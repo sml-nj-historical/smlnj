@@ -49,6 +49,8 @@
               ["Start default ML compiler"  sml
                 :active (fboundp 'sml)]
               ["-" nil nil]
+	      ["run CM.make"                sml-make
+	        :active (and (featurep 'sml-proc))]
               ["load ML source file"        sml-load-file 
                 :active (featurep 'sml-proc)]
               ["switch to ML buffer"        switch-to-sml

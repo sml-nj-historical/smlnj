@@ -119,34 +119,11 @@
 (defvar sml-default-arg ""
   "*Default command line option to pass, if any.")
 
-(defvar sml-display-frame-alist
-  '((height . 24) (width . 80) (menu-bar-lines . 0))
-  "*Alist of frame parameters used in creating dedicated ML interaction frames.
-These supersede the values given in `default-frame-alist'.
-You might like a larger screen
+(defvar sml-make-command "CM.make()"
+  "The command used by default by `sml-make'.")
 
-  \(setcdr \(assoc 'height sml-display-frame-alist\) 40\)
-
-or you might like a small font
-
-  \(setq sml-display-frame-alist 
-        \(cons '\(font . \"7x14\"\) sml-display-frame-alist\)\)
-
-in your `inferior-sml-load-hook', say. The parameters
-
-  '\(\(unsplittable . t\) \(icon-name . \"*sml*\"\)\)
-
-are always added to sml-display-frame-alist by default, though the value of
-icon-name is actually culled from `sml-program-name'. 
-
-See also the documentation for `modify-frame-parameters'.")
-
-(defvar sml-dedicated-frame (if window-system t nil)
-  "*If non-nil, interaction buffers display in their own frame.
-Default is equivalent to variable `window-system'.
-If you reset this variable after starting the compiler, you might have
-to reset the window-dedicated property of the window displaying the
-interaction buffer. See `set-window-dedicated-p'.")
+(defvar sml-make-file-name "sources.cm"
+  "The name of the makefile that `sml-make' will look for (if non-nil).")
 
 ;;(defvar sml-raise-on-error nil
 ;;  "*When non-nil, `sml-next-error' will raise the ML process's frame.")
@@ -163,7 +140,9 @@ Sending regions directly through the pty (not using temp files)
 doesn't work very well -- e.g., SML/NJ nor Poly/ML incorrectly report
 the line # of errors occurring in std_in.")
 
-(defvar sml-temp-file (make-temp-name "/tmp/ml")
+(defvar sml-temp-file
+  (make-temp-name
+   (concat (file-name-as-directory (or (getenv "TMPDIR") "/tmp")) "/ml"))
   "*Temp file that emacs uses to communicate with the ML process.
 See `sml-temp-threshold'. Defaults to \(make-temp-name \"/tmp/ml\"\)")
 
@@ -225,7 +204,7 @@ use the command \\[sml-buffer] in the interaction buffer of choice.")
 Set to \"use \\\"%s\\\"\" for SML/NJ or Edinburgh ML; 
 set to \"PolyML.use \\\"%s\\\"\" for Poly/ML, etc.")
 
-(defvar sml-cd-command "System.Directory.cd \"%s\""
+(defvar sml-cd-command "OS.FileSys.chDir \"%s\""
   "*Command template for changing working directories under ML.
 Set this to nil if your compiler can't change directories.
 
@@ -285,6 +264,28 @@ the function `sml-smlnj-error-parser' (qv).")
 (defvar sml-error-regexp sml-smlnj-error-regexp
   "*Regexp for matching \(the start of\) an error message.")
 
+;; font-lock support
+(defvar inferior-sml-font-lock-keywords
+  `((,(concat "\\(" sml-prompt-regexp "\\)\\(.*\\)")
+     (1 font-lock-prompt-face)
+     (2 font-lock-command-face keep))
+    (,sml-error-regexp . font-lock-warning-face)
+    ("^GC #.*" . font-lock-comment-face)
+    ("^\\[.*\\]" . font-lock-comment-face)))
+
+;; default faces values
+(defvar font-lock-prompt-face
+  (if (facep 'font-lock-prompt-face)
+      'font-lock-prompt-face
+    'font-lock-keyword-face))
+(defvar font-lock-command-face
+  (if (facep 'font-lock-command-face)
+      'font-lock-command-face
+    'font-lock-function-name-face))
+
+(defvar inferior-sml-font-lock-defaults
+  '(inferior-sml-font-lock-keywords nil nil nil nil))
+
 (defun sml-smlnj-error-parser (pt)
  "This parses the SML/NJ error message at PT into a 5 element list
 
@@ -341,7 +342,7 @@ inferior-sml-mode-hook.
  sml-program-name  <option> \(default \"sml\"\)
  sml-default-arg   <option> \(default \"\"\) 
  sml-use-command   \"use \\\"%s\\\"\"
- sml-cd-command    \"System.Directory.cd \\\"%s\\\"\"
+ sml-cd-command    \"OS.FileSys.chDir \\\"%s\\\"\"
  sml-prompt-regexp \"^[\\-=] *\"
  sml-error-regexp  sml-sml-nj-error-regexp
  sml-error-parser  'sml-sml-nj-error-parser"
@@ -355,7 +356,7 @@ inferior-sml-mode-hook.
      (setq sml-default-arg  arg)
      ;; buffer-local (compiler-local) variables
      (setq-default sml-use-command   "use \"%s\""
-                   sml-cd-command    "System.Directory.cd \"%s\""
+                   sml-cd-command    "OS.FileSys.chDir \"%s\""
                    sml-prompt-regexp "^[\-=] *"
                    sml-error-regexp  sml-smlnj-error-regexp
                    sml-error-parser  'sml-smlnj-error-parser)
@@ -487,12 +488,14 @@ TAB file name completion, as in shell-mode, etc.."
   (sml-mode-variables)
 
   ;; For sequencing through error messages:
-  (make-local-variable 'sml-error-cursor)
-  (setq sml-error-cursor (marker-position (point-max-marker)))
-  (make-local-variable 'sml-error-barrier)
-  (setq sml-error-barrier (marker-position (point-max-marker)))
-  (make-local-variable 'sml-real-file)
-  (setq sml-real-file (cons nil 0))
+  
+  (set (make-local-variable 'sml-error-cursor)
+       (marker-position (point-max-marker)))
+  (set (make-local-variable 'sml-error-barrier)
+       (marker-position (point-max-marker)))
+  (set (make-local-variable 'sml-real-file) (cons nil 0))
+  (set (make-local-variable 'font-lock-defaults)
+       inferior-sml-font-lock-defaults)
 
   (make-local-variable 'sml-use-command)
   (make-local-variable 'sml-cd-command)
@@ -510,8 +513,8 @@ TAB file name completion, as in shell-mode, etc.."
 
 ;;; FOR RUNNING ML FROM EMACS
 
-;;;###autoload 
-(defun sml (&optional pfx)
+;;;###autoload
+(defun run-sml (&optional pfx)
   "Run an inferior ML process, input and output via buffer *sml*. 
 With a prefix argument, this command allows you to specify any command
 line options to pass to the complier. The command runs hook functions
@@ -542,7 +545,7 @@ This usually updates `sml-buffer' to a buffer named *CMD*."
          (bname (format "*%s*" pname))
          (args (if (equal arg "") () (sml-args-to-list arg))))
     (if (comint-check-proc bname)
-        (sml-pop-to-buffer t)           ;do nothing but switch buffer
+        (pop-to-buffer (sml-proc-buffer)) ;do nothing but switch buffer
       (setq sml-buffer 
             (if (null args) 
                 ;; there is a good reason for this; to ensure
@@ -583,7 +586,8 @@ This is really mainly here to help debugging sml-mode!"
   "Switch to the ML process buffer.
 With prefix argument, positions cursor at point, otherwise at end of buffer."
   (interactive "P")
-  (sml-pop-to-buffer t)
+  (if (sml-noproc) (save-excursion (run-sml t)))
+  (pop-to-buffer (sml-proc-buffer))
   (cond ((not eob-p)
          (push-mark (point) t)
          (goto-char (point-max)))))
@@ -603,7 +607,7 @@ trailing \"\;\\n\" will be added automatically.
 
 See variables `sml-temp-threshold', `sml-temp-file' and `sml-use-command'."
   (interactive "r\nP")
-  (if (sml-noproc) (save-excursion (sml t)))
+  (if (sml-noproc) (save-excursion (run-sml t)))
   (cond ((equal start end)
          (message "The region is zero (ignored)"))
         ((and sml-use-command
@@ -691,53 +695,23 @@ With a prefix argument switch to the sml buffer as well
 
 ;; simplified from frame.el in Emacs: special-display-popup-frame...
 
-;; Display BUFFER in its own frame, reusing an existing window if any.
-;; Return the window chosen.
-
-(defun sml-display-popup-frame (buffer &optional args)
-  (let ((window (get-buffer-window buffer t)))
-    (if window
-        ;; If we have a window already, make it visible.
-        (let ((frame (window-frame window)))
-          (make-frame-visible frame)
-          (raise-frame frame)
-          window)
-      ;; otherwise no window yet, make one in a new frame.
-      (let* ((frame (make-frame (append args sml-display-frame-alist)))
-             (window (frame-selected-window frame)))
-        (set-window-buffer window buffer)
-        ;; XEmacs mostly ignores this
-        (set-window-dedicated-p window t)
-        window))))
-
 (defun sml-proc-frame ()
   "Returns the current ML process buffer's frame, or creates one first."
   (let ((buffer (sml-proc-buffer)))
-    (window-frame 
-     (or
-      ;; if its already displayed on some frame, take that as default...
-      (get-buffer-window buffer t)
-      ;; ...irrespective of what sml-dedicated-frame says, otherwise
-      ;; create a new frame (or raise an old one) perhaps...
-      (and sml-dedicated-frame 
-           (sml-display-popup-frame buffer
-                                    (list (cons 'icon-name buffer)
-                                          '(unsplittable . t))))
-      ;; ...or default to the current frame anyway.
-      (frame-selected-window)))))
+    (window-frame (display-buffer buffer))))
 
-(defun sml-pop-to-buffer (warp)
-  "(Towards) handling multiple frames properly.
-Raises the frame, and warps the mouse over there, only if WARP is non-nil."
-  (let ((current (window-frame (selected-window)))
-        (buffer  (sml-proc-buffer)))
-    (let ((frame (sml-proc-frame)))
-      (if (eq current frame)
-          (pop-to-buffer buffer)           ; stay on the same frame.
-        (select-frame frame)               ; XEmacs sometimes moves focus.
-        (select-window (get-buffer-window buffer)) ; necc. for XEmacs
-        ;; (raise-frame frame)
-        (if warp (sml-warp-mouse frame))))))
+;;(defun sml-pop-to-buffer (warp)
+;;  "(Towards) handling multiple frames properly.
+;;Raises the frame, and warps the mouse over there, only if WARP is non-nil."
+;;  (let ((current (window-frame (selected-window)))
+;;        (buffer  (sml-proc-buffer)))
+;;    (let ((frame (sml-proc-frame)))
+;;      (if (eq current frame)
+;;          (pop-to-buffer buffer)           ; stay on the same frame.
+;;        (select-frame frame)               ; XEmacs sometimes moves focus.
+;;        (select-window (get-buffer-window buffer)) ; necc. for XEmacs
+;;        ;; (raise-frame frame)
+;;        (if warp (sml-warp-mouse frame))))))
 
 
 ;;; H A C K   A T T A C K !   X E M A C S   V E R S U S   E M A C S
@@ -812,7 +786,7 @@ This command uses the ML command template `sml-use-command' to construct
 the command to send to the ML process\; a trailing \"\;\\n\" will be added
 automatically."
   (interactive "P")
-  (if (sml-noproc) (save-excursion (sml t)))
+  (if (sml-noproc) (save-excursion (run-sml t)))
   (if sml-use-command
       (let ((file 
              (car (comint-get-source "Load ML file: " sml-prev-l/c-dir/file
@@ -836,69 +810,57 @@ be executed to change the compiler's working directory\; a trailing
   (interactive "DSML Directory: ")
   (let* ((buf (sml-proc-buffer))
          (proc (get-buffer-process buf))
-         (dir (expand-file-name dir)))
+         (dir (expand-file-name dir))
+	 (string (concat (format sml-cd-command dir) ";\n")))
     (save-excursion
       (set-buffer buf)
-      (if sml-cd-command
-          (process-send-string proc
-                               (concat (format sml-cd-command dir) ";\n")))
+      (goto-char (point-max))
+      (insert string)
+      (set-marker (process-mark proc) (point))
+      (if sml-cd-command (process-send-string proc string))
       (cd dir))
     (setq sml-prev-l/c-dir/file (cons dir nil))))
 
+(defun sml-send-command (cmd &optional dir)
+  "Send string to ML process, display this string in ML's buffer"
+  (if (sml-noproc) (save-excursion (run-sml t)))
+  (let* ((my-dir (or dir (expand-file-name default-directory)))
+	 (cd-cmd (if my-dir
+		     (concat (format sml-cd-command my-dir) "; ")
+		   ""))
+	 (buf (sml-proc-buffer))
+	 (proc (get-buffer-process buf))
+	 (string (concat cd-cmd cmd ";\n")))
+    (save-some-buffers t)
+    (save-excursion
+      (sml-update-cursor buf)
+      (set-buffer buf)
+      (goto-char (point-max))
+      (insert string)
+      (if my-dir (cd my-dir))
+      (set-marker (process-mark proc) (point))
+      (process-send-string proc string))
+    (switch-to-sml t)))
+
+(defun sml-make (command)
+  "re-make a system using (by default) CM.
+   The exact command used can be specified by providing a prefix argument."
+  (interactive
+   ;; code taken straight from compile.el
+   (if (or current-prefix-arg (not sml-make-command))
+       (list (read-from-minibuffer "Compile command: "
+                                 sml-make-command nil nil
+                                 '(compile-history . 1)))
+     (list sml-make-command)))
+  (setq sml-make-command command)
+  ;; try to find a makefile up the sirectory tree
+  (let ((dir (and sml-make-file-name (expand-file-name default-directory))))
+    (while (and dir (not (file-exists-p (concat dir sml-make-file-name))))
+      (let ((newdir (file-name-directory (directory-file-name dir))))
+	(setq dir (if (equal newdir dir) nil newdir))))
+    (sml-send-command command dir)))
+
 ;;; PARSING ERROR MESSAGES
-
-;; to a very large extent "find-file-other-window" works admirably when the
-;; compiler is running in a dedicated, *unsplittable* window, and so all
-;; the goop in sml-file-other-frame-or-window is of questionable worth.
-;; unhappily, XEmacs doesn't (yet, will it ever?) implement the window
-;; unsplittable property, hence this nonsense...
-
-(defun sml-file-other-frame-or-window (file &optional window)
-  "Find or make another frame on which to display FILE.
-Start in ML interaction buffer, by hypothesis, and try not to use
-this window to display the file (with bugs in it). FILE may already
-be on display somewhere, so use that frame by default; otherwise,
-try to find a window that is displaying an sml buffer; if there is
-no such frame/window, find the nearest non-dedicated buffer or,
-in the last resort, create a whole new frame.
-
-If optional WINDOW is supplied, just use that window to display FILE."
-  (if window
-      (progn                            ; just reuse it
-        (set-window-buffer window (find-file-noselect file))
-        (select-window window))         ; assume "this" frame's selected)
-    (let* ((buf (find-file-noselect file))
-           (win (get-buffer-window buf t))
-           (frm (if win (window-frame win))))
-      (if frm
-          ;; buf is displayed in win on some frame: select frame & window
-          (progn (select-window win) (raise-frame (select-frame frm)))
-        (let* ((frame (selected-frame))   ;current frame & window
-               (window (selected-window)))
-          ;; look through all (but minibuffer) windows for an sml buffer
-          (while (and (not (eq window
-                               (select-window
-                                (previous-window (selected-window) 'mini t))))
-                      (not (memq major-mode sml-source-modes))))
-          (if (not (eq window (selected-window)))
-              ;; found window displaying an sml buffer: use that window & frame
-              (raise-frame (select-frame (window-frame (selected-window))))
-            ;; otherwise, cycle through frames looking for a spare one
-            ;; select-frame also selects the top (or root) window
-            (while (and (not (eq frame (select-frame (previous-frame
-                                                      (selected-frame) nil))))
-                        (window-dedicated-p (selected-window))))
-            ;; if no suitable frame, create one and (belt & braces) select it
-            (if (eq frame (selected-frame))
-                ;; sml-dedicated-frame iff window-dedicated-p (selected-window)
-                (if sml-dedicated-frame
-                    (progn
-                      (sml-warp-mouse (select-frame (make-frame)))
-                      (set-window-buffer
-                       (frame-selected-window (selected-frame)) buf))
-                  (switch-to-buffer-other-window buf))
-              (raise-frame (selected-frame))))
-          (switch-to-buffer buf))))))
 
 ;; This should need no modification to support other compilers. 
 
@@ -946,7 +908,7 @@ the output\) of the last error. This odd behaviour may have a use...?"
     (sml-error-overlay 'undo 1 1
                        (and sml-error-file (get-file-buffer sml-error-file)))
     ;; go to interaction buffer but don't raise it's frame 
-    (sml-pop-to-buffer nil)
+    (pop-to-buffer (sml-proc-buffer))
     ;; go to the last remembered error, and search for the next one.
     (goto-char sml-error-cursor)
     (if (not (re-search-forward sml-error-regexp (point-max) t))
@@ -988,7 +950,7 @@ the output\) of the last error. This odd behaviour may have a use...?"
         (if (not (file-readable-p file))
             (sml-bottle (concat "Can't read " file))
           ;; instead of (find-file-other-window file) to lookup the file
-          (sml-file-other-frame-or-window file sml-window)
+          (find-file-other-window file)
           ;; no good if the buffer's narrowed, still...
           (goto-char (or pos 1))        ; line 1 if no tmp file
           (forward-line (1- line0))
@@ -1017,10 +979,9 @@ the output\) of the last error. This odd behaviour may have a use...?"
 ;;; Set up the inferior mode keymap, using sml-mode bindings...
 
 (cond ((not inferior-sml-mode-map)
-       (setq inferior-sml-mode-map
-             (copy-keymap comint-mode-map))
+       (setq inferior-sml-mode-map (nconc (make-sparse-keymap) comint-mode-map))
        (install-sml-keybindings inferior-sml-mode-map)
-       (define-key inferior-sml-mode-map "\C-c\C-s" 'sml)
+       (define-key inferior-sml-mode-map "\C-c\C-s" 'run-sml)
        (define-key inferior-sml-mode-map "\t"       'comint-dynamic-complete)))
 
 ;;; H A C K   A T T A C K !   X E M A C S   /   E M A C S   K E Y S

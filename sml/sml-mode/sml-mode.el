@@ -95,6 +95,7 @@
 (defconst sml-mode-version-string
   "sml-mode, version 3.3(beta)")
 
+(require 'cl)
 (provide 'sml-mode)
 
 ;;; VARIABLES CONTROLLING INDENTATION
@@ -253,7 +254,8 @@ accepted in lieu of prompting."
 Full documentation will be available after autoloading the function."
   "Documentation for autoloading functions.")
 
-(autoload 'sml             "sml-proc"   sml-no-doc t)
+(autoload 'run-sml	   "sml-proc"   sml-no-doc t)
+(autoload 'sml-make	   "sml-proc"   sml-no-doc t)
 (autoload 'sml-load-file   "sml-proc"   sml-no-doc t)
 
 (autoload 'switch-to-sml   "sml-proc"   sml-no-doc t)
@@ -265,9 +267,128 @@ Full documentation will be available after autoloading the function."
 (cond ((not sml-mode-map)
        (setq sml-mode-map (make-sparse-keymap))
        (install-sml-keybindings sml-mode-map)
+       (define-key sml-mode-map "\C-c\C-c" 'sml-make)
        (define-key sml-mode-map "\C-c\C-s" 'switch-to-sml)
        (define-key sml-mode-map "\C-c\C-r" 'sml-send-region)
        (define-key sml-mode-map "\C-c\C-b" 'sml-send-buffer)))
+
+;; font-lock setup
+
+(defvar sml-font-lock-keywords
+  '((sml-font-comments-and-strings)
+    ("\\<\\(fun\\|and\\)\\s-+\\(\\sw+\\)"
+     (1 font-lock-keyword-face)
+     (2 font-lock-function-def-face))
+    ("\\<\\(\\(data\\|abs\\|with\\|eq\\)?type\\)\\s-+\\('\\s-*\\sw+\\s-+\\)*\\(\\sw+\\)"
+     (1 font-lock-keyword-face)
+     (4 font-lock-type-def-face))
+    ("\\<\\(val\\)\\s-+\\(\\sw+\\>\\s-*\\)?\\(\\sw+\\)\\s-*="
+     (1 font-lock-keyword-face)
+     ;;(6 font-lock-variable-def-face nil t)
+     (3 font-lock-variable-def-face))
+    ("\\<\\(structure\\|functor\\|abstraction\\)\\s-+\\(\\sw+\\)"
+     (1 font-lock-keyword-face)
+     (2 font-lock-module-def-face))
+    ("\\<\\(signature\\)\\s-+\\(\\sw+\\)"
+     (1 font-lock-keyword-face)
+     (2 font-lock-interface-def-face))
+    
+    ;; Generated with Simon Marshall's make-regexp:
+    ;; (make-regexp
+    ;;  '("abstype" "and" "andalso" "as" "case" "datatype"
+    ;;    "else" "end" "eqtype" "exception" "do" "fn" "fun" "functor"
+    ;;    "handle" "if" "in" "include" "infix" "infixr" "let" "local"
+    ;;    "nonfix" "of" "op" "open" "orelse" "overload" "raise" "rec"
+    ;;    "sharing" "sig" "signature" "struct" "structure" "then" "type"
+    ;;    "val" "where" "while" "with" "withtype") t)
+    ("\\<\\(a\\(bstype\\|nd\\(\\|also\\)\\|s\\)\\|case\\|d\\(atatype\\|o\\)\\|\
+e\\(lse\\|nd\\|qtype\\|xception\\)\\|f\\(n\\|un\\(\\|ctor\\)\\)\\|\handle\\|\
+i\\([fn]\\|n\\(clude\\|fixr?\\)\\)\\|l\\(et\\|ocal\\)\\|nonfix\\|\
+o\\([fp]\\|pen\\|relse\\|verload\\)\\|r\\(aise\\|ec\\)\\|\
+s\\(haring\\|ig\\(\\|nature\\)\\|truct\\(\\|ure\\)\\)\\|t\\(hen\\|ype\\)\\|\
+val\\|w\\(h\\(ere\\|ile\\)\\|ith\\(\\|type\\)\\)\\)\\>"
+     . font-lock-keyword-face))
+  "Regexps matching standard SML keywords.")
+
+;; default faces values
+(defvar font-lock-function-def-face
+  (if (facep 'font-lock-function-def-face)
+      'font-lock-function-name-face
+    'font-lock-function-name-face))
+(defvar font-lock-type-def-face
+  (if (facep 'font-lock-type-def-face)
+      'font-lock-type-def-face
+    'font-lock-type-face))
+(defvar font-lock-module-def-face
+  (if (facep 'font-lock-module-def-face)
+      'font-lock-module-def-face
+    'font-lock-function-name-face))
+(defvar font-lock-interface-def-face
+  (if (facep 'font-lock-interface-def-face)
+      'font-lock-interface-def-face
+    'font-lock-type-face))
+(defvar font-lock-variable-def-face
+  (if (facep 'font-lock-variable-def-face)
+      'font-lock-variable-def-face
+    'font-lock-variable-name-face))
+
+(defvar sml-font-lock-defaults
+  '(sml-font-lock-keywords t nil nil nil))
+
+;; code to get comment fontification working in the face of recursive
+;; comments.  It's lots more work than it should be.	-- stefan
+(defvar sml-font-cache '((0 . normal))
+  "List of (POSITION . STATE) pairs for an SML buffer.
+The STATE is either `normal', `comment', or `string'.  The POSITION is
+immediately after the token that caused the state change.")
+(make-variable-buffer-local 'sml-font-cache)
+
+(defun sml-font-comments-and-strings (limit)
+  "Fontify SML comments and strings up to LIMIT.
+Handles nested comments and SML's escapes for breaking a string over lines.
+Uses sml-font-cache to maintain the fontification state over the buffer."
+  (let ((beg (point))
+	last class)
+    (while (< beg limit)
+      (while (and sml-font-cache
+		  (> (caar sml-font-cache) beg))
+	(pop sml-font-cache))
+      (setq last (caar sml-font-cache))
+      (setq class (cdar sml-font-cache))
+      (goto-char last)
+      (cond
+       ((eq class 'normal)
+	(cond
+	 ((not (re-search-forward "\\((\\*\\)\\|\\(\"\\)" limit t))
+	  (goto-char limit))
+	 ((match-beginning 1)
+	  (push (cons (point) 'comment) sml-font-cache))
+	 ((match-beginning 2)
+	  (push (cons (point) 'string) sml-font-cache))))
+       ((eq class 'comment)
+	(cond
+	 ((let ((nest 1))
+	    (while (and (> nest 0)
+			(re-search-forward "\\((\\*\\)\\|\\(\\*)\\)" limit t))
+	      (cond
+	       ((match-beginning 1) (incf nest))
+	       ((match-beginning 2) (decf nest))))
+	    (> nest 0))
+	  (goto-char limit))
+	 (t
+	  (push (cons (point) 'normal) sml-font-cache)))
+	(put-text-property (- last 2) (point) 'face 'font-lock-comment-face))
+       ((eq class 'string)
+	(while (and (re-search-forward
+		     "\\(\"\\)\\|\\(\\\\\\s-*\\\\\\)\\|\\(\\\\\"\\)" limit t)
+		     (not (match-beginning 1))))
+	(cond
+	 ((match-beginning 1)
+	  (push (cons (point) 'normal) sml-font-cache))
+	 (t
+	  (goto-char limit)))
+	(put-text-property (- last 1) (point) 'face 'font-lock-string-face)))
+      (setq beg (point)))))
 
 ;;; H A C K   A T T A C K !   X E M A C S   V E R S U S   E M A C S
 
@@ -343,6 +464,7 @@ Full documentation will be available after autoloading the function."
       (setq i (1+ i))))
 
   ;; Now we change the characters that are meaningful to us.
+  (modify-syntax-entry ?\\	"\\"	sml-mode-syntax-table)
   (modify-syntax-entry ?\(      "()1"   sml-mode-syntax-table)
   (modify-syntax-entry ?\)      ")(4"   sml-mode-syntax-table)
   (modify-syntax-entry ?\[      "(]"    sml-mode-syntax-table)
@@ -415,22 +537,17 @@ Mode map
   (set-syntax-table sml-mode-syntax-table)
   (setq local-abbrev-table sml-mode-abbrev-table)
   ;; A paragraph is separated by blank lines or ^L only.
-  (make-local-variable 'paragraph-start)
-  (setq paragraph-start (concat "^[\t ]*$\\|" page-delimiter))
-  (make-local-variable 'paragraph-separate)
-  (setq paragraph-separate paragraph-start)
-  (make-local-variable 'indent-line-function)
-  (setq indent-line-function 'sml-indent-line)
-  (make-local-variable 'comment-start)
-  (setq comment-start "(* ")
-  (make-local-variable 'comment-end)
-  (setq comment-end " *)")
-  (make-local-variable 'comment-column)
-  (setq comment-column 40)              
-  (make-local-variable 'comment-start-skip)
-  (setq comment-start-skip "(\\*+[ \t]?")
-  (make-local-variable 'comment-indent-function)
-  (setq comment-indent-function 'sml-comment-indent)
+  
+  (set (make-local-variable 'paragraph-start)
+       (concat "^[\t ]*$\\|" page-delimiter))
+  (set (make-local-variable 'paragraph-separate) paragraph-start)
+  (set (make-local-variable 'indent-line-function) 'sml-indent-line)
+  (set (make-local-variable 'comment-start) "(* ")
+  (set (make-local-variable 'comment-end) " *)")
+  (set (make-local-variable 'comment-column) 40)
+  (set (make-local-variable 'comment-start-skip) "(\\*+[ \t]?")
+  (set (make-local-variable 'comment-indent-function) 'sml-comment-indent)
+  (set (make-local-variable 'font-lock-defaults) sml-font-lock-defaults)
   (setq sml-error-overlay (and sml-error-overlay (sml-make-overlay))))
 
   ;; Adding these will fool the matching of parens -- because of a
