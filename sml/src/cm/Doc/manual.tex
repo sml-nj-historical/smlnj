@@ -29,19 +29,20 @@ User Manual}
 
 This manual describes a new implementation of CM, the ``Compilation
 and Library Manager'' for Standard ML of New Jersey (SML/NJ).  Like its
-previous version, CM is in change of managing separate compilation and
+previous version, CM is in charge of managing separate compilation and
 facilitates access to stable libraries.
 
 Programming projects that use CM are typically composed of separate
 {\em libraries}.  Libraries themselves can be internally
 sub-structured using CM's notion of {\em groups}.  Using libraries and
-groups, programs can be viewed as a {\em hierarchy of modules}.  Large
-projects tend to benefit from this approach~\cite{blume:appel:cm99}.
+groups, programs can be viewed as a {\em hierarchy of modules}.  The
+organization of large projects tends to benefit from this
+approach~\cite{blume:appel:cm99}.
 
 CM uses {\em cutoff} techniques~\cite{tichy94} to minimize
 recompilation work and provides automatic dependency analysis to free
-the programmer from having to specify the module dependency graph by
-hand~\cite{blume:depend99}.
+the programmer from having to specify a detailed module dependency
+graph by hand~\cite{blume:depend99}.
 
 The most important change with repect to the previous (``old'')
 implementation of CM is a change of emphasis.  Until now the focus was
@@ -72,13 +73,16 @@ is
     basis.cm
 \end{verbatim}
 
-This library consists of three ML source files ({\tt foo.sig}, {\tt
-foo.sml}, and {\tt helper.sml}) and refers to one external library
-({\tt basis.cm}).  It exports two definitions, one for a structure
-named {\tt Foo} and one for a signature named {\tt FOO}.  The entry
-{\tt basis.cm} typically denotes the description file of the {\it
-Standard ML Basis Library}~\cite{reppy99:basis}; most programs will
-want to list it in their description file(s).
+This library exports two definitions, one for a structure named {\tt
+Foo} and one for a signature named {\tt FOO}.  The specification for
+such exports appear between the keywords {\tt Library} and {\tt is}.
+The {\em members} of the library are specified after the keyword {\tt
+is}.  Here we have three ML source files ({\tt foo.sig}, {\tt
+foo.sml}, and {\tt helper.sml}) and a reference to one external
+library ({\tt basis.cm}).  The entry {\tt basis.cm} typically denotes
+the description file for the {\it Standard ML Basis
+Library}~\cite{reppy99:basis}; most programs will want to list it in
+their own description file(s).
 
 \subsection{Library descriptions}
 
@@ -90,12 +94,19 @@ work:
 \item All top-level definitions must be {\em module} definitions
 (structures, signatures, functors, or functor signatures).  In other
 words, there can be no top-level type-, value-, or infix-definitions.
-\item For a given symbol, there can be at most one file per library
-(or---more correctly---one file per library component; see
+\item For a given symbol, there can be at most one ML source file per
+library (or---more correctly---one file per library component; see
 Section~\ref{sec:groups}) that defines the symbol at top level.
+\item For a given symbol, there can be at most one sub-library or one
+sub-group that exports that symbol.
 \item The use of ML's {\bf open} construct is not permitted at top
 level.
 \end{enumerate}
+
+Note that these rules do not require the exports of sub-groups or
+sub-libraries to be distinct from the exports of ML source files.
+Here, the disambiguating rule is that the definition from the ML
+source overrides the definition imported from the group or library.
 
 The full syntax for library description files also includes provisions
 for a simple ``conditional compilation'' facility (see
@@ -144,7 +155,7 @@ description files with the following exceptions:
 \item The initial keyword {\tt Library} is replaced with {\tt Group}
 followed by the name of the surrounding library's description file in
 parentheses.
-\item The export list can be left empty.  In this case CM will
+\item The export list can be left empty, in which case CM will
 provide a default export list: all exports from ML source files plus
 all exports from sub-components of the component.  (Note that this does
 not include the exports of other libraries.)
@@ -176,6 +187,33 @@ is
     foo-utils.cm
     basis.cm
 \end{verbatim}
+
+\subsection{Multiple occurences of the same member}
+
+The following rules apply to multiple occurences of the same ML source
+file, the same library, or the same group within a program:
+
+\begin{itemize}
+\item Within the same description file, each member can be specified
+at most once.
+\item Libraries can be referred to freely from as many other groups or
+libraries as the programmer desires.
+\item Each group cannot be used from outside the (uniquely defined)
+library that it is a component of.  However, within that library it
+can be referred to from arbitrarily many other groups.
+\item The same ML source file cannot appear more than once.  If an ML
+source file is to be referred to by multiple clients it must first be
+``wrapped'' into a library or (if sufficient) a group.
+\end{itemize}
+
+\subsection{Top-level groups}
+
+Mainly to facilitate some superficial backward-compatibility, CM also
+allows groups to appear at top level, i.e., outside of any library.
+Such groups must omit the parenthetical library specification and then
+cannot also be used within libraries. One could think of the top level
+itself as a ``virtual unnamed library'' whose components top-level
+groups are.
 
 \section{Naming objects in the file system}
 
@@ -349,23 +387,19 @@ top level.
 
 During the course of the same {\tt CM.make}, the code of each
 compilation module will be executed at most once.  Code in units that
-are marked as {\it private} will be executed exactly once.  Code in
-other units will be executed only if the unit has been recompiled
-since it was executed last time or if it depends on another
-compilation unit whose code has been executed since.
+are marked as {\it private} (see Section~\ref{sec:sharing}) will be
+executed exactly once.  Code in other units will be executed only if
+the unit has been recompiled since it was executed last time or if it
+depends on another compilation unit whose code has been executed
+since.
 
 In effect, different invocations of {\tt CM.make} (and {\tt
 CM.autoload}) will share dynamic state created at link time as much as
 possible unless the compilation units in question have been explicitly
 marked private.
 
-{\tt CM.autoload} acts like a ``lazy'' {\tt CM.make}.  The same
-bindings that {\tt CM.make} would introduce into the top-level
-enviroment are also introduced by the corresponding {\tt CM.autoload}.
-However, most work will be deferred until some code entered at the
-interactive top level later mentions one or more of the exported
-symbols.  Only then will CM go and perform just the minimal work
-necessary to provide the actual definitions for them.
+{\tt CM.autoload} acts like {\tt CM.make}, only ``lazily''. See
+Section~\ref{sec:autoload} for more information.
 
 \subsubsection*{Flags}
 
@@ -383,13 +417,15 @@ SOME} $v$ reads it and then replaces it with a new value $v$.
 \end{verbatim}
 
 {\tt CM.verbose} can be used to turn off CM's progress messages.  The
-default is {\em on}.
+default is {\em true} and can be overriden at startup time by the
+environment variable {\tt CM\_VERBOSE}.
 
 In the case of a compile-time error {\tt CM.keep\_going} instructs the
 {\tt CM.recomp} phase to continue working on parts of the dependency
 graph that are not related to the error.  (This does not work for
 syntax errors because a correct parse is needed before CM can
-construct its dependency graph.)  The default is {\em off}.
+construct its dependency graph.)  The default is {\em false} and can
+be overriden at startup by the environment variable {\tt CM\_KEEP\_GOING}.
 
 {\tt CM.parse\_caching} sets a limit on how many parse trees are
 cached in main memory.  In certain cases CM must parse source files in
@@ -399,16 +435,20 @@ saves the time to parse the file again.  Keeping parse trees can be
 expensive in memory usage.  Moreover, CM makes special efforts to
 avoid parsing files unless they have actually been modified.
 Therefore, it may not make much sense to set this value very high.
-The default is {\em 100}.
+The default is {\em 100} and can be overriden at startup time by the
+environment variable {\tt CM\_PARSE\_CACHING}.
 
 This version of CM uses an ML-inspired syntax for expressions in its
 conditional compilation subsystem.  However, for the time being it
 will accept old C-inspired expressions but produce a warning for each
 occurrence. {\tt CM.warn\_obsolete} can be used to turn these warnings
-off. The default is {\em on}.
+off. The default is {\em true} and can be overriden at startup time by
+the environment variable {\tt CM\_WARN\_OBSOLETE}.
 
 {\tt CM.debug} can be used to turn on debug mode.  This currently has
-no effect since there is no separate debug mode. The default is {\em off}.
+no effect since there is no separate debug mode. The default is {\em
+false} and can be overriden at startup time by the environment
+variable {\tt CM\_DEBUG}.
 
 \subsubsection*{Path anchors}
 
@@ -443,22 +483,23 @@ CM keeps a lot of internal state.  Some of this state can be inspected.
   val listLibs : unit -> unit
 \end{verbatim}
 
-{\tt CM.showPending} lists the names of all symbols which are
-currently registered as being bound at top level via the autoloading
-mechanism and which so far have not actually been resolved.
+{\tt CM.showPending} lists to standard output the names of all symbols
+which are currently registered as being bound at top level via the
+autoloading mechanism and which so far have not actually been
+resolved.
 
-{\tt CM.listLibs} shows the path names of library description files
-for those stable libraries that are currently known to CM.  This list
-includes those libraries which have been accessed ``implicitly'' by
-virtue of being a sub-library of another library that has been
-accessed in the past.  Library state can take up considerable space in
-main memory.  Use {\tt CM.dismissLib} (see below) to remove a library
-from CM's registry.
+{\tt CM.listLibs} lists to standard output the path names of library
+description files for those stable libraries that are currently known
+to CM.  This list includes those libraries which have been accessed
+``implicitly'' by virtue of being a sub-library of another library
+that has been accessed in the past.  Library state can take up
+considerable space in main memory.  Use {\tt CM.dismissLib} (see
+below) to remove a library from CM's registry.
 
 \subsubsection*{Altering CM's internal state}
 
-Sometimes it can become necessary to explicitly instruct CM to change
-or update its internal state.
+Sometimes it can become necessary to explicitly change or update CM's
+internal state.
 
 \begin{verbatim}
   val dismissLib : string -> unit
@@ -471,14 +512,17 @@ internal registry.  See the discussion of {\tt CM.listLibs} above.
 Although removing a library from the registry may recover considerable
 amounts of main memory, doing so also eliminates any chance of sharing
 the associated data structures with later references to the same
-library.  Therefore, doing so is not always in the interest of
-memory-conscious users.
+library.  Therefore, it is not always in the interest of
+memory-conscious users to use this feature.
+
+Sharing of dynamic state created by the library is {\em not} affected
+by this.
 
 {\tt CM.synchronize} updates tables internal to CM to reflect changes
 in the file system.  In particular, this will be necessary when the
 association of file names to ``file IDs'' (in Unix: inode numbers)
-changes during an ongoing session.  In practice, this tends to be
-rare.
+changes during an ongoing session.  In practice, the need for this
+tends to be rare.
 
 {\tt CM.reset} completely erases all internal state in CM.  This is
 not very advisable since it will also break the association with
@@ -487,6 +531,59 @@ amount of space taken up by the internal state, though.
 
 \subsection{The auto loader}
 \label{sec:autoload}
+
+From the user's point of view, a call to {\tt CM.autoload} acts very
+much like the corresponding call ot {\tt CM.make} because the same
+bindings that {\tt CM.make} would introduce into the top-level
+enviroment are also introduced by {\tt CM.autoload}.  However, most
+work will be deferred until some code entered later at the interactive
+top level refers to one or more of these bindings.  Only then will CM
+go and perform just the minimal work necessary to provide the actual
+definitions.
+
+In this version of CM the autoloader plays a central role.  Unlike
+before, it cannot be turned off since it provides many of the standard
+pre-defined top-level bindings in the interactive system.
+
+In essence, the autoloader is a convenient tool for virtually
+``loading'' an entire library without incurring an undue increase in
+memory consumption for library modules that are not actually being
+used.
+
+\subsection{Sharing of state}
+\label{sec:sharing}
+
+By default, CM tries to let multiple invocations of {\tt CM.make} or
+{\tt CM.autoload} share dynamic state created by link-time effects.
+Of course, this is not possible if the compilation unit in question
+has recently been recompiled or depends on another compilation unit
+whose code has recently been re-executed.  The programmer can
+explicitly mark certain ML files as {\em shared}, in which case CM
+will issue a warning whenever the unit's code gets re-executed.
+
+State created by compilation units marked as {\em private} is never
+shared across multiple calls to {\tt CM.make} or {\tt CM.autoload}.
+However, each such call incurs an associated {\em traversal} of the
+dependency graph, and during such a traversal each compilation unit
+will be executed at most once.  In other words, the same program will
+not see multiple instantiations of the same compilation unit.
+
+As long as only {\tt CM.make} is involved, this is not difficult to
+describe since each traversal will have completed when the call to
+{\tt CM.make} returns.  However, that is not true in the case of {\tt
+CM.autoload}.  {\tt CM.autoload} also initiates a traversal, but that
+traversal remains ``suspended'' and will be performed incrementally as
+necessary---driven by code compiled at the interactive top level.  And
+yet, it is still the case that each compilation unit will be linked at
+most once during this traversal and private state will not be confuse
+with private state of other traversals that might be active at the same
+time.
+
+% Need a good example here.
+
+\subsubsection*{Sharing annotations}
+
+
 
 \section{Conditional compilation}
 \label{sec:preproc}
