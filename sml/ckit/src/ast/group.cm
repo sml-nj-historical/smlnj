@@ -22,6 +22,8 @@ is
 	(* standard library *)
 	smlnj-lib.cm
 #endif
+#else
+#error new CM required
 #endif
 
 	(* parser *)

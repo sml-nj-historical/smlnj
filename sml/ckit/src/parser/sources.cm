@@ -32,6 +32,15 @@ Group is
 	(* pretty printer library *)
         pp-lib.cm
 #endif
+#else
+	(* standard library *)
+	smlnj-lib.cm
+
+	(* ml-yacc *)
+	ml-yacc-lib.cm
+
+	(* pretty printer library *)
+        pp-lib.cm
 #endif
 
         (* configuration *)

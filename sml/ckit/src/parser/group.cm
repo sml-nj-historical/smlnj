@@ -33,6 +33,8 @@ is
 	(* pretty printer library *)
         pp-lib.cm
 #endif
+#else
+#error new CM required
 #endif
 
         (* configuration *)

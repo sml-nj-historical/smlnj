@@ -21,6 +21,8 @@ Group is
 	(* standard library *)
 	smlnj-lib.cm
 #endif
+#else
+	smlnj-lib.cm
 #endif
 
 	(* parser *)
