@@ -1,0 +1,86 @@
+# targets
+#
+# the following is a list of the targets (in addition to sml) that
+# this shell script can install.  Comment out those that you do not
+# want.  Note that ml-burg requires the smlnj-lib target, and that cml-lib
+# requires cml.
+#
+
+# build the basic sml compiler
+TARGETS="sml"
+
+# unpack the source code for the SML/NJ compiler; this is not required,
+# unless you are doing compiler hacking, but it may be interesting to look at.
+#
+#TARGETS="$TARGETS src-smlnj"
+
+# 
+# build the sml compiler with all compiler modules visible at top-level
+#
+#TARGETS="$TARGETS sml-full"
+
+# build ML-Yacc
+#
+TARGETS="$TARGETS ml-yacc"
+
+# pre-compile and install the ML-Yacc Library; this is necessary to use
+# parsers produced by ML-Yacc
+#
+TARGETS="$TARGETS ml-yacc-lib"
+
+# build ML-Lex
+#
+TARGETS="$TARGETS ml-lex"
+
+# pre-compile and install the SML/NJ Library.  Note that this must come
+# after ml-lex and ml-yacc, but before ml-burg.
+#
+TARGETS="$TARGETS smlnj-lib"
+
+# build ML-Burg
+#
+TARGETS="$TARGETS ml-burg"
+
+# pre-compile and install Concurrent ML, which is a library for message-passing
+# concurrency.
+#
+TARGETS="$TARGETS cml"
+
+# pre-compile and install the CML Library, which provides some useful CML
+# modules.
+#
+TARGETS="$TARGETS cml-lib"
+
+# pre-compile and install eXene, which is a library for X-Windows programming.
+# EXene requires CML.
+#
+TARGETS="$TARGETS eXene"
+
+# unpack and install the documentation directory.
+#
+#TARGETS="$TARGETS doc"
+
+# If this flag is set to TRUE, then autoloading is enabled in CM.
+#
+ENABLE_AUTOLOADING=TRUE
+
+# build a version of sml-cm with CML autoloading available.  This
+# is called cml-cm.  Eventually, this will evolve into a proper
+# interactive version of CML.
+#
+#TARGETS="$TARGETS cml-cm"
+
+# These flags control which libraries sml-cm will autoload.
+#
+AUTOLOAD_SMLNJ_LIB=TRUE		# lib/smlnj-lib.cm
+AUTOLOAD_SMLNJ_UNIX=TRUE	# lib/unix-lib.cm
+#AUTOLOAD_SMLNJ_HTML=TRUE	# lib/html-lib.cm
+#AUTOLOAD_SMLNJ_REACTIVE=TRUE	# lib/reactive-lib.cm
+#AUTOLOAD_SMLNJ_PP=TRUE		# lib/pp-lib.cm
+#AUTOLOAD_SMLNJ_REGEXP=TRUE	# lib/regexp-lib.cm
+
+# These flags control which libraries cml-cm will autoload.
+#
+AUTOLOAD_CML_LIB=TRUE		# lib/cml-lib.cm
+#AUTOLOAD_EXENE=TRUE		# lib/eXene.cm
+

@@ -1,0 +1,8 @@
+Group
+	structure X86UnixCMB
+	structure X86Compiler
+is
+	../viscomp-lib.cm
+	../../cm/cm-lib.cm
+	x86-unix.sml
+        x86-compiler.cm

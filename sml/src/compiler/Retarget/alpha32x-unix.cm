@@ -1,0 +1,7 @@
+Group
+	structure Alpha32XUnixCMB
+	structure Alpha32XCompiler
+is
+	../viscomp-lib.cm	
+	../../cm/cm-lib.cm
+	alpha32x-unix.sml
