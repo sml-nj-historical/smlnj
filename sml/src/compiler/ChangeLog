@@ -1,3 +1,9 @@
+2000-04-20  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* TopLevel/viscomp/control.sml (cpsopt): Use last_contract rather than
+	first_contract because dropargs is needed to avoid blowing up
+	the register allocator.
+
 2000-04-19  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* TopLevel/viscomp/control.sml (cpsopt): Remove all but first_contract.

@@ -244,25 +244,6 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop (SUBSCRIPT_RAW64) = "subscriptraw64"
 
 
-val purePrimop =
-  fn DEREF => false
-   | ASSIGN => false 
-   | SUBSCRIPT => false
-   | BOXEDUPDATE => false
-   | UNBOXEDUPDATE => false
-   | UPDATE => false
-   | CAPTURE => false
-   | CALLCC => false
-   | ISOLATE => false
-   | ARITH{overflow,...} => not overflow
-   | NUMSUBSCRIPT{immutable,...} => immutable
-   | NUMUPDATE _ => false
-   | GETSPECIAL => false
-   | (SETSPECIAL | SETHDLR | SETVAR | SETPSEUDO | SETMARK) => false
-   | THROW => false
-   | (DISPOSE | MKSPECIAL | DEFLVAR | MARKEXN) => false
-   | _ => true
-
 (* should return more than just a boolean:
  * {Store,Continuation}-{read,write} *)
 val effect =

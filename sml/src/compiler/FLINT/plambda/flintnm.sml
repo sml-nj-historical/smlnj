@@ -2,13 +2,13 @@
 (* monnier@cs.yale.edu *)
 
 (* Converting the Standard PLambda.lexp into the FLINT IL *)
-signature FLINTNM = 
+signature FLINTNM =
 sig 
   val norm : PLambda.lexp -> FLINT.fundec
 end (* signature FLINTNM *)
 
 structure FlintNM : FLINTNM =
-struct 
+struct
 
 local structure LT = PLambdaType
       structure FL = PFlatten		(* argument flattening *)

@@ -43,8 +43,9 @@ struct
     val closureprint = ref false
     val closureStrategy = ref 0
     val lambdaopt = ref true
-    val cpsopt = ref ["first_contract" (* , "eta", "uncurry", "etasplit", *)
-		      (* "cycle_expand", "eta", "last_contract" *) ]
+    val cpsopt = ref ["last_contract"]
+    (* ["first_contract", "eta", "uncurry", "etasplit",
+	"cycle_expand", "eta", "last_contract" ] *)
     val rounds = ref 10
     val path = ref false
     val betacontract = ref true

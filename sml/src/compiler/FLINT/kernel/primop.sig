@@ -233,7 +233,6 @@ val IGE : primop
 
 val prNumkind : numkind -> string
 val prPrimop: primop -> string
-val purePrimop : primop -> bool
 val mayRaise : primop -> bool
 (* This should return more than just a boolean.
  * True means "can not be dead-code eliminated" *)
