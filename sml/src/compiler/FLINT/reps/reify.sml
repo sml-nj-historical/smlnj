@@ -184,6 +184,8 @@ let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false)
               | RECORD(rk, vs, v, e) => RECORD(rk, vs, v, loop e)
               | SELECT(u, i, v, e) => SELECT(u, i, v, loop e)
     
+	      | SUPERCAST (x, v, t, e) => SUPERCAST (x, v, t, loop e)
+
               | CON ((_, DA.CONSTANT i, _), _, _, v, e) => 
                   WRAP(LT.tcc_int, [INT i], v, loop e)
 

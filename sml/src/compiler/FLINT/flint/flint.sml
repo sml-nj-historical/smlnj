@@ -116,6 +116,8 @@ datatype lexp
   | BRANCH of primop * value list * lexp * lexp
   | PRIMOP of primop * value list * lvar * lexp
 
+  | SUPERCAST of value * lvar * lty * lexp
+
 withtype fundec = fkind * lvar * (lvar * lty) list * lexp
 and tfundec = tfkind * lvar * (tvar * tkind) list * lexp
 and dict = {default: lvar, table: (tyc list * lvar) list}

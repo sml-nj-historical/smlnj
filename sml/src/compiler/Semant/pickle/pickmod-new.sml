@@ -639,6 +639,8 @@ in
 		"v" $ [fprim p, list value vs, lexp e1, lexp e2]
 	      | l (F.PRIMOP (p, vs, v, e)) =
 		"w" $ [fprim p, list value vs, lvar v, lexp e]
+	      | l (F.SUPERCAST (x, v, t, e)) =
+		"x" $ [value x, lvar v, lty t, lexp e]
 	in
 	    l arg
 	end

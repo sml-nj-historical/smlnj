@@ -111,6 +111,9 @@ fun recover (fdec, postRep) =
               | lpe (PRIMOP((_,_,lt,ts), _, v, e)) = 
                   (addv (v, reslty (lt, ts)); lpe e)
 
+	      | lpe (SUPERCAST (_, v, t, e)) =
+		  (addv (v, t); lpe e)
+
          in lpe e 
         end (* function transform *)
 

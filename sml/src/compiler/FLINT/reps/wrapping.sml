@@ -264,6 +264,8 @@ let (* In pass1, we calculate the old type of each variables in the FLINT
                | RAISE (u, lts) => RAISE(u, map ltf lts)
                | HANDLE (e, v) => HANDLE (loop e, v)
 
+	       | SUPERCAST (x, v, t, e) => SUPERCAST (x, v, t, loop e)
+
                (* resolving the polymorphic equality in a special way *)
                | BRANCH (p as (_, PO.POLYEQL, _, _), vs, e1, e2) =>
                    loop(Equal.equal_branch (p, vs, e1, e2))

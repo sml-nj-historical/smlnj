@@ -205,6 +205,12 @@ fun copy ta alpha le = let
        let val (nlv,nalpha) = newv(lv, alpha)
        in PRIMOP(cpo po, map substval vs, nlv, copy nalpha le)
        end
+
+     | SUPERCAST (v, lv, lt, le) =>
+       let val (nlv, nalpha) = newv (lv, alpha)
+       in
+           SUPERCAST (substval v, nlv, lt_subst ta lt, copy nalpha le)
+       end
     end
 in copy' (tmap_sort ta) alpha le
 end
@@ -262,6 +268,9 @@ in case lexp
      | F.HANDLE (le,v) => addv(loop le, v)
      | F.BRANCH (po,vs,le1,le2) => fpo(addvs(S.union(loop le1, loop le2), vs), po)
      | F.PRIMOP (po,vs,lv,le) => fpo(addvs(S_rmv(lv, loop le), vs),po)
+
+     | F.SUPERCAST (v, lv, lt, le) => addv (S_rmv (lv, loop le), v)
+
 end
 
 end (* top-level local *)

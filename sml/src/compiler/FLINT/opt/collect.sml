@@ -284,6 +284,13 @@ val census = let
 	    in cexp le; if used lvi then use v else ()
 	    end
 
+	  | F.SUPERCAST (x, v, _, e) =>
+	      let val vi = newv v
+	      in
+		  cexp e;
+	          if used vi then use x else ()
+	      end
+
 	  | F.RAISE (v,_) => use v
 	  | F.HANDLE (le,v) => (use v; cexp le)
 	  
@@ -378,6 +385,13 @@ fun unuselexp undertaker = let
 	    let val lvi = get lv
 	    in if used lvi then unuse v else ();
 		def lvi; cexp le; kill lv
+	    end
+
+	  | F.SUPERCAST (x, v, _, e) =>
+	    let val vi = get v
+	    in
+		if used vi then unuse x else ();
+		def vi; cexp e; kill v
 	    end
 
 	  | F.RAISE (v,_) => unuse v

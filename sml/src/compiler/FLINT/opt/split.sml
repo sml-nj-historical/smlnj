@@ -102,6 +102,9 @@ fun sexp env lexp =			(* fixindent *)
 	 | F.PRIMOP (po,vs,lv,le) =>
 	   let1(le, fn e => F.PRIMOP(po, vs, lv, e), lv, vs, PO.effect(#2 po))
 
+	 | F.SUPERCAST (v, lv, t, le) =>
+	     let1 (le, fn e => F.SUPERCAST (v, lv, t, e), lv, [v], false)
+
 	 (* IMPROVEME: lvs should not be restricted to [lv] *)
 	 | F.LET(lvs as [lv],body as F.TAPP (v,tycs),le) =>
 	   let1(le, fn e => F.LET(lvs, body, e), lv, [v], false)

@@ -389,6 +389,13 @@ in case lexp
 	     | _ => ());
 	   (1+s, addv(S_rmv(lv, fv), v), F.SELECT(v,i,lv,le))
        end
+
+     | F.SUPERCAST (x, v, t, e) =>
+       let val (s, fv, e') = loop e
+       in
+	   (1+s, addv (S_rmv (v, fv), x), F.SUPERCAST (x, v, t, e'))
+       end
+
      | F.RAISE (F.VAR v,ltys) =>
        (* artificially high size estimate to discourage inlining *)
        (15, S.singleton v, lexp)

@@ -389,6 +389,11 @@ fun check phase envs lexp = let
                 lvarDef le lv;
                 typeWith (lv,lt) e
 	    end
+
+	| SUPERCAST (x, v, t, e) =>
+	    (lvarDef le v;
+	     typeWith (v, t) e)
+
 	| RAISE (v,lts) => (ltMatch (le,"RAISE") (typeofVal v, ltExn); lts)
 	| HANDLE (e,v) => let val lts = typeof e
 	    in ltFnAppR (le,"HANDLE") (typeofVal v, lts); lts

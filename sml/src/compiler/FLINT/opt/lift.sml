@@ -240,6 +240,7 @@ fun wellFormed (fdec : fundec) =
 		in
 		    b
 		end
+	      | formed (SUPERCAST (x, v, t, e), d) = formed (e, d)
 	in
 	    formed(e, 0)
 	end
@@ -474,6 +475,16 @@ fun lift (e, env, td, d, ad, rename) =
 	     in
 		 (SELECT(v',i,l,e'), nt'', fvs'@fvs'', hd'@hd'')
 	     end
+
+	 | loope (SUPERCAST (x, v, t, e), env, d, ad) =
+	     (* not sure if this is right -Blume *)
+	     let val (x', nt', fvs', hd') = loopc env x
+		 val _ = addEnv (env, [v], [t], fvs', td, d, true)
+		 val (e', nt'', fvs'', hd'') = loope (e, env, d, ad)
+	     in
+		 (SUPERCAST (x', v, t, e'), nt'', fvs'@fvs'', hd'@hd'')
+	     end
+
 	 | loope (RAISE(v,ls), env, d, ad) =
 	     let val (v', nt', fvs', hd') = loopc env v
 	     in  (RAISE(v',ls), ls, fvs', hd')

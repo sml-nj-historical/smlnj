@@ -1385,6 +1385,7 @@ structure UnpickMod : UNPICKMOD = struct
 	      | e #"u" = F.HANDLE (lexp (), value ())
 	      | e #"v" = F.BRANCH (fprim (), valuelist (), lexp (), lexp ())
 	      | e #"w" = F.PRIMOP (fprim (), valuelist (), lvar (), lexp ())
+	      | e #"x" = F.SUPERCAST (value (), lvar (), lty (), lexp ())
 	      | e _ = raise Format
 	in
 	    share lexpM e

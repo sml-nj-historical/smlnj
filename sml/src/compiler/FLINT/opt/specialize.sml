@@ -620,6 +620,9 @@ fun transform (ienv, d, nmap, smap, did_flat) =
            | SELECT (u, i, v, e) => 
                lplet (v, e, fn ne => SELECT(lpvar u, i, v, ne))
 
+	   | SUPERCAST (x, v, t, e) =>
+	       lplet (v, e, fn ne => SUPERCAST (lpvar x, v, t, ne))
+
            | RAISE (sv, ts) => 
                let val nts = map ltf ts
                    val nsv = lpvar sv

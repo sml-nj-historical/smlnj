@@ -110,7 +110,10 @@ struct
                      
                   | F.PRIMOP (po, vs, lv, e) => 
                     F.PRIMOP (cvtPrimop po,
-                              vs, lv, r e)
+			      vs, lv, r e)
+
+		  | F.SUPERCAST (x, v, t, e) =>
+		    F.SUPERCAST (x, v, t, r e)
         in
             r
         end (* cvtExp *)            
@@ -246,6 +249,9 @@ struct
                   | F.PRIMOP (po, vs, lv, e) => 
                     F.PRIMOP (cvtPrimop po,
                               vs, lv, r e)
+
+		  | F.SUPERCAST (x, v, t, e) =>
+		    F.SUPERCAST (x, v, t, r e)
         in
             r
         end (* cvtExp *)

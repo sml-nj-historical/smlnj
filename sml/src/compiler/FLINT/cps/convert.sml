@@ -694,6 +694,9 @@ fun convert fdec =
                in hdr(BRANCH(map_branch p, lpvars ul, mkv(),
                              loop(e1, kont), loop(e2, kont)))
               end
+
+	  | F.SUPERCAST (x, v, t, e) =>
+	      PURE (P.cast, [lpvar x], v, ctype t, loop (e, c))
      end
  
     (* processing the top-level fundec *)

@@ -250,6 +250,7 @@ fun append lvs code le =
 	  | l (F.CON (dc,tycs,v,lv,le)) = F.CON(dc, tycs, v, lv, l le)
 	  | l (F.RECORD (rk,vs,lv,le)) = F.RECORD(rk, vs, lv, l le)
 	  | l (F.SELECT (v,i,lv,le)) = F.SELECT(v, i, lv, l le)
+	  | l (F.SUPERCAST (x, v, t, e)) = F.SUPERCAST (x, v, t, l e)
 	  | l (F.BRANCH (po,vs,le1,le2)) = F.BRANCH(po, vs, l le1, l le2)
 	  | l (F.PRIMOP (po,vs,lv,le)) = F.PRIMOP(po, vs, lv, l le)
     in l le
@@ -1011,6 +1012,19 @@ fun fcBranch (po,vs,le1,le2) =
     in cont(m, F.BRANCH(npo, nvs, nle1, nle2))
     end
 
+fun fcSupercast (x, v, t, e) =
+    let val vi = C.get v
+    in
+	if C.dead vi then (click_deadval (); loop m e cont)
+	else let val sx = val2sval m x
+		 val nm = addbind (m, v, Var (v, SOME t))
+		 val ne = loop nm e cont
+	     in
+		 if C.dead vi then ne
+		 else F.SUPERCAST (sval2val sx, v, t, ne)
+	     end
+    end
+
 fun fcPrimop (po,vs,lv,le) =
     let val lvi = C.get lv
 	val pure = not(PO.effect(#2 po))
@@ -1037,6 +1051,7 @@ in case le
       | F.CON x => fcCon x
       | F.RECORD x => fcRecord x
       | F.SELECT x => fcSelect x
+      | F.SUPERCAST x => fcSupercast x
       | F.RAISE (v,ltys) => cont(m, F.RAISE(substval v, ltys))
       | F.HANDLE (le,v) => cont(m, F.HANDLE(loop m le #2, substval v))
       | F.BRANCH x => fcBranch x

@@ -281,6 +281,12 @@ struct
           appPrint printBranch (newline & dent) 
               [("THEN", body1), ("ELSE", body2)])
 	 
+      | pLexp (F.SUPERCAST (x, v, t, e)) =
+	  (printVar v; say " = SUPERCAST(";
+	   printSval x; say ", ";
+	   printLty t; say ")";
+	   newline (); dent (); pLexp e)
+
       | pLexp (F.PRIMOP (p as (_, PO.MKETAG, _, _), [value], lvar, body)) =
 	 (* <lvar> = ETAG(<value>[<tyc>])
 	  * <body>

@@ -110,6 +110,9 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 	  | g (F.SELECT (v, field, lv, body)) =
 	    F.SELECT (substVal v, field, lv, g body)
 
+	  | g (F.SUPERCAST (x, v, t, e)) =
+	      F.SUPERCAST (substVal x, v, t, g e)
+
 	  | g (F.RAISE (v, ty)) = F.RAISE (substVal v, ty)
 
 	  | g (F.HANDLE (body, v)) = F.HANDLE (g body, substVal v)
@@ -301,6 +304,14 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 	    else (m, F.SELECT (v, f, lv, b))
 	end
 
+      | hoist (F.SUPERCAST (x, v, t, e)) =
+  	  let val (m, e') = hoist e
+	  in
+	      if M.inDomain (m, v) then
+		  (remove' (m, v), F.SUPERCAST (x, v, t, lenOp (v, m, e')))
+	      else (m, F.SUPERCAST (x, v, t, e'))
+	  end
+
       | hoist (F.RAISE (v, ltys)) = 
 	(M.empty, F.RAISE (v, ltys))
 
@@ -488,6 +499,9 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 	    
 	  | g (F.SELECT (v, field, lv, body)) =
 	    F.SELECT (v, field, lv, g body)
+
+	  | g (F.SUPERCAST (x, v, t, e)) =
+	      F.SUPERCAST (x, v, t, g e)
 
 	  | g (F.RAISE (v, ty)) = F.RAISE (v, ty)
 

@@ -93,6 +93,8 @@ in case le
      | F.BRANCH(_,_,le1,le2) => (loop le1; loop le2)
 
      | F.APP _ => bug "weird F.APP in collect"
+
+     | F.SUPERCAST (_, _, _, le) => loop le
 end
 
 (* (intended as a `foldr' argument).
@@ -239,6 +241,8 @@ in case le
      | F.PRIMOP(po,vs,lv,le) => F.PRIMOP(po, vs, lv, loop le)
 
      | F.APP _ => bug "unexpected APP"
+
+     | F.SUPERCAST (x, v, t, e) => F.SUPERCAST (x, v, t, loop e)
 end
 
 in

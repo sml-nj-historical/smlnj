@@ -885,7 +885,7 @@ fun mkStr (s as M.STR { access, info, ... }, d) =
 	    val slty = strLty (s, d, compInfo)
 	    val x = mkAccInfo (access, info, fn () => LT.ltc_obj, NONE)
 	in
-	    raise Fail "notyet: mkStr: plugin"
+	    SUPERCAST (x, slty)
 	end
     in
 	II.match info

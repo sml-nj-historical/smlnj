@@ -572,8 +572,12 @@ and tolvar (venv,d,lvar,lexp,cont) =
 (*       | L.WRAP _ => bug "unexpected WRAP in plambda" *)
 (*       | L.UNWRAP _ => bug "unexpected UNWRAP in plambda" *)
 
-      | L.SUPERCAST (e, lty) =>
-	    bug "SUPERCAST is not currently supported"
+      | L.SUPERCAST (lexp, lty) =>
+	    tovalue (venv, d, lexp,
+		     fn (v, _) =>
+			let val (c_lexp, c_lty) = cont lty
+			in (F.SUPERCAST (v, lvar, lty, c_lexp), c_lty)
+			end)
 
       | _ => default_tolexp ()
     end

@@ -91,6 +91,7 @@ fun pass1 fdec =
               | pse (HANDLE(e,v)) = (pse e; psv v)
               | pse (BRANCH(_, vs, e1, e2)) = (app psv vs; pse e1; pse e2) 
               | pse (PRIMOP(_, vs, _, e)) = (app psv vs; pse e)
+	      | pse (SUPERCAST (x,_,_,e)) = (psv x; pse e)
 
          in pse e
         end
@@ -356,6 +357,10 @@ end (* branchopt local *)
                 of SOME nv => (chkIn(v, SimpVal nv); loop e)
                  | NONE => lplet ((fn z => SELECT(lpsv u, i, v, z)), 
                                   true, v, StdExp, e))
+
+	  | SUPERCAST (x, v, t, e) =>
+	      lplet  ((fn z => SUPERCAST (lpsv x, v, t, z)),
+		      true, v, StdExp, e)
 
           | RAISE(v, ts) => (RAISE(lpsv v, ts), false)
           | HANDLE(e, v) => 
