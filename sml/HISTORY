@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/04/12 13:55:00 EDT
+Tag: blume-20020412-assyntax
+Description:
+
+1. Grabbed newer assyntax.h from the XFree86 project.
+2. Fiddled with how to compile X86.prim.asm without warnings.
+3. (Very) Minor cleanup in CM.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/04/01 (no joke!) 17:07:00 EST
 Tag: blume-20020401-x86div
 Description:

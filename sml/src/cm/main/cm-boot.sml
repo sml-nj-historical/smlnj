@@ -50,8 +50,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
           BfcFn (val arch = HostBackend.architecture)
 
       structure Link =
-	  LinkFn (val x = 1		(* ***** *)
-                  structure BFC = BFC
+	  LinkFn (structure BFC = BFC
 		  val system_values = system_values)
 
       structure AutoLoad = AutoLoadFn
