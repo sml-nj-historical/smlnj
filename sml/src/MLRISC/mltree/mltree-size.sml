@@ -9,8 +9,6 @@ struct
 
    fun size(T.REG(ty,_)) = ty
      | size(T.LI _) = intTy
-     | size(T.LI32 _) = intTy
-     | size(T.LIInf _) = intTy
      | size(T.LABEL _) = intTy
      | size(T.CONST _) = intTy
      | size(T.NEG(ty,_)) = ty

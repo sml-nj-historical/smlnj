@@ -40,6 +40,7 @@ struct
   type instrStream = (I.instruction,C.cellset) T.stream
   type mltreeStream = (T.stm,T.mlrisc list) T.stream
 
+
   val (intTy,naturalWidths) = if bit64mode then (64,[32,64]) else (32,[32])
   structure Gen = MLTreeGen
     (structure T = T
@@ -60,10 +61,6 @@ struct
       I.ROTATEI{oper=I.RLWINM,ra=d,rs=r,sh=I.ImmedOp i,mb=0,me=SOME(31-i)}
   fun SRLI32{r,i,d} = 
       I.ROTATEI{oper=I.RLWINM,ra=d,rs=r,sh=I.ImmedOp(32-i),mb=i,me=SOME(31)}
-
-  (*
-  val _ = if C.lr = 80 then () else error "LR must be encoded as 80!"
-   *)
 
   (*  
    * Integer multiplication 
@@ -124,11 +121,22 @@ struct
       val newFreg = C.newFreg
       val newCCreg = C.newCell C.CC
 
-      fun signed16 i = ~32768 <= i andalso i < 32768
-      fun signed12 i = ~2048 <= i andalso i < 2048
-      fun unsigned16 i = 0 <= i andalso i < 65536
-      fun unsigned5  i = 0 <= i andalso i < 32
-      fun unsigned6  i = 0 <= i andalso i < 64
+      
+      val int_0       = T.I.int_0
+      val int_m0x8000 = T.I.fromInt(32, ~32768)
+      val int_0x8000  = T.I.fromInt(32,  32768)
+      val int_m0x800  = T.I.fromInt(32, ~2048)
+      val int_0x800   = T.I.fromInt(32,  2048)
+      fun LT (x,y)    = T.I.LT(32, x, y)
+      fun LE (x,y)    = T.I.LE(32, x, y)
+      fun toInt mi = T.I.toInt(32, mi)
+      fun LI i = T.I.fromInt(32, i)
+
+      fun signed16 mi   = LE(int_m0x8000, mi) andalso LT(mi, int_0x8000)
+      fun signed12 mi   = LE(int_m0x800, mi) andalso LT(mi, int_0x800)
+      fun unsigned16 mi = LE(int_0, mi) andalso LT(mi, T.I.int_0x10000)
+      fun unsigned5 mi  = LE(int_0, mi) andalso LT(mi, T.I.int_32)
+      fun unsigned6 mi  = LE(int_0, mi) andalso LT(mi, T.I.int_64)
 
       fun move(rs,rd,an) =
         if C.sameColor(rs,rd) then () 
@@ -158,14 +166,16 @@ struct
           defineLabel fallThrLab
       end
 
-      fun split n = 
-      let val wtoi = Word.toIntX
-          val w = Word.fromInt n
-          val hi = Word.~>>(w, 0w16)
-          val lo = Word.andb(w, 0w65535)
-          val (high, low) = if lo < 0w32768 then (hi, lo) 
-                            else (hi+0w1, lo-0w65536)
-      in (wtoi high, wtoi low) end
+      fun split n = let 
+        val wtoi = Word32.toIntX
+	val w = T.I.toWord32(32, n)
+	val hi = W32.~>>(w, 0w16)
+	val lo = W32.andb(w, 0w65535)
+	val (high, low) = 
+	  if W32.<(lo,0w32768) then (hi, lo) else (hi+0w1, lo-0w65536)
+      in 
+	(wtoi high, wtoi low) 
+      end
 
       fun loadImmedHiLo(0, lo, rt, an) =
             mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=zeroR, im=I.ImmedOp lo}, an)
@@ -176,23 +186,10 @@ struct
 
       fun loadImmed(n, rt, an) = 
         if signed16 n then
-           mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=zeroR, im=I.ImmedOp n}, an)
+           mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=zeroR, im=I.ImmedOp(toInt(n))}, an)
         else let val (hi, lo) = split n
-             in loadImmedHiLo(hi, lo, rt, an) end
-
-      fun loadImmedw(w, rt, an) = 
-          let val wtoi = Word32.toIntX
-          in  if w < 0w32768 then 
-                 mark(I.ARITHI{oper=I.ADDI,rt=rt,ra=zeroR,
-                               im=I.ImmedOp(wtoi w)}, an)
-              else 
-               let val hi = Word32.~>>(w, 0w16)
-                   val lo = Word32.andb(w, 0w65535)
-                   val (high, low) = 
-                    if lo < 0w32768 then (hi, lo) else (hi+0w1, lo-0w65536)
-               in loadImmedHiLo(wtoi high, wtoi low, rt, an)
-               end
-          end
+           in loadImmedHiLo(hi, lo, rt, an) 
+	   end
 
       fun loadLabel(lexp, rt, an) = 
           mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=zeroR, im=I.LabelOp lexp}, an)
@@ -202,16 +199,9 @@ struct
                         im=I.LabelOp(LE.CONST c)}, an)
 
       fun immedOpnd range (e1, e2 as T.LI i) =
-           (expr e1, if range i then I.ImmedOp i else I.RegOp(expr e2))
+           (expr e1, if range i then I.ImmedOp(toInt i) else I.RegOp(expr e2))
         | immedOpnd _ (e1, T.CONST c) = (expr e1, I.LabelOp(LE.CONST c))
         | immedOpnd _ (e1, T.LABEL lexp) = (expr e1, I.LabelOp lexp)
-        | immedOpnd range (e1, e2 as T.LI32 w) = 
-          let fun opnd2() = I.RegOp(expr e2)
-          in (expr e1,
-              let val i = Word32.toIntX w
-              in if range i then I.ImmedOp i else opnd2()
-              end handle Overflow => opnd2())
-          end
         | immedOpnd _ (e1, e2) = (expr e1, I.RegOp(expr e2))
 
       and commImmedOpnd range (e1 as T.LI _, e2) = 
@@ -235,7 +225,7 @@ struct
        *)
       and addr(size,T.ADD(_, e, T.LI i)) =
           let val ra = expr e
-          in  if size i then (ra, I.ImmedOp i) else 
+          in  if size i then (ra, I.ImmedOp(toInt i)) else 
               let val (hi, lo) = split i 
                   val tmpR = newReg()
               in  emit(I.ARITHI{oper=I.ADDIS, rt=tmpR, ra=ra, im=I.ImmedOp hi});
@@ -244,7 +234,7 @@ struct
           end
         | addr(size,T.ADD(ty, T.LI i, e)) = addr(size,T.ADD(ty, e, T.LI i))
         | addr(size,exp as T.SUB(ty, e, T.LI i)) = 
-            (addr(size,T.ADD(ty, e, T.LI (~i))) 
+            (addr(size,T.ADD(ty, e, T.LI (T.I.NEGT(32, i)))) 
                handle Overflow => (expr exp, I.ImmedOp 0))
         | addr(size,T.ADD(_, e1, e2)) = (expr e1, I.RegOp (expr e2))
         | addr(size,e) = (expr e, I.ImmedOp 0)
@@ -290,38 +280,44 @@ struct
         | stmt(s, _) = doStmts(Gen.compileStm s)
 
       and branch(T.CMP(_, _, T.LI _, T.LI _), _, _) = error "branch"
-        | branch(T.CMP(ty, cc, T.ANDB(_, e1, e2), T.LI 0), lab, an) = 
-          (case commImmedOpnd unsigned16 (e1, e2)
-            of (ra, I.RegOp rb) =>
-                emit(I.ARITH{oper=I.AND, ra=ra, rb=rb, rt=newReg(), 
-                             Rc=true, OE=false})
-             | (ra, opnd) =>
-                emit(I.ARITHI{oper=I.ANDI_Rc, ra=ra, im=opnd, rt=newReg()})
-           (*esac*);
-            branch(T.CC(cc, CR0), lab, an)
-          )
         | branch(T.CMP(ty, cc, e1 as T.LI _, e2), lab, an) = 
           let val cc' = T.Basis.swapCond cc
           in  branch(T.CMP(ty, cc', e2, e1), lab, an)
           end
-        | branch(cmp as T.CMP(ty, cond, _, _), lab, an) =
-          let val ccreg = if true then CR0 else newCCreg() (* XXX *)
-              val (bo, cf) = 
-                (case cond of 
-                   T.LT =>  (I.TRUE,  I.LT)
-                 | T.LE =>  (I.FALSE, I.GT)
-                 | T.EQ =>  (I.TRUE,  I.EQ)
-                 | T.NE =>  (I.FALSE, I.EQ)
-                 | T.GT =>  (I.TRUE,  I.GT)
-                 | T.GE =>  (I.FALSE, I.LT)
-                 | T.LTU => (I.TRUE,  I.LT)
-                 | T.LEU => (I.FALSE, I.GT)
-                 | T.GTU => (I.TRUE,  I.GT)
-                 | T.GEU => (I.FALSE, I.LT)
-               (*esac*))
-             val addr = I.LabelOp(LE.LABEL lab)
-          in doCCexpr(cmp, ccreg, []);
-             emitBranch{bo=bo, bf=ccreg, bit=cf, addr=addr, LK=false}
+        | branch(cmp as T.CMP(ty, cond, e1, e2), lab, an) = let
+	    val (bo, cf) = 
+	      (case cond  
+	       of T.LT  => (I.TRUE,  I.LT)
+		| T.LE  => (I.FALSE, I.GT)
+		| T.EQ  => (I.TRUE,  I.EQ)
+		| T.NE  => (I.FALSE, I.EQ)
+		| T.GT  => (I.TRUE,  I.GT)
+		| T.GE  => (I.FALSE, I.LT)
+		| T.LTU => (I.TRUE,  I.LT)
+		| T.LEU => (I.FALSE, I.GT)
+		| T.GTU => (I.TRUE,  I.GT)
+		| T.GEU => (I.FALSE, I.LT)
+	     (*esac*))
+            val ccreg = if true then CR0 else newCCreg() (* XXX *)
+	    val addr = I.LabelOp(LE.LABEL lab)
+	    fun default() = 
+	      (doCCexpr(cmp, ccreg, []);
+	       emitBranch{bo=bo, bf=ccreg, bit=cf, addr=addr, LK=false})
+          in
+	    case (e1, e2)
+	    of (T.ANDB(_, a1, a2), T.LI z) =>
+	        if T.I.isZero(z) then 
+		  (case commImmedOpnd unsigned16 (a1, a2)
+		   of (ra, I.RegOp rb) =>
+			emit(I.ARITH{oper=I.AND, ra=ra, rb=rb, rt=newReg(), Rc=true, OE=false})
+		    | (ra, opnd) =>
+			emit(I.ARITHI{oper=I.ANDI_Rc, ra=ra, im=opnd, rt=newReg()})
+		   (*esac*);
+		   branch(T.CC(cond, CR0), lab, an))
+	        else 
+		  default()
+             | _ => 
+		  default()
           end
         | branch(T.CC(cc, cr), lab, an) = 
           let val addr=I.LabelOp(LE.LABEL lab)
@@ -398,7 +394,7 @@ struct
     
       and subfImmed(i, ra, rt, an) = 
           if signed16 i then
-             mark(I.ARITHI{oper=I.SUBFIC, rt=rt, ra=ra, im=I.ImmedOp i}, an)
+             mark(I.ARITHI{oper=I.SUBFIC, rt=rt, ra=ra, im=I.ImmedOp(toInt i)}, an)
           else
              mark(I.ARITH{oper=I.SUBF, rt=rt, ra=ra, rb=expr(T.LI i), 
                           Rc=false, OE=false}, an)
@@ -462,7 +458,7 @@ struct
 
       (* Generate a subtract operation *)
       and subtract(ty, e1, e2 as T.LI i, rt, an) =
-            (doExpr(T.ADD(ty, e1, T.LI (~i)), rt, an)
+            (doExpr(T.ADD(ty, e1, T.LI (T.I.NEGT(32, i))), rt, an)
               handle Overflow => 
               mark(I.ARITH{oper=I.SUBF, rt=rt, ra=expr e2, 
                            rb=expr e1, OE=false, Rc=false}, an)
@@ -471,8 +467,6 @@ struct
         | subtract(ty, T.CONST c, e2, rt, an) =
              mark(I.ARITHI{oper=I.SUBFIC,rt=rt,ra=expr e2,
                            im=I.LabelOp(LE.CONST c)},an)
-        | subtract(ty, T.LI32 w, e2, rt, an) =
-             subfImmed(Word32.toIntX w, expr e2, rt, an)
         | subtract(ty, e1, e2, rt, an) =
           let val rb = expr e1 val ra = expr e2
           in  mark(I.ARITH{oper=I.SUBF,rt=rt,ra=ra,rb=rb,Rc=false,OE=false},an)
@@ -489,36 +483,19 @@ struct
                      an)]
               fun const(e,i) =
                   let val r = expr e
-                  in  genMult{r=r,i=i,d=rt}
+                  in  genMult{r=r,i=toInt(i),d=rt}
                       handle _ => nonconst(T.REG(ty,r),T.LI i)
                   end
-              fun constw(e,i) = const(e,Word32.toInt i) 
-                                 handle _ => nonconst(e,T.LI32 i)
               val instrs =
                  case (e1,e2) of
                    (_,T.LI i)   => const(e1,i)
-                 | (_,T.LI32 i) => constw(e1,i)
                  | (T.LI i,_)   => const(e2,i)
-                 | (T.LI32 i,_) => constw(e2,i)
                  | _            => nonconst(e1,e2)
           in  app emit instrs end
 
       and divu32 x = Mulu32.divide{mode=T.TO_ZERO,stm=doStmt} x 
 
       and divt32 x = Mult32.divide{mode=T.TO_ZERO,stm=doStmt} x 
-
-      (*
-      and GOTO lab = T.JMP(T.LABEL(LE.LABEL lab), [], [])
-
-      and roundToZero{ty,r,i,d} =
-      let val L = Label.newLabel ""
-          val dReg = T.REG(ty,d)
-      in  doStmt(T.MV(ty,d,T.REG(ty,r)));
-          doStmt(T.IF(T.CMP(ty,T.GE,dReg,T.LI 0),GOTO L,T.SEQ []));
-          doStmt(T.MV(ty,d,T.ADD(ty,dReg,T.LI i)));
-          defineLabel L
-      end
-       *)
 
           (* Generate optimized division code *)
       and divide(ty,oper,genDiv,e1,e2,rt,overflow,an) =
@@ -529,14 +506,11 @@ struct
                   )
               fun const(e,i) =
                   let val r = expr e
-                  in  app emit (genDiv{r=r,i=i,d=rt})
+                  in  app emit (genDiv{r=r,i=toInt(i),d=rt})
                       handle _ => nonconst(T.REG(ty,r),T.LI i)
                   end
-              fun constw(e,i) = const(e,Word32.toInt i)
-                                handle _ => nonconst(e,T.LI32 i)
           in  case (e1,e2) of
                 (_,T.LI i)   => const(e1,i)
-              | (_,T.LI32 i) => constw(e1,i)
               | _            => nonconst(e1,e2)
           end
 
@@ -572,7 +546,6 @@ struct
              T.REG(_,rs)  => if C.sameColor(rs,C.lr) then mark(MFLR rt,an)
                              else move(rs,rt,an)
            | T.LI i       => loadImmed(i, rt, an)
-           | T.LI32 w     => loadImmedw(w, rt, an)
            | T.LABEL lexp => loadLabel(lexp, rt, an)
            | T.CONST c    => loadConst(c, rt, an)
 

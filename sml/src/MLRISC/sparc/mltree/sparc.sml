@@ -54,6 +54,12 @@ struct
   type instrStream = (I.instruction,C.cellset) T.stream
   type mltreeStream = (T.stm,T.mlrisc list) T.stream
 
+  val int_0 = T.I.int_0
+  fun toInt n = T.I.toInt(32, n)
+  fun LI i = T.LI(T.I.fromInt(32, i))
+  fun LT (n,m) = T.I.LT(32, n, m)
+  fun LE (n,m) = T.I.LE(32, n, m)
+
   val intTy = if V9 then 64 else 32
   structure Gen = MLTreeGen(structure T = T
                             val intTy = intTy
@@ -169,11 +175,13 @@ struct
       val zeroR   = C.r0
       val newReg  = C.newReg
       val newFreg = C.newFreg
-      fun immed13 n = ~4096 <= n andalso n < 4096
+      val int_m4096 = T.I.fromInt(32, ~4096)
+      val int_4096 =  T.I.fromInt(32, 4096)
+      fun immed13 n = LE(int_m4096, n) andalso LT(n, int_4096)
       fun immed13w w = let val x = W.~>>(w,0w12)
                        in  x = 0w0 orelse (W.notb x) = 0w0 end
       fun splitw w = {hi=W.toInt(W.>>(w,0w10)),lo=W.toInt(W.andb(w,0wx3ff))}
-      fun split n  = splitw(W.fromInt n)
+      fun split n  = splitw(T.I.toWord32(32, n))
 
      
       val zeroOpn = I.REG zeroR (* zero value operand *)
@@ -251,25 +259,10 @@ struct
       fun fmoves(s,d,an) = fmoved(s,d,an) (* error "fmoves" for now!!! XXX *)
       fun fmoveq(s,d,an) = error "fmoveq"
 
-      (* load word constant *)
-      fun loadImmedw(w,d,cc,an) =
-      let val or = if cc <> REG then I.ORCC else I.OR
-      in  if immed13w w then 
-             mark(I.ARITH{a=or,r=zeroR,i=I.IMMED(W.toIntX w),d=d},an)
-          else let val {hi,lo} = splitw w
-               in  if lo = 0 then 
-                      (mark(I.SETHI{i=hi,d=d},an); genCmp0(cc,d))
-                   else let val t = newReg()
-                        in  emit(I.SETHI{i=hi,d=t});
-                            mark(I.ARITH{a=or,r=t,i=I.IMMED lo,d=d},an)
-                        end
-               end
-      end
-
       (* load immediate *)
       and loadImmed(n,d,cc,an) =
       let val or = if cc <> REG then I.ORCC else I.OR
-      in  if immed13 n then mark(I.ARITH{a=or,r=zeroR,i=I.IMMED n,d=d},an)
+      in  if immed13 n then mark(I.ARITH{a=or,r=zeroR,i=I.IMMED(toInt n),d=d},an)
           else let val {hi,lo} = split n
                in  if lo = 0 then 
                       (mark(I.SETHI{i=hi,d=d},an); genCmp0(cc,d))
@@ -314,17 +307,13 @@ struct
                   | (r,i,_) => gen({r=reduceOpn r,i=i,d=d},reduceOpn)
               fun const(e,i) = 
                   let val r = expr e
-                  in  genConst{r=r,i=i,d=d}
+                  in  genConst{r=r,i=toInt i,d=d}
                       handle _ => gen({r=r,i=opn(T.LI i),d=d},reduceOpn)
                  end
-              fun constw(e,i) = const(e,Word32.toInt i)
-                                handle _ => nonconst(e,T.LI32 i)
               val instrs =
                  case (comm,e1,e2) of
                    (_,e1,T.LI i) => const(e1,i)
-                 | (_,e1,T.LI32 i) => constw(e1,i)
                  | (COMMUTE,T.LI i,e2) => const(e2,i)
-                 | (COMMUTE,T.LI32 i,e2) => constw(e2,i) 
                  |  _ => nonconst(e1,e2)
           in  app emit instrs; 
               genCmp0(cc,d)
@@ -341,17 +330,13 @@ struct
                  ]
               fun const(e,i) = 
                   let val r = expr e
-                  in  genConst{r=r,i=i,d=d}
+                  in  genConst{r=r,i=toInt i,d=d}
                       handle _ => [mark'(I.ARITH{a=a,r=r,i=opn(T.LI i),d=d},an)]
                   end
-              fun constw(e,i) = const(e,Word32.toInt i)
-                                handle _ => nonconst(e,T.LI32 i)
               val instrs =
                  case (comm,e1,e2) of
                    (_,e1,T.LI i) => const(e1,i)
-                 | (_,e1,T.LI32 i) => constw(e1,i)
                  | (COMMUTE,T.LI i,e2) => const(e2,i)
-                 | (COMMUTE,T.LI32 i,e2) => constw(e2,i) 
                  |  _ => nonconst(e1,e2)
           in  app emit instrs; 
               genCmp0(cc,d)
@@ -365,18 +350,6 @@ struct
       and divs64 x = Muls64.divide{mode=T.TO_ZERO,stm=doStmt} x
       and divt64 x = Mult64.divide{mode=T.TO_ZERO,stm=doStmt} x
 
-      (*
-      and GOTO lab = T.JMP(T.LABEL(LE.LABEL lab),[],[])
-
-      and roundToZero{ty,r,i,d} =
-          let val L = Label.newLabel ""
-          in  doStmt(T.MV(ty,d,T.REG(ty,r)));
-              doStmt(T.IF(T.CMP(ty,T.GE,T.REG(ty,d),T.LI 0),GOTO L,T.SEQ []));
-              doStmt(T.MV(ty,d,T.ADD(ty,T.REG(ty,d),T.LI i)));
-              defineLabel L
-          end
-       *)
-
       (* emit an unary floating point op *)
       and funary(a,e,d,an) = mark(I.FPop1{a=a,r=fexpr e,d=d},an)
 
@@ -386,7 +359,7 @@ struct
 
       (* convert an expression into an addressing mode *)
       and addr(T.ADD(_,e,T.LI n)) = 
-          if immed13 n then (expr e,I.IMMED n) 
+          if immed13 n then (expr e,I.IMMED(toInt n))
           else let val d = newReg()
                in  loadImmed(n,d,REG,[]); (d,opn e) end
         | addr(T.ADD(_,e,T.CONST c)) = (expr e,I.LAB(LE.CONST c))
@@ -395,7 +368,7 @@ struct
         | addr(T.ADD(_,T.CONST c,e)) = (expr e,I.LAB(LE.CONST c))
         | addr(T.ADD(_,T.LABEL l,e)) = (expr e,I.LAB l)
         | addr(T.ADD(_,e1,e2))       = (expr e1,I.REG(expr e2))
-        | addr(T.SUB(ty,e,T.LI n))   = addr(T.ADD(ty,e,T.LI(~n)))
+        | addr(T.SUB(ty,e,T.LI n))   = addr(T.ADD(ty,e,T.LI(T.I.NEG(32,n))))
         | addr(T.LABEL l)            = (zeroR,I.LAB l)
         | addr a                     = (expr a,zeroOpn)
 
@@ -452,7 +425,7 @@ struct
       and branch(T.CMP(ty,cond,a,b),lab,an) =
           let val (cond,a,b) =
                   case a of
-                    (T.LI _ | T.LI32 _ | T.CONST _ | T.LABEL _) => 
+                    (T.LI _ | T.CONST _ | T.LABEL _) => 
                       (T.Basis.swapCond cond,b,a)
                   | _ => (cond,a,b)
           in  if V9 then
@@ -527,11 +500,16 @@ struct
       and doStmts ss = app doStmt ss
 
           (* convert an expression into a register *) 
-      and expr(T.REG(_,r)) = r
-        | expr(T.LI 0)     = zeroR
-        | expr(T.LI32 0w0) = zeroR
-        | expr e           = let val d = newReg()
-                             in  doExpr(e,d,REG,[]); d end
+      and expr e = let
+	fun comp() = let
+	  val d = newReg()
+        in doExpr(e, d, REG, []); d 
+        end
+      in case e
+	 of T.REG(_,r) => r
+          | T.LI z => if T.I.isZero z then zeroR else comp()
+	  | _ => comp()
+      end
 
           (* compute an integer expression and put the result in register d 
            * If cc is set then set the condition code with the result.
@@ -540,16 +518,21 @@ struct
           case e of
             T.REG(_,r) => (move(r,d,an); genCmp0(cc,r))
           | T.LI n     => loadImmed(n,d,cc,an)
-          | T.LI32 w   => loadImmedw(w,d,cc,an)
           | T.LABEL l  => loadLabel(l,d,cc,an)
           | T.CONST c  => loadLabel(LE.CONST c,d,cc,an)
 
                 (* generic 32/64 bit support *)
           | T.ADD(_,a,b) => arith(I.ADD,I.ADDCC,a,b,d,cc,COMMUTE,[],an)
-          | T.SUB(_,a,T.LI 0) => doExpr(a,d,cc,an)
-          | T.SUB(_,a,T.LI32 0w0) => doExpr(a,d,cc,an)
-          | T.SUB(_,a,b) => arith(I.SUB,I.SUBCC,a,b,d,cc,NOCOMMUTE,[],an)
-  
+	  | T.SUB(_,a,b) => let
+	      fun default() = arith(I.SUB,I.SUBCC,a,b,d,cc,NOCOMMUTE,[],an)
+            in
+	      case b 
+              of T.LI z => 
+		  if T.I.isZero(z) then doExpr(a,d,cc,an) else default()
+	       | _ => default()
+              (*esac*)
+	    end
+
           | T.ANDB(_,a,T.NOTB(_,b)) => 
                arith(I.ANDN,I.ANDNCC,a,b,d,cc,NOCOMMUTE,[],an)
           | T.ORB(_,a,T.NOTB(_,b)) => 
@@ -568,7 +551,7 @@ struct
           | T.ANDB(_,a,b) => arith(I.AND,I.ANDCC,a,b,d,cc,COMMUTE,[],an)
           | T.ORB(_,a,b) => arith(I.OR,I.ORCC,a,b,d,cc,COMMUTE,[],an)
           | T.XORB(_,a,b) => arith(I.XOR,I.XORCC,a,b,d,cc,COMMUTE,[],an)
-          | T.NOTB(_,a) => arith(I.XNOR,I.XNORCC,a,T.LI 0,d,cc,COMMUTE,[],an)
+          | T.NOTB(_,a) => arith(I.XNOR,I.XNORCC,a,LI 0,d,cc,COMMUTE,[],an)
 
                (* 32 bit support *)
           | T.SRA(32,a,b) => shift(I.SRA,a,b,d,cc,an)
@@ -712,13 +695,12 @@ struct
       and ccExpr e = let val d = newReg() in doCCexpr(e,d,[]); d end
 
           (* convert an expression into an operand *) 
-      and opn(T.LI 0)        = zeroOpn
-        | opn(T.LI32 0w0)    = zeroOpn
-        | opn(T.CONST c)     = I.LAB(LE.CONST c)
+      and opn(T.CONST c)     = I.LAB(LE.CONST c)
         | opn(T.LABEL l)     = I.LAB l
-        | opn(e as T.LI n)   = if immed13 n then I.IMMED n else I.REG(expr e)
-        | opn(e as T.LI32 n) = 
-             if immed13w n then I.IMMED(W.toIntX n) else I.REG(expr e)
+        | opn(e as T.LI n)   = 
+	    if T.I.isZero(n) then zeroOpn
+	    else if immed13 n then I.IMMED(toInt n)
+		 else I.REG(expr e)
         | opn e              = I.REG(expr e)
 
       and reducer() =

@@ -92,12 +92,30 @@ struct
 
    datatype ea = datatype I.addressing_mode
 
-   datatype times248 = TIMES1
-                     | TIMES2 
-                     | TIMES4 
-                     | TIMES8 
+   datatype times248 = TIMES1 | TIMES2 | TIMES4 | TIMES8 
 
-   val itow = W.fromInt
+   datatype amode = 
+       AMode of I.addressing_mode 
+     | DISP of I.C.cell * T.I.machine_int
+     
+
+   (* infinite-precision short cuts. *)
+   val int_0       = T.I.int_0
+   val int_m16     = T.I.fromInt(32, ~16)
+   val int_1024    = T.I.fromInt(32, 1024)
+   val int_m1024   = T.I.fromInt(32, ~1024)
+   val int_8192    = T.I.fromInt(32, 8192)
+   val int_m8192   = T.I.fromInt(32, ~8192)
+
+   fun LI i        = T.LI(T.I.fromInt(32, i))
+   fun toInt mi    = T.I.toInt(32, mi)
+   fun toInt32 mi  = T.I.toInt32(32, mi)
+   fun toWord mi   = T.I.toWord(32, mi)
+   fun toWord32 mi = T.I.toWord32(32, mi)
+   fun EQ(x,y)     = T.I.EQ(32, x, y)
+   fun LT(x,y)     = T.I.LT(32, x, y)
+   fun GE(x,y)     = T.I.GE(32, x, y)
+
 
    fun selectInstructions
         (instrStream as
@@ -126,69 +144,53 @@ struct
        val ldLabelOpnd = LC.ldLabelOpnd emit
 
        (* Check whether an expression is being multiplied by 2, 4, or 8 *)
-       fun times(T.MULU(_,e,T.LI 2)) = (TIMES2,e)
-         | times(T.MULU(_,e,T.LI32 0w2)) = (TIMES2,e)
-         | times(T.MULU(_,e,T.LI 4)) = (TIMES4,e)
-         | times(T.MULU(_,e,T.LI32 0w4)) = (TIMES4,e)
-         | times(T.MULU(_,e,T.LI 8)) = (TIMES8,e)
-         | times(T.MULU(_,e,T.LI32 0w8)) = (TIMES8,e)
-         | times(T.MULU(_,T.LI 2,e)) = (TIMES2,e)
-         | times(T.MULU(_,T.LI32 0w2,e)) = (TIMES2,e)
-         | times(T.MULU(_,T.LI 4,e)) = (TIMES4,e)
-         | times(T.MULU(_,T.LI32 0w4,e)) = (TIMES4,e)
-         | times(T.MULU(_,T.LI 8,e)) = (TIMES8,e)
-         | times(T.MULU(_,T.LI32 0w8,e)) = (TIMES8,e)
-         | times(T.SLL(_,e,T.LI 1))  = (TIMES2,e)
-         | times(T.SLL(_,e,T.LI32 0w1))  = (TIMES2,e)
-         | times(T.SLL(_,e,T.LI 2))  = (TIMES4,e)
-         | times(T.SLL(_,e,T.LI32 0w2))  = (TIMES4,e)
-         | times(T.SLL(_,e,T.LI 3))  = (TIMES8,e)
-         | times(T.SLL(_,e,T.LI32 0w3))  = (TIMES8,e)
-         | times e = (TIMES1,e)
+       local
+	 fun mul(mi,e, exp) = 
+	   if EQ(mi, T.I.int_2) then (TIMES2, e)
+	   else if EQ(mi, T.I.int_4) then (TIMES4, e)
+		else if EQ(mi, T.I.int_8) then (TIMES8, e) 
+		     else (TIMES1, exp)
+       in	 
+	 fun times(exp) =
+	  (case exp
+	   of T.MULU(_, e, T.LI mi) => mul(mi, e, exp)
+	    | T.MULU(_, T.LI mi, e) => mul(mi, e, exp)
+	    | T.SLL(_, e, T.LI mi) => 
+	       if EQ(mi, T.I.int_1) then (TIMES2, e)
+	       else if EQ(mi, T.I.int_2) then (TIMES4, e)
+		    else if EQ(mi, T.I.int_3) then (TIMES8, e)
+			 else (TIMES1, exp)
+	    | _ => (TIMES1, exp)
+          (*esac*))
 
-       (* trapping version of the above *)
-       fun timest(T.MULT(_,e,T.LI 2)) = (TIMES2,e)
-         | timest(T.MULT(_,e,T.LI 4)) = (TIMES4,e)
-         | timest(T.MULT(_,e,T.LI 8)) = (TIMES8,e)
-         | timest(T.MULT(_,T.LI 2,e)) = (TIMES2,e)
-         | timest(T.MULT(_,T.LI 4,e)) = (TIMES4,e)
-         | timest(T.MULT(_,T.LI 8,e)) = (TIMES8,e)
-         | timest e = (TIMES1,e)
+	 (* trapping version of the above *)
+	 fun timest(exp as T.MULT(_, e, T.LI mi)) = mul(mi, e, exp)
+	   | timest(exp as T.MULT(_, T.LI mi, e)) = mul(mi, e, exp)
+	   | timest e = (TIMES1, e)
+       end (*local*)
 
-
-       fun im5 n = n < 16 andalso n >= ~16
-       fun im11 n = n < 1024 andalso n >= ~1024
-       fun im14 n = n < 8192 andalso n >= ~8192
+       fun im5 n   = LT(n,T.I.int_16) andalso GE(n, int_m16)
+       fun im11 n  = LT(n, int_1024)  andalso GE(n, int_m1024)
+       fun im14 n  = LT(n, int_8192)  andalso GE(n, int_m8192)
 
        (* Split values into 11 low bits and 21 high bits *)
        fun split11w w = 
            {hi = Word32.toIntX(Word32.~>>(w,0w11)), 
             lo = Word32.toIntX(Word32.andb(w,0wx7ff))}
-       fun split11 n = split11w(Word32.fromInt n)
+       fun split11 n = split11w(toWord32 n)
 
        (* load immediate *)
        fun loadImmed(n,t,an) =
            if im14 n 
-           then mark(I.LDO{i=I.IMMED n,b=zeroR,t=t},an)
+           then mark(I.LDO{i=I.IMMED(toInt n),b=zeroR,t=t},an)
            else let val {hi,lo} = split11 n
                     val tmp = newReg()
                 in  emit(I.LDIL{i=I.IMMED hi,t=tmp});
                     mark(I.LDO{i=I.IMMED lo,b=tmp,t=t},an)
                 end
 
-       (* load word constant into register t *)
-       fun loadImmedw(w,t,an) =
-           if Word32.<(w,0w8192) 
-           then mark(I.LDO{i=I.IMMED(Word32.toIntX w),b=zeroR,t=t},an)
-           else let val {hi,lo} = split11w w
-                    val tmp = newReg()
-                in  emit(I.LDIL{i=I.IMMED hi,t=tmp});
-                    mark(I.LDO{i=I.IMMED lo,b=tmp,t=t},an)
-                end
-
        (* generate code to load a immediate constant *) 
-       fun immed n = let val t = newReg() in loadImmed(n,t,[]); t end
-       fun immedw w = let val t = newReg() in loadImmedw(w,t,[]); t end
+       fun immed (n: T.I.machine_int) = let val t = newReg() in loadImmed(n,t,[]); t end
 
        (* load constant *)
        fun loadConst(c,t,an) = 
@@ -259,23 +261,26 @@ struct
  
        (* convert an expression into an addressing mode 
         * scale is the size of the data being addressed.
+	*
+	* Return the addressing mode and an infinite precision immediate
+	* in the case of DISPea.
         *)
-       and addr(scale,T.ADD(_,e,T.LI n))    = DISPea(expr e,I.IMMED n)
+       and addr(scale,T.ADD(_,e,T.LI n))    = DISP(expr e, n)
          | addr(scale,T.ADD(_,e,T.CONST c)) =
-              DISPea(expr e,I.LabExp(LE.CONST c,I.F))
+              AMode(DISPea(expr e,I.LabExp(LE.CONST c,I.F)))
          | addr(scale,T.ADD(ty,i as T.LI _,e)) = addr(scale,T.ADD(ty,e,i))
          | addr(scale,T.ADD(_,T.CONST c,e)) = 
-              DISPea(expr e,I.LabExp(LE.CONST c,I.F))
+              AMode(DISPea(expr e,I.LabExp(LE.CONST c,I.F)))
          | addr(scale,T.ADD(_,e,T.LABEL le)) = 
              let val rs = expr e
                  val (rt, opnd) = ldLabelEA le
              in  case (C.registerId rt, opnd) of
-                    (0, opnd) => DISPea(rs,opnd)
-                 |  (_,I.IMMED 0) => INDXea(rs,rt)
+                    (0, opnd) => AMode(DISPea(rs,opnd))
+                 |  (_,I.IMMED 0) => AMode(INDXea(rs,rt))
                  |  (_,opnd) => 
                      let val tmp = newReg()
                      in  emit(I.ARITH{a=I.ADD,r1=rs,r2=rt,t=tmp});
-                         DISPea(tmp,opnd)
+                         AMode(DISPea(tmp,opnd))
                      end
              end
          | addr(scale,T.ADD(t,e1 as T.LABEL l,e2)) = addr(scale,T.ADD(t,e2,e1))
@@ -287,27 +292,27 @@ struct
                if actualScale = scale then (* can we use scaled indexing mode?*)
                    let val x = expr e1
                        val b = expr e2
-                   in  INDXSCALEDea(b,x) 
+                   in  AMode(INDXSCALEDea(b,x))
                    end
                else  (* no, use the SHnADD operator, then *)
                    let val tmp = newReg()
                    in  emit(I.ARITH{a=opcode,r1=expr e1,r2=expr e2,t=tmp});
-                       DISPea(tmp,zeroImmed)
+                       AMode(DISPea(tmp,zeroImmed))
                    end
            in  case times e1 of
                  (TIMES2,e1) => scaleIndexed(16,I.SH1ADD,e1,e2)
                | (TIMES4,e1) => scaleIndexed(32,I.SH2ADD,e1,e2)
                | (TIMES8,e1) => scaleIndexed(64,I.SH3ADD,e1,e2)
                | _ => 
-               case times e2 of
-                 (TIMES2,e2) => scaleIndexed(16,I.SH1ADD,e2,e1)
-               | (TIMES4,e2) => scaleIndexed(32,I.SH2ADD,e2,e1)
-               | (TIMES8,e2) => scaleIndexed(64,I.SH3ADD,e2,e1)
-               | _ => INDXea(expr e1,expr e2)
+		 case times e2 of
+		   (TIMES2,e2) => scaleIndexed(16,I.SH1ADD,e2,e1)
+		 | (TIMES4,e2) => scaleIndexed(32,I.SH2ADD,e2,e1)
+		 | (TIMES8,e2) => scaleIndexed(64,I.SH3ADD,e2,e1)
+		 | _ => AMode(INDXea(expr e1,expr e2))
            end
-         | addr(scale,T.SUB(ty,e,T.LI n)) = addr(scale,T.ADD(ty,e,T.LI(~n)))
-         | addr(scale,T.LABEL lexp)       = DISPea(ldLabelEA(lexp))
-         | addr(scale,ea)                 = DISPea(expr ea,zeroImmed)
+         | addr(scale,T.SUB(ty,e,T.LI n)) = addr(scale,T.ADD(ty,e,T.LI(T.I.NEGT(32,n))))
+         | addr(scale,T.LABEL lexp)       = AMode(DISPea(ldLabelEA(lexp)))
+         | addr(scale,ea)                 = AMode(DISPea(expr ea,zeroImmed))
  
        (* emit an integer load 
         * li - load immediate, 
@@ -316,22 +321,22 @@ struct
         * r1 is base r2 is x
         *)
        and load(scale,li,l,ls,ea,t,mem,an) = 
-           case addr(scale,ea) of
-              DISPea(r,i as I.IMMED off) =>
+           case addr(scale,ea) 
+	   of DISP(r, off) =>
                  if im14 off then
-                    mark(I.LOADI{li=li,r=r,i=i,t=t,mem=mem},an)
+                    mark(I.LOADI{li=li,r=r,i=I.IMMED(toInt off),t=t,mem=mem},an)
                  else
                     mark(I.LOAD{l=l,r1=r,r2=immed off,t=t,mem=mem},an)
-            | DISPea(r,i) => mark(I.LOADI{li=li,r=r,i=i,t=t,mem=mem},an) 
-            | INDXea(r1,r2) => mark(I.LOAD{l=l,r1=r1,r2=r2,t=t,mem=mem},an) 
-            | INDXSCALEDea(b,x) => mark(I.LOAD{l=ls,r1=b,r2=x,t=t,mem=mem},an)
+            | AMode(DISPea(r,i)) => mark(I.LOADI{li=li,r=r,i=i,t=t,mem=mem},an) 
+            | AMode(INDXea(r1,r2)) => mark(I.LOAD{l=l,r1=r1,r2=r2,t=t,mem=mem},an) 
+            | AMode(INDXSCALEDea(b,x)) => mark(I.LOAD{l=ls,r1=b,r2=x,t=t,mem=mem},an)
  
        (* emit an integer store *)
        and store(st,ea,r,mem,an) =
            let val (b,d) =
-               case addr(0,ea) of
-                  DISPea(b,d as I.IMMED disp) => 
-                    if im14 disp then (b,d) 
+               case addr(0,ea) 
+                of DISP(b, disp) =>
+                    if im14 disp then (b,I.IMMED(toInt disp) )
                     else let val {hi,lo} = split11 disp
                              val tmp1    = newReg()
                              val tmp2    = newReg()
@@ -339,47 +344,48 @@ struct
                              emit(I.ARITH{a=I.ADD,r1=b,r2=tmp1,t=tmp2});
                              (tmp2,I.IMMED lo)
                          end  
-                | DISPea bd => bd
-                | INDXea(r1,r2) => 
+                | AMode(DISPea bd) => bd
+                | AMode(INDXea(r1,r2)) => 
                     let val tmp = newReg()
                     in  emit(I.ARITH{a=I.ADD,r1=r1,r2=r2,t=tmp});
                         (tmp,I.IMMED 0)
                     end
-                | INDXSCALEDea _ => error "store"
+                | AMode(INDXSCALEDea _) => error "store"
            in  mark(I.STORE{st=st,b=b,d=d,r=r,mem=mem},an) end
 
        (* emit a floating point load *)
        and fload(scale,fl,flx,flxs,ea,t,mem,an) =
            case addr(scale,ea) of
-             INDXea(b,x) => mark(I.FLOADX{flx=flx,b=b,x=x,t=t,mem=mem},an)
-           | INDXSCALEDea(b,x) => 
+             AMode(INDXea(b,x)) => mark(I.FLOADX{flx=flx,b=b,x=x,t=t,mem=mem},an)
+           | AMode(INDXSCALEDea(b,x)) => 
                mark(I.FLOADX{flx=flxs,b=b,x=x,t=t,mem=mem},an)
-           | DISPea(b,I.IMMED d) =>
-               if im5 d then 
-                  mark(I.FLOAD{fl=fl,b=b,d=d,t=t,mem=mem},an)
-               else
-                  mark(I.FLOADX{flx=flx,b=b,x=immed d,t=t,mem=mem},an)
-           | DISPea(b,d) => 
+           | AMode(DISPea(b,d)) => 
                let val tmp = newReg()
                in  emit(I.ARITHI{ai=I.ADDI,r=b,i=d,t=tmp});
                    mark(I.FLOADX{flx=flx,b=tmp,x=zeroR,t=t,mem=mem},an)
                end
+           | DISP(b, d) =>
+               if im5 d then 
+                  mark(I.FLOAD{fl=fl,b=b,d=toInt d,t=t,mem=mem},an)
+               else
+                  mark(I.FLOADX{flx=flx,b=b,x=immed d,t=t,mem=mem},an)
   
        (* emit a floating point store *)
        and fstore(scale,fst,fstx,fstxs,ea,data,mem,an) =
            let val r = fexpr data 
            in  case addr(scale,ea) of
-                 DISPea(b,I.IMMED d) => 
-                   if im5 d then mark(I.FSTORE{fst=fst,b=b,d=d,r=r,mem=mem},an)
+                 DISP(b, d) => 
+                   if im5 d then 
+		     mark(I.FSTORE{fst=fst,b=b,d=(toInt d),r=r,mem=mem},an)
                    else mark(I.FSTOREX{fstx=fstx,b=b,x=immed d,r=r,mem=mem},an)
-               | DISPea(b,d) => 
+               | AMode(DISPea(b,d)) => 
                    let val tmp = newReg()
                    in  emit(I.ARITHI{ai=I.ADDI,r=b,i=d,t=tmp});
                        mark(I.FSTORE{fst=I.FSTDS,b=tmp,d=0,r=r,mem=mem},an)
                    end
-               | INDXea(b,x) => 
+               | AMode(INDXea(b,x)) => 
                    mark(I.FSTOREX{fstx=fstx,b=b,x=x,r=r,mem=mem},an)
-               | INDXSCALEDea(b,x) => 
+               | AMode(INDXSCALEDea(b,x)) => 
                    mark(I.FSTOREX{fstx=fstxs,b=b,x=x,r=r,mem=mem},an)
            end
  
@@ -419,13 +425,9 @@ struct
 
         (* generate a branch cmp with immed *)
        and emitBranchCmpWithImmed(ty,cc,n,e2 as T.ANDB(_,e,T.LI mask),t,an) = 
-             emitBranchOnBit(ty,cc,n,e2,e,itow mask,t,an)
-         | emitBranchCmpWithImmed(ty,cc,n,e2 as T.ANDB(_,e,T.LI32 mask),t,an) =
-             emitBranchOnBit(ty,cc,n,e2,e,mask,t,an)
+             emitBranchOnBit(ty,cc,n,e2,e,toWord32 mask,t,an)
          | emitBranchCmpWithImmed(ty,cc,n,e2 as T.ANDB(_,T.LI mask,e),t,an) = 
-             emitBranchOnBit(ty,cc,n,e2,e,itow mask,t,an)
-         | emitBranchCmpWithImmed(ty,cc,n,e2 as T.ANDB(_,T.LI32 mask,e),t,an) = 
-             emitBranchOnBit(ty,cc,n,e2,e,mask,t,an)
+             emitBranchOnBit(ty,cc,n,e2,e,toWord32 mask,t,an)
          | emitBranchCmpWithImmed(ty,cc,n,e2,t,an) = 
              emitBranchI(ty,cc,n,e2,t,an)
 
@@ -436,7 +438,7 @@ struct
                let fun f(0w1,n) = n
                  | f(w,n) = f(W.>>(w,0w1),n+1)
                in  f(w,0) end
-               val n' = itow n
+               val n' = toWord32 n
            in  if (n' = 0w0 orelse n' = mask) andalso
                   (cc = T.EQ orelse cc = T.NE) andalso
                   (mask > 0w0 andalso isPowerOf2 mask) then (* bit test! *)
@@ -475,7 +477,7 @@ struct
                        | T.GTU => (I.COMIBF, I.LEU)
                        | T.NE  => (I.COMIBF, I.EQ)
                        | _     => error "emitBranchI"
-               in  mark(I.BCONDI{cmpi=cmpi,bc=bc,i=n,r2=r2,t=t,f=f,
+               in  mark(I.BCONDI{cmpi=cmpi,bc=bc,i=toInt(n),r2=r2,t=t,f=f,
                                   n=false, nop=true},an);
                    defineLabel f
                end
@@ -540,19 +542,23 @@ struct
        and doStmt s = stmt(s,[])
        and doStmts ss = app doStmt ss
 
-       and jmp(e,labs,an) = 
-           let val (b,x) = 
+       and jmp(e,labs,an) = let
+	     fun disp(r, i) = let
+	       val b = newReg()
+	     in emit(I.ARITHI{ai=I.ADDI, i=i, r=r, t=b});
+	        (b, zeroR)
+	     end
+
+             val (b,x) = 
                case addr(32,e) of
-                 DISPea(b,I.IMMED 0) => (b,zeroR)
-               | DISPea(r,i) => let val b=newReg()
-                                in  emit(I.ARITHI{ai=I.ADDI,i=i,r=r,t=b});
-                                    (b,zeroR)
-                                end
-               | INDXea(r1,r2) => let val b=newReg()
+		 DISP(b, i) => 
+		   if T.I.isZero(i) then (b, zeroR) else disp(b, I.IMMED(toInt i))
+               | AMode(DISPea(r,i)) => disp(r, i) 
+               | AMode(INDXea(r1,r2)) => let val b=newReg()
                                   in  emit(I.ARITH{a=I.ADD,r1=r1,r2=r2,t=b});
                                       (b,zeroR)
                                   end
-               | INDXSCALEDea(b,x) => (b,x)
+               | AMode(INDXSCALEDea(b,x)) => (b,x)
            in mark(I.BV{b=b,x=x,n=true,labs=labs},an) end
 
        and call(s,an) = let val reduce = {stm=doStmt, rexp=expr, emit=emit}
@@ -575,38 +581,28 @@ struct
             * d <- r + i
             * d <- if r >= 0 then r else d
             *)
-       (*
-       and roundToZero{ty,r,i,d} = 
-          (doStmt(T.MV(ty,d,T.ADD(ty,T.REG(ty,r),T.LI i)));
-           doStmt(T.MV(ty,d,T.COND(ty,T.CMP(ty,T.GE,T.REG(ty,r),T.LI 0),
-                                   T.REG(ty,r),T.REG(ty,d))))
-          )
-        *)
-
        and divu32 x = Mulu32.divide{mode=T.TO_ZERO,stm=doStmt} x
        and divt32 x = Mult32.divide{mode=T.TO_ZERO,stm=doStmt} x
        
        and muldiv(ty,genConst,milliFn,a,b,t,commute,an) =
            let fun const(a,i) =  
                let val r = expr a 
-               in  app emit (genConst{r=r,i=i,d=t})
+               in  app emit (genConst{r=r,i=toInt i,d=t})
                       handle _ => milliCall(milliFn,T.REG(ty,r),T.LI i,t)
                end
-               fun constw(a,i) =
-                    const(a,Word32.toInt i) 
-                    handle Overflow => milliCall(milliFn,a,b,t)
            in  case (commute,a,b) of
                  (_,a,T.LI i)      => const(a,i)
-               | (_,a,T.LI32 i)    => constw(a,i)
                | (true,T.LI i,a)   => const(a,i)
-               | (true,T.LI32 i,a) => constw(a,i)
                | (_,a,b)           => milliCall(milliFn,a,b,t)
            end 
 
            (* compile shift *)
-       and shift(immedShift,varShift,e,T.LI n,t,an) =
+       and shift(immedShift,varShift,e,T.LI n,t,an) = let
+	      val n = toInt n
+	   in
              if n < 0 orelse n > 31 then error "shift"
              else mark(I.SHIFT{s=immedShift,r=expr e,p=31-n,len=32-n,t=t},an)
+           end
          | shift(immedShift,varShift,e1,e2,t,an) =
              let val r1 = expr e1
                  val r2 = expr e2
@@ -659,19 +655,20 @@ struct
                         | _     => error "comclr"
                val tmp = newReg()
                val (b,i) = 
-                  case yes of
-                    T.LI n   => if im14 n then (zeroR,n) else 
+                  case yes 
+                  of T.LI n   => if im14 n then (zeroR, toInt(n)) else 
                                 let val {hi,lo} = split11 n
                                     val b = newReg()
                                 in  emit(I.LDIL{i=I.IMMED hi,t=b}); (b,lo) end
-                  | T.LI32 w => let val {hi,lo} = split11w w
-                                    val b = newReg()
-                                in  emit(I.LDIL{i=I.IMMED hi,t=b}); (b,lo) end
-                  | e        => (expr e, 0)
+                   | e        => (expr e, 0)
+		  (*esac*)
+
                val t1 =
-                  case no of
-                   (T.LI 0 | T.LI32 0w0) => tmp (* false case is zero *)
-                 | _ => (doExpr(no,tmp,[]); zeroR) (* move false case to tmp *)
+                  case no 
+                  of T.LI z =>			     (* false case is zero *)
+		      if T.I.isZero(z) then tmp else  (doExpr(no,tmp,[]); zeroR)
+                   | _ => (doExpr(no,tmp,[]); zeroR) (* move false case to tmp *)
+                  (*esac*)
 
                val instr =
                   case i1 of
@@ -683,17 +680,23 @@ struct
            end
 
            (* convert an expression into a register *) 
-       and expr(T.REG(_,r)) = r
-         | expr(T.LI 0)     = zeroR
-         | expr(T.LI32 0w0) = zeroR
-         | expr e           = let val t = newReg() in doExpr(e,t,[]); t end
+       and expr(exp) = let
+	 fun comp() = let
+	   val t = newReg()
+         in doExpr(exp, t, []); t
+         end
+       in 
+	 case exp
+	 of T.REG(_, r) => r
+          | T.LI z => if T.I.isZero(z) then zeroR else comp()
+	  | _ => comp()
+       end
  
            (* compute an integer expression and put the result in register t *)
        and doExpr(e,t,an) =
            case e of
              T.REG(_,r) => move(r,t,an)
            | T.LI n     => loadImmed(n,t,an)
-           | T.LI32 w   => loadImmedw(w,t,an)
            | T.LABEL le  => 
                 (case ldLabelOpnd{label=le,pref=SOME t} of
                    I.REG r => move(r,t,an)
@@ -703,15 +706,15 @@ struct
            | T.ADD(_,a,b) => plus(times,
                                   I.SH1ADDL,I.SH2ADDL,I.SH3ADDL,I.ADD,I.ADDI,
                                   a,b,t,an) 
-           | T.SUB(_,a,T.LI 0) => doExpr(a,t,an)
-           | T.SUB(_,a,T.LI32 0w0) => doExpr(a,t,an)
-           | T.SUB(_,a,T.LI n) => commImmedArith(I.ADD,I.ADDI,a,T.LI(~n),t,an)
+	   | T.SUB(_,a,T.LI mi) => 
+	      if T.I.isZero(mi) then doExpr(a,t,an)
+	      else commImmedArith(I.ADD,I.ADDI,a,T.LI(T.I.NEGT(32,mi)),t,an)
            | T.SUB(_,a,b) => immedArith(I.SUB,I.SUBI,a,b,t,an)
            | T.ADDT(_,a,b) => plus(timest,
                                  I.SH1ADDO,I.SH2ADDO,I.SH3ADDO,I.ADDO,I.ADDIO,
                                  a,b,t,an) 
            | T.SUBT(_,a,T.LI n) => 
-                    commImmedArith(I.ADDO,I.ADDIO,a,T.LI(~n),t,an)
+                    commImmedArith(I.ADDO,I.ADDIO,a,T.LI(T.I.NEGT(32,n)),t,an)
            | T.SUBT(_,a,b) => immedArith(I.SUBO,I.SUBIO,a,b,t,an)
 
            | T.ANDB(_,a,T.NOTB(_,b)) => arith(I.ANDCM,a,b,t,an)
@@ -809,12 +812,14 @@ struct
            (* convert an expression into an operand *) 
        and opn(T.CONST c)     = I.LabExp(LE.CONST c,I.F)
          | opn(T.LABEL le)    = ldLabelOpnd{label=le,pref=NONE}
-         | opn(e as T.LI n)   = if im11 n then I.IMMED n
-                                else I.REG(expr e)
-         | opn(e as T.LI32 w) = if Word32.<(w,0w1024) 
-                                then I.IMMED(Word32.toIntX w)
+         | opn(e as T.LI n)   = if im11 n then I.IMMED(toInt n)
                                 else I.REG(expr e)
          | opn e              = I.REG(expr e)
+
+       and addrOf e = 
+	 case addr(0, e)
+	 of AMode mode => mode
+          | DISP(r, mi) => DISPea(r, I.IMMED(toInt mi))
 
        and reducer() = 
           T.REDUCER{reduceRexp    = expr,
@@ -823,7 +828,7 @@ struct
                     reduceStm     = stmt,
                     operand       = opn,
                     reduceOperand = reduceOpn,
-                    addressOf     = fn e => addr(0,e),
+                    addressOf     = addrOf,
                     emit          = mark,
                     instrStream   = instrStream,
                     mltreeStream  = self()

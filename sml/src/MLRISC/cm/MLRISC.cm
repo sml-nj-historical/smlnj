@@ -35,6 +35,7 @@ Library
 	signature LABEL
 	signature LABELEXP
 	signature LIVENESS
+	signature MACHINE_INT
 	signature MC_EMIT
 	signature MLRISC_ANNOTATIONS
 	signature MLRISC_OPTIMIZATION
@@ -70,6 +71,7 @@ Library
 	structure ChaitinSpillHeur
 	structure ChowHennessySpillHeur
 	structure Label
+	structure MachineInt
 	structure MLRiscAnnotations
 	structure MLRiscRegion
 	structure MLTreeBasis
@@ -155,6 +157,8 @@ is
 	../aliasing/pointsTo.sml
 	
 	(* Core definitions for the MLTREE language. These are required. *)
+	../mltree/machine-int.sig
+	../mltree/machine-int.sml
 	../mltree/mltree-extension.sig
 	../mltree/mltree-basis.sig
 	../mltree/mltree-basis.sml

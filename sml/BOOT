@@ -1,10 +1,15 @@
 BOOT: the location of the latest boot files.
-
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2000/12/22 22:22:58 EST 2000
+Tag: Release_110_32
+Version: 110.32
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/110.32
 ----------------------------------------------------------------------
 Name: Lal George
 Date: 2000/12/08 09:56:14 EST 2000
 Tag: Release_110_31
-Version: 110.30
+Version: 110.31
 Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/110.31
 ----------------------------------------------------------------------
 Name: Lal George

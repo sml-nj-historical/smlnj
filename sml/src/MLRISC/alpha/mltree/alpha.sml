@@ -161,6 +161,14 @@ struct
 
   val zeroR   = C.r31
   val zeroOpn = I.REGop zeroR
+  fun LI i    = T.LI(T.I.fromInt(32, i))
+  fun toInt i = T.I.toInt(32, i)
+  val int_0   = T.I.int_0
+  val int_1   = T.I.int_1
+  fun EQ(x,y) = T.I.EQ(32, x, y)
+  fun GE(x,y) = T.I.GE(32, x, y)
+  fun LE(x,y) = T.I.LE(32, x, y)
+  fun LT(x,y) = T.I.LT(32, x, y)
 
   (*
    * Specialize the modules for multiplication/division 
@@ -282,15 +290,13 @@ struct
    * The main stuff
    *)
 
-  datatype times4or8 = TIMES1
-                     | TIMES4
-                     | TIMES8 
+  datatype times4or8 = TIMES1 | TIMES4 | TIMES8 
   datatype zeroOne   = ZERO | ONE | OTHER
   datatype commutative = COMMUTE | NOCOMMUTE
 
   val zeroFR = C.f31 
   val zeroEA = I.Direct zeroR
-  val zeroT  = T.LI 0
+  val zeroT  = T.LI int_0
   val trapb = [I.TRAPB]
   val zeroImm = I.IMMop 0
 
@@ -348,61 +354,56 @@ struct
             in  emit(I.LDA{r=r, b=base, d=offset}); r end
 
       (* emit load immed *)
-      fun loadImmed(n, base, rd, an) =
-      if n = 0 then
-         move(base, rd, an)
-      else if ~32768 <= n andalso n < 32768 then
-         mark(I.LDA{r=rd, b=base, d=I.IMMop n},an)
-      else 
-      let val w = itow n
-          val hi = Word.~>>(w, 0w16)
-          val lo = Word.andb(w, 0w65535)
-          val (hi', lo') =
-             if lo < 0w32768 then (hi, lo) else (hi+0w1, lo-0w65536)
-          val t = lda(base,I.IMMop(wtoi lo'))
-      in  mark(I.LDAH{r=rd, b=t, d=I.IMMop(wtoi hi')},an) 
+      fun loadImmed(n, base, rd, an) = let
+	val n = T.I.toInt32(32, n)
+      in
+	if n = 0 then move(base, rd, an)
+	else if ~32768 <= n andalso n < 32768 then
+	  mark(I.LDA{r=rd, b=base, d=I.IMMop(Int32.toInt n)}, an)
+        else loadImmed32(n, base, rd, an)
       end
 
       (* loadImmed32 is used to load int32 and word32 constants.
        * In either case we sign extend the 32-bit value. This is compatible 
        * with LDL which sign extends a 32-bit valued memory location.
        *)
-      and loadImmed32(0w0, base, rd, an) =
-           move(base, rd, an)
-        | loadImmed32(n, base, rd, an) = let
-            val low = W32.andb(n, 0w65535)  (* unsigned (0 .. 65535) *)
-            val high = W32.~>>(n, 0w16)     (* signed (~32768 .. 32768] *)
-            fun loadimmed(0, high) = 
-                 mark(I.LDAH{r=rd, b=base, d=I.IMMop(high)},an)
-              | loadimmed(low, 0) = 
-                 mark(I.LDA{r=rd, b=base, d=I.IMMop(low)},an)
-              | loadimmed(low, high) =
-                 (emit(I.LDA{r=rd, b=base, d=I.IMMop(low)});
-                  mark(I.LDAH{r=rd, b=rd, d=I.IMMop(high)},an))
+      (* TODO: 
+       *  Should handle 64 bits if immediate is not in the 32 bit range.
+       *)
+      and loadImmed32(n, base, rd, an) = let
+	fun immed(0, high) =
+	      mark(I.LDAH{r=rd, b=base, d=I.IMMop(high)}, an)
+	  | immed(low, 0) = 
+	      mark(I.LDA{r=rd, b=base, d=I.IMMop(low)}, an)
+	  | immed(low, high) = 
+	      (emit(I.LDA{r=rd, b=base, d=I.IMMop(low)});
+	       mark(I.LDAH{r=rd, b=rd, d=I.IMMop(high)}, an)
+	       )
+	val w = Word32.fromLargeInt(Int32.toLarge n)
+	val low = W32.andb(w, 0wxffff)
+	val high = W32.~>>(w, 0w16)
+      in
+	if W32.<(low, 0wx8000) then 
+	  immed(W32.toInt low, W32.toIntX high)
+	else let
+	    val low = W32.toIntX(W32.-(low, 0wx10000))
+	    val high = W32.toIntX(W32.+(high, 0w1))
           in
-            if W32.<(low, 0w32768) then 
-               loadimmed(W32.toInt low, W32.toIntX high)
-            else let (* low = (32768 .. 65535) *)
-               val lowsgn = W32.-(low, 0w65536) (* signed (~1 .. ~32768)  *)
-               val highsgn = W32.+(high, 0w1)   (* (~32768 .. 32768) *)
-               val ilow = W32.toIntX lowsgn
-               val ihigh = W32.toIntX highsgn
-             in
-               if ihigh <> 32768 then loadimmed(ilow, ihigh)
-               else
-               let val tmpR1 = newReg()
-                   val tmpR2 = newReg()
-                   val tmpR3 = newReg()
-               in
-                 (* you gotta do what you gotta do! *)
-                 emit(I.LDA{r=tmpR3, b=base, d=I.IMMop(ilow)});
-                 emit(I.OPERATE{oper=I.ADDQ, ra=zeroR, rb=I.IMMop 1, rc=tmpR1});
-                 emit(I.OPERATE{oper=I.SLL, ra=tmpR1, rb=I.IMMop 31, rc=tmpR2});
-                 mark(I.OPERATE{oper=I.ADDQ, ra=tmpR2, rb=I.REGop tmpR3, 
-                                rc=rd},an)
-               end
-             end
-           end
+	    if high <> 0x8000 then immed(low, high) 
+	    else let (* transition of high from pos to neg *)
+	        val tmpR1 = newReg() 
+		val tmpR2 = newReg() 
+		val tmpR3=newReg()
+              in
+		(* you just gotta do, what you gotta do! *)
+		emit(I.LDA{r=tmpR3, b=base, d=I.IMMop(low)});
+		emit(I.OPERATE{oper=I.ADDQ, ra=zeroR, rb=I.IMMop 1, rc=tmpR1});
+		emit(I.OPERATE{oper=I.SLL, ra=tmpR1, rb=I.IMMop 31, rc=tmpR2});
+		mark(I.OPERATE{oper=I.ADDQ, ra=tmpR2, rb=I.REGop tmpR3, rc=rd},an)
+              end
+	  end
+      end
+
 
       (* emit load immed *)
       and loadConst(c,d,an) = mark(I.LDA{r=d,b=zeroR,d=I.LABop(LE.CONST c)},an)
@@ -474,13 +475,10 @@ struct
       (* convert an expression into an operand *)
       and opn(T.REG(_,r)) = I.REGop r
         | opn(e as T.LI n) = 
-            if n <= 255 andalso n >= 0 then I.IMMop n 
+	    if LE(n, T.I.int_0xff) andalso GE(n, T.I.int_0) then 
+	      I.IMMop(toInt(n))
             else let val tmpR = newReg()
                  in  loadImmed(n,zeroR,tmpR,[]); I.REGop tmpR end
-        | opn(e as T.LI32 w) =   
-            if w <= 0w255 then I.IMMop(W32.toIntX w) 
-            else let val tmpR = newReg()
-                 in  loadImmed32(w,zeroR,tmpR,[]); I.REGop tmpR end
         | opn(T.CONST c) = I.LABop(LE.CONST c)
         | opn e = I.REGop(expr e)
 
@@ -491,32 +489,27 @@ struct
                 | toLexp(I.LABop le) = le
                 | toLexp _ = error "addr.toLexp"
 
-              fun add(n,I.IMMop m) = I.IMMop(n+m)
-                | add(n,I.LABop le) = I.LABop(LE.PLUS(LE.INT n,le))
+              fun add(n,I.IMMop m)  = I.IMMop(toInt n + m)
+                | add(n,I.LABop le) = I.LABop(LE.PLUS(LE.INT(toInt(n)),le))
                 | add(n,_) = error "addr.add"
-              fun add32(n,disp) = add(W32.toIntX n,disp) (* overflow XXX *)
               fun addC(c,I.IMMop 0) = I.LABop(LE.CONST c)
                 | addC(c,disp) = I.LABop(LE.PLUS(LE.CONST c,toLexp disp))
               fun addL(l,I.IMMop 0) = I.LABop l
                 | addL(l,disp) = I.LABop(LE.PLUS(l,toLexp disp))
-              fun sub(n,I.IMMop m) = I.IMMop(m-n)
-                | sub(n,I.LABop le) = I.LABop(LE.MINUS(le,LE.INT n))
+              fun sub(n,I.IMMop m) = I.IMMop(m - toInt n)
+                | sub(n,I.LABop le) = I.LABop(LE.MINUS(le,LE.INT(toInt n)))
                 | sub(n,_) = error "addr.sub"
-              fun sub32(n,disp) = sub(W32.toIntX n,disp)
               fun subC(c,disp) = I.LABop(LE.MINUS(toLexp disp, LE.CONST c))
               fun subL(l,disp) = I.LABop(LE.MINUS(toLexp disp, l))
              
               (* Should really take into account of the address width XXX *) 
               fun fold(T.ADD(_,e,T.LI n),disp) = fold(e, add(n,disp))
-                | fold(T.ADD(_,e,T.LI32 n),disp) = fold(e, add32(n,disp))
                 | fold(T.ADD(_,e,T.CONST c),disp) = fold(e, addC(c,disp))
                 | fold(T.ADD(_,e,T.LABEL l),disp) = fold(e, addL(l,disp))
                 | fold(T.ADD(_,T.LI n,e),disp) = fold(e, add(n,disp))
-                | fold(T.ADD(_,T.LI32 n, e),disp) = fold(e, add32(n,disp))
                 | fold(T.ADD(_,T.CONST n, e),disp) = fold(e, addC(n,disp))
                 | fold(T.ADD(_,T.LABEL l, e),disp) = fold(e, addL(l,disp))
                 | fold(T.SUB(_,e,T.LI n),disp) = fold(e, sub(n,disp))
-                | fold(T.SUB(_,e,T.LI32 n),disp) = fold(e, sub32(n,disp))
                 | fold(T.SUB(_,e,T.CONST n),disp) = fold(e, subC(n,disp))
                 | fold(T.SUB(_,e,T.LABEL l),disp) = fold(e, subL(l,disp))
                 | fold(e,disp) = (expr e,disp)
@@ -561,33 +554,22 @@ struct
 
       (* look for multiply by 4 and 8 of the given type *)
       and times4or8(ty,e) =
-          let fun f(t,a,n) = if t = ty then 
-                               if n = 4 then (TIMES4,a)
-                               else if n = 8 then (TIMES8,a)
+          let 
+	      fun f(t,a,n) = if t = ty then 
+                               if EQ(n, T.I.int_4) then (TIMES4,a)
+                               else if EQ(n, T.I.int_8) then (TIMES8,a)
                                else (TIMES1,e)
                              else (TIMES1,e)
-              fun g(t,a,n) = if t = ty then
-                               if n = 0w4 then (TIMES4,a)
-                               else if n = 0w8 then (TIMES8,a)
-                               else (TIMES1,e)
-                             else (TIMES1,e)
+
               fun u(t,a,n) = if t = ty then
-                               if n = 2 then (TIMES4,a)
-                               else if n = 3 then (TIMES8,a)
-                               else (TIMES1,e)
-                             else (TIMES1,e)
-              fun v(t,a,n) = if t = ty then
-                               if n = 0w2 then (TIMES4,a)
-                               else if n = 0w3 then (TIMES8,a)
+                               if EQ(n, T.I.int_2) then (TIMES4,a)
+                               else if EQ(n, T.I.int_3) then (TIMES8,a)
                                else (TIMES1,e)
                              else (TIMES1,e)
           in  case e of 
                 T.MULU(t,a,T.LI n)   => f(t,a,n)
-              | T.MULU(t,a,T.LI32 n) => g(t,a,n)
               | T.MULS(t,T.LI n,a)   => f(t,a,n)
-              | T.MULS(t,T.LI32 n,a) => g(t,a,n)
               | T.SLL(t,a,T.LI n)    => u(t,a,n)
-              | T.SLL(t,a,T.LI32 n)  => v(t,a,n)
               | _                    => (TIMES1,e)
           end
 
@@ -619,15 +601,14 @@ struct
                  (* use LDA to handle subtraction when possible 
                   * Note: this may have sign extension problems later.
                   *)
-                 T.LI i => (loadImmed(~i,expr a,d,an) handle Overflow =>
+                 T.LI i => (loadImmed(T.I.NEGT(32,i),expr a,d,an) handle _ =>
                               arith(sub,a,b,d,an))
               |  _ => arith(sub,a,b,d,an)
               ) else arith(sub,a,b,d,an)
           )
 
       (* look for special constants *)
-      and wordOpn(T.LI n) = SOME(W32.fromInt n)
-        | wordOpn(T.LI32 w) = SOME w
+      and wordOpn(T.LI n) = SOME(T.I.toWord32(32, n))
         | wordOpn e = NONE
 
       (* look for special byte mask constants 
@@ -658,9 +639,9 @@ struct
           case byteMask(ty,wordOpn a) of
             ~1 => (case byteMask(ty,wordOpn b) of
                     ~1 => commArith(I.AND,a,b,d,an)
-                  | mask => arith(I.ZAP,a,T.LI mask,d,an)
+                  | mask => arith(I.ZAP,a,LI mask,d,an)
                   )
-          | mask => arith(I.ZAP,b,T.LI mask,d,an)
+          | mask => arith(I.ZAP,b,LI mask,d,an)
 
       (* generate sll/sra/srl *)
       and sll32(a,b,d,an) =
@@ -724,21 +705,19 @@ struct
               in mark'(instr,an)::trapb end
               fun const(e,i) =
                   let val r = expr e
-                  in  if !useMultByConst andalso i >= 0 andalso i < 256 then
-                         mark'(gen{ra=r,rb=I.IMMop i,rc=rd},an)::trapb
+                  in  if !useMultByConst andalso 
+		           GE(i, T.I.int_0) andalso 
+			   LT(i, T.I.int_0x100) then
+                         mark'(gen{ra=r,rb=I.IMMop(toInt i),rc=rd},an)::trapb
                       else    
-                         (genConst{r=r,i=i,d=rd}@trapb
+                         (genConst{r=r,i=toInt i,d=rd}@trapb
                           handle _ => nonconst(T.REG(ty,r),T.LI i))
                   end
-              fun constw(e,i) = const(e,Word32.toInt i) 
-                                  handle _ => nonconst(e,T.LI32 i)
               val instrs =
-                  case (e1,e2) of
-                     (e1,T.LI i)   => const(e1,i)
-                   | (e1,T.LI32 i) => constw(e1,i)
-                   | (T.LI i,e2)   => const(e2,i)
-                   | (T.LI32 i,e2) => constw(e2,i)
-                   | _             => nonconst(e1,e2)
+		case (e1, e2) 
+		of (_, T.LI i) => const(e1, i)
+	         | (T.LI i, _) => const(e2, i)
+		 | _ => nonconst(e1, e2)
           in  app emit instrs
           end
 
@@ -768,15 +747,12 @@ struct
               fun const(e,i) =
                   let val r = expr e
                   in  genDiv{mode=T.TO_ZERO,stm=doStmt}
-                            {r=r,i=i,d=rd}
+                            {r=r,i=toInt i,d=rd}
                       handle _ => nonconst(T.REG(ty,r),T.LI i)
                   end
-              fun constw(e,i) = const(e,Word32.toInt i) 
-                                  handle _ => nonconst(e,T.LI32 i)
               val instrs =
                   case e2 of
                      T.LI i   => const(e1,i)
-                   | T.LI32 i => constw(e1,i)
                    | _        => nonconst(e1,e2)
           in  app emit instrs
           end
@@ -922,24 +898,28 @@ struct
           app emit (pseudo{mode=rounding, fs=fexpr e, rd=rd})
 
       (* generate an expression and return the register that holds the result *)
-      and expr(T.REG(_,r)) = r
-        | expr(T.LI 0) = zeroR
-        | expr(T.LI32 0w0) = zeroR
+      and expr(e) = let
+	fun comp() = let
+	  val r = newReg()
+        in doExpr(e, r, []); r
+	end
+      in
+	case e
+	of T.REG(_, r) => r
+         | T.LI z => if T.I.isZero(z) then zeroR else comp()
             (* On the alpha: all 32 bit values are already sign extended.
              * So no sign extension is necessary
              *)
-        | expr(T.SX(64, 32, e)) = expr e
-        | expr(T.ZX(64, 32, e)) = expr e
-
-        | expr e = let val r = newReg()
-                   in  doExpr(e,r,[]); r end
+         | T.SX(64, 32, e) => expr e
+         | T.ZX(64, 32, e) => expr e
+	 | _ => comp()
+      end
 
       (* generate an expression that targets register d *)
       and doExpr(exp,d,an) =
           case exp of
             T.REG(_,r) => move(r,d,an)
           | T.LI n     => loadImmed(n,zeroR,d,an)
-          | T.LI32 w   => loadImmed32(w,zeroR,d,an)
           | T.LABEL l  => loadLabel(l,d,an)
           | T.CONST c  => loadConst(c,d,an)
 
@@ -955,9 +935,14 @@ struct
                mark(I.LDA{r=d,b=expr e,d=I.LABop(LE.CONST c)},an)
           | T.ADD(64,e,T.LI i)     => loadImmed(i, expr e, d, an)
           | T.ADD(64,T.LI i,e)     => loadImmed(i, expr e, d, an)
-          | T.ADD(64,e,T.LI32 i)   => loadImmed32(i, expr e, d, an)
-          | T.ADD(64,T.LI32 i,e)   => loadImmed32(i, expr e, d, an)
-          | T.SUB(_,a,(T.LI 0 | T.LI32 0w0)) => doExpr(a,d,an)
+	  | T.SUB(sz, a, b as T.LI z)    =>
+	      if T.I.isZero(z) then
+		doExpr(a,d,an) 
+	      else (case sz
+		of 32 => minus(32,I.SUBL,I.S4SUBL,I.S8SUBL,a,b,d,an)
+	         | 64 => minus(64,I.SUBQ,I.S4SUBQ,I.S8SUBQ,a,b,d,an)
+		 | _ =>  doExpr(Gen.compileRexp exp,d,an)
+		(*esac*))
 
             (* 32-bit support *)
           | T.ADD(32,a,b) => plus(32,I.ADDL,I.S4ADDL,I.S8ADDL,a,b,d,an)
@@ -1053,12 +1038,17 @@ struct
             )
 
            (* conversion to boolean *)
-          | T.COND(_,T.CMP(ty,cond,e1,e2),T.LI 1,T.LI 0) => 
-               compare(ty,cond,e1,e2,d,an) 
-          | T.COND(_,T.CMP(ty,cond,e1,e2),T.LI 0,T.LI 1) => 
-               compare(ty,T.Basis.negateCond cond,e1,e2,d,an) 
-          | T.COND(_,T.CMP(ty,cond,e1,e2),x,y) => 
-               cmove(ty,cond,e1,e2,x,y,d,an) 
+	  | T.COND(_, T.CMP(ty,cond,e1,e2), x, y)  => 
+	     (case (x, y)
+	      of (T.LI n, T.LI m) =>
+		if EQ(n, int_1) andalso EQ(m, int_0) then 
+		  compare(ty,cond,e1,e2,d,an) 
+		else if EQ(n, int_0) andalso EQ(m, int_1) then
+		  compare(ty,T.Basis.negateCond cond,e1,e2,d,an)
+	        else
+		  cmove(ty,cond,e1,e2,x,y,d,an) 
+	      | _ => cmove(ty,cond,e1,e2,x,y,d,an) 
+	     (*esac*))
 
           | T.LET(s,e) => (doStmt s; doExpr(e, d, an))
           | T.MARK(e,A.MARKREG f) => (f d; doExpr(e,d,an))
@@ -1178,24 +1168,27 @@ struct
           | _ => error "doFexpr"
 
           (* check whether an expression is andb(e,1) *)
-      and isAndb1(T.ANDB(_,e,T.LI 1))     = (true,e)
-        | isAndb1(T.ANDB(_,e,T.LI32 0w1)) = (true,e)
-        | isAndb1(T.ANDB(_,T.LI 1,e))     = (true,e)
-        | isAndb1(T.ANDB(_,T.LI32 0w1,e)) = (true,e)
-        | isAndb1 e                       = (false,e)
+      and isAndb1(e as T.ANDB(_, e1, e2)) = let
+	    fun isOne(n, ei) = 
+	      if EQ(n, int_1) then (true, ei) else (false, e)
+	  in
+	    case(e1, e2) 
+	    of (T.LI n, _) => isOne(n, e2)
+	     | (_, T.LI n) => isOne(n, e1)
+	     | _ => (false, e)
+	  end
+	| isAndb1 e = (false, e)
 
-      and zeroOrOne(T.LI 0)     = ZERO
-        | zeroOrOne(T.LI32 0w0) = ZERO
-        | zeroOrOne(T.LI 1)     = ONE
-        | zeroOrOne(T.LI32 0w1) = ONE
-        | zeroOrOne _           = OTHER
+      and zeroOrOne(T.LI n) =
+	if T.I.isZero n then ZERO 
+	else if EQ(n, int_1) then ONE
+	     else OTHER
+	| zeroOrOne _ = OTHER
 
       (* compile a branch *)
       and branch(e,lab,an) = 
           case e of
             T.CMP(ty,cc,e1 as T.LI _,e2) => 
-               branchBS(ty,T.Basis.swapCond cc,e2,e1,lab,an)
-          | T.CMP(ty,cc,e1 as T.LI32 _,e2) => 
                branchBS(ty,T.Basis.swapCond cc,e2,e1,lab,an)
           | T.CMP(ty,cc,e1,e2) => branchBS(ty,cc,e1,e2,lab,an)
             (* generate an floating point branch *)
@@ -1259,8 +1252,10 @@ struct
           (* generate a branch instruction. 
            * Check for branch on zero as a special case 
            *)
-      and branchIt(ty,cc,e,T.LI 0,lab,an) = branchIt0(cc,e,lab,an)
-        | branchIt(ty,cc,e,T.LI32 0w0,lab,an) = branchIt0(cc,e,lab,an)
+
+      and branchIt(ty,cc,e1,e2 as T.LI z,lab,an) = 
+	   if T.I.isZero z then branchIt0(cc,e1,lab,an)
+	   else branchItOther(ty,cc,e1,e2,lab,an)
         | branchIt(ty,cc,e1,e2,lab,an) = branchItOther(ty,cc,e1,e2,lab,an)
 
           (* generate a branch instruction. 
@@ -1339,11 +1334,12 @@ struct
               val (cond,a,b) = 
                 (* move the immed operand to b *)
                 case a of
-                  (T.LI _ | T.LI32 _ | T.CONST _) => (T.Basis.swapCond cond,b,a)
+                  (T.LI _ | T.CONST _) => (T.Basis.swapCond cond,b,a)
                 | _ => (cond,a,b)
 
-              fun sub(a,(T.LI 0 | T.LI32 0w0)) = expr a
-                | sub(a,b)                     = expr(T.SUB(ty,a,b))
+              fun sub(a, T.LI z) = 
+		   if T.I.isZero z then expr a else expr(T.SUB(ty,a,b))
+                | sub(a,b)       = expr(T.SUB(ty,a,b))
 
               fun cmp(cond,e1,e2) = 
                   let val flag = newReg()
@@ -1401,7 +1397,7 @@ struct
                   end
               val (cond,e1,e2) =
 		  case e1 of
-                    (T.LI _ | T.LI32 _ | T.CONST _) => 
+                    (T.LI _ | T.CONST _) => 
                        (T.Basis.swapCond cond,e2,e1)
                   | _ => (cond,e1,e2)
           in  case cond of

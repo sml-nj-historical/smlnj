@@ -38,6 +38,9 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("MLTreeGen",msg)
 
+   val zeroT = T.LI(T.I.int_0)
+   fun LI i = T.LI(T.I.fromInt(intTy, i))
+
    fun condOf(T.CC(cc,_)) = cc
      | condOf(T.CMP(_,cc,_,_)) = cc
      | condOf(T.CCMARK(cc,_)) = condOf cc
@@ -60,7 +63,7 @@ struct
     * Lal showed me this neat trick!
     *)
    fun arith(rightShift,f,ty,a,b) = 
-       let val shift = T.LI(W-ty)
+       let val shift = LI(W-ty)
        in  rightShift(W,f(W,T.SLL(W,a,shift),T.SLL(W,b,shift)),shift)
        end
 
@@ -80,12 +83,12 @@ struct
     * term.
     *)
 
-   fun compileRexp(exp) =
+   fun compileRexp(exp) = 
        case exp of
          T.CONST c => T.LABEL(T.LabelExp.CONST c)
 
          (* non overflow trapping ops *)
-       | T.NEG(ty,a)    => T.SUB(ty,T.LI 0,a)
+       | T.NEG(ty,a)    => T.SUB(ty, zeroT, a)
        | T.ADD(ty,a,b)  => promotable T.SRA (exp,T.ADD,ty,a,b)
        | T.SUB(ty,a,b)  => promotable T.SRA (exp,T.SUB,ty,a,b)
        | T.MULS(ty,a,b) => promotable T.SRA (exp,T.MULS,ty,a,b)
@@ -96,7 +99,7 @@ struct
        | T.REMU(ty,a,b) => promotable T.SRL (exp,T.REMU,ty,a,b)
 
          (* for overflow trapping ops; we have to do the simulation *)
-       | T.NEGT(ty,a)   => T.SUBT(ty,T.LI 0,a)
+       | T.NEGT(ty,a)   => T.SUBT(ty,zeroT,a)
        | T.ADDT(ty,a,b) => arith (T.SRA,T.ADDT,ty,a,b)
        | T.SUBT(ty,a,b) => arith (T.SRA,T.SUBT,ty,a,b)
        | T.MULT(ty,a,b) => arith (T.SRA,T.MULT,ty,a,b)
@@ -104,9 +107,12 @@ struct
        | T.REMT(ty,a,b) => arith (T.SRA,T.REMT,ty,a,b)
 
          (* conditional evaluation rules *)
+(*** XXX: Seems wrong.
        | T.COND(ty,T.CC(cond,r),x,y) =>
-           T.COND(ty,T.CMP(ty,cond,T.REG(ty,r),T.LI 0),x,y)
+           T.COND(ty,T.CMP(ty,cond,T.REG(ty,r),zeroT),x,y)
+***)
        | T.COND(ty,T.CCMARK(cc,a),x,y) => T.MARK(T.COND(ty,cc,x,y),a)
+(*** XXX: TODO
        | T.COND(ty,T.CMP(t,cc,e1,e2),x as (T.LI 0 | T.LI32 0w0),y) => 
            T.COND(ty,T.CMP(t,T.Basis.negateCond cc,e1,e2),y,T.LI 0)
            (* we'll let others strength reduce the multiply *)
@@ -114,15 +120,17 @@ struct
            T.MULU(ty,T.COND(ty,cc,T.LI 1,T.LI 0),e1)
        | T.COND(ty,cc,T.LI m,T.LI n) =>
            T.ADD(ty,T.MULU(ty,T.COND(ty,cc,T.LI 1,T.LI 0),T.LI(m-n)),T.LI n)
-       | T.COND(ty,cc,e1,e2) =>  
-           T.ADD(ty,T.MULU(ty,T.COND(ty,cc,T.LI 1,T.LI 0),T.SUB(ty,e1,e2)),e2)
+***)
+
+       | T.COND(ty,cc,e1,e2) => 
+           T.ADD(ty,T.MULU(ty,T.COND(ty,cc,T.LI T.I.int_1,zeroT),T.SUB(ty,e1,e2)),e2)
 
        (* ones-complement.
         * WARNING: we are assuming two's complement architectures here.
         * Are there any architectures in use nowadays that doesn't use 
         * two's complement for integer arithmetic?
         *)
-       | T.NOTB(ty,e) => T.XORB(ty,e,T.LI ~1)
+       | T.NOTB(ty,e) => T.XORB(ty,e,T.LI T.I.int_m1)
 
        (* 
         * Default ways of converting integers to integers
@@ -132,15 +140,15 @@ struct
          else if rep = SE andalso fromTy < ty andalso 
               fromTy >= hd naturalWidths then e 
          else
-             let val shift = T.LI(W - fromTy)
+             let val shift = T.LI(T.I.fromInt(intTy, W - fromTy))
              in  T.SRA(W,T.SLL(W,e,shift),shift) 
              end 
        | T.ZX(ty,fromTy,e) => 
          if fromTy <= ty then e else 
             (case ty of (* ty < fromTy *)
-                8  => T.ANDB(ty,e,T.LI32 0wxff) 
-              | 16 => T.ANDB(ty,e,T.LI32 0wxffff) 
-              | 32 => T.ANDB(ty,e,T.LI32 0wxffffffff) 
+                8  => T.ANDB(ty,e,T.LI T.I.int_0xff) 
+              | 16 => T.ANDB(ty,e,T.LI T.I.int_0xffff)
+              | 32 => T.ANDB(ty,e,T.LI T.I.int_0xffffffff)
               | 64 => e
               | _  => raise Unsupported("unknown expression")
             )

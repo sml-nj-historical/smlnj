@@ -14,6 +14,7 @@ signature MLTREE = sig
   structure Extension   : MLTREE_EXTENSION
      sharing Stream.P = PseudoOp
      sharing Constant = LabelExp.Constant
+  structure I           : MACHINE_INT
 
   type ty  = Basis.ty
   type fty = Basis.fty
@@ -79,9 +80,7 @@ signature MLTREE = sig
       REG    of ty * reg            
 
       (* sizes of constants are inferred by context *)
-    | LI     of int                 
-    | LI32   of Word32.word         
-    | LIInf  of IntInf.int         
+    | LI     of I.machine_int
     | LABEL  of LabelExp.labexp
     | CONST  of Constant.const
 

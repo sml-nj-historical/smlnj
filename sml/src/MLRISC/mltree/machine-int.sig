@@ -1,14 +1,11 @@
 (*
- * How to evaluate constants for various widths.  
- * The widths are dynamic.  
+ * This module implements 2's complement arithmetic of various widths.
  *)
 signature MACHINE_INT =
 sig
 
-   type machine_int = IntInf.int
-   type ty = int
-
-   exception MLTreeArith
+   type machine_int = IntInf.int 
+   type sz = int (* width in bits *)
 
    (* some common constants *)
    val int_0   : machine_int
@@ -28,27 +25,36 @@ sig
    val int_32  : machine_int
    val int_63  : machine_int
    val int_64  : machine_int
-   val int_0xff : machine_int
-   val int_0x100 : machine_int
-   val int_0xffff : machine_int
-   val int_0x10000 : machine_int
-   val int_0xffffffff : machine_int
+   val int_0xff : machine_int		(* 255 *)
+   val int_0x100 : machine_int		(* 256 *)
+   val int_0xffff : machine_int		(* 65535 *)
+   val int_0x10000 : machine_int	(* 65536 *)
+   val int_0xffffffff : machine_int	
    val int_0x100000000 : machine_int
 
    (* machine_int <-> other types *)
-   val fromString  : ty * string -> machine_int (* raises MLTreeArith *)
-   val fromInt     : ty * int -> machine_int
-   val fromWord    : ty * word -> machine_int
-   val fromWord32  : ty * Word32.word -> machine_int
-   val toString    : ty * machine_int -> string
-   val toHexString : ty * machine_int -> string
-   val toBinString : ty * machine_int -> string
-   val toInt       : ty * machine_int -> int
-   val toWord      : ty * machine_int -> word
-   val toWord32    : ty * machine_int -> Word32.word
+   val fromInt     : sz * int -> machine_int
+   val fromInt32   : sz * Int32.int -> machine_int
+   val fromWord    : sz * word -> machine_int
+   val fromWord32  : sz * Word32.word -> machine_int
 
-    (* when in doubt, use this! *)
-   val narrowToType : ty * IntInf.int -> machine_int
+   val toInt       : sz * machine_int -> int
+   val toWord      : sz * machine_int -> word
+   val toWord32    : sz * machine_int -> Word32.word
+   val toInt32     : sz * machine_int -> Int32.int
+
+   val fromString  : sz * string -> machine_int option
+   val toString    : sz * machine_int -> string
+   val toHexString : sz * machine_int -> string
+   val toBinString : sz * machine_int -> string
+
+
+    (* when in doubt, use this to narrow to a given width! *)
+   val narrow : sz * IntInf.int -> machine_int
+
+    (* convert to signed/unsigned representation *)
+   val signed   : sz * machine_int -> IntInf.int
+   val unsigned : sz * machine_int -> IntInf.int
 
    (* queries *)
    val isNeg    : machine_int -> bool
@@ -60,65 +66,70 @@ sig
    val isOdd    : machine_int -> bool
 
    (* two's complement operators *)
-   val NEG   : ty * machine_int -> machine_int
-   val ABS   : ty * machine_int -> machine_int
-   val ADD   : ty * machine_int * machine_int -> machine_int
-   val SUB   : ty * machine_int * machine_int -> machine_int
-   val MULS  : ty * machine_int * machine_int -> machine_int
-   val DIVS  : ty * machine_int * machine_int -> machine_int
-   val QUOTS : ty * machine_int * machine_int -> machine_int
-   val REMS  : ty * machine_int * machine_int -> machine_int
-   val MULU  : ty * machine_int * machine_int -> machine_int
-   val DIVU  : ty * machine_int * machine_int -> machine_int
-   val QUOTU : ty * machine_int * machine_int -> machine_int
-   val REMU  : ty * machine_int * machine_int -> machine_int
-   val ABST  : ty * machine_int -> machine_int
-   val NEGT  : ty * machine_int -> machine_int
-   val ADDT  : ty * machine_int * machine_int -> machine_int
-   val SUBT  : ty * machine_int * machine_int -> machine_int
-   val MULT  : ty * machine_int * machine_int -> machine_int
-   val DIVT  : ty * machine_int * machine_int -> machine_int
-   val QUOTT : ty * machine_int * machine_int -> machine_int
-   val REMT  : ty * machine_int * machine_int -> machine_int
+   val NEG   : sz * machine_int -> machine_int
+   val ABS   : sz * machine_int -> machine_int
+   val ADD   : sz * machine_int * machine_int -> machine_int
+   val SUB   : sz * machine_int * machine_int -> machine_int
+   val MULS  : sz * machine_int * machine_int -> machine_int
+   val DIVS  : sz * machine_int * machine_int -> machine_int
+   val QUOTS : sz * machine_int * machine_int -> machine_int
+   val REMS  : sz * machine_int * machine_int -> machine_int
+
+   (* unsigned operators *)
+   val MULU  : sz * machine_int * machine_int -> machine_int
+   val DIVU  : sz * machine_int * machine_int -> machine_int
+   val QUOTU : sz * machine_int * machine_int -> machine_int
+   val REMU  : sz * machine_int * machine_int -> machine_int
+
+   (* Signed, trapping operators, may raise Overflow *)
+   val ABST  : sz * machine_int -> machine_int
+   val NEGT  : sz * machine_int -> machine_int
+   val ADDT  : sz * machine_int * machine_int -> machine_int
+   val SUBT  : sz * machine_int * machine_int -> machine_int
+   val MULT  : sz * machine_int * machine_int -> machine_int
+   val DIVT  : sz * machine_int * machine_int -> machine_int
+   val QUOTT : sz * machine_int * machine_int -> machine_int
+   val REMT  : sz * machine_int * machine_int -> machine_int
 
    (* bit operators *)
-   val NOTB  : ty * machine_int -> machine_int
-   val ANDB  : ty * machine_int * machine_int -> machine_int
-   val ORB   : ty * machine_int * machine_int -> machine_int
-   val XORB  : ty * machine_int * machine_int -> machine_int
-   val EQVB  : ty * machine_int * machine_int -> machine_int
-   val SLL   : ty * machine_int * machine_int -> machine_int
-   val SRL   : ty * machine_int * machine_int -> machine_int
-   val SRA   : ty * machine_int * machine_int -> machine_int
-   val BITSLICE : ty * (int * int) list * machine_int -> machine_int
+   val NOTB  : sz * machine_int -> machine_int
+   val ANDB  : sz * machine_int * machine_int -> machine_int
+   val ORB   : sz * machine_int * machine_int -> machine_int
+   val XORB  : sz * machine_int * machine_int -> machine_int
+   val EQVB  : sz * machine_int * machine_int -> machine_int
+   val SLL   : sz * machine_int * machine_int -> machine_int
+   val SRL   : sz * machine_int * machine_int -> machine_int
+   val SRA   : sz * machine_int * machine_int -> machine_int
+   val BITSLICE : sz * (int * int) list * machine_int -> machine_int
 
    (* Other useful operators *)
-   val Sll       : ty * machine_int * int -> machine_int
-   val Srl       : ty * machine_int * int -> machine_int
-   val Sra       : ty * machine_int * int -> machine_int
+   val Sll       : sz * machine_int * word -> machine_int
+   val Srl       : sz * machine_int * word -> machine_int
+   val Sra       : sz * machine_int * word -> machine_int
    val pow2      : int -> machine_int
-   val maxOfType : ty -> machine_int
-   val minOfType : ty -> machine_int
-   val isInTypeRange : ty * machine_int -> bool
+   val maxOfSize : sz -> machine_int
+   val minOfSize : sz -> machine_int
+   val isInRange : sz * machine_int -> bool
 
-   val bitOf     : ty * machine_int * int -> word        (* 0w0 or 0w1 *)
-   val byteOf    : ty * machine_int * int -> word        (* 8 bits *)
-   val halfOf    : ty * machine_int * int -> word        (* 16 bits *)
-   val wordOf    : ty * machine_int * int -> Word32.word (* 32 bits *)
+   (* Indexing *)
+   val bitOf     : sz * machine_int * int -> word        (* 0w0 or 0w1 *)
+   val byteOf    : sz * machine_int * int -> word        (* 8 bits *)
+   val halfOf    : sz * machine_int * int -> word        (* 16 bits *)
+   val wordOf    : sz * machine_int * int -> Word32.word (* 32 bits *)
   
    (* type promotion *)
-   val SX    : ty * ty * machine_int -> machine_int
-   val ZX    : ty * ty * machine_int -> machine_int
+   val SX    : sz (* to *) * sz (* from *) * machine_int -> machine_int
+   val ZX    : sz (* to *) * sz (* from *) * machine_int -> machine_int
 
    (* comparisions *)
-   val EQ  : ty * machine_int * machine_int -> bool
-   val NE  : ty * machine_int * machine_int -> bool
-   val GT  : ty * machine_int * machine_int -> bool
-   val GE  : ty * machine_int * machine_int -> bool
-   val LT  : ty * machine_int * machine_int -> bool
-   val LE  : ty * machine_int * machine_int -> bool
-   val LTU : ty * machine_int * machine_int -> bool
-   val GTU : ty * machine_int * machine_int -> bool
-   val LEU : ty * machine_int * machine_int -> bool
-   val GEU : ty * machine_int * machine_int -> bool
+   val EQ  : sz * machine_int * machine_int -> bool
+   val NE  : sz * machine_int * machine_int -> bool
+   val GT  : sz * machine_int * machine_int -> bool
+   val GE  : sz * machine_int * machine_int -> bool
+   val LT  : sz * machine_int * machine_int -> bool
+   val LE  : sz * machine_int * machine_int -> bool
+   val LTU : sz * machine_int * machine_int -> bool
+   val GTU : sz * machine_int * machine_int -> bool
+   val LEU : sz * machine_int * machine_int -> bool
+   val GEU : sz * machine_int * machine_int -> bool
 end

@@ -4,20 +4,26 @@
  * Internally, we represent machine_int as a signed integer.
  * So when we do bit or unsigned operations we have to convert to
  * the unsigned representation first.
+ *
+ * Note: this implementation requires andb, orb, xorb etc in IntInf.
+ * You have to upgrade to the latest version of smlnj-lib if this
+ * fails to compile.
  *)
+local
+
+   val maxSz = 65
+
+in
+
 structure MachineInt : MACHINE_INT =
 struct
 
    structure I = IntInf
    structure S = String
    type machine_int = I.int
-   type ty = int
+   type sz = int
 
-   fun error msg = MLRiscErrorMsg.error("MLTreeArith",msg)
-
-   exception MLTreeArith 
-
-   val maxTy = 65
+   val itow = Word.fromInt
 
    (* Parse hex or binary, but not octal, that's for wussies *)
    val hexToInt = StringCvt.scanString (I.scan StringCvt.HEX)
@@ -47,23 +53,19 @@ struct
    val int_0x10000 = I.fromInt 0x10000
 
    (* Precompute some tables for faster arithmetic *)
-   val pow2table = Array.array(maxTy, int_0)      (* 2^n *)
-   val maxtable  = Array.array(maxTy+1, int_0)    (* 2^{n-1}-1 *)
-   val mintable  = Array.array(maxTy+1, int_m1)   (* -2^{n-1} *)
-
-   fun init(n, i) = 
-       if i >= maxTy then () 
-       else
-         (Array.update(pow2table, i, n);
-          Array.update(maxtable, i+1, I.-(n,int_1));
-          Array.update(mintable, i+1, I.~ n);
-          init(I.+(n,n), i+1)
-         )
-   val _ = init(int_1,0)
+   val pow2table = Array.tabulate(maxSz,fn n => I.<<(int_1,itow n))  (* 2^n *)
+   val maskTable = Array.tabulate(maxSz,
+                       fn n => I.-(I.<<(int_1,itow n),int_1))      (* 2^n-1 *)
+   val maxtable  = Array.tabulate(maxSz+1, 
+                    fn 0 => int_0
+                     | n => I.-(I.<<(int_1,itow(n-1)),int_1))  (* 2^{n-1}-1 *)
+   val mintable  = Array.tabulate(maxSz+1, 
+                    fn 0 => int_0
+                     | n => I.~(I.<<(int_1,itow(n-1))))   (* -2^{n-1} *)
 
    fun pow2 i = Array.sub(pow2table, i) 
-   fun maxOfType ty = Array.sub(maxtable, ty)
-   fun minOfType ty = Array.sub(mintable, ty)
+   fun maxOfSize sz = Array.sub(maxtable, sz)
+   fun minOfSize sz = Array.sub(mintable, sz)
 
    (* queries *)
    fun isNeg(i)    = I.sign i < 0
@@ -75,71 +77,88 @@ struct
    fun isOdd(i)    = not(isEven(i))
 
    (* to unsigned representation *)
-   fun toUnsigned(ty, i) = if isNeg i then I.+(i, pow2 ty) else i
+   fun unsigned(sz, i) = if isNeg i then I.+(i, pow2 sz) else i
 
    (* to signed representation *)
-   fun toSigned(ty, i) = 
-       if I.>(i, maxOfType ty) then I.-(i, pow2 ty) else i
+   fun signed(sz, i) = if I.>(i, maxOfSize sz) then I.-(i, pow2 sz) else i
 
    (* Narrow to the representation of a given type *)
-   fun narrowToType(ty, i) = 
-       let val r   = pow2 ty
-           val x   = I.rem(i, r)
-       in  if I.>(x, maxOfType ty) then I.-(x, r) else x
-       end
+   fun narrow(sz, i) = signed(sz, I.andb(i, Array.sub(maskTable,sz)))
 
    (* Recognize 0x and 0b prefix and do the right thing *)
-   fun fromString(ty, s) = 
+   fun fromString(sz, s) = 
    let val n = S.size s 
-       val result =
-       if n >= 2 andalso S.sub(s, 0) = #"0" then 
-         (case S.sub(s, 1) of
-           #"x" => hexToInt (S.substring(s,2,n-2))
-         | #"b" => binToInt (S.substring(s,2,n-2))
-         | _    => I.fromString s 
+       fun conv(i,negate) = 
+       if n >= 2+i andalso S.sub(s, i) = #"0" then 
+         (case S.sub(s, i+1) of
+           #"x" => (hexToInt (S.substring(s,2+i,n-2-i)), negate)
+         | #"b" => (binToInt (S.substring(s,2+i,n-2-i)), negate)
+         | _    => (I.fromString s, false) 
          )
-       else I.fromString s
-   in  case result of
-         SOME n => narrowToType(ty, n)
-       | NONE => raise MLTreeArith
+       else (I.fromString s, false)
+       val (result, negate) =
+           if s = "" then (NONE, false)
+           else if S.sub(s, 0) = #"~" then conv(1, true)
+           else conv(0, false)
+   in  case (result, negate) of
+         (SOME n, true) => SOME(narrow(sz, n))
+       | (SOME n, false) => SOME(narrow(sz, I.~ n))
+       | (NONE, _) => NONE
    end
 
+   (* Convert types into IntInf without losing precision. *)
+   structure Cvt =
+   struct
+      structure W   = Word
+      structure W32 = Word32
+      val wtoi   = W.toIntX
+      val w32toi = W32.toIntX
+      val fromInt    = I.fromInt 
+      val fromInt32  = I.fromLarge
+      fun fromWord w = I.fromLarge(Word.toLargeInt w)
+      fun fromWord32 w = I.+(I.<<(I.fromInt(w32toi(W32.>>(w,0w16))),0w16), 
+                                  I.fromInt(w32toi(W32.andb(w,0wxffff))))
+   end
    (* machine_int <-> other types *)
-   fun fromInt(ty,i)      = narrowToType(ty,I.fromInt i)
-   fun fromWord(ty,w)     = narrowToType(ty,I.fromInt(Word.toIntX w))
-   fun fromWord32(ty,w)   = narrowToType(ty,I.fromLarge(Word32.toLargeInt w))
-   fun toString(ty,i)     = I.toString i
+   fun fromInt(sz,i)      = narrow(sz,Cvt.fromInt i)
+   fun fromInt32(sz,i)    = narrow(sz,Cvt.fromInt32 i)
+   fun fromWord(sz,w)     = narrow(sz,Cvt.fromWord w)
+   fun fromWord32(sz,w)   = narrow(sz,Cvt.fromWord32 w)
+   fun toString(sz,i)     = I.toString i
    val toHex = I.fmt StringCvt.HEX
    val toBin = I.fmt StringCvt.BIN
-   fun toHexString(ty, i) = "0x"^toHex(toUnsigned(ty, i))
-   fun toBinString(ty, i) = "0b"^toBin(toUnsigned(ty, i))
-   fun toInt(ty, i)       = I.toInt i
-   fun toWord(ty, i)      = Word.fromInt(I.toInt(toUnsigned(ty, i)))
-   fun toWord32(ty, i)    = Word32.fromLargeInt(I.toLarge i)
+   fun toHexString(sz, i) = "0x"^toHex(unsigned(sz, i))
+   fun toBinString(sz, i) = "0b"^toBin(unsigned(sz, i))
+   fun toInt(sz, i)       = I.toInt(narrow(sz, i))
+   fun toWord(sz, i)      = Word.fromLargeInt(I.toLarge(unsigned(sz, i)))
+   fun toWord32(sz, i)    = 
+       let val i  = unsigned(sz, i)
+           val lo = I.andb(i,int_0xffff)
+           val hi = I.~>>(i,0w16)
+           fun tow32 i = Word32.fromLargeInt(I.toLarge i)
+       in  tow32 lo + Word32.<<(tow32 hi, 0w16) end
+   fun toInt32(sz, i) = I.toLarge(narrow(sz, i))
 
    (* constants *)
-   val int_0xffffffff = fromString(64, "0xffffffff")
-   val int_0x100000000 = fromString(64, "0x100000000")
+   val int_0xffffffff = Option.valOf(fromString(64, "0xffffffff"))
+   val int_0x100000000 = Option.valOf(fromString(64, "0x100000000"))
 
-
-   fun isInTypeRange(ty, i) = 
-       I.<=(minOfType ty,i) andalso I.<=(i,maxOfType ty) 
+   fun isInRange(sz, i) = I.<=(minOfSize sz,i) andalso I.<=(i,maxOfSize sz) 
  
-   fun signedBinOp f (ty,i,j) = narrowToType(ty, f(i, j))
+   fun signedBinOp f (sz,i,j) = narrow(sz, f(i, j))
 
-   fun signedUnaryOp f (ty,i) = narrowToType(ty, f i)
+   fun signedUnaryOp f (sz,i) = narrow(sz, f i)
 
-   fun unsignedBinOp f (ty,i,j) = 
-         narrowToType(ty, f(toSigned(ty, i), toSigned(ty, j)))
+   fun unsignedBinOp f (sz,i,j) = narrow(sz, f(unsigned(sz,i), unsigned(sz,j)))
  
-   fun trappingUnaryOp f (ty,i) =
+   fun trappingUnaryOp f (sz,i) =
        let val x = f i
-       in  if isInTypeRange(ty, x) then x else raise Overflow 
+       in  if isInRange(sz, x) then x else raise Overflow 
        end
 
-   fun trappingBinOp f (ty,i,j) = 
+   fun trappingBinOp f (sz,i,j) = 
        let val x = f(i,j)
-       in  if isInTypeRange(ty, x) then x else raise Overflow
+       in  if isInRange(sz, x) then x else raise Overflow
        end
 
    (* two's complement operators *)
@@ -165,87 +184,46 @@ struct
    val QUOTT = trappingBinOp I.quot
    val REMT  = trappingBinOp I.rem
 
- 
-   (* Unfortunately, the InfInt interface doesn't provide bit operations.
-    * So we'll fake it by first converting it to hex. 
-    *)
-   fun h2w #"0" = 0wx0 | h2w #"1" = 0wx1 | h2w #"2" = 0wx2 | h2w #"3" = 0wx3
-     | h2w #"4" = 0wx4 | h2w #"5" = 0wx5 | h2w #"6" = 0wx6 | h2w #"7" = 0wx7
-     | h2w #"8" = 0wx8 | h2w #"9" = 0wx9 | h2w #"a" = 0wxa | h2w #"b" = 0wxb
-     | h2w #"c" = 0wxc | h2w #"d" = 0wxd | h2w #"e" = 0wxe | h2w #"f" = 0wxf
-     | h2w c    = error("h2w"^Char.toString c)
+   fun NOTB(sz,x)   = narrow(sz,I.notb x)
+   fun ANDB(sz,x,y) = narrow(sz,I.andb(x,y))
+   fun ORB(sz,x,y)  = narrow(sz,I.orb(x,y))
+   fun XORB(sz,x,y) = narrow(sz,I.xorb(x,y))
+   fun EQVB(sz,x,y) = narrow(sz,I.xorb(I.notb x,y))
+   fun Sll(sz,x,y)  = narrow(sz,I.<<(x, y))
+   fun Srl(sz,x,y)  = narrow(sz,I.~>>(unsigned(sz, x), y))
+   fun Sra(sz,x,y)  = narrow(sz,I.~>>(x, y))
+   fun SLL(sz,x,y)  = Sll(sz,x,toWord(sz, y))
+   fun SRL(sz,x,y)  = Srl(sz,x,toWord(sz, y))
+   fun SRA(sz,x,y)  = Sra(sz,x,toWord(sz, y))
 
-   fun bitUnaryOp f (ty,x) =
-   let val x  = toHex(toUnsigned(ty, x))
-       val xn = size x 
-       fun combine(i,0,digits) = 
-             Option.valOf(hexToInt(String.concat(rev(digits))))
-         | combine(i,n,digits) =    
-             combine(i+1,n-1,
-                Word.toString(Word.andb(f(h2w(S.sub(x,i))),0wxf))::digits)
-       val result = combine(0,xn,[])       
-   in  toSigned(ty, result)
-   end
-     
-   fun bitBinaryOp f (ty,x,y) =
-   let val x  = toHex(toUnsigned(ty, x))
-       val y  = toHex(toUnsigned(ty, y))
-       val xn = size x 
-       val yn = size y 
-       fun prefix(xn,yn,i,j,digits) =
-           if xn = yn then combine(i,j,xn,digits)
-           else if xn < yn then 
-                prefix(xn,yn-1,i,j+1,S.substring(y,j,1)::digits)
-           else prefix(xn-1,yn,i+1,j,S.substring(x,i,1)::digits)
-       and combine(i,j,0,digits) = 
-             Option.valOf(hexToInt(String.concat(rev(digits))))
-         | combine(i,j,n,digits) =    
-             combine(i+1,j+1,n-1,
-                     Word.toString(Word.andb(0wxf,
-                         f(h2w(S.sub(x,i)),h2w(S.sub(y,i)))))::digits)
-       val result = prefix(xn,yn,0,0,[])       
-   in  toSigned(ty, result)
-   end
-
-
-   val NOTB  = bitUnaryOp Word.notb
-   val ANDB  = bitBinaryOp Word.andb
-   val ORB   = bitBinaryOp Word.orb
-   val XORB  = bitBinaryOp Word.xorb
-   val EQVB  = bitBinaryOp (fn (x,y) => Word.notb(Word.xorb(x,y)))
-   fun Sll(ty,x,y) = narrowToType(ty, I.*(toUnsigned(ty, x), pow2 y))
-   fun Srl(ty,x,y) = I.div(toUnsigned(ty, x), pow2 y)
-   fun Sra(ty,x,y) = narrowToType(ty, I.div(x, pow2 y))
-   fun SLL(ty,x,y) = Sll(ty,x,I.toInt y)
-   fun SRL(ty,x,y) = Srl(ty,x,I.toInt y)
-   fun SRA(ty,x,y) = Sra(ty,x,I.toInt y)
-
-   fun BITSLICE(ty,sl,x) =
+   fun BITSLICE(sz,sl,x) =
    let fun slice([],n) = n
          | slice((from,to)::sl,n) =
-            slice(sl, ORB(ty, narrowToType(to-from+1, Srl(ty, x, from)), n))
+            slice(sl, ORB(sz, narrow(to-from+1, 
+                                Srl(sz, x, Word.fromInt from)), n))
    in  slice(sl, int_0) 
    end
 
-   fun bitOf(ty, i, b) = toWord(1, narrowToType(1, Srl(ty, i, b)))
-   fun byteOf(ty, i, b) = toWord(8, narrowToType(8, Srl(ty, i, b*8)))
-   fun halfOf(ty, i, h) = toWord(16, narrowToType(16, Srl(ty, i, h*16)))
-   fun wordOf(ty, i, w) = toWord32(32, narrowToType(32, Srl(ty, i, w*32)))
+   fun bitOf(sz, i, b) = toWord(1, narrow(1, Srl(sz, i, Word.fromInt b)))
+   fun byteOf(sz, i, b) = toWord(8, narrow(8, Srl(sz, i, Word.fromInt(b*8))))
+   fun halfOf(sz, i, h) = toWord(16, narrow(16, Srl(sz, i, Word.fromInt(h*16))))
+   fun wordOf(sz, i, w) = toWord32(32, narrow(32, Srl(sz, i, Word.fromInt(w*32))))
 
    (* type promotion *)
-   fun SX(toTy,fromTy,i) = narrowToType(toTy, narrowToType(fromTy, i))
-   fun ZX(toTy,fromTy,i) = 
-       narrowToType(toTy, toUnsigned(fromTy, narrowToType(fromTy, i)))
+   fun SX(toSz,fromSz,i) = narrow(toSz, narrow(fromSz, i))
+   fun ZX(toSz,fromSz,i) = narrow(toSz, unsigned(fromSz, narrow(fromSz, i)))
 
    (* comparisions *)
-   fun EQ(ty,i,j)  = i = j
-   fun NE(ty,i,j)  = i <> j
-   fun GT(ty,i,j)  = I.>(i,j)
-   fun GE(ty,i,j)  = I.>=(i,j)
-   fun LT(ty,i,j)  = I.<(i,j)
-   fun LE(ty,i,j)  = I.<=(i,j)
-   fun LTU(ty,i,j) = I.<(toUnsigned(ty, i),toUnsigned(ty, j))
-   fun GTU(ty,i,j) = I.>(toUnsigned(ty, i),toUnsigned(ty, j))
-   fun LEU(ty,i,j) = I.<=(toUnsigned(ty, i),toUnsigned(ty, j))
-   fun GEU(ty,i,j) = I.>=(toUnsigned(ty, i),toUnsigned(ty, j))
+   fun EQ(sz,i,j)  = i = j
+   fun NE(sz,i,j)  = i <> j
+   fun GT(sz,i,j)  = I.>(i,j)
+   fun GE(sz,i,j)  = I.>=(i,j)
+   fun LT(sz,i,j)  = I.<(i,j)
+   fun LE(sz,i,j)  = I.<=(i,j)
+   fun LTU(sz,i,j) = I.<(unsigned(sz, i),unsigned(sz, j))
+   fun GTU(sz,i,j) = I.>(unsigned(sz, i),unsigned(sz, j))
+   fun LEU(sz,i,j) = I.<=(unsigned(sz, i),unsigned(sz, j))
+   fun GEU(sz,i,j) = I.>=(unsigned(sz, i),unsigned(sz, j))
+end
+
 end

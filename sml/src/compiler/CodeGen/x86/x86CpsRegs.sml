@@ -23,7 +23,7 @@ structure X86CpsRegs : CPSREGS = struct
   val ebx = T.REG(32, C.ebx)	val edi = T.REG(32, C.edi)
 
   fun regInMem i = 
-      T.LOAD(32, T.ADD(32, esp, T.LI i), CPSRegions.memory) 
+      T.LOAD(32, T.ADD(32, esp, T.LI(T.I.fromInt(32, i))), CPSRegions.memory) 
 
   val allocptr 	= edi
   val stdarg 	= ebp

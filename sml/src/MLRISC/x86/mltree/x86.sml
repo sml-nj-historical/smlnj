@@ -179,7 +179,7 @@ struct
       (* conversions *)
       val itow = Word.fromInt
       val wtoi = Word.toInt
-      fun toInt32 i = Int32.fromLarge(Int.toLarge i)
+      fun toInt32 i = T.I.toInt32(32, i)
       val w32toi32 = Word32.toLargeIntX 
       val i32tow32 = Word32.fromLargeInt
 
@@ -194,8 +194,7 @@ struct
       fun immedLabel lab = I.ImmedLabel(LE.LABEL lab)
  
       (* Is the expression zero? *)
-      fun isZero(T.LI 0) = true
-        | isZero(T.LI32 0w0) = true
+      fun isZero(T.LI z) = T.I.isZero z 
         | isZero(T.MARK(e,a)) = isZero e
         | isZero _ = false
        (* Does the expression set the zero bit? 
@@ -283,12 +282,9 @@ struct
       val readonly = I.Region.readonly
 
       (* 
-       * Compute an effective address.  This is a new version
+       * Compute an effective address.  
        *)
-      fun address(ea, mem) = 
-      let (* tricky way to negate without overflow! *)
-          fun neg32 w = Word32.notb w + 0w1
-
+      fun address(ea, mem) = let 
           (* Keep building a bigger and bigger effective address expressions 
            * The input is a list of trees
            * b -- base
@@ -299,8 +295,7 @@ struct
           fun doEA([], b, i, s, d) = makeAddressingMode(b, i, s, d)
             | doEA(t::trees, b, i, s, d) =
               (case t of 
-                 T.LI n   => doEAImmed(trees, n, b, i, s, d)
-               | T.LI32 n => doEAImmedw(trees, n, b, i, s, d)
+                 T.LI n   => doEAImmed(trees, toInt32 n, b, i, s, d)
                | T.CONST c => doEALabel(trees, LE.CONST c, b, i, s, d)
                | T.LABEL le => doEALabel(trees, le, b, i, s, d)
                | T.ADD(32, t1, t2 as T.REG(_,r)) => 
@@ -308,40 +303,27 @@ struct
                     else doEA(t1::t2::trees, b, i, s, d)
                | T.ADD(32, t1, t2) => doEA(t1::t2::trees, b, i, s, d)
                | T.SUB(32, t1, T.LI n) => 
-                    (* can't overflow here *)
-                    doEA(t1::T.LI32(neg32(Word32.fromInt n))::trees, b, i, s, d)
-               | T.SUB(32, t1, T.LI32 n) => 
-                    doEA(t1::T.LI32(neg32 n)::trees, b, i, s, d)
-               | T.SLL(32, t1, T.LI 0) => displace(trees, t1, b, i, s, d)
-               | T.SLL(32, t1, T.LI 1) => indexed(trees, t1, t, 1, b, i, s, d)
-               | T.SLL(32, t1, T.LI 2) => indexed(trees, t1, t, 2, b, i, s, d)
-               | T.SLL(32, t1, T.LI 3) => indexed(trees, t1, t, 3, b, i, s, d)
-               | T.SLL(32, t1, T.LI32 0w0) => displace(trees, t1, b, i, s, d)
-               | T.SLL(32, t1, T.LI32 0w1) => indexed(trees,t1,t,1,b,i,s,d)
-               | T.SLL(32, t1, T.LI32 0w2) => indexed(trees,t1,t,2,b,i,s,d)
-               | T.SLL(32, t1, T.LI32 0w3) => indexed(trees,t1,t,3,b,i,s,d)
+		    doEA(t1::T.LI(T.I.NEG(32,n))::trees, b, i, s, d)
+	       | T.SLL(32, t1, T.LI n) => let
+		    val n = T.I.toInt(32, n)
+                 in 
+		   case n
+		   of 0 => displace(trees, t1, b, i, s, d)
+	  	    | 1 => indexed(trees, t1, t, 1, b, i, s, d)
+	  	    | 2 => indexed(trees, t1, t, 2, b, i, s, d)
+		    | 3 => indexed(trees, t1, t, 3, b, i, s, d)
+		    | _ => displace(trees, t, b, i, s, d)
+                 end
                | t => displace(trees, t, b, i, s, d)
               ) 
 
           (* Add an immed constant *)
           and doEAImmed(trees, 0, b, i, s, d) = doEA(trees, b, i, s, d)
             | doEAImmed(trees, n, b, i, s, I.Immed m) = 
-                 doEA(trees, b, i, s, (* no overflow! *)
-                       I.Immed(w32toi32(Word32.fromInt n + i32tow32 m)))
+                 doEA(trees, b, i, s, I.Immed(n+m))
             | doEAImmed(trees, n, b, i, s, I.ImmedLabel le) = 
-                 doEA(trees, b, i, s, I.ImmedLabel(LE.PLUS(le,LE.INT n)))
+                 doEA(trees, b, i, s, I.ImmedLabel(LE.PLUS(le,LE.INT(Int32.toInt n))))
             | doEAImmed(trees, n, b, i, s, _) = error "doEAImmed"
-
-          (* Add an immed32 constant *)
-          and doEAImmedw(trees, 0w0, b, i, s, d) = doEA(trees, b, i, s, d)
-            | doEAImmedw(trees, n, b, i, s, I.Immed m) = 
-                 (* no overflow! *)
-                 doEA(trees, b, i, s, I.Immed(w32toi32(i32tow32 m + n)))
-            | doEAImmedw(trees, n, b, i, s, I.ImmedLabel le) = 
-                 doEA(trees, b, i, s, 
-                      I.ImmedLabel(LE.PLUS(le,LE.INT(Word32.toIntX n)))
-                      handle Overflow => error "doEAImmedw: constant too large")
-            | doEAImmedw(trees, n, b, i, s, _) = error "doEAImmedw"
 
           (* Add a label expression *)
           and doEALabel(trees, le, b, i, s, I.Immed 0) = 
@@ -358,7 +340,7 @@ struct
             | makeAddressingMode(SOME base, NONE, _, disp) = 
                 I.Displace{base=base, disp=disp, mem=mem}
             | makeAddressingMode(base, SOME index, scale, disp) = 
-                I.Indexed{base=base, index=index, scale=scale, 
+                I.Indexed{base=base, index=index, scale=scale,
                           disp=disp, mem=mem}
 
           (* generate code for tree and ensure that it is not in %esp *)
@@ -408,8 +390,7 @@ struct
       end (* address *)
 
           (* reduce an expression into an operand *)
-      and operand(T.LI i) = I.Immed(toInt32 i)
-        | operand(T.LI32 w) = I.Immed(wToInt32 w)
+      and operand(T.LI i) = I.Immed(toInt32(i)) 
         | operand(T.CONST c) = I.ImmedLabel(LE.CONST c)
         | operand(T.LABEL lab) = I.ImmedLabel lab
         | operand(T.REG(_,r)) = IntReg r
@@ -540,15 +521,16 @@ struct
               end
        
                   (* Optimize the special case for division *) 
-              fun divide(signed, overflow, e1, e2 as T.LI n) = 
-              let fun isPowerOf2 w = Word.andb((w - 0w1), w) = 0w0 
+              fun divide(signed, overflow, e1, e2 as T.LI n') = let
+		  val n = toInt32 n'
+                  val w = T.I.toWord32(32, n')
+                  fun isPowerOf2 w = W32.andb((w - 0w1), w) = 0w0 
                   fun log2 n =  (* n must be > 0!!! *)
                       let fun loop(0w1,pow) = pow
-                            | loop(w,pow) = loop(Word.>>(w, 0w1),pow+1)
+                            | loop(w,pow) = loop(W32.>>(w, 0w1),pow+1)
                       in loop(n,0) end
-                  val w = Word.fromInt n
               in  if n > 1 andalso isPowerOf2 w then 
-                     let val pow = T.LI(log2 w)
+                     let val pow = T.LI(T.I.fromInt(32,log2 w))
                      in  if signed then 
                          (* signed; simulate round towards zero *)
                          let val label = Label.newLabel ""
@@ -561,7 +543,7 @@ struct
                                      I.UNARY{unOp=I.INCL, opnd=opnd1}
                                   else
                                      I.BINARY{binOp=I.ADDL, 
-                                              src=I.Immed(toInt32 n - 1),
+                                              src=I.Immed(n - 1),
                                               dst=opnd1});
                              defineLabel label;
                              shift(I.SARL, T.REG(32, reg1), pow)
@@ -793,45 +775,72 @@ struct
                           move'(tmp, rdOpnd, [])
                       end
                    else move'(IntReg rs, rdOpnd, an)
-             | (T.LI 0 | T.LI32 0w0) =>  
-                 (* As per Fermin's request, special optimization for rd := 0. 
-                  * Currently we don't bother with the size.
-                  *)
-                 if isMemReg rd then move'(I.Immed 0, rdOpnd, an)
-                 else mark(I.BINARY{binOp=I.XORL, src=rdOpnd, dst=rdOpnd}, an)
-             | T.LI n      => move'(I.Immed(toInt32 n), rdOpnd, an)
-             | T.LI32 w    => move'(I.Immed(wToInt32 w), rdOpnd, an)
+	     | T.LI z => let
+		 val n = toInt32 z
+	       in 
+		 if n=0 then 
+		   (* As per Fermin's request, special optimization for rd := 0. 
+		    * Currently we don't bother with the size.
+		    *)
+		   if isMemReg rd then move'(I.Immed 0, rdOpnd, an)
+		   else mark(I.BINARY{binOp=I.XORL, src=rdOpnd, dst=rdOpnd}, an)
+		 else
+		   move'(I.Immed(n), rdOpnd, an)
+	       end
              | T.CONST c   => move'(I.ImmedLabel(LE.CONST c), rdOpnd, an)
              | T.LABEL lab => move'(I.ImmedLabel lab, rdOpnd, an)
 
                (* 32-bit addition *)
-             | T.ADD(32, e, (T.LI 1|T.LI32 0w1)) => unary(I.INCL, e)
-             | T.ADD(32, (T.LI 1|T.LI32 0w1), e) => unary(I.INCL, e)
-             | T.ADD(32, e, T.LI ~1) => unary(I.DECL, e)
-             | T.ADD(32, T.LI ~1, e) => unary(I.DECL, e)
+	     | T.ADD(32, e1, e2 as T.LI n) => let
+	         val n = toInt32 n
+               in 
+		 case n 
+		 of 1  => unary(I.INCL, e1)
+	          | ~1 => unary(I.DECL, e1)
+		  | _ => addition(e1, e2)
+	       end
+	     | T.ADD(32, e1 as T.LI n, e2) => let
+	         val n = toInt32 n
+	       in
+		 case n 
+		 of  1 => unary(I.INCL, e2)
+	          | ~1 => unary(I.DECL, e2)
+		  | _ => addition(e1, e2)
+	       end
              | T.ADD(32, e1, e2) => addition(e1, e2)
 
                (* 32-bit addition but set the flag!
                 * This is a stupid hack for now.  
                 *)
-             | T.ADD(0, e, (T.LI 1|T.LI32 0w1)) => unary(I.INCL, e)
-             | T.ADD(0, (T.LI 1|T.LI32 0w1), e) => unary(I.INCL, e)
-             | T.ADD(0, e, T.LI ~1) => unary(I.DECL, e)
-             | T.ADD(0, T.LI ~1, e) => unary(I.DECL, e)
-             | T.ADD(0, e1, e2) => binaryComm(I.ADDL, e1, e2)
-
+	     | T.ADD(0, e, e1 as T.LI n) => let
+	         val n = T.I.toInt(32, n)
+               in
+		 if n=1 then unary(I.INCL, e)
+		 else if n = ~1 then unary(I.DECL, e)
+ 		      else binaryComm(I.ADDL, e, e1)
+               end
+	     | T.ADD(0, e1 as T.LI n, e) => let
+	         val n = T.I.toInt(32, n)
+	       in
+		 if n=1 then unary(I.INCL, e)
+		 else if n = ~1 then unary(I.DECL, e)
+		      else binaryComm(I.ADDL, e1, e)
+               end
+	     | T.ADD(0, e1, e2) => binaryComm(I.ADDL, e1, e2)
+	         
                (* 32-bit subtraction *)
-             | T.SUB(32, e, (T.LI 0 | T.LI32 0w0)) => doExpr(e, rd, an)
-             | T.SUB(32, e, (T.LI 1 | T.LI32 0w1)) => unary(I.DECL, e)
-             | T.SUB(32, e, T.LI ~1) => unary(I.INCL, e)
-             | T.SUB(32, (T.LI 0 | T.LI32 0w0), e) => unary(I.NEGL, e)
-
-             (* Never mind:
-               | T.SUB(32, e1, e2 as T.LI n) => 
-                 (mark(I.LEA{r32=rd, addr=address(T.ADD(32, e1, T.LI(~n)),
-                                                  I.Region.readonly)}, an)
-                  handle (Overflow|EA) => binary(I.SUBL, e1, e2))
-             *)      
+	     | T.SUB(32, e1, e2 as T.LI n) => let
+	         val n = toInt32 n
+	       in
+		 case n
+		 of 0 => doExpr(e1, rd, an)
+	          | 1 => unary(I.DECL, e1)
+		  | ~1 => unary(I.INCL, e1)
+		  | _ => binary(I.SUBL, e1, e2)
+               end
+	     | T.SUB(32, e1 as T.LI n, e2) => 
+	         if T.I.isZero n then unary(I.NEGL, e2)
+		 else binary(I.SUBL, e1, e2)
              | T.SUB(32, e1, e2) => binary(I.SUBL, e1, e2)
 
              | T.MULU(32, x, y) => uMultiply(x, y)
@@ -865,9 +874,6 @@ struct
 
              | T.COND(32, T.CMP(ty, cc, t1, t2), T.LI yes, T.LI no) => 
                  setcc(ty, cc, t1, t2, toInt32 yes, toInt32 no)
-             | T.COND(32, T.CMP(ty, cc, t1, t2), T.LI32 yes, T.LI32 no) => 
-                 setcc(ty, cc, t1, t2, Word32.toLargeIntX yes, 
-                                       Word32.toLargeIntX no)
              | T.COND(32, T.CMP(ty, cc, t1, t2), yes, no) => 
                 (case !arch of (* PentiumPro and higher has CMOVcc *)
                    Pentium => unknownExp exp

@@ -12,6 +12,15 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2000/12/22 22:22:58 EST 2000
+Tag: Release_110_32
+Description:
+
+	Infinite precision used throughout MLRISC.
+	see MLRISC/mltree/machine-int.sig
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/12/22 21:20:00 JST
 Tag: blume-20001222-anchorenv

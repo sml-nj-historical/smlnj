@@ -17,6 +17,7 @@ struct
   structure Region = Region
   structure Basis  = MLTreeBasis
   structure Extension = Extension
+  structure I      = MachineInt
 
   type ty  = Basis.ty
   type fty = Basis.fty
@@ -82,9 +83,7 @@ struct
       REG    of ty * reg            
 
       (* sizes of constants are inferred by context *)
-    | LI     of int                 
-    | LI32   of Word32.word         
-    | LIInf  of IntInf.int         
+    | LI     of IntInf.int           
     | LABEL  of LabelExp.labexp
     | CONST  of Constant.const
 

@@ -80,9 +80,10 @@ struct
 
    val sp   = Cells.stackptrR  (* stack pointer *)
    val spR  = T.REG(addrTy,sp)
-   val unit = T.LI 1           (* representation of ML's unit; 
+   val unit = T.LI(T.I.int_1)  (* representation of ML's unit; 
                                 * this is used to initialize registers.
                                 *)
+   fun LI i = T.LI (T.I.fromInt(32, i))
        (*
         * Callee-save registers 
         * All callee save registers are used in the gc calling convention.
@@ -103,8 +104,10 @@ struct
    in  val gcCall =
           T.ANNOTATION(
           T.CALL{
-            funct=T.LOAD(32, T.ADD(addrTy,C.stackptr,T.LI MS.startgcOffset), 
-                        R.stack),
+            funct=
+	      T.LOAD(32, 
+		     T.ADD(addrTy,C.stackptr, LI MS.startgcOffset),
+		     R.stack),
             targets=[], defs=def, uses=use, region=R.stack},
           #create MLRiscAnnotations.COMMENT "call gc")
 
@@ -161,7 +164,7 @@ struct
            if isStackPtr sp then live(es, regs, 0::mem)
            else error "set:LOAD32"
          | live(T.LOAD(_, T.ADD(_, T.REG(_, sp), T.LI i), _)::es, regs, mem) =
-           if isStackPtr sp then live(es, regs, i::mem)
+           if isStackPtr sp then live(es, regs, T.I.toInt(32,i)::mem)
            else error "set:LOAD32"
          | live([], regs, mem) = (regs, mem)
          | live _ = error "live"
@@ -178,7 +181,7 @@ struct
 
    fun setToMLTree{regs,mem} =
        map (fn r => T.REG(32,r)) regs @ 
-       map (fn i => T.LOAD(32, T.ADD(addrTy, spR, T.LI i), R.memory)) mem
+       map (fn i => T.LOAD(32, T.ADD(addrTy, spR, LI(i)), R.memory)) mem
             
    (* The client communicates root pointers to the gc via the following set
     * of registers and memory locations.
@@ -200,7 +203,7 @@ struct
            | NONE => gotoGC(normalTestLimit)
           )
        else  
-       let val shiftedAllocPtr = T.ADD(addrTy,C.allocptr,T.LI(maxAlloc-skidPad))
+       let val shiftedAllocPtr = T.ADD(addrTy,C.allocptr,LI(maxAlloc-skidPad))
            val shiftedTestLimit = T.CMP(pty, gcCmp, shiftedAllocPtr, C.limitptr)
        in  case C.exhausted of
              SOME(cc as T.CC(_,r)) => 
@@ -360,7 +363,7 @@ struct
              (case float of
                 [] => ()
               | _  => emit(T.MV(addrTy, allocptrR, 
-                                T.ORB(addrTy, C.allocptr, T.LI 4)));
+                                T.ORB(addrTy, C.allocptr, LI 4)));
               (* If we have int32 or floating point stuff, package them
                * up into a raw record.  Floating point stuff have to come first.
                *)
@@ -411,7 +414,7 @@ struct
            in  (* update the heap pointer if we have done any allocation *)
                if hp > 0 then  
                   emit(T.MV(addrTy, allocptrR, 
-                            T.ADD(addrTy, C.allocptr, T.LI hp)))
+                            T.ADD(addrTy, C.allocptr, LI hp)))
                else ();
                (* emit the parallel copies *)
                copy(rds, rss);
@@ -447,7 +450,7 @@ struct
 
             (* Make a record and put it in reg *) 
        and makeRecord(hp, {boxed, words, reg, fields, ...}) = 
-           let fun disp(n) = T.ADD(addrTy, C.allocptr, T.LI n)
+           let fun disp(n) = T.ADD(addrTy, C.allocptr, LI n)
                fun alloci(hp, e) = emit(T.STORE(32, disp hp, e, R.memory))
                fun allocf(hp, e) = emit(T.FSTORE(64, disp hp, e, R.memory))
                fun alloc(hp, []) = ()
@@ -466,7 +469,7 @@ struct
                (* MUST evaluate nested records first *)
                val hp   = evalArgs(fields, hp)
                val desc = if boxed then boxedDesc words else unboxedDesc words
-           in  emit(T.STORE(32, disp hp, T.LI desc, R.memory));
+           in  emit(T.STORE(32, disp hp, LI desc, R.memory));
                alloc(hp+4, fields);
                emit(T.MV(addrTy, reg, disp(hp+4))); 
                hp + 4 + Word.toIntX(Word.<<(Word.fromInt words,0w2))
@@ -498,7 +501,7 @@ struct
            (* unpack fields from record *)
        and unpack(recordR, fields, rds, rss) = 
            let val record = T.REG(32, recordR)
-               fun disp n = T.ADD(addrTy, record, T.LI n)
+               fun disp n = T.ADD(addrTy, record, LI n)
                fun sel n = T.LOAD(32, disp n, R.memory)
                fun fsel n = T.FLOAD(64, disp n, R.memory)
                val N = A.length clientRoots
@@ -669,7 +672,7 @@ struct
            GCINFO{boxed=b2, int32=i2, float=f2, ret=T.JMP(ret2, _), ...}) =
    let fun eqEA(T.REG(_, r1), T.REG(_, r2)) = Cells.sameColor(r1,r2)
          | eqEA(T.ADD(_,T.REG(_,r1),T.LI i), T.ADD(_,T.REG(_,r2),T.LI j)) =  
-             Cells.sameColor(r1,r2) andalso i = j
+             Cells.sameColor(r1,r2) andalso T.I.EQ(32,i,j)
          | eqEA _ = false
        fun eqR(T.REG(_,r1), T.REG(_,r2)) = Cells.sameColor(r1,r2)
          | eqR(T.LOAD(_,ea1,_), T.LOAD(_,ea2,_)) = eqEA(ea1, ea2)

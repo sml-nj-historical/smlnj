@@ -91,6 +91,7 @@ struct
 	List.foldl  (fn (fld, sum) => sizeOf fld + sum) 0 fields
 
   val sp = C.esp
+  fun LI i = T.LI(T.I.fromInt(32, i))
 
   local
     fun fpr(sz,f) = T.FPR(T.FREG(sz, f))
@@ -155,9 +156,8 @@ struct
     val unsigned = push false
 
     fun push64 rexp = error "push64"
-
     (* increment the stack pointer and store floating point result. *)
-    fun bumpSp sz = T.MV(32, sp, T.SUB(32, T.REG(32,sp), T.LI sz))
+    fun bumpSp sz = T.MV(32, sp, T.SUB(32, T.REG(32,sp), LI sz))
     fun storeAtSp(sz, e) = T.STORE(sz, T.REG(32,sp), e, stack)
     fun PUSHB(e, stmts) = bumpSp(1)::storeAtSp(8, e)::stmts
     fun PUSHW(e, stmts) = bumpSp(2)::storeAtSp(16, e)::stmts
@@ -184,7 +184,7 @@ struct
 	    val ptr = T.REG(32, ptrR)
 	    fun mkArgs([], i, acc) = (i, rev acc)
 	      | mkArgs(ty::rest, i, acc) = let
-		  fun ea() = T.ADD(32, ptr, T.LI i)
+		  fun ea() = T.ADD(32, ptr, LI i)
 		  fun fload (bits, bytes) =
 		    mkArgs(rest, i+bytes, 
 			   FARG(T.FLOAD(bits, ea(), mem))::acc)
@@ -316,7 +316,7 @@ struct
     val (retRegs, cpyOut) = copyOut(cRets, [], [])
     val call = mkCall(cDefs) :: (case argsSz paramTys
          of 0 => cpyOut
-          | n => T.MV(32, sp, T.ADD(32, T.REG(32,sp), T.LI n)) :: cpyOut
+          | n => T.MV(32, sp, T.ADD(32, T.REG(32,sp), LI n)) :: cpyOut
         (* end case *))
     val callSeq = pushArgs(paramTys, args, pushStructRetAddr(call))
   in {callseq=callSeq, result=retRegs}

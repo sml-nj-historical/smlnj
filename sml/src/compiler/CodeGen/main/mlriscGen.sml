@@ -1,4 +1,4 @@
-(* mlriscGenNew.sml --- translate CPS to MLRISC.
+(* mlriscGen.sml --- translate CPS to MLRISC.
  * 
  * This version of MLRiscGen also injects GC types to the MLRISC backend.
  * I've also reorganized it a bit and added a few comments
@@ -120,11 +120,13 @@ struct
   val ity = 32 (* size of ML's integer *)
   val fty = 64 (* size of ML's real number *)
 
-  val zero = M.LI 0
-  val one  = M.LI 1
-  val two  = M.LI 2
-  val mlZero = M.LI 1
+  val zero = M.LI M.I.int_0
+  val one  = M.LI M.I.int_1
+  val two  = M.LI M.I.int_2
+  val mlZero = one			(* tagged zero *)
   val offp0 = CPS.OFFp 0 
+  fun LI i = M.LI (M.I.fromInt(ity, i))
+  fun LW w = M.LI (M.I.fromWord32(ity, w))
  
   (*
    * The allocation pointer.  This must be a register
@@ -449,14 +451,14 @@ struct
           fun resolveHpOffset(M.CONST(absoluteHpOffset)) = 
               let val tmpR = newReg PTR 
                   val offset = absoluteHpOffset - !advancedHP
-              in  emit(M.MV(pty, tmpR, M.ADD(addrTy, C.allocptr, M.LI offset)));
+              in  emit(M.MV(pty, tmpR, M.ADD(addrTy, C.allocptr, LI offset)));
                   M.REG(pty, tmpR) 
               end
             | resolveHpOffset(e) = e
 
           fun regbind(CPS.VAR v) = resolveHpOffset(lookupGpRegTbl v)
-            | regbind(CPS.INT i) = M.LI (i+i+1)
-            | regbind(CPS.INT32 w) = M.LI32 w
+            | regbind(CPS.INT i) = LI (i+i+1)
+            | regbind(CPS.INT32 w) = LW w
             | regbind(CPS.LABEL v) = 
                   laddr(functionLabel(if splitEntry then ~v-1 else v), 0)
             | regbind _ = error "regbind"
@@ -466,13 +468,13 @@ struct
            *)
           fun resolveHpOffset'(M.CONST(absoluteHpOffset)) = 
               let val offset = absoluteHpOffset - !advancedHP
-              in  markPTR(M.ADD(addrTy, C.allocptr, M.LI offset))
+              in  markPTR(M.ADD(addrTy, C.allocptr, LI offset))
               end
             | resolveHpOffset'(e) = e
 
           fun regbind'(CPS.VAR v) = resolveHpOffset'(lookupGpRegTbl v)
-            | regbind'(CPS.INT i) = M.LI (i+i+1)
-            | regbind'(CPS.INT32 w) = M.LI32 w
+            | regbind'(CPS.INT i) = LI (i+i+1)
+            | regbind'(CPS.INT32 w) = LW w
             | regbind'(CPS.LABEL v) = 
                   laddr(functionLabel(if splitEntry then ~v-1 else v), 0)
             | regbind' _ = error "regbind'"
@@ -542,7 +544,7 @@ struct
           fun updtHeapPtr(hp) = 
           let fun advBy hp = 
                (advancedHP := !advancedHP + hp;
-                emit(M.MV(pty, allocptrR, M.ADD(addrTy, C.allocptr, M.LI hp))))
+                emit(M.MV(pty, allocptrR, M.ADD(addrTy, C.allocptr, LI hp))))
           in  if hp = 0 then () 
               else if Word.andb(Word.fromInt hp, 0w4) <> 0w0 then advBy(hp+4)
               else advBy(hp)
@@ -564,13 +566,13 @@ struct
            *   x <- [descriptor ... fields]
            *) 
           fun ea(r, 0) = r
-            | ea(r, n) = M.ADD(addrTy, r, M.LI n)
+            | ea(r, n) = M.ADD(addrTy, r, LI n)
           fun indexEA(r, 0) = r
-            | indexEA(r, n) = M.ADD(addrTy, r, M.LI(n*4))
+            | indexEA(r, n) = M.ADD(addrTy, r, LI(n*4))
 
           fun allocRecord(markComp, mem, desc, fields, hp) =  
           let fun getField(v, e, CPS.OFFp 0) = e
-                | getField(v, e, CPS.OFFp n) = M.ADD(addrTy, e, M.LI(4*n))
+                | getField(v, e, CPS.OFFp n) = M.ADD(addrTy, e, LI(4*n))
                 | getField(v, e, p) = getPath(getRegion v, e, p)
 
               and getPath(mem, e, CPS.OFFp n) = indexEA(e, n)
@@ -583,7 +585,7 @@ struct
 
               fun storeFields([], hp, elem) = hp
                 | storeFields((v, p)::fields, hp, elem) =  
-                  (emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, M.LI hp),
+                  (emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI hp),
                            getField(v, regbind' v, p), pi(mem, elem)));
                    storeFields(fields, hp+4, elem+1)
                   )
@@ -599,7 +601,7 @@ struct
            *) 
           fun allocFrecord(mem, desc, fields, hp) = 
           let fun fea(r, 0) = r
-                | fea(r, n) = M.ADD(addrTy, r, M.LI(n*8))
+                | fea(r, n) = M.ADD(addrTy, r, LI(n*8))
               fun fgetField(v, CPS.OFFp 0) = fregbind v
                 | fgetField(v, CPS.OFFp _) = error "allocFrecord.fgetField"
                 | fgetField(v, p) = fgetPath(getRegion v, regbind' v, p)
@@ -614,7 +616,7 @@ struct
                  
               fun fstoreFields([], hp, elem) = hp
                 | fstoreFields((v, p)::fields, hp, elem) =  
-                  (emit(M.FSTORE(fty, M.ADD(addrTy, C.allocptr, M.LI hp),
+                  (emit(M.FSTORE(fty, M.ADD(addrTy, C.allocptr, LI hp),
                                  fgetField(v, p), pi(mem, elem)));
                    fstoreFields(fields, hp+8, elem+1)
                   )
@@ -625,10 +627,10 @@ struct
 
           (* Allocate a header pair for vector or array *) 
           fun allocHeaderPair(hdrDesc, mem, dataPtr, len, hp) =
-              (emit(M.STORE(ity, ea(C.allocptr, hp), M.LI hdrDesc,pi(mem,~1)));
+              (emit(M.STORE(ity, ea(C.allocptr, hp), LI hdrDesc,pi(mem,~1)));
                emit(M.STORE(ity, ea(C.allocptr, hp+4), 
                             M.REG(ity,dataPtr),pi(mem, 0)));
-               emit(M.STORE(ity, ea(C.allocptr, hp+8), M.LI(len+len+1),
+               emit(M.STORE(ity, ea(C.allocptr, hp+8), LI(len+len+1),
                             pi(mem, 1)));
                hp+4
              )
@@ -665,29 +667,29 @@ struct
 
           fun untag(true, e) = untagSigned e 
             | untag(false, e) = untagUnsigned e
-          and untagUnsigned(CPS.INT i) = M.LI i
+          and untagUnsigned(CPS.INT i) = LI i
             | untagUnsigned v          = M.SRL(ity, regbind v, one)
-          and untagSigned(CPS.INT i) = M.LI i
+          and untagSigned(CPS.INT i) = LI i
             | untagSigned v          = M.SRA(ity, regbind v, one)
 
           (*
            * Integer operators 
            *)
-          fun int31add(addOp, CPS.INT k, w) = addOp(ity, M.LI(k+k), regbind w)
+          fun int31add(addOp, CPS.INT k, w) = addOp(ity, LI(k+k), regbind w)
             | int31add(addOp, w, v as CPS.INT _) = int31add(addOp, v, w)
             | int31add(addOp, v, w) = addOp(ity,regbind v,stripTag(regbind w))
 
-          fun int31sub(subOp, CPS.INT k, w) = subOp(ity, M.LI(k+k+2),regbind w)
-            | int31sub(subOp, v, CPS.INT k) = subOp(ity, regbind v, M.LI(k+k))
+          fun int31sub(subOp, CPS.INT k, w) = subOp(ity, LI(k+k+2),regbind w)
+            | int31sub(subOp, v, CPS.INT k) = subOp(ity, regbind v, LI(k+k))
             | int31sub(subOp, v, w) = addTag(subOp(ity, regbind v, regbind w))
 
-          fun int31xor(CPS.INT k, w) = M.XORB(ity, M.LI(k+k), regbind w)
+          fun int31xor(CPS.INT k, w) = M.XORB(ity, LI(k+k), regbind w)
             | int31xor(w, v as CPS.INT _) = int31xor (v,w)
             | int31xor(v, w) = addTag (M.XORB(ity, regbind v, regbind w))
 
           fun int31mul(signed, v, w) = 
-          let fun f(CPS.INT k, CPS.INT j) = (M.LI(k+k), M.LI(j))
-                | f(CPS.INT k, w) = (untag(signed,w), M.LI(k+k))
+          let fun f(CPS.INT k, CPS.INT j) = (LI(k+k), LI(j))
+                | f(CPS.INT k, w) = (untag(signed,w), LI(k+k))
                 | f(v, w as CPS.INT _) = f(w, v)
                 | f(v, w) = (stripTag(regbind v), untag(signed,w))
               val (v, w) = f(v, w)
@@ -697,31 +699,31 @@ struct
           fun int31div(signed, v, w) = 
           let val (v, w) = 
               case (v, w) of
-                (CPS.INT k, CPS.INT j) => (M.LI k, M.LI j)
-              | (CPS.INT k, w) => (M.LI k, untag(signed, w))
-              | (v, CPS.INT k) => (untag(signed, v), M.LI(k))
+                (CPS.INT k, CPS.INT j) => (LI k, LI j)
+              | (CPS.INT k, w) => (LI k, untag(signed, w))
+              | (v, CPS.INT k) => (untag(signed, v), LI(k))
               | (v, w) => (untag(signed, v), untag(signed, w))
           in  tag(signed, 
                   if signed then M.DIVT(ity, v, w) else M.DIVU(ity, v, w))
           end
 
           fun int31lshift(CPS.INT k, w) =
-                addTag (M.SLL(ity, M.LI(k+k), untagUnsigned(w)))
+                addTag (M.SLL(ity, LI(k+k), untagUnsigned(w)))
             | int31lshift(v, CPS.INT k) = 
-                addTag(M.SLL(ity,stripTag(regbind v), M.LI(k)))
+                addTag(M.SLL(ity,stripTag(regbind v), LI(k)))
             | int31lshift(v,w) = 
                 addTag(M.SLL(ity,stripTag(regbind v), untagUnsigned(w)))
 
           fun int31rshift(rshiftOp, v, CPS.INT k) =  
-                orTag(rshiftOp(ity, regbind v, M.LI(k)))
+                orTag(rshiftOp(ity, regbind v, LI(k)))
             | int31rshift(rshiftOp, v, w) =
                 orTag(rshiftOp(ity, regbind v, untagUnsigned(w)))
 
           fun getObjDescriptor(v) = 
-            M.LOAD(ity, M.SUB(pty, regbind v, M.LI(4)), getRegionPi(v, ~1))
+            M.LOAD(ity, M.SUB(pty, regbind v, LI(4)), getRegionPi(v, ~1))
 
           fun getObjLength(v) = 
-            M.SRL(ity, getObjDescriptor(v), M.LI(D.tagWidth -1))
+            M.SRL(ity, getObjDescriptor(v), LI(D.tagWidth -1))
 
           (* 
            * Note: because formals are moved into fresh temporaries,
@@ -774,26 +776,26 @@ struct
 
           (* scale-and-add *)
           fun scale1(a, CPS.INT 0) = a
-            | scale1(a, CPS.INT k) = M.ADD(ity, a, M.LI(k))
+            | scale1(a, CPS.INT k) = M.ADD(ity, a, LI(k))
             | scale1(a, i) = M.ADD(ity, a, untagSigned(i))
 
           fun scale4(a, CPS.INT 0) = a
-            | scale4(a, CPS.INT i) = M.ADD(ity, a, M.LI(i*4))
+            | scale4(a, CPS.INT i) = M.ADD(ity, a, LI(i*4))
             | scale4(a, i) = M.ADD(ity, a, M.SLL(ity, untagSigned(i), two))
                                             
 
           fun scale8(a, CPS.INT 0) = a
-            | scale8(a, CPS.INT i) = M.ADD(ity, a, M.LI(i*8))
+            | scale8(a, CPS.INT i) = M.ADD(ity, a, LI(i*8))
             | scale8(a, i) = M.ADD(ity, a, M.SLL(ity, stripTag(regbind i), 
-                                                  M.LI(2)))
+                                                  LI(2)))
     
           (* add to storelist, the address where a boxed update has occured *)
           fun recordStore(tmp, hp) =
-            (emit(M.STORE(pty,M.ADD(addrTy,C.allocptr,M.LI(hp)),
+            (emit(M.STORE(pty,M.ADD(addrTy,C.allocptr,LI(hp)),
                                     tmp,R.storelist));
-             emit(M.STORE(pty,M.ADD(addrTy,C.allocptr,M.LI(hp+4)),
+             emit(M.STORE(pty,M.ADD(addrTy,C.allocptr,LI(hp+4)),
                                     C.storeptr,R.storelist));
-             emit(assign(C.storeptr, M.ADD(addrTy, C.allocptr, M.LI(hp)))))
+             emit(assign(C.storeptr, M.ADD(addrTy, C.allocptr, LI(hp)))))
                
           fun unsignedCmp oper = 
               case oper
@@ -946,7 +948,7 @@ struct
 
               (* Align the allocation pointer if necessary *)
               if !hasFloats then
-                 emit(M.MV(pty,allocptrR, M.ORB(pty,C.allocptr, M.LI 4)))
+                 emit(M.MV(pty,allocptrR, M.ORB(pty,C.allocptr, LI 4)))
               else ();
 
               (* Generate code *)
@@ -992,7 +994,7 @@ struct
            * If x is only used once, we try to propagate that to its use.
            *)
           and defAlloc(x, offset, k, hp) = 
-                defBoxed(x, M.ADD(addrTy, C.allocptr, M.LI offset), k, hp)
+                defBoxed(x, M.ADD(addrTy, C.allocptr, LI offset), k, hp)
 
           
           (* Generate code for
@@ -1111,7 +1113,7 @@ struct
                             M.LOAD(ity,M.ADD(ity,M.REG(ity, r2),i),R.readonly))
                   fun unroll i = 
                       if i=n' then ()
-                      else (emit(M.BCC(cmpWord(M.LI(i)), false_lab));
+                      else (emit(M.BCC(cmpWord(LI(i)), false_lab));
                             unroll (i+4))
               in  emit(M.MV(ity, r1, M.LOAD(ity, regbind v, R.readonly)));
                   emit(M.MV(ity, r2, M.LOAD(ity, regbind w, R.readonly)));
@@ -1148,7 +1150,7 @@ struct
               let val len = length vl
                   val desc = dtoi(D.makeDesc (len, D.tag_record))
               in  treeifyAlloc(w, 
-                     allocRecord(markPTR, memDisambig w, M.LI desc, vl, hp), 
+                     allocRecord(markPTR, memDisambig w, LI desc, vl, hp), 
                         e, hp+4+len*4)
               end
 
@@ -1157,7 +1159,7 @@ struct
               let val len = length vl
                   val desc = dtoi(D.makeDesc (len, D.tag_raw32))
               in  treeifyAlloc(w,
-                     allocRecord(markI32, memDisambig w, M.LI desc, vl, hp),
+                     allocRecord(markI32, memDisambig w, LI desc, vl, hp),
                         e, hp+4+len*4)
               end
  
@@ -1174,7 +1176,7 @@ struct
                     if Word.andb(Word.fromInt hp, 0w4) <> 0w0 then hp+4 else hp
               in  (* The components are floating point *)
                   treeifyAlloc(w,
-                     allocFrecord(memDisambig w, M.LI desc, vl, hp),
+                     allocFrecord(memDisambig w, LI desc, vl, hp),
                         e, hp+4+len*8)
               end
 
@@ -1188,7 +1190,7 @@ struct
                   val hp'     = hp + 4 + len*4
               in  (* The components are boxed *)
                   (* Allocate the data *)
-                  allocRecord(markPTR, mem, M.LI dataDesc, vl, hp);
+                  allocRecord(markPTR, mem, LI dataDesc, vl, hp);
                   emit(M.MV(pty, dataPtr, ea(C.allocptr, hp+4)));
                   (* Now allocate the header pair *)
                   treeifyAlloc(w, 
@@ -1226,7 +1228,7 @@ struct
                     executed; its semantics is completely screwed up !
                   *)
               in  if isFlt t then fallocSp(x, e, hp)
-                  else defI32(x, M.LI k, e, hp)(* BOGUS *)
+                  else defI32(x, LI k, e, hp)(* BOGUS *)
               end
 
           (*
@@ -1396,9 +1398,9 @@ struct
             | gen(PURE(P.pure_arith{oper=P.notb, kind}, [v], x, _, e), hp) =
                (case kind 
                 of P.UINT 32 => defI32(x,M.XORB(ity, regbind v, 
-                                                M.LI32 0wxFFFFFFFF), e, hp)
+                                                LW 0wxFFFFFFFF), e, hp)
                  | P.INT 32 => defI32(x,M.XORB(ity, regbind v, 
-                                               M.LI32 0wxFFFFFFFF), e, hp)
+                                               LW 0wxFFFFFFFF), e, hp)
                  | P.UINT 31 => defI31(x,M.SUB(ity, zero, regbind v), e, hp)
                  | P.INT 31 => defI31(x,M.SUB(ity, zero, regbind v), e, hp)
               (*esac*))
@@ -1414,11 +1416,11 @@ struct
               (case ft
                of (8,31) => 
                     defI31(x, 
-                       M.SRA(ity, M.SLL(ity, regbind v,M.LI 23), M.LI 23),
+                       M.SRA(ity, M.SLL(ity, regbind v,LI 23), LI 23),
                           e, hp)
                 | (8,32) =>
                     defI32(x, 
-                       M.SRA(ity, M.SLL(ity, regbind v, M.LI 23), M.LI 24), 
+                       M.SRA(ity, M.SLL(ity, regbind v, LI 23), LI 24), 
                           e, hp)
                 | (31,32) => defI32(x, M.SRA(ity, regbind v, one), e, hp)
                 | (n, m) => if n = m then copyM(m, x, v, e, hp) 
@@ -1428,9 +1430,9 @@ struct
               (case ft
                of (32, 31) => 
                    defI31(x, M.ORB(ity, M.SLL(ity, regbind v, one), one), e, hp)
-                | (31,8) => defI32(x, M.ANDB(ity, regbind v, M.LI 0x1ff), e, hp)
+                | (31,8) => defI32(x, M.ANDB(ity, regbind v, LI 0x1ff), e, hp)
                 | (32,8) => defI32(x, tagUnsigned(M.ANDB(ity, regbind v, 
-                                          M.LI 0xff)), e, hp)
+                                          LI 0xff)), e, hp)
                 | (n, m) => if n = m then copyM(m, x, v, e, hp) 
                             else error "gen:PURE:trunc"
                (*esac*))
@@ -1460,13 +1462,13 @@ struct
               end
             | gen(PURE(P.gettag, [v], x, _, e), hp) = 
                 defI31(x, tagUnsigned(M.ANDB(ity,
-                             getObjDescriptor(v), M.LI(D.powTagWidth-1))),
+                             getObjDescriptor(v), LI(D.powTagWidth-1))),
                       e, hp)
             | gen(PURE(P.mkspecial, [i, v], x, _, e), hp) = 
               let val desc = case i
-                  of INT n => M.LI(dtoi(D.makeDesc(n, D.tag_special)))
-                   | _ => M.ORB(ity, M.SLL(ity, untagSigned(i),M.LI D.tagWidth),
-                                M.LI(dtoi D.desc_special))
+                  of INT n => LI(dtoi(D.makeDesc(n, D.tag_special)))
+                   | _ => M.ORB(ity, M.SLL(ity, untagSigned(i),LI D.tagWidth),
+                                LI(dtoi D.desc_special))
               in  (* What gc types are the components? *)
                   treeifyAlloc(x, 
                     allocRecord(markNothing, memDisambig x, 
@@ -1474,10 +1476,10 @@ struct
                     e, hp+8)
               end
             | gen(PURE(P.makeref, [v], x, _, e), hp) = 
-              let val tag = M.LI(dtoi D.desc_ref)
+              let val tag = LI(dtoi D.desc_ref)
                   val mem = memDisambig x
-              in  emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,M.LI hp),tag,mem));
-                  emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,M.LI(hp+4)), 
+              in  emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,LI hp),tag,mem));
+                  emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,LI(hp+4)), 
                                regbind' v, mem));
                   treeifyAlloc(x, hp+4, e, hp+8)
               end
@@ -1518,11 +1520,11 @@ struct
                   val hdrM = memDisambig x
                   val (tagM, valM) = (hdrM, hdrM) (* Allen *)
               in  (* gen code to allocate "ref()" for array data *)
-                  emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, M.LI hp), 
-                               M.LI dataDesc, tagM));
-                  emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, M.LI(hp+4)), 
+                  emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI hp), 
+                               LI dataDesc, tagM));
+                  emit(M.STORE(ity, M.ADD(addrTy, C.allocptr, LI(hp+4)), 
                                mlZero, valM));
-                  emit(M.MV(pty, dataPtr, M.ADD(addrTy,C.allocptr,M.LI(hp+4))));
+                  emit(M.MV(pty, dataPtr, M.ADD(addrTy,C.allocptr,LI(hp+4))));
                   (* gen code to allocate array header *)
                   treeifyAlloc(x, 
                      allocHeaderPair(hdrDesc, hdrM, dataPtr, 0, hp+8),
@@ -1531,7 +1533,7 @@ struct
             (*** ARITH ***)
             | gen(ARITH(P.arith{kind=P.INT 31, oper=P.~}, [v], x, _, e), hp) = 
                 (updtHeapPtr hp;
-                 defI31(x, M.SUBT(ity, M.LI 2, regbind v), e, 0)
+                 defI31(x, M.SUBT(ity, LI 2, regbind v), e, 0)
                 )
             | gen(ARITH(P.arith{kind=P.INT 31, oper}, [v, w], x, _, e), hp) = 
               (updtHeapPtr hp; 
@@ -1637,7 +1639,7 @@ struct
             | gen(LOOKER(P.deflvar, [], x, _, e), hp)= defBoxed(x, zero, e, hp)
             | gen(LOOKER(P.getspecial, [v], x, _, e), hp) = 
                 defBoxed(x, orTag(M.SRA(ity, getObjDescriptor(v),
-                                             M.LI (D.tagWidth-1))), 
+                                             LI (D.tagWidth-1))), 
                          e, hp)
             | gen(LOOKER(P.getpseudo, [i], x, _, e), hp) = 
                 (print "getpseudo not implemented\n"; nop(x, i, e, hp))
@@ -1695,13 +1697,13 @@ struct
                   gen(e, hp)
               end
             | gen(SETTER(P.setspecial, [v, i], e), hp) = 
-              let val ea = M.SUB(ity, regbind v, M.LI 4)
+              let val ea = M.SUB(ity, regbind v, LI 4)
                   val i' = 
                     case i 
-                      of INT k => M.LI(dtoi(D.makeDesc(k, D.tag_special)))
+                      of INT k => LI(dtoi(D.makeDesc(k, D.tag_special)))
                      | _ => M.ORB(ity, M.SLL(ity, untagSigned(i), 
-                                             M.LI D.tagWidth),
-                                  M.LI(dtoi D.desc_special))
+                                             LI D.tagWidth),
+                                  LI(dtoi D.desc_special))
                   val mem = getRegionPi(v, 0)
               in  emit(M.STORE(ity, ea, i', mem));
                   gen(e, hp)
