@@ -3,6 +3,25 @@ correspond to SML/NJ releases.
 
 
 --------------------------------------------------------------------------------
+[1999-05-05]
+	Fixed a couple of bugs in the PP library having to do with nesting
+	absolute and relative indentations.
+
+[1999-04-21]
+	Added a way to pass control information to a PP device via the PP
+	stream (function control in PP_STREAM).
+
+[1999-04-16]
+	Added better style support to the HTML PP device.
+
+[1998-09-04]
+	Added isEmpty predicate and first fucntion to ORD_MAP
+	signature (and to implementations).
+
+[1998-06-23]
+	Fixed a bug in ParserComb.bind (reported by Andrew Kennedy).
+
+--------------------------------------------------------------------------------
 [1998-04-15] 110 --> 110.5
 --------------------------
 

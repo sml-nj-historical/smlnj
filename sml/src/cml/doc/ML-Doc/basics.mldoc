@@ -17,5 +17,6 @@ Things to cover:
   preemptive scheduling
 -->
 
+<INCLFILE FILE="running">
 <INCLFILE FILE="porting">
 </SECTION>

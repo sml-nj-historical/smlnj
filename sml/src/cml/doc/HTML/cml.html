@@ -289,7 +289,16 @@ creates an event value that becomes enabled at the time 	  interval <VAR>t</VAR>
 <DT> <A NAME="SIG:CML.atTimeEvt:VAL"><CODE>atTimeEvt <VAR>t</VAR>
           </CODE></A>
 <DD>
-creates an event value that becomes enabled at the specified time 	  <VAR>t</VAR>.     
+creates an event value that becomes enabled at the specified time 	  <VAR>t</VAR>. 	  For example, the expression: 	  
+<PRE>
+	    <A HREF="cml.html#SIG:CML.sync:VAL:SPEC">sync</A> (atTimeEvt (<A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/date.html#SIG:DATE.toTime:VAL:SPEC">Date.toTime</A> (<A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/date.html#SIG:DATE.date:VAL:SPEC">Date.date</A> {
+		year = 2000, month = <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/date.html#SIG:DATE.month:TY:SPEC">Date.Jan</A>, day = 0,
+		hour = 0, minute = 0, second = 0, 
+		offset = NONE
+	      })))
+	  
+</PRE>
+ 	  blocks the calling thread until the beginning of the year 2000.     
 <BR>
 <BR>
 

@@ -55,6 +55,7 @@ functor PPDebugFn (PP : sig
     val newline = debug' "newline" PP.newline
     val nbSpace = debug "nbSpace" PP.nbSpace
     val onNewline = debug "onNewline" PP.onNewline
+    val control = debug "control" PP.control
 
   end;
 

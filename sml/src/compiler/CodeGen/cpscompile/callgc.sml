@@ -177,7 +177,7 @@ struct
     val {known, boxed, int32, float, regfmls, ret, lab} =
       (case gcInfo
 	of GCINFO info => info
-         | MODULE {info=GCINFO info, ...} => info
+         | MODULE {info=GCINFO info, addrs} => info
 	 | _ => error "invokeGC:gcInfo"
       (*esac*))
 

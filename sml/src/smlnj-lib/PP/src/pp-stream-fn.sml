@@ -42,6 +42,7 @@ functor PPStreamFn (
       | POP_STYLE
       | NL
       | IF_NL
+      | CTL of (device -> unit)		(* device control operation *)
 
    and box_type = HBOX | VBOX | HVBOX | HOVBOX | BOX | FITS
 
@@ -81,7 +82,7 @@ functor PPStreamFn (
     fun indentToString (Abs n) = concat["Abs ", Int.toString n]
       | indentToString (Rel n) = concat["Rel ", Int.toString n]
     fun tokToString (TEXT s) = concat["TEXT \"", String.toString s, "\""]
-      | tokToString (NBSP n) = concat["NBSP \"", Int.toString n, "\""]
+      | tokToString (NBSP n) = concat["NBSP ", Int.toString n]
       | tokToString (BREAK{nsp, offset}) =
 	  F.format "BREAK{nsp=%d, offset=%d}" [F.INT nsp, F.INT offset]
       | tokToString (BEGIN(indent, ty)) = F.format "BEGIN(%s, %s)" [
@@ -92,6 +93,7 @@ functor PPStreamFn (
       | tokToString POP_STYLE = "POP_STYLE"
       | tokToString NL = "NL"
       | tokToString IF_NL = "IF_NL"
+      | tokToString (CTL f) = "CTL _"
     fun qelemToString {tok, sz, len} = F.format "{tok=%s, sz=%d, len=%d}" [
 	    F.STR(tokToString tok), F.INT(!sz), F.INT len
 	  ]
@@ -102,7 +104,8 @@ functor PPStreamFn (
 	  fun prf (fmt, items) = pr(F.format fmt items)
 	  fun fmtElemToString (ty, n) =
 		F.format "(%s, %d)" [F.STR(boxTypeToString ty), F.INT n]
-	  fun prl fmtElem l = pr(ListFormat.fmt {
+	  fun prl fmtElem [] = pr "[]"
+	    | prl fmtElem l = pr(ListFormat.fmt {
 		  init = "[\n    ", final = "]", sep = "\n    ", fmt = fmtElem
 		} l)
 	  in
@@ -136,10 +139,15 @@ functor PPStreamFn (
 	  rightTot := !rightTot + #len tok;
 	  Q.enqueue(queue, tok))
 
-  (* format a break; indenting the new line *)
-    fun breakNewLine (strm, offset, nsp) = let
+  (* format a break as a newline; indenting the new line.
+   *   strm	-- PP stream
+   *   offset	-- the extra indent amount supplied by the break
+   *   wid	-- the remaining line width at the opening of the
+   *		   innermost enclosing box.
+   *)
+    fun breakNewLine (strm, offset, wid) = let
 	  val PP{width, curIndent, spaceLeft, ...} = strm
-	  val indent = (width - nsp) + offset
+	  val indent = (width - wid) + offset
 (***** CAML version does the following: *****
 	  val indent = min(maxIndent, indent)
 *****)
@@ -150,23 +158,27 @@ functor PPStreamFn (
 	    blanks (strm, indent)
 	  end
 
-  (* line break inside a block w/o offset *)
-    fun lineBreak (strm, nsp) = breakNewLine (strm, 0, nsp)
-
+  (* format a break as spaces.
+   *   strm	-- PP stream
+   *   nsp	-- number of spaces to output.
+   *)
     fun breakSameLine (strm as PP{spaceLeft, ...}, nsp) = (
 	  spaceLeft := !spaceLeft - nsp;
 	  blanks (strm, nsp))
 
+(***** this function is in the CAML version, but is currently not used.
     fun forceLineBreak (strm as PP{fmtStk, spaceLeft, ...}) = (case !fmtStk
 	   of ((ty, wid)::r) => if (wid > !spaceLeft)
 		then (case ty
 		   of (FITS | HBOX) => ()
-		    | _ => lineBreak (strm, wid)
+		    | _ => breakNewLine (strm, 0, wid)
 		  (* end case *))
 		else ()
 	    | _ => outputNL strm
 	  (* end case *))
+*****)
 
+  (* return the current style of the PP stream *)
     fun currentStyle (PP{styleStk = ref [], dev, ...}) = D.defaultStyle dev
       | currentStyle (PP{styleStk = ref(sty::_), ...}) = sty
 
@@ -207,9 +219,13 @@ functor PPStreamFn (
 		val PP{curIndent, spaceLeft, width, fmtStk, ...} = strm
 		val spaceLeft' = !spaceLeft
 		val insPt = width - spaceLeft'
+	      (* compute offset from right margin of this block's indent *)
 		val offset = (case indent
 		       of (Rel off) => spaceLeft' - off
-			| (Abs off) => width - (!curIndent + off)
+			| (Abs off) => (case !fmtStk
+			     of ((_, wid)::_) => wid - off
+			      | _ => width - (!curIndent + off)
+			    (* end case *))
 		      (* end case *))
 (***** CAML version does the following: ****
 		val _ = if (insPt > maxIndent)
@@ -244,11 +260,16 @@ functor PPStreamFn (
 		val PP{fmtStk, ...} = strm
 		in
 		  case !fmtStk
-		   of ((_, wid)::r) => lineBreak (strm, wid)
+		   of ((_, wid)::r) => breakNewLine (strm, 0, wid)
 		    | _ => outputNL strm
 		  (* end case *)
 		end
 	    | IF_NL => raise Fail "IF_NL"
+	    | (CTL ctlFn) => let
+		val PP{dev, ...} = strm
+		in
+		  ctlFn dev
+		end
 	  (* end case *))
 
     fun advanceLeft strm = let
@@ -447,4 +468,7 @@ functor PPStreamFn (
 
     fun onNewline  strm () = raise Fail "onNewline"
 
+    fun control strm ctlFn = enqueueToken (strm, CTL ctlFn)
+
   end
+

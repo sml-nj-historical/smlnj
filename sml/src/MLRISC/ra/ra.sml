@@ -384,7 +384,7 @@ struct
 	     add(ns, addMvWkl(!movelist, wkl))
 	   else
 	     add(ns, wkl)
-	| add(_::ns, wkl) = wkl
+	| add(_::ns, wkl) = add(ns, wkl)
     in
       add(node:: (!adj), moveWkl)
     end
@@ -499,6 +499,7 @@ struct
       fun safe(r, NODE{adj, ...}) = let
 	fun f [] = true
 	  | f (NODE{color=ref (COLORED _), ...}::rest) = f rest
+	  | f (NODE{color=ref (ALIASED _), ...}::rest) = f rest
 	  | f ((x as NODE{degree, ...})::rest) = 
 	    (!degree < K orelse memBitMatrix(x, r)) andalso f rest
       in
@@ -616,7 +617,7 @@ struct
 	  (status := LOST;
 	   case y 
 	     of NODE{color=ref(COLORED _), ...} => NONE
-	      | NODE{movecnt=ref 1, degree, ...} =>
+	      | NODE{movecnt as ref 1, degree, ...} =>
 		 (movecnt := 0;
 		  if !degree < K then SOME y
 		  else NONE)
@@ -1183,6 +1184,9 @@ end (* functor *)
 
 (*
  * $Log: ra.sml,v $
+ * Revision 1.6  1999/04/16 14:58:33  george
+ *   changes to support new x86 code generator
+ *
  * Revision 1.5  1999/03/24 21:26:02  george
  *   fixed bug in implementation of flags
  *

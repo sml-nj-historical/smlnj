@@ -9,6 +9,13 @@ structure HTMLDev : sig
 
     include PP_DEVICE
 
+  (* combine two styles into one *)
+    val combineStyle : (style * style) -> style
+
+  (* unstyled text *)
+    val styleNONE : style
+
+  (* standard HTML text styles *)
     val styleTT : style
     val styleI : style
     val styleB : style
@@ -23,7 +30,12 @@ structure HTMLDev : sig
     val styleVAR : style
     val styleCITE : style
 
+  (* color text (using FONT element) *)
     val color : string -> style
+
+  (* hyper-text links and anchors *)
+    val link : string -> style
+    val anchor : string -> style
 
     val openDev : {wid : int, textWid : int option} -> device
     val done : device -> HTML.text
@@ -36,6 +48,9 @@ structure HTMLDev : sig
       | STRONG | DFN | CODE | SAMP | KBD
       | VAR | CITE
       | COLOR of string
+      | LINK of string
+      | ANCHOR of string
+      | STYS of style list
 
     datatype device = DEV of {
 	lineWid : int,
@@ -69,26 +84,35 @@ structure HTMLDev : sig
 
     fun wrapStyle (sty, [], tl') = tl'
       | wrapStyle (sty, tl, tl') = let
+	  fun wrap (NOEMPH, t) = t
+	    | wrap (TT, t) = HTML.TT t
+	    | wrap (I, t) = HTML.I t
+	    | wrap (B, t) = HTML.B t
+	    | wrap (U, t) = HTML.U t
+	    | wrap (STRIKE, t) = HTML.STRIKE t
+	    | wrap (EM, t) = HTML.EM t
+	    | wrap (STRONG, t) = HTML.STRONG t
+	    | wrap (DFN, t) = HTML.DFN t
+	    | wrap (CODE, t) = HTML.CODE t
+	    | wrap (SAMP, t) = HTML.SAMP t
+	    | wrap (KBD, t) = HTML.KBD t
+	    | wrap (VAR, t) = HTML.VAR t
+	    | wrap (CITE, t) = HTML.CITE t
+	    | wrap (COLOR c, t) = HTML.FONT{color=SOME c, size=NONE, content=t}
+	    | wrap (LINK s, t) = HTML.A{
+		  name = NONE, href = SOME s,
+		  rel = NONE, rev = NONE, title = NONE,
+		  content = t
+		}
+	    | wrap (ANCHOR s, t) = HTML.A{
+		  name = SOME s, href = NONE,
+		  rel = NONE, rev = NONE, title = NONE,
+		  content = t
+		}
+	    | wrap (STYS l, t) = List.foldr wrap t l
 	  val t = (case tl of [t] => t | _ => HTML.TextList(List.rev tl))
-	  val t = (case sty
-		 of NOEMPH => t
-		  | TT => HTML.TT t
-		  | I => HTML.I t
-		  | B => HTML.B t
-		  | U => HTML.U t
-		  | STRIKE => HTML.STRIKE t
-		  | EM => HTML.EM t
-		  | STRONG => HTML.STRONG t
-		  | DFN => HTML.DFN t
-		  | CODE => HTML.CODE t
-		  | SAMP => HTML.SAMP t
-		  | KBD => HTML.KBD t
-		  | VAR => HTML.VAR t
-		  | CITE => HTML.CITE t
-		  | (COLOR c) => HTML.FONT{color=SOME c, size=NONE, content=t}
-		(* end case *))
 	  in
-	    t :: tl'
+	    wrap(sty, t) :: tl'
 	  end
 
   (* push/pop a style from the devices style stack.  A pop on an
@@ -131,6 +155,13 @@ structure HTMLDev : sig
   (* flush is a nop for us *)
     fun flush _ = ()
 
+    fun combineStyle (NOEMPH, sty) = sty
+      | combineStyle (sty, NOEMPH) = sty
+      | combineStyle (STYS l1, STYS l2) = STYS(l1 @ l2)
+      | combineStyle (sty, STYS l) = STYS(sty::l)
+      | combineStyle (sty1, sty2) = STYS[sty1, sty2]
+
+    val styleNONE = NOEMPH
     val styleTT = TT
     val styleI = I
     val styleB = B
@@ -145,6 +176,8 @@ structure HTMLDev : sig
     val styleVAR = VAR
     val styleCITE = CITE
     val color = COLOR
+    val link = LINK
+    val anchor = ANCHOR
 
     fun openDev {wid, textWid} = DEV{
 	    txt = ref [],
