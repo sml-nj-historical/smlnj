@@ -5,9 +5,16 @@
  *)
 signature PICKMOD = sig
 
-    datatype ckey =			(* context key *)
-	PrimKey				(* for primEnv *)
-      | NodeKey of int * Symbol.symbol	(* n-th sublib, module exporting sym *)
+    (* "context keys": PrimKey indicates some kind of "primitive" context
+     * (e.g., the primitive environment), and NodeKey specifies a module
+     * of a library.  The library is given by the string list (CM's "pickle"
+     * representation of the abstract path) and the module is given by
+     * a representative export symbol.
+     * But these are details that we don't concern us here.  We just have
+     * to write this info to a pickle. *)
+    datatype ckey =
+	PrimKey
+      | NodeKey of string list * Symbol.symbol
 
     type 'a context =
 	{ lookSTR: ModuleId.modId -> 'a,
@@ -67,7 +74,6 @@ signature PICKMOD = sig
 end
 
 local
-    (* make those into red-black-maps once rb-maps work correcty. *)
     functor MapFn = RedBlackMapFn
     structure IntMap = IntRedBlackMap
 in
@@ -627,7 +633,7 @@ in
 
     datatype ckey =			(* context key *)
 	PrimKey
-      | NodeKey of int * Symbol.symbol
+      | NodeKey of string list * Symbol.symbol
 
     type 'a context =
 	{ lookSTR: ModuleId.modId -> 'a,
@@ -641,7 +647,7 @@ in
 	NoStub
       | SimpleStub
       | PrimStub
-      | NodeStub of int * Symbol.symbol
+      | NodeStub of string list * Symbol.symbol
 
     (* the environment pickler *)
     fun mkEnvPickler (context0: stubinfo context, isLocalPid) = let
@@ -777,8 +783,8 @@ in
 			  | NoStub => "B" $ [stamp s, int arity, eqprop eq,
 					     tyckind kind, ipath path]
 			  | PrimStub => "I" $ [modId id]
-			  | NodeStub (i, s) =>
-				"J" $ [int i, symbol s, modId id]
+			  | NodeStub (sl, s) =>
+			    "J" $ [list string sl, symbol s, modId id]
 		in
 		    share (MIs (id, NONE)) gt_raw x
 		end
@@ -879,8 +885,8 @@ in
 				       list (list spath) typsharing,
 				       list (list spath) strsharing]
 			  | PrimStub => "D" $ [modId id]
-			  | NodeStub (i, s) =>
-				"E" $ [int i, symbol s, modId id]
+			  | NodeStub (sl, s) =>
+			    "E" $ [list string sl, symbol s, modId id]
 		    end
 		in
 		    share (MIs (id, NONE)) sig_raw x
@@ -905,8 +911,8 @@ in
 				       option symbol paramsym,
 				       Signature bodysig]
 			  | PrimStub => "d" $ [modId id]
-			  | NodeStub (i, s) =>
-				"e" $ [int i, symbol s, modId id]
+			  | NodeStub (sl, s) => "e" $ [list string sl,
+						       symbol s, modId id]
 		    end
 		in
 		    share (MIs (id, NONE)) fsig_raw x
@@ -962,8 +968,9 @@ in
 				"D" $ [Signature sign, strEntity rlzn,
 				       access a, inl_info info]
 			  | PrimStub => "I" $ [modId id]
-			  | NodeStub (i, s) =>
-				 "J" $ [int i, symbol s, modId id, access a]
+			  | NodeStub (sl, s) =>
+			    "J" $ [list string sl, symbol s, modId id,
+				   access a]
 		in
 		    share (MIs (id, acc_pid (#access x))) s_raw x
 		end
@@ -982,11 +989,12 @@ in
 			case lookFCT id of
 			    SimpleStub => "F" $ [modId id, access a]
 			  | NoStub =>
-				"G" $ [fctSig sign, fctEntity rlzn,
-				       access a, inl_info info]
+			    "G" $ [fctSig sign, fctEntity rlzn,
+				   access a, inl_info info]
 			  | PrimStub => "H" $ [modId id]
-			  | NodeStub (i, s) =>
-				"I" $ [int i, symbol s, modId id, access a]
+			  | NodeStub (sl, s) =>
+			    "I" $ [list string sl, symbol s, modId id,
+				   access a]
 		in
 		    share (MIs (id, acc_pid (#access x))) f_raw x
 		end
@@ -1063,7 +1071,8 @@ in
 			SimpleStub => "D" $ [modId id]
 		      | NoStub => "E" $ [stamp s, entityEnv r]
 		      | PrimStub => "F" $ [modId id]
-		      | NodeStub (i, s) => "G" $ [int i, symbol s, modId id]
+		      | NodeStub (sl, s) =>
+			"G" $ [list string sl, symbol s, modId id]
 	    in
 		share (MIs (id, NONE)) mee_raw (s, r)
 	    end
@@ -1165,7 +1174,7 @@ in
 	fun cvt lk i =
 	    case lk i of
 		SOME PrimKey => PrimStub
-	      | SOME (NodeKey (i, s)) => NodeStub (i, s)
+	      | SOME (NodeKey (sl, s)) => NodeStub (sl, s)
 	      | NONE => NoStub
 	val c = { lookSTR = cvt lookSTR,
 		  lookSIG = cvt lookSIG,

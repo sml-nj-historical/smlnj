@@ -15,8 +15,7 @@ signature CM = sig
     type 'a controller = { get : unit -> 'a, set : 'a -> unit }
 
     structure Anchor : sig
-	val set : { anchor: string, path: string } -> unit
-	val cancel : string -> unit
+	val anchor : string -> string option controller
 	val reset : unit -> unit
     end
 

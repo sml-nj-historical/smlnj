@@ -11,29 +11,35 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 local
+    structure DG = DependencyGraph
     structure GG = GroupGraph
     structure GP = GeneralParams
     structure TS = TStamp
 in
 signature VERIFY_STABLE = sig
-    val verify : GP.info -> GG.group -> bool
+    type exportmap = SmlInfo.info StableMap.map
+    val verify' : GP.info -> exportmap
+	-> SrcPath.t *			(* grouppath *)
+	   DG.sbnode list *		(* export_nodes *)
+	   (SrcPath.t * GG.group) list * (* sublibs *)
+	   SrcPathSet.set		(* groups *)
+	-> bool
+    val verify : GP.info -> exportmap -> GG.group -> bool
 end
 
-structure VerifyStable :> VERIFY_STABLE = struct
-    fun verify (gp: GP.info) g = let
+functor VerStabFn (structure Stabilize: STABILIZE) :> VERIFY_STABLE = struct
+
+    type exportmap = SmlInfo.info StableMap.map
+
+    fun verify' (gp: GP.info) em (grouppath, export_nodes, sublibs, groups) =
+    let val groups = SrcPathSet.add (groups, grouppath)
 	val policy = #fnpolicy (#param gp)
 	fun sname p = FilenamePolicy.mkStableName policy p
-	val GG.GROUP { grouppath, exports, sublibs, ... } = g
 	val stablename = sname grouppath
-	fun invalidSublib st (p, GG.GROUP { kind = GG.STABLELIB _, ... }) =
-	    let val sn = sname p
-	    in case TS.fmodTime sn of
-		TS.TSTAMP t => Time.compare (t, st) = GREATER
-	      | _ => true
-	    end
-	  | invalidSublib _ _ = true
+
 	fun invalidMember stab_t i = let
 	    val p = SmlInfo.sourcepath i
+		    
 	    val bn = SmlInfo.binname i
 	in
 	    case (SrcPath.tstamp p, TS.fmodTime bn) of
@@ -42,14 +48,43 @@ structure VerifyStable :> VERIFY_STABLE = struct
 		    Time.compare (src_t, stab_t) = GREATER
 	      | _ => true
 	end
+
+	fun nonstabSublib (_, GG.GROUP { kind = GG.STABLELIB _, ... }) = false
+	  | nonstabSublib _ = true
+
+	fun invalidGroup stab_t p =
+	    case SrcPath.tstamp p of
+		TS.TSTAMP g_t => Time.compare (g_t, stab_t) = GREATER
+	      | _ => true
+
+	val validStamp = Stabilize.libStampIsValid gp
+
+	val isValid =
+	    case TS.fmodTime stablename of
+		TS.TSTAMP st => let
+		    val (m, i) = Reachable.reachable' export_nodes
+		in
+		    (* The group itself is included in "groups"... *)
+		    not (SrcPathSet.exists (invalidGroup st) groups) andalso
+		    not (List.exists nonstabSublib sublibs) andalso
+		    validStamp (grouppath, export_nodes, sublibs) andalso
+		    not (SmlInfoSet.exists (invalidMember st) m)
+		end
+	      | _ => false
     in
-	case (TS.fmodTime stablename, SrcPath.tstamp grouppath) of
-	    (TS.TSTAMP st, TS.TSTAMP gt) =>
-		if Time.compare (st, gt) = LESS then false
-		else not (SmlInfoSet.exists (invalidMember st)
-			                    (Reachable.reachable g) orelse
-			  List.exists (invalidSublib st) sublibs)
-	  | _ => false
+	if not isValid then
+	    OS.FileSys.remove stablename handle _ => ()
+	else ();
+	isValid
+    end
+
+    fun verify gp em (group as GG.GROUP g) = let
+	val { exports, grouppath, sublibs, ... } = g
+	val groups = Reachable.groupsOf group
+    in
+	verify' gp em (grouppath,
+		       map (#2 o #1) (SymbolMap.listItems exports),
+		       sublibs, groups)
     end
 end
 end

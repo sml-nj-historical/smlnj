@@ -4,6 +4,7 @@
  */
 
 #include <time.h>
+#include <string.h>
 #include "ml-base.h"
 #include "ml-values.h"
 #include "ml-objects.h"

@@ -8,10 +8,10 @@
 #include "ml-base.h"
 #include "ml-values.h"
 #include "ml-state.h"
+#include "memory.h"
 #include "heap.h"
 #include "ml-objects.h"
 #include "cfun-proto-list.h"
-
 
 #define STREQ(s1, s2)	(strcmp((s1), STR_MLtoC(s2)) == 0)
 

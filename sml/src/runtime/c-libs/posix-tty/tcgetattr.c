@@ -21,7 +21,7 @@
  */
 ml_val_t _ml_P_TTY_tcgetattr (ml_state_t *msp, ml_val_t arg)
 {
-    int             i, sts, fd = INT_MLtoC(arg);
+    int             sts, fd = INT_MLtoC(arg);
     ml_val_t        iflag, oflag, cflag, lflag;
     ml_val_t        cc, ispeed, ospeed, obj;
     struct termios  data;

@@ -15,12 +15,12 @@
 #define VOFFSET(fld)	(((Addr_t)&(V.s.fld)) - (Addr_t)&(V.b[0]))
 
 #define PVOFFSET(sym, fld)	\
-    fprintf(f, "#define %sOffVSP %d\n", (sym), VOFFSET(fld))
+    fprintf(f, "#define %sOffVSP %ld\n", (sym), (long int) VOFFSET(fld))
 #define PMOFFSET(sym, fld)	\
-    fprintf(f, "#define %sOffMSP %d\n", (sym), MOFFSET(fld))
+    fprintf(f, "#define %sOffMSP %ld\n", (sym), (long int) MOFFSET(fld))
 
 
-main ()
+int main (void)
 {
     union {
 	vproc_state_t	s;
@@ -30,7 +30,6 @@ main ()
 	ml_state_t	s;
 	char		b[sizeof(ml_state_t)];
     }		M;
-    int		i;
     FILE	*f;
 
     f = OpenFile ("mlstate-offsets.h", "_MLSTATE_OFFSETS_");

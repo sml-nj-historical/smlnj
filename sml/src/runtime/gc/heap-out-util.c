@@ -76,7 +76,9 @@ Addr_t HeapIO_WriteExterns (writer_t *wr, export_table_t *tbl)
 	}
     }
 
+    /*
   done:;
+    */
     FREE (externs);
 
     if (WR_Error(wr))

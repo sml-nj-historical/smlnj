@@ -131,6 +131,8 @@ structure PickleUtil :> PICKLE_UTIL = struct
   	    end
   	end)
 
+    structure PM = IntRedBlackMap
+
     datatype pre_result =
 	STRING of string
       | CONCAT of pre_result * pre_result
@@ -143,7 +145,8 @@ structure PickleUtil :> PICKLE_UTIL = struct
     val nullbytes = STRING ""
 
     type hcm = id HCM.map
-    type 'ahm state = hcm * 'ahm * pos
+    type fwdm = id PM.map		(* forwarding map *)
+    type 'ahm state = hcm * fwdm * 'ahm * pos
 
     type 'ahm pickle = 'ahm state -> codes * pre_result * 'ahm state
     type ('ahm, 'v) pickler = 'v -> 'ahm pickle
@@ -191,19 +194,21 @@ structure PickleUtil :> PICKLE_UTIL = struct
     val int32_encode = largeint_encode o Int32.toLarge
     val int_encode = largeint_encode o Int.toLarge
 
-    fun % ti c (hcm, ahm, next) = let
+    fun % ti c (hcm, fwdm, ahm, next) = let
 	val key = (c, ti, [])
     in
 	case HCM.find (hcm, key) of
-	    SOME i => ([i], STRING c, (hcm, ahm, next + size c))
+	    SOME i => ([i], STRING c, (hcm, PM.insert (fwdm, next, i),
+				       ahm, next + size c))
 	  | NONE => ([next], STRING c,
-		     (HCM.insert (hcm, key, next), ahm, next + size c))
+		     (HCM.insert (hcm, key, next), fwdm, ahm, next + size c))
     end
 
     fun dollar ti (c, []) state = % ti c state
-      | dollar ti (c, plh :: plt) (hcm, ahm, next) = let
+      | dollar ti (c, plh :: plt) (hcm, fwdm, ahm, next) = let
 	    val p = collapse (plh, plt)
-	    val (codes, pr, (hcm', ahm', next')) = p (hcm, ahm, next + size c)
+	    val (codes, pr, (hcm', fwdm', ahm', next')) =
+		p (hcm, fwdm, ahm, next + size c)
 	    val key = (c, ti, codes)
 	in
 	    case HCM.find (hcm, key) of
@@ -211,24 +216,26 @@ structure PickleUtil :> PICKLE_UTIL = struct
 		    val brnum = int_encode i
 		in
 		    ([i], CONCAT (backref, STRING brnum),
-		     (hcm, ahm, next + size_backref + size brnum))
+		     (hcm, PM.insert (fwdm, next, i),
+		      ahm, next + size_backref + size brnum))
 		end
 	      | NONE =>
 		([next], CONCAT (STRING c, pr),
-		 (HCM.insert (hcm', key, next), ahm', next'))
+		 (HCM.insert (hcm', key, next), fwdm', ahm', next'))
 	end
 
-    fun ah_share { find, insert } w v (hcm, ahm, next) =
+    fun ah_share { find, insert } w v (hcm, fwdm, ahm, next) =
 	case find (ahm, v) of
-	    SOME i => let
+	    SOME i0 => let
+		val i = getOpt (PM.find (fwdm, i0), i0)
 		val brnum = int_encode i
 	    in
 		([i], CONCAT (backref, STRING brnum),
-		 (hcm, ahm, next + size_backref + size brnum))
+		 (hcm, fwdm, ahm, next + size_backref + size brnum))
 	    end
-	  | NONE => w v (hcm, insert (ahm, v, next), next)
+	  | NONE => w v (hcm, fwdm, insert (ahm, v, next), next)
 
-    fun w_lazy w thunk (hcm, ahm, next) = let
+    fun w_lazy w thunk (hcm, fwdm, ahm, next) = let
 	val v = thunk ()
 	(* The larger the value of trialStart, the smaller the chance that
 	 * the loop (see below) will run more than once.  However, some
@@ -239,7 +246,7 @@ structure PickleUtil :> PICKLE_UTIL = struct
 	 * encoding of the thunk's value, but that encoding depends
 	 * on the length (or rather: on the length of the length). *)
 	fun loop (nxt, ilen) = let
-	    val (codes, pr, state) = w v (hcm, ahm, nxt)
+	    val (codes, pr, state) = w v (hcm, fwdm, ahm, nxt)
 	    val sz = pre_size pr
 	    val ie = int_encode sz
 	    val iesz = size ie
@@ -365,7 +372,7 @@ structure PickleUtil :> PICKLE_UTIL = struct
 	end
     in
 	fun pickle emptyMap p = let
-	    val (_, pr, _) = p (HCM.empty, emptyMap, 0)
+	    val (_, pr, _) = p (HCM.empty, PM.empty, emptyMap, 0)
 	in
 	     pr2s pr
 	end
@@ -374,12 +381,13 @@ structure PickleUtil :> PICKLE_UTIL = struct
     type ('b_ahm, 'a_ahm) map_lifter =
         { extract: 'a_ahm -> 'b_ahm, patchback: 'a_ahm * 'b_ahm -> 'a_ahm }
 
-    fun lift_pickler { extract, patchback } wb b (hcm, a_ahm, next) = let
+    fun lift_pickler { extract, patchback } wb b (hcm, fwdm, a_ahm, next) = let
 	val b_ahm = extract a_ahm
-	val (codes, pr, (hcm', b_ahm', next')) = wb b (hcm, b_ahm, next)
+	val (codes, pr, (hcm', fwdm', b_ahm', next')) =
+	    wb b (hcm, fwdm, b_ahm, next)
 	val a_ahm' = patchback (a_ahm, b_ahm')
     in
-	(codes, pr, (hcm', a_ahm', next'))
+	(codes, pr, (hcm', fwdm', a_ahm', next'))
     end
 
     (* for export *)

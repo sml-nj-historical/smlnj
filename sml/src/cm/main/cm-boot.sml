@@ -14,6 +14,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
   local
       structure E = GenericVC.Environment
+      structure DE = DynamicEnv
       structure SE = GenericVC.StaticEnv
       structure ER = GenericVC.EnvRef
       structure BE = GenericVC.BareEnvironment
@@ -35,7 +36,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			    val os = os)
 
       val emptydyn = E.dynamicPart E.emptyEnv
-      val system_values = ref emptydyn
+      val system_values = ref (SrcPathMap.empty: E.dynenv SrcPathMap.map)
 
       structure Compile =
 	  CompileFn (structure MachDepVC = HostMachDepVC
@@ -149,14 +150,17 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val theValues = ref (NONE: kernelValues option)
 
       in
-	  fun setAnchor { anchor = a, path = s } =
-	      (PathConfig.set (pcmode, a, s); SrcPath.sync ())
 	  (* cancelling anchors cannot affect the order of existing paths
 	   * (it may invalidate some paths; but all other ones stay as
 	   * they are) *)
-	  fun cancelAnchor a = PathConfig.cancel (pcmode, a)
+	  fun setAnchor a NONE = PathConfig.cancel (pcmode, a)
+	    | setAnchor a (SOME s) = (PathConfig.set (pcmode, a, s);
+				      SrcPath.sync ())
 	  (* same goes for reset because it just cancels all anchors... *)
 	  fun resetPathConfig () = PathConfig.reset pcmode
+	  (* get the current binding for an anchor *)
+	  fun getAnchor a () =
+	      Option.map (fn f => f ()) (PathConfig.configAnchor pcmode a)
 
 	  fun mkStdSrcPath s =
 	      SrcPath.standard pcmode { context = SrcPath.cwdContext (),
@@ -207,8 +211,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	  fun parse_arg (gr, sflag, p) =
 	      { load_plugin = load_plugin, gr = gr, param = param (),
-	        stabflag = sflag, group = p, init_group = init_group (),
-		paranoid = false }
+	        stabflag = sflag, group = p,
+		init_group = init_group (), paranoid = false }
 
 	  and autoload s = let
 	      val p = mkStdSrcPath s
@@ -292,7 +296,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	       Parse.reset ();
 	       SmlInfo.reset ())
 
-	  fun initTheValues (bootdir, er, autoload_postprocess) = let
+	  fun initTheValues (bootdir, de, er, autoload_postprocess) = let
 	      val _ = let
 		  fun listDir ds = let
 		      fun loop l =
@@ -317,6 +321,37 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      in
 		  app (fn (x, d) => PathConfig.set (pcmode, x, d)) pairList
 	      end
+
+	      val pidmapfile = P.concat (bootdir, BtNames.pidmap)
+	      fun readpidmap s = let
+		  fun loop m = let
+		      fun enter (d, pids) = let
+			  fun enter1 (hexp, e) =
+			      case GenericVC.PersStamps.fromHex hexp of
+				  SOME p => (DE.bind (p, DE.look de p, e)
+					     handle DE.Unbound => e)
+				| NONE => e
+		      in
+			  SrcPathMap.insert (m, SrcPath.fromDescr pcmode d,
+					     foldl enter1 emptydyn pids)
+		      end
+		  in
+		      case TextIO.inputLine s of
+			  "" => m
+			| line => (case String.tokens Char.isSpace line of
+				       d :: pids => loop (enter (d, pids))
+				     | _ => loop m)
+		  end
+	      in
+		  system_values := loop SrcPathMap.empty
+	      end
+	      
+	      val _ =
+		  SafeIO.perform { openIt = fn () => TextIO.openIn pidmapfile,
+				   closeIt = TextIO.closeIn,
+				   work = readpidmap,
+				   cleanup = fn _ => () }
+
 	      val initgspec = mkStdSrcPath BtNames.initgspec
 	      val ginfo = { param = { fnpolicy = fnpolicy,
 				      pcmode = pcmode,
@@ -395,7 +430,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		      case er of
 			  BARE =>
 			      (bare_preload BtNames.bare_preloads;
-			       system_values := emptydyn;
+			       system_values := SrcPathMap.empty;
 			       NONE)
 			| AUTOLOAD =>
 			      (HostMachDepVC.Interact.installCompManager
@@ -434,17 +469,16 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      | l => ignore (foldl arg autoload l)
 	end
     in
-	system_values := de;
-	initTheValues (bootdir, er, fn () => (Cleanup.install initPaths;
-					      procCmdLine))
+	initTheValues (bootdir, de, er,
+		       fn () => (Cleanup.install initPaths;
+				 procCmdLine))
     end
 
     structure CM :> CM = struct
 	type 'a controller = { get : unit -> 'a, set : 'a -> unit }
 
 	structure Anchor = struct
-	    val set = setAnchor
-	    val cancel = cancelAnchor
+	    fun anchor a = { get = getAnchor a, set = setAnchor a }
 	    val reset = resetPathConfig
 	end
 

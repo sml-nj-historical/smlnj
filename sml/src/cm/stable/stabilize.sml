@@ -21,6 +21,9 @@ in
 
 signature STABILIZE = sig
 
+    val libStampIsValid : GP.info ->
+	SrcPath.t * DG.sbnode list * GG.subgrouplist -> bool
+
     val loadStable :
 	GP.info -> { getGroup: SrcPath.t -> GG.group option,
 		     anyerrors: bool ref }
@@ -52,6 +55,8 @@ struct
 
     structure PU = PickleUtil
     structure UU = UnpickleUtil
+
+    val libstamp_nbytes = 16
 
     type map = { ss: PU.id SSMap.map, sn: PU.id SNMap.map, pm: P.map }
 
@@ -86,6 +91,7 @@ struct
 	    else raise UU.Format
 	end
 
+	val libstamp = bytesIn libstamp_nbytes	(* ignored *)
 	val dg_sz = LargeWord.toIntX (Pack32Big.subVec (bytesIn 4, 0))
 	val dg_pickle = Byte.bytesToString (bytesIn dg_sz)
     in
@@ -97,6 +103,103 @@ struct
 			 closeIt = BinIO.closeIn,
 			 work = #pickle o fetch_pickle,
 			 cleanup = fn _ => () }
+
+    fun mkInverseMap sublibs = let
+	(* Here we build a mapping that maps each BNODE to the path
+	 * representing the sub-library that it came from and a
+	 * representative symbol that can be used to find the BNODE
+	 * within the exports of that library.
+	 * It is not enough to just use the BNODE's group path
+	 * because that group might not actually be in our list
+	 * of sublibs.  Instead, it could be defined in a library
+	 * component (subgroup) or in another library and just
+	 * be "passed through". *)
+	fun oneB p (sy, ((_, DG.SB_BNODE (DG.BNODE n, _)), _), m) =
+	    StableMap.insert (m, #bininfo n, (p, sy))
+	  | oneB _ (_, _, m) = m
+	fun oneSL ((p, g as GG.GROUP { exports, ... }), m) =
+	    SymbolMap.foldli (oneB p) m exports
+	val im = foldl oneSL StableMap.empty sublibs
+	fun look i =
+	    case StableMap.find (im, i) of
+		SOME p => p
+	      | NONE => EM.impossible "stabilize: bad inverse map"
+    in
+	look
+    end
+
+    (* A stamp for a library is created by "pickling" the dependency graph
+     * of the library in a cursory fashion, thereby recording the ii pids
+     * of external references.  The so-created pickle string is never used
+     * for unpickling.  Instead, it is hashed and recorded as part of
+     * the regular library file.  In paranoia mode CM checks if the recorded
+     * hash is identical to the one that _would_ be created if one were
+     * to re-build the library now. *)
+    fun libStampOf (grouppath, export_nodes, sublibs) = let
+	val inverseMap = mkInverseMap sublibs
+
+	val pid = PickleSymPid.w_pid
+	val share = PU.ah_share
+	val symbol = PickleSymPid.w_symbol
+	val string = PU.w_string
+	val list = PU.w_list
+
+	fun abspath p = let
+	    val op $ = PU.$ AP
+	    val l = SrcPath.pickle (fn _ => ()) (p, grouppath)
+	in
+	    "p" $ [list string l]
+	end
+
+	fun sn n = let
+	    val op $ = PU.$ SN
+	    fun raw_sn (DG.SNODE n) =
+		"a" $ [list sn (#localimports n), list fsbn (#globalimports n)]
+	in
+	    share SNs raw_sn n
+	end
+
+	and sbn x = let
+	    val op $ = PU.$ SBN
+	in
+	    case x of
+		DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, ii) => let
+		    val (p, sy) = inverseMap i
+		    val { statpid, sympid, ... } = ii
+		in
+		    "2" $ [abspath p, symbol sy, pid statpid, pid sympid]
+		end
+	      | DG.SB_SNODE n => "3" $ [sn n]
+	end
+
+	and fsbn (_, n) = let val op $ = PU.$ FSBN in "f" $ [sbn n] end
+
+	fun group () = let
+	    val op $ = PU.$ G
+	in "g" $ [list sbn export_nodes]
+	end
+    in
+	P.pickle2hash (Byte.stringToBytes (PU.pickle emptyMap (group ())))
+    end
+
+    (* Comparison of old and new library stamps. *)
+    fun libStampIsValid (gp: GP.info) (a as (grouppath, _, _)) = let
+	val newStamp = Byte.bytesToString (Pid.toBytes (libStampOf a))
+	val policy = #fnpolicy (#param gp)
+	val sname = FilenamePolicy.mkStableName policy grouppath
+	fun work s = let
+	    val oldStamp =
+		Byte.bytesToString (BinIO.inputN (s, libstamp_nbytes))
+	in
+	    oldStamp = newStamp
+	end
+    in
+	SafeIO.perform { openIt = fn () => BinIO.openIn sname,
+			 closeIt = BinIO.closeIn,
+			 work = work,
+			 cleanup = fn _ => () }
+	handle _ => false
+    end
 
     fun loadStable gp { getGroup, anyerrors } group = let
 
@@ -123,14 +226,12 @@ struct
 			     raise Format)
 
 	    val { size = dg_sz, pickle = dg_pickle } = fetch_pickle s
-	    val offset_adjustment = dg_sz + 4
+	    val offset_adjustment = dg_sz + 4 + libstamp_nbytes
 	    val { getter, dropper } =
 		UU.stringGetter' (SOME dg_pickle, mkPickleFetcher mksname)
 	    val session = UU.mkSession getter
 
 	    val sgListM = UU.mkMap ()
-	    val stringListM = UU.mkMap ()
-	    val stringListM = UU.mkMap ()
 	    val ssM = UU.mkMap ()
 	    val ssoM = UU.mkMap ()
 	    val boolOptionM = UU.mkMap ()
@@ -147,6 +248,7 @@ struct
 	    val exportsM = UU.mkMap ()
 	    val privilegesM = UU.mkMap ()
 	    val poM = UU.mkMap ()
+	    val stringListM = UU.mkMap ()
 
 	    fun list m r = UU.r_list session m r
 	    val string = UU.r_string session
@@ -160,13 +262,15 @@ struct
 	    val bool = UU.r_bool session
 	    val pid = UnpickleSymPid.r_pid (session, string)
 
+	    fun list2path sl =
+		SrcPath.unpickle pcmode (sl, group)
+		handle SrcPath.Format => raise Format
+		     | SrcPath.BadAnchor a =>
+		       (error ["configuration anchor \"", a, "\" undefined"];
+			raise Format)
+
 	    fun abspath () = let
-		fun ap #"p" =
-		    (SrcPath.unpickle pcmode (stringlist (), group)
-		     handle SrcPath.Format => raise Format
-			  | SrcPath.BadAnchor a =>
-			 (error ["configuration anchor \"", a, "\" undefined"];
-			  raise Format))
+		fun ap #"p" = list2path (stringlist ())
 		  | ap _ = raise Format
 	    in
 		share apM ap
@@ -180,14 +284,16 @@ struct
 
 	    fun gr #"g" =
 		let val sublibs = list sgListM sg ()
+		    val sublibm =
+			foldl SrcPathMap.insert' SrcPathMap.empty sublibs
 
 		    (* Now that we have the list of sublibs, we can build the
 		     * environment for unpickling the environment list.
 		     * We will need the environment list when unpickling the
 		     * export list (making SB_BNODES). *)
-		    fun node_context (n, sy) = let
-			val (_, GG.GROUP { exports = slexp, ... }) =
-			    List.nth (sublibs, n)
+		    fun node_context (sl, sy) = let
+			val GG.GROUP { exports = slexp, ... } =
+			    valOf (SrcPathMap.find (sublibm, list2path sl))
 		    in
 			case SymbolMap.find (slexp, sy) of
 			    SOME ((_, DG.SB_BNODE (_, x)), _) =>
@@ -198,7 +304,8 @@ struct
 		    val { symenv, env, symbol, symbollist } =
 			UP.mkUnpicklers session
 			   { node_context = node_context,
-			     prim_context = E.primEnv }
+			     prim_context = E.primEnv,
+			     stringlist = stringlist }
 
 		    val lazy_symenv = UU.r_lazy session symenv
 		    val lazy_env = UU.r_lazy session env
@@ -263,10 +370,10 @@ struct
 		    (* this one changes from farsbnode to plain farbnode *)
 		    and sbn () = let
 			fun sbn' #"2" = let
-				val n = int ()
+				val p = abspath ()
 				val sy = symbol ()
-				val (_, GG.GROUP { exports = slexp, ... }) =
-				    List.nth (sublibs, n)
+				val GG.GROUP { exports = slexp, ... } =
+				    valOf (SrcPathMap.find (sublibm, p))
 				    handle _ => raise Format
 			    in
 				case SymbolMap.find (slexp, sy) of
@@ -327,8 +434,6 @@ struct
 			share exportsM e
 		    end
 
-		    val stringlist = list stringListM string
-
 		    fun privileges () = let
 			fun p #"p" =
 			    StringSet.addList (StringSet.empty, stringlist ())
@@ -364,9 +469,16 @@ struct
 
 	val policy = #fnpolicy (#param gp)
 
-	val grouppath = #grouppath grec
-
 	fun doit (wrapped, getBFC) = let
+
+	    val grouppath = #grouppath grec
+	    val sublibs = #sublibs grec
+	    val exports = #exports grec
+
+	    val libstamp =
+		libStampOf (grouppath,
+			    map (#2 o #1) (SymbolMap.listItems exports),
+			    sublibs)
 
 	    fun writeBFC s i = BF.write { stream = s,
 					  content = getBFC i,
@@ -386,9 +498,7 @@ struct
 
 	    val grpSrcInfo = (#errcons gp, anyerrors)
 
-	    val exports = #exports grec
 	    val required = StringSet.difference (#required grec, wrapped)
-	    val sublibs = #sublibs grec
 
 	    (* The format of a stable archive is the following:
 	     *  - It starts with the size s of the pickled dependency
@@ -406,16 +516,7 @@ struct
 	     *    their static environments.
 	     *)
 
-	    (* Here we build a mapping that maps each BNODE to a number
-	     * representing the sub-library that it came from and a
-	     * representative symbol that can be used to find the BNODE
-	     * within the exports of that library *)
-	    fun oneB i (sy, ((_, DG.SB_BNODE (DG.BNODE n, _)), _), m) =
-		StableMap.insert (m, #bininfo n, (i, sy))
-	      | oneB i (_, _, m) = m
-	    fun oneSL ((_, g as GG.GROUP { exports, ... }), (m, i)) =
-		(SymbolMap.foldli (oneB i) m exports, i + 1)
-	    val inverseMap = #1 (foldl oneSL (StableMap.empty, 0) sublibs)
+	    val inverseMap = mkInverseMap sublibs
 
 	    val members = ref []
 	    val (registerOffset, getOffset) = let
@@ -434,6 +535,32 @@ struct
 		(reg, get)
 	    end
 
+	    fun path2list p = let
+		fun warn_relabs abs = let
+		    val relabs = if abs then "absolute" else "relative"
+		    fun ppb pps =
+			(PP.add_newline pps;
+			 PP.add_string pps (SrcPath.descr p);
+			 PP.add_newline pps;
+			 PP.add_string pps
+     "(This means that in order to be able to use the result of stabilization";
+                         PP.add_newline pps;
+			 PP.add_string pps "the library must be in the same ";
+			 PP.add_string pps relabs;
+			 PP.add_string pps " location as it is now.)";
+			 PP.add_newline pps)
+		in
+		    EM.errorNoFile (#errcons gp, anyerrors) SM.nullRegion
+				   EM.WARN
+				   (concat [SrcPath.descr grouppath,
+					    ": library referred to by ",
+					    relabs, " pathname:"])
+				   ppb
+		end
+	    in
+		SrcPath.pickle warn_relabs (p, grouppath)
+	    end
+
 	    (* Collect all BNODEs that we see and build
 	     * a context suitable for P.envPickler. *)
 	    fun mkContext () = let
@@ -444,10 +571,11 @@ struct
 		    case n of
 			DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, ii) => let
 			    val { statenv, ... } = ii
-			    val nsy = valOf (StableMap.find (inverseMap, i))
+			    val (p, sy) = inverseMap i
+			    val pl = path2list p
 			    val bnodes' =
 				StableMap.insert (bnodes, i,
-						  (nsy, #env o statenv))
+						  ((pl, sy), #env o statenv))
 			in
 			    k (bnodes', snodes)
 			end
@@ -553,33 +681,10 @@ struct
 		       option pid rts_pid, shm sh_mode]
 	    end
 
-	    fun warn_relabs p abs = let
-		val relabs = if abs then "absolute" else "relative"
-		fun ppb pps =
-		    (PP.add_newline pps;
-		     PP.add_string pps (SrcPath.descr p);
-		     PP.add_newline pps;
-		     PP.add_string pps
-    "(This means that in order to be able to use the result of stabilization";
-		     PP.add_newline pps;
-		     PP.add_string pps "the library must be in the same ";
-		     PP.add_string pps relabs;
-		     PP.add_string pps " location as it is now.)";
-		     PP.add_newline pps)
-	    in
-		EM.errorNoFile (#errcons gp, anyerrors) SM.nullRegion
-		    EM.WARN
-		    (concat [SrcPath.descr grouppath,
-			     ": library referred to by ", relabs,
-			     " pathname:"])
-		    ppb
-	    end
-
 	    fun abspath p = let
 		val op $ = PU.$ AP
-		val pp = SrcPath.pickle (warn_relabs p) (p, grouppath)
 	    in
-		"p" $ [list string pp]
+		"p" $ [list string (path2list p)]
 	    end
 
 	    fun sn n = let
@@ -598,9 +703,9 @@ struct
 	    in
 		case x of
 		    DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, _) => let
-			val (n, sy) = valOf (StableMap.find (inverseMap, i))
+			val (p, sy) = inverseMap i
 		    in
-			"2" $ [int n, symbol sy]
+			"2" $ [abspath p, symbol sy]
 		    end
 		  | DG.SB_SNODE n => "3" $ [sn n]
 	    end
@@ -647,7 +752,9 @@ struct
 	    in
 		(* Pickle the sublibs first because we need to already
 		 * have them back when we unpickle BNODEs. *)
-		"g" $ [list sg sublibs, w_exports exports, privileges required]
+		"g" $ [list sg sublibs,
+		       w_exports exports,
+		       privileges required]
 	    end
 
 	    val dg_pickle =
@@ -655,7 +762,7 @@ struct
 
 	    val dg_sz = Word8Vector.length dg_pickle
 
-	    val offset_adjustment = dg_sz + 4
+	    val offset_adjustment = dg_sz + 4 + libstamp_nbytes
 
 	    (* We could generate the graph for a stable group here directly
 	     * by transcribing the original graph.  However, it is cumbersome
@@ -683,8 +790,14 @@ struct
 	    val memberlist = rev (!members)
 
 	    fun mksname () = FilenamePolicy.mkStableName policy grouppath
+	    val libstamp_bytes = Pid.toBytes libstamp
+	    val _ =
+		if Word8Vector.length libstamp_bytes <> libstamp_nbytes then
+		    EM.impossible "stabilize: libstamp size wrong"
+		else ()
 	    fun work outs =
-		(writeInt32 (outs, dg_sz);
+		(BinIO.output (outs, libstamp_bytes);
+		 writeInt32 (outs, dg_sz);
 		 BinIO.output (outs, dg_pickle);
 		 app (writeBFC outs) memberlist)
 	in

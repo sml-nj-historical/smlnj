@@ -61,7 +61,9 @@ PVT void RepairHeap (
 PVT ml_val_t RepairWord (
 	ml_val_t w, aid_t *oldBIBOP, Addr_t addrOffset[MAX_NUM_GENS][NUM_ARENAS],
 	addr_tbl_t *boRegionTbl, ml_val_t *externs);
+/*
 PVT int RepairBORef (aid_t *bibop, aid_t id, ml_val_t *ref, ml_val_t oldObj);
+*/
 PVT bo_reloc_t *AddrToRelocInfo (aid_t *, addr_tbl_t *, aid_t, Addr_t);
 
 #define READ(bp,obj)	HeapIO_ReadBlock(bp, &(obj), sizeof(obj))
@@ -75,7 +77,6 @@ PVT long	heapStart = -1;
  */
 ml_state_t *ImportHeapImage (const char *fname, heap_params_t *params)
 {
-    int			i;
     ml_state_t		*msp;
     ml_image_hdr_t	imHdr;
     ml_heap_hdr_t	heapHdr;
@@ -226,7 +227,6 @@ PVT void ReadHeap (inbuf_t *bp, ml_heap_hdr_t *hdr, ml_state_t *msp, ml_val_t *e
     {
 	int			sz;
 	bo_region_info_t	*boRgnHdr;
-	bigobj_region_t		*rp;
 
 	boRegionTbl = MakeAddrTbl(BIBOP_SHIFT+1, hdr->numBORegions);
 	sz = hdr->numBORegions * sizeof(bo_region_info_t);

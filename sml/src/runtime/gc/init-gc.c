@@ -51,7 +51,7 @@ int		NStatsRecs;	/* the number of records in the buffer */
  */
 heap_params_t *ParseHeapParams (char **argv)
 {
-    char	    option[MAX_OPT_LEN], *optionArg, **nextArg;
+    char	    option[MAX_OPT_LEN], *optionArg;
     bool_t	    errFlg = FALSE;
     char	    *arg;
     heap_params_t   *params;

@@ -14,7 +14,7 @@
 #define DST_FILE "unix-sigtbl.c"
 #endif
 
-main ()
+int main (void)
 {
     sig_info_t	    *sigInfo;
     int		    i;

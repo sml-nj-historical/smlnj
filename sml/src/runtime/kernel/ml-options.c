@@ -42,7 +42,7 @@ int GetSzOption (int scale, char *sz)
     char	*p;
 
   /* find first non-digit in the string */
-    for (p = sz;  isdigit(*p);  *p++)
+    for (p = sz;  isdigit(*p); p++)
 	continue;
 
     if (p == sz)

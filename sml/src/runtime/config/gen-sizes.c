@@ -34,7 +34,7 @@ int log2 (int x)
 
 } /* end of log2 */
 
-main ()
+int main (void)
 {
     char	*i16, *i32, *i64;
     FILE	*f;

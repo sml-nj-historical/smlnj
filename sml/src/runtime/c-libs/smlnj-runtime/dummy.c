@@ -16,7 +16,9 @@
  */
 ml_val_t _ml_RunT_dummy (ml_state_t *msp, ml_val_t arg)
 {
+  /*
     char	*s = STR_MLtoC(arg);
+  */
 
     return ML_unit;
 

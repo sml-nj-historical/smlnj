@@ -44,7 +44,7 @@ TARGETS="$TARGETS ml-lex"
 
 # build ML-Burg
 #
-TARGETS="$TARGETS ml-burg"
+#TARGETS="$TARGETS ml-burg"
 
 # pre-compile and install the remaining components of the SML/NJ library
 # (everything except smlnj-lib.cm, aka Util, itself)

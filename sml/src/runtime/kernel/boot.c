@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include "ml-base.h"
 #include "ml-limits.h"
 #include "cache-flush.h"
@@ -34,7 +35,8 @@ PVT ml_val_t	BinFileList = LIST_nil;	/* A list of bin files to load */
 
 
 /* local routines */
-PVT ml_val_t BuildFileList (ml_state_t *msp, const char *bootlist);
+PVT ml_val_t BuildFileList (ml_state_t *msp, const char *bootlist,
+			    int *max_boot_path_len_ptr);
 PVT FILE *OpenBinFile (const char *fname, bool_t isBinary);
 PVT void ReadBinFile (FILE *file, void *buf, int nbytes, const char *fname);
 PVT void LoadBinFile (ml_state_t *msp, char *fname);
@@ -51,7 +53,8 @@ PVT void ShowPerID (char *buf, pers_id_t *perID);
 void BootML (const char *bootlist, heap_params_t *heapParams)
 {
     ml_state_t	*msp;
-    char	fname[MAX_BOOT_PATH_LEN];
+    int         max_boot_path_len;
+    char	*fname;
     int         rts_init = 0;
 
     msp = AllocMLState (TRUE, heapParams);
@@ -65,10 +68,16 @@ void BootML (const char *bootlist, heap_params_t *heapParams)
     AllocGlobals (msp);
 
   /* construct the list of files to be loaded */
-    BinFileList = BuildFileList (msp, bootlist);
+    BinFileList = BuildFileList (msp, bootlist, &max_boot_path_len);
+
+  /* this space is ultimately wasted */
+    if ((fname = malloc (max_boot_path_len)) == NULL)
+      Die ("unable to allocate space for boot file names");
 
   /* boot the system */
     while (BinFileList != LIST_nil) {
+      /* need to make a copy of the path name because LoadBinFile is
+       * going to scribble into it */
 	strcpy(fname, STR_MLtoC(LIST_hd(BinFileList)));
 	BinFileList = LIST_tl(BinFileList);
 	if (fname[0] == '#')
@@ -102,22 +111,54 @@ void BootML (const char *bootlist, heap_params_t *heapParams)
  * Given the directory path, build a list of the .bin files in the
  * heap.
  */
-PVT ml_val_t BuildFileList (ml_state_t *msp, const char *bootlist)
+PVT ml_val_t BuildFileList (ml_state_t *msp, const char *bootlist, int *mbplp)
 {
     FILE	*listF;
-    ml_val_t	fileNames[MAX_NUM_BOOT_FILES];
+    ml_val_t	*fileNames = NULL;
+    char	*nameBuf = NULL;
+    int         max_num_boot_files = MAX_NUM_BOOT_FILES;
+    int         max_boot_path_len = MAX_BOOT_PATH_LEN;
     int		i, j, numFiles;
-    char	nameBuf[MAX_BOOT_PATH_LEN];
     ml_val_t	fileList;
+# define SIZE_BUF_LEN	128	/* this should be plenty for two numbers */
+    char        sizeBuf[SIZE_BUF_LEN];
+    char        c;
 
     numFiles = 0;
+
     listF = OpenBinFile (bootlist, FALSE);
+
     if (listF != NULL) {
+      c = getc (listF);
+      if (c == EOF)
+	Die ("bootlist file \"%s\" is empty", bootlist);
+      if (c == '%') {
+	if (fgets (sizeBuf, SIZE_BUF_LEN, listF) != NIL(char *)) {
+	  /* hardly any checking here... */
+	  char *space = strchr (sizeBuf, ' ');
+	  *space = '\0';
+	  max_num_boot_files = strtoul (sizeBuf, NULL, 0);
+	  max_boot_path_len = strtoul (space+1, NULL, 0) + 2;
+	} else
+	  Die ("unable to read first line in \"%s\" after %%", bootlist);
+      } else {
+	/* size spec is missing -- use defaults */
+	ungetc (c, listF);
+      }
+
+      *mbplp = max_boot_path_len; /* tell the calling function... */
+
+      if ((nameBuf = malloc (max_boot_path_len)) == NULL)
+	Die ("unable to allocate space for boot file names");
+
+      if ((fileNames = malloc (max_num_boot_files * sizeof (char *))) == NULL)
+	Die ("unable to allocate space for boot file name table");
+
       /* read in the file names, converting them to ML strings. */
-	while (fgets (nameBuf, MAX_BOOT_PATH_LEN, listF) != NIL(char *)) {
+	while (fgets (nameBuf, max_boot_path_len, listF) != NIL(char *)) {
 	    j = strlen(nameBuf)-1;
 	    if (nameBuf[j] == '\n') nameBuf[j] = '\0';	/* remove "\n" */
-	    if (numFiles < MAX_NUM_BOOT_FILES)
+	    if (numFiles < max_num_boot_files)
 		fileNames[numFiles++] = ML_CString(msp, nameBuf);
 	    else
 		Die ("too many files\n");
@@ -129,6 +170,12 @@ PVT ml_val_t BuildFileList (ml_state_t *msp, const char *bootlist)
     for (fileList = LIST_nil, i = numFiles;  --i >= 0; ) {
 	LIST_cons(msp, fileList, fileNames[i], fileList);
     }
+
+    /* these guys are no longer needed from now on */
+    if (fileNames)
+      free (fileNames);
+    if (nameBuf)
+      free (nameBuf);
 
     return fileList;
 
@@ -315,8 +362,8 @@ PVT void ImportSelection (ml_state_t *msp, FILE *file, const char *fname,
 PVT void LoadBinFile (ml_state_t *msp, char *fname)
 {
     FILE	    *file;
-    int		    i, exportSzB, remainingCode, importRecLen;
-    bool_t	    isDataSeg;
+    int		    i, remainingCode, importRecLen;
+    int             exportSzB = 0;
     ml_val_t	    codeObj, importRec, closure, val;
     binfile_hdr_t   hdr;
     pers_id_t	    exportPerID;
@@ -396,8 +443,6 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
     }
     else if (hdr.exportCnt != 0)
 	Die ("# of export pids is %d (should be 0 or 1)", (int)hdr.exportCnt);
-    else
-	exportSzB = 0;
 
   /* seek to code section */
     {
@@ -533,13 +578,11 @@ PVT ml_val_t LookupPerID (pers_id_t *perID)
 	if (memcmp((char *)perID, STR_MLtoC(id), PERID_LEN) == 0)
 	    return (REC_SEL(p, 1));
     }
-
     {
 	char	buf[64];
 	ShowPerID (buf, perID);
 	Die ("unable to find PerID %s", buf);
     }
-
 } /* end of LookupPerID */
 
 

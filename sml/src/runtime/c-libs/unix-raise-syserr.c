@@ -7,6 +7,7 @@
 #ifdef HAS_STRERROR
 #  include <string.h>
 #endif
+#include <stdio.h>
 #include <errno.h>
 #include "ml-base.h"
 #include "ml-state.h"

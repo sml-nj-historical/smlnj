@@ -325,7 +325,7 @@ struct
 	end
 
 	fun checkMagic s =
-	    if (bytesIn (s, magicBytes)) = MAGIC then ()
+	    if bytesIn (s, magicBytes) = MAGIC then ()
 	    else error "bad magic number"
 
 	fun readHeader s = let

@@ -197,7 +197,7 @@ void MarkRegion (bibop_t bibop, ml_val_t *baseAddr, Word_t szB, aid_t aid)
  */
 void ScanWeakPtrs (heap_t *heap)
 {
-    ml_val_t	*p, *q, *obj, desc, fwdObj;
+    ml_val_t	*p, *q, *obj, desc;
 
 /* SayDebug ("ScanWeakPtrs:\n"); */
     for (p = heap->weakList;  p != NIL(ml_val_t *);  p = q) {

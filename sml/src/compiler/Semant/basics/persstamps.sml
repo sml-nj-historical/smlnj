@@ -26,6 +26,18 @@ struct
      in String.concat (Word8Vector.foldr f [] pid)
     end
 
+  fun fromHex s = let
+      fun onebyte i = let
+	  val i2 = 2 * i
+	  val c1 = String.sub (s, i2)
+	  val c2 = String.sub (s, i2 + 1)
+      in
+	  valOf (Word8.fromString (implode [c1, c2]))
+      end
+  in
+      SOME (PS (Word8Vector.tabulate (16, onebyte)))
+  end handle _ => NONE
+
 end (* structure PersStamps *)
 
 

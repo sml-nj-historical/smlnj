@@ -103,7 +103,6 @@ PVT ml_val_t BlastUnboxed (ml_state_t *msp, ml_val_t obj)
  */
 PVT ml_val_t BlastHeap (ml_state_t *msp, ml_val_t obj, blast_res_t *info)
 {
-    int			pagesize = GETPAGESIZE();
     heap_t		*heap = msp->ml_heap;
     int			maxGen = info->maxGen;
     Addr_t		totArenaSzB[NUM_ARENAS], totSzB;
@@ -113,7 +112,6 @@ PVT ml_val_t BlastHeap (ml_state_t *msp, ml_val_t obj, blast_res_t *info)
 					/* arena. */
     }			adjust[MAX_NUM_GENS][NUM_ARENAS];
     heap_arena_hdr_t	*p, *arenaHdrs[NUM_OBJ_KINDS], *arenaHdrsBuf;
-    long		offset;
     int			arenaHdrSz, i, j, numArenas;
     ml_val_t	        blastedObj;
     writer_t		*wr;

@@ -24,7 +24,9 @@ signature UNPICKMOD = sig
     val mkUnpicklers :
 	UnpickleUtil.session ->
 	{ prim_context: CMStaticEnv.staticEnv,
-	  node_context: int * Symbol.symbol -> CMStaticEnv.staticEnv option }
+	  node_context:
+	       string list * Symbol.symbol -> CMStaticEnv.staticEnv option,
+	  stringlist: string list UnpickleUtil.reader }
 	-> { symenv: SymbolicEnv.symenv UnpickleUtil.reader,
 	     env: env'n'ctxt UnpickleUtil.reader,
 	     symbol: Symbol.symbol UnpickleUtil.reader,
@@ -267,7 +269,8 @@ structure UnpickMod : UNPICKMOD = struct
     end
 
     fun mkEnvUnpickler arg = let
-	val (session, symbollist, sharedStuff, context0, globalPid) = arg
+	val (session, symbollist, stringlist,
+	     sharedStuff, context0, globalPid) = arg
 
 	val { lookTYC, lookSIG, lookFSIG, lookSTR, lookFCT, lookEENV,
 	      lookTYCp, lookSIGp, lookFSIGp, lookSTRp, lookFCTp, lookEENVp,
@@ -500,7 +503,7 @@ structure UnpickMod : UNPICKMOD = struct
 	      | tyc #"G" = T.FREEtyc (int ())
 	      | tyc #"H" = T.ERRORtyc
 	      | tyc #"I" = lookTYCp (modId ())
-	      | tyc #"J" = lookTYCn (int (), symbol(), modId ())
+	      | tyc #"J" = lookTYCn (stringlist (), symbol(), modId ())
 	      | tyc _ = raise Format
 	in
 	    share tyconM tyc
@@ -583,7 +586,7 @@ structure UnpickMod : UNPICKMOD = struct
 				  typsharing = spathlistlist (),
 				  strsharing = spathlistlist () }
 	      | sg #"D" = lookSIGp (modId ())
-	      | sg #"E" = lookSIGn (int (), symbol (), modId ())
+	      | sg #"E" = lookSIGn (stringlist (), symbol (), modId ())
 	      | sg _ = raise Format
 	in
 	    share sigM sg
@@ -598,7 +601,7 @@ structure UnpickMod : UNPICKMOD = struct
 				    paramsym = symboloption (),
 				    bodysig = Signature () }
 	      | fsg #"d" = lookFSIGp (modId ())
-	      | fsg #"e" = lookFSIGn (int (), symbol (), modId ())
+	      | fsg #"e" = lookFSIGn (stringlist (), symbol (), modId ())
 	      | fsg _ = raise Format
 	in
 	    share fsigM fsg
@@ -651,7 +654,7 @@ structure UnpickMod : UNPICKMOD = struct
 	      | str #"D" = M.STR { sign = Signature (), rlzn = strEntity (),
 				   access = access (), info = inl_info () }
 	      | str #"I" = stracc (lookSTRp (modId ()))
-	      | str #"J" = stracc (lookSTRn (int (), symbol (), modId ()))
+	      | str #"J" = stracc (lookSTRn (stringlist (), symbol (), modId ()))
 	      | str _ = raise Format
 	in
 	    share strM str
@@ -667,7 +670,8 @@ structure UnpickMod : UNPICKMOD = struct
 	      | fct #"G" = M.FCT { sign = fctSig (), rlzn = fctEntity (),
 				   access = access (), info = inl_info () }
 	      | fct #"H" = fctacc (lookFCTp (modId ()))
-	      | fct #"I" = fctacc (lookFCTn (int (), symbol (), modId ()))
+	      | fct #"I" = fctacc (lookFCTn (stringlist (), symbol (),
+					     modId ()))
 	      | fct _ = raise Format
 	in
 	    share fctM fct
@@ -760,7 +764,7 @@ structure UnpickMod : UNPICKMOD = struct
 	      | eenv #"D" = lookEENV (modId ())
 	      | eenv #"E" = M.MARKeenv (stamp (), entityEnv ())
 	      | eenv #"F" = lookEENVp (modId ())
-	      | eenv #"G" = lookEENVn (int (), symbol (), modId ())
+	      | eenv #"G" = lookEENVn (stringlist (), symbol (), modId ())
 	      | eenv _ = raise Format
 	in
 	    share eenvM eenv
@@ -853,11 +857,14 @@ structure UnpickMod : UNPICKMOD = struct
 	val session =
 	    UU.mkSession (UU.stringGetter (Byte.bytesToString pickle))
 	fun import i = A.PATH (A.EXTERN hash, i)
-	val sharedStuff as { symbol, ... } = mkSharedStuff (session, import)
+	val sharedStuff as { symbol, string, ... } =
+	    mkSharedStuff (session, import)
 	val symbolListM = UU.mkMap ()
 	val symbollist = UU.r_list session symbolListM symbol
+	val stringListM = UU.mkMap ()
+	val stringlist = UU.r_list session stringListM string
 	val { envUnpickler, ... } =
-	    mkEnvUnpickler (session, symbollist, sharedStuff,
+	    mkEnvUnpickler (session, symbollist, stringlist, sharedStuff,
 			    c, fn () => hash)
     in
 	(* order of evaluation is important here! *)
@@ -1101,13 +1108,13 @@ structure UnpickMod : UNPICKMOD = struct
     end
 
     fun mkUnpicklers session contexts = let
-	val { prim_context, node_context } = contexts
+	val { prim_context, node_context, stringlist } = contexts
 	fun cvtP lk id =
 	    case lk prim_context id of
 		SOME v => v
 	      | NONE => raise Format
-	fun cvtN lk (i, s, id) =
-	    case node_context (i, s) of
+	fun cvtN lk (sl, s, id) =
+	    case node_context (sl, s) of
 		NONE => raise Format
 	      | SOME e => (case lk e id of SOME v => v | NONE => raise Format)
 	fun dont i = raise Format
@@ -1134,7 +1141,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val symbolListM = UU.mkMap ()
 	val symbollist = UU.r_list session symbolListM symbol
 	val { envUnpickler', ... } =
-	    mkEnvUnpickler (session, symbollist, sharedStuff,
+	    mkEnvUnpickler (session, symbollist, stringlist, sharedStuff,
 			    c, fn () => raise Format)
 	val flint = mkFlintUnpickler (session, sharedStuff)
 	val pidFlintPM = UU.mkMap ()

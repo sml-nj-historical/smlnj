@@ -11,6 +11,9 @@
 #include "cfun-proto-list.h"
 #include "profile.h"
 
+extern void EnableProfSignals (void);
+extern void DisableProfSignals (void);
+
 /* _ml_Prof_setpref : word array option -> unit
  *
  * Set the profile array reference; NONE means that there is no array.

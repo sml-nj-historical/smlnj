@@ -24,12 +24,15 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		 val evictStale : unit -> unit
 		 structure Stabilize: STABILIZE) :> PARSE = struct
 
+    structure VerifyStable = VerStabFn (structure Stabilize = Stabilize)
+
     val lookAhead = 30
 
     structure S = GenericVC.Source
     structure EM = GenericVC.ErrorMsg
     structure SM = GenericVC.SourceMap
     structure GG = GroupGraph
+    structure DG = DependencyGraph
 
     structure CMLrVals = CMLrValsFun (structure Token = LrParser.Token)
     structure CMLex = CMLexFun (structure Tokens = CMLrVals.Tokens)
@@ -42,10 +45,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
     val sgc = ref (SrcPathMap.empty: CMSemant.group SrcPathMap.map)
     fun reset () = sgc := SrcPathMap.empty
 
-    fun registerNewStable (p, g) =
-	(sgc := SrcPathMap.insert (!sgc, p, g);
-	 SrcPathSet.app (SmlInfo.cleanGroup true) (Reachable.groupsOf g);
-	 evictStale ())
+    fun majorGC () = SMLofNJ.Internals.GC.doGC 7
+
     fun cachedStable (p, ig as GG.GROUP { grouppath, ... }) =
 	if SrcPath.compare (p, grouppath) = EQUAL then SOME ig
 	else SrcPathMap.find (!sgc, p)
@@ -64,8 +65,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	handle LibBase.NotFound => ()
 
     fun parse args = let
-	val { load_plugin, gr, param, stabflag, group, init_group, paranoid } =
-	    args
+	val { load_plugin, gr, param, stabflag, group,
+	      init_group, paranoid } = args
 
 	val GroupGraph.GROUP { grouppath = init_gname, ... } = init_group
 
@@ -82,6 +83,28 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	 * This registry is primed with the "init" group because it is
 	 * "special" and cannot be parsed directly. *)
 	val gc = ref (SrcPathMap.singleton (init_gname, SOME init_group))
+
+	val em = ref StableMap.empty
+
+	fun update_em (GG.GROUP ns_g, GG.GROUP s_g) = let
+	    val s_e = #exports s_g
+	    fun add (sy, ((_ , DG.SB_SNODE (DG.SNODE sn)), _)) =
+		(case SymbolMap.find (s_e, sy) of
+		     SOME ((_, DG.SB_BNODE (DG.BNODE bn, _)), _) =>
+			 em := StableMap.insert (!em, #bininfo bn, #smlinfo sn)
+		   | _ => ())
+	      | add _ = ()
+	in SymbolMap.appi add (#exports ns_g)
+	end
+
+	fun registerNewStable (p, g) =
+	    (sgc := SrcPathMap.insert (!sgc, p, g);
+	     SrcPathSet.app (SmlInfo.cleanGroup true) (Reachable.groupsOf g);
+	     evictStale ();
+	     (gc := #1 (SrcPathMap.remove (!gc, p));
+	      (* ... and for good measure, do a major GC... *)
+	      majorGC ())
+	     handle LibBase.NotFound => ())
 
 	fun hasCycle (group, groupstack) = let
 	    (* checking for cycles among groups and printing them nicely *)
@@ -174,7 +197,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		     in
 			 case go of
 			     NONE => NONE
-			   | SOME g => (registerNewStable (group, g); SOME g)
+			   | SOME g' =>
+				 (registerNewStable (group, g'); SOME g')
 		     end
 		   | _ => SOME g)
 	in
@@ -192,12 +216,18 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    if paranoid then
 			case try_n () of
 			    NONE => reg NONE
-			  | SOME g =>
-				if VerifyStable.verify ginfo g then
-				    reg (case try_s () of
-					     NONE => SOME g
-					   | SOME g' => SOME g')
-				else proc_n (SOME g)
+			  | SOME g => let
+				val gopt' =
+				    if VerifyStable.verify ginfo (!em) g then
+					reg (case try_s () of
+						 NONE => SOME g
+					       | SOME g' => SOME g')
+				    else proc_n (SOME g)
+			    in
+				case gopt' of
+				    NONE => NONE
+				  | SOME g' => (update_em (g, g'); SOME g')
+			    end
 		    else case try_s () of
 			SOME g => reg (SOME g)
 		      | NONE => proc_n (try_n ())

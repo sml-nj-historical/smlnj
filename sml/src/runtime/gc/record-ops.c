@@ -55,7 +55,6 @@ PVT int GetLen (ml_val_t r)
  */
 ml_val_t RecordConcat (ml_state_t *msp, ml_val_t r1, ml_val_t r2)
 {
-    ml_val_t	res;
     int		l1 = GetLen(r1);
     int		l2 = GetLen(r2);
 

@@ -3,6 +3,8 @@
  * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.
  */
 
+#include <stdio.h>
+
 #include "ml-base.h"
 #include "ml-limits.h"
 #include "ml-values.h"
@@ -29,8 +31,6 @@ PVT void UncaughtExn (ml_val_t e);
  */
 ml_val_t ApplyMLFn (ml_state_t *msp, ml_val_t f, ml_val_t arg, bool_t useCont)
 {
-    int		i;
-
     InitMLState (msp);
 
   /* initialize the calling context */
@@ -68,6 +68,7 @@ void RaiseMLExn (ml_state_t *msp, ml_val_t exn)
 
 } /* end of RaiseMLExn. */
 
+extern int restoreregs (ml_state_t *msp);
 
 /* RunML:
  */
@@ -77,7 +78,7 @@ void RunML (ml_state_t *msp)
     vproc_state_t *vsp = msp->ml_vproc;
     ml_val_t	prevProfIndex = PROF_OTHER;
 
-    while (TRUE) {
+    for (;;) {
 
 	ASSIGN(ProfCurrent, prevProfIndex);
 	request = restoreregs(msp);
@@ -270,11 +271,11 @@ PVT void UncaughtExn (ml_val_t e)
     char	buf[1024];
 
     if (isUNBOXED(val))
-	sprintf (buf, "%d\n", INT_MLtoC(val));
+	sprintf (buf, "%ld\n", (long int) INT_MLtoC(val));
     else {
 	ml_val_t	desc = OBJ_DESC(val);
 	if (desc == DESC_string)
-	    sprintf (buf, "\"%.*s\"", GET_SEQ_LEN(val), STR_MLtoC(val));
+	    sprintf (buf, "\"%.*s\"", (int) GET_SEQ_LEN(val), STR_MLtoC(val));
 	else
 	    sprintf (buf, "<unknown>");
     }
@@ -288,7 +289,7 @@ PVT void UncaughtExn (ml_val_t e)
 	} while (next != LIST_nil);
 	val = LIST_hd(traceBack);
 	sprintf (buf+strlen(buf), " raised at %.*s",
-	    GET_SEQ_LEN(val), STR_MLtoC(val));
+		 (int) GET_SEQ_LEN(val), STR_MLtoC(val));
     }
 
     Die ("Uncaught exception %.*s with %s\n",

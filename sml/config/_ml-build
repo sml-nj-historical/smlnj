@@ -13,7 +13,7 @@ cmfile=$xx-export.cm
 listfile=$xx-BOOTLIST
 mlscript=$xx-script
 
-trap 'rm -rf $smlfile $cmfile $listfile $mlscript' 0 1 2 3 15
+trap 'rm -rf `find . -name $smlfile` $cmfile $listfile $mlscript' 0 1 2 3 15
 
 usage() {
     echo ${thisscript}: $*
@@ -40,14 +40,19 @@ Group structure ${rare} is basis.cm ${root} ${smlfile}
 EOF
 
 cat >$mlscript <<EOF
-OS.Process.exit ((case CM.mk_standalone NONE "${cmfile}" of
+ignore (OS.Process.exit ((case CM.mk_standalone NONE "${cmfile}" of
    NONE => OS.Process.failure
  | SOME l => let val s = TextIO.openOut "${listfile}"
-   in app (fn str => TextIO.output (s, str ^ "\n")) l;
+                 fun wr str = TextIO.output (s, str ^ "\n")
+		 val n = length l
+		 fun maxsz (s, n) = Int.max (size s, n)
+		 val m = foldl maxsz 0 l
+   in wr (concat ["%", Int.toString n, " ", Int.toString m]);
+      app wr l;
       TextIO.closeOut s;
       OS.Process.success
    end)
-   handle _ => OS.Process.failure)
+   handle _ => OS.Process.failure))
 EOF
 
 if $SML full-cm.cm <$mlscript ; then

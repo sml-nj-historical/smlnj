@@ -838,7 +838,7 @@ PVT ml_val_t MajorGC_ForwardObj (heap_t *heap, aid_t maxAid, ml_val_t v, aid_t i
 PVT bigobj_desc_t *MajorGC_ForwardBigObj (
 	heap_t *heap, int maxGen, ml_val_t obj, aid_t id)
 {
-    int		    i, gen;
+    int		    i;
     bigobj_region_t *region;
     bigobj_desc_t   *dp;
 

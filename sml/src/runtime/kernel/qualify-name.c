@@ -3,6 +3,7 @@
  * COPYRIGHT (c) 1996 AT&T Research.
  */
 
+#include <string.h>
 #include "ml-base.h"
 #include "machine-id.h"
 

@@ -36,8 +36,6 @@ in
 	    { group: GP.info -> env option,
 	      exports: (GP.info -> env option) SymbolMap.map }
 
-	val sysval : GenericVC.PersStamps.persstamp option -> env option
-
 	(* discard persistent state *)
 	val reset : unit -> unit
     end
@@ -45,7 +43,7 @@ in
     functor LinkFn (structure MachDepVC : MACHDEP_VC
 		    structure BFC : BFC
 		    sharing type MachDepVC.Binfile.bfContent = BFC.bfc
-		    val system_values : env ref) :> LINK
+		    val system_values : env SrcPathMap.map ref) :> LINK
 	where type bfc = BFC.bfc =
     struct
 
@@ -61,51 +59,22 @@ in
 
 	val stablemap = ref (StableMap.empty: bnode StableMap.map)
 
-	val emptyStatic = E.staticPart E.emptyEnv
-	val emptyDyn = E.dynamicPart E.emptyEnv
-
-	fun sysval NONE = NONE
-	  | sysval (SOME pid) =
-	    SOME (DynamicEnv.bind (pid,
-				   DynamicEnv.look (!system_values) pid,
-				   DynamicEnv.empty))
-	    handle DynamicEnv.Unbound => NONE
-
-	fun exn_err (msg, error, descr, exn) = let
-	    fun ppb pps =
-		(PP.add_newline pps;
-		 PP.add_string pps (General.exnMessage exn);
-		 PP.add_newline pps)
-	in
-	    error (concat [msg, " ", descr]) ppb;
-	    raise exn
-	end
-
-	(* We invoke mk_de here and only if we don't have the value
-	 * available as a sysval.  This saves the (unnecessary) traversal
-	 * in the stable case. (Normally all sysval entries are from
-	 * stable libraries.) *)
-	fun execute (bfc, mk_de, gp: GP.info) =
-	    case sysval (BF.exportPidOf bfc) of
-		NONE =>
-		    BF.exec (bfc,
-			     DE.atop (mk_de gp,
-				      BE.dynamicPart (#corenv (#param gp))))
-	      | SOME de' => de'
-
 	type smemo = E.dynenv * SmlInfo.info list
 
 	val smlmap = ref (SmlInfoMap.empty: smemo SmlInfoMap.map)
+
+	val emptyStatic = E.staticPart E.emptyEnv
+	val emptyDyn = E.dynamicPart E.emptyEnv
 
 	fun evict gp i = let
 	    fun check () =
 		case SmlInfo.sh_mode i of
 		    Sharing.SHARE true =>
 			SmlInfo.error gp i EM.WARN
-			  (concat ["sharing for ",
-				   SmlInfo.descr i,
-				   " may be lost"])
-			  EM.nullErrorBody
+			(concat ["sharing for ",
+				 SmlInfo.descr i,
+				 " may be lost"])
+			EM.nullErrorBody
 		  | _ =>  ()
 	in
 	    (smlmap := #1 (SmlInfoMap.remove (!smlmap, i))
@@ -136,107 +105,143 @@ in
 	    app (visit o #1) (SmlInfoMap.listItemsi (!smlmap))
 	end
 
-	(* Construction of the environment is delayed until we are
-	 * sure we really, really need it.  This way we spare ourselves
-	 * the trouble of doing the ancestor traversal iff we
-	 * end up finding out we already have the value in sysVal. *)
-	fun link_stable (i, mk_e, gp) = let
-	    val stable = BinInfo.stablename i
-	    val os = BinInfo.offset i
-	    val descr = BinInfo.describe i
-	    val error = BinInfo.error i EM.COMPLAIN
-	    val bfc =
-		BFC.getStable { stable = stable, offset = os, descr = descr }
-		handle exn => exn_err ("unable to load library module",
-				       error, descr, exn)
-	in
-	    execute (bfc, mk_e, gp)
-	    handle exn => exn_err ("link-time exception in library code",
-				   error, descr, exn)
-	end
+	fun newTraversal (group, getBFC) = let
 
-	fun link_sml (gp, i, getBFC, getE, snl) = let
-	    fun fresh () = let
-		val bfc = getBFC i
+	    val GG.GROUP { exports, grouppath, ... } = group
+
+	    fun exn_err (msg, error, descr, exn) = let
+		fun ppb pps =
+		    (PP.add_newline pps;
+		     PP.add_string pps (General.exnMessage exn);
+		     PP.add_newline pps)
 	    in
-		case getE gp of
-		    NONE => NONE
-		  | SOME e =>
-			(SOME (execute (bfc, fn _ => e, gp))
-			 handle exn =>
-			     exn_err ("link-time exception in user program",
-				      SmlInfo.error gp i EM.COMPLAIN,
-				      SmlInfo.descr i,
-				      exn))
-	    end handle _ => NONE
-	in
-	    case SmlInfo.sh_mode i of
-		Sharing.SHARE _ =>
-		    (case SmlInfoMap.find (!smlmap, i) of
-			 NONE =>
-			     (case fresh () of
-				  NONE => NONE
-				| SOME de => let
-				      val m = (de, snl)
-				  in
-				      smlmap :=
-				        SmlInfoMap.insert (!smlmap, i, m);
-				      SOME de
-				  end)
-		       | SOME (de, _) => SOME de)
-	      | Sharing.DONTSHARE => (evict gp i; fresh ())
-	end
+		error (concat [msg, " ", descr]) ppb;
+		raise exn
+	    end
 
-	fun registerGroup g = let
+	    (* We invoke mk_de here and only if we don't have the value
+	     * available as a sysval.  This saves the (unnecessary) traversal
+	     * in the stable case. (Normally all sysval entries are from
+	     * stable libraries.) *)
+	    fun execute sysval (bfc, mk_de, gp: GP.info) =
+		case sysval (BF.exportPidOf bfc) of
+		    NONE =>
+			BF.exec (bfc,
+				 DE.atop (mk_de gp,
+					  BE.dynamicPart(#corenv (#param gp))))
+		  | SOME de' => de'
+
+	    (* Construction of the environment is delayed until we are
+	     * sure we really REALLY need it.  This way we spare ourselves
+	     * the trouble of doing the ancestor traversal if we
+	     * end up finding out we already have the value in sysVal. *)
+	    fun link_stable sysval (i, mk_e, gp) = let
+		val stable = BinInfo.stablename i
+		val os = BinInfo.offset i
+		val descr = BinInfo.describe i
+		val error = BinInfo.error i EM.COMPLAIN
+		val bfc = BFC.getStable { stable = stable, offset = os,
+					  descr = descr }
+		    handle exn => exn_err ("unable to load library module",
+					   error, descr, exn)
+	    in
+		execute sysval (bfc, mk_e, gp)
+		handle exn =>
+		    exn_err ("link-time exception in library code",
+			     error, descr, exn)
+	    end
+
+	    fun link_sml (gp, i, getBFC, getE, snl) = let
+		fun fresh () = let
+		    val bfc = getBFC i
+		in
+		    case getE gp of
+			NONE => NONE
+		      | SOME e =>
+			    (SOME (execute (fn _ => NONE) (bfc, fn _ => e, gp))
+			     handle exn =>
+				exn_err ("link-time exception in user program",
+					 SmlInfo.error gp i EM.COMPLAIN,
+					 SmlInfo.descr i,
+					 exn))
+		end handle _ => NONE
+	    in
+		case SmlInfo.sh_mode i of
+		    Sharing.SHARE _ =>
+			(case SmlInfoMap.find (!smlmap, i) of
+			     NONE =>
+				 (case fresh () of
+				      NONE => NONE
+				    | SOME de => let
+					  val m = (de, snl)
+				      in
+					  smlmap :=
+					    SmlInfoMap.insert (!smlmap, i, m);
+					  SOME de
+				      end)
+			   | SOME (de, _) => SOME de)
+		  | Sharing.DONTSHARE => (evict gp i; fresh ())
+	    end
+
 	    val visited = ref SrcPathSet.empty
-	    fun registerGroup' g = let
+
+	    fun registerGroup g = let
 		val GG.GROUP { grouppath, kind, sublibs, ... } = g
-		fun registerStableLib (GG.GROUP { exports, ... }) = let
+		fun registerStableLib (GG.GROUP sg) = let
+		    val { exports, grouppath = sgp, ... } = sg
+		    val sysvals =
+			let val (m', e) =
+			    SrcPathMap.remove (!system_values, sgp)
+			in system_values := m'; e
+			end handle LibBase.NotFound => emptyDyn
+
+		    fun sv (SOME pid) =
+			(SOME (DE.bind (pid, DE.look sysvals pid, emptyDyn))
+			 handle DE.Unbound => NONE)
+		      | sv _ = NONE
+
 		    val localmap = ref StableMap.empty
 		    fun bn (DG.BNODE n) = let
-			    val { bininfo = i, localimports, globalimports } =
-				n
-			    fun new () = let
-				val e0 = (fn _ => emptyDyn, [])
-				fun join ((f, NONE), (e, l)) =
-				    (fn gp => DE.atop (f gp emptyDyn, e gp), l)
-				  | join ((f, SOME (i, l')), (e, l)) =
-				    (e, B (f, i, l') :: l)
-				val ge = foldl join e0 (map fbn globalimports)
-				val le = foldl join ge (map bn localimports)
-			    in
-				case (BinInfo.sh_mode i, le) of
-				    (Sharing.SHARE _, (e, [])) => let
-					fun thunk gp =
-					    link_stable (i, e, gp)
-					val m_thunk = Memoize.memoize thunk
-				    in
-					(fn gp => fn _ => m_thunk gp, NONE)
-				    end
-				  | (Sharing.SHARE _, _) =>
-				    EM.impossible "Link: sh_mode inconsistent"
-				  | (Sharing.DONTSHARE, (e, l)) =>
-				    (fn gp => fn e' =>
-				     link_stable (i,
-						  fn gp => DE.atop (e', e gp),
-						  gp),
-				     SOME (i, l))
-			    end
+			val { bininfo = i, localimports, globalimports } = n
+			fun new () = let
+			    val e0 = (fn _ => emptyDyn, [])
+			    fun join ((f, NONE), (e, l)) =
+				(fn gp => DE.atop (f gp emptyDyn, e gp), l)
+			      | join ((f, SOME (i, l')), (e, l)) =
+				(e, B (f, i, l') :: l)
+			    val ge = foldl join e0 (map fbn globalimports)
+			    val le = foldl join ge (map bn localimports)
 			in
-			    case StableMap.find (!stablemap, i) of
-				SOME (B (f, i, [])) =>
-				    (case BinInfo.sh_mode i of
-					 Sharing.DONTSHARE => (f, SOME (i, []))
-				       | _ => (f, NONE))
-			      | SOME (B (f, i, l)) => (f, SOME (i, l))
-			      | NONE => (case StableMap.find (!localmap, i) of
-					     SOME x => x
-					   | NONE => let val x = new ()
-					     in localmap := StableMap.insert
-						    (!localmap, i, x);
-						x
-					     end)
+			    case (BinInfo.sh_mode i, le) of
+				(Sharing.SHARE _, (e, [])) => let
+				    fun thunk gp = link_stable sv (i, e, gp)
+				    val m_thunk = Memoize.memoize thunk
+				in
+				    (fn gp => fn _ => m_thunk gp, NONE)
+				end
+			      | (Sharing.SHARE _, _) =>
+				EM.impossible "Link: sh_mode inconsistent"
+			      | (Sharing.DONTSHARE, (e, l)) =>
+				(fn gp => fn e' =>
+				 link_stable sv
+				    (i, fn gp => DE.atop (e', e gp), gp),
+				 SOME (i, l))
 			end
+		    in
+			case StableMap.find (!stablemap, i) of
+			    SOME (B (f, i, [])) =>
+				(case BinInfo.sh_mode i of
+				     Sharing.DONTSHARE => (f, SOME (i, []))
+				   | _ => (f, NONE))
+			  | SOME (B (f, i, l)) => (f, SOME (i, l))
+			  | NONE => (case StableMap.find (!localmap, i) of
+					 SOME x => x
+				       | NONE => let val x = new ()
+					 in localmap := StableMap.insert
+					           (!localmap, i, x);
+					    x
+					 end)
+		    end
 
 		    and fbn (_, n) = bn n
 
@@ -260,17 +265,12 @@ in
 	    in
 		if SrcPathSet.member (!visited, grouppath) then ()
 		else (visited := SrcPathSet.add (!visited, grouppath);
-		      app (registerGroup' o #2) sublibs;
+		      app (registerGroup o #2) sublibs;
 		      case kind of
 			  GG.STABLELIB _ => registerStableLib g
 			| _ => ())
 	    end
-	in
-	    registerGroup' g
-	end
 
-	fun newTraversal (group as GG.GROUP { exports, ... }, getBFC) = let
-	    
 	    val _ = registerGroup group
 
 	    val l_stablemap = ref StableMap.empty

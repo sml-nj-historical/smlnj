@@ -10,6 +10,7 @@
 #include "ml-base.h"
 #include "ml-options.h"
 #include "ml-limits.h"
+#include "ml-globals.h"
 
 #ifdef COLLECT_STATS
 #include <sys/types.h>
@@ -41,12 +42,14 @@ PVT char	*LoadImage	/* the path name of the image file to load */
 		    = DFLT_IMAGE;
 PVT char	*BootFrom	/* the boot source (bin file list file). */
 		    = NULL;
+# ifdef MP_SUPPORT
 PVT int		NumProcs = 1;	/* not used */
+# endif
 
 PVT void ParseOptions (int argc, char **argv, heap_params_t **heapParams);
 
 
-main (int argc, char **argv)
+int main (int argc, char **argv)
 {
     heap_params_t	*heapParams;
 
@@ -77,7 +80,6 @@ main (int argc, char **argv)
     }
 
     Exit (0);
-
 } /* end of main. */
 
 
@@ -222,4 +224,3 @@ void Exit (int code)
     exit (code);
 
 } /* end of Exit */
-

@@ -146,7 +146,6 @@ SayDebug ("MakeHandlerArg: resumeC = %#x, arg = %#x\n", resumeCont, arg);
 void LoadResumeState (ml_state_t *msp)
 {
     ml_val_t	    *contClosure;
-    int		    i, n, mask;
 #ifdef SIGNAL_DEBUG
 SayDebug ("LoadResumeState:\n");
 #endif

@@ -415,7 +415,6 @@ SayDebug (" unboxed\n");
 	    else {
 		aid_t		aid = ADDR_TO_PAGEID(BIBOP, v);
 		ml_val_t	*vp = PTR_MLtoC(ml_val_t, v);
-		ml_val_t	desc;
 
 		if (aid == AID_NEW) {
 		    if (vp[-1] == DESC_forwarded) {

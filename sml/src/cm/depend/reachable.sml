@@ -7,9 +7,11 @@
  *)
 signature REACHABLE = sig
     (* These two functions simply give you the set of (non-stable)
-     * modules reachable from some root. *)
-    val reachable' : DependencyGraph.impexp SymbolMap.map -> SmlInfoSet.set
-    val reachable : GroupGraph.group -> SmlInfoSet.set
+     * modules reachable from some root and the fringe of stable
+     * modules that surrounds the non-stable portion. *)
+    val reachable' :
+	DependencyGraph.sbnode list -> SmlInfoSet.set * StableSet.set
+    val reachable : GroupGraph.group -> SmlInfoSet.set * StableSet.set
 
     (* "snodeMap" gives us handles at arbitrary points within the (non-stable)
      * portion of a dependency graph.
@@ -28,7 +30,7 @@ signature REACHABLE = sig
     (* Given a "closed" subset of (non-stable) nodes in a dependency graph,
      * "frontier" gives you the set of frontier nodes of that set.  The
      * closed set is given by its indicator function (first argument).
-     * ("closed" means that any node that if a node's ancestors are all in
+     * ("closed" means that if a node's ancestors are all in
      * the set, then so is the node itself.  A frontier node is a node that
      * is in the set but either not all of its ancestors are or the node
      * is an export node.) *)
@@ -40,30 +42,32 @@ structure Reachable :> REACHABLE = struct
     structure GG = GroupGraph
 
     local
-	fun reach ops (exports: DG.impexp SymbolMap.map) = let
+	fun reach ops (export_nodes: DG.sbnode list) = let
 	    val { add, member, empty } = ops
-	    fun snode (x as DG.SNODE n, known) = let
+	    fun snode (x as DG.SNODE n, (known, stabfringe)) = let
 		val { smlinfo = i, localimports = l, globalimports = g } = n
 	    in
-		if member (known, i) then known
-		else foldl farsbnode (foldl snode (add (known, i, x)) l) g
+		if member (known, i) then (known, stabfringe)
+		else foldl farsbnode
+		           (foldl snode (add (known, i, x), stabfringe) l)
+			   g
 	    end
 	
-	    and farsbnode ((_, n), known) = sbnode (n, known)
+	    and farsbnode ((_, n), ksf) = sbnode (n, ksf)
 		
-	    and sbnode (DG.SB_BNODE _, known) = known
-	      | sbnode (DG.SB_SNODE n, known) = snode (n, known)
-		
-	    fun impexp ((n, _), known) = farsbnode (n, known)
+	    and sbnode (DG.SB_BNODE (DG.BNODE n, _), (known, stabfringe)) =
+		(known, StableSet.add (stabfringe, #bininfo n))
+	      | sbnode (DG.SB_SNODE n, ksf) = snode (n, ksf)
 	in
-	    SymbolMap.foldl impexp empty exports
+	    foldl sbnode (empty, StableSet.empty) export_nodes
 	end
 
-	fun snodeMap' (exports, acc) = let
+	fun snodeMap' (exports: DG.impexp SymbolMap.map, acc) = let
 	    fun add (m, i, x) = SrcPathMap.insert (m, SmlInfo.sourcepath i, x)
 	    fun member (m, i) = SrcPathMap.inDomain (m, SmlInfo.sourcepath i)
 	in
-	    reach { add = add, member = member, empty = acc } exports
+	    #1 (reach { add = add, member = member, empty = acc }
+		      (map (#2 o #1) (SymbolMap.listItems exports)))
 	end
     in
 	val reachable' =
@@ -71,7 +75,8 @@ structure Reachable :> REACHABLE = struct
 		    member = SmlInfoSet.member,
 		    empty = SmlInfoSet.empty }
 
-	fun reachable (GG.GROUP { exports, ... }) = reachable' exports
+	fun reachable (GG.GROUP { exports, ... }) =
+	              reachable' (map (#2 o #1) (SymbolMap.listItems exports))
 
 	fun snodeMap g = let
 	    fun snm (g, (a, seen)) = let

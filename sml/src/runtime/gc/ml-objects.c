@@ -242,7 +242,6 @@ ml_val_t ML_AllocCode (ml_state_t *msp, int len)
 			: CODE_ALLOC_GEN;
     gen_t	    *gen = heap->gen[allocGen-1];
     bigobj_desc_t   *dp;
-    ml_val_t	    res;
 
     BEGIN_CRITICAL_SECT(MP_GCGenLock)
 	dp = BO_Alloc (heap, allocGen, len);
@@ -311,7 +310,9 @@ ml_val_t ML_AllocArray (ml_state_t *msp, int len, ml_val_t initVal)
 	int	gcLevel = (isBOXED(initVal) ? 0 : -1);
 
 	BEGIN_CRITICAL_SECT(MP_GCGenLock)
+#ifdef MP_SUPPORT
 	  checkGC:;	/* the MP version jumps to here to recheck for GC */
+#endif
 	    if (! isACTIVE(ap)
 	    || (AVAIL_SPACE(ap) <= (WORD_SZB*(len + 1))+msp->ml_heap->allocSzB))
 		gcLevel = 1;
@@ -373,7 +374,9 @@ ml_val_t ML_AllocVector (ml_state_t *msp, int len, ml_val_t initVal)
 	    if (! isACTIVE(ap)
 	    || (AVAIL_SPACE(ap) <= (WORD_SZB*(len + 1))+msp->ml_heap->allocSzB))
 		gcLevel = 1;
+#ifdef MP_SUPPORT
 	  checkGC:;	/* the MP version jumps to here to redo the GC */
+#endif
 	    ap->reqSizeB += WORD_SZB*(len + 1);
 	    RELEASE_LOCK(MP_GCGenLock);
 	        InvokeGCWithRoots (msp, gcLevel, &root, NIL(ml_val_t *));

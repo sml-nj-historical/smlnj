@@ -132,7 +132,7 @@ PVT SigReturn_t CSigHandler (
     SigContext_t    *scp)
 #endif
 {
-#if defined(OPSYS_LINUX)
+#if defined(OPSYS_LINUX) && defined(USE_ZERO_LIMIT_PTR_FN)
     SigContext_t    *scp = &sc;
 #endif
     vproc_state_t   *vsp = SELF_VPROC;

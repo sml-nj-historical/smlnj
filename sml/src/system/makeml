@@ -41,6 +41,10 @@ if [ -f $twoup/bin/.arch-n-opsys ]; then
     fi
 fi
 
+# A function to create a directory hierarchy parallel to a given
+# hierarchy where ordinary files are hard-linked (i.e., shared).
+# The first argument must be a simple path (no / inside), and
+# the second argument must be an absolute path.
 link() {
     if [ -d $1 ] ; then
 	if [ ! -d $2 ] ; then

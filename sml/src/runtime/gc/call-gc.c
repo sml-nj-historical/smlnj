@@ -48,7 +48,6 @@ void InvokeGC (ml_state_t *msp, int level)
     ml_val_t	*roots[NUM_GC_ROOTS];	/* registers and globals */
     ml_val_t	**rootsPtr = roots;
     heap_t	*heap;
-    Word_t	mask;
     int		i;
 #ifdef MP_SUPPORT
     int		nProcs;
@@ -195,7 +194,6 @@ void InvokeGCWithRoots (ml_state_t *msp, int level, ...)
     ml_val_t	*roots[NUM_GC_ROOTS+NUM_EXTRA_ROOTS];	/* registers and globals */
     ml_val_t	**rootsPtr = roots, *p;
     heap_t	*heap;
-    Word_t	mask;
     int		i;
     va_list	ap;
 #ifdef MP_SUPPORT

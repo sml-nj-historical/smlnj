@@ -67,8 +67,6 @@ TopLevel/batch/batchconfig.sml
 TopLevel/batch/binfile.sig
 TopLevel/batch/binfile.sml
 TopLevel/batch/smlfile.sml
-TopLevel/batch/cmsa.sig
-TopLevel/batch/cmsa.sml
 TopLevel/batch/envcvt.sml
 TopLevel/environ/dynenv.sig
 TopLevel/environ/dynenv.sml

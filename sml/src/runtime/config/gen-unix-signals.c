@@ -15,7 +15,7 @@
 #endif
 
 
-main ()
+int main (void)
 {
     sig_info_t	    *sigInfo;
     int		    i;

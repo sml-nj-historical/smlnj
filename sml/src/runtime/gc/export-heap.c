@@ -28,6 +28,7 @@
 #include "c-globals-tbl.h"
 #include "writer.h"
 #include "heap-io.h"
+#include "heap-output.h"
 
 #define isEXTERN(bibop, w)	(isBOXED(w) && (ADDR_TO_PAGEID(bibop, w) == AID_UNMAPPED))
 #define isEXTERNTAG(w)		(isDESC(w) && (GET_TAG(w) == DTAG_extern))
@@ -75,9 +76,10 @@ status_t ExportFnImage (ml_state_t *msp, ml_val_t funct, FILE *file)
 PVT status_t ExportImage (ml_state_t *msp, int kind, FILE *file)
 {
     heap_t	*heap = msp->ml_heap;
+    /*
     gen_t	*oldestGen = heap->gen[heap->numGens-1];
+    */
     status_t	status = SUCCESS;
-    int		i, j;
     export_table_t *exportTbl;
     writer_t	*wr;
 

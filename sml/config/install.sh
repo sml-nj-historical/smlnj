@@ -63,6 +63,20 @@ LOCALPATHCONFIG=$INSTALLDIR/pathconfig # a temporary pathconfig file
 TOOLDIR=$BINDIR
 
 #
+# files to be deleted after we are done...
+#
+tmpfiles=""
+tmpfiles="$tmpfiles $ROOT/preloads.standard"
+tmpfiles="$tmpfiles $LIBLIST"
+tmpfiles="$tmpfiles $LOCALPATHCONFIG"
+tmpfiles="$tmpfiles $LIBMOVESCRIPT"
+#
+# make sure we always clean up after ourselves...
+#
+trap 'rm -f $tmpfiles' 0 1 2 3 15
+
+
+#
 # set the CM configuration variables (these are environment variables
 # that will be queried by the bootstrap code)
 # Especially important is CM_PATHCONFIG_DEFAULT.
@@ -265,9 +279,13 @@ eval $ARCH_N_OPSYS
 installdriver() {
     dsrc=$1
     ddst=$2
-    if [ -x $BINDIR/$ddst ]; then
-	echo Script $BINDIR/$ddst already exists.
-    else
+# We install the driver unconditionally. (It would be better to test
+# for an outdated driver script, but not all "test" commands understand
+# the -nt comparison operator....)
+#   if [ -x $BINDIR/$ddst ]; then
+#	echo Script $BINDIR/$ddst already exists.
+#   else
+	rm -f $BINDIR/$ddst
 	cat $CONFIGDIR/$dsrc | \
 	sed -e "s,@SHELL@,$SHELL,g" \
 	    -e "s,@BINDIR@,$BINDIR," \
@@ -278,7 +296,7 @@ installdriver() {
 	    echo "!!! Installation of $BINDIR/${ddst} failed."
 	    exit 1
 	fi
-    fi
+#   fi
 }
 
 installdriver _run-sml .run-sml
@@ -321,24 +339,6 @@ esac
 # the name of the bin files directory
 #
 BOOT_FILES=sml.boot.$ARCH-unix
-
-#
-# files to be deleted after we are done...
-#
-tmpfiles=""
-tmpfiles="$tmpfiles $ROOT/preloads.standard"
-tmpfiles="$tmpfiles $ROOT/$LIBLIST"
-tmpfiles="$tmpfiles $ROOT/$LOCALPATHCONFIG"
-tmpfiles="$tmpfiles $ROOT/$LIBMOVESCRIPT"
-#
-# also remove the boot dir because it won't have anything interesting in
-# it after we are successful...
-#
-tmpfiles="$tmpfiles $ROOT/$BOOT_FILES"
-#
-# make sure we always clean up after ourselves...
-#
-trap 'rm -rf $tmpfiles' 0 1 2 3 15
 
 #
 # build the run-time system

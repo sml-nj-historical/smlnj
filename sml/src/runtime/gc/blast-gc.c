@@ -64,7 +64,9 @@ PVT void BlastGC_RepairHeap (ml_state_t *msp, int maxGen);
 PVT void BlastGC_FinishGC (ml_state_t *msp, int maxGen);
 PVT void BlastGC_Flip (heap_t *heap, int gen);
 PVT status_t BlastGC_SweepToSpace (heap_t *heap, aid_t maxAid);
+/*
 PVT bool_t BlastGC_SweepToSpArrays (heap_t *heap, arena_t *tosp, card_map_t *cm);
+*/
 PVT ml_val_t BlastGC_ForwardObj (heap_t *heap, ml_val_t obj, aid_t id);
 PVT bigobj_desc_t *BlastGC_ForwardBigObj (
 	heap_t *heap, ml_val_t *p, ml_val_t obj, aid_t aid);
@@ -127,7 +129,6 @@ blast_res_t BlastGC (ml_state_t *msp, ml_val_t *root, int gen)
 {
     heap_t	*heap = msp->ml_heap;
     bibop_t	bibop = BIBOP;
-    int		i, j;
     blast_res_t	result;
     bool_t	errFlg = FALSE;
 
@@ -296,7 +297,6 @@ PVT void BlastGC_FinishGC (ml_state_t *msp, int maxGen)
     heap_t	*heap = msp->ml_heap;
     bibop_t	bibop = BIBOP;
     bool_t	dummy = FALSE;
-    Word_t	mask;
     int		i, j;
     aid_t	maxAid;
 
@@ -757,8 +757,7 @@ PVT bigobj_desc_t *BlastGC_ForwardBigObj (
     int		    i;
     bigobj_region_t *region;
     bigobj_desc_t   *dp;
-    embobj_info_t   *codeInfo, *objInfo;
-    embobj_kind_t   kind;
+    embobj_info_t   *codeInfo;
 
     for (i = BIBOP_ADDR_TO_INDEX(obj);  !BO_IS_HDR(aid);  aid = BIBOP[--i])
 	continue;

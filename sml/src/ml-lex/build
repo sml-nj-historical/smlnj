@@ -5,23 +5,19 @@
 # options:
 #   -o image		-- specify the name of the heap image, "ml-lex"
 #			   is the default.
-#   -sml path		-- specify the path to the sml executable, "../../bin/sml"
-#			   is the default.
 
-CMD="build"
+CMD=$0
 
 ROOT="ml-lex"
 HEAP_IMAGE=""
 TWOUP=`pwd`/../../
 BIN=${INSTALLDIR:-$TWOUP}/bin
-SML=$BIN/sml
+BUILD=$BIN/ml-build
 
 #
 # process command-line options
 #
-ARGS=""
-while [ "$#" != "0" ]
-do
+while [ "$#" != "0" ] ; do
     arg=$1
     shift
     case $arg in
@@ -31,17 +27,11 @@ do
 		exit 1
 	    fi
 	    HEAP_IMAGE=$1; shift
-	;;
-	-sml)
-	    if [ "$#" = "0" ]; then
-		echo "$CMD: must supply path for -sml option"
-		exit 1
-	    fi
-	    SML=$1; shift
-	;;
+	    ;;
 	*)
-	    ARGS="$ARGS $arg"
-	;;
+	    echo $CMD: invalid argument: $arg
+	    exit 1
+	    ;;
     esac
 done
 
@@ -49,8 +39,5 @@ if [ "$HEAP_IMAGE" = "" ]; then
     HEAP_IMAGE="$ROOT"
 fi
 
-$SML $ARGS <<ZZZ
-  CM.make "ml-lex.cm";
-  ExportLexGen.export "$HEAP_IMAGE" : unit;
-ZZZ
+$BUILD ml-lex.cm ExportLexGen.lexGen $HEAP_IMAGE
 

@@ -8,7 +8,6 @@
 signature MACHDEP_VC = sig
     structure Profile : PROFILE
     structure Binfile: BINFILE
-    structure CMSA: CMSA
     structure Compile : COMPILE
     structure Interact : INTERACT
     structure Machine : MACHINE

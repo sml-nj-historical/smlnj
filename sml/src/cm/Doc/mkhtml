@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec latex2html -local_icons -split 0 -show_section_numbers "$@"

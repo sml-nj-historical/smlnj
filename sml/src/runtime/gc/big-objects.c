@@ -9,7 +9,7 @@
 #include "memory.h"
 #include "heap.h"
 #include "heap-monitor.h"
-
+#include <string.h>
 
 #ifdef BO_DEBUG
 /* PrintRegionMap:
@@ -260,7 +260,6 @@ bigobj_desc_t *BO_GetDesc (ml_val_t addr)
 char *BO_AddrToCodeObjTag (Word_t pc, char *buf, int bufSz)
 {
     bigobj_region_t	*region;
-    bigobj_desc_t	*bdp;
     aid_t		aid;
 
     aid = ADDR_TO_PAGEID(BIBOP, pc);

@@ -18,14 +18,15 @@
 
 /* local routines */
 PVT SigReturn_t FaultHandler (/* int sig, SigInfo_t code, SigContext_t *scp */);
+#if defined(TARGET_BYTECODE)
 PVT SigReturn_t PanicTrace (/* int sig, SigInfo_t code, SigContext_t *scp */);
+#endif
 
 
 /* InitFaultHandlers:
  */
 void InitFaultHandlers (ml_state_t *msp)
 {
-    int		mlSig;
 
 #ifndef TARGET_BYTECODE
 

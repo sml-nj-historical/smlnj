@@ -11,6 +11,8 @@ sig
   val toHex : persstamp -> string
       (* convert the persstamp to a printable representation (hex digits) *)
 
+  val fromHex : string -> persstamp option
+
   val toBytes   : persstamp -> Word8Vector.vector
   val fromBytes : Word8Vector.vector -> persstamp
 

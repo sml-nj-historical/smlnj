@@ -321,8 +321,8 @@ directory names is a simple one-way mapping.  At startup time, this
 mapping is initialized by reading two configuration files: an
 installation-specific one and a user-specific one.  After that, the
 mapping can be maintained using CM's interface functions {\tt
-CM.Anchor.set}, {\tt CM.Anchor.cancel}, and {\tt CM.Anchor.reset}
-(see Section~\ref{sec:api}).
+CM.Anchor.anchor} and {\tt CM.Anchor.reset} (see
+Section~\ref{sec:api}).
 
 The default location of the installation-specific configuration file
 is {\tt /usr/lib/smlnj-pathconfig}.  However, normally this default
@@ -529,21 +529,20 @@ structure {\tt CM.Anchor}.
 
 \begin{verbatim}
   structure Anchor : sig
-    val set : { anchor: string, path: string } -> unit
-    val cancel : string -> unit
+    val anchor : string -> string option controller
     val reset : unit -> unit
   end
 \end{verbatim}
 
-{\tt CM.Anchor.set} creates a new association or replaces an existing
-association of an anchor name with a directory name.  Both names must
-be given as strings---the directory name in native syntax.  If the
-directory name is a relative path name, then it will be expanded by
-prepending the name of the current working directory.
-
-{\tt CM.Anchor.cancel} deletes the association of the given anchor name
-with its directory should such an association currently exist.
-Otherwise it will do nothing.
+{\tt CM.Anchor.anchor} returns a pair of {\tt get} and {\tt set}
+functions that can be used to query and modify the status of the named
+anchor.  Note that the {\tt get}-{\tt set}-pair operates over type
+{\tt string option}; a value of {\tt NONE} means that the anchor is
+currently not bound (or, in the case of {\tt set}, that it is being
+cancelled).  The (optional) string given to {\tt set} must be a
+directory name in native syntax.  If it is specified as a relative
+path name, then it will be expanded by prepending the name of the
+current working directory.
 
 {\tt CM.Anchor.reset} erases the entire existing path configuration
 mapping.
@@ -1375,16 +1374,17 @@ directory.
 \subsection{Parallel bootstrap compilation}
 
 The bootstrap compiler\footnote{otherwise not mentioned in this
-document} with its functions {\tt CMB.make}, {\tt CMB.deliver}, and
-the corresponding cross-compilation variants of the bootstrap compiler
-will also use any attached compile servers.  If one intends to
-exclusively use the bootstrap compiler, one can even attach servers
-that run on machines with different architecture or operating system.
+document} with its main function {\tt CMB.make} and the corresponding
+cross-compilation variants of the bootstrap compiler will also use any
+attached compile servers.  If one intends to exclusively use the
+bootstrap compiler, one can even attach servers that run on machines
+with different architecture or operating system.
 
 Since the master-slave protocol is fairly simple, it cannot handle
-complicated scenarios such as the one necessary for setting up the
-initial (pervasive) environment during {\tt CMB.make}.  Therefore,
-this will always be done locally by the master process.
+complicated scenarios such as the one necessary for compiling the
+``init group'' (i.e., the small set of files necessary for setting up
+the ``pervasive'' environment) during {\tt CMB.make}.  Therefore, this
+will always be done locally by the master process.
 
 \section{Example: Dynamic linking}
 \label{sec:dynlink}

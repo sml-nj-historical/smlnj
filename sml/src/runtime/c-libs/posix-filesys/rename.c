@@ -4,6 +4,7 @@
  */
 
 #include "ml-unixdep.h"
+#include <stdio.h>
 #include <unistd.h>
 #include "ml-base.h"
 #include "ml-values.h"

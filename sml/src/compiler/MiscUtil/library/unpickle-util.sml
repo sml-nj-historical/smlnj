@@ -208,11 +208,14 @@ structure UnpickleUtil :> UNPICKLE_UTIL = struct
 	      | _ => raise Format
 
 	fun f_largeint cvt rd () = let
-	    val (w, negative) = f_anyint rd ()
-	    val i = LargeWord.toLargeInt w handle _ => raise Format
+	    val (wpos, negative) = f_anyint rd ()
+	    (* The negation must be done in word domain to prevent
+	     * overflow on minInt. For the same reason we must then
+	     * use toIntX. *)
+	    val w = if negative then 0w0 - wpos else wpos
+	    val i = LargeWord.toLargeIntX w
 	in
-	    (if negative then cvt (~i) else cvt i)
-	    handle _ => raise Format
+	    cvt i handle _ => raise Format
 	end
     in
 	val f_int = f_largeint Int.fromLarge

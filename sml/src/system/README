@@ -61,62 +61,42 @@ To be able to use CMB at all, you must first say
 
 	CM.autoload "host-cmb.cm";
 
-after you start sml.
+after you start sml.  Alternatively -- and perhaps more conveniently --
+you can provide "host-cmb.cm" as a command-line argument to sml:
 
-* Compiling the compiler -- a two-step procedure
-------------------------------------------------
+      $ sml host-cmb.cm
 
-Until now (with the old CM), once we managed to run CMB.make() to
-completion we had a directory full of binfiles that were ready to be
-used by the boot procedure.  This is no longer the case.
+* Compiling the compiler
+------------------------
 
-The boot procedure now wants to use stable libraries (except for the
-part that makes up the pervasive environment).  Having stable
-libraries around during development of these very libraries would be a
-bit annoying because if CM sees a stable library it will no longer
-bother to check the corresponding source files -- even if they have
-changed.  Therefore, libraries are not stabilized until you think you
-are ready for that.  Thus, you should run:
+We are now back to the old scheme where a call to CMB.make() suffices to
+build a bootable set of files (libraries in our case).  CMB.make maintains
+two parallel hierarchies of derived files:
 
-	CMB.make ();
+  1. the binfile hierarchy ("binfiles"), containing compiled objects for
+     each individual ML source file; this hierarchy is rooted at
+      <prefix>.bin.<arch>-<opsys>
+  2. the stable library hierarchy ("boot files"), containing library files
+     for each library that participates in building SML/NJ; this hierarchy
+     is rooted at
+      <prefix>.boot.<arch>-<opsys>
 
-until you no longer get compile errors.  CMB.make will return true in
-this case.  Then you say:
+The default for <prefix> is "sml".  It can be changed by using
+CMB.make' with the new <prefix> as the optional string argument.
 
-	CMB.deliver ();
+CMB.make uses bootfiles after it has verified that they are consistent
+with their corresponding binfiles.  Bootfiles do not need to be
+deleted in order for CMB.make to work correctly.
 
-This command creates a second directory parallel to the "bin"
-directory -- the "boot" directory.  It will hold everything necessary
-to bootstrap a new heap image.  You will probably find that
-CMB.deliver() compiles a number of additional files even though
-CMB.make completed successfully.  This is because CMB.make compiles
-just those modules that will actually go into the heap image, but
-CMB.deliver must also build the remaining files -- files that are part
-of libraries to be stabilized but which are not used by the compiler.
+To bootstrap a new system (using the runtime system boot loader), the
+bootfiles _must_ be present, the binfiles need not be present (but
+their presence does not hurt either).
 
 You can reduce the number of extra files compiled and stabilized
-during CMB.deliver at the expense of not building any cross-compilers.
+during CMB.make at the expense of not building any cross-compilers.
 For that, say
 	#set (CMB.symval "LIGHT") (SOME 1);
-before running CMB.deliver.
-
-After you have made the boot directory, if you want to continue
-developing the compiler (i.e., make changes to some sources,
-recompile, etc.), you must first get rid of that boot directory.
-Running the "makeml" script (see below) will automatically remove the
-boot directory.
-
-The names of "bin" and "boot" directories are
-
-	<prefix>.bin.<arch>-<os>
-
-and
-
-	<prefix>.boot.<arch>-<os>
-
-respectively, with "sml" being the default for <prefix>.  To change
-the prefix, use CMB.make' and CMB.deliver' with the new prefix
-provided as the optional string argument to these functions.
+before running CMB.make.
 
 * Making the heap image
 -----------------------
@@ -129,8 +109,8 @@ argument (which takes the full name of the boot directory to be used).
 The "feel" of using makeml should be mostly as it used to.  However,
 internally, there are some changes that you should be aware of:
 
-1. The script will make a heap image and also move its associated
-   libraries into a separate directory.
+1. The script will make a heap image and build a separate library directory
+   that contains links to the library files in the bootfile directory.
 
 2. There is no "-full" option anymore.  This functionality should
    eventually be provided by a library with a sufficiently rich export
@@ -142,8 +122,7 @@ internally, there are some changes that you should be aware of:
    option to actually make the image.  The argument to "-rebuild"
    is the <prefix> for the new bin and boot directories (see above).
 
-4. Unless you use "-rebuild", makeml will delete the boot directory
-   (thus readying you for further "CMB.make();" runs).
+Makeml will not destroy the bootfile directory.
 
 * Testing a newly generated heap image
 --------------------------------------
@@ -151,14 +130,15 @@ internally, there are some changes that you should be aware of:
 If you use a new heap image by saying "sml @SMLload=..." then things
 will not go as you may expect because along with the new heap image
 should go those new stable libraries, but unless you do something
-about it, the new CM will look for its stable libraries in places
-where you stored your _old_ stable libraries.
+about it, the newly booted system will look for its stable libraries
+in places where you stored your _old_ stable libraries.
 
 After you have made the new heap image, the new libraries are in a
 separate directory whose name is derived from the name of the heap
-image.  The "testml" script that you also find here will run the heap
-image and instruct it to look for its libraries in that new library
-directory.
+image.  (Actually, only the directory hierachy is separate, the
+library files themselves are hard links.)  The "testml" script that you
+also find here will run the heap image and instruct it to look for its
+libraries in that new library directory.
 
 "testml" takes the <prefix> of the heap image as its first
 argument. All other arguments are passed verbatim to the ML process.
@@ -182,7 +162,7 @@ argument.  <prefix> defaults to "sml" if no argument is specified.
 "installml" patches the ../../lib/pathconfig file to reflect any
 changes or additions to the path name mapping.
 
-Thus, after a successful CMB.deliver, you should say
+Thus, after a successful CMB.make, you should say
 
 	./makeml
 
@@ -233,6 +213,15 @@ are interested in by auto-loading <arch>-compiler.cm or <arch>-<os>.cm.
 <arch> currently ranges over "alpha32", "hppa", "ppc", "sparc", and "x86.
 <os> can be either "unix" or "macos" or "win32".
 (Obviously, not all combinations are valid.)
+
+Again, as with host-cmb.cm, you can specify the .cm file as an
+argument to the sml command:
+
+    $ sml target-compilers.cm
+
+or
+
+    $ sml alpha32-unix.cm
 
 * Path configuration
 --------------------
@@ -384,7 +373,7 @@ In other words, even if you have n+1 CM description files (1 for the
 library, n for n sub-groups), there will be just one file representing
 the one stable archive (per architecture/os) for the whole thing.  For
 example, I structured the standard basis into one library with two
-sub-groups, but once you compile it (CMB.deliver) there is only one
+sub-groups, but once you compile it (CMB.make) there is only one
 stable file that represents the whole basis library.  If groups were
 allowed to appear in more than one library, then stabilization would
 duplicate the group (its code, its environment data structures, and
@@ -399,39 +388,43 @@ then the the owner will be taken to be the interactive toplevel.
 * Pervasive environment, core environment, the init group "init.cmi"
 -------------------------------------------------------------------------
 
-CMB.make (or CMB.deliver) starts out by building and compiling the
+CMB.make starts out by building and compiling the
 "init group".  This group cannot be described in the "usual" way
 because it uses "magic" in three ways:
  - it is used to later tie in the runtime system
- - it builds the "core" environment
- - it builds the "pervasive" environment
+ - it exports the "core" environment
+ - it exports the "pervasive" environment
 
 The pervasive environment no longer includes the entire basis library
 but only non-modular bindings (top-level bindings of variables and
 types).
 
-CM cannot automatically determine dependencies for the init group
-source files, but it still does use its regular cutoff recompilation
-mechanism.  Therefore, dependencies must be given explicitly.  This is
-done by a special description file which currently lives in
-Init/init.cmi.  See the long comment at the beginning of that file for
-more details.
+CM cannot automatically determine dependencies (or exports) for the
+init group source files, but it still does use its regular cutoff
+recompilation mechanism.  Therefore, dependencies must be given
+explicitly.  This is done by a special description file which
+currently lives in Init/init.cmi.  See the long comment at the
+beginning of that file for more details.
 
 After it is built, init.cmi can be used as an "ordinary" library by
 other libraries.  (This is done, for example, by the implementation of
 the Basis library.)  Access to "init.cmi" is protected by the
-privilege named "primitive".
+privilege named "primitive".  Also, note that the .cmi-file is not
+automatically recognized as as CM description file.  Therefore, it
+must be given an explicit member class:
+
+     init.cmi : cm
 
 * Autoloader
 ------------
 
 The new system heavily relies on the autoloader.  As a result, almost
-no static environments need to get unpickled at bootstap time.  The
+no static environments need to get unpickled at bootstrap time.  The
 construction of such environments is deferred until they become
-necessary.  Because of this, I was able to reduce the size of the heap
-image by more than one megabyte (depending on the architecture).  The
-downside (although not really terribly bad) is that there is a short
-wait when you first touch an identifier that hasn't been touched
+necessary.  Thanks of this, it was possible to reduce the size of the
+heap image by more than one megabyte (depending on the architecture).
+The downside (although not really terribly bad) is that there is a
+short wait when you first touch an identifier that hasn't been touched
 before.  (I acknowledge that the notion of "short" may depend on your
 sense of urgency. :-)
 
@@ -564,7 +557,7 @@ new build/install.sh script for examples of that.)
 
 Don't use relative or absolute pathnames to refer to libraries.  If
 you do it anyway, you'll get an appropriate warning at the time when
-you do CMB.deliver().  If you use relative or absolute pathnames to
+you do CMB.make().  If you use relative or absolute pathnames to
 refer to library B from library A, you will be committed to keeping B
 in the same relative (to A) or absolute location.  This, clearly,
 would be undesirable.

@@ -12,8 +12,6 @@ functor MachDepVCFun (Machm : CODEGENERATOR) : MACHDEP_VC = struct
     structure Compile = CompileF (structure M = Machm
 				  structure CC = BatchConfig)
     structure Binfile = BinfileFun (Compile)
-    structure CMSA = CMSAFun (structure BF = Binfile
-			      structure C = Compile)
     structure Profile = ProfileFn (ProfEnv (Interact))
     structure Machine = Machm.Machine
     val architecture = Machm.architecture

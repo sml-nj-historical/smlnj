@@ -6,23 +6,24 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-functor BootstrapCompileFn (structure MachDepVC : MACHDEP_VC
-			    val os : SMLofNJ.SysInfo.os_kind
-			    val load_plugin : string -> bool) :> sig
-    val make' : string option -> bool
-    val make : unit -> bool
-    val deliver' : string option -> bool
-    val deliver : unit -> bool
-    val reset : unit -> unit
-    val symval : string -> { get: unit -> int option, set: int option -> unit }
-end = struct
-
+local
     structure EM = GenericVC.ErrorMsg
     structure E = GenericVC.Environment
     structure SE = GenericVC.CMStaticEnv
     structure BE = GenericVC.BareEnvironment
     structure PS = GenericVC.PersStamps
     structure CoerceEnv = GenericVC.CoerceEnv
+    structure GG = GroupGraph
+    structure DG = DependencyGraph
+in
+functor BootstrapCompileFn (structure MachDepVC : MACHDEP_VC
+			    val os : SMLofNJ.SysInfo.os_kind
+			    val load_plugin : string -> bool) :> sig
+    val make' : string option -> bool
+    val make : unit -> bool
+    val reset : unit -> unit
+    val symval : string -> { get: unit -> int option, set: int option -> unit }
+end = struct
     structure SSV = SpecificSymValFn (structure MachDepVC = MachDepVC
 				      val os = os)
     structure P = OS.Path
@@ -33,7 +34,7 @@ end = struct
     val osname = FilenamePolicy.kind2name os
     val archos = concat [arch, "-", osname]
 
-    fun init_servers (GroupGraph.GROUP { grouppath, ... }) =
+    fun init_servers (GG.GROUP { grouppath, ... }) =
 	Servers.cmb { archos = archos,
 		      root = SrcPath.descr grouppath }
 
@@ -59,6 +60,8 @@ end = struct
 		     end
 		     val getII = Compile.getII)
 
+    structure VerifyStable = VerStabFn (structure Stabilize = Stabilize)
+
     (* ... and Parse *)
     structure Parse = ParseFn (structure Stabilize = Stabilize
 			       val evictStale = Compile.evictStale
@@ -82,7 +85,7 @@ end = struct
 	MkBootList.group listName g
     end
 
-    fun mk_compile deliver root dbopt = let
+    fun mk_compile { deliver, root, dirbase = dbopt, paranoid } = let
 
 	val dirbase = getOpt (dbopt, BtNames.dirbaseDefault)
 	val pcmodespec = BtNames.pcmodespec
@@ -137,94 +140,131 @@ end = struct
 
 	    val { core = core_n, pervasive = perv_n, others, src } = arg
 
-	    val ovldR = GenericVC.Control.overloadKW
-	    val savedOvld = !ovldR
-	    val _ = ovldR := true
-	    val sbnode = Compile.newSbnodeTraversal ()
+	    fun recompInitGroup () = let
+		val ovldR = GenericVC.Control.overloadKW
+		val savedOvld = !ovldR
+		val _ = ovldR := true
+		val sbnode = Compile.newSbnodeTraversal ()
 
-	    (* here we build a new gp -- the one that uses the freshly
-	     * brewed pervasive env, core env, and primitives *)
-	    val core = valOf (sbnode ginfo_nocore core_n)
-	    val corenv =
-		BE.mkenv { static = CoerceEnv.es2bs (#env (#statenv core ())),
-			   symbolic = #symenv core (),
-			   dynamic = BE.dynamicPart BE.emptyEnv }
+		(* here we build a new gp -- the one that uses the freshly
+		 * brewed pervasive env, core env, and primitives *)
+		val core = valOf (sbnode ginfo_nocore core_n)
+		val corenv =
+		    BE.mkenv { static = CoerceEnv.es2bs
+			                  (#env (#statenv core ())),
+			       symbolic = #symenv core (),
+			       dynamic = emptydyn }
 
-	    (* The following is a bit of a hack (but corenv is a hack anyway):
-	     * As soon as we have core available, we have to patch the
-	     * ginfo to include the correct corenv (because virtually
-	     * everybody else needs access to corenv). *)
+		(* The following is a bit of a hack (but corenv is a hack
+		 * anyway): As soon as we have core available, we have to
+		 * patch the ginfo to include the correct corenv (because
+		 * virtually everybody else needs access to corenv). *)
+		val param = mkParam corenv
+		val ginfo =
+		    { param = param, groupreg = groupreg, errcons = errcons }
+
+		val perv_fsbnode = (NONE, perv_n)
+
+		fun rt n = valOf (sbnode ginfo n)
+		val pervasive = rt perv_n
+
+		fun rt2ie (n, ii: IInfo.info) = let
+		    val bs = CoerceEnv.es2bs (#env (#statenv ii ()))
+		    val (dae, mkDomain) = Statenv2DAEnv.cvt bs
+		in
+		    { ie = ((NONE, n), dae), mkDomain = mkDomain }
+		end
+		
+		fun add_exports (n, exports) = let
+		    val { ie, mkDomain } = rt2ie (n, rt n)
+		    fun ins_ie (sy, m) = SymbolMap.insert (m, sy, ie)
+		in
+		    SymbolSet.foldl ins_ie exports (mkDomain ())
+		end
+
+		val special_exports = let
+		    fun mkie (n, rtn) = #ie (rt2ie (n, rtn))
+		in
+		    foldl SymbolMap.insert' SymbolMap.empty
+		       [(PervCoreAccess.pervStrSym, mkie (perv_n, pervasive)),
+		        (PervCoreAccess.coreStrSym, mkie (core_n, core))]
+		end
+	    in
+		(GG.GROUP { exports = foldl add_exports special_exports others,
+			    kind = GroupGraph.LIB (StringSet.empty, []),
+			    required = StringSet.singleton "primitive",
+			    grouppath = initgspec,
+			    sublibs = [] },
+		 corenv)
+		before (ovldR := savedOvld)
+	    end
+
+	    (* just go and load the stable init group or signal failure *)
+	    fun loadInitGroup () = let
+		val coresym = PervCoreAccess.coreStrSym
+		val lsarg =
+		    { getGroup = fn _ => raise Fail "CMB: initial getGroup",
+		      anyerrors = ref false }
+	    in
+		case Stabilize.loadStable ginfo_nocore lsarg initgspec of
+		    NONE => NONE
+		  | SOME (g as GG.GROUP { exports, ... }) => 
+			(case SymbolMap.find (exports, coresym) of
+			     SOME ((_, DG.SB_BNODE (_, ii)), _) => let
+				 val stat = #env (#statenv ii ())
+				 val sym = #symenv ii ()
+				 val corenv =
+				     BE.mkenv { static = CoerceEnv.es2bs stat,
+					        symbolic = sym,
+						dynamic = emptydyn }
+			     in
+				 SOME (g, corenv)
+			     end
+			   | _ => NONE)
+	    end
+		    
+	    (* Don't try to load the stable init group. Instead, recompile
+	     * directly. *)
+	    fun dontLoadInitGroup () = let
+		val (g0, corenv) = recompInitGroup ()
+		val stabarg = { group = g0, anyerrors = ref false }
+	    in
+		if deliver then
+		    case Stabilize.stabilize ginfo_nocore stabarg of
+			SOME g => (g, corenv)
+		      | NONE => raise Fail "CMB: cannot stabilize init group"
+		else (g0, corenv)
+	    end
+
+	    (* Try loading the init group from the stable file if possible;
+	     * recompile if loading fails *)
+	    fun tryLoadInitGroup () =
+		case loadInitGroup () of
+		    SOME g => g
+		  | NONE => dontLoadInitGroup ()
+			
+	    (* Ok, now, based on "paranoid" and stable verification,
+	     * call the appropriate function(s) to get the init group. *)
+	    val (init_group, corenv) =
+		if paranoid then let
+		    val export_nodes = core_n :: perv_n :: others
+		    val ver_arg = (initgspec, export_nodes, [],
+				   SrcPathSet.empty)
+		    val em = StableMap.empty
+		in
+		    if VerifyStable.verify' ginfo_nocore em ver_arg then
+			tryLoadInitGroup ()
+		    else dontLoadInitGroup ()
+		end
+		else tryLoadInitGroup ()
+
+	    (* now we finally build the real param and ginfo that we can
+	     * use throughout the rest... *)
 	    val param = mkParam corenv
 	    val ginfo =
-		{ param = param, groupreg = groupreg, errcons = errcons }
+		{ param = param, errcons = errcons, groupreg = groupreg }
 
-	    val perv_fsbnode = (NONE, perv_n)
-
-	    fun rt n = valOf (sbnode ginfo n)
-	    val pervasive = rt perv_n
-
-	    fun rt2ie (n, ii: IInfo.info) = let
-		val bs = CoerceEnv.es2bs (#env (#statenv ii ()))
-		val (dae, mkDomain) = Statenv2DAEnv.cvt bs
-	    in
-		{ ie = ((NONE, n), dae), mkDomain = mkDomain }
-	    end
-		
-	    fun add_exports (n, exports) = let
-		val { ie, mkDomain } = rt2ie (n, rt n)
-		fun ins_ie (sy, m) = SymbolMap.insert (m, sy, ie)
-	    in
-		SymbolSet.foldl ins_ie exports (mkDomain ())
-	    end
-
-	    val special_exports = let
-		fun mkie (n, rtn) = #ie (rt2ie (n, rtn))
-	    in
-		foldl SymbolMap.insert' SymbolMap.empty
-		      [(PervCoreAccess.pervStrSym, mkie (perv_n, pervasive)),
-		       (PervCoreAccess.coreStrSym, mkie (core_n, core))]
-	    end
-
-	    val init_group = GroupGraph.GROUP
-		{ exports = foldl add_exports special_exports others,
-		  kind = GroupGraph.LIB (StringSet.empty, []),
-		  required = StringSet.singleton "primitive",
-		  grouppath = initgspec,
-		  sublibs = [] }
-
-	    val _ = ovldR := savedOvld
-
-	    (* At this point we check if there is a usable stable version
-	     * of the init group.  If so, we continue to use that. *)
-	    val (stab, init_group, deliver) = let
-		fun nostabinit () =
-		    if deliver then
-			let val stabarg = { group = init_group,
-					    anyerrors = ref false }
-			in
-			    case Stabilize.stabilize ginfo stabarg of
-				SOME g => (SOME true, g, true)
-			      (* if we cannot stabilize the init group, then
-			       * as a first remedy we turn delivery off *)
-			      | NONE => (NONE, init_group, false)
-			end
-		    else (NONE, init_group, false)
-	    in
-		if VerifyStable.verify ginfo init_group then let
-		    fun load () =
-			Stabilize.loadStable ginfo
-			  { getGroup = fn _ =>
-			       raise Fail "CMB: initial getGroup",
-			    anyerrors = ref false }
-			  initgspec
-		in
-		    case load () of
-			NONE => nostabinit ()
-		      | SOME g =>
-			    (if deliver then SOME true else NONE, g, deliver)
-		end
-		else nostabinit ()
-	    end
+	    val stab = if deliver then SOME true else NONE
 
 	    val gr = GroupReg.new ()
 	    val _ = GroupReg.register gr (initgspec, src)
@@ -236,10 +276,9 @@ end = struct
 		  stabflag = stab,
 		  group = maingspec,
 		  init_group = init_group,
-		  paranoid = true }
+		  paranoid = paranoid }
 	in
 	    Servers.dirbase dirbase;
-	    Parse.reset ();
 	    case Parse.parse parse_arg of
 		NONE => NONE
 	      | SOME (g, gp) => let
@@ -260,7 +299,12 @@ end = struct
 				               stablelibs
 			    fun writeBootList s = let
 				fun wr str = TextIO.output (s, str ^ "\n")
+				val numitems = length bootitems
+				fun biggerlen (s, n) = Int.max (size s, n)
+				val maxlen = foldl biggerlen 0 bootitems
 			    in
+				wr (concat ["%", Int.toString numitems,
+					    " ", Int.toString maxlen]);
 				app wr bootitems
 			    end
 			    fun writePid s i = let
@@ -319,14 +363,16 @@ end = struct
 	  | NONE => NONE
     end
 
-    fun compile deliver dbopt =
-	case mk_compile deliver NONE dbopt of
+    fun compile dbopt =
+	case mk_compile { deliver = true, root = NONE,
+			  dirbase = dbopt, paranoid = true } of
 	    NONE => false
 	  | SOME (_, thunk) => thunk ()
 
     local
 	fun slave (dirbase, root) =
-	    case mk_compile false (SOME root) (SOME dirbase) of
+	    case mk_compile { deliver = false, root = SOME root,
+			      dirbase = SOME dirbase, paranoid = false } of
 		NONE => NONE
 	      | SOME ((g, gp, pcmode), _) => let
 		    val trav = Compile.newSbnodeTraversal () gp
@@ -342,13 +388,8 @@ end = struct
 	(Compile.reset ();
 	 Parse.reset ())
 
-    val make' = compile false
+    val make' = compile
     fun make () = make' NONE
-    fun deliver' arg =
-	SafeIO.perform { openIt = fn () => (),
-			 closeIt = reset,
-			 work = fn () => compile true arg,
-			 cleanup = fn _ => () }
-    fun deliver () = deliver' NONE
     val symval = SSV.symval
 end
+end (* local *)

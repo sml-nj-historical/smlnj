@@ -27,7 +27,7 @@ extern char	*ArenaName[NUM_ARENAS+1];
 int Flip (heap_t *heap, int min_gc_level)
 {
     int		i, j, prevGC, numGCs;
-    Addr_t	totSz, newSz, prevOldSz[NUM_ARENAS], minSize[NUM_ARENAS];
+    Addr_t	newSz, prevOldSz[NUM_ARENAS], minSize[NUM_ARENAS];
     arena_t	*ap;
 
 #ifdef VERBOSE

@@ -11,6 +11,7 @@
 #include "ml-unixdep.h"
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "gen.h"
 #include "gen-unix-signals.h"
 
@@ -82,7 +83,6 @@ sig_info_t *SortSignalTbl ()
     int		    i, j, k, n;
     sig_desc_t	    **signals;
     sig_info_t	    *sigInfo;
-    int		    NumRunTSigs;
 
     signals = NEW_VEC(sig_desc_t *, TABLE_SIZE+NUM_RUN_SIGS);
 

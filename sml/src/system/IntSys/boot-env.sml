@@ -11,4 +11,4 @@ structure BootEnv =
     BootEnvF (datatype envrequest = datatype CM0.envrequest
 	      val architecture = Compiler.architecture
 	      val cminit = CM0.init
-	      val cmbmake = ignore o CMB.deliver' o SOME)
+	      val cmbmake = ignore o CMB.make' o SOME)

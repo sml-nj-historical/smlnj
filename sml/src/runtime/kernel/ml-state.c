@@ -30,10 +30,13 @@ PVT void InitVProcState (vproc_state_t *vsp);
  */
 ml_state_t *AllocMLState (bool_t isBoot, heap_params_t *heapParams)
 {
-    ml_state_t	*msp;
+    ml_state_t	*msp = NIL(ml_state_t *);
+#ifdef MP_SUPPORT
     int		i;
+#endif
 
 #ifdef MP_SUPPORT
+
     for (i = 0; i < MAX_NUM_PROCS; i++) {
 	if (((VProc[i] = NEW_OBJ(vproc_state_t)) == NIL(vproc_state_t *))
 	||  ((msp = NEW_OBJ(ml_state_t)) == NIL(ml_state_t *))) {
@@ -140,8 +143,6 @@ PVT void InitVProcState (vproc_state_t *vsp)
  */
 void InitMLState (ml_state_t *msp)
 {
-    int		i;
-
     msp->ml_storePtr		= ML_unit;
 #ifdef SOFT_POLL
     msp->ml_pollPending		= FALSE;
@@ -161,7 +162,6 @@ void SaveCState (ml_state_t *msp, ...)
     va_list	    ap;
     int		    n, i;
     ml_val_t	    *vp;
-    extern ml_val_t return_a[];
 
     va_start (ap, msp);
     for (n = 0; (vp = va_arg(ap, ml_val_t *)) != NIL(ml_val_t *);  n++)
