@@ -33,9 +33,9 @@ signature MEMBERCOLLECTION = sig
 
     val subgroups : collection -> (AbsPath.t * GroupGraph.group) list
 
-    val num_look : collection -> string -> int
+    val num_look : GeneralParams.info -> collection -> string -> int
+    val cm_look : GeneralParams.info -> collection -> string -> bool
     val ml_look : collection -> symbol -> bool
-    val cm_look : collection -> string -> bool
 end
 
 structure MemberCollection :> MEMBERCOLLECTION = struct
@@ -98,6 +98,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     fun expandOne (gp, rparse) arg = let
 	val primconf = #primconf (#param gp)
 	val { sourcepath, group, class } = arg
+	val class = Option.map (String.map Char.toLower) class
 	val error = GroupReg.error (#groupreg gp) group
 	fun noPrimitive () = let
 	    fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
@@ -171,9 +172,13 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 
     fun subgroups (COLLECTION { subgroups = sg, ... }) = sg
 
-    fun num_look (c: collection) (s: string) = 0
-
-    fun cm_look (c: collection) (s: string) = false
+    local
+	fun symenv_look (gp: GeneralParams.info) (c: collection) s =
+	    SymVal.look (#symenv (#param gp)) s
+    in
+	fun num_look gp c s = getOpt (symenv_look gp c s, 0)
+	fun cm_look gp c s = isSome (symenv_look gp c s)
+    end
 
     fun ml_look (COLLECTION { imports, localdefs, ... }) s =
 	isSome (SymbolMap.find (imports, s)) orelse

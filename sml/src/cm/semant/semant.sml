@@ -70,7 +70,7 @@ signature CM_SEMANT = sig
 
     (* arithmetic (number-valued) expression *)
     val number : int -> aexp
-    val variable : cm_symbol -> aexp
+    val variable : GeneralParams.info -> cm_symbol -> aexp
     val plus : aexp * aexp -> aexp
     val minus : aexp * aexp -> aexp
     val times : aexp * aexp -> aexp
@@ -80,7 +80,7 @@ signature CM_SEMANT = sig
 
     (* (bool-valued) expressions *)
     val ml_defined : ml_symbol -> exp
-    val cm_defined : cm_symbol -> exp
+    val cm_defined : GeneralParams.info -> cm_symbol -> exp
     val conj : exp * exp -> exp
     val disj : exp * exp -> exp
     val beq : exp * exp -> exp
@@ -211,7 +211,7 @@ structure CMSemant :> CM_SEMANT = struct
     fun error_export thunk env = (thunk (); SymbolSet.empty)
 
     fun number i _ = i
-    fun variable v e = MemberCollection.num_look e v
+    fun variable gp v e = MemberCollection.num_look gp e v
     fun plus (e1, e2) e = e1 e + e2 e
     fun minus (e1, e2) e = e1 e - e2 e
     fun times (e1, e2) e = e1 e * e2 e
@@ -220,7 +220,7 @@ structure CMSemant :> CM_SEMANT = struct
     fun negate ex e = ~(ex e)
 
     fun ml_defined s e = MemberCollection.ml_look e s
-    fun cm_defined s e = MemberCollection.cm_look e s
+    fun cm_defined gp s e = MemberCollection.cm_look gp e s
     fun conj (e1, e2) e = e1 e andalso e2 e
     fun disj (e1, e2) e = e1 e orelse e2 e
     fun beq (e1: exp, e2) e = e1 e = e2 e

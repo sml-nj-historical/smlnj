@@ -15,6 +15,8 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
     structure BE = GenericVC.BareEnvironment
     structure PS = GenericVC.PersStamps
     structure CoerceEnv = GenericVC.CoerceEnv
+    structure SSV = SpecificSymValFn (structure MachDepVC = MachDepVC
+				      val os = os)
 
     (* Since the bootstrap compiler never executes any of the code
      * it produces, we don't need any dynamic values.  Therefore,
@@ -95,6 +97,7 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 	val param_nocore = { primconf = primconf,
 			     fnpolicy = fnpolicy,
 			     pcmode = pcmode,
+			     symenv = SSV.env,
 			     keep_going = keep_going,
 			     pervasive = E.emptyEnv,
 			     corenv = BE.staticPart BE.emptyEnv,
@@ -127,6 +130,7 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 	    val param_justcore = { primconf = primconf,
 				   fnpolicy = fnpolicy,
 				   pcmode = pcmode,
+				   symenv = SSV.env,
 				   keep_going = keep_going,
 				   pervasive = E.emptyEnv,
 				   corenv = corenv,
@@ -154,6 +158,7 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 	    val param = { primconf = Primitive.configuration pspecs,
 			  fnpolicy = fnpolicy,
 			  pcmode = pcmode,
+			  symenv = SSV.env,
 			  keep_going = keep_going,
 			  pervasive = E.mkenv { static = #1 (#stat pervasive),
 					        symbolic = #1 (#sym pervasive),

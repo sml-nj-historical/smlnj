@@ -12,6 +12,7 @@ structure GeneralParams = struct
     type param = { primconf : Primitive.configuration,
 		   pcmode : PathConfig.mode,
 		   fnpolicy: FilenamePolicy.policy,
+		   symenv: SymVal.env,
 		   keep_going: bool,
 		   pervasive: GenericVC.Environment.environment,
 		   corenv: GenericVC.BareEnvironment.staticEnv,

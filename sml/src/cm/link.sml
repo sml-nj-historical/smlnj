@@ -16,6 +16,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure S = GenericVC.Symbol
       structure CoerceEnv = GenericVC.CoerceEnv
 
+      val os = SMLofNJ.SysInfo.getOSKind ()
+
+      structure SSV = SpecificSymValFn (structure MachDepVC = HostMachDepVC
+					val os = os)
+
       (* For testing purposes, I need to have access to the old basis
        * library.  This is done via the "primitives" mechanism.  Eventually,
        * the basis will be accessed as a genuine library. The "primitives"
@@ -140,12 +145,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	    val pcmode = PathConfig.hardwire
 		[("smlnj-lib.cm", "/home/blume/ML/current/lib")]
 	    val fnpolicy =
-		FilenamePolicy.colocate { os = SMLofNJ.SysInfo.getOSKind (),
+		FilenamePolicy.colocate { os = os,
 					  arch = HostMachDepVC.architecture }
 	    val keep_going = EnvConfig.getSet StdConfig.keep_going NONE
 	    val param = { primconf = primconf,
 			  fnpolicy = fnpolicy,
 			  pcmode = pcmode,
+			  symenv = SSV.env,
 			  keep_going = keep_going,
 			  pervasive = perv,
 			  corenv = corenv,
@@ -164,7 +170,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
     structure CMB = struct
 	structure BootstrapCompile =
 	    BootstrapCompileFn (structure MachDepVC = HostMachDepVC
-				val os = SMLofNJ.SysInfo.getOSKind ())
+				val os = os)
 	fun make () = let
 	    val res = BootstrapCompile.compile
 		{ binroot = "xxx.bin.xxx",

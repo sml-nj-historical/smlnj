@@ -67,6 +67,8 @@ is
 	main/stdcfg.sml
 	main/general-params.sml
 	main/filename-policy.sml
+	main/symval.sml
+	main/specific-symval-fn.sml
 
 	(* pathname abstraction *)
 	paths/abspath.sml
