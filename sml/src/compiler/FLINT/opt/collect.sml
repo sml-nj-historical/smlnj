@@ -9,10 +9,11 @@ sig
     val collect : FLINT.fundec -> unit
 
     (* query functions *)
-    val recursive : FLINT.lvar -> bool
     val escaping  : FLINT.lvar -> bool	(* non-call uses *)
     val usenb     : FLINT.lvar -> int	(* nb of non-recursive uses *)
-    (* val callnb    : FLINT.lvar -> int *)
+    val called    : FLINT.lvar -> bool	(* known call uses *)
+    val insidep   : FLINT.lvar -> bool	(* are we inside f right now ? *)
+    val recursive : FLINT.lvar -> bool	(* self-recursion test *)
 
     (* inc the "true=call,false=use" count *)
     val use    : bool -> FLINT.lvar -> unit
@@ -26,6 +27,8 @@ sig
     val kill   : FLINT.lvar -> unit
     (* create a new var entry (true=fun, false=other) initialized to zero *)
     val new    : bool -> FLINT.lvar -> unit
+    (* move all the internal counts to external *)
+    val extcounts : FLINT.lvar -> unit
 
     (* when creating a new var.  Used when alpha-renaming *)
     (* val copy   : FLINT.lvar * FLINT.lvar -> unit *)
@@ -158,6 +161,21 @@ fun unuse undertaker call lv =
 	 | Transfer lv => unuse undertaker call lv
     end
 
+fun insidep lv =
+    case get lv
+     of Fun{inside=ref x,...} => x
+      | Var us => false
+      | Transfer lv => (say "\nCollect insidep on transfer"; insidep lv)
+
+(* move internal counts to external *)
+fun extcounts lv =
+    case get lv
+     of Fun{iuses,euses,icalls,ecalls,...}
+	=> (euses := !euses + !iuses; iuses := 0;
+	    ecalls := !ecalls + !icalls; icalls := 0)
+      | Var us => ()
+      | Transfer lv => (say "\nCollect extcounts on transfer"; extcounts lv)
+
 fun usenb lv     = case get lv of (Fun{euses=uses,...} | Var uses) => !uses
 				| Transfer _ => 0
 fun used lv      = usenb lv > 0
@@ -170,6 +188,12 @@ fun escaping lv =
 	=> !euses + !iuses > !ecalls + !icalls
       | Var us => !us > 0 (* arbitrary, but I opted for the "safe" choice *)
       | Transfer lv => (say "\nCollect escaping on transfer"; escaping lv)
+
+fun called lv =
+    case get lv
+     of Fun{icalls,ecalls,...} => !ecalls + !icalls > 0
+      | Var us => false (* arbitrary, but consistent with escaping *)
+      | Transfer lv => (say "\nCollect escaping on transfer"; called lv)
 
 (* census of the internal part *)    
 fun inside f thunk =

@@ -1,4 +1,19 @@
+1998-10-28  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* opt/fcontract.sml (inline): do simple inlining only for non-isrec
+	  functions (to ensure we never silently turn external uses into internal
+	  uses) and correspondingly change the agressive inlining to inline
+	  non-inlinable functions as long as its their last use.
+	(dropargs): new functions to drop unused arguments.
+	  
+
 1998-10-27  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* opt/optutils.sml: trying to reuse code between fixfix and fcontract.
+
+	* opt/collect.sml (called): added for eta-expand.
+
+	* opt/fcontract.sml (inline): allow single inlining of FK_FCT.
 
 	* lsplit/ls-inline.sml: don't call lcontract anymore.
 

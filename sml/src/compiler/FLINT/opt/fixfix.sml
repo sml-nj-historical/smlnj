@@ -28,8 +28,8 @@ local
     structure S = IntSetF
     structure M = IntmapF
     structure PP = PPFlint
-    structure LK = LtyKernel
     structure LT = LtyExtern
+    structure OU = OptUtils
 in
 
 val say = Control.Print.say
@@ -127,21 +127,7 @@ fun fexp (fv,lexp) = let
 
 	    (* create the new fkinds *)
 	    val (fty,rtys') = getrtypes(args, NONE)
-	    val (nfk,nfk') =
-		case fk
-		 of F.FK_FCT => (F.FK_FCT, F.FK_FCT)
-		  | F.FK_FUN {isrec,known,fixed,inline} =>
-		    let val fixed' =
-			    case fixed
-			     of LK.FF_VAR(f1,f2) => LK.FF_VAR(true, f2)
-			      | LK.FF_FIXED => LK.FF_FIXED
-(*  			val rtys = Option.map (fn lty => #2(LT.ltd_fkfun lty)) *)
-(*  					      fty *)
-		    in (F.FK_FUN{isrec=isrec, known=known,
-			      fixed=fixed, inline=true},
-			F.FK_FUN{isrec=rtys', known=true,
-			      fixed=fixed', inline=inline})
-		    end
+	    val (nfk,nfk') = OU.fk_wrap(fk, rtys')
 
 	    (* funarg renaming *)
 	    fun newargs fargs = map (fn (a,t) => (cplv a,t)) fargs

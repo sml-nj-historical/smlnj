@@ -612,7 +612,7 @@ in
           val ne = transform (ienv, d, ltfg, tcfg, d, false) e
           val hdr = chkOutEscs (ienv, map #1 vts)
           val nfdec = (fk, f, vts, hdr ne) before (cleanUp())
-       in if (num_click()) > 0 then LContract.lcontract nfdec
+       in if (num_click()) > 0 then (*  LContract.lcontract *) nfdec
           (* if we did specialize, we run a round of lcontract on the result *)
           else nfdec
       end

@@ -8,6 +8,8 @@ SML=sml.$(HEAP_SUFFIX)
 BINDIR=bin.$(BINDIR_SUFFIX)
 MLCMD=CMB.make()
 
+default: $(SML)
+
 $(BINDIR).new:
 	if [ -d $(BINDIR) ]; then \
 	    mv $(BINDIR) $(BINDIR).new && mv $(BINDIR).old $(BINDIR) ;\

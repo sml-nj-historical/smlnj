@@ -23,7 +23,7 @@ val say = Control.Print.say
 
 fun phase x = Stats.doPhase (Stats.makePhase x)
 
-val lcontract = phase "Compiler 052 lcontract" LContract.lcontract 
+(*  val lcontract = phase "Compiler 052 lcontract" LContract.lcontract  *)
 val fcontract = phase "Compiler 052 fcontract" FContract.contract
 val specialize= phase "Compiler 053 specialize" Specialize.specialize
 val wrapping  = phase "Compiler 054 wrapping" Wrapping.wrapping
@@ -92,7 +92,7 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
        * r:boot		whether it has gone through reify yet
        * l:string	last phase through which it went *)
       fun runphase (p as "fcontract",(f,r,l)) = (fcontract f, r, p)
-	| runphase (p as "lcontract",(f,r,l)) = (lcontract f, r, p)
+(*  	| runphase (p as "lcontract",(f,r,l)) = (lcontract f, r, p) *)
 	| runphase (p as "fixfix",(f,r,l)) = (fixfix f, r, p)
 	| runphase (p as "wrap",(f,false,l)) = (wrapping f, false, p)
 	| runphase (p as "specialize",(f,false,l)) = (specialize f, false, p)
@@ -101,7 +101,9 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	(* pseudo FLINT phases *)
 	| runphase ("id",(f,r,l)) = (f,r,l)
 	| runphase (p as "print",(f,r,l)) =
-	  (say("\n[ After "^l^"... ]\n"); PPFlint.printFundec f; (f,r,l))
+	  (say("\n[ After "^l^"... ]\n\n");
+	   PPFlint.printFundec f; (f,r,l)
+	   before say "\n")
 	| runphase ("check",(f,r,l)) =
 	  (check (ChkFlint.checkTop, PPFlint.printFundec, "FLINT")
 		 (ref true, r, l) f; (f,r,l))
@@ -113,10 +115,14 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
       fun print (f,r,l) = (prF l f; (f, r, l))
       fun check (f,r,l) = (chkF (r, l) f; (f, r, l))
 
+      fun runphase' (arg as (_,{1=f,...})) = ((runphase arg)
+				 handle x => (dumpTerm(PPFlint.printFundec,"FLINT.bug", f); raise x))
+
       (* the "id" phases is just added to do the print/check at the entrance *)
-      val (flint,true,_) = foldl (check o print o runphase)
-				 (flint,false,"flintnm")
-				 ("id" :: !CTRL.phases)
+      val (flint,r,_) = foldl (check o print o runphase')
+			      (flint,false,"flintnm")
+			      ("id" :: !CTRL.phases)
+      val flint = if r then flint else (say "\n!!Forgot reify!!\n"; reify flint)
 
 (*        val _ = (chkF (false,"1") o prF "Translation/Normalization") flint *)
 (*        val flint = (chkF (false,"2") o prF "Fcontract" o fcontract) flint *)

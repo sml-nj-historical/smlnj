@@ -22,6 +22,7 @@ end
  * - elimination of Con(Decon x)
  * - update counts when selecting a SWITCH alternative
  * - contracting RECORD(R.1,R.2) => R  (only if the type is easily available)
+ * - dropping of arguments
  *)
 
 (* things that lcontract.sml does that fcontract doesn't do (yet):
@@ -39,7 +40,6 @@ end
  * - Handler operations
  * - primops expressions
  * - branch expressions
- * - dropping of arguments
  *)
 
 (* things that could also be added:
@@ -159,6 +159,7 @@ local
     structure PP = PPFlint
     structure FU = FlintUtil
     structure LT = LtyExtern
+    structure OU = OptUtils
     structure CTRL = Control.FLINT
 in
 
@@ -226,7 +227,8 @@ fun cexp (cfg as (d,od)) ifs m le = let
 	  | Con{1=lv,...} | Select{1=lv,...} | Var{1=lv,...}) => F.VAR lv
 	  | Val v => v
 			 
-    fun val2sval m (F.VAR ov) = lookup m ov
+    fun val2sval m (F.VAR ov) = 
+	((lookup m ov) handle x => (PP.printSval(F.VAR ov); raise x))
       | val2sval m v = Val v
 
     fun bugsv (msg,sv) = bugval(msg, sval2val sv)
@@ -288,6 +290,12 @@ fun cexp (cfg as (d,od)) ifs m le = let
 	(s, Access.EXN(Access.LVAR(substvar lv)), lty)
       | cdcon dc = dc
 
+    fun isrec (F.FK_FCT | F.FK_FUN{isrec=NONE,...}) = false
+      | isrec _ = true
+
+    fun inlinable F.FK_FCT = false
+      | inlinable (F.FK_FUN{inline,...}) = inline
+
     (* F.APP inlining (if any)
      * `ifs' is the set of function we are currently inlining
      * `f' is the function, `vs' its arguments.
@@ -297,9 +305,13 @@ fun cexp (cfg as (d,od)) ifs m le = let
      *)
     fun inline ifs (f,vs) =
 	case ((val2sval m f) handle x => raise x)
-	 of Fun(g,body,args,F.FK_FUN{isrec,inline,...},od) =>
+	 of Fun(g,body,args,fk,od) =>
 	    (ASSERT(C.usenb g > 0, "C.usenb g > 0");
-	     if C.usenb g = 1 andalso od = d andalso not (C.recursive g)
+	     (* if a function is mutually recursive with one of the
+	      * functions inside which we are, inlining it will turn
+	      * extrnal uses in internal ones.  The 'body move' optimization
+	      * used below cannot be used in such a case *)
+	     if C.usenb g = 1 andalso od = d andalso not (isrec fk)
 							 
 	     (* simple inlining:  we should copy the body and then
 	      * kill the function, but instead we just move the body
@@ -316,17 +328,21 @@ fun cexp (cfg as (d,od)) ifs m le = let
 	      * mutually recursive with its main function.  On another hand,
 	      * self recursion (C.recursive) is too dangerous to be inlined
 	      * except for loop unrolling which we don't support yet *)
-	     else if inline andalso od = d andalso not(S.member ifs g) then
-		 let val nle = FU.copy M.empty (F.LET(map #1 args, F.RET vs, body))
+	     else if ((inlinable fk orelse
+		       (C.usenb g = 1 andalso not (C.recursive g)))
+			  andalso od = d andalso not(S.member ifs g)) then
+		 let val nle =
+			 FU.copy M.empty (F.LET(map #1 args, F.RET vs, body))
 		     val _ = if C.recursive g then
 			 (say "\n inlining recursive function ";
-			      PP.printSval (F.VAR g)) else ()
+			  PP.printSval (F.VAR g)) else ()
 		 in C.uselexp nle;
 		     app (unuseval (undertake m)) vs;
-		     C.unuse (undertake m) true g;
+		     (* FIXME: this `unuse' can lead to bogus counts if we
+		      * currently are in a function mutually recursive with g *)
+		      if isrec fk then () else C.unuse (undertake m) true g;
 		     (SOME(nle, od), S.add(g, ifs))
 		 end
-
 	     else (NONE, ifs))
 	  | sv => (NONE, ifs)
 in
@@ -480,13 +496,42 @@ in
 			   C.transfer(f,g); C.unuse (undertake nm) true g;
 			   (addbind(nm, f, svg),f::hs)
 		       end
+		       (* the default case could ensure the inline *)
 		       else (m, hs)
 		    end
 		else (m, hs)
 	      | ceta (_,(m,hs)) = (m, hs)
 
+	    (* add droparg wrapper if useful *)
+	    fun dropargs (f as (fk,g,args,body):F.fundec,fs) =
+		case fk
+		 of F.FK_FCT => f::fs (* we can't make inlinable fcts *)
+		  | F.FK_FUN{inline=true,...} => f::fs (* no use *)
+		  | fk as F.FK_FUN{isrec,...} =>
+		    let val used = map (fn (v,t) => (C.usenb v > 0)) args
+		    (* if all args are used, there's nothing we can do *)
+		    in if List.all OU.id used then f::fs else
+			let fun filter xs = OU.filter(used, xs)
+			    val ng = cplv g
+			    val _ = (C.new true ng; C.use true ng; C.extcounts g)
+			    val nargs = map (fn (v,t) => (cplv v, t)) args
+			    val _ = app (fn (v,t) =>
+					 (C.new false v; C.use false v))
+					nargs
+			    val appargs = (map (F.VAR o #1) nargs)
+			    val (nfk,nfk') = OU.fk_wrap(fk, isrec)
+			    val nf = (nfk, g, nargs,
+				      F.APP(F.VAR ng, filter appargs))
+			    val nf' = (nfk', ng, filter args, body)
+			in nf'::nf::fs
+			end
+		    end
+
 	    (* junk unused funs *)
 	    val fs = List.filter (used o #2) fs
+
+	    (* add wrappers to drop unused arguments *)
+	    val fs = foldl dropargs [] fs
 
 	    (* register the new bindings (uncontracted for now) *)
 	    val nm = foldl (fn (fdec as (fk,f,args,body),m) =>
@@ -508,7 +553,16 @@ in
 	    (* junk newly unused funs *)
 	    val fs = List.filter (used o #2) fs
 	in
-	    if List.null fs then nle else F.FIX(fs,nle)
+	    case fs
+	     of [] => nle
+	      | [f1 as (F.FK_FUN{isrec=NONE,...},f,args,F.APP _),f2] =>
+		(* gross hack: dropargs might have added a second
+		 * non-recursive function.  we need to split them into
+		 * 2 FIXes.  This is very ad-hoc *)
+		F.FIX([f2], F.FIX([f1], nle))
+	      | (F.FK_FUN{isrec=NONE,...},f,args,body)::_::_ =>
+		bug "gross hack failed"
+	      | _ => F.FIX(fs, nle)
 	end
 	    
       | F.APP (f,vs) =>
