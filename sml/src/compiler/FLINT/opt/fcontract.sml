@@ -180,7 +180,7 @@ struct
 local
     structure F  = FLINT
     structure M  = IntBinaryMap
-    structure S  = IntSetF
+    structure S  = IntBinarySet
     structure C  = Collect
     structure O  = Option
     structure DI = DebIndex
@@ -388,7 +388,7 @@ fun contract {etaSplit,tfnInline} (fdec as (_,f,_,_)) = let
 	if (C.unuse true (C.get lv)) then undertake m lv else ()
 
 
-    fun addbind (m,lv,sv) = M.add(m, lv, sv)
+    fun addbind (m,lv,sv) = M.insert(m, lv, sv)
 
     (* substitute a value sv for a variable lv and unuse value v. *)
     fun substitute (m, lv1, sv, v) =
@@ -540,7 +540,7 @@ fun fcFix (fs,le) =
 			* Temporarily remove f's definition from the
 			* environment while we're rebuilding it to avoid
 			* nasty problems. *)
-		       val nbody = fcexp (S.add(f, ifs))
+		       val nbody = fcexp (S.add(ifs, f))
 					 (addbind(nm, f, Var(f, NONE)))
 					 body #2
 		       (* if inlining took place, the body might be completely
@@ -741,17 +741,17 @@ fun fcApp (f,vs) =
 		       (*  say("copyinline "^(C.LVarString g)^"\n"); *)
 		       (app (unuseval m) vs);
 		       unusecall m g;
-		       fcexp (S.add(g, ifs)) m nle cont
+		       fcexp (S.add(ifs, g)) m nle cont
 		   end
 
-	   in if C.usenb gi = 1 andalso not(S.member ifs g) then simpleinline()
+	   in if C.usenb gi = 1 andalso not(S.member(ifs, g)) then simpleinline()
 	      else case inline of
 		  F.IH_SAFE => noinline()
 		| F.IH_UNROLL => noinline()
 		| F.IH_ALWAYS =>
-		  if S.member ifs g then noinline() else copyinline()
+		  if S.member(ifs, g) then noinline() else copyinline()
 		| F.IH_MAYBE(min,ws) =>
-		  if S.member ifs g then noinline() else let
+		  if S.member(ifs, g) then noinline() else let
 		      fun value w _ (Val _ | Con _ | Record _) = w
 			| value w v (Fun (f,_,args,_,_)) =
 			  if C.usenb(C.get v) = 1 then w * 2 else w
@@ -818,14 +818,14 @@ fun fcTapp (f,tycs) =
 		       click_copyinline();
 		       (*  say("copyinline "^(C.LVarString g)^"\n"); *)
 		       unusecall m g;
-		       fcexp (S.add(g, ifs)) m nle cont
+		       fcexp (S.add(ifs, g)) m nle cont
 		   end
 
-	   in if C.usenb gi = 1 andalso not(S.member ifs g)
+	   in if C.usenb gi = 1 andalso not(S.member(ifs, g))
 	      then noinline() (* simpleinline() *)
 	      else case inline of
 		  F.IH_ALWAYS =>
-		  if S.member ifs g then noinline() else copyinline()
+		  if S.member(ifs, g) then noinline() else copyinline()
 		| _ => noinline()
 	   end
 	 | sv => noinline()

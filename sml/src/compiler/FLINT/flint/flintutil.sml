@@ -22,11 +22,11 @@ sig
    * free variables remain unchanged except for the renaming specified
    * in the first (types) and second (values) argument *)
   val copy : (FLINT.tvar * FLINT.tyc) list ->
-             FLINT.lvar IntmapF.intmap ->
+             FLINT.lvar IntBinaryMap.map ->
              FLINT.lexp -> FLINT.lexp
   val copyfdec : FLINT.fundec -> FLINT.fundec
 
-  val freevars : FLINT.lexp -> IntSetF.intset
+  val freevars : FLINT.lexp -> IntBinarySet.set
 
   val dcon_eq : FLINT.dcon * FLINT.dcon -> bool
 
@@ -40,10 +40,10 @@ local structure EM = ErrorMsg
       structure LT = LtyExtern
       structure PO = PrimOp
       structure DA = Access
-      structure M  = IntmapF
+      structure M  = IntBinaryMap
       structure A  = Access
       structure O  = Option
-      structure S  = IntSetF
+      structure S  = IntBinarySet
       structure F  = FLINT
       open FLINT
 in 
@@ -103,13 +103,13 @@ fun copy ta alpha le = let
     val tc_subst = LT.tc_nvar_subst_gen()
     val lt_subst = LT.lt_nvar_subst_gen()
 
-    val tmap_sort = Sort.sort (fn ((v1,_),(v2,_)) => v1 > v2)
+    val tmap_sort = ListMergeSort.sort (fn ((v1,_),(v2,_)) => v1 > v2)
 
-    fun substvar alpha lv = ((M.lookup alpha lv) handle M.IntmapF => lv)
+    fun substvar alpha lv = case M.find(alpha,lv) of SOME(lv) => lv | NOE => lv
     fun substval alpha (VAR lv) = VAR(substvar alpha lv)
       | substval alpha v = v
     fun newv (lv,alpha) =
-	let val nlv = cplv lv in (nlv, M.add(alpha,lv,nlv)) end
+	let val nlv = cplv lv in (nlv, M.insert(alpha,lv,nlv)) end
     fun newvs (lvs,alpha) =
 	foldr (fn (lv,(lvs,alpha)) =>
 	       let val (nlv,nalpha) = newv(lv,alpha) in (nlv::lvs,nalpha) end)
@@ -214,10 +214,10 @@ fun copyfdec fdec =
 fun freevars lexp = let
     val loop = freevars
 
-    fun addv (s,F.VAR lv) = S.add(lv, s)
+    fun addv (s,F.VAR lv) = S.add(s, lv)
       | addv (s,_) = s
     fun addvs (s,vs) = foldl (fn (v,s) => addv(s, v)) s vs
-    fun rmvs (s,lvs) = foldl S.rmv s lvs
+    fun rmvs (s,lvs) = foldl (fn (l,s) => S.delete (s, l)) s lvs
     fun singleton (F.VAR v) = S.singleton v
       | singleton _ = S.empty
 			  
@@ -237,27 +237,27 @@ in case lexp
 		   (loop le) fdecs),
 	    map #2 fdecs)
      | F.APP (f,args) => addvs(S.empty, f::args)
-     | F.TFN ((tfk,f,args,body),le) => S.union(S.rmv(f, loop le), loop body)
+     | F.TFN ((tfk,f,args,body),le) => S.union(S.delete(loop le, f), loop body)
      | F.TAPP (f,args) => singleton f
      | F.SWITCH (v,ac,arms,def) =>
        let fun farm ((dc,le),fv) =
 	       let val fvle = loop le
 	       in S.union(fv,
 			  case dc
-			   of F.DATAcon(dc,_,lv) => fdcon(S.rmv(lv, fvle),dc)
+			   of F.DATAcon(dc,_,lv) => fdcon(S.delete(fvle, lv),dc)
 			    | _ => fvle)
 	       end
 	   val fvs = case def of NONE => singleton v
 			       | SOME le => addv(loop le, v)
        in foldl farm fvs arms
        end
-     | F.CON (dc,tycs,v,lv,le) => fdcon(addv(S.rmv(lv, loop le), v),dc)
-     | F.RECORD (rk,vs,lv,le) => addvs(S.rmv(lv, loop le), vs)
-     | F.SELECT (v,i,lv,le) => addv(S.rmv(lv, loop le), v)
+     | F.CON (dc,tycs,v,lv,le) => fdcon(addv(S.delete(loop le, lv), v),dc)
+     | F.RECORD (rk,vs,lv,le) => addvs(S.delete(loop le, lv), vs)
+     | F.SELECT (v,i,lv,le) => addv(S.delete(loop le, lv), v)
      | F.RAISE (v,ltys) => singleton v
      | F.HANDLE (le,v) => addv(loop le, v)
      | F.BRANCH (po,vs,le1,le2) => fpo(addvs(S.union(loop le1, loop le2), vs), po)
-     | F.PRIMOP (po,vs,lv,le) => fpo(addvs(S.rmv(lv, loop le), vs),po)
+     | F.PRIMOP (po,vs,lv,le) => fpo(addvs(S.delete(loop le, lv), vs),po)
 end
 
 end (* top-level local *)

@@ -534,14 +534,14 @@ fun twrap_gen bbb =
 (************************************************************************
  *            SUBSTITION OF NAMED VARS IN A TYC/LTY                     *
  ************************************************************************)
-structure LtDict = BinaryDict
+structure LtDict = BinaryMapFn
                        (struct
                            type ord_key = lty
-                           val cmpKey = LtyKernel.lt_cmp
+                           val compare = LtyKernel.lt_cmp
                        end)
 
 fun tc_nvar_elim_gen() = let
-    val dict = ref (TcDict.mkDict())
+    val dict = ref (TcDict.empty)
 
     fun tc_nvar_elim s d tyc = 
         case LK.tc_nvars tyc of
@@ -552,7 +552,7 @@ fun tc_nvar_elim_gen() = let
          * using tcc_proj *)
         val tycdepth = tcc_proj (tyc, d)
     in
-        case TcDict.peek(!dict, tycdepth) of
+        case TcDict.find(!dict, tycdepth) of
             SOME t => t                 (* hit! *)
           | NONE => let                 (* must recompute *)
                 val r = tc_nvar_elim s d (* default recursive invoc. *)
@@ -605,7 +605,7 @@ in
 end
 
 fun lt_nvar_elim_gen() = let
-    val dict = ref (LtDict.mkDict())
+    val dict = ref (LtDict.empty)
     val tc_nvar_elim = tc_nvar_elim_gen()
 
     fun lt_nvar_elim s d lty = 
@@ -617,7 +617,7 @@ fun lt_nvar_elim_gen() = let
          * (only first 2 args are useful) *)
         val ltydepth = lt_inj (LK.LT_ENV (lty, d, 0, LK.initTycEnv))
     in
-        case LtDict.peek(!dict, ltydepth) of
+        case LtDict.find(!dict, ltydepth) of
             SOME t => t                 (* hit! *)
           | NONE => let                 (* must recompute *)
                 val r = lt_nvar_elim s d (* default recursive invoc. *)
@@ -672,7 +672,7 @@ fun searchSubst (tv:tvar, s) =
     end
             
 fun tc_nvar_subst_gen() = let
-    val dict = ref (TcDict.mkDict())
+    val dict = ref (TcDict.empty)
 
     fun tc_nvar_subst subst = let
         fun loop tyc =
@@ -681,7 +681,7 @@ fun tc_nvar_subst_gen() = let
              false => tyc               (* nothing to subst *)
            | true => 
              (* next check the memoization table *)
-             (case TcDict.peek(!dict, tyc) of
+             (case TcDict.find(!dict, tyc) of
                   SOME t => t           (* hit! *)
                 | NONE => 
               let                       (* must recompute *)
@@ -736,7 +736,7 @@ in tc_nvar_subst
 end (* tc_nvar_subst_gen *)
 
 fun lt_nvar_subst_gen() = let
-    val dict = ref (LtDict.mkDict())
+    val dict = ref (LtDict.empty)
     val tc_nvar_subst' = tc_nvar_subst_gen()
 
     fun lt_nvar_subst subst = let
@@ -748,7 +748,7 @@ fun lt_nvar_subst_gen() = let
              false => lty                  (* nothing to subst *)
            | true => 
              (* next check the memoization table *)
-             (case LtDict.peek(!dict, lty) of
+             (case LtDict.find(!dict, lty) of
                   SOME t => t           (* hit! *)
                 | NONE => 
               let                       (* must recompute *)
@@ -802,7 +802,7 @@ fun intersect(nil, _:tvar list) = nil
 (* val s_nvars = Stats.makeStat "Cvt free nvars length" *)
 
 fun tc_nvar_cvt_gen() = let
-    val dict = ref (TcDict.mkDict())
+    val dict = ref (TcDict.empty)
 
     fun tc_nvar_cvt (tvoffs:tvoffs) d tyc = 
         ((* Stats.addStat s_iter 1; *)
@@ -819,7 +819,7 @@ fun tc_nvar_cvt_gen() = let
          * using tcc_proj *)
         val tycdepth = tcc_proj (tyc, d)
     in
-        case TcDict.peek(!dict, tycdepth) of
+        case TcDict.find(!dict, tycdepth) of
             SOME t => ((* Stats.addStat s_hits 1; *)
                        t                 (* hit! *)
                        )
@@ -876,7 +876,7 @@ end (* tc_nvar_cvt_gen *)
 
 
 fun lt_nvar_cvt_gen() = let
-    val dict = ref (LtDict.mkDict())
+    val dict = ref (LtDict.empty)
     val tc_nvar_cvt = tc_nvar_cvt_gen()
 
     fun lt_nvar_cvt tvoffs d lty = 
@@ -889,7 +889,7 @@ fun lt_nvar_cvt_gen() = let
          * (only first 2 args are useful) *)
         val ltydepth = lt_inj (LK.LT_ENV (lty, d, 0, LK.initTycEnv))
     in
-        case LtDict.peek(!dict, ltydepth) of
+        case LtDict.find(!dict, ltydepth) of
             SOME t => t                 (* hit! *)
           | NONE => let                 (* must recompute *)
                 val r = lt_nvar_cvt tvoffs d (* default recursive invoc. *)
@@ -930,7 +930,7 @@ fun lt_nvpoly(tvks, lt) =
 		
 	val (ks, tvoffs) = frob (tvks, 0, [], [])
 	fun cmp ((tvar1,_), (tvar2,_)) = tvar1 > tvar2
-	val tvoffs = Sort.sort cmp tvoffs
+	val tvoffs = ListMergeSort.sort cmp tvoffs
 			       
 	(* temporarily gen() *)
 	val ltSubst = lt_nvar_cvt_gen() tvoffs (DI.next DI.top)

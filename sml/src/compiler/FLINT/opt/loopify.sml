@@ -13,7 +13,7 @@ local
     structure F  = FLINT
     structure O  = Option
     structure M  = IntBinaryMap
-    structure S  = IntSetF
+    structure S  = IntBinarySet
     structure OU = OptUtils
     structure LK = LtyKernel
     structure CTRL = FLINT_Control
@@ -58,7 +58,7 @@ in case le
        let val I{tcp,calls,icalls,...} = new(f, known, p)
 	   val _ = loop le
 	   val necalls = length(!calls)
-       in  collect f (if !tcp then S.add(f,tfs) else S.singleton f) body;
+       in  collect f (if !tcp then S.add(tfs, f) else S.singleton f) body;
 	   icalls := List.take(!calls, length(!calls) - necalls)
        end
      | F.FIX(fdecs,le) =>
@@ -76,9 +76,9 @@ in case le
        end
      | F.APP(F.VAR f,vs) =>
        (let val I{tails,calls,tcp,parent,...} = get f
-       in if S.member tfs f then tails := vs::(!tails)
+       in if S.member(tfs, f) then tails := vs::(!tails)
 	  else (calls := vs::(!calls);
-		if S.member tfs parent then () else tcp := false)
+		if S.member(tfs, parent) then () else tcp := false)
        end handle NotFound => ())
      | F.TFN((_,_,_,body),le) => (collect p S.empty body; loop le)
      | F.TAPP _ => ()
@@ -222,7 +222,7 @@ in case le
 	      of SOME(fl, filt) =>
 		   F.APP(F.VAR fl, OU.filter filt vs)
                | NONE => le
-            (*esac*))
+            (*esac*)))
      | F.TFN((tfk,f,args,body),le) => F.TFN((tfk, f, args, loop body), loop le)
      | F.TAPP(f,tycs) => le
      | F.SWITCH(v,ac,arms,def) =>

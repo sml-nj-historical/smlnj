@@ -21,7 +21,7 @@ local structure DA = Access
       structure DI = DebIndex
       structure F  = FLINT
       structure FU = FlintUtil
-      structure M  = IntmapF
+      structure M  = IntBinaryMap
 
       open CPS 
 in
@@ -412,7 +412,7 @@ fun convert fdec =
 				 (vl,
 				  FIX([(KNOWN_TAIL, f', vl', cl',
 					(* add the function to the tail map *)
-					loop' (M.add(m,f,f')) (e, kont))],
+					loop' (M.insert(m,f,f')) (e, kont))],
 				      APP(VAR f', map VAR (tl vl))))
 			     end
 			      | _ => (k::(map #1 vts), loop(e, kont))
@@ -422,16 +422,16 @@ fun convert fdec =
 	    end
           | F.APP(f as F.VAR lv, vs) =>
 	    (* first check if it's a recursive call to a tail loop *)
-	    (let val f' = M.lookup m lv
-	    in APP(VAR f', lpvars vs)
-	    end handle M.IntmapF =>
-		     (* code for the non-tail case.
-		      * Sadly this is *not* exceptional *)
-		     let val (hdr, F) = preventEta c
-			 val vf = lpvar f
-			 val ul = lpvars vs
-		     in hdr(APP(vf, F::ul))
-		     end)
+	    (case M.find(m, lv)
+	      of SOME f' => APP(VAR f', lpvars vs)
+	       | NONE =>
+		 (* code for the non-tail case.
+		  * Sadly this is *not* exceptional *)
+		 let val (hdr, F) = preventEta c
+		     val vf = lpvar f
+		     val ul = lpvars vs
+		 in hdr(APP(vf, F::ul))
+		 end)
           | F.APP _ => bug "unexpected APP in convert"
      	  
           | (F.TFN _ | F.TAPP _) => 

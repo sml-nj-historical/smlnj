@@ -356,24 +356,24 @@ fun addsmap (tvks, ts, smap) =
         fun select ((tvar,tkind),tyc) = (tvar,tyc)
         val tvtcs = ListPair.map select (tvks, ts)
         fun cmp ((tvar1,_), (tvar2,_)) = tvar1 > tvar2
-        val tvtcs = Sort.sort cmp tvtcs
+        val tvtcs = ListMergeSort.sort cmp tvtcs
     in
         mergesmaps (tvtcs, smap)
     end
 (***** end of the substitution intmapf hack *********************)
 
 (***** the nvar-depth intmapf: named variable -> DI.depth *********)
-type nmap = DI.depth IntmapF.intmap
-val initnmap = IntmapF.empty
+type nmap = DI.depth IntBinaryMap.map
+val initnmap = IntBinaryMap.empty
 fun addnmap (tvks, d, nmap) = 
   let fun h ((tv,_)::xs, nmap) = 
-           h(xs, IntmapF.add(nmap, tv, d))
+           h(xs, IntBinaryMap.insert(nmap, tv, d))
         | h ([], nmap) = nmap
    in h(tvks, nmap)
   end 
 fun looknmap nmap nvar = 
-    ((IntmapF.lookup nmap nvar) handle IntmapF.IntmapF => 
-     bug "unexpected case in looknmap")
+    case IntBinaryMap.find(nmap, nvar) of SOME d => d | NONE => DI.top
+     (*  bug "unexpected case in looknmap") *)
 (***** end of the substitution intmapf hack *********************)
 
 fun phase x = Stats.doPhase (Stats.makePhase x)

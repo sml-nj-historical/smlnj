@@ -5,7 +5,7 @@ smlnj-lib.cm		../smlnj-lib/Util
 comp-lib.cm		../comp-lib
 ml-yacc-lib.cm		../ml-yacc/lib
 viscomp-lib.cm		../compiler
-cm-lib.cm		../new-cm
+cm-lib.cm		../cm
 MLRISC.cm		../MLRISC
 intsys.cm		IntSys
 target-compilers.cm	TargetCompilers
