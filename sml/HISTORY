@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/01/22
+Tag: blume-20020122-x86-ccalls
+Description:
+
+Bug fix for c-calls on x86 (having to do with how char- and
+short-arguments are being handled).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/01/21
 Tag: blume-20020121-ff
 Description:

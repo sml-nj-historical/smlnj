@@ -358,7 +358,9 @@ struct
 	    (*esac*))
         in pad16 sz + argsSz(rest)
         end
-      | argsSz(ty::rest) = sizeOf(ty)+argsSz(rest)
+      | argsSz(ty::rest) =
+	(* remember that char and short get promoted... *)
+	Int.max(sizeOf(ty),4)+argsSz(rest)
       | argsSz [] = 0
 
     
