@@ -1,3 +1,10 @@
+(*
+ * Implementation of environments for CM "preprocessor" variables.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 signature SYMVAL = sig
 
     type env

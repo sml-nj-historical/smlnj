@@ -1,3 +1,10 @@
+(*
+ * Building a host/OS-specific environments for CM "preprocessor" variables.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 functor SpecificSymValFn (structure MachDepVC: MACHDEP_VC
 			  val os: SMLofNJ.SysInfo.os_kind) =
     struct
