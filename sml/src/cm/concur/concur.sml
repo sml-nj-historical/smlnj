@@ -39,6 +39,9 @@ signature CONCUR = sig
 
     (* forget all waiting threads and input conditions *)
     val reset : unit -> unit
+
+    (* check whether there are any (other) runable tasks... *)
+    val noTasks : unit -> bool
 end
 
 structure Concur :> CONCUR = struct
@@ -71,6 +74,8 @@ structure Concur :> CONCUR = struct
     val inputs = ref ([]: (unit cond * OS.IO.poll_desc) list)
 
     fun reset () = (runable := []; inputs := [])
+
+    fun noTasks () = List.null (!runable)
 
     (* we heavily favor non-I/O conditions, but that's ok for our purposes *)
 

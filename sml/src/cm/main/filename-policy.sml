@@ -15,17 +15,19 @@ signature FILENAMEPOLICY = sig
 
     val mkBinName : policy -> SrcPath.t -> string
     val mkSkelName : policy -> SrcPath.t -> string
-    val mkStableName : policy -> SrcPath.t -> string
+    val mkStableName : policy -> SrcPath.t * Version.t option -> string
 
     val kind2name : SMLofNJ.SysInfo.os_kind -> string
 end
 
 functor FilenamePolicyFn (val cmdir : string
+			  val versiondir: Version.t -> string
 			  val skeldir : string) :> FILENAMEPOLICY = struct
 
-    type converter = SrcPath.t -> string
+    type policy = { bin: SrcPath.t -> string,
+		    skel: SrcPath.t -> string,
+		    stable: SrcPath.t * Version.t option -> string }
 
-    type policy = { bin: converter, skel: converter, stable: converter }
     type policyMaker = { arch: string, os: SMLofNJ.SysInfo.os_kind } -> policy
 
     fun kind2name SMLofNJ.SysInfo.BEOS = "beos"
@@ -34,22 +36,35 @@ functor FilenamePolicyFn (val cmdir : string
       | kind2name SMLofNJ.SysInfo.UNIX = "unix"
       | kind2name SMLofNJ.SysInfo.WIN32 = "win32"
 
-    fun mkPolicy (shiftbin, shiftstable) { arch, os } = let
-	fun cmname d s = let
+    fun mkPolicy (shiftbin, shiftstable, ignoreversion) { arch, os } = let
+	fun cmname dl s = let
 	    val { dir = d0, file = f } = OS.Path.splitDirFile s
 	    val d1 = OS.Path.joinDirFile { dir = d0, file = cmdir }
-	    val d2 = OS.Path.joinDirFile { dir = d1, file = d }
+	    fun subDir (sd, d) = OS.Path.joinDirFile { dir = d, file = sd }
+	    val d2 = foldl subDir d1 dl
 	in
 	    OS.Path.joinDirFile { dir = d2, file = f }
 	end
 	val archos = concat [arch, "-", kind2name os]
+	val stable0 = cmname [archos] o shiftstable
+	val stable =
+	    if ignoreversion then stable0 o #1
+	    else (fn (s, NONE) => stable0 s
+		   | (s, SOME v) => let
+			 val try =
+			     cmname [versiondir v, archos] (shiftstable s)
+			 val exists =
+			     OS.FileSys.access (try, []) handle _ => false
+		     in
+			 if exists then try else stable0 s
+		     end)
     in
-	{ skel = cmname skeldir o SrcPath.osstring,
-	  bin = cmname archos o shiftbin,
-	  stable = cmname archos o shiftstable }
+	{ skel = cmname [skeldir] o SrcPath.osstring,
+	  bin = cmname [archos] o shiftbin,
+	  stable = stable }
     end
 
-    val colocate = mkPolicy (SrcPath.osstring, SrcPath.osstring)
+    val colocate = mkPolicy (SrcPath.osstring, SrcPath.osstring, false)
 
     fun separate { bindir, bootdir } = let
 	fun shiftname root p =
@@ -59,13 +74,14 @@ functor FilenamePolicyFn (val cmdir : string
 				  " is not an anchored path!\n"];
 			 raise Fail "bad path")
     in
-	mkPolicy (shiftname bindir, shiftname bootdir)
+	mkPolicy (shiftname bindir, shiftname bootdir, true)
     end
 
     fun mkBinName (p: policy) s = #bin p s
     fun mkSkelName (p: policy) s = #skel p s
-    fun mkStableName (p: policy) s = #stable p s
+    fun mkStableName (p: policy) (s, v) = #stable p (s, v)
 end
 
 structure FilenamePolicy =
-    FilenamePolicyFn (val cmdir = "CM" val skeldir = "SKEL")
+    FilenamePolicyFn (val cmdir = "CM" val skeldir = "SKEL"
+		      val versiondir = Version.toString)

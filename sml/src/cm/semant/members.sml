@@ -23,9 +23,9 @@ signature MEMBERCOLLECTION = sig
     val implicit : GroupGraph.group -> collection
 
     val expandOne :
-	GeneralParams.info *
-	(SrcPath.t -> GroupGraph.group) *
-	(SrcPath.context -> string -> bool)
+	{ gp: GeneralParams.info,
+	  rparse: SrcPath.t * Version.t option -> GroupGraph.group,
+	  load_plugin: SrcPath.context -> string -> bool }
 	-> { name: string,
 	     mkpath: string -> SrcPath.t,
 	     group: SrcPath.t * region,
@@ -54,6 +54,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     structure E = GenericVC.Environment
     structure SS = SymbolSet
     structure GG = GroupGraph
+    structure V = Version
 
     type smlinfo = SmlInfo.info
     type symbol = Symbol.symbol
@@ -133,7 +134,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	end
       | sequential _ = ERRORCOLLECTION
 
-    fun expandOne (gp, rparse, load_plugin) arg = let
+    fun expandOne { gp, rparse, load_plugin } arg = let
 	val { name, mkpath, group, class, tooloptions, context } = arg
 	val class = Option.map (String.map Char.toLower) class
 	val error = GroupReg.error (#groupreg gp) group
@@ -144,13 +145,28 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 				  spec = (name, mkpath, class, tooloptions),
 				  context = context,
 				  load_plugin = load_plugin }
-	fun g_coll p =
-	    case rparse p of
+	fun g_coll (p, v) =
+	    case rparse (p, v) of
 		g as GG.GROUP { exports = i, kind, required,
 				grouppath, sublibs } => let
-		    val gi =
-			case kind of GG.NOLIB _ => i | _ => SymbolMap.empty
+		    val (gi, ver) =
+			case kind of
+			    GG.NOLIB _ => (i, NONE)
+			  | GG.LIB l => (SymbolMap.empty, #version l)
 		in
+		    case (v, ver) of
+			(NONE, _) => ()
+		      | (SOME vrq, NONE) =>
+			e0 "library does not carry a version stamp"
+		      | (SOME vrq, SOME ver) =>
+			(case V.compare (vrq, ver) of
+			     GREATER => e0 "library is older than expected"
+			   | EQUAL => ()
+			   | LESS =>
+			     (case V.compare (V.nextMajor vrq, ver) of
+				  GREATER =>
+				   w0 "library is slightly newer than expected"
+				| _ => e0 "library is newer than expected"));
 		    COLLECTION { imports = i, gimports = gi, smlfiles = [],
 				 localdefs = SymbolMap.empty,
 				 subgroups = [(p, g)],

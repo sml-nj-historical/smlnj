@@ -7,6 +7,8 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 
+structure S = CMSemant
+
 type svalue = Tokens.svalue
 type pos = int
 
@@ -64,8 +66,8 @@ val ml_ids = [("structure", Tokens.STRUCTURE),
 	      ("funsig", Tokens.FUNSIG)]
 
 val pp_ids = [("defined", Tokens.DEFINED),
-	      ("div", Tokens.DIV),
-	      ("mod", Tokens.MOD),
+	      ("div", fn (x, y) => Tokens.MULSYM (S.DIV, x, y)),
+	      ("mod", fn (x, y) => Tokens.MULSYM (S.MOD, x, y)),
 	      ("andalso", Tokens.ANDALSO),
 	      ("orelse", Tokens.ORELSE),
 	      ("not", Tokens.NOT)]
@@ -195,19 +197,19 @@ sharp="#";
 <INITIAL,P>"("		=> (Tokens.LPAREN (yypos, yypos + 1));
 <INITIAL,P>")"		=> (Tokens.RPAREN (yypos, yypos + 1));
 <INITIAL>":"		=> (Tokens.COLON (yypos, yypos + 1));
-<P>"+"		        => (Tokens.PLUS (yypos, yypos + 1));
-<P>"-"		        => (Tokens.MINUS (yypos, yypos + 1));
-<P>"*"		        => (Tokens.TIMES (yypos, yypos + 1));
-<P>"<>"		        => (Tokens.NE (yypos, yypos + 2));
+<P>"+"		        => (Tokens.ADDSYM (S.PLUS, yypos, yypos + 1));
+<P>"-"		        => (Tokens.ADDSYM (S.MINUS, yypos, yypos + 1));
+<P>"*"		        => (Tokens.MULSYM (S.TIMES, yypos, yypos + 1));
+<P>"<>"		        => (Tokens.EQSYM (S.NE, yypos, yypos + 2));
 <P>"!="                 => (obsolete (yypos, yypos + 2);
-			    Tokens.NE (yypos, yypos+2));
-<P>"<="		        => (Tokens.LE (yypos, yypos + 2));
-<P>"<"		        => (Tokens.LT (yypos, yypos + 1));
-<P>">="		        => (Tokens.GE (yypos, yypos + 2));
-<P>">"		        => (Tokens.GT (yypos, yypos + 1));
+			    Tokens.EQSYM (S.NE, yypos, yypos+2));
+<P>"<="		        => (Tokens.INEQSYM (S.LE, yypos, yypos + 2));
+<P>"<"		        => (Tokens.INEQSYM (S.LT, yypos, yypos + 1));
+<P>">="		        => (Tokens.INEQSYM (S.GE, yypos, yypos + 2));
+<P>">"		        => (Tokens.INEQSYM (S.GT, yypos, yypos + 1));
 <P>"=="                 => (obsolete (yypos, yypos + 2);
-			    Tokens.EQ (yypos, yypos + 2));
-<P>"="		        => (Tokens.EQ (yypos, yypos + 1));
+			    Tokens.EQSYM (S.EQ, yypos, yypos + 2));
+<P>"="		        => (Tokens.EQSYM (S.EQ, yypos, yypos + 1));
 <P>"~"		        => (Tokens.TILDE (yypos, yypos + 1));
 
 <P>{digit}+	        => (Tokens.NUMBER
@@ -221,9 +223,9 @@ sharp="#";
 <P>{id}                 => (idToken (yytext, yypos, pp_ids, Tokens.CM_ID,
 				     fn () => YYBEGIN PM));
 <P>"/"                  => (obsolete (yypos, yypos + 1);
-			    Tokens.DIV (yypos, yypos + 1));
+			    Tokens.MULSYM (S.DIV, yypos, yypos + 1));
 <P>"%"                  => (obsolete (yypos, yypos + 1);
-			    Tokens.MOD (yypos, yypos + 1));
+			    Tokens.MULSYM (S.MOD, yypos, yypos + 1));
 <P>"&&"                 => (obsolete (yypos, yypos + 2);
 			    Tokens.ANDALSO (yypos, yypos + 2));
 <P>"||"                 => (obsolete (yypos, yypos + 2);

@@ -28,6 +28,9 @@ signature SERVERS = sig
      * SafeIO.perform. *)
     val reset : bool -> unit
 
+    (* check whether all servers are currently idle *)
+    val allIdle : unit -> bool
+
     (* signal all servers that future cmb calls use a different dirbase *)
     val dirbase : string -> unit
 
@@ -37,8 +40,11 @@ signature SERVERS = sig
     (* signal all servers that we are starting with a new .cm file *)
     val cm : { archos: string, project: string } -> unit
 
-    (* signal all servers that we are starting with a new CMB.make *)
+    (* signal all servers that we are doing another part of a CMB.make *)
     val cmb : { archos: string, root: string } -> unit
+
+    (* signal all servers that we are starting with a brand-new CMB.make *)
+    val cmb_new : { archos: string } -> unit
 
     (* schedule a compilation *)
     val compile : string -> bool

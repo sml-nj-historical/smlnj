@@ -13,6 +13,58 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/04/30 01:00:00 JST
+Tag: blume-20000430-versions
+Description:
+
+1. CM version numbering added.  This is an implementation of Lal's
+   proposal for adding version numbers and version checking to .cm
+   files.  Lal said that his proposal was just that -- a proposal.
+   For the time being I went ahead and implemented it so that people
+   can comment on it.  Everything is completely backward-compatible
+   (except for the stable library format, i.e., new bootfiles!).
+
+   As usual, see the CM manual for details.
+
+2. An alternative syntax for anchored paths has been implemented.
+   Dave has recently voiced the same concerns that I had when I did
+   this, so there should be some support.  My take is that eventually
+   I will let support for the current syntax (where anchors are
+   "implicit") fade out in favor of the new, explicit syntax.
+   In order to be backward-compatible, both old and new syntax are
+   currently supported.
+
+   Again, see the CM manual for details.
+
+3. Parallel make is trying to be slightly smarter:  When the master
+   process finds a "bottleneck", i.e., when there is only one
+   compilation unit that can be compiled and everybody else is
+   waiting on it, then it will simply compile it directly instead
+   of clumsily telling one of the slaves to do it.
+
+4. Support for "unsharing" added.  This is necessary in order to be
+   able to have two different versions of the same library running
+   at the same time (e.g., for trying out a new MLRISC while still
+   having the old MLRISC linked into the current compiler, etc.)
+   See the CM manual.
+
+5. Simple "makedepend" functionality added for generating Makefile
+   dependency information.  (This is rather crude at the moment.
+   Expect some changes here in the future.)
+
+6. ".fun" added as a recognized suffix for ML files. Also documented
+   explicitly in the manual that the fallback behavior (unknown suffix
+   -> ML file) is not an official feature!
+
+7. Small changes to the pickler for stable libraries.
+
+8. Several internal changes to CM (for cleanup/improvement).
+
+
+!!!! NEW BINFILES !!!!
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/04/28 17:30:00 JST
 Tag: blume-20000428-pathconfig
 Description:

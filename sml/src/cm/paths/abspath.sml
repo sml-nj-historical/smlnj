@@ -298,22 +298,37 @@ structure AbsPath :> ABSPATH = struct
 		fresh (context,
 		       P.toString { isAbs = false, vol = "",
 				    arcs = map transl arcs })
+
+	    fun anchored (a, arcs, otherwise) =
+		case PathConfig.configAnchor mode a of
+		    NONE => otherwise ()
+		  | SOME fetch => let
+			val anchorcontext =
+			    CONFIG_ANCHOR { fetch = fetch,
+					    cache = ref NONE,
+					    config_name = a }
+		    in
+			mk (arcs, anchorcontext)
+		    end
 	in
 	    case String.fields delim spec of
 		[""] => impossible "AbsPath.standard: zero-length name"
 	      | "" :: arcs => mk (arcs, ROOT "")
 	      | [] => impossible "AbsPath.standard: no fields"
-	      | arcs as (arc1 :: _) =>
-		    (case PathConfig.configAnchor mode arc1 of
-			 NONE => mk (arcs, context)
-		       | SOME fetch => let
-			     val anchorcontext =
-				 CONFIG_ANCHOR { fetch = fetch,
-						 cache = ref NONE,
-						 config_name = arc1 }
-			 in
-			     mk (arcs, anchorcontext)
-			 end)
+	      | ["$"] => raise BadAnchor ""
+	      | "$" :: "" :: _ => raise BadAnchor ""
+	      (* $-anchored paths using default anchor... *)
+	      | "$" :: (arcs as (arc1 :: _)) =>
+		anchored (arc1, arcs, fn () => raise BadAnchor arc1)
+	      | arcs as (arc1 :: arcn) =>
+		(if String.sub (arc1, 0) = #"$" then
+		     (* $-anchored paths with specified anchor *)
+		     let val a = String.extract (arc1, 1, NONE)
+			 val arcn = case arcn of [] => [a] | _ => arcn
+		     in
+			 anchored (a, arcn, fn () => raise BadAnchor a)
+		     end
+		 else anchored (arc1, arcs, fn () => mk (arcs, context)))
 	end
 
 	(* make a pickle-string *)

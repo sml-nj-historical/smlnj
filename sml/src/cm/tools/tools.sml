@@ -45,7 +45,7 @@ signature CORETOOLS = sig
     (* The goal of applying tools to members is to obtain an "expansion",
      * i.e., a list of ML-files and a list of .cm-files. *)
     type expansion = { smlfiles: (srcpath * Sharing.request) list,
-		       cmfiles: srcpath list }
+		       cmfiles: (srcpath * Version.t option) list }
 
     (* A partial expansion is an expansion with a list of things yet to be
      * expanded... *)
@@ -164,7 +164,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
     type spec = string * pathmaker * class option * toolopts option
 
     type expansion = { smlfiles: (srcpath * Sharing.request) list,
-		       cmfiles: srcpath list }
+		       cmfiles: (srcpath * Version.t option) list }
 
     type partial_expansion = expansion * spec list
 
@@ -271,10 +271,21 @@ structure PrivateTools :> PRIVATETOOLS = struct
     in
 	({ smlfiles = [(mkpath name, srq)], cmfiles = [] }, [])
     end
-    fun cmrule { spec = (name, mkpath, _, NONE), context, mkNativePath } =
-	({ smlfiles = [], cmfiles = [mkpath name] }, [])
-      | cmrule _ = raise ToolError { tool = "cm",
-				     msg = "superfluous option specified" }
+    fun cmrule { spec = (name, mkpath, _, oto), context, mkNativePath } =
+	let fun err m = raise ToolError { tool = "cm", msg = m }
+	    val vrq =
+		case oto of
+		    NONE => NONE
+		  | SOME [] => NONE
+		  | SOME [SUBOPTS { name = "version",
+				    opts = [STRING { name, ... }] }] =>
+		    (case Version.fromString name of
+			 NONE => err "ill-formed version specification"
+		       | SOME v => SOME v)
+		  | _ => err "unknown option"
+	in
+	    ({ smlfiles = [], cmfiles = [(mkpath name, vrq)] }, [])
+	end
 
     fun expand { error, spec, context, load_plugin } = let
 	fun mkNativePath s = SrcPath.native { context = context, spec = s }

@@ -117,8 +117,6 @@ end = struct
 
     fun mk_compile { deliver, root, dirbase = dbopt, paranoid } = let
 
-	val _ = StabModmap.reset ()
-
 	val dirbase = getOpt (dbopt, BtNames.dirbaseDefault)
 	val _ = checkDirbase dirbase
 	val pcmodespec = BtNames.pcmodespec
@@ -205,8 +203,10 @@ end = struct
 		end
 	    in
 		GG.GROUP { exports = foldl add_exports special_exports others,
-			   kind = GroupGraph.LIB { wrapped = StringSet.empty,
+			   kind = GG.LIB {
+			     kind = GG.DEVELOPED { wrapped = StringSet.empty,
 						   subgroups = [] },
+				version = NONE },
 			   required = StringSet.singleton "primitive",
 			   grouppath = initgspec,
 			   sublibs = [] }
@@ -219,7 +219,7 @@ end = struct
 		    { getGroup = fn _ => raise Fail "CMB: initial getGroup",
 		      anyerrors = ref false }
 	    in
-		case Stabilize.loadStable ginfo lsarg initgspec of
+		case Stabilize.loadStable ginfo lsarg (initgspec, NONE) of
 		    NONE => NONE
 		  | SOME (g as GG.GROUP { exports, ... }) => SOME g
 		  | SOME GG.ERRORGROUP => NONE
@@ -251,7 +251,7 @@ end = struct
 		if paranoid then let
 		    val export_nodes = perv_n :: others
 		    val ver_arg = (initgspec, export_nodes, [],
-				   SrcPathSet.empty)
+				   SrcPathSet.empty, NONE)
 		    val em = StableMap.empty
 		in
 		    if VerifyStable.verify' ginfo em ver_arg then
@@ -276,6 +276,7 @@ end = struct
 		  paranoid = paranoid }
 	in
 	    Servers.dirbase dirbase;
+	    Servers.cmb_new { archos = archos };
 	    case Parse.parse parse_arg of
 		NONE => NONE
 	      | SOME (g, gp) => let
@@ -361,13 +362,15 @@ end = struct
     end
 
     fun compile dbopt =
-	case mk_compile { deliver = true, root = NONE,
-			  dirbase = dbopt, paranoid = true } of
-	    NONE => false
-	  | SOME (_, thunk) => thunk ()
+	(StabModmap.reset ();
+	 case mk_compile { deliver = true, root = NONE,
+			   dirbase = dbopt, paranoid = true } of
+	     NONE => false
+	   | SOME (_, thunk) => thunk ())
 
     local
-	fun slave (dirbase, root) =
+	fun slave NONE = (StabModmap.reset (); NONE)
+	  | slave (SOME (dirbase, root)) =
 	    case mk_compile { deliver = false, root = SOME root,
 			      dirbase = SOME dirbase, paranoid = false } of
 		NONE => NONE

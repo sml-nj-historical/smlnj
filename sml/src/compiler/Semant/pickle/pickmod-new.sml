@@ -37,7 +37,7 @@ signature PICKMOD = sig
     datatype context =
 	INITIAL of ModuleId.tmap
       | REHASH of PersStamps.persstamp
-      | LIBRARY of ((string list * Symbol.symbol) option * ModuleId.tmap) list
+      | LIBRARY of ((int * Symbol.symbol) option * ModuleId.tmap) list
 
     type map
     val emptyMap : map
@@ -77,7 +77,7 @@ in
     datatype context =
 	INITIAL of ModuleId.tmap
       | REHASH of PersStamps.persstamp
-      | LIBRARY of ((string list * Symbol.symbol) option * ModuleId.tmap) list
+      | LIBRARY of ((int * Symbol.symbol) option * ModuleId.tmap) list
 
     (* to gather some statistics... *)
     val addPickles = Stats.addStat (Stats.makeStat "Pickle Bytes")
@@ -714,7 +714,7 @@ in
 		  | (SOME stb, ownerOf) => [pid (ownerOf stb)]
 	    else []
 
-	fun libModSpec lms = option (pair (list string, symbol)) lms
+	fun libModSpec lms = option (pair (int, symbol)) lms
 
 	val stampConverter = Stamps.newConverter ()
 

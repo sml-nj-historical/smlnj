@@ -13,6 +13,7 @@ signature CM_SEMANT = sig
     type ml_symbol
     type cm_symbol
     type cm_class
+    type cm_version = Version.t
 
     type group = GroupGraph.group
 
@@ -28,8 +29,10 @@ signature CM_SEMANT = sig
 
     (* getting elements of primitive types (pathnames and symbols) *)
     val file_native : string * context -> pathname
-    val file_standard : GeneralParams.info -> string * context -> pathname
+    val file_standard :
+	GeneralParams.info -> string * context * complainer -> pathname
     val cm_symbol : string -> cm_symbol
+    val cm_version : string * complainer -> cm_version
     val ml_structure : string -> ml_symbol
     val ml_signature : string -> ml_symbol
     val ml_functor : string -> ml_symbol
@@ -37,16 +40,22 @@ signature CM_SEMANT = sig
     val class : cm_symbol -> cm_class
 
     (* getting the full analysis for a group/library *)
-    val group :
-	pathname * privilegespec * exports option * members *
-	GeneralParams.info * pathname option * pathname option * complainer *
-	GroupGraph.group		(* init group *)
-	-> group
-    val library :
-	pathname * privilegespec * exports * members *
-	GeneralParams.info *
-	GroupGraph.group		(* init group *)
-	-> group
+    val group : { path: pathname,
+		  privileges: privilegespec,
+		  exports: exports option,
+		  members: members,
+		  gp: GeneralParams.info,
+		  curlib: pathname option,
+		  owner: pathname option,
+		  error: complainer,
+		  initgroup: group } -> group
+    val library : { path: pathname,
+		    privileges: privilegespec,
+		    exports: exports,
+		    version : cm_version option,
+		    members: members,
+		    gp: GeneralParams.info,
+		    initgroup: group } -> group
 
     (* assembling privilege lists *)
     val initialPrivilegeSpec : privilegespec
@@ -56,8 +65,9 @@ signature CM_SEMANT = sig
     (* constructing member collections *)
     val emptyMembers : members
     val member :
-	GeneralParams.info * (pathname option -> pathname -> group) *
-	                     (SrcPath.context -> string -> bool)
+	{ gp: GeneralParams.info,
+	  rparse: pathname option -> pathname * Version.t option -> group,
+	  load_plugin: SrcPath.context -> string -> bool }
 	-> { name: string,
 	     mkpath: string -> pathname,
 	     group: pathname * region,
@@ -78,14 +88,32 @@ signature CM_SEMANT = sig
 	exp * (exports * exports) * (string -> unit) -> exports
     val error_export : (unit -> unit) -> exports
 
+    (* groups of operator symbols (to make grammar smaller) *)
+    type addsym
+    val PLUS : addsym
+    val MINUS : addsym
+    
+    type mulsym
+    val TIMES : mulsym
+    val DIV : mulsym
+    val MOD : mulsym
+
+    type eqsym
+    val EQ : eqsym
+    val NE : eqsym
+
+    type ineqsym
+    val GT : ineqsym
+    val GE : ineqsym
+    val LT : ineqsym
+    val LE : ineqsym
+
     (* arithmetic (number-valued) expression *)
     val number : int -> aexp
     val variable : GeneralParams.info -> cm_symbol -> aexp
-    val plus : aexp * aexp -> aexp
-    val minus : aexp * aexp -> aexp
-    val times : aexp * aexp -> aexp
-    val divide : aexp * aexp -> aexp
-    val modulus : aexp * aexp -> aexp
+    val add : aexp * addsym * aexp -> aexp
+    val mul : aexp * mulsym * aexp -> aexp
+    val sign : addsym * aexp -> aexp
     val negate : aexp -> aexp
 
     (* (bool-valued) expressions *)
@@ -93,15 +121,10 @@ signature CM_SEMANT = sig
     val cm_defined : GeneralParams.info -> cm_symbol -> exp
     val conj : exp * exp -> exp
     val disj : exp * exp -> exp
-    val beq : exp * exp -> exp
-    val bne : exp * exp -> exp
+    val beq : exp * eqsym * exp -> exp
     val not : exp -> exp
-    val lt : aexp * aexp -> exp
-    val le : aexp * aexp -> exp
-    val gt : aexp * aexp -> exp
-    val ge : aexp * aexp -> exp
-    val eq : aexp * aexp -> exp
-    val ne : aexp * aexp -> exp
+    val ineq : aexp * ineqsym * aexp -> exp
+    val eq : aexp * eqsym * aexp -> exp
 
     (* tool options *)
     val string : { name: string, mkpath: string -> pathname } -> toolopt
@@ -120,6 +143,7 @@ structure CMSemant :> CM_SEMANT = struct
     type ml_symbol = Symbol.symbol
     type cm_symbol = string
     type cm_class = string
+    type cm_version = Version.t
 
     type group = GG.group
     type privilegespec = { required: GG.privileges, wrapped: GG.privileges }
@@ -142,9 +166,19 @@ structure CMSemant :> CM_SEMANT = struct
 	     false)
 
     fun file_native (s, d) = SrcPath.native { context = d, spec = s }
-    fun file_standard (gp: GeneralParams.info) (s, d) =
+    fun file_standard (gp: GeneralParams.info) (s, d, err) =
 	SrcPath.standard (#pcmode (#param gp)) { context = d, spec = s }
+	handle SrcPath.BadAnchor "" =>
+	       (err "invalid empty anchor in path name"; file_native (s, d))
+	     | SrcPath.BadAnchor a =>
+	       (err (concat ["invalid anchor `", a, "' in path name"]);
+		file_native (s, d))
+		
     fun cm_symbol s = s
+    fun cm_version (s, error) =
+	case Version.fromString s of
+	    SOME v => v
+	  | NONE => (error "ill-formed version specification"; Version.zero)
     val ml_structure = Symbol.strSymbol
     val ml_signature = Symbol.sigSymbol
     val ml_functor = Symbol.fctSymbol
@@ -167,15 +201,45 @@ structure CMSemant :> CM_SEMANT = struct
 	foldl oneSG [] subgroups
     end
 
-    fun grouplib (isgroup, g, p, e, m, gp, curlib, init_group) = let
-	val mc = applyTo (MemberCollection.implicit init_group, curlib) m
+    fun group arg = let
+	val { path = g, privileges = p, exports = e, members = m,
+	      gp, curlib, owner, error, initgroup } = arg
+	val mc = applyTo (MemberCollection.implicit initgroup, curlib) m
 	val filter = Option.map (applyTo mc) e
 	val pfsbn = let
 	    val { exports, ... } =
-		case init_group of
+		case initgroup of
 		    GG.GROUP x => x
 		  | GG.ERRORGROUP =>
-		    EM.impossible "semant.sml: grouplib: bad init group"
+		    EM.impossible "semant.sml: group: bad init group"
+	in
+	    #1 (valOf (SymbolMap.find (exports, PervAccess.pervStrSym)))
+	end
+	val (exports, rp) = MemberCollection.build (mc, filter, gp, pfsbn)
+	val subgroups = MemberCollection.subgroups mc
+	val { required = rp', wrapped = wr } = p
+	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
+    in
+	if StringSet.isEmpty wr then ()
+	else EM.impossible "group with wrapped privileges";
+	GG.GROUP { exports = exports,
+		   kind = GG.NOLIB { subgroups = subgroups, owner = owner },
+		   required = rp'',
+		   grouppath = g,
+		   sublibs = sgl2sll subgroups }
+    end
+
+    fun library arg = let
+	val { path = g, privileges = p, exports = e, members = m,
+	      version, gp, initgroup } = arg
+	val mc = applyTo (MemberCollection.implicit initgroup, SOME g) m
+	val filter = SOME (applyTo mc e)
+	val pfsbn = let
+	    val { exports, ... } =
+		case initgroup of
+		    GG.GROUP x => x
+		  | GG.ERRORGROUP =>
+		    EM.impossible "semant.sml: lib: bad init group"
 	in
 	    #1 (valOf (SymbolMap.find (exports, PervAccess.pervStrSym)))
 	end
@@ -185,24 +249,13 @@ structure CMSemant :> CM_SEMANT = struct
 	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
     in
 	GG.GROUP { exports = exports,
-		   kind = case isgroup of
-			      NONE => GG.LIB { wrapped = wr,
-					       subgroups = subgroups }
-			    | SOME owner => 
-			      (if StringSet.isEmpty wr then ()
-			       else EM.impossible
-					"group with wrapped privilege";
-					GG.NOLIB { subgroups = subgroups,
-						   owner = owner }),
+		   kind = GG.LIB { version = version,
+				   kind = GG.DEVELOPED { subgroups = subgroups,
+							 wrapped = wr } },
 		   required = rp'',
 		   grouppath = g,
 		   sublibs = sgl2sll subgroups }
     end
-
-    fun group (g, p, e, m, gp, curlib, owner, error, init_group) =
-	grouplib (SOME owner, g, p, e, m, gp, curlib, init_group)
-    fun library (g, p, e, m, gp, init_group) =
-	grouplib (NONE, g, p, SOME e, m, gp, SOME g, init_group)
 
     local
 	val isMember = StringSet.member
@@ -222,8 +275,11 @@ structure CMSemant :> CM_SEMANT = struct
     end
 
     fun emptyMembers (env, _) = env
-    fun member (gp, rparse, ldpi) arg (env, curlib) = let
-	val coll = MemberCollection.expandOne (gp, rparse curlib, ldpi) arg
+    fun member { gp, rparse, load_plugin } arg (env, curlib) = let
+	val coll = MemberCollection.expandOne
+		       { gp = gp, rparse = rparse curlib,
+			 load_plugin = load_plugin }
+		       arg
 	val group = #group arg
 	val error = GroupReg.error (#groupreg gp) group
 	fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
@@ -261,28 +317,35 @@ structure CMSemant :> CM_SEMANT = struct
 	if saveEval (c, env, error) then e1 env else e2 env
     fun error_export thunk env = (thunk (); SymbolSet.empty)
 
+    datatype addsym = PLUS | MINUS
+    datatype mulsym = TIMES | DIV | MOD
+    datatype eqsym = EQ | NE
+    datatype ineqsym = GT | GE | LT | LE
+
     fun number i _ = i
     fun variable gp v e = MemberCollection.num_look gp e v
-    fun plus (e1, e2) e = e1 e + e2 e
-    fun minus (e1, e2) e = e1 e - e2 e
-    fun times (e1, e2) e = e1 e * e2 e
-    fun divide (e1, e2) e = e1 e div e2 e
-    fun modulus (e1, e2) e = e1 e mod e2 e
+    fun add (e1, PLUS, e2) e = e1 e + e2 e
+      | add (e1, MINUS, e2) e = e1 e - e2 e
+    fun mul (e1, TIMES, e2) e = e1 e * e2 e
+      | mul (e1, DIV, e2) e = e1 e div e2 e
+      | mul (e1, MOD, e2) e = e1 e mod e2 e
+    fun sign (PLUS, ex) e = ex e
+      | sign (MINUS, ex) e = ~(ex e)
     fun negate ex e = ~(ex e)
 
     fun ml_defined s e = MemberCollection.ml_look e s
     fun cm_defined gp s e = MemberCollection.cm_look gp e s
     fun conj (e1, e2) e = e1 e andalso e2 e
     fun disj (e1, e2) e = e1 e orelse e2 e
-    fun beq (e1: exp, e2) e = e1 e = e2 e
-    fun bne (e1: exp, e2) e = e1 e <> e2 e
+    fun beq (e1: exp, EQ, e2) e = e1 e = e2 e
+      | beq (e1, NE, e2) e = e1 e <> e2 e
     fun not ex e = Bool.not (ex e)
-    fun lt (e1, e2) e = e1 e < e2 e
-    fun le (e1, e2) e = e1 e <= e2 e
-    fun gt (e1, e2) e = e1 e > e2 e
-    fun ge (e1, e2) e = e1 e >= e2 e
-    fun eq (e1: aexp, e2) e = e1 e = e2 e
-    fun ne (e1: aexp, e2) e = e1 e <> e2 e
+    fun ineq (e1, LT, e2) e = e1 e < e2 e
+      | ineq (e1, LE, e2) e = e1 e <= e2 e
+      | ineq (e1, GT, e2) e = e1 e > e2 e
+      | ineq (e1, GE, e2) e = e1 e >= e2 e
+    fun eq (e1: aexp, EQ, e2) e = e1 e = e2 e
+      | eq (e1, NE, e2) e = e1 e <> e2 e
 
     val string = PrivateTools.STRING
     val subopts = PrivateTools.SUBOPTS

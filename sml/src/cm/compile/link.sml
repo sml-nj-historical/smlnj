@@ -37,6 +37,9 @@ in
 
 	(* discard persistent state *)
 	val reset : unit -> unit
+
+	(* discard persistent state for a specific stable library *)
+	val unshare : SrcPath.t -> unit
     end
 
     functor LinkFn (structure MachDepVC : MACHDEP_VC
@@ -282,7 +285,8 @@ in
 		    else (visited := SrcPathSet.add (!visited, grouppath);
 			  app (registerGroup o #2) sublibs;
 			  case kind of
-			      GG.STABLELIB _ => registerStableLib g
+			      GG.LIB { kind = GG.STABLE _, ... } =>
+			          registerStableLib g
 			    | _ => ())
 		end
 
@@ -362,5 +366,15 @@ in
 
 	fun reset () = (stablemap := StableMap.empty;
 			smlmap := SmlInfoMap.empty)
+
+	fun unshare group =
+	    let fun other (i, _) =
+		    SrcPath.compare (BinInfo.group i, group) <> EQUAL
+		val sv = system_values
+	    in
+		stablemap := StableMap.filteri other (!stablemap);
+		(sv := #1 (SrcPathMap.remove (!sv, group)))
+		handle LibBase.NotFound => ()
+	    end
     end
 end

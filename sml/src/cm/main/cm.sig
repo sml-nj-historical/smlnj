@@ -34,6 +34,7 @@ signature CM = sig
 	val descr : lib -> string
 	val osstring : lib -> string
 	val dismiss : lib -> unit
+	val unshare : lib -> unit
     end
 
     structure State : sig
@@ -52,6 +53,10 @@ signature CM = sig
 	val kill : server -> unit
 	val name : server -> string
     end
+
+    val makedepend : { group : string,
+		       targetname : string,
+		       outstream : TextIO.outstream } -> bool
 
     val symval : string -> int option controller
     val load_plugin : string -> bool

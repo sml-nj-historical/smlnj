@@ -22,13 +22,15 @@ in
 
 signature STABILIZE = sig
 
-    val libStampIsValid : GP.info ->
-	SrcPath.t * DG.sbnode list * GG.subgrouplist -> bool
+    val libStampIsValid : GP.info
+	-> (SrcPath.t * DG.sbnode list * GG.subgrouplist) * Version.t option
+	-> bool
+
+    type groupgetter = SrcPath.t * Version.t option -> GG.group option
 
     val loadStable :
-	GP.info -> { getGroup: SrcPath.t -> GG.group option,
-		     anyerrors: bool ref }
-	-> SrcPath.t -> GG.group option
+	GP.info -> { getGroup: groupgetter, anyerrors: bool ref } ->
+	groupgetter
 
     val stabilize :
 	GP.info -> { group: GG.group, anyerrors: bool ref } -> GG.group option
@@ -40,6 +42,8 @@ functor StabilizeFn (structure MachDepVC : MACHDEP_VC
 			 (SmlInfo.info -> MachDepVC.Binfile.bfContent) option
 		     val getII : SmlInfo.info -> IInfo.info) :> STABILIZE =
 struct
+    type groupgetter = SrcPath.t * Version.t option -> GG.group option
+
     structure BF = MachDepVC.Binfile
 
     structure SSMap = MapFn
@@ -72,9 +76,9 @@ struct
 
     (* type info *)
     val (BN, SN, SBN, SS, SI, FSBN, IMPEXP, SHM, G, AP,
-	 PRIM, EXPORTS, PRIV) =
+	 PRIM, EXPORTS, PRIV, VERSION, SG) =
 	(1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010,
-	 1011, 1012, 1013)
+	 1011, 1012, 1013, 1014, 1015)
 
     val SSs =
 	{ find = fn (m: map, k) => SSMap.find (#ss m, k),
@@ -107,22 +111,17 @@ struct
 			 cleanup = fn _ => () }
 
     fun mkInverseMap sublibs = let
-	(* Here we build a mapping that maps each BNODE to the path
-	 * representing the sub-library that it came from and a
-	 * representative symbol that can be used to find the BNODE
-	 * within the exports of that library.
-	 * It is not enough to just use the BNODE's group path
-	 * because that group might not actually be in our list
-	 * of sublibs.  Instead, it could be defined in a library
-	 * component (subgroup) or in another library and just
-	 * be "passed through". *)
-	fun oneB p (sy, ((_, DG.SB_BNODE (DG.BNODE n, _)), _), m) =
-	    StableMap.insert (m, #bininfo n, (p, sy))
+	(* Here we build a mapping that maps each BNODE to the
+	 * position of its exporting sub-library and a representative
+	 * symbol that can be used to find the BNODE within the
+	 * exports of that library. *)
+	fun oneB i (sy, ((_, DG.SB_BNODE (DG.BNODE n, _)), _), m) =
+	    StableMap.insert (m, #bininfo n, (i, sy))
 	  | oneB _ (_, _, m) = m
-	fun oneSL ((p, g as GG.GROUP { exports, ... }), m) =
-	    SymbolMap.foldli (oneB p) m exports
-	  | oneSL (_, m) = m
-	val im = foldl oneSL StableMap.empty sublibs
+	fun oneSL ((_, g as GG.GROUP { exports, ... }), (m, i)) =
+	    (SymbolMap.foldli (oneB i) m exports, i + 1)
+	  | oneSL (_, (m, i)) = (m, i + 1)
+	val (im, _) = foldl oneSL (StableMap.empty, 0) sublibs
 	fun look i =
 	    case StableMap.find (im, i) of
 		SOME p => p
@@ -146,6 +145,7 @@ struct
 	val symbol = PickleSymPid.w_symbol
 	val string = PU.w_string
 	val list = PU.w_list
+	val int = PU.w_int
 
 	fun abspath p = let
 	    val op $ = PU.$ AP
@@ -167,10 +167,10 @@ struct
 	in
 	    case x of
 		DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, ii) => let
-		    val (p, sy) = inverseMap i
+		    val (i, sy) = inverseMap i
 		    val { statpid, sympid, ... } = ii
 		in
-		    "2" $ [abspath p, symbol sy, pid statpid, pid sympid]
+		    "2" $ [int i, pid statpid, pid sympid]
 		end
 	      | DG.SB_SNODE n => "3" $ [sn n]
 	end
@@ -186,10 +186,10 @@ struct
     end
 
     (* Comparison of old and new library stamps. *)
-    fun libStampIsValid (gp: GP.info) (a as (grouppath, _, _)) = let
+    fun libStampIsValid (gp: GP.info) (a as (grouppath, _, _), version) = let
 	val newStamp = Byte.bytesToString (Pid.toBytes (libStampOf a))
 	val policy = #fnpolicy (#param gp)
-	val sname = FilenamePolicy.mkStableName policy grouppath
+	val sname = FilenamePolicy.mkStableName policy (grouppath, version)
 	fun work s = let
 	    val oldStamp =
 		Byte.bytesToString (BinIO.inputN (s, libstamp_nbytes))
@@ -204,7 +204,7 @@ struct
 	handle _ => false
     end
 
-    fun loadStable gp { getGroup, anyerrors } group = let
+    fun loadStable gp { getGroup, anyerrors } (group, version) = let
 
 	val errcons = #errcons (gp: GeneralParams.info)
 	val grpSrcInfo = (errcons, anyerrors)
@@ -218,12 +218,12 @@ struct
 	val pcmode = #pcmode (#param gp)
 	val policy = #fnpolicy (#param gp)
 
-	fun mksname () = FilenamePolicy.mkStableName policy group
+	fun mksname () = FilenamePolicy.mkStableName policy (group, version)
 
 	fun work s = let
 
-	    fun getGroup' p =
-		case getGroup p of
+	    fun getGroup' (p, vo) =
+		case getGroup (p, vo) of
 		    SOME g => g
 		  | NONE => (error ["unable to find ", SrcPath.descr p];
 			     raise Format)
@@ -252,6 +252,9 @@ struct
 	    val privilegesM = UU.mkMap ()
 	    val poM = UU.mkMap ()
 	    val stringListM = UU.mkMap ()
+	    val versionM = UU.mkMap ()
+	    val versionOptM = UU.mkMap ()
+	    val sgM = UU.mkMap ()
 
 	    fun list m r = UU.r_list session m r
 	    val string = UU.r_string session
@@ -280,29 +283,47 @@ struct
 		share apM ap
 	    end
 
-	    fun sg () = let
-		val p = abspath ()
+	    fun version () = let
+		fun v #"v" =
+		    (case Version.fromString (string ()) of
+			 SOME v => v
+		       | NONE => raise Format)
+		  | v _ = raise Format
 	    in
-		(p, getGroup' p)
+		share versionM v
+	    end
+
+	    fun sg () = let
+		fun xsg #"s" =
+		    let val p = abspath ()
+			val vo = option versionOptM version ()
+		    in
+			(p, getGroup' (p, vo))
+		    end
+		  | xsg _ = raise Format
+	    in
+		share sgM xsg
 	    end
 
 	    fun gr #"g" =
-		let val sublibs = list sgListM sg ()
-		    val sublibm =
-			foldl SrcPathMap.insert' SrcPathMap.empty sublibs
+		let val version = option versionOptM version ()
+		    val sublibs = list sgListM sg ()
+
+		    fun getSublib i =
+			(case #2 (List.nth (sublibs, i)) of
+			     GG.GROUP x => x
+			   | GG.ERRORGROUP =>
+			       EM.impossible "loadStable: ERRORGROUP")
+			handle General.Subscript => raise Format
 
 		    fun context NONE = raise Format
-		      | context (SOME (sl, sy)) = let
-			    val ap = list2path sl
+		      | context (SOME (pos, sy)) = let
+			    val { exports, ... } = getSublib pos
 			in
-			    case getGroup' ap of
-				GG.ERRORGROUP =>
-				  EM.impossible "loadStable: ERRORGROUP"
-			      | GG.GROUP { exports, ... } =>
-				(case SymbolMap.find (exports, sy) of
-				     SOME ((_, DG.SB_BNODE (_, x)), _) =>
-				       StabModmap.addEnv (#statenv x ())
-				   | _ => raise Format)
+			    case SymbolMap.find (exports, sy) of
+				SOME ((_, DG.SB_BNODE (_, x)), _) =>
+				StabModmap.addEnv (#statenv x ())
+			      | _ => raise Format
 			end
 
 		    val { symenv, statenv, symbol, symbollist } =
@@ -374,12 +395,9 @@ struct
 		    (* this one changes from farsbnode to plain farbnode *)
 		    and sbn () = let
 			fun sbn' #"2" = let
-				val p = abspath ()
+				val pos = int ()
 				val sy = symbol ()
-				val { exports = slexp, ... } =
-				    case SrcPathMap.find (sublibm, p) of
-					SOME (GG.GROUP x) => x
-				      | _ => raise Format
+				val { exports = slexp, ... } = getSublib pos
 			    in
 				case SymbolMap.find (slexp, sy) of
 				    SOME ((_, DG.SB_BNODE(n, _)), _) => n
@@ -447,7 +465,8 @@ struct
 		    val required = privileges ()
 		in
 		    GG.GROUP { exports = exports,
-			       kind = GG.STABLELIB dropper,
+			       kind = GG.LIB { version = version,
+					       kind = GG.STABLE dropper },
 			       required = required,
 			       grouppath = group,
 			       sublibs = sublibs }
@@ -471,7 +490,7 @@ struct
 
 	val policy = #fnpolicy (#param gp)
 
-	fun doit (wrapped, getBFC) = let
+	fun doit (wrapped, getBFC, vers) = let
 
 	    val grouppath = #grouppath grec
 	    val sublibs = #sublibs grec
@@ -572,11 +591,10 @@ struct
 		fun sbn n k (s as (bnodes, snodes)) =
 		    case n of
 			DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, ii) => let
-			    val (p, sy) = inverseMap i
-			    val pl = path2list p
+			    val (pos, sy) = inverseMap i
 			    val bnodes' =
 				StableMap.insert (bnodes, i,
-						  ((pl, sy), #statenv ii))
+						  ((pos, sy), #statenv ii))
 			in
 			    k (bnodes', snodes)
 			end
@@ -690,9 +708,9 @@ struct
 	    in
 		case x of
 		    DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, _) => let
-			val (p, sy) = inverseMap i
+			val (pos, sy) = inverseMap i
 		    in
-			"2" $ [abspath p, symbol sy]
+			"2" $ [int pos, symbol sy]
 		    end
 		  | DG.SB_SNODE n => "3" $ [sn n]
 	    end
@@ -731,13 +749,28 @@ struct
 		"p" $ [list string (StringSet.listItems p)]
 	    end
 
+	    fun version v = let
+		val op $ = PU.$ VERSION
+	    in
+		"v" $ [string (Version.toString v)]
+	    end
+
+	    fun sg (p, g) = let
+		val op $ = PU.$ SG
+		val vo = case g of GG.GROUP { kind = GG.LIB { version, ... },
+					      ... } => version
+				 | _ => NONE
+	    in
+		"s" $ [abspath p, option version vo]
+	    end
+
 	    fun group () = let
 		val op $ = PU.$ G
-		fun sg (p, g) = abspath p
 	    in
 		(* Pickle the sublibs first because we need to already
 		 * have them back when we unpickle BNODEs. *)
-		"g" $ [list sg sublibs,
+		"g" $ [option version vers,
+		       list sg sublibs,
 		       w_exports exports,
 		       privileges required]
 	    end
@@ -756,14 +789,14 @@ struct
 	     * It seems easier to simply rely on "loadStable" to re-fetch
 	     * the stable graph. *)
 	    fun refetchStableGroup () = let
-		fun getGroup p = let
+		fun getGroup (p, _) = let
 		    fun theSublib (q, _) = SrcPath.compare (p, q) = EQUAL
 		in
 		    Option.map #2 (List.find theSublib sublibs)
 		end
 	    in
 		loadStable gp { getGroup = getGroup, anyerrors = anyerrors }
-		           grouppath
+		           (grouppath, NONE)
 	    end
 			        
 	    fun writeInt32 (s, i) = let
@@ -774,7 +807,10 @@ struct
 	    end
 	    val memberlist = rev (!members)
 
-	    fun mksname () = FilenamePolicy.mkStableName policy grouppath
+	    (* We do not use version information for making the stable path! *)
+	    fun mksname () =
+		FilenamePolicy.mkStableName policy (grouppath, NONE)
+
 	    val libstamp_bytes = Pid.toBytes libstamp
 	    val _ =
 		if Word8Vector.length libstamp_bytes <> libstamp_nbytes then
@@ -803,18 +839,20 @@ struct
 	end
     in
 	case #kind grec of
-	    GG.STABLELIB _ => SOME g
+	    GG.LIB { kind = GG.STABLE _, ... } => SOME g
 	  | GG.NOLIB _ => EM.impossible "stabilize: no library"
-	  | GG.LIB { wrapped, ... } =>
+	  | GG.LIB { kind = GG.DEVELOPED { wrapped, ... }, version } =>
 	     (case recomp gp g of
 		  NONE => (anyerrors := true; NONE)
 		| SOME bfc_acc => let
-		      fun notStable (_, GG.GROUP { kind, ... }) =
-			  (case kind of GG.STABLELIB _ => false | _ => true)
+		      fun notStable (_, GG.GROUP { kind =
+						   GG.LIB { kind = GG.STABLE _,
+							    ... }, ... }) =
+			  false
 			| notStable _ = true
 		  in
 		    case List.filter notStable (#sublibs grec) of
-			[] => doit (wrapped, bfc_acc)
+			[] => doit (wrapped, bfc_acc, version)
 		      | l => let
 			    val grammar = case l of [_] => " is" | _ => "s are"
 			    fun ppb pps = let

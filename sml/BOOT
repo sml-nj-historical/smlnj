@@ -1,6 +1,12 @@
 BOOT: the location of the latest boot files.
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/04/30 01:00:00
+Tag: blume-20000430-versions
+Version: 110.27
+Location: ftp://ftp.cs.princeton.edu/pub/people/blume/sml/110.28pre1-autofetch/
+----------------------------------------------------------------------
 Name: Dave MacQueen
 Date: 2000/04/10 14:00 EDT
 Tag: dbm-20000410-Version_110_27

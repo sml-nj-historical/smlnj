@@ -32,6 +32,7 @@ in
 	    else case String.tokens Char.isSpace line of
 		["cd", d] => (chDir d; say_ok (); waitForStart ())
 	      | ["cm", archos, f] => do_cm (archos, f)
+	      | ["cmb", archos] => reset_cmb archos
 	      | ["cmb", archos, f] => do_cmb (archos, f)
 	      | ["ping"] => (say_pong (); waitForStart ())
 	      | ["finish"] => (say_ok (); waitForStart ())
@@ -41,10 +42,18 @@ in
 	      | _ => (say_error (); waitForStart ())
 	end handle _ => (say_error (); waitForStart ())
 
+	and reset_cmb archos = let
+	    val slave = CMBSlave.slave make
+	in
+	    ignore (slave archos NONE);
+	    say_ok ();
+	    waitForStart ()
+	end
+
 	and do_cmb (archos, f) = let
 	    val slave = CMBSlave.slave make
 	in
-	    case slave archos (!dbr, f) of
+	    case slave archos (SOME (!dbr, f)) of
 		NONE => (say_error (); waitForStart ())
 	      | SOME (g, trav, cmb_pcmode) => let
 		    val _ = say_ok ()

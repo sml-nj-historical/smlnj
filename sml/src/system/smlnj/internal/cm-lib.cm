@@ -12,6 +12,8 @@ Library
 	functor LinkCM
 	functor BootstrapCompileFn
 
+	signature VERSION
+	structure Version
 	structure Sharing
 	signature TOOLS
 is

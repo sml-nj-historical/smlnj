@@ -326,14 +326,21 @@ in
 						 SOME memo)
 					    else otherwise ()
 					end
+				fun bottleneck () =
+				    (* Are we the only runable task? *)
+				    Servers.allIdle () andalso
+				    Concur.noTasks ()
 				fun compile_again () =
 				    (Say.vsay ["[compiling ",
 					       SmlInfo.descr i, "]\n"];
 				     compile_here (stat, sym, pids, split))
+				fun compile_there' p =
+				    not (bottleneck ()) andalso
+				    compile_there p
 				fun compile () = let
 				    val sp = SmlInfo.sourcepath i
 				in
-				    if compile_there sp then
+				    if compile_there' sp then
 					tryload ("received", compile_again)
 				    else compile_again ()
 				end
@@ -379,7 +386,7 @@ in
 			     SmlInfo.forgetParsetree i)
 		    in
 			localstate :=
-			  SmlInfoMap.insert (!localstate, i, mopt_c);
+			    SmlInfoMap.insert (!localstate, i, mopt_c);
 			Option.map memo2ed (Concur.wait mopt_c)
 		    end
 	    end (* snode *)

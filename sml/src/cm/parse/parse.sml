@@ -63,11 +63,12 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	let val changed = ref true
 	    fun canStay GG.ERRORGROUP = true (* doesn't matter *)
 	      | canStay (GG.GROUP { sublibs, ... }) = let
-		  fun goodSublib (p, GG.GROUP { kind = GG.STABLELIB _, ... }) =
-		      SrcPath.compare (p, igp) = EQUAL orelse
-		      SrcPathMap.inDomain (!sgc, p)
-		    | goodSublib _ = true
-		  val cs = List.all goodSublib sublibs
+		    fun goodSublib (p, GG.GROUP {
+			    kind = GG.LIB { kind = GG.STABLE _, ... }, ... }) =
+			SrcPath.compare (p, igp) = EQUAL orelse
+			SrcPathMap.inDomain (!sgc, p)
+		      | goodSublib _ = true
+		    val cs = List.all goodSublib sublibs
 		in
 		    if cs then () else changed := true;
 		    cs
@@ -83,7 +84,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
     fun listLibs () = map #1 (SrcPathMap.listItemsi (!sgc))
 
     fun dropPickles () = let
-	fun drop (GG.GROUP { kind = GG.STABLELIB dropper, ... }) = dropper ()
+	fun drop (GG.GROUP { kind = GG.LIB { kind = GG.STABLE dropper,
+					     ... }, ... }) = dropper ()
 	  | drop _ = ()
     in
 	SrcPathMap.app drop (!sgc)
@@ -176,8 +178,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	      | [] => false
 	end
 
-	fun mparse (group, groupstack, pErrFlag, stabthis, curlib) = let
-	    fun getStable stablestack gpath = let
+	fun mparse (group, vers, groupstack, pErrFlag, stabthis, curlib) = let
+	    fun getStable stablestack (gpath, vers) = let
 		(* This is a separate "findCycle" routine that detects
 		 * cycles among stable libraries.  These cycles should
 		 * never occur unless someone purposefully renames
@@ -207,7 +209,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    val go = Stabilize.loadStable ginfo
 			{ getGroup = getStable (gpath :: stablestack),
 			  anyerrors = pErrFlag }
-			gpath
+			(gpath, vers)
 		in
 		    case go of
 			NONE => NONE
@@ -243,7 +245,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	    case SrcPathMap.find (!gc, group) of
 		SOME gopt => gopt
 	      | NONE => let
-		    fun try_s () = getStable [] group
+		    fun try_s () = getStable [] (group, vers)
 		    fun try_n () = parse' (group, groupstack, pErrFlag, curlib)
 		    fun reg gopt =
 			(gc := SrcPathMap.insert (!gc, group, gopt); gopt)
@@ -306,7 +308,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		     * This function is used to parse sub-groups.
 		     * Errors are propagated by explicitly setting the
 		     * "anyErrors" flag of the parent group. *)
-		    fun recParse (p1, p2) curlib p = let
+		    fun recParse (p1, p2) curlib (p, v) = let
 			val gs' = (group, (source, p1, p2)) :: groupstack
 			(* my error flag *)
 			val mef = #anyErrors source
@@ -315,7 +317,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			 * recursive traversals once there was an error on
 			 * this group. *)
 			if !mef andalso not keep_going then GG.ERRORGROUP
-			else case mparse (p, gs', mef, staball, curlib) of
+			else case mparse (p, v, gs', mef, staball, curlib) of
 				 NONE => (mef := true; GG.ERRORGROUP)
 			       | SOME res => res
 		    end
@@ -324,11 +326,13 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			 GG.ERRORGROUP)
 
 		    fun doMember ({ name, mkpath }, p1, p2, c, oto) =
-			CMSemant.member (ginfo, recParse (p1, p2), load_plugin)
-			  { name = name, mkpath = mkpath,
-			    class = c, tooloptions = oto,
-			    group = (group, (p1, p2)),
-			    context = context }
+			CMSemant.member { gp = ginfo,
+					  rparse = recParse (p1, p2),
+					  load_plugin = load_plugin }
+					{ name = name, mkpath = mkpath,
+					  class = c, tooloptions = oto,
+					  group = (group, (p1, p2)),
+					  context = context }
 
 		    (* Build the argument for the lexer; the lexer's local
 		     * state is encapsulated here to make sure the parser
@@ -441,7 +445,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	end
     in
 	SmlInfo.newGeneration ();
-	case mparse (group, [], ref false, stabthis, NONE) of
+	case mparse (group, NONE, [], ref false, stabthis, NONE) of
 	    NONE => NONE
 	  | SOME g => SOME (g, ginfo)
     end

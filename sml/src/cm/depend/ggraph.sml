@@ -10,10 +10,13 @@ structure GroupGraph = struct
 
     type privileges = StringSet.set
 
-    datatype kind =
+    datatype libkind =
+	STABLE of unit -> unit		(* pickle dropper *)
+      | DEVELOPED of { wrapped: privileges, subgroups: subgrouplist }
+
+    and kind =
 	NOLIB of { owner: SrcPath.t option, subgroups: subgrouplist }
-      | LIB of { wrapped: privileges, subgroups: subgrouplist }
-      | STABLELIB of unit -> unit	(* pickle dropper *)
+      | LIB of { version: Version.t option, kind: libkind }
 
     (* the "required" field includes everything:
      *   1. privileges required by subgroups

@@ -55,6 +55,7 @@ signature SMLINFO = sig
     val sourcepath : info -> SrcPath.t
     val skelname : info -> string
     val binname : info -> string
+    val group : info -> SrcPath.t
     val error : GeneralParams.info -> info -> complainer
 
     val parsetree : GeneralParams.info -> info -> (ast * source) option
@@ -154,6 +155,8 @@ structure SmlInfo :> SMLINFO = struct
 
     fun error gp (INFO { persinfo = PERS { group, ... }, ... }) =
 	gerror gp group
+
+    fun group (INFO { persinfo = PERS { group = (g, _), ... }, ... }) = g
 
     fun compare (INFO { sourcepath = p, ... }, INFO { sourcepath = p', ... }) =
 	SrcPath.compare (p, p')

@@ -258,6 +258,31 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val recomp = run mkStdSrcPath NONE recomp_runner
 	  val make = run mkStdSrcPath NONE (make_runner true)
 
+	  fun makedepend { group, targetname, outstream } = let
+	      val oss = SrcPath.osstring
+	      val fnrec = { bininfo = fn i => [BinInfo.stablename i],
+			    smlinfo = fn i => [oss (SmlInfo.group i),
+					       oss (SmlInfo.sourcepath i)],
+			    Cons = fn (l, s) => foldl StringSet.add' s l,
+			    Nil = StringSet.empty }
+	      val p = mkStdSrcPath group
+	      val gr = GroupReg.new ()
+	  in
+	      (case Parse.parse (parse_arg (gr, NONE, p)) of
+		   NONE => false
+		 | SOME (g, _) => let
+		       val names = MkList.group fnrec g
+		       fun oneTarget t =
+			   TextIO.output (outstream, " \\\n\t" ^ t)
+		   in
+		       TextIO.output (outstream, targetname ^ ":");
+		       StringSet.app oneTarget names;
+		       TextIO.output (outstream, "\n");
+		       true
+		   end)
+	      before dropPickles ()
+	  end
+
 	  (* I would have liked to express this using "run", but "run"
 	   * thinks it has to return a bool... *)
 	  fun mk_standalone sflag s = let
@@ -369,7 +394,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		  Stabilize.loadStable ginfo
 		    { getGroup = fn _ => raise Fail "CMBoot: initial getGroup",
 		      anyerrors = ref false }
-		    initgspec
+		    (initgspec, NONE)
 	  in
 	      case loadInitGroup () of
 		  NONE => raise Fail "CMBoot: unable to load init group"
@@ -488,6 +513,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	    val descr = SrcPath.descr
 	    val osstring = SrcPath.osstring
 	    val dismiss = Parse.dismissLib
+	    fun unshare lib = (Link.unshare lib; dismiss lib)
 	end
 
 	structure State = struct
@@ -508,6 +534,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	val make = make
 	val recomp = recomp
 	val stabilize = stabilize
+
+	val makedepend = makedepend
 
 	val symval = SSV.symval
 	val load_plugin = cwd_load_plugin 

@@ -96,7 +96,9 @@ structure Reachable :> REACHABLE = struct
 
 	fun groupsOf g = let
 	    fun subgroups (GG.GROUP { kind = GG.NOLIB x, ... }) = #subgroups x
-	      | subgroups (GG.GROUP { kind = GG.LIB x, ... }) = #subgroups x
+	      | subgroups (GG.GROUP { kind = GG.LIB { kind = GG.DEVELOPED x,
+						      ... },
+				      ... }) = #subgroups x
 	      | subgroups _ = []
 	    fun go (GG.ERRORGROUP, a) = a
 	      | go (g as GG.GROUP { grouppath, ... }, a) = let
@@ -124,7 +126,7 @@ structure Reachable :> REACHABLE = struct
 				val seen = SrcPathSet.add (seen, p)
 			    in
 				case kind of
-				    GG.STABLELIB _ =>
+				    GG.LIB { kind = GG.STABLE _, ... } =>
 				    (seen, SrcPathMap.insert (res, p, g))
 				  | _ => (seen, res)
 			    end

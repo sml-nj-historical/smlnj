@@ -430,7 +430,7 @@ must be given an explicit member class:
 The new system heavily relies on the autoloader.  As a result, almost
 no static environments need to get unpickled at bootstrap time.  The
 construction of such environments is deferred until they become
-necessary.  Thanks of this, it was possible to reduce the size of the
+necessary.  Thanks to this, it was possible to reduce the size of the
 heap image by more than one megabyte (depending on the architecture).
 The downside (although not really terribly bad) is that there is a
 short wait when you first touch an identifier that hasn't been touched
@@ -502,7 +502,7 @@ sources/subgroups/sublibraries:
 	defined(<namespace> <name>)
     is true if any of the included members preceeding this clause exports
     a symbol "<namespace> <name>".
-  - Within the "exports" section of the description (i.e., before "is):
+  - Within the "exports" section of the description (i.e., before "is"):
     The same expression is true if _any_ of the members exports the
     named symbol.
     (It would be more logical if the exports section would follow the

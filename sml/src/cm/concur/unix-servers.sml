@@ -40,31 +40,27 @@ structure Servers :> SERVERS = struct
     val someIdle = ref (Concur.pcond ())
 
     local
-	val nservers = ref 0
 	val all = ref (IntMap.empty: server IntMap.map)
+	fun nservers () = IntMap.numItems (!all)
     in
-	fun noServers () = !nservers = 0
+        fun allIdle () = length (!idle) = nservers ()
+	fun noServers () = nservers () = 0
 	fun allServers () = IntMap.listItems (!all)
 	fun addServer s = let
-	    val ns = !nservers
+	    val ns = nservers ()
 	in
-	    nservers := ns + 1;
 	    all := IntMap.insert (!all, servId s, s)
 	end
-	fun delServer s = let
-	    val ns = !nservers - 1
-	in
-	    all := #1 (IntMap.remove (!all, servId s));
-	    nservers := ns;
-	    (* If this was the last server we need to wake up
-	     * everyone who is currently waiting to grab a server.
-	     * The "grab"-loop will then gracefully fail and
-	     * not cause a deadlock. *)
-	    if ns = 0 then
-		(Say.dsay ["No more servers -> back to sequential mode.\n"];
-		 Concur.signal (!someIdle))
-	    else ()
-	end
+	fun delServer s =
+	    (all := #1 (IntMap.remove (!all, servId s));
+	     (* If this was the last server we need to wake up
+	      * everyone who is currently waiting to grab a server.
+	      * The "grab"-loop will then gracefully fail and
+	      * not cause a deadlock. *)
+	     if noServers () then
+		 (Say.dsay ["No more servers -> back to sequential mode.\n"];
+		  Concur.signal (!someIdle))
+	     else ())
     end
 
     (* This really shouldn't be here, but putting it into SrcPath would
@@ -318,6 +314,14 @@ structure Servers :> SERVERS = struct
     fun cmb { archos, root } = let
 	fun st s =
 	    (send (s, concat ["cmb ", archos, " ", root, "\n"]);
+	     ignore (wait_status (s, false)))
+    in
+	startAll st
+    end
+
+    fun cmb_new { archos } = let
+	fun st s =
+	    (send (s, concat ["cmb ", archos, "\n"]);
 	     ignore (wait_status (s, false)))
     in
 	startAll st

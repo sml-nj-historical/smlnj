@@ -11,6 +11,8 @@ Group (smlnj/internal/cm-lib.cm)
 	functor LinkCM
 	functor BootstrapCompileFn
 
+	signature VERSION
+	structure Version
 	structure Sharing
 	signature TOOLS
 is
@@ -24,6 +26,7 @@ is
 	semant/group-reg.sml
 
 	(* semantic actions for description file parser *)
+	semant/version.sml
 	semant/members.sml
 	semant/semant.sml
 

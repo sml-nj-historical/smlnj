@@ -22,7 +22,8 @@ signature VERIFY_STABLE = sig
 	-> SrcPath.t *			(* grouppath *)
 	   DG.sbnode list *		(* export_nodes *)
 	   (SrcPath.t * GG.group) list * (* sublibs *)
-	   SrcPathSet.set		(* groups *)
+	   SrcPathSet.set *		(* groups *)
+	   Version.t option
 	-> bool
     val verify : GP.info -> exportmap -> GG.group -> bool
 end
@@ -31,11 +32,12 @@ functor VerStabFn (structure Stabilize: STABILIZE) :> VERIFY_STABLE = struct
 
     type exportmap = SmlInfo.info StableMap.map
 
-    fun verify' (gp: GP.info) em (grouppath, export_nodes, sublibs, groups) =
-    let val groups = SrcPathSet.add (groups, grouppath)
+    fun verify' (gp: GP.info) em args = let
+	val (grouppath, export_nodes, sublibs, groups, version) = args
+	val groups = SrcPathSet.add (groups, grouppath)
 	val policy = #fnpolicy (#param gp)
-	fun sname p = FilenamePolicy.mkStableName policy p
-	val stablename = sname grouppath
+	val stablename =
+	    FilenamePolicy.mkStableName policy (grouppath, version)
 
 	fun invalidMember stab_t i = let
 	    val p = SmlInfo.sourcepath i
@@ -49,7 +51,8 @@ functor VerStabFn (structure Stabilize: STABILIZE) :> VERIFY_STABLE = struct
 	      | _ => true
 	end
 
-	fun nonstabSublib (_, GG.GROUP { kind = GG.STABLELIB _, ... }) = false
+	fun nonstabSublib (_, GG.GROUP { kind = GG.LIB { kind = GG.STABLE _,
+							 ... }, ... }) = false
 	  | nonstabSublib _ = true
 
 	fun invalidGroup stab_t p =
@@ -67,8 +70,8 @@ functor VerStabFn (structure Stabilize: STABILIZE) :> VERIFY_STABLE = struct
 		    (* The group itself is included in "groups"... *)
 		    not (SrcPathSet.exists (invalidGroup st) groups) andalso
 		    not (List.exists nonstabSublib sublibs) andalso
-		    validStamp (grouppath, export_nodes, sublibs) andalso
-		    not (SmlInfoSet.exists (invalidMember st) m)
+		    validStamp ((grouppath, export_nodes, sublibs), version)
+		    andalso not (SmlInfoSet.exists (invalidMember st) m)
 		end
 	      | _ => false
     in
@@ -80,12 +83,16 @@ functor VerStabFn (structure Stabilize: STABILIZE) :> VERIFY_STABLE = struct
 
     fun verify _ _ GG.ERRORGROUP = false
       | verify gp em (group as GG.GROUP g) = let
-	    val { exports, grouppath, sublibs, ... } = g
+	    val { exports, grouppath, sublibs, kind, ... } = g
 	    val groups = Reachable.groupsOf group
+	    val version =
+		case kind of
+		    GG.NOLIB _ => NONE
+		  | GG.LIB { version, ... } => version
 	in
 	    verify' gp em (grouppath,
 			   map (#2 o #1) (SymbolMap.listItems exports),
-			   sublibs, groups)
+			   sublibs, groups, version)
 	end
 end
 end

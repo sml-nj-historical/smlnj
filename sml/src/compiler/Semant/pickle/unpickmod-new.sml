@@ -19,7 +19,7 @@
  *)
 signature UNPICKMOD = sig
 
-    type context = (string list * Symbol.symbol) option -> ModuleId.tmap
+    type context = (int * Symbol.symbol) option -> ModuleId.tmap
 
     val unpickleEnv : context ->
 		      PersStamps.persstamp * Word8Vector.vector ->
@@ -43,7 +43,7 @@ end
 
 structure UnpickMod : UNPICKMOD = struct
 
-    type context = (string list * Symbol.symbol) option -> ModuleId.tmap
+    type context = (int * Symbol.symbol) option -> ModuleId.tmap
 
     structure A = Access
     structure DI = DebIndex
@@ -388,8 +388,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val { pid, string, symbol, access, conrep, consig,
 	      primop, boollist, tkind, tkindlist } = sharedStuff
 
-	fun libModSpec () =
-	    option lmsOptM (pair lmsPairM (stringlist, symbol)) ()
+	fun libModSpec () = option lmsOptM (pair lmsPairM (int, symbol)) ()
 
 	fun stamp () = let
 	    fun st #"A" = Stamps.global { pid = globalPid (),

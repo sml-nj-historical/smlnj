@@ -21,10 +21,12 @@ structure Servers :> SERVERS = struct
     fun cd _ = ()
     fun cm _ = ()
     fun cmb _ = ()
+    fun cmb_new _ = ()
     fun compile _ = false
     fun withServers f =
 	SafeIO.perform { openIt = fn () => (),
 			 closeIt = fn () => (),
 			 work = f,
 			 cleanup = reset }
+    fun allIdle () = true
 end

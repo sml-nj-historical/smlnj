@@ -23,14 +23,19 @@ structure S = CMSemant
     | ERROR of string
     | STRUCTURE | SIGNATURE | FUNCTOR | FUNSIG
     | DEFINED
-    | PLUS | MINUS | TIMES | DIV | MOD | TILDE
+    | ADDSYM of CMSemant.addsym
+    | MULSYM of CMSemant.mulsym
+    | EQSYM of CMSemant.eqsym
+    | INEQSYM of CMSemant.ineqsym
+    | TILDE
     | ANDALSO | ORELSE | NOT
-    | LT | LE | GT | GE | EQ | NE
 
 %nonterm description of S.group
        | group of S.group
        | gprivspec of S.privilegespec
        | lprivspec of S.privilegespec
+       | version of S.cm_version
+       | opt_version of S.cm_version option
        | wrapspec of S.privilegespec -> S.privilegespec
        | mand_exports of S.exports
        | opt_exports of S.exports option
@@ -81,10 +86,10 @@ structure S = CMSemant
 
 %left ORELSE
 %left ANDALSO
-%nonassoc LT LE GT GE
-%nonassoc EQ NE
-%left PLUS MINUS
-%left TIMES DIV MOD
+%nonassoc INEQSYM
+%nonassoc EQSYM
+%left ADDSYM
+%left MULSYM
 %left NOT TILDE
 
 %%
@@ -92,16 +97,33 @@ structure S = CMSemant
 description : group				(group)
 
 group : gprivspec owner opt_exports IS members (S.group
-						 (grouppath,
-						  gprivspec, opt_exports,
-						  members, gp, curlib, owner,
-						  error (ownerleft,
-							 ownerright),
-						  ig))
-      | lprivspec mand_exports IS members      (S.library
-						 (grouppath,
-						  lprivspec, mand_exports,
-						  members, gp, ig))
+						 { path = grouppath,
+						   privileges = gprivspec,
+						   exports = opt_exports,
+						   members = members,
+						   gp = gp,
+						   curlib = curlib,
+						   owner = owner,
+						   error = error (ownerleft,
+								  ownerright),
+						   initgroup = ig })
+      | lprivspec opt_version mand_exports IS members
+                                               (S.library
+						 { path = grouppath,
+						   privileges = lprivspec,
+						   exports = mand_exports,
+						   version = opt_version,
+						   members = members,
+						   gp = gp,
+						   initgroup = ig })
+
+opt_version : (* empty *)                      (NONE)
+            | LPAREN version RPAREN            (SOME version)
+
+version : FILE_STANDARD                        (S.cm_version
+						(FILE_STANDARD,
+						 error (FILE_STANDARDleft,
+							FILE_STANDARDright)))
 
 owner : (* empty *)                            (NONE)
       | LPAREN pathname RPAREN                 (SOME (#mkpath pathname
@@ -209,30 +231,24 @@ exp : boolexp					(boolexp)
 aexp : NUMBER				        (S.number NUMBER)
      | sym					(S.variable gp sym)
      | LPAREN aexp RPAREN		        (aexp)
-     | aexp PLUS aexp		                (S.plus (aexp1, aexp2))
-     | aexp MINUS aexp		                (S.minus (aexp1, aexp2))
-     | aexp TIMES aexp		                (S.times (aexp1, aexp2))
-     | aexp DIV aexp		                (S.divide (aexp1, aexp2))
-     | aexp MOD aexp		                (S.modulus (aexp1, aexp2))
+     | aexp ADDSYM aexp                         (S.add (aexp1, ADDSYM, aexp2))
+     | aexp MULSYM aexp                         (S.mul (aexp1, MULSYM, aexp2))
      | TILDE aexp		                (S.negate aexp)
-     | MINUS aexp %prec TILDE                   (obsolete (MINUSleft,
-							   MINUSright);
-						 S.negate aexp)
+     | ADDSYM aexp %prec TILDE                  (obsolete (ADDSYMleft,
+							   ADDSYMright);
+						 S.sign (ADDSYM, aexp))
 
 boolexp : DEFINED LPAREN ml_symbol RPAREN	(S.ml_defined ml_symbol)
 	| DEFINED LPAREN sym RPAREN		(S.cm_defined gp sym)
 	| LPAREN boolexp RPAREN			(boolexp)
 	| boolexp ANDALSO boolexp		(S.conj (boolexp1, boolexp2))
 	| boolexp ORELSE boolexp		(S.disj (boolexp1, boolexp2))
-	| boolexp EQ boolexp			(S.beq (boolexp1, boolexp2))
-	| boolexp NE boolexp			(S.bne (boolexp1, boolexp2))
+	| boolexp EQSYM boolexp                 (S.beq (boolexp1, EQSYM,
+							boolexp2))
 	| NOT boolexp				(S.not boolexp)
-	| aexp LT aexp			        (S.lt (aexp1, aexp2))
-	| aexp LE aexp			        (S.le (aexp1, aexp2))
-	| aexp GT aexp			        (S.gt (aexp1, aexp2))
-	| aexp GE aexp			        (S.ge (aexp1, aexp2))
-	| aexp EQ aexp			        (S.eq (aexp1, aexp2))
-	| aexp NE aexp			        (S.ne (aexp1, aexp2))
+	| aexp INEQSYM aexp                     (S.ineq (aexp1, INEQSYM,
+							 aexp2))
+	| aexp EQSYM aexp                       (S.eq (aexp1, EQSYM, aexp2))
 
 ml_symbol : STRUCTURE ML_ID			(S.ml_structure ML_ID)
 	  | SIGNATURE ML_ID			(S.ml_signature ML_ID)
@@ -242,7 +258,9 @@ ml_symbol : STRUCTURE ML_ID			(S.ml_structure ML_ID)
 pathname : FILE_STANDARD			({ name = FILE_STANDARD,
 						   mkpath = fn n =>
 						     S.file_standard gp
-						       (n, context) })
+						      (n, context, error
+						       (FILE_STANDARDleft,
+							FILE_STANDARDright)) })
 	 | FILE_NATIVE				({ name = FILE_NATIVE,
 						   mkpath = fn n =>
 						     S.file_native
