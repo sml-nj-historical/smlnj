@@ -158,9 +158,14 @@ structure Servers :> SERVERS = struct
 	    send (s, "ping\n");
 	    loop ()
 	end
+	val si = Concur.ucond ()
     in
+	if List.null al then ()
+	else (Concur.signal si;
+	      Say.say ["Waiting for attached servers to become idle...\n"]);
 	app ping al;
-	idle := al
+	idle := al;
+	someIdle := si
     end
 
     fun shutdown (name, method) = let
@@ -222,7 +227,10 @@ structure Servers :> SERVERS = struct
 	val _ = idle := []
 	val tl = map (fn s => Concur.fork (fn () => st s)) l
     in
-	app Concur.wait tl
+	SafeIO.perform { openIt = fn () => (),
+			 closeIt = fn () => (),
+			 work = fn () => app Concur.wait tl,
+			 cleanup = reset }
     end
 
     fun cm p = let
