@@ -32,7 +32,7 @@ struct
       end
 
 (* val full : vector -> slice *)
-  fun full base = SL{base=base,start=0,stop=InlineT.PolyVector.length base}
+  fun full base = SL{base=base,start=0,stop=V.length base}
 (*
       let val blen = V.length base
        in if geu(start, blen)  (* checks start >= 0 *)
@@ -73,6 +73,7 @@ struct
 
 (* val base : slice -> vector * int * int *)
   fun full base = SL{base=base,start=0,stop=V.length base}
+(*
       let val blen = V.length base
        in if geu(start, blen)  (* checks start >= 0 *)
           then raise Core.Subscript
@@ -83,15 +84,16 @@ struct
 		      then raise Core.Subscript
 		      else SL{base=base,start=start,stop=start+n}
       end
+*)
 
 (* val vector : slice -> vector *)
   fun vector (SL{base,start,stop}) =
-      Word8Vector.tabulate((fn n => sub'(base,n+start)),
-			   stop-start)
+      Word8Vector.tabulate(stop-start,
+			   fn n => sub'(base,n+start))
 
 (* utility functions *)
   fun checkLen n =
-      if InlineT.DfltInt.ltu(V.maxLen, n)
+      if InlineT.DfltInt.ltu(Word8Vector.maxLen, n)
 	  then raise General.Size
       else ()
 
@@ -125,7 +127,7 @@ struct
 (* val getItem : slice -> (elem * slice) option *)
   fun getItem (SL{base,start,stop}) =
       if stop<=start then NONE
-      else SOME(sub'(base, j'), SL{base=base,start=start+1,stop=stop})
+      else SOME(sub'(base, start), SL{base=base,start=start+1,stop=stop})
 
 (* val appi : (int * elem -> unit) -> slice -> unit *)
   fun appi f (SL{base,start,stop}) =
@@ -136,7 +138,7 @@ struct
       end
 
 (* val app  : (elem -> unit) -> slice -> unit *)
-  fun appi f (SL{base,start,stop}) =
+  fun app f (SL{base,start,stop}) =
       let fun app i = if (i < stop)
 	      then (f (sub'(base, i)); app(i+1))
 	      else ()
@@ -183,7 +185,7 @@ struct
       end
 
 (* val foldl  : (elem * 'b -> 'b) -> 'b -> slice -> 'b *)
-  fun foldli f init (SL{base,start,stop}) = 
+  fun foldl f init (SL{base,start,stop}) = 
       let fun fold (i, accum) = if (i < stop)
 	      then fold (i+1, f (sub'(base, i), accum))
 	      else accum
@@ -218,7 +220,7 @@ struct
 	      then let val item = sub'(base, i)
 		    in if f item
 		       then SOME(item)
-		       else findi' (i+1)
+		       else find' (i+1)
 		   end
 	      else NONE
        in find' start
@@ -259,5 +261,7 @@ struct
 	      else EQUAL
        in cmp(start,start')
       end
+
+  fun base (SL { base, start, stop }) = (base, start, stop - start)
     
 end (* structure Word8VectorSlice *)

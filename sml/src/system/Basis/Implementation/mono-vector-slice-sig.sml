@@ -22,8 +22,8 @@ signature MONO_VECTOR_SLICE =
     val getItem : slice -> (elem * slice) option
     val appi : (int * elem -> unit) -> slice -> unit
     val app  : (elem -> unit) -> slice -> unit
-    val mapi : (int * elem -> 'b) -> slice -> vector
-    val map  : (elem -> 'b) -> slice -> vector
+    val mapi : (int * elem -> elem) -> slice -> vector
+    val map  : (elem -> elem) -> slice -> vector
     val foldli : (int * elem * 'b -> 'b) -> 'b -> slice -> 'b
     val foldr  : (elem * 'b -> 'b) -> 'b -> slice -> 'b
     val foldl  : (elem * 'b -> 'b) -> 'b -> slice -> 'b
