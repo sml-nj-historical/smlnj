@@ -1,4 +1,4 @@
-Library
+Group (viscomp-lib.cm)
 	signature ABELIAN_GROUP
 	signature ABELIAN_GROUP_WITH_INF
 	signature ALL_PAIRS_SHORTEST_PATHS

@@ -221,6 +221,3 @@ struct
 
 end (* structure PPUtil *)
 
-(*
- * $Log$
- *)

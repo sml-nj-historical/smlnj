@@ -28,6 +28,3 @@ sig
 end  (* signature INTERACT *)
 
 
-(*
- * $Log$
- *)

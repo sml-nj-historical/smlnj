@@ -867,18 +867,3 @@ end (* local *)
 end (* structure TypesUtil *)
 
 
-(*
- * $Log: typesutil.sml,v $
- * Revision 1.6  1998/09/30 19:26:53  dbm
- * added comments
- *
- * Revision 1.5  1998/08/19 18:17:18  dbm
- * bug fixes for 110.9 [dbm]
- *
- * Revision 1.4  1998/07/22 17:56:09  dbm
- * fix bug 1391, correct bad defn of mkStrict
- *
- * Revision 1.3  1998/05/23 14:10:19  george
- *   Fixed RCS keyword syntax
- *
- *)

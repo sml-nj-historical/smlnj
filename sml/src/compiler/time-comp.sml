@@ -25,9 +25,3 @@ fun make () = let
 end;
 
 
-(*
- * $Log: time-comp.sml,v $
- * Revision 1.1.1.1  1997/01/14 01:38:07  george
- *   Version 109.24
- *
- *)

@@ -442,6 +442,3 @@ fun ppDataconTypes env ppstrm (GENtyc{kind=DATATYPE{index,freetycs,family={membe
 end (* toplevel local *)
 end (* structure PPType *)
 
-(*
- * $Log$
- *)

@@ -50,11 +50,3 @@ signature GENERIC_VC = sig
 end
 
 
-(*
- * $Log: generic-vc.sig,v $
- * Revision 1.1  1998/10/16 14:04:03  george
- *   Implemented a hierachical bin directory structure and
- *   broke up the Compiler structure into a machine dependent
- *   and independent parts. [blume]
- *
- *)

@@ -14,6 +14,3 @@ sig
 end (* signature FRONT_END *)
 
 
-(*
- * $Log$
- *)

@@ -287,10 +287,3 @@ end  (* end of case #1 for function elabInclude *)
 end (* local *)
 end (* structure Include *)
 
-(*
- * $Log: include.sml,v $
- * Revision 1.3  1998/05/23 14:10:08  george
- *   Fixed RCS keyword syntax
- *
- *
- *)

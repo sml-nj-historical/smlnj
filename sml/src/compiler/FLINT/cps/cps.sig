@@ -162,15 +162,3 @@ val ctyc  : LtyDef.tyc -> cty
 val ctype : LtyDef.lty -> cty
 end (* signature CPS *)
 
-(*
- * $Log: cps.sig,v $
- * Revision 1.3  1998/11/18 03:53:15  jhr
- *  New array representations.
- *
- * Revision 1.2  1998/10/28 18:21:21  jhr
- *   New primops to support new array representation.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:47  george
- * Version 110.5
- *
- *)

@@ -545,15 +545,3 @@ end (* structure PrimEnv *)
 
 
 
-(*
- * $Log: prim.sml,v $
- * Revision 1.3  1998/10/28 18:25:17  jhr
- *   New primops to support new array representation.
- *
- * Revision 1.2  1998/09/30 19:22:38  dbm
- * new repl field in TYCspec (bug 1432)
- *
- * Revision 1.1.1.1  1998/04/08 18:39:36  george
- * Version 110.5
- *
- *)

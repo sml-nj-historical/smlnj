@@ -235,6 +235,3 @@ structure Stats :> STATS =
 
   end (* structure Stats *)
 
-(*
- * $Log$
- *)

@@ -17,6 +17,3 @@ signature INT_INF =
 
   end (* signature INT_INF *)
 
-(*
- * $Log$
- *)

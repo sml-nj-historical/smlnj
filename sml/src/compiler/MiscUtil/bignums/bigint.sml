@@ -40,6 +40,3 @@ fun size x = length x
 
 end
 
-(*
- * $Log$
- *)

@@ -35,12 +35,3 @@ signature CPSREGS = sig
   val availF     : int list
 end
 
-(*
- * $Log: cpsRegs.sig,v $
- * Revision 1.4  1999/02/23 20:22:05  george
- *   Got rid of gclinkreg
- *
- * Revision 1.3  1998/05/23 14:09:17  george
- *   Fixed RCS keyword syntax
- *
- *)

@@ -91,6 +91,3 @@ struct
 
 end (* structure ModuleId *)
 
-(*
- * $Log$
- *)

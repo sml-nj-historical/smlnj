@@ -378,6 +378,3 @@ end (* toplevel local *)
 end (* struct PPLexp *)
 
 
-(*
- * $Log$
- *)

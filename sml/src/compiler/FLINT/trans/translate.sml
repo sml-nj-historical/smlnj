@@ -1177,9 +1177,3 @@ end (* top-level local *)
 end (* structure Translate *)
 
 
-(*
- * $Log: translate.sml,v $
- * Revision 1.7  1999/01/11 16:53:37  george
- *   new array representation support
- *
- *)

@@ -321,6 +321,3 @@ val evalApp = Stats.doPhase(Stats.makePhase "Compiler 044 x-evalApp") evalApp
 end (* toplevel local *)
 end (* structure EvalEntity *)
 
-(*
- * $Log$
- *)

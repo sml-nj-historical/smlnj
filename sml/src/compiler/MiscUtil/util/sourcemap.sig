@@ -111,6 +111,3 @@ signature SOURCE_MAP = sig
   val newlineCount: sourcemap -> region -> int
 end
 
-(*
- * $Log$
- *)

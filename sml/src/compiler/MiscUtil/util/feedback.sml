@@ -210,6 +210,3 @@ val feedback = feedback2 o normalize
 
 end
 
-(*
- * $Log$
- *)

@@ -84,6 +84,3 @@ in
 end
 end
 
-(*
- * $Log$
- *)

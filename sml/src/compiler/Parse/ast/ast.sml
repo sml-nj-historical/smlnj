@@ -222,7 +222,3 @@ and ty
  
 end (* structure Ast *)
 
-(*
- * $Log$
- *
- *)

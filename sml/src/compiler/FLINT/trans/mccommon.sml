@@ -106,6 +106,3 @@ end (* structure MCCommon *)
 
 
 
-(*
- * $Log$
- *)

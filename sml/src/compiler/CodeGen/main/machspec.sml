@@ -60,6 +60,3 @@ structure DefaultMachSpec : MACH_SPEC =
     val spillRematerialization = false
   end (* DefaultMachSpec *)
 
-(*
- * $Log$
- *)

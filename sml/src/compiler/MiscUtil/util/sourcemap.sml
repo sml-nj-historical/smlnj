@@ -186,6 +186,3 @@ structure SourceMap : SOURCE_MAP = struct
     end
 end
 
-(*
- * $Log$
- *)

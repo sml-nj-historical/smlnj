@@ -58,6 +58,3 @@ struct
 
 end (* structure PPTABLE *)
 
-(*
- * $Log$
- *)

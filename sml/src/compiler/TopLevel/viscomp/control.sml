@@ -177,15 +177,3 @@ structure Control : CONTROL =
 end
 
 
-(*
- * $Log: control.sml,v $
- * Revision 1.8  1999/01/18 15:49:37  george
- *   support of interactive loading of MLRISC optimizer
- *
- * Revision 1.7  1999/01/11 16:53:42  george
- *   new array representation support
- *
- * Revision 1.4  1998/05/23 14:10:30  george
- *   Fixed RCS keyword syntax
- *
- *)

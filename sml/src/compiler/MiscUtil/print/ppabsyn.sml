@@ -744,6 +744,3 @@ and ppFctexp (context as (_,source_opt)) ppstrm =
 end (* top-level local *)
 end (* structure PPAbsyn *)
 
-(*
- * $Log$
- *)

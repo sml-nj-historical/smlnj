@@ -371,9 +371,3 @@ and merge_fields(extra1,extra2,fields1,fields2) =
 end (* local *)
 end (* structure Unify *)
 
-(*
- * $Log$
- *)
-
-
-

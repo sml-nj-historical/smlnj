@@ -48,6 +48,3 @@ end (* signature ACCESS *)
 
 
 
-(*
- * $Log$
- *)

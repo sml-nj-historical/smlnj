@@ -176,7 +176,3 @@ fun ppVariable ppstrm  =
 end (* local *)
 end (* structure PPVal *)
 
-(*
- * $Log$
- *
- *)

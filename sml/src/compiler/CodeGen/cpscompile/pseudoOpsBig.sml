@@ -69,18 +69,3 @@ end
 
 	
 
-(*
- * $Log: pseudoOpsBig.sml,v $
- * Revision 1.4  1998/12/21 17:04:55  jhr
- *   Got rid of "removable" function.
- *
- * Revision 1.3  1998/11/18 03:53:09  jhr
- *  New array representations.
- *
- * Revision 1.2  1998/10/28 18:20:40  jhr
- *   Removed code generator support for STRING/REAL constants.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:54  george
- * Version 110.5
- *
- *)

@@ -181,15 +181,3 @@ sig
 end
 
 
-(*
- * $Log: control.sig,v $
- * Revision 1.7  1999/01/18 15:49:36  george
- *   support of interactive loading of MLRISC optimizer
- *
- * Revision 1.6  1999/01/11 16:53:41  george
- *   new array representation support
- *
- * Revision 1.3  1998/05/23 14:10:29  george
- *   Fixed RCS keyword syntax
- *
- *)

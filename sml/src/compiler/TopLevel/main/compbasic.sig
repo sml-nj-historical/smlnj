@@ -26,9 +26,3 @@ val anyErrors   : compInfo -> bool
 end (* signature COMPBASIC *)
 
 
-(*
- * $Log: compbasic.sig,v $
- * Revision 1.3  1998/05/23 14:10:24  george
- *   Fixed RCS keyword syntax
- *
- *)

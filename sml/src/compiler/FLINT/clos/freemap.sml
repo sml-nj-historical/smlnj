@@ -173,6 +173,3 @@ end (* local *)
 end (* structure FreeMap *)
 
 
-(*
- * $Log$
- *)

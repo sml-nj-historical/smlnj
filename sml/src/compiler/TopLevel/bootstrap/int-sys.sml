@@ -37,6 +37,3 @@ structure InteractiveSystem : sig end = struct
 	     Compiler.Interact.interact())
 end
 
-(*
- * $Log$
- *)

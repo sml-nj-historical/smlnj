@@ -124,9 +124,3 @@ val flintcomp = phase "Compiler 050 flintcomp" flintcomp
 end (* local *)
 end (* structure FLINTComp *)
 
-(*
- * $Log: flintcomp.sml,v $
- * Revision 1.8  1999/01/11 16:53:25  george
- *   new array representation support
- *
- *)

@@ -607,6 +607,3 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 end (* toplevel local *)
 end (* functor Expand *)
 
-(*
- * $Log$
- *)

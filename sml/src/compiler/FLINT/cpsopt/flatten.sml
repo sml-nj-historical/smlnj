@@ -315,6 +315,3 @@ end
 end (* toplevel local *)
 end (* functor Flatten *)
 
-(*
- * $Log$
- *)

@@ -219,6 +219,3 @@ end (* local *)
 end (* structure SProf *)
 
 
-(*
- * $Log$
- *)

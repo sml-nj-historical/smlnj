@@ -1783,15 +1783,3 @@ val getTycPaths =
 end (* local *)
 end (* structure Instantiate *)
 
-(*
- * $Log: instantiate.sml,v $
- * Revision 1.3  1998/09/30 19:14:27  dbm
- * fixes for bugs 1364 and 1432
- *
- * Revision 1.2  1998/08/19 18:17:15  dbm
- * bug fixes for 110.9 [dbm]
- *
- * Revision 1.1.1.1  1998/04/08 18:39:26  george
- * Version 110.5
- *
- *)

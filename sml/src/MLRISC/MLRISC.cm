@@ -1,6 +1,8 @@
-Group is
+Group (viscomp-lib.cm) is
 
-UTIL.cm
+  basis.cm
+  comp-lib.cm
+
 library/sources.cm
 graphs/sources.cm
 visualization/sources.cm

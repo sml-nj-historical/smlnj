@@ -313,9 +313,3 @@ end
 end (* toplevel local *)
 end (* structure Switch *)
 
-(*
- * $Log: switch.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:47  george
- * Version 110.5
- *
- *)

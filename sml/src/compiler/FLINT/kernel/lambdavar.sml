@@ -62,6 +62,3 @@ end (* local *)
 
 end (* structure LambdaVar *)
 
-(*
- * $Log$
- *)

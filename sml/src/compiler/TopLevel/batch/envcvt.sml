@@ -21,6 +21,3 @@ struct
   val debugging = CMStaticEnv.debugging
 end
 
-(*
- * $Log$
- *)

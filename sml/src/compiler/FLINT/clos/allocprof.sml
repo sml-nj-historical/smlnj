@@ -405,6 +405,3 @@ fun reset() = (print "New  alloc profvec, size ";
 end (* toplevel local *)
 end (* structure AllocProf *)
 
-(*
- * $Log$
- *)

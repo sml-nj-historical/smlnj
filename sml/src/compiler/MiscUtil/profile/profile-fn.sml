@@ -41,6 +41,3 @@ functor ProfileFn (ProfEnv: PROF_ENV) : PROFILE =
   end;
 
 
-(*
- * $Log$
- *)

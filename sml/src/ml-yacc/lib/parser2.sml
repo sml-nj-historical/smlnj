@@ -1,8 +1,8 @@
 (* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
- * Revision 1.1.1.10  1999/04/17 18:56:10  monnier
- * version 110.16
+ * Revision 1.1.1.11  1999/09/03 23:50:32  monnier
+ * version 110.20
  *
  * Revision 1.2  1997/08/26 19:18:54  jhr
  *   Replaced used of "abstraction" with ":>".
@@ -561,8 +561,3 @@ fun mkFixError({is_keyword,terms,errtermvalue,
 	end
  end;
 
-(* drt (12/15/89) -- needed only when the code above is functorized
-
-structure LrParser = ParserGen(structure LrTable=LrTable
-			     structure Stream=Stream);
-*)

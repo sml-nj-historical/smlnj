@@ -20,6 +20,3 @@ sig
 
 end (* signature LAMBDA_VAR *)
 
-(*
- * $Log$
- *)

@@ -11,6 +11,3 @@ signature PATHNAMES =
     val trim :string -> string
   end
 
-(*
- * $Log$
- *)

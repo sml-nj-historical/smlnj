@@ -595,7 +595,7 @@ let fun continue() = lex() in
 	| action (i,(node::acts)::l) =
 		case node of
 		    Internal.N yyk => 
-			(let val yytext = substring(!yyb,i0,i-i0)
+			(let fun yymktext() = substring(!yyb,i0,i-i0)
 			     val yypos = i0+ !yygone
 			open UserDeclarations Internal.StartStates
  in (yybufpos := i; case yyk of 
@@ -623,8 +623,8 @@ let fun continue() = lex() in
 			    else T.PPERCENT(rev(!raw),!lineNum,!lineNum)
 					before raw := [])
 | 70 => (YYBEGIN COMMENT; comLevel:=1; continue())
-| 73 => (T.INT(valOf(Int.fromString yytext),!lineNum,!lineNum))
-| 76 => (T.ID(yytext,!lineNum,!lineNum))
+| 73 => let val yytext=yymktext() in T.INT(valOf(Int.fromString yytext),!lineNum,!lineNum) end
+| 76 => let val yytext=yymktext() in T.ID(yytext,!lineNum,!lineNum) end
 | 79 => (inc comLevel; continue())
 | 81 => (inc lineNum; continue())
 | 84 => (dec comLevel;
@@ -635,14 +635,14 @@ let fun continue() = lex() in
 			    YYBEGIN INITIAL; continue())
 | 9 => (continue())
 | 91 => (rawNextLine (); inc lineNum; continue())
-| 93 => (outputRaw yytext; continue())
+| 93 => let val yytext=yymktext() in outputRaw yytext; continue() end
 | 95 => (rawNextLine (); inc lineNum; continue())
-| 97 => (outputRaw yytext; continue())
+| 97 => let val yytext=yymktext() in outputRaw yytext; continue() end
 | _ => raise Internal.LexerError
 
 		) end )
 
-	val {fin,trans} = Vector.sub(Internal.tab, s)
+	val {fin,trans} = Unsafe.Vector.sub(Internal.tab, s)
 	val NewAcceptingLeaves = fin::AcceptingLeaves
 	in if l = !yybl then
 	     if trans = #trans(Vector.sub(Internal.tab,0))
@@ -658,8 +658,9 @@ let fun continue() = lex() in
 		     yybl := size (!yyb);
 		     scan (s,AcceptingLeaves,l-i0,0))
 	    end
-	  else let val NewChar = Char.ord(String.sub(!yyb,l))
-		val NewState = if NewChar<128 then Char.ord(String.sub(trans,NewChar)) else Char.ord(String.sub(trans,128))
+	  else let val NewChar = Char.ord(Unsafe.CharVector.sub(!yyb,l))
+		val NewChar = if NewChar<128 then NewChar else 128
+		val NewState = Char.ord(Unsafe.CharVector.sub(trans,NewChar))
 		in if NewState=0 then action(l,NewAcceptingLeaves)
 		else scan(NewState,NewAcceptingLeaves,l+1,i0)
 	end

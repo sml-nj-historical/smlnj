@@ -219,6 +219,3 @@ end (* fun eta *)
 end (* toplevel local *)
 end (* structure Eta *)
 
-(*
- * $Log$
- *)

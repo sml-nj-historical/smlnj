@@ -856,6 +856,3 @@ structure IntInf : INT_INF =
 
   end (* structure IntInf *)
 
-(*
- * $Log$
- *)

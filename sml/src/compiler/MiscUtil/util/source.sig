@@ -43,6 +43,3 @@ signature SOURCE =
 (*                                                                          *)
 (* <source.sig>=                                                            *)
 
-(*
- * $Log$
- *)

@@ -12,7 +12,7 @@
 # get the target list
 #
 if [ ! -r config/targets ]; then
-  echo "!!! no target list"
+  echo "!!! File config/targets is missing."
   exit 1;
 fi
 . config/targets
@@ -21,14 +21,6 @@ fi
 # some OSs have make in strange places
 #
 MAKE=make
-
-#
-# command for building SML libraries; this should be either
-# "CM.recompile()" or "CM.stabilize true".  The latter builds
-# stable libraries, which may be somewhat faster to use.
-#
-#CM_MAKE_LIB="CM.recompile();"
-CM_MAKE_LIB="CM.stabilize true;"
 
 #
 # check for ksh
@@ -43,27 +35,30 @@ CM_MAKE_LIB="CM.stabilize true;"
 #else
   SHELL=/bin/sh
 #fi
-echo "  using $SHELL"
+echo Using shell $SHELL.
 
 #
 # set the SML root directory
 #
 REAL_PWD=`pwd`
 ROOT=${PWD:-$REAL_PWD}
-echo "SML root is $ROOT"
+echo SML root is $ROOT.
 
 #
-# set the various directory pathname variables
+# set the various directory and file pathname variables
 #
-BINDIR=$ROOT/bin
+BINDIR=$ROOT/bin		# main dir for binary stuff
 CONFIGDIR=$ROOT/config
-HEAPDIR=$BINDIR/.heap
-RUNDIR=$BINDIR/.run
-SRCDIR=$ROOT/src
-LIBDIR=$ROOT/lib
+HEAPDIR=$BINDIR/.heap		# where heap images live
+RUNDIR=$BINDIR/.run		# where executables (i.e., the RTS) live
+SRCDIR=$ROOT/src		# where the source tree is rooted
+LIBDIR=$ROOT/lib		# where libraries live
+LIBLIST=$ROOT/liblist		# list of commands to stabilize libraries
+LIBMOVESCRIPT=$ROOT/libmove	# a temporary script
+LOCALPATHCONFIG=$ROOT/pathconfig # a temporary pathconfig file
 
 #
-# the paths to ml-yacc and ml-lex; needed to configure CM
+# the paths to ml-yacc, ml-burg, and ml-lex; needed to configure CM
 #
 YACCPATH=$BINDIR/ml-yacc
 LEXPATH=$BINDIR/ml-lex
@@ -72,35 +67,150 @@ BURGPATH=$BINDIR/ml-burg
 #
 # set the CM configuration variables (these are environment variables
 # that will be queried by the bootstrap code)
-#  -M.Blume (5/1998)
+# Especially important is CM_PATHCONFIG_DEFAULT.
 #
 CM_YACC_DEFAULT=$YACCPATH
 CM_LEX_DEFAULT=$LEXPATH
 CM_BURG_DEFAULT=$BURGPATH
-CM_PATH_DEFAULT=.:$LIBDIR
-export CM_YACC_DEFAULT CM_LEX_DEFAULT CM_BURG_DEFAULT CM_PATH_DEFAULT 
+CM_PATHCONFIG_DEFAULT=$LIBDIR/pathconfig
+export CM_YACC_DEFAULT CM_LEX_DEFAULT CM_BURG_DEFAULT CM_PATHCONFIG_DEFAULT
 
 #
 # the release version that we are installing
 #
 VERSION=`cat $CONFIGDIR/version`
-echo "installing version $VERSION"
+echo Installing version $VERSION.
+
+#
+# Function to make a directory (and advertise such action).
+#
+makedir() {
+    if [ ! -d $1 ] ; then
+	echo Making directory $1
+	if mkdir $1 ; then
+	    : everything is fine
+	else
+	    echo "!!! Unable to make directory $1!"
+	    exit 1
+	fi
+    fi
+}
+
+#
+# Function to unpack a source archive.
+#
+# $1: descriptive name of the sources to be unpacked
+# $2: the directory into which to unpack the sources
+# $3: the sub-directory of $2 that is going to be created by unpacking
+# $4: the basename of the source archive (the script will check several
+#     different suffixes to determine what kind of de-compression is to
+#     be used)
+unpack() {
+    if [ ! -d $2/$3 ]; then
+	echo Unpacking $1 source files.
+	cd $2
+	if [ -r $4.tar.Z ] ; then
+	    zcat $4.tar.Z | tar -xf -
+	elif [ -r $4.tar ] ; then
+	    tar -xf $4.tar
+	elif [ -r $4.tar.gz ] ; then
+	    gunzip -c $4.tar.gz | tar -xf -
+	elif [ -r $4.tar.bz2 ] ; then
+	    bunzip2 -c $4.tar.bz2 | tar -xf -
+	elif [ -r $4.tgz ] ; then
+	    gunzip -c $4.tgz | tar -xf -
+	elif [ -r $4.tz ] ; then
+	    zcat $4.tz | tar -xf -
+	else
+	    echo "!!! The $1 source files are missing."
+	    exit 1
+	fi
+	if [ ! -d $2/$3 ]; then
+	    echo "!!! Unable to unpack $1 source files."
+	    exit 1
+	fi
+    fi
+}
+
+#
+# Move the stable archive of a library whose description file was $1/$2 to
+# $LIBDIR/$2/CM/$ARCH-unix/$2 so that it appears as if the description file
+# had been at $LIBDIR/$2/$2
+#
+movelib() {
+    if [ -f $1/CM/$ARCH-unix/$2 ] ; then
+	echo Moving library $2 to $LIBDIR.
+	makedir $LIBDIR/$2
+	makedir $LIBDIR/$2/CM
+	makedir $LIBDIR/$2/CM/$ARCH-unix
+	mv $1/CM/$ARCH-unix/$2 $LIBDIR/$2/CM/$ARCH-unix/$2
+    fi
+}
+
+# A shell function that registers a library for being built.
+# This function takes two arguments: 1. a name under which the library
+# is to be known later (something.cm) and 2. the path relative to $SRCDIR
+# that leads to the library's .cm file.  The library's .cm file must be the
+# same as $1.
+#
+# This works by adding ML code to file $LIBLIST.  The code in this file
+# will be executed near the end of this script.  If $MOVE_LIBRARIES is
+# set to true, then reglib will also register a "movelib" to be executed at
+# the end by putting a "movelib" line into $LIBMOVESCRIPT.
+
+reglib() {
+    echo Scheduling library $1 to be built.
+    echo "andalso CM.stabilize false \"$1\"" >>$LIBLIST
+    echo $1 $SRCDIR/$2 >>$LOCALPATHCONFIG
+    if [ x$MOVE_LIBRARIES = xtrue ] ; then
+	echo movelib $SRCDIR/$2 $1 >>$LIBMOVESCRIPT
+	echo $1 $LIBDIR/$1 >>$CM_PATHCONFIG_DEFAULT
+    else
+	echo $1 $SRCDIR/$2 >>$CM_PATHCONFIG_DEFAULT
+    fi
+}
+
+#
+# Function to build a standalone program such as ml-yacc.  The function takes
+# 2 or 3 arguments.  First the name of the program with at the same time
+# is the directory name under $SRCDIR where the sources reside.  The second
+# argument is a descriptive name for the program (passed on to "unpack").
+# The optional third argument specifies the path relative to $SRCDIR/$1
+# of the directory where the program's heap image is to be found.
+#
+
+standalone() {
+    TARGET=$1.$HEAP_SUFFIX
+    if [ $# = 3 ] ; then
+	TARGETLOC=$3/$TARGET
+    else
+	TARGETLOC=$TARGET
+    fi
+    if [ -r $HEAPDIR/$TARGET ] ; then
+	echo Target $TARGET already exists.
+    else
+	echo Building $TARGET.
+	unpack $2 $SRCDIR $1 $ROOT/$VERSION-$1
+	cd $SRCDIR/$1
+	./build
+	if [ -r $TARGETLOC ] ; then
+	    mv $TARGETLOC $HEAPDIR/$TARGET
+	    if [ ! -f $BINDIR/$1 ] ; then
+		cd $BINDIR
+		ln -s .run-sml $1
+	    fi
+	else
+	    echo "!!! Build of $TARGET failed."
+	fi
+    fi
+}
 
 #
 # create the various sub directories
 #
 for dir in $BINDIR $HEAPDIR $RUNDIR $LIBDIR $SRCDIR
 do
-  if [ -d $dir ]; then
-    echo "$dir already exists"
-  else
-    echo "creating $dir"
-    mkdir $dir
-    if [ $? != "0" ]; then
-      echo "unable to create $dir"
-      exit 1
-    fi
-  fi
+    makedir $dir
 done
 
 
@@ -108,34 +218,34 @@ done
 # install the script that tests the architecture, and make sure that it works
 #
 if [ -x $BINDIR/.arch-n-opsys ]; then
-  echo "$BINDIR/.arch-n-opsys already exists"
+  echo Script $BINDIR/.arch-n-opsys already exists.
 else
   cat $CONFIGDIR/_arch-n-opsys | sed -e "s,@SHELL@,$SHELL,g" > $BINDIR/.arch-n-opsys
   chmod 555 $BINDIR/.arch-n-opsys
   if [ ! -x $BINDIR/.arch-n-opsys ]; then
-    echo "!!! installation of $BINDIR/.arch-n-opsys failed for some reason"
+    echo "!!! Installation of $BINDIR/.arch-n-opsys failed for some reason."
     exit 1
   fi
 fi
 ARCH_N_OPSYS=`$BINDIR/.arch-n-opsys`
 if [ "$?" != "0" ]; then
-  echo "!!! $BINDIR/.arch-n-opsys fails on this machine"
-  echo "!!! you must patch this by hand and repeat the installation"
+  echo "!!! Script $BINDIR/.arch-n-opsys fails on this machine."
+  echo "!!! You must patch this by hand and repeat the installation."
   exit 2
 else
-  echo "$BINDIR/.arch-n-opsys reports $ARCH_N_OPSYS"
+  echo Script $BINDIR/.arch-n-opsys reports $ARCH_N_OPSYS.
 fi
 eval $ARCH_N_OPSYS
 
 if [ -x $BINDIR/.run-sml ]; then
-  echo "$BINDIR/.run-sml already exists"
+  echo Script $BINDIR/.run-sml already exists.
 else
   cat $CONFIGDIR/_run-sml | \
     sed -e "s,@SHELL@,$SHELL,g" -e "s,@BINDIR@,$BINDIR," -e "s,@VERSION@,$VERSION," \
     > $BINDIR/.run-sml
   chmod 555 $BINDIR/.run-sml
   if [ ! -x $BINDIR/.run-sml ]; then
-    echo "!!! installation of $BINDIR/.run-sml failed for some reason"
+    echo "!!! Installation of $BINDIR/.run-sml failed for some reason."
     exit 1
   fi
 fi
@@ -162,7 +272,7 @@ case $OPSYS in
   linux)
     EXTRA_DEFS=`$CONFIGDIR/chk-global-names.sh`
     if [ "$?" != "0" ]; then
-      echo "problems checking for underscores in global names"
+      echo "!!! Problems checking for underscores in global names."
       exit 1
     fi
     EXTRA_DEFS="XDEFS=$EXTRA_DEFS"
@@ -172,24 +282,21 @@ esac
 #
 # the name of the bin files directory
 #
-BIN_FILES=bin.$ARCH-unix
+BOOT_FILES=comp.boot.$ARCH-unix
 
 #
 # build the run-time system
 #
-$CONFIGDIR/unpack.sh "run-time" $SRCDIR runtime $ROOT/$VERSION-runtime.tar
-if [ "$?" != "0" ]; then
-  exit $?
-fi
+unpack "run-time" $SRCDIR runtime $ROOT/$VERSION-runtime
 if [ ! -x $RUNDIR/run.$ARCH-$OPSYS ]; then
   cd $SRCDIR/runtime/objs
-  echo "compiling the run-time system"
+  echo Compiling the run-time system.
   $MAKE -f mk.$ARCH-$OPSYS $EXTRA_DEFS
   if [ -x run.$ARCH-$OPSYS ]; then
     mv run.$ARCH-$OPSYS $RUNDIR
     $MAKE MAKE=$MAKE clean
   else
-    echo "!!! run-time system build failed for some reason"
+    echo "!!! Run-time system build failed for some reason."
     exit 1
   fi
 fi
@@ -199,307 +306,137 @@ cd $SRCDIR
 # boot the base SML system
 #
 if [ -r $HEAPDIR/sml.$HEAP_SUFFIX ]; then
-  echo "$HEAPDIR/sml.$HEAP_SUFFIX already exists"
+  echo Heap image $HEAPDIR/sml.$HEAP_SUFFIX already exists.
 else
-  $CONFIGDIR/unpack.sh bin $ROOT $BIN_FILES $ROOT/$VERSION-$BIN_FILES.tar
+  unpack bin $ROOT $BOOT_FILES $ROOT/$VERSION-$BOOT_FILES
   cd $ROOT
-  $RUNDIR/run.$ARCH-$OPSYS @SMLboot=$ROOT/$BIN_FILES @SMLalloc=$ALLOC <<XXXX
-    $SET_FLAGS
-    val use = Compiler.Interact.useFile
-    val _ = (SMLofNJ.exportML "sml";
-             print Compiler.banner;
-             print "\n");
-XXXX
-  if [ -r sml.$HEAP_SUFFIX ]; then
-    mv sml.$HEAP_SUFFIX $HEAPDIR
-    cd $BINDIR
-    ln -s .run-sml sml
+  if $RUNDIR/run.$ARCH-$OPSYS @SMLheap=sml \
+	@SMLboot=$ROOT/$BOOT_FILES @SMLrtpid=`cat $BOOT_FILES/RTPID` \
+	@SMLalloc=$ALLOC
+  then
+    if [ -r sml.$HEAP_SUFFIX ]; then
+	mv sml.$HEAP_SUFFIX $HEAPDIR
+	cd $BINDIR
+	ln -s .run-sml sml
+
+	#
+	# Now move all stable libraries to #LIBDIR and generate
+	# the pathconfig file.
+	#
+
+	cd $ROOT/$BOOT_FILES
+	for lib in *.cm ; do
+	    echo $lib $LIBDIR/$lib >>$CM_PATHCONFIG_DEFAULT
+	    movelib $ROOT/$BOOT_FILES/$lib $lib
+	done
+	cd $ROOT
+	rm -rf $BOOT_FILES
+
+    else
+	echo "!!! Boot code did not produce heap image (sml.$HEAP_SUFFIX)."
+	exit 1
+    fi
   else
-    echo "!!! unable to build SML heap image (sml.$HEAP_SUFFIX)"
+    echo "!!! Boot code failed, no heap image built (sml.$HEAP_SUFFIX)."
     exit 1
   fi
 fi
 
+#
+# Initialize $LIBLIST
+#
+cd $ROOT
+rm -f $LOCALPATHCONFIG $LIBLIST
+echo 'OS.Process.exit (if true' >$LIBLIST
 
 #
-# now build the individual targets
+# now build (or prepare to build) the individual targets
 #
 cd $SRCDIR
-echo "install targets"
-for i in $TARGETS
-do
-  if [ $i = "doc" ]; then
-    TARGET=$i
-  else
-    TARGET=$i.$HEAP_SUFFIX
-  fi
-  if [ -r $HEAPDIR/$TARGET ]; then
-    echo "$TARGET already exists"
-  else
-    echo "  building $TARGET"
+echo Installing other targets.
+for i in $TARGETS ; do
     case $i in
       src-smlnj)
-        for src in compiler comp-lib cm MLRISC; do
-          $CONFIGDIR/unpack.sh $src $ROOT/src $src $ROOT/$VERSION-$src.tar
+	for src in compiler comp-lib new-cm MLRISC smlnj-lib ml-yacc system
+	do
+	    unpack $src $ROOT/src $src $ROOT/$VERSION-$src
         done
-      ;;
-      sml-full)
-	if [ ! -d $ROOT/$BIN_FILES ]; then
-	  echo "!!! bin files are missing; build of $TARGET failed"
-	  exit 1
-	else
-	  cd $ROOT
-	  $RUNDIR/run.$ARCH-$OPSYS @SMLfull @SMLboot=$ROOT/$BIN_FILES @SMLalloc=$ALLOC <<XXXX
-	    $SET_FLAGS
-	    val use = Compiler.Interact.useFile
-	    val _ = (SMLofNJ.exportML "sml-full";
-		     print Compiler.banner;
-		     print " [full]\n");
-XXXX
-	  if [ -r sml-full.$HEAP_SUFFIX ]; then
-	    mv sml-full.$HEAP_SUFFIX $HEAPDIR
-	    cd $BINDIR
-	    ln -s .run-sml sml-full
-	  else
-	    echo "!!! unable to build SML-FULL heap image"
-	    exit 1
-	  fi
-	fi
-      ;;
+	;;
       ml-yacc)
-        $CONFIGDIR/unpack.sh ML-Yacc $SRCDIR ml-yacc $ROOT/$VERSION-ml-yacc.tar
-        if [ "$?" != "0" ]; then
-	  exit $?
-        fi
-        cd $SRCDIR/ml-yacc
-        ./build
-        if [ -r src/$TARGET ]; then
-	  mv src/$TARGET $HEAPDIR
-	  if [ ! -f $BINDIR/$i ]; then
-	    cd $BINDIR
-	    ln -s .run-sml $i
-	  fi
-        else
-	  echo "!!! build of $TARGET failed"
-	  exit 1
-        fi
-      ;;
+	standalone ml-yacc ML-Yacc src
+	;;
       ml-lex)
-        $CONFIGDIR/unpack.sh ML-Lex $SRCDIR ml-lex $ROOT/$VERSION-ml-lex.tar
-        if [ "$?" != "0" ]; then
-	  exit $?
-        fi
-        cd $SRCDIR/ml-lex
-        ./build
-        if [ -r $TARGET ]; then
-	  mv $TARGET $HEAPDIR
-	  if [ ! -f $BINDIR/$i ]; then
-	    cd $BINDIR
-	    ln -s .run-sml $i
-	  fi
-        else
-	  echo "!!! build of $TARGET failed"
-	  exit 1
-        fi
-      ;;
+	standalone ml-lex ML-Lex
+	;;
       ml-burg)
-        $CONFIGDIR/unpack.sh ML-Burg $SRCDIR ml-burg $ROOT/$VERSION-ml-burg.tar
-        if [ "$?" != "0" ]; then
-	  exit $?
-        fi
-        cd $SRCDIR/ml-burg
-        ./build
-        if [ -r $TARGET ]; then
-	  mv $TARGET $HEAPDIR
-	  if [ ! -f $BINDIR/$i ]; then
-	    cd $BINDIR
-	    ln -s .run-sml $i
-	  fi
-        else
-	  echo "!!! build of $TARGET failed"
-	  exit 1
-        fi
-      ;;
+	standalone ml-burg ML-Burg
+	;;
       smlnj-lib)
-        $CONFIGDIR/unpack.sh "SML/NJ Library" $SRCDIR smlnj-lib $ROOT/$VERSION-smlnj-lib.tar
-        if [ "$?" != "0" ]; then
-	  exit $?
-        fi
-      # make the Util library
-        cd $SRCDIR/smlnj-lib/Util
-        echo "$CM_MAKE_LIB" | $BINDIR/sml
-	if [ ! -f $LIBDIR/smlnj-lib.cm ]; then
-          cd $LIBDIR
-          echo "Alias $SRCDIR/smlnj-lib/Util/sources.cm" > smlnj-lib.cm
-	fi
-      # make the Unix library
-        cd $SRCDIR/smlnj-lib/Unix
-        echo "$CM_MAKE_LIB" | $BINDIR/sml
-	if [ ! -f $LIBDIR/unix-lib.cm ]; then
-          cd $LIBDIR
-          echo "Alias $SRCDIR/smlnj-lib/Unix/sources.cm" > unix-lib.cm
-	fi
-      # make the INet library
-        cd $SRCDIR/smlnj-lib/INet
-        echo "$CM_MAKE_LIB" | $BINDIR/sml-cm
-	if [ ! -f $LIBDIR/inet-lib.cm ]; then
-          cd $LIBDIR
-          echo "Alias $SRCDIR/smlnj-lib/INet/sources.cm" > inet-lib.cm
-	fi
-      # make the HTML library
-        cd $SRCDIR/smlnj-lib/HTML
-        echo "$CM_MAKE_LIB" | $BINDIR/sml
-	if [ ! -f $LIBDIR/html-lib.cm ]; then
-          cd $LIBDIR
-          echo "Alias $SRCDIR/smlnj-lib/HTML/sources.cm" > html-lib.cm
-	fi
-      # make the PP library
-        cd $SRCDIR/smlnj-lib/PP
-        echo "$CM_MAKE_LIB" | $BINDIR/sml
-	if [ ! -f $LIBDIR/pp-lib.cm ]; then
-          cd $LIBDIR
-          echo "Alias $SRCDIR/smlnj-lib/PP/sources.cm" > pp-lib.cm
-	fi
-      # make the RegExp library
-        cd $SRCDIR/smlnj-lib/RegExp
-        echo "$CM_MAKE_LIB" | $BINDIR/sml
-	if [ ! -f $LIBDIR/regexp-lib.cm ]; then
-          cd $LIBDIR
-          echo "Alias $SRCDIR/smlnj-lib/RegExp/sources.cm" > regexp-lib.cm
-	fi
-      # make the Reactive library
-        cd $SRCDIR/smlnj-lib/Reactive
-        echo "$CM_MAKE_LIB" | $BINDIR/sml
-	if [ ! -f $LIBDIR/reactive-lib.cm ]; then
-          cd $LIBDIR
-          echo "Alias $SRCDIR/smlnj-lib/Reactive/sources.cm" > reactive-lib.cm
-	fi
-      ;;
-      ml-yacc-lib)
-        $CONFIGDIR/unpack.sh ML-Yacc $SRCDIR ml-yacc $ROOT/$VERSION-ml-yacc.tar
-        if [ "$?" != "0" ]; then
-	  exit $?
-        fi
-        cd $SRCDIR/ml-yacc/lib
-        echo "$CM_MAKE_LIB" | $BINDIR/sml
-	if [ ! -f $LIBDIR/ml-yacc-lib.cm ]; then
-          cd $LIBDIR
-          echo "Alias $SRCDIR/ml-yacc/lib/sources.cm" > ml-yacc-lib.cm
-	fi
-      ;;
+        unpack "SML/NJ Library" $SRCDIR smlnj-lib $ROOT/$VERSION-smlnj-lib
+
+	# Don't make the Util library -- it came pre-made and has been
+	# installed when making the base system.  In other words, don't do...
+	    #reglib smlnj-lib.cm smlnj-lib/Util
+	# make the Unix library
+	    reglib unix-lib.cm smlnj-lib/Unix
+	# make the INet library
+	    reglib inet-lib.cm smlnj-lib/INet
+	# make the HTML library
+	    reglib html-lib.cm smlnj-lib/HTML
+	# make the PP library
+	    reglib pp-lib.cm smlnj-lib/PP
+	# make the RegExp library
+	    reglib regexp-lib.cm smlnj-lib/RegExp
+	# make the Reactive library
+	    reglib reactive-lib.cm smlnj-lib/Reactive
+	;;
       cml)
-        $CONFIGDIR/unpack.sh CML $SRCDIR cml $ROOT/$VERSION-cml.tar
-        if [ "$?" != "0" ]; then
-	  exit $?
-        fi
-        cd $SRCDIR/cml/src
-        echo "$CM_MAKE_LIB" | $BINDIR/sml
-	if [ ! -f $LIBDIR/cml.cm ]; then
-          cd $LIBDIR
-          echo "Alias $SRCDIR/cml/src/sources.cm" > cml.cm
-	fi
-      ;;
+        unpack CML $SRCDIR cml $ROOT/$VERSION-cml
+	reglib core-cml.cm cml/src/core-cml
+	reglib cml.cm cml/src
+	reglib cml-basis.cm cml
+	;;
       cml-lib)
-        $CONFIGDIR/unpack.sh CML $SRCDIR cml $ROOT/$VERSION-cml.tar
-        if [ "$?" != "0" ]; then
-	  exit $?
-        fi
-        cd $SRCDIR/cml/cml-lib
-        echo "$CM_MAKE_LIB" | $BINDIR/sml
-	if [ ! -f $LIBDIR/cml-lib.cm ]; then
-          cd $LIBDIR
-          echo "Alias $SRCDIR/cml/cml-lib/sources.cm" > cml-lib.cm
-	fi
-      ;;
-      cml-cm)
-	CMD="CM.autoloading(SOME true); CM.clearAutoList();"
-	CMD="$CMD CM.autoload'(\"$LIBDIR/cml.cm\");"
-	if [ "$AUTOLOAD_CML_LIB" = "TRUE" ]; then
-	  CMD="$CMD CM.autoload'(\"$LIBDIR/cml-lib.cm\");"
-	fi
-	if [ "$AUTOLOAD_EXENE" = "TRUE" ]; then
-	  CMD="$CMD CM.autoload'(\"$LIBDIR/eXene.cm\");"
-	fi
-	cd $ROOT
-	$BINDIR/sml <<XXXX
-	  $CMD
-	  val _ = (SMLofNJ.exportML "$i";
-		print CML.banner;
-		print "[CML autoload]\n");
-XXXX
-	if [ -r $TARGET ]; then
-	  mv $TARGET $HEAPDIR
-	  if [ ! -f $BINDIR/$i ]; then
-	    cd $BINDIR
-	    ln -s .run-sml $i
-	  fi
-	else
-	  echo "!!! unable to build autoloading CML"
-	  exit 1
-	fi
-      ;;
+        unpack CML $SRCDIR cml $ROOT/$VERSION-cml
+	reglib cml-lib.cm cml/cml-lib
+	;;
       eXene)
-        $CONFIGDIR/unpack.sh EXene $SRCDIR eXene $ROOT/$VERSION-eXene.tar
-        if [ "$?" != "0" ]; then
-	  exit $?
-        fi
-        cd $SRCDIR/eXene
-        echo "$CM_MAKE_LIB" | $BINDIR/sml
-	if [ ! -f $LIBDIR/eXene.cm ]; then
-          cd $LIBDIR
-          echo "Alias $SRCDIR/eXene/sources.cm" > eXene.cm
-	fi
-      ;;
+        unpack EXene $SRCDIR eXene $ROOT/$VERSION-eXene
+	reglib eXene.cm eXene
+	;;
       doc)
-	$CONFIGDIR/unpack.sh Doc $ROOT doc $ROOT/$VERSION-doc.tar
-        if [ "$?" != "0" ]; then
-	  exit $?
-        fi
+	unpack Doc $ROOT doc $ROOT/$VERSION-doc
         cd $ROOT/doc
 	build $ROOT
-      ;;
+	;;
       *)
-        echo "!!! unknown target $i"
-      ;;
+        echo "!!! Unknown target $i."
+	;;
     esac
-  fi
 done
 
-if [ "$ENABLE_AUTOLOADING" = "TRUE" ]; then
-  CMD="CM.autoloading(SOME true); CM.clearAutoList();"
-  if [ "$AUTOLOAD_SMLNJ_LIB" = "TRUE" ]; then
-    CMD="$CMD CM.autoload'(\"$LIBDIR/smlnj-lib.cm\");"
-  fi
-  if [ "$AUTOLOAD_SMLNJ_UNIX" = "TRUE" ]; then
-    CMD="$CMD CM.autoload'(\"$LIBDIR/unix-lib.cm\");"
-  fi
-  if [ "$AUTOLOAD_SMLNJ_INET" = "TRUE" ]; then
-    CMD="$CMD CM.autoload'(\"$LIBDIR/inet-lib.cm\");"
-  fi
-  if [ "$AUTOLOAD_SMLNJ_HTML" = "TRUE" ]; then
-    CMD="$CMD CM.autoload'(\"$LIBDIR/html-lib.cm\");"
-  fi
-  if [ "AUTOLOAD_SMLNJ_PP" = "TRUE" ]; then
-    CMD="$CMD CM.autoload'(\"$LIBDIR/pp-lib.cm\");"
-  fi
-  if [ "AUTOLOAD_SMLNJ_REGEXP" = "TRUE" ]; then
-    CMD="$CMD CM.autoload'(\"$LIBDIR/regexp-lib.cm\");"
-  fi
-  if [ "$AUTOLOAD_SMLNJ_REACTIVE" = "TRUE" ]; then
-    CMD="$CMD CM.autoload'(\"$LIBDIR/reactive-lib.cm\");"
-  fi
-  cd $ROOT
-  $BINDIR/sml <<XXXX
-    $CMD
-    val _ = (SMLofNJ.exportML "sml";
-             print Compiler.banner;
-             print " [CM; autoload enabled]\n");
-XXXX
-  if [ -r sml.$HEAP_SUFFIX ]; then
-    mv sml.$HEAP_SUFFIX $HEAPDIR
-  else
-    echo "!!! unable to build SML with autoloading"
-    exit 1
-  fi
-fi
+#
+# Now go and stabilize all registered libraries...
+# This is done with library sources in their original locations inside
+# $SRCDIR, so we must consult $LOCALPATHCONFIG.
+#
 
+echo Compiling library code.
+echo 'then OS.Process.success else OS.Process.failure);' >>$LIBLIST
+if CM_LOCAL_PATHCONFIG=$LOCALPATHCONFIG $BINDIR/sml <$LIBLIST ; then
+    echo Libraries compiled successfully.
+else
+    echo "!!! Something went wrong when compiling the libraries."
+    exit 1
+fi
+rm -f $LIBLIST $LOCALPATHCONFIG
+
+#
+# Finally, move the libraries to their final locations...
+#
+
+if [ -r $LIBMOVESCRIPT ] ; then
+    echo Moving libraries to $LIBDIR.
+    . $LIBMOVESCRIPT
+    rm -f $LIBMOVESCRIPT
+fi

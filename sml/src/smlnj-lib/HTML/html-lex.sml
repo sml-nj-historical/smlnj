@@ -559,14 +559,14 @@ type result = UserDeclarations.lexresult
 	exception LexerError (* raised if illegal leaf action tried *)
 end
 
+fun makeLexer yyinput =
+let	val yygone0=1
 	val yylineno = ref 0
 
-fun makeLexer yyinput = 
-let 
 	val yyb = ref "\n" 		(* buffer *)
 	val yybl = ref 1		(*buffer length *)
 	val yybufpos = ref 1		(* location of next character to use *)
-	val yygone = ref 1		(* position in file of beginning of buffer *)
+	val yygone = ref yygone0	(* position in file of beginning of buffer *)
 	val yydone = ref false		(* eof found yet? *)
 	val yybegin = ref 1		(*Current 'start state' for lexer *)
 
@@ -581,38 +581,38 @@ let fun continue() : Internal.result =
 	| action (i,(node::acts)::l) =
 		case node of
 		    Internal.N yyk => 
-			(let val yytext = substring(!yyb,i0,i-i0)
+			(let fun yymktext() = substring(!yyb,i0,i-i0)
 			     val yypos = i0+ !yygone
-			val _ = yylineno := CharVector.foldl
-				(fn (#"\n", n) => n+1 | (_, n) => n) (!yylineno) yytext
+			val _ = yylineno := CharVector.foldli
+				(fn (_,#"\n", n) => n+1 | (_,_, n) => n) (!yylineno) (!yyb,i0,SOME(i-i0))
 			open UserDeclarations Internal.StartStates
  in (yybufpos := i; case yyk of 
 
 			(* Application actions *)
 
-  10 => (addStr yytext; continue())
-| 13 => (addStr yytext; continue())
-| 15 => (addStr yytext; continue())
-| 19 => (addStr yytext; continue())
-| 23 => (addStr yytext; continue())
-| 25 => (addStr yytext; continue())
-| 3 => (addStr yytext; YYBEGIN STAG; continue())
-| 32 => (case Elems.endTag file (yytext, !yylineno, !yylineno)
+  10 => let val yytext=yymktext() in addStr yytext; continue() end
+| 13 => let val yytext=yymktext() in addStr yytext; continue() end
+| 15 => let val yytext=yymktext() in addStr yytext; continue() end
+| 19 => let val yytext=yymktext() in addStr yytext; continue() end
+| 23 => let val yytext=yymktext() in addStr yytext; continue() end
+| 25 => let val yytext=yymktext() in addStr yytext; continue() end
+| 3 => let val yytext=yymktext() in addStr yytext; YYBEGIN STAG; continue() end
+| 32 => let val yytext=yymktext() in case Elems.endTag file (yytext, !yylineno, !yylineno)
 	     of NONE => continue()
 	      | (SOME tag) => tag
-	    (* end case *))
+	    (* end case *) end
 | 37 => (YYBEGIN COM1; continue())
 | 40 => (YYBEGIN COM2; continue())
 | 42 => (continue())
 | 44 => (continue())
 | 47 => (YYBEGIN COM1; continue())
 | 49 => (YYBEGIN INITIAL; continue())
-| 5 => (addStr yytext;
+| 5 => let val yytext=yymktext() in addStr yytext;
 	    YYBEGIN INITIAL;
 	    case Elems.startTag file (getStr(), !yylineno, !yylineno)
 	     of NONE => continue()
 	      | (SOME tag) => tag
-	    (* end case *))
+	    (* end case *) end
 | 51 => (continue())
 | 53 => (continue())
 | 55 => (errorFn("bad comment syntax", !yylineno, !yylineno+1);
@@ -621,22 +621,22 @@ let fun continue() : Internal.result =
 | 61 => (
 (** At some point, we should support &#SPACE; and &#TAB; **)
 	    continue())
-| 67 => (T.CHAR_REF(yytext, !yylineno, !yylineno))
+| 67 => let val yytext=yymktext() in T.CHAR_REF(yytext, !yylineno, !yylineno) end
 | 7 => (addStr " "; continue())
-| 72 => (T.ENTITY_REF(yytext, !yylineno, !yylineno))
+| 72 => let val yytext=yymktext() in T.ENTITY_REF(yytext, !yylineno, !yylineno) end
 | 74 => (continue())
 | 76 => (continue())
-| 79 => (T.PCDATA(yytext, !yylineno, !yylineno))
-| 81 => (errorFn(concat[
+| 79 => let val yytext=yymktext() in T.PCDATA(yytext, !yylineno, !yylineno) end
+| 81 => let val yytext=yymktext() in errorFn(concat[
 		"bogus character #\"", Char.toString(String.sub(yytext, 0)),
 		"\" in PCDATA\n"
 	      ], !yylineno, !yylineno+1);
-	    continue())
+	    continue() end
 | _ => raise Internal.LexerError
 
 		) end )
 
-	val {fin,trans} = Vector.sub(Internal.tab, s)
+	val {fin,trans} = Unsafe.Vector.sub(Internal.tab, s)
 	val NewAcceptingLeaves = fin::AcceptingLeaves
 	in if l = !yybl then
 	     if trans = #trans(Vector.sub(Internal.tab,0))
@@ -652,8 +652,8 @@ let fun continue() : Internal.result =
 		     yybl := size (!yyb);
 		     scan (s,AcceptingLeaves,l-i0,0))
 	    end
-	  else let val NewChar = Char.ord(String.sub(!yyb,l))
-		val NewState = Char.ord(String.sub(trans,NewChar))
+	  else let val NewChar = Char.ord(Unsafe.CharVector.sub(!yyb,l))
+		val NewState = Char.ord(Unsafe.CharVector.sub(trans,NewChar))
 		in if NewState=0 then action(l,NewAcceptingLeaves)
 		else scan(NewState,NewAcceptingLeaves,l+1,i0)
 	end

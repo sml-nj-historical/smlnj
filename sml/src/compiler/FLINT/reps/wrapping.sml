@@ -315,6 +315,3 @@ end (* function wrapping *)
 end (* toplevel local *)
 end (* structure Wrapping *)
 
-(*
- * $Log$
- *)

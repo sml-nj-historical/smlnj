@@ -39,6 +39,3 @@ structure Alignment = struct
   end (* build *)
 end
 
-(*
- * $Log$
- *)

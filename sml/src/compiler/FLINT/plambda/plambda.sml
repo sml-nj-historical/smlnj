@@ -92,6 +92,3 @@ end (* local *)
 end (* structure PLambda *)
 
 
-(*
- * $Log$
- *)

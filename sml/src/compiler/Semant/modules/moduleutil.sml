@@ -473,12 +473,3 @@ fun getSignatureNames(STR{sign,...} | STRSIG{sign,...}) =
 end (* local *)
 end (* structure ModuleUtil *)
 
-(*
- * $Log: moduleutil.sml,v $
- * Revision 1.4  1998/09/30 19:17:48  dbm
- * change in types of TYCspec (bug 1432) and TYCdef
- *
- * Revision 1.3  1998/05/23 14:10:10  george
- *   Fixed RCS keyword syntax
- *
- *)

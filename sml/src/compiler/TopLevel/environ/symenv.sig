@@ -16,6 +16,3 @@ signature SYMENV = sig
 
 end (* signature SYMENV *)
 
-(*
- * $Log$
- *)

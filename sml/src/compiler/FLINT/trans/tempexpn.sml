@@ -359,6 +359,3 @@ end (* toplevel local *)
 end (* structure TemplateExpansion *)
 
 
-(*
- * $Log$
- *)

@@ -114,6 +114,3 @@ datatype datacon                    (* data constructors *)
 end (* signature TYPES *)
 
 
-(*
- * $Log$
- *)

@@ -1,4 +1,4 @@
-Library
+Group (viscomp-lib.cm)
 	signature ANNOTATIONS
 	signature BITSET
 	signature FIXED_POINT
@@ -106,3 +106,5 @@ is
 	union-find.sml
 	uref.sml
 	word64.sml
+
+	basis.cm

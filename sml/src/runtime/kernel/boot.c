@@ -7,6 +7,8 @@
 
 #include "ml-osdep.h"
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include "ml-base.h"
 #include "ml-limits.h"
 #include "cache-flush.h"
@@ -48,20 +50,34 @@ PVT void ReadBinFile (
     FILE *file, void *buf, int nbytes,
     const char *binDir, const char *fname
 );
-PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname);
+PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname);
 PVT void EnterPerID (ml_state_t *msp, pers_id_t *perID, ml_val_t obj);
 PVT ml_val_t LookupPerID (pers_id_t *perID);
 PVT void ShowPerID (char *buf, pers_id_t *perID);
 
+# define HEX(c) (isdigit(c) ? (c) - '0' : (c) - 'a' + 10)
 
 /* BootML:
  *
  * Boot the system using the .bin files from binDir.
  */
-void BootML (const char *binDir, heap_params_t *heapParams)
+void BootML (const char *binDir, heap_params_t *heapParams,
+	     const char *rtpid_spec)
 {
     ml_state_t	*msp;
     char	fname[512];
+
+    if (rtpid_spec) {
+      int i, l = strlen (rtpid_spec);
+      for (i = 0; i < PERID_LEN; i++) {
+	int i2 = 2 * i;
+	if (i2 + 1 < l) {
+	  int c1 = rtpid_spec [i2];
+	  int c2 = rtpid_spec [i2 + 1];
+	  RunTimePerID.bytes[i] = HEX (c1) * 16 + HEX (c2);
+	}
+      }
+    }
 
     msp = AllocMLState (TRUE, heapParams);
 
@@ -82,7 +98,6 @@ void BootML (const char *binDir, heap_params_t *heapParams)
   /* boot the system */
     while (BinFileList != LIST_nil) {
 	strcpy(fname, STR_MLtoC(LIST_hd(BinFileList)));
-	Say ("[Loading %s]\n", fname);
 	BinFileList = LIST_tl(BinFileList);
 	LoadBinFile (msp, binDir, fname);
     }
@@ -317,7 +332,7 @@ PVT void ImportSelection (
 
 /* LoadBinFile:
  */
-PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
+PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname)
 {
     FILE	    *file;
     int		    i, exportSzB, remainingCode, importRecLen;
@@ -326,11 +341,37 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
     binfile_hdr_t   hdr;
     pers_id_t	    exportPerID;
     Int32_t         thisSzB;
+    size_t          archive_offset;
+    char            *atptr, *colonptr;
+    char            *objname = fname;
+    
+
+    if ((atptr = strchr (fname, '@')) == NULL)
+      archive_offset = 0;
+    else {
+      if ((colonptr = strchr (atptr + 1, ':')) != NULL) {
+	objname = colonptr + 1;
+	*colonptr = '\0';
+      }
+      /* not a lot of extensive checking here... */
+      archive_offset = strtoul (atptr + 1, NULL, 0);
+      *atptr = '\0';
+    }
+
+    Say ("[Loading %s]\n", objname);
 
   /* open the file */
     file = OpenBinFile (binDir, fname, TRUE);
     if (file == NULL)
 	Exit (1);
+
+  /* if an offset is given (i.e., we are probably dealing with a stable
+   * archive), then seek to the beginning of the section that contains
+   * the binfile */
+    if (archive_offset)
+      if (fseek (file, archive_offset, SEEK_SET) == -1)
+	Die ("cannot seek on archive file \"%s%c%s@%ul\"",
+	     binDir, PATH_ARC_SEP, fname, (unsigned long) archive_offset);
 
   /* get the header */
     ReadBinFile (file, &hdr, sizeof(binfile_hdr_t), binDir, fname);
@@ -379,7 +420,8 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
 
   /* seek to code section */
     {
-	long	    off = sizeof(binfile_hdr_t)
+	long	    off = archive_offset
+	                + sizeof(binfile_hdr_t)
 			+ hdr.importSzB
 	                + exportSzB
 	                + hdr.cmInfoSzB
@@ -387,7 +429,8 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
 			+ hdr.reserved1 + hdr.reserved2;
 
 	if (fseek(file, off, SEEK_SET) == -1)
-	    Die ("cannot seek on bin file \"%s%c%s\"", binDir, PATH_ARC_SEP, fname);
+	    Die ("cannot seek on bin file \"%s%c%s\"",
+		 binDir, PATH_ARC_SEP, fname);
     }
 
   /* Read code objects and run them.  The first code object will be the
@@ -440,7 +483,7 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
        * length byte is WORD_SZB bytes.  The padding is inserted between
        * the code and the string.
        */
-	strLen = strlen(fname);
+	strLen = strlen(objname);
 	if (strLen > 255)
 	    strLen = 255;
 	extraLen = strLen+1;  /* include byte for length */
@@ -458,7 +501,7 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
 	ReadBinFile (file, PTR_MLtoC(char, codeObj), thisSzB, binDir, fname);
 
       /* tack on the bin-file name as a comment string. */
-	memcpy (PTR_MLtoC(char, codeObj)+thisSzB+padLen, fname, strLen);
+	memcpy (PTR_MLtoC(char, codeObj)+thisSzB+padLen, objname, strLen);
 	*(PTR_MLtoC(Byte_t, codeObj)+thisSzB+extraLen-1) = (Byte_t)strLen;
 	
 	FlushICache (PTR_MLtoC(char, codeObj), thisSzB);

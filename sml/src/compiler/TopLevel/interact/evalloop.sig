@@ -25,6 +25,3 @@ sig
 end (* signature EVALLOOP *)
 
 
-(*
- * $Log$
- *)

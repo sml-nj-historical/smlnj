@@ -303,26 +303,3 @@ val execute = ST.doPhase (ST.makePhase "Execute") execute
 end (* local of CompileF *)
 end (* functor CompileF *)
 
-(*
- * $Log: compile.sml,v $
- * Revision 1.10  1999/04/14 15:35:04  jhr
- *   Changed code to use Object.mkTuple.
- *
- * Revision 1.9  1998/12/30 20:21:30  jhr
- *   Modifications to support code generation directly into code objects.
- *
- * Revision 1.8  1998/11/18 03:54:25  jhr
- *  New array representations.
- *
- * Revision 1.7  1998/10/28 18:25:43  jhr
- *   New literal lifting and new Unsafe.Object API.
- *
- * Revision 1.6  1998/10/16 14:04:00  george
- *   Implemented a hierachical bin directory structure and
- *   broke up the Compiler structure into a machine dependent
- *   and independent parts. [blume]
- *
- * Revision 1.5  1998/06/02 17:39:29  george
- *   Changes to integrate CM functionality into the compiler --- blume
- *
- *)

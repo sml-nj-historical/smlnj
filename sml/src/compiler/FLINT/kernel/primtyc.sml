@@ -168,6 +168,3 @@ end (* toplevel local *)
 end (* structure PrimTyc *)
 
 
-(*
- * $Log$
- *)

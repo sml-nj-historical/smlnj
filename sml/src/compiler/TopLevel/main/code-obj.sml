@@ -84,7 +84,3 @@ structure CodeObj :> CODE_OBJ =
 
   end;
 
-(*
- * $Log$
- *)
-

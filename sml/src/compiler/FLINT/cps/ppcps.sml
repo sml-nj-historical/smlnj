@@ -280,16 +280,3 @@ fun prcps(ce) = show0 (Control.Print.say) 1 ce
 end (* toplevel local *)
 end (* structure PPCps *)
 
-(*
- * $Log: ppcps.sml,v $
- * Revision 1.3  1998/11/18 03:53:18  jhr
- *  New array representations.
- *
- * Revision 1.2  1998/10/28 18:21:23  jhr
- *   New primops to support new array representation.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:47  george
- * Version 110.5
- *
- *)
-

@@ -1261,12 +1261,3 @@ end (* local *)
 end (* structure UnpickleMod *)
 
 
-(*
- * $Log: unpickmod.sml,v $
- * Revision 1.10  1999/01/11 16:53:39  george
- *   new array representation support
- *
- * Revision 1.4  1998/05/23 14:10:13  george
- *   Fixed RCS keyword syntax
- *
- *)

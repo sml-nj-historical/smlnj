@@ -11,6 +11,3 @@ signature ARG_PASSING = sig
   val fixed : CPS.cty list -> T.mlrisc list
 end
 
-(*
- * $Log$
- *)

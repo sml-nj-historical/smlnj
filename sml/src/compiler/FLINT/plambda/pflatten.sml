@@ -144,6 +144,3 @@ fun v_coerce (wflag, nftcs, oftcs) =
 end (* local *)
 end (* structure PFlatten *)
 
-(*
- * $Log$
- *)

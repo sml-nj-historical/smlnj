@@ -57,6 +57,3 @@ val isvoid : primtyc -> bool
 
 end (* signature PRIM_TYC *)
 
-(*
- * $Log$
- *)

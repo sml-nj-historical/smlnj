@@ -356,6 +356,3 @@ val suspPatType = POLYty {sign = [false], tyfun = suspTyfun}
 end (* local *)
 end (* structure BasicTypes *)
 
-(*
- * $Log$
- *)

@@ -77,6 +77,3 @@ struct
 
 end (* structure PrintUtil *)
 
-(*
- * $Log$
- *)

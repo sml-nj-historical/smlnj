@@ -59,6 +59,3 @@ withtype dict = {default: lexp, table: (tyc list * lexp) list}
 
 end (* signature PLAMBDA *)
 
-(*
- * $Log$
- *)

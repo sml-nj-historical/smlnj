@@ -74,6 +74,3 @@ fun withInternals (f: unit -> 'a) =
 end (* local *)
 end (* structure ElabDebug *)
 
-(*
- * $Log$
- *)

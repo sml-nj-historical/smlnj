@@ -100,6 +100,3 @@ struct
 
 end (* structure ConvertPaths *)
 
-(*
- * $Log$
- *)

@@ -39,6 +39,3 @@ struct
 
 end (* structure Source *)
 
-(*
- * $Log$
- *)

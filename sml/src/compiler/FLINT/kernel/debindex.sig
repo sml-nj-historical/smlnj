@@ -30,6 +30,3 @@ sig
 end (* signature DEB_INDEX *)
 
 
-(*
- * $Log$
- *)

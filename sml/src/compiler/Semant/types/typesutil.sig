@@ -106,6 +106,3 @@ sig
 
 end  (* signature TYPESUTIL *)
 
-(*
- * $Log$
- *)

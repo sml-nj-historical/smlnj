@@ -1228,16 +1228,3 @@ end (* function elabDec *)
 end (* top-level local *)
 end (* structure ElabCore *)
 
-(*
- * $Log: elabcore.sml,v $
- * Revision 1.5  1998/08/19 18:17:11  dbm
- * bug fixes for 110.9 [dbm]
- *
- * Revision 1.4  1998/07/22 17:53:47  dbm
- * fix bug 1397 and other problems related to lazy decls
- *
- * Revision 1.3  1998/05/23 14:10:00  george
- *   Fixed RCS keyword syntax
- *
- *
- *)

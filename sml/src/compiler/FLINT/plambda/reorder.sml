@@ -255,6 +255,3 @@ val reorder = fn x => bug "reorder not implemented" (* getexp (loop x) *)
 end (* toplevel local *)
 end (* structure Reorder *)
 
-(*
- * $Log$
- *)

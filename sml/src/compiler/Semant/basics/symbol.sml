@@ -5,6 +5,3 @@ structure Symbol : SYMBOL = Env.Symbol
 structure FastSymbol : FASTSYMBOL = Env.FastSymbol
 
 
-(*
- * $Log$
- *)

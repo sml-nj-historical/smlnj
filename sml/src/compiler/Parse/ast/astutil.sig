@@ -28,6 +28,3 @@ signature ASTUTIL =
 end  (* signature ASTUTIL *)
 
 
-(*
- * $Log$
- *)

@@ -78,6 +78,3 @@ fun diffPure(s,[]) = s
 end (* local *)
 end (* abstraction TyvarSet *)
 
-(*
- * $Log$
- *)

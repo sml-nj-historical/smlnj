@@ -143,6 +143,3 @@ end (* toplevel local *)
 end (* functor Uncurry *)
 
 
-(*
- * $Log$
- *)

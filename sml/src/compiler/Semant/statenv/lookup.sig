@@ -38,6 +38,3 @@ sig
 
 end (* signature LOOKUP *)
 
-(*
- * $Log$
- *)

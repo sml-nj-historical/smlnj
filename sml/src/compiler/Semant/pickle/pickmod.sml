@@ -929,24 +929,3 @@ end (* structure PickMod *)
 
 
 
-(*
- * $Log: pickmod.sml,v $
- * Revision 1.10  1999/01/11 16:53:38  george
- *   new array representation support
- *
- * Revision 1.9  1998/12/31 05:43:41  jhr
- *   Added UNBOXEDASSIGN primop to FLINT.
- *
- * Revision 1.8  1998/12/22 17:02:11  jhr
- *   Merged in 110.10 changes from Yale.
- *
- * Revision 1.6  1998/10/28 18:25:11  jhr
- *   New primops to support new array representation.
- *
- * Revision 1.5  1998/09/30 19:20:59  dbm
- * new repl field in TYCspec (bug 1432)
- *
- * Revision 1.4  1998/05/23 14:10:12  george
- *   Fixed RCS keyword syntax
- *
- *)

@@ -745,6 +745,3 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 end (* local *)
 end (* functor Expand *)
 
-(*
- * $Log$
- *)

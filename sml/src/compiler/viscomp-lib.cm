@@ -13,7 +13,6 @@ Library
 
 	structure GenericVC
 
-	structure Alpha32XVisComp
 	structure Alpha32VisComp
 	structure HppaVisComp
 	structure PPCVisComp
@@ -24,14 +23,15 @@ Library
 	structure MipsLittleVisComp
 	structure RS6000VisComp
 ****)
-	functor BootEnvF
+
+	(* eventually we should export more of these guys... *)
+	structure DynamicEnv
 is
 
 TopLevel/batch/batchconfig.sml
 TopLevel/batch/binfile.sig
 TopLevel/batch/binfile.sml
 TopLevel/batch/smlfile.sml
-TopLevel/bootstrap/boot.sml
 TopLevel/batch/cmsa.sig
 TopLevel/batch/cmsa.sml
 TopLevel/batch/envcvt.sml
@@ -60,7 +60,6 @@ TopLevel/main/compile.sig
 TopLevel/main/compile.sml
 TopLevel/main/version.sml
 TopLevel/viscomp/alpha32vis.sml
-TopLevel/viscomp/alpha32xvis.sml
 TopLevel/viscomp/control.sig
 TopLevel/viscomp/control.sml
 TopLevel/viscomp/hppavis.sml
@@ -237,10 +236,6 @@ CodeGen/alpha32/alpha32MLTree.sml
 CodeGen/alpha32/alpha32PseudoInstrs.sml
 CodeGen/alpha32/alpha32gen.sml
 CodeGen/alpha32/alpha32spec.sml
-CodeGen/alpha32x/alpha32xGen.sml
-CodeGen/alpha32x/alpha32xMC.sml
-CodeGen/alpha32x/alpha32xSpec.sml
-CodeGen/alpha32x/alpha32xCG.sml
 CodeGen/cpscompile/alignment.sml
 CodeGen/cpscompile/argPassing.sig
 CodeGen/cpscompile/argPassing.sml
@@ -337,10 +332,11 @@ MiscUtil/util/sourcemap.sig
 MiscUtil/util/sourcemap.sml
 MiscUtil/util/stats.sml
 
-../comp-lib/UTIL.cm 			
+comp-lib.cm
 
-../ml-yacc/lib/sources.cm
-../smlnj-lib/Util/sources.cm
+basis.cm
+ml-yacc-lib.cm
+smlnj-lib.cm
 
-../MLRISC/MLRISC.cm
+MLRISC.cm
 

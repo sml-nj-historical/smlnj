@@ -16,6 +16,3 @@ sig
 
 end (* signature PERSSTAMPS *)
 
-(*
- * $Log$
- *)

@@ -49,7 +49,7 @@ if [ "$HEAP_IMAGE" = "" ]; then
 fi
 
 $SML $ARGS <<ZZZ
-  CM.make();
+  CM.make "sources.cm";
   Main.export "$HEAP_IMAGE" : unit;
 ZZZ
 

@@ -108,6 +108,3 @@ fun accLvar (LVAR v) = SOME v
 end (* local *)
 end (* structure Access *)
 
-(*
- * $Log$
- *)
