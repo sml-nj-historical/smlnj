@@ -293,6 +293,8 @@ struct
         | stmt(T.FSTORE(ty,ea,data,mem),an) = fstore(ty,ea,data,mem,an)
         | stmt(T.BCC(cc, lab),an) = branch(cc,lab,an)
         | stmt(T.DEFINE l, _) = defineLabel l
+        | stmt(T.LIVE S, an) = mark'(I.LIVE{regs=cellset S,spilled=C.empty},an)
+        | stmt(T.KILL S, an) = mark'(I.KILL{regs=cellset S,spilled=C.empty},an)
         | stmt(T.ANNOTATION(s,a),an) = stmt(s,a::an)
         | stmt(s, _) = doStmts(Gen.compileStm s)
 

@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/11/17 16:05:21 EST 2004
+Tag: leunga-20041117-mlrisc-live-kill
+Description:
+
+   Added support for MLTree constructs LIVE and KILL 
+to all the architectures.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/11/13 00:20:00 CST
 Tag: blume-20041113-versiontool

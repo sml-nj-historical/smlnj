@@ -445,6 +445,8 @@ struct
           | T.FSTORE(32,ea,data,mem) => fstore(I.SWC1,ea,data,mem,an)
           | T.FSTORE(64,ea,data,mem) => fstore(I.SDC1,ea,data,mem,an)
           | T.DEFINE l => defineLabel l
+          | T.LIVE S => mark'(I.LIVE{regs=cellset S,spilled=C.empty},an)
+          | T.KILL S => mark'(I.KILL{regs=cellset S,spilled=C.empty},an)
           | T.ANNOTATION(s,a) => stmt(s,a::an)
           | T.EXT s => ExtensionComp.compileSext (reducer()) {stm=s,an=an}
           | s => doStmts (Gen.compileStm s)

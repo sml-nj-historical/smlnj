@@ -549,6 +549,8 @@ struct
               fstore(64,I.FSTDS,I.FSTDX,I.FSTDX_S,ea,t,mem,an)
          | stmt(T.BCC(cc,lab),an) = branch(cc,lab,an)
          | stmt(T.DEFINE l,_) = defineLabel l
+         | stmt(T.LIVE S,an) = mark'(I.LIVE{regs=cellset S,spilled=C.empty},an)
+         | stmt(T.KILL S,an) = mark'(I.KILL{regs=cellset S,spilled=C.empty},an)
          | stmt(T.ANNOTATION(i,a),an) = stmt(i,a::an)
          | stmt(T.EXT s,an) = 
               ExtensionComp.compileSext (reducer()) {stm=s, an=an}
