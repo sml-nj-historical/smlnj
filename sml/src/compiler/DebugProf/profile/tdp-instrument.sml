@@ -54,7 +54,7 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	ControlRegistry.register
 	    registry
 	    { ctl = Controls.stringControl bool_cvt ctl,
-	      envName = SOME "TDP_INSTUMENT" };
+	      envName = SOME "TDP_INSTRUMENT" };
 	r
     end
 
