@@ -15,7 +15,7 @@ structure Version : sig
 
     val version = {
 	    system = "Standard ML of New Jersey ",
-	    version_id = [110, 25],
+	    version_id = [110, 26],
 	    date = "December 1, 1999"
 	  }
 
