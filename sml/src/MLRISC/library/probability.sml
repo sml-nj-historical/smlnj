@@ -27,6 +27,11 @@ signature PROBABILITY =
 
     val percent : int -> prob
 
+  (* combine a conditional branch probability (trueProb) with a
+   * prediction heuristic (takenProb) using Dempster-Shafer theory.
+   *)
+    val combineProb2 : {trueProb : prob, takenProb : prob} -> {t : prob, f : prob}
+
     val toReal : prob -> real
     val toString : prob -> string
 
@@ -133,6 +138,33 @@ structure Probability :> PROBABILITY =
 	  val toStr = Word.fmt StringCvt.DEC
 	  in
 	    concat [toStr n, "/", toStr d]
+	  end
+
+  (* combine a conditional branch probability (trueProb) with a
+   * prediction heuristic (takenProb) using Dempster-Shafer theory.
+   * The basic equations (from Wu-Larus 1994) are:
+   *    t = trueProb*takenProb / d
+   *	f = ((1-trueProb)*(1-takenProb)) / d
+   * where
+   *	d = trueProb*takenProb + ((1-trueProb)*(1-takenProb))
+   *)
+    fun combineProb2 {trueProb=PROB(n1, d1), takenProb=PROB(n2, d2)} = let
+	(* compute sd/sn, where
+	 *    sn/sd = (trueProb*takenProb) + (1-trueProb)*(1-takenProb)
+	 *)
+	  val d12 = d1*d2
+	  val n12 = n1*n2
+	  val (sn, sd) = let
+		val n = d12 + 0w2*n12 - (d2*n1) - (d1*n2)
+		in
+		  (d12, n)
+		end
+	(* compute the true probability *)
+	  val t as PROB(tn, td) = normalize(n12*sn, d12*sd)
+	(* compute the false probability *)
+	  val f = PROB(td-tn, td)
+	  in
+	    {t = t, f = f}
 	  end
 
     val op + = add
