@@ -99,7 +99,6 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 
 	    (* normal processing -- used when there is no cycle to report *)
 	    fun normal_processing () = let
-		val currentDir = AbsPath.dir group
 		val context = AbsPath.relativeContext (AbsPath.dir group)
 		val filename = AbsPath.name group
 		val _ = Say.vsay ["[scanning ", filename, "]\n"]

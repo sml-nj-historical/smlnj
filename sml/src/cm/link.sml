@@ -160,6 +160,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
     end
 
     structure CMB = struct
+	structure MkPrimPerv = MkPrimPerv
 	fun setRetargetPervStatEnv x = ()
 	fun wipeOut () = ()
 	fun make' _ = ()

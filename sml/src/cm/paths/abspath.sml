@@ -15,7 +15,6 @@ signature ABSPATH = sig
     val newEra : unit -> unit
 
     val cwdContext: unit -> context
-    (* val configContext: (unit -> string) * string -> context *)
     val relativeContext: t -> context
 
     val name : t -> string
@@ -86,7 +85,7 @@ structure AbsPath :> ABSPATH = struct
 			   config_name: string }
       | RELATIVE of t
 
-    and  t =
+    and t =
 	PATH of { context: context,
 		  spec: string,
 		  cache: elaboration option ref }
@@ -134,10 +133,8 @@ structure AbsPath :> ABSPATH = struct
 	fun cwdContext () =
 	    CUR { stamp = cwdStamp (), name = cwdName (), id = cwdId () }
 
-	fun configContext (f, n) =
-	    CONFIG_ANCHOR { fetch = f, cache = ref NONE, config_name = n }
-
-	fun relativeContext p = RELATIVE p
+	fun relativeContext (p as PATH { context, spec, ... }) =
+	    if spec = OS.Path.currentArc then context else RELATIVE p
 
 	fun mkElab (cache, name) = let
 	    val e : elaboration =

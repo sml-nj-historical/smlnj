@@ -66,10 +66,14 @@ is
 	main/general-params.sml
 	main/filename-policy.sml
 
+	(* pathname abstraction *)
 	paths/abspath.sml
 	paths/pathconfig.sml
 	paths/abspathmap.sml
 	paths/abspathset.sml
+
+	(* bootstrap compiler (formerly known as "batch") *)
+	bootstrap/mkprimperv.sml
 
 	(* CM-internal libraries *)
 	util/sources.cm
