@@ -97,12 +97,14 @@ ml_val_t MakeResumeCont (ml_state_t *msp, ml_val_t resume[])
     ML_AllocWrite(msp,  5, msp->ml_linkReg);
     ML_AllocWrite(msp,  6, msp->ml_pc);
     ML_AllocWrite(msp,  7, msp->ml_exnCont);
+    /* John (Reppy) says that varReg should not be included here...
     ML_AllocWrite(msp,  8, msp->ml_varReg);
-    ML_AllocWrite(msp,  9, msp->ml_calleeSave[0]);
-    ML_AllocWrite(msp, 10, msp->ml_calleeSave[1]);
-    ML_AllocWrite(msp, 11, msp->ml_calleeSave[2]);
+    */
+    ML_AllocWrite(msp,  8, msp->ml_calleeSave[0]);
+    ML_AllocWrite(msp,  9, msp->ml_calleeSave[1]);
+    ML_AllocWrite(msp, 10, msp->ml_calleeSave[2]);
 
-    return ML_Alloc(msp, 11);
+    return ML_Alloc(msp, 10);
 
 } /* end of MakeResumeCont */
 
@@ -158,10 +160,12 @@ SayDebug ("LoadResumeState:\n");
     msp->ml_linkReg		= contClosure[4];
     msp->ml_pc			= contClosure[5];
     msp->ml_exnCont		= contClosure[6];
+    /* John says ...
     msp->ml_varReg		= contClosure[7];
-    msp->ml_calleeSave[0]	= contClosure[8];
-    msp->ml_calleeSave[1]	= contClosure[9];
-    msp->ml_calleeSave[2]	= contClosure[10];
+    */
+    msp->ml_calleeSave[0]	= contClosure[7];
+    msp->ml_calleeSave[1]	= contClosure[8];
+    msp->ml_calleeSave[2]	= contClosure[9];
 
 } /* end of LoadResumeState */
 

@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/06/19 17:25:00 EDT
+Tag: blume-20010619-signals
+Description:
+
+This should (hopefully) fix the long-standing signal handling bug.
+(The runtime system was constructing a continuation record with an
+incorrect descriptor which would cause the GC to drop data on the floor...)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/06/15 15:05:00 EDT
 Tag: blume-20010615-moresparc
 Description:
