@@ -10,12 +10,19 @@ structure StdConfig = struct
 	val bool = EnvConfig.new Bool.fromString
 	val int = EnvConfig.new Int.fromString
 	val string = EnvConfig.new SOME
+	val stringoptthunk = EnvConfig.new (fn s => SOME (fn () => SOME s))
     in
 	val verbose = bool ("VERBOSE", true)
 	val debug = bool ("DEBUG", false)
 	val keep_going = bool ("KEEP_GOING", false)
 	val pathcfgspec = string ("PATHCONFIG", "/usr/lib/smlnj-pathconfig")
 	val parse_caching = int ("PARSE_CACHING", 100)
+	val local_pathconfig =
+	    stringoptthunk ("LOCAL_PATHCONFIG",
+			    fn () =>
+			      Option.map (fn h => OS.Path.concat
+					   (h, ".smlnj-pathconfig"))
+			                 (OS.Process.getEnv "HOME"))
     end
 end
 

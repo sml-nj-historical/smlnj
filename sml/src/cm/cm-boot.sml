@@ -1,3 +1,13 @@
+(*
+ * This is the module that actually puts together the contents of the
+ * structure CM that people find at the top-level.  The "real" structure
+ * CM is defined in CmHook, but it needs to be initialized at bootstrap
+ * time -- and _that_ is what's done here.
+ *
+ *   Copyright (c) 1999 by Lucent Bell Laboratories
+ *
+ * author: Matthias Blume (blume@cs.princeton.edu)
+ *)
 functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
   datatype envrequest = AUTOLOAD | BARE
@@ -31,16 +41,16 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  FullPersstateFn (structure MachDepVC = HostMachDepVC
 			   val system_values = system_values)
 
-      (* Create two arguments appropriate for being passed to
-       * CompileGenericFn. One instantiation of that functor
-       * is responsible for "recompile" traversals, the other one
-       * does "link" traversals. Notice how the two share the same
-       * underlying state. *)
-      structure Recomp = RecompFn (structure PS = FullPersstate)
-      structure Exec = ExecFn (structure PS = FullPersstate)
+      (* Building "Exec" will automatically also build "Recomp" and
+       * "RecompTraversal"... *)
+      local
+	  structure E = ExecFn (structure PS = FullPersstate)
+      in
+	  structure Recomp = E.Recomp
+	  structure RT = E.RecompTraversal
+	  structure Exec = E.Exec
+      end
 
-      (* make the two traversals *)
-      structure RT = CompileGenericFn (structure CT = Recomp)
       structure ET = CompileGenericFn (structure CT = Exec)
 
       (* The StabilizeFn functor needs a way of converting bnodes to
@@ -110,7 +120,6 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       (* Instantiate the stabilization mechanism. *)
       structure Stabilize =
 	  StabilizeFn (val bn2statenv = bn2statenv
-		       val getPid = FullPersstate.pid_fetch_sml
 		       val recomp = recomp_runner
 		       val transfer_state = FullPersstate.transfer_state)
 
@@ -139,11 +148,22 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  fun cancelAnchor a = PathConfig.cancel (pcmode, a)
 	  fun resetPathConfig () = PathConfig.reset pcmode
 
+	  fun showPending () = let
+	      fun one (s, _) = let
+		  val nss = Symbol.nameSpaceToString (Symbol.nameSpace s)
+		  val n = Symbol.name s
+	      in
+		  Say.say ["  ", nss, " ", n, "\n"]
+	      end
+	  in
+	      SymbolMap.appi one (AutoLoad.getPending ())
+	  end
+
 	  fun initPaths () = let
-	      val p =
-		  case OS.Process.getEnv "HOME" of
-		      NONE => []
-		    | SOME h => [OS.Path.concat (h, ".smlnj-pathconfig")]
+	      val lpcth = EnvConfig.getSet StdConfig.local_pathconfig NONE
+	      val p = case lpcth () of
+		  NONE => []
+		| SOME f => [f]
 	      val p = EnvConfig.getSet StdConfig.pathcfgspec NONE :: p
 	      fun processOne f = PathConfig.processSpecFile (pcmode, f)
 		  handle _ => ()
@@ -255,7 +275,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		  NONE => raise Fail "CMBoot: BuiltInitDG.build"
 		| SOME { rts, core, pervasive, primitives, ... } => let
 		      fun get n = let
-			  val { stat = (s, sp), sym = (sy, syp), ctxt } =
+			  val { stat = (s, sp), sym = (sy, syp), ctxt, bfc } =
 			      valOf (RT.sbnode ginfo n)
 			  val d = Exec.env2result (valOf (ET.sbnode ginfo n))
 			  val env = E.mkenv { static = s, symbolic = sy,
@@ -321,7 +341,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				      EnvConfig.getSet StdConfig.parse_caching,
 				   setAnchor = setAnchor,
 				   cancelAnchor = cancelAnchor,
-				   resetPathConfig = resetPathConfig })
+				   resetPathConfig = resetPathConfig,
+				   synchronize = SrcPath.sync,
+				   showPending = showPending })
 
 		  end
 	  end

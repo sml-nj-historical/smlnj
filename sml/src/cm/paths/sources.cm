@@ -13,6 +13,7 @@ Group (../cm-lib.cm)
 	structure SrcPathMap
 	structure SrcPathSet
 is
+	era.sml
 	pathconfig.sml
 	abspath.sml
 	abspathmap.sml

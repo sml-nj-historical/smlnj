@@ -12,23 +12,10 @@ local
     structure DG = DependencyGraph
     structure GG = GroupGraph
 in
-    functor CompileGenericFn (structure CT: COMPILATION_TYPE) :> sig
-
-	type envdelta = CT.envdelta
-	type result = CT.result
-
-	val bnode : GP.info -> DG.bnode -> envdelta option
-	val group : GP.info -> GG.group -> result option
-	val impexpmap :
-	    GP.info -> DependencyGraph.impexp SymbolMap.map -> result option
-
-	(* If you go through the "sbnode" interface, then
-	 * you must reset explicitly when you are done. *)
-	val sbnode : GP.info -> DG.sbnode -> envdelta option
-	val reset : unit -> unit
-
-	val resetAll : unit -> unit
-    end = struct
+    functor CompileGenericFn (structure CT: COMPILATION_TYPE) :> TRAVERSAL
+	where type envdelta = CT.envdelta
+	  and type result = CT.result =
+    struct
 
 	type envdelta = CT.envdelta
 	type env = CT.env
@@ -37,7 +24,8 @@ in
 
 	val smlcache = ref (SmlInfoMap.empty: envdelta option SmlInfoMap.map)
 	val stablecache = ref (StableMap.empty: envdelta option StableMap.map)
-	fun reset () = smlcache := SmlInfoMap.empty
+	fun reset () = (CT.nestedTraversalReset ();
+			smlcache := SmlInfoMap.empty)
 	fun resetAll () = (reset (); stablecache := StableMap.empty)
 
 	(* To implement "keep_going" we have two different ways of
@@ -61,7 +49,7 @@ in
 				  Option.map CT.bnofilter o bnode gp))
 
 	    fun bn (DG.PNODE p) = SOME (CT.primitive gp p)
-	      | bn (DG.BNODE n) = let
+	      | bn (node as DG.BNODE n) = let
 		    val { bininfo, localimports = li, globalimports = gi } = n
 		in
 		    case StableMap.find (!stablecache, bininfo) of
@@ -69,7 +57,7 @@ in
 		      | NONE => let
 			    fun mkenv () =
 				loc (glob (SOME (CT.bpervasive gp)) gi) li
-			    val r = CT.dostable (bininfo, mkenv, gp)
+			    val r = CT.dostable (bininfo, mkenv, gp, node)
 			in
 			    stablecache :=
 			       StableMap.insert (!stablecache, bininfo, r);
@@ -87,7 +75,7 @@ in
 	      | (SOME d, NONE) => SOME (CT.bnofilter d)
 	      | (SOME d, SOME s) => SOME (CT.bfilter (d, s))
 
-	fun snode gp (DG.SNODE n) = let
+	fun snode gp (node as DG.SNODE n) = let
 
 	    val k = #keep_going (#param gp)
 	    val glob =
@@ -106,7 +94,7 @@ in
 		    val e = loc ge li
 		    val r = case e of
 			NONE => NONE
-		      | SOME e => CT.dosml (smlinfo, e, gp)
+		      | SOME e => CT.dosml (smlinfo, e, gp, node)
 		in
 		    smlcache := SmlInfoMap.insert (!smlcache, smlinfo, r);
 		    r

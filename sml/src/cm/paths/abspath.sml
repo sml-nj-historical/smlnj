@@ -94,7 +94,6 @@ structure AbsPath :> ABSPATH = struct
     type ord_key = t
 
     local
-	val elabStamp = ref (ref ())
 	val cwdInfoCache : cwdinfo option ref = ref NONE
 	fun cwdInfo () =
 	    case !cwdInfoCache of
@@ -113,7 +112,7 @@ structure AbsPath :> ABSPATH = struct
 	val cwdId = #id o cwdInfo
     in
 	(* start a new era (i.e., invalidate all previous elaborations) *)
-	fun newEra () = elabStamp := ref ()
+	val newEra = Era.newEra
 
 	(* make sure the cwd is consistent *)
 	fun revalidateCwd () =
@@ -140,14 +139,14 @@ structure AbsPath :> ABSPATH = struct
 
 	fun mkElab (cache, name) = let
 	    val e : elaboration =
-		{ stamp = !elabStamp, name = name, id = ref NONE }
+		{ stamp = Era.thisEra (), name = name, id = ref NONE }
 	in
 	    cache := SOME e; e
 	end
 
 	fun validElab NONE = NONE
 	  | validElab (SOME (e as { stamp, name, id })) =
-	    if stamp = !elabStamp then SOME e else NONE
+	    if Era.isThisEra stamp then SOME e else NONE
 
 	val rootName = P.toString { isAbs = true, arcs = [], vol = "" }
 	val rootId = ref (NONE: id option)
@@ -155,7 +154,7 @@ structure AbsPath :> ABSPATH = struct
 	fun elabContext c =
 	    case c of
 		THEN_CWD { stamp, name, id } =>
-		    { stamp = !elabStamp, id = ref (SOME id),
+		    { stamp = Era.thisEra (), id = ref (SOME id),
 		      name = if stamp = cwdStamp () orelse name = cwdName ()
 			     then P.currentArc else name }
 	      | CONFIG_ANCHOR { fetch, cache, config_name } =>
@@ -167,7 +166,8 @@ structure AbsPath :> ABSPATH = struct
 		in 
 		    { name = P.dir name, stamp = stamp, id = ref NONE }
 		end
-	      | ROOT => { stamp = !elabStamp, name = rootName, id = rootId }
+	      | ROOT => { stamp = Era.thisEra (),
+			  name = rootName, id = rootId }
 
 	and elab (PATH { context, spec, cache }) =
 	    case validElab (!cache) of

@@ -9,8 +9,16 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
+functor ExecFn (structure PS : FULL_PERSSTATE) : sig
+    structure Recomp : COMPILATION_TYPE
+    structure RecompTraversal : TRAVERSAL
+    structure Exec : COMPILATION_TYPE
+end = struct
 
+  structure Recomp = RecompFn (structure PS = PS)
+  structure RecompTraversal = CompileGenericFn (structure CT = Recomp)
+
+  structure Exec = struct
     structure E = GenericVC.Environment
     structure DE = GenericVC.DynamicEnv
     structure BF = PS.MachDepVC.Binfile
@@ -67,35 +75,38 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
 	NONE
     end
 
-    fun dostable (i, mkbenv, gp) =
-	case mkbenv () of
-	    NONE => NONE
-	  | SOME (benv, sl, bl) => let
-		val bfc = PS.bfc_fetch_stable i
-	    in
-		case PS.exec_look_stable (i, gp, BF.exportPidOf bfc) of
-		    SOME m =>
-			(BF.discardCode bfc;
-			 SOME (thunkify m, [], [i]))
-		  | NONE => (execute (bfc, benv,
+    fun dostable (i, mkbenv, gp, bn) =
+      case mkbenv () of
+	  NONE => NONE
+	| SOME (benv, sl, bl) =>
+	      (case RecompTraversal.bnode gp bn of
+		   SOME { bfc = SOME bfc, ... } =>
+		       (case PS.exec_look_stable (i, gp, BF.exportPidOf bfc) of
+			    SOME m =>
+				(BF.discardCode bfc;
+				 SOME (thunkify m, [], [i]))
+			  | NONE => (execute
+				     (bfc, benv,
 				      BinInfo.error i EM.COMPLAIN,
 				      BinInfo.describe i,
 				      fn e => PS.exec_memo_stable (i, e, bl),
-				      [], [i]))
-	    end
+				      [], [i])))
+		 | _ => NONE)
 
-    fun dosml (i, (env, sl, bl), gp) = let
-	val bfc = PS.bfc_fetch_sml i
-	    handle e => (print "!!! fetch_sml\n"; raise e)
-    in
-	case PS.exec_look_sml (i, gp, BF.exportPidOf bfc) of
-	    SOME m =>
-		(BF.discardCode bfc;
-		 SOME (thunkify m, [i], []))
-	  | NONE => (execute (bfc, env,
-			      SmlInfo.error gp i EM.COMPLAIN,
-			      SmlInfo.descr i,
-			      fn m => PS.exec_memo_sml (i, m, sl, bl),
-			      [i], []))
-    end
+    fun dosml (i, (env, sl, bl), gp, sn) =
+	case RecompTraversal.snode gp sn of
+	    SOME { bfc = SOME bfc, ... } =>
+		(case PS.exec_look_sml (i, gp, BF.exportPidOf bfc) of
+		     SOME m =>
+			 (BF.discardCode bfc;
+			  SOME (thunkify m, [i], []))
+		   | NONE => (execute (bfc, env,
+				       SmlInfo.error gp i EM.COMPLAIN,
+				       SmlInfo.descr i,
+				       fn m => PS.exec_memo_sml (i, m, sl, bl),
+				       [i], [])))
+	  | _ => NONE
+
+    val nestedTraversalReset = RecompTraversal.reset
+  end
 end

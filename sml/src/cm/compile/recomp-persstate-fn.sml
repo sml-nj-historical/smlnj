@@ -75,12 +75,5 @@ functor RecompPersstateFn
 		 BF.discardCode (#bfc memo)
 	     else ();
 	     stablemap := StableMap.insert (!stablemap, i, memo))
-
-	fun bfc_fetch_sml i = #bfc (#1 (valOf (SmlInfoMap.find (!smlmap, i))))
-	    handle Option => raise Fail "bfc_fetch_sml"
-	fun bfc_fetch_stable i = #bfc (valOf (StableMap.find (!stablemap, i)))
-	    handle Option => raise Fail "bfc_fetch_stable"
-
-	val pid_fetch_sml = BF.exportPidOf o bfc_fetch_sml
     end
 end

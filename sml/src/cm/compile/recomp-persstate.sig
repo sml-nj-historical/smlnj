@@ -20,14 +20,6 @@ signature RECOMP_PERSSTATE = sig
     val recomp_look_stable : BinInfo.info -> recomp_memo option
     val recomp_memo_stable : BinInfo.info * recomp_memo -> unit
 
-    (* The next two functions are there to be used by
-     * an enclosing implementation of FULL_PERSSTATE *)
-    val bfc_fetch_sml : SmlInfo.info -> MachDepVC.Binfile.bfContent
-    val bfc_fetch_stable : BinInfo.info -> MachDepVC.Binfile.bfContent
-
-    (* ... and this one is for stabilize (cache pre-warming) ... *)
-    val pid_fetch_sml : SmlInfo.info -> GenericVC.PersStamps.persstamp option
-
     (* transfer the state of some SmlInfo.info to the corresponding
      * BinInfo.info during stabilization *)
     val transfer_state : SmlInfo.info * BinInfo.info -> unit

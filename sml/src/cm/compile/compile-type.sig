@@ -30,10 +30,15 @@ signature COMPILATION_TYPE = sig
     val pervasive : GeneralParams.info -> env
 
     val dostable:
-	BinInfo.info * (unit -> benv option) * GeneralParams.info
+	BinInfo.info * (unit -> benv option) * GeneralParams.info *
+	DependencyGraph.bnode
 	-> envdelta option
 
-    val dosml :	SmlInfo.info * env * GeneralParams.info -> envdelta option
+    val dosml :
+	SmlInfo.info * env * GeneralParams.info * DependencyGraph.snode
+	-> envdelta option
+
+    val nestedTraversalReset : unit -> unit
 
     val reset : unit -> unit
 end

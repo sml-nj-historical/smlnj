@@ -13,13 +13,14 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 
     structure MachDepVC = PS.MachDepVC
     structure E = GenericVC.Environment
-    structure PID = GenericVC.PersStamps
+    structure Pid = GenericVC.PersStamps
     structure BF = MachDepVC.Binfile
     structure PP = PrettyPrint
     structure EM = GenericVC.ErrorMsg
     structure DE = GenericVC.DynamicEnv
 
-    type pid = PID.persstamp
+    type pid = Pid.persstamp
+    type bfc = BF.bfContent
 
     type statenv = E.staticEnv
     type symenv = E.symenv
@@ -43,15 +44,17 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 
     type 'e wpid = 'e * pid
 
-    type envdelta = { stat: statenv wpid, sym: symenv wpid, ctxt: statenv }
+    (* bfc will be NONE for primitives, SOME ... for anybody else *)
+    type envdelta = { stat: statenv wpid, sym: symenv wpid, ctxt: statenv,
+		      bfc: bfc option }
 
-    type memorecord = { bfc: BF.bfContent, ctxt: statenv }
+    type memorecord = { bfc: bfc, ctxt: statenv }
 
     structure FilterMap = BinaryMapFn
 	(struct
 	    type ord_key = pid * SymbolSet.set
 	    fun compare ((u, f), (u', f')) =
-		case PID.compare (u, u') of
+		case Pid.compare (u, u') of
 		    EQUAL => SymbolSet.compare (f, f')
 		  | unequal => unequal
 	end)
@@ -125,7 +128,8 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
     in
 	{ stat = (E.staticPart e, statpid),
 	  sym = (E.symbolicPart e, sympid),
-	  ctxt = ctxt }
+	  ctxt = ctxt,
+	  bfc = NONE }
     end
 
     fun pervasive (gp: GeneralParams.info) = let
@@ -141,9 +145,9 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
     fun memo2envdelta { bfc, ctxt } =
 	{ stat = (BF.senvOf bfc, BF.staticPidOf bfc),
 	  sym = (BF.symenvOf bfc, BF.lambdaPidOf bfc),
-	  ctxt = ctxt }
+	  ctxt = ctxt, bfc = SOME bfc }
 
-    fun dostable (i, mkenv, gp: GeneralParams.info) = let
+    fun dostable (i, mkenv, gp: GeneralParams.info, bn) = let
 	fun load be = let
 	    val stable = BinInfo.stablename i
 	    val os = BinInfo.offset i
@@ -182,7 +186,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 		   | SOME be => load (be ()))
     end
 
-    fun dosml (i, { envs, pids }, gp) = let
+    fun dosml (i, { envs, pids }, gp, sn) = let
 	val pids = PidSet.union (pids, #pervcorepids (#param gp))
     in
 	case Option.map memo2envdelta (PS.recomp_look_sml (i, pids, gp)) of
@@ -287,4 +291,6 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 			else compile ()
 	    end
     end
+
+    fun nestedTraversalReset () = ()
 end

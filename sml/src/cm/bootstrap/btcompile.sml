@@ -46,7 +46,6 @@ end = struct
     (* instantiate Stabilize... *)
     structure Stabilize =
 	StabilizeFn (fun bn2statenv gp i = #1 (#stat (valOf (RT.bnode gp i)))
-		     val getPid = RecompPersstate.pid_fetch_sml
 		     fun warmup (i, p) = ()
 		     val recomp = recomp
 		     val transfer_state = RecompPersstate.transfer_state)
@@ -198,7 +197,7 @@ end = struct
 	    val pervasive = rt pervasive
 
 	    fun sn2pspec (name, n) = let
-		val { stat = (s, sp), sym = (sy, syp), ctxt } = rt n
+		val { stat = (s, sp), sym = (sy, syp), ctxt, bfc } = rt n
 		val env =
 		    E.mkenv { static = s, symbolic = sy, dynamic = emptydyn }
 		val pidInfo = { statpid = sp, sympid = syp, ctxt = ctxt }

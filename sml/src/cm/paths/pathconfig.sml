@@ -29,10 +29,12 @@ structure PathConfig :> PATHCONFIG = struct
 
     type mode = string StringMap.map ref
 
-    fun set (m, a, s) = m := StringMap.insert (!m, a, s)
-    fun reset m = m := StringMap.empty
-    fun cancel (m, a) = (m := #1 (StringMap.remove (!m, a)))
-	handle LibBase.NotFound => ()
+    fun set (m, a, s) = m := (Era.newEra (); StringMap.insert (!m, a, s))
+    fun reset m = m := (Era.newEra (); StringMap.empty)
+    fun cancel (m, a) =
+	(Era.newEra ();
+	 (m := #1 (StringMap.remove (!m, a)))
+	 handle LibBase.NotFound => ())
 
     fun new () = ref StringMap.empty
 

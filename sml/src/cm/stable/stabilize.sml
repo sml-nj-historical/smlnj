@@ -32,7 +32,6 @@ signature STABILIZE = sig
 end
 
 functor StabilizeFn (val bn2statenv : statenvgetter
-		     val getPid : SmlInfo.info -> pid option
 		     val transfer_state : SmlInfo.info * BinInfo.info -> unit
 		     val recomp : recomp) :> STABILIZE = struct
 
