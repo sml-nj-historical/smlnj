@@ -873,7 +873,7 @@ struct
              | T.SX(32,8,T.LOAD(8,ea,mem)) => load8s(ea, mem)
              | T.SX(32,16,T.LOAD(16,ea,mem)) => load16s(ea, mem)
              | T.ZX(32,8,T.LOAD(8,ea,mem)) => load8(ea, mem)
-             | T.ZX(32,16,T.LOAD(16,ea,mem)) => load32(ea, mem)
+             | T.ZX(32,16,T.LOAD(16,ea,mem)) => load16(ea, mem)
 
              | T.COND(32, T.CMP(ty, cc, t1, t2), T.LI yes, T.LI no) => 
                  setcc(ty, cc, t1, t2, toInt32 yes, toInt32 no)
