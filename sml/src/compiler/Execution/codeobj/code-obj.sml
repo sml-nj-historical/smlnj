@@ -13,6 +13,7 @@ structure CodeObj :> CODE_OBJ =
     type object = Unsafe.Object.object
 
     datatype code_object = C of {
+	entrypoint : int ref,
 	obj : Word8Array.array
       }
 
@@ -33,14 +34,14 @@ structure CodeObj :> CODE_OBJ =
     val allocCode : int -> W8A.array =
 	  CI.c_function "SMLNJ-RunT" "allocCode"
     val mkLiterals : W8V.vector -> object = CI.c_function "SMLNJ-RunT" "mkLiterals"
-    val mkExec : W8A.array -> executable = CI.c_function "SMLNJ-RunT" "mkExec"
+    val mkExec : W8A.array * int -> executable = CI.c_function "SMLNJ-RunT" "mkExec"
     end (* local *)
 
   (* Allocate an uninitialized code object.
    *)
     fun alloc n =
 	(if (n <= 0) then raise Size else ();
-	 C { obj = allocCode n })
+	 C { entrypoint = ref 0, obj = allocCode n })
 
   (* Allocate a code object of the given size and initialize it
    * from the input stream.
@@ -74,9 +75,13 @@ structure CodeObj :> CODE_OBJ =
   (* View the code object as an executable.  This has the side-effect
    * of flushing the instruction cache.
    *)
-    fun exec (C{obj, ...}) = mkExec obj
+    fun exec (C{obj, entrypoint = ref ep }) = mkExec (obj, ep)
 
   (* return the size of the code object *)
     fun size (C{obj, ...}) = W8A.length obj
+
+    fun entrypoint (C c) = !(#entrypoint c)
+
+    fun set_entrypoint (C c, ep) = #entrypoint c := ep
 
   end;

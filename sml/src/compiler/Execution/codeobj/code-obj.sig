@@ -24,6 +24,7 @@ signature CODE_OBJ =
     val alloc : int -> code_object
 	(* Allocate an unintialized code object of the given number of bytes.
 	 *)
+
     val input : (BinIO.instream * int) -> code_object
 	(* Allocate a code object of the given size and initialize it
 	 * from the input stream.
@@ -34,6 +35,9 @@ signature CODE_OBJ =
     val bytes : code_object -> Word8Array.array
 	(* View the code object as an updatable array of bytes. *)
 
+    val set_entrypoint : code_object * int -> unit
+        (* Set the offset of the entrypoint of the code object (default: 0). *)
+
     val exec : code_object -> executable
 	(* View the code object as an executable.  This has the side-effect
 	 * of flushing the instruction cache.
@@ -41,6 +45,9 @@ signature CODE_OBJ =
 
     val size : code_object -> int
 	(* return the size of the code object *)
+
+    val entrypoint : code_object -> int
+        (* return the offset of the entry point of the code object *)
 
     val mkLiterals : Word8Vector.vector -> Unsafe.Object.object
 	(* use the run-time system interpreter to generate a literals

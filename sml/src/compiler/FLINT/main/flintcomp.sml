@@ -3,7 +3,8 @@
 
 functor FLINTComp
 	    (structure Gen: MACHINE_GEN
-             val collect: unit -> CodeObj.code_object) : CODEGENERATOR =
+             val collect: (unit -> int) ->
+			  CodeObj.code_object) : CODEGENERATOR =
 struct
 
 local structure MachSpec = Gen.MachSpec
@@ -215,9 +216,11 @@ fun flintcomp
                   val carg = globalfix fx
                   val carg = spill carg
                   val (carg, limit) = limit carg
-               in codegen { funcs = carg, limits = limit, err = err,
-			    source = src };
-                  collect ()
+		  val epthunk =
+		      codegen { funcs = carg, limits = limit, err = err,
+				source = src }
+	      in
+                  collect epthunk
               end
 
          in case CpsSplit.cpsSplit function

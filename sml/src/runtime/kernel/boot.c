@@ -277,10 +277,12 @@ PVT FILE *OpenBinFile (const char *fname, bool_t isBinary)
  *  the data segment will not contain executable code at all but some form
  *  of bytecode that is to be interpreted separately.)
  *
- *  In the binfile, each code segment is represented by its size s (in
- *  bytes -- written as a 4-byte big-endian integer) followed by s bytes of
- *  machine- (or byte-) code. The total length of all code segments
- *  (including the bytes spent on representing individual sizes) is codeSzB.
+ *  In the binfile, each code segment is represented by its size s and its
+ *  entry point offset (in bytes -- written as 4-byte big-endian integers)
+ *  followed by s bytes of machine- (or byte-) code. The total length of all
+ *  code segments (including the bytes spent on representing individual sizes
+ *  and entry points) is codeSzB.  The entrypoint field for the data segment
+ *  is currently ignored (and should be 0).
  *
  * LINKING CONVENTIONS:
  *
@@ -370,7 +372,7 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
     ml_val_t	    codeObj, importRec, closure, val;
     binfile_hdr_t   hdr;
     pers_id_t	    exportPerID;
-    Int32_t         thisSzB;
+    Int32_t         thisSzB, thisEntryPoint;
     size_t          archiveOffset;
     char            *atptr, *colonptr;
     char            *objname = fname;
@@ -464,18 +466,17 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
     }
 
   /* Read code objects and run them.  The first code object will be the
-   * data segment.  We add a comment string to each code object to mark
-   * which bin file it came from.  This code should be the same as that
-   * in ../c-libs/smlnj-runtime/mkcode.c.
-   */
+   * data segment.  */
 
     remainingCode = hdr.codeSzB;
 
-  /* read the size for the data object */
+  /* read the size and the dummy entry point for the data object */
     ReadBinFile (file, &thisSzB, sizeof(Int32_t), fname);
     thisSzB = BIGENDIAN_TO_HOST(thisSzB);
+    ReadBinFile (file, &thisEntryPoint, sizeof(Int32_t), fname);
+    /* thisEntryPoint = BIGENDIAN_TO_HOST(thisEntryPoint); */
 
-    remainingCode -= thisSzB + sizeof(Int32_t);
+    remainingCode -= thisSzB + 2 * sizeof(Int32_t);
     if (remainingCode < 0)
 	Die ("format error (data size mismatch) in bin file \"%s\"", fname);
 
@@ -502,12 +503,14 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
 
     while (remainingCode > 0) {
 
-      /* read the size for this code object */
+      /* read the size and entry point for this code object */
 	ReadBinFile (file, &thisSzB, sizeof(Int32_t), fname);
 	thisSzB = BIGENDIAN_TO_HOST(thisSzB);
+	ReadBinFile (file, &thisEntryPoint, sizeof(Int32_t), fname);
+	thisEntryPoint = BIGENDIAN_TO_HOST(thisEntryPoint);
 
       /* how much more? */
-	remainingCode -= thisSzB + sizeof(Int32_t);
+	remainingCode -= thisSzB + 2 * sizeof(Int32_t);
 	if (remainingCode < 0)
 	  Die ("format error (code size mismatch) in bin file \"%s\"", fname);
 
@@ -517,8 +520,9 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
 
 	FlushICache (PTR_MLtoC(char, codeObj), thisSzB);
       
-      /* create closure */
-	REC_ALLOC1 (msp, closure, codeObj);
+      /* create closure (taking entry point into account) */
+	REC_ALLOC1 (msp, closure,
+		    PTR_CtoML (PTR_MLtoC (char, codeObj) + thisEntryPoint));
 
       /* apply the closure to the import PerID vector */
 	SaveCState (msp, &BinFileList, NIL(ml_val_t *));

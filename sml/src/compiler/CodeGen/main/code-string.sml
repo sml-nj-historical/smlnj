@@ -20,9 +20,10 @@ structure CodeString : CODE_STRING =
 
     fun update (i, b) = Word8Array.update (!arr, i, b)
 
-    fun getCodeString () = let
+    fun getCodeString ep = let
 	  val co = valOf(!obj)
 	  in
+	    CodeObj.set_entrypoint (co, ep);
 	    arr := Word8Array.array(0, 0w0);
 	    obj := NONE;
 	    co

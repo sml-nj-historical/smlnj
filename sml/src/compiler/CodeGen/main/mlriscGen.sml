@@ -14,7 +14,10 @@ sig
 		  limits:  CPS.lvar -> int * int,
 		  err: ErrorMsg.complainer,
 		  source: string }
-		-> unit
+		-> (unit -> int)
+    (* The result is a thunk around the address of the resulting code
+     * object's entry point.  The client must promise to first call
+     * "finish" before forcing it. *)
 end
 
 
@@ -2125,28 +2128,11 @@ struct
 	compile(endCluster NO_OPT)
       end
 
-      fun linkageCluster((fk,f,args,cty,cexp)::_) = let
-	val stream = MLTreeComp.selectInstructions (Flowgen.build ())
-	val TS.S.STREAM{beginCluster, emit, exitBlock, entryLabel, pseudoOp, endCluster, ...} = stream
-	val flab = functionLabel f
-	val lab = Label.anon()
-	val formals = ArgP.standard{fnTy=typmap f, vfp=false, argTys=cty}
-      in
-	  beginCluster 0;
-	  entryLabel lab;
-	  emit(assign(C.stdlink(false), 
-		        M.ADD(ity, C.stdlink(false), 
-			      M.LABEXP(M.SUB(ity, M.LABEL(flab), M.LABEL(lab))))));
-	  emit (M.JMP(M.LABEL flab, [flab]));
-	  exitBlock(formals @ dedicated);
-	  compile(endCluster NO_OPT)
-      end 
-
+      fun entrypoint ((_,f,_,_,_)::_) () = Label.addrOf (functionLabel f)
   in  
     app mkGlobalTables funcs;
-    linkageCluster(funcs);
     app genCluster (Cluster.cluster funcs);
-    finishCompilationUnit source
+    finishCompilationUnit source;
+    entrypoint (funcs)
   end (* codegen *)
 end (* MLRiscGen *)
-

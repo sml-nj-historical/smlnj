@@ -7,4 +7,5 @@
 structure PPCMC = 
   FLINTComp(
     structure Gen=PPCCG
-    fun collect name = (PPCCG.finish name; CodeString.getCodeString()))
+    fun collect epthunk = (PPCCG.finish ();
+			   CodeString.getCodeString (epthunk ())))

@@ -17,6 +17,6 @@ signature MACHINE_GEN = sig
 		  limits: CPS.lvar -> int * int,
 		  err: ErrorMsg.complainer,
 		  source: string }
-		-> unit
+		-> (unit -> int)
 end (* MACHINE_GEN *)
 

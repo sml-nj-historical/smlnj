@@ -84,10 +84,12 @@
  *  then be garbage-collected immediatly. (In fact, the data segment does
  *  not consist of machine code but of code for an internal bytecode engine.)
  *
- *  In the binfile, each code segment is represented by its size s (in
- *  bytes -- written as a 4-byte big-endian integer) followed by s bytes of
- *  machine- (or byte-) code. The total length of all code segments
- *  (including the bytes spent on representing individual sizes) is codeSzB.
+ *  In the binfile, each code segment is represented by its size s and its
+ *  entry point offset (in bytes -- written as 4-byte big-endian integers)
+ *  followed by s bytes of machine- (or byte-) code. The total length of all
+ *  code segments (including the bytes spent on representing individual sizes
+ *  and entry points) is codeSzB.  The entrypoint field for the data segment
+ *  is currently ignored (and should be 0).
  *
  * LINKING CONVENTIONS:
  *
@@ -297,11 +299,11 @@ structure Binfile :> BINFILE = struct
 	(* assert (Word8Vector.length (MAGIC <arch>) = magicBytes *)
     end
 
-    (* calculate size of code objects (including length fields) *)
+    (* calculate size of code objects (including lengths and entrypoints) *)
     fun codeSize (csegs: csegments) =
 	List.foldl
-	    (fn (co, n) => n + CodeObj.size co + 4)
-	    (CodeObj.size(#c0 csegs) + Word8Vector.length(#data csegs) + 8)
+	    (fn (co, n) => n + CodeObj.size co + 8)
+	    (CodeObj.size(#c0 csegs) + Word8Vector.length(#data csegs) + 16)
 	    (#cn csegs)
 
     (* This function must be kept in sync with the "write" function below.
@@ -344,14 +346,17 @@ structure Binfile :> BINFILE = struct
 	fun readCode 0 = []
 	  | readCode n = let
 		val sz = readInt32 strm
-		val n' = n - sz - 4
+		val ep = readInt32 strm
+		val n' = n - sz - 8
+		val cobj = if n' < 0 then error "code size"
+			   else CodeObj.input(strm, sz)
 	    in
-		if n' < 0 then
-		    error "code size"
-		else CodeObj.input(strm, sz) :: readCode n'
+		CodeObj.set_entrypoint (cobj, ep);
+		cobj :: readCode n'
 	    end
 	val dataSz = readInt32 strm
-	val n' = nbytes - dataSz - 4
+	val _ = readInt32 strm (* ignore entry point field for data segment *)
+	val n' = nbytes - dataSz - 8
 	val data = if n' < 0 then error "data size" else bytesIn (strm, dataSz)
     in
 	case readCode n' of
@@ -448,7 +453,9 @@ structure Binfile :> BINFILE = struct
 	val pp = String.size pepper
 	val pad = 0			(* currently no padding *)
 	val cs = codeSize csegments
-	fun codeOut c = (writeInt32 s (CodeObj.size c); CodeObj.output (s, c))
+	fun codeOut c = (writeInt32 s (CodeObj.size c);
+			 writeInt32 s (CodeObj.entrypoint c);
+			 CodeObj.output (s, c))
 	val es = pickleSize senv
 	val writeEnv = if nopickle then fn () => ()
 		       else fn () => BinIO.output (s, senvP)
@@ -469,6 +476,7 @@ structure Binfile :> BINFILE = struct
 	(* padding area is currently empty *)
 	(* code objects *)
 	writeInt32 s datasz;
+	writeInt32 s 0;		(* dummy entry point for data segment *)
 	BinIO.output(s, #data csegments);
 	codeOut (#c0 csegments);
 	app codeOut (#cn csegments);

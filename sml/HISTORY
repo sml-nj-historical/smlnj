@@ -13,6 +13,25 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/08 16:05:00
+Tag: blume-20020308-entrypoints
+Description:
+
+Version number bumped to 110.39.1.  NEW BOOTFILES!
+
+Entrypoints: non-zero offset into a code object where execution should begin.
+
+- Added the notion of an entrypoint to CodeObj.
+- Added reading/writing of entrypoint info to Binfile.
+- Made runtime system bootloader aware of entrypoints.
+- Use the address of the label of the first function given to mlriscGen
+  as the entrypoint.  This address is currently always 0, but it will
+  not be 0 once we turn on block placement.
+- Removed the linkage cluster code (which was The Other Way(tm) of dealing
+  with entry points) from mlriscGen.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2002/03/07 20:45:00 EST
 Tag: leunga-20020307-x86-cmov
