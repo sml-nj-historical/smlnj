@@ -68,16 +68,10 @@ struct
    fun dumpFlowgraph(txt, cfg as Graph.GRAPH graph, outstrm) = let
      fun say txt = TextIO.output(outstrm, txt)
      fun sayPseudo p = (say(CFG.P.toString p); say "\n")
-     val labToString = CFG.P.Client.AsmPseudoOps.defineLabel
-     fun dump (nid, CFG.BLOCK{labels, align, insns, ...}) = 
-       (case !align of NONE => () | SOME p => sayPseudo p;
-	app (fn lab => say(labToString lab ^ "\n")) (!labels);
-        app emit (rev (!insns)))
      val CFG.INFO{data, ...} = #graph_info graph
-   in 
-       app dump (#nodes graph ());
+   in
+       CFG.dump(outstrm, txt, cfg);
        app sayPseudo (rev(!data))
-      
    end
 
    val annotations = CFG.annotations 
