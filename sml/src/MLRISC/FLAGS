@@ -1,0 +1,32 @@
+			MLRISC Control
+
+These flags are set via the MLRISC_Control structure.
+
+ Register allocation:
+    flags:
+	"dump-cfg-before-ra"
+		Prints the control flowgraph before register 
+		allocation.
+
+	"dump-cfg-after-ra"
+		Prints the control flowgraph after register 
+		allocation.
+
+	"dump-interference-graph"	
+		Dumps out the interference graph at each round.
+
+    counters:
+        "ra-int-spills"
+		Counts the number of integer spill instructions
+
+	"ra-int-reloads"
+		Counts the number of integer reload instructions.
+
+	"ra-float-spills"
+		Counts the number of floating point spill instructions
+
+	"ra-float-reloads"
+		Counts the number of floating point reload instructions.
+
+	
+    
