@@ -30,11 +30,12 @@ struct
   structure CB  = CellsBasis
   structure W32 = Word32
   structure A   = MLRiscAnnotations
+  structure CFG = ExtensionComp.CFG
 
   fun error msg = MLRiscErrorMsg.error("PPC",msg)
 
-  type instrStream = (I.instruction,CB.CellSet.cellset) T.stream
-  type mltreeStream = (T.stm,T.mlrisc list) T.stream
+  type instrStream = (I.instruction, CB.CellSet.cellset, CFG.cfg) T.stream
+  type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) T.stream
 
 
   val (intTy,naturalWidths) = if bit64mode then (64,[32,64]) else (32,[32])
@@ -156,7 +157,7 @@ struct
                                      | _ => SOME(I.FDirect(newFreg()))},an)
 
       fun emitBranch{bo, bf, bit, addr, LK} = 
-      let val fallThrLab = Label.newLabel""
+      let val fallThrLab = Label.anon()
           val fallThrOpnd = I.LabelOp(T.LABEL fallThrLab)
       in
           emit(I.BC{bo=bo, bf=bf, bit=bit, addr=addr, LK=LK, fall=fallThrOpnd});
@@ -419,7 +420,7 @@ struct
       (*  Generate an overflow trap *)
       and overflowTrap() =
           let val label = case !trapLabel of
-                            NONE => let val l = Label.newLabel ""
+                            NONE => let val l = Label.anon()
                                     in  trapLabel := SOME l; l end
                           | SOME l => l
           in  emitBranch{bo=I.TRUE, bf=CR0, bit=I.SO, LK=false,

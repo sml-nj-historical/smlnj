@@ -11,8 +11,9 @@
 
 functor InvokeGC
    (structure Cells : CELLS
-    structure C : CPSREGS where T.Region=CPSRegions
-    structure MS: MACH_SPEC
+    structure C     : CPSREGS where T.Region=CPSRegions
+    structure CFG   : CONTROL_FLOW_GRAPH 
+    structure MS    : MACH_SPEC
    ) : INVOKE_GC =
 struct
 
@@ -24,6 +25,7 @@ struct
    structure GC = SMLGCType
    structure Cells = Cells
    structure A  = Array
+   structure CFG = CFG
    structure CB = CellsBasis
    structure S  = CB.SortedCells
 
@@ -35,7 +37,7 @@ struct
               return   : T.stm
             }
 
-   type stream = (T.stm,T.mlrisc list) T.stream
+   type stream = (T.stm, T.mlrisc list, CFG.cfg) T.stream
 
    val debug = Control.MLRISC.getFlag "debug-gc";
 
@@ -204,7 +206,7 @@ struct
     * It returns the label to the GC invocation block.
     *) 
    fun checkLimit(emit, maxAlloc) =
-   let val lab = Label.newLabel ""
+   let val lab = Label.anon()
        fun gotoGC(cc) = emit(T.ANNOTATION(T.BCC(cc, lab), unlikely))
    in  if maxAlloc < skidPad then
           (case C.exhausted of
@@ -229,7 +231,7 @@ struct
     * This function recomputes the base pointer address.
     *)
    fun computeBasePtr(emit,defineLabel,annotation) =
-   let val returnLab = Label.newLabel ""
+   let val returnLab = Label.anon()
        val baseExp = 
            T.ADD(addrTy, C.gcLink(vfp),
                  T.LABEXP(T.SUB(addrTy,baseOffset,T.LABEL returnLab)))
@@ -728,7 +730,7 @@ struct
                        addrs := l :: (!addrs) 
 		   else search rest
 		 | search [] = (* no matching convention *)
-		   let val label = Label.newLabel ""
+		   let val label = Label.anon()
 		   in  lab := label;
                    moduleGcBlocks := MODULE{info=info, addrs=ref[l]}
 				     :: (!moduleGcBlocks)

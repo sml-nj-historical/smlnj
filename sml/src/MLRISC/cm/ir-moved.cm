@@ -1,5 +1,11 @@
 (* This file is created by makeallcm *)
 Library
+  signature LOOP_STRUCTURE
+  functor LoopStructure
+  signature CONTROL_DEPENDENCE_GRAPH
+  functor ControlDependenceGraph
+  signature DOMINATOR_TREE
+  functor DominatorTree
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -28,15 +34,12 @@ is
 	Lib.cm
 	Graphs.cm
 #endif
-	../ir/apt.sig
-	../ir/apt.sml
 	../ir/cdg.sig
 	../ir/cdg.sml
 	../ir/compute-freq.sig
 	../ir/compute-freq.sml
 	../ir/compute-freq2.sig
 	../ir/compute-freq2.sml
-	../ir/comp-djgraph.sml
 	../ir/derived-graph.sig
 	../ir/derived-graph.sml
 	../ir/dj-dataflow.sig

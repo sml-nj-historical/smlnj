@@ -1,27 +1,35 @@
-(*
+(* cfgEmit.sml
+ *
+ * COPYRIGHT (c) 2001 Bell Labs, Lucent Technologies
+ *
  * This module takes a flowgraph and an assembly emitter module and 
  * ties them together into one.  The output is sent to AsmStream.
  *  --Allen
  *)
-functor ClusterEmit
-  (structure F : FLOWGRAPH
+
+functor CFGEmit
+  (structure CFG : CONTROL_FLOW_GRAPH
    structure E : INSTRUCTION_EMITTER
-      where I = F.I and P = F.P) : ASSEMBLY_EMITTER = 
+      where I = CFG.I and P = CFG.P) : ASSEMBLY_EMITTER = 
 struct
-  type flowgraph = F.cluster
-  fun asmEmit(F.CLUSTER{blocks,annotations=an,...}) = 
-  let val E.S.STREAM{pseudoOp,defineLabel,emit,annotation,comment,...} = 
+
+  structure CFG = CFG
+
+  fun asmEmit (Graph.GRAPH graph, blocks) = let
+	val CFG.INFO{annotations=an, ...} = #graph_info graph
+	val E.S.STREAM{pseudoOp,defineLabel,emit,annotation,comment,...} = 
              E.makeStream (!an)
-      fun emitAn a = if Annotations.toString a = "" then () else annotation(a)
-      fun emitIt(F.PSEUDO pOp) = pseudoOp pOp
-        | emitIt(F.LABEL lab)  = defineLabel lab
-        | emitIt(F.BBLOCK{insns, annotations=a, ...}) = 
-          (app emitAn (!a);
-           app emit (rev (!insns))
-          )
-        | emitIt _ = ()
-  in  app annotation (!an);
-      app emitIt blocks
-  end
+	fun emitAn a = if Annotations.toString a = "" then () else annotation(a)
+	fun emitData (CFG.LABEL lab) = defineLabel lab
+	  | emitData (CFG.PSEUDO pOp) = pseudoOp pOp
+	fun emitIt (id, CFG.BLOCK{data, labels, annotations=a, insns, ...}) = (
+	      List.app emitData (!data);
+(*	      List.app defineLabel (!labels); *) (* JHR *)
+	      List.app emitAn (!a);
+	      List.app emit (rev (!insns)))
+	in
+	  List.app emitAn (!an);
+	  List.app emitIt blocks
+	end
 end
 

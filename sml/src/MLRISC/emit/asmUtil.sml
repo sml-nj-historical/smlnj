@@ -22,7 +22,7 @@ struct
     | emit_cutsTo emit labels = 
       emit("\n\t/* cuts to:"^
         List.foldr
-          (fn (l,"") => Label.nameOf l
-            | (l,s)  => Label.nameOf l^","^s)
+          (fn (l,"") => Label.toString l
+            | (l,s)  => Label.toString l^","^s)
             "" labels^" */\n")
 end

@@ -15,7 +15,7 @@ structure PPCCG =
 
     structure OmitFramePtr = struct
       exception NotImplemented
-      structure F=PPCFlowGraph
+      structure CFG=PPCCFG
       structure I=PPCInstr
       val vfp = PPCCpsRegs.vfp
       fun omitframeptr _ = raise NotImplemented
@@ -29,6 +29,7 @@ structure PPCCG =
            structure ExtensionComp = SMLNJMLTreeExtComp
                (structure I = PPCInstr
                 structure T = PPCMLTree
+		structure CFG = PPCCFG
                )
            val bit64mode=false
            val multCost=ref 6 (* an estimate *)
@@ -39,14 +40,15 @@ structure PPCCG =
                 structure Shuffle=PPCShuffle)
 
     structure BackPatch =
-       BBSched2(structure Flowgraph = PPCFlowGraph
+       BBSched2(structure CFG = PPCCFG
+		structure Placement = DefaultBlockPlacement(PPCCFG)
                 structure Jumps = Jumps
                 structure Emitter = PPCMCEmitter)
 
     structure RA = 
        RISC_RA
          (structure I         = PPCInstr
-          structure Flowgraph = PPCFlowGraph
+          structure Flowgraph = PPCCFG
           structure CpsRegs   = PPCCpsRegs
           structure InsnProps = InsnProps 
           structure Rewrite   = PPCRewrite(PPCInstr) 

@@ -24,11 +24,6 @@ structure Alpha32Props = AlphaProps(Alpha32Instr)
 
 structure Alpha32Shuffle = AlphaShuffle(Alpha32Instr)
 
-(* Flowgraph data structure specialized to DEC alpha instructions *)
-structure Alpha32FlowGraph = 
-  FlowGraph(structure I=Alpha32Instr
-	    structure P=Alpha32PseudoOps
-           )
 
 structure Alpha32AsmEmitter=
   AlphaAsmEmitter(structure Instr=Alpha32Instr
@@ -44,4 +39,11 @@ structure Alpha32MCEmitter =
 
 structure Alpha32PseudoInstrs = Alpha32PseudoInstrs(Alpha32Instr)
 
-
+(* Flowgraph data structure specialized to DEC alpha instructions *)
+structure Alpha32CFG = 
+  ControlFlowGraph
+     (structure I = Alpha32Instr
+      structure PseudoOps = Alpha32PseudoOps
+      structure GraphImpl = DirectedGraph
+      structure InsnProps = Alpha32Props
+      structure Asm = Alpha32AsmEmitter)

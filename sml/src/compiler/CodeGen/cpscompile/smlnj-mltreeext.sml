@@ -14,16 +14,19 @@ end
  * used for all architectures except the x86.
  *)
 functor SMLNJMLTreeExtComp
-   (structure T : MLTREE
-    structure I : INSTRUCTIONS
+   (structure T   : MLTREE
+    structure I   : INSTRUCTIONS
+    structure CFG : CONTROL_FLOW_GRAPH
+      sharing CFG.I = I
       sharing T = I.T
    ) : MLTREE_EXTENSION_COMP =
 struct
    structure T = T
    structure I = I
    structure C = I.C
+   structure CFG = CFG
    type reducer =
-     (I.instruction,C.cellset,I.operand,I.addressing_mode) T.reducer
+     (I.instruction,C.cellset,I.operand,I.addressing_mode,CFG.cfg) T.reducer
 
    fun unimplemented _ = MLRiscErrorMsg.impossible "SMLNJMLTreeExtComp" 
 

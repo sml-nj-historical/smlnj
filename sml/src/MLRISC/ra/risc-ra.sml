@@ -5,7 +5,7 @@
  *)
 functor RISC_RA
   (structure I         : INSTRUCTIONS
-   structure Flowgraph : FLOWGRAPH
+   structure Flowgraph : CONTROL_FLOW_GRAPH 
    structure InsnProps : INSN_PROPERTIES
    structure Rewrite   : REWRITE_INSTRUCTIONS
    structure Asm       : INSTRUCTION_EMITTER
@@ -102,16 +102,14 @@ functor RISC_RA
       (* Mode for RA optimizations *)
       val mode : RAGraph.mode
    end
-  ) : CLUSTER_OPTIMIZATION =
+  ) : CFG_OPTIMIZATION =
 struct
 
-   structure F = Flowgraph
-   structure I = F.I
-   structure P = InsnProps
-   structure C = I.C
-   structure G = RAGraph
-
-   type flowgraph = F.cluster
+   structure CFG = Flowgraph
+   structure I   = CFG.I
+   structure P   = InsnProps
+   structure C   = I.C
+   structure G   = RAGraph
 
    val name = "RISC_RA"
 
@@ -265,7 +263,7 @@ struct
         (SpillHeur) 
         (* (ChowHennessySpillHeur) *)
         (ClusterRA 
-          (structure Flowgraph = F
+          (structure Flowgraph = CFG
            structure Asm = Asm
            structure InsnProps = InsnProps
            structure Spill = Spill

@@ -1,20 +1,21 @@
 (*
  * Run peephole optimization on a cluster
  *)
-functor ClusterPeephole
-  (structure F        : FLOWGRAPH
+functor CFGPeephole
+  (structure CFG      : CONTROL_FLOW_GRAPH
    structure PeepHole : PEEPHOLE
-     sharing F.I = PeepHole.I
-  ) : CLUSTER_OPTIMIZATION =
+     sharing CFG.I = PeepHole.I
+  ) : CFG_OPTIMIZATION =
 struct
-   structure F = F
-   type flowgraph = F.cluster
+   structure CFG = CFG
 
    val name = "Peephole optimization"
 
-   fun run(cluster as F.CLUSTER{blocks, ...}) =
-       (app (fn F.BBLOCK{insns, ...} => insns := PeepHole.peephole(rev(!insns))
-              | _ => ()) blocks;
-        cluster
-       )
+   fun run (cfg as Graph.GRAPH graph) = let
+         fun opt (_, CFG.BLOCK{insns, ...}) = insns := PeepHole.peephole(rev(!insns))
+	 in
+	   #forall_nodes graph opt;
+	   cfg
+	 end
+
 end

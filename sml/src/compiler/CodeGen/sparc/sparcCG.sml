@@ -15,7 +15,7 @@ structure SparcCG =
       Sparc_CCalls (structure T = SparcMLTree  fun ix x = x)
 
     structure OmitFramePtr = struct
-      structure F=SparcFlowGraph
+      structure CFG=SparcCFG
       structure I=SparcInstr
       val vfp = CpsRegs.vfp
       (* no rewriting necessary, backend uses %fp instead of %sp *)
@@ -29,6 +29,7 @@ structure SparcCG =
              structure ExtensionComp = SparcMLTreeExtComp
                (structure I = SparcInstr
                 structure T = SparcMLTree
+		structure CFG = SparcCFG
                )
              val V9 = false
              val muluCost = ref 5
@@ -45,7 +46,8 @@ structure SparcCG =
 
     structure BackPatch =
        SpanDependencyResolution
-         (structure Flowgraph = SparcFlowGraph
+         (structure CFG	      = SparcCFG
+	  structure Placement = DefaultBlockPlacement(SparcCFG) 
           structure Jumps     = Jumps
           structure Emitter   = SparcMCEmitter
           structure DelaySlot = SparcDelaySlots
@@ -57,7 +59,7 @@ structure SparcCG =
     structure RA = 
        RISC_RA
          (structure I         = SparcInstr
-          structure Flowgraph = SparcFlowGraph
+          structure Flowgraph = SparcCFG
           structure InsnProps = InsnProps 
           structure Rewrite   = SparcRewrite(SparcInstr)
           structure Asm       = SparcAsmEmitter

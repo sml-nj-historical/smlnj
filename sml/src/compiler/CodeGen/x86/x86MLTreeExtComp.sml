@@ -1,6 +1,7 @@
 functor X86MLTreeExtComp
-   (structure T : MLTREE where Extension = X86_SMLNJMLTreeExt
-    structure I : X86INSTR where T = T
+   ( structure T : MLTREE where Extension = X86_SMLNJMLTreeExt
+     structure I : X86INSTR where T = T
+     structure CFG : CONTROL_FLOW_GRAPH where I=I and P = T.PseudoOp
    ) : MLTREE_EXTENSION_COMP =
 struct
    structure T = T
@@ -8,10 +9,14 @@ struct
    structure C = I.C
    structure CB = CellsBasis
    structure Ext = X86_SMLNJMLTreeExt
-   structure X86CompInstrExt = X86CompInstrExt(I)
+   structure CFG = CFG
+   structure X86CompInstrExt = 
+     X86CompInstrExt
+        (structure I=I
+	 structure CFG = CFG)
 
    type reducer = 
-     (I.instruction,C.cellset,I.operand,I.addressing_mode) T.reducer
+     (I.instruction,C.cellset,I.operand,I.addressing_mode,CFG.cfg) T.reducer
 
    val fast_fp = MLRiscControl.getFlag "x86-fast-fp"
 

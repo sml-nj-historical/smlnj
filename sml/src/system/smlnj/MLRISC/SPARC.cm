@@ -17,5 +17,6 @@ is
 	$SMLNJ-MLRISC/SPARC.cm
                 (bind:(anchor:Control.cm value:$SMLNJ-MLRISC)
                  bind:(anchor:Lib.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:Graphs.cm value:$SMLNJ-MLRISC)
                  bind:(anchor:MLTREE.cm value:$SMLNJ-MLRISC)
                  bind:(anchor:MLRISC.cm value:$SMLNJ-MLRISC))

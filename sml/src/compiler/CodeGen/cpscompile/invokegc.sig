@@ -15,13 +15,14 @@ signature INVOKE_GC =
 sig
    structure T     : MLTREE
    structure Cells : CELLS
+   structure CFG   : CONTROL_FLOW_GRAPH 
 
    type t = { maxAlloc : int,
               regfmls  : T.mlrisc list,
 	      regtys   : CPS.cty list,
 	      return   : T.stm
             }
-   type stream = (T.stm, T.mlrisc list) T.stream
+   type stream = (T.stm, T.mlrisc list, CFG.cfg) T.stream
 
       (* initialize the state before compiling a module *)
    val init : unit -> unit

@@ -40,8 +40,8 @@ struct
    (*
     * Hashing
     *)
-   fun hashLabel(Label.Label{id,...}) = w id
-   and hasher() = {stm=hashStm, rexp=hashRexp, fexp=hashFexp, ccexp=hashCCexp}
+   val hashLabel = Label.hash
+   fun hasher() = {stm=hashStm, rexp=hashRexp, fexp=hashFexp, ccexp=hashCCexp}
    and hashCtrl ctrl = wv ctrl
    and hashStm stm =
       case stm of  
@@ -179,8 +179,8 @@ struct
   and hashCCexps([],h) = h
     | hashCCexps(e::es,h) = hashCCexps(es,hashCCexp e + h)
 
-  fun eqLabel(Label.Label{id=x,...},Label.Label{id=y,...}) = x=y 
-  and eqLabels([],[]) = true
+  val eqLabel = Label.same
+  fun eqLabels([],[]) = true
     | eqLabels(a::b,c::d) = eqLabel(a,c) andalso eqLabels(b,d)
     | eqLabels _ = false
   and eqCell(C.CELL{id=x, ...},C.CELL{id=y, ...}) = x=y
@@ -447,7 +447,7 @@ struct
 
   fun toString le = toStr(le, 0) 
 
-  and toStr(T.LABEL lab, _) = Label.nameOf lab 
+  and toStr(T.LABEL lab, _) = Label.toString lab 
     | toStr(T.LABEXP le, p) = toStr(le, p)
     | toStr(T.CONST c, _) = 
         if !resolveConstants then prInt(Constant.valueOf c)

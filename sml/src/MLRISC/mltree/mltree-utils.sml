@@ -49,8 +49,8 @@ struct
    (*
     * Hashing
     *)
-   fun hashLabel(Label.Label{id,...}) = w id
-   and hasher() = {stm=hashStm, rexp=hashRexp, fexp=hashFexp, ccexp=hashCCexp}
+   val hashLabel = Label.hash 
+   fun hasher() = {stm=hashStm, rexp=hashRexp, fexp=hashFexp, ccexp=hashCCexp}
    and hashCtrl ctrl = wv ctrl
    and hashStm stm =
       case stm of  
@@ -193,8 +193,8 @@ struct
     * Equality
     *)
 
-  fun eqLabel(Label.Label{id=x,...},Label.Label{id=y,...}) = x=y 
-  and eqLabels([],[]) = true
+  val eqLabel = Label.same
+  fun eqLabels([],[]) = true
     | eqLabels(a::b,c::d) = eqLabel(a,c) andalso eqLabels(b,d)
     | eqLabels _ = false
   and eqCell(C.CELL{id=x, ...},C.CELL{id=y, ...}) = x=y
@@ -437,12 +437,12 @@ struct
         | stm(T.CALL{funct,targets,defs,uses,region,pops}) = 
               "call "^rexp funct
         | stm(T.FLOW_TO(s, targets)) =
-              stm s^" ["^listify' Label.nameOf targets^"]"
+              stm s^" ["^listify' Label.toString targets^"]"
         | stm(T.RET(flow)) = "ret"
         | stm(T.STORE(ty,ea,e,mem)) = store(ty,"",ea,mem,e)
         | stm(T.FSTORE(fty,ea,e,mem)) = fstore(fty,"",ea,mem,e)
         | stm(T.BCC(a,lab)) = 
-             "bcc "^ccexp a^" "^Label.nameOf lab
+             "bcc "^ccexp a^" "^Label.toString lab
         | stm(T.IF(a,b,T.SEQ [])) = "if "^ccexp a^" then "^stm b
         | stm(T.IF(a,b,c)) = "if "^ccexp a^" then "^stm b^" else "^stm c
         | stm(T.SEQ []) = "skip"
@@ -470,7 +470,7 @@ struct
           (* pretty print an expression  *)
       and rexp(T.REG(ty, src)) = srcReg(ty,src)
         | rexp(T.LI i) = IntInf.toString i
-        | rexp(T.LABEL l) = Label.nameOf l
+        | rexp(T.LABEL l) = Label.toString l
         | rexp(T.CONST c) = Constant.toString c
         | rexp(T.LABEXP le) = rexp le
         | rexp(T.NEG x) = unary("~",x)

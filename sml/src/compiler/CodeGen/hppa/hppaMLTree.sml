@@ -29,12 +29,6 @@ structure HppaShuffle = HppaShuffle(HppaInstr)
 
 structure HppaProps = HppaProps(HppaInstr)
 
-(* flowgraph data structure specialized to Hppa instructions *)
-structure HppaFlowGraph = 
-  FlowGraph(structure I=HppaInstr
-	    structure P=HppaPseudoOps
-           )
-
 structure HppaAsmEmitter = 
   HppaAsmEmitter(structure Instr=HppaInstr
 		 structure Shuffle=HppaShuffle
@@ -47,5 +41,13 @@ structure HppaMCEmitter =
                 structure Stream=HppaStream 
 		structure CodeString=CodeString)
 
+(* flowgraph data structure specialized to Hppa instructions *)
+structure HppaCFG = 
+  ControlFlowGraph
+     (structure I = HppaInstr
+      structure PseudoOps = HppaPseudoOps
+      structure GraphImpl = DirectedGraph
+      structure InsnProps = HppaProps
+      structure Asm = HppaAsmEmitter)
 
 

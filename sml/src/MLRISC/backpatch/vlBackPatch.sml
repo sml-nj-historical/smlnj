@@ -11,17 +11,23 @@ end
   
 functor BackPatch
   (structure CodeString : CODE_STRING
-   structure Jumps: SDI_JUMPS 
-   structure Props : INSN_PROPERTIES 
-   structure Emitter : MC_EMIT
-   structure Flowgraph : FLOWGRAPH
-   structure Asm : INSTRUCTION_EMITTER
-      sharing Emitter.I = Jumps.I = Flowgraph.I = Props.I = Asm.I) : BBSCHED = 
+   structure Jumps      : SDI_JUMPS 
+   structure Props      : INSN_PROPERTIES 
+			where I = Jumps.I
+   structure Emitter    : MC_EMIT
+			where I = Props.I
+   structure CFG        : CONTROL_FLOW_GRAPH
+			where I = Emitter.I
+   structure Asm	: INSTRUCTION_EMITTER
+			where I = CFG.I
+   structure Placement  : BLOCK_PLACEMENT
+			where CFG = CFG)  : BBSCHED = 
 struct 
-  structure I = Jumps.I
-  structure C = I.C
-  structure F = Flowgraph
-  structure P = F.P
+  structure I   = Jumps.I
+  structure C   = I.C
+  structure CFG = CFG
+  structure P   = CFG.P
+  structure G   = Graph
   structure W8V = Word8Vector
 
   datatype desc =
@@ -39,29 +45,35 @@ struct
 
   fun cleanUp() = clusters := []
 
-  fun bbsched(F.CLUSTER{blocks, ...}) = let
+  val Asm.S.STREAM{emit,...} = Asm.makeStream []
+
+  fun bbsched(cfg as G.GRAPH graph) = let
+    val blocks = map #2 (Placement.blockPlacement cfg)
     fun bytes([], p) = p
       | bytes([s], p) = BYTES(s, p)
       | bytes(s, p) = BYTES(W8V.concat s, p)
-    (* Note: Instructions start out in reverse order *)
-    fun f(F.PSEUDO pOp::rest) = PSEUDO(pOp, f rest)
-      | f(F.LABEL lab::rest) = LABEL(lab, f rest)
-      | f(F.BBLOCK{insns, ...}::rest) = let
+
+    fun f(CFG.BLOCK{data, labels, insns, ...}::rest) = let
 	 fun instrs([], b) = bytes(rev b, f rest)
 	   | instrs(i::rest, b) = 
 	     if Jumps.isSdi i then 
 	       bytes(rev b, SDI(i, ref(Jumps.minSize i), instrs(rest, [])))
 	     else
 	       instrs(rest, Emitter.emitInstr(i)::b)
-	in instrs(rev(!insns), []) 
+	 fun doLabels(lab::rest) = LABEL(lab, doLabels rest)
+	   | doLabels [] = instrs(rev(!insns), [])
+	 fun pseudo(CFG.PSEUDO pOp :: rest) = PSEUDO(pOp, pseudo rest)
+	   | pseudo(CFG.LABEL lab :: rest) =  LABEL(lab, pseudo rest)
+	   | pseudo [] = doLabels(!labels)
+
+	in pseudo(!data)
 	end 
-      | f(F.ENTRY _::rest) = f rest
-      | f(F.EXIT _::rest) = f rest
       | f [] = NIL
-  in
+  in 
     clusters := 
       CLUSTER{cluster=f blocks}:: !clusters
   end
+
 
   fun finish() = let
     fun labels (BYTES(s,rest), pos, chgd) = labels(rest, pos+W8V.length s, chgd)
@@ -103,7 +115,6 @@ struct
     fun output v = 
       W8V.app (fn v => (CodeString.update(!loc, v); loc:= !loc+1)) v
 
-    val Asm.S.STREAM{emit,...} = Asm.makeStream []
 
     fun chunk(pos, []) = ()
       | chunk(pos, CLUSTER{cluster}::rest) = let
@@ -148,13 +159,14 @@ struct
 
     fun fix clusters = let
       val (pos, changed) = clusterLabels clusters
-    in if changed then (adjust(clusters, 0); fix clusters) else pos
+    in 
+      if changed then (adjust(clusters, 0); fix clusters) else pos
     end
 
     val clusters = rev(!clusters) before clusters := []
   in
     CodeString.init(fix clusters);
-    loc := 0; chunk(0, clusters)
+    loc := 0; chunk(0, clusters) 
   end (* finish *)
 
 end (* functor BackPatch *)

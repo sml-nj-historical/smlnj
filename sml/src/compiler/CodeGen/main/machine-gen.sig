@@ -4,11 +4,14 @@
 signature MACHINE_GEN = sig			
   include MACHINE
   structure MLTreeComp : MLTREECOMP
+		where CFG = CFG
+		  and I = CFG.I
   structure InvokeGC   : INVOKE_GC
-  structure Shuffle    : SHUFFLE where I = F.I
+		where CFG=MLTreeComp.CFG
+		  and T = MLTreeComp.T
+  structure Shuffle    : SHUFFLE 
+		where I = MLTreeComp.I
   structure MachSpec   : MACH_SPEC
-     sharing InvokeGC.T   = MLTreeComp.T
-     sharing MLTreeComp.I = F.I 
 
   val codegen : CPS.function list * (CPS.lvar -> (int * int))
                 * ErrorMsg.complainer -> unit

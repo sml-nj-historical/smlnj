@@ -6,14 +6,15 @@ Library
 	signature BBSCHED
 	signature CELLS
 	signature CELLS_BASIS
-	signature CLUSTER_OPTIMIZATION
+	signature CFG_OPTIMIZATION
 	signature CODE_STRING
 	signature CONSTANT
+	signature CONTROL_FLOW_GRAPH
+	signature CONTROL_FLOWGRAPH_GEN
 	signature C_CALLS
 	signature DELAY_SLOT_PROPERTIES
 	signature EXPAND_COPIES
-	signature FLOWGRAPH
-	signature FLOWGRAPH_GEN
+(*	signature FLOWGRAPH_GEN		*)
 	signature FREQUENCY_PROPERTIES
 	signature GC_CELLS
 	signature GC_TYPE
@@ -40,12 +41,12 @@ Library
 	signature MLTREE_SIZE
 	signature OMIT_FRAME_POINTER
 	signature POINTS_TO
-	signature PRINT_CLUSTER
+(*	signature PRINT_CLUSTER			*)
 	signature PSEUDO_OPS
 	signature RA
 	signature RA_CORE
 	signature RA_FLOWGRAPH
-	signature RA_FLOWGRAPH_PARTITIONER
+(*	signature RA_FLOWGRAPH_PARTITIONER	*)
 	signature RA_GRAPH
 	signature RA_PRIORITY_QUEUE
 	signature RA_SPILL
@@ -70,14 +71,20 @@ Library
 	structure RAGraph
 	functor BBSched2
 	functor BackPatch
+	functor BuildFlowgraph
 	functor Cells
-	functor ClusterCountCopies
-	functor ClusterEmit
-	functor ClusterExpandCopies
-	functor ClusterGen
-	functor ClusterPartitioner
+	functor ControlFlowGraph
+	functor CFGCountCopies
+	functor CFGEmit
+	functor CFGExpandCopies
+(*	functor ClusterCountCopies	*)
+(*	functor ClusterEmit		*)
+(*	functor ClusterExpandCopies	*)
+(*	functor ClusterGen		*)
+(*	functor ClusterPartitioner	*)
 	functor ClusterRA
-	functor FlowGraph
+        functor DefaultBlockPlacement
+(*	functor FlowGraph		*)
 	functor FreqProps
 	functor GCCells
 	functor GetReg
@@ -91,12 +98,12 @@ Library
 	functor MLTreeSize
 	functor MemoryRA
 	functor NoDelaySlots
-	functor PrintCluster
+(*	functor PrintCluster		*)
 	functor RADeadCodeElim
 	functor RASpill
 	functor RASpillTypes
 	functor RISC_RA
-	functor RegionBasedRA
+(*	functor RegionBasedRA		*)
 	functor RegisterAllocator
 	functor Shuffle
 	functor SpanDependencyResolution
@@ -108,21 +115,25 @@ is
 	$/smlnj-lib.cm
 	Control.cm
 	Lib.cm
+	Graphs.cm
 #else
 	$/smlnj-lib.cm
 	$/Control.cm
 	$/Lib.cm
+	$/Graphs.cm
 #endif
 #else
 	basis.cm
 	smlnj-lib.cm
 	Control.cm
 	Lib.cm
+	Graphs.cm
 #endif
 #else
 	smlnj-lib.cm
 	Control.cm
 	Lib.cm
+	Graphs.cm
 #endif
 	../instructions/cells.sig
 	../instructions/cells.sml
@@ -137,7 +148,8 @@ is
 	../instructions/shuffle.sig
 	../instructions/shuffle.sml
 	../instructions/constant.sig
-	../instructions/labels.sml
+	../instructions/label-sig.sml
+	../instructions/label.sml
 	../instructions/pseudoOps.sig
 	../instructions/region.sig
 	../instructions/freqProps.sig
@@ -159,19 +171,24 @@ is
 	../mltree/mltree-gen.sml
 	../mltree/mltree-size.sig
 	../mltree/mltree-size.sml
-	../mltree/flowgen.sig
+(*	../mltree/flowgen.sig		*)
 	../mltree/mltree-mult.sig
 	../mltree/mltree-mult.sml
 	../mltree/mltree-labexp.sig
 	../mltree/mltree-labexp.sml
 	../mltree/machine-int.sig
 	../mltree/machine-int.sml
-	../cluster/flowgraph.sml
-	../cluster/clustergen.sml
-	../cluster/printCluster.sml
+	../flowgraph/buildFlowgraph.sml
+	../flowgraph/cfg.sig
+	../flowgraph/cfg.sml
+	../flowgraph/cfg-optimization.sig
+	../flowgraph/cfgExpandCopies.sml
+(*	../cluster/flowgraph.sml	*)
+(*	../cluster/clustergen.sml	*)
+(*	../cluster/printCluster.sml	*)
 	../cluster/clusterOptimization.sig
-	../cluster/clusterCountCopies.sml
-	../cluster/clusterExpandCopies.sml
+	../cluster/clusterCountCopies.sml	(* move to flowgraph *)
+(*	../cluster/clusterExpandCopies.sml	*)
 	../ra/getreg.sig
 	../ra/getreg.sml
 	../ra/getreg2.sml
@@ -187,21 +204,21 @@ is
         ../ra/ra-spill.sml
         ../ra/ra-spillheur.sig
         ../ra/ra-flowgraph.sig
-        ../ra/ra-flowgraph-part.sig
+(*      ../ra/ra-flowgraph-part.sig	*)
         ../ra/ra.sig
         ../ra/ra.sml
 	../ra/ra-deadCodeE.sml
 	../ra/ra-priqueue.sig
 	../ra/mem-ra.sml
-	../ra/region-based-ra.sml
+(*	../ra/region-based-ra.sml	*)
 	../ra/risc-ra.sml
         ../ra/cluster-ra.sml
-        ../ra/cluster-partitioner.sml
+(*        ../ra/cluster-partitioner.sml	*)
 	../emit/instruction-emitter.sig
 	../emit/asmEmit.sig 
 	../emit/asmStream.sml
 	../emit/asmUtil.sml
-	../emit/clusterEmit.sml
+	../emit/clusterEmit.sml		(* move to emit/cfgEmit.sml *)
 	../emit/code-string.sig
 	../gc-safety/gc-cells.sig
 	../gc-safety/gc-cells.sml
@@ -215,4 +232,6 @@ is
 	../backpatch/vlBackPatch.sml
         ../c-calls/c-types.sml
         ../c-calls/c-calls.sig
+	../block-placement/block-placement.sig
+	../block-placement/default-block-placement.sml
  	../omit-frameptr/omit-frame-pointer.sig

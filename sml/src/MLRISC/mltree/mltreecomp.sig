@@ -10,16 +10,18 @@ signature MLTREE_EXTENSION_COMP =
 sig
    structure T : MLTREE
    structure I : INSTRUCTIONS
-   structure C : CELLS
-      sharing T = I.T
-      sharing I.C = C
+   structure CFG : CONTROL_FLOW_GRAPH
+
+   sharing I.T = T
+   sharing CFG.I = I
+   sharing CFG.P = T.PseudoOp
 
    (* 
     * The reducer is given to the client during the compilation of
     * the user extensions.
     *)
    type reducer = 
-     (I.instruction,C.cellset,I.operand,I.addressing_mode) T.reducer
+     (I.instruction,I.C.cellset,I.operand,I.addressing_mode,CFG.cfg) T.reducer
 
    val compileSext : reducer -> {stm:T.sext, an:T.an list} -> unit
    val compileRext : reducer -> {e:T.ty * T.rext, rd:CellsBasis.cell, an:T.an list} -> unit
@@ -30,15 +32,21 @@ end
 signature MLTREECOMP = 
 sig
    structure T : MLTREE 
-   structure I : INSTRUCTIONS
-   structure C : CELLS
-   structure Gen : MLTREEGEN
-      sharing T = Gen.T
-      sharing T = I.T
-      sharing I.C = C
+   structure I : INSTRUCTIONS where T = T
+   structure Gen : MLTREEGEN where T = T
+(*
+      sharing T = Gen.T = I.T
+*)
 
-   type instrStream = (I.instruction,C.cellset) T.stream  
-   type mltreeStream = (T.stm,T.mlrisc list) T.stream 
+   structure CFG : CONTROL_FLOW_GRAPH 
+      where I = I and P = T.PseudoOp
+(*
+	  sharing CFG.I = I
+	  sharing CFG.P = Gen.T.PseudoOp
+*)
+
+   type instrStream = (I.instruction, I.C.cellset, CFG.cfg) T.stream  
+   type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) T.stream 
 
     (* 
      * The instruction selection phase converts an instruction stream

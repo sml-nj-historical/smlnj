@@ -6,38 +6,46 @@
 
 (** liveness.sml - computes live variables **)
 
+
 (* I've moved the parameters of the functor to the function arguments 
  * so that it is more flexible.
  *
  * -- Allen 4/28/00
  *)
 
+(* TODO: The liveness module should take a 
+ *  C.cellset list IntHashTable.hash_table  
+ *)
+
 signature LIVENESS = sig
 
-  structure F : FLOWGRAPH
-  structure I : INSTRUCTIONS
-  structure C : CELLS
-    sharing F.I = I
-    sharing I.C = C
+  structure CFG : CONTROL_FLOW_GRAPH
 
-  val liveness : 
-      { defUse     : I.instruction -> CellsBasis.cell list * CellsBasis.cell list,
-        updateCell : C.cellset * CellsBasis.cell list -> C.cellset,
-        getCell    : C.cellset -> CellsBasis.cell list,
-        blocks     : F.block list
-      } -> F.block list
+  type live_in_table = CellsBasis.SortedCells.sorted_cells IntHashTable.hash_table
+
+  val liveness : {
+	  defUse : CFG.I.instruction
+			-> (CellsBasis.cell list * CellsBasis.cell list),
+	  getCell    : CellsBasis.CellSet.cellset -> CellsBasis.cell list 
+	} -> CFG.cfg 
+	    -> live_in_table
+
 end
 
 
-functor Liveness(Flowgraph : FLOWGRAPH) : LIVENESS = 
-struct
+functor Liveness(Flowgraph : CONTROL_FLOW_GRAPH) : LIVENESS = struct
+  structure CFG = Flowgraph
+  structure I   = CFG.I
+  structure SC  = CellsBasis.SortedCells	
+  structure CS  = CellsBasis.CellSet
+  structure HT  = IntHashTable
+  structure G   = Graph
 
-  structure F  = Flowgraph
-  structure I  = F.I
-  structure C  = I.C
-  structure SC = CellsBasis.SortedCells (* CellsBasis.SortedCells *)
+  type live_in_table = SC.sorted_cells HT.hash_table
 
   fun error msg = MLRiscErrorMsg.error("Liveness",msg)
+
+  val NotFound = General.Fail("Liveness: Not Found")		(* exception *)
 
   fun prList(l,msg:string) = let
       fun pr([]) = print "\n"
@@ -45,95 +53,112 @@ struct
     in print msg; pr l
     end
 
-  fun liveness{defUse,getCell,updateCell,blocks} = let
-      val getCell = SC.uniq o getCell
-      fun codeBlocks [] = []
-        | codeBlocks((blk as F.BBLOCK _)::blks) = blk::codeBlocks blks
-        | codeBlocks(_::blks) = codeBlocks blks
+  fun liveness {defUse,getCell} = let
+    val getCell = SC.uniq o getCell
 
-      fun dataflow blkArr = let
-          val M                                    = Array.length blkArr
-          val useArr : SC.sorted_cells Array.array = Array.array(M,SC.empty)
-          val defArr : SC.sorted_cells Array.array = Array.array(M,SC.empty)
+    fun dataflow (cfg as G.GRAPH graph) = let
+      val blocks = #nodes graph ()
+      val nNodes = #order graph ()
 
-          fun init ~1 = ()
-            | init n  = let
-                val F.BBLOCK{blknum,insns,liveIn,...} = Array.sub(blkArr,n)
-                fun defuse(insn::insns,def,use) = let
-                      val (d,u) = defUse insn
-                      val u' = SC.difference(SC.uniq u,def)
-                      val use' = SC.union(u', use)
-                      val d' = SC.difference(SC.uniq d,use')
-                    in
-                      defuse(insns, SC.union(d',def), use')
-                    end
-                  | defuse([],def,use) = 
-                      (Array.update(useArr,blknum,use);
-                       Array.update(defArr,blknum,def))
-              in
-                  defuse(rev(!insns),SC.empty,SC.empty);
-                  liveIn := updateCell(!liveIn,[]);
-                  init(n-1)
-              end
+      val liveIn : SC.sorted_cells  HT.hash_table = HT.mkTable(nNodes, NotFound)
+      val liveOut : SC.sorted_cells HT.hash_table = HT.mkTable(nNodes, NotFound)
+      val uses : SC.sorted_cells HT.hash_table = HT.mkTable(nNodes, NotFound)
+      val defs : SC.sorted_cells HT.hash_table = HT.mkTable(nNodes, NotFound)
 
-          fun outB(F.BBLOCK{succ=ref [], ...}) = false
-            | outB(F.BBLOCK{succ=ref [(F.EXIT _,_)], ...}) = false
-            | outB(F.BBLOCK{succ, liveOut,...}) = let
-                fun inSuccs([], acc) = acc
-                  | inSuccs((F.EXIT _,_)::sl, acc) = inSuccs(sl, acc)
-                  | inSuccs((F.BBLOCK{blknum,liveIn,...},_)::sl, acc) = 
-                      inSuccs(sl, SC.union(getCell(!liveIn), acc))
-                val liveout = inSuccs(!succ, SC.empty)
-                val change = SC.notEq(getCell(!liveOut),liveout)
-              in liveOut:= updateCell(!liveOut,SC.return liveout); change
-              end
-            | outB _ = error "liveness.dataflow.outB"
+      (* compute block aggregate definition use. *)
+      fun initDefUse(nid, CFG.BLOCK{insns, ...}) = let
+	fun defuse (insn::insns,def,use) = let
+	      val (d,u) = defUse insn
+	      val u' = SC.difference(SC.uniq u,def)
+	      val use' = SC.union(u', use)
+	      val d' = SC.difference(SC.uniq d,use')
+	    in defuse(insns, SC.union(d',def), use')
+	    end
+	  | defuse([],def,use) = 
+	      (HT.insert uses (nid, use);  HT.insert defs (nid, def))
+      in
+	defuse(rev(!insns), SC.empty, SC.empty)
+      end
 
-          fun inB(F.BBLOCK{blknum,liveIn,liveOut,...}) = let
-              val use    = Array.sub(useArr,blknum)
-              val def    = Array.sub(defArr,blknum)
-              val livein = SC.union(use, SC.difference(getCell(!liveOut),def))
-              val change = SC.notEq(getCell(!liveIn),livein)
-            in
-              liveIn := updateCell(!liveIn, SC.return livein); change
-            end
-            | inB _ = error "liveness.dataflow.inB"
+      (* gather the liveOut information *)
+      fun initLiveOut(nid, CFG.BLOCK{annotations, ...}) = 
+	(case #get CFG.LIVEOUT (!annotations)
+	  of NONE => HT.insert liveOut (nid, SC.empty)
+	   | SOME cs => HT.insert liveOut (nid, getCell cs)
+        (*esac*))
 
-          fun bottomup() = let
-              val visited = Array.array(M,false)
-              fun visit(n, changed) = let
-                  fun visitSucc([],changed') = changed'
-                    | visitSucc((F.EXIT _,_)::ns, changed') =
-                       visitSucc(ns, changed')
-                    | visitSucc((F.BBLOCK{blknum=n, ...},_)::ns,changed') =
-                       if Array.sub(visited,n) then visitSucc(ns,changed')
-                       else visitSucc(ns,visit(n,changed'))
 
-                  val block as(F.BBLOCK{succ,...}) = Array.sub(blkArr, n)
-                  val _ = Array.update(visited,n,true)
+      fun initLiveIn () = 
+	#forall_nodes graph (fn (nid, _) => HT.insert liveIn (nid, SC.empty))
 
-                  val changed' = visitSucc(!succ,changed);
-                  val change1 = outB block
-                  val change2 = inB block
-                in
-                  changed' orelse change1 orelse change2
-                end
-              fun visitAll(n,last,changed) = 
-                  if n=last then changed
-                  else if Array.sub(visited,n) then visitAll(n+1,last,changed)
-                       else visitAll(n+1,last,visit(n,changed))
-            in
-              visitAll(0,M,false)
-            end
+      fun init() = ( 
+	    #forall_nodes graph initDefUse;  
+	    #forall_nodes graph initLiveOut;
+	    initLiveIn())
 
-          fun repeat n = if bottomup() then repeat(n+1) else (n+1)
-        in
-            init (M-1); repeat 0
-        end  
+      fun inB(nid) = let
+	val use = HT.lookup uses nid 
+	val def = HT.lookup defs nid
+	val liveOut = HT.lookup liveOut nid
+        val livein = SC.union(use, SC.difference(liveOut, def))
+        val changed = SC.notEq(HT.lookup liveIn nid, livein)
+      in
+	HT.insert liveIn (nid, livein); changed
+      end
+
+
+      fun outB(nid, CFG.BLOCK{annotations, ...}) = let
+	fun inSucc([], acc) = acc
+	  | inSucc(nid::ns, acc) = 
+	     inSucc(ns, SC.union(HT.lookup liveIn nid, acc))
+	val oldLiveOut = HT.lookup liveOut nid 
+	val newLiveOut = inSucc(#succ graph nid, SC.empty)
+      in 
+	HT.insert liveOut (nid, newLiveOut);
+	SC.notEq(oldLiveOut, newLiveOut)
+      end
+
+      fun bottomup() = let
+	  val visitedTbl : bool HT.hash_table = HT.mkTable(nNodes, NotFound)
+	  fun isVisited nid = 
+	    (case HT.find visitedTbl nid of NONE => false | _ => true)
+	  fun visit(nid, changed) = let
+	    fun visitSucc([], changed') = changed'
+	      | visitSucc(nid::ns, changed') = let
+		  val CFG.BLOCK{kind, ...} = #node_info graph nid
+		in case kind
+		    of CFG.STOP => visitSucc(ns, changed')
+		     | CFG.NORMAL =>
+			if isVisited nid then visitSucc(ns, changed')
+			else visitSucc(ns, visit(nid, changed'))
+		end
+
+	    val _ = HT.insert visitedTbl (nid, true)
+
+	    val changed' = visitSucc(#succ graph nid, changed);
+	    val block = #node_info graph nid
+	    val change1 = outB(nid, block)
+	    val change2 = inB(nid)
+	  in
+	    changed' orelse change1 orelse change2
+	  end
+
+	  fun forall([], changed) = changed
+	    | forall((nid,block)::rest, changed) = 
+	       if isVisited(nid) then forall(rest, changed)
+	       else forall(rest, visit(nid, changed))
+	in
+	  forall(blocks, false)
+	end 
+
+      fun repeat n = if bottomup() then repeat(n+1) else (n+1)
+
     in 
-        dataflow (Array.fromList (codeBlocks blocks));
-        blocks
-    end
+      init(); repeat 0; liveIn
+    end  
+
+  in dataflow
+  end
 end
 
 

@@ -34,12 +34,14 @@ is
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+	Graphs.cm
 	MLTREE.cm
 #else
 	$/smlnj-lib.cm
 	$/MLRISC.cm
 	$/Control.cm
 	$/Lib.cm
+	$/Graphs.cm
 	$/MLTREE.cm
 #endif
 #else
@@ -48,6 +50,7 @@ is
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+	Graphs.cm
 	MLTREE.cm
 #endif
 #else
@@ -55,6 +58,7 @@ is
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+	Graphs.cm
 	MLTREE.cm
 #endif
         ../x86/c-calls/ia32-svid.sml

@@ -6,23 +6,26 @@
  *)
 
 functor SpanDependencyResolution
-    (structure Flowgraph : FLOWGRAPH
-     structure Emitter : INSTRUCTION_EMITTER
-     structure Jumps : SDI_JUMPS
+    (structure CFG       : CONTROL_FLOW_GRAPH
+     structure Emitter   : INSTRUCTION_EMITTER
+     structure Jumps     : SDI_JUMPS
      structure DelaySlot : DELAY_SLOT_PROPERTIES
-     structure Props : INSN_PROPERTIES
-       sharing Flowgraph.P = Emitter.P
-       sharing Flowgraph.I = Jumps.I = DelaySlot.I = Props.I = Emitter.I)
+     structure Props     : INSN_PROPERTIES
+     structure Placement : BLOCK_PLACEMENT
+       sharing Placement.CFG = CFG
+       sharing CFG.P = Emitter.P
+       sharing CFG.I = Jumps.I = DelaySlot.I = Props.I = Emitter.I)
          : BBSCHED =
 struct
 
-  structure F = Flowgraph
+  structure CFG = CFG
   structure E = Emitter
-  structure I = F.I
+  structure I = CFG.I
   structure C = I.C
   structure J = Jumps
-  structure P = Flowgraph.P
+  structure P = CFG.P
   structure D = DelaySlot
+  structure G = Graph
   structure A = Array
 
   fun error msg = MLRiscErrorMsg.error("SpanDependencyResolution",msg)
@@ -52,244 +55,251 @@ struct
   val clusterList : compressed list ref = ref []
   fun cleanUp() = clusterList := []
 
-  fun bbsched(cluster as 
-              F.CLUSTER{blocks, blkCounter, ...}) = 
-  let fun blknumOf(F.BBLOCK{blknum,...}) = blknum
-        | blknumOf(F.EXIT{blknum,...}) = blknum
-        | blknumOf _ = error "blknumOf"
+  fun bbsched(cfg as G.GRAPH graph) = let
+    fun maxBlockId (CFG.BLOCK{id, ...}::rest, curr) = 
+       if id > curr then maxBlockId(rest, id) else maxBlockId(rest, curr)
+     | maxBlockId([], curr) = curr
+    val blocks = map #2 (Placement.blockPlacement(cfg))
+    val N = maxBlockId(blocks, #capacity graph ())
 
-      fun noPseudo [] = true
-        | noPseudo (F.BBLOCK _::_) = true
-        | noPseudo (F.LABEL _::rest) = noPseudo rest
-        | noPseudo (F.PSEUDO _::_) = false
-        | noPseudo _ = error "noPseudo"
+    (* Order of blocks in code layout *)
+    val blkOrder = Array.array(N, 0)
 
-      (* Maps blknum -> label at the position of the second instruction *)
-      val dummy = Label.newLabel ""
-      val labelMap = A.array(!blkCounter,dummy)
+    (* Maps blknum -> label at the position of the second instruction *)
+    (* This is incase the first instruction gets used to fill a delay slot *)
+    val dummy = Label.anon ()
+    val labelMap = A.array(N, dummy)
 
-      (* enter labels into the labelMap *)
-      fun enterLabels([]) = ()
-        | enterLabels(F.PSEUDO _::rest) = enterLabels rest
-        | enterLabels(F.LABEL _::rest) = enterLabels rest
-        | enterLabels(F.BBLOCK{blknum,...}::rest) = 
-             (A.update(labelMap,blknum,Label.newLabel ""); enterLabels rest)
-        | enterLabels _ = error "enterLabels"
+    (* enter labels into the labelMap *)
+    fun enterLabels(blocks) = 
+      List.app 
+        (fn CFG.BLOCK{id, ...} => Array.update(labelMap, id, Label.anon ()))
+	blocks
 
-      (* Is the instruction an empty copy *)
-      fun isEmptyCopy instr = 
-          Props.instrKind instr = Props.IK_COPY andalso
-          J.sdiSize(instr,Label.addrOf,0) = 0 
-      (* 
-       * Find the branch target of block blknum, return the first instruction
-       * in the target block and its associated label. 
-       *
-       * BUG FIX: have to make sure that the first instruction cannot be
-       * used to fill the delay slot in the target block!
-       *)
-      fun findTarget(blknum,[(F.BBLOCK{blknum=x,insns=insns1,...},_),
-                             (F.BBLOCK{blknum=y,insns=insns2,...},_)]) =
-          let fun extract(blknum,insns) =  
-              let (* First we skip all the empty copies *)
-                  fun find [] = NONE
-                    | find(instrs as instr::rest) = 
-                       if isEmptyCopy instr then find rest
-                       else find' rest 
+    (* create block order *)
+    fun blockOrder(blocks) = let
+      fun order(CFG.BLOCK{id, ...}, n) = (Array.update(blkOrder, id, n); n+1)
+    in List.foldl order 0 blocks
+    end
 
-                  (* Okay, we are now guaranteed that the remaining 
-                   * instructions will not be used in the delay slot of
-                   * the current block.   Find the first instruction.
-                   *)
-                  and find' [first] = SOME(first,A.sub(labelMap,blknum))
-                    | find' [] = NONE
-                    | find' (_::rest) = find' rest
-              in  case insns of
-                    jmp::rest => if Props.instrKind jmp = Props.IK_JUMP then 
-                                 find rest else find insns
-                  | [] => NONE (* no first instruction *)
-              end
-          in  if x = blknum + 1 then extract(y,!insns2)
-              else if y = blknum + 1 then extract(x,!insns1)
-              else NONE 
+    fun isFallthrough(blk1, blk2) = 
+      Array.sub(blkOrder, blk1) + 1 = Array.sub(blkOrder, blk2)
+
+    fun isBackwards(blk1, blk2) = 
+      Array.sub(blkOrder, blk2) <= Array.sub(blkOrder, blk1)
+
+    (* zero length copy instruction *)
+    fun isEmptyCopy instr =
+      Props.instrKind(instr) = Props.IK_COPY 
+         andalso J.sdiSize(instr, Label.addrOf, 0) = 0 
+
+    (* Find the target of a block, and return the first instruction and 
+     * its associated label.
+     *)
+    fun findTarget(blknum, [CFG.BLOCK{id=id1, insns=insns1, ...},
+			    CFG.BLOCK{id=id2, insns=insns2, ...}]) = let
+          fun extract(blknum, insns) = let
+	    (* skip over empty copies *)
+	    fun find [] = NONE
+	      | find(instrs as instr::rest) = 
+	        if isEmptyCopy instr then find rest else find' rest
+
+	    (* Okay, we are now guaranteed that the remaining 
+	     * instructions will not be used in the delay slot of
+	     * the current block.   Find the first instruction.
+	     *)
+	    and find' [first] = SOME(first, A.sub(labelMap,blknum))
+	      | find' [] = NONE
+	      | find' (_::rest) = find' rest
+          in
+	    case insns 
+	     of jmp::rest => 
+	         if Props.instrKind jmp = Props.IK_JUMP then find rest 
+		 else find insns
+	      | [] => NONE (* no first instruction *)
           end
-        | findTarget _ = NONE
-
-
-      (* Convert a cluster into compressed form *)
-      fun compress(F.PSEUDO pOp::rest) = PSEUDO pOp::compress rest
-        | compress(F.LABEL lab::rest) = LABEL lab:: compress rest
-        | compress(F.BBLOCK{blknum,insns,succ,...}::rest) = 
-	let 
-            (* WARNING!!! Assumes jump to exit is NOT a backward branch *)
-
-            val backward = List.exists 
-                   (fn (F.EXIT _,_) => false
-                     | (b,_) => blknumOf b <= blknum) (!succ) 
-
-            (* build the code list *)
-            fun scan([],nonSdiInstrs,nonSdiSize,code) = 
-                   group(nonSdiSize,nonSdiInstrs,code)
-              | scan(instr::instrs,nonSdiInstrs,nonSdiSize,code) =
-                let val {n,nOn,nOff,nop} = D.delaySlot{instr=instr,backward=backward}
-                in  case (nOff,instrs) of
-                        (D.D_ALWAYS,delaySlot::rest) => 
-                        if D.delaySlotCandidate{jmp=instr,
-                                                delaySlot=delaySlot} andalso
-                           not(D.conflict{src=delaySlot,dst=instr}) 
-                        then scan(rest,[],0,
-                                  mkCandidate1(instr,delaySlot)::
-                                  group(nonSdiSize,nonSdiInstrs,code))
-                        else scanSdi(instr,instrs,nonSdiInstrs,nonSdiSize,code)
-                    |  _ =>  scanSdi(instr,instrs,nonSdiInstrs,nonSdiSize,code)
-                end
-            and scanSdi(instr,instrs,nonSdiInstrs,nonSdiSize,code) =
-                let val s = J.minSize instr
-                in  if J.isSdi instr then
-                         scan(instrs,[],0,SDI{size=ref s,insn=instr}::
-                              group(nonSdiSize,nonSdiInstrs,code))
-                    else scan(instrs,instr::nonSdiInstrs,nonSdiSize+s,code)
-                end
-            and group(0,[],code) = code
-	      | group(size,insns,code) = FIXED{size=size,insns=insns}::code
-
-            and buildList instrs = scan'(instrs,[],0,[])
-
-            and scan'([],nonSdiInstrs,nonSdiSize,code) = 
-                   group(nonSdiSize,nonSdiInstrs,code)
-              | scan'(instr::instrs,nonSdiInstrs,nonSdiSize,code) =
-                let val s = J.minSize instr
-                in  if J.isSdi instr then
-                         scan'(instrs,[],0,SDI{size=ref s,insn=instr}::
-                               group(nonSdiSize,nonSdiInstrs,code))
-                    else scan'(instrs,instr::nonSdiInstrs,nonSdiSize+s,code)
-                end
-
-            (* 
-             * Create a branch delay slot candidate sequence.
-             * jmp is the normal jump instruction; jmp' is the
-             * jump instruction when the delay slot is active.
-             *)
-            and mkCandidate1(jmp,delaySlot) = 
-                let val fillSlot = ref true
-                    val jmp' = D.enableDelaySlot{n=false,nop=false,instr=jmp}
-                in  CANDIDATE{newInsns= 
-                                [BRANCH{branchSize=J.minSize jmp',
-                                        insn=buildList [jmp'],
-                                        fillSlot=fillSlot},
-                                 DELAYSLOT{insn=buildList [delaySlot],
-                                           fillSlot=fillSlot}],
-                              oldInsns=buildList [jmp,delaySlot],
-                              fillSlot=fillSlot}
-                end 
-
-            (* 
-             * Create a branch delay slot candidate sequence.
-             * jmp is the normal jump instruction; jmp' is the
-             * jump instruction when the delay slot is active.
-             *)
-            and mkCandidate2(jmp,delaySlot,label) = 
-                let val fillSlot = ref true
-                    val jmp' = D.setTarget(
-                                D.enableDelaySlot{n=true,nop=false,instr=jmp},
-                                label)
-                in  CANDIDATE{newInsns= 
-                                [BRANCH{branchSize=J.minSize jmp',
-                                        insn=buildList [jmp'],
-                                        fillSlot=fillSlot},
-                                 DELAYSLOT{insn=buildList [delaySlot],
-                                           fillSlot=fillSlot}],
-                              oldInsns=buildList [jmp],
-                              fillSlot=fillSlot}
-                end 
-
-            (*
-             * Try different strategies for delay slot filling
-             *)
-            and fitDelaySlot(jmp,body) =
-               (case body of  (* remove empty copies *)
-                  [] => fitDelaySlot'(jmp,body)
-                | prev::rest =>
-                    if isEmptyCopy prev
-                    then fitDelaySlot(jmp,rest)
-                    else fitDelaySlot'(jmp,body)
-               )
-
-            and fitDelaySlot'(jmp,body) =
-            let val {n,nOn,nOff,nop} = D.delaySlot{instr=jmp,backward=backward}
-                (* 
-                 * Use the previous instruction to fill the delay slot 
-                 *)
-                fun strategy1() =
-                    case (nOff,body) of
-                       (D.D_ALWAYS,delaySlot::body) => 
-                        if not(D.delaySlotCandidate{jmp=jmp,
-                                                   delaySlot=delaySlot}) orelse
-                           D.conflict{src=delaySlot,dst=jmp} 
-                        then strategy2()
-                        else scan(body,[],0,
-                                  [mkCandidate1(eliminateNop jmp,delaySlot)])
-                    | _ => strategy2()
-                (* 
-                 * Use the first instruction in the target block to fill
-                 * the delay slot.
-                 * BUG FIX: note this is unsafe if this first instruction
-                 * is also used to fill the delay slot in the target block!  
-                 *)
-                and strategy2() =
-                    case (nOn,findTarget(blknum,!succ)) of
-                      (D.D_TAKEN,SOME(delaySlot,label)) => 
-                        if not(D.delaySlotCandidate{jmp=jmp,
-                                              delaySlot=delaySlot}) orelse
-                          D.conflict{src=delaySlot,dst=jmp} 
-                        then strategy3()
-                        else scan(body,[],0,
-                             [mkCandidate2(eliminateNop jmp,delaySlot,label)])
-                    | _ => strategy3()
-
-                (* 
-                 * If nop is on and if the delay slot is only active on
-                 * the fallsthru branch, then turn nullify on and eliminate
-                 * the delay slot
-                 *)
-                and strategy3() = scan(eliminateNop(jmp)::body,[],0,[]) 
-
-                and eliminateNop(jmp) = 
-                    case (nop,nOn) of
-                       (true,(D.D_FALLTHRU | D.D_NONE)) =>
-                            D.enableDelaySlot{n=true,nop=false,instr=jmp}
-                    |  _ => jmp
- 
-            in  strategy1()
-            end
-
-        
-
-            (*
-             * Try to remove the branch if it is unnecessary 
-             *)
-            and processBranch(jmp,body) =
-                  case (!succ, noPseudo rest) of
-                     ([(F.BBLOCK{blknum=id,...},_)],true) =>
-                        if id = blknum + 1 then scan(body,[],0,[])
-                        else fitDelaySlot(jmp,body)
-                  |  _ => fitDelaySlot(jmp,body)
-
-            and process([],others) = others
-              | process(instrs as jmp::body,others) =
-                CODE(A.sub(labelMap,blknum),
-                     case Props.instrKind jmp of
-                       Props.IK_JUMP => processBranch(jmp,body)
-                     | _ => scan(instrs,[],0,[])
-                    )::others
-	in 
-	    process(!insns,compress rest)
+        in
+	  if isFallthrough(blknum, id1) then extract(id2, !insns2)
+	  else if isFallthrough(blknum, id2) then extract(id1, !insns1)
+	       else NONE
 	end
-      | compress [] = []
-      | compress _ = error "compress"
-  in  enterLabels blocks;
-      clusterList:=CLUSTER{comp = compress blocks}:: 
-		    (!clusterList)
-  end
+      | findTarget _ = NONE
+
+
+
+    fun compress [] = []
+      | compress (CFG.BLOCK{id, data, labels, insns, ...}::rest) = let
+
+          val succ = map (#node_info graph) (#succ graph id)
+
+	  val backward = 
+	    List.exists 
+	      (fn CFG.BLOCK{id=id1, ...} => isBackwards(id, id1))
+	      succ
+
+	  (* build the code list *)
+	  fun scan([],nonSdiInstrs,nonSdiSize,code) = 
+		 group(nonSdiSize,nonSdiInstrs,code)
+	    | scan(instr::instrs,nonSdiInstrs,nonSdiSize,code) =
+	      let val {n,nOn,nOff,nop} = D.delaySlot{instr=instr,backward=backward}
+	      in  case (nOff,instrs) of
+		      (D.D_ALWAYS,delaySlot::rest) => 
+		      if D.delaySlotCandidate{jmp=instr,
+					      delaySlot=delaySlot} andalso
+			 not(D.conflict{src=delaySlot,dst=instr}) 
+		      then scan(rest,[],0,
+				mkCandidate1(instr,delaySlot)::
+				group(nonSdiSize,nonSdiInstrs,code))
+		      else scanSdi(instr,instrs,nonSdiInstrs,nonSdiSize,code)
+		  |  _ =>  scanSdi(instr,instrs,nonSdiInstrs,nonSdiSize,code)
+	      end
+	  and scanSdi(instr,instrs,nonSdiInstrs,nonSdiSize,code) =
+	      let val s = J.minSize instr
+	      in  if J.isSdi instr then
+		       scan(instrs,[],0,SDI{size=ref s,insn=instr}::
+			    group(nonSdiSize,nonSdiInstrs,code))
+		  else scan(instrs,instr::nonSdiInstrs,nonSdiSize+s,code)
+	      end
+	  and group(0,[],code) = code
+	    | group(size,insns,code) = FIXED{size=size,insns=insns}::code
+
+	  and buildList instrs = scan'(instrs,[],0,[])
+
+	  and scan'([],nonSdiInstrs,nonSdiSize,code) = 
+		 group(nonSdiSize,nonSdiInstrs,code)
+	    | scan'(instr::instrs,nonSdiInstrs,nonSdiSize,code) =
+	      let val s = J.minSize instr
+	      in  if J.isSdi instr then
+		       scan'(instrs,[],0,SDI{size=ref s,insn=instr}::
+			     group(nonSdiSize,nonSdiInstrs,code))
+		  else scan'(instrs,instr::nonSdiInstrs,nonSdiSize+s,code)
+	      end
+
+	  (* 
+	   * Create a branch delay slot candidate sequence.
+	   * jmp is the normal jump instruction; jmp' is the
+	   * jump instruction when the delay slot is active.
+	   *)
+	  and mkCandidate1(jmp,delaySlot) = 
+	      let val fillSlot = ref true
+		  val jmp' = D.enableDelaySlot{n=false,nop=false,instr=jmp}
+	      in  CANDIDATE{newInsns= 
+			      [BRANCH{branchSize=J.minSize jmp',
+				      insn=buildList [jmp'],
+				      fillSlot=fillSlot},
+			       DELAYSLOT{insn=buildList [delaySlot],
+					 fillSlot=fillSlot}],
+			    oldInsns=buildList [jmp,delaySlot],
+			    fillSlot=fillSlot}
+	      end 
+
+	  (* 
+	   * Create a branch delay slot candidate sequence.
+	   * jmp is the normal jump instruction; jmp' is the
+	   * jump instruction when the delay slot is active.
+	   *)
+	  and mkCandidate2(jmp,delaySlot,label) = 
+	      let val fillSlot = ref true
+		  val jmp' = D.setTarget(
+			      D.enableDelaySlot{n=true,nop=false,instr=jmp},
+			      label)
+	      in  CANDIDATE{newInsns= 
+			      [BRANCH{branchSize=J.minSize jmp',
+				      insn=buildList [jmp'],
+				      fillSlot=fillSlot},
+			       DELAYSLOT{insn=buildList [delaySlot],
+					 fillSlot=fillSlot}],
+			    oldInsns=buildList [jmp],
+			    fillSlot=fillSlot}
+	      end 
+
+	  (*
+	   * Try different strategies for delay slot filling
+	   *)
+	  and fitDelaySlot(jmp,body) =
+	     (case body of  (* remove empty copies *)
+		[] => fitDelaySlot'(jmp,body)
+	      | prev::rest =>
+		  if isEmptyCopy prev
+		  then fitDelaySlot(jmp,rest)
+		  else fitDelaySlot'(jmp,body)
+	     )
+
+	  and fitDelaySlot'(jmp,body) =
+	  let val {n,nOn,nOff,nop} = D.delaySlot{instr=jmp,backward=backward}
+	      (* 
+	       * Use the previous instruction to fill the delay slot 
+	       *)
+	      fun strategy1() =
+		  case (nOff,body) of
+		     (D.D_ALWAYS,delaySlot::body) => 
+		      if not(D.delaySlotCandidate{jmp=jmp,
+						 delaySlot=delaySlot}) orelse
+			 D.conflict{src=delaySlot,dst=jmp} 
+		      then strategy2()
+		      else scan(body,[],0,
+				[mkCandidate1(eliminateNop jmp,delaySlot)])
+		  | _ => strategy2()
+	      (* 
+	       * Use the first instruction in the target block to fill
+	       * the delay slot.
+	       * BUG FIX: note this is unsafe if this first instruction
+	       * is also used to fill the delay slot in the target block!  
+	       *)
+	      and strategy2() =
+		  case (nOn,findTarget(id,succ)) of
+		    (D.D_TAKEN,SOME(delaySlot,label)) => 
+		      if not(D.delaySlotCandidate{jmp=jmp,
+					    delaySlot=delaySlot}) orelse
+			D.conflict{src=delaySlot,dst=jmp} 
+		      then strategy3()
+		      else scan(body,[],0,
+			   [mkCandidate2(eliminateNop jmp,delaySlot,label)])
+		  | _ => strategy3()
+
+	      (* 
+	       * If nop is on and if the delay slot is only active on
+	       * the fallsthru branch, then turn nullify on and eliminate
+	       * the delay slot
+	       *)
+	      and strategy3() = scan(eliminateNop(jmp)::body,[],0,[]) 
+
+	      and eliminateNop(jmp) = 
+		  case (nop,nOn) of
+		     (true,(D.D_FALLTHRU | D.D_NONE)) =>
+			  D.enableDelaySlot{n=true,nop=false,instr=jmp}
+		  |  _ => jmp
+
+	  in  strategy1()
+	  end
+
+
+	  and process([],others) = others
+	    | process(instrs as jmp::body,others) = let
+	        fun pseudo (CFG.PSEUDO pOp) = PSEUDO pOp
+		  | pseudo (CFG.LABEL lab) = LABEL lab
+              in
+		map pseudo (!data) @
+		   (map LABEL (!labels) @
+		      CODE
+		        (A.sub(labelMap, id),
+			 case Props.instrKind jmp 
+		          of Props.IK_JUMP => fitDelaySlot(jmp,body)
+			   | _	           => scan(instrs,[],0,[])
+	       	         )::others)
+              end
+	in 
+	  process(!insns,compress rest)
+	end (* compress *) 
+
+  in
+    blockOrder(blocks);
+    enterLabels(blocks);
+    clusterList := CLUSTER{comp=compress blocks} :: !clusterList
+  end (* bbsched *)
+
+
+
 
   fun finish() = let
     fun labels(PSEUDO pOp::rest, pos) = 
@@ -379,10 +389,10 @@ struct
 
     val compressed = (rev (!clusterList)) before cleanUp()
     val size = fixpoint compressed
-  in beginCluster size;
+  in 
+     beginCluster size;
      foldl emitCluster 0 compressed handle e => raise e;
      ()
   end (*finish*)
-
 end (* spanDep.sml *)
 

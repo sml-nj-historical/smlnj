@@ -5,7 +5,7 @@ structure X86CG =
   MachineGen
   ( structure I          = X86Instr
     structure C          = I.C
-    structure F          = X86FlowGraph
+    structure F          = X86CFG
     structure R          = X86CpsRegs
     structure CG         = Control.CG
 
@@ -21,9 +21,9 @@ structure X86CG =
       IA32SVID_CCalls (structure T = X86MLTree  fun ix x = x)
 
     structure OmitFramePtr = 
-      X86OmitFramePointer(structure I=X86Instr  structure F=X86FlowGraph 
-			  structure PC=X86PrintCluster
+      X86OmitFramePointer(structure I=X86Instr  
 			  structure MemRegs=X86MemRegs
+			  structure CFG=X86CFG
 			  val memRegBase = SOME(X86CpsRegs.vfp))
 
     val spill = CPSRegions.spill 
@@ -44,6 +44,7 @@ structure X86CG =
            structure ExtensionComp = X86MLTreeExtComp
                (structure I = X86Instr
                 structure T = X86MLTree
+		structure CFG = X86CFG
                ) 
            structure MLTreeUtils = MLTreeUtils
                (structure T = X86MLTree
@@ -87,7 +88,8 @@ structure X86CG =
        BackPatch(structure Jumps=Jumps
                  structure Emitter=X86MCEmitter
                  structure Props=InsnProps
-                 structure Flowgraph=X86FlowGraph
+		 structure Placement=DefaultBlockPlacement(X86CFG)
+		 structure CFG = X86CFG
                  structure Asm=X86AsmEmitter
                  structure CodeString=CodeString)
 
@@ -98,7 +100,7 @@ structure X86CG =
        structure CB	   = CellsBasis
        structure InsnProps = InsnProps
        structure Asm       = X86AsmEmitter
-       structure F         = X86FlowGraph
+       structure CFG       = X86CFG
        structure SpillHeur = ChowHennessySpillHeur
        structure Spill     = RASpill
                              (structure Asm = X86AsmEmitter

@@ -15,7 +15,7 @@ Group (../system/smlnj/viscomp/sparc.cm)
         structure SparcCpsRegs
         structure SparcInstr
 	structure SparcProps
-	structure SparcFlowGraph
+	structure SparcCFG
 	structure SparcAsmEmitter
 is
 
@@ -36,4 +36,6 @@ $/smlnj-lib.cm
 $smlnj/viscomp/core.cm
 $smlnj/MLRISC/Control.cm
 $smlnj/MLRISC/MLRISC.cm
+$smlnj/MLRISC/MLTREE.cm
 $smlnj/MLRISC/SPARC.cm
+$smlnj/MLRISC/Graphs.cm

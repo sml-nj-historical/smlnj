@@ -11,11 +11,11 @@ structure Alpha32CG =
     structure InsnProps  = Alpha32Props
     structure Asm        = Alpha32AsmEmitter
     structure Shuffle    = Alpha32Shuffle
-
+   
     structure CCalls     = DummyCCallsFn (Alpha32MLTree)
     structure OmitFramePtr = struct
       exception NotImplemented
-      structure F=Alpha32FlowGraph
+      structure CFG=Alpha32CFG
       structure I=Alpha32Instr
       val vfp = CpsRegs.vfp
       fun omitframeptr _ = raise NotImplemented
@@ -29,6 +29,7 @@ structure Alpha32CG =
              structure ExtensionComp = SMLNJMLTreeExtComp
                (structure I = Alpha32Instr
                 structure T = Alpha32MLTree
+		structure CFG = Alpha32CFG
                )
              val mode32bit = true (* simulate 32 bit mode *)
              val multCost = ref 8 (* just guessing *)
@@ -42,14 +43,15 @@ structure Alpha32CG =
                   structure Shuffle=Alpha32Shuffle)
 
     structure BackPatch =
-       BBSched2(structure Flowgraph = Alpha32FlowGraph
+       BBSched2(structure CFG=Alpha32CFG
                 structure Jumps = Jumps
+		structure Placement = DefaultBlockPlacement(Alpha32CFG)
                 structure Emitter = Alpha32MCEmitter)
 
     structure RA = 
        RISC_RA
          (structure I         = Alpha32Instr
-          structure Flowgraph = Alpha32FlowGraph
+          structure Flowgraph = Alpha32CFG
           structure InsnProps = InsnProps 
           structure Rewrite   = AlphaRewrite(Alpha32Instr)
           structure Asm       = Alpha32AsmEmitter

@@ -32,9 +32,10 @@ struct
    structure LC = LabelComp
    structure Region = I.Region
    structure A = MLRiscAnnotations
+   structure CFG = ExtensionComp.CFG
 
-   type instrStream = (I.instruction,C.cellset) T.stream
-   type mltreeStream = (T.stm,T.mlrisc list) T.stream
+   type instrStream = (I.instruction, C.cellset, CFG.cfg) T.stream
+   type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) T.stream
 
    structure Gen = MLTreeGen(structure T = T
                              val intTy = 32
@@ -400,7 +401,7 @@ struct
          | branch(T.FCMP(fty,cc,a,b),lab,an) =
            let val f1 = fexpr a
                val f2 = fexpr b
-               val fallThrough = Label.newLabel ""
+               val fallThrough = Label.anon()
                fun fcond T.==   = I.!=
                  | fcond T.?<>  = I.==
                  | fcond T.?    = I.<=>
@@ -448,7 +449,7 @@ struct
                           | (T.NE,0w0) => I.BSET (* bit is 1 *)
                           | (T.NE,_)   => I.BCLR (* bit is 0 *)
                           | _          => error "emitBranchOnBit"
-                      val f = Label.newLabel "" 
+                      val f = Label.anon()
                       val bit = 31 - log mask 
                   in  mark(I.BB{bc=bc,r=expr e,p=bit,t=t,f=f,
                                 n=false, nop=true},an);
@@ -462,7 +463,7 @@ struct
        and emitBranchI(ty,cc,n,e2,t,an) = 
            let val r2 = expr e2 
            in  if im5 n then
-               let val f = Label.newLabel "" 
+               let val f = Label.anon()
                    val (cmpi,bc) =
                        case cc of
                          T.LT  => (I.COMIBT, I.LT)
@@ -485,7 +486,7 @@ struct
 
        (* generate a branch *)
        and emitBranch(ty,cond,r1,r2,t,an) = 
-           let val f = Label.newLabel ""
+           let val f = Label.anon()
                val (cmp,bc,r1,r2) =
                     case cond of
                        T.LT  => (I.COMBT, I.LT, r1, r2)

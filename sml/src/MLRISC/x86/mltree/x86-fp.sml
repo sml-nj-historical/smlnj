@@ -63,13 +63,12 @@ in
 functor X86FP
    (structure X86Instr  : X86INSTR
     structure X86Props  : INSN_PROPERTIES where I = X86Instr
-    structure Flowgraph : FLOWGRAPH where I = X86Instr
-    structure Liveness  : LIVENESS where F = Flowgraph
-    structure Asm       : INSTRUCTION_EMITTER where I = X86Instr
-      sharing Flowgraph.P = Asm.P
-   ) : CLUSTER_OPTIMIZATION = 
+    structure Flowgraph : CONTROL_FLOW_GRAPH where I = X86Instr
+    structure Liveness  : LIVENESS where CFG.I = X86Instr
+    structure Asm       : INSTRUCTION_EMITTER where I = X86Instr and P = Flowgraph.P
+   ) : CFG_OPTIMIZATION = 
 struct
-   structure F  = Flowgraph
+   structure CFG = Flowgraph
    structure I  = X86Instr
    structure T  = I.T
    structure P  = X86Props
@@ -81,7 +80,7 @@ struct
    structure CB = CellsBasis
    structure SL = CB.SortedCells
 
-   type flowgraph = F.cluster
+   type flowgraph = CFG.cfg
    type an = An.annotations
 
    val name = "X86 floating point rewrite"
@@ -154,7 +153,8 @@ struct
    fun fregsToString s =
         List.foldr (fn (r,"") => fregToString r | 
                        (r,s) => fregToString r^" "^s) "" s
-   fun blknumOf(F.BBLOCK{blknum, ...}) = blknum
+
+(*   fun blknumOf(F.BBLOCK{blknum, ...}) = blknum *)
 
    (*-----------------------------------------------------------------------
     * A stack datatype that mimics the x86 floating point stack
@@ -390,6 +390,8 @@ struct
     *     When necessary, split critical edges.
     *  5. Sacrifice a goat to make sure things don't go wrong.
     *-----------------------------------------------------------------------*)
+   fun run _ = error "not implemented "
+(*
    fun run(cluster as F.CLUSTER{blocks, blkCounter, ...}) = 
    let val getCell = C.getCellsByKind CB.FP (*extract the fp component of cellset*)
 
@@ -1863,7 +1865,7 @@ struct
        if IntHashTable.numItems edgesToSplit = 0 then cluster 
        else repairCriticalEdges(cluster)
    end 
-
+*)
 end (* functor *)
 
 end (* local *)

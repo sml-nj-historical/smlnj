@@ -41,17 +41,18 @@ struct
                   in  if n<0 then "-"^String.substring(s,1,size s-1)
                       else s
                   end
-       fun emit_label lab = emit(Label.nameOf lab)
+       fun emit_label lab = emit(Label.toString lab)
        fun emit_labexp le = emit(LabelExp.toString le)
        fun emit_const c = emit(Constant.toString c)
        fun emit_int i = emit(ms i)
        fun paren f = (emit "("; f(); emit ")")
-       fun defineLabel lab = emit(Label.nameOf lab^":\n")
+       fun defineLabel lab = emit(Label.toString lab^":\n")
        fun entryLabel lab = defineLabel lab
-       fun comment msg = (tab(); emit("/* " ^ msg ^ " */"))
+       fun comment msg = (tab(); emit("/* " ^ msg ^ " */\n"))
        fun annotation a = (comment(Annotations.toString a); nl())
        fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
+       fun fail _ = raise Fail "AsmEmitter"
        fun emit_region mem = comment(I.Region.toString mem)
        val emit_region = 
           if !show_region then emit_region else doNothing
@@ -593,7 +594,7 @@ struct
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                endCluster=doNothing,
+                endCluster=fail,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,
                 comment=comment,

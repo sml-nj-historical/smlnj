@@ -42,6 +42,7 @@ struct
   structure P   = PseudoInstrs
   structure A   = MLRiscAnnotations
   structure CB  = CellsBasis
+  structure CFG = ExtensionComp.CFG
 
  (*********************************************************
 
@@ -142,8 +143,8 @@ struct
 
   fun error msg = MLRiscErrorMsg.error("Alpha",msg) 
 
-  type instrStream = (I.instruction,C.cellset) T.stream
-  type mltreeStream = (T.stm,T.mlrisc list) T.stream
+  type instrStream = (I.instruction, C.cellset, CFG.cfg) T.stream
+  type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) T.stream
 
   (*
    * This module is used to simulate operations of non-standard widths.
@@ -1197,7 +1198,7 @@ struct
                 fun fall(cmp1, br1, cmp2, br2) = 
                 let val tmpR1 = newFreg()
                     val tmpR2 = newFreg()
-                    val fallLab = Label.newLabel ""
+                    val fallLab = Label.anon()
                 in  emit(I.DEFFREG(tmpR1));
                     emit(I.FOPERATE{oper=cmp1, fa=f1, fb=f2, fc=tmpR1});
                     emit(I.TRAPB);

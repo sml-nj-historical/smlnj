@@ -30,12 +30,6 @@ structure SparcPseudoInstrs = SparcPseudoInstrs(SparcInstr)
 
 structure SparcShuffle = SparcShuffle(SparcInstr)
 
-(* flowgraph data structure specialized to Sparc instructions *)
-structure SparcFlowGraph = 
-  FlowGraph(structure I=SparcInstr
-	    structure P=SparcPseudoOps
-           )
-
 structure SparcAsmEmitter = 
   SparcAsmEmitter(structure Instr=SparcInstr
 		  structure Shuffle=SparcShuffle
@@ -48,5 +42,14 @@ structure SparcMCEmitter =
 		 structure Assembler=SparcAsmEmitter
                  structure Stream = SparcStream
 		 structure CodeString=CodeString)
+
+(* flowgraph data structure specialized to Sparc instructions *)
+structure SparcCFG = 
+  ControlFlowGraph
+     (structure I = SparcInstr
+      structure PseudoOps = SparcPseudoOps
+      structure GraphImpl = DirectedGraph
+      structure InsnProps = SparcProps
+      structure Asm = SparcAsmEmitter)
 
 

@@ -16,7 +16,7 @@ Group (../system/smlnj/viscomp/alpha32.cm)
         structure Alpha32CpsRegs
         structure Alpha32Instr
 	structure Alpha32Props
-	structure Alpha32FlowGraph
+	structure Alpha32CFG
 	structure Alpha32AsmEmitter
 is
 
@@ -34,4 +34,6 @@ $/smlnj-lib.cm
 $smlnj/viscomp/core.cm
 $smlnj/MLRISC/Control.cm
 $smlnj/MLRISC/MLRISC.cm
+$smlnj/MLRISC/MLTREE.cm
 $smlnj/MLRISC/ALPHA.cm
+$smlnj/MLRISC/Graphs.cm

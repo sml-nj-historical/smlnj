@@ -71,10 +71,11 @@ struct
   structure W32 = Word32
   structure LE = I.LabelExp
   structure A = MLRiscAnnotations
+  structure CFG = ExtensionComp.CFG
   structure CB = CellsBasis
 
-  type instrStream = (I.instruction,C.cellset) T.stream
-  type mltreeStream = (T.stm,T.mlrisc list) T.stream
+  type instrStream = (I.instruction,C.cellset,CFG.cfg) T.stream
+  type mltreeStream = (T.stm,T.mlrisc list,CFG.cfg) T.stream
 
   datatype kind = REAL | INTEGER
  
@@ -147,7 +148,7 @@ struct
       fun trap() =
       let val jmp = 
             case !trapLabel of 
-              NONE => let val label = Label.newLabel "trap"
+              NONE => let val label = Label.label "trap" ()
                           val jmp   = I.JCC{cond=I.O, 
                                             opnd=I.ImmedLabel(T.LABEL label)}
                       in  trapLabel := SOME(jmp, label); jmp end
@@ -554,7 +555,7 @@ struct
                      let val pow = T.LI(T.I.fromInt(32,log2 w))
                      in  if signed then 
                          (* signed; simulate round towards zero *)
-                         let val label = Label.newLabel ""
+                         let val label = Label.anon()
                              val reg1  = expr e1
                              val opnd1 = I.Direct reg1
                          in  if setZeroBit e1 then ()

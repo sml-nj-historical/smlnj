@@ -48,9 +48,10 @@ struct
   structure W  = Word32
   structure P  = PseudoInstrs
   structure A  = MLRiscAnnotations
+  structure CFG = ExtensionComp.CFG
 
-  type instrStream = (I.instruction,C.cellset) T.stream
-  type mltreeStream = (T.stm,T.mlrisc list) T.stream
+  type instrStream = (I.instruction, C.cellset, CFG.cfg) T.stream
+  type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) T.stream
 
   val int_0 = T.I.int_0
   fun toInt n = T.I.toInt(32, n)

@@ -4,7 +4,10 @@ sig
    structure C : CELLS
    structure I : INSTRUCTIONS
    structure T : MLTREE
+   structure CFG : CONTROL_FLOW_GRAPH
 
+   sharing CFG.I = I
+   sharing CFG.P = I.T.PseudoOp
    sharing I.C = C 
    sharing T.Constant = I.Constant
 
@@ -22,5 +25,5 @@ sig
     *)
    val newStream : { compile   : flowgraph -> unit,
                      flowgraph : flowgraph option
-                   } -> (I.instruction, C.cellset) T.stream
+                   } -> (I.instruction, C.cellset, CFG.cfg) T.stream
 end

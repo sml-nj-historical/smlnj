@@ -8,9 +8,10 @@ functor PseudoOpsBig(M : MACH_SPEC) = struct
   structure T = M.ObjDesc
   structure W = Word
 
-  datatype pseudo_op = 
+  datatype smlnj_pseudo_op = 
       ALIGN4
     | JUMPTABLE of {base:Label.label, targets:Label.label list}
+  type pseudo_op = smlnj_pseudo_op
 
   val >> = Word.>>
   val ~>> = Word.~>>
@@ -24,8 +25,8 @@ functor PseudoOpsBig(M : MACH_SPEC) = struct
    * about this, but it is good enough for debugging purposes.
    *)
   fun toString (JUMPTABLE{base, targets}) =
-	Label.nameOf base ^ ":\t.jumptable " ^
-	List.foldr (op ^) "" (map (fn l => Label.nameOf l ^ " ") targets) ^
+	Label.toString base ^ ":\t.jumptable " ^
+	List.foldr (op ^) "" (map (fn l => Label.toString l ^ " ") targets) ^
 	"\n"
     | toString ALIGN4 = "\t .align\n"
 

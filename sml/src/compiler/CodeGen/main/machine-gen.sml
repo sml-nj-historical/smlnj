@@ -7,52 +7,55 @@ functor MachineGen
   (structure MachSpec   : MACH_SPEC            (* machine specifications *) 
    structure PseudoOps  : SMLNJ_PSEUDO_OP_TYPE (* pseudo ops *)
    structure Ext        : SMLNJ_MLTREE_EXT
-   structure CpsRegs    : CPSREGS              (* CPS registers *)
-      where T.Region=CPSRegions
-        and T.Constant=SMLNJConstant 
-        and T.PseudoOp=PseudoOps
-	and T.Extension=Ext
    structure InsnProps  : INSN_PROPERTIES      (* instruction properties *)
-      where I.Constant = CpsRegs.T.Constant
+   structure CpsRegs    : CPSREGS              (* CPS registers *)
+		      where T.Region=CPSRegions
+		        and T.Constant=SMLNJConstant 
+		        and T.PseudoOp=PseudoOps
+			and T.Extension=Ext
    structure MLTreeComp : MLTREECOMP           (* instruction selection *)
-      where T = CpsRegs.T
-        and I = InsnProps.I
+		      where T = CpsRegs.T
+		        and I = InsnProps.I
    structure Asm        : INSTRUCTION_EMITTER  (* assembly *)
-      where S = MLTreeComp.T.Stream
-        and P = PseudoOps
-        and I = MLTreeComp.I
+		      where S = MLTreeComp.T.Stream
+		        and P = PseudoOps
+			and I = MLTreeComp.I
    structure Shuffle    : SHUFFLE              (* shuffling copies *) 
-      where I = MLTreeComp.I
+		      where I = Asm.I
    structure BackPatch  : BBSCHED              (* machine code emitter *)
-      where F.P = PseudoOps
-        and F.I = Asm.I
-   structure RA         : CLUSTER_OPTIMIZATION (* register allocator *)
-      where F = BackPatch.F
+		      where CFG = MLTreeComp.CFG
+   structure RA         : CFG_OPTIMIZATION     (* register allocator *)
+		      where CFG = BackPatch.CFG
    structure CCalls     : C_CALLS	       (* native C call generator *)
-      where T = CpsRegs.T
-   structure OmitFramePtr : OMIT_FRAME_POINTER where F=BackPatch.F
+		      where T = CpsRegs.T
+   structure OmitFramePtr : OMIT_FRAME_POINTER 
+		      where CFG=RA.CFG
   ) : MACHINE_GEN =
 struct
 
-   structure F         = BackPatch.F
-   structure P         = InsnProps
-   structure I         = F.I
-   structure Cells     = I.C 
-   structure T         = MLTreeComp.T
-   structure S         = T.Stream
-   structure Asm       = Asm
-   structure Shuffle   = Shuffle
-   structure MachSpec  = MachSpec
-   structure MLTreeComp= MLTreeComp
+   structure G		= Graph 
+   structure CFG        = BackPatch.CFG
+   structure P          = InsnProps
+   structure I          = CFG.I
+   structure Cells      = I.C 
+   structure T          = MLTreeComp.T
+   structure S          = T.Stream
+   structure Asm        = Asm
+   structure Shuffle    = Shuffle
+   structure MachSpec   = MachSpec
+   structure MLTreeComp = MLTreeComp
 
-   fun omitFramePointer(cluster as F.CLUSTER{annotations, ...}) =
+   fun omitFramePointer(cfg as G.GRAPH graph) = let
+     val CFG.INFO{annotations, ...} = #graph_info graph 
+   in
      if #contains MLRiscAnnotations.USES_VIRTUAL_FRAME_POINTER (!annotations) then 
      	(OmitFramePtr.omitframeptr
-	     {vfp=CpsRegs.vfp, cl=cluster, idelta=SOME 0:Int32.int option};
-	 cluster)
-     else cluster
+	     {vfp=CpsRegs.vfp, cfg=cfg, idelta=SOME 0:Int32.int option};
+	 cfg)
+     else cfg
+   end     
 
-   type mlriscPhase = string * (F.cluster -> F.cluster) 
+   type mlriscPhase = string * (CFG.cfg -> CFG.cfg) 
 
    fun phase x = Stats.doPhase (Stats.makePhase x)
    fun makePhase(name,f) = (name, phase name f)
@@ -73,16 +76,17 @@ struct
      
    (* Flowgraph generation *)
    structure FlowGraphGen =
-       ClusterGen(structure Flowgraph = F
-                  structure InsnProps = InsnProps
-                  structure MLTree    = T
-                 )
+      BuildFlowgraph(
+         structure CFG = CFG
+	 structure Props = InsnProps
+	 structure Stream = T.Stream)
 
    (* GC Invocation *)
    structure InvokeGC =
       InvokeGC(structure Cells = Cells
                structure C     = CpsRegs
                structure MS    = MachSpec
+	       structure CFG   = CFG
               )
 
    fun compile cluster =
@@ -95,13 +99,13 @@ struct
    structure MLTreeGen =
       MLRiscGen(structure MachineSpec=MachSpec
                 structure MLTreeComp=MLTreeComp
-                structure Cells=Cells
 		structure Ext = Ext
                 structure C=CpsRegs
                 structure InvokeGC=InvokeGC
                 structure PseudoOp=PseudoOps
                 structure Flowgen=FlowGraphGen
 		structure CCalls = CCalls
+		structure Cells = Cells
                 val compile = compile
                )
 	       

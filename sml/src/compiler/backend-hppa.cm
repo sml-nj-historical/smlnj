@@ -15,7 +15,7 @@ Group (../system/smlnj/viscomp/hppa.cm)
         structure HppaCpsRegs
         structure HppaInstr
 	structure HppaProps
-	structure HppaFlowGraph
+	structure HppaCFG
 	structure HppaAsmEmitter
 is
 
@@ -35,4 +35,6 @@ $smlnj/viscomp/basics.cm
 $smlnj/viscomp/core.cm
 $smlnj/MLRISC/Control.cm
 $smlnj/MLRISC/MLRISC.cm
+$smlnj/MLRISC/MLTREE.cm
 $smlnj/MLRISC/HPPA.cm
+$smlnj/MLRISC/Graphs.cm

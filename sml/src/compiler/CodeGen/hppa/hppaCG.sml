@@ -15,7 +15,7 @@ structure HppaCG =
 
     structure OmitFramePtr = struct
       exception NotImplemented
-      structure F=HppaFlowGraph
+      structure CFG=HppaCFG
       structure I=HppaInstr
       val vfp = CpsRegs.vfp
       fun omitframeptr _ = raise NotImplemented
@@ -33,6 +33,7 @@ structure HppaCG =
             structure ExtensionComp = SMLNJMLTreeExtComp
                (structure I = HppaInstr
                 structure T = HppaMLTree
+		structure CFG = HppaCFG
                )
             val costOfMultiply = ref 7
             val costOfDivision = ref 7
@@ -44,7 +45,8 @@ structure HppaCG =
 
     structure BackPatch =
        SpanDependencyResolution
-         (structure Flowgraph = HppaFlowGraph
+         (structure CFG = HppaCFG
+	  structure Placement = DefaultBlockPlacement(HppaCFG)
           structure Jumps     = Jumps
           structure Emitter   = HppaMCEmitter
           structure DelaySlot = HppaDelaySlots
@@ -56,7 +58,7 @@ structure HppaCG =
     structure RA = 
        RISC_RA
          (structure I         = HppaInstr
-          structure Flowgraph = HppaFlowGraph
+          structure Flowgraph = HppaCFG
           structure InsnProps = InsnProps 
           structure Rewrite   = HppaRewrite(HppaInstr) 
           structure Asm       = HppaAsmEmitter

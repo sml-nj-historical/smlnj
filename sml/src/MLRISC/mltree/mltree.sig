@@ -211,13 +211,13 @@ signature MLTREE = sig
   (*
    * Instruction streams
    *)
-  type ('i,'cellset) stream = ('i, an list, 'cellset) Stream.stream 
+  type ('i,'cellset, 'cfg) stream = ('i, an list, 'cellset, 'cfg) Stream.stream 
 
   (* 
    * Extension mechanism
    *)
 
-  datatype ('instr,'cellset,'operand,'addressing_mode) reducer =
+  datatype ('instr,'cellset,'operand,'addressing_mode, 'cfg) reducer =
     REDUCER of
     { reduceRexp    : rexp -> reg,
       reduceFexp    : fexp -> reg,
@@ -227,8 +227,8 @@ signature MLTREE = sig
       reduceOperand : 'operand -> reg,
       addressOf     : rexp -> 'addressing_mode,
       emit          : 'instr * an list -> unit,
-      instrStream   : ('instr,'cellset) stream,
-      mltreeStream  : (stm,mlrisc list) stream
+      instrStream   : ('instr,'cellset, 'cfg) stream,
+      mltreeStream  : (stm,mlrisc list, 'cfg) stream
     }
 
   (*

@@ -7,20 +7,23 @@
 (** bbsched2.sml - invoke scheduling after span dependent resolution **)
 
 functor BBSched2
-    (structure Flowgraph : FLOWGRAPH
-     structure Jumps : SDI_JUMPS
+    (structure CFG     : CONTROL_FLOW_GRAPH
+     structure Jumps   : SDI_JUMPS
      structure Emitter : INSTRUCTION_EMITTER
-       sharing Emitter.P = Flowgraph.P
-       sharing Flowgraph.I = Jumps.I = Emitter.I): BBSCHED =
+     structure Placement : BLOCK_PLACEMENT
+       sharing Placement.CFG = CFG
+       sharing Emitter.P = CFG.P
+       sharing CFG.I = Jumps.I = Emitter.I): BBSCHED =
 
 struct
 
-  structure F = Flowgraph
-  structure I = F.I
+  structure CFG = CFG
+  structure G = Graph
+  structure I = CFG.I
   structure C = I.C
   structure E = Emitter
   structure J = Jumps
-  structure P = Flowgraph.P
+  structure P = CFG.P
 
   fun error msg = MLRiscErrorMsg.error("BBSched",msg)
 
@@ -39,10 +42,13 @@ struct
   val clusterList : compressed list ref = ref []
   fun cleanUp() = clusterList := []
 
-  fun bbsched(cluster as F.CLUSTER{blocks, ...}) = let
-    fun compress(F.PSEUDO pOp::rest) = PSEUDO pOp::compress rest
-      | compress(F.LABEL lab::rest) = LABEL lab:: compress rest
-      | compress(F.BBLOCK{insns, ...}::rest) = let
+  fun bbsched(cfg as G.GRAPH graph) = let
+    val blocks = map #2 (Placement.blockPlacement cfg)
+    
+    fun compress [] = []
+      | compress(CFG.BLOCK{data, labels, insns, ...} :: rest) = let
+	  fun pseudo(CFG.LABEL lab) = LABEL lab
+	    | pseudo(CFG.PSEUDO pOp) = PSEUDO pOp
 	  fun mkCode(0, [], [], code) = code
 	    | mkCode(size, insns, [], code) = FIXED{size=size, insns=insns}:: code
 	    | mkCode(size, insns, instr::instrs, code) = let
@@ -59,14 +65,19 @@ struct
 		  end
 		else mkCode(size+s, instr::insns, instrs, code)
 	      end
-	in 
-	  CODE(mkCode(0, [], !insns, [])) :: compress rest
+	in
+	  map pseudo (!data) @
+	    map LABEL (!labels) @ 
+	       CODE(mkCode(0, [], !insns, [])) :: compress rest
 	end
-      | compress [] = []
-      | compress _ = error "compress"
-  in clusterList:=CLUSTER{comp = compress blocks}:: (!clusterList)
+
+  in
+    clusterList:=CLUSTER{comp = compress blocks}:: (!clusterList)
   end
 
+
+
+  
   fun finish() = let
     fun labels(PSEUDO pOp::rest, pos) = 
           (P.adjustLabels(pOp, pos); labels(rest, pos+P.sizeOf(pOp,pos)))

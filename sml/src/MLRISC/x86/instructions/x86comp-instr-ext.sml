@@ -6,22 +6,26 @@
  *)
 
 signature X86COMP_INSTR_EXT = sig
-  structure T : MLTREE
   structure I : X86INSTR
+  structure CFG : CONTROL_FLOW_GRAPH where I = I
 
   type reducer = 
-    (I.instruction, I.C.cellset, I.operand, I.addressing_mode) T.reducer
+    (I.instruction, I.C.cellset, I.operand, I.addressing_mode, CFG.cfg) I.T.reducer
 
   val compileSext : 
      reducer 
-      -> {stm: (T.stm, T.rexp, T.fexp, T.ccexp) X86InstrExt.sext, 
-	  an: T.an list} 
+      -> {stm: (I.T.stm, I.T.rexp, I.T.fexp, I.T.ccexp) X86InstrExt.sext, 
+	  an: I.T.an list} 
         -> unit
 end
 
 
-functor X86CompInstrExt(I : X86INSTR) : X86COMP_INSTR_EXT = 
+functor X86CompInstrExt
+  (structure I : X86INSTR
+   structure CFG : CONTROL_FLOW_GRAPH where I = I
+ ) : X86COMP_INSTR_EXT = 
 struct
+  structure CFG = CFG
   structure T = I.T
   structure I = I
   structure C = I.C
@@ -30,7 +34,7 @@ struct
   type stm = (T.stm, T.rexp, T.fexp, T.ccexp) X.sext
 
   type reducer = 
-    (I.instruction, I.C.cellset, I.operand, I.addressing_mode) T.reducer
+    (I.instruction, I.C.cellset, I.operand, I.addressing_mode, CFG.cfg) T.reducer
 
   val esp = C.esp
   val espOpnd = I.Direct(esp)

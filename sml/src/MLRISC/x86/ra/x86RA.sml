@@ -110,8 +110,8 @@
 functor X86RA 
   ( structure I          : X86INSTR
     structure InsnProps  : INSN_PROPERTIES where I = I
-    structure F          : FLOWGRAPH where I = I
-    structure Asm        : INSTRUCTION_EMITTER where I = I
+    structure CFG        : CONTROL_FLOW_GRAPH where I = I
+    structure Asm        : INSTRUCTION_EMITTER where I = I and P = CFG.P
 
       (* Spilling heuristics determines which node should be spilled. 
        * You can use Chaitin, ChowHenessey, or one of your own.
@@ -124,7 +124,6 @@ functor X86RA
        *)
     structure Spill : RA_SPILL where I = I 
 
-    sharing F.P = Asm.P
 
     type spill_info (* user-defined abstract type *)
 
@@ -140,7 +139,7 @@ functor X86RA
     datatype spillOperandKind = SPILL_LOC | CONST_VAL
 
     (* Called before register allocation; perform your initialization here. *)
-    val beforeRA : F.cluster -> spill_info
+    val beforeRA : CFG.cfg -> spill_info
 
     (* Integer register allocation parameters *)
     structure Int :
@@ -184,17 +183,17 @@ functor X86RA
        val fastPhases  : raPhase list
     end
 
-  ) : CLUSTER_OPTIMIZATION =
+  ) : CFG_OPTIMIZATION =
 struct
 
-    structure F = F
+    structure CFG = CFG
     structure I = I
     structure C = I.C
     structure CB = CellsBasis
 
     val name = "X86RA"
 
-    type flowgraph = F.cluster 
+    type flowgraph = CFG.cfg
 
     val intSpillCnt = MLRiscControl.getCounter "ra-int-spills"
     val floatSpillCnt = MLRiscControl.getCounter "ra-float-spills"
@@ -211,15 +210,20 @@ struct
     val deadblocks = MLRiscControl.getCounter "x86-dead-blocks"
  *)
 
+(*
     structure PrintFlowGraph=
-       PrintCluster(structure Flowgraph=F
+       PrintCluster(structure Flowgraph=CFG
                     structure Asm = Asm)
+*)
+    structure PrintFlowGraph= struct
+      fun printCluster _ = error "printCluster: not implemented"
+    end
 
     structure X86FP = 
        X86FP(structure X86Instr = I
              structure X86Props = InsnProps
-             structure Flowgraph = F
-             structure Liveness = Liveness(F)
+             structure Flowgraph = CFG
+             structure Liveness = Liveness(CFG)
              structure Asm = Asm
             )
 
@@ -233,8 +237,10 @@ struct
 	  IntHashTable.mkTable(32,X86DeadCode) : bool IntHashTable.hash_table
     val deadRegs       =
 	  IntHashTable.mkTable(32,X86DeadCode) : bool IntHashTable.hash_table
-    fun removeDeadCode(F.CLUSTER{blocks, ...}) =
-    let val find = IntHashTable.find deadRegs
+
+    fun removeDeadCode(cfg as Graph.GRAPH graph) = let
+        val blocks = #nodes graph ()
+        val find = IntHashTable.find deadRegs
         fun isDead r = 
             case find (CB.cellId r) of
                SOME _ => true
@@ -246,13 +252,12 @@ struct
           | isDeadInstr(I.COPY{dst=[rd], ...}) = isDead rd
           | isDeadInstr _ = false
         fun scan [] = ()
-          | scan(F.BBLOCK{blknum, insns, ...}::rest) =
+          | scan((blknum, CFG.BLOCK{insns, ...})::rest) =
             (if isAffected blknum then 
                 ((* deadblocks := !deadblocks + 1; *)
                  insns := elim(!insns, [])
                 ) else ();
              scan rest)
-          | scan(_::rest) = scan rest
        and elim([], code) = rev code
          | elim(i::instrs, code) = 
           if isDeadInstr i then 
@@ -293,7 +298,7 @@ struct
        (MemoryRA             (* for memory coalescing *)
          (RADeadCodeElim     (* do the funky dead code elimination stuff *)
             (ClusterRA
-               (structure Flowgraph = F
+               (structure Flowgraph = CFG
                 structure Asm = Asm
                 structure InsnProps = InsnProps
                 structure Spill = Spill

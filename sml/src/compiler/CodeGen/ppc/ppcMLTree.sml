@@ -25,11 +25,6 @@ structure PPCProps = PPCProps(PPCInstr)
 
 structure PPCShuffle = PPCShuffle(PPCInstr)
 
-(* Flowgraph data structure specialized to DEC alpha instructions *)
-structure PPCFlowGraph = 
-  FlowGraph(structure I=PPCInstr
-	    structure P=PPCPseudoOps
-           )
 
 structure PPCAsmEmitter=
   PPCAsmEmitter(structure Instr=PPCInstr
@@ -43,5 +38,12 @@ structure PPCMCEmitter =
                structure Stream=PPCStream
 	       structure CodeString=CodeString)
 
-
+(* Flowgraph data structure specialized to DEC alpha instructions *)
+structure PPCCFG = 
+  ControlFlowGraph
+     (structure I = PPCInstr
+      structure PseudoOps = PPCPseudoOps
+      structure GraphImpl = DirectedGraph
+      structure InsnProps = PPCProps
+      structure Asm = PPCAsmEmitter)
 

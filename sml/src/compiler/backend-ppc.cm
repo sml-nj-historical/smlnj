@@ -15,7 +15,7 @@ Group (../system/smlnj/viscomp/ppc.cm)
         structure PPCCpsRegs
         structure PPCInstr
 	structure PPCProps
-	structure PPCFlowGraph
+	structure PPCCFG
 	structure PPCAsmEmitter
 is
 
@@ -33,4 +33,6 @@ $/smlnj-lib.cm
 $smlnj/viscomp/core.cm
 $smlnj/MLRISC/Control.cm
 $smlnj/MLRISC/MLRISC.cm
+$smlnj/MLRISC/MLTREE.cm
 $smlnj/MLRISC/PPC.cm
+$smlnj/MLRISC/Graphs.cm

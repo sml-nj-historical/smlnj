@@ -137,7 +137,7 @@ struct
 
   fun longJump{lab, n} =
     (print "longJump used\n";
-     [I.LONGJUMP{lab=lab, tmpLab=Label.newLabel "", n=n, tmp=C.asmTmpR}]
+     [I.LONGJUMP{lab=lab, tmpLab=Label.anon(), n=n, tmp=C.asmTmpR}]
     )
 
   fun split11 n = let

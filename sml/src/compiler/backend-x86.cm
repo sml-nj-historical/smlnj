@@ -14,7 +14,7 @@ Group (../system/smlnj/viscomp/x86.cm)
         structure X86CpsRegs
         structure X86Instr
  	structure X86Props
-	structure X86FlowGraph
+	structure X86CFG
 	structure X86AsmEmitter
 is
 
@@ -40,3 +40,4 @@ $smlnj/MLRISC/Control.cm
 $smlnj/MLRISC/MLRISC.cm
 $smlnj/MLRISC/MLTREE.cm
 $smlnj/MLRISC/IA32.cm
+$smlnj/MLRISC/Graphs.cm

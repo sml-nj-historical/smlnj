@@ -276,6 +276,7 @@ $smlnj/viscomp/execute.cm
 (* MLRISC libraries. *)
 $smlnj/MLRISC/Lib.cm			(* provides SortedList *)
 $smlnj/MLRISC/Control.cm
+$smlnj/MLRISC/Graphs.cm			
 $smlnj/MLRISC/MLRISC.cm
 
 (* Other libaries. *)
