@@ -84,6 +84,8 @@ structure SkelIO :> SKELIO = struct
 
     fun read_decl s = let
 
+	val firstLine = inputLine s
+
 	val session = UU.mkSession (UU.stringGetter (b2s (BinIO.inputAll s)))
 
 	val symbol = UU.r_symbol session
@@ -123,7 +125,7 @@ structure SkelIO :> SKELIO = struct
 	    share modExpM m
 	end
     in
-	if inputLine s = version then decl () else raise Format
+	if firstLine = version then decl () else raise Format
     end
 
     fun read (s, ts) =
