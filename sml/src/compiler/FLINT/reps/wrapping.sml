@@ -90,7 +90,7 @@ fun wrapping fdec =
 let (* In pass1, we calculate the old type of each variables in the FLINT
      * expression. We do this for the sake of having simpler wrapping code.
      *)
-    val {getLty=getLtyGen, cleanUp} = Recover.recover (fdec, false)
+    val {getLty=getlty, cleanUp} = Recover.recover (fdec, false)
 
     (** generate a set of new wrappers *)
     val (tcWrap, ltWrap, tcf, ltf, cleanup2) = LT.twrap_gen true
@@ -104,8 +104,7 @@ let (* In pass1, we calculate the old type of each variables in the FLINT
 
     (* transform : CO.wpEnv * DI.depth -> (lexp -> lexp) *)
     fun transform (wenv, d) = 
-      let val getlty = getLtyGen d 
-
+      let 
           fun lpfd ({isrec,known,inline,cconv}, v, vts, e) = 
 	      let val nisrec = case isrec of SOME(ts,l) => SOME(map ltf ts, l)
 					   | NONE => NONE

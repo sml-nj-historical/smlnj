@@ -121,18 +121,18 @@ fun tkApp (tk, tks) =
  * tyc to an association list that maps the kinds of the free
  * variables in the tyc (represented as a TK_SEQ) to the tyc's kind.
  *)
+structure TcDict = BinaryDict
+                       (struct
+                           type ord_key = tyc
+                           val cmpKey = LK.tc_cmp
+                           end)
+                       
 structure Memo :> sig
     type dict 
     val newDict         : unit -> dict
     val recallOrCompute : dict * tkindEnv * tyc * (unit -> tkind) -> tkind
 end =
 struct
-    structure TcDict = BinaryDict
-                           (struct
-                               type ord_key = tyc
-                               val cmpKey = LK.tc_cmp
-                           end)
-
     type dict = (tkind * tkind) list TcDict.dict ref
     val newDict : unit -> dict = ref o TcDict.mkDict
 
@@ -528,6 +528,396 @@ fun twrap_gen bbb =
    in (tcWrap o tc_norm, ltWrap o lt_norm, 
        tcMap o tc_norm, ltMap o lt_norm, cleanup)
   end
+
+
+(************************************************************************
+ *            SUBSTITION OF NAMED VARS IN A TYC/LTY                     *
+ ************************************************************************)
+structure LtDict = BinaryDict
+                       (struct
+                           type ord_key = lty
+                           val cmpKey = LtyKernel.lt_cmp
+                       end)
+
+fun tc_nvar_elim_gen() = let
+    val dict = ref (TcDict.mkDict())
+
+    fun tc_nvar_elim s d tyc = 
+        case LK.tc_nvars tyc of
+            [] => tyc                   (* nothing to elim *)
+          | _ =>
+    let
+        (* encode the tyc and the depth for memoization
+         * using tcc_proj *)
+        val tycdepth = tcc_proj (tyc, d)
+    in
+        case TcDict.peek(!dict, tycdepth) of
+            SOME t => t                 (* hit! *)
+          | NONE => let                 (* must recompute *)
+                val r = tc_nvar_elim s d (* default recursive invoc. *)
+                val rs = map r          (* recursive invocation on list *)
+                val t = 
+                    case tc_out tyc of
+                        LK.TC_NVAR tvar =>   
+                            (case s (tvar, d) of
+                                 SOME t => t
+                               | NONE => tyc)
+                      | LK.TC_VAR _ => tyc
+                      | LK.TC_PRIM _ => tyc
+                      | LK.TC_FN (tks, t) =>
+                            tcc_fn (tks, tc_nvar_elim s (DI.next d) t)
+                      | LK.TC_APP (t, ts) =>
+                            tcc_app (r t, rs ts)
+                      | LK.TC_SEQ ts =>
+                            tcc_seq (rs ts)
+                      | LK.TC_PROJ (t, i) =>
+                            tcc_proj (r t, i)
+                      | LK.TC_SUM ts =>
+                            tcc_sum (rs ts)
+                      | LK.TC_FIX ((i,t,ts),j) =>
+                            tcc_fix ((i, r t, rs ts), j)
+                      | LK.TC_TUPLE (rf,ts) =>
+                            tcc_tuple (rs ts)
+                      | LK.TC_ARROW (ff, ts, ts') =>
+                            tcc_arrow (ff, rs ts, rs ts')
+                      | LK.TC_PARROW (t, t') =>
+                            tcc_parrow (r t, r t')
+                      | LK.TC_BOX t =>
+                            tcc_box (r t)
+                      | LK.TC_ABS t =>
+                            tcc_abs (r t)
+                      | LK.TC_TOKEN (tok, t) =>
+                            tc_inj (LK.TC_TOKEN (tok, r t))
+                      | LK.TC_CONT ts =>
+                            tcc_cont (rs ts)
+                      | LK.TC_IND _ =>
+                            bug "unexpected TC_IND in tc_nvar_elim"
+                      | LK.TC_ENV _ =>
+                            bug "unexpected TC_ENV in tc_nvar_elim"
+            in
+                dict := TcDict.insert(!dict, tycdepth, t);
+                t
+            end
+    end (* tc_nvar_elim *)
+in
+    tc_nvar_elim
+end
+
+fun lt_nvar_elim_gen() = let
+    val dict = ref (LtDict.mkDict())
+    val tc_nvar_elim = tc_nvar_elim_gen()
+
+    fun lt_nvar_elim s d lty = 
+        case LK.lt_nvars lty of
+            [] => lty                   (* nothing to elim *)
+          | _ => 
+    let
+        (* encode the lty and depth info using LT_ENV
+         * (only first 2 args are useful) *)
+        val ltydepth = lt_inj (LK.LT_ENV (lty, d, 0, LK.initTycEnv))
+    in
+        case LtDict.peek(!dict, ltydepth) of
+            SOME t => t                 (* hit! *)
+          | NONE => let                 (* must recompute *)
+                val r = lt_nvar_elim s d (* default recursive invoc. *)
+                val rs = map r          (* recursive invocation on list *)
+                val t =
+                    case lt_out lty of
+                        LK.LT_TYC t => 
+                            ltc_tyc (tc_nvar_elim s d t)
+                      | LK.LT_STR ts => 
+                            ltc_str (rs ts)
+                      | LK.LT_FCT (ts, ts') => 
+                            ltc_fct (rs ts, rs ts')
+                      | LK.LT_POLY (tks, ts) => 
+                            ltc_poly (tks, 
+                                      map (lt_nvar_elim s (DI.next d)) ts)
+                      | LK.LT_CONT ts => 
+                            ltc_cont (rs ts)
+                      | LK.LT_IND _ =>
+                            bug "unexpected LT_IND in lt_nvar_elim"
+                      | LK.LT_ENV _ =>
+                            bug "unexpected LT_ENV in lt_nvar_elim"
+            in
+                dict := LtDict.insert(!dict, ltydepth, t);
+                t
+            end
+    end (* lt_nvar_elim *)
+in
+    lt_nvar_elim
+end (* lt_nvar_elim_gen *)
+
+(************************************************************)
+
+type smap = (tvar * tyc) list
+
+(* is the intersection of two sorted lists non-nil? *)
+fun intersectionNonEmpty(nil,_:tvar list) = false
+  | intersectionNonEmpty(_,nil) = false
+  | intersectionNonEmpty(s1 as (h1:tvar,_)::t1, s2 as h2::t2) =
+        case Int.compare (h1, h2) of
+            LESS => intersectionNonEmpty(t1, s2)
+          | GREATER => intersectionNonEmpty(s1, t2)
+          | EQUAL => true
+
+fun searchSubst (tv:tvar, s) = 
+    let fun h [] = NONE
+          | h ((tv':tvar,tyc)::s) = 
+                case Int.compare (tv, tv') of
+                    LESS => NONE
+                  | GREATER => h s
+                  | EQUAL => SOME tyc
+    in h s
+    end
+            
+fun tc_nvar_subst_gen() = let
+    val dict = ref (TcDict.mkDict())
+
+    fun tc_nvar_subst subst = let
+        fun loop tyc =
+        (* check if substitution overlaps with free vars list *)
+        (case intersectionNonEmpty(subst, LK.tc_nvars tyc) of
+             false => tyc               (* nothing to subst *)
+           | true => 
+             (* next check the memoization table *)
+             (case TcDict.peek(!dict, tyc) of
+                  SOME t => t           (* hit! *)
+                | NONE => 
+              let                       (* must recompute *)
+                  val t =
+                    case tc_out tyc of
+                        LK.TC_NVAR tv => 
+                            (case searchSubst(tv,subst) of 
+                                 SOME t => t 
+                               | NONE => tyc
+                                 )
+                      | LK.TC_VAR _ => tyc
+                      | LK.TC_PRIM _ => tyc
+                      | LK.TC_FN (tks, t) =>
+                            tcc_fn (tks, loop t)
+                      | LK.TC_APP (t, ts) =>
+                            tcc_app (loop t, map loop ts)
+                      | LK.TC_SEQ ts =>
+                            tcc_seq (map loop ts)
+                      | LK.TC_PROJ (t, i) =>
+                            tcc_proj (loop t, i)
+                      | LK.TC_SUM ts =>
+                            tcc_sum (map loop ts)
+                      | LK.TC_FIX ((i,t,ts),j) =>
+                            tcc_fix ((i, loop t, map loop ts), j)
+                      | LK.TC_TUPLE (rf,ts) =>
+                            tcc_tuple (map loop ts)
+                      | LK.TC_ARROW (ff, ts, ts') =>
+                            tcc_arrow (ff, map loop ts, map loop ts')
+                      | LK.TC_PARROW (t, t') =>
+                            tcc_parrow (loop t, loop t')
+                      | LK.TC_BOX t =>
+                            tcc_box (loop t)
+                      | LK.TC_ABS t =>
+                            tcc_abs (loop t)
+                      | LK.TC_TOKEN (tok, t) =>
+                            tc_inj (LK.TC_TOKEN (tok, loop t))
+                      | LK.TC_CONT ts =>
+                            tcc_cont (map loop ts)
+                      | LK.TC_IND _ =>
+                            bug "unexpected TC_IND in substTyc"
+                      | LK.TC_ENV _ =>
+                            bug "unexpected TC_ENV in substTyc"
+              in
+                  (* update memoization table *)
+                  dict := TcDict.insert(!dict, tyc, t);
+                  t
+              end
+                  )) (* end cases *)
+    in loop
+    end (* tc_nvar_subst *)
+in tc_nvar_subst
+end (* tc_nvar_subst_gen *)
+
+fun lt_nvar_subst_gen() = let
+    val dict = ref (LtDict.mkDict())
+    val tc_nvar_subst' = tc_nvar_subst_gen()
+
+    fun lt_nvar_subst subst = let
+        val tc_nvar_subst = tc_nvar_subst' subst
+                           
+        fun loop lty =
+        (* check if there are any free type variables first *)
+        (case intersectionNonEmpty(subst, LK.lt_nvars lty) of
+             false => lty                  (* nothing to subst *)
+           | true => 
+             (* next check the memoization table *)
+             (case LtDict.peek(!dict, lty) of
+                  SOME t => t           (* hit! *)
+                | NONE => 
+              let                       (* must recompute *)
+                  val t =
+                    case lt_out lty of
+                        LK.LT_TYC t => 
+                            ltc_tyc (tc_nvar_subst t)
+                      | LK.LT_STR ts => 
+                            ltc_str (map loop ts)
+                      | LK.LT_FCT (ts, ts') => 
+                            ltc_fct (map loop ts, map loop ts')
+                      | LK.LT_POLY (tks, ts) => 
+                            ltc_poly (tks, map loop ts)
+                      | LK.LT_CONT ts => 
+                            ltc_cont (map loop ts)
+                      | LK.LT_IND _ =>
+                            bug "unexpected LT_IND in lt_nvar_elim"
+                      | LK.LT_ENV _ =>
+                            bug "unexpected LT_ENV in lt_nvar_elim"
+              in
+                  (* update memoization table *)
+                  dict := LtDict.insert(!dict, lty, t);
+                  t
+              end
+                  )) (* end cases *)
+    in loop
+    end (* lt_nvar_subst *)
+in lt_nvar_subst
+end (* lt_nvar_subst_gen *)
+
+(************************************************************)
+
+(** building up a polymorphic type by abstracting over a 
+ ** list of named vars 
+ **)
+type tvoffs = (tvar * int) list
+
+fun intersect(nil, _:tvar list) = nil
+  | intersect(_, nil) = nil
+  | intersect(s1 as (h1:tvar,n)::t1, s2 as h2::t2) =
+        case Int.compare (h1, h2) of
+            LESS => intersect(t1, s2)
+          | GREATER => intersect(s1, t2)
+          | EQUAL => (h1,n) :: intersect(t1, t2)
+
+val s_iter = Stats.makeStat "Cvt Iterations"
+val s_hits = Stats.makeStat "Cvt Hits in dict"
+val s_cuts = Stats.makeStat "Cvt Freevar cutoffs"
+
+val s_tvoffs = Stats.makeStat "Cvt tvoffs length"
+val s_nvars = Stats.makeStat "Cvt free nvars length"
+
+fun tc_nvar_cvt_gen() = let
+    val dict = ref (TcDict.mkDict())
+
+    fun tc_nvar_cvt (tvoffs:tvoffs) d tyc = 
+        (Stats.addStat s_iter 1;
+         Stats.addStat s_tvoffs (length tvoffs);
+         Stats.addStat s_nvars (length (LK.tc_nvars tyc));
+        (* check if substitution overlaps with free vars list *)
+        case intersect(tvoffs, LK.tc_nvars tyc) of
+            [] => (Stats.addStat s_cuts 1;
+                   tyc           (* nothing to cvt *)
+                   )
+          | tvoffs => 
+    let
+        (* encode the tyc and the depth for memoization
+         * using tcc_proj *)
+        val tycdepth = tcc_proj (tyc, d)
+    in
+        case TcDict.peek(!dict, tycdepth) of
+            SOME t => (Stats.addStat s_hits 1;
+                       t                 (* hit! *)
+                       )
+          | NONE => let                 (* must recompute *)
+                val r = tc_nvar_cvt tvoffs d (* default recursive invoc. *)
+                val rs = map r          (* recursive invocation on list *)
+                val t = 
+                    case tc_out tyc of
+                        LK.TC_NVAR tvar =>
+                            (case searchSubst(tvar,tvoffs) of
+                                 SOME i => tcc_var (d, i)
+                               | NONE => tyc)
+                      | LK.TC_VAR _ => tyc
+                      | LK.TC_PRIM _ => tyc
+                      | LK.TC_FN (tks, t) =>
+                            tcc_fn (tks, tc_nvar_cvt tvoffs (DI.next d) t)
+                      | LK.TC_APP (t, ts) =>
+                            tcc_app (r t, rs ts)
+                      | LK.TC_SEQ ts =>
+                            tcc_seq (rs ts)
+                      | LK.TC_PROJ (t, i) =>
+                            tcc_proj (r t, i)
+                      | LK.TC_SUM ts =>
+                            tcc_sum (rs ts)
+                      | LK.TC_FIX ((i,t,ts),j) =>
+                            tcc_fix ((i, r t, rs ts), j)
+                      | LK.TC_TUPLE (rf,ts) =>
+                            tcc_tuple (rs ts)
+                      | LK.TC_ARROW (ff, ts, ts') =>
+                            tcc_arrow (ff, rs ts, rs ts')
+                      | LK.TC_PARROW (t, t') =>
+                            tcc_parrow (r t, r t')
+                      | LK.TC_BOX t =>
+                            tcc_box (r t)
+                      | LK.TC_ABS t =>
+                            tcc_abs (r t)
+                      | LK.TC_TOKEN (tok, t) =>
+                            tc_inj (LK.TC_TOKEN (tok, r t))
+                      | LK.TC_CONT ts =>
+                            tcc_cont (rs ts)
+                      | LK.TC_IND _ =>
+                            bug "unexpected TC_IND in tc_nvar_cvt"
+                      | LK.TC_ENV _ =>
+                            bug "unexpected TC_ENV in tc_nvar_cvt"
+            in
+                dict := TcDict.insert(!dict, tycdepth, t);
+                t
+            end
+    end (* tc_nvar_cvt *)
+        )
+in
+    tc_nvar_cvt
+end (* tc_nvar_cvt_gen *)
+
+
+fun lt_nvar_cvt_gen() = let
+    val dict = ref (LtDict.mkDict())
+    val tc_nvar_cvt = tc_nvar_cvt_gen()
+
+    fun lt_nvar_cvt tvoffs d lty = 
+        (* check if substitution overlaps with free vars list *)
+        case intersect(tvoffs, LK.lt_nvars lty) of
+            [] => lty                (* nothing to cvt *)
+          | tvoffs => 
+    let
+        (* encode the lty and depth info using LT_ENV
+         * (only first 2 args are useful) *)
+        val ltydepth = lt_inj (LK.LT_ENV (lty, d, 0, LK.initTycEnv))
+    in
+        case LtDict.peek(!dict, ltydepth) of
+            SOME t => t                 (* hit! *)
+          | NONE => let                 (* must recompute *)
+                val r = lt_nvar_cvt tvoffs d (* default recursive invoc. *)
+                val rs = map r          (* recursive invocation on list *)
+                val t =
+                    case lt_out lty of
+                        LK.LT_TYC t => 
+                            ltc_tyc (tc_nvar_cvt tvoffs d t)
+                      | LK.LT_STR ts => 
+                            ltc_str (rs ts)
+                      | LK.LT_FCT (ts, ts') => 
+                            ltc_fct (rs ts, rs ts')
+                      | LK.LT_POLY (tks, ts) => 
+                            ltc_poly (tks, 
+                                      map (lt_nvar_cvt tvoffs (DI.next d)) ts)
+                      | LK.LT_CONT ts => 
+                            ltc_cont (rs ts)
+                      | LK.LT_IND _ =>
+                            bug "unexpected LT_IND in lt_nvar_cvt"
+                      | LK.LT_ENV _ =>
+                            bug "unexpected LT_ENV in lt_nvar_cvt"
+            in
+                dict := LtDict.insert(!dict, ltydepth, t);
+                t
+            end
+    end (* lt_nvar_cvt *)
+in
+    lt_nvar_cvt
+end (* lt_nvar_cvt_gen *)
 
 
 end (* top-level local *)

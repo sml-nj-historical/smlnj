@@ -20,8 +20,10 @@ sig
 
   (* copy a lexp with alpha renaming.
    * free variables remain unchanged except for the renaming specified
-   * in the first argument *)
-  val copy : FLINT.lvar IntmapF.intmap -> FLINT.lexp -> FLINT.lexp
+   * in the first (types) and second (values) argument *)
+  val copy : (FLINT.tvar * FLINT.tyc) list ->
+             FLINT.lvar IntmapF.intmap ->
+             FLINT.lexp -> FLINT.lexp
 
   val dcon_eq : FLINT.dcon * FLINT.dcon -> bool
 
@@ -36,6 +38,8 @@ local structure EM = ErrorMsg
       structure PO = PrimOp
       structure DA = Access
       structure M  = IntmapF
+      structure A  = Access
+      structure O  = Option
       open FLINT
 in 
 
@@ -89,25 +93,48 @@ val cplv = LambdaVar.dupLvar
  * except for the renaming specified in the first argument.
  *   val copy: lvar M.intmap -> fundec -> fundec
  *)
-fun copy alpha le = let
-    fun substvar lv = ((M.lookup alpha lv) handle M.IntmapF => lv)
-    fun substval (VAR lv) = VAR(substvar lv)
-      | substval v = v
+fun copy ta alpha le = let
+
+    val tc_subst = LT.tc_nvar_subst_gen()
+    val lt_subst = LT.lt_nvar_subst_gen()
+
+    fun substvar alpha lv = ((M.lookup alpha lv) handle M.IntmapF => lv)
+    fun substval alpha (VAR lv) = VAR(substvar alpha lv)
+      | substval alpha v = v
     fun newv (lv,alpha) =
 	let val nlv = cplv lv in (nlv, M.add(alpha,lv,nlv)) end
     fun newvs (lvs,alpha) =
 	foldr (fn (lv,(lvs,alpha)) =>
 	       let val (nlv,nalpha) = newv(lv,alpha) in (nlv::lvs,nalpha) end)
 	      ([],alpha) lvs
-    fun cdcon (s,Access.EXN(Access.LVAR lv),lty) =
-	(s, Access.EXN(Access.LVAR(substvar lv)), lty)
-      | cdcon dc = dc
-    fun cpo (SOME{default,table},po,lty,tycs) =
-	(SOME{default=substvar default,
-	      table=map (fn (tycs,lv) => (tycs, substvar lv)) table},
-	 po,lty,tycs)
-      | cpo po = po
-in case le
+    fun cdcon ta alpha (s,ac,lty) =
+	(s,
+	 case ac
+	  of A.EXN(A.LVAR lv) => A.EXN(A.LVAR(substvar alpha lv))
+	   | _ => ac,
+	 lt_subst ta lty)
+    fun cpo ta alpha (dict,po,lty,tycs) =
+	(O.map (fn {default,table} =>
+		{default=substvar alpha default,
+		 table=map (fn (tycs,lv) =>
+			    (map (tc_subst ta) tycs, substvar alpha lv))
+			   table}) dict,
+	 po, lt_subst ta lty, map (tc_subst ta) tycs)
+    fun cfk ta {isrec=SOME(ltys,lk),known,inline,cconv} =
+	{isrec=SOME(map (lt_subst ta) ltys,lk),
+	 known=known, inline=inline, cconv=cconv}
+      | cfk _ fk = fk
+
+    fun crk ta (RK_VECTOR tyc) = RK_VECTOR(tc_subst ta tyc)
+      | crk _ rk = rk
+
+    fun copy' ta alpha le = let
+	val cpo = cpo ta alpha
+	val cdcon = cdcon ta alpha
+	val substvar = substvar alpha
+	val substval = substval alpha
+	val copy = copy' ta
+    in case le
     of RET vs => RET(map substval vs)
      | LET (lvs,le,body) =>
        let val nle = copy alpha le
@@ -117,7 +144,9 @@ in case le
      | FIX (fdecs,le) =>
        let fun cfun alpha ((fk,f,args,body):fundec,nf) =
 	       let val (nargs,nalpha) = newvs(map #1 args, alpha)
-	       in (fk, nf, ListPair.zip(nargs, (map #2 args)), copy nalpha body)
+	       in (cfk ta fk, nf,
+		   ListPair.zip(nargs, (map (lt_subst ta o #2) args)),
+		   copy nalpha body)
 	       end
 	   val (nfs, nalpha) = newvs(map #2 fdecs, alpha)
 	   val nfdecs = ListPair.map (cfun nalpha) (fdecs, nfs)
@@ -129,31 +158,34 @@ in case le
        (* don't forget to rename the tvar also *)
        let val (nlv,nalpha) = newv(lv,alpha)
 	   val (nargs,ialpha) = newvs(map #1 args, nalpha)
-       in TFN((nlv, ListPair.zip(nargs, map #2 args), copy ialpha body),
+	   val ita = (ListPair.map (fn (t,nt) => (t, LT.tcc_nvar nt))
+				   (map #1 args, nargs)) @ ta
+       in TFN((nlv, ListPair.zip(nargs, map #2 args), copy' ita ialpha body),
 		copy nalpha le)
        end
-     | TAPP (f,tycs) => TAPP(substval f, tycs)
+     | TAPP (f,tycs) => TAPP(substval f, map (tc_subst ta) tycs)
      | SWITCH (v,ac,arms,def) =>
        let fun carm (DATAcon(dc,tycs,lv),le) =
 	       let val (nlv,nalpha) = newv(lv, alpha)
-	       in (DATAcon(cdcon dc, tycs, nlv), copy nalpha le)
+	       in (DATAcon(cdcon dc, map (tc_subst ta) tycs, nlv),
+		   copy nalpha le)
 	       end
 	     | carm (con,le) = (con, copy alpha le)
        in SWITCH(substval v, ac, map carm arms, Option.map (copy alpha) def)
        end
      | CON (dc,tycs,v,lv,le) =>
        let val (nlv,nalpha) = newv(lv, alpha)
-       in CON(cdcon dc, tycs, substval v, nlv, copy nalpha le)
+       in CON(cdcon dc, map (tc_subst ta) tycs, substval v, nlv, copy nalpha le)
        end
      | RECORD (rk,vs,lv,le) => 
        let val (nlv,nalpha) = newv(lv, alpha)
-       in RECORD(rk, map substval vs, nlv, copy nalpha le)
+       in RECORD(crk ta rk, map substval vs, nlv, copy nalpha le)
        end
      | SELECT (v,i,lv,le) => 
        let val (nlv,nalpha) = newv(lv, alpha)
        in SELECT(substval v, i, nlv, copy nalpha le)
        end
-     | RAISE (v,ltys) => RAISE(substval v, ltys)
+     | RAISE (v,ltys) => RAISE(substval v, map (lt_subst ta) ltys)
      | HANDLE (le,v) => HANDLE(copy alpha le, substval v)
      | BRANCH (po,vs,le1,le2) =>
        BRANCH(cpo po, map substval vs, copy alpha le1, copy alpha le2)
@@ -161,6 +193,8 @@ in case le
        let val (nlv,nalpha) = newv(lv, alpha)
        in PRIMOP(cpo po, map substval vs, nlv, copy nalpha le)
        end
+    end
+in copy' ta alpha le
 end
 
 

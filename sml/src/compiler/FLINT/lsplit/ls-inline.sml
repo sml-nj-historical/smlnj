@@ -61,7 +61,7 @@ structure LSplitInline :> LSPLIT_INLINE = struct
 	      | build ((imp as (pid, tr)) :: rest, tyl, i, rvl) = let
 		    val lc = cnt tr
 		    fun copy fdec = let val F.FIX([fdec], F.RET[]) =
-			FU.copy IntmapF.empty (F.FIX([fdec], F.RET[]))
+			FU.copy [] IntmapF.empty (F.FIX([fdec], F.RET[]))
 		    in fdec end
 		in
 		    case Option.map copy (symLook pid) of

@@ -47,16 +47,18 @@ structure Control : CONTROL =
 	val liftLiterals= ref false
 	val sharewrap	= ref true
 	val maxargs	= ref 10
-	val phases	= ref ["lcontract", "fcontract",
+	val saytappinfo	= ref true	(* for typelifting statistics *)
+	val phases	= ref ["deb2names", "lcontract", "fcontract",
 			       "fixfix", "fcontract",
 			       "specialize", "fcontract",
+			       (* "names2deb", "typelift", "wellformed", "deb2names", *)
 			       "loopify", "fcontract",
-			       "wrap", "fixfix", "fcontract",
+			       "wrap",
 			       "reify", "fixfix", "fcontract"]
-
+			      
 	(* only for temporary debugging *)
 	val misc	= ref 0
-
+			      
 	(* FLINT internal type-checking controls *)
 	val check	= ref true
 	val checkDatatypes = ref false	(* loops on the new cm.sml *)
@@ -72,8 +74,8 @@ structure Control : CONTROL =
       val closureprint = ref false
       val closureStrategy = ref 0
       val lambdaopt = ref true
-      val cpsopt = ref ["first_contract", "eta", "uncurry", "etasplit",
-			"cycle_expand", "eta", "last_contract"]
+      val cpsopt = ref [(* "first_contract", "eta", "uncurry", "etasplit",
+			"cycle_expand", *) "eta", "last_contract"]
       val rounds = ref 10
       val path = ref false
       val betacontract = ref true

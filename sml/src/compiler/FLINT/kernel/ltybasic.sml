@@ -153,8 +153,7 @@ fun tk_print (x : tkind) =
 
 fun tc_print (x : tyc) =
   let fun g (LK.TC_VAR(i,j)) = "TV(" ^ (DI.di_print i) ^ "," ^ (itos j) ^ ")"
-        | g (LK.TC_NVAR(v,d,i)) = "NTV(v" ^ (itos v) ^ "," ^ (itos d) 
-                               ^ "," ^ (itos i) ^ ")"
+        | g (LK.TC_NVAR v) = "NTV(v" ^ (itos v) ^ ")"
         | g (LK.TC_PRIM pt) = PT.pt_print pt
         | g (LK.TC_FN(ks, t)) = 
               "(\\[" ^ plist(tk_print, ks) ^ "]." ^ (tc_print t) ^ ")"

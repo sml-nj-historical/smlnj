@@ -91,7 +91,7 @@ struct
     val printTyc = say o LT.tc_print
     val printLty = say o LT.lt_print
     fun printTvTk (tv:LT.tvar,tk) = 
-	say (LT.tk_print tk)
+	say ((LV.lvarName tv)^":"^(LT.tk_print tk))
 
     val parenCommaSep = ("(", ",", ")")
     val printValList = PU.printClosedSequence ("[",",","]") printSval

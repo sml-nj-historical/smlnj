@@ -431,7 +431,7 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
       | tyc #"B" = R.int (fn v => 
                      R.int (fn d => 
                        R.int (fn i => 
-                         %Utyc (LT.tcc_nvar(v, DI.di_fromint d, i)))))
+                         %Utyc (LT.tcc_nvar v))))
       | tyc #"C" = R.int (fn k => %Utyc (LT.tcc_prim (PT.pt_fromint k)))
       | tyc #"D" = ?tkindList (fn UtkindList ks => 
                       ?tyc (fn Utyc tc => %Utyc(LT.tcc_fn(ks, tc))))

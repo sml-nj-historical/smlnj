@@ -1,3 +1,17 @@
+1998-11-21  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* reps/rttype.sml: changes from Bratin.
+	(rtLexp): define the NVAR case (return the tvar as an lvar).
+
+	* opt/[fl]contract.sml: removed the restriction on inlining at the same
+	  deBruijn depth.
+
+	* opt/lift.sml: new file for typelifting.
+
+	* flint/flintutil.sml (copy): added tvar renaming.
+
+	* flint/tvarcvt.sml: new file for named tvar <-> deBruijn conversions.
+
 1998-11-19  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* opt/loopify.sml: new file

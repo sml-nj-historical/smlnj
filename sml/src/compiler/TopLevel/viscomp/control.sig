@@ -39,6 +39,7 @@ sig
     val sharewrap	: bool ref
     val maxargs		: int ref	(* to put a cap on arity raising *)
     val phases		: string list ref
+    val saytappinfo	: bool ref	(* for verbose typelifting *)
 
     (* only for temporary debugging *)
     val misc		: int ref

@@ -405,7 +405,7 @@ end
 
 val uselexp = census
 fun copylexp alpha le =
-    let val nle = FU.copy alpha le
+    let val nle = FU.copy [] alpha le
     in uselexp nle; nle
     end
 

@@ -177,6 +177,7 @@ FLINT/flint/flint.sml
 FLINT/flint/flintutil.sml
 FLINT/flint/ppflint.sig
 FLINT/flint/ppflint.sml
+FLINT/flint/tvarcvt.sml
 FLINT/kernel/debindex.sig
 FLINT/kernel/debindex.sml
 FLINT/kernel/lambdavar.sig
@@ -204,6 +205,7 @@ FLINT/opt/lcontract.sml
 FLINT/opt/recover.sml
 FLINT/opt/specialize.sml
 FLINT/opt/loopify.sml
+FLINT/opt/lift.sml
 FLINT/plambda/chkplexp.sml
 FLINT/plambda/flintnm.sml
 FLINT/plambda/pflatten.sig

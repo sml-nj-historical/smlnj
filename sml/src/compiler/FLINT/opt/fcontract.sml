@@ -200,8 +200,8 @@ val cplv = LambdaVar.dupLvar
 
 datatype sval
   = Val    of F.value			(* F.value should never be F.VAR lv *)
-  | Fun    of F.lvar * F.lexp * (F.lvar * F.lty) list * F.fkind * DI.depth
-  | TFun   of F.lvar * F.lexp * (F.tvar * F.tkind) list * DI.depth
+  | Fun    of F.lvar * F.lexp * (F.lvar * F.lty) list * F.fkind
+  | TFun   of F.lvar * F.lexp * (F.tvar * F.tkind) list
   | Record of F.lvar * sval list
   | Con    of F.lvar * sval * F.dcon * F.tyc list
   | Decon  of F.lvar * sval * F.dcon * F.tyc list
@@ -266,9 +266,9 @@ fun contract (fdec as (_,f,_,_), counter) = let
  * ifs (inlined functions): records which functions we're currently inlining
  *     in order to detect loops
  * m: is a map lvars to their defining expressions (svals) *)
-fun cexp (cfg as (d,od)) ifs m le cont = let
+fun cexp ifs m le cont = let
 
-    val loop = cexp cfg ifs
+    val loop = cexp ifs
 
     fun used lv = (C.usenb(C.get lv) > 0)
 		      handle x =>
@@ -318,7 +318,7 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 	in case lookup m lv
 	    of Var {1=nlv,...}	 => ()
 	     | Val v		 => ()
-	     | Fun (lv,le,args,_,_) =>
+	     | Fun (lv,le,args,_) =>
 	       C.unuselexp undertake
 			   (F.LET(map #1 args,
 				  F.RET (map (fn _ => F.INT 0) args),
@@ -380,9 +380,8 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
      *)
     fun inline ifs (f,vs) =
 	case ((val2sval m f) handle x => raise x)
-	 of Fun(g,body,args,{inline,...},od) =>
-	    (if d <> od then (NONE, ifs)
-	     else if ((C.usenb(C.get g))handle x => raise x) = 1 andalso not(S.member ifs g) then
+	 of Fun(g,body,args,{inline,...}) =>
+	    (if ((C.usenb(C.get g))handle x => raise x) = 1 andalso not(S.member ifs g) then
 							 
 		 (* simple inlining:  we should copy the body and then
 		  * kill the function, but instead we just move the body
@@ -391,7 +390,7 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 		  * see comments at the begining of this file and in cfun *)
 		 (click_simpleinline();
 		  ignore(C.unuse true (C.get g));
-		  (SOME(F.LET(map #1 args, F.RET vs, body), od), ifs))
+		  (SOME(F.LET(map #1 args, F.RET vs, body)), ifs))
 		 
 	     (* aggressive inlining (but hopefully safe).  We allow
 	      * inlining for mutually recursive functions (isrec)
@@ -417,7 +416,7 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 		     (*  say ("\nInlining "^(C.LVarString g)); *)
 		     (app (unuseval m) vs) handle x => raise x;
 		     unusecall m g;
-		     (SOME(nle, od),
+		     (SOME nle,
 		      (* gross hack: to prevent further unrolling,
 		       * I pretend that the rest is not inside the body *)
 		      if inline = F.IH_UNROLL
@@ -505,7 +504,7 @@ in
 			    addbind(m, lv, Var(lv, SOME lty))
 			val nm = foldl addnobind m args
 			(* contract the body and create the resulting fundec *)
-			val nbody = cexp cfg (S.add(f, ifs)) nm body #2
+			val nbody = cexp (S.add(f, ifs)) nm body #2
 			(* if inlining took place, the body might be completely
 			 * changed (read: bigger), so we have to reset the
 			 * `inline' bit *)
@@ -520,7 +519,7 @@ in
 			 * gets inlined afterwards, the counts will reflect the
 			 * new contracted code while we'll be working on the
 			 * the old uncontracted code *)
-			val nm = addbind(m, f, Fun(f, nbody, args, nfk, od))
+			val nm = addbind(m, f, Fun(f, nbody, args, nfk))
 		    in cfun(nm, fs, (nfk, f, args, nbody)::acc)
 			   (*  before say ("\nExiting "^(C.LVarString f)) *)
 		    end
@@ -617,7 +616,7 @@ in
 
 	    (* register the new bindings (uncontracted for now) *)
 	    val nm = foldl (fn (fdec as (fk,f,args,body),m) =>
-			    addbind(m, f, Fun(f, body, args, fk, od)))
+			    addbind(m, f, Fun(f, body, args, fk)))
 			   m fs
 	    (* check for eta redexes *)
 	    val (nm,fs,_) = foldl ceta (nm,[],[]) fs
@@ -648,15 +647,15 @@ in
       | F.APP (f,vs) =>
 	let val nvs = ((map substval vs) handle x => raise x)
 	in case inline ifs (f, nvs)
-	    of (SOME(le,od),nifs) => cexp (d,od) nifs m le cont
+	    of (SOME le,nifs) => cexp nifs m le cont
 	     | (NONE,_) => cont(m,F.APP((substval f) handle x => raise x, nvs))
 	end
 	    
       | F.TFN ((f,args,body),le) =>
 	let val fi = C.get f
 	in if C.dead fi then (click_deadlexp(); loop m le cont) else
-	    let val nbody = cexp (DI.next d, DI.next od) ifs m body #2
-		val nm = addbind(m, f, TFun(f, nbody, args, od))
+	    let val nbody = cexp ifs m body #2
+		val nm = addbind(m, f, TFun(f, nbody, args))
 		val nle = loop nm le cont
 	    in
 		if C.dead fi then nle else F.TFN((f, args, nbody), nle)
@@ -870,7 +869,7 @@ end
 		 
 in
     (*  C.collect fdec; *)
-    case cexp (DI.top,DI.top) S.empty
+    case cexp S.empty
 	      M.empty (F.FIX([fdec], F.RET[F.VAR f])) #2
      of F.FIX([fdec], F.RET[F.VAR f]) => fdec
       | fdec => bug "invalid return fundec"
