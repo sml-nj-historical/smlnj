@@ -1,4 +1,3 @@
-
 (* alpha32CG.sml --- 32 bit DEC alpha code generator
  *
  * COPYRIGHT (c) 1996 Bell Laboratories.
@@ -6,18 +5,17 @@
  *)
 functor Alpha32CG(structure Emitter : EMITTER_NEW
 		    where I = Alpha32Instr
-		    where P = Alpha32PseudoOps) : 
-  sig
-    structure MLTreeGen : CPSGEN 
-    val finish : unit -> unit
-  end = 
+		    where P = Alpha32PseudoOps) : MACHINE_GEN = 
 struct
 
   structure I = Alpha32Instr
   structure C = Alpha32Cells
   structure R = Alpha32CpsRegs
-  structure MLTree = Alpha32MLTree
   structure B = Alpha32MLTree.BNames
+  structure F = Alpha32FlowGraph
+  structure Asm	     = Alpha32AsmEmitter
+  structure MLTree   = Alpha32MLTree
+  structure MachSpec = Alpha32Spec
   structure CG = Control.CG
 
   fun error msg = ErrorMsg.impossible ("Alpha32CG." ^ msg)
@@ -27,13 +25,14 @@ struct
   structure Alpha32Rewrite = Alpha32Rewrite(Alpha32Instr)
 
   (* properties of instruction set *)
-  structure Alpha32Props = 
+  structure P = 
     Alpha32Props(structure Alpha32Instr= I
 		 structure Shuffle=Alpha32Shuffle)
 
+
   (* Label backpatching and basic block scheduling *)
   structure BBSched =
-    BBSched2(structure Flowgraph = Alpha32FlowGraph
+    BBSched2(structure Flowgraph = F
 	     structure Jumps = 
 	       Alpha32Jumps(structure Instr=Alpha32Instr
 			    structure Shuffle=Alpha32Shuffle)
@@ -41,13 +40,14 @@ struct
 
   (* flow graph pretty printing routine *)
   structure PrintFlowGraph = 
-     PrintFlowGraphFn (structure FlowGraph = Alpha32FlowGraph
-                       structure Emitter   = Alpha32AsmEmitter)
+     PrintFlowGraphFn (structure FlowGraph = F
+                       structure Emitter   = Asm)
 
   (* register allocation *)
   structure RegAllocation : 
     sig
-      val ra : Alpha32FlowGraph.cluster -> Alpha32FlowGraph.cluster
+      val ra : F.cluster -> F.cluster
+      val cp : F.cluster -> F.cluster
     end =
   struct
 
@@ -150,10 +150,10 @@ struct
     structure FR = GetReg(val nRegs=32 val available=R.availF)
 
     structure Alpha32Ra = 
-       Alpha32RegAlloc(structure P = Alpha32Props
+       Alpha32RegAlloc(structure P = P
 		       structure I = Alpha32Instr
-		       structure F = Alpha32FlowGraph
-		       structure Asm = Alpha32AsmEmitter)
+		       structure F = F
+		       structure Asm = Asm)
 
     (* register allocation for general purpose registers *)
     structure IntRa = 
@@ -194,6 +194,7 @@ struct
     val iRegAlloc = IntRa.ra IntRa.REGISTER_ALLOCATION
     val fRegAlloc = FloatRa.ra FloatRa.REGISTER_ALLOCATION
     val iCopyProp = IntRa.ra IntRa.COPY_PROPAGATION
+    val fCopyProp = FloatRa.ra FloatRa.COPY_PROPAGATION
 
     fun ra cluster = let
       val pg = PrintFlowGraph.printCluster TextIO.stdOut
@@ -201,38 +202,18 @@ struct
       fun floatRa cluster = (FR.reset(); fRegAlloc cluster)
     in spillInit(); (floatRa o intRa) cluster
     end
+    val cp = fCopyProp o iCopyProp
   end (* RegAllocation *)
+  
+  val optimizerHook : (F.cluster->F.cluster) option ref = ref NONE
 
-  fun codegen cluster = let
-    fun phaseToMsg(CG.AFTER_INSTR_SEL) = "After instruction selection"
-      | phaseToMsg(CG.AFTER_RA) = "After register allocation"
-      | phaseToMsg(CG.AFTER_SCHED) = "After instruction scheduling"
-      | phaseToMsg _ = error "phaseToMsg"
-    val printGraph = PrintFlowGraph.printCluster (!CG.printFlowgraphStream)
-    fun doPhase (phase, f) cluster = let
-      fun show(CG.PHASES(ph1, ph2)) = show ph1 orelse show ph2
-	| show(ph) = (ph = phase)
-      val newCluster = f cluster
-    in
-      if show (!CG.printFlowgraph) then
-	printGraph (phaseToMsg phase) newCluster 
-      else ();
-      newCluster
-    end
-    val instrSel = doPhase (CG.AFTER_INSTR_SEL, fn x => x)
-    val regAlloc = doPhase (CG.AFTER_RA, RegAllocation.ra)
-  in
-    case !CG.printFlowgraph 
-    of CG.NO_PHASE => (BBSched.bbsched o RegAllocation.ra) cluster
-     | phase => (BBSched.bbsched o regAlloc o instrSel) cluster
-  end
-
-  (* primitives for generation of DEC alpha instruction flowgraphs *)
+ (* primitives for generation of DEC alpha instruction flowgraphs *)
   structure FlowGraphGen =
-     FlowGraphGen(structure Flowgraph = Alpha32FlowGraph
-		  structure InsnProps = Alpha32Props
+     FlowGraphGen(structure Flowgraph = F
+		  structure InsnProps = P
 		  structure MLTree = MLTree
-		  val codegen = codegen)
+		  val optimize = optimizerHook
+		  val output = BBSched.bbsched o RegAllocation.ra)
 
   (* compilation of CPS to MLRISC *)
   structure MLTreeGen = 
@@ -247,12 +228,17 @@ struct
 	       structure ConstType=Alpha32Const
 	       structure PseudoOp=Alpha32PseudoOps)
 
+  val copyProp = RegAllocation.cp
+  val codegen = MLTreeGen.codegen
   val finish = BBSched.finish
 end
 
 
 (*
  * $Log: alpha32CG.sml,v $
+ * Revision 1.5  1998/10/06 13:59:56  george
+ * Flowgraph has been removed from modules that do not need it -- [leunga]
+ *
  * Revision 1.4  1998/07/25 03:05:32  george
  *   changes to support block names in MLRISC
  *

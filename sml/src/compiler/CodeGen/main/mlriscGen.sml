@@ -4,29 +4,33 @@
  *
  *)
 
+signature MLRISCGEN = sig
+  val codegen : 
+    CPS.function list * (CPS.lvar -> (int * int)) * ErrorMsg.complainer -> unit
+end
+
 functor MLRiscGen
-  (structure MachineSpec: MACH_SPEC
-   structure ConstType  : CONST_TYPE
-   structure PseudoOp   : SMLNJ_PSEUDO_OP_TYPE
-   structure C          : CPSREGS
+ (  structure MachineSpec: MACH_SPEC
+    structure ConstType  : CONST_TYPE
+    structure PseudoOp   : SMLNJ_PSEUDO_OP_TYPE
+    structure C          : CPSREGS
        where type T.Constant.const = ConstType.const
        where T.Region = CPSRegions
        and T.BNames = FunctionNames 
        and T.PseudoOp = PseudoOp
-   structure Cells	: CELLS
-   structure MLTreeComp : MLTREECOMP 
+    structure Cells	: CELLS
+    structure MLTreeComp : MLTREECOMP 
        where T = C.T
-  ) : CPSGEN =
+  ): MLRISCGEN =
 struct
   structure M : MLTREE = C.T
   structure P = CPS.P
   structure LE = LabelExp
   structure R = CPSRegions
   structure CG = Control.CG
+  structure MS = MachineSpec
 
-  structure MachSpec = MachineSpec
-
-  structure D = MachSpec.ObjDesc
+  structure D = MS.ObjDesc
   val dtoi = LargeWord.toInt	(* convert object descriptor to int *)
 
   structure CallGc = 
@@ -502,7 +506,7 @@ struct
 
 	(*** SELECT ***)
 	| gen(SELECT(i,INT k,x,t,e), hp) =
-           let val unboxedfloat = MachSpec.unboxedFloats
+           let val unboxedfloat = MS.unboxedFloats
                fun isFlt t = 
                  if unboxedfloat then (case t of FLTt => true | _ => false)
                  else false
@@ -560,7 +564,7 @@ struct
 	       end
 	     | Frag.KNOWNCHK(r as ref(Frag.UNGEN(f,vl,tl,e))) => let
 	         val formals = 
-		   if MachSpec.fixedArgPassing then ArgP.fixed tl
+		   if MS.fixedArgPassing then ArgP.fixed tl
 		   else ArgP.known tl
 		 val lab = functionLabel f
 	       in
@@ -1133,6 +1137,10 @@ end (* MLRiscGen *)
 
 (*
  * $Log: mlriscGen.sml,v $
+ * Revision 1.11  1998/11/23 20:09:42  jhr
+ *   Fixed length field of raw64 objects (should be in words); new raw64Subscript
+ *   primop.
+ *
  * Revision 1.10  1998/11/18 03:53:11  jhr
  *  New array representations.
  *

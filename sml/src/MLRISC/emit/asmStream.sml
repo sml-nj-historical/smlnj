@@ -8,7 +8,12 @@
  *             Typically asmOutStream is rebound to a file.
  *)
 
-structure AsmStream = struct
+signature ASM_STREAM = sig
+  val asmOutStream : TextIO.outstream ref
+  val withStream : TextIO.outstream -> ('a -> 'b) -> 'a -> 'b
+end
+
+structure AsmStream : ASM_STREAM = struct
   val asmOutStream = ref TextIO.stdOut
   fun withStream stream body x = let
      val s = !asmOutStream 
@@ -23,6 +28,9 @@ end
 
 (*
  * $Log: asmStream.sml,v $
+ * Revision 1.1.1.1  1998/11/16 21:48:19  george
+ *  Version 110.10
+ *
  * Revision 1.2  1998/10/06 14:07:43  george
  * Flowgraph has been removed from modules that do not need it.
  * Changes to compiler/CodeGen/*/*{MLTree,CG}.sml necessary.

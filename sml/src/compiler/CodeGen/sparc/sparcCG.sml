@@ -1,9 +1,7 @@
-functor SparcCG(structure Emitter : EMITTER_NEW
-		 where I = SparcInstr and P = SparcPseudoOps) :
-  sig
-    structure MLTreeGen : CPSGEN 
-    val finish : unit -> unit
-  end = 
+functor SparcCG
+  (  structure Emitter : EMITTER_NEW
+	 where I = SparcInstr and P = SparcPseudoOps
+   ) : MACHINE_GEN = 
 struct
   structure I = SparcInstr
   structure C = SparcCells
@@ -11,41 +9,45 @@ struct
   structure CG = Control.CG
   structure B = SparcMLTree.BNames
   structure Region = I.Region
+  structure MachSpec = SparcSpec
+  structure Asm = SparcAsmEmitter
 
-  fun error msg = ErrorMsg.impossible ("SparcCG." ^ msg)
+  structure F = SparcFlowGraph
+  (* properties of instruction set *)
+  structure P = 
+    SparcProps(structure SparcInstr = I 
+	       structure Shuffle = SparcShuffle)
 
   structure SparcRewrite = SparcRewrite(SparcInstr)
 
-  (* properties of instruction set *)
-  structure SparcProps = 
-    SparcProps(structure SparcInstr = I 
-	       structure Shuffle = SparcShuffle)
+  fun error msg = ErrorMsg.impossible ("SparcCG." ^ msg)
 
   
   (* Label backpatching and basic block scheduling *)
   structure SparcJumps =
      SparcJumps(structure Instr=SparcInstr
    	        structure Shuffle=SparcShuffle)
+
   structure BBSched =
       SpanDependencyResolution(
-         structure Flowgraph = SparcFlowGraph
+         structure Flowgraph = F
 	 structure Jumps = SparcJumps
 	 structure Emitter = Emitter
          structure DelaySlot = SparcDelaySlotProps(structure I=SparcInstr
-                                                   structure P=SparcProps)
-         structure Props = SparcProps
+                                                   structure P=P)
+         structure Props = P
       )
 
   (* flow graph pretty printing routine *)
   structure PrintFlowGraph = 
-     PrintFlowGraphFn (structure FlowGraph = SparcFlowGraph
-                       structure Emitter   = SparcAsmEmitter)
+     PrintFlowGraphFn (structure FlowGraph = F
+                       structure Emitter   = Asm)
 
   (* register allocation *)
   structure RegAllocation : 
     sig
-      val ra : SparcFlowGraph.cluster -> SparcFlowGraph.cluster
-      val cp : SparcFlowGraph.cluster -> SparcFlowGraph.cluster
+      val ra : F.cluster -> F.cluster
+      val cp : F.cluster -> F.cluster
     end =
   struct
    (* spill area management *)
@@ -179,10 +181,10 @@ struct
     structure FR = GetReg(val nRegs = 32 val available = R.availF)
 
     structure SparcRa = 
-      SparcRegAlloc(structure P = SparcProps
+      SparcRegAlloc(structure P = P
 		    structure I = SparcInstr
-		    structure F = SparcFlowGraph
-		    structure Asm = SparcAsmEmitter)
+		    structure F = F
+		    structure Asm = Asm)
 
     (* register allocation for general purpose registers *)
     structure IntRa = 
@@ -234,46 +236,24 @@ struct
 
 (*
   structure Opt =
-      MLRISC_OptimizerF(structure F   = SparcFlowGraph
+      MLRISC_OptimizerF(structure F   = F
                         structure Asm = SparcAsmEmitter
-                        structure P    = SparcProps
+                        structure P    = P
                         structure Ctrl = MLRISC_Control
                         val copy_propagation    = RegAllocation.cp
                         val register_allocation = RegAllocation.ra
                         val emit_code           = BBSched.bbsched
                        )
 *)
-
- fun codegen cluster = let
-    fun phaseToMsg(CG.AFTER_INSTR_SEL) = "After instruction selection"
-      | phaseToMsg(CG.AFTER_RA) = "After register allocation"
-      | phaseToMsg(CG.AFTER_SCHED) = "After instruction scheduling"
-      | phaseToMsg _ = error "phaseToMsg"
-    val printGraph = PrintFlowGraph.printCluster (!CG.printFlowgraphStream)
-    fun doPhase (phase, f) cluster = let
-      fun show(CG.PHASES(ph1, ph2)) = show ph1 orelse show ph2
-        | show(ph) = (ph = phase)
-      val newCluster = f cluster
-    in
-      if show (!CG.printFlowgraph) then
-        printGraph (phaseToMsg phase) newCluster
-      else ();
-      newCluster
-    end
-    val instrSel = doPhase (CG.AFTER_INSTR_SEL, fn x => x)
-    val regAlloc = doPhase (CG.AFTER_RA, RegAllocation.ra)
-  in
-    case !CG.printFlowgraph
-    of CG.NO_PHASE => (BBSched.bbsched o RegAllocation.ra) cluster
-     | phase => (BBSched.bbsched o regAlloc o instrSel) cluster
-  end
+  val optimizerHook : (F.cluster->F.cluster) option ref = ref NONE
 
   (* primitives for generation of SPARC instruction flowgraphs *)
   structure FlowGraphGen = 
-     FlowGraphGen(structure Flowgraph = SparcFlowGraph
-		  structure InsnProps = SparcProps
+     FlowGraphGen(structure Flowgraph = F
+		  structure InsnProps = P
 		  structure MLTree = SparcMLTree
-		  val codegen = codegen)
+		  val optimize = optimizerHook
+		  val output = BBSched.bbsched o RegAllocation.ra)
 
   (* compilation of CPS to MLRISC *)
   structure MLTreeGen = 
@@ -291,11 +271,16 @@ struct
 	       structure ConstType=SparcConst
 	       structure PseudoOp=SparcPseudoOps)
 
+  val copyProp = RegAllocation.cp
+  val codegen = MLTreeGen.codegen
   val finish = BBSched.finish
 end
 
 (*
  * $Log: sparcCG.sml,v $
+ * Revision 1.2  1998/10/06 14:00:01  george
+ * Flowgraph has been removed from modules that do not need it -- [leunga]
+ *
  * Revision 1.1.1.1  1998/08/05 19:37:50  george
  *   Release 110.7.4
  *
