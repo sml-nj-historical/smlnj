@@ -496,8 +496,8 @@ struct
         | stmt(T.JMP(ctrl,T.LABEL(LE.LABEL l),_),an) =
             mark(I.Bicc{b=I.BA,a=true,label=l,nop=false},an)
         | stmt(T.JMP(ctrl,e,labs),an) = jmp(e,labs,an)
-        | stmt(T.CALL(e,flow,def,use,cdef,cuse,mem),an) = 
-            call(e,flow,def,use,mem,an)
+        | stmt(T.CALL{funct,targets,defs,uses,cdefs,cuses,region},an) = 
+            call(funct,targets,defs,uses,region,an)
         | stmt(T.RET _,an) = mark(I.RET{leaf=not registerwindow,nop=true},an)
         | stmt(T.STORE(8,a,d,mem),an)   = store(I.STB,a,d,mem,an)
         | stmt(T.STORE(16,a,d,mem),an)  = store(I.STH,a,d,mem,an)

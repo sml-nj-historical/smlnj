@@ -21,7 +21,7 @@ struct
 
   (* should change the return pointer to 2 to follow HPUX conventions *)
   fun doCall({stm,rexp,emit}:reduce, 
-             T.CALL(exp, flow, def, use, cdef, cuse, mem)) = 
+             T.CALL{funct, targets, defs, uses, cdefs, cuses, region}) = 
   let
         val addCCreg = C.addCell C.CC
 	fun live([], acc) = acc
@@ -31,10 +31,10 @@ struct
 	  | live(T.CCR(T.FCC(_,c))::regs, acc) = live(regs, addCCreg(c, acc))
 	  | live(_::regs, acc) = live(regs, acc)
 	val returnPtr = 31
-	val defs = C.addReg(returnPtr, live(def, C.empty))
-	val uses = live(use, C.empty)
-      in emit(I.BLE{b=rexp exp, d=I.IMMED 0, sr=5, t=returnPtr, 
-                    defs=defs, uses=uses, mem=mem})
+	val defs = C.addReg(returnPtr, live(defs, C.empty))
+	val uses = live(uses, C.empty)
+      in emit(I.BLE{b=rexp funct, d=I.IMMED 0, sr=5, t=returnPtr, 
+                    defs=defs, uses=uses, mem=region})
       end
     | doCall _ = error "doCall"
 

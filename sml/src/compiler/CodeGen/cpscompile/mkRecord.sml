@@ -31,14 +31,7 @@ struct
     | pi(x,i) = R.PT.pi(x,i)
 
   fun record {desc, fields, mem, hp, emit, markPTR, markComp} = let
-    fun getfield(r, CPS.SELp(n, CPS.OFFp 0), mem) = 
-        let val mem = pi(mem,n)
-        in  markComp(T.LOAD(ity, indexEA(r, n), mem)) end
-      | getfield(r, CPS.SELp(n, CPS.OFFp off), mem) = 
-        let val mem = pi(mem,n)
-        in  T.ADD(addrTy,markComp(T.LOAD(ity, indexEA(r, n), mem)),T.LI(off+4))
-        end
-      | getfield(r, CPS.SELp(n, p), mem) = 
+    fun getfield(r, CPS.SELp(n, p), mem) = 
         let val mem = pi(mem,n)
         in  getfield(markPTR(T.LOAD(ity, indexEA(r, n), mem)), p, mem) end
       | getfield(r, CPS.OFFp 0, _) = r
@@ -46,9 +39,11 @@ struct
 
     fun storeFields ([], _, _, _) = ()
       | storeFields ((v, p)::rest, n, mem, i) = 
-	 (emit(T.STORE(ity, T.ADD(addrTy, C.allocptr, T.LI n), 
-               getfield(v,p,mem), pi(mem,i)));
-	  storeFields(rest, n + 4, mem, i+1))
+        let val elem = pi(mem, i)
+        in  emit(T.STORE(ity, T.ADD(addrTy, C.allocptr, T.LI n), 
+                 getfield(v, p, elem), elem));
+	    storeFields(rest, n + 4, mem, i+1)
+        end
   in
     emit(T.STORE(ity, ea(C.allocptr, hp), desc, pi(mem,~1)));
     storeFields(fields, hp+4, mem, 0);
@@ -72,9 +67,11 @@ struct
 
     fun fstoreFields ([], _, _, _) = ()
       | fstoreFields ((v, p)::rest, n, mem, i) =
-	  (emit(T.FSTORE(fty, 
-                T.ADD(addrTy,C.allocptr,T.LI n),fgetfield(v,p,mem), pi(mem,i)));
-	   fstoreFields(rest, n + 8, mem, i+2))
+        let val elem = pi(mem, i)
+        in  emit(T.FSTORE(fty, T.ADD(addrTy, C.allocptr, T.LI n),
+                          fgetfield(v, p, elem), elem));
+	    fstoreFields(rest, n + 8, mem, i+2)
+        end
   in
     emit(T.STORE(ity, ea(C.allocptr, hp), desc, pi(mem,~1)));
     fstoreFields(fields, hp+4, mem, 0);

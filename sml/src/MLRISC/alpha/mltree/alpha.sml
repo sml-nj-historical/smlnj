@@ -1453,7 +1453,8 @@ struct
           | T.JMP(ctrl,T.LABEL(LE.LABEL lab),_) => goto(lab,an)
           | T.JMP(ctrl,e,labs) => mark(I.JMPL({r=zeroR,b=expr e,d=0},labs),an)
           | T.BCC(ctrl,cc,lab) => branch(cc,lab,an)
-          | T.CALL(e,flow,def,use,cdef,cuse,mem) => call(e,flow,def,use,mem,an)
+          | T.CALL{funct,targets,defs,uses,cdefs,cuses,region} => 
+              call(funct,targets,defs,uses,region,an)
           | T.RET _ => mark(I.RET{r=zeroR,b=26,d=0},an)
           | T.STORE(8,ea,data,mem) => store8(ea,data,mem,an)
           | T.STORE(16,ea,data,mem) => store16(ea,data,mem,an)

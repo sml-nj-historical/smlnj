@@ -101,9 +101,10 @@ struct
                                      | SOME cc => T.CCR cc::use
    in  val gcCall =
           T.ANNOTATION(
-          T.CALL(
-            T.LOAD(32, T.ADD(addrTy,C.stackptr,T.LI MS.startgcOffset), R.stack),
-                 [],  def, use, [], [], R.stack),
+          T.CALL{
+            funct=T.LOAD(32, T.ADD(addrTy,C.stackptr,T.LI MS.startgcOffset), 
+                        R.stack),
+            targets=[], defs=def, uses=use, cdefs=[], cuses=[], region=R.stack},
           #create MLRiscAnnotations.COMMENT "call gc")
 
        val ZERO_FREQ = #create MLRiscAnnotations.EXECUTION_FREQ 0

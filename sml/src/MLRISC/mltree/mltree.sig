@@ -58,8 +58,9 @@ signature MLTREE = sig
       (* control flow *)
     | JMP     of ctrls * rexp * controlflow (* rtl *)
     | BCC     of ctrls * ccexp * Label.label
-    | CALL    of rexp * controlflow * mlrisc list * mlrisc list * 
-                 ctrls * ctrls * Region.region (* rtl *)
+    | CALL    of {funct:rexp, targets:controlflow,
+                  defs:mlrisc list, uses:mlrisc list,
+                  cdefs:ctrls, cuses: ctrls, region: Region.region} (* rtl *)
     | RET     of ctrls * controlflow (* rtl *)
     | JOIN    of ctrls
     | IF      of ctrls * ccexp * stm * stm   (* rtl *)

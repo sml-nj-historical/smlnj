@@ -34,8 +34,12 @@ struct
 
    exception Precison
 
-   fun simplify {addressWidth} = 
-   let 
+   (*
+    * Constant folding code
+    * 
+    * This should be rewritten to take advantage of IntInf.
+    *)
+
       (* Get constant value *)
    fun valOf(T.LI i) = CONST(W.fromInt i)
      | valOf(T.LI32 w) = CONST w
@@ -93,26 +97,26 @@ struct
          )
        | _ => e
 
-   fun sll x = compute (false,fn (a,b) => W.<<(a,Word.fromInt(W.toIntX(b)))) x
-   fun srl x = compute (false,fn (a,b) => W.>>(a,Word.fromInt(W.toIntX(b)))) x
-   fun sra x = compute (true,fn (a,b) => W.~>>(a,Word.fromInt(W.toIntX(b)))) x
-   fun andb x = compute (false,W.andb) x
-   fun orb  x = compute (false,W.orb) x
-   fun xorb x = compute (false,W.xorb) x
-   fun notb x = computeUnary (false,W.notb) x
-   fun add  x = compute (true,W.+) x
-   fun addt x = computeTrap (Int.+) x
-   fun sub  x = compute (true,W.-) x
-   fun subt x = computeTrap (Int.-) x
-   fun muls x = compute (true,W.* ) x
-   fun mulu x = compute (false,W.* ) x
-   fun mult x = computeTrap (Int.* ) x
-   fun divs x = compute (true,W.div) x
-   fun divu x = compute (false,W.div) x
-   fun divt x = computeTrap (Int.div) x
-   fun rems x = compute (true,W.mod) x
-   fun remu x = compute (false,W.mod) x
-   fun remt x = computeTrap (Int.mod) x
+   val sll = compute (false,fn (a,b) => W.<<(a,Word.fromInt(W.toIntX(b))))
+   val srl = compute (false,fn (a,b) => W.>>(a,Word.fromInt(W.toIntX(b))))
+   val sra = compute (true,fn (a,b) => W.~>>(a,Word.fromInt(W.toIntX(b))))
+   val andb = compute (false,W.andb)
+   val orb  = compute (false,W.orb)
+   val xorb = compute (false,W.xorb)
+   val notb = computeUnary (false,W.notb)
+   val add  = compute (true,W.+)
+   val addt = computeTrap (Int.+)
+   val sub  = compute (true,W.-)
+   val subt = computeTrap (Int.-)
+   val muls = compute (true,W.* )
+   val mulu = compute (false,W.* )
+   val mult = computeTrap (Int.* )
+   val divs = compute (true,W.div)
+   val divu = compute (false,W.div)
+   val divt = computeTrap (Int.div)
+   val rems = compute (true,W.mod)
+   val remu = compute (false,W.mod)
+   val remt = computeTrap (Int.mod)
 
       (* Evaluate an integer comparison *)
    fun cmp (signed,rel) (ty,a,b) = 
@@ -128,14 +132,14 @@ struct
        else rel(a,b)
    end
 
-   fun gt  x = cmp (true,W.>) x
-   fun lt  x = cmp (true,W.<) x
-   fun ge  x = cmp (true,W.>=) x
-   fun le  x = cmp (true,W.<=) x
-   fun gtu x = cmp (false,W.>) x
-   fun ltu x = cmp (false,W.<) x
-   fun geu x = cmp (false,W.>=) x
-   fun leu x = cmp (false,W.<=) x
+   val gt  = cmp (true,W.>) 
+   val lt  = cmp (true,W.<) 
+   val ge  = cmp (true,W.>=)
+   val le  = cmp (true,W.<=)
+   val gtu = cmp (false,W.>)
+   val ltu = cmp (false,W.<)
+   val geu = cmp (false,W.>=)
+   val leu = cmp (false,W.<=)
 
       (* Evaluate a comparison *)
    fun evalcc(T.CMP(ty,cond,a,b)) =
@@ -159,49 +163,81 @@ struct
      | evalcc(T.CCMARK(e,_)) = evalcc e
      | evalcc _ = UNKNOWN
 
-   fun sim ==> e =
+   (*
+    *  The main algebraic simplifier
+    *)
+
+   exception NotFoldable
+
+   fun simplify {addressWidth, signedAddress} = 
+   let 
+
+   fun sim ==> exp =
    let
-     (* algebraic simplification and constant folding *)
-      fun ADD(e,f,ty,a,(T.LI 0 | T.LI32 0w0)) = a
-        | ADD(e,f,ty,(T.LI 0 | T.LI32 0w0),a) = a
-        | ADD(e,f,ty,a,b) = 
-            if ty = addressWidth then
-            (case (a, b) of
-              (T.LABEL le, T.LI n) => T.LABEL(LE.PLUS(le,LE.INT n))
-            | (T.LI n, T.LABEL le) => T.LABEL(LE.PLUS(le,LE.INT n))
-            | (T.LABEL le, T.LABEL le') => T.LABEL(LE.PLUS(le,le'))
-            | _ => f(e,ty,a,b)
-            ) else f(e,ty,a,b)
-      fun SUB(e,f,ty,a,(T.LI 0 | T.LI32 0w0)) = a
-        | SUB(e,f,ty,a,b) = 
-            if ty = addressWidth then
-            (case (a, b) of
-              (T.LABEL le, T.LI n) => T.LABEL(LE.MINUS(le,LE.INT n))
-            | (T.LI n, T.LABEL le) => T.LABEL(LE.MINUS(LE.INT n,le))
-            | (T.LABEL le, T.LABEL le') => T.LABEL(LE.MINUS(le,le'))
-            | _ => f(e,ty,a,b)
-            ) else f(e,ty,a,b)
-      fun MUL(e,f,ty,a,b as (T.LI 0 | T.LI32 0w0)) = b
-        | MUL(e,f,ty,a as (T.LI 0 | T.LI32 0w0),b) = a
-        | MUL(e,f,ty,a,(T.LI 1 | T.LI32 0w1)) = a
-        | MUL(e,f,ty,(T.LI 1 | T.LI32 0w1),b) = b
-        | MUL(e,f,ty,a,b) = f(e,ty,a,b)
-      fun DIV(e,f,ty,a,(T.LI 1 | T.LI32 0w1)) = a
-        | DIV(e,f,ty,a,b) = f(e,ty,a,b)
-      fun REM(e,f,ty,a,b) = f(e,ty,a,b)
-      fun ANDB(e,ty,a,b as (T.LI 0 | T.LI32 0w0)) = b
-        | ANDB(e,ty,a as (T.LI 0 | T.LI32 0w0),b) = a
-        | ANDB(e,ty,a,b) = andb(e,ty,a,b)
-      fun ORB(e,ty,a,(T.LI 0 | T.LI32 0w0)) = a
-        | ORB(e,ty,(T.LI 0 | T.LI32 0w0),b) = b
-        | ORB(e,ty,a,b) = orb(e,ty,a,b)
-      fun XORB(e,ty,a,(T.LI 0 | T.LI32 0w0)) = a
-        | XORB(e,ty,(T.LI 0 | T.LI32 0w0),b) = b
-        | XORB(e,ty,a,b) = xorb(e,ty,a,b)
-      fun NOTB(e,ty,a) = notb(e,ty,a)
-      fun SHIFT(e,f,ty,a,(T.LI 0 | T.LI32 0w0)) = a
-        | SHIFT(e,f,ty,a as (T.LI 0 | T.LI32 0w0),b) = a
-        | SHIFT(e,f,ty,a,b) = f(e,ty,a,b)
+
+      fun isConstant(T.LI _) = true
+        | isConstant(T.LABEL _) = true
+        | isConstant(T.CONST _) = true
+        | isConstant(T.LI32 _) = true
+        | isConstant _ = false
+
+      (*
+       * Fold in abstract constant
+       *)
+      fun foldConst(h, f, ty, a, b) = 
+      if ty = addressWidth then
+      let fun g(T.LABEL le) = le 
+            | g(T.LI n) = LE.INT n    
+            | g(T.CONST c) = LE.CONST c    
+            | g(T.LI32 n) = LE.INT(W.toIntX n)
+            | g _ = raise NotFoldable
+      in  T.LABEL(h(g a, g b)) handle _ => f(exp, ty, a, b) end
+      else f(exp, ty, a, b)
+
+      fun foldConst2(h, f, ty, a, b) = 
+      if ty = addressWidth then
+      let fun g(T.LABEL le) = le 
+            | g(T.LI n) = LE.INT n    
+            | g(T.CONST c) = LE.CONST c    
+            | g(T.LI32 n) = LE.INT(W.toIntX n)
+            | g _ = raise NotFoldable
+          fun g'(T.LI n) = Word.fromInt n
+            | g'(T.LI32 w) = Word.fromLargeWord w
+            | g' _ = raise NotFoldable
+      in  T.LABEL(h(g a, g' b)) handle _ => f(exp, ty, a, b) end
+      else f(exp, ty, a, b)
+
+
+      (* algebraic simplification and constant folding rules
+       * for various operators 
+       *)
+      fun ADD(f,fold,ty,a,(T.LI 0 | T.LI32 0w0)) = a
+        | ADD(f,fold,ty,(T.LI 0 | T.LI32 0w0),a) = a
+        | ADD(f,fold,ty,a,b) = 
+            if fold then foldConst(LE.PLUS, f, ty, a, b) else f(exp,ty,a,b) 
+
+      fun SUB(f,fold,ty,a,(T.LI 0 | T.LI32 0w0)) = a
+        | SUB(f,fold,ty,a,b) = 
+            if fold then foldConst(LE.MINUS, f, ty, a, b) else f(exp,ty,a,b) 
+
+      fun MUL(f,fold,ty,a,b as (T.LI 0 | T.LI32 0w0)) = b
+        | MUL(f,fold,ty,a as (T.LI 0 | T.LI32 0w0),b) = a
+        | MUL(f,fold,ty,a,(T.LI 1 | T.LI32 0w1)) = a
+        | MUL(f,fold,ty,(T.LI 1 | T.LI32 0w1),b) = b
+        | MUL(f,fold,ty,a,b) = 
+            if fold then foldConst(LE.MULT, f, ty, a, b) else f(exp,ty,a,b) 
+
+      fun DIV(f,fold,ty,a,(T.LI 1 | T.LI32 0w1)) = a
+        | DIV(f,fold,ty,a,b) = 
+            if fold then foldConst(LE.DIV, f, ty, a, b) else f(exp,ty,a,b) 
+
+      fun REM(f,ty,a,b) = f(exp,ty,a,b)
+
+      fun SHIFT(f,fold,g,ty,a,(T.LI 0 | T.LI32 0w0)) = a
+        | SHIFT(f,fold,g,ty,a as (T.LI 0 | T.LI32 0w0),b) = a
+        | SHIFT(f,fold,g,ty,a,b) =
+            if fold then foldConst2(g, f, ty, a, b) else f(exp,ty,a,b)
+
       fun identity_ext(8,T.SIGN_EXTEND,T.LI n) = ~128 <= n andalso n <= 127
         | identity_ext(16,T.SIGN_EXTEND,T.LI n) = ~32768 <= n andalso n <= 32767
         | identity_ext(ty,T.SIGN_EXTEND,T.LI n) = ty >= 32
@@ -217,46 +253,60 @@ struct
         | identity_ext _ = false
 
    in (* perform algebraic simplification and constant folding *)
-      case e of
-        T.ADD(ty,a,b)  => ADD(e,add,ty,a,b)
+      case exp of
+        T.ADD(ty,a,b) => ADD(add,true,ty,a,b)
       | T.SUB(ty,(T.LI 0 | T.LI32 0w0),T.SUB(ty',(T.LI 0 | T.LI32 0w0), a)) =>
-            if ty = ty' then a else e
-      | T.SUB(ty,a,b)  => SUB(e,sub,ty,a,b)
-      | T.MULS(ty,a,b) => MUL(e,muls,ty,a,b)
-      | T.DIVS(ty,a,b) => DIV(e,divs,ty,a,b)
-      | T.REMS(ty,a,b) => REM(e,rems,ty,a,b)
-      | T.MULU(ty,a,b) => MUL(e,mulu,ty,a,b)
-      | T.DIVU(ty,a,b) => DIV(e,divu,ty,a,b)
-      | T.REMU(ty,a,b) => REM(e,remu,ty,a,b)
+            if ty = ty' then a else exp
+      | T.SUB(ty,a,b) => SUB(sub,true,ty,a,b)
 
-      | T.ADDT(ty,a,b) => ADD(e,addt,ty,a,b)
-      | T.SUBT(ty,a,b) => SUB(e,subt,ty,a,b)
-      | T.MULT(ty,a,b) => MUL(e,mult,ty,a,b)
-      | T.DIVT(ty,a,b) => DIV(e,divt,ty,a,b)
-      | T.REMT(ty,a,b) => REM(e,remt,ty,a,b)
+      | T.MULS(ty,a,b) => MUL(muls,signedAddress,ty,a,b)
+      | T.DIVS(ty,a,b) => DIV(divs,signedAddress,ty,a,b)
+      | T.REMS(ty,a,b) => REM(rems,ty,a,b)
 
+      | T.MULU(ty,a,b) => MUL(mulu,not signedAddress,ty,a,b)
+      | T.DIVU(ty,a,b) => DIV(divu,not signedAddress,ty,a,b)
+      | T.REMU(ty,a,b) => REM(remu,ty,a,b)
+
+      | T.ADDT(ty,a,b) => ADD(addt,true,ty,a,b)
+      | T.SUBT(ty,a,b) => SUB(subt,true,ty,a,b)
+
+      | T.MULT(ty,a,b) => MUL(mult,false,ty,a,b)
+      | T.DIVT(ty,a,b) => DIV(divt,false,ty,a,b)
+      | T.REMT(ty,a,b) => REM(remt,ty,a,b)
+
+      | T.ANDB(_,_,b as (T.LI 0 | T.LI32 0w0)) => b
+      | T.ANDB(_,a as (T.LI 0 | T.LI32 0w0),_) => a
       | T.ANDB(ty,T.NOTB(ty',a),T.NOTB(ty'',b)) => 
-         if ty = ty' andalso ty' = ty'' then T.NOTB(ty,T.ORB(ty,a,b)) else e
-      | T.ANDB(ty,a,b) => ANDB(e,ty,a,b)
+         if ty = ty' andalso ty' = ty'' then T.NOTB(ty,T.ORB(ty,a,b)) else exp
+      | T.ANDB(ty,a,b) => foldConst2(LE.AND,andb,ty,a,b)
+
+      | T.ORB(_,a,(T.LI 0 | T.LI32 0w0)) => a
+      | T.ORB(_,(T.LI 0 | T.LI32 0w0),b) => b
       | T.ORB(ty,T.NOTB(ty',a),T.NOTB(ty'',b)) => 
-          if ty = ty' andalso ty' = ty'' then T.NOTB(ty,T.ANDB(ty,a,b)) else e
-      | T.ORB(ty,a,b)  => ORB(e,ty,a,b)
+          if ty = ty' andalso ty' = ty'' then T.NOTB(ty,T.ANDB(ty,a,b)) else exp
+      | T.ORB(ty,a,b) => foldConst2(LE.OR,orb,ty,a,b)
+
+      | T.XORB(ty,a,(T.LI 0 | T.LI32 0w0)) => a
+      | T.XORB(ty,(T.LI 0 | T.LI32 0w0),b) => b
       | T.XORB(ty,T.NOTB(ty',a),T.NOTB(ty'',b)) => 
-          if ty = ty' andalso ty' = ty'' then T.NOTB(ty,T.XORB(ty,a,b)) else e
-      | T.XORB(ty,a,b) => XORB(e,ty,a,b)
-      | T.NOTB(ty,T.NOTB(ty',a)) => if ty = ty' then a else e
-      | T.NOTB(ty,a)   => NOTB(e,ty,a)
-      | T.SRA(ty,a,b)  => SHIFT(e,sra,ty,a,b)
-      | T.SRL(ty,a,b)  => SHIFT(e,srl,ty,a,b)
-      | T.SLL(ty,a,b)  => SHIFT(e,sll,ty,a,b)
+          if ty = ty' andalso ty' = ty'' 
+          then T.NOTB(ty,T.XORB(ty,a,b)) else exp
+      | T.XORB(ty,a,b) => xorb(exp,ty,a,b)
+
+      | T.NOTB(ty,T.NOTB(ty',a)) => if ty = ty' then a else exp
+      | T.NOTB(ty,a)   => notb(exp,ty,a)
+
+      | T.SRA(ty,a,b)  => SHIFT(sra,signedAddress,LE.RSHIFT,ty,a,b)
+      | T.SRL(ty,a,b)  => SHIFT(srl,not signedAddress,LE.RSHIFT,ty,a,b)
+      | T.SLL(ty,a,b)  => SHIFT(sll,true,LE.LSHIFT,ty,a,b)
 
       | T.CVTI2I(_,_,_,e as (T.LI 0 | T.LI32 0w0)) => e
       | cvt as T.CVTI2I(ty,ext,_,e) =>
            if identity_ext(ty,ext,e) then e else cvt
 
       | T.COND(ty,cc,a,b) => 
-          (case evalcc cc of TRUE => a | FALSE => b | UNKNOWN => e)
-      | e => e
+          (case evalcc cc of TRUE => a | FALSE => b | UNKNOWN => exp)
+      | exp => exp
    end
 
    and simStm ==> (s as T.IF(ctrl,cc,s1,s2)) = (* dead code elimination *)

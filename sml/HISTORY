@@ -11,6 +11,15 @@ Name:
 Date:
 Tag: <post-commit CVS tag>
 Description:
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/04/02 21:17:00 EST
+Tag: leunga-20000402-mltree
+Description:
+
+   1. Renamed the constructor CALL in MLTREE by popular demand.
+   2. Added a bunch of files from my repository.  These are currently
+      used by other non-SMLNJ backends.
 
 ----------------------------------------------------------------------
 Name: Allen Leung

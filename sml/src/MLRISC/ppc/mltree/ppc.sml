@@ -267,11 +267,11 @@ struct
           in  emit(MTLR(rs));
               mark(I.BCLR{bo=I.ALWAYS,bf=CR0,bit=I.LT,LK=false,labels=labs},an)
           end
-        | stmt(T.CALL(rexp, flow, defs, uses, cdef, cuse, mem), an) = 
+        | stmt(T.CALL{funct, targets, defs, uses, cdefs, cuses, region}, an) = 
           let val defs=cellset(defs)
               val uses=cellset(uses)
-           in emit(MTLR(expr rexp));
-              mark(I.CALL{def=defs, use=uses, mem=mem}, an)
+           in emit(MTLR(expr funct));
+              mark(I.CALL{def=defs, use=uses, mem=region}, an)
            end
         | stmt(T.RET flow,an) = mark(RET,an)
         | stmt(T.STORE(ty,ea,data,mem),an) = store(ty,ea,data,mem,an)

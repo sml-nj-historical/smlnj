@@ -1191,8 +1191,8 @@ struct
         | stmt(T.COPY(_, dst, src), an) = copy(dst, src, an)
         | stmt(T.FCOPY(fty, dst, src), an) = fcopy(fty, dst, src, an)
         | stmt(T.JMP(ctrl, e, labs), an) = jmp(e, labs, an)
-        | stmt(T.CALL(e, flow, def, use, cdef, cuse, mem), an) = 
-             call(e,flow,def,use,mem,an)
+        | stmt(T.CALL{funct, targets, defs, uses, cdefs, cuses, region}, an) = 
+             call(funct,targets,defs,uses,region,an)
         | stmt(T.RET _, an) = mark(I.RET NONE, an)
         | stmt(T.STORE(8, ea, d, mem), an) = store8(ea, d, mem, an)
         | stmt(T.STORE(16, ea, d, mem), an) = store16(ea, d, mem, an)

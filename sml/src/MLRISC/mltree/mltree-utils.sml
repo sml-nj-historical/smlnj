@@ -55,8 +55,8 @@ struct
     | T.COPY(ty,dst,src) => 0w234 + w ty + ws dst + ws src
     | T.FCOPY(fty,dst,src) => 0w456 + w fty + ws dst + ws src
     | T.JMP(ctrl,ea,labels) => 0w45 + hashRexp ea
-    | T.CALL(ea,flow,defs,uses,cdefs,cuses,mem) =>
-          hashRexp ea  + hashMlriscs defs + hashMlriscs uses + 
+    | T.CALL{funct,targets,defs,uses,cdefs,cuses,region} =>
+          hashRexp funct + hashMlriscs defs + hashMlriscs uses + 
           hashCtrls cdefs + hashCtrls cuses
     | T.RET _ => 0w567
     | T.STORE(ty,ea,data,mem) => 0w888 + w ty + hashRexp ea + hashRexp data 
@@ -194,7 +194,8 @@ struct
     | eqStm(T.FCOPY x,T.FCOPY y) = x = y
     | eqStm(T.JMP(a,b,c),T.JMP(a',b',c')) = 
          a=a' andalso eqRexp(b,b') andalso eqLabels(c,c')
-    | eqStm(T.CALL(a,_,b,c,_,_,_),T.CALL(d,_,e,f,_,_,_)) =  
+    | eqStm(T.CALL{funct=a,defs=b,uses=c,...},
+            T.CALL{funct=d,defs=e,uses=f,...}) =  
          eqRexp(a,d) andalso eqMlriscs(b,e) andalso eqMlriscs(c,f)
     | eqStm(T.RET _,T.RET _) = true
     | eqStm(T.STORE(a,b,c,_),T.STORE(d,e,f,_)) = 
@@ -395,8 +396,8 @@ struct
         | stm(T.COPY(ty,dst,src)) = copy(ty,dst,src)
         | stm(T.FCOPY(fty,dst,src)) = fcopy(fty,dst,src)
         | stm(T.JMP(cr,ea,labels)) = defctrls cr^"jmp "^rexp ea
-        | stm(T.CALL(ea,flow,defs,uses,cdef,cuse,mem)) = 
-              defctrls cdef^"call "^rexp ea^usectrls cuse
+        | stm(T.CALL{funct,targets,defs,uses,cdefs,cuses,region}) = 
+              defctrls cdefs^"call "^rexp funct^usectrls cuses
         | stm(T.RET(cr,flow)) = defctrls cr^"ret"
         | stm(T.STORE(ty,ea,e,mem)) = store(ty,"",ea,mem,e)
         | stm(T.FSTORE(fty,ea,e,mem)) = fstore(fty,"",ea,mem,e)

@@ -164,7 +164,8 @@ struct
     fun mkCall ret = let
       val defs = [T.GPR(T.REG(32,C.ecx)), T.GPR(T.REG(32,C.edx))]
       val uses = ret
-    in T.CALL(name, [], defs, uses, [], [], T.Region.memory)
+    in T.CALL{funct=name, targets=[], defs=defs, uses=uses, 
+              cdefs=[], cuses=[], region=T.Region.memory}
     end
 
     val c_rets = results(retTy)
