@@ -1,8 +1,8 @@
 (*
  * This is the module that actually puts together the contents of the
- * structure CM that people find at the top-level.  The "real" structure
+ * structure CM that people find at the top-level.  A "minimal" structure
  * CM is defined in CmHook, but it needs to be initialized at bootstrap
- * time -- and _that_ is what's done here.
+ * time -- and that is what's done here, too.
  *
  *   Copyright (c) 1999 by Lucent Bell Laboratories
  *
