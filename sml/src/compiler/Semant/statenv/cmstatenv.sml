@@ -22,7 +22,7 @@ structure CMStaticEnv : CMSTATICENV = struct
 	    val compare = I.cmp
 	end
 
-	structure D = BinaryMapFn (Key)
+	structure D = RedBlackMapFn (Key)
 
 	type modmap = { strD : M.Structure D.map,
 		        sigD : M.Signature D.map,
