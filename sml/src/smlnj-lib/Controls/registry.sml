@@ -24,6 +24,7 @@ structure ControlRegistry : CONTROL_REGISTRY =
       }
 
     and subregistry = SubReg of {
+	prefix : string option,		(* the key for qualified registries *)
 	priority : Controls.priority,	(* control's priority *)
 	obscurity : int,		(* registry's detail level; higher means *)
 					(* more obscure *)
@@ -52,6 +53,7 @@ structure ControlRegistry : CONTROL_REGISTRY =
   (* nest a registry inside another registry *)
     fun nest (Reg{uRegs, qRegs, ...}) {prefix, pri, obscurity, reg} = let
 	  val subReg = SubReg{
+		  prefix = prefix,
 		  priority = pri,
 		  obscurity = obscurity,
 		  reg = reg
@@ -73,7 +75,7 @@ structure ControlRegistry : CONTROL_REGISTRY =
 	    | find (Reg{qRegs, uRegs,...}, prefix::r) = (
 		case ATbl.find qRegs prefix
 		 of NONE => findInList(!uRegs, prefix::r)
-		  | SOME(SubReg{reg, ...}) => (case find(reg, prefix::r)
+		  | SOME(SubReg{reg, ...}) => (case find(reg, r)
 		       of NONE => findInList(!uRegs, prefix::r)
 			| someCtl => someCtl
 		      (* end case *))
@@ -125,9 +127,9 @@ structure ControlRegistry : CONTROL_REGISTRY =
 		val subregs =
 		      List.foldl gather (ATbl.fold gather [] qRegs) (!uRegs)
 		val subregs = sortSubregs subregs
-		fun getReg (SubReg{reg, ...}) = getTree (path, reg)
-		fun getRegi (prefix, SubReg{reg, ...}) =
+		fun getReg (SubReg{prefix=SOME prefix, reg, ...}) =
 		      getTree(prefix::path, reg)
+		  | getReg (SubReg{reg, ...}) = getTree (path, reg)
 		in
 		  RTree{
 		      path = List.rev path,
