@@ -13,6 +13,18 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/06/18 22:00:10 JST
+Tag: blume-20000618-implicit-anchors-really-gone
+Description:
+
+I updates the previous HISTORY entry where I forgot to mention that
+implicit anchors are no longer with us.
+
+The current update also gets rid of the (now useless) controller
+CM.Control.implicit_anchors.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/06/16 17:30:00 JST
 Tag: blume-20000616-anchorenv
 Description:
@@ -31,10 +43,17 @@ problem.)
 
 Visible changes:
 
-** 1. The $<singlearc> abbreviation for $/<singlearc> for anchored
-paths has finally vanished.
+** 0. Implicit path anchors (without the leading $-symbol) are no
+longer recognized at all. This means that such path names are not
+illegal either.  For example, the name basis.cm simply refers to a
+local file called "basis.cm" (i.e, the name is an ordinary path
+relative to .cm-files directory).  Or, to put it differently, only
+names that start with $ are anchored paths.
 
-John had critizised this as soon as I originally proposed and
+** 1. The $<singlearc> abbreviation for $/<singlearc> has finally
+vanished.
+
+John (Reppy) had critizised this as soon as I originally proposed and
 implemented it, but at that time I did not really deeply believe
 him. :) Now I came full-circle because I need the $<singlearc> syntax
 in another place where it cannot be seen as an abbreviation for
@@ -45,7 +64,7 @@ value).
 However, when paths are used as members in CM description files, it
 continues to be true that there must be at least another arc after the
 anchor.  This is now enforced separately during semantic analysis
-(i.e., form a lexical/syntactical point of view, the notation is ok.)
+(i.e., from a lexical/syntactical point of view, the notation is ok.)
 
 ** 2. The "cm" class now accepts an option "bind".  The option's value
 is a sub-option list of precisely two items -- one labeled "anchor"
@@ -133,6 +152,8 @@ I find this notation to be much more informative than before.
 Another new feature of the encoding is that special characters
 including parentheses, colons, (back)slashes, and white space are
 written as \ddd (where ddd is the decimal encoding of the character).
+
+*** The CM manual still needs to be updated.
 
 ----------------------------------------------------------------------
 Name: Allen Leung
