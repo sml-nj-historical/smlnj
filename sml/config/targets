@@ -55,12 +55,12 @@ request smlnj-lib
 # pre-compile and install Concurrent ML, which is a library for message-passing
 # concurrency.
 #
-#request cml
+request cml
 
 # pre-compile and install the CML Library, which provides some useful CML
 # modules.
 #
-#request cml-lib
+request cml-lib
 
 # pre-compile and install eXene, which is a library for X-Windows programming.
 # EXene requires CML.
@@ -102,10 +102,6 @@ request smlnj-lib
 # (Requires the mlrisc-tools library!)
 #
 #request nowhere
-
-# unpack and install the documentation directory.
-#
-#request doc
 
 # Note: autoloading is always enabled.
 #   In order to customize what is being pre-registered for autoloading
