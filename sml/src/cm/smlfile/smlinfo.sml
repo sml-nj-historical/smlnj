@@ -275,9 +275,14 @@ structure SmlInfo :> SMLINFO = struct
 		    val _ = if noerrors orelse quiet then ()
 			    else Say.vsay ["[parsing ",
 					   SrcPath.descr sourcepath, "]\n"]
+		    val normal_ec = #errcons gp
+		    val dummy_ec = { consumer = fn (x: string) => (),
+				     linewidth = #linewidth normal_ec,
+				     flush = fn () => () }
+		    val ec = if noerrors then dummy_ec else normal_ec
 		    val source =
 			Source.newSource (SrcPath.osstring' sourcepath,
-					  1, stream, false, #errcons gp)
+					  1, stream, false, ec)
 		in
 		    (SF.parse source, source)
 		end

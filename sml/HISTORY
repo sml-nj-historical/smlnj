@@ -13,6 +13,14 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/09/07 14:45:00 JST
+Tag: blume-20000907-cmerrmsg
+Description:
+
+Small tweak to CM to avoid getting ML syntax error messages twice.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/08/31 18:00:00 JST
 Tag: blume-20000831-cvsbootfiles
 Description:
