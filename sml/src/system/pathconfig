@@ -14,3 +14,4 @@ host-cm.cm		HostCompiler
 host-cmb.cm		HostCompiler
 host-compiler.cm	HostCompiler
 cm-hook.cm		HostCompiler
+cm-tools.cm		../cm

@@ -136,7 +136,7 @@ structure Control : CONTROL =
 
     structure MC : MCCONTROL = Control_MC
 
-    structure MLRISC = MLRISC_Control
+    structure MLRISC = MLRiscControl
 
     structure FLINT :> FLINTCONTROL = FLINT_Control
 
