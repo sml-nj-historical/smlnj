@@ -18,7 +18,7 @@ struct
   fun doCall({stm,rexp,emit}:reduce, 
              T.CALL{funct, targets, defs, uses, region, ...}) = 
   let
-        val addCCreg = C.CellSet.add 
+        val addCCreg = CellsBasis.CellSet.add 
 	fun live([], acc) = acc
 	  | live(T.GPR(T.REG(_, r))::regs, acc) = live(regs, C.addReg(r, acc))
 	  | live(T.FPR(T.FREG(_, f))::regs, acc) = live(regs, C.addFreg(f, acc))

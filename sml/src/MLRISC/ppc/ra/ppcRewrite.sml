@@ -2,6 +2,7 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
   structure I = Instr
   structure C = I.C
   structure CB = CellsBasis
+  structure CS = CB.CellSet
 
   fun ea(NONE, _, _) = NONE
     | ea(e as SOME(I.Direct r), rs, rt) =
@@ -43,7 +44,7 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | I.TW {to, ra, si} => I.TW{to=to, ra=rplac ra, si=rwOperand si}
      | I.TD {to, ra, si} => I.TD{to=to, ra=rplac ra, si=rwOperand si}
      | I.CALL {def, use, cutsTo, mem} => 
-          I.CALL{def=def, use=C.CellSet.map {from=rs,to=rt} use, 
+          I.CALL{def=def, use=CS.map {from=rs,to=rt} use, 
                  cutsTo=cutsTo, mem=mem}
      | I.COPY{dst, src, impl, tmp} =>
 	I.COPY{dst=dst, src=map rplac src, impl=impl, tmp=tmp}
@@ -77,7 +78,7 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
 	I.ROTATEI {oper=oper, ra=rplac ra, rs=rs, sh=sh, mb=mb, me=me}
      | I.MFSPR {rt, spr} => I.MFSPR{rt=rplac rt, spr=spr}
      | I.CALL {def, use, cutsTo, mem} => 
-        I.CALL{def=C.CellSet.map {from=rs,to=rt} def, use=use, 
+        I.CALL{def=CS.map {from=rs,to=rt} def, use=use, 
                cutsTo=cutsTo, mem=mem}
      | I.COPY {dst, src, impl, tmp} =>
 	I.COPY{dst=map rplac dst, src=src, impl=impl, tmp=ea(tmp,rs,rt)}
@@ -98,7 +99,7 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
     of I.STF {st, fs, ra, d, mem} =>
          I.STF{st=st, fs=rplac fs, ra=ra, d=d, mem=mem}
      | I.CALL{def, use, cutsTo, mem} => 
-         I.CALL{def=def, use=C.CellSet.map {from=fs,to=ft} use, 
+         I.CALL{def=def, use=CS.map {from=fs,to=ft} use, 
                 cutsTo=cutsTo, mem=mem}
      | I.FCOMPARE {cmp, bf, fa, fb} =>
 	 I.FCOMPARE{cmp=cmp, bf=bf, fa=rplac fa, fb=rplac fb}
@@ -135,7 +136,7 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
 	I.FARITH3{oper=oper, ft=rplac ft, fa=fa, fb=fb, fc=fc, Rc=Rc}
     (* CALL = BCLR {bo=ALWAYS, bf=0, bit=0, LK=true, labels=[] *)
      | I.CALL{def, use, cutsTo, mem} => 
-        I.CALL{def=C.CellSet.map {from=fs,to=ft} def, use=use, 
+        I.CALL{def=CS.map {from=fs,to=ft} def, use=use, 
                cutsTo=cutsTo, mem=mem}
      | I.FCOPY {dst, src, impl, tmp} =>
         I.FCOPY{dst=map rplac dst, src=src, impl=impl, tmp=ea(tmp,fs,ft)}

@@ -7,6 +7,7 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
   structure I = Instr
   structure C = I.C
   structure CB = CellsBasis
+  structure CS = CB.CellSet
 
   fun error msg = MLRiscErrorMsg.error("HppaRewrite",msg)
 
@@ -49,10 +50,10 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.BLR{x, t, labs, n} => I.BLR{x=replc x, t=t, labs=labs,n=n} 
      | I.BLE{b, d, sr, t, defs, uses, cutsTo, mem} => 
 	I.BLE{b=replc b, d=d, sr=sr, t=t, defs=defs, 
-              uses=C.CellSet.map {from=rs,to=rt} uses, cutsTo=cutsTo, mem=mem} 
+              uses=CS.map {from=rs,to=rt} uses, cutsTo=cutsTo, mem=mem} 
      | I.BL{lab, t, defs, uses, mem, cutsTo, n} => 
 	I.BL{lab=lab, t=t, defs=defs, cutsTo=cutsTo,
-             uses=C.CellSet.map {from=rs,to=rt} uses, mem=mem, n=n} 
+             uses=CS.map {from=rs,to=rt} uses, mem=mem, n=n} 
      | I.LDO{b, t, i} => I.LDO{b=replc b, t=t, i=i} 
      | I.COPY{dst, src, tmp, impl} => 
 	I.COPY{dst=dst, src=map replc src, impl=impl, tmp=tmp}
@@ -103,11 +104,11 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.BLR{x, t, labs, n} => I.BLR{x=x, t=replc t, labs=labs,n=n} 
      | I.BLE{d, b, sr, t, defs, uses, cutsTo, mem} => 
         I.BLE{d=d, b=b, sr=sr, t=replc t, 
-              defs=C.CellSet.map {from=rs,to=rt} defs, uses=uses, 
+              defs=CS.map {from=rs,to=rt} defs, uses=uses, 
               cutsTo=cutsTo, mem=mem}
      | I.BL{lab, t, defs, uses, mem, cutsTo, n} => 
 	I.BL{lab=lab, t=replc t, cutsTo=cutsTo,
-              defs=C.CellSet.map {from=rs,to=rt} defs, uses=uses, mem=mem, n=n} 
+              defs=CS.map {from=rs,to=rt} defs, uses=uses, mem=mem, n=n} 
      | I.LDIL{i, t} => I.LDIL{i=i, t=replc t} 
      | I.LDO{i, b, t} => I.LDO{i=i, b=b, t=replc t}
      | I.COPY{dst, src, impl, tmp} =>
@@ -140,10 +141,10 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 	I.FCOPY{dst=dst, src=map replc src, impl=impl, tmp=tmp}
      | I.BLE{d, b, sr, t, defs, uses, cutsTo, mem} => 
         I.BLE{d=d, b=b, sr=sr, t=replc t, defs=defs, 
-             uses=C.CellSet.map {from=fs,to=ft} uses, cutsTo=cutsTo, mem=mem}
+             uses=CS.map {from=fs,to=ft} uses, cutsTo=cutsTo, mem=mem}
      | I.BL{lab, t, defs, uses, mem, cutsTo, n} => 
 	I.BL{lab=lab, t=t, defs=defs, cutsTo=cutsTo, 
-             uses=C.CellSet.map {from=fs,to=ft} uses, mem=mem, n=n} 
+             uses=CS.map {from=fs,to=ft} uses, mem=mem, n=n} 
      | I.ANNOTATION{i,a} => 
         I.ANNOTATION{i=frewriteUse(i,fs,ft),
                         a=case a of
@@ -172,10 +173,10 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 	I.FCOPY{dst=map replc dst, src=src, impl=impl, tmp=ea tmp}
      | I.BLE{d, b, sr, t, defs, uses, cutsTo, mem} => 
         I.BLE{d=d, b=b, sr=sr, t=replc t, cutsTo=cutsTo,
-              defs=C.CellSet.map {from=fs,to=ft} defs, uses=uses, mem=mem}
+              defs=CS.map {from=fs,to=ft} defs, uses=uses, mem=mem}
      | I.BL{lab, t, defs, uses, mem, cutsTo, n} => 
 	I.BL{lab=lab, t=t, cutsTo=cutsTo, 
-             defs=C.CellSet.map {from=fs,to=ft} defs, uses=uses, mem=mem, n=n} 
+             defs=CS.map {from=fs,to=ft} defs, uses=uses, mem=mem, n=n} 
      | I.ANNOTATION{i,a} => 
         I.ANNOTATION{i=frewriteDef(i,fs,ft),
                         a=case a of

@@ -410,9 +410,9 @@ struct
       (* convert mlrisc to cellset *)
       and cellset mlrisc =
       let fun g([],set) = set
-            | g(T.GPR(T.REG(_,r))::regs,set) = g(regs,C.CellSet.add(r,set))
-            | g(T.FPR(T.FREG(_,f))::regs,set) = g(regs,C.CellSet.add(f,set))
-            | g(T.CCR(T.CC(_,cc))::regs,set) = g(regs,C.CellSet.add(cc,set))
+            | g(T.GPR(T.REG(_,r))::regs,set) = g(regs,CB.CellSet.add(r,set))
+            | g(T.FPR(T.FREG(_,f))::regs,set) = g(regs,CB.CellSet.add(f,set))
+            | g(T.CCR(T.CC(_,cc))::regs,set) = g(regs,CB.CellSet.add(cc,set))
             | g(_::regs, set) = g(regs,set)
       in  g(mlrisc, C.empty) end
  

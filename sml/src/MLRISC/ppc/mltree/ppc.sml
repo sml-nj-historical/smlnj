@@ -33,7 +33,7 @@ struct
 
   fun error msg = MLRiscErrorMsg.error("PPC",msg)
 
-  type instrStream = (I.instruction,C.cellset) T.stream
+  type instrStream = (I.instruction,CB.CellSet.cellset) T.stream
   type mltreeStream = (T.stm,T.mlrisc list) T.stream
 
 
@@ -237,7 +237,7 @@ struct
 
        (* convert mlrisc to cellset: *)
        and cellset mlrisc =
-           let val addCCReg = C.CellSet.add 
+           let val addCCReg = CB.CellSet.add 
                fun g([],acc) = acc
                  | g(T.GPR(T.REG(_,r))::regs,acc)  = g(regs,C.addReg(r,acc))
                  | g(T.FPR(T.FREG(_,f))::regs,acc) = g(regs,C.addFreg(f,acc))
