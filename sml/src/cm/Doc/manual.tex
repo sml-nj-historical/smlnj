@@ -22,7 +22,6 @@ User Manual}
 \newcommand{\nt}[1]{{\it #1}}
 \newcommand{\tl}[1]{{\underline{\bf #1}}}
 \newcommand{\ttl}[1]{{\underline{\tt #1}}}
-\newenvironment{syntax}{\begin{tabbing} xyzwww \=\kill}{\end{tabbing}}
 \newcommand{\ar}{$\rightarrow$\ }
 \newcommand{\vb}{~$|$~}
 
@@ -819,32 +818,31 @@ remainder of the line after the word {\tt error}.
 
 \subsection{BNF for expressions}
 
-\begin{tabbing}
-\nt{non-terminal}~\= \ar \kill
-\nt{letter} \> \ar \tl{A} \vb $\ldots$ \vb \tl{Z} \vb \tl{a} \vb $\ldots$ \vb \tl{z} \\
-\nt{digit}  \> \ar \tl{0} \vb $\ldots$ \vb \tl{9} \\
-\nt{ldau}   \> \ar \nt{letter} \vb \nt{digit} \vb \tl{'} \vb \tl{\_} \\
+\begin{tabular}{rcl}
+\nt{letter} &\ar& \tl{A} \vb $\ldots$ \vb \tl{Z} \vb \tl{a} \vb $\ldots$ \vb \tl{z} \\
+\nt{digit}  &\ar& \tl{0} \vb $\ldots$ \vb \tl{9} \\
+\nt{ldau}   &\ar& \nt{letter} \vb \nt{digit} \vb \tl{'} \vb \tl{\_} \\
 \\
-\nt{number} \> \ar \nt{digit} \{\nt{digit}\} \\
-\nt{sym}    \> \ar \nt{letter} \{\nt{ldau}\} \\
+\nt{number} &\ar& \nt{digit} \{\nt{digit}\} \\
+\nt{sym}    &\ar& \nt{letter} \{\nt{ldau}\} \\
 \\
-\nt{aatom}  \> \ar \nt{number} \vb \nt{sym} \vb \tl{(} \nt{asum} \tl{)} \vb \tl{$\tilde{~}$} \nt{aatom} \\
-\nt{aprod}  \> \ar \{\nt{aprod} (\tl{*} \vb \tl{div} \vb \tl{mod})\} \nt{aatom} \\
-\nt{asum}   \> \ar \{\nt{asum} (\tl{+} \vb \tl{-})\} \nt{aprod} \\
+\nt{aatom}  &\ar& \nt{number} \vb \nt{sym} \vb \tl{(} \nt{asum} \tl{)} \vb \tl{$\tilde{~}$} \nt{aatom} \\
+\nt{aprod}  &\ar& \{\nt{aprod} (\tl{*} \vb \tl{div} \vb \tl{mod})\} \nt{aatom} \\
+\nt{asum}   &\ar& \{\nt{asum} (\tl{+} \vb \tl{-})\} \nt{aprod} \\
 \\
-\nt{ns}     \> \ar \tl{structure} \vb \tl{signature} \vb \tl{functor} \vb \tl{funsig} \\
-\nt{mlsym}  \> \ar {\em a Standard ML identifier} \\
-\nt{query}  \> \ar \tl{defined} \tl{(} \nt{sym} \tl{)} \vb \tl{defined} \tl{(} \nt{ns} \nt{mlsym} \tl{)} \\
+\nt{ns}     &\ar& \tl{structure} \vb \tl{signature} \vb \tl{functor} \vb \tl{funsig} \\
+\nt{mlsym}  &\ar& {\em a Standard ML identifier} \\
+\nt{query}  &\ar& \tl{defined} \tl{(} \nt{sym} \tl{)} \vb \tl{defined} \tl{(} \nt{ns} \nt{mlsym} \tl{)} \\
 \\
-\nt{acmp}   \> \ar \nt{aexp} (\ttl{<} \vb \ttl{<=} \vb \ttl{>} \vb \ttl{>=} \vb \ttl{=} \vb \ttl{<>}) \nt{aexp} \\
+\nt{acmp}   &\ar& \nt{aexp} (\ttl{<} \vb \ttl{<=} \vb \ttl{>} \vb \ttl{>=} \vb \ttl{=} \vb \ttl{<>}) \nt{aexp} \\
 \\
-\nt{batom}  \> \ar \nt{query} \vb \nt{acmp} \vb \tl{not} \nt{batom} \vb \tl{(} \nt{bdisj} \tl{)} \\
-\nt{bcmp}   \> \ar \nt{batom} [(\ttl{=} \vb \ttl{<>}) \nt{batom}] \\
-\nt{bconj}  \> \ar \{\nt{bcmp} \tl{andalso}\} \nt{bcmp} \\
-\nt{bdisj}  \> \ar \{\nt{bconj} \tl{orelse}\} \nt{bdisj} \\
+\nt{batom}  &\ar& \nt{query} \vb \nt{acmp} \vb \tl{not} \nt{batom} \vb \tl{(} \nt{bdisj} \tl{)} \\
+\nt{bcmp}   &\ar& \nt{batom} [(\ttl{=} \vb \ttl{<>}) \nt{batom}] \\
+\nt{bconj}  &\ar& \{\nt{bcmp} \tl{andalso}\} \nt{bcmp} \\
+\nt{bdisj}  &\ar& \{\nt{bconj} \tl{orelse}\} \nt{bdisj} \\
 \\
-\nt{expression} \> \ar \nt{bdisj}
-\end{tabbing}
+\nt{expression} &\ar& \nt{bdisj}
+\end{tabular}
 
 \section{Access control}
 \label{sec:access}
