@@ -67,12 +67,49 @@ structure Int31Imp : INTEGER =
 	(*esac*))
     in f
     end
-(*
-    val scan = NumScan.scanInt
-*)
 
     val toString = fmt StringCvt.DEC
+(*
     val fromString = PreBasis.scanString (scan StringCvt.DEC)
-
+*)
+    local
+	structure W31 = InlineT.Word31
+	structure CV = InlineT.CharVector
+    in
+    (* optimized version of fromString; it is about 2x as fast as
+     * using scanString: *)
+    fun fromString s =
+	let val n = size s
+	    val z = ord #"0"
+	    val sub = CV.sub
+	    infix ++
+	    fun x ++ y = W31.toIntX (W31.+ (W31.fromInt x, W31.fromInt y))
+	    fun num (i, a) =
+		if i >= n then a
+		else let val c = ord (sub (s, i)) - z
+		     in
+			 if c < 0 orelse c > 9 then a
+			 else num (i ++ 1, 10 * a + c)
+		     end
+	    fun nonneg i =
+		if i >= n then NONE
+		else let val c = ord (sub (s, i)) - z
+		     in
+			 if c < 0 orelse c > 9 then NONE
+			 else SOME (num (i ++ 1, c))
+		     end
+	    fun skipwhite i =
+		if i >= n then NONE
+		else let val c = sub (s, i)
+		     in
+			 if Char.isSpace c then skipwhite (i ++ 1)
+			 else if c = #"-" orelse c = #"~" then
+			     Option.map ~ (nonneg (i ++ 1))
+			 else nonneg i
+		     end
+	in
+	    skipwhite 0
+	end
+    end (* local *)
   end  (* structure Int31 *)
 
