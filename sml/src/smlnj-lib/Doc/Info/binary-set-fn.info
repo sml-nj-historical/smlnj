@@ -1,6 +1,0 @@
-@FILES
-  {"binary-set-fn"; "The BinarySetFn functor";}
-@SIGNATURE ORD_SET
-@SIGNATURE ORD_KEY
-@FUNCTOR BinarySetFn "binary-set-fn" ORD_KEY
-ORD_SET

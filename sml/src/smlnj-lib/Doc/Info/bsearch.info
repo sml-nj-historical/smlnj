@@ -1,8 +1,0 @@
-@FILES
-  {"bsearch"; "The BSearchFn functor";}
-@FUNCTOR BSearchFn "bsearch" @EXTERNAL
-{
-  @STRUCTURE A @EXTERNAL
-  @VALS 
-    bsearch
-}

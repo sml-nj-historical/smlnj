@@ -1,6 +1,0 @@
-@FILES
-  {"list-map-fn"; "The ListMapFn functor";}
-@SIGNATURE ORD_MAP
-@SIGNATURE ORD_KEY
-@FUNCTOR ListMapFn "list-map-fn" ORD_KEY
-ORD_MAP

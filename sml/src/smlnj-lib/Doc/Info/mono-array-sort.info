@@ -1,8 +1,0 @@
-@FILES
-  {"mono-array-sort"; "The MONO_ARRAY_SORT signature";}
-@SIGNATURE MONO_ARRAY_SORT "mono-array-sort" {
-  @STRUCTURE A @EXTERNAL
-  @VALS 
-    sort
-    sorted
-}

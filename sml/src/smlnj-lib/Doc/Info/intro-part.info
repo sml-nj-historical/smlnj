@@ -1,7 +1,0 @@
-@FILES
-  {"intro-part"; "SML/NJ Library Introduction";
-    @SECTION "Introduction" {
-      @SECTION "Overview" {}
-      @SECTION "A quick tour" {}
-    }
-  }
