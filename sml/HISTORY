@@ -13,6 +13,14 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/11 13:30:00 EST
+Tag: blume-20020311-mltreeeval
+Description:
+
+A functor parameter was missing.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2002/03/11 10:30:00 EST
 Tag: leunga-20020310-runtime-string0

@@ -67,6 +67,7 @@ structure X86MCEmitter =
 	       structure Shuffle=X86Shuffle
 	       structure AsmEmitter=X86AsmEmitter
 	       structure MemRegs=X86MemRegs
+	       structure MLTreeEval=X86MLTreeEval
 	       val memRegBase=SOME(X86Instr.C.esp))
 
 (* Flowgraph data structure specialized to X86 instructions *)
