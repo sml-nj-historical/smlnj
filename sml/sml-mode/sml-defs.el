@@ -68,6 +68,69 @@
     ("%&$+-/:<=>?@`^|"	 . "."))
   "The syntax table used in sml-mode.")
 
+(defconst sml-menu
+  '("SML"
+    ("Process"
+     ["Start default ML compiler" sml		:active (fboundp 'sml)]
+     ["-" nil nil]
+     ["run CM.make"		sml-make	:active (featurep 'sml-proc)]
+     ["load ML source file"	sml-load-file	:active (featurep 'sml-proc)]
+     ["switch to ML buffer"	switch-to-sml	:active (featurep 'sml-proc)]
+     ["--" nil nil]
+     ["send buffer contents"	sml-send-buffer	:active (featurep 'sml-proc)]
+     ["send region"		sml-send-region	:active (featurep 'sml-proc)]
+     ["send paragraph"		sml-send-function :active (featurep 'sml-proc)]
+     ["goto next error"		sml-next-error	:active (featurep 'sml-proc)]
+     ["---" nil nil]
+     ["Standard ML of New Jersey" sml-smlnj	:active (fboundp 'sml-smlnj)]
+     ["Poly/ML"			sml-poly-ml	:active (fboundp 'sml-poly-ml)]
+     ["Moscow ML"		sml-mosml	:active (fboundp 'sml-mosml)]
+     ["Help for Inferior ML"	(describe-function 'inferior-sml-mode) :active (featurep 'sml-proc)])
+    ["electric pipe"     sml-electric-pipe t]
+    ["insert SML form"   sml-insert-form t]
+    ("Forms" 
+     ["abstype"     sml-form-abstype t]
+     ["datatype"    sml-form-datatype t]
+     ["-" nil nil]
+     ["let"         sml-form-let t]
+     ["local"       sml-form-local t]
+     ["case"        sml-form-case t]
+     ["--" nil nil]
+     ["signature"   sml-form-signature t]
+     ["functor"     sml-form-functor t]
+     ["structure"   sml-form-structure t])
+    ("Format/Mode Variables"
+     ["indent region"             sml-indent-region t]
+     ["outdent"                   sml-back-to-outer-indent t]
+     ["-" nil nil]
+     ["set indent-level"          sml-indent-level t]
+     ["set pipe-indent"           sml-pipe-indent t]
+     ["--" nil nil]
+     ["toggle type-of-indent"     (sml-type-of-indent) t]
+     ["toggle nested-if-indent"   (sml-nested-if-indent) t]
+     ["toggle case-indent"        (sml-case-indent) t]
+     ["toggle electric-semi-mode" (sml-electric-semi-mode) t])
+    ["-----" nil nil]
+    ["SML mode help (brief)"       describe-mode t]
+    ["SML mode *info*"             sml-mode-info t]
+    ["SML mode version"            sml-mode-version t]
+    ["-----" nil nil]
+    ["Remove overlay"    (sml-error-overlay 'undo) :active (sml-overlay-active-p)]))
+
+(when (ignore-errors (require 'easymenu))
+  (easy-menu-define sml-mode-menu
+		    sml-mode-map
+		    "Menu used in sml-mode."
+		    sml-menu))
+
+;;; Make's sure they appear in the menu bar when sml-mode-map is active.
+;; On the hook for XEmacs only -- see easy-menu-add in auc-menu.el.
+;; (defun sml-mode-menu-bar ()
+;;   "Make sure menus appear in the menu bar as well as under mouse 3."
+;;   (and (eq major-mode 'sml-mode)
+;;        (easy-menu-add sml-mode-menu sml-mode-map)))
+;; (add-hook 'sml-mode-hook 'sml-mode-menu-bar)
+
 ;;
 ;; regexps
 ;;
@@ -110,10 +173,10 @@
    (cons "\\<local\\>" '(sml-indent-level 0))
    (cons "\\<of\\>" '(3 nil))
    (cons "\\<else\\>" '(sml-indent-level 0))
-   (cons "\\<in\\>" '(sml-indent-level nil))
-   (cons (sml-syms-re "abstype" "and" "case" "of" "datatype"
-		      "fun" "if" "then" "else" "sharing" "infix" "infixr"
-		      "let" "in" "local" "nonfix" "open" "raise" "sig"
+   (cons "\\<in\\|fun\\|and\\>" '(sml-indent-level nil))
+   (cons (sml-syms-re "abstype" "case" "datatype"
+		      "if" "then" "else" "sharing" "infix" "infixr"
+		      "let" "local" "nonfix" "open" "raise" "sig"
 		      "struct" "type" "val" "while" "do" "with" "withtype")
 	 'sml-indent-level))
   "")

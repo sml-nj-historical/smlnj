@@ -23,10 +23,14 @@
 (unless (fboundp 'set-keymap-parents)
   (defun set-keymap-parents (m parents)
     (set-keymap-parent
-     m (reduce (lambda (m1 m2)
-		 (let ((m (copy-keymap m1)))
-		   (set-keymap-parent m m2) m))
-	       parents))))
+     m
+     (if (cdr parents)
+	 (reduce (lambda (m1 m2)
+		   (let ((m (copy-keymap m1)))
+		     (set-keymap-parent m m2) m))
+		 parents
+		 :from-end t)
+       (car parents)))))
 
 ;;
 (provide 'sml-compat)

@@ -104,8 +104,7 @@
 
 ;;; VERSION STRING
 
-(defconst sml-mode-version-string
-  "sml-mode, version 3.3")
+(defconst sml-mode-version-string "sml-mode, version 3.9.1")
 
 (require 'cl)
 (require 'sml-util)
@@ -123,20 +122,8 @@
 (defvar sml-pipe-indent -2
   "*Extra (usually negative) indentation for lines beginning with `|'.")
 
-(defvar sml-indent-case-arm 0
-  "*Indentation of case arms.")
-
 (defvar sml-indent-case-of 2
   "*Indentation of an `of' on its own line.")
-
-(defvar sml-indent-equal -2
-  "*Extra (usually negative) indenting for lines beginning with `='.")
-
-(defvar sml-indent-fn -3
-  "*Extra (usually negative) indenting for lines beginning with `fn'.")
-
-;;(defvar sml-indent-paren -1
-;;  "*Extra (usually negative) indenting for lines beginning with `('.")
 
 (defvar sml-indent-args 4
   "*Indentation of args placed on a separate line.")
@@ -153,32 +140,9 @@
 The first seems to be the standard in SML/NJ, but the second
 seems nicer...")
 
-(defvar sml-nested-if-indent nil
-  "*Determine how nested if-then-else will be formatted:
-    If t: if exp1 then exp2               If nil:   if exp1 then exp2
-          else if exp3 then exp4                    else if exp3 then exp4
-          else if exp5 then exp6                         else if exp5 then exp6
-          else exp7                                           else exp7")
-
-(defvar sml-type-of-indent nil
-  "*How to indent `let' `struct' etc.
-    If t:  fun foo bar = let              If nil:  fun foo bar = let
-                             val p = 4                 val p = 4
-                         in                        in
-                             bar + p                   bar + p
-                         end                       end
-
-Will not have any effect if the starting keyword is first on the line.")
-
 (defvar sml-electric-semi-mode nil
   "*If t, `\;' will self insert, reindent the line, and do a newline.
 If nil, just insert a `\;'. (To insert while t, do: C-q \;).")
-
-(defvar sml-paren-lookback 1000
-  "*How far back (in chars) the indentation algorithm should look
-for open parenthesis. High value means slow indentation algorithm. A
-value of 1000 (being the equivalent of 20-30 lines) should suffice
-most uses. (A value of nil, means do not look at all)")
 
 ;;; OTHER GENERIC MODE VARIABLES
 
@@ -203,18 +167,6 @@ This is a good place to put your preferred key bindings.")
 
 (defvar sml-mode-abbrev-table nil "*SML mode abbrev table (default nil)")
 
-(defvar sml-error-overlay t
-  "*Non-nil means use an overlay to highlight errorful code in the buffer.
-
-This gets set when `sml-mode' is invoked\; if you don't like/want SML 
-source errors to be highlighted in this way, do something like
-
-  \(setq-default sml-error-overlay nil\)
-
-in your `sml-load-hook', say.")
-
-(make-variable-buffer-local 'sml-error-overlay)
-
 ;;; CODE FOR SML-MODE 
 
 (defun sml-mode-info ()
@@ -235,14 +187,12 @@ See doc for the variable sml-mode-info."
        "This function is part of sml-proc, and has not yet been loaded.
 Full documentation will be available after autoloading the function."))
 
-  (autoload 'run-sml	   "sml-proc"   sml-no-doc t)
-  (autoload 'sml-make	   "sml-proc"   sml-no-doc t)
-  (autoload 'sml-load-file   "sml-proc"   sml-no-doc t)
-
-  (autoload 'switch-to-sml   "sml-proc"   sml-no-doc t)
-  (autoload 'sml-send-region "sml-proc"   sml-no-doc t)
-  (autoload 'sml-send-buffer "sml-proc"   sml-no-doc t)
-  (autoload 'sml-next-error  "sml-proc"   sml-no-doc t))
+  (autoload 'run-sml		"sml-proc"   sml-no-doc t)
+  (autoload 'sml-compile	"sml-proc"   sml-no-doc t)
+  (autoload 'sml-load-file	"sml-proc"   sml-no-doc t)
+  (autoload 'switch-to-sml	"sml-proc"   sml-no-doc t)
+  (autoload 'sml-send-region	"sml-proc"   sml-no-doc t)
+  (autoload 'sml-send-buffer	"sml-proc"   sml-no-doc t))
 
 ;; font-lock setup
 
@@ -297,6 +247,7 @@ Full documentation will be available after autoloading the function."))
     (modify-syntax-entry ?l "(d" st)
     (modify-syntax-entry ?s "(d" st)
     (modify-syntax-entry ?d ")l" st)
+    (modify-syntax-entry ?\\ "." st)
     (modify-syntax-entry ?* "." st)
     st))
 
@@ -322,109 +273,13 @@ Full documentation will be available after autoloading the function."))
   `(;;("\\<\\(l\\)\\(et\\|ocal\\)\\>" (1 ',sml-syntax-prop-table))
     ;;("\\<\\(s\\)\\(ig\\truct\\)\\>" (1 ',sml-syntax-prop-table))
     ;;("\\<en\\(d\\)\\>" (1 ',sml-syntax-prop-table))
+    ("^\\s-*\\(\\\\\\)" (1 ',sml-syntax-prop-table))
     ("(?\\(\\*\\))?" (1 (sml-get-depth-st)))))
 
 (defconst sml-font-lock-defaults
   '(sml-font-lock-keywords nil nil ((?_ . "w") (?' . "w")) nil
 			   (font-lock-syntactic-keywords . sml-font-lock-syntactic-keywords)))
 
-;; code to get comment fontification working in the face of recursive
-;; comments.  It's lots more work than it should be.	-- stefan
-;; (defvar sml-font-cache '((0 . normal))
-;;   "List of (POSITION . STATE) pairs for an SML buffer.
-;; The STATE is either `normal', `comment', or `string'.  The POSITION is
-;; immediately after the token that caused the state change.")
-;; (make-variable-buffer-local 'sml-font-cache)
-
-;; (defun sml-font-comments-and-strings (limit)
-;;   "Fontify SML comments and strings up to LIMIT.
-;; Handles nested comments and SML's escapes for breaking a string over lines.
-;; Uses sml-font-cache to maintain the fontification state over the buffer."
-;;   (let ((beg (point))
-;; 	last class)
-;;     (while (< beg limit)
-;;       (while (and sml-font-cache
-;; 		  (> (caar sml-font-cache) beg))
-;; 	(pop sml-font-cache))
-;;       (setq last (caar sml-font-cache))
-;;       (setq class (cdar sml-font-cache))
-;;       (goto-char last)
-;;       (cond
-;;        ((eq class 'normal)
-;; 	(cond
-;; 	 ((not (re-search-forward "\\((\\*\\)\\|\\(\"\\)" limit t))
-;; 	  (goto-char limit))
-;; 	 ((match-beginning 1)
-;; 	  (push (cons (point) 'comment) sml-font-cache))
-;; 	 ((match-beginning 2)
-;; 	  (push (cons (point) 'string) sml-font-cache))))
-;;        ((eq class 'comment)
-;; 	(cond
-;; 	 ((let ((nest 1))
-;; 	    (while (and (> nest 0)
-;; 			(re-search-forward "\\((\\*\\)\\|\\(\\*)\\)" limit t))
-;; 	      (cond
-;; 	       ((match-beginning 1) (incf nest))
-;; 	       ((match-beginning 2) (decf nest))))
-;; 	    (> nest 0))
-;; 	  (goto-char limit))
-;; 	 (t
-;; 	  (push (cons (point) 'normal) sml-font-cache)))
-;; 	(put-text-property (- last 2) (point) 'face 'font-lock-comment-face))
-;;        ((eq class 'string)
-;; 	(while (and (re-search-forward
-;; 		     "\\(\"\\)\\|\\(\\\\\\s-*\\\\\\)\\|\\(\\\\\"\\)" limit t)
-;; 		     (not (match-beginning 1))))
-;; 	(cond
-;; 	 ((match-beginning 1)
-;; 	  (push (cons (point) 'normal) sml-font-cache))
-;; 	 (t
-;; 	  (goto-char limit)))
-;; 	(put-text-property (- last 1) (point) 'face 'font-lock-string-face)))
-;;       (setq beg (point)))))
-
-;;; H A C K   A T T A C K !   X E M A C S   V E R S U S   E M A C S
-
-;; (cond ((fboundp 'make-extent)
-;;        ;; suppose this is XEmacs
-
-;;        (defun sml-make-overlay ()
-;;          "Create a new text overlay (extent) for the SML buffer."
-;;          (let ((ex (make-extent 1 1)))
-;;            (set-extent-property ex 'face 'zmacs-region) ex))
-
-;;        (defalias 'sml-is-overlay 'extentp)
-
-;;        (defun sml-overlay-active-p ()
-;;          "Determine whether the current buffer's error overlay is visible."
-;;          (and (sml-is-overlay sml-error-overlay)
-;;               (not (zerop (extent-length sml-error-overlay)))))
-
-;;        (defalias 'sml-move-overlay 'set-extent-endpoints))
-
-;;       ((fboundp 'make-overlay)
-       ;; otherwise assume it's Emacs
-
-       (defun sml-make-overlay ()
-         "Create a new text overlay (extent) for the SML buffer."
-         (let ((ex (make-overlay 0 0)))
-           (overlay-put ex 'face 'region) ex))
-
-       (defalias 'sml-is-overlay 'overlayp)
-
-       (defun sml-overlay-active-p ()
-         "Determine whether the current buffer's error overlay is visible."
-         (and (sml-is-overlay sml-error-overlay)
-              (not (equal (overlay-start sml-error-overlay)
-                          (overlay-end sml-error-overlay)))))
-
-       (defalias 'sml-move-overlay 'move-overlay);;)
-;;       (t
-;;        ;; what *is* this!?
-;;        (defalias 'sml-is-overlay 'ignore)
-;;        (defalias 'sml-overlay-active-p 'ignore)
-;;        (defalias 'sml-make-overlay 'ignore)
-;;        (defalias 'sml-move-overlay 'ignore)))
 
 ;;; MORE CODE FOR SML-MODE
 
@@ -460,19 +315,8 @@ sml-pipe-indent (default -2)
 sml-case-indent (default nil)
     Determine the way to indent case-of expression.
 
-sml-nested-if-indent (default nil)
-    Determine how nested if-then-else expressions are formatted.
-
-sml-type-of-indent (default nil)
-    How to indent let, struct, local, etc.
-    Will not have any effect if the starting keyword is first on the line.
-
 sml-electric-semi-mode (default nil)
     If t, a `\;' will reindent line, and perform a newline.
-
-sml-paren-lookback (default 1000)
-    Determines how far back (in chars) the indentation algorithm should 
-    look to match parenthesis. A value of nil, means do not look at all.
 
 Mode map
 ========
@@ -501,32 +345,7 @@ Mode map
   (set (make-local-variable 'comment-column) 40)
   (set (make-local-variable 'comment-start-skip) "(\\*+[ \t]?")
   (set (make-local-variable 'comment-indent-function) 'sml-comment-indent)
-  (set (make-local-variable 'font-lock-defaults) sml-font-lock-defaults)
-  ;;(set (make-local-variable 'parse-sexp-lookup-properties) t)
-  ;;(set (make-local-variable 'parse-sexp-ignore-comments) t)
-  (setq sml-error-overlay (and sml-error-overlay (sml-make-overlay))))
-
-(defun sml-error-overlay (undo &optional beg end buffer)
-  "Move `sml-error-overlay' so it surrounds the text region in the
-current buffer. If the buffer-local variable `sml-error-overlay' is
-non-nil it should be an overlay \(or extent, in XEmacs speak\)\; this
-function moves the overlay over the current region. If the optional
-BUFFER argument is given, move the overlay in that buffer instead of
-the current buffer.
-
-Called interactively, the optional prefix argument UNDO indicates that
-the overlay should simply be removed: \\[universal-argument] \
-\\[sml-error-overlay]."
-  (interactive "P")
-  (save-excursion
-    (set-buffer (or buffer (current-buffer)))
-    (if (sml-is-overlay sml-error-overlay)
-        (if undo
-            (sml-move-overlay sml-error-overlay 1 1)
-          ;; if active regions, signals mark not active if no region set
-          (let ((beg (or beg (region-beginning)))
-                (end (or end (region-end))))
-            (sml-move-overlay sml-error-overlay beg end))))))
+  (set (make-local-variable 'font-lock-defaults) sml-font-lock-defaults))
 
 (defun sml-electric-pipe ()
   "Insert a \"|\".
@@ -661,7 +480,7 @@ If anyone has a good algorithm for this..."
 				   (looking-at "[\t ]*\\\\"))
 		   (progn (previous-line 1) (current-indentation))
 		 (if (re-search-backward "[^\\\\]\"" nil t)
-		     (1+ (current-indentation))
+		     (1+ (current-column))
 		   0))))
 
 	(and (looking-at "in\\>")	; Match the beginning let/local
@@ -674,10 +493,12 @@ If anyone has a good algorithm for this..."
 	(and (looking-at "else\\>")	; Match the if
 	     (progn
 	       (sml-find-match-backward "\\<else\\>" "\\<if\\>")
-	       (sml-move-if (backward-word 1)
-			    (and sml-nested-if-indent
-				 (looking-at "else[ \t]+if\\>")))
-	       (current-column)))
+	       ;;(sml-move-if (backward-word 1)
+	       ;;	    (and sml-nested-if-indent
+	       ;;		 (looking-at "else[ \t]+if\\>")))
+	       (if (sml-dangling-sym)
+		     (sml-indent-default 'noindent)
+		 (current-column))))
 
 	(and (looking-at "then\\>")	; Match the if + extra indentation
 	     (sml-find-match-indent "\\<then\\>" "\\<if\\>" t))
@@ -697,33 +518,6 @@ If anyone has a good algorithm for this..."
 
 	(sml-indent-arg)
 	(sml-indent-default))))))
-
-;; 	  (let ((indent (current-column)))
-;; 	    ;;(skip-chars-forward "\t (")
-;; 	    (cond
-;; 	     ;; a "let fun" or "let val"
-;; 	     ((looking-at "let \\(fun\\|val\\)\\>")
-;; 	      (+ (current-column) 4 sml-indent-level))
-;; 	     ;; Started val/fun/structure...
-;; 	     ;; Indent after "=>" pattern, but only if its not an fn _ =>
-;; 	     ;; (890726)
-;; 	     ((looking-at ".*=>")
-;; 	      (if (looking-at ".*\\<fn\\>.*=>")
-;; 		  indent
-;; 		(+ indent sml-indent-case-arm)))
-;; 	     ;; else keep the same indentation as previous line
-;; 	     (t indent)))))))))
-
-
-	;;(and (setq indent (sml-get-indent)) nil)
-
-	;;(and (looking-at "=[^>]") (+ indent sml-indent-equal))
-	;;(and (looking-at "fn\\>") (+ indent sml-indent-fn))
-	;;       (and (looking-at "(") (+ indent sml-indent-paren))
-
-	;;(and sml-paren-lookback    ; Look for open parenthesis ?
-	;;    (max indent (sml-get-paren-indent)))
-	;;indent)))))
 
 (defun sml-indent-pipe ()
   (when (sml-find-matching-starter (concat "|\\|\\<of\\>\\|" sml-pipehead-re)
@@ -764,6 +558,7 @@ If anyone has a good algorithm for this..."
   (when sym
     (cdr (assoc* sym al
 		 :test (lambda (x y) (string-match y x))))))
+
 (defun sml-get-indent (data n &optional strict)
   (eval (if (listp data)
 	    (nth n data)
@@ -777,7 +572,9 @@ If anyone has a good algorithm for this..."
 			     (sml-forward-spaces))))))
 
 (defun sml-get-sym-indent (sym &optional style)
-  "expects to be looking-at SYM."
+  "expects to be looking-at SYM.
+If indentation is delegated, the point will be at the start of
+the parent at the end of this function."
   (let ((indent-data (sml-re-assoc sml-indent-starters sym))
 	(delegate (eval (sml-re-assoc sml-delegate sym))))
     (or (when indent-data
@@ -794,8 +591,8 @@ If anyone has a good algorithm for this..."
 	    (let* ((parent-sym (save-excursion (sml-move-read (sml-forward-sym))))
 		   (parent-indent (sml-re-assoc sml-indent-starters parent-sym)))
 	      ;; check the special rules
-	      (sml-move-if (backward-word 1)
-			   (looking-at "\\<else[ \t]+if\\>"))
+	      ;;(sml-move-if (backward-word 1)
+		;;	   (looking-at "\\<else[ \t]+if\\>"))
 	      (+ (if (sml-dangling-sym)
 		     (sml-indent-default 'noindent)
 		   (current-column))
@@ -816,8 +613,8 @@ If anyone has a good algorithm for this..."
 	 (_ (sml-backward-spaces))
 	 (sym-before (sml-move-read (sml-backward-sym)))
 	 (prec (or (sml-op-prec sym-before 'back) prec-after 100))
-	 sexp)
-    (or (and sym-before (sml-get-sym-indent sym-before))
+	 (sym-indent (and sym-before (sml-get-sym-indent sym-before))))
+    (or (and sym-indent (if noindent (current-column) sym-indent))
 	(progn
 	  ;;(sml-forward-sym)
 	  (while (and (not (sml-bolp))
@@ -825,7 +622,12 @@ If anyone has a good algorithm for this..."
 		      (not (sml-bolp)))
 	    (while (sml-move-if (sml-backward-sexp prec))))
 	  (or (and (not (sml-bolp))
-		   (= prec 65) (string-equal "=" sym-before) ;Yuck!!
+		   ;; If we backed over an equal char which was not the
+		   ;; polymorphic equality, then we did what amounts to
+		   ;; delegate indent from `=' to the corresponding head, so we
+		   ;; need to look at the preceding symbol and follow its
+		   ;; intentation instructions.
+		   (= prec 65) (string-equal "=" sym-before)
 	           (save-excursion
 		     (sml-backward-spaces)
 		     (let* ((sym (sml-move-read (sml-backward-sym)))
@@ -841,29 +643,6 @@ If anyone has a good algorithm for this..."
   (save-excursion
     (skip-chars-backward " \t|") (bolp)))
 
-;; (defun sml-goto-first-subexp ()
-;;   (let ((initpoint (point)))
-    
-;;     (let ((argp (and (looking-at "[[({a-zA-Z0-9_'#~]\\|$")
-;; 		     (not (looking-at (concat "[ \t]*" sml-not-arg-regexp))))))
-;;       (while (and argp (not (bobp)))
-;; 	(let* ((endpoint (point))
-;; 	       (startpoint endpoint))
-;; 	  (setq argp
-;; 		(ignore-errors
-;; 		 (sml-backward-sexp t)
-;; 		 (setq startpoint (point))
-;; 		 (and (not (looking-at (concat "[[(]\\|" sml-keywords-regexp)))
-;; 		      (progn (sml-forward-sexp)
-;; 			     (sml-skip-spaces)
-;; 			     (>= (point) endpoint)))))
-;; 	  (goto-char (if argp startpoint endpoint))))
-;;       (let ((res (point)))
-;; 	(sml-backward-spaces) (skip-syntax-backward "^ ")
-;; 	(if (looking-at "*\\|:[^=]\\|->\\|of\\>")
-;; 	    (goto-char initpoint)
-;; 	  (goto-char res)
-;; 	  (sml-skip-spaces))))))
 
 ;; maybe `|' should be set to word-syntax in our temp syntax table ?
 (defun sml-current-indentation ()
@@ -872,100 +651,6 @@ If anyone has a good algorithm for this..."
     (skip-chars-forward " \t|")
     (current-column)))
 
-;; (defun sml-get-indent ()
-;;   (save-excursion
-;;     ;;(let ((endpoint (point)))
-
-;;       ;; let's try to see whether we are inside an `f a1 a2 ..' expression
-;;       ;;(sml-goto-first-subexp)
-;;       ;;(setq rover (current-column))
-;;       ;;(sml-skip-spaces)
-;;       (cond
-;; ;;        ((< (point) endpoint)
-;; ;; 	;; we're not the first subexp
-;; ;; 	(sml-forward-sexp)
-;; ;; 	(if (and sml-indent-align-args
-;; ;; 		 (progn (sml-skip-spaces) (< (point) endpoint)))
-;; ;; 	    ;; we're not the second subexp
-;; ;; 	    (current-column)
-;; ;; 	  (+ rover sml-indent-args)))
-
-;;        ;; we're not inside an `f a1 a2 ..' expr
-;;        ((progn ;;(goto-char endpoint)
-;; 	       (sml-backward-spaces)
-;; 	       (/= (skip-chars-backward ";,") 0))
-;; 	(sml-backward-sexps (concat "[[(]\\'\\|" sml-user-begin-symbols-re))
-;; 	(current-column))
-
-;;        (t
-;; 	(while (/= (current-column) (current-indentation))
-;; 	  (sml-backward-sexp t))
-;; 	(when (looking-at "\\<of\\>") (forward-word 1))
-;; 	(skip-chars-forward "\t |")
-;; 	(let ((indent (current-column)))
-;; 	  ;;(skip-chars-forward "\t (")
-;; 	  (cond
-;; 	   ;; a "let fun" or "let val"
-;; 	   ((looking-at "let \\(fun\\|val\\)\\>")
-;; 	    (+ (current-column) 4 sml-indent-level))
-;; 	   ;; Started val/fun/structure...
-;; 	   ((looking-at sml-indent-starters-reg)
-;; 	    (+ (current-column) sml-indent-level))
-;; 	   ;; Indent after "=>" pattern, but only if its not an fn _ =>
-;; 	   ;; (890726)
-;; 	   ((looking-at ".*=>")
-;; 	    (if (looking-at ".*\\<fn\\>.*=>")
-;; 		indent
-;; 	      (+ indent sml-indent-case-arm)))
-;; 	   ;; else keep the same indentation as previous line
-;; 	   (t indent)))))))
-
-;; (defun sml-get-paren-indent ()
-;;   (save-excursion
-;;     (condition-case ()
-;; 	(progn
-;; 	  (up-list -1)
-;; 	  (if (save-excursion
-;; 		(forward-char 1)
-;; 		(looking-at sml-indent-starters-reg))
-;; 	      (1+ (+ (current-column) sml-indent-level))
-;; 	    (1+ (current-column))))
-;;       (error 0))))
-
-;; (defun sml-inside-comment-or-string-p ()
-;;   (let ((start (point)))
-;;     (if (save-excursion
-;;           (condition-case ()
-;;               (progn
-;;                 (search-backward "(*")
-;;                 (search-forward "*)")
-;;                 (forward-char -1)       ; A "*)" is not inside the comment
-;;                 (> (point) start))
-;;             (error nil)))
-;;         t
-;;       (let ((numb 0))
-;;         (save-excursion
-;;           (save-restriction
-;;             (narrow-to-region (progn (beginning-of-line) (point)) start)
-;;             (condition-case ()
-;;                 (while t
-;;                   (search-forward "\"")
-;;                   (setq numb (1+ numb)))
-;;               (error (if (and (not (zerop numb))
-;;                               (not (zerop (% numb 2))))
-;;                          t nil)))))))))
-
-;; (defun sml-find-match-backward (unquoted-this this match)
-;;   (let ((case-fold-search nil)
-;; 	(level 1)
-;; 	(pattern (concat this "\\|" match)))
-;;     (while (not (zerop level))
-;;       (if (sml-re-search-backward pattern)
-;; 	  (setq level (cond
-;; 		       ((looking-at this) (1+ level))
-;; 		       ((looking-at match) (1- level))))
-;; 	;; The right match couldn't be found
-;; 	(error (concat "Unbalanced: " unquoted-this))))))
 
 (defun sml-find-match-indent (this match &optional indented)
   (save-excursion
@@ -979,17 +664,6 @@ If anyone has a good algorithm for this..."
   (while (not (or (looking-at regexp) (bobp)))
     (sml-backward-sexp prec))
   (not (bobp)))
-
-;; (defun sml-re-search-backward (regexpr)
-;;   (let ((case-fold-search nil) (found t))
-;;     (if (re-search-backward regexpr nil t)
-;;         (progn
-;;           (condition-case ()
-;;               (while (sml-inside-comment-or-string-p)
-;;                 (re-search-backward regexpr))
-;;             (error (setq found nil)))
-;;           found)
-;;       nil)))
 
 (defun sml-comment-indent ()
   (if (looking-at "^(\\*")              ; Existing comment at beginning
@@ -1211,16 +885,7 @@ should specify \":\" or \":>\" and the constraining signature."
       (indent-to indent)
       (insert "end"))))
 
-;;; Load the menus, if they can be found on the load-path
-
-(condition-case nil
-    (require 'sml-menus)
-  (error (message "Sorry, not able to load SML mode menus.")))
-
 ;;; & do the user's customisation
-
-(add-hook 'sml-load-hook 'sml-mode-version t)
-
 (run-hooks 'sml-load-hook)
 
 ;;; sml-mode.el has just finished.

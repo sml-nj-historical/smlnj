@@ -35,6 +35,43 @@
   "Syntax table used for internal sml-mode operation."
   :copy sml-mode-syntax-table)
 
+;;; 
+;;; various macros
+;;; 
+
+(defmacro sml-with-ist (&rest r)
+  (let ((ost-sym (make-symbol "oldtable")))
+    `(let ((,ost-sym (syntax-table))
+	   (case-fold-search nil))
+       (unwind-protect
+	   (progn (set-syntax-table sml-internal-syntax-table) . ,r)
+	 (set-syntax-table ,ost-sym)))))
+(def-edebug-spec sml-with-ist t)
+
+(defmacro sml-move-if (f &optional c)
+  (let ((pt-sym (make-symbol "point"))
+	(res-sym (make-symbol "result")))
+    `(let* ((,pt-sym (point))
+	    (,res-sym ,f))
+       (or ,(or c res-sym) (progn (goto-char ,pt-sym) nil)))))
+(def-edebug-spec sml-move-if t)
+
+(defmacro sml-move-read (&rest body)
+  (let ((pt-sym (make-symbol "point")))
+    `(let ((,pt-sym (point)))
+       ,@body
+       (when (/= (point) ,pt-sym)
+	 (buffer-substring (point) ,pt-sym)))))
+(def-edebug-spec sml-move-read t)
+
+(defmacro sml-point-after (&rest body)
+  `(save-excursion
+     ,@body
+     (point)))
+(def-edebug-spec sml-point-after t)
+
+;;
+
 (defun sml-op-prec (op dir)
   "return the precedence of OP or nil if it's not an infix.
 DIR should be set to BACK if you want to precedence w.r.t the left side
@@ -43,62 +80,39 @@ This assumes that we are looking-at the OP."
   (cond
    ((not op) nil)
    ;;((or (string-match (sml-syms-re (appen
-   ((or (string-equal ";" op) (string-equal "," op)) 10)
-   ((or (string-equal "=>" op)
-	(and (string-equal "=" op)
+   ((or (string= ";" op) (string= "," op)) 10)
+   ((or (string= "=>" op)
+	(and (string= "=" op)
 	     ;; not the polymorphic equlity
 	     (> (sml-point-after (re-search-backward sml-=-starter-re nil 'top))
 		(sml-point-after (re-search-backward "=" nil 'top)))))
     ;; depending on the direction
     (if (eq dir 'back) 65 40))
    ((or (string-match (sml-syms-re "case" "of" "fn") op)) 45)
-   ((or (string-equal "|" op)) (if (eq dir 'back) 47 30))
+   ((or (string= "|" op)) (if (eq dir 'back) 47 30))
    ((or (string-match (sml-syms-re "if" "then" "else" "while" "do" "raise") op)) 50)
-   ((or (string-equal "handle" op)) 60)
-   ((or (string-equal "orelse" op)) 70)
-   ((or (string-equal "andalso" op)) 80)
-   ((or (string-equal ":" op) (string-equal ":>" op)) 90)
-   ((or (string-equal "->" op)) 95)
+   ((or (string= "handle" op)) 60)
+   ((or (string= "orelse" op)) 70)
+   ((or (string= "andalso" op)) 80)
+   ((or (string= ":" op) (string= ":>" op)) 90)
+   ((or (string= "->" op)) 95)
    ;; standard infix ops: 10*(10 + prec) as defined in `the definition of SML'
-   ((or (string-equal "!" op)) nil)
-   ((or (string-equal "~" op)) nil)
-   ((or (string-equal ":=" op)) 130)
-   ((or (string-match "\\`[<>]?=?\\'" op)) 140)
-   ((or (string-equal "::" op)) 150)
-   ((or (string-equal "+" op) (string-equal "-" op)) 160)
-   ((or (string-equal "/" op) (string-equal "*" op)
-	(string-equal "div" op) (string-equal "mod" op)) 170)
+   ;;((or (string= "!" op)) nil)
+   ;;((or (string= "~" op)) nil)
+   ((or (string= "before" op)) 100)
+   ((or (string= ":=" op) (string= "o" op)) 130)
+   ((or (string= ">" op) (string= ">=" op) (string= "<>" op)
+	(string= "<" op) (string= "<=" op) (string= "=" op)) 140)
+   ((or (string= "::" op) (string= "@" op)) 150)
+   ((or (string= "+" op) (string= "-" op) (string= "^" op)) 160)
+   ((or (string= "/" op) (string= "*" op)
+	(string= "quot" op) (string= "rem" op)
+	(string= "div" op) (string= "mod" op)) 170)
    ;; default heuristic: alphanum symbols are not infix
-   ((or (string-match "\\sw" op)) nil)
-   (t 100)))
-
-
-(defmacro sml-with-ist (&rest r)
-  `(let ((sml-ost (syntax-table))
-	 (case-fold-search nil))
-     (unwind-protect
-	 (progn (set-syntax-table sml-internal-syntax-table) . ,r)
-       (set-syntax-table sml-ost))))
-(def-edebug-spec sml-with-ist t)
-
-(defmacro sml-move-if (f &optional c)
-  `(let* ((-sml-move-if-pt (point))
-	  (-sml-move-if-res ,f))
-     (or ,(or c '-sml-move-if-res) (progn (goto-char -sml-move-if-pt) nil))))
-(def-edebug-spec sml-move-if t)
-
-(defmacro sml-move-read (&rest body)
-  `(let ((-sml-move-read-pt (point)))
-     ,@body
-     (when (/= (point) -sml-move-read-pt)
-       (buffer-substring (point) -sml-move-read-pt))))
-(def-edebug-spec sml-move-read t)
-
-(defmacro sml-point-after (&rest body)
-  `(save-excursion
-     ,@body
-     (point)))
-(def-edebug-spec sml-point-after t)
+   ;;((or (string-match "\\sw" op)) nil)
+   ;;(t 100)
+   (t nil)
+   ))
 
 ;;
 
@@ -133,29 +147,6 @@ This assumes that we are looking-at the OP."
 	     ((sml-looking-back-at match) (1- level))
 	     (t (error "Unbalanced")))))
     t))
-
-;; (defun sml-forward-sexp (&optional count strict)
-;;   "Moves one sexp forward if possible, or one char else.
-;; Returns T if the move indeed moved through one sexp and NIL if not."
-;;   (let ((parse-sexp-lookup-properties t)
-;; 	(parse-sexp-ignore-comments t))
-;;     (condition-case ()
-;; 	(progn
-;; 	  (forward-sexp 1)
-;; 	  (cond
-;; 	   ((sml-looking-back-at
-;; 	     (if strict sml-begin-symbols-re sml-user-begin-symbols-re))
-;; 	    (sml-find-match-forward sml-begin-symbols-re "\\<end\\>") t)
-;; 	   ((sml-looking-back-at "\\<end\\>") nil)
-;; 	   (t t)))
-;;       (error (forward-char 1) nil))))
-
-;; the terminators should be chosen more carefully:
-;; `let' isn't one while `=' may be
-;; (defun sml-forward-sexps (&optional end)
-;;   (sml-forward-sexp)
-;;   (while (not (sml-looking-back-at (or end (concat sml-keywords-regexp "\\|[])}|:;]"))))
-;;       (sml-forward-sexp)))
 
 ;;
 ;; now backwards
@@ -204,9 +195,9 @@ Returns T if the move indeed moved through one sexp and NIL if not."
 	  (ignore-errors (backward-sexp 1))
 	  (if (/= point (point)) t (backward-char 1) nil)))
        ;; let...end atoms
-       ((or (string-equal "end" op)
+       ((or (string= "end" op)
 	    (and (not prec)
-		 (or (string-equal "in" op) (string-equal "with" op))))
+		 (or (string= "in" op) (string= "with" op))))
 	(sml-find-match-backward "\\<end\\>" sml-begin-symbols-re))
        ;; don't forget the `op' special keyword
        ((sml-move-if (progn (sml-backward-spaces) (skip-syntax-backward "w_"))
@@ -215,11 +206,11 @@ Returns T if the move indeed moved through one sexp and NIL if not."
        ((and (or (not prec) (and prec op-prec (< prec op-prec)))
 	     (string-match (sml-syms-re sml-exptrail-syms) op))
 	(cond
-	 ((or (string-equal "else" op) (string-equal "then" op))
+	 ((or (string= "else" op) (string= "then" op))
 	  (sml-find-match-backward "\\<else\\>" "\\<if\\>"))
-	 ((string-equal "of" op)
+	 ((string= "of" op)
 	  (sml-find-match-backward "\\<of\\>" "\\<case\\>"))
-	 ((string-equal "do" op)
+	 ((string= "do" op)
 	  (sml-find-match-backward "\\<do\\>" "\\<while\\>"))
 	 (t prec)))
        ;; infix ops precedence
@@ -250,20 +241,20 @@ Returns T if the move indeed moved through one sexp and NIL if not."
        ;; let...end atoms
        ((or (string-match sml-begin-symbols-re op)
 	    (and (not prec)
-		 (or (string-equal "in" op) (string-equal "with" op))))
+		 (or (string= "in" op) (string= "with" op))))
 	(sml-find-match-forward sml-begin-symbols-re "\\<end\\>"))
        ;; don't forget the `op' special keyword
-       ((string-equal "op" op) (sml-forward-sym))
+       ((string= "op" op) (sml-forward-sym))
        ;; infix ops precedence
        ((and prec op-prec) (< prec op-prec))
        ;; [ prec = nil ]  if...then...else
-       ;; ((or (string-equal "else" op) (string-equal "then" op))
+       ;; ((or (string= "else" op) (string= "then" op))
        ;;  (sml-find-match-backward "\\<else\\>" "\\<if\\>"))
        ;; [ prec = nil ]  case...of
-       ;; ((string-equal "of" op)
+       ;; ((string= "of" op)
        ;;  (sml-find-match-backward "\\<of\\>" "\\<case\\>"))
        ;; [ prec = nil ]  while...do
-       ;; ((string-equal "do" op)
+       ;; ((string= "do" op)
        ;;  (sml-find-match-backward "\\<do\\>" "\\<while\\>"))
        ;; [ prec = nil ]  a new operator, let's skip the sexps until the next
        (op-prec (while (sml-move-if (sml-forward-sexp op-prec))) t)
@@ -275,8 +266,8 @@ Returns T if the move indeed moved through one sexp and NIL if not."
        (t t))))) ;(or (string-match "\\sw" op) (sml-backward-sexp prec))
 
 (defun sml-in-word-p ()
-  (and (eq ?w (char-syntax (char-before)))
-       (eq ?w (char-syntax (char-after)))))
+  (and (eq ?w (char-syntax (or (char-before) ? )))
+       (eq ?w (char-syntax (or (char-after) ? )))))
 
 (defun sml-user-backward-sexp (&optional count)
   "Like `backward-sexp' but tailored to the SML syntax."
@@ -309,41 +300,6 @@ Returns T if the move indeed moved through one sexp and NIL if not."
 
 (defun sml-backward-arg () (sml-backward-sexp 1000))
 (defun sml-forward-arg () (sml-forward-sexp 1000))
-
-;; (defun sml-backward-arg ()
-;;   "Moves one sexp backward (and return T) if it is an argument."
-;;   (let* ((point (point))
-;; 	 (argp (and (sml-backward-sexp t)
-;; 		    (not (looking-at sml-not-arg-re))
-;; 		    (save-excursion
-;; 		      (sml-forward-sexp 1 t)
-;; 		      (sml-forward-spaces)
-;; 		      (>= (point) point)))))
-;;     (unless argp (goto-char point))
-;;     argp))
-
-;; (defun sml-backward-sexps (&optional end)
-;;   (sml-backward-spaces)
-;;   (let ((eos (point)))
-;;     (sml-backward-sexp t)
-;;     (while (not (save-restriction
-;; 		  (narrow-to-region (point) eos)
-;; 		  (looking-at (or end sml-keywords-regexp))))
-;;       (sml-backward-spaces)
-;;       (setq eos (point))
-;;       (sml-backward-sexp t))
-;;     (if (looking-at "\\sw")
-;; 	(forward-word 1)
-;;       (forward-char))
-;;     (sml-forward-spaces)))
-
-;; (defun sml-up-list ()
-;;   (save-excursion
-;;     (condition-case ()
-;;         (progn
-;;           (up-list 1)
-;;           (point))
-;;       (error 0))))
 
 ;;
 (provide 'sml-move)

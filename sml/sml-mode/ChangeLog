@@ -1,3 +1,25 @@
+1999-06-13  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-smlnj.el, sml-mosml.el, sml-poly-ml.el: removed.
+
+	* sml-proc.el (...): got rid of sml-next-error by spicing up the interface
+	  with compile.el so that intervals can be displayed.  `sml-overlay' is
+	  kept (and moved from sml-mode to sml-proc where it belongs) but is
+	  made redundant in the case of transient-mark-mode.
+
+1999-06-12  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-proc.el (sml-prompt-regexp): more general regexp to catch mosml,
+	  smlnj as well as polyml prompts.
+	(sml-update-cursor, sml-send-command, inferior-sml-mode): make it work
+	  with compile.el's `next-error'.
+	(sml-temp-threshold): dropped: always use a temp file.
+
+1999-06-10  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-move.el (sml-op-prec): updated the list of default infix ops based on
+	  sml/nj's source files.
+
 1999-06-08  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* sml-proc.el (sml-run): removed dubious code to take care of a supposedly

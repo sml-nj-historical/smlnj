@@ -37,6 +37,44 @@ and is hence executed at macro-expansion-time."
 	  (flatten head rest)
 	(cons head rest)))))
 
+;;; 
+;;; temp files
+;;; 
+
+(defvar temp-file-dir temporary-file-directory
+  "Directory where to put temp files.")
+
+(defvar temp-directories ())
+
+(defun delete-temp-dirs ()
+  (dolist (dir temp-directories)
+    (when (file-directory-p dir)
+      (let ((default-directory dir))
+	(dolist (file (directory-files "."))
+	  (ignore-errors (delete-file file))))
+      (delete-directory dir))))
+(add-hook 'kill-emacs-hook 'delete-temp-dirs)
+
+(defun make-temp-dir (s)
+  (let* ((prefix (expand-file-name s temp-file-dir))
+	 (dir (make-temp-name prefix)))
+    (if (not (ignore-errors (make-directory dir t) t))
+	(make-temp-dir prefix)
+      (push dir temp-directories)
+      dir)))
+
+(defun make-temp-file (s)
+  (unless (file-name-absolute-p s)
+    (unless (equal (user-uid)
+		   (third (file-attributes temporary-file-directory)))
+      (setq temporary-file-directory (make-temp-dir "emacs")))
+    (setq s (expand-file-name s temporary-file-directory)))
+  (let ((file (make-temp-name s)))
+    (write-region 1 1 file nil 'silent)
+    file))
+
+;; defmap ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun custom-create-map (m bs args)
   (unless (keymapp m)
     (setq bs (append m bs))
@@ -47,7 +85,7 @@ and is hence executed at macro-expansion-time."
       (cond
        ((symbolp key)
 	(substitute-key-definition key binding m global-map))
-       ((not (lookup-key m key))
+       ((let ((o (lookup-key m key))) (or (null o) (numberp o)))
 	(define-key m key binding)))))
   (while args
     (let ((key (first args))
@@ -58,25 +96,28 @@ and is hence executed at macro-expansion-time."
 	 ((keymapp val) (set-keymap-parent m val))
 	 (t (set-keymap-parents m val))))
        (t (error "Uknown argument %s in defmap" key))))
-    (setq args (cddr args))))
+    (setq args (cddr args)))
+  m)
 
 (defmacro defmap (m bs doc &rest args)
-  `(progn
-     (defvar ,m (make-sparse-keymap) ,doc)
-     (custom-create-map ,m ,bs ,(cons 'list args))))
+  `(defconst ,m
+     (custom-create-map (if (boundp ',m) ,m) ,bs ,(cons 'list args))
+     ,doc))
+
+;; defsyntax ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun custom-create-syntax (css args)
+  (let ((st (make-syntax-table (cadr (memq :copy args)))))
+    (dolist (cs css)
+      (let ((char (car cs))
+	    (syntax (cdr cs)))
+	(if (sequencep char)
+	    (mapcar* (lambda (c) (modify-syntax-entry c syntax st)) char)
+	  (modify-syntax-entry char syntax st))))
+    st))
 
 (defmacro defsyntax (st css doc &rest args)
-  `(defvar ,st
-     (let ((st (make-syntax-table ,(cadr (memq :copy args)))))
-       (dolist (cs ,css)
-	 (let ((char (car cs))
-	       (syntax (cdr cs)))
-	   (if (sequencep char)
-	       (mapcar* (lambda (c) (modify-syntax-entry c syntax st))
-			char)
-	     (modify-syntax-entry char syntax st))))
-       st)
-     doc))
+  `(defconst ,st (custom-create-syntax ,css ,(cons 'list args)) doc))
 
 ;;
 (provide 'sml-util)

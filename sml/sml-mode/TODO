@@ -27,19 +27,19 @@ let fun toStringFKind {isrec,cconv,inline,...} =
 	    in (fk, f, args, loop body)
 	    end
 	    fun foo x = let
-		val 
+	      val 
 	    in 
-		
-		let f
-		in if 2 then
-		       ~3
-		   else 
-		       asdf
-		end
-		    
-		    (
-		     if foo then 1 else 2;
-		     ())
+	      
+	      let f
+	      in if 2 then
+		   ~3
+		 else 
+		   asdf
+	      end
+		  
+		  (
+		   if foo then 1 else 2;
+		   ())
 	    end
 	end
       | toStringFKind =
@@ -75,32 +75,31 @@ let fun toStringFKind {isrec,cconv,inline,...} =
 		       orelse vs = (map (F.VAR o #1) args) andalso
 			      not (C.escaping g)
 		    then
-			let val g = F.VAR g
-			in substitute(f, val2sval g, g)
-			end
-			handle NotFound =>
-			       addbind (f, Fun(f, body, args, fk, od))
+		      let val g = F.VAR g
+		      in substitute(f, val2sval g, g)
+		      end
+		      handle NotFound =>
+			     addbind (f, Fun(f, body, args, fk, od))
 		    else addbind (f, Fun(f, body, args, fk, od))
 		  | (fk,f,args,body) =>
 		    addbind (f, Fun(f, body, args, fk, od)))
 	    
-	    (if 1 then 1 + 2 else
-	     if
-		 1 then
-		 1
-		 + df
+	    (if 1 then 1 + 2 else if
+	       1 then
+	       1
+	       + df
 	     else
-		 hell
-		     de
-		     der
-		     +1)
+	       hell
+		   de
+		   der
+		   +1)
 	    
 	    case
-		case a
-		 of 2 =>
-		    1
-		    + 2
-		  |  => 
+	      case a of
+		 2 =>
+		 1
+		 + 2
+	       |  => 
 	     of 1 =>
 		sd
 	      |  => 
