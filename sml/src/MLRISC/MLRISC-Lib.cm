@@ -1,0 +1,78 @@
+(*
+ * This is the MLRISC library
+ *)
+Library 
+	signature ANNOTATIONS
+	structure Annotations
+	signature BITSET
+	structure BitSet
+	signature CATNETABLE_LIST
+	structure CatnetableList
+	structure DynamicArray
+	signature FREQ
+	structure Freq
+	structure HashArray
+	signature PRIORITY_QUEUE
+	structure PriorityQueue
+	signature STRING_STREAM
+	structure StringStream
+	structure Word64
+is
+	basis.cm
+	smlnj-lib.cm
+
+	library/annotations.sig
+	library/annotations.sml
+	library/bitset.sig
+	library/bitset.sml
+(*
+	library/cache.sml
+ *)
+	library/catlist.sml
+	library/dynamic-array.sml
+(*
+	library/dynamic-bitset.sml
+	library/fixed-point.sig
+	library/fixed-point.sml
+ *)
+	library/freq.sig
+	library/freq.sml
+	library/hash-array.sml
+(*
+	library/hash-table.sig
+	library/hash-table.sml
+	library/hashMap.sig
+	library/hashMap.sml
+	library/hashBag.sig
+	library/hashBag.sml
+	library/hashMultimap.sig
+	library/hashMultimap.sml
+	library/hashSet.sig
+	library/hashSet.sml
+	library/int-set.sml
+ *)
+	library/priQueue.sig
+	library/priQueue.sml
+(*
+	library/probability.sml
+	library/randlist.sml
+	library/regset.sig
+	library/regset.sml
+	library/sorting2.sml
+ *)
+	library/stringStream.sml
+(*
+	library/susp.sml
+	library/transaction-glue.sml
+	library/transaction-log.sig
+	library/transaction-log.sml
+	library/transaction.sig
+	library/transaction.sml
+	library/tree-map.sml
+	library/undoable-array.sml
+	library/undoable-ref.sml
+	library/union-find.sml
+	library/uref.sml
+ *)
+	library/word64.sml
+

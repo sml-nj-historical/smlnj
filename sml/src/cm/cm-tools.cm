@@ -1,0 +1,5 @@
+Library
+	signature TOOLS
+	structure Tools
+is
+	cm-lib.cm
