@@ -8,7 +8,6 @@
  *)
 structure PidSet = SetFn
     (struct
-	 type ord_key = GenericVC.PersStamps.persstamp
-	 val compare = GenericVC.PersStamps.compare
+	 type ord_key = PersStamps.persstamp
+	 val compare = PersStamps.compare
     end)
-

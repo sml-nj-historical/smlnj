@@ -5,17 +5,20 @@
  *)
 
 
-functor HppaAsmEmitter(structure Instr : HPPAINSTR
+functor HppaAsmEmitter(structure S : INSTRUCTION_STREAM
+                       structure Instr : HPPAINSTR
+                          where T = S.P.T
                        structure Shuffle : HPPASHUFFLE
                           where I = Instr
+                       structure MLTreeEval : MLTREE_EVAL
+                          where T = Instr.T
                       ) : INSTRUCTION_EMITTER =
 struct
    structure I  = Instr
    structure C  = I.C
    structure T  = I.T
-   structure S  = T.Stream
+   structure S  = S
    structure P  = S.P
-   structure LabelExp = I.LabelExp
    structure Constant = I.Constant
    
    val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
@@ -41,27 +44,28 @@ struct
                   in  if n<0 then "-"^String.substring(s,1,size s-1)
                       else s
                   end
-       fun emit_label lab = emit(Label.nameOf lab)
-       fun emit_labexp le = emit(LabelExp.toString le)
+       fun emit_label lab = emit(P.Client.AsmPseudoOps.lexpToString(T.LABEL lab))
+       fun emit_labexp le = emit(P.Client.AsmPseudoOps.lexpToString (T.LABEXP le))
        fun emit_const c = emit(Constant.toString c)
        fun emit_int i = emit(ms i)
        fun paren f = (emit "("; f(); emit ")")
-       fun defineLabel lab = emit(Label.nameOf lab^":\n")
+       fun defineLabel lab = emit(P.Client.AsmPseudoOps.defineLabel lab^":\n")
        fun entryLabel lab = defineLabel lab
-       fun comment msg = (tab(); emit("/* " ^ msg ^ " */"))
+       fun comment msg = (tab(); emit("/* " ^ msg ^ " */\n"))
        fun annotation a = (comment(Annotations.toString a); nl())
        fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
+       fun fail _ = raise Fail "AsmEmitter"
        fun emit_region mem = comment(I.Region.toString mem)
        val emit_region = 
           if !show_region then emit_region else doNothing
-       fun pseudoOp pOp = emit(P.toString pOp)
+       fun pseudoOp pOp = (emit(P.toString pOp); emit "\n")
        fun init size = (comment("Code Size = " ^ ms size); nl())
        val emitCellInfo = AsmFormatUtil.reginfo
                                 (emit,formatAnnotations)
-       fun emitCell r = (emit(C.toString r); emitCellInfo r)
+       fun emitCell r = (emit(CellsBasis.toString r); emitCellInfo r)
        fun emit_cellset(title,cellset) =
-         (nl(); comment(title^C.CellSet.toString cellset))
+         (nl(); comment(title^CellsBasis.CellSet.toString cellset))
        val emit_cellset = 
          if !show_cellset then emit_cellset else doNothing
        fun emit_defs cellset = emit_cellset("defs: ",cellset)
@@ -593,7 +597,7 @@ struct
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                endCluster=doNothing,
+                endCluster=fail,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,
                 comment=comment,

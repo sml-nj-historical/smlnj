@@ -11,7 +11,8 @@ sig
                         strLty : Modules.Structure * DebIndex.depth 
                                  * ElabUtil.compInfo -> PLambdaType.lty,
                         fctLty : Modules.Functor * DebIndex.depth 
-                                 * ElabUtil.compInfo -> PLambdaType.lty}
+                                 * ElabUtil.compInfo -> PLambdaType.lty,
+			markLBOUND: DebIndex.depth * int -> int}
 end (* signature TRANSTYPES *)
 
 structure TransTypes : TRANSTYPES = 
@@ -84,12 +85,32 @@ fun freeTyc (i) =
       end
 end (* end of recTyc and freeTyc hack *)
 
-fun tpsKnd (TP_VAR {kind, ...}) = kind
+fun tpsKnd (TP_VAR x) = #kind (TVI.fromExn x)
   | tpsKnd _ = bug "unexpected tycpath parameters in tpsKnd"
 
+fun genTT() = 
+  let
+
+val nextmark = ref 0
+val markmap = ref IntRedBlackMap.empty
+fun markLBOUND (di, n) =
+    let val m = !nextmark
+    in
+	nextmark := m + 1;
+	markmap := IntRedBlackMap.insert (!markmap, m, (di, n));
+	m
+    end
+fun findLBOUND m =
+    case IntRedBlackMap.find (!markmap, m) of
+	SOME i => i
+      | NONE => ErrorMsg.impossible "transtypes:findLBOUND"
+	      
 fun tpsTyc d tp = 
-  let fun h (TP_VAR {depth, num, ...}, cur) = 
+  let fun h (TP_VAR x, cur) =
+	  let val { depth, num, ... } = TVI.fromExn x
+	  in
               LT.tcc_var(DI.calc(cur, depth), num)
+	  end
         | h (TP_TYC tc, cur) = tycTyc(tc, cur)
         | h (TP_SEL (tp, i), cur) = LT.tcc_proj(h(tp, cur), i)
         | h (TP_APP (tp, ps), cur) = 
@@ -126,6 +147,30 @@ and tycTyc(tc, d) =
              in (LT.tkc_int i, resTyc)
             end
 
+      fun dtsFam (freetycs, fam as { members, ... } : dtypeFamily) =
+	  case ModulePropLists.dtfLtyc fam of
+	      SOME (tc, od) =>
+              LT.tc_adj(tc, od, d) (* invariant: tc contains no free variables 
+				    * so tc_adj should have no effects *)
+	    | NONE => 
+              let fun ttk (GENtyc { arity, ... }) = LT.tkc_int arity
+                    | ttk (DEFtyc{tyfun=TYFUN{arity=i, ...},...}) =
+		      LT.tkc_int i
+                    | ttk _ = bug "unexpected ttk in dtsFam"
+                  val ks = map ttk freetycs
+                  val (nd, hdr) = 
+                      case ks of [] => (d, fn t => t)
+                               | _ => (DI.next d, fn t => LT.tcc_fn(ks, t))
+                  val mbs = Vector.foldr (op ::) nil members
+                  val mtcs = map (dtsTyc (DI.next nd)) mbs
+                  val (fks, fts) = ListPair.unzip mtcs
+                  val nft = case fts of [x] => x | _ => LT.tcc_seq fts
+                  val tc = hdr(LT.tcc_fn(fks, nft)) 
+                  val _ = ModulePropLists.setDtfLtyc (fam, SOME(tc, d))
+              in tc
+              end
+
+(*
       fun dtsFam (_, {lambdatyc=ref (SOME (tc,od)), ...} : dtypeFamily) =
             LT.tc_adj(tc, od, d) (* invariant: tc contains no free variables 
                                     so tc_adj should have no effects *)
@@ -145,8 +190,9 @@ and tycTyc(tc, d) =
                 val _ = (x := SOME(tc, d))
              in tc
             end
+*)
 
-      fun h (PRIMITIVE pt, _) = LT.tcc_prim(pt)
+      fun h (PRIMITIVE pt, _) = LT.tcc_prim (PrimTyc.pt_fromint pt)
         | h (DATATYPE {index, family, freetycs, stamps, root}, _) = 
               let val tc = dtsFam (freetycs, family)
                   val n = Vector.length stamps 
@@ -216,7 +262,11 @@ and toTyc d t =
         end
 
       and h (INSTANTIATED t) = g t
-        | h (LBOUND {depth, num}) = LT.tcc_var(DI.calc(d, depth), num)
+        | h (TV_MARK m) = let
+	      val (depth, num) = findLBOUND m
+	  in
+	      LT.tcc_var(DI.calc(d, depth), num)
+	  end
         | h (OPEN _) = LT.tcc_void
         | h _ = LT.tcc_void  (* ZHONG? *)
 
@@ -325,22 +375,22 @@ and signLty (sign, depth, compInfo) =
    in h sign
   end
 *)
-and strMetaLty (sign, rlzn : strEntity, depth, compInfo) =
-    case (sign, rlzn) of
-	(_, {lambdaty = ref (SOME (lt,od)), ...}) =>
-	LT.lt_adj(lt, od, depth)
-      | (SIG {elements,...}, {entities, lambdaty, ...}) =>
+and strMetaLty (sign, rlzn as { entities, ... }: strEntity, depth, compInfo) =
+    case (sign, ModulePropLists.strEntityLty rlzn) of
+	(_, SOME (lt, od)) => LT.lt_adj(lt, od, depth)
+      | (SIG { elements, ... }, NONE) => 
 	let val ltys = specLty (elements, entities, depth, compInfo)
             val lt = (* case ltys of [] => LT.ltc_int
                                    | _ => *) LT.ltc_str(ltys)
-        in lambdaty := SOME(lt, depth); lt
+        in
+	    ModulePropLists.setStrEntityLty (rlzn, SOME(lt, depth));
+	    lt
         end
       | _ => bug "unexpected sign and rlzn in strMetaLty"
 
 and strRlznLty (sign, rlzn : strEntity, depth, compInfo) =
-    case (sign, rlzn) of
-	(sign, {lambdaty = ref (SOME (lt,od)), ...}) =>
-	LT.lt_adj(lt, od, depth)
+    case (sign, ModulePropLists.strEntityLty rlzn) of
+	(sign, SOME (lt,od)) => LT.lt_adj(lt, od, depth)
 
 (* Note: the code here is designed to improve the "toLty" translation;
    by translating the signature instead of the structure, this can 
@@ -362,11 +412,10 @@ and strRlznLty (sign, rlzn : strEntity, depth, compInfo) =
       | _ => strMetaLty(sign, rlzn, depth, compInfo)
 
 and fctRlznLty (sign, rlzn, depth, compInfo) = 
-    case (sign, rlzn) of
-	(sign, {lambdaty = ref (SOME (lt, od)), ...}) =>
-	LT.lt_adj(lt, od, depth)
-      | (FSIG{paramsig, bodysig, ...},
-         {closure as CLOSURE{env,...}, lambdaty, ...}) =>
+    case (sign, ModulePropLists.fctEntityLty rlzn, rlzn) of
+	(sign, SOME (lt, od), _) => LT.lt_adj(lt, od, depth)
+      | (FSIG{paramsig, bodysig, ...}, _,
+         {closure as CLOSURE{env,...}, ...}) =>
         let val {rlzn=argRlzn, tycpaths=tycpaths} = 
                 INS.instParam {sign=paramsig, entEnv=env, depth=depth, 
                                rpath=InvPath.IPATH[], compInfo=compInfo,
@@ -380,25 +429,31 @@ and fctRlznLty (sign, rlzn, depth, compInfo) =
             val bodyLty = strRlznLty(bodysig, bodyRlzn, nd, compInfo)
 			  
             val lt = LT.ltc_poly(ks, [LT.ltc_fct([paramLty],[bodyLty])])
-        in lambdaty := SOME (lt, depth); lt
+        in
+	    ModulePropLists.setFctEntityLty (rlzn, SOME (lt, depth));
+	    lt
         end
       | _ => bug "fctRlznLty"
 
 and strLty (str as STR { sign, rlzn, ... }, depth, compInfo) =
-    (case rlzn of
-	 {lambdaty=ref (SOME (lt, od)), ...} => LT.lt_adj(lt, od, depth)
-       | {lambdaty as ref NONE, ...} =>
+    (case ModulePropLists.strEntityLty rlzn of
+	 SOME (lt, od) => LT.lt_adj(lt, od, depth)
+       | NONE =>
          let val lt = strRlznLty(sign, rlzn, depth, compInfo)
-         in (lambdaty := SOME(lt, depth); lt)
+         in
+	     ModulePropLists.setStrEntityLty (rlzn, SOME(lt, depth));
+	     lt
          end)
   | strLty _ = bug "unexpected structure in strLty"
 
 and fctLty (fct as FCT { sign, rlzn, ... }, depth, compInfo) =
-    (case rlzn of
-	 {lambdaty=ref(SOME (lt,od)),...} => LT.lt_adj(lt, od, depth)
-       | {lambdaty as ref NONE, ...} =>
+    (case ModulePropLists.fctEntityLty rlzn of
+	 SOME (lt,od) => LT.lt_adj(lt, od, depth)
+       | NONE =>
          let val lt = fctRlznLty(sign, rlzn, depth, compInfo)
-	 in (lambdaty := SOME(lt,depth); lt)
+	 in
+	     ModulePropLists.setFctEntityLty (rlzn, SOME(lt,depth));
+	     lt
          end)
   | fctLty _ = bug "unexpected functor in fctLty"
 
@@ -412,8 +467,6 @@ structure MIDict = RedBlackMapFn(struct type ord_key = ModuleId.modId
                               end)
 *)
 
-fun genTT() = 
-  let val _ = ()
 (*
       val m1 = ref (MIDict.mkDict())   (* modid (tycon) -> LT.tyc *)
       val m2 = ref (MIDict.mkDict())   (* modid (str/fct) -> LT.lty *)
@@ -464,11 +517,9 @@ fun genTT() =
 *)
 
    in {tpsKnd=tpsKnd, tpsTyc=tpsTyc,
-       toTyc=toTyc, toLty=toLty, strLty=strLty, fctLty=fctLty}
+       toTyc=toTyc, toLty=toLty, strLty=strLty, fctLty=fctLty,
+       markLBOUND = markLBOUND}
   end (* function genTT *)
 
 end (* toplevel local *)
 end (* structure TransTypes *)
-
-
-

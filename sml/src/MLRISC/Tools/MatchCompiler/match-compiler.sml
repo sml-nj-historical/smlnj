@@ -10,7 +10,13 @@ local
 in
 
 functor MatchCompiler
-   (structure Con : (* datatype constructors *)
+   (structure Var  : (* a variable *)
+    sig type var 
+        val compare : var * var -> order 
+        val toString : var -> string
+    end
+
+    structure Con : (* datatype constructors *)
     sig
        type con 
        val compare     : con * con -> order
@@ -30,6 +36,7 @@ functor MatchCompiler
     structure Action :   
     sig type action  (* an action *)
         val toString : action -> string
+        val freeVars : action -> Var.var list
     end
 
     structure Guard  : (* a guard expression *)
@@ -42,12 +49,6 @@ functor MatchCompiler
     structure Exp :
     sig type exp
         val toString : exp -> string
-    end
-               (* a variable *)
-    structure Var  : 
-    sig type var 
-        val compare : var * var -> order 
-        val toString : var -> string
     end
    ) : MATCH_COMPILER =
 struct
@@ -116,6 +117,9 @@ struct
         | compare(PVAR  _, VAR _) = GREATER
       fun equal(x,y) = compare(x,y) = EQUAL
       structure Set = RedBlackSetFn(type ord_key = name val compare = compare)
+      fun setToString s = 
+          "{"^List.foldr (fn (v,"") =>toString v
+                           | (v,s) => toString v^"."^s) "" (Set.listItems s)^"}"
    end
 
    structure VarSet = RedBlackSetFn
@@ -1072,27 +1076,42 @@ struct
        fun ruleUsed r = redundant := IntListSet.delete(!redundant, r)
        fun vars subst = Name.Set.addList(empty,Subst.listItems subst)
 
-       fun visit(DFA{stamp, refCount, test, freeVars, height, ...}) = 
+       fun visit(DFA{stamp, refCount, test, freeVars, height, ...},PVs) = 
            (refCount := !refCount + 1;
             if isVisited stamp then (!freeVars, !height)
             else (mark stamp;
                   case test of
                     FAIL => (empty, 0)
                   | BIND(subst, dfa) => 
-                    let val (s, h) = visit dfa
-                        val s = union(s, vars subst)
-                    in  occurs s; 
-                        (set(freeVars, s), setH(height, h + 1))
+                    let val patvars = Name.Set.addList(empty, 
+                                        map VAR (Subst.listKeys subst))
+                        val (s, h) = visit(dfa, union(PVs, patvars))
+                        val variables = vars subst
+                        val s' = union(s, variables)
+                        val s' = diff(s', patvars)
+                    in  occurs s'; 
+                        (set(freeVars, s'), setH(height, h + 1))
                     end
                   | LET(p, _, dfa) =>
-                    let val (s, h) = visit dfa
+                    let val (s, h) = visit(dfa, PVs)
                     in  (set(freeVars, s), setH(height, h+1))
                     end
-                  | OK(rule_no, _) => (ruleUsed rule_no; (empty, 0))
+                  | OK(rule_no, action) => 
+                    let val fvs = Name.Set.addList(empty, 
+                                    map VAR(Action.freeVars action))
+                        (* val _ = 
+                            (print("Action = "^Action.toString action^"\n");
+                             print("PVs = "^Name.setToString PVs^"\n");
+                             print("FVs = "^Name.setToString fvs^"\n")
+                            ) *)
+                        val fvs = Name.Set.intersection(PVs, fvs)
+                    in  ruleUsed rule_no; 
+                        (set(freeVars, fvs), 0)
+                    end
                   | CASE(p, cases, opt) =>
                     let val (fvs, h) = 
                          List.foldr (fn ((_,ps,x),(s, h)) => 
-                             let val (fv,h') = visit x
+                             let val (fv,h') = visit(x, PVs)
                                  val fv = diffPaths(fv, ps)
                              in  (union(fv,s), Int.max(h,h'))
                              end)
@@ -1100,7 +1119,7 @@ struct
                         val (fvs, h) =  
                             case opt of NONE => (fvs, h) 
                                       | SOME x => 
-                                        let val (fv, h') = visit x
+                                        let val (fv, h') = visit(x, PVs)
                                         in  (union(fvs,fv), Int.max(h,h'))
                                         end
                         val fvs = add(fvs, PVAR p) 
@@ -1108,29 +1127,29 @@ struct
                         (set(freeVars, fvs), setH(height, h+1))
                     end 
                   | WHERE(_, y, n) => 
-                    let val (sy, hy) = visit y
-                        val (sn, hn) = visit n
+                    let val (sy, hy) = visit(y, PVs)
+                        val (sn, hn) = visit(n, PVs)
                         val s = union(sy, sn)
                         val h = Int.max(hy,hn) + 1
                     in  occurs s; 
                         (set(freeVars, s), setH(height, h))
                     end
                   | SELECT(p, bs, x) => 
-                    let val (s, h) = visit x
+                    let val (s, h) = visit(x, PVs)
                         val s  = add(s, PVAR p)
                         val bs = foldr (fn ((p,_),S) => add(S,PVAR p)) s bs 
                     in  occurs bs; 
                         (set(freeVars, s), setH(height,h+1)) 
                     end 
                   | CONT(k, x) =>
-                    let val (s, h) = visit x
+                    let val (s, h) = visit(x, PVs)
                     in  (* always generate a state function *)
                         refCount := !refCount + 1; 
                         (set(freeVars, s), setH(height,h+1))
                     end 
                  )
            )
-       val _ = visit dfa; 
+       val _ = visit(dfa, empty); 
        val DFA{refCount=failCount, ...} = fail
    in  ROOT{used = !used, 
             dfa = dfa, 

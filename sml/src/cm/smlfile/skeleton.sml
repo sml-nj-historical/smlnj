@@ -21,7 +21,7 @@
 structure Skeleton = struct
 
     type symbol = Symbol.symbol
-    type sympath = GenericVC.SymPath.path
+    type sympath = SymPath.path
 
     datatype decl =
 	Bind of symbol * modExp

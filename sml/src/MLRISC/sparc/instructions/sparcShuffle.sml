@@ -3,11 +3,12 @@ struct
   structure I = I
   structure W = Word32
   structure Shuffle = Shuffle(I)
-  type t = {tmp:I.ea option, dst:I.C.cell list, src:I.C.cell list}
+  structure CB = CellsBasis
+  type t = {tmp:I.ea option, dst:CB.cell list, src:CB.cell list}
 
   fun error msg = MLRiscErrorMsg.error("SparcShuffle",msg)
   val mem = I.Region.memory
-  val zeroR = Option.valOf(I.C.zeroReg I.C.GP)
+  val zeroR = Option.valOf(I.C.zeroReg CB.GP)
 
   fun move{src=I.Direct rs, dst=I.Direct rt} = 
        [I.ARITH{a=I.OR, r=zeroR, i=I.REG rs, d=rt}]

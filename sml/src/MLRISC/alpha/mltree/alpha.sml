@@ -11,9 +11,10 @@
 functor Alpha
    (structure AlphaInstr : ALPHAINSTR 
     structure PseudoInstrs : ALPHA_PSEUDO_INSTR
+    			where I = AlphaInstr
     structure ExtensionComp : MLTREE_EXTENSION_COMP
-       where I = AlphaInstr
-       sharing PseudoInstrs.I = AlphaInstr
+    			where I = AlphaInstr
+			  and T = AlphaInstr.T
 
       (* Cost of multiplication in cycles *)
     val multCost : int ref
@@ -36,11 +37,13 @@ struct
   structure I   = AlphaInstr
   structure C   = I.C
   structure T   = I.T
-  structure S   = T.Stream
+  structure TS  = ExtensionComp.TS
   structure R   = T.Region
   structure W32 = Word32
   structure P   = PseudoInstrs
   structure A   = MLRiscAnnotations
+  structure CB  = CellsBasis
+  structure CFG = ExtensionComp.CFG
 
  (*********************************************************
 
@@ -141,8 +144,8 @@ struct
 
   fun error msg = MLRiscErrorMsg.error("Alpha",msg) 
 
-  type instrStream = (I.instruction,C.cellset) T.stream
-  type mltreeStream = (T.stm,T.mlrisc list) T.stream
+  type instrStream = (I.instruction, C.cellset, CFG.cfg) TS.stream
+  type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
   (*
    * This module is used to simulate operations of non-standard widths.
@@ -169,11 +172,12 @@ struct
   functor Multiply32 = MLTreeMult
     (structure I = I
      structure T = T
+     structure CB = CellsBasis
 
      val intTy = 32
    
-     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
-     type argi = {r:C.cell,i:int,d:C.cell}
+     type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
+     type argi = {r:CB.cell,i:int,d:CB.cell}
 
      fun mov{r,d}    = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
      fun add{r1,r2,d} = I.OPERATE{oper=I.ADDL,ra=r1,rb=I.REGop r2,rc=d}
@@ -211,11 +215,12 @@ struct
   functor Multiply64 = MLTreeMult
     (structure I = I
      structure T = T
+     structure CB = CellsBasis
    
      val intTy = 64
 
-     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
-     type argi = {r:C.cell,i:int,d:C.cell}
+     type arg  = {r1:CB.cell, r2:CB.cell, d:CB.cell}
+     type argi = {r:CB.cell, i:int, d:CB.cell}
 
      fun mov{r,d}    = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
      fun add{r1,r2,d}= I.OPERATE{oper=I.ADDQ,ra=r1,rb=I.REGop r2,rc=d}
@@ -294,9 +299,9 @@ struct
 
   fun selectInstructions
         (instrStream as
-         S.STREAM{emit,beginCluster,endCluster,getAnnotations,
-                  defineLabel,entryLabel,pseudoOp,annotation,
-                  exitBlock,comment,...}) =
+         TS.S.STREAM{emit,beginCluster,endCluster,getAnnotations,
+                     defineLabel,entryLabel,pseudoOp,annotation,
+                     exitBlock,comment,...}) =
   let
       infix || && << >> ~>>
 
@@ -413,11 +418,11 @@ struct
                            [_] => NONE | _ => SOME(I.FDirect(newFreg()))},an)
 
       and move(s,d,an) = 
-          if C.sameCell(s,d) orelse C.sameCell(d,zeroR) then () else 
+          if CB.sameCell(s,d) orelse CB.sameCell(d,zeroR) then () else 
           mark(I.COPY{dst=[d],src=[s],impl=ref NONE,tmp=NONE},an)
 
       and fmove(s,d,an) = 
-          if C.sameCell(s,d) orelse C.sameCell(d,zeroFR) then () else 
+          if CB.sameCell(s,d) orelse CB.sameCell(d,zeroFR) then () else 
           mark(I.FCOPY{dst=[d],src=[s],impl=ref NONE,tmp=NONE},an)
 
        (* emit an sign extension op *)
@@ -1194,7 +1199,7 @@ struct
                 fun fall(cmp1, br1, cmp2, br2) = 
                 let val tmpR1 = newFreg()
                     val tmpR2 = newFreg()
-                    val fallLab = Label.newLabel ""
+                    val fallLab = Label.anon()
                 in  emit(I.DEFFREG(tmpR1));
                     emit(I.FOPERATE{oper=cmp1, fa=f1, fb=f2, fc=tmpR1});
                     emit(I.TRAPB);
@@ -1465,17 +1470,17 @@ struct
           | s => doStmts (Gen.compileStm s)
 
       and reducer() =
-          T.REDUCER{reduceRexp    = expr,
-                    reduceFexp    = fexpr,
-                    reduceCCexp   = ccExpr,
-                    reduceStm     = stmt,
-                    operand       = opn,
-                    reduceOperand = reduceOpn,
-                    addressOf     = addr,
-                    emit          = mark,
-                    instrStream   = instrStream,
-                    mltreeStream  = self()
-                   } 
+          TS.REDUCER{reduceRexp    = expr,
+                     reduceFexp    = fexpr,
+                     reduceCCexp   = ccExpr,
+                     reduceStm     = stmt,
+                     operand       = opn,
+                     reduceOperand = reduceOpn,
+                     addressOf     = addr,
+                     emit          = mark,
+                     instrStream   = instrStream,
+                     mltreeStream  = self()
+                    } 
 
       and doStmt s = stmt(s,[])
       and doStmts ss = app doStmt ss
@@ -1493,7 +1498,7 @@ struct
           in  g(mlrisc, C.empty) end
 
       and self() = 
-          S.STREAM
+          TS.S.STREAM
          { beginCluster   = beginCluster,
            endCluster     = endCluster,
            emit           = doStmt,

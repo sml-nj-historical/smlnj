@@ -7,43 +7,42 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 local
-    structure EM = GenericVC.ErrorMsg
-    structure E = GenericVC.Environment
-    structure SE = GenericVC.StaticEnv
-    structure PS = GenericVC.PersStamps
+    structure EM = ErrorMsg
+    structure SE = StaticEnv
+    structure PS = PersStamps
     structure GG = GroupGraph
     structure DG = DependencyGraph
 in
 functor BootstrapCompileFn
-	    (structure MachDepVC : MACHDEP_VC
+	    (structure Backend : BACKEND
 	     val useStream : TextIO.instream -> unit
 	     val os : SMLofNJ.SysInfo.os_kind
 	     val load_plugin : SrcPath.dir -> string -> bool) =
 struct
-    structure SSV = SpecificSymValFn (structure MachDepVC = MachDepVC
+    structure SSV = SpecificSymValFn (val arch = Backend.architecture
 				      val os = os)
     structure P = OS.Path
     structure F = OS.FileSys
-    structure BF = MachDepVC.Binfile
+    structure BF = Binfile
 
-    val arch = MachDepVC.architecture
+    val arch = Backend.architecture
     val osname = FilenamePolicy.kind2name os
 
     val archos = concat [arch, "-", osname]
 
     structure StabModmap = StabModmapFn ()
 
-    structure Compile = CompileFn (structure MachDepVC = MachDepVC
+    structure Compile = CompileFn (structure Backend = Backend
 				   structure StabModmap = StabModmap
 				   val useStream = useStream
 				   val compile_there =
 				       Servers.compile o SrcPath.encode)
 
-    structure BFC = BfcFn (structure MachDepVC = MachDepVC)
+    structure BFC = BfcFn (val arch = Backend.architecture)
 
     (* instantiate Stabilize... *)
     structure Stabilize =
-	StabilizeFn (structure MachDepVC = MachDepVC
+	StabilizeFn (val arch = Backend.architecture
 		     structure StabModmap = StabModmap
 		     fun recomp gp g = let
 			 val { store, get } = BFC.new ()
@@ -154,9 +153,10 @@ struct
 	    { fnpolicy = fnpolicy,
 	      penv = penv,
 	      symval = SSV.symval,
+	      archos = archos,
 	      keep_going = keep_going }
 
-	val emptydyn = E.dynamicPart E.emptyEnv
+	val emptydyn = DynamicEnv.empty
 
 	(* first, build an initial GeneralParam.info, so we can
 	 * deal with the pervasive env and friends... *)
@@ -172,7 +172,7 @@ struct
 	    val { pervasive = perv_n, others, src } = arg
 
 	    fun recompInitGroup () = let
-		val ovldR = GenericVC.Control.overloadKW
+		val ovldR = Control.overloadKW
 		val savedOvld = !ovldR
 		val _ = ovldR := true
 		val sbnode = Compile.newSbnodeTraversal ()

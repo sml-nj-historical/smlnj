@@ -108,7 +108,7 @@ struct
        val look   = IntHashTable.lookup locMap
        val bind   = IntHashTable.insert locMap 
 
-       val newMem = Cells.newCell Cells.MEM
+       val newMem = Cells.newCell CellsBasis.MEM
 
        val _      = PT.reset newMem
 

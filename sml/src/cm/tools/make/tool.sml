@@ -17,7 +17,7 @@ structure MakeTool = struct
 
 	fun err m = raise ToolError { tool = tool, msg = m }
 
-	fun rule { spec, context, native2pathmaker, defaultClassOf } = let
+	fun rule { spec, context, native2pathmaker, defaultClassOf, sysinfo } = let
 	    val { name = str, mkpath, opts = too, ... } : spec = spec
 	    val (tclass, topts, mopts) =
 		case too of

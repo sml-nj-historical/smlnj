@@ -109,19 +109,27 @@ val primTypes =
 
       val entities = EntityEnv.mark(fn _ => ST.special"primEntEnv", entities)
 
-   in M.STR{sign=M.SIG {stamp=ST.special "PrimTypesSig",
-			name=SOME(S.sigSymbol "PRIMTYPES"), closed=true,
-			fctflag=false,
-			symbols=allSymbols,elements=allElements,
-			typsharing=nil,strsharing=nil,
-			boundeps=ref (SOME []), lambdaty=ref(NONE),
-			stub = NONE},
-	    rlzn={stamp=ST.special "PrimTypesStr",
-		  stub=NONE,
-		  entities=entities,
-		  lambdaty=ref NONE, 
-		  rpath=IP.IPATH[S.strSymbol "primTypes"]},
-	    access=A.nullAcc, info=II.mkStrInfo []}
+      val sigrec = 
+	  {stamp=ST.special "PrimTypesSig",
+	   name=SOME(S.sigSymbol "PRIMTYPES"), closed=true,
+	   fctflag=false,
+	   symbols=allSymbols,elements=allElements,
+	   typsharing=nil,strsharing=nil,
+	   properties = PropList.newHolder (),
+	   (* boundeps=ref (SOME []), *)
+	   (* lambdaty=ref(NONE), *)
+	   stub = NONE}
+      val _ = ModulePropLists.setSigBoundeps (sigrec, SOME [])
+      val strrec =
+	  {sign=M.SIG sigrec,
+	   rlzn={stamp=ST.special "PrimTypesStr",
+		 stub=NONE,
+		 entities=entities,
+		 properties = PropList.newHolder (),
+		 (* lambdaty=ref NONE,  *)
+		 rpath=IP.IPATH[S.strSymbol "primTypes"]},
+	   access=A.nullAcc, info= II.mkStrInfo []}
+   in M.STR strrec
 
   end (* primTypes *)
 
@@ -336,11 +344,14 @@ val allPrimops =
         *)
        (* So we take them out... (Matthias)
        ("boxedupdate",   P.BOXEDUPDATE,   ?) :-:
-       ("unboxedupdate", P.UNBOXEDUPDATE, ?) :-:
        ("getrunvec",	 P.GETRUNVEC,     ?) :-:
        ("uselvar",	 P.USELVAR,       ?) :-:
        ("deflvar",	 P.DEFLVAR,       ?) :-:
        *)
+
+       (* I put this one back in so tprof can find it in _Core
+	* instead of having to construct it ... (Matthias) *)
+       ("unboxedupdate", P.UNBOXEDUPDATE, p1(ar(tp(ay(v1),i,v1),u))) :-:
        			 
        ("inlnot",	 P.INLNOT,      	        b_b) :-:
        ("floor",         P.ROUND{floor=true,
@@ -683,20 +694,24 @@ val uList =
               mkConElement("nil", BT.unilDcon),
               mkConElement("::", BT.uconsDcon)]
       val allSymbols = map #1 allElements
-
-   in M.STR{sign=M.SIG{stamp=ST.special "uListSig",
+      val sigrec = {stamp=ST.special "uListSig",
 		       name=NONE, closed=true, 
 		       fctflag=false,
 		       symbols=allSymbols, elements=allElements,
 		       typsharing=nil, strsharing=nil,
-		       boundeps=ref (SOME []), lambdaty=ref NONE,
-		       stub = NONE},
+		       properties = PropList.newHolder (),
+		       (* boundeps=ref (SOME []), *)
+		       (* lambdaty=ref NONE, *)
+		       stub = NONE}
+      val _ = ModulePropLists.setSigBoundeps (sigrec, SOME [])
+   in M.STR{sign=M.SIG sigrec,
             rlzn={stamp=ST.special "uListStr",
 		  stub=NONE,
 		  entities=EE.bind(ev,M.TYCent BT.ulistTycon,EE.empty),
-		  lambdaty=ref(NONE),
+		  properties = PropList.newHolder (),
+		  (* lambdaty=ref(NONE), *)
 		  rpath=IP.IPATH[S.strSymbol "uList"]},
-            access=A.nullAcc, info=II.mkStrInfo[]}
+            access=A.nullAcc, info= II.mkStrInfo[]}
   end
 
 (* inLine structure *)
@@ -717,19 +732,24 @@ val inLine =
       val (allSymbols, allElements, infList) = 
             (rev allSymbols, rev allElements, rev infList)
 
-   in M.STR{sign=M.SIG{stamp=ST.special "inLineSig",
+      val sigrec ={stamp=ST.special "inLineSig",
 		       name=NONE, closed=true, 
 		       fctflag=false,
 		       symbols=allSymbols, elements=allElements,
 		       typsharing=nil, strsharing=nil,
-		       boundeps=ref (SOME []), lambdaty=ref NONE,
-		       stub = NONE},
+		       properties = PropList.newHolder (),
+		       (* boundeps=ref (SOME []), *)
+		       (* lambdaty=ref NONE, *)
+		       stub = NONE}
+      val _ = ModulePropLists.setSigBoundeps (sigrec, SOME [])
+   in M.STR{sign=M.SIG sigrec,
             rlzn={stamp=ST.special "inLineStr",
 		  stub=NONE,
 		  entities=EE.empty,
-		  lambdaty=ref(NONE),
+		  properties = PropList.newHolder (),
+		  (* lambdaty=ref(NONE), *)
 		  rpath=IP.IPATH[S.strSymbol "inLine"]},
-	    access=A.nullAcc, info=(II.mkStrInfo infList)}
+	    access=A.nullAcc, info= II.mkStrInfo infList}
   end
 
 (* priming structures: PrimTypes and InLine *)

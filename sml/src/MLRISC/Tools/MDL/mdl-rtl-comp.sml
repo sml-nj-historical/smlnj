@@ -232,11 +232,11 @@ struct
     * Turn off pattern matching warnings
     *------------------------------------------------------------------------*)
    fun compileFile filename =
-   let val warn     = Compiler.Control.MC.bindNonExhaustiveWarn 
+   let val warn     = Control.MC.bindNonExhaustiveWarn 
        val previous = !warn
        fun reset() = warn := previous 
    in  warn := false;
-       (Compiler.Interact.useFile filename; reset()) 
+       (Backend.Interact.useFile filename; reset()) 
          handle e => (reset(); raise e)
    end
 

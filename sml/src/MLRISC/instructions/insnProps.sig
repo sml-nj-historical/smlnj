@@ -5,10 +5,9 @@
  *)
 signature INSN_PROPERTIES = 
 sig
-   structure C : CELLS
    structure I : INSTRUCTIONS
-
-   sharing I.C = C 
+   structure C : CELLS
+     sharing I.C = C
 
       (* classify instructions *)
    datatype kind = IK_JUMP   (* branches, including returns *)
@@ -25,8 +24,8 @@ sig
 
       (* parallel moves *) 
    val moveInstr  : I.instruction -> bool
-   val moveTmpR   : I.instruction -> C.cell option
-   val moveDstSrc : I.instruction -> C.cell list * C.cell list
+   val moveTmpR   : I.instruction -> CellsBasis.cell option
+   val moveDstSrc : I.instruction -> CellsBasis.cell list * CellsBasis.cell list
 
       (* no op *)
    val nop 	  : unit -> I.instruction
@@ -36,8 +35,8 @@ sig
 
       (* load immediate; must be within immedRange *)
    val immedRange  : {lo:int, hi:int}
-   val loadImmed   : {immed:int, t:C.cell} -> I.instruction
-   val loadOperand : {opn:I.operand, t:C.cell} -> I.instruction
+   val loadImmed   : {immed:int, t:CellsBasis.cell} -> I.instruction
+   val loadOperand : {opn:I.operand, t:CellsBasis.cell} -> I.instruction
 
      (* 
       * Targets of a branch instruction 
@@ -60,8 +59,8 @@ sig
    val negateConditional : I.instruction -> I.instruction
 
      (* definition/use for the RA *)
-   val defUse     : C.cellkind -> 
-                      I.instruction -> (C.cell list * C.cell list)
+   val defUse     : CellsBasis.cellkind -> 
+                      I.instruction -> (CellsBasis.cell list * CellsBasis.cell list)
 
      (* annotations *)
    val getAnnotations : I.instruction ->

@@ -1,47 +1,73 @@
-structure Alpha32PseudoOps = 
-    PseudoOpsLittle(structure M = Alpha32Spec val nop = NONE)
-
-structure Alpha32Stream = InstructionStream(Alpha32PseudoOps)
-
 structure Alpha32MLTree = 
   MLTreeF(structure Constant=SMLNJConstant
 	  structure Region=CPSRegions
-	  structure Stream=Alpha32Stream
 	  structure Extension=SMLNJMLTreeExt
          )
 
-(* specialised alpha32 instruction set *)
-structure Alpha32Instr = 
-  AlphaInstr(
-    LabelExp
-       (structure T = Alpha32MLTree
-        fun h _ _ = 0w0 fun eq _ _ = false
-        val hashRext = h and hashFext = h and hashCCext = h and hashSext = h
-        val eqRext = eq and eqFext = eq and eqCCext = eq and eqSext = eq
-        ))
+structure Alpha32MLTreeEval =
+   MLTreeEval
+      (structure T = Alpha32MLTree
+       fun eq _ _ =  false
+       val eqRext = eq	 val eqFext = eq
+       val eqCCext = eq	 val eqSext = eq)
+					    
+structure Alpha32MLTreeHash = 
+  MLTreeHash
+     (structure T = Alpha32MLTree
+      fun h _ _ = 0w0
+      val hashRext = h	 val hashFext = h
+      val hashCCext = h  val hashSext = h)
 
-structure Alpha32Props = AlphaProps(Alpha32Instr)
+
+structure Alpha32GasPseudoOps = 
+   AlphaGasPseudoOps(structure T=Alpha32MLTree
+		     structure MLTreeEval = Alpha32MLTreeEval)
+
+structure Alpha32ClientPseudoOps = 
+   SMLNJPseudoOps(structure Asm = Alpha32GasPseudoOps)
+
+structure Alpha32PseudoOps = PseudoOps(structure Client=Alpha32ClientPseudoOps)
+
+structure Alpha32Stream = InstructionStream(Alpha32PseudoOps)
+
+structure Alpha32MLTreeStream = 
+  MLTreeStream
+     (structure T = Alpha32MLTree
+      structure S = Alpha32Stream)
+
+(* specialised alpha32 instruction set *)
+structure Alpha32Instr = AlphaInstr(Alpha32MLTree)
+
+structure Alpha32Props = 
+   AlphaProps(structure Instr=Alpha32Instr
+	      structure MLTreeHash=Alpha32MLTreeHash
+	      structure MLTreeEval=Alpha32MLTreeEval)
 
 structure Alpha32Shuffle = AlphaShuffle(Alpha32Instr)
 
-(* Flowgraph data structure specialized to DEC alpha instructions *)
-structure Alpha32FlowGraph = 
-  FlowGraph(structure I=Alpha32Instr
-	    structure P=Alpha32PseudoOps
-           )
 
 structure Alpha32AsmEmitter=
   AlphaAsmEmitter(structure Instr=Alpha32Instr
 	          structure PseudoOps=Alpha32PseudoOps
                   structure Stream=Alpha32Stream
-		  structure Shuffle = Alpha32Shuffle)
+		  structure Shuffle = Alpha32Shuffle
+		  structure MLTreeEval=Alpha32MLTreeEval
+		  structure S=Alpha32Stream)
 
 structure Alpha32MCEmitter = 
   AlphaMCEmitter(structure Instr=Alpha32Instr
 		 structure PseudoOps=Alpha32PseudoOps
+	         structure MLTreeEval=Alpha32MLTreeEval
                  structure Stream=Alpha32Stream
 		 structure CodeString=CodeString)
 
 structure Alpha32PseudoInstrs = Alpha32PseudoInstrs(Alpha32Instr)
 
-
+(* Flowgraph data structure specialized to DEC alpha instructions *)
+structure Alpha32CFG = 
+  ControlFlowGraph
+     (structure I = Alpha32Instr
+      structure PseudoOps = Alpha32PseudoOps
+      structure GraphImpl = DirectedGraph
+      structure InsnProps = Alpha32Props
+      structure Asm = Alpha32AsmEmitter)

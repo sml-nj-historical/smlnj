@@ -39,7 +39,7 @@ end = struct
 	(handleInterrupt lex_gen; OS.Process.success)
 	handle Interrupt => (err [name, ": Interrupt\n"]; OS.Process.failure)
 	     | any => (err [name, ": uncaught exception ",
-			    exnMessage any, "\n"];
+			    General.exnMessage any, "\n"];
 		       OS.Process.failure)
     end
 end

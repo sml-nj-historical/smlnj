@@ -9,16 +9,13 @@ signature INSTRUCTION_EMITTER =
 sig
 
    structure I : INSTRUCTIONS
-   structure C : CELLS
    structure S : INSTRUCTION_STREAM
-   structure P : PSEUDO_OPS
-      sharing I.C = C  
-      sharing S.P = P
 
    (* 
     * Create a new stream.  The argument is a list of 
     * annotations that can affect the output format.
     *)
-   val makeStream : Annotations.annotations -> (I.instruction,'b,'c) S.stream
+   val makeStream : Annotations.annotations ->
+		    (I.instruction,'b,'c,'d) S.stream
 
 end

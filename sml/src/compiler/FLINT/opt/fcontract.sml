@@ -590,10 +590,10 @@ fun fcFix (fs,le) =
 			* to f, we have to be careful to update its
 			* binding to not refer to f any more since f
 			* will disappear *)
-		       val nm = foldl (fn (h,m) =>
-				       if sval2val(lookup m h) = F.VAR f
-				       then addbind(m, h, svg) else m)
-				      m hs
+		       val m = foldl (fn (h,m) =>
+					 if sval2val(lookup m h) = F.VAR f
+					 then addbind(m, h, svg) else m)
+				     m hs
 		   in
 		       (* I could almost reuse `substitute' but the
 			* unuse in substitute assumes the val is escaping *)

@@ -48,8 +48,8 @@ struct
         *)
        val _ = Liveness.liveness{blocks=blocks,
                                  defUse=InsnProps.defUse cellkind,
-                                 getCell=C.CellSet.get cellkind,
-                                 updateCell=C.CellSet.update cellkind
+                                 getCell=C.getCellsByKind cellkind,
+                                 updateCell=C.updateCellsByKind cellkind
                                 }
 
        val F.ENTRY{succ=entrySucc, ...} = entry
@@ -180,8 +180,8 @@ struct
                        (* To save space, clear liveIn and 
                         * liveOut information (if it is not an exit)
                         *)
-                       liveIn := C.CellSet.empty;
-                       if exit then () else liveOut := C.CellSet.empty;
+                       liveIn := CellsBasis.CellSet.empty;
+                       if exit then () else liveOut := CellsBasis.CellSet.empty;
                        processNodes(nodes, trail)
                    end
                  | processNodes _ = error "processNodes"

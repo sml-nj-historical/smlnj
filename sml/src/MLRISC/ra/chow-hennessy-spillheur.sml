@@ -58,10 +58,12 @@ struct
                         (_, []) =>  (* one def no use *)
                           loop(rest, (node, ~1.0 - real(deg))::L, false)
                       | ([d], [u]) => (* defs after use; don't use *) 
-                          if d = u+1 orelse d = u+2 then 
-                             loop(rest, L, false)
-                          else 
-                             newnode()
+                        let fun plus({block,insn},n) = {block=block,insn=insn+n}
+                        in  if d = plus(u,1) orelse d = plus(u,2) then 
+                               loop(rest, L, false)
+                            else 
+                               newnode()
+                        end
                       | _ => newnode() 
                   end 
                 | _ => loop(rest, L, pruned) (* discard node *)

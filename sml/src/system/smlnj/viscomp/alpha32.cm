@@ -9,6 +9,6 @@
  *   M.Blume (03/2000)
  *)
 Library
-	(* this is a proxy library; exports taken from its (only) member *)
+	group($compiler/backend-alpha32.cm)
 is
-	$compiler/viscomp-alpha32.cm  
+	$compiler/backend-alpha32.cm

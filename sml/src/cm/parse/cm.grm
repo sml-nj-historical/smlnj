@@ -29,16 +29,16 @@ structure S = CMSemant
     | INEQSYM of CMSemant.ineqsym
     | TILDE
     | ANDALSO | ORELSE | NOT
+    | STAR | DASH | SOURCE
 
 %nonterm description of S.group
        | group of S.group
        | gprivspec of S.privilegespec
        | lprivspec of S.privilegespec
        | version of S.cm_version
-       | opt_version of S.cm_version option
        | wrapspec of S.privilegespec -> S.privilegespec
        | mand_exports of S.exports
-       | opt_exports of S.exports option
+       | opt_exports of S.exports
        | exports of S.exports
        | export of S.exports
        | guarded_exports of S.exports * S.exports
@@ -51,28 +51,32 @@ structure S = CMSemant
        | boolexp of S.exp
        | exp of S.exp
        | ml_symbol of S.ml_symbol
+       | ml_symbolset of S.exports
        | pathname of { name: string, mkpath: unit -> SrcPath.prefile }
        | sym of S.cm_symbol
        | word of S.cm_symbol
-       | owner of SrcPath.file option
        | class of S.cm_class
        | optclass of S.cm_class option
        | toolopts of S.toolopt list
        | ptoolopts of S.toolopt list
        | opttoolopts of S.toolopt list option
+       | srcfile of SrcPath.file
+       | srcfiles of SrcPath.file option
+       | filecat of SrcPath.file option * S.complainer -> S.exports
 
 %pos int
 %verbose
-%arg (grouppath, context, obsolete, error, doMember, curlib, gp, ig) :
-    SrcPath.file *
-    S.context *
-    (pos * pos -> unit) *
-    (pos * pos -> string -> unit) *
-    ({ name: string, mkpath: unit -> SrcPath.prefile } *
-     pos * pos * S.cm_class option * S.toolopt list option -> S.members) *
-    SrcPath.file option *
-    GeneralParams.info *
-    S.group
+%arg ({ grouppath, context, obsolete, error, doMember, curlib, gp, ig }) :
+    { grouppath: SrcPath.file,
+      context: S.context,
+      obsolete: pos * pos -> unit,
+      error: pos * pos -> string -> unit,
+      doMember : { name: string, mkpath: unit -> SrcPath.prefile } *
+		 pos * pos * S.cm_class option * S.toolopt list option
+		 -> S.members,
+      curlib: SrcPath.file option,
+      gp: GeneralParams.info,
+      ig: S.group }
 %start description
 %eop EOF
 %noshift EOF
@@ -92,47 +96,55 @@ structure S = CMSemant
 %left MULSYM
 %left NOT TILDE
 
+%left DASH
+%left STAR
+
 %%
 
 description : group				(group)
 
-group : gprivspec owner opt_exports IS members (S.group
+group : gprivspec LPAREN srcfile RPAREN opt_exports IS members
+                                                (S.group
 						 { path = grouppath,
 						   privileges = gprivspec,
 						   exports = opt_exports,
 						   members = members,
 						   gp = gp,
 						   curlib = curlib,
-						   owner = owner,
+						   owner = SOME srcfile,
 						   initgroup = ig })
-      | lprivspec opt_version mand_exports IS members
+      | gprivspec opt_exports IS members        (S.group
+						 { path = grouppath,
+						   privileges = gprivspec,
+						   exports = opt_exports,
+						   members = members,
+						   gp = gp,
+						   curlib = curlib,
+						   owner = NONE,
+						   initgroup = ig })
+      | lprivspec LPAREN version RPAREN mand_exports IS members
                                                (S.library
 						 { path = grouppath,
 						   privileges = lprivspec,
 						   exports = mand_exports,
-						   version = opt_version,
+						   version = SOME version,
 						   members = members,
 						   gp = gp,
 						   initgroup = ig })
-      | lprivspec IS members                   (S.proxy
+      | lprivspec mand_exports IS members
+                                               (S.library
 						 { path = grouppath,
 						   privileges = lprivspec,
+						   exports = mand_exports,
+						   version = NONE,
 						   members = members,
-						   error =
-						     error (membersleft,
-							    membersright) } )
-
-opt_version : (* empty *)                      (NONE)
-            | LPAREN version RPAREN            (SOME version)
+						   gp = gp,
+						   initgroup = ig })
 
 version : FILE_STANDARD                        (S.cm_version
 						(FILE_STANDARD,
 						 error (FILE_STANDARDleft,
 							FILE_STANDARDright)))
-
-owner : (* empty *)                            (NONE)
-      | LPAREN pathname RPAREN                 (SOME (SrcPath.file
-							(#mkpath pathname ())))
 
 wrapspec : (* empty *)                         (fn p => p)
           | wrapspec word                      (fn p =>
@@ -152,19 +164,15 @@ lprivspec : LIBRARY                             (S.initialPrivilegeSpec)
           | LPAREN wrapspec RPAREN lprivspec    (wrapspec lprivspec)
 
 mand_exports : export				(export)
-	     | mand_exports export	        (S.exports (mand_exports,
-							    export))
+	     | mand_exports export	        (S.union (mand_exports,export))
 
-opt_exports : (* empty *)                       (NONE)
-            | mand_exports                      (SOME mand_exports)
+opt_exports : (* empty *)                       (S.default_group_exports)
+            | mand_exports                      (mand_exports)
 
 exports : (* empty *)                           (S.emptyExports)
-        | exports export                        (S.exports (exports, export))
+        | exports export                        (S.union (exports, export))
 
-export : ml_symbol				(S.export
-						 (ml_symbol,
-						  error (ml_symbolleft,
-							 ml_symbolright)))
+export : ml_symbolset				(ml_symbolset)
        | IF exp guarded_exports			(S.guarded_exports
 						  (exp, guarded_exports,
 						   error (expleft, expright)))
@@ -172,6 +180,42 @@ export : ml_symbol				(S.export
 						 (fn () =>
 						  error (ERRORleft, ERRORright)
 						        ERROR))
+
+filecat : GROUP                                 (S.exportgroup)
+        | SOURCE                                (S.exportsource)
+
+
+ml_symbolset : ml_symbol                        (S.export
+						     (ml_symbol,
+						      error (ml_symbolleft,
+							     ml_symbolright)))
+             | LPAREN exports RPAREN            (exports)
+             | ml_symbolset STAR ml_symbolset   (S.intersection
+						     (ml_symbolset1,
+						      ml_symbolset2))
+             | ml_symbolset DASH ml_symbolset   (S.difference
+						     (ml_symbolset1,
+						      ml_symbolset2))
+	     | filecat LPAREN srcfiles RPAREN   (filecat
+						     (srcfiles,
+						      error (srcfilesleft,
+							     srcfilesright)))
+             | LIBRARY LPAREN pathname opttoolopts RPAREN
+                                                (S.exportlibrary
+						     (SrcPath.file
+							 (#mkpath pathname ()),
+						      error (pathnameleft,
+							     pathnameright),
+						      { hasoptions =
+							   isSome opttoolopts,
+							elab = fn () =>
+							   doMember
+							       (pathname,
+								pathnameleft,
+								pathnameright,
+								NONE,
+								opttoolopts),
+							curlib = curlib }))
 
 guarded_exports : exports else_exports	        ((exports, else_exports))
 
@@ -274,3 +318,8 @@ pathname : FILE_STANDARD			({ name = FILE_STANDARD,
 							context, error
 							(FILE_NATIVEleft,
 							 FILE_NATIVEright)) })
+
+srcfile : pathname                              (SrcPath.file
+						     (#mkpath pathname ()))
+srcfiles : srcfile                              (SOME srcfile)
+         | DASH                                 (NONE)

@@ -55,6 +55,8 @@ structure SockUtil : SOCK_UTIL =
 		  PC.wrap (scanName, ServName),
 		  PC.wrap (Int.scan StringCvt.DEC, PortNumber))))) getc strm
 
+    val addrFromString = StringCvt.scanString scanAddr
+
     exception BadAddr of string
 
     fun resolveAddr {host, port} = let

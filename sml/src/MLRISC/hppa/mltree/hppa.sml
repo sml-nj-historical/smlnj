@@ -15,25 +15,30 @@
 functor Hppa
   (structure HppaInstr : HPPAINSTR
    structure ExtensionComp : MLTREE_EXTENSION_COMP
-      where I = HppaInstr 
+      		where I = HppaInstr 
+		  and T = HppaInstr.T
    structure MilliCode : HPPA_MILLICODE
-      where I = HppaInstr
-   structure LabelComp : LABEL_COMP where I = HppaInstr 
+      		where I = HppaInstr
+   structure LabelComp : LABEL_COMP 
+   		where I = HppaInstr  
+		  and T = HppaInstr.T
    val costOfMultiply : int ref
    val costOfDivision : int ref
   ) : MLTREECOMP =
 struct
    structure I = HppaInstr
    structure T = I.T
-   structure S = T.Stream
+   structure TS = ExtensionComp.TS
    structure C = I.C
+   structure CB = CellsBasis
    structure MC = MilliCode
    structure LC = LabelComp
    structure Region = I.Region
    structure A = MLRiscAnnotations
+   structure CFG = ExtensionComp.CFG
 
-   type instrStream = (I.instruction,C.cellset) T.stream
-   type mltreeStream = (T.stm,T.mlrisc list) T.stream
+   type instrStream = (I.instruction, C.cellset, CFG.cfg) TS.stream
+   type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
    structure Gen = MLTreeGen(structure T = T
                              val intTy = 32
@@ -46,9 +51,10 @@ struct
    functor Multiply32 = MLTreeMult
     (structure I = I
      structure T = T
+     structure CB = CB
      val intTy = 32
-     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
-     type argi = {r:C.cell,i:int,d:C.cell}
+     type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
+     type argi = {r:CB.cell,i:int,d:CB.cell}
 
      fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
      fun add{r1,r2,d} = I.ARITH{a=I.ADD,r1=r1,r2=r2,t=d}
@@ -92,7 +98,7 @@ struct
 
    datatype amode = 
        AMode of I.addressing_mode 
-     | DISP of I.C.cell * T.I.machine_int
+     | DISP of CB.cell * T.I.machine_int
      
 
    (* infinite-precision short cuts. *)
@@ -115,7 +121,7 @@ struct
 
    fun selectInstructions
         (instrStream as
-         S.STREAM{emit, defineLabel, entryLabel, getAnnotations,
+         TS.S.STREAM{emit, defineLabel, entryLabel, getAnnotations,
                   beginCluster, endCluster, annotation,
                   exitBlock, pseudoOp, comment, ...}) =
    let
@@ -210,14 +216,14 @@ struct
  
        (* move register s to register t *)
        fun move(s,t,an) =
-           if C.sameColor(s,t) orelse C.registerId t = 0 then ()
-           else if C.registerId s = 0 then
+           if CB.sameColor(s,t) orelse CB.registerId t = 0 then ()
+           else if CB.registerId s = 0 then
                 mark(I.LDO{i=zeroImmed,b=zeroR,t=t},an)
            else mark(I.COPY{src=[s],dst=[t],impl=ref NONE,tmp=NONE},an)
  
        (* move floating point register s to register t *)
        fun fmove(s,t,an) =
-           if C.sameColor(s,t) then ()
+           if CB.sameColor(s,t) then ()
            else mark(I.FCOPY{src=[s],dst=[t],impl=ref NONE,tmp=NONE},an)
 
        (* generate millicode function call *)
@@ -271,7 +277,7 @@ struct
          | addr(scale,T.ADD(_,e,T.LABEXP le)) = 
              let val rs = expr e
                  val (rt, opnd) = ldLabelEA le
-             in  case (C.registerId rt, opnd) of
+             in  case (CB.registerId rt, opnd) of
                     (0, opnd) => AMode(DISPea(rs,opnd))
                  |  (_,I.IMMED 0) => AMode(INDXea(rs,rt))
                  |  (_,opnd) => 
@@ -398,7 +404,7 @@ struct
          | branch(T.FCMP(fty,cc,a,b),lab,an) =
            let val f1 = fexpr a
                val f2 = fexpr b
-               val fallThrough = Label.newLabel ""
+               val fallThrough = Label.anon()
                fun fcond T.==   = I.!=
                  | fcond T.?<>  = I.==
                  | fcond T.?    = I.<=>
@@ -446,7 +452,7 @@ struct
                           | (T.NE,0w0) => I.BSET (* bit is 1 *)
                           | (T.NE,_)   => I.BCLR (* bit is 0 *)
                           | _          => error "emitBranchOnBit"
-                      val f = Label.newLabel "" 
+                      val f = Label.anon()
                       val bit = 31 - log mask 
                   in  mark(I.BB{bc=bc,r=expr e,p=bit,t=t,f=f,
                                 n=false, nop=true},an);
@@ -460,7 +466,7 @@ struct
        and emitBranchI(ty,cc,n,e2,t,an) = 
            let val r2 = expr e2 
            in  if im5 n then
-               let val f = Label.newLabel "" 
+               let val f = Label.anon()
                    val (cmpi,bc) =
                        case cc of
                          T.LT  => (I.COMIBT, I.LT)
@@ -483,7 +489,7 @@ struct
 
        (* generate a branch *)
        and emitBranch(ty,cond,r1,r2,t,an) = 
-           let val f = Label.newLabel ""
+           let val f = Label.anon()
                val (cmp,bc,r1,r2) =
                     case cond of
                        T.LT  => (I.COMBT, I.LT, r1, r2)
@@ -822,16 +828,16 @@ struct
           | DISP(r, mi) => DISPea(r, I.IMMED(toInt mi))
 
        and reducer() = 
-          T.REDUCER{reduceRexp    = expr,
-                    reduceFexp    = fexpr,
-                    reduceCCexp   = ccExpr,
-                    reduceStm     = stmt,
-                    operand       = opn,
-                    reduceOperand = reduceOpn,
-                    addressOf     = addrOf,
-                    emit          = mark,
-                    instrStream   = instrStream,
-                    mltreeStream  = self()
+          TS.REDUCER{reduceRexp    = expr,
+		     reduceFexp    = fexpr,
+		     reduceCCexp   = ccExpr,
+		     reduceStm     = stmt,
+		     operand       = opn,
+		     reduceOperand = reduceOpn,
+		     addressOf     = addrOf,
+		     emit          = mark,
+		     instrStream   = instrStream,
+		     mltreeStream  = self()
                    }
  
        (* convert mlrisc to cellset: 
@@ -846,7 +852,7 @@ struct
            in  g(mlrisc, C.empty) end
 
        and self() =
-          S.STREAM
+          TS.S.STREAM
             { beginCluster   = beginCluster,
               endCluster     = endCluster,
               emit           = doStmt,

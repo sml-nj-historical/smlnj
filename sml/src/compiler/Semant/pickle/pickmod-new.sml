@@ -53,12 +53,10 @@ signature PICKMOD = sig
 		      exportLvars: Access.lvar list,
 		      exportPid: PersStamps.persstamp option }
 
-    val pickleFLINT:
-        CompBasic.flint option
-	-> { hash: PersStamps.persstamp,
-	     pickle: Word8Vector.vector }
+    val pickleFLINT: FLINT.prog option -> { hash: PersStamps.persstamp,
+					    pickle: Word8Vector.vector }
 
-    val symenvPickler : (map, SymbolicEnv.symenv) PickleUtil.pickler
+    val symenvPickler : (map, SymbolicEnv.env) PickleUtil.pickler
 
     val pickle2hash: Word8Vector.vector -> PersStamps.persstamp
 	
@@ -828,7 +826,7 @@ in
 
 	and tyckind arg = let
 	    val op $ = PU.$ TYCKIND
-	    fun tk (T.PRIMITIVE pt) = "a" $ [int (PT.pt_toint pt)]
+	    fun tk (T.PRIMITIVE pt) = "a" $ [int pt]
 	      | tk (T.DATATYPE { index, family, stamps, root,freetycs }) =
 		"b" $ [int index, option entVar root,
 		       dtypeInfo (stamps, family, freetycs)]
@@ -858,7 +856,7 @@ in
 
 	and dtFamily x = let
 	    val op $ = PU.$ DTF
-	    fun dtf_raw { mkey, members, lambdatyc } =
+	    fun dtf_raw { mkey, members, properties } =
 		"b" $ [stamp mkey,
 		       list dtmember (Vector.foldr (op ::) [] members)]
 	in
@@ -928,10 +926,10 @@ in
 	end
 
 	val op $ = PU.$ II
-	fun inl_info (II.INL_PRIM (p, t)) = "A" $ [primop p, ty t]
-	  | inl_info (II.INL_STR sl) = "B" $ [list inl_info sl]
-	  | inl_info II.INL_NO = "C" $ []
-	  | inl_info _ = bug "unexpected inl_info in pickmod"
+	fun inl_info i =
+	    II.match i { inl_prim = fn (p, t) => "A" $ [primop p, ty t],
+			 inl_str = fn sl => "B" $ [list inl_info sl],
+			 inl_no = fn () => "C" $ [] }
 
 	val op $ = PU.$ VAR
 	fun var (V.VALvar { access = a, info, path, typ = ref t }) =
@@ -969,9 +967,11 @@ in
 			 fun sig_raw (s: M.sigrec) = let
 			     val { stamp = sta, name, closed,
 				   fctflag, symbols, elements,
-				   boundeps = ref b,
-				   lambdaty = _, stub,
-				   typsharing, strsharing } = s
+				   properties,
+				   (* boundeps = ref b, *)
+				   (* lambdaty = _, *)
+				   stub, typsharing, strsharing } = s
+			     val b = ModulePropLists.sigBoundeps s
 			     val b = NONE (* currently turned off *)
 			 in
 			     "C" $ ([stamp sta,
@@ -1149,7 +1149,7 @@ in
 	  | entityEnv M.NILeenv = "B" $ []
 	  | entityEnv M.ERReenv = "C" $ []
 
-        and strEntity { stamp = s, entities, lambdaty = _, rpath, stub } =
+        and strEntity { stamp = s, entities, properties, rpath, stub } =
 	    let val op $ = PU.$ SEN
 	    in
 		"s" $ ([stamp s, entityEnv entities, ipath rpath]
@@ -1158,7 +1158,8 @@ in
 
 	and shStrEntity id = share (STRs id) strEntity
 
-        and fctEntity { stamp = s, closure, lambdaty, tycpath, rpath, stub } =
+        and fctEntity { stamp = s,
+			closure, properties, tycpath, rpath, stub } =
 	    let val op $ = PU.$ FEN
 	    in
 		"f" $ ([stamp s, fctClosure closure, ipath rpath]
@@ -1183,7 +1184,7 @@ in
 	  | binding (B.FIXbind x) = "8" $ [fixity x]
 
 	fun env e = let
-	    val syms = ListMergeSort.uniqueSort symCmp (Env.symbols e)
+	    val syms = ListMergeSort.uniqueSort symCmp (StaticEnv.symbols e)
 	    val pairs = map (fn s => (s, StaticEnv.look (e, s))) syms
 	in
 	    list (pair (symbol, binding)) pairs
@@ -1223,7 +1224,7 @@ in
 		0w0,0w0,0w0,toByte(w >> 0w8),0w0,0w0,0w0,toByte(w)])
 	end
         (* next line is an alternative to using Env.consolidate *)
-	val syms = ListMergeSort.uniqueSort symCmp (Env.symbols senv)
+	val syms = ListMergeSort.uniqueSort symCmp (StaticEnv.symbols senv)
 	fun newAccess i = A.PATH (A.EXTERN hash, i)
 	fun mapbinding (sym, (i, env, lvars)) =
 	    case StaticEnv.look (senv, sym) of

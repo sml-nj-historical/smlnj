@@ -1,9 +1,13 @@
-functor PPCProps(PPCInstr : PPCINSTR) : INSN_PROPERTIES = 
+functor PPCProps
+   ( structure PPCInstr : PPCINSTR
+     structure MLTreeEval : MLTREE_EVAL where T = PPCInstr.T
+     structure MLTreeHash : MLTREE_HASH where T = PPCInstr.T
+    ) : INSN_PROPERTIES = 
 struct
   structure I = PPCInstr
   structure C = I.C
   structure T = I.T 
-  structure LE = I.LabelExp
+  structure CB = CellsBasis
 
   exception NegateConditional
 
@@ -14,13 +18,13 @@ struct
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
   (* This stupid architecture doesn't really have a dedicated zero register *)
-  fun zeroR() = C.Reg C.GP 0
+  fun zeroR() = C.Reg CB.GP 0
 
   fun instrKind(I.BC _) = IK_JUMP
     | instrKind(I.BCLR _) = IK_JUMP
     | instrKind(I.B _) = IK_JUMP
     | instrKind(I.ARITHI{oper=I.ORI, rt, ra, im=I.ImmedOp 0}) = 
-         if C.registerId rt = 0 andalso C.registerId ra = 0 then IK_NOP
+         if CB.registerId rt = 0 andalso CB.registerId ra = 0 then IK_NOP
          else IK_INSTR
     | instrKind(I.COPY _) = IK_COPY
     | instrKind(I.FCOPY _) = IK_COPY
@@ -84,12 +88,12 @@ struct
 
   fun negateConditional _ = error "negateConditional"
 
-  fun hashOpn(I.RegOp r) = C.hashCell r
+  fun hashOpn(I.RegOp r) = CB.hashCell r
     | hashOpn(I.ImmedOp i) = Word.fromInt i
-    | hashOpn(I.LabelOp l) = I.LabelExp.hash l
-  fun eqOpn(I.RegOp a,I.RegOp b) = C.sameColor(a,b)
+    | hashOpn(I.LabelOp l) = MLTreeHash.hash l
+  fun eqOpn(I.RegOp a,I.RegOp b) = CB.sameColor(a,b)
     | eqOpn(I.ImmedOp a,I.ImmedOp b) = a = b
-    | eqOpn(I.LabelOp a,I.LabelOp b) = I.LabelExp.==(a,b)
+    | eqOpn(I.LabelOp a,I.LabelOp b) = MLTreeEval.==(a,b)
     | eqOpn _ = false
 
   fun defUseR instr = let
@@ -118,7 +122,7 @@ struct
 	   | SOME(I.Direct r) => (r::dst, src)
 	(* | SOME(I.Displace{base, disp}) => (dst, base::src) *)
 	 (*esac*))
-     | I.ANNOTATION{a=C.DEF_USE{cellkind=C.GP,defs,uses}, i, ...} => 
+     | I.ANNOTATION{a=CB.DEF_USE{cellkind=CB.GP,defs,uses}, i, ...} => 
        let val (d,u) = defUseR i in (defs@d, u@uses) end
      | I.ANNOTATION{a, i, ...} => defUseR i
      | _ => ([], [])
@@ -138,7 +142,7 @@ struct
 	  of SOME(I.FDirect f) => (f::dst, src)
 	   | _ => (dst, src)
 	 (*esac*))
-     | I.ANNOTATION{a=C.DEF_USE{cellkind=C.FP,defs,uses}, i, ...} => 
+     | I.ANNOTATION{a=CB.DEF_USE{cellkind=CB.FP,defs,uses}, i, ...} => 
        let val (d,u) = defUseF i in (defs@d, u@uses) end
      | I.ANNOTATION{a, i, ...} => defUseF i
      | _ => ([], [])
@@ -146,9 +150,9 @@ struct
 
   fun defUseCC instr = error "defUseCC: not implemented"
 
-  fun defUse C.GP = defUseR
-    | defUse C.FP = defUseF
-    | defUse C.CC = defUseCC
+  fun defUse CB.GP = defUseR
+    | defUse CB.FP = defUseF
+    | defUse CB.CC = defUseCC
     | defUse _ = error "defUse"
 
   (*========================================================================

@@ -1,7 +1,7 @@
 (* COPYRIGHT (c) 1996 Bell Laboratories *)
 (* version.sml *)
 
-structure Version : sig
+structure CompilerVersion : sig
 
     val version : {
             system : string,      	(* the system title *)
@@ -15,8 +15,8 @@ structure Version : sig
 
     val version = {
 	    system = "Standard ML of New Jersey ",
-	    version_id = [110, 33],
-	    date = "May 23, 2001"
+	    version_id = [110, 37],
+	    date = "November 21, 2001"
 	  }
 
     fun f ([], l) = l
@@ -28,3 +28,5 @@ structure Version : sig
 	    f (#version_id version, [" [FLINT v1.5], ", #date version]))
 
   end
+
+structure Version = CompilerVersion

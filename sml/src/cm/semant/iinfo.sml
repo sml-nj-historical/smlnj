@@ -8,9 +8,8 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 structure IInfo = struct
-    type info =
-	{ statenv: unit -> GenericVC.Environment.staticEnv,
-	  symenv: unit -> GenericVC.Environment.symenv,
-	  statpid: GenericVC.PersStamps.persstamp,
-	  sympid: GenericVC.PersStamps.persstamp }
+    type info = { statenv: unit -> StaticEnv.staticEnv,
+		  symenv: unit -> SymbolicEnv.env,
+		  statpid: PersStamps.persstamp,
+		  sympid: PersStamps.persstamp }
 end

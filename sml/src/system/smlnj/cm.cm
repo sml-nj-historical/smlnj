@@ -7,6 +7,6 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 Library
-	(* this is a proxy library, exports taken from only member *)
+	library($smlnj/cm/cm.cm)
 is
 	$smlnj/cm/cm.cm

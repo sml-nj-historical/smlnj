@@ -1,18 +1,18 @@
-structure SourceMap :> SOURCE_MAP =
+structure SourceMapping :> SOURCE_MAPPING =
 struct
 
   type charpos = int
 
   type region = charpos * charpos
 
-  datatype location = LOC of {srcFile   : Symbol.symbol,
+  datatype location = LOC of {srcFile   : UniqueSymbol.symbol,
                               beginLine : int,
                               beginCol  : int,
                               endLine   : int,
                               endCol    : int
                              }
   datatype state = STATE of {lineNum : int,
-                             file    : Symbol.symbol, 
+                             file    : UniqueSymbol.symbol, 
                              charPos : charpos
                             }
 
@@ -20,15 +20,17 @@ struct
           { linePos  : charpos list ref,
             filePos  : {linePos:charpos list, 
                         line   :int,
-                        srcFile:Symbol.symbol} list ref,
+                        srcFile:UniqueSymbol.symbol} list ref,
             lineNum  : int ref
           }
 
-  val dummyLoc = LOC{srcFile=Symbol.fromString "???", beginLine=1,beginCol=1,
+  val dummyLoc = LOC{srcFile=UniqueSymbol.fromString "???", 
+                     beginLine=1,beginCol=1,
                      endLine=1,endCol=1}
   fun newmap{srcFile} = SOURCEMAP
          { linePos = ref [0],
-           filePos = ref [{linePos=[],line=1,srcFile=Symbol.fromString srcFile}],
+           filePos = ref [{linePos=[],line=1,
+                           srcFile=UniqueSymbol.fromString srcFile}],
            lineNum = ref 1
          }
 
@@ -44,14 +46,15 @@ struct
   fun resynch (SOURCEMAP{linePos,filePos,lineNum,...}) {pos,srcFile,line} =
       (filePos := {linePos= !linePos,
                    line= !lineNum,
-                   srcFile=Symbol.fromString srcFile
+                   srcFile=UniqueSymbol.fromString srcFile
                   } :: !filePos;
        linePos := [pos];
        lineNum := line
       )
   fun reset srcMap (STATE{file, lineNum, charPos}) =
-     (print(Symbol.toString file^" "^Int.toString lineNum^"\n");
-      resynch srcMap {pos=charPos,srcFile=Symbol.toString file, line=lineNum} 
+     (print(UniqueSymbol.toString file^" "^Int.toString lineNum^"\n");
+      resynch srcMap {pos=charPos,
+                      srcFile=UniqueSymbol.toString file, line=lineNum} 
      )
 
   fun parseDirective sourceMap (pos,directive) =
@@ -97,7 +100,7 @@ struct
 
   fun toString(LOC{srcFile,beginLine,beginCol,endLine,endCol}) =
   let val int = Int.toString
-  in  Symbol.toString srcFile^":"^int beginLine^"."^int beginCol^
+  in  UniqueSymbol.toString srcFile^":"^int beginLine^"."^int beginCol^
            (if beginLine = endLine andalso beginCol = endCol then ""
             else "-"^int endLine^"."^int endCol)
   end
@@ -105,7 +108,7 @@ struct
   fun directive(LOC{srcFile,beginLine,beginCol,endLine,endCol}) =
   let val int = Int.toString
   in  "(*#line "^int beginLine^"."^int beginCol^" \""^
-        Symbol.toString srcFile^"\"*)"
+        UniqueSymbol.toString srcFile^"\"*)"
   end
 
 end

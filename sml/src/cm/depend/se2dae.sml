@@ -6,8 +6,7 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 signature STATENV2DAENV = sig
-    val cvt : GenericVC.Environment.staticEnv ->
-	DAEnv.env * (unit -> SymbolSet.set)
+    val cvt : StaticEnv.staticEnv -> DAEnv.env * (unit -> SymbolSet.set)
 
     (* The thunk passed to cvtMemo will not be called until the first
      * attempt to query the resulting DAEnv.env.
@@ -15,23 +14,21 @@ signature STATENV2DAENV = sig
      * should further guard the resulting env with an appropriate filter
      * to avoid queries that are known in advance to be unsuccessful
      * because they would needlessly cause the thunk to be called. *)
-    val cvtMemo :
-	(unit -> GenericVC.Environment.staticEnv) ->
-	DAEnv.env
+    val cvtMemo : (unit -> StaticEnv.staticEnv) -> DAEnv.env
 end
 
 structure Statenv2DAEnv :> STATENV2DAENV = struct
 
-    structure E = GenericVC.Environment
+    structure BSE = BrowseStatEnv
 
     fun cvt_fctenv look = DAEnv.FCTENV (cvt_result o look)
 
-    and cvt_result (E.CM_ENV { look, ... }) = SOME (cvt_fctenv look)
-      | cvt_result E.CM_NONE = NONE
+    and cvt_result (BSE.Env { look, ... }) = SOME (cvt_fctenv look)
+      | cvt_result BSE.NoEnv = NONE
 
     fun cvt sb = let
 	fun l2s l = let
-	    fun addModule (sy, set) =
+	    fun addModule ((sy, _), set) =
 		case Symbol.nameSpace sy of
 		    (Symbol.STRspace | Symbol.SIGspace |
 		     Symbol.FCTspace | Symbol.FSIGspace) =>
@@ -40,8 +37,8 @@ structure Statenv2DAEnv :> STATENV2DAENV = struct
 	in
 	    foldl addModule SymbolSet.empty l
 	end
-	val dae = cvt_fctenv (E.cmEnvOfModule sb)
-	fun mkDomain () = l2s (E.catalogEnv sb)
+	val dae = cvt_fctenv (BSE.browse sb)
+	fun mkDomain () = l2s (StaticEnv.sort sb)
     in
 	(dae, mkDomain)
     end
@@ -49,7 +46,7 @@ structure Statenv2DAEnv :> STATENV2DAENV = struct
     fun cvtMemo getSB = let
 	val l = ref (fn s => raise Fail "se2dae: uninitialized")
 	fun looker s = let
-	    fun getCME () = E.cmEnvOfModule (getSB ())
+	    fun getCME () = BSE.browse (getSB ())
 	    val lk = cvt_result o (getCME ())
 	in
 	    l := lk;

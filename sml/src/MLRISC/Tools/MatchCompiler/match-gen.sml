@@ -77,12 +77,6 @@ struct
           | arity(EXN(_,_,SOME _)) = 1
      end
 
-   structure Action =
-     struct
-        type action = A.exp
-        val toString = PP.text o AstPP.exp
-     end
-
    structure Var =
      struct
         type var = A.id
@@ -90,6 +84,22 @@ struct
         fun toString x = x
         structure Map = RedBlackMapFn(type ord_key = var 
                                       val compare = compare)
+        structure Set = RedBlackSetFn(type ord_key = var 
+                                       val compare = compare)
+     end
+
+   structure Action =
+     struct
+        type action = A.exp
+        val toString = PP.text o AstPP.exp
+        fun freeVars e =
+        let val fvs = ref Var.Set.empty
+            fun exp _ (e as A.IDexp(A.IDENT([],x))) = 
+                 (fvs := Var.Set.add(!fvs,x); e)
+              | exp _ e = e
+        in  #exp(R.rewrite{pat=NO,exp=exp,decl=NO,sexp=NO,ty=NO}) e;
+            Var.Set.listItems(!fvs)
+        end 
      end
 
    structure MC  =
@@ -255,6 +265,20 @@ struct
    end
 
    exception GenReal and GenIntInf 
+
+   local
+      val intInfCompare = A.IDexp(A.IDENT(["IntInf"],"compare"))
+      val realEq        = A.IDexp(A.IDENT(["Real"],"=="))
+      val eq            = A.IDexp(A.IDENT([],"="))
+      val equal         = A.IDexp(A.IDENT([],"EQUAL"))
+   in
+
+      fun makeIntInfEq(x,y) = A.APPexp(eq,
+                                 A.TUPLEexp[A.APPexp(intInfCompare,
+                                               A.TUPLEexp[x,y]),
+                                            equal])
+      fun makeRealEq(x,y)   = A.APPexp(realEq,A.TUPLEexp[x,y])
+   end
   
    (* Generate ML code *)
    fun codeGen {root, dfa, fail=genFail, literals} =
@@ -309,11 +333,11 @@ struct
                   |  SOME default => [A.CLAUSE([A.WILDpat], NONE, default)]
                   )
               )   
-           handle GenReal => genLitCmp(A.IDENT(["Real"],"=="),v,cases, default)
-             | GenIntInf => genLitCmp(A.IDENT([],"="),v,cases,default)
+           handle GenReal => genLitCmp(makeRealEq,v,cases, default)
+             | GenIntInf => genLitCmp(makeIntInfEq, v,cases,default)
        and genLitCmp(eq, v, cases, SOME default) = 
            let val x = ID v 
-               fun equal lit = A.APPexp(A.IDexp eq,A.TUPLEexp[x,genLit lit])
+               fun equal lit = eq(x, genLit lit)
            in  List.foldr(fn ((MC.LIT lit, _, e),rest) =>
                   A.IFexp(equal lit,e,rest)) default cases    
            end

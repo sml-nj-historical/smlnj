@@ -10,12 +10,11 @@ local
     structure GP = GeneralParams
     structure DG = DependencyGraph
     structure GG = GroupGraph
-    structure E = GenericVC.Environment
     structure DE = DynamicEnv
-    structure EM = GenericVC.ErrorMsg
+    structure EM = ErrorMsg
     structure PP = PrettyPrint
 
-    type env = E.dynenv
+    type env = DynamicEnv.env
     type posmap = env IntMap.map
 in
     signature LINK = sig
@@ -43,33 +42,32 @@ in
 	val unshare : SrcPath.file -> unit
     end
 
-    functor LinkFn (structure MachDepVC : MACHDEP_VC
-		    structure BFC : BFC
-		    sharing type MachDepVC.Binfile.bfContent = BFC.bfc
+    functor LinkFn (structure BFC : BFC where type bfc = Binfile.bfContents
+(***)		    val x : int
 		    val system_values : posmap SrcPathMap.map ref) :>
 	    LINK where type bfc = BFC.bfc =
     struct
 
 	exception Link of exn
 
-	structure BF = MachDepVC.Binfile
+	structure BF = Binfile
 
-	type bfc = BF.bfContent
+	type bfc = BF.bfContents
 	type bfcGetter = SmlInfo.info -> bfc
 
-	type bfun = GP.info -> E.dynenv -> E.dynenv
+	type bfun = GP.info -> env -> env
 
 	datatype bnode =
 	    B of bfun * BinInfo.info * bnode list
 
 	val stablemap = ref (StableMap.empty: bnode StableMap.map)
 
-	type smemo = E.dynenv * SmlInfo.info list
+	type smemo = env * SmlInfo.info list
 
 	val smlmap = ref (SmlInfoMap.empty: smemo SmlInfoMap.map)
 
-	val emptyStatic = E.staticPart E.emptyEnv
-	val emptyDyn = E.dynamicPart E.emptyEnv
+	val emptyStatic = StaticEnv.empty
+	val emptyDyn = DynamicEnv.empty
 
 	fun evict gp i = let
 	    fun check () =

@@ -6,14 +6,43 @@
  *)
 signature CELLS_BASIS = 
 sig
-   type cellkindInfo
-   type cellkindDesc
+   type sz           = int (* width in bits *)
+   type cell_id      = int (* unique cell identifier *)  
+   type register_id  = int (* register id *)
+   type register_num = int (* register number *)
+    (* Note: register_id and register_num should probably be made into
+     * different datatypes with different tags, but FLINT currently boxes 
+     * such objects.
+     *)
+
+   datatype cellkindInfo = INFO of {name:string, nickname:string}
+   datatype cellkindDesc =
+        DESC of
+        {kind             : cellkind,
+         counter          : int ref,
+	 dedicated	  : int ref,
+	    (* It is sometimes desirable to allocate dedicated 
+	     * pseudo registers that will get rewritten to something else,
+	     * e.g., the virtual frame pointer. 
+	     * Since these registers are never assigned a register  by 
+	     * the register allocator, a limited number of these kinds 
+	     * of registers may be generated.
+	     *)
+         low              : int,
+         high             : int,
+         toString         : register_id -> string,
+         toStringWithSize : register_id * sz -> string,
+         defaultValues    : (register_id * int) list,
+         physicalRegs     : cell Array.array ref,
+         zeroReg          : register_id option
+        }
+
 
    (* Cellkind denotes the types of storage cells.
     * This definition is further augumented by architecture specific 
     * cells descriptions.  Type cellkind is an equality type.
     *)
-   datatype cellkind = 
+   and cellkind = 
         GP       (* general purpose register *)
       | FP       (* floating point register *) 
       | CC       (* condition code register *) 
@@ -23,14 +52,6 @@ sig
 
       | MISC_KIND of cellkindInfo ref (* client defined *)
 
-   type sz           = int (* width in bits *)
-   type cell_id      = int (* unique cell identifier *)  
-   type register_id  = int (* register id *)
-   type register_num = int (* register number *)
-    (* Note: register_id and register_num should probably be made into
-     * different datatypes with different tags, but FLINT currently boxes 
-     * such objects.
-     *)
 
    (*
     * A cell is a stateful object reprensenting a storage cell in a 
@@ -51,7 +72,7 @@ sig
     * sameColor for testing for color identity.  For most things,
     * sameColor is the right function to use.
     *)
-   datatype cell = 
+   and cell = 
       CELL of {id   : cell_id,
                col  : cellColor ref, 
                desc : cellkindDesc, 
@@ -157,6 +178,27 @@ sig
     *)
    structure ColorTable : MONO_HASH_TABLE where type Key.hash_key = cell
 
+   (* 
+    * Cell set represents a map from cellkind to sorted_cells.
+    *)
+   structure CellSet :
+   sig
+      type cellset 
+      (* cellset functions *)
+      val empty  : cellset
+      val add    : cell * cellset -> cellset
+      val rmv    : cell * cellset -> cellset
+      val get    : cellkindDesc -> cellset -> cell list
+      val update : cellkindDesc -> cellset * cell list -> cellset
+      val map    : {from:cell, to:cell} -> cellset -> cellset
+
+      (* convert cellset into a list of cells *)
+      val toCellList : cellset -> cell list
+
+      (* pretty printing *)
+      val toString   : cellset -> string
+   end
+
     (*
      * These annotations adds extra definitions and uses to an instruction
      *)
@@ -170,5 +212,7 @@ sig
     (* Internal use only! *)
    val show         : cellkindDesc -> register_id -> string
    val showWithSize : cellkindDesc -> register_id * sz -> string
+
+   val array0 : cell Array.array
 end
 

@@ -2,6 +2,27 @@
  *
  * Copyright 1999 by Bell Laboratories 
  *)
+
+(* NOTE on maxIter:
+ * 
+ * maxIter -- is the number of times a span-dependent instruction
+ *	is allowed to expand in a non-monotonic way. 
+ *
+ * This table shows the number of span-dependent instructions
+ * whose size was over-estimated as a function of maxIter, for the
+ * file Parse/parse/ml.grm.sml:
+ *
+ *    maxIter		# of instructions:
+ *	10			687
+ *	20			438
+ *	30			198
+ *      40			  0
+ *
+ * In compiling the compiler, there is no significant difference in
+ * compilation speed between maxIter=10 and maxIter=40. 
+ * Indeed 96% of the  files in the compiler reach a fix point within
+ * 13 iterations.
+ *)
 signature MC_EMIT = sig
   structure I : INSTRUCTIONS
 
@@ -11,17 +32,23 @@ end
   
 functor BackPatch
   (structure CodeString : CODE_STRING
-   structure Jumps: SDI_JUMPS 
-   structure Props : INSN_PROPERTIES 
-   structure Emitter : MC_EMIT
-   structure Flowgraph : FLOWGRAPH
-   structure Asm : INSTRUCTION_EMITTER
-      sharing Emitter.I = Jumps.I = Flowgraph.I = Props.I = Asm.I) : BBSCHED = 
+   structure Jumps      : SDI_JUMPS 
+   structure Props      : INSN_PROPERTIES 
+                        where I = Jumps.I
+   structure Emitter    : MC_EMIT
+                        where I = Props.I
+   structure CFG        : CONTROL_FLOW_GRAPH
+                        where I = Emitter.I
+   structure Asm        : INSTRUCTION_EMITTER
+                        where I = CFG.I
+   structure Placement  : BLOCK_PLACEMENT
+                        where CFG = CFG)  : BBSCHED = 
 struct 
-  structure I = Jumps.I
-  structure C = I.C
-  structure F = Flowgraph
-  structure P = F.P
+  structure I   = Jumps.I
+  structure C   = I.C
+  structure CFG = CFG
+  structure P   = CFG.P
+  structure G   = Graph
   structure W8V = Word8Vector
 
   datatype desc =
@@ -33,47 +60,64 @@ struct
 
   datatype cluster = CLUSTER of {cluster: desc}
 
+  val maxIter = MLRiscControl.getInt "variable-length-backpatch-iterations"
+  val _ = maxIter := 40
+ 
   fun error msg = MLRiscErrorMsg.error("vlBackPatch",msg)
 
-  val clusters = ref ([] : cluster list)
+  val clusterList : cluster list ref = ref []
+  val dataList : P.pseudo_op list ref = ref []
+  fun cleanUp() = (clusterList := []; dataList := [])
 
-  fun cleanUp() = clusters := []
-
-  fun bbsched(F.CLUSTER{blocks, ...}) = let
+  fun bbsched(cfg as G.GRAPH{graph_info=CFG.INFO{data, ...}, ...}) = let
+    val blocks = map #2 (Placement.blockPlacement cfg)
     fun bytes([], p) = p
       | bytes([s], p) = BYTES(s, p)
       | bytes(s, p) = BYTES(W8V.concat s, p)
-    (* Note: Instructions start out in reverse order *)
-    fun f(F.PSEUDO pOp::rest) = PSEUDO(pOp, f rest)
-      | f(F.LABEL lab::rest) = LABEL(lab, f rest)
-      | f(F.BBLOCK{insns, ...}::rest) = let
-	 fun instrs([], b) = bytes(rev b, f rest)
-	   | instrs(i::rest, b) = 
-	     if Jumps.isSdi i then 
-	       bytes(rev b, SDI(i, ref(Jumps.minSize i), instrs(rest, [])))
-	     else
-	       instrs(rest, Emitter.emitInstr(i)::b)
-	in instrs(rev(!insns), []) 
-	end 
-      | f(F.ENTRY _::rest) = f rest
-      | f(F.EXIT _::rest) = f rest
+
+    fun f(CFG.BLOCK{align, labels, insns, ...}::rest) = let
+         fun instrs([], b) = bytes(rev b, f rest)
+           | instrs(i::rest, b) = 
+             if Jumps.isSdi i then 
+               bytes(rev b, SDI(i, ref(Jumps.minSize i), instrs(rest, [])))
+             else
+               instrs(rest, Emitter.emitInstr(i)::b)
+         fun doLabels(lab::rest) = LABEL(lab, doLabels rest)
+           | doLabels [] = instrs(rev(!insns), [])
+         fun alignIt(NONE) = doLabels(!labels)
+	   | alignIt(SOME p) = PSEUDO(p, alignIt(NONE))
+        in
+          alignIt(!align)
+        end 
       | f [] = NIL
-  in
-    clusters := 
-      CLUSTER{cluster=f blocks}:: !clusters
+  in 
+    clusterList := 
+      CLUSTER{cluster=f blocks}:: !clusterList;
+    dataList := !data @ !dataList
   end
 
-  fun finish() = let
+  
+  fun finish () = let
+    val iter = ref 0 (* iteration count *)
     fun labels (BYTES(s,rest), pos, chgd) = labels(rest, pos+W8V.length s, chgd)
-      | labels (SDI(_, ref size, rest), pos, chgd) = labels(rest, pos+size, chgd)
+      | labels (SDI(instr, r as ref size, rest), pos, chgd) = 
+          let val s = Jumps.sdiSize(instr, Label.addrOf, pos)
+              (* Allow contraction in the first two passes;
+               * after which only allows expansion to ensure termination.
+               *)
+          in 
+	      if (!iter <= !maxIter andalso s <> size) orelse s > size then
+		  (r := s; labels(rest, pos + s, true))
+	      else labels(rest, pos + size, chgd)
+          end
       | labels (LABEL(l,rest), pos, changed) = 
         if Label.addrOf(l) = pos then labels(rest, pos, changed)
-	else (Label.setAddr(l, pos); labels(rest, pos, true))
+        else (Label.setAddr(l, pos); labels(rest, pos, true))
       | labels (PSEUDO(pOp, rest), pos, chgd) = let
-	  val oldSz = P.sizeOf(pOp, pos)
-	  val newSz = (P.adjustLabels(pOp, pos); P.sizeOf(pOp, pos))
-        in labels(rest, pos + newSz, chgd orelse newSz<>oldSz)
-	end
+          val oldSz = P.sizeOf(pOp, pos)
+          val newSz = (P.adjustLabels(pOp, pos); P.sizeOf(pOp, pos))
+        in labels(rest, pos + newSz, chgd orelse newSz<>oldSz) (* XXXX???? *)
+        end
       | labels (NIL, pos, chgd) = (pos, chgd)
 
     fun clusterLabels clusters = let
@@ -81,21 +125,6 @@ struct
     in List.foldl f (0, false) clusters
     end
       
-    fun adjust([], pos) = () 
-      | adjust(CLUSTER{cluster}::rest, pos) = let
-	  fun f(pos, BYTES(s, rest)) = f(pos+W8V.length s, rest)
-	    | f(pos, SDI(instr, r as ref size, rest)) = let
-		val s = Jumps.sdiSize(instr, Label.addrOf, pos)
-	      in
-		if s > size then r := s else ();
-		f (pos+size, rest)
-	      end
-	    | f(pos, LABEL(l,rest)) = f(pos, rest)
-	    | f(pos, PSEUDO(pOp,rest)) = f(pos + P.sizeOf(pOp, pos), rest)
-	    | f(pos, NIL) = adjust(rest, pos)
-        in f(pos, cluster)
-        end
-       
     val nop = Props.nop()
 
     val loc = ref 0
@@ -103,60 +132,83 @@ struct
     fun output v = 
       W8V.app (fn v => (CodeString.update(!loc, v); loc:= !loc+1)) v
 
-    val Asm.S.STREAM{emit,...} = Asm.makeStream []
 
     fun chunk(pos, []) = ()
       | chunk(pos, CLUSTER{cluster}::rest) = let
           fun outputInstr i = output (Emitter.emitInstr(nop))
           fun nops 0 = ()
-	    | nops n = 
-	       if n < 0 then error "chunk.nops"
-	       else (outputInstr(nop); nops(n-1))
-	  fun f(pos, BYTES(s,r)) = (output s; f(pos+W8V.length s,r))
-	    | f(pos, SDI(instr, ref size, r)) = let
-	        val emitInstrs = map (fn i => Emitter.emitInstr(i))
-	        val instrs = emitInstrs (Jumps.expand(instr, size, pos))
-		val sum = List.foldl (fn (a,b) => (W8V.length a + b)) 0
-		val n = size - sum instrs
+            | nops n = (outputInstr(nop); nops(n-1))
+          fun f(pos, BYTES(s,r)) = (output s; f(pos+W8V.length s,r))
+            | f(pos, SDI(instr, ref size, r)) = let
+                val emitInstrs = map (fn i => Emitter.emitInstr(i))
+                val instrs = emitInstrs (Jumps.expand(instr, size, pos))
+                val sum = List.foldl (fn (a,b) => (W8V.length a + b)) 0
+                val n = size - sum instrs
               in
-		if n > 0 then 
-		  (print ("\t\t\t Inserting " ^ Int.toString n ^ "nops\n");
-		   emit instr)
-		else ();
-		app output instrs;
-		if n < 0 then 
-		  error "chunk: numNops"
-		else 
-		  if n = 0 then () else nops(n);
-		f(pos+size, r)
-	      end
-	    | f(pos, LABEL(lab, rest)) = 
-	        if pos = Label.addrOf lab then f(pos,rest)
-		else error "chunk: LABEL"
-	    | f(pos, PSEUDO(pOp, rest)) = let
-	        val s : Word8.word list ref = ref []
-	      in
-	        P.emitValue{pOp=pOp, loc=pos, 
-			    emit=(fn w => s :=  w :: (!s))};
-		output(W8V.fromList(rev(!s)));
-		f(pos + P.sizeOf(pOp, pos), rest)
+                (*
+                 if n > 0 then 
+                   (print ("\t\t\t Inserting " ^ Int.toString n ^ "nops\n");
+                    emit instr)
+                 else (); 
+                *)
+                app output instrs;
+		nops(n);
+                f(pos+size, r)
               end
-	    | f(pos, NIL) = chunk(pos, rest)
+            | f(pos, LABEL(lab, rest)) = 
+                if pos = Label.addrOf lab then f(pos,rest)
+                else error "chunk: LABEL"
+            | f(pos, PSEUDO(pOp, rest)) = let
+                val s : Word8.word list ref = ref []
+              in
+                P.emitValue{pOp=pOp, loc=pos, 
+                            emit=(fn w => s :=  w :: (!s))};
+                output(W8V.fromList(rev(!s)));
+                f(pos + P.sizeOf(pOp, pos), rest)
+              end
+            | f(pos, NIL) = chunk(pos, rest)
 
         in f(pos, cluster)
-	end
+        end
 
     fun fix clusters = let
       val (pos, changed) = clusterLabels clusters
-    in if changed then (adjust(clusters, 0); fix clusters) else pos
+    in 
+      if changed then (iter := !iter + 1; fix clusters) else pos
     end
 
-    val clusters = rev(!clusters) before clusters := []
+    (* 
+     * Initialize labels so that they have 
+     * some reasonable value to begin with.
+     *)
+    fun initLabels (clusters) = let
+      fun init(BYTES(bytes, rest), loc) = init(rest, loc + W8V.length bytes)
+	| init(PSEUDO(pOp, rest), loc) = 
+	    (P.adjustLabels(pOp, loc); init(rest, loc + P.sizeOf(pOp, loc)))
+	| init(SDI(sdi, size, rest), loc) = init(rest, loc + !size)
+	| init(LABEL(lab, rest), loc) = 
+	    (Label.setAddr(lab, loc); init(rest, loc))
+	| init(NIL, loc) = loc
+    in 
+      List.foldl
+	(fn (CLUSTER{cluster, ...}, loc) => init(cluster, loc)) 0 clusters
+    end
+
+    (* The dataList is in reverse order, and the entries in each
+     * are also in reverse 
+     *)
+    fun compUnit(d::dl, cl, acc) = compUnit(dl, cl, PSEUDO(d, acc))
+      | compUnit([], cl, acc) = let
+	  fun revCl(c::cl, acc) = revCl(cl, c::acc)
+	    | revCl([], acc) = acc
+        in revCl(cl, [CLUSTER{cluster=acc}])
+        end
+      
+    val compressed =  compUnit(!dataList, !clusterList, NIL) before cleanUp()
   in
-    CodeString.init(fix clusters);
-    loc := 0; chunk(0, clusters)
+    initLabels(compressed);
+    CodeString.init(fix compressed);
+    loc := 0; chunk(0, compressed) 
   end (* finish *)
 
 end (* functor BackPatch *)
-
-

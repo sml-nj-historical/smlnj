@@ -8,9 +8,15 @@
 signature SPARCCOMP_INSTR_EXT = sig
     structure T : MLTREE
     structure I : SPARCINSTR
+    		where T = T
+    structure TS : MLTREE_STREAM
+		where T = I.T
+    structure CFG : CONTROL_FLOW_GRAPH 
+    		where I = I 
+
 
     type reducer =
-	 (I.instruction, I.C.cellset, I.operand, I.addressing_mode) T.reducer
+	 (I.instruction, I.C.cellset, I.operand, I.addressing_mode, CFG.cfg) TS.reducer
 
     val compileSext :
 	reducer
@@ -19,8 +25,18 @@ signature SPARCCOMP_INSTR_EXT = sig
 	-> unit
 end
 
-functor SparcCompInstrExt (I: SPARCINSTR) : SPARCCOMP_INSTR_EXT = struct
-    structure T = I.T
+functor SparcCompInstrExt 
+  (structure I   : SPARCINSTR
+   structure TS  : MLTREE_STREAM
+		where T = I.T
+   structure CFG : CONTROL_FLOW_GRAPH 
+   		where I = I
+                  and P = TS.S.P
+  ) : SPARCCOMP_INSTR_EXT = 
+struct
+    structure CFG = CFG
+    structure T = TS.T
+    structure TS = TS
     structure I = I
     structure C = I.C
     structure X = SparcInstrExt
@@ -28,10 +44,10 @@ functor SparcCompInstrExt (I: SPARCINSTR) : SPARCCOMP_INSTR_EXT = struct
     type stm = (T.stm, T.rexp, T.fexp, T.ccexp) X.sext
 
     type reducer =
-	 (I.instruction, I.C.cellset, I.operand, I.addressing_mode) T.reducer
+	 (I.instruction, I.C.cellset, I.operand, I.addressing_mode, CFG.cfg) TS.reducer
 
     fun compileSext reducer { stm: stm, an: T.an list } = let
-	val T.REDUCER { emit, ... } = reducer
+	val TS.REDUCER { emit, ... } = reducer
     in
 	case stm of X.UNIMP i => emit (I.UNIMP {const22 = i}, an)
     end

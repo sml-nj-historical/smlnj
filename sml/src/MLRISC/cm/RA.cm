@@ -12,13 +12,11 @@ is
 	MLRISC.cm
 	Control.cm
 	Lib.cm
-	ir.cm
 #else
 	$/smlnj-lib.cm
 	$/MLRISC.cm
 	$/Control.cm
 	$/Lib.cm
-	$/ir.cm
 #endif
 #else
 	basis.cm
@@ -26,14 +24,12 @@ is
 	MLRISC.cm
 	Control.cm
 	Lib.cm
-	ir.cm
 #endif
 #else
 	smlnj-lib.cm
 	MLRISC.cm
 	Control.cm
 	Lib.cm
-	ir.cm
 #endif
 	../ra/chaitin-spillheur2.sml
 	../ra/chow-hennessy-spillheur2.sml

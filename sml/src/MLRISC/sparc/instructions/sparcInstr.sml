@@ -9,10 +9,8 @@ signature SPARCINSTR =
 sig
    structure C : SPARCCELLS
    structure T : MLTREE
-   structure LabelExp : LABELEXP
    structure Constant: CONSTANT
    structure Region : REGION
-      sharing LabelExp.T = T
       sharing Constant = T.Constant
       sharing Region = T.Region
    datatype load =
@@ -177,56 +175,57 @@ sig
    | FBULE
    | FBO
    datatype ea =
-     Direct of C.cell
-   | FDirect of C.cell
-   | Displace of {base:C.cell, disp:int}
+     Direct of CellsBasis.cell
+   | FDirect of CellsBasis.cell
+   | Displace of {base:CellsBasis.cell, disp:int}
    datatype fsize =
      S
    | D
    | Q
    datatype operand =
-     REG of C.cell
+     REG of CellsBasis.cell
    | IMMED of int
    | LAB of T.labexp
    | LO of T.labexp
    | HI of T.labexp
-   type addressing_mode = (C.cell * operand)
+   type addressing_mode = CellsBasis.cell * operand
    datatype instruction =
-     LOAD of {l:load, d:C.cell, r:C.cell, i:operand, mem:Region.region}
-   | STORE of {s:store, d:C.cell, r:C.cell, i:operand, mem:Region.region}
-   | FLOAD of {l:fload, r:C.cell, i:operand, d:C.cell, mem:Region.region}
-   | FSTORE of {s:fstore, d:C.cell, r:C.cell, i:operand, mem:Region.region}
+     LOAD of {l:load, d:CellsBasis.cell, r:CellsBasis.cell, i:operand, mem:Region.region}
+   | STORE of {s:store, d:CellsBasis.cell, r:CellsBasis.cell, i:operand, mem:Region.region}
+   | FLOAD of {l:fload, r:CellsBasis.cell, i:operand, d:CellsBasis.cell, mem:Region.region}
+   | FSTORE of {s:fstore, d:CellsBasis.cell, r:CellsBasis.cell, i:operand, 
+        mem:Region.region}
    | UNIMP of {const22:int}
-   | SETHI of {i:int, d:C.cell}
-   | ARITH of {a:arith, r:C.cell, i:operand, d:C.cell}
-   | SHIFT of {s:shift, r:C.cell, i:operand, d:C.cell}
-   | MOVicc of {b:branch, i:operand, d:C.cell}
-   | MOVfcc of {b:fbranch, i:operand, d:C.cell}
-   | MOVR of {rcond:rcond, r:C.cell, i:operand, d:C.cell}
-   | FMOVicc of {sz:fsize, b:branch, r:C.cell, d:C.cell}
-   | FMOVfcc of {sz:fsize, b:fbranch, r:C.cell, d:C.cell}
+   | SETHI of {i:int, d:CellsBasis.cell}
+   | ARITH of {a:arith, r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
+   | SHIFT of {s:shift, r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
+   | MOVicc of {b:branch, i:operand, d:CellsBasis.cell}
+   | MOVfcc of {b:fbranch, i:operand, d:CellsBasis.cell}
+   | MOVR of {rcond:rcond, r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
+   | FMOVicc of {sz:fsize, b:branch, r:CellsBasis.cell, d:CellsBasis.cell}
+   | FMOVfcc of {sz:fsize, b:fbranch, r:CellsBasis.cell, d:CellsBasis.cell}
    | Bicc of {b:branch, a:bool, label:Label.label, nop:bool}
    | FBfcc of {b:fbranch, a:bool, label:Label.label, nop:bool}
-   | BR of {rcond:rcond, p:prediction, r:C.cell, a:bool, label:Label.label, 
+   | BR of {rcond:rcond, p:prediction, r:CellsBasis.cell, a:bool, label:Label.label, 
         nop:bool}
    | BP of {b:branch, p:prediction, cc:cc, a:bool, label:Label.label, nop:bool}
-   | JMP of {r:C.cell, i:operand, labs:Label.label list, nop:bool}
-   | JMPL of {r:C.cell, i:operand, d:C.cell, defs:C.cellset, uses:C.cellset, 
-        cutsTo:Label.label list, nop:bool, mem:Region.region}
+   | JMP of {r:CellsBasis.cell, i:operand, labs:Label.label list, nop:bool}
+   | JMPL of {r:CellsBasis.cell, i:operand, d:CellsBasis.cell, defs:C.cellset, 
+        uses:C.cellset, cutsTo:Label.label list, nop:bool, mem:Region.region}
    | CALL of {defs:C.cellset, uses:C.cellset, label:Label.label, cutsTo:Label.label list, 
         nop:bool, mem:Region.region}
-   | Ticc of {t:branch, cc:cc, r:C.cell, i:operand}
-   | FPop1 of {a:farith1, r:C.cell, d:C.cell}
-   | FPop2 of {a:farith2, r1:C.cell, r2:C.cell, d:C.cell}
-   | FCMP of {cmp:fcmp, r1:C.cell, r2:C.cell, nop:bool}
-   | COPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
+   | Ticc of {t:branch, cc:cc, r:CellsBasis.cell, i:operand}
+   | FPop1 of {a:farith1, r:CellsBasis.cell, d:CellsBasis.cell}
+   | FPop2 of {a:farith2, r1:CellsBasis.cell, r2:CellsBasis.cell, d:CellsBasis.cell}
+   | FCMP of {cmp:fcmp, r1:CellsBasis.cell, r2:CellsBasis.cell, nop:bool}
+   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
-   | FCOPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
+   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
-   | SAVE of {r:C.cell, i:operand, d:C.cell}
-   | RESTORE of {r:C.cell, i:operand, d:C.cell}
-   | RDY of {d:C.cell}
-   | WRY of {r:C.cell, i:operand}
+   | SAVE of {r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
+   | RESTORE of {r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
+   | RDY of {d:CellsBasis.cell}
+   | WRY of {r:CellsBasis.cell, i:operand}
    | RET of {leaf:bool, nop:bool}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}
@@ -234,12 +233,11 @@ sig
    | PHI of {}
 end
 
-functor SparcInstr(LabelExp : LABELEXP
+functor SparcInstr(T: MLTREE
                   ) : SPARCINSTR =
 struct
    structure C = SparcCells
-   structure LabelExp = LabelExp
-   structure T = LabelExp.T
+   structure T = T
    structure Region = T.Region
    structure Constant = T.Constant
    datatype load =
@@ -404,56 +402,57 @@ struct
    | FBULE
    | FBO
    datatype ea =
-     Direct of C.cell
-   | FDirect of C.cell
-   | Displace of {base:C.cell, disp:int}
+     Direct of CellsBasis.cell
+   | FDirect of CellsBasis.cell
+   | Displace of {base:CellsBasis.cell, disp:int}
    datatype fsize =
      S
    | D
    | Q
    datatype operand =
-     REG of C.cell
+     REG of CellsBasis.cell
    | IMMED of int
    | LAB of T.labexp
    | LO of T.labexp
    | HI of T.labexp
-   type addressing_mode = (C.cell * operand)
+   type addressing_mode = CellsBasis.cell * operand
    datatype instruction =
-     LOAD of {l:load, d:C.cell, r:C.cell, i:operand, mem:Region.region}
-   | STORE of {s:store, d:C.cell, r:C.cell, i:operand, mem:Region.region}
-   | FLOAD of {l:fload, r:C.cell, i:operand, d:C.cell, mem:Region.region}
-   | FSTORE of {s:fstore, d:C.cell, r:C.cell, i:operand, mem:Region.region}
+     LOAD of {l:load, d:CellsBasis.cell, r:CellsBasis.cell, i:operand, mem:Region.region}
+   | STORE of {s:store, d:CellsBasis.cell, r:CellsBasis.cell, i:operand, mem:Region.region}
+   | FLOAD of {l:fload, r:CellsBasis.cell, i:operand, d:CellsBasis.cell, mem:Region.region}
+   | FSTORE of {s:fstore, d:CellsBasis.cell, r:CellsBasis.cell, i:operand, 
+        mem:Region.region}
    | UNIMP of {const22:int}
-   | SETHI of {i:int, d:C.cell}
-   | ARITH of {a:arith, r:C.cell, i:operand, d:C.cell}
-   | SHIFT of {s:shift, r:C.cell, i:operand, d:C.cell}
-   | MOVicc of {b:branch, i:operand, d:C.cell}
-   | MOVfcc of {b:fbranch, i:operand, d:C.cell}
-   | MOVR of {rcond:rcond, r:C.cell, i:operand, d:C.cell}
-   | FMOVicc of {sz:fsize, b:branch, r:C.cell, d:C.cell}
-   | FMOVfcc of {sz:fsize, b:fbranch, r:C.cell, d:C.cell}
+   | SETHI of {i:int, d:CellsBasis.cell}
+   | ARITH of {a:arith, r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
+   | SHIFT of {s:shift, r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
+   | MOVicc of {b:branch, i:operand, d:CellsBasis.cell}
+   | MOVfcc of {b:fbranch, i:operand, d:CellsBasis.cell}
+   | MOVR of {rcond:rcond, r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
+   | FMOVicc of {sz:fsize, b:branch, r:CellsBasis.cell, d:CellsBasis.cell}
+   | FMOVfcc of {sz:fsize, b:fbranch, r:CellsBasis.cell, d:CellsBasis.cell}
    | Bicc of {b:branch, a:bool, label:Label.label, nop:bool}
    | FBfcc of {b:fbranch, a:bool, label:Label.label, nop:bool}
-   | BR of {rcond:rcond, p:prediction, r:C.cell, a:bool, label:Label.label, 
+   | BR of {rcond:rcond, p:prediction, r:CellsBasis.cell, a:bool, label:Label.label, 
         nop:bool}
    | BP of {b:branch, p:prediction, cc:cc, a:bool, label:Label.label, nop:bool}
-   | JMP of {r:C.cell, i:operand, labs:Label.label list, nop:bool}
-   | JMPL of {r:C.cell, i:operand, d:C.cell, defs:C.cellset, uses:C.cellset, 
-        cutsTo:Label.label list, nop:bool, mem:Region.region}
+   | JMP of {r:CellsBasis.cell, i:operand, labs:Label.label list, nop:bool}
+   | JMPL of {r:CellsBasis.cell, i:operand, d:CellsBasis.cell, defs:C.cellset, 
+        uses:C.cellset, cutsTo:Label.label list, nop:bool, mem:Region.region}
    | CALL of {defs:C.cellset, uses:C.cellset, label:Label.label, cutsTo:Label.label list, 
         nop:bool, mem:Region.region}
-   | Ticc of {t:branch, cc:cc, r:C.cell, i:operand}
-   | FPop1 of {a:farith1, r:C.cell, d:C.cell}
-   | FPop2 of {a:farith2, r1:C.cell, r2:C.cell, d:C.cell}
-   | FCMP of {cmp:fcmp, r1:C.cell, r2:C.cell, nop:bool}
-   | COPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
+   | Ticc of {t:branch, cc:cc, r:CellsBasis.cell, i:operand}
+   | FPop1 of {a:farith1, r:CellsBasis.cell, d:CellsBasis.cell}
+   | FPop2 of {a:farith2, r1:CellsBasis.cell, r2:CellsBasis.cell, d:CellsBasis.cell}
+   | FCMP of {cmp:fcmp, r1:CellsBasis.cell, r2:CellsBasis.cell, nop:bool}
+   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
-   | FCOPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
+   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
-   | SAVE of {r:C.cell, i:operand, d:C.cell}
-   | RESTORE of {r:C.cell, i:operand, d:C.cell}
-   | RDY of {d:C.cell}
-   | WRY of {r:C.cell, i:operand}
+   | SAVE of {r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
+   | RESTORE of {r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
+   | RDY of {d:CellsBasis.cell}
+   | WRY of {r:CellsBasis.cell, i:operand}
    | RET of {leaf:bool, nop:bool}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}

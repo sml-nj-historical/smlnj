@@ -4,11 +4,15 @@
  *
  *)
 
-functor HppaProps(HppaInstr : HPPAINSTR) : INSN_PROPERTIES = 
+functor HppaProps
+   ( structure HppaInstr : HPPAINSTR
+     structure MLTreeEval : MLTREE_EVAL where T = HppaInstr.T
+     structure MLTreeHash : MLTREE_HASH where T = HppaInstr.T
+    ) : INSN_PROPERTIES = 
 struct
   structure I = HppaInstr
   structure C = HppaInstr.C
-  structure LE = I.LabelExp
+  structure CB = CellsBasis
 
   exception NegateConditional
 
@@ -18,8 +22,8 @@ struct
                 | IK_CALL_WITH_CUTS | IK_PHI | IK_SOURCE | IK_SINK
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
-  val zeroR = Option.valOf(C.zeroReg C.GP)
-  val r31   = C.Reg C.GP 31
+  val zeroR = Option.valOf(C.zeroReg CB.GP)
+  val r31   = C.Reg CB.GP 31
 
    (*========================================================================
     *  Instruction Kinds
@@ -164,18 +168,18 @@ struct
      | hashFieldSel I.T = 0w4
      | hashFieldSel I.P = 0w5
    fun hashOpn(I.IMMED i) = Word.fromInt i
-     | hashOpn(I.LabExp(l,f)) = I.LabelExp.hash l + hashFieldSel f
-     | hashOpn(I.HILabExp(l,f)) = I.LabelExp.hash l + hashFieldSel f + 0w10000
-     | hashOpn(I.LOLabExp(l,f)) = I.LabelExp.hash l + hashFieldSel f + 0w20000
-     | hashOpn(I.REG r) = C.hashCell r
+     | hashOpn(I.LabExp(l,f)) = MLTreeHash.hash l + hashFieldSel f
+     | hashOpn(I.HILabExp(l,f)) = MLTreeHash.hash l + hashFieldSel f + 0w10000
+     | hashOpn(I.LOLabExp(l,f)) = MLTreeHash.hash l + hashFieldSel f + 0w20000
+     | hashOpn(I.REG r) = CB.hashCell r
    fun eqOpn(I.IMMED i,I.IMMED j) = i = j
-     | eqOpn(I.REG x,I.REG y) = C.sameColor(x,y)
+     | eqOpn(I.REG x,I.REG y) = CB.sameColor(x,y)
      | eqOpn(I.LabExp(a,b),I.LabExp(c,d)) = 
-          b = d andalso I.LabelExp.==(a,c)
+          b = d andalso MLTreeEval.==(a,c)
      | eqOpn(I.HILabExp(a,b),I.HILabExp(c,d)) = 
-          b = d andalso I.LabelExp.==(a,c)
+          b = d andalso MLTreeEval.==(a,c)
      | eqOpn(I.LOLabExp(a,b),I.LOLabExp(c,d)) = 
-          b = d andalso I.LabelExp.==(a,c)
+          b = d andalso MLTreeEval.==(a,c)
      | eqOpn _ = false
    
 
@@ -195,10 +199,10 @@ struct
       | I.ARITH {a, r1, r2, t, ...} => trap(a, [t], [r1,r2])
       | I.ARITHI {ai, r, t, ...}    => trapi(ai, [t], [r])
       | I.COMCLR_LDO{r1, r2, b, t1, t2, ...}=> 
-          if C.sameColor(t1,t2) then ([t1], [b, r1, r2])
+          if CB.sameColor(t1,t2) then ([t1], [b, r1, r2])
           else ([t1, t2], [b, r1, r2, t2])
       | I.COMICLR_LDO{i1, r2, b, t1, t2, ...}=> 
-          if C.sameColor(t1,t2) then ([t1], [b, r2])
+          if CB.sameColor(t1,t2) then ([t1], [b, r2])
           else ([t1, t2], [b, r2, t2])
       | I.SHIFTV {r, t, ...}        => ([t], [r])
       | I.SHIFT {r, t, ...}         => ([t], [r])
@@ -220,7 +224,7 @@ struct
       | I.FSTOREX {b, x, ...}  	    => ([],  [b,x])
       | I.FLOAD {b, ...}	    => ([],  [b])
       | I.FLOADX{b, x, ...} 	    => ([],  [b,x])
-      | I.ANNOTATION{a=C.DEF_USE{cellkind=C.GP,defs,uses}, i, ...} => 
+      | I.ANNOTATION{a=CB.DEF_USE{cellkind=CB.GP,defs,uses}, i, ...} => 
         let val (d,u) = defUseR i in (defs@d, u@uses) end
       | I.ANNOTATION{a, i, ...} => defUseR i
       | _   => ([],[])
@@ -240,13 +244,13 @@ struct
        | I.BLE{defs, uses, ...}    => (C.getFreg defs, C.getFreg uses)
        | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...} => (f::dst, src)
        | I.FCOPY{dst, src, ...}    => (dst, src)
-       | I.ANNOTATION{a=C.DEF_USE{cellkind=C.FP,defs,uses}, i, ...} => 
+       | I.ANNOTATION{a=CB.DEF_USE{cellkind=CB.FP,defs,uses}, i, ...} => 
          let val (d,u) = defUseF i in (defs@d, u@uses) end
        | I.ANNOTATION{a, i, ...} => defUseF i
        | _ => ([],[])
 
-  fun defUse C.GP = defUseR
-    | defUse C.FP = defUseF
+  fun defUse CB.GP = defUseR
+    | defUse CB.FP = defUseF
     | defUse _ = error "defUse"
 
   (*========================================================================

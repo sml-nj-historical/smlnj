@@ -68,4 +68,10 @@ signature CM = sig
     val mk_standalone : bool option ->
 			{ project: string, wrapper: string, target: string } ->
 			string list option
+
+    structure Graph : sig
+	val graph : string -> { graph: PortableGraph.graph,
+				imports: Library.lib list,
+				nativesrc: string -> string } option
+    end
 end

@@ -142,6 +142,7 @@ val known = Intset.new()
 val knownP = Intset.mem known
 val knownM = Intset.add known
 fun knownK k = (k <> CONT) andalso (k <> ESCAPE)
+fun frmszK k = (k = CONT) orelse (k = KNOWN_TAIL)
 
 val contset = Intset.new()
 val contP = Intset.mem contset
@@ -539,7 +540,7 @@ fun freefix (sn,freeb) (fk,f,vl,cl,ce) =
 
          val _ = addEntry(f,l,z,(gsz,fsz))
          val (gsz',fsz') = 
-           if econtK fk then   (* only count escaping functions *)
+           if frmszK fk then   (* only count escap-cont & knowntail funs *)
              (let val gn = length l (**** NEED MORE WORK HERE ****)
                in (Int.max(gn,gsz),fsz)
               end) 

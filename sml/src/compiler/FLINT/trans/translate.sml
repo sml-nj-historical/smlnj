@@ -6,10 +6,10 @@ sig
 
   (* Invariant: transDec always applies to a top-level absyn declaration *) 
   val transDec : Absyn.dec * Access.lvar list 
-                 * StaticEnv.staticEnv * CompBasic.compInfo
+                 * StaticEnv.staticEnv * Absyn.dec CompInfo.compInfo
                  -> {flint: FLINT.prog,
                      imports: (PersStamps.persstamp 
-                               * CompBasic.importTree) list}
+                               * ImportTree.importTree) list}
 
 end (* signature TRANSLATE *)
 
@@ -21,7 +21,6 @@ local structure B  = Bindings
       structure DA = Access
       structure DI = DebIndex
       structure EM = ErrorMsg
-      structure CB = CompBasic
       structure II = InlInfo
       structure LT = PLambdaType
       structure M  = Modules
@@ -65,16 +64,6 @@ type pid = PersStamps.persstamp
 (** old-style fold for cases where it is partially applied *)
 fun fold f l init = foldr f init l
 
-(*
- * MAJOR CLEANUP REQUIRED ! The function mkv is currently directly taken 
- * from the LambdaVar module; I think it should be taken from the 
- * "compInfo". Similarly, should we replace all mkLvar in the backend
- * with the mkv in "compInfo" ? (ZHONG)
- *)
-val mkv = LambdaVar.mkLvar 
-fun mkvN NONE = mkv()
-  | mkvN (SOME s) = LambdaVar.namedLvar s
-
 (** sorting the record fields for record types and record expressions *)
 fun elemgtr ((LABEL{number=x,...},_),(LABEL{number=y,...},_)) = (x>y)
 fun sorted x = ListMergeSort.sorted elemgtr x 
@@ -95,15 +84,33 @@ exception NoCore
  *                 * StaticEnv.staticEnv * CompBasic.compInfo               *
  *                 -> {flint: FLINT.prog,                                   *
  *                     imports: (PersStamps.persstamp                       *
- *                               * CompBasic.importTree) list}              *
+ *                               * ImportTree.importTree) list}             *
  ****************************************************************************)
 
-fun transDec (rootdec, exportLvars, env,
-	      compInfo as {errorMatch,error,...}: CB.compInfo) =
+fun transDec
+	(rootdec, exportLvars, env,
+	 compInfo as {errorMatch,error,...}: Absyn.dec CompInfo.compInfo) =
 let 
 
+(* We take mkLvar from compInfo.  This should answer Zhong's question... *)
+(*
+(*
+ * MAJOR CLEANUP REQUIRED ! The function mkv is currently directly taken 
+ * from the LambdaVar module; I think it should be taken from the 
+ * "compInfo". Similarly, should we replace all mkLvar in the backend
+ * with the mkv in "compInfo" ? (ZHONG)
+ *)
+val mkv = LambdaVar.mkLvar 
+fun mkvN NONE = mkv()
+  | mkvN (SOME s) = LambdaVar.namedLvar s
+*)
+
+val mkvN = #mkLvar compInfo
+fun mkv () = mkvN NONE
+
 (** generate the set of ML-to-FLINT type translation functions *)
-val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty} = TT.genTT()
+val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty, markLBOUND} =
+    TT.genTT()
 fun toTcLt d = (toTyc d, toLty d)
 
 (** translating the typ field in DATACON into lty; constant datacons 
@@ -282,23 +289,24 @@ fun mkAcc (p, nameOp) =
  * clean up this is to put all the core constructors and primitives into
  * the primitive environment. (ZHONG)
  *)
+exception NoCore
+
 fun coreExn id =
-  ((case coreLookup(id, env)
-     of V.CON(TP.DATACON{name, rep as DA.EXN _, typ, ...}) => 
-          let val nt = toDconLty DI.top typ
-              val nrep = mkRep(rep, nt, name)
-           in CON'((name, nrep, nt), [], unitLexp)
-          end
-      | _ => bug "coreExn in translate")
-   handle NoCore => (say "WARNING: no Core access \n"; INT 0))
+    (case CoreAccess.getCon' (fn () => raise NoCore) (env, id) of
+	 TP.DATACON { name, rep as DA.EXN _, typ, ... } =>
+         let val nt = toDconLty DI.top typ
+             val nrep = mkRep(rep, nt, name)
+         in CON'((name, nrep, nt), [], unitLexp)
+         end
+       | _ => bug "coreExn in translate")
+    handle NoCore => (say "WARNING: no Core access\n"; INT 0)
 
 and coreAcc id =
-  ((case coreLookup(id, env)
-     of V.VAL(V.VALvar{access, typ, path, ...}) => 
-           mkAccT(access, toLty DI.top (!typ), getNameOp path)
-      | _ => bug "coreAcc in translate")
-   handle NoCore => (say "WARNING: no Core access \n"; INT 0))
-
+    (case CoreAccess.getVar' (fn () => raise NoCore) (env, id) of
+	 V.VALvar { access, typ, path, ... } =>
+	 mkAccT(access, toLty DI.top (!typ), getNameOp path)
+       | _ => bug "coreAcc in translate")
+    handle NoCore => (say "WARNING: no Core access\n"; INT 0)
 
 (** expands the flex record pattern and convert the EXN access pat *)
 (** internalize the conrep's access, always exceptions *)
@@ -736,26 +744,38 @@ fun mkVar (v as V.VALvar{access, info, typ, path}, d) =
       mkAccInfo(access, info, fn () => toLty d (!typ), getNameOp path)
   | mkVar _ = bug "unexpected vars in mkVar"
 
-fun mkVE (v as V.VALvar {info=II.INL_PRIM(p, typ), ...}, ts, d) = 
-      (case (p, ts)
-        of (PO.POLYEQL, [t]) => eqGen(typ, t, toTcLt d)
-         | (PO.POLYNEQ, [t]) => composeNOT(eqGen(typ, t, toTcLt d), toLty d t)
-         | (PO.INLMKARRAY, [t]) => 
-                let val dict = 
-                      {default = coreAcc "mkNormArray",
-                       table = [([LT.tcc_real], coreAcc "mkRealArray")]}
-                 in GENOP (dict, p, toLty d typ, map (toTyc d) ts)
-                end
-	 | (PO.RAW_CCALL NONE, [a, b, c]) =>
-	   let val i = SOME { c_proto = CProto.decode b,
-			      ml_flt_args = CProto.flt_args a,
-			      ml_flt_res_opt = CProto.flt_res c }
-		   handle CProto.BadEncoding => NONE
-	    in PRIM (PO.RAW_CCALL i, toLty d typ, map (toTyc d) ts)
-	   end
-         | _ => transPrim(p, (toLty d typ), map (toTyc d) ts))
-  | mkVE (v, [], d) = mkVar(v, d)
-  | mkVE (v, ts, d) = TAPP(mkVar(v, d), map (toTyc d) ts)
+fun mkVE (v, ts, d) = let
+    fun otherwise () =
+	case ts of
+	    [] => mkVar (v, d)
+	  | _ => TAPP(mkVar(v, d), map (toTyc d) ts)
+in
+    case v of
+	V.VALvar { info, ... } =>
+	II.match info
+	   { inl_prim = fn (p, typ) =>
+	     (case (p, ts) of
+		  (PO.POLYEQL, [t]) => eqGen(typ, t, toTcLt d)
+		| (PO.POLYNEQ, [t]) =>
+		  composeNOT(eqGen(typ, t, toTcLt d), toLty d t)
+		| (PO.INLMKARRAY, [t]) => 
+                  let val dict = 
+			  {default = coreAcc "mkNormArray",
+			   table = [([LT.tcc_real], coreAcc "mkRealArray")]}
+                  in GENOP (dict, p, toLty d typ, map (toTyc d) ts)
+                  end
+		| (PO.RAW_CCALL NONE, [a, b, c]) =>
+		  let val i = SOME { c_proto = CProto.decode b,
+				     ml_flt_args = CProto.flt_args a,
+				     ml_flt_res_opt = CProto.flt_res c }
+			  handle CProto.BadEncoding => NONE
+		  in PRIM (PO.RAW_CCALL i, toLty d typ, map (toTyc d) ts)
+		  end
+		| _ => transPrim(p, (toLty d typ), map (toTyc d) ts)),
+	     inl_str = fn _ => otherwise (),
+	     inl_no = fn () => otherwise () }
+      | _ => otherwise ()
+end
 
 fun mkCE (TP.DATACON{const, rep, name, typ, ...}, ts, apOp, d) = 
   let val lt = toDconLty d typ
@@ -808,13 +828,17 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
       let val savedtvs = map ! boundtvs
 
           fun g (i, []) = ()
-            | g (i, (tv as ref (TP.OPEN _))::rest) = 
-                   (tv := TP.LBOUND{depth=d, num=i}; g(i+1,rest))
-            | g (i, (tv as ref (TP.LBOUND _))::res) =
-                   bug ("unexpected tyvar LBOUND in mkPE")
+            | g (i, (tv as ref (TP.OPEN _))::rest) = let
+		  val m = markLBOUND (d, i);
+	      in
+		  tv := TP.TV_MARK m;
+		  g (i+1, rest)
+	      end
+            | g (i, (tv as ref (TP.TV_MARK _))::res) =
+                   bug ("unexpected tyvar TV_MARK in mkPE")
             | g _ = bug "unexpected tyvar INSTANTIATED in mkPE"
 
-          val _ = g(0, boundtvs) (* assign the LBOUND tyvars *)
+          val _ = g(0, boundtvs) (* assign the TV_MARK tyvars *)
           val exp' = mkExp(exp, DI.next d)
 
           fun h ([], []) = ()
@@ -1112,15 +1136,15 @@ and mkExp (exp, d) =
 fun wrapPidInfo (body, pidinfos) = 
   let val imports = 
         let fun p2itree (ANON xl) = 
-                  CB.ITNODE (map (fn (i,z) => (i, p2itree z)) xl)
-              | p2itree (NAMED _) = CB.ITNODE []
+                  ImportTree.ITNODE (map (fn (i,z) => (i, p2itree z)) xl)
+              | p2itree (NAMED _) = ImportTree.ITNODE []
          in map (fn (p, pi) => (p, p2itree pi)) pidinfos
         end
 (*
       val _ = let val _ = say "\n ****************** \n"
                   val _ = say "\n the current import tree is :\n"
-                  fun tree (CB.ITNODE []) = ["\n"]
-                    | tree (CB.ITNODE xl) = 
+                  fun tree (ImportTree.ITNODE []) = ["\n"]
+                    | tree (ImportTree.ITNODE xl) = 
                         foldr (fn ((i, x), z) => 
                           let val ts = tree x
                               val u = (Int.toString i)  ^ "   "

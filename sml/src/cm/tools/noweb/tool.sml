@@ -44,7 +44,7 @@ structure NowebTool = struct
 		       [("sml", "(*#line %L \"%F\"*)"),
 			("cm", "#line %L %F%N")])
 
-	fun rule { spec, context, native2pathmaker, defaultClassOf } = let
+	fun rule { spec, context, native2pathmaker, defaultClassOf, sysinfo } = let
 	    val { name = str, mkpath, opts = too, derived, ... } : spec = spec
 	    val p = srcpath (mkpath ())
 	    val sname = nativeSpec p

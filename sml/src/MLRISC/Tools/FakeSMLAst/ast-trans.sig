@@ -19,6 +19,9 @@ sig
    (* Simplify an expression, declaration etc. *)
    val simplifyExp  : Ast.exp  -> Ast.exp
    val simplifyDecl : Ast.decl -> Ast.decl
+   val simplifyPat  : Ast.pat -> Ast.pat
+   val simplifyTy   : Ast.ty -> Ast.ty
+   val simplifySexp : Ast.structexp -> Ast.structexp
 
    (* Strip away all location markings *)
    val stripMarks   : Ast.decl -> Ast.decl

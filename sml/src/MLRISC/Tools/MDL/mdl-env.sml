@@ -124,7 +124,7 @@ struct
        and openStrs E ids = 
            List.foldr (fn (id,E') => lookupStr E id ++ E') empty ids
         
-   in  D E SourceMap.dummyLoc d
+   in  D E SourceMapping.dummyLoc d
    end
 
    (*

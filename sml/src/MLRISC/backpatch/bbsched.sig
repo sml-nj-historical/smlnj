@@ -1,7 +1,7 @@
 signature BBSCHED = sig
-  structure F : FLOWGRAPH
+  structure CFG : CONTROL_FLOW_GRAPH
 
-  val bbsched : F.cluster -> unit
+  val bbsched : CFG.cfg -> unit
   val finish : unit -> unit
   val cleanUp : unit -> unit
 end

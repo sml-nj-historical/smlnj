@@ -16,6 +16,7 @@ Library
 	functor X86ExpandCopies
 	functor X86FP
 	functor X86FreqProps
+	functor X86GasPseudoOps
 	functor X86Instr
 	functor X86Jumps
 	functor X86MCEmitter
@@ -34,12 +35,14 @@ is
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+	Graphs.cm
 	MLTREE.cm
 #else
 	$/smlnj-lib.cm
 	$/MLRISC.cm
 	$/Control.cm
 	$/Lib.cm
+	$/Graphs.cm
 	$/MLTREE.cm
 #endif
 #else
@@ -48,6 +51,7 @@ is
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+	Graphs.cm
 	MLTREE.cm
 #endif
 #else
@@ -55,9 +59,11 @@ is
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+	Graphs.cm
 	MLTREE.cm
 #endif
         ../x86/c-calls/ia32-svid.sml
+        ../x86/flowgraph/x86GasPseudoOps.sml
 	../x86/omit-frameptr/x86omit-frameptr.sml
 	../x86/instructions/x86Cells.sml
 	../x86/instructions/x86comp-instr-ext.sml

@@ -4,6 +4,7 @@ smlnj			../system/smlnj
 SMLNJ-MLRISC		../MLRISC/cm
 pickle-lib.cm		../compiler/MiscUtil/library
 
+pgraph.cm		../cm/pgraph
 cm			../cm
 compiler		../compiler
 

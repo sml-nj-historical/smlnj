@@ -1,112 +1,58 @@
-(* Copyright 1996 by Bell Laboratories *)
-(* inlinfo.sml *)
-
-signature INL_INFO = 
-sig
-
-  datatype inl_info
-    = INL_PRIM of PrimOp.primop * Types.ty
-(*  | INL_LEXP of FLINT.prog * Types.ty option *)
-    | INL_PATH of Access.access * Types.ty option (* still used anywhere? *)
-    | INL_STR  of inl_info list
-    | INL_NO
-  
-  val prInfo : inl_info -> string
-  val selInfo : inl_info * int -> inl_info
-  
-  val isPrimInfo : inl_info -> bool
-  val isPrimCallcc : inl_info -> bool
-  val pureInfo : inl_info -> bool
-  
-  val mkPrimInfo : PrimOp.primop * Types.ty -> inl_info
-  val mkAccInfo : Access.access * Types.ty option -> inl_info
-  val mkStrInfo : inl_info list -> inl_info
-  
-  val nullInfo : inl_info
-
-end (* signature INL_INFO *)
-
-
-structure InlInfo : INL_INFO =
-struct
-
-local structure A  = Access
-      structure PO = PrimOp
-      structure T  = Types
-      structure EM = ErrorMsg
-in 
-
-fun bug msg = EM.impossible("InlInfo: "^msg)
-
-(*
- * inl_info: the information used for inter-module or intra-module
- * inlining and specializations. Each access path is associated with
- * specific inlining-information. INL_NO means that there is no specific
- * information available so the dynamic access path must be used. INL_PRIM
- * means the access is actually a built-in primops. INL_LEXP refers to
- * an access whose implementation is memorized as an intermediate lambda
- * expression lexp; the expression might be containing free variables, but
- * they must have acc_paths of the form PATH(i1,...(PATH(i_n, EXTERN pid))).
- * INL_PATH means the current access shares the inlining information with
- * the one with acc_path. INL_STR means the current access is a module 
- * structure with proper inlining information for each of its components.
+(* inlinfo.sml
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
  *)
-datatype inl_info
-  = INL_PRIM of PO.primop * T.ty
-(*| INL_LEXP of FLINT.prog * T.ty option   (* should be lty option *) *)
-  | INL_PATH of A.access * T.ty option
-  | INL_STR of inl_info list
-  | INL_NO
+structure InlInfo : INL_INFO = struct
 
+    fun bug s = ErrorMsg.impossible ("InlInfo: " ^ s)
 
-(****************************************************************************
- *                   UTILITY FUNCTIONS FOR INL_INFO                         *
- ****************************************************************************)
+    exception E of PrimOp.primop * Types.ty
 
-(** printing an inl_info object *)
-fun prInfo (INL_PRIM (p, _)) = PO.prPrimop p
-(*| prInfo (INL_LEXP _) = "<InlLexp>" *)
-  | prInfo (INL_PATH (acc, _)) = A.prAcc(acc)
-  | prInfo (INL_STR []) = "{}" 
-  | prInfo (INL_STR (a::r)) = 
-      let val r' = foldr (fn (i,s) => ("," ^ (prInfo i) ^ s)) "}" r
-       in "{" ^ (prInfo a) ^ r'
-      end
-  | prInfo (INL_NO) = "<InlNo>"
+    type inl_info = II.ii
 
+    val INL_PRIM = II.Info o E
+    val INL_STR = II.List
+    val INL_NO = II.Null
 
-(** selecting a component out of a structure info *)
-fun selInfo (INL_STR sl, i) = 
-      (List.nth(sl, i) handle Subscript => bug "Wrong field in INL_STR !")
-  | selInfo (INL_NO, i) = INL_NO
-  | selInfo _ = bug "Unexpected or un-implemented cases in selInfo"
-        
-(** checking if it is a primop *)
-fun isPrimInfo (INL_PRIM _) = true
-  | isPrimInfo _ = false
+    fun match i { inl_prim, inl_str, inl_no } =
+	case i of
+	    II.Info (E x) => inl_prim x
+	  | II.Info _ => bug "bogus Info node"
+	  | II.List l => inl_str l
+	  | II.Null => inl_no ()
 
-(** checking if a particular primop captures the continuations *)
-fun isPrimCallcc (INL_PRIM (PO.CALLCC, _)) = true
-  | isPrimCallcc (INL_PRIM (PO.CAPTURE, _)) = true
-  | isPrimCallcc _ = false
+    fun prInfo i = let
+	fun loop (i, acc) =
+	    match i { inl_prim = fn (p, _) => PrimOp.prPrimop p :: acc,
+		      inl_no = fn () => "<InlNo>" :: acc,
+		      inl_str = fn [] => "{}" :: acc
+				 | h::t =>
+				   "{" :: loop (h,
+						foldr (fn (x, a) =>
+							  "," :: loop (x, a))
+						      ("}" :: acc)
+						      t) }
+    in
+	concat (loop (i, []))
+    end
 
-(** checking if a particular primop can incur side-effects *)
-fun pureInfo (INL_PRIM (PO.CAST, _)) = true 
-  | pureInfo (INL_PRIM (p, _)) = false (* PO.purePrimop p *)
-  | pureInfo _ = false
+    val selInfo = II.sel
 
-(** build a new primop info *)
-fun mkPrimInfo x = INL_PRIM x
+    val isPrimInfo = II.isSimple
 
-(** build a new access info *)
-fun mkAccInfo x = INL_PATH x
+    fun isPrimCallcc (II.Info (E ((PrimOp.CALLCC | PrimOp.CAPTURE), _))) = true
+      | isPrimCallcc _ = false
 
-(** build a new structure info *)
-fun mkStrInfo x = INL_STR x
+    fun pureInfo (II.Info (E (p, _))) =
+	let fun isPure PrimOp.CAST = true
+	      | isPure _ = false
+	(* val isPure = PrimOp.purePrimop *)
+	in
+	    isPure p
+	end
+      | pureInfo _ = false
 
-val nullInfo = INL_NO
-
-end (* toplevel local *)
-end (* structure InlInfo *)
-
-
+    val mkPrimInfo = INL_PRIM
+    val mkStrInfo = INL_STR
+    val nullInfo = INL_NO
+end

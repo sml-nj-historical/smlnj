@@ -14,6 +14,716 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/11/22 21:40:00 EST
+Tag: Release_110_37
+Description:
+
+Release 110.37.  This time for real.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/11/21 16:35:00 EST
+Tag: blume-20011121-foot-in-mouth
+Description:
+
+Removed the "Release_110_37" tag because of a serious bug.
+This will be re-tagged once the bug is fixed.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/11/21 16:14:00 EST
+Tag: blume-20011121-forgottenfile
+Description:
+
+Forgot to add a file.  (Just a .tex-file -- part of
+the CM manual source.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/11/21 16:10:00 EST
+Tag: blume-20011121-invalid_110_37
+Description:
+
+Note: I removed the original tag "Release_110_37" from this commit
+      because we found a serious bug in all non-x86 backends.
+      - Matthias
+
+1. Modifications to the SML/NJ code generator and to the runtime system
+   so that code object name strings are directly inserted into code
+   objects at code generation time.  The only business the runtime system
+   has with this is now to read the name strings on occasions.
+   (The encoding of the name string has also changed somewhat.)
+
+2. CM now implements a simple "set calculus" for specifying export lists.
+   In particular, it is now possible to refer to the export lists of
+   other libraries/groups/sources and form unions as well as differences.
+   See the latest CM manual for details.
+
+3. An separate notion of "proxy" libraries has again be eliminated from
+   CM's model.  (Proxy libraries are now simply a special case of using
+   the export list calculus.)
+
+4. Some of the existing libraries now take advantage of the new set
+   calculus.
+   (Notice that not all libraries have been converted because some
+   of the existing .cm-files are supposed to be backward compatible
+   with 110.0.x.)
+
+5. Some cleanup in stand-alone programs.  (Don't use "exnMessage" -- use
+   "General.exnMessage"!  The former relies on a certain hook to be
+   initialized, and that often does not happen in the stand-alone case.)
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/11/21  13:56:18 EST
+Tag: george-2001121-pseudo-ops
+Description:
+
+  Implemented a complete redesign of MLRISC pseudo-ops. Now there
+  ought to never be any question of incompatabilities with 
+  pseudo-op syntax expected by host assemblers.
+
+  For now, only modules supporting GAS syntax are implemented
+  but more should follow, such as MASM, and vendor assembler
+  syntax, e.g. IBM as, Sun as, etc.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/11/14 11:52:00 EST
+Tag: blume-20011114-srcname
+Description:
+
+1. Routed the name of the current source file to mlriscgen where it
+   should be directly emitted into the code object.  (This last part
+   is yet to be done.)
+
+2. Some cleanup of the pgraph code to make it match the proposal that
+   I put out the other day.  (The proposal notwithstanding, things are
+   still in flux here.)
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/11/14 09:44:04 EST 
+Tag: 
+Description:
+
+  Fix for a backpatching bug reported by Allen.
+
+  Because the boundary between short and long span-dependent 
+  instructions is +/- 128, there are an astounding number of
+  span-dependent instructions whose size is over estimated. 
+
+  Allen came up with the idea of letting the size of span 
+  dependent instructions be non-monotonic, for a maxIter
+  number of times, after which the size must be monotonically
+  increasing.
+  
+  This table shows the number of span-dependent instructions
+  whose size was over-estimated as a function of maxIter, for the
+  file Parse/parse/ml.grm.sml:
+ 
+     maxIter		# of instructions:
+ 	10			687
+ 	20			438
+ 	30			198
+        40			  0
+ 
+  In compiling the compiler, there is no significant difference in
+  compilation speed between maxIter=10 and maxIter=40. Actually, 
+  my measurements showed that maxIter=40 was a tad faster than
+  maxIter=10! Also 96% of the  files in the compiler reach a fix
+  point within 13 iterations, so fixing maxIter at 40, while high, 
+  is okay.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/10/31 15:25:00 EST
+Tag: blume-20011031-pgraph
+Description:
+
+CKIT:
+* Changed the "Function" constructor of type Ast.ctype to carry optional
+  argument identifiers.
+* Changed the return type of TypeUtil.getFunction accordingly.
+* Type equality ignores the argument names.
+* TypeUtil.composite tries to preserve argument names but gives up quickly
+  if there is a mismatch.
+
+installation script:
+* attempts to use "curl" if available (unless "wget" is available as well)
+
+CM:
+* has an experimental implementation of "portable graphs" which I will
+  soon propose as an implementation-independent library format
+* there are also new libraries $/pgraph.cm and $/pgraph-util.cm
+
+NLFFI-LIB:
+* some cleanup (all cosmetic)
+
+NLFFIGEN:
+* temporarily disabled the mechanism that suppresses ML output for
+  C definitions whose identifiers start with an underscore character
+* generate val bindings for enum constants
+* user can request that only one style (light or heavy) is being used;
+  default is to use both (command-line arguments: -heavy and -light)
+* fixed bug in handling of function types involving incomplete pointers
+* generate ML entry points that take record arguments (i.e., using
+  named arguments) for C functions that have a prototype with named
+  arguments
+  (see changes to CKIT)
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2001/10/27 20:34:00 EDT
+Tag: leunga-20011027-x86-fast-fp-call
+Description:
+
+   Fixed the bug described in blume-20010920-slowfp.
+
+   The fix involves 
+      1. generating FCOPYs in FSTP in ia32-svid
+      2. marking a CALL with the appropriate annotation
+  
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/10/16 11:32:00 EDT
+Tag: blume-20011016-netbsd
+Description:
+
+Underscore patch from Chris Richards (fixing problem with compiling
+runtime system under recent NetBSD).
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2001/10/12 17:18:32 EDT 2001
+Tag: leung-20011012-x86-printflowgraph
+Description:
+
+X86RA now uses a valid (instead of dummy) PrintFlowgraph module.
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/10/11 23:51:34 EDT
+Tag: george-20011011-too-many-instrs
+Description:
+
+The representation of a program point never expected to see more 
+than 65536 instructions in a basic block!
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/10/09 09:41:37 EDT 
+Tag: george-20011008-mlrisc-labels
+Description:
+
+Changed the machine description files to support printing of 
+local and global labels in assembly code, based on host assembler
+conventions.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/09/25 15:25:00 EDT
+Tag: blume-20010925-exninfo
+Description:
+
+I provided a non-hook implementation of exnName (at the toplevel) and
+made the "dummy" implementation of exnMessage (at the toplevel) more
+useful: if nothing gets "hooked in", then at least you are going to
+see the exception name and a message indicating why you don't see more.
+
+[For the time being, programs that need exnMessage and want to use
+ml-build should either use General.exnMessage (strongly recommended) or
+refer to structure General at some other point so that CM sees a
+static dependency.]
+
+[Similar remarks go for "print" and "use":  If you want to use their
+functionality in stand-alone programs generated by ml-build, then use
+TextIO.output and Backend.Interact.useFile (from $smlnj/compiler.cm).]
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/09/20 17:28:00 EDT
+Tag: blume-20010920-slowfp
+Description:
+
+Allen says that x86-fast-fp is not safe yet, so I turned it off again...
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/09/20 17:20:00 EDT
+Tag: blume-20010920-canonicalpaths
+Description:
+
+0. Updated the BOOT file (something that I forgot to do earlier).
+
+1. Small internal change to CM so that it avoids "/../" in filenames
+   as much as possible (but only where it is safe).
+
+2. Changed config/_run-sml (resulting in a changed bin/.run-sml) so
+   that arguments that contain delimiters are passed through correctly.
+   This change also means that all "special" arguments of the form
+   @SMLxxx... must come first.
+
+3. Changed install script to put relative anchor names for tool commands
+   into pathconfig.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+>>>>>>> 1.169
+Date: 2001/09/18 15:35:00 EDT
+Tag: blume-20010918-readme11036
+Description:
+
+Added README files.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/09/18 11:45:00 EDT
+Tag: Release_110_36 (retag)
+Description:
+
+Fixed mistake in config/preloads. Retagged as 110.36.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/09/18 09:40:00 EDT
+Tag: Release_110_36_orig (tag changed)
+Description:
+
+New version (110.36).  New bootfiles.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/09/14 16:15:00 EDT
+Tag: blume-20010914-x86fastfp
+Description:
+
+John committed some changes that Allen made, in particular a (hopefully)
+correctly working version of the x86-fp module.
+
+I changed the default setting of the Control.MLRISC.getFlag "x86-fast-fp"
+flag to "true".  Everything seems to compile to a fixpoint ok, and
+"mandelbrot" speeds up by about 15%.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/09/13 11:20:00 EDT
+Tag: blume-20010913-minimal
+Description:
+
+1. Stefan Monnier's patch to fix a miscompilation problem that
+   was brought to light by John Reppy's work on Moby.
+
+2. Implemented a minimal "structure Compiler" that contains just
+   "version" and "architecture".  The minimal version will be
+   available when the full version is not.  This is for backward-
+   compatibility with code that wants to test Compiler.version.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/08/28 14:03:00 EDT
+Tag: blume-20010828-ml-lex
+Description:
+
+Fix for bug 1581, received from Neophytos Michael.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/08/27 11:20:00 EDT
+Tag: blume-20010827-readme11035
+Description:
+
+Fleshed out the README file for 110.35.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/08/24 17:10:00 EDT
+Tag: Release_110_35
+Description:
+
+New version number (110.35).  New bootfiles.
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/08/24 13:47:18 EDT 2001
+Tag: george-20010824-MLRISC-graphs
+Description:
+
+ removed clusters from MLRISC completely and replaced with graphs.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/08/23 17:50:00 EDT
+Tag: blume-20010823-toplevel
+Description:
+
+- some reorganization of the code that implements various kinds of
+  environments in the compiler (static, dynamic, symbolic, combined)
+- re-implemented the EnvRef module so that evalStream works properly
+  (if the stream contains references to "use", "CM.make", etc.)
+- cleaned up evalloop.sml and interact.sml (but they need more cleaning)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/08/20 15:50 EDT
+Tag: blume20010820-slipup
+Description:
+
+I forgot to commit a few files.  Here they are...
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/08/20 15:35:00 EDT
+Tag: blume-20010820-debugprof
+Description:
+
+!!!! NEW BOOTFILES !!!!
+
+This is another round of reorganizing the compiler sources.  This
+time the main goal was to factor out all the "instrumentation"
+passes (for profiling and backtracing) into their own library.
+The difficulty was to do it in such a way that it does not depend
+on elaborate.cm but only on elabdata.cm.
+
+Therefore there have been further changes to both elaborate.cm and
+elabdata.cm -- more "generic" things have been moved from the former
+to the latter.  As a result, I was forced to split the assignment
+of numbers indicating "primtyc"s into two portions: SML-generic and
+SML/NJ-specific.  Since it would have been awkward to maintain,
+I bit the bullet and actually _changed_ the mapping between these
+numbers and primtycs.  The bottom line of this is that you need
+a new set of bin- and bootfiles.
+
+I have built new bootfiles for all architectures, so doing a fresh
+checkout and config/install.sh should be all you need.
+
+The newly created library's name is
+
+    $smlnj/viscomp/debugprof.cm
+
+and its sources live under
+
+    src/compiler/DebugProf
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/08/15 17:15:00 EDT
+Tag: blume-20010815-compreorg
+Description:
+
+This is a first cut at reorganizing the CM libraries that make up the
+core of the compiler.  The idea is to separate out pieces that could
+be used independently by tools, e.g., the parser, the typechecker, etc.
+
+The current status is a step in this direction, but it is not quite
+satisfactory yet.  Expect more changes in the future.
+
+Here is the current (new) organization...
+
+    What used to be $smlnj/viscomp/core.cm is now divided into
+    six CM libraries:
+
+         $smlnj/viscomp/basics.cm
+                       /parser.cm
+                       /elabdata.cm
+                       /elaborate.cm
+                       /execute.cm
+                       /core.cm
+
+    The CM files for these libraries live under src/system/smlnj/viscomp.
+    All these libraries are proxy libraries that contain precisely
+    one CM library component.  Here are the locations of the components
+    (all within the src/compiler tree):
+
+         Basics/basics.cm
+         Parse/parser.cm
+         ElabData/elabdata.cm
+         Elaborator/elaborate.cm
+         Execution/execute.cm
+         core.cm
+
+     [This organization is the same that has been used already
+     for a while for the architecture-specific parts of the visible
+     compiler and for the old version of core.cm.]
+
+     As you will notice, many source files have been moved from their
+     respective original locations to a new home in one of the above
+     subtrees.
+
+     The division of labor between the new libraries is the following:
+
+         basics.cm:
+            - Simple, basic definitions that pertain to many (or all) of
+              the other libraries.
+         parser.cm:
+            - The SML parser, producing output of type Ast.dec.
+            - The type family for Ast is also defined and exported here.
+         elabdata.cm:
+            - The datatypes that describe input and output of the elaborator.
+              This includes types, absyn, and static environments.
+         elaborator.cm:
+            - The SML/NJ type checker and elaborator.
+              This maps an Ast.dec (with a given static environment) to
+              an Absyn.dec (with a new static environment).
+            - This libraries implements certain modules that used to be
+              structures as functors (to remove dependencies on FLINT).
+         execute.cm:
+            - Everything having to do with executing binary code objects.
+            - Dynamic environments.
+         core.cm:
+            - SML/NJ-specific instantiations of the elaborator and MLRISC.
+            - Top-level modules.
+            - FLINT (this should eventually become its own library)
+
+Notes:
+
+I am not 100% happy with the way I separated the elaborator (and its
+data structures) from FLINT.  Two instances of the same problem:
+
+    1. Data structures contain certain fields that carry FLINT-specific
+       information.  I hacked around this using exn and the property list
+       module from smlnj-lib.  But the fact that there are middle-end
+       specific fields around at all is a bit annoying.
+
+    2. The elaborator calculates certain FLINT-related information.  I tried
+       to make this as abstract as I could using functorization, but, again,
+       the fact that the elaborator has to perform calculations on behalf
+       of the middle-end at all is not nice.
+
+    3. Having to used exn and property lists is unfortunate because it
+       weakens type checking.  The other alternative (parameterizing
+       nearly *everything*) is not appealing, though.
+
+I removed the "rebinding =" warning hack because due to the new organization
+it was awkward to maintain it.  As a result, the compiler now issues some of
+these warnings when compiling init.cmi during bootstrap compilation. On
+the plus side, you also get a warning when you do, for example:
+   val op = = Int32.+
+which was not the case up to now.
+
+I placed "assign" and "deref" into the _Core structure so that the
+code that deals with the "lazy" keyword can find them there.  This
+removes the need for having access to the primitive environment
+during elaboration.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/08/13
+Tag: blume-20010813-closures
+Description:
+
+This fix was sent to us by Zhong Shao.  It is supposed to improve the
+performance of certain loops by avoiding needless closure allocation.
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/07/31 10:03:23 EDT 2001
+Tag: george-20010731-x86-fmalloc
+Description: Fixed bug in x86 calls
+
+    There was a bug where call instructions would mysteriously
+    vanish. The call instruction had to be one that returned 
+    a floating point value.
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/07/19 16:36:29 EDT 2001
+Tag: george-20010719-simple-cells
+Description: 
+
+I have dramatically simplified the interface for CELLS in MLRISC.
+
+In summary, the cells interface is broken up into three parts:
+
+  1. CellsBasis : CELLS_BASIS
+
+	CellsBasis is a top level structure and common for all
+        architectures.  it contains the definitions of basic datatypes
+        and utility  functions over these types.
+
+  2. functor Cells() : CELLS
+
+	Cells generates an interface for CELLS that incorporates the
+	specific resources on the target architecture, such as the 
+	presence of special register classes, their number and size, 
+	and various useful substructures.
+
+  3. <ARCH>CELLS 
+	
+	e.g. SparcCells: SPARCCELLS
+
+        <ARCH>CELLS usually contains additional bindings for special
+	registers  on the architecture, such as:
+	
+		val r0 : cell		(* register zero *)
+		val y : cell		(* Y register *)
+		val psr : cell		(* processor status register *) 
+		...
+	
+        The structure returned by applying the Cells functor is opened
+        in this interface. 
+
+The main implication of all this is that the datatypes for cells is 
+split between CellsBasis and CELLS -- a fairly simple change for user
+code. 
+
+In the old scheme the CELLS interface had a definitional binding of
+the form:
+
+	signature CELLS = sig
+
+ 	   structure CellsBasis = CellsBasis
+	
+	   ...
+
+        end
+
+With all the sharing constraints that goes on in MLRISC, this old
+design  quickly leads to errors such as:
+
+	"structure definition spec inside of sharing ... "
+
+
+and appears to require an unacceptable amount of sharing and where
+constraint hackery.  
+
+I think this error message (the interaction of definitional specs and
+sharing) requires more explanation on our web page. 
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/07/19 15:00:00 EDT
+Tag: blume-20010719-libreorg
+Description:
+
+This update puts together a fairly extensive but straightforward change
+to the way the libraries that implement the interactive system are
+organized:
+
+   The biggest change is the elimination of structure Compiler.  As a
+   replacement for this structure, there is now a CM library
+   (known as $smlnj/compiler.cm or $smlnj/compiler/current.cm)
+   that exports all the substructures of the original structure Compiler
+   directly.  So instead of saying Compiler.Foo.bar one now simply
+   says Foo.bar.  (The CM libraries actually export a collection of
+   structures that is richer than the collection of substructures of
+   structure Compiler.)
+
+   To make the transition smooth, there is a separate library called
+   $smlnj/compiler/compiler.cm which puts together and exports the
+   original structure Compiler (or at least something very close to it).
+
+   There are five members of the original structure Compiler
+   that are not exported directly but which instead became members
+   of a new structure Backend (described by signature BACKEND).  These are:
+   structure Profile (: PROFILE), structure Compile (: COMPILE), structure
+   Interact (: INTERACT), structure Machine (: MACHINE), and val
+   architecture (: string).
+
+   Structure Compiler.Version has become structure CompilerVersion.
+
+   Cross-compilers for alpha32, hppa, ppc, sparc, and x86 are provided
+   by $smlnj/compiler/<arch>.cm where <arch> is alpha32, hppa, ppc, sparc,
+   or x86, respectively.
+   Each of these exports the same frontend structures that
+   $smlnj/compiler.cm exports.  But they do not have a structure Backend
+   and instead export some structure <Arch>Backend where <Arch> is Alpha32,
+   Hppa, PPC, Sparc, or X86, respectively.
+
+   Library $smlnj/compiler/all.cm exports the union of the exports of
+   $smlnj/compiler/<arch>.cm
+
+   There are no structures <Arch>Compiler anymore, use
+   $smlnj/compiler/<arch>.cm instead.
+
+   Library host-compiler-0.cm is gone.  Instead, the internal library
+   that instantiates CM is now called cm0.cm.  Selection of the host
+   compiler (backend) is no longer done here but. (Responsibility for it
+   now lies with $smlnj/compiler/current.cm.  This seems to be more
+   logical.)
+
+   Many individual files have been moved or renamed.  Some files have
+   been split into multiple files, and some "dead" files have been deleted.
+
+Aside from these changes to library organization, there are also changes
+to the way the code itself is organized:
+
+   Structure Binfile has been re-implemented in such a way that it no
+   longer needs any knowledge of the compiler.  It exclusively deals
+   with the details of binfile layout.  It no longer invokes the
+   compiler (for the purpose of creating new prospective binfile
+   content), and it no longer has any knowledge of how to interpret
+   pickles.
+
+   Structure Compile (: COMPILE) has been stripped down to the bare
+   essentials of compilation.  It no longer deals with linking/execution.
+   The interface has been cleaned up considerably.
+
+   Utility routines for dealing with linking and execution have been
+   moved into their own substructures.
+
+   (The ultimate goal of these changes is to provide a light-weight
+   binfile loader/linker (at least for, e.g., stable libraries) that
+   does not require CM or the compiler to be present.)
+
+CM documentation has been updated to reflect the changes to library
+organization.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/07/10 17:30:00 EDT
+Tag: Release_110_34
+Description:
+
+Minor tweak to 110.34 (re-tagged):
+
+  - README.html file added to CVS repository
+  - runtime compiles properly under FreeBSD 3.X and 4.X
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/07/10 17:30:00 EDT
+Tag: Release_110_34
+Description:
+
+New version number (110.34). New bootfiles.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/07/09 16:00:00 EDT
+Tag: blume-20010709-more-varargs
+Description:
+
+I changed the handling of varargs in ml-nlffigen again:
+The ellipsis ... will now simply be ignored (with an accompanying warning).
+
+The immediate effect is that you can actually call a varargs function
+from ML -- but you can't actually supply any arguments beyond the ones
+specified explicitly.  (For example, you can call printf with its format
+string, but you cannot pass additional arguments.)
+
+This behavior is only marginally more useful than the one before, but
+it has the advantage that a function or, more importantly, a function
+type never gets dropped on the floor, thus avoiding follow-up problems with
+other types that refer to the offending one.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/07/09 11:25:00 EDT
+Tag: blume-20010709-varargs
+Description:
+
+1. ckit-lib.cm now exports structure Error
+2. ml-nlffigen reports occurences of "..." (i.e., varargs function types)
+   with a warning accompanied by a source location.  Moreover, it
+   merely skips the offending function or type and proceeds with the
+   rest of its work.u  As a result, one can safely feed C code containing
+   "..." to ml-nlffigen.
+3. There are some internal improvements to CM, providing slightly
+   more general string substitutions in the tools subsystem.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/06/27 15:10:00 EDT
 Tag: blume-20010627-concur
 Description:
@@ -2536,7 +3246,7 @@ This update contains:
      elaborator). There were a lot of changes during my "linkpath" trials
      that could have been reverted to their original state but weren't.
      Please, don't be too harsh on me for messing with this code a bit more
-     than what was strictly necessary...  (I _did_ resist the tempation
+     than what was strictly necessary...  (I _did_ resist the temptation
      of doing any "global reformatting" to avoid an untimely death at
      Dave's hands. :)
 

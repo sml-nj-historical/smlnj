@@ -1,6 +1,36 @@
 BOOT: the location of the latest boot files.
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/11/21 16:10:00 EST
+Tag: Release_110_37
+Version: 110.37
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/110.37/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/09/18 09:40:00 EDT
+Tag: Release_110_36
+Version: 110.36
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/110.36/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/08/24 17:10:00 EDT
+Tag: Release_110_35
+Version: 110.35
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/110.35/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/08/20 15:35:00 EDT
+Tag: blume-20010820-debugprof
+Version: 110.34(+)
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/bootfiles/blume-20010820-debugprof/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/07/10 17:30:00 EDT
+Tag: Release_110_34
+Version: 110.34
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/110.34/
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/05/23 14:30:00 EDT
 Tag: Release_110_33
 Version: 110.33

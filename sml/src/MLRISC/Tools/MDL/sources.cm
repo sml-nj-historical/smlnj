@@ -1,7 +1,6 @@
 Group 
 	signature CELLS
-	signature CELLS_BASIS
-	signature CELLS_COMMON
+	signature CELLS_BASIS 
 	signature CONSTANT
 	signature ENV
 	signature INSTRUCTION_STREAM
@@ -29,7 +28,6 @@ Group
 	signature REGION
 	signature RTL_BUILD
 	structure CellsBasis
-	structure CellsInternal
 	structure Env
 	structure Label
 	structure MDLAstUtil
@@ -59,7 +57,7 @@ Group
 	structure MLRiscTypes
 	structure MLTreeBasis
 	structure MachineInt
-	functor CellsCommon
+(*	functor Cells *)
 	functor InstructionStream
 	functor MDLCompile
 	functor MDLDummyGen

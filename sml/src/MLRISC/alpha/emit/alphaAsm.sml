@@ -5,17 +5,20 @@
  *)
 
 
-functor AlphaAsmEmitter(structure Instr : ALPHAINSTR
+functor AlphaAsmEmitter(structure S : INSTRUCTION_STREAM
+                        structure Instr : ALPHAINSTR
+                           where T = S.P.T
                         structure Shuffle : ALPHASHUFFLE
                            where I = Instr
+                        structure MLTreeEval : MLTREE_EVAL
+                           where T = Instr.T
                        ) : INSTRUCTION_EMITTER =
 struct
    structure I  = Instr
    structure C  = I.C
    structure T  = I.T
-   structure S  = T.Stream
+   structure S  = S
    structure P  = S.P
-   structure LabelExp = I.LabelExp
    structure Constant = I.Constant
    
    val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
@@ -41,27 +44,28 @@ struct
                   in  if n<0 then "-"^String.substring(s,1,size s-1)
                       else s
                   end
-       fun emit_label lab = emit(Label.nameOf lab)
-       fun emit_labexp le = emit(LabelExp.toString le)
+       fun emit_label lab = emit(P.Client.AsmPseudoOps.lexpToString(T.LABEL lab))
+       fun emit_labexp le = emit(P.Client.AsmPseudoOps.lexpToString (T.LABEXP le))
        fun emit_const c = emit(Constant.toString c)
        fun emit_int i = emit(ms i)
        fun paren f = (emit "("; f(); emit ")")
-       fun defineLabel lab = emit(Label.nameOf lab^":\n")
+       fun defineLabel lab = emit(P.Client.AsmPseudoOps.defineLabel lab^":\n")
        fun entryLabel lab = defineLabel lab
-       fun comment msg = (tab(); emit("/* " ^ msg ^ " */"))
+       fun comment msg = (tab(); emit("/* " ^ msg ^ " */\n"))
        fun annotation a = (comment(Annotations.toString a); nl())
        fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
+       fun fail _ = raise Fail "AsmEmitter"
        fun emit_region mem = comment(I.Region.toString mem)
        val emit_region = 
           if !show_region then emit_region else doNothing
-       fun pseudoOp pOp = emit(P.toString pOp)
+       fun pseudoOp pOp = (emit(P.toString pOp); emit "\n")
        fun init size = (comment("Code Size = " ^ ms size); nl())
        val emitCellInfo = AsmFormatUtil.reginfo
                                 (emit,formatAnnotations)
-       fun emitCell r = (emit(C.toString r); emitCellInfo r)
+       fun emitCell r = (emit(CellsBasis.toString r); emitCellInfo r)
        fun emit_cellset(title,cellset) =
-         (nl(); comment(title^C.CellSet.toString cellset))
+         (nl(); comment(title^CellsBasis.CellSet.toString cellset))
        val emit_cellset = 
          if !show_cellset then emit_cellset else doNothing
        fun emit_defs cellset = emit_cellset("defs: ",cellset)
@@ -275,7 +279,7 @@ struct
    and emit_osf_user_palcode x = emit (asm_osf_user_palcode x)
 
 (*#line 483.7 "alpha/alpha.mdl"*)
-   fun isZero (I.LABop le) = (LabelExp.valueOf le) = 0
+   fun isZero (I.LABop le) = (MLTreeEval.valueOf le) = 0
      | isZero _ = false
    fun emitInstr' instr = 
        (case instr of
@@ -283,7 +287,8 @@ struct
          ( emit "/* deffreg\t"; 
            emitCell FP; 
            emit " */" )
-       | I.LDA{r, b, d} => (if ((isZero d) andalso (C.sameCell (r, b)))
+       | I.LDA{r, b, d} => (if ((isZero d) andalso (CellsBasis.sameCell (r, 
+            b)))
             then ()
             else 
             ( 
@@ -291,7 +296,7 @@ struct
                 emitCell r; 
                 emit ", "; 
                 emit_operand d ); 
-              (if ((C.registerId b) = 31)
+              (if ((CellsBasis.registerId b) = 31)
                  then ()
                  else 
                  ( emit "("; 
@@ -303,7 +308,7 @@ struct
              emitCell r; 
              emit ", "; 
              emit_operand d ); 
-           (if ((C.registerId b) = 31)
+           (if ((CellsBasis.registerId b) = 31)
               then ()
               else 
               ( emit "("; 
@@ -404,11 +409,11 @@ struct
                    emit ", "; 
                    emitCell rc )
          in 
-            (case (oper, C.registerId ra, rb, C.registerId rc) of
-              (I.BIS, 27, I.REGop rb, 29) => (if ((C.registerId rb) = 31)
+            (case (oper, CellsBasis.registerId ra, rb, CellsBasis.registerId rc) of
+              (I.BIS, 27, I.REGop rb, 29) => (if ((CellsBasis.registerId rb) = 31)
                  then (emit "ldgp\t$29, 0($27)")
                  else (disp ()))
-            | (I.BIS, 26, I.REGop rb, 29) => (if ((C.registerId rb) = 31)
+            | (I.BIS, 26, I.REGop rb, 29) => (if ((CellsBasis.registerId rb) = 31)
                  then (emit "ldgp\t$29, 0($26)")
                  else (disp ()))
             | _ => disp ()
@@ -495,7 +500,7 @@ struct
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                endCluster=doNothing,
+                endCluster=fail,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,
                 comment=comment,

@@ -51,15 +51,8 @@ is
 	../IR/dataflow.sig
 	../IR/dataflow.sml
 	../IR/mlrisc-branch-chaining.sml
-	../IR/mlrisc-cfg-gen.sig
-	../IR/mlrisc-cfg-gen.sml
-	../IR/mlrisc-cfg-gen2.sml
 	../IR/mlrisc-cfg-util.sig
 	../IR/mlrisc-cfg-util.sml
-	../IR/mlrisc-cfg.sig
-	../IR/mlrisc-cfg.sml
-	../IR/mlrisc-cluster2cfg.sml
-	../IR/mlrisc-cfg2cluster.sml
 	../IR/mlrisc-cpr.sml
 	../IR/mlrisc-format-insn.sml
 	../IR/idefs2.sig

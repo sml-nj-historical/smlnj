@@ -1,7 +1,7 @@
 (* This file is created by makeallcm *)
 Library
 	signature PEEPHOLE
-	functor ClusterPeephole
+	functor CFGPeephole
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -9,18 +9,22 @@ is
 #if defined(UNSHARED_MLRISC)
 	$/smlnj-lib.cm
 	MLRISC.cm
+	Graphs.cm
 #else
 	$/smlnj-lib.cm
 	$/MLRISC.cm
+	$/Graphs.cm
 #endif
 #else
 	basis.cm
 	smlnj-lib.cm
 	MLRISC.cm
+	Graphs.cm
 #endif
 #else
 	smlnj-lib.cm
 	MLRISC.cm
+	Graphs.cm
 #endif
 	../instructions/peephole.sig
-	../cluster/clusterPeephole.sml
+	../flowgraph/cfgPeephole.sml

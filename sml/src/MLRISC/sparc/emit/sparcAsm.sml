@@ -5,9 +5,13 @@
  *)
 
 
-functor SparcAsmEmitter(structure Instr : SPARCINSTR
+functor SparcAsmEmitter(structure S : INSTRUCTION_STREAM
+                        structure Instr : SPARCINSTR
+                           where T = S.P.T
                         structure Shuffle : SPARCSHUFFLE
                            where I = Instr
+                        structure MLTreeEval : MLTREE_EVAL
+                           where T = Instr.T
 
 (*#line 466.21 "sparc/sparc.mdl"*)
                         val V9 : bool
@@ -16,9 +20,8 @@ struct
    structure I  = Instr
    structure C  = I.C
    structure T  = I.T
-   structure S  = T.Stream
+   structure S  = S
    structure P  = S.P
-   structure LabelExp = I.LabelExp
    structure Constant = I.Constant
    
    val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
@@ -44,27 +47,28 @@ struct
                   in  if n<0 then "-"^String.substring(s,1,size s-1)
                       else s
                   end
-       fun emit_label lab = emit(Label.nameOf lab)
-       fun emit_labexp le = emit(LabelExp.toString le)
+       fun emit_label lab = emit(P.Client.AsmPseudoOps.lexpToString(T.LABEL lab))
+       fun emit_labexp le = emit(P.Client.AsmPseudoOps.lexpToString (T.LABEXP le))
        fun emit_const c = emit(Constant.toString c)
        fun emit_int i = emit(ms i)
        fun paren f = (emit "("; f(); emit ")")
-       fun defineLabel lab = emit(Label.nameOf lab^":\n")
+       fun defineLabel lab = emit(P.Client.AsmPseudoOps.defineLabel lab^":\n")
        fun entryLabel lab = defineLabel lab
-       fun comment msg = (tab(); emit("/* " ^ msg ^ " */"))
+       fun comment msg = (tab(); emit("/* " ^ msg ^ " */\n"))
        fun annotation a = (comment(Annotations.toString a); nl())
        fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
+       fun fail _ = raise Fail "AsmEmitter"
        fun emit_region mem = comment(I.Region.toString mem)
        val emit_region = 
           if !show_region then emit_region else doNothing
-       fun pseudoOp pOp = emit(P.toString pOp)
+       fun pseudoOp pOp = (emit(P.toString pOp); emit "\n")
        fun init size = (comment("Code Size = " ^ ms size); nl())
        val emitCellInfo = AsmFormatUtil.reginfo
                                 (emit,formatAnnotations)
-       fun emitCell r = (emit(C.toString r); emitCellInfo r)
+       fun emitCell r = (emit(CellsBasis.toString r); emitCellInfo r)
        fun emit_cellset(title,cellset) =
-         (nl(); comment(title^C.CellSet.toString cellset))
+         (nl(); comment(title^CellsBasis.CellSet.toString cellset))
        val emit_cellset = 
          if !show_cellset then emit_cellset else doNothing
        fun emit_defs cellset = emit_cellset("defs: ",cellset)
@@ -316,13 +320,18 @@ struct
               emitCell d )
          end
        | I.ARITH{a, r, i, d} => 
-         (case (a, C.registerId r, C.registerId d) of
-           (I.OR, 0, _) => 
+         (case (a, CellsBasis.registerId r, CellsBasis.registerId d, i) of
+           (I.OR, 0, _, I.REG _) => 
            ( emit "mov\t"; 
              emit_operand i; 
              emit ", "; 
              emitCell d )
-         | (I.SUBCC, _, 0) => 
+         | (I.OR, 0, _, _) => 
+           ( emit "set\t"; 
+             emit_operand i; 
+             emit ", "; 
+             emitCell d )
+         | (I.SUBCC, _, 0, _) => 
            ( emit "cmp\t"; 
              emitCell r; 
              emit ", "; 
@@ -457,7 +466,7 @@ struct
            emit_operand i )
        | I.FPop1{a, r, d} => 
          let 
-(*#line 763.18 "sparc/sparc.mdl"*)
+(*#line 764.18 "sparc/sparc.mdl"*)
              fun f (a, r, d) = 
                  ( emit a; 
                    emit "\t"; 
@@ -465,23 +474,23 @@ struct
                    emit ", "; 
                    emit (C.showFP d))
 
-(*#line 768.18 "sparc/sparc.mdl"*)
+(*#line 769.18 "sparc/sparc.mdl"*)
              fun g (a, r, d) = 
                  let 
-(*#line 769.22 "sparc/sparc.mdl"*)
-                     val r = C.registerNum r
-                     and d = C.registerNum d
+(*#line 770.22 "sparc/sparc.mdl"*)
+                     val r = CellsBasis.registerNum r
+                     and d = CellsBasis.registerNum d
                  in f (a, r, d); 
                     emit "\n\t"; 
                     f ("fmovs", r + 1, d + 1)
                  end
 
-(*#line 773.18 "sparc/sparc.mdl"*)
+(*#line 774.18 "sparc/sparc.mdl"*)
              fun h (a, r, d) = 
                  let 
-(*#line 774.22 "sparc/sparc.mdl"*)
-                     val r = C.registerNum r
-                     and d = C.registerNum d
+(*#line 775.22 "sparc/sparc.mdl"*)
+                     val r = CellsBasis.registerNum r
+                     and d = CellsBasis.registerNum d
                  in f (a, r, d); 
                     emit "\n\t"; 
                     f ("fmovs", r + 1, d + 1); 
@@ -577,7 +586,7 @@ struct
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                endCluster=doNothing,
+                endCluster=fail,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,
                 comment=comment,

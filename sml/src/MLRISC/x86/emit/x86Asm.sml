@@ -5,23 +5,26 @@
  *)
 
 
-functor X86AsmEmitter(structure Instr : X86INSTR
+functor X86AsmEmitter(structure S : INSTRUCTION_STREAM
+                      structure Instr : X86INSTR
+                         where T = S.P.T
                       structure Shuffle : X86SHUFFLE
                          where I = Instr
+                      structure MLTreeEval : MLTREE_EVAL
+                         where T = Instr.T
 
 (*#line 509.7 "x86/x86.mdl"*)
                       structure MemRegs : MEMORY_REGISTERS where I=Instr
 
 (*#line 510.7 "x86/x86.mdl"*)
-                      val memRegBase : MemRegs.I.C.cell option
+                      val memRegBase : CellsBasis.cell option
                      ) : INSTRUCTION_EMITTER =
 struct
    structure I  = Instr
    structure C  = I.C
    structure T  = I.T
-   structure S  = T.Stream
+   structure S  = S
    structure P  = S.P
-   structure LabelExp = I.LabelExp
    structure Constant = I.Constant
    
    val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
@@ -47,27 +50,28 @@ struct
                   in  if n<0 then "-"^String.substring(s,1,size s-1)
                       else s
                   end
-       fun emit_label lab = emit(Label.nameOf lab)
-       fun emit_labexp le = emit(LabelExp.toString le)
+       fun emit_label lab = emit(P.Client.AsmPseudoOps.lexpToString(T.LABEL lab))
+       fun emit_labexp le = emit(P.Client.AsmPseudoOps.lexpToString (T.LABEXP le))
        fun emit_const c = emit(Constant.toString c)
        fun emit_int i = emit(ms i)
        fun paren f = (emit "("; f(); emit ")")
-       fun defineLabel lab = emit(Label.nameOf lab^":\n")
+       fun defineLabel lab = emit(P.Client.AsmPseudoOps.defineLabel lab^":\n")
        fun entryLabel lab = defineLabel lab
-       fun comment msg = (tab(); emit("/* " ^ msg ^ " */"))
+       fun comment msg = (tab(); emit("/* " ^ msg ^ " */\n"))
        fun annotation a = (comment(Annotations.toString a); nl())
        fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
+       fun fail _ = raise Fail "AsmEmitter"
        fun emit_region mem = comment(I.Region.toString mem)
        val emit_region = 
           if !show_region then emit_region else doNothing
-       fun pseudoOp pOp = emit(P.toString pOp)
+       fun pseudoOp pOp = (emit(P.toString pOp); emit "\n")
        fun init size = (comment("Code Size = " ^ ms size); nl())
        val emitCellInfo = AsmFormatUtil.reginfo
                                 (emit,formatAnnotations)
-       fun emitCell r = (emit(C.toString r); emitCellInfo r)
+       fun emitCell r = (emit(CellsBasis.toString r); emitCellInfo r)
        fun emit_cellset(title,cellset) =
-         (nl(); comment(title^C.CellSet.toString cellset))
+         (nl(); comment(title^CellsBasis.CellSet.toString cellset))
        val emit_cellset = 
          if !show_cellset then emit_cellset else doNothing
        fun emit_defs cellset = emit_cellset("defs: ",cellset)
@@ -288,7 +292,7 @@ struct
        end
 
 (*#line 518.6 "x86/x86.mdl"*)
-   val {low=SToffset, ...} = C.cellRange C.FP
+   val {low=SToffset, ...} = C.cellRange CellsBasis.FP
 
 (*#line 520.6 "x86/x86.mdl"*)
    fun emitScale 0 = emit "1"
@@ -314,7 +318,7 @@ struct
        | I.ST f => emitCell f
        | I.FPR f => 
          ( emit "%f"; 
-           emit (Int.toString (C.registerNum f)))
+           emit (Int.toString (CellsBasis.registerNum f)))
        | I.FDirect f => emit_operand (memReg opn)
        | I.Displace{base, disp, mem, ...} => 
          ( emit_disp disp; 
@@ -337,20 +341,20 @@ struct
            emit ")"; 
            emit_region mem )
        )
-   and emit_operand8 (I.Direct r) = emit (C.toStringWithSize (r, 8))
+   and emit_operand8 (I.Direct r) = emit (CellsBasis.toStringWithSize (r, 8))
      | emit_operand8 opn = emit_operand opn
    and emit_disp (I.Immed 0) = ()
      | emit_disp (I.Immed i) = emitInt32 i
      | emit_disp (I.ImmedLabel lexp) = emit_labexp lexp
      | emit_disp _ = error "emit_disp"
 
-(*#line 564.7 "x86/x86.mdl"*)
+(*#line 565.7 "x86/x86.mdl"*)
    fun stupidGas (I.ImmedLabel lexp) = emit_labexp lexp
      | stupidGas opnd = 
        ( emit "*"; 
          emit_operand opnd )
 
-(*#line 568.7 "x86/x86.mdl"*)
+(*#line 569.7 "x86/x86.mdl"*)
    fun isMemOpnd (I.MemReg _) = true
      | isMemOpnd (I.FDirect f) = true
      | isMemOpnd (I.LabelEA _) = true
@@ -358,10 +362,10 @@ struct
      | isMemOpnd (I.Indexed _) = true
      | isMemOpnd _ = false
 
-(*#line 574.7 "x86/x86.mdl"*)
+(*#line 575.7 "x86/x86.mdl"*)
    fun chop fbinOp = 
        let 
-(*#line 575.15 "x86/x86.mdl"*)
+(*#line 576.15 "x86/x86.mdl"*)
            val n = size fbinOp
        in 
           (case Char.toLower (String.sub (fbinOp, n - 1)) of
@@ -370,11 +374,11 @@ struct
           )
        end
 
-(*#line 581.7 "x86/x86.mdl"*)
-   fun isST0 (I.ST r) = (C.registerNum r) = 0
+(*#line 582.7 "x86/x86.mdl"*)
+   fun isST0 (I.ST r) = (CellsBasis.registerNum r) = 0
      | isST0 _ = false
 
-(*#line 585.7 "x86/x86.mdl"*)
+(*#line 586.7 "x86/x86.mdl"*)
    fun emit_fbinaryOp (binOp, src, dst) = (if (isMemOpnd src)
           then 
           ( emit_fbinOp binOp; 
@@ -394,31 +398,31 @@ struct
             | _ => error "emit_fbinaryOp"
             )))
 
-(*#line 595.7 "x86/x86.mdl"*)
+(*#line 596.7 "x86/x86.mdl"*)
    val emit_dst = emit_operand
 
-(*#line 596.7 "x86/x86.mdl"*)
+(*#line 597.7 "x86/x86.mdl"*)
    val emit_src = emit_operand
 
-(*#line 597.7 "x86/x86.mdl"*)
+(*#line 598.7 "x86/x86.mdl"*)
    val emit_opnd = emit_operand
 
-(*#line 598.7 "x86/x86.mdl"*)
+(*#line 599.7 "x86/x86.mdl"*)
    val emit_opnd8 = emit_operand8
 
-(*#line 599.7 "x86/x86.mdl"*)
+(*#line 600.7 "x86/x86.mdl"*)
    val emit_rsrc = emit_operand
 
-(*#line 600.7 "x86/x86.mdl"*)
+(*#line 601.7 "x86/x86.mdl"*)
    val emit_lsrc = emit_operand
 
-(*#line 601.7 "x86/x86.mdl"*)
+(*#line 602.7 "x86/x86.mdl"*)
    val emit_addr = emit_operand
 
-(*#line 602.7 "x86/x86.mdl"*)
+(*#line 603.7 "x86/x86.mdl"*)
    val emit_src1 = emit_operand
 
-(*#line 603.7 "x86/x86.mdl"*)
+(*#line 604.7 "x86/x86.mdl"*)
    val emit_ea = emit_operand
    fun emitInstr' instr = 
        (case instr of
@@ -724,7 +728,7 @@ struct
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                endCluster=doNothing,
+                endCluster=fail,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,
                 comment=comment,

@@ -13,6 +13,7 @@ structure GeneralParams = struct
 		   fnpolicy: FilenamePolicy.policy,
 		   symval: string -> { get: unit -> int option,
 				       set: int option -> unit },
+		   archos: string,
 		   keep_going: bool }
 
     type info = { param: param,
@@ -20,9 +21,10 @@ structure GeneralParams = struct
 		  errcons: PrettyPrint.ppconsumer,
 		  youngest: TStamp.t ref }
 
-    fun bind { param = { penv, fnpolicy, symval, keep_going },
+    fun bind { param = { penv, archos, fnpolicy, symval, keep_going },
 		groupreg, errcons, youngest } rb =
 	{ param = { penv = SrcPath.bind penv rb,
+		    archos = archos,
 		    fnpolicy = fnpolicy,
 		    symval = symval,
 		    keep_going = keep_going },

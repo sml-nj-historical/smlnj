@@ -6,13 +6,11 @@
 
 signature MLTREE = sig
   structure Constant    : CONSTANT
-  structure PseudoOp    : PSEUDO_OPS
   structure Region      : REGION
-  structure Stream      : INSTRUCTION_STREAM
+(*  structure Stream      : INSTRUCTION_STREAM *)
   structure Basis       : MLTREE_BASIS
   structure Extension   : MLTREE_EXTENSION
   structure I           : MACHINE_INT  
-     sharing Stream.P = PseudoOp
 
   type ty  = Basis.ty
   type fty = Basis.fty
@@ -43,6 +41,14 @@ signature MLTREE = sig
 
       (* control flow *)
     | JMP     of rexp * controlflow 
+(*
+    | SWITCH  of 
+        {tblLab: Label.label,		 (* label associated with table *)
+	 base : rexp option,		 (* base pointer -- if any *)
+	 table : fn Label.label -> rexp, (* get table address *)
+	 index : rexp,			 (* index into table  *)
+	 targets : controlflow}		 (* targets of switch *)
+*)
     | BCC     of ccexp * Label.label
     | CALL    of {funct:rexp, targets:controlflow,
                   defs:mlrisc list, uses:mlrisc list,
@@ -207,17 +213,17 @@ signature MLTREE = sig
        and fext   = (stm, rexp, fexp, ccexp) Extension.fx
        and ccext  = (stm, rexp, fexp, ccexp) Extension.ccx
        and labexp = rexp
-
+(*
   (*
    * Instruction streams
    *)
-  type ('i,'cellset) stream = ('i, an list, 'cellset) Stream.stream 
+  type ('i,'cellset, 'cfg) stream = ('i, an list, 'cellset, 'cfg) Stream.stream 
 
   (* 
    * Extension mechanism
    *)
 
-  datatype ('instr,'cellset,'operand,'addressing_mode) reducer =
+  datatype ('instr,'cellset,'operand,'addressing_mode, 'cfg) reducer =
     REDUCER of
     { reduceRexp    : rexp -> reg,
       reduceFexp    : fexp -> reg,
@@ -227,10 +233,10 @@ signature MLTREE = sig
       reduceOperand : 'operand -> reg,
       addressOf     : rexp -> 'addressing_mode,
       emit          : 'instr * an list -> unit,
-      instrStream   : ('instr,'cellset) stream,
-      mltreeStream  : (stm,mlrisc list) stream
+      instrStream   : ('instr,'cellset, 'cfg) stream,
+      mltreeStream  : (stm,mlrisc list, 'cfg) stream
     }
-
+*)
   (*
    * Useful type abbreviations for working for MLTree.
    *)

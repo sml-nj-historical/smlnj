@@ -6,18 +6,17 @@
  *
  * author: Matthias Blume (blume@cs.princeton.edu)
  *)
-functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
+functor LinkCM (structure HostBackend : BACKEND) = struct
 
   datatype envrequest = AUTOLOAD | BARE
 
   local
-      structure E = GenericVC.Environment
+      structure E = Environment
       structure DE = DynamicEnv
-      structure SE = GenericVC.StaticEnv
-      structure ER = GenericVC.EnvRef
-      structure S = GenericVC.Symbol
-      structure EM = GenericVC.ErrorMsg
-      structure BF = HostMachDepVC.Binfile
+      structure SE = StaticEnv
+      structure ER = EnvRef
+      structure S = Symbol
+      structure EM = ErrorMsg
       structure P = OS.Path
       structure F = OS.FileSys
       structure DG = DependencyGraph
@@ -26,30 +25,33 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
       val os = SMLofNJ.SysInfo.getOSKind ()
       val my_archos =
-	  concat [HostMachDepVC.architecture, "-", FilenamePolicy.kind2name os]
+	  concat [HostBackend.architecture, "-", FilenamePolicy.kind2name os]
 
       structure SSV =
-	  SpecificSymValFn (structure MachDepVC = HostMachDepVC
+	  SpecificSymValFn (val arch = HostBackend.architecture
 			    val os = os)
 
-      val emptydyn = E.dynamicPart E.emptyEnv
       val system_values =
 	  ref (SrcPathMap.empty: E.dynenv IntMap.map SrcPathMap.map)
 
       structure StabModmap = StabModmapFn ()
 
+      val useStreamHook =
+	  ref (fn _ => raise Fail "useStreamHook not initialized")
+	  : (TextIO.instream -> unit) ref
+
       structure Compile =
-	  CompileFn (structure MachDepVC = HostMachDepVC
+	  CompileFn (structure Backend = HostBackend
 		     structure StabModmap = StabModmap
-		     val useStream = HostMachDepVC.Interact.useStream
+		     fun useStream s = !useStreamHook s
 		     val compile_there = Servers.compile o SrcPath.encode)
 
       structure BFC =
-	  BfcFn (structure MachDepVC = HostMachDepVC)
+          BfcFn (val arch = HostBackend.architecture)
 
       structure Link =
-	  LinkFn (structure MachDepVC = HostMachDepVC
-		  structure BFC = BFC
+	  LinkFn (val x = 1		(* ***** *)
+                  structure BFC = BFC
 		  val system_values = system_values)
 
       structure AutoLoad = AutoLoadFn
@@ -83,7 +85,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val { group = c_group, ... } =
 		  Compile.newTraversal (Link.evict, store, g)
 	      val { group = l_group, ... } =
-		  Link.newTraversal (g, #content o get)
+		  Link.newTraversal (g, #contents o get)
 	  in
 	      case Servers.withServers (fn () => c_group gp) of
 		  NONE => false
@@ -104,10 +106,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				let val delta = E.mkenv { static = stat,
 							  symbolic = sym,
 							  dynamic = dyn }
-				    val base = #get ER.topLevel ()
+				    val loc = ER.loc ()
+				    val base = #get loc ()
 				    val new = E.concatEnv (delta, base)
 				in
-				    #set ER.topLevel new;
+				    #set loc new;
 				    Say.vsay ["[New bindings added.]\n"]
 				end
 			    else ();
@@ -118,7 +121,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
       (* Instantiate the stabilization mechanism. *)
       structure Stabilize =
-	  StabilizeFn (structure MachDepVC = HostMachDepVC
+	  StabilizeFn (val arch = HostBackend.architecture
 		       structure StabModmap = StabModmap
 		       fun recomp gp g = let
 			   val { store, get } = BFC.new ()
@@ -145,7 +148,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  type kernelValues = { init_group : GG.group }
 
 	  val fnpolicy = FilenamePolicy.colocate
-	      { os = os, arch = HostMachDepVC.architecture }
+	      { os = os, arch = HostBackend.architecture }
 
 	  val theValues = ref (NONE: kernelValues option)
 
@@ -200,14 +203,12 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  fun getTheValues () = valOf (!theValues)
 	      handle Option => raise Fail "CMBoot: theParam not initialized"
 
-	  fun param () = let
-	      val v = getTheValues ()
-	  in
+	  fun param () =
 	      { fnpolicy = fnpolicy,
 		penv = penv,
 		symval = SSV.symval,
+		archos = my_archos,
 		keep_going = #get StdConfig.keep_going () }
-	  end
 
 	  val init_group = #init_group o getTheValues
 
@@ -227,7 +228,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      (case Parse.parse (parse_arg (al_greg, NONE, p)) of
 		   NONE => false
 		 | SOME (g, _) =>
-		   (AutoLoad.register (GenericVC.EnvRef.topLevel, g);
+		   (AutoLoad.register (EnvRef.loc (), g);
 		    true))
 	      before dropPickles ()
 	  end
@@ -302,6 +303,24 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	  val recomp = run mkStdSrcPath NONE recomp_runner
 	  val make = run mkStdSrcPath NONE (make_runner true)
+
+	  fun to_portable s = let
+	      val gp = mkStdSrcPath s
+	      fun nativesrc s = let
+		  val p = SrcPath.standard
+			      { err = fn s => raise Fail s, env = penv }
+			      { context = SrcPath.dir gp, spec = s }
+	      in
+		  SrcPath.osstring' (SrcPath.file p)
+	      end
+	      fun mkres (g, pl) = { graph = g, imports = pl,
+				    nativesrc = nativesrc }
+	  in
+	      Option.map
+		  (mkres o ToPortable.export)
+		  (Parse.parse (parse_arg
+				    (GroupReg.new (), NONE, mkStdSrcPath s)))
+	  end
 
 	  fun sources archos group = let
 	      val policy =
@@ -447,8 +466,6 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      AutoLoad.mkManager { get_ginfo = al_ginfo,
 				   dropPickles = dropPickles }
 
-	  fun al_manager' (ast, _, ter) = al_manager (ast, ter)
-
 	  fun reset () =
 	      (Compile.reset ();
 	       Link.reset ();
@@ -457,7 +474,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	       SmlInfo.reset ();
 	       StabModmap.reset ())
 
-	  fun initTheValues (bootdir, de, er, autoload_postprocess) = let
+	  fun initTheValues (bootdir, de, er, autoload_postprocess, icm) = let
+	      (* icm: "install compilation manager" *)
 	      val _ = let
 		  fun listDir ds = let
 		      fun loop l =
@@ -489,16 +507,17 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		  fun loop m = let
 		      fun enter (d, pids) = let
 			  fun enter1 (spec, pm) = let
-			      val fromHex = GenericVC.PersStamps.fromHex
+			      val fromHex = PersStamps.fromHex
 			  in
 			      case String.tokens (fn c => c = #":") spec of
 				  [pos, hexp] =>
 				  (case (fromHex hexp, Int.fromString pos) of
 				       (SOME p, SOME i) =>
-				       (IM.insert (pm, i,
-						   DE.bind (p, DE.look de p,
-							    emptydyn))
-					handle DE.Unbound => pm)
+				       (case DE.look de p of
+					    NONE => pm
+					  | SOME obj => 
+					    IM.insert (pm, i,
+						       DE.singleton (p, obj)))
 				     | _ => pm)
 				| _ => pm
 			  end
@@ -528,6 +547,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val ginfo = { param = { fnpolicy = fnpolicy,
 				      penv = penv,
 				      symval = SSV.symval,
+				      archos = my_archos,
 				      keep_going = false },
 			    groupreg = GroupReg.new (),
 			    errcons = EM.defaultConsumer (),
@@ -584,7 +604,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			  Preload.preload { make = make, autoload = autoload }
 		  in
 		      #set ER.pervasive pervasive;
-		      #set ER.topLevel E.emptyEnv;
+		      #set (ER.loc ()) E.emptyEnv;(* redundant? *)
 		      theValues := SOME { init_group = init_group };
 		      case er of
 			  BARE =>
@@ -592,9 +612,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			       system_values := SrcPathMap.empty;
 			       NONE)
 			| AUTOLOAD =>
-			      (HostMachDepVC.Interact.installCompManager
-			            (SOME al_manager');
-				    standard_preload BtNames.standard_preloads;
+			      (icm al_manager;
+			       standard_preload BtNames.standard_preloads;
 			       (* unconditionally drop all library pickles *)
 			       Parse.dropPickles ();
 			       SOME (autoload_postprocess ()))
@@ -602,12 +621,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  end
       end
   in
-    fun init (bootdir, de, er) = let
+    fun init (bootdir, de, er, useStream, useFile, icm) = let
 	fun procCmdLine () = let
 	    val autoload = ignore o autoload
 	    val make = ignore o make
-	    fun p (f, mk, ("sml" | "sig" | "fun")) =
-		HostMachDepVC.Interact.useFile f
+	    fun p (f, mk, ("sml" | "sig" | "fun")) = useFile f
 	      | p (f, mk, "cm") = mk f
 	      | p (f, mk, e) = Say.say ["!* unable to process `", f,
 					"' (unknown extension `", e, "')\n"]
@@ -648,9 +666,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      | l => args (l, autoload)
 	end
     in
+	useStreamHook := useStream;
 	initTheValues (bootdir, de, er,
 		       fn () => (Cleanup.install initPaths;
-				 procCmdLine))
+				 procCmdLine),
+		       icm)
     end
 
     structure CM = struct
@@ -705,6 +725,10 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	val symval = SSV.symval
 	val load_plugin = cwd_load_plugin 
 	val mk_standalone = mk_standalone
+
+	structure Graph = struct
+	    val graph = to_portable
+	end
     end
 
     structure Tools = ToolsFn (val load_plugin' = load_plugin'

@@ -419,7 +419,7 @@ struct
          BPT 0x80 | BUGCHK 0x81 | CALLSYS 0x83 
        | GENTRAP 0xaa | IMB 0x86 | RDUNIQUE 0x9e | WRUNIQUE 0x9f
 
-      type addressing_mode = C.cell * operand
+      type addressing_mode = CellsBasis.cell * operand
    
    end (* Instruction *)
 
@@ -429,7 +429,7 @@ struct
    instruction formats 32 bits 
      Memory{opc:6, ra:5, rb:GP 5, disp: signed 16} (* p3-9 *)
       (* derived from Memory *) 
-   | Split{le} = let val i = LabelExp.valueOf le
+   | Split{le} = let val i = MLTreeEval.valueOf le
                      val w = itow i 
                      val hi = w ~>> 0w16
                      val lo = w && 0w65535
@@ -444,7 +444,7 @@ struct
            | I.IMMop i  => itow i
            | I.HILABop le => High{le=le}
            | I.LOLABop le => Low{le=le}
-           | I.LABop le => itow(LabelExp.valueOf le)
+           | I.LABop le => itow(MLTreeEval.valueOf le)
        in  Memory{opc,ra,rb,disp}
        end
    | ILoadStore{opc,r:GP,b,d} = LoadStore{opc,ra=r,rb=b,disp=d}
@@ -465,7 +465,7 @@ struct
         | I.IMMop i  => Operate1{opc,ra,lit=itow i,func,rc}
         | I.HILABop le => Operate1{opc,ra,lit=High{le=le},func,rc}
         | I.LOLABop le => Operate1{opc,ra,lit=Low{le=le},func,rc}
-        | I.LABop le => Operate1{opc,ra,lit=itow(LabelExp.valueOf le),func,rc}
+        | I.LABop le => Operate1{opc,ra,lit=itow(MLTreeEval.valueOf le),func,rc}
         )
    | Foperate{opc:6,fa:FP 5,fb:FP 5,func:5..15,fc:FP 5}
    | Funary{opc:6,fa:5=31,fb:FP 5,func:5..15,fc:FP 5}
@@ -475,12 +475,12 @@ struct
    struct
       (* compute displacement address *)
       fun disp lab = itow(Label.addrOf lab - !loc - 4) ~>> 0w2
-      val zeroR = Option.valOf(C.zeroReg C.GP)
+      val zeroR = Option.valOf(C.zeroReg CellsBasis.GP)
    end
 
    structure Assembly =
    struct
-      fun isZero(I.LABop le) = LabelExp.valueOf le = 0
+      fun isZero(I.LABop le) = MLTreeEval.valueOf le = 0
         | isZero _ = false
    end
 
@@ -501,16 +501,16 @@ struct
  
    (* Load/Store *)
    | LDA of {r: $GP, b: $GP, d:operand}        (* use of REGop is illegal *)
-     asm: if isZero d andalso C.sameCell(r,b) then ()
+     asm: if isZero d andalso CellsBasis.sameCell(r,b) then ()
           else (``lda\t<r>, <d>''; 
-                if C.registerId b = 31 then () else ``(<b>)''
+                if CellsBasis.registerId b = 31 then () else ``(<b>)''
                )
      mc:  ILoadStore{opc=0w08,r,b,d}
      rtl: ``LDA''
 
    | LDAH of {r: $GP, b: $GP, d:operand} (* use of REGop is illegal *)
      asm: (``ldah\t<r>, <d>''; 
-           if C.registerId b = 31 then () else ``(<b>)''
+           if CellsBasis.registerId b = 31 then () else ``(<b>)''
           )
      mc:  ILoadStore{opc=0w09,r,b,d}
      rtl: ``LDAH''
@@ -576,12 +576,12 @@ struct
    | OPERATE of {oper:operate, ra: $GP, rb:operand, rc: $GP}
              (* Pretty print ldgp differently *) 
      asm: let fun disp() = ``<oper>\t<ra>, <rb>, <rc>''
-          in  case (oper,C.registerId ra,rb,C.registerId rc) of
+          in  case (oper,CellsBasis.registerId ra,rb,CellsBasis.registerId rc) of
                  (I.BIS,27,I.REGop rb,29) => 
-                   if C.registerId rb = 31 then ``ldgp\t$29, 0($27)''
+                   if CellsBasis.registerId rb = 31 then ``ldgp\t$29, 0($27)''
                    else disp()
               |  (I.BIS,26,I.REGop rb,29) => 
-                   if C.registerId rb = 31 then ``ldgp\t$29, 0($26)''
+                   if CellsBasis.registerId rb = 31 then ``ldgp\t$29, 0($26)''
                    else disp()
               | _                        => disp()
           end

@@ -6,7 +6,7 @@ functor SparcDelaySlots
 struct
    structure I  = I
    structure C  = I.C
-   structure SL = C.SortedCells
+   structure SL = CellsBasis.SortedCells
 
    fun error msg = MLRiscErrorMsg.error("SparcDelaySlotProps",msg)
 
@@ -51,12 +51,12 @@ struct
            I.ANNOTATION{i=enableDelaySlot{instr=i,n=n,nop=nop},a=a}
        | _ => error "enableDelaySlot"
 
-    val defUseI = P.defUse C.GP
-    val defUseF = P.defUse C.FP
+    val defUseI = P.defUse CellsBasis.GP
+    val defUseF = P.defUse CellsBasis.FP
     val psr     = [C.psr] 
     val fsr     = [C.fsr]
     val y       = [C.y]
-    val zeroR   = Option.valOf(C.zeroReg C.GP)
+    val zeroR   = Option.valOf(C.zeroReg CellsBasis.GP)
     val everything = [C.y,C.psr,C.fsr]
     fun conflict{src=i,dst=j} = 
         let fun cc I.ANDCC  = true

@@ -16,8 +16,7 @@ structure GroupGraph = struct
 
     and kind =
 	NOLIB of { owner: SrcPath.file option,
-		   subgroups: subgrouplist,
-		   explicit: bool }	(* export list was explicit? *)
+		   subgroups: subgrouplist }
       | LIB of { version: Version.t option, kind: libkind }
 
     (* the "required" field includes everything:

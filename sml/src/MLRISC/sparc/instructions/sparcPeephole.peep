@@ -10,17 +10,17 @@ in
 functor SparcPeephole(SparcInstr : SPARCINSTR) : PEEPHOLE =
 struct
    structure I = SparcInstr
-   structure C = I.C
+   structure CB = CellsBasis
 
    (* IMPORTANT: instructions are now given in forward order *)
    fun peephole instrs =
    let fun isZero(I.LAB le)  = I.LabelExp.valueOf le = 0
-         | isZero(I.REG r)   = C.registerNum r = 0
+         | isZero(I.REG r)   = CB.registerNum r = 0
          | isZero(I.IMMED i) = i = 0
          | isZero _ = false
 
        fun removable(I.ARITH{a=(I.ADD | I.SUB), r, i, d}) =
-             C.sameColor(r,d) andalso isZero i
+             CB.sameColor(r,d) andalso isZero i
          | removable(I.ANNOTATION{i,a}) = removable i
          | removable _ = false
 

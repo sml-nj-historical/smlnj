@@ -1,4 +1,4 @@
-structure Symbol :> SYMBOL =
+structure UniqueSymbol :> UNIQUE_SYMBOL =
 struct
 
    structure H = HashTable

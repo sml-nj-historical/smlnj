@@ -75,9 +75,9 @@ end
 
 
 fun markdecl srcMap (decl,left,right) = 
-     MARKdecl(SourceMap.location srcMap (left,right), decl)
+     MARKdecl(SourceMapping.location srcMap (left,right), decl)
 fun markexp srcMap (exp,left,right) = 
-     MARKexp(SourceMap.location srcMap (left,right), exp)
+     MARKexp(SourceMapping.location srcMap (left,right), exp)
 
 exception Bad
 
@@ -102,6 +102,12 @@ fun enumExp'(err, loc, es, id) =
 fun clause(pats, guard, NONE, e) = CLAUSE(pats, guard, e)
   | clause(pats, guard, SOME x, e) = CLAUSE(pats, guard, CONTexp(e, x))
 
+fun seqdecl [d] = d
+  | seqdecl ds  = SEQdecl ds
+
+fun idty(IDENT([],"unit")) = TUPLEty []
+  | idty x = IDty x
+
 %%
 %header (functor MDLParser(structure Token   : TOKEN
                            structure AstPP   : MDL_AST_PRETTY_PRINTER
@@ -109,8 +115,8 @@ fun clause(pats, guard, NONE, e) = CLAUSE(pats, guard, e)
         )
 
 %arg	(srcMap,err,import,precStack,extraCells) 
-   : SourceMap.sourcemap * (SourceMap.location * string -> unit) * 
-     (SourceMap.location * string -> decl list) *
+   : SourceMapping.sourcemap * (SourceMapping.location * string -> unit) * 
+     (SourceMapping.location * string -> decl list) *
      PrecedenceParser.precedence_stack ref *
      Ast.storagedecl list
 %name	MDL
@@ -120,7 +126,8 @@ fun clause(pats, guard, NONE, e) = CLAUSE(pats, guard, e)
         LPAREN | RPAREN | LBRACKET | RBRACKET | LBRACE | RBRACE | SEMICOLON |
         LDQUOTE | RDQUOTE | LMETA | RMETA |
 	CELLSET | FN | STORAGE | LOCATIONS | HASH |
-	COMMA | COLON | DOT | DOTDOT | AT | BAR | ARROW | DARROW | PAR | BITS |
+	COMMA | COLON | COLONGREATER |
+        DOT | DOTDOT | AT | BAR | ARROW | DARROW | PAR | BITS |
 	IF | THEN | ELSE | TRUE | FALSE | WILD | RAISE |
         HANDLE | LET | STRUCTURE | FUNCTOR | SIGNATURE | SIG | STRUCT | WHERE |
 	SHARING | INSTRUCTION | REGISTER | CELL | CELLS | ORDERING |
@@ -149,6 +156,7 @@ fun clause(pats, guard, NONE, e) = CLAUSE(pats, guard, e)
 
 %nonterm architecture of decl list |
 	 structexp of structexp |
+	 sigcon of sigconstraint |
 	 opt_of of unit |
          id of id |
          sym of id |
@@ -185,6 +193,7 @@ fun clause(pats, guard, NONE, e) = CLAUSE(pats, guard, e)
 	 aexp2 of exp Prec.token |
 	 appexp of exp Prec.token list |
 	 exp of exp |
+	 typedexp of exp |
 	 guard of exp option |
 	 funguard of exp option |
 	 cont of id option |
@@ -203,6 +212,7 @@ fun clause(pats, guard, NONE, e) = CLAUSE(pats, guard, e)
 	 apat2 of pat Prec.token |
 	 apppat of pat Prec.token list |
 	 pat of pat |
+	 typedpat of pat |
 	 pats of pat list |
 	 pats1 of pat list |
 	 pats2 of pat list |
@@ -357,8 +367,8 @@ optsemi:				()
 decl:		mldecl optsemi	(mldecl)
 |		mddecl optsemi	(mddecl)
 |		INCLUDE string optsemi
-		(SEQdecl(import
-                  (SourceMap.location srcMap 
+		(seqdecl(import
+                  (SourceMapping.location srcMap 
                       (INCLUDEleft,stringright), string)))
 
 mldecl:		mymldecl (markdecl srcMap (mymldecl,mymldeclleft,mymldeclright))
@@ -452,26 +462,28 @@ mymldecl:	DATATYPE datatypebinds withtypeclause
 |		RTL id LBRACE labpats0 RBRACE EQ exp 
                    (RTLdecl(IDpat id,LAMBDAexp
                                   [CLAUSE([RECORDpat labpats0],NONE,exp)],
-                      SourceMap.location srcMap (RTLleft, expright)))
+                      SourceMapping.location srcMap (RTLleft, expright)))
 |		RTL asapat EQ exp
                    (RTLdecl(asapat,exp,
-                            SourceMap.location srcMap (RTLleft,expright)))
+                            SourceMapping.location srcMap (RTLleft,expright)))
 |		RTL syms COLON ty (RTLSIGdecl(syms,ty))
 |		VAL valbinds (VALdecl(valbinds))
 |		VAL syms COLON ty	 (VALSIGdecl(syms,ty))
 |		TYPE tyvarseq tid (TYPESIGdecl(tid,tyvarseq))
 |		LOCAL scopeddecls IN scopeddecls END 
 			(LOCALdecl(scopeddecls1,scopeddecls2))
-|		STRUCTURE id EQ structexp (STRUCTUREdecl(id,[],NONE,structexp))
-|		STRUCTURE id COLON sigexp EQ structexp 
-			(STRUCTUREdecl(id,[],SOME sigexp,structexp))
+|		STRUCTURE id EQ structexp 
+			(STRUCTUREdecl(id,[],NONE,structexp))
+|		STRUCTURE id sigcon EQ structexp 
+			(STRUCTUREdecl(id,[],SOME sigcon,structexp))
 |		STRUCTURE id COLON sigexp (STRUCTURESIGdecl(id,sigexp))
 |		SIGNATURE id EQ sigexp (SIGNATUREdecl(id,sigexp))
 |		FUNCTOR id LPAREN functorarg RPAREN EQ structexp
 			(STRUCTUREdecl(id,functorarg,NONE,structexp))
-|		FUNCTOR id LPAREN functorarg RPAREN COLON sigexp EQ structexp
-			(STRUCTUREdecl(id,functorarg,SOME sigexp,structexp))
-|		FUNCTOR id EQ structexp (FUNCTORdecl(id,[],NONE,structexp))
+|		FUNCTOR id LPAREN functorarg RPAREN sigcon EQ structexp
+			(STRUCTUREdecl(id,functorarg,SOME sigcon,structexp))
+|		FUNCTOR id EQ structexp 
+			(FUNCTORdecl(id,[],NONE,structexp))
 |		SHARING sharingdecls (SHARINGdecl sharingdecls)
 |		INFIX intopt syms (Infix precStack (intopt,syms); INFIXdecl(intopt,syms))
 |		INFIXR intopt syms (Infixr precStack (intopt,syms); INFIXRdecl(intopt,syms))
@@ -489,11 +501,14 @@ exceptionbind:	id 		(EXCEPTIONbind(id,NONE))
 
 
 functorarg:	scopeddecls		(scopeddecls)
-|		id COLON sigexp		([FUNCTORARGdecl(id,sigexp)])
+|		id sigcon		([FUNCTORARGdecl(id,sigcon)])
 
 sigexp:		ident			(IDsig ident)
 |		SIG decls END		(DECLsig decls)
 |		sigexp WHERE sigsubs 	(sigsubs sigexp)
+
+sigcon:		COLON sigexp		({abstract=false,sigexp=sigexp})
+|		COLONGREATER sigexp	({abstract=true,sigexp=sigexp})
 
 sigsubs:	sigsub			(sigsub)
 |		sigsub AND sigsubs	(sigsub o sigsubs)
@@ -597,7 +612,7 @@ consbind:	sym of_ty consassembly consencoding rtl nop
 			  nop=nop,sdi=sdi,nullified=nullified, 
 			  delayslot=delayslot,
 			  delaycand=cand, latency=latency, pipeline=pipeline,
-                          loc=SourceMap.location srcMap (symleft,sdiright)
+                          loc=SourceMapping.location srcMap (symleft,sdiright)
 			 }
 		 end
 		)
@@ -732,7 +747,7 @@ funbind:	funclauses	(FUNbind funclauses)
 valbinds:	valbind			([valbind])
 |		valbind AND valbinds	(valbind::valbinds)
 
-valbind:	pat EQ exp		(VALbind(pat,exp))
+valbind:	pat EQ typedexp		(VALbind(pat,typedexp))
 
 literal:	word			(WORD32lit word)
 |		int			(INTlit int)	
@@ -747,10 +762,10 @@ aexp:		literal			(LITexp literal)
 |		HASH id			(TYPEexp(TYVARty(INTtv id))) 
 |		OP symb			(IDexp(IDENT([],symb)))
 |		LPAREN symb RPAREN	(IDexp(IDENT([],symb)))
-|		LPAREN exp COLON ty RPAREN	(TYPEDexp(exp,ty))
+(*|		LPAREN exp COLON ty RPAREN	(TYPEDexp(exp,ty))*)
 |		LDQUOTE asms RDQUOTE	(ASMexp(ASMasm asms))
 |		LPAREN RPAREN		(TUPLEexp [])
-|		LPAREN exp RPAREN	(exp)
+|		LPAREN typedexp RPAREN	(typedexp)
 |		LPAREN exps2 RPAREN	(TUPLEexp exps2)
 |		LPAREN expseq2 RPAREN	(SEQexp expseq2)
 |		LBRACKET exps RBRACKET	(LISTexp(exps,NONE))
@@ -758,18 +773,18 @@ aexp:		literal			(LITexp literal)
 |		DOLLAR id LBRACKET exp region RBRACKET (LOCexp(id,exp,region))
 |		LLBRACKET rtlterms RRBRACKET (RTLexp(rtlterms))
 |		sym CONCAT LBRACKET exps RBRACKET 
-                (let val loc = SourceMap.location srcMap 
+                (let val loc = SourceMapping.location srcMap 
                                 (symleft,RBRACKETright)
                  in LISTexp(enumExp(err,loc,sym,exps),NONE) end
                 )
 |		LBRACKET exps RBRACKET CONCAT sym
-                (let val loc = SourceMap.location srcMap 
+                (let val loc = SourceMapping.location srcMap 
                                 (symleft,RBRACKETright)
                  in LISTexp(enumExp'(err,loc,exps,sym),NONE) end
                 )
 
 |		sym CONCAT LBRACKET exps RBRACKET CONCAT sym
-                (let val loc = SourceMap.location srcMap 
+                (let val loc = SourceMapping.location srcMap 
                                 (symleft,RBRACKETright)
                  in LISTexp(enumExp'(err,loc,
                                     enumExp(err,loc,sym1,exps),sym2),
@@ -794,29 +809,33 @@ labexps0:				([])
 labexps:	labexp			([labexp])
 |		labexp COMMA labexps	(labexp::labexps)
 
-labexp:		id EQ exp		(id,exp)
+labexp:		id EQ typedexp		(id,typedexp)
 |		id			(id,IDexp(IDENT([],id)))
 
 appexp:		aexp2			([aexp2])
 |		appexp aexp2		(appexp @ [aexp2])
 
 exp: 		appexp			(parseExp precStack err 
-                 (SourceMap.location srcMap (appexpleft,appexpright)) appexp)
-|		IF exp THEN exp ELSE exp (IFexp(exp1,exp2,exp3))
-|		CASE exp OF clauses	(CASEexp(exp,clauses))
+                 (SourceMapping.location srcMap (appexpleft,appexpright)) appexp)
+|		IF typedexp THEN typedexp ELSE exp 
+			(IFexp(typedexp1,typedexp2,exp))
+|		CASE typedexp OF clauses	(CASEexp(typedexp,clauses))
 |		FN clauses		(LAMBDAexp clauses)
 |		exp HANDLE clauses	(HANDLEexp(exp,clauses))
 |		RAISE exp		(RAISEexp exp)
 
-expseq:		exp			([exp])
-|		exp SEMICOLON expseq	(exp::expseq)
+typedexp:	exp			(exp)
+|		typedexp COLON ty 	(TYPEDexp(typedexp,ty))
 
-expseq2:	exp SEMICOLON expseq	(exp::expseq)
+expseq:		typedexp			([typedexp])
+|		typedexp SEMICOLON expseq	(typedexp::expseq)
 
-exps1:		exp		([exp])
-|		exp COMMA exps1	(exp::exps1)
+expseq2:	typedexp SEMICOLON expseq	(typedexp::expseq)
 
-exps2:		exp COMMA exps1 (exp::exps1)
+exps1:		typedexp		([typedexp])
+|		typedexp COMMA exps1	(typedexp::exps1)
+
+exps2:		typedexp COMMA exps1 (typedexp::exps1)
 
 exps:			([])
 |		exps1	(exps1)
@@ -829,35 +848,36 @@ apat:		ident2				(CONSpat(ident2,NONE))
 |		LPAREN pats2 RPAREN		(TUPLEpat pats2)
 |		LPAREN orpats2 RPAREN		(ORpat orpats2)
 |		LPAREN andpats2 RPAREN		(ANDpat andpats2)
-|		LPAREN pat RPAREN		(pat)
-|		LPAREN pat WHERE exp RPAREN	(WHEREpat(pat,exp))
-|		LPAREN pat WHERE exp IN pat RPAREN	
-						(NESTEDpat(pat1,exp,pat2))
+|		LPAREN typedpat RPAREN		(typedpat)
+|		LPAREN typedpat WHERE typedexp RPAREN	
+			(WHEREpat(typedpat,typedexp))
+|		LPAREN typedpat WHERE typedexp IN typedpat RPAREN	
+			(NESTEDpat(typedpat1,typedexp,typedpat2))
 |		LBRACE labpats0 RBRACE		(RECORDpat(labpats0))
 |		sym CONCAT LBRACKET pats RBRACKET 
-                (let val loc = SourceMap.location srcMap 
+                (let val loc = SourceMapping.location srcMap 
                                    (symleft,RBRACKETright)
                  in LISTpat(enumPat(err,loc,sym,pats),NONE) end
 		)
 |		sym CONCAT LBRACKET pats RBRACKET CONCAT sym
-                (let val loc = SourceMap.location srcMap 
+                (let val loc = SourceMapping.location srcMap 
                                    (symleft,RBRACKETright)
                  in LISTpat(enumPat'(err,loc,
                                 enumPat(err,loc,sym1,pats),sym2),NONE) end
 		)
 
 |		LBRACKET pats RBRACKET CONCAT sym
-                (let val loc = SourceMap.location srcMap 
+                (let val loc = SourceMapping.location srcMap 
                                    (symleft,RBRACKETright)
                  in LISTpat(enumPat'(err,loc,pats,sym),NONE) end
 		)
 
 
-orpats2:	pat BAR pat	([pat1,pat2])
-|		pat BAR orpats2	(pat::orpats2)
+orpats2:	typedpat BAR typedpat	([typedpat1,typedpat2])
+|		typedpat BAR orpats2	(typedpat::orpats2)
 
-andpats2:	pat AND pat		([pat1,pat2])
-|		pat AND andpats2	(pat::andpats2)
+andpats2:	typedpat AND typedpat		([typedpat1,typedpat2])
+|		typedpat AND andpats2	(typedpat::andpats2)
 
 apat2:		apat			(Prec.EXP apat)
 |		sym			(Prec.ID sym)
@@ -867,9 +887,12 @@ apppat:		apat2			([apat2])
 |		apppat apat2		(apppat@[apat2])
 
 pat:		apppat		(parsePat precStack err 
-                                    (SourceMap.location srcMap 
+                                    (SourceMapping.location srcMap 
                                        (apppatleft,apppatright)) apppat)
 |		id AS pat	(ASpat(id,pat))
+
+typedpat:	pat			(pat)
+|		typedpat COLON ty 	(TYPEDpat(typedpat,ty)) 
 
 asapat:		apat		(apat)
 |		id AS asapat	(ASpat(id,asapat))
@@ -877,10 +900,10 @@ asapat:		apat		(apat)
 pats:			([])
 |		pats1	(pats1)
 
-pats1:		pat		([pat])
-|		pat COMMA pats1	(pat::pats1)
+pats1:		typedpat		([typedpat])
+|		typedpat COMMA pats1	(typedpat::pats1)
 
-pats2:		pat COMMA pats1	(pat::pats1)
+pats2:		typedpat COMMA pats1	(typedpat::pats1)
 
 labpats0:			([],false)
 |		labpats		(labpats)
@@ -890,45 +913,47 @@ labpats:	labpat			([labpat],false)
 |		labpat COMMA labpats	(labpat:: #1 labpats, #2 labpats)
 
 labpat:		sym		(sym,IDpat sym)
-|		sym EQ pat	(sym,pat)
-|		sym AS pat 	(sym,ASpat(sym,pat))
-|		sym WHERE exp	(sym,WHEREpat(IDpat sym,exp))
-|		sym WHERE exp IN pat (sym,NESTEDpat(IDpat sym,exp,pat))
+|		sym EQ typedpat	(sym,typedpat)
+|		sym AS typedpat 	(sym,ASpat(sym,typedpat))
+|		sym WHERE typedexp	(sym,WHEREpat(IDpat sym,typedexp))
+|		sym WHERE typedexp IN typedpat 
+			(sym,NESTEDpat(IDpat sym,typedexp,typedpat))
 
-clause:		pat guard cont DARROW exp	(clause([pat],guard,cont,exp))
+clause:		typedpat guard cont DARROW exp	
+			(clause([typedpat],guard,cont,exp))
 
 cont:				(NONE)
 |		EXCEPTION id	(SOME id) 
 
 guard:				(NONE)
-|		WHERE exp	(SOME exp)
+|		WHERE typedexp	(SOME typedexp)
 
 clauses:	clause			([clause])
 |		clause BAR clauses	(clause::clauses)
 
-funclause:	apppat funguard cont EQ exp	
-                (let val loc = SourceMap.location srcMap (apppatleft,expright)
+funclause:	apppat funguard cont EQ typedexp	
+                (let val loc = SourceMapping.location srcMap (apppatleft,typedexpright)
                  in case parseFunPat precStack err loc apppat of
-                      (SOME f,ps) => (f,clause(ps,funguard,cont,exp))
+                      (SOME f,ps) => (f,clause(ps,funguard,cont,typedexp))
                     | (NONE,ps) => 
                       (err(loc,
                            "in clause "^
-                             PP.text(AstPP.clause (CLAUSE(ps,funguard,exp))));
-                       ("dummy",clause(ps,funguard,cont,exp)))
+                             PP.text(AstPP.clause (CLAUSE(ps,funguard,typedexp))));
+                       ("dummy",clause(ps,funguard,cont,typedexp)))
                  end
                 )
 
 funguard:				(NONE)
-|		WHERE LPAREN exp RPAREN (SOME exp)
+|		WHERE LPAREN typedexp RPAREN (SOME typedexp)
 
 funclauses:	funclause		(#1 funclause,[#2 funclause])
 |		funclause BAR funclauses (#1 funclause,#2 funclause:: #2 funclauses)
 
-aty:		tident			(IDty tident)
+aty:		tident			(idty(tident))
 |		HASH int		(INTVARty int)
 |		tyvar			(TYVARty tyvar)
 |		DOLLAR id		(CELLty id)
-|		LPAREN RPAREN		(IDty(IDENT([],"unit")))
+|		LPAREN RPAREN		(TUPLEty [])
 |		LPAREN ty RPAREN	(ty)
 |		LBRACE labtys RBRACE	(RECORDty labtys)
 

@@ -70,13 +70,23 @@ signature CORETOOLS = sig
 
     type splitting = int option option (* see ....Control.LambdaSplitting... *)
 
+    type smlparams = 
+	 { share: Sharing.request,
+	   setup: setup,
+	   split: splitting,
+	   locl: bool }
+
+    type cmparams =
+	 { version: Version.t option,
+	   rebindings: rebindings }
+
     (* The goal of applying tools to members is to obtain an "expansion",
      * i.e., a list of ML-files and a list of .cm-files.  We also
      * obtain a list of "sources".  This is used to implement CM.sources,
      * i.e., to generate dependency information etc. *)
     type expansion =
-	 { smlfiles: (srcpath * Sharing.request * setup * splitting) list,
-	   cmfiles: (srcpath * Version.t option * rebindings) list,
+	 { smlfiles: (srcpath * smlparams) list,
+	   cmfiles: (srcpath * cmparams) list,
 	   sources: (srcpath * { class: class, derived: bool}) list }
 
     (* A partial expansion is an expansion with a list of things yet to be
@@ -103,7 +113,9 @@ signature CORETOOLS = sig
     type rule = { spec: spec,
 		  native2pathmaker: string -> pathmaker,
 		  context: rulecontext,
-		  defaultClassOf: fnspec -> class option } ->
+		  defaultClassOf: fnspec -> class option,
+		  sysinfo: { symval: string -> int option,
+			     archos: string } } ->
 		partial_expansion
 
     (* install a class *)

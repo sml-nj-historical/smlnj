@@ -5,12 +5,12 @@
  *)
 functor SparcJumps
   (structure Instr:SPARCINSTR
-   structure Shuffle:SPARCSHUFFLE
-      sharing Shuffle.I = Instr) : SDI_JUMPS = 
+   structure Shuffle:SPARCSHUFFLE where I = Instr
+   structure MLTreeEval : MLTREE_EVAL where T = Instr.T
+  ) : SDI_JUMPS = 
 struct
   structure I = Instr
   structure C = Instr.C
-  structure LE = I.LabelExp
   structure Const = I.Constant
 
   fun error msg = MLRiscErrorMsg.error("SparcJumps",msg)
@@ -87,7 +87,7 @@ struct
         | oper(I.REG _,_) = 4
         | oper(I.HI _,_) = 4
         | oper(I.LO _,_) = 4
-        | oper(I.LAB lexp,hi) = if immed13(LE.valueOf lexp) then 4 else hi
+        | oper(I.LAB lexp,hi) = if immed13(MLTreeEval.valueOf lexp) then 4 else hi
       fun displacement lab = ((labMap lab) - loc) div 4
       fun branch22 lab = if immed22(displacement lab) then 4 else 16
       fun branch19 lab = if immed19(displacement lab) then 4 else 16
@@ -98,7 +98,7 @@ struct
       fun size instr =
       case instr of
         I.ARITH{a=I.OR,r,i,...} => 
-            if C.cellId r = 0 then oper(i,8) else oper(i,12)
+            if CellsBasis.cellId r = 0 then oper(i,8) else oper(i,12)
       | I.ARITH{i,...} => oper(i,12)
       | I.SHIFT{i,...} => oper(i,12)
       | I.LOAD{i,...} => oper(i,12)
@@ -143,7 +143,7 @@ struct
       }
   end
 
-  fun split(I.LAB lexp) = split22_10(LE.valueOf lexp)
+  fun split(I.LAB lexp) = split22_10(MLTreeEval.valueOf lexp)
     | split _ = error "split"
 
   (* Expand the immediate constant into two instructions *)
@@ -162,7 +162,7 @@ struct
     | (I.FCOPY{impl=ref(SOME instrs),...},_) => instrs
     | (instr,4) => [instr]
     | (I.ARITH{a=I.OR,r,i,d},8) =>
-        if C.cellId r = 0 then
+        if CellsBasis.cellId r = 0 then
         let val {lo,hi} = split i
         in  [I.SETHI{i=hi,d=C.asmTmpR},
              I.ARITH{a=I.OR,r=C.asmTmpR,i=I.IMMED lo,d=d}

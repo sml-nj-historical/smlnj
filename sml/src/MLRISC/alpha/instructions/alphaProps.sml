@@ -4,17 +4,21 @@
  *
  *)
 
-functor AlphaProps(AlphaInstr:ALPHAINSTR):INSN_PROPERTIES =
+functor AlphaProps
+   (structure Instr : ALPHAINSTR
+    structure MLTreeHash :  MLTREE_HASH where T = Instr.T
+    structure MLTreeEval : MLTREE_EVAL where T = Instr.T
+    ):INSN_PROPERTIES =
 struct
-    structure I = AlphaInstr
+    structure I = Instr
     structure C = I.C
-    structure LE = I.LabelExp
+    structure CB = CellsBasis
 
     exception NegateConditional
 
     fun error msg = MLRiscErrorMsg.impossible ("alphaProps."^msg)
 
-    val zeroR = Option.valOf(C.zeroReg C.GP)
+    val zeroR = Option.valOf(C.zeroReg CB.GP)
 
     datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL 
                   | IK_CALL_WITH_CUTS | IK_PHI | IK_SOURCE | IK_SINK
@@ -83,7 +87,7 @@ struct
               then I.IMMop immed else I.LABop(I.T.LI(I.T.I.fromInt(64,immed)))}
     fun loadOperand{opn,t} = I.LDA{r=t,b=zeroR,d=opn}
 
-    fun setTargets(I.BRANCH{b=I.BR,r as C.CELL{id=31,...}, ...},[L]) = 
+    fun setTargets(I.BRANCH{b=I.BR,r as CB.CELL{id=31,...}, ...},[L]) = 
              I.BRANCH{b=I.BR,r=r,lab=L}
       | setTargets(I.BRANCH{b,r,...},[F,T])  = I.BRANCH{b=b,r=r,lab=T}
       | setTargets(I.FBRANCH{b,f,...},[F,T]) = I.FBRANCH{b=b,f=f,lab=T}
@@ -119,17 +123,17 @@ struct
    (*========================================================================
     *  Equality and hashing for operands
     *========================================================================*)
-   fun hashOpn(I.REGop r) = C.hashCell r
+   fun hashOpn(I.REGop r) = CB.hashCell r
      | hashOpn(I.IMMop i) = Word.fromInt i
-     | hashOpn(I.HILABop l) = I.LabelExp.hash l
-     | hashOpn(I.LOLABop l) = I.LabelExp.hash l
-     | hashOpn(I.LABop l) = I.LabelExp.hash l
+     | hashOpn(I.HILABop l) = MLTreeHash.hash l
+     | hashOpn(I.LOLABop l) = MLTreeHash.hash l
+     | hashOpn(I.LABop l) = MLTreeHash.hash l
 
-   fun eqOpn(I.REGop a,I.REGop b) = C.sameColor(a,b)
+   fun eqOpn(I.REGop a,I.REGop b) = CB.sameColor(a,b)
      | eqOpn(I.IMMop a,I.IMMop b) = a = b
-     | eqOpn(I.HILABop a,I.HILABop b) = I.LabelExp.==(a,b)
-     | eqOpn(I.LOLABop a,I.LOLABop b) = I.LabelExp.==(a,b)
-     | eqOpn(I.LABop a,I.LABop b) = I.LabelExp.==(a,b)
+     | eqOpn(I.HILABop a,I.HILABop b) = MLTreeEval.==(a,b)
+     | eqOpn(I.LOLABop a,I.LOLABop b) = MLTreeEval.==(a,b)
+     | eqOpn(I.LABop a,I.LABop b) = MLTreeEval.==(a,b)
      | eqOpn _ = false
 
    (*========================================================================
@@ -174,7 +178,7 @@ struct
 	 | I.TRAPB 	=> trap([],[])
 	 (* macro *)
 	 | I.CALL_PAL{def,use, ...} => (C.getReg def, C.getReg use)
-         | I.ANNOTATION{a=C.DEF_USE{cellkind=C.GP,defs,uses}, i, ...} => 
+         | I.ANNOTATION{a=CB.DEF_USE{cellkind=CB.GP,defs,uses}, i, ...} => 
            let val (d,u) = defUseR i in (defs@d, u@uses) end
          | I.ANNOTATION{a, i, ...} => defUseR i
 	 | _  		=> ([],[])
@@ -196,13 +200,13 @@ struct
       | I.FCOPY{dst, src, ...}			=> (dst, src) 
       | I.JSR{defs,uses, ...}	     => (C.getFreg defs,C.getFreg uses)
       | I.BSR{defs,uses, ...}	     => (C.getFreg defs,C.getFreg uses)
-      | I.ANNOTATION{a=C.DEF_USE{cellkind=C.FP,defs,uses}, i, ...} => 
+      | I.ANNOTATION{a=CB.DEF_USE{cellkind=CB.FP,defs,uses}, i, ...} => 
         let val (d,u) = defUseF i in (defs@d, u@uses) end
       | I.ANNOTATION{a, i, ...} => defUseF i
       | _ => ([],[])
 
-    fun defUse C.GP = defUseR
-      | defUse C.FP = defUseF
+    fun defUse CB.GP = defUseR
+      | defUse CB.FP = defUseF
       | defUse _ = error "defUse"
 
     (*=======================================================================

@@ -1,6 +1,5 @@
-(* (C) 1999 Lucent Technologies, Bell Laboratories *)
-
-structure HppaCompiler = struct
-    open HppaVisComp
-    open GenericVC
-end
+(* compiler/hppa.sml
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *)
+structure Backend = HppaBackend

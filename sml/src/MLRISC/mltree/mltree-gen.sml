@@ -185,8 +185,8 @@ struct
      | compileStm (T.IF(cond,T.JMP(T.LABEL L,_),T.SEQ [])) = 
            [T.BCC(cond,L)]
      | compileStm (T.IF(cond,yes,no)) = 
-       let val L1 = Label.newLabel ""
-           val L2 = Label.newLabel ""
+       let val L1 = Label.anon()
+           val L2 = Label.anon()
        in  [T.BCC(cond,L1),
             no,
             T.JMP(T.LABEL L2,[]),
@@ -204,7 +204,7 @@ struct
     * e1 and e2 are allowed to be eagerly evaluated. 
     *)
    fun compileCond{exp=(ty,ccexp,e1,e2),rd,an} =
-   let val L1 = Label.newLabel ""
+   let val L1 = Label.anon()
    in  [T.MV(ty,rd,e1),
         mark(T.BCC(ccexp,L1),an),
         T.MV(ty,rd,e2),
@@ -212,7 +212,7 @@ struct
        ]
    end
    fun compileFcond{exp=(fty,ccexp,e1,e2),fd,an} =
-   let val L1 = Label.newLabel ""
+   let val L1 = Label.anon()
    in  [T.FMV(fty,fd,e1),
         mark(T.BCC(ccexp,L1),an),
         T.FMV(fty,fd,e2),

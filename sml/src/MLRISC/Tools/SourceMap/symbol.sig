@@ -2,7 +2,7 @@
  * Maps strings to unique symbols. 
  * This saves space and makes equality testing and hashing quicker
  *)
-signature SYMBOL =
+signature UNIQUE_SYMBOL =
 sig
 
    eqtype symbol 

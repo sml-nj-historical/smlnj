@@ -18,8 +18,8 @@ in
 
 type symbol = S.symbol
 type staticEnv = SE.staticEnv
-type dynenv  = DE.dynenv
-type symenv = SY.symenv
+type dynenv  = DE.env
+type symenv = SY.env
 
 type environment = { static: staticEnv, dynamic: dynenv, symbolic: symenv }
 
@@ -152,8 +152,10 @@ fun getbindings(static: staticEnv, symbols: S.symbol list) :
 fun copystat([], senv) = senv
   | copystat((s,b)::l, senv) = copystat(l,SE.bind(s, b, senv))
 
+(*
 fun filterStaticEnv(static: staticEnv, symbols: S.symbol list) : staticEnv =
       copystat(getbindings(static, symbols), SE.empty)
+*)
 
 local
     fun copydynsym (bindings, dynamic, symbolic) = let
@@ -162,7 +164,7 @@ local
 	    (case stampOf b
 		 of NONE => loop (l, denv, syenv)
 	       | SOME pid =>
-		     let val dy = DE.look dynamic pid
+		     let val dy = valOf (DE.look dynamic pid)
 			 val denv = DE.bind (pid, dy, denv)
 			 val sy = SY.look symbolic pid
 			 val syenv = case sy
@@ -181,72 +183,14 @@ in
 	in {static =senv, dynamic = denv, symbolic = syenv}
 	end
 
-    fun catalogEnv static : S.symbol list = map #1 (SE.sort static)
-
     fun trimEnv { static, dynamic, symbolic } = let
-	val syms = catalogEnv static
+	val syms = BrowseStatEnv.catalog static
 	val (dynamic, symbolic) =
 	    copydynsym (getbindings (static, syms), dynamic, symbolic)
     in
 	{ static = static, dynamic = dynamic, symbolic = symbolic }
     end
 end
-
-(* CM-style environment lookup *)
-datatype cmEnv
-  = CM_NONE
-  | CM_ENV of {look : S.symbol -> cmEnv, 
-               symbols : unit -> S.symbol list}
-
-exception CmEnvOfModule
-
-fun lookElems elements sym =
-      (case MU.getSpec(elements,sym)
-         of M.STRspec{sign,...} => sigenv sign
-          | M.FCTspec{sign,...} => fsgenv sign
-          | _ => CM_NONE)
-      handle MU.Unbound _ => CM_NONE
-
-and sigenv (s as M.SIG {elements,...}) =
-      CM_ENV {look = lookElems elements,
-              symbols = (fn () => MU.getSigSymbols s)}
-  | sigenv _ = CM_NONE
-
-(*
- * The following is a hack to make the cmEnvOfModule function consistent
- * with the changes made on ast during the elaboration of ast into absyn.
- * Syntactic changes made on ast by the elaborator should be propagated
- * to this function so that CM can do the correct job. I personally think 
- * that syntactic changes on curried functors and insertions of <resultStr>s 
- * should be done on Ast directly, before the elaboration --- this way, we 
- * don't have to write the following ugly sigenvSp function. 
- * 
- *)
-and sigenvSp (M.SIG {elements=[(sym,M.STRspec{sign,...})],...}) =
-    if S.name sym = "<resultStr>" then sigenv sign
-    else bug "unexpected case <resultStr> in sigenvSp"
-  | sigenvSp (M.SIG {elements=[(sym,M.FCTspec{sign,...})],...}) =
-    if S.name sym = "<functor>" then fsgenv sign
-    else bug "unexpected case <functtor> in sigenvSp"
-  | sigenvSp _ = bug "unexpected case in signenvSp"
-
-and fsgenv (M.FSIG{bodysig,...}) = sigenvSp bodysig
-  | fsgenv _ = CM_NONE
-
-fun strenv(M.STR { sign, ... }) = sigenv sign
-  | strenv _ = CM_NONE
-
-fun fctenv(M.FCT { sign, ... }) = fsgenv sign
-  | fctenv _ = CM_NONE
-
-fun cmEnvOfModule env sym =
-    (case SE.look(env,sym)
-       of B.SIGbind b => sigenv b
-        | B.STRbind b => strenv b
-        | B.FSGbind b => fsgenv b
-        | B.FCTbind b => fctenv b
-        | _ => CM_NONE)
-    handle SE.Unbound => CM_NONE
 
 fun describe static (s: symbol) : unit =
       let open PrettyPrint

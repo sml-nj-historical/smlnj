@@ -106,7 +106,7 @@ struct
              ("word32",  M.CONV("CELL(word32 x)")),
              ("cell",    M.CONV("CELL x")),
              ("label",   M.IGNORE),
-             ("cellset", M.MULTI("map CELL (C.CellSet.toCellList x)")),
+             ("cellset", M.MULTI("map CELL (CellsBasis.CellSet.toCellList x)")),
              ("operand", M.CONV("OPERAND x"))
             ]
         val decl0 =

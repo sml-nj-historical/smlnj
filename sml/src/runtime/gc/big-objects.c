@@ -257,7 +257,7 @@ bigobj_desc_t *BO_GetDesc (ml_val_t addr)
  * Return the tag of the code object containing the given PC (or else
  * NIL).
  */
-char *BO_AddrToCodeObjTag (Word_t pc, char *buf, int bufSz)
+char *BO_AddrToCodeObjTag (Word_t pc)
 {
     bigobj_region_t	*region;
     aid_t		aid;
@@ -269,7 +269,7 @@ char *BO_AddrToCodeObjTag (Word_t pc, char *buf, int bufSz)
 	while (!BO_IS_HDR(aid))
 	    aid = BIBOP[--indx];
 	region = (bigobj_region_t *)BIBOP_INDEX_TO_ADDR(indx);
-	return BO_GetCodeObjTag (ADDR_TO_BODESC(region, pc), buf, bufSz);
+	return BO_GetCodeObjTag (ADDR_TO_BODESC(region, pc));
     }
     else
 	return NIL(char *);
@@ -279,23 +279,15 @@ char *BO_AddrToCodeObjTag (Word_t pc, char *buf, int bufSz)
 
 /* BO_GetCodeObjTag:
  *
- * Return the tag of the given code object (return NIL, if it doesn't
- * fit in the buffer).
+ * Return the tag of the given code object.
  */
-char *BO_GetCodeObjTag (bigobj_desc_t *bdp, char *buf, int bufSz)
+char *BO_GetCodeObjTag (bigobj_desc_t *bdp)
 {
     Byte_t		*lastByte;
-    int			len;
+    int			kx;
 
     lastByte = (Byte_t *)(bdp->obj) + bdp->sizeB - 1;
-    len = *lastByte;
-    if (len < bufSz) {
-	strncpy (buf, lastByte-len, len);
-	buf[len] = '\0';
-	return buf;
-    }
-    else
-	return NIL(char *);
-
+    kx = *lastByte * WORD_SZB;
+    return lastByte - kx + 1;
 } /* end of BO_GetCodeObjTag */
 

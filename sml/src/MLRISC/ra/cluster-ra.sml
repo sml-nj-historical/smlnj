@@ -10,18 +10,19 @@
  *)
 
 functor ClusterRA
-   (structure Flowgraph : FLOWGRAPH
-    structure Asm       : INSTRUCTION_EMITTER
+   (structure Asm       : INSTRUCTION_EMITTER
+    structure Flowgraph : CONTROL_FLOW_GRAPH
+    			where I = Asm.I 
+			  and P = Asm.S.P
     structure InsnProps : INSN_PROPERTIES
-      where C = CellsBasis
+    			where I = Flowgraph.I 
     structure Spill : RA_SPILL 
-      sharing Flowgraph.I = InsnProps.I = Asm.I = Spill.I 
-      sharing Asm.P = Flowgraph.P
+    			where I = Flowgraph.I
    ) : RA_FLOWGRAPH =
 struct
-   structure F      = Flowgraph
-   structure I      = F.I
-   structure W      = F.W
+   structure CFG    = Flowgraph
+   structure I      = CFG.I
+   structure W      = CFG.W
    structure G      = RAGraph
    structure Props  = InsnProps
    structure Core   = RACore
@@ -29,82 +30,91 @@ struct
    structure UA     = Unsafe.Array (* okay, I'm cheating a bit here *)
    structure Spill  = Spill
 
-   structure PrintCluster = PrintCluster
-      (structure Flowgraph = F
-       structure Asm = Asm
-      )
-
    open G
-   structure C  = I.C
+   structure C      = I.C
+   structure CB     = CellsBasis
 
    fun isOn(flag,mask) = Word.andb(flag,mask) <> 0w0
 
    val dump_size = MLRiscControl.getFlag "ra-dump-size"
 
-   type flowgraph = F.cluster (* flowgraph is a cluster *)
+   type flowgraph = CFG.cfg  (* flowgraph is a cluster *)
 
    fun error msg = MLRiscErrorMsg.error("ClusterRA", msg)
 
-   val i2s = Int.toString
-  
    val mode = 0w0
 
-   fun uniqCells s = C.SortedCells.return(C.SortedCells.uniq s)
+   fun uniqCells s = CB.SortedCells.return(CB.SortedCells.uniq s)
 
-   fun chaseCell(c as C.CELL{col=ref(C.MACHINE r),...}) = (c,r)
-     | chaseCell(C.CELL{col=ref(C.ALIASED c), ...}) = chaseCell c
-     | chaseCell(c as C.CELL{col=ref C.SPILLED, ...}) = (c,~1)
-     | chaseCell(c as C.CELL{col=ref C.PSEUDO, id, ...}) = (c,id)
+   fun chaseCell(c as CB.CELL{col=ref(CB.MACHINE r),...}) = (c,r)
+     | chaseCell(CB.CELL{col=ref(CB.ALIASED c), ...}) = chaseCell c
+     | chaseCell(c as CB.CELL{col=ref CB.SPILLED, ...}) = (c,~1)
+     | chaseCell(c as CB.CELL{col=ref CB.PSEUDO, id, ...}) = (c,id)
 
-   fun colorOf(C.CELL{col=ref(C.MACHINE r),...}) = r
-     | colorOf(C.CELL{col=ref(C.ALIASED c), ...}) = colorOf c
-     | colorOf(C.CELL{col=ref C.SPILLED, ...}) = ~1
-     | colorOf(C.CELL{col=ref C.PSEUDO, id, ...}) = id
+   fun colorOf(CB.CELL{col=ref(CB.MACHINE r),...}) = r
+     | colorOf(CB.CELL{col=ref(CB.ALIASED c), ...}) = colorOf c
+     | colorOf(CB.CELL{col=ref CB.SPILLED, ...}) = ~1
+     | colorOf(CB.CELL{col=ref CB.PSEUDO, id, ...}) = id
 
    fun chase(NODE{color=ref(ALIASED n), ...}) = chase n
      | chase n = n
 
-   fun dumpFlowgraph(msg, cluster, stream) =
-       PrintCluster.printCluster stream 
-          ("------------------ "^msg^" ------------------") cluster
-
    exception NotThere
 
-   val dummyLabel = F.LABEL(Label.Label{id= ~1, addr=ref ~1, name=""})
+   val Asm.S.STREAM{emit,...} = Asm.makeStream []
+
+   fun dumpFlowgraph(txt, cfg as Graph.GRAPH graph, outstrm) = let
+     fun say txt = TextIO.output(outstrm, txt)
+     fun sayPseudo p = (say(CFG.P.toString p); say "\n")
+     val labToString = CFG.P.Client.AsmPseudoOps.defineLabel
+     fun dump (nid, CFG.BLOCK{labels, align, insns, ...}) = 
+       (case !align of NONE => () | SOME p => sayPseudo p;
+	app (fn lab => say(labToString lab ^ "\n")) (!labels);
+        app emit (rev (!insns)))
+     val CFG.INFO{data, ...} = #graph_info graph
+   in 
+       app dump (#nodes graph ());
+       app sayPseudo (rev(!data))
+      
+   end
+
+   val annotations = CFG.annotations 
+
+   val dummyBlock =   CFG.newBlock(~1, ref 0)
 
    fun x + y = Word.toIntX(Word.+(Word.fromInt x, Word.fromInt y))
 
-   fun length l =
-   let fun loop([],n)   = n
-         | loop(_::l,n) = loop(l,n+1)
-   in  loop(l,0) end
+   val uniq = ListMergeSort.uniqueSort 
+                (fn ({block=b1,insn=i1},{block=b2,insn=i2}) =>
+                    case Int.compare(b1,b2) of
+                      EQUAL => Int.compare(i1,i2)
+                    | ord   => ord)
 
-   fun services(cluster as F.CLUSTER{blocks, blkCounter, annotations=clAnns, ...}) =
-   let (* Create a graph based view of cluster *)
-       val N = !blkCounter
+   fun services(cfg as Graph.GRAPH graph) = let
+       val CFG.INFO{annotations=clAnns, ...} = #graph_info graph
+       val blocks = #nodes graph ()
+       fun maxBlockId ((id, CFG.BLOCK _)::rest, curr) = 
+	   if id > curr then maxBlockId(rest, id) else maxBlockId(rest, curr)
+	 | maxBlockId([], curr) = curr
 
-       fun computeShift(0w0, max) = 0w31-max
-         | computeShift(N, max) = computeShift(Word.>>(N, 0w1), Word.+(max,0w1))
-       val shift = computeShift(Word.>>(Word.fromInt N, 0w15), 0w15)
-       val mask  = Word.<<(0w1, shift) - 0w1
+       val N = maxBlockId(blocks, #capacity graph ())
 
        (*
         * Construct program point 
         *)
-       fun progPt(blknum, instrId) = 
-           Word.toIntX(Word.+(Word.<<(Word.fromInt blknum, shift),
-                                      Word.fromInt instrId))
-       fun blockNum pt = Word.toIntX(Word.>>(Word.fromInt pt, shift))
-       fun instrNum pt = Word.toIntX(Word.andb(Word.fromInt pt, mask))
+       fun progPt(blknum, instrId) = {block=blknum, insn=instrId}
+       fun blockNum{block,insn} = block
+       fun instrNum{block,insn} = insn
 
            (* blocks indexed by block id *)
-       val blockTable   = A.array(N, dummyLabel)
+       val blockTable = A.array(N, (#new_id graph (), dummyBlock))
 
        fun fillBlockTable [] = ()
-         | fillBlockTable((b as F.BBLOCK{blknum, ...})::blocks) =
-             (UA.update(blockTable, blknum, b); fillBlockTable blocks)
-         | fillBlockTable(_::blocks) = fillBlockTable blocks
+         | fillBlockTable((b as (nid, _))::blocks) =
+             (UA.update(blockTable, nid, b); fillBlockTable blocks)
        val _ = fillBlockTable blocks
+
+       val EXIT = (case #exits graph () of [e] => e | _ => error "EXIT")
 
        (*
         * Building the interference graph
@@ -122,24 +132,19 @@ struct
             * v is a source of a copy.
             *)
            val copyTable    = IntHashTable.mkTable(N, NotThere) 
-                : {dst:C.cell,pt:int} list IntHashTable.hash_table
+                : {dst:CB.cell,pt:G.programPoint} list IntHashTable.hash_table
            val lookupCopy   = IntHashTable.find copyTable 
            val lookupCopy   = fn r => case lookupCopy r of SOME c => c 
                                                          | NONE => []
            val addCopy      = IntHashTable.insert copyTable
              
-       
            val stamp = ref 0
     
            (* Allocate the arrays *)
            fun alloc [] = ()
-             | alloc((b as F.BBLOCK{blknum, insns, ...})::blocks) =
-               let val n = length(!insns)
-                   val m = n+1
-               in  UA.update(defsTable, blknum, A.array(m, []));
-                   alloc blocks
-               end
-             | alloc(_::blocks) = alloc blocks
+	     | alloc((id, CFG.BLOCK{insns, ...})::blocks) = 
+		(UA.update(defsTable, id, A.array(length(!insns)+1, []));
+		 alloc blocks)
            val _ = alloc blocks
     
            (*
@@ -151,10 +156,10 @@ struct
            (*
             * Initialize the definitions before computing the liveness for v.
             *)
-           fun initialize(v,v',useSites) =
-           let (* First we remove all definitions for all copies 
+           fun initialize(v, v', useSites) = let
+               (* First we remove all definitions for all copies 
                 * with v as source.
-                *  When we have a copy and while we are processing v
+                * When we have a copy and while we are processing v
                 *
                 *      x <- v
                 *
@@ -205,37 +210,32 @@ struct
             * Perform incremental liveness analysis on register v 
             * and compute the span
             *)
-           fun liveness(v, v' as NODE{uses, ...}, cellV) = 
-           let val st = !stamp
+           fun liveness(v, v' as NODE{uses, ...}, cellV) = let
+               val st = !stamp
                val _  = stamp := st + 1
                fun foreachUseSite([], span) = span
-                 | foreachUseSite(u::uses, span) =   
-                   let val b = blockNum u
-                       val i = instrNum u
-                   in  case UA.sub(blockTable, b) of
-                         block as F.BBLOCK{freq, ...} => 
-                         let val span =
-                               if i = 0 then 
-                                  liveOutAtBlock(block, span) (* live out *)
-                              else 
-                                  let val f = !freq
-                                      val defs = UA.sub(defsTable, b)
-                                  in  liveOutAtStmt(block, A.length defs,
-                                                    defs, i+1, f, span+f)
-                                  end;
-                         in  foreachUseSite(uses, span)
-                         end
-                       | _ => error "liveness2"
+                 | foreachUseSite(u::uses, span) = let
+                     val b = blockNum u
+		     val i = instrNum u
+		     val block as (_, CFG.BLOCK{freq, ...}) = UA.sub(blockTable, b)
+		     val span =
+		       if i = 0 then liveOutAtBlock(block, span) (* live out *)
+		       else let 
+			   val f = !freq
+			   val defs = UA.sub(defsTable, b)
+			 in  liveOutAtStmt(block, A.length defs, defs, i+1, f, span+f)
+			 end
+                   in foreachUseSite(uses, span)
                    end
     
-               and visitPred(block, span) =
+               and visitPred((nid, _), span) =
                    let fun foreachPred([], span) = span
-                         | foreachPred((b, _)::pred, span) =
-                           let val span = liveOutAtBlock(b, span)
-                           in  foreachPred(pred, span) end
-                   in  case block of
-                         F.BBLOCK{pred, ...} => foreachPred(!pred, span)
-                       | _ => error "visitPred"
+                         | foreachPred(nid::pred, span) = let
+                              val span = liveOutAtBlock((nid, #node_info graph nid), span)
+                           in  foreachPred(pred, span) 
+			   end
+                   in  
+		     foreachPred(#pred graph nid, span)
                    end
     
                and liveOutAtStmt(block, nDefs, defs, pos, freq, span) = 
@@ -252,29 +252,28 @@ struct
                    end
                    else visitPred(block, span)
     
-               and liveOutAtBlock(block as F.BBLOCK{blknum, freq, ...}, span) = 
+               and liveOutAtBlock(block as (nid, CFG.BLOCK{freq, ...}), span) = 
                    (* v is live out at the current block *)
-                   if UA.sub(marked, blknum) = st then span
-                   else 
-                      (UA.update(marked, blknum, st);
-                       let val defs = UA.sub(defsTable, blknum)
-                       in  liveOutAtStmt(block, A.length defs, defs, 
-                                         1, !freq, span)
-                       end
-                      )
-                 | liveOutAtBlock(_, span) = span
+                   if UA.sub(marked, nid) = st then span
+                   else let
+		       val defs = UA.sub(defsTable, nid)
+		     in
+                       UA.update(marked, nid, st);
+                       liveOutAtStmt(block, A.length defs, defs, 1, !freq, span)
+                     end
    
-               val useSites = SortedList.uniq(!uses) 
+               val useSites = uniq(!uses) 
                val trail    = initialize(v, v', useSites)
                val span     = foreachUseSite (useSites, 0)
                val _        = cleanup trail
-           in  span
+           in  
+	     span
            end 
 
            val newNodes   = Core.newNodes G
            val getnode    = IntHashTable.lookup nodes
            val insnDefUse = Props.defUse cellkind
-           val getCell    = C.CellSet.get cellkind
+           val getCell    = C.getCellsByKind cellkind
 
            fun isDedicated r = dedicated r
 
@@ -282,13 +281,13 @@ struct
            fun rmvDedicated regs =
            let fun loop([], rs') = rs'
                  | loop(r::rs, rs') = 
-                   let fun rmv(r as C.CELL{col=ref(C.PSEUDO), id, ...}) = 
+                   let fun rmv(r as CB.CELL{col=ref(CB.PSEUDO), id, ...}) = 
 			     if isDedicated(id) then loop(rs, rs') else loop(rs, r::rs')
-                         | rmv(C.CELL{col=ref(C.ALIASED r), ...}) = rmv r
-                         | rmv(r as C.CELL{col=ref(C.MACHINE col), ...}) = 
+                         | rmv(CB.CELL{col=ref(CB.ALIASED r), ...}) = rmv r
+                         | rmv(r as CB.CELL{col=ref(CB.MACHINE col), ...}) = 
                              if isDedicated col then loop(rs, rs')
                              else loop(rs, r::rs')
-                         | rmv(C.CELL{col=ref(C.SPILLED), ...}) = loop(rs,rs')
+                         | rmv(CB.CELL{col=ref(CB.SPILLED), ...}) = loop(rs,rs')
                    in  rmv r 
                    end
            in  loop(regs, []) end
@@ -304,7 +303,9 @@ struct
                            (* Add a pseudo use for tmpR *)
                           (case chase(getnode(colorOf r)) of
                              tmp as NODE{uses,defs=ref [d],...} =>
-                               (uses := [d-1]; (dst, tmp::tmps)) 
+                             let fun prev{block,insn}={block=block,insn=insn-1}
+                             in  (uses := [prev d]; (dst, tmp::tmps)) 
+                             end
                           | _ => error "mkMoves"
                           )
                        | (_, dst) => (dst, tmps)
@@ -332,48 +333,53 @@ struct
                in  (moves(dst, src, mv), tmps) end
                else (mv, tmps)
 
+
+
            (* Add the nodes first *)
            fun mkNodes([], mv, tmps) = (mv, tmps)
-             | mkNodes(F.BBLOCK{blknum, insns, succ, freq=ref w, 
-                                liveOut, ...}::blks, mv, tmps)= 
-               let val dtab = A.sub(defsTable, blknum)
-                   fun scan([], pt, i, mv, tmps) = (pt, i, mv, tmps)
-                     | scan(insn::rest, pt, i, mv, tmps) =
-                       let val (d, u) = insnDefUse insn
-                           val defs = rmvDedicated d
-                           val uses = rmvDedicated u
-                           val defs = newNodes{cost=w, pt=pt, 
-                                               defs=defs, uses=uses}
-                           val _    = UA.update(dtab, i, defs)
-                           val (mv, tmps) = 
-                                 mkMoves(insn, pt, d, u, w, mv, tmps)
-                       in  scan(rest, pt+1, i+1, mv, tmps)  
-                       end
-                   val (pt, i, mv, tmps) = 
-                       scan(!insns, progPt(blknum,1), 1, mv, tmps)
-                   val _ = if pt >= progPt(blknum+1, 0) then 
-                              error("mkNodes: too many instructions")
-                           else ()
-               in  (* If the block is escaping, then all liveout
-                    * registers are considered used here.
-                    *)
-                   case !succ of
-                      [(F.EXIT _, _)] =>
-                      let val liveSet = rmvDedicated(
-                                           uniqCells(getCell(!liveOut)))
-                      in  newNodes{cost=w, pt=progPt(blknum, 0),
+	     | mkNodes((nid, blk)::blocks, mv, tmps) = let
+	         val CFG.BLOCK{insns, freq=ref w, annotations, ...} = blk
+	         val succ = #succ graph nid
+		 val liveOut = CFG.liveOut blk
+                 val dtab = A.sub(defsTable, nid)
+		 fun scan([], pt, i, mv, tmps) = (pt, i, mv, tmps)
+		   | scan(insn::rest, pt, i, mv, tmps) =
+		     let val (d, u) = insnDefUse insn
+			 val defs = rmvDedicated d
+			 val uses = rmvDedicated u
+			 val defs = newNodes{cost=w, pt=pt, 
+					     defs=defs, uses=uses}
+			 val _    = UA.update(dtab, i, defs)
+			 val (mv, tmps) = 
+			       mkMoves(insn, pt, d, u, w, mv, tmps)
+                         fun next{block,insn} = {block=block,insn=insn+1}
+		     in  scan(rest,next pt, i+1, mv, tmps)  
+		     end
+		 val (pt, i, mv, tmps) = 
+		   scan(!insns, progPt(nid,1), 1, mv, tmps)
+               in  
+		 (* If the block is escaping, then all liveout
+		  * registers are considered used here.
+		  *)
+		  case succ 
+		   of [id] => 
+		      if id = EXIT then let
+                          val liveSet = rmvDedicated(
+                                           uniqCells(getCell(liveOut)))
+                        in  newNodes{cost=w, pt=progPt(nid, 0),
                                    defs=[], uses=liveSet}; ()
-                      end
-                   | _ => ()
-                   ;
-                   mkNodes(blks, mv, tmps)
+                        end
+		      else ()
+                    | _ => ()
+                  (*esac*);
+                  mkNodes(blocks, mv, tmps)
                end
-             | mkNodes(_::blks, mv, tmps) = mkNodes(blks, mv, tmps)
 
           (* Add the edges *)
 
            val (moves, tmps) = mkNodes(blocks, [], [])
-       in  IntHashTable.appi
+       in  
+	   IntHashTable.appi
              (let val setSpan =
                   if isOn(mode,Core.COMPUTE_SPAN) then
                   let val spanMap = IntHashTable.mkTable
@@ -396,27 +402,30 @@ struct
            if isOn(Core.SAVE_COPY_TEMPS, mode) then copyTmps := tmps else ();
            rmPseudoUses tmps;
            moves
-       end
+       end (* buildIt *)
 
        (* 
         * Build the interference graph initially.
         *)
-       fun build(G, cellkind) = 
-       let val moves = buildIt(cellkind, G)
-       in  if !dump_size then
-              let val GRAPH{nodes, bitMatrix,...} = G
-                  val insns = 
-                      foldr (fn (F.BBLOCK{insns,...},n) => length(!insns) + n 
-                              | (_,n) => n) 0 blocks
-              in  TextIO.output(!MLRiscControl.debug_stream,
-                        "RA #blocks="^i2s N^
-                        " #insns="^i2s insns^
-                        " #nodes="^i2s(IntHashTable.numItems nodes)^
-                        " #edges="^i2s(Core.BM.size(!bitMatrix))^
-                        " #moves="^i2s(length moves)^"\n")
-              end
-           else ();
-           moves
+       fun build(G, cellkind) = let
+         val moves = buildIt(cellkind, G)
+	 val i2s = Int.toString
+       in
+	 if !dump_size then let 
+	      val GRAPH{nodes, bitMatrix,...} = G
+	      val insns = 
+	        foldr (fn ((_,CFG.BLOCK{insns,...}),n) => length(!insns) + n) 0 blocks
+            in 
+	      TextIO.output
+	         (!MLRiscControl.debug_stream,
+		  "RA #blocks="^i2s N ^
+	 	    " #insns="^i2s insns ^
+                    " #nodes="^i2s(IntHashTable.numItems nodes) ^
+                    " #edges="^i2s(Core.BM.size(!bitMatrix)) ^
+                    " #moves="^i2s(length moves)^"\n")
+            end
+         else ();
+         moves
        end
 
        (* 
@@ -438,13 +447,13 @@ struct
            val _ = Core.clearGraph graph
 
            (* maps program point to registers to be spilled *)
-           val spillSet = IntHashTable.mkTable(32, NotThere)
+           val spillSet = G.PPtHashTable.mkTable(32, NotThere)
 
            (* maps program point to registers to be reloaded *)
-           val reloadSet = IntHashTable.mkTable(32, NotThere)
+           val reloadSet = G.PPtHashTable.mkTable(32, NotThere)
 
            (* maps program point to registers to be killed *)
-           val killSet = IntHashTable.mkTable(32, NotThere) 
+           val killSet = G.PPtHashTable.mkTable(32, NotThere) 
 
            val spillRewrite = Spill.spillRewrite
                               { graph=graph,
@@ -467,8 +476,8 @@ struct
            val addAffectedBlocks = IntHashTable.insert affectedBlocks
 
            fun ins set = let
-               val add  = IntHashTable.insert set
-               val look = IntHashTable.find set
+               val add  = G.PPtHashTable.insert set
+               val look = G.PPtHashTable.find set
                val look = fn r => case look r of SOME s => s | NONE => []
                fun enter(r, []) = ()
                  | enter(r, pt::pts) = 
@@ -483,8 +492,8 @@ struct
            val insReloadSet = ins reloadSet
            val insKillSet   = 
 	     let
-               val add  = IntHashTable.insert killSet
-               val look = IntHashTable.find killSet
+               val add  = G.PPtHashTable.insert killSet
+               val look = G.PPtHashTable.find killSet
                val look = fn r => case look r of SOME s => s | NONE => []
                fun enter(r, []) = ()
                  | enter(r, pt::pts) = (add(pt, r::look pt); enter(r, pts))
@@ -514,17 +523,15 @@ struct
            val _ = app markSpills nodesToSpill
 
            (* Rewrite all affected blocks *)
-           fun rewriteAll (blknum, _) =
-	     (case A.sub(blockTable, blknum) 
-              of F.BBLOCK{annotations, insns as ref instrs, ...} => let
-                    val instrs = 
-		      spillRewrite{pt=progPt(blknum, length instrs),
-				   instrs=instrs,
-				   annotations=annotations}
-                  in insns := instrs
-                  end
-              | _ => error "rewriteAll"
-             (*esac*))
+           fun rewriteAll (blknum, _) = let
+	     val (_, CFG.BLOCK{insns as ref instrs, annotations, ...}) = 
+	       A.sub(blockTable, blknum)
+	     val instrs = 
+	       spillRewrite{pt=progPt(blknum, length instrs),
+			    instrs=instrs, annotations=annotations}
+           in
+	     insns := instrs
+           end
 
 
 	   fun mark(G.NODE{color, ...}) = 

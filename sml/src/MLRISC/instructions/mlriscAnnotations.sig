@@ -4,6 +4,9 @@
  * to MLRISC.  Client-defined annotations are ignored by MLRISC. 
  *
  * -- Allen
+ * 
+ * TODO: There should be comments to say that the annotations are block
+ * or instruction annotations. -- Lal.
  *)
 
 signature MLRISC_ANNOTATIONS =
@@ -14,10 +17,10 @@ sig
     (* 
      * The branch probability of conditional branches. 
      * The client can attach this with conditional branches.
-     * This has no effect otherwise. 
+     * nnThis has no effect otherwise. 
      *
      * Currently, the annotation is recognized by the static branch prediction
-     * module. 
+     * mondule. 
      *)
    exception BRANCHPROB of int
    val BRANCH_PROB : int Annotations.property (* in percentage (0-100)*) 
@@ -30,6 +33,9 @@ sig
 
     (* No effect at all; this just allows you to insert comments *)
    val COMMENT : string Annotations.property
+
+    (* Instructions in the block should not be reordered *)
+   val NOREORDER : unit Annotations.property
 
     (* 
      * Control dependence definition and use.

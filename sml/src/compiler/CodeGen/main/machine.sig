@@ -3,14 +3,15 @@
 (* Signature to capture various aspects of the MLRISC back end *) 
 
 signature MACHINE = sig
-  structure F : FLOWGRAPH
   structure P : INSN_PROPERTIES
-	where I = F.I and C = F.C
   structure Asm : INSTRUCTION_EMITTER
-        where I = F.I and  P = F.P 
+		  where I = P.I
+  structure CFG : CONTROL_FLOW_GRAPH 
+		  where I = Asm.I
+		    and P = Asm.S.P
 
-  type mlriscPhase = string * (F.cluster -> F.cluster) 
-  val makePhase     : string * (F.cluster -> F.cluster) -> mlriscPhase
+  type mlriscPhase = string * (CFG.cfg -> CFG.cfg) 
+  val makePhase     : string * (CFG.cfg -> CFG.cfg) -> mlriscPhase
   val raPhase       : mlriscPhase 
   val optimizerHook : mlriscPhase list ref
   val finish        : unit -> unit

@@ -66,7 +66,7 @@ struct
         ([stdlink(false), stdclos(false), stdarg(false), stdcont(false), gcLink(false)] @ miscregs)
 
   local
-      structure SC = HppaCells.SortedCells
+      structure SC = CellsBasis.SortedCells
       val -- = SC.difference
       infix --
   in

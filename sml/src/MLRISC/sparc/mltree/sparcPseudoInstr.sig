@@ -6,12 +6,12 @@ signature SPARC_PSEUDO_INSTR = sig
    structure I : SPARCINSTR
 
    type format1 = 
-       {r:I.C.cell, i:I.operand, d:I.C.cell} * 
-       (I.operand -> I.C.cell) -> I.instruction list
+       {r:CellsBasis.cell, i:I.operand, d:CellsBasis.cell} * 
+       (I.operand -> CellsBasis.cell) -> I.instruction list
 
    type format2 = 
-       {i:I.operand, d:I.C.cell} * 
-       (I.operand -> I.C.cell) -> I.instruction list
+       {i:I.operand, d:CellsBasis.cell} * 
+       (I.operand -> CellsBasis.cell) -> I.instruction list
    (* 
     * Signed and unsigned multiplications.
     * These are all 32 bit operations 

@@ -11,11 +11,12 @@ sig
    structure F : RA_FLOWGRAPH 
       sharing F.I   = I
       sharing I.C   = C
+   structure CB : CELLS_BASIS = CellsBasis
 
-   type getreg = { pref  : C.cell_id list,
+   type getreg = { pref  : CB.cell_id list,
                    stamp : int, 
                    proh  : int Array.array
-                 } -> C.cell_id
+                 } -> CB.cell_id
 
    type mode = word
 
@@ -44,9 +45,9 @@ sig
     *
     *)
    type raClient = 
-   { cellkind     : C.cellkind,             (* kind of register *)
-     spillProh    : C.cell list,            (* don't spill these *)
-     memRegs      : C.cell list,            (* memory registers *)
+   { cellkind     : CB.cellkind,             (* kind of register *)
+     spillProh    : CB.cell list,            (* don't spill these *)
+     memRegs      : CB.cell list,            (* memory registers *)
      K            : int,                    (* number of colors *)
      dedicated    : int -> bool,            (* dedicated registers *)
      getreg       : getreg,                 (* how to find a color *)

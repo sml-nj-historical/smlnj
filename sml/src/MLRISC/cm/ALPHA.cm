@@ -8,6 +8,7 @@ Library
 	functor Alpha
 	functor AlphaAsmEmitter
 	functor AlphaFreqProps
+	functor AlphaGasPseudoOps
 	functor AlphaInstr
 	functor AlphaJumps
 	functor AlphaMCEmitter
@@ -51,6 +52,7 @@ is
 	../alpha/emit/alphaAsm.sml
 	../alpha/emit/alphaMC.sml
 	../alpha/backpatch/alphaJumps.sml
+	../alpha/flowgraph/alphaGasPseudoOps.sml
 	../alpha/mltree/alphaPseudoInstr.sig
 	../alpha/mltree/alpha.sml
 	../alpha/ra/alphaRewrite.sml

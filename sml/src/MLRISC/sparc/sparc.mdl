@@ -459,7 +459,7 @@ struct
        | LO of T.labexp   ``%lo(<labexp>)''  rtl: lo(labexp)
        | HI of T.labexp   ``%hi(<labexp>)''  rtl: hi(labexp)
 
-      type addressing_mode = C.cell * operand
+      type addressing_mode = CellsBasis.cell * operand
    
    end (* Instruction *)
 
@@ -480,9 +480,9 @@ struct
       in  case i of
            I.REG rs2 => error "opn"
          | I.IMMED i => itow i
-         | I.LAB l   => itow(LabelExp.valueOf l)
-         | I.LO l    => lo10(LabelExp.valueOf l)
-         | I.HI l    => hi22(LabelExp.valueOf l)
+         | I.LAB l   => itow(MLTreeEval.valueOf l)
+         | I.LO l    => lo10(MLTreeEval.valueOf l)
+         | I.HI l    => hi22(MLTreeEval.valueOf l)
       end
 
       (* basic formats, integer source registers, target type not determined.*)
@@ -594,8 +594,8 @@ struct
    struct
       (* this computes the displacement address *)
       fun disp label = itow((Label.addrOf label - !loc)) ~>> 0w2
-      val r15 = C.Reg C.GP 15
-      and r31 = C.Reg C.GP 31
+      val r15 = C.Reg CellsBasis.GP 15
+      and r31 = C.Reg CellsBasis.GP 31
    end
 
 
@@ -660,14 +660,15 @@ struct
 	rtl: ``SETHI''
 
    |  ARITH of { a:arith, r: $GP, i:operand, d: $GP }
-        asm: (case (a,C.registerId r,C.registerId d) of 
+        asm: (case (a,CellsBasis.registerId r,CellsBasis.registerId d, i) of 
                 (* generate abbreviations! *)
-               (I.OR,0,_)    => ``mov\t<i>, <d>''
-             | (I.SUBCC,_,0) => ``cmp\t<r>, <i>''
-             |  _            => ``<a>\t<r>, <i>, <d>'' 
+               (I.OR,0,_,I.REG _) => ``mov\t<i>, <d>''
+             | (I.OR,0,_,_)       => ``set\t<i>, <d>''
+             | (I.SUBCC,_,0,_)    => ``cmp\t<r>, <i>''
+             |  _                 => ``<a>\t<r>, <i>, <d>'' 
              )
         mc:  arith{a,r,i,d}
-	rtl: (case (a,C.registerId r) of 
+	rtl: (case (a,CellsBasis.registerId r) of 
                (I.OR, 0) => ``<li>''
              | _         => ``<a>''
              )
@@ -766,12 +767,12 @@ struct
                   emit ", "; 
                   emit(C.showFP d))
                  fun g(a,r,d) =
-                 let val r = C.registerNum r and d = C.registerNum d
+                 let val r = CellsBasis.registerNum r and d = CellsBasis.registerNum d
                  in  f(a,r,d); emit "\n\t"; 
                      f("fmovs",r+1,d+1) 
                  end
                  fun h(a,r,d) =
-                 let val r = C.registerNum r and d = C.registerNum d
+                 let val r = CellsBasis.registerNum r and d = CellsBasis.registerNum d
                  in  f(a,r,d); emit "\n\t"; 
                      f("fmovs",r+1,d+1); emit "\n\t";
                      f("fmovs",r+2,d+2); emit "\n\t";

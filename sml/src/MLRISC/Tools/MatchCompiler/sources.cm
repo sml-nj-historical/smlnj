@@ -1,7 +1,6 @@
 Library
 	signature MATCH_COMPILER
 	signature MATCH_GEN
-	structure TestMatchGen
 	functor MatchCompiler
 	functor MatchGen
 is
@@ -24,5 +23,3 @@ is
 	match-compiler.sml
 	match-gen.sig
 	match-gen.sml
-
-	test-match-gen.sml

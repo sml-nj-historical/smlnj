@@ -10,6 +10,7 @@ Library
 	functor HppaAsmEmitter
 	functor HppaDelaySlots
 	functor HppaFreqProps
+	functor HppaGasPseudoOps
 	functor HppaInstr
 	functor HppaJumps
 	functor HppaMCEmitter
@@ -54,6 +55,7 @@ is
 	../hppa/emit/hppaMC.sml
 	../hppa/backpatch/hppaDelaySlotProps.sml
 	../hppa/backpatch/hppaJumps.sml
+	../hppa/flowgraph/hppaGasPseudoOps.sml
 	../hppa/mltree/hppaMillicode.sig
 	../hppa/mltree/hppaLabelComp.sig
 	../hppa/mltree/hppa.sml

@@ -6,15 +6,16 @@
 
 
 functor SparcMCEmitter(structure Instr : SPARCINSTR
+                       structure MLTreeEval : MLTREE_EVAL where T = Instr.T
+                       structure Stream : INSTRUCTION_STREAM 
                        structure CodeString : CODE_STRING
                       ) : INSTRUCTION_EMITTER =
 struct
    structure I = Instr
    structure C = I.C
-   structure LabelExp = I.LabelExp
    structure Constant = I.Constant
    structure T = I.T
-   structure S = T.Stream
+   structure S = Stream
    structure P = S.P
    structure W = Word32
    
@@ -34,7 +35,7 @@ struct
        val emit_int = itow
        fun emit_word w = w
        fun emit_label l = itow(Label.addrOf l)
-       fun emit_labexp le = itow(LabelExp.valueOf le)
+       fun emit_labexp le = itow(MLTreeEval.valueOf le)
        fun emit_const c = itow(Constant.valueOf c)
        val loc = ref 0
    
@@ -49,6 +50,7 @@ struct
        in loc := i + 1; CodeString.update(i,Word8.fromLargeWord w) end
    
        fun doNothing _ = ()
+       fun fail _ = raise Fail "MCEmitter"
        fun getAnnotations () = error "getAnnotations"
    
        fun pseudoOp pOp = P.emitValue{pOp=pOp, loc= !loc,emit=eByte}
@@ -70,15 +72,15 @@ struct
             eByteW b16; 
             eByteW b8 )
        end
-   fun emit_GP r = itow (C.physicalRegisterNum r)
-   and emit_FP r = itow (C.physicalRegisterNum r)
-   and emit_Y r = itow (C.physicalRegisterNum r)
-   and emit_PSR r = itow (C.physicalRegisterNum r)
-   and emit_FSR r = itow (C.physicalRegisterNum r)
-   and emit_CC r = itow (C.physicalRegisterNum r)
-   and emit_MEM r = itow (C.physicalRegisterNum r)
-   and emit_CTRL r = itow (C.physicalRegisterNum r)
-   and emit_CELLSET r = itow (C.physicalRegisterNum r)
+   fun emit_GP r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_FP r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_Y r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_PSR r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_FSR r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CC r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_MEM r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CTRL r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CELLSET r = itow (CellsBasis.physicalRegisterNum r)
    fun emit_load (I.LDSB) = (0wx9 : Word32.word)
      | emit_load (I.LDSH) = (0wxa : Word32.word)
      | emit_load (I.LDUB) = (0wx1 : Word32.word)
@@ -238,9 +240,9 @@ struct
           (case i of
             I.REG rs2 => error "opn"
           | I.IMMED i => itow i
-          | I.LAB l => itow (LabelExp.valueOf l)
-          | I.LO l => lo10 (LabelExp.valueOf l)
-          | I.HI l => hi22 (LabelExp.valueOf l)
+          | I.LAB l => itow (MLTreeEval.valueOf l)
+          | I.LO l => lo10 (MLTreeEval.valueOf l)
+          | I.HI l => hi22 (MLTreeEval.valueOf l)
           )
        end
    and rr {op1, rd, op3, rs1, rs2} = 
@@ -453,8 +455,8 @@ struct
    fun disp label = (itow ((Label.addrOf label) - ( ! loc))) ~>> 0wx2
 
 (*#line 597.7 "sparc/sparc.mdl"*)
-   val r15 = C.Reg C.GP 15
-   and r31 = C.Reg C.GP 31
+   val r15 = C.Reg CellsBasis.GP 15
+   and r31 = C.Reg CellsBasis.GP 31
        fun emitter instr =
        let
    fun emitInstr (I.LOAD{l, d, r, i, mem}) = load {l=l, r=r, i=i, d=d}
@@ -524,7 +526,7 @@ struct
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                endCluster=doNothing,
+                endCluster=fail,
                 defineLabel=doNothing,
                 entryLabel=doNothing,
                 comment=doNothing,

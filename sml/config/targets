@@ -50,6 +50,9 @@ TARGETS="$TARGETS ml-lex"
 # (everything except smlnj-lib.cm, aka Util, itself)
 TARGETS="$TARGETS smlnj-lib"
 
+# pre-compile and install CM "portable graph" utility library
+#TARGETS="$TARGETS pgraph-util"
+
 # pre-compile and install Concurrent ML, which is a library for message-passing
 # concurrency.
 #
@@ -86,6 +89,12 @@ TARGETS="$TARGETS smlnj-lib"
 # This preview release currently works only under X86/Linux.
 #
 #TARGETS="$TARGETS ml-nlffigen"
+
+# pre-compile and install the MLRISC Tools library.
+# This library is for parsing and pretty printing SML code.
+# It's used by various MLRISC code generator generator.
+#
+#TARGETS="$TARGETS mlrisc-tools"
 
 # unpack and install the documentation directory.
 #

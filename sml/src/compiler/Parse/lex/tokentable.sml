@@ -104,10 +104,10 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
 	    let
 	    val tokFn = Tbl.map idTbl (hash, str)
 	    in
-	      if ((not(!Control.overloadKW))
+	      if ((not(!ParserControl.overloadKW))
 	         andalso (hash = overloadHash) andalso (str = "overload"))
 	        then mkId()
-	      else if ((not(!Control.lazysml))
+	      else if ((not(!ParserControl.lazysml))
 	              andalso (hash = lazyHash) andalso (str = "lazy"))
 	        then mkId()
 	      else tokFn yypos

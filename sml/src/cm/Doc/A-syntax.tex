@@ -32,10 +32,10 @@ The following lexical classes are recognized:
 {\bf functor}, or {\bf funsig}.  These keywords are recognized
 everywhere.
 \item[CM keywords:] {\bf group}, {\bf Group}, {\bf GROUP}, {\bf
-library}, {\bf Library}, {\bf LIBRARY}, {\bf is}, {\bf IS}.  These
-keywords are recognized everywhere except within ``preprocessor''
-lines (lines starting with {\bf \#}) or following one of the namespace
-specifiers.
+library}, {\bf Library}, {\bf LIBRARY}, {\bf source}, {\bf Source},
+{\bf SOURCE}, {\bf is}, {\bf IS}, {\bf *}, {\bf -}.  These keywords
+are recognized everywhere except within ``preprocessor'' lines (lines
+starting with {\bf \#}) or following one of the namespace specifiers.
 \item[Preprocessor control keywords:] {\bf \#if}, {\bf \#elif}, {\bf
 \#else}, {\bf \#endif}, {\bf \#error}.  These keywords are recognized
 only at the beginning of the line and indicate the start of a
@@ -128,20 +128,6 @@ preprocessor expressions (\nt{ppexp}):
 \nt{ppexp} &\ar& \nt{bdisj}
 \end{tabular}
 
-\subsection{EBNF for export lists}
-
-The following set of rules defines the syntax for export lists (\nt{elst}):
-
-\begin{tabular}{rcl}
-\nt{guardedexports} &\ar& \{ \nt{export} \} (\tl{\#endif} \vb
-\tl{\#else} \{ \nt{export} \} \tl{\#endif} \vb \tl{\#elif} \nt{ppexp}
-\nt{guardedexports}) \\
-\nt{restline}      &\ar& rest of current line up to next newline character \\
-\nt{export}        &\ar& \nt{mlsym} \vb \tl{\#if} \nt{ppexp}
-\nt{guardedexports} \vb \tl{\#error} \nt{restline}  \\
-\nt{elst}       &\ar& \nt{export} \{ \nt{export} \} \\
-\end{tabular}
-
 \subsection{EBNF for tool options}
 
 The following set of rules defines the syntax for tool options
@@ -150,6 +136,29 @@ The following set of rules defines the syntax for tool options
 \begin{tabular}{rcl}
 \nt{pathname} &\ar& \nt{stdpn} \vb \nt{ntvpn} \\
 \nt{toolopts} &\ar& \{ \nt{pathname} [\tl{:} (\tl{(} \nt{toolopts} \tl{)} \vb \nt{pathname})] \}
+\end{tabular}
+
+\subsection{EBNF for export lists}
+
+The following set of rules defines the syntax for export lists (\nt{elst}):
+
+\begin{tabular}{rcl}
+\nt{libkw}         &\ar& \tl{library} \vb \tl{Library} \vb \tl{LIBRARY} \\
+\nt{groupkw}       &\ar& \tl{group} \vb \tl{Group} \vb \tl{GROUP} \\
+\nt{sourcekw}      &\ar& \tl{source} \vb \tl{Source} \vb \tl{SOURCE} \\
+\nt{guardedexports} &\ar& \{ \nt{export} \} (\tl{\#endif} \vb
+   \tl{\#else} \{ \nt{export} \} \tl{\#endif} \vb \tl{\#elif} \nt{ppexp} \nt{guardedexports}) \\
+\nt{restline}      &\ar& rest of current line up to next newline character \\
+\nt{export}        &\ar& \nt{difference} \vb \tl{\#if} \nt{ppexp} \nt{guardedexports} \vb \tl{\#error} \nt{restline}  \\
+\nt{difference}    &\ar& \nt{intersection} \vb \nt{difference} \ttl{-} \nt{intersection} \\
+\nt{intersection}  &\ar& \nt{atomicset} \vb \nt{intersection} \ttl{*} \nt{atomicset} \\
+\nt{atomicset}     &\ar& \nt{mlsym} \vb \nt{union} \vb \nt{implicitset} \\
+\nt{union}         &\ar& \tl{(} [ \nt{elst} ] \tl{)} \\
+\nt{implicitset}   &\ar& \nt{sourceset} \vb \nt{subgroupset} \vb \nt{libraryset} \\
+\nt{sourceset}     &\ar& \nt{sourcekw} \tl{(} (\ttl{-} \vb \nt{pathname}) \tl{)} \\
+\nt{subgroupset}   &\ar& \nt{groupkw} \tl{(} (\ttl{-} \vb \nt{pathname}) \tl{)} \\
+\nt{libraryset}    &\ar& \nt{libkw} \tl{(} (\nt{pathname}) [\tl{(} \nt{toolopts} \tl{)}] \tl{)} \\
+\nt{elst}          &\ar& \nt{export} \{ \nt{export} \} \\
 \end{tabular}
 
 \subsection{EBNF for member lists}
@@ -173,7 +182,6 @@ undergo further analysis according to the rules given in
 section~\ref{sec:versions}:
 
 \begin{tabular}{rcl}
-\nt{libkw}     &\ar& \tl{library} \vb \tl{Library} \vb \tl{LIBRARY} \\
 \nt{version}   &\ar& \nt{stdpn} \\
 \nt{privilege} &\ar& \nt{stdpn} \\
 \nt{lprivspec} &\ar& \{ \nt{privilege} \vb \tl{(} \{ \nt{privilege} \} \tl{)} \} \\
@@ -198,7 +206,6 @@ front of the \tl{group} keyword) never appear within parentheses.
 component (group) descriptions (\nt{group}):
 
 \begin{tabular}{rcl}
-\nt{groupkw}   &\ar& \tl{group} \vb \tl{Group} \vb \tl{GROUP} \\
 \nt{owner}     &\ar& \nt{pathname} \\
 \nt{gprivspec} &\ar& \{ \nt{privilege} \} \\
 \nt{group}     &\ar& [\nt{gprivspec}] \nt{groupkw} [\tl{(} \nt{owner} \tl{)}] [\nt{elst}] (\tl{is} \vb \tl{IS}) \nt{members}

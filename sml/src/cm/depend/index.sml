@@ -1,4 +1,5 @@
-(*
+(* index.sml
+ *
  * Generating indices mapping top-level defined symbols to files
  * where they are defined.
  *
@@ -11,7 +12,6 @@ signature INDEX = sig
 	GeneralParams.info *
 	SrcPath.file *
 	{ imports: DependencyGraph.impexp SymbolMap.map,
-	  gimports: 'a,
 	  smlfiles: 'b,
 	  localdefs: SmlInfo.info SymbolMap.map,
 	  subgroups:
@@ -24,7 +24,7 @@ end
 structure Index :> INDEX = struct
     fun mkIndex (gp: GeneralParams.info, group, coll) =
 	if #get StdConfig.generate_index () then
-	    let val { imports, gimports, smlfiles, localdefs, subgroups,
+	    let val { imports, smlfiles, localdefs, subgroups,
 		      sources, reqpriv } = coll
 		val idxfile =
 		    FilenamePolicy.mkIndexName (#fnpolicy (#param gp)) group

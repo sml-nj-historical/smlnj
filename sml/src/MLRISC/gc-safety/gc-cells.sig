@@ -8,15 +8,16 @@ sig
 
    structure C  : CELLS
    structure GC : GC_TYPE
+   structure CB : CELLS_BASIS = CellsBasis
 
    (* Generate a virtual register and update the gc info at the same time. *)
-   val newCell   : C.cellkind -> GC.gctype -> C.cell
-   val setGCType : C.cell * GC.gctype -> unit
-   val getGCType : C.cell -> GC.gctype
+   val newCell   : CB.cellkind -> GC.gctype -> CB.cell
+   val setGCType : CB.cell * GC.gctype -> unit
+   val getGCType : CB.cell -> GC.gctype
 
    (* Prettty print gc type *)
-   val printType : C.cell -> string
+   val printType : CB.cell -> string
 
-   val GCLIVEOUT : (C.cell * GC.gctype) list Annotations.property
+   val GCLIVEOUT : (CB.cell * GC.gctype) list Annotations.property
 
 end

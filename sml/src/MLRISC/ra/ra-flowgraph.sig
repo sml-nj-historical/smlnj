@@ -25,6 +25,9 @@ sig
     (* Dump the flograph to a stream *)
    val dumpFlowgraph : string * flowgraph * TextIO.outstream -> unit
 
+    (* Dump the flograph to a stream *)
+   val annotations : flowgraph -> Annotations.annotations ref
+
     (*
      * Interface for communicating with the new register allocator.
      * It is expected that the services will cache enough information
@@ -32,7 +35,7 @@ sig
      * quickly.
      *)
    val services : flowgraph ->
-       { build   : G.interferenceGraph * C.cellkind-> 
+       { build   : G.interferenceGraph * CellsBasis.cellkind-> 
                       G.move list, (* build the graph *)
          spill   : {copyInstr    : Spill.copyInstr,
                     spill        : Spill.spill,
@@ -43,7 +46,7 @@ sig
                     renameSrc    : Spill.renameSrc,
                     graph        : G.interferenceGraph,
                     nodes        : G.node list,
-                    cellkind     : C.cellkind
+                    cellkind     : CellsBasis.cellkind
                    } -> G.move list,
                      (* spill/rebuild the graph *)
          programPoint : {block:int, instr:int} -> G.programPoint,

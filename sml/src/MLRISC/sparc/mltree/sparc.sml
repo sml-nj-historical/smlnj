@@ -12,9 +12,12 @@
 functor Sparc
   (structure SparcInstr : SPARCINSTR
    structure PseudoInstrs : SPARC_PSEUDO_INSTR 
+   			where I = SparcInstr
    structure ExtensionComp : MLTREE_EXTENSION_COMP
-      where I = SparcInstr 
-      sharing PseudoInstrs.I = SparcInstr
+   			where I = SparcInstr
+			  and T = SparcInstr.T
+
+			  
    (* 
     * The client should also specify these parameters.
     * These are the estimated cost of these instructions.
@@ -40,16 +43,17 @@ functor Sparc
 struct
   structure I  = SparcInstr
   structure T  = I.T
-  structure S  = T.Stream
+  structure TS = ExtensionComp.TS
   structure R  = T.Region
   structure C  = I.C
-  structure LE = I.LabelExp
+  structure CB = CellsBasis
   structure W  = Word32
   structure P  = PseudoInstrs
   structure A  = MLRiscAnnotations
+  structure CFG = ExtensionComp.CFG
 
-  type instrStream = (I.instruction,C.cellset) T.stream
-  type mltreeStream = (T.stm,T.mlrisc list) T.stream
+  type instrStream = (I.instruction, C.cellset, CFG.cfg) TS.stream
+  type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
   val int_0 = T.I.int_0
   fun toInt n = T.I.toInt(32, n)
@@ -68,8 +72,9 @@ struct
   functor Multiply32 = MLTreeMult
     (structure I = I
      structure T = T
-     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
-     type argi = {r:C.cell,i:int,d:C.cell}
+     structure CB = CellsBasis
+     type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
+     type argi = {r:CB.cell,i:int,d:CB.cell}
   
      val intTy = 32    
      fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
@@ -82,8 +87,9 @@ struct
   functor Multiply64 = MLTreeMult
     (structure I = I
      structure T = T
-     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
-     type argi = {r:C.cell,i:int,d:C.cell}
+     structure CB = CellsBasis
+     type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
+     type argi = {r:CB.cell,i:int,d:CB.cell}
       
      val intTy = 64    
      fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
@@ -160,7 +166,7 @@ struct
 
   fun selectInstructions
        (instrStream as
-        S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,getAnnotations,
+        TS.S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,getAnnotations,
                  beginCluster,endCluster,exitBlock,comment,...}) =
   let
       (* Flags *)
@@ -246,12 +252,12 @@ struct
 
       (* move register s to register d *)
       fun move(s,d,an) =
-          if C.sameColor(s,d) orelse C.registerId d = 0 then ()
+          if CB.sameColor(s,d) orelse CB.registerId d = 0 then ()
           else mark(I.COPY{dst=[d],src=[s],tmp=NONE,impl=ref NONE},an)
 
       (* move floating point register s to register d *)
       fun fmoved(s,d,an) =
-          if C.sameColor(s,d) then ()
+          if CB.sameColor(s,d) then ()
           else mark(I.FCOPY{dst=[d],src=[s],tmp=NONE,impl=ref NONE},an)
       fun fmoves(s,d,an) = fmoved(s,d,an) (* error "fmoves" for now!!! XXX *)
       fun fmoveq(s,d,an) = error "fmoveq"
@@ -407,9 +413,9 @@ struct
       (* convert mlrisc to cellset *)
       and cellset mlrisc =
       let fun g([],set) = set
-            | g(T.GPR(T.REG(_,r))::regs,set) = g(regs,C.CellSet.add(r,set))
-            | g(T.FPR(T.FREG(_,f))::regs,set) = g(regs,C.CellSet.add(f,set))
-            | g(T.CCR(T.CC(_,cc))::regs,set) = g(regs,C.CellSet.add(cc,set))
+            | g(T.GPR(T.REG(_,r))::regs,set) = g(regs,CB.CellSet.add(r,set))
+            | g(T.FPR(T.FREG(_,f))::regs,set) = g(regs,CB.CellSet.add(f,set))
+            | g(T.CCR(T.CC(_,cc))::regs,set) = g(regs,CB.CellSet.add(cc,set))
             | g(_::regs, set) = g(regs,set)
       in  g(mlrisc, C.empty) end
  
@@ -418,7 +424,7 @@ struct
 	  let val (r,i) = addr a
               val defs=cellset(defs)
               val uses=cellset(uses)
-	  in  case (C.registerId r,i) of
+	  in  case (CB.registerId r,i) of
 		  (0,I.LAB(T.LABEL l)) =>
 		  mark(I.CALL{label=l,defs=C.addReg(C.linkReg,defs),uses=uses,
                               cutsTo=cutsTo,mem=mem,nop=true},an)
@@ -440,7 +446,7 @@ struct
                  (doExpr(T.SUB(ty,a,b),newReg(),CC,[]); br(cond,lab,an)) 
           end
         | branch(T.CC(cond,r),lab,an) = 
-              if C.sameCell(r, C.psr) then br(cond,lab,an)
+              if CB.sameCell(r, C.psr) then br(cond,lab,an)
               else (genCmp0(CC,r); br(cond,lab,an))
         | branch(T.FCMP(fty,cond,a,b),lab,an) =
           let val cmp = case fty of
@@ -690,11 +696,11 @@ struct
           | e => doFexpr(Gen.compileFexp e,d,an)
 
       and doCCexpr(T.CMP(ty,cond,e1,e2),cc,an) =
-             if C.sameCell(cc,C.psr) then
+             if CB.sameCell(cc,C.psr) then
                   doExpr(T.SUB(ty,e1,e2),newReg(),CC,an)
              else error "doCCexpr"
         | doCCexpr(T.CC(_,r),d,an) = 
-             if C.sameColor(r,C.psr) then error "doCCexpr"
+             if CB.sameColor(r,C.psr) then error "doCCexpr"
              else move(r,d,an)
         | doCCexpr(T.CCMARK(e,A.MARKREG f),d,an) = (f d; doCCexpr(e,d,an))
         | doCCexpr(T.CCMARK(e,a),d,an) = doCCexpr(e,d,a::an)
@@ -715,7 +721,7 @@ struct
         | opn e              = I.REG(expr e)
 
       and reducer() =
-          T.REDUCER{reduceRexp    = expr,
+          TS.REDUCER{reduceRexp    = expr,
                     reduceFexp    = fexpr,
                     reduceCCexp   = ccExpr,
                     reduceStm     = stmt,
@@ -727,7 +733,7 @@ struct
                     mltreeStream  = self()
                    }
       and self() = 
-          S.STREAM
+          TS.S.STREAM
           { beginCluster   = beginCluster,
             endCluster     = endCluster,
             emit           = doStmt,

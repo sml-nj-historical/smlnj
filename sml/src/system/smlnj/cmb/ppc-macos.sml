@@ -4,7 +4,7 @@
  *)
 
 structure PPCMacOSCMB : CMB =
-    BootstrapCompileFn (structure MachDepVC = PPCVisComp
-			val useStream = Compiler.Interact.useStream
+    BootstrapCompileFn (structure Backend = PPCBackend
+			val useStream = Backend.Interact.useStream
 			val os = SMLofNJ.SysInfo.MACOS
 			val load_plugin = CM0.load_plugin)

@@ -22,20 +22,19 @@
  *                         contact: Gene Rollins (rollins+@cs.cmu.edu)
  *)
 signature SKELCVT = sig
-    val convert : { tree: GenericVC.Ast.dec,
-		    err: GenericVC.ErrorMsg.severity ->
-		         GenericVC.Ast.region -> string -> unit }
+    val convert : { tree: Ast.dec,
+		    err: ErrorMsg.severity -> Ast.region -> string -> unit }
 	-> { skeleton : Skeleton.decl, complain : unit -> unit }
 end
 
 structure SkelCvt :> SKELCVT = struct
 
-    open GenericVC.Ast Skeleton
+    open Ast Skeleton
 
     structure S = Symbol
-    structure SP = GenericVC.SymPath
+    structure SP = SymPath
     structure SS = SymbolSet
-    structure EM = GenericVC.ErrorMsg
+    structure EM = ErrorMsg
 
     type symbol = Symbol.symbol
     type path = symbol list

@@ -15,7 +15,7 @@ structure DirTool = struct
 
 	fun err m = raise ToolError { tool = tool, msg = m }
 
-	fun rule { spec, context, native2pathmaker, defaultClassOf } = let
+	fun rule { spec, context, native2pathmaker, defaultClassOf, sysinfo } = let
 	    val { name, mkpath, opts = too, ... } : spec = spec
 	    val pre_d = mkpath ()
 	    (* We are making up specs for the members of the directory

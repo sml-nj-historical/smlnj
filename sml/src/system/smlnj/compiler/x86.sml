@@ -1,6 +1,5 @@
-(* (C) 1999 Lucent Technologies, Bell Laboratories *)
-
-structure X86Compiler = struct
-    open X86VisComp
-    open GenericVC
-end
+(* compiler/x86.sml
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *)
+structure Backend = X86Backend

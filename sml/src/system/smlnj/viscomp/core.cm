@@ -13,7 +13,7 @@
  *)
 
 Library
-	(* this is a proxy library; exports taken from its (only) member *)
+	group($compiler/core.cm)
 is
 	(* reference to our only group... *)
-	$compiler/viscomp-core.cm
+	$compiler/core.cm

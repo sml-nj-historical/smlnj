@@ -5,12 +5,12 @@ struct
   structure C = Instr.C
 
   type format1 =
-       {r:C.cell, i:I.operand, d:C.cell} *
-       (I.operand -> I.C.cell) -> I.instruction list
+       {r:CellsBasis.cell, i:I.operand, d:CellsBasis.cell} *
+       (I.operand -> CellsBasis.cell) -> I.instruction list
 
   type format2 =
-       {i:I.operand, d:C.cell} *
-       (I.operand -> I.C.cell) -> I.instruction list
+       {i:I.operand, d:CellsBasis.cell} *
+       (I.operand -> CellsBasis.cell) -> I.instruction list
 
   fun error msg = MLRiscErrorMsg.impossible ("SparcPseudoInstrs."^msg)
 

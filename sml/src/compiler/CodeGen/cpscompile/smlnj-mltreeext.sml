@@ -14,16 +14,18 @@ end
  * used for all architectures except the x86.
  *)
 functor SMLNJMLTreeExtComp
-   (structure T : MLTREE
-    structure I : INSTRUCTIONS
-      sharing T = I.T
+   (structure TS  : MLTREE_STREAM
+    structure CFG : CONTROL_FLOW_GRAPH 
+		    where P = TS.S.P
    ) : MLTREE_EXTENSION_COMP =
 struct
-   structure T = T
-   structure I = I
-   structure C = I.C
+   structure TS = TS
+   structure T  = TS.T
+   structure I = CFG.I
+   structure CFG = CFG
+
    type reducer =
-     (I.instruction,C.cellset,I.operand,I.addressing_mode) T.reducer
+     (I.instruction,I.C.cellset,I.operand,I.addressing_mode,CFG.cfg) TS.reducer
 
    fun unimplemented _ = MLRiscErrorMsg.impossible "SMLNJMLTreeExtComp" 
 
@@ -32,3 +34,4 @@ struct
    val compileFext  = unimplemented
    val compileCCext = unimplemented
 end
+

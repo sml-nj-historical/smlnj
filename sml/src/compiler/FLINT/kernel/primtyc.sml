@@ -5,6 +5,7 @@ structure PrimTyc :> PRIM_TYC =
 struct
 
 local fun bug s = ErrorMsg.impossible ("PrimTyc: " ^ s)
+      structure PTN = PrimTycNum
 
 in
 
@@ -57,31 +58,31 @@ datatype ptyc
 type primtyc = ptyc * int * int
 
 (** the set of primitive type constructors *)
-val ptc_int31  = (PT_INT31, 0,  1)
-val ptc_int32  = (PT_INT32, 0,  2)
-val ptc_real   = (PT_REAL,  0,  3)     
-val ptc_string = (PT_STRING,0,  4)   
-val ptc_exn    = (PT_EXN,   0,  5)      
-val ptc_void   = (PT_VOID,  0,  6)     
-val ptc_array  = (PT_ARRAY, 1,  7)    
-val ptc_vector = (PT_VECTOR,1,  8)   
-val ptc_ref    = (PT_REF,   1,  9)      
-val ptc_list   = (PT_LIST,  1, 10)     
-val ptc_etag   = (PT_ETAG,  1, 11)
-val ptc_cont   = (PT_CONT,  1, 12)
-val ptc_ccont  = (PT_CCONT, 1, 13)    
-val ptc_arrow  = (PT_ARROW, 2, 14)    
-val ptc_option = (PT_OPTION,1, 15)   
-val ptc_boxed  = (PT_BOXED, 1, 16)
-val ptc_tgd    = (PT_TGD,   1, 17)      
-val ptc_utgd   = (PT_UTGD,  1, 18)     
-val ptc_tnsp   = (PT_TNSP,  1, 19)     
-val ptc_dyn    = (PT_DYN,   1, 20)      
-val ptc_obj    = (PT_OBJ,   0, 21)
-val ptc_cfun   = (PT_CFUN,  0, 22)
-val ptc_barray = (PT_BARRAY,0, 23)
-val ptc_rarray = (PT_RARRAY,0, 24)
-val ptc_slock  = (PT_SLOCK, 0, 25)
+val ptc_int31  = (PT_INT31, 0, PTN.ptn_int31)
+val ptc_int32  = (PT_INT32, 0, PTN.ptn_int32)
+val ptc_real   = (PT_REAL,  0, PTN.ptn_real)
+val ptc_string = (PT_STRING,0, PTN.ptn_string)
+val ptc_exn    = (PT_EXN,   0, PTN.ptn_exn)
+val ptc_void   = (PT_VOID,  0, PTN.ptn_void)
+val ptc_array  = (PT_ARRAY, 1, PTN.ptn_array)
+val ptc_vector = (PT_VECTOR,1, PTN.ptn_vector)
+val ptc_ref    = (PT_REF,   1, PTN.ptn_ref)
+val ptc_list   = (PT_LIST,  1, PTN.ptn_list)
+val ptc_etag   = (PT_ETAG,  1, PTN.ptn_etag)
+val ptc_cont   = (PT_CONT,  1, PTN.ptn_cont)
+val ptc_ccont  = (PT_CCONT, 1, PTN.ptn_ccont)
+val ptc_arrow  = (PT_ARROW, 2, PTN.ptn_arrow)
+val ptc_option = (PT_OPTION,1, PTN.ptn_option)
+val ptc_boxed  = (PT_BOXED, 1, PTN.ptn_boxed)
+val ptc_tgd    = (PT_TGD,   1, PTN.ptn_tgd)
+val ptc_utgd   = (PT_UTGD,  1, PTN.ptn_utgd)
+val ptc_tnsp   = (PT_TNSP,  1, PTN.ptn_tnsp)
+val ptc_dyn    = (PT_DYN,   1, PTN.ptn_dyn)
+val ptc_obj    = (PT_OBJ,   0, PTN.ptn_obj)
+val ptc_cfun   = (PT_CFUN,  0, PTN.ptn_cfun)
+val ptc_barray = (PT_BARRAY,0, PTN.ptn_barray)
+val ptc_rarray = (PT_RARRAY,0, PTN.ptn_rarray)
+val ptc_slock  = (PT_SLOCK, 0, PTN.ptn_slock)
 
 
 (** get the arity of a particular primitive tycon *)
@@ -90,34 +91,20 @@ fun pt_arity(_, i, _) = i
 (** each primitive type constructor is equipped with a key *)
 fun pt_toint (_, _, k) = k
 
-fun pt_fromint k = 
-  (case k 
-    of  1 => ptc_int31  
-     |  2 => ptc_int32  
-     |  3 => ptc_real   
-     |  4 => ptc_string 
-     |  5 => ptc_exn    
-     |  6 => ptc_void   
-     |  7 => ptc_array  
-     |  8 => ptc_vector 
-     |  9 => ptc_ref    
-     | 10 => ptc_list   
-     | 11 => ptc_etag
-     | 12 => ptc_cont   
-     | 13 => ptc_ccont  
-     | 14 => ptc_arrow  
-     | 15 => ptc_option 
-     | 16 => ptc_boxed  
-     | 17 => ptc_tgd    
-     | 18 => ptc_utgd   
-     | 19 => ptc_tnsp   
-     | 20 => ptc_dyn    
-     | 21 => ptc_obj
-     | 22 => ptc_cfun
-     | 23 => ptc_barray
-     | 24 => ptc_rarray
-     | 25 => ptc_slock
-     | _ => bug "unexpected integer in pt_fromint")
+val pt_fromint = let
+    val ptlist =
+	[ptc_int31, ptc_int32, ptc_real, ptc_string,
+	 ptc_exn, ptc_void, ptc_array, ptc_vector,
+	 ptc_ref, ptc_list, ptc_etag, ptc_cont, ptc_ccont,
+	 ptc_arrow, ptc_option, ptc_boxed, ptc_tgd, ptc_utgd,
+	 ptc_tnsp, ptc_dyn, ptc_obj, ptc_cfun, ptc_barray,
+	 ptc_rarray, ptc_slock]
+    fun gt ((_, _, n1), (_, _, n2)) = n1 > n2
+    val ptvec = Vector.fromList (ListMergeSort.sort gt ptlist)
+in
+    fn k => (Vector.sub (ptvec, k)
+	     handle Subscript => bug "unexpected integer in pt_fromint")
+end
 
 (** printing out the primitive type constructor *)
 fun pt_print (pt, _, _) =
@@ -166,5 +153,3 @@ fun isvoid ((PT_INT31 | PT_INT32 | PT_REAL | PT_STRING), _, _) = false
 
 end (* toplevel local *)
 end (* structure PrimTyc *)
-
-

@@ -8,7 +8,7 @@ EPS=	eps/big-pict.eps \
 	eps/hyperblock-formation.eps \
 	eps/if-conversion.eps \
 	eps/layers.eps \
-	eps/mlrisc-ir.eps \
+	eps/mlrisc-ir-archive.eps \
 	eps/mlrisc-IR.eps \
 	eps/phg.eps \
 	eps/region-builder.eps \
@@ -23,7 +23,7 @@ PNG=	png/compiler-1.png \
 	png/compiler-2.png \
 	png/hof-1.png \
 	png/hof-2.png \
-	png/mlrisc-ir.png \
+	png/mlrisc-ir-archive.png \
 	png/optimization.png \
 	png/sharing1.png \
 	png/sharing2.png \

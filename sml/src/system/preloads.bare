@@ -6,5 +6,12 @@
 #
 # author: Matthias Blume (blume@cs.princeton.edu)
 #
+
+# The SML Basis library:
 make $/basis.cm
+
+# The Visisble Compiler (collection of structures)
 make $smlnj/compiler.cm
+
+# The Visible Compiler (old style: structure Compiler)
+#make $smlnj/compiler/compiler.cm

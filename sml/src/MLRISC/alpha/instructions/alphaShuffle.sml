@@ -2,11 +2,11 @@ functor AlphaShuffle(I:ALPHAINSTR) : ALPHASHUFFLE = struct
   structure I = I
   structure Shuffle = Shuffle(I)
 
-  type t = {tmp:I.ea option, dst:I.C.cell list, src:I.C.cell list}
+  type t = {tmp:I.ea option, dst:CellsBasis.cell list, src:CellsBasis.cell list}
 
   val mem=I.Region.memory
 
-  val zeroR = I.REGop(Option.valOf(I.C.zeroReg I.C.GP))
+  val zeroR = I.REGop(Option.valOf(I.C.zeroReg CellsBasis.GP))
 
   fun move{src=I.Direct rs, dst=I.Direct rd} = 
         [I.OPERATE{oper=I.BIS, ra=rs, rb=zeroR, rc=rd}]

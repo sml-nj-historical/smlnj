@@ -9,36 +9,39 @@
 signature MLTREE_EXTENSION_COMP =
 sig
    structure T : MLTREE
+   structure TS : MLTREE_STREAM where T = T
    structure I : INSTRUCTIONS
-   structure C : CELLS
-      sharing T = I.T
-      sharing I.C = C
-
+   structure CFG : CONTROL_FLOW_GRAPH
+		where I = I
+	          and P = TS.S.P
    (* 
     * The reducer is given to the client during the compilation of
     * the user extensions.
     *)
    type reducer = 
-     (I.instruction,C.cellset,I.operand,I.addressing_mode) T.reducer
+     (I.instruction,I.C.cellset,I.operand,I.addressing_mode,CFG.cfg) TS.reducer
 
    val compileSext : reducer -> {stm:T.sext, an:T.an list} -> unit
-   val compileRext : reducer -> {e:T.ty * T.rext, rd:C.cell, an:T.an list} -> unit
-   val compileFext : reducer -> {e:T.ty * T.fext, fd:C.cell, an:T.an list} -> unit
-   val compileCCext : reducer -> {e:T.ty * T.ccext, ccd:C.cell, an:T.an list} -> unit
+   val compileRext : reducer -> {e:T.ty * T.rext, rd:CellsBasis.cell, an:T.an list} -> unit
+   val compileFext : reducer -> {e:T.ty * T.fext, fd:CellsBasis.cell, an:T.an list} -> unit
+   val compileCCext : reducer -> {e:T.ty * T.ccext, ccd:CellsBasis.cell, an:T.an list} -> unit
 end
+
+
+
 
 signature MLTREECOMP = 
 sig
-   structure T : MLTREE 
-   structure I : INSTRUCTIONS
-   structure C : CELLS
-   structure Gen : MLTREEGEN
-      sharing T = Gen.T
-      sharing T = I.T
-      sharing I.C = C
+   structure TS : MLTREE_STREAM
+   structure I : INSTRUCTIONS 
+   structure CFG : CONTROL_FLOW_GRAPH 
+      		where I = I
+		  and P = TS.S.P
+   structure Gen : MLTREEGEN 
+   		where T = TS.T
 
-   type instrStream = (I.instruction,C.cellset) T.stream  
-   type mltreeStream = (T.stm,T.mlrisc list) T.stream 
+   type instrStream = (I.instruction, I.C.cellset, CFG.cfg) TS.stream  
+   type mltreeStream = (TS.T.stm, TS.T.mlrisc list, CFG.cfg) TS.stream 
 
     (* 
      * The instruction selection phase converts an instruction stream
@@ -51,3 +54,7 @@ sig
      *)
    val selectInstructions : instrStream -> mltreeStream
 end
+
+
+
+

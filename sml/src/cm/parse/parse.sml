@@ -29,9 +29,9 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 
     val lookAhead = 30
 
-    structure S = GenericVC.Source
-    structure EM = GenericVC.ErrorMsg
-    structure SM = GenericVC.SourceMap
+    structure S = Source
+    structure EM = ErrorMsg
+    structure SM = SourceMap
     structure GG = GroupGraph
     structure DG = DependencyGraph
 
@@ -448,11 +448,19 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    fun inputc k = TextIO.input stream
 
 		    val tokenStream = CMParse.makeLexer inputc lexarg
+		    val parsearg =
+			{ grouppath = group,
+			  context = context,
+			  obsolete = obsolete,
+			  error = error,
+			  doMember = doMember,
+			  curlib = curlib,
+			  gp = ginfo,
+			  ig = init_group }
 		    val (parseResult, _) =
 			CMParse.parse (lookAhead, tokenStream,
 				       fn (s,p1,p2) => error (p1, p2) s,
-				       (group, context, obsolete, error,
-					doMember, curlib, ginfo, init_group))
+				       parsearg)
 		in
 		    if !(#anyErrors source) then NONE
 		    else SOME parseResult

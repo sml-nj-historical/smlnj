@@ -12,7 +12,7 @@ structure CodeString : CODE_STRING =
     val arr = ref (Word8Array.array(0, 0w0))
 
     fun init sz = let
-	  val co = CodeObj.alloc (sz, NONE)
+	  val co = CodeObj.alloc sz
 	  in
 	    obj := SOME co;
 	    arr := CodeObj.bytes co

@@ -45,9 +45,19 @@ structure PrivateTools : PRIVATETOOLS = struct
 
     type splitting = int option option
 
+    type smlparams = 
+	 { share: Sharing.request,
+	   setup: setup,
+	   split: splitting,
+	   locl: bool }
+
+    type cmparams =
+	 { version: Version.t option,
+	   rebindings: rebindings }
+
     type expansion =
-	 { smlfiles: (srcpath * Sharing.request * setup * splitting) list,
-	   cmfiles: (srcpath * Version.t option * rebindings) list,
+	 { smlfiles: (srcpath * smlparams) list,
+	   cmfiles: (srcpath * cmparams) list,
 	   sources: (srcpath * { class: string, derived: bool}) list }
 
     type partial_expansion = expansion * spec list
@@ -57,7 +67,9 @@ structure PrivateTools : PRIVATETOOLS = struct
     type rule = { spec: spec,
 		  native2pathmaker: string -> pathmaker,
 		  context: rulecontext,
-		  defaultClassOf: fnspec -> class option } ->
+		  defaultClassOf: fnspec -> class option,
+		  sysinfo: { symval: string -> int option,
+			     archos: string } } ->
 		partial_expansion
 
     type gcarg = { name: string, mkfname: unit -> string }
@@ -266,7 +278,7 @@ structure PrivateTools : PRIVATETOOLS = struct
 	loop (options, StringMap.empty, [])
     end
 
-    fun smlrule { spec, context, native2pathmaker, defaultClassOf } = let
+    fun smlrule { spec, context, native2pathmaker, defaultClassOf, sysinfo } = let
 	val { name, mkpath, opts = oto, derived, ... } : spec = spec
 	val tool = "sml"
 	fun err s = raise ToolError { tool = tool, msg = s }
@@ -282,11 +294,21 @@ structure PrivateTools : PRIVATETOOLS = struct
 			parseOptions { tool = tool,
 				       keywords = [kw_setup, kw_lambdasplit],
 				       options = to }
+		    fun is_shspec "shared" = true
+		      | is_shspec "private" = true
+		      | is_shspec _ = false
+		    val (sh_options, restoptions) =
+			List.partition is_shspec restoptions
 		    val srq =
-			case restoptions of
+			case sh_options of
 			    [] => Sharing.DONTCARE
 			  | ["shared"] => Sharing.SHARED
 			  | ["private"] => Sharing.PRIVATE
+			  | _ => err "invalid option(s)"
+		    val locl =
+			case restoptions of
+			    ["local"] => true
+			  | [] => false
 			  | _ => err "invalid option(s)"
 		    val setup =
 			case matches kw_setup of
@@ -332,13 +354,15 @@ structure PrivateTools : PRIVATETOOLS = struct
 		    (srq, setup, splitting)
 		end
 	val p = srcpath (mkpath ())
+	val sparam = { share = srq, setup = setup, split = splitting,
+		       locl = false (* FIXME *) }
     in
-	({ smlfiles = [(p, srq, setup, splitting)],
+	({ smlfiles = [(p, sparam)],
 	   sources = [(p, { class = "sml", derived = derived })],
 	   cmfiles = [] },
 	 [])
     end
-    fun cmrule { spec, context, native2pathmaker, defaultClassOf } = let
+    fun cmrule { spec, context, native2pathmaker, defaultClassOf, sysinfo } = let
 	val { name, mkpath, opts = oto, derived, ... } : spec = spec
 	fun err m = raise ToolError { tool = "cm", msg = m }
 	fun proc_opts (rb, vrq, []) = (rb, vrq)
@@ -369,14 +393,15 @@ structure PrivateTools : PRIVATETOOLS = struct
 			    NONE => ([], NONE)
 			  | SOME l => proc_opts ([], NONE, l)
 	val p = srcpath (mkpath ())
+	val cparams = { version = vrq, rebindings = rev rb }
     in
 	({ smlfiles = [],
 	   sources = [(p, { class = "cm", derived = derived })],
-	   cmfiles = [(p, vrq, rev rb)] },
+	   cmfiles = [(p, cparams)] },
 	 [])
     end
 
-    fun expand { error, local_registry = lr, spec, context, load_plugin } = let
+    fun expand { error, local_registry = lr, spec, context, load_plugin, sysinfo } = let
 	val dummy = ({ smlfiles = [], cmfiles = [], sources = [] }, [])
 	fun norule _ = dummy
 	fun native2pathmaker s () =
@@ -422,7 +447,8 @@ structure PrivateTools : PRIVATETOOLS = struct
 	in
 	    rule { spec = spec, context = rcontext,
 		   native2pathmaker = native2pathmaker,
-		   defaultClassOf = defaultClassOf (load_plugin context) }
+		   defaultClassOf = defaultClassOf (load_plugin context),
+		   sysinfo = sysinfo }
 	    handle ToolError { tool, msg } =>
 		   (error (concat ["tool \"", tool, "\" failed: ", msg]);
 		    dummy)

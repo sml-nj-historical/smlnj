@@ -13,15 +13,17 @@
 
 signature INVOKE_GC =
 sig
-   structure T     : MLTREE
-   structure Cells : CELLS
+   structure TS    : MLTREE_STREAM
+   structure CFG   : CONTROL_FLOW_GRAPH 
+		      where P = TS.S.P
+				
 
    type t = { maxAlloc : int,
-              regfmls  : T.mlrisc list,
+              regfmls  : TS.T.mlrisc list,
 	      regtys   : CPS.cty list,
-	      return   : T.stm
+	      return   : TS.T.stm
             }
-   type stream = (T.stm, T.mlrisc list) T.stream
+   type stream = (TS.T.stm, TS.T.mlrisc list, CFG.cfg) TS.stream
 
       (* initialize the state before compiling a module *)
    val init : unit -> unit
@@ -43,9 +45,9 @@ sig
 
       (* generate the actual GC invocation code *)
    val callGC : stream ->
-                {regfmls : T.mlrisc list, 
+                {regfmls : TS.T.mlrisc list, 
                  regtys : CPS.cty list,
-                 ret : T.stm
+                 ret : TS.T.stm
                 }  -> unit
 
 end

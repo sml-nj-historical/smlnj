@@ -25,7 +25,7 @@ signature UNPICKMOD = sig
 		      PersStamps.persstamp * Word8Vector.vector ->
 		      StaticEnv.staticEnv
 
-    val unpickleFLINT : Word8Vector.vector -> CompBasic.flint option
+    val unpickleFLINT : Word8Vector.vector -> FLINT.prog option
 
     (* The env unpickler resulting from "mkUnpicklers" cannot be used for
      * "original" environments that come out of the elaborator.  For those,
@@ -35,7 +35,7 @@ signature UNPICKMOD = sig
 	{ session: UnpickleUtil.session,
 	  stringlist: string list UnpickleUtil.reader } ->
 	context ->
-	{ symenv: SymbolicEnv.symenv UnpickleUtil.reader,
+	{ symenv: SymbolicEnv.env UnpickleUtil.reader,
 	  statenv: StaticEnv.staticEnv UnpickleUtil.reader,
 	  symbol: Symbol.symbol UnpickleUtil.reader,
 	  symbollist: Symbol.symbol list UnpickleUtil.reader }
@@ -527,7 +527,7 @@ structure UnpickMod : UNPICKMOD = struct
 	end
 
 	and tyckind () = let
-	    fun tk #"a" = T.PRIMITIVE (PT.pt_fromint (int ()))
+	    fun tk #"a" = T.PRIMITIVE (int ())
 	      | tk #"b" = let
 		    val index = int ()
 		    val root = entVarOption ()
@@ -557,7 +557,7 @@ structure UnpickMod : UNPICKMOD = struct
 	    fun dtf #"b" =
 		{ mkey = stamp (),
 		  members = Vector.fromList (dtmemberlist ()),
-		  lambdatyc = ref NONE }
+		  properties = PropList.newHolder () }
 	      | dtf _ = raise Format
 	in
 	    share dtfM dtf
@@ -749,8 +749,9 @@ structure UnpickMod : UNPICKMOD = struct
 			      fctflag = ff,
 			      symbols = sl,
 			      elements = el,
-			      boundeps = ref beps,
-			      lambdaty = ref NONE,
+			      properties = PropList.newHolder (),
+			      (* boundeps = ref beps, *)
+			      (* lambdaty = ref NONE, *)
 			      typsharing = ts,
 			      strsharing = ss,
 			      stub = SOME { owner = if lib then pid ()
@@ -758,6 +759,7 @@ structure UnpickMod : UNPICKMOD = struct
 					    tree = branch eltrl,
 					    lib = lib } }
 		in
+		    ModulePropLists.setSigBoundeps (r, beps);
 		    (M.SIG r, M.SIGNODE r)
 		end
 	      | sg _ = raise Format
@@ -1102,7 +1104,8 @@ structure UnpickMod : UNPICKMOD = struct
 		    ({ stamp = s,
 		       entities = e,
 		       rpath = ipath (),
-		       lambdaty = ref NONE,
+		       properties = PropList.newHolder (),
+		       (* lambdaty = ref NONE, *)
 		       stub = SOME { owner = if lib then pid ()
 					     else globalPid (),
 				     tree = etr,
@@ -1124,7 +1127,8 @@ structure UnpickMod : UNPICKMOD = struct
 		    ({ stamp = s,
 		       closure = c,
 		       rpath = ipath (),
-		       lambdaty = ref NONE,
+		       properties = PropList.newHolder (),
+		       (* lambdaty = ref NONE, *)
 		       tycpath = NONE,
 		       stub = SOME { owner = if lib then pid ()
 					     else globalPid (),
@@ -1167,7 +1171,7 @@ structure UnpickMod : UNPICKMOD = struct
 	    val bindlist = list envM (pair symBindPM (symbol, binding')) ()
 	    fun bind ((s, (b, t)), e) = StaticEnv.bind0 (s, (b, SOME t), e)
 	in
-	    Env.consolidate (foldl bind StaticEnv.empty bindlist)
+	    StaticEnv.consolidate (foldl bind StaticEnv.empty bindlist)
 	end
     in
 	env

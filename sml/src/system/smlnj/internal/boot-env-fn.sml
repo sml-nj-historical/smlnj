@@ -13,8 +13,11 @@ end
 
 functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 		  val architecture: string
-		  val cminit : string * DynamicEnv.dynenv * envrequest ->
-		               (unit -> unit) option
+		  val cminit : string * DynamicEnv.env * envrequest
+			       * (TextIO.instream -> unit)(* useStream *)
+			       * (string -> unit) (* useFile *)
+			       * ((Ast.dec * EnvRef.envref -> unit) -> unit)
+			       -> (unit -> unit) option
 		  val cmbmake: string * bool -> unit) :> BOOTENV = struct
 
     exception BootFailure
@@ -27,7 +30,7 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
     structure DirToolClassify = DirToolClassify
 
     structure DynE = DynamicEnv
-    structure Print = GenericVC.Control.Print
+    structure Print = Control.Print
 
     fun say s = (Print.say s; Print.flush ())
     fun die s = (say s; raise BootFailure)
@@ -44,14 +47,17 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 	fun initialize (bootdir, er) = let
 	    fun mkDE (U.NILrde, de) = de
 	      | mkDE (U.CONSrde (rawdynpid, obj, rest), de) = let
-		    val dynpid = GenericVC.PersStamps.fromBytes rawdynpid
+		    val dynpid = PersStamps.fromBytes rawdynpid
 		in
 		    mkDE (rest, DynE.bind (dynpid, obj, de))
 		end
 	    val de = mkDE (!U.pStruct, DynE.empty)
 	in
 	    U.pStruct := U.NILrde;
-	    cminit (bootdir, de, er)
+	    cminit (bootdir, de, er,
+		    Backend.Interact.useStream,
+		    Backend.Interact.useFile,
+		    Backend.Interact.installCompManager)
 	end
     end
 

@@ -3,6 +3,18 @@ correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
 
+[2001-10-19]
+	Added new HashCons library.
+
+[2001-10-19]
+	Added PrimeSizes module to Util library.
+
+[2001-09-27]
+	Fixed bug in UnixEnv module (reported by Leunga).
+
+[2001-05-05]
+	Added addrToString function to SockUtil module in INet library.
+
 [2001-05-04]
 	Modified GraphSCC module to support a list of roots (Blume).
 	The old interface still works, but will be dropped when we move

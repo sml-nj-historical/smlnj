@@ -69,7 +69,7 @@ struct
       local
 	  fun unREG (T.REG (_, r)) = r
 	    | unREG _ = raise Fail "sparcCpsRegs:unREG"
-	  structure SC = SparcCells.SortedCells
+	  structure SC = CellsBasis.SortedCells
 	  val -- = SC.difference
 	  infix --
       in

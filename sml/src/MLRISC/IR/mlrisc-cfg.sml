@@ -204,7 +204,7 @@ struct
                val start = newStart(i,ref 0)
                val _     = #add_node cfg (i,start)
                val j     = #new_id cfg ()
-               val stop  = newStop(i,ref 0)
+               val stop  = newStop(j,ref 0)
                val _     = #add_node cfg (j,stop) 
            in  #add_edge cfg (i,j,EDGE{k=ENTRY,w=ref 0,a=ref []});
                #set_entries cfg [i];

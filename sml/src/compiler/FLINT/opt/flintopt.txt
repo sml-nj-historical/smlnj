@@ -79,7 +79,18 @@
 	size-increase of 0 (we only inline if the body is as big as the function
 	call).  Again, this is really only useful to avoid blowing up the register
 	allocator when compiling ml.grm.sml (from about 150MB down to 80MB).
-
+** exception handling
+	CPS-contract does some optimization of exception handling.  Sadly, it
+	does it pretty slowly, so this requires many passes.  For example,
+	to eliminate the construction of an unused exception object, we need:
+	First "contract" cancels out obvious sethdlr-gethdlr pairs.
+	Second "etasplit" makes the exception handler into a known function (this
+	is necessary for optimizations such as dropargs to be effective).
+	Third, "contract" does the dropargs elimination.
+	Forth, "contract" removes the object contraction that became dead
+	at the previous round (but wasn't removed because the counters are not
+	properly updated for this specific case).
+	
 * Problems
 	The presence of types introduces some difficulties.
 ** LET([...], RAISE ..., lexp)

@@ -36,7 +36,7 @@ sig
    * numbering is in reverse.  The number 0 is reserved for "live-out".
    *
    *)
-  type programPoint = int 
+  type programPoint = {block:int, insn:int} 
 
   (* Hash table indexed by program point *)
   structure PPtHashTable : MONO_HASH_TABLE 

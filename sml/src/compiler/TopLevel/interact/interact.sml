@@ -5,63 +5,36 @@ functor Interact(EvalLoop : EVALLOOP) : INTERACT =
 struct
   exception Interrupt = EvalLoop.Interrupt
 
- (* This is where CM can install itelf into.  Added for the purpose of
-  * autoloading. (blume)
-  *)
   type envref = EnvRef.envref
 
-  fun installCompManager m = (#compManagerHook EvalLoop.stdParams) := m
+  val installCompManager = EvalLoop.installCompManager
 
-  fun interact() = (
-	EvalLoop.interact EvalLoop.stdParams;
-	OS.Process.exit OS.Process.success)
+  fun interact() = (EvalLoop.interact (); OS.Process.exit OS.Process.success)
 
-  fun useFile (fname: string) =
+  fun useFile fname =
       (app Control.Print.say ["[opening ",fname,"]\n"];
-       EvalLoop.evalStream EvalLoop.stdParams
-		  (fname,(TextIO.openIn fname
-			  handle e as IO.Io _ =>
-			      (app Control.Print.say["[use failed: ",
-						     General.exnMessage e,
-						     "]\n"];
-			       raise ErrorMsg.Error))))
+       EvalLoop.evalStream
+	   (fname, (TextIO.openIn fname
+		    handle e as IO.Io _ =>
+			   (app Control.Print.say["[use failed: ",
+						  General.exnMessage e,
+						  "]\n"];
+			    raise ErrorMsg.Error))))
 
-  fun useStream (stream: TextIO.instream) =
-    EvalLoop.evalStream EvalLoop.stdParams ("<instream>", stream)
+  fun useStream stream = EvalLoop.evalStream ("<instream>", stream)
 
-  fun evalStream (stream: TextIO.instream, baseEnv: Environment.environment) : 
-      Environment.environment =
-      let val r = ref Environment.emptyEnv
-	  val localEnvRef = {get=(fn()=> !r),set=(fn x=>r:=x)}
-	  val b = ref baseEnv
-	  val baseEnvRef = 
-            {get=(fn()=> !b),set=(fn _ => raise Fail "evalStream")}
-       in EvalLoop.evalStream
-	    ({compManagerHook = ref NONE,
-	      (* ????  should CM get its hands into that? *)
-	      baseEnvRef = baseEnvRef,
-	      localEnvRef=localEnvRef,
-	      transform=(fn x => x), 
-              instrument=(fn _ => fn x => x),
-	      perform=(fn x => x),
-	      isolate= #isolate EvalLoop.stdParams,
-	      printer= #printer EvalLoop.stdParams})
-	    ("<instream>", stream);
-	  #get localEnvRef ()
-      end
-
-  (* These mUse functions should really be part of the Open Compiler *)
-  val mUseFile_hiddenList =
-        ref [ [((fn () => (print "--mUseFile not reset!")),"Error!")] ];
-
-  fun mUseFile_reset () = (mUseFile_hiddenList := [])
-  fun mUseFile_add   f  = (mUseFile_hiddenList := (f::(!mUseFile_hiddenList)))
-  fun mUseFile_list  () = (List.rev(!mUseFile_hiddenList))
-
-  fun mUseFile (test) (fname: string) =
-      let fun repeat test n = 
-               if (test n) then (useFile fname; repeat test (n+1)) else ()
-      in repeat test 0 end
+  fun evalStream (stream, baseEnv) = let
+      val r = ref Environment.emptyEnv
+      val base = { set = fn _ => raise Fail "evalStream: #set base",
+		   get = fn () => baseEnv }
+      val loc = { set = fn e => r := e,
+		  get = fn () => !r }
+      val props = PropList.newHolder ()
+      val state = { loc = loc, base = base, props = props }
+  in
+      EnvRef.locally (state,
+		      fn () => (EvalLoop.evalStream ("<instream>", stream);
+				!r))
+  end
 
 end (* functor Interact *)
-

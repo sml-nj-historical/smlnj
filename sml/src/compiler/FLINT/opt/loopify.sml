@@ -68,18 +68,18 @@ in case le
 			fdecs
 	   fun cfun ({isrec,...}:F.fkind,f,body,I{calls,icalls,...}) =
 	       let val necalls = length(!calls)
-	       in  collect f (S.singleton f) body;
-		   icalls := List.take(!calls, length(!calls) - necalls)
+	       in collect f (S.singleton f) body;
+		  icalls := List.take(!calls, length(!calls) - necalls)
 	       end
-       in  loop le;
-	   app cfun fs
+       in loop le;
+	  app cfun fs
        end
      | F.APP(F.VAR f,vs) =>
        (let val I{tails,calls,tcp,parent,...} = get f
-       in if S.member(tfs, f) then tails := vs::(!tails)
-	  else (calls := vs::(!calls);
-		if S.member(tfs, parent) then () else tcp := false)
-       end handle NotFound => ())
+	in if S.member(tfs, f) then tails := vs::(!tails)
+	   else (calls := vs::(!calls);
+		 if S.member(tfs, parent) then () else tcp := false)
+	end handle NotFound => ())
      | F.TFN((_,_,_,body),le) => (collect p S.empty body; loop le)
      | F.TAPP _ => ()
      | F.SWITCH(v,ac,arms,def) =>
@@ -124,6 +124,7 @@ in case le
 		     f,args,body) =
 	       let val I{tcp=ref tcp,icalls=ref icalls,tails=ref tails,...} =
 		       get f
+		   val tfs = (if tcp then tfs else [])
 	       (* cpsopt uses the following condition:
 		*     escape = 0 andalso !unroll_call > 0
 		*    	    andalso (!call - !unroll_call > 1 
@@ -141,9 +142,9 @@ in case le
 		*     undone by fcontract.
 		* `C.callnb fi <= icallnb + 1': if there's only one external
 		*     call, loopification will probably (?) not be of much use
-		*     and the same benefit would be had by just moving f *)
+		*     and the same benefit would be had by just moving f.  *)
 	       in if null icalls andalso null tails
-		  then (fk, f, args, lexp m (if tcp then tfs else []) body)
+		  then (fk, f, args, lexp m tfs body)
 		  else
 		      let val cconv' =
 			      case cconv
@@ -163,11 +164,11 @@ in case le
 				      ListPair.foldr drop_invariant
 						     ([],[],[],[])
 						     (args, actuals)
-			      in ((f,ft,fcall)::(if tcp then tfs else []),
+			      in ((f,ft,fcall)::tfs,
 				  afun, acall, afree, ft)
 			      end
 
-			  (* Do the same for the non-tail loop *)
+			  (* Do the same for the non-tail loop.  *)
 			  val (nm,alfun,alcall,args,fl) =
 			      if null icalls then (m,[],[],args,f) else let
 				  val fl = cplv f
@@ -180,10 +181,10 @@ in case le
 				  afun, acall, afree, fl)
 			      end
 
-			  (* make the new body *)
+			  (* make the new body.  *)
 			  val nbody = lexp nm tfs' body
 
-			  (* wrap into a tail loop if necessary *)
+			  (* wrap into a tail loop if necessary.  *)
 			  val nbody =
 			      if null tails then nbody else
 				  F.FIX([({isrec=SOME(ltys, F.LK_TAIL),
@@ -192,7 +193,7 @@ in case le
 					  nbody)],
 				    F.APP(F.VAR ft, atcall))
 
-			  (* wrap into a non-tail loop if necessary *)
+			  (* wrap into a non-tail loop if necessary.  *)
 			  val nbody =
 			      if null icalls then nbody else
 				  F.FIX([({isrec=SOME(ltys, F.LK_LOOP),

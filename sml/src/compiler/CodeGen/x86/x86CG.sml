@@ -5,11 +5,12 @@ structure X86CG =
   MachineGen
   ( structure I          = X86Instr
     structure C          = I.C
-    structure F          = X86FlowGraph
+    structure F          = X86CFG
     structure R          = X86CpsRegs
     structure CG         = Control.CG
 
     structure MachSpec   = X86Spec
+    structure ClientPseudoOps = X86ClientPseudoOps
     structure PseudoOps  = X86PseudoOps
     structure Ext        = X86_SMLNJMLTreeExt(* x86-specific *)
     structure CpsRegs    = X86CpsRegs
@@ -17,13 +18,16 @@ structure X86CG =
     structure Asm        = X86AsmEmitter
     structure Shuffle    = X86Shuffle
 
+    val fast_floating_point = MLRiscControl.getFlag "x86-fast-fp"
+
     structure CCalls     = 
-      IA32SVID_CCalls (structure T = X86MLTree  fun ix x = x)
+      IA32SVID_CCalls (structure T = X86MLTree  fun ix x = x
+                       val fast_floating_point = fast_floating_point)
 
     structure OmitFramePtr = 
-      X86OmitFramePointer(structure I=X86Instr  structure F=X86FlowGraph 
-			  structure PC=X86PrintCluster
+      X86OmitFramePointer(structure I=X86Instr  
 			  structure MemRegs=X86MemRegs
+			  structure CFG=X86CFG
 			  val memRegBase = SOME(X86CpsRegs.vfp))
 
     val spill = CPSRegions.spill 
@@ -31,21 +35,13 @@ structure X86CG =
 
     fun error msg = MLRiscErrorMsg.error("X86CG",msg)
 
-    val fast_floating_point = MLRiscControl.getFlag "x86-fast-fp"
-
-
     fun base() = (* XXXX *)
       if !ClusterAnnotation.useVfp then X86CpsRegs.vfp else I.C.esp 
 
 
     structure MLTreeComp=
        X86(structure X86Instr=X86Instr
-           structure X86MLTree=X86MLTree
-           structure ExtensionComp = X86MLTreeExtComp
-               (structure I = X86Instr
-                structure T = X86MLTree
-               ) 
-           structure MLTreeUtils = MLTreeUtils
+	   structure MLTreeUtils = MLTreeUtils
                (structure T = X86MLTree
                 fun hashSext  _ _ = 0w0 
                 fun hashRext  _ _ = 0w0
@@ -64,6 +60,15 @@ structure X86CG =
                 fun showFext  _ _ = ""
                 fun showCCext _ _ = ""
                )
+           structure ExtensionComp = X86MLTreeExtComp
+               (structure I = X86Instr
+                structure T = X86MLTree
+		structure CFG = X86CFG
+		structure TS = X86MLTreeStream
+               ) 
+	   structure MLTreeStream = X86MLTreeStream
+           datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
+           val arch = ref Pentium (* Lowest common denominator *)
            fun cvti2f{src,ty,an} = let (* ty is always 32 for SML/NJ *)
 	     val tempMem = I.Displace{base=base(), disp=I.Immed 304, mem=stack}
            in
@@ -72,14 +77,13 @@ structure X86CG =
                 cleanup = []
                }
            end
-           datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
-           val arch = ref Pentium (* Lowest common denominator *)
            val fast_floating_point = fast_floating_point
           )
 
     structure Jumps = 
        X86Jumps(structure Instr=X86Instr
                 structure AsmEmitter=X86AsmEmitter
+		structure Eval=X86MLTreeEval 
                 structure Shuffle=X86Shuffle
                 structure MCEmitter=X86MCEmitter)
    
@@ -87,7 +91,8 @@ structure X86CG =
        BackPatch(structure Jumps=Jumps
                  structure Emitter=X86MCEmitter
                  structure Props=InsnProps
-                 structure Flowgraph=X86FlowGraph
+		 structure Placement=DefaultBlockPlacement(X86CFG)
+		 structure CFG = X86CFG
                  structure Asm=X86AsmEmitter
                  structure CodeString=CodeString)
 
@@ -95,9 +100,10 @@ structure X86CG =
     structure RA = 
       X86RA
       (structure I         = X86Instr
+       structure CB	   = CellsBasis
        structure InsnProps = InsnProps
        structure Asm       = X86AsmEmitter
-       structure F         = X86FlowGraph
+       structure CFG       = X86CFG
        structure SpillHeur = ChowHennessySpillHeur
        structure Spill     = RASpill
                              (structure Asm = X86AsmEmitter
@@ -122,7 +128,7 @@ structure X86CG =
        struct
           val avail     = R.availR
           val dedicated = R.dedicatedR
-          val memRegs   = C.Regs C.GP {from=8,to=31,step=1}
+          val memRegs   = C.Regs CB.GP {from=8,to=31,step=1}
           val phases    = [SPILL_PROPAGATION,SPILL_COLORING]
 
           (* We try to make unused memregs available for spilling 
@@ -182,7 +188,7 @@ structure X86CG =
           fun spillLoc(S, an, loc) =
             I.Displace{base=base(), disp=X86StackSpills.getFregLoc loc, mem=spill}
 
-          val fastMemRegs = C.Regs C.FP {from=8, to=31, step=1}
+          val fastMemRegs = C.Regs CB.FP {from=8, to=31, step=1}
           val fastPhases  = [SPILL_PROPAGATION,SPILL_COLORING]
       end
     ) (* X86RA *)

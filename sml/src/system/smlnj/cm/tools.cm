@@ -12,10 +12,11 @@ Library
 	structure Version
 	signature TOOLS
 	structure Tools
+	structure Subst
 is
 	$/basis.cm
 	$smlnj/internal/srcpath-lib.cm
 	$smlnj/internal/cm-lib.cm
-	$smlnj/internal/host-compiler-0.cm
+	$smlnj/internal/cm0.cm
 	tools.sml
 

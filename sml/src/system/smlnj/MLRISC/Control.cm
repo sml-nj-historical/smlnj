@@ -12,7 +12,7 @@
  * author: Matthias Blume (blume@cs.princeton.edu)
  *)     
 Library
-	(* this is a proxy library; exports taken from only member *)
+	library($SMLNJ-MLRISC/Control.cm)
 is
 	$SMLNJ-MLRISC/Control.cm
                 (bind:(anchor:Control.cm value:$SMLNJ-MLRISC)

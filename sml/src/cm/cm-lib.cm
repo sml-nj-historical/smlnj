@@ -13,6 +13,7 @@ Group (../system/smlnj/internal/cm-lib.cm)
 	structure Version
 	structure Sharing
 	signature TOOLS
+	structure Subst
 is
 	$/basis.cm
 	$/smlnj-lib.cm
@@ -42,6 +43,8 @@ is
 	depend/mklist.sml
 	depend/indegree.sml
 	depend/index.sml
+
+	depend/to-portable.sml
 
 	(* handling SML source code *)
 	smlfile/smlinfo.sml
@@ -103,8 +106,14 @@ is
 	util/sources.cm
 
 	(* compiler libraries *)
+	$smlnj/viscomp/basics.cm
+	$smlnj/viscomp/parser.cm
+	$smlnj/viscomp/elabdata.cm
+	$smlnj/viscomp/execute.cm
 	$smlnj/viscomp/core.cm
+	
 	$/pickle-lib.cm
 
 	(* auxiliary libraries *)
 	$/ml-yacc-lib.cm
+	$/pgraph.cm

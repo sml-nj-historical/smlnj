@@ -11,6 +11,6 @@ sig
    (* Partition a flowgraph into smaller subgraphs and apply
     * allocation to them individually
     *)
-   val partition : flowgraph -> C.cellkind -> (flowgraph -> flowgraph) -> unit
+   val partition : flowgraph -> CellsBasis.cellkind -> (flowgraph -> flowgraph) -> unit
 
 end

@@ -11,8 +11,9 @@ sig
    structure C : CELLS 
       sharing I.C = C
 
+   structure CB : CELLS_BASIS = CellsBasis 
    type copyInstr =
-          (C.cell list * C.cell list) * I.instruction -> I.instruction list
+          (CB.cell list * CB.cell list) * I.instruction -> I.instruction list
 
    (*
     * Spill the value associated with reg into spillLoc.
@@ -20,22 +21,22 @@ sig
     *)
    type spill =
       {instr    : I.instruction,       (* instruction where spill is to occur *)
-       reg      : C.cell,              (* register to spill *)
+       reg      : CB.cell,              (* register to spill *)
        spillLoc : G.spillLoc,          (* logical spill location *)
        kill     : bool,                (* can we kill the current node? *)
        annotations : Annotations.annotations ref (* annotations *)
       } ->
       {code     : I.instruction list,  (* instruction + spill code *)
-       proh     : C.cell list,         (* prohibited from future spilling *)
-       newReg   : C.cell option        (* the spilled value is available here *)
+       proh     : CB.cell list,         (* prohibited from future spilling *)
+       newReg   : CB.cell option        (* the spilled value is available here *)
       }
 
    (* Spill the register src into spillLoc.
     * The value is originally from register reg.
     *)
    type spillSrc =
-      {src      : C.cell,              (* register to spill from *)
-       reg      : C.cell,              (* the register *)
+      {src      : CB.cell,              (* register to spill from *)
+       reg      : CB.cell,              (* the register *)
        spillLoc : G.spillLoc,          (* logical spill location *)
        annotations : Annotations.annotations ref (* annotations *)
       } -> I.instruction list          (* spill code *)
@@ -45,7 +46,7 @@ sig
     *)
    type spillCopyTmp =
       {copy     : I.instruction,       (* copy to spill *)
-       reg      : C.cell,              (* the register *)
+       reg      : CB.cell,              (* the register *)
        spillLoc : G.spillLoc,          (* logical spill location *)
        annotations : Annotations.annotations ref (* annotations *)
       } -> I.instruction               (* spill code *)
@@ -56,13 +57,13 @@ sig
     *)
    type reload =
       {instr    : I.instruction,       (* instruction where spill is to occur *)
-       reg      : C.cell,              (* register to spill *)
+       reg      : CB.cell,              (* register to spill *)
        spillLoc : G.spillLoc,          (* logical spill location *)
        annotations : Annotations.annotations ref (* annotations *)
       } ->
       {code     : I.instruction list,  (* instr + reload code *)
-       proh     : C.cell list,         (* prohibited from future spilling *)
-       newReg   : C.cell option        (* the reloaded value is here *)
+       proh     : CB.cell list,         (* prohibited from future spilling *)
+       newReg   : CB.cell option        (* the reloaded value is here *)
       }
 
    (*
@@ -70,20 +71,20 @@ sig
     *)
    type renameSrc =
       {instr    : I.instruction,       (* instruction where spill is to occur *)
-       fromSrc  : C.cell,              (* register to rename *)
-       toSrc    : C.cell               (* register to rename to *)
+       fromSrc  : CB.cell,              (* register to rename *)
+       toSrc    : CB.cell               (* register to rename to *)
       } ->
       {code     : I.instruction list,  (* renamed instr *)
-       proh     : C.cell list,         (* prohibited from future spilling *)
-       newReg   : C.cell option        (* the renamed value is here *)
+       proh     : CB.cell list,         (* prohibited from future spilling *)
+       newReg   : CB.cell option        (* the renamed value is here *)
       }
 
    (* Reload the register dst from spillLoc. 
     * The value is originally from register reg.
     *)
    type reloadDst =
-      {dst      : C.cell,              (* register to reload to *)
-       reg      : C.cell,              (* the register *)
+      {dst      : CB.cell,              (* register to reload to *)
+       reg      : CB.cell,              (* the register *)
        spillLoc : G.spillLoc,          (* logical spill location *)
        annotations : Annotations.annotations ref (* annotations *)
       } -> I.instruction list          (* reload code *)
@@ -102,10 +103,10 @@ sig
           reloadDst    : reloadDst, 
           renameSrc    : renameSrc, 
           copyInstr    : copyInstr,
-          cellkind     : C.cellkind,
-          spillSet     : C.cell list G.PPtHashTable.hash_table,
-          reloadSet    : C.cell list G.PPtHashTable.hash_table,
-          killSet      : C.cell list G.PPtHashTable.hash_table
+          cellkind     : CB.cellkind,
+          spillSet     : CB.cell list G.PPtHashTable.hash_table,
+          reloadSet    : CB.cell list G.PPtHashTable.hash_table,
+          killSet      : CB.cell list G.PPtHashTable.hash_table
         } -> 
         { pt          : G.programPoint,              (* starting program pt *)
           annotations : Annotations.annotations ref, (* annotations *)

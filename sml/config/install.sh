@@ -72,10 +72,10 @@ LOCALPATHCONFIG=$INSTALLDIR/pathconfig # a temporary pathconfig file
 URLGETTER=unknown
 
 #
-# the path to the dir where ml-yacc, ml-burg, ml-lex, ml-build, and
-# ml-makedepend live
+# The path to the dir where ml-yacc, ml-burg, ml-lex, ml-build, and
+# ml-makedepend live.  This path will be interpreted relative to $LIBDIR.
 #
-TOOLDIR=$BINDIR
+TOOLDIR=../bin
 
 #
 # A temporary file for post-editing the pathconfig file...
@@ -191,6 +191,10 @@ uselynx() {
     lynx -source $1/$2 >$3
 }
 
+usecurl() {
+    curl -s $1/$2 >$3
+}
+
 testurlgetter() {
     (exec >/dev/null 2>&1 ; exec $*)
 }
@@ -203,6 +207,8 @@ urlgetter() {
     if [ "$URLGETTER" = unknown ] ; then
 	if testurlgetter wget --help ; then
 	    URLGETTER="fetchurl usewget"
+	elif testurlgetter curl --help ; then
+	    URLGETTER="fetchurl usecurl"
 	elif testurlgetter lynx -help ; then
 	    URLGETTER="fetchurl uselynx"
 	else
@@ -640,7 +646,7 @@ for i in $TARGETS ; do
       cml-lib)
         unpack CML $SRCDIR cml cml
 	reglib cml-lib trace-cml.cm cml/cml-lib/cm
-	reglib cml-lib smlnj-lib.cm cml/cml-lib/cm ????
+	reglib cml-lib smlnj-lib.cm cml/cml-lib/cm
 	;;
       eXene)
         unpack EXene $SRCDIR eXene eXene
@@ -655,6 +661,19 @@ for i in $TARGETS ; do
 	reglib memory.cm memory.cm ml-nlffi-lib/memory
 	reglib c-int.cm c-int.cm ml-nlffi-lib/internals
 	reglib c.cm c.cm ml-nlffi-lib
+	;;
+      pgraph-util)
+	unpack "CM source code" $SRCDIR cm cm
+	reglib pgraph-util.cm pgraph-util.cm cm/pgraph
+	;;
+      mlrisc-tools)
+	unpack "MLRISC Tools Library" $SRCDIR MLRISC MLRISC
+        reglib mlrisc-tools pp.cm MLRISC/Tools
+        reglib mlrisc-tools source-map.cm MLRISC/Tools
+        reglib mlrisc-tools sml-ast.cm MLRISC/Tools
+        reglib mlrisc-tools prec-parser.cm MLRISC/Tools
+        reglib mlrisc-tools parser.cm MLRISC/Tools
+        reglib mlrisc-tools match-compiler.cm MLRISC/Tools
 	;;
       doc)
 	unpack Doc $ROOT doc doc

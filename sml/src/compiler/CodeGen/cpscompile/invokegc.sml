@@ -6,25 +6,29 @@
  * in the presence of GC.  
  * 
  * -- Allen
- * 
  *)
 
 functor InvokeGC
-   (structure Cells : CELLS
-    structure C : CPSREGS where T.Region=CPSRegions
-    structure MS: MACH_SPEC
+   (
+    structure MS    : MACH_SPEC
+    structure C     : CPSREGS 
+		        where T.Region=CPSRegions
+    structure TS    : MLTREE_STREAM
+		        where T = C.T
+    structure CFG   : CONTROL_FLOW_GRAPH 
+		        where P = TS.S.P
    ) : INVOKE_GC =
 struct
-
+   structure CB = CellsBasis
+   structure S  = CB.SortedCells
    structure T  = C.T
    structure D  = MS.ObjDesc
    structure R  = CPSRegions
-   structure S  = Cells.SortedCells
-   structure St = T.Stream
    structure SL = SortedList
    structure GC = SMLGCType
-   structure Cells = Cells
-   structure A  = Array
+   structure Cells = C.C
+   structure CFG = CFG
+   structure TS = TS
 
    fun error msg = ErrorMsg.impossible("InvokeGC."^msg)
 
@@ -34,7 +38,7 @@ struct
               return   : T.stm
             }
 
-   type stream = (T.stm,T.mlrisc list) T.stream
+   type stream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
    val debug = Control.MLRISC.getFlag "debug-gc";
 
@@ -169,8 +173,8 @@ struct
 	* anyway (because of some RCC that happens to be in the cluster).
 	* Therefor, we test for either the real frame pointer (theFp) or
 	* the virtual frame pointer (theVfp) here. *)
-       fun isFramePtr fp = Cells.sameColor (fp, theFp) orelse
-			   Cells.sameColor (fp, theVfp)
+       fun isFramePtr fp = CB.sameColor (fp, theFp) orelse
+			   CB.sameColor (fp, theVfp)
        fun live(T.REG(_,r)::es, regs, mem) = live(es, r::regs, mem)
          | live(T.LOAD(_, T.REG(_, fp), _)::es, regs, mem) =
            if isFramePtr fp then live(es, regs, 0::mem)
@@ -188,7 +192,7 @@ struct
        {regs=S.difference(r1,r2), mem=SL.difference(m1,m2)}
  
    fun setToString{regs,mem} =
-       "{"^foldr (fn (r,s) => Cells.toString r^" "^s) "" regs
+       "{"^foldr (fn (r,s) => CB.toString r^" "^s) "" regs
           ^foldr (fn (m,s) => Int.toString m^" "^s) "" mem^"}"
 
    (* The client communicates root pointers to the gc via the following set
@@ -203,7 +207,7 @@ struct
     * It returns the label to the GC invocation block.
     *) 
    fun checkLimit(emit, maxAlloc) =
-   let val lab = Label.newLabel ""
+   let val lab = Label.anon()
        fun gotoGC(cc) = emit(T.ANNOTATION(T.BCC(cc, lab), unlikely))
    in  if maxAlloc < skidPad then
           (case C.exhausted of
@@ -228,7 +232,7 @@ struct
     * This function recomputes the base pointer address.
     *)
    fun computeBasePtr(emit,defineLabel,annotation) =
-   let val returnLab = Label.newLabel ""
+   let val returnLab = Label.anon()
        val baseExp = 
            T.ADD(addrTy, C.gcLink(vfp),
                  T.LABEXP(T.SUB(addrTy,baseOffset,T.LABEL returnLab)))
@@ -260,7 +264,7 @@ struct
      | split(T.FPR r::rl, CPS.FLTt::tl, b, i, f) = split(rl,tl,b,i,r::f)
      | split _ = error "split"
 
-   fun genGcInfo (clusterRef,known,optimized) (St.STREAM{emit,...} : stream)
+   fun genGcInfo (clusterRef,known,optimized) (TS.S.STREAM{emit,...} : stream)
                  {maxAlloc, regfmls, regtys, return} =
    let (* partition the root set into the appropriate classes *)
        val {boxed, int32, float} = split(regfmls, regtys, [], [], [])
@@ -298,10 +302,10 @@ struct
     * An array for checking cycles  
     *)
    local
-       val N = 1 + foldr (fn (r,n) => Int.max(Cells.registerNum r,n)) 
+       val N = 1 + foldr (fn (r,n) => Int.max(CB.registerNum r,n)) 
 			 0 (#regs gcrootSet)
    in
-       val clientRoots = A.array(N, ~1)
+       val clientRoots = Array.array(N, ~1)
        val stamp       = ref 0
    end
 
@@ -314,13 +318,13 @@ struct
         * Datatype binding describes the contents a gc root.
         *)
        datatype binding =
-         Reg     of Cells.cell               (* integer register *)
-       | Freg    of Cells.cell               (* floating point register*)
+         Reg     of CB.cell               (* integer register *)
+       | Freg    of CB.cell               (* floating point register*)
        | Mem     of T.rexp * R.region        (* integer memory register *)
        | Record  of {boxed: bool,            (* is it a boxed record *)
                      words:int,              (* how many words *)
-                     reg: Cells.cell,        (* address of this record *)
-                     regTmp: Cells.cell,     (* temp used for unpacking *)
+                     reg: CB.cell,        (* address of this record *)
+                     regTmp: CB.cell,     (* temp used for unpacking *)
                      fields: binding list    (* its fields *)
                     }
 
@@ -340,19 +344,19 @@ struct
        val st     = !stamp 
        val cyclic = st + 1
        val _      = if st > 100000 then stamp := 0 else stamp := st + 2
-       val N = A.length clientRoots
+       val N = Array.length clientRoots
        fun markClients [] = ()
          | markClients(T.REG(_, r)::rs) = 
-           let val rx = Cells.registerNum r
-           in  if rx < N then A.update(clientRoots, rx, st) else ();
+           let val rx = CB.registerNum r
+           in  if rx < N then Array.update(clientRoots, rx, st) else ();
                markClients rs
            end
          | markClients(_::rs) = markClients rs
        fun markGCRoots [] = ()
          | markGCRoots(T.REG(_, r)::rs) = 
-           let val rx = Cells.registerNum r
-           in  if A.sub(clientRoots, rx) = st then
-                  A.update(clientRoots, rx, cyclic)
+           let val rx = CB.registerNum r
+           in  if Array.sub(clientRoots, rx) = st then
+                  Array.update(clientRoots, rx, cyclic)
                else (); 
                markGCRoots rs
            end
@@ -514,7 +518,7 @@ struct
                fun disp n = T.ADD(addrTy, record, LI n)
                fun sel n = T.LOAD(32, disp n, R.memory)
                fun fsel n = T.FLOAD(64, disp n, R.memory)
-               val N = A.length clientRoots
+               val N = Array.length clientRoots
                (* unpack normal fields *)
                fun unpackFields(n, [], rds, rss) = (rds, rss)
                  | unpackFields(n, Freg r::bs, rds, rss) = 
@@ -527,8 +531,8 @@ struct
                      (emit(T.MV(32, regTmp, sel n));
                       unpackFields(n+4, bs, rds, rss))
                  | unpackFields(n, Reg rd::bs, rds, rss) = 
-                   let val rdx = Cells.registerNum rd
-                   in  if rdx < N andalso A.sub(clientRoots, rdx) = cyclic then
+                   let val rdx = CB.registerNum rd
+                   in  if rdx < N andalso Array.sub(clientRoots, rdx) = cyclic then
                        let val tmpR = Cells.newReg()
                        in  (* print "WARNING: CYCLE\n"; *)
                            emit(T.MV(32, tmpR, sel n));
@@ -564,7 +568,7 @@ struct
     * It packages up the roots into the appropriate
     * records, call the GC routine, then unpack the roots from the record.
     *) 
-   fun emitCallGC{stream=St.STREAM{emit, annotation, defineLabel, ...}, 
+   fun emitCallGC{stream=TS.S.STREAM{emit, annotation, defineLabel, ...}, 
                   known, boxed, int32, float, ret } =
    let fun setToMLTree{regs,mem} =
 	   map (fn r => T.REG(32,r)) regs @ 
@@ -641,9 +645,9 @@ struct
          | listify title f l  = 
              title^foldr (fn (x,"") => f x
                            | (x,y)  => f x ^", "^y) "" (S.uniq l)^" "
-   in  listify "boxed=" Cells.toString (map extract boxed)^
-       listify "int32=" Cells.toString (map extract int32)^
-       listify "float=" Cells.toString (map fextract float)
+   in  listify "boxed=" CB.toString (map extract boxed)^
+       listify "int32=" CB.toString (map extract int32)^
+       listify "float=" CB.toString (map fextract float)
    end
 
    (*
@@ -651,7 +655,7 @@ struct
     * GC calling code, with entry labels and return information.
     *)
    fun invokeGC(stream as 
-               St.STREAM{emit,defineLabel,entryLabel,exitBlock,annotation,...},
+               TS.S.STREAM{emit,defineLabel,entryLabel,exitBlock,annotation,...},
                 externalEntry) gcInfo = 
    let val {known, optimized, boxed, int32, float, regfmls, ret, lab} =
            case gcInfo of
@@ -686,15 +690,15 @@ struct
    fun sameCallingConvention
           (GCINFO{boxed=b1, int32=i1, float=f1, ret=T.JMP(ret1, _),...},
            GCINFO{boxed=b2, int32=i2, float=f2, ret=T.JMP(ret2, _),...}) =
-	  let fun eqEA(T.REG(_, r1), T.REG(_, r2)) = Cells.sameColor(r1,r2)
+	  let fun eqEA(T.REG(_, r1), T.REG(_, r2)) = CB.sameColor(r1,r2)
 		| eqEA(T.ADD(_,T.REG(_,r1),T.LI i),
 		       T.ADD(_,T.REG(_,r2),T.LI j)) =  
-		  Cells.sameColor(r1,r2) andalso T.I.EQ(32,i,j)
+		  CB.sameColor(r1,r2) andalso T.I.EQ(32,i,j)
 		| eqEA _ = false
-	      fun eqR(T.REG(_,r1), T.REG(_,r2)) = Cells.sameColor(r1,r2)
+	      fun eqR(T.REG(_,r1), T.REG(_,r2)) = CB.sameColor(r1,r2)
 		| eqR(T.LOAD(_,ea1,_), T.LOAD(_,ea2,_)) = eqEA(ea1, ea2)
 		| eqR _ = false
-	      fun eqF(T.FREG(_,f1), T.FREG(_,f2)) = Cells.sameColor(f1,f2)
+	      fun eqF(T.FREG(_,f1), T.FREG(_,f2)) = CB.sameColor(f1,f2)
 		| eqF(T.FLOAD(_,ea1,_), T.FLOAD(_,ea2,_)) = eqEA(ea1, ea2)
 		| eqF _ = false
 
@@ -717,7 +721,7 @@ struct
     * The actual GC invocation code is not generated yet.
     *)
    fun emitLongJumpsToGCInvocation
-       (stream as St.STREAM{emit,defineLabel,exitBlock,...}) =
+       (stream as TS.S.STREAM{emit,defineLabel,exitBlock,...}) =
    let (* GC code can be shared if the calling convention is the same 
         * Use linear search to find the gc subroutine.
         *)
@@ -727,7 +731,7 @@ struct
                        addrs := l :: (!addrs) 
 		   else search rest
 		 | search [] = (* no matching convention *)
-		   let val label = Label.newLabel ""
+		   let val label = Label.anon()
 		   in  lab := label;
                    moduleGcBlocks := MODULE{info=info, addrs=ref[l]}
 				     :: (!moduleGcBlocks)

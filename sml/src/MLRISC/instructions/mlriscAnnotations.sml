@@ -26,6 +26,9 @@ struct
     (* no effect at all; just allows you to insert comments *)
    val COMMENT = A.new(SOME(fn s => s))
 
+    (* Instructions in the block should not be reordered *)
+   val NOREORDER = A.new(NONE : (unit->string) option)
+
    fun listify f =
    let fun g [] = ""
          | g [x] = f x

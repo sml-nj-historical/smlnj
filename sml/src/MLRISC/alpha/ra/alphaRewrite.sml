@@ -6,9 +6,11 @@
 functor AlphaRewrite(Instr : ALPHAINSTR) = struct
   structure I=Instr
   structure C=I.C
+  structure CB=CellsBasis
+  structure CS=CB.CellSet
 
   fun rewriteUse(instr, rs, rt) = let
-    fun match r = C.sameColor(r,rs)
+    fun match r = CB.sameColor(r,rs)
     fun isRegOp (I.REGop r) = match r
       | isRegOp _ = false
     fun rwOperand(opnd as I.REGop r) = 
@@ -52,10 +54,10 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
        if match b then I.JMPL({r=r, b=rt, d=d}, labs) else instr
      | I.JSR{r, b, d, defs, uses, cutsTo, mem} =>
 	 I.JSR{r=r, b=replace b, d=d, defs=defs, 
-               uses=C.CellSet.map {from=rs,to=rt} uses, cutsTo=cutsTo, mem=mem}
+               uses=CS.map {from=rs,to=rt} uses, cutsTo=cutsTo, mem=mem}
      | I.BSR{r, lab, defs, uses, cutsTo, mem} =>
 	 I.BSR{r=r, lab=lab, defs=defs, 
-               uses=C.CellSet.map {from=rs,to=rt} uses, cutsTo=cutsTo, mem=mem}
+               uses=CS.map {from=rs,to=rt} uses, cutsTo=cutsTo, mem=mem}
      | I.RET{r,b,d} => I.RET{r=r, b=replace b, d=d}
      | I.BRANCH{b=I.BR, ...} => instr
      | I.BRANCH{b, r, lab} => if match r then I.BRANCH{b=b, r=rt, lab=lab} 
@@ -67,22 +69,22 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | I.COPY{dst, src, tmp, impl} => 
 	 I.COPY{dst=dst, src=map replace src, tmp=tmp, impl=impl}
      | I.CALL_PAL{code, def, use } => 
-         I.CALL_PAL{code=code, def=def, use=C.CellSet.map {from=rs,to=rt} use}
+         I.CALL_PAL{code=code, def=def, use=CS.map {from=rs,to=rt} use}
      | I.PSEUDOARITH{oper, ra, rb, rc, tmps} => 
          I.PSEUDOARITH{oper=oper, ra=replace ra, rb=rwOperand rb, rc=rc,
                        tmps=tmps}
      | I.ANNOTATION{i,a} =>
            I.ANNOTATION{i=rewriteUse(i,rs,rt),
                         a=case a of 
-                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
-                             C.DEF_USE{cellkind=C.GP,defs=defs,
+                           CB.DEF_USE{cellkind=CB.GP,defs,uses} =>
+                             CB.DEF_USE{cellkind=CB.GP,defs=defs,
                                        uses=map replace uses}
                           | _ => a}
      | _ => instr
   end
 
   fun frewriteUse(instr, fs, ft) = let
-     fun match f = C.sameColor(f,fs)
+     fun match f = CB.sameColor(f,fs)
     fun replace f = if match f then ft else f
     fun foperate(opClass, {oper, fa, fb, fc}) = 
       if match fa then 
@@ -106,15 +108,15 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
          I.FCMOVE{oper=oper,fa=replace fa,fb=replace fb,fc=replace fc}
      | I.JSR{r, b, d, defs, uses, cutsTo, mem} => 
          I.JSR{r=r, b=b, d=d, defs=defs, 
-               uses=C.CellSet.map {from=fs,to=ft} uses, cutsTo=cutsTo, mem=mem}
+               uses=CS.map {from=fs,to=ft} uses, cutsTo=cutsTo, mem=mem}
      | I.BSR{r, lab, defs, uses, cutsTo, mem} => 
          I.BSR{r=r, lab=lab, defs=defs, 
-               uses=C.CellSet.map {from=fs,to=ft} uses, cutsTo=cutsTo, mem=mem}
+               uses=CS.map {from=fs,to=ft} uses, cutsTo=cutsTo, mem=mem}
      | I.ANNOTATION{i,a} => 
          I.ANNOTATION{i=frewriteUse(i,fs,ft),
                       a=case a of 
-                         C.DEF_USE{cellkind=C.FP,defs,uses} =>
-                           C.DEF_USE{cellkind=C.FP,defs=defs,
+                         CB.DEF_USE{cellkind=CB.FP,defs,uses} =>
+                           CB.DEF_USE{cellkind=CB.FP,defs=defs,
                                      uses=map replace uses}
                         | _ => a}
 
@@ -122,7 +124,7 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
   end
 
   fun rewriteDef(instr, rs, rt) = let
-    fun match r = C.sameColor(r,rs)
+    fun match r = CB.sameColor(r,rs)
     fun rewrite r = if match r then rt else r
     fun ea (SOME(I.Direct r)) = SOME(I.Direct (rewrite r))
       | ea x = x
@@ -135,10 +137,10 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | I.JMPL({r, b, d}, labs) =>
        if match r then I.JMPL({r=rt, b=b, d=d}, labs) else instr
      | I.JSR{r, b, d, defs, uses, cutsTo, mem} =>
-         I.JSR{r=rewrite r, b=b, d=d, defs=C.CellSet.map {from=rs,to=rt} defs, 
+         I.JSR{r=rewrite r, b=b, d=d, defs=CS.map {from=rs,to=rt} defs, 
                uses=uses, cutsTo=cutsTo, mem=mem}
      | I.BSR{r, lab, defs, uses, cutsTo, mem} =>
-         I.BSR{r=rewrite r, lab=lab, defs=C.CellSet.map {from=rs,to=rt} defs, 
+         I.BSR{r=rewrite r, lab=lab, defs=CS.map {from=rs,to=rt} defs, 
                uses=uses, cutsTo=cutsTo, mem=mem}
      | I.RET{r, b, d} => I.RET{r=rewrite r, b=b, d=d}
      | I.BRANCH{b=I.BR, r, lab} => 
@@ -151,22 +153,22 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | I.COPY{dst, src, impl, tmp} =>
 	I.COPY{dst=map rewrite dst, src=src, tmp=ea tmp, impl=impl}
      | I.CALL_PAL{code, def, use} => 
-         I.CALL_PAL{code=code, def=C.CellSet.map {from=rs,to=rt} def, use=use}
+         I.CALL_PAL{code=code, def=CS.map {from=rs,to=rt} def, use=use}
      | I.PSEUDOARITH{oper, ra, rb, rc, tmps} => 
          I.PSEUDOARITH{oper=oper, ra=ra, rb=rb, rc=rewrite rc,
-                       tmps=C.CellSet.map {from=rs,to=rt} tmps}
+                       tmps=CS.map {from=rs,to=rt} tmps}
      | I.ANNOTATION{i,a} => 
          I.ANNOTATION{i=rewriteDef(i,rs,rt),
                         a=case a of 
-                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
-                             C.DEF_USE{cellkind=C.GP,uses=uses,
+                           CB.DEF_USE{cellkind=CB.GP,defs,uses} =>
+                             CB.DEF_USE{cellkind=CB.GP,uses=uses,
                                        defs=map rewrite defs}
                           | _ => a}
      | _ => instr
   end
 
   fun frewriteDef(instr, fs, ft) = let
-    fun match f = C.sameColor(f,fs)
+    fun match f = CB.sameColor(f,fs)
     fun rewrite f = if match f then ft else f
     fun ea (SOME(I.FDirect f)) = SOME(I.FDirect(rewrite f))
       | ea x  = x
@@ -185,19 +187,19 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
 	I.FCOPY{dst=map rewrite dst, src=src, tmp=ea tmp, impl=impl} 
      | I.FCMOVE{oper,fa,fb,fc} => I.FCMOVE{oper=oper,fa=fa,fb=fb,fc=rewrite fc}
      | I.JSR{r, b, d, defs, uses, cutsTo, mem} => 
-        I.JSR{r=r, b=b, d=d, defs=C.CellSet.map {from=fs,to=ft} defs, 
+        I.JSR{r=r, b=b, d=d, defs=CS.map {from=fs,to=ft} defs, 
               uses=uses, cutsTo=cutsTo, mem=mem}
      | I.BSR{r, lab, defs, uses, cutsTo, mem} => 
-        I.BSR{r=r, lab=lab, defs=C.CellSet.map {from=fs,to=ft} defs, 
+        I.BSR{r=r, lab=lab, defs=CS.map {from=fs,to=ft} defs, 
               uses=uses, cutsTo=cutsTo, mem=mem}
      | I.PSEUDOARITH{oper, ra, rb, rc, tmps} => 
          I.PSEUDOARITH{oper=oper, ra=ra, rb=rb, rc=rc, 
-                       tmps=C.CellSet.map {from=fs,to=ft} tmps}
+                       tmps=CS.map {from=fs,to=ft} tmps}
      | I.ANNOTATION{i,a} => 
          I.ANNOTATION{i=frewriteDef(i,fs,ft),
                         a=case a of
-                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
-                             C.DEF_USE{cellkind=C.FP,uses=uses,
+                           CB.DEF_USE{cellkind=CB.FP,defs,uses} =>
+                             CB.DEF_USE{cellkind=CB.FP,uses=uses,
                                        defs=map rewrite defs}
                           | _ => a}
      | _  => instr

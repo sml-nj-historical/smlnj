@@ -151,7 +151,15 @@ struct
      | appexp e = exp e
 
    and exp' NONE = nop
-     | exp'(SOME e) = exp e
+     | exp'(SOME e) = if isParenedExp e then exp e else paren(exp e)
+
+   and isParenedExp(IDexp _) = true
+     | isParenedExp(TUPLEexp []) = true
+     | isParenedExp(TUPLEexp [x]) = isParenedExp x
+     | isParenedExp(TUPLEexp _) = true
+     | isParenedExp(RECORDexp _) = true
+     | isParenedExp(LISTexp _) = true
+     | isParenedExp _ = false
 
    and isSym "+" = true
      | isSym "-" = true
@@ -204,32 +212,32 @@ struct
      | decl(SEQdecl ds) = decls ds
      | decl($ ds) = concat(map line (map !! ds))
      | decl(STRUCTUREdecl(id,[],s,se)) = 
-           line(! "structure" ++ ! id ++ sigexpOpt s ++ ! "=" ++ sexp se)
+           line(! "structure" ++ ! id ++ sigconOpt(s) ++ ! "=" ++ sexp se)
      | decl(STRUCTURESIGdecl(id,se)) = 
-           line(! "structure" ++ ! id ++ ! ":" ++ sigexp se)
+           line(! "structure" ++ ! id ++ !":" ++ sigexp se)
      | decl(STRUCTUREdecl(id,ds,s,se)) = 
            line(! "functor" ++ ! id ++ settab ++ !! "(" ++ settab ++
                  decls ds ++ unindent ++
-                 tab ++ !! ")" ++ unindent ++ sigexpOpt s ++ 
+                 tab ++ !! ")" ++ unindent ++ sigconOpt(s) ++ 
                  ! "=" ++ nl ++ sexp se)
      | decl(FUNCTORdecl(id,[],s,se)) = 
-           line(! "functor" ++ ! id ++ sigexpOpt s ++ ! "=" ++ nl ++ sexp se)
+           line(! "functor" ++ ! id ++ sigconOpt(s) ++ ! "=" ++ nl ++ sexp se)
      | decl(FUNCTORdecl(id,ds,s,se)) = 
            line(! "functor" ++ ! id ++ settab ++ !! "(" ++ settab ++
                  decls ds ++ unindent ++
-                 tab ++ !! ")" ++ unindent ++ sigexpOpt s ++ 
+                 tab ++ !! ")" ++ unindent ++ sigconOpt(s) ++ 
                  ! "=" ++ nl ++ sexp se)
      | decl(SIGNATUREdecl(id,se)) = 
            line(! "signature" ++ ! id ++ ! "=" ++ sigexp se)
      | decl(OPENdecl ids) = 
            line(! "open" ++ seq(nop,sp,nop)(map ident ids))
      | decl(INCLUDESIGdecl s) = line(! "include" ++ sigexp s) 
-     | decl(FUNCTORARGdecl(id,se)) = ! id ++ ! ":" ++ sigexp se
+     | decl(FUNCTORARGdecl(id,se)) = ! id ++ sigcon se
      | decl(EXCEPTIONdecl ebs) =
            line(!"exception" ++ ands(map exceptionbind ebs))
      | decl(SHARINGdecl s) = line(! "sharing" ++ ands(map share s))
      | decl(MARKdecl(l,d)) = 
-        nl++ !(SourceMap.directive l) ++nl ++ decl d 
+        nl++ !(SourceMapping.directive l) ++nl ++ decl d 
      | decl(INFIXdecl(i,ids)) = line(! "infix" ++ int i ++ concat(map ! ids))
      | decl(INFIXRdecl(i,ids)) = line(! "infixr" ++ int i ++ concat(map ! ids))
      | decl(NONFIXdecl ids) = line(! "nonfix" ++ concat(map ! ids))
@@ -247,7 +255,7 @@ struct
      | decl(VERSIONdecl _) = line(!"version ...")
      | decl(ASSEMBLYCASEdecl _) = line(!"assembly ...")
      | decl(INSTRUCTIONdecl cbs) = line(!"instruction" ++ 
-                                      tab' ~6 ++ bars (map consbind cbs))
+                                      tab' ~6 ++ consbinds cbs)
      | decl(DEBUGdecl _) = line(!"debug ...")
      | decl(RESOURCEdecl _) = line(!"resource ...")
      | decl(CPUdecl _) = line(!"cpu ...")
@@ -268,8 +276,11 @@ struct
 	sigexp se ++ !"where type" ++ ident x ++ !! "=" ++ ty t
      | sigexp(DECLsig ds) = line(!"sig") ++ block(decls ds) ++ line(!"end")
 
-   and sigexpOpt NONE = nop
-     | sigexpOpt (SOME s) = !":" ++ sigexp s
+   and sigconOpt(NONE) = nop
+     | sigconOpt(SOME s) = sigcon s
+
+   and sigcon{abstract=false,sigexp=s} = !":" ++ sigexp s
+     | sigcon{abstract=true,sigexp=s} = !":>" ++ sigexp s
 
    and sexp (IDsexp id) = ident id
      | sexp (APPsexp(a,DECLsexp ds)) = sexp a ++ nl ++ 
@@ -294,17 +305,17 @@ struct
 
    and ty(IDty id) = ident id
      | ty(TYVARty tv) = tyvar tv
-     | ty(APPty(id,[t])) = ty t ++ ident id
+     | ty(APPty(id,[t])) = pty t ++ sp ++ ident id
      | ty(APPty(id,tys)) = tuple(map ty tys) ++ sp ++ ident id
      | ty(FUNty(x,y)) = ty x ++ !! " -> " ++ pty y
      | ty(TUPLEty []) = ! "unit"
      | ty(TUPLEty [t]) = ty t
-     | ty(TUPLEty tys) = seq(!! "(",!! " * ",!! ")") (map pty tys)
+     | ty(TUPLEty tys) = seq(nop,!! " * ",nop) (map pty tys)
      | ty(RECORDty labtys) = record(map labty labtys)
      | ty(CELLty id) = 
            select( fn "pretty" => !!"$" ++ !id 
                     | "code" => !(if id = "cellset" then "C.cellset" 
-                                  else "C.cell")
+                                  else "CellsBasis.cell")
                     | mode => (error mode; nop)
                  )
      | ty(VARty(TYPEkind,i,_,ref NONE)) = !("'X"^Int.toString i)
@@ -318,8 +329,15 @@ struct
      | ty(LAMBDAty(vars,t)) = !!"\\" ++ tuple(map ty vars) ++ !!"." ++ ty t 
 
    and pty(t as FUNty _) = paren(ty t)
+     | pty(TUPLEty[t]) = pty t
+     | pty(t as TUPLEty []) = ty t
      | pty(t as TUPLEty _) = paren(ty t)
-     | pty t = ty t
+     | pty(t as RECORDty _) = ty t
+     | pty(t as IDty _) = ty t
+     | pty(t as APPty _) = ty t
+     | pty(t as VARty _) = ty t
+     | pty(t as TYVARty _) = ty t
+     | pty t = paren(ty t)
 
    and labty (id,t) = ! id ++ !! ":" ++ ty t 
 
@@ -334,6 +352,7 @@ struct
      | pat(TUPLEpat ps) = tuple(map pat ps)
      | pat(RECORDpat(lps,flex)) = 
            record(map labpat lps @ (if flex then [! "..."] else []))
+     | pat(TYPEDpat(p,t)) = paren(pat p ++ !! ":" ++ ty t)
      | pat(CONSpat(id,NONE)) = ident id 
      | pat(CONSpat(IDENT([],"::"),SOME(TUPLEpat[x,y]))) = 
            paren(pat x ++ sp ++ !!"::" ++ sp ++ pat y)
@@ -364,6 +383,8 @@ struct
 
    and funbind(FUNbind(id,c)) = bars (map (funclause id) c)
 
+   and funbinds fbs = ands (map funbind fbs) 
+
    and funclause id (CLAUSE(ps,g,e)) = 
         line(!(name id) ++ sp ++ ppats ps ++ sp ++ guard g ++ ! "=" ++ 
             sp ++ goodFunBreak ++ appexp e)
@@ -382,25 +403,33 @@ struct
 
    and fundecl [] = nop
      | fundecl fbs = (* nl ++ *) tab ++ ! "fun" ++ sp ++ settab ++ 
-                     ands (map funbind fbs) ++ unindent
+                     funbinds fbs ++ unindent
 
    and valbind (VALbind(p,e)) = 
          line(settab ++ pat p ++ sp ++ ! "=" ++ sp ++ appexp e ++ unindent)
 
+   and valbinds vbs = block(ands (map valbind vbs))
+
    and valdecl [] = nop
-     | valdecl vbs = tab ++ ! "val" ++ sp ++ block(ands (map valbind vbs))
+     | valdecl vbs = tab ++ ! "val" ++ sp ++ valbinds vbs 
  
    and datatypebind(DATATYPEbind{id,tyvars=ts,cbs,...}) =
        line(tyvars ts ++ ! id ++ ! "=") ++ 
-       tab' ~6 ++ bars (map consbind cbs)
+       tab' ~6 ++ consbinds cbs
      | datatypebind(DATATYPEEQbind{id,tyvars=ts,ty=t,...}) =
        line(tyvars ts ++ ! id ++ ! "=" ++ !"datatype" ++ ty t)
+
+   and datatypebinds ds = block(ands(map datatypebind ds))
+
+   and consbinds cbs = bars(map consbind cbs)
 
    and consbind(CONSbind{id,ty=NONE,...}) = line(! id)
      | consbind(CONSbind{id,ty=SOME t,...}) = line(! id ++ ! "of" ++ sp ++ ty t)
 
    and typebind(TYPEbind(id,ts,t)) =
        line (tyvars ts ++ !id ++ ! "=" ++ sp ++ ty t)
+
+   and typebinds tbs = block(ands (map typebind tbs))
 
    and tyvars []  = nop
      | tyvars [t] = tyvar t
@@ -414,10 +443,10 @@ struct
    and datatypedecl([],t) = tab ++ ! "type" ++ block(ands (map typebind t))
      | datatypedecl(d,t) =
        tab ++ ! "datatype" ++
-       block(ands(map datatypebind d)) ++
+       datatypebinds d ++
        (case t of
            [] => nop
-        |  _  => tab ++ ! "withtype" ++ block(ands (map typebind t))
+        |  _  => tab ++ ! "withtype" ++ typebinds t
        )
 
 end

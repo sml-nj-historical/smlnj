@@ -16,6 +16,8 @@ functor LabelExp
    val eqRext  : T.equality -> T.rext * T.rext -> bool
    val eqFext  : T.equality -> T.fext * T.fext -> bool
    val eqCCext : T.equality -> T.ccext * T.ccext -> bool
+   (* assembly output *)
+   val labelFmt : {gPrefix : string, aPrefix: string}
   ) : LABELEXP =
 struct
 
@@ -24,7 +26,6 @@ struct
    structure Constant   = T.Constant
    structure B          = T.Basis
    structure C          = CellsBasis
-   structure CI         = CellsInternal
    structure W          = Word
 
    val w = W.fromInt
@@ -32,7 +33,7 @@ struct
    val toLower = String.map Char.toLower
 
    fun error msg = MLRiscErrorMsg.error("LabelExp",msg)
-   fun wv(CI.CELL{id, ...}) = w id
+   fun wv(C.CELL{id, ...}) = w id
    fun wvs is = 
    let fun f([],h) = h
          | f(i::is,h) = f(is,wv i+h)
@@ -41,8 +42,8 @@ struct
    (*
     * Hashing
     *)
-   fun hashLabel(Label.Label{id,...}) = w id
-   and hasher() = {stm=hashStm, rexp=hashRexp, fexp=hashFexp, ccexp=hashCCexp}
+   val hashLabel = Label.hash
+   fun hasher() = {stm=hashStm, rexp=hashRexp, fexp=hashFexp, ccexp=hashCCexp}
    and hashCtrl ctrl = wv ctrl
    and hashStm stm =
       case stm of  
@@ -180,11 +181,11 @@ struct
   and hashCCexps([],h) = h
     | hashCCexps(e::es,h) = hashCCexps(es,hashCCexp e + h)
 
-  fun eqLabel(Label.Label{id=x,...},Label.Label{id=y,...}) = x=y 
-  and eqLabels([],[]) = true
+  val eqLabel = Label.same
+  fun eqLabels([],[]) = true
     | eqLabels(a::b,c::d) = eqLabel(a,c) andalso eqLabels(b,d)
     | eqLabels _ = false
-  and eqCell(CI.CELL{id=x, ...},CI.CELL{id=y, ...}) = x=y
+  and eqCell(C.CELL{id=x, ...},C.CELL{id=y, ...}) = x=y
   and eqCells([], []) = true
     | eqCells(x::xs,y::ys) = eqCell(x,y) andalso eqCells(xs,ys)
     | eqCells _ = false
@@ -448,7 +449,7 @@ struct
 
   fun toString le = toStr(le, 0) 
 
-  and toStr(T.LABEL lab, _) = Label.nameOf lab 
+  and toStr(T.LABEL lab, _) = Label.fmt labelFmt lab 
     | toStr(T.LABEXP le, p) = toStr(le, p)
     | toStr(T.CONST c, _) = 
         if !resolveConstants then prInt(Constant.valueOf c)

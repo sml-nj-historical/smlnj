@@ -15,8 +15,8 @@ struct
 
    val NO = R.noRewrite
 
-   val SZty          = IDty(IDENT([],"sz"))
-   val REGISTER_IDty = IDty(IDENT([],"register_id"))
+   val SZty          = IDty(IDENT([],"CellsBasis.sz"))
+   val REGISTER_IDty = IDty(IDENT([],"CellsBasis.register_id"))
    val showFunTy  = FUNty(REGISTER_IDty, STRINGty)
    val showWithSizeFunTy = FUNty(TUPLEty[REGISTER_IDty,SZty], STRINGty)
 
@@ -100,7 +100,7 @@ struct
        (* Client defined cellkinds *)
        val clientDefinedCellKindsSig = 
            VALSIGdecl(map (fn CELLdecl{id, ...} => id) clientDefinedCellKinds,
-                      IDty(IDENT([],"cellkind")))
+                      IDty(IDENT([],"CellsBasis.cellkind")))
        fun createCellKind(CELLdecl{id, nickname, ...}) =
              VALbind(IDpat id, 
                 APPexp(IDexp(IDENT(["CellsBasis"],"newCellKind")),
@@ -134,9 +134,9 @@ struct
                            defaults, NONE) 
 
            val count = Int.max(!to - !from + 1,0)
-           val physicalRegs = APP("ref", ID("CellsInternal.array0"))
+           val physicalRegs = APP("ref", ID("CellsBasis.array0"))
            val exp = 
-             APP("CellsInternal.DESC",
+             APP("CellsBasis.DESC",
                RECORDexp[("low",           INTexp(!from)),
                          ("high",          INTexp(!to)),
                          ("kind",          kindName id),
@@ -159,8 +159,8 @@ struct
 
        (* create CellsBasis *)
        val applyCellsCommon =
-           STRUCTUREdecl("MyCellsCommon",[],NONE,
-             APPsexp(IDsexp(IDENT([],"CellsCommon")),
+           STRUCTUREdecl("MyCells",[],NONE,
+             APPsexp(IDsexp(IDENT([],"Cells")),
                DECLsexp
                [$["exception Cells = "^strName,
                   "val firstPseudo = 256"
@@ -170,11 +170,29 @@ struct
                ]))
 
        (* User defined locations *)
+       (*
        val locationsSig = 
             map (fn LOCbind(id,NONE,_) => VALSIGdecl([id],REGISTERty)
                   | LOCbind(id,SOME _,_) =>
                      VALSIGdecl([id],FUNty(INTty,REGISTERty)))
                 locations
+       *)
+
+       (* stackptrR, asmTmpR, and fasmTmpR are in the common CELLS
+	* interface, so we do not include them in the architecture interface
+	* as well -- or we would have a duplicate specification error.
+	*)
+       val locationsSig = let
+	 fun locs(LOCbind("stackptrR",_,_)::rest) = locs rest
+	   | locs(LOCbind("asmTmpR",_,_)::rest) = locs rest
+	   | locs(LOCbind("fasmTmp",_,_)::rest) = locs rest
+	   | locs(LOCbind(id,NONE,_)::rest) = VALSIGdecl([id],REGISTERty)::locs rest
+	   | locs(LOCbind(id,SOME _,_)::rest) =
+	       VALSIGdecl([id],FUNty(INTty,REGISTERty))::locs rest
+	   | locs [] = []
+       in
+         locs locations
+       end
 
        val locationsFun0 =
            VALdecl(map (fn CELLdecl{id, ...} =>
@@ -201,7 +219,7 @@ struct
 
        (* body of signature *) 
        val sigBody = 
-          [$["include CELLS_COMMON"],
+          [$["include CELLS"],
            clientDefinedCellKindsSig,
            showFunSig,
            showWithSizeFunSig,
@@ -212,13 +230,14 @@ struct
        (* body of structure *) 
        val strBody = 
            [$["exception "^strName,
-              "fun error msg = MLRiscErrorMsg.error(\""^strName^"\",msg)"
+              "fun error msg = MLRiscErrorMsg.error(\""^strName^"\",msg)",
+	      "open CellsBasis"
              ],
             showWithSizeFuns,
             showFuns,
             clientDefinedCellKindsDecl,
             applyCellsCommon,
-            $["open MyCellsCommon"],
+            $["open MyCells"],
             addFun,
             locationsFun0,
             SEQdecl locationsFun,

@@ -1,15 +1,26 @@
 functor SparcMLTreeExtComp
-   (structure T : MLTREE where Extension = Sparc_SMLNJMLTreeExt
-    structure I : SPARCINSTR where T = T) : MLTREE_EXTENSION_COMP =
+   (structure T : MLTREE 
+   		where Extension = Sparc_SMLNJMLTreeExt
+    structure I : SPARCINSTR
+    		where T = T
+    structure Stream : MLTREE_STREAM
+                where T = I.T
+    structure CFG : CONTROL_FLOW_GRAPH 
+    		where I = I
+                  and P = Stream.S.P
+   ) : MLTREE_EXTENSION_COMP =
 struct
-   structure T = T
+   structure TS = Stream
    structure I = I
+   structure T = I.T
    structure C = I.C
    structure Ext = Sparc_SMLNJMLTreeExt
-   structure SparcCompInstrExt = SparcCompInstrExt(I)
+   structure CFG = CFG
+   structure SparcCompInstrExt = 
+     SparcCompInstrExt(structure I = I structure CFG = CFG structure TS=Stream)
 
    type reducer = 
-     (I.instruction,C.cellset,I.operand,I.addressing_mode) T.reducer
+     (I.instruction,C.cellset,I.operand,I.addressing_mode, CFG.cfg) TS.reducer
 
    fun unimplemented _ = MLRiscErrorMsg.impossible "SparcMLTreeExtComp" 
 

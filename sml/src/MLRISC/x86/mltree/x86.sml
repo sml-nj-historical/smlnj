@@ -40,9 +40,11 @@ in
 functor X86
   (structure X86Instr : X86INSTR
    structure MLTreeUtils : MLTREE_UTILS
-     where T = X86Instr.T
+			where T = X86Instr.T
    structure ExtensionComp : MLTREE_EXTENSION_COMP
-     where I = X86Instr
+     			where I = X86Instr and T = X86Instr.T
+   structure MLTreeStream : MLTREE_STREAM
+			where T = ExtensionComp.T
     datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
     val arch : arch ref
     val cvti2f : 
@@ -65,15 +67,16 @@ functor X86
 struct
   structure I = X86Instr
   structure T = I.T
-  structure S = T.Stream
+  structure TS = ExtensionComp.TS
   structure C = I.C
   structure Shuffle = Shuffle(I)
   structure W32 = Word32
-  structure LE = I.LabelExp
   structure A = MLRiscAnnotations
+  structure CFG = ExtensionComp.CFG
+  structure CB = CellsBasis
 
-  type instrStream = (I.instruction,C.cellset) T.stream
-  type mltreeStream = (T.stm,T.mlrisc list) T.stream
+  type instrStream = (I.instruction,C.cellset,CFG.cfg) TS.stream
+  type mltreeStream = (T.stm,T.mlrisc list,CFG.cfg) TS.stream
 
   datatype kind = REAL | INTEGER
  
@@ -94,15 +97,15 @@ struct
 
   (* The following hardcoded *)
   fun isMemReg r = rewriteMemReg andalso 
-                   let val r = C.registerNum r
+                   let val r = CB.registerNum r
                    in  r >= 8 andalso r < 32 
                    end
   fun isFMemReg r = if enableFastFPMode andalso !fast_floating_point
-                    then let val r = C.registerNum r
+                    then let val r = CB.registerNum r
                          in r >= 8 andalso r < 32 end
                     else true
   val isAnyFMemReg = List.exists (fn r => 
-                                  let val r = C.registerNum r  
+                                  let val r = CB.registerNum r  
                                   in  r >= 8 andalso r < 32 end
                                  )
 
@@ -128,7 +131,7 @@ struct
    *)
   fun selectInstructions 
        (instrStream as
-        S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,getAnnotations,
+        TS.S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,getAnnotations,
                  beginCluster,endCluster,exitBlock,comment,...}) =
   let exception EA
 
@@ -146,7 +149,7 @@ struct
       fun trap() =
       let val jmp = 
             case !trapLabel of 
-              NONE => let val label = Label.newLabel "trap"
+              NONE => let val label = Label.label "trap" ()
                           val jmp   = I.JCC{cond=I.O, 
                                             opnd=I.ImmedLabel(T.LABEL label)}
                       in  trapLabel := SOME(jmp, label); jmp end
@@ -177,13 +180,13 @@ struct
       fun copy([], [], an) = ()
         | copy(dst, src, an) = 
           let fun mvInstr{dst as I.MemReg rd, src as I.MemReg rs} = 
-                  if C.sameColor(rd,rs) then [] else
+                  if CB.sameColor(rd,rs) then [] else
                   let val tmpR = I.Direct(newReg())
                   in  [I.MOVE{mvOp=I.MOVL, src=src, dst=tmpR},
                        I.MOVE{mvOp=I.MOVL, src=tmpR, dst=dst}]
                   end
                 | mvInstr{dst=I.Direct rd, src=I.Direct rs} = 
-                    if C.sameColor(rd,rs) then [] 
+                    if CB.sameColor(rd,rs) then [] 
                     else [I.COPY{dst=[rd], src=[rs], tmp=NONE}]
                 | mvInstr{dst, src} = [I.MOVE{mvOp=I.MOVL, src=src, dst=dst}]
           in
@@ -288,7 +291,7 @@ struct
 
       (* Move and annotate *) 
       fun move'(src as I.Direct s, dst as I.Direct d, an) =
-          if C.sameColor(s,d) then ()
+          if CB.sameColor(s,d) then ()
           else mark(I.COPY{dst=[d], src=[s], tmp=NONE}, an)
         | move'(I.Immed 0, dst as I.Direct d, an) = 
             mark(I.BINARY{binOp=I.XORL, src=dst, dst=dst}, an)
@@ -366,7 +369,7 @@ struct
           (* generate code for tree and ensure that it is not in %esp *)
           and exprNotEsp tree =
               let val r = expr tree
-              in  if C.sameColor(r, C.esp) then 
+              in  if CB.sameColor(r, C.esp) then 
                      let val tmp = newReg()
                      in  move(I.Direct r, I.Direct tmp); tmp end
                   else r
@@ -378,9 +381,9 @@ struct
             | displace(trees, t, b as SOME base, NONE, _, d) = (* no index *)
               (* make t the index, but make sure that it is not %esp! *)
               let val i = expr t
-              in  if C.sameColor(i, C.esp) then
+              in  if CB.sameColor(i, C.esp) then
                     (* swap base and index *)
-                    if C.sameColor(base, C.esp) then
+                    if CB.sameColor(base, C.esp) then
                        doEA(trees, SOME i, b, 0, d)
                     else  (* base and index = %esp! *)
                        let val index = newReg()
@@ -455,11 +458,11 @@ struct
           * Compute an integer expression and put the result in 
           * the destination register rd.  
           *)
-      and doExpr(exp, rd : I.C.cell, an) = 
+      and doExpr(exp, rd : CB.cell, an) = 
           let val rdOpnd = IntReg rd
 
-              fun equalRd(I.Direct r) = C.sameColor(r, rd)
-                | equalRd(I.MemReg r) = C.sameColor(r, rd)
+              fun equalRd(I.Direct r) = CB.sameColor(r, rd)
+                | equalRd(I.MemReg r) = CB.sameColor(r, rd)
                 | equalRd _ = false
 
                  (* Emit a binary operator.  If the destination is
@@ -553,7 +556,7 @@ struct
                      let val pow = T.LI(T.I.fromInt(32,log2 w))
                      in  if signed then 
                          (* signed; simulate round towards zero *)
-                         let val label = Label.newLabel ""
+                         let val label = Label.anon()
                              val reg1  = expr e1
                              val opnd1 = I.Direct reg1
                          in  if setZeroBit e1 then ()
@@ -770,12 +773,12 @@ struct
                   (* Generate addition *)
               fun addition(e1, e2) =
                   case e1 of
-                    T.REG(_,rs) => if C.sameColor(rs,rd) then addN e2 
+                    T.REG(_,rs) => if CB.sameColor(rs,rd) then addN e2 
                                    else addition1(e1,e2)
                   | _ => addition1(e1,e2)
               and addition1(e1, e2) =
                   case e2 of
-                    T.REG(_,rs) => if C.sameColor(rs,rd) then addN e1 
+                    T.REG(_,rs) => if CB.sameColor(rs,rd) then addN e1 
                                    else addition2(e1,e2)
                   | _ => addition2(e1,e2) 
               and addition2(e1,e2) =     
@@ -964,12 +967,12 @@ struct
 
           (* %eflags <- src *)
       and moveToEflags src =
-          if C.sameColor(src, C.eflags) then ()
+          if CB.sameColor(src, C.eflags) then ()
           else (move(I.Direct src, eax); emit(I.LAHF))
 
           (* dst <- %eflags *) 
       and moveFromEflags dst =
-          if C.sameColor(dst, C.eflags) then ()
+          if CB.sameColor(dst, C.eflags) then ()
           else (emit(I.SAHF); move(eax, I.Direct dst))
 
          (* generate a condition code expression 
@@ -981,7 +984,7 @@ struct
            moveFromEflags rd
           ) 
         | doCCexpr(T.CC(cond,rs), rd, an) = 
-          if C.sameColor(rs,C.eflags) orelse C.sameColor(rd,C.eflags) then
+          if CB.sameColor(rs,C.eflags) orelse CB.sameColor(rd,C.eflags) then
              (moveToEflags rs; moveFromEflags rd)
           else
              move'(I.Direct rs, I.Direct rd, an)
@@ -1052,7 +1055,7 @@ struct
        (* convert mlrisc to cellset:
         *)
        and cellset mlrisc =
-           let val addCCReg = C.CellSet.add 
+           let val addCCReg = CB.CellSet.add 
                fun g([],acc) = acc
                  | g(T.GPR(T.REG(_,r))::regs,acc)  = g(regs,C.addReg(r,acc))
                  | g(T.FPR(T.FREG(_,f))::regs,acc) = g(regs,C.addFreg(f,acc))
@@ -1066,7 +1069,7 @@ struct
       let fun return(set, []) = set
             | return(set, a::an) =
               case #peek A.RETURN_ARG a of 
-                SOME r => return(C.CellSet.add(r, set), an)
+                SOME r => return(CB.CellSet.add(r, set), an)
               | NONE => return(set, an)
       in
 	  mark(I.CALL{opnd=operand ea,defs=cellset(def),uses=cellset(use),
@@ -1082,7 +1085,7 @@ struct
           let val src = 
                  case immedOrReg(operand d) of
                      src as I.Direct r =>
-                       if C.sameColor(r,C.eax) 
+                       if CB.sameColor(r,C.eax) 
                        then src else (move(src, eax); eax)
                    | src => src
           in  mark(I.MOVE{mvOp=mvOp, src=src, dst=address(ea,mem)},an)
@@ -1244,7 +1247,7 @@ struct
       and fload'(fty, ea, mem, fd, an) = 
             let val ea = address(ea, mem)
             in  mark(fld(fty, ea), an); 
-                if C.sameColor(fd,ST0) then () 
+                if CB.sameColor(fd,ST0) then () 
                 else emit(fstp(fty, I.FDirect fd))
             end
 
@@ -1252,18 +1255,18 @@ struct
           
           (* generate floating point expression and put the result in fd *)
       and doFexpr'(fty, T.FREG(_, fs), fd, an) = 
-            (if C.sameColor(fs,fd) then () 
+            (if CB.sameColor(fs,fd) then () 
              else mark(I.FCOPY{dst=[fd], src=[fs], tmp=NONE}, an)
             )
         | doFexpr'(_, T.FLOAD(fty, ea, mem), fd, an) = 
             fload'(fty, ea, mem, fd, an)
         | doFexpr'(fty, T.FEXT fexp, fd, an) = 
             (ExtensionComp.compileFext (reducer()) {e=fexp, fd=fd, an=an};
-             if C.sameColor(fd,ST0) then () else emit(fstp(fty, I.FDirect fd))
+             if CB.sameColor(fd,ST0) then () else emit(fstp(fty, I.FDirect fd))
             )
         | doFexpr'(fty, e, fd, an) =
             (reduceFexp(fty, e, []);
-             if C.sameColor(fd,ST0) then ()
+             if CB.sameColor(fd,ST0) then ()
              else mark(fstp(fty, I.FDirect fd), an)
             )
 
@@ -1345,7 +1348,7 @@ struct
 
               and sameTree(LEAF(_, T.FREG(t1,f1), []), 
                            LEAF(_, T.FREG(t2,f2), [])) = 
-                        t1 = t2 andalso C.sameColor(f1,f2)
+                        t1 = t2 andalso CB.sameColor(f1,f2)
                 | sameTree _ = false
 
               (* Traverse tree and generate code *)
@@ -1544,7 +1547,7 @@ struct
 
       and doFexpr''(fty, e, fd, an) = 
           case e of
-            T.FREG(_,fs) => if C.sameColor(fs,fd) then () 
+            T.FREG(_,fs) => if CB.sameColor(fs,fd) then () 
                             else fcopy''(fty, [fd], [fs], an)
             (* Stupid x86 does everything as 80-bits internally. *)
 
@@ -1752,7 +1755,7 @@ struct
          )
 
       and reducer() = 
-          T.REDUCER{reduceRexp    = expr,
+          TS.REDUCER{reduceRexp    = expr,
                     reduceFexp    = fexpr,
                     reduceCCexp   = ccExpr,
                     reduceStm     = stmt,
@@ -1765,7 +1768,7 @@ struct
                    }
 
       and self() =
-          S.STREAM
+          TS.S.STREAM
           {  beginCluster   = beginCluster',
              endCluster     = endCluster',
              emit           = doStmt,

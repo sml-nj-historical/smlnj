@@ -7,9 +7,10 @@
 
 functor PPC
   (structure PPCInstr : PPCINSTR
-   structure ExtensionComp : MLTREE_EXTENSION_COMP where I = PPCInstr 
    structure PseudoInstrs : PPC_PSEUDO_INSTR 
-      sharing PseudoInstrs.I = PPCInstr 
+   			where I = PPCInstr
+   structure ExtensionComp : MLTREE_EXTENSION_COMP 
+   			where I = PPCInstr and T = PPCInstr.T
 
    (* 
     * Support 64 bit mode? 
@@ -21,19 +22,21 @@ functor PPC
     * Cost of multiplication in cycles
     *)
    val multCost : int ref
-  ) : MLTREECOMP = 
+  ) = 
 struct
   structure I   = PPCInstr
   structure T   = I.T
-  structure S   = T.Stream
+  structure TS  = ExtensionComp.TS
   structure C   = PPCInstr.C
+  structure CB  = CellsBasis
   structure W32 = Word32
   structure A   = MLRiscAnnotations
+  structure CFG = ExtensionComp.CFG
 
   fun error msg = MLRiscErrorMsg.error("PPC",msg)
 
-  type instrStream = (I.instruction,C.cellset) T.stream
-  type mltreeStream = (T.stm,T.mlrisc list) T.stream
+  type instrStream = (I.instruction, CB.CellSet.cellset, CFG.cfg) TS.stream
+  type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
 
   val (intTy,naturalWidths) = if bit64mode then (64,[32,64]) else (32,[32])
@@ -50,7 +53,7 @@ struct
    *)
   fun MTLR r = I.MTSPR{rs=r, spr=C.lr}
   fun MFLR r = I.MFSPR{rt=r, spr=C.lr}
-  val CR0 = C.Reg C.CC 0
+  val CR0 = C.Reg CB.CC 0
   val RET = I.BCLR{bo=I.ALWAYS, bf=CR0, bit=I.LT, LK=false, labels=[]}
   fun SLLI32{r,i,d} = 
       I.ROTATEI{oper=I.RLWINM,ra=d,rs=r,sh=I.ImmedOp i,mb=0,me=SOME(31-i)}
@@ -63,9 +66,10 @@ struct
   functor Multiply32 = MLTreeMult
     (structure I = I
      structure T = T
+     structure CB = CellsBasis
      val intTy = 32
-     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
-     type argi = {r:C.cell,i:int,d:C.cell}
+     type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
+     type argi = {r:CB.cell,i:int,d:CB.cell}
 
      fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
      fun add{r1,r2,d}= I.ARITH{oper=I.ADD,ra=r1,rb=r2,rt=d,Rc=false,OE=false}
@@ -97,7 +101,7 @@ struct
     (val signed = true)
 
   fun selectInstructions
-      (S.STREAM{emit,comment,getAnnotations,
+      (TS.S.STREAM{emit,comment,getAnnotations,
                 defineLabel,entryLabel,pseudoOp,annotation,
                 beginCluster,endCluster,exitBlock,...}) =
   let (* mark an instruction with annotations *)
@@ -114,7 +118,7 @@ struct
 
       val newReg = C.newReg
       val newFreg = C.newFreg
-      val newCCreg = C.newCell C.CC
+      val newCCreg = C.newCell CB.CC
 
       
       val int_0       = T.I.int_0
@@ -134,15 +138,15 @@ struct
       fun unsigned6 mi  = LE(int_0, mi) andalso LT(mi, T.I.int_64)
 
       fun move(rs,rd,an) =
-        if C.sameColor(rs,rd) then () 
+        if CB.sameColor(rs,rd) then () 
         else mark(I.COPY{dst=[rd],src=[rs],impl=ref NONE,tmp=NONE},an)
 
       fun fmove(fs,fd,an) =
-        if C.sameColor(fs,fd) then () 
+        if CB.sameColor(fs,fd) then () 
         else mark(I.FCOPY{dst=[fd],src=[fs],impl=ref NONE,tmp=NONE},an)
 
       fun ccmove(ccs,ccd,an) =
-        if C.sameColor(ccd,ccs) then () else mark(I.MCRF{bf=ccd, bfa=ccs},an)
+        if CB.sameColor(ccd,ccs) then () else mark(I.MCRF{bf=ccd, bfa=ccs},an)
 
       fun copy(dst, src, an) =
           mark(I.COPY{dst=dst, src=src, impl=ref NONE, 
@@ -154,7 +158,7 @@ struct
                                      | _ => SOME(I.FDirect(newFreg()))},an)
 
       fun emitBranch{bo, bf, bit, addr, LK} = 
-      let val fallThrLab = Label.newLabel""
+      let val fallThrLab = Label.anon()
           val fallThrOpnd = I.LabelOp(T.LABEL fallThrLab)
       in
           emit(I.BC{bo=bo, bf=bf, bit=bit, addr=addr, LK=LK, fall=fallThrOpnd});
@@ -235,7 +239,7 @@ struct
 
        (* convert mlrisc to cellset: *)
        and cellset mlrisc =
-           let val addCCReg = C.CellSet.add 
+           let val addCCReg = CB.CellSet.add 
                fun g([],acc) = acc
                  | g(T.GPR(T.REG(_,r))::regs,acc)  = g(regs,C.addReg(r,acc))
                  | g(T.FPR(T.FREG(_,f))::regs,acc) = g(regs,C.addFreg(f,acc))
@@ -417,7 +421,7 @@ struct
       (*  Generate an overflow trap *)
       and overflowTrap() =
           let val label = case !trapLabel of
-                            NONE => let val l = Label.newLabel ""
+                            NONE => let val l = Label.anon()
                                     in  trapLabel := SOME l; l end
                           | SOME l => l
           in  emitBranch{bo=I.TRUE, bf=CR0, bit=I.SO, LK=false,
@@ -529,7 +533,7 @@ struct
        * the value.
        *)
       and expr(rexp as T.REG(_,r)) =     
-          if C.sameColor(C.lr, r) then
+          if CB.sameColor(C.lr, r) then
           let val rt = newReg()
           in  doExpr(rexp, rt, []); rt end 
           else r
@@ -542,11 +546,11 @@ struct
        *    and annotate the expression with an
        *)
       and doExpr(e, rt, an) =
-           if C.sameColor(rt,C.lr) then 
+           if CB.sameColor(rt,C.lr) then 
            let val rt = newReg() in doExpr(e,rt,[]); mark(MTLR rt,an) end
            else
            case e of
-             T.REG(_,rs)  => if C.sameColor(rs,C.lr) then mark(MFLR rt,an)
+             T.REG(_,rs)  => if CB.sameColor(rs,C.lr) then mark(MFLR rt,an)
                              else move(rs,rt,an)
            | T.LI i        => loadImmed(i, rt, an)
            | T.LABEXP lexp => loadLabexp(lexp, rt, an)
@@ -726,7 +730,8 @@ struct
    
       and emitTrap() = emit(I.TW{to=31,ra=zeroR,si=I.ImmedOp 0}) 
 
-        val beginCluster = fn _ => (trapLabel := NONE; beginCluster(0))
+        val beginCluster = fn _ =>
+	   (trapLabel := NONE; beginCluster 0)
         val endCluster = fn a =>
            (case !trapLabel of 
               SOME label => 
@@ -734,7 +739,7 @@ struct
             | NONE => ();
            endCluster a)
 
-   in  S.STREAM
+   in  TS.S.STREAM
        { beginCluster  = beginCluster,
          endCluster    = endCluster,
          emit          = doStmt,

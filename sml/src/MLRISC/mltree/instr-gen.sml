@@ -4,11 +4,15 @@
 functor InstrGen
    (structure I      : INSTRUCTIONS
     structure Stream : INSTRUCTION_STREAM
+    structure CFG    : CONTROL_FLOW_GRAPH
+    			where I = I
+			  and P = Stream.P
    ) : INSTR_GEN =
 struct
-   structure C = I.C
-   structure I = I
-   structure S = Stream
+   structure C   = I.C
+   structure I   = I
+   structure S   = Stream
+   structure CFG = CFG
 
    (* Pretty stupid, eh? *)
    fun newStream(instrs) =

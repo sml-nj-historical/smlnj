@@ -1,4 +1,4 @@
-(* mlriscGenNew.sml --- translate CPS to MLRISC.
+(* mlriscGen.sml --- translate CPS to MLRISC.
  * 
  * This version of MLRiscGen also injects GC types to the MLRISC backend.
  * I've also reorganized it a bit and added a few comments
@@ -10,37 +10,58 @@
 
 signature MLRISCGEN = 
 sig
-  val codegen : 
-    CPS.function list * (CPS.lvar -> (int * int)) * ErrorMsg.complainer -> unit
+  val codegen : { funcs: CPS.function list,
+		  limits:  CPS.lvar -> int * int,
+		  err: ErrorMsg.complainer,
+		  source: string }
+		-> unit
 end
 
+
+
 functor MLRiscGen
- (  structure MachineSpec: MACH_SPEC
-    structure PseudoOp   : SMLNJ_PSEUDO_OP_TYPE
+   (structure MachineSpec: MACH_SPEC
     structure Ext        : SMLNJ_MLTREE_EXT
-    structure C          : CPSREGS where T.Region = CPSRegions 
-                                   and   T.Constant = SMLNJConstant
-				   and   T.Extension = Ext
-    structure InvokeGC   : INVOKE_GC where T = C.T
-    structure MLTreeComp : MLTREECOMP where T = C.T
-    structure Flowgen    : FLOWGRAPH_GEN where T = C.T
-    structure Cells      : CELLS
-    structure CCalls     : C_CALLS where T = C.T
-       sharing C.T.PseudoOp = PseudoOp
-       sharing Flowgen.I = MLTreeComp.I  
-    val compile : Flowgen.flowgraph -> unit
+    structure C          : CPSREGS 
+		 	   where T.Region = CPSRegions 
+	                     and T.Constant = SMLNJConstant
+		  	     and T.Extension = Ext
+    structure ClientPseudoOps : SMLNJ_PSEUDO_OPS
+    structure PseudoOp   : PSEUDO_OPS
+			    where T = C.T
+			      and Client = ClientPseudoOps
+    structure MLTreeComp : MLTREECOMP 
+			   where TS.T = C.T
+                             and TS.S.P = PseudoOp
+    structure Flowgen    : CONTROL_FLOWGRAPH_GEN 
+			   where S = MLTreeComp.TS.S
+			     and I = MLTreeComp.I
+			     and CFG = MLTreeComp.CFG  
+    structure InvokeGC   : INVOKE_GC  
+			   where TS = MLTreeComp.TS
+			     and CFG = Flowgen.CFG
+
+    structure Cells      : CELLS 
+    structure CCalls     : C_CALLS 
+			   where T = C.T
+    val compile : Flowgen.CFG.cfg -> unit
  ) : MLRISCGEN =
 struct
 
-  structure M  = C.T            (* MLTree *)
-  structure E  = Ext            (* Extensions *)
-  structure P  = CPS.P          (* CPS primitive operators *)
-  structure R  = CPSRegions     (* Regions *)
-  structure PT = R.PT           (* PointsTo *)
-  structure CG = Control.CG     (* Compiler Control *)
-  structure MS = MachineSpec    (* Machine Specification *)
-  structure D  = MS.ObjDesc     (* ML Object Descriptors *)
+  structure M  = C.T			(* MLTree *)
+  structure E  = Ext			(* Extensions *)
+  structure P  = CPS.P			(* CPS primitive operators *)
+  structure R  = CPSRegions		(* Regions *)
+  structure PT = R.PT			(* PointsTo *)
+  structure CG = Control.CG		(* Compiler Control *)
+  structure MS = MachineSpec		(* Machine Specification *)
+  structure D  = MS.ObjDesc		(* ML Object Descriptors *)
+  structure TS = MLTreeComp.TS		(* MLTREE streams *)
+  structure CPs = ClientPseudoOps
+  structure PB = PseudoOpsBasisTyp
   structure An = MLRiscAnnotations
+  structure CB = CellsBasis
+  
 
   structure ArgP =              (* Argument passing *)
     ArgPassing(structure Cells=Cells
@@ -80,7 +101,7 @@ struct
 
   val enterGC = GCCells.setGCType
 
-  fun sameRegAs x y = Cells.sameCell (x, y)
+  fun sameRegAs x y = CB.sameCell (x, y)
 
   val ptr = #create An.MARK_REG(fn r => enterGC(r,PTR))
   val i32 = #create An.MARK_REG(fn r => enterGC(r,I32))
@@ -183,28 +204,17 @@ struct
    *)
   val dtoi = LargeWord.toInt   
 
-   
-  (*
-   * The mltree stream
-   *)
-  val stream as M.Stream.STREAM
-          { beginCluster,  (* start a cluster *)
-            endCluster,    (* end a cluster *)
-            emit,          (* emit MLTREE stm *)
-            defineLabel,   (* define a local label *)
-            entryLabel,    (* define an external entry *) 
-            exitBlock,     (* mark the end of a procedure *)
-            pseudoOp,      (* emit a pseudo op *)
-            annotation,    (* add an annotation *)
-            ... } = 
-            MLTreeComp.selectInstructions
-                (Flowgen.newStream{compile=compile, flowgraph=NONE})
+  val newLabel = Label.anon   
 
   (*
    * The main codegen function.
    *)
-  fun codegen(funcs : CPS.function list, limits:CPS.lvar -> (int*int), err) = 
+  fun codegen args =
   let 
+      val { funcs : CPS.function list,
+	    limits:CPS.lvar -> (int*int),
+	    err, source } =
+	  args
       val maxAlloc = #1 o limits
       val splitEntry = !splitEntry
 
@@ -227,8 +237,8 @@ struct
 
       val (newReg, newRegWithCty, newRegWithKind, newFreg)  = 
            if gctypes then 
-              let val newReg  = GCCells.newCell Cells.GP
-                  val newFreg = GCCells.newCell Cells.FP
+              let val newReg  = GCCells.newCell CB.GP
+                  val newFreg = GCCells.newCell CB.FP
                   fun newRegWithCty cty = newReg(ctyToGCty cty)
                   fun newRegWithKind kind = newReg(kindToGCty kind)
               in  (newReg, newRegWithCty, newRegWithKind, newFreg) end
@@ -278,12 +288,12 @@ struct
        *)
       fun mkGlobalTables(fk, f, _, _, _) =
           ((* internal label *)
-           addLabelTbl (f, Label.newLabel "");
+           addLabelTbl (f, newLabel());
            (* external entry label *)
            if splitEntry then
              (case fk of
                 (CPS.CONT | CPS.ESCAPE) => 
-                    addLabelTbl (~f-1, Label.newLabel(Int.toString f))
+                    addLabelTbl (~f-1, Label.label(Int.toString f) ())
               | _ => ()
              )
            else ();
@@ -296,8 +306,23 @@ struct
       (*
        * Function for generating code for one cluster.
        *)
-      fun genCluster(cluster) = 
-      let val _ = if !Control.debugging then app PPCps.printcps0 cluster else ()
+      fun genCluster(cluster) = let
+          val _ = if !Control.debugging then app PPCps.printcps0 cluster else ()
+
+	  (*
+	   * The mltree stream
+	   *)
+	  val stream as TS.S.STREAM
+	    { beginCluster,  (* start a cluster *)
+	      endCluster,    (* end a cluster *)
+	      emit,          (* emit MLTREE stm *)
+	      defineLabel,   (* define a local label *)
+	      entryLabel,    (* define an external entry *) 
+	      exitBlock,     (* mark the end of a procedure *)
+	      pseudoOp,      (* emit a pseudo op *)
+	      annotation,    (* add an annotation *)
+	      ... 
+	     } = MLTreeComp.selectInstructions (Flowgen.build ())
 
 	 (*
 	  * If RCC is present we need to use the virtual frame pointer
@@ -1106,7 +1131,7 @@ struct
 
               (* normal branches *)
           and branch (cmp, [v, w], yes, no, hp) = 
-          let val trueLab = Label.newLabel""
+          let val trueLab = newLabel ()
           in  (* is single assignment great or what! *)
               emit(M.BCC(M.CMP(32, cmp, regbind v, regbind w), trueLab));
               genCont(no, hp);
@@ -1115,7 +1140,7 @@ struct
 
               (* branch if x is boxed *) 
           and branchOnBoxed(x, yes, no, hp) = 
-              let val lab = Label.newLabel ""
+              let val lab = newLabel()
                   val cmp = M.CMP(32, M.NE, M.ANDB(ity, regbind x, one), zero)
               in  emit(M.BCC(cmp, lab));
                   genCont(yes, hp);
@@ -1125,7 +1150,7 @@ struct
               (* branch if are identical strings v, w of length n *)
           and branchStreq(n, v, w, yes, no, hp) =
               let val n' = ((n+3) div 4) * 4
-                  val false_lab = Label.newLabel ""
+                  val false_lab = newLabel ()
                   val r1 = newReg I32
                   val r2 = newReg I32
                   fun cmpWord(i) = 
@@ -1348,7 +1373,7 @@ struct
             | gen(RECORD(RK_VECTOR, vl, w, e), hp) = mkVector(vl, w, e, hp)
             | gen(RECORD(RK_I32BLOCK, vl, w, e), hp) = mkI32block(vl, w, e, hp)
             | gen(RECORD(_, vl, w, e), hp) = mkRecord(vl, w, e, hp)
-  
+
             (*** SELECT ***)
             | gen(SELECT(i, INT k, x, t, e), hp) = funnySelect(i,k,x,t,e,hp)
             | gen(SELECT(i, v, x, FLTt, e), hp) = fselect(i, v, x, e, hp)
@@ -1366,13 +1391,15 @@ struct
             (*** SWITCH ***)
             | gen(SWITCH(INT _, _, _), hp) = error "SWITCH"
             | gen(SWITCH(v, _, l), hp) = 
-              let val lab = Label.newLabel""
-                  val labs = map (fn _ => Label.newLabel"") l
+              let val lab = newLabel ()
+                  val labs = map (fn _ => newLabel()) l
                   val tmpR = newReg I32 val tmp = M.REG(ity,tmpR)
               in  emit(M.MV(ity, tmpR, laddr(lab, 0)));
                   emit(M.JMP(M.ADD(addrTy, tmp, M.LOAD(pty, scale4(tmp, v), 
                                                        R.readonly)), labs));
-                  pseudoOp(PseudoOp.JUMPTABLE{base=lab, targets=labs});
+		  pseudoOp(PB.DATA_READ_ONLY);
+		  pseudoOp(PB.EXT(CPs.JUMPTABLE{base=lab, targets=labs}));
+		  pseudoOp(PB.TEXT);
                   ListPair.app (fn (lab, e) => genlabCont(lab, e, hp)) (labs, l)
               end
 
@@ -1636,7 +1663,7 @@ struct
               let val vreg = regbind v
                   val tmp = newReg I32
                   val tmpR = M.REG(ity,tmp)
-                  val lab = Label.newLabel ""
+                  val lab = newLabel ()
               in  emit(M.MV(ity, tmp, regbind(INT32 0wx3fffffff)));
                   updtHeapPtr hp;
                   emit(M.BCC(M.CMP(32, M.LEU, vreg, tmpR),lab));
@@ -1950,7 +1977,7 @@ struct
             | gen(BRANCH(P.cmp{oper, kind=P.INT 32}, vw, _, e, d), hp) = 
                 branch(signedCmp oper, vw, e, d, hp)
             | gen(BRANCH(P.fcmp{oper,size=64}, [v,w], _, d, e), hp) =
-              let val trueLab = Label.newLabel""
+              let val trueLab = newLabel ()
                   val fcond = 
                       case oper
                         of P.fEQ => M.==  
@@ -1996,7 +2023,7 @@ struct
                                               ...})) = 
                   let val formals = ArgP.standard{fnTy=typmap f, argTys=tl, vfp=vfp}
                   in  func := NONE;
-                      pseudoOp PseudoOp.ALIGN4;
+		      pseudoOp(PB.ALIGN_SZ 2);
                       genCPSFunction(lab, k, f, vl, formals, tl, e);
                       continue()
                   end
@@ -2041,19 +2068,25 @@ struct
 	beginCluster 0;
 	fragComp();
 	InvokeGC.emitLongJumpsToGCInvocation stream;
-	endCluster(clusterAnnotations())
+	compile(endCluster(clusterAnnotations()))
       end (* genCluster *)
 
-      fun emitMLRiscUnit f =
-	(Cells.reset();
-	 ClusterAnnotation.useVfp := false;
-	 beginCluster 0; 
-	 f stream;
-	 endCluster NO_OPT
-         )
-  in  app mkGlobalTables funcs;
-      app genCluster (Cluster.cluster funcs);
-      emitMLRiscUnit InvokeGC.emitModuleGC
+      fun finishCompilationUnit file = let
+	val stream = MLTreeComp.selectInstructions (Flowgen.build ())
+	val TS.S.STREAM{beginCluster, pseudoOp, endCluster, ...} = stream
+      in
+	Cells.reset();
+	ClusterAnnotation.useVfp := false;
+	beginCluster 0; 
+	InvokeGC.emitModuleGC stream;
+	pseudoOp (PB.DATA_READ_ONLY);
+	pseudoOp (PB.EXT(CPs.FILENAME file));
+	compile(endCluster NO_OPT)
+      end
+  in  
+    app mkGlobalTables funcs;
+    app genCluster (Cluster.cluster funcs);
+    finishCompilationUnit source
   end (* codegen *)
 end (* MLRiscGen *)
 

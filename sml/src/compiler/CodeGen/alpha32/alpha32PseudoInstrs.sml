@@ -4,10 +4,11 @@ struct
   structure I = Instr
   structure T = I.T
   structure C = Instr.C
+  structure CB = CellsBasis
 
   fun error msg = MLRiscErrorMsg.impossible("Alpha32PsuedoInstrs."^msg)
 
-  type reduceOpnd = I.operand -> C.cell
+  type reduceOpnd = I.operand -> CB.cell
 
   val floatTmpOffset = I.IMMop 96	(* runtime system dependent *)
   val floatTmpOffset8 = I.IMMop(96+8)		(* " *)

@@ -10,29 +10,30 @@
  *)
 functor X86OmitFramePointer (
     structure I : X86INSTR 
-    structure F : FLOWGRAPH where I = I
-    structure PC : PRINT_CLUSTER where F=F
+    structure CFG : CONTROL_FLOW_GRAPH where I = I
     structure MemRegs : MEMORY_REGISTERS where I=I
-    val memRegBase : I.C.cell option): OMIT_FRAME_POINTER = 
+    val memRegBase : CellsBasis.cell option): OMIT_FRAME_POINTER = 
 struct
-  structure F = F
+  structure CFG = CFG
   structure I = I
   structure C = I.C
+  structure CB = CellsBasis
+  structure HT = IntHashTable
   val sp = C.esp
 
   val dumpCfg = MLRiscControl.getFlag "dump-cfg-after-omit-frame-pointer"
 
   fun error msg = MLRiscErrorMsg.error("X86OmitFramePointer", msg)
 
-  fun omitframeptr{vfp:I.C.cell, idelta:Int32.int option, cl as F.CLUSTER{entry, blkCounter, ...}} = let
+  fun omitframeptr{vfp:CB.cell, idelta:Int32.int option, cfg as Graph.GRAPH graph} = let
 
     (* rewrite a list of instructions where the gap between fp and sp is delta *)
     fun rewrite(instrs, idelta) = let
 
       (* What kind of register? *)
       datatype which = SP | FP | OTHER
-      fun isSp cell = C.sameColor(cell, sp)
-      fun isVfp cell = C.sameColor(cell, vfp)
+      fun isSp cell = CB.sameColor(cell, sp)
+      fun isVfp cell = CB.sameColor(cell, vfp)
       fun which(cell) = if isSp(cell) then SP else if isVfp(cell) then FP else OTHER
       fun either(cell) = isSp(cell) orelse isVfp(cell) 
 
@@ -156,7 +157,7 @@ struct
 	     else unchanged(I.MOVE{mvOp=mvOp, src=operand(src), dst=dst})
 	 | I.MOVE{mvOp, src, dst} => 
 	     unchanged(I.MOVE{mvOp=mvOp, src=operand(src), dst=operand(dst)})
-	 | I.LEA{r32:C.cell, addr as I.Displace{base, disp=I.Immed d, mem}} => 
+	 | I.LEA{r32:CB.cell, addr as I.Displace{base, disp=I.Immed d, mem}} => 
 	   (case (which r32, which base) 
 	    of (SP, SP) => 
 	         (* assumes stack grows from high to low. 
@@ -213,7 +214,7 @@ struct
 	    unchanged(I.CMPXCHG{lock=lock, sz=sz, src=operand(src), dst=operand(dst)})
 	 | I.MULTDIV{multDivOp:I.multDivOp, src:I.operand} =>
 	    unchanged(I.MULTDIV{multDivOp=multDivOp, src=operand(src)})
-	 | I.MUL3{dst:C.cell, src2:Int32.int, src1:I.operand} => 
+	 | I.MUL3{dst:CB.cell, src2:Int32.int, src1:I.operand} => 
 	   if either(dst) then error "MUL3: assignment to FP/SP"
 	   else unchanged(I.MUL3{dst=dst, src2=src2, src1=operand(src1)})
 	 | I.UNARY{unOp=I.INCL, opnd as I.Direct(r)} =>
@@ -231,7 +232,7 @@ struct
 	 | I.UNARY{unOp, opnd} => unchanged(I.UNARY{unOp=unOp, opnd=operand(opnd)})
 	 | I.SET{cond:I.cond, opnd:I.operand} => 
 	     unchanged(I.SET{cond=cond, opnd=operand(opnd)})
-	 | I.CMOV{cond:I.cond, src as I.Direct(s), dst:C.cell} =>
+	 | I.CMOV{cond:I.cond, src as I.Direct(s), dst:CB.cell} =>
 	     if either(s) orelse either(dst) then 
 	       error "CMOV: FP/SP in conditional move"
 	     else unchanged(I.CMOV{cond=cond, src=operand(src), dst=dst})
@@ -239,7 +240,7 @@ struct
 	 | I.PUSHW opnd => changedto(I.PUSHW(operand(opnd)), addToDelta(2))
 	 | I.PUSHB opnd => changedto(I.PUSHB(operand(opnd)), addToDelta(1))
 	 | I.POP opnd => changedto(I.POP(operand(opnd)), addToDelta(~4))
-	 | I.COPY{dst:C.cell list, src:C.cell list, tmp:I.operand option} => let
+	 | I.COPY{dst:CB.cell list, src:CB.cell list, tmp:I.operand option} => let
 	    (* the situation where SP <- FP is somewhat complicated.
 	     * The copy must be extracted, and a lea generated.
 	     * Should it be before or after the parallel copy? Depends on if SP is used. 
@@ -320,43 +321,50 @@ struct
     
 
     (* rewrite blocks using a depth first traversal of the blocks *)
-    val info = Array.array(!blkCounter, {visited=false, delta=NONE:Int32.int option})
-    fun dfs(F.BBLOCK{blknum, insns, succ, ...}, delta) = let
-          val {visited, delta=d} = Array.sub(info, blknum)
-	  fun sameDelta(NONE, NONE) = true
-	    | sameDelta(SOME i1: Int32.int option, SOME i2) = i1 = i2
-	in
-    	  if visited then (if sameDelta(d, delta) then () else error "dfs")
-	  else let 
-	      val (instrs, delta2) = rewrite(rev(!insns), delta)
-	    in 
-	      insns := instrs;
-	      Array.update(info, blknum, {visited=true, delta=delta});
-	      app (fn (blk, _) => dfs(blk, delta2)) (!succ)
-	    end
-	end
-      | dfs(F.ENTRY{succ, ...}, delta) = 
-	  app (fn (blk, _) => dfs(blk, delta)) (!succ)
-      | dfs(F.EXIT _, _) = ()
-      | dfs(_, _) = error "dfs: BBLOCK expected"
+    val info : {visited:bool, delta: Int32.int option} HT.hash_table = 
+      HT.mkTable(32, General.Fail "X86OmitFramePtr: Not Found")
+    val noInfo = {visited=false, delta=NONE}
 
+    fun dfs (nid, delta) = let
+      fun doSucc(delta) = 
+	app (fn snid => dfs(snid, delta)) (#succ graph nid)
+      val CFG.BLOCK{insns, kind, ...} = #node_info graph nid
+    in
+      case kind
+      of CFG.STOP => ()
+       | CFG.START => doSucc(delta)
+       | CFG.NORMAL => let
+	   val {visited, delta=d} = Option.getOpt(HT.find info nid, noInfo)
+	   fun sameDelta(NONE, NONE) = true
+	     | sameDelta(SOME i1: Int32.int option, SOME i2) = i1 = i2
+	 in 
+	   if visited then (if sameDelta(d, delta) then () else error "dfs")
+	   else let
+	       val (instrs, delta2) = rewrite(rev(!insns), delta)
+	     in 
+	       insns := instrs;
+	       HT.insert info (nid, {visited=true, delta=delta});
+	       doSucc(delta2)
+	     end
+	 end
+      (*esac*)
+    end
 
-
-    val C.CELL{col, ...} = vfp
+    val CB.CELL{col, ...} = vfp
   in 
     (* 
      * check that virtual frame pointer is a pseudo register or
      * aliased to the stack pointer.
      *)
     case !col
-     of C.PSEUDO => dfs(entry, idelta)
+     of CB.PSEUDO => app (fn nid => dfs(nid, idelta)) (#entries graph ())
       | _ => error "virtual frame pointer not a pseudo register"
-    (*esac*);
+    (*esac*)
     
     (* output cluster  *)
-    if !dumpCfg then 
+(*    if !dumpCfg then 
       PC.printCluster TextIO.stdOut "after omit frame pointer"  cl
-    else ()
+      else () *)
   end
 end
 

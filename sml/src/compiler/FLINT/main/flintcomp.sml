@@ -1,13 +1,12 @@
 (* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
 (* flintcomp.sml *)
 
-functor FLINTComp (structure Gen: MACHINE_GEN
-                   val collect: unit -> CodeObj.code_object) : CODEGENERATOR =
+functor FLINTComp
+	    (structure Gen: MACHINE_GEN
+             val collect: unit -> CodeObj.code_object) : CODEGENERATOR =
 struct
 
-local structure CB = CompBasic
-      (*        structure CGC = Control.CG *)
-      structure MachSpec = Gen.MachSpec
+local structure MachSpec = Gen.MachSpec
       structure Convert = Convert(MachSpec)
       structure CPStrans = CPStrans(MachSpec)
       structure CPSopt = CPSopt(MachSpec)
@@ -88,8 +87,10 @@ fun dumpTerm (printE, s, le) =
 val fcs : (FLINT.prog -> FLINT.prog) list ref = ref []
 
 (** compiling FLINT code into the binary machine code *)
-fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo,
-	      splitting) = 
+fun flintcomp
+	(flint,
+	 compInfo as {error, sourceName=src, ...}: Absyn.dec CompInfo.compInfo,
+	 splitting) = 
   let fun err severity s =
  	error (0,0) severity (concat["Real constant out of range: ",s,"\n"])
 
@@ -209,15 +210,13 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo,
 	    val data = litToBytes dlit
             val _ = prC "cpsopt-code" function
 
-(** NOTE: we should be passing the source-code name (src) to the
- ** code generator somehow (for the second argument to code object allocation).
- **)
             fun gen fx = 
               let val fx = (prC "closure" o closure) fx
                   val carg = globalfix fx
                   val carg = spill carg
                   val (carg, limit) = limit carg
-               in codegen (carg, limit, err);
+               in codegen { funcs = carg, limits = limit, err = err,
+			    source = src };
                   collect ()
               end
 
@@ -232,4 +231,3 @@ val flintcomp = phase "FLINT 050 flintcomp" flintcomp
 
 end (* local *)
 end (* structure FLINTComp *)
-

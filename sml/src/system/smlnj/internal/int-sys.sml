@@ -40,7 +40,7 @@ structure InteractiveSystem : sig end = struct
 	 Signals.overrideHandler (Signals.sigTERM, Signals.HANDLER handleTERM);
 	 ifSignal ("QUIT", handleTERM))
 
-    val _ = UseHook.useHook := Compiler.Interact.useFile
+    val _ = UseHook.useHook := Backend.Interact.useFile
 
 
     (* add cleanup code that resets the internal timers and stats
@@ -48,21 +48,21 @@ structure InteractiveSystem : sig end = struct
     local
 	structure I = SMLofNJ.Internals
 	structure C = I.CleanUp
-	fun reset _ = (I.resetTimers (); Compiler.Stats.reset ())
+	fun reset _ = (I.resetTimers (); Stats.reset ())
     in
         val _ = C.addCleaner ("initialize-timers-and-stats", [C.AtInit], reset)
     end
 
     (* launch interactive loop *)
-    val _ = (Compiler.Control.Print.say "Generating heap image...\n";
+    val _ = (Control.Print.say "Generating heap image...\n";
 	     if SMLofNJ.exportML heapfile then
-		 (print Compiler.banner;
+		 (print CompilerVersion.banner;
 		  print "\n";
 		  getOpt (procCmdLine, fn () => ()) ();
-		  Compiler.Interact.interact ())
+		  Backend.Interact.interact ())
 	     else
 		 (print "This is...\n";
-		  print Compiler.banner;
+		  print CompilerVersion.banner;
 		  print "\n";
 		  OS.Process.exit OS.Process.success))
 end

@@ -12,23 +12,24 @@ signature SMLINFO = sig
     type info
     type ord_key = info
 
-    type complainer = GenericVC.ErrorMsg.complainer
-    type ast = GenericVC.Ast.dec
-    type region = GenericVC.SourceMap.region
-    type source = GenericVC.Source.inputSource
-    type splitrequest = GenericVC.Control.LambdaSplitting.localsetting
+    type complainer = ErrorMsg.complainer
+    type ast = Ast.dec
+    type region = SourceMap.region
+    type source = Source.inputSource
+    type splitrequest = Control.LambdaSplitting.localsetting
 
     type attribs =
 	{ split: splitrequest,
 	  is_rts: bool,
 	  explicit_core_sym: Symbol.symbol option,
-	  extra_compenv: GenericVC.Environment.staticEnv option }
+	  extra_compenv: StaticEnv.staticEnv option }
 
     type info_args =
 	{ sourcepath: SrcPath.file,
 	  group: SrcPath.file * region,
 	  sh_spec: Sharing.request,
-	  setup: string option * string option }
+	  setup: string option * string option,
+	  locl: bool }
 
     val eq : info * info -> bool	(* compares sourcepaths *)
     val compare : info * info -> order	(* compares sourcepaths *)
@@ -66,6 +67,7 @@ signature SMLINFO = sig
     val attribs : info -> attribs
     val lastseen : info -> TStamp.t
     val setup : info -> string option * string option
+    val is_local : info -> bool
 
     (* forget a parse tree that we are done with *)
     val forgetParsetree : info -> unit
@@ -93,29 +95,28 @@ end
 
 structure SmlInfo :> SMLINFO = struct
 
-    structure Source = GenericVC.Source
-    structure SF = GenericVC.SmlFile
-    structure EM = GenericVC.ErrorMsg
+    structure Source = Source
+    structure SF = SmlFile
+    structure EM = ErrorMsg
     structure FNP = FilenamePolicy
 
     type source = Source.inputSource
-    type ast = GenericVC.Ast.dec
-    type region = GenericVC.SourceMap.region
-    type splitrequest = GenericVC.Control.LambdaSplitting.localsetting
+    type ast = Ast.dec
+    type region = SourceMap.region
+    type splitrequest = Control.LambdaSplitting.localsetting
 
     type complainer = EM.complainer
 
-    type attribs =
-	{ split: splitrequest,
-	  is_rts: bool,
-	  explicit_core_sym: Symbol.symbol option,
-	  extra_compenv: GenericVC.Environment.staticEnv option }
+    type attribs = { split: splitrequest,
+		     is_rts: bool,
+		     explicit_core_sym: Symbol.symbol option,
+		     extra_compenv: StaticEnv.staticEnv option }
 
-    type info_args =
-	{ sourcepath: SrcPath.file,
-	  group: SrcPath.file * region,
-	  sh_spec: Sharing.request,
-	  setup: string option * string option }
+    type info_args = { sourcepath: SrcPath.file,
+		       group: SrcPath.file * region,
+		       sh_spec: Sharing.request,
+		       setup: string option * string option,
+		       locl: bool }
 
     type generation = unit ref
 
@@ -136,7 +137,8 @@ structure SmlInfo :> SMLINFO = struct
 		  persinfo: persinfo,
 		  sh_spec: Sharing.request,
 		  attribs: attribs,
-		  setup: string option * string option }
+		  setup: string option * string option,
+		  locl:  bool }
 
     type ord_key = info
 
@@ -156,6 +158,7 @@ structure SmlInfo :> SMLINFO = struct
 	sh_mode := m
     fun attribs (INFO { attribs = a, ... }) = a
     fun setup (INFO { setup = s, ... }) = s
+    fun is_local (INFO { locl, ... }) = locl
 
     fun gerror (gp: GeneralParams.info) = GroupReg.error (#groupreg gp)
 
@@ -214,7 +217,8 @@ structure SmlInfo :> SMLINFO = struct
     end
 
     fun info' attribs (gp: GeneralParams.info) arg = let
-	val { sourcepath, group = gr as (group, region), sh_spec, setup } = arg
+	val { sourcepath, group = gr as (group, region), sh_spec, setup, locl }
+	    = arg
 	val policy = #fnpolicy (#param gp)
 	fun mkSkelname () = FNP.mkSkelName policy sourcepath
 	fun mkBinname () = FNP.mkBinName policy sourcepath
@@ -259,7 +263,8 @@ structure SmlInfo :> SMLINFO = struct
 	       persinfo = persinfo (),
 	       sh_spec = sh_spec,
 	       attribs = attribs,
-	       setup = setup }
+	       setup = setup,
+	       locl = locl }
     end
 
     fun info split = info' { split = split, extra_compenv = NONE,
@@ -334,7 +339,7 @@ structure SmlInfo :> SMLINFO = struct
 		else ();
 		pto
 	    end handle exn as IO.Io _ => (err (General.exnMessage exn); NONE)
-	             | SF.Compile msg => (err msg; NONE)
+	             | CompileExn.Compile msg => (err msg; NONE)
     end
 
     fun getSkeleton gp (i as INFO ir, noerrors) = let

@@ -1,4 +1,7 @@
-(*
+(* x86-fp.sml
+ *
+ * COPYRIGHT (c) 2001 Bell Labs, Lucent Technologies
+ *
  * This phase takes a cluster with pseudo x86 fp instructions, performs
  * liveness analysis to determine their live ranges, and rewrite the
  * program into the correct stack based code.
@@ -53,34 +56,40 @@
  *) 
 
 local
-   val debug = false        (* set this to true to debug this module 
+   val debug = false         (* set this to true to debug this module 
                               * set this to false for production use.
                               *) 
-   val debugLiveness = false (* debug liveness analysis *)
+   val debugLiveness = true (* debug liveness analysis *)
    val debugDead = false     (* debug dead code removal *)
-   val sanityCheck = false
+   val sanityCheck = true
 in
 functor X86FP
    (structure X86Instr  : X86INSTR
-    structure X86Props  : INSN_PROPERTIES where I = X86Instr
-    structure Flowgraph : FLOWGRAPH where I = X86Instr
-    structure Liveness  : LIVENESS where F = Flowgraph
-    structure Asm       : INSTRUCTION_EMITTER where I = X86Instr
-      sharing Flowgraph.P = Asm.P
-   ) : CLUSTER_OPTIMIZATION = 
+    structure X86Props  : INSN_PROPERTIES 
+			      where I = X86Instr
+    structure Flowgraph : CONTROL_FLOW_GRAPH
+			      where I = X86Instr
+    structure Liveness  : LIVENESS 
+			      where CFG = Flowgraph
+    structure Asm       : INSTRUCTION_EMITTER 
+			      where I = X86Instr
+				and S.P = Flowgraph.P
+   ) : CFG_OPTIMIZATION = 
 struct
-   structure F  = Flowgraph
+   structure CFG = Flowgraph
+   structure G  = Graph
    structure I  = X86Instr
    structure T  = I.T
    structure P  = X86Props
    structure C  = I.C
    structure A  = Array
    structure L  = Label
-   structure LE = I.LabelExp
    structure An = Annotations
-   structure SL = C.SortedCells
+   structure CB = CellsBasis
+   structure SL = CB.SortedCells
+   structure HT = IntHashTable
 
-   type flowgraph = F.cluster
+   type flowgraph = CFG.cfg
    type an = An.annotations
 
    val name = "X86 floating point rewrite"
@@ -98,6 +107,12 @@ struct
     *)
    fun x + y = Word.toIntX(Word.+(Word.fromInt x, Word.fromInt y))
    fun x - y = Word.toIntX(Word.-(Word.fromInt x, Word.fromInt y))
+
+   fun celllistToCellset l = List.foldr CB.CellSet.add CB.CellSet.empty l
+   fun celllistToString l = CB.CellSet.toString(celllistToCellset l)
+
+   (* Annotation to mark split edges *)
+   exception TargetMovedTo of G.node_id
 
    (*-----------------------------------------------------------------------
     * Primitive instruction handling routines
@@ -149,11 +164,12 @@ struct
    (*-----------------------------------------------------------------------
     * Pretty print routines
     *-----------------------------------------------------------------------*)
-   fun fregToString f = "%f"^i2s(C.registerNum f)
+   fun fregToString f = "%f"^i2s(CB.registerNum f)
    fun fregsToString s =
         List.foldr (fn (r,"") => fregToString r | 
                        (r,s) => fregToString r^" "^s) "" s
-   fun blknumOf(F.BBLOCK{blknum, ...}) = blknum
+
+   fun blknumOf(CFG.BLOCK{id, ...}) = id 
 
    (*-----------------------------------------------------------------------
     * A stack datatype that mimics the x86 floating point stack
@@ -167,15 +183,15 @@ struct
       val stack0 : stack
       val copy   : stack -> stack
       val clear  : stack -> unit
-      val fp     : stack * C.register_id -> stnum
-      val st     : stack * stnum -> C.register_id
-      val set    : stack * stnum * C.register_id -> unit 
-      val push   : stack * C.register_id -> unit
+      val fp     : stack * CB.register_id -> stnum
+      val st     : stack * stnum -> CB.register_id
+      val set    : stack * stnum * CB.register_id -> unit 
+      val push   : stack * CB.register_id -> unit
       val xch    : stack * stnum * stnum -> unit
       val pop    : stack -> unit
       val depth  : stack -> int
       val nonFull : stack -> unit
-      val kill   : stack * C.cell -> unit
+      val kill   : stack * CellsBasis.cell -> unit
       val stackToString : stack -> string
       val equal : stack * stack -> bool 
    end = 
@@ -183,7 +199,7 @@ struct
       type stnum = int
       datatype stack =
           STACK of 
-          { st  : C.register_id A.array, (* mapping %st -> %fp registers *)
+          { st  : CB.register_id A.array, (* mapping %st -> %fp registers *)
             fp  : stnum A.array,    (* mapping %fp -> %st registers *)
             sp  : int ref           (* stack pointer *)
           } 
@@ -243,7 +259,7 @@ struct
           set(stack, n, f_m)
       end
 
-      fun kill(STACK{fp, ...}, f) = A.update(fp, C.registerNum f, 16)
+      fun kill(STACK{fp, ...}, f) = A.update(fp, CB.registerNum f, 16)
 
       fun equal(st1, st2) =
       let val m = depth st1
@@ -389,8 +405,14 @@ struct
     *     When necessary, split critical edges.
     *  5. Sacrifice a goat to make sure things don't go wrong.
     *-----------------------------------------------------------------------*)
-   fun run(cluster as F.CLUSTER{blocks, blkCounter, ...}) = 
-   let val getCell = C.CellSet.get C.FP (*extract the fp component of cellset*)
+   fun run(Cfg as G.GRAPH cfg) = 
+   let
+       val numberOfBlks = #capacity cfg ()
+       val ENTRY        = List.hd (#entries cfg ())
+       val EXIT         = List.hd (#exits cfg ())
+
+       val getCell = C.getCellsByKind CB.FP 
+                 (*extract the fp component of cellset*)
 
        val stTable = A.tabulate(8, fn n => I.ST(C.ST n))
 
@@ -430,12 +452,12 @@ struct
         * Perform liveness analysis on the floating point variables
         * P.S. I'm glad I didn't throw away the code liveness code.
         *------------------------------------------------------------------*) 
-       val defUse = P.defUse C.FP   (* def/use properties *)
-       val _ = Liveness.liveness{defUse=defUse,
-                                 updateCell=C.CellSet.update C.FP,
-                                 getCell=getCell,
-                                 blocks=blocks
-                                }
+       val defUse = P.defUse CB.FP   (* def/use properties *)
+       val {liveIn=liveInTable, liveOut=liveOutTable} = Liveness.liveness {
+		defUse=defUse,
+		(* updateCell=C.updateCellsByKind CB.FP, *)
+		getCell=getCell
+	      } Cfg
        (*------------------------------------------------------------------
         * Scan the instructions compute the last uses and dead definitions
         * at each program point.  Ideally we can do this during the code 
@@ -461,7 +483,7 @@ struct
                       else ()
                in  scan(instrs, live, (last,dead)::lastUse)
                end
-           val liveOutSet = SL.uniq(getCell (!liveOut))
+           val liveOutSet = SL.uniq liveOut
            val _ = 
                if debug andalso debugLiveness then 
                   print("LiveOut("^i2s blknum^") = "^
@@ -473,14 +495,14 @@ struct
        (*------------------------------------------------------------------ 
         * Temporary work space 
         *------------------------------------------------------------------*)
-       val {high, low} = C.cellRange C.FP
+       val {high, low} = C.cellRange CB.FP
        val n           = high+1
        val lastUseTbl  = A.array(n,~1) (* table for marking last uses *)
        val useTbl      = A.array(n,~1) (* table for marking uses *)
 
        (* %fp register bindings before and after a basic block *)
-       val bindingsIn   = A.array(!blkCounter, NONE)
-       val bindingsOut  = A.array(!blkCounter, NONE)
+       val bindingsIn   = A.array(numberOfBlks, NONE)
+       val bindingsOut  = A.array(numberOfBlks, NONE)
        val stampCounter = ref ~4096
 
        (* Edges that need splitting *)
@@ -494,25 +516,23 @@ struct
         * Code for handling bindings between basic block
         *------------------------------------------------------------------*)
 
-       fun splitEdge(targetId, source, target) = 
+       fun splitEdge(title, source, target, e) =
           (if debug andalso !traceOn then
-              pr("SPLITTING "^i2s(blknumOf source)^"->"^
-                              i2s(blknumOf target)^"\n")
+              pr(title^" SPLITTING "^i2s source^"->"^ i2s target^"\n")
            else ();
-           addEdgesToSplit(targetId, 
-                           (source,target)::lookupEdgesToSplit targetId)
+           addEdgesToSplit(target,(source,target,e)::lookupEdgesToSplit target)
           )
 
        (* Given a cellset, return a sorted and unique 
         * list of elements with all non-physical registers removed
         *)
-       fun removeNonPhysical cellSet = 
+       fun removeNonPhysical celllist = 
        let fun loop([], S) = SL.return(SL.uniq S)
              | loop(f::fs, S) = 
-               let val fx = C.registerNum f 
+               let val fx = CB.registerNum f 
                in  loop(fs,if fx <= 7 then f::S else S)
                end
-       in  loop(getCell(!cellSet), []) 
+       in  loop(celllist, []) 
        end
    
        (* Given a sorted and unique list of registers,
@@ -520,7 +540,7 @@ struct
         *)
        fun newStack fregs =
        let val stack = ST.create()
-       in  app (fn f => ST.push(stack, C.registerNum f)) (rev fregs);
+       in  app (fn f => ST.push(stack, CB.registerNum f)) (rev fregs);
            stack
        end
  
@@ -534,7 +554,7 @@ struct
            val _     = stampCounter := !stampCounter - 1
            fun markLive [] = ()
              | markLive(r::rs) = 
-               (A.update(useTbl, C.registerNum r, stamp); markLive rs)
+               (A.update(useTbl, CB.registerNum r, stamp); markLive rs)
            fun isLive f = A.sub(useTbl, f) = stamp
            fun loop(i, depth, code) = 
                if i >= depth then code else 
@@ -678,8 +698,9 @@ struct
        (*------------------------------------------------------------------ 
         * Magic for inserting shuffle code at the end of a basic block
         *------------------------------------------------------------------*) 
-       fun shuffleOut(stackOut, insns, b, block, succ, liveOut) = 
-       let val liveOut = removeNonPhysical liveOut
+       fun shuffleOut(stackOut, insns, b, block, liveOut) = 
+       let 
+           val liveOut = removeNonPhysical(liveOut)
 
            (* Generate code that remove unnecessary values *)
            val code = removeDeadValues(stackOut, liveOut, []) 
@@ -705,52 +726,58 @@ struct
             * from the edge with the highest frequency.
             *)
            fun find([], _, id, best) = (id, best)
-             | find((F.BBLOCK{blknum, insns, ...},freq)::edges, 
-                    highestFreq, id, best) = 
-               if blknum = b+1 then (blknum, A.sub(bindingsIn, blknum))
-               else (case A.sub(bindingsIn, blknum) of
-                      NONE => find(edges, highestFreq, id, best)
-                    | this as SOME stack => 
-                      if highestFreq < !freq then
-                         find(edges, !freq, blknum, this)
-                      else
-                         find(edges, highestFreq, id, best)
-                    )
-             | find(_::edges, highestFreq, id, best) = 
-                  find(edges, highestFreq, id, best)
+             | find((_, target, _)::edges, highestFreq, id, best) = 
+               let val CFG.BLOCK{freq, ...} = #node_info cfg target
+               in  if target = b+1 then (target, A.sub(bindingsIn, target))
+                    else (case A.sub(bindingsIn, target) of
+                            NONE => find(edges, highestFreq, id, best)
+                          | this as SOME stack => 
+                            if highestFreq < !freq then
+                               find(edges, !freq, target, this)
+                            else
+                               find(edges, highestFreq, id, best)
+                          )
+               end
 
-           fun splitAllEdgesExcept([], succBlock) = ()
-             | splitAllEdgesExcept((next as F.BBLOCK{blknum, ...},_)::edges, 
-                                    succBlock) = 
-               (if blknum <> succBlock andalso blknum <= b
-                then splitEdge(blknum,block,next) else ();
-                splitAllEdgesExcept(edges, succBlock)
+           (*
+            * Split all edges source->target except omitThis.
+            *)
+           fun splitAllEdgesExcept([], omitThis) = ()
+             | splitAllEdgesExcept((source,target,e)::edges, omitThis) = 
+               if target = EXIT then error "can't split exit edge!"
+               else
+               (if target <> omitThis andalso 
+                   target <= b andalso          (* XXX *)
+                   target <> ENTRY
+                then splitEdge("ShuffleOut",source,target,e) else ();
+                splitAllEdgesExcept(edges, omitThis)
                )
-             | splitAllEdgesExcept((F.EXIT _,_)::_, _) =
-                  error "can't split exit edge!"
-             | splitAllEdgesExcept(_::edges, succBlock) = 
-                splitAllEdgesExcept(edges, succBlock)
 
-       in  case !succ of
-             []             => matchLiveOut()
-           | [(F.EXIT _,_)] => matchLiveOut()
-           | succ =>
               (* Just one successor; 
                * try to match the bindings of the successor if it exist.
                *)
-             let val (succBlock, target) = find(succ, ~1, ~1, NONE) 
-             in  splitAllEdgesExcept(succ, succBlock);
-                 case target of
-                   SOME stackIn => match(stackOut, stackIn)
-                 | NONE => done(stackOut,insns,code)
-             end
+           fun matchIt succ = 
+           let val (succBlock, target) = find(succ, ~1, ~1, NONE) 
+           in  splitAllEdgesExcept(succ, succBlock);
+               case target of
+                 SOME stackIn => match(stackOut, stackIn)
+               | NONE => done(stackOut,insns,code)
+           end
+
+       in  case #out_edges cfg b of
+             [] => matchLiveOut()
+           | succ as [(_,target,_)] => 
+                if target = EXIT then matchLiveOut()
+                else matchIt succ
+           | succ => matchIt succ 
        end (* shuffleOut *)
 
        (*------------------------------------------------------------------ 
         * Compute the initial fp stack bindings for basic block b.
         *------------------------------------------------------------------*) 
-       fun shuffleIn(b, block, pred, liveIn) = 
-       let val liveInSet = removeNonPhysical liveIn
+       fun shuffleIn(b, block, liveIn) = 
+       let 
+           val liveInSet = removeNonPhysical liveIn
 
            (* With multiple predecessors, find out which one we
             * should connect to.   Choose the one from the block that
@@ -758,29 +785,25 @@ struct
             * from the edge with the highest frequency.
             *)
            fun find([], _, best) = best
-             | find((F.BBLOCK{blknum, insns, ...},freq)::edges, 
-                    highestFreq, best) = 
-               (case A.sub(bindingsOut, blknum) of
-                 NONE => find(edges, highestFreq, best)
-               | this as SOME stack => 
-                    if blknum = b-1 then (* falls into b *)
-                       this
-                    else if highestFreq < !freq then
-                       find(edges, !freq, this)
-                    else
-                       find(edges, highestFreq, best)
-               )
-             | find(_::edges, highestFreq, best) = 
-                  find(edges, highestFreq, best)
+             | find((source, _, _)::edges, highestFreq, best) = 
+               let val CFG.BLOCK{freq, ...} = #node_info cfg source
+               in  case A.sub(bindingsOut, source) of
+                      NONE => find(edges, highestFreq, best)
+                    | this as SOME stack => 
+                      if source = b-1
+                      then this (* falls into b *)
+                      else if highestFreq < !freq then find(edges, !freq, this)
+                        else find(edges, highestFreq, best)
+               end
 
            fun splitAllDoneEdges [] = ()
-             | splitAllDoneEdges
-                  ((prev as F.BBLOCK{blknum, ...},_)::edges) = 
-               (if blknum < b 
-                then splitEdge(b,prev,block) else ();
+             | splitAllDoneEdges ((source, target, e)::edges) = 
+               (if source < b andalso 
+                   source <> ENTRY andalso 
+                   source <> EXIT
+                then splitEdge("ShuffleIn", source, target, e) else ();
                 splitAllDoneEdges edges
                )
-             | splitAllDoneEdges(_::edges) = splitAllDoneEdges edges
 
            (* The initial stack bindings are determined by the live set. 
             * No compensation code is needed.
@@ -790,18 +813,20 @@ struct
                    case liveInSet of
                      [] => ST.stack0
                    | _  => 
-                     (pr("liveIn="^C.CellSet.toString (!liveIn)^"\n");
+                     (pr("liveIn="^celllistToString liveIn^"\n");
                       newStack liveInSet 
                      )
                val stackOut = ST.copy stackIn
            in  (stackIn, stackOut, [])
            end
 
+           val pred = #in_edges cfg b 
+
            val (stackIn, stackOut, code) =  
-               case find(!pred, ~1, NONE) of
-                 NONE => (splitAllDoneEdges(!pred); fromLiveIn())
+               case find(pred, ~1, NONE) of
+                 NONE => (splitAllDoneEdges(pred); fromLiveIn())
                | SOME stackIn' => 
-                 (case !pred of
+                 (case pred of
                     [_] => (* one predecessor *)
                     (* Use the bindings as from the previous block 
                      * We first have to deallocate all unused values.
@@ -810,7 +835,7 @@ struct
                            (* Clean the stack of unused entries *)
                         val code = removeDeadValues(stackOut, liveInSet, [])
                     in  (stackIn', stackOut, code) end
-                 |  _ => (* more than one predecessors *)
+                 |  pred => (* more than one predecessors *)
                     let val stackIn = ST.copy stackIn'
                         val code = removeDeadValues(stackIn, liveInSet, [])
                         val stackOut = ST.copy stackIn
@@ -819,7 +844,7 @@ struct
                          *)
                         case code of
                            [] => ()
-                        |  _  => splitAllDoneEdges(!pred);
+                        |  _  => splitAllDoneEdges(pred);
                         (stackIn, stackOut, []) 
                     end
                  )
@@ -831,17 +856,41 @@ struct
        (*------------------------------------------------------------------ 
         * Code for patching up critical edges.
         * The trick is finding a good place to insert the critical edges.
-        * The cluster representation is very hard to work with.
+        * Let's call an edge x->y that requires compensation 
+        * code c to be inserted an candidate edge.  We write this as x->y(c)
+        *
+        * Here are the heuristics that we use to improve the final code:
+        *
+        *    1. Given two candidate edges a->x(c1) and b->x(c2) where c1=c2
+        *       then we can merge the two copies of compensation code.
+        *       This is quite common.  This generalizes to any number of edges.
+        *
+        *    2. Given two candidate edges a->x(c1) and b->x(c2) and where
+        *       c1 and c2 are pops, we can partially share c1 and c2.
+        *       Currently, I think I only recognize this case when
+        *       x has no fp registers live-in.  
+        *
+        *    3. Given two candidate edges a->x(c1) and b->x(c2), 
+        *       if a->x has a higher frequency then put the compensation
+        *       code in front of x (so that it falls through into x)
+        *       whenever possible.
+        * 
+        * As you can see, the voodoo is strong here. 
+        *
+        * The routine has two main phases:
+        *    1. Determine the compensation code by applying the heuristics
+        *       above.
+        *    2. Then insert them and rebuild the cfg by renaming all block
+        *       ids.  This is currently necessary to keep the layout order
+        *       consistent with the order of the id.
         *------------------------------------------------------------------*)
-       fun repairCriticalEdges
-           (cluster as F.CLUSTER{blocks, entry, exit, annotations,
-                                 blkCounter}) =
+       fun repairCriticalEdges(Cfg as G.GRAPH cfg) =
        let (* Data structure for recording critical edge splitting info *) 
            datatype compensationCode = 
              NEWEDGE of 
-                {label:L.label,          (* label of new block *)
-                 preds:F.block list ref, (* predecessors *)
-                 code:I.instruction list,(* code *)
+                {label:L.label,               (* label of new block *)
+                 entries:CFG.edge list ref,   (* edges going into this code *)
+                 code:I.instruction list,     (* code *)
                  comment:an 
                 } 
 
@@ -857,47 +906,30 @@ struct
                 getOpt(IntHashTable.find repairCodeTable b,[])
 
            (* Repair code table; mapping from block id -> compensation code
-            * These must be relocated...
+            * These must be relocated ...
             *)
            val repairCodeTable'  = IntHashTable.mkTable(32, Nothing)
            val addRepairCode'    = IntHashTable.insert repairCodeTable'
            fun lookupRepairCode' b = 
                 getOpt(IntHashTable.find repairCodeTable' b,[])
 
-           (* Mapping from block id -> labels *)
-           val labelTable  = IntHashTable.mkTable(32, Nothing)
-           val addLabel    = IntHashTable.insert labelTable
-           fun lookupLabel b = getOpt(IntHashTable.find labelTable b, [])
-
-           (* Scan code and insert labels *)
-           fun insertLabels([], []) = ()
-             | insertLabels(labels, []) = error "orphan labels"
-             | insertLabels(labels, F.LABEL l::blocks) = 
-                 insertLabels(l::labels, blocks) 
-             | insertLabels(labels, (b as F.BBLOCK{blknum,...})::blocks) = 
-                 (addLabel(blknum, labels); insertLabels([], blocks))
-             | insertLabels(_, _::blocks) = insertLabels([], blocks)
-                  (* skip labels to pseudo ops *)
-
-           val _ = insertLabels([], blocks)
-
-           (* Does the block falls thru from the previous block? *)
-           fun isFallsThru(F.BBLOCK{pred, blknum=j, ...}) = 
-               let fun loop((F.BBLOCK{blknum=i,...},_)::rest) = 
-                          i+1 = j orelse loop rest
-                     | loop((F.ENTRY _,_)::_) = true
-                     | loop(_) = false
-               in  loop(!pred) 
-               end
-             | isFallsThru _ = false
+           (* Does the given block falls thru from the previous block? 
+            * If the previous block is ENTRY then also consider this to be true
+            *)
+           fun isFallsThru b =
+               case #in_edges cfg b of
+                  [(b',_,_)] => (case CFG.fallsThruTo(Cfg,b') of
+                                   SOME b'' => b'' = b
+                                 | NONE => b' = ENTRY
+                                )
+               | _ => false
 
            (* Create jump instruction to a block *)
-           fun jump(F.BBLOCK{blknum,...}) = 
-               (case lookupLabel blknum of 
+           fun jump(CFG.BLOCK{labels, ...}) = 
+               (case !labels of 
                  []   => error "no label to target of critical edge!"
                | l::_ => P.jump l
                )
-             | jump _ = error "jump"
 
            (* 
             * Special case: target block has stack depth of 0.
@@ -906,17 +938,16 @@ struct
             * all the critical edges.
             *)
            fun genPoppingCode(_, []) = ()
-             | genPoppingCode(targetId, edges as (_,target)::_) = 
-           let val preds = 
-                  map (fn (source, _) =>
-                      let val sourceId = blknumOf source
-                          val SOME stackOut = A.sub(bindingsOut,sourceId)
-                          val n  = ST.depth stackOut
-                      in  (n, source) end
+             | genPoppingCode(targetBlk, edges as (_,target,_)::_) = 
+           let val entries = 
+                  map (fn edge as (source, _, _) =>
+                      let val n  = ST.depth(valOf(A.sub(bindingsOut,source)))
+                      in  (n, edge) end
                       ) edges
+
                (* Ordered by increasing stack height *)
-               val preds = 
-                   ListMergeSort.sort (fn ((n,_),(m,_)) => n > m) preds
+               val entries = 
+                   ListMergeSort.sort (fn ((n,_),(m,_)) => n > m) entries
 
                val relocate = isFallsThru target
 
@@ -926,7 +957,8 @@ struct
                fun makeCode(popCount, rest) = 
                    let val code = pop(popCount, [])
                    in  case rest of
-                         [] => if relocate then jump target::code
+                         [] => if relocate then 
+                                  jump(#node_info cfg target)::code
                                else code
                        | _  => code
                    end
@@ -935,44 +967,47 @@ struct
                 * have to pop the same number of elements 
                 *)
                fun gen([], h, code) = code
-                 | gen((n,b)::rest, _, []) = 
+                 | gen((n,e)::rest, _, []) = 
                      gen(rest, n,
-                        [NEWEDGE{label=L.newLabel "",preds=ref [b],
-                                 code=makeCode(n,rest), comment=cleanup}])
-                 | gen((n,b)::rest, h, all as (NEWEDGE{preds, ...}::_)) = 
+                        [NEWEDGE{label=L.anon(), 
+                                 entries=ref [e],
+                                 code=makeCode(n,rest), 
+                                 comment=cleanup
+                                }
+                        ])
+                 | gen((n,e)::rest, h, all as (NEWEDGE{entries, ...}::_)) = 
                      gen(rest,h,
                          if n = h then 
-                           (preds := b :: !preds; all)
+                           (entries := e :: !entries; all)
                          else
-                           NEWEDGE{label=L.newLabel "", preds=ref [b],
+                           NEWEDGE{label=L.anon(), 
+                                   entries=ref [e],
                                    code=makeCode(n-h,rest),
-                                   comment=cleanup}::all
+                                   comment=cleanup
+                                  }::all
                         )
-               val repairCode = gen(preds, 0, []) 
+               val repairCode = gen(entries, 0, []) 
            in  (if relocate then addRepairCode' else addRepairCode)
-                 (targetId, repairCode)
+                 (target, repairCode)
            end
 
            (* The general case:  
             *   Remove dead values, then
             *   Shuffle.
             *)
-           fun genRepairCode(targetId, stackIn, edges) =
+           fun genRepairCode(target, targetBlk, stackIn, edges) =
            let val repairList = ref []
                val repairCount = ref 0 
-               val SOME stackIn = A.sub(bindingsIn, targetId)
-               fun repair(source, target) =
-               let val F.BBLOCK{blknum=sourceId, ...} = source
-                   val SOME stackOut' = A.sub(bindingsOut, sourceId)
+               val SOME stackIn = A.sub(bindingsIn, target)
+               fun repair(edge as (source, _, _)) =
+               let val SOME stackOut' = A.sub(bindingsOut, source)
                    fun createNewRepairEdge() = 
                    let val stackOut = ST.copy stackOut'
-                       val F.BBLOCK{liveIn, ...} = target
+                       val liveIn = IntHashTable.lookup liveInTable target
                        val liveInSet = removeNonPhysical liveIn
                        val _ = 
                           if debug then
-                              pr("LiveIn = "^
-                                C.CellSet.toString (!liveIn)^
-                                 "\n")
+                              pr("LiveIn = "^celllistToString liveIn^"\n")
                           else ()
 
                        (* deallocate unused values *)
@@ -982,41 +1017,46 @@ struct
                        fun addNewEdge() =
                        let (* Do we need to relocate this block? *)
                            val relocate = !repairCount > 0 orelse
-                                          isFallsThru target andalso 
-                                          sourceId + 1 <> targetId  
+                                          isFallsThru target
+                                          andalso source + 1 <> target  
  
                            (* add a jump to the target block *)
-                           val code = if relocate then jump target::code 
+                           val code = if relocate then jump targetBlk::code 
                                       else code
   
                            val repairCode = 
-                               NEWEDGE{label=L.newLabel "", 
-                                       preds=ref [source], 
-                                       code=code, comment=critical}
+                               NEWEDGE{label=L.anon(), 
+                                       entries=ref [edge], 
+                                       code=code, 
+                                       comment=critical
+                                      }
                        in  repairCount := !repairCount + 1;
                            repairList := (repairCode, stackOut') 
                                             :: !repairList;
                            if relocate then 
-                              addRepairCode'(targetId, 
-                                  repairCode::lookupRepairCode' targetId)
+                              addRepairCode'(target, 
+                                  repairCode::lookupRepairCode' target)
                            else
-                              addRepairCode(targetId,
-                                 repairCode::lookupRepairCode targetId)
+                              addRepairCode(target,
+                                 repairCode::lookupRepairCode target)
                        end
-                   in  case source of
-                          F.BBLOCK{succ=ref [(F.BBLOCK{blknum=j,...},_)],
-                                   insns, ...} =>
-                          if j = targetId then (*insert code at predecessor*)
-                             insns := insertAtEnd(!insns, code)
-                          else
-                             addNewEdge()
+                   in  case #out_edges cfg source of
+                         [(_,j,_)] =>
+                         if j = target then (*insert code at predecessor*)
+                            let val CFG.BLOCK{insns,...} = 
+                                  #node_info cfg source 
+                            in  insns := insertAtEnd(!insns, code)
+                            end
+                         else
+                            addNewEdge()
                        | _ => addNewEdge()
                    end
 
                    fun shareRepairEdge [] = false
-                     | shareRepairEdge((NEWEDGE{preds,...},stackOut'')::rest) =
+                     | shareRepairEdge
+                        ((NEWEDGE{entries,...},stackOut'')::rest) =
                         if ST.equal(stackOut'', stackOut') then
-                            (preds := source :: !preds; true)
+                            (entries := edge :: !entries; true)
                         else shareRepairEdge rest 
 
                in  if shareRepairEdge(!repairList) then ()
@@ -1026,211 +1066,235 @@ struct
            end
 
            (*
-            * Code to split critical edges entering block targetId
+            * Code to split critical edges entering block target
             *)
-           fun split(targetId, edges) = 
-               let val SOME stackIn = A.sub(bindingsIn,targetId)
-                   fun log(source, target) = 
-                   let val s = blknumOf source
-                       val t = blknumOf target
-                       val SOME stackOut = A.sub(bindingsOut,s)
+           fun split(target, edges) = 
+               let val SOME stackIn = A.sub(bindingsIn,target)
+                   fun log(s, t, e) = 
+                   let val SOME stackOut = A.sub(bindingsOut,s)
                    in  pr("SPLIT "^i2s s^"->"^i2s t^" "^
                           ST.stackToString stackOut^"->"^
                           ST.stackToString stackIn^"\n")
                    end
                    val _ = if debug andalso !traceOn then app log edges else ()
-               in  if ST.depth stackIn = 0 then genPoppingCode(targetId, edges)
-                   else genRepairCode(targetId, stackIn, edges)
+                   val targetBlk = #node_info cfg target
+               in  if ST.depth stackIn = 0 then genPoppingCode(targetBlk,edges)
+                   else genRepairCode(target, targetBlk, stackIn, edges)
                end
 
-           (* Renumber all the blocks and insert compensation code at the
+
+           (*
+            * Create a new empty cfg with the same graph info as the old one.
+            *)
+           val Cfg' as G.GRAPH cfg' = CFG.cfg (#graph_info cfg)
+
+           (* 
+            * Renumber all the blocks and insert compensation code at the
             * right places.
             *)
            fun renumberBlocks() = 
-           let val labelTbl = IntHashTable.mkTable(32, Nothing)
-               val addLabel = IntHashTable.insert labelTbl
-               fun insertLabel(L.Label{id, ...},block) = addLabel(id, block)
+           let (* Mapping from label to new node ids *)
+               val labelMap = HashTable.mkTable (L.hash,L.same) (32, Nothing)
+               val mapLabelToId = HashTable.insert labelMap
 
-               val entries = ref []
-               val exits   = ref []
+               (* Mapping from old id to new id *)
+               val idMap = IntHashTable.mkTable (32, Nothing)
+               val mapOldIdToNewId = IntHashTable.insert idMap
+               val oldIdToNewId = IntHashTable.lookup idMap
 
-               (* retarget the branch of block *)
-               fun retarget(I.JMP(I.ImmedLabel(T.LABEL _), [_])::rest, l) = 
-                     I.JMP(I.ImmedLabel(T.LABEL l), [l])::rest
-                 | retarget(I.JCC{cond,opnd=I.ImmedLabel(T.LABEL _)}::rest,l)=
-                     I.JCC{cond=cond,opnd=I.ImmedLabel(T.LABEL l)}::rest
-                 | retarget(_,l) = error "retarget"
+               (* Retarget a jump instruction to label l *)
+               fun retargetJump(I.JMP(I.ImmedLabel(T.LABEL _), [_]), l) = 
+                     I.JMP(I.ImmedLabel(T.LABEL l), [l])
+                 | retargetJump(I.JCC{cond,opnd=I.ImmedLabel(T.LABEL _)},l)=
+                     I.JCC{cond=cond,opnd=I.ImmedLabel(T.LABEL l)}
+                 | retargetJump(I.ANNOTATION{i,a},l) =
+                     I.ANNOTATION{i=retargetJump(i,l),a=a}
+                 | retargetJump(_,l) = error "retargetJump"
 
-               (* Translate repair code to actual block *)
-               fun transRepair(n, [], blocks) = (n, blocks)
-                 | transRepair(n, NEWEDGE{label, preds, code, comment}::rest,
-                                  blocks) = 
-                   let val blocks = F.LABEL label::blocks
-                       val this = F.BBLOCK{blknum=n, freq=ref 0,
-                                           pred=ref [], 
-                                           succ=ref [],
-                                           annotations=ref comment, 
-                                           liveIn=ref C.empty, 
-                                           liveOut=ref C.empty,
-                                           insns=ref code}
-                       fun retargetBlock(F.BBLOCK{insns, ...}) = 
-                            insns := retarget(!insns, label) 
-                         | retargetBlock _ = ()
+               (* 
+                * Given a candidate edge, generate compensation code.
+                *)
+               fun transRepair(n, []) = n
+                 | transRepair(n, NEWEDGE{label,entries,code,comment}::rest) =
+                   let val this =
+                           CFG.BLOCK{id=n, 
+                                     kind=CFG.NORMAL,
+                                     freq=ref 0, (* XXX Wrong frequency! *)
+                                     labels=ref [label],
+                                     insns=ref code,
+                                     annotations=ref comment,
+				     align=ref NONE
+                                    }
+
+                       (*
+                        * Update the instructions to predecessors of this edge.
+                        *)
+                       fun retarget(CFG.BLOCK{kind=CFG.START,...}) = ()
+                         | retarget(CFG.BLOCK{insns as ref(jmp::rest), ...}) = 
+                            insns := retargetJump(jmp, label)::rest
+                         | retarget _ = error "retarget"
+
+                       fun retargetEntries(pred,_,CFG.EDGE{a,...}) = 
+                             (retarget(#node_info cfg pred);
+                              a := TargetMovedTo n :: !a
+                             )
+
                    in  if debug andalso !traceOn then
                            pr("Inserting critical edge at block "^i2s n^" "^
-                               L.nameOf label^"\n")
+                               L.toString label^"\n")
                        else ();
-                       insertLabel(label, this);
-                       app retargetBlock (!preds);
-                       transRepair(n+1, rest, this::blocks) 
+                       #add_node cfg' (n, this);  (* insert block *)
+                       mapLabelToId(label, n);
+                       app retargetEntries (!entries);
+                       transRepair(n+1, rest)
                    end
  
-               fun renumber(n, [], pseudoOps, repairCode', blocks) = 
-                   let val (n, blocks) = transRepair(n, repairCode', blocks) 
-                       val blocks      = pseudoOps @ blocks
-                   in  (n, rev blocks)
-                   end
-                 | renumber(n, (block as 
-                               F.BBLOCK{blknum,annotations,insns,freq,
-                                        pred,succ,liveIn,liveOut,...})::rest,
-                            pseudoOps, repairCode', blocks) =
+               (* 
+                * Renumber all the blocks and insert repair code.
+                *)
+               fun renumber(n, [], repairCode') =  transRepair(n, repairCode')
+                 | renumber(n, (blknum, block as 
+                                 CFG.BLOCK{kind,annotations,insns,freq,align,labels, ...})::rest,
+                           repairCode') =
                    let (* If we have outstanding repair code and this is
                         * NOT a fallsthru entry, then insert them here.
                         *)
-                       val (n, blocks, repairCode') =
+                       val (n, repairCode') =
                           case repairCode' of
-                            [] => (n, blocks, [])
-                          | _  => if isFallsThru block then
-                                    (n, blocks, repairCode')
+                            [] => (n, [])
+                          | _  => if isFallsThru blknum then
+                                    (n, repairCode')
                                   else
-                                    let val (n, blocks) = 
-                                       transRepair(n, repairCode', blocks)
-                                    in (n, blocks, [])
-                                    end
+                                    (transRepair(n, repairCode'), [])
 
                        (*  Insert non-relocatable repair code *)
                        val repairCode = lookupRepairCode blknum
-                       val (n, blocks) = transRepair(n, repairCode, blocks)
+                       val n = transRepair(n, repairCode)
 
                        (*  Create this block *)
-                       val this = F.BBLOCK{blknum=n,annotations=annotations,
-                                           freq=freq, insns=insns, 
-                                           pred=ref [], succ=ref [],
-                                           liveIn=liveIn,liveOut=liveOut
-                                          }
+                       val this = CFG.BLOCK{id=n, 
+                                            kind=kind,
+                                            freq=freq,
+                                            align=align,
+                                            labels=labels,
+                                            insns=insns,
+                                            annotations=annotations
+                                           }
 
                        (*  Insert new relocatable repair code *)
                        val repairCode' = repairCode' @ 
                                            lookupRepairCode' blknum
 
-                       (*  Insert labels *)
-                       fun insertLabels((p as F.LABEL l)::ps) = 
-                            (insertLabel(l, this); insertLabels ps)
-                         | insertLabels(p::ps) = insertLabels ps
-                         | insertLabels [] = blocks
+                       (*  Insert labels that map to this block *)
+                       val _ = app (fn l => mapLabelToId(l, n)) (!labels)
 
-                       val _ = insertLabels pseudoOps
+                       (*  Insert block *)
+                       val _ = #add_node cfg' (n, this)
+                       val _ = mapOldIdToNewId(blknum, n)
 
-                       val blocks = this::pseudoOps @ blocks
-
-                       fun addEntry((F.ENTRY _,w)::_) = 
-                             entries := (this,w):: !entries 
-                         | addEntry(_::es) = addEntry es
-                         | addEntry [] = ()
-                       fun addExit((F.EXIT _,w)::_) = 
-                             exits := (this,w) :: !exits  
-                         | addExit(_::es) = addExit es
-                         | addExit [] = ()
-
-                   in  addEntry(!pred); (* check if this is an entry *)
-                       addExit(!succ);  (* check if this ia an exit *)
-                       renumber(n+1, rest, [], repairCode', blocks)
+                   in  case kind of
+                          CFG.START => #set_entries cfg' [n]
+                       |  CFG.STOP  => #set_exits cfg' [n]
+                       |  _         => ();
+                       renumber(n+1, rest, repairCode')
                    end
-                 | renumber(n, p::rest, pseudoOps, repairCode', blocks) = 
-                     renumber(n, rest, p::pseudoOps, repairCode', blocks)
 
-               val (n, blocks) = renumber(0, blocks, [], [], [])
+               (* Do all the blocks *)
+               val n = renumber(0, #nodes cfg (), [])
 
-               (* New entry and exits *)
-               val F.ENTRY{freq=entryFreq, ...} = entry
-               val newEntry = F.ENTRY{blknum=n, freq=entryFreq, succ=entries}
-               val n        = n+1
-               val F.EXIT{freq=exitFreq, ...} = exit
-               val newExit  = F.EXIT{blknum=n, freq=exitFreq, pred=exits}
-               val n        = n+1
+               val [newExit] = #exits cfg' ()
 
-               val lookupLabel = IntHashTable.find labelTbl
-               val lookupLabel = 
-                   fn l => case lookupLabel l of
-                             SOME b => b
-                           | NONE   => newExit
+               (*
+                * Given a label, finds out which block it targets.
+                * If not found then it means the block is escaping.
+                *)
+               val findLabel = HashTable.find labelMap
+               fun labelToBlockId l = getOpt(findLabel l, newExit)
 
-               fun addPred b (F.BBLOCK{pred, ...},w) = pred := (b,w) :: !pred
-                 | addPred b (F.EXIT{pred, ...},w) = pred := (b,w) :: !pred
-                 | addPred _ _ = error "addPred"
+               fun hasJump x = 
+               let val CFG.BLOCK{insns, ...} = #node_info cfg' x
+               in  case !insns of
+                     [] => false
+                   | jmp::_ => P.instrKind jmp = P.IK_JUMP 
+               end
 
-               fun adjustSucc(
-                      (blk as F.BBLOCK{blknum,insns,succ,pred,...})::rest) = 
-                   let fun follows(F.LABEL _::rest) = follows rest
-                         | follows((b as F.BBLOCK _)::rest) = (b, ref 0)
-                         | follows [] = (newExit, ref 0)
-                       fun succBlocks([], succ) = succ
-                         | succBlocks(P.ESCAPES::targets, succ) = 
-                            succBlocks(targets, (newExit, ref 0)::succ)
-                         | succBlocks(P.FALLTHROUGH::targets, succ) = 
-                            succBlocks(targets, follows rest::succ)
-                         | succBlocks(P.LABELLED(L.Label{id,...})::targets, 
-                                      succ) = 
-                            succBlocks(targets, (lookupLabel id, ref 0)::succ)
-                       fun fallsThru rest = [follows rest]
-                   in  case !insns of 
-                         [] => succ := fallsThru rest
-                       | jmp::_ => 
-                         case P.instrKind jmp of
-                           P.IK_JUMP => 
-                              succ := succBlocks(P.branchTargets jmp,[])
-                         | _ => succ := fallsThru rest;
-                       app (addPred blk) (!succ);
-                       adjustSucc rest
-                  end 
-                | adjustSucc(_::rest) = adjustSucc rest
-                | adjustSucc [] = ()
+               (*
+                * Now rebuild all the old edges.
+                * For each edge, makes sure the target hasn't been moved.
+                *)
+               fun renameEdge(x, y, e as CFG.EDGE{a,k,w,...}) =
+               let val x = oldIdToNewId x
+                   val (z, e) =
+                   case !a of
+                      TargetMovedTo z::an => 
+                      let val e = 
+                          case k of
+                             (CFG.FALLSTHRU | CFG.BRANCH false) =>
+                                if hasJump x then 
+                                  CFG.EDGE{a=a, w=w, k=CFG.JUMP}
+                                else e
+                          | _ => e
+                      in  a := an;   (* remove the marker *)
+                          (z, e)
+                      end 
+                   |   _ => (oldIdToNewId y, e)
+               in  #add_edge cfg' (x,z,e)
+               end
+ 
+               val _ = #forall_edges cfg renameEdge
 
-               val _ = adjustSucc blocks
-               val _ = app (addPred entry) (!entries)
+               (*
+                * Now add new edges x->y where x is a new compensation block
+                *) 
+               fun addNewEdge(NEWEDGE{label, code, entries, ...}) = 
+               let val x = labelToBlockId label
+                   val (y, k) = 
+                      case code of
+                        [] => (x + 1, CFG.FALLSTHRU) (* next block *)
+                      | jmp::_ => 
+                         if P.instrKind jmp = P.IK_JUMP then
+                            (case P.branchTargets jmp of
+                              [P.LABELLED l] => (labelToBlockId l, CFG.JUMP)
+                            | _ => error "addNewEdge where is the target?"
+                            )
+                         else 
+                            (x + 1, CFG.FALLSTHRU)
+                   (* compute weight *)
+                   val w = List.foldr (fn ((_,_,CFG.EDGE{w,...}),n) => !w+n)
+                              0 (!entries)
+               in  #add_edge cfg' (x, y, CFG.EDGE{a=ref [], w=ref w, k=k})
+               end
 
-           in  F.CLUSTER{blkCounter=ref n,
-                         annotations=annotations,
-                         blocks=blocks,
-                         entry=newEntry,
-                         exit=newExit
-                        }
+               val addNewEdges = app addNewEdge
+               val _ = IntHashTable.app addNewEdges repairCodeTable 
+               val _ = IntHashTable.app addNewEdges repairCodeTable'
+
+           in  Cfg'
            end
 
-       in  insertLabels([], blocks);
-           IntHashTable.appi split edgesToSplit;
+       in  IntHashTable.appi split edgesToSplit;
            renumberBlocks()
-       end
-
+       end 
 
        (*------------------------------------------------------------------ 
-        * Process all blocks 
+        * Process all blocks which are not the entry or the exit
         *------------------------------------------------------------------*)
-       fun rewriteAllBlocks
-            (stamp, 
-             (block as F.BBLOCK{blknum, insns, liveIn, liveOut, 
-                                annotations, pred, succ, ...})::rest) = 
-            let val stamp = rewrite(stamp, blknum, block, 
+       val stamp = ref 0
+       fun rewriteAllBlocks (_, CFG.BLOCK{kind=CFG.START, ...}) = ()
+         | rewriteAllBlocks (_, CFG.BLOCK{kind=CFG.STOP, ...}) = ()
+         | rewriteAllBlocks
+            (blknum, block as CFG.BLOCK{insns, labels, annotations, ...}) =
+            let val _ = 
+                  if debug andalso !debugOn then 
+                      app (fn l => pr(L.toString l^":\n")) (!labels)
+                  else ();
+                val liveIn  = HT.lookup liveInTable blknum
+                val liveOut = HT.lookup liveOutTable blknum
+                val st = rewrite(!stamp, blknum, block, 
                                     insns, liveIn, liveOut, 
-                                    pred, succ, annotations)
-            in  rewriteAllBlocks(stamp+1, rest)
+                                    annotations)
+            in  stamp := st (* update stamp *)
             end
-         | rewriteAllBlocks(stamp, F.LABEL l::rest) = 
-            (if debug andalso !debugOn then pr(Label.nameOf l^":\n") else ();
-             rewriteAllBlocks(stamp, rest)
-            )
-         | rewriteAllBlocks(stamp, _::rest) = rewriteAllBlocks(stamp, rest)
-         | rewriteAllBlocks(stamp, []) = ()
 
        (*------------------------------------------------------------------ 
         * Translate code within a basic block.
@@ -1238,8 +1302,8 @@ struct
         * uses.
         *------------------------------------------------------------------*)
        and rewrite(stamp, blknum, block, insns, liveIn, liveOut, 
-                   pred, succ, annotations) = 
-       let val (stackIn, stack, code) = shuffleIn(blknum, block, pred, liveIn)
+                   annotations) = 
+       let val (stackIn, stack, code) = shuffleIn(blknum, block, liveIn)
 
            (* Dump instructions when encountering a bug *)
            fun bug msg = 
@@ -1252,7 +1316,7 @@ struct
              | loop(stamp, instr::rest, (lastUse,dead)::lastUses, code) = 
                let fun mark(tbl, []) = ()
                      | mark(tbl, r::rs) = 
-                       (A.update(tbl, C.registerNum r, stamp); mark(tbl, rs))
+                       (A.update(tbl, CB.registerNum r, stamp); mark(tbl, rs))
                in  mark(lastUseTbl,lastUse); (* mark all last uses *)
                    trans(stamp, instr, [], rest, dead, lastUses, code) 
                end
@@ -1278,7 +1342,7 @@ struct
                fun DONE code = 
                let fun kill([], code) = FINISH code
                      | kill(f::fs, code) = 
-                       let val fx = C.registerNum f 
+                       let val fx = CB.registerNum f 
                        in  if debug andalso debugDead then
                               pr("DEAD "^fregToString f^" in "^
                                  ST.stackToString stack^"\n")
@@ -1309,7 +1373,7 @@ struct
                (* Is this value dead? *) 
                fun isDead f = 
                let fun loop [] = false
-                     | loop(r::rs) = C.sameColor(f,r) orelse loop rs
+                     | loop(r::rs) = CB.sameColor(f,r) orelse loop rs
                in loop dead end
 
                (* Dump the stack before each intruction for debugging *)
@@ -1319,7 +1383,7 @@ struct
 
                (* Find the location of a source register *)
                fun getfs(f) = 
-               let val fx = C.registerNum f 
+               let val fx = CB.registerNum f 
                    val s = ST.fp(stack, fx) 
                in  (isLastUse fx,s) end
 
@@ -1331,15 +1395,15 @@ struct
                in  DONE code end
 
                (* Allocate a new register in %st(0) *)
-               fun alloc(f,code) = (ST.push(stack,C.registerNum f); code)
+               fun alloc(f,code) = (ST.push(stack,CB.registerNum f); code)
 
                (* register -> register move *)
                fun rrmove(fs,fd) = 
-               if C.sameColor(fs,fd) then DONE code 
+               if CB.sameColor(fs,fd) then DONE code 
                else
                let val (dead,ss) = getfs fs 
                in  if dead then              (* fs is dead *)
-                      (ST.set(stack,ss,C.registerNum fd);  (* rename fd to fs *)
+                      (ST.set(stack,ss,CB.registerNum fd);  (* rename fd to fs *)
                        DONE code             (* no code is generated *)
                       )
                    else (* fs is not dead; push it onto %st(0);
@@ -1420,7 +1484,7 @@ struct
 
                fun storeResult(fsize, dst, n, code) = 
                    case dst of
-                     I.FPR fd => (ST.set(stack, n, C.registerNum fd); DONE code)
+                     I.FPR fd => (ST.set(stack, n, CB.registerNum fd); DONE code)
                    | mem      => 
                       let val code = if n = 0 then code else xch n::code
                       in  ST.pop stack; DONE(FSTP(fsize, mem)::code) end
@@ -1672,13 +1736,13 @@ struct
                fun fcopy{dst,src,tmp} =
                let fun loop([], [], copies, renames) = (copies, renames)
                      | loop(fd::fds, fs::fss, copies, renames) = 
-                       let val fsx = C.registerNum fs
+                       let val fsx = CB.registerNum fs
                        in  if isLastUse fsx then 
                              if A.sub(useTbl,fsx) <> stamp 
                                (* unused *)
                              then (A.update(useTbl,fsx,stamp);
                                    loop(fds, fss, copies, 
-                                        if C.sameColor(fd,fs) then renames 
+                                        if CB.sameColor(fd,fs) then renames 
                                         else (fd, fs)::renames)
                                )
                               else loop(fds, fss, (fd, fs)::copies, renames)
@@ -1689,17 +1753,17 @@ struct
                    (* generate code for the copies *)
                    fun genCopy([], code) = code
                      | genCopy((fd, fs)::copies, code) = 
-                       let val ss   = ST.fp(stack, C.registerNum fs)
-                           val _    = ST.push(stack, C.registerNum fd)
+                       let val ss   = ST.fp(stack, CB.registerNum fs)
+                           val _    = ST.push(stack, CB.registerNum fd)
                            val code = I.FLDL(ST ss)::code 
                        in  genCopy(copies, code) end
 
                    (* perform the renaming; it must be done in parallel! *)
                    fun renaming(renames) = 
                    let val ss = map (fn (_,fs) => 
-                                        ST.fp(stack,C.registerNum fs)) renames
+                                        ST.fp(stack,CB.registerNum fs)) renames
                    in  ListPair.app (fn ((fd,_),ss) => 
-                               ST.set(stack,ss,C.registerNum fd))
+                               ST.set(stack,ss,CB.registerNum fd))
                           (renames, ss)
                    end
 
@@ -1725,11 +1789,13 @@ struct
                    DONE code
                end
 
-               fun call return =
-               let val returnSet = SL.return(SL.uniq(getCell return))
-               in  case returnSet of
+               fun call(instr, return) = let 
+		 val code = mark(instr, an)::code
+		 val returnSet = SL.return(SL.uniq(getCell return))
+               in
+		 case returnSet of
                      [] => ()
-                   | [r] => ST.push(stack, C.registerNum r)
+                   | [r] => ST.push(stack, CB.registerNum r)
                    | _   => 
                      error "can't return more than one fp argument (yet)";
                    DONE code
@@ -1750,7 +1816,7 @@ struct
                | I.FCOPY x   => (log(); fcopy x)
 
                  (* handle calling convention *)
-               | I.CALL{return, ...}    => (log(); call return)
+               | I.CALL{return, ...}    => (log(); call(instr,return))
 
                   (* 
                    * Catch instructions that absolutely 
@@ -1818,9 +1884,12 @@ struct
            (* Dump the initial code *)
            val _ = if debug andalso !debugOn then
                     (pr("-------- block "^i2s blknum^" ----"^
-                         C.CellSet.toString (!liveIn)^" "^
+                         celllistToString liveIn^" "^
                          ST.stackToString stackIn^"\n");
-                     dump (!insns)
+                     dump (!insns);
+                     pr("succ=");
+                     app (fn b => pr(i2s b^" ")) (#succ cfg blknum);
+                     pr("\n")
                     )
                    else ()
 
@@ -1831,16 +1900,16 @@ struct
            val (stamp, insns') = loop(stamp, rev(!insns), lastUse, code)
 
            (* Insert shuffle code at the end if necessary *)
-           val insns' = shuffleOut(stack, insns', blknum, block, succ, liveOut)
+           val insns' = shuffleOut(stack, insns', blknum, block, liveOut)
 
            (* Dump translation *)
            val _ = if debug andalso !debugOn then
                      (pr("-------- translation "^i2s blknum^"----"^
-                         C.CellSet.toString (!liveIn)^" "^
+                         celllistToString liveIn^" "^
                          ST.stackToString stackIn^"\n");
                       dump insns';
                       pr("-------- done "^i2s blknum^"----"^
-                         C.CellSet.toString (!liveOut)^" "^
+                         celllistToString liveOut^" "^
                          ST.stackToString stack^"\n")
                      )
                   else ()
@@ -1855,12 +1924,12 @@ struct
        end (* process *)
 
    in  (* Translate all blocks *)
-       rewriteAllBlocks(C.firstPseudo, blocks);
+       stamp := C.firstPseudo; 
+       #forall_nodes cfg rewriteAllBlocks; 
        (* If we found critical edges, then we have to split them... *)
-       if IntHashTable.numItems edgesToSplit = 0 then cluster 
-       else repairCriticalEdges(cluster)
+       if IntHashTable.numItems edgesToSplit = 0 then Cfg 
+       else repairCriticalEdges(Cfg)
    end 
-
 end (* functor *)
 
 end (* local *)

@@ -13,16 +13,16 @@ signature BUILD_INIT_DG = sig
     val build : GeneralParams.info -> SrcPath.file ->
 	{ pervasive: DependencyGraph.sbnode,
 	  others: DependencyGraph.sbnode list,
-	  src: GenericVC.Source.inputSource } option
+	  src: Source.inputSource } option
 end
 
 structure BuildInitDG :> BUILD_INIT_DG = struct
 
-    structure S = GenericVC.Source
-    structure EM = GenericVC.ErrorMsg
-    structure SM = GenericVC.SourceMap
+    structure S = Source
+    structure EM = ErrorMsg
+    structure SM = SourceMap
     structure DG = DependencyGraph
-    structure LSC = GenericVC.Control.LambdaSplitting
+    structure LSC = Control.LambdaSplitting
 
     fun build (gp: GeneralParams.info) specgroup = let
 	val penv = #penv (#param gp)
@@ -59,7 +59,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			    sub (line, len -1 ) = #"\n" andalso
 			    sub (line, len - 2) = #"\\"
 		    in
-			GenericVC.SourceMap.newline sourceMap newpos;
+			SourceMap.newline sourceMap newpos;
 			if iscont then
 			    loop (newpos, TextIO.inputLine stream,
 				  substring (line, 0, len - 2) :: lines)
@@ -89,7 +89,8 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			      { sourcepath = p,
 			        group = (specgroup, (pos, newpos)),
 				sh_spec = Sharing.DONTCARE,
-				setup = (NONE, NONE) }
+				setup = (NONE, NONE),
+				locl = false }
 			end
 			fun bogus n = 
 			    DG.SNODE { smlinfo = sml (n, LSC.UseDefault, NONE,
@@ -106,8 +107,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			    val (li, needs_primenv) =
 				foldr one ([], false) args
 			    val xe =
-				if needs_primenv then
-				    SOME (GenericVC.Environment.primEnv)
+				if needs_primenv then SOME PrimEnv.primEnv
 				else NONE
 			    val i = sml (file, split, xe, is_rts, ecs)
 			    val n = DG.SNODE { smlinfo = i,

@@ -1,6 +1,5 @@
-(* (C) 1999 Lucent Technologies, Bell Laboratories *)
-
-structure RS6000Compiler = struct
-    open RS6000VisComp
-    open GenericVC
-end
+(* compiler/rs6000.sml
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *)
+structure Backend = RS6000Backend

@@ -12,10 +12,12 @@
  * author: Matthias Blume (blume@cs.princeton.edu)
  *)     
 Library
-	(* this is a proxy library; exports taken from only member *)
+	library($SMLNJ-MLRISC/MLRISC.cm)
 is
 	$SMLNJ-MLRISC/MLRISC.cm
                 (bind:(anchor:Control.cm value:$SMLNJ-MLRISC)
                  bind:(anchor:Lib.cm value:$SMLNJ-MLRISC)
                  bind:(anchor:MLTREE.cm value:$SMLNJ-MLRISC)
-                 bind:(anchor:MLRISC.cm value:$SMLNJ-MLRISC))
+                 bind:(anchor:Graphs.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:Visual.cm value:$SMLNJ-MLRISC))
+(*                 bind:(anchor:MLRISC.cm value:$SMLNJ-MLRISC)) *)

@@ -6,15 +6,16 @@
 
 
 functor AlphaMCEmitter(structure Instr : ALPHAINSTR
+                       structure MLTreeEval : MLTREE_EVAL where T = Instr.T
+                       structure Stream : INSTRUCTION_STREAM 
                        structure CodeString : CODE_STRING
                       ) : INSTRUCTION_EMITTER =
 struct
    structure I = Instr
    structure C = I.C
-   structure LabelExp = I.LabelExp
    structure Constant = I.Constant
    structure T = I.T
-   structure S = T.Stream
+   structure S = Stream
    structure P = S.P
    structure W = Word32
    
@@ -34,7 +35,7 @@ struct
        val emit_int = itow
        fun emit_word w = w
        fun emit_label l = itow(Label.addrOf l)
-       fun emit_labexp le = itow(LabelExp.valueOf le)
+       fun emit_labexp le = itow(MLTreeEval.valueOf le)
        fun emit_const c = itow(Constant.valueOf c)
        val loc = ref 0
    
@@ -49,6 +50,7 @@ struct
        in loc := i + 1; CodeString.update(i,Word8.fromLargeWord w) end
    
        fun doNothing _ = ()
+       fun fail _ = raise Fail "MCEmitter"
        fun getAnnotations () = error "getAnnotations"
    
        fun pseudoOp pOp = P.emitValue{pOp=pOp, loc= !loc,emit=eByte}
@@ -70,12 +72,12 @@ struct
             eByteW b24; 
             eByteW b32 )
        end
-   fun emit_GP r = itow (C.physicalRegisterNum r)
-   and emit_FP r = itow (C.physicalRegisterNum r)
-   and emit_CC r = itow (C.physicalRegisterNum r)
-   and emit_MEM r = itow (C.physicalRegisterNum r)
-   and emit_CTRL r = itow (C.physicalRegisterNum r)
-   and emit_CELLSET r = itow (C.physicalRegisterNum r)
+   fun emit_GP r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_FP r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CC r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_MEM r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CTRL r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CELLSET r = itow (CellsBasis.physicalRegisterNum r)
    fun emit_branch (I.BR) = (0wx30 : Word32.word)
      | emit_branch (I.BLBC) = (0wx38 : Word32.word)
      | emit_branch (I.BEQ) = (0wx39 : Word32.word)
@@ -251,7 +253,7 @@ struct
    and Split {le} = 
        let 
 (*#line 432.22 "alpha/alpha.mdl"*)
-           val i = LabelExp.valueOf le
+           val i = MLTreeEval.valueOf le
 
 (*#line 433.22 "alpha/alpha.mdl"*)
            val w = itow i
@@ -286,7 +288,7 @@ struct
                | I.IMMop i => itow i
                | I.HILABop le => High {le=le}
                | I.LOLABop le => Low {le=le}
-               | I.LABop le => itow (LabelExp.valueOf le)
+               | I.LABop le => itow (MLTreeEval.valueOf le)
                )
        in Memory {opc=opc, ra=ra, rb=rb, disp=disp}
        end
@@ -342,7 +344,7 @@ struct
             rc=rc}
        | I.LOLABop le => Operate1 {opc=opc, ra=ra, lit=Low {le=le}, func=func, 
             rc=rc}
-       | I.LABop le => Operate1 {opc=opc, ra=ra, lit=itow (LabelExp.valueOf le), 
+       | I.LABop le => Operate1 {opc=opc, ra=ra, lit=itow (MLTreeEval.valueOf le), 
             func=func, rc=rc}
        )
    and Foperate {opc, fa, fb, func, fc} = 
@@ -362,7 +364,7 @@ struct
    fun disp lab = (itow (((Label.addrOf lab) - ( ! loc)) - 4)) ~>> 0wx2
 
 (*#line 478.7 "alpha/alpha.mdl"*)
-   val zeroR = Option.valOf (C.zeroReg C.GP)
+   val zeroR = Option.valOf (C.zeroReg CellsBasis.GP)
        fun emitter instr =
        let
    fun emitInstr (I.DEFFREG FP) = ()
@@ -429,7 +431,7 @@ struct
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                endCluster=doNothing,
+                endCluster=fail,
                 defineLabel=doNothing,
                 entryLabel=doNothing,
                 comment=doNothing,
