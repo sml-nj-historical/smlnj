@@ -49,6 +49,7 @@ functor LeftPriorityQFn (P : PRIORITY) : MONO_PRIORITYQ =
       | isEmpty _ = false
 
     fun fromList [] = empty
+      | fromList [x] = Q (1, singleton x)
       | fromList l = let
 	  fun merge ([], [h]) = h
 	    | merge ([], hl) = merge (hl, [])

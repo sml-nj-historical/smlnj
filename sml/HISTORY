@@ -14,6 +14,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/02/19 10:48:00 EST
+Tag: blume-20020219-pqfix
+Description:
+
+Applied Chris Okasaki's bug fix for priority queues.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/02/15 17:05:00
 Tag: Release_110_39
 Description:
