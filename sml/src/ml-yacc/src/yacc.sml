@@ -1,8 +1,14 @@
 (* ML-Yacc Parser Generator (c) 1989, 1990 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
- * Revision 1.1.1.11  1999/12/07 15:40:30  monnier
- * version 110.25
+ * Revision 1.1.1.12  1999/12/07 17:56:19  monnier
+ * version 110.25.1
+ *
+ * Revision 1.3  1999/12/07 14:24:18  george
+ * *** empty log message ***
+ *
+ * Revision 1.2  1999/12/02 17:26:11  george
+ * *** empty log message ***
  *
  * Revision 1.1.1.1  1999/07/15 17:52:56  george
  *  Version 110.20
@@ -241,7 +247,7 @@ functor ParseGenFun(structure ParseGenParser : PARSE_GEN_PARSER
 
 
 	 fun printChange () =
-	    (sayln "val preferred_change = ";
+	    (sayln "val preferred_change : (term list * term list) list = ";
 	     app (fn (d,i) =>
 		    (say"("; printTermList d; say ","; printTermList i; 
 		     sayln ")::"
@@ -300,7 +306,7 @@ functor ParseGenFun(structure ParseGenParser : PARSE_GEN_PARSER
 	    printBoolCase noshift;
 	    printNames ();
 	    printErrValues value;
-	    say "val terms = ";
+	    say "val terms : term list = ";
 	    printTermList ecTerms;
 	    sayln "end"
 	end
