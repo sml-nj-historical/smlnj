@@ -11,10 +11,13 @@ Library
 	structure Set
 	structure StringSet
 	structure SymbolSet
+	structure SymbolMap
 is
 	set.sml
 	stringset.sml
+	symbolordkey.sml
 	symbolset.sml
+	symbolmap.sml
 
 	../../compiler/viscomp-lib.cm
 

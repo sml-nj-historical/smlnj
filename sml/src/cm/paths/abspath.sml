@@ -190,25 +190,34 @@ structure AbsPath :> ABSPATH = struct
 			 end)
 	end
 
-	fun joinDirFile { dir as (CUR _ | CONFIG_ANCHOR _), file } =
-	    fresh (dir, file)
-	  | joinDirFile { dir = SPEC { context, spec, ... }, file } = let
-		val j =
-		    P.mkCanonical (P.joinDirFile { dir = spec, file = file })
-	    in
-		fresh (context, j)
-	    end
+	(* . and .. are not permitted as file parameter *)
+	fun joinDirFile { dir, file } =
+	    if file = P.currentArc orelse file = P.parentArc then
+		raise Fail "AbsPath.joinDirFile: . or .."
+	    else case dir of
+		(CUR _ | CONFIG_ANCHOR _) => fresh (dir, file)
+	      | SPEC { context, spec, ... } =>
+		    fresh (context, P.joinDirFile { dir = spec, file = file })
 
-	(* The cases where we try to split CUR, CONFIG_ANCHOR, ".",
-	 * or any path ending in ".." should never occur in practice.
-	 * It would perhaps be better to put error-handling here... *)
+	(* splitDirFile never walks past a context.
+	 * Moreover, it is an error to split something that ends in "..". *)
 	fun splitDirFile (x as (CUR _ | CONFIG_ANCHOR _)) =
-	    { dir = x, file = P.currentArc }
+	    raise Fail "AbsPath.splitDirFile: CUR or CONFIG_ANCHOR"
 	  | splitDirFile (SPEC { context, spec, ... }) = let
-		val { dir, file } = P.splitDirFile spec
-		val dir = if dir = "" then P.currentArc else dir
+		fun loop "" =
+		    raise Fail "AbsPath.splitDirFile: tried to split context"
+		  | loop spec = let
+			val { dir, file } = P.splitDirFile spec
+		    in
+			if file = P.currentArc then loop dir
+			else if file = P.parentArc then
+			    raise Fail "AbsPath.splitDirFile: <path>/.."
+			else (dir, file)
+		    end
+		val (dir, file) = loop spec
+		val dir = if dir = "" then context else fresh (context, dir)
 	    in
-		{ dir = fresh (context, dir), file = file }
+		{ dir = dir, file = file }
 	    end
 
 	val dir = #dir o splitDirFile

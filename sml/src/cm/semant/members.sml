@@ -13,6 +13,12 @@
  *)
 signature MEMBERCOLLECTION = sig
 
+    type symbol = GenericVC.Symbol.symbol
+    type smlinfo = DependencyGraph.smlinfo
+
+    exception DuplicateImport of symbol * smlinfo * smlinfo
+    exception DuplicateDefinition of symbol * smlinfo * smlinfo
+
     type collection
 
     val expandOne : AbsPath.t * string option -> collection
@@ -25,12 +31,38 @@ end
 
 structure MemberCollection :> MEMBERCOLLECTION = struct
 
-    type collection = unit
+    structure DG = DependencyGraph
 
-    fun expandOne (f: AbsPath.t, c: string option) = ()
-    fun sequential (c1: collection, c2: collection) = ()
+    type smlinfo = DG.smlinfo
+    type symbol = GenericVC.Symbol.symbol
+
+    exception DuplicateImport of symbol * smlinfo * smlinfo
+    exception DuplicateDefinition of symbol * smlinfo * smlinfo
+
+    datatype collection =
+	COLLECTION of { subexports: DG.farnode SymbolMap.map,
+		        smlfiles: smlinfo list,
+			localdefs: smlinfo SymbolMap.map }
+
+    fun expandOne (f: AbsPath.t, c: string option) = raise Fail "notyet"
+
+    fun sequential (COLLECTION c1, COLLECTION c2) = let
+	fun se_error (s, (_, DG.NODE n1), (_, DG.NODE n2)) =
+	    raise DuplicateImport (s, #smlinfo n1, #smlinfo n2)
+	fun ld_error (s, f1, f2) = raise DuplicateDefinition (s, f1, f2)
+	val se_union = SymbolMap.unionWithi se_error
+	val ld_union = SymbolMap.unionWithi ld_error
+    in
+	COLLECTION { subexports = se_union (#subexports c1, #subexports c2),
+		     smlfiles = #smlfiles c1 @ #smlfiles c2,
+		     localdefs = ld_union (#localdefs c1, #localdefs c2) }
+    end
 
     fun num_look (c: collection) (s: string) = 0
-    fun ml_look (c: collection) (s: GenericVC.Symbol.symbol) = false
+
     fun cm_look (c: collection) (s: string) = false
+
+    fun ml_look (COLLECTION { subexports, localdefs, ... }) s =
+	isSome (SymbolMap.find (subexports, s)) orelse
+	isSome (SymbolMap.find (localdefs, s))
 end
