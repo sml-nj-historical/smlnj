@@ -12,6 +12,36 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/03/22 01:23:00
+Tag: leunga-20000322-fix_x86_hppa_ra
+Description:
+
+1. X86 fixes/changes  
+
+   a.  x86Rewrite bug with MUL3 (found by Lal)
+   b.  Added the instructions FSTS, FSTL
+
+2. PA-RISC fixes/changes
+
+   a.  B label should not be a delay slot candidate!  Why did this work?
+   b.  ADDT(32, REG(32, r), LI n) now generates one instruction instead of two,
+       as it should be.
+   c.  The assembly syntax for fstds and fstdd was wrong.
+   d.  Added the composite instruction COMICLR/LDO, which is the immediate
+       operand variant of COMCLR/LDO.
+
+3. Generic MLRISC
+
+   a.  shuffle.sml rewritten to be slightly more efficient
+   b.  DIV bug in mltree-simplify fixed (found by Fermin)
+
+4. Register Allocator
+
+   a.  I now release the interference graph earlier during spilling.
+       May improve memory usage.  
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/03/14 14:15:32
 Tag: blume_main_v110p26p1_2
