@@ -51,18 +51,6 @@ struct
 
   datatype cluster = CLUSTER of {cluster: desc}
 
-  structure DefaultPlacement = DefaultBlockPlacement(CFG)
-  structure WeightedPlacement = 
-     WeightedBlockPlacementFn(structure CFG = CFG structure InsnProps = Props)
-
-  val placementFlag = MLRiscControl.mkFlag
-			  ("weighted-block-placement",
-			   "whether MLRISC does weigted block placement")
-
-  fun blockPlacement cfg = 
-      if !placementFlag then WeightedPlacement.blockPlacement cfg
-      else DefaultPlacement.blockPlacement cfg
-
   val maxIter = MLRiscControl.mkInt
 		    ("variable-length-backpatch-iterations",
 		     "number of variable-length backpath iterations")
@@ -75,13 +63,12 @@ struct
   val dataList : P.pseudo_op list ref = ref []
   fun cleanUp() = (clusterList := []; dataList := [])
 
-  fun bbsched(cfg as G.GRAPH{graph_info=CFG.INFO{data, ...}, ...}) = let
-    val blocks = map #2 (blockPlacement cfg)
+  fun bbsched(G.GRAPH{graph_info=CFG.INFO{data, ...}, ...}, blocks) = let
     fun bytes([], p) = p
       | bytes([s], p) = BYTES(s, p)
       | bytes(s, p) = BYTES(W8V.concat s, p)
 
-    fun f(CFG.BLOCK{align, labels, insns, ...}::rest) = let
+    fun f((_, CFG.BLOCK{align, labels, insns, ...})::rest) = let
          fun instrs([], b) = bytes(rev b, f rest)
            | instrs(i::rest, b) = 
              if Jumps.isSdi i then 

@@ -310,7 +310,7 @@ functor WeightedBlockPlacementFn (
 		  List.app prBlock blocks
 		end
 	      else ();
-	    blocks
+	    (cfg, blocks)
 	  end
 
   end

@@ -45,10 +45,11 @@ sig
    datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
    val branchTargets : I.instruction -> target list
 
-  (* Set the branch target; no effect if not a branch instruction.  For
-   * conditional branches, both the true and false targets must be specified.
-   *)
-   val setTargets : I.instruction * Label.label list -> I.instruction
+  (* Set the jump target; error if not a jump instruction.  *)
+   val setJumpTarget : I.instruction * Label.label -> I.instruction
+
+  (* Set the branch target; error if not a branch instruction, t=true, f=false case *)
+   val setBranchTargets : {i:I.instruction, t:Label.label, f:Label.label} -> I.instruction
  
       (* equality and hashing on operands *)
    val eqOpn      : I.operand * I.operand -> bool

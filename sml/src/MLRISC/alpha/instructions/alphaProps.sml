@@ -93,14 +93,20 @@ struct
               then I.IMMop immed else I.LABop(I.T.LI(I.T.I.fromInt(64,immed)))}
     fun loadOperand{opn,t} = I.lda{r=t,b=zeroR,d=opn}
 
-    fun setTargets(I.INSTR(I.BRANCH{b=I.BR,r as CB.CELL{id=31,...}, ...}),[L]) = 
-             I.branch{b=I.BR,r=r,lab=L}
-      | setTargets(I.INSTR(I.BRANCH{b,r,...}),[F,T])  = I.branch{b=b,r=r,lab=T}
-      | setTargets(I.INSTR(I.FBRANCH{b,f,...}),[F,T]) = I.fbranch{b=b,f=f,lab=T}
-      | setTargets(I.INSTR(I.JMPL(x,_)),labs)       = I.jmpl(x,labs)
-      | setTargets(I.ANNOTATION{i,a},labs) = 
-            I.ANNOTATION{i=setTargets(i,labs),a=a}
-      | setTargets(i,_) = i
+    fun setJumpTarget(I.ANNOTATION{i,a},lab) = 
+	  I.ANNOTATION{i=setJumpTarget(i,lab),a=a}
+      | setJumpTarget(I.INSTR(I.BRANCH{b=I.BR,r as CB.CELL{id=31,...}, ...}), lab) = 
+	  I.branch{b=I.BR,r=r,lab=lab}
+      | setJumpTarget _ = error "setJumpTarget"
+
+   fun setBranchTargets{i=I.ANNOTATION{a,i}, t, f} = 
+	 I.ANNOTATION{a=a, i=setBranchTargets{i=i, t=t, f=f}}
+     | setBranchTargets{i=I.INSTR(I.BRANCH{b=I.BR,r as CB.CELL{id=31,...}, ...}), ...} = 
+         error "setBranchTargets"
+     | setBranchTargets{i=I.INSTR(I.BRANCH{b,r,...}), t, f} =  I.branch{b=b,r=r,lab=t}
+     | setBranchTargets{i=I.INSTR(I.FBRANCH{b,f,...}), t, ...} = I.fbranch{b=b,f=f,lab=t}
+     | setBranchTargets _ = error "setBranchTargets"
+
 
     fun negateConditional (br, lab) = let
       fun revBranch I.BEQ  = I.BNE 

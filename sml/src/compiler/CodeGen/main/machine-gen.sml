@@ -55,6 +55,24 @@ struct
 	  (structure CFG = CFG   
 	   structure Shuffle = Shuffle)
 
+   structure BlockPlacement = 
+      BlockPlacement
+          (structure CFG = CFG 
+	   structure Props = InsnProps)
+
+   structure JumpChaining = 
+      JumpChainElimFn			     
+	  (structure CFG = CFG
+	   structure InsnProps = InsnProps)
+
+   structure InvokeGC =
+      InvokeGC
+	  (structure C     = CpsRegs
+	   structure MS    = MachSpec
+	   structure CFG   = CFG
+	   structure TS    = MLTreeComp.TS
+	  )
+
    fun omitFramePointer(cfg as G.GRAPH graph) = let
      val CFG.INFO{annotations, ...} = #graph_info graph 
    in
@@ -71,13 +89,14 @@ struct
    fun makePhase(name,f) = (name, phase name f)
 
    val mc         = phase "MLRISC BackPatch.bbsched" BackPatch.bbsched
-   val finish     = phase "MLRISC BackPatch.finish" BackPatch.finish
+   val placement  = phase "MLRISC Block placement" BlockPlacement.blockPlacement
+   val chainJumps = phase "MLRISC Jump chaining" JumpChaining.run
+   val finish     = phase "MLRISC BackPatch.finish" BackPatch.finish 
    val ra         = phase "MLRISC ra" RA.run
    val omitfp     = phase "MLRISC omit frame pointer" omitFramePointer
    val expandCpys = phase "MLRISC expand copies" ExpandCpys.run
-
+   
    val raPhase = ("ra",ra)
-
 
    val optimizerHook = 
      ref [("ra", ra),
@@ -85,42 +104,35 @@ struct
 	  ("expand copies", expandCpys)
 	 ]
 
-     
-   (* Flowgraph generation *)
-   structure FlowGraphGen =
-      BuildFlowgraph(
-         structure CFG = CFG
-	 structure Props = InsnProps
-	 structure Stream = MLTreeComp.TS.S)
-
-   (* GC Invocation *)
-   structure InvokeGC =
-      InvokeGC(structure C     = CpsRegs
-               structure MS    = MachSpec
-	       structure CFG   = CFG
-	       structure TS    = MLTreeComp.TS
-              )
-
-   fun compile cluster =
-   let fun runPhases([],cluster) = cluster
+   fun compile cluster = let
+       fun runPhases([],cluster) = cluster
          | runPhases((_,f)::phases,cluster) = runPhases(phases,f cluster)
-   in  mc(runPhases(!optimizerHook,cluster))
+
+       fun dumpBlocks cfg = mc (chainJumps (placement cfg))
+   in  
+       dumpBlocks (runPhases(!optimizerHook,cluster))
    end
  
    (* compilation of CPS to MLRISC *)
    structure MLTreeGen =
-      MLRiscGen(structure MachineSpec=MachSpec
-                structure MLTreeComp=MLTreeComp
-		structure Ext = Ext
-                structure C=CpsRegs
-                structure InvokeGC=InvokeGC
-		structure ClientPseudoOps =ClientPseudoOps
-                structure PseudoOp=PseudoOps
-                structure Flowgen=FlowGraphGen
-		structure CCalls = CCalls
-		structure Cells = Cells
-                val compile = compile
-               )
+      MLRiscGen
+	  (structure MachineSpec=MachSpec
+           structure MLTreeComp=MLTreeComp
+	   structure Ext = Ext
+           structure C=CpsRegs
+	   structure ClientPseudoOps =ClientPseudoOps
+           structure PseudoOp=PseudoOps
+           structure InvokeGC=InvokeGC
+           structure Flowgen=
+	      BuildFlowgraph
+                  (structure CFG = CFG
+		   structure Props = InsnProps
+		   structure Stream = MLTreeComp.TS.S
+		  )
+	   structure CCalls = CCalls
+	   structure Cells = Cells
+           val compile = compile
+          )
 	       
 
    val gen = phase "MLRISC MLTreeGen.codegen" MLTreeGen.codegen
@@ -132,5 +144,4 @@ struct
         BackPatch.cleanUp(); 
         gen x
        )
-
 end

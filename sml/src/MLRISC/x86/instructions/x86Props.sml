@@ -124,11 +124,15 @@ struct
 
   exception NotImplemented
 
-  fun setTargets(I.ANNOTATION{i,a},l) = I.ANNOTATION{i=setTargets(i,l),a=a}
-    | setTargets(I.INSTR(I.JMP(I.ImmedLabel _,_)), [l]) = jump l
-    | setTargets(I.INSTR(I.JCC{cond,opnd=I.ImmedLabel _}),[f,t]) =
+  fun setJumpTarget(I.ANNOTATION{a,i}, l) = I.ANNOTATION{a=a, i=setJumpTarget(i,l)}
+    | setJumpTarget(I.INSTR(I.JMP(I.ImmedLabel _, _)), lab) = jump lab
+    | setJumpTarget _ = error "setJumpTarget"
+
+  fun setBranchTargets{i=I.ANNOTATION{a,i}, t, f} = 
+        I.ANNOTATION{a=a, i=setBranchTargets{i=i, t=t, f=f}}
+    | setBranchTargets{i=I.INSTR(I.JCC{cond,opnd=I.ImmedLabel _}), t, ...} = 
         I.jcc{cond=cond,opnd=I.ImmedLabel(T.LABEL t)}
-    | setTargets(i,_) = error "setTargets"
+    | setBranchTargets _ = error "setBranchTargets"
 
   fun negateConditional (I.ANNOTATION{i,a}, lab) =
 	I.ANNOTATION{i=negateConditional(i,lab), a=a}

@@ -101,14 +101,19 @@ struct
 
   fun labelOp l = I.LabelOp(T.LABEL l)
 
-  fun setTargets(I.INSTR(I.BC{bo as I.ALWAYS, bf, bit, addr, fall, LK}), [l]) = 
-        I.bc{bo=bo, bf=bf, bit=bit, fall=fall, LK=LK, addr=labelOp l}
-    | setTargets(I.INSTR(I.BC{bo, bf, bit, addr, fall, LK}), [f,t]) = 
+  fun setJumpTarget(I.ANNOTATION{a,i}, l) = I.ANNOTATION{a=a, i=setJumpTarget(i,l)}
+    | setJumpTarget(I.INSTR(I.BC{bo as I.ALWAYS, bf, bit, addr, fall, LK}), lab) = 
+        I.bc{bo=bo, bf=bf, bit=bit, fall=fall, LK=LK, addr=labelOp lab}
+    | setJumpTarget(I.INSTR(I.B{addr, LK}), lab) = I.b{addr=labelOp(lab), LK=LK}
+    | setJumpTarget _ = error "setJumpTarget"
+
+  fun setBranchTargets{i=I.ANNOTATION{a,i}, t, f} = 
+        I.ANNOTATION{a=a, i=setBranchTargets{i=i, t=t, f=f}}
+    | setBranchTargets{i=I.INSTR(I.BC{bo=I.ALWAYS, bf, bit, addr, fall, LK}), ...} = 
+        error "setBranchTargets"
+    | setBranchTargets{i=I.INSTR(I.BC{bo, bf, bit, addr, fall, LK}), t, f} = 
         I.bc{bo=bo, bf=bf, bit=bit, LK=LK, addr=labelOp t, fall=labelOp f}
-    | setTargets(I.INSTR(I.BCLR _), _) = error "setTargets BCLR"
-    | setTargets(I.INSTR(I.B{addr, LK}), [l]) =  I.b{addr=labelOp(l), LK=LK}
-    | setTargets(I.ANNOTATION{a,i}, l) = I.ANNOTATION{i=setTargets(i,l), a=a}
-    | setTargets _ = error "setTargets"
+    | setBranchTargets _ = error "setBranchTargets"
 
   fun jump lab = I.b{addr=I.LabelOp(T.LABEL lab), LK=false}
 

@@ -13,6 +13,6 @@
 signature BLOCK_PLACEMENT = sig
   structure CFG : CONTROL_FLOW_GRAPH
 
-  val blockPlacement : CFG.cfg -> CFG.node list
+  val blockPlacement : CFG.cfg -> (CFG.cfg * CFG.node list)
 
 end

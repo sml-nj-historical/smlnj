@@ -81,6 +81,7 @@ Library
 	structure RaBitmatrix
 	functor BBSched2
 	functor BackPatch
+	functor BlockPlacement
 	functor BuildFlowgraph
 	functor CFGCountCopies
 	functor CFGEmit
@@ -269,6 +270,7 @@ is
 	../backpatch/sdi-jumps.sig
 	../backpatch/vlBackPatch.sml
 	../block-placement/block-placement.sig
+	../block-placement/block-placement.sml
 	../block-placement/default-block-placement.sml
 	../block-placement/weighted-block-placement-fn.sml
 	../block-placement/jump-chain-elim-fn.sml

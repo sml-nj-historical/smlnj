@@ -31,18 +31,6 @@ struct
   structure G = Graph
   structure A = Array
 
-  structure DefaultPlacement = DefaultBlockPlacement(CFG)
-  structure WeightedPlacement = 
-     WeightedBlockPlacementFn(structure CFG = CFG structure InsnProps = Props)
-
-  val placementFlag = MLRiscControl.mkFlag
-	  ("weighted-block-placement",
-	   "whether MLRISC does weigted block placement")
-
-  fun blockPlacement cfg = 
-      if !placementFlag then WeightedPlacement.blockPlacement cfg
-      else DefaultPlacement.blockPlacement cfg
-
   fun error msg = MLRiscErrorMsg.error("SpanDependencyResolution",msg)
 
   datatype code =
@@ -72,11 +60,12 @@ struct
   val dataList : P.pseudo_op list ref = ref []
   fun cleanUp() = (clusterList := []; dataList := [])
 
-  fun bbsched(cfg as G.GRAPH graph) = let
+  fun bbsched(G.GRAPH graph, blocks : CFG.node list) = let
+    val blocks = map #2 blocks
+
     fun maxBlockId (CFG.BLOCK{id, ...}::rest, curr) = 
        if id > curr then maxBlockId(rest, id) else maxBlockId(rest, curr)
      | maxBlockId([], curr) = curr
-    val blocks = map #2 (blockPlacement(cfg))
     val N = maxBlockId(blocks, #capacity graph ())
 
     (* Order of blocks in code layout *)

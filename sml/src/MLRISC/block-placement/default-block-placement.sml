@@ -17,9 +17,19 @@ struct
     val EXIT = 
       (case #exits graph () of [n] => n | _ => error "EXIT")
 
+    fun blocks () = let
+      val entryBlk = (ENTRY, #node_info graph ENTRY)
+      val exitBlk = (EXIT, #node_info graph EXIT)
+      fun filter([]) = [exitBlk]
+	| filter((node as (i, CFG.BLOCK{kind, ...}))::rest) = 
+	    (case kind
+	     of CFG.START  => filter rest
+	      | CFG.STOP   => filter rest
+	      | CFG.NORMAL => node::filter rest
+	    (*esac*))
+    in entryBlk :: filter(#nodes graph ())
+    end
   in 
-      List.filter
-         (fn (i, CFG.BLOCK{kind, ...}) => i <> ENTRY andalso i <> EXIT)
-	 (#nodes graph ())
+      (cfg, blocks())
   end 
 end

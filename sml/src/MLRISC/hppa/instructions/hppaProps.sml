@@ -107,21 +107,22 @@ struct
               else I.LabExp(I.T.LI(I.T.I.fromInt(32,immed)),I.F),b=zeroR,t=t}
   fun loadOperand{opn,t} = I.ldo{i=opn,b=zeroR,t=t}
 
-  fun setTargets(I.INSTR(I.BCOND{cmp,bc,r1,r2,t,f,n,nop}), [F,T]) =
-          I.bcond{cmp=cmp,bc=bc,r1=r1,r2=r2,t=T,f=F,n=n,nop=nop}
-    | setTargets(I.INSTR(I.BCONDI{cmpi,bc,i,r2,t,f,n,nop=nop}), [F,T]) =
-          I.bcondi{cmpi=cmpi,bc=bc,i=i,r2=r2,t=T,f=F,n=n,nop=nop}
-    | setTargets(I.INSTR(I.BB{bc,r,p,t,f,n,nop}), [F,T]) =
-          I.bb{bc=bc,r=r,p=p,t=T,f=F,n=n,nop=nop}
-    | setTargets(I.INSTR(I.B{n,...}), [L]) = I.b{lab=L,n=n}
-    | setTargets(I.INSTR(I.FBRANCH{cc,fmt,n,long,f1,f2,...}), [F,T]) =
-          I.fbranch{cc=cc,fmt=fmt,t=T,f=F,n=n,long=long,f1=f1,f2=f2} 
-    | setTargets(I.INSTR(I.BV{x,b,n,...}),labels) = I.bv{x=x,b=b,labs=labels,n=n}
-    | setTargets(I.INSTR(I.BE{b,d,n,sr,...}),labs) = I.be{b=b,d=d,n=n,sr=sr,labs=labs}
-    | setTargets(I.INSTR(I.BLR{x,t,n,...}),labels) = I.blr{x=x,t=t,labs=labels,n=n}
-    | setTargets(I.ANNOTATION{i,a},labels) =
-          I.ANNOTATION{i=setTargets(i,labels),a=a}
-    | setTargets(i,_) = i
+  fun setJumpTarget(I.ANNOTATION{a,i}, l) = I.ANNOTATION{a=a, i=setJumpTarget(i,l)}
+    | setJumpTarget(I.INSTR(I.B{n,...}), L) = I.b{lab=L,n=n}
+    | setJumpTarget _ = error "setJumpTarget"
+
+  fun setBranchTargets{i=I.ANNOTATION{a,i}, t, f} = 
+      I.ANNOTATION{a=a, i=setBranchTargets{i=i, t=t, f=f}}
+    | setBranchTargets{i=I.INSTR(I.BCOND{cmp,bc,r1,r2,t,f,n,nop}), t=T, f=F} = 
+        I.bcond{cmp=cmp,bc=bc,r1=r1,r2=r2,t=T,f=F,n=n,nop=nop}
+    | setBranchTargets{i=I.INSTR(I.BCONDI{cmpi,bc,i,r2,t,f,n,nop=nop}),t=T, f=F} = 
+        I.bcondi{cmpi=cmpi,bc=bc,i=i,r2=r2,t=T,f=F,n=n,nop=nop}
+    | setBranchTargets{i=I.INSTR(I.BB{bc,r,p,t,f,n,nop}), t=T, f=F} = 
+        I.bb{bc=bc,r=r,p=p,t=T,f=F,n=n,nop=nop}
+    | setBranchTargets{i=I.INSTR(I.FBRANCH{cc,fmt,n,long,f1,f2,...}), t=T, f=F} = 
+        I.fbranch{cc=cc,fmt=fmt,t=T,f=F,n=n,long=long,f1=f1,f2=f2}
+    | setBranchTargets _ = error "setBranchTargets"
+
 
   (* negate the branch.  Since the HPPA instruction representation tracks both
    * the true and false target labels, we set the false label to be the

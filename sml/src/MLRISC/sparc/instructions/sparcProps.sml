@@ -70,21 +70,26 @@ struct
       (*esac*))
     | branchTargets _  = error "branchTargets"
 
-  fun setTargets(I.INSTR(I.Bicc{b=I.BA,a,nop,...}),[L]) = 
+
+  fun setJumpTarget(I.ANNOTATION{a,i}, l) = I.ANNOTATION{a=a, i=setJumpTarget(i,l)}
+    | setJumpTarget(I.INSTR(I.Bicc{b=I.BA,a,nop,...}), L) = 
           I.bicc{b=I.BA,a=a,label=L,nop=nop}
-    | setTargets(I.INSTR(I.Bicc{b,a,nop,...}),[F,T]) = 
-          I.bicc{b=b,a=a,label=T,nop=nop}
-    | setTargets(I.INSTR(I.FBfcc{b,a,nop,...}),[F,T]) = 
-          I.fbfcc{b=b,a=a,label=T,nop=nop}
-    | setTargets(I.INSTR(I.BR{rcond,p,r,a,nop,...}),[F,T]) = 
-          I.br{rcond=rcond,p=p,r=r,a=a,label=T,nop=nop}
-    | setTargets(I.INSTR(I.BP{b,cc,p,a,nop,...}),[F,T]) = 
-          I.bp{b=b,cc=cc,p=p,a=a,label=T,nop=nop}
-    | setTargets(I.INSTR(I.JMP{r,i,nop,...}),labels) = 
-          I.jmp{r=r,i=i,labs=labels,nop=nop}
-    | setTargets(I.ANNOTATION{i,a},labs) = 
-          I.ANNOTATION{i=setTargets(i,labs),a=a}
-    | setTargets(i,_) = i
+    | setJumpTarget _ = error "setJumpTarget"
+
+
+  fun setBranchTargets{i=I.ANNOTATION{a,i}, t, f} = 
+          I.ANNOTATION{a=a, i=setBranchTargets{i=i, t=t, f=f}}
+    | setBranchTargets{i=I.INSTR(I.Bicc{b=I.BA,a,nop,...}), ...} =  
+          error "setBranchTargets: Bicc"
+    | setBranchTargets{i=I.INSTR(I.Bicc{b,a,nop,...}), t, f}  =
+          I.bicc{b=b,a=a,label=t,nop=nop}
+    | setBranchTargets{i=I.INSTR(I.FBfcc{b,a,nop,...}), t=T, ...}  = 
+          I.fbfcc{b=b, a=a, label=T, nop=nop}
+    | setBranchTargets{i=I.INSTR(I.BR{rcond,p,r,a,nop,...}), t=T, ...}   = 
+          I.br{rcond=rcond, p=p, r=r, a=a, label=T, nop=nop}
+    | setBranchTargets{i=I.INSTR(I.BP{b,cc,p,a,nop,...}), t=T, ...}   = 
+          I.bp{b=b, cc=cc, p=p, a=a, label=T, nop=nop}
+    | setBranchTargets _ = error "setBranchTargets"
 
    fun revCond I.BA = I.BN
      | revCond I.BN = I.BA

@@ -26,18 +26,6 @@ struct
   structure J = Jumps
   structure P = CFG.P
 
-  structure DefaultPlacement = DefaultBlockPlacement(CFG)
-  structure WeightedPlacement = 
-     WeightedBlockPlacementFn(structure CFG = CFG structure InsnProps = Props)
-
-  val placementFlag = MLRiscControl.mkFlag
-	  ("weighted-block-placement",
-	   "whether MLRISC does weigted block placement")
-
-  fun blockPlacement cfg = 
-      if !placementFlag then WeightedPlacement.blockPlacement cfg
-      else DefaultPlacement.blockPlacement cfg
-
   fun error msg = MLRiscErrorMsg.error("BBSched",msg)
 
   datatype code =
@@ -57,11 +45,9 @@ struct
   val dataList : P.pseudo_op list ref = ref []
   fun cleanUp() = (clusterList := []; dataList := [])
 
-  fun bbsched(cfg as G.GRAPH{graph_info=CFG.INFO{data, ...}, ...}) = let
-    val blocks = map #2 (blockPlacement cfg)
-    
-    fun compress [] = []
-      | compress(CFG.BLOCK{align, labels, insns, ...} :: rest) = let
+  fun bbsched(G.GRAPH{graph_info=CFG.INFO{data, ...}, ...}, blocks) = let
+   fun compress [] = []
+      | compress((_, CFG.BLOCK{align, labels, insns, ...}) :: rest) = let
           fun alignIt(chunks) = 
 	    (case !align of NONE => chunks | SOME p => PSEUDO(p)::chunks)
 

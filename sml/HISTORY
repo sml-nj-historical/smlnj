@@ -13,6 +13,43 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/03/11 11 22:38:53 EST
+Tag: george-20020311-jump-chain-elim
+Description:
+
+Tested the jump chain elimination on all architectures (except the
+hppa).  This is on by default right now and is profitable for the
+alpha and x86, however, it may not be profitable for the sparc and ppc
+when compiling the compiler.
+
+The gc test will typically jump to a label at the end of the cluster, 
+where there is another jump to an external cluster containing the actual 
+code to invoke gc. This is to allow factoring of common gc invocation
+sequences. That is to say, we generate:
+
+	f:
+	   testgc
+	   ja	L1	% jump if above to L1
+
+	L1:
+	   jmp L2
+
+
+After jump chain elimination the 'ja L1' instructions is converted to
+'ja L2'. On the sparc and ppc, many of the 'ja L2' instructions may end
+up being implemented in their long form (if L2 is far away) using:
+
+	jbe	L3	% jump if below or equal to L3
+        jmp 	L2
+     L3:
+	...
+
+
+For large compilation units L2  may be far away.
+
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/03/11 13:30:00 EST
 Tag: blume-20020311-mltreeeval
