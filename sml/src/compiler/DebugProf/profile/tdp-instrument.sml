@@ -62,7 +62,8 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
     val ii_u_u_Ty = ii_u_Ty --> BT.unitTy
     val u_u_Ty = BT.unitTy --> BT.unitTy
     val u_u_u_Ty = BT.unitTy --> u_u_Ty
-    val iis_u_Ty = BT.tupleTy [BT.intTy, BT.intTy, BT.unitTy] --> BT.unitTy
+    val iiis_u_Ty =
+	BT.tupleTy [BT.intTy, BT.intTy, BT.intTy, BT.unitTy] --> BT.unitTy
 
     fun instrument0 isSpecial (senv, cinfo: A.dec CompInfo.compInfo) d = let
 
@@ -111,7 +112,7 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	val tdp_enter = getCoreVal "tdp_enter"
 	val matchcon = getCoreCon "Match"
 
-	val tdp_register_var = tmpvar ("<tdp_register>", iis_u_Ty)
+	val tdp_register_var = tmpvar ("<tdp_register>", iiis_u_Ty)
 	val tdp_save_var = tmpvar ("<tdp_save>", u_u_u_Ty)
 	val tdp_push_var = tmpvar ("<tdp_push>", ii_u_u_Ty)
 	val tdp_nopush_var = tmpvar ("<tdp_nopush>", ii_u_Ty)
