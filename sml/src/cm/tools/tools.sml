@@ -1,3 +1,10 @@
+(*
+ * Target expansion and CM tools.
+ *
+ *   (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 signature TOOLS = sig
 
     type fname = string
@@ -48,23 +55,17 @@ signature PRIVATETOOLS = sig
 
     include TOOLS
 
-    type primitive = Primitive.primitive
-
     type smlsource =
 	{ sourcepath: AbsPath.t, history: class list, share: bool option }
 
     datatype expansion =
-	PRIMITIVE of primitive
-      | SMLSOURCE of smlsource
+	SMLSOURCE of smlsource
       | GROUP of AbsPath.t
 
     datatype private_rule =
-	ISPRIMITIVE
-      | ISSML of bool option
+	ISSML of bool option
       | ISGROUP
       | ISTOOL of class * rule
-
-    val registerPrimitiveClass : class -> unit
 
     val expand : AbsPath.t * class option -> expansion list
 end
@@ -83,19 +84,15 @@ structure PrivateTools :> PRIVATETOOLS = struct
     type rulecontext = rulefn -> item list
     type rule = fname * rulecontext -> item list
 
-    type primitive = Primitive.primitive
-
     type smlsource =
 	{ sourcepath: AbsPath.t, history: class list, share: bool option }
 
     datatype expansion =
-	PRIMITIVE of primitive
-      | SMLSOURCE of smlsource
+	SMLSOURCE of smlsource
       | GROUP of AbsPath.t
 
     datatype private_rule =
-	ISPRIMITIVE
-      | ISSML of bool option
+	ISSML of bool option
       | ISGROUP
       | ISTOOL of class * rule
 
@@ -109,9 +106,6 @@ structure PrivateTools :> PRIVATETOOLS = struct
 
     fun registerGroupClass class =
 	classes := StringMap.insert (!classes, class, ISGROUP)
-
-    fun registerPrimitiveClass class =
-	classes := StringMap.insert (!classes, class, ISPRIMITIVE)
 
     (* classifiers are used when the class is not given explicitly *)
     datatype classifier =
@@ -180,9 +174,8 @@ structure PrivateTools :> PRIVATETOOLS = struct
     fun expand' context = let
 	fun loop (acc, []) = rev acc
 	  | loop (acc, ((p, c), history) :: t) = let
-		fun step ISPRIMITIVE =
-		    loop (PRIMITIVE (Primitive.fromString p) :: acc, t)
-		  | step (ISSML share) = let
+		fun step (ISSML share) =
+		    let
 			val ap = AbsPath.native { context = context, spec = p }
 			val src = { sourcepath = ap,
 				    history = rev history,
@@ -204,7 +197,10 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	    in
 		case c of
 		    SOME class => step (class2rule class)
-		  | NONE => step (ISSML NONE)
+		  | NONE =>
+			(case defaultClassOf p of
+			     SOME class => step (class2rule class)
+			   | NONE => step (ISSML NONE))
 	    end
     in
 	fn l => loop ([], l)
@@ -212,9 +208,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 
     fun expand (ap, SOME class) =
 	(case class2rule class of
-	     ISPRIMITIVE =>
-		 [PRIMITIVE (Primitive.fromString (AbsPath.spec ap))]
-	   | ISSML share =>
+	     ISSML share =>
 		 [SMLSOURCE { sourcepath = ap, history = [], share = share }]
 	   | ISGROUP =>
 		 [GROUP ap]
@@ -227,6 +221,21 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	     end)
       | expand (ap, NONE) =
 	     expand' (AbsPath.context ap) [((AbsPath.spec ap, NONE), [])]
+
+    (* registering standard classes and classifiers *)
+    local
+	fun sfx (s, c) =
+	    registerClassifier (stdSfxClassifier { sfx = s, class = c })
+    in
+	val _ = registerSmlClass ("sml", NONE)
+	val _ = registerSmlClass ("shared", SOME true)
+	val _ = registerSmlClass ("private", SOME false)
+	val _ = registerGroupClass "cm"
+	    
+	val _ = sfx ("sml", "sml")
+	val _ = sfx ("sig", "sml")
+	val _ = sfx ("cm", "cm")
+    end
 end
 
 structure Tools :> TOOLS = PrivateTools

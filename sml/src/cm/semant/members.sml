@@ -19,6 +19,8 @@ signature MEMBERCOLLECTION = sig
 
     type collection
 
+    val empty : collection
+
     val expandOne : (AbsPath.t -> DependencyGraph.farnode SymbolMap.map)
 	-> { sourcepath: AbsPath.t, group: AbsPath.t, class: string option }
 	-> collection
@@ -44,6 +46,11 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		        smlfiles: smlinfo list,
 			localdefs: smlinfo SymbolMap.map }
 
+    val empty =
+	COLLECTION { subexports = SymbolMap.empty,
+		     smlfiles = [],
+		     localdefs = SymbolMap.empty }
+
     fun sequential (COLLECTION c1, COLLECTION c2) = let
 	fun se_error (s, (_, n1), (_, n2)) =
 	    raise DuplicateImport (s, DG.describeNode n1, DG.describeNode n2)
@@ -60,12 +67,35 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     end
 
     fun expandOne gexports { sourcepath, group, class } = let
-	val expansions = PrivateTools.expand (sourcepath, class)
-	fun exp2coll (PrivateTools.GROUP p) =
-	    COLLECTION { subexports = gexports p,
-			 smlfiles = [],
-			 localdefs = SymbolMap.empty }
-	  | exp2coll (PrivateTools.PRIMITIVE p) = let
+	fun noPrimitive () = let
+	    val expansions = PrivateTools.expand (sourcepath, class)
+	    fun exp2coll (PrivateTools.GROUP p) =
+		COLLECTION { subexports = gexports p,
+			     smlfiles = [],
+			     localdefs = SymbolMap.empty }
+	      | exp2coll (PrivateTools.SMLSOURCE src) = let
+		    val { sourcepath = p, history = h, share = s } = src
+		    val i =  SmlInfo.new
+			Policy.default
+			{ sourcepath = p, group = group, history = h,
+			  share = s, stableinfo = NONE }
+		    val exports = SmlInfo.exports i
+		    fun addLD (s, m) = SymbolMap.insert (m, s, i)
+		    val ld = SymbolSet.foldl addLD SymbolMap.empty exports
+		in
+		    COLLECTION { subexports = SymbolMap.empty,
+				 smlfiles = [i],
+				 localdefs = ld }
+		end
+	    val collections = map exp2coll expansions
+	    fun combine (c1, c2) = sequential (c2, c1)
+	in
+	    foldl combine empty collections
+	end
+    in
+	if isSome class then noPrimitive ()
+	else case Primitive.fromString (AbsPath.spec sourcepath) of
+	    SOME p => let
 		val exports = Primitive.exports p
 		fun addFN (s, m) =
 		    SymbolMap.insert (m, s, (NONE, DG.PNODE p))
@@ -75,27 +105,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 			     smlfiles = [],
 			     localdefs = SymbolMap.empty }
 	    end
-	  | exp2coll (PrivateTools.SMLSOURCE src) = let
-		val { sourcepath = p, history = h, share = s } = src
-		val i =  SmlInfo.new { sourcepath = p, group = group,
-				       history = h, share = s,
-				       stableinfo = NONE }
-		val exports = SmlInfo.exports i
-		fun addLD (s, m) = SymbolMap.insert (m, s, i)
-		val ld = SymbolSet.foldl addLD SymbolMap.empty exports
-	    in
-		COLLECTION { subexports = SymbolMap.empty,
-			     smlfiles = [i],
-			     localdefs = ld }
-	    end
-
-	val collections = map exp2coll expansions
-	val empty = COLLECTION { subexports = SymbolMap.empty,
-				 smlfiles = [],
-				 localdefs = SymbolMap.empty }
-	fun combine (c1, c2) = sequential (c2, c1)
-    in
-	foldl combine empty collections
+	  | NONE => noPrimitive ()
     end
 
     fun num_look (c: collection) (s: string) = 0

@@ -45,7 +45,7 @@ structure CMParse :> CMPARSE = struct
 	 * This function is used to parse aliases and sub-groups. *)
 	fun recParse (p1, p2) p =
 	    case parse' (p, (group, (source, p1, p2)) :: groupstack) of
-		NONE => raise LrParser.ParseError
+		NONE => (#anyErrors source := true; CMSemant.emptyGroup)
 	      | SOME res => res
 
 	fun doMember (p, p1, p2, c) =
@@ -73,14 +73,13 @@ structure CMParse :> CMPARSE = struct
 			end
 		in
 		    PrettyPrint.add_newline pps;
-		    PrettyPrint.begin_block pps PrettyPrint.CONSISTENT 4;
-		    loop (g, hist);
-		    PrettyPrint.end_block pps
+		    loop (g, hist)
 		end
 	    in
 		EM.error s (p1, p2) EM.COMPLAIN
 		   ("group hierarchy forms a cycle with " ^ AbsPath.spec group)
-		   pphist
+		   pphist;
+		raise LrParser.ParseError
 	    end
 	in
 	    case findCycle (groupstack, []) of
@@ -156,7 +155,9 @@ structure CMParse :> CMPARSE = struct
 	TextIO.closeIn stream;
 	if !(#anyErrors source) then NONE
 	else SOME parseResult
-    end handle LrParser.ParseError => NONE
+    end
+    handle LrParser.ParseError => NONE
+	 | Cycle => NONE
 
     fun parse group = parse' (group, [])
 end

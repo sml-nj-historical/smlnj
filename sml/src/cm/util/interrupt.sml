@@ -1,5 +1,5 @@
 (*
- * util/interrupt.sml: turning SMLofNJ signals into exceptions
+ * Turning SMLofNJ signals into exceptions
  *
  *   Copyright (c) 1998 by Lucent Bell Laboratories
  *

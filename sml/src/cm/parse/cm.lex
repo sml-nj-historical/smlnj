@@ -34,27 +34,43 @@ in
     Tokens.EOF (pos, pos)
 end
 
-local
-    val idlist = [("Alias", Tokens.ALIAS),
-		  ("Group", Tokens.GROUP),
-		  ("Library", Tokens.LIBRARY),
-		  ("is", Tokens.IS),
-		  ("structure", Tokens.STRUCTURE),
-		  ("signature", Tokens.SIGNATURE),
-		  ("functor", Tokens.FUNCTOR),
-		  ("funsig", Tokens.FUNSIG),
-		  ("defined", Tokens.DEFINED),
-		  ("div", Tokens.DIV),
-		  ("mod", Tokens.MOD),
-		  ("andalso", Tokens.ANDALSO),
-		  ("orelse", Tokens.ORELSE),
-		  ("not", Tokens.NOT)]
+fun errorTok (t, p) = let
+    fun findGraph i =
+	if Char.isGraph (String.sub (t, i)) then i
+	else findGraph (i + 1)
+    fun findError i =
+	if String.sub (t, i) = #"e" then i
+	else findError (i + 1)
+    val start = findGraph (5 + findError 0)
+    val msg = String.extract (t, start, NONE)
 in
-    fun idToken (t, p) =
-	case List.find (fn (id, _) => id = t) idlist of
-	    NONE => Tokens.FILE_STANDARD (t, p, p + size t)
-	  | SOME (_, tok) => tok (p, p + size t)
+    Tokens.ERROR (msg, p, p + size t)
 end
+
+val cm_ids = [("Alias", Tokens.ALIAS),
+	      ("Group", Tokens.GROUP),
+	      ("Library", Tokens.LIBRARY),
+	      ("is", Tokens.IS)]
+
+val ml_ids = [("structure", Tokens.STRUCTURE),
+	      ("signature", Tokens.SIGNATURE),
+	      ("functor", Tokens.FUNCTOR),
+	      ("funsig", Tokens.FUNSIG)]
+
+val pp_ids = [("defined", Tokens.DEFINED),
+	      ("div", Tokens.DIV),
+	      ("mod", Tokens.MOD),
+	      ("andalso", Tokens.ANDALSO),
+	      ("orelse", Tokens.ORELSE),
+	      ("not", Tokens.NOT)]
+
+fun idToken (t, p, idlist, default, chstate) =
+    case List.find (fn (id, _) => id = t) ml_ids of
+	SOME (_, tok) => (chstate (); tok (p, p + size t))
+      | NONE =>
+	    (case List.find (fn (id, _) => id = t) idlist of
+		 SOME (_, tok) => tok (p, p + size t)
+	       | NONE => default (t, p, p + size t))
 
 (* states:
 
@@ -67,21 +83,17 @@ end
        +------> M -> MC
        |
        +------> S -> SS
-       |
-       +------> ES -> E
 
    "C"  -- COMMENT
    "P"  -- PREPROC
    "M"  -- MLSYMBOL
    "S"  -- STRING
    "SS" -- STRINGSKIP
-   "ES" -- ERRORSTART
-   "E"  -- ERROR
 *)
 
 %%
 
-%s C P PC PM PMC M MC S SS E ES;
+%s C P PC PM PMC M MC S SS;
 
 %header(functor CMLexFun (structure Tokens: CM_TOKENS));
 
@@ -93,11 +105,12 @@ end
 
 idchars=[A-Za-z'_0-9];
 id=[A-Za-z]{idchars}*;
-cmextrachars=[!%&$+/<=>?@~|#*]|\-|\^;
+cmextrachars=[.;,!%&$+/<=>?@~|#*]|\-|\^;
 cmidchars={idchars}|{cmextrachars};
-cmid={cmextrachars}+;
+cmid={cmidchars}+;
 ws=("\012"|[\t\ ]);
 eol=("\013\010"|"\013"|"\010");
+neol=[^\013\010];
 sym=[!%&$+/:<=>?@~|#*]|\-|\^|"\\";
 digit=[0-9];
 sharp="#";
@@ -193,40 +206,29 @@ sharp="#";
 				   0),
 			      yypos, yypos + size yytext));
 
-<P>{id}                 => (Tokens.CM_ID (yytext, yypos, yypos + size yytext));
+<P>{id}                 => (idToken (yytext, yypos, pp_ids, Tokens.CM_ID,
+				     fn () => YYBEGIN PM));
 
 <M>({id}|{sym}+)        => (YYBEGIN INITIAL;
 			    Tokens.ML_ID (yytext, yypos, yypos + size yytext));
 <PM>({id}|{sym}+)       => (YYBEGIN P;
 			    Tokens.ML_ID (yytext, yypos, yypos + size yytext));
 
-<INITIAL>{eol}{sharp}{ws}*"if"	 => (YYBEGIN P;
+<INITIAL,P>{eol}{sharp}{ws}*"if" => (YYBEGIN P;
 				     newline yypos;
 				     Tokens.IF (yypos, yypos + size yytext));
-<INITIAL>{eol}{sharp}{ws}*"then" => (YYBEGIN P;
-				     newline yypos;
-				     Tokens.THEN (yypos, yypos + size yytext));
-<INITIAL>{eol}{sharp}{ws}*"elif" => (YYBEGIN P;
+<INITIAL,P>{eol}{sharp}{ws}*"elif" => (YYBEGIN P;
 				     newline yypos;
 				     Tokens.ELIF (yypos, yypos + size yytext));
-<INITIAL>{eol}{sharp}{ws}*"else" => (YYBEGIN P;
+<INITIAL,P>{eol}{sharp}{ws}*"else" => (YYBEGIN P;
 				     newline yypos;
 				     Tokens.ELSE (yypos, yypos + size yytext));
-<INITIAL>{eol}{sharp}{ws}*"endif" => (YYBEGIN P;
+<INITIAL,P>{eol}{sharp}{ws}*"endif" => (YYBEGIN P;
 				      newline yypos;
 				      Tokens.ENDIF (yypos,
 						    yypos + size yytext));
-<INITIAL>{eol}{sharp}{ws}*"error" => (YYBEGIN ES; newline yypos;
-				      newS (yypos, "error"); continue ());
-<ES>{ws}+               => (continue ());
-<ES>{eol}               => (YYBEGIN INITIAL; newline yypos;
-			    getS (yypos, Tokens.ERROR));
-<ES>.                   => (YYBEGIN E;
-			    addS (String.sub (yytext, 0)); continue ());
-<E>{eol}                => (YYBEGIN INITIAL; newline yypos;
-			    getS (yypos, Tokens.ERROR));
-<E>.                    => (addS (String.sub (yytext, 0)); continue ());
-
+<INITIAL,P>{eol}{sharp}{ws}*"error"{ws}+{neol}* => (newline yypos;
+						    errorTok (yytext, yypos));
 <INITIAL,M,PM>{eol}     => (newline yypos; continue ());
 <P>{eol}                => (YYBEGIN INITIAL; newline yypos; continue ());
 
@@ -237,7 +239,9 @@ sharp="#";
 			     yytext);
 			    continue ());
 
-<INITIAL>{cmid}		=> (idToken (yytext, yypos));
+<INITIAL>{cmid}		=> (idToken (yytext, yypos, cm_ids,
+				     Tokens.FILE_STANDARD,
+				     fn () => YYBEGIN M));
 
 
 <INITIAL>.		=> (error (yypos, yypos+1)

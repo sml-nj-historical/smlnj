@@ -29,6 +29,10 @@ signature ABSPATH = sig
     val splitDirFile : t -> { dir: t, file: string }
     val dir : t -> t
     val file : t -> string
+
+    val exists : t -> bool
+    val tstamp : t -> TStamp.t
+    val stabletstamp : t -> TStamp.t
 end
 
 structure AbsPath :> ABSPATH = struct
@@ -246,5 +250,18 @@ structure AbsPath :> ABSPATH = struct
 
 	val dir = #dir o splitDirFile
 	val file = #file o splitDirFile
+
+	fun fileExists n = F.access (n, []) handle _ => false
+	fun fileModTime n = F.modTime n handle _ => Time.zeroTime
+
+	val exists = fileExists o name
+
+	fun tstamp0 TS p = let
+	    val n = name p
+	in
+	    if fileExists n then TS (fileModTime n) else TStamp.NOTSTAMP
+	end
+	val tstamp = tstamp0 TStamp.TSTAMP
+	val stabletstamp = tstamp0 TStamp.STABLETSTAMP
     end
 end

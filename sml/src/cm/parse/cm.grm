@@ -19,7 +19,7 @@ structure S = CMSemant
     | NUMBER of int
     | ALIAS | GROUP | LIBRARY | IS
     | LPAREN | RPAREN | COLON
-    | IF | THEN | ELIF | ELSE | ENDIF
+    | IF | ELIF | ELSE | ENDIF
     | ERROR of string
     | STRUCTURE | SIGNATURE | FUNCTOR | FUNSIG
     | DEFINED
@@ -30,7 +30,6 @@ structure S = CMSemant
 %nonterm description of S.group
        | alias of S.group
        | group of S.group
-       | opt_perms of S.perms
        | perms of S.perms
        | lib_exports of S.exports
        | exports of S.exports
@@ -63,7 +62,7 @@ structure S = CMSemant
 
 %name CM
 
-%keyword ALIAS GROUP LIBRARY IS IF THEN ELIF ELSE ENDIF DEFINED
+%keyword ALIAS GROUP LIBRARY IS IF ELIF ELSE ENDIF DEFINED
   STRUCTURE SIGNATURE FUNCTOR FUNSIG
 
 %prefer LPAREN
@@ -85,22 +84,17 @@ alias : ALIAS pathname				(recParse
 						 (pathnameleft, pathnameright)
 						 pathname)
 
-group : GROUP
-        opt_perms exports IS members	        (S.group
-						 (opt_perms, exports, members))
-      | LIBRARY
-        opt_perms lib_exports IS members        (S.library
-						 (opt_perms, lib_exports,
+group : perms GROUP exports IS members	        (S.group
+						 (perms, exports, members))
+      | perms LIBRARY lib_exports IS members    (S.library
+						 (perms, lib_exports,
 						  members))
-
-opt_perms : (* empty *)				(S.initialPerms)
-	  | LPAREN perms RPAREN		        (perms)
 
 perms : (* empty *)                             (S.initialPerms)
       | perms sym                               (S.require (perms, sym,
 							    error (symleft,
 								   symright)))
-      | perms COLON sym                         (S.grant (perms, sym,
+      | perms LPAREN sym RPAREN                 (S.grant (perms, sym,
 							  error (symleft,
 								 symright)))
 
@@ -114,7 +108,7 @@ export : ml_symbol				(S.export ml_symbol)
 						  (exp, guarded_exports))
        | ERROR                                  (S.error_export ERROR)
 
-guarded_exports : THEN exports else_exports	((exports, else_exports))
+guarded_exports : exports else_exports	        ((exports, else_exports))
 
 else_exports : ENDIF				(S.emptyExports)
 	     | ELSE exports ENDIF		(exports)
@@ -136,7 +130,7 @@ member : pathname				(doMember (pathname,
 						 (exp, guarded_members))
        | ERROR                                  (S.error_member ERROR)
 
-guarded_members : THEN members else_members	((members, else_members))
+guarded_members : members else_members	        ((members, else_members))
 
 else_members : ENDIF				(S.emptyMembers)
 	     | ELSE members ENDIF		(members)

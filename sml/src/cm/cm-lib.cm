@@ -18,6 +18,7 @@ is
 
 	depend/graph.sml
 
+	smlfile/policy.sml
 	smlfile/smlinfo.sml
 	smlfile/skeleton.sml
 
@@ -33,4 +34,6 @@ is
 
 	ml-yacc-lib.cm
 
+	(* dummy modules for testing *)
 	dummy.sml
+	link.sml

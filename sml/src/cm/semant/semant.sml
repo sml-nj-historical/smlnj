@@ -35,6 +35,7 @@ signature CM_SEMANT = sig
     val ml_funsig : string -> ml_symbol
 
     (* getting the full analysis for a group/library *)
+    val emptyGroup : group
     val group : perms * exports * members -> group
     val library : perms * exports * members -> group
 
@@ -124,8 +125,13 @@ structure CMSemant :> CM_SEMANT = struct
     val ml_functor = Symbol.fctSymbol
     val ml_funsig = Symbol.fsigSymbol
 
-    fun group (p: perms, e: exports, m: members) = Dummy.v
-    fun library (p: perms, e: exports, m: members) = Dummy.v
+    val emptyGroup = Dummy.v
+    fun group (p: perms, e: exports, m: members) =
+	(ignore (m MemberCollection.empty);
+	 Dummy.v)
+    fun library (p: perms, e: exports, m: members) =
+	(ignore (m MemberCollection.empty);
+	 Dummy.v)
 
     local
 	val isMember = StringSet.member
@@ -145,8 +151,7 @@ structure CMSemant :> CM_SEMANT = struct
     end
 
     (* get the export map from a group *)
-    fun getExports (g: group) =
-	(Dummy.f ()) : DependencyGraph.farnode SymbolMap.map
+    fun getExports (g: group) = (ignore Dummy.v; SymbolMap.empty)
 
     fun emptyMembers env = env
     fun member rparse arg env = let
@@ -157,7 +162,9 @@ structure CMSemant :> CM_SEMANT = struct
     fun members (m1, m2) env = m2 (m1 env)
     fun guarded_members (c, (m1, m2)) env =
 	if saveEval (c, env) then m1 env else m2 env
-    fun error_member m env = raise ExplicitError m
+    fun error_member m env =
+	(print (m ^ "\n");
+	 raise ExplicitError m)
 
     fun emptyExports env = SymbolSet.empty
     fun export s env = SymbolSet.singleton s

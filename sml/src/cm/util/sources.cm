@@ -13,6 +13,7 @@ Library
 	structure SymbolMap
 	signature INTERRUPT
 	structure Interrupt
+	structure TStamp
 is
 	stringset.sml
 	stringmap.sml
@@ -20,6 +21,7 @@ is
 	symbolset.sml
 	symbolmap.sml
 	interrupt.sml
+	tstamp.sml
 
 	../../compiler/viscomp-lib.cm
 
