@@ -38,14 +38,4 @@ signature C_CALLS =
 	    result: T.mlrisc list
 	  }
 
-    val tmpsp_genCall :
-	  {
-	    name  : T.rexp,
-            proto : CTypes.c_proto,
-            structRet : {szb : int, align : int} -> T.rexp,
-            args : c_arg list
-	  } -> {
-	    callseq : T.stm list,
-	    result: T.mlrisc list
-	  }
   end

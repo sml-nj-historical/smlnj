@@ -58,9 +58,21 @@ struct
     | FARG of T.fexp
     | ARGS of c_arg list
 
-  fun genCall0 use_tmpsp
-	       {name, proto={conv="", retTy, paramTys}, structRet, args} =
-      let val mem = T.Region.memory
+  fun genCall {name, proto={conv, retTy, paramTys}, structRet, args} =
+      (* If use_tmpsp, then we must use a temporary stack pointer
+       * almost all the time.  (If virtual registers are used,
+       * they are being accessed via the real stack pointer.
+       * Moving that stack pointer before all references to
+       * virtual registers are done with would obviously break
+       * things... *)
+      let val use_tmpsp =
+	      case conv of
+		  "SMLNJ" => true
+		| "" => false
+		| _ => error(concat["unknown calling convention \"",
+				    String.toString conv, "\""])
+
+	  val mem = T.Region.memory
 	  val stack = T.Region.memory
 
 	  (* map C integer types to their MLRisc type *)
@@ -329,21 +341,27 @@ struct
 		(*esac*))
 
 	  (* call defines callersave registers and uses result registers. *)
-	  fun mkCall (defs, 0) =
-	      [T.CALL { funct = name, targets = [], defs = defs, uses = [],
-			region = T.Region.memory }]
-	    | mkCall (defs, n) = let
-		  fun call f = T.CALL { funct = f, targets = [],
-					defs = defs, uses = [],
-					region=T.Region.memory }
-		  val pop = T.MV (32, sp, T.ADD (32, T.REG (32, sp), LI n))
-	      in
-		  if use_tmpsp then [T.MV (32, C.eax, name),
-				     T.MV (32, sp, T.REG(32,mysp)),
-				     call (T.REG(32,C.eax)),
-				     pop]
-		  else [call name, pop]
-	      end
+	  fun mkCall (defs, n) = let
+	      fun call f = T.CALL { funct = f, targets = [],
+				    defs = defs, uses = [],
+				    region=T.Region.memory }
+	      val pop = T.MV (32, sp, T.ADD (32, T.REG (32, sp), LI n))
+	  in
+	      (* Although the real stack pointer needs to be moved
+	       * eventually even when use_tmpsp is set, we do so at the
+	       * last possible moment to avoid earlier interferences with
+	       * virtual registers. *)
+	      case (use_tmpsp, n) of
+		  (false, 0) => [call name]
+		| (true, 0) => [T.MV (32, C.eax, name), (* why? *)
+				call (T.REG (32, C.eax))]
+		| (false, _) => [call name,
+				 pop]
+		| (true, _) => [T.MV (32, C.eax, name),
+				T.MV (32, sp, T.REG (32, mysp)),
+				call (T.REG (32, C.eax)),
+				pop]
+	  end
 
 	  (* size to pop off on return *)
 	  fun argsSz(Ty.C_STRUCT fields::rest) =
@@ -365,10 +383,4 @@ struct
 	      else callSeq0
       in {callseq=callSeq, result=retRegs}
       end
-    | genCall0 _ {proto={conv, ...}, ...} =
-      error(concat["unknown calling convention \"",
-		   String.toString conv, "\""])
-
-  val genCall = genCall0 false
-  val tmpsp_genCall = genCall0 true
 end

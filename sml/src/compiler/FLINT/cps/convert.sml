@@ -624,12 +624,13 @@ fun convert fdec =
 				      loop (e, c)))
 			end
 		end
+		val sel = if is_float_record a then selectFL else selectNM
 		fun build ([], rvl, _) = rcc (rev rvl)
 		  | build (ft :: ftl, rvl, i) = let
 			val t = cty ft
 			val v = mkv ()
 		    in
-			selectNM (i, a', v, t, build (ftl, v :: rvl, i + 1))
+			sel (i, a', v, t, build (ftl, v :: rvl, i + 1))
 		    end
 	    in
 		case ml_flt_args of

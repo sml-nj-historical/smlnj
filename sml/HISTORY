@@ -12,6 +12,19 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/01/12 21:20:00 JST
+Tag: blume-20010112-sync
+Description:
+
+I am just flushing out some minor changes that had accumulated in
+my private branch in order to sync with the main tree.  (This is 
+mainly because I had CVS trouble when trying to merge _into_ my
+private branch.)
+
+Most people should be completely unaffected by this.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: Thu Jan 11 21:03:00 EST 2001
 Tag: leunga-20010111-labexp=mltree

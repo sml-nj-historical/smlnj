@@ -1792,7 +1792,7 @@ struct
 			   build_args avl)
 			| _ => error "RCC: prototype/arglist mismatch"
 		  val { callseq, result } =
-		      CCalls.tmpsp_genCall
+		      CCalls.genCall
 			  { name = f, proto = p, structRet = sr, args = a }
 	      in
 		  (* just for testing... *)

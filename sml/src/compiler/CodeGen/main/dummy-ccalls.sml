@@ -5,10 +5,5 @@ functor DummyCCallsFn (T: MLTREE) :> C_CALLS where T = T = struct
       | FARG of T.fexp
       | ARGS of c_arg list
 
-    local
-	fun unimplemented _ = ErrorMsg.impossible "C-calls not implemented"
-    in
-        val genCall = unimplemented
-        val tmpsp_genCall = unimplemented
-    end
+    fun genCall _ = ErrorMsg.impossible "C-calls not implemented"
 end
