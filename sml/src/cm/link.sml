@@ -124,8 +124,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	fun run sflag f s = let
 	    val c = AbsPath.cwdContext ()
-	    val p = AbsPath.native { context = AbsPath.cwdContext (),
-				     spec = s }
+	    val p = AbsPath.native { context = c, spec = s }
 	    val { mod = basis, nomod = perv } = split (#get ER.pervasive ())
 	    val corenv = #get ER.core ()
 	    val bpspec = let
@@ -143,10 +142,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	    val fnpolicy =
 		FilenamePolicy.colocate { os = SMLofNJ.SysInfo.getOSKind (),
 					  arch = HostMachDepVC.architecture }
+	    val keep_going = EnvConfig.getSet StdConfig.keep_going NONE
 	    val param = { primconf = primconf,
 			  fnpolicy = fnpolicy,
 			  pcmode = pcmode,
-			  keep_going = true,
+			  keep_going = keep_going,
 			  pervasive = perv,
 			  corenv = corenv,
 			  pervcorepids = PidSet.empty }
@@ -163,7 +163,14 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
     structure CMB = struct
 	structure BootstrapCompile =
-	    BootstrapCompileFn (structure MachDepVC = HostMachDepVC)
+	    BootstrapCompileFn (structure MachDepVC = HostMachDepVC
+				val os = SMLofNJ.SysInfo.getOSKind ())
+	fun make () =
+	    BootstrapCompile.compile
+	      { binroot = "xxx.bin.xxx",
+	        pcmodespec = "pathconfig",
+		initgspec = "Init/spec.cmi",
+		maingspec = "Libs/main.cm" }
 	fun setRetargetPervStatEnv x = ()
 	fun wipeOut () = ()
 	fun make' _ = ()

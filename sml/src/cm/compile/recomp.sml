@@ -125,8 +125,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 
     fun dostable (i, mkenv, gp: GeneralParams.info) = let
 	fun load be = let
-	    val fnp = #fnpolicy (#param gp)
-	    val stable = FilenamePolicy.mkStablePath fnp (BinInfo.group i)
+	    val stable = BinInfo.stablepath i
 	    val os = BinInfo.offset i
 	    val descr = BinInfo.describe i
 	    val _ = Say.vsay ["[consulting ", descr, "]\n"]

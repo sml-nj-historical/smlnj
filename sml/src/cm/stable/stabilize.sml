@@ -272,7 +272,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    val sz = size pickle
 	    val offset_adjustment = sz + 4
 
-	    fun mkStableGroup () = let
+	    fun mkStableGroup spath = let
 		val m = ref SmlInfoMap.empty
 		fun sn (DG.SNODE (n as { smlinfo, ... })) =
 		    case SmlInfoMap.find (!m, smlinfo) of
@@ -288,6 +288,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			    val locs = SmlInfo.errorLocation gp smlinfo
 			    val error = EM.errorNoSource grpSrcInfo locs
 			    val i = BinInfo.new { group = grouppath,
+						  stablepath = spath,
 						  spec = spec,
 						  offset = offset,
 						  share = share,
@@ -337,7 +338,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		 app (cpb outs) memberlist;
 		 app delb memberlist;
 		 BinIO.closeOut outs;
-		 SOME (mkStableGroup ()))
+		 SOME (mkStableGroup spath))
 	in
 	    Interrupt.guarded try
 	    handle e as Interrupt.Interrupt => (BinIO.closeOut outs;
@@ -561,6 +562,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    val error = EM.errorNoSource grpSrcInfo locs
 	in
 	    BinInfo.new { group = group,
+			  stablepath = spath,
 			  error = error,
 			  spec = spec,
 			  offset = offset,

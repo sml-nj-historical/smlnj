@@ -15,6 +15,7 @@ signature BININFO = sig
     type region = GenericVC.SourceMap.region
 
     val new : { group: AbsPath.t,
+	        stablepath: AbsPath.t,
 	        error: complainer,
 		spec: string,
 		offset: int,
@@ -24,6 +25,7 @@ signature BININFO = sig
     val describe : info -> string
     val offset : info -> int
     val group : info -> AbsPath.t
+    val stablepath : info -> AbsPath.t
     val share : info -> bool option
     val error : info -> complainer
 end
@@ -35,6 +37,7 @@ structure BinInfo :> BININFO = struct
 
     datatype info =
 	INFO of { group: AbsPath.t,
+		  stablepath: AbsPath.t,
 		  spec: string,
 		  offset: int,
 		  share: bool option,
@@ -55,6 +58,7 @@ structure BinInfo :> BININFO = struct
     fun group (INFO { group = g, ... }) = g
     fun offset (INFO { offset = os, ... }) = os
     fun share (INFO { share = s, ... }) = s
+    fun stablepath (INFO { stablepath = sp, ... }) = sp
 
     fun error (INFO { error = e, ... }) = e
 end

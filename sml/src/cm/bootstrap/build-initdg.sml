@@ -36,7 +36,8 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 
 	val context = AbsPath.relativeContext (AbsPath.dir specgroup)
 	val specname = AbsPath.name specgroup
-	val stream = TextIO.openIn specname
+	val _ = Say.vsay ["[reading init spec from ", specname, "]\n"]
+	val stream = AbsPath.openTextIn specgroup
 	val source = S.newSource (specname, 1, stream, false, errcons)
 	val sourceMap = #sourceMap source
 
@@ -98,28 +99,35 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			val n = DG.SNODE { smlinfo = i,
 					   localimports = li,
 					   globalimports = gi }
+			val pl' =
+			    case pl of
+				NONE => NONE
+			      | SOME l => SOME (p :: l)
 		    in
 			loop (split,
 			      StringMap.insert (m, name, DG.SB_SNODE n),
-			      p :: pl, newpos)
+			      pl', newpos)
 		    end
 		in
 		    case line of
 			[] => loop (split, m, pl, newpos)
 		      | ["split"] => loop (true, m, pl, newpos)
 		      | ["nosplit"] => loop (false, m, pl, newpos)
-		      | ("let" :: name :: file :: args)  =>
+		      | ["start"] => loop (split, m, SOME [], newpos)
+		      | ("bind" :: name :: file :: args)  =>
 			    node (name, file, args)
 		      | ("return" :: rts :: core :: pervasive :: prims) =>
-			    SOME { rts = look_snode rts,
-				   core = look_snode core,
-				   pervasive = look_snode pervasive,
-				   primitives =
-				        map (fn n => (n, look_snode n)) prims,
-				   filepaths = rev pl }
+			    (Say.vsay ["[init spec read successfully]\n"];
+			     SOME { rts = look_snode rts,
+				    core = look_snode core,
+				    pervasive = look_snode pervasive,
+				    primitives =
+				         map (fn n => (n, look_snode n)) prims,
+				    filepaths = rev (getOpt (pl, [])) })
 		      | _ => (error "malformed line"; NONE)
 		end
     in
-	loop (false, StringMap.empty, [], 2) (* consistent with ml-lex bug? *)
+	(* 2: consistent with ml-lex bug? *)
+	loop (false, StringMap.empty, NONE, 2)
     end
 end
