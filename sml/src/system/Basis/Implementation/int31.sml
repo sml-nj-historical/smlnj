@@ -60,9 +60,11 @@ structure Int31Imp : INTEGER =
 	(case scanLarge getc cs
 	  of NONE => NONE
 	   | SOME(i, cs') => 
+(* this is redundant because Int32.toInt does the check already:
 	     if I32.>(i, 0x3fffffff) orelse I32.<(i, ~0x40000000) then
 	       raise Overflow
 	     else
+*)
 	       SOME(Int32Imp.toInt i, cs')
 	(*esac*))
     in f
