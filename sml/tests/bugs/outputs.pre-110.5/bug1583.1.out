@@ -1,0 +1,41 @@
+val it = () : unit
+signature FOO =
+  sig
+    type bar = string
+    datatype foo = A | B | C of bar
+  end
+structure Foo :
+  sig
+    type bar = string
+    datatype foo = A | B | C of bar
+  end
+signature BAR =
+  sig
+    structure Foo :
+      sig
+        type bar = string
+        datatype foo = A | B | C of bar
+      end
+    type foo = Foo.foo
+  end
+functor Bar : <sig>
+signature FOO =
+  sig
+    type bar = string
+    datatype foo = A | B | C of string
+  end
+structure Foo :
+  sig
+    type bar = string
+    datatype foo = A | B | C of string
+  end
+signature BAR =
+  sig
+    structure Foo :
+      sig
+        type bar = string
+        datatype foo = A | B | C of string
+      end
+    type foo = Foo.foo
+  end
+functor Bar : <sig>

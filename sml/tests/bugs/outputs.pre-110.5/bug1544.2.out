@@ -1,0 +1,40 @@
+val it = () : unit
+structure Util :
+  sig val listCompare : ('a * 'b -> order) -> 'a list * 'b list -> order end
+structure StandardType :
+  sig
+    datatype TypeConstant
+      = CharType | IntType | RealType | StringType | UnitType
+    datatype STLocalPropDatatype
+      = STsinks of IntBinarySet.set | STsources of IntBinarySet.set
+    type STLocalPropType = STLocalPropDatatype list ref
+    datatype Typ
+      = AbsType of {body:Typ, sProp:STLocalPropType, tv:int, uid:int}
+      | AppType of {rand:Typ, rator:Typ, sProp:STLocalPropType, uid:int}
+      | ArrayType of {dims:int, sProp:STLocalPropType, typ:Typ, uid:int}
+      | ArrowType of {from:Typ, sProp:STLocalPropType, to:Typ, uid:int}
+      | ConstType of {const:TypeConstant, sProp:STLocalPropType, uid:int}
+      | Exception of {sProp:STLocalPropType, uid:int}
+      | ExceptionConstructor of {sProp:STLocalPropType, typ:Typ, uid:int}
+      | IsectType of {fields:string list, sProp:STLocalPropType,
+                      types:Typ list, uid:int}
+      | RecType of {body:Typ, btvs:int list, decls:Typ list,
+                    sProp:STLocalPropType, uid:int}
+      | RecordType of {fields:string list, sProp:STLocalPropType,
+                       types:Typ list, uid:int}
+      | RefType of {sProp:STLocalPropType, typ:Typ, uid:int}
+      | UnionType of {sProp:STLocalPropType, tag:string, tags:string list,
+                      types:Typ list, uid:int}
+      | VarType of {sProp:STLocalPropType, tv:int, uid:int}
+      | VariantType of {sProp:STLocalPropType, tag:string, tags:string list,
+                        types:Typ list, uid:int}
+    val uidOf : Typ -> int
+  end
+structure STcompare :
+  sig
+    val checkFlowLabels : bool ref
+    val freeVarMatchesAll : bool ref
+    val tagMatters : bool ref
+    type ord_key = StandardType.Typ
+    val compare : StandardType.Typ * StandardType.Typ -> order
+  end

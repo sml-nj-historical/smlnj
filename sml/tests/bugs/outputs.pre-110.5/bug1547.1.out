@@ -1,0 +1,19 @@
+val it = () : unit
+signature S =
+  sig
+    type t
+    val x : t
+    val f : t -> string
+  end
+structure A : S
+structure B : S
+signature SS =
+  sig
+    structure X :
+      sig
+        type t
+        val x : t
+        val f : t -> string
+      end
+  end
+bug1547.1.sml:10.1-10.47 Error: structure def spec for X not matched

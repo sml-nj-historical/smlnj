@@ -1,0 +1,9 @@
+val it = () : unit
+bug1602.1.sml:5.3-6.28 Error: unbound signature: Absyn
+bug1602.1.sml:11.17-11.22 Error: unbound structure: Absyn
+
+uncaught exception nonexhaustive match failure
+  raised at: modules/sigmatch.sml:845.14
+             modules/sigmatch.sml:884.25
+             modules/sigmatch.sml:966.24
+             elaborate/elabmod.sml:1223.8

@@ -1,0 +1,28 @@
+val it = () : unit
+signature SIG1 = sig type t end
+signature SIG2 =
+  sig
+    type t
+    val f : t -> unit
+  end
+signature SIG3 = sig structure S : sig type t end end
+functor MkA : <sig>
+functor MkB : <sig>
+functor MkC : <sig>
+structure A :
+  sig
+    type t = int
+    val f : 'a -> unit
+  end
+structure B : SIG3
+bug1599.1.sml:38.15-39.35 Error: unmatched structure specification: Ta
+
+uncaught exception nonexhaustive binding failure
+  raised at: modules/sigmatch.sml:576.10-576.44
+             modules/sigmatch.sml:728.45
+             modules/sigmatch.sml:884.25
+             modules/sigmatch.sml:728.45
+             modules/sigmatch.sml:884.25
+             modules/sigmatch.sml:966.24
+             elaborate/elabmod.sml:1223.8
+             elaborate/elabmod.sml:1223.8

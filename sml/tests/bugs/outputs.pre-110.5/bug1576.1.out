@@ -1,0 +1,12 @@
+val it = () : unit
+val x = nan : real
+x = nan
+Real.==(x,x) = false
+Real.!=(x,x) = true
+Real.?=(x,x) = true
+Real.==(x,1.0) = false
+Real.!=(x,1.0) = true
+Real.?=(x,1.0) = true
+Real.==(1.0,1.0) = true
+Real.!=(1.0,1.0) = false
+Real.?=(1.0,1.0) = true

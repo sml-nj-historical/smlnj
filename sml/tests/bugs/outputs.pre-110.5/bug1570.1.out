@@ -1,0 +1,2 @@
+val it = () : unit
+structure X : sig val main : int -> int end

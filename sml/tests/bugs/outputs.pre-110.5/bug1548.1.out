@@ -1,0 +1,5 @@
+val it = () : unit
+bug1548.1.sml:3.9-13.4 Error: value type in structure doesn't match signature spec
+    name: v
+  spec:   _ V.t
+  actual: V.t

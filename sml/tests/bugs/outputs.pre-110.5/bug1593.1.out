@@ -1,0 +1,2 @@
+val it = () : unit
+Error: Compiler bug: CPSGen: Overflow in cps/generic.sml

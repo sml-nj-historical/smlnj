@@ -1,0 +1,7 @@
+val it = () : unit
+val f = fn : int -> 'a
+bug1506.1.sml:4.1-4.4 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+
+uncaught exception overflow
+  raised at: <file stdIn>

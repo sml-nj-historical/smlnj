@@ -1,0 +1,4 @@
+val it = () : unit
+bug1584.1.sml:3.47 Error: overloaded variable not defined at type
+  symbol: /
+  type: int

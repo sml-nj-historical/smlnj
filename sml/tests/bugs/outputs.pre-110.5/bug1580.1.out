@@ -1,0 +1,5 @@
+val it = () : unit
+**** hmmm, I didn't find the variable 1489
+
+uncaught exception ltUnbound
+  raised at: basics/ltyenv.sml:251.32-251.41

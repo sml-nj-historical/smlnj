@@ -1,0 +1,19 @@
+val it = () : unit
+signature NUMBER = sig type t end
+signature VEC =
+  sig
+    structure Number : sig type t end
+    type t
+    val fromSeq : Number.t vector -> t
+    val toSeq : t -> Number.t vector
+  end
+functor PointFromVector : <sig>
+signature GEOMETRY_PRIMS =
+  sig structure Point : sig structure Vec : <sig> end end
+bug1549.1.sml:32.3-37.6 Warning: match nonexhaustive
+          #[x,y] => ...
+  
+functor GeometryPrims2d : <sig>
+structure RealNumber : sig type t = real end
+structure RealGeometryPrims2d : GEOMETRY_PRIMS
+val foo = [|6.0,0.0|] : RealNumber.t array

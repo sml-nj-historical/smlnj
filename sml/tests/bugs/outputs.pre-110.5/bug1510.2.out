@@ -1,0 +1,3 @@
+val it = () : unit
+signature S = sig type ('a,'b) t = 'a end
+bug1510.2.sml:8.1-11.4 Error: type t does not match definitional specification
