@@ -448,6 +448,7 @@ is
 	Sockets/serv-db.sig
 	Sockets/serv-db.sml
 	Sockets/socket.sig
+	Sockets/socket.sml
 	Sockets/generic-sock.sig
 	Sockets/inet-sock.sig
 	Sockets/inet-sock.sml
@@ -456,11 +457,11 @@ is
 #if defined(OPSYS_UNIX)
 	Sockets/net-db.sig
 	Sockets/net-db.sml
-	Sockets/unix-socket.sml
 	Sockets/unix-sock.sig
 	Sockets/unix-generic-sock.sml
 	Sockets/unix-sock.sml
+	Sockets/unix-details.sml
 #elif defined(OPSYS_WIN32)
-	Sockets/win32-socket.sml
 	Sockets/win32-generic-sock.sml
+	Sockets/win32-details.sml
 #endif

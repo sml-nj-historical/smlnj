@@ -51,8 +51,10 @@ structure INetSock : INET_SOCK =
 	local
 	  val ctlDELAY : (int * bool option) -> bool = sockFn "ctlNODELAY"
 	in
-	fun getNODELAY (PreSock.SOCK fd) = ctlDELAY(fd, NONE)
-	fun setNODELAY (PreSock.SOCK fd, flg) = ignore(ctlDELAY(fd, SOME flg))
+	fun getNODELAY (PreSock.SOCK { fd, ... }) =
+	    ctlDELAY(fd, NONE)
+	fun setNODELAY (PreSock.SOCK { fd, ... }, flg) =
+	    ignore(ctlDELAY(fd, SOME flg))
 	end (* local *)
       end
   end

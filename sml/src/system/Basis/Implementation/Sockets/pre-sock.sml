@@ -21,8 +21,12 @@ structure PreSock =
   (* the raw representation of an address family *)
     type af = CInterface.system_const
 
-  (* the raw representation of a socket (a file descriptor for now) *)
-    type socket = int
+  (* the raw representation of a socket:
+   *   a file descriptor for now and a mutable flag indicating
+   *   (with a value of true) if the socket is currently set
+   *   to non-blocking *)
+    type sockFD = int
+    type socket = { fd: sockFD, nb: bool ref }
 
   (* an internet address; this is here because it is abstract in the
    * NetHostDB and IP structures.
@@ -108,5 +112,3 @@ end
  * types.
  *)
 structure Socket = PreSock;
-
-

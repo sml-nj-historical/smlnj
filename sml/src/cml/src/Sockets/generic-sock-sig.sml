@@ -3,6 +3,14 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
  * $Log$
+ * Revision 1.4  2003/09/24 20:09:40  mblume
+ * sync of socket implementation with Basis spec;
+ * minor updates to Real64 code
+ *
+ * Revision 1.3.2.1  2003/09/23 20:37:17  mblume
+ * switched to spec-conforming implementation of Sockets;
+ * updated CML accordingly
+ *
  * Revision 1.3  2001/06/20 20:39:14  blume
  * CML compiles and works again
  *
@@ -19,6 +27,7 @@
 
 signature GENERIC_SOCK =
   sig
+(*
     val addressFamilies : unit -> Socket.AF.addr_family list
 	(* returns a list of the supported address families; this should include
 	 * at least:  Socket.AF.inet.
@@ -28,6 +37,7 @@ signature GENERIC_SOCK =
 	(* returns a list of the supported socket types; this should include at
 	 * least:  Socket.SOCK.stream and Socket.SOCK.dgram.
 	 *)
+*)
 
   (* create sockets using default protocol *)
     val socket : (Socket.AF.addr_family * Socket.SOCK.sock_type)

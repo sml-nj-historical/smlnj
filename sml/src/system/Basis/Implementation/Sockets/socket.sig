@@ -13,12 +13,12 @@ signature SOCKET =
   (* sockets are polymorphic; the instantiation of the type variables
    * provides a way to distinguish between different kinds of sockets.
    *)
-    type ('af, 'sock) sock
+    type ('af, 'sock_type) sock
     type 'af sock_addr
 
   (* witness types for the socket parameter *)
     type dgram
-    type 'a stream
+    type 'mode stream
     type passive	(* for passive streams *)
     type active		(* for active (connected) streams *)
 
@@ -46,56 +46,73 @@ signature SOCKET =
     structure Ctl : sig
 
       (* get/set socket options *)
-        val getDEBUG		: ('a, 'b) sock -> bool
-        val setDEBUG		: (('a, 'b) sock * bool) -> unit
-        val getREUSEADDR	: ('a, 'b) sock -> bool
-        val setREUSEADDR	: (('a, 'b) sock * bool) -> unit
-        val getKEEPALIVE	: ('a, 'b) sock -> bool
-        val setKEEPALIVE	: (('a, 'b) sock * bool) -> unit
-        val getDONTROUTE	: ('a, 'b) sock -> bool
-        val setDONTROUTE	: (('a, 'b) sock * bool) -> unit
-        val getLINGER		: ('a, 'b) sock -> Time.time option
-        val setLINGER		: (('a, 'b) sock * Time.time option) -> unit
-        val getBROADCAST	: ('a, 'b) sock -> bool
-        val setBROADCAST	: (('a, 'b) sock * bool) -> unit
-        val getOOBINLINE	: ('a, 'b) sock -> bool
-        val setOOBINLINE	: (('a, 'b) sock * bool) -> unit
-        val getSNDBUF		: ('a, 'b) sock -> int
-        val setSNDBUF		: (('a, 'b) sock * int) -> unit
-        val getRCVBUF		: ('a, 'b) sock -> int
-        val setRCVBUF		: (('a, 'b) sock * int) -> unit
-        val getTYPE		: ('a, 'b) sock -> SOCK.sock_type
-        val getERROR		: ('a, 'b) sock -> bool
+        val getDEBUG		: ('af, 'sock_type) sock -> bool
+        val setDEBUG		: ('af, 'sock_type) sock * bool -> unit
+        val getREUSEADDR	: ('af, 'sock_type) sock -> bool
+        val setREUSEADDR	: ('af, 'sock_type) sock * bool -> unit
+        val getKEEPALIVE	: ('af, 'sock_type) sock -> bool
+        val setKEEPALIVE	: ('af, 'sock_type) sock * bool -> unit
+        val getDONTROUTE	: ('af, 'sock_type) sock -> bool
+        val setDONTROUTE	: ('af, 'sock_type) sock * bool -> unit
+        val getLINGER		: ('af, 'sock_type) sock
+				     -> Time.time option
+        val setLINGER		: ('af, 'sock_type) sock * Time.time option
+				    -> unit
+        val getBROADCAST	: ('af, 'sock_type) sock -> bool
+        val setBROADCAST	: ('af, 'sock_type) sock * bool -> unit
+        val getOOBINLINE	: ('af, 'sock_type) sock -> bool
+        val setOOBINLINE	: ('af, 'sock_type) sock * bool -> unit
+        val getSNDBUF		: ('af, 'sock_type) sock -> int
+        val setSNDBUF		: ('af, 'sock_type) sock * int -> unit
+        val getRCVBUF		: ('af, 'sock_type) sock -> int
+        val setRCVBUF		: ('af, 'sock_type) sock * int -> unit
+        val getTYPE		: ('af, 'sock_type) sock -> SOCK.sock_type
+        val getERROR		: ('af, 'sock_type) sock -> bool
 
-	val getPeerName		: ('a, 'b) sock -> 'a sock_addr
-	val getSockName		: ('a, 'b) sock -> 'a sock_addr
-	val setNBIO		: (('a, 'b) sock * bool) -> unit
-	val getNREAD		: ('a, 'b) sock -> int
-	val getATMARK		: ('a, active stream) sock -> bool
+	val getPeerName		: ('af, 'sock_type) sock -> 'af sock_addr
+	val getSockName		: ('af, 'sock_type) sock -> 'af sock_addr
+	val getNREAD		: ('af, 'sock_type) sock -> int
+	val getATMARK		: ('af, active stream) sock -> bool
       end (* Ctl *)
 
   (* socket address operations *)
-    val sameAddr     : ('a sock_addr * 'a sock_addr) -> bool
-    val familyOfAddr : 'a sock_addr -> AF.addr_family
+    val sameAddr     : 'af sock_addr * 'af sock_addr -> bool
+    val familyOfAddr : 'af sock_addr -> AF.addr_family
 
   (* socket management *)
-    val accept  : ('a, passive stream) sock
-		    -> (('a, active stream) sock * 'a sock_addr)
-    val bind    : (('a, 'b) sock * 'a sock_addr) -> unit
-    val connect : (('a, 'b) sock * 'a sock_addr) -> unit
-    val listen  : (('a, passive stream) sock * int) -> unit
-    val close   : ('a, 'b) sock -> unit
-    datatype shutdown_mode = NO_RECVS | NO_SENDS | NO_RECVS_OR_SENDS
-    val shutdown : (('a, 'b stream) sock * shutdown_mode) -> unit
+    val bind      : ('af, 'sock_type) sock * 'af sock_addr -> unit
+    val listen    : ('af, passive stream) sock * int -> unit
+    val accept    : ('af, passive stream) sock
+		    -> ('af, active stream) sock * 'af sock_addr
+    val acceptNB  : ('af, passive stream) sock
+		    -> (('af, active stream) sock * 'af sock_addr) option
+    val connect   : ('af, 'sock_type) sock * 'af sock_addr -> unit
+    val connectNB : ('af, 'sock_type) sock * 'af sock_addr -> bool
+    val close     : ('af, 'sock_type) sock -> unit
 
-    val pollDesc : ('a, 'b) sock -> OS.IO.poll_desc
+    datatype shutdown_mode = NO_RECVS | NO_SENDS | NO_RECVS_OR_SENDS
+    val shutdown : ('af, 'mode stream) sock * shutdown_mode -> unit
+
+    type sock_desc
+    val sockDesc : ('af, 'sock_type) sock -> sock_desc
+    val sameDesc : sock_desc * sock_desc -> bool
+
+    val select : { rds : sock_desc list,
+		   wrs : sock_desc list,
+		   exs : sock_desc list,
+		   timeout : Time.time option }
+		 -> { rds : sock_desc list,
+		      wrs : sock_desc list,
+		      exs : sock_desc list }
+
+    val ioDesc : ('af, 'sock_type) sock -> OS.IO.iodesc
 
   (* Sock I/O option types *)
     type out_flags = {don't_route : bool, oob : bool}
     type in_flags = {peek : bool, oob : bool}
 
   (* Sock output operations *)
-    val sendVec	   : ('a, active stream) sock * Word8VectorSlice.slice
+    val sendVec	   : ('af, active stream) sock * Word8VectorSlice.slice
 		        -> int
     val sendArr	   : ('a, active stream) sock * Word8ArraySlice.slice
 			-> int
@@ -103,14 +120,33 @@ signature SOCKET =
 			-> int
     val sendArr'   : ('a, active stream) sock * Word8ArraySlice.slice * out_flags
 			-> int
+
+    val sendVecNB  : ('af, active stream) sock * Word8VectorSlice.slice
+		       -> int option
+    val sendArrNB  : ('a, active stream) sock * Word8ArraySlice.slice
+			-> int option
+    val sendVecNB' : ('a, active stream) sock * Word8VectorSlice.slice * out_flags
+			-> int option
+    val sendArrNB' : ('a, active stream) sock * Word8ArraySlice.slice * out_flags
+			-> int option
+
     val sendVecTo  : ('a, dgram) sock * 'a sock_addr * Word8VectorSlice.slice
-			-> int
+			-> unit
     val sendArrTo  : ('a, dgram) sock * 'a sock_addr * Word8ArraySlice.slice
-			-> int
+			-> unit
     val sendVecTo' : ('a, dgram) sock * 'a sock_addr * Word8VectorSlice.slice * out_flags
-			-> int
+			-> unit
     val sendArrTo' : ('a, dgram) sock * 'a sock_addr * Word8ArraySlice.slice * out_flags
-			-> int
+			-> unit
+
+    val sendVecToNB: ('a, dgram) sock * 'a sock_addr * Word8VectorSlice.slice
+			-> bool
+    val sendArrToNB: ('a, dgram) sock * 'a sock_addr * Word8ArraySlice.slice
+			-> bool
+    val sendVecToNB':('a, dgram) sock * 'a sock_addr * Word8VectorSlice.slice * out_flags
+			-> bool
+    val sendArrToNB':('a, dgram) sock * 'a sock_addr * Word8ArraySlice.slice * out_flags
+			-> bool
 
   (* Sock input operations *)
     val recvVec      : ('a, active stream) sock * int
@@ -121,14 +157,34 @@ signature SOCKET =
 			-> Word8Vector.vector
     val recvArr'     : ('a, active stream) sock * Word8ArraySlice.slice * in_flags
 			-> int
+
+    val recvVecNB    : ('a, active stream) sock * int
+			-> Word8Vector.vector option
+    val recvArrNB    : ('a, active stream) sock * Word8ArraySlice.slice
+			-> int option
+    val recvVecNB'   : ('a, active stream) sock * int * in_flags
+			-> Word8Vector.vector option
+    val recvArrNB'   : ('a, active stream) sock * Word8ArraySlice.slice * in_flags
+			-> int option
+
+
     val recvVecFrom  : ('a, dgram) sock * int
 			-> Word8Vector.vector * 'b sock_addr
     val recvArrFrom  : ('a, dgram) sock * Word8ArraySlice.slice
 			-> int * 'a sock_addr
     val recvVecFrom' : ('a, dgram) sock * int * in_flags
 			-> Word8Vector.vector * 'b sock_addr
-    val recvArrFrom' : (('a, dgram) sock * Word8ArraySlice.slice * in_flags)
+    val recvArrFrom' : ('a, dgram) sock * Word8ArraySlice.slice * in_flags
 			-> int * 'a sock_addr
+
+    val recvVecFromNB: ('a, dgram) sock * int
+			-> (Word8Vector.vector * 'b sock_addr) option
+    val recvArrFromNB: ('a, dgram) sock * Word8ArraySlice.slice
+			-> (int * 'a sock_addr) option
+    val recvVecFromNB':('a, dgram) sock * int * in_flags
+			-> (Word8Vector.vector * 'b sock_addr) option
+    val recvArrFromNB':('a, dgram) sock * Word8ArraySlice.slice * in_flags
+			-> (int * 'a sock_addr) option
 
   end
 end

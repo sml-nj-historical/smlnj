@@ -170,9 +170,7 @@ structure Real64Imp : REAL =
 			             else IEEEReal.NAN IEEEReal.QUIET
 
     val radix = 2
-    val precision = 52			(* 53? *)
-
-    val radix_to_the_precision = 18014398509481984.0
+    val precision = 53			(* hidden bit gets counted, too *)
 
     val two_to_the_neg_1000 =
       let fun f(i,x) = if i=0 then x else f(i - 1, x*0.5)
@@ -223,14 +221,11 @@ structure Real64Imp : REAL =
 	 * get 53 bits of precision...
 	 * (See insanity insurance above.)
 	 *)
-	fun scaleup (k, x) = let	(* increase exponent by k *)
-	    val { man, exp } = toManExp x
-	in
-	    fromManExp { man = man, exp = exp + k }
-	end
 	fun dosign (x: real) = if negative then ~x else x
 	fun calc (k, d1, d2, d3, []) =
-	      dosign (scaleup (k, w2r d1 + rbase * (w2r d2 + rbase * w2r d3)))
+	      dosign (Assembly.A.scalb (w2r d1 +
+					rbase * (w2r d2 + rbase * w2r d3),
+					k))
 	  | calc (k, _, d1, d2, d3 :: r) = calc (k + baseBits, d1, d2, d3, r)
     in
 	case digits of
@@ -329,7 +324,7 @@ structure Real64Imp : REAL =
 			  * bad.  The correct solution is to multiply
 			  * by 2^min(exp,53) and adjust exp by subtracting
 			  * min(exp,53): *)
-			 val adj = IntImp.min (53 (* precision? *), exp)
+			 val adj = IntImp.min (precision, exp)
 			 val man = fromManExp { man = man, exp = adj }
 			 val exp = exp - adj
 

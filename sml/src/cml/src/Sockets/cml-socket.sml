@@ -56,7 +56,6 @@ structure CML_Socket : CML_SOCKET =
         fun getERROR arg = wrapGet Socket.Ctl.getERROR arg
 	fun getPeerName arg = wrapGet Socket.Ctl.getPeerName arg
 	fun getSockName arg = wrapGet Socket.Ctl.getSockName arg
-	fun setNBIO _ = ()	(* all CML sockets are non-blocking *)
 	fun getNREAD arg = wrapGet Socket.Ctl.getNREAD arg
 	fun getATMARK arg = wrapGet Socket.Ctl.getATMARK arg
       end (* Ctl *)
@@ -67,37 +66,42 @@ structure CML_Socket : CML_SOCKET =
 
   (* socket management *)
     local
-      fun accept' sock = let val (sock', addr) = Socket.accept sock
-	    in
-	      (PreSock.mkSock sock', addr)
-	    end
+      fun acceptNB' sock =
+	  case Socket.acceptNB sock of
+	      SOME (sock', addr) =>
+	        SOME (PreSock.mkSock sock', addr)
+	    | NONE => NONE
+      fun accept' sock = let
+	  val (sock', addr) = Socket.accept sock
+      in
+	  (PreSock.mkSock sock', addr)
+      end
     in
     fun acceptEvt (s as PS.CMLSock{sock, ...}) = CML.guard (fn () =>
-	  case PS.wouldBlock accept' sock
+	  case acceptNB' sock
 	   of (SOME res) => CML.alwaysEvt res
 	    | NONE => CML.wrap((PreSock.inEvt s), fn _ => accept' sock)
 	  (* end case *))
 
     fun accept (s as PS.CMLSock{sock, ...}) = (
-	  case PS.wouldBlock accept' sock
+	  case acceptNB' sock
 	   of (SOME res) => res
 	    | NONE => (CML.sync(PreSock.inEvt s); accept' sock)
 	  (* end case *))
+
+    fun acceptNB (PS.CMLSock{sock, ...}) = acceptNB' sock
+
     end (* local *)
 
     fun bind (PS.CMLSock{sock, ...}, addr) = Socket.bind(sock, addr)
 
     fun connectEvt (s as PS.CMLSock{sock, ...}, addr) = CML.guard (fn () =>
-	  case PS.wouldBlock Socket.connect (sock, addr)
-	   of (SOME res) => CML.alwaysEvt res
-	    | NONE => PreSock.outEvt s
-	  (* end case *))
+	  if Socket.connectNB (sock, addr) then CML.alwaysEvt ()
+	  else PreSock.outEvt s)
 
-    fun connect (s as PS.CMLSock{sock, ...}, addr) = (
-	  case PS.wouldBlock Socket.connect (sock, addr)
-	   of (SOME res) => res
-	    | NONE => CML.sync(PreSock.outEvt s)
-	  (* end case *))
+    fun connect (s as PS.CMLSock{sock, ...}, addr) =
+	  if Socket.connectNB (sock, addr) then ()
+	  else CML.sync (PreSock.outEvt s)
 
     fun listen (PS.CMLSock{sock, ...}, n) = Socket.listen(sock, n)
 
@@ -108,16 +112,17 @@ structure CML_Socket : CML_SOCKET =
 	  (* end case *);
 	  SyncVar.mPut(state, PS.Closed))
 
-(*
-    datatype shutdown_mode = datatype Socket.shutdown_mode
-*)
     structure S' : sig
 	datatype shutdown_mode = NO_RECVS | NO_SENDS | NO_RECVS_OR_SENDS
       end = Socket
     open S'
     fun shutdown (PS.CMLSock{sock, ...}, how) = Socket.shutdown(sock, how)
 
-    fun pollDesc (PS.CMLSock{sock, ...}) = Socket.pollDesc sock
+    type sock_desc = Socket.sock_desc
+    fun ioDesc (PS.CMLSock{sock,...}) = Socket.ioDesc sock
+    fun sockDesc (PS.CMLSock{sock,...}) = Socket.sockDesc sock
+    val sameDesc = Socket.sameDesc
+    val select = Socket.select
 
   (* Sock I/O option types *)
     type out_flags = {don't_route : bool, oob : bool}
@@ -126,130 +131,133 @@ structure CML_Socket : CML_SOCKET =
     type 'a buf = {buf : 'a, i : int, sz : int option}
 
   (* Sock output operations *)
-    fun sendVec (s as PS.CMLSock{sock, ...}, buf) = (
-	  case PS.wouldBlock Socket.sendVec (sock, buf)
-	   of (SOME res) => res
-	    | NONE => (CML.sync(PS.outEvt s); Socket.sendVec (sock, buf))
-	  (* end case *))
-    fun sendArr (s as PS.CMLSock{sock, ...}, buf) = (
-	  case PS.wouldBlock Socket.sendArr (sock, buf)
-	   of (SOME res) => res
-	    | NONE => (CML.sync(PS.outEvt s); Socket.sendArr (sock, buf))
-	  (* end case *))
-    fun sendVec' (s as PS.CMLSock{sock, ...}, buf, flgs) = (
-	  case PS.wouldBlock Socket.sendVec' (sock, buf, flgs)
-	   of (SOME res) => res
-	    | NONE => (CML.sync(PS.outEvt s); Socket.sendVec' (sock, buf, flgs))
-	  (* end case *))
-    fun sendArr' (s as PS.CMLSock{sock, ...}, buf, flgs) = (
-	  case PS.wouldBlock Socket.sendArr' (sock, buf, flgs)
-	   of (SOME res) => res
-	    | NONE => (CML.sync(PS.outEvt s); Socket.sendArr' (sock, buf, flgs))
-	  (* end case *))
-    fun sendVecTo (s as PS.CMLSock{sock, ...}, addr, buf) = (
-	  case PS.wouldBlock Socket.sendVecTo (sock, addr, buf)
-	   of (SOME res) => res
-	    | NONE => (CML.sync(PS.outEvt s); Socket.sendVecTo (sock, addr, buf))
-	  (* end case *))
-    fun sendArrTo (s as PS.CMLSock{sock, ...}, addr, buf) = (
-	  case PS.wouldBlock Socket.sendArrTo (sock, addr, buf)
-	   of (SOME res) => res
-	    | NONE => (CML.sync(PS.outEvt s); Socket.sendArrTo (sock, addr, buf))
-	  (* end case *))
-    fun sendVecTo' (s as PS.CMLSock{sock, ...}, addr, buf, flgs) = (
-	  case PS.wouldBlock Socket.sendVecTo' (sock, addr, buf, flgs)
-	   of (SOME res) => res
-	    | NONE => (
-		CML.sync(PS.outEvt s); Socket.sendVecTo' (sock, addr, buf, flgs))
-	  (* end case *))
-    fun sendArrTo' (s as PS.CMLSock{sock, ...}, addr, buf, flgs) = (
-	  case PS.wouldBlock Socket.sendArrTo' (sock, addr, buf, flgs)
-	   of (SOME res) => res
-	    | NONE => (
-		CML.sync(PS.outEvt s); Socket.sendArrTo' (sock, addr, buf, flgs))
-	  (* end case *))
+    fun sendVec (s as PS.CMLSock{sock, ...}, buf) =
+	case Socket.sendVecNB (sock, buf)
+	 of (SOME res) => res
+	  | NONE => (CML.sync(PS.outEvt s); Socket.sendVec (sock, buf))
+    fun sendArr (s as PS.CMLSock{sock, ...}, buf) =
+	case Socket.sendArrNB (sock, buf)
+	 of (SOME res) => res
+	  | NONE => (CML.sync(PS.outEvt s); Socket.sendArr (sock, buf))
+    fun sendVec' (s as PS.CMLSock{sock, ...}, buf, flgs) =
+	case Socket.sendVecNB' (sock, buf, flgs)
+	 of (SOME res) => res
+	  | NONE => (CML.sync(PS.outEvt s); Socket.sendVec' (sock, buf, flgs))
+    fun sendArr' (s as PS.CMLSock{sock, ...}, buf, flgs) =
+	case Socket.sendArrNB' (sock, buf, flgs)
+	 of (SOME res) => res
+	  | NONE => (CML.sync(PS.outEvt s); Socket.sendArr' (sock, buf, flgs))
+    fun sendVecTo (s as PS.CMLSock{sock, ...}, addr, buf) =
+	  if Socket.sendVecToNB (sock, addr, buf) then ()
+	  else (CML.sync(PS.outEvt s); Socket.sendVecTo (sock, addr, buf))
+    fun sendArrTo (s as PS.CMLSock{sock, ...}, addr, buf) =
+	if Socket.sendArrToNB (sock, addr, buf) then ()
+	else (CML.sync(PS.outEvt s); Socket.sendArrTo (sock, addr, buf))
+    fun sendVecTo' (s as PS.CMLSock{sock, ...}, addr, buf, flgs) =
+	if Socket.sendVecToNB' (sock, addr, buf, flgs) then ()
+	else (CML.sync(PS.outEvt s); Socket.sendVecTo' (sock, addr, buf, flgs))
+    fun sendArrTo' (s as PS.CMLSock{sock, ...}, addr, buf, flgs) =
+	if Socket.sendArrToNB' (sock, addr, buf, flgs) then ()
+	else (CML.sync(PS.outEvt s); Socket.sendArrTo' (sock, addr, buf, flgs))
+
+    local
+	fun s2 f (PS.CMLSock{sock,...}, x) = f (sock, x)
+	fun s3 f (PS.CMLSock{sock,...}, x, y) = f (sock, x, y)
+	fun s4 f (PS.CMLSock{sock,...}, x, y, z) = f (sock, x, y, z)
+    in
+        fun connectNB arg = s2 Socket.connectNB arg
+        fun sendVecNB arg = s2 Socket.sendVecNB arg
+	fun sendArrNB arg = s2 Socket.sendArrNB arg
+	fun sendVecNB' arg = s3 Socket.sendVecNB' arg
+	fun sendArrNB' arg = s3 Socket.sendArrNB' arg
+	fun sendVecToNB arg = s3 Socket.sendVecToNB arg
+	fun sendArrToNB arg = s3 Socket.sendArrToNB arg
+	fun sendVecToNB' arg = s4 Socket.sendVecToNB' arg
+	fun sendArrToNB' arg = s4 Socket.sendArrToNB' arg
+	fun recvVecNB arg = s2 Socket.recvVecNB arg
+	fun recvArrNB arg = s2 Socket.recvArrNB arg
+	fun recvVecNB' arg = s3 Socket.recvVecNB' arg
+	fun recvArrNB' arg = s3 Socket.recvArrNB' arg
+	fun recvVecFromNB arg = s2 Socket.recvVecFromNB arg
+	fun recvArrFromNB arg = s2 Socket.recvArrFromNB arg
+	fun recvVecFromNB' arg = s3 Socket.recvVecFromNB' arg
+	fun recvArrFromNB' arg = s3 Socket.recvArrFromNB' arg
+    end
 
   (* Sock input operations *)
-    fun recvVec (s as PS.CMLSock{sock, ...}, n) = (
-	  case PS.wouldBlock Socket.recvVec (sock, n)
-	   of (SOME res) => res
-	    | NONE => (CML.sync(PS.inEvt s); Socket.recvVec (sock, n))
-	  (* end case *))
-    fun recvArr (s as PS.CMLSock{sock, ...}, buf) = (
-	  case PS.wouldBlock Socket.recvArr (sock, buf)
-	   of (SOME res) => res
-	    | NONE => (CML.sync(PS.inEvt s); Socket.recvArr (sock, buf))
-	  (* end case *))
-    fun recvVec' (s as PS.CMLSock{sock, ...}, n, flgs) = (
-	  case PS.wouldBlock Socket.recvVec' (sock, n, flgs)
-	   of (SOME res) => res
-	    | NONE => (CML.sync(PS.inEvt s); Socket.recvVec' (sock, n, flgs))
-	  (* end case *))
-    fun recvArr' (s as PS.CMLSock{sock, ...}, buf, flgs) = (
-	  case PS.wouldBlock Socket.recvArr' (sock, buf, flgs)
-	   of (SOME res) => res
-	    | NONE => (CML.sync(PS.inEvt s); Socket.recvArr' (sock, buf, flgs))
-	  (* end case *))
-    fun recvVecFrom (s as PS.CMLSock{sock, ...}, n) = (
-	  case PS.wouldBlock Socket.recvVecFrom (sock, n)
-	   of (SOME res) => res
-	    | NONE => (CML.sync(PS.inEvt s); Socket.recvVecFrom (sock, n))
-	  (* end case *))
-    fun recvArrFrom (s as PS.CMLSock{sock, ...}, buf) = (
-	  case PS.wouldBlock Socket.recvArrFrom (sock, buf)
-	   of (SOME res) => res
-	    | NONE => (CML.sync(PS.inEvt s); Socket.recvArrFrom (sock, buf))
-	  (* end case *))
-    fun recvVecFrom' (s as PS.CMLSock{sock, ...}, n, flgs) = (
-	  case PS.wouldBlock Socket.recvVecFrom' (sock, n, flgs)
-	   of (SOME res) => res
-	    | NONE => (CML.sync(PS.inEvt s); Socket.recvVecFrom' (sock, n, flgs))
-	  (* end case *))
-    fun recvArrFrom' (s as PS.CMLSock{sock, ...}, buf, flgs) = (
-	  case PS.wouldBlock Socket.recvArrFrom' (sock, buf, flgs)
-	   of (SOME res) => res
-	    | NONE => (CML.sync(PS.inEvt s); Socket.recvArrFrom' (sock, buf, flgs))
-	  (* end case *))
+    fun recvVec (s as PS.CMLSock{sock, ...}, n) =
+	case Socket.recvVecNB (sock, n)
+	 of (SOME res) => res
+	  | NONE => (CML.sync(PS.inEvt s); Socket.recvVec (sock, n))
+    fun recvArr (s as PS.CMLSock{sock, ...}, buf) =
+	case Socket.recvArrNB (sock, buf)
+	 of (SOME res) => res
+	  | NONE => (CML.sync(PS.inEvt s); Socket.recvArr (sock, buf))
+    fun recvVec' (s as PS.CMLSock{sock, ...}, n, flgs) =
+	case Socket.recvVecNB' (sock, n, flgs)
+	 of (SOME res) => res
+	  | NONE => (CML.sync(PS.inEvt s); Socket.recvVec' (sock, n, flgs))
+    fun recvArr' (s as PS.CMLSock{sock, ...}, buf, flgs) =
+	case Socket.recvArrNB' (sock, buf, flgs)
+	 of (SOME res) => res
+	  | NONE => (CML.sync(PS.inEvt s); Socket.recvArr' (sock, buf, flgs))
+    fun recvVecFrom (s as PS.CMLSock{sock, ...}, n) =
+	case Socket.recvVecFromNB (sock, n)
+	 of (SOME res) => res
+	  | NONE => (CML.sync(PS.inEvt s); Socket.recvVecFrom (sock, n))
+    fun recvArrFrom (s as PS.CMLSock{sock, ...}, buf) =
+	case Socket.recvArrFromNB (sock, buf)
+	 of (SOME res) => res
+	  | NONE => (CML.sync(PS.inEvt s); Socket.recvArrFrom (sock, buf))
+    fun recvVecFrom' (s as PS.CMLSock{sock, ...}, n, flgs) =
+	case Socket.recvVecFromNB' (sock, n, flgs)
+	 of (SOME res) => res
+	  | NONE => (CML.sync(PS.inEvt s); Socket.recvVecFrom' (sock, n, flgs))
+    fun recvArrFrom' (s as PS.CMLSock{sock, ...}, buf, flgs) =
+	case Socket.recvArrFromNB' (sock, buf, flgs)
+	 of (SOME res) => res
+	  | NONE => (CML.sync(PS.inEvt s);
+		     Socket.recvArrFrom' (sock, buf, flgs))
 
   (* Sock input event constructors *)
     fun recvVecEvt (s as PS.CMLSock{sock, ...}, n) = CML.guard (fn () =>
-	  case PS.wouldBlock Socket.recvVec (sock, n)
+	  case Socket.recvVecNB (sock, n)
 	   of (SOME res) => CML.alwaysEvt res
 	    | NONE => CML.wrap(PS.inEvt s, fn _ => Socket.recvVec (sock, n))
 	  (* end case *))
     fun recvArrEvt (s as PS.CMLSock{sock, ...}, buf) = CML.guard (fn () =>
-	  case PS.wouldBlock Socket.recvArr (sock, buf)
+	  case Socket.recvArrNB (sock, buf)
 	   of (SOME res) => CML.alwaysEvt res
 	    | NONE => CML.wrap(PS.inEvt s, fn _ => Socket.recvArr (sock, buf))
 	  (* end case *))
     fun recvVecEvt' (s as PS.CMLSock{sock, ...}, n, flgs) = CML.guard (fn () =>
-	  case PS.wouldBlock Socket.recvVec' (sock, n, flgs)
+	  case Socket.recvVecNB' (sock, n, flgs)
 	   of (SOME res) => CML.alwaysEvt res
 	    | NONE => CML.wrap(PS.inEvt s, fn _ => Socket.recvVec' (sock, n, flgs))
 	  (* end case *))
     fun recvArrEvt' (s as PS.CMLSock{sock, ...}, buf, flgs) = CML.guard (fn () =>
-	  case PS.wouldBlock Socket.recvArr' (sock, buf, flgs)
+	  case Socket.recvArrNB' (sock, buf, flgs)
 	   of (SOME res) => CML.alwaysEvt res
 	    | NONE => CML.wrap(PS.inEvt s, fn _ => Socket.recvArr' (sock, buf, flgs))
 	  (* end case *))
     fun recvVecFromEvt (s as PS.CMLSock{sock, ...}, n) = CML.guard (fn () =>
-	  case PS.wouldBlock Socket.recvVecFrom (sock, n)
+	  case Socket.recvVecFromNB (sock, n)
 	   of (SOME res) => CML.alwaysEvt res
 	    | NONE => CML.wrap(PS.inEvt s, fn _ => Socket.recvVecFrom (sock, n))
 	  (* end case *))
     fun recvArrFromEvt (s as PS.CMLSock{sock, ...}, buf) = CML.guard (fn () =>
-	  case PS.wouldBlock Socket.recvArrFrom (sock, buf)
+	  case Socket.recvArrFromNB (sock, buf)
 	   of (SOME res) => CML.alwaysEvt res
 	    | NONE => CML.wrap(PS.inEvt s, fn _ => Socket.recvArrFrom (sock, buf))
 	  (* end case *))
     fun recvVecFromEvt' (s as PS.CMLSock{sock, ...}, n, flgs) = CML.guard (fn () =>
-	  case PS.wouldBlock Socket.recvVecFrom' (sock, n, flgs)
+	  case Socket.recvVecFromNB' (sock, n, flgs)
 	   of (SOME res) => CML.alwaysEvt res
 	    | NONE =>
 		CML.wrap(PS.inEvt s, fn _ => Socket.recvVecFrom' (sock, n, flgs))
 	  (* end case *))
     fun recvArrFromEvt' (s as PS.CMLSock{sock, ...}, buf, flgs) = CML.guard (fn () =>
-	  case PS.wouldBlock Socket.recvArrFrom' (sock, buf, flgs)
+	  case Socket.recvArrFromNB' (sock, buf, flgs)
 	   of (SOME res) => CML.alwaysEvt res
 	    | NONE =>
 		CML.wrap(PS.inEvt s, fn _ => Socket.recvArrFrom' (sock, buf, flgs))

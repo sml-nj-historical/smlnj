@@ -14,6 +14,32 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/24 15:10:05 CDT
+Tag: blume-20030924-sockets
+Description:
+
+1. Fixed SOCKET API and implementation to match Basis spec.
+   This required changing the internal representation of sockets to one
+   that remembers (for each socket file descriptor) whether it is currently
+   blocking or non-blocking.  This state is maintained lazily (i.e., a system
+   call is made only if the state actually needs to change).
+
+2. OS-specific details of sockets were moved into separate files, thus
+   making it possible to unify the bulk of the socket implementations
+   between Unix and Win32.
+
+3. CML's socket API changed accordingly.
+   (Note that we need to remove non-blocking functions from this API
+   since they are redundant in the case of CML!)
+
+4. CML's socket implementation now makes use of non-blocking functions
+   provided by Basis, thus removing all OS-dependent code from this part
+   of CML.
+
+5. Changed Real64.precision from 52 to 53.  Minor cleanup in Real64 code.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/09/22 12:10:00 CDT
 Tag: blume-20030922-110_43_2
 Description:

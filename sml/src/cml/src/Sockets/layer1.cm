@@ -27,12 +27,6 @@ is
   ../core-cml.cm
 #endif
 
-
-(* remove Posix reliance in pre-sock *)
-#if defined(OPSYS_WIN32)
-  win32-pre-sock.sml
-#else
-  pre-sock.sml
-#endif
+pre-sock.sml
 cml-socket-sig.sml
 cml-socket.sml

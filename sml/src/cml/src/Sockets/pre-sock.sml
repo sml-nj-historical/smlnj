@@ -22,11 +22,6 @@ structure PreSock : sig
 
     val mkSock : ('a, 'b) Socket.sock -> ('a, 'b) sock
 
-    val wouldBlock : ('a -> 'b) -> 'a -> 'b option
-	(* attempt the system call; return SOME x, if it succeeds with x, return
-	 * NONE, if it fails because it would have blocked.
-	 *)
-
     val inEvt : ('a, 'b) sock -> unit CML.event
     val outEvt : ('a, 'b) sock -> unit CML.event
 
@@ -45,32 +40,21 @@ structure PreSock : sig
 	sock : ('a, 'b) Socket.sock
       }
 
-  (* given an SML socket, return a CML socket (which is non-blocking) *)
-    fun mkSock s = (
-	  Socket.Ctl.setNBIO(s, true);
-	  CMLSock{
-	      state = SyncVar.mVarInit Unconnected,
-	      sock = s
-	    })
+    (* given an SML socket, return a CML socket *)
+    fun mkSock s =
+	CMLSock { state = SyncVar.mVarInit Unconnected,
+		  sock = s }
 
-    val blockErrors = (case Posix.Error.syserror "wouldblock"
-	   of NONE => [Posix.Error.again, Posix.Error.inprogress]
-	    | (SOME e) => [e, Posix.Error.again, Posix.Error.inprogress]
-	  (* end case *))
-
-    fun blockErr (OS.SysErr(_, SOME err)) = let
-	  fun isErr [] = false
-	    | isErr (e::r) = (e = err) orelse isErr r
-	  in
-	    isErr blockErrors
-	  end
-
-    fun wouldBlock f x = SOME(f x)
-	  handle ex => if (blockErr ex) then NONE else raise ex
-
+    local
+	fun pollD sock =
+	    case OS.IO.pollDesc (Socket.ioDesc sock) of
+		SOME pd => pd
+	      | NONE => raise Fail "no polling on socket I/O descriptor"
+    in
     fun inEvt (CMLSock{sock, ...}) =
-	  CML.wrap(IOManager.ioEvt(OS.IO.pollIn(Socket.pollDesc sock)), ignore)
+	  CML.wrap(IOManager.ioEvt (OS.IO.pollIn (pollD sock)), ignore)
     fun outEvt (CMLSock{sock, ...}) =
-	  CML.wrap(IOManager.ioEvt(OS.IO.pollOut(Socket.pollDesc sock)), ignore)
+	  CML.wrap(IOManager.ioEvt(OS.IO.pollOut (pollD sock)), ignore)
 
+    end
   end;

@@ -1,6 +1,15 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2003-09-23]
+	Accounted for changes to socket API in Basis. (Non-blocking
+	behavior is no longer a stateful property of a socket.  Instead,
+	there are non-blocking versions of most functions in the
+	interface.  This simplifies the CML code since it no longer
+	has to do OS-specific handling of "wouldblock" etc.
+	On the other hand, (trivial) CML implementations of those
+	non-blocking operations had to be added.)
+
 [2003-09-12]
         Accounted for changed type of inputLine.
 

@@ -6,6 +6,7 @@
 structure CML_GenericSock : GENERIC_SOCK =
   struct
 
+(*
   (* returns a list of the supported address families; this should include
    * at least:  Socket.AF.inet.
    *)
@@ -15,6 +16,7 @@ structure CML_GenericSock : GENERIC_SOCK =
    * least:  Socket.SOCK.stream and Socket.SOCK.dgram.
    *)
     val socketTypes = GenericSock.socketTypes
+*)
 
   (* create sockets using default protocol *)
     fun socket arg = PreSock.mkSock(GenericSock.socket arg)
