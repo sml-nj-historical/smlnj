@@ -70,6 +70,11 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("RASpill",msg)
 
+   val keep_dead_copies = 
+       MLRiscControl.mkFlag 
+          ("ra-preserve-dead-copies",
+	   "Dead copies are not removed when spilling")
+
    fun dec1 n = Word.toIntX(Word.fromInt n - 0w1)
    fun dec{block,insn} = {block=block,insn=dec1 insn}
 
@@ -298,7 +303,8 @@ struct
                val copy = case copyDst of
                             [] => []
                           | _  => copyInstr((copyDst,copySrc),instr)
-           in  if kill 
+           in 
+	       if kill andalso not(!keep_dead_copies) 
                then (* kill the move *)
                  ((* print ("Copy "^Int.toString(hd mvDst)^" <- "^
                                  Int.toString(hd mvSrc)^" removed\n"); *) 
