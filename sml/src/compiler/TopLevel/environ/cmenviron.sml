@@ -37,6 +37,15 @@ struct
 	  { static = CMS.adjCM ([#static e], static),
 	    dynamic = dynamic, symbolic = symbolic }
       end
+
+      val catalogEnv = E.catalogEnv o CMS.unCM
+
+      fun trimEnv e = let
+	  val { dynamic, symbolic, ... } = E.trimEnv (unCM e)
+      in
+	  { static = #static e, dynamic = dynamic, symbolic = symbolic }
+      end
+
       fun filterStaticEnv (s, l) =
 	  CMS.adjCM ([s], E.filterStaticEnv (CMS.unCM s, l))
 
@@ -64,8 +73,6 @@ struct
          dynamic = DynamicEnv.consolidate dynamic,
          symbolic = SymbolicEnv.consolidate symbolic}
 
-      val catalogEnv = E.catalogEnv o CMS.unCM
-
       datatype cmEnv
 	= CM_NONE
 	| CM_ENV of {look : Symbol.symbol -> cmEnv,
@@ -88,8 +95,5 @@ struct
 end
 
 (*
- * $Log: cmenviron.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:15  george
- * Version 110.5
- *
+ * $Log$
  *)

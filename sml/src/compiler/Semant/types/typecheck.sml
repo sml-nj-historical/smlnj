@@ -809,13 +809,7 @@ end (* local *)
 end (* structure Typecheck *)
 
 (*
- * $Log: typecheck.sml,v $
- * Revision 1.2  1998/05/15 03:47:54  dbm
- *   Added lazyp fields as appropriate.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:38  george
- * Version 110.5
- *
+ * $Log$
  *)
 
 
