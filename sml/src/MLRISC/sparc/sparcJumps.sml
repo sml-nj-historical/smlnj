@@ -25,6 +25,7 @@ struct
     | minSize(I.JMPL{nop=true,...}) = 8
     | minSize(I.CALL{nop=true,...}) = 8
     | minSize(I.RET{nop=true,...}) = 8
+    | minSize(I.FCMP{nop=true,...}) = 8
     | minSize(I.FPop1{a=(I.FMOVd | I.FNEGd | I.FABSd),...}) = 8
 (*
     | minSize(I.ANNOTATION(i,_)) = minSize i
@@ -200,5 +201,8 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: sparcJumps.sml,v $
+ * Revision 1.1.1.1  1998/08/05 19:38:49  george
+ *   Release 110.7.4
+ *
  *)

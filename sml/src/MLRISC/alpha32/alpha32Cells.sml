@@ -7,6 +7,7 @@
 structure Alpha32Cells : ALPHA32CELLS = struct
   structure S = SortedList
 
+  type register = int
   type regmap = int Intmap.intmap
   datatype cellclass = GP | FP | CC | CR | MEM | CTRL
 
@@ -88,5 +89,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: alpha32Cells.sml,v $
+ * Revision 1.3  1998/05/25 15:10:46  george
+ *   Fixed RCS keywords
+ *
  *)

@@ -78,8 +78,8 @@ signature HPPAINSTR = sig
     | BCONDI  of {cmpi: cmpi, bc:bcond,  i:int,  r2:int, n:bool,
 		  t:Label.label, f:Label.label}
     | B       of {lab:Label.label, n:bool}
-    | FBCC    of {t:Label.label, f:Label.label, n:bool}
-    | BV      of {x:int,      b:int,   labs: Label.label list, n:bool}
+    | BV      of {x:int, b:int, labs: Label.label list, n:bool}
+    | BLR     of {x:int, t:int, labs: Label.label list, n:bool}
     | BL      of {x:operand,  t:int, defs: C.cellset, uses:C.cellset, n:bool}
     | BLE     of {d:operand,  b:int, sr:int, t:int,
 		  defs: C.cellset, uses:C.cellset}
@@ -97,8 +97,14 @@ signature HPPAINSTR = sig
     | FLOADX  of {flx:floadx, b:int,   x:int,   t:int, mem:Region.region}
     | FARITH  of {fa:farith,  r1:int,  r2:int,  t:int}
     | FUNARY  of {fu:funary,  f:int,   t:int}
+ (* The following three instructions have been replaced by FBRANCH.
+    This make life much easier for instruction schedulers.
     | FCMP    of fcond * int * int
     | FTEST
+    | FBCC    of {t:Label.label, f:Label.label, n:bool}
+ *)
+    | FBRANCH of {cc:fcond, f1:int, f2:int,
+                  t:Label.label, f:Label.label, n:bool, long:bool}
     | BREAK   of int * int
     | NOP
     | COPY    of {dst:int list, src:int list, 
@@ -110,5 +116,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: hppaInstr.sig,v $
+ * Revision 1.3  1998/05/25 15:10:55  george
+ *   Fixed RCS keywords
+ *
  *)

@@ -20,7 +20,7 @@ datatype Signature
   | ERRORsig
 
 and spec
-  = TYCspec of {entVar : EntPath.entVar, spec : Types.tycon, scope : int}
+  = TYCspec of {entVar : EntPath.entVar, spec : Types.tycon, repl: bool, scope : int}
   | STRspec of {entVar : EntPath.entVar, sign : Signature,
 		def : (strDef * int) option, slot : int}
   | FCTspec of {entVar : EntPath.entVar, sign : fctSig, slot : int}
@@ -43,7 +43,10 @@ and fctSig
   | ERRORfsig
 
 and extDef
-  = TYCdef of SymPath.path * Types.tycon * bool (* relative *)
+  = TYCdef of
+      {path : SymPath.path, (* the (inward) path to the spec being defined *)
+       tyc : Types.tycon, (* the definition, typically relativized *)
+       relative : bool} (* does tyc contain entity paths *)
   | STRdef of SymPath.path * strDef
 
 and strDef
@@ -157,5 +160,8 @@ end (* signature MODULES *)
 
 
 (*
- * $Log$
+ * $Log: modules.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:28  george
+ * Version 110.5
+ *
  *)

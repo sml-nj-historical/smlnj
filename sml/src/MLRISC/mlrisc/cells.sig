@@ -10,8 +10,8 @@
  *
  *)
 signature CELLS = sig
-
-  type regmap = int Intmap.intmap
+  type register = int
+  type regmap = register Intmap.intmap
   eqtype cellclass
   exception Cells
   val GP   : cellclass  (* general purpose register *)
@@ -24,17 +24,17 @@ signature CELLS = sig
   val asmTmpR : int			(* assembly temporary *)
   val fasmTmp : int			(* floating point temporary *)
 
-  val newCell : cellclass -> unit -> int (* generate a new name *)
+  val newCell : cellclass -> unit -> register (* generate a new name *)
   val numCell : cellclass -> unit -> int (* number of names in class *)
   val maxCell : unit -> int		 (* max id of name *)
-  val cellToString : int * cellclass -> string
+  val cellToString : register * cellclass -> string
 
-  val newReg : unit -> int		(* newClass GP *)
-  val newFreg : unit -> int		(* newClass FP *)
-  val newCCreg : unit -> int		(* newClass CC *)
+  val newReg : unit -> register		(* newClass GP *)
+  val newFreg : unit -> register	(* newClass FP *)
+  val newCCreg : unit -> register	(* newClass CC *)
 
-  val firstPseudo : int
-  val zero : cellclass -> int option 
+  val firstPseudo : register
+  val zero : cellclass -> register option 
        (* name of the register that contains zero *)
 
   val resetRegs : unit -> regmap (* reset any local state *)
@@ -42,14 +42,17 @@ signature CELLS = sig
   type cellset
   val cellset2string : cellset -> string
   val empty	     : cellset
-  val addCell        : cellclass -> int * cellset -> cellset
-  val cellsetToRegs  : regmap * cellset -> int list
+  val addCell        : cellclass -> register * cellset -> cellset
+  val cellsetToRegs  : regmap * cellset -> register list
 
-  val addReg  : int * cellset -> cellset (* addCell GP *)
-  val addFreg : int * cellset -> cellset (* addCell FP *)
+  val addReg  : register * cellset -> cellset (* addCell GP *)
+  val addFreg : register * cellset -> cellset (* addCell FP *)
 end
 
 
 (*
- * $Log$
+ * $Log: cells.sig,v $
+ * Revision 1.3  1998/05/25 15:11:02  george
+ *   Fixed RCS keywords
+ *
  *)

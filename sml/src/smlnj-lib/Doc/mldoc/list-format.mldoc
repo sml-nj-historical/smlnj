@@ -1,0 +1,35 @@
+<!-- list-format.mldoc -->
+
+<!DOCTYPE ML-DOC SYSTEM>
+
+<COPYRIGHT OWNER="AT&AMP;T Bell Laboratories" YEAR=1996>
+<VERSION VERID="1.0" YEAR=1996 MONTH=5 DAY=29>
+<TITLE>The LIST_FORMAT signature</TITLE>
+
+<SECT>
+<HEAD>The <CD/LIST_FORMAT/ signature</HEAD>
+
+<PP>
+<!-- Some general introductory text -->
+
+<SIGNATURE SIGID="LIST_FORMAT">
+  <SIGBODY SIGID="LIST_FORMAT" FILE=LIST-FORMAT-SIG>
+    <SPEC>
+      <VAL>formatList<TY>{init : string, sep : string, final : string, fmt : 'a -> string} -> 'a list -> string
+        <COMMENT>
+          <PROTOTY>
+          formatList {<ARG/init/, <ARG/sep/, <ARG/final/, <ARG/fmt/} <ARG/l/
+          </PROTOTY>
+          explain the use and semantics of formatList HERE.
+    <SPEC>
+      <VAL>scanList<TY>{init : string, sep : string, final : string, scan : (char,'b) StringCvt.reader -> ('a,'b) StringCvt.reader} -> (char,'b) StringCvt.reader -> ('a list,'b) StringCvt.reader
+        <COMMENT>
+          <PROTOTY>
+          scanList {<ARG/init/, <ARG/sep/, <ARG/final/, <ARG/scan/} <ARG/re/
+          </PROTOTY>
+          explain the use and semantics of scanList HERE.
+<!-- optional SEEALSO; uncomment to use     -->
+<!-- <SEEALSO>    -->
+<!--   non-empty list of XREFS here   -->
+<!-- </SEEALSO>    -->
+</SIGNATURE>

@@ -1,11 +1,8 @@
 (* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
- * Revision 1.1.1.5  1998/09/07 21:10:48  monnier
- * 110.8
- *
- * Revision 1.1.1.1  1998/04/08 18:40:17  george
- * Version 110.5
+ * Revision 1.1.1.6  1998/11/07 20:11:15  monnier
+ * version $version
  *
  * Revision 1.2  1997/05/23 16:21:10  dbm
  *   SML '97 sharing, where clauses.

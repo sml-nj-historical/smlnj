@@ -165,11 +165,7 @@ structure Win32BinPrimIO : OS_PRIM_IO =
 	  fun withLock' NONE = NONE
 	    | withLock' (SOME f) = SOME(withLock f)
 	  val closed = ref false
-(****
-	  val appendFS = PIO.O.flags(if appendMode then [PIO.O.append] else [])
-	  fun updateStatus() = PIO.setfl(fd, appendFS)
 	  fun ensureOpen () = if !closed then raise IO.ClosedStream else ()
-****)
 	  fun putV x = W32IO.writeVec x
 	  fun putA x = W32IO.writeArr x
 	  fun write put arg = (ensureOpen(); put(W32FS.IODToHndl iod, arg))

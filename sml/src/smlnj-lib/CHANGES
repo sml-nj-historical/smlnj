@@ -2,9 +2,6 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
 
-[1998-06-23]
-	Fixed a bug in ParserComb.bind (reported by Andrew Kennedy).
-
 --------------------------------------------------------------------------------
 [1998-04-15] 110 --> 110.5
 --------------------------

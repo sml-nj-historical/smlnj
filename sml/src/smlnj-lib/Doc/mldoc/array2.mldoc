@@ -1,0 +1,72 @@
+<!-- array2.mldoc -->
+
+<!DOCTYPE ML-DOC SYSTEM>
+
+<COPYRIGHT OWNER="AT&AMP;T Bell Laboratories" YEAR=1996>
+<VERSION VERID="1.0" YEAR=1996 MONTH=5 DAY=29>
+<TITLE>The ARRAY2 signature</TITLE>
+
+<SECT>
+<HEAD>The <CD/ARRAY2/ signature</HEAD>
+
+<PP>
+<!-- Some general introductory text -->
+
+<SIGNATURE SIGID="ARRAY2">
+  <SIGBODY SIGID="ARRAY2" FILE=ARRAY2-SIG>
+    <SPEC>
+      <TYPE><TYPARAM>'a<ID>array2
+    <SPEC>
+      <VAL>array<TY>(int * int * 'a) -> 'a array2
+        <COMMENT>
+          <PROTOTY>
+          array (<ARG/i/, <ARG/j/, <ARG/a/)
+          </PROTOTY>
+          explain the use and semantics of array HERE.
+    <SPEC>
+      <VAL>tabulate<TY>(int * int * ((int * int) -> 'a)) -> 'a array2
+        <COMMENT>
+          <PROTOTY>
+          tabulate (<ARG/i/, <ARG/j/, <ARG/f/)
+          </PROTOTY>
+          explain the use and semantics of tabulate HERE.
+    <SPEC>
+      <VAL>sub<TY>('a array2 * int * int) -> 'a
+        <COMMENT>
+          <PROTOTY>
+          sub (<ARG/ar/, <ARG/i/, <ARG/j/)
+          </PROTOTY>
+          explain the use and semantics of sub HERE.
+    <SPEC>
+      <VAL>update<TY>('a array2 * int * int * 'a) -> unit
+        <COMMENT>
+          <PROTOTY>
+          update (<ARG/ar/, <ARG/i/, <ARG/j/, <ARG/a/)
+          </PROTOTY>
+          explain the use and semantics of update HERE.
+    <SPEC>
+      <VAL>dimensions<TY>'a array2 -> (int * int)
+        <COMMENT>
+          <PROTOTY>
+          dimensions <ARG/ar/
+          </PROTOTY>
+          explain the use and semantics of dimensions HERE.
+    <SPEC>
+      <VAL>row<TY>('a array2 * int) -> 'a Array.array
+        <COMMENT>
+          <PROTOTY>
+          row (<ARG/ar/, <ARG/i/)
+          </PROTOTY>
+          explain the use and semantics of row HERE.
+    <SPEC>
+      <VAL>column<TY>('a array2 * int) -> 'a Array.array
+        <COMMENT>
+          <PROTOTY>
+          column (<ARG/ar/, <ARG/i/)
+          </PROTOTY>
+          explain the use and semantics of column HERE.
+<!-- optional SEEALSO; uncomment to use     -->
+<!-- <SEEALSO>    -->
+<!--   non-empty list of XREFS here   -->
+<!-- </SEEALSO>    -->
+</SIGNATURE>

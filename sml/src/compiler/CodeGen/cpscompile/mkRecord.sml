@@ -11,8 +11,11 @@
 
 functor MkRecord
   (structure C: CPSREGS where T.Region = CPSRegions
-   structure MLTreeComp : MLTREECOMP
-     sharing C.T = MLTreeComp.T) : MK_RECORD =
+   structure MLTreeComp : MLTREECOMP where T = C.T
+(* DBM: sharing/defn conflict ---
+     sharing C.T = MLTreeComp.T
+*)
+  ) : MK_RECORD =
 struct
   structure T : MLTREE = C.T
   structure R = CPSRegions
@@ -106,5 +109,8 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: mkRecord.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
+ *
  *)

@@ -27,13 +27,13 @@ struct
              exportPid=exportPid, newenv=newenv'}
         end
 
-  val makePid : cmstatenv * cmstatenv -> pid 
-    = fn (context, se) => #hash (PickMod.pickleEnv (context, fromCM se))
-
   val mkMkStamp : unit -> (unit -> Stamps.stamp) = Stamps.new
 
 end (* structure BatchConfig *)
 
 (*
- * $Log$
+ * $Log: batchconfig.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
+ *
  *)

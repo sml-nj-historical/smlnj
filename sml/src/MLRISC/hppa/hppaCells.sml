@@ -6,6 +6,7 @@
 structure HppaCells : HPPACELLS = struct
   structure SL = SortedList
 
+  type register = int
   type regmap = int Intmap.intmap
   datatype cellclass = GP | FP | CC | CR | MEM | CTRL
 
@@ -14,6 +15,8 @@ structure HppaCells : HPPACELLS = struct
   val stackptrR		= 30
   val asmTmpR		= 29
   val fasmTmp		= 31
+  val sar               = 64+11
+  fun cr r              = 64+r
 
   val firstPseudo	= 256
 
@@ -94,5 +97,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: hppaCells.sml,v $
+ * Revision 1.3  1998/05/25 15:10:54  george
+ *   Fixed RCS keywords
+ *
  *)

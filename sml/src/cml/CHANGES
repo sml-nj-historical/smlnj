@@ -1,6 +1,13 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+Version 1.0.13 (SML/NJ 110.9)
+-----------------------------
+
+  - Changes to I/O APIs to track basis changes (deleted in_pos support
+    and changed type of StreamIO.mkInstream).
+    [1998-10-16]
+
 Version 1.0.12 (SML/NJ 110.0.4 and 110.8)
 -----------------------------------------
 

@@ -61,7 +61,7 @@ struct
    in  case instr of
          I.FPop1{a,r,d} => I.FPop1{a=a,r=R r,d=d}
        | I.FPop2{a,r1,r2,d} => I.FPop2{a=a,r1=R r1,r2=R r2,d=d}
-       | I.FCMP{cmp,r1,r2} => I.FCMP{cmp=cmp,r1=R r1,r2=R r2}
+       | I.FCMP{cmp,r1,r2,nop} => I.FCMP{cmp=cmp,r1=R r1,r2=R r2,nop=nop}
        | I.FSTORE{s,r,i,d,mem} => I.FSTORE{s=s,r=r,i=i,d=R d,mem=mem}
        | I.JMPL{r,i,d,defs,uses=(A,B),nop} =>
            I.JMPL{r=r,i=i,d=d,defs=defs,uses=(A,rwset(B,R)),nop=nop}
@@ -98,5 +98,8 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: sparcRewrite.sml,v $
+ * Revision 1.1.1.1  1998/08/05 19:38:49  george
+ *   Release 110.7.4
+ *
  *)

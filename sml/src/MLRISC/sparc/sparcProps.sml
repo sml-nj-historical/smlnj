@@ -30,7 +30,8 @@ struct
   fun branchTargets(I.Bicc{b=I.BA,label,...}) = [LABELLED label]
     | branchTargets(I.Bicc{label,...}) = [LABELLED label, FALLTHROUGH] 
     | branchTargets(I.FBfcc{b=I.FBA,label,...}) = [LABELLED label]
-    | branchTargets(I.FBfcc{label,...}) = [LABELLED label, FALLTHROUGH] 
+    | branchTargets(I.FBfcc{label,...}) = [LABELLED label, FALLTHROUGH]
+    | branchTargets(I.JMP{labs=[],...}) = [ESCAPES]
     | branchTargets(I.JMP{labs,...})    = map LABELLED labs
 (*
     | branchTargets(I.ANNOTATION(i,_)) = branchTargets i
@@ -131,8 +132,8 @@ struct
         | I.JMPL{defs,uses,d,r,i,...} => oper(i,d:: #1 defs,r:: #1 uses)
         | I.CALL{defs,uses,...} => (15 :: #1 defs, #1 uses)
         | I.JMP{r,i,...} => oper(i,[],[r])
-        | I.RET{leaf=false,...} => ([15],[])
-        | I.RET{leaf=true,...} => ([31],[])
+        | I.RET{leaf=false,...} => ([],[31])
+        | I.RET{leaf=true,...} => ([],[15])
         | I.COPY{src,dst,tmp=SOME(I.Direct r),...} => (r::dst,src)
         | I.COPY{src,dst,...} => (dst,src)
         | I.SAVE{r,i,d} => oper(i,[d],[r])
@@ -178,6 +179,4 @@ struct
 end
 
 
-(*
- * $Log$
- *)
+

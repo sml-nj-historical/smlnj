@@ -5,7 +5,8 @@
 signature PRINT_FLOW_GRAPH = sig
    structure F : FLOWGRAPH
    structure E : EMITTER_NEW
-      sharing E.F = F
+      sharing E.I = F.I
+      sharing E.P = F.P
    type regmaps = int Array.array ref list
 
    val printBlock : TextIO.outstream -> int Intmap.intmap -> F.block -> unit
@@ -15,8 +16,8 @@ end
 
 functor PrintFlowGraphFn 
    (structure FlowGraph : FLOWGRAPH
-    structure Emitter   : EMITTER_NEW 
-      sharing FlowGraph = Emitter.F) : PRINT_FLOW_GRAPH =
+    structure Emitter   : EMITTER_NEW where P=FlowGraph.P and I=FlowGraph.I
+   ) : PRINT_FLOW_GRAPH =
 struct
    structure E = Emitter
    structure F = FlowGraph
@@ -83,6 +84,9 @@ end
 
 (*
  * $Log: printFlowgraph.sml,v $
+ * Revision 1.2  1998/07/25 03:08:22  george
+ *   added to support block names in MLRISC
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:02  george
  * Version 110.5
  *

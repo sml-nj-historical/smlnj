@@ -53,9 +53,11 @@ signature BINFILE = sig
     val exec: bfContent * denv -> env
 
     val parse: Source.inputSource -> Ast.dec
-    val makePid: senv * senv -> pid
 end (* signature BINFILE *)
 
 (*
- * $Log$
+ * $Log: binfile.sig,v $
+ * Revision 1.2  1998/05/23 14:10:20  george
+ *   Fixed RCS keyword syntax
+ *
  *)

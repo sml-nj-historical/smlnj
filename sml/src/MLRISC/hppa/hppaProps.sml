@@ -27,8 +27,9 @@ struct
   fun instrKind(I.BCOND _)  = IK_JUMP
     | instrKind(I.BCONDI _) = IK_JUMP
     | instrKind(I.B _)      = IK_JUMP
-    | instrKind(I.FBCC _)   = IK_JUMP
+    | instrKind(I.FBRANCH _)= IK_JUMP
     | instrKind(I.BV _)     = IK_JUMP
+    | instrKind(I.BLR _)    = IK_JUMP
     | instrKind(I.NOP)      = IK_NOP
     | instrKind _	    = IK_INSTR
 
@@ -80,28 +81,24 @@ struct
   fun branchTargets(I.BCOND{t, ...})    = [LABELLED t, FALLTHROUGH]
     | branchTargets(I.BCONDI{t, ...})   = [LABELLED t, FALLTHROUGH]
     | branchTargets(I.B{lab, ...})      = [LABELLED lab]
-    | branchTargets(I.FBCC{t,...})      = [LABELLED t, FALLTHROUGH]
+    | branchTargets(I.FBRANCH{t,...})   = [LABELLED t, FALLTHROUGH]
     | branchTargets(I.BV{labs=[],...})  = [ESCAPES]
     | branchTargets(I.BV{labs,...})     = map LABELLED labs
+    | branchTargets(I.BLR{labs,...})    = map LABELLED labs
     | branchTargets _ = error "branchTargets"
 
   fun jump label = I.B{lab=label,n=true}
-(*
+
   fun setTargets(I.BCOND{cmp,bc,r1,r2,t,f,n},[F,T]) =
           I.BCOND{cmp=cmp,bc=bc,r1=r1,r2=r2,t=T,f=F,n=n}
     | setTargets(I.BCONDI{cmpi,bc,i,r2,t,f,n},[F,T]) =
           I.BCONDI{cmpi=cmpi,bc=bc,i=i,r2=r2,t=T,f=F,n=n}
     | setTargets(I.B{n,...},[L]) = I.B{lab=L,n=n}
-    | setTargets(I.FBRANCH{cc,n,long,r1,r2,...},[F,T]) =
-          I.FBRANCH{cc=cc,t=T,f=F,n=n,long=long,r1=r1,r2=r2} 
+    | setTargets(I.FBRANCH{cc,n,long,f1,f2,...},[F,T]) =
+          I.FBRANCH{cc=cc,t=T,f=F,n=n,long=long,f1=f1,f2=f2} 
     | setTargets(I.BV{x,b,n,...},labels) = I.BV{x=x,b=b,labs=labels,n=n}
     | setTargets(I.BLR{x,t,n,...},labels) = I.BLR{x=x,t=t,labs=labels,n=n}
     | setTargets(i,_) = i
-*)
-  fun setTargets _ = let
-    exception NotImplemented
-  in raise NotImplemented
-  end
 
   fun negateConditional br = let
     fun revFcond I.?    = I.!?
@@ -131,16 +128,16 @@ struct
       | revFcond I.!?   = I.?
       | revFcond I.<=>  = I.!<=>
   in
-    case br
-    of I.BCOND{cmp,bc,r1,r2,t,f,n} => 
+    case br of 
+      I.BCOND{cmp,bc,r1,r2,t,f,n} => 
          I.BCOND{bc=bc, r1=r1, r2=r2, t=t, f=f, n=n,
 		 cmp=case cmp of I.COMBT => I.COMBF | I.COMBF => I.COMBT}
-     | I.BCONDI{cmpi,bc,i,r2,t,f,n} =>
+    | I.BCONDI{cmpi,bc,i,r2,t,f,n} =>
         I.BCONDI{bc=bc, i=i, r2=r2, t=t, f=f, n=n,
 		 cmpi=case cmpi of I.COMIBT => I.COMIBF | I.COMIBF => I.COMIBT}
-(*     | I.FBRANCH{cc,r1,r2,t,f,n,long} =>
-        I.FBRANCH{cc=revFcond cc,r1=r1,r2=r2,t=t,f=f,n=n,long=long} *)
-    |  _ => raise NegateConditional
+    | I.FBRANCH{cc,f1,f2,t,f,n,long} =>
+        I.FBRANCH{cc=revFcond cc,f1=f1,f2=f2,t=t,f=f,n=n,long=long} 
+    | _ => raise NegateConditional
   end
 
   (*========================================================================
@@ -164,6 +161,7 @@ struct
       | I.BCOND {r1, r2, ...}       => ([],  [r1,r2])
       | I.BCONDI {r2, ...} 	    => ([],  [r2])
       | I.BV {x, b, ...}	    => ([],  [x,b])
+      | I.BLR{x, t, ...}            => ([t], [x])
       | I.BL{defs, uses, ...}       => (#1 defs, #1 uses)
       | I.BLE{t, b, defs, uses, ...}=> (31 :: t :: #1 defs, b :: #1 uses)
       | I.LDIL{i, t}		    => ([t], [])
@@ -186,7 +184,7 @@ struct
        | I.FLOADX{t, ...}	   => ([t], [])
        | I.FARITH {r1, r2, t, ...} => ([t], [r1,r2])
        | I.FUNARY {f, t, ...}      => ([t], [f])
-       | I.FCMP  (_, f1, f2)	   => ([],  [f1, f2])
+       | I.FBRANCH{f1, f2,...}	   => ([],  [f1, f2])
        | I.BL{defs, uses, ...}     => (#2 defs, #2 uses)
        | I.BLE{defs, uses, ...}    => (#2 defs, #2 uses)
        | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...} => (f::dst, src)
@@ -201,5 +199,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: hppaProps.sml,v $
+ * Revision 1.3  1998/05/25 15:10:58  george
+ *   Fixed RCS keywords
+ *
  *)

@@ -9,9 +9,8 @@
 functor RegAllocator 
   (structure RaArch : RA_ARCH_PARAMS) 
   (structure RaUser : RA_USER_PARAMS 
-      where type I.operand = RaArch.I.operand
-        and type I.instruction = RaArch.I.instruction
-	and type B.name = RaArch.Liveness.F.B.name) : RA =
+      where I = RaArch.I
+      where type B.name = RaArch.Liveness.F.B.name) : RA =
 struct
   structure F = RaArch.Liveness.F
   structure P = RaArch.InsnProps
@@ -75,7 +74,8 @@ struct
 
 		(*-------------------------------*)
   (* set of dedicated registers *)
-  val dedicated         = SL.uniq RaUser.dedicated
+  val spillRegSentinel  = ~1
+  val dedicated         = SL.uniq (spillRegSentinel :: RaUser.dedicated)
   val isDedicated       = SL.member dedicated
 
   (* Note: This function maintains the order of members in rset
@@ -804,7 +804,7 @@ struct
     **)
     fun rerun spillList = let
       val SOME(dInfo,uInfo) = !remainInfo
-
+     (*
       fun coalesceSpillLoc () = let
 	fun grow([], set, remain) = (set, remain)
 	  | grow(x::xs, set, remain) = let
@@ -822,7 +822,6 @@ struct
       in loop(spillList)
       end
 
-     (*
       val _ = 
 	 app (fn set => prList(map nodeNumber set, 
 			       "coalesced " ^ Int.toString(length set) ^ ": "))
@@ -1007,9 +1006,13 @@ struct
        * it twice.
        *)
       fun glue([], prevSpills) = prevSpills
-	| glue((node as NODE{number, ...})::rest, prevSpills) =
-	   if SL.member prevSpills number then glue(rest, prevSpills)
-	   else glue(rest, doBlocks(affectedBlocks node, node, prevSpills))
+	| glue((node as NODE{number, color, ...})::rest, prevSpills) =
+	   if SL.member prevSpills number then 
+	     glue(rest, prevSpills)
+	   else 
+	    (color := COLORED(spillRegSentinel);
+	     glue(rest, doBlocks(affectedBlocks node, node, prevSpills)))
+	     
 
       (* redoAlgorithm
        *	-- rerun graph coloring but note that spilling may 
@@ -1048,11 +1051,12 @@ struct
 	      | neighbors(r::rs) = 
 	        (case chase r
 		  of NODE{color=ref (COLORED col), number, ...} => 
-		       col::neighbors rs
+		       if col = spillRegSentinel then neighbors rs
+		       else col::neighbors rs
 		   | _ => neighbors rs
 		 (*esac*))
 	    val neighs = neighbors(!adj)
-	    fun getcolor () = RaUser.getreg{pref=[], proh=neighbors(!adj)}
+	    fun getcolor () = RaUser.getreg{pref=[], proh=neighs}
 	  in
 	    let val col = getcolor()
 	    in
@@ -1183,6 +1187,12 @@ end (* functor *)
 
 (*
  * $Log: ra.sml,v $
+ * Revision 1.5  1998/09/30 19:36:34  dbm
+ * fixing sharing/defspec conflict
+ *
+ * Revision 1.4  1998/07/25 03:08:24  george
+ *   added to support block names in MLRISC
+ *
  * Revision 1.3  1998/05/25 15:11:05  george
  *   Fixed RCS keywords
  *

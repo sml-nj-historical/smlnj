@@ -834,6 +834,7 @@ fun wrapDef(tyc as DEFtyc _,_) = tyc
 	       tyfun=TYFUN{arity=arity,body=CONty(tyc,args)}}
     end
 
+(* eta-reduce a type function: \args.tc args => tc *)
 fun unWrapDef1(tyc as DEFtyc{tyfun=TYFUN{body=CONty(tyc',args),arity},...}) =
      let fun formals((IBOUND i)::rest,j) = if i=j then formals(rest,j+1) else false
 	   | formals(nil,_) = true
@@ -842,6 +843,7 @@ fun unWrapDef1(tyc as DEFtyc{tyfun=TYFUN{body=CONty(tyc',args),arity},...}) =
      end
   | unWrapDef1 tyc = NONE
 
+(* closure under iterated eta-reduction *)
 fun unWrapDefStar tyc =
      (case unWrapDef1 tyc
 	of SOME tyc' => unWrapDefStar tyc'
@@ -865,3 +867,15 @@ end (* local *)
 end (* structure TypesUtil *)
 
 
+(*
+ * $Log: typesutil.sml,v $
+ * Revision 1.5  1998/08/19 18:17:18  dbm
+ * bug fixes for 110.9 [dbm]
+ *
+ * Revision 1.4  1998/07/22 17:56:09  dbm
+ * fix bug 1391, correct bad defn of mkStrict
+ *
+ * Revision 1.3  1998/05/23 14:10:19  george
+ *   Fixed RCS keyword syntax
+ *
+ *)

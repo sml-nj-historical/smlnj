@@ -20,7 +20,7 @@ struct
   end
 
   fun valueOf(REGLIST(regs, regmap)) = let
-    val lookup = Intmap.map regmap
+    val lookup = Intmap.map regmap 
     fun add(Reg r, mask) = RegMask.regMask(lookup r, mask)
       | add(Mem m, mask) = RegMask.memMask(m, mask)
   in Word.toIntX (List.foldl add 0w0 regs)
@@ -28,5 +28,8 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: regmaskConst.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
+ *
  *)

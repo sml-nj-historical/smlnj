@@ -19,11 +19,13 @@ sig
                      {hash: hash, pickle: pickle, exportLvars: lvar list,
                       exportPid: pid option, newenv: statenv}
 
-  val makePid : cmstatenv * cmstatenv -> pid
   val mkMkStamp : unit -> (unit -> Stamps.stamp)
 
 end (* signature CCONFIG *)
 
 (*
- * $Log$
+ * $Log: cconfig.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:15  george
+ * Version 110.5
+ *
  *)

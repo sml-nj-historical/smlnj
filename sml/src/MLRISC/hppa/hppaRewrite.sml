@@ -26,6 +26,7 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.BCONDI{cmpi, bc, i, r2, t, f, n} => 
         I.BCONDI{cmpi=cmpi, bc=bc, i=i, r2=replc r2, t=t, f=f,n=n} 
      | I.BV{x, b, labs, n} => I.BV{x=replc x, b=replc b, labs=labs,n=n} 
+     | I.BLR{x, t, labs, n} => I.BLR{x=replc x, t=t, labs=labs,n=n} 
      | I.BLE{b, d, sr, t, defs, uses=(i,f)} => 
 	I.BLE{b=replc b, d=d, sr=sr, t=t, defs=defs, uses=(map replc i, f)} 
      | I.LDO{b, t, i} => I.LDO{b=replc b, t=t, i=i} 
@@ -56,6 +57,7 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.COMCLR{cc, r1, r2, t} => I.COMCLR{cc=cc, r1=r1, r2=r2, t=replc t} 
      | I.SHIFTV{sv, r, len, t} => I.SHIFTV{sv=sv, r=r, len=len, t=replc t}
      | I.SHIFT{s, r, p, len, t} => I.SHIFT{s=s, r=r, p=p, len=len, t=replc t}
+     | I.BLR{x, t, labs, n} => I.BLR{x=x, t=replc t, labs=labs,n=n} 
      | I.BLE{d, b, sr, t, defs=(i,f), uses} => 
         I.BLE{d=d, b=b, sr=sr, t=replc t, defs=(map replc i, f), uses=uses}
      | I.LDIL{i, t} => I.LDIL{i=i, t=replc t} 
@@ -76,7 +78,8 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.FARITH{fa, r1, r2, t}  => 
 	I.FARITH{fa=fa, r1=replc r1, r2=replc r2, t=t}
      | I.FUNARY{fu, f, t} => I.FUNARY{fu=fu, f=replc f, t=t} 
-     | I.FCMP(fcc, f1, f2) => I.FCMP(fcc, replc f1, replc f2) 
+     | I.FBRANCH{cc,f1,f2,t,f,n,long} =>
+         I.FBRANCH{cc=cc,f1=replc f1,f2=replc f2,t=t,f=f,n=n,long=long}
      | I.FCOPY{dst, src, tmp, impl} => 
 	I.FCOPY{dst=dst, src=map replc src, impl=impl, tmp=tmp}
      | I.BLE{d, b, sr, t, defs=defs, uses=(i,f)} => 
@@ -107,5 +110,8 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 end
 
 (*
- * $Log$
+ * $Log: hppaRewrite.sml,v $
+ * Revision 1.3  1998/05/25 15:11:00  george
+ *   Fixed RCS keywords
+ *
  *)

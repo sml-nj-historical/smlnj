@@ -15,6 +15,10 @@ sig
   val defineEqProps : Types.tycon list * ExpandTycon.sigContext
                       * EntityEnv.entityEnv -> unit
   val checkEqTySig : Types.ty * Types.polysign -> bool
+      (* check whether type ty is an equality type, given a polysign
+       * indicating which IBOUND elements are equality types.  
+       * This isn't accurate on (relatized) types containing PATHtycs,
+       * which are effectively treated as OBJ *)
   val isEqTycon : Types.tycon -> bool
   val isEqType : Types.ty -> bool
   val debugging : bool ref
@@ -476,5 +480,8 @@ end (* structure EqTypes *)
 
 
 (*
- * $Log$
+ * $Log: eqtypes.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:36  george
+ * Version 110.5
+ *
  *)

@@ -561,3 +561,10 @@ end (* structure ElabUtil *)
 
 
 
+(*
+ * $Log: elabutil.sml,v $
+ * Revision 1.3  1998/05/23 14:10:07  george
+ *   Fixed RCS keyword syntax
+ *
+ *
+ *)

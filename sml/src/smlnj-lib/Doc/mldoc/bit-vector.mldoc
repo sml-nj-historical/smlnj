@@ -1,0 +1,131 @@
+<!-- bit-vector.mldoc -->
+
+<!DOCTYPE ML-DOC SYSTEM>
+
+<COPYRIGHT OWNER="AT&AMP;T Bell Laboratories" YEAR=1996>
+<VERSION VERID="1.0" YEAR=1996 MONTH=5 DAY=29>
+<TITLE>The BIT_VECTOR signature</TITLE>
+
+<SECT>
+<HEAD>The <CD/BIT_VECTOR/ signature</HEAD>
+
+<PP>
+<!-- Some general introductory text -->
+
+<SIGNATURE SIGID="BIT_VECTOR">
+  <SIGBODY SIGID="BIT_VECTOR" FILE=BIT-VECTOR-SIG>
+    <SPEC>
+      <INCLUDE>MONO_VECTOR
+      <SHARING TYPE>
+        elem <EQU> bool
+      </SHARING>
+    <SPEC>
+      <VAL>fromString<TY>string -> vector
+        <COMMENT>
+          <PROTOTY>
+          fromString <ARG/s/
+          </PROTOTY>
+          explain the use and semantics of fromString HERE.
+    <SPEC>
+      <VAL>bits<TY>(int * int list) -> vector
+        <COMMENT>
+          <PROTOTY>
+          bits (<ARG/i/, <ARG/l/)
+          </PROTOTY>
+          explain the use and semantics of bits HERE.
+    <SPEC>
+      <VAL>getBits<TY>vector -> int list
+        <COMMENT>
+          <PROTOTY>
+          getBits <ARG/vec/
+          </PROTOTY>
+          explain the use and semantics of getBits HERE.
+    <SPEC>
+      <VAL>toString<TY>vector -> string
+        <COMMENT>
+          <PROTOTY>
+          toString <ARG/vec/
+          </PROTOTY>
+          explain the use and semantics of toString HERE.
+    <SPEC>
+      <VAL>isZero<TY>vector -> bool
+        <COMMENT>
+          <PROTOTY>
+          isZero <ARG/vec/
+          </PROTOTY>
+          explain the use and semantics of isZero HERE.
+    <SPEC>
+      <VAL>extend0<TY>(vector * int) -> vector
+        <COMMENT>
+          <PROTOTY>
+          extend0 (<ARG/vec/, <ARG/i/)
+          </PROTOTY>
+          explain the use and semantics of extend0 HERE.
+    <SPEC>
+      <VAL>extend1<TY>(vector * int) -> vector
+        <COMMENT>
+          <PROTOTY>
+          extend1 (<ARG/vec/, <ARG/i/)
+          </PROTOTY>
+          explain the use and semantics of extend1 HERE.
+    <SPEC>
+      <VAL>eqBits<TY>(vector * vector) -> bool
+        <COMMENT>
+          <PROTOTY>
+          eqBits (<ARG/vec/, <ARG/vec2/)
+          </PROTOTY>
+          explain the use and semantics of eqBits HERE.
+    <SPEC>
+      <VAL>equal<TY>(vector * vector) -> bool
+        <COMMENT>
+          <PROTOTY>
+          equal (<ARG/vec/, <ARG/vec2/)
+          </PROTOTY>
+          explain the use and semantics of equal HERE.
+    <SPEC>
+      <VAL>andb<TY>(vector * vector * int) -> vector
+        <COMMENT>
+          <PROTOTY>
+          andb (<ARG/vec/, <ARG/vec2/, <ARG/i/)
+          </PROTOTY>
+          explain the use and semantics of andb HERE.
+    <SPEC>
+      <VAL>orb<TY>(vector * vector * int) -> vector
+        <COMMENT>
+          <PROTOTY>
+          orb (<ARG/vec/, <ARG/vec2/, <ARG/i/)
+          </PROTOTY>
+          explain the use and semantics of orb HERE.
+    <SPEC>
+      <VAL>xorb<TY>(vector * vector * int) -> vector
+        <COMMENT>
+          <PROTOTY>
+          xorb (<ARG/vec/, <ARG/vec2/, <ARG/i/)
+          </PROTOTY>
+          explain the use and semantics of xorb HERE.
+    <SPEC>
+      <VAL>notb<TY>vector -> vector
+        <COMMENT>
+          <PROTOTY>
+          notb <ARG/vec/
+          </PROTOTY>
+          explain the use and semantics of notb HERE.
+    <SPEC>
+      <VAL>lshift<TY>(vector * int) -> vector
+        <COMMENT>
+          <PROTOTY>
+          lshift (<ARG/vec/, <ARG/i/)
+          </PROTOTY>
+          explain the use and semantics of lshift HERE.
+    <SPEC>
+      <VAL>rshift<TY>(vector * int) -> vector
+        <COMMENT>
+          <PROTOTY>
+          rshift (<ARG/vec/, <ARG/i/)
+          </PROTOTY>
+          explain the use and semantics of rshift HERE.
+<!-- optional SEEALSO; uncomment to use     -->
+<!-- <SEEALSO>    -->
+<!--   non-empty list of XREFS here   -->
+<!-- </SEEALSO>    -->
+</SIGNATURE>

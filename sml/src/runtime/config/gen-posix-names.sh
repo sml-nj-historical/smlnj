@@ -14,11 +14,13 @@
 #
 PATH=/bin:/usr/bin
 
+CPP=${CPP:-/lib/cpp}
+
 PFIX=$1      # prefix: _SC_ or _PC_
 OUTF=$2      # name of output file
 
 # linux uses enums for the _SC_ constants. 
-# In this case, we cannot use the #ifdef to check avoid symbols
+# In this case, we cannot use the #ifdef check to avoid symbols
 # that are not really defined in unistd.h.
 case "$VERSION" in
   *linux*) USED_ENUMS=TRUE ;;
@@ -27,9 +29,10 @@ esac
 
 if [ "$USED_ENUMS" = "TRUE" ]; then
   INCLFILE=tmp$$
-  /lib/cpp > $INCLFILE <<XXX
-#include <unistd.h>
-XXX
+  SRCFILE=tmp$$.c
+  echo "#include <unistd.h>" > $SRCFILE
+  $CPP $SRCFILE > $INCLFILE
+  rm -f $SRCFILE
 elif [ -r "/usr/include/sys/unistd.h" ]; then
   INCLFILE=/usr/include/sys/unistd.h
 elif [ -r "/usr/include/confname.h" ]; then

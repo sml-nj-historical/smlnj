@@ -2,18 +2,18 @@
 (* control.sig *)
 
 signature PRINTCONTROL =
-  sig
-   val printDepth : int ref
-   val printLength : int ref
-   val stringDepth : int ref
-   val printLoop : bool ref
-   val signatures : int ref
-   val printOpens : bool ref
-   val out : {say : string -> unit, flush : unit -> unit} ref
-   val linewidth : int ref
-   val say : string -> unit 
-   val flush: unit -> unit
- end
+sig
+  val printDepth : int ref
+  val printLength : int ref
+  val stringDepth : int ref
+  val printLoop : bool ref
+  val signatures : int ref
+  val printOpens : bool ref
+  val out : {say : string -> unit, flush : unit -> unit} ref
+  val linewidth : int ref
+  val say : string -> unit 
+  val flush: unit -> unit
+end
 
 signature MCCONTROL =
 sig
@@ -138,47 +138,61 @@ sig
 end
 
 signature CONTROL = 
-   sig structure MC : MCCONTROL
-       structure CG : CGCONTROL
-       structure MLRISC : MLRISC_CONTROL
-       structure Print : PRINTCONTROL
-       val debugging : bool ref
-       val primaryPrompt : string ref
-       val secondaryPrompt : string ref
-       val printWarnings : bool ref
-       val valueRestrictionLocalWarn : bool ref
-       val valueRestrictionTopWarn : bool ref
-       val instantiateSigs : bool ref 
-          (* check signatures at declaration by instantiating them *)
-       val internals : bool ref
-       val lazysml : bool ref
-       val interp : bool ref
+sig
+  structure MC : MCCONTROL
+  structure CG : CGCONTROL
+  structure MLRISC : MLRISC_CONTROL
+  structure Print : PRINTCONTROL
+  val debugging : bool ref
+  val primaryPrompt : string ref
+  val secondaryPrompt : string ref
+  val printWarnings : bool ref
+     (* if false, suppress all warning messages *)
+  val valueRestrictionLocalWarn : bool ref  (* default false *)
+     (* warning message on failure of value restriction in local decls *)
+  val valueRestrictionTopWarn : bool ref    (* default true *)
+     (* warning message on failure of value restriction at top level *)
+  val multDefWarn : bool ref    (* default false *)
+     (* warning messages for multiple defs in sigs *)
+  val shareDefError : bool ref  (* default true *)
+     (* error (true) or warning (false) for defs in sharing constraints *)
+  val instantiateSigs : bool ref (* default true *)
+     (* check signatures at declaration by instantiating them *)
+  val internals : bool ref  (* default false *)
+     (* print internal representations of types at top level *)
+  val lazysml : bool ref  (* default false *)
+     (* turn on lazy keywords and lazy declaration processing *)
+  val interp : bool ref
+     (* turn on interpreter -- defunct *)
 (*
-       val debugLook : bool ref
-       val debugCollect : bool ref
-       val debugBind : bool ref
+  val debugLook : bool ref
+  val debugCollect : bool ref
+  val debugBind : bool ref
 *)
-       val saveLambda : bool ref
-       val saveLvarNames : bool ref
-       val preserveLvarNames : bool ref
-       val markabsyn : bool ref
-       val trackExn : bool ref
-       val indexing : bool ref
-       val instSigs : bool ref
-       val quotation : bool ref
-       val overloadKW : bool ref
+  val saveLambda : bool ref
+  val saveLvarNames : bool ref
+  val preserveLvarNames : bool ref
+  val markabsyn : bool ref
+  val trackExn : bool ref
+  val indexing : bool ref
+  val instSigs : bool ref
+  val quotation : bool ref
+  val overloadKW : bool ref
 
-       val saveit : bool ref
-       val saveAbsyn : bool ref
-       val saveConvert : bool ref
-       val saveCPSopt : bool ref
-       val saveClosure : bool ref
+  val saveit : bool ref
+  val saveAbsyn : bool ref
+  val saveConvert : bool ref
+  val saveCPSopt : bool ref
+  val saveClosure : bool ref
 
-       val lambdaSplitEnable: bool ref
-       val crossInlineEnable: bool ref
-   end
+  val lambdaSplitEnable: bool ref
+  val crossInlineEnable: bool ref
+end
 
 
 (*
- * $Log$
+ * $Log: control.sig,v $
+ * Revision 1.3  1998/05/23 14:10:29  george
+ *   Fixed RCS keyword syntax
+ *
  *)

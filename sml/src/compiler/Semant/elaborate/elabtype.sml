@@ -456,3 +456,13 @@ end (* local *)
 end (* structure ElabType *)
 
 
+(*
+ * $Log: elabtype.sml,v $
+ * Revision 1.4  1998/07/22 20:17:34  dbm
+ *   fix for bug 1412
+ *
+ * Revision 1.3  1998/05/23 14:10:05  george
+ *   Fixed RCS keyword syntax
+ *
+ *
+ *)

@@ -1,1 +1,2 @@
-structure Compiler = X86VisComp
+structure MachDepVC = X86VisComp
+

@@ -1,1 +1,2 @@
-structure Compiler = HppaVisComp
+structure MachDepVC = HppaVisComp
+

@@ -453,7 +453,7 @@ fun extractSig (env, epContext, context,
                            in (x, ee, ed)
                           end)
 
-                  val spec = TYCspec{spec=T.ERRORtyc,entVar=ev,scope=0}
+                  val spec = TYCspec{spec=T.ERRORtyc,entVar=ev,repl=false,scope=0}
                   val elements' = addElems((sym, spec), elements)
                   (* 
                    * Use of T.ERRORtyc here is a hack. It relies on the
@@ -1622,6 +1622,9 @@ end (* structure ElabMod *)
 
 
 (*
- * $Log$
+ * $Log: elabmod.sml,v $
+ * Revision 1.3  1998/05/23 14:10:01  george
+ *   Fixed RCS keyword syntax
+ *
  *
  *)

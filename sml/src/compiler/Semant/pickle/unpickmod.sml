@@ -1017,8 +1017,9 @@ fun unpickleEnv (context0, pickle) =
 
       and spec #"T" = ?tycon(fn Utycon t => 
 		       ?entVar(fn Ustamp v => 
-			R.int(fn s =>
-		         %Uspec(M.TYCspec{spec=t, entVar=v, scope=s}))))
+			?bool(fn Ubool r =>
+			 R.int(fn s =>
+		          %Uspec(M.TYCspec{spec=t, entVar=v, repl=r,scope=s})))))
         | spec #"S" = ?Signature (fn USignature s =>
   		       R.int (fn d =>
 		        ?strDefIntOption(fn UstrDefIntOption e =>
@@ -1253,5 +1254,8 @@ end (* structure UnpickleMod *)
 
 
 (*
- * $Log$
+ * $Log: unpickmod.sml,v $
+ * Revision 1.4  1998/05/23 14:10:13  george
+ *   Fixed RCS keyword syntax
+ *
  *)

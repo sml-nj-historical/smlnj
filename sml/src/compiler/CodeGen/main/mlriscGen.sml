@@ -6,15 +6,17 @@
 
 functor MLRiscGen
   (structure MachineSpec: MACH_SPEC
-   structure C          : CPSREGS where T.Region = CPSRegions
-   structure Cells	: CELLS
    structure ConstType  : CONST_TYPE
    structure PseudoOp   : SMLNJ_PSEUDO_OP_TYPE
-   structure MLTreeComp : MLTREECOMP 
-     where type T.Constant.const = ConstType.const
+   structure C          : CPSREGS
+       where type T.Constant.const = ConstType.const
+       where T.Region = CPSRegions
        and T.BNames = FunctionNames 
-     sharing MLTreeComp.T = C.T
-     sharing PseudoOp = MLTreeComp.T.PseudoOp) : CPSGEN =
+       and T.PseudoOp = PseudoOp
+   structure Cells	: CELLS
+   structure MLTreeComp : MLTREECOMP 
+       where T = C.T
+  ) : CPSGEN =
 struct
   structure M : MLTREE = C.T
   structure P = CPS.P
@@ -210,7 +212,7 @@ struct
        * function body and is critical in avoiding artificial register
        * interferences.
        *)
-      fun initialRegBindings(vl, rl, tl) = let
+      fun initialRegBindingsEscaping(vl, rl, tl) = let
 	fun eCopy(x::xs, M.GPR(M.REG r)::rl, rds, rss, xs', rl') = let
 	      val t = newReg()
 	    in addRegBinding(x, t); eCopy(xs, rl, t::rds, r::rss, xs', rl')
@@ -239,6 +241,15 @@ struct
 	val (vl', rl') = eCopy(vl, rl, [], [], [], [])
       in
 	eFcopy(eOther(vl', rl', [], []));
+	ListPair.app addTypBinding (vl, tl)
+      end
+
+      fun initialRegBindingsKnown(vl, rl, tl) = let
+	fun f(v, M.GPR(M.REG r)) = addRegBinding(v, r)
+	  | f(v, M.FPR(M.FREG f)) = addFregBinding(v, f)
+	  | f _ = error "initialRegBindingsKnown.f"
+      in 
+        ListPair.app f (vl, rl);
 	ListPair.app addTypBinding (vl, tl)
       end
 
@@ -545,7 +556,7 @@ struct
 		 comp(M.DEFINELABEL lab);
 		 comp(M.BLOCK_NAME(Int.toString f));
 		 alignAllocptr f;
-		 initialRegBindings(vl, formals, tl);
+ 		 initialRegBindingsEscaping(vl, formals, tl);
 		 initTypBindings e;
 		 gen(e, 0)
 	       end
@@ -565,7 +576,7 @@ struct
 		   {maxAlloc=4*maxAlloc f, regfmls=formals, regtys=tl, 
 		    return=branchToLabel(lab)};
 	         alignAllocptr f;
-		 initialRegBindings(vl, formals, tl);
+		 initialRegBindingsEscaping(vl, formals, tl);
 		 initTypBindings e;
 		 gen(e, 0)
 	       end
@@ -582,7 +593,6 @@ struct
 	       end
 	     | _ => error "APP"
 	  (*esac*))
-
 	(*** SWITCH ***)
 	| gen(SWITCH(v, _, l), hp) = let
 	    val lab = Label.newLabel""
@@ -875,7 +885,7 @@ struct
 	       | _ => M.ORB(M.SLL(untag(true, i), M.LI D.tagWidth, M.LR),
 			    M.LI(dtoi D.desc_special))
 	  in
-	    M.STORE32(ea, i',R.RW_MEM);
+	    emit(M.STORE32(ea, i',R.RW_MEM));
 	    gen(e, hp)
 	  end
 	| gen(SETTER(P.sethdlr,[x],e), hp) = 
@@ -1018,7 +1028,7 @@ struct
 	      CallGc.stdCheckLimit{maxAlloc=4 * maxAlloc f, regfmls=regfmls, 
 				   regtys=tl, return=M.JMP(linkreg,[])};
 	      clearTables();
-	      initialRegBindings(vl, regfmls, tl);
+	      initialRegBindingsEscaping(vl, regfmls, tl);
 	      initTypBindings e;
               if !Control.CG.printit then (
               print "************************************************* \n";
@@ -1084,6 +1094,18 @@ end (* MLRiscGen *)
 
 (*
  * $Log: mlriscGen.sml,v $
+ * Revision 1.7  1998/10/15 17:56:54  george
+ *   known functions do not move formals to fresh temps
+ *
+ * Revision 1.6  1998/09/30 18:56:35  dbm
+ * removed sharing/defspec conflict, using where structure
+ *
+ * Revision 1.5  1998/08/28 12:58:27  george
+ *   Fix for bug1422: Core dump on Sparc when using lazy features
+ *
+ * Revision 1.4  1998/07/25 03:05:36  george
+ *   changes to support block names in MLRISC
+ *
  * Revision 1.3  1998/05/23 14:09:26  george
  *   Fixed RCS keyword syntax
  *

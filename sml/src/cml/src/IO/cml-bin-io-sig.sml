@@ -9,7 +9,7 @@
 signature CML_BIN_IO =
   sig
     include CML_IMPERATIVE_IO
-(*
+(** SML'97 SYNTAX IS PROKEN **
       where type StreamIO.vector = Word8Vector.vector
       where type StreamIO.elem = Word8.word
       where type StreamIO.reader = BinPrimIO.reader

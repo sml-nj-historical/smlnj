@@ -292,7 +292,7 @@ and ppElements (env,depth,entityEnvOp) ppstrm elements =
 		   end_block ppstrm;
 		  end_block ppstrm)
 
-	      | M.TYCspec{spec,entVar,scope} => 
+	      | M.TYCspec{spec,entVar,repl,scope} => 
 		 (if first then () else add_newline ppstrm;
 		  begin_block ppstrm CONSISTENT 0;
 		   case entityEnvOp
@@ -909,5 +909,8 @@ end (* local *)
 end (* structure PPModules *)
 
 (*
- * $Log$
+ * $Log: ppmod.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
+ *
  *)

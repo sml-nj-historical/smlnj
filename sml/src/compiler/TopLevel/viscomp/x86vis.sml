@@ -4,8 +4,11 @@
  *
  *)
 
-structure X86VisComp = VisComp(X86MC)
+structure X86VisComp = MachDepVCFun (X86MC)
 
 (*
- * $Log$
+ * $Log: x86vis.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:14  george
+ * Version 110.5
+ *
  *)

@@ -46,6 +46,9 @@ is
 #   error "Strange architecture!"
 # endif
 
+	(* make Compiler once we have selected MachDepVC *)
+	TopLevel/bootstrap/full-compiler.sml
+
 	(* make CM and CMB once we have selected the Compiler *)
 	TopLevel/bootstrap/link-cm.sml
 

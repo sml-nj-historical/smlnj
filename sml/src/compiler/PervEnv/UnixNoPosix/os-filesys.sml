@@ -138,3 +138,9 @@ structure OS_FileSys : OS_FILE_SYS =
   end; (* FILE_SYS *)
 
 
+(*
+ * $Log: os-filesys.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:00  george
+ * Version 110.5
+ *
+ *)
