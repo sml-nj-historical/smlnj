@@ -13,6 +13,25 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/05/07 14:40:00 EDT
+Tag: blume-20010507-proxies
+Description:
+
+I made into "proxy libraries" all libraries that qualify for such a
+change.  (A qualifying library is a library that has another library or
+groups as its sole member and repeats that member's export list
+verbatim.  A proxy library avoids this repetition by omitting its export
+list, effectively inheriting the list that its (only) member exports.
+See the CM manual for more explanation.)
+The main effect is that explicit export lists for these libraries
+do not have to be kepts in sync, making maintenance a bit easier.
+
+I also added copyright notices to many .cm-files.
+
+Last but not least, I made a new set of bootfiles.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/05/04 17:00:00 EDT
 Tag: blume-20010504-cm-lsplit
 Description:

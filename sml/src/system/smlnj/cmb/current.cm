@@ -1,3 +1,11 @@
+(*
+ * Library exporting structure CMB, the bootstrap compiler for the
+ * current architecture.
+ *
+ * (C) 2001 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@research.bell-labs.com)
+ *)
 Library
 	signature CMB
 	structure CMB

@@ -1,3 +1,10 @@
+(*
+ * Library exporting "visible" compilers for all architectures.
+ *
+ *  (C) 2001, Lucent Technologies, Bell Labs
+ *
+ * author: Matthias Blume (blume@research.bell-labs.com)
+ *)
 Library
 	structure Alpha32UnixCMB
 	structure HppaUnixCMB

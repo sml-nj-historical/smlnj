@@ -13,60 +13,7 @@
  *)
 
 Library
-	signature GENERIC_VC
-	signature MACHDEP_VC
-
-	structure GenericVC
-
-	(* eventually we should export more of these guys... *)
-	structure DynamicEnv
-	structure PrettyPrint
-
-	structure PickleSymPid
-	structure UnpickleSymPid
-	structure PickMod
-	structure UnpickMod
-	structure GenModIdMap
-	structure CompBasic
-	structure CoreSym
-
-	structure FLINT
-
-        (* To make it possible to dynamically link in the optimizer, 
-         * we have to export the following to the library.
-         * A.Leung.
-         *)
-        signature MACHINE_GEN
-        signature INVOKE_GC
-        signature CPSREGS
-
-        structure CPSRegions
-        structure SMLGCType
-
-	(* To be able to separate machine-dependent parts of viscomp-lib.cm
-	 * from machine-independent parts, we must also export the
-	 * the following things.
-	 *  M.Blume (11/1999) *)
-
-	signature MACH_SPEC
-
-	structure ErrorMsg
-	structure Control
-	structure DefaultMachSpec
-	structure SMLNJConstant
-	signature SMLNJ_MLTREE_EXT
-	structure SMLNJMLTreeExt
-        functor   SMLNJMLTreeExtComp
-	structure CodeString
-
-	functor PseudoOpsBig
-	functor PseudoOpsLittle
-	functor MachineGen
-	functor SpillTable
-	functor FLINTComp
-	functor MachDepVCFun
-
-	functor DummyCCallsFn
+	(* this is a proxy library; exports taken from its (only) member *)
 is
 	(* reference to our only group... *)
 	$compiler/viscomp-core.cm

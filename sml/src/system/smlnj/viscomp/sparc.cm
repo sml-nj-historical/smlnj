@@ -9,12 +9,6 @@
  *   M.Blume (03/2000)
  *)
 Library
-	structure SparcVisComp
-        structure SparcCG
-        structure SparcCpsRegs
-        structure SparcInstr
-	structure SparcProps
-	structure SparcFlowGraph
-	structure SparcAsmEmitter
+	(* this is a proxy library; exports taken from its (only) member *)
 is
 	$compiler/viscomp-sparc.cm

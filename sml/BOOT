@@ -1,5 +1,11 @@
 BOOT: the location of the latest boot files.
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/05/07 14:40:00 EDT
+Tag: blume-20010507-proxies
+Version: 110.32.2(+)
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/bootfiles/blume-20010507-proxies/
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2001/04/20 09:15:28 EDT
 Tag: george-20010420-macosX
