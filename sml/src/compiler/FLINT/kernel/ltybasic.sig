@@ -34,6 +34,12 @@ val mkTvar : unit -> tvar
 val tkc_int    : int -> tkind
 val tkc_arg    : int -> tkind list    
 
+(** primitives and utility functions for fflags and rflags *)
+val ffc_plambda: fflag
+val ffc_rrflint: fflag
+val ffc_fspec  : fflag * (bool * bool) -> fflag
+val ffd_fspec  : fflag -> bool * bool
+
 (** primitive lambda tycs *)
 val tcc_int    : tyc
 val tcc_int32  : tyc
@@ -68,14 +74,18 @@ val ltc_etag   : lty -> lty
 
 val ltc_top    : lty    (* used in a dirty hack in prim.sml *)
 
-(** testing equivalence of tkinds, tycs, and ltys *)
+(** testing equivalence of tkinds, tycs, ltys, fflags, and rflags *)
 val tk_eqv     : tkind * tkind -> bool
 val tc_eqv     : tyc * tyc -> bool
 val lt_eqv     : lty * lty -> bool
+val ff_eqv     : fflag * fflag -> bool
+val rf_eqv     : rflag * rflag -> bool
 
 (** testing the equivalence for tycs and ltys with relaxed constraints *)
-val tc_eqv_bx: tyc * tyc -> bool
-val lt_eqv_bx: lty * lty -> bool
+val tc_eqv_x   : tyc * tyc -> bool
+val lt_eqv_x   : lty * lty -> bool
+val tc_eqv_bx  : tyc * tyc -> bool
+val lt_eqv_bx  : lty * lty -> bool
 
 (** pretty printing of tkinds, tycs, and ltys *)
 val tk_print   : tkind -> string
@@ -85,8 +95,9 @@ val lt_print   : lty -> string
 (** adjusting an lty or tyc from one depth to another *)
 val lt_adj     : lty * depth * depth -> lty
 val tc_adj     : tyc * depth * depth -> tyc
-val tc_adj_one : tyc * depth * depth -> tyc  
-                                (* used by trans/transtypes.sml *)
+
+val lt_adj_k   : lty * depth * depth * int -> lty  
+val tc_adj_k   : tyc * depth * depth * int -> tyc  
 
 (** finding out the depth for a tyc's innermost-bound free variables *)
 val tc_depth : tyc * depth -> depth
@@ -94,6 +105,9 @@ val tcs_depth: tyc list * depth -> depth
 
 (** automatically flattening the argument or the result type *)
 val lt_autoflat : lty -> bool * lty list * bool
+
+(** testing if a tyc is a unknown constructor *)
+val tc_unknown : tyc -> bool
 
 (** utility functions on tkindEnv *)
 type tkindEnv 

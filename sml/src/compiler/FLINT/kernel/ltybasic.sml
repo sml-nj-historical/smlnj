@@ -23,17 +23,21 @@ local structure PT = PrimTyc
 
       val tcc_env = LK.tcc_env
       val ltc_env = LK.ltc_env
-      val tc_whnm = LK.tc_whnm
-      val lt_whnm = LK.lt_whnm
-      val tc_norm = LK.tc_norm
-      val lt_norm = LK.lt_norm
 
       val itos = Int.toString
       fun plist(p, []) = ""
         | plist(p, x::xs) = 
             (p x) ^ (String.concat (map (fn z => ("," ^ (p z))) xs))
 
-      fun parw(p, (t1, t2)) = "<" ^ (p t1) ^ "> -> <" ^ (p t2) ^ ">"
+      fun pfflag (LK.FF_VAR b) = 
+            let fun pff (true, true) = "rr"  | pff (true, false) = "rc"
+                  | pff (false, true) = "cr" | pff (false, false) = "cc"
+             in pff b
+            end
+        | pfflag (LK.FF_FIXED) = "f"
+
+      fun parw(p, (ff, t1, t2)) = 
+            "<" ^ (p t1) ^ "> -" ^ pfflag ff ^ "-> <" ^ (p t2) ^ ">"
 in
 
 open LtyDef
@@ -47,15 +51,26 @@ fun tkc_arg n =
    in h(n, [])
   end
 
-val tkc_fn1 = tkc_fun(tkc_seq(tkc_arg 1), tkc_mono)
-val tkc_fn2 = tkc_fun(tkc_seq(tkc_arg 2), tkc_mono)
-val tkc_fn3 = tkc_fun(tkc_seq(tkc_arg 3), tkc_mono)
+val tkc_fn1 = tkc_fun(tkc_arg 1, tkc_mono)
+val tkc_fn2 = tkc_fun(tkc_arg 2, tkc_mono)
+val tkc_fn3 = tkc_fun(tkc_arg 3, tkc_mono)
 
 fun tkc_int 0 = tkc_mono
   | tkc_int 1 = tkc_fn1
   | tkc_int 2 = tkc_fn2
   | tkc_int 3 = tkc_fn3
-  | tkc_int i = tkc_fun(tkc_seq(tkc_arg i), tkc_mono)
+  | tkc_int i = tkc_fun(tkc_arg i, tkc_mono)
+
+(** primitive fflags and rflags *)
+val ffc_plambda = ffc_var (false, false)
+val ffc_rrflint = ffc_var (true, true)
+
+fun ffc_fspec (x as LK.FF_FIXED, (true,true)) = x
+  | ffc_fspec (x as LK.FF_VAR _, nx) = ffc_var nx
+  | ffc_fspec _ = bug "unexpected case in ffc_fspec"
+
+fun ffd_fspec (LK.FF_FIXED) = (true,true)
+  | ffd_fspec (LK.FF_VAR x) = x
 
 (** utility functions for constructing tycs *)
 val tcc_int    = tcc_prim PT.ptc_int31
@@ -111,12 +126,16 @@ val ltc_top = ltc_ppoly([tkc_mono], ltc_tv 0)
  *            UTILITY FUNCTIONS FOR TESTING EQUIVALENCE                    *
  ***************************************************************************)
 
-(** testing equivalence of tkinds, tycs, and ltys *)
+(** testing equivalence of tkinds, tycs, ltys, fflags, and rflags *)
 val tk_eqv    : tkind * tkind -> bool = LK.tk_eqv
 val tc_eqv    : tyc * tyc -> bool = LK.tc_eqv
 val lt_eqv    : lty * lty -> bool = LK.lt_eqv
+val ff_eqv    : fflag * fflag -> bool = LK.ff_eqv
+val rf_eqv    : rflag * rflag -> bool = LK.rf_eqv
 
 (** testing the equivalence for tycs and ltys with relaxed constraints *)
+val tc_eqv_x  : tyc * tyc -> bool = LK.tc_eqv_x
+val lt_eqv_x  : lty * lty -> bool = LK.lt_eqv_x
 val tc_eqv_bx : tyc * tyc -> bool = LK.tc_eqv_bx
 val lt_eqv_bx : lty * lty -> bool = LK.lt_eqv_bx
 
@@ -128,7 +147,8 @@ val lt_eqv_bx : lty * lty -> bool = LK.lt_eqv_bx
 fun tk_print (x : tkind) = 
   let fun g (LK.TK_MONO) = "K0"
         | g (LK.TK_BOX) = "KB0"
-        | g (LK.TK_FUN z) =  (parw(tk_print, z))
+        | g (LK.TK_FUN (ks, k)) =  
+               "<" ^ (plist(tk_print, ks)) ^ "->" ^ (tk_print k) ^ ">"
         | g (LK.TK_SEQ zs) = "KS(" ^ (plist(tk_print, zs)) ^ ")"
    in g (tk_out x)
   end
@@ -138,9 +158,8 @@ fun tc_print (x : tyc) =
         | g (LK.TC_NVAR(v,d,i)) = "NTV(v" ^ (itos v) ^ "," ^ (itos d) 
                                ^ "," ^ (itos i) ^ ")"
         | g (LK.TC_PRIM pt) = PT.pt_print pt
-        | g (LK.TC_FN([], t)) = "TF(0," ^ (tc_print t) ^ ")"
         | g (LK.TC_FN(ks, t)) = 
-              "\\" ^ (itos (length ks)) ^ ".(" ^ (tc_print t) ^ ")"
+              "(\\[" ^ plist(tk_print, ks) ^ "]." ^ (tc_print t) ^ ")"
         | g (LK.TC_APP(t, [])) = tc_print t ^ "[]"
         | g (LK.TC_APP(t, zs)) =
               (tc_print t) ^ "[" ^ (plist(tc_print, zs)) ^ "]"
@@ -154,13 +173,19 @@ fun tc_print (x : tyc) =
               else if tc_eqv(x,tcc_list) then "LST" 
                    else (let val ntc = case ts of [] => tc
                                                 | _ => tcc_app(tc, ts)
-                          in ("DT{" ^ (tc_print ntc) ^ "===" ^ (itos i) ^ "}")
+                          in ("DT{" ^ "DATA" (* (tc_print ntc) *)
+                                    ^ "===" ^ (itos i) ^ "}")
                          end)
         | g (LK.TC_ABS t) = "Ax(" ^ (tc_print t) ^ ")"
         | g (LK.TC_BOX t) = "Bx(" ^ (tc_print t) ^ ")"
-        | g (LK.TC_TUPLE zs) = "TT<" ^ (plist(tc_print, zs)) ^ ">"
-        | g (LK.TC_ARROW (_,z1,z2)) = parw(fn u => plist(tc_print,u), (z1,z2))
+        | g (LK.TC_TUPLE(_,zs)) = "TT<" ^ (plist(tc_print, zs)) ^ ">"
+        | g (LK.TC_ARROW (ff,z1,z2)) = 
+               parw(fn u => plist(tc_print,u),(ff,z1,z2))
         | g (LK.TC_PARROW _) = bug "unexpected TC_PARROW in tc_print"
+        | g (LK.TC_TOKEN (k, t)) = 
+              if LK.token_isvalid k then 
+                 (LK.token_abbrev k) ^ "(" ^ (tc_print t) ^ ")"
+              else bug "unexpected TC_TOKEN tyc in tc_print"
         | g (LK.TC_CONT ts) = "Cnt(" ^ (plist(tc_print,ts)) ^ ")"
         | g (LK.TC_IND _) = bug "unexpected TC_IND in tc_print"
         | g (LK.TC_ENV _) = bug "unexpected TC_ENV in tc_print"
@@ -177,7 +202,7 @@ fun lt_print (x : lty) =
              "(" ^ (plist(lt_print, ts1)) ^ ") ==> ("
                  ^ (plist(lt_print, ts2)) ^ ")"
         | g (LK.LT_POLY(ks, ts)) = 
-             "Q" ^ (itos (length ks)) ^ ".(" ^ (plist(lt_print,ts)) ^ ")"
+             "(Q[" ^ plist(tk_print, ks) ^ "]." ^ (plist(lt_print,ts)) ^ ")"
         | g (LK.LT_CONT ts) = "CNT(" ^ (plist(lt_print, ts)) ^ ")"
         | g (LK.LT_IND _) = bug "unexpected LT_IND in lt_print"
         | g (LK.LT_ENV _) = bug "unexpected LT_ENV in lt_print"
@@ -191,21 +216,38 @@ val tcs_depth: tyc list * depth -> depth = LK.tcs_depth
 
 (** adjusting an lty or tyc from one depth to another *)
 fun lt_adj (lt, d, nd) = 
-  if d = nd then lt else lt_norm(ltc_env(lt, 0, nd - d, LK.initTycEnv))
+  if d = nd then lt 
+  else ltc_env(lt, 0, nd - d, LK.initTycEnv)
 
 fun tc_adj (tc, d, nd) = 
-  if d = nd then tc else tc_norm(tcc_env(tc, 0, nd - d, LK.initTycEnv))
-
-(** the following function is called only inside transtype.sml *)
-fun tc_adj_one (tc, d, nd) = 
   if d = nd then tc 
-  else (let val dd = nd - d
-         in tc_norm(tcc_env(tc, 1, dd + 1, 
-                            LK.tcInsert(LK.initTycEnv, (NONE, dd))))
-        end)
+  else tcc_env(tc, 0, nd - d, LK.initTycEnv)
+
+(** the following functions does the smiliar thing as lt_adj and
+    tc_adj; it adjusts an lty (or tyc) from depth d+k to depth nd+k,
+    assuming the last k levels are type abstractions. So lt_adj
+    is really lt_adj_k with k set to 0. Both functions are currently
+    called inside the lcontract.sml only. *)
+local
+fun mkTycEnv (i, k, dd, e) = 
+  if i >= k then e else mkTycEnv(i+1, k, dd, LK.tcInsert(e,(NONE, dd+i)))
+
+in 
+fun lt_adj_k (lt, d, nd, k) = 
+  if d = nd then lt 
+  else ltc_env(lt, k, nd-d+k, mkTycEnv(0, k, nd-d, LK.initTycEnv))
+
+fun tc_adj_k (tc, d, nd, k) = 
+  if d = nd then tc 
+  else tcc_env(tc, k, nd-d+k, mkTycEnv(0, k, nd-d, LK.initTycEnv))
+
+end (* lt_adj_k and tc_adj_k *)
 
 (** automatically flattening the argument or the result type *)
 val lt_autoflat : lty -> bool * lty list * bool = LK.lt_autoflat
+
+(** testing if a tyc is a unknown constructor *)
+val tc_unknown : tyc -> bool = LK.tc_unknown
 
 (***************************************************************************
  *            UTILITY FUNCTIONS ON TKIND ENVIRONMENT                       *

@@ -9,7 +9,7 @@ end (* signature LTYNARROW *)
 structure LtNarrow : LTNARROW = 
 struct
 
-local structure LU = LtyUtil
+local structure LT = LtyExtern
       open Lambda
 in
 
@@ -18,7 +18,7 @@ fun bug s = ErrorMsg.impossible ("LtNarrow: " ^ s)
 fun narrow lexp = 
 let
 
-val (tcNarrow, ltNarrow, clear) = LU.narrowGen ()
+val (tcNarrow, ltNarrow, clear) = LT.tnarrow_gen ()
 
 fun lpsv sv = 
   (case sv
@@ -38,7 +38,8 @@ fun loop le =
      | UNWRAP(tc, b, v) => UNWRAP(tcNarrow tc, b, lpsv v)
 
      | CON _ => bug "unexpected CON in loop"
-     | DECON _ => bug "unexpected CON in loop"
+     | DECON (dc, ts, v) => SVAL(lpsv v)
+         (* bug "unexpected DECON in loop" *)
 
      | SWITCH (v, reps, cases, opp) => 
          let fun g (c, x) = (c, loop x)

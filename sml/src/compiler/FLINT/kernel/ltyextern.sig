@@ -41,7 +41,9 @@ include LTYBASIC        (* see ltydef.sig and ltybasic.sig for details *)
 
 (** instantiating a polymorphic type or an higher-order constructor *)
 val lt_inst     : lty * tyc list -> lty list
+val lt_pinst    : lty * tyc list -> lty
 val lt_inst_st  : lty * tyc list -> lty list   (* strict apply *)
+val lt_pinst_st : lty * tyc list -> lty        (* strict apply *)
 
 exception TkTycChk
 exception LtyAppChk
@@ -61,11 +63,25 @@ val ltw_iscont  : lty * (lty list -> 'a) * (tyc list -> 'a) * (lty -> 'a) -> 'a
 val lt_select : lty * int -> lty
 val lt_swap : lty -> lty
 
+(** functions that manipulate the FLINT function and record types *)
+val ltc_fkfun   : FLINT.fkind * lty list * lty list -> lty
+val ltd_fkfun   : lty -> lty list * lty list (* fkind omitted *)
+
+val ltc_rkind   : FLINT.rkind * lty list -> lty
+val ltd_rkind   : lty * int -> lty
+
+(** all functions below should go away soon *)
+
 val ltc_arw     : lty * lty -> lty
 val ltc_fun     : lty * lty -> lty
 
 val lt_arrow    : lty -> lty * lty
 val lt_arrowN   : lty -> lty list * lty list
+
+val tc_upd_prim : tyc -> PrimOp.primop
+
+val tk_lty      : tkind -> lty
+val tnarrow_gen : unit -> ((tyc -> tyc) * (lty -> lty) * (unit -> unit))
 
 end (* signature LTYEXTERN *)
 

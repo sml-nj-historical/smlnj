@@ -52,13 +52,6 @@ and atopMerge(d, M.NILeenv) = M.BINDeenv(d, M.NILeenv)
   | atopMerge(d, M.BINDeenv(d', e)) = M.BINDeenv(ED.overlay(d,d'),e)
   | atopMerge(d, M.MARKeenv(_,r)) = atopMerge(d, r)
 
-(*
-val atop = 
-  Stats.doPhase (Stats.makePhase "Compiler 032 c-atopEE") atop
-val atopSp = 
-  Stats.doPhase (Stats.makePhase "Compiler 032 c-atopSP") atopSp
-*)
-
 fun toList (M.MARKeenv(_,ee)) = toList ee
   | toList (M.BINDeenv(d, ee)) = ED.fold((op ::), toList ee, d)
   | toList M.NILeenv = nil
@@ -83,11 +76,6 @@ fun look(env,v) =
 	       raise Unbound)
      in scan env
     end
-
-(*
-val look = 
-  Stats.doPhase (Stats.makePhase "Compiler 032 a-lookEV") look
-*)
 
 fun lookStrEnt(entEnv,entVar) = 
     case look(entEnv,entVar)
@@ -122,10 +110,7 @@ fun lookEP(entEnv,[]) = bug "lookEP.1"
 		 | _ => say "ERRORent\n";
 	      say "entpath: "; say (EP.entPathToString(ep)); say "\n";
 	      bug "lookEnt.2"))
-(*
-val lookEP = 
-  Stats.doPhase (Stats.makePhase "Compiler 032 b-lookEP") lookEP
-*)
+
 fun lookTycEP(entEnv,entPath) = 
     case lookEP(entEnv,entPath)
      of M.TYCent tycon => tycon

@@ -4,9 +4,6 @@
 structure PrimOp : PRIM_OP = 
 struct
 
-structure B = BasicTypes 
-structure T = Types
-
 (* numkind includes kind and number of bits *)
 datatype numkind 
   = INT of int 
@@ -89,6 +86,11 @@ datatype primop
   | INL_VECTOR                 (* inline polymorphic vector allocation *)
   | INL_MONOARRAY of numkind   (* inline monomorphic array allocation *)
   | INL_MONOVECTOR of numkind  (* inline monomorphic vector allocation *)
+
+  | MKETAG                     (* make a new exception tag *)
+  | WRAP                       (* box a value by wrapping it *)
+  | UNWRAP                     (* unbox a value by unwrapping it *)
+
 
 (** default integer arithmetic and comparison operators *)
 val IADD = ARITH{oper=op +, overflow=true, kind=INT 31}
@@ -223,6 +225,9 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
       concat ["inl_monovector(", prNumkind kind, ")"]
   | prPrimop (MARKEXN) = "markexn"
 
+  | prPrimop (MKETAG) = "mketag"
+  | prPrimop (WRAP) = "wrap"
+  | prPrimop (UNWRAP) = "unwrap"
 
 val purePrimop =
   fn DEREF => false

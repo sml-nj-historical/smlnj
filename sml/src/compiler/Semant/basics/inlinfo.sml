@@ -5,10 +5,10 @@ signature INL_INFO =
 sig
 
   datatype inl_info
-    = INL_PRIM of PrimOp.primop * Types.ty option
-    | INL_LEXP of Lambda.lexp * Types.ty option
-    | INL_PATH of Access.access * Types.ty option
-    | INL_STR of inl_info list
+    = INL_PRIM of PrimOp.primop   * Types.ty option
+(*  | INL_LEXP of FLINT.prog * Types.ty option *)
+    | INL_PATH of Access.access   * Types.ty option
+    | INL_STR  of inl_info list
     | INL_NO
   
   val prInfo : inl_info -> string
@@ -31,7 +31,6 @@ structure InlInfo : INL_INFO =
 struct
 
 local structure A  = Access
-      structure L  = Lambda
       structure PO = PrimOp
       structure T  = Types
       structure EM = ErrorMsg
@@ -54,7 +53,7 @@ fun bug msg = EM.impossible("InlInfo: "^msg)
  *)
 datatype inl_info
   = INL_PRIM of PO.primop * T.ty option
-  | INL_LEXP of L.lexp * T.ty option   (* should be changed to lty option *)
+(*| INL_LEXP of FLINT.prog * T.ty option   (* should be lty option *) *)
   | INL_PATH of A.access * T.ty option
   | INL_STR of inl_info list
   | INL_NO
@@ -66,7 +65,7 @@ datatype inl_info
 
 (** printing an inl_info object *)
 fun prInfo (INL_PRIM (p, _)) = PO.prPrimop p
-  | prInfo (INL_LEXP _) = "<InlLexp>"
+(*| prInfo (INL_LEXP _) = "<InlLexp>" *)
   | prInfo (INL_PATH (acc, _)) = A.prAcc(acc)
   | prInfo (INL_STR []) = "{}" 
   | prInfo (INL_STR (a::r)) = 
@@ -86,6 +85,7 @@ fun selInfo (INL_STR sl, i) =
 fun isPrimInfo (INL_PRIM _) = true
   | isPrimInfo _ = false
 
+(** checking if a particular primop captures the continuations *)
 fun isPrimCallcc (INL_PRIM (PO.CALLCC, _)) = true
   | isPrimCallcc (INL_PRIM (PO.CAPTURE, _)) = true
   | isPrimCallcc _ = false
@@ -109,9 +109,3 @@ val nullInfo = INL_NO
 end (* toplevel local *)
 end (* structure InlInfo *)
 
-(*
- * $Log: inlinfo.sml,v $
- * Revision 1.1.1.1  1997/01/14  01:38:10  george
- *   Version 109.24
- *
- *)

@@ -111,16 +111,6 @@ fun bindLongPath(EMPTY, _, _) = ()
           else (locals := D.insert(!locals, s, h(ep,bindContext)))
       end
 
-(*
-(*** top leve wrappers: used for profiling the compilation time *)
-val lookPath =
-  Stats.doPhase (Stats.makePhase "Compiler 034 x-lookPath") lookPath
-val bindPath =
-  Stats.doPhase (Stats.makePhase "Compiler 034 x-bindPath") bindPath
-val bindLongPath =
-  Stats.doPhase (Stats.makePhase "Compiler 034 y-bindPath") bindLongPath
-*)
-
 end (* local *)
 end (* structure EntPathContext *)
 

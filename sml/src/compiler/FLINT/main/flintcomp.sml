@@ -25,7 +25,9 @@ fun phase x = Stats.doPhase (Stats.makePhase x)
 val lconLexp  = phase "Compiler 052 lcontract" LContract.lcontract 
 val specLexp  = phase "Compiler 053 specLexp" Specialize.specialize
 val wrapLexp  = phase "Compiler 054 wrapLexp" Wrapping.wrapLexp
+val wrapLexpN = phase "Compiler 054 wrapLexpN" WrappingNEW.wrapping
 val ltyComp   = phase "Compiler 055 ltyComp" Reify.ltyComp
+val reify     = phase "Compiler 055 ltyCompN" ReifyNEW.reify
 val narrow    = phase "Compiler 056 ltNarrow" LtNarrow.narrow
 (* val lambdaopt = phase "Compiler 057 lambdaopt" LContract.lcontract *)
 
@@ -81,8 +83,23 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
       val flint =
         if !CGC.specialize then
            (chkFlint (CGC.checkflint1,1,"3") 
-           o prFlint "Specialization" o specLexp) flint
+            o prFlint "Specialization" o specLexp) flint
         else flint
+
+(*
+      (*** explicit FLINT checking phase ***)
+      val flint = chkFlint (ref true, 3, "3") flint
+
+      (*** check out the new wrapping function *)
+      val nflint1 = (prFlint "NewWrapping" o wrapLexpN) flint
+      val nflint2 = chkFlint (ref true, 4, "4") nflint1
+      val nflint3 = 
+        (chkFlint (ref false, 5, "5") o prFlint "NewReify" o reify) nflint2
+      val nlambda = Flint2Lambda.transFundec(nflint3)
+      val nlambda =
+	(chkLexp (CGC.checklty1,21,"4") o prLexp "NarrowingN" o narrow) nlambda
+      val (nfunction,ntable) = convert nlambda 
+*)
 
       val lambda =
 	(chkLexp (CGC.checklty1,1,"1")
@@ -104,6 +121,9 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 *)
 
       val (function,table) = convert lambda
+      local exception ZZZ
+      in val table : FLINT.lty Intmap.intmap = Intmap.new(32, ZZZ) 
+      end
       val _ = prCps "convert" function
 
       val function = (prCps "cpstrans" o cpstrans) function

@@ -1,27 +1,17 @@
-(* symenv.sig
- *
- * COPYRIGHT (c) 1995 by AT&T Bell Laboratories
- *)
+(* COPYRIGHT (c) 1995 by Bell Laboratories *)
+(* symenv.sig *)
 
 signature SYMENV = sig
-
-    type lambda = Lambda.lexp
+    type flint = CompBasic.flint
     type symenv
     type pid = PersStamps.persstamp
 
     val empty: symenv
-    val look: symenv -> pid -> lambda option
-    val bind: pid * lambda * symenv -> symenv
+    val look: symenv -> pid -> flint option
+    val bind: pid * flint * symenv -> symenv
     val atop: symenv * symenv -> symenv
     val remove: pid list * symenv -> symenv
     val consolidate: symenv -> symenv
-    val singleton: pid * lambda -> symenv
+    val singleton: pid * flint -> symenv
 
-end
-
-(*
- * $Log: symenv.sig,v $
- * Revision 1.1.1.1  1997/01/14  01:38:37  george
- *   Version 109.24
- *
- *)
+end (* signature SYMENV *)

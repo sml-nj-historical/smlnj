@@ -205,6 +205,10 @@ datatype primop
   | INL_MONOARRAY of numkind   (* inline monomorphic array allocation *)
   | INL_MONOVECTOR of numkind  (* inline monomorphic vector allocation *)
 
+  | MKETAG                     (* make a new exception tag *)
+  | WRAP                       (* box a value by wrapping it *)
+  | UNWRAP                     (* unbox a value by unwrapping it *)
+
 
 val IADD : primop  (* default integer addition *)
 val ISUB : primop  (* default integer subtraction *)

@@ -27,14 +27,17 @@ local structure PT = PrimTyc
 in
 
 (** basic entities *)
-type tkind = LK.tkind
 type index = DI.index
 type depth = DI.depth
 type primtyc = PT.primtyc
 type tvar = LK.tvar
+
+type fflag = LK.fflag
+type rflag = LK.rflag
+
+type tkind = LK.tkind
 type tyc = LK.tyc
 type lty = LK.lty
-type rawflag = LK.rawflag
 
 (* 
  * FLINT tkind is roughly equivalent to the following ML datatype 
@@ -43,7 +46,7 @@ type rawflag = LK.rawflag
  *      = TK_MONO 
  *      | TK_BOX
  *      | TK_SEQ of tkind list
- *      | TK_FUN of tkind * tkind
+ *      | TK_FUN of tkind list * tkind
  *
  * We treat tkind as an abstract type so we can no longer use 
  * pattern matching. 
@@ -53,7 +56,7 @@ type rawflag = LK.rawflag
 val tkc_mono   : tkind = tk_inj (LK.TK_MONO)
 val tkc_box    : tkind = tk_inj (LK.TK_BOX)
 val tkc_seq    : tkind list -> tkind = tk_inj o LK.TK_SEQ
-val tkc_fun    : tkind * tkind -> tkind = tk_inj o LK.TK_FUN
+val tkc_fun    : tkind list * tkind -> tkind = tk_inj o LK.TK_FUN
 
 (** tkind deconstructors *)
 val tkd_mono   : tkind -> unit = fn _ => ()
@@ -61,7 +64,7 @@ val tkd_box    : tkind -> unit = fn _ => ()
 val tkd_seq    : tkind -> tkind list = fn tk => 
       (case tk_out tk of LK.TK_SEQ x => x
                        | _ => bug "unexpected tkind in tkd_seq")  
-val tkd_fun    : tkind -> tkind * tkind = fn tk => 
+val tkd_fun    : tkind -> tkind list * tkind = fn tk => 
       (case tk_out tk of LK.TK_FUN x => x
                        | _ => bug "unexpected tkind in tkd_fun")  
 
@@ -83,11 +86,54 @@ fun tkw_fun (tk, f, g) =
 
 
 (* 
+ * FLINT fflag and rflag are used to classify different kinds of monomorphic 
+ * functions and records. As of now, they are roughly equivalent to:
+ *
+ *    datatype fflag
+ *      = FF_VAR of bool * bool
+ *      | FF_FIXED
+ *
+ *    datatype rflag = RF_TMP
+ *
+ * We treat both as abstract types so pattern matching no longer applies.
+ * NOTE: FF_VAR flags are used by FLINTs before we perform representation
+ * analysis while FF_FIXED is used by FLINTs after we perform representation
+ * analysis. 
+ *)
+
+(** fflag and rflag constructors *)
+val ffc_var    : bool * bool -> fflag = fn x => LK.FF_VAR x
+val ffc_fixed  : fflag = LK.FF_FIXED
+val rfc_tmp    : rflag = LK.RF_TMP
+
+(** fflag and rflag deconstructors *)
+val ffd_var    : fflag -> bool * bool = fn x =>
+      (case x of LK.FF_VAR x => x | _ => bug "unexpected fflag in ffd_var")
+val ffd_fixed  : fflag -> unit = fn x =>
+      (case x of LK.FF_FIXED => () | _ => bug "unexpected fflag in ffd_fixed")
+val rfd_tmp    : rflag -> unit = fn (LK.RF_TMP) => ()
+
+(** fflag and rflag predicates *)
+val ffp_var    : fflag -> bool = fn x => 
+      (case x of LK.FF_VAR _ => true | _ => false)
+val ffp_fixed  : fflag -> bool = fn x => 
+      (case x of LK.FF_FIXED => true | _ => false)
+val rfp_tmp    : rflag -> bool = fn (LK.RF_TMP) => true
+
+(** fflag and rflag one-arm switch *)
+fun ffw_var (ff, f, g) = 
+      (case ff of LK.FF_VAR x => f x | _ => g ff)
+fun ffw_fixed (ff, f, g) = 
+      (case ff of LK.FF_FIXED => f () | _ => g ff)
+fun rfw_tmp (rf, f, g) = f()
+
+
+(* 
  * FLINT tyc is roughly equivalent to the following ML datatype 
  *
  *    datatype tyc
  *      = TC_VAR of index * int
- *      | TC_NVAR of tvar * depth * int    (* currently not used *)
+ *      | TC_NVAR of tvar * depth * int    (* NOT USED *)
  *      | TC_PRIM of primtyc
  *      | TC_FN of tkind list * tyc
  *      | TC_APP of tyc * tyc list
@@ -95,10 +141,11 @@ fun tkw_fun (tk, f, g) =
  *      | TC_PROJ of tyc * int
  *      | TC_SUM of tyc list
  *      | TC_FIX of tyc * int
- *      | TC_ABS of tyc                    (* currently not used *)
- *      | TC_BOX of tyc                    (* used by rep analysis only *)
- *      | TC_TUPLE of tyc list
- *      | TC_ARROW of rawflag * tyc list * tyc list 
+ *      | TC_WRAP of tyc                   (* used after rep. analysis only *)
+ *      | TC_ABS of tyc                    (* NOT USED *)
+ *      | TC_BOX of tyc                    (* NOT USED *)
+ *      | TC_TUPLE of tyc list             (* rflag hidden *)
+ *      | TC_ARROW of fflag * tyc list * tyc list 
  *
  * We treat tyc as an abstract type so we can no longer use 
  * pattern matching. Type applications (TC_APP) and projections 
@@ -118,10 +165,11 @@ val tcc_seq    : tyc list -> tyc = tc_inj o LK.TC_SEQ
 val tcc_proj   : tyc * int -> tyc = tc_inj o LK.TC_PROJ
 val tcc_sum    : tyc list -> tyc = tc_inj o LK.TC_SUM
 val tcc_fix    : (int * tyc * tyc list) * int -> tyc = tc_inj o LK.TC_FIX
+val tcc_wrap   : tyc -> tyc = fn tc => tc_inj (LK.TC_TOKEN(LK.wrap_token, tc))
 val tcc_abs    : tyc -> tyc = tc_inj o LK.TC_ABS
-val tcc_box    : tyc -> tyc = tc_inj o LK.TC_BOX
-val tcc_tuple  : tyc list -> tyc = tc_inj o LK.TC_TUPLE
-val tcc_arrow  : rawflag * tyc list * tyc list -> tyc = LK.tcc_arw
+val tcc_box    : tyc -> tyc = tc_inj o LK.TC_BOX 
+val tcc_tuple  : tyc list -> tyc = fn ts => tc_inj (LK.TC_TUPLE (rfc_tmp, ts))
+val tcc_arrow  : fflag * tyc list * tyc list -> tyc = LK.tcc_arw
 
 (** tyc deconstructors *)
 val tcd_var    : tyc -> index * int = fn tc =>
@@ -151,6 +199,12 @@ val tcd_sum    : tyc -> tyc list = fn tc =>
 val tcd_fix    : tyc -> (int * tyc * tyc list) * int = fn tc =>
       (case tc_out tc of LK.TC_FIX x => x
                        | _ => bug "unexpected tyc in tcd_fix")  
+val tcd_wrap   : tyc -> tyc = fn tc => 
+      (case tc_out tc 
+        of LK.TC_TOKEN(tk, x) => 
+             if LK.token_eq(tk, LK.wrap_token) then x
+             else bug "unexpected token tyc in tcd_wrap"
+         | _ => bug "unexpected regular tyc in tcd_wrap")
 val tcd_abs    : tyc -> tyc = fn tc =>
       (case tc_out tc of LK.TC_ABS x => x
                        | _ => bug "unexpected tyc in tcd_abs")  
@@ -158,9 +212,9 @@ val tcd_box    : tyc -> tyc = fn tc =>
       (case tc_out tc of LK.TC_BOX x => x
                        | _ => bug "unexpected tyc in tcd_box")  
 val tcd_tuple  : tyc -> tyc list = fn tc =>
-      (case tc_out tc of LK.TC_TUPLE x => x
+      (case tc_out tc of LK.TC_TUPLE (_,x) => x
                        | _ => bug "unexpected tyc in tcd_tuple")  
-val tcd_arrow  : tyc -> rawflag * tyc list * tyc list = fn tc => 
+val tcd_arrow  : tyc -> fflag * tyc list * tyc list = fn tc => 
       (case tc_out tc of LK.TC_ARROW x => x
                        | _ => bug "unexpected tyc in tcd_arrow")  
 
@@ -183,6 +237,9 @@ val tcp_sum    : tyc -> bool = fn tc =>
       (case tc_out tc of LK.TC_SUM _ => true | _ => false)
 val tcp_fix    : tyc -> bool = fn tc => 
       (case tc_out tc of LK.TC_FIX _ => true | _ => false)
+val tcp_wrap   : tyc -> bool = fn tc =>
+      (case tc_out tc of LK.TC_TOKEN (tk, _) => LK.token_eq(tk, LK.wrap_token)
+                       | _ => false)
 val tcp_abs    : tyc -> bool = fn tc => 
       (case tc_out tc of LK.TC_ABS _ => true | _ => false)
 val tcp_box    : tyc -> bool = fn tc => 
@@ -211,12 +268,17 @@ fun tcw_sum (tc, f, g) =
       (case tc_out tc of LK.TC_SUM x => f x | _ => g tc)  
 fun tcw_fix (tc, f, g) = 
       (case tc_out tc of LK.TC_FIX x => f x | _ => g tc)  
+fun tcw_wrap (tc, f, g) = 
+      (case tc_out tc 
+        of LK.TC_TOKEN(rk, x) => 
+             if LK.token_eq(rk, LK.wrap_token) then f x else g tc
+         | _ => g tc)  
 fun tcw_abs (tc, f, g) = 
       (case tc_out tc of LK.TC_ABS x => f x | _ => g tc)  
 fun tcw_box (tc, f, g) = 
       (case tc_out tc of LK.TC_BOX x => f x | _ => g tc)  
 fun tcw_tuple (tc, f, g) = 
-      (case tc_out tc of LK.TC_TUPLE x => f x | _ => g tc)
+      (case tc_out tc of LK.TC_TUPLE (_,x) => f x | _ => g tc)
 fun tcw_arrow (tc, f, g) = 
       (case tc_out tc of LK.TC_ARROW x => f x | _ => g tc)
 
@@ -295,7 +357,7 @@ fun ltw_pst (lt, f, g) =
 val ltc_var    : index * int -> lty = ltc_tyc o tcc_var
 val ltc_prim   : primtyc -> lty = ltc_tyc o tcc_prim
 val ltc_tuple  : lty list -> lty = ltc_tyc o (tcc_tuple o (map ltd_tyc))
-val ltc_arrow  : rawflag * lty list * lty list -> lty = fn (r, t1, t2) => 
+val ltc_arrow  : fflag * lty list * lty list -> lty = fn (r, t1, t2) => 
   let val ts1 = map ltd_tyc t1
       val ts2 = map ltd_tyc t2
    in ltc_tyc (tcc_arrow(r, ts1, ts2))
@@ -305,7 +367,7 @@ val ltc_arrow  : rawflag * lty list * lty list -> lty = fn (r, t1, t2) =>
 val ltd_var    : lty -> index * int = tcd_var o ltd_tyc
 val ltd_prim   : lty -> primtyc = tcd_prim o ltd_tyc
 val ltd_tuple  : lty -> lty list = (map ltc_tyc) o (tcd_tuple o ltd_tyc)
-val ltd_arrow  : lty -> rawflag * lty list * lty list = fn t =>
+val ltd_arrow  : lty -> fflag * lty list * lty list = fn t =>
   let val (r, ts1, ts2) = tcd_arrow (ltd_tyc t)
    in (r, map ltc_tyc ts1, map ltc_tyc ts2)
   end
@@ -336,7 +398,7 @@ fun ltw_prim (lt, f, g) =
 fun ltw_tuple (lt, f, g) = 
   (case lt_out lt 
     of LK.LT_TYC tc => 
-         (case tc_out tc of LK.TC_TUPLE x => f x | _ => g lt)
+         (case tc_out tc of LK.TC_TUPLE (_, x) => f x | _ => g lt)
      | _ => g lt)
 
 fun ltw_arrow (lt, f, g) = 
@@ -404,7 +466,7 @@ fun ltw_cont (lt, f, g) =
 
 (** plambda tyc-lty constructors *)
 val tcc_parrow : tyc * tyc -> tyc =    
-  fn (x, y) => tcc_arrow((false, false), [x], [y])
+  fn (x, y) => tcc_arrow(ffc_var (false, false), [x], [y])
 val ltc_parrow : lty * lty -> lty =
   fn (x, y) => ltc_tyc (tcc_parrow (ltd_tyc x, ltd_tyc y))
 val ltc_ppoly  : tkind list * lty -> lty = fn (ks, t) => ltc_poly(ks, [t]) 
@@ -412,12 +474,9 @@ val ltc_pfct   : lty * lty -> lty = fn (x, y) => ltc_fct ([x], [y])
 
 (** plambda tyc-lty deconstructors *)
 val tcd_parrow : tyc -> tyc * tyc = fn tc =>   
-  let fun tuple [x] = x 
-        | tuple xs = tcc_tuple xs
-   in (case tc_out tc 
-        of LK.TC_ARROW (_, xs, ys) => (tuple xs, tuple ys)
-         | _ => bug "unexpected tyc in tcd_parrow") 
-  end
+  (case tc_out tc 
+    of LK.TC_ARROW (_, xs, ys) => (LK.tc_autotuple xs, LK.tc_autotuple ys)
+     | _ => bug "unexpected tyc in tcd_parrow")
 val ltd_parrow : lty -> lty * lty = fn t =>
   let val (t1, t2) = tcd_parrow (ltd_tyc t)
    in (ltc_tyc t1, ltc_tyc t2)

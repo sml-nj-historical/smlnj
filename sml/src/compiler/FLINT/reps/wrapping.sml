@@ -1,4 +1,4 @@
-(* COPYRIGHT (c) 1996 Bell Laboratories *)
+(* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
 (* wrapping.sml *)
 
 signature WRAPPING =
@@ -24,7 +24,10 @@ val say = Control.Print.say
 
 val mkv = LambdaVar.mkLvar
 val ident = fn le => le
-val IntOpTy = LT.ltc_arw(LT.ltc_tuple[LT.ltc_int,LT.ltc_int],LT.ltc_int)
+val IntOpTy = LT.ltc_parrow(LT.ltc_tuple[LT.ltc_int,LT.ltc_int],LT.ltc_int)
+
+(** based on the given tyc, return its appropriate Update operator *)
+val tcUpd = LT.tc_upd_prim
 
 (****************************************************************************
  *                   MISC UTILITY FUNCTIONS                                 *
@@ -35,8 +38,6 @@ fun ltApply x = case LT.lt_inst x
 fun ltAppSt x = case LT.lt_inst_st x 
                  of [z] => z
                   | _ => bug "unexpected in ltAppSt"
-val ltAppSt2 = Stats.doPhase(Stats.makePhase "Compiler 051 2-ltAppSt") ltAppSt
-val ltAppSt = Stats.doPhase(Stats.makePhase "Compiler 051 1-ltAppSt") ltAppSt
 
 val ltArrow = LT.lt_arrow 
 val ltSelect = LT.lt_select
@@ -49,14 +50,14 @@ val tc_real = LT.tcc_real
 val lt_upd = 
   let val x = LT.ltc_array (LT.ltc_tv 0)
    in LT.ltc_poly([LT.tkc_mono], 
-                  [LT.ltc_arw(LT.ltc_tuple [x, LT.ltc_int, LT.ltc_tv 0], 
-                             LT.ltc_unit)])
+                  [LT.ltc_arrow(LT.ffc_rrflint, [x, LT.ltc_int, LT.ltc_tv 0], 
+                                 [LT.ltc_unit])])
   end
 
 val lt_sub = 
   let val x = LT.ltc_array (LT.ltc_tv 0)
    in LT.ltc_poly([LT.tkc_mono], 
-                  [LT.ltc_arw(LT.ltc_tuple [x, LT.ltc_int], LT.ltc_tv 0)])
+                  [LT.ltc_arrow(LT.ffc_rrflint, [x, LT.ltc_int], [LT.ltc_tv 0])])
   end
 
 datatype primKind = STANDARD | PARRAYOP | RARRAYOP
@@ -76,12 +77,12 @@ fun mkPrim(p as PO.SUBSCRIPT, t, [tc]) =
       if lt_eqv(t,lt_upd)
       then if tc_eqv(tc,tc_real)
            then (PO.NUMUPDATE{kind=PO.FLOAT 64, checked=false}, RARRAYOP)
-           else (let val np = LU.tcUpd tc
+           else (let val np = tcUpd tc
                   in case np
                       of PO.UPDATE => (np, PARRAYOP)
                        | _ => (np, STANDARD)
                  end)
-      else (LU.tcUpd tc, STANDARD)
+      else (tcUpd tc, STANDARD)
   | mkPrim(PO.SUBSCRIPT, _, _) = bug "unexpected SUBSCRIPT primops in mkPrim"
   | mkPrim(PO.UPDATE, _, _) = bug "unexpected UPDATE primops in mkPrim"
   | mkPrim(p, _, []) = bug "unexpected arguments in mkPrim"
@@ -102,13 +103,28 @@ fun mkPrim(p as PO.SUBSCRIPT, t, [tc]) =
  *       the following invariants:                                          *
  *         The resulting lexp is a simply-typed lambda expression, and      *
  *         all explicit type annotations can only be:  ltc_int, ltc_int32,  *
- *         ltc_real, ltc_void, ltc_arw, ltc_tup, or ltc_cont.               * 
+ *         ltc_real, ltc_void, ltc_parrow, ltc_tup, or ltc_cont.            * 
  *                                                                          *
  ****************************************************************************)
 fun transform (wenv, venv, d) = 
 let 
 
 val (tcWrap, ltWrap, tcsWrap) = LU.genWrap true
+
+fun fixDconTy lt = 
+  let fun fix t = 
+        (case LT.ltd_arrow t
+          of (ff, [aty], rtys) =>
+               (case ltWrap aty 
+                 of NONE => t
+                  | SOME naty => LT.ltc_arrow(ff, [naty], rtys))
+           | _ => bug "unexpected type in fixDconTy")
+   in if LT.ltp_ppoly lt then
+        let val (ks, t) = LT.ltd_ppoly lt
+         in LT.ltc_ppoly(ks, fix t)
+        end
+      else fix lt
+  end (* function fixDconTy *)
 
 fun primExp(sv as (PRIM _ | GENOP _), t) = 
       let val x = mkv()
@@ -120,32 +136,7 @@ fun primExp(sv as (PRIM _ | GENOP _), t) =
 fun lpve sv = 
   (case sv
     of VAR v => (SVAL sv, LT.ltLookup(venv, v, d))
-     | INT i => 
-        ((i+i+2; (SVAL sv, LT.ltc_int)) handle Overflow => 
-         (let val x = mkv()    
-              val z = i div 2
-              val (ne,_) = loop(RECORD([INT z,INT (i-z)]))
-
-              (*
-               *  The ordering of the above three lines has caused
-               *  interesting trap-related instruction-scheduling bug. (zsh)
-               *)
-           in (LET(x, ne, APP(PRIM(PO.IADD,IntOpTy,[]), VAR x)), LT.ltc_int)
-          end))
-     | WORD w => 
-        let val maxWord = 0wx20000000
-         in if Word.<(w, maxWord) then 
-              (SVAL sv, LT.ltc_int)
-            else let val addu = 
-                       PO.ARITH{oper=PO.+, overflow=false, kind=PO.UINT 31}
-                     val x1 = Word.div(w, 0w2)
-                     val x2 = Word.-(w, x1)
-                     val (ne,_) = loop(RECORD [WORD x1, WORD x2])
-                     val x = mkv()
-                  in (LET(x, ne, APP(PRIM(addu, IntOpTy, []), VAR x)),
-                      LT.ltc_int)
-                 end
-        end
+     | (INT _ | WORD _) => (SVAL sv, LT.ltc_int)
      | (INT32 _ | WORD32 _) => (SVAL sv, LT.ltc_int32)
      | REAL _ => (SVAL sv, LT.ltc_real)
      | STRING _ => (SVAL sv, LT.ltc_string)
@@ -223,8 +214,8 @@ and loop le =
           in (case tcsWrap ts
                of NONE => (hdr0(TAPP(nv, ts)), ltApply(lt, ts))
                 | SOME nts => 
-                    let val nt = ltAppSt2(lt, nts)
-                        val ot = ltAppSt2(lt, ts)
+                    let val nt = ltAppSt(lt, nts)
+                        val ot = ltAppSt(lt, ts)
                         val hdr = CO.unwrapOp (wenv, nt, ot, d)
                         
                      in (hdr0(hdr(TAPP(nv, nts))), ot)
@@ -245,6 +236,7 @@ and loop le =
                of NONE => (hdr0(CON(x, ts, nv)), res)
                 | SOME nargt =>
                     let val hdr = CO.wrapOp (wenv, nargt, argt, d)
+                        val x = (name, rep, fixDconTy lt)
                         val ne = hdr0(hdr(SVAL nv))
                      in case ne 
                          of SVAL nnv => (CON(x, ts, nnv), res)
@@ -265,6 +257,7 @@ and loop le =
                of NONE => (hdr0(DECON(x, ts, nv)), res)
                 | SOME nres =>
                     let val hdr = CO.unwrapOp (wenv, nres, res, d)
+                        val x = (name, rep, fixDconTy lt)
                      in (hdr(hdr0(DECON(x, ts, nv))), res)
                     end)
          end

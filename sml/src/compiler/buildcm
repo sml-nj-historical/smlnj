@@ -45,7 +45,7 @@ BIN="../../bin"
 CMPATH=""
 PROF=""
 CHECK=""
-STATS=""
+STATS='Compiler.Stats.summarySp ();'
 CURDIR=`pwd`
 cd ../cm/
 
@@ -126,7 +126,10 @@ do
                    structure CheckItOut = CheckIt (Compiler);'
             ;;
 	-stats)
-	    STATS='Compiler.Stats.summary ();'
+	    STATS='Compiler.Stats.summarySp ();'
+	    ;;
+	-nostats)
+	    STATS=""
 	    ;;
 	*)
 	    ARGS="$ARGS $arg"
@@ -177,7 +180,6 @@ $SML $ARGS <<ZZZ
         val _ = Posix.FileSys.chdir "../cm/";
 	use "$tmp";
 	$STATS
-        Compiler.Stats.summary();
         val _ = Posix.FileSys.chdir "$CURDIR";
 	(SMLofNJ.exportML "$HEAP_IMAGE";
          print (Compiler.banner ^ " [CM&CMB]\n");

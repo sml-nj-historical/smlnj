@@ -1,119 +1,72 @@
-(* Copyright 1996 by Bell Laboratories *)
+(* Copyright 1998 YALE FLINT PROJECT *)
 (* coerce.sml *)
 
-signature COERCE = sig
+signature COERCE_NEW = sig
 
   type wpEnv
-
   val initWpEnv: unit -> wpEnv
   val wpNew    : wpEnv * DebIndex.depth -> wpEnv
   val wpBuild  : wpEnv * FLINT.lexp -> FLINT.lexp
 
   val unwrapOp : wpEnv * LtyDef.lty list * LtyDef.lty list * DebIndex.depth
-                   -> (FLINT.lexp -> FLINT.lexp) 
+                   -> (FLINT.value list -> FLINT.lexp) option
 
   val wrapOp   : wpEnv * LtyDef.lty list * LtyDef.lty list * DebIndex.depth
-                   -> (FLINT.lexp -> FLINT.lexp) 
+                   -> (FLINT.value list -> FLINT.lexp) option
 
 end (* signature COERCE *)
 
-structure Coerce : COERCE  = 
+structure CoerceNEW : COERCE_NEW  = 
 struct
 
 local structure DI = DebIndex
       structure LT = LtyExtern
-      structure LU = LtyUtil
       structure LV = LambdaVar
+      structure PF = PFlatten
       structure FU = FlintUtil
       open LtyKernel FLINT
-      val WRAP = FU.WRAP
-      val UNWRAP = FU.UNWRAP
 in
 
 (****************************************************************************
  *                  UTILITY FUNCTIONS AND CONSTANTS                         * 
  ****************************************************************************) 
 
-fun bug s = ErrorMsg.impossible ("CoerceLexp: " ^ s)
+fun bug s = ErrorMsg.impossible ("Coerce: " ^ s)
 fun say (s : string) = Control.Print.say s
 
-val mkv = LV.mkLvar
+fun mkv _ = LV.mkLvar ()
 val ident = fn le => le
-
-fun split(RET [v]) = (v, ident)
-  | split x = let val v = mkv()
-               in (VAR v, fn z => LET([v], x, z))
-              end
-
-fun APPg(e1, e2) = 
-  let val (v1, h1) = split e1
-      val (v2, h2) = split e2
-   in h1(h2(APP(v1, [v2])))
-  end
-
-fun RECORDg es = 
-  let val x = mkv()
-      fun f ([], vs, hdr) = hdr(RECORD (FU.rk_tuple, rev vs, x, RET[VAR x]))
-        | f (e::r, vs, hdr) = 
-              let val (v, h) = split e
-               in f(r, v::vs, hdr o h)
-              end
-   in f(es, [], ident)
-  end
-
-fun SRECORDg es = 
-  let val x = mkv()
-      fun f ([], vs, hdr) = hdr(RECORD (RK_STRUCT, rev vs, x, RET[VAR x]))
-        | f (e::r, vs, hdr) = 
-              let val (v, h) = split e
-               in f(r, v::vs, hdr o h)
-              end
-   in f(es, [], ident)
-  end
-
-fun WRAPg (z, b, e) = 
-  let val x = mkv()
-      val (v, h) = split e
-   in h(WRAP(z, v, x, RET[VAR x]))
-  end
-
-fun UNWRAPg (z, b, e) = 
-  let val x = mkv()
-      val (v, h) = split e
-   in h(UNWRAP(z, v, x, RET[VAR x]))
-  end
-
+val fkfun = FK_FUN{isrec=NONE, known=false, inline=true, fixed=LT.ffc_fixed}
 fun fromto(i,j) = if i < j then (i::fromto(i+1,j)) else []
 
-fun option(NONE) = false
-  | option(SOME _) = true
+fun opList (NONE :: r) = opList r
+  | opList ((SOME _) :: r) = true
+  | opList [] = false
 
-fun exists(p, a::r) = if p a then true else exists(p, r)
-  | exists(p, []) = false
+fun WRAP(t, u, kont) = 
+  let val v = mkv() 
+   in FU.WRAP(t, [u], v, kont(VAR v))
+  end
 
-fun opList l = exists(option, l)
+fun UNWRAP(t, u, kont) = 
+  let val v = mkv() 
+   in FU.UNWRAP(t, [u], v, kont (VAR v))
+  end
 
-fun force (NONE, le) = le
-  | force (SOME f, le) = f le
-
-fun minList (a : int, []) = a
-  | minList (a, b::r) = if a > b then minList(b, r) else minList(a, r)
+fun RETv (v) = RET [v]
 
 (****************************************************************************
- *                           WRAPPER CACHES                                 *
+ *              WRAPPER CACHES AND WRAPPER ENVIRONMENTS                     *
  ****************************************************************************) 
-type tpairs = lty * lty
-type hdr = lexp -> lexp
+type hdr = value -> lexp
 type hdrOp = hdr option
 
 type wpCache = (lty * hdrOp) list IntmapF.intmap
+type wpEnv = (fundec list ref * wpCache ref) list
 
 val initWpCache : wpCache = IntmapF.empty
+fun initWpEnv () = [(ref [], ref initWpCache)]
 
-(*
- * Warning: because the hash key is not unique, so the following
- * code is problematic. It should be corrected in the future (ZHONG)
- *)
 fun wcEnter([], t, x) = bug "unexpected wenv in wcEnter"
   | wcEnter((_, z as ref m)::_, t, x) =
       let val h = lt_key t
@@ -128,15 +81,11 @@ fun wcLook([], t) = bug "unexpected wenv in wcLook"
         in loop(IntmapF.lookup m (lt_key t))
        end handle IntmapF.IntmapF => NONE)
 
-(****************************************************************************
- *                         WRAPPER ENVIRONMENTS                             *
- ****************************************************************************) 
-type wpEnv = (fundec list ref * wpCache ref) list
-fun initWpEnv () = [(ref [], ref initWpCache)]
-
 fun wpNew(wpEnv, d) = 
   let val od = length wpEnv
-      val _ = if (d+1 = od) then () else bug "inconsistent state in wpNew"
+      val _ = (* sanity check *)
+        if (d+1 = od) then () 
+        else bug "inconsistent state in wpNew"
    in (ref [], ref initWpCache)::wpEnv
   end
 
@@ -151,17 +100,56 @@ fun addWrappers(wenv, p, d) =
    in (wref := (p::(!wref)))
   end
 
+(* appWraps : hdrOp list * value list * (value list -> lexp) -> lexp *)
+fun appWraps (wps, vs, cont) = 
+  let fun g (NONE::ws, v::vs, hdr, nvs) = g(ws, vs, hdr, v::nvs)
+        | g ((SOME f)::ws, v::vs, hdr, nvs) = 
+              let val nv = mkv()
+               in g(ws, vs, fn le => hdr(LET([nv], f v, le)), (VAR nv)::nvs)
+              end
+        | g ([], [], hdr, nvs) = hdr(cont(rev nvs))
+        | g _ = bug "unexpected cases in appWraps"
+   in g(wps, vs, ident, [])
+  end (* function appWraps *)
+
+(* appWrapsWithFiller does the same thing as appWraps, except that
+ * it also fills in proper coercions when there are mismatches between
+ * the original values. Occurs strictly only for TC_ARROW case. The
+ * filler is generated by the PFlatten.v_coerce function.
+ *
+ * The boolean flag indicates if the filler should be applied before 
+ * wrapping or after wrapping.
+ *
+ * appWrapsWithFiller: 
+ *   bool -> {filler: (value list -> (value list * (lexp -> lexp))) option,
+ *            wps: hdrOp list, args: value list, cont: (value list -> lex)}
+ *        -> lexp 
+ *)
+fun appWrapsWithFiller before_wrap {filler=NONE, wps, args, cont} = 
+      appWraps(wps, args, cont)
+
+  | appWrapsWithFiller before_wrap {filler=SOME ff, wps, args, cont} = 
+      let val ((nargs, nhdr), ncont) = 
+            if before_wrap then (ff args, cont)
+            else ((args, ident), 
+                  fn vs => let val (nvs, h) = ff vs 
+                            in h(cont(nvs)) 
+                           end)
+       in nhdr(appWraps(wps, nargs, ncont))
+      end (* function appWrapsWithFiller *)
+
 (****************************************************************************
  *                            MAIN FUNCTIONS                                *
  ****************************************************************************) 
-fun wrapperGen (wflag, sflag) (wenv, nt, ot, d) = 
+fun wrapperGen (wflag, sflag) (wenv, nts, ots, d) = 
 let 
 
 val doWrap = 
   if sflag then 
-     (fn (w, fdec) => (addWrappers(wenv, (w,fdec), d); RET [VAR w]))
+    (fn (w, fdec) => (addWrappers(wenv, fdec, d); 
+                      (fn u => APP(VAR w, [u]))))
   else 
-     (fn (w, fdec) => FIX([fdec], RET[VAR w]))
+    (fn (w, fdec) => (fn u => FIX([fdec], APP(VAR w, [u]))))
 
 fun getWTC(wflag, nx, ox, doit) = 
   if tc_eqv(nx, ox) then NONE
@@ -178,7 +166,7 @@ fun getWTC(wflag, nx, ox, doit) =
 
 fun getWLT(wflag, nx, ox, doit) = 
   if lt_eqv(nx, ox) then NONE
-  else (if sflag then 
+  else (if sflag then  (*** we could always force the sharing here ***)
           (let val mark = if wflag then LT.ltc_int else LT.ltc_real (* hack *)
                val key = LT.ltc_str [nx, ox, mark]
             in case wcLook(wenv, key)
@@ -191,58 +179,88 @@ fun getWLT(wflag, nx, ox, doit) =
 
 fun tcLoop wflag (nx, ox) = 
   getWTC(wflag, nx, ox, 
-   (fn (TC_BOX nz, _) => 
-          let (* major gross hack mode ON ----- *)
-              val nz = case LU.tcWrap ox (* was nz *)
-                        of NONE => nz
-                         | SOME x => 
-                             if tc_eqv(x, nx) then nz 
-                             else (case tc_out x of TC_BOX z => z
-                                                  | _ => nz)
-              (* major gross hack mode OFF ----- *)
-
-              val wp = tcLoop wflag (nz, ox)
-              fun hdr le = 
-                case wp of NONE => le
-                         | SOME _ => force(wp, le) 
-           in if wflag then SOME(fn le => WRAPg(nz, true, hdr le))
-              else SOME(fn le => hdr(UNWRAPg(nz, true, le)))
-          end          
-
-     | (TC_TUPLE (_, nxs), TC_TUPLE (_, oxs)) => 
+   (fn (TC_TOKEN (_, nz), _) => (* sanity check: tcc_wrap(ox) = nx *)
+          if LT.tcp_wrap nx then
+              let val (ax, act) = if wflag then (ox, WRAP) else (nx, UNWRAP)
+               in if LT.tcp_prim ox then SOME (fn u => act(ox, u, RETv))
+                  else let val wp = tcLoop wflag (nz, ox)
+                           val f = mkv() and v = mkv()
+                           val (tx, kont, u, hdr) = 
+                             (case wp 
+                               of NONE => (ox, RETv, VAR v, ident)
+                                | SOME hh =>
+                                    if wflag then
+                                      let val z = mkv()
+                                       in (nz, RETv, VAR z, 
+                                           fn e => LET([z], hh(VAR v), e))
+                                      end
+                                    else (nz, hh, VAR v, ident))
+                           val fdec = (fkfun, f, [(v, LT.ltc_tyc ax)], 
+                                       hdr(act(tx, u, kont)))
+                        in SOME(doWrap(f, fdec))
+                       end
+              end
+          else bug "unexpected TC_TOKEN in tcLoop"
+     | (TC_TUPLE (nrf, nxs), TC_TUPLE (orf, oxs)) => 
           let val wps = ListPair.map (tcLoop wflag) (nxs, oxs)
            in if opList wps then 
-                let val v = mkv()
+                let val f = mkv() and v = mkv()
                     val nl = fromto(0, length nxs)
-                    val base = map (fn i => SELECT(i, VAR v)) nl
-                    val res = ListPair.map force (wps, base)
-                    val ax = if wflag then LT.ltc_tyc ox else LT.ltc_tyc nx
-                    val e = doWrap(v, ax, RECORDg res)
-                 in SOME(fn le => APPg(e, le))
+                    val u = VAR v
+                    val (nvs, hdr) =  (* take out all the fields *)
+                      foldr (fn (i, (z,h)) => 
+                              let val x = mkv()
+                               in ((VAR x)::z, 
+                                   fn le => SELECT(u, i, x, h le))
+                              end) ([], ident) nl
+
+                    val (ax, rf) = 
+                      if wflag then (LT.ltc_tyc ox, nrf) 
+                      else (LT.ltc_tyc nx, orf)
+                    fun cont nvs = 
+                      let val z = mkv()
+                       in RECORD(RK_TUPLE rf, nvs, z, RET[VAR z])
+                      end
+                    val body = hdr(appWraps(wps, nvs, cont))
+                    val fdec = (fkfun, f, [(v, ax)], body)
+                 in SOME(doWrap(f, fdec))
                 end
               else NONE
           end
-     | (TC_ARROW _, TC_ARROW _) => 
-          let val (nx1, nx2) = LT.tcd_parrow nx
-              val (ox1, ox2) = LT.tcd_parrow ox
-              val wp1 = tcLoop (not wflag) (nx1, ox1)
-              val wp2 = tcLoop wflag (nx2, ox2)
-           in (case (wp1, wp2)
-                of (NONE, NONE) => NONE
+     | (TC_ARROW (_, nxs1, nxs2), TC_ARROW (_, oxs1, oxs2)) => 
+          let val (awflag, rwflag) = (not wflag, wflag) (* polarity *)
+              val (oxs1', filler1) = PF.v_coerce (awflag, nxs1, oxs1)
+              val wps1 = ListPair.map (tcLoop awflag) (nxs1, oxs1')
+              val (oxs2', filler2) = PF.v_coerce (rwflag, nxs2, oxs2)
+              val wps2 = ListPair.map (tcLoop rwflag) (nxs2, oxs2')
+           in (case (opList wps1, opList wps2, filler1, filler2)
+                of (false, false, NONE, NONE) => NONE
                  | _ => 
-                    let val r = mkv() and v = mkv() and w = mkv()
-                        val ve = force(wp1, SVAL(VAR v))
-                        val re = force(wp2, SVAL(VAR r))
-                        val (ax, rx) = if wflag then (ox, nx1) else (nx, ox1)
-                        val (ax, rx) = (LT.ltc_tyc ax, LT.ltc_tyc rx)
-                        val e = doWrap(w, ax, 
-                                   FN(v, rx,
-                                        LET(r, APPg(SVAL(VAR w), ve), re)))
-                     in SOME (fn le => APPg(e, le))
+                    let val wf = mkv() and f = mkv() and rf = mkv()
+                        val (ax, rxs1, rxs2) = 
+                          if wflag then (LT.ltc_tyc ox, nxs1, oxs2) 
+                          else (LT.ltc_tyc nx, oxs1, nxs2)
+
+                        val params = map (fn t => (mkv(), LT.ltc_tyc t)) rxs1
+                        val avs = map (fn (x, _) => VAR x) params
+                        val rvs = map mkv rxs2
+                        val rbody = 
+                          LET(rvs, 
+                              appWrapsWithFiller awflag 
+                                {filler=filler1, wps=wps1, args=avs,
+                                 cont=(fn wvs => APP(VAR f, wvs))},
+                              appWrapsWithFiller rwflag
+                                {filler=filler2, wps=wps2, 
+                                 args=map VAR rvs, cont=RET})
+
+                        val rfdec = (fkfun, rf, params, rbody)
+                        val body = FIX([rfdec], RET[VAR rf])
+                        val fdec = (fkfun, wf, [(f, ax)], body)
+                     in SOME (doWrap(wf, fdec))
                     end)
           end
      | (_, _) => 
-          if LT.tc_eqv_bx(nx, ox) then NONE 
+          if LT.tc_eqv_x(nx, ox) then NONE
           else (say " Type nx is : \n"; say (LT.tc_print nx);
                 say "\n Type ox is : \n"; say (LT.tc_print ox); say "\n";
                 bug "unexpected other tycs in tcLoop")))
@@ -253,112 +271,98 @@ fun ltLoop wflag (nx, ox) =
      | (LT_STR nxs, LT_STR oxs) => 
           let val wps = ListPair.map (ltLoop wflag) (nxs, oxs)
            in if opList wps then 
-                let val v = mkv()
+                let val f = mkv() and v = mkv()
                     val nl = fromto(0, length nxs)
-                    val base = map (fn i => SELECT(i, VAR v)) nl
-                    val res = ListPair.map force (wps, base)
+                    val u = VAR v
+                    val (nvs, hdr) =  (* take out all the fields *)
+                      foldr (fn (i, (z,h)) => 
+                              let val x = mkv()
+                               in ((VAR x)::z, 
+                                   fn le => SELECT(u, i, x, h le))
+                              end) ([], ident) nl
+                    fun cont nvs = 
+                      let val z = mkv()
+                       in RECORD(RK_STRUCT, nvs, z, RET[VAR z])
+                      end
+                    val body = hdr(appWraps(wps, nvs, cont))
                     val ax = if wflag then ox else nx
-                    val e = doWrap(v, ax, SRECORDg res)
-                 in SOME(fn le => APPg(e, le))
+                    val fdec = (FK_FCT, f, [(v, ax)], body)
+                 in SOME(doWrap(f, fdec))
                 end
               else NONE
           end
-     | (LT_FCT _, LT_FCT _) => 
-          let val (nx1, nx2) = 
-                case LT.ltd_fct nx of ([a],[b]) => (a,b)
-                                    | _ => bug "unexpected LT_FCT"
-              val (ox1, ox2) = 
-                case LT.ltd_fct ox of ([a],[b]) => (a,b)
-                                    | _ => bug "unexpected LT_FCT"
-              val wp1 = ltLoop (not wflag) (nx1, ox1)
-              val wp2 = ltLoop wflag (nx2, ox2)
-           in (case (wp1, wp2)
-                of (NONE, NONE) => NONE
+     | (LT_FCT (nxs1, nxs2), LT_FCT (oxs1, oxs2)) => 
+          let val wps1 = ListPair.map (ltLoop (not wflag)) (nxs1, oxs1)
+              val wps2 = ListPair.map (ltLoop wflag) (nxs2, oxs2)
+           in (case (opList wps1, opList wps2)
+                of (false, false) => NONE
                  | _ => 
-                    let val r = mkv() and v = mkv() and w = mkv()
-                        val ve = force(wp1, SVAL (VAR v))
-                        val re = force(wp2, SVAL (VAR r))
-                        val (ax, rx) = if wflag then (ox, nx1) else (nx, ox1)
-                        val e = doWrap(w, ax, FN(v, rx,
-                                         LET(r, APPg(SVAL(VAR w), ve), re)))
-                     in SOME (fn le => APPg(e, le))
+                    let val wf = mkv() and f = mkv() and rf = mkv()
+                        val (ax, rxs1, rxs2) = 
+                          if wflag then (ox, nxs1, oxs2) else (nx, oxs1, nxs2)
+
+                        val params = map (fn t => (mkv(), t)) rxs1
+                        val avs = map (fn (x, _) => VAR x) params
+                        val rvs = map mkv rxs2
+                        val rbody = 
+                          LET(rvs, 
+                              appWraps(wps1, avs, fn wvs => APP(VAR f, wvs)),
+                              appWraps(wps2, map VAR rvs, fn wvs => RET wvs))
+
+                        val rfdec = (FK_FCT, rf, params, rbody)
+                        val body = FIX([rfdec], RET[VAR rf])
+                        val fdec = (FK_FCT, wf, [(f, ax)], body)
+                     in SOME (doWrap(wf, fdec))
                     end)
           end
-     | (LT_POLY(nks, [nz]), LT_POLY(oks, [oz])) => 
+     | (LT_POLY(nks, nzs), LT_POLY(oks, ozs)) => 
           let val nwenv = wpNew(wenv, d)
-              val nd = DI.next d
-              val wp = wrapperGen (wflag, sflag) (nwenv, nz, oz, nd)
+              val wp = wrapperGen (wflag, sflag) (nwenv, nzs, ozs, DI.next d)
            in (case wp
                 of NONE => NONE
-                 | SOME z => 
-                    let val nl = fromto(0, length nks) 
+                 | SOME (hdr : value list -> lexp) => 
+                    let val wf = mkv() and f = mkv() and rf = mkv() 
+                        val (ax, aks, rxs)  = 
+                          if wflag then (ox, nks, ozs) else (nx, oks, nzs)
+                        val nl = fromto(0, length nks) 
                         val ts = map (fn i => LT.tcc_var(DI.innermost, i)) nl
-                        val v = mkv() and w = mkv() 
-                        val ax = if wflag then ox else nx
-                        val we = LET(v, TAPP(VAR w, ts), 
-                                     force(wp, SVAL(VAR v)))
-                        val nwe = wpBuild(nwenv, we)
-                        val e = doWrap(w, ax, TFN(nks, nwe))
-                     in SOME(fn le => APPg(e, le))
+                        val avs = map mkv rxs
+                        val rbody = 
+                          LET(avs, TAPP(VAR f, ts), hdr (map VAR avs))
+                        val nrbody = wpBuild(nwenv, rbody)
+                        val atvks = map (fn k => (LT.mkTvar(),k)) aks
+                        val body = TFN((rf, atvks, nrbody), RET[VAR rf])
+                        val fdec = (FK_FCT, wf, [(f, ax)], body)
+                     in SOME(doWrap(wf, fdec))
                     end)
           end
-     | _ => bug "unexpected pair of ltys in ltTrans"))
+     | _ => 
+          (say " Type nx is : \n"; say (LT.lt_print nx);
+           say "\n Type ox is : \n"; say (LT.lt_print ox); say "\n";
+           bug "unexpected other ltys in ltLoop")))
 
- in ltLoop wflag (nt, ot)
+val wps = ListPair.map (ltLoop wflag) (nts, ots)
+
+in if opList wps 
+   then SOME (fn vs => appWraps(wps, vs, RET))
+   else NONE
 end (* function wrapperGen *)
 
-(** share or not share ? currently, module wrappers share ! *)
-fun sFlag lt = (case (lt_out lt) 
-                 of LT_TYC _ => !Control.CG.sharewrap (* was always false *)
-                  | _ => true)
+fun unwrapOp (wenv, nts, ots, d) = 
+  let val nts' = map lt_norm nts
+      val ots' = map lt_norm ots
+      val sflag = !Control.CG.sharewrap
+   in wrapperGen (false, sflag) (wenv, nts', ots', d)
+  end (* function unwrapOp *)
 
-fun unwrapOp (wenv, nt, ot, d) = 
-  (case (wrapperGen (false, sFlag nt) (wenv, nt, ot, d))
-    of NONE => ident
-     | SOME wp => 
-         let fun h (x as SVAL(VAR _)) = wp(x)
-               | h x = let val v = mkv()
-                        in LET(v, x, wp(SVAL(VAR v)))
-                       end
-          in h
-         end)
-
-fun wrapOp (wenv, nt, ot, d) = 
-  (case (wrapperGen (true, sFlag nt) (wenv, nt, ot, d))
-    of NONE => ident
-     | SOME wp => 
-         let fun h (x as SVAL(VAR _)) = wp(x)
-               | h x = let val v = mkv()
-                        in LET(v, x, wp(SVAL(VAR v)))
-                       end
-          in h
-         end)
+fun wrapOp (wenv, nts, ots, d) = 
+  let val nts' = map lt_norm nts
+      val ots' = map lt_norm ots
+      val sflag = !Control.CG.sharewrap
+   in wrapperGen (true, sflag) (wenv, nts', ots', d)
+  end (* function wrapOp *)
 
 end (* toplevel local *)
 end (* structure Coerce *)
 
 
-(*
- * $Log: coerce.sml,v $
- * Revision 1.4  1997/08/22  18:39:07  george
- *   Sharing the wrappers for core-language polymorphic functions also.
- *   The sharing can be turned off by setting Compiler.Control.CG.sharewrap
- *   to false.
- *
- * 								-- zsh
- *
- * Revision 1.3  1997/07/15  16:21:25  dbm
- *   Fix representation bug (#1209).
- *
- * Revision 1.2  1997/05/05  20:00:09  george
- *   Change the term language into the quasi-A-normal form. Added a new round
- *   of lambda contraction before and after type specialization and
- *   representation analysis. Type specialization including minimum type
- *   derivation is now turned on all the time. Real array is now implemented
- *   as realArray. A more sophisticated partial boxing scheme is added and
- *   used as the default.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:46  george
- *   Version 109.24
- *
- *)

@@ -429,11 +429,6 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 	(finalDtycs,finalWithtycs,finalDcons,finalEnv)
     end (* fun elabDATATYPEdec0 *)
 
-(*
-val elabDATATYPEdec = 
-  Stats.doPhase (Stats.makePhase "Compiler 032 7-elabDataTy") elabDATATYPEdec
-*)
-
 end (* local *)
 end (* structure ElabType *)
 

@@ -7,39 +7,32 @@ sig
 type tkind = LtyDef.tkind
 type tyc = LtyDef.tyc
 type lty = LtyDef.lty
+
 type tvar = LtyDef.tvar 
 type lvar = LambdaVar.lvar
 
+type fflag = LtyDef.fflag
+type rflag = LtyDef.rflag
+
 (** classifying various kinds of functions *)
-type fkind = 
-  {isrec : lty list option, 
-   raw   : LtyDef.rawflag,
-   isfct : bool}
-(*
- * rec --- NONE means non-recursive
- *	      SOME t means that t is the function type.
- * raw --- true means that argument/result flattening has been done
- *
- * In the future, we want to cover the following and more:
- *
- *  FK_KREC            known recursive functions 
- *  FK_KNOWN           general known functions 
- *  FK_ESCAPE          general escaping functions 
- *  FK_KTAIL           tail-recursive kernal 
- *  FK_NOINL           no in-line expansions are allowed inslide 
- *  FK_HANDLER         exception handler 
- *)
+datatype fkind 
+  = FK_FCT
+  | FK_FUN of 
+      {isrec : lty list option,  (* is this function recursive ? *)
+       fixed : fflag,            (* is calling convention fixed ? *)
+       known : bool,             (* is this function known, default: false *)
+       inline: bool}             (* is this inlinable, default: not isrec *)
 
 (** classifying various kinds of records *)
 datatype rkind
-  = RK_VECTOR of tyc  (* vector: all elements have same type *)
-  | RK_RECORD         (* tuple: all elements are monomorphic *)
-  | RK_STRUCT         (* module: elements may be polymorphic *)
+  = RK_VECTOR of tyc           (* vector: all elements have same type *)
+  | RK_STRUCT                  (* module: elements may be polymorphic *)
+  | RK_TUPLE of rflag          (* tuple: all fields are monomorphic *)
 
 (*
  * dcon records the name of the constructor (for debugging), the 
- * corresponding conrep, and the lambda type lty; the value carrying 
- * data constructors must have the arrow type. 
+ * corresponding conrep, and the flint type lty (which must be an
+ * arrow type). The use of conrep will go away soon.
  *)
 type dcon = Symbol.symbol * Access.conrep * lty
 
@@ -47,17 +40,17 @@ type dcon = Symbol.symbol * Access.conrep * lty
  * con: used to specify all possible switching statements. Efficient switch
  * generation can be applied to DATAcon and INTcon. Otherwise, the switch is 
  * just a short-hand of the binary branch trees. Some of these instances 
- * such as REALcon probably should go away.
+ * such as REALcon and VLENcon will go away soon.
  *)
 datatype con 
-  = DATAcon of dcon * tyc list * lvar list
+  = DATAcon of dcon * tyc list * lvar 
   | INTcon of int                          (* should use InfInf.int *)
   | INT32con of Int32.int 
   | WORDcon of word 
   | WORD32con of Word32.word 
   | REALcon of string 
   | STRINGcon of string 
-  | VLENcon of int                  (* ??? require checks on vec select *) 
+  | VLENcon of int 
 
 (** simple values, including variables and static constants. *)
 datatype value
@@ -75,38 +68,29 @@ datatype lexp
   | LET of lvar list * lexp * lexp
 
   | FIX of fundec list * lexp 
-  | APP of value * value list 
+  | APP of value * value list  
 
-  | TFN of tfundec * lexp                           
-  | TAPP of value * tyc list
+  | TFN of tfundec * lexp
+  | TAPP of value * tyc list 
 
   | SWITCH of value * Access.consig * (con * lexp) list * lexp option
-  | CON of dcon * tyc list * value list * lvar * lexp  
+  | CON of dcon * tyc list * value * lvar * lexp  
 
   | RECORD of rkind * value list * lvar * lexp
   | SELECT of value * int * lvar * lexp          (* add rkind ? *)
 
-  | RAISE of value * lty list
+  | RAISE of value * lty list                    
   | HANDLE of lexp * value
-  | ETAG of tyc * value * lvar * lexp            
 
+  | BRANCH of primop * value list * lexp * lexp
   | PRIMOP of primop * value list * lvar * lexp
-  | GENOP of dict * primop * value list * lvar * lexp
 
-  | WRAP of tyc * value * lvar * lexp
-  | UNWRAP of tyc * value * lvar * lexp
-
-(** the return type is not required for non-recursive functions *)
 withtype fundec = fkind * lvar * (lvar * lty) list * lexp
+and tfundec = lvar * (tvar * tkind) list * lexp  
+and dict = {default: lvar, table: (tyc list * lvar) list} 
+and primop = dict option * PrimOp.primop * lty * tyc list 
+        (* Invariant: primop's lty is always fully closed *)
 
-(** definitions of type functions, result type not required *)
-and tfundec = lvar * (tvar * tkind) list * lexp
-
-(** used by GENOP only, should go away soon *)
-and dict = {default: lvar, table: (tyc list * lvar) list}
-
-and primop = PrimOp.primop * lty * tyc list
-
-type prog = fundec (* was "lvar * lty * lexp" *)
+type prog = fundec  (* was "lvar * lty * lexp" *)
 
 end (* signature FLINT *)

@@ -14,9 +14,9 @@ structure Version : sig
   end = struct
 
     val version = {
-	    system = "Standard ML of New Jersey (FLINT v1.2)",
+	    system = "Standard ML of New Jersey (FLINT v1.3)",
 	    version_id = [110,3],
-	    date = "Rev. 02/23/98"
+	    date = "Rev. 03/13/98"
 	  }
 
     fun f ([], l) = l

@@ -3,31 +3,47 @@
 
 signature TRANSTYPES = 
 sig
-  val tpsKnd : Types.tycpath -> PLambdaType.tkind
-  val tpsTyc : DebIndex.depth -> Types.tycpath -> PLambdaType.tyc
-
-  val toTyc  : DebIndex.depth -> Types.ty -> PLambdaType.tyc
-  val toLty  : DebIndex.depth -> Types.ty -> PLambdaType.lty
+  val genTT  : unit -> {tpsKnd : Types.tycpath -> PLambdaType.tkind,
+                        tpsTyc : DebIndex.depth -> Types.tycpath 
+                                 -> PLambdaType.tyc,
+                        toTyc  : DebIndex.depth -> Types.ty -> PLambdaType.tyc,
+                        toLty  : DebIndex.depth -> Types.ty -> PLambdaType.lty,
+                        strLty : Modules.Structure * DebIndex.depth 
+                                 * ElabUtil.compInfo -> PLambdaType.lty,
+                        fctLty : Modules.Functor * DebIndex.depth 
+                                 * ElabUtil.compInfo -> PLambdaType.lty}
 end (* signature TRANSTYPES *)
 
 structure TransTypes : TRANSTYPES = 
 struct
 local structure BT = BasicTypes
+      structure DA = Access   
       structure DI = DebIndex
-      structure PT = PrimTyc
+      structure EE = EntityEnv
+      structure EM = ErrorMsg
+      structure EPC = EntPathContext
+      structure EV = EvalEntity
+      structure INS = Instantiate
+      structure IP = InvPath
       structure LT = PLambdaType
+      structure PT = PrimTyc
+      structure MU = ModuleUtil
+      structure SE = StaticEnv
       structure TU = TypesUtil
-      open Types
-
-      val tcAppSt = LT.tcc_app
+      open Types Modules ElabDebug
 in
 
 fun bug msg = ErrorMsg.impossible ("TransTypes: " ^ msg)
 val say = Control.Print.say 
+val debugging = Control.CG.tmdebugging
+fun debugmsg (msg: string) =
+  if !debugging then (say msg; say "\n") else ()
+val debugPrint = (fn x => debugPrint debugging x)
+val defaultError =
+  EM.errorNoFile(EM.defaultConsumer(),ref false) SourceMap.nullRegion
 
 local
 structure PP = PrettyPrint
-structure EM = ErrorMsg
 in
 val env = StaticEnv.empty
 fun ppType x = 
@@ -45,6 +61,9 @@ fun ppTycon x =
   handle _ => say "fail to print anything")
 end
 
+(****************************************************************************
+ *               TRANSLATING ML TYPES INTO FLINT TYPES                      *
+ ****************************************************************************)
 local val recTyContext = ref [~1]
 in 
 fun enterRecTy (a) = (recTyContext := (a::(!recTyContext)))
@@ -145,7 +164,7 @@ and tycTyc(tc, d) =
                   fun fromto(i,j) = if i < j then (i::fromto(i+1,j)) else []
                   val fs = fromto(0, n)
                   val ts = map (fn i => LT.tcc_var(DI.innermost, i)) fs
-                  val b = tcAppSt(tycTyc(tc, DI.next d), ts)
+                  val b = LT.tcc_app(tycTyc(tc, DI.next d), ts)
                in LT.tcc_fn(ks, LT.tcc_abs b)
               end
               <<<*)
@@ -184,12 +203,14 @@ and toTyc d t =
   let val m : (tyvar * LT.tyc) list ref = ref []
       fun lookTv tv = 
         let val xxx = !m
-            fun uu ((a,x)::r) = if a = tv then x else uu r
-              | uu [] = let val zz = h (!tv)
-                            val _ = (m := ((tv,zz)::xxx))
-                         in zz
-                        end
-         in uu xxx
+            fun uu ((z as (a,x))::r, b, n) = 
+                 if a = tv then (x, z::((rev b)@r)) else uu(r, z::b, n+1)
+              | uu ([], b, n) = let val zz = h (!tv)
+                                    val nb = if n > 64 then tl b else b
+                                 in (zz, (tv, zz)::(rev b))
+                                end
+            val (res, nxx) = uu(xxx, [], 0)
+         in m := nxx; res
         end
 
       and h (INSTANTIATED t) = g t
@@ -203,7 +224,7 @@ and toTyc d t =
         | g (CONty(tyc, [])) = tycTyc(tyc, d)
         | g (CONty(DEFtyc{tyfun,...}, args)) = g(TU.applyTyfun(tyfun,args))
         | g (CONty(tc as GENtyc {kind=ABSTRACT _, ...}, ts)) = 
-              tcAppSt(tycTyc(tc, d), map g ts)
+              LT.tcc_app(tycTyc(tc, d), map g ts)
         | g (CONty(tc as GENtyc _, [t1, t2])) = 
               if TU.eqTycon(tc, BT.arrowTycon) then LT.tcc_parrow(g t1, g t2)
               else LT.tcc_app(tycTyc(tc, d), [g t1, g t2])
@@ -224,15 +245,232 @@ and toLty d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) = toLty d body
 
   | toLty d x = LT.ltc_tyc (toTyc d x)
 
-(*
-val toTyc  = 
-  (fn x => fn y => 
-     (Stats.doPhase(Stats.makePhase "Compiler 043 2-toTyc") (toTyc x) y))
+(****************************************************************************
+ *               TRANSLATING ML MODULES INTO FLINT TYPES                    *
+ ****************************************************************************)
 
-val toLty  = 
-  (fn x => fn y => 
-     (Stats.doPhase(Stats.makePhase "Compiler 043 3-toLty") (toLty x) y))
+fun specLty (elements, entEnv, depth, compInfo) = 
+  let fun g ([], entEnv, ltys) = rev ltys
+        | g ((sym, TYCspec _)::rest, entEnv, ltys) = g(rest, entEnv, ltys)
+        | g ((sym, STRspec {sign, entVar, ...})::rest, entEnv, ltys) =
+              let val rlzn = EE.lookStrEnt(entEnv,entVar)
+                  val lt = strRlznLty(sign, rlzn, depth, compInfo) 
+               in g(rest, entEnv, lt::ltys)
+              end
+        | g ((sym, FCTspec {sign, entVar, ...})::rest, entEnv, ltys) = 
+              let val rlzn = EE.lookFctEnt(entEnv,entVar)
+                  val lt = fctRlznLty(sign, rlzn, depth, compInfo) 
+               in g(rest, entEnv, lt::ltys)
+              end
+        | g ((sym, spec)::rest, entEnv, ltys) =
+              let val _ = debugmsg ">>specLtyElt"
+                  fun transty ty = 
+                    ((MU.transType entEnv ty)
+                      handle EE.Unbound =>
+                         (debugmsg "$specLty";
+                          withInternals(fn () =>
+                           debugPrint("entEnv: ",
+                                 (fn pps => fn ee => 
+                                  PPModules.ppEntityEnv pps (ee,SE.empty,12)),
+                                  entEnv));
+                          debugmsg ("$specLty: should have printed entEnv");
+                          raise EE.Unbound))
+
+                  fun mapty t = toLty depth (transty t)
+
+               in case spec
+                   of VALspec{spec=typ,...} => 
+                        g(rest, entEnv, (mapty typ)::ltys)
+                    | CONspec{spec=DATACON{rep=DA.EXN _, 
+                                           typ, ...}, ...} => 
+                        let val argt = 
+                              if BT.isArrowType typ then  
+                                   #1(LT.ltd_parrow (mapty typ))
+                              else LT.ltc_unit
+                         in g(rest, entEnv, (LT.ltc_etag argt)::ltys)
+                        end
+                    | CONspec{spec=DATACON _, ...} =>
+                        g(rest, entEnv, ltys)
+                    | _ => bug "unexpected spec in specLty"
+              end
+
+   in g (elements, entEnv, [])
+  end
+
+(*
+and signLty (sign, depth, compInfo) = 
+  let fun h (SIG {kind=SOME _, lambdaty=ref (SOME(lt, od)), ...}) = lt
+             (* LT.lt_adj(lt, od, depth) *)
+        | h (sign as SIG{kind=SOME _, lambdaty as ref NONE, ...}) = 
+          (* Invariant: we assum that all Named signatures (kind=SOME _) are
+           * defined at top-level, outside any functor definitions. (ZHONG)
+           *)
+             let val {rlzn=rlzn, tycpaths=tycpaths} = 
+                   INS.instParam {sign=sign, entEnv=EE.empty, depth=depth,
+                                  rpath=InvPath.IPATH[], compInfo=compInfo,
+                                  region=SourceMap.nullRegion}
+                 val nd = DI.next depth
+                 val nlty = strMetaLty(sign, rlzn, nd, compInfo)
+
+                 val ks = map tpsKnd tycpaths
+                 val lt = LT.ltc_poly(ks, nlty)
+              in lambdaty := SOME (lt, depth); lt
+             end
+        | h _ = bug "unexpected sign in signLty"
+   in h sign
+  end
 *)
+and strMetaLty (sign, rlzn, depth, compInfo) = 
+  let fun g (sign, rlzn as {lambdaty = ref (SOME (lt,od)), ...}) = 
+             LT.lt_adj(lt, od, depth)
+        | g (sign as SIG{elements, ...}, 
+             rlzn as {entities, lambdaty, ...} : strEntity) = 
+               let val ltys = specLty(elements, entities, depth, compInfo)
+                   val lt = (* case ltys of [] => LT.ltc_int
+                                       | _ => *) LT.ltc_str(ltys)
+                in lambdaty := SOME(lt, depth); lt
+               end
+        | g _ = bug "unexpected sign and rlzn in strMetaLty"
+
+   in g(sign, rlzn)
+  end
+
+and strRlznLty (sign, rlzn, depth, compInfo) = 
+  let fun g (sign, rlzn as {lambdaty = ref (SOME (lt,od)), ...} : strEntity) = 
+             LT.lt_adj(lt, od, depth)
+
+(* Note: the code here is designed to improve the "toLty" translation;
+   by translating the signature instead of the structure, this can 
+   potentially save time on strLty. But it can increase the cost of
+   other procedures. Thus we turn it off temporarily. (ZHONG)
+
+        | g (sign as SIG{kind=SOME _, ...}, rlzn as {lambdaty, ...}) = 
+             let val sgt = signLty(sign, depth, compInfo)
+                 (* Invariant: we assum that all Named signatures 
+                  * (kind=SOME _) are defined at top-level, outside any 
+                  * functor definitions. (ZHONG)
+                  *)
+                 val argtycs = INS.getTycPaths{sign=sign, rlzn=rlzn,
+                         entEnv=EE.empty, compInfo=compInfo}
+                 val lt = LT.lt_inst(sgt, map (tpsTyc depth) argtycs)
+              in lambdaty := SOME(lt, depth); lt
+             end
+*)
+        | g _ = strMetaLty(sign, rlzn, depth, compInfo)
+
+   in g(sign, rlzn)
+  end
+
+and fctRlznLty (sign, rlzn, depth, compInfo) = 
+  let fun g (sign, rlzn as {lambdaty = ref (SOME (lt, od)), ...}) = 
+             LT.lt_adj(lt, od, depth)
+        | g (sign as FSIG{paramsig, bodysig, ...},
+             rlzn as {stamp, closure as CLOSURE{env,...}, lambdaty, ...}) = 
+               let val {rlzn=argRlzn, tycpaths=tycpaths} = 
+                     INS.instParam {sign=paramsig, entEnv=env, depth=depth, 
+                                    rpath=InvPath.IPATH[], compInfo=compInfo,
+                                    region=SourceMap.nullRegion}
+                   val nd = DI.next depth
+                   val paramLty = strMetaLty(paramsig, argRlzn, nd, compInfo)
+                   val ks = map tpsKnd tycpaths
+                   val bodyRlzn = 
+                     EV.evalApp(rlzn, argRlzn, nd, EPC.initContext,
+                                IP.empty, compInfo)
+                   val bodyLty = strRlznLty(bodysig, bodyRlzn, nd, compInfo)
+
+                   val lt = LT.ltc_poly(ks, [LT.ltc_fct([paramLty],[bodyLty])])
+                in lambdaty := SOME (lt, depth); lt
+               end
+
+        | g _ = bug "fctRlznLty"
+
+   in g(sign, rlzn)
+  end
+
+and strLty (str, depth, compInfo) = 
+  let fun g (STR{rlzn={lambdaty=ref (SOME (lt, od)), ...}, ...}) = 
+              LT.lt_adj(lt, od, depth)
+        | g (STR{sign, rlzn as {lambdaty as ref NONE, ...}, ...}) = 
+              let val lt = strRlznLty(sign, rlzn, depth, compInfo)
+               in (lambdaty := SOME(lt, depth); lt)
+              end
+        | g _ = bug "unexpected structure in strLty"
+   in g str
+  end
+
+and fctLty (fct, depth, compInfo) = 
+  let fun g (FCT{rlzn={lambdaty=ref(SOME (lt,od)),...}, ...}) = 
+              LT.lt_adj(lt, od, depth)
+        | g (FCT{sign, rlzn as {lambdaty as ref NONE, ...}, ...}) = 
+              let val lt = fctRlznLty(sign, rlzn, depth, compInfo)
+               in (lambdaty := SOME(lt,depth); lt)
+              end
+        | g _ = bug "unexpected functor in fctLty"
+   in g fct
+  end
+
+(****************************************************************************
+ *           A HASH-CONSING VERSION OF THE ABOVE TRANSLATIONS               *
+ ****************************************************************************)
+
+structure MIDict = BinaryDict(struct type ord_key = ModuleId.modId
+                                     val cmpKey = ModuleId.cmp
+                              end)
+
+fun genTT() = 
+  let val _ = ()
+(*
+      val m1 = ref (MIDict.mkDict())   (* modid (tycon) -> LT.tyc *)
+      val m2 = ref (MIDict.mkDict())   (* modid (str/fct) -> LT.lty *)
+
+      fun tycTycLook (t as (GENtyc _ | DEFtyc _), d) = 
+            let tid = MU.tycId t
+             in (case MIDict.peek(!m1, tid)
+                  of SOME (t', od) => LT.tc_adj(t', od, d)
+                   | NONE => 
+                       let val x = tycTyc (t, d)
+                           val _ = (m1 := TcDict.insert(!m1, tid, (x, d)))
+                        in x
+                       end)
+            end
+        | tycTycLook x = tycTyc tycTycLook x
+
+(*
+      val toTyc = toTyc tycTycLook
+      val toLty = toTyc tycTycLook
+*)
+      val coreDict = (toTyc, toLty)
+
+      fun strLtyLook (s as STR _, d) = 
+            let sid = MU.strId s
+             in (case MIDict.peek(!m2, sid)
+                  of SOME (t', od) => LT.lt_adj(t', od, d)
+                   | NONE => 
+                       let val x = strLty (coreDict, strLtyLook, 
+                                           fctLtyLook) (s, d)
+                           val _ = (m2 := TcDict.insert(!m2, sid, (x, d)))
+                        in x
+                       end)
+            end
+        | strLtyLook x = strLty (coreDict, strLtyLook, fctLtyLook)
+
+      and fctLtyLook (f as FCT _, d) = 
+            let fid = fctId f
+             in (case MIDict.peek(!m2, fid)
+                  of SOME (t', od) => LT.lt_adj(t', od, d)
+                   | NONE => 
+                       let val x = fctLty (tycTycLook, strLtyLook, 
+                                           fctLtyLook) (s, d)
+                           val _ = (m2 := TcDict.insert(!m2, fid, (x, d)))
+                        in x
+                       end)
+            end
+        | fctLtyLook x = fctLty (coreDict, strLtyLook, fctLtyLook)
+*)
+
+   in {tpsKnd=tpsKnd, tpsTyc=tpsTyc,
+       toTyc=toTyc, toLty=toLty, strLty=strLty, fctLty=fctLty}
+  end (* function genTT *)
 
 end (* toplevel local *)
 end (* structure TransTypes *)
