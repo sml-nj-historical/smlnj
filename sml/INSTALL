@@ -22,7 +22,7 @@ If you are running Win32, see WININSTALL.
    - Download config.tgz, e.g.
 
       $ v=110.38               # or whatever is the version you desire
-      $ wget http://ftp.research.bell-labs.com/dist/smlnj/working/$v/config.tgz
+      $ wget http://smlnj.cs.uchicago.edu/dist/working/$v/config.tgz
 
    - Gunzip and untar, e.g.
 
@@ -123,7 +123,7 @@ If you are running Win32, see WININSTALL.
    2.3.  Using a different ftp server (for a step-1.-like installation)
    --------------------------------------------------------------------
 
-    - If you have a local mirror for ftp.research.bell-labs.com/dist/smlnj,
+    - If you have a local mirror for smlnj.cs.uchicago.edu/dist,
       then you can speed up installation by pointing the automatic URL
       fetch mechanism there.  The URL of the repository is stored in
       config/srcarchiveurl.  Edit this file before running
