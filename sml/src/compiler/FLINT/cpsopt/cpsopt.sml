@@ -184,6 +184,9 @@ in  (if rounds < 0 then function
 		| apply ("etasplit",f)	    = etasplit f
 		| apply ("last_contract",f) = last_contract f
 		| apply ("cycle_expand",f)  = cycle(rounds, not(!CG.unroll), f)
+		| apply ("contract",f)      = contract false f
+		| apply ("flatten",f)       = flatten f
+		| apply ("expand",f)        = expand(f, bodysize, false)
 		| apply ("print",f)	    = (PPCps.printcps0 f; f)
 		| apply (p,f) = (say("\n!! Unknown cps phase '"^p^"' !!\n"); f)
      in foldl apply function (!CG.cpsopt)

@@ -194,10 +194,11 @@ fun list (alpha,alphaproj,alphalistproj,alphalistinj) =
 
 val boolList = list(?bool, fn Ubool t => t, fn UboolList t => t, UboolList)
 
-fun lvar #"x" = R.int (%Ulvar)
-  | lvar _ = raise Fail "    | lvar"
-
-val lvarList = list (?lvar, fn Ulvar v => v, fn UlvarList l => l, UlvarList)
+val lvar = R.int
+val lvarList = list (fn f => R.int(f o Ulvar),
+                     fn Ulvar v => v,
+		     fn UlvarList l => l,
+		     UlvarList)
 
 fun numkind #"I" = R.int(fn i => %Unumkind(P.INT i))
   | numkind #"U" = R.int(fn i => %Unumkind(P.UINT i))
@@ -429,9 +430,7 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
     and tyc #"A" = R.int (fn i => R.int (fn j => 
                       %Utyc (LT.tcc_var (DI.di_fromint i, j))))
       | tyc #"B" = R.int (fn v => 
-                     R.int (fn d => 
-                       R.int (fn i => 
-                         %Utyc (LT.tcc_nvar v))))
+			  %Utyc (LT.tcc_nvar v))
       | tyc #"C" = R.int (fn k => %Utyc (LT.tcc_prim (PT.pt_fromint k)))
       | tyc #"D" = ?tkindList (fn UtkindList ks => 
                       ?tyc (fn Utyc tc => %Utyc(LT.tcc_fn(ks, tc))))
@@ -493,7 +492,7 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
                 fn UtycsLvarPairList t => t, UtycsLvarPairList) x
 
     fun con #"." = ?dcon (fn Udcon (dc, ts) =>
-		    ?lvar (fn Ulvar v  => 
+		    lvar (fn v  => 
 		     ?lexp (fn Ulexp e =>
                       %Ucon (F.DATAcon (dc, ts, v), e))))
       | con #"," = R.int (fn i => 
@@ -580,17 +579,17 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
 			%Ulexp (F.SWITCH (v, crl, cel, eo))))))
       | lexp #"q" = ?dcon (fn Udcon (c, ts) =>
 	             ?value (fn Uvalue u =>
-                      ?lvar (fn Ulvar v => 
+                      lvar (fn v => 
                        ?lexp (fn Ulexp e =>
 			%Ulexp (F.CON (c, ts, u, v,e ))))))
       | lexp #"r" = ?rkind (fn Urkind rk =>
                      ?valueList (fn UvalueList vl => 
-                      ?lvar (fn Ulvar v =>
+                      lvar (fn v =>
                        ?lexp (fn Ulexp e =>
                         %Ulexp (F.RECORD(rk, vl, v, e))))))
       | lexp #"s" = ?value (fn Uvalue u =>
                       R.int (fn i => 
-                       ?lvar (fn Ulvar v =>
+                       lvar (fn v =>
                         ?lexp (fn Ulexp e =>
                          %Ulexp (F.SELECT(u, i, v, e))))))
       | lexp #"t" = ?value (fn Uvalue v =>
@@ -606,7 +605,7 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
                         %Ulexp (F.BRANCH(p, vs, e1, e2))))))
       | lexp #"w" = ?fprim (fn Ufprim p => 
                      ?valueList (fn UvalueList vs =>
-                      ?lvar (fn Ulvar v =>
+                      lvar (fn v =>
                        ?lexp (fn Ulexp e =>
                         %Ulexp (F.PRIMOP(p, vs, v, e))))))
       | lexp _ = raise Fail "    | lexp"
@@ -620,7 +619,7 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
       | lexpOption _ = raise Fail "    | lexpOption"
 
     and fundec #"0" = ?fkind (fn Ufkind fk =>
-                       ?lvar (fn Ulvar v =>
+                       lvar (fn v =>
                         ?lvarLtyPairList (fn UlvarLtyPairList vts =>
                          ?lexp (fn Ulexp e =>
                            %Ufundec (fk, v, vts, e)))))
@@ -634,7 +633,7 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
         list (?fundec, fn Ufundec x => x, fn UfundecList l => l,
               UfundecList) x
 
-    and lvarLtyPair #"T" = ?lvar (fn Ulvar v => 
+    and lvarLtyPair #"T" = lvar (fn v => 
                             ?lty (fn Ulty t => %UlvarLtyPair (v, t)))
       | lvarLtyPair _ = raise Fail "   | lvarLtyPair"
 
@@ -642,7 +641,7 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
         list (?lvarLtyPair, fn UlvarLtyPair x => x, fn UlvarLtyPairList l => l,
               UlvarLtyPairList) x
 
-    and tvarTkPair #"T" = ?lvar (fn Ulvar tv =>
+    and tvarTkPair #"T" = lvar (fn tv =>
                            ?tkind (fn Utkind tk => %UtvarTkPair (tv, tk)))
       | tvarTkPair _ = raise Fail "   | tvarTkPair"
 
@@ -650,7 +649,7 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
         list (?tvarTkPair, fn UtvarTkPair x => x, fn UtvarTkPairList l => l,
               UtvarTkPairList) x
 
-    and tfundec #"0" = ?lvar (fn Ulvar v =>
+    and tfundec #"1" = lvar (fn v =>
                         ?tvarTkPairList (fn UtvarTkPairList tvks =>
                          ?lexp (fn Ulexp e =>
                            %Utfundec (v, tvks, e))))

@@ -365,7 +365,7 @@ fun mkPickleLty (stamp,tvar) =
 	  (case LK.tc_out x
 	    of LK.TC_VAR(db,i) => "A6" $ [int(DI.di_toint db), int i]
              | LK.TC_NVAR n => 
-                 "B6" $ [int n]
+                 "B6" $ [tvar n]
 	     | LK.TC_PRIM t => "C6" $ [int(PT.pt_toint t)]
              | LK.TC_FN(ks,tc) => "D6" $ [list tkind ks, tyc tc]
              | LK.TC_APP(tc,l) => "E6" $ [tyc tc, list tyc l]

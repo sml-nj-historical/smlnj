@@ -147,13 +147,6 @@ let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false)
            | lpcon (DATAcon _) = bug "unexpected case in lpcon"
            | lpcon c = (c, ident)
     
-         (* lpev : lexp -> (value * (lexp -> lexp)) *)
-         and lpev (RET [v]) = (v, ident)
-           | lpev e = (* bug "lpev not implemented yet" *) 
-               let val x= mkv()
-                in (VAR x, fn y => LET([x], e, y))
-               end
-       
          (* loop: lexp -> lexp *)
          and loop le = 
            (case le
@@ -169,14 +162,14 @@ let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false)
                    in hdr(ne1, loop e2)
                   end
               | TAPP(v, ts) => 
-                  let val (u, hdr) = lpev(LP.tsLexp(kenv, ts))
+                  let val (us, hdr) = LP.tsLexp(kenv, ts)
 
                       (* a temporary hack that fixes type mismatches *)
                       val lt = getlty v
                       val oldts = map ltf (#2 (LT.ltd_poly lt))
                       val newts = map ltf (LT.lt_inst(lt, ts))
                       val nhdr = mcast(oldts, newts)
-                   in nhdr (hdr (APP(v, [u])))
+                   in nhdr (hdr (APP(v, us)))
                   end
     
               | RECORD(RK_VECTOR tc, vs, v, e) => 
