@@ -344,14 +344,7 @@ end (* structure CheckLty *)
 
 (*
  * $Log: chkplexp.sml,v $
-# Revision 1.1  1997/05/06  01:15:34  george
-#   Version 109.27+
-#
- * Revision 1.2  1997/04/18  15:49:02  george
- *   Cosmetic changes on some constructor names. Changed the shape for
- *   FIX type to potentially support shared dtsig. -- zsh
- *
- * Revision 1.1.1.1  1997/01/14  01:38:46  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:38  george
+ * Version 110.5
  *
  *)

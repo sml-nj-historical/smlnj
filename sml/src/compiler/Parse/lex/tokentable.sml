@@ -133,20 +133,7 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
 
 (*
  * $Log: tokentable.sml,v $
- * Revision 1.5  1998/02/10 21:10:21  jhr
- *   Changes in the way that syntatic extensions (overload, lazy and quotation)
- *   are controlled.
- *
- * Revision 1.4  1997/08/26 19:25:26  jhr
- *   Keyword clean-up: abstraction is gone; overload is _overload; lazy is _lazy.
- *
- * Revision 1.3  1997/08/26  16:01:50  walidt
- * Added the "lazy" keyword to the tokentable.
- *
- * Revision 1.2  1997/01/31  15:11:25  dbm
- * Added token ":>" for opaque signature constraints.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:38  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:19  george
+ * Version 110.5
  *
  *)

@@ -482,3 +482,10 @@ fun checkExp (le,phase) = check phase (LT.initTkEnv, LT.initLtyEnv, DI.top) le
 
 end (* toplevel local *)
 end (* structure ChkFlint *)
+
+(*
+ * $Log: chkflint.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:38  george
+ * Version 110.5
+ *
+ *)

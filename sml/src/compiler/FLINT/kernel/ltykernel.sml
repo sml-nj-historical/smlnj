@@ -590,7 +590,7 @@ val tcc_token = tc_injX o TC_TOKEN
 (** the following function contains the procedure on how to
  *  flatten the arguments and results of an arbitrary FLINT function
  *) 
-val maxFlat = 5 (* most number of args to flatten *)
+val maxFlat = 10 (* most number of args to flatten *)
 
 fun isKnown tc = 
   (case tc_outX(tc_whnm tc)
@@ -1273,3 +1273,10 @@ fun tcs_depth ([], d) = DI.top
 end (* toplevel local *)
 end (* abstraction LtyKernel *)
 
+
+(*
+ * $Log: ltykernel.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:38  george
+ * Version 110.5
+ *
+ *)
