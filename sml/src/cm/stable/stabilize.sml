@@ -4,30 +4,33 @@ structure Stablize = struct
     structure GG = GroupGraph
     structure EM = GenericVC.ErrorMsg
 
-    datatype item =
-	SS of SymbolSet.set
-      | S of Symbol.symbol
-      | SI of SmlInfo.info		(* only used during pickling *)
-      | AP of AbsPath.t
-      | BI of BinInfo.info		(* only used during unpickling *)
+    datatype pitem =
+	PSS of SymbolSet.set
+      | PS of Symbol.symbol
+      | PSN of DG.snode
+      | PAP of AbsPath.t
 
-    fun compare (S s, S s') = SymbolOrdKey.compare (s, s')
-      | compare (S _, _) = GREATER
-      | compare (_, S _) = LESS
-      | compare (SS s, SS s') = SymbolSet.compare (s, s')
-      | compare (SS _, _) = GREATER
-      | compare (_, SS _) = LESS
-      | compare (SI i, SI i') = SmlInfo.compare (i, i')
-      | compare (SI _, _) = GREATER
-      | compare (_, SI _) = LESS
-      | compare (AP p, AP p') = AbsPath.compare (p, p')
-      | compare (AP _, _) = GREATER
-      | compare (_, AP _) = LESS
-      | compare (BI i, BI i') = BinInfo.compare (i, i')
+    datatype uitem =
+	USS of SymbolSet.set
+      | US of Symbol.symbol
+      | UBN of DG.bnode
+      | UAP of AbsPath.t
+
+    fun compare (PS s, PS s') = SymbolOrdKey.compare (s, s')
+      | compare (PS _, _) = GREATER
+      | compare (_, PS _) = LESS
+      | compare (PSS s, PSS s') = SymbolSet.compare (s, s')
+      | compare (PSS _, _) = GREATER
+      | compare (_, PSS _) = LESS
+      | compare (PSN (DG.SNODE n), PSN (DG.SNODE n')) =
+	SmlInfo.compare (#smlinfo n, #smlinfo n')
+      | compare (PSN _, _) = GREATER
+      | compare (_, PSN _) = LESS
+      | compare (PAP p, PAP p') = AbsPath.compare (p, p')
 
     structure Map =
 	BinaryMapFn (struct
-			 type ord_key = item
+			 type ord_key = pitem
 			 val compare = compare
 	end)
 
@@ -49,34 +52,36 @@ structure Stablize = struct
 		 *    need no further adjustment.
 		 *  - Individual binfile contents (concatenated).
 		 *)
-		val members = let
-		    fun sn (DG.SNODE { smlinfo, localimports = l, ... }, s) =
-			      if SmlInfoSet.member (s, smlinfo) then s
-			      else foldl sn (SmlInfoSet.add (s, smlinfo)) l
-		    fun impexp (((_, DG.SB_BNODE _), _), s) = s
-		      | impexp (((_, DG.SB_SNODE n), _), s) = sn (n, s)
+
+		val offsetDict = ref SmlInfoMap.empty
+		val members = ref []
+		val registerOffset = let
+		    val cur = ref 0
+		    fun reg (i, sz) = let
+			val os = !cur
+		    in
+			cur := os + sz;
+			offsetDict := SmlInfoMap.insert (!offsetDict, i, os);
+			members := i :: (!members);
+			os
+		    end
 		in
-			      SmlInfoSet.listItems
-			      (SymbolMap.foldl impexp SmlInfoSet.empty exports)
+		    reg
 		end
 
-		val offsetDict = let
-		    fun add (i, (d, n)) =
-			(SmlInfoMap.insert (d, i, n), n + binSizeOf i)
-		in
-		    #1 (foldl add (SmlInfoMap.empty, 0) members)
-		end
-
-		fun w_list w_item [] k m = "0" :: k m
-		  | w_list w_item [a] k m = "1" :: w_item a k m
-		  | w_list w_item [a, b] k m = "2" :: w_item a (w_item b k) m
+		fun w_list w_item [] k m =
+		    "0" :: k m
+		  | w_list w_item [a] k m =
+		    "1" :: w_item a k m
+		  | w_list w_item [a, b] k m =
+		    "2" :: w_item a (w_item b k) m
 		  | w_list w_item [a, b, c] k m =
 		    "3" :: w_item a (w_item b (w_item c k)) m
 		  | w_list w_item [a, b, c, d] k m =
 		    "4" :: w_item a (w_item b (w_item c (w_item d k))) m
 		  | w_list w_item (a :: b :: c :: d :: e :: r) k m =
 		    "5" :: w_item a (w_item b (w_item c (w_item d (w_item e
-						  (w_list w_item r k))))) m
+						      (w_list w_item r k))))) m
 
 		fun w_option w_item NONE k m = "n" :: k m
 		  | w_option w_item (SOME i) k m = "s" :: w_item i k m
@@ -115,9 +120,9 @@ structure Stablize = struct
 		    ns :: Symbol.name s :: "." :: k m
 		end
 
-		val w_symbol = w_share w_symbol_raw S
+		val w_symbol = w_share w_symbol_raw PS
 
-		val w_ss = w_share (w_list w_symbol o SymbolSet.listItems) SS
+		val w_ss = w_share (w_list w_symbol o SymbolSet.listItems) PSS
 
 		val w_filter = w_option w_ss
 
@@ -134,10 +139,10 @@ structure Stablize = struct
 		  | w_sharing (SOME true) k m = "t" :: k m
 		  | w_sharing (SOME false) k m = "f" :: k m
 
-		fun w_si_raw i k = let
+		fun w_si i k = let
 		    val spec = AbsPath.spec (SmlInfo.sourcepath i)
 		    val locs = SmlInfo.errorLocation gp i
-		    val offset = valOf (SmlInfoMap.find (offsetDict, i))
+		    val offset = registerOffset (i, binSizeOf i)
 		in
 		    w_string spec
 		        (w_string locs
@@ -145,24 +150,24 @@ structure Stablize = struct
 			         (w_sharing (SmlInfo.share i) k)))
 		end
 
-		val w_si = w_share w_si_raw SI
-
 		fun w_primitive p k m = String.str (Primitive.toIdent p) :: k m
 
 		fun w_abspath_raw p k m =
 		    w_list w_string (AbsPath.pickle p) k m
 
-		val w_abspath = w_share w_abspath_raw AP
+		val w_abspath = w_share w_abspath_raw PAP
 
 		fun w_bn (DG.PNODE p) k m = "p" :: w_primitive p k m
 		  | w_bn (DG.BNODE { bininfo = i, ... }) k m =
 		    "b" :: w_abspath (BinInfo.group i)
 		              (w_int (BinInfo.offset i) k) m
 
-		fun w_sn (DG.SNODE n) k =
+		fun w_sn_raw (DG.SNODE n) k =
 		    w_si (#smlinfo n)
 		        (w_list w_sn (#localimports n)
 		              (w_list w_fsbn (#globalimports n) k))
+
+		and w_sn n = w_share w_sn_raw PSN n
 
 		and w_sbn (DG.SB_BNODE n) k m = "b" :: w_bn n k m
 		  | w_sbn (DG.SB_SNODE n) k m = "s" :: w_sn n k m
@@ -197,16 +202,13 @@ structure Stablize = struct
 		Dummy.f ()
 	    end
 
-    fun g (getGroup, fsbn2env, knownStable, grpSrcInfo, group, s) = let
+    fun g (getGroup, bn2env, grpSrcInfo, group, s) = let
 
 	exception Format
 
 	(* for getting sharing right... *)
 	val m = ref IntBinaryMap.empty
 	val next = ref 0
-
-	(* to build the stable info *)
-	val simap = ref IntBinaryMap.empty
 
 	fun bytesIn n = let
 	    val bv = BinIO.inputN (s, n)
@@ -295,10 +297,10 @@ structure Stablize = struct
 		case AbsPath.unpickle (r_list r_string ()) of
 		    SOME p => p
 		  | NONE => raise Format
-	    fun unAP (AP x) = x
-	      | unAP _ = raise Format
+	    fun unUAP (UAP x) = x
+	      | unUAP _ = raise Format
 	in
-	    r_share r_abspath_raw AP unAP
+	    r_share r_abspath_raw UAP unUAP
 	end
 
     	val r_symbol = let
@@ -314,19 +316,19 @@ structure Stablize = struct
 	    in
 		ns (loop (first, []))
 	    end
-	    fun unS (S x) = x
-	      | unS _ = raise Format
+	    fun unUS (US x) = x
+	      | unUS _ = raise Format
 	in
-	    r_share r_symbol_raw S unS
+	    r_share r_symbol_raw US unUS
 	end
 
 	val r_ss = let
 	    fun r_ss_raw () =
 		SymbolSet.addList (SymbolSet.empty, r_list r_symbol ())
-	    fun unSS (SS s) = s
-	      | unSS _ = raise Format
+	    fun unUSS (USS s) = s
+	      | unUSS _ = raise Format
 	in
-	    r_share r_ss_raw SS unSS
+	    r_share r_ss_raw USS unUSS
 	end
 
 	val r_filter = r_option r_ss
@@ -343,46 +345,46 @@ structure Stablize = struct
 	      | #"f" => SOME false
 	      | _ => raise Format
 
-	val r_si = let
-	    fun r_si_raw () = let
-		val spec = r_string ()
-		val locs = r_string ()
-		val offset = r_int () + offset_adjustment
-		val share = r_sharing ()
-		val error = EM.errorNoSource grpSrcInfo locs
-		val i = BinInfo.new { group = group,
-				      error = error,
-				      spec = spec,
-				      offset = offset,
-				      share = share }
-	    in
-		simap := IntBinaryMap.insert (!simap, offset, i);
-		i
-	    end
-	    fun unBI (BI i) = i
-	      | unBI _ = raise Format
+	fun r_si () = let
+	    val spec = r_string ()
+	    val locs = r_string ()
+	    val offset = r_int () + offset_adjustment
+	    val share = r_sharing ()
+	    val error = EM.errorNoSource grpSrcInfo locs
 	in
-	    r_share r_si_raw BI unBI
+	    BinInfo.new { group = group,
+			  error = error,
+			  spec = spec,
+			  offset = offset,
+			  share = share }
 	end
 
 	fun r_bn () =
 	    case rd () of
 		#"p" => DG.PNODE (r_primitive ())
-	      | #"b" =>
-		    (case AbsPathMap.find (knownStable, r_abspath ()) of
-			 NONE => raise Format
-		       | SOME im =>
-			     (case IntBinaryMap.find (im, r_int ()) of
-				  NONE => raise Format
-				| SOME n => n))
+	      | #"b" => let
+		    val p = r_abspath ()
+		    val os = r_int ()
+		    val GG.GROUP { stableinfo, ... } = getGroup p
+		in
+		    case stableinfo of
+			GG.NONSTABLE _ => raise Format
+		      | GG.STABLE im =>
+			    (case IntBinaryMap.find (im, os) of
+				 NONE => raise Format
+			       | SOME n => n)
+		end
 	      | _ => raise Format
 
 	(* this is the place where what used to be an
 	 * SNODE changes to a BNODE! *)
-	fun r_sn () =
+	fun r_sn_raw () =
 	    DG.BNODE { bininfo = r_si (),
 		       localimports = r_list r_sn (),
 		       globalimports = r_list r_fsbn () }
+
+	and r_sn () =
+	    r_share r_sn_raw UBN (fn (UBN n) => n | _ => raise Format) ()
 
 	(* this one changes from farsbnode to plain farbnode *)
 	and r_sbn () =
@@ -396,7 +398,7 @@ structure Stablize = struct
 	fun r_impexp () = let
 	    val sy = r_symbol ()
 	    val (f, n) = r_fsbn ()	(* really reads farbnodes! *)
-	    val e = fsbn2env n
+	    val e = bn2env n
 	in
 	    (sy, ((f, DG.SB_BNODE n), e)) (* coerce to farsbnodes *)
 	end
@@ -413,19 +415,23 @@ structure Stablize = struct
 	    val required = r_privileges ()
 	    val grouppath = r_abspath ()
 	    val subgroups = r_list (getGroup o r_abspath) ()
-	    fun add (((_, DG.SB_BNODE (DG.BNODE { bininfo, ... })), _), s) =
-		IntBinarySet.add (s, BinInfo.offset bininfo)
-	      | add (_, s) = s
-	    val ens = SymbolMap.foldl add IntBinarySet.empty exports
-	    fun isExported (os, _) = IntBinarySet.member (ens, os)
-	    val final_simap = IntBinaryMap.filteri isExported (!simap)
+	    (* find all the exported bnodes that are in the same group: *)
+	    fun add (((_, DG.SB_BNODE (n as DG.BNODE b)), _), m) = let
+		    val i = #bininfo b
+		in
+		    if AbsPath.compare (BinInfo.group i, group) = EQUAL then
+			IntBinaryMap.insert (m, BinInfo.offset i, n)
+		    else m
+		end
+	      | add (_, m) = m
+	    val simap = SymbolMap.foldl add IntBinaryMap.empty exports
 	in
 	    GG.GROUP { exports = exports,
 		       islib = islib,
 		       required = required,
 		       grouppath = grouppath,
 		       subgroups = subgroups,
-		       stableinfo = GG.STABLE final_simap }
+		       stableinfo = GG.STABLE simap }
 	end
     in
 	SOME (unpickle_group ()) handle Format => NONE

@@ -12,7 +12,7 @@ structure GroupGraph = struct
 
     datatype stableinfo =
 	NONSTABLE of privileges		(* granted privileges *)
-      | STABLE of BinInfo.info IntBinaryMap.map
+      | STABLE of DependencyGraph.bnode IntBinaryMap.map
 
     (* the "required" field includes everything:
      *   1. privileges required by subgroups
