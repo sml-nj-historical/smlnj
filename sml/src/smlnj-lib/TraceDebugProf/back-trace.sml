@@ -18,7 +18,6 @@
  * Author: Matthias Blume (blume@tti-c.org)
  *)
 structure BackTrace : sig
-    exception BTraceTriggered of unit -> string list
     val trigger : unit -> 'a
     val monitor : (unit -> 'a) -> 'a
     val install : unit -> unit
@@ -187,12 +186,22 @@ end = struct
 
     fun monitor work =
 	let val restore = save ()
-	    fun hdl (e, []) = raise e
+	    fun last (x, []) = x
+	      | last (_, x :: xs) = last (x, xs)
+	    fun emsg e =
+		case SMLofNJ.exnHistory e of
+		    [] => General.exnMessage e
+		  | (h :: t) =>
+		      concat [last (h, t), ": ", General.exnMessage e]
+	    fun hdl (e, []) =
+		  (Control.Print.say (emsg e ^ "\n\n");
+		   raise e)
 	      | hdl (e, hist) =
-		(Control.Print.say
-		     (concat ("\n*** BACK-TRACE ***\n" :: hist));
-		 Control.Print.say "\n";
-		 raise e)
+		  (Control.Print.say
+		       (concat ("\n*** BACK-TRACE ***\n" :: hist));
+		   Control.Print.say
+		       (concat ["\n", emsg e, "\n\n"]);
+		   raise e)
 	in
 	    work ()
 	    handle e as BTraceTriggered do_report =>

@@ -11,7 +11,7 @@ structure X = struct
 *)
 	and e (x, 0) = f x
 	  | e (x, n) = e (x, n - 1)
-	and f 0 = BackTrace.trigger ()
+	and f 0 = (* BackTrace.trigger () *) raise Fail "triggered"
 	  | f n = n * g (n - 1)
 	and g n = a (n, 3)
     in
