@@ -13,6 +13,16 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Dave MacQueen (macqueen@cs.uchicago.edu)
+Date: 2003/06/17
+Tag: macqueen-20030617-bug895
+Description:
+
+Modified compiler/Elaborator/print/pptype.sml to fix bug 895.
+Tag will be used for new development branch (mcz-branch) for
+use by MacQueen, (Lucasz) Zairek, and (George) Cao at uchicago.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume@tti-c.org)
 Date: 2003/05/27 16:55:00 CDT
 Tag: blume-20030527-polyeq
