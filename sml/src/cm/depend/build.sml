@@ -16,7 +16,6 @@ signature BUILDDEPEND = sig
 	  subgroups: (SrcPath.t * GroupGraph.group) list,
 	  reqpriv: GroupGraph.privileges }
 	* SymbolSet.set option		(* filter *)
-	* (string -> unit)		(* error *)
 	* GeneralParams.info
 	->
 	impexp SymbolMap.map		(* exports *)
@@ -110,7 +109,7 @@ structure BuildDepend :> BUILDDEPEND = struct
     fun symDesc (s, r) =
 	S.nameSpaceToString (S.nameSpace s) :: " " :: S.name s :: r
 
-    fun build (coll, fopt, error, gp) = let
+    fun build (coll, fopt, gp) = let
 	val { imports, gimports, smlfiles, localdefs, subgroups, reqpriv } =
 	    coll
 

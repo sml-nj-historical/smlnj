@@ -25,6 +25,8 @@ end
 
 structure AutoLoad :> AUTOLOAD = struct
 
+    structure SE = GenericVC.StaticEnv
+
     (* We let the topLevel env *logically* sit atop the pending
      * autoload bindings.  This way we do not have to intercept every
      * change to the topLevel env.  However, it means that any addition
@@ -54,8 +56,15 @@ structure AutoLoad :> AUTOLOAD = struct
 	val { skeleton, ... } =
 	    SkelCvt.convert { tree = ast, err = fn _ => fn _ => fn _ => () }
 	val te = #get ter ()
-	val (dae, _) = Statenv2DAEnv.cvt (BE.staticPart te)
-	val pend = !pending
+	val ste = BE.staticPart te
+
+	(* First, we get rid of anything in "pending" that has
+	 * meanwhile been added to the toplevel. *)
+	fun notTopDefined (sy, _) =
+	    (SE.look (ste, sy); false) handle SE.Unbound => true
+	val pend = SymbolMap.filteri notTopDefined (!pending)
+	val _ = pending := pend
+	val (dae, _) = Statenv2DAEnv.cvt ste
 	val load = ref SymbolMap.empty
 	fun lookpend sy =
 	    case SymbolMap.find (pend, sy) of
@@ -64,18 +73,45 @@ structure AutoLoad :> AUTOLOAD = struct
 	      | NONE => DAEnv.EMPTY
 	val lookimport = BuildDepend.look lookpend dae
 	val _ = BuildDepend.processOneSkeleton lookimport skeleton
-	val loadmap = !load
+
+	(* Here are the nodes that actually have been picked because
+	 * something demanded an exported symbol: *)
+	val loadmap0 = !load
+
+	(* However, we want to avoid hanging on to stuff unnecessarily, so
+	 * we now look for symbols that become available "for free" because
+	 * their corresponding node has been picked.  So we first build
+	 * three sets: sml- and stable-infos of picked nodes as well
+	 * as the set of PNODEs: *)
+	fun add (((_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })), _),
+		 (ss, bs, ps)) =
+	    (SmlInfoSet.add (ss, smlinfo), bs, ps)
+	  | add (((_, DG.SB_BNODE (DG.BNODE { bininfo, ... })), _),
+		 (ss, bs, ps)) =
+	    (ss, StableSet.add (bs, bininfo), ps)
+	  | add (((_, DG.SB_BNODE (DG.PNODE p)), _), (ss, bs, ps)) =
+	    (ss, bs, StringSet.add (ps, Primitive.toString p))
+
+	val (smlinfos, stableinfos, prims) =
+	    SymbolMap.foldl add
+	          (SmlInfoSet.empty, StableSet.empty, StringSet.empty)
+		  loadmap0
+
+	(* now we can easily find out whether a node has been picked... *)
+	fun isPicked ((_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })), _) =
+	    SmlInfoSet.member (smlinfos, smlinfo)
+	  | isPicked ((_, DG.SB_BNODE (DG.BNODE { bininfo, ... })), _) =
+	    StableSet.member (stableinfos, bininfo)
+	  | isPicked ((_, DG.SB_BNODE (DG.PNODE p)), _) =
+	    StringSet.member (prims, Primitive.toString p)
+
+	val loadmap = SymbolMap.filter isPicked pend
+	val noloadmap = SymbolMap.filter (not o isPicked) pend
     in
 	case loadit loadmap of
-	    SOME e => let
-		val te' = BE.concatEnv (e, te)
-		fun notPicked (sy, _) =
-		    not (isSome (SymbolMap.find (loadmap, sy)))
-		val pend' = SymbolMap.filteri notPicked pend
-	    in
-		#set ter te';
-		pending := pend'
-	    end
+	    SOME e =>
+		(#set ter (BE.concatEnv (e, te));
+		 pending := noloadmap)
 	  | NONE => ()
     end
 

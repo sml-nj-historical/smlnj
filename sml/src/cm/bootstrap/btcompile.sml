@@ -8,8 +8,8 @@
  *)
 functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 			    val os: SMLofNJ.SysInfo.os_kind) :> sig
-    val recomp' : string option -> bool
-    val recomp : unit -> bool
+    val make' : string option -> bool
+    val make : unit -> bool
     val deliver' : string option -> bool
     val deliver : unit -> bool
     val reset : unit -> unit
@@ -23,6 +23,8 @@ end = struct
     structure CoerceEnv = GenericVC.CoerceEnv
     structure SSV = SpecificSymValFn (structure MachDepVC = MachDepVC
 				      val os = os)
+    structure P = OS.Path
+    structure F = OS.FileSys
 
     (* Since the bootstrap compiler never executes any of the code
      * it produces, we don't need any dynamic values.  Therefore,
@@ -52,19 +54,28 @@ end = struct
     structure Parse = ParseFn (structure Stabilize = Stabilize
 			       val pending = AutoLoad.getPending)
 
-    fun listName p =
-	case OS.Path.fromString p of
-	    { vol = "", isAbs = false, arcs = _ :: arc1 :: arcn } => let
-		fun win32name () =
-		    concat (arc1 ::
-			    foldr (fn (a, r) => "\\" :: a :: r) [] arcn)
-	    in
-		case os of
-		    SMLofNJ.SysInfo.WIN32 => win32name ()
-		  | _ => OS.Path.toString { isAbs = false, vol = "",
-					    arcs = arc1 :: arcn }
-	    end
-	  | _ => raise Fail "BootstrapCompile:listName: bad name"
+    fun cpTextStreams (ins, outs) = let
+	val N = 4096
+	fun cp () =
+	    if TextIO.endOfStream ins then ()
+	    else (TextIO.output (outs,
+				 TextIO.inputN (ins, N));
+		  cp ())
+    in
+	cp ()
+    end
+
+    fun openTextStreams (inf, outf) () =
+	(TextIO.openIn inf, AutoDir.openTextOut outf)
+    fun closeTextStreams (ins, outs) =
+	(TextIO.closeIn ins; TextIO.closeOut outs)
+
+    fun copyFile (inf, outf) =
+	SafeIO.perform { openIt = openTextStreams (inf, outf),
+			 closeIt = closeTextStreams,
+			 work = cpTextStreams,
+			 cleanup = fn () =>
+			    (F.remove outf handle _ => ()) }
 
     fun compile deliver dbopt = let
 
@@ -78,12 +89,34 @@ end = struct
 	val bindir = concat [dirbase, ".bin.", arch, "-", osname]
 	val bootdir = concat [dirbase, ".boot.", arch, "-", osname]
 
+	fun listName (p, copy) =
+	    case P.fromString p of
+		{ vol = "", isAbs = false, arcs = arc0 :: arc1 :: arcn } => let
+		    fun win32name () =
+			concat (arc1 ::
+				foldr (fn (a, r) => "\\" :: a :: r) [] arcn)
+		    fun doCopy () = let
+			val bootpath =
+			    P.toString { isAbs = false, vol = "",
+					 arcs = bootdir :: arc1 :: arcn }
+		    in
+			copyFile (p, bootpath)
+		    end
+		in
+		    if copy andalso arc0 = bindir then doCopy () else ();
+		    case os of
+			SMLofNJ.SysInfo.WIN32 => win32name ()
+		      | _ => P.toString { isAbs = false, vol = "",
+					  arcs = arc1 :: arcn }
+		end
+	      | _ => raise Fail "BootstrapCompile:listName: bad name"
+
 	val keep_going = EnvConfig.getSet StdConfig.keep_going NONE
 
 	val ctxt = SrcPath.cwdContext ()
 
-	val pidfile = OS.Path.joinDirFile { dir = bootdir, file = "RTPID" }
-	val listfile = OS.Path.joinDirFile { dir = bootdir, file = "BOOTLIST" }
+	val pidfile = P.joinDirFile { dir = bootdir, file = "RTPID" }
+	val listfile = P.joinDirFile { dir = bootdir, file = "BOOTLIST" }
 
 	val pcmode = PathConfig.new ()
 	val _ = PathConfig.processSpecFile (pcmode, pcmodespec)
@@ -96,15 +129,11 @@ end = struct
 	val cmifile = valOf (SrcPath.reAnchoredName (initgspec, bootdir))
 	    handle Option => raise Fail "BootstrapCompile: cmifile"
 
-	val initfnpolicy =
-	    FilenamePolicy.separate { bindir = bootdir, bootdir = bootdir }
-	        { arch = arch, os = os }
-
-	val mainfnpolicy =
+	val fnpolicy =
 	    FilenamePolicy.separate { bindir = bindir, bootdir = bootdir }
 	        { arch = arch, os = os }
 
-	fun mkParam { primconf, pervasive, pervcorepids, fnpolicy }
+	fun mkParam { primconf, pervasive, pervcorepids }
 	            { corenv } =
 	    { primconf = primconf,
 	      fnpolicy = fnpolicy,
@@ -123,8 +152,7 @@ end = struct
 	val primconf = Primitive.primEnvConf
 	val mkInitParam = mkParam { primconf = primconf,
 				    pervasive = E.emptyEnv,
-				    pervcorepids = PidSet.empty,
-				    fnpolicy = initfnpolicy }
+				    pervcorepids = PidSet.empty }
 
 	val param_nocore = mkInitParam { corenv = BE.staticPart BE.emptyEnv }
 
@@ -185,8 +213,7 @@ end = struct
 			    PidSet.addList (PidSet.empty,
 					    [#2 (#stat pervasive),
 					     #2 (#sym pervasive),
-					     #2 (#stat core)]),
-			  fnpolicy = mainfnpolicy }
+					     #2 (#stat core)]) }
 		        { corenv = corenv }
 	    val stab =
 		if deliver then SOME true else NONE
@@ -196,27 +223,24 @@ end = struct
 	      | SOME (g, gp) =>
 		    if recomp gp g then let
 			val rtspid = PS.toHex (#2 (#stat rts))
-			val bootfiles =
-			    map (fn x => (x, NONE)) binpaths @
-			    MkBootList.group g
 			fun writeList s = let
-			    fun offset NONE = ["\n"]
-			      | offset (SOME i) = ["@", Int.toString i, "\n"]
-			    fun showBootFile (p, off) =
-				TextIO.output (s, concat (listName p ::
-							  offset off))
+			    fun add ((p, flag), l) = let
+				val n = listName (p, true)
+			    in
+				if flag then n :: l else l
+			    end
+			    fun transcribe (p, NONE) = listName (p, true)
+			      | transcribe (p, SOME (off, desc)) =
+				concat [listName (p, false),
+					"@", Int.toString off, ":", desc]
+			    val bootstrings =
+				foldr add (map transcribe (MkBootList.group g))
+				      binpaths
+			    fun show str =
+				(TextIO.output (s, str);
+				 TextIO.output (s, "\n"))
 			in
-			    app showBootFile bootfiles
-			end
-			fun cpCMI (ins, outs) = let
-			    val N = 4096
-			    fun cp () =
-				if TextIO.endOfStream ins then ()
-				else (TextIO.output (outs,
-						     TextIO.inputN (ins, N));
-				      cp ())
-			in
-			    cp ()
+			    app show bootstrings
 			end
 		    in
 		      Say.say ["Runtime System PID is: ", rtspid, "\n"];
@@ -236,16 +260,7 @@ end = struct
 					 cleanup = fn () =>
 					   OS.FileSys.remove listfile
 					   handle _ => () };
-			SafeIO.perform { openIt = fn () =>
-					   (SrcPath.openTextIn initgspec,
-					    AutoDir.openTextOut cmifile),
-					 closeIt = fn (ins, outs) =>
-					   (TextIO.closeIn ins;
-					    TextIO.closeOut outs),
-					 work = cpCMI,
-					 cleanup = fn () =>
-					   OS.FileSys.remove cmifile
-					   handle _ => () })
+			copyFile (SrcPath.osstring initgspec, cmifile))
 		      else ();
 		      true
 		    end
@@ -258,8 +273,8 @@ end = struct
 	  | NONE => false
     end
 
-    val recomp' = compile false
-    fun recomp () = recomp' NONE
+    val make' = compile false
+    fun make () = make' NONE
     val deliver' = compile true
     fun deliver () = deliver' NONE
     fun reset () =

@@ -33,6 +33,7 @@ structure S = CMSemant
        | gprivspec of S.privilegespec
        | lprivspec of S.privilegespec
        | wrapspec of S.privilegespec -> S.privilegespec
+       | mand_exports of S.exports
        | opt_exports of S.exports option
        | exports of S.exports
        | export of S.exports
@@ -92,16 +93,11 @@ alias : ALIAS pathname				(recParse
 group : gprivspec opt_exports IS members        (S.group
 						 (grouppath,
 						  gprivspec, opt_exports,
-						  members,
-						  error (opt_exportsleft,
-							 opt_exportsright),
-						  gp))
-      | lprivspec exports IS members            (S.library
+						  members, gp))
+      | lprivspec mand_exports IS members       (S.library
 						 (grouppath,
-						  lprivspec, exports, members,
-						  error (exportsleft,
-							 exportsright),
-						  gp))
+						  lprivspec, mand_exports,
+						  members, gp))
 
 wrapspec : (* empty *)                         (fn p => p)
           | wrapspec word                      (fn p =>
@@ -120,11 +116,15 @@ lprivspec : LIBRARY                             (S.initialPrivilegeSpec)
 								   wordright)))
           | LPAREN wrapspec RPAREN lprivspec    (wrapspec lprivspec)
 
-exports : export				(export)
-	| export exports			(S.exports (export, exports))
+mand_exports : export				(export)
+	     | mand_exports export	        (S.exports (mand_exports,
+							    export))
 
 opt_exports : (* empty *)                       (NONE)
-            | exports                           (SOME exports)
+            | mand_exports                      (SOME mand_exports)
+
+exports : (* empty *)                           (S.emptyExports)
+        | exports export                        (S.exports (exports, export))
 
 export : ml_symbol				(S.export
 						 (ml_symbol,

@@ -35,11 +35,11 @@ signature CM_SEMANT = sig
     (* getting the full analysis for a group/library *)
     val emptyGroup : pathname -> group
     val group :
-	pathname * privilegespec * exports option * members * complainer *
+	pathname * privilegespec * exports option * members *
 	GeneralParams.info
 	-> group
     val library :
-	pathname * privilegespec * exports * members * complainer *
+	pathname * privilegespec * exports * members *
 	GeneralParams.info
 	-> group
 
@@ -155,10 +155,10 @@ structure CMSemant :> CM_SEMANT = struct
 	foldl oneSG [] subgroups
     end
 
-    fun grouplib (islib, g, p, e, m, error, gp) = let
+    fun grouplib (islib, g, p, e, m, gp) = let
 	val mc = applyTo MemberCollection.empty m
 	val filter = Option.map (applyTo mc) e
-	val (exports, rp) = MemberCollection.build (mc, filter, error, gp)
+	val (exports, rp) = MemberCollection.build (mc, filter, gp)
 	val subgroups = MemberCollection.subgroups mc
 	val { required = rp', wrapped = wr } = p
 	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
@@ -174,10 +174,10 @@ structure CMSemant :> CM_SEMANT = struct
 		   sublibs = sgl2sll subgroups }
     end
 
-    fun group (g, p, e, m, error, gp) =
-	grouplib (false, g, p, e, m, error, gp)
-    fun library (g, p, e, m, error, gp) =
-	grouplib (true, g, p, SOME e, m, error, gp)
+    fun group (g, p, e, m, gp) =
+	grouplib (false, g, p, e, m, gp)
+    fun library (g, p, e, m, gp) =
+	grouplib (true, g, p, SOME e, m, gp)
 
     local
 	val isMember = StringSet.member

@@ -27,8 +27,7 @@ signature MEMBERCOLLECTION = sig
     val sequential : collection * collection * (string -> unit) -> collection
 
     val build :
-	collection * SymbolSet.set option * (string -> unit) *
-	GeneralParams.info
+	collection * SymbolSet.set option * GeneralParams.info
 	-> impexp SymbolMap.map * GroupGraph.privileges
 
     val subgroups : collection -> (SrcPath.t * GroupGraph.group) list
@@ -175,8 +174,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	  | NONE => noPrimitive ()
     end
 
-    fun build (COLLECTION c, fopt, error, gp) =
-	BuildDepend.build (c, fopt, error, gp)
+    fun build (COLLECTION c, fopt, gp) =
+	BuildDepend.build (c, fopt, gp)
 
     fun subgroups (COLLECTION { subgroups = sg, ... }) = sg
 

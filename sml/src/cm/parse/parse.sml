@@ -107,7 +107,6 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	    (* normal processing -- used when there is no cycle to report *)
 	    fun normal_processing () = let
 		val context = SrcPath.sameDirContext group
-		val _ = Say.vsay ["[scanning ", SrcPath.descr group, "]\n"]
 
 		fun work stream = let
 		    val source =
@@ -243,9 +242,9 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    if !(#anyErrors source) then NONE
 		    else SOME parseResult
 		end
+		fun openIt () = TextIO.openIn (SrcPath.osstring group)
 		val pro =
-		    SafeIO.perform { openIt =
-				        fn () => SrcPath.openTextIn group,
+		    SafeIO.perform { openIt = openIt,
 				     closeIt = TextIO.closeIn,
 				     work = work,
 				     cleanup = fn () => () }
@@ -262,8 +261,14 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		h :: t => (report (h, t); NONE)
 	      | [] =>
 		    (case getStable group of
-			 NONE => normal_processing ()
-		       | SOME g => SOME g)
+			 NONE =>
+			     (Say.vsay ["[scanning ", SrcPath.descr group,
+					"]\n"];
+			      normal_processing ())
+		       | SOME g =>
+			     (Say.vsay ["[library ", SrcPath.descr group,
+					" is stable]\n"];
+			      SOME g))
 	end
     in
 	case mparse (group, [], ref false, stabthis) of

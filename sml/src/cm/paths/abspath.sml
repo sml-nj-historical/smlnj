@@ -37,8 +37,6 @@ signature ABSPATH = sig
     val unpickle : PathConfig.mode -> string list * t -> t option
 
     val tstamp : t -> TStamp.t
-
-    val openTextIn : t -> TextIO.instream
 end
 
 structure AbsPath :> ABSPATH = struct
@@ -274,8 +272,6 @@ structure AbsPath :> ABSPATH = struct
 	end
 
 	fun tstamp p = TStamp.fmodTime (osstring p)
-
-	val openTextIn = TextIO.openIn o osstring
 
 	fun descr (PATH { spec, context, ... }) = let
 	    fun dir (x, l) =

@@ -454,7 +454,6 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	val policy = #fnpolicy (#param gp)
 	val primconf = #primconf (#param gp)
 	fun mksname () = FilenamePolicy.mkStableName policy group
-	val _ = Say.vsay ["[checking stable ", gdescr, "]\n"]
 
 	fun work s = let
 

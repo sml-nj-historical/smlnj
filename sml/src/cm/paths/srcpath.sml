@@ -45,8 +45,6 @@ signature SRCPATH = sig
     val unpickle : PathConfig.mode -> string list * t -> t option
 
     val tstamp : t -> TStamp.t
-
-    val openTextIn : t -> TextIO.instream
 end
 
 structure SrcPath :> SRCPATH = struct
@@ -92,8 +90,6 @@ structure SrcPath :> SRCPATH = struct
     fun tstamp (ap, _) = AbsPath.tstamp ap
     fun sameDirContext (ap, _) = AbsPath.sameDirContext ap
     val cwdContext = AbsPath.cwdContext
-
-    fun openTextIn (ap, _) = AbsPath.openTextIn ap
 
     fun pickle warn ((ap, _), (cap, _)) = AbsPath.pickle warn (ap, cap)
     fun unpickle m (l, (cap, _)) =

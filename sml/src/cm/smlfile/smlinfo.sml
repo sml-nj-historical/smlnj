@@ -193,7 +193,7 @@ structure SmlInfo :> SMLINFO = struct
 		in
 		    (SF.parse source, source)
 		end
-		fun openIt () = SrcPath.openTextIn sourcepath
+		fun openIt () = TextIO.openIn (SrcPath.osstring sourcepath)
 		val pto =
 		    SOME (SafeIO.perform { openIt = openIt,
 					   closeIt = TextIO.closeIn,

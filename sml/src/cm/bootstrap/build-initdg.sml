@@ -18,7 +18,7 @@ signature BUILD_INIT_DG = sig
 	  core: DependencyGraph.sbnode,
 	  pervasive: DependencyGraph.sbnode,
 	  primitives: (string * DependencyGraph.sbnode) list,
-	  binpaths: string list } option
+	  binpaths: (string * bool) list } option
 end
 
 structure BuildInitDG :> BUILD_INIT_DG = struct
@@ -59,7 +59,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 		     else SOME (String.tokens sep line, newpos)
 	    end
 
-	    fun loop (split, m, bnl, pos) =
+	    fun loop (split, m, bnl, pos, lst) =
 		case lineIn pos of
 		    NONE => (error (pos, pos) "unexpected end of file"; NONE)
 		  | SOME (line, newpos) => let
@@ -96,21 +96,19 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			    val n = DG.SNODE { smlinfo = i,
 					      localimports = li,
 					      globalimports = gi }
-			    val bnl' =
-				case bnl of
-				    NONE => NONE
-				  | SOME l => SOME (SmlInfo.binname i :: l)
 			in
 			    loop (split,
 				  StringMap.insert (m, name, DG.SB_SNODE n),
-				  bnl', newpos)
+				  (SmlInfo.binname i, lst) :: bnl,
+				  newpos,
+				  lst)
 			end
 		    in
 			case line of
-			    [] => loop (split, m, bnl, newpos)
-			  | ["split"] => loop (true, m, bnl, newpos)
-			  | ["nosplit"] => loop (false, m, bnl, newpos)
-			  | ["start"] => loop (split, m, SOME [], newpos)
+			    [] => loop (split, m, bnl, newpos, lst)
+			  | ["split"] => loop (true, m, bnl, newpos, lst)
+			  | ["nosplit"] => loop (false, m, bnl, newpos, lst)
+			  | ["start"] => loop (split, m, bnl, newpos, true)
 			  | ("bind" :: name :: file :: args)  =>
 				node (name, file, args)
 			  | ("return" :: core :: rts :: pervasive :: prims) =>
@@ -119,14 +117,15 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 				       pervasive = look pervasive,
 				       primitives =
 				              map (fn n => (n, look n)) prims,
-				       binpaths = rev (getOpt (bnl, [])) }
+				       binpaths = rev bnl }
 			  | _ => (error "malformed line"; NONE)
 		    end
 	in
-	    loop (false, StringMap.empty, NONE, 1)
+	    loop (false, StringMap.empty, [], 1, false)
 	end
+	fun openIt () = TextIO.openIn (SrcPath.osstring specgroup)
     in
-	SafeIO.perform { openIt = fn () => SrcPath.openTextIn specgroup,
+	SafeIO.perform { openIt = openIt,
 			 closeIt = TextIO.closeIn,
 			 work = work,
 			 cleanup = fn () => () }
