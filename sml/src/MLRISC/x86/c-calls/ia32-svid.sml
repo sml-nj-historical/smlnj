@@ -105,15 +105,14 @@ functor IA32SVID_CCalls (
     val sp = C.esp
     fun LI i = T.LI(T.I.fromInt(32, i))
 
-    local
-      fun fpr(sz,f) = T.FPR(T.FREG(sz, f))
-      fun gpr(sz,r) = T.GPR(T.REG(sz, r))
-      val st0 = C.ST(0)
+    fun fpr(sz,f) = T.FPR(T.FREG(sz, f))
+    fun gpr(sz,r) = T.GPR(T.REG(sz, r))
+    val st0 = C.ST(0)
     (* note that the caller saves includes the result register (%eax) *)
-      val callerSaves = [gpr(32, C.eax), gpr(32, C.ecx), gpr(32, C.edx)]
-      val oneRes = [gpr(32, C.eax)]
-      val twoRes = [gpr(32, C.edx), gpr(32, C.eax)]
-    in
+    val callerSaves = [gpr(32, C.eax), gpr(32, C.ecx), gpr(32, C.edx)]
+    val oneRes = [gpr(32, C.eax)]
+    val twoRes = [gpr(32, C.edx), gpr(32, C.eax)]
+
   (* List of registers defined by a C Call; this is the result registers
    * plus the caller-save registers.
    * Multiple returns have most significant register first.
@@ -134,7 +133,6 @@ functor IA32SVID_CCalls (
       | resultsAndDefs (Ty.C_PTR) = (oneRes, callerSaves)
       | resultsAndDefs (Ty.C_ARRAY _) = (oneRes, callerSaves)
       | resultsAndDefs (Ty.C_STRUCT _) = (oneRes, callerSaves)
-    end (* local *)
 
 (**** START NEW CODE ****)
 
