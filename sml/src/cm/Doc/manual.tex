@@ -4,7 +4,7 @@
 
 \marginparwidth0pt\oddsidemargin0pt\evensidemargin0pt\marginparsep0pt
 \topmargin0pt\advance\topmargin by-\headheight\advance\topmargin by-\headsep
-\textwidth6.7in\textheight9.1in %\renewcommand{\baselinestretch}{1.2}
+\textwidth6.7in\textheight9.1in
 \columnsep0.25in
 
 \newcommand{\smlmj}{110}
@@ -205,8 +205,8 @@ include the exports of other libraries.)
 specifications (see Section~\ref{sec:access}).
 \end{itemize}
 
-As an example, let us assume that {\tt foo-utils.cm} contains the
-following text:
+As an example, let us assume that
+{\tt foo-utils.cm} contains the following text:
 
 %note: emacs gets temporarily confused by the single dollar
 \begin{verbatim}
@@ -222,7 +222,7 @@ following properties:
 
 \begin{itemize}
 \item it is a component of library {\tt foo-lib.cm} (meaning that only
-foo-lib.cm itself or other groups thereof may list foo-utils.cm as one
+foo-lib.cm itself or other groups thereof may list {\tt foo-utils.cm} as one
 of their members)
 \item {\tt set-utils.sml} and {\tt map-util.sml} are ML source files
 belonging to this component
@@ -249,10 +249,11 @@ is
 %note: emacs should be sufficiently un-confused again by now
 
 No harm is done if {\tt foo-lib.cm} does not actually mention {\tt
-foo-utils.cm}.  In this case it could be that {\tt foo-utils.cm} is
-mentioned indirectly via a chain of other components of {\tt
-foo-lib.cm}.  The other possibility is that it is not mentioned at all
-(in which case CM would never know about it and not complain).
+foo-utils.cm}.  In this case it could be that\linebreak {\tt
+foo-utils.cm} is mentioned indirectly via a chain of other components
+of {\tt foo-lib.cm}.  The other possibility is that it is not
+mentioned at all (in which case CM would never know about it, so it
+cannot complain).
 
 \subsection{Multiple occurences of the same member}
 \label{sec:multioccur}
@@ -377,14 +378,14 @@ to the anchor.  An error is signalled whenever the anchor name does
 not correspond to an existing anchor.
 
 Note that any ``implicitly anchored'' path {\tt foo/bar/baz} (as
-described above) can always be re-written as {\tt \$foo/foo/bar/baz}.
-Moreover, the explicit form is slightly more expressive as it permits
-names such as {\tt \$a/b/c} where the anchor name and the first arc do
-not coincide.
+described above) can always be re-written as\linebreak {\tt
+\$foo/foo/bar/baz}.  Moreover, the explicit form is slightly more
+expressive as it permits names such as {\tt \$a/b/c} where the anchor
+name and the first arc do not coincide.
 
 One can abbreviate the frequent case where they do coincide without
-resorting to implicit syntax by writing {\tt \$/foo/bar/baz} instead
-of the lengthier {\tt \$foo/foo/bar/baz}.
+resorting to implicit syntax by writing\linebreak {\tt \$/foo/bar/baz}
+instead of the lengthier {\tt \$foo/foo/bar/baz}.
 
 Another (somewhat controversial) shorthand is the following: if an
 explicitly anchored path has only one component and the component
@@ -606,9 +607,9 @@ The {\tt CM.Control.implicit\_anchors} controller has been added
 temporarily while support for {\em implicitly anchored paths} (see
 Section~\ref{sec:implicit}) is being faded out.  If set to {\tt
 false}, CM will check for implicitly anchored paths and issue an
-error.  The default ({\tt true}, i.e, implicit anchors are being
-accepted) can be overridden at startup by the environment variable
-{\tt CM\_IMPLICIT\_ANCHORS}.
+error; this is the default.  Changing the value to {\tt true} (e.g.,
+by setting the environment variable {\tt CM\_IMPLICIT\_ANCHORS at
+startup}) causes implicit anchors to be accepted.
 
 \subsubsection*{Path anchors}
 
@@ -805,8 +806,8 @@ may become necessary to use {\tt CM.Server.kill}, which will send a
 Unix TERM signal to destroy the server.
 
 Given a server handle, function {\tt CM.Server.name} returns the
-string that was originally given to the call of {\tt CM.Server.start}
-used to created the server.
+string that was originally given to the call of\linebreak {\tt
+CM.Server.start} used to created the server.
 
 \subsubsection*{Plug-ins}
 
@@ -1240,7 +1241,7 @@ by the target file name; any other string beginning with {\bf \%} is
 shortened by its first character.
 
 In the specification one can swap the positions of source and target
-(i.e., let member name be the target) by using a {\tt source}
+(i.e., let the member name be the target) by using a {\tt source}
 parameter:
 
 \begin{verbatim}
@@ -1495,11 +1496,11 @@ is
 Here, the file {\tt bar-client.sml} gets included if {\tt
 SMLNJ\_VERSION} is greater than 110 and {\tt new-foo.sml} exports a
 structure {\tt Bar} {\em or} if {\tt SMLNJ\_VERSION <= 110} and {\tt
-old-foo.sml} exports structure {\tt Bar}.
-Otherwise {\tt no-bar-so-far.sml} gets included instead.  In addition,
-the export of structure {\tt Bar} is guarded by its own existence.
-(Structure {\tt Bar} could also be defined by {\tt no-bar-so-far.sml}
-in which case it would get exported regardless of the outcome of the
+old-foo.sml} exports structure {\tt Bar}.  Otherwise\linebreak {\tt
+no-bar-so-far.sml} gets included instead.  In addition, the export of
+structure {\tt Bar} is guarded by its own existence.  (Structure {\tt
+Bar} could also be defined by {\tt no-bar-so-far.sml} in
+which case it would get exported regardless of the outcome of the
 other {\tt defined} test.)
 
 \subsection{Explicit errors}
@@ -1624,7 +1625,7 @@ not take any notice.)
 
 {\em Note:} As discussed in section~\ref{sec:toolparam}, CM sometimes
 looks for library files in
-{\tt CM/}{\tt version}{\tt /}{\it arch}{\tt -}{\it os}.
+{\tt CM/}{\it version}{\tt /}{\it arch}{\tt -}{\it os}.
 However, library files are never {\em created} there by CM.  If
 several versions of the same library are to be provided, an
 administrator must arrange the directory hierarchy accordingly ``by
@@ -1638,9 +1639,9 @@ outdated.  The rule is that in order to be considered ``up-to-date''
 the time stamp on skeleton file and binfile has to be exactly the
 same\footnote{CM explicitly sets the time stamp to be the same.} as
 the one on the ML source file.  This guarantees that all changes to a
-source will be noticed\footnote{except for the pathological case where
+source will be noticed.\footnote{except for the pathological case where
 two different versions of the same source file have exactly the same
-time stamp}.
+time stamp}
 
 CM also uses time stamps to decide whether tools such as ML-Yacc or
 ML-Lex need to be run (see Section~\ref{sec:tools}).  However, the
@@ -1682,11 +1683,13 @@ val _ = Tools.registerStdShellCmdTool
     dflopts = [] }
 \end{verbatim}
 
+\begin{sloppy}
 This code can either be packaged as a CM library or entered at the
-interactive top level after loading the {\tt \$smlnj/cm/tools.cm} library
-via {\tt CM.make} or {\tt CM.load\_plugin}.  ({\tt CM.autoload} is not
-enough because of its lazy nature which prevents the required
-side-effects to occur.)
+interactive top level after loading the {\tt \$smlnj/cm/ tools.cm}
+library via {\tt CM.make} or {\tt CM.load\_plugin}.  ({\tt
+CM.autoload} is not enough because of its lazy nature which prevents
+the required side-effects to occur.)
+\end{sloppy}
 
 In our example, the shell command name for our tool is {\tt
 new-ml-yacc}.  When looking for this command in the file system, CM
@@ -1761,7 +1764,7 @@ file, and the third component maps source options to target options.
 substituting {\bf \%$n$o} fields in {\tt template} (see above) if no
 options were specified.  (Note that the value of {\tt dflopts} is never
 passed to the option mappers in {\tt Tools.EXTEND} or {\tt
-Tools.REPLACE}.)  Type: {\tt Tools.toolopts}.
+Tools. REPLACE}.)  Type: {\tt Tools.toolopts}.
 \end{description}
 
 Less common kinds of rules can also be defined using the generic
@@ -1806,9 +1809,9 @@ used.  From there, one can distribute the work across a network of
 machines by taking advantage of the network file system and the
 ``rsh'' facility.
 
-To perform parallel compilations, one must attach ``compile servers'' to
-CM.  This is done using function {\tt CM.Server.start} with the following
-signature:
+To perform parallel compilations, one must attach ``compile servers''
+to CM.  This is done using function\linebreak {\tt CM.Server.start}
+with the following signature:
 
 \begin{verbatim}
   structure Server : sig
@@ -2074,12 +2077,12 @@ Although its programming model is more general, CM's implementation is
 closely tied to the Standard ML programming language~\cite{milner97}
 and its SML/NJ implementation~\cite{appel91:sml}.
 
-The current version is preceded by several other compilation managers,
-the most recent going by the same name ``CM''~\cite{blume95:cm}, while
-earlier ones were known as IRM ({\it Incremental Recompilation
-Manager})~\cite{harper94:irm} and SC (for {\it Separate
-Compilation})~\cite{harper-lee-pfenning-rollins-CM}.  CM owes many
-ideas to SC and IRM.
+The current version is preceded by several other compilation managers.
+Of those, the most recent went by the same name
+``CM''~\cite{blume95:cm}, while earlier ones were known as IRM ({\it
+Incremental Recompilation Manager})~\cite{harper94:irm} and SC (for
+{\it Separate Compilation})~\cite{harper-lee-pfenning-rollins-CM}.  CM
+owes many ideas to SC and IRM.
 
 Separate compilation in the SML/NJ system heavily relies on mechanisms
 for converting static environments (i.e., the compiler's symbol
@@ -2125,8 +2128,8 @@ everywhere.
 \item[CM keywords:] {\bf group}, {\bf Group}, {\bf GROUP}, {\bf
 library}, {\bf Library}, {\bf LIBRARY}, {\bf is}, {\bf IS}.  These
 keywords are recognized everywhere except within ``preprocessor''
-lines (lines starting with {\bf \#}) or following one of the SML
-keywords.
+lines (lines starting with {\bf \#}) or following one of the namespace
+specifiers.
 \item[Preprocessor control keywords:] {\bf \#if}, {\bf \#elif}, {\bf
 \#else}, {\bf \#endif}, {\bf \#error}.  These keywords are recognized
 only at the beginning of the line and indicate the start of a
@@ -2224,8 +2227,12 @@ preprocessor expressions (\nt{ppexp}):
 The following set of rules defines the syntax for export lists (\nt{elst}):
 
 \begin{tabular}{rcl}
-\nt{guardedexport} &\ar& \{ \nt{export} \} (\tl{\#endif} \vb \tl{\#else} \{ \nt{export} \} \tl{\#endif} \vb \tl{\#elif} \nt{ppexp} \nt{guardedexports}) \\
-\nt{export}        &\ar& \nt{mlsym} \vb \tl{\#if} \nt{ppexp} \nt{guardedexports} \vb \tl{\#error}  \\
+\nt{guardedexport} &\ar& \{ \nt{export} \} (\tl{\#endif} \vb
+\tl{\#else} \{ \nt{export} \} \tl{\#endif} \vb \tl{\#elif} \nt{ppexp}
+\nt{guardedexports}) \\
+\nt{restline}      &\ar& rest of current line up to next newline character \\
+\nt{export}        &\ar& \nt{mlsym} \vb \tl{\#if} \nt{ppexp}
+\nt{guardedexports} \vb \tl{\#error} \nt{restline}  \\
 \nt{elst}       &\ar& \nt{export} \{ \nt{export} \} \\
 \end{tabular}
 
@@ -2247,7 +2254,8 @@ The following set of rules defines the syntax for member lists (\nt{members}):
 \nt{class}          &\ar& \nt{stdpn} \\
 \nt{member}         &\ar& \nt{pathname} [\tl{:} \nt{class}] [\tl{(} \nt{toolopts} \tl{)}] \\
 \nt{guardedmembers} &\ar& \nt{members} (\tl{\#endif} \vb \tl{\#else} \nt{members} \tl{\#endif} \vb \tl{\#elif} \nt{ppexp} \nt{guardedmembers}) \\
-\nt{members}        &\ar& \{ (\nt{member} \vb \tl{\#if} \nt{ppexp} \nt{guardedmembers} \vb \tl{\#error})\} 
+\nt{members}        &\ar& \{ (\nt{member} \vb \tl{\#if} \nt{ppexp}
+\nt{guardedmembers} \vb \tl{\#error} \nt{restline}) \} 
 \end{tabular}
 
 \subsection{EBNF for library descriptions}
@@ -2389,33 +2397,34 @@ structure CM : CM
 \section{Listing of all CM-specific environment variables}
 
 Most control parameters that affect CM's operation can be adjusted
-using environment variables $v_s$ at startup time, i.e,
-when the {\tt sml} command is invoked.  Each such parameter has a
-default setting.  Default settings are determined at bootstrap time,
-i.e., the time when the heap image for SML/NJ's interactive system is
+using environment variables $v_s$ at startup time, i.e, when the {\tt
+sml} command is invoked.  Each such parameter has a default setting.
+Default settings are determined at bootstrap time, i.e., the time when
+the heap image for SML/NJ's interactive system is
 built.\footnote{Normally this is the same as installation time, but
 for SML/NJ compiler there is also a {\tt makeml} script for the
-purpose of bootstrapping.}
-
-At bootstrap time, it is possible to adjust defaults by using a
-different set of environment variables $v_b$.  The rule
-is that if parameter $x$ is adjustable using variable {\tt CM\_$X$},
-then the default is adjustable at bootstrap time using varibable {\tt
-CM\_$X$\_DEFAULT}.  If neither variable was set, a hard-wired fallback
+purpose of bootstrapping.}  At bootstrap time, it is possible to
+adjust defaults by using a different set of environment variables
+$v_b$.  If neither $v_s$ nor $v_b$ were set, a hard-wired fallback
 value will be used.
 
-Since the normal installation procedure for SML/NJ sets some of the
-{\tt CM\_$X$\_DEFAULT} variables at bootstrap time, there are two
-columns with default values in the following table.  The value labeled
-{\em fallback} is the one that would have been used had there been no
-environment variable at bootrap time, the one labeled {\em default} is
-the one the user will actually see.
+The rule for constructing (the names of) $v_s$ and $v_b$ is the
+following: For each adjustable parameter $x$ there is a {\em name
+stem}.  If the stem for $x$ is $s$, then $v_s = \mbox{\tt CM\_}s$ and
+$v_b = v_s\mbox{\tt \_DEFAULT}$.
 
-To save space, the table only lists the {\em stem} of each variable
-name.  If the stem is $X$, then $v_s$ has the form {\tt CM\_$X$} and
-$v_b$ has the form {\tt CM\_$X$\_DEFAULT}.  For example, CM's
-verbosity can be adjusted using {\tt CM\_VERBOSE} and the default can
-be set using {\tt CM\_VERBOSE\_DEFAULT}.
+Since the normal installation procedure for SML/NJ sets some of the
+$v_b$ variables at bootstrap time, there are two columns with default
+values in the following table.  The value labeled {\em fallback} is
+the one that would have been used had there been no environment
+variable at bootrap time, the one labeled {\em default} is the one the
+user will actually see.
+
+To save space, the table lists the stem but not the names for its
+associated (longer) $v_s$ and $v_b$.  For example, since the the table
+shows {\tt VERBOSE} in the row for {\tt CM.Control.verbose}, CM's
+per-session verbosity can be adjusted using {\tt CM\_VERBOSE} and the
+boot-time default can be set using {\tt CM\_VERBOSE\_DEFAULT}.
 
 \begin{center}
 \begin{small}
@@ -2494,9 +2503,9 @@ of the form {\tt \$$/x[/\cdots]$} act as an abbreviation for {\tt
 
 \begin{center}
 \begin{tabular}{p{2.3in}||p{2.8in}|c|c}
-name & description & installed & autoloaded \\
+name & description & installed & loaded \\
 \hline\hline
-{\tt \$/basis.cm} & Standard Basis Library & always & yes \\
+{\tt \$/basis.cm} & Standard Basis Library & always & auto \\
 \hline\hline
 {\tt \$/ml-yacc-lib.cm} & ML-Yacc library & always & no \\
 \hline\hline
@@ -2528,48 +2537,48 @@ so-called {\em visible compiler} infrastructure and to the compilation
 manager API.
 
 \begin{center}
-\begin{tabular}{p{2.3in}||p{2.8in}|c|c}
-name & description & installed & autoloaded \\
+\begin{tabular}{p{2.3in}||p{2.5in}|c|c}
+name & description & installed & loaded \\
 \hline\hline
 {\tt \$smlnj/compiler.cm} \newline
 {\tt \$smlnj/compiler/current.cm} & visible compiler for current
-architecture & always & yes \\
+architecture & always & auto \\
 \hline\hline
 {\tt \$smlnj/cm.cm} \newline
-{\tt \$smlnj/cm/full.cm} & compilation manager & always & yes \\
+{\tt \$smlnj/cm/full.cm} & compilation manager & always & auto \\
 \hline
 {\tt \$smlnj/cm/tools.cm} & API for extending CM with new tools &
 always & no \\
 \hline\hline
 {\tt \$/mllex-tool.cm} & plugin library for class {\tt mllex} & always
-& no \\
+& on demand \\
 \hline
 {\tt \$/lex-ext.cm} & plugin library for extension {\tt .lex} & always
-& no \\
+& on demand \\
 \hline
 {\tt \$/mlyacc-tool.cm} & plugin library for class {\tt mlyacc} &
-always & no \\
+always & on demand \\
 \hline
 {\tt \$/grm-ext.cm} & plugin library for extension {\tt .grm} & always
-& no \\
+& on demand \\
 \hline
 {\tt \$/mlburg-tool.cm} & plugin library for class {\tt mlburg} &
-always & no \\
+always & on demand \\
 \hline
 {\tt \$/burg-ext.cm} & plugin library for extension {\tt .burg} &
-always & no \\
+always & on demand \\
 \hline
 {\tt \$/noweb-tool.cm} & plugin library for class {\tt noweb} & always
-& no \\
+& on demand \\
 \hline
 {\tt \$/nw-ext.cm} & plugin library for extension {\tt .nw} & always &
-no \\
+on demand \\
 \hline
 {\tt \$/make-tool.cm} & plugin library for class {\tt make} & always &
-no \\
+on demand \\
 \hline
 {\tt \$/shell-tool.cm} & plugin library for class {\tt shell} & always
-& no \\
+& on demand \\
 \end{tabular}
 \end{center}
 
@@ -2583,7 +2592,7 @@ can target all of SML/NJ's supported platforms.
 
 \begin{center}
 \begin{tabular}{p{2.3in}||p{2.8in}|c|c}
-name & description & installed & autoloaded \\
+name & description & installed & loaded \\
 \hline\hline
 {\tt \$smlnj/cmb.cm} \newline
 {\tt \$smlnj/cmb/current.cm} & bootstrap compiler for current
@@ -2638,7 +2647,7 @@ SML/NJ's implementation:
 
 \begin{center}
 \begin{tabular}{p{2.8in}||p{2.3in}|c|c}
-name & description & installed & autoloaded \\
+name & description & installed & loaded \\
 \hline\hline
 {\tt \$MLRISC/Lib.cm} & utility library for MLRISC backend & always &
 no \\

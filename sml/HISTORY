@@ -13,6 +13,25 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/06/07 17:00:00 JST
+Tag: blume-20000607-no-implicit-anchors
+Description:
+
+1. This update changes the default setting for
+CM.Control.implicit_anchors from true to false.  This means that
+implicit anchors are no longer permitted by default.  I also tried to
+make sure that nothing else still relies on implicit anchors.
+(This is the next step on the schedule towards a CM that does not even
+have the notion of implicit anchors anymore.)
+
+2. More CM manual updates.
+
+3. I managed to track down and fix the pickling bug I mentioned last
+time.  Because of the previously existing workaround, this entails no
+immediate practical changes.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/06/06 11:15:00 JST
 Tag: blume-20000606-lazierpickle
 Description:

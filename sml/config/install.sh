@@ -349,7 +349,7 @@ reglib() {
 	echo "$this: Library $1 already exists in $FINALLOCATION."
     else
         echo "$this: Scheduling library $1 to be built in $FINALLOCATION."
-        echo "  andalso CM.stabilize false \"$1\"" >>$LIBLIST
+        echo "  andalso CM.stabilize false \"\$/$1\"" >>$LIBLIST
         echo $1 $SRCDIR/$2 >>$LOCALPATHCONFIG
         if [ x$MOVE_LIBRARIES = xtrue ] ; then
 	    echo movelibs $SRCDIR/$2 $1 >>$LIBMOVESCRIPT

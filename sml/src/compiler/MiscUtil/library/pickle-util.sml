@@ -251,6 +251,9 @@ structure PickleUtil :> PICKLE_UTIL = struct
 	    val sz = pre_size pr
 	    val ie = int_encode sz
 	    val iesz = size ie
+
+	    val _ = if iesz > 2 then ignore (w v (hcm, fwdm, ahm, nxt)) else ()
+
 	    (* Padding in front is better because the unpickler can
 	     * simply discard all leading 0s and does not need to know
 	     * about the pickler's setting of "trialStart". *)
@@ -259,10 +262,7 @@ structure PickleUtil :> PICKLE_UTIL = struct
 		if n = 0 then pr
 		else pad (CONCAT (null, pr), n - 1)
 	in
-	    if ilen < iesz then
-		(print (concat ["%LAZY-PICKLE LOOP: sz = ", Int.toString sz,
-				", iesz = ", Int.toString iesz, "\n"]);
-		 loop (nxt + 1, ilen + 1))
+	    if ilen < iesz then loop (nxt + 1, ilen + 1)
 	    else (codes, CONCAT (pad (STRING ie, ilen - iesz), pr), state)
 	end
     in
@@ -378,7 +378,7 @@ structure PickleUtil :> PICKLE_UTIL = struct
 	fun pickle emptyMap p = let
 	    val (_, pr, _) = p (HCM.empty, PM.empty, emptyMap, 0)
 	in
-	     pr2s pr
+	    pr2s pr
 	end
     end
 

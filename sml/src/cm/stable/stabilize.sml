@@ -52,21 +52,15 @@ struct
 	     val compare = SymbolSet.compare
 	end)
 
-    structure SNMap = MapFn
-	(struct
-	     type ord_key = DG.snode
-	     fun compare (DG.SNODE n, DG.SNODE n') =
-		 SmlInfo.compare (#smlinfo n, #smlinfo n')
-	end)
-
     structure PU = PickleUtil
     structure UU = UnpickleUtil
 
     val libstamp_nbytes = 16
 
-    type map = { ss: PU.id SSMap.map, sn: PU.id SNMap.map, pm: P.map }
+    type map = { ss: PU.id SSMap.map, sn: PU.id SmlInfoMap.map, pm: P.map }
 
-    val emptyMap = { ss = SSMap.empty, sn = SNMap.empty, pm = P.emptyMap }
+    val emptyMap : map =
+	{ ss = SSMap.empty, sn = SmlInfoMap.empty, pm = P.emptyMap }
 
     val lifter =
 	{ extract = fn (m: map) => #pm m,
@@ -84,10 +78,12 @@ struct
 	{ find = fn (m: map, k) => SSMap.find (#ss m, k),
 	  insert = fn ({ ss, sn, pm }, k, v) =>
 	               { sn = sn, ss = SSMap.insert (ss, k, v), pm = pm } }
-    val	SNs =
-	{ find = fn (m: map, k) => SNMap.find (#sn m, k),
-	  insert = fn ({ ss, sn, pm }, k, v) =>
-	               { ss = ss, sn = SNMap.insert (sn, k, v), pm = pm } }
+    val SNs =
+	{ find = fn (m: map, DG.SNODE k) => SmlInfoMap.find (#sn m,#smlinfo k),
+	  insert = fn ({ ss, sn, pm }, DG.SNODE k, v) =>
+		      { ss = ss,
+			sn = SmlInfoMap.insert (sn, #smlinfo k, v),
+			pm = pm } }
 
     fun fetch_pickle s = let
 	fun bytesIn n = let
@@ -568,15 +564,25 @@ struct
 	    val (registerOffset, getOffset) = let
 		val dict = ref SmlInfoMap.empty
 		val cur = ref 0
-		fun reg (i, sz) = let
-		    val os = !cur
-		in
-		    cur := os + sz;
-		    dict := SmlInfoMap.insert (!dict, i, os);
-		    members := i :: (!members);
-		    os
-		end
-		fun get i = valOf (SmlInfoMap.find (!dict, i))
+		fun get0 i = SmlInfoMap.find (!dict, i)
+		fun reg (i, sz) =
+		    case get0 i of
+			(* This test is necessary because of a tiny chance
+			 * that a portion of a pickle needs to be re-done
+			 * by the pickler because it underestimated its
+			 * size during lazy pickling. Ideally, the pickler
+			 * should run without side-effects, but in the
+			 * present case all we need is idempotence. *)
+			SOME os => os
+		      | NONE => let
+			    val os = !cur
+			in
+			    cur := os + sz;
+			    dict := SmlInfoMap.insert (!dict, i, os);
+			    members := i :: (!members);
+			    os
+			end
+		val get = valOf o get0
 	    in
 		(reg, get)
 	    end
