@@ -113,16 +113,15 @@ group : gprivspec LPAREN srcfile RPAREN opt_exports IS members
 						   members = members,
 						   gp = gp,
 						   curlib = curlib,
-						   owner = SOME srcfile,
 						   initgroup = ig })
-      | gprivspec opt_exports IS members        (S.group
+      | gprivspec opt_exports IS members
+                                                (S.group
 						 { path = grouppath,
 						   privileges = gprivspec,
 						   exports = opt_exports,
 						   members = members,
 						   gp = gp,
 						   curlib = curlib,
-						   owner = NONE,
 						   initgroup = ig })
       | lprivspec LPAREN version RPAREN mand_exports IS members
                                                (S.library

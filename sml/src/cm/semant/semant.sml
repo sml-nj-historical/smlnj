@@ -48,7 +48,6 @@ signature CM_SEMANT = sig
 		  members: members,
 		  gp: GeneralParams.info,
 		  curlib: SrcPath.file option,
-		  owner: SrcPath.file option,
 		  initgroup: group } -> group
 
     val library : { path: SrcPath.file,
@@ -246,7 +245,7 @@ structure CMSemant :> CM_SEMANT = struct
 
     fun group arg = let
 	val { path = g, privileges = p, exports = e, members = m,
-	      gp, curlib, owner, initgroup } = arg
+	      gp, curlib, initgroup } = arg
 	val mc = applyTo (MC.implicit gp initgroup, curlib) m
 	val filter = getExports (mc, e)
 	val pfsbn = let
@@ -267,7 +266,8 @@ structure CMSemant :> CM_SEMANT = struct
 	if StringSet.isEmpty wr then ()
 	else EM.impossible "group with wrapped privileges";
 	GG.GROUP { exports = exports,
-		   kind = GG.NOLIB { subgroups = subgroups, owner = owner },
+		   kind = GG.NOLIB { subgroups = subgroups,
+				     owner = curlib },
 		   required = rp' \/ rp \/ wr,
 		   grouppath = g,
 		   sources = MC.sources mc,
@@ -330,22 +330,7 @@ structure CMSemant :> CM_SEMANT = struct
 	val group = #group arg
 	val error = GroupReg.error (#groupreg gp) group
 	fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
-	fun checkowner (_, GG.GROUP { kind = GG.NOLIB { owner, ... }, ...},
-			_) =
-	    let fun libname NONE = "<toplevel>"
-		  | libname (SOME p) = SrcPath.descr p
-		fun eq (NONE, NONE) = true
-		  | eq (SOME p, SOME p') = SrcPath.compare (p, p') = EQUAL
-		  | eq _ = false
-	    in
-		if eq (curlib, owner) then ()
-		else e0 (concat ["owner of subgroup (", libname owner,
-				 ") does not match current library (",
-				 libname curlib, ")"])
-	    end
-	  | checkowner _ = ()
     in
-	app checkowner (MC.subgroups coll);
 	MC.sequential (env, coll, e0)
     end
     fun members (m1, m2) (env, curlib) = m2 (m1 (env, curlib), curlib)
