@@ -3,6 +3,9 @@ correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
 
+[2003-05-22]
+	Cleanup logic in Scan.scanf function.
+
 [2002-10-03]
 	Fixed bug in formating reals with the %g format.
 

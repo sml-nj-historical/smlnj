@@ -119,60 +119,40 @@ structure Scan : SCAN =
 		in
 		  scan (scanSet strm, rf, items)
 		end
-	    | scan (strm, Field(flags, wid, ty)::rf, items) = (let
+	    | scan (strm, Field(flags, wid, ty)::rf, items) = let
 		val strm = skipWS strm
+		fun next (con, SOME(x, strm')) = scan (strm', rf, con(x)::items)
+		  | next _ = NONE
 		fun getInt fmt = if (#large flags)
-		      then let
-			val SOME(n, strm) = LargeInt.scan fmt getc strm
-			in
-			  (LINT n, strm)
-			end
-		      else let
-			val SOME(n, strm) = Int.scan fmt getc strm
-			in
-			  (INT n, strm)
-			end
-		val (item, strm) = (case ty
-		       of OctalField => getInt SC.OCT
-			| IntField => getInt SC.DEC
-			| HexField => getInt SC.HEX
-			| CapHexField => getInt SC.HEX
-			| CharField => let val SOME(c, strm) = getc strm
-			    in
-			      (CHR c, strm)
-			    end
-			| BoolField => let
-			    val SOME(b, strm) = Bool.scan getc strm
-			    in
-			      (BOOL b, strm)
-			    end
-			| StrField => let
-			    val notSpace = not o Char.isSpace
-			    val pred = (case wid
-				   of NoPad => notSpace
-				    | (Wid n) => let val cnt = ref n
-					in
-					  fn c => (case !cnt
-					     of 0 => false
-					      | n => (cnt := n-1; notSpace c)
-					    (* end case *))
-					end
-				  (* end case *))
-			    val (s, strm) = SC.splitl pred getc strm
-			    in
-			      (STR s, strm)
-			    end
-			| (RealField _) => let
-			      val SOME(r, strm) = LargeReal.scan getc strm
-			    in
-			      (REAL r, strm)
-			    end
-		      (* end case *))
+		      then next(LINT, LargeInt.scan fmt getc strm)
+		      else next(INT, Int.scan fmt getc strm)
 		in
-		  scan (strm, rf, item::items)
+		  case ty
+		   of OctalField => getInt SC.OCT
+		    | IntField => getInt SC.DEC
+		    | HexField => getInt SC.HEX
+		    | CapHexField => getInt SC.HEX
+		    | CharField => next(CHR, getc strm)
+		    | BoolField => next(BOOL, Bool.scan getc strm)
+		    | StrField => let
+			val notSpace = not o Char.isSpace
+			val pred = (case wid
+			       of NoPad => notSpace
+				| (Wid n) => let val cnt = ref n
+				    in
+				      fn c => (case !cnt
+					 of 0 => false
+					  | n => (cnt := n-1; notSpace c)
+					(* end case *))
+				    end
+			      (* end case *))
+			val (s, strm) = SC.splitl pred getc strm
+			in
+			  scan (strm, rf, STR s :: items)
+			end
+		    | (RealField _) => next(REAL, LargeReal.scan getc strm)
+		  (* end case *)
 		end
-		  handle Overflow => raise Overflow
-		       | _ => NONE)
 	  in
 	    scan(strm, fmts, [])
 	  end (* scanf *)
