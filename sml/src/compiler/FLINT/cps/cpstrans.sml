@@ -154,8 +154,8 @@ fun spillOut (origargs, origctys, spgvars, spgctys, spfvars) =
           | _ => let val v = mkv() 
                      val u = VAR v
                      fun g (sv, (i,hdr)) = 
-                       (i+1, fn e => SELECT(i, u, sv, FLTt, hdr e))
-                     val (n,fh) = foldr g (0, ident) spfvars
+                       (i+1, fn e => hdr(SELECT(i, u, sv, FLTt, e)))
+                     val (n,fh) = foldl g (0, ident) spfvars
                      val ct = PTRt(FPT n)
                   in (SOME v, fh, v::spgvars, ct::spgctys)
                  end
@@ -166,8 +166,8 @@ fun spillOut (origargs, origctys, spgvars, spgctys, spfvars) =
           | _ => let val v = mkv()
                      val u = VAR v
                      fun g (sv, (i,hdr)) = 
-                       (i+1, fn e => SELECT(i, u, sv, FLTt, hdr e))
-                     val (n, gh) = foldr g (0, fhdr) spgvars
+                       (i+1, fn e =>hdr(SELECT(i, u, sv, FLTt, e)))
+                     val (n, gh) = foldl g (0, fhdr) spgvars
                      val ct = PTRt(RPT n)
                   in (SOME (v, ct), gh)
                  end
