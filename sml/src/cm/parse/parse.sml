@@ -6,18 +6,18 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 signature PARSE = sig
-    val parse : { load_plugin: SrcPath.context -> string -> bool,
+    val parse : { load_plugin: SrcPath.dir -> string -> bool,
 		  gr: GroupReg.groupreg,
 		  param: GeneralParams.param,
 		  stabflag: bool option,
-		  group: SrcPath.t,
+		  group: SrcPath.file,
 		  init_group: CMSemant.group,
 		  paranoid: bool }
 	-> (CMSemant.group * GeneralParams.info) option
     val reset : unit -> unit
-    val listLibs : unit -> SrcPath.t list
+    val listLibs : unit -> SrcPath.file list
     val dropPickles : unit -> unit
-    val dismissLib : SrcPath.t -> unit
+    val dismissLib : SrcPath.file -> unit
 end
 
 functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
@@ -63,7 +63,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	let val changed = ref true
 	    fun canStay GG.ERRORGROUP = true (* doesn't matter *)
 	      | canStay (GG.GROUP { sublibs, ... }) = let
-		    fun goodSublib (p, gth) =
+		    fun goodSublib (p, gth, _) =
 			case gth () of
 			    GG.GROUP { kind = GG.LIB { kind = GG.STABLE _,
 						       ... }, ... } =>
@@ -113,7 +113,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 
 	val groupreg = gr
 	val errcons = EM.defaultConsumer ()
-	val ginfo = { param = param, groupreg = groupreg, errcons = errcons }
+	val ginfo0 = { param = param, groupreg = groupreg, errcons = errcons }
 	val keep_going = #keep_going param
 
 	(* The "group cache" -- we store "group options";  having
@@ -168,7 +168,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			    PrettyPrint.add_newline pps;
 			    PrettyPrint.add_string pps s;
 			    PrettyPrint.add_string pps ": importing ";
-			    PrettyPrint.add_string pps (SrcPath.specOf g0);
+			    PrettyPrint.add_string pps (SrcPath.descr g0);
 			    loop (g, t)
 			end
 		in
@@ -177,7 +177,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	    in
 		EM.error s (p1, p2) EM.COMPLAIN
 		           ("group hierarchy forms a cycle with " ^
-			    SrcPath.specOf group)
+			    SrcPath.descr group)
 			   pphist
 	    end
 	in
@@ -186,8 +186,10 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	      | [] => false
 	end
 
-	fun mparse (group, vers, groupstack, pErrFlag, stabthis, curlib) = let
-	    fun getStable stablestack (gpath, vers) = let
+	fun mparse args = let
+	    val (group, vers, groupstack, pErrFlag, stabthis, curlib,
+		 ginfo, rb) = args
+	    fun getStable stablestack (ginfo, gpath, vers, rb) = let
 		(* This is a separate "findCycle" routine that detects
 		 * cycles among stable libraries.  These cycles should
 		 * never occur unless someone purposefully renames
@@ -214,10 +216,10 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		      pphist
 		end
 		fun load () = let
-		    val go = Stabilize.loadStable ginfo
+		    val go = Stabilize.loadStable
 			{ getGroup = getStable (gpath :: stablestack),
 			  anyerrors = pErrFlag }
-			(gpath, vers)
+			(ginfo, gpath, vers, rb)
 		in
 		    case go of
 			NONE => NONE
@@ -253,8 +255,9 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	    case SrcPathMap.find (!gc, group) of
 		SOME gopt => gopt
 	      | NONE => let
-		    fun try_s () = getStable [] (group, vers)
-		    fun try_n () = parse' (group, groupstack, pErrFlag, curlib)
+		    fun try_s () = getStable [] (ginfo, group, vers, rb)
+		    fun try_n () =
+			parse' (group, groupstack, pErrFlag, curlib, ginfo, rb)
 		    fun reg gopt =
 			(gc := SrcPathMap.insert (!gc, group, gopt); gopt)
 		    fun proc_n gopt =
@@ -285,13 +288,15 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 
 	(* Parse' is used when we are sure that we don't want to load
 	 * a stable library. *)
-	and parse' (group, groupstack, pErrFlag, curlib) = let
+	and parse' (group, groupstack, pErrFlag, curlib, ginfo, rb) = let
+
+	    val ginfo = GeneralParams.bind ginfo rb
 
 	    (* normal processing -- used when there is no cycle to report *)
 	    fun normal_processing () = let
 		val _ = Say.vsay ["[scanning ", SrcPath.descr group, "]\n"]
 
-		val context = SrcPath.sameDirContext group
+		val context = SrcPath.dir group
 
 		fun work stream = let
 		    val source =
@@ -316,7 +321,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		     * This function is used to parse sub-groups.
 		     * Errors are propagated by explicitly setting the
 		     * "anyErrors" flag of the parent group. *)
-		    fun recParse (p1, p2) curlib (p, v) = let
+		    fun recParse (p1, p2) curlib (p, v, rb) = let
 			val gs' = (group, (source, p1, p2)) :: groupstack
 			(* my error flag *)
 			val mef = #anyErrors source
@@ -325,7 +330,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			 * recursive traversals once there was an error on
 			 * this group. *)
 			if !mef andalso not keep_going then GG.ERRORGROUP
-			else case mparse (p, v, gs', mef, staball, curlib) of
+			else case mparse (p, v, gs', mef, staball,
+					  curlib, ginfo, rb) of
 				 NONE => (mef := true; GG.ERRORGROUP)
 			       | SOME res => res
 		    end
@@ -453,8 +459,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	end
     in
 	SmlInfo.newGeneration ();
-	case mparse (group, NONE, [], ref false, stabthis, NONE) of
+	case mparse (group, NONE, [], ref false, stabthis, NONE, ginfo0, []) of
 	    NONE => NONE
-	  | SOME g => SOME (g, ginfo)
+	  | SOME g => SOME (g, ginfo0)
     end
 end

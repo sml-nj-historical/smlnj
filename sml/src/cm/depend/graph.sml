@@ -35,7 +35,7 @@ structure DependencyGraph = struct
     fun describeSBN (SB_BNODE (BNODE { bininfo = i, ... }, _)) =
 	BinInfo.describe i
       | describeSBN (SB_SNODE (SNODE { smlinfo = i, ... })) =
-	SmlInfo.fullDescr i
+	SmlInfo.descr i
 
     fun describeFarSBN (_, sbn) = describeSBN sbn
 

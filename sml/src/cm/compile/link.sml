@@ -39,7 +39,7 @@ in
 	val reset : unit -> unit
 
 	(* discard persistent state for a specific stable library *)
-	val unshare : SrcPath.t -> unit
+	val unshare : SrcPath.file -> unit
     end
 
     functor LinkFn (structure MachDepVC : MACHDEP_VC

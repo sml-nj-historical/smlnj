@@ -29,5 +29,5 @@ sortedlist.sml
 pickle-util.sml
 unpickle-util.sml
 
-$basis.cm
-$smlnj-lib.cm
+$/basis.cm
+$/smlnj-lib.cm

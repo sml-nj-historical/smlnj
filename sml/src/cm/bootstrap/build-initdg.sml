@@ -10,7 +10,7 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 signature BUILD_INIT_DG = sig
-    val build : GeneralParams.info -> SrcPath.t ->
+    val build : GeneralParams.info -> SrcPath.file ->
 	{ pervasive: DependencyGraph.sbnode,
 	  others: DependencyGraph.sbnode list,
 	  src: GenericVC.Source.inputSource } option
@@ -24,11 +24,11 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
     structure DG = DependencyGraph
 
     fun build (gp: GeneralParams.info) specgroup = let
-	val pcmode = #pcmode (#param gp)
+	val penv = #penv (#param gp)
 	val errcons = #errcons gp
 	val groupreg = #groupreg gp
 
-	val context = SrcPath.sameDirContext specgroup
+	val context = SrcPath.dir specgroup
 	val _ = Say.vsay ["[reading init spec from ",
 			  SrcPath.descr specgroup, "]\n"]
 
@@ -59,8 +59,10 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 		  | SOME (line, newpos) => let
 			val error = error (pos, newpos)
 			fun sml (spec, s, xe, rts, ecs) = let
-			    val p = SrcPath.standard pcmode
-				{ context = context, spec = spec, err = error }
+			    val p = SrcPath.file
+				     (SrcPath.standard
+					  { env = penv, err = error }
+					  { context = context, spec = spec })
 			    val attribs =
 				{ split = s, is_rts = rts, extra_compenv = xe,
 				  explicit_core_sym = ecs }

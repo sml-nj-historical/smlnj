@@ -10,4 +10,4 @@
 Library
 	structure BurgTool
 is
-	$mlburg-tool.cm
+	$/mlburg-tool.cm

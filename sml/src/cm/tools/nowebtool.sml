@@ -43,7 +43,7 @@ structure NowebTool = struct
 
 	fun rule { spec, context, mkNativePath } = let
 	    val { name = str, mkpath, opts = too, derived, ... } : spec = spec
-	    val p = mkpath str
+	    val p = srcpath (mkpath str)
 	    val sname = nativeSpec p
 	    fun oneTarget (tname, rname, tclass, topts, lf, cpif) = let
 		fun runcmd () = let
@@ -83,7 +83,7 @@ structure NowebTool = struct
 	    end
 
 	    fun simpleTarget { name, mkpath } = let
-		val tname = nativeSpec (mkpath name)
+		val tname = nativeSpec (srcpath (mkpath name))
 	    in
 		oneTarget (tname, tname, NONE, NONE, NONE, true)
 	    end
@@ -99,7 +99,7 @@ structure NowebTool = struct
 				case matches kw of
 				    NONE => misskw kw
 				  | SOME [STRING { name, mkpath }] =>
-				    nativeSpec (mkpath name)
+				    nativeSpec (srcpath (mkpath name))
 				  | _ => badspec kw
 			    fun smatch kw =
 				case matches kw of

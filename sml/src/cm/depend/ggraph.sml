@@ -15,7 +15,7 @@ structure GroupGraph = struct
       | DEVELOPED of { wrapped: privileges, subgroups: subgrouplist }
 
     and kind =
-	NOLIB of { owner: SrcPath.t option, subgroups: subgrouplist }
+	NOLIB of { owner: SrcPath.file option, subgroups: subgrouplist }
       | LIB of { version: Version.t option, kind: libkind }
 
     (* the "required" field includes everything:
@@ -27,12 +27,13 @@ structure GroupGraph = struct
 	GROUP of { exports: DependencyGraph.impexp SymbolMap.map,
 		   kind: kind,
 		   required: privileges,
-		   grouppath: SrcPath.t,
+		   grouppath: SrcPath.file,
 		   sources: { class: string, derived: bool } SrcPathMap.map,
 		   sublibs: subgrouplist }
       | ERRORGROUP
 
-    withtype subgrouplist = (SrcPath.t * (unit -> group)) list
+    withtype subgrouplist =
+	(SrcPath.file * (unit -> group) * SrcPath.rebindings) list
     (* Note: "sublibs" consists of (srcpath, group) pairs where
      * srcpath is equivalent -- but not necessarily identical -- to
      * the "grouppath" component of "group".  The group might have

@@ -11,8 +11,7 @@ structure Cleanup = struct
 	val label = "CM-Cleanup"
 	fun atInit initPaths _ =
 	    (EnvConfig.init ();
-	     initPaths ();
-	     SrcPath.sync ())
+	     initPaths ())
     in
 	fun install initPaths =
 	    ignore (C.addCleaner (label, [C.AtInit], atInit initPaths))

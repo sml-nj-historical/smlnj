@@ -15,6 +15,8 @@ signature MEMBERCOLLECTION = sig
     type smlinfo = SmlInfo.info
     type impexp = DependencyGraph.impexp
     type region = GenericVC.SourceMap.region
+    type subgroups =
+	 (SrcPath.file * GroupGraph.group * SrcPath.rebindings) list
 
     type collection
 
@@ -24,14 +26,15 @@ signature MEMBERCOLLECTION = sig
 
     val expandOne :
 	{ gp: GeneralParams.info,
-	  rparse: SrcPath.t * Version.t option -> GroupGraph.group,
-	  load_plugin: SrcPath.context -> string -> bool }
+	  rparse: SrcPath.file * Version.t option * SrcPath.rebindings ->
+		  GroupGraph.group,
+	  load_plugin: SrcPath.dir -> string -> bool }
 	-> { name: string,
-	     mkpath: string -> SrcPath.t,
-	     group: SrcPath.t * region,
+	     mkpath: string -> SrcPath.prefile,
+	     group: SrcPath.file * region,
 	     class: string option,
 	     tooloptions: PrivateTools.toolopts option,
-	     context: SrcPath.context }
+	     context: SrcPath.dir }
 	-> collection
     val sequential : collection * collection * (string -> unit) -> collection
 
@@ -40,7 +43,7 @@ signature MEMBERCOLLECTION = sig
 	DependencyGraph.farsbnode	(* pervasive env *)
 	-> impexp SymbolMap.map * GroupGraph.privileges
 
-    val subgroups : collection -> (SrcPath.t * GroupGraph.group) list
+    val subgroups : collection -> subgroups
     val sources : collection ->
 		  { class: string, derived: bool } SrcPathMap.map
 
@@ -62,13 +65,14 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     type symbol = Symbol.symbol
     type impexp = DG.impexp
     type region = GenericVC.SourceMap.region
+    type subgroups = (SrcPath.file * GG.group * SrcPath.rebindings) list
 
     datatype collection =
 	COLLECTION of { imports: impexp SymbolMap.map,
 		        gimports: impexp SymbolMap.map,
 		        smlfiles: smlinfo list,
 			localdefs: smlinfo SymbolMap.map,
-			subgroups: (SrcPath.t * GG.group) list,
+			subgroups: subgroups,
 			sources:
 			       { class: string, derived: bool } SrcPathMap.map,
 			reqpriv: GG.privileges }
@@ -100,7 +104,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		     gimports = SymbolMap.empty,
 		     smlfiles = [],
 		     localdefs = SymbolMap.empty,
-		     subgroups = [(grouppath, init_group)],
+		     subgroups = [(grouppath, init_group, [])],
 		     sources = sm,
 		     reqpriv = StringSet.empty }
     end
@@ -136,8 +140,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	    val gi_union = SymbolMap.unionWith #1
 	    fun ld_error (s, f1, f2) =
 		(error (concat (describeSymbol
-				    (s, [" defined in ", SmlInfo.spec f1,
-					 " and also in ", SmlInfo.spec f2])));
+				    (s, [" defined in ", SmlInfo.descr f1,
+					 " and also in ", SmlInfo.descr f2])));
 		 f1)
 	    val ld_union = SymbolMap.unionWithi ld_error
 	    val s_union = SrcPathMap.unionWith #1
@@ -168,8 +172,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 				  context = context,
 				  load_plugin = load_plugin }
 	val msources = foldl SrcPathMap.insert' SrcPathMap.empty sources
-	fun g_coll (p, v) =
-	    case rparse (p, v) of
+	fun g_coll (p, v, rb) =
+	    case rparse (p, v, rb) of
 		g as GG.GROUP { exports = i, kind, required, sources,
 				grouppath, sublibs } => let
 		    val (gi, ver) =
@@ -192,7 +196,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 				| _ => e0 "library is newer than expected"));
 		    COLLECTION { imports = i, gimports = gi, smlfiles = [],
 				 localdefs = SymbolMap.empty,
-				 subgroups = [(p, g)],
+				 subgroups = [(p, g, rb)],
 				 sources = SrcPathMap.empty,
 				 reqpriv = required }
 		end

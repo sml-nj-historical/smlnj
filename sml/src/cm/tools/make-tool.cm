@@ -8,6 +8,6 @@
 Library
 	structure MakeTool
 is
-	$basis.cm
+	$/basis.cm
 	$smlnj/cm/tools.cm
 	maketool.sml

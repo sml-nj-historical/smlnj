@@ -9,7 +9,7 @@
  *)
 structure GeneralParams = struct
 
-    type param = { pcmode : PathConfig.mode,
+    type param = { penv: SrcPath.env,
 		   fnpolicy: FilenamePolicy.policy,
 		   symval: string -> { get: unit -> int option,
 				       set: int option -> unit },
@@ -18,4 +18,12 @@ structure GeneralParams = struct
     type info = { param: param,
 		  groupreg: GroupReg.groupreg,
 		  errcons: PrettyPrint.ppconsumer }
+
+    fun bind { param = { penv, fnpolicy, symval, keep_going },
+		groupreg, errcons } rb =
+	{ param = { penv = SrcPath.bind penv rb,
+		    fnpolicy = fnpolicy,
+		    symval = symval,
+		    keep_going = keep_going },
+	  groupreg = groupreg, errcons = errcons }
 end

@@ -7,9 +7,9 @@
  *)
 structure BtNames = struct
     val initgspec = "$smlnj/init/init.cmi"
-    val maingspec = "$root.cm"
+    val maingspec = "$/root.cm"
     val dirbaseDefault = "sml"
-    val pcmodespec = "pathconfig"
+    val penvspec = "pathconfig"
     val bare_preloads = "preloads.bare"
     val standard_preloads = "preloads.standard"
     val bootlist = "BOOTLIST"

@@ -11,12 +11,13 @@ signature GROUPREG = sig
     type groupreg
 
     val new : unit -> groupreg
-    val register : groupreg -> SrcPath.t * GenericVC.Source.inputSource -> unit
-    val lookup : groupreg -> SrcPath.t -> GenericVC.Source.inputSource
-    val registered : groupreg -> SrcPath.t -> bool
+    val register :
+	groupreg -> SrcPath.file * GenericVC.Source.inputSource -> unit
+    val lookup : groupreg -> SrcPath.file -> GenericVC.Source.inputSource
+    val registered : groupreg -> SrcPath.file -> bool
     val error :
 	groupreg
-	-> SrcPath.t * GenericVC.SourceMap.region
+	-> SrcPath.file * GenericVC.SourceMap.region
 	-> GenericVC.ErrorMsg.complainer
 end
 

@@ -36,7 +36,7 @@ structure MakeTool = struct
 			 matches kw_options,
 			 restoptions)
 		    end
-	    val p = mkpath str
+	    val p = srcpath (mkpath str)
 	    val tname = nativeSpec p
 	    val partial_expansion =
 		(* The "make" class is odd in that it has only a target

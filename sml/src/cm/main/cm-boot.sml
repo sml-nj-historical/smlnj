@@ -149,24 +149,21 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val theValues = ref (NONE: kernelValues option)
 
       in
-	  val pcmode = PathConfig.new ()
+          val penv = SrcPath.newEnv ()
 
 	  (* cancelling anchors cannot affect the order of existing paths
 	   * (it may invalidate some paths; but all other ones stay as
 	   * they are) *)
-	  fun setAnchor a NONE = PathConfig.cancel (pcmode, a)
-	    | setAnchor a (SOME s) = (PathConfig.set (pcmode, a, s);
-				      SrcPath.sync ())
+	  fun setAnchor a v = SrcPath.set_anchor (penv, a, v)
 	  (* same goes for reset because it just cancels all anchors... *)
-	  fun resetPathConfig () = PathConfig.reset pcmode
+	  fun resetPathConfig () = SrcPath.reset_anchors penv
 	  (* get the current binding for an anchor *)
-	  fun getAnchor a () =
-	      Option.map (fn f => f ()) (PathConfig.configAnchor pcmode a)
+	  fun getAnchor a () = SrcPath.get_anchor (penv, a)
 
 	  fun mkStdSrcPath s =
-	      SrcPath.standard pcmode { context = SrcPath.cwdContext (),
-				        spec = s,
-					err = fn s => raise Fail s }
+	      SrcPath.file
+	        (SrcPath.standard { err = fn s => raise Fail s, env = penv }
+				  { context = SrcPath.cwd (), spec = s })
 
 	  fun getPending () = let
 	      fun one (s, _) = let
@@ -185,9 +182,10 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		  NONE => []
 		| SOME f => [f]
 	      val p = #get StdConfig.pathcfgspec () :: p
-	      fun processOne f = PathConfig.processSpecFile (pcmode, f)
+	      fun processOne f = SrcPath.processSpecFile (penv, f)
 		  handle _ => ()
 	  in
+	      SrcPath.sync ();
 	      app processOne p
 	  end
 
@@ -198,7 +196,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val v = getTheValues ()
 	  in
 	      { fnpolicy = fnpolicy,
-		pcmode = pcmode,
+		penv = penv,
 		symval = SSV.symval,
 		keep_going = #get StdConfig.keep_going () }
 	  end
@@ -240,8 +238,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val _ = Say.vsay ["[attempting to load plugin ", x, "]\n"]
 	      fun badname s = Say.say ["[bad plugin name: ", s, "]\n"]
 	      fun mkSrcPath s =
-		  SrcPath.standard pcmode { context = context,
-					    spec = s, err = badname }
+		  SrcPath.file
+		      (SrcPath.standard { env = penv, err = badname }
+					{ context = context, spec = s })
 	      val success =
 		  run mkSrcPath NONE (make_runner false) x handle _ => false
 	  in
@@ -252,7 +251,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      success
 	  end
 
-	  fun cwd_load_plugin x = load_plugin (SrcPath.cwdContext ()) x
+	  fun cwd_load_plugin x = load_plugin (SrcPath.cwd ()) x
 
 	  fun stabilize_runner gp g = true
 
@@ -267,7 +266,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		  case archos of
 		      NONE => fnpolicy
 		    | SOME ao => FilenamePolicy.colocate_generic ao
-	      fun sourcesOf ((p, gth), (v, a)) =
+	      fun sourcesOf ((p, gth, _), (v, a)) =
 		  if SrcPathSet.member (v, p) then (v, a)
 		  else
 		      let val v = SrcPathSet.add (v, p)
@@ -305,7 +304,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      (case Parse.parse (parse_arg (gr, NONE, p)) of
 		   SOME (g, _) => let
 		       val (_, sm) =
-			   sourcesOf ((p, fn () => g),
+			   sourcesOf ((p, fn () => g, []),
 				      (SrcPathSet.empty,
 				       StringMap.singleton
 					   (SrcPath.osstring p,
@@ -339,7 +338,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val gr = GroupReg.new ()
 	      fun parse p = Parse.parse (parse_arg (gr, NONE, p))
 	  in
-	      Slave.slave { pcmode = pcmode,
+	      Slave.slave { penv = penv,
 			    parse = parse,
 			    my_archos = my_archos,
 			    sbtrav = Compile.newSbnodeTraversal,
@@ -386,8 +385,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		      if isDir d then SOME (x, d) else NONE
 		  end
 		  val pairList = List.mapPartial subDir fileList
+		  fun sa (x, d) = SrcPath.set_anchor (penv, x, SOME d)
 	      in
-		  app (fn (x, d) => PathConfig.set (pcmode, x, d)) pairList
+		  app sa pairList
 	      end
 
 	      val pidmapfile = P.concat (bootdir, BtNames.pidmap)
@@ -400,7 +400,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 					     handle DE.Unbound => e)
 				| NONE => e
 		      in
-			  SrcPathMap.insert (m, SrcPath.fromDescr pcmode d,
+			  SrcPathMap.insert (m, SrcPath.decode penv d,
 					     foldl enter1 emptydyn pids)
 		      end
 		  in
@@ -422,16 +422,17 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	      val initgspec = mkStdSrcPath BtNames.initgspec
 	      val ginfo = { param = { fnpolicy = fnpolicy,
-				      pcmode = pcmode,
+				      penv = penv,
 				      symval = SSV.symval,
 				      keep_going = false },
 			    groupreg = GroupReg.new (),
 			    errcons = EM.defaultConsumer () }
 	      fun loadInitGroup () =
-		  Stabilize.loadStable ginfo
-		    { getGroup = fn _ => raise Fail "CMBoot: initial getGroup",
-		      anyerrors = ref false }
-		    (initgspec, NONE)
+		  Stabilize.loadStable
+		      { getGroup = fn _ =>
+				      raise Fail "CMBoot: initial getGroup",
+			anyerrors = ref false }
+		      (ginfo, initgspec, NONE, [])
 	  in
 	      case loadInitGroup () of
 		  NONE => raise Fail "CMBoot: unable to load init group"
@@ -541,7 +542,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	end
 
 	structure Library = struct
-	    type lib = SrcPath.t
+	    type lib = SrcPath.file
 	    val known = Parse.listLibs
 	    val descr = SrcPath.descr
 	    val osstring = SrcPath.osstring
@@ -557,7 +558,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	structure Server = struct
 	    type server = Servers.server
-	    fun start x = Servers.start x before SrcPath.invalidateCwd ()
+	    fun start x = Servers.start x
+			  before SrcPath.scheduleNotification ()
 	    val stop = Servers.stop
 	    val kill = Servers.kill
 	    val name = Servers.name
@@ -576,7 +578,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
     end
 
     structure Tools = ToolsFn (val load_plugin = cwd_load_plugin
-			       val pcmode = pcmode)
+			       val penv = penv)
 
     val load_plugin = load_plugin
   end

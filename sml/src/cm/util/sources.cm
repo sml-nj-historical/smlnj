@@ -53,6 +53,6 @@ is
 	int-map.sml
 	int-set.sml
 
-	$basis.cm
+	$/basis.cm
 	$smlnj/viscomp/core.cm
-	$smlnj-lib.cm
+	$/smlnj-lib.cm

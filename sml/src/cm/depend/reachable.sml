@@ -88,7 +88,7 @@ structure Reachable :> REACHABLE = struct
 		    val { exports, sublibs, grouppath, ... } = grec
 		in
 		    if SrcPathSet.member (seen, grouppath) then (a, seen)
-		    else foldl (fn ((_, g), x) => snm (g (), x))
+		    else foldl (fn ((_, g, _), x) => snm (g (), x))
 		               (snodeMap' (exports, a),
 				SrcPathSet.add (seen, grouppath))
 			       sublibs
@@ -106,7 +106,7 @@ structure Reachable :> REACHABLE = struct
 	    fun go (GG.ERRORGROUP, a) = a
 	      | go (g as GG.GROUP { grouppath, ... }, a) = let
 		    val sgl = subgroups g
-		    fun sl ((p, gth), a) =
+		    fun sl ((p, gth, _), a) =
 			case gth () of
 			    g as GG.GROUP { kind = GG.NOLIB _, ... } =>
 			    if SrcPathSet.member (a, p) then a else go (g, a)
@@ -136,7 +136,7 @@ structure Reachable :> REACHABLE = struct
 				  | _ => (seen, res)
 			    end
 		    end
-		and slo ((p, gth), x) = slo' ((p, gth ()), x)
+		and slo ((p, gth, _), x) = slo' ((p, gth ()), x)
 	    in
 		#2 (slo' ((grouppath, g),
 			  (SrcPathSet.empty, SrcPathMap.empty)))

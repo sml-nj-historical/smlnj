@@ -125,8 +125,8 @@ fun equalUptoAlpha(ce1,ce2) =
               | same(REAL a, REAL b) = a=b
               | same(STRING a, STRING b) = a=b
 	      | same(a,b) = false
-            fun samefields((a,ap)::ar,(b,bp)::br) = ap=bp andalso same(a,b)
-		                                     andalso samefields(ar,br)
+            fun samefields((a,ap)::ar,(b,bp)::br) =
+		ap=bp andalso same(a,b) andalso samefields(ar,br)
               | samefields(nil,nil) = true
               | samefields _ = false
 	    fun samewith p = equ (p::pairs)
@@ -939,7 +939,7 @@ end
      | (P.cmp{oper=P.eql, kind}, [VAR v, VAR w]) => 
 	 (case kind
   	   of P.FLOAT _ => raise ConstFold (* incase of NaN's *)
-	    | _ => if v=w then  (click "v"; true) else raise raise ConstFold
+	    | _ => if v=w then  (click "v"; true) else raise ConstFold
  	           (*esac*))
      | (P.cmp{oper=P.eql,...}, [INT i, INT j]) => (click "w"; i=j)
      | (P.cmp{oper=P.neq,kind}, vl) => 

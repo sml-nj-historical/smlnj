@@ -341,10 +341,10 @@ MiscUtil/util/sourcemap.sig
 MiscUtil/util/sourcemap.sml
 MiscUtil/util/stats.sml
 
-$basis.cm
-$ml-yacc-lib.cm
-$smlnj-lib.cm
-$comp-lib.cm
-$pp-lib.cm
+$/basis.cm
+$/ml-yacc-lib.cm
+$/smlnj-lib.cm
+$/comp-lib.cm
+$/pp-lib.cm
 $MLRISC/Control.cm
 $MLRISC/MLRISC.cm

@@ -13,7 +13,7 @@ Library
 is
 	$smlnj/init/init.cmi : cm
 
-	$basis.cm
+	$/basis.cm
 	$smlnj/viscomp/core.cm
 
 	(* need access to CM's "init" function *)
@@ -27,25 +27,25 @@ is
 	$smlnj/cm/tools.cm
         (* We need the ml-yacc and ml-lex tool plugins here. They must
          * always be "plugged in" because they are needed for -rebuild. *)
-	$mlyacc-tool.cm
-	$mllex-tool.cm
-	$grm-ext.cm
-	$lex-ext.cm
+	$/mlyacc-tool.cm
+	$/mllex-tool.cm
+	$/grm-ext.cm
+	$/lex-ext.cm
         (* Technically, the ml-burg tool is not needed here.  It should
          * eventually be moved into the ML-Burg source tree and installed
          * from there. *)
-	$mlburg-tool.cm
-	$burg-ext.cm
+	$/mlburg-tool.cm
+	$/burg-ext.cm
         (* Technically, the noweb tool is not needed here.  It should
          * eventually be moved into the noweb source tree and installed
          * from there. *)
-	$noweb-tool.cm
-	$nw-ext.cm
+	$/noweb-tool.cm
+	$/nw-ext.cm
 	(* Register the make tool here. (Kinda unrealistic to hope that
 	 * Unix' make suddenly comes with a CM plugin... *)
-	$make-tool.cm
+	$/make-tool.cm
 	(* Same for shell tool... *)
-	$shell-tool.cm
+	$/shell-tool.cm
 
 # if not defined(LIGHT)
 	$smlnj/compiler/all.cm

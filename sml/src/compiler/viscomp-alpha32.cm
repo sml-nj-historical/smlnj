@@ -27,9 +27,9 @@ CodeGen/alpha32/alpha32PseudoInstrs.sml
 CodeGen/alpha32/alpha32gen.sml
 CodeGen/alpha32/alpha32spec.sml
 
-$basis.cm
+$/basis.cm
 $smlnj/viscomp/core.cm
-$comp-lib.cm
+$/comp-lib.cm
 $MLRISC/Control.cm
 $MLRISC/MLRISC.cm
 $MLRISC/ALPHA.cm

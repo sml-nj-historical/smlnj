@@ -1,7 +1,7 @@
 Library
 	structure HppaUnixCMB
 is
-	$basis.cm
+	$/basis.cm
 	$smlnj/internal/cm-lib.cm
 	$smlnj/internal/host-compiler-0.cm
 	$smlnj/viscomp/hppa.cm

@@ -23,7 +23,7 @@ structure ShellTool = struct
 
 	fun rule { spec, context, mkNativePath } = let
 	    val { name = str, mkpath, opts = too, derived, ... } : spec = spec
-	    val specpath = mkpath str
+	    val specpath = srcpath (mkpath str)
 	    val specname = nativeSpec specpath
 	    val (sname, tname, tclass, topts, cmdline) =
 		case too of
@@ -36,7 +36,7 @@ structure ShellTool = struct
 			    case matches kw of
 				NONE => NONE
 			      | SOME [STRING { name, mkpath }] =>
-				  SOME (nativeSpec (mkpath name))
+				  SOME (nativeSpec (srcpath (mkpath name)))
 			      | _ => badspec kw
 			val tclass =
 			    case matches kw_class of
@@ -67,7 +67,7 @@ structure ShellTool = struct
 			  | (SOME _, SOME _) => err
 			 "only one of `source=' and `target=' can be specified"
 		    end
-	    val spath = mkNativePath sname
+	    val spath = srcpath (mkNativePath sname)
 	    val partial_expansion =
 		({ smlfiles = [], cmfiles = [],
 		   (* If str was the target, then "derived" does not really

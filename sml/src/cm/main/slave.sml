@@ -11,7 +11,7 @@ local
 in
   structure Slave = struct
 
-    fun slave { pcmode, my_archos, parse, sbtrav, make } = let
+    fun slave { penv, my_archos, parse, sbtrav, make } = let
 
 	val dbr = ref BtNames.dirbaseDefault
 
@@ -20,10 +20,10 @@ in
 	fun say_error () = Say.say ["SLAVE: error\n"]
 	fun say_pong () = Say.say ["SLAVE: pong\n"]
 
-	fun path (s, pcmode) = SrcPath.fromDescr pcmode s
+	fun path (s, penv) = SrcPath.decode penv s
 		  
 	fun chDir d =
-	    OS.FileSys.chDir (SrcPath.osstring (path (d, pcmode)))
+	    OS.FileSys.chDir (SrcPath.osstring (path (d, penv)))
 
 	fun waitForStart () = let
 	    val line = TextIO.inputLine TextIO.stdIn
@@ -55,18 +55,18 @@ in
 	in
 	    case slave archos (SOME (!dbr, f)) of
 		NONE => (say_error (); waitForStart ())
-	      | SOME (g, trav, cmb_pcmode) => let
+	      | SOME (g, trav, cmb_penv) => let
 		    val _ = say_ok ()
 		    val index = Reachable.snodeMap g
 		in
-		    workLoop (index, trav, cmb_pcmode)
+		    workLoop (index, trav, cmb_penv)
 		end
 	end handle _ => (say_error (); waitForStart ())
 
 	and do_cm (archos, f) =
 	    if archos <> my_archos then (say_error (); waitForStart ())
 	    else let
-		val p = path (f, pcmode)
+		val p = path (f, penv)
 	    in
 		case parse p of
 		    NONE => (say_error (); waitForStart ())
@@ -76,11 +76,11 @@ in
 			val trav = sbtrav () gp
 			fun trav' sbn = isSome (trav sbn)
 		    in
-			workLoop (index, trav', pcmode)
+			workLoop (index, trav', penv)
 		    end
 	    end handle _ => (say_error (); waitForStart ())
 
-	and workLoop (index, trav, pcmode) = let
+	and workLoop (index, trav, penv) = let
 	    fun loop () = let
 		val line = TextIO.inputLine TextIO.stdIn
 	    in
@@ -88,7 +88,7 @@ in
 		else case String.tokens Char.isSpace line of
 		    ["cd", d] => (chDir d; say_ok (); loop ())
 		  | ["compile", f] => let
-			val p = path (f, pcmode)
+			val p = path (f, penv)
 		    in
 			case SrcPathMap.find (index, p) of
 			    NONE => (say_error (); loop ())

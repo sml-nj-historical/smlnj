@@ -49,7 +49,7 @@ in
 
     functor CompileFn (structure MachDepVC : MACHDEP_VC
 		       structure StabModmap : STAB_MODMAP
-		       val compile_there : SrcPath.t -> bool) :>
+		       val compile_there : SrcPath.file -> bool) :>
 	COMPILE where type bfc = MachDepVC.Binfile.bfContent =
     struct
 

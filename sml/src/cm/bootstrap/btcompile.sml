@@ -17,7 +17,7 @@ in
 functor BootstrapCompileFn
 	    (structure MachDepVC : MACHDEP_VC
 	     val os : SMLofNJ.SysInfo.os_kind
-	     val load_plugin : SrcPath.context -> string -> bool) :> sig
+	     val load_plugin : SrcPath.dir -> string -> bool) :> sig
     val make' : string option -> bool
     val make : unit -> bool
     val reset : unit -> unit
@@ -36,7 +36,7 @@ end = struct
 
     fun init_servers (GG.GROUP { grouppath, ... }) =
 	Servers.cmb { archos = archos,
-		      root = SrcPath.descr grouppath }
+		      root = SrcPath.encode grouppath }
       | init_servers GG.ERRORGROUP = ()
 
     structure StabModmap = StabModmapFn ()
@@ -44,7 +44,7 @@ end = struct
     structure Compile = CompileFn (structure MachDepVC = MachDepVC
 				   structure StabModmap = StabModmap
 				   val compile_there =
-				       Servers.compile o SrcPath.descr)
+				       Servers.compile o SrcPath.encode)
 
     structure BFC = BfcFn (structure MachDepVC = MachDepVC)
 
@@ -120,7 +120,7 @@ end = struct
 
 	val dirbase = getOpt (dbopt, BtNames.dirbaseDefault)
 	val _ = checkDirbase dirbase
-	val pcmodespec = BtNames.pcmodespec
+	val penvspec = BtNames.penvspec
 	val initgspec = BtNames.initgspec
 	val maingspec = BtNames.maingspec
 
@@ -129,23 +129,24 @@ end = struct
 
 	val keep_going = #get StdConfig.keep_going ()
 
-	val ctxt = SrcPath.cwdContext ()
+	val ctxt = SrcPath.cwd ()
 
 	val listfile = P.joinDirFile { dir = bootdir, file = BtNames.bootlist }
 	val pidmapfile = P.joinDirFile { dir = bootdir, file = BtNames.pidmap }
 
-	val pcmode = PathConfig.new ()
-	val _ = PathConfig.processSpecFile (pcmode, pcmodespec)
+	val penv = SrcPath.newEnv ()
+	val _ = SrcPath.processSpecFile (penv, penvspec)
 
-	fun stdpath s = SrcPath.standard pcmode { context = ctxt,
-						  spec = s,
-						  err = fn s => raise Fail s }
+	fun stdpath s =
+	    SrcPath.file (SrcPath.standard
+			      { err = fn s => raise Fail s, env = penv }
+			      { context = ctxt, spec = s })
 
 	val initgspec = stdpath initgspec
 	val maingspec =
 	    case root of
 		NONE => stdpath maingspec
-	      | SOME r => SrcPath.fromDescr pcmode r
+	      | SOME r => SrcPath.decode penv r
 
 	val fnpolicy =
 	    FilenamePolicy.separate { bindir = bindir, bootdir = bootdir }
@@ -153,7 +154,7 @@ end = struct
 
 	val param =
 	    { fnpolicy = fnpolicy,
-	      pcmode = pcmode,
+	      penv = penv,
 	      symval = SSV.symval,
 	      keep_going = keep_going }
 
@@ -223,7 +224,7 @@ end = struct
 		    { getGroup = fn _ => raise Fail "CMB: initial getGroup",
 		      anyerrors = ref false }
 	    in
-		case Stabilize.loadStable ginfo lsarg (initgspec, NONE) of
+		case Stabilize.loadStable lsarg (ginfo, initgspec, NONE, []) of
 		    NONE => NONE
 		  | SOME (g as GG.GROUP { exports, ... }) => SOME g
 		  | SOME GG.ERRORGROUP => NONE
@@ -324,7 +325,7 @@ end = struct
 			    end
 			    fun writePidLine s (p, set) =
 				if StableSet.isEmpty set then ()
-				else (TextIO.output (s, SrcPath.descr p);
+				else (TextIO.output (s, SrcPath.encode p);
 				      StableSet.app (writePid s) set;
 				      TextIO.output (s, "\n"))
 			    fun writePidMap s =
@@ -355,7 +356,7 @@ end = struct
 			else false
 		    end
 		in
-		    SOME ((g, gp, pcmode), thunk)
+		    SOME ((g, gp, penv), thunk)
 		end
 	end handle Option => (Compile.reset (); NONE)
 	    	   (* to catch valOf failures in "rt" *)
@@ -378,11 +379,11 @@ end = struct
 	    case mk_compile { deliver = false, root = SOME root,
 			      dirbase = SOME dirbase, paranoid = false } of
 		NONE => NONE
-	      | SOME ((g, gp, pcmode), _) => let
+	      | SOME ((g, gp, penv), _) => let
 		    val trav = Compile.newSbnodeTraversal () gp
 		    fun trav' sbn = isSome (trav sbn)
 		in
-		    SOME (g, trav', pcmode)
+		    SOME (g, trav', penv)
 		end
     in
 	val _ = CMBSlaveHook.init archos slave

@@ -97,12 +97,12 @@ is
 	(* CM-internal libraries *)
 	util/sources.cm
 
-	$basis.cm
+	$/basis.cm
 
 	(* compiler libraries *)
 	$smlnj/viscomp/core.cm
-	$comp-lib.cm
+	$/comp-lib.cm
 
 	(* auxiliary libraries *)
-	$ml-yacc-lib.cm
-	$smlnj-lib.cm
+	$/ml-yacc-lib.cm
+	$/smlnj-lib.cm

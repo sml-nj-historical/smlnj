@@ -51,10 +51,10 @@ structure S = CMSemant
        | boolexp of S.exp
        | exp of S.exp
        | ml_symbol of S.ml_symbol
-       | pathname of { name: string, mkpath: string -> S.pathname }
+       | pathname of { name: string, mkpath: string -> SrcPath.prefile }
        | sym of S.cm_symbol
        | word of S.cm_symbol
-       | owner of S.pathname option
+       | owner of SrcPath.file option
        | class of S.cm_class
        | optclass of S.cm_class option
        | toolopts of S.toolopt list
@@ -64,13 +64,13 @@ structure S = CMSemant
 %pos int
 %verbose
 %arg (grouppath, context, obsolete, error, doMember, curlib, gp, ig) :
-    S.pathname *
+    SrcPath.file *
     S.context *
     (pos * pos -> unit) *
     (pos * pos -> string -> unit) *
-    ({ name: string, mkpath: string -> S.pathname } *
+    ({ name: string, mkpath: string -> SrcPath.prefile } *
      pos * pos * S.cm_class option * S.toolopt list option -> S.members) *
-    S.pathname option *
+    SrcPath.file option *
     GeneralParams.info *
     S.group
 %start description
@@ -126,8 +126,9 @@ version : FILE_STANDARD                        (S.cm_version
 							FILE_STANDARDright)))
 
 owner : (* empty *)                            (NONE)
-      | LPAREN pathname RPAREN                 (SOME (#mkpath pathname
-						      (#name pathname)))
+      | LPAREN pathname RPAREN                 (SOME (SrcPath.file
+							  (#mkpath pathname
+							    (#name pathname))))
 
 wrapspec : (* empty *)                         (fn p => p)
           | wrapspec word                      (fn p =>
@@ -264,4 +265,6 @@ pathname : FILE_STANDARD			({ name = FILE_STANDARD,
 	 | FILE_NATIVE				({ name = FILE_NATIVE,
 						   mkpath = fn n =>
 						     S.file_native
-						       (n, context) })
+						       (n, context, error
+							(FILE_NATIVEleft,
+							 FILE_NATIVEright)) })

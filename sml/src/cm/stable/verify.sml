@@ -19,7 +19,7 @@ in
 signature VERIFY_STABLE = sig
     type exportmap = SmlInfo.info StableMap.map
     val verify' : GP.info -> exportmap
-	-> SrcPath.t *			(* grouppath *)
+	-> SrcPath.file *		(* grouppath *)
 	   DG.sbnode list *		(* export_nodes *)
 	   GG.subgrouplist *		(* sublibs *)
 	   SrcPathSet.set *		(* groups *)
@@ -51,7 +51,7 @@ functor VerStabFn (structure Stabilize: STABILIZE) :> VERIFY_STABLE = struct
 	      | _ => true
 	end
 
-	fun nonstabSublib (_, gth) =
+	fun nonstabSublib (_, gth, _) =
 	    case gth () of
 		GG.GROUP { kind = GG.LIB { kind = GG.STABLE _,
 					   ... }, ... } => false

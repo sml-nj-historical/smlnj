@@ -15,7 +15,7 @@ signature BININFO = sig
     type region = GenericVC.SourceMap.region
     type pid = GenericVC.PersStamps.persstamp
 
-    val new : { group: SrcPath.t,
+    val new : { group: SrcPath.file,
 	        mkStablename: unit -> string,
 	        error: complainer,
 		spec: string,
@@ -26,7 +26,7 @@ signature BININFO = sig
     val compare : info * info -> order
     val describe : info -> string
     val offset : info -> int
-    val group : info -> SrcPath.t
+    val group : info -> SrcPath.file
     val stablename : info -> string
     val rts_pid : info -> pid option
     val sh_mode : info -> Sharing.mode
@@ -40,7 +40,7 @@ structure BinInfo :> BININFO = struct
     type pid = GenericVC.PersStamps.persstamp
 
     datatype info =
-	INFO of { group: SrcPath.t,
+	INFO of { group: SrcPath.file,
 		  mkStablename: unit -> string,
 		  spec: string,
 		  offset: int,

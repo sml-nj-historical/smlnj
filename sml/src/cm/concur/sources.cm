@@ -16,5 +16,5 @@ Group (../../system/smlnj/internal/cm-lib.cm) is
 # else
 	dummy-servers.sml
 # endif
-	$basis.cm
+	$/basis.cm
 	../util/sources.cm

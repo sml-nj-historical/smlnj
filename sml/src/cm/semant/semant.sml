@@ -7,8 +7,7 @@
  *)
 signature CM_SEMANT = sig
 
-    type context = SrcPath.context
-    type pathname = SrcPath.t
+    type context = SrcPath.dir
     type region = GenericVC.SourceMap.region
     type ml_symbol
     type cm_symbol
@@ -28,9 +27,9 @@ signature CM_SEMANT = sig
     type complainer = string -> unit
 
     (* getting elements of primitive types (pathnames and symbols) *)
-    val file_native : string * context -> pathname
+    val file_native : string * context * complainer -> SrcPath.prefile
     val file_standard :
-	GeneralParams.info -> string * context * complainer -> pathname
+	GeneralParams.info -> string * context * complainer -> SrcPath.prefile
     val cm_symbol : string -> cm_symbol
     val cm_version : string * complainer -> cm_version
     val ml_structure : string -> ml_symbol
@@ -40,16 +39,16 @@ signature CM_SEMANT = sig
     val class : cm_symbol -> cm_class
 
     (* getting the full analysis for a group/library *)
-    val group : { path: pathname,
+    val group : { path: SrcPath.file,
 		  privileges: privilegespec,
 		  exports: exports option,
 		  members: members,
 		  gp: GeneralParams.info,
-		  curlib: pathname option,
-		  owner: pathname option,
+		  curlib: SrcPath.file option,
+		  owner: SrcPath.file option,
 		  error: complainer,
 		  initgroup: group } -> group
-    val library : { path: pathname,
+    val library : { path: SrcPath.file,
 		    privileges: privilegespec,
 		    exports: exports,
 		    version : cm_version option,
@@ -66,14 +65,16 @@ signature CM_SEMANT = sig
     val emptyMembers : members
     val member :
 	{ gp: GeneralParams.info,
-	  rparse: pathname option -> pathname * Version.t option -> group,
-	  load_plugin: SrcPath.context -> string -> bool }
+	  rparse: SrcPath.file option ->
+		  SrcPath.file * Version.t option * SrcPath.rebindings ->
+		  group,
+	  load_plugin: SrcPath.dir -> string -> bool }
 	-> { name: string,
-	     mkpath: string -> pathname,
-	     group: pathname * region,
+	     mkpath: string -> SrcPath.prefile,
+	     group: SrcPath.file * region,
 	     class: cm_class option,
 	     tooloptions: toolopt list option,
-	     context: SrcPath.context }
+	     context: SrcPath.dir }
 	-> members
     val members : members * members -> members
     val guarded_members :
@@ -127,7 +128,7 @@ signature CM_SEMANT = sig
     val eq : aexp * eqsym * aexp -> exp
 
     (* tool options *)
-    val string : { name: string, mkpath: string -> pathname } -> toolopt
+    val string : { name: string, mkpath: string -> SrcPath.prefile } -> toolopt
     val subopts : { name: string, opts: toolopt list } -> toolopt
 end
 
@@ -137,8 +138,7 @@ structure CMSemant :> CM_SEMANT = struct
     structure EM = GenericVC.ErrorMsg
     structure GG = GroupGraph
 
-    type pathname = SrcPath.t
-    type context = SrcPath.context
+    type context = SrcPath.dir
     type region = GenericVC.SourceMap.region
     type ml_symbol = Symbol.symbol
     type cm_symbol = string
@@ -152,7 +152,8 @@ structure CMSemant :> CM_SEMANT = struct
 
     type aexp = environment -> int
     type exp = environment -> bool
-    type members = environment * pathname option -> MemberCollection.collection
+    type members =
+	 environment * SrcPath.file option -> MemberCollection.collection
     type exports = environment -> SymbolSet.set
 
     type toolopt = PrivateTools.toolopt
@@ -165,10 +166,11 @@ structure CMSemant :> CM_SEMANT = struct
 	    (error ("expression raises exception: " ^ General.exnMessage exn);
 	     false)
 
-    fun file_native (s, d) = SrcPath.native { context = d, spec = s }
+    fun file_native (s, d, err) =
+	SrcPath.native { err = err } { context = d, spec = s }
     fun file_standard (gp: GeneralParams.info) (s, d, err) =
-	SrcPath.standard (#pcmode (#param gp))
-			 { context = d, spec = s, err = err }
+	SrcPath.standard { env = #penv (#param gp), err = err }
+			 { context = d, spec = s }
     fun cm_symbol s = s
     fun cm_version (s, error) =
 	case Version.fromString s of
@@ -184,10 +186,10 @@ structure CMSemant :> CM_SEMANT = struct
     fun applyTo mc e = e mc
 
     fun sgl2sll subgroups = let
-	fun sameSL (p, g) (p', g') = SrcPath.compare (p, p') = EQUAL
+	fun sameSL (p, _, _) (p', _, _) = SrcPath.compare (p, p') = EQUAL
 	fun add (x, l) =
 	    if List.exists (sameSL x) l then l else x :: l
-	fun oneSG (x as (_, gth), l) =
+	fun oneSG (x as (_, gth, _), l) =
 	    case gth () of
 		GG.GROUP { kind, sublibs, ... } =>
 		(case kind of
@@ -213,7 +215,7 @@ structure CMSemant :> CM_SEMANT = struct
 	    #1 (valOf (SymbolMap.find (exports, PervAccess.pervStrSym)))
 	end
 	val (exports, rp) = MemberCollection.build (mc, filter, gp, pfsbn ())
-	fun thunkify (p, g) = (p, fn () => g)
+	fun thunkify (p, g, rb) = (p, fn () => g, rb)
 	val subgroups = map thunkify (MemberCollection.subgroups mc)
 	val { required = rp', wrapped = wr } = p
 	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
@@ -243,7 +245,7 @@ structure CMSemant :> CM_SEMANT = struct
 	    #1 (valOf (SymbolMap.find (exports, PervAccess.pervStrSym)))
 	end
 	val (exports, rp) = MemberCollection.build (mc, filter, gp, pfsbn ())
-	fun thunkify (p, g) = (p, fn () => g)
+	fun thunkify (p, g, rb) = (p, fn () => g, rb)
 	val subgroups = map thunkify (MemberCollection.subgroups mc)
 	val { required = rp', wrapped = wr } = p
 	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
@@ -284,8 +286,9 @@ structure CMSemant :> CM_SEMANT = struct
 	val group = #group arg
 	val error = GroupReg.error (#groupreg gp) group
 	fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
-	fun checkowner (_, GG.GROUP { kind = GG.NOLIB { owner, ... }, ...}) =
-	    let	fun libname NONE = "<toplevel>"
+	fun checkowner (_, GG.GROUP { kind = GG.NOLIB { owner, ... }, ...},
+			_) =
+	    let fun libname NONE = "<toplevel>"
 		  | libname (SOME p) = SrcPath.descr p
 		fun eq (NONE, NONE) = true
 		  | eq (SOME p, SOME p') = SrcPath.compare (p, p') = EQUAL

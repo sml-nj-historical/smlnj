@@ -23,14 +23,15 @@ in
 signature STABILIZE = sig
 
     val libStampIsValid : GP.info
-	-> (SrcPath.t * DG.sbnode list * GG.subgrouplist) * Version.t option
+	-> (SrcPath.file * DG.sbnode list * GG.subgrouplist) * Version.t option
 	-> bool
 
-    type groupgetter = SrcPath.t * Version.t option -> GG.group option
+    type groupgetter =
+	 GP.info * SrcPath.file * Version.t option * SrcPath.rebindings ->
+	 GG.group option
 
     val loadStable :
-	GP.info -> { getGroup: groupgetter, anyerrors: bool ref } ->
-	groupgetter
+	{ getGroup: groupgetter, anyerrors: bool ref } -> groupgetter
 
     val stabilize :
 	GP.info -> { group: GG.group, anyerrors: bool ref } -> GG.group option
@@ -42,7 +43,9 @@ functor StabilizeFn (structure MachDepVC : MACHDEP_VC
 			 (SmlInfo.info -> MachDepVC.Binfile.bfContent) option
 		     val getII : SmlInfo.info -> IInfo.info) :> STABILIZE =
 struct
-    type groupgetter = SrcPath.t * Version.t option -> GG.group option
+    type groupgetter =
+	 GP.info * SrcPath.file * Version.t option * SrcPath.rebindings ->
+	 GG.group option
 
     structure BF = MachDepVC.Binfile
 
@@ -70,9 +73,9 @@ struct
 
     (* type info *)
     val (BN, SN, SBN, SS, SI, FSBN, IMPEXP, SHM, G, AP,
-	 PRIM, EXPORTS, PRIV, VERSION, SG) =
+	 PRIM, EXPORTS, PRIV, VERSION, SG, RB) =
 	(1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010,
-	 1011, 1012, 1013, 1014, 1015)
+	 1011, 1012, 1013, 1014, 1015, 1016)
 
     val SSs =
 	{ find = fn (m: map, k) => SSMap.find (#ss m, k),
@@ -119,7 +122,7 @@ struct
 	fun oneSL (g as GG.GROUP { exports, ... }, (m, i)) =
 	    (SymbolMap.foldli (oneB i) m exports, i + 1)
 	  | oneSL (_, (m, i)) = (m, i + 1)
-	fun oneSL' ((_, gth), a) = oneSL (gth (), a)
+	fun oneSL' ((_, gth, _), a) = oneSL (gth (), a)
 	val (im, _) = foldl oneSL' (StableMap.empty, 0) sublibs
 	fun look i =
 	    case StableMap.find (im, i) of
@@ -148,7 +151,8 @@ struct
 
 	fun abspath p = let
 	    val op $ = PU.$ AP
-	    val l = SrcPath.pickle (fn _ => ()) (p, grouppath)
+	    val l = SrcPath.pickle { warn = fn _ => () }
+			{ file = SrcPath.pre p, relativeTo = grouppath }
 	in
 	    "p" $ [list string l]
 	end
@@ -203,7 +207,9 @@ struct
 	handle _ => false
     end
 
-    fun loadStable gp { getGroup, anyerrors } (group, version) = let
+    fun loadStable { getGroup, anyerrors } (gp, group, version, rebinds) = let
+
+	val gp = GeneralParams.bind gp rebinds
 
 	val errcons = #errcons (gp: GeneralParams.info)
 	val grpSrcInfo = (errcons, anyerrors)
@@ -214,15 +220,15 @@ struct
 
 	exception Format = UU.Format
 
-	val pcmode = #pcmode (#param gp)
+	val penv = #penv (#param gp)
 	val policy = #fnpolicy (#param gp)
 
 	fun mksname () = FilenamePolicy.mkStableName policy (group, version)
 
 	fun work s = let
 
-	    fun getGroup' (p, vo) =
-		case getGroup (p, vo) of
+	    fun getGroup' (gp, p, vo, rb) =
+		case getGroup (gp, p, vo, rb) of
 		    SOME g => g
 		  | NONE => (error ["unable to find ", SrcPath.descr p];
 			     raise Format)
@@ -254,6 +260,8 @@ struct
 	    val versionM = UU.mkMap ()
 	    val versionOptM = UU.mkMap ()
 	    val sgM = UU.mkMap ()
+	    val rbM = UU.mkMap ()
+	    val rblM = UU.mkMap ()
 
 	    fun list m r = UU.r_list session m r
 	    val string = UU.r_string session
@@ -268,15 +276,12 @@ struct
 
 	    val stringlist = list stringListM string
 
-	    fun list2path sl =
-		SrcPath.unpickle pcmode (sl, group)
+	    fun list2path c sl =
+		c (SrcPath.unpickle penv { pickled = sl, relativeTo = group })
 		handle SrcPath.Format => raise Format
-		     | SrcPath.BadAnchor a =>
-		       (error ["configuration anchor \"", a, "\" undefined"];
-			raise Format)
 
 	    fun abspath () = let
-		fun ap #"p" = list2path (stringlist ())
+		fun ap #"p" = list2path SrcPath.file (stringlist ())
 		  | ap _ = raise Format
 	    in
 		share apM ap
@@ -292,14 +297,26 @@ struct
 		share versionM v
 	    end
 
+	    fun rb () = let
+		fun r #"b" =
+		    { anchor = string (),
+		      value = list2path (fn x => x) (stringlist ()) }
+		  | r _ = raise Format
+	    in
+		share rbM r
+	    end
+
 	    fun sg () = let
-		fun xsg #"s" =
+		fun doit getRbl =
 		    let val p = abspath ()
 			val vo = option versionOptM version ()
-			fun gth () = getGroup' (p, vo)
+			val rbl = getRbl ()
+			fun gth () = getGroup' (gp, p, vo, rbl)
 		    in
-			(p, Memoize.memoize gth)
+			(p, Memoize.memoize gth, rbl)
 		    end
+		fun xsg #"s" = doit (fn () => []) (* backward-compatible *)
+		  | xsg #"S" = doit (list rblM rb)
 		  | xsg _ = raise Format
 	    in
 		share sgM xsg
@@ -587,32 +604,36 @@ struct
 		(reg, get)
 	    end
 
-	    fun path2list p = let
-		fun warn_relabs abs = let
+	    fun prepath2list what p = let
+		fun warn_relabs (abs, descr) = let
 		    val (relabs, is) = if abs then ("absolute", "is: ")
 				       else ("relative", "was resolved as: ")
 		    fun ppb pps =
 			(PP.add_newline pps;
-			 PP.add_string pps ("The library's path " ^ is);
-			 PP.add_string pps (SrcPath.descr p);
+			 PP.add_string pps (concat ["The ", what,
+						    "'s path ", is]);
+			 PP.add_string pps descr;
 			 PP.add_newline pps;
 			 PP.add_string pps
     "(This means that in order to be able to use the result of stabilization,";
                          PP.add_newline pps;
-			 PP.add_string pps "the library must be in the same ";
+			 PP.add_string pps
+    "objects referred to using this path must be in the same ";
 			 PP.add_string pps relabs;
-			 PP.add_string pps " location as it is now.)";
+			 PP.add_newline pps;
+			 PP.add_string pps "location as they are now.)";
 			 PP.add_newline pps)
 		in
 		    EM.errorNoFile (#errcons gp, anyerrors) SM.nullRegion
 				   EM.WARN
 				   (concat [SrcPath.descr grouppath,
-					    ": library referred to by ",
+					    ": ", what, " referred to by ",
 					    relabs, " pathname."])
 				   ppb
 		end
 	    in
-		SrcPath.pickle warn_relabs (p, grouppath)
+		SrcPath.pickle { warn = warn_relabs }
+			       { file = p, relativeTo = grouppath }
 	    end
 
 	    (* Collect all BNODEs that we see and build
@@ -707,7 +728,7 @@ struct
 		 * within libraries.  However, the spec in BinInfo.info
 		 * is only used for diagnostics and has no impact on the
 		 * operation of CM itself. *)
-		val spec = SrcPath.specOf (SmlInfo.sourcepath i)
+		val spec = SrcPath.osstring_relative (SmlInfo.sourcepath i)
 		val locs = SmlInfo.errorLocation gp i
 		val offset = registerOffset (i, sizeBFC i)
 		val { is_rts, ... } = SmlInfo.attribs i
@@ -722,7 +743,7 @@ struct
 	    fun abspath p = let
 		val op $ = PU.$ AP
 	    in
-		"p" $ [list string (path2list p)]
+		"p" $ [list string (prepath2list "library" (SrcPath.pre p))]
 	    end
 
 	    fun sn n = let
@@ -792,13 +813,20 @@ struct
 		"v" $ [string (Version.toString v)]
 	    end
 
-	    fun sg (p, gth) = let
+	    fun rb { anchor, value } = let
+		val op $ = PU.$ RB
+	    in
+		"b" $ [string anchor,
+		       list string (prepath2list "anchor binding" value)]
+	    end
+
+	    fun sg (p, gth, rbl) = let
 		val op $ = PU.$ SG
 		val vo = case gth () of
 			     GG.GROUP { kind = GG.LIB x, ... } => #version x
 			   | _ => NONE
 	    in
-		"s" $ [abspath p, option version vo]
+		"S" $ [abspath p, option version vo, list rb rbl]
 	    end
 
 	    fun group () = let
@@ -826,15 +854,16 @@ struct
 	     * It seems easier to simply rely on "loadStable" to re-fetch
 	     * the stable graph. *)
 	    fun refetchStableGroup () = let
-		fun getGroup (p, _) = let
-		    fun theSublib (q, _) = SrcPath.compare (p, q) = EQUAL
+		fun getGroup (_, p, _, _) = let
+		    fun theSublib (q, _, _) = SrcPath.compare (p, q) = EQUAL
 		    fun force f = f ()
 		in
 		    Option.map (force o #2) (List.find theSublib sublibs)
 		end
 	    in
-		loadStable gp { getGroup = getGroup, anyerrors = anyerrors }
-		           (grouppath, NONE)
+		(* We don't need to worry about rebindings here. *)
+		loadStable { getGroup = getGroup, anyerrors = anyerrors }
+		           (gp, grouppath, NONE, [])
 	    end
 			        
 	    fun writeInt32 (s, i) = let
@@ -883,7 +912,7 @@ struct
 	     (case recomp gp g of
 		  NONE => (anyerrors := true; NONE)
 		| SOME bfc_acc => let
-		      fun notStable (_, gth) =
+		      fun notStable (_, gth, _) =
 			  case gth () of
 			      GG.GROUP { kind =
 					 GG.LIB { kind = GG.STABLE _,
@@ -897,7 +926,7 @@ struct
 			    val grammar = case l of [_] => " is" | _ => "s are"
 			    fun ppb pps = let
 				fun loop [] = ()
-				  | loop ((p, _) :: t) =
+				  | loop ((p, _, _) :: t) =
 				    (PP.add_string pps (SrcPath.descr p);
 				     PP.add_newline pps;
 				     loop t)

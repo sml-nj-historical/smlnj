@@ -41,21 +41,21 @@ signature SMLINFO = sig
     val newGeneration : unit -> unit
 
     val info : GeneralParams.info ->
-	{ sourcepath: SrcPath.t,
-	  group: SrcPath.t * region,
+	{ sourcepath: SrcPath.file,
+	  group: SrcPath.file * region,
 	  sh_spec: Sharing.request }
 	-> info
 
     val info' : attribs -> GeneralParams.info ->
-	{ sourcepath: SrcPath.t,
-	  group: SrcPath.t * region,
+	{ sourcepath: SrcPath.file,
+	  group: SrcPath.file * region,
 	  sh_spec: Sharing.request }
 	-> info
 
-    val sourcepath : info -> SrcPath.t
+    val sourcepath : info -> SrcPath.file
     val skelname : info -> string
     val binname : info -> string
-    val group : info -> SrcPath.t
+    val group : info -> SrcPath.file
     val error : GeneralParams.info -> info -> complainer
 
     val parsetree : GeneralParams.info -> info -> (ast * source) option
@@ -77,7 +77,7 @@ signature SMLINFO = sig
      * members of the group are dismissed regardless of their
      * generation. This is used to get rid of the information for
      * members of now-stable libraries. *)
-    val cleanGroup : bool -> SrcPath.t -> unit
+    val cleanGroup : bool -> SrcPath.file -> unit
 
     (* See if a given piece of info is (still) known here: *)
     val isKnown : info -> bool
@@ -86,10 +86,7 @@ signature SMLINFO = sig
     val reset : unit -> unit
 
     (* different ways of describing an sml file using group and source *)
-    val spec : info -> string		(* sspec *)
-    val fullSpec : info -> string	(* gspec(sspec) *)
     val descr : info -> string		(* sname *)
-    val fullDescr : info -> string	(* gname(sspec) *)
 
     val errorLocation : GeneralParams.info -> info -> string
 end
@@ -118,7 +115,7 @@ structure SmlInfo :> SMLINFO = struct
     (* sh_mode is an elaboration of sh_spec;  it must be persistent
      * and gets properly re-computed when there is a new sh_spec *)
     datatype persinfo =
-	PERS of { group: SrcPath.t * region,
+	PERS of { group: SrcPath.file * region,
 		  generation: generation ref,
 		  lastseen: TStamp.t ref,
 		  parsetree: (ast * source) option ref,
@@ -126,7 +123,7 @@ structure SmlInfo :> SMLINFO = struct
 		  sh_mode: Sharing.mode ref }
 		      
     datatype info =
-	INFO of { sourcepath: SrcPath.t,
+	INFO of { sourcepath: SrcPath.file,
 		  mkSkelname: unit -> string,
 		  mkBinname: unit -> string,
 		  persinfo: persinfo,
@@ -343,12 +340,7 @@ structure SmlInfo :> SMLINFO = struct
 
     fun parsetree gp i = getParseTree gp (i, true, true)
 
-    fun spec (INFO { sourcepath, ... }) = SrcPath.specOf sourcepath
-    fun fullSpec (INFO { sourcepath, persinfo = PERS { group, ... }, ... }) =
-	concat [SrcPath.specOf (#1 group), "(", SrcPath.specOf sourcepath, ")"]
     fun descr (INFO { sourcepath, ... }) = SrcPath.descr sourcepath
-    fun fullDescr (INFO { sourcepath, persinfo = PERS { group, ... }, ... }) =
-	concat [SrcPath.descr (#1 group), "(", SrcPath.specOf sourcepath, ")"]
 
     fun errorLocation (gp: GeneralParams.info) (INFO i) = let
 	val { persinfo = PERS { group = (group, reg), ... }, ... } = i

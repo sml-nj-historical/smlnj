@@ -35,8 +35,8 @@ is
 
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11028 
-	$basis.cm
-	$smlnj-lib.cm
+	$/basis.cm
+	$/smlnj-lib.cm
 #else
 	basis.cm
 	smlnj-lib.cm

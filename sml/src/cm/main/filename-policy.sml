@@ -17,9 +17,9 @@ signature FILENAMEPOLICY = sig
     val separate_generic : { bindir: string, bootdir: string } ->
 			   { arch: string, os: string } -> policy
 
-    val mkBinName : policy -> SrcPath.t -> string
-    val mkSkelName : policy -> SrcPath.t -> string
-    val mkStableName : policy -> SrcPath.t * Version.t option -> string
+    val mkBinName : policy -> SrcPath.file -> string
+    val mkSkelName : policy -> SrcPath.file -> string
+    val mkStableName : policy -> SrcPath.file * Version.t option -> string
 
     val kind2name : SMLofNJ.SysInfo.os_kind -> string
 end
@@ -28,9 +28,9 @@ functor FilenamePolicyFn (val cmdir : string
 			  val versiondir: Version.t -> string
 			  val skeldir : string) :> FILENAMEPOLICY = struct
 
-    type policy = { bin: SrcPath.t -> string,
-		    skel: SrcPath.t -> string,
-		    stable: SrcPath.t * Version.t option -> string }
+    type policy = { bin: SrcPath.file -> string,
+		    skel: SrcPath.file -> string,
+		    stable: SrcPath.file * Version.t option -> string }
 
     type policyMaker = { arch: string, os: SMLofNJ.SysInfo.os_kind } -> policy
 
@@ -73,12 +73,15 @@ functor FilenamePolicyFn (val cmdir : string
     val colocate_generic = mkPolicy (SrcPath.osstring, SrcPath.osstring, false)
 
     fun separate_generic { bindir, bootdir } = let
-	fun shiftname root p =
-	    case SrcPath.reAnchoredName (p, root) of
+	fun shiftname root p = let
+	    fun anchor a = OS.Path.concat (root, a)
+	in
+	    case SrcPath.osstring_reanchored anchor p of
 		SOME s => s
 	      | NONE => (Say.say ["Failure: ", SrcPath.descr p,
 				  " is not an anchored path!\n"];
 			 raise Fail "bad path")
+	end
     in
 	mkPolicy (shiftname bindir, shiftname bootdir, true)
     end

@@ -22,12 +22,17 @@ signature CORETOOLS = sig
      * the name to a srcpath and then get the native string back by 
      * applying "nativeSpec". *)
     type srcpath
+    type presrcpath
+
+    type rebindings = { anchor: string, value: presrcpath } list
 
     val nativeSpec : srcpath -> string
 
+    val srcpath : presrcpath -> srcpath
+
     exception ToolError of { tool: string, msg: string }
 
-    type pathmaker = string -> srcpath
+    type pathmaker = string -> presrcpath
 
     (* case-by-case parameters that can be passed to tools... *)
     datatype toolopt =
@@ -54,7 +59,7 @@ signature CORETOOLS = sig
      * i.e., to generate dependency information etc. *)
     type expansion =
 	 { smlfiles: (srcpath * Sharing.request) list,
-	   cmfiles: (srcpath * Version.t option) list,
+	   cmfiles: (srcpath * Version.t option * rebindings) list,
 	   sources: (srcpath * { class: string, derived: bool}) list }
 
     (* A partial expansion is an expansion with a list of things yet to be
@@ -113,12 +118,13 @@ signature CORETOOLS = sig
 end
 
 signature PRIVATETOOLS = sig
-    include CORETOOLS where type srcpath = SrcPath.t
+    include CORETOOLS where type srcpath = SrcPath.file
+		      where type presrcpath = SrcPath.prefile
 
     val expand : { error: string -> unit,
 		   spec: spec,
-		   context: SrcPath.context,
-		   load_plugin: SrcPath.context -> string -> bool }
+		   context: SrcPath.dir,
+		   load_plugin: SrcPath.dir -> string -> bool }
 	-> expansion
 
     val defaultClassOf : (string -> bool) -> string -> class option
@@ -156,13 +162,17 @@ structure PrivateTools :> PRIVATETOOLS = struct
 
     type class = string
 
-    type srcpath = SrcPath.t
+    type srcpath = SrcPath.file
+    type presrcpath = SrcPath.prefile
+    type rebindings = SrcPath.rebindings
 
-    val nativeSpec = SrcPath.specOf
+    val nativeSpec = SrcPath.osstring_relative
+
+    val srcpath = SrcPath.file
 
     exception ToolError of { tool: string, msg: string }
 
-    type pathmaker = string -> srcpath
+    type pathmaker = string -> presrcpath
 
     datatype toolopt =
 	STRING of { name: string, mkpath: pathmaker }
@@ -179,7 +189,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 
     type expansion =
 	 { smlfiles: (srcpath * Sharing.request) list,
-	   cmfiles: (srcpath * Version.t option) list,
+	   cmfiles: (srcpath * Version.t option * rebindings) list,
 	   sources: (srcpath * { class: string, derived: bool}) list }
 
     type partial_expansion = expansion * spec list
@@ -280,14 +290,14 @@ structure PrivateTools :> PRIVATETOOLS = struct
 
     fun smlrule { spec, context, mkNativePath } = let
 	val { name, mkpath, opts = oto, derived, ... } : spec = spec
+	fun err s = raise ToolError { tool = "sml", msg = s }
 	val srq = case oto of
 		      NONE => Sharing.DONTCARE
 		    | SOME [] => Sharing.DONTCARE
 		    | SOME [STRING { name = "shared", ... }] => Sharing.SHARED
 		    | SOME [STRING { name = "private",... }] => Sharing.PRIVATE
-		    | SOME l => raise ToolError { tool = "sml",
-						  msg = "invalid option(s)" }
-	val p = mkpath name
+		    | SOME l => err "invalid option(s)"
+	val p = srcpath (mkpath name)
     in
 	({ smlfiles = [(p, srq)],
 	   sources = [(p, { class = "sml", derived = derived })],
@@ -297,26 +307,44 @@ structure PrivateTools :> PRIVATETOOLS = struct
     fun cmrule { spec, context, mkNativePath } = let
 	val { name, mkpath, opts = oto, derived, ... } : spec = spec
 	fun err m = raise ToolError { tool = "cm", msg = m }
-	val vrq =
-	    case oto of
-		NONE => NONE
-	      | SOME [] => NONE
-	      | SOME [SUBOPTS { name = "version",
-				opts = [STRING { name, ... }] }] =>
-		(case Version.fromString name of
-		     NONE => err "ill-formed version specification"
-		   | SOME v => SOME v)
-	      | _ => err "unknown option"
-	val p = mkpath name
+	fun proc_opts (rb, vrq, []) = (rb, vrq)
+	  | proc_opts (_, _, STRING _ :: _) = err "ill-formed option"
+	  | proc_opts (rb, vrq, SUBOPTS { name = "version", opts } :: r)  =
+	    let fun ill () = err "ill-formed version specification"
+	    in
+		case (vrq, opts) of
+		    (SOME _, _) =>
+		    err "version cannot be specified more than once"
+		  | (NONE, [STRING { name, ... }]) =>
+		    (case Version.fromString name of
+			 NONE => ill ()
+		       | SOME v => proc_opts (rb, SOME v, r))
+		  | _ => ill ()
+	    end
+	  | proc_opts (rb, vrq, SUBOPTS { name = "bind", opts } :: r) =
+	    (case opts of
+		 [SUBOPTS { name = "anchor", opts = [STRING { name, ... }] },
+		  SUBOPTS { name = "value", opts = [STRING v] }] =>
+		 proc_opts ({ anchor = name, value = #mkpath v (#name v) }
+			    :: rb,
+			    vrq, r)
+	       | _ => err "ill-formed bind specification")
+	  | proc_opts (_, _, SUBOPTS { name, ... } :: _) =
+	    err ("unknown option: " ^ name)
+	val (rb, vrq) = case oto of
+			    NONE => ([], NONE)
+			  | SOME l => proc_opts ([], NONE, l)
+	val p = srcpath (mkpath name)
     in
 	({ smlfiles = [],
 	   sources = [(p, { class = "cm", derived = derived })],
-	   cmfiles = [(p, vrq)] },
+	   cmfiles = [(p, vrq, rev rb)] },
 	 [])
     end
 
     fun expand { error, spec, context, load_plugin } = let
-	fun mkNativePath s = SrcPath.native { context = context, spec = s }
+	fun mkNativePath s =
+	    SrcPath.native { err = error } { context = context, spec = s }
 	fun class2rule class =
 	    case StringMap.find (!classes, class) of
 		SOME rule => rule
@@ -344,7 +372,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 			     SOME c => class2rule c
 			   | NONE => smlrule)
 	    fun rcontext rf = let
-		val dir = SrcPath.contextName context
+		val dir = SrcPath.osstring_dir context
 		val cwd = OS.FileSys.getDir ()
 	    in
 		SafeIO.perform { openIt = fn () => OS.FileSys.chDir dir,
@@ -388,7 +416,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 end
 
 functor ToolsFn (val load_plugin : string -> bool
-		 val pcmode: PathConfig.mode) : TOOLS = struct
+		 val penv: SrcPath.env) : TOOLS = struct
 
     open PrivateTools
     val defaultClassOf = defaultClassOf load_plugin
@@ -397,7 +425,7 @@ functor ToolsFn (val load_plugin : string -> bool
     val vsay = Say.vsay
 
     fun mkCmdName cmdStdPath =
-	(* It is not enough to turn the string into a SrcPath.t
+	(* It is not enough to turn the string into a SrcPath.file
 	 * once.  This is because if there was no anchor in the
 	 * beginning, later additions of an anchor will go unnoticed.
 	 * This is different from how other files (ML source files etc.)
@@ -405,26 +433,26 @@ functor ToolsFn (val load_plugin : string -> bool
 	 * never become (implicitly) anchored later (although an existing
 	 * anchor is allowed to change). Of course, the whole issue
 	 * becomes moot once there are no more implicitly anchored paths. *)
-	case PathConfig.configAnchor pcmode cmdStdPath of
+	case SrcPath.get_anchor (penv, cmdStdPath) of
 	    NONE => cmdStdPath
-	  | SOME mkPath =>
-	    OS.Path.joinDirFile { dir = mkPath (), file = cmdStdPath }
+	  | SOME p => OS.Path.joinDirFile { dir = p, file = cmdStdPath }
 
     fun registerStdShellCmdTool args = let
 	val { tool, class, suffixes, cmdStdPath,
 	      extensionStyle, template, dflopts } = args
 	val template = getOpt (template, "%c %s")
+	fun err m = raise ToolError { tool = tool, msg = m }
 	fun rule { spec, context, mkNativePath } = let
 	    val { name, mkpath, opts = oto, derived, ... } : spec = spec
 	    val opts = getOpt (oto, dflopts)
 	    val sol = let		(* only use STRING options for %o *)
 		fun so (SUBOPTS _) = NONE
 		  | so (STRING { name, mkpath }) =
-		    SOME (nativeSpec (mkpath name))
+		    SOME (nativeSpec (srcpath (mkpath name)))
 	    in
 		List.mapPartial so opts
 	    end
-	    val p = mkpath name
+	    val p = srcpath (mkpath name)
 	    val nativename = nativeSpec p
 	    val tfiles = extend extensionStyle (nativename, oto)
 	    val partial_expansion =
@@ -471,7 +499,7 @@ functor ToolsFn (val load_plugin : string -> bool
 	    in
 		Say.vsay ["[", cmd, "]\n"];
 		if OS.Process.system cmd = OS.Process.success then ()
-		else raise ToolError { tool = tool, msg = cmd }
+		else err cmd
 	    end
 	    fun rulefn () =
 		(if outdated tool (map #1 tfiles, nativename) then runcmd ()

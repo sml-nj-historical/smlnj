@@ -12,6 +12,129 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/06/16 17:30:00 JST
+Tag: blume-20000616-anchorenv
+Description:
+
+This patch implements the long anticipated (just kidding :) "anchor
+environment" mechanism.  In the course of doing this, I also
+re-implemented CM's internal "SrcPath" module from scratch.  The new
+one should be more robust in certain boundary cases.  In any case, it
+is a lot cleaner than its predecessor (IMHO).
+
+This time, although there is yet another boot file format change, I
+kept the unpickler backward-compatible.  As a result, no new bootfiles
+are necessary and bootstrapping is straightforward.  (You cannot read
+new bootfiles into an old system, but the other way around is no
+problem.)
+
+Visible changes:
+
+** 1. The $<singlearc> abbreviation for $/<singlearc> for anchored
+paths has finally vanished.
+
+John had critizised this as soon as I originally proposed and
+implemented it, but at that time I did not really deeply believe
+him. :) Now I came full-circle because I need the $<singlearc> syntax
+in another place where it cannot be seen as an abbreviation for
+$/<singlearc>.  To avoid the confusion, $<singlearc> now means what it
+seems to mean (i.e., it "expands" into the corresponding anchor
+value).
+
+However, when paths are used as members in CM description files, it
+continues to be true that there must be at least another arc after the
+anchor.  This is now enforced separately during semantic analysis
+(i.e., form a lexical/syntactical point of view, the notation is ok.)
+
+** 2. The "cm" class now accepts an option "bind".  The option's value
+is a sub-option list of precisely two items -- one labeled "anchor"
+and the other one labeled "value".  As you might expect, "anchor" is
+used to specify an anchor name to be bound, and "value" specifies what
+the anchor is being bound to.
+
+The value must be a directory name and can be given in either standard
+syntax (including the possibility that it is itself an anchored path)
+or native syntax.
+
+Examples:
+
+   foo.cm (bind:(anchor:bar value:$mystuff/bar))
+   lib.cm (bind:(anchor:a value:"H:\\x\\y\\z"))  (* only works under windows *)
+
+and so on.
+
+The meaning of this is that the .cm-file will be processed with an
+augmented anchor environment where the given anchor(s) is/are bound to
+the given values(s).
+
+The rationale for having this feature is this: Suppose you are trying
+to use two different (already stable) libraries a.cm and b.cm (that
+you perhaps didn't write yourself).  Further, suppose each of these
+two libraries internally uses its own auxiliary library $aux/lib.cm.
+Normally you would now have a problem because the anchor "lib" can not
+be bound to more than one value globally.  Therefore, the project that
+uses both a.cm and b.cm must locally redirect the anchor to some other
+place:
+
+   a.cm (bind:(anchor:lib value:/usr/lib/smlnj/a-stuff))
+   b.cm (bind:(anchor:lib value:/usr/lib/smlnj/b-stuff))
+
+This hard-wires $lib/aux.cm to /usr/lib/smlnj/a-stuff/aux.cm or
+/usr/lib/smlnj/b-stuff/aux.cm, respectively.
+
+Hard-wiring path names is a bit inflexible (and CM will verbosely warn
+you when you do so at the time of CM.stabilize).  Therefore, you can
+also use an anchored path as the value:
+
+  a.cm (bind:(anchor:lib value:$a-lib))
+  b.cm (bind:(anchor:lib value:$b-lib))
+
+Now you can globally configure (using the usual CM.Anchor.anchor or
+pathconfig machinery) bindings for "a-lib" and "b-lib".  Since "lib"
+itself is always locally bound, setting it globally is no longer
+meaningful or necessary (but it does not hurt either).  In fact, "lib"
+can still be used as a global anchor for separate purposes.  As a
+matter of fact, one can locally define "lib" in terms of a global
+"lib":
+
+  a.cm (bind:(anchor:lib value:$lib/a))
+  b.cm (bind:(anchor:lib value:$lib/b))
+
+** 3: The encoding of path names has changed.  This affects the way
+path names are shown in CM's progress report and also the internal
+protocol encoding used for parallel make.
+
+The encoding now uses one or more ':'-separated segments.  Each
+segments corresponds to a file that has been specified relative to the
+file given by its preceding segment.  The first segment is either
+relative to the CWD, absolute, or anchored.  Each segment itself is
+basically a Unix pathname; all segments but the first are relative.
+
+Example:
+
+   $foo/bar/baz.cm:a/b/c.sml
+
+This path denotes the file bar/a/b/c.sml relative to the directory
+denoted by anchor "foo".  Notice that the encoding also includes
+baz.cm which is the .cm-file that listed a/b/c.sml.  As usual, such
+paths are resolved relative to the .cm-files directory, so baz.cm must
+be ignored to get the "real" pathname.
+
+To make this fact more obvious, CM puts the names of such "virtual
+arcs" into parentheses when they appear in progress reports. (No
+parentheses will appear in the internal protocol encoding.)  Thus,
+what you really see is:
+
+  $foo/bar/(baz.cm):a/b/c.sml
+
+I find this notation to be much more informative than before.
+
+Another new feature of the encoding is that special characters
+including parentheses, colons, (back)slashes, and white space are
+written as \ddd (where ddd is the decimal encoding of the character).
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2000/06/15 00:38:00
 Tag: leunga-20000615-x86-peephole
