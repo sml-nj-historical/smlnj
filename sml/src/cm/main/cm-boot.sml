@@ -1,10 +1,8 @@
 (*
  * This is the module that actually puts together the contents of the
- * structure CM that people find in smlnj/cm/full.cm.  A "minimal" structure
- * CM is defined in CmHook, but it needs to be initialized at bootstrap
- * time.
+ * structure CM that people find in $smlnj/cm/full.cm.
  *
- *   Copyright (c) 1999 by Lucent Bell Laboratories
+ *   Copyright (c) 1999, 2000 by Lucent Bell Laboratories
  *
  * author: Matthias Blume (blume@cs.princeton.edu)
  *)
@@ -683,8 +681,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	val mk_standalone = mk_standalone
     end
 
-    structure Tools = ToolsFn (val load_plugin = cwd_load_plugin
-			       val load_plugin' = load_plugin'
+    structure Tools = ToolsFn (val load_plugin' = load_plugin'
 			       val penv = penv)
 
     val load_plugin = load_plugin

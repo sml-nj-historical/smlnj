@@ -1,13 +1,15 @@
 (*
- * The plugin library for the "shell" tool.
+ * The plugin library for the "dir" tool.
  *
  * (C) 2000 Lucent Technologies, Bell Laboratories
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 Library
-	structure ShellTool
+	structure DirTool
+	structure DirToolClassify
 is
 	$/basis.cm
 	$smlnj/cm/tools.cm
 	tool.sml
+	classify.sml

@@ -29,7 +29,4 @@ signature TOOLS = sig
 				    extensionStyle: extensionStyle,
 				    template: string option,
 				    dflopts: toolopts } -> unit
-
-    (* query default class *)
-    val defaultClassOf : string -> class option
 end

@@ -10,4 +10,4 @@ Library
 is
 	$/basis.cm
 	$smlnj/cm/tools.cm
-	maketool.sml
+	tool.sml

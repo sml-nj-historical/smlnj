@@ -13,4 +13,5 @@ structure BootEnv =
 	      val cminit = CM0.init
 	      fun cmbmake (nbd, light) =
 		  (if light then #set (CMB.symval "LIGHT") (SOME 1) else ();
+		   #set (CMB.symval "CMB_REBUILD") (SOME 1);
 		   ignore (CMB.make' (SOME nbd))))

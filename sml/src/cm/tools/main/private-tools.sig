@@ -21,7 +21,5 @@ signature PRIVATETOOLS = sig
 		   load_plugin: SrcPath.dir -> string -> bool }
 	-> expansion
 
-    val defaultClassOf : (string -> bool) -> string -> class option
-
     val withPlugin : SrcPath.file -> (unit -> 'a) -> 'a
 end

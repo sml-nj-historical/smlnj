@@ -6,8 +6,9 @@
 
 The CM parser employs a context-sensitive scanner.  In many cases this
 avoids the need for ``escape characters'' or other lexical devices
-that would make writing description files cumbersome.  On the other
-hand, it increases the complexity of both documentation and implementation.
+that would make writing description files cumbersome.  (The downside
+of this is that it increases the complexity of both documentation and
+implementation.)
 
 The scanner skips all nestable SML-style comments (enclosed with {\bf
 (*} and {\bf *)}).
@@ -49,7 +50,7 @@ considered SML identifiers.
 \item[SML identifiers (\nt{mlid}):] Recognized SML identifiers
 include all legal identifiers as defined by the SML language
 definition. (CM also recognizes some tokens as SML identifiers that
-are really keywords according to the SML language definiten. However,
+are really keywords according to the SML language definition. However,
 this can never cause problems in practice.)  SML identifiers are
 recognized only when they directly follow one of the namespace
 specifiers.

@@ -11,4 +11,4 @@ is
 	$/basis.cm
 	$/smlnj-lib.cm
 	$smlnj/cm/tools.cm
-	nowebtool.sml
+	tool.sml

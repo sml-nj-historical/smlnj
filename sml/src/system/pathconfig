@@ -23,3 +23,4 @@ make-tool.cm		../cm/tools/make
 shell-tool.cm		../cm/tools/shell
 noweb-tool.cm		../cm/tools/noweb
 nw-ext.cm		../cm/tools/noweb
+dir-tool.cm		../cm/tools/dir

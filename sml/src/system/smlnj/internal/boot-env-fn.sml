@@ -23,6 +23,8 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
      * to force their plugins to be _always_ plugged in.  We achieve this
      * by simply mentioning the structure names here. *)
     structure YaccTool = YaccTool and LexTool = LexTool
+    (* The classifier for dir-tool.cm must also be registered permanently... *)
+    structure DirToolClassify = DirToolClassify
 
     structure DynE = DynamicEnv
     structure Print = GenericVC.Control.Print

@@ -44,9 +44,9 @@ structure NowebTool = struct
 		       [("sml", "(*#line %L \"%F\"*)"),
 			("cm", "#line %L %F%N")])
 
-	fun rule { spec, context, mkNativePath } = let
+	fun rule { spec, context, native2pathmaker, defaultClassOf } = let
 	    val { name = str, mkpath, opts = too, derived, ... } : spec = spec
-	    val p = srcpath (mkpath str)
+	    val p = srcpath (mkpath ())
 	    val sname = nativeSpec p
 	    val (sd, wn) =
 		case too of
@@ -59,12 +59,12 @@ structure NowebTool = struct
 			    if name = kw_subdir then
 				case sd of
 				    NONE =>
-				    loop (t, SOME (#mkpath s (#name s)), wn)
+				    loop (t, SOME (#mkpath s ()), wn)
 				  | SOME _ => dup kw_subdir
 			    else if name = kw_witness then
 				case wn of
 				    NONE =>
-				    loop (t, sd, SOME (#mkpath s (#name s)))
+				    loop (t, sd, SOME (#mkpath s ()))
 				  | SOME _ => dup kw_witness
 			    else loop (t, sd, wn)
 			  | loop (SUBOPTS { name, ... } :: t, sd, wn) =
@@ -77,8 +77,8 @@ structure NowebTool = struct
 	    val subdir_pp =
 		case sd of
 		    SOME pp => pp
-		  | NONE => mkNativePath dfl_subdir
-	    val subdir = nativePre subdir_pp
+		  | NONE => native2pathmaker dfl_subdir ()
+	    val subdir = nativePreSpec subdir_pp
 	    fun inSubdir f =
 		if OS.Path.isRelative f then OS.Path.concat (subdir, f)
 		else f
@@ -93,7 +93,7 @@ structure NowebTool = struct
 							     tgt = tname,
 							     wtn = wn },
 				fn () => TextIO.closeOut (openTextOut wn))
-	    fun oneTarget (tname, rname, tclass, topts, lf) = let
+	    fun oneTarget (tname, tfns, rname, tclass, topts, lf) = let
 		val tname = inSubdir tname
 		fun runcmd () = let
 		    val cmdname = mkCmdName stdCmdPath
@@ -110,7 +110,7 @@ structure NowebTool = struct
 				case tclass of
 				    SOME c => classNumbering c
 				  | NONE =>
-				    (case defaultClassOf tname of
+				    (case defaultClassOf tfns of
 					 SOME c => classNumbering c
 				       | NONE => "-L'' ")
 			    end
@@ -127,15 +127,15 @@ structure NowebTool = struct
 		end
 	    in
 		if outd tname then runcmd () else ();
-		{ name = tname, mkpath = mkNativePath,
+		{ name = tname, mkpath = native2pathmaker tname,
 		  class = tclass, opts = topts, derived = true }
 	    end
 
-	    fun oneTarget' tname =
-		oneTarget (tname, tname, NONE, NONE, NONE)
+	    fun oneTarget' (tname, tfns) =
+		oneTarget (tname, tfns, tname, NONE, NONE, NONE)
 
-	    fun simpleTarget { name, mkpath } =
-		oneTarget' (nativeSpec (srcpath (mkpath name)))
+	    fun simpleTarget (tfns as { name, mkpath }) =
+		oneTarget' (nativeSpec (srcpath (mkpath ())), tfns)
 
 	    fun oneOpt (STRING x, rest) = simpleTarget x :: rest
 	      | oneOpt (SUBOPTS { name, opts }, rest) = let
@@ -147,8 +147,8 @@ structure NowebTool = struct
 			    fun fmatch kw =
 				case matches kw of
 				    NONE => misskw kw
-				  | SOME [STRING { name, mkpath }] =>
-				    nativeSpec (srcpath (mkpath name))
+				  | SOME [STRING (fns as { name, mkpath })] =>
+				    (nativeSpec (srcpath (mkpath ())), fns)
 				  | _ => badspec kw
 			    fun smatch kw =
 				case matches kw of
@@ -158,13 +158,14 @@ structure NowebTool = struct
 			in
 			    case restoptions of
 				[] => let
-				    val tname = fmatch kw_name
+				    val (tname, tfns) = fmatch kw_name
 				    val rname = getOpt (smatch kw_root, tname)
 				    val tclass = smatch kw_class
 				    val topts = matches kw_options
 				    val lf = smatch kw_lineformat
 				in
-				    oneTarget (tname, rname, tclass, topts, lf)
+				    oneTarget (tname, tfns,
+					       rname, tclass, topts, lf)
 				end
 			      | _ => err "unrecognized target option(s)"
 		    end
@@ -184,9 +185,14 @@ structure NowebTool = struct
 			     case ext of
 				 NONE => base
 			       | SOME e => if e = "nw" then base else sname
-			 fun exp e =
-			     oneTarget' (OS.Path.joinBaseExt
-					     { base = base, ext = SOME e })
+			 fun exp e = let
+			     val tname = OS.Path.joinBaseExt
+					     { base = base, ext = SOME e }
+			     val tfns = { name = tname,
+					  mkpath = native2pathmaker tname }
+			 in
+			     oneTarget' (tname, tfns)
+			 end
 		     in
 			 [exp "sig", exp "sml"]
 		     end)

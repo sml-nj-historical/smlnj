@@ -27,19 +27,29 @@ signature CORETOOLS = sig
 
     type rebindings = { anchor: string, value: presrcpath } list
 
+    (* get the spec (i.e., relative to the directory context) of a path: *)
     val nativeSpec : srcpath -> string
+    (* same for presrcpath... *)
+    val nativePreSpec : presrcpath -> string
 
-    val nativePre : presrcpath -> string
-
+    (* make a srcpath from a presrcpath, checking that the "at least one
+     * arc" rule is satisfied... *)
     val srcpath : presrcpath -> srcpath
+
+    (* augment a presrcpath with extra arcs; the new path has inherits
+     * the context (i.e., any anchoring) from the original one... *)
+    val augment : presrcpath -> string list -> presrcpath
 
     exception ToolError of { tool: string, msg: string }
 
-    type pathmaker = string -> presrcpath
+    type pathmaker = unit -> presrcpath
+
+    (* a file-name specification *)
+    type fnspec = { name: string, mkpath: pathmaker }
 
     (* case-by-case parameters that can be passed to tools... *)
     datatype toolopt =
-	STRING of { name: string, mkpath: pathmaker }
+	STRING of fnspec
       | SUBOPTS of { name: string, opts: toolopts }
     withtype toolopts = toolopt list
 
@@ -88,9 +98,11 @@ signature CORETOOLS = sig
      * derived specs that was used for the original spec. *)
     type rulefn = unit -> partial_expansion
     type rulecontext = rulefn -> partial_expansion
-    type rule =
-	{ spec: spec, mkNativePath: pathmaker, context: rulecontext } ->
-	partial_expansion
+    type rule = { spec: spec,
+		  native2pathmaker: string -> pathmaker,
+		  context: rulecontext,
+		  defaultClassOf: fnspec -> class option } ->
+		partial_expansion
 
     (* install a class *)
     val registerClass : class * rule -> unit
@@ -98,7 +110,8 @@ signature CORETOOLS = sig
     (* classifiers are used when the class is not given explicitly *)
     datatype classifier =
 	SFX_CLASSIFIER of string -> class option
-      | GEN_CLASSIFIER of string -> class option
+      | GEN_CLASSIFIER of { name: string, mkfname: unit -> string } ->
+			  class option
 
     (* make a classifier which looks for a specific file name suffix *)
     val stdSfxClassifier : { sfx: string , class: class } -> classifier

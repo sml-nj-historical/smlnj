@@ -73,7 +73,7 @@ signature CM_SEMANT = sig
 		  group,
 	  load_plugin: SrcPath.dir -> string -> bool }
 	-> { name: string,
-	     mkpath: string -> SrcPath.prefile,
+	     mkpath: unit -> SrcPath.prefile,
 	     group: SrcPath.file * region,
 	     class: cm_class option,
 	     tooloptions: toolopt list option,
@@ -132,7 +132,7 @@ signature CM_SEMANT = sig
     val eq : aexp * eqsym * aexp -> exp
 
     (* tool options *)
-    val string : { name: string, mkpath: string -> SrcPath.prefile } -> toolopt
+    val string : { name: string, mkpath: unit -> SrcPath.prefile } -> toolopt
     val subopts : { name: string, opts: toolopt list } -> toolopt
 end
 

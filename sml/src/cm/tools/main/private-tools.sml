@@ -16,17 +16,20 @@ structure PrivateTools : PRIVATETOOLS = struct
     type rebindings = SrcPath.rebindings
 
     val nativeSpec = SrcPath.osstring_relative
-
-    val nativePre = SrcPath.osstring_prefile
+    val nativePreSpec = SrcPath.osstring_prefile_relative
 
     val srcpath = SrcPath.file
 
+    val augment = SrcPath.extend
+
     exception ToolError of { tool: string, msg: string }
 
-    type pathmaker = string -> presrcpath
+    type pathmaker = unit -> presrcpath
+
+    type fnspec = { name: string, mkpath: pathmaker }
 
     datatype toolopt =
-	STRING of { name: string, mkpath: pathmaker }
+	STRING of fnspec
       | SUBOPTS of { name: string, opts: toolopts }
     withtype toolopts = toolopt list
 
@@ -49,13 +52,17 @@ structure PrivateTools : PRIVATETOOLS = struct
 
     type rulefn = unit -> partial_expansion
     type rulecontext = rulefn -> partial_expansion
-    type rule =
-	{ spec: spec, mkNativePath: pathmaker, context: rulecontext } ->
-	partial_expansion
+    type rule = { spec: spec,
+		  native2pathmaker: string -> pathmaker,
+		  context: rulecontext,
+		  defaultClassOf: fnspec -> class option } ->
+		partial_expansion
+
+    type gcarg = { name: string, mkfname: unit -> string }
 
     type registry = { classes : rule StringMap.map ref,
 		      sfx_classifiers : (string -> class option) ref,
-		      gen_classifiers : (string -> class option) ref }
+		      gen_classifiers : (gcarg -> class option) ref }
 
     fun layer (look1, look2) s = case look1 s of NONE => look2 s | x => x
 
@@ -102,7 +109,7 @@ structure PrivateTools : PRIVATETOOLS = struct
 
     datatype classifier =
 	SFX_CLASSIFIER of string -> class option
-      | GEN_CLASSIFIER of string -> class option
+      | GEN_CLASSIFIER of gcarg -> class option
 
     fun stdSfxClassifier { sfx, class } =
 	SFX_CLASSIFIER (fn e => if sfx = e then SOME class else NONE)
@@ -217,12 +224,14 @@ structure PrivateTools : PRIVATETOOLS = struct
 			 cleanup = fn _ => () }
 
     (* query default class *)
-    fun defaultClassOf load_plugin p = let
+    fun defaultClassOf load_plugin (s: fnspec) = let
+	val p = #name s
+	val mkfname = SrcPath.osstring_prefile o #mkpath s
+	val gcarg = { name = p, mkfname = mkfname }
 	fun sfx_gen_check e =
 	    case sfx_classifiers e of
 		SOME c => SOME c
-	      | NONE => gen_classifiers p
-
+	      | NONE => gen_classifiers gcarg
     in
 	case OS.Path.ext p of
 	    SOME e =>
@@ -234,7 +243,7 @@ structure PrivateTools : PRIVATETOOLS = struct
 		     if globally load_plugin plugin then sfx_gen_check e
 		     else NONE
 		 end)
-	  | NONE => gen_classifiers p
+	  | NONE => gen_classifiers gcarg
     end
 
     fun parseOptions { tool, keywords, options } = let
@@ -255,7 +264,7 @@ structure PrivateTools : PRIVATETOOLS = struct
 	loop (options, StringMap.empty, [])
     end
 
-    fun smlrule { spec, context, mkNativePath } = let
+    fun smlrule { spec, context, native2pathmaker, defaultClassOf } = let
 	val { name, mkpath, opts = oto, derived, ... } : spec = spec
 	val tool = "sml"
 	fun err s = raise ToolError { tool = tool, msg = s }
@@ -298,14 +307,14 @@ structure PrivateTools : PRIVATETOOLS = struct
 		in
 		    (srq, setup)
 		end
-	val p = srcpath (mkpath name)
+	val p = srcpath (mkpath ())
     in
 	({ smlfiles = [(p, srq, setup)],
 	   sources = [(p, { class = "sml", derived = derived })],
 	   cmfiles = [] },
 	 [])
     end
-    fun cmrule { spec, context, mkNativePath } = let
+    fun cmrule { spec, context, native2pathmaker, defaultClassOf } = let
 	val { name, mkpath, opts = oto, derived, ... } : spec = spec
 	fun err m = raise ToolError { tool = "cm", msg = m }
 	fun proc_opts (rb, vrq, []) = (rb, vrq)
@@ -326,7 +335,7 @@ structure PrivateTools : PRIVATETOOLS = struct
 	    (case opts of
 		 [SUBOPTS { name = "anchor", opts = [STRING { name, ... }] },
 		  SUBOPTS { name = "value", opts = [STRING v] }] =>
-		 proc_opts ({ anchor = name, value = #mkpath v (#name v) }
+		 proc_opts ({ anchor = name, value = #mkpath v () }
 			    :: rb,
 			    vrq, r)
 	       | _ => err "ill-formed bind specification")
@@ -335,7 +344,7 @@ structure PrivateTools : PRIVATETOOLS = struct
 	val (rb, vrq) = case oto of
 			    NONE => ([], NONE)
 			  | SOME l => proc_opts ([], NONE, l)
-	val p = srcpath (mkpath name)
+	val p = srcpath (mkpath ())
     in
 	({ smlfiles = [],
 	   sources = [(p, { class = "cm", derived = derived })],
@@ -344,7 +353,9 @@ structure PrivateTools : PRIVATETOOLS = struct
     end
 
     fun expand { error, local_registry = lr, spec, context, load_plugin } = let
-	fun mkNativePath s =
+	val dummy = ({ smlfiles = [], cmfiles = [], sources = [] }, [])
+	fun norule _ = dummy
+	fun native2pathmaker s () =
 	    SrcPath.native { err = error } { context = context, spec = s }
 	fun class2rule class =
 	    case classes class of
@@ -354,8 +365,8 @@ structure PrivateTools : PRIVATETOOLS = struct
 		    val plugin = OS.Path.joinBaseExt { base = base,
 						       ext = SOME "cm" }
 		    fun complain () =
-			(error (concat ["unknown class \"", class, "\""]);
-			 smlrule)
+			(error (concat ["unknown class: ", class]);
+			 norule)
 		in
 		    if globally (load_plugin context) plugin then
 			case classes class of
@@ -364,14 +375,17 @@ structure PrivateTools : PRIVATETOOLS = struct
 		    else complain ()
 		end
 
-	fun expand1 (spec as { name, class = co, ... }) = let
+	fun expand1 (spec as { name, mkpath, class = co, ... }) = let
+	    val fns = { name = name, mkpath = mkpath }
 	    val rule =
 		case co of
 		    SOME c0 => class2rule (String.map Char.toLower c0)
 		  | NONE =>
-			(case defaultClassOf (load_plugin context) name of
+			(case defaultClassOf (load_plugin context) fns of
 			     SOME c => class2rule c
-			   | NONE => smlrule)
+			   | NONE =>
+			     (error (concat ["unable to classify: ", name]);
+			      norule))
 	    fun rcontext rf = let
 		val dir = SrcPath.osstring_dir context
 		val cwd = OS.FileSys.getDir ()
@@ -383,10 +397,11 @@ structure PrivateTools : PRIVATETOOLS = struct
 	    end
 	in
 	    rule { spec = spec, context = rcontext,
-		   mkNativePath = mkNativePath }
+		   native2pathmaker = native2pathmaker,
+		   defaultClassOf = defaultClassOf (load_plugin context) }
 	    handle ToolError { tool, msg } =>
 		   (error (concat ["tool \"", tool, "\" failed: ", msg]);
-		    ({ smlfiles = [], cmfiles = [], sources = [] }, []))
+		    dummy)
 	end
 	fun loop (expansion, []) = expansion
 	  | loop ({ smlfiles, cmfiles, sources }, item :: items) = let

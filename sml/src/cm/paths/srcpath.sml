@@ -62,6 +62,9 @@ signature SRCPATH = sig
     val standard : { err: string -> unit, env: env } ->
 		   { context: dir, spec: string } -> prefile
 
+    (* augment a prefile (naming a directory) with a list of arcs... *)
+    val extend : prefile -> string list -> prefile
+
     (* check that there is at least one arc in after the path's context *)
     val file : prefile -> file
 
@@ -83,6 +86,9 @@ signature SRCPATH = sig
      * absolute path if the original spec was not relative (i.e., if
      * it was anchored or absolute) *)
     val osstring_relative : file -> string
+
+    (* same for prefile *)
+    val osstring_prefile_relative : prefile -> string
 
     (* get name of dir *)
     val osstring_dir : dir -> string
@@ -514,6 +520,9 @@ structure SrcPath :> SRCPATH = struct
 	  | ANCHORED (a, l) =>
 	    prefile (ANCHOR { name = a, look = mk_look (env, a) }, l, err)
 
+    fun extend { context, arcs, err } morearcs =
+	{ context = context, arcs = arcs @ morearcs, err = err }
+
     fun osstring_reanchored anchor f = let
 	fun path (PATH { context, arcs, ... }) =
 	    Option.map (augPP arcs) (ctxt context)
@@ -525,10 +534,12 @@ structure SrcPath :> SRCPATH = struct
 	Option.map pp2name (path (unintern f))
     end
 
-    fun osstring_relative (p as (PATH { arcs, context, ... }, _)) =
+    fun osstring_prefile_relative (p as { arcs, context, ... }) =
 	case context of
 	    DIR _ => P.toString { arcs = arcs, vol = "", isAbs = false }
-	  | _ => osstring p
+	  | _ => osstring_prefile p
+
+    val osstring_relative = osstring_prefile_relative o pre
 
     fun tstamp f = TStamp.fmodTime (osstring f)
 

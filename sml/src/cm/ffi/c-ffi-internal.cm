@@ -1,0 +1,32 @@
+(*
+ * A new foreign-function interface for SML, including its "private"
+ * internal parts.
+ *
+ *   (C) 2000, Lucent Technologies, Bell Laboratories
+ *
+ * author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+c-ffi-internal
+Library
+	structure Dim
+
+	signature CMEMORY
+	structure CMemory
+
+	signature CTYPES
+	structure CTypes
+
+	signature CTYPES_INTERNAL
+	structure CTypesInternal
+is
+	$/basis.cm
+
+	dim.sml
+
+	c-memory-sig.sml
+	c-memory.sml
+
+	c-types-int-sig.sml
+	c-types-sig.sml
+	c-types-int.sml
+	c-types.sml

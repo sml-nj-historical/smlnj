@@ -9,4 +9,4 @@ Library
 	structure LexTool
 is
 	$smlnj/cm/tools.cm
-	lextool.sml
+	tool.sml

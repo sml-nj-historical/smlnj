@@ -53,7 +53,18 @@ eval $ARCH_N_OPSYS
 #############################################################################
 
 # special shortcut for frequent use (and for Linux' binfmt)
-case "$1" in /* | ./* | ../* ) HEAP="@SMLload=$1"; shift ;; esac
+case "$1" in
+    /* | ./* | ../* )
+	case "$1" in
+	    *.cm | *.sml | *.sig | *.fun )
+		;;
+	    * )
+		HEAP="@SMLload=$1"
+		shift
+		;;
+	esac
+	;;
+esac
 
 ALLOC=""
 

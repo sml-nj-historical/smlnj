@@ -24,15 +24,18 @@ VERSION}.
       type rebindings = { anchor: string, value: presrcpath } list
   
       val nativeSpec : srcpath -> string
-      val nativePre : presrcpath -> string
+      val nativePreSpec : presrcpath -> string
       val srcpath : presrcpath -> srcpath
+      val augment : presrcpath -> string list -> presrcpath
   
       exception ToolError of { tool: string, msg: string }
   
-      type pathmaker = string -> presrcpath
-  
+      type pathmaker = unit -> presrcpath
+
+      type fnspec = { name: string, mkpath: pathmaker }  
+
       datatype toolopt =
-          STRING of { name: string, mkpath: pathmaker }
+          STRING of fnspec
         | SUBOPTS of { name: string, opts: toolopts }
       withtype toolopts = toolopt list
   
@@ -52,15 +55,18 @@ VERSION}.
   
       type rulefn = unit -> partial_expansion
       type rulecontext = rulefn -> partial_expansion
-      type rule =
-          { spec: spec, mkNativePath: pathmaker, context: rulecontext } ->
-          partial_expansion
+      type rule = { spec: spec,
+                    native2pathmaker: string -> pathmaker,
+                    context: rulecontext,
+                    defaultClassOf: fnspec -> class option }
+                  -> partial_expansion
   
       val registerClass : class * rule -> unit
   
       datatype classifier =
           SFX_CLASSIFIER of string -> class option
-        | GEN_CLASSIFIER of string -> class option
+        | GEN_CLASSIFIER of { name: string, mkfname: unit -> string } ->
+                            class option
   
       val stdSfxClassifier : { sfx: string , class: class } -> classifier
   
@@ -97,8 +103,6 @@ VERSION}.
             cmdStdPath: string, extensionStyle: extensionStyle,
             template: string option, dflopts: toolopts }
           -> unit
-  
-      val defaultClassOf : string -> class option
   end
   
   structure Tools :> TOOLS

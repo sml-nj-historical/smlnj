@@ -30,7 +30,7 @@ signature MEMBERCOLLECTION = sig
 		  GroupGraph.group,
 	  load_plugin: SrcPath.dir -> string -> bool }
 	-> { name: string,
-	     mkpath: string -> SrcPath.prefile,
+	     mkpath: unit -> SrcPath.prefile,
 	     group: SrcPath.file * region,
 	     class: string option,
 	     tooloptions: PrivateTools.toolopts option,

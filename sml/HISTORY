@@ -12,6 +12,16 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/12/15 00:01:05 JST
+Tag: blume-20001215-dirtool
+Description:
+
+- "dir" tool added.
+- improvements and cleanup to Tools structure
+- documentation updates
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: Thu Dec 14 03:45:24 EST 2000  
 Description:

@@ -21,9 +21,9 @@ structure ShellTool = struct
 	fun badspec kw = err (concat ["bad specification for keyword `",
 				      kw, "'"])
 
-	fun rule { spec, context, mkNativePath } = let
+	fun rule { spec, context, native2pathmaker, defaultClassOf } = let
 	    val { name = str, mkpath, opts = too, derived, ... } : spec = spec
-	    val specpath = srcpath (mkpath str)
+	    val specpath = srcpath (mkpath ())
 	    val specname = nativeSpec specpath
 	    val (sname, tname, tclass, topts, cmdline) =
 		case too of
@@ -36,7 +36,7 @@ structure ShellTool = struct
 			    case matches kw of
 				NONE => NONE
 			      | SOME [STRING { name, mkpath }] =>
-				  SOME (nativeSpec (srcpath (mkpath name)))
+				  SOME (nativeSpec (srcpath (mkpath ())))
 			      | _ => badspec kw
 			val tclass =
 			    case matches kw_class of
@@ -67,14 +67,14 @@ structure ShellTool = struct
 			  | (SOME _, SOME _) => err
 			 "only one of `source=' and `target=' can be specified"
 		    end
-	    val spath = srcpath (mkNativePath sname)
+	    val spath = srcpath (native2pathmaker sname ())
 	    val partial_expansion =
 		({ smlfiles = [], cmfiles = [],
 		   (* If str was the target, then "derived" does not really
 		    * make much sense.  I guess the best thing is to get
 		    * rid of the "source:" option. FIXME!! *)
 		   sources = [(spath, { class = class, derived = derived })] },
-		 [{ name = tname, mkpath = mkNativePath,
+		 [{ name = tname, mkpath = native2pathmaker tname,
 		    class = tclass, opts = topts, derived = true }])
 	    fun runcmd () =
 		(vsay ["[", cmdline, "]\n"];

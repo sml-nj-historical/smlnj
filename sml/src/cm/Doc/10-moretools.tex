@@ -43,7 +43,7 @@ Alternatively, the code could also be entered at the interactive top
 level after loading library {\tt \$smlnj/cm/tools.cm}.
 
 In our example, the shell command name for our tool is {\tt
-new-ml-yacc}.  When looking for this command in the file system, CM
+new-ml-yacc}.  When looking for this command in the filesystem, CM
 first tries to treat it as a path anchor (see
 section~\ref{sec:anchor:env}).  For example, suppose {\tt new-ml-yacc} is
 mapped to {\tt /bin}.  In this case the command to be
@@ -128,6 +128,86 @@ Adding a new class whose behavior is not covered by the mechanism
 described in section~\ref{sec:addshellclass} is not complicated
 either, but it requires a bit more code.
 
+\subsubsection{Filename abstractions}
+
+CM represents filenames as something that could be called a {\em
+filename closure}.  Essentially, what this means is that not only a
+string is being remembered but also the context in which to interpret
+the string.  For a relative path, context information is the directory
+in which it is to be interpreted; for an anchored path, the context
+takes care of the anchoring.
+
+The {\tt Tools} module provides two abstract types related to this
+filename abstraction:
+
+\begin{verbatim}
+  type presrcpath
+  type srcpath
+\end{verbatim}
+
+Since many tools invoke external shell commands or perform other
+operation on physical files, it is often necessary to obtain an actual
+native filename string from an abstract path:
+
+\begin{verbatim}
+  val nativeSpec : srcpath -> string
+  val nativePreSpec : presrcpath -> string
+\end{verbatim}
+
+It is important to remember that these two functions frequently return
+relative filenames, and such relative names must be interpreted from
+within the right directory.  This ``right'' directory is the directory
+that contains the CM description file on whose behalf the tool's rule
+was invoked.  Rules that perform physical operations on files whose
+names result from {\tt nativeSpec} or {\tt nativePreSpec} must
+therefore first switch to that directory.  See the discussion of the
+{\tt context} argument to rule functions below.
+
+Strings that can potentially be used as pathnames are being passed
+around as records containing a {\tt name}- and a {\tt mkpath} field.
+The {\tt name} field contains the string itself while {\tt mkpath}
+is a ``suspended'' abstract version of the path.
+
+A fresh pathmaker can be constructed from native strings using {\tt
+native2pathmaker}, which like {\tt context} is also an argument to
+rule functions.  This function takes care of interpreting relative
+strings within the correct context.  (For this, it is not even
+necessary to first switch the current working directory.)
+
+Recall that filenames that appear in description files can be written
+using either ``standard'' or ``native'' syntax.  The field {\tt name}
+will, thus, contain a string that can be in either of these two forms.
+However, CM will pass an {\tt mkpath} function that accounts for these
+syntactic differences and which also takes care of interpreting the
+string in the correct context.
+
+When new name specifications are constructed by the tool, the
+appropriate {\tt mkpath} function must be provided.  For most tools
+this will be a value constructed by applying {\tt native2pathmaker} to
+some native filename string (because most tools internally operate on
+native paths).
+
+As shown above, there are two abstract path types: {\tt presrcpath}
+and {\tt srcpath}.  The former can represent both directory names and
+source file names, the latter can represent only source file names.
+To convert from {\tt presrcpath} to {\tt srcpath}, use function {\tt
+Tools.srcpath}:
+\begin{verbatim}
+  val srcpath : presrcpath -> srcpath
+\end{verbatim}
+This function enforces CM's rule that there has to be at least one arc
+in every such name (i.e., that it cannot be just an anchor).
+
+One can also construct a new abstract path from an existing path by
+adding arcs at the end.  The constructed path will share its internal
+context with the old one.
+
+\begin{verbatim}
+  val augment : presrcpath -> string list -> presrcpath
+\end{verbatim}
+
+The list of strings must contain simple pathname arcs.
+
 \subsubsection{Adding a class and its rule}
 
 The interface to add arbitrary classes is the routine {\tt
@@ -155,15 +235,18 @@ expansion}:
 
 \begin{verbatim}
   type rule =
-    { spec: spec, mkNativePath: pathmaker, context: rulecontext } ->
+    { spec: spec,
+      native2pathmaker: string -> pathmaker,
+      context: rulecontext,
+      defaultClassOf: fnspec -> class option } ->
     partial_expansion
 \end{verbatim}
 
 The specification {\tt spec} consists of the name of the member
-together with a function to convert it to an abstract path (should
-that be necessary), the member's optional class (in case it had been
-given explicitly), its tool options, and a boolean flag that tells
-whether this member was the result of another tool:
+together with a function to produce its corresponding abstract
+path (should that be necessary), the member's optional class (in case
+it had been given explicitly), its tool options, and a boolean flag
+that tells whether this member was the result of another tool:
 
 \begin{verbatim}
   type spec = { name: string,
@@ -178,58 +261,52 @@ whether this member was the result of another tool:
 description file.  Be sure not to use this string directly as a file
 name (although some tools might use it directly for purposes other
 than file names).  Instead, first convert it to an abstract path (see
-{\tt mkpath} below) and convert back to a {\em native} file name
-string using one of:
-\begin{verbatim}
-  val nativeSpec : srcpath -> string
-  val nativePre : presrcpath -> string
-\end{verbatim}
-\item[mkpath] This is a function of type {\tt pathmaker} that converts
-the name string to an abstract path name.  CM will pass in different
+{\tt mkpath} below) and then convert back to a {\em native} file name
+string using one of {\tt nativeSpec} or {\tt nativePreSpec}.
+\item[mkpath] This is a function of type {\tt pathmaker} that produces
+an abstract pathname corresponding to {\tt name}.  CM will pass in different
 functions here depending on whether {\tt name} was given in CM's
-standard path name syntax or in the underlying operating system's
+standard pathname syntax or in the underlying operating system's
 native syntax.
 \begin{verbatim}
-  type pathmaker = string -> presrcpath
+  type pathmaker = unit -> presrcpath
 \end{verbatim}
-There are two abstract path types: {\tt presrcpath} and {\tt srcpath}.
-The former can represent both directory names and source file names,
-the latter can represent only source file names.  To convert from {\tt
-presrcpath} to {\tt srcpath}, use function {\tt Tools.srcpath}:
-\begin{verbatim}
-  val srcpath : presrcpath -> srcpath
-\end{verbatim}
-This function enforces CM's rule that there has to be at least one arc
-in every such name (i.e., that it cannot be just an anchor).
 \item[class:] This argument carries the class name if such a class
 name was explicitly specified.  If the class was inferred from the
 member name, then it will be set to {\tt NONE}.
 \item[opts:] Tool options are represented by a data structure
 resembling Lisp lists:
 \begin{verbatim}
+  type fnspec = { name: string, mkpath: pathmaker }
   datatype toolopt =
-      STRING of { name: string, mkpath: pathmaker }
+      STRING of fnspec
     | SUBOPTS of { name: string, opts: toolopts }
   withtype toolopts = toolopt list
 \end{verbatim}
 The nesting of {\tt SUBOPTS} reflects the nesting of sub-option lists
 in the member's tool option specification.
+Again, names which are potentially to be interpreted as file names are
+represented by their original specification string and a function {\tt
+mkpath} to get the corresponding abstract path, thereby taking
+care of interpreting the name according to its respective syntactic
+rules and its context. (Type {\tt fnspec} is a slimmed-down version of
+type {\tt spec}.  It also appears as the argument type of function
+{\tt defaultClassOf}.  See below.)
 \item[derived:] This flag is set to {\tt true} if the source file
 represented by the specification is the result of a another, earlier
 tool invocation.
 \end{description}
 
-The other two arguments of a rule function are {\tt mkNativePath} and
-{\tt context}:
+The other three arguments of a rule function are {\tt native2pathmaker},
+{\tt context}, and {\tt defaultClassOf}:
 
 \begin{description}
-\item[mkNativePath:] This is a function of the same type as {\tt
-mkpath} above.  When the rule constructs the specifications for its
-result files, it must provide the corresponding {\tt mkpath} function
-for those.  Since most tools internally operate on native path names
-(for example, because they pass these names to other, external
-programs), this {\tt mkpath} function will have to be {\tt
-mkNativePath}.
+\item[native2pathmaker:] This function takes a string and produces a
+function of the same type as {\tt mkpath} above.  When the rule
+constructs the specifications for its result files, it must provide
+the corresponding {\tt mkpath} functions for those.  Since most tools
+internally operate on native pathnames, these {\tt mkpath} functions
+will have to be constructed using {\tt native2pathmaker}.
 \item[context:] The context argument of a rule represents the
 directory that contains the CM description file on whose behalf the
 rule was invoked.  It is represented as a higher-order function that
@@ -243,6 +320,11 @@ pass this function to the context.
   type rulefn = unit -> partial_expansion
   type rulecontext = rulefn -> partial_expansion
 \end{verbatim}
+\item[defaultClassOf:] This function can be used to directly invoke
+CM's internal classification mechanism, taking advantage of any
+registered classifiers.  The argument to be passed is of type {\tt
+fnspec}, i.e., a record consisting of a name string and a function to
+convert the string to its corresponding abstract path.
 \end{description}
 
 A (full) {\em expansion} consists of three lists: a list of ML files,
@@ -292,26 +374,44 @@ error:
 \subsubsection{Adding a classifier}
 
 A classifier is a mechanism that enables CM to infer a member's class
-form its name.  Classifiers are invoked if no explicit class was
+from its name.  Classifiers are invoked if no explicit class was
 given.  CM supports two kinds of classifiers: suffix classifiers and
 general classifiers.
 
 \begin{verbatim}
   datatype classifier =
       SFX_CLASSIFIER of string -> class option
-    | GEN_CLASSIFIER of string -> class option
+    | GEN_CLASSIFIER of { name: string, mkfname: unit -> string } ->
+                        class option
 \end{verbatim}
 
-Most of the time, classifiers look at the file name suffix as the only
+Most of the time classifiers look at the file name suffix as their only
 clue.  This idea is captured by {\tt SFX\_CLASSIFIER} which carries a
 partial function from suffixes to class names.  The function should
 return {\tt NONE} if it does not know about the given argument suffix.
 
 The {\tt GEN\_CLASSIFIER} constructor carries a similar function---the
-only difference being that the entire member name is passed to it.
-(Suffix classifiers could be implemented as general classifiers, but
-using {\tt SFX\_CLASSIFIER} for them is slightly more efficient
-because CM will extract the suffix from the name only once.)
+difference being that the entire member name is passed to it.
+Moreover, the function can also invoke the {\tt mkfname} argument to
+obtain a native filename string.  This string can at this point be
+used to perform actual filesystem operations.
+
+Invocation of {\tt mkfname} may raise exceptions, usually due to
+syntax errors in {\tt name} that prevent it from being interpreted as
+a filename.  Tools that use {\tt mkfname} should therefore be prepared
+to handle such exceptions.
+
+Moreover, it is advisable not to over-use this feature, and not to
+perform extensive filesystem processing in order to perform
+classification.  Otherwise the presence of this classifier might cause
+considerable overhead.
+
+By the way, suffix classifiers could be implemented as general
+classifiers, but using {\tt SFX\_CLASSIFIER} for them is slightly more
+efficient.  CM extracts the suffix from the name only once and applies
+all suffix classifier before ever considering any generic classifier.
+If some suffix classifier succeeds, there will be no overhead caused
+by any generic classifier.
 
 Function {\tt Tools.stdSfxClassifier} is a simple wrapper around {\tt
 SFX\_CLASSIFIER} and produces a classifier that looks for precisely
@@ -365,8 +465,8 @@ source file is older than all of its corresponding target files.
 \end{verbatim}
 
 In a call {\tt (Tools.outdated $t$ ($l$, $s$))}, $t$ is the name of
-the tool, $l$ is the list of targets (as native file names), and $s$
-is the source (also as a native file name).
+the tool, $l$ is the list of targets (as native file names),
+and $s$ is the source (also as a native file name).
 
 An alternative way of checking for outdated sources (in the style of
 the Noweb-tool; see section~\ref{sec:builtin-tools:noweb}) is the
@@ -439,14 +539,6 @@ implementing anchor-configurable names for auxiliary shell commands
 If $m$ is a path anchor that points to $d$, then {\tt (mkCmdName $m$)}
 returns $d${\tt /}$m$; otherwise it returns $m$.
 
-\noindent{\bf Querying the default class of a member:} One can
-directly invoke CM's internal classification mechanism, taking
-advantage of any registered classifiers:
-
-\begin{verbatim}
-  val defaultClassOf : string -> class option
-\end{verbatim}
-
 \subsection{Plug-in Tools}
 \label{sec:plugintools}
 
@@ -466,11 +558,11 @@ placing appropriately named plug-in libraries in some convenient place
 and making the corresponding adjustments to the anchor environment.
 In other words, description files {\tt \$/}$c${\tt -tool.cm} and {\tt
 \$/}$s${\tt -ext.cm} that correspond to general-purpose tools should
-be registered by modifying either the global or the local path
-configuration file (or by directly invoking functon {\tt
-CM.Anchor.anchor}; see section~\ref{sec:api:anchors}).  If this is
-done, actual description files for the tools' implementations can be
-placed in arbitrary locations.
+be registered either by modifying the global or the local path
+configuration file or by directly invoking functon {\tt
+CM.Anchor.anchor} (see section~\ref{sec:api:anchors}).  Actual
+description files for the tools' implementations can then be placed in
+arbitrary locations.
 
 \subsubsection{Explicitly loaded, local plug-in tools}
 \label{sec:localtools}

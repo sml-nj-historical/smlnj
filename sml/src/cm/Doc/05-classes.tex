@@ -50,11 +50,8 @@ See section~\ref{sec:plugintools}.
 
 By default, CM automatically classifies files with a {\tt .sml}
 suffix, a {\tt .sig} suffix, or a {\tt .fun} suffix as ML-source, file
-names ending in {\tt .cm} as CM descriptions.\footnote{Suffixes that
-are not known and for which no plugin module can be found are treated
-as ML source code.  However, as new tools are added there is no
-guarantee that this behavior will be preserved in future versions of
-CM.}
+names ending in {\tt .cm} as CM descriptions.  Failure to classify a
+member will be reported as an error.
 
 \subsection{Tool parameters}
 \label{sec:toolparam}
@@ -457,3 +454,117 @@ the {\em current arc} ``{\bf .}'' and write:
           witness:foo.wtn
           target:(name:main.sml))
 \end{verbatim}
+
+\subsubsection{Dir}
+\label{sec:builtin-tools:dir}
+
+Using the Dir tool one can use directory names in description files.
+There are two possible uses for the Dir tool:
+
+\begin{enumerate}
+\item Factoring out common directory names.
+\item Scanning the contents of directories for files with ML code.
+\end{enumerate}
+
+\paragraph{Directory factoring:}
+The main purpose of the Dir tool (class {\tt dir}) is to simplify CM
+descriptions that mention a large number of files all of which are
+located in in the same directory.  For this style of usage, tool
+options have to be specified.
+
+For example, writing
+
+\begin{verbatim}
+Group is
+  long/directory/name : dir (a.sml b/c.sml d.sml)
+\end{verbatim}
+
+is equivalent to the following verbose description:
+
+\begin{verbatim}
+Group is
+  long/directory/name/a.sml
+  long/directory/name/b/c.sml
+  long/directory/name/d.sml
+\end{verbatim}
+
+Since CM automatically classifies directory names as members of class
+{\tt dir}, the example can be further simplified:
+
+\begin{verbatim}
+Group is
+  long/directory/name (a.sml b/c.sml d.sml)
+\end{verbatim}
+
+Options for class {\tt dir} consist of a list of items, each item
+having one of two possible forms:
+
+\begin{enumerate}
+\item The item can be a sub-option list of the form
+{\tt member:($m$ class:$c$ options:$o$)} which emulates an ordinary
+member specification with class and options.  The {\tt class}- and
+{\tt options}-fields may (independently of each other) be missing, but
+the order of fields that are present is fixed.
+\item The item can be a simple name (as shown in the example).  Such a
+simple name $m$ is equivalent to the longer form {\tt member:($m$)}.
+\end{enumerate}
+
+Members $m$ must always be specified using {\em relative} path names.
+
+For example, the description
+
+\begin{verbatim}
+Group is
+  alpha/a.sml (private)
+  alpha/b.ml : sml (shared)
+  alpha/c.cm
+  beta/d.sml
+  beta/e.sml
+\end{verbatim}
+
+can be simplified as:
+
+\begin{verbatim}
+Group is
+  alpha (member:(a.sml options:private)
+         member:(b.ml class:sml options:shared)
+         c.cm)
+  beta (d.sml e.sml)
+\end{verbatim}
+
+\paragraph{Directory scanning:}
+Another use of the Dir tool, indicated by the absence of tool options,
+is to include all ML code in a given directory ``whole-sale style''.
+For example, a member of the form
+
+\begin{verbatim}
+  projects/ml/foo : dir
+\end{verbatim}
+
+lets CM scan the contents of directory {\tt projects/ml/foo} and
+proceed as if a list of all discovered ML files had been written
+in place of the {\tt dir} member.  For this, the usual classification
+mechanism is used to decide which directory entries are to be
+considered files containing ML code.
+
+As before, the example could be further simplified by omitting the
+class name.  Thus, a very quick way of putting together a small
+project is to use a generic description file of the form:
+
+\begin{verbatim}
+Group is $/basis.cm .
+\end{verbatim}
+% $
+
+As usual, the dot denotes the current directory.  Therefore, CM will
+scan the current directory and include any ML code it finds there.
+(Library {\tt \$/basis.cm} is necessary for most non-trivial programs,
+so we included it also.)
+
+This is deceptively simple, but be warned: The technique of letting CM
+scan the physical directory is to be avoided for any serious project
+because it is very fragile.  It does not mix well with the use of
+other tools, it will break when certain otherwise unrelated ML files
+are present, and so on, and so forth. In short, for serious
+programming the Dir tool should not be used without specifying
+options.

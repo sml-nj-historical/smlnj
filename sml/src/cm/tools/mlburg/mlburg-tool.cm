@@ -9,4 +9,4 @@ Library
 	structure BurgTool
 is
 	$smlnj/cm/tools.cm
-	burgtool.sml
+	tool.sml

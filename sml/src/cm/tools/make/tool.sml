@@ -17,7 +17,7 @@ structure MakeTool = struct
 
 	fun err m = raise ToolError { tool = tool, msg = m }
 
-	fun rule { spec, context, mkNativePath } = let
+	fun rule { spec, context, native2pathmaker, defaultClassOf } = let
 	    val { name = str, mkpath, opts = too, ... } : spec = spec
 	    val (tclass, topts, mopts) =
 		case too of
@@ -36,13 +36,13 @@ structure MakeTool = struct
 			 matches kw_options,
 			 restoptions)
 		    end
-	    val p = srcpath (mkpath str)
+	    val p = srcpath (mkpath ())
 	    val tname = nativeSpec p
 	    val partial_expansion =
 		(* The "make" class is odd in that it has only a target
 		 * but no sources. *)
 		({ smlfiles = [], cmfiles = [], sources = [] },
-		 [{ name = tname, mkpath = mkNativePath,
+		 [{ name = tname, mkpath = native2pathmaker tname,
 		    class = tclass, opts = topts, derived = true }])
 	    fun runcmd () = let
 		val cmdname = mkCmdName stdCmdPath
@@ -58,6 +58,6 @@ structure MakeTool = struct
 	    context rulefn
 	end
     in
-        val _ = registerClass (class, rule);
+        val _ = registerClass (class, rule)
     end
 end

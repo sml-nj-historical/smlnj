@@ -44,6 +44,10 @@ is
 	(* Same for shell tool... *)
 	$/shell-tool.cm
 
+	(* Register the "dir" tool.  Its classifier (but not the tool
+	 * itself) is always "plugged-in". *)
+	$/dir-tool.cm
+
 # if not defined(LIGHT)
 	$smlnj/compiler/all.cm
 # endif
