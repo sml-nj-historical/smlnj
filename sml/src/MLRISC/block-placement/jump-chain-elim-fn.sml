@@ -116,7 +116,12 @@ functor JumpChainElimFn (
 		  if !needFilter then List.filter keepBlock blocks else blocks)
 	  in
 	    if !dumpCFG
-	      then CFG.dump(!dumpStrm, "after jump-chain elimination", cfg)
+	      then let
+		val prBlock = CFG.dumpBlock (!dumpStrm, cfg)
+		in
+		  TextIO.output(!dumpStrm, "[ after jump-chain elimination ]\n");
+		  List.app prBlock blocks
+		end
 	      else ();
 	    blocks
 	  end
