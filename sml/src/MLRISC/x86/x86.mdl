@@ -169,13 +169,12 @@ struct
        | LOCK_XADDB "lock\n\txaddb"
        | LOCK_XADDW "lock\n\txaddw"
        | LOCK_XADDL "lock\n\txaddl"
-       | LOCK_CMPXCHGB "lock\n\tcmpxchgb"
-       | LOCK_CMPXCHGW "lock\n\tcmpxchgw"
-       | LOCK_CMPXCHGL "lock\n\tcmpxchgl"
     
       datatype multDivOp! = MULL | IDIVL | DIVL
     
-      datatype unaryOp! = DECL | INCL | NEGL | NOTL | NOTW | NOTB 
+      datatype unaryOp! = DECL | INCL | NEGL | NOTL 
+                        | DECW | INCW | NEGW | NOTW
+                        | DECB | INCB | NEGB | NOTB 
                         | LOCK_DECL "lock\n\tdecl"
                         | LOCK_INCL "lock\n\tincl"
                         | LOCK_NEGL "lock\n\tnegl"
@@ -704,6 +703,16 @@ struct
              | _ => ``<binOp>\t<src>, <dst>''
              )
 	rtl: ``<binOp>''
+
+    | CMPXCHG of {lock:bool, sz:isize, src: operand, dst:operand}
+	asm: (if lock then ``lock\n\t'' else ();
+              ``cmpxchg'';
+              case sz of
+                I.I8 => ``b''
+              | I.I16 => ``w''
+              | I.I32 => ``l'';
+              ``\t<src>, <dst>''
+             )
 
     | MULTDIV of {multDivOp:multDivOp, src:operand}
 	asm: ``<multDivOp>\t<src>''

@@ -253,6 +253,7 @@ IA32.cm:
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+	MLTREE.cm
 
         (* c calls *)
         ../x86/c-calls/ia32-svid.sml
@@ -516,13 +517,15 @@ MIPS.cm:
 	../mips/instructions/mipsInstr.sml
 	../mips/instructions/mipsShuffle.sig
 	../mips/instructions/mipsShuffle.sml
-	(*mips/instructions/mipsProps.sml
-	../mips/instructions/mipsFreqProps.sml*)
+	../mips/instructions/mipsProps.sml
+	../mips/instructions/mipsFreqProps.sml
+	../mips/instructions/mipsExpandCopies.sml
 	../mips/emit/mipsAsm.sml
 	../mips/emit/mipsMC.sml
+	../mips/backpatch/mipsDelaySlotProps.sml
 	../mips/backpatch/mipsJumps.sml
-	(*mips/mltree/mipsPseudoInstr.sig*)
-	(*mips/mltree/mips.sml*)
+	../mips/mltree/mipsPseudoInstr.sig
+	../mips/mltree/mips.sml
 	../mips/ra/mipsRewrite.sml
 MLRISC.cm:
 (* MLRISC.cm

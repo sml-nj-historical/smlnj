@@ -158,7 +158,7 @@ struct
        | I.FDirect _ => extension {opc=opc, opnd=memReg opnd}
        | I.Displace{base, disp, ...} => 
          let 
-(*#line 471.13 "x86/x86.mdl"*)
+(*#line 470.13 "x86/x86.mdl"*)
              val immed = immedOpnd {opnd=disp}
          in ()
          end
@@ -206,6 +206,7 @@ struct
      | emitInstr (I.TESTB{lsrc, rsrc}) = error "TESTB"
      | emitInstr (I.BITOP{bitOp, lsrc, rsrc}) = error "BITOP"
      | emitInstr (I.BINARY{binOp, src, dst}) = error "BINARY"
+     | emitInstr (I.CMPXCHG{lock, sz, src, dst}) = error "CMPXCHG"
      | emitInstr (I.MULTDIV{multDivOp, src}) = error "MULTDIV"
      | emitInstr (I.MUL3{dst, src2, src1}) = error "MUL3"
      | emitInstr (I.UNARY{unOp, opnd}) = error "UNARY"

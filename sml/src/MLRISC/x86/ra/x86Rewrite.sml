@@ -50,6 +50,8 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
         I.BITOP{bitOp=bitOp, lsrc=operand lsrc, rsrc=operand rsrc}
      | I.BINARY{binOp, src, dst} => 
 	I.BINARY{binOp=binOp, src=operand src, dst=operand dst}
+     | I.CMPXCHG{lock, sz, src, dst} => 
+	I.CMPXCHG{lock=lock, sz=sz, src=operand src, dst=operand dst}
      | I.MULTDIV{multDivOp, src} => 
 	I.MULTDIV{multDivOp=multDivOp, src=operand src}
      | I.MUL3{dst, src1, src2 as NONE} => 
@@ -119,6 +121,8 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
      | I.MOVE{mvOp, src, dst} => I.MOVE{mvOp=mvOp, src=src, dst=operand dst}
      | I.LEA{r32, addr} => I.LEA{r32=replace r32, addr=addr}
      | I.BINARY{binOp, src, dst} => I.BINARY{binOp=binOp, src=src, dst=operand dst}
+     | I.CMPXCHG{lock, sz, src, dst} => 
+	I.CMPXCHG{lock=lock, sz=sz, src=src, dst=operand dst}
      | I.MUL3{dst, src1, src2} => I.MUL3{dst=replace dst, src1=src1, src2=src2}
      | I.UNARY{unOp, opnd} => I.UNARY{unOp=unOp, opnd=operand opnd}
      | I.SET{cond, opnd} => I.SET{cond=cond, opnd=operand opnd}

@@ -36,4 +36,5 @@ $/smlnj-lib.cm
 $smlnj/viscomp/core.cm
 $smlnj/MLRISC/Control.cm
 $smlnj/MLRISC/MLRISC.cm
+$smlnj/MLRISC/MLTREE.cm
 $smlnj/MLRISC/IA32.cm

@@ -60,5 +60,7 @@ struct
 
      | X.LEAVE	     => emit(I.LEAVE, an)
      | X.RET(rexp)   => emit(I.RET(SOME(operand rexp)), an)
+     | X.LOCK_CMPXCHGL(src, dst) =>
+       emit(I.CMPXCHG{lock=true,sz=I.I32, src=operand src, dst=operand dst},an)
   end
 end

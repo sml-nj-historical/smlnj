@@ -33,11 +33,13 @@ is
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+	MLTREE.cm
 #else
 	$/smlnj-lib.cm
 	$/MLRISC.cm
 	$/Control.cm
 	$/Lib.cm
+	$/MLTREE.cm
 #endif
 #else
 	basis.cm
@@ -45,12 +47,14 @@ is
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+	MLTREE.cm
 #endif
 #else
 	smlnj-lib.cm
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+	MLTREE.cm
 #endif
         ../x86/c-calls/ia32-svid.sml
 	../x86/instructions/x86Cells.sml

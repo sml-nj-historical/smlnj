@@ -3,11 +3,17 @@ Library
 	signature MIPSCELLS
 	signature MIPSINSTR
 	signature MIPSSHUFFLE
+	signature MIPS_PSEUDO_INSTR
 	structure MIPSCells
+	functor MIPS
 	functor MIPSAsmEmitter
+	functor MIPSDelaySlots
+	functor MIPSExpandCopies
+	functor MIPSFreqProps
 	functor MIPSInstr
 	functor MIPSJumps
 	functor MIPSMCEmitter
+	functor MIPSProps
 	functor MIPSRewrite
 	functor MIPSShuffle
 is
@@ -42,7 +48,13 @@ is
 	../mips/instructions/mipsInstr.sml
 	../mips/instructions/mipsShuffle.sig
 	../mips/instructions/mipsShuffle.sml
+	../mips/instructions/mipsProps.sml
+	../mips/instructions/mipsFreqProps.sml
+	../mips/instructions/mipsExpandCopies.sml
 	../mips/emit/mipsAsm.sml
 	../mips/emit/mipsMC.sml
+	../mips/backpatch/mipsDelaySlotProps.sml
 	../mips/backpatch/mipsJumps.sml
+	../mips/mltree/mipsPseudoInstr.sig
+	../mips/mltree/mips.sml
 	../mips/ra/mipsRewrite.sml

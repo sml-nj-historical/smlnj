@@ -39,6 +39,8 @@ in
 
 functor X86
   (structure X86Instr : X86INSTR
+   structure MLTreeUtils : MLTREE_UTILS
+     where T = X86Instr.T
    structure ExtensionComp : MLTREE_EXTENSION_COMP
      where I = X86Instr
     datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
@@ -103,6 +105,20 @@ struct
 
   val ST0 = C.ST 0
   val ST7 = C.ST 7
+  val one = T.I.int_1
+
+  val opcodes8 = {INC=I.INCB,DEC=I.DECB,ADD=I.ADDB,SUB=I.SUBB,
+                  NOT=I.NOTB,NEG=I.NEGB,
+                  SHL=I.SHLB,SHR=I.SHRB,SAR=I.SARB,
+                  OR=I.ORB,AND=I.ANDB,XOR=I.XORB}
+  val opcodes16 = {INC=I.INCW,DEC=I.DECW,ADD=I.ADDW,SUB=I.SUBW,
+                   NOT=I.NOTW,NEG=I.NEGW,
+                   SHL=I.SHLW,SHR=I.SHRW,SAR=I.SARW,
+                   OR=I.ORW,AND=I.ANDW,XOR=I.XORW}
+  val opcodes32 = {INC=I.INCL,DEC=I.DECL,ADD=I.ADDL,SUB=I.SUBL,
+                   NOT=I.NOTL,NEG=I.NEGL,
+                   SHL=I.SHLL,SHR=I.SHRL,SAR=I.SARL,
+                   OR=I.ORL,AND=I.ANDL,XOR=I.XORL}
 
   (* 
    * The code generator 
@@ -1555,6 +1571,101 @@ struct
           then doFexpr''(fty, e, fd, an)
           else doFexpr'(fty, e, fd, an)
 
+      (*================================================================
+       * Optimizations for x := x op y 
+       * Special optimizations: 
+       * Generate a binary operator, result must in memory.
+       * The source must not be in memory
+       *================================================================*)
+      and binaryMem(binOp, src, dst, mem, an) =
+          mark(I.BINARY{binOp=binOp, src=immedOrReg(operand src),
+                        dst=address(dst,mem)}, an)
+      and unaryMem(unOp, opnd, mem, an) =
+          mark(I.UNARY{unOp=unOp, opnd=address(opnd,mem)}, an)
+
+      and isOne(T.LI n) = n = one
+        | isOne _ = false
+
+      (* 
+       * Perform optimizations based on recognizing 
+       *    x := x op y    or
+       *    x := y op x 
+       * first.
+       *)
+      and store(ty, ea, d, mem, an, 
+                {INC,DEC,ADD,SUB,NOT,NEG,SHL,SHR,SAR,OR,AND,XOR},
+                doStore
+               ) = 
+          let fun default() = doStore(ea, d, mem, an)
+              fun binary1(t, t', unary, binary, ea', x) =  
+                  if t = ty andalso t' = ty then
+                     if MLTreeUtils.eqRexp(ea, ea') then
+                        if isOne x then unaryMem(unary, ea, mem, an)
+                        else binaryMem(binary, x, ea, mem, an)
+                      else default()
+                  else default()
+              fun unary(t,unOp, ea') = 
+                  if t = ty andalso MLTreeUtils.eqRexp(ea, ea') then
+                     unaryMem(unOp, ea, mem, an)
+                  else default() 
+              fun binary(t,t',binOp,ea',x) =
+                  if t = ty andalso t' = ty andalso
+                     MLTreeUtils.eqRexp(ea, ea') then
+                      binaryMem(binOp, x, ea, mem, an)
+                  else default()
+
+              fun binaryCom1(t,unOp,binOp,x,y) = 
+              if t = ty then
+              let fun again() =
+                    case y of
+                      T.LOAD(ty',ea',_) =>
+                        if ty' = ty andalso MLTreeUtils.eqRexp(ea, ea') then
+                           if isOne x then unaryMem(unOp, ea, mem, an)
+                           else binaryMem(binOp,x,ea,mem,an)
+                        else default()
+                    | _ => default()
+              in  case x of 
+                    T.LOAD(ty',ea',_) =>
+                      if ty' = ty andalso MLTreeUtils.eqRexp(ea, ea') then
+                         if isOne y then unaryMem(unOp, ea, mem, an)
+                         else binaryMem(binOp,y,ea,mem,an)
+                      else again()
+                  | _ => again()
+              end 
+              else default()
+
+              fun binaryCom(t,binOp,x,y) = 
+              if t = ty then
+              let fun again() =
+                    case y of
+                      T.LOAD(ty',ea',_) =>
+                        if ty' = ty andalso MLTreeUtils.eqRexp(ea, ea') then
+                           binaryMem(binOp,x,ea,mem,an)
+                        else default()
+                    | _ => default()
+              in  case x of 
+                    T.LOAD(ty',ea',_) =>
+                      if ty' = ty andalso MLTreeUtils.eqRexp(ea, ea') then
+                         binaryMem(binOp,y,ea,mem,an)
+                      else again()
+                  | _ => again()
+              end 
+              else default()
+
+          in  case d of
+                T.ADD(t,x,y) => binaryCom1(t,INC,ADD,x,y)
+              | T.SUB(t,T.LOAD(t',ea',_),x) => binary1(t,t',DEC,SUB,ea',x)
+              | T.ORB(t,x,y) => binaryCom(t,OR,x,y)
+              | T.ANDB(t,x,y) => binaryCom(t,AND,x,y)
+              | T.XORB(t,x,y) => binaryCom(t,XOR,x,y)
+              | T.SLL(t,T.LOAD(t',ea',_),x) => binary(t,t',SHL,ea',x)
+              | T.SRL(t,T.LOAD(t',ea',_),x) => binary(t,t',SHR,ea',x)
+              | T.SRA(t,T.LOAD(t',ea',_),x) => binary(t,t',SAR,ea',x)
+              | T.NEG(t,T.LOAD(t',ea',_)) => unary(t,NEG,ea')
+              | T.NOTB(t,T.LOAD(t',ea',_)) => unary(t,NOT,ea')
+              | _ => default()
+          end (* store *)
+ 
           (* generate code for a statement *)
       and stmt(T.MV(_, rd, e), an) = doExpr(e, rd, an)
         | stmt(T.FMV(fty, fd, e), an) = doFexpr(fty, e, fd, an) 
@@ -1568,9 +1679,13 @@ struct
                          cutTo), an) = 
              call(funct,targets,defs,uses,region,cutTo,an)
         | stmt(T.RET _, an) = mark(I.RET NONE, an)
-        | stmt(T.STORE(8, ea, d, mem), an) = store8(ea, d, mem, an)
-        | stmt(T.STORE(16, ea, d, mem), an) = store16(ea, d, mem, an)
-        | stmt(T.STORE(32, ea, d, mem), an) = store32(ea, d, mem, an)
+        | stmt(T.STORE(8, ea, d, mem), an)  = 
+             store(8, ea, d, mem, an, opcodes8, store8)
+        | stmt(T.STORE(16, ea, d, mem), an) = 
+             store(16, ea, d, mem, an, opcodes16, store16)
+        | stmt(T.STORE(32, ea, d, mem), an) = 
+             store(32, ea, d, mem, an, opcodes32, store32)
+
         | stmt(T.FSTORE(fty, ea, d, mem), an) = fstore(fty, ea, d, mem, an)
         | stmt(T.BCC(cc, lab), an) = branch(cc, lab, an)
         | stmt(T.DEFINE l, _) = defineLabel l

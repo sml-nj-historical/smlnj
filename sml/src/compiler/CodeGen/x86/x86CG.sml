@@ -34,6 +34,25 @@ structure X86CG =
            structure ExtensionComp = X86MLTreeExtComp
                (structure I = X86Instr
                 structure T = X86MLTree
+               ) 
+           structure MLTreeUtils = MLTreeUtils
+               (structure T = X86MLTree
+                fun hashSext  _ _ = 0w0 
+                fun hashRext  _ _ = 0w0
+                fun hashFext  _ _ = 0w0 
+                fun hashCCext _ _ = 0w0
+             
+                (* Equality extensions *)
+                fun eqSext  _ _ = false
+                fun eqRext  _ _ = false
+                fun eqFext  _ _ = false
+                fun eqCCext _ _ = false
+             
+                (* Pretty printing extensions *)
+                fun showSext  _ _ = ""
+                fun showRext  _ _ = ""
+                fun showFext  _ _ = ""
+                fun showCCext _ _ = ""
                )
            val tempMem = I.Displace{base=esp, disp=I.Immed 304, mem=stack}
            fun cvti2f{src,ty} = (* ty is always 32 for SML/NJ *)

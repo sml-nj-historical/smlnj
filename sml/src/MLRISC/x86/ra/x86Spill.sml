@@ -129,6 +129,21 @@ functor X86Spill(structure Instr: X86INSTR
                newReg=NONE
               }
 	  end
+      | I.CMPXCHG{lock,sz,src,dst} => 
+           if immedOrReg src then
+               {proh=[],
+                code=[mark(I.CMPXCHG{lock=lock,sz=sz,src=src,dst=spillLoc},an)],
+                newReg=NONE
+               }
+           else
+	   let val tmpR = newReg()
+               val tmp  = I.Direct tmpR
+           in {proh=[],
+               code=[I.MOVE{mvOp=I.MOVL, src=src, dst=tmp},
+                     mark(I.CMPXCHG{lock=lock,sz=sz,src=tmp,dst=spillLoc},an)],
+               newReg=NONE
+              }
+           end
       | I.MULTDIV _ => error "spill: MULTDIV"
       | I.MUL3{src1, src2, dst} => 
           let val tmpR = newReg() 
@@ -321,6 +336,10 @@ functor X86Spill(structure Instr: X86INSTR
      | I.BINARY{binOp, src, dst} => 
 	withTmp(fn tmpR => I.BINARY{binOp=binOp, src=operand(tmpR, src), 
                                                  dst=operand(tmpR, dst)}, an)
+     | I.CMPXCHG{lock,sz,src,dst} => 
+        withTmp(fn tmpR => I.CMPXCHG{lock=lock, sz=sz,
+                                     src=operand(tmpR, src),
+                                     dst=operand(tmpR, dst)},an)
      | I.MULTDIV{multDivOp, src as I.Direct _} => 
         done(I.MULTDIV{multDivOp=multDivOp, src=replace src}, an)
      | I.MULTDIV{multDivOp, src} =>

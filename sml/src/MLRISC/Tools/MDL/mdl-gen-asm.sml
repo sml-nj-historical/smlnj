@@ -123,8 +123,11 @@ struct
                     if mode = EMIT then APP("emit",e) else e
                fun asmToExp E (TEXTasm s) = emitIt(mkString s) 
                  | asmToExp E (EXPasm(IDexp(IDENT([],x)))) = 
-                    let val (e, ty) = E x
-                    in  emitTy(x, ty, e) end
+                    (let val (e, ty) = E x
+                     in  emitTy(x, ty, e) end
+                     handle e => 
+                        fail("unknown assembly field <"^x^">")
+                    )
                  | asmToExp E (EXPasm e) = 
                    let fun exp _ (ASMexp(STRINGasm s)) = emitIt(mkString s)
                          | exp _ (ASMexp(ASMasm a)) = SEQexp(map (asmToExp E) a)

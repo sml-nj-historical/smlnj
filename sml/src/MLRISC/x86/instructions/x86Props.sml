@@ -185,6 +185,8 @@ struct
            if C.sameColor(rs,rd) then ([rd],[]) else ([rd],[rs,rd])
       | I.BINARY{src,dst,...} =>   
            (operandDef dst, operandAcc(src, operandUse dst))
+      | I.CMPXCHG{src, dst, ...} =>
+           (C.eax::operandDef dst, C.eax::operandAcc(src, operandUse dst))
       | I.ENTER _             => ([C.esp, C.ebp], [C.esp, C.ebp])
       | I.LEAVE               => ([C.esp, C.ebp], [C.esp, C.ebp])
       | I.MULTDIV arg	      => multdiv arg

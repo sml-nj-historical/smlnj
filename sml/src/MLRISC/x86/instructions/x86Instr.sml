@@ -110,9 +110,6 @@ sig
    | LOCK_XADDB
    | LOCK_XADDW
    | LOCK_XADDL
-   | LOCK_CMPXCHGB
-   | LOCK_CMPXCHGW
-   | LOCK_CMPXCHGL
    datatype multDivOp =
      MULL
    | IDIVL
@@ -122,7 +119,13 @@ sig
    | INCL
    | NEGL
    | NOTL
+   | DECW
+   | INCW
+   | NEGW
    | NOTW
+   | DECB
+   | INCB
+   | NEGB
    | NOTB
    | LOCK_DECL
    | LOCK_INCL
@@ -233,6 +236,7 @@ sig
    | TESTB of {lsrc:operand, rsrc:operand}
    | BITOP of {bitOp:bitOp, lsrc:operand, rsrc:operand}
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
+   | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
    | MUL3 of {dst:C.cell, src2:Int32.int option, src1:operand}
    | UNARY of {unOp:unaryOp, opnd:operand}
@@ -390,9 +394,6 @@ struct
    | LOCK_XADDB
    | LOCK_XADDW
    | LOCK_XADDL
-   | LOCK_CMPXCHGB
-   | LOCK_CMPXCHGW
-   | LOCK_CMPXCHGL
    datatype multDivOp =
      MULL
    | IDIVL
@@ -402,7 +403,13 @@ struct
    | INCL
    | NEGL
    | NOTL
+   | DECW
+   | INCW
+   | NEGW
    | NOTW
+   | DECB
+   | INCB
+   | NEGB
    | NOTB
    | LOCK_DECL
    | LOCK_INCL
@@ -513,6 +520,7 @@ struct
    | TESTB of {lsrc:operand, rsrc:operand}
    | BITOP of {bitOp:bitOp, lsrc:operand, rsrc:operand}
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
+   | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
    | MUL3 of {dst:C.cell, src2:Int32.int option, src1:operand}
    | UNARY of {unOp:unaryOp, opnd:operand}

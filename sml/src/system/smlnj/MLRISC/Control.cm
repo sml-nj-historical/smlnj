@@ -24,4 +24,5 @@ is
 	$SMLNJ-MLRISC/Control.cm
                 (bind:(anchor:Control.cm value:$SMLNJ-MLRISC)
                  bind:(anchor:Lib.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:MLTREE.cm value:$SMLNJ-MLRISC)
                  bind:(anchor:MLRISC.cm value:$SMLNJ-MLRISC))        
