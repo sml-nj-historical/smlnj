@@ -33,18 +33,17 @@ struct
              | isStackPtr _ = false
 
 (*#line 35.8 "x86Peephole.peep"*)
-           fun isZero (I.Immed n) = n = 0
-             | isZero (I.ImmedLabel le) = ((Eval.valueOf le) = 0)handle _ => false
-
-             | isZero _ = false
-
-(*#line 39.8 "x86Peephole.peep"*)
-           fun isZeroOpt NONE = true
-             | isZeroOpt (SOME opn) = isZero opn
-
-(*#line 42.8 "x86Peephole.peep"*)
            fun isZeroLE le = ((Eval.valueOf le) = 0)handle _ => false
 
+
+(*#line 37.8 "x86Peephole.peep"*)
+           fun isZero (I.Immed n) = n = 0
+             | isZero (I.ImmedLabel le) = isZeroLE le
+             | isZero _ = false
+
+(*#line 41.8 "x86Peephole.peep"*)
+           fun isZeroOpt NONE = true
+             | isZeroOpt (SOME opn) = isZero opn
 
 (*#line 44.8 "x86Peephole.peep"*)
            fun loop (code, instrs) = 
