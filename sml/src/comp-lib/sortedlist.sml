@@ -8,12 +8,6 @@ fun enter(new:int,l) =
   in  f l
   end
 
-fun uniq l =
-    let fun loop([],acc) = acc
-	  | loop(a::r,acc) = loop(r,enter(a,acc))
-    in loop(l,[])
-    end
-
 fun merge(a,[]) = a
   | merge([],a) = a
   | merge(l as (i:int)::a, m as j::b) = 
@@ -23,6 +17,18 @@ local fun loop (a::b::rest) = loop(merge(a,b)::loop rest)
         | loop l = l
 in fun foldmerge l = hd(loop l) handle Hd => []
 end
+
+fun uniq l =
+    let fun split([],l,r) = (l,r)
+	  | split(h::t,l,r) = split(t,r,h::l)
+        fun sort [] = []
+          | sort (l as [_]) = l
+          | sort (l as [x : int,y : int]) = 
+             if x = y then [x] else if x < y then l else [y,x]
+          | sort l = let val (l,r) = split(l,[],[])
+                     in  merge(sort l, sort r) end
+    in  sort l
+    end
 
 fun remove(x as (xl:int)::xr, y as yl::yr) =
     if xl>yl then yl::remove(x,yr) else remove(xr,if xl<yl then y else yr)

@@ -108,125 +108,129 @@ structure CMStaticEnv : CMSTATICENV = struct
 	    { strD = strD, sigD = sigD, fctD = fctD, tycD = tycD,
 	      eenvD = D.insert (eenvD, i, b) }
 
-	fun enter (sel, add) (i, b, go_inside) (table: modmap) =
-	    case D.find (sel table, i) of
-		SOME _ => table
-	      | NONE => go_inside (add (i, b) table)
+	fun CM env0 = let
+	    fun enter (sel, add) (i, b, go_inside) (table: modmap) =
+		case D.find (sel table, i) of
+		    SOME _ => table
+		  | NONE => go_inside (add (i, b) table)
 
-	val enterSTR = enter (#strD, addSTR)
-	val enterSIG = enter (#sigD, addSIG)
-	val enterFCT = enter (#fctD, addFCT)
-	val enterTYC = enter (#tycD, addTYC)
-	val enterEENV = enter (#eenvD, addEENV)
+	    val enterSTR = enter (#strD, addSTR)
+	    val enterSIG = enter (#sigD, addSIG)
+	    val enterFCT = enter (#fctD, addFCT)
+	    val enterTYC = enter (#tycD, addTYC)
+	    val enterEENV = enter (#eenvD, addEENV)
 
-	fun nothing table = table
-	fun list x = foldr (op o) nothing x
+	    fun nothing table = table
+	    fun list x = foldr (op o) nothing x
 
-	fun getbindings env = SE.fold (fn ((s, b), l) => b :: l) nil env
+	    fun getbindings env = SE.fold (fn ((s, b), l) => b :: l) nil env
 
-	fun binding (B.VALbind v) = var v
-	  | binding (B.CONbind v) = datacon v
-	  | binding (B.TYCbind v) = tycon v
-	  | binding (B.SIGbind v) = Signature v
-	  | binding (B.STRbind v) = Structure v
-	  | binding (B.FSGbind v) = fctSig v
-	  | binding (B.FCTbind v) = Functor v
-	  | binding (B.FIXbind v) = nothing
+	    fun binding (B.VALbind v) = var v
+	      | binding (B.CONbind v) = datacon v
+	      | binding (B.TYCbind v) = tycon v
+	      | binding (B.SIGbind v) = Signature v
+	      | binding (B.STRbind v) = Structure v
+	      | binding (B.FSGbind v) = fctSig v
+	      | binding (B.FCTbind v) = Functor v
+	      | binding (B.FIXbind v) = nothing
 
-	and var (V.VALvar { typ = ref t, ...}) = ty t
-	  | var (V.OVLDvar { options = ref p, scheme = s, ...}) = 
-	    (list (map var_option p)  o  tyfun s)
-	  | var (V.ERRORvar) = nothing
+	    and var (V.VALvar { typ = ref t, ...}) = ty t
+	      | var (V.OVLDvar { options = ref p, scheme = s, ...}) = 
+		(list (map var_option p)  o  tyfun s)
+	      | var (V.ERRORvar) = nothing
 
-	and var_option {indicator, variant} = ty indicator  o  var variant
+	    and var_option {indicator, variant} = ty indicator  o  var variant
 
-	and tyfun (T.TYFUN { body, ...}) = ty body
+	    and tyfun (T.TYFUN { body, ...}) = ty body
 
-	and ty (T.VARty (ref (T.INSTANTIATED t))) = ty t
-	  | ty (T.CONty (tyc, tyl)) = (tycon tyc o list (map ty tyl))
-	  | ty (T.POLYty { tyfun = t, ...}) = tyfun t
-	  | ty _ = nothing
+	    and ty (T.VARty (ref (T.INSTANTIATED t))) = ty t
+	      | ty (T.CONty (tyc, tyl)) = (tycon tyc o list (map ty tyl))
+	      | ty (T.POLYty { tyfun = t, ...}) = tyfun t
+	      | ty _ = nothing
 
-	and tycon (t as T.GENtyc { stamp, ... }) =
-	    enterTYC (I.TYCid stamp, t, nothing)
-	  | tycon (T.DEFtyc { tyfun = t, ... }) = tyfun t
-	  | tycon _ = nothing
+	    and tycon (t as T.GENtyc { stamp, ... }) =
+		enterTYC (I.TYCid stamp, t, nothing)
+	      | tycon (T.DEFtyc { tyfun = t, ... }) = tyfun t
+	      | tycon _ = nothing
 
-	and datacon (T.DATACON {typ, ... }) = ty typ
+	    and datacon (T.DATACON {typ, ... }) = ty typ
 
-	and spec (M.TYCspec { spec = t, ... }) = tycon t
-	  | spec (M.STRspec { sign = s, ... }) = Signature s
-	  | spec (M.FCTspec { sign = s, ... }) = fctSig s
-	  | spec (M.VALspec { spec = t, ... }) = ty t
-	  | spec (M.CONspec { spec = d, ... }) = datacon d
+	    and spec (M.TYCspec { spec = t, ... }) = tycon t
+	      | spec (M.STRspec { sign = s, ... }) = Signature s
+	      | spec (M.FCTspec { sign = s, ... }) = fctSig s
+	      | spec (M.VALspec { spec = t, ... }) = ty t
+	      | spec (M.CONspec { spec = d, ... }) = datacon d
 
-	and Signature (s as M.SIG { stamp, elements = e, ... }) =
-	    enterSIG (I.SIGid stamp, s, fn x => list (map (spec o #2) e) x)
-	  | Signature M.ERRORsig = nothing
+	    and Signature (s as M.SIG { stamp, elements = e, ... }) =
+		enterSIG (I.SIGid stamp, s, fn x => list (map (spec o #2) e) x)
+	      | Signature M.ERRORsig = nothing
 
-	and Structure (s as M.STR { sign = g, rlzn = r, ... }) =
-	    enterSTR (strId s, s, fn x => (Signature g o strEntity r) x)
-	  | Structure (M.STRSIG { sign = s, ... }) = Signature s
-	  | Structure (M.ERRORstr) = nothing
+	    and Structure (s as M.STR { sign = g, rlzn = r, ... }) =
+		enterSTR (strId s, s, fn x => (Signature g o strEntity r) x)
+	      | Structure (M.STRSIG { sign = s, ... }) = Signature s
+	      | Structure (M.ERRORstr) = nothing
 
-	and tycExp (M.CONSTtyc t) = tycon t
-	  | tycExp _ = nothing
+	    and tycExp (M.CONSTtyc t) = tycon t
+	      | tycExp _ = nothing
 
-	and strExp (M.VARstr _) = nothing
-	  | strExp (M.CONSTstr strent) = strEntity strent
-	  | strExp (M.STRUCTURE { entDec = d, ... }) = entityDec d
-	  | strExp (M.APPLY (f, s)) = fctExp f o strExp s
-	  | strExp (M.LETstr (d, e)) = entityDec d o strExp e
-	  | strExp (M.ABSstr (s, e)) = Signature s o strExp e  
-	  | strExp (M.CONSTRAINstr { raw, coercion, ... }) =
-	    strExp raw o strExp coercion
-	  | strExp (M.FORMstr fs) = fctSig fs
+	    and strExp (M.VARstr _) = nothing
+	      | strExp (M.CONSTstr strent) = strEntity strent
+	      | strExp (M.STRUCTURE { entDec = d, ... }) = entityDec d
+	      | strExp (M.APPLY (f, s)) = fctExp f o strExp s
+	      | strExp (M.LETstr (d, e)) = entityDec d o strExp e
+	      | strExp (M.ABSstr (s, e)) = Signature s o strExp e  
+	      | strExp (M.CONSTRAINstr { raw, coercion, ... }) =
+		strExp raw o strExp coercion
+	      | strExp (M.FORMstr fs) = fctSig fs
 
-	and fctExp (M.VARfct _) = nothing
-	  | fctExp (M.CONSTfct f) = fctEntity f
-	  | fctExp (M.LAMBDA { body, ... }) = strExp body
-	  | fctExp (M.LAMBDA_TP { body, sign, ... }) =
-	    strExp body o fctSig sign
-	  | fctExp (M.LETfct (d, f)) = entityDec d o fctExp f
+	    and fctExp (M.VARfct _) = nothing
+	      | fctExp (M.CONSTfct f) = fctEntity f
+	      | fctExp (M.LAMBDA { body, ... }) = strExp body
+	      | fctExp (M.LAMBDA_TP { body, sign, ... }) =
+		strExp body o fctSig sign
+	      | fctExp (M.LETfct (d, f)) = entityDec d o fctExp f
 
-	and entityDec (M.TYCdec (v, t)) = tycExp t
-	  | entityDec (M.STRdec (v, s, _)) = strExp s
-	  | entityDec (M.FCTdec(v,f)) = fctExp f
-	  | entityDec (M.SEQdec ds) = list (map entityDec ds)
-	  | entityDec (M.LOCALdec (din, dout)) = entityDec din o entityDec dout
-	  | entityDec (M.ERRORdec) = nothing
-	  | entityDec (M.EMPTYdec) = nothing
+	    and entityDec (M.TYCdec (v, t)) = tycExp t
+	      | entityDec (M.STRdec (v, s, _)) = strExp s
+	      | entityDec (M.FCTdec(v,f)) = fctExp f
+	      | entityDec (M.SEQdec ds) = list (map entityDec ds)
+	      | entityDec (M.LOCALdec (din, dout)) =
+		entityDec din o entityDec dout
+	      | entityDec (M.ERRORdec) = nothing
+	      | entityDec (M.EMPTYdec) = nothing
 
-	and strEntity { entities = e, ...} = entityEnv e
+	    and strEntity { entities = e, ...} = entityEnv e
 
-	and fctEntity { closure = M.CLOSURE { body = b, env = e, ... }, ... } =
-	    strExp b  o  entityEnv e
+	    and fctEntity { closure = M.CLOSURE { body = b, env = e, ... },
+			    ... } =
+		strExp b  o  entityEnv e
 
-	and tycEntity t = tycon t
+	    and tycEntity t = tycon t
 
-	and entityEnv (e as M.MARKeenv(s, rest)) =
-	    enterEENV (I.EENVid s, e, fn x => entityEnv rest x)
-	  | entityEnv (M.BINDeenv (d, rest)) =
-	    (list (map (entity o #2) (ED.listItemsi d))) o entityEnv rest
-	  | entityEnv M.NILeenv = nothing
-	  | entityEnv M.ERReenv = nothing
+	    and entityEnv (e as M.MARKeenv(s, rest)) =
+		enterEENV (I.EENVid s, e, fn x => entityEnv rest x)
+	      | entityEnv (M.BINDeenv (d, rest)) =
+		(list (map (entity o #2) (ED.listItemsi d))) o entityEnv rest
+	      | entityEnv M.NILeenv = nothing
+	      | entityEnv M.ERReenv = nothing
 
-	and entity(M.TYCent t) = tycEntity t
-	  | entity(M.STRent s) = strEntity s
-	  | entity(M.FCTent f) = fctEntity f
-	  | entity _ = nothing
+	    and entity(M.TYCent t) = tycEntity t
+	      | entity(M.STRent s) = strEntity s
+	      | entity(M.FCTent f) = fctEntity f
+	      | entity _ = nothing
 
-	and fctSig (M.FSIG { paramsig = p, bodysig = b, ... }) =
-	    Signature p o Signature b
-	  | fctSig M.ERRORfsig = nothing
+	    and fctSig (M.FSIG { paramsig = p, bodysig = b, ... }) =
+		Signature p o Signature b
+	      | fctSig M.ERRORfsig = nothing
 
-	and Functor (f as M.FCT { sign = s, rlzn = r, ...}) =
-	    enterFCT (fctId f, f, fn x => (fctSig s o fctEntity r) x)
-	  | Functor M.ERRORfct = nothing
+	    and Functor (f as M.FCT { sign = s, rlzn = r, ...}) =
+		enterFCT (fctId f, f, fn x => (fctSig s o fctEntity r) x)
+	      | Functor M.ERRORfct = nothing
 
-	and env e = list (map binding (getbindings e))
-
-	fun CM env0 = (env0, [env env0 emptyModmap])
+	    and env e = list (map binding (getbindings e))
+	in
+	    (env0, [env env0 emptyModmap])
+	end
 
 	val CM = Stats.doPhase (Stats.makePhase "Compiler 038 cmstatenv") CM
 

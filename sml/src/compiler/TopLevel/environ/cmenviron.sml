@@ -19,7 +19,9 @@ struct
       type symenv = E.symenv
       type environment = {static: staticEnv, dynamic: dynenv, symbolic: symenv}
       type symbol = E.symbol
-      val emptyEnv = CM E.emptyEnv
+      val emptyEnv = { static = CMS.empty,
+		       dynamic = DynamicEnv.empty,
+		       symbolic = SymbolicEnv.empty }
       fun staticPart { static, dynamic, symbolic } = static
       fun dynamicPart { static, dynamic, symbolic } = dynamic
       fun symbolicPart { static, dynamic, symbolic } = symbolic
