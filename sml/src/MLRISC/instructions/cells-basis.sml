@@ -147,7 +147,8 @@ struct
    fun isConst(CELL{id, ...}) = id < 0 
 
    (* Pretty printing of cells *)
-   fun toString(c as CELL{desc=DESC{toString, ...},...}) = 
+   fun toString(CELL{col=ref(ALIASED c), ...}) = toString(c)
+     | toString(c as CELL{desc=DESC{toString, ...}, ...}) =
         toString(registerNum c)
 
    fun toStringWithSize(c as CELL{desc=DESC{toStringWithSize,...},...},sz) = 
