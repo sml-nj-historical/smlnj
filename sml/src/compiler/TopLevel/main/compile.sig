@@ -60,7 +60,7 @@ val compile     : {source: source, ast: ast,
 		   statenv: statenv,
                    symenv: symenv, compInfo: compInfo, 
                    checkErr: string -> unit,
-                   splitting: bool}
+                   splitting: int option}
                    -> {csegments: csegments, newstatenv: statenv,
                        absyn: absyn (* for pretty printing only *),
                        exportPid: pid option, exportLvars: lvar list,

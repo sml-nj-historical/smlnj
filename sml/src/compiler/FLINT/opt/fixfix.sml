@@ -272,7 +272,7 @@ in case lexp
 
 	   (* find strongly connected components *)
 	   val top = 
-	     SCC.topOrder{root=lename, 
+	     SCC.topOrder{root=lename,
 			  follow=(fn n => #1(Option.valOf(M.find(m,n))))}
 	       handle x => (bug "top:follow"; raise x)
 

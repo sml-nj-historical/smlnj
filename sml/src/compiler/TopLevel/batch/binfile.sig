@@ -26,7 +26,7 @@ signature BINFILE = sig
 
     val size: { content: bfContent, nopickle: bool } -> int
 
-    val create: { splitting: bool,
+    val create: { splitting: Control.LambdaSplitting.localsetting,
 		  cmData: pid list,
 		  ast: Ast.dec,
 		  source: Source.inputSource,

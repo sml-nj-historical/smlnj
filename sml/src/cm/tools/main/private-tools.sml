@@ -43,8 +43,10 @@ structure PrivateTools : PRIVATETOOLS = struct
 
     type setup = string option * string option
 
+    type splitting = int option option
+
     type expansion =
-	 { smlfiles: (srcpath * Sharing.request * setup) list,
+	 { smlfiles: (srcpath * Sharing.request * setup * splitting) list,
 	   cmfiles: (srcpath * Version.t option * rebindings) list,
 	   sources: (srcpath * { class: string, derived: bool}) list }
 
@@ -269,13 +271,16 @@ structure PrivateTools : PRIVATETOOLS = struct
 	val tool = "sml"
 	fun err s = raise ToolError { tool = tool, msg = s }
 	val kw_setup = "setup"
-	val (srq, setup) =
+	val kw_lambdasplit = "lambdasplit"
+	val UseDefault = NONE
+	val Suggest = SOME
+	val (srq, setup, splitting) =
 	    case oto of
-		NONE => (Sharing.DONTCARE, (NONE, NONE))
+		NONE => (Sharing.DONTCARE, (NONE, NONE), UseDefault)
 	      | SOME to => let
 		    val { matches, restoptions } =
 			parseOptions { tool = tool,
-				       keywords = [kw_setup],
+				       keywords = [kw_setup, kw_lambdasplit],
 				       options = to }
 		    val srq =
 			case restoptions of
@@ -304,12 +309,31 @@ structure PrivateTools : PRIVATETOOLS = struct
 					     opts = [STRING pre] }]) =>
 			    (SOME (#name pre), SOME (#name post))
 			  | _ => err "invalid setup spec"
+		    val splitting = let
+			fun invalid () = err "invalid lambdasplit spec"
+			fun spec (s: fnspec) =
+			    case #name s of
+				"default" => UseDefault
+			      | "on" => Suggest (SOME 0)
+			      | "off" => Suggest NONE
+			      | "infinity" => Suggest (SOME 100000000)
+			      | n =>
+				(case Int.fromString n of
+				     SOME i => Suggest (SOME i)
+				   | NONE => invalid ())
+		    in
+			case matches kw_lambdasplit of
+			    NONE => UseDefault
+			  | SOME [] => Suggest (SOME 0)(* == "on" *)
+			  | SOME [STRING x] => spec x
+			  | _ => err "invalid lambdasplit spec"
+		    end
 		in
-		    (srq, setup)
+		    (srq, setup, splitting)
 		end
 	val p = srcpath (mkpath ())
     in
-	({ smlfiles = [(p, srq, setup)],
+	({ smlfiles = [(p, srq, setup, splitting)],
 	   sources = [(p, { class = "sml", derived = derived })],
 	   cmfiles = [] },
 	 [])

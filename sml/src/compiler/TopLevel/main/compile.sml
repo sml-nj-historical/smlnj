@@ -127,14 +127,14 @@ local
     val addCode = ST.addStat (ST.makeStat "Code Size")
 in
     fun codegen { flint: flint, imports: import list, symenv: symenv,
-		  splitting: bool, compInfo: compInfo } = let
+		  splitting: int option, compInfo: compInfo } = let
 	(* hooks for cross-module inlining and specialization *)
 	val (flint, revisedImports) = inline (flint, imports, symenv)
 
 	(* from optimized FLINT code, generate the machine code.  *)
-	val (csegs,inlineExp) = M.flintcomp(flint, compInfo)
+	val (csegs,inlineExp) = M.flintcomp(flint, compInfo, splitting)
 	(* Obey the nosplit directive used during bootstrapping.  *)
-	val inlineExp = if splitting then inlineExp else NONE
+	(* val inlineExp = if isSome splitting then inlineExp else NONE *)
 	val codeSz =
 	      List.foldl
 		(fn (co, n) => n + CodeObj.size co)

@@ -206,10 +206,10 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 				 reqpriv = required }
 		end
 	      | GG.ERRORGROUP => ERRORCOLLECTION
-	fun s_coll (p, s, setup) = let
+	fun s_coll (p, s, setup, split) = let
 	    val i =
-		SmlInfo.info gp { sourcepath = p, group = group,
-				  sh_spec = s, setup = setup }
+		SmlInfo.info split gp { sourcepath = p, group = group,
+					sh_spec = s, setup = setup }
 	    val exports =
 		case SmlInfo.exports gp i of
 		    NONE => SS.empty

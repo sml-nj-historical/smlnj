@@ -68,12 +68,14 @@ signature CORETOOLS = sig
 
     type setup = string option * string option (* (pre, post) *)
 
+    type splitting = int option option (* see ....Control.LambdaSplitting... *)
+
     (* The goal of applying tools to members is to obtain an "expansion",
      * i.e., a list of ML-files and a list of .cm-files.  We also
      * obtain a list of "sources".  This is used to implement CM.sources,
      * i.e., to generate dependency information etc. *)
     type expansion =
-	 { smlfiles: (srcpath * Sharing.request * setup) list,
+	 { smlfiles: (srcpath * Sharing.request * setup * splitting) list,
 	   cmfiles: (srcpath * Version.t option * rebindings) list,
 	   sources: (srcpath * { class: class, derived: bool}) list }
 

@@ -60,18 +60,16 @@ end = struct
     end
 
     fun scc g = let
-	val allbutroot = map #1 g
-	val root = (foldl Int.max 0 allbutroot) + 1
+	val roots = map #1 g
 	fun add ((v, e), (sm, fm)) =
 	    (IM.insert (sm, v, e), IM.insert (fm, v, s2l e))
 	val (set_map, follow_map) = foldl add (IM.empty, IM.empty) g
-	val follow_map = IM.insert (follow_map, root, allbutroot)
 	fun follow v = valOf (IM.find (follow_map, v))
 	(* Do the actual scc calculation; for a sanity check we could
 	 * match the result against (SCC.SIMPLE root :: _), but we trust
 	 * the SCC module and "nontrivial" (below) will take care of
 	 * the root node. *)
-	val sccres = SCC.topOrder { root = root, follow = follow }
+	val sccres = SCC.topOrder' { roots = roots, follow = follow }
 	(* we already eliminate all trivial (= SIMPLE) components here *)
 	fun toNode v = (v, valOf (IM.find (set_map, v)))
 	fun nontrivial (SCC.SIMPLE _, a) = a

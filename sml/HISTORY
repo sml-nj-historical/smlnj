@@ -12,6 +12,57 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/05/04 17:00:00 EDT
+Tag: blume-20010504-cm-lsplit
+Description:
+
+0. John merged pending changes to $/smlnj-lib.cm
+
+1. Allen's previous change accidentally backed out of one of Lal's
+   earlier changes.  I undid this mistake (re-introducing Lal's change).
+
+2. I used the new topOrder' function from graph-scc.sml (from $/smlnj-lib.cm)
+   within the compiler where applicable.  There is some code simplification
+   because of that.
+
+3. The "split" phase (in FLINT) is now part of the default list of phases.
+   Compiler.Control.LambdaSplitting.* can be used to globally control the
+   lambda-splitting (cross-module-inlining) engine.  In addition to that,
+   it can now also be controlled on a per-source basis: CM has been taught
+   a new tool parameter applicable to ML source files.
+
+   - To turn lambda-splitting off completely:
+        local open Compiler.Control.LambdaSplitting in
+            val _ = set Off
+        end
+   - To make "no lambda-splitting" the global default (but allow per-source
+     overriding); this is the initial setting:
+        local open Compiler.Control.LambdaSplitting in
+            val _ = set (Default NONE)
+        end
+   - To make "lambda-splitting with aggressiveness a" the global default
+     (and allow per-source overriding):
+        local open Compiler.Control.LambdaSplitting in
+            val _ = set (Default (SOME a))
+        end
+
+   - To turn lambda-splitting off for a given ML souce file (say: a.sml)
+     write (in the respective .cm-file):
+        a.sml (lambdasplitting:off)
+   - To turn lambda-splitting for a.sml on with minimal aggressiveness:
+        a.sml (lambdasplitting:on)
+   - To turn lambda-splitting for a.sml on with aggressiveness <a> (where
+     <a> is a decimal non-negative integer):
+        a.sml (lambdasplitting:<a>)
+   - To turn lambda-splitting for a.sml on with maximal aggressiveness:
+        a.sml (lambdasplitting:infinity)
+   - To use the global default for a.sml:
+        a.sml (lambdasplitting:default)
+     or simply
+        a.sml
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2001/05/04 01:57:00 EDT
 Tag: leunga-20010504-sync

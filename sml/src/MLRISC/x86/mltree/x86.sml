@@ -1089,7 +1089,8 @@ struct
           (* generate code for 8-bit integer stores *)
           (* movb has to use %eax as source. Stupid x86! *)
       and store8(ea, d, mem, an) = genStore(I.MOVB, ea, d, mem, an)
-      and store16(ea, d, mem, an) = genStore(I.MOVW, ea, d, mem, an)
+      and store16(ea, d, mem, an) = 
+	mark(I.MOVE{mvOp=I.MOVW, src=immedOrReg(operand d), dst=address(ea, mem)}, an)
       and store32(ea, d, mem, an) = 
             move'(immedOrReg(operand d), address(ea, mem), an)
 

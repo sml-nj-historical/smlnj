@@ -36,7 +36,7 @@ sig
     val phases		: string list ref
 
     val inlineThreshold	: int ref
-    val splitThreshold	: int ref
+    (* val splitThreshold	: int ref *)
     val unrollThreshold	: int ref
     val maxargs		: int ref	(* to put a cap on arity raising *)
     val dropinvariant	: bool ref
@@ -197,8 +197,15 @@ sig
   val saveCPSopt : bool ref
   val saveClosure : bool ref
 
-  val lambdaSplitEnable: bool ref
-  val crossInlineEnable: bool ref
+    structure LambdaSplitting : sig
+	datatype globalsetting =
+	    Off				(* completely disabled *)
+	  | Default of int option       (* default aggressiveness; NONE: off *)
+	type localsetting = int option option
+	val UseDefault : localsetting
+	val Suggest : int option -> localsetting
+	val set : globalsetting -> unit
+	val get : unit -> int option
+	val get' : localsetting -> int option
+  end
 end
-
-

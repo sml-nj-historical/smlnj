@@ -88,7 +88,8 @@ fun dumpTerm (printE, s, le) =
 val fcs : (FLINT.prog -> FLINT.prog) list ref = ref []
 
 (** compiling FLINT code into the binary machine code *)
-fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) = 
+fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo,
+	      splitting) = 
   let fun err severity s =
  	error (0,0) severity (concat["Real constant out of range: ",s,"\n"])
 
@@ -127,7 +128,7 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	      let val f = typelift f
 	      in if !CTRL.check then wff(f, p) else (); (f, fi, fk, p) end
 	    | ("split",    FK_NAMED)	=>
-	      let val (f,fi) = split f in (f, fi, fk, p) end
+	      let val (f,fi) = split (f, splitting) in (f, fi, fk, p) end
 
 	    (* pseudo FLINT phases *)
 	    | ("pickle",   _)		=>
