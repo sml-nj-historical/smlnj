@@ -1,6 +1,6 @@
 ;;; sml-defs.el --- Various definitions for sml-mode
 
-;; Copyright (C) 1999-2000  Stefan Monnier <monnier@cs.yale.edu>
+;; Copyright (C) 1999,2000,2003  Stefan Monnier <monnier@cs.yale.edu>
 ;;
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -79,7 +79,7 @@ notion of \"the end of an outline\".")
     ("Process"
      ["Start default ML compiler" run-sml		t]
      ["-" nil nil]
-     ["run CM.make"		sml-make	t]
+     ["run CM.make"		sml-compile	t]
      ["load ML source file"	sml-load-file	t]
      ["switch to ML buffer"	switch-to-sml	t]
      ["--" nil nil]
@@ -96,7 +96,7 @@ notion of \"the end of an outline\".")
     ["insert SML form"   sml-insert-form t]
     ("Forms" :filter sml-forms-menu)
     ("Format/Mode Variables"
-     ["indent region"             sml-indent-region t]
+     ["indent region"             indent-region t]
      ["outdent"                   sml-back-to-outer-indent t]
      ["-" nil nil]
      ["set indent-level"          sml-indent-level t]
@@ -139,7 +139,7 @@ notion of \"the end of an outline\".")
   "Symbols matching the `end' symbol.")
 
 (defconst sml-begin-syms-re
-  (sml-syms-re "let" "abstype" "local" "struct" "sig")
+  (sml-syms-re sml-begin-syms)
   "Symbols matching the `end' symbol.")
 
 ;; (defconst sml-user-begin-symbols-re

@@ -1,3 +1,8 @@
+2003-12-09  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	* sml-defs.el (sml-mode-menu): Fix typo.  Use std names.
+	(sml-begin-syms-re): Reduce redundancy.
+
 2001-09-18  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* sml-mode.el (sml-tyvarseq-re): Fix typo.
