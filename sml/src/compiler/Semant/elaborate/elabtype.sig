@@ -31,8 +31,5 @@ end (* signature ELABTYPE *)
 
 
 (*
- * $Log: elabtype.sig,v $
- * Revision 1.3  1998/05/23 14:10:04  george
- *   Fixed RCS keyword syntax
- *
+ * $Log$
  *)

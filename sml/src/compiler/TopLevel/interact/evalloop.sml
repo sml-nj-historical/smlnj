@@ -173,7 +173,7 @@ fun interact (interactParams) : unit =
               handle EndOfFile => (say "\n")
                   | Interrupt => (say "\nInterrupt\n"; 
                               flush(); loop())
-                  (* | EM.Error => (flush(); loop()) *)
+                  | EM.Error => (flush(); loop())
                   | C.Compile "syntax error" => (flush(); loop())
                   | C.Compile s =>
                      (say(concat["\nuncaught exception Compile: \"",
@@ -246,10 +246,3 @@ fun evalStream interactParams
 end (* top-level local *)
 end (* functor EvalLoopF *)
 
-
-(*
- * $Log: evalloop.sml,v $
- * Revision 1.3  1998/12/22 17:02:14  jhr
- *   Merged in 110.10 changes from Yale.
- *
- *)

@@ -46,8 +46,5 @@ end
 		      
 
 (*
- * $Log: hppaLabelComp.sml,v $
- * Revision 1.3  1998/05/23 14:09:22  george
- *   Fixed RCS keyword syntax
- *
+ * $Log$
  *)

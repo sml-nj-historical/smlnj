@@ -1,11 +1,8 @@
 (* ML-Yacc Parser Generator (c) 1989, 1990 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
- * Revision 1.1.1.7  1999/04/17 16:22:30  monnier
- * version 110.11
- *
- * Revision 1.2  1998/07/08 18:32:09  elsa
- * Added support for the new percent identifier %token_sig_info.
+ * Revision 1.1.1.8  1999/04/17 17:10:48  monnier
+ * version 110.12
  *
  * Revision 1.1.1.1  1998/04/08 18:40:17  george
  * Version 110.5

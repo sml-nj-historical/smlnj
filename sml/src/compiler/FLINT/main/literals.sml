@@ -468,9 +468,6 @@ end (* toplevel local *)
 end (* Literals *)
 
 (*
- * $Log: literals.sml,v $
- * Revision 1.3  1998/12/22 17:01:54  jhr
- *   Merged in 110.10 changes from Yale.
- *
+ * $Log$
  *)
 

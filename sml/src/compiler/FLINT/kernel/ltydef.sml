@@ -133,7 +133,7 @@ fun rfw_tmp (rf, f, g) = f()
  *
  *    datatype tyc
  *      = TC_VAR of index * int
- *      | TC_NVAR of tvar
+ *      | TC_NVAR of tvar * depth * int    (* NOT USED *)
  *      | TC_PRIM of primtyc
  *      | TC_FN of tkind list * tyc
  *      | TC_APP of tyc * tyc list
@@ -157,7 +157,7 @@ fun rfw_tmp (rf, f, g) = f()
 
 (** tyc constructors *)
 val tcc_var    : index * int -> tyc = tc_inj o LK.TC_VAR
-val tcc_nvar   : tvar -> tyc = tc_inj o LK.TC_NVAR
+val tcc_nvar   : tvar * depth * int -> tyc = tc_inj o LK.TC_NVAR
 val tcc_prim   : primtyc -> tyc = tc_inj o LK.TC_PRIM
 val tcc_fn     : tkind list * tyc -> tyc = tc_inj o LK.TC_FN
 val tcc_app    : tyc * tyc list -> tyc = tc_inj o LK.TC_APP
@@ -175,7 +175,7 @@ val tcc_arrow  : fflag * tyc list * tyc list -> tyc = LK.tcc_arw
 val tcd_var    : tyc -> index * int = fn tc =>
       (case tc_out tc of LK.TC_VAR x => x
                        | _ => bug "unexpected tyc in tcd_var")  
-val tcd_nvar   : tyc -> tvar = fn tc =>
+val tcd_nvar   : tyc -> tvar * depth * int = fn tc =>
       (case tc_out tc of LK.TC_NVAR x => x
                        | _ => bug "unexpected tyc in tcd_nvar")  
 val tcd_prim   : tyc -> primtyc = fn tc =>
@@ -508,11 +508,3 @@ fun ltw_pfct (lt, f, g) =
 
 end (* top-level local *)
 end (* structure LtyDef *)
-
-
-(*
- * $Log: ltydef.sml,v $
- * Revision 1.4  1998/12/22 17:01:45  jhr
- *   Merged in 110.10 changes from Yale.
- *
- *)

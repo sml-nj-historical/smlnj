@@ -176,10 +176,6 @@ local
     else (flint, NONE)
 
 
-  val w8vLen = W8V.length
-  fun csegsize {c0, cn, data, name} =
-    foldl (fn (x, y) => (w8vLen x) + y) (w8vLen c0 + w8vLen data) cn
-
   val addCode = ST.addStat (ST.makeStat "Code Size")
 in
     fun codegen { flint: flint, imports: import list, symenv: symenv,
@@ -189,9 +185,14 @@ in
 	val (flint, inlineExp : flint option) = split(flint, splitting)
 
 	(* from optimized FLINT code, generate the machine code *)
-	val csegs = M.flintcomp(flint, compInfo)
+	val csegs = M.flintcomp (flint, compInfo)
+	val codeSz =
+	      List.foldl
+		(fn (co, n) => n + CodeObj.size co)
+		  (CodeObj.size(#c0 csegs) + W8V.length(#data csegs))
+		    (#cn csegs)
     in
-	addCode(csegsize csegs); 
+	addCode codeSz;
 	{ csegments=csegs, inlineExp=inlineExp, imports = revisedImports }
     end 
 end (* local codegen *)
@@ -271,28 +272,14 @@ val rConcat : (object * object) -> object =
 	CI.c_function "SMLNJ-RunT" "recordConcat"
 
 (** turn the byte-vector-like code segments into an executable closure *)
-local
-  type w8v = W8V.vector
-  val mkLiterals : w8v -> object =
-	CI.c_function "SMLNJ-RunT" "mkLiterals"
-  val mkCodeV : w8v * string option -> (w8v * executable) = 
-        CI.c_function "SMLNJ-RunT" "mkCode"
-  val mkCodeO : w8v * string option -> (w8v * (object -> object)) =
-        CI.c_function "SMLNJ-RunT" "mkCode"
-in
-fun mkexec {c0: w8v, cn: w8v list, data : w8v, name: string option ref} = let
-      val s = case !name of NONE => "EMPTY COMMENT <-- check"
-                          | SOME s => s
-      val nex = let val (_, ex) = mkCodeV(c0, SOME s)
+fun mkexec (cs : CodeObj.csegments) = let
+      val ex = CodeObj.exec (#c0 cs)
+      val nex = if (W8V.length(#data cs) > 0)
+	    then fn ivec => ex(rConcat(ivec, record1(CodeObj.mkLiterals(#data cs))))
+	    else fn ivec => ex ivec
       in
-	if (W8V.length data > 0)
-	  then fn ivec => ex (rConcat (ivec, record1(mkLiterals data)))
-	  else fn ivec => ex ivec
-      end
-   in
-     foldl (fn (c, r) => (#2 (mkCodeO (c,NONE))) o r) nex cn
-   end 
-end (* local *)
+	foldl (fn (c, r) => (CodeObj.exec c) o r) nex (#cn cs)
+      end 
 
 (** just like f x, except that it catches top-level callcc's *)
 local 

@@ -133,7 +133,7 @@ fun atomeq tc =
       end
   else raise Poly
 
-val fkfun = {isrec=NONE, known=false, cconv=CC_FUN LT.ffc_rrflint, inline=IH_ALWAYS}
+ val fkfun = FK_FUN{isrec=NONE, known=false, fixed=LT.ffc_rrflint, inline=true}
 
 fun test(tc, 0) = raise Poly
   | test(tc, depth) =

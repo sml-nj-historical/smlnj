@@ -84,9 +84,6 @@ end (* structure ConRep *)
 
 
 (*
- * $Log: conrep.sml,v $
- * Revision 1.3  1998/05/23 14:09:59  george
- *   Fixed RCS keyword syntax
- *
+ * $Log$
  *
  *)

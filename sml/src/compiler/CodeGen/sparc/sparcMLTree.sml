@@ -34,7 +34,8 @@ structure SparcAsmEmitter =
 
 structure SparcMCEmitter = 
   SparcMCEmitter(structure Instr=SparcInstr
-		 structure Assembler=SparcAsmEmitter)
+		 structure Assembler=SparcAsmEmitter
+		 structure CodeString=CodeString)
 
 structure SparcMLTree = 
   MLTreeF(structure Const=SparcConst

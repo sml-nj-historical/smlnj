@@ -185,6 +185,7 @@ datatype primop
   | ISOLATE                    (* isolating a function *)
   | DEREF                      (* dereferencing *)
   | ASSIGN                     (* assignment *)
+  | UNBOXEDASSIGN              (* assignment to integer reference *)
   | UPDATE                     (* array update (maybe boxed) *)
   | INLUPDATE                  (* inline array update (maybe boxed) *)
   | BOXEDUPDATE                (* boxed array update *)
@@ -234,16 +235,6 @@ val prNumkind : numkind -> string
 val prPrimop: primop -> string
 val purePrimop : primop -> bool
 val mayRaise : primop -> bool
-(* This should return more than just a boolean.
- * True means "can not be dead-code eliminated" *)
-val effect : primop -> bool
 
 end (* signature PRIM_OP *)
 
-
-(*
- * $Log: primop.sig,v $
- * Revision 1.5  1998/12/22 17:01:50  jhr
- *   Merged in 110.10 changes from Yale.
- *
- *)

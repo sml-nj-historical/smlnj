@@ -258,6 +258,7 @@ fun primop (P.ARITH{oper=p,overflow=v,kind=k}) () =
   | primop P.THROW () = nestprimop "zk" 
   | primop P.DEREF () = nestprimop "1k" 
   | primop P.ASSIGN () = nestprimop "2k" 
+    (* NOTE: P.UNBOXEDASSIGN is defined below *)
   | primop P.UPDATE () = nestprimop "3k" 
   | primop P.INLUPDATE () = nestprimop "4k" 
   | primop P.BOXEDUPDATE () = nestprimop "5k" 
@@ -286,6 +287,7 @@ fun primop (P.ARITH{oper=p,overflow=v,kind=k}) () =
   | primop P.GET_SEQ_DATA () = nestprimop "Bk" 
   | primop P.SUBSCRIPT_REC () = nestprimop "Ck" 
   | primop P.SUBSCRIPT_RAW64 () = nestprimop "Dk" 
+  | primop P.UNBOXEDASSIGN () = nestprimop "Ek"
 
 and nestprimop s = "aj" $ [fn () => s $ []]
 
@@ -369,8 +371,8 @@ fun mkPickleLty (stamp,tvar) =
         and tycI x () = 
 	  (case LK.tc_out x
 	    of LK.TC_VAR(db,i) => "A6" $ [int(DI.di_toint db), int i]
-             | LK.TC_NVAR n => 
-                 "B6" $ [int n]
+             | LK.TC_NVAR(n, dp, i) => 
+                 "B6" $ [int n, int(DI.dp_toint dp), int i]
 	     | LK.TC_PRIM t => "C6" $ [int(PT.pt_toint t)]
              | LK.TC_FN(ks,tc) => "D6" $ [list tkind ks, tyc tc]
              | LK.TC_APP(tc,l) => "E6" $ [tyc tc, list tyc l]
@@ -482,13 +484,13 @@ fun pickleFLINT fdecOp =
       and tfundec (v, tvks, e) () = 
             "15" $ [lvar v, list (tuple2(tvar, tkind)) tvks, lexp e]
 
-      and fkind {cconv=F.CC_FCT, ...} () = "25" $ []
-        | fkind {isrec, cconv=F.CC_FUN(LK.FF_VAR(b1, b2)), known, inline} () = 
-            "35" $ [option (list lty) (Option.map #1 isrec),
-		    bool b1, bool b2, bool known, bool (inline = F.IH_ALWAYS)]
-        | fkind {isrec, cconv=F.CC_FUN LK.FF_FIXED, known, inline} () = 
-            "45" $ [option (list lty) (Option.map #1 isrec),
-		    bool known, bool (inline = F.IH_ALWAYS)]
+      and fkind (F.FK_FCT) () = "25" $ []
+        | fkind (F.FK_FUN {isrec, fixed=LK.FF_VAR(b1, b2), 
+                           known, inline}) () = 
+            "35" $ [option (list lty) isrec, bool b1, bool b2, bool known,
+                    bool inline]
+        | fkind (F.FK_FUN {isrec, fixed=LK.FF_FIXED, known, inline}) () = 
+            "45" $ [option (list lty) isrec, bool known, bool inline]
 
       and rkind (F.RK_VECTOR tc) () = "55" $ [tyc tc]
         | rkind (F.RK_STRUCT) () = "65" $ []
@@ -928,6 +930,9 @@ end (* structure PickMod *)
 
 (*
  * $Log: pickmod.sml,v $
+ * Revision 1.9  1998/12/31 05:43:41  jhr
+ *   Added UNBOXEDASSIGN primop to FLINT.
+ *
  * Revision 1.8  1998/12/22 17:02:11  jhr
  *   Merged in 110.10 changes from Yale.
  *

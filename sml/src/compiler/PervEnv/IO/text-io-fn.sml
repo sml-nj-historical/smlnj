@@ -881,9 +881,6 @@ functor TextIOFn (
 
 (*
  * $Log: text-io-fn.sml,v $
- * Revision 1.5  1998/10/19 12:49:06  jhr
- *   Fixed bug in inputLine (extra #"\n" at EOF).
- *
  * Revision 1.4  1998/10/16 17:26:31  jhr
  *   Implemented multiple EOF support; changes to basis I/O API
  *

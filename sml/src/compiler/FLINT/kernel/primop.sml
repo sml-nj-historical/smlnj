@@ -67,6 +67,7 @@ datatype primop
   | ISOLATE                    (* isolating a function *)
   | DEREF                      (* dereferencing *)
   | ASSIGN                     (* assignment *)
+  | UNBOXEDASSIGN              (* assignment to integer reference *)
   | UPDATE                     (* array or reference update (maybe boxed) *)
   | INLUPDATE                  (* inline array update (maybe boxed) *)
   | BOXEDUPDATE                (* boxed array update *)
@@ -241,9 +242,11 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop (SUBSCRIPT_REC) = "subscriptrec"
   | prPrimop (SUBSCRIPT_RAW64) = "subscriptraw64"
 
+
 val purePrimop =
   fn DEREF => false
    | ASSIGN => false 
+                    (* this should probably should never be called on ASSIGN *)
    | SUBSCRIPT => false
    | BOXEDUPDATE => false
    | UNBOXEDUPDATE => false
@@ -253,29 +256,9 @@ val purePrimop =
    | ISOLATE => false
    | ARITH{overflow,...} => not overflow
    | NUMSUBSCRIPT{immutable,...} => immutable
-   | NUMUPDATE _ => false
    | GETSPECIAL => false
-   | (SETSPECIAL | SETHDLR | SETVAR | SETPSEUDO | SETMARK) => false
-   | THROW => false
-   | (DISPOSE | MKSPECIAL | DEFLVAR | MARKEXN) => false
+   | SETSPECIAL => false
    | _ => true
-
-(* should return more than just a boolean *)
-val effect =
- fn ARITH{overflow,...} => overflow
-  | (INLRSHIFT _ | INLRSHIFTL _) => false
-  | CMP _ => false
-  | (EXTEND _ | TRUNC _ | COPY _) => false
-  | (PTREQL | PTRNEQ | POLYEQL | POLYNEQ) => false
-  | (BOXED | UNBOXED) => false
-  | (LENGTH | OBJLENGTH) => false
-  | (CAST | WCAST) => false
-  | (MAKEREF | DEREF) => false
-  | (INLMIN | INLMAX | INLNOT | INLCOMPOSE) => false
-  | (INL_ARRAY | INL_VECTOR | INL_MONOARRAY _ | INL_MONOVECTOR _) => false
-  | (WRAP | UNWRAP) => false
-  | (NEW_ARRAY0 | GET_SEQ_DATA | SUBSCRIPT_REC | SUBSCRIPT_RAW64) => false
-  | _ => true
   
 val mayRaise =
   fn ARITH{overflow,...} => overflow
@@ -289,12 +272,4 @@ val mayRaise =
    | _ => false
 
 end  (* structure PrimOp *)
-
-
-(*
- * $Log: primop.sml,v $
- * Revision 1.4  1998/12/22 17:01:51  jhr
- *   Merged in 110.10 changes from Yale.
- *
- *)
 

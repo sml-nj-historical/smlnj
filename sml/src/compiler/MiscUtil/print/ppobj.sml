@@ -567,9 +567,6 @@ end (* structure PPObj *)
 
 (*
  * $Log: ppobj.sml,v $
- * Revision 1.5  1998/11/18 03:53:25  jhr
- *  New array representations.
- *
  * Revision 1.4  1998/10/28 18:22:56  jhr
  *   New Unsafe.Object API.
  *

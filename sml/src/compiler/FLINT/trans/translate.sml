@@ -1157,7 +1157,7 @@ val (plexp, imports) = wrapPidInfo (body, Map.members (!persmap))
 
 fun prGen (flag,printE) s e =
   if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e) else ()
-val _ = prGen(Control.FLINT.print, PPLexp.printLexp) "Translate" plexp
+val _ = prGen(Control.CG.printLambda, PPLexp.printLexp) "Translate" plexp
 
 (** normalizing the plambda expression into FLINT *)
 val flint = FlintNM.norm plexp
@@ -1170,11 +1170,5 @@ end (* structure Translate *)
 
 
 (*
- * $Log: translate.sml,v $
- * Revision 1.6  1998/12/22 17:02:08  jhr
- *   Merged in 110.10 changes from Yale.
- *
- * Revision 1.4  1998/05/23 14:09:43  george
- *   Fixed RCS keyword syntax
- *
+ * $Log$
  *)

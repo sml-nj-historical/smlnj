@@ -536,8 +536,10 @@ let val rec g' =
 				     of {info=RECinfo vl,...} =>
 					 (let val z = #1(List.nth(vl,i))
 					      val z' = ren z
-					  in
-					    case z' of REAL _ => NONE | _ => SOME z'
+					  in 
+                                             case z'
+                                               of REAL _ => NONE 
+                                                | _  => SOME z'
 					  end handle Subscript => NONE)
 				      | _ => NONE)
 			       | _ => NONE)
@@ -1030,7 +1032,7 @@ in  debugprint "Contract: "; debugflush();
     cpssize := Intmap.elems m;
     let val cexp' = reduce cexp
     in  debugprint "\n";
-	if debug
+	if debug andalso !CG.misc4=16
 	    then (debugprint "After contract: \n"; 
 		  PPCps.prcps cexp')
 	else ();
@@ -1041,10 +1043,3 @@ end
 end (* toplevel local *)
 end (* functor Contract *)
 
-
-(*
- * $Log: contract.sml,v $
- * Revision 1.3  1998/12/22 17:01:34  jhr
- *   Merged in 110.10 changes from Yale.
- *
- *)

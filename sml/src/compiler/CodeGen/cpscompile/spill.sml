@@ -482,8 +482,5 @@ end (* local *)
 end (* functor Spill *)
 
 (*
- * $Log: spill.sml,v $
- * Revision 1.1  1998/12/22 17:01:19  jhr
- *   Added CPS spill phase to fix MLRisc spill area overflow.
- *
+ * $Log$
  *)

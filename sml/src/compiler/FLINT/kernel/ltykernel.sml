@@ -26,21 +26,8 @@ fun exitLevel xs =
    in h(xs, [])
   end
   
-(* definitions of named tyc variables.
-   for now, these share the same namespace with lvars. *)
-type tvar = LambdaVar.lvar
-val mkTvar = LambdaVar.mkLvar
-
-(* for lists of free type variables, debruijn indices are collapsed
-   into a single integer using tvEncode/tvDecode, named variables use
-   the tvar as an integer.  The debruijn-indexed list is kept sorted,
-   the named variables are in arbitrary order (for now) --league, 2 July 1998
- *)
-datatype aux_info = 
-    AX_REG of bool                      (* normalization flag *)
-            * enc_tvar list             (* free debruijn-indexed type vars *)
-            * tvar list                 (* free named type vars *)
-  | AX_NO                               (* no aux_info available *)
+datatype aux_info = AX_REG of bool * enc_tvar list
+                  | AX_NO
 
 val mergeTvs = merge
 val fmergeTvs = foldmerge
@@ -62,6 +49,10 @@ datatype tkindI
 
 withtype tkind = tkindI hash_cell              (* hash-consing-impl of tkind *)
 
+(* definitoins of named tyc variables *)
+type tvar = LambdaVar.lvar                     (* temporary definitions *)
+val mkTvar = LambdaVar.mkLvar
+
 (* an special extensible token key *)
 type token = int      
 
@@ -74,7 +65,7 @@ datatype rflag = RF_TMP                        (* tuple kind: a template *)
 (** definitions of lambda type constructors *)
 datatype tycI
   = TC_VAR of DebIndex.index * int             (* tyc variables *)
-  | TC_NVAR of tvar                            (* named tyc variables *)
+  | TC_NVAR of tvar * DebIndex.depth * int     (* named tyc variables *)
   | TC_PRIM of PrimTyc.primtyc                 (* primitive tyc *)
 
   | TC_FN of tkind list * tyc                  (* tyc abstraction *)
@@ -260,7 +251,7 @@ local structure Weak = SMLofNJ.Weak
 
       fun tc_hash tc = 
         let fun g (TC_VAR(d, i)) = combine [1, (DI.di_key d)*10, i]
-              | g (TC_NVAR v) = combine[15, v]
+              | g (TC_NVAR(v, d, i)) = combine[15, v, (DI.dp_key d)*13, i]
               | g (TC_PRIM pt) = combine [2, PT.pt_toint pt]
               | g (TC_FN(ks, t)) = combine (3::(getnum t)::(map getnum ks))
               | g (TC_APP(t, ts)) = combine (4::(getnum t)::(map getnum ts))
@@ -311,15 +302,14 @@ local structure Weak = SMLofNJ.Weak
       fun ltI_eq {new : ltyI, old=LT_IND(_,s)} = ltI_eq {new=new, old=s}
         | ltI_eq {new, old} = (new=old)
 
-      val baseAux = AX_REG (true, [], [])
+      val baseAux = AX_REG (true, [])
 
       fun getAux (ref(i : int, _, x)) = x
 
       fun mergeAux(AX_NO, _) = AX_NO
         | mergeAux(_, AX_NO) = AX_NO
-        | mergeAux(AX_REG(b1,vs1,nvs1), AX_REG(b2,vs2,nvs2)) =
-            AX_REG(b2 andalso b1, mergeTvs(vs1, vs2),
-                   mergeTvs(nvs1, nvs2))
+        | mergeAux(AX_REG(b1,vs1), AX_REG(b2,vs2)) =
+            AX_REG(b2 andalso b1, mergeTvs(vs1, vs2))
 
       fun fsmerge [] = baseAux
         | fsmerge [x] = getAux x
@@ -330,19 +320,19 @@ local structure Weak = SMLofNJ.Weak
              in loop(xs, baseAux)
             end
 
-      fun exitAux(AX_REG(b, vs, nvs)) = AX_REG(b, exitLevel vs, nvs)
+      fun exitAux(AX_REG(b, vs)) = AX_REG(b, exitLevel vs)
         | exitAux x = x
 
       fun tc_aux tc = 
-        let fun g (TC_VAR(d, i)) = AX_REG(true, [tvEncode(d, i)], [])
-              | g (TC_NVAR v) = AX_REG(true, [], [v])
+        let fun g (TC_VAR(d, i)) = AX_REG(true, [tvEncode(d, i)])
+              | g (TC_NVAR(v, d, i)) = baseAux (*** THIS IS WRONG ! ***)
               | g (TC_PRIM pt) = baseAux
               | g (TC_APP(ref(_, TC_FN _, AX_NO), _)) = AX_NO
               | g (TC_PROJ(ref(_, TC_SEQ _, AX_NO), _)) = AX_NO
-              | g (TC_APP(ref(_, TC_FN _, AX_REG(_,vs,nvs)), ts)) = 
-                     mergeAux(AX_REG(false, vs, nvs), fsmerge ts) (* ? *)
-              | g (TC_PROJ(ref(_, TC_SEQ _, AX_REG(_,vs,nvs)), _)) = 
-                     AX_REG(false, vs, nvs) (* ? *)
+              | g (TC_APP(ref(_, TC_FN _, AX_REG(_,vs)), ts)) = 
+                     mergeAux(AX_REG(false, vs), fsmerge ts)       (* ? *)
+              | g (TC_PROJ(ref(_, TC_SEQ _, AX_REG(_,vs)), _)) = 
+                     AX_REG(false, vs)                             (* ? *)
               | g (TC_FN(ks, t)) = exitAux(getAux t)
               | g (TC_APP(t, ts)) = fsmerge (t::ts)
               | g (TC_SEQ ts) = fsmerge ts
@@ -351,9 +341,8 @@ local structure Weak = SMLofNJ.Weak
               | g (TC_FIX((_,t,ts), _)) = 
                      let val ax = getAux t
                       in case ax
-                          of AX_REG(_,[],[]) => mergeAux(ax, fsmerge ts)
-                           | AX_REG _ => bug "unexpected TC_FIX freevars in tc_aux"
-                           | AX_NO => AX_NO
+                          of AX_REG(_,[]) => mergeAux(ax, fsmerge ts)
+                           | _ => bug "unexpected TC_FIX freevars in tc_aux"
                      end
               | g (TC_ABS t) = getAux t
               | g (TC_BOX t) = getAux t
@@ -361,8 +350,8 @@ local structure Weak = SMLofNJ.Weak
               | g (TC_ARROW(_, ts1, ts2)) = fsmerge (ts1@ts2)
               | g (TC_PARROW(t1, t2)) = fsmerge [t1, t2]
               | g (TC_TOKEN (k, (ref(_, t, AX_NO)))) = AX_NO
-              | g (TC_TOKEN (k, (x as ref(_, t, AX_REG(b,vs,nvs))))) = 
-                     AX_REG((token_whnm k x) andalso b, vs, nvs)
+              | g (TC_TOKEN (k, (x as ref(_, t, AX_REG(b,vs))))) = 
+                     AX_REG((token_whnm k x) andalso b, vs)
               | g (TC_CONT ts) = fsmerge ts
               | g (TC_IND _) = bug "unexpected TC_IND in tc_aux"
               | g (TC_ENV _) = AX_NO
@@ -387,12 +376,12 @@ local structure Weak = SMLofNJ.Weak
 in 
 
 (** a temporary hack on getting the list of free tyvars *)
-(* ignores named vars for now.  --CALeague, 1 Jul 1998 *)
 fun tc_vs (r as ref(_ : int, _ : tycI, AX_NO)) = NONE
-  | tc_vs (r as ref(_ : int, _ : tycI, AX_REG (_,x,_))) = SOME x
+  | tc_vs (r as ref(_ : int, _ : tycI, AX_REG (_,x))) = SOME x
 
 fun lt_vs (r as ref(_ : int, _ : ltyI, AX_NO)) = NONE
-  | lt_vs (r as ref(_ : int, _ : ltyI, AX_REG (_,x,_))) = SOME x
+  | lt_vs (r as ref(_ : int, _ : ltyI, AX_REG (_,x))) = SOME x
+
 
 (** converting from the hash-consing reps to the standard reps *)
 fun tk_outX (r as ref(_ : int, t : tkindI, _ : aux_info)) = t
@@ -502,10 +491,10 @@ end (* utililty function for tycEnv *)
 
 
 (** checking if a tyc or an lty is in the normal form *)
-fun tcp_norm ((t as ref (i, _, AX_REG(b,_,_))) : tyc) =  b
+fun tcp_norm ((t as ref (i, _, AX_REG(b,_))) : tyc) =  b
   | tcp_norm _ = false
 
-fun ltp_norm ((t as ref (i, _, AX_REG(b,_,_))) : lty) =  b
+fun ltp_norm ((t as ref (i, _, AX_REG(b,_))) : lty) =  b
   | ltp_norm _ = false
 
 
@@ -561,13 +550,13 @@ end (* utility functions for lt_env and tc_env *)
 (** utility functions for updating tycs and ltys *)
 fun tyc_upd (tgt as ref(i : int, old : tycI, AX_NO), nt) = 
       (tgt := (i, TC_IND (nt, old), AX_NO))
-  | tyc_upd (tgt as ref(i : int, old : tycI, x as (AX_REG(false,_,_))), nt) = 
+  | tyc_upd (tgt as ref(i : int, old : tycI, x as (AX_REG(false, _))), nt) = 
       (tgt := (i, TC_IND (nt, old), x))
   | tyc_upd _ = bug "unexpected tyc_upd on already normalized tyc"
 
 fun lty_upd (tgt as ref(i : int, old : ltyI, AX_NO), nt) = 
       (tgt := (i, LT_IND (nt, old), AX_NO))
-  | lty_upd (tgt as ref(i : int, old : ltyI, x as (AX_REG(false,_,_))), nt) = 
+  | lty_upd (tgt as ref(i : int, old : ltyI, x as (AX_REG(false, _))), nt) = 
       (tgt := (i, LT_IND (nt, old), x))
   | lty_upd _ = bug "unexpected lty_upd on already normalized lty"
 
@@ -1101,7 +1090,7 @@ val visited : eqclass option -> bool
 fun eq_fix (eqop1, hyp) (t1, t2) = 
   (case (tc_outX t1, tc_outX t2) 
     of (TC_FIX((n1,tc1,ts1),i1), TC_FIX((n2,tc2,ts2),i2)) => 
-        if not (!Control.FLINT.checkDatatypes) then true 
+        if not (!Control.CG.checkDatatypes) then true 
         else let 
             val t1eqOpt = TcDict.peek (hyp, t1)
         in
@@ -1174,8 +1163,8 @@ fun tc_eqv_gen (eqop1, eqop2, hyp) (t1, t2) =
       | _ => false
 
 (** general equality for tycs *)
-fun tc_eqv' hyp (x as ref (_, _, AX_REG(true, _, _)),
-                 y as ref (_, _, AX_REG(true, _, _))) = tc_eq(x,y)
+fun tc_eqv' hyp (x as ref (_, _, AX_REG(true, _)),
+                 y as ref (_, _, AX_REG(true, _))) = tc_eq(x,y)
   | tc_eqv' hyp (x, y) = let
         val t1 = tc_whnm x
         val t2 = tc_whnm y
@@ -1262,25 +1251,5 @@ fun tc_depth (x, d) =
 fun tcs_depth ([], d) = DI.top
   | tcs_depth (x::r, d) = Int.max(tc_depth(x, d), tcs_depth(r, d))
 
-(* these return the list of free NAMED tyvars *)
-fun tc_nvars (tyc:tyc) =
-    case getAux (tc_norm tyc) of
-        AX_REG (_,_,tvs) => tvs
-      | AX_NO => bug "unexpected case in tc_nvars"
-
-fun lt_nvars (lty:lty) = 
-    case getAux (lt_norm lty) of
-        AX_REG (_,_,tvs) => tvs
-      | AX_NO => bug "unexpected case in lt_nvars"
-
-
 end (* toplevel local *)
 end (* abstraction LtyKernel *)
-
-
-(*
- * $Log: ltykernel.sml,v $
- * Revision 1.4  1998/12/22 17:01:49  jhr
- *   Merged in 110.10 changes from Yale.
- *
- *)

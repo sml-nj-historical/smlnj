@@ -88,7 +88,7 @@ fun mcast (oldts, newts) =
  ****************************************************************************)
 (* reify : fundec -> fundec *)
 fun reify fdec = 
-let val {getLty=getlty, cleanUp} =  Recover.recover (fdec, false) 
+let val {getLty, cleanUp} =  Recover.recover (fdec, false) 
     val (tcf, ltf, clear) = LT.tnarrow_gen ()
 
     fun dcf ((name,rep,lt),ts) = (name,rep,lt_vfn)
@@ -101,14 +101,16 @@ let val {getLty=getlty, cleanUp} =  Recover.recover (fdec, false)
       end
 
     (* transform: kenv * DI.depth -> lexp -> lexp *)
-    fun transform (kenv) = 
-     let (* lpfd: fundec -> fundec *)
+    fun transform (kenv, d) = 
+     let val getlty = getLty d
+
+         (* lpfd: fundec -> fundec *)
          fun lpfd (fk, f, vts, e) = 
            let val nfk = 
                  case fk 
-                  of {isrec=SOME (lts,lk), cconv, known, inline} =>
-                       {isrec=SOME(map ltf lts, lk), cconv=cconv,
-			known=known, inline=inline}
+                  of FK_FUN{isrec=SOME lts, fixed, known, inline} =>
+                       FK_FUN{isrec=SOME(map ltf lts), fixed=fixed,
+                              known=known, inline=inline}
                    | _ => fk
                val nvts = map (fn (v,t) => (v, ltf t)) vts
             in (nfk, f, nvts, loop e)
@@ -165,7 +167,7 @@ let val {getLty=getlty, cleanUp} =  Recover.recover (fdec, false)
     
               | TFN((v, tvks, e1), e2) => 
                   let val (nkenv, hdr) = LP.tkAbs(kenv, tvks, v)
-                      val ne1 = transform (nkenv) e1
+                      val ne1 = transform (nkenv, DI.next d) e1
                    in hdr(ne1, loop e2)
                   end
               | TAPP(v, ts) => 
@@ -262,15 +264,8 @@ let val {getLty=getlty, cleanUp} =  Recover.recover (fdec, false)
 
      val (fk, f, vts, e) = fdec
  in (fk, f, map (fn (v,t) => (v, ltf t)) vts,
-     transform (LP.initKE) e) before (cleanUp(); clear())
+     transform (LP.initKE, DI.top) e) before (cleanUp(); clear())
 end (* function reify *)
 
 end (* toplevel local *)
 end (* structure Reify *)
-
-(*
- * $Log: reify.sml,v $
- * Revision 1.2  1998/12/22 17:02:03  jhr
- *   Merged in 110.10 changes from Yale.
- *
- *)

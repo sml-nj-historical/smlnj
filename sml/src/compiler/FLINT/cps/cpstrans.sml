@@ -165,9 +165,9 @@ fun spillOut (origargs, origctys, spgvars, spgctys, spfvars) =
           | ([x], t::_) => (SOME (x,t), fhdr)
           | _ => let val v = mkv()
                      val u = VAR v
-                     fun g (sv, st, (i,hdr)) = 
-                       (i+1, fn e =>hdr(SELECT(i, u, sv, st, e)))
-                     val (n, gh) = ListPair.foldl g (0, fhdr) (spgvars,spgctys)
+                     fun g (sv, (i,hdr)) = 
+                       (i+1, fn e =>hdr(SELECT(i, u, sv, FLTt, e)))
+                     val (n, gh) = foldl g (0, fhdr) spgvars
                      val ct = PTRt(RPT n)
                   in (SOME (v, ct), gh)
                  end
@@ -293,13 +293,3 @@ end
 end (* toplevel local *)
 end (* structure CPStrans *)
 
-
-(*
- * $Log: cpstrans.sml,v $
- * Revision 1.5  1998/12/22 17:01:24  jhr
- *   Merged in 110.10 changes from Yale.
- *
- * Revision 1.3  1998/05/23 14:09:30  george
- *   Fixed RCS keyword syntax
- *
- *)

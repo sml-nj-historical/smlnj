@@ -106,9 +106,6 @@ end (* MLTree *)
 
 (*
  * $Log: mltree.sml,v $
- * Revision 1.1.1.1  1998/11/16 21:49:03  george
- *   Version 110.10
- *
  * Revision 1.2  1998/07/25 03:08:21  george
  *   added to support block names in MLRISC
  *

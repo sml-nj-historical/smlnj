@@ -49,8 +49,5 @@ end (* signature ENVIRONMENT *)
 
 
 (*
- * $Log: environ.sig,v $
- * Revision 1.2  1998/06/02 17:39:27  george
- *   Changes to integrate CM functionality into the compiler --- blume
- *
+ * $Log$
  *)

@@ -295,9 +295,6 @@ end
 
 (*
  * $Log: hppaCG.sml,v $
- * Revision 1.6  1998/10/19 13:50:42  george
- * *** empty log message ***
- *
  * Revision 1.5  1998/10/06 13:59:59  george
  * Flowgraph has been removed from modules that do not need it -- [leunga]
  *

@@ -211,8 +211,5 @@ struct
 end
 
 (*
- * $Log: ssa-glb-value-num.sml,v $
- * Revision 1.1.1.1  1998/11/16 21:47:06  george
- *  Version 110.10
- *
+ * $Log$
  *)

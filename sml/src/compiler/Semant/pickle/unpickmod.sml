@@ -309,6 +309,7 @@ fun primop #"A" = ?arithop(fn Uarithop p =>
          | #"z" => P.THROW
          | #"1" => P.DEREF
          | #"2" => P.ASSIGN
+	    (* NOTE: P.UNBOXEDASSIGN is handled below *)
          | #"3" => P.UPDATE
          | #"4" => P.INLUPDATE
          | #"5" => P.BOXEDUPDATE
@@ -336,6 +337,7 @@ fun primop #"A" = ?arithop(fn Uarithop p =>
 	 | #"B" => P.GET_SEQ_DATA
 	 | #"C" => P.SUBSCRIPT_REC
 	 | #"D" => P.SUBSCRIPT_RAW64
+         | #"E" => P.UNBOXEDASSIGN
 	 | _ => raise Fail "    | primop")
 
 
@@ -437,7 +439,7 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
       | tyc #"B" = R.int (fn v => 
                      R.int (fn d => 
                        R.int (fn i => 
-                         %Utyc (LT.tcc_nvar v))))
+                         %Utyc (LT.tcc_nvar(v, DI.di_fromint d, i)))))
       | tyc #"C" = R.int (fn k => %Utyc (LT.tcc_prim (PT.pt_fromint k)))
       | tyc #"D" = ?tkindList (fn UtkindList ks => 
                       ?tyc (fn Utyc tc => %Utyc(LT.tcc_fn(ks, tc))))
@@ -662,24 +664,20 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
                            %Utfundec (v, tvks, e))))
       | tfundec _ = raise Fail "    | tfundec"
 
-    and fkind' (fixed,isrec,inline,known) =
-	{isrec=Option.map (fn ltys => (ltys,F.LK_UNKNOWN)) isrec,
-	 inline=if inline then F.IH_ALWAYS else F.IH_SAFE,
-	 cconv=F.CC_FUN fixed, known=known}
-    and fkind #"2" = %Ufkind {isrec=NONE, cconv=F.CC_FCT,
-			      inline=F.IH_SAFE, known=false}
+    and fkind #"2" = %Ufkind (F.FK_FCT)
       | fkind #"3" = ?ltyListOption (fn UltyListOption isrec =>
                       ?bool (fn Ubool b1 =>
                        ?bool (fn Ubool b2 =>
                         ?bool (fn Ubool known =>
                          ?bool (fn Ubool inline =>
-                          %Ufkind (fkind' (LT.ffc_var(b1, b2),
-					   isrec, inline, known)))))))
+                          %Ufkind (F.FK_FUN{isrec=isrec, 
+                                            fixed=LT.ffc_var(b1, b2), 
+                                            known=known, inline=inline}))))))
       | fkind #"4" = ?ltyListOption (fn UltyListOption isrec =>
                         ?bool (fn Ubool known =>
                          ?bool (fn Ubool inline =>
-                          %Ufkind (fkind' (LT.ffc_fixed,
-					   isrec, inline, known)))))
+                          %Ufkind (F.FK_FUN{isrec=isrec, fixed=LT.ffc_fixed,
+                                            known=known, inline=inline}))))
       | fkind _ = raise Fail "    | fkind"
 
     and rkind #"5" = ?tyc (fn Utyc tc => %Urkind (F.RK_VECTOR tc))
@@ -1262,11 +1260,9 @@ fun unpickleEnv (context0, pickle) =
 end (* local *)
 end (* structure UnpickleMod *)
 
+
 (*
  * $Log: unpickmod.sml,v $
- * Revision 1.8  1998/12/22 17:02:12  jhr
- *   Merged in 110.10 changes from Yale.
- *
  * Revision 1.4  1998/05/23 14:10:13  george
  *   Fixed RCS keyword syntax
  *

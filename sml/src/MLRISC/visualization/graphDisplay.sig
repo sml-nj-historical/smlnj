@@ -8,8 +8,5 @@ sig
 end
 
 (*
- * $Log: graphDisplay.sig,v $
- * Revision 1.1.1.1  1998/11/16 21:49:17  george
- *   Version 110.10
- *
+ * $Log$
  *)

@@ -13,7 +13,6 @@ local structure DI = DebIndex
       structure DA = Access
       structure LT = LtyExtern
       structure FU = FlintUtil
-      structure PO = PrimOp
       open FLINT
 in
 
@@ -38,7 +37,7 @@ fun isEqs (vs, us) =
 datatype info
   = SimpVal of value
   | ListExp of value list
-  | FunExp of lvar list * lexp
+  | FunExp of DI.depth * lvar list * lexp
   | ConExp of dcon * tyc list * value
   | StdExp
 
@@ -64,7 +63,7 @@ fun pass1 fdec =
 
       fun cand x = (get x; true) handle _ => false
 
-      fun lpfd d ({isrec=SOME _,...}, v, vts, e) = lple d e
+      fun lpfd d (FK_FUN {isrec=SOME _,...}, v, vts, e) = lple d e
         | lpfd d (_, v, vts, e) = (enter(v, d); lple d e)
 
       and lple d e = 
@@ -169,7 +168,7 @@ fun swiInfo (VAR v, ces, oe) =
 (** contracting a function application *)
 fun appInfo (VAR v) =
       ((case get v
-         of (ref 0, FunExp (vs, e)) => SOME (vs, e)
+         of (ref 0, FunExp (d, vs, e)) => SOME (d, vs, e)
           | _ => NONE) handle _ => NONE)
   | appInfo _ = NONE
 
@@ -225,32 +224,43 @@ end (* branchopt local *)
 
 
 (** the main transformation function *)
+fun transform [] = bug "unexpected case in transform"
+  | transform (cfg as ((d, od, k)::rcfg)) = let
+     fun h (f, t, (d, od, k)::r, sk) = h(f, f(t, od, d, k+sk), r, k+sk)
+       | h (f, t, [], _) = t
+     fun ltf t = h(LT.lt_adj_k, t, cfg, 0)
+     fun tcf t = h(LT.tc_adj_k, t, cfg, 0)
 
      fun lpacc (DA.LVAR v) = 
            (case lpsv (VAR v) of VAR w => DA.LVAR w
                                | _ => bug "unexpected in lpacc")
        | lpacc _ = bug "unexpected path in lpacc"
 
-     and lpdc (s, DA.EXN acc, t) = (s, DA.EXN(lpacc acc), t)
-       | lpdc (s, rep, t) = (s, rep, t)
+     and lpdc (s, DA.EXN acc, t) = (s, DA.EXN(lpacc acc), ltf t)
+       | lpdc (s, rep, t) = (s, rep, ltf t)
 
-     and lpcon (DATAcon (dc, ts, v)) = DATAcon(lpdc dc, ts, v)
+     and lpcon (DATAcon (dc, ts, v)) = DATAcon(lpdc dc, map tcf ts, v)
        | lpcon c = c
 
-     and lpdt {default=v, table=ws} =
+     and lpdt (SOME {default=v, table=ws}) =
            let fun h x = 
                  case rename (VAR x) of VAR nv => nv
                                       | _ => bug "unexpected acse in lpdt"
             in (SOME {default=h v, table=map (fn (ts,w) => (ts,h w)) ws})
            end
+       | lpdt NONE = NONE
 
      and lpsv x = (case x of VAR v => rename x | _ => x)
 
-     and lpfd ({isrec, known, inline, cconv}, v, vts, e) = 
-	 (* The function body might have changed so we need to reset
-	  * the inlining hint *)
-	 ({isrec=isrec, known=known, inline=IH_SAFE, cconv=cconv},
-	  v, vts, #1(loop e))
+     and lpfd (fk, v, vts, e) = 
+       let val nfk = 
+             case fk 
+              of FK_FUN{isrec=SOME t, known, inline, fixed} =>
+                   FK_FUN{isrec=SOME(map ltf t), known=known, inline=inline,
+                           fixed=fixed} 
+               | _ => fk
+        in (nfk, v, map (fn (v,t) => (v,ltf t)) vts, #1(loop e))
+       end
 
      and lplet (hdr: lexp -> lexp, pure, v: lvar, info: info, e) = 
        let val _ = chkIn(v, info)
@@ -301,10 +311,10 @@ end (* branchopt local *)
               end
 
           | FIX(fdecs, e) =>
-              let fun g ({isrec=SOME _, ...} :fkind, v, _, _) =
+              let fun g (FK_FUN {isrec=SOME _, ...} :fkind, v, _, _) =
                          chkIn(v, StdExp)
                     | g ((_, v, vts, xe) : fundec) = 
-                         chkIn(v, if isCand v then FunExp(map #1 vts, xe) 
+                         chkIn(v, if isCand v then FunExp(od, map #1 vts, xe) 
                                   else StdExp)
                   val _ = app g fdecs
                   val (ne, b) = loop e
@@ -313,20 +323,21 @@ end (* branchopt local *)
               end
           | APP(u, us) => 
               (case appInfo u
-                of SOME(vs, e) => 
+                of SOME(od', vs, e) => 
                      let val ne = LET(vs, RET us, e)
-                      in loop ne
+                      in transform ((od, od', 0)::cfg) ne
                      end
                  | _ => (APP(lpsv u, map lpsv us), false))
 
           | TFN(tfdec as (v, tvks, xe), e) => 
               lplet ((fn z => TFN((v, tvks, 
-                              #1(loop xe)), z)), 
+                              #1(transform ((DI.next d, DI.next od, 
+                                            k+1)::rcfg) xe)), z)), 
                      true, v, StdExp, e)
-          | TAPP(u, ts) => (TAPP(lpsv u, ts), true)
+          | TAPP(u, ts) => (TAPP(lpsv u, map tcf ts), true)
 
           | CON(c, ts, u, v, e) =>   (* this could be made more finegrain *)
-              lplet ((fn z => CON(lpdc c, ts, lpsv u, v, z)), 
+              lplet ((fn z => CON(lpdc c, map tcf ts, lpsv u, v, z)), 
                      true, v, ConExp(c,ts,u), e)
           | SWITCH (v, cs, ces, oe) => 
               (case swiInfo(v, ces, oe)
@@ -356,7 +367,7 @@ end (* branchopt local *)
                  | NONE => lplet ((fn z => SELECT(lpsv u, i, v, z)), 
                                   true, v, StdExp, e))
 
-          | RAISE(v, ts) => (RAISE(lpsv v, ts), false)
+          | RAISE(v, ts) => (RAISE(lpsv v, map ltf ts), false)
           | HANDLE(e, v) => 
               let val (ne, b) = loop e
                in if b then (ne, true)
@@ -366,20 +377,23 @@ end (* branchopt local *)
           | BRANCH(px as (d, p, lt, ts), vs, e1, e2) =>
               let val (ne1, b1) = loop e1
                   val (ne2, b2) = loop e2
-               in (BRANCH(case d of NONE => px 
-				  | SOME d => (lpdt d, p, lt, ts), 
+               in (BRANCH(case (d,ts) of (NONE, []) => px 
+                                       | _ => (lpdt d, p, lt, map tcf ts), 
                           map lpsv vs, ne1, ne2), false)
               end
           | PRIMOP(px as (dt, p, lt, ts), vs, v, e) => 
-              lplet ((fn z => PRIMOP((case dt 
-                                       of NONE => px 
-                                        | SOME d => (lpdt d, p, lt, ts)), 
+              lplet ((fn z => PRIMOP((case (dt, ts) 
+                                       of (NONE, []) => px 
+                                        | _ => (lpdt dt, p, lt, map tcf ts)), 
                                      map lpsv vs, v, z)), 
-                     false (* PO.purePrimop p *), v, StdExp, e))
+                     false (* isPure p *), v, StdExp, e))
+
+     in loop
+    end (* function transform *)
 
 val d = DI.top
 val (fk, f, vts, e) = fdec
-in (fk, f, vts, #1 (loop e))
+in (fk, f, vts, #1 (transform [(d, d, 0)] e))
    before (Intmap.clear m; cleanUp())
 end (* function lcontract *)
 
@@ -388,11 +402,3 @@ val lcontract = fn fdec => lcontract(lcontract(fdec, true), false)
 
 end (* toplevel local *)
 end (* structure LContract *)
-
-
-(*
- * $Log: lcontract.sml,v $
- * Revision 1.2  1998/12/22 17:01:56  jhr
- *   Merged in 110.10 changes from Yale.
- *
- *)

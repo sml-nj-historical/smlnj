@@ -12,8 +12,7 @@ sig
   type lexp  = FLINT.lexp
   type value = FLINT.value
 
-  val initKE : kenv  
-
+  val initKE : kenv
   val tkAbs  : kenv * (tvar * tkind) list * lvar -> 
                   (kenv * (lexp * lexp -> lexp))
   val tcLexp : kenv -> tyc -> lexp
@@ -33,15 +32,6 @@ sig
 
 end (* signature TYPEOPER *)
 
-signature Outcome = 
-sig
-    datatype outcome = YES
-		     | NO
-		     | MAYBE of FLINT.lexp
-end
-
-structure OT:Outcome = RuntimeType
-
 structure TypeOper : TYPEOPER = 
 struct
 
@@ -52,8 +42,7 @@ local structure DI = DebIndex
       structure PT = PrimTyc
       structure BT = BasicTypes 
       structure TP = Types
-      structure RT = RuntimeType
-      open LtyKernel FLINT OT
+      open LtyKernel FLINT RuntimeType
 in
 
 type tkind = tkind
@@ -63,18 +52,16 @@ type tvar  = LtyDef.tvar
 type lvar  = LV.lvar
 type lexp  = lexp
 type value = value
-type kenv = RT.kenv
 
-fun bug s = ErrorMsg.impossible ("TypeOper: " ^ s)
+fun bug s = ErrorMsg.impossible ("LtyPrim: " ^ s)
 fun say (s : string) = Control.Print.say s
 fun mkv _ = LV.mkLvar()
 val ident = fn le => le
-val fkfun = {isrec=NONE, known=false, inline=IH_ALWAYS, cconv=CC_FUN LT.ffc_fixed}
+val fkfun = FK_FUN{isrec=NONE,known=false,inline=true, fixed=LT.ffc_fixed}
 
 fun mkarw(ts1, ts2) = LT.tcc_arrow(LT.ffc_fixed, ts1, ts2)
 
 val lt_arw = LT.ltc_tyc o LT.tcc_arrow
-
 fun wty tc = 
   (NONE, PO.WRAP, lt_arw(LT.ffc_fixed, [tc], [LT.tcc_void]), [])
 fun uwty tc =   
@@ -97,7 +84,6 @@ fun UNWRAP(t, u) =
 (****************************************************************************
  *                  UTILITY FUNCTIONS AND CONSTANTS                         * 
  ****************************************************************************) 
-
 fun split(RET [v]) = (v, ident)
   | split x = let val v = mkv()
                in (VAR v, fn z => LET([v], x, z))
@@ -186,9 +172,21 @@ fun COND(u,e1,e2) = u(e1,e2)
 (****************************************************************************
  *                           KIND ENVIRONMENTS                              *
  ****************************************************************************) 
+type kenv = (LV.lvar list * tkind list) list
 
-fun addKE(kenv, vs, ks) = RT.addKE
+val initKE = []
+fun addKE(kenv, vs, ks) = (vs,ks)::kenv
+fun vlookKE(kenv, i, j) = 
+  let val (vs,_) = (List.nth(kenv, i-1) 
+		     handle _ => bug "unexpected case1 in vlookKE")
+   in ((List.nth(vs, j) handle _ => bug "unexpected case2 in vlookKE"))
+  end
 
+fun klookKE(kenv, i, j) = 
+  let val (_,ks) = (List.nth(kenv, i-1) 
+		     handle _ => bug "unexpected case1 in klookKE")
+   in ((List.nth(ks, j) handle _ => bug "unexpected case2 in klookKE"))
+  end
 
 (****************************************************************************
  *                            MAIN FUNCTIONS                                *
@@ -196,47 +194,194 @@ fun addKE(kenv, vs, ks) = RT.addKE
 
 (* val tkAbsGen : kenv * lvar list * tkind list * lvar * fkind 
                   -> kenv * ((lexp *lexp) -> lexp) *)
-val tkAbsGen = RT.tkAbsGen
+fun tkAbsGen (kenv, vs, ks, f, fk) = 
+  let val mkArgTy = case fk of FK_FUN _ => LT.ltc_tuple
+                             | FK_FCT => LT.ltc_str
+      val argt = mkArgTy (map LT.tk_lty ks)
 
+      val w = mkv()
+      fun h([], i, base) = base
+	| h(v::r, i, base) = h(r, i+1, SELECT(VAR w, i, v, base))
+      
+      fun hdr (e1, e2) = FIX([(fk, f, [(w, argt)], h(vs,0,e1))], e2)
+   in (addKE(kenv, vs, ks), hdr)
+  end
 
 (* val tkAbs: kenv * (tvar * tkind) list -> kenv * (lexp * lexp -> lexp) *)
-val tkAbs = RT.tkAbs
+fun tkAbs (kenv, tvks, f) = 
+  let val (vs, ks) = ListPair.unzip tvks
+   in tkAbsGen(kenv, vs, ks, f, FK_FCT)       
+  end
 
 (* val tkTfn: kenv * tkind list -> kenv * (lexp -> lexp) *)
-val tkTfn = RT.tkTfn
+fun tkTfn (kenv, ks) = 
+  let val vs = map (fn _ => mkv ()) ks
+      val f = mkv()
+      val (nkenv, hdr) = tkAbsGen(kenv, vs, ks, f, fkfun)
+   in (nkenv, fn e => hdr(e, RET[VAR f]))
+  end
 
-val ieqLexp = RT.ieqLexp
+val intty = LT.ltc_int
+val boolty = (* LT.ltc_bool *) LT.ltc_void
+val inteqty = LT.ltc_arrow(LT.ffc_fixed, [intty, intty], [boolty])
+val intopty = LT.ltc_arrow(LT.ffc_fixed, [intty, intty], [intty])
+val ieqprim = (NONE, PO.IEQL, inteqty, [])
+val iaddprim = (NONE, PO.IADD, intopty, [])
+fun ieqLexp (e1, e2) = 
+  let val (v1, h1) = split e1
+      val (v2, h2) = split e2
+   in fn (te, fe) => h1(h2(BRANCH(ieqprim, [v1,v2], te, fe)))
+  end
+fun iaddLexp (e1, e2) = 
+  let val (v1, h1) = split e1
+      val (v2, h2) = split e2
+      val x = mkv () 
+   in h1(h2(PRIMOP(iaddprim, [v1,v2], x, RET[VAR x])))
+  end
 
-val iaddLexp = RT.iaddLexp
+val tolexp = fn tcode => RET[tovalue tcode]
+val tcode_void   : lexp = tolexp tcode_void
+val tcode_record : lexp = tolexp tcode_record
+val tcode_int32  : lexp = tolexp tcode_int32
+val tcode_pair   : lexp = tolexp tcode_pair
+val tcode_fpair  : lexp = tolexp tcode_fpair
+val tcode_real   : lexp = tolexp tcode_real
+val tcode_realN  : int -> lexp = fn i => tolexp (tcode_realN i)
 
-
-val tovalue = RT.tovalue
-val tcode_void = RT.tcode_void
-val tcode_record = RT.tcode_record
-val tcode_int32 = RT.tcode_int32
-val tcode_pair = RT.tcode_pair
-val tcode_fpair = RT.tcode_fpair
-val tcode_real = RT.tcode_real
-val tcode_realN = RT.tcode_realN
-
+datatype outcome 
+  = YES
+  | NO
+  | MAYBE of lexp  
 
 (* tcLexp maps TC_VAR to proper lvars, TC_PRIM to proper constants *)
 (* val tcLexp : kenv -> tyc -> lexp *)
+fun tcLexp (kenv : kenv) (tc : tyc) = 
+  let fun loop (x : tyc) = 
+	(case (tc_out x)
+	  of (TC_FN(ks, tx)) => 
+		let val (nenv, hdr) = tkTfn(kenv, ks)
+		 in hdr(tcLexp nenv tx)
+		end
+	   | (TC_APP(tx, ts)) => 
+		(case tc_out tx
+		  of (TC_APP _ | TC_PROJ _ | TC_VAR _) => 
+			APPg(loop tx, tcsLexp(kenv, ts))
+		   | _ => tcode_void)
+	   | (TC_SEQ ts) => tcsLexp(kenv, ts)
+	   | (TC_PROJ(tx, i)) => SELECTg(i, loop tx)
+	   | (TC_PRIM pt) => 
+		if (pt = PT.ptc_real) then tcode_real 
+		else if (pt = PT.ptc_int32) then tcode_int32
+		     else tcode_void
+	   | (TC_VAR(i, j)) => RET[(VAR(vlookKE(kenv, i, j)))]
+	   | (TC_TUPLE (_, [t1,t2])) =>
+		(case (isFloat(kenv,t1), isFloat(kenv,t2))
+		  of (YES, YES) => tcode_fpair
+		   | ((NO, _) | (_, NO)) => tcode_pair
+		   | ((MAYBE e, YES) | (YES, MAYBE e)) =>
+			let val test = ieqLexp(e, tcode_real)
+			 in COND(test, tcode_fpair, tcode_pair)
+			end
+		   | (MAYBE e1, MAYBE e2) =>
+			let val e = iaddLexp(e1, e2)
+			    val test = ieqLexp(e, tcode_realN 2)
+			 in COND(test, tcode_fpair, tcode_pair)
+			end)
+	   | (TC_TUPLE (_, [])) => tcode_void
+	   | (TC_TUPLE (_, ts)) => tcode_record
+	   | (TC_ARROW (_,tc1,tc2)) => tcode_void
+	   | (TC_ABS tx) => loop tx
+	   | (TC_TOKEN(_,tx)) => loop tx           
+	   | (TC_FIX((n,tx,ts), i)) => 
+		let val ntx = 
+                      (case ts 
+                        of [] => tx
+                         | _ => 
+                            (case tc_out tx
+                              of TC_FN(_, x) => x
+                               | _ => bug "unexpected FIX 333 in tcLexp-loop"))
+                    val tk = 
+		     (case tc_out ntx
+		       of TC_FN (ks, _) => List.nth(ks, i)
+			| _ => bug "unexpected FIX tycs in tcLexp-loop")
+		 in case tk_out tk
+		     of TK_FUN(ks, _) => 
+			  (let val (_, hdr) = tkTfn(kenv, ks)
+			    in hdr(tcode_void)
+			   end)
+		      | _ => tcode_void
+		end
+	   | (TC_SUM _) => bug "unexpected TC_SUM tyc in tcLexp-loop"
+	   | (TC_ENV _) => bug "unexpected TC_ENV tyc in tcLexp-loop"
+	   | (TC_CONT _) => bug "unexpected TC_CONT tyc in tcLexp-loop"
+	   | (TC_IND _) => bug "unexpected TC_IND tyc in tcLexp-loop"
+	   | (TC_NVAR _) => bug "unexpected TC_NVAR tyc in tcLexp-loop"
+	   |  _ => bug "unexpected tyc in tcLexp-loop")
+   in loop tc
+  end (* function tcLexp *)
 
-val initKE = RT.initKE
+and tcsLexp (kenv, ts) = 
+  let fun h tc = tcLexp kenv tc
+   in RECORDg(map h ts)
+  end (* function tcsLexp *)
 
-val tcLexp = RT.rtLexp
-val tsLexp = RT.tsLexp
+and tsLexp (kenv, ts) = 
+  let fun h tc = tcLexp kenv tc
+   in SRECORDg(map h ts)
+  end (* function tsLexp *)
 
-val isFloat  = RT.isFloat 
+(** an improvement is to lift all of these code to the start of the 
+    compilation unit *)
+(*** THE FOLLOWING CODE IS ROUGH AND NEEDS TO BE POLISHED ! ***)
+and isFloat (kenv, tc) = 
+  let fun loop x = 
+	(case (tc_out x)
+	  of (TC_PRIM pt) => 
+		if (pt = PT.ptc_real) then YES else NO
+	   | (TC_TUPLE (_, ts)) => NO
+	   | (TC_ARROW (_,tc1,tc2)) => NO
+	   | (TC_TOKEN(_,tx)) => loop tx
+	   | (TC_FIX(_, i)) => NO
+	   | (TC_APP(tx, _)) => 
+		(case tc_out tx
+		  of (TC_APP _ | TC_PROJ _ | TC_VAR _) => 
+		       MAYBE(tcLexp kenv x)
+		   | _ => NO)
+	  (* | (TC_ABS tx) => loop tx  *)
+	   | (TC_VAR(i,j)) =>
+		let val k = klookKE(kenv, i, j)
+		 in case (tk_out k)
+		     of TK_BOX => NO
+		      | _ => MAYBE(tcLexp kenv x)
+		end 
+	   | _ => MAYBE(tcLexp kenv x))
 
-val isPair = RT.isPair
+   in loop tc
+  end
 
+fun isPair (kenv, tc) = 
+  let fun loop x = 
+	(case (tc_out x)
+	  of (TC_PRIM pt) => NO
+	   | (TC_TUPLE (_, [_,_])) => YES
+	   | (TC_TUPLE _) => NO
+	   | (TC_ARROW _) => NO
+	   | (TC_TOKEN(_,tx)) => loop tx
+	   | (TC_FIX(_, i)) => NO
+	   | (TC_APP(tx, _)) => 
+		(case tc_out tx
+		  of (TC_APP _ | TC_PROJ _ | TC_VAR _ | TC_NVAR _) => 
+		       MAYBE(tcLexp kenv x)
+		   | _ => NO)
+       (*    | (TC_ABS tx) =>  loop tx  *)
+	   | _ => MAYBE(tcLexp kenv x))
+
+   in loop tc
+  end
 
 (****************************************************************************
  *                      TYPED INTERPRETATION OF UNTAGGED                    *
  ****************************************************************************)
-
 (** tc is of kind Omega; this function tests whether tc can be int31 ? *)
 fun tcTag (kenv, tc) = 
   let fun loop x =     (* a lot of approximations in this function *)
@@ -561,5 +706,4 @@ fun arrNew(tc, pv, rv, kenv) =
 
 end (* toplevel local *)
 end (* structure TypeOper *)
-
 

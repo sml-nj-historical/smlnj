@@ -68,9 +68,6 @@ end
 
 (*
  * $Log: ra-params.sig,v $
- * Revision 1.1.1.1  1998/11/16 21:49:10  george
- *   Version 110.10
- *
  * Revision 1.2  1998/07/25 03:08:23  george
  *   added to support block names in MLRISC
  *

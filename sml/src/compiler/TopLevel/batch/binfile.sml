@@ -7,7 +7,7 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
     structure Err = ErrorMsg
     structure CB = CompBasic
 
-    exception FormatError
+    exception FormatError = CodeObj.FormatError
     exception NoCodeBug
     exception NoPickleBug
 
@@ -221,7 +221,7 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 	in
 	    if n = Word8Vector.length bv then bv
 	    else error (concat["expected ", Int.toString n,
-			       " byte, but found ",
+			       " bytes, but found ",
 			       Int.toString(Word8Vector.length bv)])
 	end
 
@@ -359,18 +359,29 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 	      | _ => error "env PID list"
 	end
 
-	(* must be called with second arg >= 0 *)
-	fun readCodeList (_, 0) = []
-	  | readCodeList (s, n) = let
-		val sz = readInt32 s
-		val n' = n - sz - 4
-		val c = if n' < 0 then error "code size" else bytesIn (s, sz)
-	    in
-		c :: readCodeList (s, n')
-	    end
+      (* must be called with second arg >= 0 *)
+	fun readCodeList (strm, name, nbytes) = let
+	      fun readCode 0 = []
+		| readCode n = let
+		    val sz = readInt32 strm
+		    val n' = n - sz - 4
+		    in
+		      if n' < 0
+			then error "code size"
+			else CodeObj.input(strm, sz, SOME name) :: readCode n'
+		    end
+	      val dataSz = readInt32 strm
+	      val n' = nbytes - dataSz - 4
+	      val data = if n' < 0 then error "data size" else bytesIn (strm, dataSz)
+	      in
+		case readCode n'
+		 of (c0 :: cn) => {data = data, c0 = c0, cn = cn}
+		  | [] => error "missing code objects"
+		(* end case *)
+	      end
     in
 	fun read args = let
-	    val { name = n, stream = s, senv = context, keep_code} = args
+	    val { name, stream = s, senv = context, keep_code} = args
 	    val { nExports = ne, lambdaSz = sa2,
 		  res1Sz, res2Sz, codeSz = cs, envSz = es,
 		  imports, exportPid, cmData,
@@ -384,11 +395,7 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 		end
 	    val _ = if res1Sz = 0 andalso res2Sz = 0
 			then () else error "non-zero reserved size"
-	    val code = (case readCodeList (s, cs) of
-			    data :: c0 :: cn =>
-				{ data = data, c0 = c0, cn = cn,
-				  name = ref (SOME n) }
-			  | _ => error "missing code objects")
+	    val code = readCodeList (s, name, cs)
 	    val penv = bytesIn (s, es)
 	    val _ =
 		if Word8Vector.length penv = es then ()
@@ -427,12 +434,15 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 		   | _ => Word8Vector.length lambdaP)
 	    val res1Sz = 0
 	    val res2Sz = 0
-	    val { data, c0, cn , ...} = codeSegments bfc
-	    fun csize c = (Word8Vector.length c) + 4 (* including size field *)
-	    val cs =
-		foldl (fn (c, a) => (csize c) + a) (csize c0 +csize data) cn
-	    fun codeOut c = (writeInt32 s (Word8Vector.length c);
-			     BinIO.output (s, c))
+	    val csegs = codeSegments bfc
+	  (* compute size of code objects (including length fields) *)
+	    val cs = List.foldl
+		  (fn (co, n) => n + CodeObj.size co + 4)
+		    (CodeObj.size(#c0 csegs) + Word8Vector.length(#data csegs) + 8)
+		      (#cn csegs)
+	    fun codeOut c = (
+		  writeInt32 s (CodeObj.size c);
+		  CodeObj.output (s, c))
 	in
 	    BinIO.output (s, MAGIC);
 	    app (writeInt32 s) [leni, ne, importSzB, cmInfoSzB];
@@ -443,15 +453,14 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 	    (* arena1 *)
 	    writePidList (s, envPids);
 	    (* arena2 *)
-	    case lu of
-		NONE => ()
-	      | _ => BinIO.output (s, lambdaP);
+	    case lu of NONE => () | _ => BinIO.output (s, lambdaP);
 	    (* arena3 is empty *)
 	    (* arena4 is empty *)
 	    (* code objects *)
-	    codeOut data;
-	    codeOut c0;
-	    app codeOut cn;
+	    writeInt32 s (Word8Vector.length(#data csegs));
+	      BinIO.output(s, #data csegs);
+	    codeOut (#c0 csegs);
+	    app codeOut (#cn csegs);
 	    BinIO.output (s, senvP);
 	    if keep_code then () else discardCode bfc;
 	    dropPickle lambda;

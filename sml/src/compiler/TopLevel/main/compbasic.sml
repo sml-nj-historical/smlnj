@@ -9,12 +9,9 @@ type ast        = Ast.dec
 type absyn      = Absyn.dec           
 type flint      = FLINT.prog         
 type dsegment   = Word8Vector.vector
-type csegments  = {c0 : Word8Vector.vector, 
-                   cn : Word8Vector.vector list, 
-                   data : Word8Vector.vector, 
-                   name : string option ref}
+type csegments  = CodeObj.csegments
 type object     = Unsafe.Object.object            
-type executable = object -> object
+type executable = CodeObj.executable
 
 datatype importTree = ITNODE of (int * importTree) list
 

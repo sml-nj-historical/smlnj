@@ -142,9 +142,6 @@ structure OS_FileSys : OS_FILE_SYS =
 
 (*
  * $Log: os-filesys.sml,v $
- * Revision 1.2  1998/08/21 17:29:28  jhr
- *   Changed types of mkRelative and mkAbsolute to track basis changes.
- *
  * Revision 1.1.1.1  1998/04/08 18:39:58  george
  * Version 110.5
  *

@@ -455,16 +455,16 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
 
       /* allocate space and read code object */
 	codeObj = ML_AllocCode (msp, thisSzB+extraLen);
-	ReadBinFile (file, STR_MLtoC(codeObj), thisSzB, binDir, fname);
+	ReadBinFile (file, PTR_MLtoC(char, codeObj), thisSzB, binDir, fname);
 
       /* tack on the bin-file name as a comment string. */
-	memcpy (STR_MLtoC(codeObj)+thisSzB+padLen, fname, strLen);
-	*(GET_SEQ_DATAPTR(Byte_t, codeObj)+thisSzB+extraLen-1) = (Byte_t)strLen;
+	memcpy (PTR_MLtoC(char, codeObj)+thisSzB+padLen, fname, strLen);
+	*(PTR_MLtoC(Byte_t, codeObj)+thisSzB+extraLen-1) = (Byte_t)strLen;
 	
-	FlushICache (STR_MLtoC(codeObj), thisSzB);
+	FlushICache (PTR_MLtoC(char, codeObj), thisSzB);
       
       /* create closure */
-	REC_ALLOC1 (msp, closure, GET_SEQ_DATA(codeObj));
+	REC_ALLOC1 (msp, closure, codeObj);
 
       /* apply the closure to the import PerID vector */
 	SaveCState (msp, &BinFileList, NIL(ml_val_t *));

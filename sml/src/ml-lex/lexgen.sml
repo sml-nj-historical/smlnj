@@ -47,10 +47,6 @@ see the COPYRIGHT NOTICE for details and restrictions.
 	05/18/95 (jhr) changed Vector.vector to Vector.fromList
 *
  * $Log: lexgen.sml,v $
- * Revision 1.2  1998/06/02 15:56:43  appel
- * Doubled speed (typically) by computing yytext only when used;
- * made certain subscripts Unsafe.
- *
  * Revision 1.1.1.1  1998/04/08 18:40:10  george
  * Version 110.5
  *

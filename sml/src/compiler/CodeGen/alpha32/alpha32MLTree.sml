@@ -26,11 +26,13 @@ structure Alpha32AsmEmitter=
 
 structure Alpha32MCEmitter = 
   Alpha32MCEmitter(structure Instr=Alpha32Instr
-		   structure PseudoOps=Alpha32PseudoOps)
+		   structure PseudoOps=Alpha32PseudoOps
+		   structure CodeString=CodeString)
 
 structure Alpha32XMCEmitter = 
   Alpha32XMCEmitter(structure Instr=Alpha32Instr
-		   structure PseudoOps=Alpha32PseudoOps)
+		   structure PseudoOps=Alpha32PseudoOps
+		   structure CodeString=CodeString)
 
 
 structure Alpha32MLTree = 

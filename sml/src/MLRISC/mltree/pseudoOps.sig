@@ -31,9 +31,6 @@ end
 
 (*
  * $Log: pseudoOps.sig,v $
- * Revision 1.2  1998/12/21 17:05:10  jhr
- *   Got rid of "removable" function.
- *
  * Revision 1.1.1.1  1998/11/16 21:49:03  george
  *   Version 110.10
  *

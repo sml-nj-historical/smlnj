@@ -112,8 +112,5 @@ signature SOURCE_MAP = sig
 end
 
 (*
- * $Log: sourcemap.sig,v $
- * Revision 1.1.1.1  1998/04/08 18:39:16  george
- * Version 110.5
- *
+ * $Log$
  *)

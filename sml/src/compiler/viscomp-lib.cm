@@ -53,6 +53,8 @@ TopLevel/interact/interact.sig
 TopLevel/interact/interact.sml
 TopLevel/main/cconfig.sig
 TopLevel/main/codes.sig
+TopLevel/main/code-obj.sig
+TopLevel/main/code-obj.sml
 TopLevel/main/compbasic.sig
 TopLevel/main/compbasic.sml
 TopLevel/main/compile.sig
@@ -185,7 +187,6 @@ FLINT/flint/flint.sml
 FLINT/flint/flintutil.sml
 FLINT/flint/ppflint.sig
 FLINT/flint/ppflint.sml
-FLINT/flint/tvarcvt.sml
 FLINT/kernel/debindex.sig
 FLINT/kernel/debindex.sml
 FLINT/kernel/lambdavar.sig
@@ -205,15 +206,9 @@ FLINT/kernel/primtyc.sig
 FLINT/kernel/primtyc.sml
 FLINT/main/flintcomp.sml
 FLINT/main/literals.sml
-FLINT/opt/fixfix.sml
-FLINT/opt/collect.sml
-FLINT/opt/fcontract.sml
-FLINT/opt/optutils.sml
 FLINT/opt/lcontract.sml
 FLINT/opt/recover.sml
 FLINT/opt/specialize.sml
-FLINT/opt/loopify.sml
-FLINT/opt/lift.sml
 FLINT/plambda/chkplexp.sml
 FLINT/plambda/flintnm.sml
 FLINT/plambda/pflatten.sig
@@ -281,6 +276,7 @@ CodeGen/hppa/hppaMask.sml
 CodeGen/hppa/hppaMillicode.sml
 CodeGen/hppa/hppagen.sml
 CodeGen/hppa/hppaspec.sml
+CodeGen/main/code-string.sml
 CodeGen/main/cpsgen.sig
 CodeGen/main/machspec.sig
 CodeGen/main/machspec.sml

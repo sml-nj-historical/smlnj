@@ -9,8 +9,8 @@ type source                         (* the input file *)
 type ast                            (* concrete syntax *)
 type absyn                          (* abstract syntax *)
 type flint                          (* intermediate code *)
-type csegments                      (* binary code segments *)
-type executable                     (* machine executables *)
+type csegments = CodeObj.csegments  (* binary code segments *)
+type executable = CodeObj.executable(* machine executables *)
 type object                         (* resulting runtime object *)
 
 datatype importTree = ITNODE of (int * importTree) list

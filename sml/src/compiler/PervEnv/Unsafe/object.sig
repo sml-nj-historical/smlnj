@@ -60,9 +60,6 @@ signature UNSAFE_OBJECT =
 
 (*
  * $Log: object.sig,v $
- * Revision 1.4  1998/11/23 20:10:09  jhr
- *   New raw64Subscript primop.
- *
  * Revision 1.3  1998/11/18 03:54:22  jhr
  *  New array representations.
  *

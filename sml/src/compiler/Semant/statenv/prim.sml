@@ -547,9 +547,6 @@ end (* structure PrimEnv *)
 
 (*
  * $Log: prim.sml,v $
- * Revision 1.4  1998/11/23 20:10:19  jhr
- *   New raw64Subscript primop.
- *
  * Revision 1.3  1998/10/28 18:25:17  jhr
  *   New primops to support new array representation.
  *

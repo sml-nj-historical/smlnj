@@ -5,10 +5,7 @@
 
 
 (*
- * $Log: ml.lex,v $
- * Revision 1.3  1998/05/25 21:01:37  george
- *   Move RCS log messages to the beginning of file
- *
+ * $Log$
  *)
 
 open ErrorMsg;

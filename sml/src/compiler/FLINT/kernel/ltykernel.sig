@@ -29,7 +29,7 @@ datatype rflag = RF_TMP                       (* tuple kind: a template *)
 
 datatype tycI
   = TC_VAR of DebIndex.index * int            (* tyc variable *)
-  | TC_NVAR of tvar                           (* named tyc variable *)
+  | TC_NVAR of tvar * DebIndex.depth * int    (* named tyc variable *)
   | TC_PRIM of PrimTyc.primtyc                (* primitive tyc *)
   | TC_FN of tkind list * tyc                 (* tyc abstraction *)
   | TC_APP of tyc * tyc list                  (* tyc application *)
@@ -102,8 +102,6 @@ val ltp_norm : lty -> bool
 (** finding out the depth for a tyc's innermost-bound free variables *)
 val tc_depth : tyc * DebIndex.depth -> DebIndex.depth
 val tcs_depth: tyc list * DebIndex.depth -> DebIndex.depth
-val tc_nvars : tyc -> tvar list
-val lt_nvars : lty -> tvar list
 
 (** utility functions on tkindEnv *)
 type tkindEnv 
@@ -149,12 +147,3 @@ val token_key     : int -> token
 val wrap_token    : token
 
 end (* signature LTYKERNEL *)
-
-
-
-(*
- * $Log: ltykernel.sig,v $
- * Revision 1.4  1998/12/22 17:01:48  jhr
- *   Merged in 110.10 changes from Yale.
- *
- *)

@@ -23,6 +23,7 @@ LIBRARY =	libsmlnj-runt.lib
 VERSION =	v-dummy
 
 OBJS =		smlnj-runt-lib.obj \
+		alloc-code.obj \
 		argv.obj \
 		raw-argv.obj \
 		cmd-name.obj \
@@ -33,6 +34,7 @@ OBJS =		smlnj-runt-lib.obj \
 		export-heap.obj \
 		export-fun.obj \
 		gc-ctl.obj \
+		mkexec.obj \
 		mkcode.obj \
 		sysinfo.obj \
 		itick.obj \

@@ -47,21 +47,6 @@ exception TkTycChk
 exception LtyAppChk
 val lt_inst_chk_gen : unit -> lty * tyc list * tkindEnv -> lty list
 
-(* substitution of named type variables *)
-(*** CLEAN THIS UP ***)
-val tc_nvar_elim_gen : unit -> (tvar * DebIndex.depth -> tyc option) 
-                            -> DebIndex.depth -> tyc -> tyc
-val lt_nvar_elim_gen : unit -> (tvar * DebIndex.depth -> tyc option) 
-                            -> DebIndex.depth -> lty -> lty
-
-val tc_nvar_subst_gen : unit -> (tvar * tyc) list -> tyc -> tyc
-val lt_nvar_subst_gen : unit -> (tvar * tyc) list -> lty -> lty
-
-val tc_nvar_cvt_gen : unit -> (tvar * int) list 
-                           -> DebIndex.depth -> tyc -> tyc
-val lt_nvar_cvt_gen : unit -> (tvar * int) list 
-                           -> DebIndex.depth -> lty -> lty
-
 (* special adjustment functions used during type specializations *)
 val lt_sp_adj : tkind list * lty * tyc list * int * int -> lty
 val tc_sp_adj : tkind list * tyc * tyc list * int * int -> tyc
@@ -97,11 +82,3 @@ val twrap_gen   : bool -> ((tyc -> tyc) * (lty -> lty) *
 val tnarrow_gen : unit -> ((tyc -> tyc) * (lty -> lty) * (unit -> unit))
 
 end (* signature LTYEXTERN *)
-
-
-(*
- * $Log: ltyextern.sig,v $
- * Revision 1.2  1998/12/22 17:01:46  jhr
- *   Merged in 110.10 changes from Yale.
- *
- *)

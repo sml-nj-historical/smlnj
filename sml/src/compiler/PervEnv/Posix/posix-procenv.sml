@@ -99,8 +99,5 @@ structure POSIX_ProcEnv =
   end (* structure POSIX_Proc_Env *)
 
 (*
- * $Log: posix-procenv.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:57  george
- * Version 110.5
- *
+ * $Log$
  *)

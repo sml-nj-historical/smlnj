@@ -22,8 +22,5 @@ sig
 end
 
 (*
- * $Log: mlrisc-idefs.sig,v $
- * Revision 1.1.1.1  1998/11/16 21:46:54  george
- *  Version 110.10
- *
+ * $Log$
  *)

@@ -1133,10 +1133,6 @@ end (* MLRiscGen *)
 
 (*
  * $Log: mlriscGen.sml,v $
- * Revision 1.11  1998/11/23 20:09:42  jhr
- *   Fixed length field of raw64 objects (should be in words); new raw64Subscript
- *   primop.
- *
  * Revision 1.10  1998/11/18 03:53:11  jhr
  *  New array representations.
  *

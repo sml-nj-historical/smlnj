@@ -268,9 +268,6 @@ end
 
 (*
  * $Log: flowgen.sml,v $
- * Revision 1.1.1.1  1998/11/16 21:47:21  george
- *   Version 110.10
- *
  * Revision 1.4  1998/07/25 03:08:17  george
  *   added to support block names in MLRISC
  *

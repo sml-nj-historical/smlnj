@@ -36,8 +36,7 @@ fun say (s : string) = Control.Print.say s
 
 fun mkv _ = LV.mkLvar ()
 val ident = fn le => le
-val fkfun = {isrec=NONE, known=false, inline=IH_ALWAYS, cconv=CC_FUN LT.ffc_fixed}
-val fkfct = {isrec=NONE, known=false, inline=IH_SAFE, cconv=CC_FCT}
+val fkfun = FK_FUN{isrec=NONE, known=false, inline=true, fixed=LT.ffc_fixed}
 fun fromto(i,j) = if i < j then (i::fromto(i+1,j)) else []
 
 fun opList (NONE :: r) = opList r
@@ -287,7 +286,7 @@ fun ltLoop wflag (nx, ox) =
                       end
                     val body = hdr(appWraps(wps, nvs, cont))
                     val ax = if wflag then ox else nx
-                    val fdec = (fkfct, f, [(v, ax)], body)
+                    val fdec = (FK_FCT, f, [(v, ax)], body)
                  in SOME(doWrap(f, fdec))
                 end
               else NONE
@@ -310,9 +309,9 @@ fun ltLoop wflag (nx, ox) =
                               appWraps(wps1, avs, fn wvs => APP(VAR f, wvs)),
                               appWraps(wps2, map VAR rvs, fn wvs => RET wvs))
 
-                        val rfdec = (fkfct, rf, params, rbody)
+                        val rfdec = (FK_FCT, rf, params, rbody)
                         val body = FIX([rfdec], RET[VAR rf])
-                        val fdec = (fkfct, wf, [(f, ax)], body)
+                        val fdec = (FK_FCT, wf, [(f, ax)], body)
                      in SOME (doWrap(wf, fdec))
                     end)
           end
@@ -333,7 +332,7 @@ fun ltLoop wflag (nx, ox) =
                         val nrbody = wpBuild(nwenv, rbody)
                         val atvks = map (fn k => (LT.mkTvar(),k)) aks
                         val body = TFN((rf, atvks, nrbody), RET[VAR rf])
-                        val fdec = (fkfct, wf, [(f, ax)], body)
+                        val fdec = (FK_FCT, wf, [(f, ax)], body)
                      in SOME(doWrap(wf, fdec))
                     end)
           end
@@ -352,25 +351,16 @@ end (* function wrapperGen *)
 fun unwrapOp (wenv, nts, ots, d) = 
   let val nts' = map lt_norm nts
       val ots' = map lt_norm ots
-      val sflag = !Control.FLINT.sharewrap
+      val sflag = !Control.CG.sharewrap
    in wrapperGen (false, sflag) (wenv, nts', ots', d)
   end (* function unwrapOp *)
 
 fun wrapOp (wenv, nts, ots, d) = 
   let val nts' = map lt_norm nts
       val ots' = map lt_norm ots
-      val sflag = !Control.FLINT.sharewrap
+      val sflag = !Control.CG.sharewrap
    in wrapperGen (true, sflag) (wenv, nts', ots', d)
   end (* function wrapOp *)
 
 end (* toplevel local *)
 end (* structure Coerce *)
-
-
-
-(*
- * $Log: coerce.sml,v $
- * Revision 1.2  1998/12/22 17:02:01  jhr
- *   Merged in 110.10 changes from Yale.
- *
- *)

@@ -27,9 +27,6 @@ end (* FRAG *)
 
 (*
  * $Log: frag.sig,v $
- * Revision 1.2  1998/10/28 18:20:37  jhr
- *   Removed code generator support for STRING/REAL constants.
- *
  * Revision 1.1.1.1  1998/04/08 18:39:54  george
  * Version 110.5
  *

@@ -120,8 +120,5 @@ structure PosixTextPrimIO : sig
 
 
 (*
- * $Log: posix-text-prim-io.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:40:00  george
- * Version 110.5
- *
+ * $Log$
  *)

@@ -20,6 +20,7 @@ LIBRARY =	libsmlnj-runt.a
 VERSION =	v-dummy
 
 OBJS =		smlnj-runt-lib.o \
+		alloc-code.o \
 		argv.o \
 		raw-argv.o \
 		cmd-name.o \
@@ -32,6 +33,7 @@ OBJS =		smlnj-runt-lib.o \
 		gc-ctl.o \
 		itick.o \
 		mkcode.o \
+		mkexec.o \
 		mkliterals.o \
 		record1.o \
 		record-concat.o \

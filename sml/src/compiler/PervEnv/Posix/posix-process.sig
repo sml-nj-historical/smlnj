@@ -59,8 +59,5 @@ signature POSIX_PROCESS =
   end (* signature POSIX_PROCESS *)
 
 (*
- * $Log: posix-process.sig,v $
- * Revision 1.1.1.1  1998/04/08 18:39:57  george
- * Version 110.5
- *
+ * $Log$
  *)

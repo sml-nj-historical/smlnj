@@ -21,7 +21,6 @@ local structure DA = Access
       structure DI = DebIndex
       structure F  = FLINT
       structure FU = FlintUtil
-      structure M  = IntmapF
 
       open CPS 
 in
@@ -29,7 +28,6 @@ in
 fun bug s = ErrorMsg.impossible ("Convert: " ^ s)
 val say = Control.Print.say
 val mkv = fn _ => LV.mkLvar()
-val cplv = LV.dupLvar
 fun mkfn f = let val v = mkv() in f v end
 val ident = fn le => le
 val OFFp0 = OFFp 0
@@ -214,6 +212,7 @@ fun map_primop p =
      | AP.BOXEDUPDATE => PKS(P.boxedupdate)
      | AP.UPDATE => PKS(P.update)
      | AP.ASSIGN => PKS(P.assign)
+     | AP.UNBOXEDASSIGN => PKS(P.unboxedassign)
      | AP.SETVAR => PKS(P.setvar)
      | AP.SETPSEUDO => PKS(P.setpseudo)
      | AP.SETMARK => PKS(P.setmark)
@@ -278,12 +277,36 @@ fun makmc (cnt, ts) = MCONT{cnt=cnt, ts=ts}
 (* rttys : mcont -> cty list *)
 fun rttys (MCONT{ts, ...}) = ts
 
+(* isEta : cexp * value list -> value option *)
+fun isEta (APP(w, vl), ul) = 
+      let fun h (x::xs, y::ys) = 
+                  if (veq(x, y)) andalso (not (veq(w, y)))
+                  then h(xs, ys) else NONE
+            | h ([], []) = SOME w
+            | h _ = NONE
+       in h(ul, vl)
+      end
+  | isEta _ = NONE
+
+(* preventEta : mcont -> (cexp -> cexp) * value *)
+fun preventEta (MCONT{cnt=c, ts=ts}) = 
+  let val vl = map mkv ts
+      val ul = map VAR vl
+      val b = c ul
+   in case isEta(b, ul) 
+       of SOME w => (ident, w)
+        | NONE => let val f = mkv()
+                   in (fn x => FIX([(CONT,f,vl,ts,b)],x), VAR f)
+                  end
+  end (* function preventEta *)
+
 (***************************************************************************
  *                        THE MAIN FUNCTION                                *
  *                   convert : F.prog -> CPS.function                      *   
  ***************************************************************************)
 fun convert fdec = 
- let val {getLty=getlty, cleanUp} = Recover.recover (fdec, true)
+ let val {getLty=getLtyGen, cleanUp} = Recover.recover (fdec, true)
+     val getlty = getLtyGen DI.top
      val ctypes = map ctype
      fun res_ctys f = 
        let val lt = getlty (F.VAR f)
@@ -322,36 +345,7 @@ fun convert fdec =
      fun newnames (v::vs, w::ws) = (newname(v,w); newnames(vs, ws))
        | newnames ([], []) = ()
        | newnames _ = bug "unexpected case in newnames"
-
-     (* isEta : cexp * value list -> value option *)
-     fun isEta (APP(w as VAR lv, vl), ul) = 
-	 (* If the function is in the global renaming table and it's
-	  * renamed to itself, then it's most likely a while loop and
-	  * should *not* be eta-reduced *)
-	 if ((case Intmap.map m lv of VAR lv' => lv = lv' | _ => false)
-		 handle Rename => false) then NONE else
-	     let fun h (x::xs, y::ys) = 
-		     if (veq(x, y)) andalso (not (veq(w, y)))
-		     then h(xs, ys) else NONE
-		   | h ([], []) = SOME w
-		   | h _ = NONE
-	     in h(ul, vl)
-	     end
-       | isEta _ = NONE
-
      end (* local of Rename *)
-
-     (* preventEta : mcont -> (cexp -> cexp) * value *)
-     fun preventEta (MCONT{cnt=c, ts=ts}) = 
-	 let val vl = map mkv ts
-	     val ul = map VAR vl
-	     val b = c ul
-	 in case isEta(b, ul) 
-	     of SOME w => (ident, w)
-	      | NONE => let val f = mkv()
-		in (fn x => FIX([(CONT,f,vl,ts,b)],x), VAR f)
-		end
-	 end (* function preventEta *)
 
      (* switch optimization *)
      val do_switch = do_switch_gen rename
@@ -376,9 +370,18 @@ fun convert fdec =
         in h(vl, [])
        end
      
+     (* lpfd : F.fundec -> function *)
+     fun lpfd ((fk, f, vts, e) : F.fundec) = 
+       let val k = mkv()
+           val vl = k::(map #1 vts)
+           val cl = CNTt::(map (ctype o #2) vts)
+           val kont = makmc (fn vs => APP(VAR k, vs), res_ctys f)
+        in (ESCAPE, f, vl, cl, loop(e, kont))
+       end
+     
      (* loop : F.lexp * (value list -> cexp) -> cexp *)
-     fun loop' m (le, c) = let val loop = loop' m
-     in case le
+     and loop (le, c) = 
+       (case le 
          of F.RET vs => appmc(c, lpvars vs)
           | F.LET(vs, e1, e2) =>
               let val kont = 
@@ -387,51 +390,13 @@ fun convert fdec =
                in loop(e1, kont)
               end
      	  
-          | F.FIX(fds, e) =>
-	    (* lpfd : F.fundec -> function *)
-	    let fun lpfd ((fk, f, vts, e) : F.fundec) = 
-		    let val k = mkv()
-			val cl = CNTt::(map (ctype o #2) vts)
-			val kont = makmc (fn vs => APP(VAR k, vs), res_ctys f)
-			val (vl,body) =
-			    case fk
-			     of {isrec=SOME(_,F.LK_TAIL),...} => let
-				 (* for tail recursive loops, we create a
-				  * local function that takes its continuation
-				  * from the environment *)
-				 val f' = cplv f
-				 (* here we add a dumb entry for f' in the
-				  * global renaming table just so that isEta
-				  * can avoid eta-reducing it *)
-				 val _ = newname(f', VAR f')
-				 val vl = k::(map (cplv o #1) vts)
-				 val vl' = map #1 vts
-				 val cl' = map (ctype o #2) vts
-			     in
-				 (vl,
-				  FIX([(KNOWN_TAIL, f', vl', cl',
-					(* add the function to the tail map *)
-					loop' (M.add(m,f,f')) (e, kont))],
-				      APP(VAR f', map VAR (tl vl))))
-			     end
-			      | _ => (k::(map #1 vts), loop(e, kont))
-		    in (ESCAPE, f, vl, cl, body)
-		    end
-	    in FIX(map lpfd fds, loop(e, c))   
-	    end
-          | F.APP(f as F.VAR lv, vs) =>
-	    (* first check if it's a recursive call to a tail loop *)
-	    (let val f' = M.lookup m lv
-	    in APP(VAR f', lpvars vs)
-	    end handle M.IntmapF =>
-		     (* code for the non-tail case.
-		      * Sadly this is *not* exceptional *)
-		     let val (hdr, F) = preventEta c
-			 val vf = lpvar f
-			 val ul = lpvars vs
-		     in hdr(APP(vf, F::ul))
-		     end)
-          | F.APP _ => bug "unexpected APP in convert"
+          | F.FIX(fds, e) => FIX(map lpfd fds, loop(e, c))   
+          | F.APP(f, vs) => 
+              let val (hdr, F) = preventEta c
+                  val vf = lpvar f
+                  val ul = lpvars vs
+               in hdr(APP(vf, F::ul))
+              end
      	  
           | (F.TFN _ | F.TAPP _) => 
               bug "unexpected TFN and TAPP in convert"
@@ -608,14 +573,13 @@ fun convert fdec =
                   val kont = makmc(fn vl => APP(F, vl), rttys c)
                in hdr(BRANCH(map_branch p, lpvars ul, mkv(),
                              loop(e1, kont), loop(e2, kont)))
-              end
-     end
+              end)
  
     (* processing the top-level fundec *)
     val (fk, f, vts, be) = fdec
     val k = mkv()    (* top-level return continuation *)
     val kont = makmc (fn vs => APP(VAR k, vs), res_ctys f)
-    val body = loop' M.empty (be, kont)
+    val body = loop(be, kont)
 
     val vl = k::(map #1 vts)
     val cl = CNTt::(map (ctype o #2) vts)
@@ -624,12 +588,4 @@ end (* function convert *)
 
 end (* toplevel local *)
 end (* functor Convert *)
-
-
-(*
- * $Log: convert.sml,v $
- * Revision 1.7  1998/12/22 17:01:23  jhr
- *   Merged in 110.10 changes from Yale.
- *
- *)
 
