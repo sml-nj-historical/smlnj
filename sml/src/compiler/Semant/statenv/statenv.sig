@@ -26,6 +26,3 @@ sig
 end (* signature STATICENV *)
 
 
-(*
- * $Log$
- *)

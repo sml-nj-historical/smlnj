@@ -30,6 +30,3 @@ sig
 end (* signature ELABTYPE *)
 
 
-(*
- * $Log$
- *)

@@ -83,6 +83,3 @@ end (* structure Precedence *)
 
 
 
-(*
- * $Log$
- *)

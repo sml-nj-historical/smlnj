@@ -32,6 +32,3 @@ sig
 
 end (* signature ENTITY_ENV *)
 
-(*
- * $Log$
- *)

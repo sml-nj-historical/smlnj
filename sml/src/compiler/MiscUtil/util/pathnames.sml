@@ -40,6 +40,3 @@ structure Pathnames : PATHNAMES =
 *)
 end
 
-(*
- * $Log$
- *)

@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
  *)
 
-Group
+Library
   functor PPStreamFn
   functor PPDebugFn
   structure SimpleTextIODev
@@ -12,7 +12,6 @@ Group
   structure HTML
   structure PrHTML
 is
-  ../../HTML/sources.cm
-  ../src/sources.cm
-  ../devices/sources.cm
-
+  basis.cm
+  html-lib.cm
+  pp-lib.cm

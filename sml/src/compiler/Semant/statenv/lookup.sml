@@ -158,6 +158,3 @@ fun lookExn (env,path,err) : V.datacon =
 end (* local *)
 end (* structure Lookup *)
 
-(*
- * $Log$
- *)

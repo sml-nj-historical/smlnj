@@ -1,4 +1,4 @@
-Library
+Group (viscomp-lib.cm)
 	signature GRAPH_DISPLAY
 	signature GRAPH_VIEWER
 	structure daVinci

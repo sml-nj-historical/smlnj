@@ -30,6 +30,3 @@ end (* structure PersStamps *)
 
 
 
-(*
- * $Log$
- *)

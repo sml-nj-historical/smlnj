@@ -21,6 +21,3 @@ sig
 end (* signature PRINTUTIL *)
 
 
-(*
- * $Log$
- *)

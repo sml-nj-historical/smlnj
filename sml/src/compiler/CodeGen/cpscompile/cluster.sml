@@ -104,6 +104,3 @@ struct
   end (* cluster *)
 end
 
-(*
- * $Log$
- *)

@@ -27,6 +27,3 @@ struct
 
 end (* structure Fixity *)
 
-(*
- * $Log$
- *)

@@ -54,6 +54,3 @@ sig
 end (* signature PPUTIL *)
 
 
-(*
- * $Log$
- *)

@@ -48,6 +48,3 @@ sig
 end (* signature ENVIRONMENT *)
 
 
-(*
- * $Log$
- *)

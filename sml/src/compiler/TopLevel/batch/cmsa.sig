@@ -27,6 +27,3 @@ signature CMSA = sig
 end (* signature CMSA *)
 
 
-(*
- * $Log$
- *)

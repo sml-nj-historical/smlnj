@@ -1210,7 +1210,7 @@ fun lexGen(infile) =
 	 sayln "\t\t\t(let fun yymktext() = substring(!yyb,i0,i-i0)\n\
 	       \\t\t\t     val yypos = i0+ !yygone";
 	 if !CountNewLines 
-	    then (sayln "\t\t\tval _ = yylineno := CharVector.foldl";
+	    then (sayln "\t\t\tval _ = yylineno := CharVector.foldli";
 	  	  sayln "\t\t\t\t(fn (_,#\"\\n\", n) => n+1 | (_,_, n) => n) (!yylineno) (!yyb,i0,SOME(i-i0))")
 	    else ();
 	 if !HaveReject

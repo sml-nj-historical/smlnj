@@ -31,6 +31,3 @@ signature PROFILE =
 
   end;
 
-(*
- * $Log$
- *)

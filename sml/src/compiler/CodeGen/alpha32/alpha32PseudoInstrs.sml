@@ -53,6 +53,3 @@ struct
   fun cvti2s _ = error "cvti2s"
 end
 
-(*
- * $Log$
- *)

@@ -1483,20 +1483,3 @@ end (* local *)
 end (* structure SigMatch *)
 
 
-(*
- * $Log: sigmatch.sml,v $
- * Revision 1.7  1998/09/30 19:19:52  dbm
- * change in type of TYCspec, remove TY.unWrapDefStar (bugs 1364, 1432)
- *
- * Revision 1.5  1998/08/19 18:17:16  dbm
- * bug fixes for 110.9 [dbm]
- *
- * Revision 1.4  1998/07/22 17:54:53  dbm
- * fix error in compStr in chechSharing
- *
- * Revision 1.3  1998/05/23 14:10:11  george
- *   Fixed RCS keyword syntax
- *
- *
- *)
-

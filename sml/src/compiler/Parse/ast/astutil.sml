@@ -79,6 +79,3 @@ fun AntiquoteExp e = AppExp{function=VarExp antiquoteDcon,argument= e}
 end (* structure *)
 
 
-(*
- * $Log$
- *)

@@ -13,9 +13,3 @@ signature INTSTRMAP =
     val transform : ('a -> 'b) -> 'a intstrmap -> 'b intstrmap
   end
 
-(*
- * $Log: intstrmap.sig,v $
- * Revision 1.1.1.1  1998/04/08 18:39:14  george
- * Version 110.5
- *
- *)

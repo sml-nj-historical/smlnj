@@ -178,12 +178,3 @@ val nolimit = fn fl =>
 end (* local *)
 end (* structure Limit *)
 
-(*
- * $Log: limit.sml,v $
- * Revision 1.1  1998/10/28 18:20:39  jhr
- *   Removed code generator support for STRING/REAL constants.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:53  george
- * Version 110.5
- *
- *)

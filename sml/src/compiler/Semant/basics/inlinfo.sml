@@ -110,6 +110,3 @@ end (* toplevel local *)
 end (* structure InlInfo *)
 
 
-(*
- * $Log$
- *)

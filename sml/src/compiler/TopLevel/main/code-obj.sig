@@ -51,7 +51,3 @@ signature CODE_OBJ =
 
   end;
 
-(*
- * $Log$
- *)
-

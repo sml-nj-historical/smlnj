@@ -281,18 +281,3 @@ struct
   val finish = BBSched.finish
 end
 
-(*
- * $Log: sparcCG.sml,v $
- * Revision 1.4  1999/03/22 17:22:39  george
- *   Changes to support new GC API
- *
- * Revision 1.3  1999/01/18 15:49:30  george
- *   support of interactive loading of MLRISC optimizer
- *
- * Revision 1.2  1998/10/06 14:00:01  george
- * Flowgraph has been removed from modules that do not need it -- [leunga]
- *
- * Revision 1.1.1.1  1998/08/05 19:37:50  george
- *   Release 110.7.4
- *
- *)

@@ -336,6 +336,3 @@ end handle Poly =>
 end (* toplevel local *)                       
 end (* structure Equal *)
 
-(*
- * $Log$
- *)

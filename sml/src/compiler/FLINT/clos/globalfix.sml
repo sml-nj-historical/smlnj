@@ -43,6 +43,3 @@ in  (fk,f,vl,cl,body) :: l
 end
 end (* structure GlobalFix *)
 
-(*
- * $Log$
- *)

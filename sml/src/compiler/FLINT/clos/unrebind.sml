@@ -81,6 +81,3 @@ end (* local *)
 end (* structure UnRebind *)
 
 
-(*
- * $Log$
- *)

@@ -132,6 +132,3 @@ end (* local *)
 end (* structure Types *)
 
 
-(*
- * $Log$
- *)

@@ -627,6 +627,3 @@ end
 end (* structure FreeClose *)
 
 
-(*
- * $Log$
- *)

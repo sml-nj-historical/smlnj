@@ -29,6 +29,3 @@ sig
 
 end (* signature STAMPS *)
 
-(*
- * $Log$
- *)

@@ -80,6 +80,3 @@ fun expandTycon(tycon,context,entEnv) =
 end (* local *)
 end (* structure ExpandTycon *)
 
-(*
- * $Log$
- *)

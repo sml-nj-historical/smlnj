@@ -1,4 +1,4 @@
-Library
+Group (viscomp-lib.cm)
 	signature CONTROL_DEPENDENCE_GRAPH
 	signature CONTROL_FLOW_GRAPH_RESTRUCTURE
 	signature DJ_GRAPH

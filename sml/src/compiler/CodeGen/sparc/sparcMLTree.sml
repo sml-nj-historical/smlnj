@@ -53,18 +53,3 @@ structure SparcMLTree =
          )
 
 
-(*
- * $Log: sparcMLTree.sml,v $
- * Revision 1.4  1999/03/22 17:22:41  george
- *   Changes to support new GC API
- *
- * Revision 1.3  1998/12/30 20:21:23  jhr
- *   Modifications to support code generation directly into code objects.
- *
- * Revision 1.2  1998/10/06 14:00:02  george
- * Flowgraph has been removed from modules that do not need it -- [leunga]
- *
- * Revision 1.1.1.1  1998/08/05 19:37:50  george
- *   Release 110.7.4
- *
- *)

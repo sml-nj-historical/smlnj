@@ -90,18 +90,3 @@ end
 
 	
 
-(*
- * $Log: pseudoOpsLittle.sml,v $
- * Revision 1.7  1998/12/21 17:04:56  jhr
- *   Got rid of "removable" function.
- *
- * Revision 1.6  1998/11/18 03:53:10  jhr
- *  New array representations.
- *
- * Revision 1.5  1998/10/28 18:20:41  jhr
- *   Removed code generator support for STRING/REAL constants.
- *
- * Revision 1.4  1998/05/23 14:09:19  george
- *   Fixed RCS keyword syntax
- *
- *)

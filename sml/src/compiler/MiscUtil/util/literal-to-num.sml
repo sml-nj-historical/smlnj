@@ -58,6 +58,3 @@ structure LiteralToNum : LITERAL_TO_NUM =
   end
 
 
-(*
- * $Log$
- *)

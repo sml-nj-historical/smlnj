@@ -210,9 +210,3 @@ functor MemDisambiguate(structure Cells: CELLS) : MEM_DISAMBIGUATION = struct
 end
 
 
-(*
- * $Log: memDisambig.sml,v $
- * Revision 1.3  1998/05/23 14:09:18  george
- *   Fixed RCS keyword syntax
- *
- *)

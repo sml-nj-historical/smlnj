@@ -44,6 +44,3 @@ end (* signature PFLATTEN *)
 
 
 
-(*
- * $Log$
- *)

@@ -1621,10 +1621,3 @@ end (* local *)
 end (* structure ElabMod *)
 
 
-(*
- * $Log: elabmod.sml,v $
- * Revision 1.3  1998/05/23 14:10:01  george
- *   Fixed RCS keyword syntax
- *
- *
- *)

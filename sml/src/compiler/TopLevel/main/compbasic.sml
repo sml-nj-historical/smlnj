@@ -44,12 +44,3 @@ fun anyErrors ({anyErrors=ref b,...} : compInfo) = b
 
 end (* structure CompBasic *)
 
-(*
- * $Log: compbasic.sml,v $
- * Revision 1.4  1998/10/28 18:25:42  jhr
- *   New literal lifting and new Unsafe.Object API.
- *
- * Revision 1.3  1998/05/23 14:10:25  george
- *   Fixed RCS keyword syntax
- *
- *)

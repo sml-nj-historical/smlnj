@@ -204,6 +204,3 @@ end
 end (* local *) 
 end (* structure ElabTop *)
 
-(*
- * $Log$
- *)

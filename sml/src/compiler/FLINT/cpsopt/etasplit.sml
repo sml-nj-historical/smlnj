@@ -172,6 +172,3 @@ end (* toplevel local *)
 end (* functor EtaSplit *)
 
 
-(*
- * $Log$
- *)

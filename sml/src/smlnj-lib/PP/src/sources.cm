@@ -5,7 +5,7 @@
  * Sources file for Pretty Printing Library.
  *)
 
-Library
+Group (../pp-lib.cm)
 
   signature PP_DEVICE
   signature PP_TOKEN
@@ -15,7 +15,8 @@ Library
   functor PPDebugFn
 
 is
-  ../../Util/sources.cm
+  basis.cm
+  smlnj-lib.cm
 
   pp-device-sig.sml
   pp-token-sig.sml

@@ -122,6 +122,3 @@ fun reportfk() =
 end (* local *)
 end (* structure ReportSZ *)
 
-(*
- * $Log$
- *)

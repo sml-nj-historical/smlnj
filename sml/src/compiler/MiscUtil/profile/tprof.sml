@@ -366,6 +366,3 @@ end (* local *)
 end (* structure TProf *)
 
 
-(*
- * $Log$
- *)

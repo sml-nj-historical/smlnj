@@ -3,6 +3,3 @@
 
 structure PLambdaType : LTYEXTERN = LtyExtern
 
-(*
- * $Log$
- *)

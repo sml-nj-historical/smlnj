@@ -2,8 +2,9 @@
 
 Group is
 
-  ../smlnj-lib/Util/sources.cm 
-  ../ml-yacc/lib/sources.cm
+  basis.cm
+  smlnj-lib.cm 
+  ml-yacc-lib.cm
 
   errormsg.sml
   burg-ast.sml

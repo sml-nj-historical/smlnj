@@ -72,6 +72,3 @@ struct
 
 end (* structure OverloadLit *)
 
-(*
- * $Log$
- *)

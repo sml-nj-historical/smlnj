@@ -48,18 +48,3 @@ structure HppaMLTree =
          )
 
 
-(*
- * $Log: hppaMLTree.sml,v $
- * Revision 1.4  1998/12/30 20:21:22  jhr
- *   Modifications to support code generation directly into code objects.
- *
- * Revision 1.3  1998/10/06 14:00:00  george
- * Flowgraph has been removed from modules that do not need it -- [leunga]
- *
- * Revision 1.2  1998/07/25 03:05:35  george
- *   changes to support block names in MLRISC
- *
- * Revision 1.1.1.1  1998/04/08 18:39:55  george
- * Version 110.5
- *
- *)

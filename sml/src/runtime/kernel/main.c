@@ -43,6 +43,8 @@ PVT char	*BootFrom	/* the boot source (bin file directory). */
 		    = NULL;
 PVT int		NumProcs = 1;	/* not used */
 
+PVT char        *rtpid_spec = NULL;
+
 PVT void ParseOptions (int argc, char **argv, heap_params_t **heapParams);
 
 
@@ -70,7 +72,7 @@ main (int argc, char **argv)
 
   /* start ML */
     if (isBoot) {
-	BootML (BootFrom, heapParams);
+	BootML (BootFrom, heapParams, rtpid_spec);
     }
     else { /* load an image */
 	LoadML (LoadImage, heapParams);
@@ -184,6 +186,10 @@ PVT void ParseOptions (int argc, char **argv, heap_params_t **heapParams)
 	    }
 #endif
 #endif
+	    else if (MATCH("rtpid")) {
+	      CHECK("rtpid");
+	      rtpid_spec = optionArg;
+	    }
 	}
 	else {
 	    *nextArg++ = arg;

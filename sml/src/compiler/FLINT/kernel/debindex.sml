@@ -56,6 +56,3 @@ end (* local *)
 end (* structure DebIndex *)
 
 
-(*
- * $Log$
- *)

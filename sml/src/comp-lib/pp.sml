@@ -577,6 +577,3 @@ fun pp_to_string linewidth ppfn ob =
 
 end (* PrettyPrint *)
 
-(*
- * $Log$
- *)

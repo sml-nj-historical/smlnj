@@ -82,9 +82,3 @@ signature TOP_COMPILE = COMPILE0 where type cmstatenv = StaticEnv.staticEnv
 
 
 
-(*
- * $Log: compile.sig,v $
- * Revision 1.3  1998/05/23 14:10:26  george
- *   Fixed RCS keyword syntax
- *
- *)

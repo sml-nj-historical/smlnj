@@ -3,15 +3,17 @@
  * Sources file for Pretty printer device library.
  *)
 
-Library
+Group (../pp-lib.cm)
 
   structure SimpleTextIODev
   structure HTMLDev
   structure StringToken
 
 is
+  basis.cm
   ../src/sources.cm
-  ../../HTML/sources.cm
+  html-lib.cm
+
   simple-textio-dev.sml
   string-token.sml
   html-dev.sml

@@ -47,6 +47,3 @@ struct
 end
 		      
 
-(*
- * $Log$
- *)

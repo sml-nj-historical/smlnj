@@ -96,6 +96,3 @@ fun parse (source as {sourceStream,errConsumer,interactive,
 
 end (* structure FrontEnd *)
 
-(*
- * $Log$
- *)

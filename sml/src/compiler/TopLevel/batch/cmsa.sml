@@ -128,6 +128,3 @@ end (* functor CMSAFun *)
 
 
 
-(*
- * $Log$
- *)

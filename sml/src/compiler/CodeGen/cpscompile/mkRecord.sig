@@ -26,6 +26,3 @@ signature MK_RECORD = sig
     } -> unit
 end
 
-(*
- * $Log$
- *)

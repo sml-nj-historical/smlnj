@@ -1153,38 +1153,3 @@ struct
   end (* codegen *)
 end (* MLRiscGen *)
 
-(*
- * $Log: mlriscGen.sml,v $
- * Revision 1.12  1999/01/18 15:49:29  george
- *   support of interactive loading of MLRISC optimizer
- *
- * Revision 1.11  1998/11/23 20:09:42  jhr
- *   Fixed length field of raw64 objects (should be in words); new raw64Subscript
- *   primop.
- *
- * Revision 1.10  1998/11/18 03:53:11  jhr
- *  New array representations.
- *
- * Revision 1.9  1998/10/28 18:20:49  jhr
- *   Removed code generator support for STRING/REAL constants.
- *
- * Revision 1.8  1998/10/19 13:28:18  george
- *   Known functions once again move their arguments to fresh temporaries.
- *   The problem has to do with spilling and adjusting the regmask.
- *
- * Revision 1.7  1998/10/15 17:56:54  george
- *   known functions do not move formals to fresh temps
- *
- * Revision 1.6  1998/09/30 18:56:35  dbm
- * removed sharing/defspec conflict, using where structure
- *
- * Revision 1.5  1998/08/28 12:58:27  george
- *   Fix for bug1422: Core dump on Sparc when using lazy features
- *
- * Revision 1.4  1998/07/25 03:05:36  george
- *   changes to support block names in MLRISC
- *
- * Revision 1.3  1998/05/23 14:09:26  george
- *   Fixed RCS keyword syntax
- *
- *)

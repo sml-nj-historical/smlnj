@@ -92,6 +92,3 @@ sig
 end (* signature BASICTYPES *)
 
 
-(*
- * $Log$
- *)

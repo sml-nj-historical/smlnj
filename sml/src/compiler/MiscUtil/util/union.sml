@@ -87,6 +87,3 @@ structure Siblings : SIBLINGS =
   end (* structure Siblings *)
 
 
-(*
- * $Log$
- *)

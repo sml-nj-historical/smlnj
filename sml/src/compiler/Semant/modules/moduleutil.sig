@@ -79,6 +79,3 @@ end (* signature MODULEUTIL *)
 
 
 
-(*
- * $Log$
- *)

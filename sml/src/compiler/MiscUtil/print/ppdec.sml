@@ -358,9 +358,3 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 end (* local *)
 end (* structure PPDec *)
 
-(*
- * $Log: ppdec.sml,v $
- * Revision 1.3  1998/05/23 14:09:44  george
- *   Fixed RCS keyword syntax
- *
- *)

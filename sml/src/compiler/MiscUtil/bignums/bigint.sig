@@ -10,6 +10,3 @@ signature BIGINT =
       val >> : bigint * int -> bigint    (* shift right *)
   end
 
-(*
- * $Log$
- *)

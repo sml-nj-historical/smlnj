@@ -98,9 +98,3 @@ sig
 
 end (* signature ELABUTIL *)
 
-(*
- * $Log: elabutil.sig,v $
- * Revision 1.3  1998/05/23 14:10:06  george
- *   Fixed RCS keyword syntax
- *
- *)
