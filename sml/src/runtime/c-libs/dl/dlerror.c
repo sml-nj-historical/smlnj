@@ -5,7 +5,6 @@
 
 #ifndef OPSYS_WIN32
 # include "ml-unixdep.h"
-#else
 # include <dlfcn.h>
 #endif
 #include "ml-base.h"
