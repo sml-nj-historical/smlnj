@@ -22,13 +22,13 @@
  *
  * author: Matthias Blume (blume@research.bell-labs.com)
  *)
-functor PointerToCompleteType (type tag val typ : tag C.T.su_typ) :>
+functor PointerToCompleteType (type tag val typ : tag C.su C.T.typ) :>
 	POINTER_TO_INCOMPLETE_TYPE
-	where type 'c iptr = (tag C.su, unit, 'c) C.ptr
-        where type 'c iptr' = (tag C.su, unit, 'c) C.ptr' =
+	where type 'c iptr = (tag C.su, 'c) C.ptr
+        where type 'c iptr' = (tag C.su, 'c) C.ptr' =
 struct
-    type 'c iptr = (tag C.su, unit, 'c) C.ptr
-    type 'c iptr' = (tag C.su, unit, 'c) C.ptr'
+    type 'c iptr = (tag C.su, 'c) C.ptr
+    type 'c iptr' = (tag C.su, 'c) C.ptr'
 
     val typ'rw = C.T.pointer typ
     val typ'ro = C.T.ro typ'rw
@@ -51,8 +51,8 @@ struct
     val inject = C.Ptr.inject
     val inject' = C.Ptr.inject'
 
-    val project = C.Ptr.project
-    val project' = C.Ptr.project'
+    val cast = C.Ptr.cast
+    val cast' = C.Ptr.cast'
 
     val null = C.Ptr.null
     val null' = C.Ptr.null'

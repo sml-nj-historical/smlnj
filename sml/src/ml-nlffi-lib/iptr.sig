@@ -26,20 +26,20 @@ signature POINTER_TO_INCOMPLETE_TYPE = sig
     type 'c iptr			(* = (? su, unit, 'c) ptr  *)
     type 'c iptr'			(* = (? su, unit, 'c) ptr' *)
 
-    val typ'rw : (C.rw iptr, unit) C.T.typ
-    val typ'ro : (C.ro iptr, unit) C.T.typ
+    val typ'rw : C.rw iptr C.T.typ
+    val typ'ro : C.ro iptr C.T.typ
 
     val light : 'c iptr -> 'c iptr'
     val heavy : 'c iptr' -> 'c iptr
 
-    val get : ('pc iptr, unit, 'c) C.obj -> 'pc iptr
-    val get' : ('pc iptr, unit, 'c) C.obj' -> 'pc iptr'
+    val get : ('pc iptr, 'c) C.obj -> 'pc iptr
+    val get' : ('pc iptr, 'c) C.obj' -> 'pc iptr'
 
-    val set : ('pc iptr, unit, C.rw) C.obj * 'pc iptr -> unit
-    val set' : ('pc iptr, unit, C.rw) C.obj' * 'pc iptr' -> unit
+    val set : ('pc iptr, C.rw) C.obj * 'pc iptr -> unit
+    val set' : ('pc iptr, C.rw) C.obj' * 'pc iptr' -> unit
 
-    val set_voidptr : ('pc iptr, unit, C.rw) C.obj * C.voidptr -> unit
-    val set_voidptr' : ('pc iptr, unit, C.rw) C.obj' * C.voidptr -> unit
+    val set_voidptr : ('pc iptr, C.rw) C.obj * C.voidptr -> unit
+    val set_voidptr' : ('pc iptr, C.rw) C.obj' * C.voidptr -> unit
 
     val compare : 'c iptr * 'c iptr -> order
     val compare' : 'c iptr' * 'c iptr' -> order
@@ -47,9 +47,9 @@ signature POINTER_TO_INCOMPLETE_TYPE = sig
     val inject : 'c iptr -> C.voidptr
     val inject' : 'c iptr' -> C.voidptr
 
-    val project : ('c iptr, unit) C.T.typ -> C.voidptr -> 'c iptr
-    val project' : ('c iptr, unit) C.T.typ -> C.voidptr -> 'c iptr'
+    val cast : 'c iptr C.T.typ -> C.voidptr -> 'c iptr
+    val cast' : 'c iptr C.T.typ -> C.voidptr -> 'c iptr'
 
-    val null : ('c iptr, unit) C.T.typ -> 'c iptr
+    val null : 'c iptr C.T.typ -> 'c iptr
     val null' : 'c iptr'
 end

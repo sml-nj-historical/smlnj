@@ -14,6 +14,24 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/06/01 13:30:00 EDT
+Tag: blume-20010601-nlffi-cleanup
+Description:
+
+This is mostly a cleanup of MLFFI stuff:
+
+   - some signature files have been put into a more exposed place
+   - the ugly 'f type parameter is gone (simplifies types tremendously!)
+   - ml-nlffigen changed accordingly
+   - tutorial updated
+
+Other changes:
+
+   - author's affiliation in CM manual(s) updated
+   - some more recognized keywords added to Allen's sml.sty
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/05/25 15:30:00 EDT
 Tag: blume-20010525-iptr
 Description:

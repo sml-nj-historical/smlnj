@@ -167,23 +167,19 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
 
    The ML type of objects is
 
-        type ('t, 'f, 'c) obj
+        type ('t, 'c) obj
 
    Here, 't is a "phantom type" that describes the type of the value
-   stored in the object, 'c is the "constness" of the object (i.e.,
+   stored in the object and 'c is the "constness" of the object (i.e.,
    "ro" or "rw" --- depending on whether there was a "const" qualifier
-   in the C declaration or not), and 'f is a typing artifact having to
-   do with the treatment of function pointers.  (For objects where the
-   instantiation of 't is not somehow based on a function pointer
-   type, 'f will always be "unit".  For instances of 't that contain
-   the type phrase F fptr, 'f is going to be instantiated to F.)
+   in the C declaration or not).
 
    1.2. Fetching and storing:
 
    For certain types 't, there are fetch and store operations for the
    corresponding objects.  See substructures "Get" and "Set".
 
-   If a type T has fetch/store operations for (T, ?, ?) obj, then we
+   If a type T has fetch/store operations for (T, ?) obj, then we
    call values of type T "first-class C values".  For first-class
    values, the phantom type coincides with the type of the value.  (For
    other (second-class) values, the phantom type is a true phantom
@@ -228,10 +224,10 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
 
    Pointers are first-class C types.  Their ML type is
 
-      type ('t, 'f, 'c) ptr
+      type ('t, 'c) ptr
 
-   A pointer of type (T, F, C) ptr points to an object of type
-   (T, F, C) obj.  One can obtain the object by applying the Ptr.|*|
+   A pointer of type (T, C) ptr points to an object of type
+   (T, C) obj.  One can obtain the object by applying the Ptr.|*|
    operator.  Ptr.|&| goes the other way around.
 
    Pointers permit pointer arithmetic just like in C using Ptr.|+|
@@ -242,7 +238,7 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
    information. See below.)
 
    Since they are first-class, pointers can be fetched from and stored
-   into pointer objects (of type (('t, 'f, 'pc) ptr, 'f, 'c) obj,
+   into pointer objects (of type (('t, 'pc) ptr, 'c) obj,
    where 'pc is the constness of the object pointed to by the pointer
    and 'c is the constness of the object containing the pointer).
 
@@ -257,8 +253,7 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
      type ('t, 'n) arr
 
    Here, 't is the type of the values stored in the array's individual
-   elements, 'f here is the same as the 'f in the case of obj or ptr,
-   and 'n is a type describing the size of the array.
+   elements and 'n is a type describing the size of the array.
 
    4.1.  Array dimensions:
 
@@ -295,7 +290,7 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
 
    Since array types are second-class, there are no operations that
    produce or consume values of type (?, ?) arr.  Instead, we use
-   array objects of type ((?, ?) arr, ?, ?) obj.
+   array objects of type ((?, ?) arr, ?) obj.
 
    Most operations related to array objects are in substructure Arr.
 
@@ -317,9 +312,7 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
    5. Function pointers:
 
    Function pointers have type 'f fptr where 'f is always instantiated
-   to (A -> B) for some A and B.  This instantiation for 'f propagates
-   through all those 'f components of obj-, ptr-, or T.typ-types whose
-   't component somehow involves the fptr-type.
+   to (A -> B) for some A and B.
 
    A function pointer of type (A -> B) fptr can be invoked with an
    argument of type A and yields a result of type B by invoking the
@@ -350,7 +343,7 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
           - Otherwise, ti must be a struct or union type.  For each
             struct or union type, the ML-FFIGEN tool will generate a new
             fresh phantom type X (as described later).  A function
-            argument of such a type will be (X, unit, ro) obj'.  This
+            argument of such a type will be (X, ro) obj'.  This
             is, on the ML side the function will expect a read-only
             struct or union object.
             (Notice the primed type "obj'"! We pass structs in
@@ -358,7 +351,7 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
              see the discussion below.)
 
        3. If the result is of struct or union type Y, then an additional
-          argument of type (Y, unit, rw) obj' is prepended to the
+          argument of type (Y, rw) obj' is prepended to the
           preliminary argument list.  This means that on the ML side
           functions "returning" a struct or union must be passed a
 	  corresponding writable struct or union object. 
@@ -381,7 +374,7 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
 
    6. Run-time type information:
 
-   For every object of type ('t, 'f, 'c) obj there is corresponding
+   For every object of type ('t, 'c) obj there is corresponding
    run-time type information that describes values of type 't.  RTI is
    used mainly to keep track of size information (needed for pointer
    arithmetic), but it also facilitates array bounds checking.
@@ -429,14 +422,14 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
    To make passing of type information statically safe (i.e., to
    disallow mixing a C value of one type with type information
    corresponding to a different type), RTI itself has a static ML
-   type.  In particular, the RTI for a value stored in a "('t, 'f, 'c)
-   obj" object will have type "('t, 'f) T.typ".
+   type.  In particular, the RTI for a value stored in a
+   "('t, 'c) obj" object will have type "'t T.typ".
 
    Array subscript, to name one example, on light-weight array objects
    enforces correct usage of RTI using ML's static typing:
 
-	Arr.sub' : (('t, 'n) arr, 'f) T.typ ->
-		   (('t, 'n) arr, 'f, 'c) obj' * int -> ('t, 'f, 'c) obj'
+	Arr.sub' : ('t, 'n) arr T.typ ->
+		   (('t, 'n) arr, 'c) obj' * int -> ('t, 'c) obj'
 
    7.1 Light vs. heavy:
 
@@ -456,12 +449,12 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
 
    Size information can be obtained from RTI (but not vice versa):
 
-         T.sizeof : ('t, 'f) T.typ -> 't S.size
+         T.sizeof : 't T.typ -> 't S.size
 
    Light-weight pointer arithmetic uses size information for the
    element type:
 
-         Ptr.|+! : 't S.size -> ('t, 'f, 'c) ptr' * int -> ('t, 'f, 'c) ptr'
+         Ptr.|+! : 't S.size -> ('t, 'c) ptr' * int -> ('t, 'c) ptr'
 
    (NB: C types are monomorphic. In ML programs we can precompute size
     info for any monomorphic type, so with a bit of help from a
@@ -518,27 +511,23 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
         val size : s_node su S.size
         
         (* RTI for this struct *)
-        val typ : s_node T.su_typ
+        val typ : s_node su T.typ
         
         (* witness types for fields *)
         type t_f_i = sint
-        type t_f_next = (s_node su, unit, rw) ptr
+        type t_f_next = (s_node su, rw) ptr
         
         (* RTI for fields *)
-        val typ_f_i : T.sint_typ
-        val typ_f_next : ((s_node su, unit, rw) ptr, unit) T.typ
+        val typ_f_i : sint T.typ
+        val typ_f_next : (s_node su, rw) ptr T.typ
         
         (* field accessors *)
-        val f_i : (s_node, 'c) su_obj -> 'c sint_obj
-        val f_next :
-            (s_node, 'c) su_obj ->
-                ((s_node su, unit, rw) ptr, unit, 'c) obj
+        val f_i : (s_node, 'c) su_obj -> ro sint_obj
+        val f_next : (s_node, 'c) su_obj -> ((s_node su, rw) ptr, 'c) obj
         
         (* field accessors (lightweight variety) *)
-        val f_i' : (s_node, 'c) su_obj' -> 'c sint_obj'
-        val f_next' :
-            (s_node, 'c) su_obj' ->
-                ((s_node su, unit, rw) ptr, unit, 'c) obj'
+        val f_i' : (s_node, 'c) su_obj' -> ro sint_obj'
+        val f_next' : (s_node, 'c) su_obj' -> ((s_node su, rw) ptr, 'c) obj'
     end (* structure S_node *)
 
    We find RTI and size info for the new type, RTI for all the
@@ -583,11 +572,10 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
 
       C                   ML
 
-      int i;              val g_i : unit -> (sint, unit, rw) obj
-      const unsigned j;   val g_j : unit -> (uint, unit, ro) obj
+      int i;              val g_i : unit -> (sint, rw) obj
+      const unsigned j;   val g_j : unit -> (uint, ro) obj
       int (**f)(void);    val g_f : unit ->
-                             (((unit -> sint) fptr, unit->sint, rw) ptr,
-                              unit->sint, rw) obj
+                                    (((unit -> sint) fptr, rw) ptr, rw) obj
 
    (Fortunately, the types will all be generated by ML-NLFFIGEN, so
    the programmer will not have to write down ugly things like the
@@ -635,17 +623,16 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
    C values are transient in that they do not stay valid across
    SMLofNJ.export{ML,Fn} and a restart using the resulting heap
    image.  The only things that stay valid are the thunks for global
-   variables and global function pointers.  (Since the generated
-   global ML functions that represent global C functions re-invoke
-   the function-pointer thunk every time they are called, they also
-   stay valid.)
+   variables and global function pointers.  (Since global ML functions
+   generated to represent global C functions re-invoke the function-pointer
+   thunk every time they are called, they also stay valid.)
 
    10. Functorization:
 
    The ML-NLFFIGEN tool produces a structure containing a functor for
    every C source file it is presented with.  The functor will at least
    take the library argument shown in the example.  However, there are
-   case when it requires additional arguments.
+   cases when it requires additional arguments.
 
    Extra functor arguments are required every time the C source file
    refers to "incomplete pointer types" -- pointers to structs that
@@ -673,7 +660,7 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
 
      2. If the type is incomplete in one file but gets spelled out in
         another, then one can produce the matching structure from
-        that by applying functor PointerToCompleteType to the
+        the latter by applying functor PointerToCompleteType to the
         structure S_foo that describes "struct foo".
 
         Suppose module Bar defines struct foo.  Then we have a
@@ -689,7 +676,7 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
 
         The main point of using PointerToCompleteType is to let
         client code "see" that 'c I_S_foo.iptr is the same as
-        (s_foo su, unit, 'c) ptr.
+        (s_foo su, 'c) ptr.
 
         Client code that must be written without the benefit of having
         access to the real definition of "struct foo" but which must

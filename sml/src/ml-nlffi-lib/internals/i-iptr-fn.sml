@@ -33,8 +33,8 @@
  *)
 functor PointerToIncompleteType () :> POINTER_TO_INCOMPLETE_TYPE = struct
 
-    type 'c iptr = (C.uchar, unit, 'c) C.ptr
-    type 'c iptr' = (C.uchar, unit, 'c) C.ptr'
+    type 'c iptr = (C.uchar, 'c) C.ptr
+    type 'c iptr' = (C.uchar, 'c) C.ptr'
 
     val typ'rw = C.T.pointer C.T.uchar
     val typ'ro = C.T.ro typ'rw
@@ -57,8 +57,8 @@ functor PointerToIncompleteType () :> POINTER_TO_INCOMPLETE_TYPE = struct
     val inject = C.Ptr.inject
     val inject' = C.Ptr.inject'
 
-    val project = C.Ptr.project
-    val project' = C.Ptr.project'
+    val cast = C.Ptr.cast
+    val cast' = C.Ptr.cast'
 
     val null = C.Ptr.null
     val null' = C.Ptr.null'

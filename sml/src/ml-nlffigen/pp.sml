@@ -29,13 +29,13 @@ structure PrettyPrint = struct
 		       [CON (k as ("schar" | "uchar" | "sint" | "uint" |
 				   "sshort" | "ushort" | "slong" | "ulong" |
 				   "float" | "double" | "voidptr"), []),
-			TUPLE [], c])) =
+			c])) =
 	CON (concat [k, "_", obj], [simplify c])
       | simplify (CON (obj as ("obj" | "obj'"),
-		       [CON ("fptr", [f]), _, c])) =
+		       [CON ("fptr", [f]), c])) =
 	CON ("fptr_" ^ obj, [simplify f, simplify c])
       | simplify (CON (obj as ("obj" | "obj'"),
-		       [CON ("su", [s]), TUPLE [], c])) =
+		       [CON ("su", [s]), c])) =
 	CON ("su_" ^ obj, [simplify s, simplify c])
       | simplify (CON ("Dim.dim", [n, CON (("Dim.nonzero" | "nonzero"), [])])) =
 	CON ("dim", [simplify n])
@@ -44,16 +44,6 @@ structure PrettyPrint = struct
 			     "Dim.dg4" | "Dim.dg5" | "Dim.dg6" | "Dim.dg7" |
 			     "Dim.dg8" | "Dim.dg9"), [n])) =
 	CON (String.extract (k, 4, NONE), [simplify n])
-      | simplify (CON ("T.typ",
-		       [CON (k as ("schar" | "uchar" | "sint" | "uint" |
-				   "sshort" | "ushort" | "slong" | "ulong" |
-				   "float" | "double" | "voidptr"), []),
-			_])) =
-	CON (concat ["T.", k, "_typ"], [])
-      | simplify (CON ("T.typ", [CON ("fptr", [f]), _])) =
-	CON ("T.fptr_typ", [simplify f])
-      | simplify (CON ("T.typ", [CON ("su", [s]), _])) =
-	CON ("T.su_typ", [simplify s])
       | simplify (ARROW (t1, t2)) = ARROW (simplify t1, simplify t2)
       | simplify (TUPLE tl) = TUPLE (map simplify tl)
       | simplify (CON (k, tl)) = CON (k, map simplify tl)

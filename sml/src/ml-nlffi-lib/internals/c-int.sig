@@ -20,34 +20,32 @@ signature C_INT = sig
     val mk_su_size : word -> 's S.size
 
     (* make struct or union RTI given its corresponding size *)
-    val mk_su_typ : 's su S.size -> 's T.su_typ
+    val mk_su_typ : 's su S.size -> 's su T.typ
 
     (* make function pointer type give the ML function that
      * implements the calling protocol *)
-    val mk_fptr_typ : (addr -> 'a -> 'b) -> ('a -> 'b) T.fptr_typ
+    val mk_fptr_typ : (addr -> 'a -> 'b) -> ('a -> 'b) fptr T.typ
 
     (* mk_obj makes writable objects; if they are declared const, then
      * function ro should be applied *)
-    val mk_obj : ('t, 'f) T.typ -> addr -> ('t, 'f, rw) obj
+    val mk_obj : 't T.typ -> addr -> ('t, rw) obj
 
     (* make a void* from an address *)
     val mk_voidptr : addr -> voidptr
 
     (* given its type, make a function pointer from an address *)
-    val mk_fptr : 'f T.fptr_typ -> addr -> 'f fptr
+    val mk_fptr : 'f fptr T.typ -> addr -> 'f fptr
 
     (* making normal and const-declared struct- or union-fields 
      * given the field's type and its offset *)
-    val mk_rw_field : ('m, 'f) T.typ -> int ->
-		      ('s, 'c) su_obj -> ('m, 'f, 'c) obj
-    val mk_ro_field : ('m, 'f) T.typ -> int ->
-		      ('s, 'c) su_obj -> ('m, 'f, ro) obj
+    val mk_rw_field : 'm T.typ -> int -> ('s, 'c) su_obj -> ('m, 'c) obj
+    val mk_ro_field : 'm T.typ -> int -> ('s, 'c) su_obj -> ('m, ro) obj
 
     (* light version *)
     (* NOTE: We do not pass RTI to the light version (which would
      * internally throw it away anyway).  This means that we
      * will need an explicit type constraint. *)
-    val mk_field' : int -> ('s, 'ac) su_obj' -> ('m, 'f, 'rc) obj'
+    val mk_field' : int -> ('s, 'ac) su_obj' -> ('m, 'rc) obj'
 
     (* making normal signed bitfields *)
     val mk_rw_sbf : int * word * word -> (* offset * bits * shift *)
@@ -80,11 +78,11 @@ signature C_INT = sig
     val freveal : 'f fptr' -> addr
 
     val vcast : addr -> voidptr
-    val pcast : addr -> ('t, 'f, 'c) ptr'
+    val pcast : addr -> ('t, 'c) ptr'
     val fcast : addr -> 'f fptr'
 
     (* unsafe low-level array subscript that does not require RTI *)
     val unsafe_sub : int ->		(* element size *)
-		     (('t, 'n) arr, 'f, 'c) obj' * int ->
-		     ('t, 'f, 'n) obj'
+		     (('t, 'n) arr, 'c) obj' * int ->
+		     ('t, 'n) obj'
 end

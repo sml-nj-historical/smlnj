@@ -16,11 +16,11 @@ structure C :> C_INT = struct
     type addr = CMemory.addr
 
     local
-	datatype 'f objt =
+	datatype objt =
 	    BASE of word
-	  | PTR of 'f objt
-	  | FPTR of addr -> 'f
-	  | ARR of { typ: 'f objt, n: word, esz: int, asz: word }
+	  | PTR of objt
+	  | FPTR of Unsafe.Object.object (* == addr -> 'f *)
+	  | ARR of { typ: objt, n: word, esz: int, asz: word }
 
 	(* Bitfield: b bits wide, l bits from left corner, r bits from right.
 	 * The word itself is CMemory.int_bits wide and located at address a.
@@ -37,11 +37,11 @@ structure C :> C_INT = struct
 	type cword = MLRep.UInt.word
 	type bf = { a: addr, l: word, r: word, lr: word, m: cword, im: cword }
 
-	fun pair_type_addr (t: 'f objt) (a: addr) = (a, t)
-	fun strip_type (a: addr, _: unit objt) = a
-	fun p_strip_type (a: addr, _: 'f objt) = a
+	fun pair_type_addr (t: objt) (a: addr) = (a, t)
+	fun strip_type (a: addr, _: objt) = a
+	fun p_strip_type (a: addr, _: objt) = a
 	fun strip_fun (a: addr, _: 'f) = a
-	fun addr_type_id (x: addr * 'f objt) = x
+	fun addr_type_id (x: addr * objt) = x
 	fun addr_id (x: addr) = x
 
 	infix -- ++
@@ -58,14 +58,14 @@ structure C :> C_INT = struct
 	val ~~ = MLRep.UInt.notb
     in
 
-    type ('t, 'f, 'c) obj = addr * 'f objt (* RTI for stored value *)
-    type ('t, 'f, 'c) obj' = addr
+    type ('t, 'c) obj = addr * objt	(* RTI for stored value *)
+    type ('t, 'c) obj' = addr
 
     type ro = unit
     type rw = unit
 
-    type ('t, 'f, 'c) ptr = addr * 'f objt (* RTI for target value *)
-    type ('t, 'f, 'c) ptr' = addr
+    type ('t, 'c) ptr = addr * objt	(* RTI for target value *)
+    type ('t, 'c) ptr' = addr
 
     type ('t, 'n) arr = unit
 
@@ -86,33 +86,33 @@ structure C :> C_INT = struct
     type float = MLRep.Float.real
     type double = MLRep.Double.real
 
-    type 'c schar_obj = (schar, unit, 'c) obj
-    type 'c uchar_obj = (uchar, unit, 'c) obj
-    type 'c sint_obj = (sint, unit, 'c) obj
-    type 'c uint_obj = (uint, unit, 'c) obj
-    type 'c sshort_obj = (sshort, unit, 'c) obj
-    type 'c ushort_obj = (ushort, unit, 'c) obj
-    type 'c slong_obj = (slong, unit, 'c) obj
-    type 'c ulong_obj = (ulong, unit, 'c) obj
-    type 'c float_obj = (float, unit, 'c) obj
-    type 'c double_obj = (double, unit, 'c) obj
-    type 'c voidptr_obj = (voidptr, unit, 'c) obj
-    type ('f, 'c) fptr_obj = ('f fptr, 'f, 'c) obj
-    type ('s, 'c) su_obj = ('s su, unit, 'c) obj
+    type 'c schar_obj = (schar, 'c) obj
+    type 'c uchar_obj = (uchar, 'c) obj
+    type 'c sint_obj = (sint, 'c) obj
+    type 'c uint_obj = (uint, 'c) obj
+    type 'c sshort_obj = (sshort, 'c) obj
+    type 'c ushort_obj = (ushort, 'c) obj
+    type 'c slong_obj = (slong, 'c) obj
+    type 'c ulong_obj = (ulong, 'c) obj
+    type 'c float_obj = (float, 'c) obj
+    type 'c double_obj = (double, 'c) obj
+    type 'c voidptr_obj = (voidptr, 'c) obj
+    type ('f, 'c) fptr_obj = ('f fptr, 'c) obj
+    type ('s, 'c) su_obj = ('s su, 'c) obj
 
-    type 'c schar_obj' = (schar, unit, 'c) obj'
-    type 'c uchar_obj' = (uchar, unit, 'c) obj'
-    type 'c sint_obj' = (sint, unit, 'c) obj'
-    type 'c uint_obj' = (uint, unit, 'c) obj'
-    type 'c sshort_obj' = (sshort, unit, 'c) obj'
-    type 'c ushort_obj' = (ushort, unit, 'c) obj'
-    type 'c slong_obj' = (slong, unit, 'c) obj'
-    type 'c ulong_obj' = (ulong, unit, 'c) obj'
-    type 'c float_obj' = (float, unit, 'c) obj'
-    type 'c double_obj' = (double, unit, 'c) obj'
-    type 'c voidptr_obj' = (voidptr, unit, 'c) obj'
-    type ('f, 'c) fptr_obj' = ('f fptr, 'f, 'c) obj'
-    type ('s, 'c) su_obj' = ('s su, unit, 'c) obj'
+    type 'c schar_obj' = (schar, 'c) obj'
+    type 'c uchar_obj' = (uchar, 'c) obj'
+    type 'c sint_obj' = (sint, 'c) obj'
+    type 'c uint_obj' = (uint, 'c) obj'
+    type 'c sshort_obj' = (sshort, 'c) obj'
+    type 'c ushort_obj' = (ushort, 'c) obj'
+    type 'c slong_obj' = (slong, 'c) obj'
+    type 'c ulong_obj' = (ulong, 'c) obj'
+    type 'c float_obj' = (float, 'c) obj'
+    type 'c double_obj' = (double, 'c) obj'
+    type 'c voidptr_obj' = (voidptr, 'c) obj'
+    type ('f, 'c) fptr_obj' = ('f fptr, 'c) obj'
+    type ('s, 'c) su_obj' = ('s su, 'c) obj'
 
     type 'c ubf = bf
     type 'c sbf = bf
@@ -200,23 +200,9 @@ structure C :> C_INT = struct
 
     structure T = struct
 
-        type ('t, 'f) typ = 'f objt
+        type 't typ = objt
 
-	type schar_typ = (schar, unit) typ
-	type uchar_typ = (uchar, unit) typ
-	type sint_typ = (sint, unit) typ
-	type uint_typ = (uint, unit) typ
-	type sshort_typ = (sshort, unit) typ
-	type ushort_typ = (ushort, unit) typ
-	type slong_typ = (slong, unit) typ
-	type ulong_typ = (ulong, unit) typ
-	type float_typ = (float, unit) typ
-	type double_typ = (double, unit) typ
-	type voidptr_typ = (voidptr, unit) typ
-	type 'f fptr_typ = ('f fptr, 'f) typ
-	type 's su_typ = ('s su, unit) typ
-
-	fun typeof (_: addr, t: 'f objt) = t
+	fun typeof (_: addr, t: objt) = t
 
 	fun sizeof (BASE b) = b
 	  | sizeof (PTR _) = S.ptr
@@ -238,7 +224,7 @@ structure C :> C_INT = struct
 	end
 	fun elem (ARR a) = #typ a
 	  | elem _ = bug "T.elem (non-array type)"
-	fun ro (t: 'f objt) = t
+	fun ro (t: objt) = t
 
 	val schar  = BASE S.schar
 	val uchar  = BASE S.uchar
@@ -264,7 +250,7 @@ structure C :> C_INT = struct
         val obj = pair_type_addr
 	val ptr = pair_type_addr
 
-	fun fptr (FPTR mkf) p = (p, mkf p)
+	fun fptr (FPTR mkf) p = (p, Unsafe.cast mkf p)
 	  | fptr _ _ = bug "Heavy.fptr (non-function-pointer-type)"
     end
 
@@ -326,7 +312,7 @@ structure C :> C_INT = struct
 	fun ptr (a, PTR t) = (CMemory.load_addr a, t)
 	  | ptr _ = bug "Get.ptr (non-pointer)"
 	fun fptr (a, FPTR mkf) =
-	    let val fa = CMemory.load_addr a in (fa, mkf fa) end
+	    let val fa = CMemory.load_addr a in (fa, Unsafe.cast mkf fa) end
 	  | fptr _ = bug "Get.fptr (non-function-pointer)"
 
 	local
@@ -391,7 +377,7 @@ structure C :> C_INT = struct
 
     fun copy' bytes { from, to } =
 	CMemory.bcopy { from = from, to = to, bytes = bytes }
-    fun copy { from = (from, t), to = (to, _: 'f objt) } =
+    fun copy { from = (from, t), to = (to, _: objt) } =
 	copy' (T.sizeof t) { from = from, to = to }
 
     structure Ptr = struct
@@ -406,14 +392,14 @@ structure C :> C_INT = struct
 	val compare' = CMemory.compare
 
 	val inject' = addr_id
-	fun project' (_ : 'f objt) = addr_id
+	fun cast' (_ : objt) = addr_id
 
 	val inject = p_strip_type
-	fun project (PTR t) (p : voidptr) = (p, t)
-	  | project _ _ = bug "Ptr.project (non-pointer-type)"
+	fun cast (PTR t) (p : voidptr) = (p, t)
+	  | cast _ _ = bug "Ptr.cast (non-pointer-type)"
 
 	val vNull = CMemory.null
-	fun null t = project t vNull
+	fun null t = cast t vNull
 	val null' = CMemory.null
 
 	val vIsNull = CMemory.isNull
@@ -424,7 +410,7 @@ structure C :> C_INT = struct
 	fun |-! s (p, p') = (p -- p') div Word.toInt s
 
 	fun |+| ((p, t), i) = (|+! (T.sizeof t) (p, i), t)
-	fun |-| ((p, t), (p', _: 'f objt)) = |-! (T.sizeof t) (p, p')
+	fun |-| ((p, t), (p', _: objt)) = |-! (T.sizeof t) (p, p')
 
 	fun sub (p, i) = |*| (|+| (p, i))
 
@@ -461,34 +447,32 @@ structure C :> C_INT = struct
 	fun dim (_: addr, t) = T.dim t
     end
 
-    fun new'' s = CMemory.alloc s
-    fun new' t = CMemory.alloc (T.sizeof t)
-    fun new t = Option.map (fn a => (a, t)) (new' t)
+    fun new' s = CMemory.alloc s
+    fun new t = Option.map (fn a => (a, t)) (new' (T.sizeof t))
 
     val discard' = CMemory.free
     fun discard x = discard' (p_strip_type x)
 
-    fun alloc'' s i = CMemory.alloc (s * i)
-    fun alloc' t i = CMemory.alloc (T.sizeof t * i)
-    fun alloc t i = Option.map (fn p => (p, t)) (alloc' t i)
+    fun alloc' s i = CMemory.alloc (s * i)
+    fun alloc t i = Option.map (fn p => (p, t)) (alloc' (T.sizeof t) i)
 
     val free' = CMemory.free
     fun free x = free' (p_strip_type x)
 
     fun call ((_: addr, f), x) = f x
 
-    fun call' (FPTR mkf) (a, x) = mkf a x
+    fun call' (FPTR mkf) (a, x) = Unsafe.cast mkf a x
       | call' _ _ = bug "call' (non-function-pointer-type)"
 
     (* ------------- internal stuff ------------- *)
 
-    fun mk_obj (t: 'f objt) (a: addr) = (a, t)
+    fun mk_obj (t: objt) (a: addr) = (a, t)
     fun mk_voidptr (a : addr) = a
-    fun mk_fptr (FPTR mkf) a = (a, mkf a)
+    fun mk_fptr (FPTR mkf) a = (a, Unsafe.cast mkf a)
       | mk_fptr _ _ = bug "mk_fptr (non-function-pointer-type)"
 
     local
-	fun mk_field (t: 'f objt) i (a, _: 'x objt) = (a ++ i, t)
+	fun mk_field (t: objt) i (a, _: objt) = (a ++ i, t)
     in
         val mk_rw_field = mk_field
 	val mk_ro_field = mk_field
@@ -507,7 +491,7 @@ structure C :> C_INT = struct
 
 	    { a = a, l = l, r = r, lr = lr, m = m, im = im } : bf
 	end
-	fun mk_bf acc (a, _: 'x objt) = mk_bf' acc a
+	fun mk_bf acc (a, _: objt) = mk_bf' acc a
     in
         val mk_rw_ubf = mk_bf
 	val mk_ro_ubf = mk_bf
@@ -522,7 +506,7 @@ structure C :> C_INT = struct
 
     fun mk_su_size sz = sz
     fun mk_su_typ sz = BASE sz
-    fun mk_fptr_typ (mkf: addr -> 'a -> 'b) = FPTR mkf
+    fun mk_fptr_typ (mkf: addr -> 'a -> 'b) = FPTR (Unsafe.cast mkf)
 
     val reveal = addr_id
     val freveal = addr_id

@@ -18,6 +18,7 @@ Library
 	signature C
 	structure C
 
+	signature ZSTRING
 	structure ZString
 
 	signature POINTER_TO_INCOMPLETE_TYPE

@@ -8,10 +8,6 @@
 signature C = sig
 
     (* objects of type 't, constness 'c;
-     * The type 'f is an artifact of how function pointers are handled:
-     *   - 'f is the 'f in 'f fptr for any type derived (via ptr or arr)
-     *     from 'f fptr.
-     *   - For all other types, 'f is unit.
      * The 't type variable will be instantiated with the object's "witness"
      * type. The intention is that there be an isomorphism between such
      * witness types and corresponding C types.
@@ -26,22 +22,22 @@ signature C = sig
      * from this object gives a value of type (sint, unit, rw) ptr'.
      * (In other words, we use the "heavy" versions of value types as witness
      * types -- even in the "light" case.) *)
-    type ('t, 'f, 'c) obj
+    type ('t, 'c) obj
 
     (* an alternative "light-weight" version that does not carry RTI at
      * the cost of requiring explicit passing of RTI for certain operations *)
-    type ('t, 'f, 'c) obj'
+    type ('t, 'c) obj'
 
     (* constness property, to be substituted for 'c *)
     type ro
     type rw
 
     (* things to be substituted for 't *)
-    type ('t, 'f, 'c) ptr		(* pointer to ('t, 'f, 'c) obj *)
+    type ('t, 'c) ptr			(* pointer to ('t, 'c) obj *)
     type ('t, 'n) arr			(* 'n-sized array with 't elements *)
 
     (* light-weight alternative *)
-    type ('t, 'f, 'c) ptr'
+    type ('t, 'c) ptr'
 
     (* void* and function pointers *)
     type voidptr			(* C's void* *)
@@ -95,34 +91,34 @@ signature C = sig
     end
 
     (* type-abbreviations for a bit more convenience. *)
-    type 'c schar_obj = (schar, unit, 'c) obj
-    type 'c uchar_obj = (uchar, unit, 'c) obj
-    type 'c sint_obj = (sint, unit, 'c) obj
-    type 'c uint_obj = (uint, unit, 'c) obj
-    type 'c sshort_obj = (sshort, unit, 'c) obj
-    type 'c ushort_obj = (ushort, unit, 'c) obj
-    type 'c slong_obj = (slong, unit, 'c) obj
-    type 'c ulong_obj = (ulong, unit, 'c) obj
-    type 'c float_obj = (float, unit, 'c) obj
-    type 'c double_obj = (double, unit, 'c) obj
-    type 'c voidptr_obj = (voidptr, unit, 'c) obj
-    type ('f, 'c) fptr_obj = ('f fptr, 'f, 'c) obj
-    type ('s, 'c) su_obj = ('s su, unit, 'c) obj
+    type 'c schar_obj = (schar, 'c) obj
+    type 'c uchar_obj = (uchar, 'c) obj
+    type 'c sint_obj = (sint, 'c) obj
+    type 'c uint_obj = (uint, 'c) obj
+    type 'c sshort_obj = (sshort, 'c) obj
+    type 'c ushort_obj = (ushort, 'c) obj
+    type 'c slong_obj = (slong, 'c) obj
+    type 'c ulong_obj = (ulong, 'c) obj
+    type 'c float_obj = (float, 'c) obj
+    type 'c double_obj = (double, 'c) obj
+    type 'c voidptr_obj = (voidptr, 'c) obj
+    type ('f, 'c) fptr_obj = ('f fptr, 'c) obj
+    type ('s, 'c) su_obj = ('s su, 'c) obj
 
     (* alt *)
-    type 'c schar_obj' = (schar, unit, 'c) obj'
-    type 'c uchar_obj' = (uchar, unit, 'c) obj'
-    type 'c sint_obj' = (sint, unit, 'c) obj'
-    type 'c uint_obj' = (uint, unit, 'c) obj'
-    type 'c sshort_obj' = (sshort, unit, 'c) obj'
-    type 'c ushort_obj' = (ushort, unit, 'c) obj'
-    type 'c slong_obj' = (slong, unit, 'c) obj'
-    type 'c ulong_obj' = (ulong, unit, 'c) obj'
-    type 'c float_obj' = (float, unit, 'c) obj'
-    type 'c double_obj' = (double, unit, 'c) obj'
-    type 'c voidptr_obj' = (voidptr, unit, 'c) obj'
-    type ('f, 'c) fptr_obj' = ('f fptr, 'f, 'c) obj'
-    type ('s, 'c) su_obj' = ('s su, unit, 'c) obj'
+    type 'c schar_obj' = (schar, 'c) obj'
+    type 'c uchar_obj' = (uchar, 'c) obj'
+    type 'c sint_obj' = (sint, 'c) obj'
+    type 'c uint_obj' = (uint, 'c) obj'
+    type 'c sshort_obj' = (sshort, 'c) obj'
+    type 'c ushort_obj' = (ushort, 'c) obj'
+    type 'c slong_obj' = (slong, 'c) obj'
+    type 'c ulong_obj' = (ulong, 'c) obj'
+    type 'c float_obj' = (float, 'c) obj'
+    type 'c double_obj' = (double, 'c) obj'
+    type 'c voidptr_obj' = (voidptr, 'c) obj'
+    type ('f, 'c) fptr_obj' = ('f fptr, 'c) obj'
+    type ('s, 'c) su_obj' = ('s su, 'c) obj'
 
     (* bitfields aren't "ordinary objects", so they have their own type *)
     type 'c sbf
@@ -223,7 +219,7 @@ signature C = sig
     structure S : sig
 
 	(* Our size info itself is statically typed!
-	 * The size info for a value stored in ('t, 'f, 'c) obj has
+	 * The size info for a value stored in ('t, 'c) obj has
 	 * the following type: *)
 	type 't size
 
@@ -243,7 +239,7 @@ signature C = sig
 	val double : double size
 
 	val voidptr : voidptr size
-	val ptr : ('t, 'f, 'c) ptr size
+	val ptr : ('t, 'c) ptr size
 	val fptr : 'f fptr size
     end
 
@@ -251,72 +247,57 @@ signature C = sig
     structure T : sig
 
 	(* Our RTI itself is statically typed!
-	 * The RTI for a value stored in ('t, 'f, 'c) obj has
+	 * The RTI for a value stored in ('t, 'c) obj has
 	 * the following type: *)
-	type ('t, 'f) typ
-
-	(* again, a lot of abbreviations *)
-	type schar_typ = (schar, unit) typ
-	type uchar_typ = (uchar, unit) typ
-	type sint_typ = (sint, unit) typ
-	type uint_typ = (uint, unit) typ
-	type sshort_typ = (sshort, unit) typ
-	type ushort_typ = (ushort, unit) typ
-	type slong_typ = (slong, unit) typ
-	type ulong_typ = (ulong, unit) typ
-	type float_typ = (float, unit) typ
-	type double_typ = (double, unit) typ
-	type voidptr_typ = (voidptr, unit) typ
-	type 'f fptr_typ = ('f fptr, 'f) typ
-	type 's su_typ = ('s su, unit) typ
+	type 't typ
 
 	(* get the RTI from an actual object *)
-	val typeof : ('t, 'f, 'c) obj -> ('t, 'f) typ
+	val typeof : ('t, 'c) obj -> 't typ
 
 	(* constructing new RTI from existing RTI *)
-	val pointer : ('t, 'f) typ -> (('t, 'f, rw) ptr, 'f) typ
-	val target  : (('t, 'f, 'c) ptr, 'f) typ -> ('t, 'f) typ
-	val arr     : ('t, 'f) typ * 'n Dim.dim -> (('t, 'n) arr, 'f) typ
-	val elem    : (('t, 'n) arr, 'f) typ -> ('t, 'f) typ
-	val ro      : (('t, 'f, 'c) ptr, 'f) typ -> (('t, 'f, ro) ptr, 'f) typ
+	val pointer : 't typ -> ('t, rw) ptr typ
+	val target  : ('t, 'c) ptr typ -> 't typ
+	val arr     : 't typ * 'n Dim.dim -> ('t, 'n) arr typ
+	val elem    : ('t, 'n) arr typ -> 't typ
+	val ro      : ('t, 'c) ptr typ -> ('t, ro) ptr typ
 
 	(* calculating the size of an object given its RTI *)
-	val sizeof : ('t, 'f) typ -> 't S.size
+	val sizeof : 't typ -> 't S.size
 
 	(* dimension of array type *)
-	val dim : (('t, 'n) arr, 'f) typ -> 'n Dim.dim
+	val dim : ('t, 'n) arr typ -> 'n Dim.dim
 
 	(* RTI for simple things *)
-	val schar  : schar_typ
-	val uchar  : uchar_typ
-	val sint   : sint_typ
-	val uint   : uint_typ
-	val sshort : sshort_typ
-	val ushort : ushort_typ
-	val slong  : slong_typ
-	val ulong  : ulong_typ
-	val float  : float_typ
-	val double : double_typ
+	val schar  : schar typ
+	val uchar  : uchar typ
+	val sint   : sint typ
+	val uint   : uint typ
+	val sshort : sshort typ
+	val ushort : ushort typ
+	val slong  : slong typ
+	val ulong  : ulong typ
+	val float  : float typ
+	val double : double typ
 
-	val voidptr : voidptr_typ
+	val voidptr : voidptr typ
     end
 
     (* convert from regular (heavy) to alternative (light) versions *)
     structure Light : sig
-	val obj : ('t, 'f, 'c) obj -> ('t, 'f, 'c) obj'
-	val ptr : ('t, 'f, 'c) ptr -> ('t, 'f, 'c) ptr'
+	val obj : ('t, 'c) obj -> ('t, 'c) obj'
+	val ptr : ('t, 'c) ptr -> ('t, 'c) ptr'
 	val fptr : 'f fptr -> 'f fptr'
     end
 
     (* and vice versa *)
     structure Heavy : sig
-	val obj : ('t, 'f) T.typ -> ('t, 'f, 'c) obj' -> ('t, 'f, 'c) obj
-	val ptr : ('t, 'f) T.typ -> ('t, 'f, 'c) ptr' -> ('t, 'f, 'c) ptr
-	val fptr : 'f T.fptr_typ  -> 'f fptr' -> 'f fptr
+	val obj : 't T.typ -> ('t, 'c) obj' -> ('t, 'c) obj
+	val ptr : 't T.typ -> ('t, 'c) ptr' -> ('t, 'c) ptr
+	val fptr : 'f fptr T.typ  -> 'f fptr' -> 'f fptr
     end
 
-    (* calculate size of an object in bytes *)
-    val sizeof : ('t, 'f, 'c) obj -> 't S.size
+    (* calculate size of an object *)
+    val sizeof : ('t, 'c) obj -> 't S.size
 
     (* "fetch" methods for various types;
      * fetching does not care about constness *)
@@ -347,12 +328,12 @@ signature C = sig
 	val double' : 'c double_obj' -> double
 
 	(* fetching pointers *)
-	val ptr : (('t, 'f, 'pc) ptr, 'f, 'c) obj -> ('t, 'f, 'pc) ptr
+	val ptr : (('t, 'pc) ptr, 'c) obj -> ('t, 'pc) ptr
 	val fptr : ('f, 'c) fptr_obj -> 'f fptr
 	val voidptr : 'c voidptr_obj -> voidptr
 
 	(* alt *)
-	val ptr' : (('t, 'f, 'pc) ptr, 'f, 'c) obj' -> ('t, 'f, 'pc) ptr'
+	val ptr' : (('t, 'pc) ptr, 'c) obj' -> ('t, 'pc) ptr'
 	val fptr' : ('f, 'c) fptr_obj' -> 'f fptr'
 	val voidptr' : 'c voidptr_obj' -> voidptr
 
@@ -388,22 +369,22 @@ signature C = sig
 	val double' : rw double_obj' * double -> unit
 
 	(* storing pointers *)
-	val ptr : (('t, 'f, 'pc) ptr, 'f, rw) obj * ('t, 'f, 'pc) ptr -> unit
+	val ptr : (('t, 'pc) ptr, rw) obj * ('t, 'pc) ptr -> unit
 	val fptr : ('f, rw) fptr_obj * 'f fptr -> unit
 	val voidptr : rw voidptr_obj * voidptr -> unit
 
 	(* alt *)
-	val ptr' : (('t, 'f, 'pc) ptr, 'f, rw) obj' * ('t, 'f, 'pc) ptr' -> unit
+	val ptr' : (('t, 'pc) ptr, rw) obj' * ('t, 'pc) ptr' -> unit
 	val fptr' : ('f, rw) fptr_obj' * 'f fptr' -> unit
 	val voidptr' : rw voidptr_obj' * voidptr -> unit
 
 	(* When storing, voidptr is compatible with any ptr type
 	 * (just like in C).  This should eliminate most need for RTI in
 	 * practice. *)
-	val ptr_voidptr : (('t, 'f, 'pc) ptr, 'f, rw) obj * voidptr -> unit
+	val ptr_voidptr : (('t, 'pc) ptr, rw) obj * voidptr -> unit
 
 	(* alt *)
-	val ptr_voidptr' : (('t, 'f, 'pc) ptr, 'f, rw) obj' * voidptr -> unit
+	val ptr_voidptr' : (('t, 'pc) ptr, rw) obj' * voidptr -> unit
 
 	(* bitfields *)
 	val sbf : rw sbf * sint -> unit
@@ -411,77 +392,74 @@ signature C = sig
     end
 
     (* copying the contents of arbitrary objects *)
-    val copy : { from: ('t, 'f, 'c) obj, to: ('t, 'f, rw) obj } -> unit
+    val copy : { from: ('t, 'c) obj, to: ('t, rw) obj } -> unit
 
     (* alt *)
-    val copy' : 't S.size ->
-		{ from: ('t, 'f, 'c) obj', to: ('t, 'f, rw) obj' } -> unit
+    val copy' : 't S.size -> { from: ('t, 'c) obj', to: ('t, rw) obj' } -> unit
 
     (* operations on (mostly) pointers *)
     structure Ptr : sig
 
 	(* going from object to pointer and vice versa *)
-	val |&| : ('t, 'f, 'c) obj -> ('t, 'f, 'c) ptr
-	val |*| : ('t, 'f, 'c) ptr -> ('t, 'f, 'c) obj
+	val |&| : ('t, 'c) obj -> ('t, 'c) ptr
+	val |*| : ('t, 'c) ptr -> ('t, 'c) obj
 
 	(* alt *)
-	val |&! : ('t, 'f, 'c) obj' -> ('t, 'f, 'c) ptr'
-	val |*! : ('t, 'f, 'c) ptr' -> ('t, 'f, 'c) obj'
+	val |&! : ('t, 'c) obj' -> ('t, 'c) ptr'
+	val |*! : ('t, 'c) ptr' -> ('t, 'c) obj'
 
 	(* comparing pointers *)
-	val compare : ('t, 'f, 'c) ptr * ('t, 'f, 'c) ptr -> order
+	val compare : ('t, 'c) ptr * ('t, 'c) ptr -> order
 
 	(* alt *)
-	val compare' : ('t, 'f, 'c) ptr' * ('t, 'f, 'c) ptr' -> order
+	val compare' : ('t, 'c) ptr' * ('t, 'c) ptr' -> order
 
 	(* going from pointer to void*;  this also accounts for a conceptual
 	 * subtyping relation and is safe *)
-	val inject : ('t, 'f, 'c) ptr -> voidptr
+	val inject : ('t, 'c) ptr -> voidptr
 
 	(* alt *)
-	val inject' : ('t, 'f, 'c) ptr' -> voidptr
+	val inject' : ('t, 'c) ptr' -> voidptr
 
 	(* the opposite is not safe, but C makes it not only easy but also
 	 * almost necessary; we use our RTI interface to specify the pointer
 	 * type (not the element type!) *)
-	val project : (('t, 'f, 'c) ptr, 'f) T.typ ->
-		      voidptr -> ('t, 'f, 'c) ptr
+	val cast : ('t, 'c) ptr T.typ -> voidptr -> ('t, 'c) ptr
 
 	(* alt *)
-	val project' : (('t, 'f, 'c) ptr, 'f) T.typ ->
-		       voidptr -> ('t, 'f, 'c) ptr'
+	val cast' : ('t, 'c) ptr T.typ -> voidptr -> ('t, 'c) ptr'
 
 	(* NULL as void* *)
 	val vNull : voidptr
 
 	(* projecting vNull to given pointer type *)
-	val null : (('t, 'f, 'c) ptr, 'f) T.typ -> ('t, 'f, 'c) ptr
+	val null : ('t, 'c) ptr T.typ -> ('t, 'c) ptr
 
 	(* the "light" NULL pointer is simply a polymorphic constant *)
-	val null' : ('t, 'f, 'c) ptr'
+	val null' : ('t, 'c) ptr'
 
 	(* checking for NULL pointer *)
 	val vIsNull : voidptr -> bool
 
 	(* combining inject and vIsNull for convenience *)
-	val isNull : ('t, 'f, 'c) ptr -> bool
+	val isNull : ('t, 'c) ptr -> bool
 
 	(* alt *)
-	val isNull' : ('t, 'f, 'c) ptr' -> bool
+	val isNull' : ('t, 'c) ptr' -> bool
 
 	(* pointer arithmetic *)
-	val |+| : ('t, 'f, 'c) ptr * int -> ('t, 'f, 'c) ptr
-	val |-| : ('t, 'f, 'c) ptr * ('t, 'f, 'c) ptr -> int
+	val |+| : ('t, 'c) ptr * int -> ('t, 'c) ptr
+	val |-| : ('t, 'c) ptr * ('t, 'c) ptr -> int
 
 	(* alt; needs explicit size (for element) *)
-	val |+! : 't S.size -> ('t, 'f, 'c) ptr' * int -> ('t, 'f, 'c) ptr'
-	val |-! : 't S.size -> ('t, 'f, 'c) ptr' * ('t, 'f, 'c) ptr' -> int
+	val |+! : 't S.size -> ('t, 'c) ptr' * int -> ('t, 'c) ptr'
+	val |-! : 't S.size -> ('t, 'c) ptr' * ('t, 'c) ptr' -> int
 
 	(* subscript through a pointer; this is unchecked *)
-	val sub : ('t, 'f, 'c) ptr * int -> ('t, 'f, 'c) obj
+	val sub : ('t, 'c) ptr * int -> ('t, 'c) obj
 
 	(* alt; needs explicit size (for element) *)
-	val sub' : 't S.size -> ('t, 'f, 'c) ptr' * int -> ('t, 'f, 'c) obj'
+	val sub' : 't S.size -> ('t, 'c) ptr' * int -> ('t, 'c) obj'
     end
 
     (* manipulating object constness
@@ -489,12 +467,12 @@ signature C = sig
      *            rw is conceptually a subtype of ro
      * ro -> rw:  this is not safe, but C makes it so easy that we
      *            might as well directly support it *)
-    val ro : ('t, 'f, 'c) obj -> ('t, 'f, ro) obj
-    val rw : ('t, 'f, 'c) obj -> ('t, 'f, rw) obj
+    val ro : ('t, 'c) obj -> ('t, ro) obj
+    val rw : ('t, 'c) obj -> ('t, rw) obj
 
     (* alt *)
-    val ro' : ('t, 'f, 'c) obj' -> ('t, 'f, ro) obj'
-    val rw' : ('t, 'f, 'c) obj' -> ('t, 'f, rw) obj'
+    val ro' : ('t, 'c) obj' -> ('t, ro) obj'
+    val rw' : ('t, 'c) obj' -> ('t, rw) obj'
 
     (* operations on (mostly) arrays *)
     structure Arr : sig
@@ -503,64 +481,55 @@ signature C = sig
 	 * since we have RTI, we can actually make this safe:  we raise
 	 * General.Subscript for out-of-bounds access;
 	 * for unchecked access, go through arr_decay and ptr_sub *)
-	val sub : (('t, 'n) arr, 'f, 'c) obj * int -> ('t, 'f, 'c) obj
+	val sub : (('t, 'n) arr, 'c) obj * int -> ('t, 'c) obj
 
 	(* alt; needs explicit type (for array) *)
-	val sub' : (('t, 'n) arr, 'f) T.typ ->
-		   (('t, 'n) arr, 'f, 'c) obj' * int -> ('t, 'f, 'c) obj'
+	val sub' : ('t, 'n) arr T.typ ->
+		   (('t, 'n) arr, 'c) obj' * int -> ('t, 'c) obj'
 
 	(* let an array object decay, yielding pointer to first element *)
-	val decay : (('t, 'n) arr, 'f, 'c) obj -> ('t, 'f, 'c) ptr
+	val decay : (('t, 'n) arr, 'c) obj -> ('t, 'c) ptr
 
 	(* alt *)
-	val decay' : (('t, 'n) arr, 'f, 'c) obj' -> ('t, 'f, 'c) ptr'
+	val decay' : (('t, 'n) arr, 'c) obj' -> ('t, 'c) ptr'
 
 	(* reconstruct an array object from the pointer to its first element *)
-	val reconstruct :
-	    ('t, 'f, 'c) ptr * 'n Dim.dim -> (('t, 'n) arr, 'f, 'c) obj
+	val reconstruct : ('t, 'c) ptr * 'n Dim.dim -> (('t, 'n) arr, 'c) obj
 
 	(* alt *)
-	val reconstruct' :
-	    ('t, 'f, 'c) ptr' * 'n Dim.dim -> (('t, 'n) arr, 'f, 'c) obj'
+	val reconstruct': ('t, 'c) ptr' * 'n Dim.dim -> (('t, 'n) arr, 'c) obj'
 
 	(* dimension of array object *)
-	val dim : (('t, 'n) arr, 'f, 'c) obj -> 'n Dim.dim
+	val dim : (('t, 'n) arr, 'c) obj -> 'n Dim.dim
     end
 
     (* allocating new objects *)
-    val new : ('t, 'f) T.typ -> ('t, 'f, rw) obj option
+    val new : 't T.typ -> ('t, rw) obj option
 
     (* alt *)
-    val new' : ('t, 'f) T.typ -> ('t, 'f, rw) obj' option
-
-    (* allocating something that does not involve function pointers... *)
-    val new'' : 't S.size -> ('t, unit, rw) obj' option
+    val new' : 't S.size -> ('t, rw) obj' option
 
     (* freeing objects that were allocated earlier *)
-    val discard : ('t, 'f, 'c) obj -> unit
+    val discard : ('t, 'c) obj -> unit
 
     (* alt *)
-    val discard' : ('t, 'f, 'c) obj' -> unit
+    val discard' : ('t, 'c) obj' -> unit
 
     (* allocating a dynamically-sized array *)
-    val alloc : ('t, 'f) T.typ -> word -> ('t, 'f, rw) ptr option
+    val alloc : 't T.typ -> word -> ('t, rw) ptr option
 
     (* alt *)
-    val alloc' : ('t, 'f) T.typ -> word -> ('t, 'f, rw) ptr' option
-
-    (* alt, without function pointers *)
-    val alloc'' : 't S.size -> word -> ('t, unit, rw) ptr' option
+    val alloc' : 't S.size -> word -> ('t, rw) ptr' option
 
     (* freeing through pointers *)
-    val free : ('t, 'f, 'c) ptr -> unit
+    val free : ('t, 'c) ptr -> unit
 
     (* alt *)
-    val free' : ('t, 'f, 'c) ptr' -> unit
+    val free' : ('t, 'c) ptr' -> unit
 
     (* perform function call through function-pointer *)
     val call : ('a -> 'b) fptr * 'a -> 'b
 
     (* alt; needs explicit type for the function pointer *)
-    val call' : (('a -> 'b) fptr, 'a -> 'b) T.typ ->
-		('a -> 'b) fptr' * 'a -> 'b
+    val call' : ('a -> 'b) fptr T.typ -> ('a -> 'b) fptr' * 'a -> 'b
 end

@@ -8,7 +8,7 @@
  *)
 local
     val program = "ml-ffigen"
-    val version = "0.1"
+    val version = "0.2"
     val author = "Matthias Blume"
     val email = "blume@research.bell-labs.com"
     structure S = Spec
@@ -167,7 +167,7 @@ end = struct
 	fun Suobj'ro sut = Con ("su_obj'", [sut, Type "ro"])
 	fun Suobj''c sut = Con ("su_obj'", [sut, Type "'c"])
 
-	fun wtn_f_fptr_p p { args, res } = let
+	fun wtn_fptr_p p { args, res } = let
 	    fun topty (S.STRUCT t) = Suobj'ro (St t)
 	      | topty (S.UNION t) = Suobj'ro (Un t)
 	      | topty t = wtn_ty' t
@@ -189,36 +189,27 @@ end = struct
 	    val dom_t = Tuple arg_tl
 	    val fct_t = Arrow (dom_t, res_t)
 	in
-	    (Con ("fptr" ^ p, [fct_t]), fct_t)
+	    Con ("fptr" ^ p, [fct_t])
 	end
 
-	and wtn_f_ty_p p (t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
+	and wtn_ty_p p (t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 				S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
 				S.FLOAT | S.DOUBLE | S.VOIDPTR)) =
-	    (Type (stem t), Unit)
-	  | wtn_f_ty_p p (S.STRUCT t) = (Con ("su", [St t]), Unit)
-	  | wtn_f_ty_p p (S.UNION t) = (Con ("su", [Un t]), Unit)
-	  | wtn_f_ty_p p (S.PTR (c, t)) =
+	    Type (stem t)
+	  | wtn_ty_p p (S.STRUCT t) = Con ("su", [St t])
+	  | wtn_ty_p p (S.UNION t) = Con ("su", [Un t])
+	  | wtn_ty_p p (S.PTR (c, t)) =
 	    (case incomplete t of
 		 SOME (K, tag) =>
-		 (Con (concat [istruct (K, tag), ".iptr", p], [rwro c]), Unit)
-	       | NONE => let
-		     val (w, f) = wtn_f_ty t
-		 in
-		     (Con ("ptr" ^ p, [w, f, rwro c]), f)
-		 end)
-	  | wtn_f_ty_p p (S.ARR { t, d, ... }) = let
-		val (w, f) = wtn_f_ty t
-	    in
-		(Con ("arr", [w, dim_ty d]), f)
-	    end
-	  | wtn_f_ty_p p (S.FPTR spec) = wtn_f_fptr_p p spec
+		 Con (concat [istruct (K, tag), ".iptr", p], [rwro c])
+	       | NONE => Con ("ptr" ^ p, [wtn_ty t, rwro c]))
+	  | wtn_ty_p p (S.ARR { t, d, ... }) =
+	    Con ("arr", [wtn_ty t, dim_ty d])
+	  | wtn_ty_p p (S.FPTR spec) = wtn_fptr_p p spec
 
-	and wtn_f_ty t = wtn_f_ty_p "" t
+	and wtn_ty t = wtn_ty_p "" t
 
-	and wtn_ty t = #1 (wtn_f_ty t)
-
-	and wtn_ty' t = #1 (wtn_f_ty_p "'" t)
+	and wtn_ty' t = wtn_ty_p "'" t
 
 	fun topfunc_ty p { args, res } = let
 	    fun topty S.SCHAR = Type "MLRep.SChar.int"
@@ -233,7 +224,7 @@ end = struct
 	      | topty S.DOUBLE = Type "MLRep.Double.real"
 	      | topty (S.STRUCT t) = Con ("su_obj" ^ p, [St t, Type "'c"])
 	      | topty (S.UNION t) = Con ("su_obj" ^ p, [Un t, Type "'c"])
-	      | topty t = #1 (wtn_f_ty_p p t)
+	      | topty t = wtn_ty_p p t
 	    val (res_t, extra_arg_t) =
 		case res of
 		    NONE => (Unit, [])
@@ -252,17 +243,9 @@ end = struct
 	    Arrow (Tuple (extra_arg_t @ map topty args), res_t)
 	end
 
-	fun  rti_ty t = let
-	    val (w, f) = wtn_f_ty t
-	in
-	    Con ("T.typ", [w, f])
-	end
+	fun  rti_ty t = Con ("T.typ", [wtn_ty t])
 
-	fun  obj_ty p (t, c) = let
-	    val (w, f) = wtn_f_ty t
-	in
-	    Con ("obj" ^ p, [w, f, c])
-	end
+	fun  obj_ty p (t, c) = Con ("obj" ^ p, [wtn_ty t, c])
 
 	fun cro S.RW = Type "'c"
 	  | cro S.RO = Type "ro"
@@ -376,7 +359,7 @@ end = struct
 		pr_vdecl ("size", Con ("S.size", [Con ("su", [StUn tag])]));
 		nl ();
 		nl (); str (concat ["(* RTI for this ", su, " *)"]);
-		pr_vdecl ("typ", Con ("T.su_typ", [StUn tag]));
+		pr_vdecl ("typ", Con ("T.typ", [Con ("su", [StUn tag])]));
 		nl ();
 		nl (); str "(* witness types for fields *)";
 		app pr_field_typ fields;
@@ -598,16 +581,10 @@ end = struct
 
 		(* low-level type used to communicate a value to the
 		 * low-level call operation *)
-		fun mlty S.SCHAR = Type "CMemory.cc_schar"
-		  | mlty S.UCHAR = Type "CMemory.cc_uchar"
-		  | mlty S.SINT = Type "CMemory.cc_sint"
-		  | mlty S.UINT = Type "CMemory.cc_uint"
-		  | mlty S.SSHORT = Type "CMemory.cc_sshort"
-		  | mlty S.USHORT = Type "CMemory.cc_ushort"
-		  | mlty S.SLONG = Type "CMemory.cc_slong"
-		  | mlty S.ULONG = Type "CMemory.cc_ulong"
-		  | mlty S.FLOAT = Type "CMemory.cc_float"
-		  | mlty S.DOUBLE = Type "CMemory.cc_double"
+		fun mlty (t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
+				S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+				S.FLOAT | S.DOUBLE)) =
+		    Type ("CMemory.cc_" ^ stem t)
 		  | mlty (S.VOIDPTR | S.PTR _ | S.FPTR _ |
 			  S.STRUCT _) = Type "CMemory.cc_addr"
 		  | mlty (S.ARR _ | S.UNION _) = raise Fail "unexpected type"
@@ -675,7 +652,7 @@ end = struct
 				      EApp (EVar "CMemory.unwrap_addr", r))
 			    fun iunwrap (K, tag, t) r =
 				EApp (EApp (EVar (istruct (K, tag) ^
-						  ".project'"),
+						  ".cast'"),
 					    rti_val t),
 				      punwrap "vcast" r)
 			    val res_wrap =

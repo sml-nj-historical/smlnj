@@ -20,6 +20,7 @@ Library
 	signature C_INT
 	structure C_Int
 
+	signature ZSTRING
 	structure ZString
 
 	signature DYN_LINKAGE
@@ -38,12 +39,14 @@ is
 
 	tag.sml
 
-	../c.sig
+	../c.sig	(lambdasplit:infinity)
 	c.sml		(lambdasplit:infinity)
-	c-int.sig
+	c-int.sig	(lambdasplit:infinity)
 	c-int.sml	(lambdasplit:infinity)
-	zstring.sml
 
-	iptr.sig
+	../zstring.sig	(lambdasplit:infinity)
+	zstring.sml	(lambdasplit:infinity)
+
+	../iptr.sig	(lambdasplit:infinity)
 	c-iptr-fn.sml	(lambdasplit:infinity)
 	i-iptr-fn.sml	(lambdasplit:infinity)
