@@ -11,7 +11,6 @@ signature SMLINFO = sig
 
     type info
 
-    type policy = Policy.policy
     type complainer = string -> (PrettyPrint.ppstream -> unit) -> unit
     type parsetree = GenericVC.Ast.dec
 
@@ -20,7 +19,7 @@ signature SMLINFO = sig
     val eq : info * info -> bool	(* compares sourcepaths *)
     val compare : info * info -> order	(* compares sourcepaths *)
 
-    val info : policy ->
+    val info : GeneralParams.params ->
 	{ sourcepath: AbsPath.t,
 	  group: AbsPath.t,
 	  error: complainer,
@@ -48,11 +47,11 @@ structure SmlInfo :> SMLINFO = struct
     structure Print = GenericVC.Control.Print
     structure SF = GenericVC.SmlFile
     structure EM = GenericVC.ErrorMsg
+    structure FNP = FilenamePolicy
 
     type source = Source.inputSource
     type parsetree = GenericVC.Ast.dec
 
-    type policy = Policy.policy
     type complainer = string -> (PrettyPrint.ppstream -> unit) -> unit
 
     datatype info =
@@ -88,7 +87,9 @@ structure SmlInfo :> SMLINFO = struct
 	knownInfo := foldl AbsPathMap.insert' AbsPathMap.empty l
     end
 
-    fun info policy { sourcepath, group, error, history, share } = let
+    fun info params arg = let
+	val { fnpolicy, groupreg, primconf } = params
+	val { sourcepath, group, error, history, share } = arg
 	fun newinfo () = let
 	    val i = INFO {
 			  sourcepath = sourcepath,
@@ -96,7 +97,7 @@ structure SmlInfo :> SMLINFO = struct
 			  error = error,
 			  lastseen = ref TStamp.NOTSTAMP,
 			  parsetree = ref NONE,
-			  skelpath = Policy.mkSkelPath policy sourcepath,
+			  skelpath = FNP.mkSkelPath fnpolicy sourcepath,
 			  skeleton = ref NONE
 			 }
 	in
@@ -107,7 +108,7 @@ structure SmlInfo :> SMLINFO = struct
 	case AbsPathMap.find (!knownInfo, sourcepath) of
 	    SOME (i as INFO { group = g, error = e, ... }) =>
 		if AbsPath.compare (group, g) <> EQUAL then
-		    (if GroupReg.registered g then
+		    (if GroupReg.registered groupreg g then
 			 let val n = AbsPath.name sourcepath
 			 in
 			     error (concat ["ML source file ", n,
@@ -200,7 +201,7 @@ structure SmlInfo :> SMLINFO = struct
 					skeleton := SOME sk);
 				  sk
 			      end
-			    | NONE => Skeleton.SeqDecl []))
+			    | NONE => Skeleton.Seq []))
     end
 
     (* first check the time stamp, then do your stuff... *)

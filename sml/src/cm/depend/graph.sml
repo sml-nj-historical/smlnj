@@ -7,7 +7,6 @@
  *)
 structure DependencyGraph = struct
 
-    type symbol = Symbol.symbol
     type primitive = Primitive.primitive
 
     type filter = SymbolSet.set option
@@ -33,17 +32,7 @@ structure DependencyGraph = struct
 
     withtype farsbnode = sbnode filtered
 
-    (* environments used for dependency analysis *)
-    datatype env =
-	EMPTY
-      | FCTENV of { looker: symbol -> value option,
-		    domain: unit -> SymbolSet.set }
-      | BINDING of symbol * value
-      | LAYER of env * env
-
-    withtype value = env
-
-    type impexp = farsbnode * env
+    type impexp = farsbnode * DAEnv.env
 
     fun describeSBN (SB_BNODE (PNODE p)) = Primitive.toString p
       | describeSBN (SB_BNODE (BNODE { bininfo = i, ... })) =

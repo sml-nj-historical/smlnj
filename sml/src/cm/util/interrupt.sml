@@ -5,7 +5,6 @@
  *
  * author: Matthias Blume (blume@cs.princeton.edu)
  *)
-
 signature INTERRUPT = sig
 
     exception Interrupt

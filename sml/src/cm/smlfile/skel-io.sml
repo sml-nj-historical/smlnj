@@ -24,7 +24,7 @@ structure SkelIO :> SKELIO = struct
     val s2b = Byte.stringToBytes
     val b2c = Byte.byteToChar
 
-    val version = "Decl 10\n"
+    val version = "Skeleton 1\n"
 
     fun makeset l = SS.addList (SS.empty, l)
 
@@ -61,49 +61,21 @@ structure SkelIO :> SKELIO = struct
 
 	fun w_path (SP.SPATH p, r) = w_list w_name (p, r)
 
-	fun w_option w (NONE, r) = "-" :: r
-	  | w_option w (SOME x, r) = "+" :: w (x, r)
+	fun w_decl (SK.Bind (name, def), r) =
+	    "b" :: w_name (name, w_modExp (def, r))
+          | w_decl (SK.Local (x, y), r) = "l" :: w_decl (x, w_decl (y, r))
+	  | w_decl (SK.Par l, r) = "p" :: w_list w_decl (l, r)
+	  | w_decl (SK.Seq l, r) = "q" :: w_list w_decl (l, r)
+ 	  | w_decl (SK.Open d, r) = "o" :: w_modExp (d, r)
+	  | w_decl (SK.Ref s, r) = "r" :: w_list w_name (SS.listItems s, r)
 
-	fun w_decl (SK.StrDecl l, r) =
-	    let
-		fun w_item ({ name, def, constraint }, r) =
-		    w_name (name,
-			    w_strExp (def,
-				      w_option w_strExp (constraint, r)))
-	    in
-		"s" :: w_list w_item (l, r)
-	    end
-	  | w_decl (SK.FctDecl l, r) = let
-		fun w_item ({ name, def }, r) =
-		    w_name (name, w_fctExp (def, r))
-	    in
-		"f" :: w_list w_item (l, r)
-	    end
-          | w_decl (SK.LocalDecl (x, y), r) = "l" :: w_decl (x, w_decl (y, r))
-	  | w_decl (SK.SeqDecl l, r) = "q" :: w_list w_decl (l, r)
- 	  | w_decl (SK.OpenDecl l, r) = "o" :: w_list w_strExp (l, r)
-	  | w_decl (SK.DeclRef s, r) = "r" :: w_list w_name (SS.listItems s, r)
-
-	and w_strExp (SK.VarStrExp p, r) = "v" :: w_path (p, r)
-	  | w_strExp (SK.BaseStrExp d, r) = "s" :: w_decl (d, r)
-	  | w_strExp (SK.AppStrExp (p, l), r) =
-	    "a" :: w_path (p, w_list w_strExp (l, r))
-	  | w_strExp (SK.LetStrExp (d, se), r) =
-	    "l" :: w_decl (d, w_strExp (se, r))
- 	  | w_strExp (SK.ConStrExp (s1, s2), r) =
- 	    "c" :: w_strExp (s1, w_strExp(s2, r))
-
-	and w_fctExp (SK.VarFctExp (p, fe), r) =
-	    "v" :: w_path (p, w_option w_fctExp (fe, r))
-	  | w_fctExp (SK.BaseFctExp { params, body, constraint }, r) =
-	    "f" :: w_decl (params,
-			   w_strExp (body, w_option w_strExp (constraint, r)))
-	  | w_fctExp (SK.AppFctExp (p, sel, feo), r) =
-	    "a" ::
-	    w_path (p, w_list w_strExp (sel, w_option w_fctExp (feo, r)))
-	  | w_fctExp (SK.LetFctExp (d, fe), r) =
-	    "l" :: w_decl (d, w_fctExp (fe, r))
-
+	and w_modExp (SK.Var p, r) = "v" :: w_path (p, r)
+	  | w_modExp (SK.Decl d, r) = "d" :: w_decl (d, r)
+	  | w_modExp (SK.App (p, l), r) =
+	    "a" :: w_path (p, w_list w_modExp (l, r))
+	  | w_modExp (SK.Let (d, m), r) = "l" :: w_decl (d, w_modExp (m, r))
+ 	  | w_modExp (SK.Con (m1, m2), r) =
+	    "c" :: w_modExp (m1, w_modExp (m2, r))
     in
 	BinIO.output (s, s2b (concat (version :: w_decl (d, ["\n"]))))
     end
@@ -139,58 +111,21 @@ structure SkelIO :> SKELIO = struct
 
 	fun r_path first = SP.SPATH (r_list r_name first)
 
-	fun r_option r (SOME #"-") = NONE
-	  | r_option r (SOME #"+") = SOME (r (rd ()))
-	  | r_option r _ = raise FormatError
-
-	fun r_decl (SOME #"s") =
-	    let
-		fun r_item first = {
-				    name = r_name first,
-				    def = r_strExp (rd ()),
-				    constraint = r_option r_strExp (rd ())
-				   }
-	    in
-		SK.StrDecl (r_list r_item (rd ()))
-	    end
-	  | r_decl (SOME #"f") =
-	    let
-		fun r_item first = {
-				    name = r_name first,
-				    def = r_fctExp (rd ())
-				   }
-	    in
-		SK.FctDecl (r_list r_item (rd ()))
-	    end
-	  | r_decl (SOME #"l") = SK.LocalDecl (r_decl (rd ()), r_decl (rd ()))
-	  | r_decl (SOME #"q") = SK.SeqDecl (r_list r_decl (rd ()))
- 	  | r_decl (SOME #"o") = SK.OpenDecl (r_list r_strExp (rd ()))
-	  | r_decl (SOME #"r") = SK.DeclRef (makeset (r_list r_name(rd ())))
+	fun r_decl (SOME #"b") = SK.Bind (r_name (rd ()), r_modExp (rd ()))
+	  | r_decl (SOME #"l") = SK.Local (r_decl (rd ()), r_decl (rd ()))
+	  | r_decl (SOME #"p") = SK.Par (r_list r_decl (rd ()))
+	  | r_decl (SOME #"q") = SK.Seq (r_list r_decl (rd ()))
+ 	  | r_decl (SOME #"o") = SK.Open (r_modExp (rd ()))
+	  | r_decl (SOME #"r") = SK.Ref (makeset (r_list r_name (rd ())))
 	  | r_decl _ = raise FormatError
 
-	and r_strExp (SOME #"v") = SK.VarStrExp (r_path (rd ()))
-	  | r_strExp (SOME #"s") = SK.BaseStrExp (r_decl (rd ()))
-	  | r_strExp (SOME #"a") =
-	    SK.AppStrExp (r_path (rd ()), r_list r_strExp (rd ()))
-	  | r_strExp (SOME #"l") =
-	    SK.LetStrExp (r_decl (rd ()), r_strExp (rd ()))
- 	  | r_strExp (SOME #"c") =
- 	    SK.ConStrExp (r_strExp (rd ()), r_strExp (rd ()))
-	  | r_strExp _ = raise FormatError
-
-	and r_fctExp (SOME #"v") =
-	    SK.VarFctExp (r_path(rd()), r_option r_fctExp(rd()))
-	  | r_fctExp (SOME #"f") =
-	    SK.BaseFctExp { params = r_decl (rd ()),
-			    body = r_strExp (rd ()),
-			    constraint = r_option r_strExp (rd ()) }
-	  | r_fctExp (SOME #"a") =
-	    SK.AppFctExp (r_path (rd ()),
-			  r_list r_strExp (rd ()),
-			  r_option r_fctExp (rd ()))
-	  | r_fctExp (SOME #"l") =
-	    SK.LetFctExp (r_decl (rd ()), r_fctExp (rd ()))
-	  | r_fctExp _ = raise FormatError
+	and r_modExp (SOME #"v") = SK.Var (r_path (rd ()))
+	  | r_modExp (SOME #"d") = SK.Decl (r_decl (rd ()))
+	  | r_modExp (SOME #"a") =
+	    SK.App (r_path (rd ()), r_list r_modExp (rd ()))
+	  | r_modExp (SOME #"l") = SK.Let (r_decl (rd ()), r_modExp (rd ()))
+ 	  | r_modExp (SOME #"c") = SK.Con (r_modExp (rd ()), r_modExp (rd ()))
+	  | r_modExp _ = raise FormatError
 
 	val firstline = inputLine s
 	val r = if firstline = version then r_decl (rd ())

@@ -218,7 +218,8 @@ structure AbsPath :> ABSPATH = struct
 	in
 	    case String.fields delim spec of
 		"" :: arcs => mk (true, arcs, context)
-	      | [] => mk (false, [], context)
+	      | [] => mk (false, [], context) (* shouldn't happen *)
+	      | [arc] => mk (false, [arc], context)
 	      | arcs as (arc1 :: arcn) =>
 		    (case PathConfig.configAnchor arc1 of
 			 NONE => mk (false, arcs, context)

@@ -13,21 +13,25 @@ is
 	parse/cm.grm
 	parse/cm.lex
 
+	semant/general-params.sml
+	semant/filename-policy.sml
+	semant/primitive.sml
+	semant/group-reg.sml
+
 	(* semantic actions for description file parser *)
 	semant/members.sml
 	semant/semant.sml
-	semant/primitive.sml
-	semant/group-reg.sml
 
 	(* dependency graphs *)
 	depend/graph.sml
 	depend/build.sml
+	depend/da-env.sml
 
 	(* handling SML source code *)
-	smlfile/policy.sml
 	smlfile/smlinfo.sml
 	smlfile/skeleton.sml
 	smlfile/skel-cvt.sml
+	smlfile/skel-opt.sml
 	smlfile/skel-io.sml
 	smlfile/skel-exports.sml
 

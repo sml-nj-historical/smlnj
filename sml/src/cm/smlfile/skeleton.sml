@@ -1,6 +1,8 @@
 (*
  * SML source skeletons.
+ *   (This has been vastly streamlined and simplified.)
  *
+ *   Copyright (c) 1999 by Bell Laboratories, Lucent Technologies
  *   Copyright (c) 1995 by AT&T Bell Laboratories
  *   Copyright (c) 1993 by Carnegie Mellon University,
  *                         School of Computer Science
@@ -14,25 +16,17 @@ structure Skeleton = struct
     type sympath = GenericVC.SymPath.path
 
     datatype decl =
-	StrDecl of { name: symbol,
-		     def: strExp,
-		     constraint: strExp option } list    
-      | FctDecl of { name: symbol, def: fctExp } list    
-      | LocalDecl of decl * decl
-      | SeqDecl of decl list    
-      | OpenDecl of strExp list
-      | DeclRef of SymbolSet.set
+	Bind of symbol * modExp
+      | Local of decl * decl
+      | Par of decl list
+      | Seq of decl list
+      | Open of modExp
+      | Ref of SymbolSet.set
 
-    and strExp = 
-	VarStrExp of sympath
-      | BaseStrExp of decl
-      | AppStrExp of sympath * strExp list
-      | LetStrExp of decl * strExp  
-      | ConStrExp of strExp * strExp
-
-    and fctExp = 
-	VarFctExp of sympath * fctExp option 
-      | BaseFctExp of { params: decl, body: strExp, constraint: strExp option }
-      | AppFctExp of sympath * strExp list * fctExp option
-      | LetFctExp of decl * fctExp
+    and modExp =
+	Var of sympath
+      | Decl of decl
+      | App of sympath * modExp list
+      | Let of decl * modExp
+      | Con of modExp * modExp
 end

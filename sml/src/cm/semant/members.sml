@@ -22,7 +22,7 @@ signature MEMBERCOLLECTION = sig
 
     val empty : collection
 
-    val expandOne : farlooker
+    val expandOne : GeneralParams.params * farlooker
 	-> { sourcepath: AbsPath.t, group: AbsPath.t, class: string option,
 	     error : string -> (PrettyPrint.ppstream -> unit) -> unit }
 	-> collection
@@ -41,6 +41,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     structure DG = DependencyGraph
     structure EM = GenericVC.ErrorMsg
     structure CBE = GenericVC.BareEnvironment
+    structure SS = SymbolSet
 
     type smlinfo = SmlInfo.info
     type symbol = Symbol.symbol
@@ -60,25 +61,6 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		     gimports = SymbolMap.empty,
 		     smlfiles = [],
 		     localdefs = SymbolMap.empty }
-
-    fun convertEnv cmenv = let
-	fun modulesOnly sl = let
-	    fun addModule (sy, set) =
-		case Symbol.nameSpace sy of
-		    (Symbol.STRspace | Symbol.SIGspace |
-		     Symbol.FCTspace | Symbol.FSIGspace) =>
-			SymbolSet.add (set, sy)
-		  | _ => set
-	in
-	    foldl addModule SymbolSet.empty sl
-	end
-	fun cvt CBE.CM_NONE = NONE
-	  | cvt (CBE.CM_ENV { look, symbols }) =
-	    SOME (DG.FCTENV { looker = cvt o look,
-			      domain = modulesOnly o symbols })
-    in
-	valOf (cvt cmenv)
-    end
 
     fun sequential (COLLECTION c1, COLLECTION c2, error) = let
 	fun describeSymbol (s, r) = let
@@ -106,7 +88,9 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		     localdefs = ld_union (#localdefs c1, #localdefs c2) }
     end
 
-    fun expandOne gexports { sourcepath, group, class, error } = let
+    fun expandOne (params, gexports) arg = let
+	val primconf = #primconf params
+	val { sourcepath, group, class, error } = arg
 	fun noPrimitive () = let
 	    fun e0 s = error s EM.nullErrorBody
 	    val expansions = PrivateTools.expand e0 (sourcepath, class)
@@ -119,13 +103,15 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	      | exp2coll (PrivateTools.SMLSOURCE src) = let
 		    val { sourcepath = p, history = h, share = s } = src
 		    val i =  SmlInfo.info
-			Policy.default
+			params
 			{ sourcepath = p, group = group,
 			  error = error, history = h,
 			  share = s }
 		    val exports = SmlInfo.exports i
+		    val _ = if SS.isEmpty exports then e0 "no module exports"
+			    else ()
 		    fun addLD (s, m) = SymbolMap.insert (m, s, i)
-		    val ld = SymbolSet.foldl addLD SymbolMap.empty exports
+		    val ld = SS.foldl addLD SymbolMap.empty exports
 		in
 		    COLLECTION { imports = SymbolMap.empty,
 				 gimports = SymbolMap.empty,
@@ -141,15 +127,15 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	if isSome class then noPrimitive ()
 	else case Primitive.fromString (AbsPath.spec sourcepath) of
 	    SOME p => let
-		val exports = Primitive.exports p
+		val exports = Primitive.exports primconf p
+		val plook = Primitive.lookup primconf p
 		fun addFN (s, m) = let
-		    val cmenv = Primitive.lookup p s
-		    val env = convertEnv cmenv
+		    val env = plook s
 		    val fsbn = (NONE, DG.SB_BNODE (DG.PNODE p))
 		in
 		    SymbolMap.insert (m, s, (fsbn, env))
 		end
-		val imp = SymbolSet.foldl addFN SymbolMap.empty exports
+		val imp = SS.foldl addFN SymbolMap.empty exports
 	    in
 		COLLECTION { imports = imp,
 			     gimports = SymbolMap.empty,

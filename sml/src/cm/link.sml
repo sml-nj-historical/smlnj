@@ -10,13 +10,15 @@ functor LinkCM () = struct
   in
     structure CM = struct
 	
-	fun parse s = let
+	fun parse cfg s = let
 	    val c = AbsPath.cwdContext ()
 	    val p = AbsPath.native { context = AbsPath.cwdContext (),
 				     spec = s }
 	in
-	    CMParse.parse p
+	    CMParse.parse cfg p
 	end
+
+	val configuration = Primitive.configuration
     end
 
     structure CMB = struct

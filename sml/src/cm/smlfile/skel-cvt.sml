@@ -1,6 +1,7 @@
 (*
  * Convert ASTs to CM's trimmed version thereof.
  *
+ *   Copyright (c) 1999 by Lucent Technologies, Bell Laboratories
  *   Copyright (c) 1995 by AT&T Bell Laboratories
  *   Copyright (c) 1993 by Carnegie Mellon University,
  *                         School of Computer Science
@@ -24,371 +25,221 @@ structure SkelCvt :> SKELCVT = struct
     structure SS = SymbolSet
     structure EM = GenericVC.ErrorMsg
 
-    val symbolModPath = SP.SPATH
-
     type symbol = Symbol.symbol
     type path = symbol list
 
-    fun allButLast lst =
-	case lst of
-	    [] => []
-	  | [last] => []
-	  | head :: (tail as (_ :: _)) => head :: (allButLast tail)
+    infix o'
+    fun (f o' g) (x, y) = f (g x, y)
 
-    fun modRef (path, accum) =
-	case path of [] => accum
-      | [only] => accum
-      | head :: _ => SS.add (accum, head)
+    (* given a path, add an element to a set of module references *)
+    fun s_addP ([], a) = a		(* can this happen at all? *)
+      | s_addP ([only], a) = a		(* no module name here *)
+      | s_addP (head :: _, a) = SS.add (a, head)
 
-    fun declRef (path, accum) =
-	case path of
-	    [] => accum
-	  | head :: _ =>
-		(case accum of
-		     [] => [DeclRef (SS.singleton head)]
-		   | (DeclRef otherRefs) :: tail =>
-			 (DeclRef (SS.add (otherRefs, head))) :: tail
-		   | _ => (DeclRef (SS.singleton head)) :: accum)
+    (* given a path, add an element to a decl list *)
+    fun d_addP ([], a) = a
+      | d_addP (h :: _, []) = [Ref (SS.singleton h)]
+      | d_addP (h :: _, Ref s :: a) = Ref (SS.add (s, h)) :: a
+      | d_addP (h :: _, a) = Ref (SS.singleton h) :: a
 
-    fun dropLast [x] = nil
-      | dropLast [] = []
-      | dropLast (a :: rest) = a :: (dropLast rest)
+    (* given a set of module references, add it to a decl list *)
+    fun d_addS (s, a) =
+	if SS.isEmpty s then a
+	else case a of
+	    [] => [Ref s]
+	  | Ref s' :: a => Ref (SS.union (s, s')) :: a
+	  | a => Ref s :: a
 
-    fun modRefSet (modNames, accum) =
-	if SS.isEmpty modNames then accum
-	else
-	    case accum of
-		[] => [DeclRef modNames]
-	      | (DeclRef otherRefs) :: tail =>
-		    (DeclRef (SS.union (modNames, otherRefs))) :: tail
-	      | _ => (DeclRef modNames) :: accum
+    fun localDec ([], [], a) = a
+      | localDec ([], [Ref s], a) = d_addS (s, a)
+      | localDec (Ref s :: t, body, a) = d_addS (s, localDec (t, body, a))
+      | localDec (bdg, body, a) = Local (Seq bdg, Seq body) :: a
 
-    fun localDec ((bind, body), accum) =
-	case (bind, body) of
-	    ([], []) => accum
-	  | ([], [DeclRef names]) => modRefSet (names, accum)
-	  | ([DeclRef names], []) => modRefSet (names, accum)
-	  | ([DeclRef names1], [DeclRef names2]) =>
-		modRefSet (SS.union (names1, names2), accum)
-	  | args => (LocalDecl (SeqDecl bind, SeqDecl body)) :: accum
+    fun con (s1, NONE) = s1
+      | con (s1, SOME s2) = Con (s1, s2)
 
-    fun c_dec ast =
-	case do_dec (ast, []) of
-	    [] => DeclRef SS.empty
-	  | [decl] => decl
-	  | declList => SeqDecl declList
+    fun c_dec ast = Seq (do_dec (ast, []))
 
-    and do_dec (ast, accum) =
-	case ast of
-	    ValDec (arg, _) => foldr c_vb accum arg
-	  | ValrecDec (arg, _) => foldr c_rvb accum arg
-	  | FunDec (arg, _) => foldr c_fb accum arg
-	  | TypeDec arg => modRefSet (foldr c_tb SS.empty arg, accum)
-	  | DatatypeDec { datatycs, withtycs } =>
-		modRefSet (foldr c_db (foldr c_tb SS.empty withtycs) datatycs,
-			   accum)
-	  | AbstypeDec { abstycs, withtycs, body } =>
-		(* body is syntactically restricted to ldecs,
-		 * no module scoping here *)
-		modRefSet (foldr c_db (foldr c_tb SS.empty withtycs) abstycs,
-			   (c_dec body) :: accum)
-	  | ExceptionDec arg =>
-		modRefSet (foldr c_eb SS.empty arg, accum)
-	  | StrDec arg => (StrDecl (foldr c_strb [] arg)) :: accum
-	  | AbsDec arg => (StrDecl (foldr c_strb [] arg)) :: accum
-	  | FctDec arg => (FctDecl (foldr c_fctb [] arg)) :: accum
-	  | SigDec arg => (StrDecl (foldr c_sigb [] arg)) :: accum
-	  | FsigDec arg => (FctDecl (foldr c_fsigb [] arg)) :: accum
-	  | LocalDec (bindingDec, bodyDec) =>
-		localDec ((do_dec (bindingDec, []),
-			   do_dec (bodyDec, [])),
-			  accum)
-	  | SeqDec arg => foldr do_dec accum arg
- 	  | OpenDec arg =>
-		(OpenDecl (map (VarStrExp o symbolModPath) arg)) :: accum
-	  | OvldDec arg => accum
-	  | FixDec arg => accum
-	  | MarkDec (arg, _) => do_dec (arg, accum)
+    and do_dec (ValDec (l, _), a) = foldr c_vb a l
+      | do_dec (ValrecDec (l, _), a) = foldr c_rvb a l
+      | do_dec (FunDec (l, _), a) = foldr c_fb a l
+      | do_dec (TypeDec l, a) = d_addS (foldl c_tb SS.empty l, a)
+      | do_dec (DatatypeDec { datatycs, withtycs }, a) =
+	d_addS (foldl c_db (foldl c_tb SS.empty withtycs) datatycs, a)
+      | do_dec (AbstypeDec { abstycs, withtycs, body }, a) =
+	(* body is syntactically restricted to ldecs,
+	 * no module scoping here *)
+	d_addS (foldl c_db (foldl c_tb SS.empty withtycs) abstycs,
+		c_dec body :: a)
+      | do_dec (ExceptionDec l, a) = d_addS (foldl c_eb SS.empty l, a)
+      | do_dec ((StrDec l | AbsDec l), a) = Par (foldr c_strb [] l) :: a
+      | do_dec (FctDec l, a) = Par (foldr c_fctb [] l) :: a
+      | do_dec (SigDec l, a) = Par (foldr c_sigb [] l) :: a
+      | do_dec (FsigDec l, a) = Par (foldr c_fsigb [] l) :: a
+      | do_dec (LocalDec (bdg, body), a) =
+	localDec (do_dec (bdg, []), do_dec (body, []), a)
+      | do_dec (SeqDec l, a) = foldr do_dec a l
+      | do_dec (OpenDec l, a) = Par (map (Open o Var o SP.SPATH) l) :: a
+      | do_dec ((OvldDec _ | FixDec _), a) = a
+      | do_dec (MarkDec (arg, _), a) = do_dec (arg, a)
 
-    and c_strb (ast, accum) =
-	case ast of
-	    Strb { name, def, constraint } =>
-		{
-		 name = name,
-		 def = c_strexp def,
-		 constraint = sigexpConst constraint
-		} :: accum
-	  | MarkStrb (arg, _) => c_strb (arg, accum)
+    and c_strb (Strb { name, def, constraint }, a) =
+	Bind (name, con (c_strexp def, sigexpConst constraint)) :: a
+      | c_strb (MarkStrb (arg, _), a) = c_strb (arg, a)
 
-    and c_fctb (ast, accum) =
-	case ast of
-	    Fctb { name, def } => 
-		{ name = name, def = c_fctexp def } :: accum
-	  | MarkFctb (arg, _) => c_fctb (arg, accum)
+    and c_fctb (Fctb { name, def }, a) = Bind (name, c_fctexp def) :: a
+      | c_fctb (MarkFctb (arg, _), a) = c_fctb (arg, a)
 
-    and c_sigb (ast, accum) =
-	case ast of
-	    Sigb { name, def } =>
-		{
-		 name = name,
-		 def = c_sigexp def,
-		 constraint = NONE
-		} :: accum
-	  | MarkSigb (arg, _) => c_sigb (arg, accum)
+    and c_sigb (Sigb { name, def }, a) = Bind (name, c_sigexp def) :: a
+      | c_sigb (MarkSigb (arg, _), a) = c_sigb (arg, a)
 
-    and c_fsigb (ast, accum) =
-	case ast of
-	    Fsigb { name, def } =>
-		{ name = name, def = c_fsigexp def } :: accum
-	  | MarkFsigb (arg, _) => c_fsigb (arg, accum)
+    and c_fsigb (Fsigb { name, def }, a) = Bind (name, c_fsigexp def) :: a
+      | c_fsigb (MarkFsigb (arg, _), a) = c_fsigb (arg, a)
 
-    and c_strexp ast =
-	case ast of
-	    VarStr path => VarStrExp (symbolModPath path)
-	  | BaseStr dec => BaseStrExp (c_dec dec)
- 	  | ConstrainedStr (strexp,NoSig) => c_strexp strexp
- 	  | ConstrainedStr (strexp, (Transparent sigexp | Opaque sigexp)) =>
- 		ConStrExp (c_strexp strexp, c_sigexp sigexp)
-	  | (AppStr (path, argList) |
-	     AppStrI (path, argList)) =>
-		AppStrExp (symbolModPath path,
-			   map (fn (se, _) => c_strexp se) argList)
-	  | LetStr (bindings, body) =>
-		LetStrExp (c_dec bindings, c_strexp body)
-	  | MarkStr (strexp, _) => c_strexp strexp
+    and c_strexp (VarStr path) = Var (SP.SPATH path)
+      | c_strexp (BaseStr dec) = Decl (c_dec dec)
+      | c_strexp (ConstrainedStr (s, NoSig)) = c_strexp s
+      | c_strexp (ConstrainedStr (s, (Transparent g | Opaque g))) =
+	Con (c_strexp s, c_sigexp g)
+      | c_strexp (AppStr (p, l) | AppStrI (p, l)) =
+	App (SP.SPATH p, map (c_strexp o #1) l)
+      | c_strexp (LetStr (bdg, body)) = Let (c_dec bdg, c_strexp body)
+      | c_strexp (MarkStr (s, _)) = c_strexp s
 
-    and c_fctexp ast =
-	case ast of
-	    VarFct (path, constraint) =>
-		VarFctExp (symbolModPath path, fsigexpConst constraint)
-	  | BaseFct { params, body, constraint } =>
-		BaseFctExp {
-			    params = SeqDecl (map functorParams params),
-			    body = c_strexp body,
-			    constraint = sigexpConst constraint
-			   }
-	  | AppFct (path, argList, constraint) =>
-		AppFctExp (symbolModPath path,
-			   map (fn (se, _) => c_strexp se) argList,
-			   fsigexpConst constraint)
-	  | LetFct (bindings, body) =>
-		LetFctExp (c_dec bindings, c_fctexp body)
-	  | MarkFct (arg, _) => c_fctexp arg
+    and c_fctexp (VarFct (p, c)) = con (Var (SP.SPATH p), fsigexpConst c)
+      | c_fctexp (BaseFct { params = p, body = b, constraint = c }) =
+	Let (Seq (map functorParams p), con (c_strexp b, sigexpConst c))
+      | c_fctexp (AppFct (p, l, c)) =
+	con (App (SP.SPATH p, map (c_strexp o #1) l), fsigexpConst c)
+      | c_fctexp (LetFct (bdg, body)) = Let (c_dec bdg, c_fctexp body)
+      | c_fctexp (MarkFct (arg, _)) = c_fctexp arg
 
-    and functorParams (symOpt, constraint) = let
-	val c = c_sigexp constraint
-    in
-	case symOpt of
-	    NONE => OpenDecl [c]
-	  | SOME sym => StrDecl [{ name = sym, def = c, constraint = NONE }]
-    end
+    and functorParams (NONE, c) = Open (c_sigexp c)
+      | functorParams (SOME s, c) = Bind (s, c_sigexp c)
 
-    and sigexpConst sec =
-	case sec of
-	    NoSig => NONE
-	  | Transparent sigexp => SOME (c_sigexp sigexp)
-	  | Opaque sigexp => SOME (c_sigexp sigexp)
+    and sigexpConst NoSig = NONE
+      | sigexpConst (Transparent g | Opaque g) = SOME (c_sigexp g)
 
-    and c_sigexp ast =
-	case ast of
-	    VarSig symbol => VarStrExp (symbolModPath [symbol])
-	  | AugSig (se, whspecs) => let
-		fun f (WhType (_, _, ty), x) = c_ty (ty, x)
-		  | f (WhStruct (_, head :: _), x) =
-		    SS.add (x, head)
-		  | f _ = raise Fail "decl/convert/c_sigexp" 
-	    in
-		LetStrExp (DeclRef (foldr f SS.empty whspecs),
-			   c_sigexp se)
-	    end
-	  | BaseSig specList =>
-		BaseStrExp (SeqDecl (foldr c_spec [] specList))
-	  | MarkSig (arg,_) => c_sigexp arg
+    and c_sigexp (VarSig s) = Var (SP.SPATH [s])
+      | c_sigexp (AugSig (g, whspecs)) = let
+	    fun f (WhType (_, _, ty), x) = c_ty (ty, x)
+	      | f (WhStruct (_, head :: _), x) = SS.add (x, head)
+	      | f _ = raise Fail "skel-cvt/c_sigexp"
+	in
+	    Let (Ref (foldl f SS.empty whspecs), c_sigexp g)
+	end
+      | c_sigexp (BaseSig l) = Decl (Seq (foldr c_spec [] l))
+      | c_sigexp (MarkSig (arg, _)) = c_sigexp arg
 
-    and fsigexpConst arg =
-	case arg of
-	    NoSig => NONE
-	  | Transparent fsigexp => SOME (c_fsigexp fsigexp)
-	  | Opaque fsigexp => SOME (c_fsigexp fsigexp)
+    and fsigexpConst NoSig = NONE
+      | fsigexpConst (Transparent fg | Opaque fg) = SOME (c_fsigexp fg)
 
-    and c_fsigexp ast =
-	case ast of
-	    VarFsig symbol => VarFctExp (symbolModPath [symbol], NONE)
-	  | BaseFsig { param, result } =>
-		BaseFctExp {
-			    params = SeqDecl (map functorParams param),
-			    body = c_sigexp result,
-			    constraint = NONE
-			   }
-	  | MarkFsig (arg, _) => c_fsigexp arg
+    and c_fsigexp (VarFsig s) = Var (SP.SPATH [s])
+      | c_fsigexp (BaseFsig { param, result }) =
+	Let (Seq (map functorParams param), c_sigexp result)
+      | c_fsigexp (MarkFsig (arg, _)) = c_fsigexp arg
 
-    and c_spec (ast, accum) =
-	case ast of
-	    StrSpec arg => let
- 		fun f (symbol, sigexp, NONE) =
-		    {
-		     name = symbol,
-		     def = c_sigexp sigexp,
-		     constraint = NONE
-		    }
-		  | f (symbol, sigexp, SOME path) =
-		    {
-		     name = symbol,
-		     def = VarStrExp (symbolModPath path),
-		     constraint = SOME(c_sigexp sigexp)
-		    }
-	    in
-		(StrDecl (map f arg)) :: accum
-	    end
-	  | TycSpec (arg, _) => let
-		fun filter ((_, _, SOME x) :: rest) = x :: filter rest
-		  | filter (_ :: rest) = filter rest
-		  | filter nil = nil
-		val mod'ref'set = foldr c_ty SS.empty (filter arg)
-	    in
-		modRefSet (mod'ref'set, accum)
-	    end
-	  | FctSpec arg => let
-		fun f (symbol, fsigexp) =
-		    { name = symbol, def = c_fsigexp fsigexp }
-	    in
-		(FctDecl (map f arg)) :: accum
-	    end
-	  | ValSpec arg => let
-		val mod'ref'set = foldr c_ty SS.empty (map #2 arg)
-	    in
-		modRefSet (mod'ref'set, accum)
-	    end
-	  | DataSpec { datatycs, withtycs } =>
-		modRefSet (foldr c_db (foldr c_tb SS.empty withtycs) datatycs,
-			   accum)
-	  | ExceSpec arg => let
-		val mod'ref'set = foldr tyoption SS.empty (map #2 arg)
-	    in
-		modRefSet (mod'ref'set, accum)
-	    end
-	  | ShareStrSpec arg => foldr declRef accum arg
-	  | ShareTycSpec arg => foldr declRef accum (map dropLast arg)
- 	  | IncludeSpec sigexp => (OpenDecl [c_sigexp sigexp]) :: accum
-	  | MarkSpec (arg, _) => c_spec (arg, accum)
+    and c_spec (StrSpec l, a) = let
+	    fun f (s, g, c) =
+	        Bind (s, con (c_sigexp g, Option.map (Var o SP.SPATH) c))
+        in
+	    (Par (map f l)) :: a
+        end
+      | c_spec (TycSpec (l, _), a) = let
+	    fun f ((_, _, SOME t), s) = c_ty (t, s)
+	      | f (_, s) = s
+	in
+	    d_addS (foldl f SS.empty l, a)
+	end
+      | c_spec (FctSpec l, a) =
+	Par (map (fn (s, g) => Bind (s, c_fsigexp g)) l) :: a
+      | c_spec (ValSpec l, a) = d_addS (foldl (c_ty o' #2) SS.empty l, a)
+      | c_spec (DataSpec { datatycs, withtycs }, a) =
+	d_addS (foldl c_db (foldl c_tb SS.empty withtycs) datatycs, a)
+      | c_spec (ExceSpec l, a) = d_addS (foldl (tyoption o' #2) SS.empty l, a)
+      | c_spec (ShareStrSpec l, a) = foldl d_addP a l
+      | c_spec (ShareTycSpec l, a) = d_addS (foldl s_addP SS.empty l, a)
+      | c_spec (IncludeSpec g, a) = Open (c_sigexp g) :: a
+      | c_spec (MarkSpec (arg, _), a) = c_spec (arg, a)
 
-    and c_vb (ast, accum) =
-	case ast of
-	    Vb { pat, exp, lazyp } =>
-		modRefSet (c_pat (pat, SS.empty), c_exp (exp, accum))
-	  | MarkVb (arg, _) => c_vb (arg, accum)
+    and c_vb (Vb { pat, exp, lazyp }, a) =
+	d_addS (c_pat (pat, SS.empty), c_exp (exp, a))
+      | c_vb (MarkVb (arg, _), a) = c_vb (arg, a)
 
-    and c_rvb (ast, accum) =
-	case ast of
-	    Rvb { var, exp, resultty,... } =>
-		modRefSet (tyoption (resultty, SS.empty), c_exp (exp, accum))
-	  | MarkRvb (arg, _) => c_rvb (arg, accum)
+    and c_rvb (Rvb { var, exp, resultty, ... }, a) =
+	d_addS (tyoption (resultty, SS.empty), c_exp (exp, a))
+      | c_rvb (MarkRvb (arg, _), a) = c_rvb (arg, a)
 
-    and c_fb (ast, accum) =
-	case ast of
-	    Fb (clauses, _) => foldr c_clause accum clauses
-	  | MarkFb (arg,_) => c_fb (arg, accum)
+    and c_fb (Fb (l, _), a) = foldr c_clause a l
+      | c_fb (MarkFb (arg, _), a) = c_fb (arg, a)
 
-    and c_clause (Clause { pats, resultty, exp }, accum) =
-	modRefSet
-	  (foldr c_pat (tyoption (resultty, SS.empty)) (map #item pats),
-	   c_exp (exp, accum))
+    and c_clause (Clause { pats = p, resultty = t, exp = e }, a) =
+	d_addS (foldl (c_pat o' #item) (tyoption (t, SS.empty)) p,
+		c_exp (e, a))
 
-    and c_tb (ast, accum) =
-	case ast of
-	    Tb { tyc, def, tyvars } => c_ty (def, accum)
-	  | MarkTb (arg, _) => c_tb (arg, accum)
+    and c_tb (Tb { tyc, def, tyvars }, a) = c_ty (def, a)
+      | c_tb (MarkTb (arg, _), a) = c_tb (arg, a)
 
-    and c_db (ast, accum) =
-	case ast of
-	    Db { tyc, tyvars, rhs, lazyp } => c_dbrhs (rhs, accum)
-	  | MarkDb (arg, _) => c_db (arg, accum)
+    and c_db (Db { tyc, tyvars, rhs, lazyp }, a) = c_dbrhs (rhs, a)
+      | c_db (MarkDb (arg, _), a) = c_db (arg, a)
 
-    and c_dbrhs (ast,accum) =
-	case ast of
-	    Constrs def => foldr tyoption accum (map #2 def)
-          | Repl consName => modRef (consName, accum)
+    and c_dbrhs (Constrs def, a) = foldl (tyoption o' #2) a def
+      | c_dbrhs (Repl cn, a) = s_addP (cn, a)
 
-    and c_eb (ast, accum) =
-	case ast of
-	    EbGen { exn, etype } => tyoption (etype, accum)
-	  | EbDef { exn, edef } => modRef (edef, accum)
-	  | MarkEb (arg, _) => c_eb (arg, accum)
+    and c_eb (EbGen { exn, etype }, a) = tyoption (etype, a)
+      | c_eb (EbDef { exn, edef }, a) = s_addP (edef, a)
+      | c_eb (MarkEb (arg, _), a) = c_eb (arg, a)
 
-    and c_exp (ast, accum) =
-	case ast of
-	    VarExp path =>
-		(case path of
-		     [] => accum
-		   | [only] => accum
-		   | head :: _ =>
-			 (case accum of
-			      [] => [DeclRef (SS.singleton head)]
-			    | (DeclRef otherRefs) :: tail =>
-				  (DeclRef (SS.add (otherRefs, head))) :: tail
-			    | _ => (DeclRef (SS.singleton head)) :: accum))
-	  | FnExp arg => foldr c_rule accum arg
-	  | FlatAppExp items => foldr c_exp accum (map #item items)
-	  | AppExp { function, argument } =>
-		c_exp (function, c_exp (argument, accum))
-	  | CaseExp {expr, rules } =>
-		c_exp (expr, foldr c_rule accum rules)
-	  | LetExp { dec, expr } =>
-		(* syntactically only ldecs; no module scoping here *)
-		localDec ((do_dec (dec, []), c_exp (expr, [])), accum)
-	  | SeqExp arg => foldr c_exp accum arg
-	  | RecordExp arg  => foldr c_exp accum (map #2 arg)
-	  | ListExp arg => foldr c_exp accum arg
-	  | TupleExp arg => foldr c_exp accum arg
-	  | SelectorExp symbol => accum
-	  | ConstraintExp { expr, constraint } =>
-		c_exp (expr, modRefSet (c_ty (constraint, SS.empty), accum))
-	  | HandleExp { expr, rules } =>
-		c_exp (expr, foldr c_rule accum rules)
-	  | RaiseExp expr => c_exp (expr, accum)
-	  | IfExp { test, thenCase, elseCase } =>
-		c_exp (test, c_exp (thenCase, c_exp (elseCase, accum)))
-	  | AndalsoExp (expr1, expr2) => c_exp (expr1, c_exp (expr2, accum))
-	  | OrelseExp (expr1, expr2) => c_exp (expr1, c_exp (expr2, accum))
-	  | WhileExp { test, expr } => c_exp (test, c_exp (expr, accum))
-	  | MarkExp (arg, _) => c_exp (arg, accum)
-	  | VectorExp arg => foldr c_exp accum arg
-	  | _ => accum
+    and c_exp (VarExp p, a) = d_addP (p, a)
+      | c_exp (FnExp arg, a) = foldr c_rule a arg
+      | c_exp (FlatAppExp l, a) = foldr (c_exp o' #item) a l
+      | c_exp (AppExp { function, argument }, a) =
+	c_exp (function, c_exp (argument, a))
+      | c_exp (CaseExp { expr, rules }, a) = c_exp (expr, foldr c_rule a rules)
+      | c_exp (LetExp { dec, expr }, a) =
+	localDec (do_dec (dec, []), c_exp (expr, []), a)
+      | c_exp ((SeqExp l | ListExp l | TupleExp l | VectorExp l), a) =
+	foldr c_exp a l
+      | c_exp (RecordExp l, a) = foldr (c_exp o' #2) a l
+      | c_exp (SelectorExp _, a) = a
+      | c_exp (ConstraintExp { expr, constraint }, a) =
+	c_exp (expr, d_addS (c_ty (constraint, SS.empty), a))
+      | c_exp (HandleExp { expr, rules }, a) =
+	c_exp (expr, foldr c_rule a rules)
+      | c_exp (RaiseExp e, a) = c_exp (e, a)
+      | c_exp (IfExp { test, thenCase, elseCase }, a) =
+	c_exp (test, c_exp (thenCase, c_exp (elseCase, a)))
+      | c_exp ((AndalsoExp (e1, e2) | OrelseExp (e1, e2)), a) =
+	c_exp (e1, c_exp (e2, a))
+      | c_exp (WhileExp { test, expr }, a) = c_exp (test, c_exp (expr, a))
+      | c_exp (MarkExp (arg, _), a) = c_exp (arg, a)
+      | c_exp ((IntExp _|WordExp _|RealExp _|StringExp _|CharExp _), a) = a
 		
-    and c_rule (Rule { pat, exp }, accum) =
-	modRefSet (c_pat (pat, SS.empty), c_exp (exp, accum))
+    and c_rule (Rule { pat, exp }, a) =
+	d_addS (c_pat (pat, SS.empty), c_exp (exp, a))
 
-    and c_pat (ast, accum) =
-	case ast of
-	    VarPat path => modRef (path, accum)
-	  | RecordPat { def, ... } => foldr c_pat accum (map #2 def)
-	  | ListPat arg => foldr c_pat accum arg
-	  | TuplePat arg => foldr c_pat accum arg
-	  | FlatAppPat items => foldr c_pat accum (map #item items)
-	  | AppPat { constr, argument } =>
-		c_pat (constr, c_pat (argument, accum))
-	  | ConstraintPat { pattern, constraint } =>
-		c_pat (pattern, c_ty (constraint, accum))
-	  | LayeredPat { varPat, expPat } =>
-		c_pat (varPat, c_pat (expPat, accum))
-	  | VectorPat arg => foldr c_pat accum arg
-	  | OrPat arg => foldr c_pat accum arg
-	  | MarkPat (arg, _) => c_pat (arg, accum)
-	  | _ => accum
+    and c_pat (VarPat p, a) = s_addP (p, a)
+      | c_pat (RecordPat { def, ... }, a) = foldl (c_pat o' #2) a def
+      | c_pat ((ListPat l | TuplePat l | VectorPat l | OrPat l), a) =
+	foldl c_pat a l
+      | c_pat (FlatAppPat l, a) = foldl (c_pat o' #item) a l
+      | c_pat (AppPat { constr, argument }, a) =
+	c_pat (constr, c_pat (argument, a))
+      | c_pat (ConstraintPat { pattern, constraint }, a) =
+	c_pat (pattern, c_ty (constraint, a))
+      | c_pat (LayeredPat { varPat, expPat }, a) =
+	c_pat (varPat, c_pat (expPat, a))
+      | c_pat (MarkPat (arg, _), a) = c_pat (arg, a)
+      | c_pat ((WildPat|IntPat _|WordPat _|StringPat _|CharPat _), a) = a
 
-    and c_ty (ast, accum) =
-	case ast of
-	    VarTy arg => accum
-	  | ConTy (consName, args) =>
-		modRef (consName, foldr c_ty accum args)
-	  | RecordTy arg => foldr c_ty accum (map #2 arg)
-	  | TupleTy arg => foldr c_ty accum arg
-	  | MarkTy (arg, _) => c_ty (arg, accum)
+    and c_ty (VarTy _, a) = a
+      | c_ty (ConTy (cn, l), a) = s_addP (cn, foldl c_ty a l)
+      | c_ty (RecordTy l, a) = foldl (c_ty o' #2) a l
+      | c_ty (TupleTy l, a) = foldl c_ty a l
+      | c_ty (MarkTy (arg, _), a) = c_ty (arg, a)
 
-    and tyoption (arg, accum) =
-	case arg of
-	    NONE => accum
-	  | SOME ty => c_ty (ty, accum)
+    and tyoption (NONE, a) = a
+      | tyoption (SOME ty, a) = c_ty (ty, a)
 
     fun convert { tree, err } = let
 	(* build a function that will complain (once you call it)
@@ -409,6 +260,7 @@ structure SkelCvt :> SKELCVT = struct
 	    sameReg
 	end
     in
-	{ complain = newReg (0, 0) (tree, fn () => ()), skeleton = c_dec tree }
+	{ complain = newReg (0, 0) (tree, fn () => ()),
+	  skeleton = SkelOpt.opt (c_dec tree) }
     end
 end

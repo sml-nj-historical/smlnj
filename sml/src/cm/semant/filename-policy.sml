@@ -1,4 +1,13 @@
-signature POLICY = sig
+(* just a placeholder so far *)
+
+(*
+ * A type representing different choices for file naming conventions.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+signature FILENAMEPOLICY = sig
 
     type policy
 
@@ -8,7 +17,7 @@ signature POLICY = sig
     val mkSkelPath : policy -> AbsPath.t -> AbsPath.t
 end
 
-structure Policy :> POLICY = struct
+structure FilenamePolicy :> FILENAMEPOLICY = struct
 
     type policy = Dummy.t
 

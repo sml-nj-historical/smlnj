@@ -48,7 +48,7 @@ signature CM_SEMANT = sig
 
     (* constructing member collections *)
     val emptyMembers : members
-    val member : (pathname -> group)
+    val member : GeneralParams.params * (pathname -> group)
 	-> { sourcepath: pathname, group: pathname, class: cm_symbol option,
 	     error: string -> (PrettyPrint.ppstream -> unit) -> unit }
 	-> members
@@ -183,8 +183,8 @@ structure CMSemant :> CM_SEMANT = struct
 	  gimports = if islib then SymbolMap.empty else exports }
 
     fun emptyMembers env = env
-    fun member rparse arg env = let
-	val coll = MemberCollection.expandOne (getExports o rparse) arg
+    fun member (params, rparse) arg env = let
+	val coll = MemberCollection.expandOne (params, getExports o rparse) arg
 	val error = #error arg
 	fun e0 s = error s GenericVC.ErrorMsg.nullErrorBody
     in

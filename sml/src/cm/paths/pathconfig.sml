@@ -14,7 +14,6 @@ end
 
 structure PathConfig :> PATHCONFIG = struct
     (* this is bogus -- should not be hard-wired like this *)
-    fun configAnchor "basis" = SOME (fn () => "/usr/local/smlnj/lib/basis")
-      | configAnchor "smlnj" = SOME (fn () => "/usr/local/smlnj/lib")
+    fun configAnchor "smlnj" = SOME (fn () => "/home/blume/ML/current/lib")
       | configAnchor _ = NONE
 end

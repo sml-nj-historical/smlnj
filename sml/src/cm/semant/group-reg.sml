@@ -1,17 +1,28 @@
+(*
+ * The "group registry".  CM uses this to remember which groups it is
+ * currently working on, and what the corresponding input sources are.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 signature GROUPREG = sig
-    val clear : unit -> unit
-    val register : AbsPath.t * GenericVC.Source.inputSource -> unit
-    val lookup : AbsPath.t -> GenericVC.Source.inputSource
-    val registered : AbsPath.t -> bool
+
+    type groupreg
+
+    val new : unit -> groupreg
+    val register : groupreg -> AbsPath.t * GenericVC.Source.inputSource -> unit
+    val lookup : groupreg -> AbsPath.t -> GenericVC.Source.inputSource
+    val registered : groupreg -> AbsPath.t -> bool
 end
 
 structure GroupReg :> GROUPREG = struct
 
-    val m  =
-	ref (AbsPathMap.empty: GenericVC.Source.inputSource AbsPathMap.map)
+    type groupreg = GenericVC.Source.inputSource AbsPathMap.map ref
 
-    fun clear () = m := AbsPathMap.empty
-    fun register (g, s) = m := AbsPathMap.insert (!m, g, s)
-    fun lookup g = valOf (AbsPathMap.find (!m, g))
-    fun registered g = isSome (AbsPathMap.find (!m, g))
+    fun new () = ref AbsPathMap.empty : groupreg
+
+    fun register gr (g, s) = gr := AbsPathMap.insert (!gr, g, s)
+    fun lookup gr g = valOf (AbsPathMap.find (!gr, g))
+    fun registered gr g = isSome (AbsPathMap.find (!gr, g))
 end
