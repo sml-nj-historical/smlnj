@@ -611,7 +611,12 @@ struct
 	   | T.MULS(32, e1, e2) => multiply(32,I.MULLW,I.MULLI,
 					    Muls32.multiply,e1,e2,rt,an)
 	   | T.DIVS(T.DIV_TO_ZERO, 32, e1, e2) =>
-	                           divide(32,I.DIVW,divs32,e1,e2,rt,false,an)
+	       (* On the PPC we turn overflow checking on despite this
+		* being DIVS.  That's because divide-by-zero is also
+		* indicated through "overflow" instead of causing a trap. *)
+	                           divide(32,I.DIVW,divs32,e1,e2,rt,
+					  true (* !! *),
+					  an)
 
            | T.ADDT(32, e1, e2) => arithTrapping(I.ADD, e1, e2, rt, an)
            | T.SUBT(32, e1, e2) => arithTrapping(I.SUBF, e2, e1, rt, an)

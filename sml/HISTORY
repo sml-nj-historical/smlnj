@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/10/10 13:10:00 EDT
+Tag: blume-20021010-ppc-divs
+Description:
+
+The mltree operator DIVS must be implemented with an overflow check on
+the PPC because the hardware indicates divide-by-zero using "overflow" as
+well.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/07/23 11:45:00
 Tag: blume-20020723-smlnj-home
 Description:
