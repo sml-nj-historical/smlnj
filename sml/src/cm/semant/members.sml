@@ -216,11 +216,12 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		end
 	      | GG.ERRORGROUP => ERRORCOLLECTION
 	fun s_coll (p, sparams) = let
-	    val { share = s, setup, split, locl } = sparams
+	    val { share = s, setup, split, noguid, locl } = sparams
 	    val i =
-		SmlInfo.info split gp { sourcepath = p, group = group,
-					sh_spec = s, setup = setup,
-					locl = locl }
+		SmlInfo.info (split, noguid)
+			     gp { sourcepath = p, group = group,
+				  sh_spec = s, setup = setup,
+				  locl = locl }
 	    val exports =
 		case SmlInfo.exports gp i of
 		    NONE => SS.empty

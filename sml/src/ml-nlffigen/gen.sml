@@ -26,7 +26,8 @@ structure Gen :> sig
 		libraryhandle: string,
 
 		allSU: bool,
-		lambdasplit: string option,
+		smloptions: string list,
+		noguid: bool,
 		wid: int,
 		weightreq: bool option,	(* true -> heavy, false -> light *)
 		namedargs: bool,
@@ -115,7 +116,7 @@ end = struct
 	val { cfiles, match, mkidlsource, gensym_stem,
 	      dirname,
 	      cmfile, prefix, extramembers, libraryhandle,
-	      allSU, lambdasplit,
+	      allSU, smloptions, noguid,
 	      wid,
 	      weightreq,
 	      namedargs = doargnames,
@@ -203,8 +204,15 @@ end = struct
 	    val nqx = noquotes x
 	    val file = OS.Path.joinBaseExt { base = nqx, ext = SOME "sml" }
 	    val result = OS.Path.joinDirFile { dir = dirname, file = file }
+	    val opts = if noguid then "noguid" :: smloptions else smloptions
+	    val opt =
+		case opts of
+		    [] => ""
+		  | h :: t => concat ("(" :: h :: foldr
+						   (fn (x, l) => " " :: x :: l)
+						   [")"] t)
 	in
-	    files := file :: !files;
+	    files := file ^ opt :: !files;
 	    do_dir ();
 	    result
 	end

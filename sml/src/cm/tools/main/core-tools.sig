@@ -74,6 +74,7 @@ signature CORETOOLS = sig
 	 { share: Sharing.request,
 	   setup: setup,
 	   split: splitting,
+	   noguid: bool,
 	   locl: bool }
 
     type cmparams =

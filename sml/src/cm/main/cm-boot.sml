@@ -481,8 +481,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	       AutoLoad.reset ();
 	       Parse.reset ();
 	       SmlInfo.reset ();
-	       StabModmap.reset ();
-	       UniquePid.reset ())
+	       StabModmap.reset ())
 
 	  fun initTheValues (bootdir, de, er, autoload_postprocess, icm) = let
 	      (* icm: "install compilation manager" *)

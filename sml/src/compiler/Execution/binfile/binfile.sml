@@ -25,7 +25,7 @@
  *           24  4  size of import tree area in bytes (importSzB)
  *           28  4  size of CM-specific info in bytes (cmInfoSzB)
  *           32  4  size of pickled lambda-expression in bytes (lambdaSzB)
- *           36  4  size of "pepper" area in bytes (pepper)
+ *           36  4  size of GUID area in bytes (g)
  *           40  4  size of padding in bytes (pad)
  *           44  4  size of code area in bytes (codeSzB)
  *           48  4  size of pickled environment in bytes (envSzB)
@@ -38,7 +38,7 @@
  * ----END OF HEADER----
  *            0  h  HEADER (h = 52+cm+ex+i)
  *            h  l  pickle of exported lambda-expr. (l = lambdaSzB)
- *          l+h  pp pepper area (pp = pepper)
+ *          l+h  g  GUID area (g = guid)
  *        r+l+h  p  padding (p = pad)
  *      p+r+l+h  c  code area (c = codeSzB) [Structured into several
  *                    segments -- see below.]
@@ -141,8 +141,7 @@ structure Binfile :> BINFILE = struct
 		cmData: pid list,
 		senv: pickle,
 		lambda: pickle,
-		fingerprint: pid,
-		pepper: string,
+		guid: string,
 		csegments: csegments,
 		executable: executable option ref }
     fun unBF (BF x) = x
@@ -157,8 +156,7 @@ structure Binfile :> BINFILE = struct
     val lambdaPickleOf = #lambda o unBF
     val lambdaPidOf = #pid o lambdaPickleOf
 
-    val fingerprintOf = #fingerprint o unBF
-    val pepperOf = #pepper o unBF
+    val guidOf = #guid o unBF
 
     fun error msg =
 	(Control_Print.say (concat ["binfile format error: ", msg, "\n"]);
@@ -311,7 +309,7 @@ structure Binfile :> BINFILE = struct
      * call to "write". *)
     fun size { contents, nopickle } = let
 	val { imports, exportPid, senv, cmData, lambda,  csegments,
-	      pepper, ... } =
+	      guid, ... } =
 	    unBF contents
 	val (_, picki) = pickleImports imports
 	val hasExports = isSome exportPid
@@ -322,22 +320,20 @@ structure Binfile :> BINFILE = struct
 	9 * 4 +
 	Word8Vector.length picki +
 	(if hasExports then bytesPerPid else 0) +
-	bytesPerPid * (length cmData + 3) + (* 3 extra: stat/sym/fprint *)
-	String.size pepper +
+	bytesPerPid * (length cmData + 2) + (* 2 extra: stat/sym *)
+	String.size guid +
 	pickleSize lambda +
 	codeSize csegments +
 	pickleSize senv
     end
 
-    fun create { imports, exportPid, cmData, senv, lambda,
-		 fingerprint, pepper, csegments } =
+    fun create { imports, exportPid, cmData, senv, lambda, csegments, guid } =
 	BF { imports = imports,
 	     exportPid = exportPid,
 	     cmData = cmData,
 	     senv = senv,
 	     lambda = lambda,
-	     fingerprint = fingerprint,
-	     pepper = pepper,
+	     guid = guid,
 	     csegments = csegments,
 	     executable = ref NONE }
 
@@ -364,7 +360,7 @@ structure Binfile :> BINFILE = struct
 	  | [] => error "missing code objects"
     end
 
-    fun readFingerprintInfo s = let
+    fun readGUid s = let
 	val _ = bytesIn (s, magicBytes)
 	val _ = readInt32 s
 	val ne = readInt32 s
@@ -372,18 +368,13 @@ structure Binfile :> BINFILE = struct
 	val cmInfoSzB = readInt32 s
 	val nei = cmInfoSzB div bytesPerPid
 	val lambdaSz = readInt32 s
-	val pp = readInt32 s
+	val g = readInt32 s
 	val _ = bytesIn (s, importSzB + 3 * 4)
 	val _ = bytesIn (s, ne * bytesPerPid)
-	val envPids = readPidList (s, nei)
-	val (staticPid, lambdaPid, fingerprint, cmData) =
-	    case envPids of
-		st :: lm :: fp :: cmData => (st, lm, fp, cmData)
-	      | _ => error "env PID list"
+	val _ = readPidList (s, nei)
 	val _ = bytesIn (s, lambdaSz)
-	val pepper = Byte.bytesToString (bytesIn (s, pp))
     in
-	{ staticPid = staticPid, fingerprint = fingerprint, pepper = pepper }
+	Byte.bytesToString (bytesIn (s, g))
     end
 
     fun read { arch, version, stream = s } = let
@@ -396,7 +387,7 @@ structure Binfile :> BINFILE = struct
 	val cmInfoSzB = readInt32 s
 	val nei = cmInfoSzB div bytesPerPid
 	val lambdaSz = readInt32 s
-	val pp = readInt32 s
+	val g = readInt32 s
 	val pad = readInt32 s
 	val cs = readInt32 s
 	val es = readInt32 s
@@ -407,12 +398,12 @@ structure Binfile :> BINFILE = struct
 	       | 1 => SOME(readPid s)
 	       | _ => error "too many export PIDs")
 	val envPids = readPidList (s, nei)
-	val (staticPid, lambdaPid, fingerprint, cmData) =
+	val (staticPid, lambdaPid, cmData) =
 	    case envPids of
-		st :: lm :: fp :: cmData => (st, lm, fp, cmData)
+		st :: lm :: cmData => (st, lm, cmData)
 	      | _ => error "env PID list"
 	val plambda = bytesIn (s, lambdaSz)
-	val pepper = Byte.bytesToString (bytesIn (s, pp))
+	val guid = Byte.bytesToString (bytesIn (s, g))
 	(* skip padding *)
 	val _ = if pad <> 0 then ignore (bytesIn (s, pad)) else ()
 	(* now get the code *)
@@ -424,8 +415,7 @@ structure Binfile :> BINFILE = struct
 			      cmData = cmData,
 			      senv = { pid = staticPid, pickle = penv },
 			      lambda = { pid = lambdaPid, pickle = plambda },
-			      fingerprint = fingerprint,
-			      pepper = pepper,
+			      guid = guid,
 			      csegments = code },
 	  stats = { env = es, inlinfo = lambdaSz, code = cs,
 		    data = Word8Vector.length (#data code) } }
@@ -434,11 +424,11 @@ structure Binfile :> BINFILE = struct
     fun write { arch, version, stream = s, contents, nopickle } = let
 	(* Keep this in sync with "size" (see above). *)
 	val { imports, exportPid, cmData, senv, lambda,
-	      csegments, fingerprint, pepper, ... } =
+	      csegments, guid, ... } =
 	    unBF contents
 	val { pickle = senvP, pid = staticPid } = senv
 	val { pickle = lambdaP, pid = lambdaPid } = lambda
-	val envPids = staticPid :: lambdaPid :: fingerprint :: cmData
+	val envPids = staticPid :: lambdaPid :: cmData
 	val (leni, picki) = pickleImports imports
 	val importSzB = Word8Vector.length picki
 	val (ne, epl) =
@@ -450,7 +440,7 @@ structure Binfile :> BINFILE = struct
 	fun pickleSize { pid, pickle } =
 	    if nopickle then 0 else Word8Vector.length pickle
 	val lambdaSz = pickleSize lambda
-	val pp = String.size pepper
+	val g = String.size guid
 	val pad = 0			(* currently no padding *)
 	val cs = codeSize csegments
 	fun codeOut c = (writeInt32 s (CodeObj.size c);
@@ -464,15 +454,15 @@ structure Binfile :> BINFILE = struct
     in
 	BinIO.output (s, MAGIC);
 	app (writeInt32 s) [leni, ne, importSzB, cmInfoSzB,
-			    lambdaSz, pp, pad, cs, es];
+			    lambdaSz, g, pad, cs, es];
 	BinIO.output (s, picki);
 	writePidList (s, epl);
 	(* arena1 *)
 	writePidList (s, envPids);
 	(* arena2 -- pickled flint stuff *)
 	if lambdaSz = 0 then () else BinIO.output (s, lambdaP);
-	(* pepper area *)
-	BinIO.output (s, Byte.stringToBytes pepper);
+	(* GUID area *)
+	BinIO.output (s, Byte.stringToBytes guid);
 	(* padding area is currently empty *)
 	(* code objects *)
 	writeInt32 s datasz;

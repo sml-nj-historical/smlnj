@@ -182,7 +182,14 @@ Command-line options for ml-nlffigen:
    -width <w>   sets output line width (just a guess) to <w>
    -w <w>       default: 75
 
-   -lambdasplit <x>   instructs ml-nlffigen to generate "lambdasplit"
+   -smloption <x>   instructs ml-nlffigen to include <x> into the list
+                of options to annotate .sml entries in the generated .cm
+                file with.  By default, the list consists just of "noguid".
+   -guid        Removes the default "noguid" from the list of sml options.
+                (This re-enables strict handling of type- and object-identity
+                but can have negative impact on CM cutoff recompilation
+                performance if the programmer routinely removes the entire
+                tree of ml-nlffigen-generated files during development.)
    -ls <x>      options for all ML files (see CM manual for what this means;
                 it does not currently work anyway because cross-module
                 inlining is broken).

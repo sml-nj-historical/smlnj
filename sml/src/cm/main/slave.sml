@@ -49,7 +49,6 @@ in
 	end
 
 	and do_cmb (archos, f) = let
-	    val _ = UniquePid.reset ()
 	    val slave = CMBSlave.slave make
 	in
 	    case slave archos (SOME (!dbr, f)) of
@@ -65,7 +64,6 @@ in
 	and do_cm (archos, f) =
 	    if archos <> my_archos then (say_error (); waitForStart ())
 	    else let
-		val _ = UniquePid.reset ()
 		val p = path (f, penv)
 	    in
 		case parse p of

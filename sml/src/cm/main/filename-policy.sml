@@ -19,7 +19,7 @@ signature FILENAMEPOLICY = sig
 
     val mkBinName : policy -> SrcPath.file -> string
     val mkSkelName : policy -> SrcPath.file -> string
-    val mkIdCacheName : policy -> SrcPath.file -> { file: string, key: string }
+    val mkGUidName : policy -> SrcPath.file -> string
     val mkStableName : policy -> SrcPath.file * Version.t option -> string
     val mkIndexName : policy -> SrcPath.file -> string
 
@@ -29,12 +29,13 @@ end
 functor FilenamePolicyFn (val cmdir : string
 			  val versiondir: Version.t -> string
 			  val skeldir : string
+			  val guiddir : string
 			  val icprefix : string
 			  val indexdir : string) :> FILENAMEPOLICY = struct
 
     type policy = { bin: SrcPath.file -> string,
 		    skel: SrcPath.file -> string,
-		    id_cache: SrcPath.file -> { file: string, key: string },
+		    guid: SrcPath.file -> string,
 		    stable: SrcPath.file * Version.t option -> string,
 		    index: SrcPath.file -> string }
 
@@ -69,17 +70,10 @@ functor FilenamePolicyFn (val cmdir : string
 		     in
 			 if exists then try else stable0 s
 		     end)
-	fun id_cache src = let
-	    val s = SrcPath.osstring src
-	    val { dir = d0, file = key } = OS.Path.splitDirFile s
-	    val file = foldl subDir d0 [cmdir, archosidcache]
-	in
-	    { file = file, key = key }
-	end
     in
 	{ skel = cmname [skeldir] o SrcPath.osstring,
+	  guid = cmname [guiddir] o SrcPath.osstring,
 	  bin = cmname [archos] o shiftbin,
-	  id_cache = id_cache,
 	  stable = stable,
 	  index = cmname [indexdir] o SrcPath.osstring }
     end
@@ -108,7 +102,7 @@ functor FilenamePolicyFn (val cmdir : string
 
     fun mkBinName (p: policy) s = #bin p s
     fun mkSkelName (p: policy) s = #skel p s
-    fun mkIdCacheName (p: policy) s = #id_cache p s
+    fun mkGUidName (p: policy) s = #guid p s
     fun mkStableName (p: policy) (s, v) = #stable p (s, v)
     fun mkIndexName (p: policy) s = #index p s
 end
@@ -116,6 +110,7 @@ end
 structure FilenamePolicy =
     FilenamePolicyFn (val cmdir = "CM"
 		      val skeldir = "SKEL"
+		      val guiddir = "GUID"
 		      val icprefix = "IC"
 		      val indexdir = "INDEX"
 		      val versiondir = Version.toString)

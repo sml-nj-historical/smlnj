@@ -22,7 +22,6 @@ signature BINFILE = sig
     type pickle = { pid: pid, pickle: Word8Vector.vector }
 
     val staticPidOf    : bfContents -> pid
-    val fingerprintOf  : bfContents -> pid
     val exportPidOf    : bfContents -> pid option
     val lambdaPidOf    : bfContents -> pid
     val cmDataOf       : bfContents -> pid list
@@ -30,7 +29,7 @@ signature BINFILE = sig
     val senvPickleOf   : bfContents -> pickle
     val lambdaPickleOf : bfContents -> pickle
 
-    val pepperOf       : bfContents -> string
+    val guidOf         : bfContents -> string
 
     (* calculate the size in bytes occupied by some binfile contents *)
     val size : { contents: bfContents, nopickle: bool } -> int
@@ -39,15 +38,13 @@ signature BINFILE = sig
     val create : { imports: ImportTree.import list,
 		   exportPid: pid option,
 		   cmData: pid list,
-		   fingerprint: pid,
 		   senv: pickle,
 		   lambda: pickle,
-		   pepper: string,
+		   guid: string,
 		   csegments: CodeObj.csegments } -> bfContents
 
-    (* read fingerprint-related info from binfile *)
-    val readFingerprintInfo :
-	BinIO.instream -> { staticPid: pid, fingerprint: pid, pepper: string }
+    (* read just the guid *)
+    val readGUid : BinIO.instream -> string
 
     (* read binfile contents from an IO stream *)
     val read : { arch: string, version: int list, stream: BinIO.instream }

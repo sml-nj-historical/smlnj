@@ -6,14 +6,13 @@ signature CCONFIG = sig
   type pickle
   type hash
   type pid = PersStamps.persstamp
+  type guid
 
   val pickUnpick :
       { context: StaticEnv.staticEnv,
 	env: StaticEnv.staticEnv,
-	uniquepid: hash -> hash * string } ->
+	guid: guid } ->
       { pid: hash,
-	fingerprint: hash,
-	pepper: string,
 	pickle: pickle,
 	exportLvars: Access.lvar list,
 	exportPid: pid option,

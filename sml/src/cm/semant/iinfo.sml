@@ -12,5 +12,5 @@ structure IInfo = struct
 		  symenv: unit -> SymbolicEnv.env,
 		  statpid: PersStamps.persstamp,
 		  sympid: PersStamps.persstamp,
-		  pepper: string }
+		  guid: string }
 end

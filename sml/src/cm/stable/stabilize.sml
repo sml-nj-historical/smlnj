@@ -480,7 +480,7 @@ struct
 				val sye = lazy_symenv ()
 				val statpid = pid ()
 				val sympid = pid ()
-				val pepper = string ()
+				val guid = string ()
 				val allsyms = symbolset ()
 				fun ieth () = let
 				    val (f, n, pos) = nth ()
@@ -488,7 +488,7 @@ struct
 					       symenv = sye,
 					       statpid = statpid,
 					       sympid = sympid,
-					       pepper = pepper }
+					       guid = guid }
 				in
 				    (f, DG.SB_BNODE (n, ii, pos))
 				end
@@ -872,7 +872,7 @@ struct
 		    case nth () of
 			(_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })) =>
 			(* this is the case of an actual internal node *)
-			let val { statenv, symenv, statpid, sympid, pepper } =
+			let val { statenv, symenv, statpid, sympid, guid } =
 				getII smlinfo
 			in
 			    "i" $ [symbol s,
@@ -881,7 +881,7 @@ struct
 				   lazy_symenv symenv,
 				   pid statpid,
 				   pid sympid,
-				   string pepper,
+				   string guid,
 				   symbolset allsyms]
 			end
 		      | (f, DG.SB_BNODE (DG.BNODE n, _, _)) =>

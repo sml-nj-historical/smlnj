@@ -173,7 +173,6 @@ struct
 	    val { pervasive = perv_n, others, src } = arg
 
 	    fun recompInitGroup () = let
-		val _ = UniquePid.reset ()
 		val ovldR = Control.overloadKW
 		val savedOvld = !ovldR
 		val _ = ovldR := true
@@ -217,7 +216,7 @@ struct
 			   (* hack: sources never used for this group *)
 			   sources = SrcPathMap.empty,
 			   sublibs = [] }
-		before (ovldR := savedOvld; UniquePid.sync ginfo)
+		before ovldR := savedOvld
 	    end
 
 	    (* just go and load the stable init group or signal failure *)

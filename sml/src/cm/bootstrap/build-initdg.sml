@@ -83,7 +83,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 					  { context = context, spec = spec })
 			    val attribs =
 				{ split = s, is_rts = rts, extra_compenv = xe,
-				  explicit_core_sym = ecs }
+				  explicit_core_sym = ecs, noguid = false }
 			in
 			    SmlInfo.info' attribs gp
 			      { sourcepath = p,

@@ -14,6 +14,7 @@ struct
     type pickle     = CC.pickle		(* pickled format *)
     type hash       = CC.hash		(* environment hash id *)
     type pid        = CC.pid
+    type guid       = CC.guid
 
     (*************************************************************************
      *                             ELABORATION                               *
@@ -34,19 +35,17 @@ struct
 
     (** take ast, do semantic checks,
      ** and output the new env, absyn and pickles *)
-    fun elaborate {ast, statenv=senv, compInfo=cinfo, uniquepid} = let
+    fun elaborate {ast, statenv=senv, compInfo=cinfo, guid} = let
 
 	val (absyn, nenv) = ElabTop.elabTop(ast, senv, cinfo)
 	val (absyn, nenv) = 
             if CompInfo.anyErrors cinfo then
 		(Absyn.SEQdec nil, StaticEnv.empty)
 	    else (absyn, nenv)
-	val { pid, fingerprint, pepper, pickle, exportLvars,
-	      exportPid, newenv } =
-	    pickUnpick { context = senv, env = nenv, uniquepid = uniquepid }
+	val { pid, pickle, exportLvars, exportPid, newenv } =
+	    pickUnpick { context = senv, env = nenv, guid = guid }
     in {absyn=absyn, newstatenv=newenv, exportPid=exportPid, 
-	exportLvars=exportLvars, staticPid = pid, fingerprint = fingerprint,
-	pepper = pepper, pickle=pickle }
+	exportLvars=exportLvars, staticPid = pid, pickle = pickle }
     end (* function elaborate *)
 
     val elaborate =
@@ -142,11 +141,11 @@ struct
      *************************************************************************)
     (** compiling the ast into the binary code = elab + translate + codegen *)
     fun compile {source, ast, statenv, symenv, compInfo=cinfo,
-		 checkErr=check, splitting, uniquepid } = 
+		 checkErr=check, splitting, guid } = 
 	let val {absyn, newstatenv, exportLvars, exportPid,
-		 staticPid, fingerprint, pepper, pickle } =
+		 staticPid, pickle } =
 		elaborate {ast=ast, statenv=statenv, compInfo=cinfo,
-			   uniquepid = uniquepid}
+			   guid = guid}
 		before (check "elaborate")
 
 	    val absyn = instrument {source=source, senv = statenv,
@@ -176,8 +175,6 @@ struct
 	      exportPid = exportPid,
 	      exportLvars = exportLvars,
 	      staticPid = staticPid,
-	      fingerprint = fingerprint,
-	      pepper = pepper,
 	      pickle = pickle,
 	      inlineExp = inlineExp,
 	      imports = revisedImports }

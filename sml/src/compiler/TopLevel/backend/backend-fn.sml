@@ -17,11 +17,11 @@ functor BackendFn (structure M : CODEGENERATOR
 		       type pickle = unit
 		       type hash = unit
 		       type pid = PersStamps.persstamp
+		       type guid = unit
 		       local
 			   val topCount = ref 0
 		       in
-		           fun pickUnpick { context, env = newenv,
-					    uniquepid = _ } = let
+		           fun pickUnpick { context, env = newenv, guid } = let
 			       val _ = topCount := !topCount + 1
 			       val { newenv = newenv', hash,
 				     exportLvars, hasExports } = 
@@ -29,8 +29,6 @@ functor BackendFn (structure M : CODEGENERATOR
 							count = !topCount }
 			   in
 			       { pid = (),
-				 fingerprint = (),
-				 pepper = "",
 				 pickle = (),
 				 exportLvars = exportLvars,
 				 exportPid = if hasExports then SOME hash
@@ -56,19 +54,18 @@ functor BackendFn (structure M : CODEGENERATOR
 	          type pickle = Word8Vector.vector
 		  type hash = PersStamps.persstamp
 		  type pid = hash
+		  type guid = string
 
-		  fun pickUnpick { context, env = newenv, uniquepid } = let
+		  fun pickUnpick { context, env = newenv, guid } = let
 		      val m = GenModIdMap.mkMap context
 		      fun up_context _ = m
 		      val { hash, pickle, exportLvars, hasExports } = 
 			  PickMod.pickleEnv (PickMod.INITIAL m) newenv
-		      val (pid, pepper) = uniquepid hash
+		      val pid = Rehash.addGUID { hash = hash, guid = guid }
 		      val newenv' =
 			  UnpickMod.unpickleEnv up_context (pid, pickle)
 		  in
 		      { pid = pid,
-			fingerprint = hash,
-			pepper = pepper,
 			pickle = pickle,
 			exportLvars = exportLvars,
 			exportPid = if hasExports then SOME pid else NONE,
