@@ -120,7 +120,8 @@ struct
     (val signed = true)
 
   fun selectInstructions
-      (TS.S.STREAM{emit=emitInstruction,comment,getAnnotations,
+      (instrStream as 
+       TS.S.STREAM{emit=emitInstruction,comment,getAnnotations,
                 defineLabel,entryLabel,pseudoOp,annotation,
                 beginCluster,endCluster,exitBlock,...}) = 
   let 
@@ -296,6 +297,7 @@ struct
         | stmt(T.LIVE S, an) = mark'(I.LIVE{regs=cellset S,spilled=C.empty},an)
         | stmt(T.KILL S, an) = mark'(I.KILL{regs=cellset S,spilled=C.empty},an)
         | stmt(T.ANNOTATION(s,a),an) = stmt(s,a::an)
+        | stmt(T.EXT s,an) = ExtensionComp.compileSext(reducer()) {stm=s, an=an}
         | stmt(s, _) = doStmts(Gen.compileStm s)
 
       and call(funct, targets, defs, uses, region, cutsTo, an, 0) = 
@@ -647,6 +649,7 @@ struct
            | T.LET(s,e) => (doStmt s; doExpr(e, rt, an))
            | T.MARK(e, A.MARKREG f) => (f rt; doExpr(e,rt,an))
            | T.MARK(e, a) => doExpr(e,rt,a::an)
+           | T.REXT e => ExtensionComp.compileRext (reducer()) {e=e,rd=rt,an=an}
            | e => doExpr(Gen.compileRexp e,rt,an)
   
       (* Generate a floating point load *) 
@@ -739,6 +742,7 @@ struct
             (* Misc *)
           | T.FMARK(e, A.MARKREG f) => (f ft; doFexpr(e,ft,an))
           | T.FMARK(e, a) => doFexpr(e,ft,a::an)
+          | T.FEXT e => ExtensionComp.compileFext (reducer()) {e=e,fd=ft,an=an}
           | _ => error "doFexpr"
 
        and ccExpr(T.CC(_,cc)) = cc
@@ -768,20 +772,36 @@ struct
           | T.CC(_,cc) => ccmove(cc,ccd,an)
           | T.CCMARK(cc,A.MARKREG f) => (f ccd; doCCexpr(cc,ccd,an))
           | T.CCMARK(cc,a) => doCCexpr(cc,ccd,a::an)
+          | T.CCEXT e =>
+	    ExtensionComp.compileCCext (reducer()) {e=e, ccd=ccd, an=an}
           | _ => error "doCCexpr: Not implemented"
    
       and emitTrap() = emit(I.TW{to=31,ra=zeroR,si=I.ImmedOp 0}) 
 
-        val beginCluster = fn _ =>
+      and beginCluster _ =
 	   (trapLabel := NONE; beginCluster 0)
-        val endCluster = fn a =>
+
+      and endCluster a =
            (case !trapLabel of 
               SOME label => 
               (defineLabel label; emitTrap(); trapLabel := NONE) 
             | NONE => ();
            endCluster a)
 
-   in  TS.S.STREAM
+      and reducer() =
+          TS.REDUCER{reduceRexp    = expr,
+	             reduceFexp    = fexpr,
+		     reduceCCexp   = ccExpr,
+		     reduceStm     = stmt,
+		     operand       = (fn _ => error "operand"),
+		     reduceOperand = reduceOpn,
+		     addressOf     = (fn _ => error "addressOf"),
+		     emit          = emitInstruction o annotate,
+		     instrStream   = instrStream,
+		     mltreeStream  = self()
+	  }
+       and self() = 
+       TS.S.STREAM
        { beginCluster  = beginCluster,
          endCluster    = endCluster,
          emit          = doStmt,
@@ -793,6 +813,7 @@ struct
          getAnnotations=getAnnotations,
          exitBlock     = fn mlrisc => exitBlock(cellset mlrisc)
        }
+   in  self()
    end
     
 end
