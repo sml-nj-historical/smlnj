@@ -158,6 +158,7 @@ structure IntRedBlackMap :> ORD_MAP where type Key.ord_key = int =
 	  fun delMin (T(R, E, yk, y, b), z) = (yk, y, (false, zip(z, b)))
 	    | delMin (T(B, E, yk, y, b), z) = (yk, y, bbZip(z, b))
 	    | delMin (T(color, a, yk, y, b), z) = delMin(a, LEFT(color, yk, y, b, z))
+	    | delMin (E, _) = raise Match
 	  fun join (R, E, E, z) = zip(z, E)
 	    | join (_, a, E, z) = #2(bbZip(z, a))	(* color = black *)
 	    | join (_, E, b, z) = #2(bbZip(z, b))	(* color = black *)

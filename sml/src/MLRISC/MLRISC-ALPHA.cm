@@ -30,8 +30,6 @@ is
 	MLRISC-Lib.cm
 	smlnj-lib.cm
 
-	comp-lib.cm	(* should get rid of this eventually *)
-
 	(* Alpha specific backend *)
 	alpha/instructions/alphaCells.sml
 	alpha/instructions/alphaInstr.sml

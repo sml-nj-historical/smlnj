@@ -480,7 +480,7 @@ struct
    |  JMPL of { r: $GP, i:operand, d: $GP, 
                 defs:C.cellset, uses:C.cellset, nop:bool, mem:Region.region
               }
-	``jmpl\t[<r>+<i>], <d><mem><nop>'' 
+	``jmpl\t[<r>+<i>], <d><mem><emit_defs(defs)><emit_uses(uses)><nop>'' 
 	(jmpl{r,i,d}; delay{nop})
 	[[ d := indcall(r+operand i) ]]
         padded when nop = true
@@ -490,7 +490,7 @@ struct
    |  CALL of  { defs:C.cellset, uses:C.cellset, 
                  label:Label.label, nop:bool, mem:Region.region
                }  
-	``call\t<label><mem><nop>'' 
+	``call\t<label><mem><emit_defs(defs)><emit_uses(uses)><nop>'' 
 	(call{disp30=disp label}; delay{nop})
 	[[ $GP[15] := call label ]]
         padded when nop = true

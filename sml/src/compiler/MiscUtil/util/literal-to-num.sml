@@ -52,7 +52,9 @@ structure LiteralToNum : LITERAL_TO_NUM =
 		val (d, m) = IntInf.divmod(w, two)
 		val d = Word32.fromLargeInt(IntInf.toLarge d)
 		in
-		  if (m = zero) then Word32.<<(d, 0w1) else Word32.<<(d, 0w1)+0w1
+		  case IntInf.compare(m, zero)
+		  of EQUAL => Word32.<<(d, 0w1) 
+	           | _ => Word32.<<(d, 0w1)+0w1
 		end
 
   end

@@ -21,7 +21,7 @@ signature BINFILE = sig
     val exportPidOf: bfContent -> pid option
     val lambdaPidOf: bfContent -> pid
     val cmDataOf: bfContent -> pid list
-    val senvOf: bfContent -> senv
+    val senvOf: bfContent -> { env: senv, ctxt: ModuleId.Set.set }
     val symenvOf: bfContent -> symenv
 
     val size: { content: bfContent, nopickle: bool } -> int

@@ -34,7 +34,7 @@ structure PreString =
       val op <= = InlineT.DfltInt.<=
       val op > = InlineT.DfltInt.>
       val op >= = InlineT.DfltInt.>=
-      val op = = InlineT.=
+(*      val op = = InlineT.= *)
       val unsafeSub = InlineT.CharVector.sub
       val unsafeUpdate = InlineT.CharVector.update
       val unsafeCreate = Assembly.A.create_s

@@ -8,6 +8,8 @@
 signature DOMINATOR_TREE =
 sig
 
+    structure GI : GRAPH_IMPLEMENTATION
+
     exception Dominator
 
     type ('n,'e,'g) dom_info

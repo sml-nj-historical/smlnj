@@ -1,7 +1,9 @@
 (* COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies *)
 (* binfile.sml *)
 
-functor BinfileFun (C : COMPILE) : BINFILE = struct
+functor BinfileFun (C : COMPILE
+		    where type newContext = ModuleId.Set.set) : BINFILE =
+struct
     structure Pid = PersStamps
     structure Env = CMEnv.Env
     structure Err = ErrorMsg
@@ -49,7 +51,7 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 		imports: C.import list,
 		exportPid: pid option,
 		cmData: pid list,
-		senv: senv pData,
+		senv: { env: senv, ctxt: ModuleId.Set.set } pData,
 		lambda: lambda option pData,
 		csegments: csegments,
 		executable: executable option ref
@@ -396,19 +398,23 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 			then () else error "non-zero reserved size"
 	    val code = readCodeList (s, name, cs)
 	    val (senv, penv) =
-		if es = 0 then (fn () => CMStaticEnv.empty,
+		if es = 0 then (fn () => { env = CMStaticEnv.empty,
+					   ctxt = ModuleId.Set.empty },
 				Word8Vector.fromList [])
 		else let
 		    val penv = bytesIn (s, es)
 		    val _ =
 			if Word8Vector.length penv = es then ()
 			else error "missing bytes in bin file"
+		    fun bs2es { env, ctxt } =
+			{ env = CMStaticEnv.CM env, ctxt = ctxt }
 		    val mkSenv =
 			delay (fn () =>
-			       CMStaticEnv.CM
-			        (UnpickMod.unpickleEnv { context = context,
-							 hash = staticPid,
-							 pickle = penv }))
+			       bs2es
+			        (UnpickMod.unpickleEnv
+				 { context = context,
+				   hash = staticPid,
+				   pickle = penv }))
 		in
 		    (mkSenv, penv)
 		end
@@ -514,7 +520,7 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 	    val cinfo = C.mkCompInfo (source, corenv, fn x => x)
 
 	    val { csegments=code, newstatenv, exportPid, staticPid, imports,
-		  pickle=envPickle, inlineExp, ...} = 
+		  pickle=envPickle, inlineExp, ctxt, ...} = 
 		C.compile { source=source, ast=ast, statenv=senv, 
 			    symenv=symenv, compInfo=cinfo, checkErr=check, 
 			    runtimePid=runtimePid, splitting=splitting}
@@ -525,7 +531,8 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 	    BFC { imports = imports,
 		  exportPid = exportPid,
 		  cmData = cmData,
-		  senv = pd (newstatenv, staticPid, envPickle),
+		  senv = pd ({ env = newstatenv, ctxt = ctxt },
+			     staticPid, envPickle),
 		  lambda = pd (inlineExp, lambdaPid, pickle),
 		  csegments = code,
 		  executable = ref NONE }

@@ -10,7 +10,7 @@ structure AsmFormatUtil : ASM_FORMAT_UTIL =
 struct
 
   fun reginfo(emit,an) =
-      case #get BasicAnnotations.REGINFO an of
+      case #get MLRiscAnnotations.REGINFO an of
          SOME f => (fn r => emit(f r))
       |  NONE => (fn _ => ())
 

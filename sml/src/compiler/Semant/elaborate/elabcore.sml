@@ -380,7 +380,7 @@ let
 			      in doPat'
 			     end
 		     (* check that each variable occurs in each sub-pattern *)
-		       fun checkComplete m (_, id, (_, _, n)) =
+		       fun checkComplete m (_, id, (_, _, n:int)) =
 			   if (n = m) then () else (errorMsg id)
 		       val pats = (doPat insFn pat) :: 
                                       (map (doPat bumpFn) pats)

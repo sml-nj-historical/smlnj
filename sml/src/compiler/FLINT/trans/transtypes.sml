@@ -413,7 +413,7 @@ and fctLty (fct, depth, compInfo) =
  *           A HASH-CONSING VERSION OF THE ABOVE TRANSLATIONS               *
  ****************************************************************************)
 
-structure MIDict = BinaryMapFn(struct type ord_key = ModuleId.modId
+structure MIDict = RedBlackMapFn(struct type ord_key = ModuleId.modId
                                      val compare = ModuleId.cmp
                               end)
 

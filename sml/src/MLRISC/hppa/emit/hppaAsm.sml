@@ -17,6 +17,8 @@ struct
    structure LE = LabelExp
    structure Constant = I.Constant
    
+   val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
+   
    fun error msg = MLRiscErrorMsg.error("HppaAsm",msg)
    
    fun makeStream formatAnnotations =
@@ -63,6 +65,13 @@ struct
    and emit_GP r = 
        ((emit (C.showGP (regmap r))); 
        (emitRegInfo r))
+   
+       fun emit_cellset(title,cellset) =
+       if !show_cellset then
+         (nl(); comment(title^C.cellsetToString' regmap cellset))
+       else ()
+       fun emit_defs cellset = emit_cellset("defs: ",cellset)
+       fun emit_uses cellset = emit_cellset("uses: ",cellset)
 
    fun asm_farith (I.FADD_S) = "fadd,sgl"
      | asm_farith (I.FADD_D) = "fadd,dbl"
@@ -411,7 +420,9 @@ struct
         (emit "\t"); 
         (emit_operand x); 
         (emit "), "); 
-        (emit_GP t))
+        (emit_GP t); 
+        (emit_defs defs); 
+        (emit_uses uses))
       | I.BLE{d, b, sr, t, defs, uses, mem} => 
         ((emit "ble\t"); 
         (emit_operand d); 
@@ -420,7 +431,9 @@ struct
         (emit ","); 
         (emit_GP b); 
         (emit ")"); 
-        (emit_region mem))
+        (emit_region mem); 
+        (emit_defs defs); 
+        (emit_uses uses))
       | I.LDIL{i, t} => 
         ((emit "ldil\t"); 
         (emit_operand i); 

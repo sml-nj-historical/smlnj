@@ -34,7 +34,7 @@ functor CpsSplitFun (MachSpec: MACH_SPEC): CPSSPLIT = struct
     structure C = CPS
     structure SL = SortedList
     structure A = LambdaVar
-    structure M = IntBinaryMap
+    structure M = IntRedBlackMap
 
     val add = SL.enter
     val del = SL.rmv
@@ -90,7 +90,7 @@ functor CpsSplitFun (MachSpec: MACH_SPEC): CPSSPLIT = struct
       | live (C.ARITH (_, l, v, _, e)) = lv_calc (l, v, live e)
       | live (C.PURE (_, l, v, _, e)) = lv_calc (l, v, live e)
 
-    structure M = IntBinaryMap
+    structure M = IntRedBlackMap
 
     (* scc stuff *)
 
@@ -550,6 +550,9 @@ end
 
 (*
  * $Log: cps-split.sml,v $
+ * Revision 1.1.1.1  1999/07/15 17:52:42  george
+ *  Version 110.20
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:46  george
  * Version 110.5
  *

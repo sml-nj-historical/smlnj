@@ -9,12 +9,15 @@ functor SSAOptimizerFn
     structure P  : INSN_PROPERTIES
     structure SP : SSA_PROPERTIES
     structure GCP : GC_PROPERTIES
+    structure GCMap : GC_MAP
     structure FreqProps : FREQUENCY_PROPERTIES
        sharing P.I = SP.I = GCP.I = Asm.I = F.I = FreqProps.I = MLTreeComp.I
        sharing F.P = Asm.P = MLTreeComp.T.PseudoOp 
        sharing MLTreeComp.T.Constant = F.I.Constant
+       sharing GCP.GC = GCMap.GC
     val callgc : { id     : int,
-                   label  : Label.label,
+                   gcLabel  : Label.label,
+                   returnLabel  : Label.label,
                    roots  : (P.I.C.cell * GCP.GC.gctype) list,
                    stream : (MLTreeComp.T.stm,P.I.C.regmap) MLTreeComp.T.stream
                  } -> unit
@@ -26,12 +29,11 @@ struct
 
    val view_IR    = MLRiscControl.getFlag "view-IR" 
    val verbose    = MLRiscControl.getFlag "verbose"
-   val viewer     = MLRiscControl.getString "viewer"
    val min_blocks = MLRiscControl.getInt "min-blocks"
 
    fun error msg = MLRiscErrorMsg.error("SSAOptimizer",msg)
 
-   structure GraphViewer = GraphViewerFn(AllDisplaysFn(val viewer = viewer))
+   structure GraphViewer = GraphViewerFn(AllDisplays)
 
    structure FormatInsn = FormatInstructionFn(Asm)
 
@@ -141,13 +143,14 @@ struct
    structure GCTyping = GCTyping
       (structure IR = IR
        structure GCProps = GCP
+       structure GCMap = GCMap
        structure Props = P
       )
 
    structure GCGen = GCGen
       (structure MLTreeComp = MLTreeComp
        structure IR = IR
-       structure GC = GCP.GC
+       structure GCMap = GCMap
        structure InsnProps = P
       )
 

@@ -7,12 +7,13 @@
  *       (M. Blume, 7/1999)
  *)
 signature BOOTENV = sig
-    val init: unit -> string
+    val init: unit -> { heapfile: string, procCmdLine: (unit -> unit) option }
 end
 
 functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 		  val architecture: string
-		  val cminit : string * DynamicEnv.dynenv * envrequest -> unit
+		  val cminit : string * DynamicEnv.dynenv * envrequest ->
+		               (unit -> unit) option
 		  val cmbmake: string -> unit) :> BOOTENV = struct
 
     exception BootFailure
@@ -83,7 +84,11 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 	val newbindir = Option.map OS.Path.mkCanonical newbindir
     in
 	case newbindir of
-	    NONE => (initialize (bootdir, er); heapfile)
+	    NONE => let
+		val procCmdLine = initialize (bootdir, er)
+	    in
+		{ heapfile = heapfile, procCmdLine = procCmdLine }
+	    end
 	  | SOME nbd =>
 		if nbd = bootdir then
 		    die "@SMLboot= and @SMLrebuild= name the same directory\n"

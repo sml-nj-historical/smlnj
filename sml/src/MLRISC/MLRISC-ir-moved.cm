@@ -28,8 +28,9 @@ Library
 	signature STATIC_SINGLE_ASSIGNMENT_FORM
 	functor StaticSingleAssignmentFormFn
 is
+#if defined(NEW_CM)
 	basis.cm
-	comp-lib.cm
+#endif
 	smlnj-lib.cm
 	MLRISC-Lib.cm
 	MLRISC-Graphs.cm

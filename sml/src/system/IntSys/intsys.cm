@@ -14,16 +14,22 @@ is
 	use-hook
 
 	basis.cm
-	viscomp-lib.cm
+	viscomp-core.cm
 
 	(* need access to CM's "init" function *)
 	host-compiler-0.cm
 
 	(* these are just here so they get made... *)
 	host-compiler.cm
-	host-cm.cm
+	(* We don't mention minimal-cm.cm here because it would conflict
+	 * with full-cm.cm.  Instead, the reference to minimal-cm.cm is
+	 * now within full-cm.cm. (See there.) *)
+	full-cm.cm
 	host-cmb.cm
 	cm-tools.cm
+# if not defined(LIGHT)
+	target-compilers.cm
+# endif
 
 	(* build boot environments *)
 	boot-env-fn.sml

@@ -42,8 +42,9 @@ Library
 	functor MLRISCGlue
 is
 
+#if defined(NEW_CM)
 	basis.cm
-	comp-lib.cm
+#endif
 	smlnj-lib.cm
 	
 	MLRISC.cm

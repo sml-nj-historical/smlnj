@@ -136,6 +136,7 @@ structure IntRedBlackSet :> ORD_SET where type Key.ord_key = int =
 	  fun delMin (T(R, E, y, b), z) = (y, (false, zip(z, b)))
 	    | delMin (T(B, E, y, b), z) = (y, bbZip(z, b))
 	    | delMin (T(color, a, y, b), z) = delMin(a, LEFT(color, y, b, z))
+	    | delMin (E, _) = raise Match
 	  fun join (R, E, E, z) = zip(z, E)
 	    | join (_, a, E, z) = #2(bbZip(z, a))	(* color = black *)
 	    | join (_, E, b, z) = #2(bbZip(z, b))	(* color = black *)

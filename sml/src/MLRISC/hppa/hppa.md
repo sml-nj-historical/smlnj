@@ -532,14 +532,14 @@ struct
 	candidate of delayslot never
 
     | BL of {x:operand,t: $GP, defs: C.cellset, uses:C.cellset, n:bool}
-	``bl<n>\t<x>), <t>''
+	``bl<n>\t<x>), <t><emit_defs(defs)><emit_uses(uses)>''
         (* not implemented *) 
         nullified when n = true
 	candidate of delayslot never
 
     | BLE of {d:operand,b: $GP, sr:int, t: $GP,
 	      defs: C.cellset, uses:C.cellset, mem:Region.region}
-	``ble\t<d>(<emit_int sr>,<b>)<mem>''
+	``ble\t<d>(<emit_int sr>,<b>)<mem><emit_defs(defs)><emit_uses(uses)>''
         (case (d,t) of
           (I.IMMED 0,31) =>
              BranchExternal{Op=0wx39,b=b,w1=0w0,s=assemble_3(itow sr),

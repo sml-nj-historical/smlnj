@@ -29,6 +29,7 @@ functor MLRiscGen
     structure Flowgen : FLOWGRAPH_GEN
        where T = MLTreeComp.T
          and I = MLTreeComp.I
+    val compile : Flowgen.flowgraph -> unit
   ): MLRISCGEN =
 struct
   structure M : MLTREE = C.T
@@ -59,10 +60,11 @@ struct
       GCCells(structure C = Cells
               structure GCMap = SMLGCMap)
 
-  val NONREF = SMLGCType.NONREF(ref CPS.INTt)
-  val FLOAT  = SMLGCType.NONREF(ref CPS.FLTt)
-  val REF    = SMLGCType.REF(ref(CPS.PTRt(CPS.VPT)))
-  val NO_OPT = [#create BasicAnnotations.NO_OPTIMIZATION ()]
+  val I31    = SMLGCType.I31     (* tagged integers *)
+  val I32    = SMLGCType.I32     (* untagged integers *)
+  val REAL64 = SMLGCType.REAL64  (* untagged floats *)
+  val PTR    = SMLGCType.PTR     (* boxed objects *)
+  val NO_OPT = #create MLRiscAnnotations.NO_OPTIMIZATION ()
 
   fun error msg = ErrorMsg.impossible ("MLRiscGen." ^ msg)
 
@@ -89,6 +91,8 @@ struct
     case C.exhausted of NONE => dedicated' 
                       | SOME cc => M.CCR cc :: dedicated'
 
+  val mlrisc   = Control.MLRISC.getFlag "mlrisc"
+
   (* 
    * If this flag is on then annotate the registers with GC type info.  
    * Otherwise use the default behavior.
@@ -104,7 +108,7 @@ struct
   (*
    * This dummy annotation is used to get an empty block  
    *)
-  val EMPTY_BLOCK = #create BasicAnnotations.EMPTY_BLOCK ()
+  val EMPTY_BLOCK = #create MLRiscAnnotations.EMPTY_BLOCK ()
 
   (*
    * The codegen function.
@@ -121,7 +125,8 @@ struct
             pseudoOp,      (* emit a pseudo op *)
             annotation,    (* add an annotation *)
             ... } = 
-            MLTreeComp.selectInstructions(Flowgen.newStream())
+            MLTreeComp.selectInstructions
+               (Flowgen.newStream{compile=compile, flowgraph=NONE})
       val maxAlloc = #1 o limits
       val instructionCount = #2 o limits
       val splitEntry = !splitEntry
@@ -140,17 +145,30 @@ struct
        * versions of newReg that automatically update the GCMap.
        * Otherwise, we'll just use the normal version.
        *)
-      val (newReg,newFreg) = 
+      val (newReg,newFreg,markPTR) = 
             if !gcsafety then
-               (GCCells.setGCMap(GCCells.newGCMap());
-                (GCCells.newCell Cells.GP, GCCells.newCell Cells.FP))
-            else (Cells.newReg, Cells.newFreg)
+            let val gcMap = GCCells.newGCMap()
+                val enterGC = Intmap.add gcMap
+            in  GCCells.setGCMap gcMap;
+                (GCCells.newCell Cells.GP, 
+                 GCCells.newCell Cells.FP,
+                 #create MLRiscAnnotations.MARK_REG(fn r => enterGC(r,PTR))
+                )
+            end
+            else (Cells.newReg, Cells.newFreg, NO_OPT)
 
-      (* This function maps cps type info gc type *)
-      fun gctypeOf CPS.INTt   = NONREF
-        | gctypeOf CPS.INT32t = NONREF
-        | gctypeOf CPS.FLTt   = FLOAT
-        | gctypeOf _          = REF
+      (*
+       * Known functions have parameters passed in fresh temporaries. 
+       * We also annotate the gc types of these temporaries.
+       *)
+      fun known [] = []
+        | known(cty::rest) =
+            (case cty of
+              CPS.FLTt   => M.FPR(M.FREG(64,newFreg REAL64))
+            | CPS.INTt   => M.GPR(M.REG(32,newReg I31))
+            | CPS.INT32t => M.GPR(M.REG(32,newReg I32))
+            | _          => M.GPR(M.REG(32,newReg PTR))
+            )::known rest
 
       (* labelTbl: mapping of function names (CPS.lvars) to labels *)
       exception LabelBind and TypTbl
@@ -186,7 +204,14 @@ struct
        *)
       val gcTest = M.CMP(pty, if C.signedGCTest then M.GT else M.GTU, 
                          C.allocptr, C.limitptr)
-  
+ 
+      (*
+       * Convert kind to gc type
+       *)
+      fun kindToGC(CPS.P.INT 31) = I31
+        | kindToGC(CPS.P.UINT 31) = I31
+        | kindToGC(_) = I32 
+
       (*
        * Function for generating code for one cluster.
        *)
@@ -270,11 +295,16 @@ struct
            * compilation unit.  This function generates the address of
            * a label that is embedded in the same compilation unit.  The
            * generated address is relative to the baseptr.
+           *
+           * Note: For GC safety, we considered this to be an object reference
            *)
           fun laddr(lab, k) =
+          let val e = 
               M.ADD(addrTy, C.baseptr,
                     M.LABEL(LE.PLUS(LE.LABEL lab, 
                             LE.CONST(k-MachineSpec.constBaseRegOffset))))
+          in  if !gcsafety then M.MARK(e,markPTR) else e
+          end
 
           (*
            * A CPS register may be implemented as a physical 
@@ -346,7 +376,7 @@ struct
            *)
           fun initialRegBindingsEscaping(vl, rl, tl) = 
           let fun eCopy(x::xs, M.GPR(M.REG(_,r))::rl, rds, rss, xs', rl') = 
-                  let val t = newReg REF
+                  let val t = newReg PTR
                   in  addRegBinding(x, t); 
                       eCopy(xs, rl, t::rds, r::rss, xs', rl')
                   end
@@ -357,7 +387,7 @@ struct
                    (emit(M.COPY(ity, rds, rss)); (xs', rl'))
 
               fun eOther(x::xs, M.GPR(r)::rl, xs', rl') = 
-                  let val t = newReg REF
+                  let val t = newReg PTR
                   in  addRegBinding(x, t); emit(M.MV(ity, t, r)); 
                       eOther(xs, rl, xs', rl')
                   end
@@ -367,7 +397,7 @@ struct
 
               fun eFcopy([], []) = ()
                 | eFcopy(xs, rl) = 
-                  let val fs = map (fn _ => newFreg FLOAT) xs
+                  let val fs = map (fn _ => newFreg REAL64) xs
                   in  ListPair.app 
                         (fn (x,f) => addFregBinding(x,M.FREG(fty,f))) (xs,fs);
                       emit(M.FCOPY(fty, fs, rl))
@@ -418,7 +448,7 @@ struct
           let fun double r = if signed then M.ADDT(ity,r,r) else M.ADD(ity, r,r)
           in  case e 
               of M.REG _ => addTag(double e)
-               | _ => let val tmp = newReg REF
+               | _ => let val tmp = newReg PTR
                       in  M.SEQ(M.MV(ity, tmp, e), 
                                 addTag(double (M.REG(ity,tmp))))
                       end
@@ -559,27 +589,21 @@ struct
           in
     
           val offp0 = CPS.OFFp 0 
-   
-          (*
-           * x <- e where e contains a non-reference value
-           *)
-          fun alloc(x, e, rest, hp) = 
-          let val r = newReg NONREF
-          in  addRegBinding(x, r);
-              emit(M.MV(ity, r, e));  
-              gen(rest, hp)
-          end
 
           (*
-           * x <- e where e contains an ML reference value
+           * x <- e where e is an integer expression
            *)
-          and palloc(x, e, rest, hp) = 
-          let val r = newReg REF
+          fun alloc(gc, x, e, rest, hp) = 
+          let val r = newReg gc
           in  addRegBinding(x, r);
               emit(M.MV(ity, r, e));  
               gen(rest, hp)
           end
-   
+ 
+          and int31alloc(x, e, rest, hp) = alloc(I31, x, e, rest, hp)
+          and int32alloc(x, e, rest, hp) = alloc(I32, x, e, rest, hp)
+          and palloc(x, e, rest, hp) = alloc(PTR, x, e, rest, hp)
+
           (*
            * x <- e where e contains an floating-point value
            *)
@@ -588,17 +612,17 @@ struct
                 of CpsTreeify.DEAD => gen(rest, hp)
                  | CpsTreeify.TREEIFY => (addFregBinding(x,e); gen(rest, hp))
                  | CpsTreeify.COMPUTE => 
-                   let val f = newFreg FLOAT
+                   let val f = newFreg REAL64
                    in  addFregBinding(x, M.FREG(fty, f));  
                        emit(M.FMV(fty, f, e));  
                        gen(rest, hp)
                    end
               (*esac*))
     
-          and nop(x, v, e, hp) = alloc(x, regbind v, e, hp)
+          and nop(x, v, e, hp) = int31alloc(x, regbind v, e, hp)
     
-          and copy(x, v, rest, hp) = 
-          let val dst = newReg NONREF
+          and copy(gc, x, v, rest, hp) = 
+          let val dst = newReg gc
           in  addRegBinding(x, dst);
               case regbind v
                 of M.REG(_,src) => emit(M.COPY(ity, [dst], [src]))
@@ -606,7 +630,10 @@ struct
               (*esac*);
               gen(rest, hp)
           end
-    
+
+          and copyM(31, x, v, rest, hp) = copy(I31, x, v, rest, hp)
+            | copyM(_, x, v, rest, hp)  = copy(I32, x, v, rest, hp)
+
           and branch (cmp, [v,w], d, e, hp) = 
           let val trueLab = Label.newLabel""
           in  (* is single assignment great or what! *)
@@ -615,14 +642,23 @@ struct
               genlab(trueLab, d, hp)
           end
     
-          and arith(oper, v, w, x, e, hp) = 
-            alloc(x, oper(ity, regbind v, regbind w), e, hp)
+          and arith(gc, oper, v, w, x, e, hp) = 
+               alloc(gc, x, oper(ity, regbind v, regbind w), e, hp)
+
+          and arith31(oper, v, w, x, e, hp) = 
+               arith(I31, oper, v, w, x, e, hp) 
+
+          and arith32(oper, v, w, x, e, hp) = 
+               arith(I32, oper, v, w, x, e, hp) 
     
-          and orderedArith(oper, v, w, x, order, e, hp) = 
-            alloc(x, oper(ity, regbind v, regbind w, order), e, hp)
-    
-          and logical(oper, v, w, x, e, hp) = 
-            alloc(x, oper(ity, regbind v, untag(false, w)), e, hp)
+          and logical(gc, oper, v, w, x, e, hp) = 
+               alloc(gc, x, oper(ity, regbind v, untag(false, w)), e, hp)
+
+          and logical31(oper, v, w, x, e, hp) = 
+               logical(I31, oper, v, w, x, e, hp) 
+
+          and logical32(oper, v, w, x, e, hp) = 
+               logical(I32, oper, v, w, x, e, hp) 
     
           and genlab(lab, e, hp) = (defineLabel lab; gen(e, hp))
 
@@ -644,7 +680,7 @@ struct
                           | (x, p as OFFp 0) => (M.FPR(fregbind x), p)
                           | _ => error "gen:RECORD:RK_FBLOCK")
                         vl
-                  val ptr = newReg REF
+                  val ptr = newReg PTR
                 (* At initialization the allocation pointer is aligned on
                  * an odd-word boundary, and the heap offset set to zero. If an
                  * odd number of words have been allocated then the heap pointer
@@ -663,8 +699,8 @@ struct
                   val hdrDesc = dtoi(D.desc_polyvec)
                   val dataDesc = dtoi(D.makeDesc(len, D.tag_vec_data))
                   val contents = map (fn (v,p) => (regbind v, p)) vl
-                  val dataPtr = newReg REF
-                  val hdrPtr = newReg REF
+                  val dataPtr = newReg PTR
+                  val hdrPtr = newReg PTR
                   val hdrM = memDisambig w
                   val dataM = hdrM (* Allen *)
               in  addRegBinding(w, hdrPtr);
@@ -691,7 +727,7 @@ struct
                     | (_, l) => dtoi(D.makeDesc (l, D.tag_record))
                   (*esac*)
                   val contents = map (fn (v,p) => (regbind v, p)) vl
-                  val ptr = newReg REF
+                  val ptr = newReg PTR
               in  addRegBinding(w, ptr);
                   MkRecord.record 
                     {desc=M.LI desc, fields=contents, ans=ptr, 
@@ -706,12 +742,12 @@ struct
                      if unboxedfloat then (case t of FLTt => true | _ => false)
                      else false
                    fun fallocSp(x,e,hp) =
-                     (addFregBinding(x,M.FREG(fty,newFreg FLOAT));gen(e, hp))
+                     (addFregBinding(x,M.FREG(fty,newFreg REAL64));gen(e, hp))
                   (* warning: the following generated code should never be 
                      executed; its semantics is completely screwed up !
                    *)
                 in if isFlt t then fallocSp(x, e, hp)
-                   else alloc(x, M.LI k, e, hp)(* BOGUS *)
+                   else int32alloc(x, M.LI k, e, hp)(* BOGUS *)
                end
             | gen(SELECT(i, v, x, FLTt, e), hp) = 
                 falloc(x, M.FLOAD(fty, scale8(regbind v, INT i), R.real), e, hp)
@@ -749,7 +785,7 @@ struct
                      callSetup(formals, args); 
                      emit(branchToLabel(functionLabel f)))
                  | Frag.KNOWNFUN(r as ref(Frag.UNGEN(f,vl,tl,e))) => 
-                   let val formals = ArgP.known tl
+                   let val formals = known tl
                        val lab = functionLabel f
                    in  r := Frag.GEN formals;
                        updtHeapPtr(hp);
@@ -763,7 +799,7 @@ struct
                  | Frag.KNOWNCHK(r as ref(Frag.UNGEN(f,vl,tl,e))) => 
                    let val formals = 
                            if MS.fixedArgPassing then ArgP.fixed tl
-                           else ArgP.known tl
+                           else known tl
                        val lab = functionLabel f
                    in  r:=Frag.GEN formals;
                        callSetup(formals, args);
@@ -772,7 +808,10 @@ struct
                        emit(branchToLabel(lab));
 			***)
                        defineLabel lab;
-                       InvokeGC.knwCheckLimit stream
+                       (if !mlrisc andalso !gcsafety then
+                        InvokeGC.optimizedKnwCheckLimit else
+                        InvokeGC.knwCheckLimit) 
+                         stream
                          {maxAlloc=4*maxAlloc f, regfmls=formals, regtys=tl, 
                           return=branchToLabel(lab)};
                        alignAllocptr f;
@@ -797,7 +836,7 @@ struct
             | gen(SWITCH(v, _, l), hp) = 
               let val lab = Label.newLabel""
                   val labs = map (fn _ => Label.newLabel"") l
-                  val tmpR = newReg NONREF val tmp = M.REG(ity,tmpR)
+                  val tmpR = newReg I32 val tmp = M.REG(ity,tmpR)
               in  emit(M.MV(ity, tmpR, laddr(lab, 0)));
                   emit(M.JMP(M.ADD(addrTy, tmp, M.LOAD(pty, scale4(tmp, v), 
                                                        R.readonly)), labs));
@@ -806,88 +845,91 @@ struct
               end
 
             (*** PURE ***)
-            | gen(PURE(P.pure_arith{oper=P.orb, ...}, [v,w], x, _, e), hp) = 
-                alloc(x, M.ORB(ity, regbind v, regbind w), e, hp)
-            | gen(PURE(P.pure_arith{oper=P.andb, ...}, [v,w], x, _, e), hp) = 
-                alloc(x, M.ANDB(ity, regbind v, regbind w), e, hp)
+            | gen(PURE(P.pure_arith{oper=P.orb, kind}, [v,w], x, _, e), hp) = 
+               alloc(kindToGC kind, x, M.ORB(ity, regbind v, regbind w), e, hp)
+            | gen(PURE(P.pure_arith{oper=P.andb, kind}, [v,w], x, _, e), hp) = 
+               alloc(kindToGC kind, x, M.ANDB(ity, regbind v, regbind w), e, hp)
             | gen(PURE(P.pure_arith{oper, kind}, args as [v,w], x, ty, e), hp) = 
               (case kind
                 of P.INT 31 => (case oper
-                     of P.xorb   => alloc(x, int31xor(args), e, hp)
-                      | P.lshift => alloc(x, int31lshift args, e, hp)
-                      | P.rshift => alloc(x, int31rshift(M.SRA,args), e, hp)
+                     of P.xorb   => int31alloc(x, int31xor(args), e, hp)
+                      | P.lshift => int31alloc(x, int31lshift args, e, hp)
+                      | P.rshift => int31alloc(x, int31rshift(M.SRA,args),e,hp)
                       | _ => error "gen:PURE INT 31"
                     (*esac*))        
                  | P.INT 32  => (case oper
-                     of P.xorb  => arith(M.XORB, v, w, x, e, hp)
-                      | P.lshift => logical(M.SLL, v, w, x, e, hp)
-                      | P.rshift => logical(M.SRA, v, w, x, e, hp)
+                     of P.xorb  => arith32(M.XORB, v, w, x, e, hp)
+                      | P.lshift => logical32(M.SLL, v, w, x, e, hp)
+                      | P.rshift => logical32(M.SRA, v, w, x, e, hp)
                       | _ => error "gen:PURE INT 32"
                     (*esac*))
                  | P.UINT 31 => (case oper
-                     of P.+    => alloc(x, int31add(M.ADD, args), e, hp)
-                      | P.-    => alloc(x, int31sub(M.SUB, args), e, hp)
-                      | P.*    => alloc(x, int31mul(false, args), e, hp)
+                     of P.+    => int31alloc(x, int31add(M.ADD, args), e, hp)
+                      | P.-    => int31alloc(x, int31sub(M.SUB, args), e, hp)
+                      | P.*    => int31alloc(x, int31mul(false, args), e, hp)
                       | P./    => (* This is not really a pure 
                                      operation -- oh well *)
                                    (updtHeapPtr hp;
-                                    alloc(x, int31div(false, args), e, 0))
-                      | P.xorb => alloc(x, int31xor(args), e, hp)
-                      | P.lshift  => alloc(x, int31lshift args, e, hp)
-                      | P.rshift  => alloc(x, int31rshift(M.SRA,args), e, hp)
-                      | P.rshiftl => alloc(x, int31rshift(M.SRL,args), e, hp)
+                                    int31alloc(x, int31div(false, args), e, 0))
+                      | P.xorb => int31alloc(x, int31xor(args), e, hp)
+                      | P.lshift  => int31alloc(x, int31lshift args, e, hp)
+                      | P.rshift  => int31alloc(x,int31rshift(M.SRA,args),e,hp)
+                      | P.rshiftl => int31alloc(x,int31rshift(M.SRL,args),e,hp)
                       | _ => error "gen:PURE UINT 31"
                     (*esac*))
                  | P.UINT 32 => (case oper
-                     of P.+     => arith(M.ADD, v, w, x, e, hp)
-                       | P.-     => arith(M.SUB, v, w, x, e, hp)
-                      | P.*     => arith(M.MULU, v, w, x, e, hp)
+                     of P.+     => arith32(M.ADD, v, w, x, e, hp)
+                       | P.-     => arith32(M.SUB, v, w, x, e, hp)
+                      | P.*     => arith32(M.MULU, v, w, x, e, hp)
                       | P./     => (updtHeapPtr hp; 
-                                    arith(M.DIVU, v, w, x, e, 0))
-                      | P.xorb  => arith(M.XORB, v, w, x, e, hp)
-                      | P.lshift => logical(M.SLL, v, w, x, e, hp)
-                      | P.rshift => logical(M.SRA, v, w, x, e, hp)
-                      | P.rshiftl=> logical(M.SRL, v, w, x, e, hp)
+                                    arith32(M.DIVU, v, w, x, e, 0))
+                      | P.xorb  => arith32(M.XORB, v, w, x, e, hp)
+                      | P.lshift => logical32(M.SLL, v, w, x, e, hp)
+                      | P.rshift => logical32(M.SRA, v, w, x, e, hp)
+                      | P.rshiftl=> logical32(M.SRL, v, w, x, e, hp)
                       | _ => error "gen:PURE UINT 32"
                     (*esac*))
               (*esac*))
             | gen(PURE(P.pure_arith{oper=P.notb, kind}, [v], x, _, e), hp) =
               (case kind 
-                of P.UINT 32 => alloc(x, M.XORB(ity, regbind v, 
+                of P.UINT 32 => int32alloc(x,M.XORB(ity, regbind v, 
                                                 M.LI32 0wxFFFFFFFF), e, hp)
-                 | P.INT 32 => alloc(x, M.XORB(ity, regbind v, 
+                 | P.INT 32 => int32alloc(x,M.XORB(ity, regbind v, 
                                                M.LI32 0wxFFFFFFFF), e, hp)
-                 | P.UINT 31 => alloc(x, M.SUB(ity, M.LI 0, regbind v), e, hp)
-                 | P.INT 31 => alloc(x, M.SUB(ity, M.LI 0, regbind v), e, hp)
+                 | P.UINT 31 => int31alloc(x,M.SUB(ity, M.LI 0, regbind v), e, hp)
+                 | P.INT 31 => int31alloc(x,M.SUB(ity, M.LI 0, regbind v), e, hp)
               (*esac*))
             | gen(PURE(P.copy ft, [v], x, _, e), hp) =
                (case ft
-                of (31, 32) => alloc(x, M.SRL(ity, regbind v, one), e, hp)
-                 | (8, 31) => copy(x, v, e, hp)
-                 | (8, 32) => alloc(x, M.SRL(ity, regbind v, one), e, hp)
-                 | (n,m) => if n = m then copy(x, v, e, hp) 
+                of (31, 32) => int32alloc(x, M.SRL(ity, regbind v, one), e, hp)
+                 | (8, 31) => copy(I31, x, v, e, hp)
+                 | (8, 32) => int32alloc(x, M.SRL(ity, regbind v, one), e, hp)
+                 | (n,m) => if n = m then copyM(m, x, v, e, hp) 
                             else error "gen:PURE:copy"
                (*esac*))
             | gen(PURE(P.extend ft, [v], x, _ ,e), hp) = 
               (case ft
                of (8,31) => 
-                    alloc(x, M.SRA(ity, M.SLL(ity, regbind v,M.LI 23), M.LI 23),
+                    int31alloc(x, 
+                       M.SRA(ity, M.SLL(ity, regbind v,M.LI 23), M.LI 23),
                           e, hp)
                 | (8,32) =>
-                    alloc(x, M.SRA(ity, M.SLL(ity, regbind v, M.LI 23), M.LI 24), 
+                    int32alloc(x, 
+                       M.SRA(ity, M.SLL(ity, regbind v, M.LI 23), M.LI 24), 
                           e, hp)
-                | (31,32) => alloc(x, M.SRA(ity, regbind v, one), e, hp)
-                | (n, m) => if n = m then copy(x, v, e, hp) 
+                | (31,32) => int32alloc(x, M.SRA(ity, regbind v, one), e, hp)
+                | (n, m) => if n = m then copyM(m, x, v, e, hp) 
                             else error "gen:PURE:extend"
                 (*esac*))
             | gen(PURE(P.trunc ft, [v], x, _, e), hp) = 
               (case ft
                of (32, 31) => 
-                    alloc(x, M.ORB(ity, M.SLL(ity, regbind v, one), one), e, hp)
-                | (31, 8) => alloc(x, M.ANDB(ity, regbind v, M.LI 0x1ff), e, hp)
-                | (32, 8) => alloc(x, tag(false, M.ANDB(ity, regbind v, 
-                                                        M.LI 0xff)), e, hp)
-                | (n, m) => if n = m then copy(x, v, e, hp) 
+                   int31alloc(x, 
+                     M.ORB(ity, M.SLL(ity, regbind v, one), one), e, hp)
+                | (31, 8) => int32alloc(x, M.ANDB(ity, regbind v, M.LI 0x1ff), e, hp)
+                | (32, 8) => int32alloc(x, tag(false, M.ANDB(ity, regbind v, 
+                                           M.LI 0xff)), e, hp)
+                | (n, m) => if n = m then copyM(m, x, v, e, hp) 
                             else error "gen:PURE:trunc"
                (*esac*))
             | gen(PURE(P.real{fromkind=P.INT 31, tokind}, [v], x, _, e), hp) = 
@@ -905,7 +947,7 @@ struct
                      | P.abs => falloc(x, M.FABS(fty,r), e, hp)
               end
             | gen(PURE(P.objlength, [v], x, _, e), hp) = 
-                alloc(x, orTag(getObjLength(v)), e, hp)
+                int31alloc(x, orTag(getObjLength(v)), e, hp)
             | gen(PURE(P.length, [v], x, t, e), hp) =
               (* array/vector length operation *)
                 gen(SELECT(1, v, x, t, e), hp)
@@ -914,20 +956,21 @@ struct
                   (* get data pointer *)
                   val a = M.LOAD(ity, regbind v, region)  
                   val region' = region (* Allen *)
-              in  alloc(x, M.LOAD(ity, scale4(a, INT i), region'), e, hp)
+              in  palloc(x, M.LOAD(ity, scale4(a, INT i), region'), e, hp)
               end
             | gen(PURE(P.subscriptv, [v, w], x, _, e), hp) = 
               let (* get data pointer *)
                   val a = M.LOAD(ity, regbind v, R.readonly) 
-              in  alloc (x, M.LOAD(ity, scale4(a, w), R.readonly), e, hp)
+              in  palloc(x, M.LOAD(ity, scale4(a, w), R.readonly), e, hp)
               end
             | gen(PURE(P.pure_numsubscript{kind=P.INT 8}, [v,i], x, _, e), hp) =
               let (* get data pointer *)
                   val a = M.LOAD(ity, regbind v, R.readonly)  
-              in alloc(x, tag(false,M.LOAD(8,scale1(a, i), R.memory)), e, hp) 
+              in int31alloc(x, 
+                  tag(false,M.LOAD(8,scale1(a, i), R.memory)), e, hp) 
               end
             | gen(PURE(P.gettag, [v], x, _, e), hp) = 
-                alloc(x, tag(false, M.ANDB(ity,
+                int31alloc(x, tag(false, M.ANDB(ity,
                              getObjDescriptor(v), M.LI(D.powTagWidth-1))),
                       e, hp)
             | gen(PURE(P.mkspecial, [i, v], x, _, e), hp) = 
@@ -935,14 +978,14 @@ struct
                   of INT n => M.LI(dtoi(D.makeDesc(n, D.tag_special)))
                    | _ => M.ORB(ity, M.SLL(ity, untag(true, i),M.LI D.tagWidth),
                                 M.LI(dtoi D.desc_special))
-                  val ptr = newReg REF
+                  val ptr = newReg PTR
               in  MkRecord.record{desc=desc, fields=[(regbind v, offp0)],
                                   ans=ptr, mem=memDisambig x, hp=hp, emit=emit};
                   addRegBinding(x, ptr);
                   gen(e, hp+8)
               end
             | gen(PURE(P.makeref, [v], x, _, e), hp) = 
-              let val ptr = newReg REF
+              let val ptr = newReg PTR
                   val tag = M.LI(dtoi D.desc_ref)
                   val mem = memDisambig x
               in  emit(M.STORE(ity,M.ADD(addrTy,C.allocptr,M.LI hp),tag,mem));
@@ -961,9 +1004,13 @@ struct
                 gen(RECORD(CPS.RK_I32BLOCK,[(u, offp0)],w,e), hp)
             | gen(PURE(P.i32unwrap,[u],w,_,e), hp) = 
                 gen(SELECT(0,u,w,INT32t,e), hp)
-            | gen(PURE(P.wrap,[u],w,_,e), hp) = copy(w, u, e, hp)
-            | gen(PURE(P.unwrap,[u],w,_,e), hp) = copy(w, u, e, hp)
-            | gen(PURE(P.cast,[u],w,_,e), hp) = copy(w, u, e, hp)
+
+            | gen(PURE(P.wrap,[u],w,_,e), hp) = copy(PTR, w, u, e, hp)
+            | gen(PURE(P.unwrap,[u],w,_,e), hp) = copy(I32, w, u, e, hp)
+
+                (* Note: the gc type is unsafe! *)
+            | gen(PURE(P.cast,[u],w,_,e), hp) = copy(PTR, w, u, e, hp)
+                 
             | gen(PURE(P.getcon,[u],w,t,e), hp) = gen(SELECT(0,u,w,t,e), hp)
             | gen(PURE(P.getexn,[u],w,t,e), hp) = gen(SELECT(0,u,w,t,e), hp)
             | gen(PURE(P.getseqdata, [u], x, t, e), hp) = 
@@ -971,7 +1018,8 @@ struct
             | gen(PURE(P.recsubscript, [v, INT w], x, t, e), hp) = 
                 gen(SELECT(w, v, x, t, e), hp)
             | gen(PURE(P.recsubscript, [v, w], x, _, e), hp) =
-                alloc(x, M.LOAD(ity, scale4(regbind v, w), R.readonly), e, hp)
+                int31alloc(x, 
+                   M.LOAD(ity, scale4(regbind v, w), R.readonly), e, hp)
             | gen(PURE(P.raw64subscript, [v, INT i], x, _, e), hp) =
                 gen(SELECT(i, v, x, FLTt, e), hp)
             | gen(PURE(P.raw64subscript, [v, i], x, _, e), hp) =
@@ -979,8 +1027,8 @@ struct
             | gen(PURE(P.newarray0, [_], x, t, e), hp) = 
               let val hdrDesc = dtoi(D.desc_polyarr)
                   val dataDesc = dtoi D.desc_ref
-                  val dataPtr = newReg REF
-                  val hdrPtr = newReg REF
+                  val dataPtr = newReg PTR
+                  val hdrPtr = newReg PTR
                   val hdrM = memDisambig x
                   val (tagM, valM) = (hdrM, hdrM) (* Allen *)
               in  addRegBinding(x, hdrPtr);
@@ -1003,25 +1051,26 @@ struct
             | gen(ARITH(P.arith{kind=P.INT 31, oper}, args, x, _, e), hp) = 
               (updtHeapPtr hp;
                case oper
-                of P.+ => alloc(x, int31add(M.ADDT, args), e, 0)
-                 | P.- => alloc(x, int31sub(M.SUBT, args), e, 0)
-                 | P.* => alloc(x, int31mul(true, args), e, 0)
-                 | P./ => alloc(x, int31div(true, args), e, 0)
-                 | P.~ => alloc(x, M.SUBT(ity, M.LI 2, regbind(hd args)), e, 0)
+                of P.+ => int31alloc(x, int31add(M.ADDT, args), e, 0)
+                 | P.- => int31alloc(x, int31sub(M.SUBT, args), e, 0)
+                 | P.* => int31alloc(x, int31mul(true, args), e, 0)
+                 | P./ => int31alloc(x, int31div(true, args), e, 0)
+                 | P.~ => int31alloc(x, 
+                             M.SUBT(ity, M.LI 2, regbind(hd args)), e, 0)
                  | _ => error "gen:ARITH INT 31"
               (*esac*))        
             | gen(ARITH(P.arith{kind=P.INT 32, oper}, [v,w], x, _, e), hp) =
               (updtHeapPtr hp;
                case oper
-                of P.+     => arith(M.ADDT, v, w, x, e, 0)
-                 | P.-     => arith(M.SUBT, v, w, x, e, 0)
-                 | P.*     => arith(M.MULT, v, w, x, e, 0)
-                 | P./     => arith(M.DIVT, v, w, x, e, 0)
+                of P.+     => arith32(M.ADDT, v, w, x, e, 0)
+                 | P.-     => arith32(M.SUBT, v, w, x, e, 0)
+                 | P.*     => arith32(M.MULT, v, w, x, e, 0)
+                 | P./     => arith32(M.DIVT, v, w, x, e, 0)
                  | _ => error "P.arith{kind=INT 32, oper}, [v,w], ..."
               (*esac*))
             | gen(ARITH(P.arith{kind=P.INT 32, oper=P.~ }, [v], x, _, e), hp) =
                 (updtHeapPtr hp;
-                 alloc(x, M.SUBT(ity, M.LI 0, regbind v), e, 0))
+                 int32alloc(x, M.SUBT(ity, M.LI 0, regbind v), e, 0))
     
               (* Note: for testu operations we use a somewhat arcane method
                * to generate traps on overflow conditions. A better approach
@@ -1029,24 +1078,24 @@ struct
                * on a variety of machines, e.g. mips and sparc (maybe others).
                *)
             | gen(ARITH(P.testu(32, 32), [v], x, _, e), hp) = 
-              let val xreg = newReg NONREF
+              let val xreg = newReg I32
                   val vreg = regbind v
               in  updtHeapPtr hp;
                   emit(M.MV(ity, xreg, M.ADDT(ity, vreg, 
                                               regbind(INT32 0wx80000000))));
-                  alloc(x, vreg, e, 0)
+                  int32alloc(x, vreg, e, 0)
               end
             | gen(ARITH(P.testu(31, 31), [v], x, _, e), hp) = 
-              let val xreg = newReg NONREF
+              let val xreg = newReg I31
                   val vreg = regbind v
               in  updtHeapPtr hp;
                   emit(M.MV(ity,xreg,M.ADDT(ity, vreg, 
                                             regbind(INT32 0wx80000000))));
-                  alloc(x, vreg, e, 0)
+                  int31alloc(x, vreg, e, 0)
               end
             | gen(ARITH(P.testu(32,31), [v], x, _, e), hp) = 
               let val vreg = regbind v
-                  val tmp = newReg NONREF
+                  val tmp = newReg I32
                   val tmpR = M.REG(ity,tmp)
                   val lab = Label.newLabel ""
               in  emit(M.MV(ity, tmp, regbind(INT32 0wx3fffffff)));
@@ -1055,12 +1104,12 @@ struct
                   emit(M.MV(ity, tmp, M.SLL(ity, tmpR, one)));
                   emit(M.MV(ity, tmp, M.ADDT(ity, tmpR, tmpR)));
                   defineLabel lab;
-                  alloc(x, tag(false, vreg), e, hp)
+                  int31alloc(x, tag(false, vreg), e, hp)
               end
             | gen(ARITH(P.test(32,31), [v], x, _, e), hp) = 
-               (updtHeapPtr hp; alloc(x, tag(true, regbind v), e, 0))
+               (updtHeapPtr hp; int31alloc(x, tag(true, regbind v), e, 0))
             | gen(ARITH(P.test(n, m), [v], x, _, e), hp) = 
-               if n = m then copy(x, v, e, hp) else error "gen:ARITH:test"
+               if n = m then copyM(m, x, v, e, hp) else error "gen:ARITH:test"
             | gen(ARITH(P.arith{oper, kind=P.FLOAT 64}, vl, x, _, e), hp) = 
               let fun binary(oper, [v,w]) = 
                       falloc(x, oper(fty, fregbind v, fregbind w), e, hp)
@@ -1081,7 +1130,8 @@ struct
             | gen(LOOKER(P.numsubscript{kind=P.INT 8},[v,i],x,_,e), hp) = 
               let (* get data pointer *)
                   val a = M.LOAD(ity, regbind v, R.readonly)  
-              in  alloc(x, tag(false, M.LOAD(8,scale1(a, i),R.memory)), e, hp)
+              in  int31alloc(x, 
+                     tag(false, M.LOAD(8,scale1(a, i),R.memory)), e, hp)
               end
             | gen(LOOKER(P.numsubscript{kind=P.FLOAT 64}, [v,i], x, _, e), hp)=
               let (* get data pointer *)
@@ -1245,8 +1295,8 @@ struct
             | gen(BRANCH(P.streq, [INT n,v,w],_,d,e), hp) = 
               let val n' = ((n+3) div 4) * 4
                   val false_lab = Label.newLabel ""
-                  val r1 = newReg NONREF
-                  val r2 = newReg NONREF
+                  val r1 = newReg I32
+                  val r2 = newReg I32
                   fun cmpWord(i) = 
                       M.CMP(32, M.NE, 
                             M.LOAD(ity,M.ADD(ity,M.REG(ity, r1),i),R.readonly), 
@@ -1328,9 +1378,10 @@ struct
           in  app init rest;
               init start
           end
-          val _ = initFrags cluster
-          val regmap = beginCluster 0
       in
+          initFrags cluster;
+          beginCluster 0;
+          if !gcsafety then Intmap.clear(GCCells.getGCMap()) else ();
           fragComp();
           InvokeGC.emitLongJumpsToGCInvocation stream;
           endCluster(
@@ -1338,7 +1389,7 @@ struct
                 let val gcmap = GCCells.getGCMap()
                 in  [#create SMLGCMap.GCMAP gcmap,
                      #create 
-                        BasicAnnotations.REGINFO(SMLGCMap.toString gcmap)
+                        MLRiscAnnotations.REGINFO(SMLGCMap.toString gcmap)
                     ]
                 end
              else []
@@ -1349,7 +1400,7 @@ struct
           (Cells.reset();
            beginCluster 0; 
            f stream;
-           endCluster NO_OPT
+           endCluster [NO_OPT]
           )
   in  app mkGlobalTables funcs;
       app genCluster (Cluster.cluster funcs);

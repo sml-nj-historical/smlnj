@@ -1,6 +1,7 @@
 signature SMLGCTYPE =
 sig
 
+   structure CPS : CPS
    type objtype = CPS.cty 
   
    datatype gctype =
@@ -12,7 +13,19 @@ sig
    | BOT
    | TOP
 
+   val ==       : gctype * gctype -> bool
+   val join     : gctype * gctype -> gctype
+   val meet     : gctype * gctype -> gctype
+
    val toString : gctype -> string
+
+   (*
+    * Primitive types 
+    *)
+   val I31      : gctype  (* tagged integers *)
+   val I32      : gctype  (* untagged integers *)
+   val REAL64   : gctype  (* unboxed real *)
+   val PTR      : gctype  (* tagged ML objects *)
 
 end
 

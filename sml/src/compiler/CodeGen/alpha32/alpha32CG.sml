@@ -39,7 +39,7 @@ structure Alpha32CG =
           structure Asm       = Alpha32AsmEmitter
 
           val sp = I.C.stackptrR
-          val stack = I.Region.stack
+          val spill = CPSRegions.spill
 
           fun pure _ = false
 
@@ -63,14 +63,14 @@ structure Alpha32CG =
 
           (* spill register *)
           fun spillInstrR(r,offset) =
-              [I.STORE{stOp=I.STL, b=sp, d=I.IMMop offset, r=r, mem=stack}]
+              [I.STORE{stOp=I.STL, b=sp, d=I.IMMop offset, r=r, mem=spill}]
           fun spillInstrF(r,offset) =
-              [I.FSTORE{stOp=I.STT, b=sp, d=I.IMMop offset, r=r, mem=stack}]
+              [I.FSTORE{stOp=I.STT, b=sp, d=I.IMMop offset, r=r, mem=spill}]
 
           (* reload register *)
           fun reloadInstrR(r,offset,rest) =
-              I.LOAD{ldOp=I.LDL, b=sp, d=I.IMMop offset, r=r, mem=stack}::rest
+              I.LOAD{ldOp=I.LDL, b=sp, d=I.IMMop offset, r=r, mem=spill}::rest
           fun reloadInstrF(r,offset,rest) =
-              I.FLOAD{ldOp=I.LDT, b=sp, d=I.IMMop offset, r=r, mem=stack}::rest
+              I.FLOAD{ldOp=I.LDT, b=sp, d=I.IMMop offset, r=r, mem=spill}::rest
          )
   )

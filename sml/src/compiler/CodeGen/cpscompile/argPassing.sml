@@ -4,8 +4,7 @@
  * COPYRIGHT (c) 1996 AT&T Bell Laboratories.
  *
  *)
-functor ArgPassing (structure Cells : CELLS
-		    structure C : CPSREGS
+functor ArgPassing (structure C : CPSREGS
 		    structure MS : MACH_SPEC) : ARG_PASSING = 
 struct
   structure T : MLTREE = C.T
@@ -70,9 +69,11 @@ struct
     | standard(_, tl) = standardEscape tl
 
   (* known functions have parameters passed in fresh temporaries. *)
+  (*
   fun known(CPS.FLTt::rest) = T.FPR(T.FREG(64,Cells.newFreg())):: known rest
     | known(_::rest) = T.GPR(T.REG(32,Cells.newReg())):: known rest
     | known [] = []
+   *)
 
   (* use an arbitary but fixed set of registers. *)
   fun fixed ctys = let

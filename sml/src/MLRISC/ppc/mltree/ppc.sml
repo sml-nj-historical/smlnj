@@ -596,7 +596,11 @@ struct
 
               (* Misc *)
            | T.SEQ(stm, e) => (stmt(stm,[]); doExpr(e, rt, an))
-           | T.MARK(e, a) => doExpr(e, rt, a::an)
+           | T.MARK(e, a) => 
+             (case #peek MLRiscAnnotations.MARK_REG a of
+               SOME f => (f rt; doExpr(e,rt,an))
+             | NONE => doExpr(e,rt,a::an)
+             )
            | e => doExpr(Gen.compile e,rt,an)
   
       (* Generate a floating point load *) 
@@ -681,7 +685,11 @@ struct
 
             (* Misc *)
           | T.FSEQ(stm, e) => (doStmt stm; doFexpr(e, ft, an))
-          | T.FMARK(e, a) => doFexpr(e, ft, a::an)
+          | T.FMARK(e, a) => 
+            (case #peek MLRiscAnnotations.MARK_REG a of
+              SOME f => (f ft; doFexpr(e,ft,an))
+            | NONE => doFexpr(e,ft,a::an)
+            )
           | _ => error "doFexpr"
 
        and ccExpr(T.CC cc) = cc
@@ -708,7 +716,11 @@ struct
           | T.FCMP(fty, fcc, e1, e2) => 
              mark(I.FCOMPARE{cmp=I.FCMPU, bf=ccd, fa=fexpr e1, fb=fexpr e2},an) 
           | T.CC cc => ccmove(cc,ccd,an)
-          | T.CCMARK(cc,a) => doCCexpr(cc,ccd,a::an)
+          | T.CCMARK(cc,a) => 
+            (case #peek MLRiscAnnotations.MARK_REG a of
+              SOME f => (f ccd; doCCexpr(cc,ccd,an))
+            | NONE => doCCexpr(cc,ccd,a::an)
+            )
           | _ => error "doCCexpr: Not implemented"
    
       and emitTrap() = emit(I.TW{to=31,ra=0,si=I.ImmedOp 0}) 

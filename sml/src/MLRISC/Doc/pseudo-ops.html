@@ -10,8 +10,9 @@
 <H1>
 <FONT COLOR="#aa0000">Client Defined Pseudo Ops</FONT></H1></CENTER>
 <h2> Introduction </h2>
-
-Client defined pseudo ops should satisfy the following signature:
+Pseudo ops are client defined instruction stream markers.  They
+can be used to represent assembly directives.
+Pseudo ops should satisfy the following signature:
 <pre>
 signature <a href="../instructions/pseudoOps.sig" target=code>PSEUDO_OPS</a> = sig
   type pseudo_op
@@ -22,7 +23,7 @@ signature <a href="../instructions/pseudoOps.sig" target=code>PSEUDO_OPS</a> = s
 end
 </pre>
 
-The methods that need to be implemented are:
+The method that is required is:
 <ul>
  <li> <tt>toString</tt> -- assembly pretty printing
 </ul>
@@ -44,10 +45,6 @@ the following methods:
 </ul>
 
 <HR>
-    <FONT SIZE="-2">
-<ADDRESS>
-<A HREF="mailto:leunga@cs.nyu.edu">Allen Leung</A></ADDRESS>
-<BR>
 
 </BODY>
 </HTML>

@@ -4,14 +4,10 @@
  * -- Allen
  *)
 
-functor AllDisplaysFn (val viewer : string ref) : 
-sig
-   include GRAPH_DISPLAY
-   val viewer : string ref
-end =
+structure AllDisplays : GRAPH_DISPLAY =
 struct
 
-   val viewer = viewer
+   val viewer = MLRiscControl.getString "viewer"
 
    fun visualize print =
        (case !viewer of

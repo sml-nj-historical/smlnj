@@ -20,7 +20,7 @@
 structure InteractiveSystem : sig end = struct
 
     (* environment initializations *)
-    val heapfile = BootEnv.init ()
+    val { heapfile, procCmdLine } = BootEnv.init ()
 	
     (* establish default signal handlers *)
     fun handleINT _ = !Unsafe.topLevelCont
@@ -45,8 +45,8 @@ structure InteractiveSystem : sig end = struct
 		  Compiler.Stats.reset ();
 		  print Compiler.banner;
 		  print "\n";
-		  CM0.procCmdLine ();
-		  Compiler.Interact.interact())
+		  getOpt (procCmdLine, fn () => ()) ();
+		  Compiler.Interact.interact ())
 	     else
 		 (print "This is...\n";
 		  print Compiler.banner;

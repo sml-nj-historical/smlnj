@@ -20,8 +20,9 @@ tool is still available but is unsupported.)
  of hierarchical graphs, zoom in/zoom out functions.  It can
  handle up to around 5000 nodes in a graph.
 <li> <a href="http://www.Informatik.Uni-Bremen.DE/~davinci/"> daVinci</a> -- this tool supports a separate
- ``survey'' view from the main view and text searching.  It 
- can handle up around 500 nodes in a graph.
+ ``survey'' view from the main view and text searching.  This tool is
+slower than vcg but it has a nicer interface, and
+ can handle up to around 500 nodes in a graph.
 </ul>
 
 All graph viewing back-ends work in the same manner.  
@@ -32,33 +33,34 @@ into the target description language.  For vcg, the target description
 language is GDL.  For daVinci, it is a language based on s-expressions.
 
 <h3>Graph Layout</h3>
-Some basic layout annotations are defined structure 
+Some basic layout formats are defined structure 
 <tt>GraphLayout</tt> are:
 <pre>
  structure <a href="../visualization/graphLayout.sml" target=code>GraphLayout</a> = struct
-   exception LABEL of string
-   exception COLOR of string
-   exception NODE_COLOR of string
-   exception EDGE_COLOR of string
-   exception TEXT_COLOR of string
-   exception ARROW_COLOR of string
-   exception BACKARROW_COLOR of string
-   exception BORDER_COLOR of string
-   exception BORDERLESS 
-   exception SHAPE of string 
-   exception ALGORITHM of string
-   exception EDGEPATTERN of string
+   datatype format =
+     LABEL of string
+   | COLOR of string
+   | NODE_COLOR of string
+   | EDGE_COLOR of string
+   | TEXT_COLOR of string
+   | ARROW_COLOR of string
+   | BACKARROW_COLOR of string
+   | BORDER_COLOR of string
+   | BORDERLESS 
+   | SHAPE of string 
+   | ALGORITHM of string
+   | EDGEPATTERN of string
 
    type ('n,'e,'g) style = 
-      { edge  : 'e edge -> annotations,
-        node  : 'n node -> annotations,
-        graph : 'g -> annotations
+      { edge  : 'e edge -> format list,
+        node  : 'n node -> format list,
+        graph : 'g -> format list
       }
-   type layout = (annotations, annotations, annotations) graph
+   type layout = (format list, format list, format list) graph
  end
 </pre>
 
-The interpretation of the layout annotations are as follows:
+The interpretation of the layout formats are as follows:
 <pre>
    LABEL <em>l</em> &  Label a node or an edge with the string <em>l</em> \\
    COLOR <em>c</em> &  Use color <em>c</em> for a node or an edge \\
@@ -73,23 +75,22 @@ The interpretation of the layout annotations are as follows:
    ALGORITHM <em>a</em> & Use algorithm <em>a</em> to layout the graph \\
    EDGEPATTERN <em>p</em> & Use pattern <em>p</em> to layout an edge 
 </pre>
-Exactly how these annotations are interpreted is determined by
+Exactly how these formats are interpreted is determined by
 the visualization tool that is used.    If a feature is unsupported
-then the corresponding annotation will be ignored.
+then the corresponding format will be ignored.
 Please see the appropriate reference manuals of vcg and daVinci for details.
-
 
 <h3> Layout style</h3>
 How a graph is layout is determined by its <font color="#ff0000">layout style</font>:
 <pre>
    type ('n,'e,'g) style = 
-      { edge  : 'e edge -> annotations,
-        node  : 'n node -> annotations,
-        graph : 'g -> annotations
+      { edge  : 'e edge -> format list,
+        node  : 'n node -> format list,
+        graph : 'g -> format list
       }
 </pre>
 which is simply three functions that convert nodes, edges and graph
-info into layout annotations.
+info into layout formats.
 The function <tt>makeLayout</tt> can be used to convert a 
 layout style into a layout, which can then be passed to a graph
 viewer to be displayed.
@@ -138,10 +139,6 @@ that can be used to display any layout graph.
 <p>
 
 <HR>
-    <FONT SIZE="-2">
-<ADDRESS>
-<A HREF="mailto:leunga@cs.nyu.edu">Allen Leung</A></ADDRESS>
-<BR>
 
 </BODY>
 </HTML>

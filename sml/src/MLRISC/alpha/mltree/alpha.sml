@@ -995,8 +995,11 @@ struct
                cmove(ty,cond,e1,e2,x,y,d,an) 
 
           | T.SEQ(s,e) => (doStmt s; doExpr(e,d,an))
-          | T.MARK(e,a) => doExpr(e,d,a::an)
-
+          | T.MARK(e,a) => 
+            (case #peek MLRiscAnnotations.MARK_REG a of
+              SOME f => (f d; doExpr(e,d,an))
+            | NONE => doExpr(e,d,a::an)
+            )
             (* On the alpha: all 32 bit values are already sign extended.
              * So no sign extension is necessary
              *)
@@ -1092,8 +1095,11 @@ struct
 
             (* misc *)
           | T.FSEQ(s,e) => (doStmt s; doFexpr(e,d,an))
-          | T.FMARK(e,a) => doFexpr(e,d,a::an)
-
+          | T.FMARK(e,a) => 
+            (case #peek MLRiscAnnotations.MARK_REG a of
+              SOME f => (f d; doFexpr(e,d,an))
+            | NONE => doFexpr(e,d,a::an)
+            )
           | _ => error "doFexpr"
 
           (* check whether an expression is andb(e,1) *)
@@ -1353,7 +1359,11 @@ struct
       and doCCexpr(T.CC r,d,an) = move(r,d,an)
         | doCCexpr(T.CMP(ty,cond,e1,e2),d,an)  = compare(ty,cond,e1,e2,d,an) 
         | doCCexpr(T.FCMP(fty,cond,e1,e2),d,an) = error "doCCexpr"
-        | doCCexpr(T.CCMARK(e,a),d,an) = doCCexpr(e,d,a::an)
+        | doCCexpr(T.CCMARK(e,a),d,an) = 
+          (case #peek MLRiscAnnotations.MARK_REG a of
+            SOME f => (f d; doCCexpr(e,d,an))
+          | NONE => doCCexpr(e,d,a::an)
+          )
 
       and ccExpr(T.CC r) = r
         | ccExpr e = let val d = newReg()

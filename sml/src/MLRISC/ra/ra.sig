@@ -12,18 +12,23 @@ sig
       sharing F.I = I
       sharing I.C = C
 
-   datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
-
-   datatype optimization = DEAD_COPY_ELIM
-                         | SPILL_PROPAGATION
-                         | SPILL_COALESCING
-                         | SPILL_COLORING
-                         | BIASED_SELECTION
-
    type getreg = { pref  : C.cell list,
                    stamp : int, 
                    proh  : int Array.array
                  } -> C.cell
+
+   type mode = word
+
+   (*
+    * Optimizations
+    *)
+   val NO_OPTIMIZATION   : mode
+   val DEAD_COPY_ELIM    : mode
+   val BIASED_SELECTION  : mode
+   val SPILL_COLORING    : mode
+   val SPILL_COALESCING  : mode
+   val SPILL_PROPAGATION : mode
+   val COPY_PROPAGATION  : mode
 
    (*
     * Perform register allocation.
@@ -31,16 +36,24 @@ sig
     * spillProh is a list of register ranges (inclusive) that cannot be spilled.
     *
     *)
-   val ra : mode -> 
-            { cellkind     : C.cellkind,             (* kind of register *)
-              spillProh    : (C.cell * C.cell) list, (* don't spill these *)
-              K            : int,                    (* number of colors *)
-              dedicated    : bool Array.array,       (* dedicated registers *)
-              getreg       : getreg,                 (* how to find a color *)
-              copyInstr    : F.Spill.copyInstr,      (* how to make a copy *)
-              spill        : F.Spill.spill,          (* spill callback *)
-              reload       : F.Spill.reload,         (* reload callback *)
-              optimizations: optimization list       (* optimizations *)
-            } list -> F.flowgraph -> F.flowgraph
+   type raClient = 
+   { cellkind     : C.cellkind,             (* kind of register *)
+     spillProh    : (C.cell * C.cell) list, (* don't spill these *)
+     K            : int,                    (* number of colors *)
+     dedicated    : bool Array.array,       (* dedicated registers *)
+     firstMemReg  : C.cell,                 (* first memory registers *)
+     numMemRegs   : int,                    (* number of memory registers *)
+     getreg       : getreg,                 (* how to find a color *)
+     copyInstr    : F.Spill.copyInstr,      (* how to make a copy *)
+     spill        : F.Spill.spill,          (* spill callback *)
+     spillSrc     : F.Spill.spillSrc,       (* spill callback *)
+     spillCopyTmp : F.Spill.spillCopyTmp,   (* spill callback *)
+     reload       : F.Spill.reload,         (* reload callback *)
+     reloadDst    : F.Spill.reloadDst,      (* reload callback *)
+     renameSrc    : F.Spill.renameSrc,      (* rename callback *)
+     mode         : mode                    (* mode *)
+   } 
+
+   val ra : raClient list -> F.flowgraph -> F.flowgraph
 
 end

@@ -18,10 +18,11 @@ sig
      sharing C          = IR.I.C
 
    type callgcCallback =
-        { id     : int,                           (* basic block id *)
-          label  : Label.label,                   (* label of gc block *)
-          roots  : (C.cell * GC.gctype) list,     (* root set *)
-          stream : (T.stm,C.regmap) T.stream      (* code generator *)
+        { id          : int,                        (* basic block id *)
+          gcLabel     : Label.label,                (* label of gc block *)
+          returnLabel : Label.label,                (* label of return block *)
+          roots       : (C.cell * GC.gctype) list,  (* root set *)
+          stream      : (T.stm,C.regmap) T.stream   (* code generator *)
         } -> unit
 
    val gcGen : {callgc : callgcCallback} -> IR.IR -> IR.IR

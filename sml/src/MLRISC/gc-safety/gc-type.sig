@@ -15,6 +15,10 @@ sig
    val BOT    : gctype
    val TOP    : gctype
 
+   val ==     : gctype * gctype -> bool
+   val join   : gctype * gctype -> gctype
+   val meet   : gctype * gctype -> gctype
+
    val toString : gctype -> string
 
 end

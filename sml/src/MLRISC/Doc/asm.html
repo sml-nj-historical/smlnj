@@ -25,7 +25,8 @@ sig
       sharing I.C = C  
       sharing S.P = P
 
-   val makeStream : unit -> (I.instruction,'a,'b) S.stream
+   val makeStream : Annotations.annotation list -> 
+          (I.instruction,'a,'b) S.stream
 end
 </pre>
 
@@ -46,7 +47,7 @@ It is possible to redirect the output of an instruction stream.
 For example, the following statement
 <small>
 <pre>
-   val asm = makeStream()
+   val asm = makeStream []
 </pre>
 </small>
 binds the output of <tt>asm</tt> to <tt>AsmStream.asmOutStream</tt>, which
@@ -54,7 +55,7 @@ by default is just <tt>TextIO.stdOut</tt>.  On the other hand, the
 statement
 <small>
 <pre>
-   val asm = AsmStream.withStream mystream makeStream()
+   val asm = AsmStream.withStream mystream makeStream []
 </pre>
 </small>
 binds the output of asm to <tt>mystream</tt>.
@@ -73,10 +74,5 @@ assemblers are listed below:
 </ul>
 
 <HR>
-    <FONT SIZE="-2">
-<ADDRESS>
-<A HREF="mailto:leunga@cs.nyu.edu">Allen Leung</A></ADDRESS>
-<BR>
-
 </BODY>
 </HTML>

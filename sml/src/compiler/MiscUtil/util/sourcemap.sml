@@ -147,7 +147,7 @@ structure SourceMap : SOURCE_MAP = struct
         val (files, lines) = remove (fn pos : int => pos >= hi andalso pos > lo) smap
         val _ = if null files orelse null lines then raise Impossible else ()
         val answer = gather(files, lines, end_of(hi, hd files, hd lines), [])
-        fun validate(({fileName=f,  line=l,  column=c}, 
+        fun validate(({fileName=f,  line=l,  column=c}:sourceloc, 
                       {fileName=f', line=l', column=c'}) :: rest) = 
               if f = f' andalso (l' > l orelse (l' = l andalso c' >= c)) then
                 validate rest 

@@ -139,7 +139,7 @@ struct
                         [EXIT] => EXIT
                       | _ => raise Graph.NotSingleExit
         val CFG.INFO{regmap,annotations,...} = #graph_info cfg
-        val _       = delete_preentries(ENTRY,CFG)
+        (* val _       = delete_preentries(ENTRY,CFG) *)
         val _       = remove_entry_to_exit(ENTRY,EXIT,CFG)
         val A       = A.array(M,dummyNode)
         val nodes   = List.filter(fn (i,CFG.BLOCK{kind,...}) => 
@@ -180,7 +180,7 @@ struct
         val EXIT    = case #exits cfg () of
                         [EXIT] => EXIT
                       | _ => raise Graph.NotSingleExit
-        val _        = delete_preentries(ENTRY,CFG)
+        (* val _        = delete_preentries(ENTRY,CFG) *) 
         val CFG.INFO{firstBlock,regmap=regmap,annotations,...} = 
                #graph_info cfg
         val A        = A.array(M,dummyNode)    (* new id -> F.block *)

@@ -15,86 +15,22 @@ structure CmHook = struct
 	(* some dummy routines to make up the initial contents of the hook *)
 	fun b's_b (b: bool) (s: string) = false
 	fun s_b (s: string) = false
-	fun u_u () = ()
-	val b_gs = { get = fn () => false, set = fn (x: bool) => () }
-	val i_gs = { get = fn () => 0, set = fn (x: int) => () }
-	fun s_iogs (s: string) =
-	    { get = fn () => SOME 0, set = fn (x: int option) => () }
-	fun s_u (s: string) = ()
-	fun s's_u (s1: string, s2: string) = ()
-	fun server_start { name: string, cmd: string * string list,
-			   pathtrans: (string -> string) option,
-			   pref: int } = false
-	fun server_stop (s: string) = ()
-	fun server_kill (s: string) = ()
 
 	(* the hook itself *)
 	val hook = ref { stabilize = b's_b,
 			 recomp = s_b,
 			 make = s_b,
-			 autoload = s_b,
-			 reset = u_u,
-			 verbose = b_gs,
-			 debug = b_gs,
-			 keep_going = b_gs,
-			 warn_obsolete = b_gs,
-			 parse_caching = i_gs,
-			 setAnchor = s's_u,
-			 cancelAnchor = s_u,
-			 resetPathConfig = u_u,
-			 synchronize = u_u,
-			 showPending = u_u,
-			 listLibs = u_u,
-			 dismissLib = s_u,
-			 symval = s_iogs,
-			 server_start = server_start,
-			 server_stop = server_stop,
-			 server_kill = server_kill }
-
-	fun gs label = let
-	    fun get' () = let
-		val { get, set } = label (!hook)
-	    in
-		get ()
-	    end
-	    fun set' x = let
-		val { get, set } = label (!hook)
-	    in
-		set x
-	    end
-	in
-	    { get = get', set = set' }
-	end
+			 autoload = s_b }
     in
 	(* the routine to be called at bootstrap time... *)
 	fun init v = hook := v
 
-	local
-	in
-	    (* the CM structure that will be visible at top-level *)
-	    structure CM = struct
-		fun stabilize b s = #stabilize (!hook) b s
-		fun recomp s = #recomp (!hook) s
-		fun make s = #make (!hook) s
-		fun autoload s = #autoload (!hook) s
-		fun reset () = #reset (!hook) ()
-		val verbose = gs #verbose
-		val debug = gs #debug
-		val keep_going = gs #keep_going
-		val warn_obsolete = gs #warn_obsolete
-		val parse_caching = gs #parse_caching
-		fun setAnchor (a, s) = #setAnchor (!hook) (a, s)
-		fun cancelAnchor a = #cancelAnchor (!hook) a
-		fun resetPathConfig () = #resetPathConfig (!hook) ()
-		fun synchronize () = #synchronize (!hook) ()
-		fun showPending () = #showPending (!hook) ()
-		fun listLibs () = #listLibs (!hook) ()
-		fun dismissLib l = #dismissLib (!hook) l
-		fun symval s = #symval (!hook) s
-		fun server_start a = #server_start (!hook) a
-		fun server_stop s = #server_stop (!hook) s
-		fun server_kill s = #server_kill (!hook) s
-	    end
+	(* the CM structure that will be visible at top-level *)
+	structure CM :> MINIMAL_CM = struct
+	    fun autoload s = #autoload (!hook) s
+	    fun make s = #make (!hook) s
+	    fun recomp s = #recomp (!hook) s
+	    fun stabilize b s = #stabilize (!hook) b s
 	end
     end
 end

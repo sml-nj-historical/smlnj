@@ -114,7 +114,7 @@ struct
     (* generate the checklimit, returning the label to 
      * branch to to invoke GC.
      *)
-    val unlikely = BasicAnnotations.BRANCH_PROB 0
+    val unlikely = MLRiscAnnotations.BRANCH_PROB 0
     val gcCmp    = if C.signedGCTest then T.GT else T.GTU
     fun testLimit(allocR) = T.CMP(32, gcCmp, allocR, C.limitptr)
     val normalTestLimit = testLimit(C.allocptr) 
@@ -407,7 +407,7 @@ struct
       val use = roots
       val gcAddr = T.ADD (32, C.stackptr, T.LI MS.startgcOffset)
     in
-      annotation(BasicAnnotations.CALLGC);
+      annotation(MLRiscAnnotations.CALLGC);
       emit(T.CALL(T.LOAD(32, gcAddr, R.stack), def, use, R.stack));
       if known then let			(* recompute base address *)
 	  val returnLab = Label.newLabel ""

@@ -1,8 +1,29 @@
 This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
-
 --------------------------------------------------------------------------------
+[1999-12-03]
+	Added IntHashTable structure to Util library; this structure is
+	a specialization of hash tables to integer keys.
+
+[1999-12-03]
+	Added default cases to avoid "match not exhaustive" warnings.
+
+[1999-12-03]
+	Added GraphSCCFn functor to Util library, which implements a
+	strongly-connected components algorithm on directed graphs (written
+	by Matthias Blume).
+
+[1999-11-10]
+	Fixed a benign type error in RegExp/BackEnd/fsm.sml that was exposed by
+	the previous change.
+
+[1999-11-7]
+	Made the result signatures of ListSetFn and ListMapFn opaque.
+
+[1999-11-1]
+	Fixed bug in PP/devices/sources.cm under new CM (missing smlnj-lib.cm).
+
 [1999-10-20]
 	Fixed bug in RedBlack trees (the linear time construction of
 	trees from ordered sequences was producing backwards trees).

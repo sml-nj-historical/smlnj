@@ -13,6 +13,7 @@ signature LOOP_STRUCTURE =
 sig
 
    structure Dom : DOMINATOR_TREE
+   structure GI  : GRAPH_IMPLEMENTATION
 
    (*
     * DEF: An edge i -> j  is a backedge iff j dom i.

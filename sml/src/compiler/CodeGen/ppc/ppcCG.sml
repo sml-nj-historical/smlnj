@@ -38,7 +38,7 @@ structure PPCCG =
           structure Asm       = PPCAsmEmitter
 
           val sp = I.C.stackptrR
-          val stack = I.Region.stack
+          val spill = CPSRegions.spill
 
           fun pure _ = false
 
@@ -62,14 +62,14 @@ structure PPCCG =
 
           (* spill register *)
           fun spillInstrR(rs,offset) =
-              [I.ST{st=I.STW, ra=sp, d=I.ImmedOp offset, rs=rs, mem=stack}]
+              [I.ST{st=I.STW, ra=sp, d=I.ImmedOp offset, rs=rs, mem=spill}]
           fun spillInstrF(fs,offset) =
-              [I.STF{st=I.STFD, ra=sp, d=I.ImmedOp offset, fs=fs, mem=stack}]
+              [I.STF{st=I.STFD, ra=sp, d=I.ImmedOp offset, fs=fs, mem=spill}]
 
           (* reload register *)
           fun reloadInstrR(rt,offset,rest) =
-              I.L{ld=I.LWZ, ra=sp, d=I.ImmedOp offset, rt=rt, mem=stack}::rest
+              I.L{ld=I.LWZ, ra=sp, d=I.ImmedOp offset, rt=rt, mem=spill}::rest
           fun reloadInstrF(ft,offset,rest) =
-              I.LF{ld=I.LFD, ra=sp, d=I.ImmedOp offset, ft=ft, mem=stack}::rest
+              I.LF{ld=I.LFD, ra=sp, d=I.ImmedOp offset, ft=ft, mem=spill}::rest
          )
   )

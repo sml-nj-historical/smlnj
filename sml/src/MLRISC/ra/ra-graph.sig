@@ -29,19 +29,14 @@ sig
 
   (*
    * The following represent a program point in the program.
-   * As a convention, program point is computed by
-   *
-   *    block number * 16384 + instruction number
    *
    * The last instruction in the block is numbered 1, i.e. the instruction
    * numbering is in reverse.  The number 0 is reserved for "live-out".
    *
-   * This implies that there can be a maximum of 16k-1 instructions
-   * per basic block/hyperblock, plus a maximum of 32k blocks.
-   * Let's hope this is enough. (I'm not kidding, aggressive inlining
-   * and unrolling can produce large blocks.)
    *)
   type programPoint = int 
+
+  type mode = word
 
   datatype interferenceGraph = 
      GRAPH of 
@@ -71,23 +66,37 @@ sig
 
        (* dead copies *)
        deadCopies   : int list ref,
+       copyTmps     : node list ref,
+       memMoves     : move list ref,
+       memRegs      : node list ref,
 
        (* spill locations *)
-       spillLoc     : int ref
+       spillLoc     : int ref,
+
+       (* span indexed by node id *)
+       span         : int Intmap.intmap,
+
+       (* mode *)
+       mode         : mode,
+
+       pseudoCount  : int ref,
+       blockedCount : int ref
      }
 
-  and moveStatus = MOVE         (* not yet coalesced *)
-                 | COALESCED    (* coalesced *)
-                 | CONSTRAINED  (* src and target intefere *)
-                 | LOST         (* frozen moves *)
-                 | WORKLIST     (* on the move worklist *)
+  and moveStatus = BRIGGS_MOVE             (* not yet coalesceable *)
+                 | GEORGE_MOVE             (* not yet coalesceable *)
+                 | COALESCED               (* coalesced *)
+                 | CONSTRAINED             (* src and target intefere *)
+                 | LOST                    (* frozen moves *)
+                 | WORKLIST                (* on the move worklist *)
 
   and move = 
     MV of {src    : node,  		(* source register of move *)
 	   dst    : node,		(* destination register of move *)
            (*kind   : moveKind, *)      (* kind of move *)
            cost   : cost,               (* cost *)
-	   status : moveStatus ref	(* coalesced? *)
+	   status : moveStatus ref,     (* coalesced? *)
+           hicount: int ref             (* neighbors of high degree *)
 	  }
 
   and moveKind = REG_TO_REG      (* register to register *)
@@ -103,6 +112,13 @@ sig
       | ALIASED of node       (* coalesced *)
       | COLORED of int        (* colored *)
       | SPILLED of int        (* spilled *)
+
+       (* Note on SPILLED:
+        *  SPILLED ~1 means that the spill location is still undetermined
+        *  SPILLED c, c >= 0 means that c is a fixed "memory register"
+        *  SPILLED c, c < ~1 means that c is a logical spill location
+        *                    assigned by the register allocator
+        *)
 
   and node = 
     NODE of { number : int,		(* node number *)
@@ -136,7 +152,11 @@ sig
                      {pref:int list,stamp:int,proh:int Array.array} -> int,
                    getpair      : 
                      {pref:int list,stamp:int,proh:int Array.array} -> int,
-                   proh         : int Array.array
+                   proh         : int Array.array,
+                   mode         : mode,
+                   spillLoc     : int ref,
+                   firstMemReg  : int,
+                   numMemRegs   : int
                  } -> interferenceGraph
 
 end

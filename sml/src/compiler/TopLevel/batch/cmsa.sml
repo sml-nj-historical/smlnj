@@ -67,7 +67,7 @@ functor CMSAFun (structure BF : BINFILE
   	        val _ = P.say "done\n"
        	        in
 	           E.mkenv { dynamic = de,
-			     static = BF.senvOf bfc,
+			     static = #env (BF.senvOf bfc),
 			     symbolic = BF.symenvOf bfc }
 	        end
 	in

@@ -28,11 +28,11 @@ in
 fun bug s = ErrorMsg.impossible ("LtyDict: " ^ s)
 val say = Control.Print.say
 
-structure TcDict = BinaryMapFn(struct type ord_key = tyc
+structure TcDict = RedBlackMapFn(struct type ord_key = tyc
 				      val compare = tc_cmp
 			       end)
 
-structure LtDict = BinaryMapFn(struct type ord_key = lty
+structure LtDict = RedBlackMapFn(struct type ord_key = lty
 				      val compare = lt_cmp
 			       end)
 

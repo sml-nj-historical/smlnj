@@ -48,7 +48,7 @@ structure SparcCG =
           structure Asm       = SparcAsmEmitter
 
           val sp = I.C.stackptrR
-          val stack = I.Region.stack
+          val spill = CPSRegions.spill
          
           fun pure(I.ANNOTATION{i,...}) = pure i
             | pure(I.LOAD _) = true
@@ -79,14 +79,14 @@ structure SparcCG =
 
           (* spill register *)
           fun spillInstrR(d,offset) =
-              [I.STORE{s=I.ST, r=sp, i=I.IMMED offset, d=d, mem=stack}]
+              [I.STORE{s=I.ST, r=sp, i=I.IMMED offset, d=d, mem=spill}]
           fun spillInstrF(d,offset) =
-              [I.FSTORE{s=I.STDF, r=sp, i=I.IMMED offset, d=d, mem=stack}]
+              [I.FSTORE{s=I.STDF, r=sp, i=I.IMMED offset, d=d, mem=spill}]
 
           (* reload register *)
           fun reloadInstrR(d,offset,rest) =
-              I.LOAD{l=I.LD, r=sp, i=I.IMMED offset, d=d, mem=stack}::rest
+              I.LOAD{l=I.LD, r=sp, i=I.IMMED offset, d=d, mem=spill}::rest
           fun reloadInstrF(d,offset,rest) =
-              I.FLOAD{l=I.LDDF, r=sp, i=I.IMMED offset, d=d, mem=stack}::rest
+              I.FLOAD{l=I.LDDF, r=sp, i=I.IMMED offset, d=d, mem=spill}::rest
          )
   )

@@ -271,10 +271,10 @@ struct
        end 
 
    fun getString f x = 
-   let val buffer = StringStream.mkStreamBuf()
-       val S      = StringStream.openStringOut buffer
+   let val buffer = StringOutStream.mkStreamBuf()
+       val S      = StringOutStream.openStringOut buffer
        val _      = AsmStream.withStream S f x 
-   in  StringStream.getString buffer end
+   in  StringOutStream.getString buffer end
 
    fun show_block an regmap block = 
    let val text = getString (emit an regmap) block

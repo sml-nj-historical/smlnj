@@ -163,7 +163,7 @@ structure Scan : SCAN =
 			      (STR s, strm)
 			    end
 			| (RealField _) => let
-			    val SOME(r, strm) = LargeReal.scan getc strm
+			      val SOME(r, strm) = LargeReal.scan getc strm
 			    in
 			      (REAL r, strm)
 			    end

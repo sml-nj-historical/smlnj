@@ -20,14 +20,14 @@ struct
    structure I = Emitter.I
 
    fun toString regmap insn =
-   let val buffer = StringStream.mkStreamBuf()
-       val S      = StringStream.openStringOut buffer
+   let val buffer = StringOutStream.mkStreamBuf()
+       val S      = StringOutStream.openStringOut buffer
        val _      = AsmStream.withStream S 
                     (fn i =>
                      let val Emitter.S.STREAM{emit,...} = Emitter.makeStream []
                      in  emit (I.C.lookup regmap) i
                      end) insn
-       val text   = StringStream.getString buffer
+       val text   = StringOutStream.getString buffer
        fun isSpace #" "  = true
          | isSpace #"\t" = true
          | isSpace _     = false

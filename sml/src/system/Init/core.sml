@@ -209,11 +209,17 @@ structure Core =
     fun polyequal (a : 'a, b : 'a) = peql(a,b)
 	  orelse (boxed a andalso boxed b
 	    andalso let
+	    (* NOTE: since GC may strip the header from the pair in question,
+	     * we must fetch the length before getting the tag, whenever we
+	     * might be dealing with a pair.
+	     *)
+	      val aLen = getObjLen a
 	      val aTag = getObjTag a
 	      fun pairEq () = let
+		    val bLen = getObjLen b
 		    val bTag = getObjTag b
 		    in
-		      ((ieql(bTag, 0x02) andalso ieql(getObjLen b, 2))
+		      ((ieql(bTag, 0x02) andalso ieql(bLen, 2))
 		        orelse ineq(andb(bTag, 0x3),0x2))
 		      andalso polyequal(recSub(a, 0), recSub(b, 0))
 		      andalso polyequal(recSub(a, 1), recSub(b, 1))
@@ -227,14 +233,11 @@ structure Core =
 		    end
 	      in
 		case aTag
-		 of 0x02 (* tag_record *) => let
-		      val aLen = getObjLen a
-		      in
-			(ieql(aLen, 2) andalso pairEq())
-			orelse (
-			  ieql(getObjTag b, 0x02) andalso ieql(getObjLen b, aLen)
-			  andalso eqVecData(aLen, a, b))
-		      end
+		 of 0x02 (* tag_record *) =>
+		      (ieql(aLen, 2) andalso pairEq())
+		      orelse (
+			ieql(getObjTag b, 0x02) andalso ieql(getObjLen b, aLen)
+			andalso eqVecData(aLen, a, b))
 		  | 0x06 (* tag_vec_hdr *) => (
 		    (* length encodes element type *)
 		      case (getObjLen a)
@@ -246,6 +249,7 @@ structure Core =
 				andalso eqVecData(aLen, getData a, getData b)
 			    end
 			| 1 (* seq_word8 *) => stringequal(cast a, cast b)
+			| _ => raise Match (* shut up compiler *)
 		      (* end case *))
 		  | 0x0a (* tag_arr_hdr *) => peql(getData a, getData b)
 		  | 0x0e (* tag_arr_data and tag_ref *) => false
@@ -260,3 +264,10 @@ structure Core =
 
   end
 
+(*
+ * $Log: core.sml,v $
+ * Revision 1.3  1998/05/23 14:09:57  george
+ *   Fixed RCS keyword syntax
+ *
+ *
+ *)

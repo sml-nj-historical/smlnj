@@ -1,8 +1,8 @@
 (* export-lex.sml
  *
  * $Log$
- * Revision 1.1.1.8  1999/04/17 18:56:05  monnier
- * version 110.16
+ * Revision 1.1.1.9  1999/12/07 15:40:25  monnier
+ * version 110.25
  *
  * Revision 1.2  1997/03/03 17:10:35  george
  * moved callcc related functions to SMLofNJ.Cont
@@ -25,6 +25,7 @@
 
 structure ExportLexGen : sig
 
+    val export : string -> unit
     val lexGen : (string * string list) -> OS.Process.status
 
   end = struct
@@ -70,7 +71,5 @@ structure ExportLexGen : sig
 			OS.Process.failure)
           end
 
-  end;
-   
-fun export name = SMLofNJ.exportFn (name, ExportLexGen.lexGen);
-
+    fun export name = SMLofNJ.exportFn (name, lexGen);
+  end

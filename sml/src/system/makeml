@@ -9,8 +9,9 @@ OBJS_DIR=../runtime/objs
 HEAP_IMAGE=""
 RUN=""
 RUN_ARGS=""
-REBUILD=""
+MODE=""
 BOOT_DIR=""
+rebuilt=no
 
 #
 # Set CM_PATHCONFIG_DEFAULT to ../../lib/pathconfig
@@ -55,13 +56,14 @@ while [ "$#" != "0" ]
 do
   arg=$1; shift
   case $arg in
-    -bare) FULL="@SMLbare" ;;
+    -bare) MODE="@SMLbare" ;;
     -rebuild)
       if [ "$#" = "0" ]; then
         echo "makeml: missing argument for \"-rebuild\" option"
 	exit 1
       fi
-      REBUILD="@SMLrebuild=$1"; shift
+      rebuilt=yes
+      MODE="@SMLrebuild=$1"; shift
     ;;
     -arch)
       if [ "$#" = "0" ]; then
@@ -135,19 +137,19 @@ if [ x"$HEAP_IMAGE" = x ]; then
 fi
 
 if [ x"$BOOT_DIR" = x ]; then
-  BOOT_DIR="./comp.boot.$ARCH-unix"
+  BOOT_DIR="./sml.boot.$ARCH-unix"
 fi
 
 echo "$RUN @SMLboot=$BOOT_DIR @SMLrtpid=`cat $BOOT_DIR/RTPID` \
-	@SMLheap=$HEAP_IMAGE @SMLalloc=$ALLOC $RUN_ARGS $REBUILD"
+	@SMLheap=$HEAP_IMAGE @SMLalloc=$ALLOC $RUN_ARGS $MODE"
 
 if $RUN @SMLboot=$BOOT_DIR @SMLrtpid=`cat $BOOT_DIR/RTPID` \
-	@SMLheap=$HEAP_IMAGE @SMLalloc=$ALLOC $RUN_ARGS $REBUILD
+	@SMLheap=$HEAP_IMAGE @SMLalloc=$ALLOC $RUN_ARGS $MODE
 then
 #
 # If this was a -rebuild run, we have to quit now...
 #
-    if [ x$REBUILD != x ] ; then
+    if [ $rebuilt = yes ] ; then
 	echo New binfiles are ready.
 	exit 0
     fi
@@ -170,7 +172,7 @@ cd $BOOT_DIR
 
 for i in *.cm ; do
     mv $i $LIB_DIR/$i
-    echo $i $LIB_DIR/$i
+    echo $i $i
 done >$LIB_DIR/pathconfig
 
 cd ..

@@ -17,6 +17,7 @@ sig
    | LabelEA of LabelExp.labexp
    | Direct of int
    | FDirect of int
+   | MemReg of int
    | Displace of {base:int, disp:operand, mem:Region.region}
    | Indexed of {base:int option, index:int, scale:int, disp:operand, mem:Region.region
      }
@@ -123,6 +124,7 @@ struct
    | LabelEA of LabelExp.labexp
    | Direct of int
    | FDirect of int
+   | MemReg of int
    | Displace of {base:int, disp:operand, mem:Region.region}
    | Indexed of {base:int option, index:int, scale:int, disp:operand, mem:Region.region
      }

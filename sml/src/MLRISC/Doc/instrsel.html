@@ -9,29 +9,24 @@
 <CENTER>
 <H1>
 <FONT COLOR="#aa0000">Instruction Selection Modules</FONT></H1></CENTER>
-<h3> Overview </h3>
-<h3> The Details </h3>
-
 All instruction selection modules satisfy the
 <a href="../mltree/mltreecomp.sig" target=code> MLTREECOMP </a>
-signature.
+signature, which is defined as follows:
 
 <pre>
 signature MLTREECOMP = sig
     structure T : <a href="mltree.html">MLTREE</a>
     structure I : <a href="instructions.html">INSTRUCTIONS</a>
-    structure S : <a href="streams.html">INSTRUCTION_STREAM</a>
-      sharing S.B = T.BNames
-      sharing S.P = T.PseudoOp
 
     val selectInstructions : 
-        (I.instruction,T.mlrisc list,I.C.regmap) S.stream ->
-        {  mltreeComp : T.mltree -> unit,
-           mlriscComp : T.stm -> unit,
-           emitInstr  : I.instruction -> unit
-        }
+        (I.instruction,T.mlrisc list,I.C.regmap) T.stream ->
+        (T.stm,T.mlrisc list,I.C.regmap) T.stream 
 end
 </pre>
+
+Intuitively, this signature states that
+the instruction selection module transforms a stream of MLTREE statements 
+into a stream of instructions of the target machine.
 
 <h3> Various Backends </h3>
 <ul>
@@ -43,10 +38,6 @@ end
   <li> C6xx 
 </ul>
 <HR>
-    <FONT SIZE="-2">
-<ADDRESS>
-<A HREF="mailto:leunga@cs.nyu.edu">Allen Leung</A></ADDRESS>
-<BR>
 
 </BODY>
 </HTML>

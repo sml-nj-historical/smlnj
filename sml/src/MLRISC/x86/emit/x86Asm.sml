@@ -9,7 +9,7 @@ functor X86AsmEmitter(structure Instr : X86INSTR
                       structure Shuffle : X86SHUFFLE
                          where I = Instr
 
-(*#line 140.1 "x86/x86.md"*)
+(*#line 141.1 "x86/x86.md"*)
                       structure MemRegs : MEMORY_REGISTERS where I=Instr
                      ) : INSTRUCTION_EMITTER =
 struct
@@ -19,6 +19,8 @@ struct
    structure P  = S.P
    structure LE = LabelExp
    structure Constant = I.Constant
+   
+   val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
    
    fun error msg = MLRiscErrorMsg.error("X86Asm",msg)
    
@@ -63,6 +65,13 @@ struct
    and emit_GP r = 
        ((emit (C.showGP (regmap r))); 
        (emitRegInfo r))
+   
+       fun emit_cellset(title,cellset) =
+       if !show_cellset then
+         (nl(); comment(title^C.cellsetToString' regmap cellset))
+       else ()
+       fun emit_defs cellset = emit_cellset("defs: ",cellset)
+       fun emit_uses cellset = emit_cellset("uses: ",cellset)
 
    fun asm_unaryOp (I.DEC) = "dec"
      | asm_unaryOp (I.INC) = "inc"
@@ -123,10 +132,10 @@ struct
 
    fun emitInt32 i = let
 
-(*#line 144.1 "x86/x86.md"*)
+(*#line 145.1 "x86/x86.md"*)
           val s = (Int32.toString i)
 
-(*#line 145.1 "x86/x86.md"*)
+(*#line 146.1 "x86/x86.md"*)
           val s = (if (i >= 0)
                 then s
                 else ("-" ^ (String.substring (s, 1, ((size s) - 1)))))
@@ -162,9 +171,10 @@ struct
       | I.LabelEA le => (emit_labexp le)
       | I.Relative _ => (error "emit_operand")
       | I.Direct r => (emit_GP r)
+      | I.MemReg r => (emit_operand (memReg opn))
       | I.FDirect f => let
 
-(*#line 171.1 "x86/x86.md"*)
+(*#line 173.1 "x86/x86.md"*)
            val f' = (regmap f)
         in (if (f' < (32 + 8))
               then (emit_FP f')
@@ -233,7 +243,9 @@ struct
       | I.CALL(operand, cellset1, cellset2, region) => 
         ((emit "call\t"); 
         (stupidGas operand); 
-        (emit_region region))
+        (emit_region region); 
+        (emit_defs cellset1); 
+        (emit_uses cellset2))
       | I.RET operand => 
         ((emit "ret"); 
         

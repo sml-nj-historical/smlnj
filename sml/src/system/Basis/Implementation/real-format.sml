@@ -260,6 +260,8 @@ structure RealFormat : sig
       | fmtReal (StringCvt.FIX(SOME prec)) = realToFixStr prec
       | fmtReal (StringCvt.GEN NONE) = realToGenStr 12
       | fmtReal (StringCvt.GEN(SOME prec)) = realToGenStr prec
+      | fmtReal StringCvt.EXACT =
+	raise Fail "RealFormat: fmtReal: EXACT not supported"
 
   end
 

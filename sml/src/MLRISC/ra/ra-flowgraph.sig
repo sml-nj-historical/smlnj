@@ -17,9 +17,10 @@ sig
    structure W     : FREQ
      sharing Spill.I = I
      sharing I.C = C 
-  
 
    type flowgraph
+
+   val mode : G.mode
 
     (* Extract the regmap from the flowgraph *)
    val regmap : flowgraph -> C.regmap
@@ -36,15 +37,21 @@ sig
    val services : flowgraph ->
        { build   : G.interferenceGraph * C.cellkind-> 
                       G.move list, (* build the graph *)
-         spill   : {copyInstr : Spill.copyInstr,
-                    spill     : Spill.spill,
-                    reload    : Spill.reload,
-                    graph     : G.interferenceGraph,
-                    nodes     : G.node list,
-                    cellkind  : C.cellkind
-                   } -> G.move list, 
+         spill   : {copyInstr    : Spill.copyInstr,
+                    spill        : Spill.spill,
+                    spillSrc     : Spill.spillSrc,
+                    spillCopyTmp : Spill.spillCopyTmp,
+                    reload       : Spill.reload,
+                    reloadDst    : Spill.reloadDst,
+                    renameSrc    : Spill.renameSrc,
+                    graph        : G.interferenceGraph,
+                    nodes        : G.node list,
+                    cellkind     : C.cellkind
+                   } -> G.move list,
                      (* spill/rebuild the graph *)
-         freq    : G.programPoint -> W.freq (* execution frequency *)
+         programPoint : {block:int, instr:int} -> G.programPoint,
+         blockNum     : G.programPoint -> int,
+         instrNum     : G.programPoint -> int
        }
 
 end

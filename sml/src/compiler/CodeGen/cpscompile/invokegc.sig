@@ -13,7 +13,8 @@
 
 signature INVOKE_GC =
 sig
-   structure T  : MLTREE
+   structure T     : MLTREE
+   structure Cells : CELLS
 
    type t = { maxAlloc : int,
               regfmls  : T.mlrisc list,
@@ -30,10 +31,20 @@ sig
       (* generate a check limit for known function *)
    val knwCheckLimit : (T.stm,int Intmap.intmap) T.stream -> t -> unit
 
+      (* generate a check limit for optimized, known function *)
+   val optimizedKnwCheckLimit : (T.stm,int Intmap.intmap) T.stream -> t -> unit
+
       (* generate a long jump to call gc *)
    val emitLongJumpsToGCInvocation : (T.stm,int Intmap.intmap) T.stream -> unit
 
       (* generate all GC invocation code in a module *)
    val emitModuleGC : (T.stm,int Intmap.intmap) T.stream -> unit
+
+      (* generate the actual GC invocation code *)
+   val callGC : (T.stm,int Intmap.intmap) T.stream -> 
+                {regfmls : T.mlrisc list, 
+                 regtys : CPS.cty list,
+                 ret : T.stm
+                }  -> unit
 
 end

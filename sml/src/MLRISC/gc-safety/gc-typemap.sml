@@ -15,15 +15,12 @@ struct
    val empty = []
 
    fun fromList(l:typemap) = 
-       ListMergeSort.sort (fn ((r1,_),(r2,_)) => r1 > r2) l
-
-   fun gcMeet(a,b) = a
-   fun gcJoin(a,b) = a
+       ListMergeSort.uniqueSort (fn ((r1,_),(r2,_)) => Int.compare(r1,r2)) l
 
    fun ==(a,b) = 
    let fun loop([]:typemap,[]:typemap) = true
-         | loop((r1,_)::a,(r2,_)::b) =
-            r1 = r2 andalso loop(a,b)
+         | loop((r1,gc1)::a,(r2,gc2)::b) =
+            r1 = r2 andalso GC.==(gc1,gc2) andalso loop(a,b)
          | loop _ = false
    in  loop(a,b) end
 
@@ -31,16 +28,16 @@ struct
    let fun loop(a,[]) = []
          | loop([],a) = []
          | loop(a as (x as (r1,g1))::u, b as (y as (r2,g2))::v) =
-            if r1 = r2 then (r1,gcMeet(g1,g2))::loop(u,v)
+            if r1 = r2 then (r1,GC.meet(g1,g2))::loop(u,v)
             else if r1 < r2 then loop(u,b)
             else loop(a,v)
    in  loop(a,b) end
 
    fun join(a,b) =
-   let fun loop(a,[]) = []
-         | loop([],a) = []
+   let fun loop(a,[]) = a
+         | loop([],a) = a
          | loop(a as (x as (r1,g1))::u, b as (y as (r2,g2))::v) =
-            if r1 = r2 then (r1,gcJoin(g1,g2))::loop(u,v)
+            if r1 = r2 then (r1,GC.join(g1,g2))::loop(u,v)
             else if r1 < r2 then x::loop(u,b)
             else y::loop(a,v)
    in  loop(a,b) end
@@ -49,7 +46,7 @@ struct
      | meets [a] = a
      | meets (a::l) = meet(a,meets l)
 
-   fun joins [] = error "joins"
+   fun joins [] = []
      | joins [a] = a
      | joins (a::l) = join(a,joins l)
 
@@ -59,7 +56,7 @@ struct
          | loop(a as (x as (r1,_))::u,b as (y as (r2,_))::v) =
             if r1 = r2 then y::loop(u,v)
             else if r1 < r2 then x::loop(u,b)
-            else y::loop(a,v)
+            else (* r1 > r2 *) y::loop(a,v)
    in  loop(a,b) end
 
    fun kill(a,b) = 
@@ -68,7 +65,7 @@ struct
          | loop(a as (x as (r1,_))::u,b as (y as (r2,_))::v) =
            if r1 = r2 then loop(u,v)
            else if r1 < r2 then x::loop(u,b)
-           else loop(a,v)
+           else (* r1 > r2 *) loop(a,v)
    in  loop(a,b) end
 
    fun toString typemap =
@@ -76,7 +73,6 @@ struct
    in  "{"^ List.foldr (fn (x,"") => f x
                          | (x,y)  => f x ^ ", " ^ y) "" typemap^"}"
    end
-            
 
 end
         

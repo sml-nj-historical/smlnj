@@ -10,8 +10,6 @@ functor CFGGen
   (structure CFG : CONTROL_FLOW_GRAPH
    structure InsnProps : INSN_PROPERTIES
    structure MLTree : MLTREE
-
-   val codegen : CFG.cfg -> unit
      sharing CFG.I = InsnProps.I
      sharing MLTree.Constant = InsnProps.I.Constant
      sharing MLTree.PseudoOp = CFG.P 
@@ -31,8 +29,11 @@ struct
 
    type flowgraph = CFG.cfg
 
-   fun newStream() =
-   let val cfg = ref(CFG.new(I.C.regmap()))
+   fun newStream{compile,flowgraph} =
+   let val cfg = ref(case flowgraph of
+                       NONE => CFG.new(I.C.regmap())
+                     | SOME cfg => cfg
+                    )
        val {stream,next} = Builder.builder(!cfg)
        val S.STREAM{beginCluster,endCluster,pseudoOp,emit,exitBlock,
                     comment,annotation,defineLabel,entryLabel,alias,phi,...} 
@@ -57,7 +58,7 @@ struct
            val newCFG = CFG.new(I.C.regmap())
        in  cfg := newCFG;
            next newCFG;
-           codegen oldCFG
+           compile oldCFG
        end 
 
    in  S.STREAM{beginCluster= beginCluster,

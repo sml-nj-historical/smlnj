@@ -13,7 +13,7 @@ functor ClusterRA
    (structure Flowgraph : FLOWGRAPH
     structure Asm       : INSTRUCTION_EMITTER
     structure InsnProps : INSN_PROPERTIES
-      sharing Flowgraph.I = Asm.I = InsnProps.I
+      sharing Flowgraph.I = InsnProps.I = Asm.I
       sharing Asm.P = Flowgraph.P
    ) : RA_FLOWGRAPH =
 struct
@@ -26,7 +26,9 @@ struct
    structure Core   = RACore
    structure A      = Array 
    structure UA     = Unsafe.Array (* okay, I'm cheating a bit here *)
-   structure Spill  = RASpill(InsnProps)
+   structure Spill  = RASpill(structure InsnProps = InsnProps
+                              structure Asm       = Asm
+                             )
 
    structure PrintCluster = PrintClusterFn
       (structure Flowgraph = F
@@ -35,10 +37,46 @@ struct
 
    open G
 
+   fun isOn(flag,mask) = Word.andb(flag,mask) <> 0w0
+
    type flowgraph = F.cluster (* flowgraph is a cluster *)
 
    fun error msg = MLRiscErrorMsg.error("ClusterRA", msg)
+  
+   val mode = 0w0
 
+   (*
+   local
+      val redundant_spills_on = MLRiscControl.getFlag "count-redundant-spills"
+      val red_reloads   = MLRiscControl.getCounter "redundant-reloads"
+   in fun countSpillsReloads nodesToSpill =
+      if !redundant_spills_on then
+      app (fn G.NODE{color=ref(G.ALIASED _), ...} => ()
+            | G.NODE{number, defs=ref defs, uses=ref uses, pri, ...} => 
+              let datatype defUse = DEF | USE
+                  val defsUses = 
+                        ListMergeSort.sort (fn ((a,_), (b,_)) => a < b)
+                          (map (fn pt => (pt,DEF)) defs @
+                           map (fn pt => (pt,USE)) uses)
+                  fun scan((a,b)::(rest as (c,d)::_)) =
+                      (if (a=c+1 orelse a=c+2) 
+                          andalso blockNum a = blockNum c then
+                          (case (b,d) of
+                            (DEF, USE) => red_reloads := !red_reloads + 1
+                          | (USE, USE) => red_reloads := !red_reloads + 1
+                          | _ => ()
+                          )
+                       else ();
+                       scan rest
+                      )
+                    | scan _ = ()
+              in  scan defsUses
+              end
+          ) nodesToSpill
+      else ()
+   end
+   *)
+ 
    fun regmap(F.CLUSTER{regmap, ...}) = regmap
 
    fun dumpFlowgraph(msg, cluster, stream) =
@@ -47,29 +85,43 @@ struct
 
    exception NotThere
 
+   (*
    val Asm.S.STREAM{emit, ...} = Asm.makeStream []
+    *)
 
    val dummyLabel = F.LABEL(Label.Label{id= ~1, addr=ref ~1, name=""})
 
-   fun inc n = Word.toIntX(Word.fromInt n + 0w1)
+   fun x + y = Word.toIntX(Word.+(Word.fromInt x, Word.fromInt y))
 
    fun length l =
    let fun loop([],n)   = n
-         | loop(_::l,n) = loop(l,inc n)
+         | loop(_::l,n) = loop(l,n+1)
    in  loop(l,0) end
 
    fun services(cluster as F.CLUSTER{regmap, blocks, blkCounter, ...}) =
    let (* Create a graph based view of cluster *)
        val N            = !blkCounter
-       val _            = if N >= 65536 then 
-                              error "too many blocks" else ()
 
-       (* blocks indexed by block id *)
+       fun computeShift(0w0, max) = 0w31-max
+         | computeShift(N, max) = computeShift(Word.>>(N, 0w1), Word.+(max,0w1))
+       val shift = computeShift(Word.>>(Word.fromInt N, 0w15), 0w15)
+       val mask  = Word.<<(0w1, shift) - 0w1
+
+       (*
+        * Construct program point 
+        *)
+       fun progPt(blknum, instrId) = 
+           Word.toIntX(Word.+(Word.<<(Word.fromInt blknum, shift),
+                                      Word.fromInt instrId))
+       fun blockNum pt = Word.toIntX(Word.>>(Word.fromInt pt, shift))
+       fun instrNum pt = Word.toIntX(Word.andb(Word.fromInt pt, mask))
+
+              (* blocks indexed by block id *)
        val blockTable   = A.array(N, dummyLabel)
 
        (* definitions indexed by block id+instruction id *)
        val defsTable    = A.array(N, A.array(0, [])) : node list A.array A.array
-       val marked       = A.array(N, A.array(0, ~1))
+       val marked       = A.array(N, ~1)
     
        val stamp = ref 0
 
@@ -80,7 +132,6 @@ struct
                (* val m = Word.toIntX(Word.>>(Word.fromInt(n+8),0w3)) *) 
                val m = n+1
            in  UA.update(blockTable, blknum, b); 
-               UA.update(marked, blknum, A.array(m, ~1));
                UA.update(defsTable, blknum, A.array(m, []));
                init blocks
            end
@@ -88,22 +139,73 @@ struct
        val _ = init blocks
 
        (*
-        * Construct program point 
-        *)
-       fun progPt(blknum, instrId) = 
-           Word.toIntX(Word.<<(Word.fromInt blknum,0w14) + Word.fromInt instrId)
-       fun blockNum pt = Word.toIntX(Word.>>(Word.fromInt pt,0w14))
-       fun instrNum pt = Word.toIntX(Word.andb(Word.fromInt pt,0w16383))
-
-       fun freq(pt) = 
-           let val F.BBLOCK{freq, ...} = A.sub(blockTable, blockNum pt)
-           in  !freq end
-
-       (*
-        * Remove pseudo use 
+        * Remove pseudo use generated by copy temporaries
         *)
        fun rmPseudoUses [] = ()
          | rmPseudoUses(NODE{uses,...}::ns) = (uses := []; rmPseudoUses ns)
+
+       (*
+       val marker = NODE{pri=ref 0,adj=ref [],degree=ref 0,movecnt=ref 0,
+                         color=ref PSEUDO, defs=ref [], uses=ref [],
+                         movecost=ref 0,movelist=ref [], number= ~1}
+        *)
+
+       (*
+        * Remove duplicates on use sites
+        *)
+       (*
+       fun uniq [] = []
+         | uniq (l as [_]) = l
+         | uniq (l as [x,y]) = if x = y then [x] else l
+         | uniq uses =
+       let fun mark([], uses') = uses'
+             | mark(u::uses, uses') =
+               let val b    = blockNum u
+                   val i    = instrNum u
+                   val defs = UA.sub(defsTable, b)
+               in  case A.sub(defs, i) of
+                      NODE{number= ~1, ...}::_ => mark(uses, uses')
+                   | instrs => (UA.update(defs, i, marker::instrs); 
+                                mark(uses, u::uses'))
+               end
+           val useSites = mark(uses, [])
+           fun unmark [] = ()
+             | unmark(u::uses) = 
+               let val b    = blockNum u
+                   val i    = instrNum u
+                   val defs = UA.sub(defsTable, b)
+                   val _::instrs = UA.sub(defs, i)
+               in  UA.update(defs, i, instrs); unmark uses end  
+       in  unmark useSites; 
+           useSites 
+       end
+        *)
+
+       (*
+        * Mark the use site as definitions so that the traversal would
+        * end properly.
+        *)
+       fun markUseSites(v,[]) = ()
+         | markUseSites(v,u::uses) =
+           let val b    = blockNum u
+               val i    = instrNum u
+               val defs = UA.sub(defsTable, b)
+           in  UA.update(defs, i, v::UA.sub(defs, i)); 
+               markUseSites(v, uses)
+           end
+
+       (*
+        *  Unmark fake def sites
+        *)
+       fun unmarkUseSites [] = ()
+         | unmarkUseSites(u::uses) = 
+           let val b    = blockNum u
+               val i    = instrNum u
+               val defs = UA.sub(defsTable, b)
+               val _::instrs = UA.sub(defs, i)
+           in  UA.update(defs, i, instrs); 
+               unmarkUseSites uses
+           end
 
        (*
         * Perform incremental liveness analysis on register v 
@@ -111,7 +213,7 @@ struct
        fun liveness(v, v' as NODE{uses, ...}, addEdge) = 
        let val st = !stamp
            val _  = stamp := st + 1
-           fun foreachUseSite [] = ()
+           fun foreachUseSite([]) = ()
              | foreachUseSite(u::uses) =   
                let val b = blockNum u
                    val i = instrNum u
@@ -119,60 +221,114 @@ struct
                in  if i = 0 then 
                        liveOutAtBlock(block) (* live out *)
                    else 
-                       liveInAtStmt(block, 
-                                    UA.sub(defsTable, b),
-                                    UA.sub(marked, b), i);
-                   foreachUseSite uses
+                       liveOutAtStmt(block, UA.sub(defsTable, b), i+1);
+                   foreachUseSite(uses)
                end
 
-           and visitPred block =
+           and visitPred(block) =
                let fun foreachPred([]) = ()
                      | foreachPred((b, _)::pred) =
-                        (liveOutAtBlock b; foreachPred pred)
+                        (liveOutAtBlock(b); foreachPred(pred))
                    val F.BBLOCK{pred, ...} = block
                in  foreachPred(!pred) end
 
-           and liveInAtStmt(block, defs, marked, pos) =  
-               if pos >= A.length defs then visitPred block
-               else if UA.sub(marked, pos) = st then ()
-               else (UA.update(marked, pos, st);
-                     liveOutAtStmt(block, defs, marked, inc pos)
-                    )
-
-           and liveOutAtStmt(block, defs, marked, pos) = 
+           and liveOutAtStmt(block, defs, pos) = 
                   (* v is live out *)
                if pos < A.length defs then
-               let fun foreachDef([], kill) = kill
+               let fun foreachDef([], true) = ()
+                     | foreachDef([], false) = 
+                         liveOutAtStmt(block, defs, pos+1)
                      | foreachDef((d as NODE{number=r, ...})::ds, kill) = 
                        if r = v then foreachDef(ds, true)
-                       else (addEdge(d, v'); foreachDef(ds, kill)) 
-                   val killed = foreachDef(UA.sub(defs, pos), false)
-               in  if killed then ()
-                   else liveInAtStmt(block, defs, marked, pos)
+                       else if r < 256 andalso v < 256 then foreachDef(ds, kill)
+                       else (addEdge(d,v'); foreachDef(ds, kill))
+               in  foreachDef(UA.sub(defs, pos), false)
                end
-               else visitPred block
+               else visitPred(block)
 
            and liveOutAtBlock(block as F.BBLOCK{blknum, ...}) = 
                (* v is live out at the current block *)
-               let val marked = UA.sub(marked, blknum)
-               in  if UA.sub(marked, 0) = st then ()
-                   else 
-                    (UA.update(marked, 0, st);
-                     liveOutAtStmt(block, UA.sub(defsTable, blknum),
-                                   marked, 1)
-                    )
-               end
+               if UA.sub(marked, blknum) = st then ()
+               else 
+                 (UA.update(marked, blknum, st);
+                  liveOutAtStmt(block, UA.sub(defsTable, blknum), 1)
+                 )
              | liveOutAtBlock _ = ()
 
-       in  foreachUseSite (!uses)
+           val useSites = SortedList.uniq(!uses)
+       in  markUseSites(v', useSites);
+           foreachUseSite(useSites);
+           unmarkUseSites useSites
+       end 
+
+       (*
+        * Perform incremental liveness analysis on register v 
+        * and compute the span
+        *)
+       fun liveness2(v, v' as NODE{uses, ...}, addEdge, setSpan) = 
+       let val st = !stamp
+           val _  = stamp := st + 1
+           fun foreachUseSite([], span) = span
+             | foreachUseSite(u::uses, span) =   
+               let val b = blockNum u
+                   val i = instrNum u
+                   val block as F.BBLOCK{freq, ...} = UA.sub(blockTable, b)
+                   val span =
+                   if i = 0 then 
+                       liveOutAtBlock(block, span) (* live out *)
+                   else 
+                       let val f = !freq
+                       in  liveOutAtStmt(block, UA.sub(defsTable, b),
+                                         i+1, f, span+f)
+                       end;
+               in  foreachUseSite(uses, span)
+               end
+
+           and visitPred(block, span) =
+               let fun foreachPred([], span) = span
+                     | foreachPred((b, _)::pred, span) =
+                       let val span = liveOutAtBlock(b, span)
+                       in  foreachPred(pred, span) end
+                   val F.BBLOCK{pred, ...} = block
+               in  foreachPred(!pred, span) end
+
+           and liveOutAtStmt(block, defs, pos, freq, span) = 
+                  (* v is live out *)
+               if pos < A.length defs then
+               let fun foreachDef([], true) = span
+                     | foreachDef([], false) = 
+                          liveOutAtStmt(block, defs, pos+1, freq, span+freq)
+                     | foreachDef((d as NODE{number=r, ...})::ds, kill) = 
+                       if r = v then foreachDef(ds, true)
+                       else (addEdge(d, v'); foreachDef(ds, kill)) 
+               in foreachDef(UA.sub(defs, pos), false)
+               end
+               else visitPred(block, span)
+
+           and liveOutAtBlock(block as F.BBLOCK{blknum, freq, ...}, span) = 
+               (* v is live out at the current block *)
+               if UA.sub(marked, blknum) = st then span
+               else 
+                  (UA.update(marked, blknum, st);
+                   liveOutAtStmt(block, UA.sub(defsTable, blknum),
+                                 1, !freq, span)
+                  )
+             | liveOutAtBlock(_, span) = span
+
+           val useSites = SortedList.uniq(!uses)
+           val _        = markUseSites(v', useSites)
+           val span     = foreachUseSite (useSites, 0)
+          (*val _ = print("Span(r"^Int.toString v^")="^Int.toString span^"\n")*)
+           val _        = unmarkUseSites useSites
+       in  setSpan(v, span)
        end 
 
        (*
         * Building the interference graph
         *) 
-       fun buildIt (cellkind, regmap, G as GRAPH{nodes, dedicated, ...}) = 
+       fun buildIt (cellkind, regmap, 
+                    G as GRAPH{nodes, dedicated, mode, span, copyTmps, ...}) =
        let val newNodes   = Core.newNodes G
-           val addEdge    = Core.addEdge G
            val getnode    = Intmap.map nodes
            val insnDefUse = Props.defUse cellkind
            val getCell    = C.getCell cellkind
@@ -181,10 +337,7 @@ struct
               r < 0 orelse 
               r < A.length dedicated andalso UA.sub(dedicated, r) 
 
-           fun chase(NODE{color=ref(ALIASED n), ...}) = chase n
-             | chase n = n
-
-           (* Remove all dedicated or spilled registers from the list *)
+          (* Remove all dedicated or spilled registers from the list *)
            fun rmvDedicated regs =
            let fun loop([], rs') = rs'
                  | loop(r::rs, rs') = 
@@ -201,20 +354,31 @@ struct
                        case (Props.moveTmpR insn, dst) of
                          (SOME r, _::dst) => 
                            (* Add a pseudo use for tmpR *)
-                           let val tmp as NODE{uses,defs=ref [d],...} = 
+                         let fun chase(NODE{color=ref(ALIASED n), ...}) = 
+                                  chase n
+                               | chase n = n
+                             val tmp as NODE{uses,defs=ref [d],...} = 
                                     chase(getnode r)
-                           in  uses := [d-1]; (dst, tmp::tmps) end
+                         in  uses := [d-1]; (dst, tmp::tmps) end
                        | (_, dst) => (dst, tmps)
                    fun moves([], [], mv) = mv
                      | moves(d::ds, s::ss, mv) =
                        if isDedicated d orelse isDedicated s 
                        then moves(ds, ss, mv)
                        else
-                       let val dst as NODE{number=d, ...} = chase(getnode d)
-                           val src as NODE{number=s, ...} = chase(getnode s)
+                       let fun chases(NODE{color=ref(ALIASED src), ...}, dst) =
+                                 chases(src, dst)
+                             | chases(src, dst) = chases'(src, dst)
+                           and chases'(src, NODE{color=ref(ALIASED dst), ...}) =
+                                 chases'(src, dst)
+                             | chases'(src, dst) = (src, dst)
+                           val (src as NODE{number=s, ...},
+                                dst as NODE{number=d, ...}) =
+                                   chases(getnode s, getnode d)
                        in if d = s then moves(ds, ss, mv)
                           else moves(ds, ss, MV{dst=dst, src=src,
                                                 status=ref WORKLIST,
+                                                hicount=ref 0,
                                                 (* kind=REG_TO_REG, *)
                                                 cost=cost}::mv)
                        end
@@ -236,16 +400,16 @@ struct
                                                defs=defs, uses=uses}
                            val _    = UA.update(dtab, i, defs)
                            val (mv, tmps) = mkMoves(insn, d, u, w, mv, tmps)
-                       in  scan(rest, inc pt, inc i, mv, tmps)  
+                       in  scan(rest, pt+1, i+1, mv, tmps)  
                        end
                    val (pt, i, mv, tmps) = 
                        scan(!insns, progPt(blknum,1), 1, mv, tmps)
                    val _ = if pt >= progPt(blknum+1, 0) then 
-                              error "mkNodes: too many instructions"
+                              error("mkNodes: too many instructions")
                            else ()
                    fun fill i = 
                        if i < A.length dtab then 
-                          (UA.update(dtab, i, []); fill(inc i))
+                          (UA.update(dtab, i, []); fill(i+1))
                        else ()
                in  fill i;
                    (* If the block is escaping, then all liveout
@@ -264,12 +428,27 @@ struct
              | mkNodes(_::blks, mv, tmps) = mkNodes(blks, mv, tmps)
 
           (* Add the edges *)
-           fun mkEdges(v, v' as NODE{color=ref(PSEUDO | COLORED _), ...}) = 
-                 liveness(v, v', addEdge) 
-             | mkEdges _ = ()
 
            val (moves, tmps) = mkNodes(blocks, [], [])
-       in  Intmap.app mkEdges nodes; 
+           val addEdge = Core.addEdge G
+       in  Intmap.app 
+             (if isOn(mode,Core.COMPUTE_SPAN) then
+               let val setSpan = Intmap.add span
+               in  fn (v, v' as NODE{color=ref(PSEUDO | COLORED _), ...}) => 
+                      liveness2(v, v', addEdge, setSpan) 
+                    | (v, v' as NODE{color=ref(SPILLED c), ...}) => 
+                      if c >= 0 then liveness2(v, v', addEdge, setSpan) else ()
+                    | _ => ()
+               end 
+              else
+               (fn (v, v' as NODE{color=ref(PSEUDO | COLORED _), ...}) => 
+                    liveness(v, v', addEdge) 
+                 | (v, v' as NODE{color=ref(SPILLED c), ...}) => 
+                      if c >= 0 then liveness(v, v', addEdge) else ()
+                 | _ => ()
+               )
+             ) nodes;
+           if isOn(Core.SAVE_COPY_TEMPS, mode) then copyTmps := tmps else ();
            rmPseudoUses tmps;
            moves
        end
@@ -285,9 +464,9 @@ struct
        fun grow(b, n) =
        let (* val m = Word.toIntX(Word.>>(Word.fromInt(n+8),0w3)) *) 
            val m = n+1
-       in  if A.length(A.sub(marked, b)) < m then
+       in  (* if A.length(A.sub(marked, b)) < m then
               UA.update(marked, b, A.array(m, ~1))
-            else ();
+           else (); *)
            if A.length(A.sub(defsTable, b)) < m then
               UA.update(defsTable, b, A.array(m, []))
            else ()
@@ -307,17 +486,10 @@ struct
        (*
         * Spill a set of nodes and rewrite the flowgraph 
         *)
-       fun spill{copyInstr, spill, reload, graph as G.GRAPH{regmap,...}, 
+       fun spill{copyInstr, spill, spillSrc, spillCopyTmp, 
+                 reload, reloadDst, renameSrc, graph as G.GRAPH{regmap, ...}, 
                  cellkind, nodes=nodesToSpill} = 
        let
-           val spillRewrite = Spill.spillRewrite
-                              { graph=graph,
-                                spill=spill,
-                                reload=reload,
-                                copyInstr=copyInstr,
-                                cellkind=cellkind
-                              }
-
            (* maps program point to registers to be spilled *)
            val spillSet = Intmap.new(32, NotThere) : C.cell list Intmap.intmap
 
@@ -327,6 +499,21 @@ struct
            (* maps program point to registers to be killed *)
            val killSet = Intmap.new(32, NotThere) : C.cell list Intmap.intmap
 
+           val spillRewrite = Spill.spillRewrite
+                              { graph=graph,
+                                spill=spill,
+                                spillSrc=spillSrc,
+                                spillCopyTmp=spillCopyTmp,
+                                reload=reload,
+                                reloadDst=reloadDst,
+                                renameSrc=renameSrc,
+                                copyInstr=copyInstr,
+                                cellkind=cellkind,
+                                spillSet=spillSet,
+                                reloadSet=reloadSet,
+                                killSet=killSet
+                              }
+
            (* set of basic blocks that are affected *)
            val affectedBlocks = Intmap.new(32, NotThere) : bool Intmap.intmap
 
@@ -335,7 +522,7 @@ struct
            fun ins set = 
            let val add  = Intmap.add set
                val look = Intmap.mapWithDefault(set, [])
-           in  fn (x, r) =>
+           in  fn r => fn x =>
                (add (x, r::look x);
                 addAffectedBlocks (blockNum x, true)
                )
@@ -346,71 +533,87 @@ struct
            val insKillSet   = 
            let val add  = Intmap.add killSet
                val look = Intmap.mapWithDefault(killSet, [])
-           in  fn (x, r) => add (x, r::look x) end
+           in  fn r => fn x => add (x, r::look x) end
 
-           fun get set = Intmap.mapWithDefault (set, [])
-           val getSpillSet  = get spillSet
-           val getReloadSet = get reloadSet
-           val getKillSet   = get killSet
-
-           val _ = app 
-              (fn G.NODE{color=ref(G.ALIASED _), ...} => ()
-                | G.NODE{number, defs=ref defs, uses=ref uses, ...} =>
-                  (app (fn pt => insSpillSet (pt, number)) defs;
-                   app (fn pt => insReloadSet (pt, number)) uses;
-                   (* Definitions but no use! *) 
-                   case uses of
-                      [] => app (fn pt => insKillSet(pt, number)) defs
-                    | _ => ()
-                  )
-              ) nodesToSpill
-
-           (* Rewrite a basic block *)
-           fun rewrite(annotations, blknum, pt, [], newInstrs) = rev newInstrs
-             | rewrite(annotations, blknum, pt, i::rest, newInstrs) = 
-               let val spillRegs  = getSpillSet pt
-                   val reloadRegs = getReloadSet pt
-                   val killRegs   = getKillSet pt
-               in  case (spillRegs, reloadRegs) of
-                     ([], []) => 
-                        rewrite(annotations, blknum, inc pt, rest, i::newInstrs)
-                   | _ =>
-                   (* do something with this instruction, dude! *)
-                   let (* val _ = (print("Spilling: "^regs spillRegs); 
-                                print(" Reloading: "^regs reloadRegs);
-                                emit (C.lookup regmap) i) *)
-                       val {code} = 
-                        spillRewrite{instr=i, 
-                                     spillRegs=spillRegs,
-                                     reloadRegs=reloadRegs, 
-                                     killRegs=killRegs,
-                                     annotations=annotations}
-                       (* val _ = (print("Code:"); 
-                                app (emit (C.lookup regmap)) code) *)
-                   in  rewrite(annotations, 
-                               blknum, inc pt, rest, code @ newInstrs)
-                   end
+           (* Mark all spill/reload locations *)
+           val markSpills = app 
+              (fn G.NODE{color, number, defs=ref defs, uses=ref uses, ...} =>
+               let fun spillIt(defs, uses) = 
+                       (app (insSpillSet number) defs;
+                        app (insReloadSet number) uses;
+                        (* Definitions but no use! *) 
+                        case uses of
+                           [] => app (insKillSet number) defs
+                         | _ => ()
+                       )
+               in  case !color of
+                     G.SPILLED c => spillIt(defs, uses)
+                   | G.PSEUDO => spillIt(defs, uses)
+                   | _ => ()
                end
+             ) 
+           val _ = markSpills nodesToSpill
+
+           (* Print all spill/reload locations *)
+           (* val _ = countSpillsReloads nodesToSpill *) 
+           (*
+           val _ = 
+              if !(MLRiscControl.getFlag "dump-spills") then
+              app 
+              (fn G.NODE{color=ref(G.ALIASED _), ...} => ()
+                | G.NODE{number, defs=ref defs, uses=ref uses, pri, ...} => 
+                  let fun pr pt = let val b = blockNum pt
+                                      val p = instrNum pt
+                                  in  Int.toString b^"."^Int.toString p end
+                      fun prs pts = foldr (fn (pt,"") => pr pt
+                                            | (pt,l) => pr pt^", "^l) "" pts
+                  in   case 
+                         (if List.exists 
+                           (fn def => List.exists (fn use => use=def-1) uses)
+                          defs then (print "DEF-USE "; true) else false,
+                          if List.exists 
+                          (fn use => List.exists (fn use2 => use=use2-1) uses)
+                          uses then (print " USE-USE "; true) else false) of
+                         (false,false) => ()
+                       | _ =>
+                          (print("Spilling ["^Int.toString(!pri)^
+                                 "] r"^Int.toString number);
+                           print(" defs="^prs(SortedList.uniq defs));
+                           print(" uses="^prs(SortedList.uniq uses));
+                           print "\n")
+                  end
+              ) nodesToSpill
+              else ()
+            *)
 
            (* Rewrite all affected blocks *)
            fun rewriteAll (blknum, _) =
-               let val F.BBLOCK{annotations, insns, ...} = 
+               let val F.BBLOCK{annotations, insns as ref instrs, ...} = 
                           A.sub(blockTable, blknum)
-                   val instrs = 
-                        rewrite(annotations,
-                                blknum, progPt(blknum, 1), !insns, [])
+                   val instrs = spillRewrite{pt=progPt(blknum, length instrs),
+                                             instrs=instrs,
+                                             annotations=annotations}
                in  insns := instrs;
                    grow(blknum, length instrs)
                end
 
        in  Intmap.app rewriteAll affectedBlocks;
-           app (fn G.NODE{color=ref(ALIASED _), ...} => ()
-                 | G.NODE{color, ...} => color := (SPILLED 0)
-               ) nodesToSpill;
+           let val spilledMarker = SPILLED ~2
+           in  app (fn G.NODE{number, color as ref(SPILLED c), ...} => 
+                        if number <> c then color := spilledMarker else ()
+                     | G.NODE{color as ref PSEUDO, ...} => 
+                        color := spilledMarker 
+                     | _ => ()
+                   ) nodesToSpill
+           end;
            rebuild(cellkind, graph)
        end
 
-   in  {build=build, spill=spill, freq=freq}
+   in  {build=build, spill=spill, 
+        programPoint=fn{block,instr} => progPt(block,instr),
+        blockNum=blockNum, 
+        instrNum=instrNum
+       }
    end
 
 end

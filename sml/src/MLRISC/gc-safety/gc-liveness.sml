@@ -27,7 +27,7 @@ struct
           val  forward = false
           val  bot     = R.empty
           val  ==      = R.==
-          val join     = R.meets
+          val join     = R.joins
           type dataflow_info = 
                 (C.cell -> GC.gctype) * 
                 (C.cell -> C.cell) *
@@ -35,7 +35,7 @@ struct
           fun mk(gcmap,regmap,regs) =
               R.fromList(map (fn r => (regmap r,gcmap r)) regs)
 
-          fun liveOut(gcmap,regmap,b) = 
+          fun liveOut(gcmap,regmap,b as CFG.BLOCK{id,...}) = 
           let val cellset = CFG.liveOut(b)
               val regs    = C.cellsetToCells cellset
           in  mk(gcmap,regmap,regs)
@@ -49,10 +49,15 @@ struct
                 | loop(i::is,def,use) =
                   let val (d1,u1) = defUseR i 
                       val (d2,u2) = defUseF i 
-                      val d' = mk(gcmap,regmap,d1 @ d2)
-                      val u' = mk(gcmap,regmap,u1 @ u2)
-                      val use = R.gen(R.kill(use,d'),u')
-                      val def = R.kill(R.gen(def,d'),u')
+                      val d = mk(gcmap,regmap,d1 @ d2)
+                      val u = mk(gcmap,regmap,u1 @ u2)
+                      (* val _ = print("d="^R.toString d^" ")
+                      val _ = print("u="^R.toString u^"\n")
+                      val _ = print("use-d="^R.toString(R.kill(use,d))^"\n")*)
+                      val use = R.gen(R.kill(use,d),u)
+                      val def = R.kill(R.gen(def,d),u)
+                      (*val _ = print("def="^R.toString def^" ")
+                      val _ = print("use="^R.toString use^"\n") *)
                   in  loop(is,def,use) 
                   end
           in  loop(!insns,R.empty,R.empty) end
@@ -60,14 +65,20 @@ struct
           fun prologue (_,(gcmap,regmap,_)) (b,b') =
           let val (def,use) = scan(gcmap,regmap,b')
               val liveOut   = liveOut(gcmap,regmap,b')
-          in  { input    = liveOut,
+          in  (* print("Liveout("^Int.toString b^")="^R.toString liveOut^"\n");
+              print("def("^Int.toString b^")="^R.toString def^"\n");
+              print("use("^Int.toString b^")="^R.toString use^"\n"); *)
+              { input    = liveOut,
                 output   = R.gen(R.kill(liveOut,def),use),
                 transfer = fn liveOut => R.gen(R.kill(liveOut,def),use)
               }
           end
           fun epilogue (_,(_,_,table)) 
               {node=(b,_), input=liveOut, output=liveIn } = 
+               ((* print("Livein("^Int.toString b^")="^R.toString liveIn^"\n");
+                print("Liveout("^Int.toString b^")="^R.toString liveOut^"\n");*)
                 A.update(table,b,{liveIn=liveIn,liveOut=liveOut})
+               ) 
          )
 
   fun liveness (IR as G.GRAPH cfg) = 

@@ -32,7 +32,7 @@ struct
    fun attachPrettyPrinter p = prettyPrinters := p :: !prettyPrinters
 
    fun toString a =
-   let fun pr([]) = "<"^exnName a^">"
+   let fun pr([]) = ""
          | pr(p::ps) = (p a handle _ => pr ps)
    in  pr(!prettyPrinters) end
 

@@ -25,14 +25,17 @@ structure URef : UREF =
 
     fun uRef x = ref (ECR(x, 0))
 
-    fun !! p = let val ECR(x, _) = !(find p) in x end
+    fun !! p = (case !(find p)
+	   of ECR (x, _) => x
+	    | _ => raise Match
+	  (* end case *))
       
     fun equal (p, p') = (find p = find p')
 
-    fun update (p, x) = let val (p' as ref(ECR(_, r))) = find p
-	  in
-	    p' := ECR(x, r)
-	  end
+    fun update (p, x) = (case find p
+	   of (p' as ref(ECR(_, r))) => p' := ECR(x, r)
+	    | _ => raise Match
+	  (* end case *))
 
     fun link (p, q) = let
 	  val p' = find p
@@ -41,46 +44,42 @@ structure URef : UREF =
 	    if (p' = q') then false else (p' := PTR q; true)
 	  end
 
-    fun unify f (p, q) = let
-	  val (p' as ref(ECR(pc, pr))) = find p
-          val (q' as ref(ECR(qc, qr))) = find q
-	  val newC = f (pc, qc)
-          in
-	    if p' = q'
-	      then (p' := ECR(newC, pr); false)
-	      else (
-	        if pr = qr
-		  then (
-		    q' := ECR(newC, qr+1);
-		    p' := PTR q')
-		else if pr < qr
-		  then (
-		    q' := ECR(newC, qr);
-		    p' := PTR q')
-		  else ((* pr > qr *)
-		    p' := ECR(newC, pr);
-		    q':= PTR p');
-		true)
-          end
+    fun unify f (p, q) = (case (find p, find q)
+	   of (p' as ref(ECR(pc, pr)), q' as ref(ECR(qc, qr))) =>
+		let
+		val newC = f (pc, qc)
+		in
+		  if p' = q'
+		    then (p' := ECR(newC, pr); false)
+		    else (
+		      if pr = qr
+			then (q' := ECR(newC, qr+1); p' := PTR q')
+		      else if pr < qr
+			then (q' := ECR(newC, qr); p' := PTR q')
+		      else ((* pr > qr *)
+			p' := ECR(newC, pr);
+			q':= PTR p');
+		      true)
+		end
+	    | _ => raise Match
+	  (* end case *))
 
     fun union (p, q) = let
 	  val p' = find p
-          val q' = find q
-          in
-	    if p' = q' 
-              then false
-              else let
-		val ECR(pc, pr) = !p' and ECR(qc, qr) = !q'
-		in
-		  if pr = qr 
-		    then (
-		      q' := ECR(qc, qr+1);
-		      p' := PTR q')
-		  else if pr < qr
-		    then p' := PTR q'
-		    else q':= PTR p';
-		  true
-		end
-          end
+	  val q' = find q
+	  in
+	    if (p' = q')
+	      then false
+	      else (case (!p', !q')
+		 of (ECR(pc, pr), ECR(qc, qr)) => (
+		      if pr = qr
+			then (q' := ECR(qc, qr+1); p' := PTR q')
+		      else if pr < qr
+			then p' := PTR q'
+			else q':= PTR p';
+		      true)
+		  | _ => raise Match
+		(* end case *))
+	  end
 
   end

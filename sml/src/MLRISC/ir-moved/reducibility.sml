@@ -9,8 +9,7 @@ struct
    structure Dom  = Loop.Dom
    structure G    = Graph
 
-   structure Derived = DerivedGraphFn(structure Dom = Dom
-                                      structure GraphImpl = DirectedGraph)
+   structure Derived = DerivedGraphFn(Dom)
 
    fun is_reducible(Loop) =
    let val Dom = Loop.dom Loop

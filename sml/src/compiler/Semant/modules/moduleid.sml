@@ -16,6 +16,7 @@ sig
   val cmp: modId * modId -> order
   val idToString : modId -> string
 
+  structure Set : ORD_SET where type Key.ord_key = modId
 end (* signature MODULE_ID *)
 
 structure ModuleId : MODULE_ID =
@@ -89,5 +90,10 @@ struct
 	String.concat["TYCid(", stampToString stamp,")"]
     | idToString(EENVid st) = String.concat["EENVid(",stampToString st,")"]
 
+  structure Set = RedBlackSetFn
+      (struct
+	   type ord_key = modId
+	   val compare = cmp
+      end)
 end (* structure ModuleId *)
 

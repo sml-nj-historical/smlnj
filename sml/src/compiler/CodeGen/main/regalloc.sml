@@ -22,8 +22,8 @@ functor RegAlloc
     * and a copy instruction, return a new copy instruction with the same
     * temporary as the old one.
     *)
-   val copyR : (int list * int list) * I.instruction -> I.instruction
-   val copyF : (int list * int list) * I.instruction -> I.instruction
+   val copyR : (int list * int list) * I.instruction -> I.instruction 
+   val copyF : (int list * int list) * I.instruction -> I.instruction 
 
    (* These functions are used to spill the temporary used in the copy
     * onto some stack offset.
@@ -54,12 +54,22 @@ struct
    (* Counters for register allocation *)
    val intSpillsCnt = MLRiscControl.getCounter "ra-int-spills"
    val intReloadsCnt = MLRiscControl.getCounter "ra-int-reloads"
+   val intRenamesCnt = MLRiscControl.getCounter "ra-int-renames"
    val floatSpillsCnt = MLRiscControl.getCounter "ra-float-spills"
    val floatReloadsCnt = MLRiscControl.getCounter "ra-float-reloads"
+   val floatRenamesCnt = MLRiscControl.getCounter "ra-float-renames"
 
    fun error msg = MLRiscErrorMsg.error(MachSpec.architecture,msg)
 
    val itow = Word.fromInt
+
+   (*
+    * Make arithmetic non-overflow trapping.
+    * This makes sure that if we happen to run the compiler for a long
+    * period of time overflowing counters will not crash the compiler. 
+    *)
+   fun x + y = Word.toIntX(Word.+(Word.fromInt x, Word.fromInt y))
+   fun x - y = Word.toIntX(Word.-(Word.fromInt x, Word.fromInt y))
 
    (* GetReg specialized to integer and floating point registers *)
    local
@@ -124,108 +134,100 @@ struct
        end
 
    (* Spill integer register *)
-   fun spillR{annotations,kill=true,regmap,reg,spillLoc,graph,instr} = 
-         if pure instr then {code=[], instr=NONE, proh=[]}
+   fun spillR{annotations,kill=true,regmap,reg,spillLoc,instr} = 
+         if pure instr then {code=[], proh=[], newReg=NONE}
          else spillR{annotations=annotations,kill=false,
                      regmap=regmap,spillLoc=spillLoc,
-                     reg=reg,graph=graph,instr=instr}
-     | spillR{annotations,kill,regmap,reg,spillLoc,graph,instr} = 
+                     reg=reg,instr=instr}
+     | spillR{annotations,kill,regmap,reg,spillLoc,instr} = 
        let val _   = intSpillsCnt := !intSpillsCnt + 1
-           val loc = getRegLoc(spillLoc)
-           fun spillIt() = 
-           let val newR = Cells.newReg()
-    	       val instr' = Rewrite.rewriteDef(regmap, instr, reg, newR)
-           in {code=spillInstrR(newR,loc), instr=SOME instr', proh=[newR]}
-           end
-       in  case P.instrKind instr of
-             P.IK_COPY => 
-               (case P.moveDstSrc instr of 
-                  ([rd], [rs]) => 
-                     if regmap rd = reg then 
-                       {code=spillInstrR(rs,loc), instr=NONE,proh=[]}
-                     else   
-                     (case P.moveTmpR instr of
-                       NONE => error "spillR: MOVE"
-                     | SOME r => let val newCopy = spillCopyTmp(instr,loc)
-                                 in {code=[], instr=SOME newCopy, proh=[]} end
-                     )
-                | _ => spillIt()
-                )
-           | _ => spillIt()
+           val loc = getRegLoc spillLoc
+           val newR = Cells.newReg()
+    	   val instr' = Rewrite.rewriteDef(regmap, instr, reg, newR)
+       in  {code=instr'::spillInstrR(newR,loc), proh=[newR], newReg=SOME newR}
        end
 
+   fun spillReg{annotations,src,reg,spillLoc} =
+       (intSpillsCnt := !intSpillsCnt + 1;
+        spillInstrR(src,getRegLoc spillLoc) 
+       )
+
+   fun spillTmp{annotations,copy,spillLoc} =
+       (intSpillsCnt := !intSpillsCnt + 1;
+        spillCopyTmp(copy,getRegLoc spillLoc)
+       )
+
    (* Spill floating point register *)
-   fun spillF{annotations,kill=true,regmap,reg,spillLoc,graph,instr} = 
-         if pure instr then {code=[], instr=NONE, proh=[]}
+   fun spillF{annotations,kill=true,regmap,reg,spillLoc,instr} = 
+         if pure instr then {code=[], proh=[], newReg=NONE}
          else spillF{annotations=annotations,kill=false,
                      regmap=regmap,spillLoc=spillLoc,
-                     reg=reg,graph=graph,instr=instr}
-     | spillF{annotations,kill,regmap,reg,spillLoc,graph,instr} = 
+                     reg=reg,instr=instr}
+     | spillF{annotations,kill,regmap,reg,spillLoc,instr} = 
        let val _   = floatSpillsCnt := !floatSpillsCnt + 1
-           val loc = getFregLoc(spillLoc)
-           fun spillIt() =
-           let val newR = Cells.newFreg()
-    	       val instr' = Rewrite.frewriteDef(regmap, instr, reg, newR)
-           in {code=spillInstrF(newR,loc), instr=SOME instr', proh=[newR]}
-           end
-    
-       in  case P.instrKind instr of
-             P.IK_COPY => 
-               (case P.moveDstSrc instr of 
-                  ([fd], [fs]) => 
-                     if regmap fd = reg then 
-                      {code=spillInstrF(fs,loc), instr=NONE,proh=[]}
-                     else   
-                     (case P.moveTmpR instr of
-                       NONE => error "spillF: MOVE"
-                     | SOME r => let val newCopy = spillFcopyTmp(instr,loc)
-                                 in {code=[], instr=SOME newCopy, proh=[]} end
-                     )
-                | _ => spillIt()
-                )
-           | _ => spillIt()
+           val loc = getFregLoc spillLoc
+           val newR = Cells.newFreg()
+    	   val instr' = Rewrite.frewriteDef(regmap, instr, reg, newR)
+       in {code=instr'::spillInstrF(newR,loc), proh=[newR], newReg=SOME newR}
+       end
+
+   fun spillFreg{annotations,reg,src,spillLoc} = 
+       (floatSpillsCnt := !floatSpillsCnt + 1;
+        spillInstrF(src,getFregLoc spillLoc)
+       )
+
+   fun spillFtmp{annotations,copy,spillLoc} = 
+       (floatSpillsCnt := !floatSpillsCnt + 1;
+        spillFcopyTmp(copy,getFregLoc spillLoc) 
+       )
+
+   (* Rename integer register *)
+   fun renameR{regmap,fromSrc,toSrc,instr} = 
+       let val _   = intRenamesCnt := !intRenamesCnt + 1
+           val instr' = Rewrite.rewriteUse(regmap, instr, fromSrc, toSrc)
+       in {code=[instr'], proh=[], newReg=SOME toSrc}
        end
 
    (* Reload integer register *)
-   fun reloadR{annotations,regmap,reg,spillLoc,graph,instr} = 
-   let val _   = intReloadsCnt := !intReloadsCnt + 1
-       val loc = getRegLoc(spillLoc)
-       fun reloadIt() =
-       let val newR = Cells.newReg()
-	   val instr' = Rewrite.rewriteUse(regmap, instr, reg, newR)
-       in {code=reloadInstrR(newR,loc,[instr']), proh=[newR]}
+   fun reloadR{annotations,regmap,reg,spillLoc,instr} = 
+       let val _   = intReloadsCnt := !intReloadsCnt + 1
+           val loc = getRegLoc spillLoc
+           val newR = Cells.newReg()
+           val instr' = Rewrite.rewriteUse(regmap, instr, reg, newR)
+       in {code=reloadInstrR(newR,loc,[instr']), proh=[newR], newReg=SOME newR}
        end
-   in  case P.instrKind instr of
-         P.IK_COPY => 
-           (case P.moveDstSrc instr of
-             ([rd],[rs]) => {code=reloadInstrR(rd,loc,[]), proh=[]}
-           | _ => reloadIt()  
-           )
-       | _ => reloadIt()
-   end
+
+   fun reloadReg{annotations,reg,dst,spillLoc} = 
+       (intReloadsCnt := !intReloadsCnt + 1;
+        reloadInstrR(dst,getRegLoc spillLoc,[]) 
+       )
                    
-   (* Reload floating point register *)
-   fun reloadF{annotations,regmap,reg,spillLoc,graph,instr} =
-   let val _   = floatReloadsCnt := !floatReloadsCnt + 1
-       val loc = getFregLoc(spillLoc)
-       fun reloadIt() =
-       let val newR = Cells.newFreg()
-	   val instr' = Rewrite.frewriteUse(regmap, instr, reg, newR)
-       in {code=reloadInstrF(newR,loc,[instr']), proh=[newR]}
+   (* Rename floating point register *)
+   fun renameF{regmap,fromSrc,toSrc,instr} =
+       let val _ = floatRenamesCnt := !floatRenamesCnt + 1
+           val instr' = Rewrite.frewriteUse(regmap, instr, fromSrc, toSrc)
+       in  {code=[instr'], proh=[], newReg=SOME toSrc}
        end
-   in  case P.instrKind instr of
-         P.IK_COPY => 
-           (case P.moveDstSrc instr of
-             ([fd],[fs]) => {code=reloadInstrF(fd,loc,[]), proh=[]}
-           | _ => reloadIt()  
-           )
-       | _ => reloadIt()
-   end
+
+   (* Reload floating point register *)
+   fun reloadF{annotations,regmap,reg,spillLoc,instr} =
+       let val _ = floatReloadsCnt := !floatReloadsCnt + 1
+           val loc = getFregLoc(spillLoc)
+           val newR = Cells.newFreg()
+           val instr' = Rewrite.frewriteUse(regmap, instr, reg, newR)
+       in  {code=reloadInstrF(newR,loc,[instr']), proh=[newR], newReg=SOME newR}
+       end
+
+   fun reloadFreg{annotations,reg,dst,spillLoc} =
+       (floatReloadsCnt := !floatReloadsCnt + 1;
+        reloadInstrF(dst,getFregLoc spillLoc,[]) 
+       )
 
    (* The generic register allocator *)
    structure Ra =
       RegisterAllocator
-        (ChaitinSpillHeur)
+        (ChaitinSpillHeur) 
+        (* (ChowHennessySpillHeur) *)
         (ClusterRA 
           (structure Flowgraph = F
            structure Asm = Asm
@@ -233,39 +235,49 @@ struct
           )
         )
 
-   fun cp _ = error "copy propagation"
-
    val KR = length CpsRegs.availR
    val KF = length CpsRegs.availF
 
    val params =
-       [  { cellkind  = I.C.GP,
-            getreg    = GR.getreg,
-            spill     = spillR,
-            reload    = reloadR,
-            K         = KR,
-            dedicated = dedicatedR,
-            copyInstr = copyR,
-            spillProh = [],
-            optimizations = []
+       [  { cellkind     = I.C.GP,
+            getreg       = GR.getreg,
+            spill        = spillR,
+            spillSrc     = spillReg,
+            spillCopyTmp = spillTmp,
+            reload       = reloadR,
+            reloadDst    = reloadReg,
+            renameSrc    = renameR,
+            K            = KR,
+            dedicated    = dedicatedR,
+            copyInstr    = fn i => [copyR i],
+            spillProh    = [],
+            firstMemReg  = 0,
+            numMemRegs   = 0,
+            mode         = Ra.SPILL_COLORING
           },
-          { cellkind  = I.C.FP,
-            getreg    = FR.getreg,
-            spill     = spillF,
-            reload    = reloadF,
-            K         = KF,
-            dedicated = dedicatedF,
-            copyInstr = copyF,
-            spillProh = [],
-            optimizations = []
+          { cellkind     = I.C.FP,
+            getreg       = FR.getreg,
+            spill        = spillF,
+            spillSrc     = spillFreg,
+            spillCopyTmp = spillFtmp,
+            reload       = reloadF,
+            reloadDst    = reloadFreg,
+            renameSrc    = renameF,
+            K            = KF,
+            dedicated    = dedicatedF,
+            copyInstr    = fn i => [copyF i],
+            spillProh    = [],
+            firstMemReg  = 0,
+            numMemRegs   = 0,
+            mode         = Ra.NO_OPTIMIZATION
           }
-       ]
+       ] : Ra.raClient list
   
    fun ra cluster =
       (spillInit();
        GR.reset();
        FR.reset();
-       Ra.ra Ra.REGISTER_ALLOCATION params cluster
+       Ra.ra params cluster
       )
 
 end

@@ -11,9 +11,6 @@
 <H1>
 <FONT COLOR="#aa0000">Architecture of MLRISC</FONT></H1></CENTER>
 
-<h2> Overview </h2>
-  MLRISC is 
-
 <h2> Core Components </h2>
 
   The core components of MLRISC allow the client to quickly construct 
@@ -46,26 +43,81 @@ In addition, MLRISC has been enhanced to support various types of
 machine level optimizations.  These include:
 
 <ul>
-  <li> Core optimizations
-  <li> SSA optimizations
+  <li> Core optimizations, which various types of control flow transformation
+  <li> SSA based scalar optimizations
   <li> ILP optimizations for superscalars
   <li> ILP optimizations for VLIW/EPIC architectures
+  <li> GC safety analysis
 </ul>
 
-<h2> Basic Types </h2>
+<h2> Basic Concepts </h2>
+
+  Basic concepts in MLRISC are: 
+<ul>
+    <LI> <A href="instructions.html"> Instructions </A> --
+    the instruction set of the target architecture.
+    <LI> <A href="cells.html"> Cells</A> -- which describes registers,
+memory and other mutable resources in the machine.
+    <LI> <A href="regions.html"> Regions</A> -- a client defined
+   abstract type used to represent aliasing information available from
+the front-end.
+    <LI> <A href="constants.html"> Constants</A> -- a client defined
+   place holder used to represent constants whose values are unknown 
+   in the front-end. 
+    <LI> <A href="pseudo-ops.html"> Pseudo Ops</A> -- a client defined
+      
+    <LI> <A href="annotations.html"> Annotations </A> -- this is
+   a generic mechinism for propagating information in the MLRISC sstem.
+   The client may attach arbitrary annotation of various granularity 
+   to MLRISC's program representation,
+   which can then be propagated to later phases.
+   These can be information related to profiling frequency, dependence, 
+   comments, and/or types.
+   The same mechanism is also used to propagate 
+   analysis information one optimization phase to 
+   another.
+    <LI> <A href="streams.html"> Instruction Streams </A> -- an abstraction
+   for describing a stream of instructions.  Instruction streams are
+   used to connect modules such as instruction selection,  assembler, 
+   machine code emitter, and 
+   control flow graph builder.
+   <LI> <A href="regmap.html"> Regmap </A> -- a mapping between registers
+     names.  MLRISC register allocators represent the result of register
+   allocation as a regmap.
+   <LI> <A href="labels.html"> Labels </A> -- a type representing
+symbolic labels.
+   <LI> <A href="labelexp.html"> Label Expressions </A> -- a type representing
+     constant expressions
+    involving symbolic labels.
+</ul>
 
 <h2> How Things Are Fit Together </h2>
 
+  MLRISC uses two different program representations, clusters and MLRISC IR.
 <ul>
-  <li> Cluster
-  <li> MLRISC IR
+  <li> <a href="cluster.html">Cluster</a> is light-weight representation
+that is used when only the most basic optimizations are required.
+  <li> <a href="mlrisc-ir.html"> MLRISC IR</a> is more heavy-weight
+   representation that is built from the 
+    <a href="graphs.html"> MLRISC graph library </a> and the
+    <a href="compiler-graphs.html"> MLRISC compiler graph library </a>.
+   MLRISC IR allows more complex transformations and analysis of the
+   program graph.
+</ul>
+Conversion modules between the two representations are provided.
+
+In general MLRISC optimization phases are transformations applied on one
+of these representations.  Optimizations may be chained together to form
+a compiler backend.  For example, a minimal backend consists of
+<ul>
+  <li> the instruction selection module, which translates 
+<a href="mltree.html"> MLTree </a> into target instructions,
+  <li> the flowgraph builder, which conversts a stream of target instructions
+   into a cluster,
+  <li> the register allocator, which performs register allocation, and
+  <li> the assembly code emitter, which generates assembly output
 </ul>
 
 <HR>
-    <FONT SIZE="-2">
-<ADDRESS>
-<A HREF="mailto:leunga@cs.nyu.edu">Allen Leung</A></ADDRESS>
-<BR>
-
 </BODY>
 </HTML>

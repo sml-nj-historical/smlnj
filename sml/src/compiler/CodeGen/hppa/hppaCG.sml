@@ -55,7 +55,7 @@ structure HppaCG =
            *)
 
           val sp        = I.C.stackptrR
-          val stack     = I.Region.stack
+          val spill     = CPSRegions.spill
           val tmpR      = I.C.asmTmpR
           val itow      = Word.fromInt
           val wtoi      = Word.toIntX
@@ -94,19 +94,19 @@ structure HppaCG =
 
           (* spill register *) 
           fun spillInstrR(r,offset) =
-              [I.STORE{st=I.STW, b=sp, d=I.IMMED(~offset), r=r, mem=stack}]
+              [I.STORE{st=I.STW, b=sp, d=I.IMMED(~offset), r=r, mem=spill}]
           fun spillInstrF(r,offset) =
               [I.LDIL{i=I.IMMED(high21(~offset)), t=tmpR},
                I.LDO{i=I.IMMED(low11(~offset)), b=tmpR, t=tmpR},
-               I.FSTOREX{fstx=I.FSTDX, b=sp, x=tmpR, r=r, mem=stack}
+               I.FSTOREX{fstx=I.FSTDX, b=sp, x=tmpR, r=r, mem=spill}
               ]
 
           (* reload register *) 
           fun reloadInstrR(t,offset,rest) =
-              I.LOADI{li=I.LDW, i=I.IMMED(~offset), r=sp, t=t, mem=stack}::rest
+              I.LOADI{li=I.LDW, i=I.IMMED(~offset), r=sp, t=t, mem=spill}::rest
           fun reloadInstrF(t,offset,rest) =
               I.LDIL{i=I.IMMED(high21(~offset)), t=tmpR} ::
               I.LDO{i=I.IMMED(low11(~offset)), b=tmpR, t=tmpR} ::
-              I.FLOADX{flx=I.FLDDX, b=sp, x=tmpR, t=t, mem=stack} :: rest
+              I.FLOADX{flx=I.FLDDX, b=sp, x=tmpR, t=t, mem=spill} :: rest
          )
   )

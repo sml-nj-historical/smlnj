@@ -30,6 +30,7 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
       | first (MAP{root, ...}) = let
 	  fun f (SplayObj{value=(_, value), left=SplayNil, ...}) = SOME value
 	    | f (SplayObj{left, ...}) = f left
+	    | f SplayNil = raise Fail "SplayMapFn.first"
 	  in
 	    f (!root)
 	  end
@@ -39,6 +40,7 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
       | firsti (MAP{root, ...}) = let
 	  fun f (SplayObj{value=(key, value), left=SplayNil, ...}) = SOME(key, value)
 	    | f (SplayObj{left, ...}) = f left
+	    | f SplayNil = raise Fail "SplayMapFn.firsti"
 	  in
 	    f (!root)
 	  end

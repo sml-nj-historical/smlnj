@@ -20,6 +20,8 @@ struct
    structure LE = LabelExp
    structure Constant = I.Constant
    
+   val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
+   
    fun error msg = MLRiscErrorMsg.error("SparcAsm",msg)
    
    fun makeStream formatAnnotations =
@@ -72,6 +74,13 @@ struct
    and emit_FSR r = 
        ((emit (C.showFSR (regmap r))); 
        (emitRegInfo r))
+   
+       fun emit_cellset(title,cellset) =
+       if !show_cellset then
+         (nl(); comment(title^C.cellsetToString' regmap cellset))
+       else ()
+       fun emit_defs cellset = emit_cellset("defs: ",cellset)
+       fun emit_uses cellset = emit_cellset("uses: ",cellset)
 
    fun asm_farith1 (I.FiTOs) = "fitos"
      | asm_farith1 (I.FiTOd) = "fitod"
@@ -412,11 +421,15 @@ struct
         (emit "], "); 
         (emit_GP d); 
         (emit_region mem); 
+        (emit_defs defs); 
+        (emit_uses uses); 
         (emit_nop nop))
       | I.CALL{defs, uses, label, nop, mem} => 
         ((emit "call\t"); 
         (emit_label label); 
         (emit_region mem); 
+        (emit_defs defs); 
+        (emit_uses uses); 
         (emit_nop nop))
       | I.Ticc{t, cc, r, i} => 
         ((emit "t"); 

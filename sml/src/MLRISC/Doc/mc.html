@@ -25,7 +25,8 @@ sig
       sharing I.C = C  
       sharing S.P = P
 
-   val makeStream : unit -> (I.instruction,'a,'b) S.stream
+   val makeStream : Annotations.annotation list -> 
+       (I.instruction,'a,'b) S.stream
 end
 </pre>
 
@@ -58,10 +59,6 @@ emitters are listed below:
 
 
 <HR>
-    <FONT SIZE="-2">
-<ADDRESS>
-<A HREF="mailto:leunga@cs.nyu.edu">Allen Leung</A></ADDRESS>
-<BR>
 
 </BODY>
 </HTML>

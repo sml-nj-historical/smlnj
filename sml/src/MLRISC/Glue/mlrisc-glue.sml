@@ -11,14 +11,12 @@ functor MLRISCGlue
     structure FreqProps : FREQUENCY_PROPERTIES
        sharing P.I = Asm.I = F.I = FreqProps.I
        sharing F.P = Asm.P 
-    val copyProp : F.cluster -> F.cluster
    ) : MLRISC_GLUE =
 struct
 
    structure F = F
    structure I = F.I
  
-   val viewer  = MLRiscControl.getString     "viewer"
    val mlrisc  = MLRiscControl.getFlag       "mlrisc"
    val phases  = MLRiscControl.getStringList "mlrisc-phases"
    val view_IR = MLRiscControl.getFlag       "view-IR"
@@ -26,7 +24,7 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("MLRISCGlue",msg)
 
-   structure GraphViewer = GraphViewerFn(AllDisplaysFn(val viewer = viewer))
+   structure GraphViewer = GraphViewerFn(AllDisplays)
 
    structure FormatInsn = FormatInstructionFn(Asm)
 
@@ -93,8 +91,7 @@ struct
    fun optimize cluster =
    let datatype rep = IR of IR.IR
                     | CLUSTER of F.cluster
-       fun doPhase "copy-prop" (CLUSTER c) = CLUSTER(copyProp c)
-         | doPhase "cluster->cfg" (CLUSTER c) = IR(Cluster2CFG.cluster2cfg c)
+       fun doPhase "cluster->cfg" (CLUSTER c) = IR(Cluster2CFG.cluster2cfg c)
          | doPhase "cfg->cluster" (IR cfg) = 
             CLUSTER(CFG2Cluster.cfg2cluster{cfg=cfg,relayout=false})
          | doPhase "guess" (r as IR ir) =

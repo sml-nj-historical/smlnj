@@ -32,12 +32,14 @@ signature GENERIC_VC = sig
 	val install_pp : string list -> 
 	    (PrettyPrint.ppstream -> 'a -> unit) -> unit
     end
-    structure MakePid : sig
-	val makePid : CMStaticEnv.staticEnv * CMStaticEnv.staticEnv
-	    -> PersStamps.persstamp
-    end
     structure Ast : AST
     structure SmlFile : SMLFILE
+    structure Rehash : sig
+	val rehash : { context: ModuleId.Set.set,
+		       env: StaticEnv.staticEnv,
+		       orig_hash: PersStamps.persstamp }
+	    -> PersStamps.persstamp
+    end
 
     structure PrintHooks : PRINTHOOKS
 

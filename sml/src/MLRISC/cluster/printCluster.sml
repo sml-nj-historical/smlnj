@@ -46,31 +46,29 @@ struct
              AsmStream.withStream stream E.makeStream (!annotations)
        val emit = emit regmap
 
-       fun printEntry(F.ENTRY{blknum, succ, freq, ...}) = 
-         (pr ("ENTRY " ^ Int.toString blknum ^ showFreq freq^"\n");
-          pr "\tsucc:     "; prList (map showEdge (!succ));	pr "\n")
-
-       fun printBlock(F.PSEUDO pOp) = pseudoOp pOp
+       fun printBlock(F.ENTRY{blknum, succ, freq, ...}) = 
+           (pr ("ENTRY " ^ Int.toString blknum ^ showFreq freq^"\n");
+            pr "\tsucc:     "; prList (map showEdge (!succ));        pr "\n")
+         | printBlock(F.PSEUDO pOp) = pseudoOp pOp
          | printBlock(F.LABEL l)    = defineLabel l
          | printBlock(F.BBLOCK{blknum, freq, succ, pred, liveOut, liveIn, 
                                insns, annotations, ...}) = 
-          (pr ("BLOCK " ^ Int.toString blknum ^ showFreq freq ^ "\n");
-           app annotation (!annotations);
-           pr ("\tlive in:  " ^ C.cellsetToString' regmap (!liveIn) ^ "\n");
-	   pr ("\tlive out: " ^ C.cellsetToString' regmap (!liveOut) ^ "\n");
-	   pr ("\tsucc:     "); prList (map showEdge (!succ)); pr "\n";
-	   pr ("\tpred:     "); prList (map showEdge (!pred)); pr "\n";
-	   app emit (rev (!insns)))
-
-       fun printExit(F.EXIT{blknum, pred, freq, ...}) = 
-         (pr ("EXIT " ^ Int.toString blknum ^ showFreq freq ^"\n");
-          pr "\tpred      "; prList (map showEdge (!pred));  pr "\n")
+           (pr ("BLOCK " ^ Int.toString blknum ^ showFreq freq ^ "\n");
+            app annotation (!annotations);
+            pr ("\tlive in:  " ^ C.cellsetToString' regmap (!liveIn) ^ "\n");
+            pr ("\tlive out: " ^ C.cellsetToString' regmap (!liveOut) ^ "\n");
+            pr ("\tsucc:     "); prList (map showEdge (!succ)); pr "\n";
+            pr ("\tpred:     "); prList (map showEdge (!pred)); pr "\n";
+            app emit (rev (!insns)))
+         | printBlock(F.EXIT{blknum, pred, freq, ...}) = 
+           (pr ("EXIT " ^ Int.toString blknum ^ showFreq freq ^"\n");
+            pr "\tpred:     "; prList (map showEdge (!pred));  pr "\n")
    in
        pr("[ "^ title ^" ]\n");
        app annotation (!annotations);
-       printEntry entry;
+       printBlock entry;
        AsmStream.withStream stream (app printBlock) blocks;
-       printExit exit;
+       printBlock exit;
        TextIO.flushOut stream
    end
 end

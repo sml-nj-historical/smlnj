@@ -8,8 +8,6 @@ functor ClusterGen
   (structure Flowgraph : FLOWGRAPH
    structure InsnProps : INSN_PROPERTIES
    structure MLTree : MLTREE
-
-   val output : Flowgraph.cluster -> unit
      sharing Flowgraph.I = InsnProps.I
      sharing MLTree.Constant = InsnProps.I.Constant  
      sharing MLTree.PseudoOp = Flowgraph.P 
@@ -17,7 +15,6 @@ functor ClusterGen
 struct
 
   structure F = Flowgraph
-  structure Props = InsnProps
   structure I = Flowgraph.I
   structure C = I.C
 
@@ -25,238 +22,242 @@ struct
   structure P = T.PseudoOp
   structure S = T.Stream
   
-  type label = Label.label
-
   fun error msg = MLRiscErrorMsg.error("ClusterGen",msg)
+
+  fun can'tUse _ = error "unimplemented"
 
   type flowgraph = F.cluster
 
-  fun newStream() = 
-  let val bblkCnt = ref 0 
-      val entryLabels = ref ([] : Label.label list)
-      val regmap  = ref NONE
-      fun can'tUse _ = error "unimplemented" 
-      val aliasF  = ref can'tUse : (T.alias -> unit) ref
-      val NOBLOCK = F.EXIT{blknum=0,freq=ref 0,pred=ref []}
-      val currBlock : F.block ref = ref NOBLOCK
-      val blockList : F.block list ref = ref []
-      val blockNames : Annotations.annotations ref = ref []
-    
-      fun nextBlkNum () = !bblkCnt before bblkCnt := !bblkCnt + 1
-    
-      (** Note - currBlock will always be a reference to a F.BBLOCK{..} **)
-      fun newBasicBlk init = 
-          F.BBLOCK{blknum=nextBlkNum(),
-                   freq=ref 1,
-                   annotations=ref(!blockNames),
-                   liveIn=ref C.empty,
-                   liveOut=ref C.empty,
-                   succ=ref [],
-                   pred=ref [],
-                   insns=ref init}
-      local
-        fun blockListAdd b = let
-          val blocks = !blockList
-        in
-          case !currBlock 
-           of blk as F.BBLOCK _ => (blockList:=b::blk::blocks; 
-                                    currBlock:=NOBLOCK)
-            | _ => blockList := b::blocks
-        end
-      in
-        fun pseudoOp pOp  = blockListAdd (F.PSEUDO pOp)
-        fun defineLabel lab = blockListAdd(F.LABEL lab)
-        fun entryLabel lab = 
-          (entryLabels := lab::(!entryLabels);  blockListAdd(F.LABEL lab))
-      end (*local*)
-    
-      (** emitInstr - instructions are always added to currBlock. **)
-      fun emitInstr instr = let
-         fun addInstr (F.BBLOCK{insns, ...}) = insns := instr::(!insns)
-           | addInstr _ = currBlock:=newBasicBlk [instr]
-      in addInstr(!currBlock);
-         case Props.instrKind instr
-          of Props.IK_JUMP => 
-              (blockList:= !currBlock :: (!blockList);
-               currBlock := NOBLOCK)
-           | _ => ()
-         (*esac*)
-      end      
+  (* This rewritten version allows increment flowgraph updates *)
 
-      fun annotation a = 
-          case #peek BasicAnnotations.BLOCK_NAMES a of
-            SOME names => 
-            (blockNames := names;
-             case !currBlock of
-               blk as F.BBLOCK _ => (blockList:= blk :: (!blockList);
-                                     currBlock := NOBLOCK)
-             | _ => ()
-            )
-         | NONE =>
-            if #contains BasicAnnotations.EMPTY_BLOCK [a] then
-            (case !currBlock of 
-               blk as F.BBLOCK _ => blockList := blk :: (!blockList)
-             | _ => blockList := newBasicBlk [] :: (!blockList)
-             ;
-             currBlock := NOBLOCK
-            )
-            else
-            (case !currBlock of
-               F.BBLOCK{annotations,...} => annotations := a :: !annotations
-            | _ => (currBlock := newBasicBlk []; annotation a)
-            )
-    
-      fun exitBlock liveRegs  = let
-        val addReg   = C.addCell C.GP
-        val addFreg  = C.addCell C.FP
-        val addCCreg = C.addCell C.CC
-        (* we don't care about memory locations that may be live. *)
-        fun live(T.GPR(T.REG(_,r))::rest, acc) = live(rest, addReg(r, acc))
-          | live(T.FPR(T.FREG(_,f))::rest, acc) = live(rest, addFreg(f, acc))
-          | live(T.CCR(T.CC c)::rest, acc) = live(rest, addCCreg(c, acc))
-          | live(_::rest, acc) = live(rest, acc)
-          | live([], acc) = acc
-    
-        val lout = live(liveRegs, C.empty)
-    
-        fun findCodeBlock(F.BBLOCK{liveOut,...}::_)  = liveOut
-          | findCodeBlock(F.LABEL _::blks) = findCodeBlock blks
-          | findCodeBlock _                = error "exitBlock.codeBlock"
-    
-      in
-        case !currBlock
-         of F.BBLOCK{liveOut, ...} =>
-            (liveOut := lout;
-             blockList := !currBlock :: (!blockList);
-             currBlock := NOBLOCK)
-          | _ => 
-            let val outRef = findCodeBlock (!blockList)
-            in  outRef := lout
-            end
-       (*esac*)
+  fun newStream{compile,flowgraph} = 
+  let val NOBLOCK = F.LABEL(Label.Label{id= ~1, name="", addr=ref 0})
+
+      val (blkCounter, regmap, annotations, blocks, entry, exit) = 
+          case flowgraph of
+            SOME(F.CLUSTER{blkCounter, regmap, annotations, blocks, 
+                           entry, exit, ...}) =>
+                  (ref(!blkCounter-2), 
+                   ref regmap, !annotations, ref(rev blocks),
+                   entry, exit)
+          | NONE => (ref 0, ref(C.regmap()), [], ref [], NOBLOCK, NOBLOCK)
+
+      val currBlock   = ref NOBLOCK
+      val blockNames  = ref [] : Annotations.annotations ref
+      val aliasF      = ref (Intmap.add (!regmap))
+      val entryLabels = ref [] : Label.label list ref
+
+      fun nextBlockNum() = 
+      let val n = !blkCounter in blkCounter := n + 1; n end
+
+      (* Create a new basic block *)
+      fun newBasicBlock insns =
+      let val n = !blkCounter
+      in  blkCounter := n + 1;
+          F.BBLOCK{blknum      = n,
+                   freq        = ref 1, 
+                   annotations = ref (!blockNames),
+                   liveIn      = ref C.empty,
+                   liveOut     = ref C.empty,
+                   succ        = ref [],
+                   pred        = ref [],
+                   insns       = ref insns
+                  }
       end
 
-      fun endCluster(annotations) = let
-          exception LabTbl
-          val labTbl : F.block Intmap.intmap = Intmap.new(16, LabTbl)
-          val addLabTbl = Intmap.add labTbl
-          val lookupLabTbl = Intmap.map labTbl
-    
-          (* find next code block *)
-          exception NextCodeBlock
-          fun nextCodeBlock((blk as F.BBLOCK _)::_) = blk
-            | nextCodeBlock(_::rest) = nextCodeBlock rest
-            | nextCodeBlock [] = raise NextCodeBlock
-    
-          (* mapping of labels to code blocks *)
-          fun fillLabTbl(F.LABEL lab::blks) = 
-                (addLabTbl(Label.id lab, nextCodeBlock blks) 
-                                            handle NextCodeBlock => ();
-                 fillLabTbl blks)
-            (*| fillLabTbl(F.ORDERED labs::blks) = fillLabTbl(labs@blks)*)
-            | fillLabTbl(_::blks) = fillLabTbl(blks)
-            | fillLabTbl [] = ()
-    
-          val exitBlk = F.EXIT{blknum=nextBlkNum(), pred=ref [], freq=ref 1}
-    
-          (** update successor and predecessor information **)
-          fun graphEdges((blk as F.BBLOCK{blknum,insns,succ,...})::blks) = let
-                fun updtPred(F.BBLOCK{pred, ...},w) = pred := (blk,w)::(!pred)
-                  | updtPred(F.EXIT{pred, ...},w) = pred := (blk,w)::(!pred)
-    
-                fun succBlks([], acc) = acc
-                  | succBlks(Props.FALLTHROUGH::labs, acc) =
-                      ((succBlks(labs, (nextCodeBlock blks,ref 0)::acc))
-                        handle NextCodeBlock => error  "graphEdges.succBlks")
-                  | succBlks(Props.LABELLED lab::labs, acc) =
-                      ((succBlks(labs,(lookupLabTbl(Label.id lab),ref 0)::acc))
-                        handle LabTbl => 
-                          succBlks(labs, (exitBlk,ref 0)::acc))
-                  | succBlks(Props.ESCAPES::labs,acc) = 
-                       succBlks(labs, (exitBlk,ref 0)::acc)
-    
-                fun lastCodeBlock(F.BBLOCK _ :: _) = false
-                  | lastCodeBlock(_::rest) = lastCodeBlock rest
-                  | lastCodeBlock [] = true
-              in
-                case !insns of
-                  lastInstr::_ =>
-                    (case Props.instrKind lastInstr of 
-                      Props.IK_JUMP => succ:=succBlks 
-                                        (Props.branchTargets lastInstr,[])
-                      | _  => 
-                        if lastCodeBlock blks then
-                          succ := [(exitBlk,ref 0)] 
-                                    (* control must escape via trap *)
-                        else succ := [(nextCodeBlock blks,ref 0)] 
-                    )
-                | [] => succ := [(nextCodeBlock blks,ref 0)] 
-                (*esac*);
-                app updtPred (!succ);
-                graphEdges(blks)
-              end
-             | graphEdges(_::blks) = graphEdges(blks)
-            | graphEdges [] = ()
-    
-          fun mkEntryBlock () = let
-            val blocks = 
-                 map (fn Label.Label{id,...} => (lookupLabTbl id,ref 0)) 
-                       (!entryLabels)
-            val entryBlk = F.ENTRY{blknum=nextBlkNum(), freq=ref 1,
-                                   succ=ref blocks}
-          in
-            app (fn (F.BBLOCK{pred, ...},w) => 
-                  pred := (entryBlk,w)::(!pred)) blocks;
-            entryBlk
-          end
-    
-          val _ = case !currBlock
-            of blk as F.BBLOCK _ => blockList := blk :: !blockList
-             | _ => ()
-    
-          val blocks = rev(!blockList) 
-          val _ = blockList := []
-          val _ = blockNames := []
-          val _ = fillLabTbl(blocks)
-          val _ = graphEdges(blocks)
-          val cluster =
-           F.CLUSTER{blocks=blocks, entry=mkEntryBlock(), exit=exitBlk,
-                     blkCounter=ref(!bblkCnt), regmap= Option.valOf(!regmap),
-                     annotations=ref(annotations)}
-          val _ = regmap := NONE
-          val _ = aliasF := can'tUse
-        in  output cluster
-        end
-    
-      fun beginCluster _ = 
-      let val map = C.regmap()
-      in  entryLabels := [];
-          bblkCnt := 0;
-          blockList := [];
-          blockNames := [];
-          currBlock := NOBLOCK;
-          regmap := SOME map;
-          aliasF := Intmap.add map;
-          map
-      end 
+      (* Add current block to the list *)
+      fun endCurrBlock() =
+          case !currBlock of
+            blk as F.BBLOCK _ => (blocks := blk:: !blocks; currBlock := NOBLOCK)
+          | _ => ()
 
-      fun comment msg = annotation(#create BasicAnnotations.COMMENT msg)
+      (* Add pseudo op/label to the block list *)
+      fun blockListAdd b = (endCurrBlock(); blocks := b :: !blocks)
+      fun pseudoOp pOp = blockListAdd (F.PSEUDO pOp)
+      fun defineLabel lab = blockListAdd (F.LABEL lab)
+      fun entryLabel lab = (entryLabels := lab :: !entryLabels; defineLabel lab)
+
+      (* Add an instruction to the current block *)
+      fun emit instr =
+         (case !currBlock of
+            F.BBLOCK{insns, ...} => insns := instr :: !insns
+          | _ => currBlock := newBasicBlock [instr]
+          ;
+          case InsnProps.instrKind instr of 
+            InsnProps.IK_JUMP => (blocks := !currBlock :: !blocks; 
+                                  currBlock := NOBLOCK)
+          | _ => ()
+         )
+
+      (* Add an annotation *)
+      fun annotation a =
+          case #peek MLRiscAnnotations.BLOCK_NAMES a of
+            SOME names => (endCurrBlock(); blockNames := names)
+          | NONE => if #contains MLRiscAnnotations.EMPTY_BLOCK [a] then
+                       (case !currBlock of
+                          F.BBLOCK _ => ()
+                        | _ => currBlock := newBasicBlock [];
+                        endCurrBlock())
+                    else (case !currBlock of
+                            F.BBLOCK{annotations, ...} => 
+                             annotations := a :: !annotations
+                         |  _ => (currBlock := newBasicBlock []; annotation a)
+                         )
+
+      (* Add a comment *)
+      fun comment msg = annotation(#create MLRiscAnnotations.COMMENT msg)
+
+      (* Mark a block as exit *)
+      fun exitBlock liveRegs =
+      let val addCCreg = C.addCell C.CC 
+          (* we don't care about memory locations that may be live. *)
+          fun live(T.GPR(T.REG(_,r))::rest, acc) = live(rest,C.addReg(r, acc))
+            | live(T.FPR(T.FREG(_,f))::rest, acc) = live(rest,C.addFreg(f, acc))
+            | live(T.CCR(T.CC c)::rest, acc) = live(rest, addCCreg(c, acc))
+            | live(_::rest, acc) = live(rest, acc)
+            | live([], acc) = acc
+
+          fun findLiveOut(F.BBLOCK{liveOut, ...}::_) = liveOut
+            | findLiveOut(F.LABEL _::blks) = findLiveOut blks
+            | findLiveOut _ = error "exitBlock: no basic block"
+      in  endCurrBlock();
+          findLiveOut (!blocks) := live(liveRegs, C.empty)
+      end
+
+      (* Add an alias to the regmap *)
       fun alias(v,r) = !aliasF(v,r)
 
-   in S.STREAM
-      { beginCluster= beginCluster,
-        endCluster  = endCluster,
-        emit        = emitInstr,
-        defineLabel = defineLabel,
-        entryLabel  = entryLabel,
-        pseudoOp    = pseudoOp,
-        exitBlock   = exitBlock,
-        annotation  = annotation,
-        comment     = comment,
-        alias       = alias,
-        phi         = can'tUse
-      }
-   end
-  
-end
+      (* Start a new cluster *)
+      fun beginCluster _ = !regmap
 
+      (* End a cluster *)
+      fun endCluster blockAnnotations =
+      let exception LabelMap
+          val labelMap : F.block Intmap.intmap = Intmap.new(16, LabelMap)
+          val addLabelMap = Intmap.add labelMap
+
+          (* find the next code block *)
+          fun nextCodeBlock((blk as F.BBLOCK _)::_) = blk
+            | nextCodeBlock(_::blks) = nextCodeBlock blks
+            | nextCodeBlock [] = error "nextCodeBlock"
+
+          fun fillLabelMap(F.LABEL(Label.Label{id, ...})::blks,ids) =
+              fillLabelMap(blks, id::ids)
+            | fillLabelMap((blk as F.BBLOCK _)::blks, ids) =
+              let fun loop [] = ()
+                    | loop (id::ids) = (addLabelMap(id, blk); loop ids)
+              in  loop ids; fillLabelMap(blks, [])  end
+            | fillLabelMap(_::blks, ids) = fillLabelMap(blks, ids)
+            | fillLabelMap([], _) = ()
+
+          val exitBlk = 
+              case exit of
+                F.EXIT{freq, ...} => 
+                     F.EXIT{blknum=nextBlockNum(), pred=ref [], freq=freq}
+              | _ => F.EXIT{blknum=nextBlockNum(), pred=ref [], freq=ref 1}
+
+          val (entryBlk, entryEdges) =
+              case entry of
+                F.ENTRY{freq, succ, ...} => 
+                    (F.ENTRY{blknum=nextBlockNum(), succ=succ, freq=freq},
+                     succ)
+              | _ => 
+                let val edges = ref []
+                in  (F.ENTRY{blknum=nextBlockNum(), succ=edges, freq=ref 1},
+                     edges)
+                end
+
+          val lookupLabelMap = Intmap.mapWithDefault (labelMap, exitBlk)
+
+          fun addPred blk (F.BBLOCK{pred, ...}, w) = pred := (blk,w) :: !pred
+            | addPred blk (F.EXIT{pred, ...}, w) = pred := (blk,w) :: !pred
+            | addPred _   _ = error "addPred"
+
+          (* Update successor and predecessor edges *)
+          fun insertGraphEdges [] = ()
+            | insertGraphEdges((blk as F.BBLOCK{blknum,insns,succ,...})::rest) =
+              let fun succBlocks([], succs) = succs
+                    | succBlocks(InsnProps.FALLTHROUGH::labs, succs) = 
+                        succBlocks(labs, (nextCodeBlock rest, ref 0)::succs)
+                    | succBlocks(InsnProps.LABELLED(Label.Label{id,...})::labs,
+                                 succs) =
+                        succBlocks(labs, (lookupLabelMap id, ref 0)::succs)
+                    | succBlocks(InsnProps.ESCAPES::labs, succs) =     
+                        succBlocks(labs, (exitBlk, ref 0)::succs)
+
+                  (* Is it the last code block *)
+                  fun isLastCodeBlock(F.BBLOCK _::_) = false
+                    | isLastCodeBlock(_::rest) = isLastCodeBlock rest
+                    | isLastCodeBlock [] = true
+
+              in  case !insns of
+                    lastInstr::_ =>
+                    (case InsnProps.instrKind lastInstr of
+                       InsnProps.IK_JUMP => 
+                          succ := succBlocks
+                             (InsnProps.branchTargets lastInstr,[])
+                     | _ => 
+                       if isLastCodeBlock rest then
+                          succ := [(exitBlk, ref 0)]
+                                  (* control must escape via trap! *)
+                       else succ := [(nextCodeBlock rest, ref 0)]
+                    ) 
+                  | [] => succ := [(nextCodeBlock rest, ref 0)]
+                  ;
+                  app (addPred blk) (!succ);
+                  insertGraphEdges rest
+              end
+            | insertGraphEdges(_::rest) = insertGraphEdges rest
+
+          (* And entry edges *)
+          fun insertEntryEdges() = 
+          let val newEntryEdges = 
+                  map (fn Label.Label{id, ...} => (lookupLabelMap id,ref 0))
+                      (!entryLabels) 
+          in  entryEdges := newEntryEdges @ !entryEdges;
+              app (addPred entryBlk) newEntryEdges
+          end
+                      
+
+          val _         = endCurrBlock()
+          val allBlocks = rev(!blocks)
+
+             (* clean up *)
+          val _         = blocks := []
+          val _         = blockNames := []
+
+             (* fill in edges *)
+          val _ = fillLabelMap(allBlocks, [])
+          val _ = insertGraphEdges(allBlocks)
+          val _ = insertEntryEdges() 
+
+             (* create a new cluster *)
+          val cluster = 
+              F.CLUSTER{blocks=allBlocks, entry=entryBlk, exit=exitBlk,
+                        blkCounter=ref(!blkCounter), regmap= !regmap, 
+                        annotations=ref(blockAnnotations @ annotations)}
+
+             (* reset regmap *)
+	  val _         = blkCounter := 0
+          val _         = regmap := C.regmap()  
+          val _         = aliasF := Intmap.add (!regmap)
+          val _         = entryLabels := []
+      in  compile cluster
+      end
+
+  in  S.STREAM
+      {  beginCluster = beginCluster,
+         endCluster   = endCluster,
+         emit         = emit,
+         defineLabel  = defineLabel,
+         entryLabel   = entryLabel,
+         pseudoOp     = pseudoOp,
+         exitBlock    = exitBlock,
+         annotation   = annotation,
+         comment      = comment,
+         alias        = alias,
+         phi          = can'tUse
+      }
+  end
+
+end 

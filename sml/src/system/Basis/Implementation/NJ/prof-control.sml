@@ -105,15 +105,16 @@ structure ProfControl : PROF_CONTROL =
 	  end
 
     fun register names = let
-	  val ref (list as UNIT{base,size,...}::_) = units
-	  val count = newlines names
-	  val a = Array.array(count,0)
-	  val b = base+size
-	  in
-	    increase(b+count);
-	    units := UNIT{base=b,size=count,counts=a,names=names}::list;
-	    (b,a,current)
-	  end
+	val list = !units
+	val UNIT { base, size, ... } = List.hd list
+	val count = newlines names
+	val a = Array.array(count,0)
+	val b = base+size
+    in
+	increase(b+count);
+	units := UNIT{base=b,size=count,counts=a,names=names}::list;
+	(b,a,current)
+    end
 
     val _ =  Core.profile_register := register;
 
