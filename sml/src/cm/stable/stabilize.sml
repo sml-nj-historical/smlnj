@@ -33,7 +33,7 @@ end
 
 functor StabilizeFn (val bn2statenv : statenvgetter
 		     val getPid : SmlInfo.info -> pid option
-		     val warmup : BinInfo.info * pid -> unit
+		     val warmup : BinInfo.info * pid option -> unit
 		     val recomp : recomp) :> STABILIZE = struct
 
     datatype pitem =
@@ -95,10 +95,12 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    val bsz = OS.FileSys.fileSize o bname
 
 	    fun cpb s i = let
+		val N = 4096
 		fun copy ins = let
 		    fun cp () =
 			if BinIO.endOfStream ins then ()
-			else (BinIO.output (s, BinIO.input ins); cp ())
+			else (BinIO.output (s, BinIO.inputN (ins, N));
+			      cp ())
 		in
 		    cp ()
 		end
@@ -644,13 +646,11 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    fun r_sn_raw () = let
 		val popt = r_option r_pid ()
 		val i = r_si ()
-		val n = DG.BNODE { bininfo = i,
-				   localimports = r_list r_sn (),
-				   globalimports = r_list r_fsbn () }
 	    in
-		case popt of
-		    NONE => n
-		  | SOME p => (warmup (i, p); n)
+		warmup (i, popt);
+		DG.BNODE { bininfo = i,
+			   localimports = r_list r_sn (),
+			   globalimports = r_list r_fsbn () }
 	    end
 
 	    and r_sn () =

@@ -5,13 +5,17 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-functor FullPersstateFn (structure MachDepVC : MACHDEP_VC) :> FULL_PERSSTATE =
-    struct
-	structure E = GenericVC.Environment
-	structure EM = GenericVC.ErrorMsg
-	structure PP = PrettyPrint
+local
+    structure E = GenericVC.Environment
+    structure EM = GenericVC.ErrorMsg
+    structure PP = PrettyPrint
 
-	type env = GenericVC.Environment.dynenv
+    type env = GenericVC.Environment.dynenv
+in
+functor FullPersstateFn (structure MachDepVC : MACHDEP_VC
+			 val warmup_hook: env option ref) :> FULL_PERSSTATE =
+    struct
+	type env = env
 
 	datatype ord_key =
 	    SML of SmlInfo.info
@@ -50,11 +54,33 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC) :> FULL_PERSSTATE =
 
 	fun discard_pers i = persmap := discard (i, !persmap)
 
+	fun new_info (i, popt) = let
+	    fun dlook (e, p) =
+		SOME (DynamicEnv.look e p) handle DynamicEnv.Unbound => NONE
+	in
+	    discard_pers i;
+	    case (!warmup_hook, popt) of
+		(SOME we, SOME pid) =>
+		    (case dlook (we, pid) of
+			 NONE => ()
+		       | SOME x => let
+			     val de =
+				 DynamicEnv.bind (pid, x, DynamicEnv.empty)
+			 in
+			     persmap := Map.insert (!persmap, i,
+						    SOME (de, ref Set.empty))
+			 end)
+	      | _ => ()
+	end
+
+	fun new_smlinfo (i, popt) = new_info (SML i, popt)
+	fun new_bininfo (i, popt) = new_info (STABLE i, popt)
+
 	local
 	    structure RecompPersstate =
 		RecompPersstateFn (structure MachDepVC = MachDepVC
 				   val discard_code = false
-				   val discard_value = discard_pers o SML)
+				   val new_smlinfo = new_smlinfo)
 	in
 	    open RecompPersstate
 	end
@@ -121,3 +147,4 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC) :> FULL_PERSSTATE =
 	    Map.appi addDep tm
 	end
     end
+end

@@ -12,6 +12,7 @@ signature PATHCONFIG = sig
 
     val hardwire : (string * string) list -> mode
     val envcfg : (string * string EnvConfig.getterSetter) list -> mode
+    val bootcfg : string -> mode
 
     val configAnchor : mode -> string -> (unit -> string) option
 end
@@ -33,6 +34,13 @@ structure PathConfig :> PATHCONFIG = struct
       | envcfg ((a', gs) :: t) a =
 	if a = a' then SOME (fn () => EnvConfig.getSet gs NONE)
 	else envcfg t a
+
+    fun bootcfg bootdir a = let
+	fun isDir x = OS.FileSys.isDir x handle _ => false
+	val d = OS.Path.concat (bootdir, a)
+    in
+	if isDir d then SOME (fn () => d) else NONE
+    end
 
     fun configAnchor m s = m s
 end

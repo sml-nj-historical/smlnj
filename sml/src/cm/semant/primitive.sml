@@ -36,6 +36,8 @@ signature PRIMITIVE = sig
 		   pidInfo: pidInfo }
 
     val configuration : pspec list -> configuration
+
+    val primEnvConf : configuration
 end
 
 structure Primitive :> PRIMITIVE = struct
@@ -43,22 +45,23 @@ structure Primitive :> PRIMITIVE = struct
     structure BE = GenericVC.BareEnvironment
     structure E = GenericVC.Environment
     structure DE = DAEnv
+    structure PS = GenericVC.PersStamps
+    structure SE = GenericVC.CMStaticEnv
 
     type primitive = string
 
-    type pidInfo = { statpid: GenericVC.PersStamps.persstamp,
-		     sympid: GenericVC.PersStamps.persstamp,
-		     ctxt: GenericVC.Environment.staticEnv }
+    type pidInfo = { statpid: PS.persstamp, sympid: PS.persstamp,
+		     ctxt: E.staticEnv }
 
     type pinfo = { name: string,
 		   exports: SymbolSet.set,
 		   da_env: DE.env,
-		   env: GenericVC.Environment.environment,
+		   env: E.environment,
 		   pidInfo: pidInfo,
 		   ident: char }
 
     type pspec = { name: string,
-		   env: GenericVC.Environment.environment,
+		   env: E.environment,
 		   pidInfo: pidInfo }
 
     type configuration =
@@ -116,5 +119,20 @@ structure Primitive :> PRIMITIVE = struct
 	val (sm, sl, _) = StringMap.foldl one (StringMap.empty, [], 0) m
     in
 	(sm, Vector.fromList (rev sl))
+    end
+
+    val primEnvConf = let
+	(* We could actually go and calculate the actual pid of primEnv.
+	 * But in reality it's pretty pointless to do so... *)
+	val bogusPid = PS.fromBytes (Byte.stringToBytes "0123456789abcdef")
+	val pspec = { name = "primitive",
+		      env = E.mkenv { static = E.primEnv,
+				      symbolic = E.symbolicPart E.emptyEnv,
+				      dynamic = E.dynamicPart E.emptyEnv },
+		      pidInfo = { statpid = bogusPid,
+				  sympid = bogusPid,
+				  ctxt = SE.empty } }
+    in
+	configuration [pspec]
     end
 end

@@ -76,6 +76,7 @@ is
 	paths/sources.cm
 
 	(* bootstrap compiler (formerly known as "batch") *)
+	bootstrap/names.sml
 	bootstrap/build-initdg.sml
 	bootstrap/btcompile.sml
 	bootstrap/mkbootlist.sml
@@ -101,6 +102,8 @@ is
 	../ml-yacc/lib/sources.cm
 #endif
 
-	(* dummy modules for testing *)
-	dummy.sml
+#if defined(NEW_CM)
+	cm-boot.sml
+#else
 	link.sml
+#endif

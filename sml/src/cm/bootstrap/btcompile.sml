@@ -8,14 +8,7 @@
  *)
 functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 			    val os: SMLofNJ.SysInfo.os_kind) :> sig
-
-    val compile : 
-	{ dirbase: string,
-	  pcmodespec: string,
-	  initgspec: string,
-	  maingspec: string }
-	-> bool
-
+    val compile : string option -> bool
 end = struct
 
     structure EM = GenericVC.ErrorMsg
@@ -36,7 +29,8 @@ end = struct
     structure RecompPersstate =
 	RecompPersstateFn (structure MachDepVC = MachDepVC
 			   val discard_code = true
-			   fun discard_value (i: SmlInfo.info) = ())
+			   fun new_smlinfo (i, popt) = ())
+
     structure Recomp = RecompFn (structure PS = RecompPersstate)
     structure RT = CompileGenericFn (structure CT = Recomp)
 
@@ -65,7 +59,12 @@ end = struct
 	    end
 	  | _ => raise Fail "BootstrapCompile:listName: bad name"
 
-    fun compile { dirbase, pcmodespec, initgspec, maingspec } = let
+    fun compile dbopt = let
+
+	val dirbase = getOpt (dbopt, BtNames.dirbaseDefault)
+	val pcmodespec = BtNames.pcmodespec
+	val initgspec = BtNames.initgspec
+	val maingspec = BtNames.maingspec
 
 	val arch = MachDepVC.architecture
 	val osname = FilenamePolicy.kind2name os
@@ -106,6 +105,9 @@ end = struct
 	val initgspec = stdpath initgspec
 	val maingspec = stdpath maingspec
 
+	val cmifile = valOf (SrcPath.reAnchoredName (initgspec, bootdir))
+	    handle Option => raise Fail "BootstrapCompile: cmifile"
+
 	val initfnpolicy =
 	    FilenamePolicy.separate { bindir = bootdir, bootdir = bootdir }
 	        { arch = arch, os = os }
@@ -129,21 +131,8 @@ end = struct
 
 	(* first, build an initial GeneralParam.info, so we can
 	 * deal with the pervasive env and friends... *)
-	local
-	    (* We could actually go and calculate the actual pid of primEnv.
-	     * But in reality it's pretty pointless to do so... *)
-	    val bogusPid = PS.fromBytes (Byte.stringToBytes "0123456789abcdef")
-	    val pspec = { name = "primitive",
-			  env = E.mkenv { static = E.primEnv,
-					  symbolic = E.symbolicPart E.emptyEnv,
-					  dynamic = emptydyn },
-			  pidInfo = { statpid = bogusPid,
-				      sympid = bogusPid,
-				      ctxt = SE.empty } }
-	in
-	    val primconf = Primitive.configuration [pspec]
-	end
 
+	val primconf = Primitive.primEnvConf
 	val mkInitParam = mkParam { primconf = primconf,
 				    pervasive = E.emptyEnv,
 				    pervcorepids = PidSet.empty,
@@ -229,6 +218,16 @@ end = struct
 			in
 			    app showBootFile bootfiles
 			end
+			fun cpCMI (ins, outs) = let
+			    val N = 4096
+			    fun cp () =
+				if TextIO.endOfStream ins then ()
+				else (TextIO.output (outs,
+						     TextIO.inputN (ins, N));
+				      cp ())
+			in
+			    cp ()
+			end
 		    in
 			Say.say ["Runtime System PID is: ", rtspid, "\n"];
 			SafeIO.perform { openIt = fn () =>
@@ -245,6 +244,16 @@ end = struct
 					 work = writeList,
 					 cleanup = fn () =>
 					   OS.FileSys.remove listfile
+					   handle _ => () };
+			SafeIO.perform { openIt = fn () =>
+					   (SrcPath.openTextIn initgspec,
+					    AutoDir.openTextOut cmifile),
+					 closeIt = fn (ins, outs) =>
+					   (TextIO.closeIn ins;
+					    TextIO.closeOut outs),
+					 work = cpCMI,
+					 cleanup = fn () =>
+					   OS.FileSys.remove cmifile
 					   handle _ => () };
 			true
 		    end

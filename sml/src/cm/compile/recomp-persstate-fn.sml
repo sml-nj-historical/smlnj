@@ -5,10 +5,14 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
+local
+    structure Pid = GenericVC.PersStamps
+    type pid = Pid.persstamp
+in
 functor RecompPersstateFn
     (structure MachDepVC : MACHDEP_VC
-     val discard_code : bool
-     val discard_value : SmlInfo.info -> unit) :> RECOMP_PERSSTATE = struct
+     val new_smlinfo : SmlInfo.info * pid option -> unit
+     val discard_code : bool) :> RECOMP_PERSSTATE = struct
 
 	structure MachDepVC = MachDepVC
 	structure BF = MachDepVC.Binfile
@@ -43,7 +47,7 @@ functor RecompPersstateFn
 	    val ts = SmlInfo.lastseen i
 	    val tmemo = (memo, ts)
 	in
-	    discard_value i;
+	    new_smlinfo (i, BF.exportPidOf (#bfc memo));
 	    smlmap := SmlInfoMap.insert (!smlmap, i, tmemo)
 	end
 
@@ -68,3 +72,4 @@ functor RecompPersstateFn
 
 	val pid_fetch_sml = BF.exportPidOf o bfc_fetch_sml
     end
+end

@@ -22,4 +22,7 @@ signature FULL_PERSSTATE = sig
 	BinInfo.info * env * BinInfo.info list -> unit
 
     val rememberShared : unit -> unit
+
+    val new_bininfo :
+	BinInfo.info * GenericVC.PersStamps.persstamp option -> unit
 end
