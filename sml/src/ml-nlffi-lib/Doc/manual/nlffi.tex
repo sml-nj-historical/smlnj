@@ -595,25 +595,134 @@ If the {\tt struct} or {\tt union} with tag $t$ is complete, then
   information corresponding to this {\tt struct}- or {\tt union}-type.
   The ML type of {\tt typ} is {\tt tag C.su C.T.typ}.
 \end{description}
-In addition to this, there will be a light-weight access function {\tt
-  f\_$f$'} for each field or bitfield $f$ of the {\tt struct} or {\tt
-  union}.
 
-If $f$ is a regular field, then {\tt f\_$f$'} maps a value of type
-{\tt (tag C.su, $\zeta$) C.obj'} to a value of type {\tt (${\tau}_f$,
-  ${\zeta}_f$) C.obj'} where ${\tau}_f$ is the ML type encoding the C
-type of field $f$ and where {\tt ${\zeta}_f =$ C.rw} when $f$ was
-declared {\tt const} or ${\zeta}_f = \zeta$ otherwise.
+\subsubsection*{Fields}
 
-If $f$ is a bitfield, then the result type of {\tt f\_$f$'} is either
-{\tt ${\zeta}_f$ C.sbf} or {\tt ${\zeta}_f$ C.ubf}, depending on
-whether the bitfield's C type is {\tt signed} or {\tt unsigned}.
+In addition to {\tt type tag}, {\tt val size}, and {\tt val typ}, the
+{\gentool} tool will generate a small set of structure elements for
+each field $f$ of the {\tt struct} or {\tt union}.  Let $t_f$ be the
+type of $f$:
 
-For every field $f$ that is either a regular field of complete type or
-a bitfield there is also a heavy-weight access function {\tt f\_$f$}
-which maps {\tt (tag C.su, $\zeta$) C.obj} to {\tt (${\tau}_f$,
-  ${\zeta}_f$) C.obj}, {\tt ${\zeta}_f$ C.sbf}, or {\tt ${\zeta}_f$
-  C.ubf}.
+\begin{description}\setlength{\itemsep}{0pt}
+\item[{\tt type t\_f\_$f$}] is an abbreviation for the ML encoding of $t_f$.
+\item[!{\tt val typ\_f\_$f$}] holds runtime type information regarding
+  $t_f$.  If $t_f$ is incomplete, then {\tt typ\_f\_$f$} is omitted.
+\item[!{\tt val f\_$f$}] is the heavy-weight access function for $f$.
+  It maps a value of type {\tt (tag C.su, $\zeta$) C.obj} to a value
+  of type {\tt (t\_f\_$f$, ${\zeta}_f$) C.obj} and is polymorphic in
+  $\zeta$.  If $f$ was declared {\tt const}, then {\tt ${\zeta}_f =$
+    C.ro}.  Otherwise ${\zeta}_f = \zeta$.  If $t_f$ is incomplete,
+  then {\tt f\_$f$} is omitted.
+\item[{\tt val f\_$f$'}] is the light-weight access function for $f$.
+  It maps a value of type {\tt (tag C.su, $\zeta$) C.obj'} to a value
+  of type {\tt (t\_f\_$f$, ${\zeta}_f$) C.obj'} and is polymorphic in
+  $\zeta$.  If $f$ was declared {\tt const}, then {\tt ${\zeta}_f =$
+    C.ro}.  Otherwise ${\zeta}_f = \zeta$.
+\end{description}
+
+\subsubsection*{Bitfields}
+
+If $f$ is a bitfield, then two access functions are generated:
+
+\begin{description}\setlength{\itemsep}{0pt}
+\item[{\tt val f\_$f$}] is the heavy-weight access function, mapping
+  values of type {\tt (tag C.su, $\zeta$) C.obj} to either {\tt
+    ${\zeta}_f$ C.sbf} or {\tt ${\zeta}_f$ C.ubf}, depending on
+  whether the type of $f$ is {\tt signed} or {\tt unsigned}.  The
+  function is polymorphic in $\zeta$.  If $f$ was declared {\tt
+    const}, then {\tt ${\zeta}_f =$ C.ro}.  Otherwise, ${\zeta}_f =
+  \zeta$.
+\item[{\tt val f\_$f$'}] is the light-weight access function, mapping
+  values of type {\tt (tag C.su, $\zeta$) C.obj'} to either {\tt
+    ${\zeta}_f$ C.sbf} or {\tt ${\zeta}_f$ C.ubf}, using the same
+  conventions as those used for {\tt f\_$f$}.
+\end{description}
+
+\subsubsection*{Example}
+
+\begin{small}
+\begin{center}
+\begin{tabular}{c|c}
+C declaration & signature of ML-side representation \\ \hline\hline
+\begin{minipage}{2in}
+\begin{verbatim}
+struct t {
+  int i;
+  const double d;
+  struct t *nx;
+    /* complete */
+  struct s *ms;
+    /* incomplete */
+  const int f : 2;
+  unsigned g : 3;
+};
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure S_t : sig
+  type tag = ...
+  val size : tag C.su C.S.size
+  val typ : tag C.su C.T.typ
+
+  type t_f_i = C.T.sint
+  val f_i  : (tag C.su, 'c) obj  -> (t_f_i, 'c) C.obj
+  val f_i' : (tag C.su, 'c) obj' -> (t_f_i, 'c) C.obj'
+
+  type t_f_d = C.T.double
+  val f_d  : (tag C.su, 'c) obj  -> (t_f_d, C.ro) C.obj
+  val f_d' : (tag C.su, 'c) obj' -> (t_f_d, C.ro) C.obj'
+
+  type t_f_nx = (tag C.su, C.rw) C.obj C.ptr
+  val typ_f_nx : t_f_nx C.T.typ
+  val f_nx  : (tag C.su, 'c) obj  -> (t_f_nx, 'c) C.obj
+  val f_nx' : (tag C.su, 'c) obj' -> (t_f_nx, 'c) C.obj'
+
+  type t_f_ms = (ST_s.tag C.su, C.rw) C.obj C.ptr
+  val f_ms' : (tag C.su, 'c) obj' -> (t_f_ms, 'c) C.obj'
+
+  val f_f  : (tag C.su, 'c) C.obj  -> C.ro C.sbf
+  val f_f' : (tag C.su, 'c) C.obj' -> C.ro C.sbf
+
+  val f_g  : (tag C.su, 'c) C.obj  -> 'c C.ubf
+  val f_g' : (tag C.su, 'c) C.obj' -> 'c C.ubf
+end
+
+\end{verbatim}
+\end{minipage}
+\end{tabular}
+\end{center}
+\end{small}
+
+\subsubsection*{Unnamed {\tt struct}s or {\tt union}s}
+
+Each occurrence of an unnamed {\tt struct} or {\tt union} in C has its
+own type identity.  The {\gentool} tool models this by artificially
+generating a unique tag for each such occurrence.  The tags are chosen
+in such a way that they cannot clash with real tag names that might
+occur elsewhere in the C code.  After choosing a fresh tag $t$,
+{\gentool} produces ML code according to the same rules that it uses
+when $t$ is a real tag explicitly present in the C code.
+
+Here are the rules for generating tags:
+
+\begin{itemize}\setlength{\itemsep}{0pt}
+\item If the {\tt struct}- or {\tt union}-declaration occurs at top
+  level, i.e., not within the context of a {\tt typedef} or another
+  {\tt struct}- or {\tt union}-declaration, the generated tag consists
+  of a sequence of decimal digits and can be read as a non-negative
+  number.
+\item If the immediate context of the unnamed {\tt struct} or {\tt
+    union} is a {\tt typedef} for a type name $t$, then the generated
+  tag will be {\tt '$t$}.
+\item The tag of an unnamed {\tt struct} or {\tt union} is another
+  (named or unnamed) {\tt struct} or {\tt union} with (real or
+  generated) tag $t$ is chosen to be {\tt $t$'$n$} where $n$ is a
+  fresh sequence of decimal digits that can be read as a non-negative
+  number.
+\end{itemize}
 
 \subsection{Enumerations ({\tt enum})}
 
