@@ -1,0 +1,13 @@
+Library 
+	functor AlphaPeepHole
+is
+
+#if defined(NEW_CM)
+	basis.cm
+#endif
+	MLRISC.cm
+	Peephole.cm
+	ALPHA.cm
+
+	(* alpha *)
+	alpha/instructions/alphaPeephole.sml
