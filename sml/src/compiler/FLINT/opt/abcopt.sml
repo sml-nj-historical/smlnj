@@ -27,6 +27,7 @@ val lvname = !PP.LVarString
 val pDebug = ref false
 
 val say = Control_Print.say
+
 fun sayABC s = 
     (* (if !CTRL.printABC then say s
      *  else ()) *) ()
@@ -41,6 +42,10 @@ fun printVals nil = say "\n"
 
 fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 
+    val lt_len = LT.ltc_tyc (LT.tcc_arrow (LT.ffc_fixed,
+					   [LT.tcc_void], 
+					   [LT.tcc_int]))
+		 
     fun cse lmap rmap lexp = let
 
 	fun substVar x =
@@ -121,18 +126,20 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 	g lexp
     end
 
-    val lt_len = LT.ltc_tyc (LT.tcc_arrow (LT.ffc_fixed,
-					   [LT.tcc_void], 
-					   [LT.tcc_int]))
-		 
-    fun lenOp (src, body) =
+    fun lenOp (src, mm, body) =
 	(sayABC ("hoisting: length of "^(lvname src)^"\n");
-	 F.PRIMOP((NONE, PO.LENGTH, lt_len, []),
-		  [F.VAR src],
-		  mklv(),
-		  body))
+	 case M.find(mm, src)
+	  of NONE => bug "strange bug!"
+	   | SOME lty =>
+	     F.PRIMOP((NONE, PO.LENGTH, lty, []),
+		      [F.VAR src],
+		      mklv(),
+		      body))
 	
     val agressiveHoist = ref true
+    val mapUnion = M.unionWith (fn (a, b) => a)
+    val mapIntersect = M.intersectWith (fn (a, b) => a)
+    fun remove' (m, k) = let val (m', _) = M.remove(m, k) in m' end
 
     fun sayVars nil = ()
       | sayVars (x::nil) = sayABC (lvname x)
@@ -141,23 +148,22 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 	 sayABC ", ";
 	 sayVars xs)
 
-    fun hoist (F.RET x)= (S.empty, (F.RET x))
+    fun hoist (F.RET x)= (M.empty, (F.RET x))
 			 
       | hoist (F.LET (vars, lexp, body)) =
 	let
-	    val (s1, lexp') = hoist lexp
-	    val (s2, body') = hoist body
-	    fun f x = S.member(s2, x)
-	    val hlist = List.filter f vars
+	    val (m1, lexp') = hoist lexp
+	    val (m2, body') = hoist body
+	    fun ft x = M.inDomain(m2, x)
+	    val hlist = List.filter ft vars
 
-	    fun h nil ss b = (ss, b)
-	      | h (x::xs) ss b = 
-		h xs (S.delete (ss, x)) (lenOp(x, b))
+	    fun h nil mm b = (mm, b)
+	      | h (x::xs) mm b = 
+		h xs (remove' (mm, x)) (lenOp(x, mm, b))
 		
-	    val (s2', body'') = h hlist s2 body'
+	    val (m2', body'') = h hlist m2 body'
 	in
-	    (S.union(s1, s2'),
-	     F.LET (vars, lexp', body''))
+	    (mapUnion (m1, m2'), F.LET (vars, lexp', body''))
 	end
 
       | hoist (F.FIX (fundecs, body)) =
@@ -168,17 +174,17 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 		let
 		    val varList = map #1 lvtys
 
-		    val (s, b) = hoist body
+		    val (m, b) = hoist body
 
-		    fun ft x = S.member (s, x)
+		    fun ft x = M.inDomain (m, x)
 
-		    val toHoist = (List.filter ft varList)
+		    val toHoist = List.filter ft varList
 
-		    fun h ss nil b = (ss, b)
-		      | h ss (v::vs) b = 
-			h (S.delete (ss, v)) vs (lenOp(v, b))
+		    fun h mm nil b = (mm, b)
+		      | h mm (v::vs) b = 
+			h (remove' (mm, v)) vs (lenOp(v, mm, b))
 
-		    val (set, body') = h s toHoist b
+		    val (m', body') = h m toHoist b
 
 		in
 		    (*
@@ -186,10 +192,11 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 		    sayVars (S.listItems set);
 		    sayABC ("]\n");
 		     *)
-		    sayABC ("List of hoisted vars in "^(lvname lv)^" (FIX): [");
+		    sayABC ("List of hoisted vars in "^
+			    (lvname lv)^" (FIX): [");
 		    sayVars (toHoist);
 		    sayABC ("]\n");
-		    (set, (fk, lv, lvtys, body'))
+		    (m', (fk, lv, lvtys, body'))
 		end
 
 		    
@@ -198,27 +205,27 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 	    val fsets = map #1 fsbody
 	    val fbody = map #2 fsbody
 
-	    val (bset, newbody) = hoist body
+	    val (bmap, newbody) = hoist body
 
-	    val sss = foldl S.union bset fsets
+	    val mmm = foldl mapUnion bmap fsets
 
 	in
-	    (sss, F.FIX (fbody, newbody))
+	    (mmm, F.FIX (fbody, newbody))
 	end
 
-      | hoist (F.APP x) = (S.empty, F.APP x)
+      | hoist (F.APP x) = (M.empty, F.APP x)
 
       | hoist (F.TFN (tfundec as (tfkind, lv, tvtks, tfnbody), body)) =
 	let
-	    val (stfn, btfn) = hoist tfnbody
-	    val (s, b) = hoist body
+	    val (mtfn, btfn) = hoist tfnbody
+	    val (m, b) = hoist body
 	in
-	    (S.union (stfn, s), F.TFN (tfundec, b))
+	    (mapUnion (mtfn, m), F.TFN (tfundec, b))
 	end
 
-      | hoist (F.TAPP (v, tl)) = (S.empty, F.TAPP (v, tl))
+      | hoist (F.TAPP (v, tl)) = (M.empty, F.TAPP (v, tl))
 				 
-      (* if agressive, use union; otherwise, intersect! *)
+      (* if agressive, use union; otherwise use intersect *)
       (* no var defined, so no hoisting *)
       | hoist (F.SWITCH (v, consig, clexps, lexp)) =
 	let
@@ -226,25 +233,25 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 
 	    val sblist = (map hoist lexps)
 
-	    val sets = map #1 sblist
+	    val maps = map #1 sblist
 	    val bodys = map #2 sblist
 
-	    val (defSet, defBody) =
+	    val (defMap, defBody) =
 		case lexp
 		 of SOME l =>
 		    let
-			val (s, b) = hoist l
+			val (m, b) = hoist l
 		    in
-			(SOME s, SOME b)
+			(SOME m, SOME b)
 		    end
 		  | NONE => (NONE, NONE)
 
 	    (* agressive may not always be benificial *)
 	    (* it's turned off by default *)
-	    val setOper = if !agressiveHoist then S.union
-			  else S.intersection
+	    val mapOper = if !agressiveHoist then mapUnion
+			  else mapIntersect
 
-	    val resSet = (foldl setOper (hd sets) (tl sets))
+	    val resSet = (foldl mapOper (hd maps) (tl maps))
 
 	    fun helper nil nil = nil
 	      | helper ((c, le)::xs) (le'::ys) =
@@ -254,8 +261,8 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 	    val resClexps = helper clexps bodys
 
 	in
-	    ((case defSet
-	       of SOME s => setOper(s, resSet)
+	    ((case defMap
+	       of SOME m => mapOper(m, resSet)
 		| NONE => resSet),
 	     F.SWITCH (v, consig, resClexps, defBody))
 	end
@@ -264,45 +271,44 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
       (* but anyways... *)
       | hoist (F.CON (d, tl, v, lv, le)) =
 	let
-	    val (s, b) = hoist le
+	    val (m, b) = hoist le
 	in
-	    if S.member (s, lv) then
-		(S.delete (s, lv),
-		 F.CON (d, tl, v, lv, lenOp(lv, b)))
-	    else (s, F.CON (d, tl, v, lv, b))
+	    if M.inDomain (m, lv) then
+		(remove' (m, lv),
+		 F.CON (d, tl, v, lv, lenOp(lv, m, b)))
+	    else (m, F.CON (d, tl, v, lv, b))
 	end
 
-	    
-      (* there prob. isn't anything interesting here either *)
+      (* there probably isn't anything interesting here either *)
       (* but anyways... *)
       | hoist (F.RECORD (rk, vals, lv, le)) =
 	let
-	    val (s, b) = hoist le
+	    val (m, b) = hoist le
 	in
-	    if S.member (s, lv) then
-		(S.delete (s, lv),
-		 F.RECORD (rk, vals, lv, lenOp(lv, b)))
-	    else (s, F.RECORD (rk, vals, lv, b))
+	    if M.inDomain (m, lv) then
+		(remove' (m, lv),
+		 F.RECORD (rk, vals, lv, lenOp(lv, m, b)))
+	    else (m, F.RECORD (rk, vals, lv, b))
 	end
 
       | hoist (F.SELECT (v, f, lv, le)) =
 	let
-	    val (s, b) = hoist le
+	    val (m, b) = hoist le
 	in
-	    if (S.member (s, lv)) then
-		(S.delete(s, lv), 
-		 F.SELECT (v, f, lv, lenOp(lv, b)))
-	    else (s, F.SELECT (v, f, lv, b))
+	    if (M.inDomain (m, lv)) then
+		(remove' (m, lv), 
+		 F.SELECT (v, f, lv, lenOp(lv, m, b)))
+	    else (m, F.SELECT (v, f, lv, b))
 	end
 
       | hoist (F.RAISE (v, ltys)) = 
-	(S.empty, F.RAISE (v, ltys))
+	(M.empty, F.RAISE (v, ltys))
 
       | hoist (F.HANDLE (le, v)) =
 	let
-	    val (s, b) = hoist le
+	    val (m, b) = hoist le
 	in
-	    (s, F.HANDLE (b, v))
+	    (m, F.HANDLE (b, v))
 	end
 
       (* what's used is just intersection of that of
@@ -310,31 +316,31 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
        *)
       | hoist (F.BRANCH (po, vals, le1, le2)) =
 	let
-	    val (s1, b1) = hoist le1
-	    val (s2, b2) = hoist le2
-	    val setOper =
-		if (!agressiveHoist) then S.union
-		else S.intersection
+	    val (m1, b1) = hoist le1
+	    val (m2, b2) = hoist le2
+	    val mapOper =
+		if (!agressiveHoist) then mapUnion
+		else mapIntersect
 	in
 	    (*
 	    sayABC "for this branch: [";
 	    sayVars (S.listItems (S.union (s1, s2)));
 	    sayABC "]\n";
 	     *)
-	    (* let's be agressive here! *)
-	    (setOper (s1, s2), 
-	     F.BRANCH (po, vals, b1, b2))
+	    (mapOper (m1, m2), F.BRANCH (po, vals, b1, b2))
 	end
 
       (* the use site *)
       | hoist (F.PRIMOP(p as (d, PO.LENGTH, lty, tycs),
 			vals, dest, body)) =
 	let
-	    val (s, b) = hoist body   
+	    val (m, b) = hoist body
 	in
+	    sayABC "got one!\n";
 	    (case vals
-	      of [F.VAR x] => (S.add(s, x), F.PRIMOP(p, vals, dest, b))
-	       | _ => (s, F.PRIMOP(p, vals, dest, b)))
+	      of [F.VAR x] => (M.insert(m, x, lty), 
+			       F.PRIMOP(p, vals, dest, b))
+	       | _ => (m, F.PRIMOP(p, vals, dest, b)))
 	end
 
       (* the result of a primop is unlikely to be an
@@ -343,12 +349,12 @@ fun abcOpt (pgm as (progkind, progname, progargs, progbody)) = let
 
       | hoist (F.PRIMOP (p, vals, dest, body)) =
 	let
-	    val (s, b) = hoist body
+	    val (m, b) = hoist body
 	in
-	    if S.member (s, dest) then
-		(S.delete (s, dest),
-		 F.PRIMOP (p, vals, dest, lenOp(dest, b)))
-	    else (s, F.PRIMOP (p, vals, dest, b))
+	    if M.inDomain (m, dest) then
+		(remove' (m, dest),
+		 F.PRIMOP (p, vals, dest, lenOp(dest, m, b)))
+	    else (m, F.PRIMOP (p, vals, dest, b))
 	end
 
     fun elimSwitches cmpsVV cmpsIV lexp = let
@@ -526,6 +532,7 @@ in
      * 
      * 	 say "\nbyebye! i'm done!\n\n")
      * else (); *)
+
     (* can eventually be removed after testing *)
     (*
     case (S.listItems s)
