@@ -17,7 +17,7 @@ type rflag = LtyDef.rflag
 
 (* what kind of inlining behavior is desired for the function *)
 datatype ilhint
-  = IH_SAFE				(* only if trivially size-safe *)
+  = IH_SAFE				(* only inline if trivially size-safe *)
   | IH_ALWAYS				(* inline whenever possible *)
   | IH_UNROLL				(* only inline once within itself *)
   (* call-site dependent inlining:
