@@ -1,8 +1,8 @@
 ;;; sml-mode.el --- Major mode for editing (Standard) ML
 
-;; Copyright (C) 1989       Lars Bo Nielsen
-;; Copyright (C) 1994-1997  Matthew J. Morley
 ;; Copyright (C) 1999,2000,2004  Stefan Monnier
+;; Copyright (C) 1994-1997  Matthew J. Morley
+;; Copyright (C) 1989       Lars Bo Nielsen
 
 ;; Author: Lars Bo Nielsen
 ;;      Olin Shivers
@@ -285,10 +285,11 @@ Full documentation will be available after autoloading the function."))
 
 ;;; MORE CODE FOR SML-MODE
 
-;;;###Autoload
+;;;###autoload (add-to-list 'load-path (file-name-directory load-file-name))
+;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.s\\(ml\\|ig\\)\\'" . sml-mode))
 
-;;;###Autoload
+;;;###autoload
 (define-derived-mode sml-mode fundamental-mode "SML"
   "\\<sml-mode-map>Major mode for editing ML code.
 This mode runs `sml-mode-hook' just before exiting.
@@ -749,7 +750,11 @@ signature, structure, and functor by default.")
     (let ((fsym (intern (concat "sml-form-" name))))
       `(progn
 	 (add-to-list 'sml-forms-alist ',(cons name fsym))
-	 (define-abbrev sml-mode-abbrev-table ,name "" ',fsym)
+	 (condition-case err
+	     ;; Try to use the new `system' flag.
+	     (define-abbrev sml-mode-abbrev-table ,name "" ',fsym nil 'system)
+	   (wrong-number-of-arguments
+	    (define-abbrev sml-mode-abbrev-table ,name "" ',fsym)))
 	 (define-skeleton ,fsym
 	   ,(format "SML-mode skeleton for `%s..' expressions" name)
 	   ,interactor
