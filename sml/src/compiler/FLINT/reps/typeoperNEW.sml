@@ -1,81 +1,112 @@
 (* Copyright 1998 YALE FLINT PROJECT *)
 (* typeoper.sml *)
 
-signature TYPEOPER = 
+signature TYPEOPER_NEW = 
 sig
   type kenv
+  type tkind = LtyDef.tkind
+  type tyc   = LtyDef.tyc
+  type lty   = LtyDef.lty
+  type tvar  = LtyDef.tvar
+  type lvar  = LambdaVar.lvar
+  type lexp  = FLINT.lexp
+  type value = FLINT.value
+
   val initKE : kenv
+  val tkAbs  : kenv * (tvar * tkind) list * lvar -> 
+                  (kenv * (lexp * lexp -> lexp))
+  val tcLexp : kenv -> tyc -> lexp
+  val tsLexp : kenv * tyc list -> lexp 
 
-  val tkLexp : kenv * LtyKernel.tkind list -> 
-                              (kenv * (Lambda.lexp -> Lambda.lexp))
+  val utgc   : kenv * tyc * tyc -> value -> lexp 
+  val utgd   : kenv * tyc * tyc -> value -> lexp 
+  val tgdc   : kenv * int * tyc * tyc -> value -> lexp 
+  val tgdd   : kenv * int * tyc * tyc -> value -> lexp 
 
-  val tcLexp  : kenv * LtyKernel.tyc -> Lambda.lexp
-  val tsLexp : kenv * LtyKernel.tyc list -> Lambda.lexp 
+  val mkwrp  : kenv * bool * tyc -> lexp -> lexp 
+  val mkuwp  : kenv * bool * tyc -> lexp -> lexp 
 
-  val utgc : kenv * LtyKernel.tyc -> Lambda.lexp -> Lambda.lexp 
-  val utgd : kenv * LtyKernel.tyc -> Lambda.lexp -> Lambda.lexp 
-  val tgdc : kenv * int * LtyKernel.tyc -> Lambda.lexp -> Lambda.lexp 
-  val tgdd : kenv * int * LtyKernel.tyc -> Lambda.lexp -> Lambda.lexp 
-
-  val mkwrp : kenv * bool * LtyKernel.tyc -> Lambda.lexp -> Lambda.lexp 
-  val mkuwp : kenv * bool * LtyKernel.tyc -> Lambda.lexp -> Lambda.lexp 
-
-  val arrSub : kenv * LtyKernel.lty * LtyKernel.tyc 
-                 -> Lambda.value -> Lambda.lexp
-  val arrUpd : kenv * LtyKernel.lty * LtyKernel.tyc 
-                 -> Lambda.value -> Lambda.lexp
-  val arrNew : kenv * LtyKernel.lty * LtyKernel.tyc * LambdaVar.lvar 
-                 * LambdaVar.lvar -> Lambda.value -> Lambda.lexp
+  val arrSub : kenv * lty * tyc -> value list -> lexp
+  val arrUpd : kenv * PrimOp.primop * lty * tyc -> value list -> lexp
+  val arrNew : kenv * lty * tyc * lvar * lvar -> value list -> lexp
 
 end (* signature TYPEOPER *)
 
-structure TypeOper : TYPEOPER = 
+structure TypeOperNEW : TYPEOPER_NEW = 
 struct
 
 local structure DI = DebIndex
       structure LT = LtyExtern
-      structure LU = LtyUtil
       structure LV = LambdaVar
       structure PO = PrimOp
       structure PT = PrimTyc
       structure BT = BasicTypes 
       structure TP = Types
-      open LtyKernel FLINT
+      structure FU = FlintUtil
+      open LtyKernel FLINT RuntimeType
 in
+
+type tkind = tkind
+type tyc   = tyc
+type lty   = lty
+type tvar  = LtyDef.tvar
+type lvar  = LV.lvar
+type lexp  = lexp
+type value = value
+
+fun bug s = ErrorMsg.impossible ("LtyPrim: " ^ s)
+fun say (s : string) = Control.Print.say s
+fun mkv _ = LV.mkLvar()
+val ident = fn le => le
+val fkfun = FK_FUN{isrec=NONE,known=false,inline=true, fixed=LT.ffc_fixed}
+
+fun mkarw(ts1, ts2) = LT.tcc_arrow(LT.ffc_fixed, ts1, ts2)
+
+fun WRAP(t, u) = 
+  let val v = mkv() 
+   in FU.WRAP(t, [u], v, RET[VAR v]) 
+  end
+
+fun UNWRAP(t, u) = 
+  let val v = mkv() 
+   in FU.UNWRAP(t, [u], v, RET[VAR v]) 
+  end
 
 (****************************************************************************
  *                  UTILITY FUNCTIONS AND CONSTANTS                         * 
  ****************************************************************************) 
-
-fun bug s = ErrorMsg.impossible ("LtyPrim: " ^ s)
-fun say (s : string) = Control.Print.say s
-
-val mkv = LV.mkLvar
-val ident = fn le => le
-
-fun split(SVAL v) = (v, ident)
+fun split(RET [v]) = (v, ident)
   | split x = let val v = mkv()
-               in (VAR v, fn z => LET(v, x, z))
+               in (VAR v, fn z => LET([v], x, z))
               end
-
-fun ltAppSt (lt, ts) = 
-  (case LT.lt_inst(lt, ts) 
-    of [b] => b 
-     | _ => bug "unexpected case in ltAppSt")
 
 fun SELECTg(i, e) = 
   let val (v, hdr) = split e
-   in hdr(SELECT(i, v))
+      val x = mkv()
+   in hdr(SELECT(v, i, x, RET [VAR x]))
+  end
+
+fun FNg(vts, e) = 
+  let val f = mkv()
+   in FIX([(fkfun, f, vts, e)], RET[VAR f])
+  end
+
+fun SELECTv(i, u) = 
+  let val x = mkv()
+   in SELECT(u, i, x, RET [VAR x])
   end
 
 fun APPg(e1, e2) = 
   let val (v1, h1) = split e1
       val (v2, h2) = split e2
-   in h1(h2(APP(v1, v2)))
+   in h1(h2(APP(v1, [v2])))
   end
 
 fun RECORDg es = 
-  let fun f ([], vs, hdr) = hdr(RECORD (rev vs))
+  let fun f ([], vs, hdr) = 
+               let val x = mkv()
+                in hdr(RECORD(FU.rk_tuple, rev vs, x, RET[VAR x]))
+               end
         | f (e::r, vs, hdr) = 
               let val (v, h) = split e
                in f(r, v::vs, hdr o h)
@@ -84,7 +115,10 @@ fun RECORDg es =
   end
 
 fun SRECORDg es = 
-  let fun f ([], vs, hdr) = hdr(SRECORD (rev vs))
+  let fun f ([], vs, hdr) = 
+               let val x = mkv()
+                in hdr(RECORD(RK_STRUCT, rev vs, x, RET[VAR x]))
+               end
         | f (e::r, vs, hdr) = 
               let val (v, h) = split e
                in f(r, v::vs, hdr o h)
@@ -94,26 +128,28 @@ fun SRECORDg es =
 
 fun WRAPg (z, b, e) = 
   let val (v, h) = split e
-   in h(WRAP(z, b, v))
+   in h(WRAP(z, v))
   end
 
 fun UNWRAPg (z, b, e) = 
   let val (v, h) = split e
-   in h(UNWRAP(z, b, v))
+   in h(UNWRAP(z, v))
   end
 
 fun WRAPcast (z, b, e) = 
   let val (v, h) = split e
       val pt = LT.ltc_arw(LT.ltc_tyc z, LT.ltc_tyc(LT.tcc_box z))
-      val pv = PRIM(PO.CAST,pt,[])
-   in h(APP(pv, v))
+      val pv = (NONE,PO.CAST,pt,[])
+      val x = mkv()
+   in h(PRIMOP(pv, [v], x, RET[VAR x]))
   end
 
 fun UNWRAPcast (z, b, e) = 
   let val (v, h) = split e
       val pt = LT.ltc_arw(LT.ltc_tyc(LT.tcc_box z), LT.ltc_tyc z)
-      val pv = PRIM(PO.CAST,pt,[])
-   in h(APP(pv, v))
+      val pv = (NONE,PO.CAST,pt,[])
+      val x = mkv()
+   in h(PRIMOP(pv, [v], x, RET[VAR x]))
   end
 
 fun SWITCHg (e, s, ce, d) = 
@@ -121,29 +157,17 @@ fun SWITCHg (e, s, ce, d) =
    in h(SWITCH(v, s, ce, d))
   end
 
-fun fromto(i,j) = if i < j then (i::fromto(i+1,j)) else []
-
-fun option(NONE) = false
-  | option(SOME _) = true
-
-fun exists(p, a::r) = if p a then true else exists(p, r)
-  | exists(p, []) = false
-
-fun opList l = exists(option, l)
-
-fun force (NONE, le) = le
-  | force (SOME f, le) = f le
-
-val boolsign = BT.boolsign
-val (trueDcon', falseDcon') = 
-  let val lt = LT.ltc_parrow(LT.ltc_unit, LT.ltc_bool)
-      fun h (TP.DATACON{name,rep,typ,...}) = (name, rep, lt)
-   in (h BT.trueDcon, h BT.falseDcon)
-  end
-
-fun COND(a,b,c) =
-  SWITCHg(a, boolsign, [(DATAcon(trueDcon'),b),
-		       (DATAcon(falseDcon'),c)], NONE)
+local val boolsign = BT.boolsign
+      val (trueDcon', falseDcon') = 
+        let val lt = LT.ltc_parrow(LT.ltc_unit, LT.ltc_bool)
+            fun h (TP.DATACON{name,rep,typ,...}) = (name, rep, lt)
+         in (h BT.trueDcon, h BT.falseDcon)
+        end
+in
+fun COND(u,e1,e2) =
+  SWITCHg(u, boolsign, [(DATAcon(trueDcon',[],mkv()),e1),
+                       (DATAcon(falseDcon',[],mkv()),e2)], NONE)
+end (* function COND *)
 
 (****************************************************************************
  *                           KIND ENVIRONMENTS                              *
@@ -168,51 +192,76 @@ fun klookKE(kenv, i, j) =
  *                            MAIN FUNCTIONS                                *
  ****************************************************************************)
 
-val tkLty = LU.tkLty
- 
-(* val tkLexp: kenv * tkind list -> kenv * (lexp -> lexp) *)
-fun tkLexpG (kenv, ks, record) = 
-  let val w = mkv()
-      val vs = map (fn _ => mkv ()) ks
-      val argt = record(map tkLty ks)
+(* val tkAbsGen : kenv * lvar list * tkind list * lvar * fkind 
+                  -> kenv * ((lexp *lexp) -> lexp) *)
+fun tkAbsGen (kenv, vs, ks, f, fk) = 
+  let val mkArgTy = case fk of FK_FUN _ => LT.ltc_tuple
+                             | FK_FCT => LT.ltc_str
+      val argt = mkArgTy (map LT.tk_lty ks)
+
+      val w = mkv()
       fun h([], i, base) = base
-	| h(v::r, i, base) = h(r, i+1, LET(v, SELECT(i, VAR w), base))
-      fun hdr le = FN(w, argt, h(vs, 0, le))
+	| h(v::r, i, base) = h(r, i+1, SELECT(VAR w, i, v, base))
+      
+      fun hdr (e1, e2) = FIX([(fk, f, [(w, argt)], h(vs,0,e1))], e2)
    in (addKE(kenv, vs, ks), hdr)
   end
 
-fun tkLexp (kenv, ks) = tkLexpG(kenv, ks, LT.ltc_str)
+(* val tkAbs: kenv * (tvar * tkind) list -> kenv * (lexp * lexp -> lexp) *)
+fun tkAbs (kenv, tvks, f) = 
+  let val (vs, ks) = ListPair.unzip tvks
+   in tkAbsGen(kenv, vs, ks, f, FK_FCT)       
+  end
 
-(** mapping TC_VAR to proper lvars; TC_PRIM to proper constants *)
-(** the actual type calculations should be lifted up till the innermost TFN *)
-(* val tcLexp : kenv * tyc -> lexp *)
+(* val tkTfn: kenv * tkind list -> kenv * (lexp -> lexp) *)
+fun tkTfn (kenv, ks) = 
+  let val vs = map (fn _ => mkv ()) ks
+      val f = mkv()
+      val (nkenv, hdr) = tkAbsGen(kenv, vs, ks, f, fkfun)
+   in (nkenv, fn e => hdr(e, RET[VAR f]))
+  end
 
-val tcode_void = SVAL(INT 0)
-val tcode_record = SVAL(INT 1)
-val tcode_int32 = SVAL(INT 2)
-val tcode_pair = SVAL(INT 3)
-val tcode_fpair = SVAL(INT 4)
-val tcode_real = SVAL(INT 5)
-fun tcode_realN n = SVAL(INT(n * 5))
+val intty = LT.ltc_int
+val boolty = LT.ltc_bool
+val inteqty = LT.ltc_arrow(LT.ffc_fixed, [intty, intty], [boolty])
+val intopty = LT.ltc_arrow(LT.ffc_fixed, [intty, intty], [intty])
+val ieqprim = (NONE, PO.IEQL, inteqty, [])
+val iaddprim = (NONE, PO.IADD, intopty, [])
+fun ieqLexp (e1, e2) = 
+  let val (v1, h1) = split e1
+      val (v2, h2) = split e2
+      val x = mkv () 
+   in h1(h2(PRIMOP(ieqprim, [v1,v2], x, RET[VAR x])))
+  end
+fun iaddLexp (e1, e2) = 
+  let val (v1, h1) = split e1
+      val (v2, h2) = split e2
+      val x = mkv () 
+   in h1(h2(PRIMOP(iaddprim, [v1,v2], x, RET[VAR x])))
+  end
+
+val tolexp = fn tcode => RET[tovalue tcode]
+val tcode_void   : lexp = tolexp tcode_void
+val tcode_record : lexp = tolexp tcode_record
+val tcode_int32  : lexp = tolexp tcode_int32
+val tcode_pair   : lexp = tolexp tcode_pair
+val tcode_fpair  : lexp = tolexp tcode_fpair
+val tcode_real   : lexp = tolexp tcode_real
+val tcode_realN  : int -> lexp = fn i => tolexp (tcode_realN i)
 
 datatype outcome 
   = YES
   | NO
   | MAYBE of lexp  
 
-val intty = LT.ltc_int
-val boolty = LT.ltc_bool
-val inteqty = LT.ltc_arw(LT.ltc_tuple [intty, intty], boolty)
-val intopty = LT.ltc_arw(LT.ltc_tuple [intty, intty], intty)
-val ieq = SVAL(PRIM(PO.IEQL, inteqty, []))
-val iadd = SVAL(PRIM(PO.IADD, intopty, []))
-
-fun tcLexp (kenv, tc) = 
-  let fun loop x = 
+(* tcLexp maps TC_VAR to proper lvars, TC_PRIM to proper constants *)
+(* val tcLexp : kenv -> tyc -> lexp *)
+fun tcLexp (kenv : kenv) (tc : tyc) = 
+  let fun loop (x : tyc) = 
 	(case (tc_out x)
 	  of (TC_FN(ks, tx)) => 
-		let val (nenv, hdr) = tkLexpG(kenv, ks, LT.ltc_tuple)
-		 in hdr(tcLexp(nenv, tx))
+		let val (nenv, hdr) = tkTfn(kenv, ks)
+		 in hdr(tcLexp nenv tx)
 		end
 	   | (TC_APP(tx, ts)) => 
 		(case tc_out tx
@@ -225,24 +274,24 @@ fun tcLexp (kenv, tc) =
 		if (pt = PT.ptc_real) then tcode_real 
 		else if (pt = PT.ptc_int32) then tcode_int32
 		     else tcode_void
-	   | (TC_VAR(i, j)) => SVAL(VAR(vlookKE(kenv, i, j)))
+	   | (TC_VAR(i, j)) => RET[(VAR(vlookKE(kenv, i, j)))]
 	   | (TC_TUPLE (_, [t1,t2])) =>
 		(case (isFloat(kenv,t1), isFloat(kenv,t2))
 		  of (YES, YES) => tcode_fpair
 		   | ((NO, _) | (_, NO)) => tcode_pair
 		   | ((MAYBE e, YES) | (YES, MAYBE e)) =>
-			let val test = APPg(ieq, RECORDg[e, tcode_real])
+			let val test = ieqLexp(e, tcode_real)
 			 in COND(test, tcode_fpair, tcode_pair)
 			end
 		   | (MAYBE e1, MAYBE e2) =>
-			let val e = APPg(iadd, RECORDg [e1, e2])
-			    val test = APPg(ieq, RECORDg [e, tcode_realN 2])
+			let val e = iaddLexp(e1, e2)
+			    val test = ieqLexp(e, tcode_realN 2)
 			 in COND(test, tcode_fpair, tcode_pair)
 			end)
 	   | (TC_TUPLE (_, ts)) => tcode_record
 	   | (TC_ARROW (_,tc1,tc2)) => tcode_void
 	   | (TC_ABS tx) => loop tx
-	   | (TC_BOX tx) => loop tx           
+	   | (TC_TOKEN(_,tx)) => loop tx           
 	   | (TC_FIX((n,tx,ts), i)) => 
 		let val ntx = 
                       (case ts 
@@ -257,8 +306,7 @@ fun tcLexp (kenv, tc) =
 			| _ => bug "unexpected FIX tycs in tcLexp-loop")
 		 in case tk_out tk
 		     of TK_FUN(ks, _) => 
-			  (let val (_, hdr) = 
-					tkLexpG(kenv, ks, LT.ltc_tuple)
+			  (let val (_, hdr) = tkTfn(kenv, ks)
 			    in hdr(tcode_void)
 			   end)
 		      | _ => tcode_void
@@ -273,15 +321,14 @@ fun tcLexp (kenv, tc) =
   end (* function tcLexp *)
 
 and tcsLexp (kenv, ts) = 
-  let fun h tc = tcLexp(kenv, tc)
+  let fun h tc = tcLexp kenv tc
    in RECORDg(map h ts)
   end (* function tcsLexp *)
 
 and tsLexp (kenv, ts) = 
-  let fun h tc = tcLexp(kenv, tc)
+  let fun h tc = tcLexp kenv tc
    in SRECORDg(map h ts)
   end (* function tsLexp *)
-
 
 (** an improvement is to lift all of these code to the start of the 
     compilation unit *)
@@ -293,21 +340,21 @@ and isFloat (kenv, tc) =
 		if (pt = PT.ptc_real) then YES else NO
 	   | (TC_TUPLE (_, ts)) => NO
 	   | (TC_ARROW (_,tc1,tc2)) => NO
-	   | (TC_BOX tx) => NO     (* this requires further thoughts ! *)
+	   | (TC_TOKEN(_,tx)) => loop tx
 	   | (TC_FIX(_, i)) => NO
 	   | (TC_APP(tx, _)) => 
 		(case tc_out tx
 		  of (TC_APP _ | TC_PROJ _ | TC_VAR _) => 
-		       MAYBE(tcLexp(kenv, x))
+		       MAYBE(tcLexp kenv x)
 		   | _ => NO)
 	  (* | (TC_ABS tx) => loop tx  *)
 	   | (TC_VAR(i,j)) =>
 		let val k = klookKE(kenv, i, j)
 		 in case (tk_out k)
 		     of TK_BOX => NO
-		      | _ => MAYBE(tcLexp(kenv, x))
+		      | _ => MAYBE(tcLexp kenv x)
 		end 
-	   | _ => MAYBE(tcLexp(kenv, x)))
+	   | _ => MAYBE(tcLexp kenv x))
 
    in loop tc
   end
@@ -319,15 +366,15 @@ fun isPair (kenv, tc) =
 	   | (TC_TUPLE (_, [_,_])) => YES
 	   | (TC_TUPLE _) => NO
 	   | (TC_ARROW _) => NO
-	   | (TC_BOX tx) => NO     (* this requires further thoughts !!! *)
+	   | (TC_TOKEN(_,tx)) => loop tx
 	   | (TC_FIX(_, i)) => NO
 	   | (TC_APP(tx, _)) => 
 		(case tc_out tx
 		  of (TC_APP _ | TC_PROJ _ | TC_VAR _ | TC_NVAR _) => 
-		       MAYBE(tcLexp(kenv, x))
+		       MAYBE(tcLexp kenv x)
 		   | _ => NO)
        (*    | (TC_ABS tx) =>  loop tx  *)
-	   | _ => MAYBE(tcLexp(kenv, x)))
+	   | _ => MAYBE(tcLexp kenv x))
 
    in loop tc
   end
@@ -339,74 +386,71 @@ fun isPair (kenv, tc) =
 fun tcTag (kenv, tc) = 
   let fun loop x =     (* a lot of approximations in this function *)
 	(case (tc_out x)
-	  of (TC_PRIM pt) => if PT.unboxed pt then NO else YES
+	  of (TC_PRIM pt) => if PT.ubxupd pt then YES else NO 
 		    (* this is just an approximation *)
 	   | (TC_TUPLE (_, ts)) => NO
-	   | (TC_ARROW (_,tc1,tc2)) => YES
+	   | (TC_ARROW (_,tc1,tc2)) => NO
 	   | (TC_ABS tx) => loop tx
-	   | (TC_BOX tx) => loop tx
+	   | (TC_TOKEN(_,tx)) => loop tx
 	   | (TC_FIX(_, i)) => YES
 	   | (TC_APP(tx, _)) => 
 		(case tc_out tx
 		  of (TC_APP _ | TC_PROJ _ | TC_VAR _) => 
-		       let val e1 = tcLexp(kenv, x)
-			in MAYBE(APPg(ieq, RECORDg[e1, tcode_void]))
+		       let val e1 = tcLexp kenv x
+			in MAYBE(ieqLexp(e1, tcode_void))
 		       end
 		   | _ => YES)
-	   | _ => (let val e1 = tcLexp(kenv, x)
-		    in MAYBE(APPg(ieq, RECORDg[e1, tcode_void]))
+	   | _ => (let val e1 = tcLexp kenv x
+		    in MAYBE(ieqLexp(e1, tcode_void))
 		   end))
    in loop tc
   end (* function tcTag *)
 
-(* val utgc : kenv * tyc -> lexp -> lexp *)
-fun utgc (kenv, tc) = 
+(* val utgc : kenv * tyc * tyc -> value -> lexp *)
+fun utgc (kenv, tc, rt) = 
   (case tcTag(kenv, tc)
-    of YES => (fn le => WRAPg(LT.tcc_tuple [tc], true, RECORDg[le]))
-     | NO => (fn le => le)
+    of YES => (fn u => let val v = mkv()
+                        in RECORD(FU.rk_tuple, [u], v, 
+                             WRAP(LT.tcc_tuple[rt], VAR v))
+                       end)
+     | NO => (fn u => WRAP(rt, u))
      | MAYBE ne => 
-	let fun h(x as (SVAL(VAR v))) =  
-		  COND(ne, WRAPg(LT.tcc_tuple [tc], true, RECORDg [x]),
-			   x)
-	      | h x = 
-		  let val w = mkv() 
-		   in LET(w, x, 
-		       COND(ne, WRAPg(LT.tcc_tuple [tc], true, RECORD [VAR w]),
-				SVAL(VAR w)))
-		  end
-	 in h
-	end)
+	 (fn u => let val v = mkv()
+                   in COND(ne, RECORD(FU.rk_tuple, [u], v, 
+                                      WRAP(LT.tcc_tuple[rt], VAR v)),
+                               WRAP(rt, u))                           
+           	  end))
 	    
-(* val utgd : kenv * tyc -> lexp -> lexp *)
-fun utgd (kenv, tc) = 
+(* val utgd : kenv * tyc * tyc -> value -> lexp *)
+fun utgd (kenv, tc, rt) = 
   (case tcTag(kenv, tc)
-    of YES => 
-	(fn le => SELECTg(0, UNWRAPg(LT.tcc_tuple [tc], true, le)))
-     | NO => (fn le => le)
+    of YES => (fn u => let val v = mkv() and z = mkv()
+                        in FU.UNWRAP(LT.tcc_tuple [rt], [u], v, 
+                               SELECT(VAR v, 0, z, RET[VAR z]))
+                       end)
+     | NO => (fn u => UNWRAP(rt, u))
      | MAYBE ne => 
-	let fun h(x as (SVAL(VAR v))) =  
-		  COND(ne, SELECTg(0, UNWRAPg(LT.tcc_tuple [tc], true, x)), x)
-	      | h x = 
-		  let val w = mkv()
-		   in LET(w, x, 
-		       COND(ne, SELECTg(0, UNWRAP(LT.tcc_tuple [tc],true,VAR w)),
-				SVAL(VAR w)))
-		  end
-	 in h
-	end)
+          (fn u => let val v = mkv() and z = mkv()
+                    in COND(ne, FU.UNWRAP(LT.tcc_tuple [rt], [u], v, 
+                               SELECT(VAR v, 0, z, RET[VAR z])),
+                            UNWRAP(rt, u))
+                   end))
 
-(* val tgdc : kenv * int * tyc -> lexp -> lexp *)
-fun tgdc (kenv, i, tc) = 
-  let val nt = LT.tcc_tuple [LT.tcc_int, tc]
-   in (fn le => WRAPg(nt, true, RECORDg [SVAL(INT i), le]))
+(* val tgdc : kenv * int * tyc * tyc -> value -> lexp *)
+fun tgdc (kenv, i, tc, rt) = 
+  let val nt = LT.tcc_tuple [LT.tcc_int, rt]
+   in fn u => let val x = mkv()
+               in RECORD(FU.rk_tuple, [INT i, u], x, WRAP(nt, VAR x))
+              end
   end
 
-(* val tgdd : kenv * int * tyc -> lexp -> lexp *)
-fun tgdd (kenv, i, tc) = 
-  let val nt = LT.tcc_tuple [LT.tcc_int, tc]
-   in (fn le => SELECTg(1, UNWRAPg(nt, true, le)))
+(* val tgdd : kenv * int * tyc * tyc -> value -> lexp *)
+fun tgdd (kenv, i, tc, rt) = 
+  let val nt = LT.tcc_tuple [LT.tcc_int, rt]
+   in fn u => let val x = mkv() and v = mkv()
+               in FU.UNWRAP(nt, [u], x, SELECT(VAR x, 1, v, RET[VAR v]))
+              end
   end
-
 
 (****************************************************************************
  *                      TYPED INTERPRETATION OF FP RECORD                   *
@@ -423,27 +467,27 @@ fun tcCoerce (kenv, tc, wflag, b) =
 	       | h([], i, e, el, res) = 
 		   let val w = mkv()                 
 		       val wx = VAR w
-		       fun g(i, NONE) =  SELECT(i, wx)
+		       fun g(i, NONE) =  SELECTv(i, wx)
 			 | g(i, SOME _) = 
 			     if wflag then 
-			       UNWRAPg(LT.tcc_real, b, SELECT(i, wx))
-			     else WRAPg(LT.tcc_real, b, SELECT(i, wx))
+			       UNWRAPg(LT.tcc_real, b, SELECTv(i, wx))
+			     else WRAPg(LT.tcc_real, b, SELECTv(i, wx))
 
 		       val ntc = LT.tcc_tuple(map (fn _ => LT.tcc_real) ts)
 
 		       val ne = RECORDg (map g (rev el))
-		       val test = APPg(ieq, RECORDg[e, tcode_realN res]) 
+		       val test = ieqLexp(e, tcode_realN res) 
 
 		       fun hdr0 xe = 
 			 if wflag then 
-			   COND(test, LET(w, xe, WRAPcast(ntc, b, ne)), 
+			   COND(test, LET([w], xe, WRAPcast(ntc, b, ne)), 
 				      WRAPcast(tc, b, xe))
-			 else COND(test, LET(w, UNWRAPcast(ntc, b, xe), ne), 
+			 else COND(test, LET([w], UNWRAPcast(ntc, b, xe), ne), 
 					 UNWRAPcast(tc, b, xe))
 
-		       fun hdr (xe as (SVAL(VAR _))) = hdr0 xe
+		       fun hdr (xe as (RET[(VAR _)])) = hdr0 xe
 			 | hdr xe = let val z = mkv()
-				     in LET(z, xe, hdr0 (SVAL(VAR z)))
+				     in LET([z], xe, hdr0 (RET[VAR z]))
 				    end
 		    in SOME hdr
 		   end
@@ -451,10 +495,10 @@ fun tcCoerce (kenv, tc, wflag, b) =
 		   (case isFloat(kenv, a) 
 		     of NO => NONE
 		      | YES => h(r, i+1, e, (i,NONE)::el, res)
-		      | MAYBE z => h(r, i+1, APPg(iadd, RECORDg [e, z]), 
+		      | MAYBE z => h(r, i+1, iaddLexp(e, z), 
 				     (i, SOME a)::el, res+1))
 
-	  in h(ts, 0, SVAL(INT 0), [], 0)
+	  in h(ts, 0, RET[INT 0], [], 0)
 	 end
      | TC_ARROW _ => (* (tc1, tc2) => *)
         let val (tc1, tc2) = LT.tcd_parrow tc
@@ -462,13 +506,14 @@ fun tcCoerce (kenv, tc, wflag, b) =
               of (YES | NO) => NONE
                | (MAYBE e) =>
                  let val w = mkv()
-                     val test1 = APPg(ieq, RECORDg[SVAL(VAR w), tcode_pair])
-                     val test2 = APPg(ieq, RECORDg[SVAL(VAR w), tcode_fpair])
-                     val m = mkv()
-                     val n = mkv()
+                     val test1 = ieqLexp(RET[(VAR w)], tcode_pair)
+                     val test2 = ieqLexp(RET[(VAR w)], tcode_fpair)
+                     val m = mkv() and m2 = mkv()
+                     val n = mkv() and n2 = mkv()
 
                      val tc_real = LT.tcc_real
-                     val tc_breal = LT.tcc_box tc_real
+                     val tc_breal = LT.tcc_wrap tc_real
+                     val lt_breal = LT.ltc_tyc tc_breal
                      val tc_void = LT.tcc_void
                      val lt_void = LT.ltc_void
                      val tc_pair = LT.tcc_tuple [tc_void, tc_void]
@@ -481,31 +526,48 @@ fun tcCoerce (kenv, tc, wflag, b) =
 
                      val (argt1, body1, hh1, ih1) = 
                        if wflag then (* wrapping *)
-                         (lt_pair, WRAP(tc_pair, true, VAR m),
-                          fn le => WRAPcast(LT.tcc_parrow(tc_pair,tc2), true, le),
+                         ([(m,lt_void),(m2,lt_void)], 
+                           WRAPg(tc_pair, true, 
+                                 RECORDg [RET[VAR m], RET[VAR m2]]), 
+                          fn le => 
+                            WRAPcast(mkarw([tc_void,tc_void],[tc2]), 
+                                     true, le),
                           ident)
                        else (* unwrapping *)
-                         let val q = mkv()
-                          in (lt_void, UNWRAP(tc_pair, true, VAR m),ident,
-                              fn le => UNWRAPcast(LT.tcc_parrow(tc_pair, tc2),
+                         let val x = mkv() and y = mkv() and z = mkv()
+                          in ([(m, lt_void)], 
+                              FU.UNWRAP(tc_pair, [VAR m], x, 
+                                  SELECT(VAR x, 0, y, 
+                                  SELECT(VAR x, 1, z, RET[VAR y, VAR z]))),
+                              ident,
+                              fn le => 
+                                UNWRAPcast(mkarw([tc_void, tc_void], [tc2]),
                                                true, le))
                          end
 
                      val (argt2, body2, hh2, ih2) = 
-                       if wflag then
-                         (lt_bfpair, WRAPg(tc_fpair, true, 
-                           RECORDg [UNWRAPg(tc_real, true, SELECT(0, VAR n)),
-                                    UNWRAPg(tc_real, true, SELECT(1, VAR n))]),
-                          fn le => WRAPcast(LT.tcc_parrow(tc_bfpair,tc2), true, le),
+                       if wflag then  (* wrapping *)
+                         ([(n,lt_breal),(n2,lt_breal)],
+                          WRAPg(tc_fpair, true, 
+                           RECORDg [UNWRAP(tc_real, VAR n),
+                                    UNWRAP(tc_real, VAR n2)]), 
+                          fn le => WRAPcast(mkarw([tc_breal,tc_breal],[tc2]), 
+                                            true, le),
                           ident)
-                       else
-                         let val q = mkv()
-                          in (lt_void, LET(q, UNWRAP(tc_fpair, true, VAR n),
-                            RECORDg [WRAPg(tc_real, true, SELECT(0, VAR q)),
-                                     WRAPg(tc_real, true, SELECT(1, VAR q))]),
+                       else  (* unwrapping *)
+                         let val x = mkv() and y = mkv() and z = mkv()
+                             val q0 = mkv() and q1 = mkv()
+                          in ([(n, lt_void)],
+                            FU.UNWRAP(tc_fpair, [VAR n], x, 
+                                  SELECT(VAR x, 0, y, 
+                                    FU.WRAP(tc_real, [VAR y], q0,
+                                  SELECT(VAR x, 1, z, 
+                                    FU.WRAP(tc_real, [VAR z], q1,
+                                  RET[VAR q0, VAR q1]))))),
                             ident,
-                            fn le => UNWRAPcast(LT.tcc_parrow(tc_bfpair, tc2),
-                                             true, le))
+                            fn le => 
+                              UNWRAPcast(mkarw([tc_breal, tc_breal], [tc2]),
+                                         true, le))
                          end
 
                      val hh3 = if wflag then fn le => WRAPcast(tc, true, le)
@@ -513,16 +575,16 @@ fun tcCoerce (kenv, tc, wflag, b) =
 
                      (*** NEEDS MORE WORK TO DO THE RIGHT COERCIONS ***)
                      fun hdr0(sv) =
-                       LET(w, e, 
-                         COND(test1, hh1(FN(m, argt1, 
-                                       APPg(ih1(SVAL sv), body1))),
-                           COND(test2, hh2(FN(n, argt2, 
-                                       APPg(ih2(SVAL sv), body2))),
-                                hh3(SVAL sv))))
+                       LET([w], e, 
+                         COND(test1, hh1(FNg(argt1, 
+                                             APPg(ih1(RET[sv]), body1))),
+                           COND(test2, hh2(FNg(argt2, 
+                                       APPg(ih2(RET[sv]), body2))),
+                                hh3(RET[sv]))))
 
-                     fun hdr (xe as SVAL sv) = hdr0 sv
+                     fun hdr (xe as RET [sv]) = hdr0 sv
                        | hdr xe = let val z = mkv()
-                                   in LET(z, xe, hdr0(VAR z))
+                                   in LET([z], xe, hdr0(VAR z))
                                   end
                   in SOME hdr
                  end)
@@ -544,89 +606,90 @@ fun mkuwp (kenv, b, tc) =
 val realSub = PO.NUMSUBSCRIPT{kind=PO.FLOAT 64, checked=false, immutable=false}
 val realUpd = PO.NUMUPDATE{kind=PO.FLOAT 64, checked=false}
 
-fun arrSub(kenv, lt, tc) = 
+fun rsubLexp (vs, t) = 
+  let val x = mkv()
+   in PRIMOP((NONE, realSub, t, []), vs, x, RET[VAR x])
+  end
+
+fun rupdLexp (vs, t) = 
+  let val x = mkv()
+   in PRIMOP((NONE, realUpd, t, []), vs, x, RET[VAR x])
+  end
+
+fun subLexp (vs, t) = 
+  let val x = mkv()
+   in PRIMOP((NONE, PO.SUBSCRIPT, t, []), vs, x, RET[VAR x])
+  end
+
+fun updLexp (po, vs, t) = 
+  let val x = mkv()
+   in PRIMOP((NONE, po, t, []), vs, x, RET[VAR x])
+  end
+
+
+fun arrSub (kenv, lt, tc) = 
   let val nt = LT.lt_pinst_st(lt, [tc])
       val rnt = LT.lt_pinst_st(lt, [LT.tcc_real])
    in (case isFloat(kenv, tc)
-        of NO => (fn sv => APP(PRIM(PO.SUBSCRIPT, nt, []), sv))
-         | YES => (fn sv => WRAPg(LT.tcc_real, true, 
-                                  APP(PRIM(realSub, rnt, []), sv)))
+        of NO => (fn vs => subLexp(vs, nt))
+         | YES => (fn vs => WRAPg(LT.tcc_real, true, rsubLexp(vs, rnt)))
          | MAYBE z =>
-             (let val test = APPg(ieq, RECORDg[z, tcode_real])
-               in (fn sv =>
-                     COND(test, WRAPg(LT.tcc_real, true, 
-                                  APP(PRIM(realSub, rnt, []), sv)),
-                          APP(PRIM(PO.SUBSCRIPT, nt, []), sv)))
+             (let val test = ieqLexp(z, tcode_real)
+               in (fn vs =>
+                     COND(test, WRAPg(LT.tcc_real, true, rsubLexp(vs, rnt)),
+                          subLexp(vs, nt)))
               end))
   end
 
-fun arrUpd(kenv, lt, tc) = 
+fun arrUpd(kenv, po, lt, tc) = 
   let val nt = LT.lt_pinst_st(lt, [tc])
       val rnt = LT.lt_pinst_st(lt, [LT.tcc_real])
    in (case isFloat(kenv,tc)
-        of NO => (fn sv => APP(PRIM(PO.UPDATE, nt, []), sv))
-         | YES => (fn sv => APPg(SVAL(PRIM(realUpd, rnt, [])), 
-                              RECORDg[SELECT(0, sv),
-                                      SELECT(1, sv),
-                                 UNWRAPg(LT.tcc_real, true, 
-                                         SELECT(2, sv))]))
+        of NO => (fn vs => updLexp(po, vs, nt))
+         | YES => (fn [x,y,z] => 
+                     let val nz = mkv()
+                      in LET([nz], UNWRAPg(LT.tcc_real, true, RET[z]),
+                             rupdLexp([x,y,VAR nz], rnt))
+                     end)
          | MAYBE z => 
-             (let val test = APPg(ieq, RECORDg[z, tcode_real])
-               in (fn sv => 
-                     COND(test, APPg(SVAL(PRIM(realUpd, rnt, [])), 
-                              RECORDg[SELECT(0, sv),
-                                      SELECT(1, sv),
-                                 UNWRAPg(LT.tcc_real, true, 
-                                         SELECT(2, sv))]),
-                          APP(PRIM(PO.UPDATE, nt, []), sv)))
+             (let val test = ieqLexp(z, tcode_real)
+               in (fn (vs as [x,y,z]) => 
+                     COND(test, 
+                          let val nz = mkv()
+                           in LET([nz], UNWRAPg(LT.tcc_real, true, RET[z]),
+                                  rupdLexp([x,y,VAR nz], rnt))
+                          end,
+                          updLexp(po, vs, nt)))
               end))
   end
 
 fun arrNew(kenv, lt, tc, pv, rv) = 
   (case isFloat(kenv,tc)
-    of NO => (fn sv => APPg(APPg(SVAL(VAR pv), tsLexp(kenv, [tc])), SVAL sv))
-     | YES => (fn sv => APPg(SVAL(VAR rv), 
-                   RECORDg [SELECT(0, sv), 
-                            UNWRAPg(LT.tcc_real, true, SELECT(1, sv))]))
+    of NO => (fn vs => 
+                let val x= mkv()
+                 in LET([x], APPg(RET[VAR pv], tsLexp(kenv, [tc])),
+                        APP(VAR x, vs))
+                end) 
+     | YES => (fn (vs as [x,y]) => 
+                let val z = mkv()
+                 in LET([z], UNWRAPg(LT.tcc_real, true, RET[y]),
+                        APP(VAR rv, [x, VAR z]))
+                end)
      | MAYBE z => 
-         (let val test = APPg(ieq, RECORDg[z, tcode_real])
-           in (fn sv => 
-                 COND(test, APPg(SVAL(VAR rv), 
-                   RECORDg [SELECT(0, sv), 
-                            UNWRAPg(LT.tcc_real, true, SELECT(1, sv))]),
-                    APPg(APPg(SVAL(VAR pv), tsLexp(kenv, [tc])), SVAL sv)))
+         (let val test = ieqLexp(z, tcode_real)
+           in (fn (vs as [x,y]) =>
+                 COND(test, 
+                      let val z = mkv()
+                       in LET([z], UNWRAPg(LT.tcc_real, true, RET[y]),
+                              APP(VAR rv, [x, VAR z]))
+                      end,
+                      let val z= mkv()
+                       in LET([z], APPg(RET[VAR pv], tsLexp(kenv, [tc])),
+                          APP(VAR z, vs))
+                      end))
           end))
 
 end (* toplevel local *)
 end (* structure TypeOper *)
 
 
-(*
- * $Log: ltyprim.sml,v $
- * Revision 1.5  1998/01/07 15:18:16  dbm
- *   Fixing bug 1323. Wrapping and unwrapping primitives were usually ignored
- *   in the cpstrans phase before we perform the cps optimization. Unfortunately,
- *   they could lead to ill-typed CPS programs. To resolve this, I turn those
- *   sensitive wrap and unwrap primitives into "casts"; I leave the casts in the
- *   code; the cps generic phase will generate a move for each cast. In the
- *   long term, we have to think thoroughly about the meanings of these wrapping
- *   primitives and how they interface with compile-time optimizations.
- *
- * Revision 1.4  1997/05/05 20:00:13  george
- *   Change the term language into the quasi-A-normal form. Added a new round
- *   of lambda contraction before and after type specialization and
- *   representation analysis. Type specialization including minimum type
- *   derivation is now turned on all the time. Real array is now implemented
- *   as realArray. A more sophisticated partial boxing scheme is added and
- *   used as the default.
- *
- * Revision 1.3  1997/04/18  15:49:02  george
- *   Cosmetic changes on some constructor names. Changed the shape for
- *   FIX type to potentially support shared dtsig. -- zsh
- *
- * Revision 1.2  1997/02/26  21:53:57  george
- *    Fixing the incorrect wrapper bug, BUG 1158, reported by Ken Cline
- *    (zcline.sml). This also fixes the core dump bug, BUG 1153,
- *    reported by Nikolaj.
- *
- *)

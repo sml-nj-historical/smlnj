@@ -1,4 +1,8 @@
 #!/bin/sh
 #
- 
-../../bin/.run-sml @SMLload=$*
+
+# ROOTDIR="/homes/systems/shao/sml/110.3"
+ROOTDIR="../.."
+BINDIR=$ROOTDIR/bin
+$BINDIR/.run-sml  @SMLload=$*
+

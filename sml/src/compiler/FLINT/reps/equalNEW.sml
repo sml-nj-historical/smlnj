@@ -1,24 +1,23 @@
 (* COPYRIGHT (c) 1996 Bell Laboratories *)
 (* equal.sml *)
 
-signature EQUAL = 
+signature EQUAL_NEW = 
 sig
 
   (* 
    * Constructing generic equality functions; the current version will
    * use runtime polyequal function to deal with abstract types. (ZHONG)
    *)
-  val equal : FLINT.lvar * FLINT.lvar * FLINT.tyc -> FLINT.lexp
   val equal_branch : FLINT.primop * FLINT.value list * FLINT.lexp * FLINT.lexp
                      -> FLINT.lexp
-  val equal_branch : FLINT.primop * FLINT.value list * FLINT.lvar * FLINT.lexp
+  val equal_primop : FLINT.primop * FLINT.value list * FLINT.lvar * FLINT.lexp
                      -> FLINT.lexp
   val debugging : bool ref     
 
 end (* signature EQUAL *)
 
 
-structure Equal : EQUAL = 
+structure EqualNEW : EQUAL_NEW = 
 struct
 
 local structure BT = BasicTypes
@@ -61,7 +60,8 @@ exception Poly
  *                   Commonly-used Lambda Types                             *
  ****************************************************************************)
 
-fun eqLty lt  = LT.ltc_arrow((true,true), [lt, lt], [LT.ltc_bool])
+(** assumptions: typed created here will be reprocessed in wrapping.sml *)
+fun eqLty lt  = LT.ltc_arrow(LT.ffc_rrflint, [lt, lt], [LT.ltc_bool])
 fun eqTy tc   = eqLty(LT.ltc_tyc tc)
 
 val inteqty   = eqLty (LT.ltc_int)
@@ -93,7 +93,7 @@ fun branch(PBIND p, vs, e1, e2) = BRANCH(p, vs, e1, e2)
       let val x = mkv()
        in LET([x], APP(v, vs), 
             SWITCH(VAR x, BT.boolsign, 
-                   [(DATAcon(trueDcon', [], mkv()), e1)
+                   [(DATAcon(trueDcon', [], mkv()), e1),
                     (DATAcon(falseDcon', [], mkv()), e2)], NONE))
       end
   | branch(EBIND e, vs, e1, e2) = 
@@ -143,7 +143,7 @@ fun atomeq tc =
   else if isRef(tc) then ptrEq(PO.PTREQL, tc)
   else raise Poly
 
-val fk = FK_FUN(isrec=NONE, known=false, fixed=(true,true), inline=true)
+val fkfun = FK_FUN{isrec=NONE, known=false, fixed=LT.ffc_rrflint, inline=true}
 
 fun test(tc, 0) = raise Poly
   | test(tc, depth) =
@@ -163,7 +163,7 @@ fun test(tc, 0) = raise Poly
                     | loop(_, []) = trueLexp()
 
                   val lt = LT.ltc_tyc tc
-               in patch := (fk, v, [(x, lt), (y, lt)], loop(0, ts));
+               in patch := SOME (fkfun, v, [(x, lt), (y, lt)], loop(0, ts));
                   VBIND(VAR v)
               end)
         end)
@@ -197,7 +197,7 @@ fun equal_branch ((d, p, lt, ts), vs, e1, e2) =
 fun equal_primop ((d, p, lt, ts), vs, v, e) = 
   (case (d, p, ts)
     of (SOME{default=pv, table=[(_,sv)]}, PO.POLYEQL, [tc]) =>
-          primop(equal(pv, sv, tc), vs, e1, e2)
+          primop(equal(pv, sv, tc), vs, v, e)
      | _ => bug "unexpected case in equal_branch")
 
 end (* toplevel local *)                       
