@@ -783,13 +783,11 @@ struct
             | scale8(a, i) = M.ADD(ity, a, M.SLL(ity, stripTag(regbind i), 
                                                   LI(2)))
    
- 	  (* zero-extend and sign-extend; these should just be synonyms
-	   * for M.ZX and M.SX, but the machine-code emitter does not
-	   * know how to handle those at the moment... *)
-	  fun ZX32 (sz, e) = (* M.ZX (32, sz, e) *)
-	      M.SRL (32, M.SLL (32, e, LI (32 - sz)), LI (32 - sz))
-	  fun SX32 (sz, e) = (* M.SX (32, sz, e) *)
-	      M.SRA (32, M.SLL (32, e, LI (32 - sz)), LI (32 - sz))
+ 	  (* zero-extend and sign-extend *)
+	  fun ZX32 (sz, e) = M.ZX (32, sz, e)
+	      (* M.SRL (32, M.SLL (32, e, LI (32 - sz)), LI (32 - sz)) *)
+	  fun SX32 (sz, e) = M.SX (32, sz, e)
+	      (* M.SRA (32, M.SLL (32, e, LI (32 - sz)), LI (32 - sz)) *)
 
           (* add to storelist, the address where a boxed update has occured *)
           fun recordStore(tmp, hp) =
