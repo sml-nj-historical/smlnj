@@ -13,11 +13,26 @@ Library
 
 	structure GenericVC
 
+# if not defined (LIGHT) orelse defined (ARCH_ALPHA32)
 	structure Alpha32VisComp
+# endif
+
+# if not defined (LIGHT) orelse defined (ARCH_HPPA)
 	structure HppaVisComp
+# endif
+
+# if not defined (LIGHT) orelse defined (ARCH_PPC)
 	structure PPCVisComp
+# endif
+
+# if not defined (LIGHT) orelse defined (ARCH_SPARC)
 	structure SparcVisComp
+# endif
+
+# if not defined (LIGHT) orelse defined (ARCH_X86)
 	structure X86VisComp
+# endif
+
 (**** no old-style code generators
 	structure MipsBigVisComp
 	structure MipsLittleVisComp
@@ -32,6 +47,30 @@ Library
 	structure PickMod
 	structure UnpickMod
 	structure CompBasic
+
+        (* To make it possible to dynamically link in the optimizer, 
+           * we have to export the following to the library.
+         * A.Leung.
+         *)
+        signature MACHINE_GEN
+        structure Alpha32CG
+        structure Alpha32CpsRegs
+        structure Alpha32Instr
+        structure HppaCG
+        structure HppaCpsRegs
+        structure HppaInstr
+        structure PPCCG
+        structure PPCCpsRegs
+        structure PPCInstr
+        structure SparcCG
+        structure SparcCpsRegs
+        structure SparcInstr
+        structure X86CG
+        structure X86CpsRegs
+        structure X86Instr
+        structure CPSRegions
+        structure SMLGCType
+
 is
 
 TopLevel/batch/batchconfig.sml
