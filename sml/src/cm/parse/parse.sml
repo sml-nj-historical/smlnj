@@ -102,135 +102,152 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 		val context = AbsPath.relativeContext (AbsPath.dir group)
 		val filename = AbsPath.name group
 		val _ = Say.vsay ["[scanning ", filename, "]\n"]
-		val stream = AbsPath.openTextIn group
-		val source = S.newSource (filename, 1, stream, false, errcons)
-		val sourceMap = #sourceMap source
-		val _ = GroupReg.register groupreg (group, source)
 
-		(* We can hard-wire the source into this
-		 * error function because the function is only for
-		 * immediate use and doesn't get stored into persistent
-		 * data structures. *)
-		fun error r m =
-		    EM.error source r EM.COMPLAIN m EM.nullErrorBody
+		fun work stream = let
+		    val source =
+			S.newSource (filename, 1, stream, false, errcons)
+		    val sourceMap = #sourceMap source
+		    val _ = GroupReg.register groupreg (group, source)
 
-		(* recParse returns a group (not an option).
-		 * This function is used to parse aliases and sub-groups.
-		 * Errors are propagated by explicitly setting the
-		 * "anyErrors" flag of the parent group. *)
-		fun recParse (p1, p2) p = let
-		    val groupstack' = (group, (source, p1, p2)) :: groupstack
-		    val myErrorFlag = #anyErrors source
+		    (* We can hard-wire the source into this
+		     * error function because the function is only for
+		     * immediate use and doesn't get stored into persistent
+		     * data structures. *)
+		    fun error r m =
+			EM.error source r EM.COMPLAIN m EM.nullErrorBody
+
+		    (* recParse returns a group (not an option).
+		     * This function is used to parse aliases and sub-groups.
+		     * Errors are propagated by explicitly setting the
+		     * "anyErrors" flag of the parent group. *)
+		    fun recParse (p1, p2) p = let
+			val groupstack' =
+			    (group, (source, p1, p2)) :: groupstack
+			val myErrorFlag = #anyErrors source
+		    in
+			case mparse (p, groupstack', myErrorFlag, staball) of
+			    NONE => (myErrorFlag := true;
+				     CMSemant.emptyGroup group)
+			  | SOME res => res
+		    end
+	            handle exn as IO.Io _ =>
+			(error (p1, p2) (General.exnMessage exn);
+			 CMSemant.emptyGroup group)
+
+		    fun doMember (p, p1, p2, c) =
+			CMSemant.member (ginfo, recParse (p1, p2))
+			         { sourcepath = p, class = c,
+				   group = (group, (p1, p2)) }
+
+		    (* Build the argument for the lexer; the lexer's local
+		     * state is encapsulated here to make sure the parser
+		     * is re-entrant. *)
+		    val lexarg = let
+			(* local state *)
+			val depth = ref 0
+			val curstring = ref []
+			val startpos = ref 0
+			val instring = ref false
+			(* handling comments *)
+			fun enterC () = depth := !depth + 1
+			fun leaveC () = let
+			    val d = !depth - 1
+			in
+			    depth := d;
+			    d = 0
+			end
+			(* handling strings *)
+			fun newS pos =
+			    (instring := true;
+			     curstring := [];
+			     startpos := pos)
+			fun addS c = curstring := c :: !curstring
+			fun addSC (s, offs) =
+			    addS (chr (ord (String.sub (s, 2)) - offs))
+			fun addSN (s, pos) = let
+			    val ns = substring (s, 1, 3)
+			    val n = Int.fromString ns
+			in
+			    addS (chr (valOf n))
+			    handle _ =>
+				error (pos, pos + size s)
+				         ("illegal decimal char spec: " ^ ns)
+			end
+			fun getS (pos, tok) =
+			    (instring := false;
+			     tok (implode (rev (!curstring)), !startpos, pos))
+			(* handling EOF *)
+			fun handleEof () = let
+			    val pos = SM.lastChange sourceMap
+			in
+			    if !depth > 0 then
+				error (pos, pos)
+				       "unexpected end of input in comment"
+			    else if !instring then
+				error (pos, pos)
+				       "unexpected end of input in string"
+			    else ();
+			    pos
+			end
+			(* handling line breaks *)
+			fun newline pos = SM.newline sourceMap pos
+			(* handling #line directives *)
+			fun sync (p, t) = let
+			    fun sep c = c = #"#" orelse Char.isSpace c
+			    fun cvt s = getOpt (Int.fromString s, 0)
+			    fun r (line, col, file) = SM.resynch sourceMap
+				(p, { fileName = file,
+				      line = line, column = col })
+			in
+			    case String.tokens sep t of
+				[_, line] =>
+				    r (cvt line, NONE, NONE)
+			      | [_, line, file] =>
+				    r (cvt line, NONE, SOME file)
+			      | [_, line, col, file] =>
+				    r (cvt line, SOME (cvt col), SOME file)
+			      | _ => error (p, p + size t)
+				    "illegal #line directive"
+			end
+		    in
+			{ enterC = enterC,
+			  leaveC = leaveC,
+			  newS = newS,
+			  addS = addS,
+			  addSC = addSC,
+			  addSN = addSN,
+			  getS = getS,
+			  handleEof = handleEof,
+			  newline = newline,
+			  error = error,
+			  sync = sync}
+		    end
+
+		    fun inputc k = TextIO.input stream
+
+		    val lexer = CMLex.makeLexer inputc lexarg
+		    val tokenStream = LrParser.Stream.streamify lexer
+		    val (parseResult, _) =
+			CMParse.parse (lookAhead, tokenStream,
+				       fn (s,p1,p2) => error (p1, p2) s,
+				       (group, context, error, recParse,
+					doMember, ginfo))
 		in
-		    case mparse (p, groupstack', myErrorFlag, staball) of
-			NONE => (myErrorFlag := true;
-				 CMSemant.emptyGroup group)
-		      | SOME res => res
+		    if !(#anyErrors source) then NONE
+		    else SOME parseResult
 		end
-	        handle exn as IO.Io _ =>
-		    (error (p1, p2) (General.exnMessage exn);
-		     CMSemant.emptyGroup group)
-
-		fun doMember (p, p1, p2, c) =
-		    CMSemant.member (ginfo, recParse (p1, p2))
-		                    { sourcepath = p, class = c,
-				      group = (group, (p1, p2)) }
-
-		(* Build the argument for the lexer; the lexer's local
-		 * state is encapsulated here to make sure the parser
-		 * is re-entrant. *)
-		val lexarg = let
-		    (* local state *)
-		    val depth = ref 0
-		    val curstring = ref []
-		    val startpos = ref 0
-		    val instring = ref false
-		    (* handling comments *)
-		    fun enterC () = depth := !depth + 1
-		    fun leaveC () = let
-			val d = !depth - 1
-		    in
-			depth := d;
-			d = 0
-		    end
-		    (* handling strings *)
-		    fun newS pos =
-			(instring := true; curstring := []; startpos := pos)
-		    fun addS c = curstring := c :: !curstring
-		    fun addSC (s, offs) =
-			addS (chr (ord (String.sub (s, 2)) - offs))
-		    fun addSN (s, pos) = let
-			val ns = substring (s, 1, 3)
-			val n = Int.fromString ns
-		    in
-			addS (chr (valOf n))
-			handle _ =>
-			    error (pos, pos + size s)
-			          ("illegal decimal char spec: " ^ ns)
-		    end
-		    fun getS (pos, tok) =
-			(instring := false;
-			 tok (implode (rev (!curstring)), !startpos, pos))
-		    (* handling EOF *)
-		    fun handleEof () = let
-			val pos = SM.lastChange sourceMap
-		    in
-			if !depth > 0 then
-			    error (pos, pos)
-			          "unexpected end of input in comment"
-			else if !instring then
-			    error (pos, pos)
-			          "unexpected end of input in string"
-			else ();
-			pos
-		    end
-		    (* handling line breaks *)
-		    fun newline pos = SM.newline sourceMap pos
-		    (* handling #line directives *)
-		    fun sync (p, t) = let
-			fun sep c = c = #"#" orelse Char.isSpace c
-			fun cvt s = getOpt (Int.fromString s, 0)
-			fun r (line, col, file) = SM.resynch sourceMap
-			    (p, { fileName = file, line = line, column = col })
-		    in
-			case String.tokens sep t of
-			    [_, line] =>
-				r (cvt line, NONE, NONE)
-			  | [_, line, file] =>
-				r (cvt line, NONE, SOME file)
-			  | [_, line, col, file] =>
-				r (cvt line, SOME (cvt col), SOME file)
-			  | _ => error (p, p + size t)
-				"illegal #line directive"
-		    end
-		in
-		    { enterC = enterC,
-		      leaveC = leaveC,
-		      newS = newS,
-		      addS = addS,
-		      addSC = addSC,
-		      addSN = addSN,
-		      getS = getS,
-		      handleEof = handleEof,
-		      newline = newline,
-		      error = error,
-		      sync = sync}
-		end
-
-		fun inputc k = TextIO.input stream
-
-		val lexer = CMLex.makeLexer inputc lexarg
-		val tokenStream = LrParser.Stream.streamify lexer
-		val (parseResult, _) =
-		    CMParse.parse (lookAhead, tokenStream,
-				   fn (s,p1,p2) => error (p1, p2) s,
-				   (group, context, error, recParse,
-				    doMember, ginfo))
+		val pro =
+		    SafeIO.perform { openIt =
+				        fn () => AbsPath.openTextIn group,
+				     closeIt = TextIO.closeIn,
+				     work = work,
+				     cleanup = fn () => () }
 	    in
-		TextIO.closeIn stream;
-		if !(#anyErrors source) then NONE
-		else if stabthis then stabilize parseResult
-		else SOME parseResult
+		case pro of
+		    NONE => NONE
+		  | SOME pr =>
+			if stabthis then stabilize pr
+			else SOME pr
 	    end
             handle LrParser.ParseError => NONE
 	in

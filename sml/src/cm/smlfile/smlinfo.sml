@@ -134,7 +134,7 @@ structure SmlInfo :> SMLINFO = struct
 	val ts = !lastseen
 	val nts = AbsPath.tstamp sourcepath
     in
-	if TStamp.earlier (ts, nts) then
+	if TStamp.needsUpdate { source = nts, target = ts } then
 	    (lastseen := nts;
 	     parsetree := NONE;
 	     skeleton := NONE)
@@ -198,25 +198,25 @@ structure SmlInfo :> SMLINFO = struct
 	case !parsetree of
 	    SOME pt => SOME pt
 	  | NONE => let
-		val stream = AbsPath.openTextIn sourcepath
-		val _ = if noerrors orelse quiet then ()
-			else Say.vsay ["[parsing ", name, "]\n"]
-		val source =
-		    Source.newSource (name, 1, stream, false, #errcons gp)
-		val pto = let
-		    val tree = SF.parse source
+		fun work stream = let
+		    val _ = if noerrors orelse quiet then ()
+			    else Say.vsay ["[parsing ", name, "]\n"]
+		    val source =
+			Source.newSource (name, 1, stream, false, #errcons gp)
 		in
-		    SOME (tree, source)
-		end handle SF.Compile msg => (TextIO.closeIn stream;
-					      err msg;
-					      NONE)
-		         | exn => (TextIO.closeIn stream; raise exn)
+		    (SF.parse source, source)
+		end
+		fun openIt () = AbsPath.openTextIn sourcepath
+		val pto =
+		    SOME (SafeIO.perform { openIt = openIt,
+					   closeIt = TextIO.closeIn,
+					   work = work,
+					   cleanup = fn () => () })
 	    in
-		TextIO.closeIn stream;
 		parsetree := pto;
 		pto
-	    end handle exn as IO.Io _ => (err (General.exnMessage exn);
-					  NONE)
+	    end handle exn as IO.Io _ => (err (General.exnMessage exn); NONE)
+	             | SF.Compile msg => (err msg; NONE)
     end
 
     fun getSkeleton gp (i as INFO ir, noerrors) = let
@@ -244,7 +244,7 @@ structure SmlInfo :> SMLINFO = struct
 				      else error gp i EM.COMPLAIN
 					         "error(s) in ML source file"
 						 EM.nullErrorBody
-				  else (SkelIO.write (skelpath, sk);
+				  else (SkelIO.write (skelpath, sk, !lastseen);
 					skeleton := SOME sk);
 				  SOME sk
 			      end

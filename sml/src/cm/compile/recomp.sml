@@ -129,24 +129,25 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	    val os = BinInfo.offset i
 	    val descr = BinInfo.describe i
 	    val _ = Say.vsay ["[consulting ", descr, "]\n"]
-	    val s = AbsPath.openBinIn stable
-	    fun load () = let
+	    fun work s = let
 		val _ = Seek.seek (s, os)
 		val bfc = BF.read { stream = s, name = descr, senv = be,
 				    keep_code = true }
 		val memo = { bfc = bfc, ctxt = be }
 	    in
-		BinIO.closeIn s;
 		PS.recomp_memo_stable (i, memo);
 		memo2envdelta memo
 	    end
 	in
-	    SOME (load ()) handle exn => let
+	    SOME (SafeIO.perform { openIt = fn () => AbsPath.openBinIn stable,
+				   closeIt = BinIO.closeIn,
+				   work = work,
+				   cleanup = fn () => () })
+	    handle exn => let
 		fun ppb pps =
 		    (PP.add_string pps (General.exnMessage exn);
 		     PP.add_newline pps)
 	    in
-		BinIO.closeIn s;
 		BinInfo.error i EM.COMPLAIN
 		       "unable to load stable library module" ppb;
 		NONE
@@ -169,43 +170,45 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	  | NONE => let
 		val binpath = SmlInfo.binpath i
 		val binname = AbsPath.name binpath
-		fun delete () = OS.FileSys.remove binname handle _ => ()
 
 		fun save bfc = let
-		    val s = AbsPath.openBinOut binpath
-		    fun writer () = BF.write { stream = s, content = bfc,
-					       keep_code = true }
+		    fun writer s =
+			(BF.write { stream = s, content = bfc,
+				    keep_code = true };
+			 Say.vsay ["[wrote ", binname, "]\n"])
+		    fun cleanup () = OS.FileSys.remove binname handle _ => ()
 		in
-		    Interrupt.guarded writer handle exn =>
-			(BinIO.closeOut s; raise exn);
-		    BinIO.closeOut s;
-		    Say.vsay ["[wrote ", binname, "]\n"]
-		end handle e as Interrupt.Interrupt => (delete (); raise e)
-	                 | exn => let
-			       fun ppb pps =
-				   (PP.add_string pps (General.exnMessage exn);
-				    PP.add_newline pps)
-			   in
-			       delete ();
-			       SmlInfo.error gp i EM.WARN
-			               ("failed to write " ^ binname) ppb
-			   end
+		    SafeIO.perform { openIt =
+				         fn () => AbsPath.openBinOut binpath,
+				     closeIt = BinIO.closeOut,
+				     work = writer,
+				     cleanup = cleanup }
+		    handle exn => let
+			fun ppb pps =
+			    (PP.add_string pps (General.exnMessage exn);
+			     PP.add_newline pps)
+		    in
+			SmlInfo.error gp i EM.WARN
+			         ("failed to write " ^ binname) ppb
+		    end;
+		    AbsPath.setTime (binpath, SmlInfo.lastseen i)
+		end
 
 		fun load () = let
 		    val bin_ts = AbsPath.tstamp binpath
+		    fun openIt () = AbsPath.openBinIn binpath
+		    fun reader s = BF.read { stream = s, name = binname,
+					     senv = stat, keep_code = true }
 		in
-		    if TStamp.earlier (bin_ts, SmlInfo.lastseen i) then
+		    if TStamp.needsUpdate { target = bin_ts,
+					    source = SmlInfo.lastseen i } then
 			NONE
-		    else let
-			val s = AbsPath.openBinIn binpath
-			fun read () = BF.read { stream = s, name = binname,
-					        senv = stat, keep_code = true }
-		    in
-			(SOME (Interrupt.guarded read)
-			 before SmlInfo.forgetParsetree i)
-			handle exn => (BinIO.closeIn s; raise exn)
-		    end handle e as Interrupt.Interrupt => raise e
-		             | _ => NONE
+		    else
+			SOME (SafeIO.perform { openIt = openIt,
+					       closeIt = BinIO.closeIn,
+					       work = reader,
+					       cleanup = fn () => () })
+			handle _ => NONE
 		end
 
 		fun compile () =
@@ -216,6 +219,9 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 					      " -> ", binname, "...]\n"]
 			    val corenv = #corenv (#param gp)
 			    val cmData = PidSet.listItems pids
+			    (* clear error flag (could still be set from
+			     * earlier run) *)
+			    val _ = #anyErrors source := false
 			    val bfc = BF.create { runtimePid = NONE,
 						  splitting = SmlInfo.split i,
 						  cmData = cmData,
@@ -230,8 +236,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 			    save bfc;
 			    PS.recomp_memo_sml (i, memo);
 			    SOME (memo2envdelta memo)
-			end handle e as Interrupt.Interrupt => raise e
-			         | BF.Compile _ => NONE
+			end handle BF.Compile _ => NONE
 		                 | e => let
 				       fun ppb pps =
 					   (PP.add_newline pps;

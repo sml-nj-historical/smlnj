@@ -14,8 +14,8 @@ Library
 	structure SymbolSet
 	structure SymbolMap
 	structure PidSet
-	signature INTERRUPT
-	structure Interrupt
+	signature SAFEIO
+	structure SafeIO
 	structure TStamp
 	structure Seek
 
@@ -32,7 +32,7 @@ is
 	symbolset.sml
 	symbolmap.sml
 	pidset.sml
-	interrupt.sml
+	safeio.sml
 	tstamp.sml
 	seek.sml
 

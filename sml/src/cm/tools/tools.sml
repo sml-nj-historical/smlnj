@@ -184,16 +184,13 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	    fun rctxt rf = let
 		val dir = AbsPath.contextName c
 		val cwd = OS.FileSys.getDir ()
-		fun doit () =
-		    (OS.FileSys.chDir dir; rf () before OS.FileSys.chDir cwd)
 	    in
-		(Interrupt.guarded doit)
+		SafeIO.perform { openIt = fn () => OS.FileSys.chDir dir,
+				 closeIt = fn () => OS.FileSys.chDir cwd,
+				 work = rf,
+				 cleanup = fn () => () }
 		handle ToolError { tool, msg } =>
-		            (OS.FileSys.chDir cwd;
-			     error (concat ["tool \"", tool, "\" failed: ",
-					    msg]);
-			     [])
-		     | exn => (OS.FileSys.chDir cwd; raise exn)
+		    (error (concat ["tool \"", tool, "\" failed: ", msg]); [])
 	    end
 	in
 	    rule (p, rctxt)

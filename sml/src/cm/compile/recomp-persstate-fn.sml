@@ -22,7 +22,8 @@ functor RecompPersstateFn
 
 	fun recomp_look_sml (i, provided, gp) = let
 	    fun isValid ({ bfc, ctxt }, ts) =
-		not (TStamp.earlier (ts, SmlInfo.lastseen i))
+		not (TStamp.needsUpdate { source = SmlInfo.lastseen i,
+					  target = ts })
 		andalso let
 		    val demanded =
 			PidSet.addList (PidSet.empty, BF.cmDataOf bfc)

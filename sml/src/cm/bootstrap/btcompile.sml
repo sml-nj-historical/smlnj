@@ -52,19 +52,25 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 	val binroot = AbsPath.native { context = ctxt, spec = binroot }
 
 	val pcmode = let
-	    val s = AbsPath.openTextIn pcmodespec
-	    fun loop l = let
-		val line = TextIO.inputLine s
+	    fun work s = let
+		fun loop l = let
+		    val line = TextIO.inputLine s
+		in
+		    if line = "" then PathConfig.hardwire l
+		    else case String.tokens Char.isSpace line of
+			[a, s] => loop ((a, s) :: l)
+		      | _ => (Say.say [AbsPath.name pcmodespec,
+				       ": malformed line (ignored)\n"];
+			      loop l)
+		end
 	    in
-		if line = "" then PathConfig.hardwire l
-		else case String.tokens Char.isSpace line of
-		    [a, s] => loop ((a, s) :: l)
-		  | _ => (Say.say [AbsPath.name pcmodespec,
-				   ": malformed line (ignored)\n"];
-			  loop l)
+		loop []
 	    end
 	in
-	    loop [] before TextIO.closeIn s
+	    SafeIO.perform { openIt = fn () => AbsPath.openTextIn pcmodespec,
+			     closeIt = TextIO.closeIn,
+			     work = work,
+			     cleanup = fn () => () }
 	end
 
 	val fnpolicy =

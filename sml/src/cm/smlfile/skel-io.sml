@@ -7,7 +7,7 @@
  *)
 signature SKELIO = sig
     val read : AbsPath.t * TStamp.t -> Skeleton.decl option
-    val write : AbsPath.t * Skeleton.decl -> unit
+    val write : AbsPath.t * Skeleton.decl * TStamp.t -> unit
 end
 
 structure SkelIO :> SKELIO = struct
@@ -130,28 +130,27 @@ structure SkelIO :> SKELIO = struct
     end
 
     fun read (ap, ts) =
-	if TStamp.earlier (AbsPath.tstamp ap, ts) then NONE
-	else let
-	    val s = AbsPath.openBinIn ap
-	    val r = read_decl s
-		handle exn => (BinIO.closeIn s; raise exn)
-	in
-	    BinIO.closeIn s; SOME r
-	end handle _ => NONE
+	if TStamp.needsUpdate { target = AbsPath.tstamp ap, source = ts } then
+	    NONE
+	else
+	    SOME (SafeIO.perform { openIt = fn () => AbsPath.openBinIn ap,
+				   closeIt = BinIO.closeIn,
+				   work = read_decl,
+				   cleanup = fn () => () })
+	    handle _ => NONE
 
-    fun write (ap, sk) = let
-	val s = AbsPath.openBinOut ap
-    in
-	(Interrupt.guarded (fn () => write_decl (s, sk));
-	 BinIO.closeOut s)
-	handle exn => let
+    fun write (ap, sk, ts) = let
+	fun cleanup () = let
 	    val p = AbsPath.name ap
 	in
-	    BinIO.closeOut s;
 	    OS.FileSys.remove p handle _ => ();
-	    Say.say ["[writing ", p, " failed]\n"];
-	    raise exn
+	    Say.say ["[writing ", p, " failed]\n"]
 	end
-    end handle Interrupt.Interrupt => raise Interrupt.Interrupt
-             | _ => ()
+    in
+	SafeIO.perform { openIt = fn () => AbsPath.openBinOut ap,
+			 closeIt = BinIO.closeOut,
+			 work = fn s => write_decl (s, sk),
+			 cleanup = cleanup };
+	AbsPath.setTime (ap, ts)
+    end
 end

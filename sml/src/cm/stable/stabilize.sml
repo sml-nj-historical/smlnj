@@ -71,9 +71,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	SymbolMap.foldl add IntBinaryMap.empty exports
     end
 
-    fun deleteFile n = OS.FileSys.remove n
-	handle e as Interrupt.Interrupt => raise e
-	     | _ => ()
+    fun deleteFile n = OS.FileSys.remove n handle _ => ()
 
     fun stabilize gp { group = g as GG.GROUP grec, anyerrors } = let
 
@@ -94,14 +92,20 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
 	    val bname = AbsPath.name o SmlInfo.binpath
 	    val bsz = OS.FileSys.fileSize o bname
+
 	    fun cpb s i = let
-		val ins = BinIO.openIn (bname i)
-		fun cp () =
-		    if BinIO.endOfStream ins then ()
-		    else (BinIO.output (s, BinIO.input ins); cp ())
+		fun copy ins = let
+		    fun cp () =
+			if BinIO.endOfStream ins then ()
+			else (BinIO.output (s, BinIO.input ins); cp ())
+		in
+		    cp ()
+		end
 	    in
-		cp () handle e => (BinIO.closeIn ins; raise e);
-		    BinIO.closeIn ins
+		SafeIO.perform { openIt = fn () => BinIO.openIn (bname i),
+				 closeIt = BinIO.closeIn,
+				 work = copy,
+				 cleanup = fn () => () }
 	    end
 
 	    val grpSrcInfo = (#errcons gp, anyerrors)
@@ -371,20 +375,18 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    val gpath = #grouppath grec
 	    val spath = FilenamePolicy.mkStablePath policy gpath
 	    fun delete () = deleteFile (AbsPath.name spath)
-	    val outs = AbsPath.openBinOut spath
-	    fun try () =
+	    fun work outs =
 		(Say.vsay ["[stabilizing ", AbsPath.name gpath, "]\n"];
 		 writeInt32 (outs, sz);
 		 BinIO.output (outs, Byte.stringToBytes pickle);
 		 app (cpb outs) memberlist;
-		 BinIO.closeOut outs;
-		 SOME (mkStableGroup spath))
+		 mkStableGroup spath)
 	in
-	    Interrupt.guarded try
-	    handle e as Interrupt.Interrupt => (BinIO.closeOut outs;
-						delete ();
-						raise e)
-		 | exn => (BinIO.closeOut outs; NONE)
+	    SOME (SafeIO.perform { openIt = fn () => AbsPath.openBinOut spath,
+				   closeIt = BinIO.closeOut,
+				   work = work,
+				   cleanup = delete })
+	    handle exn => NONE
 	end
     in
 	case #stableinfo grec of
@@ -451,170 +453,169 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	val primconf = #primconf (#param gp)
 	val spath = FilenamePolicy.mkStablePath policy group
 	val _ = Say.vsay ["[checking stable ", gname, "]\n"]
-	val s = AbsPath.openBinIn spath
 
-	fun getGroup' p =
-	    case getGroup p of
-		SOME g => g
-	      | NONE =>
-		    (error ["unable to find ", AbsPath.name p];
-		     raise Format)
+	fun work s = let
 
-	(* for getting sharing right... *)
-	val m = ref IntBinaryMap.empty
-	val next = ref 0
+	    fun getGroup' p =
+		case getGroup p of
+		    SOME g => g
+		  | NONE => (error ["unable to find ", AbsPath.name p];
+			     raise Format)
 
-	fun bytesIn n = let
-	    val bv = BinIO.inputN (s, n)
-	in
-	    if n = Word8Vector.length bv then bv
-	    else raise Format
-	end
+	    (* for getting sharing right... *)
+	    val m = ref IntBinaryMap.empty
+	    val next = ref 0
 
-	val sz = LargeWord.toIntX (Pack32Big.subVec (bytesIn 4, 0))
-	val pickle = bytesIn sz
-	val offset_adjustment = sz + 4
-
-	val rd = let
-	    val pos = ref 0
-	    fun rd () = let
-		val p = !pos
+	    fun bytesIn n = let
+		val bv = BinIO.inputN (s, n)
 	    in
-		pos := p + 1;
-		Byte.byteToChar (Word8Vector.sub (pickle, p))
-		handle _ => raise Format
+		if n = Word8Vector.length bv then bv
+		else raise Format
 	    end
-	in
-	    rd
-	end
 
-	fun r_list r () =
-	    case rd () of
-		#"0" => []
-	      | #"1" => [r ()]
-	      | #"2" => [r (), r ()]
-	      | #"3" => [r (), r (), r ()]
-	      | #"4" => [r (), r (), r (), r ()]
-	      | #"5" => r () :: r () :: r () :: r () :: r () :: r_list r ()
-	      | _ => raise Format
+	    val sz = LargeWord.toIntX (Pack32Big.subVec (bytesIn 4, 0))
+	    val pickle = bytesIn sz
+	    val offset_adjustment = sz + 4
 
-	fun r_bool () =
-	    case rd () of
-		#"t" => true
-	      | #"f" => false
-	      | _ => raise Format
-
-	fun r_option r_item () =
-	    case rd () of
-		#"n" => NONE
-	      | #"s" => SOME (r_item ())
-	      | _ => raise Format
-
-	fun r_int () = let
-	    fun loop n = let
-		val w8 = Byte.charToByte (rd ())
-		val n' = n * 0w128 + Word8.toLargeWord (Word8.andb (w8, 0w127))
-	    in
-		if Word8.andb (w8, 0w128) = 0w0 then n' else loop n'
-	    end
-	in
-	    LargeWord.toIntX (loop 0w0)
-	end
-
-	fun r_share r_raw C unC () =
-	    case rd () of
-		#"o" =>	(case IntBinaryMap.find (!m, r_int ()) of
-			     SOME x => unC x
-			   | NONE => raise Format)
-	      | #"n" => let
-		    val i = !next
-		    val _ = next := i + 1
-		    val v = r_raw ()
+	    val rd = let
+		val pos = ref 0
+		fun rd () = let
+		    val p = !pos
 		in
-		    m := IntBinaryMap.insert (!m, i, C v);
-		    v
+		    pos := p + 1;
+		    Byte.byteToChar (Word8Vector.sub (pickle, p))
+		    handle _ => raise Format
 		end
-	      | _ => raise Format
-
-	fun r_string () = let
-	    fun loop l =
-		case rd () of
-		    #"\"" => String.implode (rev l)
-	          | #"\\" => loop (rd () :: l)
-		  | c => loop (c :: l)
-	in
-	    loop []
-	end
-
-	fun r_abspath () =
-	    case AbsPath.unpickle pcmode (r_list r_string (), groupdir) of
-		SOME p => p
-	      | NONE => raise Format
-
-    	val r_symbol = let
-	    fun r_symbol_raw () = let
-		val (ns, first) =
-		    case rd () of
-			#"`" => (Symbol.sigSymbol, rd ())
-		      | #"(" => (Symbol.fctSymbol, rd ())
-		      | #")" => (Symbol.fsigSymbol, rd ())
-		      | c => (Symbol.strSymbol, c)
-		fun loop (#".", l) = String.implode (rev l)
-		  | loop (c, l) = loop (rd (), c :: l)
 	    in
-		ns (loop (first, []))
+		rd
 	    end
-	    fun unUS (US x) = x
-	      | unUS _ = raise Format
-	in
-	    r_share r_symbol_raw US unUS
-	end
 
-	val r_ss = let
-	    fun r_ss_raw () =
-		SymbolSet.addList (SymbolSet.empty, r_list r_symbol ())
-	    fun unUSS (USS s) = s
-	      | unUSS _ = raise Format
-	in
-	    r_share r_ss_raw USS unUSS
-	end
+	    fun r_list r () =
+		case rd () of
+		    #"0" => []
+		  | #"1" => [r ()]
+		  | #"2" => [r (), r ()]
+		  | #"3" => [r (), r (), r ()]
+		  | #"4" => [r (), r (), r (), r ()]
+		  | #"5" => r () :: r () :: r () :: r () :: r () :: r_list r ()
+		  | _ => raise Format
 
-	val r_filter = r_option r_ss
+	    fun r_bool () =
+		case rd () of
+		    #"t" => true
+		  | #"f" => false
+		  | _ => raise Format
 
-	fun r_primitive () =
-	    case Primitive.fromIdent primconf (rd ()) of
-		NONE => raise Format
-	      | SOME p => p
+	    fun r_option r_item () =
+		case rd () of
+		    #"n" => NONE
+		  | #"s" => SOME (r_item ())
+		  | _ => raise Format
 
-	fun r_sharing () =
-	    case rd () of
-		#"n" => NONE
-	      | #"t" => SOME true
-	      | #"f" => SOME false
-	      | _ => raise Format
+	    fun r_int () = let
+		fun loop n = let
+		    val w8 = Byte.charToByte (rd ())
+		    val n' =
+			n * 0w128 + Word8.toLargeWord (Word8.andb (w8, 0w127))
+		in
+		    if Word8.andb (w8, 0w128) = 0w0 then n' else loop n'
+		end
+	    in
+		LargeWord.toIntX (loop 0w0)
+	    end
 
-	fun r_si () = let
-	    val spec = r_string ()
-	    val locs = r_string ()
-	    val offset = r_int () + offset_adjustment
-	    val share = r_sharing ()
-	    val error = EM.errorNoSource grpSrcInfo locs
-	in
-	    BinInfo.new { group = group,
-			  stablepath = spath,
-			  error = error,
-			  spec = spec,
-			  offset = offset,
-			  share = share }
-	end
+	    fun r_share r_raw C unC () =
+		case rd () of
+		    #"o" => (case IntBinaryMap.find (!m, r_int ()) of
+				 SOME x => unC x
+			       | NONE => raise Format)
+		  | #"n" => let
+			val i = !next
+			val _ = next := i + 1
+			val v = r_raw ()
+		    in
+			m := IntBinaryMap.insert (!m, i, C v);
+			v
+		    end
+		  | _ => raise Format
 
-	fun r_sg () = let
-	    val p = r_abspath ()
-	in
-	    (p, getGroup' p)
-	end
+	    fun r_string () = let
+		fun loop l =
+		    case rd () of
+			#"\"" => String.implode (rev l)
+	              | #"\\" => loop (rd () :: l)
+		      | c => loop (c :: l)
+	    in
+		loop []
+	    end
 
-	fun unpickle_group () = let
+	    fun r_abspath () =
+		case AbsPath.unpickle pcmode (r_list r_string (), groupdir) of
+		    SOME p => p
+		  | NONE => raise Format
+
+	    val r_symbol = let
+		fun r_symbol_raw () = let
+		    val (ns, first) =
+			case rd () of
+			    #"`" => (Symbol.sigSymbol, rd ())
+			  | #"(" => (Symbol.fctSymbol, rd ())
+			  | #")" => (Symbol.fsigSymbol, rd ())
+			  | c => (Symbol.strSymbol, c)
+		    fun loop (#".", l) = String.implode (rev l)
+		      | loop (c, l) = loop (rd (), c :: l)
+		in
+		    ns (loop (first, []))
+		end
+		fun unUS (US x) = x
+		  | unUS _ = raise Format
+	    in
+		r_share r_symbol_raw US unUS
+	    end
+
+	    val r_ss = let
+		fun r_ss_raw () =
+		    SymbolSet.addList (SymbolSet.empty, r_list r_symbol ())
+		fun unUSS (USS s) = s
+		  | unUSS _ = raise Format
+	    in
+		r_share r_ss_raw USS unUSS
+	    end
+
+	    val r_filter = r_option r_ss
+
+	    fun r_primitive () =
+		case Primitive.fromIdent primconf (rd ()) of
+		    NONE => raise Format
+		  | SOME p => p
+
+	    fun r_sharing () =
+		case rd () of
+		    #"n" => NONE
+		  | #"t" => SOME true
+		  | #"f" => SOME false
+		  | _ => raise Format
+
+	    fun r_si () = let
+		val spec = r_string ()
+		val locs = r_string ()
+		val offset = r_int () + offset_adjustment
+		val share = r_sharing ()
+		val error = EM.errorNoSource grpSrcInfo locs
+	    in
+		BinInfo.new { group = group,
+			      stablepath = spath,
+			      error = error,
+			      spec = spec,
+			      offset = offset,
+			      share = share }
+	    end
+
+	    fun r_sg () = let
+		val p = r_abspath ()
+	    in
+		(p, getGroup' p)
+	    end
 
 	    val sublibs = r_list r_sg ()
 
@@ -680,13 +681,14 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		       grouppath = group,
 		       sublibs = sublibs,
 		       stableinfo = GG.STABLE simap }
-	    before BinIO.closeIn s
 	end
     in
-	SOME (unpickle_group ())
-	handle Format => (BinIO.closeIn s; NONE)
-	     | exn => (BinIO.closeIn s; raise exn)
-    end handle IO.Io _ => NONE
+	SOME (SafeIO.perform { openIt = fn () => AbsPath.openBinIn spath,
+			       closeIt = BinIO.closeIn,
+			       work = work,
+			       cleanup = fn () => () })
+	handle Format => NONE
+    end
 end
 
 end (* local *)

@@ -13,11 +13,12 @@ structure TStamp = struct
 
     val ancient = TSTAMP (Time.zeroTime)
 
-    (*
-     * If f1 depends on f2, then earlier (modtime f1, modtime f2) implies
-     * that f1 needs to be recompiled...     *
-     *)
-    fun earlier (_, NOTSTAMP) = false	(* prerequisite missing *)
-      | earlier (NOTSTAMP, _) = true	(* object missing *)
-      | earlier (TSTAMP t1, TSTAMP t2) = Time.< (t1, t2)
+    (* We consider a target good if it has the same time stamp
+     * as the source.  A target that isn't there is never good,
+     * and if there is a target but no source, then we assume the
+     * target to be ok. *)
+    fun needsUpdate { target = NOTSTAMP, ... } = true
+      | needsUpdate { source = NOTSTAMP, ... } = false
+      | needsUpdate { source = TSTAMP st, target = TSTAMP tt } =
+	Time.compare (st, tt) <> EQUAL
 end

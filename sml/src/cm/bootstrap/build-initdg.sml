@@ -37,94 +37,102 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 	val context = AbsPath.relativeContext (AbsPath.dir specgroup)
 	val specname = AbsPath.name specgroup
 	val _ = Say.vsay ["[reading init spec from ", specname, "]\n"]
-	val stream = AbsPath.openTextIn specgroup
-	val source = S.newSource (specname, 1, stream, false, errcons)
-	val sourceMap = #sourceMap source
 
-	val _ = GroupReg.register groupreg (specgroup, source)
+	fun work stream = let
+	    val source = S.newSource (specname, 1, stream, false, errcons)
+	    val sourceMap = #sourceMap source
 
-	fun error r m = EM.error source r EM.COMPLAIN m EM.nullErrorBody
+	    val _ = GroupReg.register groupreg (specgroup, source)
 
-	fun lineIn pos = let
-	    val line = TextIO.inputLine stream
-	    val len = size line
-	    val newpos = pos + len
-	    val _ = GenericVC.SourceMap.newline sourceMap newpos
-	    fun sep c = Char.isSpace c orelse Char.contains "(),=;" c
-	in
-	    if line = "" then NONE
-	    else if String.sub (line, 0) = #"#" then SOME ([], newpos)
-	    else SOME (String.tokens sep line, newpos)
-	end
+	    fun error r m = EM.error source r EM.COMPLAIN m EM.nullErrorBody
 
-	fun loop (split, m, bpl, pos) =
-	    case lineIn pos of
-		NONE => (error (pos, pos) "unexpected end of file"; NONE)
-	      | SOME (line, newpos) => let
-		    val error = error (pos, newpos)
-		    fun sml (spec, split) = let
-			val p = AbsPath.standard pcmode
-			    { context = context, spec = spec }
+	    fun lineIn pos = let
+		val line = TextIO.inputLine stream
+		val len = size line
+		val newpos = pos + len
+		val _ = GenericVC.SourceMap.newline sourceMap newpos
+		fun sep c = Char.isSpace c orelse Char.contains "(),=;" c
+	    in
+		if line = "" then NONE
+		else if String.sub (line, 0) = #"#" then SOME ([], newpos)
+		     else SOME (String.tokens sep line, newpos)
+	    end
+
+	    fun loop (split, m, bpl, pos) =
+		case lineIn pos of
+		    NONE => (error (pos, pos) "unexpected end of file"; NONE)
+		  | SOME (line, newpos) => let
+			val error = error (pos, newpos)
+			fun sml (spec, split) = let
+			    val p = AbsPath.standard pcmode
+				{ context = context, spec = spec }
+			in
+			    SmlInfo.info gp { sourcepath = p,
+					      group = (specgroup,
+						       (pos, newpos)),
+					      share = NONE,
+					      split = split }
+			end
+			fun bogus n = 
+			    DG.SNODE { smlinfo = sml (n, false),
+				       localimports = [], globalimports = [] }
+			fun look n =
+			    case StringMap.find (m, n) of
+				SOME x => x
+			      | NONE =>
+				    (case Primitive.fromString primconf n of
+					 SOME p => DG.SB_BNODE (DG.PNODE p)
+				       | NONE => (error ("undefined: " ^ n);
+						  DG.SB_SNODE (bogus n)))
+
+			fun look_snode n =
+			    case look n of
+				DG.SB_SNODE n => n
+			      | _ => (error ("illegal: " ^ n); bogus n)
+
+			fun node (name, file, args) = let
+			    fun one (arg, (li, gi)) =
+				case look arg of
+				    DG.SB_SNODE n => (n :: li, gi)
+				  | n as DG.SB_BNODE _ => (li, (NONE, n) :: gi)
+			    val (li, gi) = foldr one ([], []) args
+			    val i = sml (file, split)
+			    val n = DG.SNODE { smlinfo = i,
+					      localimports = li,
+					      globalimports = gi }
+			    val bpl' =
+				case bpl of
+				    NONE => NONE
+				  | SOME l => SOME (SmlInfo.binpath i :: l)
+			in
+			    loop (split,
+				  StringMap.insert (m, name, DG.SB_SNODE n),
+				  bpl', newpos)
+			end
 		    in
-			SmlInfo.info gp { sourcepath = p,
-					  group = (specgroup, (pos, newpos)),
-					  share = NONE,
-					  split = split }
-		    end
-		    fun bogus n = 
-			DG.SNODE { smlinfo = sml (n, false),
-				   localimports = [], globalimports = [] }
-		    fun look n =
-			case StringMap.find (m, n) of
-			    SOME x => x
-			  | NONE =>
-				(case Primitive.fromString primconf n of
-				     SOME p => DG.SB_BNODE (DG.PNODE p)
-				   | NONE => (error ("undefined: " ^ n);
-					      DG.SB_SNODE (bogus n)))
-
-		    fun look_snode n =
-			case look n of
-			    DG.SB_SNODE n => n
-			  | _ => (error ("illegal: " ^ n); bogus n)
-
-		    fun node (name, file, args) = let
-			fun one (arg, (li, gi)) =
-			    case look arg of
-				DG.SB_SNODE n => (n :: li, gi)
-			      | n as DG.SB_BNODE _ => (li, (NONE, n) :: gi)
-			val (li, gi) = foldr one ([], []) args
-			val i = sml (file, split)
-			val n = DG.SNODE { smlinfo = i,
-					   localimports = li,
-					   globalimports = gi }
-			val bpl' =
-			    case bpl of
-				NONE => NONE
-			      | SOME l => SOME (SmlInfo.binpath i :: l)
-		    in
-			loop (split,
-			      StringMap.insert (m, name, DG.SB_SNODE n),
-			      bpl', newpos)
-		    end
-		in
-		    case line of
-			[] => loop (split, m, bpl, newpos)
-		      | ["split"] => loop (true, m, bpl, newpos)
-		      | ["nosplit"] => loop (false, m, bpl, newpos)
-		      | ["start"] => loop (split, m, SOME [], newpos)
-		      | ("bind" :: name :: file :: args)  =>
-			    node (name, file, args)
-		      | ("return" :: core :: rts :: pervasive :: prims) =>
-			    SOME { rts = look_snode rts,
-				   core = look_snode core,
-				   pervasive = look_snode pervasive,
-				   primitives =
+			case line of
+			    [] => loop (split, m, bpl, newpos)
+			  | ["split"] => loop (true, m, bpl, newpos)
+			  | ["nosplit"] => loop (false, m, bpl, newpos)
+			  | ["start"] => loop (split, m, SOME [], newpos)
+			  | ("bind" :: name :: file :: args)  =>
+				node (name, file, args)
+			  | ("return" :: core :: rts :: pervasive :: prims) =>
+				SOME { rts = look_snode rts,
+				       core = look_snode core,
+				       pervasive = look_snode pervasive,
+				       primitives =
 				         map (fn n => (n, look_snode n)) prims,
-				   binpaths = rev (getOpt (bpl, [])) }
-		      | _ => (error "malformed line"; NONE)
-		end
+				       binpaths = rev (getOpt (bpl, [])) }
+			  | _ => (error "malformed line"; NONE)
+		    end
+	in
+	    loop (false, StringMap.empty, NONE, 1)
+	end
     in
-	loop (false, StringMap.empty, NONE, 1)
+	SafeIO.perform { openIt = fn () => AbsPath.openTextIn specgroup,
+			 closeIt = TextIO.closeIn,
+			 work = work,
+			 cleanup = fn () => () }
     end
 end
