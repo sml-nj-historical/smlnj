@@ -12,6 +12,7 @@ signature CM_SEMANT = sig
     type region = GenericVC.SourceMap.region
     type ml_symbol
     type cm_symbol
+    type cm_class
 
     type group = GroupGraph.group
 
@@ -31,6 +32,7 @@ signature CM_SEMANT = sig
     val ml_signature : string -> ml_symbol
     val ml_functor : string -> ml_symbol
     val ml_funsig : string -> ml_symbol
+    val class : cm_symbol -> cm_class
 
     (* getting the full analysis for a group/library *)
     val emptyGroup : pathname -> group
@@ -53,11 +55,11 @@ signature CM_SEMANT = sig
     val member :
 	GeneralParams.info * (pathname option -> pathname -> group)
 	-> { sourcepath: pathname, group: pathname * region,
-	     class: cm_symbol option }
+	     class: cm_class option }
 	-> members
     val members : members * members -> members
-    val guarded_members :
-	exp * (members * members) * (string -> unit) -> members
+    val guarded_members :	
+exp * (members * members) * (string -> unit) -> members
     val error_member : (unit -> unit) -> members
 
     (* constructing export lists *)
@@ -105,6 +107,7 @@ structure CMSemant :> CM_SEMANT = struct
     type region = GenericVC.SourceMap.region
     type ml_symbol = Symbol.symbol
     type cm_symbol = string
+    type cm_class = string
 
     type group = GG.group
     type privilegespec = { required: GG.privileges, wrapped: GG.privileges }
@@ -133,6 +136,8 @@ structure CMSemant :> CM_SEMANT = struct
     val ml_functor = Symbol.fctSymbol
     val ml_funsig = Symbol.fsigSymbol
 
+    fun class s = String.map Char.toLower s
+
     fun applyTo mc e = e mc
 
     fun emptyGroup path =
@@ -143,11 +148,11 @@ structure CMSemant :> CM_SEMANT = struct
 		   sublibs = [] }
 
     fun sgl2sll subgroups = let
-	fun sameSL (_, GG.GROUP g) (_, GG.GROUP g') =
+	fun sameSL (GG.GROUP g) (GG.GROUP g') =
 	    SrcPath.compare (#grouppath g, #grouppath g') = EQUAL
 	fun add (x, l) =
 	    if List.exists (sameSL x) l then l else x :: l
-	fun oneSG (x as (_, GG.GROUP { kind, sublibs, ... }), l) =
+	fun oneSG (x as (GG.GROUP { kind, sublibs, ... }), l) =
 	    case kind of
 		GG.NOLIB => foldl add l sublibs
 	      | _ => add (x, l)

@@ -20,17 +20,11 @@ structure GroupGraph = struct
      *   1. privileges required by subgroups
      *   2. newly required privileges
      *   3. privileges that would be wrapped once the group is stabilized
-     *
-     * The list of sub-libraries includes an AbsPath.t.  This is the path
-     * that was originally found in the CM description file and led to
-     * inclusion of the sublibrary.  This contrasts
-     * with the "grouppath" member of the sublibrary itself which
-     * records the path of its actual description file.
-     * The two paths are not necessarily equal because of aliases. *)
+     *)
     datatype group =
 	GROUP of { exports: DependencyGraph.impexp SymbolMap.map,
 		   kind: kind,
 		   required: privileges,
 		   grouppath: SrcPath.t,
-		   sublibs: (SrcPath.t * group) list }
+		   sublibs: group list }
 end

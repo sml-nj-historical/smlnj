@@ -144,7 +144,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			EM.error source r EM.COMPLAIN m EM.nullErrorBody
 
 		    (* recParse returns a group (not an option).
-		     * This function is used to parse aliases and sub-groups.
+		     * This function is used to parse sub-groups.
 		     * Errors are propagated by explicitly setting the
 		     * "anyErrors" flag of the parent group. *)
 		    fun recParse (p1, p2) curlib p = let
@@ -256,7 +256,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    val (parseResult, _) =
 			CMParse.parse (lookAhead, tokenStream,
 				       fn (s,p1,p2) => error (p1, p2) s,
-				       (group, context, error, recParse,
+				       (group, context, error,
 					doMember, curlib, ginfo))
 		in
 		    if !(#anyErrors source) then NONE

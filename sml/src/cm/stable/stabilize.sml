@@ -135,7 +135,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    fun oneB i (sy, ((_, DG.SB_BNODE (DG.BNODE n)), _), m) =
 		StableMap.insert (m, #bininfo n, (i, sy))
 	      | oneB i (_, _, m) = m
-	    fun oneSL ((_, g as GG.GROUP { exports, ... }), (m, i)) =
+	    fun oneSL ((g as GG.GROUP { exports, ... }), (m, i)) =
 		(SymbolMap.foldli (oneB i) m exports, i + 1)
 	    val inverseMap = #1 (foldl oneSL (StableMap.empty, 0) sublibs)
 
@@ -300,7 +300,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    fun w_privileges p = w_list w_string (StringSet.listItems p)
 
 	    fun pickle_group () = let
-		fun w_sg (p, _) = w_abspath p
+		fun w_sg (GG.GROUP { grouppath, ... }) = w_abspath grouppath
 		fun k0 m = []
 		val m0 = (0, Map.empty)
 	    in
@@ -397,7 +397,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		if not (recomp gp g) then
 		    (anyerrors := true; NONE)
 		else let
-		    fun notStable (_, GG.GROUP { kind, ... }) =
+		    fun notStable (GG.GROUP { kind, ... }) =
 			case kind of GG.STABLELIB _ => false | _ => true
 		in
 		    case List.filter notStable (#sublibs grec) of
@@ -406,13 +406,9 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			    val grammar = case l of [_] => " is" | _ => "s are"
 			    fun ppb pps = let
 				fun loop [] = ()
-				  | loop ((p, GG.GROUP { grouppath, ... })
-					  :: t) =
+				  | loop (GG.GROUP { grouppath, ... } :: t) =
 				    (PP.add_string pps
 				        (SrcPath.descr grouppath);
-				     PP.add_string pps " (";
-				     PP.add_string pps (SrcPath.descr p);
-				     PP.add_string pps ")";
 				     PP.add_newline pps;
 				     loop t)
 			    in
@@ -617,11 +613,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			      share = share }
 	    end
 
-	    fun r_sg () = let
-		val p = r_abspath ()
-	    in
-		(p, getGroup' p)
-	    end
+	    fun r_sg () = getGroup' (r_abspath ())
 
 	    val sublibs = r_list r_sg ()
 
@@ -631,7 +623,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		  | #"b" => let
 			val n = r_int ()
 			val sy = r_symbol ()
-			val (_, GG.GROUP { exports = slexp, ... }) =
+			val GG.GROUP { exports = slexp, ... } =
 			    List.nth (sublibs, n) handle _ => raise Format
 		    in
 			case SymbolMap.find (slexp, sy) of

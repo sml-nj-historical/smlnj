@@ -17,7 +17,7 @@ structure S = CMSemant
     | CM_ID of string
     | ML_ID of string
     | NUMBER of int
-    | ALIAS | GROUP | LIBRARY | IS
+    | GROUP | LIBRARY | IS
     | LPAREN | RPAREN | COLON
     | IF | ELIF | ELSE | ENDIF
     | ERROR of string
@@ -28,7 +28,6 @@ structure S = CMSemant
     | LT | LE | GT | GE | EQ | NE
 
 %nonterm description of S.group
-       | alias of S.group
        | group of S.group
        | gprivspec of S.privilegespec
        | lprivspec of S.privilegespec
@@ -53,15 +52,15 @@ structure S = CMSemant
        | sym of S.cm_symbol
        | word of S.cm_symbol
        | owner of S.pathname option
+       | class of S.cm_class
 
 %pos int
 %verbose
-%arg (grouppath, context, error, recParse, doMember, curlib, gp) :
+%arg (grouppath, context, error, doMember, curlib, gp) :
     S.pathname *
     S.context *
     (pos * pos -> string -> unit) *
-    (pos * pos -> S.pathname option -> S.pathname -> S.group) *
-    (S.pathname * pos * pos * S.cm_symbol option -> S.members) *
+    (S.pathname * pos * pos * S.cm_class option -> S.members) *
     S.pathname option *
     GeneralParams.info
 %start description
@@ -70,7 +69,7 @@ structure S = CMSemant
 
 %name CM
 
-%keyword ALIAS GROUP LIBRARY IS IF ELIF ELSE ENDIF DEFINED
+%keyword GROUP LIBRARY IS IF ELIF ELSE ENDIF DEFINED
   STRUCTURE SIGNATURE FUNCTOR FUNSIG
 
 %prefer LPAREN
@@ -85,12 +84,7 @@ structure S = CMSemant
 
 %%
 
-description : alias				(alias)
-	    | group				(group)
-
-alias : ALIAS pathname				(recParse
-						 (pathnameleft, pathnameright)
-						 curlib pathname)
+description : group				(group)
 
 group : gprivspec owner opt_exports IS members (S.group
 						 (grouppath,
@@ -160,10 +154,10 @@ member : pathname				(doMember (pathname,
 							   pathnameleft,
 							   pathnameright,
 							   NONE))
-       | pathname COLON word			(doMember (pathname,
+       | pathname COLON class			(doMember (pathname,
 							   pathnameleft,
 							   pathnameright,
-							   SOME word))
+							   SOME class))
        | IF exp guarded_members			(S.guarded_members
 						 (exp, guarded_members,
 						  error (expleft, expright)))
@@ -171,6 +165,8 @@ member : pathname				(doMember (pathname,
 						 (fn () =>
 						  error (ERRORleft, ERRORright)
 						        ERROR))
+
+class : word                                    (S.class word)
 
 guarded_members : members else_members	        ((members, else_members))
 

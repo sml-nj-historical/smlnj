@@ -26,6 +26,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure CoerceEnv = GenericVC.CoerceEnv
       structure EM = GenericVC.ErrorMsg
       structure BF = HostMachDepVC.Binfile
+      structure P = OS.Path
+      structure F = OS.FileSys
 
       val os = SMLofNJ.SysInfo.getOSKind ()
 
@@ -222,21 +224,20 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val _ = let
 		  fun listDir ds = let
 		      fun loop l =
-			  case OS.FileSys.readDir ds of
+			  case F.readDir ds of
 			      "" => l
 			    | x => loop (x :: l)
 		  in
 		      loop []
 		  end
 		  val fileList = SafeIO.perform
-		      { openIt = fn () => OS.FileSys.openDir bootdir,
-		        closeIt = OS.FileSys.closeDir,
+		      { openIt = fn () => F.openDir bootdir,
+		        closeIt = F.closeDir,
 			work = listDir,
 			cleanup = fn () => () }
-		  fun isDir x =
-		      OS.FileSys.isDir x handle _ => false
+		  fun isDir x = F.isDir x handle _ => false
 		  fun subDir x = let
-		      val d = OS.Path.concat (bootdir, x)
+		      val d = P.concat (bootdir, x)
 		  in
 		      if isDir d then SOME (x, d) else NONE
 		  end
