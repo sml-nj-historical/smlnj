@@ -112,7 +112,6 @@ functor X86RA
     structure InsnProps  : INSN_PROPERTIES where I = I
     structure F          : FLOWGRAPH where I = I
     structure Asm        : INSTRUCTION_EMITTER where I = I
-    structure CB         : CELLS_BASIS = CellsBasis
 
       (* Spilling heuristics determines which node should be spilled. 
        * You can use Chaitin, ChowHenessey, or one of your own.
@@ -146,14 +145,14 @@ functor X86RA
     (* Integer register allocation parameters *)
     structure Int :
     sig
-       val avail     : CB.cell list
-       val dedicated : CB.cell list
-       val memRegs   : CB.cell list
+       val avail     : CellsBasis.cell list
+       val dedicated : CellsBasis.cell list
+       val memRegs   : CellsBasis.cell list
        val phases    : raPhase list
 
        val spillLoc  : {info:spill_info,
                         an  :Annotations.annotations ref,
-                        cell:CB.cell, (* spilled cell *)
+                        cell:CellsBasis.cell, (* spilled cell *)
                         id  :RAGraph.logical_spill_id
                        } -> 
                        { opnd: I.operand,
@@ -169,9 +168,9 @@ functor X86RA
     structure Float :
     sig
        (* Sethi-Ullman mode *)
-       val avail     : CB.cell list
-       val dedicated : CB.cell list
-       val memRegs   : CB.cell list
+       val avail     : CellsBasis.cell list
+       val dedicated : CellsBasis.cell list
+       val memRegs   : CellsBasis.cell list
        val phases    : raPhase list
 
        val spillLoc  : spill_info * Annotations.annotations ref * 
@@ -181,7 +180,7 @@ functor X86RA
        val spillInit : RAGraph.interferenceGraph -> unit
 
        (* When fast_floating_point is on, use these instead: *)
-       val fastMemRegs : CB.cell list
+       val fastMemRegs : CellsBasis.cell list
        val fastPhases  : raPhase list
     end
 

@@ -12,12 +12,13 @@ struct
 
 (*#line 23.4 "x86Peephole.peep"*)
    structure C = I.C
+   structure CBase = CellsBasis
 
 (*#line 26.4 "x86Peephole.peep"*)
    fun peephole instrs = 
        let 
 (*#line 27.8 "x86Peephole.peep"*)
-           fun isStackPtr (I.Direct r) = C.sameColor (r, C.esp)
+           fun isStackPtr (I.Direct r) = CBase.sameColor (r, C.esp)
              | isStackPtr _ = false
 
 (*#line 30.8 "x86Peephole.peep"*)
@@ -90,7 +91,7 @@ struct
                                                       and m = v_7
                                                       and n = v_16
                                                       and rest = v_4
-                                                  in (if ((C.sameColor (d_i, C.esp)) andalso (C.sameColor (d_j, C.esp)))
+                                                  in (if ((CBase.sameColor (d_i, C.esp)) andalso (CBase.sameColor (d_j, C.esp)))
                                                         then (if (m = n)
                                                           then (loop (rest, instrs))
                                                           else (if (m < n)
@@ -144,7 +145,7 @@ struct
                                                           and dst_i = v_25
                                                           and rest = v_4
                                                           and src = v_8
-                                                         in (if (((C.sameColor (base, C.esp)) andalso (C.sameColor (dst_i, C.esp))) andalso (not (isStackPtr src)))
+                                                         in (if (((CBase.sameColor (base, C.esp)) andalso (CBase.sameColor (dst_i, C.esp))) andalso (not (isStackPtr src)))
                                                           then (loop (rest, (I.PUSHL src) :: instrs))
                                                           else (state_9 (v_0, v_3)))
                                                          end
@@ -186,7 +187,7 @@ struct
                                        and le = v_20
                                        and r32 = v_19
                                        and rest = v_3
-                                   in (if (((I.LabelExp.valueOf le) = 0) andalso (C.sameColor (r32, base)))
+                                   in (if (((I.LabelExp.valueOf le) = 0) andalso (CBase.sameColor (r32, base)))
                                          then (loop (rest, instrs))
                                          else (state_9 (v_0, v_3)))
                                    end
@@ -229,7 +230,7 @@ struct
                                                           and dst = v_1
                                                           and dst_i = v_5
                                                           and rest = v_4
-                                                         in (if (((C.sameColor (base, C.esp)) andalso (C.sameColor (dst_i, C.esp))) andalso (not (isStackPtr dst)))
+                                                         in (if (((CBase.sameColor (base, C.esp)) andalso (CBase.sameColor (dst_i, C.esp))) andalso (not (isStackPtr dst)))
                                                           then (loop (rest, (I.POP dst) :: instrs))
                                                           else (state_49 (v_0, v_1, v_2, v_3)))
                                                          end

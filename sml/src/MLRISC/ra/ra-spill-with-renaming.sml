@@ -1,4 +1,7 @@
-(*
+(* ra-spill-with-renaming.sml
+ *
+ * COPYRIGHT (c) 2001 Bell Labs, Lucent Technologies
+ *
  * This version also performs local renaming on the spill code.
  * For example, spilling t below
  *
@@ -108,6 +111,7 @@ struct
    structure I      = InsnProps.I
    structure P      = InsnProps
    structure C      = I.C
+   structure CBase  = CellsBasis
    structure Core   = RACore
    structure G      = Core.G
 
@@ -118,7 +122,7 @@ struct
    structure T = RASpillTypes(I)
    open T
 
-   fun uniq s = C.SortedCells.return(C.SortedCells.uniq s) 
+   fun uniq s = CBase.SortedCells.return(CBase.SortedCells.uniq s) 
    val i2s    = Int.toString
 
    val Asm.S.STREAM{emit, ...} = Asm.makeStream[]
@@ -147,25 +151,24 @@ struct
        val _ = Core.updateCellAliases G
 
        val getSpillLoc = Core.spillLoc G
-       fun spillLocOf(C.CELL{id, ...}) = getSpillLoc id
+       fun spillLocOf(CBase.CELL{id, ...}) = getSpillLoc id
        val spillLocsOf = map spillLocOf
        val getnode = IntHashTable.lookup nodes
-       val getnode = fn C.CELL{id, ...} => getnode id
+       val getnode = fn CBase.CELL{id, ...} => getnode id
 
        val MAX_DIST = !max_dist
 
        val insnDefUse = P.defUse cellkind
 
        fun hasNonDedicated rs =
-       let fun isDedicated r = Array.sub(dedicated,r) handle _ => false
-           fun loop [] = false
+       let fun loop [] = false
              | loop(r::rs) =
-               if isDedicated(C.registerId r) then loop rs else true
+		if dedicated(CBase.registerId r) then loop rs else true
        in  loop rs end
 
        (* Merge prohibited registers *)
        val enterSpill = IntHashTable.insert spilledRegs
-       val addProh = app (fn c => enterSpill(C.registerId c,true)) 
+       val addProh = app (fn c => enterSpill(CBase.registerId c,true)) 
 
        val getSpills  = G.PPtHashTable.find spillSet
        val getSpills  = fn p => case getSpills p of SOME s => s | NONE => []
@@ -182,17 +185,19 @@ struct
          | getLoc _ = error "getLoc"
 
        fun printRegs regs = 
-           app (fn r => print(C.toString r^" ["^
-                              Core.spillLocToString G (C.cellId r)^"] ")) regs
+           app (fn r => print(concat[
+		CBase.toString r, " [", Core.spillLocToString G (CBase.cellId r),
+		"] "
+	      ])) regs
  
        val parallelCopies = Word.andb(Core.HAS_PARALLEL_COPIES, mode) <> 0w0
 
-       fun chase(C.CELL{col=ref(C.ALIASED c), ...}) = chase c
+       fun chase(CBase.CELL{col=ref(CBase.ALIASED c), ...}) = chase c
          | chase c = c
 
-       fun cellId(C.CELL{id, ...}) = id
+       fun cellId(CBase.CELL{id, ...}) = id
 
-       fun sameCell(C.CELL{id=x,...}, C.CELL{id=y, ...}) = x=y
+       fun sameCell(CBase.CELL{id=x,...}, CBase.CELL{id=y, ...}) = x=y
 
        fun same(x,regToSpill) = sameCell(chase x,regToSpill)
 
@@ -213,7 +218,7 @@ struct
            let fun loop([], env') = env'
                  | loop((binding as (r',_,_))::env,env') =
                    loop(env, 
-                        if C.sameColor(r, r') then env' else binding::env')
+                        if CBase.sameColor(r, r') then env' else binding::env')
            in  loop(env, []) end
 
            (*
@@ -287,7 +292,7 @@ struct
                   let fun lookup [] =
                              reloadInstr(pt,instr,regToSpill,env,spillLoc)
                         | lookup((r,currentReg,defPt)::env) =
-                          if C.sameColor(r,regToSpill) then
+                          if CBase.sameColor(r,regToSpill) then
                             if defPt = pt
                             then lookup env(* this is NOT the right renaming!*)
                             else if defPt - pt <= MAX_DIST then
@@ -303,9 +308,9 @@ struct
             * Check whether the id is in a list
             *)
            fun containsId(id,[]) = false
-             | containsId(id:C.cell_id,r::rs) = r = id orelse containsId(id,rs)
+             | containsId(id:CBase.cell_id,r::rs) = r = id orelse containsId(id,rs)
            fun spillConflict(G.FRAME loc, rs) = containsId(~loc, rs)
-             | spillConflict(G.MEM_REG(C.CELL{id, ...}), rs) = 
+             | spillConflict(G.MEM_REG(CBase.CELL{id, ...}), rs) = 
                  containsId(id, rs)
 
            fun contains(r',[]) = false
@@ -338,15 +343,18 @@ struct
                    else if same(rd, regToSpill) then
                       (rs, rds@rds', rss@rss', kill)
                    else loop(rds, rss, rd::rds', rs::rss')
-                 | loop _ = 
-                     (print("rds="); 
-                      app (fn r => print(C.toString r^":"^
-                                         i2s(spillLocOf r)^" ")) rds;
-                      print("\nrss="); 
-                      app (fn r => print(C.toString r^":"^
-                                         i2s(spillLocOf r)^" ")) rss;
-                      print "\n";
-                      error("extractDef: "^C.toString regToSpill))
+                 | loop _ = let
+		      fun pr r = print(concat[
+			      CBase.toString r, ":", i2s(spillLocOf r), " "
+			    ])
+		      in
+			print("rds="); 
+                	app pr rds;
+                	print("\nrss="); 
+                	app pr rss;
+                        print "\n";
+                        error("extractDef: "^CBase.toString regToSpill)
+		      end
            in loop(rds, rss, [], []) end
     
            (*
@@ -512,11 +520,14 @@ struct
                              if parallelCopies then spillLocsOf reloadRegs
                              else []
 
-                         fun prEnv env =
-                             (print("Env=");
-                              app (fn (r,v,_) => print(C.toString r^"=>"^
-                                                       C.toString v^" ")) env;
-                              print "\n")
+                         fun prEnv env = (
+			      print("Env=");
+                              app (fn (r,v,_) =>
+				print(concat[
+				    CBase.toString r, "=>",
+				    CBase.toString v, " "
+				  ])) env;
+                               print "\n")
 
                          val (instrs,env) = 
                              spillAll(pt,[instr],spillRegs,killRegs,
