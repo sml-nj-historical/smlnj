@@ -4,13 +4,13 @@
  * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
  *
  * Sources file for the CML version of smlnj-lib.cm.
- * (Under the new CM, this file is the only subgroup of cm/smlnj-lib.cm.
- * Clients compiled using the old CM cannot use cm/smlnj-lib.cm (because
+ * (Under the new CM, this file is the only subgroup of cm-descr/smlnj-lib.cm.
+ * Clients compiled using the old CM cannot use cm-descr/smlnj-lib.cm (because
  * of a name conflict with the "real" smlnj-lib.cm) and must instead
  * refer to sources.cm (i.e., this file) directly.
  *)
 
-Group (cm/smlnj-lib.cm)
+Group (cm-descr/smlnj-lib.cm)
 
 (** CML specific modules **)
   signature MULTICAST

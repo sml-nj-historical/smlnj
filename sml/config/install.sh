@@ -792,8 +792,8 @@ for i in $TARGETS ; do
 	;;
       cml-lib)
         unpack CML $SRCDIR cml cml
-	reglib cml-lib trace-cml.cm cml/cml-lib/cm
-	reglib cml-lib smlnj-lib.cm cml/cml-lib/cm
+	reglib cml-lib trace-cml.cm cml/cml-lib/cm-descr
+	reglib cml-lib smlnj-lib.cm cml/cml-lib/cm-descr
 	;;
       eXene)
         unpack EXene $SRCDIR eXene eXene
