@@ -68,7 +68,7 @@ request cml-lib
 # pre-compile (certain) parts of MLRISC that are not already part of the SML/NJ
 # compiler itself
 #
-request mlrisc
+#request mlrisc
 
 # pre-compile and install the C-Kit, which is a library for parsing and
 # type-checking C programs
