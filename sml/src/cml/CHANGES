@@ -1,6 +1,9 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2005-02-28]
+	Fixed serious bug in structure Atom. (Must use mvar, not mailbox!)
+
 [2005-02-24]
 	Reuse signature ATOM from $/smlnj-lib.cm, thus tracking all changes.
 	Implement structure Atom in terms of structure Atom in $/smlnj-lib.cm

@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2005/02/28 23:40:00 CST
+Tag: blume-20050228-mVar
+Description:
+
+Fixed serious bug (brown paper bag variety) in new implementation of
+structure Atom in CML.  (I had accidentally used a mailbox instead of
+an mvar, leaving the door open for races.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2005/02/25 15:00:00 CST
 Tag: Release_110_53
 Description:

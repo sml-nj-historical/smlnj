@@ -9,4 +9,5 @@ extern void ps (void);
 
 extern void pll (int, long long, int);
 
-extern long long a1 (long long);
+extern
+long long a (int, long long, int, long long, int, long long, int, long long);

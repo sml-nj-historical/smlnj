@@ -11,9 +11,9 @@ structure Atom : ATOM = struct
 
     open Atom			(* from $/smlnj-lib.cm *)
 
-    local val l: unit Mailbox.mbox = Mailbox.mailbox ()
+    local val l = SyncVar.mVarInit ()
     in
-    fun atomically f arg = (Mailbox.send (l, ()); f arg before Mailbox.recv l)
+    fun atomically f a = (SyncVar.mTake l; f a before SyncVar.mPut (l, ()))
     end
 
     val atom = atomically atom
