@@ -77,7 +77,6 @@ Library
 	structure PseudoOpsBasisTyp
 	structure RACore
 	structure RAGraph
-	structure RaPriQueue
 	structure RaBitmatrix
 	functor BBSched2
 	functor BackPatch
@@ -111,6 +110,7 @@ Library
 	functor PseudoOpsBig
 	functor PseudoOpsLittle
 	functor RADeadCodeElim
+	functor RaPriQueue
 	functor RASpill
 	functor RASpillTypes
 	functor RISC_RA

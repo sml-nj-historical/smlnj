@@ -26,9 +26,9 @@ Description:
     trap instruction (in this case they are harmless since none of the
     integers overflow.)
 
-2. Plugged out various utility modules that were embedded in the modules
+2. Pulled out various utility modules that were embedded in the modules
    of the register allocator. I need these modules for other purposes, but
-   they are not complete enough to put into a library just yet.
+   they are not complete enough to put into a library (just yet).
 ----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/01/31 16:05:00 EST
