@@ -16,7 +16,6 @@ struct
   val numFloatRegs = 30
   val numFloatCalleeSaves = 0
   val startgcOffset =	4		(* from runtime *)
-  val pseudoRegOffset = 40		(* from runtime *)
   val constBaseRegOffset = 32764
 end
 

@@ -31,7 +31,6 @@ struct
   val stdclos	= T.REG 10
   val stdlink	= T.REG 9
   val baseptr	= T.REG 8
-  val maskreg	= T.REG 20
 
   val limitptr	= T.REG 4
   val varptr	= T.REG 7
@@ -41,11 +40,11 @@ struct
   val exnptr	= T.REG 6
 
   val returnPtr	= 31
-  val gclinkreg	= T.REG returnPtr
+  val gcLink	= T.REG returnPtr
   val stackptr	= T.REG 30
 
   val miscregs = 
-    map T.REG [1, 13, 14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 28, 2, 21]
+    map T.REG [1,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,2]
   val calleesave = Array.fromList miscregs
 
   (* Note: We need at least one register for shuffling purposes. *)
@@ -57,7 +56,7 @@ struct
 
   val availR = 
     map (fn T.REG r => r)
-        ([stdlink, stdclos, stdarg, stdcont, gclinkreg, maskreg] @ miscregs)
+        ([stdlink, stdclos, stdarg, stdcont, gcLink] @ miscregs)
   val dedicatedR = SL.remove(SL.uniq availR, allRegs)
 
   val availF = SL.uniq(fromto(6, 30))
@@ -65,5 +64,8 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: hppaCpsRegs.sml,v $
+ * Revision 1.3  1998/05/23 14:09:21  george
+ *   Fixed RCS keyword syntax
+ *
  *)

@@ -12,43 +12,14 @@
 #include "ml-values.h"
 #include "tags.h"
 #include "ml-request.h"
-#include "reg-mask.h"
 #include "ml-limits.h"
 #include "mlstate-offsets.h"	/** this file is generated **/
-
-/* The root registers in the ML state vector have the following layout,
- * where roots is guaranteed to be 8-byte aligned relative to the start
- * of the ML state vector (see "ml-state.h" and "mlstate-offsets.h"):
- *
- *              +----------------------+
- *     root --> | ml_stdlink (17)      |
- *              +----------------------+
- *      +4:     | ml_closure (18)      |
- *              +----------------------+
- *      +8:     | ml_arg (19)          |
- *              +----------------------+
- *      +12:    | ml_cont (20)         |
- *              +----------------------+
- *      +16:    | ml_exn (21)          |
- *              +----------------------+
- *      +20:    | ml_varptr (22)       |
- *              +----------------------+
- *      +24:    | ml_basereg (23)      |
- *              +----------------------+
- *      +28:    | unused               |
- *              +----------------------+
- *      +32:    | ml_pc		       |
- *              +----------------------+
- *      +36:    | misc 24-27,3-13,29-31|
- *		.		       .
- *		.		       .
- *              +----------------------+
- */
 
 /** register usage **/
 
 #define		sp		1
 #define 	stackptr	sp
+
 #define		allocptr	14
 #define 	limitptr	15
 #define 	storeptr	16
@@ -58,26 +29,12 @@
 #define 	stdcont		20
 #define 	exncont		21
 #define 	varptr		22
-#define 	basereg		23
 #define		miscreg0	24
 #define		miscreg1	25
 #define 	miscreg2	26
-#define		miscreg3	27
-#define		miscreg4	3
-#define		miscreg5	4
-#define		miscreg6	5
-#define		miscreg7	6
-#define		miscreg8	7
-#define		miscreg9	8
-#define		miscreg10	9
-#define		miscreg11	10
-#define		miscreg12	11
-#define		miscreg13	12
-#define		miscreg14	13
 
-#define		gclink		28
+#define		pc		28
 
-#define 	maskreg		29
 
 #define       	atmp1 29
 #define       	atmp2 30
@@ -87,8 +44,6 @@
 /* stackframe layout:
  * Note: 1. The offset of cvti2d tmp is used in rs6000.sml
  *          float load/store offset is hardwired in rs6000instr.sml
- *       2. The offset of pseudo regs is used in rs6000/rs6000.sml 
- *          to support loadpseudo and storepseudo.
  *
  * 	             +-------------------+
  *   sp--> 0(sp)     | mlstate addr      |
@@ -103,9 +58,9 @@
  *		     +-------------------+
  *	  32(sp)     | floor tmp	 |
  *		     +-------------------+
- *	  40(sp)     | pseudo regs 1	 |
+ *	  40(sp)     | unused		 |
  *		     +-------------------+
- *	  44(sp)     | pseudo regs 2	 |
+ *	  44(sp)     | unused		 |
  *		     +-------------------+
  *  argblock(sp)     | C calleesave regs |
  *	             .		         .
@@ -123,7 +78,6 @@
 #define STARTGC_OFFSET		4
 #define CVTI2D_OFFSET		8
 #define FLOOR_OFFSET		32
-#define PSEUDOREG_OFFSET        40
 
 /** offsets in condition register CR.0 **/
 
@@ -143,16 +97,14 @@
 #define CRESULT1 	3
 
 
-#if (CALLEESAVE > 0)
 #define CONTINUE					\
 	    cmpl	CR0,allocptr,limitptr;		\
 	    mtlr	stdcont;			\
 	    blr
-#endif
 
-#define CHECKLIMIT(mask,label)	 			\
+#define CHECKLIMIT(label)	 			\
 	    bt		CR0_LT, label;			\
-	    li		maskreg, mask;			\
+	    addi	pc, stdlink,0;			\
 	    b		saveregs;			\
     label:
 
@@ -181,74 +133,86 @@ cvti2d_CONST:
 /* sig_return : ('a cont * 'a) -> 'b
  */
 ML_CODE_HDR(sigh_return_a)
-	li 	atmp1,RET_MASK
 	li 	atmp4,REQ_SIG_RETURN
+	li	stdlink, ML_unit
+	li	stdclos, ML_unit
+	li	pc, ML_unit
 	b	set_request
 
 ENTRY(sigh_resume)
-	li	atmp1,FUN_MASK
 	li	atmp4, REQ_SIG_RESUME
+	li	stdlink, ML_unit
+	li	stdclos, ML_unit
+	li	pc, ML_unit
         b	set_request
 
 /* pollh_return_a:
  * The return continuation for the ML poll handler.
  */
 ML_CODE_HDR(pollh_return_a)
-	li	atmp1,RET_MASK
 	li	atmp4,REQ_POLL_RETURN
+	li	stdlink, ML_unit
+	li	stdclos, ML_unit
+	li	pc, ML_unit
 	b	set_request
 
 /* pollh_resume:
  * Resume execution at the point at which a poll event occurred.
  */
 ENTRY(pollh_resume)
-	li	atmp1,FUN_MASK
 	li	atmp4,REQ_POLL_RESUME
+	li	stdlink, ML_unit
+	li	stdclos, ML_unit
+	li	pc, ML_unit
 	b	set_request
 
 		 /* exception handler for ML functions called from C */
 ML_CODE_HDR(handle_a)
-	li	atmp1,EXN_MASK
 	li	atmp4,REQ_EXN
+	addi	pc, stdlink, 0
 	b	set_request
 
 
 		/* continuation for ML functions called from C */		
 ML_CODE_HDR(return_a)
-	li	atmp1,RET_MASK
 	li	atmp4,REQ_RETURN
+	li	stdlink, ML_unit
+	li	stdclos, ML_unit
+	li	pc, ML_unit
 	b	set_request
 
 
 ENTRY(request_fault)
-	li	atmp1,EXN_MASK
 	li	atmp4,REQ_FAULT
+	addi	pc, stdlink, 0
 	b	set_request
 
 
 /* bind_cfun : (string * string) -> c_function
  */
 ML_CODE_HDR(bind_cfun_a)
-	CHECKLIMIT(FUN_MASK,bind_cfun_v_limit) 
-	li	atmp1,FUN_MASK
+	CHECKLIMIT(bind_cfun_v_limit) 
 	li	atmp4,REQ_BIND_CFUN
 	b	set_request
 
 ML_CODE_HDR(build_literals_a)
-	CHECKLIMIT(FUN_MASK,build_literals_v_limit) 
-	li	atmp1,FUN_MASK
+	CHECKLIMIT(build_literals_v_limit) 
 	li	atmp4,REQ_BUILD_LITERALS
 	b	set_request
 
 ML_CODE_HDR(callc_a)
-	CHECKLIMIT(FUN_MASK,callc_v_limit) 
-	li	atmp1,FUN_MASK
+	CHECKLIMIT(callc_v_limit) 
 	li	atmp4,REQ_CALLC
+	b	set_request
+
+
+ENTRY(saveregs)
+	li	atmp4, REQ_GC
+	mflr	pc
 	/* fall through */
 
 set_request:
 	lwz	atmp3,MLSTATE_OFFSET(sp)	/* save the minimal ML state */
-	stw	atmp1,MaskOffMSP(atmp3)		/* mask */
 	lwz	atmp2,VProcOffMSP(atmp3)	/* atmp2 := VProc State ptr */
 	li	0,0
 	stw	0,InMLOffVSP(atmp2)		/* note that we have left ML */
@@ -256,31 +220,19 @@ set_request:
 	stw	limitptr,LimitPtrOffMSP(atmp3)
 	stw	storeptr,StorePtrOffMSP(atmp3)
 	stw	stdlink,LinkRegOffMSP(atmp3)
-	stw	stdlink,PCOffMSP(atmp3)
+	stw	pc,PCOffMSP(atmp3)
 	stw	stdarg,StdArgOffMSP(atmp3)
 	stw	stdcont,StdContOffMSP(atmp3)
 	stw	stdclos,StdClosOffMSP(atmp3)
 	stw	varptr,VarPtrOffMSP(atmp3)
 	stw	exncont,ExnPtrOffMSP(atmp3)
-#if CALLEESAVE > 0
-	stw	miscreg0,MiscRegOffMSP(0)(atmp3)
-#if CALLEESAVE > 1
-	stw	miscreg1,MiscRegOffMSP(1)(atmp3)
-#if CALLEESAVE > 2
-	stw	miscreg2,MiscRegOffMSP(2)(atmp3)
-#if CALLEESAVE > 3
-	??
-#endif
-#endif
-#endif
-#endif
+	stw	miscreg0,Misc0OffMSP(atmp3)
+	stw	miscreg1,Misc1OffMSP(atmp3)
+	stw	miscreg2,Misc2OffMSP(atmp3)
+
 	addi	3,atmp4,0			/* request as argument */
 
 restore_c_regs:
-        lwz	atmp1,PSEUDOREG_OFFSET(sp)     /* restore pseudo registers */
-        stw	atmp1,PseudoReg1OffMSP(atmp3)   
-        lwz	atmp1,PSEUDOREG_OFFSET+4(sp)
-        stw	atmp1,PseudoReg2OffMSP(atmp3)
  	lwz	2, (argblock+4)(sp) 
 	lwz	13, (argblock+8)(sp)
 	lwz	14, (argblock+12)(sp)
@@ -308,115 +260,6 @@ restore_c_regs:
 	addi	sp,sp,framesize 
 	blr
 
-	TEXT
-ENTRY(saveregs)
-	lwz	atmp3,MLSTATE_OFFSET(sp)
-	stw	maskreg,MaskOffMSP(atmp3)
-
-#ifdef SOFT_POLL
-	/* free some regs */
-	stw	miscreg0,MiscRegOffMSP(0)(atmp3)	/* use as tmp */
-	stw	miscreg1,MiscRegOffMSP(1)(atmp3)	/* use as tmp */
-#define pfreq	atmp1
-#define	pevent	miscreg0
-#define ptmp    miscreg1
-
-	/* check if polling enabled (PollFreq > 0) */
-	lwz	pfreq,T._PollFreq0(2)		/* address of PollFreq */
-	lwz	pfreq,4(pfreq)			/* contents of PollFreq */
-	sri	pfreq,pfreq,1			/* strip integer tag */
-	cmpi	CR0,pfreq,0
-	bt	CR0_EQ,check_for_gc		/* go check for real gc */
-	lwz	ptmp,InPollHandlerOffMSP(atmp3)	/* if we're in the handler */
-	cmpi	CR0,ptmp,0
-	bt	CR0_GT,reset_limit		/* ignore poll events */
-	lwz	ptmp,T._PollEvent0(2)		/* address of PollEvent */
-	lwz	pevent,4(ptmp)			/* contents of PollEvent */
-	sri	pevent,pevent,1
-	cmpi	CR0,pevent,0
-	bt	CR0_EQ,reset_limit
-	/* event occurred, so set ml_pollHandlerPending */
-	li	ptmp,1
-	stw	ptmp,PollPendingOffMSP(atmp3)
-	b	do_gc		/* and handle event in the C runtime */
-
-reset_limit:				/* reset limit ptr */
-	slwi	pfreq,pfreq,POLL_GRAIN_BITS	/* mult by POLL_GRAIN_CPSI */
-	add	limitptr,pfreq,allocptr
-
-check_for_gc:
-#define	ptmp2	pfreq
-#define vsp	pevent
-	/* ensure real limit is >= limit */
-	lwz	ptmp,RealLimitOffMSP(atmp3)
-	cmpl	CR0,ptmp,limitptr
-	bt	CR0_GT,ok_limit
-	addi	limitptr,ptmp,0           /* move ptmp into limit */
-ok_limit:
-	addi	ptmp,limitptr,-4096
-	cmpl	CR0,ptmp,allocptr
-	bf	CR0_GT,do_gc 		/* gc *//* should be a common case */
-	/* since a signal also sets limitptr == allocptr to force a trap, */
-	/* we need to disambiguate poll-events/signals here */
-	lwz	vsp,VProcOffMSP(atmp3)          /* get the vsp */
-	lwz	ptmp,PollPendingOffMSP(atmp3)
-	lwz	ptmp2,NPendingOffVSP(vsp)
-	add	ptmp,ptmp,ptmp2
-	lwz	ptmp2,NPendingSysOffVSP(vsp)
-	add	ptmp,ptmp,ptmp2
-	cmpi	CR0,ptmp,0
-	bt	CR0_GT,do_gc
-#undef  vsp
-#undef  ptmp2
-
-no_gc:	/* an uneventful poll check, back to ML */
-	lwz	miscreg0,MiscRegOffMSP(0)(atmp3)  /* reload miscregs */
-	lwz	miscreg1,MiscRegOffMSP(1)(atmp3)
-	b 	CSYM(ml_go)
-
-do_gc:
-	stw	limitptr,LimitPtrOffMSP(atmp3)
-
-#undef pfreq
-#undef pevent
-#undef ptmp
-#endif /* SOFT_POLL */
-
-	lwz	atmp2,VProcOffMSP(atmp3)	/* atmp2 := VProc State ptr */
-	li	0,0
-	stw	0,InMLOffVSP(atmp2)		/* note that we have left ML */
-	addi	basereg, basereg, -32764
-	stw	allocptr,AllocPtrOffMSP(atmp3)
-	stw	storeptr,StorePtrOffMSP(atmp3)
-	stw	stdarg,StdArgOffMSP(atmp3)
-	stw	stdcont,StdContOffMSP(atmp3)
-	stw	stdclos,StdClosOffMSP(atmp3)
-	mflr	stdclos
-	stw	stdclos,PCOffMSP(atmp3)
-	stw	exncont,ExnPtrOffMSP(atmp3)
-	/* save misc. roots */	
-#ifndef SOFT_POLL   /* miscreg0 & miscreg1 saved above for SOFT_POLL */
-	stw	miscreg0,MiscRegOffMSP(0)(atmp3)	
-	stw	miscreg1,MiscRegOffMSP(1)(atmp3)
-#endif
-	stw	miscreg2,MiscRegOffMSP(2)(atmp3)
-	stw	miscreg3,MiscRegOffMSP(3)(atmp3)
-	stw	miscreg4,MiscRegOffMSP(4)(atmp3)
-	stw	miscreg5,MiscRegOffMSP(5)(atmp3)
-	stw	miscreg6,MiscRegOffMSP(6)(atmp3)
-	stw	miscreg7,MiscRegOffMSP(7)(atmp3)
-	stw	miscreg8,MiscRegOffMSP(8)(atmp3)
-	stw	miscreg9,MiscRegOffMSP(9)(atmp3)
-	stw	miscreg10,MiscRegOffMSP(10)(atmp3)
-	stw	miscreg11,MiscRegOffMSP(11)(atmp3)
-	stw	miscreg12,MiscRegOffMSP(12)(atmp3)
-	stw	miscreg13,MiscRegOffMSP(13)(atmp3)
-	stw	miscreg14,MiscRegOffMSP(14)(atmp3)
-	stw	stdlink,LinkRegOffMSP(atmp3)
-	stw	basereg,BasePtrOffMSP(atmp3)		/* base reg */
-	stw	varptr,VarPtrOffMSP(atmp3)
-        li	CARG1,REQ_GC
-	b	restore_c_regs
 
 
 CENTRY(restoreregs)
@@ -468,10 +311,6 @@ CENTRY(restoreregs)
 	lwz	allocptr,AllocPtrOffMSP(atmp1)
 	lwz	limitptr,LimitPtrOffMSP(atmp1)
 	lwz	storeptr,StorePtrOffMSP(atmp1)
-        lwz	atmp2,PseudoReg1OffMSP(atmp1)   /* restore pseudo registers */
-        lwz	atmp3,PseudoReg2OffMSP(atmp1)
-        stw	atmp2,PSEUDOREG_OFFSET(sp)
-        stw	atmp3,PSEUDOREG_OFFSET+4(sp)
 	lwz	atmp2,VProcOffMSP(atmp1)	/* atmp2 := VProc State ptr */
 	li	atmp3,1
 	stw	atmp3,InMLOffVSP(atmp2)         /* we are entering ML code */
@@ -479,27 +318,13 @@ CENTRY(restoreregs)
 	lwz	stdcont,StdContOffMSP(atmp1)
 	lwz	stdclos,StdClosOffMSP(atmp1)
 	lwz	exncont,ExnPtrOffMSP(atmp1)
-	lwz	miscreg0,MiscRegOffMSP(0)(atmp1)
-	lwz	miscreg1,MiscRegOffMSP(1)(atmp1)
-	lwz	miscreg2,MiscRegOffMSP(2)(atmp1)
-	lwz	miscreg3,MiscRegOffMSP(3)(atmp1)
-	lwz	miscreg4,MiscRegOffMSP(4)(atmp1)
-	lwz	miscreg5,MiscRegOffMSP(5)(atmp1)
-	lwz	miscreg6,MiscRegOffMSP(6)(atmp1)
-	lwz	miscreg7,MiscRegOffMSP(7)(atmp1)
-	lwz	miscreg8,MiscRegOffMSP(8)(atmp1)
-	lwz	miscreg9,MiscRegOffMSP(9)(atmp1)
-	lwz	miscreg10,MiscRegOffMSP(10)(atmp1)
-	lwz	miscreg11,MiscRegOffMSP(11)(atmp1)
-	lwz	miscreg12,MiscRegOffMSP(12)(atmp1)
-	lwz	miscreg13,MiscRegOffMSP(13)(atmp1)
-	lwz	miscreg14,MiscRegOffMSP(14)(atmp1)
+	lwz	miscreg0,Misc0OffMSP(atmp1)
+	lwz	miscreg1,Misc1OffMSP(atmp1)
+	lwz	miscreg2,Misc2OffMSP(atmp1)
 	lwz	stdlink,LinkRegOffMSP(atmp1)
 	lwz	varptr,VarPtrOffMSP(atmp1)
-	lwz	basereg,PCOffMSP(atmp1)		/* use basereg as scratch */
-	mtlr	basereg
-	lwz	basereg,BasePtrOffMSP(atmp1)
-	addi	basereg,basereg,32764		/* adjust baseReg */
+	lwz	atmp3,PCOffMSP(atmp1)
+	mtlr	atmp3
 						/* check for pending signals */
 	lwz	atmp1,NPendingSysOffVSP(atmp2)
 	lwz	atmp3,NPendingOffVSP(atmp2)
@@ -536,7 +361,7 @@ pending_sigs:				/* there are pending signals */
  * Allocate and initialize a new array.	 This can cause GC.
  */
 ML_CODE_HDR(array_a)
-	CHECKLIMIT(FUN_MASK,array_a_limit)
+	CHECKLIMIT(array_a_limit)
 
 	lwz	atmp1,0(stdarg)		/* atmp1 := length in words */
 	srawi	atmp2, atmp1, 1		/* atmp2 := length (untagged) */
@@ -567,15 +392,15 @@ array_a_1:
 	addi	allocptr,allocptr,8
 	CONTINUE
 array_a_large:				/* off-line allocation */
-	li	atmp1,FUN_MASK
 	li	atmp4,REQ_ALLOC_ARRAY
+	addi	pc, stdlink,0
 	b	set_request
 
 /* create_b : int -> bytearray
  * Create a bytearray of the given length.
  */
 ML_CODE_HDR(create_b_a)
-	CHECKLIMIT(FUN_MASK,create_b_a_limit)
+	CHECKLIMIT(create_b_a_limit)
 
 	srawi	atmp2,stdarg,1		/* atmp2 = length (untagged int) */
 	addi	atmp2,atmp2,3		/* atmp2 = length in words */
@@ -603,8 +428,8 @@ ML_CODE_HDR(create_b_a)
 	CONTINUE
 
 create_b_a_large:			/* off-line allocation */
-	li	atmp1,FUN_MASK
 	li 	atmp4,REQ_ALLOC_BYTEARRAY
+	addi	pc, stdlink,0
 	b	set_request
 
 
@@ -612,7 +437,7 @@ create_b_a_large:			/* off-line allocation */
 ** create_s_a: int -> string
 */
 ML_CODE_HDR(create_s_a)
-	CHECKLIMIT(FUN_MASK,create_s_a_limit)
+	CHECKLIMIT(create_s_a_limit)
 
 	srawi	atmp2,stdarg,1		/* atmp2 = length(untagged int) */
 	addi	atmp2,atmp2,4
@@ -640,14 +465,14 @@ ML_CODE_HDR(create_s_a)
 	CONTINUE
 
 create_s_a_large:			/* off-line allocation */
-	li	atmp1,FUN_MASK
 	li	atmp4,REQ_ALLOC_STRING
+	addi	pc, stdlink,0
 	b	set_request
 
 
 
 ML_CODE_HDR(create_r_a)
-	CHECKLIMIT(FUN_MASK,create_r_a_limit)
+	CHECKLIMIT(create_r_a_limit)
 
 	srawi	atmp2,stdarg,1		/* atmp2 = length (untagged int) */
 	slwi	atmp2,atmp2,1		/* length in words */
@@ -676,8 +501,8 @@ ML_CODE_HDR(create_r_a)
 	addi	allocptr,allocptr,8	/* allocptr += 2 */
 	CONTINUE
 create_r_a_large:			/* offline allocation */
-	li	atmp1,FUN_MASK
 	li	atmp4,REQ_ALLOC_REALDARRAY
+	addi	pc, stdlink,0
 	b	set_request
 
 
@@ -686,7 +511,7 @@ create_r_a_large:			/* offline allocation */
  * NOTE: the front-end ensures that list cannot be nil.
  */
 ML_CODE_HDR(create_v_a)
-	CHECKLIMIT(FUN_MASK,create_v_a_limit)
+	CHECKLIMIT(create_v_a_limit)
 	
 	lwz	atmp1,0(stdarg)		/* atmp1 = tagged length */
 	srawi	atmp2,atmp1,1		/* atmp2 = untagged length */
@@ -719,8 +544,8 @@ create_v_a_1:
 	CONTINUE
 
 create_v_a_large:
-	li	atmp1,FUN_MASK
 	li	atmp4,REQ_ALLOC_VECTOR
+	addi	pc, stdlink,0
 	b	set_request
 
 
@@ -789,7 +614,7 @@ ML_CODE_HDR(logb_a)
 **	scalb(x,y) = x * 2^y
 */
 ML_CODE_HDR(scalb_a)
-	CHECKLIMIT(FUN_MASK,scalb_v_limit)
+	CHECKLIMIT(scalb_v_limit)
 	lwz	atmp1,4(stdarg)		/* atmp1 := y */
 	srawi	atmp1,atmp1,1		/* atmp1 := machine int y */
 	lwz	stdarg,0(stdarg)	/* stdarg := x */

@@ -6,7 +6,7 @@ struct
   structure I = SparcInstr
   structure C = SparcCells
   structure R = SparcCpsRegs
-  structure CG = Control.CG
+  structure Ctrl = Control.MLRISC
   structure B = SparcMLTree.BNames
   structure Region = I.Region
   structure MachSpec = SparcSpec
@@ -43,6 +43,11 @@ struct
      PrintFlowGraphFn (structure FlowGraph = F
                        structure Emitter   = Asm)
 
+  val intSpillsCnt = Ctrl.getInt "ra-int-spills"
+  val intReloadsCnt = Ctrl.getInt "ra-int-reloads"
+  val floatSpillsCnt = Ctrl.getInt "ra-float-spills"
+  val floatReloadsCnt = Ctrl.getInt "ra-float-reloads"
+  
   (* register allocation *)
   structure RegAllocation : 
     sig
@@ -100,7 +105,7 @@ struct
       fun spillInstr(r) = 
          [I.STORE{s=I.ST, r=C.stackptrR, i=I.IMMED(loc), d=r, mem=stack}]
     in
-      Control.MLRISC.int_spills := !Control.MLRISC.int_spills + 1;
+      intSpillsCnt := !intSpillsCnt + 1;
       case instr
       of I.COPY{dst as [rd], src as [rs], tmp, impl} => 
 	  if reg=rd then
@@ -126,7 +131,7 @@ struct
       fun reloadInstr(r) = 
           I.LOAD{l=I.LD, i=I.IMMED(loc), r=C.stackptrR, d=r, mem=stack}
     in
-      Control.MLRISC.int_reloads := !Control.MLRISC.int_reloads + 1;
+      intReloadsCnt := !intReloadsCnt + 1;
       case instr 
       of I.COPY{dst=[rd], src=[rs], ...} => {code=[reloadInstr(rd)],  proh=[]}
        | _ => let
@@ -141,7 +146,7 @@ struct
       fun spillInstrs(reg) = 
         [I.FSTORE{s=I.STDF, r=C.stackptrR, i=I.IMMED(disp), d=reg, mem=stack}]
     in
-      Control.MLRISC.float_spills := !Control.MLRISC.float_spills + 1;
+      floatSpillsCnt := !floatSpillsCnt + 1;
       case instr
       of I.FCOPY{dst as [fd], src as [fs], tmp, impl} => 
 	  if fd=reg then
@@ -167,7 +172,7 @@ struct
 	 I.FLOAD{l=I.LDDF, r=C.stackptrR, i=I.IMMED(disp), d=reg, mem=stack} 
             :: rest
     in
-      Control.MLRISC.float_reloads := !Control.MLRISC.float_reloads + 1;
+      floatReloadsCnt := !floatReloadsCnt + 1;
       case instr
       of I.FCOPY{dst=[fd], src=[fs], ...} => {code=reloadInstrs(fd, []), proh=[]}
        | _ => let
@@ -268,7 +273,6 @@ struct
                       )
 	       structure Cells=SparcCells
 	       structure C=SparcCpsRegs
-	       structure ConstType=SparcConst
 	       structure PseudoOp=SparcPseudoOps)
 
   val copyProp = RegAllocation.cp
@@ -278,6 +282,12 @@ end
 
 (*
  * $Log: sparcCG.sml,v $
+ * Revision 1.4  1999/03/22 17:22:39  george
+ *   Changes to support new GC API
+ *
+ * Revision 1.3  1999/01/18 15:49:30  george
+ *   support of interactive loading of MLRISC optimizer
+ *
  * Revision 1.2  1998/10/06 14:00:01  george
  * Flowgraph has been removed from modules that do not need it -- [leunga]
  *

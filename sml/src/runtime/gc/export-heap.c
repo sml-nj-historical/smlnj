@@ -52,20 +52,18 @@ status_t ExportHeapImage (ml_state_t *msp, FILE *file)
  */
 status_t ExportFnImage (ml_state_t *msp, ml_val_t funct, FILE *file)
 {
-    int		i;
-
   /* zero-out the saved parts of the ML state, and use the standard argument
    * register to hold the exported function closure.
    */
-#if (CALLEESAVE > 0)
-    for (i = 0;  i < CALLEESAVE;  i++)
-	msp->ml_calleeSave(i) = ML_unit;
-#endif
-    msp->ml_closure	= ML_unit;
-    msp->ml_cont	= ML_unit;
-    msp->ml_exnCont	= ML_unit;
-    msp->ml_pc		= ML_unit;
-    msp->ml_arg		= funct;
+    msp->ml_arg			= funct;
+    msp->ml_cont		= ML_unit;
+    msp->ml_closure		= ML_unit;
+    msp->ml_linkReg		= ML_unit;
+    msp->ml_exnCont		= ML_unit;
+    msp->ml_varReg		= ML_unit;	/* ??? */
+    msp->ml_calleeSave[0]	= ML_unit;
+    msp->ml_calleeSave[1]	= ML_unit;
+    msp->ml_calleeSave[2]	= ML_unit;
 
     return ExportImage (msp, EXPORT_FN_IMAGE, file);
 
@@ -133,17 +131,14 @@ PVT status_t ExportImage (ml_state_t *msp, int kind, FILE *file)
       /* Save the live registers */
 	SAVE_REG(image.sigHandler, DEREF(MLSignalHandler));
 	SAVE_REG(image.stdArg, msp->ml_arg);
-	SAVE_REG(image.stdClos, msp->ml_closure);
 	SAVE_REG(image.stdCont, msp->ml_cont);
-	SAVE_REG(image.exnCont, msp->ml_exnCont);
+	SAVE_REG(image.stdClos, msp->ml_closure);
 	SAVE_REG(image.pc, msp->ml_pc);
-#if (CALLEESAVE > 0)
-	for (i = 0;  i < CALLEESAVE;  i++)
-	    SAVE_REG(image.calleeSaves[i], msp->ml_calleeSave(i));
-#endif
-#if (FLOAT_CALLEESAVE > 0)
-	/** SAVE FLOAT CALLEE SAVES **/
-#endif
+	SAVE_REG(image.exnCont, msp->ml_exnCont);
+	SAVE_REG(image.varReg, msp->ml_varReg);
+	SAVE_REG(image.calleeSave[0], msp->ml_calleeSave[0]);
+	SAVE_REG(image.calleeSave[1], msp->ml_calleeSave[1]);
+	SAVE_REG(image.calleeSave[2], msp->ml_calleeSave[2]);
 
 	if (HeapIO_WriteExterns(wr, exportTbl) == FAILURE) {
 	    status = FAILURE;

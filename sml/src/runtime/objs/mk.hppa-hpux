@@ -8,7 +8,7 @@ SHELL	= /bin/sh
 # very quickly by executing, System.Unsafe.blastWrite 1;  in ML.
 # If the above works, then this bug may have been fixed.
 #
-CC =		cc -Aa -D__STDC__ 
+CC =		cc -Aa -N -D__STDC__ 
 #CC  =		gcc -ansi -D__STDC__
 CPP =		/lib/cpp.ansi
 
@@ -21,7 +21,7 @@ XOBJS =
 XLIBS =
 LD_LIBS =	-lmalloc
 BASE_DEFS =     
-DEFS =		$(BASE_DEFS) -DHOST_HPPA -DTARGET_HPPA -DOPSYS_HPUX -DCALLEESAVE=3 -DOPSYS_UNIX -DASSERT_ON -DINDIRECT_CFUNC
+DEFS =		$(BASE_DEFS) -DHOST_HPPA -DTARGET_HPPA -DOPSYS_HPUX -DOPSYS_UNIX -DASSERT_ON -DINDIRECT_CFUNC
 TARGET =	HPPA
 VERSION	=	v-hppa-hpux
 RUNTIME =	run.hppa-hpux

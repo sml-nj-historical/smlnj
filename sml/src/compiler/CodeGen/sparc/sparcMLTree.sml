@@ -4,7 +4,7 @@
  *)
 
 (* constants specialised to the sparc *)
-structure SparcConst = RegMaskConst(structure RegMask = SparcMask)
+structure SparcConst = SMLNJConstant
 
 (* specialised sparc instruction set *)
 structure SparcInstr = 
@@ -46,6 +46,9 @@ structure SparcMLTree =
 
 (*
  * $Log: sparcMLTree.sml,v $
+ * Revision 1.3  1998/12/30 20:21:23  jhr
+ *   Modifications to support code generation directly into code objects.
+ *
  * Revision 1.2  1998/10/06 14:00:02  george
  * Flowgraph has been removed from modules that do not need it -- [leunga]
  *

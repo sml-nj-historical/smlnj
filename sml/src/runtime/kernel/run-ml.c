@@ -7,7 +7,6 @@
 #include "ml-limits.h"
 #include "ml-values.h"
 #include "vproc-state.h"
-#include "reg-mask.h"
 #include "ml-state.h"
 #include "tags.h"
 #include "ml-request.h"
@@ -130,16 +129,9 @@ SayDebug ("run-ml: poll event\n");
 	        InvokeGC (msp, 0);
 	}
 	else {
-#ifdef BASE_INDX
-	    msp->ml_baseReg = ML_unit;  /* not a live root */
-#endif
 	    switch (request) {
 	      case REQ_RETURN:
-	      /* do a minor collection to clear the store list; we set the PC to
-	       * a non-root value, incase the minor collection triggers a major
-	       * collection.
-	       */
-		msp->ml_pc = ML_unit;
+	      /* do a minor collection to clear the store list */
 		InvokeGC (msp, 0);
 		return;
 
@@ -175,7 +167,6 @@ SayDebug ("run-ml: poll event\n");
 		    ml_val_t    (*f)(), arg;
 
 		    SETUP_RETURN(msp);
-		    msp->ml_liveRegMask = RET_MASK;
 		    if (NeedGC (msp, 8*ONE_K))
 			InvokeGC (msp, 0);
 

@@ -100,9 +100,9 @@ ALL_LIBS =	$(CLIBS) $(DEP_LIBS)
 
 clean:
 	rm -f v-* run.* interactive-run \
-		gen-sizes gen-offsets gen-regmask gen-bc-instr-def \
+		gen-sizes gen-offsets gen-bc-instr-def \
 		gen-unix-signals gen-unix-sigtbl \
-		ml-sizes.h reg-mask.h mlstate-offsets.h bc-instr-def.h \
+		ml-sizes.h mlstate-offsets.h bc-instr-def.h \
 		system-signals.h unix-sigtbl.c \
 		*.o prim.s primops.s
 	(cd $(MEM_DIR); $(MAKE) MAKE="$(MAKE)" clean)
@@ -157,7 +157,7 @@ load-ml.o:	$(KERN_DIR)/load-ml.c \
 #	$(CC) -c $(CFLAGS) $(DEFS) $(GC_INCLUDES) $(KERN_DIR)/load-ml.c
 
 run-ml.o:	$(KERN_DIR)/run-ml.c \
-		ml-sizes.h reg-mask.h system-signals.h \
+		ml-sizes.h system-signals.h \
 		$(INC_DIR)/ml-base.h $(INC_DIR)/ml-values.h \
 		$(INC_DIR)/vproc-state.h $(INC_DIR)/ml-roots.h \
 		$(INC_DIR)/ml-state.h
@@ -253,11 +253,8 @@ system-signals.h:	gen-unix-signals
 unix-sigtbl.c:	gen-unix-sigtbl
 	./gen-unix-sigtbl
 
-reg-mask.h:	gen-regmask
-	./gen-regmask
-
 prim.o:		$(MACH_DIR)/$(TARGET).prim.asm \
-		ml-sizes.h reg-mask.h $(INC_DIR)/ml-base.h $(INC_DIR)/tags.h \
+		ml-sizes.h $(INC_DIR)/ml-base.h $(INC_DIR)/tags.h \
 		$(INC_DIR)/asm-base.h \
 		mlstate-offsets.h
 	$(CPP) -D_ASM_ $(DEFS) -I$(BC_DIR) $(INCLUDES) $(MACH_DIR)/$(TARGET).prim.asm > prim.s
@@ -279,7 +276,7 @@ mlstate-offsets.h:	gen-offsets ml-sizes.h system-signals.h \
 # bytecode interpreter
 #
 interp.o:	$(BC_DIR)/interp.c \
-		ml-sizes.h reg-mask.h system-signals.h \
+		ml-sizes.h system-signals.h \
 		$(INC_DIR)/ml-base.h $(INC_DIR)/ml-values.h \
 		$(INC_DIR)/ml-roots.h $(INC_DIR)/ml-state.h \
 		$(INC_DIR)/tags.h $(INC_DIR)/bibop.h \

@@ -69,7 +69,7 @@
  * of the limit pointer, then A[HEAP_BUF_SZ-1] is the address of the next
  * store-vector location.
  */
-#define HEAP_BUF_SZ	1024
+#define HEAP_BUF_SZ	(1024 + 128)
 #define HEAP_BUF_SZB	(HEAP_BUF_SZ*WORD_SZB)
 
 /* The maximum number of global C variables that can be roots. */

@@ -19,13 +19,6 @@
 #define PMOFFSET(sym, fld)	\
     fprintf(f, "#define %sOffMSP %d\n", (sym), MOFFSET(fld))
 
-#if defined(TARGET_HPPA)
-# define PROOT(sym, index)	\
-       fprintf(f, "#define %sOffMSP RootsOffMSP+%d\n", (sym), WORD_SZB*index)
-#else
-# define PROOT(sym, index)	\
-       fprintf(f, "#define %sOffMSP (RootsOffMSP+%d)\n", (sym), WORD_SZB*index)
-#endif
 
 main ()
 {
@@ -40,12 +33,6 @@ main ()
     int		i;
     FILE	*f;
 
-  /* check to make sure that the ml_roots array is 8-byte aligned */
-    if ((MOFFSET(ml_roots[0]) & 7) != 0) {
-	fprintf (stderr, "Error: ml_roots not 8-byte aligned\n");
-	exit (1);
-    }
-
     f = OpenFile ("mlstate-offsets.h", "_MLSTATE_OFFSETS_");
 
 #if TARGET_BYTECODE
@@ -55,39 +42,16 @@ main ()
     PMOFFSET("AllocPtr", ml_allocPtr);
     PMOFFSET("LimitPtr", ml_limitPtr);
     PMOFFSET("StorePtr", ml_storePtr);
-    PMOFFSET("Roots", ml_roots[0]);
-    PROOT("PC", PC_INDX);
-    PROOT("StdArg", ARG_INDX);
-    PROOT("StdCont", CONT_INDX);
-    PROOT("StdClos", CLOSURE_INDX);
-    PROOT("ExnPtr", EXN_INDX);
-#ifdef BASE_INDX
-    PROOT("BasePtr", BASE_INDX);
-#endif
-    PROOT("VarPtr", VAR_INDX);
-    PROOT("LinkReg", LINK_INDX);
-#ifdef MISC0_INDX
-#   if defined(TARGET_HPPA)
-       fprintf(f, "#define MiscRegOffMSP(i) %d+(%d*(i))\n",
-	       ((Addr_t)&(M.s.ml_roots[MISC0_INDX])) - (Addr_t)&(M.b[0]),
-	       WORD_SZB);
-#   else
-       fprintf(f, "#define MiscRegOffMSP(i) (%d+(%d*(i)))\n",
-	       ((Addr_t)&(M.s.ml_roots[MISC0_INDX])) - (Addr_t)&(M.b[0]),
-	       WORD_SZB);
-#   endif
-#endif
-#ifdef N_PSEUDO_REGS
-    for (i = 0;  i < N_PSEUDO_REGS;  i++) {
-	char	buf[32];
-	sprintf (buf, "PseudoReg%d", i+1);
-	PMOFFSET(buf, ml_pseudoRegs[i]);
-    }
-#endif
-#ifdef ICOUNT
-    PMOFFSET("ICountRef", ml_icountReg);
-#endif
-    PMOFFSET("Mask", ml_liveRegMask);
+    PMOFFSET("StdArg", ml_arg);
+    PMOFFSET("StdCont", ml_cont);
+    PMOFFSET("StdClos", ml_closure);
+    PMOFFSET("LinkReg", ml_linkReg);
+    PMOFFSET("PC", ml_pc);
+    PMOFFSET("ExnPtr", ml_exnCont);
+    PMOFFSET("VarPtr", ml_varReg);
+    PMOFFSET("Misc0", ml_calleeSave[0]);
+    PMOFFSET("Misc1", ml_calleeSave[1]);
+    PMOFFSET("Misc2", ml_calleeSave[2]);
 #ifdef SOFT_POLL
     PMOFFSET("RealLimit", ml_realLimit);
     PMOFFSET("PollPending", ml_pollPending);

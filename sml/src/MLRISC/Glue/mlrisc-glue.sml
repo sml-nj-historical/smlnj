@@ -15,11 +15,12 @@ struct
    structure I = F.I
    structure B = F.B
  
-   val viewer  = MLRISC_ViewStyle.viewer
    val mlrisc  = MLRISC_Control.mlrisc
    val phases  = MLRISC_Control.mlrisc_phases
-   val view_IR = MLRISC_Control.view_IR
-   val verbose = MLRISC_Control.verbose
+
+   val view_IR = MLRISC_Control.getFlag "view_IR"
+   val verbose = MLRISC_Control.getFlag "verbose"
+   val viewer  = MLRISC_Control.getString "viewer"
 
    fun error msg = MLRiscErrorMsg.impossible("MLRISCGlue."^msg)
 

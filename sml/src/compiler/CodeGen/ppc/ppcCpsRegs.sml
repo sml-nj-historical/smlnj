@@ -1,6 +1,6 @@
-(* alpha32CpsRegs.sml --- CPS registers used on the DEC Alpha
+(* ppcCpsRegs.sml --- CPS registers used on the POWER PC
  *
- * COPYRIGHT (c) 1996 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 1999  Bell Laboratories.
  *
  *)
 
@@ -24,11 +24,10 @@ struct
   val exnptr	= T.REG 21
   val varptr	= T.REG 22
   val baseptr   = T.REG 23
-  val maskreg	= T.REG 29
-
   val stackptr	= T.REG 1
+  val gcLink	= T.REG PPCCells.lr
 
-  val miscregs =  map T.REG ([24,25,26,27] @ (3 upto 13))
+  val miscregs =  map T.REG ([24,25,26,27,29,30,31] @ (3 upto 13))
   val calleesave = Array.fromList(miscregs)
   val floatregs = map T.FREG (1 upto 31)
   val savedfpregs = []
@@ -37,7 +36,7 @@ struct
 
   val availR = 
     map (fn T.REG r => r)
-         ([maskreg, stdlink, stdclos, stdarg, stdcont] @ miscregs)
+         ([stdlink, stdclos, stdarg, stdcont] @ miscregs)
   val dedicatedR = SL.remove(SL.uniq availR, allRegs)
 
   val availF = 1 upto 31

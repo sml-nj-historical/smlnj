@@ -16,7 +16,6 @@ struct
   val stdclos	= T.REG 2
   val stdlink	= T.REG 3
   val baseptr   = T.REG 4
-  val maskreg	= T.REG 5
 
   val limitptr 	= T.REG 9
   val varptr	= T.REG 10
@@ -26,10 +25,10 @@ struct
   val allocptr 	= T.REG 13
   val exnptr	= T.REG 14
 
-  val gclinkreg	= T.REG 26
+  val gcLink	= T.REG 26
   val stackptr	= T.REG 30
 
-  val miscregs =  map T.REG ((6 upto 8) @ (16 upto 25) @ [27])
+  val miscregs =  map T.REG ((5 upto 8) @ (15 upto 25) @ [27])
   val calleesave = Array.fromList(miscregs)
   val floatregs = map T.FREG (0 upto 28)
   val savedfpregs = []
@@ -38,7 +37,7 @@ struct
 
   val availR = 
     map (fn T.REG r => r)
-         ([gclinkreg, maskreg, T.REG exhaustedR, 
+         ([gcLink, T.REG exhaustedR, 
 	   stdlink, stdclos, stdarg, stdcont] @ miscregs)
   val dedicatedR = SL.remove(SL.uniq availR, allRegs)
 
@@ -47,5 +46,8 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: alpha32CpsRegs.sml,v $
+ * Revision 1.3  1998/05/23 14:09:12  george
+ *   Fixed RCS keyword syntax
+ *
  *)

@@ -16,7 +16,7 @@ struct
   structure Asm	     = Alpha32AsmEmitter
   structure MLTree   = Alpha32MLTree
   structure MachSpec = Alpha32Spec
-  structure CG = Control.CG
+  structure Ctrl = Control.MLRISC
 
   fun error msg = ErrorMsg.impossible ("Alpha32CG." ^ msg)
 
@@ -42,6 +42,11 @@ struct
   structure PrintFlowGraph = 
      PrintFlowGraphFn (structure FlowGraph = F
                        structure Emitter   = Asm)
+
+  val intSpillCnt = Ctrl.getInt "ra-int-spills"
+  val floatSpillCnt = Ctrl.getInt "ra-float-spills"
+  val intReloadCnt = Ctrl.getInt "ra-int-reloads"
+  val floatReloadCnt = Ctrl.getInt "ra-float-reloads"
 
   (* register allocation *)
   structure RegAllocation : 
@@ -89,11 +94,13 @@ struct
     fun fmvInstr(fd, fs) = I.FOPERATE{oper=I.CPYS, fa=fs, fb=fs, fc=fd} 
 
 
-    fun spill (stClass, stOp, getLoc, newReg, rewrite) {regmap,instr,reg,id:B.name} = let
+    fun spill (stClass, stOp, getLoc, newReg, rewrite, cnts) 
+	      {regmap,instr,reg,id:B.name} = let
       val offset = I.IMMop (getLoc(reg))
       fun spillInstr(src) = 
 	[stClass{stOp=stOp, r=src, b=C.stackptrR, d=offset, mem=stack}]
     in
+      cnts := !cnts + 1;
       case instr
       of I.COPY{dst as [rd], src as [rs], tmp, impl} =>
 	  if rd=reg then
@@ -124,11 +131,13 @@ struct
 	  end
     end
 
-    fun reload (ldClass, ldOp, getLoc, newReg, rewrite) {regmap,instr,reg,id:B.name} = let
+    fun reload (ldClass, ldOp, getLoc, newReg, rewrite, cnts) 
+	       {regmap,instr,reg,id:B.name} = let
       val offset = I.IMMop (getLoc(reg))
       fun reloadInstr(dst, rest) =
 	ldClass{ldOp=ldOp, r=dst, b=C.stackptrR, d=offset, mem=stack}::rest
     in 
+      cnts := !cnts + 1;
       case instr
       of I.COPY{dst=[rd], src=[rs], ...} =>	(* reg = rs *)
 	   {code=reloadInstr(rd, []),   proh=[]:int list}
@@ -163,10 +172,10 @@ struct
 	   structure B = B
 
 	   val getreg = GR.getreg
-	   val spill = spill(I.STORE,I.STL, getRegLoc, C.newReg, 
-			     Alpha32Rewrite.rewriteDef)
+	   val spill = spill(I.STORE, I.STL, getRegLoc, C.newReg, 
+			     Alpha32Rewrite.rewriteDef, intSpillCnt)
 	   val reload = reload(I.LOAD, I.LDL, getRegLoc, C.newReg, 
-			       Alpha32Rewrite.rewriteUse)
+			       Alpha32Rewrite.rewriteUse, intReloadCnt)
 	   val nFreeRegs = length R.availR
 	   val dedicated = R.dedicatedR
 	   fun copyInstr((rds, rss), I.COPY{tmp, ...}) = 
@@ -182,9 +191,9 @@ struct
 
 	   val getreg = FR.getreg
 	   val spill = spill (I.FSTORE, I.STT, getFregLoc, C.newFreg,
-			      Alpha32Rewrite.frewriteDef)
+			      Alpha32Rewrite.frewriteDef, floatSpillCnt)
 	   val reload = reload (I.FLOAD, I.LDT, getFregLoc, C.newFreg,
-				Alpha32Rewrite.frewriteUse)
+				Alpha32Rewrite.frewriteUse, floatReloadCnt)
 	   val nFreeRegs = length R.availF
 	   val dedicated = R.dedicatedF
 	   fun copyInstr((fds, fss), I.FCOPY{tmp, ...}) = 
@@ -225,7 +234,6 @@ struct
 			  structure PseudoInstrs=Alpha32PseudoInstrs)
 	       structure Cells=Alpha32Cells
 	       structure C=Alpha32CpsRegs
-	       structure ConstType=Alpha32Const
 	       structure PseudoOp=Alpha32PseudoOps)
 
   val copyProp = RegAllocation.cp
@@ -236,6 +244,12 @@ end
 
 (*
  * $Log: alpha32CG.sml,v $
+ * Revision 1.7  1999/03/22 17:22:11  george
+ *   Changes to support new GC API
+ *
+ * Revision 1.6  1999/01/18 15:49:20  george
+ *   support of interactive loading of MLRISC optimizer
+ *
  * Revision 1.5  1998/10/06 13:59:56  george
  * Flowgraph has been removed from modules that do not need it -- [leunga]
  *

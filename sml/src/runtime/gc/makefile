@@ -167,7 +167,7 @@ c-globals-tbl.o: c-globals-tbl.c \
 	$(CC) -c $(CFLAGS) $(DEFS) $(INCLUDES) c-globals-tbl.c
 
 import-heap.o:	import-heap.c \
-		$(OBJS_DIR)/ml-sizes.h $(OBJS_DIR)/reg-mask.h \
+		$(OBJS_DIR)/ml-sizes.h \
 		$(INC_DIR)/ml-base.h $(INC_DIR)/ml-limits.h \
 		$(INC_DIR)/ml-state.h $(INC_DIR)/c-globals-tbl.h \
 		$(INC_DIR)/cache-flush.h \

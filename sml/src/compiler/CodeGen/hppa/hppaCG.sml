@@ -5,7 +5,7 @@ struct
   structure I = HppaInstr
   structure C = HppaCells
   structure R = HppaCpsRegs
-  structure CG = Control.CG
+  structure Ctrl = Control.MLRISC
   structure Region = I.Region
   structure B = HppaMLTree.BNames
   structure F = HppaFlowGraph
@@ -34,6 +34,11 @@ struct
   structure PrintFlowGraph = 
      PrintFlowGraphFn (structure FlowGraph = F
                        structure Emitter   = Asm)
+
+  val intSpillCnt = Ctrl.getInt "ra-int-spills"
+  val floatSpillCnt = Ctrl.getInt "ra-float-spills"
+  val intReloadCnt = Ctrl.getInt "ra-int-reloads"
+  val floatReloadCnt = Ctrl.getInt "ra-float-reloads"
   
   (* register allocation *)
   structure RegAllocation : 
@@ -96,7 +101,7 @@ struct
       fun spillInstr(r) = 
          [I.STORE{st=I.STW, b=C.stackptrR, d=I.IMMED(~loc), r=r, mem=stack}]
     in
-      Control.MLRISC.int_spills := !Control.MLRISC.int_spills + 1;
+      intSpillCnt := !intSpillCnt + 1;
       case instr
       of I.COPY{dst as [rd], src as [rs], tmp, impl} => 
 	  if reg=rd then
@@ -122,7 +127,7 @@ struct
       fun reloadInstr(r) = 
           I.LOADI{li=I.LDW, i=I.IMMED(~loc), r=C.stackptrR, t=r, mem=stack}
     in
-      Control.MLRISC.int_reloads := !Control.MLRISC.int_reloads + 1;
+      intReloadCnt := !intReloadCnt + 1;      
       case instr 
       of I.COPY{dst=[rd], src=[rs], ...} => {code=[reloadInstr(rd)],  proh=[]}
        | _ => let
@@ -140,7 +145,7 @@ struct
 	 I.LDO{i=I.IMMED(low11(~disp)), b=tmpR, t=tmpR},
 	 I.FSTOREX{fstx=I.FSTDX, b=C.stackptrR, x=tmpR, r=reg, mem=stack}]
     in
-      Control.MLRISC.float_spills := !Control.MLRISC.float_spills + 1;
+      floatSpillCnt := !floatSpillCnt + 1;
       case instr
       of I.FCOPY{dst as [fd], src as [fs], tmp, impl} => 
 	  if fd=reg then
@@ -168,7 +173,7 @@ struct
 	 I.LDO{i=I.IMMED(low11(~disp)), b=tmpR, t=tmpR} ::
 	 I.FLOADX{flx=I.FLDDX, b=C.stackptrR, x=tmpR, t=reg, mem=stack} :: rest
     in
-      Control.MLRISC.float_reloads := !Control.MLRISC.float_reloads + 1;
+      floatReloadCnt := !floatReloadCnt + 1;
       case instr
       of I.FCOPY{dst=[fd], src=[fs], ...} => {code=reloadInstrs(fd, []), proh=[]}
        | _ => let
@@ -264,7 +269,6 @@ struct
 		      structure LabelComp=HppaLabelComp)
 	       structure Cells=HppaCells
 	       structure C=HppaCpsRegs
-	       structure ConstType=HppaConst
 	       structure PseudoOp=HppaPseudoOps)
 
   val copyProp = RegAllocation.cp
@@ -274,6 +278,12 @@ end
 
 (*
  * $Log: hppaCG.sml,v $
+ * Revision 1.8  1999/03/22 17:22:25  george
+ *   Changes to support new GC API
+ *
+ * Revision 1.7  1999/01/18 15:49:25  george
+ *   support of interactive loading of MLRISC optimizer
+ *
  * Revision 1.6  1998/10/19 13:50:42  george
  * *** empty log message ***
  *

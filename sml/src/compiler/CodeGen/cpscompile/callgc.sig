@@ -23,9 +23,12 @@ signature CALLGC = sig
   val stdCheckLimit : t -> unit
   val knwCheckLimit : t -> unit
   val emitLongJumpsToGCInvocation : int Intmap.intmap -> unit
-  val emitInvokeGC : int Intmap.intmap -> unit
+  val emitModuleGC : int Intmap.intmap -> unit
 end
 
 (*
- * $Log$
+ * $Log: callgc.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
+ *
  *)

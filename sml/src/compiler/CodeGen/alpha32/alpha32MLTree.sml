@@ -1,9 +1,8 @@
 (* constants specialised to the alpha32 *)
-structure Alpha32Const = RegMaskConst(structure RegMask=Alpha32Mask)
 
 (* specialised alpha32 instruction set *)
 structure Alpha32Instr = 
-  Alpha32Instr(structure Const=Alpha32Const
+  Alpha32Instr(structure Const=SMLNJConstant
 	       structure Region=CPSRegions)
 
 structure Alpha32Shuffle = Alpha32Shuffle(Alpha32Instr)
@@ -36,13 +35,16 @@ structure Alpha32XMCEmitter =
 
 
 structure Alpha32MLTree = 
-  MLTreeF(structure Const=Alpha32Const
+  MLTreeF(structure Const=SMLNJConstant
 	  structure P=Alpha32PseudoOps
 	  structure R=CPSRegions
 	  structure B=FunctionNames)
 
 (*
  * $Log: alpha32MLTree.sml,v $
+ * Revision 1.4  1998/12/30 20:21:21  jhr
+ *   Modifications to support code generation directly into code objects.
+ *
  * Revision 1.3  1998/10/06 13:59:57  george
  * Flowgraph has been removed from modules that do not need it -- [leunga]
  *

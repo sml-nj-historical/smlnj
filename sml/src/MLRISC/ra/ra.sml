@@ -17,6 +17,15 @@ struct
   structure C = F.C
   structure SL = SortedList
   structure BM = TriangularBitMatrix
+  structure Control = MLRISC_Control
+
+  val cfg_before_ra = Control.getFlag "dump-cfg-before-ra"
+  val cfg_after_ra = Control.getFlag "dump-cfg-after-ra"
+  val dump_graph = Control.getFlag "dump-interference-graph"
+
+  val cfg_before_ra = ref false
+  val cfg_after_ra = ref false
+  val dump_graph = ref false
 
   fun error msg = MLRiscErrorMsg.impossible ("RegAllocator." ^ msg)
   fun assert(msg, true) = () | assert(msg, false) = error msg
@@ -138,9 +147,12 @@ struct
     AsmStream.asmOutStream:=saveStrm
   end
 
-  fun debug(msg, blocks, regmap) =			
+  fun debug(flag, msg, blocks, regmap) =
+    if !flag then
       (print ("------------------" ^ msg ^ " ----------------\n");
        printBlocks(blocks,regmap))
+    else ()
+
 
 		(*------------------------------*)
   fun graphColoring(mode, blocks, cblocks, blockDU, prevSpills, 
@@ -355,7 +367,8 @@ struct
 	nodes
     end
 
-(*    val _ = debug("before register allocation", blocks, regmap); *)
+    val _ = if !dump_graph then dumpGraph() else () 
+    val _ = debug(cfg_before_ra, "before register allocation", blocks, regmap); 
 
 		    (*---------simplify-----------*)
 
@@ -1165,13 +1178,20 @@ struct
 	blockDefUse(blocks, 0);
 	updtAliases(); 
 	graphColoring(mode, blocks, cblocks, blockDU, [], nodes, regmap);
-(*	debug("after register allocation", blocks, regmap);  *)
+	debug(cfg_after_ra, "after register allocation", blocks, regmap);  
 	cluster
       end 
 end (* functor *)
 
 (*
  * $Log: ra.sml,v $
+ * Revision 1.3  1999/03/22 17:25:26  george
+ *   Changes for new MLRISC Control
+ *
+ * Revision 1.2  1999/02/23 16:48:45  george
+ *    Registers used but never defined would raise an exception during
+ * spilling. This causes problems when compiling C (surprise!).
+ *
  * Revision 1.1.1.1  1998/11/16 21:49:10  george
  *   Version 110.10
  *

@@ -5,7 +5,7 @@
  *)
 
 (* constants specialised to the hppa *)
-structure HppaConst = RegMaskConst(structure RegMask = HppaMask)
+structure HppaConst = SMLNJConstant
 
 (* specialised hppa instruction set *)
 structure HppaInstr = 
@@ -42,6 +42,9 @@ structure HppaMLTree =
 
 (*
  * $Log: hppaMLTree.sml,v $
+ * Revision 1.4  1998/12/30 20:21:22  jhr
+ *   Modifications to support code generation directly into code objects.
+ *
  * Revision 1.3  1998/10/06 14:00:00  george
  * Flowgraph has been removed from modules that do not need it -- [leunga]
  *

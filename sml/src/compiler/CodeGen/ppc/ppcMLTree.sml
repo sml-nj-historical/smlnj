@@ -1,7 +1,7 @@
 (* COPYRIGHT (c) 1999 Lucent Technologies, Bell Labs. *)
 
 (* constants specialised to the powerpc *)
-structure PPCConst = RegMaskConst(structure RegMask=PPCMask)
+structure PPCConst = SMLNJConstant
 
 (* specialised powerpc instruction set *)
 structure PPCInstr = 

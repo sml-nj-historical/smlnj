@@ -238,7 +238,6 @@ FLINT/lsplit/ls-inline.sml
 CodeGen/alpha32/alpha32CG.sml
 CodeGen/alpha32/alpha32CpsRegs.sml
 CodeGen/alpha32/alpha32MLTree.sml
-CodeGen/alpha32/alpha32Mask.sml
 CodeGen/alpha32/alpha32PseudoInstrs.sml
 CodeGen/alpha32/alpha32gen.sml
 CodeGen/alpha32/alpha32spec.sml
@@ -252,7 +251,6 @@ CodeGen/cpscompile/argPassing.sml
 CodeGen/cpscompile/callgc.sig
 CodeGen/cpscompile/callgc.sml
 CodeGen/cpscompile/cluster.sml
-CodeGen/cpscompile/constType.sig
 CodeGen/cpscompile/cps-aliasing.sml
 CodeGen/cpscompile/cpsRegions.sig
 CodeGen/cpscompile/cpsRegions.sml
@@ -267,14 +265,12 @@ CodeGen/cpscompile/mkRecord.sml
 CodeGen/cpscompile/pseudoOpType.sig
 CodeGen/cpscompile/pseudoOpsBig.sml
 CodeGen/cpscompile/pseudoOpsLittle.sml
-CodeGen/cpscompile/regmask.sig
-CodeGen/cpscompile/regmaskConst.sml
+CodeGen/cpscompile/smlnj-const.sml
 CodeGen/cpscompile/spill.sml
 CodeGen/hppa/hppaCG.sml
 CodeGen/hppa/hppaCpsRegs.sml
 CodeGen/hppa/hppaLabelComp.sml
 CodeGen/hppa/hppaMLTree.sml
-CodeGen/hppa/hppaMask.sml
 CodeGen/hppa/hppaMillicode.sml
 CodeGen/hppa/hppagen.sml
 CodeGen/hppa/hppaspec.sml
@@ -290,14 +286,12 @@ CodeGen/main/object-desc.sml
 CodeGen/ppc/ppcCG.sml
 CodeGen/ppc/ppcCpsRegs.sml
 CodeGen/ppc/ppcMLTree.sml
-CodeGen/ppc/ppcMask.sml
 CodeGen/ppc/ppcPseudoInstr.sml
 CodeGen/ppc/ppcgen.sml
 CodeGen/ppc/ppcspec.sml
 CodeGen/sparc/sparcCG.sml
 CodeGen/sparc/sparcCpsRegs.sml
 CodeGen/sparc/sparcMLTree.sml
-CodeGen/sparc/sparcMask.sml
 CodeGen/sparc/sparcPseudoInstrs.sml
 CodeGen/sparc/sparcgen.sml
 CodeGen/sparc/sparcspec.sml
