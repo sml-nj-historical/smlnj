@@ -431,7 +431,7 @@ struct
            emit_cond cond; 
            emit "\t"; 
            stupidGas opnd )
-       | I.CALL{opnd, defs, uses, return, cutsTo, mem} => 
+       | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => 
          ( emit "call\t"; 
            stupidGas opnd; 
            emit_region mem; 

@@ -14,6 +14,36 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/06/07
+Tag: blume-20010607-calls
+Description:
+
+A number of internal changes related to C calls and calling conventions:
+
+1. ML-Tree CALL statements now carry a "pops" field.  It indicates the
+   number of bytes popped implicitly (by the callee).  In most cases
+   this field is 0 but on x86/win32 it is some non-zero value.  This
+   is information provided for the benefit of the "omit-frameptr" pass.
+2. The CALL instruction on the x86 carries a similar "pops" field.
+   The instruction selection phase copies its value from the ML-Tree
+   CALL statement.
+3. On all other architectures, the instruction selection phase checks
+   whether "pops=0" and complains if not.
+4. The c-calls implementation for x86 now accepts two calling conventions:
+   "ccall" and "stdcall".  When "ccall" is selected, the caller cleans
+   up after the call and pops is set to 0.  For "stdcall", the caller
+   does nothing, leaving the cleanup to the callee; pops is set to
+   the number of bytes that were pushed onto the stack.
+5. The cproto decoder (compiler/Semant/types/cproto.sml) now can
+   distinguish between "ccall" and "stdcall".
+6. The UNIMP instruction has been added to the supported Sparc instruction
+   set. (This is needed for implementing the official C calling convention
+   on this architecture.)
+7. I fixed some of the .cm files under src/MLRISC/Tools to make them
+   work with the latest CM.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/06/05 15:10:00 EDT
 Tag: blume-20010605-cm-index
 Description:

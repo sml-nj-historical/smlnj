@@ -228,7 +228,7 @@ sig
    | JMP of (operand * Label.label list)
    | JCC of {cond:cond, opnd:operand}
    | CALL of {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
-        cutsTo:Label.label list, mem:Region.region}
+        cutsTo:Label.label list, mem:Region.region, pops:Int32.int}
    | ENTER of {src1:operand, src2:operand}
    | LEAVE
    | RET of operand option
@@ -521,7 +521,7 @@ struct
    | JMP of (operand * Label.label list)
    | JCC of {cond:cond, opnd:operand}
    | CALL of {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
-        cutsTo:Label.label list, mem:Region.region}
+        cutsTo:Label.label list, mem:Region.region, pops:Int32.int}
    | ENTER of {src1:operand, src2:operand}
    | LEAVE
    | RET of operand option

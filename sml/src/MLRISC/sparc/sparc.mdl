@@ -505,6 +505,7 @@ struct
    |  fstore{s:fstore,r,i,d} = rif{op1=0w3,op3=s,r,i,d} (* p97 *)
    |  sethi {op1:2=0, rd:GP 5, op2:3=0b100, imm22:int signed 22}  (* p104 *)
    |  NOP   {op1:2=0, rd:5=0, op2:3=0b100, imm22:22=0} (* p105 *)
+   |  unimp {op1:2=0, rd:5=0, op2:3=0, const22:int unsigned 22} (* p137 *)
    |  delay {nop} = if nop then NOP{} else () (* delay slot *)
    |  arith {a:arith,r,i,d} =                       (* p106 *)
         rir{op1=0w2,op3=a,r,i,d} 
@@ -645,6 +646,10 @@ struct
         asm: ``<s>\t[<r>+<i>], <d><mem>'' 
         mc:  fstore{s,r,i,d}
 	rtl: ``<s>''
+
+   |  UNIMP of { const22: int }
+	asm: ``unimp <const22>''
+	mc:  unimp{const22}
 
    |  SETHI of { i:int, d: $GP } 
         asm: let val i = Word32.toString(Word32.<<(Word32.fromInt i,0w10))

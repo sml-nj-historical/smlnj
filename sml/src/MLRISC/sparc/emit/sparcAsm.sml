@@ -302,9 +302,12 @@ struct
            emit "], "; 
            emitCell d; 
            emit_region mem )
+       | I.UNIMP{const22} => 
+         ( emit "unimp "; 
+           emit_int const22 )
        | I.SETHI{i, d} => 
          let 
-(*#line 650.18 "sparc/sparc.mdl"*)
+(*#line 655.18 "sparc/sparc.mdl"*)
              val i = Word32.toString (Word32.<< (Word32.fromInt i, 0wxa))
          in 
             ( emit "sethi\t%hi(0x"; 
@@ -454,7 +457,7 @@ struct
            emit_operand i )
        | I.FPop1{a, r, d} => 
          let 
-(*#line 757.18 "sparc/sparc.mdl"*)
+(*#line 762.18 "sparc/sparc.mdl"*)
              fun f (a, r, d) = 
                  ( emit a; 
                    emit "\t"; 
@@ -462,10 +465,10 @@ struct
                    emit ", "; 
                    emit (C.showFP d))
 
-(*#line 762.18 "sparc/sparc.mdl"*)
+(*#line 767.18 "sparc/sparc.mdl"*)
              fun g (a, r, d) = 
                  let 
-(*#line 763.22 "sparc/sparc.mdl"*)
+(*#line 768.22 "sparc/sparc.mdl"*)
                      val r = C.registerNum r
                      and d = C.registerNum d
                  in f (a, r, d); 
@@ -473,10 +476,10 @@ struct
                     f ("fmovs", r + 1, d + 1)
                  end
 
-(*#line 767.18 "sparc/sparc.mdl"*)
+(*#line 772.18 "sparc/sparc.mdl"*)
              fun h (a, r, d) = 
                  let 
-(*#line 768.22 "sparc/sparc.mdl"*)
+(*#line 773.22 "sparc/sparc.mdl"*)
                      val r = C.registerNum r
                      and d = C.registerNum d
                  in f (a, r, d); 

@@ -19,6 +19,10 @@ is
 #endif
 
 	../../cm/Control.cm
+                (bind:(anchor:Control.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:Lib.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:MLTREE.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:MLRISC.cm value:$SMLNJ-MLRISC))
 
 	../SourceMap/sources.cm 
 	../FakeSMLAst/sources.cm (* the fake SML abstract syntax *)

@@ -1062,14 +1062,16 @@ struct
            in  g(mlrisc, C.empty) end
 
           (* generate code for calls *)
-      and call(ea, flow, def, use, mem, cutsTo, an) = 
+      and call(ea, flow, def, use, mem, cutsTo, an, pops) = 
       let fun return(set, []) = set
             | return(set, a::an) =
               case #peek A.RETURN_ARG a of 
                 SOME r => return(C.CellSet.add(r, set), an)
               | NONE => return(set, an)
-      in  mark(I.CALL{opnd=operand ea,defs=cellset(def),uses=cellset(use),
-                      return=return(C.empty,an),cutsTo=cutsTo,mem=mem},an)
+      in
+	  mark(I.CALL{opnd=operand ea,defs=cellset(def),uses=cellset(use),
+                      return=return(C.empty,an),cutsTo=cutsTo,mem=mem,
+		      pops=pops},an)
       end
 
           (* generate code for integer stores; first move data to %eax 
@@ -1704,11 +1706,11 @@ struct
         | stmt(T.COPY(_, dst, src), an) = copy(dst, src, an)
         | stmt(T.FCOPY(fty, dst, src), an) = fcopy(fty, dst, src, an)
         | stmt(T.JMP(e, labs), an) = jmp(e, labs, an)
-        | stmt(T.CALL{funct, targets, defs, uses, region, ...}, an) = 
-             call(funct,targets,defs,uses,region,[],an)
-        | stmt(T.FLOW_TO(T.CALL{funct, targets, defs, uses, region, ...},
+        | stmt(T.CALL{funct, targets, defs, uses, region, pops, ...}, an) = 
+             call(funct,targets,defs,uses,region,[],an, pops)
+        | stmt(T.FLOW_TO(T.CALL{funct, targets, defs, uses, region, pops, ...},
                          cutTo), an) = 
-             call(funct,targets,defs,uses,region,cutTo,an)
+             call(funct,targets,defs,uses,region,cutTo,an, pops)
         | stmt(T.RET _, an) = mark(I.RET NONE, an)
         | stmt(T.STORE(8, ea, d, mem), an)  = 
              store(8, ea, d, mem, an, opcodes8, store8)

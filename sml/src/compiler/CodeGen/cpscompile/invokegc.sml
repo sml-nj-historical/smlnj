@@ -117,7 +117,8 @@ struct
 	      T.LOAD(32, 
 		     T.ADD(addrTy,C.stackptr, LI MS.startgcOffset),
 		     R.stack),
-            targets=[], defs=def, uses=use, region=R.stack},
+            targets=[], defs=def, uses=use, region=R.stack,
+	    pops=0},
           #create MLRiscAnnotations.COMMENT "call gc")
 
        val ZERO_FREQ = #create MLRiscAnnotations.EXECUTION_FREQ 0

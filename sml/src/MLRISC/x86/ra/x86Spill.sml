@@ -68,10 +68,10 @@ functor X86Spill(structure Instr: X86INSTR
   let fun done(instr, an) = {code=[mark(instr, an)], proh=[], newReg=NONE}
       fun spillIt(instr,an) =
       case instr of 
-        I.CALL{opnd=addr, defs, uses, return, cutsTo, mem} =>
+        I.CALL{opnd=addr, defs, uses, return, cutsTo, mem, pops} =>
           done(I.CALL{opnd=addr, defs=C.rmvReg(reg,defs), 
                                  return=return, uses=uses, 
-                      cutsTo=cutsTo, mem=mem}, an)
+                      cutsTo=cutsTo, mem=mem, pops=pops}, an)
       | I.MOVE{mvOp as (I.MOVZBL|I.MOVSBL|I.MOVZWL|I.MOVSWL), src, dst} => 
           let val tmpR = newReg() val tmp = I.Direct tmpR
           in  {proh=[tmpR], newReg=SOME tmpR,
@@ -294,9 +294,9 @@ functor X86Spill(structure Instr: X86INSTR
      | I.JCC{opnd=I.Direct _, cond} => done(I.JCC{opnd=spillLoc, cond=cond}, an)
      | I.JCC{opnd, cond} => 
           withTmp(fn t => I.JCC{opnd=operand(t,opnd), cond=cond}, an)
-     | I.CALL{opnd, defs, uses, return, cutsTo, mem} => 
+     | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => 
           withTmp(fn t => 
-              I.CALL{opnd=operand(t, opnd), defs=defs, return=return,
+              I.CALL{opnd=operand(t, opnd), defs=defs, return=return,pops=pops,
                      uses=C.rmvReg(reg, uses), cutsTo=cutsTo, mem=mem}, an)
 (***
        let val tmpR = newReg()
@@ -434,11 +434,11 @@ functor X86Spill(structure Instr: X86INSTR
        | I.FSTPT _ => {proh=[], code=[mark(I.FSTPT spillLoc, an)], newReg=NONE}
        | I.FSTL _ => {proh=[], code=[mark(I.FSTL spillLoc, an)], newReg=NONE}
        | I.FSTS _ => {proh=[], code=[mark(I.FSTS spillLoc, an)], newReg=NONE}
-       | I.CALL{opnd, defs, uses, return, cutsTo, mem} =>
+       | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} =>
 	 {proh=[],
 	  code=[mark(I.CALL{opnd=opnd, defs=C.rmvFreg(reg,defs), 
                             return=return, uses=uses, 
-                            cutsTo=cutsTo, mem=mem}, an)],
+                            cutsTo=cutsTo, mem=mem, pops=pops}, an)],
 	  newReg=NONE}
 
        (* Pseudo fp instrctions *)
@@ -558,10 +558,10 @@ functor X86Spill(structure Instr: X86INSTR
                  fn tmp => I.FCMP{fsize=fsize,lsrc=rsrc, rsrc=tmp}, an)
            | _ => error "fcmp.2"
           )
-       | I.CALL{opnd, defs, uses, return, cutsTo, mem} =>
+       | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} =>
 	 {proh=[],
 	  code=[mark(I.CALL{opnd=opnd, defs=C.rmvFreg(reg,defs), 
-                            return=return,
+                            return=return, pops=pops,
                             uses=uses, cutsTo=cutsTo, mem=mem}, an)],
           newReg=NONE}
        | I.ANNOTATION{i,a} => reloadIt(i, a::an)

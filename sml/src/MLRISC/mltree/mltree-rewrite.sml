@@ -27,10 +27,10 @@ struct
            | T.FCOPY _ => s
            | T.JMP(e,cf) => T.JMP(rexp e,cf)
            | T.BCC(cc,l) => T.BCC(ccexp cc,l)
-           | T.CALL{funct,targets,defs,uses,region} => 
+           | T.CALL{funct,targets,defs,uses,region,pops} => 
                T.CALL{funct=rexp funct,targets=targets,
                       defs=mlriscs defs,uses=mlriscs uses,
-                      region=region}
+                      region=region,pops=pops}
            | T.FLOW_TO(s,controlflow) => T.FLOW_TO(stm s,controlflow)
            | T.RET _ => s
            | T.IF(cc,yes,no) => T.IF(ccexp cc,stm yes,stm no)

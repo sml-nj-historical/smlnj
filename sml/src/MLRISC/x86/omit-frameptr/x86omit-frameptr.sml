@@ -119,9 +119,15 @@ struct
         of I.JMP(opnd,labs) => unchanged(I.JMP(operand opnd, labs))
 	 | I.JCC{cond:I.cond, opnd:I.operand} => 
 	    unchanged(I.JCC{cond=cond, opnd=operand(opnd)})
-	 | I.CALL{opnd, defs, uses, cutsTo, mem, return} => 
-	    unchanged(I.CALL{opnd=operand(opnd), defs=defs, uses=uses, cutsTo=cutsTo, mem=mem,
+	 | I.CALL{opnd, defs, uses, cutsTo, mem, return, pops=0} => 
+	    unchanged(I.CALL{opnd=operand(opnd), defs=defs, uses=uses,
+			     cutsTo=cutsTo, mem=mem, pops=0,
 			     return=return})
+	 | I.CALL{opnd, defs, uses, cutsTo, mem, return, pops} =>
+	   changedto(I.CALL{opnd=operand(opnd), defs=defs, uses=uses,
+			    cutsTo=cutsTo, mem=mem, pops=pops,
+			    return=return},
+		     addToDelta(~pops))
 	 | I.ENTER{src1=I.Immed i1, src2=I.Immed i2} => changedto(instr,  addToDelta(i1 + i2*4))
 	 | I.LEAVE => (SOME instr, NONE)
 	 | I.RET opnd => (SOME instr, NONE)

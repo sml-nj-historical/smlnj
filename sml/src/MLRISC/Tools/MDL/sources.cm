@@ -85,19 +85,36 @@ is
 	$/smlnj-lib.cm
 	$/ml-yacc-lib.cm
 	$smlnj/compiler.cm
+
+        (* MLRISC libraries *)
+	../../cm/Control.cm
+                (bind:(anchor:Control.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:Lib.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:MLTREE.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:MLRISC.cm value:$SMLNJ-MLRISC))
+	../../cm/Lib.cm
+                (bind:(anchor:Control.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:Lib.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:MLTREE.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:MLRISC.cm value:$SMLNJ-MLRISC))
 #else
 	basis.cm
 	smlnj-lib.cm
 	ml-yacc-lib.cm
 	host-compiler.cm
+
+        (* MLRISC libraries *)
+	../../cm/Control.cm
+	../../cm/Lib.cm
 #endif
 #else
 	smlnj-lib.cm
 	ml-yacc-lib.cm
-#endif
+
         (* MLRISC libraries *)
 	../../cm/Control.cm
 	../../cm/Lib.cm
+#endif
 
 	(* Pretty printer *)
 	../PP/sources.cm

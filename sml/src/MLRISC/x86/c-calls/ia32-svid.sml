@@ -144,9 +144,15 @@ struct
       | copyOut _ = error "copyOut"
   end
 
-  fun genCall {name,proto={conv="", retTy, paramTys},structRet,
-	       saveRestoreDedicated, callComment,
-	       args} = let
+  fun genCall ar = let
+    val {name,proto,structRet,saveRestoreDedicated, callComment,args} = ar
+    val {conv, retTy, paramTys} = proto
+    val callee_pops =
+	case conv of
+	    (""|"ccall") => false
+	  | "stdcall" => true
+	  | _ => error (concat ["unknown calling convention \"",
+				String.toString conv, "\""])
     fun push signed {sz, e} = let
       fun pushl rexp = T.EXT(ix(IX.PUSHL(rexp)))
       fun signExtend(e) = if sz=32 then e else T.SX(32, sz, e)
@@ -295,11 +301,12 @@ struct
      (*esac*))
 
     (* call defines callersave registers and uses result registers. *)
-    fun mkCall defs = let
+    fun mkCall (defs, npop) = let
+	val npop = Int32.fromInt npop
 	val { save, restore } = saveRestoreDedicated defs
 	val callstm = 
 	    T.CALL { funct=name, targets=[], defs=defs, uses=[], 
-		     region=T.Region.memory }
+		     region=T.Region.memory, pops=npop }
 	val callstm =
 	    case callComment of
 		NONE => callstm
@@ -325,14 +332,12 @@ struct
     
     val (cRets, cDefs) = resultsAndDefs (retTy)
     val (retRegs, cpyOut) = copyOut(cRets, [], [])
-    val call = mkCall(cDefs) @
-	       (case argsSz paramTys of
-		    0 => cpyOut
-		  | n => T.MV(32, sp, T.ADD(32, T.REG(32,sp), LI n)) :: cpyOut)
+    val n = argsSz paramTys
+    val (popseq, implicit_pop) =
+	if callee_pops orelse n = 0 then ([], n)
+	else ([T.MV(32, sp, T.ADD(32, T.REG(32,sp), LI n))], 0)
+    val call = mkCall(cDefs, implicit_pop) @ popseq @ cpyOut
     val callSeq = pushArgs(paramTys, args, pushStructRetAddr(call))
   in {callseq=callSeq, result=retRegs}
   end
-    | genCall {proto={conv, ...}, ...} =
-	error(concat["unknown calling convention \"", String.toString conv, "\""])
-
 end

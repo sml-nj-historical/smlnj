@@ -519,7 +519,8 @@ struct
          | stmt(T.FCOPY(64,dst,src),an) = fcopy(dst,src,an)
          | stmt(T.JMP(T.LABEL l,_),an) = goto(l,an)
          | stmt(T.JMP(ea,labs),an) = jmp(ea,labs,an)
-         | stmt(s as T.CALL _,an) = call(s,an)
+         | stmt(s as T.CALL { pops=0, ...},an) = call(s,an)
+	 | stmt(T.CALL _, _) = error "pops<>0 not implemented"
          | stmt(T.RET _,an) = 
                mark(I.BV{labs=[],x=zeroR,b=C.returnPtr,n=true},an)
          | stmt(T.STORE(8,ea,t,mem),an) = store(I.STB,ea,expr t,mem,an)

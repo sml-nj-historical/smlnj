@@ -193,7 +193,7 @@ struct
    fun emitInstr (I.NOP) = error "NOP"
      | emitInstr (I.JMP(operand, list)) = error "JMP"
      | emitInstr (I.JCC{cond, opnd}) = error "JCC"
-     | emitInstr (I.CALL{opnd, defs, uses, return, cutsTo, mem}) = error "CALL"
+     | emitInstr (I.CALL{opnd, defs, uses, return, cutsTo, mem, pops}) = error "CALL"
      | emitInstr (I.ENTER{src1, src2}) = error "ENTER"
      | emitInstr (I.LEAVE) = error "LEAVE"
      | emitInstr (I.RET option) = error "RET"

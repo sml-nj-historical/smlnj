@@ -647,7 +647,8 @@ struct
 	rtl: ``J<cond>''
 
     | CALL of {opnd: operand, defs: $cellset, uses: $cellset,
-               return: $cellset, cutsTo: Label.label list, mem: Region.region}
+               return: $cellset, cutsTo: Label.label list, mem: Region.region,
+ 	       pops:Int32.int}
 	asm: ``call\t<stupidGas opnd><mem><
           	emit_defs(defs)><
           	emit_uses(uses)><

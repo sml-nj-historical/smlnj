@@ -196,6 +196,7 @@ sig
    | STORE of {s:store, d:C.cell, r:C.cell, i:operand, mem:Region.region}
    | FLOAD of {l:fload, r:C.cell, i:operand, d:C.cell, mem:Region.region}
    | FSTORE of {s:fstore, d:C.cell, r:C.cell, i:operand, mem:Region.region}
+   | UNIMP of {const22:int}
    | SETHI of {i:int, d:C.cell}
    | ARITH of {a:arith, r:C.cell, i:operand, d:C.cell}
    | SHIFT of {s:shift, r:C.cell, i:operand, d:C.cell}
@@ -422,6 +423,7 @@ struct
    | STORE of {s:store, d:C.cell, r:C.cell, i:operand, mem:Region.region}
    | FLOAD of {l:fload, r:C.cell, i:operand, d:C.cell, mem:Region.region}
    | FSTORE of {s:fstore, d:C.cell, r:C.cell, i:operand, mem:Region.region}
+   | UNIMP of {const22:int}
    | SETHI of {i:int, d:C.cell}
    | ARITH of {a:arith, r:C.cell, i:operand, d:C.cell}
    | SHIFT of {s:shift, r:C.cell, i:operand, d:C.cell}

@@ -52,7 +52,7 @@ struct
     | T.COPY(ty,dst,src) => 0w234 + w ty + wvs dst + wvs src
     | T.FCOPY(fty,dst,src) => 0w456 + w fty + wvs dst + wvs src
     | T.JMP(ea,labels) => 0w45 + hashRexp ea
-    | T.CALL{funct,targets,defs,uses,region} =>
+    | T.CALL{funct,targets,defs,uses,region,pops} =>
           hashRexp funct + hashMlriscs defs + hashMlriscs uses 
     | T.RET _ => 0w567
     | T.STORE(ty,ea,data,mem) => 0w888 + w ty + hashRexp ea + hashRexp data 
