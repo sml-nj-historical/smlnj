@@ -1,3 +1,25 @@
+2000-02-22  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-mode.el (sml-find-matching-starter): Use a list of syms instead of a
+	  regexp.
+	(sml-indent-default): Use symbol membership rather than a regexp.
+	  Also, use `sym-indent' instead of (current-column).  This fixes a problem
+	  with a hanging `structure Foo = (struct|let)' (due to `structure' having
+	  a sml-indent-rule, as opposed to `fun').  Hopefully it won't introduce
+	  other problems.
+	(sml-font-lock-keywords): Match vars `val x : int' also.
+	(sml-electric-pipe): Update to the new `sml-find-matching-starter' and
+	  return a sensible default instead of raising an error in case of
+	  unexpected situations.
+	(sml-indent-line): Ignore errors and keep the cursor where it is.
+	(sml-calculate-indentation, sml-indent-pipe): Use syms instead of regexps.
+
+	* sml-defs.el (sml-starters-re, sml-pipehead-re): Remove.
+
+	* testcases.sml: New file.
+
+	* makefile.pkg (test): new target to run the test suite.
+
 2000-02-18  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* *.el: Pass through checkdoc and use `eval-when-compile' whenever

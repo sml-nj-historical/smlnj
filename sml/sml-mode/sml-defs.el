@@ -239,16 +239,14 @@
 	    "open" "type" "val" "and"
 	    "withtype" "with"))
   "The starters of new expressions.")
-(defconst sml-starters-re (sml-syms-re sml-starters-syms))
 
 (defconst sml-exptrail-syms
   '("if" "then" "else" "while" "withtype" "do" "case" "of" "raise" "fn"))
 
-(defconst sml-pipehead-re
-  (concat
-   "|\\S.\\|"
-   (sml-syms-re "of" "fun" "fn" "and" "handle" "datatype" "abstype"))
-  "A `|' corresponds to one of these.")
+(defconst sml-pipeheads
+   '("|" "of" "fun" "fn" "and" "handle" "datatype" "abstype")
+   "A `|' corresponds to one of these.")
+
 
 (provide 'sml-defs)
 

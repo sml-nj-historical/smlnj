@@ -191,7 +191,7 @@ Full documentation will be available after autoloading the function."))
     ("\\<\\(\\(data\\|abs\\|with\\|eq\\)?type\\)\\s-+\\('\\sw+\\s-+\\)*\\(\\sw+\\)"
      (1 font-lock-keyword-face)
      (4 font-lock-type-def-face))
-    ("\\<\\(val\\)\\s-+\\(\\sw+\\>\\s-*\\)?\\(\\sw+\\)\\s-*="
+    ("\\<\\(val\\)\\s-+\\(\\sw+\\>\\s-*\\)?\\(\\sw+\\)\\s-*[=:]"
      (1 font-lock-keyword-face)
      ;;(6 font-lock-variable-def-face nil t)
      (3 font-lock-variable-name-face))
@@ -305,9 +305,9 @@ Depending on the context insert the name of function, a \"=>\" etc."
    (let ((text
 	  (save-excursion
 	    (backward-char 2)		;back over the just inserted "| "
-	    (sml-find-matching-starter sml-pipehead-re
-				       (sml-op-prec "|" 'back))
-	    (let ((sym (sml-forward-sym)))
+	    (let ((sym (sml-find-matching-starter sml-pipeheads
+						  (sml-op-prec "|" 'back))))
+	      (sml-forward-sym)
 	      (sml-forward-spaces)
 	      (cond
 	       ((string= sym "|")
@@ -334,8 +334,8 @@ Depending on the context insert the name of function, a \"=>\" etc."
 		  (sml-forward-spaces))
 		(concat sym "  = "))
 	       ((member sym '("case" "handle" "fn" "of")) " => ")
-	       ((member sym '("abstype" "datatype")) "")
-	       (t (error "Wow, now, there's a bug")))))))
+	       ;;((member sym '("abstype" "datatype")) "")
+	       (t ""))))))
 
      (insert text)
      (indent-according-to-mode)
@@ -378,7 +378,11 @@ If anyone has a good algorithm for this..."
 (defun sml-indent-line ()
   "Indent current line of ML code."
   (interactive)
-  (indent-line-to (sml-calculate-indentation)))
+  (let ((savep (> (current-column) (current-indentation)))
+	(indent (or (ignore-errors (sml-calculate-indentation)) 0)))
+    (if savep
+	(save-excursion (indent-line-to indent))
+      (indent-line-to indent))))
 
 (defun sml-back-to-outer-indent ()
   "Unindents to the next outer level of indentation."
@@ -444,13 +448,13 @@ If anyone has a good algorithm for this..."
 	(and (setq data (assoc sym sml-close-paren))
 	     (sml-indent-relative sym data))
 
-	(and (looking-at sml-starters-re)
+	(and (member (save-excursion (sml-forward-sym)) sml-starters-syms)
 	     (let ((sym (unless (save-excursion (sml-backward-arg))
 			  (sml-backward-spaces)
 			  (sml-backward-sym))))
 	       (if sym (sml-get-sym-indent sym)
 		 ;; FIXME: this can take a *long* time !!
-		 (sml-find-matching-starter sml-starters-re)
+		 (sml-find-matching-starter sml-starters-syms)
 		 (current-column))))
 
 	(and (string= sym "|") (sml-indent-pipe))
@@ -466,16 +470,17 @@ If anyone has a good algorithm for this..."
        (sml-delegated-indent))))
 
 (defun sml-indent-pipe ()
-  (when (sml-find-matching-starter sml-pipehead-re
-				   (sml-op-prec "|" 'back))
-    (if (looking-at "|")
-	(if (sml-bolp) (current-column) (sml-indent-pipe))
-      (let ((pipe-indent (or (cdr (assoc "|" sml-symbol-indent)) -2)))
-	(when (looking-at "\\(data\\|abs\\)type\\>")
-	  (re-search-forward "="))
-	(sml-forward-sym)
-	(sml-forward-spaces)
-	(+ pipe-indent (current-column))))))
+  (let ((sym (sml-find-matching-starter sml-pipeheads
+					(sml-op-prec "|" 'back))))
+    (when sym
+      (if (string= sym "|")
+	  (if (sml-bolp) (current-column) (sml-indent-pipe))
+	(let ((pipe-indent (or (cdr (assoc "|" sml-symbol-indent)) -2)))
+	  (when (member sym '("datatype" "abstype"))
+	    (re-search-forward "="))
+	  (sml-forward-sym)
+	  (sml-forward-spaces)
+	  (+ pipe-indent (current-column)))))))
 
 (defun sml-find-forward (re)
   (sml-forward-spaces)
@@ -567,7 +572,10 @@ Optional argument STYLE is currently ignored"
     (if sym-indent
 	;; the previous sym is an indentation introducer: follow the rule
 	(let ((indent-after (or (cdr (assoc sym-after sml-symbol-indent)) 0)))
-	  (if noindent (current-column) (+ sym-indent indent-after)))
+	  (if noindent
+	      ;;(current-column)
+	      sym-indent
+	    (+ sym-indent indent-after)))
       ;; default-default
       (let* ((prec-after (sml-op-prec sym-after 'back))
 	     (prec (or (sml-op-prec sym-before 'back) prec-after 100)))
@@ -583,7 +591,7 @@ Optional argument STYLE is currently ignored"
 	(when noindent
 	  (sml-move-if
 	   (sml-backward-spaces)
-	   (string-match sml-starters-re (or (sml-backward-sym) ""))))
+	   (member (sml-backward-sym) sml-starters-syms)))
 	(current-column)))))
 
 
@@ -600,12 +608,14 @@ Optional argument STYLE is currently ignored"
     (current-column)))
 
 
-(defun sml-find-matching-starter (regexp &optional prec)
-  (ignore-errors
-    (sml-backward-sexp prec)
-    (while (not (or (looking-at regexp) (bobp)))
-      (sml-backward-sexp prec))
-    (not (bobp))))
+(defun sml-find-matching-starter (syms &optional prec)
+  (let (sym)
+    (ignore-errors
+      (while
+	  (progn (sml-backward-sexp prec)
+		 (setq sym (save-excursion (sml-forward-sym)))
+		 (not (or (member sym syms) (bobp)))))
+      (unless (bobp) sym))))
 
 (defun sml-comment-indent ()
   (if (looking-at "^(\\*")              ; Existing comment at beginning
