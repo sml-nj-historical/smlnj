@@ -16,10 +16,22 @@ end
  * be careful to make sure that a dead variable will indeed not appear
  * in the output lexp since it might else reference other dead variables *)
 
-(* things that lcontract did that fcontract doesn't do (yet):
- *
+(* things that lcontract.sml did that fcontract doesn't do (yet):
  * - inline across DeBruijn depths
  * - elimination of let [dead-vs] = pure in body
+ *)
+
+(* things that cpsopt/eta.sml did that fcontract doesn't do:
+ * - let f vs = select(v,i,g,g vs) 
+ *)
+
+(* things that cpsopt/contract.sml did that fcontract doesn't do:
+ * - IF-idiom
+ * - unifying branches
+ * - Handler operations
+ * - primops expressions
+ * - branch expressions
+ * - dropping of arguments
  *)
 
 structure FContract :> FCONTRACT =
@@ -213,15 +225,39 @@ in
 			(* contract the body and create the resulting fundec *)
 			val nbody = C.inside f (fn()=> loop body)
 			val nsv = Fun(f, nbody, args, fk, od)
-				     
-			val _ = (* update the subst with the new code *)
-			    case nbody (* look for eta redex *)
-			     of F.APP(g,vs) =>
-				if vs = (map (F.VAR o #1) args)
-				then substitute (f, val2sval g, g)
-				else addbind (f, nsv)
-			      | _ => addbind (f, nsv)
-		    in cfun fs ((fk, f, args, nbody)::acc)
+				
+			(* update the subst with the new code.
+			 * We also do eta-reduction here *)
+			val nacc =
+			    case nbody
+			     of F.APP(F.VAR g,vs) =>
+				(* NOTE: an eta-reduction can potentially
+				 * have the nasty side effect of turning
+				 * a known fun into an escaping one *)
+				if not (C.escaping f andalso
+					not (C.escaping g)) andalso
+				    vs = (map (F.VAR o #1) args)
+				then
+				    if null acc then
+					let val g = F.VAR g
+					in (substitute (f, val2sval g, g); acc)
+					end
+				    else
+					(* the function might have already
+					 * appeared in the previous fundecs
+					 * so we don't do the eta-reduction just
+					 * now, but instead we move the function
+					 * to the head of the list so that it
+					 * will be eta-reduced next time
+					 * we go through fcontract *)
+					(addbind (f, nsv);
+					 acc @ [(fk, f, args, nbody)])
+				else
+				    (addbind (f, nsv);
+				     (fk, f, args, nbody)::acc)
+			      | _ => (addbind (f, nsv);
+				      (fk, f, args, nbody)::acc)
+		    in cfun fs nacc
 		    end
 		else cfun fs acc
 			  

@@ -87,8 +87,7 @@ fun ltEtag lt = if laterPhase(phase) then LT.ltc_void
                 else LT.ltc_etag lt
 fun ltVector t = if laterPhase(phase) then LT.ltc_void
                  else LT.ltc_tyc(LT.tcc_vector t)
-val lt_inst_chk = LT.lt_inst_chk_gen()
-                                    
+
 (** lazily selecting a field from a record/structure type *)
 exception LtySelect
 fun ltSel (lt, i) = 
