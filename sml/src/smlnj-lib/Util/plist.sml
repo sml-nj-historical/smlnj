@@ -14,9 +14,11 @@ structure PropList :> PROP_LIST =
 
     fun clearHolder r = (r := [])
 
+    fun sameHolder (r1 : holder, r2) = (r1 = r2)
+
     fun mkProp () = let
 	  exception E of 'a 
-	  fun cons(a, l) = E a :: l 
+	  fun cons (a, l) = E a :: l 
 	  fun peek [] = NONE
 	    | peek (E a :: _) = SOME a
 	    | peek (_ :: l) = peek l
@@ -59,8 +61,13 @@ structure PropList :> PROP_LIST =
 		in
 		  h := delete(!h)
 		end
+	  fun setFn (a, x) = let
+		val h = selHolder a
+		in
+		  h := cons(x, delete(!h))
+		end
 	  in
-	    {peekFn = peekFn, getFn = getF, clrFn = clrF}
+	    {peekFn = peekFn, getFn = getF, clrFn = clrF, setFn = setFn}
 	  end
 
     fun newFlag (selHolder : 'a -> holder) = let

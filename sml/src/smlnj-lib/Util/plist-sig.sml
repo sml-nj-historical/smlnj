@@ -13,19 +13,25 @@ signature PROP_LIST =
 
     val clearHolder : holder -> unit
 
+    val sameHolder : (holder * holder) -> bool
+	(* returns true, if two holders are the same *)
+
   (* newProp (selHolder, init)
    * creates a new property for objects of type 'a and returns
-   * functions to get the property and clear it.  The function
+   * functions to get the property, set it, and clear it.  The function
    * selHolder is used to select the holder field from an object
    * and init is used to create the initial property value.
    * Typically, properties are reference cells, so that they can
    * be modified.  The difference between peekFn and getFn is that
    * peekFn returns NONE when the property has not yet been created,
-   * whereas getFn will allocate and initialize the property.
+   * whereas getFn will allocate and initialize the property.  The
+   * setFn function can either be used to initialize an undefined property
+   * or to override a property's current value.
    *)
     val newProp : (('a -> holder) * ('a -> 'b)) -> {
 	    peekFn : 'a -> 'b option,
 	    getFn  : 'a -> 'b,
+	    setFn  : ('a * 'b) -> unit,
 	    clrFn  : 'a -> unit
 	  }
 

@@ -23,7 +23,7 @@
  * 
  * 
  * 
- * A difference with Sven's port: errors now raise exceptions, rather
+ * A difference with Sven's port: errors now invoke an error callback, rather
  * than returning error strings while continuing processing options.
  * The full generality of the latter does not seem justified.
  *)
@@ -74,9 +74,9 @@ signature GET_OPT =
 	      errFn : string -> unit
 	    } -> string list -> ('a list * string list)
       (* takes as argument an arg_order to specify the non-options
-       * handling, a list of option descriptions and a command line
-       * containing the options and arguments, and returns a list of 
-       * (options, non-options)
+       * handling, a list of option descriptions, an error callback,
+       * and a command line containing the options and arguments,
+       * and returns a list of (options, non-options)
        *)      
  
   end

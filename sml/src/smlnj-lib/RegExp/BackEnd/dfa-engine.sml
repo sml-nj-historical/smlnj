@@ -25,32 +25,35 @@ structure DfaEngine : REGEXP_ENGINE =
 	    let val move = D.move regexp
 		val accepting = D.accepting regexp
 		val canStart = D.canStart regexp  
-		fun loop (state,p,inits,lastP,lastS,lastN) = 
-		    (case (getc (inits)) 
-		       of NONE => (lastP,lastS,lastN)
-		        | SOME (c,s') => 
-			   (case move (state,c)
-			      of NONE => (lastP,lastS,lastN)
-			       | SOME (new) => 
+		fun loop (state, p, inits, lastAccepting) = (
+		     case (getc (inits)) 
+		       of NONE => lastAccepting
+		        | SOME (c,s') => (
+			    case move (state,c)
+			      of NONE => lastAccepting
+			       | SOME (new) => (
 				  case (accepting new)
-				    of SOME n => loop (new,p+1,s',p+1,s',n)
-				     | NONE => loop (new,p+1,s',lastP,lastS,lastN)))
+				    of SOME n => loop (new, p+1, s', SOME(p+1,s',n))
+				     | NONE => loop (new, p+1, s', lastAccepting)
+				  (* end case *))
+			    (* end case *))
+		    (* end case *))
+		fun try0 stream = (
+		      case (accepting 0)
+		       of (SOME n) =>
+			    SOME(n, M.Match(SOME{pos=stream,len=0},[]), stream)
+			| NONE => NONE
+		      (* end case *))
 	    in
 		case (getc (stream))
-		  of NONE => (case (accepting 0)
-				of SOME n => SOME (n,M.Match (SOME {pos=stream,len=0},[]),stream)
-				 | NONE => NONE)
-		   | SOME (c,s') =>
-		      if (canStart c) 
-			  then let val (last,cs,n) = loop (0,p,stream,~1,stream,0)
-			       in
-				   if (last<0) 
-				       then NONE
-				   else SOME (n,M.Match (SOME {pos=stream,
-							       len=last-p},
-							 []),cs)
-			       end
-		      else NONE 
+		  of NONE => try0 stream
+		   | SOME (c,s') => (
+		      case loop (0, p, stream, NONE)
+		       of NONE => try0 stream
+			| SOME(last, cs, n) =>
+			    SOME(n, M.Match(SOME{pos=stream,len=last-p},[]), cs)
+		      (* end case *))
+		(* end case *)
 	    end
 
 	fun prefix regexp getc stream = case (scan (regexp,getc,0,stream))

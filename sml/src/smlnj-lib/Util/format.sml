@@ -45,6 +45,9 @@ structure Format : FORMAT =
 	      | NONE => ("", "", "")
 	    (* end case *))
     in
+  (* MaxInt is used to represent the absolute value of the largest negative
+   * representable integer.
+   *)
     datatype posint = PosInt of LargeInt.int | MaxInt
     fun intToOctal MaxInt = maxInt8
       | intToOctal (PosInt i) = LargeInt.fmt SC.OCT i
@@ -56,6 +59,12 @@ structure Format : FORMAT =
 	  String.implode (
 	    CharVector.foldr (fn (c, l) => Char.toUpper c :: l) [] (intToHex i))
     end (* local *)
+
+  (* word to string conversions *)
+    val wordToOctal = LargeWord.fmt SC.OCT
+    val wordToStr = LargeWord.fmt SC.DEC
+    val wordToHex = LargeWord.fmt SC.HEX
+    fun wordToHeX i = String.map Char.toUpper (wordToHex i)
 
     fun compileFormat str = let
 	  val split = SS.splitl (fn #"%" => false | _ => true)
@@ -148,28 +157,69 @@ structure Format : FORMAT =
 			  then sign ^ zeroPadFn(sign, s)
 			  else padFn (sign ^ s)
 		      end
+	      (* word formatting *)
+		fun doWordSign () = (case (#sign flags)
+		       of AlwaysSign => "+"
+			| BlankSign => " "
+			| _ => ""
+		      (* end case *))
+		fun octalW i = let
+		      val sign = doWordSign ()
+		      val sign = if (#base flags) then sign^"0" else sign
+		      val s = wordToOctal i
+		      in
+		        if (#zero_pad flags)
+			  then sign ^ zeroPadFn(sign, s)
+			  else padFn (sign ^ s)
+		      end
+		fun decimalW i = let
+		      val sign = doWordSign ()
+		      val s = wordToStr i
+		      in
+			if (#zero_pad flags)
+			  then sign ^ zeroPadFn(sign, s)
+		          else padFn (sign ^ s)
+		      end
+		fun hexidecimalW i = let
+		      val sign = doWordSign ()
+		      val sign = if (#base flags) then sign^"0x" else sign
+		      val s = wordToHex i 
+		      in
+		        if (#zero_pad flags)
+			  then sign ^ zeroPadFn(sign, s)
+			  else padFn (sign ^ s)
+		      end
+	        fun capHexidecimalW i = let
+		      val sign = doWordSign ()
+		      val sign = if (#base flags) then sign^"0X" else sign
+		      val s = wordToHeX i 
+		      in
+		        if (#zero_pad flags)
+			  then sign ^ zeroPadFn(sign, s)
+			  else padFn (sign ^ s)
+		      end
 		in
 		  case (ty, arg)
 		   of (OctalField, LINT i) => octal i
 		    | (OctalField, INT i) => octal(Int.toLarge i)
-		    | (OctalField, WORD w) => octal(Word.toLargeInt w)
-		    | (OctalField, LWORD w) => raise Fail "LWORD"
-		    | (OctalField, WORD8 w) => octal(Word8.toLargeInt w)
+		    | (OctalField, WORD w) => octalW (Word.toLargeWord w)
+		    | (OctalField, LWORD w) => octalW w
+		    | (OctalField, WORD8 w) => octalW (Word8.toLargeWord w)
 		    | (IntField, LINT i) => decimal i
 		    | (IntField, INT i) => decimal(Int.toLarge i)
-		    | (IntField, WORD w) => decimal(Word.toLargeInt w)
-		    | (IntField, LWORD w) => raise Fail "LWORD"
-		    | (IntField, WORD8 w) => decimal(Word8.toLargeInt w)
+		    | (IntField, WORD w) => decimalW (Word.toLargeWord w)
+		    | (IntField, LWORD w) => decimalW w
+		    | (IntField, WORD8 w) => decimalW (Word8.toLargeWord w)
 		    | (HexField, LINT i) => hexidecimal i
 		    | (HexField, INT i) => hexidecimal(Int.toLarge i)
-		    | (HexField, WORD w) => hexidecimal(Word.toLargeInt w)
-		    | (HexField, LWORD w) => raise Fail "LWORD"
-		    | (HexField, WORD8 w) => hexidecimal(Word8.toLargeInt w)
+		    | (HexField, WORD w) => hexidecimalW (Word.toLargeWord w)
+		    | (HexField, LWORD w) => hexidecimalW w
+		    | (HexField, WORD8 w) => hexidecimalW (Word8.toLargeWord w)
 		    | (CapHexField, LINT i) => capHexidecimal i
 		    | (CapHexField, INT i) => capHexidecimal(Int.toLarge i)
-		    | (CapHexField, WORD w) => capHexidecimal(Word.toLargeInt w)
-		    | (CapHexField, LWORD w) => raise Fail "LWORD"
-		    | (CapHexField, WORD8 w) => capHexidecimal(Word8.toLargeInt w)
+		    | (CapHexField, WORD w) => capHexidecimalW (Word.toLargeWord w)
+		    | (CapHexField, LWORD w) => capHexidecimalW w
+		    | (CapHexField, WORD8 w) => capHexidecimalW (Word8.toLargeWord w)
 		    | (CharField, CHR c) => padFn(String.str c)
 		    | (BoolField, BOOL false) => padFn "false"
 		    | (BoolField, BOOL true) => padFn "true"

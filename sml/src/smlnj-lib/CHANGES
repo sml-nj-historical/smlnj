@@ -2,6 +2,18 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
+[2000-06-30]
+	added implementation of LWORD in Format module.
+
+[2000-05-16]
+	Fixed bug in dfa-engine.sml (bug number 1559).
+
+[2000-05-08]
+	Added setFn to PList.newProp return type.
+
+[2000-05-05]
+	Added sameHolder function to PropList module.
+
 [2000-04-05]
 	Fixed a bug in the filter/filteri hash table functions: the number
 	of items in the table was not being recomputed.
