@@ -225,6 +225,10 @@ fun map_primop p =
      | AP.DISPOSE => PKS(P.free)
      | AP.SETSPECIAL => PKS(P.setspecial)
      | AP.USELVAR => PKS(P.uselvar)
+
+     | AP.RAW_LOAD nk => PKL (P.rawload { kind = numkind nk })
+     | AP.RAW_STORE nk => PKS (P.rawstore { kind = numkind nk })
+     | AP.RAW_CCALL => bug "RAW_CCALL not implemented yet"
      
      | _ => bug ("bad primop in map_primop: " ^ (AP.prPrimop p) ^ "\n"))
 

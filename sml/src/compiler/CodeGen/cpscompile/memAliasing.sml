@@ -224,6 +224,14 @@ struct
            fun sethdlr x = PT.strongUpdate(exnptr, 0, value x)
            fun setvar  x = PT.strongUpdate(varptr, 0, value x)
 
+	   (* I don't know whether the following makes any sense...
+	    * Basically, I want to ignore this aliasing analysis
+	    * as far as raw access is concerned.  (The invariant is
+	    * that raw access NEVER occurs to any memory location
+	    * that ML "knows" about.  -- Blume (2000/1/1) *)
+	   fun rawstore (a, x) = ()
+	   fun rawload (a, x) = top
+
            fun infer(C.RECORD(rk,vs,x,k),hp) = 
                  (mkRecord(rk,x,vs,hp); infer(k,allocRecord(rk,vs,hp)))
              | infer(C.SELECT(i,v,x,cty,k),hp) = (select(i,v,x); infer(k,hp))
@@ -281,7 +289,9 @@ struct
              | infer(C.LOOKER(P.getvar,[],x,_,k),hp) = (getvar x; infer(k,hp))
 
              | infer(C.LOOKER(P.deflvar,[],x,cty,k),hp) = infer(k,hp) (* nop! *)
- 
+	     | infer (C.LOOKER (P.rawload _, [a], x, _, k), hp) =
+	         (rawload (x, a); infer(k,hp))
+
                (* Setters *)
              | infer(C.SETTER(P.assign, [a,v], k),hp) = 
                  (assign(a,v); infer(k,hp+storeListSize))
@@ -300,6 +310,8 @@ struct
 
              | infer(C.SETTER(P.sethdlr, [x], k), hp) = (sethdlr x; infer(k,hp))
              | infer(C.SETTER(P.setvar, [x], k), hp) = (setvar x; infer(k,hp))
+	     | infer (C.SETTER (P.rawstore _, [a, x], k), hp) =
+	         (rawstore (a, x); infer (k, hp))
 
                 (* Apparently these are nops (see MLRiscGen.sml) *)
              | infer(C.SETTER(P.uselvar, [x], k), hp) = infer(k, hp)

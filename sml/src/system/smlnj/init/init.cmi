@@ -131,9 +131,16 @@ bind-core (xCore) xcore = xcore.sml (core)
 # The rest of the DAG...
 # (Everybody implicitly depends on xcore to have access to _Core.)
 bind built-in = built-in.sml (core, primitive, xcore)
-ifdef ARCH_ALPHA bind math-inlT = math-built-in-alpha.sml (core, primitive, xcore)
-ifdef ARCH_X86 bind math-inlT = math-built-in-x86.sml (core, primitive, xcore)
-ifndef ARCH_ALPHA ifndef ARCH_X86 bind math-inlT = math-built-in.sml (core, primitive, xcore)
+ifdef ARCH_ALPHA \
+	bind math-inlT = math-built-in-alpha.sml (core, primitive, xcore)
+ifdef ARCH_X86 \
+	bind math-inlT = math-built-in-x86.sml (core, primitive, xcore)
+ifndef ARCH_ALPHA ifndef ARCH_X86 \
+	bind math-inlT = math-built-in.sml (core, primitive, xcore)
+ifdef ARCH_X86 \
+	bind rawmem = rawmem-x86.sml (core, primitive, xcore)
+ifndef ARCH_X86 \
+	bind rawmem = rawmem-dummy.sml (core, primitive, xcore)
 bind pp = pre-perv.sml (built-in, xcore)
 bind ps = pre-string.sml (core, built-in, pp, xcore)
 bind ss-sig = substring.sig (pp, built-in, xcore)
@@ -147,7 +154,10 @@ bind init-utils = init-utils.sml (ps ss-sig ss, xcore)
 # kept as small as possible and only bind non-modular things
 # (i.e., top-level types and values).
 # Make sure everybody else in the world gets access to structure _Core...
-bind-core (xCore) pervasive = pervasive.sml (core, ps, ss, pp, print-hook, use-hook, exn-info-hook, math-inlT, built-in, xcore)
+bind-core (xCore) pervasive = pervasive.sml (core, ps, ss, pp, print-hook, \
+					     use-hook, exn-info-hook, \
+					     math-inlT, built-in, xcore)
 
 # Report the results to the world...
-return (pervasive) built-in math-inlT print-hook use-hook exn-info-hook core init-utils
+return (pervasive) built-in math-inlT print-hook use-hook exn-info-hook core \
+		   init-utils rawmem

@@ -38,14 +38,14 @@ end = struct
 	    end
 	fun makedirs dir = generic (mkDir, makedirs, dir)
 	fun advertisemakedirs dir =
-	    (Say.vsay ["[creating directory ", dir, " ...]\n"];
+	    (Say.vsay ["[creating directory ", dir, "]\n"];
 	     makedirs dir)
     in
 	generic (fileopener, advertisemakedirs, p)
     end
 
     (* In the open-for-output case we first get rid of the file if it
-     * already exsisted... *)
+     * already existed... *)
     fun openOut fileopener =
 	openEither (fn n => (if fileExists n then (F.remove n handle _ => ())
 			     else ();

@@ -736,7 +736,7 @@ fun mkVar (v as V.VALvar{access, info, typ, path}, d) =
       mkAccInfo(access, info, fn () => toLty d (!typ), getNameOp path)
   | mkVar _ = bug "unexpected vars in mkVar"
 
-fun mkVE (v as V.VALvar {info=II.INL_PRIM(p, SOME typ), ...}, ts, d) = 
+fun mkVE (v as V.VALvar {info=II.INL_PRIM(p, typ), ...}, ts, d) = 
       (case (p, ts)
         of (PO.POLYEQL, [t]) => eqGen(typ, t, toTcLt d)
          | (PO.POLYNEQ, [t]) => composeNOT(eqGen(typ, t, toTcLt d), toLty d t)
@@ -747,19 +747,6 @@ fun mkVE (v as V.VALvar {info=II.INL_PRIM(p, SOME typ), ...}, ts, d) =
                  in GENOP (dict, p, toLty d typ, map (toTyc d) ts)
                 end
          | _ => transPrim(p, (toLty d typ), map (toTyc d) ts))
-
-  | mkVE (v as V.VALvar {info=II.INL_PRIM(p, NONE), typ, ...}, ts, d) = 
-      (case ts of [] => transPrim(p, (toLty d (!typ)), [])
-                | [x] => 
-                   (* a temporary hack to resolve the boot/built-in.sml file *)
-                   (let val lt = toLty d (!typ)
-                        val nt = toLty d x
-                     in if LT.lt_eqv(LT.ltc_top, lt) 
-                        then transPrim(p, nt, [])
-                        else bug "unexpected primop in mkVE"
-                    end)
-                | _ => bug "unexpected poly primops in mkVE")
-
   | mkVE (v, [], d) = mkVar(v, d)
   | mkVE (v, ts, d) = TAPP(mkVar(v, d), map (toTyc d) ts)
 

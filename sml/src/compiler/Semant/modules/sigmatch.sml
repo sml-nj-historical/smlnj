@@ -164,10 +164,15 @@ fun absEqvTy (spec, actual, dinfo) : (ty list * tyvar list * ty * bool) =
        * is to figure out the proper type application arguments, insttys.
        * The typechecker does similar hack. We will clean this up in the
        * future (ZHONG).
+       *
+       * Change: The hack is gone, but I am not sure whether the code
+       * below could be further simplified.  (INL_PRIM now has mandatory
+       * type information, and this type information is always correctly
+       * provided by prim.sml.)  (Blume, 1/2001)
        *)
       val insttys = 
        (case dinfo 
-         of II.INL_PRIM(_, SOME st) =>
+         of II.INL_PRIM(_, st) =>
               (let val (actinst', insttys') = TU.instantiatePoly st
                 in Unify.unifyTy(actinst', actinst) handle _ => ();
                    insttys'
@@ -193,10 +198,15 @@ fun eqvTnspTy (spec, actual, dinfo) : (ty list * tyvar list) =
        * is to figure out the proper type application arguments, insttys.
        * The typechecker does similar hack. We will clean this up in the
        * future (ZHONG).
+       *
+       * Change: The hack is gone, but I am not sure whether the code
+       * below could be further simplified.  (INL_PRIM now has mandatory
+       * type information, and this type information is always correctly
+       * provided by prim.sml.)  (Blume, 1/2001)
        *)
       val insttys = 
        (case dinfo 
-         of II.INL_PRIM(_, SOME st) =>
+         of II.INL_PRIM(_, st) =>
               (let val (actinst', insttys') = TU.instantiatePoly st
                 in Unify.unifyTy(actinst', actinst) handle _ => ();
                    insttys'

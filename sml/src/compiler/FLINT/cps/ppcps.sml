@@ -33,6 +33,7 @@ fun lookerName P.! = "!"
   | lookerName P.deflvar = "deflvar"
   | lookerName P.getspecial = "getspecial"
   | lookerName P.getpseudo = "getpseudo"
+  | lookerName (P.rawload {kind}) = ("rawload" ^ numkindName kind)
 
 fun branchName P.boxed = "boxed"
   | branchName P.unboxed = "unboxed"
@@ -83,6 +84,7 @@ fun setterName P.unboxedupdate = "unboxedupdate"
   | setterName P.setpseudo = "setpseudo"
   | setterName P.setmark = "setmark"
   | setterName P.acclink = "acclink"
+  | setterName (P.rawstore {kind}) = ("rawstore" ^ numkindName kind)
 
 fun cvtParams(from, to) = Int.toString from ^ "_" ^ Int.toString to
 

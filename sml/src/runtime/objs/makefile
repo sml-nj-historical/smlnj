@@ -459,5 +459,8 @@ $(CLIB_DIR)/posix-tty/libposix-tty.a: FORCE
 $(CLIB_DIR)/posix-error/libposix-error.a: FORCE
 	(cd $(CLIB_DIR)/posix-error; $(MAKE) $(LIB_MK_ARGS) libposix-error.a)
 
+$(CLIB_DIR)/dl/libunix-dynload.a: FORCE
+	(cd $(CLIB_DIR)/dl; $(MAKE) $(LIB_MK_ARGS) libunix-dynload.a)
+
 $(CLIB_DIR)/smlnj-ccalls/libsmlnj-ccalls.a: FORCE
 	(cd $(CLIB_DIR)/smlnj-ccalls; $(MAKE) $(LIB_MK_ARGS) libsmlnj-ccalls.a)

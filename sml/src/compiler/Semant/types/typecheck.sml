@@ -384,7 +384,7 @@ fun patType(pat: pat, depth, region) : pat * ty =
 
 fun expType(exp: exp, occ: occ, region) : exp * ty =
      case exp
-      of VARexp(r as ref(VALvar{typ, info=II.INL_PRIM(_,SOME st), ...}), _) => 
+      of VARexp(r as ref(VALvar{typ, info=II.INL_PRIM(_, st), ...}), _) => 
            let val (sty, insts) = instantiatePoly(st)
                val (nty, _) = instantiatePoly(!typ)
             in unifyTy(sty, nty) handle _ => ();  (* ??? *)

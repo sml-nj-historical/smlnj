@@ -131,7 +131,8 @@ structure UnpickMod : UNPICKMOD = struct
 	  P.GET_SEQ_DATA,
 	  P.SUBSCRIPT_REC,
 	  P.SUBSCRIPT_RAW64,
-	  P.UNBOXEDASSIGN]
+	  P.UNBOXEDASSIGN,
+	  P.RAW_CCALL]
 
     val cmpop_table =
 	#[P.>, P.>=, P.<, P.<=, P.LEU, P.LTU, P.GEU, P.GTU, P.EQL, P.NEQ]
@@ -277,6 +278,8 @@ structure UnpickMod : UNPICKMOD = struct
 					   checked = bool () }
 	      | po #"\114" = P.INL_MONOARRAY (numkind ())
 	      | po #"\115" = P.INL_MONOVECTOR (numkind ())
+	      | po #"\116" = P.RAW_LOAD (numkind ())
+	      | po #"\117" = P.RAW_STORE (numkind ())
 	      | po c =
 		Vector.sub (primop_table, Char.ord c)
 		handle General.Subscript => raise Format
@@ -605,7 +608,7 @@ structure UnpickMod : UNPICKMOD = struct
 	end
 
 	and inl_info () = let
-	    fun ii #"A" = II.INL_PRIM (primop (), tyoption ())
+	    fun ii #"A" = II.INL_PRIM (primop (), ty ())
 	      | ii #"B" = II.INL_STR (iilist ())
 	      | ii #"C" = II.INL_NO
 	      | ii _ = raise Format

@@ -30,7 +30,8 @@ LIBS =		posix-os/libposix-os.a \
 		posix-signal/libposix-signal.a \
 		posix-sysdb/libposix-sysdb.a \
 		posix-sysdb/libposix-tty.a \
-		smlnj-ccalls/libsmlnj-ccalls.a
+		smlnj-ccalls/libsmlnj-ccalls.a \
+		dl/libunix-dynload.a
 
 LIB_DIRS =	posix-os \
 		smlnj-runtime \
@@ -49,7 +50,8 @@ LIB_DIRS =	posix-os \
 		posix-signal \
 		posix-sysdb \
 		posix-tty \
-		smlnj-ccalls
+		smlnj-ccalls \
+		dl
 
 
 # include directories for this level

@@ -1,5 +1,11 @@
 BOOT: the location of the latest boot files.
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/01/05 00:30:00 JST
+Tag: blume-20010105-primops
+Version: 110.32.1
+Location: ftp://ftp.cs.princeton.edu/pub/people/blume/sml/110.32.1-autofetch/
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2000/12/22 22:22:58 EST 2000
 Tag: Release_110_32

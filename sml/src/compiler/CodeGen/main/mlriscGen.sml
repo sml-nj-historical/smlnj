@@ -878,7 +878,9 @@ struct
                      * more than once.
                      *)
                      case looker of
-                       P.numsubscript{kind=P.FLOAT _} => addCntTbl(x,COMPUTE)
+                       (P.numsubscript{kind=P.FLOAT _} |
+			P.rawload {kind=P.FLOAT _}) =>
+		       addCntTbl(x,COMPUTE)
                      | _ => ();
                      add(x,t); init e
                     )
@@ -1286,6 +1288,38 @@ struct
                    end
               (*esac*))
 
+	  and rawload ((P.UINT (sz as (8 | 16 | 32)) |
+			P.INT (sz as 32)), i, x, e, hp) =
+	      defI32 (x, M.LOAD (sz, regbind i, R.memory), e, hp)
+	    | rawload (P.INT (sz as (8 | 16)), i, x, e, hp) = let
+		  val shft = LI (32 - sz)
+	      in
+		  defI32 (x, M.SRA (ity,
+				    M.SLL (ity,
+					   M.LOAD (sz, regbind i, R.memory),
+					   shft),
+				    shft),
+			  e, hp)
+	      end
+	    | rawload ((P.UINT sz | P.INT sz), _, _, _, _) =
+	      error ("rawload: unsupported size: " ^ Int.toString sz)
+	    | rawload (P.FLOAT (sz as (32 | 64)), i, x, e, hp) =
+	      treeifyDefF64 (x, M.FLOAD (sz, regbind i, R.memory), e, hp)
+	    | rawload (P.FLOAT sz, _, _, _, _) =
+	      error ("rawstore: unsupported float size: " ^ Int.toString sz)
+
+	  and rawstore ((P.UINT (sz as (8 | 16 | 32)) |
+			 P.INT (sz as (8 | 16 | 32))), i, x) =
+	      (* both address and value are 32-bit values; only sz bits
+	       * of the value are being stored *)
+	      emit (M.STORE (sz, regbind i, regbind x, R.memory))
+	    | rawstore ((P.UINT sz | P.INT sz), _, _) =
+	      error ("rawstore: unsupported int size: " ^ Int.toString sz)
+	    | rawstore (P.FLOAT (sz as (32 | 64)) , i, x) =
+	      emit (M.FSTORE (sz, regbind i, fregbind x, R.memory))
+	    | rawstore (P.FLOAT sz, _, _) =
+	      error ("rawstore: unsupported float size: " ^ Int.toString sz)
+
           (* 
            * Generate code 
            *)
@@ -1643,6 +1677,8 @@ struct
                          e, hp)
             | gen(LOOKER(P.getpseudo, [i], x, _, e), hp) = 
                 (print "getpseudo not implemented\n"; nop(x, i, e, hp))
+	    | gen (LOOKER (P.rawload { kind }, [i], x, _, e), hp) =
+	        rawload (kind, i, x, e, hp)
             (*** SETTER ***)
             | gen(SETTER(P.assign, [a as VAR arr, v], e), hp) = 
               let val ea = regbind a
@@ -1718,6 +1754,8 @@ struct
             | gen(SETTER(P.free,[x],e), hp) = gen(e, hp)
             | gen(SETTER(P.setpseudo,_,e), hp) = 
                 (print "setpseudo not implemented\n"; gen(e, hp))
+	    | gen (SETTER (P.rawstore { kind }, [i, x], e), hp) =
+	        (rawstore (kind, i, x); gen (e, hp))
     
             (*** BRANCH  ***)
             | gen(BRANCH(P.cmp{oper,kind=P.INT 31},[INT v, INT k],_,e,d), hp) =

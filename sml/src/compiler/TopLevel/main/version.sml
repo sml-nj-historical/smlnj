@@ -15,8 +15,8 @@ structure Version : sig
 
     val version = {
 	    system = "Standard ML of New Jersey ",
-	    version_id = [110, 32],
-	    date = "December 22, 2000"
+	    version_id = [110, 32, 1],
+	    date = "January 4, 2001"
 	  }
 
     fun f ([], l) = l
@@ -25,6 +25,7 @@ structure Version : sig
 
     val banner = concat (
 	    #system version :: "v" :: 
-	    f (#version_id version, [" [FLINT v1.5], ", #date version]))
+	    f (#version_id version, [" [FLINT v1.5], ", #date version,
+				     "\n(``A Space Oddysey'' version)"]))
 
   end

@@ -38,11 +38,13 @@ structure P : sig
       | unboxedassign | assign
       | sethdlr | setvar | uselvar | setspecial
       | free | acclink | setpseudo | setmark
+      | rawstore of {kind: numkind}
 
     (* These fetch from the store, never have functions as arguments. *)
     datatype looker
       = ! | subscript | numsubscript of {kind: numkind} | getspecial | deflvar
       | getrunvec | gethdlr | getvar | getpseudo
+      | rawload of {kind: numkind}
 
   (* These might raise exceptions, never have functions as arguments.*)
     datatype arith

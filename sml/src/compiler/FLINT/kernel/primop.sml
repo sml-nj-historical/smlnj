@@ -97,6 +97,10 @@ datatype primop
   | GET_SEQ_DATA		(* get data pointer from arr/vec header *)
   | SUBSCRIPT_REC		(* record subscript operation *)
   | SUBSCRIPT_RAW64		(* raw64 subscript operation *)
+(* Primops to support new experimental C FFI. *)
+  | RAW_LOAD of numkind		(* load from arbitrary memory location *)
+  | RAW_STORE of numkind	(* store to arbitrary memory location *)
+  | RAW_CCALL			(* make a call to a C-function *)
 
 
 (** default integer arithmetic and comparison operators *)
@@ -245,6 +249,10 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop (GET_SEQ_DATA) = "getseqdata"
   | prPrimop (SUBSCRIPT_REC) = "subscriptrec"
   | prPrimop (SUBSCRIPT_RAW64) = "subscriptraw64"
+(* Primops to support new experimental C FFI. *)
+  | prPrimop (RAW_LOAD nk) = concat ["raw_load(", prNumkind nk, ")"]
+  | prPrimop (RAW_STORE nk) = concat ["raw_store(", prNumkind nk, ")"]
+  | prPrimop RAW_CCALL = "raw_ccall"
 
 
 (* should return more than just a boolean:

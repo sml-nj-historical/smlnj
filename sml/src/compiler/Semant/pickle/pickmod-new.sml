@@ -341,6 +341,8 @@ in
 		    ?113 $ [numkind kind, bool checked]
 	      | P.INL_MONOARRAY kind => ?114 $ [numkind kind]
 	      | P.INL_MONOVECTOR kind => ?115 $ [numkind kind]
+	      | P.RAW_LOAD kind => ?116 $ [numkind kind]
+	      | P.RAW_STORE kind => ?117 $ [numkind kind]
 		    
 	      | P.MKETAG => %?0
 	      | P.WRAP => %?1
@@ -406,6 +408,7 @@ in
 	      | P.SUBSCRIPT_REC => %?58
 	      | P.SUBSCRIPT_RAW64 => %?59
 	      | P.UNBOXEDASSIGN => %?60
+	      | P.RAW_CCALL => %?61
     end
 
     fun consig arg = let
@@ -886,7 +889,7 @@ in
 	end
 
 	val op $ = PU.$ II
-	fun inl_info (II.INL_PRIM (p, t)) = "A" $ [primop p, option ty t]
+	fun inl_info (II.INL_PRIM (p, t)) = "A" $ [primop p, ty t]
 	  | inl_info (II.INL_STR sl) = "B" $ [list inl_info sl]
 	  | inl_info II.INL_NO = "C" $ []
 	  | inl_info _ = bug "unexpected inl_info in pickmod"

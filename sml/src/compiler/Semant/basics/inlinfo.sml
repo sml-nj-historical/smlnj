@@ -5,9 +5,9 @@ signature INL_INFO =
 sig
 
   datatype inl_info
-    = INL_PRIM of PrimOp.primop   * Types.ty option
+    = INL_PRIM of PrimOp.primop * Types.ty
 (*  | INL_LEXP of FLINT.prog * Types.ty option *)
-    | INL_PATH of Access.access   * Types.ty option
+    | INL_PATH of Access.access * Types.ty option (* still used anywhere? *)
     | INL_STR  of inl_info list
     | INL_NO
   
@@ -18,7 +18,7 @@ sig
   val isPrimCallcc : inl_info -> bool
   val pureInfo : inl_info -> bool
   
-  val mkPrimInfo : PrimOp.primop * Types.ty option -> inl_info
+  val mkPrimInfo : PrimOp.primop * Types.ty -> inl_info
   val mkAccInfo : Access.access * Types.ty option -> inl_info
   val mkStrInfo : inl_info list -> inl_info
   
@@ -52,7 +52,7 @@ fun bug msg = EM.impossible("InlInfo: "^msg)
  * structure with proper inlining information for each of its components.
  *)
 datatype inl_info
-  = INL_PRIM of PO.primop * T.ty option
+  = INL_PRIM of PO.primop * T.ty
 (*| INL_LEXP of FLINT.prog * T.ty option   (* should be lty option *) *)
   | INL_PATH of A.access * T.ty option
   | INL_STR of inl_info list

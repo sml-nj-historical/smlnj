@@ -37,7 +37,7 @@ val updateop =
   let val t = poly1(tupleTy[CONty(arrayTycon,[IBOUND 0]),
   			         intTy, IBOUND 0] --> unitTy)
    in VALvar{path=SP.SPATH[S.varSymbol "unboxedupdate"], typ=ref t,
-             access=A.nullAcc, info=II.mkPrimInfo(P.UNBOXEDUPDATE, SOME t)}
+             access=A.nullAcc, info=II.mkPrimInfo(P.UNBOXEDUPDATE, t)}
   end
 
 val assignop = 
@@ -45,26 +45,26 @@ val assignop =
 			    intTy, IBOUND 0] --> unitTy)
 
    in VALvar{path=SP.SPATH[S.varSymbol ":="], typ=ref t,
-             access=A.nullAcc, info=II.mkPrimInfo(P.ASSIGN, SOME t)}
+             access=A.nullAcc, info=II.mkPrimInfo(P.ASSIGN, t)}
   end
 
 val subop = 
   let val t = poly1(tupleTy[CONty(arrayTycon,[IBOUND 0]),
 			    intTy] --> IBOUND 0)
    in VALvar{path=SP.SPATH[S.varSymbol "subscript"], typ=ref t,
-             access=A.nullAcc, info=II.mkPrimInfo(P.SUBSCRIPT, SOME t)}
+             access=A.nullAcc, info=II.mkPrimInfo(P.SUBSCRIPT, t)}
   end
 
 val derefop = 
   let val t = poly1(CONty(refTycon,[IBOUND 0]) --> IBOUND 0)
    in VALvar{path=SP.SPATH [S.varSymbol "!"], typ=ref t,
-             access=A.nullAcc, info=II.mkPrimInfo(P.DEREF, SOME t)}
+             access=A.nullAcc, info=II.mkPrimInfo(P.DEREF, t)}
   end
 
 val addop = 
   let val t = (tupleTy[intTy,intTy] --> intTy)
    in VALvar{path=SP.SPATH[S.varSymbol "iadd"], typ=ref t,
-             access=A.nullAcc, info=II.mkPrimInfo(P.IADD, NONE)}
+             access=A.nullAcc, info=II.mkPrimInfo(P.IADD, t)}
   end
 
 fun tmpvar(str,ty,mkv) = 

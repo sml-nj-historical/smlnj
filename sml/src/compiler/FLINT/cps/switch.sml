@@ -236,8 +236,8 @@ fun int_switch(e: 'value, l, default, inrange) =
    end
 
  fun coalesce(l:(string * 'a)list) : (int * (string * 'a) list) list = let
-     val l' as (s,_)::_ = 
-       ListMergeSort.sort (fn ((s1,_),(s2,_)) => size s1 > size s2) l
+     val l' = ListMergeSort.sort (fn ((s1,_),(s2,_)) => size s1 > size s2) l
+     val s = #1 (List.hd l')
      fun gather(n,[],current,acc) = (n,current)::acc
        | gather(n,(x as (s,a))::rest,current,acc) = let val s1 = size s
 	 in
@@ -250,6 +250,7 @@ fun int_switch(e: 'value, l, default, inrange) =
 
  fun string_switch(w,l,default) = 
   let fun strip (L.STRINGcon s, x) = (s,x)
+	| strip _ = bug "string_switch"
       val b = map strip l
 
       val bylength = coalesce b
@@ -297,6 +298,7 @@ fun int_switch(e: 'value, l, default, inrange) =
       case c
        of L.INTcon _ => 
 	     let fun un_int(L.INTcon i, e) = (i,e)
+		   | un_int _ = bug "un_int"
 	      in int_switch(exp,map un_int cases,default,NONE)
 	     end
         | L.REALcon _ => real_switch(exp,cases,default)

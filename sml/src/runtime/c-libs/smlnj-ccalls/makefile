@@ -41,7 +41,7 @@ c-calls-lib.o: $(INC_DIR)/ml-osdep.h $(INC_DIR)/ml-base.h \
 	$(INC_DIR)/ml-values.h \
 	$(CLIB_DIR)/ml-c.h cfun-proto-list.h cfun-list.h $(C_CFUNS)
 	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) $(LOCAL_INCLUDES) -c c-calls-lib.c
-	
+
 c-entry.o:	c-entry.asm c-calls.h
 	$(CPP) -D_ASM_ $(DEFS) $(INCLUDES) c-entry.asm > c-entry.s
 	$(AS) -o c-entry.o c-entry.s

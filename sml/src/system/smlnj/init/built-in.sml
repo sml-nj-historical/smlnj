@@ -16,9 +16,14 @@ in
 
   structure Assembly = Core.Assembly
 
-  (* create a type-safe version of the InLine structure while preserving
-   * the inline property of the functions.
-   *)
+  (* The following code was used to create a type-safe version of the InLine
+   * structure while preserving the inline property of the functions.
+   * Since everything in InLine is now properly typed already, the code
+   * should now be seen as:
+   *   - organizing things a bit better
+   *   - confirming the type information
+   * See compiler/Semant/statenv/prim.sml for the origin of the type info
+   * in InLine.    (Blume, 1/2001) *)
   structure InlineT =
    struct
     type 'a control_cont = 'a control_cont
@@ -59,13 +64,13 @@ in
 
     structure Int31 =
       struct
-	val fromInt : int -> int  = InLine.copy_31_31
-	val toInt   : int -> int  = InLine.copy_31_31
+	val fromInt : int -> int  = InLine.copy_31_31_ii
+	val toInt   : int -> int  = InLine.copy_31_31_ii
         val op *    : int * int -> int  = InLine.i31mul
         val op quot : int * int -> int  = InLine.i31quot
         val op rem  : int * int -> int  = InLine.i31rem
         val op +    : int * int -> int  = InLine.i31add
-        val op -    : int * int -> int  = InLine.i31sub 
+        val op -    : int * int -> int  = InLine.i31sub
         val ~       : int -> int = InLine.i31neg
         val andb    : int * int -> int  = InLine.i31andb
         val orb     : int * int -> int  = InLine.i31orb
@@ -91,10 +96,10 @@ in
 
     structure Int32 =
       struct
-	val toLarge : int32 -> int32 = InLine.copy_32_32
-	val fromInt : int -> int32 = InLine.extend_31_32
-	val toInt   : int32 -> int = InLine.test_32_31
-	val fromLarge : int32 -> int32 = InLine.copy_32_32
+	val toLarge : int32 -> int32 = InLine.copy_32_32_ii
+	val fromInt : int -> int32 = InLine.extend_31_32_ii
+	val toInt   : int32 -> int = InLine.test_32_31_i
+	val fromLarge : int32 -> int32 = InLine.copy_32_32_ii
 
         val op *    : int32 * int32 -> int32  = InLine.i32mul
         val op quot : int32 * int32 -> int32  = InLine.i32quot  
@@ -134,13 +139,13 @@ in
     structure Word32 =
       struct
 	val toLargeInt : word32 -> int32 = InLine.testu_32_32 
-	val toLargeIntX : word32 -> int32 = InLine.copy_32_32
-	val fromLargeInt : int32 -> word32 = InLine.copy_32_32
-	val fromInt : int -> word32 = InLine.extend_31_32
-	val toLargeWord : word32 -> word32 = InLine.copy_32_32
-	val toLargeWordX : word32 -> word32 = InLine.copy_32_32
-	val fromLargeWord : word32 -> word32 = InLine.copy_32_32
-	val toIntX : word32 -> int = InLine.test_32_31
+	val toLargeIntX : word32 -> int32 = InLine.copy_32_32_wi
+	val fromLargeInt : int32 -> word32 = InLine.copy_32_32_iw
+	val fromInt : int -> word32 = InLine.extend_31_32_iw
+	val toLargeWord : word32 -> word32 = InLine.copy_32_32_ww
+	val toLargeWordX : word32 -> word32 = InLine.copy_32_32_ww
+	val fromLargeWord : word32 -> word32 = InLine.copy_32_32_ww
+	val toIntX : word32 -> int = InLine.test_32_31_w
 	val toInt : word32 -> int = InLine.testu_32_31
 
         val orb     : word32 * word32 -> word32 = InLine.w32orb
@@ -165,15 +170,15 @@ in
 
     structure Word31 =
       struct
-	val toLargeInt    : word -> int32 = InLine.copy_31_32
-	val toLargeIntX   : word -> int32 = InLine.extend_31_32
+	val toLargeInt    : word -> int32 = InLine.copy_31_32_i
+	val toLargeIntX   : word -> int32 = InLine.extend_31_32_wi
 	val toInt         : word -> int = InLine.testu_31_31
-	val toLargeWord   : word -> word32 = InLine.copy_31_32
-	val toLargeWordX  : word -> word32 = InLine.extend_31_32
-	val fromInt       : int -> word = InLine.copy_31_31
-	val fromLargeWord : word32 -> word = InLine.trunc_32_31
-	val fromLargeInt  : int32 -> word = InLine.trunc_32_31
-	val toIntX        : word -> int = InLine.copy_31_31
+	val toLargeWord   : word -> word32 = InLine.copy_31_32_w
+	val toLargeWordX  : word -> word32 = InLine.extend_31_32_ww
+	val fromInt       : int -> word = InLine.copy_31_31_iw
+	val fromLargeWord : word32 -> word = InLine.trunc_32_31_w
+	val fromLargeInt  : int32 -> word = InLine.trunc_32_31_i
+	val toIntX        : word -> int = InLine.copy_31_31_wi
 
         val orb     : word * word -> word = InLine.w31orb
         val xorb    : word * word -> word = InLine.w31xorb
@@ -197,34 +202,34 @@ in
 
     structure Word8 =
       struct
-	val toLargeIntX   : word8 -> int32  = InLine.extend_8_32
-	val toLargeInt    : word8 -> int32  = InLine.copy_8_32
+	val toLargeIntX   : word8 -> int32  = InLine.extend_8_32_i
+	val toLargeInt    : word8 -> int32  = InLine.copy_8_32_i
 	val toIntX        : word8 -> int    = InLine.extend_8_31
         val toInt         : word8 -> int = InLine.copy_8_31
-	val toLargeWordX  : word8 -> word32 = InLine.extend_8_32
-	val toLargeWord   : word8 -> word32 = InLine.copy_8_32
-	val fromLargeWord : word32 -> word8 = InLine.trunc_32_8
+	val toLargeWordX  : word8 -> word32 = InLine.extend_8_32_w
+	val toLargeWord   : word8 -> word32 = InLine.copy_8_32_w
+	val fromLargeWord : word32 -> word8 = InLine.trunc_32_8_w
 	val fromInt	  : int -> word8 = InLine.trunc_31_8
-	val fromLargeInt  : int32 -> word8 = InLine.trunc_32_8
+	val fromLargeInt  : int32 -> word8 = InLine.trunc_32_8_i
 
       (* temporary framework, because the actual word8 operators 
        * are not implemented*)
-        val orb     : word8 * word8 -> word8 = InLine.i31orb
-        val xorb    : word8 * word8 -> word8 = InLine.i31xorb
-        val op div  : word8 * word8 -> word8 = InLine.i31div
-        val andb    : word8 * word8 -> word8 = InLine.i31andb
-        val op >    : word8 * word8 -> bool  = InLine.i31gt
-        val op >=   : word8 * word8 -> bool  = InLine.i31ge
-        val op <    : word8 * word8 -> bool  = InLine.i31lt
-        val op <=   : word8 * word8 -> bool  = InLine.i31le
-        val rshift  : word8 * word -> word8 = InLine.i31rshift
-        val rshiftl : word8 * word -> word8 = InLine.i31rshift (* high bits always 0 *)
-        val lshift  : word8 * word -> word8 = InLine.i31lshift
+        val orb     : word8 * word8 -> word8 = InLine.i31orb_8
+        val xorb    : word8 * word8 -> word8 = InLine.i31xorb_8
+        val op div  : word8 * word8 -> word8 = InLine.i31div_8
+        val andb    : word8 * word8 -> word8 = InLine.i31andb_8
+        val op >    : word8 * word8 -> bool  = InLine.i31gt_8
+        val op >=   : word8 * word8 -> bool  = InLine.i31ge_8
+        val op <    : word8 * word8 -> bool  = InLine.i31lt_8
+        val op <=   : word8 * word8 -> bool  = InLine.i31le_8
+        val rshift  : word8 * word -> word8 = InLine.i31rshift_8
+        val rshiftl : word8 * word -> word8 = InLine.i31rshift_8 (* high bits always 0 *)
+        val lshift  : word8 * word -> word8 = InLine.i31lshift_8
 (* WARNING! the following operators don't get the high-order bits right *)
-        val notb    : word8 -> word8 = InLine.i31notb  
-        val op *    : word8 * word8 -> word8 = InLine.i31mul
-        val op +    : word8 * word8 -> word8 = InLine.i31add
-        val op -    : word8 * word8 -> word8 = InLine.i31sub
+        val notb    : word8 -> word8 = InLine.i31notb_8  
+        val op *    : word8 * word8 -> word8 = InLine.i31mul_8
+        val op +    : word8 * word8 -> word8 = InLine.i31add_8
+        val op -    : word8 * word8 -> word8 = InLine.i31sub_8
         end
 
     structure Char =
@@ -240,10 +245,10 @@ in
 
         val ord : char -> int = InLine.cast
 
-        val (op <)  : (char * char) -> bool = InLine.i31lt
-        val (op <=) : (char * char) -> bool = InLine.i31le
-        val (op >)  : (char * char) -> bool = InLine.i31gt
-        val (op >=) : (char * char) -> bool = InLine.i31ge
+        val (op <)  : (char * char) -> bool = InLine.i31lt_c
+        val (op <=) : (char * char) -> bool = InLine.i31le_c
+        val (op >)  : (char * char) -> bool = InLine.i31gt_c
+        val (op >=) : (char * char) -> bool = InLine.i31ge_c
       end
 
     structure PolyArray =

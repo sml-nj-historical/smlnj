@@ -13,6 +13,27 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/01/05 00:30:00 JST
+Tag: blume-20010105-primops
+Description:
+
+Added some experimental support for work that I am doing right now.
+These changes mostly concern added primops, but there is also a new
+experimental C library in the runtime system (but currently not enabled
+anywhere except on Linux/X86).
+
+In the course of adding primops (and playing with them), I discovered that
+Zhong's INL_PRIM hack (no type info for certain primops) was, in fact, badly
+broken.  (Zhong was very right he labeled this stuff as "major gross hack".)
+To recover, I made type information in INL_PRIM mandatory and changed
+prim.sml as well as built-in.sml accordingly.  The InLine structure now
+has complete, correct type information (i.e., no bottom types).
+
+Since all these changes mean that we need new binfiles, I also bumped the
+version number to 110.32.1.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/12/30 22:10:00 JST
 Tag: blume-20001230-various
 Description:

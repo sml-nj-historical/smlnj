@@ -47,3 +47,6 @@ C_LIBRARY(SMLNJ_CCalls_Library)
 C_LIBRARY(SMLNJ_BC_Library)
 #endif
 
+#ifdef DLOPEN
+C_LIBRARY(UNIX_Dynload_Library)
+#endif

@@ -215,6 +215,10 @@ datatype primop
   | GET_SEQ_DATA		(* get data pointer from arr/vec header *)
   | SUBSCRIPT_REC		(* record subscript operation *)
   | SUBSCRIPT_RAW64		(* raw64 subscript operation *)
+(* Primops to support new experimental C FFI. *)
+  | RAW_LOAD of numkind		(* load from arbitrary memory location *)
+  | RAW_STORE of numkind	(* store to arbitrary memory location *)
+  | RAW_CCALL			(* make a call to a C-function *)
 
 
 val IADD : primop  (* default integer addition *)
