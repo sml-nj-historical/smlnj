@@ -3,11 +3,11 @@ signature C_CALL = sig
   structure T : MLTREE
 
   (* multiple calling conventions on a single architecture *)
-  type calling_convention
+(*  type calling_convention *)
 
   (* prototype describing C function *)
   type  c_proto = 
-    { conv : calling_convention,
+    { (* conv : calling_convention, *)
       retTy : CTypes.c_type,
       paramTys : CTypes.c_type list
      }
