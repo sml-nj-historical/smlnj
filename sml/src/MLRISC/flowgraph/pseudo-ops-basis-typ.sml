@@ -74,7 +74,7 @@ structure PseudoOpsBasisTyp = struct
          *)
    | IMPORT of Label.label list
    | EXPORT of Label.label list
-
+   | COMMENT of string
 	(*
          * Client specific pseudo-ops
 	 * All these pseudo-ops must be related to data

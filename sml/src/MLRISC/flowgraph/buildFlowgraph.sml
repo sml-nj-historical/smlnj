@@ -173,137 +173,153 @@ struct
       and fallsThru(id, blks) = 
 	case blks
 	 of [] => addEdge(id, EXIT, CFG.FALLSTHRU)
-	  | CFG.BLOCK{id=next, ...}::_ => addEdge(id, next, CFG.FALLSTHRU)
-        (*esac*)
-	     
-      and addEdges [] = ()
-	| addEdges(CFG.BLOCK{id, insns=ref[], ...}::blocks) = fallsThru(id, blocks)
-	| addEdges(CFG.BLOCK{id, insns=ref(instr::_), ...}::blocks) = let
-	    fun doJmp () = jump(id, Props.branchTargets instr, blocks)
-          in
-	   case Props.instrKind instr
-	    of Props.IK_JUMP => doJmp()
-	     | Props.IK_CALL_WITH_CUTS => doJmp()
-	     | _ => fallsThru(id, blocks)
-	   (*esac*);
-	   addEdges(blocks)
-          end
-    in
-      addEdges (rev(!blockList));
-      app (fn lab => addEdge(ENTRY, target lab, CFG.ENTRY)) (!entryLabels);
-      let val an = CFG.annotations cfg in  an := annotations @ (!an) end;
-      cfg
-    end (* endCluster *)
+	    | CFG.BLOCK{id=next, ...}::_ => addEdge(id, next, CFG.FALLSTHRU)
+	  (*esac*)
 
-    
-    (* ------------------------annotations-----------------------*)
-    (* XXX: Bug: EMPTYBLOCK does not really generate an empty block 
-     *	but merely terminates the current block. Contradicts the comment
-     *  in instructions/mlriscAnnotations.sig.
-     *  It should be (newBlock(1); newBlock(1); ())
-     *)
-
-    (* Add a new annotation *)
-    fun addAnnotation a = 
-     (case a 
-       of MLRiscAnnotations.BLOCKNAMES names =>
-	   (blockNames := names;  newBlock(1); ())
-        | MLRiscAnnotations.EMPTYBLOCK => (newBlock(1); ())
-	| MLRiscAnnotations.EXECUTIONFREQ f => 
-	   (case !currentBlock
-	     of CFG.BLOCK{id= ~1, ...} => (newBlock(f); ())
-	      | CFG.BLOCK{freq, ...} => freq := f
-           (*esac*))
-	| a => let 
-	     val CFG.BLOCK{annotations,...} = getBlock()
-           in  annotations := a :: !annotations
-	   end
-     (*esac*))
-
-    (* get annotation associated with flow graph *)
-    fun getAnnotations () = CFG.annotations(!cfg)
-
-    (* add a comment annotation to the current block *)
-    fun comment msg = addAnnotation (#create MLRiscAnnotations.COMMENT msg)
+	and addEdges [] = ()
+	  | addEdges(CFG.BLOCK{id, insns=ref[], ...}::blocks) = fallsThru(id, blocks)
+	  | addEdges(CFG.BLOCK{id, insns=ref(instr::_), ...}::blocks) = let
+	      fun doJmp () = jump(id, Props.branchTargets instr, blocks)
+	    in
+	     case Props.instrKind instr
+	      of Props.IK_JUMP => doJmp()
+	       | Props.IK_CALL_WITH_CUTS => doJmp()
+	       | _ => fallsThru(id, blocks)
+	     (*esac*);
+	     addEdges(blocks)
+	    end
+      in
+	addEdges (rev(!blockList));
+	app (fn lab => addEdge(ENTRY, target lab, CFG.ENTRY)) (!entryLabels);
+	let val an = CFG.annotations cfg in  an := annotations @ (!an) end;
+	cfg
+      end (* endCluster *)
 
 
-    (* -------------------------labels---------------------------*)
-    (* BUG: Does not respect any ordering between labels and pseudoOps. 
-     * This could be a problem with jump tables. 
-     *)
-    fun addPseudoOp p = let
-      val Graph.GRAPH graph = !cfg
-      val CFG.INFO{data, ...} = #graph_info graph
+      (* ------------------------annotations-----------------------*)
+      (* XXX: Bug: EMPTYBLOCK does not really generate an empty block 
+       *	but merely terminates the current block. Contradicts the comment
+       *  in instructions/mlriscAnnotations.sig.
+       *  It should be (newBlock(1); newBlock(1); ())
+       *)
 
-      fun addAlignment () = let
-	val CFG.BLOCK{align, ...} = newBlock(1)
-      in align := SOME p
-      end
- 
-      fun startSegment(seg) = (data := p :: !data; segmentF := seg)
+      (* Add a new annotation *)
+      fun addAnnotation a = 
+       (case a 
+	 of MLRiscAnnotations.BLOCKNAMES names =>
+	     (blockNames := names;  newBlock(1); ())
+	  | MLRiscAnnotations.EMPTYBLOCK => (newBlock(1); ())
+	  | MLRiscAnnotations.EXECUTIONFREQ f => 
+	     (case !currentBlock
+	       of CFG.BLOCK{id= ~1, ...} => (newBlock(f); ())
+		| CFG.BLOCK{freq, ...} => freq := f
+	     (*esac*))
+	  | a => let 
+	       val CFG.BLOCK{annotations,...} = getBlock()
+	     in  annotations := a :: !annotations
+	     end
+       (*esac*))
 
-      fun addData () = data := p :: !data
+      (* get annotation associated with flow graph *)
+      fun getAnnotations () = CFG.annotations(!cfg)
 
-      fun chkAddData(seg) =
-	(case !segmentF
-         of TEXT => 
-	     error (Fmt.format "addPseudoOp: %s in TEXT segment" [Fmt.STR seg])
-          | _ => addData()
-        (*esac*))
+      (* add a comment annotation to the current block *)
+      fun comment msg = 
+	case !segmentF 
+         of TEXT => addAnnotation (#create MLRiscAnnotations.COMMENT msg)
+          | _ => let
+		val Graph.GRAPH graph = !cfg
+		val CFG.INFO{data, ...} = #graph_info graph
+              in data :=  PB.COMMENT msg :: !data
+	      end
 
-    in
-      case p
-      of PB.ALIGN_SZ _ => addAlignment()
-       | PB.ALIGN_ENTRY => addAlignment()
-       | PB.ALIGN_LABEL => addAlignment()
-       | PB.DATA_LABEL _ =>
-	   (case !segmentF 
-	    of TEXT => error "addPseudoOp: DATA_LABEL in TEXT segment"
-             | _ => (data := p:: !data)
-           (*esac*))
 
-       | PB.DATA_READ_ONLY => startSegment(RO_DATA)
-       | PB.DATA => startSegment(DATA)
-       | PB.TEXT => startSegment(TEXT)
-       | PB.BSS => startSegment(BSS)
-       | PB.SECTION _ => 
+      (* -------------------------labels---------------------------*)
+      (* BUG: Does not respect any ordering between labels and pseudoOps. 
+       * This could be a problem with jump tables. 
+       *)
+      fun addPseudoOp p = let
+	val Graph.GRAPH graph = !cfg
+	val CFG.INFO{data, ...} = #graph_info graph
+
+	fun addAlignment () = let
+	  val CFG.BLOCK{align, ...} = newBlock(1)
+	in align := SOME p
+	end
+
+	fun startSegment(seg) = (data := p :: !data; segmentF := seg)
+
+	fun addData () = data := p :: !data
+
+	fun chkAddData(seg) =
 	  (case !segmentF
-	    of TEXT => error "addPseudoOp: SECTION in TEXT segment"
-             | _ => data := p :: !data
-          (*esac*))
-       | PB.REORDER => (reorder := []; newBlock(1); ())
-       | PB.NOREORDER => 
-	   (reorder := [#create MLRiscAnnotations.NOREORDER ()]; newBlock(1); ())
-  
-       | PB.INT _    => chkAddData("INT")
-       | PB.FLOAT _  => chkAddData("FLOAT")
-       | PB.ASCII _  => chkAddData("ASCII")
-       | PB.ASCIIZ _ => chkAddData("ASCIIZ")
-       | PB.SPACE _  => chkAddData("SPACE")
-       | PB.IMPORT _ => addData()
-       | PB.EXPORT _ => addData()
-       | PB.EXT _ => chkAddData("EXT")
-    end
-
-    fun defineLabel lab = 
-      (case findLabel (hashLabel lab)
-        of NONE => let
-	     fun newBlk () = 
-	       (case !currentBlock
-                 of CFG.BLOCK{id= ~1, ...} => newBlock(1)
-		  | CFG.BLOCK{insns=ref[], ...} => !currentBlock (* probably aligned block *)
-		  | _ => newBlock(1)
-               (*esac*))
-             val CFG.BLOCK{id, labels, ...} = newBlk()
-	   in 
-	       labels := lab :: !labels;
-	       addLabel(hashLabel lab, id)
-           end
-
-	 | SOME _ => 
-	     error (concat
-	       ["multiple definitions of label \"", Label.toString lab, "\""])
+	   of TEXT => 
+	       error (Fmt.format "addPseudoOp: %s in TEXT segment" [Fmt.STR seg])
+	    | _ => addData()
 	  (*esac*))
+
+      in
+	case p
+	of PB.ALIGN_SZ _ => addAlignment()
+	 | PB.ALIGN_ENTRY => addAlignment()
+	 | PB.ALIGN_LABEL => addAlignment()
+	 | PB.DATA_LABEL _ =>
+	     (case !segmentF 
+	      of TEXT => error "addPseudoOp: DATA_LABEL in TEXT segment"
+	       | _ => (data := p:: !data)
+	     (*esac*))
+
+	 | PB.DATA_READ_ONLY => startSegment(RO_DATA)
+	 | PB.DATA => startSegment(DATA)
+	 | PB.TEXT => startSegment(TEXT)
+	 | PB.BSS => startSegment(BSS)
+	 | PB.SECTION _ => 
+	    (case !segmentF
+	      of TEXT => error "addPseudoOp: SECTION in TEXT segment"
+	       | _ => data := p :: !data
+	    (*esac*))
+	 | PB.REORDER => (reorder := []; newBlock(1); ())
+	 | PB.NOREORDER => 
+	     (reorder := [#create MLRiscAnnotations.NOREORDER ()]; newBlock(1); ())
+
+	 | PB.INT _    => chkAddData("INT")
+	 | PB.FLOAT _  => chkAddData("FLOAT")
+	 | PB.ASCII _  => chkAddData("ASCII")
+	 | PB.ASCIIZ _ => chkAddData("ASCIIZ")
+	 | PB.SPACE _  => chkAddData("SPACE")
+	 | PB.IMPORT _ => addData()
+	 | PB.EXPORT _ => addData()
+	 | PB.EXT _ => chkAddData("EXT")
+      end
+
+      fun defineLabel lab = 
+	(case !segmentF 
+	 of TEXT => 
+	     (case findLabel (hashLabel lab)
+	       of NONE => let
+		    fun newBlk () = 
+		      (case !currentBlock
+			of CFG.BLOCK{id= ~1, ...} => newBlock(1)
+			 | CFG.BLOCK{insns=ref[], ...} => !currentBlock (* probably aligned block *)
+			 | _ => newBlock(1)
+		      (*esac*))
+		    val CFG.BLOCK{id, labels, ...} = newBlk()
+		  in 
+		      labels := lab :: !labels;
+		      addLabel(hashLabel lab, id)
+		  end
+		| SOME _ => 
+		   error (concat
+		     ["multiple definitions of label \"", Label.toString lab, "\""])
+	      (*esac*))
+ 	 | _ => let	
+	       (* non-text segment *)
+	       val Graph.GRAPH graph = !cfg
+	       val CFG.INFO{data, ...} = #graph_info graph
+             in
+	      data := PB.DATA_LABEL lab :: !data
+	     end
+       (*esac*))
       
     fun entryLabel lab = (defineLabel lab; entryLabels := lab :: !entryLabels)
   in
@@ -320,5 +336,5 @@ struct
          exitBlock     = exitBlock,
          endCluster    = endCluster
       }
-  end
+  end (* build *)
 end
