@@ -57,4 +57,37 @@
 	cd ../..
 	rm -r bin lib **/CM
 	config/install.sh
-	rm bin.*/*
+	rm -rf bin.*/*
+
+* diffs between release
+** sml-nj/TopLevel/viscomp/control.sml
+-      val checkFlint     = ref false
+-      val checkDatatypes = ref false
+-      val checkKinds     = ref false
++      val checkFlint     = ref true
++      val checkDatatypes = ref true
++      val checkKinds     = ref true
+** runtime/gc/import-heap.c
+--- import-heap.c       1998/01/18 01:00:25     1.1.1.2
++++ import-heap.c       1998/03/22 22:26:22     1.2
+@@ -168,7 +168,7 @@
+       /* read the ML heap */
+        ReadHeap (&inBuf, &heapHdr, msp, externs);
+       /* GC message are on by default for interactive images */
+-       GCMessages = TRUE;
++       /* GCMessages = TRUE; */
+     }
+     else {  /* EXPORT_FN_IMAGE */
+        ml_val_t        funct, cmdName, args;
+** sml-nj/TopLevel/interact/evalloop.sml
+--- evalloop.sml        1998/04/03 00:06:01     1.1.1.4
++++ evalloop.sml        1998/04/03 00:11:31
+@@ -173,7 +173,7 @@
+               handle EndOfFile => (say "\n")
+                   | Interrupt => (say "\nInterrupt\n"; 
+                               flush(); loop())
+-                  | EM.Error => (flush(); loop())
++                  (* | EM.Error => (flush(); loop()) *)
+                   | C.Compile "syntax error" => (flush(); loop())
+                   | C.Compile s =>
+                      (say(concat["\nuncaught exception Compile: \"",
