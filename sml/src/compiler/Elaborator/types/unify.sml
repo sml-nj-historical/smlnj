@@ -180,9 +180,9 @@ fun adjustType (var,depth,eq,ty) =
 		    else app (iter false) args)
  (* BUG? why don't these cases blow up (in tyconEqprop) when iter is applied
     to arguments that are unreduced applications of DEFtycs? *)
-          | iter _ (POLYty _) = bug "adjustType 1"
-          | iter _ (IBOUND _) = bug "adjustType 2"
-	  | iter _ _ = bug "adjustType 3"
+          | iter _ (POLYty _) = bug "adjustType POLYty"
+          | iter _ (IBOUND _) = bug "adjustType IBOUND"
+          | iter _ UNDEFty = bug "adjustType UNDEFty"
      in iter eq ty
     end
 

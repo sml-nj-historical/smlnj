@@ -750,14 +750,14 @@ fun elab (BaseStr decl, env, entEnv, region) =
 
 		val gtp = CoreAccess.getVar (env, "getplugin")
 	    in
-		(A.SEQdec [A.VALdec
-			       [A.VB { pat = A.VARpat tmpv,
-				       exp = A.APPexp (A.VARexp (ref gtp, []),
-						       EU.TUPLEexp
-							   [A.STAMPexp stamp,
-							    A.VARexp (ref pv, [])]),
-				       boundtvs = [],
-				       tyvars = ref [] }]],
+		(A.VALdec
+		     [A.VB { pat = A.VARpat tmpv,
+			     exp = A.APPexp (A.VARexp (ref gtp, []),
+					     EU.TUPLEexp
+						 [A.STAMPexp stamp,
+						  A.VARexp (ref pv, [])]),
+			     boundtvs = [],
+			     tyvars = ref [] }],
 		 resStr, M.CONSTstr rlzn, EE.empty)
 	    end
 	  | _ => bug "elabmod:PluginStr:lookVal"

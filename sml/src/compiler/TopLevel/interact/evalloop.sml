@@ -88,24 +88,6 @@ fun evalLoop source = let
                     fixed in the long run. (ZHONG)
                  *)
 
-                val executable = Execute.mkexec csegments before checkErrors ()
-                val executable = Isolate.isolate (interruptable executable)
-
-                val _ = (PC.current := Profile.otherIndex)
-                val newdynenv = 
-                    Execute.execute{executable=executable, imports=imports,
-				    exportPid=exportPid, dynenv=dynenv}
-                val _ = (PC.current := Profile.compileIndex)
-
-                val newenv =
-		    E.mkenv { static = newstatenv,
-			      dynamic = newdynenv, 
-                              symbolic = SymbolicEnv.mk (exportPid,inlineExp) }
-                val newLocalEnv = E.concatEnv (newenv, #get loc ())
-                    (* refetch loc because execution may 
-                       have changed its contents *)
-
-
 		(* start adding testing code of ppast.ppdec here *)
 		val debugging = ref true
 
@@ -138,6 +120,29 @@ fun evalLoop source = let
                             PPAbsyn.ppDec (statenv,NONE) ppstrm (d,!printDepth)
                      in debugPrint (Control.printAbsyn) (msg, ppAbsynDec, dec)
                     end
+
+		(* testing code to print ast *)
+		val _ = ppAstDebug("AST::",ast)
+		(* testing code to print absyn *)
+		val _ = ppAbsynDebug("ABSYN::",absyn)
+
+                val executable = Execute.mkexec csegments before checkErrors ()
+                val executable = Isolate.isolate (interruptable executable)
+
+                val _ = (PC.current := Profile.otherIndex)
+                val newdynenv = 
+                    Execute.execute{executable=executable, imports=imports,
+				    exportPid=exportPid, dynenv=dynenv}
+                val _ = (PC.current := Profile.compileIndex)
+
+                val newenv =
+		    E.mkenv { static = newstatenv,
+			      dynamic = newdynenv, 
+                              symbolic = SymbolicEnv.mk (exportPid,inlineExp) }
+                val newLocalEnv = E.concatEnv (newenv, #get loc ())
+                    (* refetch loc because execution may 
+                       have changed its contents *)
+
 
 		(* we install the new local env first before we go about
 		 * printing, otherwise we find ourselves in trouble if
@@ -173,11 +178,6 @@ fun evalLoop source = let
 				   symbolic = E.symbolicPart e0,
 				   dynamic = E.dynamicPart e0 }
             in
-		(* testing code to print ast *)
-		ppAstDebug("AST::",ast);
-		(* testing code to print absyn *)
-		ppAbsynDebug("ABSYN::",absyn);
-
 		PP.with_pp
 		    (#errConsumer source)
 		    (fn ppstrm => PPDec.ppDec e1 ppstrm (absyn, exportLvars))
