@@ -47,8 +47,8 @@ struct
 
    fun omitFramePointer(cluster as F.CLUSTER{annotations, ...}) =
      if #contains MLRiscAnnotations.USES_VIRTUAL_FRAME_POINTER (!annotations) then 
-     	(print "calling omit frame pointer \n";
-	 OmitFramePtr.omitframeptr{vfp=CpsRegs.vfp, cl=cluster, idelta=SOME 0:Int32.int option};
+     	(OmitFramePtr.omitframeptr
+	     {vfp=CpsRegs.vfp, cl=cluster, idelta=SOME 0:Int32.int option};
 	 cluster)
      else cluster
 

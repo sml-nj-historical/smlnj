@@ -44,6 +44,8 @@ signature MEMBERCOLLECTION = sig
 	DependencyGraph.farsbnode	(* pervasive env *)
 	-> impexp SymbolMap.map * GroupGraph.privileges * SymbolSet.set
 
+    val mkIndex : GeneralParams.info * SrcPath.file * collection -> unit
+
     val subgroups : collection -> subgroups
     val sources : collection ->
 		  { class: string, derived: bool } SrcPathMap.map
@@ -239,6 +241,9 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	BuildDepend.build (c, fopt, gp, perv_fsbnode)
       | build (ERRORCOLLECTION, _, _, _) =
 	(SymbolMap.empty, StringSet.empty, SymbolSet.empty)
+
+    fun mkIndex (gp, g, COLLECTION c) = Index.mkIndex (gp, g, c)
+      | mkIndex _ = ()
 
     fun subgroups (COLLECTION { subgroups = sg, ... }) = sg
       | subgroups ERRORCOLLECTION = []

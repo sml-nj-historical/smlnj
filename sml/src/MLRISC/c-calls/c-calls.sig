@@ -27,11 +27,19 @@ signature C_CALLS =
    * with void return type have no result, most others have one result,
    * but some conventions may flatten larger arguments into multiple
    * registers (e.g., a register pair for long long results).
+   *
+   * The "saveRestoreDedicated" callback receives a list of registers
+   * defined by the call instruction and should return instruction
+   * sequences to save/restore any dedicated registers around that call
+   * (if necessary).
    *)
     val genCall : {
 	    name  : T.rexp,
             proto : CTypes.c_proto,
             structRet : {szb : int, align : int} -> T.rexp,
+	    saveRestoreDedicated :
+	      T.mlrisc list -> { save: T.stm list, restore: T.stm list },
+	    callComment : string option,
             args : c_arg list
 	  } -> {
 	    callseq : T.stm list,

@@ -20,17 +20,20 @@ signature FILENAMEPOLICY = sig
     val mkBinName : policy -> SrcPath.file -> string
     val mkSkelName : policy -> SrcPath.file -> string
     val mkStableName : policy -> SrcPath.file * Version.t option -> string
+    val mkIndexName : policy -> SrcPath.file -> string
 
     val kind2name : SMLofNJ.SysInfo.os_kind -> string
 end
 
 functor FilenamePolicyFn (val cmdir : string
 			  val versiondir: Version.t -> string
-			  val skeldir : string) :> FILENAMEPOLICY = struct
+			  val skeldir : string
+			  val indexdir : string) :> FILENAMEPOLICY = struct
 
     type policy = { bin: SrcPath.file -> string,
 		    skel: SrcPath.file -> string,
-		    stable: SrcPath.file * Version.t option -> string }
+		    stable: SrcPath.file * Version.t option -> string,
+		    index: SrcPath.file -> string }
 
     type policyMaker = { arch: string, os: SMLofNJ.SysInfo.os_kind } -> policy
 
@@ -65,7 +68,8 @@ functor FilenamePolicyFn (val cmdir : string
     in
 	{ skel = cmname [skeldir] o SrcPath.osstring,
 	  bin = cmname [archos] o shiftbin,
-	  stable = stable }
+	  stable = stable,
+	  index = cmname [indexdir] o SrcPath.osstring }
     end
 
     fun ungeneric g { arch, os } = g { arch = arch, os = kind2name os }
@@ -92,8 +96,11 @@ functor FilenamePolicyFn (val cmdir : string
     fun mkBinName (p: policy) s = #bin p s
     fun mkSkelName (p: policy) s = #skel p s
     fun mkStableName (p: policy) (s, v) = #stable p (s, v)
+    fun mkIndexName (p: policy) s = #index p s
 end
 
 structure FilenamePolicy =
-    FilenamePolicyFn (val cmdir = "CM" val skeldir = "SKEL"
+    FilenamePolicyFn (val cmdir = "CM"
+		      val skeldir = "SKEL"
+		      val indexdir = "INDEX"
 		      val versiondir = Version.toString)

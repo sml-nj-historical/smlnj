@@ -114,6 +114,7 @@ structure {\tt CM}.
     val parse_caching : int controller
     val warn_obsolete : bool controller
     val conserve_memory : bool controller
+    val generate_index : bool controller
   end
 \end{verbatim}
 
@@ -163,6 +164,11 @@ occasionally incurring additional input from stable library files.
 This does not save very much and, therefore, is normally turned off.
 The default ({\em false}) can be overridden at startup by the
 environment variable {\tt CM\_CONSERVE\_MEMORY}.
+
+{\tt CM.Control.generate\_index} is used to control the generation of
+human-readable {\em index files} (see section~\ref{sec:indexfiles}).
+The default setting is {\em false} and can be overridden at startup by
+the environment variable {\tt CM\_GENERATE\_INDEX}.
 
 \subsubsection{Path anchors}
 \label{sec:api:anchors}

@@ -78,3 +78,20 @@ difference is that a file is considered outdated if it is older than
 its source.  Some care on the programmers side is necessary since this
 scheme does not allow CM to detect the situation where a source file
 gets replaced by an older version of itself.
+
+\subsection{Index files}
+\label{sec:indexfiles}
+
+CM can optionally generate a human-readable index file for each
+description file.  An index files alphabetically lists all symbols
+defined or imported within the given library or library component.
+Index-file generation is normally disabled.  To enable it, {\tt
+CM.Control.generate\_index} must be set to true (see
+section~\ref{sec:api}).
+
+With index-file generation enabled, index files will be written for
+all description files involved every time CM performs a dependency
+analysis.  (In other words, it is a side-effect to other CM operations
+such as {\tt CM.make} etc.)  If the name of the description files is
+{\tt $p$/$d$.cm}, then the corresponding index file will be in {\tt
+$p$/CM/INDEX/$d$.cm}.

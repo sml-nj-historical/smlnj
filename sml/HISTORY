@@ -14,6 +14,35 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/06/05 15:10:00 EDT
+Tag: blume-20010605-cm-index
+Description:
+
+0. The "lambdasplit" parameter for class "sml" in CM has been documented.
+
+1. CM can now generate "index files".  These are human-readable files
+   that list on a per-.cm-file basis each toplevel symbol defined or
+   imported.  The location of the index file for
+   <p>/<d>.cm is <p>/CM/INDEX/<d>.cm.
+   To enable index-file generation, set CM.Control.generate_index to true
+   or export an environment-symbol: export CM_GENERATE_INDEX=true.
+
+   The CM manual has been updated accordingly.
+
+2. I made some slight modifications to the c-calls API in MLRISC.
+
+     a) There is now a callback to support saving/restoring of
+        dedicated but caller-save registers around the actual call
+        instruction.
+     b) One can optionally specify a comment-annotation for the
+        call instruction.
+
+3. SML/NJ (mlriscGen.sml) uses this new API for the rawccall primop.
+   (For example, the comment annotation shows the C prototype of
+    the function being called.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/06/01 13:30:00 EDT
 Tag: blume-20010601-nlffi-cleanup
 Description:

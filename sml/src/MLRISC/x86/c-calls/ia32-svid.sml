@@ -144,7 +144,9 @@ struct
       | copyOut _ = error "copyOut"
   end
 
-  fun genCall{name, proto={conv="", retTy, paramTys}, structRet, args} = let
+  fun genCall {name,proto={conv="", retTy, paramTys},structRet,
+	       saveRestoreDedicated, callComment,
+	       args} = let
     fun push signed {sz, e} = let
       fun pushl rexp = T.EXT(ix(IX.PUSHL(rexp)))
       fun signExtend(e) = if sz=32 then e else T.SX(32, sz, e)
@@ -293,10 +295,19 @@ struct
      (*esac*))
 
     (* call defines callersave registers and uses result registers. *)
-    fun mkCall defs = T.CALL{
-	    funct=name, targets=[], defs=defs, uses=[], 
-            region=T.Region.memory
-	  }
+    fun mkCall defs = let
+	val { save, restore } = saveRestoreDedicated defs
+	val callstm = 
+	    T.CALL { funct=name, targets=[], defs=defs, uses=[], 
+		     region=T.Region.memory }
+	val callstm =
+	    case callComment of
+		NONE => callstm
+	      | SOME c => T.ANNOTATION (callstm,
+					#create MLRiscAnnotations.COMMENT c)
+    in
+	save @ callstm :: restore
+    end
 
     (* size to pop off on return *)
     fun argsSz(Ty.C_STRUCT fields::rest) = let
@@ -314,10 +325,10 @@ struct
     
     val (cRets, cDefs) = resultsAndDefs (retTy)
     val (retRegs, cpyOut) = copyOut(cRets, [], [])
-    val call = mkCall(cDefs) :: (case argsSz paramTys
-         of 0 => cpyOut
-          | n => T.MV(32, sp, T.ADD(32, T.REG(32,sp), LI n)) :: cpyOut
-        (* end case *))
+    val call = mkCall(cDefs) @
+	       (case argsSz paramTys of
+		    0 => cpyOut
+		  | n => T.MV(32, sp, T.ADD(32, T.REG(32,sp), LI n)) :: cpyOut)
     val callSeq = pushArgs(paramTys, args, pushStructRetAddr(call))
   in {callseq=callSeq, result=retRegs}
   end

@@ -231,11 +231,11 @@ respective local environment, and the two uses of {\tt \$H} will be
 resolved differently---as was intended.
 
 Another situation where anchor name clashes would definitely happen is
-when two different version (i.e., development stages) of the same set
-of libraries is being used at the same time.  In this case, one should
-let the libraries refer to each other using anchored names and provide
-(different) bindings for these names using {\tt bind:}-directives from
-within their respective clients.
+when two different versions (i.e., development stages) of the same set
+of libraries are being used at the same time.  In this case, one
+should let the libraries within each set refer to each other using
+anchored names and provide (different) bindings for these names using
+{\tt bind:}-directives from within their respective clients.
 
 A good way of encapsulating the construction of the required local
 anchor environment for a library is to create a {\em proxy} for it

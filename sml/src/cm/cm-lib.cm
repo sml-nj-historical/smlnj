@@ -41,6 +41,7 @@ is
 	depend/checksharing.sml
 	depend/mklist.sml
 	depend/indegree.sml
+	depend/index.sml
 
 	(* handling SML source code *)
 	smlfile/smlinfo.sml

@@ -23,6 +23,13 @@ Rolf Adams, Walter Tichy, and Annette Weinert.
 \newblock The cost of selective recompilation and environment processing.
 \newblock {\em ACM TOSEM}, 3(1):3--28, January 1994.
 
+\bibitem[BA97]{blume97:lsplit}
+Matthias Blume and Andrew~W. Appel.
+\newblock Lambda-splitting: A higher-order approach to cross-module
+  optimizations.
+\newblock In {\em Proc. 1997 ACM SIGPLAN International Conference on Functional
+  Programming (ICFP'97)}, pages 112--124. ACM Press, June 1997.
+
 \bibitem[BA99]{blume:appel:cm99}
 Matthias Blume and Andrew~W. Appel.
 \newblock Hierarchical modularity.

@@ -80,6 +80,8 @@ struct
 
   val enterGC = GCCells.setGCType
 
+  fun sameRegAs x y = Cells.sameCell (x, y)
+
   val ptr = #create An.MARK_REG(fn r => enterGC(r,PTR))
   val i32 = #create An.MARK_REG(fn r => enterGC(r,I32))
   val i31 = #create An.MARK_REG(fn r => enterGC(r,I31))
@@ -1810,9 +1812,36 @@ struct
 			   fn _ => error "RCC: unexpected struct return",
 			   build_args avl)
 			| _ => error "RCC: prototype/arglist mismatch"
+		  fun srd defs = let
+		      fun loop ([], s, r) = { save = r, restore = r }
+			| loop (M.GPR (M.REG (ty, g)) :: l, s, r) =
+			  if List.exists (sameRegAs g) C.dedicatedR then
+			      let val t = Cells.newReg ()
+			      in
+				  loop (l, M.COPY (ty, [t], [g]) :: s,
+					   M.COPY (ty, [g], [t]) :: r)
+			      end
+			  else loop (l, s, r)
+			| loop (M.FPR (M.FREG (ty, f)) :: l, s, r) =
+			  if List.exists (sameRegAs f) C.dedicatedF then
+			      let val t = Cells.newFreg ()
+			      in
+				  loop (l, M.FCOPY (ty, [t], [f]) :: s,
+					   M.FCOPY (ty, [f], [t]) :: r)
+			      end
+			  else loop (l, s, r)
+			| loop _ = error "saveRestoreDedicated: unexpected def"
+		  in
+		      loop (defs, [], [])
+		  end
+
 		  val { callseq, result } =
 		      CCalls.genCall
-			  { name = f, proto = p, structRet = sr, args = a }
+			  { name = f, proto = p, structRet = sr,
+			    saveRestoreDedicated = srd,
+			    callComment =
+			    SOME ("C prototype is: " ^ CProto.pshow p),
+			    args = a }
 
 		  fun withVSP f = let
 		      val frameptr = C.vfptr 
@@ -1824,9 +1853,11 @@ struct
 			  M.LOAD (addrTy, ea (msp, MS.VProcOffMSP), R.memory)
 
 		      val vsp' = M.REG (addrTy, Cells.newReg ())     
-		      val inML = M.LOAD (ity, ea (vsp', MS.InMLOffVSP), R.memory)
+		      val inML = M.LOAD (ity, ea (vsp', MS.InMLOffVSP),
+					 R.memory)
 		      val LimitPtrMask =
-			  M.LOAD (32, ea (vsp', MS.LimitPtrMaskOffVSP), R.memory)
+			  M.LOAD (32, ea (vsp', MS.LimitPtrMaskOffVSP),
+				  R.memory)
 		  in
 		      (* move vsp to its register *)
 		      emit (assign (vsp', vsp));   
@@ -1834,9 +1865,6 @@ struct
 		  end
 
 	      in
-		  (* just for testing... *)
-	          print ("$$$ RCC: " ^ CProto.pshow p ^ "\n");
-
 		  (* prepare for leaving ML *)
 		  withVSP (fn { inML, LimitPtrMask } =>
 			      ((* set vp_limitPtrMask to ~1 *)

@@ -244,6 +244,7 @@ structure CMSemant :> CM_SEMANT = struct
 	in
 	    #1 (valOf (SymbolMap.find (exports, PervAccess.pervStrSym)))
 	end
+	val _ = MemberCollection.mkIndex (gp, g, mc)
 	val (exports, rp, isl) =
 	    MemberCollection.build (mc, filter, gp, pfsbn ())
 	val subgroups = filt_th_sgl (MemberCollection.subgroups mc, isl)
@@ -274,6 +275,7 @@ structure CMSemant :> CM_SEMANT = struct
 	in
 	    #1 (valOf (SymbolMap.find (exports, PervAccess.pervStrSym)))
 	end
+	val _ = MemberCollection.mkIndex (gp, g, mc)
 	val (exports, rp, isl) =
 	    MemberCollection.build (mc, filter, gp, pfsbn ())
 	val subgroups = filt_th_sgl (MemberCollection.subgroups mc, isl)

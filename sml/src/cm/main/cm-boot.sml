@@ -666,6 +666,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	    val warn_obsolete = StdConfig.warn_obsolete
 	    val debug = StdConfig.debug
 	    val conserve_memory = StdConfig.conserve_memory
+	    val generate_index = StdConfig.generate_index
 	end
 
 	structure Library = struct
