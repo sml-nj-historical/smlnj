@@ -1,12 +1,9 @@
 library
-	structure PDB
+	library(pdb/pdb.cm)
 	structure PDBC
 is
 	$/basis.cm
 	$/c.cm
-	pdb.c : shell (target:pdb.c.cm
-	       ml-nlffigen -heavy -strname GenPDB -allSU -lambdasplit infinity %s)
-	forward.c : shell (target:forward.c.cm
-	       ml-nlffigen -heavy -strname GenForward -allSU -lambdasplit infinity %s)
-	pdb-glue.sml	(lambdasplit: infinity)
+	pdb/pdb.cm : make (-f pdb.make)
+
 	pdb-client.sml

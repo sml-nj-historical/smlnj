@@ -32,17 +32,22 @@ structure Spec = struct
     type field = { name: string, spec: fieldspec }
 
     type s =
-	 { tag: tag, anon: bool, size: word, fields: field list }
+	 { src: string,
+	   tag: tag, anon: bool, size: word, fields: field list }
     type u =
-	 { tag: tag, anon: bool, size: word, largest: field, all: field list }
+	 { src: string,
+	   tag: tag, anon: bool, size: word, largest: field, all: field list }
 
-    type gvar = { name: string, spec: cobj }
+    type gvar = { src: string, name: string, spec: cobj }
 
-    type gfun = { name: string, spec: cft, argnames: string list option }
+    type gfun = { src: string,
+		  name: string, spec: cft, argnames: string list option }
 
-    type gty = { name: string, spec: ctype }
+    type gty = { src: string, name: string, spec: ctype }
 
-    type enum = { name: string, spec: LargeInt.int }
+    type enumval = { name: string, spec: LargeInt.int }
+
+    type enum = { src: string, tag: tag, spec: enumval list }
 
     type spec = { structs: s list,
 		  unions: u list,
@@ -50,4 +55,25 @@ structure Spec = struct
 		  gvars: gvar list,
 		  gfuns: gfun list,
 		  enums: enum list }
+
+    fun join (x: spec, y: spec) = let
+	fun uniq sel = let
+	    fun loop ([], a) = rev a
+	      | loop (h :: t, a) =
+		loop (t, if List.exists (fn x => sel x = sel h) a then a
+			 else h :: a)
+	in
+	    loop
+	end
+    in
+	{ structs = uniq #tag (#structs x, #structs y),
+	  unions = uniq #tag (#unions x, #unions y),
+	  gtys = uniq #name (#gtys x, #gtys y),
+	  gvars = uniq #name (#gvars x, #gvars y),
+	  gfuns = uniq #name (#gfuns x, #gfuns y),
+	  enums = uniq #tag (#enums x, #enums y) } : spec
+    end
+
+    val empty : spec = { structs = [], unions = [], gtys = [], gvars = [],
+			 gfuns = [], enums = [] }
 end

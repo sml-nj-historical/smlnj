@@ -19,8 +19,8 @@ structure PrettyPrint = struct
 
     val Unit = TUPLE []
     fun Type t = CON (t, [])
-    fun St tag = Type ("s_" ^ tag)
-    fun Un tag = Type ("u_" ^ tag)
+    fun St tag = Type (concat ["ST_", tag, ".tag"])
+    fun Un tag = Type (concat ["UT_", tag, ".tag"])
 
     datatype tcontext = C_STAR | C_ARROW | C_COMMA | C_CON
 

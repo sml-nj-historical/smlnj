@@ -1,10 +1,12 @@
-(* -*- sml -*-
+(* -*- sml-yacc -*-
+ *
+ * cm.grm
  *
  * ML-Yacc grammar for CM description files
  *
- * (C) 1999 Lucent Technologies, Bell Laboratories
+ * (C) 1999,2001 Lucent Technologies, Bell Laboratories
  *
- * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ * Author: Matthias Blume (blume@research.bell-labs.com)
  *)
 
 structure S = CMSemant

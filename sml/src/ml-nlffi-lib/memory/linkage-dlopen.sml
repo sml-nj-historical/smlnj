@@ -77,7 +77,7 @@ structure DynLinkage :> DYN_LINKAGE = struct
 	fun open_lib { name, lazy, global } =
 	    mkHandle (fn () => checked dlopen (SOME name, lazy, global))
 
-	fun lib_symbol lh s = mkHandle (fn () => checked dlsym (get lh, s))
+	fun lib_symbol (lh, s) = mkHandle (fn () => checked dlsym (get lh, s))
 
 	val addr = get
 

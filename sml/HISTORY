@@ -12,6 +12,19 @@ Date: yyyy/mm/dd
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/10
+Tag: blume-20020110-newffigen
+Description:
+
+1. Updates to portable graph code.
+
+2. Major update to ml-nlffigen and ml-nlffi-lib.  Things are much
+   more scalable now so that even huge interfaces such as the one
+   for GTK compile in finite time and space. :-)
+   See src/ml-nlffigen/README for details on what's new.
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2001/01/09 14:31:35 EST 2002
 Tag: george-20011206-rm-native-copy

@@ -20,7 +20,7 @@ structure AstToSpec = struct
     fun err m = raise Fail ("AstToSpec: error: " ^ m)
     fun warn m = TextIO.output (TextIO.stdErr, "AstToSpec: warning: " ^ m)
 
-    fun build (bundle, sizes: Sizes.sizes, idlfile, allSU, eshift) = let
+    fun build (bundle, sizes: Sizes.sizes, cfiles, allSU, eshift) = let
 
 	val curLoc = ref "?"
 
@@ -37,8 +37,11 @@ structure AstToSpec = struct
 	    List.exists isTheDef ast
 	end
 
+	val srcOf = SourceMap.locToString
+
 	fun isThisFile SourceMap.UNKNOWN = false
-	  | isThisFile (SourceMap.LOC { srcFile, ... }) = srcFile = idlfile
+	  | isThisFile (SourceMap.LOC { srcFile, ... }) =
+	    List.exists (fn f => f = srcFile) cfiles
 
 (*
 	fun isPublicName "" = false
@@ -148,10 +151,15 @@ structure AstToSpec = struct
 		     unionty (tid, name, members, location)
 		   | B.Enum (tid, edefs) => let
 			 fun one ({ name, uid, location, ctype, kind }, i) =
-			     enums := SM.insert (!enums, Symbol.name name, i)
+			     { name = Symbol.name name, spec = i }
+			 val all = map one edefs
+			 val tn = tagname (name, tid)
 		     in
-			 app one edefs;
-			 Spec.SINT (* for now (hack) *)
+			 enums := SM.insert (!enums, tn,
+					     { src = srcOf location,
+					       tag = tn,
+					       spec = all });
+			 Spec.SINT
 		     end
 		   | B.Typedef (_, t) => let
 			 val res = valty t
@@ -159,13 +167,14 @@ structure AstToSpec = struct
 			     case name of
 				 NONE => bug "missing name in typedef"
 			       | SOME n => n
-			 fun sameName { name, spec } = name = n
+			 fun sameName { src, name, spec } = name = n
 		     in
 			 if includedTy (n, location) then
 			     case List.find sameName (!gtys) of
 				 SOME _ => ()
 			       | NONE =>
-				 gtys := { name = n, spec = res } :: !gtys
+				 gtys := { src = srcOf location,
+					   name = n, spec = res } :: !gtys
 			 else ();
 			 res
 		     end)
@@ -251,7 +260,8 @@ structure AstToSpec = struct
 
 			val fields = build (members, 0, (0, false))
 		    in
-			structs := { tag = tag, 
+			structs := { src = srcOf location,
+				     tag = tag, 
 				     anon = not (isSome name),
 				     size = Word.fromInt ssize,
 				     fields = fields } :: !structs
@@ -286,7 +296,8 @@ structure AstToSpec = struct
 		    let val _ = seen_unions := tag :: !seen_unions
 			val all = map mkField members
 		    in
-			unions := { tag = tag,
+			unions := { src = srcOf location,
+				    tag = tag,
 				    anon = not (isSome name),
 				    size = Word.fromInt
 					       (sizeOf (A.UnionRef tid)),
@@ -340,7 +351,8 @@ structure AstToSpec = struct
 		     (A.EXTERN | A.DEFAULT) =>
 		     (case getFunction (#ctype f) of
 			  SOME fs =>
-			  gfuns := { name = n, spec = cft fs, argnames = anlo }
+			  gfuns := { src = !curLoc,
+				     name = n, spec = cft fs, argnames = anlo }
 				   :: !gfuns
 			| NONE => bug "function without function type")
 		   | (A.AUTO | A.REGISTER | A.STATIC) => ()
@@ -359,7 +371,7 @@ structure AstToSpec = struct
 				(fn { name, ... } => name = n)
 				(!gvars) then ()
 			 else
-			     gvars := { name = n,
+			     gvars := { src = !curLoc, name = n,
 					spec = cobj (#ctype v) } :: !gvars
 		     end)
 	      | (A.AUTO | A.REGISTER | A.STATIC) => ()
@@ -389,7 +401,6 @@ structure AstToSpec = struct
 	  gtys = !gtys,
 	  gvars = !gvars,
 	  gfuns = !gfuns,
-	  enums = SM.foldri (fn (n, i, l) => { name = n, spec = i } :: l)
-			    [] (!enums) } : Spec.spec
+	  enums = SM.listItems (!enums) } : Spec.spec
     end
 end

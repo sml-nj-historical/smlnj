@@ -62,7 +62,7 @@ structure CMemory : CMEMORY = struct
 
     local
 	structure DL = DynLinkage
-	val main's = DL.lib_symbol DL.main_lib
+	fun main's s = DL.lib_symbol (DL.main_lib, s)
 	val malloc_h = main's "malloc"
 	val free_h = main's "free"
 	fun sys_malloc (n : Word32.word) = let

@@ -1,6 +1,6 @@
 (*
- * gen.sml - Generating and pretty-printing ML code implementing a
- *           typed interface to a C program.
+ * gen-new.sml - Generating and pretty-printing ML code implementing a
+ *               typed interface to a C program.
  *
  *  (C) 2001, Lucent Technologies, Bell Labs
  *
@@ -8,20 +8,22 @@
  *)
 local
     val program = "ml-ffigen"
-    val version = "0.4"
+    val version = "0.6"
     val author = "Matthias Blume"
     val email = "blume@research.bell-labs.com"
     structure S = Spec
 in
 
 structure Gen :> sig
-    val gen : { idlfile: string,
-		idlsource: string,
-		sigfile: string,
-		strfile: string,
-		cmfile:  string,
-		signame: string,
-		strname: string,
+    val gen : { cfiles: string list,
+		mkidlsource: string -> string,
+		dirname: string,
+		cmfile: string,
+		prefix: string,
+		extramembers: string list,
+		libraryhandle: string,
+		complete: bool,
+
 		allSU: bool,
 		lambdasplit: string option,
 		wid: int,
@@ -45,6 +47,7 @@ end = struct
     val Un = P.Un
     val Unit = P.Unit
     val ETuple = P.ETUPLE
+    val EUnit = ETuple []
     fun ERecord [] = P.ETUPLE []
       | ERecord l = P.ERECORD l
     val EVar = P.EVAR
@@ -62,40 +65,49 @@ end = struct
 
     val dontedit = "(* This file has been generated automatically. \
 		   \DO NOT EDIT! *)"
-    fun mkCredits (src, archos) =
-	concat ["(* [from ", src, " by ", author, "'s ",
+
+    fun mkCredits archos =
+	concat ["(* [by ", author, "'s ",
 		program, " (version ", version, ") for ",
 		archos, "] *)"]
     val commentsto = concat ["(* Send comments and suggestions to ",
 			     email, ". Thanks! *)"]
 
-    fun arg_id s = "a_" ^ s
-    fun su_id (K, tag) = concat [K, "_", tag]
-    fun isu_id (K, tag) = "I_" ^ su_id (K, tag)
-    fun Styp t = su_id ("S", t) ^ ".typ"
-    fun Utyp t = su_id ("U", t) ^ ".typ"
-    fun fptr_rtti_id n = "fptr_rtti_" ^ n
+
+    fun fptr_rtti_struct_id i = "FPtrRTTI_" ^ Int.toString i
+    fun fptr_rtti_qid i = fptr_rtti_struct_id i ^ ".typ"
+    fun fptr_mkcall_qid i = fptr_rtti_struct_id i ^ ".mkcall"
+
+    fun SUTstruct K t = concat [K, "T_", t]
+    val STstruct = SUTstruct "S"
+    val UTstruct = SUTstruct "U"
+    fun Styp t = STstruct t ^ ".typ"
+    fun Utyp t = UTstruct t ^ ".typ"
+
+    fun isu_id (K, tag) = concat ["I", K, "_", tag]
     fun fieldtype_id n = "t_f_" ^ n
     fun fieldrtti_id n = "typ_f_" ^ n
     fun field_id (n, p) = concat ["f_", n, p]
-    fun typetype_id n = "typ_t_" ^ n
-    fun gvar_id n = "g_" ^ n
-    fun funrtti_id n = "typ_fn_" ^ n
-    fun fptr_id n = "fptr_fn_" ^ n
-    fun fun_id (n, p) = concat ["fn_", n, p]
+
+    fun arg_id s = "a_" ^ s
     fun enum_id n = "e_" ^ n
-    fun let_id c = "t_" ^ String.str c
 
     fun gen args = let
-
-	val { idlfile, idlsource,
-	      sigfile, strfile, cmfile,
-	      signame, strname,
+	val { cfiles, mkidlsource,
+	      dirname, cmfile, prefix, extramembers, libraryhandle, complete,
 	      allSU, lambdasplit,
 	      wid,
 	      weightreq,
 	      namedargs = doargnames,
 	      target = { name = archos, sizes, shift, stdcall } } = args
+
+	fun SUstruct K t = concat [prefix, K, "_", t]
+	val Sstruct = SUstruct "S"
+	val Ustruct = SUstruct "U"
+	fun Tstruct n = concat [prefix, "T_", n]
+	fun Gstruct n = concat [prefix, "G_", n]
+	fun Fstruct n = concat [prefix, "F_", n]
+	fun Estruct n = concat [prefix, "E_", n]
 
 	val (doheavy, dolight) =
 	    case weightreq of
@@ -103,20 +115,58 @@ end = struct
 	      | SOME true => (true, false)
 	      | SOME false => (false, true)
 
-	val credits = mkCredits (idlfile, archos)
+	val credits = mkCredits archos
 
-	val astbundle = ParseToAst.fileToAst'
-			    TextIO.stdErr
-			    (sizes, State.INITIAL)
-			    idlsource
+	fun getSpec (cfile, s) = let
+	    val idlsource = mkidlsource cfile
+	in
+	    (let val astbundle = ParseToAst.fileToAst'
+				     TextIO.stdErr
+				     (sizes, State.INITIAL)
+				     idlsource
+		 val s' =
+		     AstToSpec.build (astbundle, sizes, cfiles, allSU, shift)
+	     in
+		 S.join (s', s)
+	     end handle e => (OS.FileSys.remove idlsource handle _ => ();
+			      raise e))
+	    before (OS.FileSys.remove idlsource handle _ => ())
+	end
 
-	val spec = AstToSpec.build (astbundle, sizes, idlfile, allSU, shift)
+	val spec = foldl getSpec S.empty cfiles
 
 	val { structs, unions, gvars, gfuns, gtys, enums } = spec
 
-	fun openPP f =
-	    PP.openStream (SimpleTextIODev.openDev { dst = TextIO.openOut f,
-						     wid = wid })
+	val do_dir = let
+	    val done = ref false
+	    fun doit () =
+		if !done then ()
+		else (done := true;
+		      if OS.FileSys.isDir dirname handle _ => false then ()
+		      else OS.FileSys.mkDir dirname)
+	in
+	    doit
+	end
+
+	val files = ref extramembers	(* all files that should go
+					 * into the .cm description *)
+	val exports = ref []
+
+	fun smlfile x = let
+	    val file = OS.Path.joinBaseExt { base = x, ext = SOME "sml" }
+	    val result = OS.Path.joinDirFile { dir = dirname, file = file }
+	in
+	    files := file :: !files;
+	    do_dir ();
+	    result
+	end
+
+	fun descrfile file = let
+	    val result = OS.Path.joinDirFile { dir = dirname, file = file }
+	in
+	    do_dir ();
+	    result
+	end
 
 	exception Incomplete
 
@@ -174,12 +224,12 @@ end = struct
 	    fun fs (S.OFIELD { spec = (_, t), ... }, a) = ty (t, a)
 	      | fs (_, a) = a
 	    fun f ({ name, spec }, a) = fs (spec, a)
-	    fun s ({ tag, size, anon, fields }, a) = foldl f a fields
-	    fun u ({ tag, size, anon, largest, all }, a) =
+	    fun s ({ src, tag, size, anon, fields }, a) = foldl f a fields
+	    fun u ({ src, tag, size, anon, largest, all }, a) =
 		foldl f a (largest :: all)
-	    fun gty ({ name, spec }, a) = ty (spec, a)
-	    fun gvar ({ name, spec = (_, t) }, a) = ty (t, a)
-	    fun gfun ({ name, spec, argnames }, a) = ty (S.FPTR spec, a)
+	    fun gty ({ src, name, spec }, a) = ty (spec, a)
+	    fun gvar ({ src, name, spec = (_, t) }, a) = ty (t, a)
+	    fun gfun ({ src, name, spec, argnames }, a) = ty (S.FPTR spec, a)
 	in
 	    foldl gfun (foldl gvar
 		         (foldl gty (foldl u (foldl s ([], [], []) structs)
@@ -201,8 +251,6 @@ end = struct
 	      | _ => NONE
 	end
 
-	val cgtys = List.filter (not o isSome o incomplete o #spec) gtys
-
 	fun rwro S.RW = Type "rw"
 	  | rwro S.RO = Type "ro"
 
@@ -212,7 +260,6 @@ end = struct
 
 	fun Suobj'rw p sut = Con ("su_obj" ^ p, [sut, Type "rw"])
 	fun Suobj'ro sut = Con ("su_obj'", [sut, Type "ro"])
-	fun Suobj''c sut = Con ("su_obj'", [sut, Type "'c"])
 
 	fun wtn_fptr_p p { args, res } = let
 	    fun topty (S.STRUCT t) = Suobj'ro (St t)
@@ -323,7 +370,7 @@ end = struct
 	      | rtti_val (S.UNION t) = EVar (Utyp t)
 	      | rtti_val (S.FPTR cft) =
 		(case List.find (fn x => #1 x = cft) fptr_types of
-		     SOME (_, i) => EVar (fptr_rtti_id (Int.toString i))
+		     SOME (_, i) => EVar (fptr_rtti_qid i)
 		   | NONE => raise Fail "fptr type missing")
 	      | rtti_val (S.PTR (S.RW, t)) =
 		(case incomplete t of
@@ -338,553 +385,508 @@ end = struct
 		EApp (EVar "T.arr", ETuple [rtti_val t, dim_val d])
 	end
 
-	fun do_sig_file () = let
+	fun fptr_mkcall spec =
+	    case List.find (fn x => #1 x = spec) fptr_types of
+		SOME (_, i) => fptr_mkcall_qid i
+	      | NONE => raise Fail "missing fptr_type (mkcall)"
 
-	    val sigpp = openPP sigfile
-
-	    fun nl () = PP.newline sigpp
-	    fun str s = PP.string sigpp s
-	    fun sp () = PP.space sigpp 1
-	    fun nsp () = PP.nbSpace sigpp 1
-	    fun Box a = PP.openBox sigpp (PP.Abs a)
-	    fun HBox () = PP.openHBox sigpp
-	    fun HOVBox a = PP.openHOVBox sigpp (PP.Abs a)
-	    fun VBox a = PP.openVBox sigpp (PP.Abs a)
-	    fun endBox () = PP.closeBox sigpp
-	    fun ppty t = P.ppType sigpp t
-			  
-	    fun pr_su_tag t =
-		(nl (); HBox (); str "type"; sp (); ppty t; endBox ())
-
-	    fun pr_struct_tag { tag, size, anon, fields } =
-		pr_su_tag (St tag)
-
-	    fun pr_union_tag { tag, size, anon, largest, all } =
-		pr_su_tag (Un tag)
+	fun openPP (f, src) = let
+	    val dst = TextIO.openOut f
+	    val stream = PP.openStream (SimpleTextIODev.openDev
+					    { dst = dst, wid = wid })
+	    fun nl () = PP.newline stream
+	    fun str s = PP.string stream s
+	    fun sp () = PP.space stream 1
+	    fun nsp () = PP.nbSpace stream 1
+	    fun Box a = PP.openBox stream (PP.Abs a)
+	    fun HBox () = PP.openHBox stream
+	    fun HVBox x = PP.openHVBox stream x
+	    fun HOVBox a = PP.openHOVBox stream (PP.Abs a)
+	    fun VBox a = PP.openVBox stream (PP.Abs a)
+	    fun endBox () = PP.closeBox stream
+	    fun ppty t = P.ppType stream t
+	    fun ppExp e = P.ppExp stream e
+	    fun ppFun x = P.ppFun stream x
+	    fun line s = (nl (); str s)
+	    fun pr_vdef (v, e) =
+		(nl (); HOVBox 4; str "val"; nsp (); str v; nsp (); str "=";
+		 sp (); ppExp e; endBox ())
+	    fun pr_fdef (f, args, res) = (nl (); ppFun (f, args, res))
 
 	    fun pr_decl (keyword, connector) (v, t) =
 		(nl (); HOVBox 4; str keyword; nsp (); str v; nsp ();
 		 str connector; sp (); ppty t; endBox ())
-
 	    val pr_tdef = pr_decl ("type", "=")
 	    val pr_vdecl = pr_decl ("val", ":")
-
-	    fun pr_su_structure (StUn, K, su, tag, fields) = let
-
-		fun pr_field_typ { name, spec = S.OFIELD { spec = (c, t),
-							   synthetic = false,
-							   offset } } =
-		    pr_tdef (fieldtype_id name, wtn_ty t)
-		  | pr_field_typ _ = ()
-
-		fun pr_field_rtti { name, spec = S.OFIELD { spec = (c, t),
-							    synthetic = false,
-							    offset } } =
-		    pr_vdecl (fieldrtti_id name, rtti_ty t)
-		  | pr_field_rtti _ = ()
-
-		fun pr_field_acc0 (name, p, t) =
-		    pr_vdecl (field_id (name, p),
-			      Arrow (Con ("su_obj" ^ p, [StUn tag, Type "'c"]),
-				     t))
-
-		fun pr_bf_acc (name, p, sg, c) =
-		    pr_field_acc0 (name, p, Con (sg ^ "bf", [cro c]))
-
-		fun pr_field_acc p { name, spec = S.OFIELD { spec = (c, t),
-							     synthetic = false,
-							     offset } } =
-		    pr_field_acc0 (name, p, obj_ty p (t, cro c))
-		  | pr_field_acc p { name, spec = S.OFIELD _ } = ()
-		  | pr_field_acc p { name, spec = S.SBF bf } =
-		    pr_bf_acc (name, p, "s", #constness bf)
-		  | pr_field_acc p { name, spec = S.UBF bf } =
-		    pr_bf_acc (name, p, "u", #constness bf)
-	    in
-		nl ();
-		nl (); str (concat ["structure ", su_id (K, tag),
-				    " : sig (* ", su, " ", tag, " *)"]);
-		Box 4;
-		pr_tdef ("tag", StUn tag);
-		nl ();
-		nl (); str (concat ["(* size for this ", su, " *)"]);
-		pr_vdecl ("size", Con ("S.size", [Con ("su", [StUn tag])]));
-		nl ();
-		nl (); str (concat ["(* RTTI for this ", su, " *)"]);
-		pr_vdecl ("typ", Con ("T.typ", [Con ("su", [StUn tag])]));
-		nl ();
-		nl (); str "(* witness types for fields *)";
-		app pr_field_typ fields;
-		nl ();
-		nl (); str "(* RTTI for fields *)";
-		app pr_field_rtti fields;
-		if doheavy then
-		    (nl ();
-		     nl (); str "(* field accessors *)";
-		     app (pr_field_acc "") fields)
-		else ();
-		if dolight then
-		    (nl ();
-		     nl (); str "(* field accessors (lightweight variety) *)";
-		     app (pr_field_acc "'") fields)
-		else ();
-		endBox ();
-		nl (); str (concat ["end (* structure ",
-				    su_id (K, tag), " *)"])
-	    end
-
-	    fun pr_struct_structure { tag, size, anon, fields } =
-		pr_su_structure (St, "S", "struct", tag, fields)
-	    fun pr_union_structure { tag, size, anon, largest, all } =
-		pr_su_structure (Un, "U", "union", tag, all)
-
-	    fun pr_gty_rtti { name, spec } =
-		pr_vdecl (typetype_id name, rtti_ty spec)
-
-	    fun pr_gvar_obj { name, spec = (c, t) } =
-		pr_vdecl (gvar_id name, Arrow (Unit, obj_ty "" (t, rwro c)))
-
-	    fun pr_gfun_rtti { name, spec, argnames } =
-		pr_vdecl (funrtti_id name, rtti_ty (S.FPTR spec))
-
-	    fun pr_gfun_fptr { name, spec, argnames } =
-		pr_vdecl (fptr_id name,
-			  Arrow (Unit, wtn_ty (S.FPTR spec)))
-
-	    fun pr_gfun_func p { name, spec, argnames } =
-		pr_vdecl (fun_id (name, p),
-			  topfunc_ty p (spec, argnames))
-
-	    fun pr_isu (K, tag) =
-		(nl ();
-		 str (concat ["structure ", isu_id (K, tag),
-			      " : POINTER_TO_INCOMPLETE_TYPE"]))
-	    fun pr_istruct tag = pr_isu ("S", tag)
-	    fun pr_iunion tag = pr_isu ("U", tag)
-
-	    fun pr_enum_const { name, spec } = pr_vdecl (enum_id name, sint_ty)
+	    fun closePP () = (PP.closeStream stream; TextIO.closeOut dst)
 	in
-	    (* Generating the signature file... *)
 	    str dontedit;
-	    nl (); str credits;
-	    nl (); str commentsto;
-	    nl (); str "local open C.Dim C in";
-	    nl (); str (concat ["signature ", signame, " = sig"]);
-	    VBox 4;
-	    app pr_istruct incomplete_structs;
-	    app pr_iunion incomplete_unions;
-	    app pr_struct_tag structs;
-	    app pr_union_tag unions;
-	    app pr_struct_structure structs;
-	    app pr_union_structure unions;
-	    if not (List.null cgtys) then
-		(nl (); nl (); str "(* RTTI for typedefs *)";
-		 app pr_gty_rtti cgtys)
-	    else ();
-	    if not (List.null gvars) then
-		(nl (); nl (); str "(* object handles for global variables *)";
-		 app pr_gvar_obj gvars)
-	    else ();
-	    if not (List.null gfuns) then
-		(nl (); nl (); str "(* RTTI for global function(-pointer)s *)";
-		 app pr_gfun_rtti gfuns;
-		 nl (); nl (); str "(* global function pointers *)";
-		 app pr_gfun_fptr gfuns;
-		 nl (); nl (); str "(* global functions *)";
-		 if dolight then app (pr_gfun_func "'") gfuns else ();
-		 if doheavy then app (pr_gfun_func "") gfuns else ())
-	    else ();
-	    if not (List.null enums) then
-		(nl (); nl (); str "(* enum constants *)";
-		 app pr_enum_const enums)
-	    else ();
-	    endBox ();
-	    nl (); str (concat ["end (* signature ", signame, " *)"]);
-	    nl (); str "end (* local *)";
+	    case src of
+		NONE => ()
+	      | SOME s =>
+		(nl (); str (concat ["(* [from code at ", s, "] *)"]));
+	    line credits;
+	    line commentsto;
 	    nl ();
-
-	    PP.closeStream sigpp
+	    { stream = stream,
+	      nl = nl, str = str, sp = sp, nsp = nsp, Box = Box, HVBox = HVBox,
+	      HBox = HBox, HOVBox = HOVBox, VBox = VBox, endBox = endBox,
+	      ppty = ppty, ppExp = ppExp, ppFun = ppFun, line = line,
+	      pr_vdef = pr_vdef, pr_fdef = pr_fdef, pr_tdef = pr_tdef,
+	      pr_vdecl = pr_vdecl,
+	      closePP = closePP
+	      }
 	end
 
-	fun do_fct_file () = let
-	    val strpp = openPP strfile
+	val get_callop = let
+	    val ncallops = ref 0
+	    val callops = ref []
+	    fun callop_sid i = "Callop_" ^ Int.toString i
+	    fun callop_qid i = callop_sid i ^ ".callop"
+	    fun get (ml_args_t, e_proto, ml_res_t) =
+		case List.find (fn (ep, _) => ep = e_proto) (!callops) of
+		    SOME (_, i) => callop_qid i
+		  | NONE => let
+			val i = !ncallops
+			val sn = callop_sid i
+			val file = smlfile ("callop-" ^ Int.toString i)
+			val { pr_vdef, closePP, str, nl, Box, endBox, ... } =
+			    openPP (file, NONE)
+		    in
+			ncallops := i + 1;
+			callops := (e_proto, i) :: !callops;
+			str (concat ["structure ", sn, " = struct"]);
+			Box 4;
+			pr_vdef ("callop",
+				 EConstr (EVar "RawMemInlineT.rawccall",
+					  Arrow (Tuple [Type "Word32.word",
+							ml_args_t,
+							e_proto],
+						 ml_res_t)));
+			endBox ();
+			nl (); str "end"; nl (); closePP ();
+			callop_qid i
+		    end
+	in
+	    get
+	end
 
-	    fun nl () = PP.newline strpp
-	    fun str s = PP.string strpp s
-	    fun sp () = PP.space strpp 1
-	    fun nsp () = PP.nbSpace strpp 1
-	    fun Box a = PP.openBox strpp (PP.Abs a)
-	    fun HBox () = PP.openHBox strpp
-	    fun HOVBox a = PP.openHOVBox strpp (PP.Abs a)
-	    fun VBox a = PP.openVBox strpp (PP.Abs a)
-	    fun endBox () = PP.closeBox strpp
-	    fun ppty t = P.ppType strpp t
-	    fun ppExp e = P.ppExp strpp e
-	    fun ppFun x = P.ppFun strpp x
+	fun pr_fptr_rtti ({ args, res }, i) = let
 
-	    fun pr_fdef (f, args, res) = (nl (); ppFun (f, args, res))
+	    val structname = fptr_rtti_struct_id i
+	    val file = smlfile ("fptr-rtti-" ^ Int.toString i)
 
-	    fun pr_def_t (sep, keyword, connector) (v, t) =
-		(sep ();
-		 HOVBox 4; str keyword; nsp (); str v; nsp (); str connector;
-		 sp (); ppty t; endBox ())
+	    val { closePP, str, Box, endBox, pr_fdef, pr_vdef, nl, ... } =
+		openPP (file, NONE)
 
-	    val pr_vdecl = pr_def_t (fn () => (), "val", ":")
+	    (* cproto encoding *)
+	    fun List t = Con ("list", [t])
+	    val Real = Type "real"
+	    val Char = Type "char"
+	    val Word8 = Type "Word8.word"
+	    val Int31 = Type "Int31.int"
+	    val Word31 = Type "Word31.word"
+	    val Int32 = Type "Int32.int"
+	    val Word32 = Type "Word32.word"
+	    val String = Type "string"
+	    val Exn = Type "exn"
 
-	    val pr_tdef = pr_def_t (nl, "type", "=")
+	    (* see src/compiler/Semant/types/cproto.sml for these... *)
+	    val E_double = Real
+	    val E_float = List Real
+	    val E_schar = Char
+	    val E_uchar = Word8
+	    val E_sint = Int31
+	    val E_uint = Word31
+	    val E_slong = Int32
+	    val E_ulong = Word32
+	    val E_sshort = List Char
+	    val E_ushort = List Word8
+	    val E_sllong = List Int32 (* not used yet *)
+	    val E_ullong = List Word32(* not used yet *)
+	    val E_ptr = String
+	    val E_nullstruct = Exn
 
-	    fun pr_vdef (v, e) =
-		(nl ();
-		 HOVBox 4; str "val"; nsp (); str v; nsp (); str "=";
-		 sp (); ppExp e; endBox ())
+	    fun encode S.DOUBLE = E_double
+	      | encode S.FLOAT = E_float
+	      | encode S.SCHAR = E_schar
+	      | encode S.UCHAR = E_uchar
+	      | encode S.SINT = E_sint
+	      | encode S.UINT = E_uint
+	      | encode S.SSHORT = E_sshort
+	      | encode S.USHORT = E_ushort
+	      | encode S.SLONG = E_slong
+	      | encode S.ULONG = E_ulong
+	      | encode (S.PTR _ | S.VOIDPTR | S.FPTR _) = E_ptr
+	      | encode (S.ARR _) = raise Fail "unexpected array"
+	      | encode (S.STRUCT t) =
+		encode_fields (#fields (get_struct t))
+	      | encode (S.UNION t) =
+		encode_fields [#largest (get_union t)]
 
-	    fun pr_su_tag (su, tag, false) =
-		let fun build [] = Type su
-		      | build (h :: tl) = Con (let_id h, [build tl])
-		in
-		    pr_tdef (su_id (su, tag), build (rev (String.explode tag)))
-		end
-	      | pr_su_tag (su, tag, true) =
-		(nl (); str "local";
-		 VBox 4;
-		 nl (); str
-		    "structure X :> sig type t end = struct type t = unit end";
-		 endBox ();
-		 nl (); str "in";
-		 VBox 4;
-		 pr_tdef (su_id (su, tag), Type "X.t");
-		 endBox ();
-		 nl (); str "end")
-
-	    fun pr_struct_tag { tag, size, anon, fields } =
-		pr_su_tag ("s", tag, anon)
-	    fun pr_union_tag { tag, size, anon, largest, all } =
-		pr_su_tag ("u", tag, anon)
-
-	    fun pr_su_tag_copy (k, tag) = let
-		val tn = su_id (k, tag)
+	    and encode_fields fields = let
+		fun f0 (S.ARR { t, d = 0, ... }, a) = a
+		  | f0 (S.ARR { t, d = 1, ... }, a) = f0 (t, a)
+		  | f0 (S.ARR { t, d, esz }, a) =
+		    f0 (t, f0 (S.ARR { t = t, d = d - 1, esz = esz }, a))
+		  | f0 (t, a) = encode t :: a
+		fun f ({ spec = S.OFIELD { spec, ... }, name }, a) =
+		    f0 (#2 spec, a)
+		  | f (_, a) = a
+		val fel = foldr f [] fields
 	    in
-		pr_tdef (tn, Type tn)
+		case fel of
+		    [] => E_nullstruct
+		  | fel => Tuple (Unit :: fel)
 	    end
 
-	    fun pr_struct_tag_copy { tag, size, anon, fields } =
-		pr_su_tag_copy ("s", tag)
-	    fun pr_union_tag_copy { tag, size, anon, largest, all } =
-		pr_su_tag_copy ("u", tag)
+	    val e_arg = Tuple (Unit :: map encode args)
+	    val e_res = case res of NONE => Unit | SOME t => encode t
+	    val e_proto0 = Con ("list", [Arrow (e_arg, e_res)])
+	    val e_proto =
+		if stdcall then Con ("list", [e_proto0]) else e_proto0
 
-	    fun pr_fptr_rtti ({ args, res }, i) = let
+	    (* generating the call operation *)
 
-		(* cproto encoding *)
-		fun List t = Con ("list", [t])
-		val Real = Type "real"
-		val Char = Type "char"
-		val Word8 = Type "Word8.word"
-		val Int31 = Type "Int31.int"
-		val Word31 = Type "Word31.word"
-		val Int32 = Type "Int32.int"
-		val Word32 = Type "Word32.word"
-		val String = Type "string"
-		val Exn = Type "exn"
+	    (* low-level type used to communicate a value to the
+	     * low-level call operation *)
+	    fun mlty (t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
+			    S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+			    S.FLOAT | S.DOUBLE)) =
+		Type ("CMemory.cc_" ^ stem t)
+	      | mlty (S.VOIDPTR | S.PTR _ | S.FPTR _ | S.STRUCT _) =
+		Type "CMemory.cc_addr"
+	      | mlty (S.ARR _ | S.UNION _) = raise Fail "unexpected type"
 
-		(* see src/compiler/Semant/types/cproto.sml for these... *)
-		val E_double = Real
-		val E_float = List Real
-		val E_schar = Char
-		val E_uchar = Word8
-		val E_sint = Int31
-		val E_uint = Word31
-		val E_slong = Int32
-		val E_ulong = Word32
-		val E_sshort = List Char
-		val E_ushort = List Word8
-		val E_sllong = List Int32 (* not used yet *)
-		val E_ullong = List Word32(* not used yet *)
-		val E_ptr = String
-		val E_nullstruct = Exn
+	    fun wrap (e, n) =
+		EApp (EVar ("CMemory.wrap_" ^ n),
+		      EApp (EVar ("Cvt.ml_" ^ n), e))
 
-		fun encode S.DOUBLE = E_double
-		  | encode S.FLOAT = E_float
-		  | encode S.SCHAR = E_schar
-		  | encode S.UCHAR = E_uchar
-		  | encode S.SINT = E_sint
-		  | encode S.UINT = E_uint
-		  | encode S.SSHORT = E_sshort
-		  | encode S.USHORT = E_ushort
-		  | encode S.SLONG = E_slong
-		  | encode S.ULONG = E_ulong
-		  | encode (S.PTR _ | S.VOIDPTR | S.FPTR _) = E_ptr
-		  | encode (S.ARR _) = raise Fail "unexpected array"
-		  | encode (S.STRUCT t) =
-		    encode_fields (#fields (get_struct t))
-		  | encode (S.UNION t) =
-		    encode_fields [#largest (get_union t)]
+	    fun vwrap e = EApp (EVar "CMemory.wrap_addr",
+				EApp (EVar "reveal", e))
+	    fun fwrap e = EApp (EVar "CMemory.wrap_addr",
+				EApp (EVar "freveal", e))
+	    fun pwrap e = EApp (EVar "CMemory.wrap_addr",
+				EApp (EVar "reveal",
+				      EApp (EVar "Ptr.inject'", e)))
+	    fun iwrap (K, tag, e) =
+		EApp (EVar "CMemory.wrap_addr",
+		      EApp (EVar "reveal",
+			    EApp (EVar (isu_id (K, tag) ^ ".inject'"), e)))
 
-		and encode_fields fields = let
-		    fun f0 (S.ARR { t, d = 0, ... }, a) = a
-		      | f0 (S.ARR { t, d = 1, ... }, a) = f0 (t, a)
-		      | f0 (S.ARR { t, d, esz }, a) =
-			f0 (t, f0 (S.ARR { t = t, d = d - 1, esz = esz }, a))
-		      | f0 (t, a) = encode t :: a
-		    fun f ({ spec = S.OFIELD { spec, ... }, name }, a) =
-			f0 (#2 spec, a)
-		      | f (_, a) = a
-		    val fel = foldr f [] fields
+	    fun suwrap e = pwrap (EApp (EVar "Ptr.|&!", e))
+
+	    (* this code is for passing structures in pieces
+	     * (member-by-member); we don't use this and rather
+	     * provide a pointer to the beginning of the struct *)
+
+	    fun arglist ([], _) = ([], [])
+	      | arglist (h :: tl, i) = let
+		    val p = EVar ("x" ^ Int.toString i)
+		    val (ta, ea) = arglist (tl, i + 1)
+		    fun sel e = (mlty h :: ta, e :: ea)
 		in
-		    case fel of
-			[] => E_nullstruct
-		      | fel => Tuple (Unit :: fel)
+		    case h of
+			(S.STRUCT _ | S.UNION _) => sel (suwrap p)
+		      | (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
+			 S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+			 S.FLOAT | S.DOUBLE) => sel (wrap (p, stem h))
+		      | S.VOIDPTR => sel (vwrap p)
+		      | S.PTR (_, t) =>
+			(case incomplete t of
+			     SOME (K, tag) => sel (iwrap (K, tag, p))
+			   | NONE => sel (pwrap p))
+		      | S.FPTR _ => sel (fwrap p)
+		      | S.ARR _ => raise Fail "unexpected array argument"
 		end
 
-		val e_arg = Tuple (Unit :: map encode args)
-		val e_res = case res of NONE => Unit | SOME t => encode t
-		val e_proto0 = Con ("list", [Arrow (e_arg, e_res)])
-		val e_proto =
-		    if stdcall then Con ("list", [e_proto0]) else e_proto0
-
-		(* generating the call operation *)
-
-		(* low-level type used to communicate a value to the
-		 * low-level call operation *)
-		fun mlty (t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
-				S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
-				S.FLOAT | S.DOUBLE)) =
-		    Type ("CMemory.cc_" ^ stem t)
-		  | mlty (S.VOIDPTR | S.PTR _ | S.FPTR _ | S.STRUCT _) =
-		    Type "CMemory.cc_addr"
-		  | mlty (S.ARR _ | S.UNION _) = raise Fail "unexpected type"
-
-		fun wrap (e, n) =
-		    EApp (EVar ("CMemory.wrap_" ^ n),
-			  EApp (EVar ("Cvt.ml_" ^ n), e))
-
-		fun vwrap e = EApp (EVar "CMemory.wrap_addr",
-				    EApp (EVar "reveal", e))
-		fun fwrap e = EApp (EVar "CMemory.wrap_addr",
-				    EApp (EVar "freveal", e))
-		fun pwrap e = EApp (EVar "CMemory.wrap_addr",
-				    EApp (EVar "reveal",
-					  EApp (EVar "Ptr.inject'", e)))
-		fun iwrap (K, tag, e) =
-		    EApp (EVar "CMemory.wrap_addr",
-			  EApp (EVar "reveal",
-				EApp (EVar (isu_id (K, tag) ^ ".inject'"), e)))
-
-		fun suwrap e = pwrap (EApp (EVar "Ptr.|&!", e))
-
-		(* this code is for passing structures in pieces
-		 * (member-by-member); we don't use this and rather
-		 * provide a pointer to the beginning of the struct *)
-
-		fun arglist ([], _) = ([], [])
-		  | arglist (h :: tl, i) = let
-			val p = EVar ("x" ^ Int.toString i)
-			val (ta, ea) = arglist (tl, i + 1)
-			fun sel e = (mlty h :: ta, e :: ea)
+	    val (ml_res_t,
+		 extra_arg_v, extra_arg_e, extra_ml_arg_t,
+		 res_wrap) =
+		case res of
+		    NONE => (Unit, [], [], [], fn r => r)
+		  | SOME (S.STRUCT _ | S.UNION _) =>
+		    (Unit,
+		     [EVar "x0"],
+		     [suwrap (EVar "x0")],
+		     [Type "CMemory.cc_addr"],
+		     fn r => ESeq (r, EVar "x0"))
+		  | SOME t => let
+			fun unwrap n r =
+			    EApp (EVar ("Cvt.c_" ^ n),
+				  EApp (EVar ("CMemory.unwrap_" ^ n), r))
+			fun punwrap cast r =
+			    EApp (EVar cast,
+				  EApp (EVar "CMemory.unwrap_addr", r))
+			fun iunwrap (K, tag, t) r =
+			    EApp (EApp (EVar (isu_id (K, tag) ^ ".cast'"),
+					rtti_val t),
+				  punwrap "vcast" r)
+			val res_wrap =
+			    case t of
+				(S.SCHAR | S.UCHAR | S.SINT | S.UINT |
+				 S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+				 S.FLOAT | S.DOUBLE) => unwrap (stem t)
+			      | S.VOIDPTR => punwrap "vcast"
+			      | S.FPTR _ => punwrap "fcast"
+			      | t0 as S.PTR (_, t) =>
+				(case incomplete t of
+				     SOME (K, tag) => iunwrap (K, tag, t0)
+				   | NONE => punwrap "pcast")
+			      | (S.STRUCT _ | S.UNION _ | S.ARR _) =>
+				raise Fail "unexpected result type"
 		    in
-			case h of
-			    (S.STRUCT _ | S.UNION _) => sel (suwrap p)
-			  | (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
-			     S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
-			     S.FLOAT | S.DOUBLE) => sel (wrap (p, stem h))
-			  | S.VOIDPTR => sel (vwrap p)
-			  | S.PTR (_, t) =>
-			    (case incomplete t of
-				 SOME (K, tag) => sel (iwrap (K, tag, p))
-			       | NONE => sel (pwrap p))
-			  | S.FPTR _ => sel (fwrap p)
-			  | S.ARR _ => raise Fail "unexpected array argument"
+			(mlty t, [], [], [], res_wrap)
 		    end
 
-		val (ml_res_t,
-		     extra_arg_v, extra_arg_e, extra_ml_arg_t,
-		     res_wrap) =
-		    case res of
-			NONE => (Unit, [], [], [], fn r => r)
-		      | SOME (S.STRUCT _ | S.UNION _) =>
-			(Unit,
-			 [EVar "x0"],
-			 [suwrap (EVar "x0")],
-			 [Type "CMemory.cc_addr"],
-			 fn r => ESeq (r, EVar "x0"))
-		      | SOME t => let
-			    fun unwrap n r =
-				EApp (EVar ("Cvt.c_" ^ n),
-				      EApp (EVar ("CMemory.unwrap_" ^ n), r))
-			    fun punwrap cast r =
-				EApp (EVar cast,
-				      EApp (EVar "CMemory.unwrap_addr", r))
-			    fun iunwrap (K, tag, t) r =
-				EApp (EApp (EVar (isu_id (K, tag) ^ ".cast'"),
-					    rtti_val t),
-				      punwrap "vcast" r)
-			    val res_wrap =
-				case t of
-				    (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
-				     S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
-				     S.FLOAT | S.DOUBLE) => unwrap (stem t)
-				  | S.VOIDPTR => punwrap "vcast"
-				  | S.FPTR _ => punwrap "fcast"
-				  | t0 as S.PTR (_, t) =>
-				    (case incomplete t of
-					 SOME (K, tag) => iunwrap (K, tag, t0)
-				       | NONE => punwrap "pcast")
-				  | (S.STRUCT _ | S.UNION _ | S.ARR _) =>
-				    raise Fail "unexpected result type"
-			in
-			    (mlty t, [], [], [], res_wrap)
-			end
+	    val (ml_args_tl, args_el) = arglist (args, 1)
 
-		val (ml_args_tl, args_el) = arglist (args, 1)
+	    val ml_args_t = Tuple (extra_ml_arg_t @ ml_args_tl)
 
-		val ml_args_t = Tuple (extra_ml_arg_t @ ml_args_tl)
-
-		val arg_vl =
+	    val arg_vl =
 		    rev (#1 (foldl (fn (_, (a, i)) =>
 				       (EVar ("x" ^ Int.toString i) :: a,
 					i + 1)) ([], 1)
 				   args))
 
-		val arg_e = ETuple (extra_arg_e @ args_el)
-	    in
-		nl ();
-		str (concat ["val ", fptr_rtti_id (Int.toString i), " = let"]);
-		VBox 4;
-		pr_vdef ("callop",
-			  EConstr (EVar "RawMemInlineT.rawccall",
-				   Arrow (Tuple [Type "Word32.word",
-						 ml_args_t,
-						 e_proto],
-					  ml_res_t)));
-		pr_fdef ("mkcall",
-			 [EVar "a", ETuple (extra_arg_v @ arg_vl)],
-			 res_wrap (EApp (EVar "callop",
-					 ETuple [EVar "a", arg_e,
-						 EVar "nil"])));
-		endBox ();
-		nl (); str "in";
-		VBox 4;
-		nl (); ppExp (EConstr (EApp (EVar "mk_fptr_typ",
-					     EVar "mkcall"),
-				       rtti_ty (S.FPTR { args = args,
-							res = res })));
-		endBox ();
-		nl (); str "end"
-	    end
+	    val arg_e = ETuple (extra_arg_e @ args_el)
+	    val callop_n = get_callop (ml_args_t, e_proto, ml_res_t)
+	in
+	    str "local open C_Int in";
+	    nl (); str (concat ["structure ", structname, " = struct"]);
+	    Box 4;
+	    pr_fdef ("mkcall",
+		     [EVar "a", ETuple (extra_arg_v @ arg_vl)],
+		     res_wrap (EApp (EVar callop_n,
+				     ETuple [EVar "a", arg_e,
+					     EVar "nil"])));
+	    pr_vdef ("typ",
+		     EConstr (EApp (EVar "mk_fptr_typ",
+				    EVar "mkcall"),
+			      rtti_ty (S.FPTR { args = args,
+						res = res })));
+	    endBox ();
+	    nl (); str "end"; nl (); str "end"; nl (); closePP ()
+	end
 
-	    fun pr_su_structure (StUn, k, K, tag, size, fields) = let
-		fun rwro S.RW = "rw"
-		  | rwro S.RO = "ro"
-		fun pr_field_typ { name, spec = S.OFIELD { spec = (c, t),
-							   synthetic = false,
-							   offset } } =
-		    pr_tdef (fieldtype_id name, wtn_ty t)
-		  | pr_field_typ _ = ()
-		fun pr_field_rtti { name, spec = S.OFIELD { spec = (c, t),
-							   synthetic = false,
-							   offset } } =
-		    pr_vdef (fieldrtti_id name, rtti_val t)
-		  | pr_field_rtti _ = ()
+	fun pr_sut_structure (src, tag, anon, size, k, K) = let
+	    val file = smlfile (concat [k, "t-", tag])
+	    val { str, closePP, nl, Box, endBox, VBox, pr_tdef,
+		  pr_vdef, ... } =
+		openPP (file, SOME src)
+	    fun build [] = Type k
+	      | build (h :: tl) = Con ("t_" ^ String.str h, [build tl])
+	    val (utildef, tag_t) =
+		if anon then
+		    ("structure X :> sig type t end \
+		     \= struct type t = unit end",
+		     Type "X.t")
+		else
+		    ("open Tag",
+		     build (rev (String.explode tag)))
+		    
+	in
+	    str "local";
+	    Box 4;
+	    nl (); str (concat ["structure ", SUstruct K tag, " = struct"]);
+	    Box 4;
+	    nl (); str "local";
+	    VBox 4;
+	    nl (); str utildef;
+	    endBox ();
+	    nl (); str "in";
+	    VBox 4;
+	    pr_tdef ("tag", tag_t);
+	    endBox ();
+	    nl (); str "end";
+	    pr_vdef ("size",
+		     EConstr (EApp (EVar "C_Int.mk_su_size", EWord size),
+			      Con ("C.S.size",
+				   [Con ("C.su", [Type "tag"])])));
+	    pr_vdef ("typ",
+		     EApp (EVar "C_Int.mk_su_typ", EVar "size"));
+	    endBox ();
+	    nl (); str "end";
+	    endBox ();
+	    nl (); str "in";
+	    Box 4;
+	    nl (); str (concat ["structure ", SUTstruct K tag,
+				" = ", SUstruct K tag]);
+	    endBox ();
+	    nl (); str "end"; nl ();
+	    closePP ()
+	end
 
-		fun pr_bf_acc (name, p, sign,
-			       { offset, constness, bits, shift }) =
-		    let val maker =
-			    concat ["mk_", rwro constness, "_", sign, "bf", p]
-		    in
-			pr_fdef (field_id (name, p),
-				 [EVar "x"],
-				 EApp (EApp (EVar maker,
-					     ETuple [EInt offset,
-						     EWord bits,
-						     EWord shift]),
-				       EVar "x"))
-		    end
+	fun pr_st_structure { src, tag, anon, size, fields } =
+	    pr_sut_structure (src, tag, anon, size, "s", "S")
+	fun pr_ut_structure { src, tag, anon, size, largest, all } =
+	    pr_sut_structure (src, tag, anon, size, "u", "U")
 
-		fun pr_field_acc' { name, spec = S.OFIELD x } =
-		    let val { synthetic, spec = (c, t), offset, ... } = x
-		    in
-			if synthetic then ()
-			else pr_fdef (field_id (name, "'"),
-				      [EConstr (EVar "x",
-						Suobj''c (StUn tag))],
-				      EConstr (EApp (EApp (EVar "mk_field'",
-							   EInt offset),
-						     EVar "x"),
-					       obj_ty "'" (t, cro c)))
-		    end
-		  | pr_field_acc' { name, spec = S.SBF bf } =
-		    pr_bf_acc (name, "'", "s", bf)
-		  | pr_field_acc' { name, spec = S.UBF bf } =
-		    pr_bf_acc (name, "'", "u", bf)
+	fun pr_su_structure (src, tag, fields, k, K) = let
 
-		fun pr_field_acc { name, spec = S.OFIELD { offset,
-							   spec = (c, t),
-							   synthetic } } =
+	    val file = smlfile (concat [k, "-", tag])
+	    val { closePP, Box, endBox, str, nl,
+		  pr_tdef, pr_vdef, pr_fdef, ... } =
+		openPP (file, SOME src)
+
+	    fun rwro S.RW = "rw"
+	      | rwro S.RO = "ro"
+
+	    fun pr_field_typ { name, spec = S.OFIELD { spec = (c, t),
+						       synthetic = false,
+						       offset } } =
+		pr_tdef (fieldtype_id name, wtn_ty t)
+	      | pr_field_typ _ = ()
+
+	    fun pr_field_rtti { name, spec = S.OFIELD { spec = (c, t),
+							synthetic = false,
+							offset } } =
+		pr_vdef (fieldrtti_id name,
+			 EConstr (rtti_val t,
+				  Con ("T.typ", [Type (fieldtype_id name)])))
+	      | pr_field_rtti _ = ()
+
+	    fun arg_x p = EConstr (EVar "x",
+				   Con ("su_obj" ^ p,
+					[Type "tag", Type "'c"]))
+		
+
+	    fun pr_bf_acc (name, p, sign, { offset, constness, bits, shift }) =
+		let val maker =
+			concat ["mk_", rwro constness, "_", sign, "bf", p]
+		in
+		    pr_fdef (field_id (name, p),
+			     [arg_x p],
+			     EApp (EApp (EVar maker,
+					 ETuple [EInt offset,
+						 EWord bits,
+						 EWord shift]),
+				   EVar "x"))
+		end
+
+	    fun pr_field_acc' { name, spec = S.OFIELD x } =
+		let val { synthetic, spec = (c, t), offset, ... } = x
+		in
 		    if synthetic then ()
-		    else let
-			    val maker = concat ["mk_", rwro c, "_field"]
-			    val rttival = EVar (fieldrtti_id name)
-			in
-			    pr_fdef (field_id (name, ""),
-				     [EVar "x"],
-				     EApp (EApp (EApp (EVar maker, rttival),
-						 EInt offset),
-					   EVar "x"))
-			end
-		  | pr_field_acc { name, spec = S.SBF bf } =
-		    pr_bf_acc (name, "", "s", bf)
-		  | pr_field_acc { name, spec = S.UBF bf } =
-		    pr_bf_acc (name, "", "u", bf)
-	    in
-		nl ();
-		str (concat ["structure ", su_id (K, tag), " = struct"]);
-		Box 4;
-		nl (); str ("open " ^ su_id (K, tag));
-		app pr_field_typ fields;
-		app pr_field_rtti fields;
-		if dolight then app pr_field_acc' fields else ();
-		if doheavy then app pr_field_acc fields else ();
-		endBox ();
-		nl (); str "end"
-	    end
+		    else pr_fdef (field_id (name, "'"),
+				  [arg_x "'"],
+				  EConstr (EApp (EVar "mk_field'",
+						 ETuple [EInt offset,
+							 EVar "x"]),
+					   Con ("obj'",
+						[Type (fieldtype_id name),
+						 cro c])))
+		end
+	      | pr_field_acc' { name, spec = S.SBF bf } =
+		pr_bf_acc (name, "'", "s", bf)
+	      | pr_field_acc' { name, spec = S.UBF bf } =
+		pr_bf_acc (name, "'", "u", bf)
 
-	    fun pr_struct_structure { tag, size, anon, fields } =
-		pr_su_structure (St, "s", "S", tag, size, fields)
-	    fun pr_union_structure { tag, size, anon, largest, all } =
-		pr_su_structure (Un, "u", "U", tag, size, all)
+	    fun pr_field_acc { name, spec = S.OFIELD { offset,
+						       spec = (c, t),
+						       synthetic } } =
+		if synthetic then ()
+		else let
+			val maker = concat ["mk_", rwro c, "_field"]
+			val rttival = EVar (fieldrtti_id name)
+		    in
+			pr_fdef (field_id (name, ""),
+				 [arg_x ""],
+				 EApp (EVar maker,
+				       ETuple [rttival,
+					       EInt offset,
+					       EVar "x"]))
+		    end
+	      | pr_field_acc { name, spec = S.SBF bf } =
+		pr_bf_acc (name, "", "s", bf)
+	      | pr_field_acc { name, spec = S.UBF bf } =
+		pr_bf_acc (name, "", "u", bf)
 
-	    fun pr_gty_rtti { name, spec } =
-		pr_vdef (typetype_id name, rtti_val spec)
+	    val sustruct = "structure " ^ SUstruct K tag
+	in
+	    str "local open C.Dim C_Int in";
+	    nl (); str (sustruct ^ " = struct");
+	    Box 4;
+	    nl (); str ("open " ^ SUTstruct K tag);
+	    app pr_field_typ fields;
+	    app pr_field_rtti fields;
+	    if dolight then app pr_field_acc' fields else ();
+	    if doheavy then app pr_field_acc fields else ();
+	    endBox ();
+	    nl (); str "end";
+	    nl (); str "end";
+	    nl (); closePP ();
+	    exports := sustruct :: (!exports)
+	end
 
-	    fun pr_addr (prefix, name) =
-		pr_vdef (prefix ^ name,
-			 EApp (EApp (EVar "D.lib_symbol", EVar "so_h"),
-			       EString name))
+	fun pr_s_structure { src, tag, anon, size, fields } =
+	    pr_su_structure (src, tag, fields, "s", "S")
+	fun pr_u_structure { src, tag, anon, size, largest, all } =
+	    pr_su_structure (src, tag, all, "u", "U")
 
-	    fun pr_gvar_addr { name, spec } = pr_addr ("gh_", name)
+	fun pr_t_structure { src, name, spec } =
+	    case incomplete spec of
+		SOME _ => ()
+	      | NONE => let
+		    val file = smlfile ("t-" ^ name)
+		    val { closePP, Box, endBox, str, nl, pr_tdef,
+			  pr_vdef, ... } =
+			openPP (file, SOME src)
+		    val tstruct = "structure " ^ Tstruct name
+		in
+		    str "local open C in";
+		    nl (); str (tstruct ^ " = struct");
+		    Box 4;
+		    pr_tdef ("t", rtti_ty spec);
+		    pr_vdef ("typ", EConstr (rtti_val spec, Type "t"));
+		    endBox ();
+		    nl (); str "end";
+		    nl (); str "end";
+		    nl ();
+		    closePP ();
+		    exports := tstruct :: !exports
+		end
 
-	    fun pr_gvar_obj { name, spec = (c, t) } = let
-		val rwobj = EApp (EApp (EVar "mk_obj", rtti_val t),
-				  EApp (EVar "D.addr", EVar ("gh_" ^ name)))
-		val obj = case c of S.RW => rwobj
-				  | S.RO => EApp (EVar "ro", rwobj)
-	    in
-		pr_fdef (gvar_id name, [ETuple []], obj)
-	    end
+	fun pr_gvar { src, name, spec = (c, t) } = let
+	    val file = smlfile ("g-" ^ name)
+	    val { closePP, str, nl, Box, VBox, endBox,
+		  pr_fdef, pr_vdef, pr_tdef, ... } =
+		openPP (file, SOME src)
+	    val rwobj = EApp (EVar "mk_obj",
+			      ETuple [rtti_val t, EApp (EVar "h", EUnit)])
+	    val obj = case c of S.RW => rwobj
+			      | S.RO => EApp (EVar "ro", rwobj)
+	    val gstruct = "structure " ^ Gstruct name
+	in
+	    str (gstruct ^ " = struct");
+	    Box 4;
+	    nl (); str "local";
+	    VBox 4;
+	    nl (); str "open C_Int";
+	    pr_vdef ("h", EApp (EVar libraryhandle, EString name));
+	    endBox ();
+	    nl (); str "in";
+	    VBox 4;
+	    pr_tdef ("t", wtn_ty t);
+	    pr_vdef ("typ", EConstr (rtti_val t, Con ("T.typ", [Type "t"])));
+	    pr_fdef ("obj", [EUnit],
+		     EConstr (obj, Con ("obj", [Type "t", rwro c])));
+	    endBox ();
+	    nl (); str "end";
+	    endBox ();
+	    nl (); str "end"; nl ();
+	    closePP ();
+	    exports := gstruct :: !exports
+	end
 
-	    fun pr_gfun_rtti { name, spec, argnames } =
-		pr_vdef (funrtti_id name, rtti_val (S.FPTR spec))
+	fun pr_gfun x = let
+	    val { src, name, spec = spec as { args, res }, argnames } = x
 
-	    fun pr_gfun_addr { name, spec, argnames } = pr_addr ("fnh_", name)
-
-	    fun pr_gfun_fptr { name, spec, argnames } =
-		pr_fdef (fptr_id name,
-			 [ETuple []],
-			 EApp (EApp (EVar "mk_fptr", EVar (funrtti_id name)),
-			       EApp (EVar "D.addr", EVar ("fnh_" ^ name))))
-
-	    fun pr_gfun_func is_light x = let
-		val { name, spec = { args, res }, argnames } = x
-		val p = if is_light then "'" else ""
+	    val file = smlfile ("f-" ^ name)
+	    val { closePP, str, nl, pr_fdef, Box, endBox,
+		  pr_vdef, pr_vdecl, ... } =
+		openPP (file, SOME src)
+	    fun do_f is_light = let
 		val ml_vars =
 		    rev (#1 (foldl (fn (_, (l, i)) =>
 				       (EVar ("x" ^ Int.toString i) :: l,
@@ -897,7 +899,7 @@ end = struct
 		fun heavy (what, t, e) =
 		    if is_light then e
 		    else EApp (EApp (EVar ("Heavy." ^ what), rtti_val t), e)
-		    
+			 
 		fun oneArg (e, t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 				     S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
 				     S.FLOAT | S.DOUBLE)) =
@@ -920,8 +922,7 @@ end = struct
 			 [writeto])
 		      | _ => (ml_vars, c_exps, [])
 		val call = EApp (EVar "call",
-				 ETuple [EApp (EVar (fptr_id name),
-					       ETuple []),
+				 ETuple [EApp (EVar "fptr", EUnit),
 					 ETuple c_exps])
 		val ml_res =
 		    case res of
@@ -946,189 +947,112 @@ end = struct
 					       ml_vars))
 		      | _ => ETuple ml_vars
 	    in
-		pr_fdef (fun_id (name, p), [argspat], ml_res)
+		pr_fdef (if is_light then "f'" else "f", [argspat], ml_res)
 	    end
-
-	    fun pr_isu_arg (K, tag) =
-		(sp (); str (concat ["structure ", isu_id (K, tag),
-				     " : POINTER_TO_INCOMPLETE_TYPE"]))
-	    fun pr_istruct_arg tag = pr_isu_arg ("S", tag)
-	    fun pr_iunion_arg tag = pr_isu_arg ("U", tag)
-
-	    fun pr_isu_def (kw, K, tag) = let
-		val n = isu_id (K, tag)
+	    fun do_fsig is_light = let
+		val p = if is_light then "'" else ""
 	    in
-		nl ();
-		str (concat [kw, " ", n, " = ", n])
+		pr_vdecl ("f" ^ p, topfunc_ty p (spec, argnames))
 	    end
-	    fun pr_istruct_res tag = pr_isu_def ("where", "S", tag)
-	    fun pr_iunion_res tag = pr_isu_def ("where", "U", tag)
-	    fun pr_istruct_def tag = pr_isu_def ("structure", "S", tag)
-	    fun pr_iunion_def tag = pr_isu_def ("structure", "U", tag)
-
-	    fun pr_pre_su (K, k, STUN, StUn, tag, size) =
-		(nl (); str (concat ["structure ",
-				     su_id (K, tag), " = struct"]);
-		 VBox 4;
-		 pr_tdef ("tag", Type (su_id (k, tag)));
-		 pr_vdef ("size",
-			  EConstr (EApp (EVar "C_Int.mk_su_size", EWord size),
-				   Con ("C.S.size",
-					[Con ("C.su", [StUn tag])])));
-		 pr_vdef ("typ", EApp (EVar "C_Int.mk_su_typ", EVar "size"));
-		 endBox ();
-		 nl (); str "end")
-
-	    fun pr_pre_struct { tag, size, anon, fields } =
-		pr_pre_su ("S", "s", S.STRUCT, St, tag, size)
-	    fun pr_pre_union { tag, size, anon, largest, all } =
-		pr_pre_su ("U", "u", S.UNION, Un, tag, size)
-
-	    fun pr_enum_const { name, spec } =
-		pr_vdef (enum_id name, EConstr (ELInt spec, sint_ty))
+	    val fstruct = "structure " ^ Fstruct name
 	in
-	    (* Generating the functor file... *)
-	    str dontedit;
-	    nl (); str credits;
-	    nl (); str commentsto;
-	    nl ();
-	    str (concat ["structure ", strname, " = struct"]);
-	    VBox 4;
-
-	    if length structs + length unions <> 0 then
-		(nl (); str "local";
-		 VBox 4;
-		 nl (); str "open Tag";
-		 endBox ();
-		 nl (); str "in";
-		 VBox 4;
-		 (* definitions for struct/union tags *)
-		 app pr_struct_tag structs;
-		 app pr_union_tag unions;
-		 endBox ();
-		 nl (); str "end")
-	    else ();
-
-	    (* "pre"-structures for all structures and unions *)
-	    app pr_pre_struct structs;
-	    app pr_pre_union unions;
-
-	    (* the main functor *)
-	    nl ();
-	    str "functor"; nsp (); str (strname ^ "Fn");
-	    HOVBox 4;
-	    sp ();
-	    PP.openHVBox strpp (PP.Rel 1);
-	    str "(";
-	    pr_vdecl ("library", Type "DynLinkage.lib_handle");
-	    app pr_istruct_arg incomplete_structs;
-	    app pr_iunion_arg incomplete_unions;
-	    str ")";
-	    endBox ();
-	    sp (); str ":"; sp (); str signame;
-	    VBox 4;
-	    app pr_istruct_res incomplete_structs;
-	    app pr_iunion_res incomplete_unions;
-	    endBox ();
-	    nsp (); str "=";
-	    endBox ();
-	    nl (); str "struct";
-	    VBox 4;
-
-	    (* copy definitions for struct/union tags *)
-	    app pr_struct_tag_copy structs;
-	    app pr_union_tag_copy unions;
-
-	    (* other local stuff (to define RTTI for function pointers) *)
-	    nl (); str "local";
-	    VBox 4;
-	    nl (); str "structure D = DynLinkage";
-	    nl (); str "open C.Dim C_Int";
-
-	    (* low-level call operations for all function pointers *)
-	    app pr_fptr_rtti fptr_types;
-
-	    (* the library handle (handle on shared object) *)
-	    nl (); str "val so_h = library";
-	    (* addr handles for global variables *)
-	    app pr_gvar_addr gvars;
-	    (* addr handles for global C functions *)
-	    app pr_gfun_addr gfuns;
-
+	    str "local";
+	    Box 4;
+	    nl (); str "open C_Int";
+	    pr_vdef ("h", EApp (EVar libraryhandle, EString name));
 	    endBox ();
 	    nl (); str "in";
-	    VBox 4;
-	    (* carry-throughs for incomplete types *)
-	    app pr_istruct_def incomplete_structs;
-	    app pr_iunion_def incomplete_unions;
-	    (* ML structures corresponding to C struct declarations *)
-	    app pr_struct_structure structs;
-	    (* ML structurse corresponding to C union declarations *)
-	    app pr_union_structure unions;
-
-	    (* RTTI for C typedefs *)
-	    app pr_gty_rtti cgtys;
-	    (* (suspended) objects for global variables *)
-	    app pr_gvar_obj gvars;
-	    (* RTTI for pointers corresponding to global C functions *)
-	    app pr_gfun_rtti gfuns;
-	    (* (suspended) function pointers for global C functions *)
-	    app pr_gfun_fptr gfuns;
-	    (* ML functions corresponding to global C functions *)
-	    if dolight then app (pr_gfun_func true) gfuns else ();
-	    if doheavy then app (pr_gfun_func false) gfuns else ();
-	    (* enum constants *)
-	    app pr_enum_const enums;
+	    nl (); str (fstruct ^ " : sig");
+	    Box 4;
+	    pr_vdecl ("typ", rtti_ty (S.FPTR spec));
+	    pr_vdecl ("fptr", Arrow (Unit, wtn_ty (S.FPTR spec)));
+	    if doheavy then do_fsig false else ();
+	    if dolight then do_fsig true else ();
 	    endBox ();
-	    nl (); str "end";		(* local *)
+	    nl (); str "end = struct";
+	    Box 4;
+	    pr_vdef ("typ", rtti_val (S.FPTR spec));
+	    pr_fdef ("fptr",
+		     [EUnit],
+		     EApp (EVar "mk_fptr",
+			   ETuple [EVar (fptr_mkcall spec),
+				   EApp (EVar "h", EUnit)]));
+	    if doheavy then do_f false else ();
+	    if dolight then do_f true else ();
 	    endBox ();
-	    nl (); str "end";		(* functor/struct *)
-	    endBox ();
-	    nl (); str "end";		(* structure/struct *)
-	    nl ();
-
-	    PP.closeStream strpp
+	    nl (); str "end"; nl (); str "end"; nl ();
+	    closePP ();
+	    exports := fstruct :: !exports
 	end
 
-	fun do_cm_file () = let
-	    val cmpp = openPP cmfile
-
-	    fun nl () = PP.newline cmpp
-	    fun str s = PP.string cmpp s
-	    fun sp () = PP.space cmpp 1
-	    fun nsp () = PP.nbSpace cmpp 1
-	    fun VBox a = PP.openVBox cmpp (PP.Abs a)
-	    fun endBox () = PP.closeBox cmpp
-	    fun line s = (nl (); str s)
-	    val ls =
-		case lambdasplit of
-		    NONE => ""
-		  | SOME s => concat ["\t(lambdasplit:", s, ")"]
+	fun pr_enum { src, tag, spec } = let
+	    val file = smlfile ("e-" ^ tag)
+	    val { closePP, str, nl, pr_vdef, Box, endBox, ... } =
+		openPP (file, SOME src)
+	    fun v { name, spec } =
+		pr_vdef (enum_id name, EConstr (ELInt spec, sint_ty))
+	    val estruct = "structure " ^ Estruct tag
 	in
-	    (* Generating the .cm file... *)
-	    str dontedit;
-	    line credits;
-	    line commentsto;
-	    line "(primitive c-int)";
+	    str (estruct ^ " = struct");
+	    Box 4;
+	    app v spec;
+	    endBox ();
+	    nl (); str "end"; nl ();
+	    closePP ();
+	    exports := estruct :: !exports
+	end
+
+	fun do_iptrs () = let
+	    val file = smlfile "iptrs"
+	    val { closePP, str, nl, ... } = openPP (file, NONE)
+	    fun pr_isu_def K tag = let
+		val istruct = "structure " ^ isu_id (K, tag)
+	    in
+		str (istruct ^ " = PointerToIncompleteType ()");
+		nl ();
+		exports := istruct :: !exports
+	    end
+	in
+	    app (pr_isu_def "S") incomplete_structs;
+	    app (pr_isu_def "U") incomplete_unions;
+	    closePP ()
+	end
+
+	fun do_cmfile () = let
+	    val file = descrfile cmfile
+	    val { closePP, line, str, nl, VBox, endBox, ... } =
+		openPP (file, NONE)
+	in
+	    str "(primitive c-int)";
 	    line "library";
 	    VBox 4;
-	    line ("signature " ^ signame);
-	    line ("structure " ^ strname);
+	    app line (!exports);
 	    endBox ();
-	    line "is";
+	    nl (); str "is";
 	    VBox 4;
-	    app line ["$/basis.cm","$/c-int.cm", "$smlnj/init/init.cmi : cm"];
-	    line (sigfile ^ ls);
-	    line (strfile ^ ls);
+	    app line ["$/basis.cm", "$/c-int.cm", "$smlnj/init/init.cmi : cm"];
+	    app line (!files);
 	    endBox ();
 	    nl ();
-
-	    PP.closeStream cmpp
+	    closePP ()
 	end
+	val needs_iptr =
+	    case (incomplete_structs, incomplete_unions) of
+		([], []) => false
+	      | _ => true
     in
-	do_sig_file ();
-	do_fct_file ();
-	do_cm_file ()
+
+	app pr_fptr_rtti fptr_types;
+	app pr_st_structure structs;
+	app pr_ut_structure unions;
+	app pr_s_structure structs;
+	app pr_u_structure unions;
+	app pr_t_structure gtys;
+	app pr_gvar gvars;
+	app pr_gfun gfuns;
+	app pr_enum enums;
+	if complete andalso needs_iptr then do_iptrs () else ();
+	do_cmfile ()
     end
 end
 end

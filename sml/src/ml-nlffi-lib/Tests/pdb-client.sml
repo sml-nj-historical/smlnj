@@ -1,8 +1,8 @@
 structure PDBC = struct
     fun print_entry e = let
 	open C
-	open PDB.S_entry
-	open Forward.S_forward
+	open S_entry
+	open S_forward
     in
 	print (concat ["Last: ",
 		       ZString.toML (Get.ptr (f_last e)),

@@ -21,7 +21,7 @@ signature DYN_LINKAGE = sig
     val open_lib : { name: string, lazy: bool, global: bool } -> lib_handle
 
     (* get the address handle of a symbol exported from a DL *)
-    val lib_symbol : lib_handle -> string -> addr_handle
+    val lib_symbol : lib_handle * string -> addr_handle
 
     (* fetch the actual address from an address handle; the value obtained
      * is not valid across export{ML,Fn}/resume cycles *)

@@ -136,11 +136,9 @@ end = struct
 		ENV m => m
 	      | _ => raise TypeError ("env", v)
 
-	fun namespace "STR" = "structure"
-	  | namespace "SIG" = "signature"
-	  | namespace "FCT" = "functor"
-	  | namespace "FSIG" = "funsig"
-	  | namespace ns = raise Fail ("unknown namespace spec: " ^ ns)
+	fun namespace P.SGN = "signature"
+	  | namespace P.STR = "structure"
+	  | namespace P.FCT = "functor"
 
 	fun onedef (P.DEF { lhs, rhs }, dm) = let
 	    val get = get dm

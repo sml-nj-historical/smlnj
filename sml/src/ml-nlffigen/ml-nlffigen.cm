@@ -1,7 +1,7 @@
 (*
  * gen.cm - CM description file describing the ml-ffigen program.
  *
- *  (C) 2001, Lucent Technologies, Bell Labs
+ *  (C) 2002, Lucent Technologies, Bell Labs
  *
  * author: Matthias Blume (blume@research.bell-labs.com)
  *)

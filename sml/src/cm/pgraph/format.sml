@@ -27,7 +27,11 @@ end = struct
 
         fun tos s = concat ["\"", String.toString s, "\""]
 
-        fun rhs (P.SYM (ns, n)) = cfc ("sym", [tos ns, tos n])
+	fun tons P.SGN = "sgn"
+	  | tons P.STR = "str"
+	  | tons P.FCT = "fct"
+
+        fun rhs (P.SYM (ns, n)) = cfc (tons ns, [tos n])
           | rhs (P.SYMS syms) = cfc ("syms", [varlist syms])
           | rhs (P.IMPORT { lib, syms }) = cfc ("import", [lib, syms])
           | rhs (P.COMPILE { src = (src, native), env, syms }) =
@@ -42,7 +46,7 @@ end = struct
 	     out ["\n"])
     in
         out ["val thelibrary = fn ", context, " => (\n"];
-        out ["fn ", varlist imports, " => let\n"];
+        out ["fn ", varlist imports, " => let open PGOps\n"];
         app dodef defs;
         out ["   in\n       export ", context, " ", export,
              "\n   end\n\

@@ -458,17 +458,16 @@ structure C :> C_INT = struct
 
     (* ------------- internal stuff ------------- *)
 
-    fun mk_obj (t: objt) (a: addr) = (a, t)
+    fun mk_obj (t: objt, a: addr) = (a, t)
     fun mk_voidptr (a : addr) = a
-    fun mk_fptr (FPTR mkf) a = (a, Unsafe.cast mkf a)
-      | mk_fptr _ _ = bug "mk_fptr (non-function-pointer-type)"
+    fun mk_fptr (mkf, a) = (a, mkf a)
 
     local
-	fun mk_field (t: objt) i (a, _: objt) = (a ++ i, t)
+	fun mk_field (t: objt, i, (a, _: objt)) = (a ++ i, t)
     in
         val mk_rw_field = mk_field
 	val mk_ro_field = mk_field
-	fun mk_field' i a = a ++ i
+	fun mk_field' (i, a) = a ++ i
     end
 
     local
