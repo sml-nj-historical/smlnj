@@ -26,5 +26,6 @@ struct
   val InMLOffVSP = 8
   val LimitPtrMaskOffVSP = 200
 
-  val ccall_maxargspace = SOME (4096 - 24) (* 4k minus linkage area *)
+  (* the pre-allocated space is 4k minus the linkage area (24 bytes) *)
+  val ccall_prealloc_argspace = SOME (4096 - 24)
 end
