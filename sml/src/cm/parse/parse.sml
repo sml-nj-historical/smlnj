@@ -417,8 +417,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 
 		    fun inputc k = TextIO.input stream
 
-		    val lexer = CMLex.makeLexer inputc lexarg
-		    val tokenStream = LrParser.Stream.streamify lexer
+		    val tokenStream = CMParse.makeLexer inputc lexarg
 		    val (parseResult, _) =
 			CMParse.parse (lookAhead, tokenStream,
 				       fn (s,p1,p2) => error (p1, p2) s,

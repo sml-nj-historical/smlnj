@@ -47,9 +47,8 @@ structure ShellTool = struct
 			    fun subst "%s" = sname
 			      | subst "%t" = tname
 			      | subst "" = ""
-			      | subst s = if String.sub (s, 0) = #"%" then
-					      String.extract (s, 1, NONE)
-					  else s
+			      | subst s = if String.sub (s, 0) <> #"%" then s
+					  else String.extract (s, 1, NONE)
 			    fun ad (x, l) = " " :: subst x :: l
 			    val cmdline =
 				case restoptions of

@@ -12,6 +12,16 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/04/05 12:30:00 JST
+Tag: blume_main_v110p26p2_3
+Description:
+
+This update just merges three minor cosmetic updates to CM's sources
+to get ready for the 110.27 code freeze on Friday.  No functionality
+has changed.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2000/04/04 19:39:00 EST
 Tag: leunga-20000404-x86-asm

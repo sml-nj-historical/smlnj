@@ -375,7 +375,7 @@ functor ToolsFn (val load_plugin : string -> bool
 	val template = getOpt (template, "%c %s")
 	fun rule { spec = (name, mkpath, _, oto), context, mkNativePath } = let
 	    val opts = getOpt (oto, dflopts)
-	    val sol = let		(* only use STRING optios for %o *)
+	    val sol = let		(* only use STRING options for %o *)
 		fun so (SUBOPTS _) = NONE
 		  | so (STRING { name, mkpath }) =
 		    SOME (nativeSpec (mkpath name))
