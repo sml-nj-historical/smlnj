@@ -103,7 +103,15 @@
   "*If non-nil, `\;' will self insert, reindent the line, and do a newline.
 If nil, just insert a `\;'.  (To insert while t, do: \\[quoted-insert] \;)."
   :group 'sml
-  :type '(boolean))
+  :type 'boolean)
+
+(defcustom sml-rightalign-and t
+  "If non-nil, right-align `and' with its leader.
+If nil:					If t:
+	datatype a = A				datatype a = A
+	and b = B				     and b = B"
+  :group 'sml
+  :type 'boolean)
 
 ;;; OTHER GENERIC MODE VARIABLES
 
@@ -160,14 +168,17 @@ Full documentation will be available after autoloading the function."))
 	       "with" "withtype" "o")
   "A regexp that matches any and all keywords of SML.")
 
+(defconst sml-tyvarseq-re
+  "\\(\\('+\\(\\sw\\s_\\)+\\|(\\([,']\\|\\sw\\|\\s_\\|\\s-\\)+)\\)\\s-+\\)?")
+
 (defconst sml-font-lock-keywords
   `(;;(sml-font-comments-and-strings)
-    ("\\<\\(fun\\|and\\)\\s-+\\('\\sw+\\s-+\\)*\\(\\sw+\\)"
+    (,(concat "\\<\\(fun\\|and\\)\\s-+" sml-tyvarseq-re "\\(\\sw+\\)\\s-+[^ \t\n=]")
      (1 font-lock-keyword-face)
-     (3 font-lock-function-name-face))
-    ("\\<\\(\\(data\\|abs\\|with\\|eq\\)?type\\)\\s-+\\('\\sw+\\s-+\\)*\\(\\sw+\\)"
+     (6 font-lock-function-name-face))
+    (,(concat "\\<\\(\\(data\\|abs\\|with\\|eq\\)?type\\)\\s-+" sml-tyvarseq-re "\\(\\sw+\\)")
      (1 font-lock-keyword-face)
-     (4 font-lock-type-def-face))
+     (7 font-lock-type-def-face))
     ("\\<\\(val\\)\\s-+\\(\\sw+\\>\\s-*\\)?\\(\\sw+\\)\\s-*[=:]"
      (1 font-lock-keyword-face)
      ;;(6 font-lock-variable-def-face nil t)
@@ -203,9 +214,9 @@ Full documentation will be available after autoloading the function."))
 (defvar font-lock-interface-def-face 'font-lock-interface-def-face
   "Face name to use for interface definitions.")
 
-;;;
-;;; Code to handle nested comments and unusual string escape sequences
-;;;
+;;
+;; Code to handle nested comments and unusual string escape sequences
+;;
 
 (defsyntax sml-syntax-prop-table
   '((?\\ . ".") (?* . "."))
@@ -257,7 +268,11 @@ Full documentation will be available after autoloading the function."))
 	(let ((kind (match-string 2))
 	      (column (progn (goto-char (match-beginning 2)) (current-column)))
 	      (location
-	       (progn (goto-char (match-end 0)) (sml-forward-spaces) (point)))
+	       (progn (goto-char (match-end 0))
+		      (sml-forward-spaces)
+		      (when (looking-at sml-tyvarseq-re)
+			(goto-char (match-end 0)))
+		      (point)))
 	      (name (sml-forward-sym)))
 	  ;; Eliminate trivial renamings.
 	  (when (or (not (member kind '("structure" "signature")))
@@ -306,8 +321,19 @@ This mode runs `sml-mode-hook' just before exiting.
   (set (make-local-variable 'comment-nested) t)
   ;;(set (make-local-variable 'block-comment-start) "* ")
   ;;(set (make-local-variable 'block-comment-end) "")
-  (set (make-local-variable 'comment-column) 40)
+  ;; (set (make-local-variable 'comment-column) 40)
   (set (make-local-variable 'comment-start-skip) "(\\*+\\s-*"))
+
+(defun sml-funname-of-and ()
+  "Name of the function this `and' defines, or nil if not a function.
+Point has to be right after the `and' symbol and is not preserved."
+  (sml-forward-spaces)
+  (if (looking-at sml-tyvarseq-re) (goto-char (match-end 0)))
+  (let ((sym (sml-forward-sym)))
+    (sml-forward-spaces)
+    (unless (or (member sym '(nil "d="))
+		(member (sml-forward-sym) '("d=")))
+      sym)))
 
 (defun sml-electric-pipe ()
   "Insert a \"|\".
@@ -333,14 +359,8 @@ Depending on the context insert the name of function, a \"=>\" etc."
 		   ((looking-at "=") (concat f "  = "))))) ;a function
 	       ((string= sym "and")
 		;; could be a datatype or a function
-		(while (and (setq sym (sml-forward-sym))
-			    (string-match "^'" sym))
-		  (sml-forward-spaces))
-		(sml-forward-spaces)
-		(if (or (not sym)
-			(equal (sml-forward-sym) "d="))
-		    ""
-		  (concat sym "  = ")))
+		(setq sym (sml-funname-of-and))
+		(if sym (concat sym "  = ") ""))
 	       ;; trivial cases
 	       ((string= sym "fun")
 		(while (and (setq sym (sml-forward-sym))
@@ -408,6 +428,8 @@ If anyone has a good algorithm for this..."
       (while (> depth 0)
 	(if (re-search-backward "(\\*\\|\\*)" nil t)
 	    (cond
+	     ;; FIXME: That's just a stop-gap.
+	     ((eq (get-text-property (point) 'face) 'font-lock-string-face))
 	     ((looking-at "*)") (incf depth))
 	     ((looking-at comment-start-skip) (decf depth)))
 	  (setq depth -1)))
@@ -426,13 +448,13 @@ If anyone has a good algorithm for this..."
 	   (sml-point (point))
 	   (sym (save-excursion (sml-forward-sym))))
        (or
-	;; allow the user to override the indentation
+	;; Allow the user to override the indentation.
 	(when (looking-at (concat ".*" (regexp-quote comment-start)
 				  "[ \t]*fixindent[ \t]*"
 				  (regexp-quote comment-end)))
 	  (current-indentation))
 
-	;; continued comment
+	;; Continued comment.
 	(and (looking-at "\\*") (sml-find-comment-indent))
 
 	;; Continued string ? (Added 890113 lbn)
@@ -446,22 +468,46 @@ If anyone has a good algorithm for this..."
 		     (1+ (current-column))
 		   0))))
 
+	;; Closing parens.  Could be handled below with `sml-indent-relative'?
+	(and (looking-at "\\s)")
+	     (save-excursion
+	       (skip-syntax-forward ")")
+	       (backward-sexp 1)
+	       (if (sml-dangling-sym)
+		   (sml-indent-default 'noindent)
+		 (current-column))))
+
 	(and (setq data (assoc sym sml-close-paren))
 	     (sml-indent-relative sym data))
 
-	(and (member (save-excursion (sml-forward-sym)) sml-starters-syms)
-	     (let ((sym (unless (save-excursion (sml-backward-arg))
-			  (sml-backward-spaces)
-			  (sml-backward-sym))))
-	       (if sym (sml-get-sym-indent sym)
-		 ;; FIXME: this can take a *long* time !!
-		 (sml-find-matching-starter sml-starters-syms)
-		 (current-column))))
+	(and (member sym sml-starters-syms)
+	     (sml-indent-starter sym))
 
 	(and (string= sym "|") (sml-indent-pipe))
 
 	(sml-indent-arg)
 	(sml-indent-default))))))
+
+(defsubst sml-bolp ()
+  (save-excursion (skip-chars-backward " \t|") (bolp)))
+
+(defun sml-indent-starter (orig-sym)
+  "Return the indentation to use for a symbol in `sml-starters-syms'.
+Point should be just before the symbol ORIG-SYM and is not preserved."
+  (let ((sym (unless (save-excursion (sml-backward-arg))
+	       (sml-backward-spaces)
+	       (sml-backward-sym))))
+    (if (equal sym "d=") (setq sym nil))
+    (if sym (sml-get-sym-indent sym)
+      ;; FIXME: this can take a *long* time !!
+      (setq sym (sml-find-matching-starter sml-starters-syms))
+      ;; Don't align with `and' because it might be specially indented.
+      (if (and (or (equal orig-sym "and") (not (equal sym "and")))
+	       (sml-bolp))
+	  (+ (current-column)
+	     (if (and sml-rightalign-and (equal orig-sym "and"))
+		 (- (length sym) 3) 0))
+	(sml-indent-starter orig-sym)))))
 
 (defun sml-indent-relative (sym data)
   (save-excursion
@@ -477,7 +523,11 @@ If anyone has a good algorithm for this..."
       (if (string= sym "|")
 	  (if (sml-bolp) (current-column) (sml-indent-pipe))
 	(let ((pipe-indent (or (cdr (assoc "|" sml-symbol-indent)) -2)))
-	  (when (member sym '("datatype" "abstype"))
+	  (when (or (member sym '("datatype" "abstype"))
+		    (and (equal sym "and")
+			 (save-excursion
+			   (forward-word 1)
+			   (not (sml-funname-of-and)))))
 	    (re-search-forward "="))
 	  (sml-forward-sym)
 	  (sml-forward-spaces)
@@ -517,10 +567,13 @@ If anyone has a good algorithm for this..."
      (t sml-indent-level))))
 
 (defun sml-dangling-sym ()
+  "Non-nil if the symbol after point is dangling.
+The symbol can be an SML symbol or an open-paren. \"Dangling\" means that
+it is not on its own line but is the last element on that line."
   (save-excursion
     (and (not (sml-bolp))
 	 (< (sml-point-after (end-of-line))
-	    (sml-point-after (sml-forward-sym)
+	    (sml-point-after (or (sml-forward-sym) (skip-syntax-forward "("))
 			     (sml-forward-spaces))))))
 
 (defun sml-delegated-indent ()
@@ -532,9 +585,8 @@ If anyone has a good algorithm for this..."
 
 (defun sml-get-sym-indent (sym &optional style)
   "Find the indentation for the SYM we're `looking-at'.
-If indentation is delegated, the point will be at the start of
-the parent at the end of this function.
-Optional argument STYLE is currently ignored"
+If indentation is delegated, point will move to the start of the parent.
+Optional argument STYLE is currently ignored."
   (assert (equal sym (save-excursion (sml-forward-sym))))
   (save-excursion
     (let ((delegate (assoc sym sml-close-paren))
@@ -569,14 +621,26 @@ Optional argument STYLE is currently ignored"
   (let* ((sym-after (save-excursion (sml-forward-sym)))
 	 (_ (sml-backward-spaces))
 	 (sym-before (sml-backward-sym))
-	 (sym-indent (and sym-before (sml-get-sym-indent sym-before))))
-    (if sym-indent
-	;; the previous sym is an indentation introducer: follow the rule
-	(let ((indent-after (or (cdr (assoc sym-after sml-symbol-indent)) 0)))
-	  (if noindent
-	      ;;(current-column)
-	      sym-indent
-	    (+ sym-indent indent-after)))
+	 (sym-indent (and sym-before (sml-get-sym-indent sym-before)))
+	 (indent-after (or (cdr (assoc sym-after sml-symbol-indent)) 0)))
+    (when (equal sym-before "end")
+      ;; I don't understand what's really happening here, but when
+      ;; it's `end' clearly, we need to do something special.
+      (forward-word 1)
+      (setq sym-before nil sym-indent nil))
+    (cond
+     (sym-indent
+      ;; the previous sym is an indentation introducer: follow the rule
+      (if noindent
+	  ;;(current-column)
+	  sym-indent
+	(+ sym-indent indent-after)))
+     ;; If we're just after a hanging open paren.
+     ((and (eq (char-syntax (preceding-char)) ?\()
+	   (save-excursion (backward-char) (sml-dangling-sym)))
+      (backward-char)
+      (sml-indent-default))
+     (t
       ;; default-default
       (let* ((prec-after (sml-op-prec sym-after 'back))
 	     (prec (or (sml-op-prec sym-before 'back) prec-after 100)))
@@ -584,21 +648,27 @@ Optional argument STYLE is currently ignored"
 	;; "current one", or until you backed over a sym that has the same prec
 	;; but is at the beginning of a line.
 	(while (and (not (sml-bolp))
-		    (sml-move-if (sml-backward-sexp (1- prec)))
+		    (while (sml-move-if (sml-backward-sexp (1- prec))))
 		    (not (sml-bolp)))
 	  (while (sml-move-if (sml-backward-sexp prec))))
-	;; the `noindent' case does back over an introductory symbol
-	;; such as `fun', ...
-	(when noindent
-	  (sml-move-if
-	   (sml-backward-spaces)
-	   (member (sml-backward-sym) sml-starters-syms)))
-	(current-column)))))
-
-
-(defun sml-bolp ()
-  (save-excursion
-    (skip-chars-backward " \t|") (bolp)))
+	(if noindent
+	    ;; the `noindent' case does back over an introductory symbol
+	    ;; such as `fun', ...
+	    (progn
+	      (sml-move-if
+	       (sml-backward-spaces)
+	       (member (sml-backward-sym) sml-starters-syms))
+	      (current-column))
+	  ;; Use `indent-after' for cases such as when , or ; should be
+	  ;; outdented so that their following terms are aligned.
+	  (+ (if (progn
+		   (if (equal sym-after ";")
+		       (sml-move-if
+			(sml-backward-spaces)
+			(member (sml-backward-sym) sml-starters-syms)))
+		   (and sym-after (not (looking-at sym-after))))
+		 indent-after 0)
+	     (current-column))))))))
 
 
 ;; maybe `|' should be set to word-syntax in our temp syntax table ?
@@ -771,7 +841,7 @@ completion from `sml-forms-alist'."
   (unless (or (not newline)
 	      (save-excursion (beginning-of-line) (looking-at "\\s-*$")))
     (insert "\n"))
-  (unless (/= ?w (char-syntax (char-before))) (insert " "))
+  (unless (/= ?w (char-syntax (preceding-char))) (insert " "))
   (let ((f (cdr (assoc name sml-forms-alist))))
     (cond
      ((commandp f) (command-execute f))
