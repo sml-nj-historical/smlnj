@@ -92,3 +92,9 @@ end
 
 
 
+(*
+ * $Log: alpha32RegAlloc.sml,v $
+ * Revision 1.3  1998/05/25 15:10:49  george
+ *   Fixed RCS keywords
+ *
+ *)

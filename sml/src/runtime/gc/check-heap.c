@@ -160,7 +160,8 @@ PVT void CheckStringArena (arena_t *ap)
 #ifdef ALIGN_REALDS
 	    ml_val_t	next = *p;
 	    if ((! isDESC(next))
-	    || ((GET_TAG(next) != DTAG_reald) && (GET_TAG(next) != DTAG_reald))) {
+	    || ((GET_TAG(next) != DTAG_reald)
+	    &&  (GET_TAG(next) != DTAG_realdarray))) {
 #endif
 		ERROR;
 		SayDebug (

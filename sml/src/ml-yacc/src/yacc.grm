@@ -18,6 +18,7 @@ open Hdr
 	PERCENT_HEADER | INT of string | KEYWORD | LBRACE | LPAREN |
 	NAME | NODEFAULT | NONTERM | NOSHIFT | OF |
 	PERCENT_EOP | PERCENT_PURE | PERCENT_POS | PERCENT_ARG |
+	PERCENT_TOKEN_SIG_INFO |
 	PREC of Header.prec | PREC_TAG | PREFER |
 	PROG of string | RBRACE | RPAREN | SUBST | START |
 	TERM | TYVAR of string | VERBOSE | VALUE |
@@ -43,7 +44,7 @@ open Hdr
 	CHANGE_DEC of (Hdr.symbol list * Hdr.symbol list) |
  	TY of string
 %header (
-functor MlyaccLrValsFun(structure Hdr : HEADER (* = Header *)
+functor MlyaccLrValsFun(structure Hdr : HEADER
 		          where type prec = Header.prec
 			structure Token : TOKEN)
 )
@@ -110,6 +111,11 @@ MPC_DECL: TERM CONSTR_LIST
 		    value=nil})
 	| PERCENT_HEADER PROG
 	     (DECL {prec=nil,control=[FUNCTOR PROG],nonterm=NONE,term=NONE,
+	            eop=nil,change=nil,keyword=nil,
+		    value=nil})
+	| PERCENT_TOKEN_SIG_INFO PROG
+	     (DECL {prec=nil,control=[TOKEN_SIG_INFO PROG],
+                    nonterm=NONE,term=NONE,
 	            eop=nil,change=nil,keyword=nil,
 		    value=nil})
 	| NAME ID

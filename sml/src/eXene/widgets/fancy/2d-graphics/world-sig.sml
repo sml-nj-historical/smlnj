@@ -82,7 +82,7 @@ signature WORLD =
     val makeWorld : (
 	    Widget.root * Canvas.canvas * ScalableFont.font_server
 	    * EXeneBase.color * Geometry.size * box option
-	  ) -> '1a world
+	  ) -> 'a world
 
     val canvasOfWorld : 'a world -> Canvas.canvas
 

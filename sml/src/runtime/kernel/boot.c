@@ -57,7 +57,7 @@ PVT void ShowPerID (char *buf, pers_id_t *perID);
 void BootML (const char *binDir, heap_params_t *heapParams)
 {
     ml_state_t	*msp;
-    char	*fname;
+    char	fname[512];
 
     msp = AllocMLState (TRUE, heapParams);
 
@@ -77,7 +77,7 @@ void BootML (const char *binDir, heap_params_t *heapParams)
 
   /* boot the system */
     while (BinFileList != LIST_nil) {
-	fname = PTR_MLtoC(char, LIST_hd(BinFileList));
+	strcpy(fname, PTR_MLtoC(char, LIST_hd(BinFileList)));
 	Say ("[Loading %s]\n", fname);
 	BinFileList = LIST_tl(BinFileList);
 	LoadBinFile (msp, binDir, fname);
@@ -316,9 +316,9 @@ PVT void ImportSelection (
 PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
 {
     FILE	    *file;
-    int		    i, exportSzB, remainingCode;
+    int		    i, exportSzB, remainingCode, importRecLen;
     bool_t	    isDataSeg;
-    ml_val_t	    codeObj, importRec, closure, exportVal, val;
+    ml_val_t	    codeObj, importRec, closure, val;
     binfile_hdr_t   hdr;
     pers_id_t	    exportPerID;
     Int32_t         thisSzB;
@@ -346,19 +346,21 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
     {
 	int	importVecPos;
 
-	if (NeedGC (msp, REC_SZB(hdr.importCnt + 1)))
-	    InvokeGCWithRoots (msp, 0, &BinFileList, &exportVal, NIL(ml_val_t *));
+	importRecLen = hdr.importCnt + 1;
 
-	ML_AllocWrite (msp, 0, MAKE_DESC(hdr.importCnt + 1, DTAG_record));
-	for (importVecPos = 1; importVecPos <= hdr.importCnt; ) {
+	if (NeedGC (msp, REC_SZB(importRecLen)))
+	    InvokeGCWithRoots (msp, 0, &BinFileList, NIL(ml_val_t *));
+
+	ML_AllocWrite (msp, 0, MAKE_DESC(importRecLen, DTAG_record));
+	for (importVecPos = 1; importVecPos < importRecLen; ) {
 	    pers_id_t	importPid;
 	    ReadBinFile (file, &importPid, sizeof(pers_id_t), binDir, fname);
 	    ImportSelection (
 		msp, file, binDir, fname, &importVecPos,
 		LookupPerID(&importPid));
 	}
-	ML_AllocWrite(msp, hdr.importCnt + 1, ML_nil);
-	importRec = ML_Alloc(msp, hdr.importCnt + 1);
+	ML_AllocWrite(msp, importRecLen, ML_nil);
+	importRec = ML_Alloc(msp, importRecLen);
     }
 
   /* read the export PerID */
@@ -434,8 +436,11 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
 	    SaveCState (msp, &BinFileList, &importRec, NIL(ml_val_t *));
 	    val = ApplyMLFn (msp, closure, val, TRUE);
 	    RestoreCState (msp, &BinFileList, &importRec, NIL(ml_val_t *));
-	    REC_SEL(importRec,hdr.importCnt) = val;
-	    val = importRec;
+	  /* do a functional update of the last element of the importRec. */
+	    for (i = 0;  i < importRecLen;  i++)
+		ML_AllocWrite(msp, i, PTR_MLtoC(ml_val_t, importRec)[i-1]);
+	    ML_AllocWrite(msp, importRecLen, val);
+	    val = ML_Alloc(msp, importRecLen);
 	    isDataSeg = FALSE;
 	}
 	else {
@@ -449,12 +454,9 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
 	    InvokeGCWithRoots (msp, 0, &BinFileList, &val, NIL(ml_val_t *));
     }
 
-  /* we are done: val -> exportVal */
-    exportVal = val;
-
   /* record the resulting exported PerID */
     if (exportSzB != 0)
-      EnterPerID (msp, &exportPerID, exportVal);
+	EnterPerID (msp, &exportPerID, val);
 
     fclose (file);
 
@@ -513,4 +515,3 @@ PVT void ShowPerID (char *buf, pers_id_t *perID)
     *cp++ = '\0';
 
 } /* end of ShowPerID */
-

@@ -3,8 +3,14 @@
  * ML-Yacc Parser Generator (c) 1991 Andrew W. Appel, David R. Tarditi
  *
  * $Log$
- * Revision 1.1.1.4  1998/06/05 19:39:58  monnier
- * 110.7
+ * Revision 1.1.1.5  1998/09/07 21:10:46  monnier
+ * 110.8
+ *
+ * Revision 1.2  1998/07/08 18:32:02  elsa
+ * Added support for the new percent identifier %token_sig_info.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:16  george
+ * Version 110.5
  *
  * Revision 1.2  1997/03/03 17:10:37  george
  * moved callcc related functions to SMLofNJ.Cont
@@ -28,6 +34,7 @@
 structure ExportParseGen : sig
 
     val parseGen : (string * string list) -> OS.Process.status
+    val export : string -> unit
 
   end = struct
     fun err msg = TextIO.output (TextIO.stdErr, msg)
@@ -69,7 +76,9 @@ structure ExportParseGen : sig
 			  ]);
 			OS.Process.failure)
 	  end
+
+fun export heap = SMLofNJ.exportFn(heap, parseGen);
+
   end;
 
-fun export heap = SMLofNJ.exportFn(heap, ExportParseGen.parseGen);
 

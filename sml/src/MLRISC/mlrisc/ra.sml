@@ -1181,4 +1181,10 @@ struct
       end 
 end (* functor *)
 
+(*
+ * $Log: ra.sml,v $
+ * Revision 1.3  1998/05/25 15:11:05  george
+ *   Fixed RCS keywords
+ *
+ *)
 

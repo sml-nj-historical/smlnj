@@ -15,6 +15,58 @@
 #include "ml-c.h"
 
 
+/* _ml_win32_PS_create_process : string -> word32
+ * 
+ * Note: This function returns the handle to the created process
+ *       This handle will need to be freed before the system releases
+ *       the memory associated to the process.
+ *       We will take care of this in the wait_for_single_object
+ *       call. This is for the time being only used by CML.
+ *       It could also cause problems later on.
+ */
+ml_val_t _ml_win32_PS_create_process(ml_state_t *msp, ml_val_t arg)
+{
+  char *str = PTR_MLtoC (char,arg);
+  PROCESS_INFORMATION pi;
+  STARTUPINFO si;
+  ml_val_t res;
+  BOOL fSuccess;
+  ZeroMemory (&si,sizeof(si));
+  si.cb = sizeof(si);
+  fSuccess = CreateProcess (NULL,str,NULL,NULL,FALSE,0,NULL,NULL,&si,&pi);
+  if (fSuccess) {
+    HANDLE hProcess = pi.hProcess;
+    CloseHandle (pi.hThread);
+    WORD_ALLOC (msp,res,(Word_t)hProcess);
+    return res;
+  }
+  WORD_ALLOC (msp,res,(Word_t)0);
+  return res;
+}
+
+ml_val_t _ml_win32_PS_wait_for_single_object(ml_state_t *msp, ml_val_t arg)
+{
+  HANDLE hProcess = (HANDLE) WORD_MLtoC (arg);
+  DWORD exit_code;
+  int res;
+  ml_val_t p,obj;
+  res = WaitForSingleObject (hProcess,0);
+  if (res==WAIT_TIMEOUT || res==WAIT_FAILED) {
+    /* information is not ready, or error */
+    obj = OPTION_NONE;
+  }
+  else { 
+    /* WAIT_OBJECT_0 ... done, finished */
+    /* get info and return SOME(exit_status) */
+    GetExitCodeProcess (hProcess,&exit_code);
+    CloseHandle (hProcess);   /* decrease ref count */
+    WORD_ALLOC (msp,p,(Word_t)exit_code);
+    OPTION_SOME(msp,obj,p);
+  }
+  return obj;
+}  
+    
+
 /* _ml_win32_PS_system : string -> word32
  *                       command
  *

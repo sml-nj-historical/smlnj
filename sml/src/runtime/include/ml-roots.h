@@ -134,8 +134,8 @@
 
 #elif defined(TARGET_SPARC)
 
-#   define NROOTS	    21		/* pc, %i0-i5, %g7, %g1-%g3, %l0-%l7, %o0-%o1 */
-#   define N_ARG_REGS       17          /* exclude baseptr */
+#   define NROOTS	    23		/* pc, %i0-i5, %g7, %g1-%g3, %l0-%l7, %o0-%o1 %o3-%o4 */
+#   define N_ARG_REGS       19          /* exclude baseptr */
 #   define N_PSEUDO_REGS    2
 #   define PC_INDX	    6
 #   define EXN_INDX	    7		/* %g7 */
@@ -153,6 +153,13 @@
 #   define MISC5_INDX	    13		/* %l1 */
 #   define MISC6_INDX	    14		/* %l2 */
 #   define MISC7_INDX	    15		/* %l3 */
+#   define MISC8_INDX	    16		/* %l4 */
+#   define MISC9_INDX	    17		/* %l5 */
+#   define MISC10_INDX	    18		/* %l6 */
+#   define MISC11_INDX	    19		/* %l7 */
+#   define MISC12_INDX	    20		/* %i4 */
+#   define MISC13_INDX	    21		/* %o3 */
+#   define MISC14_INDX	    22		/* %o4 */
 
 #elif defined (TARGET_X86)
 

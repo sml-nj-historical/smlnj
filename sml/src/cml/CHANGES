@@ -1,8 +1,14 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
-Version 1.0.12 (SML/NJ 110; patch 4)
-------------------------------------
+Version 1.0.12 (SML/NJ 110.0.4 and 110.8)
+-----------------------------------------
+
+  - Added preliminary Win32 implementation.
+    [1998-08-04]
+
+  - Fixed type of inputLineEvt in CML_TEXT_STREAM_IO (thanks to A. Appel).
+    [1998-06-01]
 
   - Fixed bug in ChanIOFn (failure to spawn threads).
     [1998-03-12]

@@ -1,8 +1,14 @@
 (* ML-Yacc Parser Generator (c) 1989, 1991 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
- * Revision 1.1.1.4  1998/06/05 19:40:02  monnier
- * 110.7
+ * Revision 1.1.1.5  1998/09/07 21:10:48  monnier
+ * 110.8
+ *
+ * Revision 1.2  1998/07/08 18:32:05  elsa
+ * Added support for the new percent identifier %token_sig_info.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:17  george
+ * Version 110.5
  *
  * Revision 1.2  1997/05/20 16:23:21  dbm
  *   SML '97 sharing.
@@ -48,7 +54,8 @@ signature HEADER =
     datatype control = NODEFAULT | VERBOSE | PARSER_NAME of symbol |
 	               FUNCTOR of string  | START_SYM of symbol |
 		       NSHIFT of symbol list | POS of string | PURE |
-		       PARSE_ARG of string * string
+		       PARSE_ARG of string * string |
+		       TOKEN_SIG_INFO of string
 			   
     datatype rule = RULE of {lhs : symbol, rhs : symbol list,
 		             code : string, prec : symbol option}

@@ -82,3 +82,9 @@ struct
 	end)
 end
 
+(*
+ * $Log: hppaRegAlloc.sml,v $
+ * Revision 1.3  1998/05/25 15:10:59  george
+ *   Fixed RCS keywords
+ *
+ *)

@@ -36,6 +36,7 @@ local val dict = [("%prec",PREC_TAG),("%term",TERM),
 	       ("%verbose",VERBOSE), ("%nodefault",NODEFAULT),
 	       ("%value",VALUE), ("%noshift",NOSHIFT),
 	       ("%header",PERCENT_HEADER),("%pure",PERCENT_PURE),
+	       ("%token_sig_info",PERCENT_TOKEN_SIG_INFO),
 	       ("%arg",PERCENT_ARG),
 	       ("%pos",PERCENT_POS)]
 in val lookup =
@@ -135,4 +136,4 @@ qualid ={id}".";
 <F>\\		=> (Add yytext; YYBEGIN STRING; continue());
 <F>.		=> (Add yytext; error inputSource (!lineno) "unclosed string";
 		    YYBEGIN CODE; continue());
-%%
+

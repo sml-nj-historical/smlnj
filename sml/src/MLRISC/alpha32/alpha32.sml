@@ -706,3 +706,12 @@ struct
 end
 
 
+(*
+ * $Log: alpha32.sml,v $
+ * Revision 1.4  1998/06/05 23:53:57  george
+ *   Fix for bug 1399 1361
+ *
+ * Revision 1.3  1998/05/25 15:10:44  george
+ *   Fixed RCS keywords
+ *
+ *)

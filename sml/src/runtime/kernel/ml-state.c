@@ -34,8 +34,11 @@ PVT void InitVProcState (vproc_state_t *vsp);
 int		ArgRegMap[N_ARG_REGS] = {
 	LINK_INDX, CLOSURE_INDX, ARG_INDX, CONT_INDX,	/* the standard arg registers */
 #if defined(TARGET_SPARC)
-      /* misc. regs = %g2-%g3, %o1-%o2, %l0-%l7, %i4; */
-	8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+      /* misc. regs = %g2-%g3, %o1-%o2, %l0-%l7, %i4; %o3-%o4 */
+	/* 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23 */
+	MISC0_INDX,  MISC1_INDX,  MISC2_INDX,  MISC3_INDX, MISC4_INDX,
+	MISC5_INDX,  MISC6_INDX,  MISC7_INDX,  MISC8_INDX, MISC9_INDX,
+	MISC10_INDX, MISC11_INDX, MISC12_INDX, MISC13_INDX, MISC14_INDX
 #elif defined(TARGET_M68)
 	5
 #elif defined(TARGET_MIPS)
