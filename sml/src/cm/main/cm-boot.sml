@@ -238,6 +238,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      fun shutdown () = OS.Process.exit OS.Process.success
 	      fun say_ok () = Say.say ["SLAVE: ok\n"]
 	      fun say_error () = Say.say ["SLAVE: error\n"]
+	      fun say_pong () = Say.say ["SLAVE: pong\n"]
 
 	      val touch = HostMachDepVC.Interact.useStream o TextIO.openString 
 		  
@@ -248,6 +249,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		  else case String.tokens Char.isSpace line of
 		      ["cm", d, f] => do_cm (d, f)
 		    | ["cmb", archos, d, db] => do_cmb (archos, d, db)
+		    | ["ping"] => (say_pong (); waitForStart ())
+		    | ["finish"] => (say_ok (); waitForStart ())
 		    | ["shutdown"] => shutdown ()
 		    | _ => (say_error (); waitForStart ())
 	      end handle _ => (say_error (); waitForStart ())
@@ -307,7 +310,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				  end handle _ => (say_error (); loop ())
 			  end
 			| ["cm", d, f] => do_cm (d, f)
+			| ["cmb", archos, d, db] => do_cmb (archos, d, db)
 			| ["finish"] => (say_ok (); waitForStart ())
+			| ["ping"] => (say_pong (); loop ())
 			| ["shutdown"] => shutdown ()
 			| _ => (say_error (); loop ())
 		  end handle _ => (say_error (); loop ())
@@ -315,6 +320,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		  loop ()
 	      end
 	  in
+	      ignore (Signals.setHandler (Signals.sigINT, Signals.IGNORE));
 	      say_ok ();		(* announce readiness *)
 	      waitForStart () handle _ => ();
 	      OS.Process.exit OS.Process.failure

@@ -84,29 +84,33 @@ structure Servers :> SERVERS = struct
 	    if echo then (fn report => Say.say (rev report))
 	    else (fn _ => ())
 
-	fun loop report =
+	fun wouldBlock () =
 	    case TextIO.canInput (ins, 1) of
-		NONE => wait report
-	      | SOME 0 => wait report
-	      | SOME _ => let
-		    val line = TextIO.inputLine ins
-		in
-		    if line = "" then (crashed (); false)
-		    else
-			(Say.dsay ["<- ", name, ": ", line];
-			 case String.tokens Char.isSpace line of
-			     ["SLAVE:", "ok"] =>
-				 (mark_idle s; show report; true)
-			   | ["SLAVE:", "error"] =>
-				 (mark_idle s;
-				  (* In the case of error we don't show
-				   * the report because it will be re-enacted
-				   * locally. *)
-				  false)
-			   | "SLAVE:" :: l => (unexpected l;
-					       loop report)
-			   | _ => loop (line :: report))
-		end
+		NONE => true
+	      | SOME 0 => true
+	      | SOME _ => false
+
+	fun loop report =
+	    if wouldBlock () then wait report
+	    else let
+		val line = TextIO.inputLine ins
+	    in
+		if line = "" then (crashed (); false)
+		else
+		    (Say.dsay ["<- ", name, ": ", line];
+		     case String.tokens Char.isSpace line of
+			 ["SLAVE:", "ok"] =>
+			     (mark_idle s; show report; true)
+		       | ["SLAVE:", "error"] =>
+			     (mark_idle s;
+			      (* In the case of error we don't show
+			       * the report because it will be re-enacted
+			       * locally. *)
+			      false)
+		       | "SLAVE:" :: l => (unexpected l;
+					   loop report)
+		       | _ => loop (line :: report))
+	    end
 
 	and wait report = (Say.dsay ["Scheduler: ", name,
 				     " is waiting for slave response.\n"];
@@ -114,6 +118,35 @@ structure Servers :> SERVERS = struct
 			   loop report)
     in
 	loop []
+    end
+
+    (* Send a "ping" to all servers and wait for the "pong" responses.
+     * This should work for all servers, busy or no.  Busy servers will
+     * take longer to respond because they first need to finish what
+     * they are doing.
+     * We use wait_all after we receive an interrupt signal.  The ping-pong
+     * protocol does not suffer from the race condition that we would have
+     * if we wanted to only wait for "ok"s from currently busy servers.
+     * (The race would happen when an interrupt occurs between receiving
+     * "ok" and marking the corresponding slave idle). *)
+    fun wait_all () = let
+	val al = StringMap.listItems (!all)
+	fun ping (s as ((name, p), _)) = let
+	    val (ins, _) = Unix.streamsOf p
+	    fun loop () = let
+		val line = TextIO.inputLine ins
+	    in
+		case String.tokens Char.isSpace line of
+		    ["SLAVE:", "pong"] => ()
+		  | _ => loop ()
+	    end
+	in
+	    send (s, "ping\n");
+	    loop ()
+	end
+    in
+	app ping al;
+	idle := al
     end
 
     fun shutdown (name, method) = let
@@ -157,15 +190,7 @@ structure Servers :> SERVERS = struct
 	    wait_status (s, true)
 	end
 
-    fun reset () = let
-	fun busy s =
-	    not (List.exists (fn s' => servName s = servName s') (!idle))
-	val b = List.filter busy (StringMap.listItems (!all))
-	fun w s = ignore (wait_status (s, false))
-    in
-	Concur.reset ();
-	app w b
-    end
+    fun reset () = (Concur.reset (); wait_all ())
 
     fun startAll st = let
 	val _ = reset ()		(* redundant? *)
@@ -205,5 +230,5 @@ structure Servers :> SERVERS = struct
 	SafeIO.perform { openIt = enable,
 			 closeIt = disable,
 			 work = f,
-			 cleanup = fn () => () }
+			 cleanup = reset }
 end
