@@ -64,5 +64,8 @@ structure Pack32Little : PACK_WORD =
 
 
 (*
- * $Log$
+ * $Log: pack-word-l32.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:04  george
+ * Version 110.5
+ *
  *)

@@ -138,5 +138,8 @@ structure Word8Vector : MONO_VECTOR =
 
 
 (*
- * $Log$
+ * $Log: word8-vector.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:04  george
+ * Version 110.5
+ *
  *)

@@ -56,5 +56,8 @@ end (* local *)
 end (* structure VarCon *)
 
 (*
- * $Log$
+ * $Log: varcon.sml,v $
+ * Revision 1.3  1998/05/23 14:10:14  george
+ *   Fixed RCS keyword syntax
+ *
  *)

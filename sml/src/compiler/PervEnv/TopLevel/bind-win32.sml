@@ -17,5 +17,8 @@ structure Win32 = Win32
 
 
 (*
- * $Log$
+ * $Log: bind-win32.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
+ *
  *)

@@ -20,7 +20,7 @@ structure Real64Array : MONO_ARRAY =
 
     val maxLen = Core.max_length
 
-    fun array (0, _) = Assembly.real64array0
+    fun array (0, _) = InlineT.Real64Array.newArray0()
       | array (len, v) =if (InlineT.DfltInt.ltu(maxLen, len))
 	    then raise General.Size
 	    else let
@@ -32,7 +32,7 @@ structure Real64Array : MONO_ARRAY =
 		init 0; arr
 	      end
 
-    fun tabulate (0, _) = Assembly.real64array0
+    fun tabulate (0, _) = InlineT.Real64Array.newArray0()
       | tabulate (len, f) = if (InlineT.DfltInt.ltu(maxLen, len))
 	    then raise General.Size
 	    else let
@@ -44,7 +44,7 @@ structure Real64Array : MONO_ARRAY =
 		init 0; arr
 	      end
 
-    fun fromList [] = Assembly.real64array0
+    fun fromList [] = InlineT.Real64Array.newArray0()
       | fromList l = let
 	  fun length ([], n) = n
 	    | length (_::r, n) = length (r, n+1)
@@ -234,5 +234,11 @@ structure Real64Array : MONO_ARRAY =
 
 
 (*
- * $Log$
+ * $Log: real64-array.sml,v $
+ * Revision 1.2  1998/11/18 03:54:14  jhr
+ *  New array representations.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:03  george
+ * Version 110.5
+ *
  *)

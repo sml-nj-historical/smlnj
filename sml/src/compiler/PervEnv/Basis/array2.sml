@@ -43,11 +43,11 @@ structure Array2 :> ARRAY2 =
 	      end
 
     fun array (nrows, ncols, v) = (case chkSize (nrows, ncols)
-	   of 0 => {data = Assembly.array0, nrows = 0, ncols = 0}
+	   of 0 => {data = InlineT.PolyArray.newArray0(), nrows = 0, ncols = 0}
 	    | n => {data = mkArray (n, v), nrows = nrows, ncols = ncols}
 	  (* end case *))
     fun fromList rows = (case List.rev rows
-	   of [] => {data = Assembly.array0, nrows = 0, ncols = 0}
+	   of [] => {data = InlineT.PolyArray.newArray0(), nrows = 0, ncols = 0}
 	    | (lastRow::rest) => let
 		val nCols = List.length lastRow
 		fun chk ([], nRows, l) = (nRows, l)
@@ -65,7 +65,7 @@ structure Array2 :> ARRAY2 =
 		end
 	  (* end case *))
     fun tabulateRM (nrows, ncols, f) = (case chkSize (nrows, ncols)
-	   of 0 => {data = Assembly.array0, nrows = nrows, ncols = ncols}
+	   of 0 => {data = InlineT.PolyArray.newArray0(), nrows = nrows, ncols = ncols}
 	    | n => let
 		val arr = mkArray (n, f(0, 0))
 		fun lp1 (i, j, k) = if (i < nrows)
@@ -82,7 +82,7 @@ structure Array2 :> ARRAY2 =
 		end
 	  (* end case *))
     fun tabulateCM (nrows, ncols, f) = (case chkSize (nrows, ncols)
-	   of 0 => {data = Assembly.array0, nrows = nrows, ncols = ncols}
+	   of 0 => {data = InlineT.PolyArray.newArray0(), nrows = nrows, ncols = ncols}
 	    | n => let
 		val arr = mkArray (n, f(0, 0))
 		val delta = n - 1
@@ -290,6 +290,12 @@ structure Array2 :> ARRAY2 =
 
 (*
  * $Log: array2.sml,v $
+ * Revision 1.4  1998/11/18 03:54:11  jhr
+ *  New array representations.
+ *
+ * Revision 1.3  1998/10/19 13:47:14  jhr
+ *   Fixed bug in Array2.fromList.
+ *
  * Revision 1.2  1998/08/21 17:28:58  jhr
  *   Fixed bug in row function.
  *

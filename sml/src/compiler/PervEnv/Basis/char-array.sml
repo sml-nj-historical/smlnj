@@ -23,7 +23,7 @@ structure CharArray : MONO_ARRAY =
 
     val maxLen = Core.max_length
 
-    fun array (0, c) = A.array0
+    fun array (0, c) = A.newArray0()
       | array (len, c) = if (InlineT.DfltInt.ltu(maxLen, len))
 	    then raise General.Size
 	    else let
@@ -35,7 +35,7 @@ structure CharArray : MONO_ARRAY =
 		init 0; arr
 	      end
 
-    fun tabulate (0, _) = A.array0
+    fun tabulate (0, _) = A.newArray0()
       | tabulate (len, f) = if (InlineT.DfltInt.ltu(maxLen, len))
 	    then raise General.Size
 	    else let
@@ -47,7 +47,7 @@ structure CharArray : MONO_ARRAY =
 		init 0; arr
 	      end
 
-    fun fromList [] = A.array0
+    fun fromList [] = A.newArray0()
       | fromList l = let
 	  fun length ([], n) = n
 	    | length (_::r, n) = length (r, n+1)
@@ -238,5 +238,11 @@ structure CharArray : MONO_ARRAY =
 
 
 (*
- * $Log$
+ * $Log: char-array.sml,v $
+ * Revision 1.2  1998/11/18 03:54:12  jhr
+ *  New array representations.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:03  george
+ * Version 110.5
+ *
  *)

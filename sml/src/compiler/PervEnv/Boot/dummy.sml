@@ -38,21 +38,24 @@ structure Assembly :> ASSEMBLYBOXED =
     exception Overflow
     exception SysErr of (string * int option)
 
-    val array0 : 'a array = cast()
     val vector0 : 'a vector = cast()
-    val word8array0 : A.word8array = cast()
     val profCurrent : int ref = cast()
     val pollEvent : bool ref = cast()
     val pollFreq : int ref = cast()
     val pollHandler : (unit cont -> unit cont) ref = cast()
     val activeProcs : int ref = cast()
     val pstruct : object ref = cast()
-    val real64array0 : A.real64array = cast()
     val sighandler : ((int * int * unit cont) -> unit cont) ref = cast()
 
  end (* abstraction Assembly *)
 
 
 (*
- * $Log$
+ * $Log: dummy.sml,v $
+ * Revision 1.2  1998/11/18 03:54:20  jhr
+ *  New array representations.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:05  george
+ * Version 110.5
+ *
  *)

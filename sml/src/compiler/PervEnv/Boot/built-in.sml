@@ -59,6 +59,8 @@ structure InlineT =
     val dispose 	: 'a -> unit = InLine.dispose 
     val inlnot		: bool -> bool = InLine.inlnot
     val real		: int -> real = InLine.real   
+    val recordSub	: ('a * int) -> 'b = InLine.recordSub
+    val raw64Sub	: ('a * int) -> real = InLine.raw64Sub
 
     structure Int31 =
       struct
@@ -251,12 +253,14 @@ structure InlineT =
 
     structure PolyArray =
       struct
+ 	val newArray0 : unit -> 'a array = InLine.newArray0
         val array     : int * 'a -> 'a array = InLine.mkarray 
         val length    : 'a array -> int = InLine.length
         val sub       : 'a array * int -> 'a = InLine.arrSub
         val chkSub    : 'a array * int -> 'a = InLine.arrChkSub
         val update    : 'a array * int * 'a -> unit = InLine.arrUpdate
         val chkUpdate : 'a array * int * 'a -> unit = InLine.arrChkUpdate
+	val getData   : 'a array -> 'b = InLine.getSeqData
       end
 
     structure PolyVector =
@@ -264,16 +268,19 @@ structure InlineT =
         val length    : 'a vector -> int = InLine.length 
         val sub       : 'a vector * int -> 'a = InLine.vecSub
         val chkSub    : 'a vector * int -> 'a = InLine.vecChkSub
+	val getData   : 'a vector -> 'b = InLine.getSeqData
       end
 
   (* The type of this ought to be float64array *)
     structure Real64Array =
       struct
+ 	val newArray0 : unit -> Assembly.A.real64array = InLine.newArray0
         val length    : Assembly.A.real64array -> int = InLine.length
         val sub       : Assembly.A.real64array * int -> real = InLine.f64Sub
         val chkSub    : Assembly.A.real64array * int -> real = InLine.f64chkSub
         val update    : Assembly.A.real64array * int * real -> unit = InLine.f64Update
         val chkUpdate : Assembly.A.real64array * int * real -> unit = InLine.f64chkUpdate
+	val getData   : Assembly.A.real64array -> 'b = InLine.getSeqData
       end
 
   (** NOTE: we are currently using polymorphic vectors to implement the Real64Vector
@@ -284,11 +291,13 @@ structure InlineT =
         val length    : real vector -> int = InLine.length 
         val sub       : real vector * int -> real = InLine.vecSub
         val chkSub    : real vector * int -> real = InLine.vecChkSub
+	val getData   : real vector -> 'b = InLine.getSeqData
       end
 
     structure Word8Array =
       struct
 	type array = Assembly.A.word8array
+ 	val newArray0 : unit -> array = InLine.newArray0
         val length    : array -> int = InLine.length
     (* BUG: using "ordof" for W8A.sub is dangerous, because ordof is
      (technically) fetching from immutable things.  A fancy optimizer might
@@ -297,6 +306,7 @@ structure InlineT =
         val chkSub    : array * int -> word8 = InLine.inlbyteof
         val update    : array * int * word8 -> unit = InLine.store
         val chkUpdate : array * int * word8 -> unit = InLine.inlstore
+	val getData   : array -> 'a = InLine.getSeqData
       end
 
     structure Word8Vector =
@@ -316,6 +326,7 @@ structure InlineT =
         val sub       : vector * int -> word8 = InLine.ordof
         val chkSub    : vector * int -> word8 = InLine.inlordof
         val update    : vector * int * word8 -> unit = InLine.store
+	val getData   : vector -> 'a = InLine.getSeqData
       end
 
     structure CharArray =
@@ -323,11 +334,11 @@ structure InlineT =
 	local
 	  structure A :> sig
 	      eqtype array
-	      val array0 : array
+	      val newArray0 : unit -> array
 	      val create : int -> array
 	    end = struct
 	      type array = Assembly.A.word8array
-	      val array0 = Assembly.word8array0
+	      val newArray0 : unit -> array = InLine.newArray0
 	      val create = Assembly.A.create_b
 	    end
 	in
@@ -338,6 +349,7 @@ structure InlineT =
 	val chkUpdate : (array * int * char) -> unit = InLine.inlstore
 	val sub       : (array * int) -> char = InLine.ordof
 	val update    : (array * int * char) -> unit = InLine.store
+	val getData   : array -> 'a = InLine.getSeqData
       end
 
     structure CharVector =
@@ -346,6 +358,7 @@ structure InlineT =
 	val chkSub    : (string * int) -> char		= InLine.inlordof
 	val sub       : (string * int) -> char		= InLine.ordof
 	val update    : (string * int * char) -> unit	= InLine.store
+	val getData   : string -> 'a = InLine.getSeqData
       end
 
     structure DfltInt  = Int31
@@ -355,5 +368,17 @@ structure InlineT =
   end  (* structure InlineT *)
 
 (*
- * $Log$
+ * $Log: built-in.sml,v $
+ * Revision 1.4  1998/11/23 20:10:04  jhr
+ *   New raw64Subscript primop.
+ *
+ * Revision 1.3  1998/11/18 03:54:18  jhr
+ *  New array representations.
+ *
+ * Revision 1.2  1998/10/28 18:24:48  jhr
+ *   New primops to support new array representation.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:05  george
+ * Version 110.5
+ *
  *)

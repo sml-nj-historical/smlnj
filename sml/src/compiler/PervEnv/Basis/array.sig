@@ -14,7 +14,6 @@ signature ARRAY =
     val array    : int * 'a -> 'a array
     val tabulate : int * (int -> 'a) -> 'a array
     val fromList : 'a list -> 'a array
-    val array0   : 'a array
 
     val length   : 'a array -> int
     val sub      : 'a array * int -> 'a
@@ -43,5 +42,11 @@ signature ARRAY =
   end
 
 (*
- * $Log$
+ * $Log: array.sig,v $
+ * Revision 1.2  1998/11/18 03:54:09  jhr
+ *  New array representations.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:03  george
+ * Version 110.5
+ *
  *)

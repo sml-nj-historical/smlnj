@@ -245,6 +245,9 @@ structure String : STRING =
 
 (*
  * $Log: string.sml,v $
+ * Revision 1.2  1998/07/31 15:00:26  jhr
+ *   SML'97 basis compliance changes.
+ *
  * Revision 1.1.1.1  1998/04/08 18:40:04  george
  * Version 110.5
  *
