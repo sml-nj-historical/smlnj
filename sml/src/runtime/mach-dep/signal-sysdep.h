@@ -502,6 +502,14 @@ extern Addr_t *ML_X86Frame;   /* used to get at limitptr */
 #  elif defined(OPSYS_WIN32)
 #    define SIG_ZeroLimitPtr()		{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
 
+#  elif defined(OPSYS_CYGWIN)
+
+     typedef void SigReturn_t;
+#    define SIG_FAULT1		SIGFPE
+#    define SIG_FAULT2		SIGSEGV
+#    define INT_DIVZERO(s, c)	((s) == SIGFPE)
+#    define SIG_ZeroLimitPtr(scp)  { ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+
 #  else
 #    error "unknown OPSYS for x86"
 #  endif

@@ -627,7 +627,7 @@ ENTRY(FPEEnable)
 	ADD_L(CONST(4), ESP)
 	RET
 
-#if (defined(OPSYS_LINUX) || defined(OPSYS_SOLARIS))
+#if (defined(OPSYS_LINUX) || defined(OPSYS_CYGWIN) || defined(OPSYS_SOLARIS))
 ENTRY(fegetround)
 	SUB_L(CONST(4), ESP)	/* allocate temporary space */
 	FSTCW(REGIND(ESP))	/* store fp control word */

@@ -12,6 +12,11 @@
 #include "cfun-proto-list.h"
 #include "sock-util.h"
 
+#if defined(__CYGWIN32__)
+#undef getnetbyname
+#define getnetbyname(x) NULL
+#endif
+
 /* _ml_NetDB_getnetbyname : string -> (string * string list * addr_family * sysword) option
  */
 ml_val_t _ml_NetDB_getnetbyname (ml_state_t *msp, ml_val_t arg)

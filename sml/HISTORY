@@ -13,6 +13,27 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2003/05/16 13:05:00 CDT
+Tag: leunga-20030516-cygwin-runtime
+Description:
+
+    Ported the runtime system to cygwin, which uses the unix 
+x86-unix bin files.  Missing/buggy features:
+
+   o getnetbyname, getnetbyaddr: these functions seem to be missing in 
+     the Cygwin library.
+   o Ctrl-C handling may be flaky.
+   o Windows system calls and Windows I/O are not supported.
+
+   A new set of binfiles is located at:
+
+     http://www.dorsai.org/~leunga/boot.x86-unix.tgz
+
+   This is only needed for bootstrapping the cygwin version of smlnj.
+   Other x86 versions can use the existing binfiles.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2003/04/08 15:42:00 CDT
 Tag: blume-20030408-listpair

@@ -95,7 +95,7 @@
 #define INCLUDE_FCNTL_H		<sys/fcntl.h>
 #endif
 
-#if defined(OPSYS_OSF1) || defined(OPSYS_DUNIX) || defined(OPSYS_AIX) || defined(OPSYS_LINUX) || defined(OPSYS_MKLINUX) || defined(OPSYS_FREEBSD) || defined(OPSYS_NETBSD)
+#if defined(OPSYS_OSF1) || defined(OPSYS_DUNIX) || defined(OPSYS_AIX) || defined(OPSYS_LINUX) || defined(OPSYS_MKLINUX) || defined(OPSYS_FREEBSD) || defined(OPSYS_NETBSD) || defined(OPSYS_CYGWIN)
 #  define INCLUDE_DIRENT_H	<dirent.h>
 #elif defined(OPSYS_MACH)
 #  define INCLUDE_DIRENT_H	<sys/dir.h>
@@ -318,6 +318,20 @@ extern char     *sys_errlist[];
 #  define HAS_ILOGB
 #  define HAS_SIGCONTEXT
 #  define HAS_STRERROR
+
+#elif (defined(TARGET_X86) && defined(OPSYS_CYGWIN))
+#  define OS_NAME	"Cygwin" 
+#  define HAS_POSIX_LIBRARIES
+#  define HAS_POSIX_SIGS
+#  define HAS_GETRUSAGE
+#  define HAS_SETITIMER
+#  define HAS_MMAP
+#  define HAS_PARTIAL_MUNMAP
+#  define HAS_SELECT
+#  define HAS_SIGCONTEXT
+#  define HAS_STRERROR
+
+#include <features.h>
 
 #endif
 

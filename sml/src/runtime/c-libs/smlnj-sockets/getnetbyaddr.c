@@ -13,6 +13,11 @@
 #include "cfun-proto-list.h"
 #include "sock-util.h"
 
+#if defined(__CYGWIN32__)
+#undef getnetbyaddr
+#define getnetbyaddr(x,y) NULL
+#endif
+
 /* _ml_NetDB_getnetbyaddr
  *     : (sysword * addr_family) -> (string * string list * addr_family * sysword) option
  */

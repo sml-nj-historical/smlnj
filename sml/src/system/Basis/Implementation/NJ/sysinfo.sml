@@ -31,7 +31,7 @@ structure SysInfo : SYS_INFO =
     fun getOSName () = getInfoStr(sysInfo "OS_NAME")
     fun getOSKind () = (case (getOSName())
 	   of ("SunOS"|"Solaris"|"Irix"|"OSF/1"|"AIX"|"SVR4"|"NeXTStep"|
-	       "Ultrix"|"HPUX"|"Linux"|"BSD"|"PLAN9"|"MACH" |"Darwin"
+	       "Ultrix"|"HPUX"|"Linux"|"BSD"|"PLAN9"|"MACH" |"Darwin" |"Cygwin"
 	      ) => UNIX
 	    | "OS/2" => OS2
 	    | "Win32" => WIN32

@@ -72,7 +72,11 @@ extern int restoreregs (ml_state_t *msp);
 
 /* RunML:
  */
+#if defined(__CYGWIN32__)
+void SystemRunML (ml_state_t *msp)
+#else
 void RunML (ml_state_t *msp)
+#endif
 {
     int		request;
     vproc_state_t *vsp = msp->ml_vproc;

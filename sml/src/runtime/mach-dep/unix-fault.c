@@ -5,6 +5,12 @@
  * Common code for handling arithmetic traps.
  */
 
+#if defined(__CYGWIN32__)
+
+#include "cygwin-fault.c"
+
+#else
+
 #include "ml-unixdep.h"
 #include "signal-sysdep.h"
 #include "ml-base.h"
@@ -155,5 +161,7 @@ PVT int SIG_GetCode (SigInfo_t code, SigContext_t *scp)
     return FPInfo.trap;
 
 } /* end of SIG_GetCode */
+
+#endif
 
 #endif

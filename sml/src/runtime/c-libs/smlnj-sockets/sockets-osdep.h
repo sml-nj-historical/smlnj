@@ -38,7 +38,7 @@ typedef void *sockoptval_t;	/* The pointer type used to pass values to */
 #    define INCLUDE_RPCENT_H	<rpc/rpc.h>
 #  endif
 
-#elif defined(OPSYS_WIN32)
+#elif defined(OPSYS_WIN32) || defined(OPSYS_CYGWIN)
 #  include <winsock.h>
 
 typedef char *sockoptval_t;	/* The pointer type used to pass values to */

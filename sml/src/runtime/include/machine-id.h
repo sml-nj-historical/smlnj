@@ -62,6 +62,8 @@
 #    define OPSYS_ID	"solaris"
 #  elif (defined(OPSYS_SUNOS))
 #    define OPSYS_ID	"sunos"
+#  elif (defined(OPSYS_CYGWIN))
+#    define OPSYS_ID    "cygwin"
 #  else
 #    define OPSYS_ID	"unix"
 #  endif

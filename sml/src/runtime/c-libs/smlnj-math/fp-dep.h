@@ -95,7 +95,7 @@ typedef int fe_rnd_mode_t;
 #  define fegetround()		fpgetround()
 #  define fesetround(RM)	fpsetround(RM)
 
-#elif (defined(OPSYS_LINUX)  || defined(OPSYS_WIN32))
+#elif (defined(OPSYS_LINUX)  || defined(OPSYS_WIN32) || defined(OPSYS_CYGWIN))
 /** Linux doesn't provide an API for controlling the rounding modes, so
  ** we've got to do it by hand.
  ** Win32 can set (some) alternate math paramters, but then only by re-linking

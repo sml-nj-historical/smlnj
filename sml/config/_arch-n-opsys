@@ -124,6 +124,16 @@ case `uname -s` in
       *) exit 1;;
     esac
     ;;
+  CYGWIN_NT*)
+    OPSYS=cygwin
+    case `uname -m` in
+       i386) ARCH=x86;;
+       i486) ARCH=x86;;
+       i586) ARCH=x86;;
+       i686) ARCH=x86;;
+       *) exit 1;;
+    esac
+    ;;
   *) exit 1;;
 esac
 
