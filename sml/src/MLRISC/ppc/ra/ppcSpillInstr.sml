@@ -44,7 +44,7 @@ functor PPCSpillInstr(Instr : PPCINSTR) : ARCH_SPILL_INSTR = struct
 
   fun spillF (instr, reg, ea) = let
 	val newR = C.newFreg()
-	val instr' = Rewrite.rewriteDef(instr, reg, newR)
+	val instr' = Rewrite.frewriteDef(instr, reg, newR)
       in 
 	  {code=[instr', storeToEA CB.FP (newR, ea)],
 	   proh=[newR],
@@ -63,7 +63,7 @@ functor PPCSpillInstr(Instr : PPCINSTR) : ARCH_SPILL_INSTR = struct
 
   fun reloadF(instr, reg, ea) = let
     val newR = C.newFreg()
-    val instr' = Rewrite.rewriteUse(instr, reg, newR)
+    val instr' = Rewrite.frewriteUse(instr, reg, newR)
   in
       {code=[loadFromEA CB.FP (newR, ea), instr'],
        proh=[newR],

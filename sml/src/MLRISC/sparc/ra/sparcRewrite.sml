@@ -80,7 +80,7 @@ struct
       (*esac*))
    in
 	 case instr
-	 of I.ANNOTATION{i, ...} => rewriteDef(instr, rs, rt)
+	 of I.ANNOTATION{i, ...} => rewriteDef(i, rs, rt)
 	  | I.KILL{regs, spilled} => 
 	      I.KILL{regs=C.addReg(rt, C.rmvReg(rs, regs)), spilled=spilled}
 	  | I.INSTR(i) => I.INSTR(sparcDef(i))
@@ -112,7 +112,7 @@ struct
      (*esac*))
    in
 	case instr
-	of I.ANNOTATION{i, ...} => frewriteUse(instr, rs, rt)
+	of I.ANNOTATION{i, ...} => frewriteUse(i, rs, rt)
 	 | I.INSTR(i) => I.INSTR(sparcUse(i))
 	 | I.LIVE{regs, spilled} => 
 	     I.LIVE{regs=C.addFreg(rt, C.rmvFreg(rs, regs)), spilled=spilled}
@@ -145,7 +145,7 @@ struct
      (*esac*))
   in
 	case instr
-	of I.ANNOTATION{i, ...} => frewriteDef(instr, rs, rt)
+	of I.ANNOTATION{i, ...} => frewriteDef(i, rs, rt)
          | I.KILL{regs, spilled} => 
 	     I.KILL{regs=C.addFreg(rt, C.rmvFreg(rs, regs)), spilled=spilled}
 	 | I.INSTR(i) => I.INSTR(sparcDef(i))

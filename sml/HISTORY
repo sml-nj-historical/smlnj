@@ -14,6 +14,19 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/12/12 16:25:00 EST
+Tag: blume-20021212-risc-ra
+Description:
+
+Fixed a serious bug in the rewrite code for FP spilling/reloading that
+sent the RA into an infinite loop when floating point registers get
+spilled.  (Because of this bug, e.g., nucleic stopped compiling between
+110.37 and 110.38.)
+There was another set of potential problems related to the handling of
+MLRISC annotations (but those did not yet cause real problems, apparently).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/12/06 22:40:00 EST
 Tag: blume-20021206-cm-fileid
 Description:

@@ -44,7 +44,7 @@ functor AlphaSpillInstr(Instr : ALPHAINSTR) : ARCH_SPILL_INSTR = struct
 
   fun spillF (instr, reg, spillLoc) = let
     val newR = C.newFreg()
-    val instr' = Rewrite.rewriteDef(instr, reg, newR)
+    val instr' = Rewrite.frewriteDef(instr, reg, newR)
   in 
       {code=[instr', storeAtEA CB.FP (newR, spillLoc)],
        proh=[newR],
@@ -63,7 +63,7 @@ functor AlphaSpillInstr(Instr : ALPHAINSTR) : ARCH_SPILL_INSTR = struct
 
   fun reloadF(instr, reg, spillLoc) = let
     val newR = C.newFreg()
-    val instr' = Rewrite.rewriteUse(instr, reg, newR)
+    val instr' = Rewrite.frewriteUse(instr, reg, newR)
   in
       {code=[loadFromEA CB.FP (newR, spillLoc), instr'],
        proh=[newR],

@@ -121,7 +121,7 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
     end
   in
     case instr
-    of I.ANNOTATION{i, ...} => frewriteUse(instr, fs, ft)
+    of I.ANNOTATION{i, ...} => frewriteUse(i, fs, ft)
      | I.LIVE{regs, spilled} => I.LIVE{regs=C.addFreg(ft, C.rmvFreg(fs, regs)),
 					spilled=spilled}
      | I.COPY{k as CB.FP, sz, dst, src, tmp} => 
