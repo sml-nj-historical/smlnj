@@ -603,20 +603,39 @@ fun AdvanceTok () : unit = let
 		| ch => onechar(ch)
 	in NextTok := makeTok()
 	end
-	| 2 => NextTok :=
-	     (case skipws()
-		 of #"(" => let
-			fun GetAct (lpct,x) = (case getch(!LexBuf)
-			       of #"(" => GetAct (lpct+1, #"("::x)
-				| #")" => if lpct = 0 then (implode (rev x))
-					 	      else GetAct(lpct-1, #")"::x)
-				| y => GetAct(lpct,y::x)
-			      (* end case *))
-			in ACTION (GetAct (0,nil))
-			end
-		 | #";" => SEMI
-		 | c => (prSynErr ("invalid character " ^ String.str c)))
-	| _ => raise LexError
+        | 2 => NextTok :=
+               (case skipws() of
+                  #"(" =>
+                  let
+                    fun loop_to_end (backslash, x) =
+                      let
+                        val c    = getch (! LexBuf)
+                        val notb = not backslash
+                        val nstr = c :: x
+                      in
+                        case c of
+                          #"\"" => if notb then nstr
+                                   else loop_to_end (false, nstr)
+                        | _ => loop_to_end (c = #"\\" andalso notb, nstr)
+                      end
+                    fun GetAct (lpct, x) =
+                      let
+                        val c    = getch (! LexBuf)
+                        val nstr = c :: x
+                      in
+                        case c of
+                          #"\"" => GetAct (lpct, loop_to_end (false, nstr))
+                        | #"(" => GetAct (lpct + 1, nstr)
+                        | #")" => if lpct = 0 then implode (rev x)
+                                  else GetAct(lpct - 1, nstr)
+                        | _ => GetAct(lpct, nstr)
+                      end
+                  in
+                    ACTION (GetAct (0,nil))
+                  end
+                | #";" => SEMI
+                | c => (prSynErr ("invalid character " ^ String.str c)))
+        | _ => raise LexError
 end
 handle eof => NextTok := EOF ;
 
