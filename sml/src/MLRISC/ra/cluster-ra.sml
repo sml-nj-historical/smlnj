@@ -109,10 +109,8 @@ struct
            (* blocks indexed by block id *)
        val blockTable = A.array(N, (#new_id graph (), dummyBlock))
 
-       fun fillBlockTable [] = ()
-         | fillBlockTable((b as (nid, _))::blocks) =
-             (UA.update(blockTable, nid, b); fillBlockTable blocks)
-       val _ = fillBlockTable blocks
+       (* fill block table *)
+       val _ = List.app (fn b as (nid, _) => Array.update(blockTable, nid, b)) blocks
 
        val EXIT = (case #exits graph () of [e] => e | _ => error "EXIT")
 

@@ -13,6 +13,23 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/02/06 13:55:02 EST
+Tag: george-20020206-ra-breakup
+Description:
+
+1. A bug fix from Allen.
+
+    A typo causes extra fstp %st(0)'s to be generated at compensation
+    edges, which might cause stack underflow traps at runtime.  This
+    occurs in fft where there are extraneous fstps right before the 'into'
+    trap instruction (in this case they are harmless since none of the
+    integers overflow.)
+
+2. Plugged out various utility modules that were embedded in the modules
+   of the register allocator. I need these modules for other purposes, but
+   they are not complete enough to put into a library just yet.
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/01/31 16:05:00 EST
 Tag: blume-20020131-sparc-ccalls
@@ -633,7 +650,6 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
->>>>>>> 1.169
 Date: 2001/09/18 15:35:00 EDT
 Tag: blume-20010918-readme11036
 Description:

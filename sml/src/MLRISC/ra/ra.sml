@@ -200,7 +200,7 @@ struct
                    (Core.initWorkLists G) {moves=moves} 
            in  logGraph("build",G);
                if debug then
-               let val G.GRAPH{bitMatrix=ref(G.BM{elems, ...}), ...} = G
+               let val G.GRAPH{bitMatrix=ref(G.BM.BM{elems, ...}), ...} = G
                in  print ("done: nodes="^i2s(IntHashTable.numItems nodes)^ 
                           " edges="^i2s(!elems)^
                           " moves="^i2s(length moves)^

@@ -77,6 +77,8 @@ Library
 	structure PseudoOpsBasisTyp
 	structure RACore
 	structure RAGraph
+	structure RaPriQueue
+	structure RaBitmatrix
 	functor BBSched2
 	functor BackPatch
 	functor BuildFlowgraph
@@ -217,6 +219,10 @@ is
 	../ra/liveness.sml
         ../ra/chaitin-spillheur.sml
         ../ra/chow-hennessy-spillheur.sml
+ 	../ra/raBitmatrix.sml
+	../ra/ra-bitmatrix.sig
+	../ra/ra-priqueue.sig
+	../ra/raPriQueue.sml
         ../ra/ra-graph.sig
         ../ra/ra-graph.sml
         ../ra/ra-core.sig
@@ -230,7 +236,6 @@ is
         ../ra/ra.sig
         ../ra/ra.sml
 	../ra/ra-deadCodeE.sml
-	../ra/ra-priqueue.sig
 	../ra/mem-ra.sml
 	../ra/region-based-ra.sml
 	../ra/risc-ra.sml

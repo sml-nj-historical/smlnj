@@ -7,23 +7,12 @@
 signature RA_GRAPH = 
 sig
 
-   structure C : CELLS_BASIS
-
+  structure C : CELLS_BASIS
+  structure BM : RA_BITMATRIX = RaBitmatrix
   (*
    * The following are the data structures used in the register allocator.
    *)
-
-  (* A new bit matrix datatype.
-   * We use the small representation whenever possible to save space.
-   *)
-  datatype bitMatrix = BM of {table:hashTable, 
-                              elems:int ref,
-                              edges:int}
-  and hashTable = SMALL of word list Array.array ref * word
-                | LARGE of bucket Array.array ref * word
-             (* | BITMATRIX of Word8Array.array *)
-  and bucket = NIL | B of int * int * bucket 
-
+  
   exception Nodes
 
   type priority = int     
@@ -57,7 +46,7 @@ sig
 
   datatype interferenceGraph = 
      GRAPH of 
-     { bitMatrix    : bitMatrix ref,
+     { bitMatrix    : BM.bitMatrix ref,
        nodes        : node IntHashTable.hash_table,
        K            : int,
        firstPseudoR : int,
@@ -161,7 +150,7 @@ sig
   and trailInfo = END | UNDO of node * moveStatus ref * trailInfo
 
   (* Create a new bitMatrix *)
-  val newBitMatrix : {edges : int, maxRegs : int} -> bitMatrix
+  val newBitMatrix : {edges : int, maxRegs : int} -> BM.bitMatrix
 
   (* Create a new interference graph *)
   val newGraph : { nodes        : node IntHashTable.hash_table,

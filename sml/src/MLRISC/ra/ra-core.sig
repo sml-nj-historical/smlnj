@@ -9,12 +9,7 @@ signature RA_CORE =
 sig
 
    structure G  : RA_GRAPH = RAGraph
-   structure BM :
-   sig 
-      val size   : G.bitMatrix -> int
-      val member : G.bitMatrix -> int * int -> bool
-      val add    : G.bitMatrix -> int * int -> bool
-   end
+   structure BM : RA_BITMATRIX
    structure MV : RA_PRIORITY_QUEUE where type elem = G.move
    structure FZ : RA_PRIORITY_QUEUE where type elem = G.node
 

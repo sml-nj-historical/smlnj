@@ -26,10 +26,10 @@ end
 
 
 functor X86CompInstrExt
-  (structure I : X86INSTR
-   structure TS  : MLTREE_STREAM
+  ( structure I : X86INSTR
+    structure TS  : MLTREE_STREAM
 		   where T = I.T
-   structure CFG : CONTROL_FLOW_GRAPH 
+    structure CFG : CONTROL_FLOW_GRAPH 
 		   where P = TS.S.P
 		     and I = I
    ) : X86COMP_INSTR_EXT = 

@@ -119,241 +119,12 @@ struct
 
   in
 
-  (*
-   * Bit Matrix routines
-   *)
-  structure BM = 
-  struct
-     fun hashFun(i, j, shift, size) = 
-     let val i    = W.fromInt i
-         val j    = W.fromInt j
-         val h    = W.+(W.<<(i, shift), W.+(i, j))
-         val mask = W.-(W.fromInt size, 0w1)
-     in  W.toIntX(W.andb(h, mask)) end
-
-     val empty = BM{table=SMALL(ref(A.array(0, [])), 0w0), elems=ref 0, edges=0}
-
-     (*
-     val indices = A.array(1024,0)
-
-     fun init(i,j) =
-         if i < 1024 then
-            (A.update(indices, i, j); init(i+1, i+j+1))
-         else ()
-
-     val _ = init(0, 0)
-      *)
-     fun size (BM{elems, ...}) = !elems
-
-     fun edges(BM{table=SMALL(ref table, _), ...}) = A.length table
-       | edges(BM{table=LARGE(ref table, _), ...}) = A.length table
-     (*| edges(BM{table=BITMATRIX _, edges, ...}) = edges *)
-
-     fun member(BM{table=SMALL(table, shift), ...}) =
-         (fn (i, j) => 
-          let val (i,j) = if i < j then (i, j) else (j, i)
-              val k = W.+(W.<<(W.fromInt i, 0w15), W.fromInt j)
-              fun find [] = false
-                | find(k'::b) = k = k' orelse find b
-              val tab = !table
-          in  find(UA.sub(tab, hashFun(i, j, shift, A.length tab))) end
-         )
-       | member(BM{table=LARGE(table, shift), ...}) =
-         (fn (i, j) => 
-          let val (i,j) = if i < j then (i, j) else (j, i)
-              fun find NIL = false
-                | find(B(i',j',b)) = i = i' andalso j = j' orelse find b
-              val tab = !table
-          in  find(UA.sub(tab, hashFun(i, j, shift, A.length tab))) end
-         )
-       (*
-       | member(BM{table=BITMATRIX table, ...}) =
-         (fn (i, j) => 
-          let val (i,j) = if i > j then (i, j) else (j, i)
-              val bit   = W.fromInt(UA.sub(indices, i) + j)
-              val index = W.toIntX(W.>>(bit, 0w3))
-              val mask  = W.<<(0w1, W.andb(bit, 0w7))
-          in  W.andb(W.fromInt(W8.toInt(UW8A.sub(table, index))), mask) <> 0w0 
-          end
-         )
-        *)
-
-     fun add (BM{table=SMALL(table, shift), elems, ...}) =
-         let fun insert(i, j) =
-             let val (i,j) = if i < j then (i, j) else (j, i)
-                 val tab = !table
-                 val len = A.length tab
-             in  if !elems < len then
-                 let val index = hashFun(i, j, shift, len)
-                     val k = W.+(W.<<(W.fromInt i, 0w15), W.fromInt j)
-                     fun find [] = false
-                       | find(k'::b) = k = k' orelse find b
-                     val b = UA.sub(tab, index)
-                 in  if find b then false
-                     else (UA.update(tab, index, k::b); 
-                           elems := !elems + 1; true)
-                 end
-                 else (* grow table *)
-                 let val oldTable = tab
-                     val oldSize  = A.length oldTable
-                     val newSize  = oldSize + oldSize
-                     val newTable = A.array(newSize,[])
-                     fun enter n =
-                     if n < oldSize then
-                     let fun loop([],a,b) = 
-                               (UA.update(newTable, n, a);
-                                UA.update(newTable, n + oldSize, b);
-                                enter(n+1))
-                           | loop(k::l,a,b) =
-                             let val i = W.toIntX(W.>>(k, 0w15))  
-                                 val j = W.toIntX(W.-(k,W.<<(W.fromInt i, 0w15)))
-                             in  if hashFun(i, j, shift, newSize) = n 
-                                 then loop(l, k::a, b)
-                                 else loop(l, a, k::b)
-                             end
-                     in  loop(UA.sub(oldTable, n), [], []) end
-                     else ()
-                 in  table := newTable;
-                     enter 0; 
-                     insert(i, j)
-                 end 
-             end
-         in  insert
-         end
-       | add (BM{table=LARGE(table, shift), elems, ...}) =
-         let fun insert(i, j) =
-             let val (i,j) = if i < j then (i, j) else (j, i)
-                 val tab = !table
-                 val len = A.length tab
-             in  if !elems < len then
-                 let val index = hashFun(i, j, shift, len)
-                     fun find NIL = false
-                       | find(B(i',j',b)) = i = i' andalso j = j' orelse find b
-                     val b = UA.sub(tab, index)
-                 in  if find b then false
-                     else (UA.update(tab, index, B(i,j,b)); 
-                           elems := !elems + 1; true)
-                 end
-                 else (* grow table *)
-                 let val oldTable = tab
-                     val oldSize  = A.length oldTable
-                     val newSize  = oldSize + oldSize
-                     val newTable = A.array(newSize,NIL)
-                     fun enter n =
-                     if n < oldSize then
-                     let fun loop(NIL,a,b) = 
-                               (UA.update(newTable, n, a);
-                                UA.update(newTable, n + oldSize, b);
-                                enter(n+1))
-                           | loop(B(i,j,l),a,b) =
-                                if hashFun(i, j, shift, newSize) = n 
-                                then loop(l, B(i,j,a), b)
-                                else loop(l, a, B(i,j,b))
-                     in  loop(UA.sub(oldTable, n), NIL, NIL) end
-                     else ()
-                 in  table := newTable;
-                     enter 0; 
-                     insert(i, j)
-                 end 
-             end
-         in  insert
-         end
-       (*
-       | add(BM{table=BITMATRIX table, ...}) =
-         (fn (i, j) =>
-          let val (i,j) = if i > j then (i, j) else (j, i)
-              val bit   = W.fromInt(UA.sub(indices, i) + j)
-              val index = W.toIntX(W.>>(bit, 0w3))
-              val mask  = W.<<(0w1, W.andb(bit, 0w7))
-              val value = W.fromInt(W8.toInt(UW8A.sub(table, index)))
-          in  if W.andb(value, mask) <> 0w0 then false
-              else (UW8A.update(table, index, 
-                      W8.fromInt(W.toIntX(W.orb(value, mask)))); true) 
-          end
-         )
-        *)
-
-     fun delete (BM{table=SMALL(table, shift), elems, ...}) =
-         (fn (i,j) =>
-          let val k = W.+(W.<<(W.fromInt i, 0w15), W.fromInt j)
-              fun find [] = []
-                | find(k'::b) =
-                  if k = k' then (elems := !elems - 1; b) else find b
-              val tab = !table
-              val index = hashFun(i, j, shift, A.length tab)
-              val n = !elems
-          in  UA.update(tab, index, find(UA.sub(tab, index)));
-              !elems <> n
-          end
-         )
-       | delete (BM{table=LARGE(table, shift), elems, ...}) =
-         (fn (i,j) =>
-          let fun find NIL = NIL
-                | find(B(i', j', b)) =
-                  if i = i' andalso j = j' then (elems := !elems - 1; b)
-                  else B(i', j', find b)
-              val tab = !table
-              val index = hashFun(i, j, shift, A.length tab)
-              val n = !elems
-          in  UA.update(tab, index, find(UA.sub(tab, index)));
-              !elems <> n
-          end
-         )
-     (*
-       | delete(BM{table=BITMATRIX table, ...}) =
-         (fn (i, j) =>
-          let val (i,j) = if i > j then (i, j) else (j, i)
-              val bit   = W.fromInt(UA.sub(indices, i) + j)
-              val index = W.toIntX(W.>>(bit, 0w3))
-              val mask  = W.-(W.<<(0w1, W.andb(bit, 0w7)), 0w1)
-              val value = W.fromInt(W8.toInt(UW8A.sub(table, index)))
-          in  if W.andb(value, mask) = 0w0 then false
-              else (UW8A.update(table, index, 
-                            W8.fromInt(W.toIntX(W.andb(value,W.notb mask)))); 
-                    true) 
-          end
-         )
-      *)
-  end
     
-
-  (*
-   * Priority Queue.  Let's hope the compiler will inline it for performance
-   *)
-  functor PriQueue(type elem val less : elem * elem -> bool) =
-  struct
-
-                       
-   (* A leftist tree is a binary tree with priority ordering
-    * with the invariant that the left branch is always the taller one         
-    *)
-   type elem = elem
-   datatype pri_queue = TREE of elem * int * pri_queue * pri_queue | EMPTY
-
-   fun merge'(EMPTY, EMPTY) = (EMPTY, 0)
-     | merge'(EMPTY, a as TREE(_, d, _, _)) = (a, d)
-     | merge'(a as TREE(_, d, _, _), EMPTY) = (a, d)
-     | merge'(a as TREE(x, d, l, r), b as TREE(y, d', l', r')) =
-       let val (root, l, r1, r2) = 
-               if less(x, y) then (x, l, r, b) else (y, l', r', a) 
-           val (r, d_r) = merge'(r1, r2)
-           val d_l = case l of EMPTY => 0 | TREE(_, d, _, _) => d 
-           val (l, r, d_t) = if d_l >= d_r then (l, r, d_l+1) else (r, l, d_r+1)
-       in  (TREE(root, d_t, l, r), d_t) end
-
-   fun merge(a, b) = #1(merge'(a, b))
-
-   fun add (x, EMPTY) =  TREE(x, 1, EMPTY, EMPTY)
-     | add (x, b as TREE(y, d', l', r')) = 
-       if less(x,y) then TREE(x, d'+1, b, EMPTY)
-       else #1(merge'(TREE(x, 1, EMPTY, EMPTY), b))
-  end
-
-  structure FZ = PriQueue
+  structure FZ = RaPriQueue
      (type elem=node 
       fun less(NODE{movecost=ref p1,...}, NODE{movecost=ref p2,...}) = p1 <= p2
      )
-  structure MV = PriQueue
+  structure MV = RaPriQueue
      (type elem=G.move 
       fun less(MV{cost=p1,...}, MV{cost=p2,...}) = p1 >= p2
      )
@@ -426,68 +197,54 @@ struct
    * Function to create new nodes.
    * Note: it is up to the caller to remove all dedicated registers.
    *)
-  fun newNodes(G.GRAPH{nodes, firstPseudoR,  ...}) =
-  let val getnode = IntHashTable.lookup nodes
+  fun newNodes (G.GRAPH{nodes, firstPseudoR,  ...}) = let
+      val getnode = IntHashTable.lookup nodes
       val addnode = IntHashTable.insert nodes
 
       fun colorOf(C.CELL{col=ref(C.MACHINE r), ...}) = r
-        | colorOf(C.CELL{id, ...}) = id
+	| colorOf(C.CELL{id, ...}) = id
 
-      fun defUse{defs, uses, pt, cost} =
-      let  fun def cell =
-           let val reg = colorOf cell
-           in  let val node as NODE{pri, defs,...} = getnode reg
-               in  pri := !pri + cost;(* increment the priority by the cost *)
-                   defs := pt :: !defs;
-                   node
-               end
-               handle _ =>
-               let val C.CELL{col, ...} = cell
-                   val col = case !col of
-                               C.MACHINE r => COLORED r
-                             | C.PSEUDO    => PSEUDO
-                             | C.ALIASED _ => error "newNodes.def ALIASED"
-                             | C.SPILLED   => error "newNodes.def SPILLED"
-                   val node = 
-                       NODE{number=reg,
-                            cell=cell, color=ref col, degree=ref 0,
-                            adj=ref [], movecnt=ref 0, movelist = ref [],
-                            movecost=ref 0, (* pair=false, *) pri=ref cost, 
-                            defs=ref [pt], uses=ref []}
-               in addnode(reg, node); node
-               end
-           end
-           fun use cell =
-           let val reg = colorOf cell
-           in  let val node as NODE{pri, uses,...} = getnode reg
-               in  pri := !pri + cost; (* increment the priority by the cost *)
-                   uses := pt :: !uses
-               end
-               handle _ =>
-               let val C.CELL{col, ...} = cell
-                   val col = case !col of
-                               C.MACHINE r => COLORED r
-                             | C.PSEUDO    => PSEUDO
-                             | C.ALIASED _ => error "newNodes.use ALIASED"
-                             | C.SPILLED   => error "newNodes.use SPILLED"
-                   val node = 
-                       NODE{number=reg, color=ref col, degree=ref 0,
-                            adj=ref [], movecnt=ref 0, movelist = ref [],
-                            movecost=ref 0, (* pair=false, *)
-                            pri=ref cost, defs=ref [], uses=ref[pt], cell=cell
-                           }
-               in  addnode(reg, node)
-               end
-           end
-           fun defAll([],ds) = ds | defAll(r::rs,ds) = defAll(rs,def r::ds)
-           fun useAll [] = () | useAll(r::rs) = (use r; useAll rs)
-           val defs = defAll(defs,[])
-           val _    = useAll uses
-      in   defs
+      fun getNode(cell as C.CELL{col, ...}) = 
+	(getnode(colorOf cell))
+	  handle _ => let
+	       val reg = colorOf cell
+	       val col = 
+		 case !col 
+		  of C.MACHINE r => G.COLORED r
+		   | C.PSEUDO    => G.PSEUDO
+		   | C.ALIASED _ => error "getNode: ALIASED"
+		   | C.SPILLED   => error "getNode: SPILLED"
+	       val node = 	         
+		 NODE{number=reg,
+		      cell=cell, color= ref col, degree=ref 0,
+		      adj=ref[], movecnt=ref 0, movelist=ref[],
+		      movecost=ref 0, pri=ref 0, defs=ref[],
+		      uses=ref[]}
+
+	    in addnode(reg, node); node
+	    end
+
+
+      fun defUse{defs, uses, pt, cost} = let
+	   fun def cell = let
+	     val node as NODE{pri, defs, ...} = getNode (cell)
+	   in
+	       pri := !pri + cost;
+	       defs := pt :: !defs;
+	       node
+	   end
+	   fun use cell = let
+	     val node as NODE{pri, uses, ...} = getNode(cell)
+	   in
+	       pri := !pri + cost;
+	       uses := pt :: !uses
+	   end
+      in  
+	  List.app use uses;
+	  List.map def defs     
       end
   in  defUse
   end
-
 
   (*
    * Add an edge (x, y) to the interference graph.
