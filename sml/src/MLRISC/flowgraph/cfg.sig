@@ -14,9 +14,10 @@ sig
    structure P : PSEUDO_OPS 
    structure I : INSTRUCTIONS 
 
-   structure W : FREQ
-   
-   type weight = W.freq
+  (* used to represent frequency of execution; we use reals because some
+   * static prediction methods produce such.
+   *)
+   type weight = real
 
    datatype block_kind = 
        START          (* entry node *)
@@ -119,13 +120,13 @@ sig
    *  Methods for manipulating basic blocks
    *
    *========================================================================*)
-   val newBlock          : int * W.freq ref -> block (* empty *)
-   val newStart          : int * W.freq ref -> block          (* start node *)
-   val newStop           : int * W.freq ref -> block          (* stop node *)
-   val copyBlock         : int * block -> block       (* copy a block *)
-   val defineLabel       : block -> Label.label       (* define a label *)
+   val newBlock          : int * weight ref -> block	(* empty *)
+   val newStart          : int * weight ref -> block	(* start node *)
+   val newStop           : int * weight ref -> block	(* stop node *)
+   val copyBlock         : int * block -> block		(* copy a block *)
+   val defineLabel       : block -> Label.label		(* define a label *)
    val insns             : block -> I.instruction list ref
-   val freq              : block -> W.freq ref
+   val freq              : block -> weight ref
    val branchOf          : edge_info -> bool option
 
                (* emit assembly *)

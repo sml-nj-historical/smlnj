@@ -1,4 +1,7 @@
-(*
+(* ra-graph.sig
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies.
+ *
  * This is the new interference graph used by the new register allocator.
  * 
  * -- Allen
@@ -15,8 +18,8 @@ sig
   
   exception Nodes
 
-  type priority = int     
-  type cost = int         
+  type priority = real
+  type cost = real         
 
   (*
    * The following represent a program point in the program.
@@ -80,7 +83,7 @@ sig
        spillLoc     : int ref,
 
        (* span indexed by node id *)
-       span         : int IntHashTable.hash_table option ref,
+       span         : cost IntHashTable.hash_table option ref,
 
        (* mode *)
        mode         : mode,

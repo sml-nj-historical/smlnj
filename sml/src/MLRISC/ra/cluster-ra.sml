@@ -1,4 +1,7 @@
-(*
+(* cluster-ra.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *
  * This module provides services for the new RA when using the cluster
  * representation.  
  * The algorithm is adapted from
@@ -22,7 +25,6 @@ functor ClusterRA
 struct
    structure CFG    = Flowgraph
    structure I      = CFG.I
-   structure W      = CFG.W
    structure G      = RAGraph
    structure Props  = InsnProps
    structure Core   = RACore
@@ -80,9 +82,7 @@ struct
 
    val annotations = CFG.annotations 
 
-   val dummyBlock =   CFG.newBlock(~1, ref 0)
-
-   fun x + y = Word.toIntX(Word.+(Word.fromInt x, Word.fromInt y))
+   val dummyBlock =   CFG.newBlock(~1, ref 0.0)
 
    val uniq = ListMergeSort.uniqueSort 
                 (fn ({block=b1,insn=i1},{block=b2,insn=i2}) =>
@@ -262,7 +262,7 @@ struct
    
                val useSites = uniq(!uses) 
                val trail    = initialize(v, v', useSites)
-               val span     = foreachUseSite (useSites, 0)
+               val span     = foreachUseSite (useSites, 0.0)
                val _        = cleanup trail
            in  
 	     span
@@ -376,7 +376,7 @@ struct
            val (moves, tmps) = mkNodes(blocks, [], [])
        in  
 	   IntHashTable.appi
-             (let val setSpan =
+             (let val setSpan : (int * real) -> unit =
                   if isOn(mode,Core.COMPUTE_SPAN) then
                   let val spanMap = IntHashTable.mkTable
                                         (IntHashTable.numItems nodes, NotThere)

@@ -1,4 +1,7 @@
-(*
+(* ra-core.sig
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies.
+ *
  * Note: This is the core of the new register allocator, i.e. the portion
  * that manipulates only the interference graph and not the flowgraph.
  *
@@ -38,7 +41,7 @@ sig
     * Function to create new nodes 
     *)
    val newNodes : G.interferenceGraph -> 
-        {cost:int,pt:G.programPoint,defs:G.C.cell list,uses:G.C.cell list} -> 
+        {cost:real,pt:G.programPoint,defs:G.C.cell list,uses:G.C.cell list} -> 
             G.node list (* defs *)
 
    (*
@@ -124,6 +127,6 @@ sig
    (*
     * Compute spill savings due to memory <-> register moves
     *)
-   val moveSavings : G.interferenceGraph -> (int -> int)
+   val moveSavings : G.interferenceGraph -> (int -> real)
 
 end

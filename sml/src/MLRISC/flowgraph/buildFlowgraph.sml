@@ -2,6 +2,7 @@
  *
  * COPYRIGHT (c) 2001 Bell Labs, Lucent Technologies
  *)
+
 signature CONTROL_FLOWGRAPH_GEN =
 sig
 
@@ -20,8 +21,6 @@ sig
    val build : unit -> instrStream
 
 end
-
-
 
 
 functor BuildFlowgraph 
@@ -74,14 +73,14 @@ struct
     val reorder      = ref [] : Annotations.annotations ref
 
     (* noblock or invalid block has id of ~1 *)
-    val noBlock = CFG.newBlock(~1, ref 0)
+    val noBlock = CFG.newBlock(~1, ref 0.0)
 
     (* current block being built up *)
     val currentBlock = ref noBlock
 
 
     (* add a new block and make it the current block being built up *)
-    fun newBlock(freq) = let
+    fun newBlock (freq) = let
       val G.GRAPH graph = !cfg
       val id = #new_id graph ()
       val blk as CFG.BLOCK{annotations, ...} = CFG.newBlock(id, ref freq)
@@ -96,7 +95,7 @@ struct
 
     (* get current basic block *)
     fun getBlock () = 
-     (case !currentBlock of CFG.BLOCK{id= ~1, ...} => newBlock(1) | blk => blk)
+     (case !currentBlock of CFG.BLOCK{id= ~1, ...} => newBlock(1.0) | blk => blk)
 
 
     (* ------------------------cluster---------------------------*)
@@ -145,7 +144,7 @@ struct
       val EXIT = hd(#exits graph ())
 
       fun addEdge(from, to, kind) =
-	#add_edge graph (from, to, CFG.EDGE{k=kind, w=ref 0, a=ref[]})
+	#add_edge graph (from, to, CFG.EDGE{k=kind, w=ref 0.0, a=ref[]})
 
       fun target lab =
 	(case (IntHashTable.find labelMap (hashLabel lab))
@@ -200,19 +199,19 @@ struct
       (* XXX: Bug: EMPTYBLOCK does not really generate an empty block 
        *	but merely terminates the current block. Contradicts the comment
        *  in instructions/mlriscAnnotations.sig.
-       *  It should be (newBlock(1); newBlock(1); ())
+       *  It should be (newBlock(1.0); newBlock(1.0); ())
        *)
 
       (* Add a new annotation *)
       fun addAnnotation a = 
        (case a 
 	 of MLRiscAnnotations.BLOCKNAMES names =>
-	     (blockNames := names;  newBlock(1); ())
-	  | MLRiscAnnotations.EMPTYBLOCK => (newBlock(1); ())
+	     (blockNames := names;  newBlock(1.0); ())
+	  | MLRiscAnnotations.EMPTYBLOCK => (newBlock(1.0); ())
 	  | MLRiscAnnotations.EXECUTIONFREQ f => 
 	     (case !currentBlock
-	       of CFG.BLOCK{id= ~1, ...} => (newBlock(f); ())
-		| CFG.BLOCK{freq, ...} => freq := f
+	       of CFG.BLOCK{id= ~1, ...} => (newBlock(real f); ())
+		| CFG.BLOCK{freq, ...} => freq := real f
 	     (*esac*))
 	  | a => let 
 	       val CFG.BLOCK{annotations,...} = getBlock()
@@ -245,7 +244,7 @@ struct
 	fun addAlignment () = 
 	  (case !segmentF
            of TEXT => let
-		val CFG.BLOCK{align, ...} = newBlock(1)
+		val CFG.BLOCK{align, ...} = newBlock 1.0
               in align := SOME p
     	      end
 	    | _ => data := p :: !data
@@ -282,9 +281,9 @@ struct
 	      of TEXT => error "addPseudoOp: SECTION in TEXT segment"
 	       | _ => data := p :: !data
 	    (*esac*))
-	 | PB.REORDER => (reorder := []; newBlock(1); ())
+	 | PB.REORDER => (reorder := []; newBlock 1.0; ())
 	 | PB.NOREORDER => 
-	     (reorder := [#create MLRiscAnnotations.NOREORDER ()]; newBlock(1); ())
+	     (reorder := [#create MLRiscAnnotations.NOREORDER ()]; newBlock 1.0; ())
 
 	 | PB.INT _    => chkAddData("INT")
 	 | PB.FLOAT _  => chkAddData("FLOAT")
@@ -304,9 +303,9 @@ struct
 	       of NONE => let
 		    fun newBlk () = 
 		      (case !currentBlock
-			of CFG.BLOCK{id= ~1, ...} => newBlock(1)
+			of CFG.BLOCK{id= ~1, ...} => newBlock 1.0
 			 | CFG.BLOCK{insns=ref[], ...} => !currentBlock (* probably aligned block *)
-			 | _ => newBlock(1)
+			 | _ => newBlock 1.0
 		      (*esac*))
 		    val CFG.BLOCK{id, labels, ...} = newBlk()
 		  in 

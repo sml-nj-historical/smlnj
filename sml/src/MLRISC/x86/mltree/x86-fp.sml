@@ -105,8 +105,6 @@ struct
    (*
     * No overflow checking is needed for integer arithmetic in this module
     *)
-   fun x + y = Word.toIntX(Word.+(Word.fromInt x, Word.fromInt y))
-   fun x - y = Word.toIntX(Word.-(Word.fromInt x, Word.fromInt y))
 
    fun celllistToCellset l = List.foldr CB.CellSet.add CB.CellSet.empty l
    fun celllistToString l = CB.CellSet.toString(celllistToCellset l)
@@ -757,7 +755,7 @@ struct
                * try to match the bindings of the successor if it exist.
                *)
            fun matchIt succ = 
-           let val (succBlock, target) = find(succ, ~1, ~1, NONE) 
+           let val (succBlock, target) = find(succ, ~1.0, ~1, NONE) 
            in  splitAllEdgesExcept(succ, succBlock);
                case target of
                  SOME stackIn => match(stackOut, stackIn)
@@ -823,7 +821,7 @@ struct
            val pred = #in_edges cfg b 
 
            val (stackIn, stackOut, code) =  
-               case find(pred, ~1, NONE) of
+               case find(pred, ~1.0, NONE) of
                  NONE => (splitAllDoneEdges(pred); fromLiveIn())
                | SOME stackIn' => 
                  (case pred of
@@ -1119,7 +1117,7 @@ struct
                    let val this =
                            CFG.BLOCK{id=n, 
                                      kind=CFG.NORMAL,
-                                     freq=ref 0, (* XXX Wrong frequency! *)
+                                     freq=ref 0.0, (* XXX Wrong frequency! *)
                                      labels=ref [label],
                                      insns=ref code,
                                      annotations=ref comment,
@@ -1260,8 +1258,8 @@ struct
                          else 
                             (x + 1, CFG.FALLSTHRU)
                    (* compute weight *)
-                   val w = List.foldr (fn ((_,_,CFG.EDGE{w,...}),n) => !w+n)
-                              0 (!entries)
+                   val w = List.foldr (fn ((_,_,CFG.EDGE{w,...}), n) => !w+n)
+                              0.0 (!entries)
                in  #add_edge cfg' (x, y, CFG.EDGE{a=ref [], w=ref w, k=k})
                end
 

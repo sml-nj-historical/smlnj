@@ -18,12 +18,11 @@ struct
     structure I = I
     structure P = Asm.S.P
     structure C = I.C
-    structure W = Freq
     structure G = Graph
     structure A = Annotations
     structure S = Asm.S
-   
-    type weight = W.freq
+
+    type weight = real
 
     datatype block_kind = 
         START          (* entry node *)
@@ -144,7 +143,7 @@ struct
     fun emitHeader (S.STREAM{comment,annotation,...}) 
                    (BLOCK{id,kind,freq,annotations,...}) = 
        (comment(kindName kind ^"["^Int.toString id^
-                    "] ("^W.toString (!freq)^")");
+                    "] ("^Real.toString (!freq)^")");
         nl();
         app annotation (!annotations)
        ) 
@@ -203,10 +202,10 @@ struct
         (case #entries cfg () of
            [] =>
            let val i     = #new_id cfg ()
-               val start = newStart(i,ref 0)
+               val start = newStart(i,ref 0.0)
                val _     = #add_node cfg (i,start)
                val j     = #new_id cfg ()
-               val stop  = newStop(j,ref 0)
+               val stop  = newStop(j,ref 0.0)
                val _     = #add_node cfg (j,stop) 
            in (*  #add_edge cfg (i,j,EDGE{k=ENTRY,w=ref 0,a=ref []}); *)
                #set_entries cfg [i];
@@ -299,7 +298,7 @@ struct
         	  | FLOWSTO	=> "flowsto"
 		(* end case *))
 	  in
-	    F.format "%s(%d)" [F.STR kind, F.INT(!w)]
+	    F.format "%s(%d)" [F.STR kind, F.REAL(!w)]
 	  end
 
     fun getString f x = let
@@ -324,7 +323,7 @@ struct
 	    | prList (h::t) = (pr (h ^ ", "); prList t)
 	  val Asm.S.STREAM{emit,defineLabel,annotation,...} = 
         	AsmStream.withStream outS Asm.makeStream []
-	  fun showFreq (ref w) = F.format "[%s]" [F.STR(W.toString w)]
+	  fun showFreq (ref w) = F.format "[%f]" [F.REAL w]
 	  fun showEdge (blknum,e) = 
 		F.format "%d:%s" [F.INT blknum, F.STR(show_edge e)]
 	  fun showSucc (_, x, e) = showEdge(x,e)

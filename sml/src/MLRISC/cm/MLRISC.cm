@@ -87,6 +87,9 @@ Library
 (*	functor CFGView *)
 	functor Cells
 	functor ClusterRA
+(*
+	functor ComputeWeightsFn
+*)
 	functor ControlFlowGraph
 	functor DefaultBlockPlacement
 	functor FreqProps
@@ -211,6 +214,13 @@ is
 	../flowgraph/pseudo-ops-big.sml
 	../flowgraph/pseudo-ops-endian.sig
 	../flowgraph/pseudo-ops-little.sml
+(*
+	../flowgraph/compute-weights-fn.sml
+*)
+	../ir-archive/dominator.sig
+	../ir-archive/dominator.sml
+	../ir-archive/loop-structure.sig
+	../ir-archive/loop-structure.sml
 	../ra/arch-spill-instr.sig
 	../ra/getreg.sig
 	../ra/getreg.sml

@@ -1,4 +1,6 @@
-(*
+(* ra-core.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies.
  *
  * Overview
  * ========
@@ -103,6 +105,7 @@ struct
       SPILL_COALESCING + SPILL_COLORING + SPILL_PROPAGATION
 
   val i2s = Int.toString
+  val r2s = Real.toString
 
   local
 
@@ -110,10 +113,6 @@ struct
 
   fun error msg = MLRiscErrorMsg.error("RACore", msg)
  
-  (* No overflow checking necessary here *)
-  fun x + y = W.toIntX(W.+(W.fromInt x, W.fromInt y))
-  fun x - y = W.toIntX(W.-(W.fromInt x, W.fromInt y))
-
   fun concat([], b) = b
     | concat(x::a, b) = concat(a, x::b)
 
@@ -154,7 +153,7 @@ struct
   fun node2s (NODE{cell, color, pri,...}) = i2s(cellId cell)^col2s(!color)
 
   fun show G (node as NODE{pri,...}) = 
-      node2s node^(if !verbose then "("^i2s(!pri)^")" else "")
+      node2s node^(if !verbose then "("^r2s(!pri)^")" else "")
 
   (*
    * Dump the interference graph
@@ -165,7 +164,7 @@ struct
       fun prMove(MV{src, dst, status=ref(WORKLIST | BRIGGS_MOVE | GEORGE_MOVE),
                     cost,...}) = 
             pr(node2s(chase dst)^" <- "^node2s(chase src)^
-               "("^i2s(cost)^") ")
+               "("^r2s(cost)^") ")
         | prMove _ = ()
 
       fun prAdj(n,n' as NODE{adj, degree, uses, defs,
@@ -218,7 +217,7 @@ struct
 		 NODE{number=reg,
 		      cell=cell, color= ref col, degree=ref 0,
 		      adj=ref[], movecnt=ref 0, movelist=ref[],
-		      movecost=ref 0, pri=ref 0, defs=ref[],
+		      movecost=ref 0.0, pri=ref 0.0, defs=ref[],
 		      uses=ref[]}
 
 	    in addnode(reg, node); node
@@ -783,7 +782,7 @@ struct
                        COLORED _ => (v, u)
                      | _         => (u, v)
              val _ = if debug then print ("Coalescing "^show u^"<->"^show v
-                         ^" ("^i2s cost^")") else ()
+                         ^" ("^r2s cost^")") else ()
              val mv = MV.merge(l, r)
              fun coalesceIt(status, v) = 
                 (status := COALESCED;
@@ -1166,13 +1165,13 @@ struct
   (*
    * Compute savings due to memory<->register moves
    *)
-  fun moveSavings(GRAPH{memMoves=ref [], ...}) = (fn node => 0)
+  fun moveSavings(GRAPH{memMoves=ref [], ...}) = (fn node => 0.0)
     | moveSavings(GRAPH{memMoves, bitMatrix, ...}) = 
   let exception Savings
       val savingsMap = IntHashTable.mkTable(32, Savings)
-               : {pinned:int,cost:int} IntHashTable.hash_table
+               : {pinned:int,cost:cost} IntHashTable.hash_table
       val savings = IntHashTable.find savingsMap
-      val savings = fn r => case savings r of NONE => {pinned= ~1, cost=0}
+      val savings = fn r => case savings r of NONE => {pinned= ~1, cost=0.0}
                                             | SOME s => s
       val addSavings = IntHashTable.insert savingsMap
       val member     = BM.member(!bitMatrix)
@@ -1261,8 +1260,8 @@ struct
   fun clearNodes(GRAPH{nodes,...}) =
   let fun init(_, NODE{pri, degree, adj, movecnt, movelist,
                        movecost, defs, uses, ...}) =
-            (pri := 0; degree := 0; adj := []; movecnt := 0; movelist := [];
-             defs := []; uses := []; movecost := 0)
+            (pri := 0.0; degree := 0; adj := []; movecnt := 0; movelist := [];
+             defs := []; uses := []; movecost := 0.0)
   in  IntHashTable.appi init nodes
   end
 

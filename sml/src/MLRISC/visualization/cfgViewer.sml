@@ -7,7 +7,6 @@ functor CFGViewer
 	end =
 struct
    structure CFG = CFG
-   structure W   = CFG.W
    structure L = GraphLayout
    structure FMT = FormatInstruction(Asm)
    structure G = Graph
@@ -27,7 +26,7 @@ struct
        val EXIT  = hd(#exits g ())
 
        fun edge(i,j,CFG.EDGE{w, ...}) = 
-       let val label = L.LABEL(W.toString (!w))
+       let val label = L.LABEL(Real.toString (!w))
            val color =
                if i = ENTRY orelse j = EXIT then green (* special edge *)
                else if i+1 = j then yellow (* fallsthru *)
@@ -35,7 +34,7 @@ struct
        in  [label, color] end
 
        fun title(blknum,ref freq) = 
-           " "^Int.toString blknum^" ("^W.toString freq^")"
+           " "^Int.toString blknum^" ("^Real.toString freq^")"
 
        fun ann(annotations) = 
             List.foldl(fn (a,l) => "/* "^Annotations.toString a^" */\n"^l) ""

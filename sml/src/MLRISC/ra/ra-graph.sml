@@ -11,7 +11,7 @@ struct
 
   structure BM = RaBitmatrix
 
-  type priority = int
+  type priority = real
 
   type programPoint = {block:int, insn:int}
 
@@ -36,7 +36,7 @@ struct
         | sameKey _ = false
       )
 
-  type cost = int
+  type cost = real
 
   type mode = word
 
@@ -68,7 +68,7 @@ struct
               memRegs      : node list ref,
 
               spillLoc     : int ref,
-              span         : int IntHashTable.hash_table option ref,
+              span         : cost IntHashTable.hash_table option ref,
               mode         : mode,
               pseudoCount  : int ref
             }
@@ -168,10 +168,10 @@ struct
                   let val id = C.registerId cell
                       val node = 
                       NODE{number=id,
-                           pri=ref 0,adj=ref [],degree=ref 0,movecnt=ref 0,
+                           pri=ref 0.0,adj=ref [],degree=ref 0,movecnt=ref 0,
                            color=ref(MEMREG(id,cell)), 
                            defs=ref [], uses=ref [],
-                           movecost=ref 0,movelist=ref [], cell=cell}
+                           movecost=ref 0.0,movelist=ref [], cell=cell}
                   in  add(id, node); loop(cells, node::ns)
                   end
           in  loop(cells, [])
