@@ -50,72 +50,36 @@ and is hence executed at macro-expansion-time."
 	  :from-end t))
 
 ;;; 
-;;; temp files
+;;; defmap
 ;;; 
 
-(defvar temp-file-dir temporary-file-directory
-  "Directory where to put temp files.")
-
-(defvar temp-directories ())
-
-(defun delete-temp-dirs ()
-  (dolist (dir temp-directories)
-    (when (file-directory-p dir)
-      (let ((default-directory dir))
-	(dolist (file (directory-files "."))
-	  (ignore-errors (delete-file file))))
-      (delete-directory dir))))
-(add-hook 'kill-emacs-hook 'delete-temp-dirs)
-
-(defun make-temp-dir (s)
-  "Create a temporary directory.
-The returned dir name (created by appending some random characters at the end
-of S and prepending `temporary-file-directory' if it is not already absolute)
-is guaranteed to point to a newly created empty directory."
-  (let* ((prefix (expand-file-name s temp-file-dir))
-	 (dir (make-temp-name prefix)))
-    (if (not (ignore-errors (make-directory dir t) t))
-	(make-temp-dir prefix)
-      (push dir temp-directories)
-      (file-name-as-directory dir))))
-
-(defun make-temp-file (s)
-  "Create a temporary file.
-The returned file name (created by appending some random characters at the end
-of S and prepending `temporary-file-directory' if it is not already absolute)
-is guaranteed to point to a newly created empty file."
-  (unless (file-name-absolute-p s)
-    (unless (equal (user-uid)
-		   (third (file-attributes temporary-file-directory)))
-      (setq temporary-file-directory (make-temp-dir "emacs")))
-    (setq s (expand-file-name s temporary-file-directory)))
-  (let ((file (make-temp-name s)))
-    (write-region 1 1 file nil 'silent)
-    file))
-
-;; defmap ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defun custom-create-map (m bs args)
-  (let (inherit dense)
+  (let (inherit dense suppress)
     (while args
       (let ((key (first args))
 	    (val (second args)))
 	(cond
 	 ((eq key :dense) (setq dense val))
 	 ((eq key :inherit) (setq inherit val))
+	 ((eq key :group) )
+	 ;;((eq key :suppress) (setq suppress val))
 	 (t (message "Uknown argument %s in defmap" key))))
       (setq args (cddr args)))
     (unless (keymapp m)
       (setq bs (append m bs))
       (setq m (if dense (make-keymap) (make-sparse-keymap))))
     (dolist (b bs)
-      (let ((key (car b))
+      (let ((keys (car b))
 	    (binding (cdr b)))
-	(cond
-	 ((symbolp key)
-	  (substitute-key-definition key binding m global-map))
-	 ((let ((o (lookup-key m key))) (or (null o) (numberp o)))
-	  (define-key m key binding)))))
+	(dolist (key (if (consp keys) keys (list keys)))
+	  (cond
+	   ((symbolp key)
+	    (substitute-key-definition key binding m global-map))
+	   ((null binding)
+	    (unless (keymapp (lookup-key m key)) (define-key m key binding)))
+	   ((let ((o (lookup-key m key)))
+	      (or (null o) (numberp o) (eq o 'undefined)))
+	    (define-key m key binding))))))
     (cond
      ((keymapp inherit) (set-keymap-parent m inherit))
      ((consp inherit) (set-keymap-parents m inherit)))
@@ -140,6 +104,18 @@ is guaranteed to point to a newly created empty file."
 
 (defmacro defsyntax (st css doc &rest args)
   `(defconst ,st (custom-create-syntax ,css ,(cons 'list args)) doc))
+
+;;;; 
+;;;; Compatibility info
+;;;; 
+
+(defvar sml-builtin-nested-comments-flag
+  (ignore-errors
+    (not (equal (let ((st (make-syntax-table)))
+		  (modify-syntax-entry ?\* ". 23n" st) st)
+		(let ((st (make-syntax-table)))
+		  (modify-syntax-entry ?\* ". 23" st) st))))
+  "Whether this Emacs understands the `n' in syntax entries.")
 
 ;;
 (provide 'sml-util)

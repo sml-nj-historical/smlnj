@@ -22,6 +22,7 @@
 
 (unless (fboundp 'set-keymap-parents)
   (defun set-keymap-parents (m parents)
+    (if (keymapp parents) (setq parents (list parents)))
     (set-keymap-parent
      m
      (if (cdr parents)
@@ -31,6 +32,37 @@
 		 parents
 		 :from-end t)
        (car parents)))))
+
+;; for XEmacs
+(when (and (not (boundp 'temporary-file-directory)) (fboundp 'temp-directory))
+  (defvar temporary-file-directory (temp-directory)))
+
+(unless (fboundp 'make-temp-file)
+  ;; Copied from Emacs-21's subr.el
+  (defun make-temp-file (prefix &optional dir-flag)
+  "Create a temporary file.
+The returned file name (created by appending some random characters at the end
+of PREFIX, and expanding against `temporary-file-directory' if necessary,
+is guaranteed to point to a newly created empty file.
+You can then use `write-region' to write new data into the file.
+
+If DIR-FLAG is non-nil, create a new empty directory instead of a file."
+  (let (file)
+    (while (condition-case ()
+	       (progn
+		 (setq file
+		       (make-temp-name
+			(expand-file-name prefix temporary-file-directory)))
+		 (if dir-flag
+		     (make-directory file)
+		   (write-region "" nil file nil 'silent nil 'excl))
+		 nil)
+	    (file-already-exists t))
+      ;; the file was somehow created by someone else between
+      ;; `make-temp-name' and `write-region', let's try again.
+      nil)
+    file))
+
 
 ;;
 (provide 'sml-compat)

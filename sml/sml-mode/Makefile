@@ -1,5 +1,7 @@
 # Makefile for emacs-lisp package
 
+#ident "@(#)$Name$:$Id$"
+
 # Copyright (C) 1998-1999  Stefan Monnier <monnier@cs.yale.edu>
 
 # This file is free software; you can redistribute it and/or modify it
@@ -16,11 +18,23 @@
 # along with GNU Emacs; see the file COPYING.  If not, write to
 # the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
+# load the package-specific settings
+include makefile.pkg
+
+# set up the usual installation paths
 prefix  = /usr/local
 datadir = $(prefix)/share
 
 # the directory where you install third-party emacs packges
 lispdir = $(datadir)/emacs/site-lisp
+
+# the directory where the .elc files will be installed
+elcdir  = $(lispdir)/$(PACKAGE)
+# the directory where the .el files will be installed
+eldir   = $(elcdir)
+
+# the file where the initialization goes.
+#startupfile = $(HOME/.emacs
 startupfile = $(lispdir)/site-start.el
 
 # the directory where you installed the elib .elc files.
@@ -38,6 +52,7 @@ TEXI2DVI= texi2dvi
 SHELL	= /bin/sh
 DVIPS	= dvips
 CP	= cp
+RM	= rm -f
 MKDIR	= mkdir -p
 ETAGS	= etags
 
@@ -45,17 +60,9 @@ ETAGS	= etags
 ###        No changes below this line should be necessary          ###
 ######################################################################
 
-PACKAGE = sml-mode
-
-# the directory where the .elc files will be installed
-elcdir  = $(lispdir)/$(PACKAGE)
-eldir   = $(elcdir)
-
 ELFLAGS	= --eval '(setq load-path (append (list "." "$(elibdir)" "$(lispdir)") load-path))'
 ELC	= $(EMACS) -batch $(ELFLAGS) -f batch-byte-compile
 
-ELFILES	= sml-compat.el sml-util.el sml-defs.el sml-move.el sml-mode.el \
-	sml-proc.el
 ELCFILES = $(ELFILES:.el=.elc)
 
 TEXEXTS =  *.cps *.fns *.kys *.vr *.tp *.pg *.log *.aux *.toc *.cp *.ky *.fn
@@ -84,37 +91,50 @@ default: elcfiles
 elcfiles: $(ELCFILES)
 info: $(PACKAGE).info
 
-install_elc: $(ELCFILES)
+install_elc: $(ELCFILES) $(PACKAGE)-startup.el
 	$(MKDIR) $(elcdir)
-	$(CP) $(ELCFILES) $(elcdir)/
+	for f in $(ELCFILES) $(PACKAGE)-startup.el; do \
+	    $(CP) $$f $(elcdir)/$$f ;\
+	done
 
 install_el:
 	$(MKDIR) $(eldir)
-	$(CP) $(ELFILES) $(eldir)/
+	for f in $(ELFILES); do \
+	    $(CP) $$f $(eldir)/$$f ;\
+	done
 
 install_info: $(PACKAGE).info
 	$(MKDIR) $(infodir)
 	$(CP) *.info* $(infodir)/
-	-[ ! -w $(infodir)/dir ] || install-info $(PACKAGE).info $(infodir)/dir
+	-[ ! -w $(infodir)/dir ] \
+	    || install-info --info-dir=$(infodir)/dir $(PACKAGE).info
 
 install_startup:
 	$(MKDIR) $(lispdir)
-	if grep $(PACKAGE) $(startupfile) >/dev/null 2>&1 || \
+	@if grep $(PACKAGE) $(lispdir)/site-start.el >/dev/null 2>&1 || \
+	   grep $(PACKAGE) $(startupfile) >/dev/null 2>&1 || \
 	   grep $(PACKAGE) $(lispdir)/default.el >/dev/null 2>&1; then \
-	    echo "!!! Check $(PACKAGE)-startup.el and merge it" \
-	    echo "!!! into your $(startupfile) file"; \
+	    echo "**********************************************************" ;\
+	    echo "*** It seems you already have some setup code" ;\
+	    echo "*** for $(PACKAGE) in your startup files." ;\
+	    echo "*** Check that it properly loads \"$(PACKAGE)-startup\"" ;\
+	    echo "**********************************************************" ;\
 	else \
-	    sed 's|@elcdir@|$(elcdir)|' \
-		$(PACKAGE)-startup.el >>$(startupfile) ;\
+	    echo 'echo ";; load $(PACKAGE) setup code" >>$(startupfile)' ;\
+	    echo ";; load $(PACKAGE) setup code" >>$(startupfile) ;\
+	    echo 'echo "(add-to-list '\''load-path \"$(elcdir)\")" >>$(startupfile)' ;\
+	    echo "(add-to-list 'load-path \"$(elcdir)\")" >>$(startupfile) ;\
+	    echo 'echo "(load \"$(PACKAGE)-startup\")" >>$(startupfile)' ;\
+	    echo "(load \"$(PACKAGE)-startup\")" >>$(startupfile) ;\
 	fi
 
 postscript: $(PACKAGE).ps
 dvi: $(PACKAGE).dvi
 install_dvi: dvi
 	$(MKDIR) $(docdir)
-	$(CP) *.dvi $(docdir)/
+	$(CP) `find . -type f -name '*.dvi' -print` $(docdir)/
 
-install: install_elc install_info # install_el
+install: install_elc install_info install_startup # install_el
 
 clean:
 	$(RM) *~ core .\#* $(TEXEXTS)
@@ -129,8 +149,8 @@ distclean: clean
 ###                    don't look below                            ###
 ######################################################################
 
-$(PACKAGE)-startup.el:  $(ELFILES)
-	chmod +w $@
+$(PACKAGE)-startup.el: $(ELFILES)
+	[ -f $@ ] || echo '' >$@
 	$(EMACS) --batch --eval '(setq generated-autoload-file "'`pwd`'/$@")' -f batch-update-autoloads "."
 
 ##
@@ -143,12 +163,9 @@ dist:
 	cd $(TMP) &&\
 	cvs export -r $(TAG) -d $(PACKAGE)-$(VERSION) elisp/$(PACKAGE) &&\
 	cd $(PACKAGE)-$(VERSION) &&\
-	gmake info &&\
+	gmake info $(PACKAGE)-startup.el &&\
 	cd .. &&\
 	ztar $(PACKAGE)-$(VERSION) &&\
 	rm -rf $(PACKAGE)-$(VERSION)
 	mv $(TMP)/$(PACKAGE)-$(VERSION).tar.gz $(ftpdir)/
 	ln -sf $(PACKAGE)-$(VERSION).tar.gz $(ftpdir)/$(PACKAGE).tar.gz
-
-
-#ident @(#)$Name$:$Id$

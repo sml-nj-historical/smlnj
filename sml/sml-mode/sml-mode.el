@@ -1,4 +1,4 @@
-;;; sml-mode.el. Major mode for editing (Standard) ML
+;;; sml-mode.el --- Major mode for editing (Standard) ML
 
 (defconst rcsid-sml-mode "@(#)$Name$:$Id$")
 
@@ -28,7 +28,11 @@
 
 ;; ====================================================================
 
-;;; HISTORY 
+
+;;; Commentary:
+;; 
+
+;;; HISTORY
 
 ;; Still under construction: History obscure, needs a biographer as
 ;; well as a M-x doctor. Change Log on request.
@@ -49,13 +53,13 @@
 ;; Maintainer: (Stefan Monnier) monnier+lists/emacs/sml@tequila.cs.yale.edu
 ;; Keywords: SML
 
-;;; DESCRIPTION 
+;;; DESCRIPTION
 
 ;; See accompanying info file: sml-mode.info
 
 ;;; FOR YOUR .EMACS FILE
 
-;; If sml-mode.el lives in some non-standard directory, you must tell 
+;; If sml-mode.el lives in some non-standard directory, you must tell
 ;; emacs where to get it. This may or may not be necessary:
 
 ;; (setq load-path (cons (expand-file-name "~jones/lib/emacs") load-path))
@@ -79,32 +83,12 @@
 ;;                indent-tabs-mode nil)))    ; whatever
 
 ;; sml-mode-hook is run whenever a new sml-mode buffer is created.
-;; There is an sml-load-hook too, which is only run when this file is
-;; loaded. One use for this hook is to select your preferred
-;; highlighting scheme, like this:
-
-;; (setq sml-load-hook
-;;       '(lambda() "Highlights." (require 'sml-hilite)))
-
-;; hilit19 is the magic that actually does the highlighting. My set up
-;; for hilit19 runs something like this:
-
-;; (if window-system
-;;     (setq hilit-background-mode   t ; monochrome (alt: 'dark or 'light)
-;;           hilit-inhibit-hooks     nil
-;;           hilit-inhibit-rebinding nil
-;;           hilit-quietly           t))
-
-;; Alternatively, you can (require 'sml-font) which uses the font-lock
-;; package instead. 
 
 ;; Finally, there are inferior-sml-{mode,load}-hooks -- see comments
 ;; in sml-proc.el. For much more information consult the mode's *info*
 ;; tree.
 
-;;; VERSION STRING
-
-(defconst sml-mode-version "version $Name$")
+;;; Code:
 
 (require 'cl)
 (require 'sml-util)
@@ -137,42 +121,38 @@
 
 (defcustom sml-electric-semi-mode nil
   "*If non-nil, `\;' will self insert, reindent the line, and do a newline.
-If nil, just insert a `\;'. (To insert while t, do: C-q \;)."
+If nil, just insert a `\;'.  (To insert while t, do: \\[quoted-insert] \;)."
   :group 'sml
   :type '(boolean))
 
 ;;; OTHER GENERIC MODE VARIABLES
 
 (defvar sml-mode-info "sml-mode"
-  "*Where to find Info file for sml-mode.
+  "*Where to find Info file for `sml-mode'.
 The default assumes the info file \"sml-mode.info\" is on Emacs' info
-directory path. If it is not, either put the file on the standard path
-or set the variable sml-mode-info to the exact location of this file
-which is part of the sml-mode 3.2 (and later) distribution. E.g:  
+directory path.  If it is not, either put the file on the standard path
+or set the variable `sml-mode-info' to the exact location of this file
 
-  (setq sml-mode-info \"/usr/me/lib/info/sml-mode\") 
+  (setq sml-mode-info \"/usr/me/lib/info/sml-mode\")
 
 in your .emacs file. You can always set it interactively with the
 set-variable command.")
 
 (defvar sml-mode-hook nil
-  "*This hook is run when sml-mode is loaded, or a new sml-mode buffer created.
+  "*Run upon entering `sml-mode'.
 This is a good place to put your preferred key bindings.")
 
-(defvar sml-load-hook nil
-  "*This hook is run when sml-mode (sml-mode.el) is loaded into Emacs.")
+(defvar sml-mode-abbrev-table nil "*Abbrev table for `sml-mode'.")
 
-(defvar sml-mode-abbrev-table nil "*SML mode abbrev table (default nil)")
-
-;;; CODE FOR SML-MODE 
+;;; CODE FOR SML-MODE
 
 (defun sml-mode-info ()
-  "Command to access the TeXinfo documentation for sml-mode.
-See doc for the variable sml-mode-info."
+  "Command to access the TeXinfo documentation for `sml-mode'.
+See doc for the variable `sml-mode-info'."
   (interactive)
   (require 'info)
   (condition-case nil
-      (Info-goto-node (concat "(" sml-mode-info ")"))
+      (info sml-mode-info)
     (error (progn
              (describe-variable 'sml-mode-info)
              (message "Can't find it... set this variable first!")))))
@@ -200,7 +180,7 @@ Full documentation will be available after autoloading the function."))
 	       "infixr" "let" "local" "nonfix" "of" "op" "open" "orelse"
 	       "overload" "raise" "rec" "sharing" "sig" "signature"
 	       "struct" "structure" "then" "type" "val" "where" "while"
-	       "with" "withtype")
+	       "with" "withtype" "o")
   "A regexp that matches any and all keywords of SML.")
 
 (defconst sml-font-lock-keywords
@@ -246,15 +226,15 @@ Full documentation will be available after autoloading the function."))
 (defvar font-lock-interface-def-face 'font-lock-interface-def-face
   "Face name to use for interface definitions.")
 
-(defvar sml-syntax-prop-table
-  (let ((st (make-syntax-table)))
-    ;;(modify-syntax-entry ?l "(d" st)
-    ;;(modify-syntax-entry ?s "(d" st)
-    ;;(modify-syntax-entry ?d ")l" st)
-    (modify-syntax-entry ?\\ "." st)
-    (modify-syntax-entry ?* "." st)
-    st))
+;;; 
+;;; Code to handle nested comments and unusual string escape sequences
+;;; 
 
+(defsyntax sml-syntax-prop-table
+  '((?\\ . ".") (?* . "."))
+  "Syntax table for text-properties")
+
+;; For Emacsen that have no built-in support for nested comments
 (defun sml-get-depth-st ()
   (save-excursion
     (let* ((disp (if (eq (char-before) ?\)) (progn (backward-char) -1) nil))
@@ -274,11 +254,9 @@ Full documentation will be available after autoloading the function."))
 	  (when depth sml-syntax-prop-table))))))
 
 (defconst sml-font-lock-syntactic-keywords
-  `(;;("\\<\\(l\\)\\(et\\|ocal\\)\\>" (1 ',sml-syntax-prop-table))
-    ;;("\\<\\(s\\)\\(ig\\truct\\)\\>" (1 ',sml-syntax-prop-table))
-    ;;("\\<en\\(d\\)\\>" (1 ',sml-syntax-prop-table))
-    ("^\\s-*\\(\\\\\\)" (1 ',sml-syntax-prop-table))
-    ("(?\\(\\*\\))?" (1 (sml-get-depth-st)))))
+  `(("^\\s-*\\(\\\\\\)" (1 ',sml-syntax-prop-table))
+    ,@(unless sml-builtin-nested-comments-flag
+	'(("(?\\(\\*\\))?" (1 (sml-get-depth-st)))))))
 
 (defconst sml-font-lock-defaults
   '(sml-font-lock-keywords nil nil ((?_ . "w") (?' . "w")) nil
@@ -287,25 +265,17 @@ Full documentation will be available after autoloading the function."))
 
 ;;; MORE CODE FOR SML-MODE
 
-(defun sml-mode-version ()
-  "This file's version number (sml-mode)."
-  (interactive)
-  (message sml-mode-version))
+;;;###Autoload
+(add-to-list 'auto-mode-alist '("\\.s\\(ml\\|ig\\)\\'" . sml-mode))
 
 ;;;###Autoload
-(defun sml-mode ()
-  "Major mode for editing ML code.
-Entry to this mode runs the hooks on `sml-mode-hook'.
+(define-derived-mode sml-mode fundamental-mode "SML"
+  "\\<sml-mode-map>Major mode for editing ML code.
+This mode runs `sml-mode-hook' just before exiting.
 \\{sml-mode-map}"
-
-  (interactive)
-  (kill-all-local-variables)
-  (sml-mode-variables)
-  (use-local-map sml-mode-map)
-  (setq major-mode 'sml-mode)
-  (setq mode-name "SML")
+  (set (make-local-variable 'font-lock-defaults) sml-font-lock-defaults)
   (set (make-local-variable 'outline-regexp) sml-outline-regexp)
-  (run-hooks 'sml-mode-hook))            ; Run the hook last
+  (sml-mode-variables))
 
 (defun sml-mode-variables ()
   (set-syntax-table sml-mode-syntax-table)
@@ -318,12 +288,12 @@ Entry to this mode runs the hooks on `sml-mode-hook'.
   (set (make-local-variable 'indent-line-function) 'sml-indent-line)
   (set (make-local-variable 'comment-start) "(* ")
   (set (make-local-variable 'comment-end) " *)")
+  (set (make-local-variable 'comment-nested) t)
   ;;(set (make-local-variable 'block-comment-start) "* ")
   ;;(set (make-local-variable 'block-comment-end) "")
   (set (make-local-variable 'comment-column) 40)
   (set (make-local-variable 'comment-start-skip) "(\\*+\\s-*")
-  (set (make-local-variable 'comment-indent-function) 'sml-comment-indent)
-  (set (make-local-variable 'font-lock-defaults) sml-font-lock-defaults))
+  (set (make-local-variable 'comment-indent-function) 'sml-comment-indent))
 
 (defun sml-electric-pipe ()
   "Insert a \"|\".
@@ -368,7 +338,7 @@ Depending on the context insert the name of function, a \"=>\" etc."
 	       (t (error "Wow, now, there's a bug")))))))
 
      (insert text)
-     (sml-indent-line)
+     (indent-according-to-mode)
      (beginning-of-line)
      (skip-chars-forward "\t |")
      (skip-syntax-forward "w")
@@ -376,8 +346,8 @@ Depending on the context insert the name of function, a \"=>\" etc."
      (when (= ?= (char-after)) (backward-char)))))
 
 (defun sml-electric-semi ()
-  "Inserts a \;.
-If variable sml-electric-semi-mode is t, indent the current line, insert 
+  "Insert a \;.
+If variable `sml-electric-semi-mode' is t, indent the current line, insert
 a newline, and indent."
   (interactive)
   (insert "\;")
@@ -387,7 +357,7 @@ a newline, and indent."
 ;;; INDENTATION !!!
 
 (defun sml-mark-function ()
-  "Synonym for mark-paragraph -- sorry.
+  "Synonym for `mark-paragraph' -- sorry.
 If anyone has a good algorithm for this..."
   (interactive)
   (mark-paragraph))
@@ -400,7 +370,7 @@ If anyone has a good algorithm for this..."
 ;;     (goto-char end) (setq end (point-marker)) (goto-char begin)
 ;;     (while (< (point) end)
 ;;       (skip-chars-forward "\t\n ")
-;;       (sml-indent-line)
+;;       (indent-according-to-mode)
 ;;       (end-of-line))
 ;;     (move-marker end nil))
 ;;   (message "Indenting region... done"))
@@ -408,16 +378,7 @@ If anyone has a good algorithm for this..."
 (defun sml-indent-line ()
   "Indent current line of ML code."
   (interactive)
-  (let ((indent (sml-calculate-indentation)))
-    (if (/= (current-indentation) indent)
-        (save-excursion                 ;; Added 890601 (point now stays)
-          (let ((beg (progn (beginning-of-line) (point))))
-            (skip-chars-forward "\t ")
-            (delete-region beg (point))
-            (indent-to indent))))
-    ;; If point is before indentation, move point to indentation
-    (if (< (current-column) (current-indentation))
-        (skip-chars-forward "\t "))))
+  (indent-line-to (sml-calculate-indentation)))
 
 (defun sml-back-to-outer-indent ()
   "Unindents to the next outer level of indentation."
@@ -564,9 +525,10 @@ If anyone has a good algorithm for this..."
     (current-column)))
 
 (defun sml-get-sym-indent (sym &optional style)
-  "expects to be looking-at SYM.
+  "Find the indentation for the SYM we're `looking-at'.
 If indentation is delegated, the point will be at the start of
-the parent at the end of this function."
+the parent at the end of this function.
+Optional argument STYLE is currently ignored"
   (assert (equal sym (save-excursion (sml-forward-sym))))
   (save-excursion
     (let ((delegate (assoc sym sml-close-paren))
@@ -653,21 +615,18 @@ the parent at the end of this function."
       (max (1+ (current-column))        ; Else indent at comment column
            comment-column))))           ; except leave at least one space.
 
-;;; INSERTING PROFORMAS (COMMON SML-FORMS) 
+;;; INSERTING PROFORMAS (COMMON SML-FORMS)
 
 (defvar sml-forms-alist nil
-  "*The alist of templates to auto-insert.
-
-You can extend this alist to your heart's content. For each additional
+  "*Alist of code templates.
+You can extend this alist to your heart's content.  For each additional
 template NAME in the list, declare a keyboard macro or function (or
 interactive command) called 'sml-form-NAME'.
-
 If 'sml-form-NAME' is a function it takes no arguments and should
 insert the template at point\; if this is a command it may accept any
 sensible interactive call arguments\; keyboard macros can't take
-arguments at all. Apropos keyboard macros, see `name-last-kbd-macro'
+arguments at all.  Apropos keyboard macros, see `name-last-kbd-macro'
 and `sml-addto-forms-alist'.
-
 `sml-forms-alist' understands let, local, case, abstype, datatype,
 signature, structure, and functor by default.")
 
@@ -735,13 +694,13 @@ the corresponding form is inserted."
       (sml-insert-form sym nil))))
 
 (defun sml-insert-form (name newline)
-  "Interactive short-cut to insert a common ML form.
-If a perfix argument is given insert a newline and indent first, or
+  "Interactive short-cut to insert the NAME common ML form.
+If a prefix argument is given insert a NEWLINE and indent first, or
 just move to the proper indentation if the line is blank\; otherwise
 insert at point (which forces indentation to current column).
 
 The default form to insert is 'whatever you inserted last time'
-\(just hit return when prompted\)\; otherwise the command reads with 
+\(just hit return when prompted\)\; otherwise the command reads with
 completion from `sml-forms-alist'."
   (interactive
    (list (completing-read
@@ -770,7 +729,7 @@ actually defined.
 The symbol's function definition becomes the keyboard macro string.
 
 If that works, NAME is added to `sml-forms-alist' so you'll be able to
-reinvoke the macro through \\[sml-insert-form]. You might want to save
+reinvoke the macro through \\[sml-insert-form].  You might want to save
 the macro to use in a later editing session -- see `insert-kbd-macro'
 and add these macros to your .emacs file.
 
@@ -782,13 +741,24 @@ See also `edit-kbd-macro' which is bound to \\[edit-kbd-macro]."
     (message "Macro bound to %s" fsym)
     (add-to-list 'sml-forms-alist (cons name fsym))))
 
-;; at a pinch these could be added to SML/Forms menu through the good
-;; offices of activate-menubar-hook or something... but documentation
-;; of this and/or menu-bar-update-hook is sparse in 19.33. anyway, use
-;; completing read for sml-insert-form prompt...
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  SML/NJ's Compilation Manager support  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; & do the user's customisation
-(run-hooks 'sml-load-hook)
+;;;###autoload
+(add-to-list 'completion-ignored-extensions "CM/")
+;;;###autoload
+(add-to-list 'auto-mode-alist '("\\.cm\\'" . sml-cm-mode))
+;;;###autoload
+(define-generic-mode 'sml-cm-mode
+  '(("(*" . "*)"))
+  '("library" "Library" "LIBRARY" "group" "Group" "GROUP" "is" "IS"
+    "structure" "functor" "signature" "funsig")
+  nil '("\\.cm\\'")
+  (list (lambda () (local-set-key "\C-c\C-c" 'sml-compile)))
+  "Generic mode for SML/NJ's Compilation Manager configuration files.")
 
-;;; sml-mode.el has just finished.
+
 (provide 'sml-mode)
+
+;;; sml-mode.el ends here

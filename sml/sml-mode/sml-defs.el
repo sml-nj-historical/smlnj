@@ -51,21 +51,23 @@
     ;;("\t"	. sml-indent-line)	; ...except this one
     ;; Process commands added to sml-mode-map -- these should autoload
     ("\C-c\C-l"	. sml-load-file)
-    ("\C-c`"	. sml-next-error))
-  "Generic bindings used in sml-mode and sml-inferior-mode."
+    ;;("\C-c`"	. sml-next-error)
+    )
+  "Generic bindings used in `sml-mode' and `inferior-sml-mode'."
   :group 'sml)
 
 (defmap sml-mode-map
   '(("\C-c\C-c" . sml-compile)
     ("\C-c\C-s" . switch-to-sml)
     ("\C-c\C-r" . sml-send-region)
-    ("\C-c\C-b" . sml-send-buffer))
-  "The keymap used in sml-mode."
+    ("\C-c\C-b" . sml-send-buffer)
+    ([(meta shift down-mouse-1)] . sml-drag-region))
+  "The keymap used in `sml-mode'."
   :inherit sml-bindings
   :group 'sml)
 
 (defsyntax sml-mode-syntax-table 
-  '((?\*   . ". 23n")
+  `((?\*   . ,(if sml-builtin-nested-comments-flag ". 23n" ". 23"))
     (?\(   . "()1")
     (?\)   . ")(4")
     ("._'" . "_")
@@ -89,7 +91,8 @@
      ["send buffer contents"	sml-send-buffer	(featurep 'sml-proc)]
      ["send region"		sml-send-region	(featurep 'sml-proc)]
      ["send paragraph"		sml-send-function (featurep 'sml-proc)]
-     ["goto next error"		sml-next-error	(featurep 'sml-proc)]
+     ;;["goto next error"		sml-next-error	(featurep 'sml-proc)]
+     ["goto next error"		next-error	(featurep 'sml-proc)]
      ["---" nil nil]				
      ["Standard ML of New Jersey" sml-smlnj	(fboundp 'sml-smlnj)]
      ["Poly/ML"			sml-poly-ml	(fboundp 'sml-poly-ml)]
@@ -245,7 +248,7 @@
 (defconst sml-pipehead-re
   (concat
    "|\\S.\\|"
-   (sml-syms-re "of" "fun" "fn" "and" "handle" "datatype" "abstype"))
+   (sml-syms-re "fun" "fn" "and" "handle" "datatype" "abstype"))
   "A `|' corresponds to one of these.")
 
 ;;

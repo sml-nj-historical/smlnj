@@ -1,4 +1,27 @@
--*- text -*-
+Changes since 3.9.3:
+
+* A new *sml* process is sent the content of sml-config-file (~/.sml-proc.sml)
+  if it exists.
+
+* `sml-compile' works yet a bit differently.  The command can begin
+  with `cd "path";' and it will be replaced by OS.FileSys.chDir.
+
+* run-sml now pops up the new buffer.  It can also run the command on another
+  machine.  And it always prompts for the command name.  Use aprefix
+  argument if you want to give args or to specify a host on which
+  to run the command.
+
+* mouse-2 to yank in *sml* should work again (but won't work for next-error
+  any more).
+
+* Added a trivial CM major-mode.
+
+* sml-load-hook has disappeared.
+
+* sml-mode-startup.el is now automatically generated and you're supposed to
+  `load' it from .emacs or siate-start.el.
+
+* Minor bug fixes.
 
 Changes since 3.3:
 
