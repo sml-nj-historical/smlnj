@@ -303,7 +303,7 @@ directory names is a simple one-way mapping.  At startup time, this
 mapping is initialized by reading two configuration files: an
 installation-specific one and a user-specific one.  After that, the
 mapping can be maintained using CM's interface functions {\tt
-CM.setAnchor}, {\tt CM.cancelAnchor}, and {\tt CM.resetPathConfig}
+CM.Anchor.set}, {\tt CM.Anchor.cancel}, and {\tt CM.Anchor.reset}
 (see Section~\ref{sec:api}).
 
 The default location of the installation-specific configuration file
@@ -349,17 +349,20 @@ but will otherwise be ignored.
 
 Functions that control CM's operation are accessible as members of a
 structure named {\tt CM}.  This structure itself is exported from a
-library called {\tt host-cm.cm}.  Other libraries can exploit CM's
-functionality simply by putting a {\tt host-cm.cm} entry into their
+library called {\tt full-cm.cm}.  Other libraries can exploit CM's
+functionality simply by putting a {\tt full-cm.cm} entry into their
 own description file.  Section~\ref{sec:dynlink} shows one
 interesting used of this feature.
 
-The {\tt host-cm.cm} library is pre-registered at the interactive
-prompt.  This is more than a mere convenience: structure {\tt CM} must
-already be known a-priori at top level because otherwise there would
-also be no way to make it known.
+Initially, only a ``minimal'' version of structure {\tt CM} (exported
+by library {\tt minimal-cm.cm}) is pre-registered at the interactive
+prompt.  To make the full version of structure {\tt CM} available, one
+must explicitly load {\tt full-cm.cm} using {\tt CM.autoload} or {\tt
+CM.make}, both of which are also available in the minimal version.
+(The minimal structure {\tt CM} contains four members: {\tt
+CM.recomp}, {\tt CM.stabilize}, {\tt CM.make}, and {\tt CM.autoload}.)
 
-Here is a description of the structure's members:
+Here is a description of all members:
 
 \subsubsection*{Compiling}
 
@@ -429,80 +432,94 @@ the operation.  The result of {\tt CM.autoload} indicates success or
 failure of the {\em registration}.  (It does not know yet whether
 loading will actually succeed.)
 
-\subsubsection*{Flags}
+\subsubsection*{Registers}
 
-Several flags control the operation of CM.  Any invocation of the
-corresponding {\tt get} function reads the current value of the flag.  An
-invocation of the {\tt set} function replaces the current value with
-the argument given to {\tt set}.
+Several internal registers control the operation of CM.  A register of
+type $T$ is accessible via a variable of type $T$ {\tt controller},
+i.e., a pair of {\tt get} and {\tt set} functions.  Any invocation of
+the corresponding {\tt get} function reads the current value of the
+register.  An invocation of the {\tt set} function replaces the
+current value with the argument given to {\tt set}.
+
+Controllers are members of {\tt CM.Control}, a sub-structure of
+structure {\tt CM}.
 
 \begin{verbatim}
-  val verbose : { get: unit -> bool, set: bool -> unit }
-  val debug : { get: unit -> bool, set: bool -> unit }
-  val keep_going : { get: unit -> bool, set: bool -> unit }
-  val parse_caching : { get: unit -> int, set: int -> unit }
-  val warn_obsolete : { get: unit -> bool, set: bool -> unit }
+  type 'a controller = { get: unit -> 'a, set: 'a -> unit }
+  structure Control : sig
+    val verbose : bool controller
+    val debug : bool controller
+    val keep_going : bool controller
+    val parse_caching : int controller
+    val warn_obsolete : bool controller
+  end
 \end{verbatim}
 
-{\tt CM.verbose} can be used to turn off CM's progress messages.  The
-default is {\em true} and can be overriden at startup time by the
-environment variable {\tt CM\_VERBOSE}.
+{\tt CM.Control.verbose} can be used to turn off CM's progress
+messages.  The default is {\em true} and can be overriden at startup
+time by the environment variable {\tt CM\_VERBOSE}.
 
-In the case of a compile-time error {\tt CM.keep\_going} instructs the
-{\tt CM.recomp} phase to continue working on parts of the dependency
-graph that are not related to the error.  (This does not work for
-outright syntax errors because a correct parse is needed before CM can
-construct the dependency graph.)  The default is {\em false} and can
-be overriden at startup by the environment variable {\tt
-CM\_KEEP\_GOING}.
+In the case of a compile-time error {\tt CM.Contol.keep\_going}
+instructs the {\tt CM.recomp} phase to continue working on parts of
+the dependency graph that are not related to the error.  (This does
+not work for outright syntax errors because a correct parse is needed
+before CM can construct the dependency graph.)  The default is {\em
+false} and can be overriden at startup by the environment variable
+{\tt CM\_KEEP\_GOING}.
 
-{\tt CM.parse\_caching} sets a limit on how many parse trees are
-cached in main memory.  In certain cases CM must parse source files in
-order to be able to calculate the dependency graph.  Later, the same
-files may need to be compiled, in which case an existing parse tree
-saves the time to parse the file again.  Keeping parse trees can be
-expensive in terms of memory usage.  Moreover, CM makes special
-efforts to avoid re-parsing files in the first place unless they have
-actually been modified.  Therefore, it may not make much sense to set
-this value very high.  The default is {\em 100} and can be overriden
-at startup time by the environment variable {\tt CM\_PARSE\_CACHING}.
+{\tt CM.Control.parse\_caching} sets a limit on how many parse trees
+are cached in main memory.  In certain cases CM must parse source
+files in order to be able to calculate the dependency graph.  Later,
+the same files may need to be compiled, in which case an existing
+parse tree saves the time to parse the file again.  Keeping parse
+trees can be expensive in terms of memory usage.  Moreover, CM makes
+special efforts to avoid re-parsing files in the first place unless
+they have actually been modified.  Therefore, it may not make much
+sense to set this value very high.  The default is {\em 100} and can
+be overriden at startup time by the environment variable {\tt
+CM\_PARSE\_CACHING}.
 
 This version of CM uses an ML-inspired syntax for expressions in its
 conditional compilation subsystem (see Section~\ref{sec:preproc}).
 However, for the time being it will accept most of the original
 C-inspired expressions but produces a warning for each occurrence of
-an old-style operator. {\tt CM.warn\_obsolete} can be used to turn
-these warnings off. The default is {\em true} and can be overriden at
-startup time by the environment variable {\tt CM\_WARN\_OBSOLETE}.
+an old-style operator. {\tt CM.Control.warn\_obsolete} can be used to
+turn these warnings off. The default is {\em true} and can be
+overriden at startup time by the environment variable {\tt
+CM\_WARN\_OBSOLETE}.
 
-{\tt CM.debug} can be used to turn on debug mode.  This currently has
-the effect of dumping a trace of the master-slave protocol for
-parallel and distributed compilation (see Section~\ref{sec:parmake})
-to TextIO.stdOut. The default is {\em false} and can be overriden at
-startup time by the environment variable {\tt CM\_DEBUG}.
+{\tt CM.Control.debug} can be used to turn on debug mode.  This
+currently has the effect of dumping a trace of the master-slave
+protocol for parallel and distributed compilation (see
+Section~\ref{sec:parmake}) to TextIO.stdOut. The default is {\em
+false} and can be overriden at startup time by the environment
+variable {\tt CM\_DEBUG}.
 
 \subsubsection*{Path anchors}
 
 Structure {\tt CM} also provides functions to explicitly manipulate
-the path anchor configuration.
+the path anchor configuration.  These functions are members of
+structure {\tt CM.Anchor}.
 
 \begin{verbatim}
-  val setAnchor : string * string -> unit
-  val cancelAnchor : string -> unit
-  val resetPathConfig : unit -> unit
+  structure Anchor : sig
+    val set : { anchor: string, path: string } -> unit
+    val cancel : string -> unit
+    val reset : unit -> unit
+  end
 \end{verbatim}
 
-{\tt CM.setAnchor} creates a new association or replaces an existing
+{\tt CM.Anchor.set} creates a new association or replaces an existing
 association of an anchor name with a directory name.  Both names must
 be given as strings---the directory name in native syntax.  If the
 directory name is a relative path name, then it will be expanded by
 prepending the name of the current working directory.
 
-{\tt CM.cancelAnchor} deletes the association of the given anchor name
+{\tt CM.Anchor.cancel} deletes the association of the given anchor name
 with its directory should such an association currently exist.
 Otherwise it will do nothing.
 
-{\tt CM.resetPathConfig} erases the entire existing path configuration
+{\tt CM.Anchor.reset} erases the entire existing path configuration
 mapping.
 
 \subsubsection*{Setting CM variables}
@@ -513,8 +530,7 @@ but the user can add new ones and alter or remove those that already
 exist.
 
 \begin{verbatim}
-  val symval : string ->
-        { get: unit -> int option, set: int option -> unit }
+  val symval : string -> int option controller
 \end{verbatim}
 
 Function {\tt CM.symval} returns a {\tt get}-{\tt set}-pair for the
@@ -531,63 +547,85 @@ of {\tt NONE} means that the variable is not defined.
 
 Some care is necessary as {\tt CM.symval} does not check whether the
 syntax of the argument string is valid.  (However, the worst thing
-that could happen is that there is no way of naming the variable
-within CM's description files, and that, therefore, the associated
-value cannot be accessed.)
+that could happen is that a variable defined via {\tt CM.symval} is
+not accessible from within CM's description files because there is no
+legal syntax to name it.)
 
-\subsubsection*{Status inspection}
+\subsubsection*{Library registry}
 
-CM keeps a lot of internal state.  Some of this state can be inspected.
-
-\begin{verbatim}
-  val showPending : unit -> unit
-  val listLibs : unit -> unit
-\end{verbatim}
-
-{\tt CM.showPending} lists to standard output the names of all symbols
-which are currently registered as being bound at top level via the
-autoloading mechanism but so far have not actually been resolved.
-
-{\tt CM.listLibs} lists to standard output the path names of library
-description files for those stable libraries that are currently known
-to CM.  This list includes libraries which have been accessed
-``implicitly'' by virtue of being a sub-library of another library
-that has been accessed in the past.  Library state can take up
-considerable space in main memory.  Use {\tt CM.dismissLib} (see
-below) to remove a library from CM's registry.
-
-\subsubsection*{Altering CM's internal state}
-
-Sometimes it can become necessary to explicitly change or update CM's
-internal state.
+To be able to share associated data structures, CM maintains an
+internal registry of all stable libraries that it has encountered
+during an ongoing interactive session.  The {\tt CM.Library}
+sub-structure of structure {\tt CM} provides access to this registry.
 
 \begin{verbatim}
-  val dismissLib : string -> unit
-  val synchronize : unit -> unit
-  val reset : unit -> unit
+  structure Library : sig
+    type lib
+    val known : unit -> lib list
+    val descr : lib -> string
+    val osstring : lib -> string
+    val dismiss : lib -> unit
+  end
 \end{verbatim}
 
-{\tt CM.dismissLib} is used to remove a stable library from CM's
-internal registry.  See the discussion of {\tt CM.listLibs} above.
-Although removing a library from the registry may recover considerable
-amounts of main memory, doing so also eliminates any chance of sharing
-the associated data structures with later references to the same
-library.  Therefore, it is not always in the interest of
-memory-conscious users to use this feature.
+{\tt CM.Library.known}, when called, produces a list of currently
+known stable libraries.  Each such library is represented by an
+element of the abstract data type {\tt CM.Library.lib}.
+
+{\tt CM.Library.descr} extracts a string describing the location of
+the CM description file associated with the given library.  The syntax
+of this string is the same that is also being used by CM's
+master-slave protocol (see section~\ref{sec:pathencode}).
+
+{\tt CM.Library.osstring} produces a string denoting the given
+library's description file using the underlying operating system's
+native pathname syntax.  In other words, the result of a call to {\tt
+CM.Library.osstring} is suitable as an argument to {\tt
+TextIO.openIn}.
+
+{\tt CM.Library.dismiss} is used to remove a stable library from CM's
+internal registry.  Although removing a library from the registry may
+recover considerable amounts of main memory, doing so also eliminates
+any chance of sharing the associated data structures with later
+references to the same library.  Therefore, it is not always in the
+interest of memory-conscious users to use this feature.
 
 Sharing of link-time state created by the library is {\em not}
 affected by this.
 
-{\tt CM.synchronize} updates tables internal to CM to reflect changes
-in the file system.  In particular, this will be necessary when the
-association of file names to ``file IDs'' (in Unix: inode numbers)
-changes during an ongoing session.  In practice, the need for this
-tends to be rare.
+\subsubsection*{Internal state}
 
-{\tt CM.reset} completely erases all internal state in CM.  This is
-not very advisable since it will also break the association with
-pre-loaded libraries.  It may be a useful tool for determining the
-amount of space taken up by the internal state, though.
+For CM to work correctly, it must maintain an up-to-date picture of
+the state of the surrounding world (as far as that state affects CM's
+operation).  Most of the time, this happens automatically should be
+transparent to the user.  However, occasionally it may become
+necessary to intervene expliticly.
+
+Access to CM's internal state is facilitated by members of the {\tt
+CM.State} structure.
+
+\begin{verbatim}
+  structure State : sig
+    val pending : unit -> string list
+    val synchronize : unit -> unit
+    val reset : unit -> unit
+  end
+\end{verbatim}
+
+{\tt CM.State.pending} produces a list of strings, each string naming
+one of the symbols that are currently bound but not yet resolved by
+the autoloading mechanism.
+
+{\tt CM.State.synchronize} updates tables internal to CM to reflect
+changes in the file system.  In particular, this will be necessary
+when the association of file names to ``file IDs'' (in Unix: inode
+numbers) changes during an ongoing session.  In practice, the need for
+this tends to be rare.
+
+{\tt CM.State.reset} completely erases all internal state in CM.  To
+do this is not very advisable since it will also break the association
+with pre-loaded libraries.  It may be a useful tool for determining
+the amount of space taken up by the internal state, though.
 
 \subsubsection*{Compile servers}
 
@@ -596,34 +634,46 @@ connected using a LAN, this can be extended to distributed compilation
 using a network file system and the operating system's ``rsh''
 facility.  For a detailed discussion, see Section~\ref{sec:parmake}.
 
+Sub-structure {\tt CM.Server} provides access to and manipulation of
+compile servers.  Each attached server is represented by a value of
+type {\tt CM.Server.server}.
+
 \begin{verbatim}
-  val server_start :
-      { name: string,
-        cmd: string * string list,
-        pathtrans: (string -> string) option,
-        pref: int } -> bool
-  val server_stop : string -> unit
-  val server_kill : string -> unit
+  structure Server : sig
+    type server
+    val start : { name: string,
+                  cmd: string * string list,
+                  pathtrans: (string -> string) option,
+                  pref: int } -> server option
+    val stop : server -> unit
+    val kill : server -> unit
+    val name : server -> string
+  end
 \end{verbatim}
 
 CM is put into ``parallel'' mode by attaching at least one compile
 server.  Compile servers are attached using invocations of {\tt
-CM.server\_start}.  The function takes the name of the server (as an
+CM.Server.start}.  The function takes the name of the server (as an
 arbitrary but unique string) ({\tt name}), the Unix command used to
 start the server in a form suitable as an argument to {\tt
 Unix.execute} ({\tt cmd}), an optional ``path transformation
 function'' for converting local path names to remote pathnames ({\tt
 pathtrans}), and a numeric ``preference'' value that is used to choose
-servers at times when more than one is idle ({\tt pref}).  The boolean
-result indicates success or failure of the attach operation.
+servers at times when more than one is idle ({\tt pref}).  The
+optional result is the handle representing the successfully attached
+server.
 
 An existing server can be shut down and detached using {\tt
-CM.server\_stop} or {\tt CM.server\_kill}.  The string argument in
-either case must match the {\tt name} argument of the corresponding
-{\tt server\_start} call.  Function {\tt server\_stop} uses CM's
-master-slave protocol to instruct the server to shut down gracefully.
-Only if this fails it may become necessary to use {\tt server\_kill}
-which will send a Unix KILL signal to destroy the server.
+CM.Server.stop} or {\tt CM.Server.kill}.  The argument in either case
+must be the result of an earlier call to {\tt CM.Server.start}.
+Function {\tt CM.Server.stop} uses CM's master-slave protocol to
+instruct the server to shut down gracefully.  Only if this fails it
+may become necessary to use {\tt CM.Server.kill} which will send a
+Unix TERM signal to destroy the server.
+
+Given a server handle, function {\tt CM.Server.name} returns the
+string that was originally given to the call of {\tt CM.Server.start}
+used to created the server.
 
 \subsection{The autoloader}
 \label{sec:autoload}
@@ -1125,17 +1175,18 @@ machines by taking advantage of the network file system and the
 ``rsh'' facility.
 
 To perform parallel compilations, one must attach ``compile servers'' to
-CM.  This is done using function {\tt CM.server\_start} with the following
+CM.  This is done using function {\tt CM.Server.start} with the following
 signature:
 
 \begin{verbatim}
-  val server_start :
-      { name: string,
-        cmd: string * string list,
-        pathtrans: (string -> string) option,
-        pref: int } -> bool
+  structure Server : sig
+    type server
+    val start : { name: string,
+                  cmd: string * string list,
+                  pathtrans: (string -> string) option,
+                  pref: int } -> server option
+  end
 \end{verbatim}
-
 
 Here, {\tt name} is a string uniquely identifying the server and {\tt
 cmd} is a value suitable as argument to {\tt Unix.execute}.
@@ -1147,20 +1198,22 @@ example, if you have installed in /path/to/smlnj/bin/sml, then a
 server process on the local machine could be started by
 
 \begin{verbatim}
-  CM.server_start { name = "A", pathtrans = NONE, pref = 0,
-                     cmd = ("/path/to/smlnj/bin/sml",
+  CM.Server.start { name = "A", pathtrans = NONE, pref = 0,
+                    cmd = ("/path/to/smlnj/bin/sml",
                            ["@CMslave"]) };
 \end{verbatim}
 
 To run a process on a remote machine, e.g., ``thatmachine'', as
-compute server, one can use ``rsh''.  Unfortunately, at the moment it
+compute server, one can use ``rsh''.\footnote{On certain systems it
+may be necessary to wrap {\tt rsh} into a script that protects rsh
+from interrupt signals.}  Unfortunately, at the moment it
 is necessary to specify the full path to ``rsh'' because {\tt
-Unix.execute} (and therefore {\tt CM.server\_start}) does not perform
+Unix.execute} (and therefore {\tt CM.Server.start}) does not perform
 a {\tt PATH} search. The remote machine
 must share the file system with the local machine, for example via NFS.
 
 \begin{verbatim}
-  CM.server_start { name = "thatmachine",
+  CM.Server.start { name = "thatmachine",
                     pathtrans = NONE, pref = 0,
                     cmd = ("/usr/ucb/rsh",
                            ["thatmachine",
@@ -1173,6 +1226,9 @@ different names.  If you attach any servers at all, then you should
 attach at least two (unless you want to attach one that runs on a
 machine vastly more powerful than your local one).  Local servers make
 sense on multi-CPU machines: start as many servers as there are CPUs.
+Parallel make is most effective on multiprocessor machines because
+network latencies can have a severely limiting effect on what can be
+gained in the distributed case.
 (Be careful, though.  Since there is no memory-sharing to speak of
 between separate instances of {\tt sml}, you should be sure to check
 that your machine has enough main memory.)
@@ -1184,15 +1240,19 @@ that more than one server is idle, this will rarely lead to vastly
 better throughput.) All attached servers must use the same
 architecture-OS combination as the controlling machine.
 
+In parallel mode, the master process itself normally does not compile
+anything.  Therefore, if you want to utilize the master's CPU for
+compilation, you should start a compile server on the same machine
+that the master runs on (even if it is a uniprocessor machine).
+
 The {\tt pathtrans} argument is used when connecting to a machine with
-a different file-system layout.
-For local servers, it can safely be left at {\tt NONE}.  The ``path
-transformation'' function is used to translate local path
-names to their remote counterparts.
-This can be a bit tricky to get right, especially if the
-machines use automounters or similar devices.
-The {\tt pathtrans} functions consumes and produces names in CM's
-internal ``protocol encoding'' (see Section~\ref{sec:pathencode}).
+a different file-system layout.  For local servers, it can safely be
+left at {\tt NONE}.  The ``path transformation'' function is used to
+translate local path names to their remote counterparts.  This can be
+a bit tricky to get right, especially if the machines use automounters
+or similar devices.  The {\tt pathtrans} functions consumes and
+produces names in CM's internal ``protocol encoding'' (see
+Section~\ref{sec:pathencode}).
 
 Once servers have been attached, one can invoke functions like
 {\tt CM.recomp}, {\tt CM.make}, and {\tt CM.stabilize}.  They should
@@ -1357,18 +1417,20 @@ of {\tt F.f}.
 
 For the new {\tt f.sml} to be compiled successfully it must be placed
 into a library {\tt f.cm} that mentions {\tt f-hook.cm} and {\tt
-host-cm.cm}.  As we have seen, {\tt f-hook.cm} exports {\tt F\_Hook.f}
-and {\tt host-cm.cm} is needed because it exports {\tt CM.make}:
+full-cm.cm}.  As we have seen, {\tt f-hook.cm} exports {\tt F\_Hook.f}
+and {\tt full-cm.cm} is needed\footnote{The reduced version of
+structure {\tt CM} as exported by library {\tt minimal-cm.cm} would
+have been sufficient, too.}  because it exports {\tt CM.make}:
 \begin{verbatim}
 Library
         structure F
 is
         f.sml
         f-hook.cm
-        host-cm.cm
+        full-cm.cm
 \end{verbatim}
 
-\noindent{\bf Beware!}  This solution makes use of {\tt host-cm.cm}
+\noindent{\bf Beware!}  This solution makes use of {\tt full-cm.cm}
 which in turn requires the SML/NJ compiler to be present.  Therefore,
 is worthwhile only for really large program modules where the benefits
 of their absence are not outweighed be the need for the compiler.
