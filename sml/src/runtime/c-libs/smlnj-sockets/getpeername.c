@@ -19,22 +19,16 @@
  */
 ml_val_t _ml_Sock_getpeername (ml_state_t *msp, ml_val_t arg)
 {
-    char	    data[MAX_SOCK_ADDR_SZB];
-    struct sockaddr *addr;
-    int		    addrLen;
+    char	    addr[MAX_SOCK_ADDR_SZB];
+    int		    addrLen = MAX_SOCK_ADDR_SZB;
 
-    addr = (struct sockaddr *)data;
-    addrLen = MAX_SOCK_ADDR_SZB;
-    if (getpeername (INT_MLtoC(arg), addr, &addrLen) < 0)
+    if (getpeername (INT_MLtoC(arg), (struct sockaddr *)addr, &addrLen) < 0)
 	return RAISE_SYSERR(msp, sts);
     else {
-	ml_val_t	af = ML_SysConst (msp, &_Sock_AddrFamily,
-				ntohs(addr->sa_family));
 	ml_val_t	cdata = ML_CData(msp, addr, addrLen);
-	ml_val_t	addr, res;
+	ml_val_t	res;
 
-	SEQHDR_ALLOC (msp, addr, DESC_word8vec, cdata, addrLen);
-	REC_ALLOC2 (msp, res, af, addr);
+	SEQHDR_ALLOC (msp, res, DESC_word8vec, cdata, addrLen);
 	return res;
     }
 
