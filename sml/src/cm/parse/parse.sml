@@ -28,11 +28,8 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 
     fun parse param stabflag group = let
 
-	val (stabthis, staball) =
-	    case stabflag of
-		NONE => (false, false)
-	      | SOME false => (true, false)
-	      | SOME true => (true, true)
+	val stabthis = isSome stabflag
+	val staball = stabflag = SOME true
 
 	val groupreg = GroupReg.new ()
 	val errcons = EM.defaultConsumer ()
@@ -93,12 +90,12 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 			(case loadStable gpath of
 			     NONE => NONE
 			   | x as SOME _ =>
-				 (gc := AbsPathMap.insert (!gc, gpath, x); x))
+				 (gc := AbsPathMap.insert (!gc, gpath, x);
+				  x))
 	    end
 
 	    fun stabilize g =
-		Stabilize.stabilize ginfo { group = g, gpath = group,
-					    anyerrors = pErrFlag }
+		Stabilize.stabilize ginfo { group = g, anyerrors = pErrFlag }
 
 	    (* normal processing -- used when there is no cycle to report *)
 	    fun normal_processing () = let

@@ -42,10 +42,6 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
       fun bn2statenv gp i = #1 (#stat (valOf (RecompTraversal.bnode gp i)))
 
-      structure Stabilize =  StabilizeFn (val bn2statenv = bn2statenv)
-
-      structure Parse = ParseFn (structure Stabilize = Stabilize)
-
       fun doall farsbnode (GroupGraph.GROUP { exports, ... }, gp) = let
 	  fun one ((fsbn, _), false) = false
 	    | one ((fsbn, _), true) =
@@ -60,6 +56,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  before FullPersstate.rememberShared ()
       fun make_group arg =
 	  (if recomp_group arg then exec_group arg else false)
+
+      structure Stabilize =  StabilizeFn (val bn2statenv = bn2statenv
+					  val recomp = recomp_group)
+
+      structure Parse = ParseFn (structure Stabilize = Stabilize)
   in
     structure CM = struct
 
