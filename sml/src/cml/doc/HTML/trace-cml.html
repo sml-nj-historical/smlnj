@@ -1,0 +1,216 @@
+<!-- HTML/trace-cml.html -->
+
+<!-- COPYRIGHT (c) 1997 AT\|@AMP\|T Research. -->
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<TITLE>The TraceCML structure</TITLE>
+</HEAD>
+<BODY><A NAME="top"></A>
+<H1 align=CENTER>The Concurrent ML Reference Manual</H1>
+<HR>
+
+
+<H2><A NAME="section:0">The <CODE>TraceCML</CODE> structure</A></H2>
+<HR>
+<H4>Synopsis</H4>
+<BLOCKQUOTE>
+<CODE><B>signature </B><A NAME="TRACE_CML:SIG:SPEC"><CODE>TRACE_CML</CODE></A><BR>
+<B>structure </B><A NAME="TraceCML:STR:SPEC"><CODE>TraceCML</CODE></A><B> : </B>TRACE_CML<BR>
+</CODE>
+</BLOCKQUOTE>
+<P>
+The TraceCML structure provides rudimentary debugging support in the form of mechanisms to control debugging output, and to monitor thread termination. This version of this module is adapted from Cliff Krumvieda's utility for tracing CML programs. It provides three facilities: trace modules, for controlling debugging output; thread watching, for detecting thread termination; and a mechanism for reporting uncaught exceptions on a per thread basis.
+<P>
+Trace modules provide a hierarchical name space, which is used to control the granularity of debugging output. The trace module operations have been implemented in such a way that they can be invoked independent of whether CML is currently running. This allows the trace hierarchy to be setup statically.
+<P>
+The TraceCML also provides hooks to detect unexpected termination of threads. Support is provided to watch for a thread's termination (useful for monitoring servers that are never supposed to terminate). Hooks are also provided to specify the action taken when a thread terminates because of an uncaught exception.
+<HR>
+<H4>Interface</H4>
+<BLOCKQUOTE>
+<CODE><B>type</B> <A NAME="SIG:TRACE_CML.trace_module:TY:SPEC" HREF="#SIG:TRACE_CML.trace_module:TY">trace_module</A><BR>
+<B>datatype</B> <A NAME="SIG:TRACE_CML.trace_to:TY:SPEC" HREF="#SIG:TRACE_CML.trace_to:TY">trace_to</A><BR>
+&nbsp;&nbsp;<B>=</B> TraceToOut<BR>
+&nbsp;&nbsp;<B>|</B> TraceToErr<BR>
+&nbsp;&nbsp;<B>|</B> TraceToNull<BR>
+&nbsp;&nbsp;<B>|</B> TraceToFile <B>of</B> string         <BR>
+&nbsp;&nbsp;<B>|</B> TraceToStream <B>of</B> TextIO.outstream       <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.setTraceFile:VAL:SPEC" HREF="#SIG:TRACE_CML.setTraceFile:VAL">setTraceFile</A> <B>:</B> trace_to -&gt; unit         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.traceRoot:VAL:SPEC" HREF="#SIG:TRACE_CML.traceRoot:VAL">traceRoot</A> <B>:</B> trace_module         <BR>
+<B>exception</B> <A NAME="SIG:TRACE_CML.NoSuchModule:EXN:SPEC" HREF="#SIG:TRACE_CML.NoSuchModule:EXN">NoSuchModule</A><BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.traceModule:VAL:SPEC" HREF="#SIG:TRACE_CML.traceModule:VAL">traceModule</A> <B>:</B> (trace_module * string) -&gt; trace_module         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.nameOf:VAL:SPEC" HREF="#SIG:TRACE_CML.nameOf:VAL">nameOf</A> <B>:</B> trace_module -&gt; string         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.moduleOf:VAL:SPEC" HREF="#SIG:TRACE_CML.moduleOf:VAL">moduleOf</A> <B>:</B> string -&gt; trace_module         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.traceOn:VAL:SPEC" HREF="#SIG:TRACE_CML.traceOn:VAL">traceOn</A> <B>:</B> trace_module -&gt; unit         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.traceOff:VAL:SPEC" HREF="#SIG:TRACE_CML.traceOff:VAL">traceOff</A> <B>:</B> trace_module -&gt; unit         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.traceOnly:VAL:SPEC" HREF="#SIG:TRACE_CML.traceOnly:VAL">traceOnly</A> <B>:</B> trace_module -&gt; unit         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.amTracing:VAL:SPEC" HREF="#SIG:TRACE_CML.amTracing:VAL">amTracing</A> <B>:</B> trace_module -&gt; bool         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.status:VAL:SPEC" HREF="#SIG:TRACE_CML.status:VAL">status</A> <B>:</B> trace_module -&gt; (trace_module * bool) list         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.trace:VAL:SPEC" HREF="#SIG:TRACE_CML.trace:VAL">trace</A> <B>:</B> (trace_module * (unit -&gt; string list)) -&gt; unit         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.watcher:VAL:SPEC" HREF="#SIG:TRACE_CML.watcher:VAL">watcher</A> <B>:</B> trace_module         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.watch:VAL:SPEC" HREF="#SIG:TRACE_CML.watch:VAL">watch</A> <B>:</B> (string * CML.thread_id) -&gt; unit         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.unwatch:VAL:SPEC" HREF="#SIG:TRACE_CML.unwatch:VAL">unwatch</A> <B>:</B> CML.thread_id -&gt; unit         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.setUncaughtFn:VAL:SPEC" HREF="#SIG:TRACE_CML.setUncaughtFn:VAL">setUncaughtFn</A> <B>:</B> ((CML.thread_id * exn) -&gt; unit) -&gt; unit         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.setHandleFn:VAL:SPEC" HREF="#SIG:TRACE_CML.setHandleFn:VAL">setHandleFn</A> <B>:</B> ((CML.thread_id * exn) -&gt; bool) -&gt; unit         <BR>
+<B>val</B> <A NAME="SIG:TRACE_CML.resetUncaughtFn:VAL:SPEC" HREF="#SIG:TRACE_CML.resetUncaughtFn:VAL">resetUncaughtFn</A> <B>:</B> unit -&gt; unit         <BR>
+</CODE>
+</BLOCKQUOTE>
+<H4>Description</H4>
+<DL>
+<DT> <A NAME="SIG:TRACE_CML.trace_module:TY"><CODE><B>type</B> trace_module</CODE></A>
+<DD>
+	A trace_module is an element in a hierarchical 	name space, which is used to control debugging output.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.trace_to:TY"><CODE><B>datatype</B> trace_to</CODE></A>
+<DD>
+	The various destinations of trace output.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.setTraceFile:VAL"><CODE>setTraceFile <VAR>tt</VAR>
+          </CODE></A>
+<DD>
+Direct the destination of trace output. 	  Note: <A HREF="trace-cml.html#SIG:TRACE_CML.trace_to:TY:SPEC">TraceToStream</A> can only be specified as a 	  destination if CML is running.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.traceRoot:VAL"><CODE>traceRoot
+          </CODE></A>
+<DD>
+is the root module of the trace hierarchy     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.NoSuchModule:EXN"><CODE><B>exception</B> NoSuchModule</CODE></A>
+<DD>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.traceModule:VAL"><CODE>traceModule (<VAR>tm</VAR>, <VAR>s</VAR>)
+          </CODE></A>
+<DD>
+creates a new trace module that is a child of <VAR>tm</VAR> and 	  has the label <VAR>s</VAR>. 	  If such a module exists, it just returns the existing module.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.nameOf:VAL"><CODE>nameOf <VAR>tm</VAR>
+          </CODE></A>
+<DD>
+returns the full name of the module <VAR>tm</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.moduleOf:VAL"><CODE>moduleOf <VAR>name</VAR>
+          </CODE></A>
+<DD>
+returns the trace module named by <VAR>name</VAR>. 	  Trace module names are written in the style of Unix pathnames 	  (e.g., using <CODE>&quot;/&quot;</CODE> as a separator).     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.traceOn:VAL"><CODE>traceOn <VAR>tm</VAR>
+          </CODE></A>
+<DD>
+turns tracing on for moduel <VAR>tm</VAR> and its descendents.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.traceOff:VAL"><CODE>traceOff <VAR>tm</VAR>
+          </CODE></A>
+<DD>
+turns tracing off for moduel <VAR>tm</VAR> and its descendents.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.traceOnly:VAL"><CODE>traceOnly <VAR>tm</VAR>
+          </CODE></A>
+<DD>
+turn tracing on for module <VAR>tm</VAR>, but not for its descendents.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.amTracing:VAL"><CODE>amTracing <VAR>tm</VAR>
+          </CODE></A>
+<DD>
+returns <CODE>true</CODE> if tracing is enabled for module <VAR>tm</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.status:VAL"><CODE>status <VAR>tm</VAR>
+          </CODE></A>
+<DD>
+returns a pre-order list of the modules rooted at <VAR>tm</VAR>, along 	  with their status (enabled or disabled).     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.trace:VAL"><CODE>trace (<VAR>tm</VAR>, <VAR>f</VAR>)
+          </CODE></A>
+<DD>
+explain the use and semantics of trace HERE.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.watcher:VAL"><CODE>watcher
+          </CODE></A>
+<DD>
+is a trace module that is used to control the printing of thread 	  termination messages. 	  Its name is <CODE>&quot;/ThreadWatcher/&quot;</CODE>, and by default it is enabled.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.watch:VAL"><CODE>watch (<VAR>name</VAR>, <VAR>tid</VAR>)
+          </CODE></A>
+<DD>
+watch the thread named by <VAR>tid</VAR> for unexpected termination. 	  If the thread terminates, then a trace message is generated 	  (see <A HREF="trace-cml.html#SIG:TRACE_CML.watcher:VAL:SPEC">watcher</A>). 	  The string <VAR>name</VAR> is used to identify the thread in the 	  termination message.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.unwatch:VAL"><CODE>unwatch <VAR>tid</VAR>
+          </CODE></A>
+<DD>
+stop watching the thread named by <VAR>tid</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.setUncaughtFn:VAL"><CODE>setUncaughtFn <VAR>f</VAR>
+          </CODE></A>
+<DD>
+sets the default uncaught exception action to <VAR>f</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.setHandleFn:VAL"><CODE>setHandleFn <VAR>f</VAR>
+          </CODE></A>
+<DD>
+adds the function <VAR>f</VAR> as an additional uncaught exception action. 	  If the action returns <CODE>true</CODE>, then no further action is taken. 	  This can be used to handle application specific exceptions.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:TRACE_CML.resetUncaughtFn:VAL"><CODE>resetUncaughtFn <VAR>()</VAR>
+          </CODE></A>
+<DD>
+resets the default uncaught exception action to the system default, 	  and removes any layered actions.
+<BR>
+<BR>
+
+</DL>
+<HR>
+
+
+<HR>
+<CENTER>
+<B>[ <A HREF="#top">Top</A>
+   | <A HREF="cml-lib.html">Parent</A>
+   | <A HREF="toc.html">Contents</A>
+   | <A HREF="index-all.html">Index</A>
+   | <A HREF="refman.html">Root</A>
+   ]</B>
+</CENTER>
+<P>
+<I>Last Modified &date;</I><BR>
+<I>Comments to <A HREF="mailto:jhr@research.bell-labs.com">John Reppy.</A></I><BR>
+
+Copyright &copy; 1998 Bell Labs, Lucent Technologies <BR>
+
+<HR>
+</BODY></HTML>

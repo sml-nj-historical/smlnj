@@ -1,0 +1,53 @@
+local
+   structure I = 
+   struct
+      include "alphaInstr.sml"
+   end
+in
+
+functor AlphaPeephole(AlphaInstr : ALPHAINSTR) : PEEPHOLE =
+struct
+   structure I = AlphaInstr
+   structure C = I.C
+
+   (* IMPORTANT: instructions are now given in forward order *)
+   fun peephole instrs =
+   let fun isZero(I.LABop le) = I.LabelExp.valueOf le = 0
+         | isZero(I.REGop r) = C.registerNum r = 31 
+         | isZero(I.IMMop i) = i = 0
+         | isZero _ = false
+
+       fun removable(I.LDA{r, b, d}) = isZero d andalso C.sameColor(r,b)
+         | removable(I.OPERATE{oper=(I.ADDQ | I.SUBQ), ra, rb, rc}) =
+             C.sameColor(ra,rc) andalso isZero rb
+         | removable(I.ANNOTATION{i,a}) = removable i
+         | removable _ = false
+
+       fun symmetric(I.STQ, I.LDQ) = true
+         | symmetric(I.STL, I.LDL) = true
+         | symmetric(I.STW, I.LDW) = true
+         | symmetric(I.STB, I.LDB) = true
+         | symmetric _             = false
+
+       fun sameOperand (I.REGop r1, I.REGop r2) = C.sameColor(r1,r2)
+         | sameOperand (I.IMMop i1, I.IMMop i2) = i1 = i2
+         | sameOperand (I.LABop l1, I.LABop l2) = 
+                I.LabelExp.valueOf l1 = I.LabelExp.valueOf l2
+         | sameOperand _ = false
+
+       fun loop(current, instrs) = 
+           case current of
+             [] => instrs
+           | (st as I.STORE{stOp, r=r1, b=b1, d=d1, ...})::
+             (ld as I.LOAD {ldOp, r=r2, b=b2, d=d2, ...})::rest 
+              where symmetric(stOp, ldOp) andalso 
+                    C.sameColor(r1,r2) andalso 
+                    C.sameColor(b1,b2) andalso 
+                    sameOperand(d1,d2) => loop(rest, st::instrs)
+           | i::rest where removable i => loop(rest, instrs)
+           | i::rest => loop(rest, i::instrs)
+   in  loop(instrs, [])
+   end
+end 
+
+end

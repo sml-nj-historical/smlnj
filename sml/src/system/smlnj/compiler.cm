@@ -1,0 +1,11 @@
+(*
+ * Library exporting "visible" compiler for host architecture.
+ *
+ * (C) 2001, Lucent Technologies, Bell Labs
+ *
+ * author: Matthias Blume (blume@research.bell-labs.com)
+ *)
+Library
+	(* this is a proxy library; exports taken from only member *)
+is
+	$smlnj/compiler/current.cm

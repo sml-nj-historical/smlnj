@@ -1,0 +1,8 @@
+library
+	structure Intr
+is
+	$/basis.cm
+	$/c.cm
+	intr.c : shell (target:intr.c.cm
+			ml-nlffigen -strname GenIntr %s)
+	intr-glue.sml

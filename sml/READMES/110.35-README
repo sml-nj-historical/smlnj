@@ -1,0 +1,34 @@
+			S  M  L   /   N  J
+
+                  1  1  0  .  3  5      N  E  W  S
+			
+  		           August 24, 2001
+
+			      WARNING
+
+  	This version is intended for compiler hackers. The 
+	version ought to be stable, however we have not run
+	our full regression testing.
+
+        http://cm.bell-labs.com/cm/cs/what/smlnj/index.html
+
+
+Summary:
+
+  Compiler sources have been reorganized into serveral CM libraries.
+  There have been various changes to the exported interfaces themselves
+  as well.
+
+  Reorganization (and simplification) of the "Cells" interface in MLRISC.
+
+  "Cluster" data structure removed from MLRISC, now using "graph"s
+  throughout.
+
+  Bug fixes to MLRISC.
+
+  Updates to closure phase in compiler.  
+
+
+Details:
+
+(To be filled in later.  In the meantime, see the HISTORY file.)

@@ -1,0 +1,60 @@
+#!@SHELL@
+
+BIN_DIR=@BINDIR@
+
+SML=$BIN_DIR/sml
+LINK=$BIN_DIR/.link-sml
+
+thisscript=$0
+
+xx=$$
+smlfile=$xx-export.sml
+cmfile=$xx-export.cm
+listfile=$xx-BOOTLIST
+
+dulist=''
+
+trap 'rm -rf `find . -name $smlfile` $cmfile $listfile' 0 1 2 3 15
+
+usage() {
+    echo ${thisscript}: $*
+    echo Usage: $thisscript root-group main-function heapfile
+    exit 1
+}
+
+while [ $# != 0 ] ; do
+    case $1 in
+    -D*|-U*)
+	dulist="$dulist $1"
+	shift
+	;;
+    *)
+	break
+	;;
+    esac
+done
+
+if [ $# != 3 ] ; then
+    usage wrong number of arguments
+fi
+
+root=$1
+main=$2
+heap=$3
+
+rare=XYZ_XXX_0123
+
+cat >$smlfile <<EOF
+structure ${rare} = struct val _ = SMLofNJ.exportFn ("${heap}", ${main}) end
+EOF
+
+cat >$cmfile <<EOF
+Group structure ${rare} is \$/basis.cm ${root} ${smlfile}
+EOF
+
+# Invoke sml with special option that causes CM to do its magic.
+# (See src/cm/main/cm-boot.sml [function "mlbuild"] to see what's
+# going on.)
+$SML $dulist @CMbuild $root $cmfile $heap $listfile $LINK
+
+exit $?

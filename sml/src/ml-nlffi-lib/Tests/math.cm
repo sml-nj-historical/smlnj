@@ -1,0 +1,8 @@
+library
+	structure CMath
+is
+	$/basis.cm
+	$/c.cm
+	math.h : shell (target: math.h.cm
+	  ml-nlffigen -strname GenMath -signame CMATH -lambdasplit infinity %s)
+	math-glue.sml (lambdasplit:infinity)

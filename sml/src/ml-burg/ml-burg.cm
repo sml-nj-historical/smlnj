@@ -1,0 +1,22 @@
+(* sources.cm file for ML-Burg *)
+
+Library
+  structure Main
+is
+
+# if defined (NEW_CM)
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/ml-yacc-lib.cm
+# else
+  smlnj-lib.cm 
+  ml-yacc-lib.cm
+# endif
+
+  errormsg.sml
+  burg-ast.sml
+  burg-lex : MLLex
+  burg-gram : MLYacc
+  parse.sml
+  burg.sml
+  main.sml
