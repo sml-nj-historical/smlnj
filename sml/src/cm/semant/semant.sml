@@ -53,7 +53,8 @@ signature CM_SEMANT = sig
     (* constructing member collections *)
     val emptyMembers : members
     val member :
-	GeneralParams.info * (pathname option -> pathname -> group)
+	GeneralParams.info * (pathname option -> pathname -> group) *
+	                     (string -> bool)
 	-> { name: string, mkpath: string -> pathname,
 	     group: pathname * region, class: cm_class option,
 	     context: SrcPath.context }
@@ -215,8 +216,8 @@ structure CMSemant :> CM_SEMANT = struct
     end
 
     fun emptyMembers (env, _) = env
-    fun member (gp, rparse) arg (env, curlib) = let
-	val coll = MemberCollection.expandOne (gp, rparse curlib) arg
+    fun member (gp, rparse, ldpi) arg (env, curlib) = let
+	val coll = MemberCollection.expandOne (gp, rparse curlib, ldpi) arg
 	val group = #group arg
 	val error = GroupReg.error (#groupreg gp) group
 	fun e0 s = error EM.COMPLAIN s EM.nullErrorBody

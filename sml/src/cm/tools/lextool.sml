@@ -12,6 +12,5 @@ structure LexTool = struct
 	  class = "mllex",
 	  suffixes = ["lex", "l"],
 	  command = command,
-	  extensionStyle = Tools.EXTEND ["sml"],
-	  sml = true }
+	  extensionStyle = Tools.EXTEND [("sml", SOME "sml")] }
 end

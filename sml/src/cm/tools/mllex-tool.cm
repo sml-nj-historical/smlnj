@@ -1,0 +1,5 @@
+Library
+	structure LexTool
+is
+	cm-tools.cm
+	lextool.sml

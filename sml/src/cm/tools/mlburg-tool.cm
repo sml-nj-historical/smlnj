@@ -1,0 +1,5 @@
+Library
+	structure BurgTool
+is
+	cm-tools.cm
+	burgtool.sml

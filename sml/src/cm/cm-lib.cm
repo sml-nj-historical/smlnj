@@ -14,7 +14,7 @@ Library
 
 	structure Sharing
 	signature TOOLS
-	structure Tools
+	functor ToolsFn
 is
 	(* the CM description file parser *)
 	parse/parse.sml
@@ -58,9 +58,6 @@ is
 
 	(* tools for handling other source types *)
 	tools/tools.sml
-	tools/yacctool.sml
-	tools/lextool.sml
-	tools/burgtool.sml
 
 	(* concurrent/parallel/distributed make *)
 	concur/sources.cm

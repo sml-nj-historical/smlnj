@@ -7,6 +7,7 @@
  *)
 signature PARSE = sig
     val parse :
+	(string -> bool) ->
 	GroupReg.groupreg option ->
 	GeneralParams.param -> bool option ->
 	SrcPath.t -> (CMSemant.group * GeneralParams.info) option
@@ -55,7 +56,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	(sgc := #1 (SrcPathMap.remove (!sgc, l)))
 	handle LibBase.NotFound => ()
 
-    fun parse gropt param stabflag group = let
+    fun parse load_plugin gropt param stabflag group = let
 
 	val stabthis = isSome stabflag
 	val staball = stabflag = SOME true
@@ -233,7 +234,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			 CMSemant.emptyGroup group)
 
 		    fun doMember ({ name, mkpath }, p1, p2, c) =
-			CMSemant.member (ginfo, recParse (p1, p2))
+			CMSemant.member (ginfo, recParse (p1, p2), load_plugin)
 			  { name = name, mkpath = mkpath,
 			    class = c, group = (group, (p1, p2)),
 			    context = context }

@@ -5,7 +5,7 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-signature TOOLS = sig
+signature CORETOOLS = sig
 
     (* We don't make classes abstract.  It doesn't look like there
      * would be much point to it. *)
@@ -43,7 +43,7 @@ signature TOOLS = sig
      * expanded... *)
     type partial_expansion = expansion * spec list
 
-    (* A rule takes a spec and a rulecontext where the name name contained
+    (* A rule takes a spec and a rulecontext where the name contained
      * in the spec -- if relative -- is considered relative to the directory
      * of the corresponding description file.  In general,
      * when coding a rule one would write a rule function and pass it to
@@ -77,8 +77,8 @@ signature TOOLS = sig
 
     (* two standard ways of dealing with filename extensions... *)
     datatype extensionStyle =
-	EXTEND of string list
-      | REPLACE of string list * string list
+	EXTEND of (string * class option) list
+      | REPLACE of string list * (string * class option) list
 
     type cmdController = { get: unit -> string, set: string -> unit }
 
@@ -88,11 +88,10 @@ signature TOOLS = sig
 				    class: string,
 				    suffixes: string list,
 				    command: cmdController,
-				    extensionStyle: extensionStyle,
-				    sml: bool } -> unit
+				    extensionStyle: extensionStyle } -> unit
 
     (* perform filename extension *)
-    val extend : extensionStyle -> string -> string list
+    val extend : extensionStyle -> string -> (string * class option) list
 
     (* check for outdated files; the pathname strings must be in
      * native syntax! *)
@@ -100,17 +99,25 @@ signature TOOLS = sig
 
     (* install a classifier *)
     val registerClassifier : classifier -> unit
-
-    (* query default class *)
-    val defaultClassOf : string -> class option
 end
 
 signature PRIVATETOOLS = sig
-    include TOOLS where type srcpath = SrcPath.t
+    include CORETOOLS where type srcpath = SrcPath.t
+
     val expand : { error: string -> unit,
 		   spec: spec,
-		   context: SrcPath.context }
+		   context: SrcPath.context,
+		   load_plugin: string -> bool }
 	-> expansion
+
+    val defaultClassOf : (string -> bool) -> string -> class option
+end
+
+signature TOOLS = sig
+    include CORETOOLS
+
+    (* query default class *)
+    val defaultClassOf : string -> class option
 end
 
 structure PrivateTools :> PRIVATETOOLS = struct
@@ -151,17 +158,18 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	SFX_CLASSIFIER (fn e => if sfx = e then SOME class else NONE)
 
     datatype extensionStyle =
-	EXTEND of string list
-      | REPLACE of string list * string list
+	EXTEND of (string * class option) list
+      | REPLACE of string list * (string * class option) list
 
     type cmdController = { get: unit -> string, set: string -> unit }
 
     fun newCmdController sp = EnvConfig.new SOME sp
 
-    fun extend (EXTEND l) f = map (fn s => concat [f, ".", s]) l
+    fun extend (EXTEND l) f = map (fn (s, co) => (concat [f, ".", s], co)) l
       | extend (REPLACE (ol, nl)) f = let
 	    val { base, ext } = OS.Path.splitBaseExt f
-	    fun join b e = OS.Path.joinBaseExt { base = b, ext = SOME e }
+	    fun join b (e, co) =
+		(OS.Path.joinBaseExt { base = b, ext = SOME e }, co)
 	    fun gen b = map (join b) nl
 	    fun sameExt (e1: string) (e2: string) = e1 = e2
 	in
@@ -194,19 +202,13 @@ structure PrivateTools :> PRIVATETOOLS = struct
     end
 
     fun registerStdShellCmdTool args = let
-	val { tool, class, suffixes, command, extensionStyle, sml } = args
+	val { tool, class, suffixes, command, extensionStyle } = args
 	fun rule { spec = (name, mkpath, _), context, mkNativePath } = let
 	    val nativename = nativeSpec (mkpath name)
 	    val targetfiles = extend extensionStyle nativename
 	    val partial_expansion =
-		if sml then
-		    ({ smlfiles =
-		        map (fn f => (mkNativePath f, Sharing.DONTCARE))
-			    targetfiles,
-		       cmfiles = [] },
-		     [])
-		else ({ smlfiles = [], cmfiles = [] },
-		      map (fn f => (f, mkNativePath, NONE)) targetfiles)
+		({ smlfiles = [], cmfiles = [] },
+		 map (fn (f, co) => (f, mkNativePath, co)) targetfiles)
 	    fun runcmd () = let
 		val cmd =
 		    concat [#get (command: cmdController) (), " ", nativename]
@@ -216,7 +218,8 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		else raise ToolError { tool = tool, msg = cmd }
 	    end
 	    fun rulefn () =
-		(if outdated tool (targetfiles, nativename) then runcmd ()
+		(if outdated tool (map #1 targetfiles, nativename) then
+		     runcmd ()
 		 else ();
 		 partial_expansion)
 	in
@@ -230,7 +233,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
     end
 
     (* query default class *)
-    fun defaultClassOf p = let
+    fun defaultClassOf load_plugin p = let
 	fun gen_loop [] = NONE
 	  | gen_loop (h :: t) =
 	    (case h p of
@@ -248,7 +251,15 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	end
     in
 	case OS.Path.ext p of
-	    SOME e => sfx_loop e
+	    SOME e =>
+		(case sfx_loop e of
+		     SOME c => SOME c
+		   | NONE => let
+			 val plugin = OS.Path.joinBaseExt { base = e ^ "-ext",
+							    ext = SOME "cm" }
+		     in
+			 if load_plugin plugin then sfx_loop e else NONE
+		     end)
 	  | NONE => gen_loop (!gen_classifiers)
     end
 
@@ -257,19 +268,31 @@ structure PrivateTools :> PRIVATETOOLS = struct
     fun cmrule { spec = (name, mkpath, _), context, mkNativePath } =
 	({ smlfiles = [], cmfiles = [mkpath name] }, [])
 
-    fun expand { error, spec, context } = let
+    fun expand { error, spec, context, load_plugin } = let
 	fun mkNativePath s = SrcPath.native { context = context, spec = s }
 	fun class2rule class =
 	    case StringMap.find (!classes, class) of
 		SOME rule => rule
-	      | NONE => (error (concat ["unknown class \"", class, "\""]);
+	      | NONE => let
+		    val plugin = OS.Path.joinBaseExt { base = class ^ "-tool",
+						       ext = SOME "cm" }
+		    fun complain () =
+			(error (concat ["unknown class \"", class, "\""]);
 			 smlrule Sharing.DONTCARE)
+		in
+		    if load_plugin plugin then
+			case StringMap.find (!classes, class) of
+			    SOME rule => rule
+			  | NONE => complain ()
+		    else complain ()
+		end
+
 	fun expand1 (spec as (name, _, co)) = let
 	    val rule =
 		case co of
 		    SOME c0 => class2rule (String.map Char.toLower c0)
 		  | NONE =>
-			(case defaultClassOf name of
+			(case defaultClassOf load_plugin name of
 			     SOME c => class2rule c
 			   | NONE => smlrule Sharing.DONTCARE)
 	    fun rcontext rf = let
@@ -314,4 +337,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
     end
 end
 
-structure Tools : TOOLS = PrivateTools
+functor ToolsFn (val load_plugin : string -> bool) : TOOLS = struct
+    open PrivateTools
+    val defaultClassOf = defaultClassOf load_plugin
+end

@@ -13,10 +13,6 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
   datatype envrequest = AUTOLOAD | BARE
 
   local
-      structure YaccTool = YaccTool
-      structure LexTool = LexTool
-      structure BurgTool = BurgTool
-
       structure E = GenericVC.Environment
       structure SE = GenericVC.StaticEnv
       structure ER = GenericVC.EnvRef
@@ -72,7 +68,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       (* This function combines the actions of "recompile" and "exec".
        * When successful, it combines the results (thus forming a full
        * environment) and adds it to the toplevel environment. *)
-      fun make_runner gp g = let
+      fun make_runner add_bindings gp g = let
 	  val { store, get } = BFC.new ()
 	  val _ = init_servers g
 	  val { group = c_group, ... } =
@@ -94,16 +90,21 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		     map (fn s => ("  " ^ s ^ "\n")) (StringSet.listItems rq));
 		   case l_group gp of
 		       NONE => false
-		     | SOME dyn => let
-			   val delta = E.mkenv { static = stat, symbolic = sym,
-						 dynamic = dyn }
-			   val base = #get ER.topLevel ()
-			   val new = BE.concatEnv (CoerceEnv.e2b delta, base)
-		       in
-			   #set ER.topLevel new;
-			   Say.vsay ["[New bindings added.]\n"];
-			   true
-		       end)
+		     | SOME dyn =>
+			   (if add_bindings then
+				let val delta = E.mkenv { static = stat,
+							  symbolic = sym,
+							  dynamic = dyn }
+				    val base = #get ER.topLevel ()
+				    val new =
+					BE.concatEnv (CoerceEnv.e2b delta,
+						      base)
+				in
+				    #set ER.topLevel new;
+				    Say.vsay ["[New bindings added.]\n"]
+				end
+			    else ();
+			    true))
       end
 
       val al_greg = GroupReg.new ()
@@ -203,12 +204,51 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val c = SrcPath.cwdContext ()
 	      val p = SrcPath.standard pcmode { context = c, spec = s }
 	  in
-	      (case Parse.parse (SOME al_greg) (param ()) NONE p of
+	      (case Parse.parse load_plugin (SOME al_greg) (param ()) NONE p of
 		   NONE => false
 		 | SOME (g, _) =>
 		       (AutoLoad.register (GenericVC.EnvRef.topLevel, g);
 			true))
 	      before dropPickles ()
+	  end
+
+	  and run sflag f s = let
+	      val c = SrcPath.cwdContext ()
+	      val p = SrcPath.standard pcmode { context = c, spec = s }
+	  in
+	      (case Parse.parse load_plugin NONE (param ()) sflag p of
+		   NONE => false
+		 | SOME (g, gp) => f gp g)
+	      before dropPickles ()
+	  end
+
+	  and load_plugin x = let
+	      val _ = Say.vsay ["[attempting to load plugin ", x, "]\n"]
+	      val success =
+		  run NONE (make_runner false) x handle _ => false
+	  in
+	      if success then
+		  Say.vsay ["[plugin ", x, " loaded successfully]\n"]
+	      else
+		  Say.vsay ["[unable to load plugin ", x, "]\n"];
+	      success
+	  end
+
+	  fun stabilize_runner gp g = true
+
+	  fun stabilize recursively = run (SOME recursively) stabilize_runner
+	  val recomp = run NONE recomp_runner
+	  val make = run NONE (make_runner true)
+
+	  fun slave () = let
+	      fun parse p =
+		  Parse.parse load_plugin NONE (param ()) NONE p
+	  in
+	      Slave.slave { pcmode = pcmode,
+			    parse = parse,
+			    my_archos = my_archos,
+			    sbtrav = Compile.newSbnodeTraversal,
+			    make = make }
 	  end
 
 	  fun al_ginfo () = { param = param (),
@@ -220,29 +260,6 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				   dropPickles = dropPickles }
 
 	  fun al_manager' (ast, _, ter) = al_manager (ast, ter)
-
-	  fun run sflag f s = let
-	      val c = SrcPath.cwdContext ()
-	      val p = SrcPath.standard pcmode { context = c, spec = s }
-	  in
-	      (case Parse.parse NONE (param ()) sflag p of
-		   NONE => false
-		 | SOME (g, gp) => f gp g)
-	      before dropPickles ()
-	  end
-
-	  fun stabilize_runner gp g = true
-
-	  fun stabilize recursively = run (SOME recursively) stabilize_runner
-	  val recomp = run NONE recomp_runner
-	  val make = run NONE make_runner
-
-	  fun slave () =
-	      Slave.slave { pcmode = pcmode,
-			    parse = fn p => Parse.parse NONE (param ()) NONE p,
-			    my_archos = my_archos,
-			    sbtrav = Compile.newSbnodeTraversal,
-			    make = make }
 
 	  fun reset () =
 	      (Compile.reset ();
@@ -461,6 +478,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	val stabilize = stabilize
 
 	val symval = SSV.symval
+	val load_plugin = load_plugin
     end
   end
 end

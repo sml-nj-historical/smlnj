@@ -20,7 +20,8 @@ signature MEMBERCOLLECTION = sig
 
     val empty : collection
 
-    val expandOne : GeneralParams.info * (SrcPath.t -> GroupGraph.group)
+    val expandOne :
+	GeneralParams.info * (SrcPath.t -> GroupGraph.group) * (string -> bool)
 	-> { name: string, mkpath: string -> SrcPath.t,
 	     group: SrcPath.t * region, class: string option,
 	     context: SrcPath.context }
@@ -104,7 +105,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		     reqpriv = StringSet.union (#reqpriv c1, #reqpriv c2) }
     end
 
-    fun expandOne (gp, rparse) arg = let
+    fun expandOne (gp, rparse, load_plugin) arg = let
 	val primconf = #primconf (#param gp)
 	val { name, mkpath, group, class, context } = arg
 	val class = Option.map (String.map Char.toLower) class
@@ -115,7 +116,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	    val { smlfiles, cmfiles } =
 		PrivateTools.expand { error = e0,
 				      spec = (name, mkpath, class),
-				      context = context }
+				      context = context,
+				      load_plugin = load_plugin }
 	    fun g_coll p = let
 		val g as GG.GROUP { exports = i, kind, required, ... } =
 		    rparse p

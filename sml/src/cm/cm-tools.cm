@@ -1,6 +1,0 @@
-Library
-	structure Sharing
-	signature TOOLS
-	structure Tools
-is
-	cm-lib.cm

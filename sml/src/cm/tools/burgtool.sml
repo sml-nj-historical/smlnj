@@ -12,6 +12,5 @@ structure BurgTool = struct
 	  class = "mlburg",
 	  suffixes = ["burg"],
 	  command = command,
-	  extensionStyle = Tools.REPLACE (["burg"], ["sml"]),
-	  sml = true }
+	  extensionStyle = Tools.REPLACE (["burg"], [("sml", SOME "sml")]) }
 end

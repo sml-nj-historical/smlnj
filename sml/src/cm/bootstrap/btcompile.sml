@@ -7,7 +7,8 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 functor BootstrapCompileFn (structure MachDepVC : MACHDEP_VC
-			    val os : SMLofNJ.SysInfo.os_kind) :> sig
+			    val os : SMLofNJ.SysInfo.os_kind
+			    val load_plugin : string -> bool) :> sig
     val make' : string option -> bool
     val make : unit -> bool
     val deliver' : string option -> bool
@@ -248,7 +249,7 @@ end = struct
 		if deliver then SOME true else NONE
 	in
 	    Servers.dirbase dirbase;
-	    case Parse.parse NONE param stab maingspec of
+	    case Parse.parse load_plugin NONE param stab maingspec of
 		NONE => NONE
 	      | SOME (g, gp) => let
 		    fun thunk () = let

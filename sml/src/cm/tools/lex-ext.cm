@@ -1,0 +1,4 @@
+Library
+	structure LexTool
+is
+	mllex-tool.cm
