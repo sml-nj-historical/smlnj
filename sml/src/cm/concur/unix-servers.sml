@@ -264,7 +264,7 @@ structure Servers :> SERVERS = struct
 	if wait_status (s, false) then (addServer s; SOME s)
 	else NONE
     end
-	
+
     fun compile p =
 	case grab () of
 	    NONE => false

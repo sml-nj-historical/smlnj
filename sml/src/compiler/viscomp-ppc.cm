@@ -10,7 +10,7 @@
  *   M.Blume (03/2000)
  *)
 
-Group ($smlnj/viscomp/ppc.cm)
+Group (../system/smlnj/viscomp/ppc.cm)
 	structure PPCVisComp
         structure PPCCG
         structure PPCCpsRegs

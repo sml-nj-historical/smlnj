@@ -1,4 +1,4 @@
-Group ($basis.cm)
+Group (../basis.cm)
 	signature ARRAY
 	signature ARRAY2
 	signature VECTOR

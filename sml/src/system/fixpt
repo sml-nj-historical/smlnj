@@ -30,6 +30,8 @@ BIN=.bin.$ARCH-unix
 BOOT=.boot.$ARCH-unix
 ITER=3
 BASE=sml
+REBUILD="-rebuild"
+SETLIGHT=""
 
 #
 # Function to do one round of compilation to get the initial set of binfiles.
@@ -38,6 +40,7 @@ BASE=sml
 initcompile() {
 $SML '$smlnj/cmb.cm' <<EOF
 local open OS.Process CMB in
+   $SETLIGHT
    val _ = exit (if make' (SOME "$BASE") then success else failure) (* ' *)
 end
 EOF
@@ -63,6 +66,10 @@ while [ "$#" != 0 ] ; do
 	fi
 	BASE=$1; shift
 	;;
+    -light)
+	REBUILD="-lightrebuild"
+	SETLIGHT='val _ = #set (CMB.symval "LIGHT") (SOME 1);'
+	;;
     *)
 	echo "$this: unknown argument \"$arg\""
 	exit 2
@@ -79,7 +86,7 @@ if initcompile ; then
 	prevbase=$iterbase
 	iter=`expr $iter + 1`
 	iterbase=$BASE$iter
-	if ./makeml -boot $prevbase$BOOT -rebuild $iterbase ; then
+	if ./makeml -boot $prevbase$BOOT $REBUILD $iterbase ; then
 	    if diff -r $prevbase$BIN $iterbase$BIN >/dev/null 2>&1 ; then
 		echo "$this: fixpoint reached in round $iter"
 		exit 0

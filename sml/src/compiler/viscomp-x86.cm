@@ -10,7 +10,7 @@
  *   M.Blume (03/2000)
  *)
 
-Group ($smlnj/viscomp/x86.cm)
+Group (../system/smlnj/viscomp/x86.cm)
 	structure X86VisComp
         structure X86CG
         structure X86CpsRegs

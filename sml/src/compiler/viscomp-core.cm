@@ -13,7 +13,7 @@
  *   M.Blume (03/2000)
  *)
 
-Group ($smlnj/viscomp/core.cm)
+Group (../system/smlnj/viscomp/core.cm)
 	signature GENERIC_VC
 	signature MACHDEP_VC
 

@@ -10,23 +10,27 @@
  *)
 structure Servers :> SERVERS = struct
     type server = unit
-    fun start _ =
-	(Say.say ["Compile server facility not available."];
-	 NONE)
-    fun stop () = ()
-    fun kill () = ()
-    fun name () = "<NoServer>"
-    fun reset _ = Concur.reset ()
-    fun dirbase _ = ()
-    fun cd _ = ()
-    fun cm _ = ()
-    fun cmb _ = ()
-    fun cmb_new _ = ()
-    fun compile _ = false
-    fun withServers f =
-	SafeIO.perform { openIt = fn () => (),
-			 closeIt = fn () => (),
-			 work = f,
-			 cleanup = reset }
-    fun allIdle () = true
+    local
+	fun unavailable x =
+	    (Say.say ["Compile server facility not available."]; x)
+	fun impossible () = raise Fail "Servers: impossible"
+    in
+        fun start _ = unavailable NONE
+	fun stop () = impossible ()
+	fun kill () = impossible ()
+	fun name () = impossible ()
+	fun reset _ = Concur.reset ()
+	fun dirbase _ = ()
+	fun cd _ = ()
+	fun cm _ = ()
+	fun cmb _ = ()
+	fun cmb_new _ = ()
+	fun compile _ = false
+	fun withServers f =
+	    SafeIO.perform { openIt = fn () => (),
+			     closeIt = fn () => (),
+			     work = f,
+			     cleanup = reset }
+	fun allIdle () = true
+    end
 end

@@ -5,7 +5,7 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-Group ($smlnj/internal/cm-lib.cm)
+Group (../../system/smlnj/internal/cm-lib.cm)
 	signature PATHCONFIG
 	structure PathConfig
 	signature SRCPATH

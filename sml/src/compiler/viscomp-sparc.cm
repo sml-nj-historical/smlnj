@@ -10,7 +10,7 @@
  *   M.Blume (03/2000)
  *)
 
-Group ($smlnj/viscomp/sparc.cm)
+Group (../system/smlnj/viscomp/sparc.cm)
 	structure SparcVisComp
         structure SparcCG
         structure SparcCpsRegs

@@ -13,6 +13,32 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/05/15 16:20:00 JST
+Tag: blume-20000515-lightrebuild
+Description:
+
+1. I added an alternative to "-rebuild" to "makeml".  The difference is
+   that prior to calling CMB.make' the CM-variable "LIGHT" will be
+   defined.  In effect, the command will not build any cross-compiler
+   backends and therefore finish more quickly.
+
+   The "fixpt" script also takes a "-light" switch to be able to use
+   this new facility while compiling for a fixpoint.
+
+2. I replaced all mentions of anchored paths in group owner specifications
+   with simple relative paths (usually starting with "..").
+   The rationale is that a library's internal workings should not be
+   compromised by the lack of some anchor.  (An anchor is necessary
+   for someone who wants to refer to the library by an anchored path,
+   but it should not be necessary to build the same library in the first
+   place.)
+
+3. I changed the way CM's tool mechanism determines the shell command
+   string used for things like ml-yacc etc. so that it does not break
+   when CM.Control.implicit_anchors is turned off.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/05/12 18:20:00 JST
 Tag: blume-20000512-ml-build
 Description:

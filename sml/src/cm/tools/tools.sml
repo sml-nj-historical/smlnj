@@ -388,7 +388,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 end
 
 functor ToolsFn (val load_plugin : string -> bool
-		 val mkStdSrcPath : string -> SrcPath.t) : TOOLS = struct
+		 val pcmode: PathConfig.mode) : TOOLS = struct
 
     open PrivateTools
     val defaultClassOf = defaultClassOf load_plugin
@@ -396,22 +396,19 @@ functor ToolsFn (val load_plugin : string -> bool
     val say = Say.say
     val vsay = Say.vsay
 
-    fun mkCmdName cmdStdPath = let
+    fun mkCmdName cmdStdPath =
 	(* It is not enough to turn the string into a SrcPath.t
 	 * once.  This is because if there was no anchor in the
 	 * beginning, later additions of an anchor will go unnoticed.
-	 * This is different from how other files (ML source files)
+	 * This is different from how other files (ML source files etc.)
 	 * behave: They, once the are found to be unanchored, should
-	 * never become anchored later (although an existing anchor
-	 * is allowed to change). *)
-	val p = mkStdSrcPath cmdStdPath
-	val n = SrcPath.osstring p
-    in
-	(* If the resulting path is not absolute, then it cannot have
-	 * been anchored (configured). In this case we just use the
-	 * given string as-is. *)
-	if OS.Path.isAbsolute n then n else cmdStdPath
-    end
+	 * never become (implicitly) anchored later (although an existing
+	 * anchor is allowed to change). Of course, the whole issue
+	 * becomes moot once there are no more implicitly anchored paths. *)
+	case PathConfig.configAnchor pcmode cmdStdPath of
+	    NONE => cmdStdPath
+	  | SOME mkPath =>
+	    OS.Path.joinDirFile { dir = mkPath (), file = cmdStdPath }
 
     fun registerStdShellCmdTool args = let
 	val { tool, class, suffixes, cmdStdPath,

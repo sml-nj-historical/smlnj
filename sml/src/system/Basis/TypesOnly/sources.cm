@@ -1,4 +1,4 @@
-Group ($basis.cm) is
+Group (../basis.cm) is
 
 	$smlnj/init/init.cmi : cm
 

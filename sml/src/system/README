@@ -156,7 +156,7 @@ internally, there are some changes that you should be aware of:
     CMB.make' with the argument that was given to -rebuild.  After
     CMB.make' is done, the system quits.  In essence, makeml with -rebuild
     acts as a bootstrap compiler that is not dependent on any usable
-    static libraries.]
+    static environments.]
 
 Makeml will not destroy the bootfile directory.
 
@@ -185,15 +185,15 @@ argument. All other arguments are passed verbatim to the ML process.
 
 The <prefix> is the same as the one used when you did "makeml".  If
 you run "testml" without arguments, <prefix> defaults to "sml".
-Thus, if you just said "makeml" without argument you can also say
-"testml" without argument.  (Note that you _must_ supply the <prefix>
+Thus, if you just said "makeml" without arguments you can also say
+"testml" without arguments.  (Note that you _must_ supply the <prefix>
 argument if you intend to pass any additional arguments.)
 
 * Installing a heap image for more permanent use
 ------------------------------------------------
 
 You can "install" a newly generated heap image by replacing the old
-image with the new one _AND AT THE SAME TIME_ replacing the old stable
+image with the new one AND AT THE SAME TIME replacing the old stable
 libaries with the new ones.  To do this, run the "installml" script.
 
 Like "testml", "installml" also expects the <prefix> as its first
@@ -204,7 +204,7 @@ changes or additions to the path name mapping.  (I say "patches"
 because entries unrelated to the SML/NJ build process are retained in
 their original form.)  If you want to use a destination directory that
 is different from ../../lib, then you must do this by hand (i.e.,
-installml will not let you do this).
+installml does not have an option for that).
 
 Thus, after a successful CMB.make, you should say
 
@@ -234,7 +234,7 @@ before you can access them.  (This step corresponds to the old
 CMB.retarget call.)  After that, _all_ cross-compilers are available
 at the same time.  However, the ones that you are not using don't take
 up any undue space because they only get loaded once you actually
-mention them at the top-level.  The names of the structures currently
+mention them at top level.  The names of the structures currently
 exported by $smlnj/compiler/all.cm are:
 
 	structure Alpha32UnixCMB
@@ -455,7 +455,7 @@ Once I have new heap image and libraries working, I replace the old
 
   mv <image>.<arch>-<osvariant> ../../bin/.heap/sml.<arch>-<osvariant>
 
-After this you must also move all libraries from <image>.libs/* to their
+After this I must also move all libraries from <image>.libs/* to their
 corresponding position in ../../lib.
 
 Since this is cumbersome to do by hand, there is a script called

@@ -15,7 +15,7 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 		  val architecture: string
 		  val cminit : string * DynamicEnv.dynenv * envrequest ->
 		               (unit -> unit) option
-		  val cmbmake: string -> unit) :> BOOTENV = struct
+		  val cmbmake: string * bool -> unit) :> BOOTENV = struct
 
     exception BootFailure
 
@@ -31,9 +31,9 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
     fun die s = (say s; raise BootFailure)
 
     (* just run CMB.make to make a new set of binfiles... *)
-    fun recompile bindir =
+    fun recompile (bindir, light) =
 	(say (concat ["[building new binfiles in ", bindir, "]\n"]);
-	 cmbmake bindir;
+	 cmbmake (bindir, light);
 	 OS.Process.exit OS.Process.success)
 
     local
@@ -55,27 +55,38 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 
     fun init bootdir = let
 	(* grab relevant command line arguments... *)
-	fun vArg (prefix, arg) =
-	    if String.isPrefix prefix arg then
-		SOME (String.extract (arg, size prefix, NONE))
-	    else NONE
+	fun caseArg arg cases dfl = let
+	    fun loop [] = dfl ()
+	      | loop ({ prefix, action } :: l) =
+		if String.isPrefix prefix arg then
+		    action (String.extract (arg, size prefix, NONE))
+		else loop l
+	in
+	    loop cases
+	end
+
 	fun bootArgs ([], newbindir, heapfile, er) = (newbindir, heapfile, er)
 	  | bootArgs ("@SMLbare" :: rest, newbindir, heapfile, _) =
 	    bootArgs (rest, newbindir, heapfile, BARE)
 	  | bootArgs (head :: rest, newbindir, heapfile, er) =
-	    (case vArg ("@SMLrebuild=", head) of
-		 nbd as SOME _ => bootArgs (rest, nbd, heapfile, er)
-	       | NONE =>
-		     (case vArg ("@SMLheap=", head) of
-			  SOME hf => bootArgs (rest, newbindir, hf, er)
-			| NONE => bootArgs (rest, newbindir, heapfile, er)))
+	    caseArg head
+		    [{ prefix = "@SMLheap=",
+		       action = fn hf => bootArgs (rest, newbindir, hf, er) },
+		     { prefix = "@SMLrebuild=",
+		       action = fn nbd =>
+				   bootArgs (rest, SOME (nbd, false),
+					     heapfile, er) },
+		     { prefix = "@SMLlightrebuild=",
+		       action = fn nbd =>
+				   bootArgs (rest, SOME (nbd, true),
+					     heapfile, er) }]
+		    (fn () => bootArgs (rest, newbindir, heapfile, er))
 
 	val (newbindir, heapfile, er) =
 	    bootArgs (SMLofNJ.getAllArgs (),
 		      NONE,
 		      "sml." ^ architecture,
 		      AUTOLOAD)
-	val newbindir = Option.map OS.Path.mkCanonical newbindir
     in
 	case newbindir of
 	    NONE => let
@@ -83,9 +94,12 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 	    in
 		{ heapfile = heapfile, procCmdLine = procCmdLine }
 	    end
-	  | SOME nbd =>
+	  | SOME (nbd, light) => let
+		val nbd = OS.Path.mkCanonical nbd
+	    in
 		if nbd = bootdir then
 		    die "@SMLboot= and @SMLrebuild= name the same directory\n"
-		else recompile nbd
+		else recompile (nbd, light)
+	    end
     end
 end

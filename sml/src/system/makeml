@@ -91,6 +91,14 @@ while [ "$#" != "0" ] ; do
 	rebuilt=yes
 	MODE="@SMLrebuild=$1"; shift
 	;;
+    -rebuildlight|-lightrebuild|-light)
+	if [ "$#" = "0" ]; then
+	    echo "$this: missing argument for \"-rebuild\" option"
+	    exit 1
+	fi
+	rebuilt=yes
+	MODE="@SMLlightrebuild=$1"; shift
+	;;
     -o)
 	if [ "$#" = "0" ]; then
 	    echo "$this: missing argument for \"-o\" option"

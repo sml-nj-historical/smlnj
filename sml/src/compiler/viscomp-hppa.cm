@@ -10,7 +10,7 @@
  *   M.Blume (03/2000)
  *)
 
-Group ($smlnj/viscomp/hppa.cm)
+Group (../system/smlnj/viscomp/hppa.cm)
 	structure HppaVisComp
         structure HppaCG
         structure HppaCpsRegs

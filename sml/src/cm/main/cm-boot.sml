@@ -146,11 +146,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val fnpolicy = FilenamePolicy.colocate
 	      { os = os, arch = HostMachDepVC.architecture }
 
-	  val pcmode = PathConfig.new ()
-
 	  val theValues = ref (NONE: kernelValues option)
 
       in
+	  val pcmode = PathConfig.new ()
+
 	  (* cancelling anchors cannot affect the order of existing paths
 	   * (it may invalidate some paths; but all other ones stay as
 	   * they are) *)
@@ -581,7 +581,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
     end
 
     structure Tools = ToolsFn (val load_plugin = cwd_load_plugin
-			       val mkStdSrcPath = mkStdSrcPath)
+			       val pcmode = pcmode)
 
     val load_plugin = load_plugin
   end
