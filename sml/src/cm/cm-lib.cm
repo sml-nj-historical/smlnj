@@ -64,6 +64,11 @@ is
 	compile/generic.sml
 	compile/recomp.sml
 	compile/exec.sml
+(*
+	compile-new/ctype.sig
+	compile-new/traversal.sig
+	compile-new/traversal.sml
+*)
 
 	(* overall control of CM *)
 	main/general-params.sml

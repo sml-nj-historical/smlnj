@@ -60,11 +60,11 @@ end = struct
 
     fun thunkify d () = d
 
-    fun execute (bfc, mkdyn, error, descr, memo, sl, bl) = let
+    fun execute (bfc, mkdyn, error, descr, memo, sl, bl, discard) = let
 	val e = BF.exec (bfc, mkdyn ())
 	val de = E.dynamicPart e
     in
-	BF.discardCode bfc;
+	if discard then BF.discardCode bfc else ();
 	memo de;
 	SOME (thunkify de, sl, bl)
     end handle exn => let
@@ -94,7 +94,8 @@ end = struct
 				     BinInfo.error i EM.COMPLAIN,
 				     BinInfo.describe i,
 				     fn e =>PS.exec_memo_stable (i, e, bl, ts),
-				     [], [i]))
+				     [], [i],
+				     BinInfo.sh_mode i <> Sharing.DONTSHARE))
 		   end
 		 | _ => NONE)
 
@@ -110,7 +111,8 @@ end = struct
 				       SmlInfo.descr i,
 				       fn m =>
 				           PS.exec_memo_sml (i, m, sl, bl, ts),
-				       [i], [])))
+				       [i], [],
+				       false)))
 	  | _ => NONE
   end
 end
