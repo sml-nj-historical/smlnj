@@ -1,0 +1,49 @@
+Library
+	structure Alpha32UnixCMB
+	structure HppaUnixCMB
+	structure PPCMacOSCMB
+	structure PPCUnixCMB
+	structure SparcUnixCMB
+	structure X86UnixCMB
+	structure X86Win32CMB
+
+	structure Alpha32Compiler
+	structure HppaCompiler
+	structure PPCCompiler
+	structure SparcCompiler
+	structure X86Compiler
+(*
+	structure MipsLittleUnixCMB
+	structure MipsBigUnixCMB
+	structure RS6000UnixCMB
+
+	structure MipsLittleCompiler
+	structure MipsBigCompiler
+	structure RS6000Compiler
+*)
+is
+	basis.cm
+	cm-lib.cm
+	viscomp-lib.cm
+
+	alpha32-compiler.sml
+	alpha32-unix.sml
+	hppa-compiler.sml
+	hppa-unix.sml
+	ppc-compiler.sml
+	ppc-macos.sml
+	ppc-unix.sml
+	sparc-compiler.sml
+	sparc-unix.sml
+	x86-compiler.sml
+	x86-unix.sml
+	x86-win32.sml
+
+(*
+	mipseb-compiler.sml
+	mipseb-unix.sml
+	mipsel-compiler.sml
+	mipsel-unix.sml
+	rs6000-compiler.sml
+	rs6000-unix.sml
+*)

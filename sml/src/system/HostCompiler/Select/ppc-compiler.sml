@@ -1,0 +1,1 @@
+structure Compiler = PPCCompiler

@@ -1,0 +1,96 @@
+#
+# spec.cmi
+#
+#  (C) 1999 Lucent Technologies, Bell Laboratories
+#
+# Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+#
+# This is the specification for how to build and set up a minimal set
+# of "primitive" environments (including the pervasive environment,
+# and the core environment).
+#
+# CM's normal group- and library processing cannot yet be used here
+# because of certain peculiarities (non-modular top-level bindings to
+# name the most important one).
+#
+# The specification is basically a DAG.  The "bind" statements define
+# named environments which are the results of compiling the files on the
+# right-hand side of "=" wrt. a combination of the environments given
+# in parentheses.
+#
+# Format of this file:
+#  - The file is processed on a line-by-line basis.
+#  - Empty lines and lines beginning with "#" are ignored.
+#  - Actual whitespace, "=", ",", "(", and ")" are all counted as whitespace.
+#     (this means that the syntactic sugar you see below is really just
+#      sugar for the human eye; the program that processes this file can
+#      do without it)
+#  - A line that says "nosplit" disables cross-module inlining (aka
+#    "lambda-splitting") until the next line that says "split".
+#  - "bind" specification that appear before the line that says "start"
+#    will not be listed in the boot list which is prepared for the
+#    runtime system boot loader.  Thus, the only files that may appear
+#    before "start" must either contain pure signature and type bindings or
+#    be the placeholder for the runtime system itself.
+#  - "bind" lines must be in topological order (i.e., they cannot access
+#    environment names that are being defined later).
+#  - The last line that gets processed is the "return" line.
+#    It must specify at least three environment names in this order:
+#      * the one that is used as the system-wide "core" environment
+#      * the one that resulted from compiling the runtime system placeholder
+#      * the one that is used as the system-wide "pervasive" environment
+#    Any additional name is taken as the name of a "primitive" that
+#    can be accessed from within CM description files by the given name.
+#    (Access to such primitives is subject to CM's access control mechanism.)
+#    Note: If you need direct access to the core environment as a primitive,
+#    then you must list it twice (one time in its usual place, one time
+#    to establish it as a "primitive").
+#  - There is one pre-defined name ("primitive") that refers to the
+#    Environment.primEnv.  It must not be "exported" by the "return" line.
+#
+# There is a side-condition on the core environment:
+# CM will first compile just the minimal required number of files that is
+# sufficient for getting hold of the core environment.  Naturally, these
+# files are compiled _without_ access to core and, therefore, cannot make
+# use of any language feature that lets the compiler try and access the core.
+# As soon as core is available, all remaining files are compiled using that
+# core, though.
+
+# Turn off splitting. It would confuse the compiler because the following
+# files are not actually loaded at boot time.
+nosplit
+
+# The "signature" of the runtime system:
+bind asig = assembly.sig (primitive)
+
+# The placeholder for the runtime system:
+bind rts = dummy.sml (asig, primitive)
+
+# All other files must be loaded by the boot loader at boot time...
+start
+
+# And we can turn the cross-module optimizer on (when available)...
+split
+
+# This defines the core environment to be used everywhere else...
+bind core = core.sml (rts, asig, primitive)
+
+# The rest of the DAG...
+bind built-in = built-in.sml (core, primitive)
+bind pp = pre-perv.sml (built-in)
+bind ps = pre-string.sml (core, built-in, pp)
+bind ss-sig = substring.sig (pp, built-in)
+bind ss = substring.sml (ss-sig, pp, ps, core, built-in)
+bind print-hook = print-hook.sml (built-in)
+bind use-hook = use-hook.sml (built-in)
+bind exn-info-hook = exn-info-hook.sml (built-in)
+bind init-utils = init-utils.sml (ps ss-sig ss)
+
+# Building the "pervasive" environment.  This file should be
+# kept as small as possible and only bind non-modular things
+# (i.e., top-level types and values).
+bind pervasive = pervasive.sml (core, ps, ss, pp, print-hook, use-hook, exn-info-hook, built-in)
+
+# Report the results to the world...
+return (core, rts, pervasive) built-in print-hook use-hook exn-info-hook core init-utils
+

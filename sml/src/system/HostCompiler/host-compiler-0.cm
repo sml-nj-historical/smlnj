@@ -1,0 +1,70 @@
+cm-init
+Library
+	structure Compiler
+	structure CMB
+	structure CM0
+is
+	(* library of visible compilers for various architectures *)
+	target-compilers.cm
+
+	(* library providing the implementation of CM *)
+	cm-lib.cm
+
+	(* based on current architecture, select Compiler *)
+
+# if defined(ARCH_ALPHA)
+	Select/alpha32-compiler.sml
+# elif defined(ARCH_MIPS)
+#   if defined(BIG_ENDIAN)
+	Select/mipseb-compiler.sml
+#   else
+	Select/mipsel-compiler.sml
+#   endif
+# elif defined(ARCH_HPPA)
+	Select/hppa-compiler.sml
+# elif defined(ARCH_RS6000)
+	Select/rs6000-compiler.sml
+# elif defined(ARCH_PPC)
+	Select/ppc-compiler.sml
+# elif defined(ARCH_SPARC)
+	Select/sparc-compiler.sml
+# elif defined(ARCH_X86)
+	Select/x86-compiler.sml
+# else
+#   error Strange architecture!
+# endif
+
+	(* based on current architecture and OS, select CMB *)
+
+# if defined(ARCH_ALPHA)
+	Select/alpha32-unix-cmb.sml
+# elif defined(ARCH_MIPS)
+#   if defined(BIG_ENDIAN)
+	Select/mipseb-unix-cmb.sml
+#   else
+	Select/mipsel-unix-cmb.sml
+#   endif
+# elif defined(ARCH_HPPA)
+	Select/hppa-unix-cmb.sml
+# elif defined(ARCH_RS6000)
+	Select/rs6000-unix-cmb.sml
+# elif defined(ARCH_PPC)
+#   if defined(OS_MACOS)
+	Select/ppc-macos-cmb.sml
+#   else
+	Select/ppc-unix-cmb.sml
+#   endif
+# elif defined(ARCH_SPARC)
+	Select/sparc-unix-cmb.sml
+# elif defined(ARCH_X86)
+#   if defined(OS_WIN32)
+	Select/x86-win32-cmb.sml
+#   else
+	Select/x86-unix-cmb.sml
+#   endif
+# else
+#   error Strange architecture and/or OS!
+# endif
+
+	(* make CM0 once we have selected the Compiler *)
+	link-cm.sml

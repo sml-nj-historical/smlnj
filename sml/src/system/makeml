@@ -1,0 +1,161 @@
+#!/bin/sh
+#
+
+ALLOC=1M
+
+ARCH=sparc
+OPSYS=solaris
+RUN_DIR=../../bin/.run
+OBJS_DIR=../runtime/objs
+HEAP_IMAGE=""
+RUN=""
+RUN_ARGS=""
+REBUILD=""
+BOOT_DIR=""
+
+#
+# Set CM_PATHCONFIG_DEFAULT to ../../lib/pathconfig
+# (using an absolute path!)
+#
+
+here=`pwd`
+cd ../..
+CM_PATHCONFIG_DEFAULT=`pwd`/lib/pathconfig
+cd $here
+export CM_PATHCONFIG_DEFAULT
+
+#
+# use the arch-n-opsys script to determine the ARCH/OS if possible
+#
+if [ -f ../../bin/.arch-n-opsys ]; then
+  ARCH_N_OPSYS=`../../bin/.arch-n-opsys`
+  if [ "$?" = "0" ]; then
+    eval $ARCH_N_OPSYS
+	echo $ARCH $OPSYS
+  fi
+fi
+
+while [ "$#" != "0" ]
+do
+  arg=$1; shift
+  case $arg in
+    -bare) FULL="@SMLbare" ;;
+    -rebuild)
+      if [ "$#" = "0" ]; then
+        echo "makeml: missing argument for \"-rebuild\" option"
+	exit 1
+      fi
+      REBUILD="@SMLrebuild=$1"; shift
+    ;;
+    -arch)
+      if [ "$#" = "0" ]; then
+        echo "makeml: missing argument for \"-arch\" option"
+	exit 1
+      fi
+      ARCH=$1; shift
+    ;;
+    -opsys)
+      if [ "$#" = "0" ]; then
+        echo "makeml: missing argument for \"-opsys\" option"
+	exit 1
+      fi
+      OPSYS=$1; shift
+    ;;
+    -o)
+      if [ "$#" = "0" ]; then
+        echo "makeml: missing argument for \"-o\" option"
+	exit 1
+      fi
+      HEAP_IMAGE=$1; shift
+    ;;
+    -run)
+      if [ "$#" = "0" ]; then
+        echo "makeml: missing argument for \"-run\" option"
+	exit 1
+      fi
+      RUN=$1; shift
+    ;;
+    -alloc)
+      if [ "$#" = "0" ]; then
+        echo "makeml: missing argument for \"-alloc\" option"
+	exit 1
+      fi
+      ALLOC=$1; shift
+    ;;
+    -boot)
+      if [ "$#" = "0" ]; then
+        echo "makeml: missing argument for \"-boot\" option"
+	exit 1
+      fi
+      BOOT_DIR=$1; shift
+    ;;
+    @SML*)
+      RUN_ARGS="$RUN_ARGS $arg"
+    ;;
+    *) echo "makeml: unknown argument \"$arg\""
+       exit 1
+    ;;
+  esac
+done
+
+if [ x"$RUN" = x ]; then
+  if [ x"$OPSYS" = xwin32 ]; then
+    RUN_CMD="run.$ARCH-$OPSYS.exe"
+  else
+    RUN_CMD="run.$ARCH-$OPSYS"
+  fi
+  if [ -x "$RUN_DIR/$RUN_CMD" ]; then
+    RUN="$RUN_DIR/$RUN_CMD"
+  elif [ -x "$OBJS_DIR/$RUN_CMD" ]; then
+    RUN="$OBJS_DIR/$RUN_CMD"
+  else
+    echo "makeml: unable to find run-time system \"$RUN_CMD\""
+    exit 1
+  fi
+fi
+
+if [ x"$HEAP_IMAGE" = x ]; then
+  HEAP_IMAGE="sml"
+fi
+
+if [ x"$BOOT_DIR" = x ]; then
+  BOOT_DIR="./comp.boot.$ARCH-unix"
+fi
+
+echo "$RUN @SMLboot=$BOOT_DIR @SMLrtpid=`cat $BOOT_DIR/RTPID` \
+	@SMLheap=$HEAP_IMAGE @SMLalloc=$ALLOC $RUN_ARGS $REBUILD"
+
+if $RUN @SMLboot=$BOOT_DIR @SMLrtpid=`cat $BOOT_DIR/RTPID` \
+	@SMLheap=$HEAP_IMAGE @SMLalloc=$ALLOC $RUN_ARGS $REBUILD
+then
+#
+# If this was a -rebuild run, we have to quit now...
+#
+    if [ x$REBUILD != x ] ; then
+	echo New binfiles are ready.
+	exit 0
+    fi
+    echo Heap image generated.
+else
+    echo Something broke.
+    exit 1
+fi
+
+#
+# Now move the libraries, generate the pathconfig file, and delete the bootdir.
+#
+
+LIB_DIR=`pwd`/${HEAP_IMAGE}.lib
+
+rm -rf $LIB_DIR
+mkdir $LIB_DIR
+
+cd $BOOT_DIR
+
+for i in *.cm ; do
+    mv $i $LIB_DIR/$i
+    echo $i $LIB_DIR/$i
+done >$LIB_DIR/pathconfig
+
+cd ..
+rm -r $BOOT_DIR
