@@ -37,11 +37,27 @@ structure Control : CONTROL =
 
     structure MLRISC = MLRISC_Control
 
+    structure FLINT =
+    struct
+	val print		= ref false
+	val inlineThreshold	= ref 0	(* it's buggy *)
+	val specialize		= ref true
+	val liftLiterals	= ref false (* true *)
+	val sharewrap		= ref true
+
+	(* FLINT internal type-checking controls *)
+	val check		= ref true
+	val checkDatatypes	= ref true
+	val checkKinds		= ref true
+
+	(* debugging *)
+	val debugFContract	= ref false
+    end
+
     structure CG : CGCONTROL =
     struct
       val tailrecur = ref true
       val recordopt = ref true
-      val specialize = ref true
       val tail = ref true
       val allocprof = ref false
       val closureprint = ref false
@@ -91,7 +107,6 @@ structure Control : CONTROL =
       val spillGen = ref 0
       val foldconst = ref true
       val etasplit = ref true
-      val printFlint = ref false
       val printit = ref false
       val printsize = ref false
       val scheduling = ref true
@@ -104,7 +119,6 @@ structure Control : CONTROL =
       val rangeopt = ref false
       val icount = ref false
       val debugRep = ref false
-      val sharewrap = ref true
       val checklty1 = ref false
       val checklty2 = ref false
       val checklty3 = ref false
@@ -112,7 +126,6 @@ structure Control : CONTROL =
       val checkcps2 = ref false
       val checkcps3 = ref false
       val checkcps = ref false
-      val liftLiterals = ref false (* true *)
       val flatfblock = ref true
       val deadup = ref true
       val pollChecks = ref false
@@ -130,11 +143,6 @@ structure Control : CONTROL =
       val memDisambiguate = ref false
       val controlDependence = ref false
       val flinton = ref true
-
-      (* FLINT internal type-checking controls *)
-      val checkFlint     = ref true
-      val checkDatatypes = ref true
-      val checkKinds     = ref true
 
       val compdebugging = ref false
       val mudebugging   = ref false

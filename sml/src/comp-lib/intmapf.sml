@@ -17,6 +17,7 @@ sig
   val cardinality : 'a intmap -> int
   val difference : 'a intmap * 'b intmap -> 'a intmap
   val delete : int * 'a intmap -> 'a intmap
+  val fold : (int * 'a * 'b -> 'b) -> 'b -> 'a intmap -> 'b
 end
 
 (*
@@ -164,13 +165,6 @@ structure IntmapF :> INTMAPF =
 		else if weight*n2 < n1 then T'(v1,v1',l1,concat(r1,t2))
 		     else cat2(t1,t2)
 
-	    fun fold(f,base,set) =
-		let fun fold'(base,E) = base
-		      | fold'(base,T(v,v',_,l,r)) = fold'(f((v,v'),fold'(base,r)),l)
-		in 
-		    fold'(base,set)
-		end
-
 	in
 
 	    type  'a intmap = 'a Map
@@ -207,7 +201,15 @@ structure IntmapF :> INTMAPF =
 			if x<v then mem l else if x>v then mem r else v'
 		in mem set end
 
-	    fun members set = fold(op::,[],set)
+	    fun fold f base map =
+		let fun fold' (base,E) = base
+		      | fold' (base,T(v,v',_,l,r)) =
+			fold'(fold'(f(v, v', base), l), r)
+		in
+		    fold'(base, map)
+		end
+
+	    fun members m = fold (fn (i,v,res) => (i,v)::res) [] m
 
 	    fun cardinality E = 0
 	      | cardinality (T(_,_,n,_,_)) = n

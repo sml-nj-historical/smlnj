@@ -6,7 +6,7 @@ functor FLINTComp (structure Gen: CPSGEN
 struct
 
 local structure CB = CompBasic
-      structure CGC = Control.CG
+(*        structure CGC = Control.CG *)
       structure MachSpec = Gen.MachSpec
       structure Convert = Convert(MachSpec)
       structure CPStrans = CPStrans(MachSpec)
@@ -23,10 +23,11 @@ val say = Control.Print.say
 fun phase x = Stats.doPhase (Stats.makePhase x)
 
 val lcontract = phase "Compiler 052 lcontract" LContract.lcontract 
+val fcontract = phase "Compiler 052 fcontract" FContract.contract
 val specialize= phase "Compiler 053 specialize" Specialize.specialize
 val wrapping  = phase "Compiler 054 wrapping" Wrapping.wrapping
 val reify     = phase "Compiler 055 reify" Reify.reify
-(* val lambdaopt = phase "Compiler 057 lambdaopt" LContract.lcontract *)
+val fixfix    = phase "Compiler 056 fixfix" FixFix.fixfix
 
 val convert   = phase "Compiler 060 convert" Convert.convert
 val cpstrans  = phase "Compiler 065 cpstrans" CPStrans.cpstrans
@@ -55,8 +56,8 @@ val (prF, prC) =
         if !flag then (say ("\n[After " ^ s ^ " ...]\n\n"); printE e; 
                        say "\n"; e) 
         else e
-   in (prGen (CGC.printFlint, PPFlint.printProg),
-       prGen (CGC.printit, PPCps.printcps0))
+   in (prGen (Control.FLINT.print, PPFlint.printProg),
+       prGen (Control.CG.printit, PPCps.printcps0))
   end
 
 (** writing out a term into a error output file *)
@@ -84,24 +85,30 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	 e)
       fun chkF (b, s) = 
         check (ChkFlint.checkTop, PPFlint.printFundec, 
-               "FLINT") (CGC.checkFlint, b, s)
+               "FLINT") (Control.FLINT.check, b, s)
 
       val _ = (chkF (false,"1") o prF "Translation/Normalization") flint
-      val flint = (chkF (false,"2") o prF "Lcontract" o lcontract) flint
+      val flint = (chkF (false,"2") o prF "Fcontract" o fcontract) flint
+
       val flint =
-        if !CGC.specialize then
+        if !Control.FLINT.specialize then
            (chkF (false,"3") o prF "Specialization" o specialize) flint
         else flint
 
+(*        val flint = (chkF (false,"6") o prF "FixFix" o fixfix) flint *)
+      val flint = (chkF (false,"2") o prF "Fcontract" o fcontract) flint
+
       val flint = (chkF (false, "4") o prF "Wrapping" o wrapping) flint
       val flint = (chkF (true, "5") o prF "Reify" o reify) flint
+
+      val flint = (chkF (true,"2") o prF "Fcontract" o fcontract) flint
 
       val (nc0, ncn, dseg) = 
         let val function = convert flint
             val _ = prC "convert" function
             val function = (prC "cpstrans" o cpstrans) function
             val function = 
-              if !CGC.cpsopt then cpsopt (function,NONE,false) 
+              if !Control.CG.cpsopt then cpsopt (function,NONE,false) 
               else function
             val _ = prC "cpsopt" function
 

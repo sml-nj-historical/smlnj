@@ -351,14 +351,14 @@ end (* function wrapperGen *)
 fun unwrapOp (wenv, nts, ots, d) = 
   let val nts' = map lt_norm nts
       val ots' = map lt_norm ots
-      val sflag = !Control.CG.sharewrap
+      val sflag = !Control.FLINT.sharewrap
    in wrapperGen (false, sflag) (wenv, nts', ots', d)
   end (* function unwrapOp *)
 
 fun wrapOp (wenv, nts, ots, d) = 
   let val nts' = map lt_norm nts
       val ots' = map lt_norm ots
-      val sflag = !Control.CG.sharewrap
+      val sflag = !Control.FLINT.sharewrap
    in wrapperGen (true, sflag) (wenv, nts', ots', d)
   end (* function wrapOp *)
 

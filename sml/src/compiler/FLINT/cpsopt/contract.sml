@@ -535,7 +535,7 @@ let val rec g' =
 				     of {info=RECinfo vl,...} =>
 					 (let val z = #1(List.nth(vl,i))
 					      val z' = ren z
-					  in if (!CG.liftLiterals)
+					  in if (!Control.FLINT.liftLiterals)
                                              then (case z' 
                                                     of REAL _ => NONE 
                                                      | _  => SOME z')

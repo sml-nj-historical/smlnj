@@ -1090,7 +1090,7 @@ val visited : eqclass option -> bool
 fun eq_fix (eqop1, hyp) (t1, t2) = 
   (case (tc_outX t1, tc_outX t2) 
     of (TC_FIX((n1,tc1,ts1),i1), TC_FIX((n2,tc2,ts2),i2)) => 
-        if not (!Control.CG.checkDatatypes) then true 
+        if not (!Control.FLINT.checkDatatypes) then true 
         else let 
             val t1eqOpt = TcDict.peek (hyp, t1)
         in
