@@ -122,14 +122,6 @@
 ;; regexps
 ;;
 
-(defvar sml-fixindent-re
-  (concat ".*" (regexp-quote comment-start)
-	  "[ \t]*fixindent[ \t]*"
-	  (regexp-quote comment-end))
-  "Regexp matching the magic string overriding indentation.")
-
-;;
-
 (defun sml-syms-re (&rest syms)
   (concat "\\<" (regexp-opt (flatten syms) t) "\\>"))
 

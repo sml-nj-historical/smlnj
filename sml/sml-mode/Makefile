@@ -61,9 +61,6 @@ TEXEXTS =  *.cps *.fns *.kys *.vr *.tp *.pg *.log *.aux *.toc *.cp *.ky *.fn
 .dvi.ps:
 	dvips -f $< >$@
 
-$(PACKAGE)-startup.el:  $(ELFILES)
-	$(EMACS) --batch --eval '(setq generated-autoload-file "'`pwd`'/$@")' -f batch-update-autoloads "."
-
 ######################################################################
 
 default: elcfiles
@@ -107,6 +104,12 @@ distclean: clean
 ######################################################################
 ###                    don't look below                            ###
 ######################################################################
+
+$(PACKAGE)-startup.el:  $(ELFILES)
+	chmod +w $@
+	$(EMACS) --batch --eval '(setq generated-autoload-file "'`pwd`'/$@")' -f batch-update-autoloads "."
+
+##
 
 TAG = $(shell echo v$(VERSION) | tr '.' '_')
 ftpdir=/home/ftp/pub/monnier/$(PACKAGE)

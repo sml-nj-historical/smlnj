@@ -234,11 +234,11 @@ prettyprinting switches.")
     ("\\(Error\\|Warning:\\) in '\\(.+\\)', line \\([0-9]+\\)" 2 3)
     ;; Moscow ML
     ("File \"\\([^\"]+\\)\", line \\([0-9]+\\)\\(-\\([0-9]+\\)\\)?, characters \\([0-9]+\\)-\\([0-9]+\\):" 1 2 5)
-    ;; SML/NJ:  the file-pattern is restricted to no-spaces to avoid
+    ;; SML/NJ:  the file-pattern is anchored to avoid
     ;; pathological behavior with very long lines.
-    ("^[-= ]*\\([^ ]+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)? \\(Error\\|Warning\\): .*" 1 sml-make-error 2 3 5 6)
+    ("^[-= ]*\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)? \\(Error\\|Warning\\): .*" 1 sml-make-error 2 3 5 6)
     ;; SML/NJ's exceptions:  see above.
-    ("^ +\\(raised at: \\)?\\([^ ]+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)" 2 sml-make-error 3 4 6 7)))
+    ("^ +\\(raised at: \\)?\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)" 2 sml-make-error 3 4 6 7)))
 
 (defvar sml-error-regexp nil
   "*Regexp for matching \(the start of\) an error message.")
@@ -283,7 +283,7 @@ prettyprinting switches.")
 ;; buffer-local
 
 (defvar sml-temp-file nil)
-(defvar sml-error-file nil)             ; file from which the last error came
+;;(defvar sml-error-file nil)             ; file from which the last error came
 (defvar sml-error-cursor nil)           ;   ditto
 
 (defun sml-proc-buffer ()
@@ -678,7 +678,9 @@ be executed to change the compiler's working directory\; a trailing
   (set-marker sml-error-cursor (1- (process-mark (sml-proc))))
   (setq sml-endof-error-alist nil)
   (compilation-forget-errors)
-  (setq compilation-parsing-end sml-error-cursor))
+  (if (markerp compilation-parsing-end)
+      (set-marker compilation-parsing-end sml-error-cursor)
+    (setq compilation-parsing-end sml-error-cursor)))
 
 (defun sml-make-error (f c)
   (let ((err (point-marker))

@@ -5,95 +5,16 @@
 
 * ignore warnings in C-x ` ????
 
+* recognize irrefutable patterns (with "Capital"-heuristics, for example).
+  This can then be used to allow indenting like
+
+		(fn x =>
+		 some expressions)
+
+* obey fixity directives
+
 * improve the run-sml to allow running on another machine and to take args
 
-* allow right-aligning "and" with its correspondant.
+* right-align "and" with its correspondant.
 
 * sample problematic indentations:
-
-let fun toStringFKind {isrec,cconv,inline,...} =
-	(if isSome isrec then "R" else "")^
-	(if cconv = F.CC_FCT then "FCT" else "FUN")^
-	(foo)
-	
-      | toStringFKind =
-	let fun cfun (fk,f,args,body) = let 
-	    in (fk, f, args, loop body)
-	    end
-	    fun foo x = let
-	      val 
-	    in 
-	      
-	      let f
-	      in if 2 then
-		   ~3
-		 else 
-		   asdf
-	      end
-		  
-		  (
-		   if foo then 1 else 2;
-		   ())
-	    end
-	end
-      | toStringFKind =
-	let bla
-	in foooooooooo;
-	   faaaaaaaaaaa
-	end
-	    
-	    
-	    let bla
-	    in (fn toto => 1,
-		fn tata => 2)
-	    end
-	    
-	    let
-	    in clet1 (fn [nv] => (Conlv, nv, ndc),
-		      fn ([nv],nle) => F.CON(dcon, tycs, nv, lv, nle))
-		     (lv,[v],le)
-	    end
-	    
-	    let
-	    in a d
-		 awsdfg
-		 sadf
-		 (fn bla =>
-		     gfsse
-		   | ss => 
-		     asdf)
-	    end
-	    (* sadgasgf *) 
-	    app (fn (fk,f,args,body as F.APP(F.VAR g,vs)) =>
-		    if not C.escaping f
-		       orelse vs = (map (F.VAR o #1) args) andalso
-			      not (C.escaping g)
-		    then
-		      let val g = F.VAR g
-		      in substitute(f, val2sval g, g)
-		      end
-		      handle NotFound =>
-			     addbind (f, Fun(f, body, args, fk, od))
-		    else addbind (f, Fun(f, body, args, fk, od))
-		  | (fk,f,args,body) =>
-		    addbind (f, Fun(f, body, args, fk, od)))
-	    
-	    (if 1 then 1 + 2 else if
-	       1 then
-	       1
-	       + df
-	     else
-	       hell
-		   de
-		   der
-		   +1)
-	    
-	    case
-	      case a of
-		 2 =>
-		 1
-		 + 2
-	       |  => 
-	     of 1 =>
-		sd
-	      |  => 

@@ -1,3 +1,10 @@
+1999-07-07  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-proc.el (sml-update-cursor): make sure it also works if compile.el
+	  is fixed to uses a marker.
+
+	* sml-mode.el (sml-indent): fix the `fixindent'.
+
 1999-06-22  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* sml-mode-startup.el: fixed to fulfill autoload.el assumptions.

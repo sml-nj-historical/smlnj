@@ -305,8 +305,10 @@ Entry to this mode runs the hooks on sml-mode-hook.
   (set (make-local-variable 'indent-line-function) 'sml-indent-line)
   (set (make-local-variable 'comment-start) "(* ")
   (set (make-local-variable 'comment-end) " *)")
+  ;;(set (make-local-variable 'block-comment-start) "* ")
+  ;;(set (make-local-variable 'block-comment-end) "")
   (set (make-local-variable 'comment-column) 40)
-  (set (make-local-variable 'comment-start-skip) "(\\*+[ \t]?")
+  (set (make-local-variable 'comment-start-skip) "(\\*+\\s-*")
   (set (make-local-variable 'comment-indent-function) 'sml-comment-indent)
   (set (make-local-variable 'font-lock-defaults) sml-font-lock-defaults))
 
@@ -440,13 +442,16 @@ If anyone has a good algorithm for this..."
     (sml-with-ist
      ;; Indentation for comments alone on a line, matches the
      ;; proper indentation of the next line.
-     (when (looking-at comment-start-skip) (sml-forward-spaces))
+     (when (looking-at "(\\*") (sml-forward-spaces))
      (let (data
 	   (sml-point (point))
 	   (sym (save-excursion (sml-forward-sym))))
        (or
 	;; allow the user to override the indentation
-	(when (looking-at sml-fixindent-re) (current-indentation))
+	(when (looking-at (concat ".*" (regexp-quote comment-start)
+				  "[ \t]*fixindent[ \t]*"
+				  (regexp-quote comment-end)))
+	  (current-indentation))
 
 	;; continued comment
 	(and (looking-at "\\*") (sml-find-comment-indent))
