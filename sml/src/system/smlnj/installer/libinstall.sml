@@ -18,6 +18,7 @@ structure LibInstall : sig
     (* all filenames that are passed as arguments use native syntax: *)
     val proc :
 	{ smlnjroot: string,
+	  installdir: string,
 	  buildcmd: string,
 	  instcmd : string -> unit,
 	  unpackcmd: string option } -> unit
@@ -121,8 +122,9 @@ end = struct
 	handle _ => false
 
     (* our main routine *)
-    fun proc { smlnjroot, buildcmd, instcmd, unpackcmd } = let
+    fun proc { smlnjroot, installdir, buildcmd, instcmd, unpackcmd } = let
 	val smlnjroot = F.fullPath smlnjroot
+	val installdir = F.fullPath installdir
 	val configdir = P.concat (smlnjroot, "config")
 
 	(* dependency file: config/dependencies *)
@@ -173,9 +175,9 @@ end = struct
 			else fail ["unpacking failed\n"]
 		    end
 
-        val libdir = P.concat (smlnjroot, "lib")
+        val libdir = P.concat (installdir, "lib")
         val srcdir = P.concat (smlnjroot, "src")
-	val bindir = P.concat (smlnjroot, "bin")
+	val bindir = P.concat (installdir, "bin")
 	val heapdir = P.concat (bindir, ".heap")
 	val cm_pathconfig = P.concat (libdir, "pathconfig")
 
@@ -355,13 +357,13 @@ end = struct
 	  | one "pgraph-util" =
 	    (r ("pgraph-util.cm", "pgraph-util.cm", "cm/pgraph"))
 	  | one "mlrisc" =
-	    (a ("Control.cm", "lib/SMLNJ-MLRISC");
-	     a ("Lib.cm", "lib/SMLNJ-MLRISC");
-	     a ("Visual.cm", "lib/SMLNJ-MLRISC");
-	     a ("MLRISC.cm", "lib/SMLNJ-MLRISC");
-	     a ("MLTREE.cm", "lib/SMLNJ-MLRISC");
-	     a ("Graphs.cm", "lib/SMLNJ-MLRISC");
-	     a ("IA32.cm", "lib/SMLNJ-MLRISC");
+	    (a ("Control.cm", P.concat (libdir, "SMLNJ-MLRISC"));
+	     a ("Lib.cm", P.concat (libdir, "SMLNJ-MLRISC"));
+	     a ("Visual.cm", P.concat (libdir, "SMLNJ-MLRISC"));
+	     a ("MLRISC.cm", P.concat (libdir, "SMLNJ-MLRISC"));
+	     a ("MLTREE.cm", P.concat (libdir, "SMLNJ-MLRISC"));
+	     a ("Graphs.cm", P.concat (libdir, "SMLNJ-MLRISC"));
+	     a ("IA32.cm", P.concat (libdir, "SMLNJ-MLRISC"));
 	     a ("Peephole.cm", "src/MLRISC/cm");
 	     r' ("OTHER-MLRISC", "RA.cm", "MLRISC/cm", "SMLNJ-MLRISC");
 	     r' ("OTHER-MLRISC", "Peephole.cm", "MLRISC/cm", "SMLNJ-MLRISC");

@@ -22,6 +22,7 @@ structure WinLibInstall : sig end = struct
     in
 	LibInstall.proc
 	    { smlnjroot = home,
+	      installdir = home,
 	      buildcmd = "build.bat",
 	      unpackcmd = NONE,
 	      instcmd = fn target =>
