@@ -280,7 +280,7 @@ struct
                    C_signed (I_char | I_short | I_int | I_long) |
                    C_PTR),
                   v :: vl) = (CCalls.ARG (regbind v), vl)
-             | m (C_STRUCT _, v :: vl) =
+             | m ((C_STRUCT _ | C_UNION _), v :: vl) =
                  (* pass struct using the pointer to its beginning *)
                  (CCalls.ARG (regbind v), vl)
              | m (_, []) = error "RCC: not enough ML args"
@@ -298,7 +298,7 @@ struct
 
        val (f, sr, a) =
            case (retTy, vl) of
-               (CTypes.C_STRUCT _, fv :: srv :: avl) =>
+               ((CTypes.C_STRUCT _ | CTypes.C_UNION _), fv :: srv :: avl) =>
                let val s = regbind srv
                in (regbind fv, fn _ => s, build_args avl)
                end
@@ -393,7 +393,7 @@ struct
        (* Find result *)
        val result = 
        case (result, retTy) of
-           (([] | [_]), (CTypes.C_void | CTypes.C_STRUCT _)) => NONE
+           (([] | [_]), (CTypes.C_void | CTypes.C_STRUCT _ | CTypes.C_UNION _)) => NONE
          | ([], _) => error "RCC: unexpectedly few results"
          | ([M.FPR x], CTypes.C_float) => SOME(M.FPR(M.CVTF2F (64, 32, x)))
          | ([r as M.FPR x], CTypes.C_double) => SOME r
