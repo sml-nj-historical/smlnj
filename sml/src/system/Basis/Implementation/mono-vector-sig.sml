@@ -20,7 +20,7 @@ signature MONO_VECTOR =
     val app  : (elem -> unit) -> vector -> unit
     val mapi : (int * elem -> elem) -> vector -> vector
     val map  : (elem -> elem) -> vector -> vector
-    val foldli : (int * elem * elem -> elem) -> 'a -> vector -> 'a
+    val foldli : (int * elem * 'a -> 'a) -> 'a -> vector -> 'a
     val foldri : (int * elem * 'a -> 'a) -> 'a -> vector -> 'a
     val foldl  : (elem * 'a -> 'a) -> 'a -> vector -> 'a
     val foldr  : (elem * 'a -> 'a) -> 'a -> vector -> 'a

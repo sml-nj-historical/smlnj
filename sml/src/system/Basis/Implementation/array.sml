@@ -75,6 +75,10 @@ structure Array : ARRAY =
 	    (* end case *)
 	  end
 
+    fun vector a = extract (a, 0, NONE)
+
+    fun copy {src, dst, di} = raise Fail "notyet"
+(*
     fun copy {src, si, len, dst, di} = let
 	  val (sstop, dstop) = let
 		val srcLen = length src
@@ -105,7 +109,10 @@ structure Array : ARRAY =
 	      then copyDown (sstop-1, dstop-1)
 	      else copyUp (si, di)
 	  end
+*)
 
+    fun copyVec {src, dst, di} = raise Fail "notyet"
+(*
     fun copyVec {src, si, len, dst, di} = let
 	  val (sstop, dstop) = let
 		val srcLen = InlineT.PolyVector.length src
@@ -129,6 +136,7 @@ structure Array : ARRAY =
 	      then raise Subscript
 	      else copyUp (si, di)
 	  end
+*)
 
     fun app f arr = let
 	  val len = length arr
@@ -167,6 +175,7 @@ structure Array : ARRAY =
 	    modify' 0
 	  end
 
+(*
     fun chkSlice (arr, i, NONE) = let val len = length arr
 	  in
 	    if (InlineT.DfltInt.ltu(len, i))
@@ -179,6 +188,7 @@ structure Array : ARRAY =
 	      then (arr, i, i+n)
 	      else raise Subscript
 	  end
+*)
 
 (* these operations moved to array-slice.sml
     fun appi f slice = let

@@ -20,8 +20,9 @@ structure Real64Vector : MONO_VECTOR
 
     val length   = Vector.length
     val sub      = Vector.sub
-    val extract  = Vector.extract
+(*    val extract  = Vector.extract *)
     val concat   = Vector.concat
+    val update   = Vector.update
 
     val app    = Vector.app
     val map    = Vector.map
@@ -32,6 +33,12 @@ structure Real64Vector : MONO_VECTOR
     val mapi = Vector.mapi
     val foldli = Vector.foldli
     val foldri = Vector.foldri
+
+    val findi  = Vector.findi
+    val find   = Vector.find
+    val exists = Vector.exists
+    val all    = Vector.all
+    val collate = Vector.collate
 
   end
 

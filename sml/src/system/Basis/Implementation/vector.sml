@@ -40,6 +40,14 @@ structure Vector : VECTOR =
     val length : 'a vector -> int = InlineT.PolyVector.length
     val sub : 'a vector * int -> 'a = InlineT.PolyVector.chkSub
 
+    fun update (v, i, x) = let
+	fun mostlySame j =
+	    if i = j then x
+	    else InlineT.PolyVector.sub (v, j)
+    in
+	tabulate (length v, mostlySame)
+    end
+
   (* a utility function *)
     fun rev ([], l) = l
       | rev (x::r, l) = rev (r, x::l)
@@ -139,15 +147,16 @@ structure Vector : VECTOR =
 	      else raise Subscript
 	  end
 
-    fun appi f slice = let
-	  val (vec, start, stop) = chkSlice slice
+    fun appi f vec = let
+	  val stop = length vec
 	  fun app i = if (i < stop)
 		then (f (i, InlineT.PolyVector.sub(vec, i)); app(i+1))
 		else ()
 	  in
-	    app start
+	    app 0
 	  end
 
+(*
     fun mapi f slice = let
 	  val (vec, start, stop) = chkSlice slice
 	  val len = stop-start
@@ -159,25 +168,81 @@ structure Vector : VECTOR =
 	      then mapf (start, [])
 	      else Assembly.vector0
 	  end
+*)
+    fun mapi f vec =
+	tabulate (length vec, fn i => f (i, InlineT.PolyVector.sub (vec, i)))
 
-    fun foldli f init slice = let
-	  val (vec, start, stop) = chkSlice slice
+    fun foldli f init vec = let
+	  val stop = length vec
 	  fun fold (i, accum) = if (i < stop)
 		then fold (i+1, f (i, InlineT.PolyVector.sub(vec, i), accum))
 		else accum
 	  in
-	    fold (start, init)
+	    fold (0, init)
 	  end
 
-    fun foldri f init slice = let
-	  val (vec, start, stop) = chkSlice slice
-	  fun fold (i, accum) = if (i >= start)
+    fun foldri f init vec = let
+	  val stop = length vec
+	  fun fold (i, accum) = if (i >= 0)
 		then fold (i-1, f (i, InlineT.PolyVector.sub(vec, i), accum))
 		else accum
 	  in
 	    fold (stop - 1, init)
 	  end
 
+    fun findi p vec = let
+	val stop = length vec
+	fun loop i =
+	    if i >= stop then NONE
+	    else let val x = InlineT.PolyVector.sub (vec, i)
+		 in if p (i, x) then SOME (i, x) else loop (i + 1)
+		 end
+    in
+	loop 0
+    end
+
+    fun find p vec = let
+	val stop = length vec
+	fun loop i =
+	    if i >= stop then NONE
+	    else let val x = InlineT.PolyVector.sub (vec, i)
+		 in if p x then SOME x else loop (i + 1)
+		 end
+    in
+	loop 0
+    end
+
+    fun exists p vec = let
+	val stop = length vec
+	fun loop i =
+	    i < stop andalso
+	    (p (InlineT.PolyVector.sub (vec, i)) orelse loop (i + 1))
+    in
+	loop 0
+    end
+
+    fun all p vec = let
+	val stop = length vec
+	fun loop i =
+	    i >= stop orelse
+	    (p (InlineT.PolyVector.sub (vec, i)) andalso loop (i + 1))
+    in
+	loop 0
+    end
+
+    fun collate ecmp (a, b) = let
+	val al = length a
+	val bl = length b
+	val stop = if al < bl then al else bl
+	fun loop i =
+	    if i >= stop then Int31Imp.compare (al, bl)
+	    else case ecmp (InlineT.PolyVector.sub (a, i),
+			    InlineT.PolyVector.sub (b, i)) of
+		     EQUAL => loop (i + 1)
+		   | unequal => unequal
+    in
+	loop 0
+    end
   end  (* Vector *)
 
 

@@ -96,6 +96,8 @@ structure CharArray : MONO_ARRAY =
 
     fun vector a = extract (a, 0, NONE)
 
+    fun copy {src, dst, di} = raise Fail "notyet"
+(*
     fun copy {src, si, len, dst, di} = let
 	  val (sstop, dstop) = let
 		val srcLen = length src
@@ -126,7 +128,10 @@ structure CharArray : MONO_ARRAY =
 	      then copyDown (sstop-1, dstop-1)
 	      else copyUp (si, di)
 	  end
+*)
 
+    fun copyVec {src, dst, di} = raise Fail "notyet"
+(*
     fun copyVec {src, si, len, dst, di} = let
 	  val (sstop, dstop) = let
 		val srcLen = String.size src
@@ -148,6 +153,7 @@ structure CharArray : MONO_ARRAY =
 	      then raise Subscript
 	      else copyUp (si, di)
 	  end
+*)
 
     fun app f arr = let
 	  val len = length arr
@@ -186,57 +192,93 @@ structure CharArray : MONO_ARRAY =
 	    modify' 0
 	  end
 
-    fun chkSlice (arr, i, NONE) = let val len = length arr
-	  in
-	    if (InlineT.DfltInt.ltu(len, i))
-	      then raise Subscript
-	      else (arr, i, len)
-	  end
-      | chkSlice (arr, i, SOME n) = let val len = length arr
-	  in
-	    if ((0 <= i) andalso (0 <= n) andalso (i+n <= len))
-	      then (arr, i, i+n)
-	      else raise Subscript
-	  end
+    fun appi f arr = let
+	val stop = length arr
+	fun loop i =
+	    if i >= stop then ()
+	    else (f (i, unsafeSub (arr, i)); loop (i + 1))
+    in
+	loop 0
+    end
 
-    fun appi f slice = let
-	  val (arr, start, stop) = chkSlice slice
-	  fun app i = if (i < stop)
-		then (f (i, unsafeSub(arr, i)); app(i+1))
-		else ()
-	  in
-	    app start
-	  end
-
-    fun foldli f init slice = let
-	  val (arr, start, stop) = chkSlice slice
+    fun foldli f init arr = let
+	  val stop = length arr
 	  fun fold (i, accum) = if (i < stop)
 		then fold (i+1, f (i, unsafeSub(arr, i), accum))
 		else accum
 	  in
-	    fold (start, init)
+	    fold (0, init)
 	  end
 
-    fun foldri f init slice = let
-	  val (arr, start, stop) = chkSlice slice
-	  fun fold (i, accum) = if (i >= start)
+    fun foldri f init arr = let
+	  val stop = length arr
+	  fun fold (i, accum) = if (i >= 0)
 		then fold (i-1, f (i, unsafeSub(arr, i), accum))
 		else accum
 	  in
 	    fold (stop - 1, init)
 	  end
 
-    fun modifyi f slice = let
-	  val (arr, start, stop) = chkSlice slice
+    fun modifyi f arr = let
+	  val stop = length arr
 	  fun modify' i = if (i < stop)
 		then (
 		  unsafeUpdate(arr, i, f (i, unsafeSub(arr, i)));
 		  modify'(i+1))
 		else ()
 	  in
-	    modify' start
+	    modify' 0
 	  end
 
+    fun findi p a = let
+	val len = length a
+	fun loop i =
+	    if i >= len then NONE
+	    else let val v = unsafeSub (a, i)
+		 in if p (i, v) then SOME (i, v) else loop (i + 1)
+		 end
+    in
+	loop 0
+    end
+
+    fun find p a = let
+	val len = length a
+	fun loop i =
+	    if i >= len then NONE
+	    else let val v = unsafeSub (a, i)
+		 in if p v then SOME v else loop (i + 1)
+		 end
+    in
+	loop 0
+    end
+
+    fun exists p a = let
+	val len = length a
+	fun loop i =
+	    i < len andalso (p (unsafeSub (a, i)) orelse loop (i + 1))
+    in
+	loop 0
+    end
+
+    fun all p a = let
+	val len = length a
+	fun loop i =
+	    i >= len orelse (p (unsafeSub (a, i)) andalso loop (i + 1))
+    in
+	loop 0
+    end
+
+    fun collate ecmp (a, b) = let
+	val al = length a
+	val bl = length b
+	val l = if al < bl then al else bl
+	fun loop i =
+	    if i >= l then Int31Imp.compare (al, bl)
+	    else case ecmp (unsafeSub (a, i), unsafeSub (b, i)) of
+		     EQUAL => loop (i + 1)
+		   | unequal => unequal
+    in
+	loop 0
+    end
+
   end (* CharArray *)
-
-

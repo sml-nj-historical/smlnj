@@ -40,6 +40,14 @@ structure CharVector : MONO_VECTOR =
     val length   = InlineT.CharVector.length
     val sub      = InlineT.CharVector.chkSub
 
+    fun update (v, i, x) = let
+	fun mostlySame j =
+	    if i = j then x
+	    else InlineT.CharVector.sub (v, j)
+    in
+	tabulate (length v, mostlySame)
+    end
+
     val extract  = String.extract
     val concat   = String.concat
 
@@ -84,15 +92,16 @@ structure CharVector : MONO_VECTOR =
 	      else raise Subscript
 	  end
 
-    fun appi f slice = let
-	  val (vec, start, stop) = chkSlice slice
+    fun appi f vec = let
+	  val stop = length vec
 	  fun app i = if (i < stop)
 		then (f (i, unsafeSub(vec, i)); app(i+1))
 		else ()
 	  in
-	    app start
+	    app 0
 	  end
 
+(*
     fun mapi f slice = let
 	  val (vec, start, stop) = chkSlice slice
 	  in
@@ -110,25 +119,81 @@ structure CharVector : MONO_VECTOR =
 		  end
 	    (* end case *)
 	  end
+*)
+    fun mapi f vec =
+	tabulate (length vec, fn i => f (i, unsafeSub (vec, i)))
 
-    fun foldli f init slice = let
-	  val (vec, start, stop) = chkSlice slice
+    fun foldli f init vec = let
+	  val stop = length vec
 	  fun fold (i, accum) = if (i < stop)
 		then fold (i+1, f (i, unsafeSub(vec, i), accum))
 		else accum
 	  in
-	    fold (start, init)
+	    fold (0, init)
 	  end
 
-    fun foldri f init slice = let
-	  val (vec, start, stop) = chkSlice slice
-	  fun fold (i, accum) = if (i >= start)
+    fun foldri f init vec = let
+	  val stop = length vec
+	  fun fold (i, accum) = if (i >= 0)
 		then fold (i-1, f (i, unsafeSub(vec, i), accum))
 		else accum
 	  in
 	    fold (stop - 1, init)
 	  end
 
+    fun findi p vec = let
+	val stop = length vec
+	fun loop i =
+	    if i >= stop then NONE
+	    else let val x = InlineT.CharVector.sub (vec, i)
+		 in if p (i, x) then SOME (i, x) else loop (i + 1)
+		 end
+    in
+	loop 0
+    end
+
+    fun find p vec = let
+	val stop = length vec
+	fun loop i =
+	    if i >= stop then NONE
+	    else let val x = InlineT.CharVector.sub (vec, i)
+		 in if p x then SOME x else loop (i + 1)
+		 end
+    in
+	loop 0
+    end
+
+    fun exists p vec = let
+	val stop = length vec
+	fun loop i =
+	    i < stop andalso
+	    (p (InlineT.CharVector.sub (vec, i)) orelse loop (i + 1))
+    in
+	loop 0
+    end
+
+    fun all p vec = let
+	val stop = length vec
+	fun loop i =
+	    i >= stop orelse
+	    (p (InlineT.CharVector.sub (vec, i)) andalso loop (i + 1))
+    in
+	loop 0
+    end
+
+    fun collate ecmp (a, b) = let
+	val al = length a
+	val bl = length b
+	val stop = if al < bl then al else bl
+	fun loop i =
+	    if i >= stop then Int31Imp.compare (al, bl)
+	    else case ecmp (InlineT.CharVector.sub (a, i),
+			    InlineT.CharVector.sub (b, i)) of
+		     EQUAL => loop (i + 1)
+		   | unequal => unequal
+    in
+	loop 0
+    end
   end (* CharVector *)
 
 
