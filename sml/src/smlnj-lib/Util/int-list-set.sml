@@ -33,6 +33,7 @@ structure IntListSet :> ORD_SET where type Key.ord_key = Int.int =
 	  in
 	    f l
 	  end
+    fun add' (s, x) = add(x, s)
 
     fun union (s1, s2) = let
 	  fun merge ([], l2) = l2

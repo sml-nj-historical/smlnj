@@ -35,20 +35,16 @@ extern ml_val_t MathVec;
 #endif
 
 extern ml_val_t _Div_id0[];
-extern ml_val_t _Div_e0[];
 #define DivId		PTR_CtoML(_Div_id0+1)
-#define DivExn		PTR_CtoML(_Div_e0+1)
 
 extern ml_val_t _Overflow_id0[];
-extern ml_val_t _Overflow_e0[];
 #define OverflowId	PTR_CtoML(_Overflow_id0+1)
-#define OverflowExn	PTR_CtoML(_Overflow_e0+1)
 
 #if defined(ASM_MATH)
-extern ml_val_t _Ln_e0[];
-#define LnExn PTR_CtoML(_Ln_e0+1)
-extern ml_val_t _Sqrt_e0[];
-#define SqrtExn PTR_CtoML(_Sqrt_e0+1)
+extern ml_val_t _Ln_id0[];
+#define LnId PTR_CtoML(_Ln_id0+1)
+extern ml_val_t _Sqrt_id0[];
+#define SqrtId PTR_CtoML(_Sqrt_id0+1)
 #endif
 
 extern ml_val_t sigh_resume[];

@@ -172,8 +172,8 @@ LABEL(CSYM(ML_X86Frame)) /* ptr to the ml frame (gives C access to limitptr) */
  1:;									\
 	jb	9f;							\
 	lea	1b, temp;		/* temp holds resume address */	\
-	movl	$maskval, mask;						\
-	jmp	via CSYM(saveregs);						\
+	movl	IMMED(maskval), mask;					\
+	jmp	via CSYM(saveregs);					\
  9:
 
 /**********************************************************************/
@@ -182,8 +182,8 @@ LABEL(CSYM(ML_X86Frame)) /* ptr to the ml frame (gives C access to limitptr) */
 
 ML_CODE_HDR(sigh_return_a)
 	movl	mlstate_ptr, temp
-	movl	$REQ_SIG_RETURN, request_w
-	movl	$RET_MASK, mask
+	movl	IMMED(REQ_SIG_RETURN), request_w
+	movl	IMMED(RET_MASK), mask
 	jmp	CSYM(set_request)
 
 /* sigh_resume:
@@ -193,10 +193,10 @@ ML_CODE_HDR(sigh_return_a)
 
 ENTRY(sigh_resume)
 	movl	mlstate_ptr, temp
-	movl	$REQ_SIG_RESUME, request_w
-/*	movl	$RET_MASK, mask
+	movl	IMMED(REQ_SIG_RESUME), request_w
+/*	movl	IMMED(RET_MASK), mask
  */
-	movl	$FUN_MASK, mask
+	movl	IMMED(FUN_MASK), mask
 	jmp	CSYM(set_request)
 
 /* pollh_return_a:
@@ -204,8 +204,8 @@ ENTRY(sigh_resume)
  */
 ML_CODE_HDR(pollh_return_a)
 	movl	mlstate_ptr, temp
-	movl	$REQ_POLL_RETURN, request_w
-	movl	$RET_MASK, mask
+	movl	IMMED(REQ_POLL_RETURN), request_w
+	movl	IMMED(RET_MASK), mask
 	jmp	CSYM(set_request)
 
 /* pollh_resume:
@@ -213,22 +213,22 @@ ML_CODE_HDR(pollh_return_a)
  */
 ENTRY(pollh_resume)
 	movl	mlstate_ptr, temp
-	movl	$REQ_POLL_RESUME, request_w
-/*	movl	$RET_MASK, mask
+	movl	IMMED(REQ_POLL_RESUME), request_w
+/*	movl	IMMED(RET_MASK), mask
  */
-	movl	$FUN_MASK, mask
+	movl	IMMED(FUN_MASK), mask
 	jmp	CSYM(set_request)
 
 ML_CODE_HDR(handle_a)
 	movl	mlstate_ptr, temp
-	movl	$REQ_EXN, request_w
-	movl	$EXN_MASK, mask
+	movl	IMMED(REQ_EXN), request_w
+	movl	IMMED(EXN_MASK), mask
 	jmp	CSYM(set_request)
 
 ML_CODE_HDR(return_a)
 	movl	mlstate_ptr, temp
-	movl	$REQ_RETURN, request_w
-	movl	$RET_MASK, mask
+	movl	IMMED(REQ_RETURN), request_w
+	movl	IMMED(RET_MASK), mask
 	jmp	CSYM(set_request)
 
 /* Request a fault.  The floating point coprocessor must be reset
@@ -240,8 +240,8 @@ ML_CODE_HDR(return_a)
 ENTRY(request_fault)
 	call    CSYM(FPEEnable)          /* Doesn't trash any general regs. */
 	movl	mlstate_ptr, temp
-	movl	$REQ_FAULT, request_w
-	movl	$EXN_MASK, mask
+	movl	IMMED(REQ_FAULT), request_w
+	movl	IMMED(EXN_MASK), mask
 	jmp	CSYM(set_request)
 
 /* bind_cfun : (string * string) -> c_function
@@ -249,22 +249,22 @@ ENTRY(request_fault)
 ML_CODE_HDR(bind_cfun_a)
 	CHECKLIMIT(FUN_MASK)
 	movl	mlstate_ptr, temp
-	movl	$REQ_BIND_CFUN, request_w
-	movl	$FUN_MASK, mask
+	movl	IMMED(REQ_BIND_CFUN), request_w
+	movl	IMMED(FUN_MASK), mask
 	jmp	CSYM(set_request)
 
 ML_CODE_HDR(build_literals_a)
 	CHECKLIMIT(FUN_MASK)
 	movl	mlstate_ptr, temp
-	movl	$REQ_BUILD_LITERALS, request_w
-	movl	$FUN_MASK, mask
+	movl	IMMED(REQ_BUILD_LITERALS), request_w
+	movl	IMMED(FUN_MASK), mask
 	jmp	CSYM(set_request)
 
 ML_CODE_HDR(callc_a)
 	CHECKLIMIT(FUN_MASK)
 	movl	mlstate_ptr, temp
-	movl	$REQ_CALLC, request_w
-	movl	$FUN_MASK, mask
+	movl	IMMED(REQ_CALLC), request_w
+	movl	IMMED(FUN_MASK), mask
 	/* fall into set_request */
 
 ENTRY(set_request)
@@ -277,7 +277,7 @@ ENTRY(set_request)
 #define	temp2 allocptr
 	/* note that we have left ML code */
 	movl	VProcOffMSP(temp),temp2
-	movl	$0, InMLOffVSP(temp2)	
+	movl	IMMED(0), InMLOffVSP(temp2)	
 
 #if (CALLEESAVE > 0)
 	movl	misc1, MiscRegOffMSP(0)(temp)
@@ -330,7 +330,7 @@ ENTRY(set_request)
 	movl	request_w,creturn
 
 	/* Pop the stack frame and return to run_ml(). */
-	addl	$ML_FRAME_SIZE, %esp
+	addl	IMMED(ML_FRAME_SIZE), %esp
 	CALLEE_RESTORE
 	ret
 
@@ -351,20 +351,20 @@ ENTRY(saveregs)
 	/* check if polling enabled (PollFreq > 0) */
 	lea	CSYM(_PollFreq0),pfreq		/* load contents of ref */
 	movl	4(pfreq),pfreq			
-	shrl	$1,pfreq			/* strip integer tag */
+	shrl	IMMED(1),pfreq			/* strip integer tag */
 	jz	check_for_gc			/* go check for real gc */
-	cmpl	$0,InPollHandlerOffMSP(temp)    /* if we're in the handler */
+	cmpl	IMMED(0),InPollHandlerOffMSP(temp)    /* if we're in the handler */
 	jne	reset_limit			/* ignore poll events */
 	lea	CSYM(_PollEvent0),tmpR		/* load contents of ref */
 	movl	4(tmpR),tmpR
-	shrl	$1,tmpR
+	shrl	IMMED(1),tmpR
 	jz	reset_limit			/* check for poll event */
 	/* event occurred, so set ml_pollHandlerPending */
-	movl	$1,PollPendingOffMSP(temp)
+	movl	IMMED(1),PollPendingOffMSP(temp)
 	jmp	do_gc		/* and handle event in the C runtime */
 	
 reset_limit:	/* reset limit ptr */
-	shll	$POLL_GRAIN_BITS,pfreq		/* mult by POLL_GRAIN_CPSI */
+	shll	IMMED(POLL_GRAIN_BITS),pfreq		/* mult by POLL_GRAIN_CPSI */
 	movl	allocptr,limitptr
 	addl	pfreq,limitptr
 #undef	pfreq
@@ -376,14 +376,14 @@ check_for_gc:
 	ja	ok_limit
 	movl	tmpR,limitptr
 ok_limit:
-	addl	$-4096,limitptr
+	addl	IMMED(-4096),limitptr
 	cmpl	limitptr,allocptr
 	jge	do_gc		       	/* gc *//* should be a common case */
-	addl	$4096,limitptr
+	addl	IMMED(4096),limitptr
 	/* since a signal also sets limitptr == allocptr to force a trap, */
 	/* we need to disambiguate poll-events/signals here */
 #define	vsp	misc2
-	movl	$0,tmpR
+	movl	IMMED(0),tmpR
 	addl	PollPendingOffMSP(temp),tmpR
 	movl	VProcOffMSP(temp),vsp
 	addl	NPendingOffVSP(vsp),tmpR
@@ -419,7 +419,7 @@ do_gc:
 
 	/* note that we have left ML code */
 	movl	VProcOffMSP(temp),temp2
-	movl	$0, InMLOffVSP(temp2)	
+	movl	IMMED(0), InMLOffVSP(temp2)	
 
 	/* vregs */
 #ifdef VREGS
@@ -453,8 +453,8 @@ do_gc:
 #undef	temp2	
 
 	/* Pop the stack frame and return to run_ml(). */
-	movl	$REQ_GC,creturn
-	addl	$ML_FRAME_SIZE, %esp
+	movl	IMMED(REQ_GC),creturn
+	addl	IMMED(ML_FRAME_SIZE), %esp
 	CALLEE_RESTORE
 	ret
 
@@ -464,7 +464,7 @@ ENTRY(restoreregs)
 
 #define temp2	%ebx
 	/* Allocate and initialize the ML stack frame. */
-	subl	$ML_FRAME_SIZE, %esp
+	subl	IMMED(ML_FRAME_SIZE), %esp
 	MOVE(	tempmem_w,  temp2, tempmem)
 	MOVE(	tempmem2_w, temp2, tempmem2)
 	MOVE(	ExnPtrOffMSP(temp),  temp2, exncont) 
@@ -517,12 +517,12 @@ ENTRY(restoreregs)
 	/* note that we're entering ML */
 	movl	VProcOffMSP(temp),temp  /* temp is now vsp */
 #define vsp	temp
-	movl	$1,InMLOffVSP(vsp)
+	movl	IMMED(1),InMLOffVSP(vsp)
 
 	/* handle signals */
 	movl	NPendingSysOffVSP(vsp),tmpreg
 	addl	NPendingOffVSP(vsp),tmpreg
-	cmpl	$0,tmpreg
+	cmpl	IMMED(0),tmpreg
 #undef  tmpreg
 	jne	pending
 
@@ -536,9 +536,9 @@ jmp_ml:
 	jmpl	temp		      /* Jump to ML code. */
 
 pending:
-	cmpl	$0,InSigHandlerOffVSP(vsp)   /* Currently handling signal? */
+	cmpl	IMMED(0),InSigHandlerOffVSP(vsp)   /* Currently handling signal? */
 	jne	restore_and_jmp_ml
-	movl	$1,HandlerPendingOffVSP(vsp) /* handler trap is now pending */
+	movl	IMMED(1),HandlerPendingOffVSP(vsp) /* handler trap is now pending */
 
 	/* must restore here because limitptr is on stack */
 	popl	temp			/* restore temp to msp */
@@ -557,21 +557,21 @@ pending:
 ML_CODE_HDR(array_a)
 	CHECKLIMIT(FUN_MASK)
 	movl 	0(stdarg),temp               /* desired length into temp */
-	sarl	$1,temp			     /* untagged */
-	cmpl	$SMALL_OBJ_SZW,temp
+	sarl	IMMED(1),temp			     /* untagged */
+	cmpl	IMMED(SMALL_OBJ_SZW),temp
 	jge	3f
 
 #define	tmpreg	misc1
 	pushl	tmpreg
 
 	movl	temp,tmpreg		     /* build descriptor in tmpreg */
-	sall	$TAG_SHIFTW,tmpreg
-	orl	$MAKE_TAG(DTAG_array),tmpreg
+	sall	IMMED(TAG_SHIFTW),tmpreg
+	orl	IMMED(MAKE_TAG(DTAG_array)),tmpreg
 	movl	tmpreg,0(allocptr)	     /* write descriptor */
-	addl	$4,allocptr
+	addl	IMMED(4),allocptr
 	movl	4(stdarg),tmpreg	     /* initial values */
 	movl	allocptr,stdarg		     /* stdarg gets ptr to new array */
-	sall	$2,temp			     /* length in bytes */
+	sall	IMMED(2),temp			     /* length in bytes */
 	addl	allocptr,temp		     
 	xchgl	tmpreg,temp		     /* tmpreg is end of array */
 2:					     /* loop: */
@@ -585,8 +585,8 @@ ML_CODE_HDR(array_a)
 	CONTINUE
 3:
 	movl	mlstate_ptr, temp
-	movl	$REQ_ALLOC_ARRAY, request_w
-	movl	$FUN_MASK, mask
+	movl	IMMED(REQ_ALLOC_ARRAY), request_w
+	movl	IMMED(FUN_MASK), mask
 	jmp	CSYM(set_request)
 	
 
@@ -594,22 +594,22 @@ ML_CODE_HDR(array_a)
 ML_CODE_HDR(create_r_a)
 	CHECKLIMIT(FUN_MASK)
 	movl 	stdarg,temp               /* desired length into temp */
-	sarl	$1,temp			  /* untagged */
-	shll	$1,temp			  /* size in words */
-	cmpl	$SMALL_OBJ_SZW,temp
+	sarl	IMMED(1),temp			  /* untagged */
+	shll	IMMED(1),temp			  /* size in words */
+	cmpl	IMMED(SMALL_OBJ_SZW),temp
 	jge	2f
 
 #define	tmpreg	misc1
 	pushl	tmpreg
 
-	shrl	$1,temp			  /* size in reals */
+	shrl	IMMED(1),temp			  /* size in reals */
 	movl	temp,tmpreg		     /* build descriptor in tmpreg */
-	sall	$TAG_SHIFTW,tmpreg
-	orl	$MAKE_TAG(DTAG_realdarray),tmpreg
+	sall	IMMED(TAG_SHIFTW),tmpreg
+	orl	IMMED(MAKE_TAG(DTAG_realdarray)),tmpreg
 	movl	tmpreg,0(allocptr)	     /* write descriptor */
-	addl	$4,allocptr
+	addl	IMMED(4),allocptr
 	movl	allocptr,stdarg		     /* stdarg gets ptr to new array */
-	sall	$3,temp			     /* length in bytes */
+	sall	IMMED(3),temp			     /* length in bytes */
 	addl	temp,allocptr		     /* adjust allocptr past array */
 
 	popl	tmpreg
@@ -617,8 +617,8 @@ ML_CODE_HDR(create_r_a)
 	CONTINUE
 2:
 	movl	mlstate_ptr, temp
-	movl	$REQ_ALLOC_REALDARRAY, request_w
-	movl	$FUN_MASK, mask
+	movl	IMMED(REQ_ALLOC_REALDARRAY), request_w
+	movl	IMMED(FUN_MASK), mask
 	jmp	CSYM(set_request)
 
 
@@ -626,23 +626,23 @@ ML_CODE_HDR(create_r_a)
 ML_CODE_HDR(create_b_a)
 	CHECKLIMIT(FUN_MASK)
 	movl 	stdarg,temp                  /* the length */
-	sarl	$1,temp			     /* untagged */
-	addl	$3,temp			     /* round */	
-	sarl	$2,temp			     /* to words */
-	cmpl	$SMALL_OBJ_SZW,temp
+	sarl	IMMED(1),temp			     /* untagged */
+	addl	IMMED(3),temp			     /* round */	
+	sarl	IMMED(2),temp			     /* to words */
+	cmpl	IMMED(SMALL_OBJ_SZW),temp
 	jge	2f
 
 #define	tmpreg	misc1
 	pushl	tmpreg
 
 	movl	stdarg,tmpreg		     /* build descriptor in tmpreg */
-	sarl	$1,tmpreg
-	sall	$TAG_SHIFTW,tmpreg
-	orl	$MAKE_TAG(DTAG_bytearray),tmpreg
+	sarl	IMMED(1),tmpreg
+	sall	IMMED(TAG_SHIFTW),tmpreg
+	orl	IMMED(MAKE_TAG(DTAG_bytearray)),tmpreg
 	movl	tmpreg,0(allocptr)	     /* write descriptor */
-	addl	$4,allocptr
+	addl	IMMED(4),allocptr
 	movl	allocptr,stdarg		     /* stdarg gets ptr to new str */
-	sall	$2,temp			     /* length in bytes (untagged) */
+	sall	IMMED(2),temp			     /* length in bytes (untagged) */
 	addl	temp,allocptr		     /* allocptr += total length */
 
 	popl	tmpreg
@@ -651,8 +651,8 @@ ML_CODE_HDR(create_b_a)
 	CONTINUE
 2:
 	movl	mlstate_ptr, temp
-	movl	$REQ_ALLOC_BYTEARRAY, request_w
-	movl	$FUN_MASK, mask
+	movl	IMMED(REQ_ALLOC_BYTEARRAY), request_w
+	movl	IMMED(FUN_MASK), mask
 	jmp	CSYM(set_request)
 
 
@@ -660,25 +660,25 @@ ML_CODE_HDR(create_b_a)
 ML_CODE_HDR(create_s_a)
 	CHECKLIMIT(FUN_MASK)
 	movl 	stdarg,temp                  /* the length */
-	sarl	$1,temp			     /* untagged */
-	addl	$4,temp			     /* round */	
-	sarl	$2,temp			     /* to words */
-	cmpl	$SMALL_OBJ_SZW,temp
+	sarl	IMMED(1),temp			     /* untagged */
+	addl	IMMED(4),temp			     /* round */	
+	sarl	IMMED(2),temp			     /* to words */
+	cmpl	IMMED(SMALL_OBJ_SZW),temp
 	jge	2f
 
 #define	tmpreg	misc1
 	pushl	tmpreg
 
 	movl	stdarg,tmpreg		     /* build descriptor in tmpreg */
-	sarl	$1,tmpreg
-	sall	$TAG_SHIFTW,tmpreg
-	orl	$MAKE_TAG(DTAG_string),tmpreg
+	sarl	IMMED(1),tmpreg
+	sall	IMMED(TAG_SHIFTW),tmpreg
+	orl	IMMED(MAKE_TAG(DTAG_string)),tmpreg
 	movl	tmpreg,0(allocptr)	     /* write descriptor */
-	addl	$4,allocptr
+	addl	IMMED(4),allocptr
 	movl	allocptr,stdarg		     /* stdarg gets ptr to new str */
-	sall	$2,temp			     /* length in bytes (untagged) */
+	sall	IMMED(2),temp			     /* length in bytes (untagged) */
 	addl	temp,allocptr		     /* allocptr += total length */
-	movl	$0,-4(allocptr)		     /* for fast strcmp */
+	movl	IMMED(0),-4(allocptr)		     /* for fast strcmp */
 
 	popl	tmpreg
 #undef  tmpreg
@@ -686,8 +686,8 @@ ML_CODE_HDR(create_s_a)
 	CONTINUE
 2:
 	movl	mlstate_ptr, temp
-	movl	$REQ_ALLOC_STRING, request_w
-	movl	$FUN_MASK, mask
+	movl	IMMED(REQ_ALLOC_STRING), request_w
+	movl	IMMED(FUN_MASK), mask
 	jmp	CSYM(set_request)
 
 /* create_v_a : int * 'a list -> 'a vector
@@ -697,25 +697,25 @@ ML_CODE_HDR(create_s_a)
 ML_CODE_HDR(create_v_a)
 	CHECKLIMIT(FUN_MASK)
 	movl 	0(stdarg),temp               /* desired length into temp */
-	sarl	$1,temp			     /* untagged */
-	cmpl	$SMALL_OBJ_SZW,temp
+	sarl	IMMED(1),temp			     /* untagged */
+	cmpl	IMMED(SMALL_OBJ_SZW),temp
 	jge	3f
 
 #define	tmpreg	misc1
 	pushl	tmpreg
 
 	movl	temp,tmpreg		     /* build descriptor in tmpreg */
-	sall	$TAG_SHIFTW,tmpreg
-	orl	$MAKE_TAG(DTAG_vector),tmpreg
+	sall	IMMED(TAG_SHIFTW),tmpreg
+	orl	IMMED(MAKE_TAG(DTAG_vector)),tmpreg
 	movl	tmpreg,0(allocptr)	     /* write descriptor */
-	addl	$4,allocptr
+	addl	IMMED(4),allocptr
 	movl	4(stdarg),tmpreg	     /* list of initial values */
 	movl	allocptr,stdarg		     /* stdarg gets ptr to new array */
 2:					     /* loop: */
 	movl	0(tmpreg),temp		     	/* temp <- hd(tmpreg) */
 	stosl				        /* 0(allocptr++) <- temp */
 	movl	4(tmpreg),tmpreg	     	/* tmpreg <- tl(tmpreg) */
-	cmpl	$ML_nil,tmpreg		     	/* end of list */
+	cmpl	IMMED(ML_nil),tmpreg		     	/* end of list */
 	jne	2b
 
 	popl	tmpreg
@@ -724,8 +724,8 @@ ML_CODE_HDR(create_v_a)
 	CONTINUE
 3:
 	movl	mlstate_ptr, temp
-	movl	$REQ_ALLOC_VECTOR, request_w
-	movl	$FUN_MASK, mask
+	movl	IMMED(REQ_ALLOC_VECTOR), request_w
+	movl	IMMED(FUN_MASK), mask
 	jmp	CSYM(set_request)
 	
 /* try_lock: spin_lock -> bool. 
@@ -737,7 +737,7 @@ ML_CODE_HDR(try_lock_a)
 #  error multiple processors not supported
 #else /* (MAX_PROCS == 1) */
 	movl	(stdarg), temp		/* Get old value of lock. */
-	movl	$1, (stdarg)		/* Set the lock to ML_false. */
+	movl	IMMED(1), (stdarg)		/* Set the lock to ML_false. */
 	movl	temp, stdarg		/* Return old value of lock. */
 	CONTINUE
 #endif
@@ -748,8 +748,8 @@ ML_CODE_HDR(unlock_a)
 #if (MAX_PROCS > 1)
 #  error multiple processors not supported
 #else /* (MAX_PROCS == 1) */
-	movl	$3, (stdarg)		/* Store ML_true into lock. */
-	movl	$1, stdarg		/* Return unit. */
+	movl	IMMED(3), (stdarg)		/* Store ML_true into lock. */
+	movl	IMMED(1), stdarg		/* Return unit. */
 	CONTINUE
 #endif
 
@@ -785,12 +785,12 @@ new_controlwd:
  */
 ENTRY(FPEEnable)
 	finit
-	subl	$4, %esp	/* Temp space.	Keep stack aligned. */
+	subl	IMMED(4), %esp	/* Temp space.	Keep stack aligned. */
 	fstcw	(%esp)		/* Store FP control word. */
-	andw	$0xf0c0, (%esp)	/* Keep undefined fields, clear others. */
-	orw	$0x023f, (%esp)	/* Set fields (see above). */
+	andw	IMMED(0xf0c0), (%esp)	/* Keep undefined fields, clear others. */
+	orw	IMMED(0x023f), (%esp)	/* Set fields (see above). */
 	fldcw	(%esp)		/* Install new control word. */
-	addl	$4, %esp
+	addl	IMMED(4), %esp
 	fldz			/* Push a zero onto the register stack. */
 	fld	%st		/* Copy it 6 times. */
 	fld	%st
@@ -802,23 +802,23 @@ ENTRY(FPEEnable)
 
 #if (defined(OPSYS_LINUX) || defined(OPSYS_SOLARIS))
 ENTRY(fegetround)
-	subl	$4, %esp	/* allocate temporary space */
+	subl	IMMED(4), %esp	/* allocate temporary space */
 	fstcw	(%esp)		/* store fp control word */
-	sarl	$10,(%esp)	/* rounding mode is at bit 10 and 11 */
-	andl	$3, (%esp)	/* mask two bits */
+	sarl	IMMED(10),(%esp)	/* rounding mode is at bit 10 and 11 */
+	andl	IMMED(3), (%esp)	/* mask two bits */
 	movl    (%esp),%eax	/* return rounding mode */
-	addl    $4, %esp	/* deallocate space */	
+	addl    IMMED(4), %esp	/* deallocate space */	
 	ret
   	
 ENTRY(fesetround)
-	subl	$4, %esp	/* allocate temporary space */	
+	subl	IMMED(4), %esp	/* allocate temporary space */	
 	fstcw	(%esp)		/* store fp control word */
-	andw	$0xf3ff, (%esp)	/* Clear rounding field. */
+	andw	IMMED(0xf3ff), (%esp)	/* Clear rounding field. */
 	movl    8(%esp), %eax	/* new rounding mode */
-	sall	$10, %eax	/* move to right place */
+	sall	IMMED(10), %eax	/* move to right place */
 	orl     %eax,(%esp)	/* new control word */
 	fldcw	(%esp)		/* load new control word */
-	addl	$4, %esp	/* deallocate space */
+	addl	IMMED(4), %esp	/* deallocate space */
 	ret
 #endif
 
@@ -841,16 +841,16 @@ ENTRY(restorefpregs)
 ML_CODE_HDR(floor_a)
 	fstcw	old_controlwd		/* Get FP control word. */
 	movw	old_controlwd, %ax
-	andw	$0xf3ff, %ax		/* Clear rounding field. */
-	orw	$0x0400, %ax		/* Round towards neg. infinity. */
+	andw	IMMED(0xf3ff), %ax		/* Clear rounding field. */
+	orw	IMMED(0x0400), %ax		/* Round towards neg. infinity. */
 	movw	%ax, new_controlwd
 	fldcw	new_controlwd		/* Install new control word. */
 
 	fldl	(stdarg)		/* Load argument. */
-	subl	$4, %esp
+	subl	IMMED(4), %esp
 	fistpl	(%esp)			/* Round, store, and pop. */
 	popl	stdarg
-	sall	$1, stdarg		/* Tag the resulting integer. */
+	sall	IMMED(1), stdarg		/* Tag the resulting integer. */
 	incl	stdarg
 
 	fldcw	old_controlwd		/* Restore old FP control word. */
@@ -862,11 +862,11 @@ ML_CODE_HDR(floor_a)
  */
 ML_CODE_HDR(logb_a)
 	movl    4(stdarg),temp		/* msb for little endian arch */
-	sarl	$20, temp		/* throw out 20 bits */
-	andl    $0x7ff,temp		/* clear all but 11 low bits */
-	subl	$1023, temp		/* unbias */
-	sall    $1, temp		/* room for tag bit */
-	addl	$1, temp		/* tag bit */
+	sarl	IMMED(20), temp		/* throw out 20 bits */
+	andl    IMMED(0x7ff),temp		/* clear all but 11 low bits */
+	subl	IMMED(1023), temp		/* unbias */
+	sall    IMMED(1), temp		/* room for tag bit */
+	addl	IMMED(1), temp		/* tag bit */
 	movl	temp, stdarg
 	CONTINUE
 	
@@ -880,20 +880,20 @@ ML_CODE_HDR(logb_a)
 ML_CODE_HDR(scalb_a)
 	CHECKLIMIT(FUN_MASK)
 	pushl	4(stdarg)		/* Get copy of scalar. */
-	sarl	$1, (%esp)		/* Untag it. */
+	sarl	IMMED(1), (%esp)		/* Untag it. */
 	fildl	(%esp)			/* Load it ... */
 	fstp	%st(1)			/* ... into 1st FP reg. */
-	addl	$4, %esp		/* Discard copy of scalar. */
+	addl	IMMED(4), %esp		/* Discard copy of scalar. */
 
 	movl	(stdarg), temp		/* Get pointer to real. */
 	fldl	(temp)			/* Load it into temp. */
 
 	fscale				/* Multiply exponent by scalar. */
-	movl	$DESC_reald, (allocptr)
+	movl	IMMED(DESC_reald), (allocptr)
 	fstpl	4(allocptr)		/* Store resulting float. */
-	addl	$4, allocptr		/* Allocate word for tag. */
+	addl	IMMED(4), allocptr		/* Allocate word for tag. */
 	movl	allocptr, stdarg	/* Return a pointer to the float. */
-	addl	$8, allocptr		/* Allocate room for float. */
+	addl	IMMED(8), allocptr		/* Allocate room for float. */
 	CONTINUE
 
 /* end of X86.prim.asm */

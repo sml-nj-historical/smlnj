@@ -28,18 +28,6 @@ void PatchAddrs ();
 	PTR_CtoML(CONCAT(ex,_s).s)			\
     }
 
-/* A nullary exception is represented by an exn packet, which is a
- * triple: (ID, unit, nil).
- */
-#define ML_EXN(ex,name)					\
-    ML_EXNID(ex,name);					\
-    ml_val_t CONCAT(ex,_e0) [4] = {			\
-	DESC_exn,					\
-	PTR_CtoML(CONCAT(ex,_id0)+1),			\
-	ML_unit,					\
-	LIST_nil					\
-    }
-
 #define ASM_CLOSURE(name)				\
     extern ml_val_t CONCAT(name,_a)[];			\
     ml_val_t CONCAT(name,_v)[2] = {			\
@@ -57,22 +45,8 @@ void PatchAddrs ();
     ML_STRING(CONCAT(ex,_s),name);			\
     ml_val_t CONCAT(ex,_id0) [2] = { DESC_ref, }
 
-/* A nullary exception is represented by an exn packet */
-#define ML_EXN(ex,name)					\
-    ML_EXNID(ex,name);					\
-    ml_val_t CONCAT(ex,_e0) [4] = {			\
-	DESC_exn,					\
-	0,						\
-	ML_unit,					\
-	LIST_nil					\
-    }
-
 #define PATCH_ML_EXNID(ex)				\
     CONCAT(ex,_id0)[1] = PTR_CtoML(CONCAT(ex,_s).s)
-
-#define PATCH_ML_EXN(ex)				\
-    PATCH_ML_EXNID(ex);					\
-    CONCAT(ex,_e0)[1] = PTR_CtoML(CONCAT(ex,_id0)+1)
 
 #define ASM_CLOSURE(name)				\
     extern ml_val_t CONCAT(name,_a)[];			\
@@ -142,15 +116,15 @@ ml_val_t _ML_bytearray0[2]	= {MAKE_DESC(0, DTAG_bytearray), ML_unit};
 ml_val_t _ML_realarray0[2]	= {MAKE_DESC(0, DTAG_realdarray), ML_unit};
 ml_val_t _ML_vector0[2]		= {MAKE_DESC(0, DTAG_vector), ML_unit};
 
-ML_EXN(_Div,"Div");
-ML_EXN(_Overflow,"Overflow");
+ML_EXNID(_Div,"Div");
+ML_EXNID(_Overflow,"Overflow");
 ML_EXNID(SysErr, "SysErr");
 
 extern ml_val_t externlist0[];
 
 #ifdef ASM_MATH
-ML_EXN(_Ln,"Ln");
-ML_EXN(_Sqrt,"Sqrt");
+ML_EXNID(_Ln,"Ln");
+ML_EXNID(_Sqrt,"Sqrt");
 #endif
 
 
@@ -206,8 +180,8 @@ void AllocGlobals (ml_state_t *msp)
 #define CSTRUCT_SZ	15
     ML_AllocWrite(msp,  0, MAKE_DESC(CSTRUCT_SZ, DTAG_record));
     ML_AllocWrite(msp,  1, RunVec);
-    ML_AllocWrite(msp,  2, DivExn);
-    ML_AllocWrite(msp,  3, OverflowExn);
+    ML_AllocWrite(msp,  2, DivId);
+    ML_AllocWrite(msp,  3, OverflowId);
     ML_AllocWrite(msp,  4, SysErrId);
     ML_AllocWrite(msp,  5, ML_array0);
     ML_AllocWrite(msp,  6, ML_bytearray0);
@@ -228,8 +202,8 @@ void AllocGlobals (ml_state_t *msp)
 #ifdef ASM_MATH
 #define MATHVEC_SZ	8
     ML_AllocWrite(msp,  0, MAKE_DESC(MATHVEC_SZ, DTAG_record));
-    ML_AllocWrite(msp,  1, LnExn);
-    ML_AllocWrite(msp,  2, SqrtExn);
+    ML_AllocWrite(msp,  1, LnId);
+    ML_AllocWrite(msp,  2, SqrtId);
     ML_AllocWrite(msp,  3, PTR_CtoML(arctan_v+1));
     ML_AllocWrite(msp,  4, PTR_CtoML(cos_v+1));
     ML_AllocWrite(msp,  5, PTR_CtoML(exp_v+1));
@@ -270,8 +244,8 @@ void RecordGlobals ()
     RecordCSymbol ("RunVec.unlock",	PTR_CtoML(unlock_v+1));
 
   /* CStruct */
-    RecordCSymbol ("CStruct.DivExn",		DivExn);
-    RecordCSymbol ("CStruct.OverflowExn",	OverflowExn);
+    RecordCSymbol ("CStruct.DivId",		DivId);
+    RecordCSymbol ("CStruct.OverflowId",	OverflowId);
     RecordCSymbol ("CStruct.SysErrId",		SysErrId);
     RecordCSymbol ("CStruct.array0",		ML_array0);
     RecordCSymbol ("CStruct.bytearray0",	ML_bytearray0);
@@ -291,8 +265,8 @@ void RecordGlobals ()
 
 #if defined(ASM_MATH)
   /* MathVec */
-    RecordCSymbol ("MathVec.LnExn",	LnExn);
-    RecordCSymbol ("MathVec.SqrtExn",	SqrtExn);
+    RecordCSymbol ("MathVec.LnId",	LnId);
+    RecordCSymbol ("MathVec.SqrtId",	SqrtId);
     RecordCSymbol ("MathVec.arctan",	PTR_CtoML(arctan_v+1));
     RecordCSymbol ("MathVec.cos",	PTR_CtoML(cos_v+1));
     RecordCSymbol ("MathVec.exp",	PTR_CtoML(exp_v+1));
@@ -312,8 +286,8 @@ void RecordGlobals ()
  */
 void PatchAddrs ()
 {
-    PATCH_ML_EXN(_Div);
-    PATCH_ML_EXN(_Overflow);
+    PATCH_ML_EXNID(_Div);
+    PATCH_ML_EXNID(_Overflow);
     PATCH_ML_EXNID(SysErr);
 
     PATCH_ASM_CLOSURE(array);

@@ -277,11 +277,17 @@ structure TraceCML : TRACE_CML =
 
   (** Uncaught exception handling **)
 
-    fun defaultHandlerFn (tid, ex) =
-	  Debug.sayDebug (concat [
-	      CML.tidToString tid, " uncaught exception ",
-	      exnName ex, " [", exnMessage ex, "]\n"
-	    ])
+    fun defaultHandlerFn (tid, ex) = let
+	  val raisedAt = (case (SMLofNJ.exnHistory ex)
+		 of [] => ["\n"]
+		  | l => [" raised at ", List.last l, "\n"]
+		(* end case *))
+	  in
+	    Debug.sayDebug (concat ([
+	        CML.tidToString tid, " uncaught exception ",
+	        exnName ex, " [", exnMessage ex, "]"
+	      ] @ raisedAt))
+	  end
 
     val defaultHandler = ref defaultHandlerFn
     val handlers = ref ([] : ((CML.thread_id * exn) -> bool) list)
