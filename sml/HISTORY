@@ -13,6 +13,35 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/07/25 16:20:00 JST
+Tag: blume-20000725-makedepend
+Description:
+
+Added a script called ml-makedepend.  This can be used in makefiles
+for Unix' make in a way very similar to the "makedepend" command for
+C.
+
+The script internally uses function CM.sources.
+
+Synopsis:
+
+    ml-makedepend [-f makefile] cmfile targetname
+
+The default for the makefile is "makefile" (or "Makefile" should
+"makefile" not exist).
+
+ml-makedepend adds a cmfile/targetname-specific section to this
+makefile (after removing the previous version of this section).  The
+section contains a single dependency specification with targetname on
+the LHS (targetname is an arbitrary name), and a list of files derived
+from the cmfile on the RHS.  Some of the files on the RHS are
+ARCH/OPSYS-specific.  Therefore, ml-makedepend inserts references to
+"make" variables $(ARCH) and $(OPSYS) in place of the corresponding
+path names.  The makefile writer is responsible for making sure that
+these variables have correct at the time "make" is invoked.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/07/22 23:30:00 JST
 Tag: blume-20000722-urlupdate
 Description:

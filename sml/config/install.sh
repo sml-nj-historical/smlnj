@@ -62,7 +62,8 @@ LOCALPATHCONFIG=$INSTALLDIR/pathconfig # a temporary pathconfig file
 URLGETTER=unknown
 
 #
-# the path to the dir where ml-yacc, ml-burg, ml-lex, and ml-build live
+# the path to the dir where ml-yacc, ml-burg, ml-lex, ml-build, and
+# ml-makedepend live
 #
 TOOLDIR=$BINDIR
 
@@ -456,6 +457,7 @@ installdriver() {
 installdriver _run-sml .run-sml
 installdriver _link-sml .link-sml
 installdriver _ml-build ml-build
+installdriver _ml-makedepend ml-makedepend
 
 #
 # set some architecture dependent run-time system flags
