@@ -19,6 +19,7 @@ Tag: blume-20040126-app
 Description:
 
 Type of top-level "app" corrected.
+Added code for setting vp_limitPtrMask to Win32-specific runtime.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
