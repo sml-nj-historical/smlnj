@@ -49,8 +49,6 @@
  * Note
  * ----
  * 1. This module should be run after floating point register allocation.
- * 2. Due to the extra complication of critical edge splitting, the cellset
- *    and frequency info are not preserved.
  * 
  * -- Allen Leung (leunga@cs.nyu.edu)
  *) 
@@ -521,6 +519,8 @@ struct
            addEdgesToSplit(target,(source,target,e)::lookupEdgesToSplit target)
           )
 
+       fun computeFreq(_,_,CFG.EDGE{w,...}) = !w
+
        (* Given a cellset, return a sorted and unique 
         * list of elements with all non-physical registers removed
         *)
@@ -889,6 +889,7 @@ struct
                 {label:L.label,               (* label of new block *)
                  entries:CFG.edge list ref,   (* edges going into this code *)
                  code:I.instruction list,     (* code *)
+                 freq:CFG.weight ref,
                  comment:an 
                 } 
 
@@ -966,25 +967,43 @@ struct
                 *)
                fun gen([], h, code) = code
                  | gen((n,e)::rest, _, []) = 
-                     gen(rest, n,
+                   let val w = computeFreq e
+                   in  gen(rest, n,  
                         [NEWEDGE{label=L.anon(), 
                                  entries=ref [e],
                                  code=makeCode(n,rest), 
+                                 freq=ref w,
                                  comment=cleanup
                                 }
                         ])
-                 | gen((n,e)::rest, h, all as (NEWEDGE{entries, ...}::_)) = 
-                     gen(rest,n,
+                   end
+                 | gen((n,e)::rest, h,
+                        all as (NEWEDGE{entries, freq, ...}::_)) = 
+                   let val w = computeFreq e
+                   in  gen(rest,n,
                          if n = h then 
-                           (entries := e :: !entries; all)
+                           (entries := e :: !entries; 
+                            freq := !freq + w;
+                            all)
                          else
                            NEWEDGE{label=L.anon(), 
                                    entries=ref [e],
                                    code=makeCode(n-h,rest),
+                                   freq=ref w,
                                    comment=cleanup
                                   }::all
                         )
+                    end
                val repairCode = gen(entries, 0, []) 
+
+               (* Add frequencies of fallsthru block *)
+               fun updateFreq(w, NEWEDGE{freq=w1, ...}::es) =
+                   let val w = w + !w1
+                   in  w1 := w; updateFreq(w, es)
+                   end
+                 | updateFreq(w, []) = ()
+
+               val () = updateFreq(0.0, repairCode)
            in  (if relocate then addRepairCode' else addRepairCode)
                  (target, repairCode)
            end
@@ -1026,6 +1045,7 @@ struct
                                NEWEDGE{label=L.anon(), 
                                        entries=ref [edge], 
                                        code=code, 
+                                       freq=ref(computeFreq edge),
                                        comment=critical
                                       }
                        in  repairCount := !repairCount + 1;
@@ -1113,11 +1133,12 @@ struct
                 * Given a candidate edge, generate compensation code.
                 *)
                fun transRepair(n, []) = n
-                 | transRepair(n, NEWEDGE{label,entries,code,comment}::rest) =
+                 | transRepair(n, 
+                        NEWEDGE{label,entries,code,freq,comment}::rest) =
                    let val this =
                            CFG.BLOCK{id=n, 
                                      kind=CFG.NORMAL,
-                                     freq=ref 0.0, (* XXX Wrong frequency! *)
+                                     freq=ref(!freq), 
                                      labels=ref [label],
                                      insns=ref code,
                                      annotations=ref comment,
@@ -1244,7 +1265,7 @@ struct
                (*
                 * Now add new edges x->y where x is a new compensation block
                 *) 
-               fun addNewEdge(NEWEDGE{label, code, entries, ...}) = 
+               fun addNewEdge(NEWEDGE{label, code, freq, entries, ...}) = 
                let val x = labelToBlockId label
                    val (y, k) = 
                       case code of
@@ -1258,8 +1279,7 @@ struct
                          else 
                             (x + 1, CFG.FALLSTHRU)
                    (* compute weight *)
-                   val w = List.foldr (fn ((_,_,CFG.EDGE{w,...}), n) => !w+n)
-                              0.0 (!entries)
+                   val w = !freq
                in  #add_edge cfg' (x, y, CFG.EDGE{a=ref [], w=ref w, k=k})
                end
 
