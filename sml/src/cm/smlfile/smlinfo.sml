@@ -126,6 +126,21 @@ structure SmlInfo :> SMLINFO = struct
 	knownInfo := AbsPathMap.filteri isReachable (!knownInfo)
     end
 
+    (* check timestamp and throw away any invalid cache *)
+    fun validate (sourcepath, PERS pir) = let
+	(* don't use "..." pattern to have the compiler catch later
+	 * additions to the type! *)
+	val { group, lastseen, parsetree, skeleton } = pir
+	val ts = !lastseen
+	val nts = AbsPath.tstamp sourcepath
+    in
+	if TStamp.earlier (ts, nts) then
+	    (lastseen := nts;
+	     parsetree := NONE;
+	     skeleton := NONE)
+	else ()
+    end
+
     fun info (gp: GeneralParams.info) arg = let
 	val { sourcepath, group = gr as (group, region), share, split } = arg
 	val policy = #fnpolicy (#param gp)
@@ -133,7 +148,8 @@ structure SmlInfo :> SMLINFO = struct
 	val binpath = FNP.mkBinPath policy sourcepath
 	val groupreg = #groupreg gp
 	fun newpersinfo () = let
-	    val pi = PERS { group = gr, lastseen = ref TStamp.NOTSTAMP,
+	    val ts = AbsPath.tstamp sourcepath
+	    val pi = PERS { group = gr, lastseen = ref ts,
 			    parsetree = ref NONE, skeleton = ref NONE }
 	in
 	    knownInfo := AbsPathMap.insert (!knownInfo, sourcepath, pi);
@@ -161,7 +177,7 @@ structure SmlInfo :> SMLINFO = struct
 				EM.nullErrorBody;
 			newpersinfo ()
 		    end
-		    else pi
+		    else (validate (sourcepath, pi); pi)
     in
 	INFO { sourcepath = sourcepath,
 	       skelpath = skelpath,
@@ -169,23 +185,6 @@ structure SmlInfo :> SMLINFO = struct
 	       persinfo = persinfo (),
 	       share = share,
 	       split = split }
-    end
-
-    (* check timestamp and throw away any invalid cache *)
-    fun validate (INFO ir) = let
-	(* don't use "..." pattern to have the compiler catch later
-	 * additions to the type! *)
-	val { sourcepath, skelpath, binpath, persinfo = PERS pir,
-	      share, split } = ir
-	val { group, lastseen, parsetree, skeleton } = pir
-	val ts = !lastseen
-	val nts = AbsPath.tstamp sourcepath
-    in
-	if TStamp.earlier (ts, nts) then
-	    (lastseen := nts;
-	     parsetree := NONE;
-	     skeleton := NONE)
-	else ()
     end
 
     (* the following functions are only concerned with getting the data,
@@ -252,16 +251,13 @@ structure SmlInfo :> SMLINFO = struct
 			    | NONE => NONE))
     end
 
-    (* first check the time stamp, then do your stuff... *)
-    fun skeleton0 noerrors gp i = (validate i; getSkeleton gp (i, noerrors))
+    fun skeleton0 noerrors gp i = getSkeleton gp (i, noerrors)
  
     (* we only complain at the time of getting the exports *)
     fun exports gp i = Option.map SkelExports.exports (skeleton0 false gp i)
     val skeleton = skeleton0 true
 
-    fun parsetree gp i =
-	(validate i;
-	 getParseTree gp (i, true, true))
+    fun parsetree gp i = getParseTree gp (i, true, true)
 
     fun spec (INFO { sourcepath, ... }) = AbsPath.spec sourcepath
     fun fullSpec (INFO { sourcepath, persinfo = PERS { group, ... }, ... }) =

@@ -117,17 +117,15 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 		      | ("bind" :: name :: file :: args)  =>
 			    node (name, file, args)
 		      | ("return" :: rts :: core :: pervasive :: prims) =>
-			    (Say.vsay ["[init spec read successfully]\n"];
-			     SOME { rts = look_snode rts,
-				    core = look_snode core,
-				    pervasive = look_snode pervasive,
-				    primitives =
+			    SOME { rts = look_snode rts,
+				   core = look_snode core,
+				   pervasive = look_snode pervasive,
+				   primitives =
 				         map (fn n => (n, look_snode n)) prims,
-				    filepaths = rev (getOpt (pl, [])) })
+				   filepaths = rev (getOpt (pl, [])) }
 		      | _ => (error "malformed line"; NONE)
 		end
     in
-	(* 2: consistent with ml-lex bug? *)
-	loop (false, StringMap.empty, NONE, 2)
+	loop (false, StringMap.empty, NONE, 1)
     end
 end

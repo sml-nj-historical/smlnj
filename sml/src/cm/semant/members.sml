@@ -31,7 +31,7 @@ signature MEMBERCOLLECTION = sig
 	GeneralParams.info
 	-> impexp SymbolMap.map * GroupGraph.privileges
 
-    val subgroups : collection -> GroupGraph.group list
+    val subgroups : collection -> (AbsPath.t * GroupGraph.group) list
 
     val num_look : collection -> string -> int
     val ml_look : collection -> symbol -> bool
@@ -56,7 +56,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		        gimports: impexp SymbolMap.map,
 		        smlfiles: smlinfo list,
 			localdefs: smlinfo SymbolMap.map,
-			subgroups: GG.group list,
+			subgroups: (AbsPath.t * GG.group) list,
 			reqpriv: GG.privileges }
 
     val empty =
@@ -110,7 +110,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	        in
 		    COLLECTION { imports = i, gimports = gi, smlfiles = [],
 				 localdefs = SymbolMap.empty,
-				 subgroups = [g],
+				 subgroups = [(p, g)],
 				 reqpriv = required }
 	        end
 	      | exp2coll (PrivateTools.SMLSOURCE src) = let

@@ -116,7 +116,9 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 	     * brewed pervasive env, core env, and primitives *)
 	    val core = valOf (RT.snode ginfo_nocore core)
 	    val corenv =  CoerceEnv.es2bs (#1 (#stat core))
-	    val pervcorepids = PidSet.singleton (#2 (#stat core))
+	    (* even though we have a pid for the core, we can't use it
+	     * (otherwise we would invalidate earlier compilation results) *)
+	    val pervcorepids = PidSet.empty
 
 	    (* The following is a bit of a hack (but corenv is a hack anyway):
 	     * As soon as we have core available, we have to patch the
@@ -172,7 +174,8 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 			         map (fn x => (x, NONE)) filepaths @
 				 MkBootList.group g }
 		    else NONE
-	end handle Option => NONE (* to catch valOf failures in "rt" *)
+	end handle Option => (RT.clearFailures (); NONE)
+	    	   (* to catch valOf failures in "rt" *)
     in
 	case BuildInitDG.build ginfo_nocore initgspec of
 	    SOME x => main_compile x

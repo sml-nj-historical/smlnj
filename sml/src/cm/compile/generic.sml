@@ -17,10 +17,15 @@ in
 	type envdelta = CT.envdelta
 	type result = CT.result
 
+	(* "bnode" does not expect failures, and "group" automatically
+	 * clears failures... *)
 	val bnode : GP.info -> DG.bnode -> envdelta option
-	val snode : GP.info -> DG.snode -> envdelta option
 	val group : GP.info -> GG.group -> result option
 
+	(* ... but if you go through the "snode" interface, then
+	 * you must clear failures explicitly when you are done. *)
+	val snode : GP.info -> DG.snode -> envdelta option
+	val clearFailures : unit -> unit
     end = struct
 
 	type envdelta = CT.envdelta

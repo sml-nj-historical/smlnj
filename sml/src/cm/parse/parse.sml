@@ -80,18 +80,13 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 	    end
 
 	    fun getStable gpath = let
-		val loadStable =
-		    Stabilize.loadStable (ginfo, getStable, pErrFlag)
+		(* To make a cycle involving existing stable groups,
+		 * one must use aliases.  The cycle will be detected
+		 * amoung those aliases... (?? - hopefully) *)
+		fun getStableSG p =
+		    mparse (p, groupstack, pErrFlag, staball)
 	    in
-		case AbsPathMap.find (!gc, gpath) of
-		    SOME (x as SOME _) => x
-		  | SOME NONE => NONE
-		  | NONE =>
-			(case loadStable gpath of
-			     NONE => NONE
-			   | x as SOME _ =>
-				 (gc := AbsPathMap.insert (!gc, gpath, x);
-				  x))
+		Stabilize.loadStable (ginfo, getStableSG, pErrFlag) gpath
 	    end
 
 	    fun stabilize g =

@@ -17,12 +17,19 @@ structure GroupGraph = struct
     (* the "required" field includes everything:
      *   1. privileges required by subgroups
      *   2. newly required privileges
-     *   3. privileges that would be granted once the group is stabilized *)
+     *   3. privileges that would be granted once the group is stabilized
+     *
+     * The list of subgroups includes an AbsPath.t.  This is the path
+     * that was originally found in the CM description file and led to
+     * inclusion of the subgroup.  This contrasts
+     * with the "grouppath" member of the subgroup itself which
+     * records the path of its actual description file.
+     * The two paths are not necessarily equal because of aliases. *)
     datatype group =
 	GROUP of { exports: DependencyGraph.impexp SymbolMap.map,
 		   islib: bool,
 		   required: privileges,
 		   grouppath: AbsPath.t,
-		   subgroups: group list,
+		   subgroups: (AbsPath.t * group) list,
 		   stableinfo: stableinfo }
 end

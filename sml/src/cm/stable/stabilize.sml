@@ -36,13 +36,11 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	PSS of SymbolSet.set
       | PS of Symbol.symbol
       | PSN of DG.snode
-      | PAP of AbsPath.t
 
     datatype uitem =
 	USS of SymbolSet.set
       | US of Symbol.symbol
       | UBN of DG.bnode
-      | UAP of AbsPath.t
 
     fun compare (PS s, PS s') = SymbolOrdKey.compare (s, s')
       | compare (PS _, _) = GREATER
@@ -52,9 +50,6 @@ functor StabilizeFn (val bn2statenv : statenvgetter
       | compare (_, PSS _) = LESS
       | compare (PSN (DG.SNODE n), PSN (DG.SNODE n')) =
 	SmlInfo.compare (#smlinfo n, #smlinfo n')
-      | compare (PSN _, _) = GREATER
-      | compare (_, PSN _) = LESS
-      | compare (PAP p, PAP p') = AbsPath.compare (p, p')
 
     structure Map =
 	BinaryMapFn (struct
@@ -126,6 +121,18 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	     *    need no further adjustment.
 	     *  - Individual binfile contents (concatenated).
 	     *)
+
+	    (* Here we build an inverse map that records for each
+	     * imported bnode a representative symbol.
+	     * This is used for pickling BNODEs -- they get represented
+	     * by a symbol that they export. This avoids having to
+	     * pickle a filename in the case of BNODEs. *)
+	    fun oneB (sy, ((_, DG.SB_BNODE (DG.BNODE n)), _), m) =
+		StableMap.insert (m, #bininfo n, sy)
+	      | oneB (_, _, m) = m
+	    fun oneSG ((_, GG.GROUP { exports, ... }), m) =
+		SymbolMap.foldli oneB m exports
+	    val inverseMap = foldl oneSG StableMap.empty subgroups
 
 	    val members = ref []
 	    val (registerOffset, getOffset) = let
@@ -227,14 +234,35 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    fun w_primitive p k m =
 		String.str (Primitive.toIdent primconf p) :: k m
 
-	    fun w_abspath_raw p k m = w_list w_string (AbsPath.pickle p) k m
+	    fun warn_nonanchor s = let
+		val relabs =
+		    if OS.Path.isRelative s then "relative" else "absolute"
+		fun ppb pps =
+		    (PP.add_newline pps;
+		     PP.add_string pps ("subgroup: " ^ s);
+		     PP.add_newline pps;
+		     PP.add_string pps
+    "(This means that in order to be able to use the result of stabilization";
+		     PP.add_newline pps;
+		     PP.add_string pps "the subgroups must be in the same ";
+		     PP.add_string pps relabs;
+		     PP.add_string pps " location as it is now.)";
+		     PP.add_newline pps)
+	    in
+		EM.errorNoFile (#errcons gp, anyerrors) SM.nullRegion
+		    EM.WARN
+		    (concat [AbsPath.name (#grouppath grec),
+			     ": subgroup referred to by ", relabs,
+			     " pathname"])
+		    ppb
+	    end
 
-	    val w_abspath = w_share w_abspath_raw PAP
+	    fun w_abspath p k m =
+		w_list w_string (AbsPath.pickle warn_nonanchor p) k m
 
 	    fun w_bn (DG.PNODE p) k m = "p" :: w_primitive p k m
 	      | w_bn (DG.BNODE { bininfo = i, ... }) k m =
-		"b" :: w_abspath (BinInfo.group i)
-		           (w_int (BinInfo.offset i) k) m
+		"b" :: w_symbol (valOf (StableMap.find (inverseMap, i))) k m
 
 	    fun w_sn_raw (DG.SNODE n) k =
 		w_si (#smlinfo n)
@@ -258,14 +286,16 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    fun w_privileges p = w_list w_string (StringSet.listItems p)
 
 	    fun pickle_group () = let
-		fun w_sg (GG.GROUP g) = w_abspath (#grouppath g)
+		fun w_sg (p, _) = w_abspath p
 		fun k0 m = []
 		val m0 = (0, Map.empty)
 	    in
-		concat (w_exports exports
-			     (w_bool islib
-			           (w_privileges required
-				          (w_list w_sg subgroups k0))) m0)
+		(* Pickle the subgroups first because we need to already
+		 * have them back when we unpickle BNODEs. *)
+		concat (w_list w_sg subgroups
+			    (w_exports exports
+			        (w_bool islib
+				    (w_privileges required k0))) m0)
 	    end
 
 	    val pickle = pickle_group ()
@@ -353,7 +383,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		if not (recomp gp g) then
 		    (anyerrors := true; NONE)
 		else let
-		    fun notStable (GG.GROUP { stableinfo, ... }) =
+		    fun notStable (_, GG.GROUP { stableinfo, ... }) =
 			case stableinfo of
 			    GG.STABLE _ => false
 			  | GG.NONSTABLE _ => true
@@ -364,9 +394,13 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			    val grammar = case l of [_] => " is" | _ => "s are"
 			    fun ppb pps = let
 				fun loop [] = ()
-				  | loop (GG.GROUP { grouppath, ... } :: t) =
+				  | loop ((p, GG.GROUP { grouppath, ... })
+					  :: t) =
 				    (PP.add_string pps
 				        (AbsPath.name grouppath);
+				     PP.add_string pps " (";
+				     PP.add_string pps (AbsPath.name p);
+				     PP.add_string pps ")";
 				     PP.add_newline pps;
 				     loop t)
 			    in
@@ -391,6 +425,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
     fun loadStable (gp, getGroup, anyerrors) group = let
 
+	val context = AbsPath.relativeContext (AbsPath.dir group)
 	fun bn2env n = Statenv2DAEnv.cvtMemo (fn () => bn2statenv gp n)
 
 	val errcons = #errcons gp
@@ -501,16 +536,10 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    loop []
 	end
 
-	val r_abspath = let
-	    fun r_abspath_raw () =
-		case AbsPath.unpickle pcmode (r_list r_string ()) of
-		    SOME p => p
-		  | NONE => raise Format
-	    fun unUAP (UAP x) = x
-	      | unUAP _ = raise Format
-	in
-	    r_share r_abspath_raw UAP unUAP
-	end
+	fun r_abspath () =
+	    case AbsPath.unpickle pcmode (r_list r_string (), context) of
+		SOME p => p
+	      | NONE => raise Format
 
     	val r_symbol = let
 	    fun r_symbol_raw () = let
@@ -569,63 +598,70 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			  share = share }
 	end
 
-	fun r_bn () =
-	    case rd () of
-		#"p" => DG.PNODE (r_primitive ())
-	      | #"b" => let
-		    val p = r_abspath ()
-		    val os = r_int ()
-		in
-		    case getGroup' p of
-			GG.GROUP { stableinfo = GG.STABLE im, ... } => 
-			    (case IntBinaryMap.find (im, os) of
-				 NONE => raise Format
-			       | SOME n => n)
-		      | _ => raise Format
-		end
-	      | _ => raise Format
-
-	(* this is the place where what used to be an
-	 * SNODE changes to a BNODE! *)
-	fun r_sn_raw () =
-	    DG.BNODE { bininfo = r_si (),
-		       localimports = r_list r_sn (),
-		       globalimports = r_list r_fsbn () }
-
-	and r_sn () =
-	    r_share r_sn_raw UBN (fn (UBN n) => n | _ => raise Format) ()
-
-	(* this one changes from farsbnode to plain farbnode *)
-	and r_sbn () =
-	    case rd () of
-		#"b" => r_bn ()
-	      | #"s" => r_sn ()
-	      | _ => raise Format
-
-	and r_fsbn () = (r_filter (), r_sbn ())
-
-	fun r_impexp () = let
-	    val sy = r_symbol ()
-	    val (f, n) = r_fsbn ()	(* really reads farbnodes! *)
-	    val e = bn2env n
-	    (* put a filter in front to avoid having the FCTENV being
-	     * queried needlessly (this avoids spurious module loadings) *)
-	    val e' = DAEnv.FILTER (SymbolSet.singleton sy, e)
+	fun r_sg () = let
+	    val p = r_abspath ()
 	in
-	    (sy, ((f, DG.SB_BNODE n), e')) (* coerce to farsbnodes *)
+	    (p, getGroup' p)
 	end
 
-	fun r_exports () =
-	    foldl SymbolMap.insert' SymbolMap.empty (r_list r_impexp ())
-
-	fun r_privileges () =
-	    StringSet.addList (StringSet.empty, r_list r_string ())
-
 	fun unpickle_group () = let
+
+	    val subgroups = r_list r_sg ()
+	    fun oneSG ((_, GG.GROUP { exports, ... }), m) =
+		SymbolMap.unionWith #1 (exports, m)
+	    val forwardMap = foldl oneSG SymbolMap.empty subgroups
+
+	    fun r_bn () =
+		case rd () of
+		    #"p" => DG.PNODE (r_primitive ())
+		  | #"b" => let
+			val sy = r_symbol ()
+		    in
+			case SymbolMap.find (forwardMap, sy) of
+			    SOME ((_, DG.SB_BNODE (n as DG.BNODE _)), _) => n
+			  | _ => raise Format
+		    end
+		  | _ => raise Format
+
+	    (* this is the place where what used to be an
+	     * SNODE changes to a BNODE! *)
+	    fun r_sn_raw () =
+		DG.BNODE { bininfo = r_si (),
+			   localimports = r_list r_sn (),
+			   globalimports = r_list r_fsbn () }
+
+	    and r_sn () =
+		r_share r_sn_raw UBN (fn (UBN n) => n | _ => raise Format) ()
+
+	    (* this one changes from farsbnode to plain farbnode *)
+	    and r_sbn () =
+		case rd () of
+		    #"b" => r_bn ()
+		  | #"s" => r_sn ()
+		  | _ => raise Format
+
+	    and r_fsbn () = (r_filter (), r_sbn ())
+
+	    fun r_impexp () = let
+		val sy = r_symbol ()
+		val (f, n) = r_fsbn ()	(* really reads farbnodes! *)
+		val e = bn2env n
+		(* put a filter in front to avoid having the FCTENV being
+		 * queried needlessly (this avoids spurious module loadings) *)
+		val e' = DAEnv.FILTER (SymbolSet.singleton sy, e)
+	    in
+		(sy, ((f, DG.SB_BNODE n), e')) (* coerce to farsbnodes *)
+	    end
+
+	    fun r_exports () =
+		foldl SymbolMap.insert' SymbolMap.empty (r_list r_impexp ())
+
+	    fun r_privileges () =
+		StringSet.addList (StringSet.empty, r_list r_string ())
+
 	    val exports = r_exports ()
 	    val islib = r_bool ()
 	    val required = r_privileges ()
-	    val subgroups = r_list (getGroup' o r_abspath) ()
 	    val simap = genStableInfoMap (exports, group)
 	in
 	    GG.GROUP { exports = exports,

@@ -26,8 +26,8 @@ signature ABSPATH = sig
     val native : { context: context, spec: string } -> t
     val standard : PathConfig.mode -> { context: context, spec: string } -> t
 
-    val pickle : t -> string list
-    val unpickle : PathConfig.mode -> string list -> t option
+    val pickle : (string -> unit) -> t -> string list
+    val unpickle : PathConfig.mode -> string list * context -> t option
 
     val joinDirFile : { dir: t, file: string } -> t
     val splitDirFile : t -> { dir: t, file: string }
@@ -36,7 +36,6 @@ signature ABSPATH = sig
 
     val exists : t -> bool
     val tstamp : t -> TStamp.t
-    val stabletstamp : t -> TStamp.t
 
     (* The open?Out functions automagically create any necessary directories
      * and announce this activity via their string consumer argument. *)
@@ -237,28 +236,26 @@ structure AbsPath :> ABSPATH = struct
 	end
 
 	(* make a pickle-string *)
-	fun pickle p = let
-	    fun p_p (PATH { context, spec, ... }) = spec :: p_c context
-	    and p_c (CUR _) = ["c"]
-	      | p_c (CONFIG_ANCHOR { config_name = n, ... }) = [n, "a"]
-	      | p_c (RELATIVE p) = p_p p
+	fun pickle warn_nonanchor (PATH { context, spec, ... }) = let
+	    fun p_c (CONFIG_ANCHOR { config_name = n, ... }) = [n, "a"]
+	      | p_c _ = (warn_nonanchor spec; ["c"])
 	in
-	    p_p p
+	    spec :: p_c context
 	end
 
-	fun unpickle mode l = let
+	fun unpickle mode (l, context) = let
 	    exception Format
 	    fun u_p (h :: t) =
 		PATH { context = u_c t, spec = h, cache = ref NONE }
 	      | u_p [] = raise Format
-	    and u_c ["c"] = cwdContext ()
+	    and u_c ["c"] = context
 	      | u_c [n, "a"] =
 		(case PathConfig.configAnchor mode n of
 		     NONE => raise Format
 		   | SOME fetch => CONFIG_ANCHOR { fetch = fetch,
 						   cache = ref NONE,
 						   config_name = n })
-	      | u_c l = RELATIVE (u_p l)
+	      | u_c _ = raise Format
 	in
 	    SOME (u_p l) handle Format => NONE
 	end
@@ -296,13 +293,12 @@ structure AbsPath :> ABSPATH = struct
 
 	val exists = fileExists o name
 
-	fun tstamp0 TS p = let
+	fun tstamp p = let
 	    val n = name p
 	in
-	    if fileExists n then TS (fileModTime n) else TStamp.NOTSTAMP
+	    if fileExists n then TStamp.TSTAMP (fileModTime n)
+	    else TStamp.NOTSTAMP
 	end
-	val tstamp = tstamp0 TStamp.TSTAMP
-	val stabletstamp = tstamp0 TStamp.STABLETSTAMP
 
 	fun openOut fileopener ap = let
 	    val p = name ap
