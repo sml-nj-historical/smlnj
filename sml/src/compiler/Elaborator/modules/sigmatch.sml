@@ -155,19 +155,20 @@ fun ident _ = ()
 
 (* returns true and the new instantiations if actual type > spec type *)
 (* matches an abstract version of a type with its actual version *)
-fun absEqvTy (spec, actual) : (ty * tyvar list * ty * bool) =
-  let val actual = TU.prune actual
-      val spec = TU.prune spec
-      val (actinst, insttys0) = TU.instantiatePoly actual
-      val (specinst, stys) = TU.instantiatePoly spec
-      val _ = ListPair.app Unify.unifyTy (insttys0, stys)
+fun absEqvTy (specty: ty, actualty: ty) : (ty * tyvar list * ty * bool) =
+  let val actualty = TU.prune actualty
+      val specty = TU.prune specty
+      val (actInst, actInstTvs) = TU.instantiatePoly actualty
+      val (specInst, specInstTvs) = TU.instantiatePoly specty
+      val _ = ListPair.app Unify.unifyTy (actInstTvs, specInstTvs)
 
-      val res = (Unify.unifyTy(actinst, specinst); true) handle _ => false
+      val res = (Unify.unifyTy(actInst, specInst); true) handle _ => false
+      (* ???? what is this doing? *)
 
-      val instbtvs = map TU.tyvarType insttys0
-      (* should I use stys here instead, why insttys0 ? *)
+      val boundTvs = map TU.tyvarType actInstTvs
+      (* should I use specInstTvs here instead, why actInstTvs ? *)
 
-   in (actinst, instbtvs, specinst, res)
+   in (actInst, boundtvs, specInst, res)
   end
 
 fun eqvTnspTy (specty: ty, actualty: ty) : (ty * tyvar list) = 
@@ -175,9 +176,9 @@ fun eqvTnspTy (specty: ty, actualty: ty) : (ty * tyvar list) =
       val (actInst, actInstTvs) = TU.instantiatePoly actualty
       val (specInst, specInstTvs) = TU.instantiatePoly specty
       val _ = ((Unify.unifyTy(actInst, specInst))
-               handle _ => bug "unexpected types in eqvTnspTy")
+               handle _ => bug "incompatible types in eqvTnspTy")
       val boundTvs = map TU.tyvarType specInstTvs
-   in (actinst, boundTvs)
+   in (actInst, boundTvs)
   end
 
 
@@ -1208,16 +1209,16 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
                    val dacc = DA.selAcc(rootAcc, s)
                    val dinfo = II.sel(rootInfo, s)
                    val (insty, btvs, resinst, eqflag) = 
-                     absEqvTy(restyp, srctyp)
+                       absEqvTy(restyp, srctyp)
 
                    val spath = SP.SPATH[sym]
                    val srcvar = VALvar{path=spath, typ=ref srctyp,
                                        access=dacc, info=dinfo}
 
                    val (decs', nv) =
-                     if eqflag then (decs, srcvar)
-                     else (let val acc = DA.namedAcc(sym, mkv)
-                               val resvar = 
+                       if eqflag then (decs, srcvar)
+                       else (let val acc = DA.namedAcc(sym, mkv)
+                                 val resvar = 
                                  VALvar{path=spath, typ=ref restyp,
                                         access=acc, info=II.Null}
 
