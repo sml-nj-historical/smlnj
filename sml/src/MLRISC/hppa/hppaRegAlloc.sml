@@ -17,13 +17,15 @@ functor HppaRegAlloc(structure P : INSN_PROPERTIES
   sig
     functor IntRa (structure RaUser : RA_USER_PARAMS
 		     where type I.operand = I.operand
-		       and type I.instruction = I.instruction) : sig
+		       and type I.instruction = I.instruction
+		       and type B.name = F.B.name) : sig
       datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
       val ra : mode -> F.cluster -> F.cluster
      end
     functor FloatRa (structure RaUser : RA_USER_PARAMS
 		     where type I.operand = I.operand
-		       and type I.instruction = I.instruction) : sig
+		       and type I.instruction = I.instruction
+		       and type B.name = F.B.name) : sig
       datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
       val ra : mode -> F.cluster -> F.cluster
      end
@@ -80,6 +82,3 @@ struct
 	end)
 end
 
-(*
- * $Log$
- *)

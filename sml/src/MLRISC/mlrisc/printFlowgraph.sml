@@ -48,12 +48,12 @@ struct
      fun display(F.PSEUDO pOp) = E.pseudoOp pOp
        | display(F.LABEL l)    = E.defineLabel l
        | display(F.ORDERED blks) = app display blks
-       | display(F.BBLOCK{blknum, succ, pred, liveOut, liveIn, insns, ...}) = 
+       | display(F.BBLOCK{blknum, succ, pred, liveOut, liveIn, insns, name, ...}) = 
 	 let 
 	     fun pr str = TextIO.output(stream, str)
 	     val prInts = printInts stream
 	 in
-	     (pr ("BLOCK " ^ Int.toString blknum ^ "\n");
+	     (pr ("BLOCK " ^ Int.toString blknum ^ "(" ^F.B.toString name ^ ")\n");
 	      pr ("\tlive in:  " ^ C.cellset2string (!liveIn) ^ "\n");
 	      pr ("\tlive out: " ^ C.cellset2string (!liveOut) ^ "\n");
 	      pr ("\tsucc:     "); prInts (map blockNum (!succ)); pr "\n";
@@ -81,6 +81,3 @@ struct
    end
 end
 
-(*
- * $Log$
- *)

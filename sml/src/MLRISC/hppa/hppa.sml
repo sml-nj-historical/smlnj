@@ -15,7 +15,8 @@ functor Hppa
      sharing Flowgen.I = MilliCode.I = LabelComp.I = HppaInstr 
      sharing Flowgen.T = LabelComp.T = HppaMLTree
      sharing HppaMLTree.Region = HppaInstr.Region
-     sharing HppaMLTree.Constant = HppaInstr.Constant) : MLTREECOMP = 
+     sharing HppaMLTree.Constant = HppaInstr.Constant
+     sharing HppaMLTree.BNames = Flowgen.B) : MLTREECOMP = 
 struct
   structure I = HppaInstr
   structure F = Flowgen
@@ -501,6 +502,7 @@ struct
       | mltc(T.ORDERED mlts)     = F.ordered mlts
       | mltc(T.BEGINCLUSTER)     = F.beginCluster()
       | mltc(T.CODE stms)	 = app stmAction stms
+      | mltc(T.BLOCK_NAME name)  = F.blockName name
       | mltc(T.ENDCLUSTER regmap)= F.endCluster regmap
       | mltc(T.ESCAPEBLOCK regs) = F.exitBlock (map cc regs)
   in mltc mltree 
@@ -509,6 +511,3 @@ struct
   val mlriscComp = stmAction
 end
 
-(*
- * $Log$
- *)

@@ -19,7 +19,8 @@ structure HppaPseudoOps = PseudoOpsBig(HppaSpec)
 (* flowgraph data structure specialized to Hppa instructions *)
 structure HppaFlowGraph = 
   FlowGraph(structure I=HppaInstr
-	    structure P=HppaPseudoOps)
+	    structure P=HppaPseudoOps
+	    structure B=FunctionNames)
 
 structure HppaAsmEmitter = 
   HppaAsmEmitter(structure Instr=HppaInstr
@@ -34,9 +35,13 @@ structure HppaMCEmitter =
 structure HppaMLTree = 
   MLTreeF(structure Const=HppaConst
 	  structure R=CPSRegions
-	  structure P=HppaPseudoOps)
+	  structure P=HppaPseudoOps
+	  structure B=FunctionNames)
 
 
 (*
- * $Log$
+ * $Log: hppaMLTree.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
+ *
  *)

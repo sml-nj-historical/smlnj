@@ -9,11 +9,9 @@
 functor RegAllocator 
   (structure RaArch : RA_ARCH_PARAMS) 
   (structure RaUser : RA_USER_PARAMS 
-(*    where I = RaArch.I -- bug 1205 *)
-    where type I.operand = RaArch.I.operand
-      and type I.instruction = RaArch.I.instruction 
-     (* -- equivalent where type if where structure not working *)
-  ) : RA =
+      where type I.operand = RaArch.I.operand
+        and type I.instruction = RaArch.I.instruction
+	and type B.name = RaArch.Liveness.F.B.name) : RA =
 struct
   structure F = RaArch.Liveness.F
   structure P = RaArch.InsnProps
@@ -824,12 +822,12 @@ struct
       in loop(spillList)
       end
 
-(*
+     (*
       val _ = 
 	 app (fn set => prList(map nodeNumber set, 
 			       "coalesced " ^ Int.toString(length set) ^ ": "))
 	     (coalesceSpillLoc())
-*)
+      *)
 
       (* blocks where spill code is required for node n *)
       fun affectedBlocks node = let
@@ -838,17 +836,11 @@ struct
 		  SL.uniq(Intmap.map uInfo n) handle _ => [])
       end
 
-      fun allBlocksAffected () = let
-	fun merge([], L) = L
-	  | merge(x::xs, L) = merge(xs, SL.enter(x, L))
-      in List.foldl merge [] (map affectedBlocks spillList)
-      end
-
       (* Insert spill code into the affected blocks *)
       fun doBlocks([], _, prevSpills) = prevSpills
 	| doBlocks(blknum::rest, node, pSpills) = let
 	    fun mapr r = Intmap.map regmap r handle _ => r
-	    val F.BBLOCK{insns, liveOut, ...} = Array.sub(cblocks, blknum)
+	    val F.BBLOCK{insns, liveOut, name, ...} = Array.sub(cblocks, blknum)
 	    val bdu = Array.sub(blockDU, blknum)
 	    val liveOut = chaseRegs (rmvDedicated(RaArch.regSet(!liveOut)))
 	      
@@ -877,7 +869,8 @@ struct
 		
 		  (* insert reloading code and continue *)
 		  fun reloadInstr(instr, du, newI, newBDU, prevSpills) = let
-		    val {code, proh} = RaUser.reload{regmap=mapr, instr=instr, reg=spillReg}
+		    val {code, proh} = 
+		      RaUser.reload{regmap=mapr, instr=instr, reg=spillReg, id=name}
 		    val prevSpills = mergeProh(proh, prevSpills)
 		    val {newI, newBDU} = outputInstrs(code, newI, newBDU)
 		  in doInstrs(rest, bDU, newI, newBDU, prevSpills)
@@ -893,7 +886,8 @@ struct
 			   val cpyInstr = RaUser.copyInstr(cpy, instr)
 			   val duCpy = defUse cpyInstr
 			   val {code, proh} =
-			     RaUser.reload{regmap=mapr, instr=RaUser.copyInstr(mv, instr), reg=spillReg}
+			     RaUser.reload{regmap=mapr, instr=RaUser.copyInstr(mv, instr), 
+					   reg=spillReg, id=name}
 			   val prevSpills = mergeProh(proh, prevSpills)
 			   val {newI, newBDU} = outputInstrs(code, newI, newBDU)
 			 in
@@ -910,7 +904,8 @@ struct
 		    if P.moveInstr(instr) then 
 		      reloadCopy(du, instr, newI, newBDU, prevSpills)
 		    else if nodeMember(node, u) then let
-			val {code, proh} = RaUser.reload{regmap=mapr, instr=instr, reg=spillReg}
+			val {code, proh} = 
+			  RaUser.reload{regmap=mapr, instr=instr, reg=spillReg, id=name}
 			val {newI, newBDU} = outputInstrs(code, newI, newBDU)
 			val prevSpills = mergeProh(proh, prevSpills)
 		      in doInstrs(rest, bDU, newI, newBDU, prevSpills)
@@ -920,7 +915,8 @@ struct
 
 
 		  fun spillInstr(instr, newI, newBDU, prevSpills) = let
-		    val {code, instr, proh} = RaUser.spill{regmap=mapr,  instr=instr, reg=spillReg}
+		    val {code, instr, proh} = 
+		      RaUser.spill{regmap=mapr,  instr=instr, reg=spillReg, id=name}
 		    val prevSpills = mergeProh(proh, prevSpills)
 		    val {newI, newBDU} = outputInstrs(code, newI, newBDU)
 		  in 
@@ -986,7 +982,7 @@ struct
 		       of P.IK_JUMP =>
 			   if escapes(P.branchTargets instr) then let
 			       val {code,...} = 
-				 RaUser.reload{regmap=mapr, instr=instr, reg=spillReg}
+				 RaUser.reload{regmap=mapr, instr=instr, reg=spillReg, id=name}
 			       val reloadDU = map defUse code
 			     in (rev code@rest, rev reloadDU@bdu)
 			     end
@@ -1185,7 +1181,4 @@ struct
       end 
 end (* functor *)
 
-(*
- * $Log$
- *)
 

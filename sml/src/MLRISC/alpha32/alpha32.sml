@@ -17,7 +17,8 @@ functor Alpha32
      sharing Alpha32Instr.Region = Alpha32MLTree.Region
      sharing Flowgen.I = PseudoInstrs.I =  Alpha32Instr
      sharing Flowgen.T=Alpha32MLTree 
-     sharing Alpha32MLTree.Constant = Alpha32Instr.Constant) : MLTREECOMP = 
+     sharing Alpha32MLTree.Constant = Alpha32Instr.Constant
+     sharing Alpha32MLTree.BNames = Flowgen.B) : MLTREECOMP = 
 struct
   structure F = Flowgen
   structure T = Alpha32MLTree
@@ -695,6 +696,7 @@ struct
       | mltc(T.ORDERED mlts)     = F.ordered mlts
       | mltc(T.BEGINCLUSTER)     = F.beginCluster()
       | mltc(T.CODE stms)        = app stmAction stms
+      | mltc(T.BLOCK_NAME name)  = F.blockName name
       | mltc(T.ENDCLUSTER regmap)= F.endCluster regmap
       | mltc(T.ESCAPEBLOCK regs) = F.exitBlock (map cc regs)
   in mltc mltree
@@ -704,6 +706,3 @@ struct
 end
 
 
-(*
- * $Log$
- *)

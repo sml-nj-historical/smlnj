@@ -26,6 +26,7 @@ end
 signature RA_USER_PARAMS = sig
 
   structure I : INSTRUCTIONS
+  structure B : BLOCK_NAMES
 
   val nFreeRegs : int
   val dedicated : int list	(* dedicated registers *)
@@ -35,7 +36,8 @@ signature RA_USER_PARAMS = sig
   val spill : 
     {instr : I.instruction,	(* instruction where spill is to occur *)
      reg: int,			(* register to spill *)
-     regmap: int -> int		(* register map *)
+     regmap: int -> int,	(* register map *)
+     id : B.name		(* block name *)
      } 
        ->
      {code: I.instruction list,	(* spill or reload code *)
@@ -45,7 +47,8 @@ signature RA_USER_PARAMS = sig
   val reload : 
      {instr : I.instruction,	(* instruction where spill is to occur *)
       reg: int,			(* register to spill *)
-      regmap: int -> int		(* register map *)
+      regmap: int -> int,	(* register map *)
+      id : B.name		(* block name *)
      } 
        -> 
      {code: I.instruction list,	(* spill or reload code *)
@@ -63,6 +66,3 @@ signature RA = sig
 end 
 
 
-(*
- * $Log$
- *)

@@ -7,6 +7,7 @@ signature MLTREE = sig
   structure Constant : CONSTANT
   structure PseudoOp : PSEUDO_OPS
   structure Region   : REGION
+  structure BNames   : BLOCK_NAMES
 
   datatype cond = LT | LTU | LE | LEU | EQ | NEQ | GE | GEU | GT | GTU
   datatype fcond =
@@ -93,6 +94,7 @@ signature MLTREE = sig
     | DEFINELABEL of Label.label
     | ENTRYLABEL of Label.label
     | CODE of stm list
+    | BLOCK_NAME of BNames.name
     | ORDERED of mltree list
     | ESCAPEBLOCK of mlrisc list 
     | ENDCLUSTER of int Intmap.intmap
@@ -100,6 +102,3 @@ signature MLTREE = sig
 end (* MLTREE *)
 
 
-(*
- * $Log$
- *)
