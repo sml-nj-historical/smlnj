@@ -1,6 +1,12 @@
 BOOT: the location of the latest boot files.
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/03/22 16:25:00 EST
+Tag: blume-20010322-bootfiles
+Version: 110.32.1(+++)
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/bootfiles/blume-20010322-bootfiles/
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/03/16 12:22:00 EST
 Tag: blume-20010316-bootfiles
 Version: 110.32.1(++)
