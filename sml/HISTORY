@@ -12,6 +12,18 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Dave MacQueen
+Date: 2000/04/09 14:00 EDT
+Tag: dbm-20000410-Version_110_27
+Description:
+
+1. Updated src/compiler/TopLevel/main/version.sml to version 110.27
+
+2. Updated src/config/version to 110.27
+
+3. New boot files!
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2000/04/09 19:09:00 EST
 Tag: leunga-20000409-misc
