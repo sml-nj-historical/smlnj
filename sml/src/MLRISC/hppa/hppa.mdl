@@ -650,9 +650,9 @@ struct
           fun lo11 n  = (itow n) && 0wx7ff 
           (* BUG: should respect the field selectors instead of ignoring them *)
       in  case opnd of
-            I.HILabExp(lexp, _) => hi21X(LabelExp.valueOf lexp)
-          | I.LOLabExp(lexp, _) => lo11(LabelExp.valueOf lexp)
-          | I.LabExp(lexp, _)   => itow(LabelExp.valueOf lexp)
+            I.HILabExp(lexp, _) => hi21X(MLTreeEval.valueOf lexp)
+          | I.LOLabExp(lexp, _) => lo11(MLTreeEval.valueOf lexp)
+          | I.LabExp(lexp, _)   => itow(MLTreeEval.valueOf lexp)
           | I.IMMED i           => itow i 
           | I.REG _             => error "REG"
       end
@@ -969,7 +969,7 @@ struct
                  Label.setAddr(tmpLab, !loc+4); 
                  branchLink(0wx3a,tmp,tmpLab,0w0,n);
                  LongImmed{Op=0wxa,r=tmp,
-                           im21=assemble_21(itow(LabelExp.valueOf offset))};
+                           im21=assemble_21(itow(MLTreeEval.valueOf offset))};
                  BranchVectored{Op=0wx3a,t=tmp,x=zeroR,ext3=0w6,n=n}
              end
 	rtl: ``B''

@@ -26,7 +26,7 @@ functor PPC
 struct
   structure I   = PPCInstr
   structure T   = I.T
-  structure S   = T.Stream
+  structure TS  = ExtensionComp.TS
   structure C   = PPCInstr.C
   structure CB  = CellsBasis
   structure W32 = Word32
@@ -35,8 +35,8 @@ struct
 
   fun error msg = MLRiscErrorMsg.error("PPC",msg)
 
-  type instrStream = (I.instruction, CB.CellSet.cellset, CFG.cfg) T.stream
-  type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) T.stream
+  type instrStream = (I.instruction, CB.CellSet.cellset, CFG.cfg) TS.stream
+  type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
 
   val (intTy,naturalWidths) = if bit64mode then (64,[32,64]) else (32,[32])
@@ -101,7 +101,7 @@ struct
     (val signed = true)
 
   fun selectInstructions
-      (S.STREAM{emit,comment,getAnnotations,
+      (TS.S.STREAM{emit,comment,getAnnotations,
                 defineLabel,entryLabel,pseudoOp,annotation,
                 beginCluster,endCluster,exitBlock,...}) =
   let (* mark an instruction with annotations *)
@@ -738,7 +738,7 @@ struct
             | NONE => ();
            endCluster a)
 
-   in  S.STREAM
+   in  TS.S.STREAM
        { beginCluster  = beginCluster,
          endCluster    = endCluster,
          emit          = doStmt,

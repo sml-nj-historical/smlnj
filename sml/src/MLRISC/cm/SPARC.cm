@@ -12,6 +12,7 @@ Library
 	functor SparcCompInstrExt
 	functor SparcDelaySlots
 	functor SparcFreqProps
+	functor SparcGasPseudoOps
 	functor SparcInstr
 	functor SparcJumps
 	functor SparcMCEmitter
@@ -58,6 +59,7 @@ is
 	../sparc/emit/sparcAsm.sml
 	../sparc/emit/sparcMC.sml
 	../sparc/backpatch/sparcJumps.sml
+	../sparc/flowgraph/sparcGasPseudoOps.sml
 	../sparc/mltree/sparcPseudoInstr.sig
 	../sparc/mltree/sparc.sml 
 	../sparc/ra/sparcRewrite.sml

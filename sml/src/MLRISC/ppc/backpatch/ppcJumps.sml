@@ -1,12 +1,12 @@
 functor PPCJumps 
   (structure Instr: PPCINSTR
    structure Shuffle : PPCSHUFFLE where I = Instr
+   structure MLTreeEval : MLTREE_EVAL where T = Instr.T
   ) : SDI_JUMPS = 
 struct
   structure I = Instr
   structure C = I.C
   structure Const = I.Constant
-  structure LE = I.LabelExp
 
   fun error msg = MLRiscErrorMsg.error("PPCJumps",msg)
 
@@ -50,7 +50,7 @@ struct
     fun unsigned5 n = 0 <=n andalso n < 32
 
     fun operand(I.LabelOp le, inRange, lo, hi) = 
-         if inRange(LE.valueOf le) then lo else hi
+         if inRange(MLTreeEval.valueOf le) then lo else hi
       | operand _ = error "sdiSize:operand"
   in
     case instr
@@ -78,7 +78,7 @@ struct
          | I.CMPL => operand(rb, unsigned16, 4, 12)
        (*esac*))
      | I.BC{addr=I.LabelOp lexp, ...} => 
-        if signed14((LE.valueOf lexp - loc) div 4) then 4 else 8
+        if signed14((MLTreeEval.valueOf lexp - loc) div 4) then 4 else 8
      | I.COPY{impl=ref(SOME l), ...} => 4 * length l
      | I.FCOPY{impl=ref(SOME l), ...} => 4 * length l
      | I.COPY{dst, src, impl as ref NONE, tmp} => let
@@ -94,7 +94,7 @@ struct
   end
 
 
-  fun valueOf(I.LabelOp lexp) = LE.valueOf lexp
+  fun valueOf(I.LabelOp lexp) = MLTreeEval.valueOf lexp
     | valueOf _ = error "valueOf"
 
   fun split opnd = let

@@ -5,9 +5,13 @@
  *)
 
 
-functor X86AsmEmitter(structure Instr : X86INSTR
+functor X86AsmEmitter(structure S : INSTRUCTION_STREAM
+                      structure Instr : X86INSTR
+                         where T = S.P.T
                       structure Shuffle : X86SHUFFLE
                          where I = Instr
+                      structure MLTreeEval : MLTREE_EVAL
+                         where T = Instr.T
 
 (*#line 509.7 "x86/x86.mdl"*)
                       structure MemRegs : MEMORY_REGISTERS where I=Instr
@@ -19,9 +23,8 @@ struct
    structure I  = Instr
    structure C  = I.C
    structure T  = I.T
-   structure S  = T.Stream
+   structure S  = S
    structure P  = S.P
-   structure LabelExp = I.LabelExp
    structure Constant = I.Constant
    
    val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
@@ -47,13 +50,12 @@ struct
                   in  if n<0 then "-"^String.substring(s,1,size s-1)
                       else s
                   end
-       fun emit_label lab = emit(Label.toString lab)
-       fun emit_label lab = emit(LabelExp.toString(T.LABEL lab))
-       fun emit_labexp le = emit(LabelExp.toString le)
+       fun emit_label lab = emit(P.Client.AsmPseudoOps.lexpToString(T.LABEL lab))
+       fun emit_labexp le = emit(P.Client.AsmPseudoOps.lexpToString (T.LABEXP le))
        fun emit_const c = emit(Constant.toString c)
        fun emit_int i = emit(ms i)
        fun paren f = (emit "("; f(); emit ")")
-       fun defineLabel lab = emit(Label.toString lab^":\n")
+       fun defineLabel lab = emit(P.Client.AsmPseudoOps.defineLabel lab^":\n")
        fun entryLabel lab = defineLabel lab
        fun comment msg = (tab(); emit("/* " ^ msg ^ " */\n"))
        fun annotation a = (comment(Annotations.toString a); nl())
@@ -63,7 +65,7 @@ struct
        fun emit_region mem = comment(I.Region.toString mem)
        val emit_region = 
           if !show_region then emit_region else doNothing
-       fun pseudoOp pOp = emit(P.toString pOp)
+       fun pseudoOp pOp = (emit(P.toString pOp); emit "\n")
        fun init size = (comment("Code Size = " ^ ms size); nl())
        val emitCellInfo = AsmFormatUtil.reginfo
                                 (emit,formatAnnotations)

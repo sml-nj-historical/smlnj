@@ -4,11 +4,14 @@
  *
  *)
 
-functor AlphaProps(AlphaInstr:ALPHAINSTR):INSN_PROPERTIES =
+functor AlphaProps
+   (structure Instr : ALPHAINSTR
+    structure MLTreeHash :  MLTREE_HASH where T = Instr.T
+    structure MLTreeEval : MLTREE_EVAL where T = Instr.T
+    ):INSN_PROPERTIES =
 struct
-    structure I = AlphaInstr
+    structure I = Instr
     structure C = I.C
-    structure LE = I.LabelExp
     structure CB = CellsBasis
 
     exception NegateConditional
@@ -122,15 +125,15 @@ struct
     *========================================================================*)
    fun hashOpn(I.REGop r) = CB.hashCell r
      | hashOpn(I.IMMop i) = Word.fromInt i
-     | hashOpn(I.HILABop l) = I.LabelExp.hash l
-     | hashOpn(I.LOLABop l) = I.LabelExp.hash l
-     | hashOpn(I.LABop l) = I.LabelExp.hash l
+     | hashOpn(I.HILABop l) = MLTreeHash.hash l
+     | hashOpn(I.LOLABop l) = MLTreeHash.hash l
+     | hashOpn(I.LABop l) = MLTreeHash.hash l
 
    fun eqOpn(I.REGop a,I.REGop b) = CB.sameColor(a,b)
      | eqOpn(I.IMMop a,I.IMMop b) = a = b
-     | eqOpn(I.HILABop a,I.HILABop b) = I.LabelExp.==(a,b)
-     | eqOpn(I.LOLABop a,I.LOLABop b) = I.LabelExp.==(a,b)
-     | eqOpn(I.LABop a,I.LABop b) = I.LabelExp.==(a,b)
+     | eqOpn(I.HILABop a,I.HILABop b) = MLTreeEval.==(a,b)
+     | eqOpn(I.LOLABop a,I.LOLABop b) = MLTreeEval.==(a,b)
+     | eqOpn(I.LABop a,I.LABop b) = MLTreeEval.==(a,b)
      | eqOpn _ = false
 
    (*========================================================================

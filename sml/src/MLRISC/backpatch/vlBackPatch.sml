@@ -65,19 +65,19 @@ struct
  
   fun error msg = MLRiscErrorMsg.error("vlBackPatch",msg)
 
-  val clusters = ref ([] : cluster list)
-
-  fun cleanUp() = clusters := []
+  val clusterList : cluster list ref = ref []
+  val dataList : P.pseudo_op list ref = ref []
+  fun cleanUp() = (clusterList := []; dataList := [])
 
   val Asm.S.STREAM{emit,...} = Asm.makeStream []
 
-  fun bbsched(cfg as G.GRAPH graph) = let
+  fun bbsched(cfg as G.GRAPH{graph_info=CFG.INFO{data, ...}, ...}) = let
     val blocks = map #2 (Placement.blockPlacement cfg)
     fun bytes([], p) = p
       | bytes([s], p) = BYTES(s, p)
       | bytes(s, p) = BYTES(W8V.concat s, p)
 
-    fun f(CFG.BLOCK{data, labels, insns, ...}::rest) = let
+    fun f(CFG.BLOCK{align, labels, insns, ...}::rest) = let
          fun instrs([], b) = bytes(rev b, f rest)
            | instrs(i::rest, b) = 
              if Jumps.isSdi i then 
@@ -86,16 +86,16 @@ struct
                instrs(rest, Emitter.emitInstr(i)::b)
          fun doLabels(lab::rest) = LABEL(lab, doLabels rest)
            | doLabels [] = instrs(rev(!insns), [])
-         fun pseudo(CFG.PSEUDO pOp :: rest) = PSEUDO(pOp, pseudo rest)
-           | pseudo(CFG.LABEL lab :: rest) =  LABEL(lab, pseudo rest)
-           | pseudo [] = doLabels(!labels)
-
-        in pseudo(!data)
+         fun alignIt(NONE) = doLabels(!labels)
+	   | alignIt(SOME p) = PSEUDO(p, alignIt(NONE))
+        in
+          alignIt(!align)
         end 
       | f [] = NIL
   in 
-    clusters := 
-      CLUSTER{cluster=f blocks}:: !clusters
+    clusterList := 
+      CLUSTER{cluster=f blocks}:: !clusterList;
+    dataList := !data @ !dataList
   end
 
   
@@ -196,11 +196,21 @@ struct
 	(fn (CLUSTER{cluster, ...}, loc) => init(cluster, loc)) 0 clusters
     end
 
-    val clusters = rev(!clusters) before clusters := []
+    (* The dataList is in reverse order, and the entries in each
+     * are also in reverse 
+     *)
+    fun compUnit(d::dl, cl, acc) = compUnit(dl, cl, PSEUDO(d, acc))
+      | compUnit([], cl, acc) = let
+	  fun revCl(c::cl, acc) = revCl(cl, c::acc)
+	    | revCl([], acc) = acc
+        in revCl(cl, [CLUSTER{cluster=acc}])
+        end
+      
+    val compressed =  compUnit(!dataList, !clusterList, NIL) before cleanUp()
   in
-    initLabels(clusters);
-    CodeString.init(fix clusters);
-    loc := 0; chunk(0, clusters) 
+    initLabels(compressed);
+    CodeString.init(fix compressed);
+    loc := 0; chunk(0, compressed) 
   end (* finish *)
 
 end (* functor BackPatch *)

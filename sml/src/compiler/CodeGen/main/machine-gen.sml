@@ -5,20 +5,22 @@
 
 functor MachineGen
   (structure MachSpec   : MACH_SPEC            (* machine specifications *) 
-   structure PseudoOps  : SMLNJ_PSEUDO_OP_TYPE (* pseudo ops *)
    structure Ext        : SMLNJ_MLTREE_EXT
    structure InsnProps  : INSN_PROPERTIES      (* instruction properties *)
    structure CpsRegs    : CPSREGS              (* CPS registers *)
 		      where T.Region=CPSRegions
 		        and T.Constant=SMLNJConstant 
-		        and T.PseudoOp=PseudoOps
 			and T.Extension=Ext
+   structure ClientPseudoOps : SMLNJ_PSEUDO_OPS
+   structure PseudoOps  : PSEUDO_OPS     (* pseudo ops *)
+	 	      where T = CpsRegs.T
+		        and Client = ClientPseudoOps
    structure MLTreeComp : MLTREECOMP           (* instruction selection *)
-		      where T = CpsRegs.T
-		        and I = InsnProps.I
+		      where I = InsnProps.I
+			and TS.T = CpsRegs.T
+		        and TS.S.P = PseudoOps
    structure Asm        : INSTRUCTION_EMITTER  (* assembly *)
-		      where S = MLTreeComp.T.Stream
-		        and P = PseudoOps
+		      where S.P = PseudoOps
 			and I = MLTreeComp.I
    structure Shuffle    : SHUFFLE              (* shuffling copies *) 
 		      where I = Asm.I
@@ -38,8 +40,8 @@ struct
    structure P          = InsnProps
    structure I          = CFG.I
    structure Cells      = I.C 
-   structure T          = MLTreeComp.T
-   structure S          = T.Stream
+   structure T          = MLTreeComp.TS.T
+   structure Stream     = MLTreeComp.TS
    structure Asm        = Asm
    structure Shuffle    = Shuffle
    structure MachSpec   = MachSpec
@@ -79,14 +81,14 @@ struct
       BuildFlowgraph(
          structure CFG = CFG
 	 structure Props = InsnProps
-	 structure Stream = T.Stream)
+	 structure Stream = MLTreeComp.TS.S)
 
    (* GC Invocation *)
    structure InvokeGC =
-      InvokeGC(structure Cells = Cells
-               structure C     = CpsRegs
+      InvokeGC(structure C     = CpsRegs
                structure MS    = MachSpec
 	       structure CFG   = CFG
+	       structure TS    = MLTreeComp.TS
               )
 
    fun compile cluster =
@@ -102,6 +104,7 @@ struct
 		structure Ext = Ext
                 structure C=CpsRegs
                 structure InvokeGC=InvokeGC
+		structure ClientPseudoOps =ClientPseudoOps
                 structure PseudoOp=PseudoOps
                 structure Flowgen=FlowGraphGen
 		structure CCalls = CCalls

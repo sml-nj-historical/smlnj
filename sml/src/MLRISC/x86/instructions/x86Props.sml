@@ -3,11 +3,14 @@
  * COPYRIGHT (c) 1997 Bell Laboratories.
  *)
 
-functor X86Props(X86Instr : X86INSTR) : INSN_PROPERTIES =
+functor X86Props
+  (structure Instr : X86INSTR
+   structure MLTreeHash : MLTREE_HASH where T = Instr.T
+   structure MLTreeEval : MLTREE_EVAL where T = Instr.T
+  ) : INSN_PROPERTIES =
 struct
-  structure I = X86Instr
+  structure I = Instr
   structure C = I.C
-  structure LE = I.LabelExp
   structure T = I.T 
   structure CB = CellsBasis
 
@@ -103,9 +106,9 @@ struct
   *  Hashing and Equality on operands
   *=====================================================================*)
    fun hashOpn(I.Immed i) = Word.fromInt(Int32.toInt i)
-     | hashOpn(I.ImmedLabel le) = LE.hash le + 0w123
+     | hashOpn(I.ImmedLabel le) = MLTreeHash.hash le + 0w123
      | hashOpn(I.Relative i) = Word.fromInt i + 0w1232
-     | hashOpn(I.LabelEA le) = LE.hash le + 0w44444
+     | hashOpn(I.LabelEA le) = MLTreeHash.hash le + 0w44444
      | hashOpn(I.Direct r)  = CB.hashCell r
      | hashOpn(I.MemReg r)  = CB.hashCell r + 0w2123
      | hashOpn(I.ST f) = CB.hashCell f + 0w88
@@ -116,9 +119,9 @@ struct
      | hashOpn(I.Indexed {base, index, scale, disp, ...}) =
          CB.hashCell index + Word.fromInt scale + hashOpn disp
    fun eqOpn(I.Immed a,I.Immed b) = a = b
-     | eqOpn(I.ImmedLabel a,I.ImmedLabel b) = LE.==(a,b)
+     | eqOpn(I.ImmedLabel a,I.ImmedLabel b) = MLTreeEval.==(a,b)
      | eqOpn(I.Relative a,I.Relative b) = a = b
-     | eqOpn(I.LabelEA a,I.LabelEA b) = LE.==(a,b)
+     | eqOpn(I.LabelEA a,I.LabelEA b) = MLTreeEval.==(a,b)
      | eqOpn(I.Direct a,I.Direct b) = CB.sameColor(a,b)
      | eqOpn(I.MemReg a,I.MemReg b) = CB.sameColor(a,b)
      | eqOpn(I.FDirect a,I.FDirect b) = CB.sameColor(a,b)

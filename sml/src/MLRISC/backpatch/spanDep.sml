@@ -6,10 +6,10 @@
  *)
 
 functor SpanDependencyResolution
-    (structure CFG       : CONTROL_FLOW_GRAPH
-     structure Emitter   : INSTRUCTION_EMITTER
-     			where P = CFG.P
-			  and I = CFG.I
+    (structure Emitter   : INSTRUCTION_EMITTER
+     structure CFG       : CONTROL_FLOW_GRAPH
+     			where I = Emitter.I
+			  and P = Emitter.S.P
      structure Jumps     : SDI_JUMPS
      			where I = CFG.I
      structure DelaySlot : DELAY_SLOT_PROPERTIES
@@ -61,7 +61,8 @@ struct
     | CLUSTER of {comp : compressed list}
 
   val clusterList : compressed list ref = ref []
-  fun cleanUp() = clusterList := []
+  val dataList : P.pseudo_op list ref = ref []
+  fun cleanUp() = (clusterList := []; dataList := [])
 
   fun bbsched(cfg as G.GRAPH graph) = let
     fun maxBlockId (CFG.BLOCK{id, ...}::rest, curr) = 
@@ -136,7 +137,7 @@ struct
 
 
     fun compress [] = []
-      | compress (CFG.BLOCK{id, data, labels, insns, ...}::rest) = let
+      | compress (CFG.BLOCK{id, align, labels, insns, ...}::rest) = let
 
           val succ = map (#node_info graph) (#succ graph id)
 
@@ -284,10 +285,10 @@ struct
 
 	  and process([],others) = others
 	    | process(instrs as jmp::body,others) = let
-	        fun pseudo (CFG.PSEUDO pOp) = PSEUDO pOp
-		  | pseudo (CFG.LABEL lab) = LABEL lab
+               fun alignIt(chunks) = 
+	         (case !align of NONE => chunks | SOME p => PSEUDO(p)::chunks)
               in
-		map pseudo (!data) @
+		alignIt
 		   (map LABEL (!labels) @
 		      CODE
 		        (A.sub(labelMap, id),
@@ -300,10 +301,12 @@ struct
 	  process(!insns,compress rest)
 	end (* compress *) 
 
+    val CFG.INFO{data, ...} = #graph_info graph
   in
     blockOrder(blocks);
     enterLabels(blocks);
-    clusterList := CLUSTER{comp=compress blocks} :: !clusterList
+    clusterList := CLUSTER{comp=compress blocks} :: !clusterList;
+    dataList := !data @ !dataList
   end (* bbsched *)
 
 
@@ -377,29 +380,31 @@ struct
 
     val E.S.STREAM{defineLabel,pseudoOp,emit,beginCluster,...} = E.makeStream []
     fun emitCluster(CLUSTER{comp},loc) = let
-      val emitInstrs = app emit 
-      fun process(PSEUDO pOp,loc) = (pseudoOp pOp; loc+P.sizeOf(pOp,loc))
-	| process(LABEL lab,loc) = (defineLabel lab; loc)
-	| process(CODE(_,code),loc) = let
-	    fun e(FIXED{insns, size, ...},loc) = (emitInstrs insns; loc+size)
-	      | e(SDI{size, insn},loc) = 
-                  (emitInstrs(J.expand(insn, !size, loc)); !size + loc)
-              | e(BRANCH{insn,...},loc) = foldl e loc insn
-              | e(DELAYSLOT{insn,...},loc) = foldl e loc insn
-              | e(CANDIDATE{newInsns,oldInsns,fillSlot,...},loc) =
-                  foldl e loc (if !fillSlot then newInsns else oldInsns)
-	  in foldl e loc code
-	  end
-	| process _ = error "process"
-    in foldl process loc comp
-    end
+	  val emitInstrs = app emit 
+	  fun process(PSEUDO pOp,loc) = (pseudoOp pOp; loc+P.sizeOf(pOp,loc))
+	    | process(LABEL lab,loc) = (defineLabel lab; loc)
+	    | process(CODE(_,code),loc) = let
+		fun e(FIXED{insns, size, ...},loc) = (emitInstrs insns; loc+size)
+		  | e(SDI{size, insn},loc) = 
+		      (emitInstrs(J.expand(insn, !size, loc)); !size + loc)
+		  | e(BRANCH{insn,...},loc) = foldl e loc insn
+		  | e(DELAYSLOT{insn,...},loc) = foldl e loc insn
+		  | e(CANDIDATE{newInsns,oldInsns,fillSlot,...},loc) =
+		      foldl e loc (if !fillSlot then newInsns else oldInsns)
+	      in foldl e loc code
+	      end
+	    | process _ = error "process"
+	in foldl process loc comp
+	end
       | emitCluster _ = error "emitCluster"
 
-    val compressed = (rev (!clusterList)) before cleanUp()
-    val size = fixpoint compressed
+    (* The dataList is in reverse order, and the entries in each
+     * are also in reverse 
+     *)
+    val compressed = rev (map PSEUDO (!dataList) @ !clusterList) before cleanUp()
   in 
-     beginCluster size;
-     foldl emitCluster 0 compressed handle e => raise e;
+     beginCluster(fixpoint(compressed));
+     foldl emitCluster 0 compressed;
      ()
   end (*finish*)
 end (* spanDep.sml *)

@@ -1,7 +1,11 @@
 functor X86MLTreeExtComp
    ( structure T : MLTREE where Extension = X86_SMLNJMLTreeExt
      structure I : X86INSTR where T = T
-     structure CFG : CONTROL_FLOW_GRAPH where I=I and P = T.PseudoOp
+     structure TS : MLTREE_STREAM
+		    where T = T
+     structure CFG : CONTROL_FLOW_GRAPH 
+		    where I=I 
+		      and P = TS.S.P
    ) : MLTREE_EXTENSION_COMP =
 struct
    structure T = T
@@ -10,13 +14,15 @@ struct
    structure CB = CellsBasis
    structure Ext = X86_SMLNJMLTreeExt
    structure CFG = CFG
+   structure TS = TS
    structure X86CompInstrExt = 
      X86CompInstrExt
         (structure I=I
+	 structure TS = TS
 	 structure CFG = CFG)
 
    type reducer = 
-     (I.instruction,C.cellset,I.operand,I.addressing_mode,CFG.cfg) T.reducer
+     (I.instruction,C.cellset,I.operand,I.addressing_mode,CFG.cfg) TS.reducer
 
    val fast_fp = MLRiscControl.getFlag "x86-fast-fp"
 
@@ -25,7 +31,7 @@ struct
    val compileSext  = X86CompInstrExt.compileSext
    val compileRext  = unimplemented
    val compileCCext = unimplemented
-   fun compileFext (T.REDUCER{reduceFexp, emit, ...}:reducer) = let
+   fun compileFext (TS.REDUCER{reduceFexp, emit, ...}:reducer) = let
      fun comp{e=(64, fexp), fd:CB.cell, an:T.an list} = let
            fun trig(f, foper) = 
 	     (reduceFexp f; emit(I.FUNARY foper, an))

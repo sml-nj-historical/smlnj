@@ -15,6 +15,7 @@ ALPHA.cm:
 	../alpha/emit/alphaAsm.sml
 	../alpha/emit/alphaMC.sml
 	../alpha/backpatch/alphaJumps.sml
+	../alpha/flowgraph/alphaGasPseudoOps.sml
 	../alpha/mltree/alphaPseudoInstr.sig
 	../alpha/mltree/alpha.sml
 	../alpha/ra/alphaRewrite.sml
@@ -195,6 +196,7 @@ HPPA.cm:
 	../hppa/emit/hppaMC.sml
 	../hppa/backpatch/hppaDelaySlotProps.sml
 	../hppa/backpatch/hppaJumps.sml
+	../hppa/flowgraph/hppaGasPseudoOps.sml
 	../hppa/mltree/hppaMillicode.sig
 	../hppa/mltree/hppaLabelComp.sig
 	../hppa/mltree/hppa.sml
@@ -258,6 +260,8 @@ IA32.cm:
 
         (* c calls *)
         ../x86/c-calls/ia32-svid.sml
+
+        ../x86/flowgraph/x86GasPseudoOps.sml
 
 	(* omit frame pointer *)
 	../x86/omit-frameptr/x86omit-frameptr.sml
@@ -559,7 +563,6 @@ MLRISC.cm:
 	../instructions/constant.sig
 	../instructions/label.sml
 	../instructions/label-sig.sml
-	../instructions/pseudoOps.sig
 	../instructions/region.sig
 	../instructions/freqProps.sig
 	../instructions/freqProps.sml
@@ -574,32 +577,45 @@ MLRISC.cm:
 	../aliasing/pointsTo.sml
 	
 	(* Core definitions for the MLTREE language. These are required. *)
+	../mltree/mltree.sig
+	../mltree/mltree.sml
+	../mltree/mltree-eval.sig
+	../mltree/mltree-eval.sml
 	../mltree/mltree-extension.sig
 	../mltree/mltree-basis.sig
 	../mltree/mltree-basis.sml
-	../mltree/mltree.sig
-	../mltree/mltree.sml
 	../mltree/mltreecomp.sig
 	../mltree/mltree-gen.sig
 	../mltree/mltree-gen.sml
+	../mltree/mltree-hash.sig
+	../mltree/mltree-hash.sml
 	../mltree/mltree-size.sig
 	../mltree/mltree-size.sml
+	../mltree/mltree-stream.sml
 	../mltree/mltree-mult.sig
 	../mltree/mltree-mult.sml
-	../mltree/mltree-labexp.sig
-	../mltree/mltree-labexp.sml
 	../mltree/machine-int.sig
 	../mltree/machine-int.sml
 	
 	(* Basic cluster stuff. These are required. *)
-	../flowgraph/cfg-optimization.sig
 	../flowgraph/buildFlowgraph.sml
+	../flowgraph/cfg-optimization.sig
+	../flowgraph/client-pseudo-ops.sig
 	../flowgraph/cfg.sig
 	../flowgraph/cfg.sml
 	../flowgraph/cfgView.sig
 	../flowgraph/cfgView.sml
 	../flowgraph/cfgCountCopies.sml
 	../flowgraph/cfgExpandCopies.sml
+	../flowgraph/gasPseudoOps.sml
+	../flowgraph/printFlowgraph.sml
+	../flowgraph/pseudo-ops.sig
+	../flowgraph/pseudo-ops.sml
+	../flowgraph/pseudo-ops-basis.sig
+	../flowgraph/pseudo-ops-basis-typ.sml
+	../flowgraph/pseudo-ops-big.sml
+	../flowgraph/pseudo-ops-little.sml
+
 	
 	(* Core register allocator utilities *)
 	../ra/getreg.sig
@@ -738,6 +754,7 @@ PPC.cm:
 	../ppc/emit/ppcMC.sml
 	../ppc/backpatch/ppcDelaySlots.sml
 	../ppc/backpatch/ppcJumps.sml
+	../ppc/flowgraph/ppcGasPseudoOps.sml
 	../ppc/mltree/ppcPseudoInstr.sig
 	../ppc/mltree/ppc.sml 
 	../ppc/ra/ppcRewrite.sml
@@ -904,6 +921,7 @@ SPARC.cm:
 	../sparc/emit/sparcAsm.sml
 	../sparc/emit/sparcMC.sml
 	../sparc/backpatch/sparcJumps.sml
+	../sparc/flowgraph/sparcGasPseudoOps.sml
 	../sparc/mltree/sparcPseudoInstr.sig
 	../sparc/mltree/sparc.sml 
 	../sparc/ra/sparcRewrite.sml

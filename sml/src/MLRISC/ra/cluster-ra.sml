@@ -10,10 +10,10 @@
  *)
 
 functor ClusterRA
-   (structure Flowgraph : CONTROL_FLOW_GRAPH
-    structure Asm       : INSTRUCTION_EMITTER
-    			where I = Flowgraph.I 
-			  and P = Flowgraph.P
+   (structure Asm       : INSTRUCTION_EMITTER
+    structure Flowgraph : CONTROL_FLOW_GRAPH
+    			where I = Asm.I 
+			  and P = Asm.S.P
     structure InsnProps : INSN_PROPERTIES
     			where I = Flowgraph.I 
     structure Spill : RA_SPILL 
@@ -65,15 +65,17 @@ struct
 
    fun dumpFlowgraph(txt, cfg as Graph.GRAPH graph, outstrm) = let
      fun say txt = TextIO.output(outstrm, txt)
-     fun dump (nid, CFG.BLOCK{data, labels, insns, ...}) = let
-       fun dumpData(CFG.LABEL lab) = say(Label.toString lab ^ "\n")
-	 | dumpData(CFG.PSEUDO pOp) = say(CFG.P.toString pOp ^ "\n")
-     in
-       app dumpData (!data);
-       app (fn lab => say(Label.toString lab ^ "\n")) (!labels);
-       app emit (rev (!insns))
-     end
-   in app dump (#nodes graph ())
+     fun sayPseudo p = (say(CFG.P.toString p); say "\n")
+     val labToString = CFG.P.Client.AsmPseudoOps.defineLabel
+     fun dump (nid, CFG.BLOCK{labels, align, insns, ...}) = 
+       (case !align of NONE => () | SOME p => sayPseudo p;
+	app (fn lab => say(labToString lab ^ "\n")) (!labels);
+        app emit (rev (!insns)))
+     val CFG.INFO{data, ...} = #graph_info graph
+   in 
+       app dump (#nodes graph ());
+       app sayPseudo (rev(!data))
+      
    end
 
    val annotations = CFG.annotations 

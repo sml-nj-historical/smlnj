@@ -33,11 +33,13 @@ struct
 
        (* Arguments for the functor *)
        val args = ["structure Instr : "^Comp.signame md "INSTR",
+		   "structure MLTreeEval : MLTREE_EVAL where T = Instr.T",
+		   "structure Stream : INSTRUCTION_STREAM ",
                    "structure CodeString : CODE_STRING"
                   ] @
                   (if debugOn then
                      ["structure Assembler : INSTRUCTION_EMITTER",
-                      "  where I = Instr and S = Instr.T.Stream"
+                      "  where I = Instr and S = MLTreeStream.S.Stream"
                      ]
                    else [])
 
@@ -243,10 +245,9 @@ struct
        val strBody =
        [$["structure I = Instr",
           "structure C = I.C",
-          "structure LabelExp = I.LabelExp",
           "structure Constant = I.Constant",
           "structure T = I.T",
-          "structure S = T.Stream",
+          "structure S = Stream",
           "structure P = S.P",
           "structure W = Word32",
           "",
@@ -269,7 +270,7 @@ struct
           "    val emit_int = itow",
           "    fun emit_word w = w",
           "    fun emit_label l = itow(Label.addrOf l)",
-          "    fun emit_labexp le = itow(LabelExp.valueOf le)",
+          "    fun emit_labexp le = itow(MLTreeEval.valueOf le)",
           "    fun emit_const c = itow(Constant.valueOf c)",
           "    val loc = ref 0",
           "",

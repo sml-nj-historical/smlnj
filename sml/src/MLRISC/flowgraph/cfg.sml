@@ -4,25 +4,20 @@
  * -- Allen
  *)
 functor ControlFlowGraph
-   (structure PseudoOps : PSEUDO_OPS
-    structure I : INSTRUCTIONS
+   (structure I : INSTRUCTIONS
     structure GraphImpl : GRAPH_IMPLEMENTATION
     structure InsnProps : INSN_PROPERTIES
     			where I = I
-    structure Asm : INSTRUCTION_EMITTER
-    			where P = PseudoOps
-			  and I = I
+    structure Asm : INSTRUCTION_EMITTER where I = I
+                         
    ) : CONTROL_FLOW_GRAPH =
 struct
 
     structure I = I
-    structure P = PseudoOps
+    structure P = Asm.S.P
     structure C = I.C
     structure W = Freq
     structure G = Graph
-(*****
-     structure L = GraphLayout
-*****)
     structure A = Annotations
     structure S = Asm.S
    
@@ -34,17 +29,14 @@ struct
       | NORMAL         (* normal node *)
       | HYPERBLOCK     (* hyperblock *)
 
-    and data = LABEL  of Label.label
-             | PSEUDO of P.pseudo_op
- 
-    and block = 
+    and block =
        BLOCK of
        {  id          : int,                        (* block id *)
           kind        : block_kind,                 (* block kind *)
           freq        : weight ref,                 (* execution frequency *) 
-          data        : data list ref,              (* data preceeding block *) 
           labels      : Label.label list ref,       (* labels on blocks *) 
           insns       : I.instruction list ref,     (* in rev order *)
+	  align	      : P.pseudo_op option ref,	    (* alignment only *)
           annotations : Annotations.annotations ref (* annotations *)
        }
 
@@ -67,7 +59,8 @@ struct
     datatype info = 
         INFO of { annotations : Annotations.annotations ref,
                   firstBlock  : int ref,
-                  reorder     : bool ref
+                  reorder     : bool ref,
+		  data        : P.pseudo_op list ref
                 }
 
     type cfg = (block,edge_info,info) Graph.graph
@@ -97,7 +90,7 @@ struct
     *
     *========================================================================*)
     fun defineLabel(BLOCK{labels=ref(l::_),...}) = l
-      | defineLabel(BLOCK{labels, data, ...}) = let
+      | defineLabel(BLOCK{labels, ...}) = let
 	  val l = Label.anon ()
           in
 	    labels := [l];
@@ -110,18 +103,18 @@ struct
         BLOCK{ id          = id,
                kind        = kind,
                freq        = freq,
-               data        = ref [],
                labels      = ref [],
                insns       = ref insns,
+	       align       = ref NONE,
                annotations = ref []
              }
 
-    fun copyBlock(id,BLOCK{kind,freq,data,labels,insns,annotations,...}) =
+    fun copyBlock(id,BLOCK{kind,freq,align,labels,insns,annotations,...}) =
         BLOCK{ id          = id,
                kind        = kind,
                freq        = ref (!freq),
-               data        = ref (!data),
                labels      = ref [],
+	       align	   = ref (!align),
                insns       = ref (!insns),
                annotations = ref (!annotations) 
              }
@@ -170,12 +163,10 @@ struct
         ) handle Overflow => print("Bad footer\n")
 
     fun emitStuff outline annotations 
-           (block as BLOCK{insns,data,labels,...}) =
+           (block as BLOCK{insns,labels,...}) =
        let val S as S.STREAM{pseudoOp,defineLabel,emit,...} = 
                Asm.makeStream annotations
        in  emitHeader S block;
-           app (fn PSEUDO p => pseudoOp p
-                 | LABEL l  => defineLabel l) (!data);
            app defineLabel (!labels); 
            if outline then () else app emit (rev (!insns));
            emitFooter S block
@@ -193,14 +184,16 @@ struct
     fun new() =
         let val info = INFO{ annotations = ref [],
                              firstBlock  = ref 0,
-                             reorder     = ref false
+                             reorder     = ref false,
+			     data        = ref []
                            }
         in  cfg info end
 
     fun subgraph(CFG as G.GRAPH{graph_info=INFO graph_info,...}) =
         let val info = INFO{ annotations = ref [],
                              firstBlock  = #firstBlock graph_info,
-                             reorder     = #reorder graph_info
+                             reorder     = #reorder graph_info,
+			     data        = #data graph_info
                            }
         in  UpdateGraphInfo.update CFG info end
 
@@ -314,59 +307,5 @@ struct
    in  foldr (fn (x,"") => x | (x,y) => x^" "^y) ""
             (String.tokens (fn #" " => true | _ => false) text)
    end
-
-(*****
-    fun headerText block = getString 
-        (fn b => emitHeader (Asm.makeStream []) b) block
-   fun footerText block = getString 
-        (fn b => emitFooter (Asm.makeStream []) b) block
-
-   fun getStyle a = (case #get L.STYLE (!a) of SOME l => l | NONE => [])
-
-   val green = L.COLOR "green"
-   val red   = L.COLOR "red"
-   val yellow = L.COLOR "yellow"
-
-   fun edgeStyle(i,j,e as EDGE{k,a,...}) = 
-   let val a = L.LABEL(show_edge e) :: getStyle a
-   in  case k of 
-         (ENTRY | EXIT) => green :: a
-       | (FALLSTHRU | BRANCH false) => yellow :: a
-       | _ => red :: a
-   end 
-
-   val outline = MLRiscControl.getFlag "view-outline"
-
-   fun viewStyle cfg =
-   let val an     = !(annotations cfg)
-       fun node (n,b as BLOCK{annotations,...}) = 
-           if !outline then
-              L.LABEL(getString emitOutline b) :: getStyle annotations
-           else
-              L.LABEL(show_block an b) :: getStyle annotations
-   in  { graph = fn _ => [],
-         edge  = edgeStyle,
-         node  = node
-       } 
-   end
-
-   fun viewLayout cfg = L.makeLayout (viewStyle cfg) cfg
-
-   fun subgraphLayout {cfg,subgraph = G.GRAPH subgraph} =
-   let val an     = !(annotations cfg)
-       fun node(n,b as BLOCK{annotations,...}) = 
-          if #has_node subgraph n then
-             L.LABEL(show_block an b) :: getStyle annotations
-          else
-             L.COLOR "lightblue"::L.LABEL(headerText b) :: getStyle annotations
-       fun edge(i,j,e) = 
-            if #has_edge subgraph (i,j) then edgeStyle(i,j,e)
-            else [L.EDGEPATTERN "dotted"]
-   in  L.makeLayout {graph = fn _ => [],
-                     edge  = edge,
-                     node  = node} cfg
-   end
-*****)
-
 end
 

@@ -4,13 +4,15 @@
  *
  *)
 functor HppaJumps
-  (structure Instr:HPPAINSTR
-   structure Shuffle:HPPASHUFFLE
-      sharing Shuffle.I = Instr) : SDI_JUMPS = 
+  ( structure Instr:HPPAINSTR
+    structure Shuffle:HPPASHUFFLE 
+			 where I = Instr
+    structure MLTreeEval : MLTREE_EVAL 
+		         where T = Instr.T
+  ) : SDI_JUMPS =				
 struct
   structure I = Instr
   structure C = Instr.C
-  structure LE = I.LabelExp
   structure Const = I.Constant
 
   fun error msg = MLRiscErrorMsg.error("HppaJumps",msg)
@@ -75,13 +77,13 @@ struct
     fun memDisp(c, short, long) = if im14(c) then short else long
   in
     case instr 
-     of I.LDO{i=I.LabExp(lexp, _), ...} => memDisp(LE.valueOf lexp, 4, 12)
-      | I.LOADI{i=I.LabExp(lexp, _), ...} => memDisp(LE.valueOf lexp, 4, 12)
-      | I.STORE{d=I.LabExp(lexp, _), ...} => memDisp(LE.valueOf lexp, 4, 12)
+     of I.LDO{i=I.LabExp(lexp, _), ...} => memDisp(MLTreeEval.valueOf lexp, 4, 12)
+      | I.LOADI{i=I.LabExp(lexp, _), ...} => memDisp(MLTreeEval.valueOf lexp, 4, 12)
+      | I.STORE{d=I.LabExp(lexp, _), ...} => memDisp(MLTreeEval.valueOf lexp, 4, 12)
       | I.COMICLR_LDO{i1=I.LabExp(lexp,_), ...} =>
-          if im11(LE.valueOf lexp) then 8 else 16
+          if im11(MLTreeEval.valueOf lexp) then 8 else 16
       | I.ARITHI{ai, i=I.LabExp(lexp,_), ...} => let
-	  fun arithImmed() = if im11(LE.valueOf lexp) then 4 else 12
+	  fun arithImmed() = if im11(MLTreeEval.valueOf lexp) then 4 else 12
 	in
 	  case ai
 	  of I.ADDI => arithImmed()

@@ -5,6 +5,7 @@ structure Alpha32CG =
   MachineGen
   ( structure I          = Alpha32Instr
     structure MachSpec   = Alpha32Spec
+    structure ClientPseudoOps = Alpha32ClientPseudoOps
     structure PseudoOps  = Alpha32PseudoOps
     structure Ext        = SMLNJMLTreeExt(* generic extension *)
     structure CpsRegs    = Alpha32CpsRegs
@@ -30,6 +31,7 @@ structure Alpha32CG =
                (structure I = Alpha32Instr
                 structure T = Alpha32MLTree
 		structure CFG = Alpha32CFG
+		structure TS = Alpha32MLTreeStream
                )
              val mode32bit = true (* simulate 32 bit mode *)
              val multCost = ref 8 (* just guessing *)
@@ -40,7 +42,8 @@ structure Alpha32CG =
 
     structure Jumps =
        AlphaJumps(structure Instr=Alpha32Instr
-                  structure Shuffle=Alpha32Shuffle)
+                  structure Shuffle=Alpha32Shuffle
+		  structure MLTreeEval=Alpha32MLTreeEval)
 
     structure BackPatch =
        BBSched2(structure CFG=Alpha32CFG

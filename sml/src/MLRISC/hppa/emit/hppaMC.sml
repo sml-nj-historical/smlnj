@@ -6,15 +6,16 @@
 
 
 functor HppaMCEmitter(structure Instr : HPPAINSTR
+                      structure MLTreeEval : MLTREE_EVAL where T = Instr.T
+                      structure Stream : INSTRUCTION_STREAM 
                       structure CodeString : CODE_STRING
                      ) : INSTRUCTION_EMITTER =
 struct
    structure I = Instr
    structure C = I.C
-   structure LabelExp = I.LabelExp
    structure Constant = I.Constant
    structure T = I.T
-   structure S = T.Stream
+   structure S = Stream
    structure P = S.P
    structure W = Word32
    
@@ -34,7 +35,7 @@ struct
        val emit_int = itow
        fun emit_word w = w
        fun emit_label l = itow(Label.addrOf l)
-       fun emit_labexp le = itow(LabelExp.valueOf le)
+       fun emit_labexp le = itow(MLTreeEval.valueOf le)
        fun emit_const c = itow(Constant.valueOf c)
        val loc = ref 0
    
@@ -411,9 +412,9 @@ struct
            fun lo11 n = (itow n) && 0wx7ff
        in 
           (case opnd of
-            I.HILabExp(lexp, _) => hi21X (LabelExp.valueOf lexp)
-          | I.LOLabExp(lexp, _) => lo11 (LabelExp.valueOf lexp)
-          | I.LabExp(lexp, _) => itow (LabelExp.valueOf lexp)
+            I.HILabExp(lexp, _) => hi21X (MLTreeEval.valueOf lexp)
+          | I.LOLabExp(lexp, _) => lo11 (MLTreeEval.valueOf lexp)
+          | I.LabExp(lexp, _) => itow (MLTreeEval.valueOf lexp)
           | I.IMMED i => itow i
           | I.REG _ => error "REG"
           )
@@ -589,7 +590,7 @@ struct
                   T.LI (IntInf.fromInt 4)))
        in Label.setAddr (tmpLab, ( ! loc) + 4); 
           branchLink (0wx3a, tmp, tmpLab, 0wx0, n); 
-          LongImmed {Op=0wxa, r=tmp, im21=assemble_21 (itow (LabelExp.valueOf offset))}; 
+          LongImmed {Op=0wxa, r=tmp, im21=assemble_21 (itow (MLTreeEval.valueOf offset))}; 
           BranchVectored {Op=0wx3a, t=tmp, x=zeroR, ext3=0wx6, n=n}
        end
      | emitInstr (I.BE{b, d, sr, n, labs}) = 

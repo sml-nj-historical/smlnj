@@ -6,15 +6,16 @@
 
 
 functor X86MCEmitter(structure Instr : X86INSTR
+                     structure MLTreeEval : MLTREE_EVAL where T = Instr.T
+                     structure Stream : INSTRUCTION_STREAM 
                      structure CodeString : CODE_STRING
                     ) : INSTRUCTION_EMITTER =
 struct
    structure I = Instr
    structure C = I.C
-   structure LabelExp = I.LabelExp
    structure Constant = I.Constant
    structure T = I.T
-   structure S = T.Stream
+   structure S = Stream
    structure P = S.P
    structure W = Word32
    
@@ -34,7 +35,7 @@ struct
        val emit_int = itow
        fun emit_word w = w
        fun emit_label l = itow(Label.addrOf l)
-       fun emit_labexp le = itow(LabelExp.valueOf le)
+       fun emit_labexp le = itow(MLTreeEval.valueOf le)
        fun emit_const c = itow(Constant.valueOf c)
        val loc = ref 0
    

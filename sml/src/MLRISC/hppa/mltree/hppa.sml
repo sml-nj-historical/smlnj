@@ -28,7 +28,7 @@ functor Hppa
 struct
    structure I = HppaInstr
    structure T = I.T
-   structure S = T.Stream
+   structure TS = ExtensionComp.TS
    structure C = I.C
    structure CB = CellsBasis
    structure MC = MilliCode
@@ -37,8 +37,8 @@ struct
    structure A = MLRiscAnnotations
    structure CFG = ExtensionComp.CFG
 
-   type instrStream = (I.instruction, C.cellset, CFG.cfg) T.stream
-   type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) T.stream
+   type instrStream = (I.instruction, C.cellset, CFG.cfg) TS.stream
+   type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
    structure Gen = MLTreeGen(structure T = T
                              val intTy = 32
@@ -121,7 +121,7 @@ struct
 
    fun selectInstructions
         (instrStream as
-         S.STREAM{emit, defineLabel, entryLabel, getAnnotations,
+         TS.S.STREAM{emit, defineLabel, entryLabel, getAnnotations,
                   beginCluster, endCluster, annotation,
                   exitBlock, pseudoOp, comment, ...}) =
    let
@@ -828,16 +828,16 @@ struct
           | DISP(r, mi) => DISPea(r, I.IMMED(toInt mi))
 
        and reducer() = 
-          T.REDUCER{reduceRexp    = expr,
-                    reduceFexp    = fexpr,
-                    reduceCCexp   = ccExpr,
-                    reduceStm     = stmt,
-                    operand       = opn,
-                    reduceOperand = reduceOpn,
-                    addressOf     = addrOf,
-                    emit          = mark,
-                    instrStream   = instrStream,
-                    mltreeStream  = self()
+          TS.REDUCER{reduceRexp    = expr,
+		     reduceFexp    = fexpr,
+		     reduceCCexp   = ccExpr,
+		     reduceStm     = stmt,
+		     operand       = opn,
+		     reduceOperand = reduceOpn,
+		     addressOf     = addrOf,
+		     emit          = mark,
+		     instrStream   = instrStream,
+		     mltreeStream  = self()
                    }
  
        (* convert mlrisc to cellset: 
@@ -852,7 +852,7 @@ struct
            in  g(mlrisc, C.empty) end
 
        and self() =
-          S.STREAM
+          TS.S.STREAM
             { beginCluster   = beginCluster,
               endCluster     = endCluster,
               emit           = doStmt,

@@ -13,6 +13,20 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/11/21  13:56:18 EST
+Tag: george-2001121-pseudo-ops
+Description:
+
+  Implemented a complete redesign of MLRISC pseudo-ops. Now there
+  ought to never be any question of incompatabilities with 
+  pseudo-op syntax expected by host assemblers.
+
+  For now, only modules supporting GAS syntax are implemented
+  but more should follow, such as MASM, and vendor assembler
+  syntax, e.g. IBM as, Sun as, etc.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2001/11/14 11:52:00 EST
 Tag: blume-20011114-srcname

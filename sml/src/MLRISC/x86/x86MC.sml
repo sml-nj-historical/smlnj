@@ -16,11 +16,16 @@ struct
   structure I = Instr
   structure C = I.C
   structure Const = I.Constant
-  structure LE = I.LabelExp
   structure W32 = Word32
   structure W8 = Word8
   structure W = LargeWord
   structure CB = CellsBasis
+  structure LE = 
+    MLTreeEval
+      (structure T = I.T
+       fun eq _ _ = false 
+       val eqSext = eq  val eqRext = eq
+       val eqFext = eq val eqCCext = eq)
 
   val itow  = Word.fromInt
   val wtoi  = Word.toInt
@@ -28,7 +33,7 @@ struct
   fun error msg = MLRiscErrorMsg.impossible ("X86MCEmitter." ^ msg)
 
   (*
-   * Sanity check! 
+   * Sanity check!
    *)
 
   val eax = 0   val esp = 4   

@@ -6,13 +6,10 @@
 
 functor MLTreeF(structure Constant  : CONSTANT
                 structure Region    : REGION
-                structure Stream    : INSTRUCTION_STREAM
                 structure Extension : MLTREE_EXTENSION
                ) : MLTREE =
 struct
   structure Constant = Constant
-  structure PseudoOp = Stream.P
-  structure Stream = Stream
   structure Region = Region
   structure Basis  = MLTreeBasis
   structure Extension = Extension
@@ -210,29 +207,6 @@ struct
        and fext   = (stm, rexp, fexp, ccexp) Extension.fx
        and ccext  = (stm, rexp, fexp, ccexp) Extension.ccx
        and labexp = rexp
-
-  (*
-   * Instruction streams
-   *)
-  type ('i,'cellset, 'cfg) stream = ('i, an list, 'cellset, 'cfg) Stream.stream 
-
-  (* 
-   * Extension mechanism
-   *)
-
-  datatype ('instr,'cellset,'operand,'addressing_mode, 'cfg) reducer =
-    REDUCER of
-    { reduceRexp    : rexp -> reg,
-      reduceFexp    : fexp -> reg,
-      reduceCCexp   : ccexp -> reg,
-      reduceStm     : stm * an list -> unit,
-      operand       : rexp -> 'operand,
-      reduceOperand : 'operand -> reg,
-      addressOf     : rexp -> 'addressing_mode,
-      emit          : 'instr * an list -> unit,
-      instrStream   : ('instr,'cellset, 'cfg) stream,
-      mltreeStream  : (stm,mlrisc list, 'cfg) stream
-    }
 
   (*
    * Useful type abbreviations for working for MLTree.

@@ -6,28 +6,29 @@
  * in the presence of GC.  
  * 
  * -- Allen
- * 
  *)
 
 functor InvokeGC
-   (structure Cells : CELLS
-    structure C     : CPSREGS where T.Region=CPSRegions
-    structure CFG   : CONTROL_FLOW_GRAPH 
+   (
     structure MS    : MACH_SPEC
+    structure C     : CPSREGS 
+		        where T.Region=CPSRegions
+    structure TS    : MLTREE_STREAM
+		        where T = C.T
+    structure CFG   : CONTROL_FLOW_GRAPH 
+		        where P = TS.S.P
    ) : INVOKE_GC =
 struct
-
+   structure CB = CellsBasis
+   structure S  = CB.SortedCells
    structure T  = C.T
    structure D  = MS.ObjDesc
    structure R  = CPSRegions
-   structure St = T.Stream
    structure SL = SortedList
    structure GC = SMLGCType
-   structure Cells = Cells
-   structure A  = Array
+   structure Cells = C.C
    structure CFG = CFG
-   structure CB = CellsBasis
-   structure S  = CB.SortedCells
+   structure TS = TS
 
    fun error msg = ErrorMsg.impossible("InvokeGC."^msg)
 
@@ -37,7 +38,7 @@ struct
               return   : T.stm
             }
 
-   type stream = (T.stm, T.mlrisc list, CFG.cfg) T.stream
+   type stream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
    val debug = Control.MLRISC.getFlag "debug-gc";
 
@@ -263,7 +264,7 @@ struct
      | split(T.FPR r::rl, CPS.FLTt::tl, b, i, f) = split(rl,tl,b,i,r::f)
      | split _ = error "split"
 
-   fun genGcInfo (clusterRef,known,optimized) (St.STREAM{emit,...} : stream)
+   fun genGcInfo (clusterRef,known,optimized) (TS.S.STREAM{emit,...} : stream)
                  {maxAlloc, regfmls, regtys, return} =
    let (* partition the root set into the appropriate classes *)
        val {boxed, int32, float} = split(regfmls, regtys, [], [], [])
@@ -304,7 +305,7 @@ struct
        val N = 1 + foldr (fn (r,n) => Int.max(CB.registerNum r,n)) 
 			 0 (#regs gcrootSet)
    in
-       val clientRoots = A.array(N, ~1)
+       val clientRoots = Array.array(N, ~1)
        val stamp       = ref 0
    end
 
@@ -343,19 +344,19 @@ struct
        val st     = !stamp 
        val cyclic = st + 1
        val _      = if st > 100000 then stamp := 0 else stamp := st + 2
-       val N = A.length clientRoots
+       val N = Array.length clientRoots
        fun markClients [] = ()
          | markClients(T.REG(_, r)::rs) = 
            let val rx = CB.registerNum r
-           in  if rx < N then A.update(clientRoots, rx, st) else ();
+           in  if rx < N then Array.update(clientRoots, rx, st) else ();
                markClients rs
            end
          | markClients(_::rs) = markClients rs
        fun markGCRoots [] = ()
          | markGCRoots(T.REG(_, r)::rs) = 
            let val rx = CB.registerNum r
-           in  if A.sub(clientRoots, rx) = st then
-                  A.update(clientRoots, rx, cyclic)
+           in  if Array.sub(clientRoots, rx) = st then
+                  Array.update(clientRoots, rx, cyclic)
                else (); 
                markGCRoots rs
            end
@@ -517,7 +518,7 @@ struct
                fun disp n = T.ADD(addrTy, record, LI n)
                fun sel n = T.LOAD(32, disp n, R.memory)
                fun fsel n = T.FLOAD(64, disp n, R.memory)
-               val N = A.length clientRoots
+               val N = Array.length clientRoots
                (* unpack normal fields *)
                fun unpackFields(n, [], rds, rss) = (rds, rss)
                  | unpackFields(n, Freg r::bs, rds, rss) = 
@@ -531,7 +532,7 @@ struct
                       unpackFields(n+4, bs, rds, rss))
                  | unpackFields(n, Reg rd::bs, rds, rss) = 
                    let val rdx = CB.registerNum rd
-                   in  if rdx < N andalso A.sub(clientRoots, rdx) = cyclic then
+                   in  if rdx < N andalso Array.sub(clientRoots, rdx) = cyclic then
                        let val tmpR = Cells.newReg()
                        in  (* print "WARNING: CYCLE\n"; *)
                            emit(T.MV(32, tmpR, sel n));
@@ -567,7 +568,7 @@ struct
     * It packages up the roots into the appropriate
     * records, call the GC routine, then unpack the roots from the record.
     *) 
-   fun emitCallGC{stream=St.STREAM{emit, annotation, defineLabel, ...}, 
+   fun emitCallGC{stream=TS.S.STREAM{emit, annotation, defineLabel, ...}, 
                   known, boxed, int32, float, ret } =
    let fun setToMLTree{regs,mem} =
 	   map (fn r => T.REG(32,r)) regs @ 
@@ -654,7 +655,7 @@ struct
     * GC calling code, with entry labels and return information.
     *)
    fun invokeGC(stream as 
-               St.STREAM{emit,defineLabel,entryLabel,exitBlock,annotation,...},
+               TS.S.STREAM{emit,defineLabel,entryLabel,exitBlock,annotation,...},
                 externalEntry) gcInfo = 
    let val {known, optimized, boxed, int32, float, regfmls, ret, lab} =
            case gcInfo of
@@ -720,7 +721,7 @@ struct
     * The actual GC invocation code is not generated yet.
     *)
    fun emitLongJumpsToGCInvocation
-       (stream as St.STREAM{emit,defineLabel,exitBlock,...}) =
+       (stream as TS.S.STREAM{emit,defineLabel,exitBlock,...}) =
    let (* GC code can be shared if the calling convention is the same 
         * Use linear search to find the gc subroutine.
         *)

@@ -8,7 +8,7 @@ signature MACHINE_GEN = sig
 		  and I = CFG.I
   structure InvokeGC   : INVOKE_GC
 		where CFG=MLTreeComp.CFG
-		  and T = MLTreeComp.T
+		  and TS = MLTreeComp.TS
   structure Shuffle    : SHUFFLE 
 		where I = MLTreeComp.I
   structure MachSpec   : MACH_SPEC

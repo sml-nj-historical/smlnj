@@ -134,6 +134,7 @@ functor Liveness(Flowgraph : CONTROL_FLOW_GRAPH) : LIVENESS = struct
 		     | CFG.NORMAL =>
 			if isVisited nid then visitSucc(ns, changed')
 			else visitSucc(ns, visit(nid, changed'))
+		     | _ => error "visit.visitSucc"
 		end
 
 	    val _ = HT.insert visitedTbl (nid, true)

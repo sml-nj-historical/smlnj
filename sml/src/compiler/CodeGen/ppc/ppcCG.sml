@@ -4,6 +4,7 @@
 structure PPCCG = 
   MachineGen
   ( structure MachSpec   = PPCSpec
+    structure ClientPseudoOps = PPCClientPseudoOps
     structure PseudoOps  = PPCPseudoOps
     structure Ext        = SMLNJMLTreeExt(* generic extension *)
     structure CpsRegs    = PPCCpsRegs
@@ -30,6 +31,7 @@ structure PPCCG =
                (structure I = PPCInstr
                 structure T = PPCMLTree
 		structure CFG = PPCCFG
+		structure TS = PPCMLTreeStream
                )
            val bit64mode=false
            val multCost=ref 6 (* an estimate *)
@@ -37,6 +39,7 @@ structure PPCCG =
 
     structure Jumps =
        PPCJumps(structure Instr=PPCInstr
+		structure MLTreeEval=PPCMLTreeEval
                 structure Shuffle=PPCShuffle)
 
     structure BackPatch =

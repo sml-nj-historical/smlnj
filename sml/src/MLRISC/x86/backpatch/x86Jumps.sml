@@ -5,13 +5,13 @@
 
 functor X86Jumps
   (structure Instr : X86INSTR
+   structure Eval : MLTREE_EVAL where T = Instr.T
    structure Shuffle : X86SHUFFLE where I = Instr
    structure MCEmitter : MC_EMIT where I = Instr) : SDI_JUMPS = 
 struct
   structure I = Instr
   structure C = I.C
   structure Const = I.Constant
-  structure LE = I.LabelExp
 
   fun error msg = MLRiscErrorMsg.error("X86Jumps",msg)
 
@@ -63,14 +63,15 @@ struct
 
   fun minSize(I.JMP _) = 2
     | minSize(I.JCC _) = 2
+    | minSize(I.LEA _) = 2
     | minSize(I.ANNOTATION{i,...}) = minSize i
     | minSize _ = 1
 
   fun maxSize _ = 12
 
   (* value of span-dependent operand *)
-  fun operand(I.ImmedLabel le) = LE.valueOf le
-    | operand(I.LabelEA le) = LE.valueOf le
+  fun operand(I.ImmedLabel le) = Eval.valueOf le
+    | operand(I.LabelEA le) = Eval.valueOf le
     | operand _ = error "operand"
 
   fun sdiSize(instr, labmap, loc) = let

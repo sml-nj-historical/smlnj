@@ -7,12 +7,12 @@
 (** bbsched2.sml - invoke scheduling after span dependent resolution **)
 
 functor BBSched2
-    (structure CFG     : CONTROL_FLOW_GRAPH
+    (structure Emitter : INSTRUCTION_EMITTER
+     structure CFG     : CONTROL_FLOW_GRAPH
+			 where I = Emitter.I
+		           and P = Emitter.S.P
      structure Jumps   : SDI_JUMPS
      			where I = CFG.I
-     structure Emitter : INSTRUCTION_EMITTER
-     			where P = CFG.P
-			  and I = CFG.I
      structure Placement : BLOCK_PLACEMENT
      			where CFG=CFG
     ) = 
@@ -41,15 +41,17 @@ struct
     | CLUSTER of {comp : compressed list}
 
   val clusterList : compressed list ref = ref []
-  fun cleanUp() = clusterList := []
+  val dataList : P.pseudo_op list ref = ref []
+  fun cleanUp() = (clusterList := []; dataList := [])
 
-  fun bbsched(cfg as G.GRAPH graph) = let
+  fun bbsched(cfg as G.GRAPH{graph_info=CFG.INFO{data, ...}, ...}) = let
     val blocks = map #2 (Placement.blockPlacement cfg)
     
     fun compress [] = []
-      | compress(CFG.BLOCK{data, labels, insns, ...} :: rest) = let
-	  fun pseudo(CFG.LABEL lab) = LABEL lab
-	    | pseudo(CFG.PSEUDO pOp) = PSEUDO pOp
+      | compress(CFG.BLOCK{align, labels, insns, ...} :: rest) = let
+          fun alignIt(chunks) = 
+	    (case !align of NONE => chunks | SOME p => PSEUDO(p)::chunks)
+
 	  fun mkCode(0, [], [], code) = code
 	    | mkCode(size, insns, [], code) = FIXED{size=size, insns=insns}:: code
 	    | mkCode(size, insns, instr::instrs, code) = let
@@ -67,18 +69,15 @@ struct
 		else mkCode(size+s, instr::insns, instrs, code)
 	      end
 	in
-	  map pseudo (!data) @
-	    map LABEL (!labels) @ 
-	       CODE(mkCode(0, [], !insns, [])) :: compress rest
+	  alignIt
+	    (map LABEL (!labels) @ 
+	       CODE(mkCode(0, [], !insns, [])) :: compress rest)
 	end
-
   in
-    clusterList:=CLUSTER{comp = compress blocks}:: (!clusterList)
+    clusterList:=CLUSTER{comp = compress blocks}:: (!clusterList);
+    dataList := !data @ !dataList
   end
 
-
-
-  
   fun finish() = let
     fun labels(PSEUDO pOp::rest, pos) = 
           (P.adjustLabels(pOp, pos); labels(rest, pos+P.sizeOf(pOp,pos)))
@@ -124,23 +123,26 @@ struct
             Emitter.makeStream []
 
     fun emitCluster(CLUSTER{comp},loc) = let
-      fun process(PSEUDO pOp,loc) = (pseudoOp pOp; loc + P.sizeOf(pOp,loc))
-	| process(LABEL lab,loc) = (defineLabel lab; loc)
-	| process(CODE code,loc) = let
-	    fun emitInstrs insns = app emit insns
-	    fun e(FIXED{insns, size,...},loc) = (emitInstrs insns; loc+size)
-	      | e(SDI{size, insn},loc) = 
-                   (emitInstrs(J.expand(insn, !size, loc)); !size + loc)
-	  in foldl e loc code
-	  end
-	| process _ = error "process"
-    in foldl process loc comp
-    end
+	  fun process(PSEUDO pOp,loc) = (pseudoOp pOp; loc + P.sizeOf(pOp,loc))
+	    | process(LABEL lab,loc) = (defineLabel lab; loc)
+	    | process(CODE code,loc) = let
+		fun emitInstrs insns = app emit insns
+		fun e(FIXED{insns, size,...},loc) = (emitInstrs insns; loc+size)
+		  | e(SDI{size, insn},loc) = 
+		       (emitInstrs(J.expand(insn, !size, loc)); !size + loc)
+	      in foldl e loc code
+	      end
+	    | process _ = error "process"
+	in foldl process loc comp
+	end
       | emitCluster _ = error "emitCluster"
 
-    val compressed = (rev (!clusterList)) before cleanUp()
+    (* The dataList is in reverse order, and the entries in each
+     * are also in reverse 
+     *)
+    val compressed = rev (map PSEUDO (!dataList) @ !clusterList) before cleanUp()
   in
-    beginCluster(fixpoint compressed);
+    beginCluster(fixpoint (compressed));
     foldl emitCluster 0 compressed; 
     ()
   end (*finish*)

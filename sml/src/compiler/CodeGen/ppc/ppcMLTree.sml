@@ -1,28 +1,48 @@
 (* COPYRIGHT (c) 1999 Lucent Technologies, Bell Labs. *)
 
-structure PPCPseudoOps = PseudoOpsBig(PPCSpec)
-
-structure PPCStream = InstructionStream(PPCPseudoOps)
-
 structure PPCMLTree = 
   MLTreeF(structure Constant=SMLNJConstant
 	  structure Region=CPSRegions
-	  structure Stream=PPCStream
 	  structure Extension=SMLNJMLTreeExt
          )
 
-(* specialised powerpc instruction set *)
-structure PPCInstr = 
-  PPCInstr(
-    LabelExp
+structure PPCMLTreeEval =
+    MLTreeEval
        (structure T = PPCMLTree
-	val labelFmt = {gPrefix="L", aPrefix="L"}
-        fun h _ _ = 0w0 fun eq _ _ = false
-        val hashRext = h and hashFext = h and hashCCext = h and hashSext = h
-        val eqRext = eq and eqFext = eq and eqCCext = eq and eqSext = eq
-        ))
+	fun eq _ _ =  false
+        val eqRext = eq		val eqFext = eq
+        val eqCCext = eq	val eqSext = eq)
+					    
+structure PPCMLTreeHash = 
+    MLTreeHash
+       (structure T = PPCMLTree
+        fun h _ _ = 0w0
+        val hashRext = h	val hashFext = h
+        val hashCCext = h       val hashSext = h)
 
-structure PPCProps = PPCProps(PPCInstr)
+structure PPCGasPseudoOps = 
+   PPCGasPseudoOps(structure T=PPCMLTree
+		   structure MLTreeEval=PPCMLTreeEval)
+
+structure PPCClientPseudoOps =
+   SMLNJPseudoOps(structure Asm=PPCGasPseudoOps)
+
+structure PPCPseudoOps = PseudoOps(structure Client = PPCClientPseudoOps)
+	      
+structure PPCStream = InstructionStream(PPCPseudoOps)
+
+structure PPCMLTreeStream = 
+    MLTreeStream
+      (structure T = PPCMLTree
+       structure S = PPCStream)
+
+(* specialised powerpc instruction set *)
+structure PPCInstr = PPCInstr(PPCMLTree)
+
+structure PPCProps = 
+   PPCProps(structure PPCInstr=PPCInstr
+	    structure MLTreeEval=PPCMLTreeEval
+	    structure MLTreeHash=PPCMLTreeHash)
 
 structure PPCShuffle = PPCShuffle(PPCInstr)
 
@@ -30,13 +50,15 @@ structure PPCShuffle = PPCShuffle(PPCInstr)
 structure PPCAsmEmitter=
   PPCAsmEmitter(structure Instr=PPCInstr
 		structure PseudoOps=PPCPseudoOps  
-                structure Stream=PPCStream
+                structure S=PPCStream
+		structure MLTreeEval=PPCMLTreeEval
 		structure Shuffle = PPCShuffle)
 
 structure PPCMCEmitter = 
   PPCMCEmitter(structure Instr=PPCInstr
 	       structure PseudoOps=PPCPseudoOps
                structure Stream=PPCStream
+ 	       structure MLTreeEval=PPCMLTreeEval
 	       structure CodeString=CodeString)
 
 (* Flowgraph data structure specialized to DEC alpha instructions *)

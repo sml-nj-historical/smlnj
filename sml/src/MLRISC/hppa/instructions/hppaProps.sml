@@ -4,11 +4,14 @@
  *
  *)
 
-functor HppaProps(HppaInstr : HPPAINSTR) : INSN_PROPERTIES = 
+functor HppaProps
+   ( structure HppaInstr : HPPAINSTR
+     structure MLTreeEval : MLTREE_EVAL where T = HppaInstr.T
+     structure MLTreeHash : MLTREE_HASH where T = HppaInstr.T
+    ) : INSN_PROPERTIES = 
 struct
   structure I = HppaInstr
   structure C = HppaInstr.C
-  structure LE = I.LabelExp
   structure CB = CellsBasis
 
   exception NegateConditional
@@ -165,18 +168,18 @@ struct
      | hashFieldSel I.T = 0w4
      | hashFieldSel I.P = 0w5
    fun hashOpn(I.IMMED i) = Word.fromInt i
-     | hashOpn(I.LabExp(l,f)) = I.LabelExp.hash l + hashFieldSel f
-     | hashOpn(I.HILabExp(l,f)) = I.LabelExp.hash l + hashFieldSel f + 0w10000
-     | hashOpn(I.LOLabExp(l,f)) = I.LabelExp.hash l + hashFieldSel f + 0w20000
+     | hashOpn(I.LabExp(l,f)) = MLTreeHash.hash l + hashFieldSel f
+     | hashOpn(I.HILabExp(l,f)) = MLTreeHash.hash l + hashFieldSel f + 0w10000
+     | hashOpn(I.LOLabExp(l,f)) = MLTreeHash.hash l + hashFieldSel f + 0w20000
      | hashOpn(I.REG r) = CB.hashCell r
    fun eqOpn(I.IMMED i,I.IMMED j) = i = j
      | eqOpn(I.REG x,I.REG y) = CB.sameColor(x,y)
      | eqOpn(I.LabExp(a,b),I.LabExp(c,d)) = 
-          b = d andalso I.LabelExp.==(a,c)
+          b = d andalso MLTreeEval.==(a,c)
      | eqOpn(I.HILabExp(a,b),I.HILabExp(c,d)) = 
-          b = d andalso I.LabelExp.==(a,c)
+          b = d andalso MLTreeEval.==(a,c)
      | eqOpn(I.LOLabExp(a,b),I.LOLabExp(c,d)) = 
-          b = d andalso I.LabelExp.==(a,c)
+          b = d andalso MLTreeEval.==(a,c)
      | eqOpn _ = false
    
 

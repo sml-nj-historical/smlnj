@@ -109,9 +109,13 @@
 
 functor X86RA 
   ( structure I          : X86INSTR
-    structure InsnProps  : INSN_PROPERTIES where I = I
-    structure CFG        : CONTROL_FLOW_GRAPH where I = I
-    structure Asm        : INSTRUCTION_EMITTER where I = I and P = CFG.P
+    structure InsnProps  : INSN_PROPERTIES 
+			       where I = I
+    structure CFG        : CONTROL_FLOW_GRAPH 
+			       where I = I
+    structure Asm        : INSTRUCTION_EMITTER 
+			       where I = I 
+				 and S.P = CFG.P
 
       (* Spilling heuristics determines which node should be spilled 
        * You can use Chaitin, ChowHenessey, or one of your own.

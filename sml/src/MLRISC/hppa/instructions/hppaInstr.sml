@@ -9,10 +9,8 @@ signature HPPAINSTR =
 sig
    structure C : HPPACELLS
    structure T : MLTREE
-   structure LabelExp : LABELEXP
    structure Constant: CONSTANT
    structure Region : REGION
-      sharing LabelExp.T = T
       sharing Constant = T.Constant
       sharing Region = T.Region
    datatype fmt =
@@ -272,12 +270,11 @@ sig
    | PHI of {}
 end
 
-functor HppaInstr(LabelExp : LABELEXP
+functor HppaInstr(T: MLTREE
                  ) : HPPAINSTR =
 struct
    structure C = HppaCells
-   structure LabelExp = LabelExp
-   structure T = LabelExp.T
+   structure T = T
    structure Region = T.Region
    structure Constant = T.Constant
    datatype fmt =

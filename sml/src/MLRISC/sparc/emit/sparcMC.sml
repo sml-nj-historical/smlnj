@@ -6,15 +6,16 @@
 
 
 functor SparcMCEmitter(structure Instr : SPARCINSTR
+                       structure MLTreeEval : MLTREE_EVAL where T = Instr.T
+                       structure Stream : INSTRUCTION_STREAM 
                        structure CodeString : CODE_STRING
                       ) : INSTRUCTION_EMITTER =
 struct
    structure I = Instr
    structure C = I.C
-   structure LabelExp = I.LabelExp
    structure Constant = I.Constant
    structure T = I.T
-   structure S = T.Stream
+   structure S = Stream
    structure P = S.P
    structure W = Word32
    
@@ -34,7 +35,7 @@ struct
        val emit_int = itow
        fun emit_word w = w
        fun emit_label l = itow(Label.addrOf l)
-       fun emit_labexp le = itow(LabelExp.valueOf le)
+       fun emit_labexp le = itow(MLTreeEval.valueOf le)
        fun emit_const c = itow(Constant.valueOf c)
        val loc = ref 0
    
@@ -239,9 +240,9 @@ struct
           (case i of
             I.REG rs2 => error "opn"
           | I.IMMED i => itow i
-          | I.LAB l => itow (LabelExp.valueOf l)
-          | I.LO l => lo10 (LabelExp.valueOf l)
-          | I.HI l => hi22 (LabelExp.valueOf l)
+          | I.LAB l => itow (MLTreeEval.valueOf l)
+          | I.LO l => lo10 (MLTreeEval.valueOf l)
+          | I.HI l => hi22 (MLTreeEval.valueOf l)
           )
        end
    and rr {op1, rd, op3, rs1, rs2} = 

@@ -6,15 +6,16 @@
 
 
 functor PPCMCEmitter(structure Instr : PPCINSTR
+                     structure MLTreeEval : MLTREE_EVAL where T = Instr.T
+                     structure Stream : INSTRUCTION_STREAM 
                      structure CodeString : CODE_STRING
                     ) : INSTRUCTION_EMITTER =
 struct
    structure I = Instr
    structure C = I.C
-   structure LabelExp = I.LabelExp
    structure Constant = I.Constant
    structure T = I.T
-   structure S = T.Stream
+   structure S = Stream
    structure P = S.P
    structure W = Word32
    
@@ -34,7 +35,7 @@ struct
        val emit_int = itow
        fun emit_word w = w
        fun emit_label l = itow(Label.addrOf l)
-       fun emit_labexp le = itow(LabelExp.valueOf le)
+       fun emit_labexp le = itow(MLTreeEval.valueOf le)
        fun emit_const c = itow(Constant.valueOf c)
        val loc = ref 0
    
@@ -80,7 +81,7 @@ struct
    and emit_CELLSET r = itow (CellsBasis.physicalRegisterNum r)
    fun emit_operand (I.RegOp GP) = emit_GP GP
      | emit_operand (I.ImmedOp int) = itow int
-     | emit_operand (I.LabelOp labexp) = itow (LabelExp.valueOf labexp)
+     | emit_operand (I.LabelOp labexp) = itow (MLTreeEval.valueOf labexp)
    and emit_fcmp (I.FCMPO) = (0wx20 : Word32.word)
      | emit_fcmp (I.FCMPU) = (0wx0 : Word32.word)
    and emit_unary (I.NEG) = (0wx68 : Word32.word)
@@ -680,7 +681,7 @@ struct
        end
 
 (*#line 540.7 "ppc/ppc.mdl"*)
-   fun relative (I.LabelOp lexp) = (itow ((LabelExp.valueOf lexp) - ( ! loc))) ~>> 0wx2
+   fun relative (I.LabelOp lexp) = (itow ((MLTreeEval.valueOf lexp) - ( ! loc))) ~>> 0wx2
      | relative _ = error "relative"
        fun emitter instr =
        let

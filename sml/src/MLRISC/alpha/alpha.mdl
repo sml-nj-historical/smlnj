@@ -429,7 +429,7 @@ struct
    instruction formats 32 bits 
      Memory{opc:6, ra:5, rb:GP 5, disp: signed 16} (* p3-9 *)
       (* derived from Memory *) 
-   | Split{le} = let val i = LabelExp.valueOf le
+   | Split{le} = let val i = MLTreeEval.valueOf le
                      val w = itow i 
                      val hi = w ~>> 0w16
                      val lo = w && 0w65535
@@ -444,7 +444,7 @@ struct
            | I.IMMop i  => itow i
            | I.HILABop le => High{le=le}
            | I.LOLABop le => Low{le=le}
-           | I.LABop le => itow(LabelExp.valueOf le)
+           | I.LABop le => itow(MLTreeEval.valueOf le)
        in  Memory{opc,ra,rb,disp}
        end
    | ILoadStore{opc,r:GP,b,d} = LoadStore{opc,ra=r,rb=b,disp=d}
@@ -465,7 +465,7 @@ struct
         | I.IMMop i  => Operate1{opc,ra,lit=itow i,func,rc}
         | I.HILABop le => Operate1{opc,ra,lit=High{le=le},func,rc}
         | I.LOLABop le => Operate1{opc,ra,lit=Low{le=le},func,rc}
-        | I.LABop le => Operate1{opc,ra,lit=itow(LabelExp.valueOf le),func,rc}
+        | I.LABop le => Operate1{opc,ra,lit=itow(MLTreeEval.valueOf le),func,rc}
         )
    | Foperate{opc:6,fa:FP 5,fb:FP 5,func:5..15,fc:FP 5}
    | Funary{opc:6,fa:5=31,fb:FP 5,func:5..15,fc:FP 5}
@@ -480,7 +480,7 @@ struct
 
    structure Assembly =
    struct
-      fun isZero(I.LABop le) = LabelExp.valueOf le = 0
+      fun isZero(I.LABop le) = MLTreeEval.valueOf le = 0
         | isZero _ = false
    end
 

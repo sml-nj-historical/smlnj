@@ -43,18 +43,17 @@ functor Sparc
 struct
   structure I  = SparcInstr
   structure T  = I.T
-  structure S  = T.Stream
+  structure TS = ExtensionComp.TS
   structure R  = T.Region
   structure C  = I.C
   structure CB = CellsBasis
-  structure LE = I.LabelExp
   structure W  = Word32
   structure P  = PseudoInstrs
   structure A  = MLRiscAnnotations
   structure CFG = ExtensionComp.CFG
 
-  type instrStream = (I.instruction, C.cellset, CFG.cfg) T.stream
-  type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) T.stream
+  type instrStream = (I.instruction, C.cellset, CFG.cfg) TS.stream
+  type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
   val int_0 = T.I.int_0
   fun toInt n = T.I.toInt(32, n)
@@ -167,7 +166,7 @@ struct
 
   fun selectInstructions
        (instrStream as
-        S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,getAnnotations,
+        TS.S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,getAnnotations,
                  beginCluster,endCluster,exitBlock,comment,...}) =
   let
       (* Flags *)
@@ -722,7 +721,7 @@ struct
         | opn e              = I.REG(expr e)
 
       and reducer() =
-          T.REDUCER{reduceRexp    = expr,
+          TS.REDUCER{reduceRexp    = expr,
                     reduceFexp    = fexpr,
                     reduceCCexp   = ccExpr,
                     reduceStm     = stmt,
@@ -734,7 +733,7 @@ struct
                     mltreeStream  = self()
                    }
       and self() = 
-          S.STREAM
+          TS.S.STREAM
           { beginCluster   = beginCluster,
             endCluster     = endCluster,
             emit           = doStmt,

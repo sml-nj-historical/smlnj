@@ -1,9 +1,12 @@
-functor PPCProps(PPCInstr : PPCINSTR) : INSN_PROPERTIES = 
+functor PPCProps
+   ( structure PPCInstr : PPCINSTR
+     structure MLTreeEval : MLTREE_EVAL where T = PPCInstr.T
+     structure MLTreeHash : MLTREE_HASH where T = PPCInstr.T
+    ) : INSN_PROPERTIES = 
 struct
   structure I = PPCInstr
   structure C = I.C
   structure T = I.T 
-  structure LE = I.LabelExp
   structure CB = CellsBasis
 
   exception NegateConditional
@@ -87,10 +90,10 @@ struct
 
   fun hashOpn(I.RegOp r) = CB.hashCell r
     | hashOpn(I.ImmedOp i) = Word.fromInt i
-    | hashOpn(I.LabelOp l) = I.LabelExp.hash l
+    | hashOpn(I.LabelOp l) = MLTreeHash.hash l
   fun eqOpn(I.RegOp a,I.RegOp b) = CB.sameColor(a,b)
     | eqOpn(I.ImmedOp a,I.ImmedOp b) = a = b
-    | eqOpn(I.LabelOp a,I.LabelOp b) = I.LabelExp.==(a,b)
+    | eqOpn(I.LabelOp a,I.LabelOp b) = MLTreeEval.==(a,b)
     | eqOpn _ = false
 
   fun defUseR instr = let

@@ -61,7 +61,7 @@ struct
           RegOp of $GP			``<GP>'' (emit_GP GP) rtl: $r[GP]
         | ImmedOp of int		``<int>'' (itow int)  rtl: immed int
         | LabelOp of T.labexp	``<emit_labexp labexp>''
-   					(itow(LabelExp.valueOf labexp))
+   					(itow(MLTreeEval.valueOf labexp))
 
       type addressing_mode = CellsBasis.cell * operand
    
@@ -537,7 +537,7 @@ struct
     *)
    structure MC = 
    struct
-      fun relative(I.LabelOp lexp) = itow(LabelExp.valueOf lexp - !loc) ~>> 0w2
+      fun relative(I.LabelOp lexp) = itow(MLTreeEval.valueOf lexp - !loc) ~>> 0w2
         | relative _ = error "relative"
    end
 

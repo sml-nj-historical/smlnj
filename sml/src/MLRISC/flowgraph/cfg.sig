@@ -24,11 +24,8 @@ sig
      | NORMAL         (* normal node *)
      | HYPERBLOCK     (* hyperblock *)
 
-   and data = LABEL  of Label.label
-            | PSEUDO of P.pseudo_op
-
    (*
-    * NOTE: the instructions are listed in reverse order.
+    * NOTE 1: the instructions are listed in reverse order.
     * This choice is for a few reasons:
     *
     * i)  Clusters represent instructions in reverse order, so keeping this
@@ -39,6 +36,9 @@ sig
     *
     * iii) This also makes it easier to manipulate the branch/jump instruction
     *      at the end of the block.
+    *
+    * NOTE 2: 
+    *  Alignment always appear before labels in a block.
     *)
    
    and block = 
@@ -46,9 +46,9 @@ sig
       {  id          : int,                        (* block id *)
          kind        : block_kind,                 (* block kind *)
          freq        : weight ref,                 (* execution frequency *) 
-         data        : data list ref,              (* data preceeding block *) 
          labels      : Label.label list ref,       (* labels on blocks *) 
          insns       : I.instruction list ref,     (* in rev order *)
+	 align	     : P.pseudo_op option ref,	   (* alignment only *)
          annotations : Annotations.annotations ref (* annotations *)
       }
 
@@ -72,7 +72,8 @@ sig
    datatype info = 
        INFO of { annotations : Annotations.annotations ref,
                  firstBlock  : int ref, (* id of first block *)
-                 reorder     : bool ref (* has the CFG been reordered? *)
+                 reorder     : bool ref, (* has the CFG been reordered? *)
+		 data        : P.pseudo_op list ref (* reverse order of generation *)
                }
 
    type cfg = (block,edge_info,info) Graph.graph

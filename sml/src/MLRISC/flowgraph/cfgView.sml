@@ -3,10 +3,10 @@
  * Copyright (c) 2001 Bell Laboratories.
  *)
 functor CFGView
-  (structure CFG : CONTROL_FLOW_GRAPH
-   structure Asm : INSTRUCTION_EMITTER
-   		   where I = CFG.I
-                     and P = CFG.P
+  (structure Asm : INSTRUCTION_EMITTER 
+   structure CFG : CONTROL_FLOW_GRAPH
+		   where I = Asm.I
+		     and P = Asm.S.P
   ) : CFG_VIEW = 
 
 struct
@@ -47,13 +47,10 @@ struct
          |  NONE => ()
         ) handle Overflow => print("Bad footer\n")
 
-  fun emitStuff outline annotations 
-           (block as CFG.BLOCK{insns,data,labels,...}) =
+  fun emitStuff outline annotations (block as CFG.BLOCK{insns,labels,...}) =
        let val S as S.STREAM{pseudoOp,defineLabel,emit,...} = 
                Asm.makeStream annotations
        in  emitHeader S block;
-           app (fn CFG.PSEUDO p => pseudoOp p
-                 | CFG.LABEL l  => defineLabel l) (!data);
            app defineLabel (!labels); 
            if outline then () else app emit (rev (!insns));
            emitFooter S block

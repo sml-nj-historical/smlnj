@@ -2,15 +2,15 @@
  *
  * COPYRIGHT (c) 2001 Bell Labs, Lucent Technologies
  *)
-
 signature CONTROL_FLOWGRAPH_GEN =
 sig
 
    structure S   : INSTRUCTION_STREAM
    structure I   : INSTRUCTIONS
+   structure P   : PSEUDO_OPS
    structure CFG : CONTROL_FLOW_GRAPH
    		where I = I
-		  and P = S.P
+                  and P = P
    (*
     * This creates an emitter which can be used to build a CFG incrementally
     *)
@@ -21,23 +21,26 @@ sig
 
 end
 
+
+
+
 functor BuildFlowgraph 
   (structure Props  : INSN_PROPERTIES
    structure Stream : INSTRUCTION_STREAM
    structure CFG    : CONTROL_FLOW_GRAPH  
-     sharing CFG.P = Stream.P
-         and CFG.I = Props.I
+			  where I = Props.I
+			    and P = Stream.P
   ) : CONTROL_FLOWGRAPH_GEN =
 struct
   structure CFG = CFG
+  structure P = CFG.P
   structure I = Props.I
-  structure P = Props
   structure G = Graph
   structure S = Stream
   structure Fmt = Format
-  exception LabelNotFound
+  structure PB  = PseudoOpsBasisTyp
 
-  fun dummy (x: CFG.I.C.cellset) = x : Props.I.C.cellset
+  exception LabelNotFound
 
   type instrStream = 
      (I.instruction, Annotations.annotations, CFG.I.C.cellset, CFG.cfg) S.stream
@@ -54,29 +57,27 @@ struct
 
     (* list of entry labels to patch successors of ENTRY *)
     val entryLabels = ref ([] : Label.label list)
+   
     (* block id associated with a label*)
     val labelMap    = IntHashTable.mkTable(32, LabelNotFound)
     val findLabel   = IntHashTable.find labelMap
     val addLabel    = IntHashTable.insert labelMap
 
-    (* the block name annotation *)
+    (* Data in text segment is read-only *)
+    datatype segment_t = TEXT | DATA | RO_DATA
+    val segmentF    = ref TEXT
+
+    (* the block names *)
     val blockNames   = ref [] : Annotations.annotations ref
+
+    (* can instructions be reordered *)
+    val reorder      = ref [] : Annotations.annotations ref
 
     (* noblock or invalid block has id of ~1 *)
     val noBlock = CFG.newBlock(~1, ref 0)
+
     (* current block being built up *)
     val currentBlock = ref noBlock
-
-    (* initialize state *)
-    fun init () = let
-      val G.GRAPH cfg = !cfg
-    in
-       blockList := [];
-       entryLabels := [];
-       IntHashTable.clear labelMap;
-       blockNames := [];
-       currentBlock := noBlock
-    end
 
 
     (* add a new block and make it the current block being built up *)
@@ -86,7 +87,7 @@ struct
       val blk as CFG.BLOCK{annotations, ...} = CFG.newBlock(id, ref freq)
     in
       currentBlock := blk;
-      annotations := !blockNames;
+      annotations := !blockNames @ !reorder;
       blockList := blk :: !blockList;
       #add_node graph (id, blk);
       blk
@@ -100,7 +101,12 @@ struct
 
     (* ------------------------cluster---------------------------*)
     (* start a new cluster *)
-    fun beginCluster _ = init()
+    fun beginCluster _ = 
+      (blockList := [];
+       entryLabels := [];
+       IntHashTable.clear labelMap;
+       blockNames := [];
+       currentBlock := noBlock)
 
     (* emit an instruction *)
     fun emit i = let
@@ -150,6 +156,7 @@ struct
 	| jump(from, [Props.LABELLED lab], _) = addEdge(from, target lab, CFG.JUMP)
 	| jump(from, [Props.LABELLED lab, Props.FALLTHROUGH], blks) = let
 	   fun next(CFG.BLOCK{id, ...}::_) = id
+	     | next [] = error "jump.next"
           in
 	    addEdge(from, target lab, CFG.BRANCH true);
 	    addEdge(from, next blks, CFG.BRANCH false)
@@ -194,44 +201,12 @@ struct
       cfg
     end (* endCluster *)
 
-    (* -------------------------labels---------------------------*)
-    (* BUG: Does not respect any ordering between labels and pseudoOps. 
-     * This could be a problem with jump tables.
-     *)
-    fun newPseudoOpBlock() =
-     (case !currentBlock 
-       of CFG.BLOCK{id= ~1,...} => newBlock(1)
-	|  b as CFG.BLOCK{insns=ref [],...} => b
-	|  _ => newBlock(1)
-     (*esac*))
-
-    fun addPseudoOp p = 
-    let val CFG.BLOCK{data, labels, ...} = newPseudoOpBlock()
-    in  data := !data @ map CFG.LABEL(!labels) @ [CFG.PSEUDO p];
-        labels := []
-    end
-
-    fun defineLabel lab = (case findLabel (hashLabel lab)
-	   of NONE => let
-        	val CFG.BLOCK{id, labels, data, ...} = newPseudoOpBlock()
-        	in 
-		  labels := lab :: !labels;
-		  addLabel(hashLabel lab, id)
-		end
-	    | SOME _ => error (concat[
-		  "multiple definitions of label \"", Label.toString lab, "\""
-		])
-	  (* end case *))
-      
-    fun entryLabel lab = (defineLabel lab; entryLabels := lab :: !entryLabels)
-
-
-
     
     (* ------------------------annotations-----------------------*)
     (* XXX: Bug: EMPTYBLOCK does not really generate an empty block 
      *	but merely terminates the current block. Contradicts the comment
      *  in instructions/mlriscAnnotations.sig.
+     *  It should be (newBlock(1); newBlock(1); ())
      *)
 
     (* Add a new annotation *)
@@ -256,6 +231,82 @@ struct
 
     (* add a comment annotation to the current block *)
     fun comment msg = addAnnotation (#create MLRiscAnnotations.COMMENT msg)
+
+
+    (* -------------------------labels---------------------------*)
+    (* BUG: Does not respect any ordering between labels and pseudoOps. 
+     * This could be a problem with jump tables. 
+     *)
+    fun addPseudoOp p = let
+      val Graph.GRAPH graph = !cfg
+      val CFG.INFO{data, ...} = #graph_info graph
+
+      fun addAlignment () = let
+	val CFG.BLOCK{align, ...} = newBlock(1)
+      in align := SOME p
+      end
+ 
+      fun startSegment(seg) = (data := p :: !data; segmentF := seg)
+
+      fun addData(seg) =
+	(case !segmentF
+         of TEXT => 
+	     error (Fmt.format "addPseudoOp: %s in TEXT segment" [Fmt.STR seg])
+          | _ => data := p :: !data
+        (*esac*))
+    in
+      case p
+      of PB.ALIGN_SZ _ => addAlignment()
+       | PB.ALIGN_ENTRY => addAlignment()
+       | PB.ALIGN_LABEL => addAlignment()
+       | PB.DATA_LABEL _ =>
+	   (case !segmentF 
+	    of TEXT => error "addPseudoOp: DATA_LABEL in TEXT segment"
+             | _ => (data := p:: !data)
+           (*esac*))
+
+       | PB.DATA_READ_ONLY => startSegment(RO_DATA)
+       | PB.DATA => startSegment(DATA)
+       | PB.TEXT => startSegment(TEXT)
+       | PB.SECTION _ => 
+	  (case !segmentF
+	    of TEXT => error "addPseudoOp: SECTION in TEXT segment"
+             | _ => data := p :: !data
+          (*esac*))
+       | PB.REORDER => (reorder := []; newBlock(1); ())
+       | PB.NOREORDER => 
+	   (reorder := [#create MLRiscAnnotations.NOREORDER ()]; newBlock(1); ())
+  
+       | PB.INT _    => addData("INT")
+       | PB.FLOAT _  => addData("FLOAT")
+       | PB.ASCII _  => addData("ASCII")
+       | PB.ASCIIZ _ => addData("ASCIIZ")
+       | PB.IMPORT _ => addData("IMPORT")
+       | PB.EXPORT _ => addData("EXPORT")
+       | PB.EXT _ => addData("EXT")
+    end
+
+    fun defineLabel lab = 
+      (case findLabel (hashLabel lab)
+        of NONE => let
+	     fun newBlk () = 
+	       (case !currentBlock
+                 of CFG.BLOCK{id= ~1, ...} => newBlock(1)
+		  | CFG.BLOCK{insns=ref[], ...} => !currentBlock (* probably aligned block *)
+		  | _ => newBlock(1)
+               (*esac*))
+             val CFG.BLOCK{id, labels, ...} = newBlk()
+	   in 
+	       labels := lab :: !labels;
+	       addLabel(hashLabel lab, id)
+           end
+
+	 | SOME _ => 
+	     error (concat
+	       ["multiple definitions of label \"", Label.toString lab, "\""])
+	  (*esac*))
+      
+    fun entryLabel lab = (defineLabel lab; entryLabels := lab :: !entryLabels)
   in
     S.STREAM
       { 

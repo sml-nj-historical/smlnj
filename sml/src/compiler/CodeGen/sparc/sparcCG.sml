@@ -4,6 +4,7 @@
 structure SparcCG = 
   MachineGen
   ( structure MachSpec   = SparcSpec
+    structure ClientPseudoOps = SparcClientPseudoOps
     structure PseudoOps  = SparcPseudoOps
     structure Ext        = Sparc_SMLNJMLTreeExt(* sparc specific *)
     structure CpsRegs    = SparcCpsRegs
@@ -29,6 +30,7 @@ structure SparcCG =
              structure ExtensionComp = SparcMLTreeExtComp
                (structure I = SparcInstr
                 structure T = SparcMLTree
+                structure Stream = SparcMLTreeStream
 		structure CFG = SparcCFG
                )
              val V9 = false
@@ -42,6 +44,7 @@ structure SparcCG =
 
     structure Jumps =
        SparcJumps(structure Instr=SparcInstr
+		  structure MLTreeEval=SparcMLTreeEval
                   structure Shuffle=SparcShuffle)
 
     structure BackPatch =

@@ -4,6 +4,7 @@
 structure HppaCG = 
   MachineGen
   ( structure MachSpec   = HppaSpec
+    structure ClientPseudoOps = HppaClientPseudoOps
     structure PseudoOps  = HppaPseudoOps
     structure Ext        = SMLNJMLTreeExt(* generic extension *)
     structure CpsRegs    = HppaCpsRegs
@@ -34,6 +35,7 @@ structure HppaCG =
                (structure I = HppaInstr
                 structure T = HppaMLTree
 		structure CFG = HppaCFG
+		structure TS = HppaMLTreeStream
                )
             val costOfMultiply = ref 7
             val costOfDivision = ref 7
@@ -41,6 +43,7 @@ structure HppaCG =
 
     structure Jumps =
        HppaJumps(structure Instr=HppaInstr
+		 structure MLTreeEval=HppaMLTreeEval
                  structure Shuffle=HppaShuffle)
 
     structure BackPatch =

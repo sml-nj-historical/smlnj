@@ -4,24 +4,27 @@
  *)
 signature PRINT_FLOWGRAPH = 
 sig
-   structure CFG : CONTROL_FLOW_GRAPH
    structure Asm : INSTRUCTION_EMITTER
-      where I = CFG.I and P = CFG.P
+   structure CFG : CONTROL_FLOW_GRAPH
+		      where I = Asm.I 
+			and P = Asm.S.P
 
    val printCFG : TextIO.outstream -> string -> CFG.cfg -> unit
 end
 
 
 functor PrintFlowgraph 
-   (structure CFG : CONTROL_FLOW_GRAPH
-    structure Asm : INSTRUCTION_EMITTER 
-       where P=CFG.P and I=CFG.I
+   (structure Asm : INSTRUCTION_EMITTER
+    structure CFG : CONTROL_FLOW_GRAPH
+		    where I = Asm.I
+		      and P = Asm.S.P
    ) : PRINT_FLOWGRAPH =
 struct
    structure Asm = Asm
    structure CFG = CFG
    structure C   = CFG.I.C
    structure W   = CFG.W
+   structure Fmt = Format
 
    val i2s = Int.toString
 
@@ -40,10 +43,11 @@ struct
        val Asm.S.STREAM{emit,pseudoOp,defineLabel,annotation,...} = 
              AsmStream.withStream stream Asm.makeStream annotations
 
-       fun showFreq(ref w) = "["^W.toString w^"]"
-       fun showEdge(blknum,e) = i2s blknum^":"^CFG.show_edge e
+       fun showFreq(ref w) = Fmt.format "[%s]" [Fmt.STR(W.toString w)] 
+       fun showEdge(blknum,e) = 
+	   Fmt.format "%d:%s" [Fmt.INT blknum, Fmt.STR(CFG.show_edge e)]
        fun showSucc(_, x, e) = showEdge(x,e)
-       fun showPred(x, _, e) = showEdge(x,e)
+       fun showPred(x, _, e) = showEdge(x,e) 
        fun showSuccs b =
             (pr "\tsucc:     "; 
              prList (map showSucc (#out_edges cfg b)); 
@@ -54,30 +58,36 @@ struct
              pr "\n")
 
        fun printBlock(_, CFG.BLOCK{kind=CFG.START, id, freq, ...}) = 
-           (pr ("ENTRY " ^ i2s id ^ showFreq freq^"\n");
+           (pr (Fmt.format "ENTRY %d %s\n" [Fmt.INT id, Fmt.STR(showFreq freq)]);
             showSuccs id)
          | printBlock(_, CFG.BLOCK{kind=CFG.STOP, id, freq, ...}) = 
-           (pr ("EXIT " ^ i2s id ^ showFreq freq ^"\n");
+	   (pr (Fmt.format "EXIT %d %s\n" [Fmt.INT id, Fmt.STR(showFreq freq)]);
             showPreds id)
-         | printBlock(_, CFG.BLOCK{id, freq, insns, annotations, data, 
+         | printBlock(_, CFG.BLOCK{id, align, freq, insns, annotations, 
                                labels, ...}) = 
-           (pr ("BLOCK " ^ i2s id ^ showFreq freq ^ "\n");
+	   (pr (Fmt.format "BLOCK %d %s\n" [Fmt.INT id, Fmt.STR(showFreq freq)]);
+	    case !align of NONE => () | SOME p => (pr (CFG.P.toString p ^ "\n"));
             app annotation (!annotations);
-            app (fn CFG.PSEUDO pOp => pseudoOp pOp
-                  | CFG.LABEL l    => defineLabel l
-                ) (!data);
             app defineLabel (!labels);
-            (*pr ("\tlive in:  " ^ CellsBasis.CellSet.toString (!liveIn) ^ "\n");
-            pr ("\tlive out: " ^ CellsBasis.CellSet.toString (!liveOut) ^ "\n");*)
+            (*
+               pr ("\tlive in:  " ^ CellsBasis.CellSet.toString (!liveIn) ^ "\n");
+               pr ("\tlive out: " ^ CellsBasis.CellSet.toString (!liveOut) ^ "\n");
+             *)
             showSuccs id;
             showPreds id;
             app emit (rev (!insns)))
+
+       fun printData() = let
+         val CFG.INFO{data, ...} = #graph_info cfg
+       in List.app (pr o CFG.P.toString) (rev(!data))
+       end
    in
-       pr("[ "^ title ^" ]\n");
+       pr(Fmt.format "[ %s ]\n" [Fmt.STR title]);
        app annotation annotations;
        (* printBlock entry; *)
        AsmStream.withStream stream (#forall_nodes cfg) printBlock;
        (* printBlock exit; *)
+       AsmStream.withStream stream printData ();
        TextIO.flushOut stream
    end
 end

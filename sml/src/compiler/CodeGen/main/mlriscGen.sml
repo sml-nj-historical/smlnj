@@ -18,23 +18,28 @@ sig
 		-> unit
 end
 
+
+
 functor MLRiscGen
- (  structure MachineSpec: MACH_SPEC
-    structure PseudoOp   : SMLNJ_PSEUDO_OP_TYPE
+   (structure MachineSpec: MACH_SPEC
     structure Ext        : SMLNJ_MLTREE_EXT
     structure C          : CPSREGS 
 		 	   where T.Region = CPSRegions 
-	                     and   T.Constant = SMLNJConstant
-		  	     and   T.Extension = Ext
-			     and   T.PseudoOp = PseudoOp
+	                     and T.Constant = SMLNJConstant
+		  	     and T.Extension = Ext
+    structure ClientPseudoOps : SMLNJ_PSEUDO_OPS
+    structure PseudoOp   : PSEUDO_OPS
+			    where T = C.T
+			      and Client = ClientPseudoOps
     structure MLTreeComp : MLTREECOMP 
-			   where T = C.T
+			   where TS.T = C.T
+                             and TS.S.P = PseudoOp
     structure Flowgen    : CONTROL_FLOWGRAPH_GEN 
-			   where S = MLTreeComp.T.Stream
+			   where S = MLTreeComp.TS.S
 			     and I = MLTreeComp.I
 			     and CFG = MLTreeComp.CFG  
     structure InvokeGC   : INVOKE_GC  
-			   where T = C.T
+			   where TS = MLTreeComp.TS
 			     and CFG = Flowgen.CFG
 
     structure Cells      : CELLS 
@@ -44,16 +49,20 @@ functor MLRiscGen
  ) : MLRISCGEN =
 struct
 
-  structure M  = C.T            (* MLTree *)
-  structure E  = Ext            (* Extensions *)
-  structure P  = CPS.P          (* CPS primitive operators *)
-  structure R  = CPSRegions     (* Regions *)
-  structure PT = R.PT           (* PointsTo *)
-  structure CG = Control.CG     (* Compiler Control *)
-  structure MS = MachineSpec    (* Machine Specification *)
-  structure D  = MS.ObjDesc     (* ML Object Descriptors *)
+  structure M  = C.T			(* MLTree *)
+  structure E  = Ext			(* Extensions *)
+  structure P  = CPS.P			(* CPS primitive operators *)
+  structure R  = CPSRegions		(* Regions *)
+  structure PT = R.PT			(* PointsTo *)
+  structure CG = Control.CG		(* Compiler Control *)
+  structure MS = MachineSpec		(* Machine Specification *)
+  structure D  = MS.ObjDesc		(* ML Object Descriptors *)
+  structure TS = MLTreeComp.TS		(* MLTREE streams *)
+  structure CPs = ClientPseudoOps
+  structure PB = PseudoOpsBasisTyp
   structure An = MLRiscAnnotations
   structure CB = CellsBasis
+  
 
   structure ArgP =              (* Argument passing *)
     ArgPassing(structure Cells=Cells
@@ -304,7 +313,7 @@ struct
 	  (*
 	   * The mltree stream
 	   *)
-	  val stream as M.Stream.STREAM
+	  val stream as TS.S.STREAM
 	    { beginCluster,  (* start a cluster *)
 	      endCluster,    (* end a cluster *)
 	      emit,          (* emit MLTREE stm *)
@@ -1365,7 +1374,7 @@ struct
             | gen(RECORD(RK_VECTOR, vl, w, e), hp) = mkVector(vl, w, e, hp)
             | gen(RECORD(RK_I32BLOCK, vl, w, e), hp) = mkI32block(vl, w, e, hp)
             | gen(RECORD(_, vl, w, e), hp) = mkRecord(vl, w, e, hp)
-  
+
             (*** SELECT ***)
             | gen(SELECT(i, INT k, x, t, e), hp) = funnySelect(i,k,x,t,e,hp)
             | gen(SELECT(i, v, x, FLTt, e), hp) = fselect(i, v, x, e, hp)
@@ -1389,7 +1398,9 @@ struct
               in  emit(M.MV(ity, tmpR, laddr(lab, 0)));
                   emit(M.JMP(M.ADD(addrTy, tmp, M.LOAD(pty, scale4(tmp, v), 
                                                        R.readonly)), labs));
-                  pseudoOp(PseudoOp.JUMPTABLE{base=lab, targets=labs});
+		  pseudoOp(PB.DATA_READ_ONLY);
+		  pseudoOp(PB.EXT(CPs.JUMPTABLE{base=lab, targets=labs}));
+		  pseudoOp(PB.TEXT);
                   ListPair.app (fn (lab, e) => genlabCont(lab, e, hp)) (labs, l)
               end
 
@@ -2013,7 +2024,7 @@ struct
                                               ...})) = 
                   let val formals = ArgP.standard{fnTy=typmap f, argTys=tl, vfp=vfp}
                   in  func := NONE;
-                      pseudoOp PseudoOp.ALIGN4;
+		      pseudoOp(PB.ALIGN_SZ 2);
                       genCPSFunction(lab, k, f, vl, formals, tl, e);
                       continue()
                   end
@@ -2061,20 +2072,22 @@ struct
 	compile(endCluster(clusterAnnotations()))
       end (* genCluster *)
 
-      fun emitMLRiscUnit f = let
+      fun finishCompilationUnit file = let
 	val stream = MLTreeComp.selectInstructions (Flowgen.build ())
-	val M.Stream.STREAM{beginCluster, endCluster, ...} = stream
+	val TS.S.STREAM{beginCluster, pseudoOp, endCluster, ...} = stream
       in
 	Cells.reset();
 	ClusterAnnotation.useVfp := false;
 	beginCluster 0; 
-	f stream;
+	InvokeGC.emitModuleGC stream;
+	pseudoOp (PB.DATA_READ_ONLY);
+	pseudoOp (PB.EXT(CPs.FILENAME file));
 	compile(endCluster NO_OPT)
       end
   in  
     app mkGlobalTables funcs;
     app genCluster (Cluster.cluster funcs);
-    emitMLRiscUnit InvokeGC.emitModuleGC
+    finishCompilationUnit "interactive"	(* blume?? *)
   end (* codegen *)
 end (* MLRiscGen *)
 

@@ -9,10 +9,8 @@ signature PPCINSTR =
 sig
    structure C : PPCCELLS
    structure T : MLTREE
-   structure LabelExp : LABELEXP
    structure Constant: CONSTANT
    structure Region : REGION
-      sharing LabelExp.T = T
       sharing Constant = T.Constant
       sharing Region = T.Region
    type gpr = int
@@ -231,12 +229,11 @@ sig
    | PHI of {}
 end
 
-functor PPCInstr(LabelExp : LABELEXP
+functor PPCInstr(T: MLTREE
                 ) : PPCINSTR =
 struct
    structure C = PPCCells
-   structure LabelExp = LabelExp
-   structure T = LabelExp.T
+   structure T = T
    structure Region = T.Region
    structure Constant = T.Constant
    type gpr = int

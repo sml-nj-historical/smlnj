@@ -10,6 +10,7 @@ structure X86CG =
     structure CG         = Control.CG
 
     structure MachSpec   = X86Spec
+    structure ClientPseudoOps = X86ClientPseudoOps
     structure PseudoOps  = X86PseudoOps
     structure Ext        = X86_SMLNJMLTreeExt(* x86-specific *)
     structure CpsRegs    = X86CpsRegs
@@ -40,13 +41,7 @@ structure X86CG =
 
     structure MLTreeComp=
        X86(structure X86Instr=X86Instr
-           structure X86MLTree=X86MLTree
-           structure ExtensionComp = X86MLTreeExtComp
-               (structure I = X86Instr
-                structure T = X86MLTree
-		structure CFG = X86CFG
-               ) 
-           structure MLTreeUtils = MLTreeUtils
+	   structure MLTreeUtils = MLTreeUtils
                (structure T = X86MLTree
                 fun hashSext  _ _ = 0w0 
                 fun hashRext  _ _ = 0w0
@@ -65,6 +60,15 @@ structure X86CG =
                 fun showFext  _ _ = ""
                 fun showCCext _ _ = ""
                )
+           structure ExtensionComp = X86MLTreeExtComp
+               (structure I = X86Instr
+                structure T = X86MLTree
+		structure CFG = X86CFG
+		structure TS = X86MLTreeStream
+               ) 
+	   structure MLTreeStream = X86MLTreeStream
+           datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
+           val arch = ref Pentium (* Lowest common denominator *)
            fun cvti2f{src,ty,an} = let (* ty is always 32 for SML/NJ *)
 	     val tempMem = I.Displace{base=base(), disp=I.Immed 304, mem=stack}
            in
@@ -73,14 +77,13 @@ structure X86CG =
                 cleanup = []
                }
            end
-           datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
-           val arch = ref Pentium (* Lowest common denominator *)
            val fast_floating_point = fast_floating_point
           )
 
     structure Jumps = 
        X86Jumps(structure Instr=X86Instr
                 structure AsmEmitter=X86AsmEmitter
+		structure Eval=X86MLTreeEval 
                 structure Shuffle=X86Shuffle
                 structure MCEmitter=X86MCEmitter)
    

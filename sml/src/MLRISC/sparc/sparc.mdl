@@ -480,9 +480,9 @@ struct
       in  case i of
            I.REG rs2 => error "opn"
          | I.IMMED i => itow i
-         | I.LAB l   => itow(LabelExp.valueOf l)
-         | I.LO l    => lo10(LabelExp.valueOf l)
-         | I.HI l    => hi22(LabelExp.valueOf l)
+         | I.LAB l   => itow(MLTreeEval.valueOf l)
+         | I.LO l    => lo10(MLTreeEval.valueOf l)
+         | I.HI l    => hi22(MLTreeEval.valueOf l)
       end
 
       (* basic formats, integer source registers, target type not determined.*)

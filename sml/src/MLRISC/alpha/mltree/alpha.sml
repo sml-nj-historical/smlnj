@@ -37,7 +37,7 @@ struct
   structure I   = AlphaInstr
   structure C   = I.C
   structure T   = I.T
-  structure S   = T.Stream
+  structure TS  = ExtensionComp.TS
   structure R   = T.Region
   structure W32 = Word32
   structure P   = PseudoInstrs
@@ -144,8 +144,8 @@ struct
 
   fun error msg = MLRiscErrorMsg.error("Alpha",msg) 
 
-  type instrStream = (I.instruction, C.cellset, CFG.cfg) T.stream
-  type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) T.stream
+  type instrStream = (I.instruction, C.cellset, CFG.cfg) TS.stream
+  type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
   (*
    * This module is used to simulate operations of non-standard widths.
@@ -299,9 +299,9 @@ struct
 
   fun selectInstructions
         (instrStream as
-         S.STREAM{emit,beginCluster,endCluster,getAnnotations,
-                  defineLabel,entryLabel,pseudoOp,annotation,
-                  exitBlock,comment,...}) =
+         TS.S.STREAM{emit,beginCluster,endCluster,getAnnotations,
+                     defineLabel,entryLabel,pseudoOp,annotation,
+                     exitBlock,comment,...}) =
   let
       infix || && << >> ~>>
 
@@ -1470,17 +1470,17 @@ struct
           | s => doStmts (Gen.compileStm s)
 
       and reducer() =
-          T.REDUCER{reduceRexp    = expr,
-                    reduceFexp    = fexpr,
-                    reduceCCexp   = ccExpr,
-                    reduceStm     = stmt,
-                    operand       = opn,
-                    reduceOperand = reduceOpn,
-                    addressOf     = addr,
-                    emit          = mark,
-                    instrStream   = instrStream,
-                    mltreeStream  = self()
-                   } 
+          TS.REDUCER{reduceRexp    = expr,
+                     reduceFexp    = fexpr,
+                     reduceCCexp   = ccExpr,
+                     reduceStm     = stmt,
+                     operand       = opn,
+                     reduceOperand = reduceOpn,
+                     addressOf     = addr,
+                     emit          = mark,
+                     instrStream   = instrStream,
+                     mltreeStream  = self()
+                    } 
 
       and doStmt s = stmt(s,[])
       and doStmts ss = app doStmt ss
@@ -1498,7 +1498,7 @@ struct
           in  g(mlrisc, C.empty) end
 
       and self() = 
-          S.STREAM
+          TS.S.STREAM
          { beginCluster   = beginCluster,
            endCluster     = endCluster,
            emit           = doStmt,

@@ -10,7 +10,6 @@ signature INSTRUCTION_STREAM =
 sig
 
    structure P : PSEUDO_OPS
-
    datatype ('a,'b,'c,'d) stream =
       STREAM of
       { beginCluster: int -> unit,             (* start new compilation unit *)
@@ -21,7 +20,7 @@ sig
         entryLabel  : Label.label -> unit,       (* define an external label *)
         comment     : string -> unit,                        (* emit comment *)
         annotation  : Annotations.annotation -> unit,      (* add annotation *)
-        getAnnotations: unit -> Annotations.propList ref,  (* get annotations*) 
+        getAnnotations: unit -> Annotations.propList ref, (* get annotations *) 
         exitBlock   : 'c -> unit              (* mark the end of a procedure *)
       }
 

@@ -5,13 +5,16 @@
  *)
 functor AlphaJumps
   (structure Instr : ALPHAINSTR
-   structure Shuffle : ALPHASHUFFLE
-      sharing Shuffle.I = Instr) : SDI_JUMPS = 
+   structure Shuffle : ALPHASHUFFLE 
+			   where I = Instr
+   structure MLTreeEval : MLTREE_EVAL 
+			   where T = Instr.T
+  ) : SDI_JUMPS = 
 struct
   structure I = Instr
   structure C = I.C
   structure Const = I.Constant
-  structure LE = I.LabelExp
+  structure Eval = MLTreeEval
 
   fun error msg = MLRiscErrorMsg.error("AlphaJumps",msg)
 
@@ -19,11 +22,11 @@ struct
 
   fun isSdi(I.DEFFREG _) 	          = true
     | isSdi(I.LDA{d=I.LABop _, ...})      = true
-    | isSdi(I.LOAD{d=I.LABop _, ...})   = true
-    | isSdi(I.STORE{d=I.LABop _, ...})  = true
-    | isSdi(I.FSTORE{d=I.LABop _, ...}) = true
-    | isSdi(I.FLOAD{d=I.LABop _, ...})  = true
-    | isSdi(I.OPERATE{rb=I.LABop _, ...})= true
+    | isSdi(I.LOAD{d=I.LABop _, ...})     = true
+    | isSdi(I.STORE{d=I.LABop _, ...})    = true
+    | isSdi(I.FSTORE{d=I.LABop _, ...})   = true
+    | isSdi(I.FLOAD{d=I.LABop _, ...})    = true
+    | isSdi(I.OPERATE{rb=I.LABop _, ...}) = true
     | isSdi(I.OPERATEV{rb=I.LABop _, ...})= true
     | isSdi(I.CMOVE{rb=I.LABop _, ...}) = true
     | isSdi(I.COPY _)			  = true
@@ -42,13 +45,13 @@ struct
 
   fun immed16 n =  ~32768 <= n andalso n < 32768 
   fun im16load n = if immed16 n then 4 else 8
-  fun im16Oper le = if immed16 (LE.valueOf le) then 4 else 12
+  fun im16Oper le = if immed16 (Eval.valueOf le) then 4 else 12
 
   fun immed8 n = n >= 0 andalso n < 256
-  fun im8Oper le = if immed8 (LE.valueOf le) then 4 else 12
+  fun im8Oper le = if immed8 (Eval.valueOf le) then 4 else 12
 
   fun sdiSize(I.DEFFREG _, _, _) = 0
-    | sdiSize(I.LDA{d=I.LABop le, ...}, _, _) = im16load(LE.valueOf le)
+    | sdiSize(I.LDA{d=I.LABop le, ...}, _, _) = im16load(Eval.valueOf le)
     | sdiSize(I.LOAD{d=I.LABop le, ...}, _, _) = im16Oper le
     | sdiSize(I.STORE{d=I.LABop le, ...}, _, _) = im16Oper le
     | sdiSize(I.FLOAD{d=I.LABop le, ...}, _, _) = im16Oper le
@@ -78,7 +81,7 @@ struct
   fun expand(instr, size, pos) = let
     fun load(ldClass, ldOp, r, b, d as I.LABop le, mem) = 
       (case size 
-       of 4 => [ldClass{ldOp=ldOp, r=r, b=b, d=I.IMMop(LE.valueOf le), mem=mem}]
+       of 4 => [ldClass{ldOp=ldOp, r=r, b=b, d=I.IMMop(Eval.valueOf le), mem=mem}]
         | 12 => let
             val instrs = expand(I.LDA{r=r, b=b, d=d}, 8, pos)
           in instrs @ [ldClass{ldOp=ldOp, r=r, b=r, d=I.IMMop 0, mem=mem}]
@@ -86,7 +89,7 @@ struct
 
     fun store(stClass, stOp, r, b, d as I.LABop le, mem) = 
       (case size 
-       of 4 => [stClass{stOp=stOp, r=r, b=b, d=I.IMMop(LE.valueOf le), mem=mem}]
+       of 4 => [stClass{stOp=stOp, r=r, b=b, d=I.IMMop(Eval.valueOf le), mem=mem}]
         | 12 => let
 	    val instrs = expand(I.LDA{r=C.asmTmpR, b=b, d=d}, 8, pos)
 	  in instrs @ [stClass{stOp=stOp, r=r, b=C.asmTmpR, d=I.IMMop 0, mem=mem}]
@@ -94,7 +97,7 @@ struct
 
     fun operate(opClass, oper, ra, rb as I.LABop le, rc) =
       (case size
-       of 4 => [opClass{oper=oper, ra=ra, rb=I.IMMop(LE.valueOf le), rc=rc}]
+       of 4 => [opClass{oper=oper, ra=ra, rb=I.IMMop(Eval.valueOf le), rc=rc}]
 	| 12 => let
 	    val instrs = expand(I.LDA{r=C.asmTmpR, b=zeroR, d=rb}, 8, pos)
 	  in instrs @ [opClass{oper=oper, ra=ra, rb=I.REGop C.asmTmpR, rc=rc}]

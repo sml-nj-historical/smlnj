@@ -1,9 +1,12 @@
-functor SparcProps(SparcInstr : SPARCINSTR) : INSN_PROPERTIES =
+functor SparcProps
+  (structure SparcInstr : SPARCINSTR
+   structure MLTreeEval : MLTREE_EVAL where T = SparcInstr.T
+   structure MLTreeHash : MLTREE_HASH where T = SparcInstr.T
+   ) : INSN_PROPERTIES =
 struct
   structure I = SparcInstr
   structure C = I.C
   structure T = I.T 
-  structure LE = I.LabelExp 
   structure CB = CellsBasis
 
   exception NegateConditional
@@ -160,14 +163,14 @@ struct
    *========================================================================*)
    fun hashOpn(I.REG r) = CB.hashCell r
      | hashOpn(I.IMMED i) = Word.fromInt i
-     | hashOpn(I.LAB l) = LE.hash l
-     | hashOpn(I.LO l) = LE.hash l
-     | hashOpn(I.HI l) = LE.hash l
+     | hashOpn(I.LAB l) = MLTreeHash.hash l
+     | hashOpn(I.LO l) = MLTreeHash.hash l
+     | hashOpn(I.HI l) = MLTreeHash.hash l
    fun eqOpn(I.REG a,I.REG b) = CB.sameColor(a,b)
      | eqOpn(I.IMMED a,I.IMMED b) = a = b
-     | eqOpn(I.LAB a,I.LAB b) = LE.==(a,b)
-     | eqOpn(I.LO a,I.LO b) = LE.==(a,b)
-     | eqOpn(I.HI a,I.HI b) = LE.==(a,b)
+     | eqOpn(I.LAB a,I.LAB b) = MLTreeEval.==(a,b)
+     | eqOpn(I.LO a,I.LO b) = MLTreeEval.==(a,b)
+     | eqOpn(I.HI a,I.HI b) = MLTreeEval.==(a,b)
      | eqOpn _ = false
 
   fun defUseR instr =

@@ -5,15 +5,15 @@
  *)
 functor RISC_RA
   (structure I         : INSTRUCTIONS
+   structure Asm       : INSTRUCTION_EMITTER
+   			where I = I 
    structure Flowgraph : CONTROL_FLOW_GRAPH 
    			where I = I
+		          and P = Asm.S.P
    structure InsnProps : INSN_PROPERTIES
    			where I = I
    structure Rewrite   : REWRITE_INSTRUCTIONS
    			where I = I
-   structure Asm       : INSTRUCTION_EMITTER
-   			where I = I 
-			  and P = Flowgraph.P
 
       (* Spilling heuristics determines which node should be spilled.
        * You can use Chaitin, ChowHenessey, or one of your own.

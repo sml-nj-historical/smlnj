@@ -65,10 +65,15 @@ local
 in
 functor X86FP
    (structure X86Instr  : X86INSTR
-    structure X86Props  : INSN_PROPERTIES where I = X86Instr
-    structure Flowgraph : CONTROL_FLOW_GRAPH where I = X86Instr
-    structure Liveness  : LIVENESS where CFG = Flowgraph
-    structure Asm       : INSTRUCTION_EMITTER where I = X86Instr and P = Flowgraph.P
+    structure X86Props  : INSN_PROPERTIES 
+			      where I = X86Instr
+    structure Flowgraph : CONTROL_FLOW_GRAPH
+			      where I = X86Instr
+    structure Liveness  : LIVENESS 
+			      where CFG = Flowgraph
+    structure Asm       : INSTRUCTION_EMITTER 
+			      where I = X86Instr
+				and S.P = Flowgraph.P
    ) : CFG_OPTIMIZATION = 
 struct
    structure CFG = Flowgraph
@@ -79,7 +84,6 @@ struct
    structure C  = I.C
    structure A  = Array
    structure L  = Label
-   structure LE = I.LabelExp
    structure An = Annotations
    structure CB = CellsBasis
    structure SL = CB.SortedCells
@@ -782,17 +786,14 @@ struct
             *)
            fun find([], _, best) = best
              | find((source, _, _)::edges, highestFreq, best) = 
-               let val CFG.BLOCK{freq, data, ...} = #node_info cfg source
+               let val CFG.BLOCK{freq, ...} = #node_info cfg source
                in  case A.sub(bindingsOut, source) of
                       NONE => find(edges, highestFreq, best)
                     | this as SOME stack => 
-                      if source = b-1 andalso List.null(!data) 
-                      then (* falls into b *)
-                         this
-                      else if highestFreq < !freq then
-                         find(edges, !freq, this)
-                      else
-                         find(edges, highestFreq, best)
+                      if source = b-1
+                      then this (* falls into b *)
+                      else if highestFreq < !freq then find(edges, !freq, this)
+                        else find(edges, highestFreq, best)
                end
 
            fun splitAllDoneEdges [] = ()
@@ -1119,10 +1120,10 @@ struct
                            CFG.BLOCK{id=n, 
                                      kind=CFG.NORMAL,
                                      freq=ref 0, (* XXX Wrong frequency! *)
-                                     data=ref [],
                                      labels=ref [label],
                                      insns=ref code,
-                                     annotations=ref comment
+                                     annotations=ref comment,
+				     align=ref NONE
                                     }
 
                        (*
@@ -1153,8 +1154,7 @@ struct
                 *)
                fun renumber(n, [], repairCode') =  transRepair(n, repairCode')
                  | renumber(n, (blknum, block as 
-                                 CFG.BLOCK{kind,annotations,insns,freq,
-                                           data, labels, ...})::rest,
+                                 CFG.BLOCK{kind,annotations,insns,freq,align,labels, ...})::rest,
                            repairCode') =
                    let (* If we have outstanding repair code and this is
                         * NOT a fallsthru entry, then insert them here.
@@ -1175,7 +1175,7 @@ struct
                        val this = CFG.BLOCK{id=n, 
                                             kind=kind,
                                             freq=freq,
-                                            data=data,
+                                            align=align,
                                             labels=labels,
                                             insns=insns,
                                             annotations=annotations

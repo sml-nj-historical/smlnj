@@ -43,6 +43,8 @@ functor X86
 			where T = X86Instr.T
    structure ExtensionComp : MLTREE_EXTENSION_COMP
      			where I = X86Instr and T = X86Instr.T
+   structure MLTreeStream : MLTREE_STREAM
+			where T = ExtensionComp.T
     datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
     val arch : arch ref
     val cvti2f : 
@@ -65,17 +67,16 @@ functor X86
 struct
   structure I = X86Instr
   structure T = I.T
-  structure S = T.Stream
+  structure TS = ExtensionComp.TS
   structure C = I.C
   structure Shuffle = Shuffle(I)
   structure W32 = Word32
-  structure LE = I.LabelExp
   structure A = MLRiscAnnotations
   structure CFG = ExtensionComp.CFG
   structure CB = CellsBasis
 
-  type instrStream = (I.instruction,C.cellset,CFG.cfg) T.stream
-  type mltreeStream = (T.stm,T.mlrisc list,CFG.cfg) T.stream
+  type instrStream = (I.instruction,C.cellset,CFG.cfg) TS.stream
+  type mltreeStream = (T.stm,T.mlrisc list,CFG.cfg) TS.stream
 
   datatype kind = REAL | INTEGER
  
@@ -130,7 +131,7 @@ struct
    *)
   fun selectInstructions 
        (instrStream as
-        S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,getAnnotations,
+        TS.S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,getAnnotations,
                  beginCluster,endCluster,exitBlock,comment,...}) =
   let exception EA
 
@@ -1754,7 +1755,7 @@ struct
          )
 
       and reducer() = 
-          T.REDUCER{reduceRexp    = expr,
+          TS.REDUCER{reduceRexp    = expr,
                     reduceFexp    = fexpr,
                     reduceCCexp   = ccExpr,
                     reduceStm     = stmt,
@@ -1767,7 +1768,7 @@ struct
                    }
 
       and self() =
-          S.STREAM
+          TS.S.STREAM
           {  beginCluster   = beginCluster',
              endCluster     = endCluster',
              emit           = doStmt,

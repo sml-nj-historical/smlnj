@@ -25,6 +25,7 @@ Group (../system/smlnj/viscomp/core.cm)
         signature MACHINE_GEN
         signature INVOKE_GC
         signature CPSREGS
+        signature SMLNJ_PSEUDO_OPS
 
         structure CPSRegions
         structure SMLGCType
@@ -40,10 +41,9 @@ Group (../system/smlnj/viscomp/core.cm)
 	signature SMLNJ_MLTREE_EXT
 	structure SMLNJMLTreeExt
         functor   SMLNJMLTreeExtComp
+        functor	  SMLNJPseudoOps
 	structure CodeString
 
-	functor PseudoOpsBig
-	functor PseudoOpsLittle
 	functor MachineGen
 	functor SpillTable
 	functor FLINTComp
@@ -231,14 +231,13 @@ CodeGen/cpscompile/invokegc.sml
 CodeGen/cpscompile/limit.sml
 CodeGen/cpscompile/memAliasing.sml
 CodeGen/cpscompile/memDisambig.sml
-CodeGen/cpscompile/pseudoOpType.sig
-CodeGen/cpscompile/pseudoOpsBig.sml
-CodeGen/cpscompile/pseudoOpsLittle.sml
+CodeGen/cpscompile/smlnj-pseudoOps.sig
 CodeGen/cpscompile/smlnj-const.sml
 CodeGen/cpscompile/smlnj-gctype.sig
 CodeGen/cpscompile/smlnj-gctype.sml
 CodeGen/cpscompile/smlnj-mltreeext.sig
 CodeGen/cpscompile/smlnj-mltreeext.sml
+CodeGen/cpscompile/smlnj-pseudoOps.sml
 CodeGen/cpscompile/spill.sml
 CodeGen/main/clusterAnnotation.sml    (* temporary hack; see comment in file *)
 CodeGen/main/code-string.sml
