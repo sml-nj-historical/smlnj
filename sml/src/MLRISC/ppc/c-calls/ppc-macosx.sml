@@ -165,7 +165,7 @@ functor PPCMacOSX_CCalls (
    * The total size is padded to agree with the struct's alignment.
    *)
     fun sizeOfStruct tys = let
-	  fun ssz [] = {sz = 0, align = 4}
+	  fun ssz [] = {sz = 0, align = 1}
 	    | ssz (first::rest) = let
 		fun f ([], maxAlign, offset) =
 		      {sz = alignAddr(offset, maxAlign), align = maxAlign}
@@ -188,7 +188,7 @@ functor PPCMacOSX_CCalls (
    * members.  The final size is padded to agree with the alignment.
    *)
     and sizeOfUnion tys = let
-	  fun usz [] = {sz = 0, align = 4}
+	  fun usz [] = {sz = 0, align = 1}
 	    | usz (first::rest) = let
 		fun f ([], maxAlign, maxSz) =
 		      {sz = alignAddr(maxSz, maxAlign), align = maxAlign}
