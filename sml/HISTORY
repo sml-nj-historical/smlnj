@@ -12,6 +12,37 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/04/04 03:18:00 EST
+Tag: leunga-20000404-C--Moby
+Description:
+
+    All of these fixes are related to C--, Moby, and my own optimization
+    stuff; so they shouldn't affect SML/NJ.
+
+1.  X86
+
+    Various fixes related floating point, and extensions.
+
+2.  Alpha 
+
+    Some extra patterns related to loads with signed/zero extension
+    provided by Fermin.
+
+3.  Assembly 
+
+    When generating assemby, resolve the value of client defined constants, 
+    instead of generating symbolic values.  This is controlled by the 
+    new flag "asm-resolve-constants", which is default to true.
+
+4.  Machine Descriptions
+
+    a. The precedence parser was slightly broken when parsing infixr symbols.
+    b. The type generalizing code had the bound variables reversed, resulting
+       in a problem during arity raising. 
+    c. Various fixes in machine descriptions.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/04/03 16:05:00 JST
 Tag: blume_main_v110p26p2_2

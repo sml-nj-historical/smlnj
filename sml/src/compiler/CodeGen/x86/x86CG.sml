@@ -28,7 +28,12 @@ structure X86CG =
                (structure I = X86Instr
                 structure T = X86MLTree
                )
-           val tempMem=I.Displace{base=esp, disp=I.Immed 304, mem=stack}
+           val tempMem = I.Displace{base=esp, disp=I.Immed 304, mem=stack}
+           fun cvti2f{src,ty} = (* ty is always 32 for SML/NJ *)
+               {instrs  = [I.MOVE{mvOp=I.MOVL, src=src, dst=tempMem}],
+                tempMem = tempMem, 
+                cleanup = []
+               }
            datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
            val arch = ref Pentium (* Lowest common denominator *)
           )

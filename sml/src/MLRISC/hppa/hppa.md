@@ -69,7 +69,9 @@ struct
       open Basis
       infix 1 ||
       infix 2 :=
-      infix 3 << >> ~>>
+      infix 5 + - 
+      infix 6 << >> ~>>
+      infix 6 * div mod 
 
       fun %  x = (operand x : #32 bits)
       fun %% l = (label l : #32 bits)
@@ -122,28 +124,28 @@ struct
       (* Integer opcodes *)
       rtl ADD{r1,r2,t}     = $r[t] := $r[r1] + $r[r2]
       rtl ADDL{r1,r2,t}    = $r[t] := $r[r1] + $r[r2]
-      rtl ADDO{r1,r2,t}    = $r[t] := $r[r1] + $r[r2] || overflowtrap{}
+      rtl ADDO{r1,r2,t}    = $r[t] := addt($r[r1], $r[r2])
       rtl SUB{r1,r2,t}     = $r[t] := $r[r1] - $r[r2]
-      rtl SUBO{r1,r2,t}    = $r[t] := $r[r1] - $r[r2] || overflowtrap{}
+      rtl SUBO{r1,r2,t}    = $r[t] := subt($r[r1], $r[r2])
       rtl SH1ADD{r1,r2,t}  = $r[t] := $r[r1] << 1 + $r[r2]
       rtl SH2ADD{r1,r2,t}  = $r[t] := $r[r1] << 2 + $r[r2]
       rtl SH3ADD{r1,r2,t}  = $r[t] := $r[r1] << 3 + $r[r2]
       rtl SH1ADDL{r1,r2,t} = $r[t] := $r[r1] << 1 + $r[r2]
       rtl SH2ADDL{r1,r2,t} = $r[t] := $r[r1] << 2 + $r[r2]
       rtl SH3ADDL{r1,r2,t} = $r[t] := $r[r1] << 3 + $r[r2]
-      rtl SH1ADDO{r1,r2,t} = SH1ADD{r1,r2,t} || overflowtrap{}
-      rtl SH2ADDO{r1,r2,t} = SH2ADD{r1,r2,t} || overflowtrap{}
-      rtl SH3ADDO{r1,r2,t} = SH3ADD{r1,r2,t} || overflowtrap{}
+      rtl SH1ADDO{r1,r2,t} = $r[t] := addt($r[r1] << 1, $r[r2])
+      rtl SH2ADDO{r1,r2,t} = $r[t] := addt($r[r1] << 2, $r[r2])
+      rtl SH3ADDO{r1,r2,t} = $r[t] := addt($r[r1] << 3, $r[r2])
       rtl OR{r1,r2,t}      = $r[t] := orb($r[r1], $r[r2])
       rtl AND{r1,r2,t}     = $r[t] := andb($r[r1], $r[r2])
       rtl XOR{r1,r2,t}     = $r[t] := xorb($r[r1], $r[r2])
       rtl ANDCM{r1,r2,t}   = $r[t] := andb($r[r1], notb($r[r2]))
 
       rtl ADDI{r,i,t}  = $r[t] := $r[r] + %i
-      rtl ADDIO{r,i,t} = $r[t] := $r[r] + %i || overflowtrap{}
+      rtl ADDIO{r,i,t} = $r[t] := addt($r[r], %i)
       rtl ADDIL{r,i,t} = $r[t] := $r[r] + %i
       rtl SUBI{r,i,t}  = $r[t] := $r[r] + %i
-      rtl SUBIO{r,i,t} = $r[t] := $r[r] + %i || overflowtrap{}
+      rtl SUBIO{r,i,t} = $r[t] := subt($r[r], %i)
 
       (* Shifts *)
       rtl extru extrs zdep : #n bits * #n bits * #n bits -> #n bits

@@ -37,7 +37,13 @@ functor X86
      sharing X86MLTree.LabelExp = X86Instr.LabelExp
     datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
     val arch : arch ref
-    val tempMem : X86Instr.operand (* temporary for CVTI2F *)
+    val cvti2f : 
+         (* source operand, guaranteed to be non-memory! *)
+         {ty: X86MLTree.ty, src: X86Instr.operand} -> 
+         {instrs : X86Instr.instruction list,(* the instructions *)
+          tempMem: X86Instr.operand,         (* temporary for CVTI2F *)
+          cleanup: X86Instr.instruction list (* cleanup code *)
+         }
   ) : sig include MLTREECOMP 
           val rewriteMemReg : bool
       end = 
@@ -992,7 +998,7 @@ struct
            mark(fstp(fty, address(ea, mem)), an)
           )
 
-      and fexpr e = error "fexpr"
+      and fexpr e = (reduceFexp(64, e, []); C.ST(0))
           
           (* generate floating point expression and put the result in fd *)
       and doFexpr(fty, T.FREG(_, fs), fd, an) = 
@@ -1017,6 +1023,7 @@ struct
       and reduceFexp(fty, fexp, an)  = 
           let val ST = I.ST(C.ST 0)
               val ST1 = I.ST(C.ST 1)
+              val cleanupCode = ref [] : I.instruction list ref
 
               datatype su_tree = 
                 LEAF of int * T.fexp * ans
@@ -1168,20 +1175,26 @@ struct
                *) 
               and leafEA(T.FREG(fty, f)) = (REAL, fty, I.FDirect f)
                 | leafEA(T.FLOAD(fty, ea, mem)) = (REAL, fty, address(ea, mem))
-                | leafEA(T.CVTI2F(_, 32, t)) = int2real(32, I.MOVL, t)
-                | leafEA(T.CVTI2F(_, 16, t)) = int2real(16, I.MOVSWL, t)
-                | leafEA(T.CVTI2F(_, 8, t))  = int2real(8, I.MOVSBL, t)
+                | leafEA(T.CVTI2F(_, 32, t)) = int2real(32, t)
+                | leafEA(T.CVTI2F(_, 16, t)) = int2real(16, t)
+                | leafEA(T.CVTI2F(_, 8, t))  = int2real(8, t)
                 | leafEA _ = error "leafEA"
 
               (* Move integer t of size ty into a memory location *)
-              and int2real(ty, mov, t) = 
+              and int2real(ty, t) = 
                   let val opnd = operand t
                   in  if isMemOpnd opnd andalso (ty = 16 orelse ty = 32)
                       then (INTEGER, ty, opnd)
-                      else (emit(I.MOVE{mvOp=mov, src=opnd, dst=tempMem});
-                            (INTEGER, 32, tempMem))
+                      else 
+                        let val {instrs, tempMem, cleanup} = 
+                                   cvti2f{ty=ty, src=opnd}
+                        in  app emit instrs;
+                            cleanupCode := !cleanupCode @ cleanup;
+                            (INTEGER, 32, tempMem)
+                        end
                   end
-          in  gencode(su fexp)
+          in  gencode(su fexp);
+              app emit(!cleanupCode)
           end (*reduceFexp*)
  
           (* generate code for a statement *)

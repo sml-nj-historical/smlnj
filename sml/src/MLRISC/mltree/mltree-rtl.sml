@@ -156,7 +156,7 @@ struct
                      | r  => ":"^ #rexp pr r
               val body = "$"^k^"["^ lhs pr e^r^"]"
           in  if t = t' orelse t = 0 then body else 
-              showEnd endian^showTy t'^showTy t^body 
+              showEnd endian^showTy t'^showTy t^" "^body 
           end
       and lhs pr (T.REG(ty,r)) = #dstReg pr (ty,r)
         | lhs pr e = #rexp pr e

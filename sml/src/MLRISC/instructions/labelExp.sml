@@ -43,6 +43,11 @@ functor LabelExp(Constant : CONSTANT) = struct
   val itow = Word.fromInt
   val wtoi = Word.toIntX
 
+  val resolveConstants = MLRiscControl.getFlag "asm-resolve-constants"
+  val _ = resolveConstants := true
+
+  fun prInt i = if i < 0 then "-"^Int.toString(~i) else Int.toString i
+
   fun valueOf(LABEL lab) = Label.addrOf lab
     | valueOf(CONST c) = Constant.valueOf c
     | valueOf(INT i) = i
@@ -67,8 +72,10 @@ functor LabelExp(Constant : CONSTANT) = struct
     | pToString lexp = parenthesize(toString lexp)
 
   and toString(LABEL lab) = Label.nameOf lab 
-    | toString(CONST c) = Constant.toString c
-    | toString(INT i) = if i < 0 then "-"^Int.toString(~i) else Int.toString i
+    | toString(CONST c) = 
+        if !resolveConstants then prInt(Constant.valueOf c)
+        else Constant.toString c
+    | toString(INT i) = prInt i
     | toString(PLUS(lexp1, lexp2)) =  pToString lexp1 ^ "+" ^ pToString lexp2
     | toString(MINUS(lexp1, lexp2)) = pToString lexp1 ^ "-" ^ pToString lexp2
     | toString(MULT(lexp1, lexp2)) = pToString lexp1 ^ "*" ^ pToString lexp2

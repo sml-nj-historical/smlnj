@@ -140,7 +140,7 @@ struct
 
     fun unary opnd = (operandDef opnd, operandUse opnd)
     fun cmptest{lsrc, rsrc} = ([], operandAcc(lsrc, operandUse rsrc))
-    fun push arg = ([], operandUse arg)
+    fun push arg = ([C.stackptrR], operandAcc(arg, [C.stackptrR]))
     fun float opnd = ([], operandUse opnd)
   in
     case instr
@@ -157,7 +157,8 @@ struct
            if rs=rd then ([rd],[]) else ([rd],[rs,rd])
       | I.BINARY{src,dst,...} =>   
            (operandDef dst, operandAcc(src, operandUse dst))
-      | I.LEAVE               => error "leave"
+      | I.ENTER _             => ([C.stackptrR], [C.stackptrR])
+      | I.LEAVE               => ([C.stackptrR], [C.stackptrR])
       | I.MULTDIV arg	      => multdiv arg
       | I.MUL3{src1, src2=SOME _, dst}=> ([dst], operandUse src1)
       | I.MUL3{src1, dst, ...}=> ([dst], dst::operandUse src1)

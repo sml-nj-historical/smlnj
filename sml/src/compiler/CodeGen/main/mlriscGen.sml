@@ -444,9 +444,8 @@ struct
            * This version allows the value to be further propagated
            *)
           fun resolveHpOffset'(M.CONST(absoluteHpOffset)) = 
-              let val tmpR = newReg PTR 
-                  val offset = absoluteHpOffset - !advancedHP
-              in  M.ADD(addrTy, C.allocptr, M.LI offset)
+              let val offset = absoluteHpOffset - !advancedHP
+              in  markPTR(M.ADD(addrTy, C.allocptr, M.LI offset))
               end
             | resolveHpOffset'(e) = e
 

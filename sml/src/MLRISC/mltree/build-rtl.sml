@@ -163,7 +163,8 @@ struct
    fun ||(a,b) = T.EXT(RTL.PAR(a,b))
    val Nop   = T.SEQ []
    fun Jmp  ty e = T.JMP([],e,[])
-   fun Call ty e = T.CALL(e,[],[],[],[],[],~1)
+   fun Call ty e = T.CALL{funct=e,targets=[],defs=[],uses=[],
+                          cdefs=[],cuses=[],region= ~1}
    val Ret   = T.RET([],[])
    fun If(x,y,z) = T.IF([],x,y,z)
 

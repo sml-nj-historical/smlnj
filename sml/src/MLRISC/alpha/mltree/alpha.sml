@@ -1039,6 +1039,12 @@ struct
           | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(8,ea,mem)) => load8s(ea,d,mem,an)
           | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(16,ea,mem))=> load16s(ea,d,mem,an)
           | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(32,ea,mem))=> load32s(ea,d,mem,an)
+          | T.CVTI2I((8|16|32|64),T.ZERO_EXTEND,_,T.LOAD(8,ea,mem)) => 
+               load8(ea,d,mem,an)
+          | T.CVTI2I((16|32|64),T.ZERO_EXTEND,_,T.LOAD(16,ea,mem))=> 
+               load16(ea,d,mem,an)
+          | T.CVTI2I(64,T.ZERO_EXTEND,_,T.LOAD(64,ea,mem)) => 
+               load(I.LDQ,ea,d,mem,an)
           | T.LOAD(8,ea,mem) => load8(ea,d,mem,an)
           | T.LOAD(16,ea,mem) => load16(ea,d,mem,an)
           | T.LOAD(32,ea,mem) => load32s(ea,d,mem,an)

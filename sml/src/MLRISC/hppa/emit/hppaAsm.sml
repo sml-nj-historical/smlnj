@@ -263,11 +263,11 @@ struct
      | emit_operand (I.HILabExp(labexp, field_selector)) = emit_labexp labexp
      | emit_operand (I.LOLabExp(labexp, field_selector)) = emit_labexp labexp
 
-(*#line 630.7 "hppa/hppa.md"*)
+(*#line 632.7 "hppa/hppa.md"*)
    fun emit_n false = ()
      | emit_n true = emit ",n"
 
-(*#line 631.7 "hppa/hppa.md"*)
+(*#line 633.7 "hppa/hppa.md"*)
    fun emit_nop false = ()
      | emit_nop true = emit "\n\tnop"
    fun emitInstr instr = 
