@@ -18,5 +18,8 @@ structure Win32_Process : WIN32_PROCESS =
 
 	val getEnvironmentVariable' : string -> string option = 
 	    cf "get_environment_variable"
-    end
 
+	val sleep' : W32G.word -> unit = cf "sleep"
+
+	val sleep = sleep' o W32G.Word.fromLargeInt o TimeImp.toSeconds
+    end

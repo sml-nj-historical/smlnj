@@ -111,4 +111,14 @@ ml_val_t _ml_win32_PS_get_environment_variable(ml_state_t *msp, ml_val_t arg)
 #undef GEV_BUF_SZ
 }
 
+/* _ml_win32_PS_sleep : word32 -> unit
+ *
+ * Suspend execution for interval in MILLIseconds.
+ */
+ml_val_t _ml_win32_PS_sleep (ml_state_t *msp, ml_val_t arg)
+{
+  Sleep ((DWORD) WORD_MLtoC(arg));
+  return ML_unit;
+}
+
 /* end of win32-process.c */

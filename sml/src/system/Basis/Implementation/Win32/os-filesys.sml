@@ -132,6 +132,7 @@ structure OS_FileSys : OS_FILE_SYS =
 	  | intToMonth 10 = Date.Oct
 	  | intToMonth 11 = Date.Nov
 	  | intToMonth 12 = Date.Dec
+	  | intToMonth _ = rse "intToMonth" "not in 1-12"
 
 	fun monthToInt Date.Jan = 1
 	  | monthToInt Date.Feb = 2
@@ -153,6 +154,7 @@ structure OS_FileSys : OS_FILE_SYS =
 	  | intToWeekDay 4 = Date.Thu
 	  | intToWeekDay 5 = Date.Fri
 	  | intToWeekDay 6 = Date.Sat
+	  | intToWeekDay _ = rse "intToWeekDay" "not in 0-6"
 
 	fun weekDayToInt Date.Sun = 0
 	  | weekDayToInt Date.Mon = 1
