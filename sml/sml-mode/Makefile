@@ -134,7 +134,7 @@ install_dvi: dvi
 	$(MKDIR) $(docdir)
 	$(CP) `find . -type f -name '*.dvi' -print` $(docdir)/
 
-install: install_elc install_info install_startup # install_el
+install: install_elc install_info install_startup install_el
 
 clean:
 	$(RM) *~ core .\#* $(TEXEXTS)
@@ -157,11 +157,13 @@ $(PACKAGE)-startup.el: $(ELFILES)
 
 TAG = $(shell echo v$(VERSION) | tr '.' '_')
 ftpdir=/home/ftp/pub/monnier/$(PACKAGE)
+cvsmodule=elisp/$(PACKAGE)
+cvsroot=$(cat CVS/Root)
 
 dist:
 	cvs tag -F $(TAG) &&\
 	cd $(TMP) &&\
-	cvs export -r $(TAG) -d $(PACKAGE)-$(VERSION) elisp/$(PACKAGE) &&\
+	cvs -d $(cvsroot) export -r $(TAG) -d $(PACKAGE)-$(VERSION) $(cvsmodule) &&\
 	cd $(PACKAGE)-$(VERSION) &&\
 	gmake info $(PACKAGE)-startup.el &&\
 	cd .. &&\
