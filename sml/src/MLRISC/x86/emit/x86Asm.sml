@@ -550,7 +550,7 @@ struct
              I.I8 => emit "b"
            | I.I16 => emit "w"
            | I.I32 => emit "l"
-	   | I.I64 => error "CMPXCHG: I64"
+           | I.I64 => error "CMPXCHG: I64"
            ); 
            
            ( emit "\t"; 

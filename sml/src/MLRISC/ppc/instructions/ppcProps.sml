@@ -173,6 +173,8 @@ struct
        | I.TW{to, ra, si} => ([], operand(si,[ra]))
        | I.TD{to, ra, si} => ([], operand(si,[ra]))
        | I.CALL{def, use, ...} => (C.getReg def, C.getReg use)
+       | I.LWARX{rt, ra, rb, ...} => ([rt], [ra, rb])
+       | I.STWCX{rs, ra, rb, ...} => ([], [rs, ra, rb]) 
        | _ => ([], [])
     end
   in

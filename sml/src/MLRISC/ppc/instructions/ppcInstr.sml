@@ -214,6 +214,8 @@ sig
    | MCRF of {bf:CellsBasis.cell, bfa:CellsBasis.cell}
    | MTSPR of {rs:CellsBasis.cell, spr:CellsBasis.cell}
    | MFSPR of {rt:CellsBasis.cell, spr:CellsBasis.cell}
+   | LWARX of {rt:CellsBasis.cell, ra:CellsBasis.cell, rb:CellsBasis.cell}
+   | STWCX of {rs:CellsBasis.cell, ra:CellsBasis.cell, rb:CellsBasis.cell}
    | TW of {to:int, ra:CellsBasis.cell, si:operand}
    | TD of {to:int, ra:CellsBasis.cell, si:operand}
    | BC of {bo:bo, bf:CellsBasis.cell, bit:bit, addr:operand, LK:bool, fall:operand}
@@ -259,6 +261,8 @@ sig
    val mcrf : {bf:CellsBasis.cell, bfa:CellsBasis.cell} -> instruction
    val mtspr : {rs:CellsBasis.cell, spr:CellsBasis.cell} -> instruction
    val mfspr : {rt:CellsBasis.cell, spr:CellsBasis.cell} -> instruction
+   val lwarx : {rt:CellsBasis.cell, ra:CellsBasis.cell, rb:CellsBasis.cell} -> instruction
+   val stwcx : {rs:CellsBasis.cell, ra:CellsBasis.cell, rb:CellsBasis.cell} -> instruction
    val tw : {to:int, ra:CellsBasis.cell, si:operand} -> instruction
    val td : {to:int, ra:CellsBasis.cell, si:operand} -> instruction
    val bc : {bo:bo, bf:CellsBasis.cell, bit:bit, addr:operand, LK:bool, fall:operand} -> instruction
@@ -478,6 +482,8 @@ struct
    | MCRF of {bf:CellsBasis.cell, bfa:CellsBasis.cell}
    | MTSPR of {rs:CellsBasis.cell, spr:CellsBasis.cell}
    | MFSPR of {rt:CellsBasis.cell, spr:CellsBasis.cell}
+   | LWARX of {rt:CellsBasis.cell, ra:CellsBasis.cell, rb:CellsBasis.cell}
+   | STWCX of {rs:CellsBasis.cell, ra:CellsBasis.cell, rb:CellsBasis.cell}
    | TW of {to:int, ra:CellsBasis.cell, si:operand}
    | TD of {to:int, ra:CellsBasis.cell, si:operand}
    | BC of {bo:bo, bf:CellsBasis.cell, bit:bit, addr:operand, LK:bool, fall:operand}
@@ -515,6 +521,8 @@ struct
    and mcrf = INSTR o MCRF
    and mtspr = INSTR o MTSPR
    and mfspr = INSTR o MFSPR
+   and lwarx = INSTR o LWARX
+   and stwcx = INSTR o STWCX
    and tw = INSTR o TW
    and td = INSTR o TD
    and bc = INSTR o BC

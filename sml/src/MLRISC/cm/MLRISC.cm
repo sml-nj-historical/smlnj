@@ -1,5 +1,7 @@
 (* This file is created by makeallcm *)
 Library
+(*	signature CFG_VIEW *)
+(*	functor CFGView *)
 	signature ARCH_SPILL_INSTR
 	signature ASM_FORMAT_UTIL
 	signature ASM_STREAM
@@ -9,7 +11,6 @@ Library
 	signature CELLS
 	signature CELLS_BASIS
 	signature CFG_OPTIMIZATION
-(*	signature CFG_VIEW *)
 	signature CLIENT_PSEUDO_OPS
 	signature CODE_STRING
 	signature COMPUTE_EXECUTION_FREQUENCIES
@@ -18,6 +19,7 @@ Library
 	signature CONTROL_FLOW_GRAPH
 	signature C_CALLS
 	signature DELAY_SLOT_PROPERTIES
+	signature DOMINATOR_TREE
 	signature FREQUENCY_PROPERTIES
 	signature GAS_PSEUDO_OPS
 	signature GC_CELLS
@@ -29,6 +31,7 @@ Library
 	signature INSTRUCTION_STREAM
 	signature LABEL
 	signature LIVENESS
+	signature LOOP_STRUCTURE
 	signature MACHINE_INT
 	signature MC_EMIT
 	signature MLRISC_ANNOTATIONS
@@ -52,6 +55,7 @@ Library
 	signature PSEUDO_OPS_BASIS
 	signature PSEUDO_OPS_ENDIAN
 	signature RA
+	signature RA_BITMATRIX
 	signature RA_CORE
 	signature RA_FLOWGRAPH
 	signature RA_FLOWGRAPH_PARTITIONER
@@ -87,7 +91,6 @@ Library
 	functor CFGCountCopies
 	functor CFGEmit
 	functor CFGExpandCopies
-(*	functor CFGView *)
 	functor Cells
 	functor CheckPlacementFn
 	functor ClusterRA
@@ -95,6 +98,7 @@ Library
 	functor ComputeFreqsFn
 	functor ControlFlowGraph
 	functor DefaultBlockPlacement
+	functor DominatorTree
 	functor EstimateLoopProbsFn
 	functor FreqProps
 	functor GCCells
@@ -104,6 +108,7 @@ Library
 	functor InstructionStream
 	functor JumpChainElimFn
 	functor Liveness
+	functor LoopStructure
 	functor MLTreeEval
 	functor MLTreeF
 	functor MLTreeGen
@@ -118,10 +123,10 @@ Library
 	functor PseudoOpsBig
 	functor PseudoOpsLittle
 	functor RADeadCodeElim
-	functor RaPriQueue
 	functor RASpill
 	functor RASpillTypes
 	functor RISC_RA
+	functor RaPriQueue
 	functor RegionBasedRA
 	functor RegisterAllocator
 	functor Shuffle

@@ -13,6 +13,18 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/07/13 15:04:00 EST
+Tag: leunga-110_46_1-ppc-lwarx
+Description:
+
+   Added the two instructions LWARX and STWCX to the PowerPC
+instruction set.   
+
+   A (untested) rewrite of loop-structure.sml.  The old version
+is completely broken.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/07/13 13:50:00 CDT
 Tag: blume-20040713-nlffi
