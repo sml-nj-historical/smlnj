@@ -374,7 +374,9 @@ in case lexp
 	     | _ => ()) handle M.IntmapF=>();
 	   (1+s, addv(S.rmv(lv, fv), v), F.SELECT(v,i,lv,le))
        end
-     | F.RAISE (F.VAR v,ltys) => (3, S.singleton v, lexp)
+     | F.RAISE (F.VAR v,ltys) =>
+       (* artificially high size estimate to discourage inlining *)
+       (15, S.singleton v, lexp)
      | F.HANDLE (le,v) =>
        let val (s,fv,le) = loop le
        in (2+s, addv(fv, v), F.HANDLE(le,v))
