@@ -132,7 +132,7 @@ fun cvtParams(from, to) = Int.toString from ^ "_" ^ Int.toString to
 
 fun prPrimop (ARITH{oper,overflow,kind}) =
       ((case oper 
-         of op + => "+" |  op - => "-" |  op * => "*"
+         of op + => "+" |  op - => "-" |  op * => " *"
           | op / => "/" |  op ~ => "~" | LSHIFT => "lshift" 
           | RSHIFT => "rshift" | RSHIFTL => "rshift_l" | ABS => "abs"
           | ANDB => "andb" | ORB => "orb" | XORB => "xorb" 
@@ -243,7 +243,7 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop (SUBSCRIPT_RAW64) = "subscriptraw64"
 
   (* These ones were strangely missing.  Maybe they should never happen? *)
-  | prPrimop UNBOXEDASSIGN = "**!!UNEXPECTED!!**"
+  | prPrimop UNBOXEDASSIGN = "!**!!UNEXPECTED!!**!"
 
 
 val purePrimop =
