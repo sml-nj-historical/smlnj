@@ -1,0 +1,24 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ *
+ * The main sources file for the PP library.
+ *)
+
+Library
+
+  signature PP_DEVICE
+  signature PP_TOKEN
+  signature PP_DESC
+  signature PP_STREAM
+
+  functor PPDescFn
+  functor PPStreamFn
+
+  structure SimpleTextIODev
+  structure HTMLDev
+
+is
+  src/sources.cm
+  devices/sources.cm
+

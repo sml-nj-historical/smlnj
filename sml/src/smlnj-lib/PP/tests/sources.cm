@@ -1,0 +1,18 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ *)
+
+Group
+  functor PPStreamFn
+  functor PPDebugFn
+  structure SimpleTextIODev
+  structure HTMLDev
+
+  structure HTML
+  structure PrHTML
+is
+  ../../HTML/sources.cm
+  ../src/sources.cm
+  ../devices/sources.cm
+
