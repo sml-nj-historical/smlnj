@@ -1,0 +1,6 @@
+-*- text -*-
+
+* The special frame handling has been thrown out because it doesn't interact
+  well with Emacs' own similar feature.  I believe XEmacs still doesn't provide
+  such a feature, so if you miss it, either switch to Emacs or (convince
+  someone else to) add it to XEmacs.

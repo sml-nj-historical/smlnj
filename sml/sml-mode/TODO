@@ -1,19 +1,15 @@
 -*- sml -*-
 
-* make `end' align on `in' when possible
-
 * if indentation is non-obvious, return a list of possible indentations
   and choose the first unless the current is one of the possible choices.
 
-* M-| with datatypes gives "|  => " instead of "|  of "
-
-* tab at end or beginning of buffer infinite-loop
-
-* ignore warnings in C-c `
+* ignore warnings in C-x ` ????
 
 * improve the run-sml to allow running on another machine and to take args
 
-* C-c ` tends to switch to another window
+* allow zero-indent after single-line `if a then b else'.
+
+* allow right-aligning "and" with its correspondant.
 
 * sample problematic indentations:
 

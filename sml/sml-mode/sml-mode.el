@@ -122,14 +122,18 @@
 (defvar sml-pipe-indent -2
   "*Extra (usually negative) indentation for lines beginning with `|'.")
 
-(defvar sml-indent-case-of 2
-  "*Indentation of an `of' on its own line.")
-
 (defvar sml-indent-args 4
   "*Indentation of args placed on a separate line.")
 
 (defvar sml-indent-align-args t
   "*Whether the arguments should be aligned.")
+
+(defvar sml-nested-if-indent t
+  "*Determine how nested if-then-else will be formatted:
+    If t: if exp1 then exp2               If nil:   if exp1 then exp2
+          else if exp3 then exp4                    else if exp3 then exp4
+          else if exp5 then exp6                         else if exp5 then exp6
+          else exp7                                           else exp7")
 
 (defvar sml-case-indent nil
   "*How to indent case-of expressions.
@@ -352,28 +356,44 @@ Mode map
 Depending on the context insert the name of function, a \"=>\" etc."
   (interactive)
   (sml-with-ist
+   (unless (save-excursion (skip-chars-backward "\t ") (bolp)) (insert "\n"))
+   (insert "| ")
    (let ((text
 	  (save-excursion
-	    (sml-find-matching-starter sml-pipehead-re)
-	    (cond
-	     ;; It was a function, insert the function name
-	     ((or (looking-at "fun\\>")
-		  (and (looking-at "and\\>")
-		       (save-excursion
-			 (sml-find-matching-starter
-			  (sml-syms-re "datatype" "abstype" "fun"))
-			 (looking-at "fun\\>"))))
-	      (forward-word 1) (sml-forward-spaces)
-	      (concat
-	       (buffer-substring (point) (progn (forward-word 1) (point)))
-	       "  = "))
+	    (backward-char 2)		;back over the just inserted "| "
+	    (sml-find-matching-starter sml-pipehead-re
+				       (sml-op-prec "|" 'back))
+	    (let ((sym (sml-forward-sym)))
+	      (sml-forward-spaces)
+	      (cond
+	       ((string= sym "|")
+		(let ((f (sml-forward-sym)))
+		  (sml-find-forward "\\(=>\\|=\\||\\)\\S.")
+		  (cond
+		   ((looking-at "|") "") ;probably a datatype
+		   ((looking-at "=>") " => ") ;`case', or `fn' or `handle'
+		   ((looking-at "=") (concat f "  = "))))) ;a function
+	       ((string= sym "and")
+		;; could be a datatype or a function
+		(while (and (setq sym (sml-forward-sym))
+			    (string-match "^'" sym))
+		  (sml-forward-spaces))
+		(sml-forward-spaces)
+		(if (or (not sym)
+			(equal (sml-forward-sym) "d="))
+		    ""
+		  (concat sym "  = ")))
+	       ;; trivial cases
+	       ((string= sym "fun")
+		(while (and (setq sym (sml-forward-sym))
+			    (string-match "^'" sym))
+		  (sml-forward-spaces))
+		(concat sym "  = "))
+	       ((member sym '("case" "handle" "fn")) " => ")
+	       ((member sym '("abstype" "datatype")) "")
+	       (t (error "Wow, now, there's a bug")))))))
 
-	     ((looking-at (sml-syms-re "case" "handle" "fn")) " => ")
-	     ((looking-at (sml-syms-re "abstype" "datatype" "and")) "")
-	     (t (error "Wow, now, there's a bug"))))))
-
-     (unless (save-excursion (skip-chars-backward "\t ") (bolp)) (insert "\n"))
-     (insert "| " text)
+     (insert text)
      (sml-indent-line)
      (beginning-of-line)
      (skip-chars-forward "\t |")
@@ -452,25 +472,22 @@ If anyone has a good algorithm for this..."
 	     ((looking-at comment-start-skip) (decf depth)))
 	  (setq depth -1)))
       (if (= depth 0)
-	  (current-column)
+	  (1+ (current-column))
 	nil))))
 
 (defun sml-calculate-indentation ()
   (save-excursion
     (beginning-of-line) (skip-chars-forward "\t ")
     (sml-with-ist
-     (let ((indent 0)
-	   (sml-point (point)))
+     ;; Indentation for comments alone on a line, matches the
+     ;; proper indentation of the next line.
+     (when (looking-at comment-start-skip) (sml-forward-spaces))
+     (let (data
+	   (sml-point (point))
+	   (sym (save-excursion (sml-forward-sym))))
        (or
-	;;(and (bobp) 0)
-
-	;; Indentation for comments alone on a line, matches the
-	;; proper indentation of the next line.
-	(and (looking-at comment-start-skip) (sml-forward-spaces) nil)
-
 	;; continued comment
-	(and (looking-at "\\*") (setq indent (sml-find-comment-indent))
-	     (1+ indent))
+	(and (looking-at "\\*") (sml-find-comment-indent))
 
 	;; Continued string ? (Added 890113 lbn)
 	(and (looking-at "\\\\")
@@ -483,61 +500,48 @@ If anyone has a good algorithm for this..."
 		     (1+ (current-column))
 		   0))))
 
-	(and (looking-at "in\\>")	; Match the beginning let/local
-	     (sml-find-match-indent "\\<in\\>" "\\<l\\(ocal\\|et\\)\\>"))
-
-	(and (looking-at "end\\>")	; Match the beginning
-	     ;; FIXME: should match "in" if available.  Or maybe not
-	     (sml-find-match-indent "\\<end\\>" sml-begin-symbols-re))
-
-	(and (looking-at "else\\>")	; Match the if
-	     (progn
-	       (sml-find-match-backward "\\<else\\>" "\\<if\\>")
-	       ;;(sml-move-if (backward-word 1)
-	       ;;	    (and sml-nested-if-indent
-	       ;;		 (looking-at "else[ \t]+if\\>")))
-	       (if (sml-dangling-sym)
-		     (sml-indent-default 'noindent)
-		 (current-column))))
-
-	(and (looking-at "then\\>")	; Match the if + extra indentation
-	     (sml-find-match-indent "\\<then\\>" "\\<if\\>" t))
-
-	(and (looking-at "of\\>")
-	     (progn
-	       (sml-find-match-backward "\\<of\\>" "\\<case\\>")
-	       (+ (current-column) sml-indent-case-of)))
+	(and (setq data (assoc sym sml-close-paren))
+	     (sml-indent-relative sym data))
 
 	(and (looking-at sml-starters-re)
 	     (let ((sym (unless (save-excursion (sml-backward-arg))
 			  (sml-backward-spaces)
 			  (sml-backward-sym))))
 	       (if sym (sml-get-sym-indent sym)
+		 ;; FIXME: this can take a *long* time !!
 		 (sml-find-matching-starter sml-starters-re)
 		 (current-column))))
 
-	(and (looking-at "|") (sml-indent-pipe))
+	(and (string= sym "|") (sml-indent-pipe))
 
 	(sml-indent-arg)
 	(sml-indent-default))))))
 
+(defun sml-indent-relative (sym data)
+  (save-excursion
+    (sml-forward-sym) (sml-backward-sexp nil)
+    (unless (cdr data) (sml-backward-spaces) (sml-backward-sym))
+    (+ (or (cdr (assoc sym sml-symbol-indent)) 0)
+       (sml-delegated-indent))))
+
 (defun sml-indent-pipe ()
-  (when (sml-find-matching-starter (concat "|\\|\\<of\\>\\|" sml-pipehead-re)
+  (when (sml-find-matching-starter sml-pipehead-re
 				   (sml-op-prec "|" 'back))
     (if (looking-at "|")
 	(if (sml-bolp) (current-column) (sml-indent-pipe))
-      (cond
-       ((looking-at "datatype\\>")
-	(re-search-forward "=")
-	(forward-char))
-       ((looking-at "case\\>")
-	(sml-forward-sym)	;skip `case'
-	(sml-find-match-forward "\\<case\\>" "\\<of\\>"))
-       (t
-	(forward-word 1)))
+      (when (looking-at "\\(data\\|abs\\)type\\>")
+	(re-search-forward "="))
+      (sml-forward-sym)
       (sml-forward-spaces)
       (+ sml-pipe-indent (current-column)))))
 
+(defun sml-find-forward (re)
+  (sml-forward-spaces)
+  (while (and (not (looking-at re))
+	      (progn
+		(or (ignore-errors (forward-sexp 1) t) (forward-char 1))
+		(sml-forward-spaces)
+		(not (looking-at re))))))
 
 (defun sml-indent-arg ()
   (and (save-excursion (ignore-errors (sml-forward-arg)))
@@ -556,15 +560,13 @@ If anyone has a good algorithm for this..."
 	   (sml-forward-arg) (sml-forward-spaces))
 	 (current-column))))
 
-(defun sml-re-assoc (al sym)
-  (when sym
-    (cdr (assoc* sym al
-		 :test (lambda (x y) (string-match y x))))))
-
-(defun sml-get-indent (data n &optional strict)
-  (eval (if (listp data)
-	    (nth n data)
-	  (and (not strict) data))))
+(defun sml-get-indent (data sym)
+  (let ((head-sym (pop data)) d)
+    (cond
+     ((not (listp data)) data)
+     ((setq d (member sym data)) (second d))
+     ((and (consp data) (not (stringp (car data)))) (car data))
+     (t sml-indent-level))))
 
 (defun sml-dangling-sym ()
   (save-excursion
@@ -573,72 +575,85 @@ If anyone has a good algorithm for this..."
 	    (sml-point-after (sml-forward-sym)
 			     (sml-forward-spaces))))))
 
+(defun sml-delegated-indent ()
+  (if (sml-dangling-sym)
+      (sml-indent-default 'noindent)
+    (sml-move-if (backward-word 1)
+		 (and sml-nested-if-indent
+		      (looking-at sml-agglomerate-re)))
+    (current-column)))
+
 (defun sml-get-sym-indent (sym &optional style)
   "expects to be looking-at SYM.
 If indentation is delegated, the point will be at the start of
 the parent at the end of this function."
-  (let ((indent-data (sml-re-assoc sml-indent-starters sym))
-	(delegate (eval (sml-re-assoc sml-delegate sym))))
-    (or (when indent-data
-	  (if (or style (not delegate))
-	      ;; normal indentation
-	      (let ((indent (sml-get-indent indent-data (or style 0))))
-		(when indent
-		  (+ (if (sml-dangling-sym)
-			 (sml-indent-default 'noindent)
-		       (current-column))
-		     indent)))
-	    ;; delgate indentation to the parent
-	    (sml-forward-sym) (sml-backward-sexp nil)
-	    (let* ((parent-sym (save-excursion (sml-forward-sym)))
-		   (parent-indent (sml-re-assoc sml-indent-starters parent-sym)))
-	      ;; check the special rules
-	      ;;(sml-move-if (backward-word 1)
-		;;	   (looking-at "\\<else[ \t]+if\\>"))
-	      (+ (if (sml-dangling-sym)
-		     (sml-indent-default 'noindent)
-		   (current-column))
-		 (or (sml-get-indent indent-data 1 'strict)
-		     (sml-get-indent parent-indent 1 'strict)
-		     (sml-get-indent indent-data 0)
-		     (sml-get-indent parent-indent 0))))))
-	;; (save-excursion
-	;;   (sml-forward-sym)
-	;;   (when (> (sml-point-after (end-of-line))
-	;; 	      (progn (sml-forward-spaces) (point)))
-	;;     (current-column)))
-	)))
+  (assert (equal sym (save-excursion (sml-forward-sym))))
+  (save-excursion
+    (let ((delegate (assoc sym sml-close-paren))
+	  (head-sym sym))
+      (when delegate
+	;;(sml-find-match-backward sym delegate)
+	(sml-forward-sym) (sml-backward-sexp nil)
+	(setq head-sym
+	      (if (cdr delegate)
+		  (save-excursion (sml-forward-sym))
+		(sml-backward-spaces) (sml-backward-sym))))
+
+      (let ((idata (assoc head-sym sml-indent-rule)))
+	(when idata
+	  ;;(if (or style (not delegate))
+	  ;; normal indentation
+	  (let ((indent (sml-get-indent idata sym)))
+	    (when indent (+ (sml-delegated-indent) indent)))
+	  ;; delgate indentation to the parent
+	  ;;(sml-forward-sym) (sml-backward-sexp nil)
+	  ;;(let* ((parent-sym (save-excursion (sml-forward-sym)))
+	  ;;     (parent-indent (cdr (assoc parent-sym sml-indent-starters))))
+	  ;; check the special rules
+	  ;;(+ (sml-delegated-indent)
+	  ;; (or (sml-get-indent indent-data 1 'strict)
+	  ;; (sml-get-indent parent-indent 1 'strict)
+	  ;; (sml-get-indent indent-data 0)
+	  ;; (sml-get-indent parent-indent 0))))))))
+	  )))))
 
 (defun sml-indent-default (&optional noindent)
   (let* ((sym-after (save-excursion (sml-forward-sym)))
 	 (prec-after (sml-op-prec sym-after 'back))
+	 (indent-after (or (cdr (assoc sym-after sml-symbol-indent)) 0))
 	 (_ (sml-backward-spaces))
 	 (sym-before (sml-backward-sym))
 	 (prec (or (sml-op-prec sym-before 'back) prec-after 100))
 	 (sym-indent (and sym-before (sml-get-sym-indent sym-before))))
-    (or (and sym-indent (if noindent (current-column) sym-indent))
-	(progn
-	  ;;(sml-forward-sym)
-	  (while (and (not (sml-bolp))
-		      (sml-move-if (sml-backward-sexp (1- prec)))
-		      (not (sml-bolp)))
-	    (while (sml-move-if (sml-backward-sexp prec))))
-	  (or (and (not (sml-bolp))
-		   ;; If we backed over an equal char which was not the
-		   ;; polymorphic equality, then we did what amounts to
-		   ;; delegate indent from `=' to the corresponding head, so we
-		   ;; need to look at the preceding symbol and follow its
-		   ;; intentation instructions.
-		   (= prec 65) (string-equal "=" sym-before)
-	           (save-excursion
-		     (sml-backward-spaces)
-		     (let* ((sym (sml-backward-sym))
-			    (sym-indent (sml-re-assoc sml-indent-starters sym)))
-		       (when sym-indent
-			 (if noindent
-			     (current-column)
-			   (sml-get-sym-indent sym 1))))))
-	      (current-column))))))
+    (if sym-indent
+	(if noindent (current-column) (+ sym-indent indent-after))
+      ;;(sml-forward-sym)
+      (while (and (not (sml-bolp))
+		  (sml-move-if (sml-backward-sexp (1- prec)))
+		  (not (sml-bolp)))
+	(while (sml-move-if (sml-backward-sexp prec))))
+;;       (or (and (not (sml-bolp))
+;; 	       ;; If we backed over an equal char which was not the
+;; 	       ;; polymorphic equality, then we did what amounts to
+;; 	       ;; delegate indent from `=' to the corresponding head, so we
+;; 	       ;; need to look at the preceding symbol and follow its
+;; 	       ;; intentation instructions.
+;; 	       (string-equal "d=" sym-before)
+;; 	       (let ((point (point)))
+;; 		 (sml-backward-spaces)
+;; 		 (let* ((sym (sml-backward-sym))
+;; 			(sym-indent (cdr (assoc-default sym sml-indent-rule))))
+;; 		   (when sym-indent
+;; 		     (if noindent (current-column)
+;; 		       (let ((sym-indent (sml-get-sym-indent sym 1)))
+;; 			 (if sym-indent (+ indent-after sym-indent)
+;; 			   (goto-char point)
+;; 			   (+ indent-after (current-column)))))))))
+      
+      (when noindent
+	(sml-move-if (sml-backward-spaces)
+		     (string-match sml-starters-re (or (sml-backward-sym) ""))))
+      (current-column))))
 
 
 (defun sml-bolp ()
@@ -654,18 +669,12 @@ the parent at the end of this function."
     (current-column)))
 
 
-(defun sml-find-match-indent (this match &optional indented)
-  (save-excursion
-    (sml-find-match-backward this match)
-    (if (or indented (not (sml-dangling-sym)))
-        (current-column)
-      (sml-indent-default 'noindent))))
-
 (defun sml-find-matching-starter (regexp &optional prec)
-  (sml-backward-sexp prec)
-  (while (not (or (looking-at regexp) (bobp)))
-    (sml-backward-sexp prec))
-  (not (bobp)))
+  (ignore-errors
+    (sml-backward-sexp prec)
+    (while (not (or (looking-at regexp) (bobp)))
+      (sml-backward-sexp prec))
+    (not (bobp))))
 
 (defun sml-comment-indent ()
   (if (looking-at "^(\\*")              ; Existing comment at beginning
@@ -677,10 +686,8 @@ the parent at the end of this function."
 
 ;;; INSERTING PROFORMAS (COMMON SML-FORMS) 
 
-(defvar sml-forms-alist
-  '(("let") ("local") ("case") ("abstype") ("datatype")
-    ("signature") ("structure") ("functor"))
-  "*The list of templates to auto-insert.
+(defvar sml-forms-alist nil
+  "*The alist of templates to auto-insert.
 
 You can extend this alist to your heart's content. For each additional
 template NAME in the list, declare a keyboard macro or function (or
@@ -695,12 +702,88 @@ and `sml-addto-forms-alist'.
 `sml-forms-alist' understands let, local, case, abstype, datatype,
 signature, structure, and functor by default.")
 
+(defmacro sml-def-skeleton (name interactor &rest elements)
+  (let ((fsym (intern (concat "sml-form-" name))))
+    `(progn
+       (add-to-list 'sml-forms-alist ',(cons name fsym))
+       (define-skeleton ,fsym
+	 ,(format "SML-mode skeleton for `%s..' expressions" name)
+	 ,interactor
+	 ,(concat " " name " ") >
+	 ,@elements))))
+(put 'sml-def-skeleton 'lisp-indent-function 2)
+
+(sml-def-skeleton "let" nil
+  _ "\nin" > "\nend" >)
+
+(sml-def-skeleton "if" nil
+  _ " then " > "\nelse " >)
+
+(sml-def-skeleton "local" nil
+  _ "\nin" > "\nend" >)
+
+(sml-def-skeleton "case" "Case expr: "
+  str (if sml-case-indent "\nof " " of\n") > _ " => ")
+
+(sml-def-skeleton "signature" "Signature name: "
+  str " =\nsig" > "\n" > _ "\nend" >)
+
+(sml-def-skeleton "structure" "Structure name: "
+  str " =\nstruct" > "\n" > _ "\nend" >)
+
+(sml-def-skeleton "functor" "Functor name: "
+  str " () : =\nstruct" > "\n" > _ "\nend" >)
+
+(sml-def-skeleton "datatype" "Datatype name and type parameters: "
+  str " =" \n)
+
+(sml-def-skeleton "abstype" "Abstype name and type parameters: "
+  str " =" \n _ "\nwith" > "\nend" >)
+
+;;
+
+(defun sml-forms-menu (menu)
+  (easy-menu-filter-return
+   (easy-menu-create-menu "Forms"
+	 (mapcar (lambda (x)
+		   (let ((name (car x))
+			 (fsym (cdr x)))
+		     (vector name fsym t)))
+		 sml-forms-alist))))
+
+(defvar sml-last-form "let")
+
+(defun sml-insert-form (name newline)
+  "Interactive short-cut to insert a common ML form.
+If a perfix argument is given insert a newline and indent first, or
+just move to the proper indentation if the line is blank\; otherwise
+insert at point (which forces indentation to current column).
+
+The default form to insert is 'whatever you inserted last time'
+\(just hit return when prompted\)\; otherwise the command reads with 
+completion from `sml-forms-alist'."
+  (interactive
+   (list (completing-read
+	  (format "Form to insert: (default %s) " sml-last-form)
+	  sml-forms-alist nil t nil)
+	 current-prefix-arg))
+  ;; default is whatever the last insert was...
+  (if (string= name "") (setq name sml-last-form) (setq sml-last-form name))
+  (unless (or (not newline)
+	      (save-excursion (beginning-of-line) (looking-at "\\s-*$")))
+    (insert "\n"))
+  (let ((f (cdr (assoc name sml-forms-alist))))
+    (cond
+     ((commandp f) (command-execute f))
+     (f (funcall f))
+     (t (error "Undefined form: %s" name)))))
+
 ;; See also macros.el in emacs lisp dir.
 
 (defun sml-addto-forms-alist (name)
   "Assign a name to the last keyboard macro defined.
 Argument NAME is transmogrified to sml-form-NAME which is the symbol
-actually defined. 
+actually defined.
 
 The symbol's function definition becomes the keyboard macro string.
 
@@ -711,181 +794,16 @@ and add these macros to your .emacs file.
 
 See also `edit-kbd-macro' which is bound to \\[edit-kbd-macro]."
   (interactive "sName for last kbd macro (\"sml-form-\" will be added): ")
-  (if (string-equal name "")
-      (error "No command name given")
-    (name-last-kbd-macro (intern (concat "sml-form-" name)))
-    (message (concat "Macro bound to sml-form-" name))
-    (or (assoc name sml-forms-alist)
-        (setq sml-forms-alist (cons (list name) sml-forms-alist)))))
+  (when (string= name "") (error "No command name given"))
+  (let ((fsym (intern (concat "sml-form-" name))))
+    (name-last-kbd-macro fsym)
+    (message "Macro bound to %s" fsym)
+    (add-to-list 'sml-forms-alist (cons name fsym))))
 
 ;; at a pinch these could be added to SML/Forms menu through the good
 ;; offices of activate-menubar-hook or something... but documentation
 ;; of this and/or menu-bar-update-hook is sparse in 19.33. anyway, use
 ;; completing read for sml-insert-form prompt...
-
-(defvar sml-last-form "let"
-  "The most recent sml form inserted.")
-
-(defun sml-insert-form (arg)
-  "Interactive short-cut to insert a common ML form.
-If a perfix argument is given insert a newline and indent first, or
-just move to the proper indentation if the line is blank\; otherwise
-insert at point (which forces indentation to current column).
-
-The default form to insert is 'whatever you inserted last time'
-\(just hit return when prompted\)\; otherwise the command reads with 
-completion from `sml-forms-alist'."
-  (interactive "P")
-  (let ((name (completing-read
-               (format "Form to insert: (default %s) " sml-last-form)
-               sml-forms-alist nil t nil)))
-    ;; default is whatever the last insert was...
-    (if (string= name "") (setq name sml-last-form))
-    (setq sml-last-form name)
-    (if arg
-        (if (save-excursion (beginning-of-line) (looking-at "[ \t]*$"))
-            (sml-indent-line)
-          (newline-and-indent)))
-    (cond ((string= name "let") (sml-form-let))
-          ((string= name "local") (sml-form-local))
-          ((string= name "case") (sml-form-case))
-          ((string= name "abstype") (sml-form-abstype))
-          ((string= name "datatype") (sml-form-datatype))
-          ((string= name "functor") (sml-form-functor))
-          ((string= name "structure") (sml-form-structure))
-          ((string= name "signature") (sml-form-signature))
-          (t
-           (let ((template (intern (concat "sml-form-" name))))
-             (if (fboundp template)
-                 (if (commandp template)
-                     ;; it may be a named kbd macro too
-                     (command-execute template)
-                   (funcall template))
-               (error
-                (format "Undefined format function: %s" template))))))))
-
-(defun sml-form-let () 
-  "Insert a `let in end' template."
-  (interactive)
-  (sml-let-local "let"))
-
-(defun sml-form-local ()
-  "Insert a `local in end' template."
-  (interactive)
-  (sml-let-local "local"))
-
-(defun sml-let-local (starter)
-  "Insert a let or local template, depending on STARTER string."
-  (let ((indent (current-column)))
-    (insert starter)
-    (insert "\n") (indent-to (+ sml-indent-level indent))
-    (save-excursion                     ; so point returns here
-      (insert "\n")
-      (indent-to indent)
-      (insert "in\n")
-      (indent-to (+ sml-indent-level indent))
-      (insert "\n")
-      (indent-to indent)
-      (insert "end"))))
-
-(defun sml-form-case ()
-  "Insert a case expression template, prompting for the case-expresion."
-  (interactive)
-  (let ((expr (read-string "Case expr: "))
-        (indent (current-column)))
-    (insert (concat "case " expr))
-    (if sml-case-indent
-        (progn
-          (insert "\n")
-          (indent-to (+ 2 indent))
-          (insert "of "))
-      (insert " of\n")
-      (indent-to (+ indent sml-indent-level)))
-    (save-excursion (insert " => "))))
-
-(defun sml-form-signature ()
-  "Insert a generative signature binding, prompting for the name."
-  (interactive)
-  (let ((indent (current-column))
-        (name (read-string "Signature name: ")))
-    (insert (concat "signature " name " ="))
-    (insert "\n")
-    (indent-to (+ sml-structure-indent indent))
-    (insert "sig\n")
-    (indent-to (+ sml-structure-indent sml-indent-level indent))
-    (save-excursion
-      (insert "\n")
-      (indent-to (+ sml-structure-indent indent))
-      (insert "end"))))
-
-(defun sml-form-structure ()
-  "Insert a generative structure binding, prompting for the name.
-The command also prompts for any signature constraint -- you should
-specify \":\" or \":>\" and the constraining signature."
-  (interactive)
-  (let ((indent (current-column))
-        (name (read-string (concat "Structure name: ")))
-        (signame (read-string "Signature constraint (default none): ")))
-    (insert (concat "structure " name " "))
-    (insert (if (string= "" signame) "=" (concat signame " =")))
-    (insert "\n")
-    (indent-to (+ sml-structure-indent indent))
-    (insert "struct\n")
-    (indent-to (+ sml-structure-indent sml-indent-level indent))
-    (save-excursion
-      (insert "\n")
-      (indent-to (+ sml-structure-indent indent))
-      (insert "end"))))
-
-(defun sml-form-functor ()
-  "Insert a genarative functor binding, prompting for the name.
-The command also prompts for the required signature constraint -- you
-should specify \":\" or \":>\" and the constraining signature."
-  (interactive)
-  (let ((indent(current-indentation))
-        (name (read-string "Name of functor: "))
-        (signame (read-string "Signature constraint: " ":" )))
-    (insert (concat "functor " name " () " signame " ="))
-    (insert "\n")
-    (indent-to (+ sml-structure-indent indent))
-    (insert "struct\n")
-    (indent-to (+ sml-structure-indent sml-indent-level indent))
-    (save-excursion                     ; return to () instead?
-      (insert "\n")
-      (indent-to (+ sml-structure-indent indent))
-      (insert "end"))))
-
-(defun sml-form-datatype ()
-  "Insert a datatype declaration, prompting for name and type parameter."
-  (interactive)
-  (let ((indent (current-indentation))
-        (type (read-string "Datatype type parameter (default none): "))
-        (name (read-string (concat "Name of datatype: "))))
-    (insert (concat "datatype "
-                    (if (string= type "") "" (concat type " "))
-                    name " ="))
-    (insert "\n")
-    (indent-to (+ sml-indent-level indent))))
-
-(defun sml-form-abstype ()
-  "Insert an abstype declaration, prompting for name and type parameter."
-  (interactive)
-  (let ((indent(current-indentation))
-        (type (read-string "Abstype type parameter (default none): "))
-        (name (read-string "Name of abstype: ")))
-    (insert (concat "abstype "
-                    (if (string= type "") "" (concat type " "))
-                    name " ="))
-    (insert "\n")
-    (indent-to (+ sml-indent-level indent))
-    (save-excursion
-      (insert "\n")
-      (indent-to indent)
-      (insert "with\n")
-      (indent-to (+ sml-indent-level indent))
-      (insert "\n")
-      (indent-to indent)
-      (insert "end"))))
 
 ;;; & do the user's customisation
 (run-hooks 'sml-load-hook)

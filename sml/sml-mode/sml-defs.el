@@ -68,37 +68,29 @@
     ("%&$+-/:<=>?@`^|"	 . "."))
   "The syntax table used in sml-mode.")
 
-(defconst sml-menu
+
+
+(easy-menu-define sml-mode-menu sml-mode-map "Menu used in sml-mode."
   '("SML"
     ("Process"
-     ["Start default ML compiler" sml		:active (fboundp 'sml)]
-     ["-" nil nil]
-     ["run CM.make"		sml-make	:active (featurep 'sml-proc)]
-     ["load ML source file"	sml-load-file	:active (featurep 'sml-proc)]
-     ["switch to ML buffer"	switch-to-sml	:active (featurep 'sml-proc)]
-     ["--" nil nil]
-     ["send buffer contents"	sml-send-buffer	:active (featurep 'sml-proc)]
-     ["send region"		sml-send-region	:active (featurep 'sml-proc)]
-     ["send paragraph"		sml-send-function :active (featurep 'sml-proc)]
-     ["goto next error"		sml-next-error	:active (featurep 'sml-proc)]
-     ["---" nil nil]
-     ["Standard ML of New Jersey" sml-smlnj	:active (fboundp 'sml-smlnj)]
-     ["Poly/ML"			sml-poly-ml	:active (fboundp 'sml-poly-ml)]
-     ["Moscow ML"		sml-mosml	:active (fboundp 'sml-mosml)]
+     ["Start default ML compiler" sml		(fboundp 'sml)]
+     ["-" nil nil]				
+     ["run CM.make"		sml-make	(featurep 'sml-proc)]
+     ["load ML source file"	sml-load-file	(featurep 'sml-proc)]
+     ["switch to ML buffer"	switch-to-sml	(featurep 'sml-proc)]
+     ["--" nil nil]				
+     ["send buffer contents"	sml-send-buffer	(featurep 'sml-proc)]
+     ["send region"		sml-send-region	(featurep 'sml-proc)]
+     ["send paragraph"		sml-send-function (featurep 'sml-proc)]
+     ["goto next error"		sml-next-error	(featurep 'sml-proc)]
+     ["---" nil nil]				
+     ["Standard ML of New Jersey" sml-smlnj	(fboundp 'sml-smlnj)]
+     ["Poly/ML"			sml-poly-ml	(fboundp 'sml-poly-ml)]
+     ["Moscow ML"		sml-mosml	(fboundp 'sml-mosml)]
      ["Help for Inferior ML"	(describe-function 'inferior-sml-mode) :active (featurep 'sml-proc)])
     ["electric pipe"     sml-electric-pipe t]
     ["insert SML form"   sml-insert-form t]
-    ("Forms" 
-     ["abstype"     sml-form-abstype t]
-     ["datatype"    sml-form-datatype t]
-     ["-" nil nil]
-     ["let"         sml-form-let t]
-     ["local"       sml-form-local t]
-     ["case"        sml-form-case t]
-     ["--" nil nil]
-     ["signature"   sml-form-signature t]
-     ["functor"     sml-form-functor t]
-     ["structure"   sml-form-structure t])
+    ("Forms" :filter sml-forms-menu)
     ("Format/Mode Variables"
      ["indent region"             sml-indent-region t]
      ["outdent"                   sml-back-to-outer-indent t]
@@ -116,12 +108,6 @@
     ["SML mode version"            sml-mode-version t]
     ["-----" nil nil]
     ["Remove overlay"    (sml-error-overlay 'undo) :active (sml-overlay-active-p)]))
-
-(when (ignore-errors (require 'easymenu))
-  (easy-menu-define sml-mode-menu
-		    sml-mode-map
-		    "Menu used in sml-mode."
-		    sml-menu))
 
 ;;; Make's sure they appear in the menu bar when sml-mode-map is active.
 ;; On the hook for XEmacs only -- see easy-menu-add in auc-menu.el.
@@ -143,6 +129,11 @@
 (defconst sml-module-head-syms
   '("signature" "structure" "functor" "abstraction"))
 
+
+(defconst sml-begin-syms
+  '("let" "abstype" "local" "struct" "sig")
+  "Symbols matching the `end' symbol.")
+
 (defconst sml-begin-symbols-re
   (sml-syms-re "let" "abstype" "local" "struct" "sig")
   "Symbols matching the `end' symbol.")
@@ -154,6 +145,7 @@
 (defconst sml-sexp-head-symbols-re
   (sml-syms-re "let" "abstype" "local" "struct" "sig" "in" "with"
 	       "if" "then" "else" "case" "of" "fn" "fun" "val" "and"
+	       "datatype" "type" "exception" "open" "infix" "infixr" "nonfix"
 	       sml-module-head-syms
 	       "handle" "raise")
   "Symbols starting an sexp.")
@@ -166,35 +158,67 @@
 ;;   (sml-syms-re "in" "of" "end" "andalso")
 ;;   "Symbols that should not be confused with an arg.")
 
-(defconst sml-indent-starters
-  (list
-   (cons "\\<struct\\>" 0)
-   (cons (sml-syms-re sml-module-head-syms) '(sml-indent-level 0))
-   (cons "\\<local\\>" '(sml-indent-level 0))
-   (cons "\\<of\\>" '(3 nil))
-   (cons "\\<else\\>" '(sml-indent-level 0))
-   (cons "\\<in\\|fun\\|and\\>" '(sml-indent-level nil))
-   (cons (sml-syms-re "abstype" "case" "datatype"
-		      "if" "then" "else" "sharing" "infix" "infixr"
-		      "let" "local" "nonfix" "open" "raise" "sig"
-		      "struct" "type" "val" "while" "do" "with" "withtype")
-	 'sml-indent-level))
+(defconst sml-=-starter-syms
+  (list* "|" "val" "fun" "and" "datatype" "type" "abstype" "eqtype"
+	 sml-module-head-syms)
+  "Symbols that can be followed by a `='.")
+(defconst sml-=-starter-re
+  (concat "\\S.|\\S.\\|" (sml-syms-re (cdr sml-=-starter-syms)))
+  "Symbols that can be followed by a `='.")
+
+(defconst sml-indent-rule
+  (sml-preproc-alist
+   `(("struct" . 0)
+     (,sml-module-head-syms . ("d=" 0))
+     ("local" . ("in" 0))
+     ;;("of" . (3 nil))
+     ;;("else" . (sml-indent-level 0))
+     ;;(("in" "fun" "and" "of") . (sml-indent-level nil))
+     (,sml-=-starter-syms . (nil))
+     (("abstype" "case" "datatype" "if" "then" "else" "sharing" "infix" "infixr"
+       "let" "local" "nonfix" "open" "raise" "sig" "struct" "type" "val" "while"
+       "do" "with" "withtype"))))
   "")
 
 (defconst sml-starters-indent-after
   (sml-syms-re "let" "local" "struct" "in" "sig" "with")
   "Indent after these.")
 
-(defconst sml-=-starter-re
-  (sml-syms-re "val" "fun" "and" "datatype" "type" "abstype" "eqtype"
-	       sml-module-head-syms)
-  "keywords which can be followed by a `='")
-
 (defconst sml-delegate
-  (list
-   (cons (sml-syms-re "of" "else" "then") '(not (sml-bolp)))
-   (cons "\\<in\\>" t))
+  (sml-preproc-alist
+   `((("of" "else" "then" "d=") . (not (sml-bolp)))
+     ("in" . t)))
   "Words which might delegate indentation to their parent.")
+
+(defconst sml-symbol-indent
+  '(("fn" . -3)
+    ("of" . 1)
+    ;;("in" . 1)
+    ("d=" . 2))
+  "Special indentation alist for some symbols.")
+
+(defconst sml-open-paren
+  (sml-preproc-alist
+   `((,(list* "with" "in" sml-begin-syms) . "\\<end\\>")))
+  "Symbols that should behave somewhat like opening parens.")
+
+(defconst sml-close-paren
+  `(("in" . "\\<l\\(ocal\\|et\\)\\>")
+    ("with" . "\\<abstype\\>")
+    ("withtype" . "\\<\\(abs\\|data\\)type\\>")
+    ("end" . ,sml-begin-symbols-re)
+    ("then" . "\\<if\\>")
+    ("else" . "\\<if\\>")
+    ("of" . "\\<case\\>")
+    ("d=" . nil))
+  "Symbols that should behave somewhat like close parens.")
+
+(defconst sml-agglomerate-re "\\<else[ \t]+if\\>"
+  "Regexp of compound symbols (pairs of symbols to be considered as one).")
+
+(defconst sml-non-nested-of-starter-re
+  (sml-syms-re "datatype" "abstype" "exception")
+  "Symbols that can introduce an `of' that shouldn't behave like a paren.")
 
 (defconst sml-starters-syms
   (append sml-module-head-syms
@@ -206,10 +230,12 @@
 (defconst sml-starters-re (sml-syms-re sml-starters-syms))
 
 (defconst sml-exptrail-syms
-  '("if" "then" "else" "while" "do" "case" "of" "raise" "fn"))
+  '("if" "then" "else" "while" "withtype" "do" "case" "of" "raise" "fn"))
 
 (defconst sml-pipehead-re
-  (sml-syms-re "fun" "fn" "and" "handle" "case" "datatype" "abstype")
+  (concat
+   "|\\S.\\|"
+   (sml-syms-re "of" "fun" "fn" "and" "handle" "datatype" "abstype"))
   "A `|' corresponds to one of these.")
 
 ;;

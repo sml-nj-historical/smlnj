@@ -1,5 +1,4 @@
-* in SML `!' is like a single-char symbol (not an operator).
-  sml-mode considers it as a tightly-binding prefix.  A similar problem
-  happens with `~'.
+* indentation of a declaration after a long `datatype' is slow
 
-* `raise', `div' and `mod' should not be treated like functions.
+* buggy indentation samples:
+

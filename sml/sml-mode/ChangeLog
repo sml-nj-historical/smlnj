@@ -1,3 +1,26 @@
+1999-06-16  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-move.el (sml-(for|back)ward-sym): distinguishes between
+	  operator "=" and syntax for definitions "d=".
+
+	* sml-defs.el (sml-indent-starters, sml-delegate): simplified.
+	(sml-symbol-indent): added outdentation for `fn' and generalized it to
+	  also work for `of' and `in' and `end'.
+
+	* sml-mode.el (sml-nested-if-indent): reintroduced as well as the special
+	  casing code for it.
+	(sml-indent-relative): generalize the treatment of `of', `in', `end', ...
+	(sml-electric-pipe): removed the slow behavior and added smarts for the
+	  never-used type-variable arguments for function definitions.
+
+1999-06-15  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-defs.el (sml-mode-menu), sml-mode.el (sml-forms-menu): make the menu
+	  dynamically.
+
+	* sml-mode.el (sml-form-<foo>): use skeletons.
+	(sml-calculate-indentation): added `with' indentation.
+
 1999-06-14  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* sml-move.el (sml-(for|back)ward-sym): now also return the string if any

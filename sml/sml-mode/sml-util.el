@@ -37,6 +37,18 @@ and is hence executed at macro-expansion-time."
 	  (flatten head rest)
 	(cons head rest)))))
 
+(defun sml-preproc-alist (al)
+  "Expand an alist where keys can be lists of keys into a normal one."
+  (reduce (lambda (x al)
+	    (let ((k (car x))
+		  (v (cdr x)))
+	      (if (consp k)
+		  (append (mapcar (lambda (y) (cons y v)) k) al)
+		(cons x al))))
+	  al
+	  :initial-value nil
+	  :from-end t))
+
 ;;; 
 ;;; temp files
 ;;; 
@@ -56,14 +68,22 @@ and is hence executed at macro-expansion-time."
 (add-hook 'kill-emacs-hook 'delete-temp-dirs)
 
 (defun make-temp-dir (s)
+  "Create a temporary directory.
+The returned dir name (created by appending some random characters at the end
+of S and prepending `temporary-file-directory' if it is not already absolute)
+is guaranteed to point to a newly created empty directory."
   (let* ((prefix (expand-file-name s temp-file-dir))
 	 (dir (make-temp-name prefix)))
     (if (not (ignore-errors (make-directory dir t) t))
 	(make-temp-dir prefix)
       (push dir temp-directories)
-      dir)))
+      (file-name-as-directory dir))))
 
 (defun make-temp-file (s)
+  "Create a temporary file.
+The returned file name (created by appending some random characters at the end
+of S and prepending `temporary-file-directory' if it is not already absolute)
+is guaranteed to point to a newly created empty file."
   (unless (file-name-absolute-p s)
     (unless (equal (user-uid)
 		   (third (file-attributes temporary-file-directory)))
