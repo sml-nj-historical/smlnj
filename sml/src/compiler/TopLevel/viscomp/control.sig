@@ -98,6 +98,7 @@ sig
   val foldconst : bool ref
   val etasplit : bool ref
   val printLambda : bool ref
+  val printFlint : bool ref
   val printit : bool ref
   val printsize : bool ref
   val scheduling : bool ref

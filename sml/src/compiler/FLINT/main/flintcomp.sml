@@ -47,7 +47,7 @@ fun prGen (flag,printE) s e =
    e)
 
 val prLexp  = prGen (CGC.printLambda, MCprint.printLexp)
-val prFlint = prGen (CGC.printLambda, PPFlint.printProg)
+val prFlint = prGen (CGC.printFlint, PPFlint.printProg)
 val prCps   = prGen (CGC.printit, PPCps.printcps0)
 
 (** compiling FLINT code into the binary machine code *)

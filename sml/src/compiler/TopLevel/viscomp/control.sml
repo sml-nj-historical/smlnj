@@ -111,6 +111,7 @@ structure Control : CONTROL =
       val foldconst = ref true
       val etasplit = ref true
       val printLambda = ref false
+      val printFlint = ref false
       val printit = ref false
       val printsize = ref false
       val scheduling = ref true
