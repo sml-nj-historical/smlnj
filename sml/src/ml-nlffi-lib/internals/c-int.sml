@@ -402,9 +402,15 @@ structure C :> C_INT = struct
 	fun null t = cast t vNull
 	val null' = CMemory.null
 
+	val fnull' = CMemory.null
+	fun fnull t = Heavy.fptr t fnull'
+
 	val vIsNull = CMemory.isNull
 	fun isNull p = vIsNull (inject p)
 	val isNull' = CMemory.isNull
+
+	fun isFNull (p, _) = CMemory.isNull p
+	val isFNull' = CMemory.isNull
 
 	fun |+! s (p, i) = p ++ (Word.toInt s * i)
 	fun |-! s (p, p') = (p -- p') div Word.toInt s

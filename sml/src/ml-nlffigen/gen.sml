@@ -258,6 +258,11 @@ end = struct
 	  | dim_ty n = Con ("dg" ^ Int.toString (n mod 10),
 			    [dim_ty (n div 10)])
 
+	val dim_ty =
+	    fn n =>
+	       if n < 0 then raise Fail "negative dimension"
+	       else dim_ty n
+
 	fun Suobj'rw p sut = Con ("su_obj" ^ p, [sut, Type "rw"])
 	fun Suobj'ro sut = Con ("su_obj'", [sut, Type "ro"])
 

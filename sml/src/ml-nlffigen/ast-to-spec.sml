@@ -120,7 +120,11 @@ structure AstToSpec = struct
 	  | valty (A.Numeric _) = bug "numeric type not (yet) supported"
 	  | valty (A.Array (NONE, t)) = valty (A.Pointer t)
 	  | valty (A.Array (SOME (n, _), t)) =
-	    Spec.ARR { t = valty t, d = Int.fromLarge n, esz = sizeOf t }
+	    let val d = Int.fromLarge n
+	    in
+		if d < 0 then err "negative dimension"
+		else Spec.ARR { t = valty t, d = d, esz = sizeOf t }
+	    end
 	  | valty (A.Pointer t) =
 	    (case getCoreType t of
 		 A.Void => Spec.VOIDPTR

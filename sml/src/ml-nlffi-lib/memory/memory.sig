@@ -8,7 +8,7 @@
 signature CMEMORY = sig
     exception OutOfMemory
 
-    type addr
+    eqtype addr
     val null : addr
     val isNull : addr -> bool
     val ++ : addr * int -> addr

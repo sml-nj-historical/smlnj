@@ -14,6 +14,23 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/01/21
+Tag: blume-20020121-ff
+Description:
+
+Another day of fiddling with the FFI...
+
+1. Bug fix/workaround:  CKIT does not complain about negative array
+   dimensions, so ml-nlffigen has to guard itself against this possibility.
+   (Otherwise a negative dimension would send it into an infinite loop.)
+
+2. Some of the abstract types (light objects, light pointers, most "base"
+   types) in structure C are now eqtypes.
+
+3. Added constructors and test functions for NULL function pointers.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/01/18
 Tag: blume-20020118-ready-for-new-release
 Description:

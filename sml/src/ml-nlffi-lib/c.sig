@@ -28,7 +28,7 @@ signature C = sig
 
     (* an alternative "light-weight" version that does not carry RTTI at
      * the cost of requiring explicit passing of RTTI for certain operations *)
-    type ('t, 'c) obj'
+    eqtype ('t, 'c) obj'
 
     (* constness property, to be substituted for 'c *)
     type ro and rw
@@ -38,14 +38,14 @@ signature C = sig
     type ('t, 'n) arr			(* 'n-sized array with 't elements *)
 
     (* light-weight alternative *)
-    type ('t, 'c) ptr'
+    eqtype ('t, 'c) ptr'
 
     (* void* and function pointers *)
-    type voidptr			(* C's void* *)
+    eqtype voidptr			(* C's void* *)
     type 'f fptr			(* a function pointer *)
 
     (* alt *)
-    type 'f fptr'
+    eqtype 'f fptr'
 
     (* structures and unions *)
     type 'tag su			(* struct/union named 'tag;
@@ -53,11 +53,11 @@ signature C = sig
 					 * defined in the Tag module *)
 
     (* primtypes (signed/unsigned char, int, short, long; float, double) *)
-    type schar  and uchar
-    type sint   and uint
-    type sshort and ushort
-    type slong  and ulong
-    type float  and double
+    eqtype schar  and uchar
+    eqtype sint   and uint
+    eqtype sshort and ushort
+    eqtype slong  and ulong
+    type float    and double
 
     (* going from abstract to concrete and vice versa *)
     structure Cvt : sig
@@ -117,7 +117,7 @@ signature C = sig
     type ('s, 'c) su_obj' = ('s su, 'c) obj'
 
     (* bitfields aren't "ordinary objects", so they have their own type *)
-    type 'c sbf and 'c ubf
+    eqtype 'c sbf and 'c ubf
 
     (*
      * A family of types and corresponding values representing natural numbers.
@@ -442,6 +442,12 @@ signature C = sig
 	(* the "light" NULL pointer is simply a polymorphic constant *)
 	val null' : ('t, 'c) ptr'
 
+	(* fptr version of NULL *)
+	val fnull : 'f fptr T.typ -> 'f fptr
+
+	(* again, "light" version is simply a polymorphic constant *)
+	val fnull' : 'f fptr'
+
 	(* checking for NULL pointer *)
 	val vIsNull : voidptr -> bool
 
@@ -450,6 +456,12 @@ signature C = sig
 
 	(* alt *)
 	val isNull' : ('t, 'c) ptr' -> bool
+
+	(* checking a function pointer for NULL *)
+	val isFNull : 'f fptr -> bool
+
+	(* alt *)
+	val isFNull' : 'f fptr' -> bool
 
 	(* pointer arithmetic *)
 	val |+| : ('t, 'c) ptr * int -> ('t, 'c) ptr
