@@ -19,17 +19,18 @@ signature INTEGER =
     val fromInt   : Int.int -> int
 
     val ~ : int -> int
+    val + : int * int -> int
+    val - : int * int -> int
     val * : int * int -> int
     val div : int * int -> int
     val mod : int * int -> int
     val quot : int * int -> int
     val rem : int * int -> int
-    val + : int * int -> int
-    val - : int * int -> int
-    val abs : int -> int
 
     val min : (int * int) -> int
     val max : (int * int) -> int
+
+    val abs : int -> int
 
     val sign     : int -> Int.int
     val sameSign : (int * int) -> bool

@@ -322,15 +322,21 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 		       end
 		| (T.ABSTRACT _, _) =>
 		    (if TU.eqTycon (tyc, BT.int64Tycon) then
-			 PP.string ppstrm "<int64>"
+			 case Obj.toTuple obj of
+			     [hi, lo] =>
+			     let val i =
+				     InlineT.Int64.intern (Obj.toWord32 hi,
+							   Obj.toWord32 lo)
+			     in PP.string ppstrm (Int64.toString i)
+			     end
+			   | _ => PP.string ppstrm "<int64?>"
 		     else  if TU.eqTycon (tyc, BT.word64Tycon) then
 			 case Obj.toTuple obj of
 			     [hi, lo] =>
 			     let val w =
 				     InlineT.Word64.intern (Obj.toWord32 hi,
 							    Obj.toWord32 lo)
-			     in
-				 PP.string ppstrm ("0wx" ^ Word64.toString w)
+			     in PP.string ppstrm ("0wx" ^ Word64.toString w)
 			     end
 			   | _ => PP.string ppstrm "<word64?>"
 		     else PP.string ppstrm "-")

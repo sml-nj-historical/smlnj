@@ -16,20 +16,18 @@ structure Int32Imp : INTEGER =
     val minInt : int option = SOME minIntVal
     val maxInt : int option = SOME 2147483647
 
-    val op *    : int * int -> int  = I32.*
-    val op quot : int * int -> int  = I32.quot
-    val op rem  : int * int -> int  = I32.rem
-    val op div  : int * int -> int  = I32.div
-    val op mod  : int * int -> int  = I32.mod
+    val ~       : int -> int = I32.~
     val op +    : int * int -> int  = I32.+
     val op -    : int * int -> int  = I32.-
-    val ~       : int -> int = I32.~
+    val op *    : int * int -> int  = I32.*
+    val op div  : int * int -> int  = I32.div
+    val op mod  : int * int -> int  = I32.mod
+    val quot    : int * int -> int  = I32.quot
+    val rem     : int * int -> int  = I32.rem
     val op <    : int * int -> bool = I32.<
     val op <=   : int * int -> bool = I32.<=
     val op >    : int * int -> bool = I32.>
     val op >=   : int * int -> bool = I32.>=
-    val op =    : int * int -> bool = I32.=
-    val op <>   : int * int -> bool = I32.<>
     val min     : int * int -> int = I32.min
     val max     : int * int -> int = I32.max
     val abs     : int -> int = I32.abs
@@ -54,5 +52,3 @@ structure Int32Imp : INTEGER =
     val toLarge : int -> LargeInt.int = I32.toLarge
     val fromLarge : LargeInt.int -> int = I32.fromLarge
   end
-
-

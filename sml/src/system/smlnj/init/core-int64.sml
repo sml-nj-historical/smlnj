@@ -9,6 +9,8 @@
 structure CoreInt64 = struct
 
   local
+      structure CII = CoreIntInf
+
       infix o val op o = InLine.compose
       val not = InLine.inlnot
       infix 7 * val op * = InLine.w32mul
@@ -16,6 +18,10 @@ structure CoreInt64 = struct
       infix 5 << >> val op << = InLine.w32lshift val op >> = InLine.w32rshiftl
       infix 5 & val op & = InLine.w32andb
       infix 4 < val op < = InLine.w32lt
+      infix 4 <> val op <> = InLine.w32ne
+      infix 4 == val op == = InLine.w32eq
+      val ~ = InLine.w32neg
+      val ^ = InLine.w32notb
 
       fun lift1' f = f o InLine.i64p
       fun lift1 f = InLine.p64i o lift1' f
@@ -23,34 +29,55 @@ structure CoreInt64 = struct
       fun lift2 f = InLine.p64i o lift2' f
 
       fun neg64 (0wx80000000, 0w0) = raise Assembly.Overflow
-	| neg64 (hi, 0w0) = (InLine.w32neg hi, 0w0)
-	| neg64 (hi, lo) = (InLine.w32notb hi, InLine.w32neg lo)
+	| neg64 (hi, 0w0) = (~hi, 0w0)
+	| neg64 (hi, lo) = (^hi, ~lo)
 
-      fun notyet _ = raise Assembly.Overflow
+      fun negbit hi = hi & 0wx80000000
+      fun isneg hi = negbit hi <> 0w0
 
-      val add64 = notyet
-      val sub64 = notyet
-      val mul64 = notyet
-      val div64 = notyet
-      val mod64 = notyet
+      fun add64 ((hi1, lo1), (hi2, lo2)) =
+	  let val (hi, lo) = (hi1 + hi2, lo1 + lo2)
+	      val hi = if lo < lo1 then hi + 0w1 else hi
+	      val nb1 = negbit hi1
+	  in if nb1 <> negbit hi2 orelse nb1 == negbit hi then (hi, lo)
+	     else raise Assembly.Overflow
+	  end
 
-      fun negbit hi = InLine.w32ne (InLine.w32andb (hi, 0wx80000000), 0w0)
+      fun sub64 ((hi1, lo1), (hi2, lo2)) =
+	  let val (hi, lo) = (hi1 - hi2, lo1 - lo2)
+	      val hi = if lo1 < lo then hi - 0w1 else hi
+	      val nb1 = negbit hi1
+	  in if nb1 == negbit hi2 orelse nb1 == negbit hi then (hi, lo)
+	     else raise Assembly.Overflow
+	  end
+
+      (* I am definitely too lazy to do this the pedestrian way, so
+       * here we go... *)
+      fun mul64 (x, y) =
+	  CII.testInf64 (CII.* (CII.extendInf64 x, CII.extendInf64 y))
+
+      fun div64 (_, (0w0, 0w0)) = raise Assembly.Div
+	| div64 (x, (0w0, 0w1)) = x
+	| div64 (x, (0wxffffffff, 0wxffffffff)) = neg64 x
+	| div64 (x, y) =
+	    (* again, the easy way out... *)
+	    CII.truncInf64 (CII.div (CII.extendInf64 x, CII.extendInf64 y))
+
+      fun mod64 (x, y) = sub64 (x, mul64 (div64 (x, y), y))
 
       fun swap (x, y) = (y, x)
 
       fun lt64 ((hi1, lo1), (hi2, lo2)) =
-	  let fun normal () =
-		  hi1 < hi2 orelse (InLine.w32eq (hi1, hi2) andalso lo1 < lo2)
-	  in if negbit hi1 then
-		 if negbit hi2 then normal ()
-		 else true
+	  let fun normal () = hi1 < hi2 orelse (hi1 == hi2 andalso lo1 < lo2)
+	  in if isneg hi1 then
+		 if isneg hi2 then normal () else true
 	     else normal ()
 	  end
       val gt64 = lt64 o swap
       val le64 = not o gt64
       val ge64 = not o lt64
 
-      fun abs64 (hi, lo) = if negbit hi then neg64 (hi, lo) else (hi, lo)
+      fun abs64 (hi, lo) = if isneg hi then neg64 (hi, lo) else (hi, lo)
   in
       val extern = InLine.i64p
       val intern = InLine.p64i

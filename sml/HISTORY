@@ -13,6 +13,16 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/11/12 00:30:00 CST
+Tag: blume-20041112-int64
+Description:
+
+Structure Int64 fully hooked in.  (The implementation is not very
+efficient, though.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/11/11 17:30:00 CST
 Tag: blume-20041111-more64
 Description:
