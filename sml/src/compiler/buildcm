@@ -197,8 +197,7 @@ $SML $ARGS <<ZZZ
 	(SMLofNJ.exportML "$HEAP_IMAGE";
          print (Compiler.banner ^
 		"\n[built `date`]\n$NOTE[CM&CMB]\n");
-         CM.procCmdLine ();
-         Compiler.Interact.initialize());
+         CM.procCmdLine ());
 ZZZ
 
 rm -f ../cm/$config ../cm/$tmp

@@ -29,15 +29,9 @@ struct
   fun useStream (stream: TextIO.instream) =
     EvalLoop.evalStream EvalLoop.stdParams ("<instream>", stream)
 
-  fun initialize () = (* read $HOME/.smlnjrc, if it exists *)
-      let val home = valOf (OS.Process.getEnv "HOME")
-          val rcfile = ".smlnjrc"
-          val rcpath = OS.Path.joinDirFile {dir=home, file=rcfile}
-          val rcin = TextIO.openIn rcpath
-          (* when reading the rc file, we use the usual evalloop 
-           * params, but we substitute a pretty-printer that 
-           * does nothing, so that we get rid of gross 
-           * `val it = () : unit' everywhere.
+  fun useStreamSilently (name, stream) = 
+      let (* use the usual evalloop params, but substitute a 
+           * pretty-printer that does nothing.
            *)
           val {compManagerHook,
                baseEnvRef,
@@ -58,10 +52,8 @@ struct
                printer = fn _ => fn _ => fn _ => () (* no-op printer *)
                }
       in
-          EvalLoop.evalStream params (rcpath, rcin)
+          EvalLoop.evalStream params (name, stream)
       end
-          handle Option => ()
-               | IO.Io _ => ()
 
   fun evalStream (stream: TextIO.instream, baseEnv: SCEnv.Env.environment) : 
       SCEnv.Env.environment =

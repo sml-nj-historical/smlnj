@@ -135,8 +135,7 @@ $SET_FLAGS
 val use = Compiler.Interact.useFile;
 val _ = (SMLofNJ.exportML "$HEAP_IMAGE";
 	 print Compiler.banner; print "\n";
-         print "[built `date`]\n"; print "$NOTE";
-         Compiler.Interact.initialize());
+         print "[built `date`]\n"; print "$NOTE");
 XXXX
 
 if [ -L ./bin.$ARCH-unix ]; then

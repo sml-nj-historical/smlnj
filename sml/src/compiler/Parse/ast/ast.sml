@@ -53,7 +53,6 @@ datatype exp
   | HandleExp of {expr:exp, rules:rule list}
 				(* exception handler *)
   | RaiseExp of exp		(* raise an exception *)
-  | AssertExp of exp            (* special form for assertions *)
   | IfExp of {test:exp, thenCase:exp, elseCase:exp}
 				(* if expression (derived form) *)
   | AndalsoExp of exp * exp	(* andalso (derived form) *)

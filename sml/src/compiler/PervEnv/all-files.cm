@@ -279,8 +279,6 @@ NJ/internals.sig
 NJ/internals.sml
 NJ/cont.sig
 NJ/cont.sml
-NJ/assert.sig
-NJ/assert.sml
 NJ/smlnj.sig
 
 System/command-line.sig

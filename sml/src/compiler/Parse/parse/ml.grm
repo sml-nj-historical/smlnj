@@ -36,7 +36,7 @@ val quotedBogusString = "'BOGUS"
     | STRING of string 
     | CHAR of string
     | ABSTYPE | AND
-    | ARROW | AS | ASSERT | BAR | CASE | DATATYPE | DOTDOTDOT | ELSE | END | EQUALOP
+    | ARROW | AS | BAR | CASE | DATATYPE | DOTDOTDOT | ELSE | END | EQUALOP
     | EQTYPE | EXCEPTION | DO | DOT | DARROW | FN | FUN | FUNCTOR | HANDLE 
     | HASH | IF | IN | INCLUDE | INFIX | INFIXR | LAZY | LET | LOCAL | NONFIX | OF 
     | OP | OPEN | OVERLOAD | RAISE | REC | SHARING | SIG | SIGNATURE | STRUCT
@@ -154,7 +154,7 @@ val quotedBogusString = "'BOGUS"
 
 %name ML
 
-%keyword ABSTYPE AND AS ASSERT CASE DATATYPE DOTDOTDOT ELSE END 
+%keyword ABSTYPE AND AS CASE DATATYPE DOTDOTDOT ELSE END 
   EQTYPE EXCEPTION  DO  DARROW  FN  FUN  FUNCTOR  HANDLE
   IF IN INCLUDE  INFIX  INFIXR  LAZY LET  LOCAL  NONFIX  OF  OP
   OPEN OVERLOAD  RAISE  REC  SHARING  SIG  SIGNATURE  STRUCT
@@ -261,8 +261,6 @@ exp	: exp HANDLE match	(HandleExp{expr=exp,rules=match})
 				   elseCase=markexp(exp3,exp3left,exp3right)})
 	 | RAISE exp	     (markexp(markexp(RaiseExp exp, expleft,expright),
 				      RAISEleft,expright))
-         | ASSERT exp        (markexp(markexp(AssertExp exp, expleft,expright),
-	                              ASSERTleft,expright))
 
 app_exp	: aexp	        ([{item=markexp(aexp,aexpleft,aexpright),
 			   region=(aexpleft,aexpright), fixity=NONE}])
