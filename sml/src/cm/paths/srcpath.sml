@@ -376,17 +376,17 @@ structure SrcPath :> SRCPATH = struct
 
     fun cwd () = (revalidateCwd (); CWD (!cwd_info))
 
-    val osstring = pp2name o #pp o elab_file o unintern
+    val osstring = I.canonical o pp2name o #pp o elab_file o unintern
 
     fun osstring_prefile { context, arcs, err } =
-	pp2name (#pp (augElab arcs (elab_dir context)))
+	I.canonical (pp2name (#pp (augElab arcs (elab_dir context))))
 
     val descr = encode0 true o pre
 
     fun osstring_dir d =
 	case pp2name (#pp (elab_dir d)) of
 	    "" => P.currentArc
-	  | s => s
+	  | s => I.canonical s
 
     fun osstring' f = let
 	val oss = osstring f
@@ -548,11 +548,13 @@ structure SrcPath :> SRCPATH = struct
 	{ context = context, arcs = arcs @ morearcs, err = err }
 
     fun osstring_reanchored cvt f =
-	Option.map pp2name (#reanchor (elab_file (unintern f)) cvt)
+	Option.map (I.canonical o pp2name)
+		   (#reanchor (elab_file (unintern f)) cvt)
 
     fun osstring_prefile_relative (p as { arcs, context, ... }) =
 	case context of
-	    DIR _ => P.toString { arcs = arcs, vol = "", isAbs = false }
+	    DIR _ => I.canonical
+			 (P.toString { arcs = arcs, vol = "", isAbs = false })
 	  | _ => osstring_prefile p
 
     val osstring_relative = osstring_prefile_relative o pre

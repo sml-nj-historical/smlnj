@@ -15,6 +15,8 @@ signature FILEID = sig
     val compare : id * id -> order
 
     val fileId : string -> id
+
+    val canonical : string -> string
 end
 
 structure FileId :> FILEID = struct
@@ -52,4 +54,18 @@ structure FileId :> FILEID = struct
     in
 	PRESENT (F.fileId f) handle _ => ABSENT (expandPath f)
     end
+
+    fun canonical "" = ""
+      | canonical f =
+	if (F.access (f, []) handle _ => false) then
+	    let val f' = P.mkCanonical f
+	    in
+		if F.compare (F.fileId f, F.fileId f') = EQUAL then f'
+		else f
+	    end
+	else
+	    let val { dir, file } = P.splitDirFile f
+	    in
+		P.joinDirFile { dir = canonical dir, file = file }
+	    end
 end

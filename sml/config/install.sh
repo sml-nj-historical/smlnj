@@ -72,10 +72,10 @@ LOCALPATHCONFIG=$INSTALLDIR/pathconfig # a temporary pathconfig file
 URLGETTER=unknown
 
 #
-# the path to the dir where ml-yacc, ml-burg, ml-lex, ml-build, and
-# ml-makedepend live
+# The path to the dir where ml-yacc, ml-burg, ml-lex, ml-build, and
+# ml-makedepend live.  This path will be interpreted relative to $LIBDIR.
 #
-TOOLDIR=$BINDIR
+TOOLDIR=../bin
 
 #
 # A temporary file for post-editing the pathconfig file...

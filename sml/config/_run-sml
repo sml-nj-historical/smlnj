@@ -73,32 +73,36 @@ ALLOC=""
 #
 # Process command line arguments
 #
-ARGS=""
 while [ "$#" != "0" ]; do
-  arg=$1; shift
+  arg=$1
   case $arg in
     @SMLrun=*)
+      shift
       RUN=`echo $arg | sed 's/@SMLrun=//'`
       ;;
     @SMLload=*)
-      HEAP=$arg;
+      shift
+      HEAP=$arg
       ;;
     @SMLappl)
+      shift
       if [ "$#" = "0" ]; then
         echo "$CMD: missing argument for @SMLappl option"
         exit 1
       fi
-      APPL=$1; shift
+      APPL=$1
+      shift
       ;;
     @SMLversion)
       echo "$CMD @VERSION@"
       exit 0
       ;;
     @SMLalloc=*)
+      shift
       ALLOC=$arg
       ;;
     *)
-      ARGS="$ARGS $arg"
+      break
       ;;
   esac
 done
@@ -182,4 +186,4 @@ fi
 #
 # run the sucker!
 #
-exec $RUN @SMLcmdname=$0 $HEAP $ALLOC $ARGS
+exec $RUN @SMLcmdname=$0 $HEAP $ALLOC "$@"

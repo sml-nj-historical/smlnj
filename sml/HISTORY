@@ -14,6 +14,25 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/09/20 17:20:00 EDT
+Tag: blume-20010920-canonicalpaths
+Description:
+
+0. Updated the BOOT file (something that I forgot to do earlier).
+
+1. Small internal change to CM so that it avoids "/../" in filenames
+   as much as possible (but only where it is safe).
+
+2. Changed config/_run-sml (resulting in a changed bin/.run-sml) so
+   that arguments that contain delimiters are passed through correctly.
+   This change also means that all "special" arguments of the form
+   @SMLxxx... must come first.
+
+3. Changed install script to put relative anchor names for tool commands
+   into pathconfig.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/09/18 15:35:00 EDT
 Tag: blume-20010918-readme11036
 Description:
