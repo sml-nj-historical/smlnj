@@ -252,7 +252,7 @@ BOOT_FILES=sml.$BOOT_ARCHIVE
 #
 # build the run-time system
 #
-$CONFIGDIR/unpack.sh $ROOT runtime
+$CONFIGDIR/unpack $ROOT runtime
 if [ -x $RUNDIR/run.$ARCH-$OPSYS ]; then
     vsay $this: Run-time system already exists.
 else
@@ -274,7 +274,7 @@ cd $SRCDIR
 if [ -r $HEAPDIR/sml.$HEAP_SUFFIX ]; then
     vsay $this: Heap image $HEAPDIR/sml.$HEAP_SUFFIX already exists.
 else
-    $CONFIGDIR/unpack.sh $ROOT $BOOT_ARCHIVE
+    $CONFIGDIR/unpack $ROOT $BOOT_ARCHIVE
     cd $ROOT/$BOOT_FILES
     if $BINDIR/.link-sml @SMLheap=$ROOT/sml @SMLboot=BOOTLIST @SMLalloc=$ALLOC
     then
@@ -315,7 +315,7 @@ LibInstall.proc { smlnjroot = "${ROOT}",
                   targetsfiles = ["config/targets.customized",
                                   "config/targets"],
                   buildcmd = "CM_LOCAL_PATHCONFIG=/dev/null ./build",
-                  unpackcmd = SOME "$CONFIGDIR/unpack.sh",
+                  unpackcmd = SOME "$CONFIGDIR/unpack",
                   instcmd = fn target => let
                               val new = "$BINDIR/" ^ target
                             in
