@@ -59,9 +59,17 @@ is
 	tools/burgtool.sml
 
 	(* doing actual compilation work *)
+	compile/concur.sml
 	compile/compile.sml
 	compile/link.sml
 	compile/bfc.sml
+	compile/servers.sig
+
+# if defined (OPSYS_UNIX)
+	compile/unix-servers.sml
+# else
+	compile/dummy-servers.sml
+# endif
 
 	(* overall control of CM *)
 	main/general-params.sml

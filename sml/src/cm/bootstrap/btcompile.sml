@@ -28,7 +28,8 @@ end = struct
     structure F = OS.FileSys
     structure BF = MachDepVC.Binfile
 
-    structure Compile = CompileFn (structure MachDepVC = MachDepVC)
+    structure Compile = CompileFn (structure MachDepVC = MachDepVC
+				   fun compile_there _ = false)
 
     structure BFC = BfcFn (structure MachDepVC = MachDepVC)
 

@@ -46,7 +46,8 @@ in
 	      exports: (GP.info -> result option) SymbolMap.map }
     end
 
-    functor CompileFn (structure MachDepVC : MACHDEP_VC) :>
+    functor CompileFn (structure MachDepVC : MACHDEP_VC
+		       val compile_there : SrcPath.t -> bool) :>
 	COMPILE where type bfc = MachDepVC.Binfile.bfContent =
     struct
 
@@ -231,7 +232,7 @@ in
 		val { smlinfo = i, localimports = li, globalimports = gi } = n
 		val binname = SmlInfo.binname i
 
-		fun compile (stat, sym, pids) = let
+		fun compile_here (stat, sym, pids) = let
 		    fun save bfc = let
 			fun writer s =
 			    (BF.write { stream = s, content = bfc,
@@ -281,17 +282,22 @@ in
 			    storeBFC (i, bfc);
 			    SOME memo
 			end
-		end (* compile *)
+		end (* compile_here *)
 		fun notlocal () = let
 		    (* Ok, it is not in the local state, so we first have
 		     * to traverse all children before we can proceed... *)
 		    val k = #keep_going (#param gp)
 		    fun loc li_n = Option.map nofilter (snode gp li_n)
 		    fun glob gi_n = fsbnode gp gi_n
+		    val gi_cl =
+			map (fn gi_n => Concur.fork (fn () => glob gi_n)) gi
+		    val li_cl =
+			map (fn li_n => Concur.fork (fn () => loc li_n)) li
 		    val e =
-			layerwork k loc
-			         (layerwork k glob (SOME (pervenv gp)) gi)
-				 li
+			layerwork k Concur.wait
+			         (layerwork k Concur.wait
+				              (SOME (pervenv gp)) gi_cl)
+				 li_cl
 		in
 		    case e of
 			NONE => NONE
@@ -318,19 +324,37 @@ in
 					    cleanup = fn () => () })
 				    handle _ => NONE
 				end (* load *)
+				fun tryload (what, otherwise) =
+				    case load () of
+					NONE => otherwise ()
+				      | SOME (bfc, ts) => let
+					    val memo = bfc2memo (bfc, stat, ts)
+					in
+					    if isValidMemo (memo, pids, i) then
+						(Say.vsay ["[", binname,
+							   " ", what, "]\n"];
+						 storeBFC (i, bfc);
+						 SOME memo)
+					    else otherwise ()
+					end
+				fun compile_again () =
+				    compile_here (stat, sym, pids)
+				fun compile () = let
+				    val sp = SmlInfo.sourcepath i
+				in
+				    if compile_there sp then
+					tryload ("compiled", compile_again)
+				    else compile_again ()
+				end
 			    in
-				case load () of
-				    NONE => compile (stat, sym, pids)
-				  | SOME (bfc, ts) => let
-					val memo = bfc2memo (bfc, stat, ts)
-				    in
-					if isValidMemo (memo, pids, i) then
-					    (Say.vsay ["[", binname,
-						       " loaded]\n"];
-					     storeBFC (i, bfc);
-					     SOME memo)
-					else compile (stat, sym, pids)
-				    end
+				(* If anything goes wrong loading the first
+				 * time, we go and compile.  Compiling
+				 * may mean compiling externally, and if so,
+				 * we must load the result of that.
+				 * If the second load also goes wrong, we
+				 * compile locally to gather error messages
+				 * and make everything look "normal". *)
+				tryload ("loaded", compile)
 			    end (* fromfile *)
 			    fun notglobal () =
 				case fromfile () of
@@ -351,17 +375,18 @@ in
 		end (* notlocal *)
 	    in
 		case SmlInfoMap.find (!localstate, i) of
-		    SOME mopt => Option.map memo2ed mopt
+		    SOME mopt_c => Option.map memo2ed (Concur.wait mopt_c)
 		  | NONE => let
-			val mopt = notlocal ()
+			val mopt_c = Concur.fork
+			    (fn () => notlocal () before
+			     (* "Not local" means that we have not processed
+			      * this file before.  Therefore, we should now
+			      * remove its parse tree... *)
+			     SmlInfo.forgetParsetree i)
 		    in
-			(* "Not local" means that we have not processed
-			 * this file before.  Therefore, we should now
-			 * remove its parse tree... *)
-			SmlInfo.forgetParsetree i;
 			localstate :=
-			  SmlInfoMap.insert (!localstate, i, mopt);
-			Option.map memo2ed mopt
+			  SmlInfoMap.insert (!localstate, i, mopt_c);
+			Option.map memo2ed (Concur.wait mopt_c)
 		    end
 	    end (* snode *)
 
@@ -378,9 +403,10 @@ in
 		  | loop (h :: t, success) =
 		    if isSome (impexp gp h) then loop (t, success)
 		    else if k then loop (t, false) else false
-		val eo =
-		    layerwork k (impexp gp) (SOME emptyEnv)
-		    (SymbolMap.listItems exports)
+		val eo_cl =
+		    map (fn x => Concur.fork (fn () => impexp gp x))
+		        (SymbolMap.listItems exports)
+		val eo = layerwork k Concur.wait (SOME emptyEnv) eo_cl
 	    in
 		case eo of
 		    NONE => NONE

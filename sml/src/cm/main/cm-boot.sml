@@ -39,7 +39,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       val system_values = ref emptydyn
 
       structure Compile =
-	  CompileFn (structure MachDepVC = HostMachDepVC)
+	  CompileFn (structure MachDepVC = HostMachDepVC
+		     val compile_there = Servers.compile)
 
       structure Link =
 	  LinkFn (structure MachDepVC = HostMachDepVC
@@ -204,10 +205,70 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  fun run sflag f s = let
 	      val c = SrcPath.cwdContext ()
 	      val p = SrcPath.standard pcmode { context = c, spec = s }
+	      val _ = Servers.start (c, p)
 	  in
 	      case Parse.parse NONE (param ()) sflag p of
 		  NONE => false
 		| SOME (g, gp) => f gp g
+	  end
+
+	  fun slave () = let
+	      fun shutdown () = OS.Process.exit OS.Process.success
+	      fun say_ok () = Say.say ["SLAVE: ok\n"]
+	      fun say_error () = Say.say ["SLAVE: error\n"]
+		  
+	      fun waitForStart () = let
+		  val line = TextIO.inputLine TextIO.stdIn
+	      in
+		  if line = "" then shutdown ()
+		  else case String.tokens Char.isSpace line of
+		      ["cm", d, f] => start (d, f)
+		    | ["shutdown"] => shutdown ()
+		    | _ => (say_error (); waitForStart ())
+	      end handle _ => (say_error (); waitForStart ())
+
+	      and start (d, f) = let
+		  val _ = OS.FileSys.chDir d
+		  val c = SrcPath.cwdContext ()
+		  val p = SrcPath.native { context = c, spec = f }
+	      in
+		  case Parse.parse NONE (param ()) NONE p of
+		      NONE => (say_error (); waitForStart ())
+		    | SOME x => (say_ok (); workLoop (x, c))
+	      end handle _ => (say_error (); waitForStart ())
+
+	      and workLoop ((g, gp), c) = let
+		  val index = Reachable.snodeMap g
+		  val trav = Compile.newSbnodeTraversal ()
+		  fun loop () = let
+		      val line = TextIO.inputLine TextIO.stdIn
+		  in
+		      if line = "" then shutdown ()
+		      else case String.tokens Char.isSpace line of
+			  ["compile", f] => let
+			      val p = SrcPath.native { context = c, spec = f }
+			  in
+			      case SrcPathMap.find (index, p) of
+				  NONE => (say_error (); loop ())
+				| SOME sn => let
+				      val sbn = DependencyGraph.SB_SNODE sn
+				  in
+				      case trav gp sbn of
+					  NONE => (say_error (); loop ())
+					| SOME _ => (say_ok (); loop ())
+				  end
+			  end
+			| ["cm", d, f] => start (d, f)
+			| ["finish"] => (say_ok (); waitForStart ())
+			| ["shutdown"] => shutdown ()
+			| _ => (say_error (); loop ())
+		  end handle _ => (say_error (); loop ())
+	      in
+		  loop ()
+	      end
+	  in
+	      say_ok ();		(* announce readiness *)
+	      waitForStart ()
 	  end
 
 	  val listLibs = Parse.listLibs
@@ -365,7 +426,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				   showPending = showPending,
 				   listLibs = listLibs,
 				   dismissLib = dismissLib,
-				   symval = SSV.symval })
+				   symval = SSV.symval,
+				   server = Servers.add })
 
 		  end
 	  end
@@ -375,5 +437,20 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	(system_values := de;
 	 initTheValues (bootdir, er);
 	 Cleanup.install initPaths)
+
+    fun procCmdLine () = let
+	fun p (f, "sml") = HostMachDepVC.Interact.useFile f
+	  | p (f, "sig") = HostMachDepVC.Interact.useFile f
+	  | p (f, "cm") = ignore (make f)
+	  | p (f, e) =
+		(print (concat ["!* unable to process `", f,
+				"' (unknown extension `", e, "')\n"]))
+	fun c f = (f, String.map Char.toLower
+		          (getOpt (OS.Path.ext f, "<none>")))
+    in
+	case SMLofNJ.getArgs () of
+	    ["@CMslave"] => slave ()
+	  | l => app (p o c) l
+    end
   end
 end
