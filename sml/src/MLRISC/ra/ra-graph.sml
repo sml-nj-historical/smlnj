@@ -70,8 +70,7 @@ struct
               spillLoc     : int ref,
               span         : int IntHashTable.hash_table option ref,
               mode         : mode,
-              pseudoCount  : int ref,
-              blockedCount : int ref
+              pseudoCount  : int ref
             }
 
   and moveStatus = BRIGGS_MOVE | GEORGE_MOVE
@@ -203,8 +202,7 @@ struct
              spillLoc     = spillLoc,
              span         = ref NONE,
              mode         = mode,
-             pseudoCount  = ref 0,
-             blockedCount = ref 0
+             pseudoCount  = ref 0
            }
   end
   

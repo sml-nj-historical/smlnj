@@ -13,6 +13,51 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/02/14 09:55:27 EST 2002
+Tag: george-20020214-isabelle-bug
+Description: 
+
+Fixed the MLRISC bug sent by Markus Wenzel regarding the compilation
+of Isabelle on the x86.
+
+From Allen:
+-----------
+ I've found the problem:  
+
+     in ra-core.sml, I use the counter "blocked" to keep track of the
+     true number of elements in the freeze queue.  When the counter goes
+     to zero, I skip examining the queue.  But I've messed up the
+     bookkeeping in combine():
+
+         else ();
+         case !ucol of
+           PSEUDO => (if !cntv > 0 then 
+                 (if !cntu > 0 then blocked := !blocked - 1 else (); 
+                                    ^^^^^^^^^^^^^^^^^^^^^^^
+                  moveu := mergeMoveList(!movev, !moveu)
+                 )
+              else ();  
+             
+     combine() is called to coalesce two nodes u and v.
+     I think I was thinking that if the move counts of u and v are both
+     greater than zero then after they are coalesced then one node is
+     removed from the freeze queue.  Apparently I was thinking that
+     both u and v are of low degree, but that's clearly not necessarily true.
+ 
+
+02/12/2002:
+    Here's the patch.  HOL now compiles.
+
+    I don't know how this impact on performance (compile
+    time or runtime).  This bug caused the RA (especially on the x86) 
+    to go thru the potential spill phase when there are still nodes on the
+    freeze queue.
+
+
+
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/02/13 22:40:00 EST
 Tag: blume-20020213-fptr-rtti

@@ -85,8 +85,7 @@ sig
        (* mode *)
        mode         : mode,
 
-       pseudoCount  : int ref,
-       blockedCount : int ref
+       pseudoCount  : int ref
      }
 
   and moveStatus = BRIGGS_MOVE             (* not yet coalesceable *)

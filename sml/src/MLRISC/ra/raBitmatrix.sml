@@ -172,7 +172,7 @@ structure RaBitmatrix : RA_BITMATRIX = struct
 	let val k = W.+(W.<<(W.fromInt i, 0w15), W.fromInt j)
 	    fun find [] = []
 	      | find(k'::b) =
-		if k = k' then (elems := !elems - 1; b) else find b
+		if k = k' then (elems := !elems - 1; b) else k'::find b
 	    val tab = !table
 	    val index = hashFun(i, j, shift, A.length tab)
 	    val n = !elems

@@ -42,6 +42,5 @@ struct
                    edge=fn _ => edgeColor,
                    graph=fn _ => []} G
    end
-
 end
 

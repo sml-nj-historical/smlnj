@@ -301,7 +301,7 @@ struct
    * Initialize a list of worklists
    *)
   fun initWorkLists 
-        (GRAPH{nodes, K, bitMatrix, pseudoCount, blockedCount,
+        (GRAPH{nodes, K, bitMatrix, pseudoCount, 
                firstPseudoR, deadCopies, memMoves, mode, ...}) {moves} =
   let 
       (* Filter moves that already have an interference
@@ -379,28 +379,26 @@ struct
        * Scan all nodes in the graph and check which worklist they should
        * go into.
        *)
-      fun collect([], simp, fz, moves, spill, pseudos, blocked) =
+      fun collect([], simp, fz, moves, spill, pseudos) =
          (pseudoCount := pseudos;
-          blockedCount := blocked;
           {simplifyWkl = simp,
            moveWkl     = moves,
            freezeWkl   = fz,
            spillWkl    = spill
           }
          )
-        | collect(node::rest, simp, fz, moves, spill, pseudos, blocked) = 
+        | collect(node::rest, simp, fz, moves, spill, pseudos) = 
           (case node of
               NODE{color=ref PSEUDO, movecnt, degree, ...} =>
                  if !degree >= K then
-                    collect(rest, simp, fz, moves, node::spill, 
-                            pseudos+1, blocked)
+                    collect(rest, simp, fz, moves, node::spill, pseudos+1)
                  else if !movecnt > 0 then
                     collect(rest, simp, FZ.add(node, fz), 
-                            moves, spill, pseudos+1, blocked+1)
+                            moves, spill, pseudos+1)
                  else
                     collect(rest, node::simp, fz, moves, spill, 
-                            pseudos+1, blocked)  
-           |  _ => collect(rest, simp, fz, moves, spill, pseudos, blocked)
+                            pseudos+1)  
+           |  _ => collect(rest, simp, fz, moves, spill, pseudos)
           )
 
       (* First build the move priqueue *)
@@ -412,7 +410,7 @@ struct
                 else filter(moves, MV.EMPTY, [])
 
   in  memMoves := mem;  (* memory moves *)
-      collect(IntHashTable.listItems nodes, [], FZ.EMPTY, mvs, [], 0, 0)
+      collect(IntHashTable.listItems nodes, [], FZ.EMPTY, mvs, [], 0)
   end
 
   (*
@@ -453,13 +451,11 @@ struct
    *)
   fun iteratedCoalescingPhases
        (G as GRAPH{K, bitMatrix, spillFlag, trail, stamp, mode,
-                   pseudoCount, blockedCount, ...}) =
+                   pseudoCount,  ...}) =
   let val member = BM.member(!bitMatrix)
       val addEdge = addEdge G
       val show = show G
       val memoryCoalescingOn = isOn(mode, MEMORY_COALESCING)
-
-      val blocked = blockedCount 
 
       (*
        * SIMPLIFY node:
@@ -507,7 +503,7 @@ struct
            (* node is now low degree!!! *)
            let val mv = enableMoves(!adj, mv)
            in  if !movecnt > 0 then (* move related *)
-                  (blocked := !blocked + 1; (mv, FZ.add(node, fz), stack))
+                  (mv, FZ.add(node, fz), stack)
                else (* non-move related, simplify now! *)
                   simplify(node, mv, fz, stack)
            end
@@ -520,7 +516,7 @@ struct
              (* node is now low degree!!! *)
              let val mv = enableMoves(node :: !adj, mv)
              in  if !movecnt > 0 then (* move related *)
-                    (blocked := !blocked + 1; (mv, FZ.add(node, fz), stack))
+                    (mv, FZ.add(node, fz), stack)
                  else (* non-move related, simplify now! *)
                     simplify(node, mv, fz, stack)
              end
@@ -647,7 +643,7 @@ struct
          in  movecnt := newCnt;
              movecost := !movecost - cost;
              if newCnt = 0 andalso !degree < K (* low degree and movecnt = 0 *)
-             then (blocked := !blocked - 1; simplify(node, mv, fz, stack))
+             then (simplify(node, mv, fz, stack))
              else (mv, fz, stack)
          end
        | decMoveCnt(_, _, _, mv, fz, stack) = (mv, fz, stack)
@@ -748,10 +744,7 @@ struct
          else ();
          case !ucol of
            PSEUDO => 
-             (if !cntv > 0 then 
-                 (if !cntu > 0 then blocked := !blocked - 1 else ();
-                  moveu := mergeMoveList(!movev, !moveu) 
-                 )
+             (if !cntv > 0 then moveu := mergeMoveList(!movev, !moveu) 
               else (); 
               movev := []; (* XXX kill the list to free space *)
               cntu  := !cntu + !cntv
@@ -880,8 +873,7 @@ struct
                     | NODE{movecnt as ref c, degree, ...} => (* pseudo *)
                         (movecnt := c - 1; 
                          if c = 1 andalso !degree < K then 
-                           (blocked := !blocked - 1; 
-                            elimMoves(mvs, you::simp))
+                            elimMoves(mvs, you::simp)
                          else 
                             elimMoves(mvs, simp)
                         )
@@ -933,22 +925,18 @@ struct
                          (*val _ = 
                             if tally then good_freeze := !good_freeze + 1
                             else ()*)
-                         val _ = blocked := !blocked - 1; 
                          val (mv, fz, stack) = markAsFrozen(node, fz, stack)
                          val (fz, stack) = coalesce(mv, fz, stack)
-                     in  if !blocked = 0 
-                         then ((* print "[no freezing again]"; *) stack)
-                         else ((* print("[freezing again "^
-                               i2s(!blocked)^"]"); *)
-                               loop(FZ.merge(fz, newFz), FZ.EMPTY, stack))
+                     in  ((* print("[freezing again "^
+                           i2s(!blocked)^"]"); *)
+                           loop(FZ.merge(fz, newFz), FZ.EMPTY, stack))
                      end
                   | _ => 
                     ((*if tally then bad_freeze := !bad_freeze + 1 else ();*)
                      loop(fz, newFz, stack))
               end
-      in  if !blocked = 0 then ((* print "[no freezing]"; *) stack)
-          else ((* print("[freezing "^i2s(!blocked)^"]"); *)
-                loop(fz, FZ.EMPTY, stack))
+      in  (* print("[freezing "^i2s(!blocked)^"]"); *)
+          loop(fz, FZ.EMPTY, stack)
       end
 
       (* 
