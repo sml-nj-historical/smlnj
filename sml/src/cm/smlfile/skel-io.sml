@@ -28,7 +28,7 @@ structure SkelIO :> SKELIO = struct
     val b2s = Byte.bytesToString
     val b2c = Byte.byteToChar
 
-    val version = "Skeleton 4\n"
+    val version = "Skeleton 5\n"
 
     fun makeset l = SS.addList (SS.empty, l)
 

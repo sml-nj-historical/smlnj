@@ -318,8 +318,14 @@ directory.  Therefore, an anchored path has the general form
    $<anchor>/<path>
 
 It is important that there is at least one arc in <path>.  In other
-words, the form $<anchor> is NOT valid.  (Actually, it currently is
-valid, but CM interprets it in a different way.)
+words, the form $<anchor> is NOT valid.
+
+(Actually, under certain circumstances it _is_ valid -- and means what
+it seems to mean, namely the directory denoted by the name that
+<anchor> is mapped to.  However, since directory names do not usually
+occur by themselves, you can think of this form as being invalid.
+There is one exception to this: "bind" specifications for .cm files.
+See the CM manual for more details.)
 
 Examples:
 
@@ -356,13 +362,13 @@ seems to mean: a relative path starting with an arc named <foo>.
 + Why anchored paths?
 
 The important point is that one can change the mapping of the anchor,
-and the tranlation of the (anchored) path name will also change
-accordingly -- even very late in the game.  CM avoids "elaborating"
-path names until it really needs them when it is time to open files.
-CM is also willing to re-elaborate the same names if there is reason
-to do so. Thus, the "basis.cm" library that was analyzed "here" but
-then moved "there" will also be found "there" if the anchor has been
-re-set accordingly.
+and the tranlation of the (anchored) path name -- together will all
+file names derived from it -- will also change accordingly -- even
+very late in the game.  CM avoids "elaborating" path names until it
+really needs them when it is time to open files.  CM is also willing
+to re-elaborate the same names if there is reason to do so. Thus, the
+"basis.cm" library that was analyzed "here" but then moved "there"
+will also be found "there" if the anchor has been re-set accordingly.
 
 The anchor mapping is (re-)initialized at startup time by reading two
 configuration files.  Normally, those are the "../../lib/pathconfig"
@@ -545,8 +551,8 @@ means that in order to be able to use the system, your paths must be
 properly configured.
 
 Several libraries get pre-registered at bootstap time.  Here, at least
-the following two should be included: the basis library ("$/basis.cm")
-and CM itself ("$smlnj/cm.cm").  Currently, we also pre-register the
+the following two should be included: the basis library ($/basis.cm)
+and CM itself ($smlnj/cm.cm).  Currently, we also pre-register the
 library exporting structure Compiler ($smlnj/compiler.cm) and the
 SML/NJ library ($/smlnj-lib.cm).
 
@@ -566,16 +572,6 @@ image with the bootstrap compiler being pre-registered as well.  This
 seems reasonable for compiler hackers.  (The config/install.sh script
 uses config/preloads where $smlnj/cmb.cm is not pre-registered.  This
 is appropriate as a setup for general users.)
-
-[****** Note:  The following is NO LONGER TRUE:
-The fact that $smlnj/compiler.cm is not among the pre-registered
-libraries seems like an oversight and could lead to some
-inconveniences to users who want to, for example, set compiler flags.
-However, pre-registration of this library significantly increases the
-size of the heap image.  Moreover, since the library can easily be
-loaded by giving the string as a command line argument, this does not
-really appear to be a big burden to me.  Just create a shell alias or
-a little wrapper script if you think you really need this.]
 
 * Internal sharing
 ------------------
@@ -645,12 +641,12 @@ Example:
 	|#endif			   |
 	+--------------------------+
 
-Here, the file "bar-client.sml" gets included if SMLNJ_VERSION is
+Here, the file bar-client.sml gets included if SMLNJ_VERSION is
 greater than 110 and new-foo.sml exports a structure Bar _or_ if
 SMLNJ_VERSION <= 110 and old-foo.sml exports structure Bar. Otherwise
-"no-bar-so-far.sml" gets included instead.  In addition, the export of
+no-bar-so-far.sml gets included instead.  In addition, the export of
 structure Bar is guarded by its own existence.  (Structure Bar could
-also be defined by "no-bar-so-far.sml" in which case it would get
+also be defined by no-bar-so-far.sml in which case it would get
 exported regardless of the outcome of the other "defined" test.)
 
 Some things to note:
@@ -666,7 +662,7 @@ Some things to note:
 -----------------------------------------
 
 The SML'97 basis is no longer built-in.  If you want to use it, you
-must specify "basis.cm" as a member of your group/library.
+must specify $/basis.cm as a member of your group/library.
 
 * No more aliases
 -----------------

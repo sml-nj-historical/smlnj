@@ -10,6 +10,18 @@
  * i.e. for small absolute values) integer representation.
  *
  * July 1999, Matthias Blume
+ *
+ * Addendum: This module now also marks as "actually being shared" those
+ * nodes where actual sharing has been detected.  Marking is done by
+ * setting the high bit in the char code of the node.  This means that
+ * char codes must be in the range [0,126] to avoid conflicts. (127
+ * cannot be used because setting the high bit there results in 255 --
+ * which is the backref code.)
+ * This improves unpickling time by about 25% and also reduces memory
+ * usage because much fewer sharing map entries have to be made during
+ * unpickling.
+ *
+ * October 2000, Matthias Blume
  *)
 
 (*
@@ -54,11 +66,10 @@ signature PICKLE_UTIL = sig
 
     (* "ah_share" is used to specify potential for "ad-hoc" sharing
      * using the user-supplied map.
-     * Ad-hoc sharing is used to break structural
-     * cycles, to identify parts of the value that the hash-conser cannot
-     * automatically identify but which should be identified nevertheless,
-     * or to identify those parts that would be too expensive to be left
-     * to the hash-conser. *)
+     * Ad-hoc sharing is used to identify parts of the value that the
+     * hash-conser cannot automatically identify but which should be
+     * identified nevertheless, or to identify those parts that would be
+     * too expensive to be left to the hash-conser. *)
     val ah_share : { find : 'ahm * 'v -> id option,
 		     insert : 'ahm * 'v * id -> 'ahm } ->
         ('ahm, 'v) pickler -> ('ahm, 'v) pickler
@@ -75,8 +86,6 @@ signature PICKLE_UTIL = sig
      * for the parameter) *)
     val w_list : ('ahm, 'a) pickler -> ('ahm, 'a list) pickler
     val w_option : ('ahm, 'a) pickler -> ('ahm, 'a option) pickler
-
-    (* this doesn't automatically identify (i.e., hash-cons) pairs *)
     val w_pair :
 	('ahm, 'a) pickler * ('ahm, 'b) pickler -> ('ahm, 'a * 'b) pickler
 
@@ -91,7 +100,7 @@ signature PICKLE_UTIL = sig
     (* The xxx_lifter stuff is here to allow picklers to be "patched
      * together".  If you already have a pickler that uses a sharing map
      * of type B and you want to use it as part of a bigger pickler that
-     * uses a sharing map of type A, then you must write a (B, A) map_lifter
+     * uses a sharing map of type A, you must write a (B, A) map_lifter
      * which then lets you lift the existing pickler to one that uses
      * type A maps instead of its own type B maps.
      *
@@ -110,8 +119,13 @@ structure PickleUtil :> PICKLE_UTIL = struct
 
     type pos = int
     type id = pos
-    type tinfo = int
     type codes = id list
+    type tinfo = int
+
+    type shareinfo = IntRedBlackSet.set
+    val si_empty = IntRedBlackSet.empty
+    val si_add = IntRedBlackSet.add
+    val si_list = IntRedBlackSet.listItems
 
     structure HCM = RedBlackMapFn
   	(struct
@@ -146,7 +160,7 @@ structure PickleUtil :> PICKLE_UTIL = struct
 
     type hcm = id HCM.map
     type fwdm = id PM.map		(* forwarding map *)
-    type 'ahm state = hcm * fwdm * 'ahm * pos
+    type 'ahm state = hcm * fwdm * 'ahm * pos * shareinfo
 
     type 'ahm pickle = 'ahm state -> codes * pre_result * 'ahm state
     type ('ahm, 'v) pickler = 'v -> 'ahm pickle
@@ -194,21 +208,23 @@ structure PickleUtil :> PICKLE_UTIL = struct
     val int32_encode = largeint_encode o Int32.toLarge
     val int_encode = largeint_encode o Int.toLarge
 
-    fun % ti c (hcm, fwdm, ahm, next) = let
+    fun % ti c (hcm, fwdm, ahm, next, si) = let
 	val key = (c, ti, [])
     in
 	case HCM.find (hcm, key) of
-	    SOME i => ([i], STRING c, (hcm, PM.insert (fwdm, next, i),
-				       ahm, next + size c))
-	  | NONE => ([next], STRING c,
-		     (HCM.insert (hcm, key, next), fwdm, ahm, next + size c))
+	    SOME i =>
+		([i], STRING c, (hcm, PM.insert (fwdm, next, i),
+				 ahm, next + size c, si))
+	  | NONE =>
+		([next], STRING c, (HCM.insert (hcm, key, next), fwdm,
+				    ahm, next + size c, si))
     end
 
     fun dollar ti (c, []) state = % ti c state
-      | dollar ti (c, plh :: plt) (hcm, fwdm, ahm, next) = let
+      | dollar ti (c, plh :: plt) (hcm, fwdm, ahm, next, si) = let
 	    val p = collapse (plh, plt)
-	    val (codes, pr, (hcm', fwdm', ahm', next')) =
-		p (hcm, fwdm, ahm, next + size c)
+	    val (codes, pr, (hcm', fwdm', ahm', next', si')) =
+		p (hcm, fwdm, ahm, next + size c, si)
 	    val key = (c, ti, codes)
 	in
 	    case HCM.find (hcm, key) of
@@ -217,25 +233,27 @@ structure PickleUtil :> PICKLE_UTIL = struct
 		in
 		    ([i], CONCAT (backref, STRING brnum),
 		     (hcm, PM.insert (fwdm, next, i),
-		      ahm, next + size_backref + size brnum))
+		      ahm, next + size_backref + size brnum,
+		      si_add (si', i)))
 		end
 	      | NONE =>
 		([next], CONCAT (STRING c, pr),
-		 (HCM.insert (hcm', key, next), fwdm', ahm', next'))
+		 (HCM.insert (hcm', key, next), fwdm', ahm', next', si'))
 	end
 
-    fun ah_share { find, insert } w v (hcm, fwdm, ahm, next) =
+    fun ah_share { find, insert } w v (hcm, fwdm, ahm, next, si) =
 	case find (ahm, v) of
 	    SOME i0 => let
 		val i = getOpt (PM.find (fwdm, i0), i0)
 		val brnum = int_encode i
 	    in
 		([i], CONCAT (backref, STRING brnum),
-		 (hcm, fwdm, ahm, next + size_backref + size brnum))
+		 (hcm, fwdm, ahm, next + size_backref + size brnum,
+		  si_add (si, i)))
 	    end
-	  | NONE => w v (hcm, fwdm, insert (ahm, v, next), next)
+	  | NONE => w v (hcm, fwdm, insert (ahm, v, next), next, si)
 
-    fun w_lazy w thunk (hcm, fwdm, ahm, next) = let
+    fun w_lazy w thunk (hcm, fwdm, ahm, next, si) = let
 	val v = thunk ()
 	(* The larger the value of trialStart, the smaller the chance that
 	 * the loop (see below) will run more than once.  However, some
@@ -247,12 +265,10 @@ structure PickleUtil :> PICKLE_UTIL = struct
 	 * encoding of the thunk's value, but that encoding depends
 	 * on the length (or rather: on the length of the length). *)
 	fun loop (nxt, ilen) = let
-	    val (codes, pr, state) = w v (hcm, fwdm, ahm, nxt)
+	    val (codes, pr, state) = w v (hcm, fwdm, ahm, nxt, si)
 	    val sz = pre_size pr
 	    val ie = int_encode sz
 	    val iesz = size ie
-
-	    val _ = if iesz > 2 then ignore (w v (hcm, fwdm, ahm, nxt)) else ()
 
 	    (* Padding in front is better because the unpickler can
 	     * simply discard all leading 0s and does not need to know
@@ -354,7 +370,7 @@ structure PickleUtil :> PICKLE_UTIL = struct
 	      | esc #"\255" = "\\\255"	(* need to escape backref char *)
 	      | esc c = String.str c
 	in
-	    (String.translate esc s ^ "\"") $ [dummy_pickle]
+	    (concat ["\"", String.translate esc s, "\""]) $ [dummy_pickle]
 	end
     end
 
@@ -366,33 +382,73 @@ structure PickleUtil :> PICKLE_UTIL = struct
     end
 
     local
-	fun pr2s pr = let
-	    fun flat (STRING s, l) = s :: l
-	      | flat (CONCAT (x, STRING s), l) = flat (x, s :: l)
-	      | flat (CONCAT (x, CONCAT (y, z)), l) =
-		flat (CONCAT (CONCAT (x, y), z), l)
+	fun pr2s (pr, next, si) = let
+
+	    (* This puts a code string in front of the list of
+	     * code strings that follow.  It also takes care of
+	     * setting the high bit where necessary (see below),
+	     * updates the current position and the list of remaining
+	     * shared positions. *)
+	    fun add ("", p, h, t, l) = (p, h :: t, l)
+	      | add (s, p, h, t, l) = let
+		    val len = size s
+		    val p' = p - len
+		in
+		    if p' = h then let
+			val fst =
+			    String.str
+			      (Char.chr
+			        (Char.ord (String.sub (s, 0)) + 128))
+			fun ret x = (p', t, x)
+		    in
+			if len > 1 then
+			    ret (fst :: String.extract (s, 1, NONE) :: l)
+			else ret (fst :: l)
+		    end
+		    else (p', h :: t, s :: l)
+		end
+
+	    (* Fast flattening -- when we are out of shared codes. *)
+	    fun fflat (STRING s, l) = s :: l
+	      | fflat (CONCAT (x, STRING s), l) = fflat (x, s :: l)
+	      | fflat (CONCAT (x, CONCAT (y, z)), l) =
+		fflat (CONCAT (CONCAT (x, y), z), l)
+
+	    (* Flattening runs in linear time.
+	     * We simultaneously use this loop to set the high bits in
+	     * codes that correspond to shared nodes.  The positions of
+	     * these codes are given by high-to-low sorted list of
+	     * integers. *)
+	    fun flat (x, (_, [], l)) = fflat (x, l)
+	      | flat (STRING s, (p, h :: t, l)) =
+		#3 (add (s, p, h, t, l))
+	      | flat (CONCAT (x, STRING s), (p, h :: t, l)) =
+		flat (x, add (s, p, h, t, l))
+	      | flat (CONCAT (x, CONCAT (y, z)), phtl) =
+		flat (CONCAT (CONCAT (x, y), z), phtl)
 	in
-	     concat (flat (pr, []))
+	    concat (flat (pr, (next, rev (si_list si), [])))
 	end
     in
 	fun pickle emptyMap p = let
-	    val (_, pr, _) = p (HCM.empty, PM.empty, emptyMap, 0)
+	    val (_, pr, (_, _, _, next, si)) =
+		 p (HCM.empty, PM.empty, emptyMap, 0, si_empty)
 	in
-	    pr2s pr
+	    pr2s (pr, next, si)
 	end
     end
 
     type ('b_ahm, 'a_ahm) map_lifter =
         { extract: 'a_ahm -> 'b_ahm, patchback: 'a_ahm * 'b_ahm -> 'a_ahm }
 
-    fun lift_pickler { extract, patchback } wb b (hcm, fwdm, a_ahm, next) = let
-	val b_ahm = extract a_ahm
-	val (codes, pr, (hcm', fwdm', b_ahm', next')) =
-	    wb b (hcm, fwdm, b_ahm, next)
-	val a_ahm' = patchback (a_ahm, b_ahm')
-    in
-	(codes, pr, (hcm', fwdm', a_ahm', next'))
-    end
+    fun lift_pickler { extract, patchback } wb b (hcm, fwdm, a_ahm, next, si) =
+	let val b_ahm = extract a_ahm
+	    val (codes, pr, (hcm', fwdm', b_ahm', next', si')) =
+		wb b (hcm, fwdm, b_ahm, next, si)
+	    val a_ahm' = patchback (a_ahm, b_ahm')
+	in
+	    (codes, pr, (hcm', fwdm', a_ahm', next', si'))
+	end
 
     (* for export *)
     nonfix $

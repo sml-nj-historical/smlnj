@@ -19,6 +19,14 @@
  *         fewer generated thunks that make the code run faster.)
  *
  * July 1999, Matthias Blume
+ *
+ * We now use the high bit in char codes of shareable nodes to indicate
+ * that actual sharing has occured.  If the high bit is not set, we do
+ * no longer bother to insert the node into its sharing map.  This
+ * improves unpickling speed (e.g., for autoloading) by about 25% and
+ * saves tons of memory.
+ *
+ * October 2000, Matthias Blume
  *)
 signature UNPICKLE_UTIL = sig
 
@@ -104,8 +112,7 @@ signature UNPICKLE_UTIL = sig
     val share : session -> 'v map -> (char -> 'v) -> 'v
 
     (* If you know that you don't need a map because there can be no
-     * sharing (typically if you didn't use any $ but only % for pickling
-     * your type), then you can use "nonshare" instead of "share". *)
+     * sharing, then you can use "nonshare" instead of "share". *)
     val nonshare : session -> (char -> 'v) -> 'v
 
     (* making readers for some common types *)
@@ -228,39 +235,49 @@ structure UnpickleUtil :> UNPICKLE_UTIL = struct
 	({ state = mkMap (), getter = charGetter }: session)
 
     fun share { state, getter = { read, seek, cur } } m r = let
+	(* "firsttime" is guaranteed to be called with a character
+	 * that has the high-bit set. *)
 	fun firsttime (pos, c) = let
-	    val v = r c
+	    val v = r (Char.chr (Char.ord c - 128))
 	    val pos' = cur ()
 	in
 	    m := M.insert (!m, pos, (v, pos'));
 	    v
 	end
+	val c = read ()
     in
-	case read () of
-	    #"\255" => let
-		val pos = f_int read ()
-	    in
-		case M.find (!m, pos) of
-		    SOME (v, _) => v
-		  | NONE => let
-			val here = cur ()
-		    in
-			seek pos;
-			(* It is ok to use "read" here because
-			 * there won't be back-references that jump
-			 * to other back-references. *)
-			firsttime (pos, read())
-			before seek here
-		    end
-	    end
-	  | c => let
-		(* Must subtract one to get back in front of c. *)
-		val pos = cur () - 1
-	    in
-		case M.find (!m, pos) of
-		    SOME (v, pos') => (seek pos'; v)
-		  | NONE => firsttime (pos, c)
-	    end
+	if Char.ord c < 128 then
+	    (* High-bit is not set, so this is not a shared node.
+	     * Therefore, it can't possibly be in the map, and
+	     * we can call r directly. *)
+	    r c
+	else if c = #"\255" then let
+	    val pos = f_int read ()
+	in
+	    case M.find (!m, pos) of
+		SOME (v, _) => v
+	      | NONE => let
+		    val here = cur ()
+		in
+		    seek pos;
+		    (* It is ok to use "read" here because
+		     * there won't be back-references that jump
+		     * to other back-references.
+		     * (Since we are jumping to something that
+		     * was shared, it has the high-bit set, so
+		     * calling "firsttime" is ok.) *)
+		    firsttime (pos, read())
+		    before seek here
+		end
+	end
+	else let
+	    (* Must subtract one to get back in front of c. *)
+	    val pos = cur () - 1
+	in
+	    case M.find (!m, pos) of
+		SOME (v, pos') => (seek pos'; v)
+	      | NONE => firsttime (pos, c)
+	end
     end
 
     (* "nonshare" gets around backref detection.  Certain integer
@@ -354,13 +371,14 @@ structure UnpickleUtil :> UNPICKLE_UTIL = struct
     fun r_string session () = let
 	val { state = m, getter } = session
 	val { read, ... } = getter
-	fun rs c = let
-	    fun loop (l, #"\"") = String.implode (rev l)
-	      | loop (l, #"\\") = loop (read () :: l, read ())
-	      | loop (l, c) = loop (c :: l, read ())
-	in
-	    loop ([], c)
-	end
+	fun rs #"\"" =
+	    let fun loop (l, #"\"") = String.implode (rev l)
+		  | loop (l, #"\\") = loop (read () :: l, read ())
+		  | loop (l, c) = loop (c :: l, read ())
+	    in
+		loop ([], read ())
+	    end
+	  | rs _ = raise Format
     in
 	share session m rs
     end

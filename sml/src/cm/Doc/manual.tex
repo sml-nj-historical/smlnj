@@ -608,7 +608,7 @@ but will otherwise be ignored.
 
 Functions that control CM's operation are accessible as members of a
 structure named {\tt CM} which itself is exported from a library
-called {\tt \$smlnj/full.cm} (or, alternatively, {\tt
+called {\tt \$smlnj/cm.cm} (or, alternatively, {\tt
 \$smlnj/cm/full.cm}).  This library is pre-registered for auto-loading
 at the interactive top level.
 
@@ -943,7 +943,7 @@ type {\tt CM.Server.server}.
 CM is put into ``parallel'' mode by attaching at least one compile
 server.  Compile servers are attached using invocations of {\tt
 CM.Server.start}.  The function takes the name of the server (as an
-arbitrary but unique string) ({\tt name}), the Unix command used to
+arbitrary string) ({\tt name}), the Unix command used to
 start the server in a form suitable as an argument to {\tt
 Unix.execute} ({\tt cmd}), an optional ``path transformation
 function'' for converting local path names to remote pathnames ({\tt
@@ -2101,8 +2101,10 @@ with the following signature:
   end
 \end{verbatim}
 
-Here, {\tt name} is a string uniquely identifying the server and {\tt
-cmd} is a value suitable as argument to {\tt Unix.execute}.
+Here, {\tt name} is an arbitrary string that is used by CM when
+issuing diagnostic messages concerning the server\footnote{Therefore,
+it is useful to choose {\tt name} uniquely.} and {\tt cmd} is a value
+suitable as argument to {\tt Unix.execute}.
 
 The program to be specified by {\tt cmd} should be another instance of
 CM---running in ``slave mode''.  To start CM in slave mode, start {\tt
@@ -2254,7 +2256,7 @@ operating system shell by invoking the command {\tt sml}.
 This section describes those arguments accepted by {\tt sml} that
 are related to (and processed by) CM.
 
-CM accepts {\em file names}, {\em mode switching flags}, and {\tt
+CM accepts {\em file names}, {\em mode switching flags}, and {\em
 preprocessor definitions} as arguments.  All these arguments are
 processed one-by-one from left to right.
 

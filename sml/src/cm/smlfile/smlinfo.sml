@@ -275,16 +275,36 @@ structure SmlInfo :> SMLINFO = struct
 		    val _ = if noerrors orelse quiet then ()
 			    else Say.vsay ["[parsing ",
 					   SrcPath.descr sourcepath, "]\n"]
-		    val normal_ec = #errcons gp
-		    val dummy_ec = { consumer = fn (x: string) => (),
-				     linewidth = #linewidth normal_ec,
-				     flush = fn () => () }
-		    val ec = if noerrors then dummy_ec else normal_ec
-		    val source =
-			Source.newSource (SrcPath.osstring' sourcepath,
-					  1, stream, false, ec)
+		    (* The logic is a bit tricky here:
+		     *  If "noerrors" is set we want to suppress error
+		     *  messages from the parser.  This is done using
+		     *  a dummy error consumer that does nothing.  However,
+		     *  if we do that we get a "source" object that has
+		     *  a dummy error consumer hard-wired into it.  As a
+		     *  result we also don't see error messages from the
+		     *  elaborator in this case -- bad.  So we make
+		     *  TWO "source" objects that share the same input
+		     *  stream but used different error consumers. *)
+		    val (source, parse_source) = let
+			val normal_ec = #errcons gp
+			val source =
+			    Source.newSource (SrcPath.osstring' sourcepath,
+					      1, stream, false, normal_ec)
+		    in
+			if noerrors then let
+			    val dummy_ec = { consumer = fn (x: string) => (),
+					    linewidth = #linewidth normal_ec,
+					    flush = fn () => () }
+			    val parse_source =
+				Source.newSource (SrcPath.osstring' sourcepath,
+						  1, stream, false, dummy_ec)
+			in
+			    (source, parse_source)
+			end
+			else (source, source)
+		    end
 		in
-		    (SF.parse source, source)
+		    (SF.parse parse_source, source)
 		end
 		fun openIt () = TextIO.openIn (SrcPath.osstring sourcepath)
 		val pto =

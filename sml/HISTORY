@@ -13,6 +13,17 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/08/31 17:30:00 JST
+Tag: blume-20001017-v110p29p1
+Description:
+
+I made a version 110.29.1 with new bootfiles.
+
+Changes:  Modified pickler/unpickler for faster and leaner unpickling.
+          CM documentation changes and a small bugfix in CM's error reporting.
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2000/09/27 14:42:35 EDT
 Tag: george-20000927-nodestatus
