@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/26 15:00:00 CDT
+Tag: blume-20030926-110_43_3
+Description:
+
+- additional cleanup
+- version number bump, NEW BOOTFILES
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/09/26 12:00:00 CDT
 Tag: blume-20030926-ppautoload
 Description:
@@ -30,8 +39,8 @@ instances of these ?.Foo.Bar.xxx names from being printed.
 
 The mechanism that picks names for types still needs some work, though.
 (Right now it seems that if there is a type A.t which is defined to
-be B.y, but B is unavailable at toplevel, then A.t gets printed as
-"?.B.t" although the perhaps more sensible solution would be to use
+be B.u, but B is unavailable at toplevel, then A.t gets printed as
+"?.B.u" although the perhaps more sensible solution would be to use
 "A.t" in this case.  In other words, the prettyprinter should follow
 a chain of DEFtycs not farther than there are corresponding toplevel
 names in the current environment.)

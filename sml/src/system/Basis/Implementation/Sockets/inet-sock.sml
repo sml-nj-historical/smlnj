@@ -24,11 +24,12 @@ structure INetSock : INET_SOCK =
       val fromInetAddr : Socket.addr -> (Socket.addr * int) = sockFn "fromInetAddr"
       val inetAny  : int -> Socket.addr = sockFn "inetany"
     in
-    fun toAddr (Socket.INADDR a, port) = Socket.ADDR(toInetAddr(a, port))
+    fun toAddr (ina, port) =
+	Socket.ADDR(toInetAddr(NetHostDBInternal.unINADDR ina, port))
     fun fromAddr (Socket.ADDR addr) = let
 	  val (a, port) = fromInetAddr addr
 	  in
-	    (Socket.INADDR a, port)
+	    (NetHostDBInternal.INADDR a, port)
 	  end
     fun any port = Socket.ADDR(inetAny port)
     end

@@ -1,7 +1,6 @@
 right now:
 
 short-term:
-  * make LargeInt = IntInf in Basis
 
 future:
  * better (more efficient) implementation of IntInf (better

@@ -6,17 +6,24 @@
 
 local
     structure Word8 = Word8Imp
-    structure SysWord = SysWordImp
 in
-structure NetHostDB : NET_HOST_DB =
-  struct
+structure NetHostDBInternal :> sig
+    (* export extra element for internal use by Basis implementation *)
+    include NET_HOST_DB
+    val INADDR : Socket.addr -> in_addr
+    val unINADDR : in_addr -> Socket.addr
+end
+  where type addr_family = Socket.AF.addr_family
+= struct
 
-    structure SysW = SysWord
+    structure SysW = SysWordImp
 
     fun netdbFun x = CInterface.c_function "SMLNJ-Sockets" x
 
-    type in_addr = Socket.in_addr
+    datatype in_addr = INADDR of Socket.addr
     type addr_family = Socket.AF.addr_family
+
+    fun unINADDR (INADDR a) = a
 
     datatype entry = HOSTENT of {
 	  name : string,
@@ -42,19 +49,19 @@ structure NetHostDB : NET_HOST_DB =
 	| getHostEnt (SOME(name, aliases, addrType, addrs)) = SOME(HOSTENT{
 	      name = name, aliases = aliases,
 	      addrType = Socket.AF.AF addrType,
-	      addrs = List.map Socket.INADDR addrs
+	      addrs = List.map INADDR addrs
 	    })
       val getHostByName' : string -> hostent option = netdbFun "getHostByName"
       val getHostByAddr' : Socket.addr -> hostent option = netdbFun "getHostByAddr"
     in
     val getByName = getHostEnt o getHostByName'
-    fun getByAddr (Socket.INADDR addr) = getHostEnt(getHostByAddr' addr)
+    fun getByAddr (INADDR addr) = getHostEnt(getHostByAddr' addr)
     end (* local *)
 
     fun scan getc strm = let
 	  fun w2b w = Word8.fromLargeWord(SysW.toLargeWord w)
 	  fun getB (w, shft) = SysW.andb(SysW.>>(w, shft), 0wxFF)
-	  fun mkAddr (a, b, c, d) = Socket.INADDR(Word8Vector.fromList[
+	  fun mkAddr (a, b, c, d) = INADDR(Word8Vector.fromList[
 		  w2b a, w2b b, w2b c, w2b d
 		])
 	  in
@@ -73,7 +80,7 @@ structure NetHostDB : NET_HOST_DB =
 
     val fromString = StringCvt.scanString scan
 
-    fun toString (Socket.INADDR addr) = let
+    fun toString (INADDR addr) = let
 	  fun get i = Word8Vector.sub(addr, i)
 	  in
 	    Socket.fromBytes(get 0, get 1, get 2, get 3)
@@ -82,5 +89,8 @@ structure NetHostDB : NET_HOST_DB =
     val getHostName : unit -> string = netdbFun "getHostName"
 
   end
-end
 
+(* restrict to NET_HOST_DB *)
+structure NetHostDB : NET_HOST_DB = NetHostDBInternal
+
+end

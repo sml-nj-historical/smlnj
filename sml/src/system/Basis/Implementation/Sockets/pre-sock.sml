@@ -6,7 +6,6 @@
  * structure is called Sock, so that the signatures will compile.
  *
  *)
-
 local
     structure SysWord = SysWordImp
     structure Word8 = Word8Imp
@@ -26,12 +25,6 @@ structure Socket = struct
    *   to non-blocking *)
     type sockFD = int
     type socket = { fd: sockFD, nb: bool ref }
-
-  (* an internet address; this is here because it is abstract in the
-   * NetHostDB and IP structures.
-   *)
-    datatype in_addr = INADDR of addr
-
 
   (* sockets are polymorphic; the instantiation of the type variables
    * provides a way to distinguish between different kinds of sockets.
