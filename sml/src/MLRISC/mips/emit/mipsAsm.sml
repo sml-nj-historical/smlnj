@@ -5,23 +5,23 @@
  *)
 
 
-functor MIPSAsmEmitter(structure Instr : MIPSINSTR
+functor MIPSAsmEmitter(structure S : INSTRUCTION_STREAM
+                       structure Instr : MIPSINSTR
+                          where T = S.P.T
                        structure Shuffle : MIPSSHUFFLE
                           where I = Instr
+                       structure MLTreeEval : MLTREE_EVAL
+                          where T = Instr.T
                       ) : INSTRUCTION_EMITTER =
 struct
    structure I  = Instr
    structure C  = I.C
    structure T  = I.T
-   structure S  = T.Stream
+   structure S  = S
    structure P  = S.P
-   structure LabelExp = I.LabelExp
    structure Constant = I.Constant
    
-   val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
-   val show_region  = MLRiscControl.getFlag "asm-show-region"
-   val show_cutsTo = MLRiscControl.getFlag "asm-show-cutsto"
-   val indent_copies = MLRiscControl.getFlag "asm-indent-copies"
+   open AsmFlags
    
    fun error msg = MLRiscErrorMsg.error("MIPSAsmEmitter",msg)
    
@@ -41,27 +41,28 @@ struct
                   in  if n<0 then "-"^String.substring(s,1,size s-1)
                       else s
                   end
-       fun emit_label lab = emit(Label.nameOf lab)
-       fun emit_labexp le = emit(LabelExp.toString le)
+       fun emit_label lab = emit(P.Client.AsmPseudoOps.lexpToString(T.LABEL lab))
+       fun emit_labexp le = emit(P.Client.AsmPseudoOps.lexpToString (T.LABEXP le))
        fun emit_const c = emit(Constant.toString c)
        fun emit_int i = emit(ms i)
        fun paren f = (emit "("; f(); emit ")")
-       fun defineLabel lab = emit(Label.nameOf lab^":\n")
+       fun defineLabel lab = emit(P.Client.AsmPseudoOps.defineLabel lab^"\n")
        fun entryLabel lab = defineLabel lab
-       fun comment msg = (tab(); emit("/* " ^ msg ^ " */"))
-       fun annotation a = (comment(Annotations.toString a); nl())
+       fun comment msg = (tab(); emit("/* " ^ msg ^ " */"); nl())
+       fun annotation a = comment(Annotations.toString a)
        fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
+       fun fail _ = raise Fail "AsmEmitter"
        fun emit_region mem = comment(I.Region.toString mem)
        val emit_region = 
           if !show_region then emit_region else doNothing
-       fun pseudoOp pOp = emit(P.toString pOp)
+       fun pseudoOp pOp = (emit(P.toString pOp); emit "\n")
        fun init size = (comment("Code Size = " ^ ms size); nl())
        val emitCellInfo = AsmFormatUtil.reginfo
                                 (emit,formatAnnotations)
-       fun emitCell r = (emit(C.toString r); emitCellInfo r)
+       fun emitCell r = (emit(CellsBasis.toString r); emitCellInfo r)
        fun emit_cellset(title,cellset) =
-         (nl(); comment(title^C.CellSet.toString cellset))
+         (nl(); comment(title^CellsBasis.CellSet.toString cellset))
        val emit_cellset = 
          if !show_cellset then emit_cellset else doNothing
        fun emit_defs cellset = emit_cellset("defs: ",cellset)
@@ -548,17 +549,34 @@ struct
        | I.SOURCE{} => emit "source"
        | I.SINK{} => emit "sink"
        )
-          and emitInstr i = (tab(); emitInstr' i; nl())
-          and emitInstrIndented i = (indent(); emitInstr' i; nl())
-          and emitInstrs instrs =
+      in  tab(); emitInstr' instr; nl()
+      end (* emitter *)
+      and emitInstrIndented i = (indent(); emitInstr i; nl())
+      and emitInstrs instrs =
            app (if !indent_copies then emitInstrIndented
                 else emitInstr) instrs
-      in  emitInstr instr end
+   
+      and emitInstr(I.ANNOTATION{i,a}) =
+           ( comment(Annotations.toString a);
+              nl();
+              emitInstr i )
+        | emitInstr(I.LIVE{regs, spilled})  = 
+            comment("live= " ^ CellsBasis.CellSet.toString regs ^
+                    "spilled= " ^ CellsBasis.CellSet.toString spilled)
+        | emitInstr(I.KILL{regs, spilled})  = 
+            comment("killed:: " ^ CellsBasis.CellSet.toString regs ^
+                    "spilled:: " ^ CellsBasis.CellSet.toString spilled)
+        | emitInstr(I.INSTR i) = emitter i
+        | emitInstr(I.COPY{k=CellsBasis.GP, sz, src, dst, tmp}) =
+           emitInstrs(Shuffle.shuffle{tmp=tmp, src=src, dst=dst})
+        | emitInstr(I.COPY{k=CellsBasis.FP, sz, src, dst, tmp}) =
+           emitInstrs(Shuffle.shufflefp{tmp=tmp, src=src, dst=dst})
+        | emitInstr _ = error "emitInstr"
    
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
-                emit=emitter,
-                endCluster=doNothing,
+                emit=emitInstr,
+                endCluster=fail,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,
                 comment=comment,

@@ -6,15 +6,16 @@
 
 
 functor MIPSMCEmitter(structure Instr : MIPSINSTR
+                      structure MLTreeEval : MLTREE_EVAL where T = Instr.T
+                      structure Stream : INSTRUCTION_STREAM 
                       structure CodeString : CODE_STRING
                      ) : INSTRUCTION_EMITTER =
 struct
    structure I = Instr
    structure C = I.C
-   structure LabelExp = I.LabelExp
    structure Constant = I.Constant
    structure T = I.T
-   structure S = T.Stream
+   structure S = Stream
    structure P = S.P
    structure W = Word32
    
@@ -34,7 +35,7 @@ struct
        val emit_int = itow
        fun emit_word w = w
        fun emit_label l = itow(Label.addrOf l)
-       fun emit_labexp le = itow(LabelExp.valueOf le)
+       fun emit_labexp le = itow(MLTreeEval.valueOf le)
        fun emit_const c = itow(Constant.valueOf c)
        val loc = ref 0
    
@@ -49,6 +50,7 @@ struct
        in loc := i + 1; CodeString.update(i,Word8.fromLargeWord w) end
    
        fun doNothing _ = ()
+       fun fail _ = raise Fail "MCEmitter"
        fun getAnnotations () = error "getAnnotations"
    
        fun pseudoOp pOp = P.emitValue{pOp=pOp, loc= !loc,emit=eByte}
@@ -70,15 +72,15 @@ struct
             eByteW b24; 
             eByteW b32 )
        end
-   fun emit_GP r = itow (C.physicalRegisterNum r)
-   and emit_FP r = itow (C.physicalRegisterNum r)
-   and emit_CC r = itow (C.physicalRegisterNum r)
-   and emit_COND r = itow (C.physicalRegisterNum r)
-   and emit_HI r = itow (C.physicalRegisterNum r)
-   and emit_LO r = itow (C.physicalRegisterNum r)
-   and emit_MEM r = itow (C.physicalRegisterNum r)
-   and emit_CTRL r = itow (C.physicalRegisterNum r)
-   and emit_CELLSET r = itow (C.physicalRegisterNum r)
+   fun emit_GP r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_FP r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CC r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_COND r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_HI r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_LO r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_MEM r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CTRL r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CELLSET r = itow (CellsBasis.physicalRegisterNum r)
    fun Load {l, rt, b, offset} = 
        let val rt = emit_GP rt
            val b = emit_GP b
@@ -133,10 +135,16 @@ struct
            emitInstr instr
        end
    
+   fun emitInstruction(I.ANNOTATION{i, ...}) = emitInstruction(i)
+     | emitInstruction(I.INSTR(i)) = emitter(i)
+     | emitInstruction(I.LIVE _)  = ()
+     | emitInstruction(I.KILL _)  = ()
+   | emitInstruction _ = error "emitInstruction"
+   
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
-                emit=emitter,
-                endCluster=doNothing,
+                emit=emitInstruction,
+                endCluster=fail,
                 defineLabel=doNothing,
                 entryLabel=doNothing,
                 comment=doNothing,
