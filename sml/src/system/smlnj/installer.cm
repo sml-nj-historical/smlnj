@@ -1,0 +1,32 @@
+(* installer.cm
+ *
+ *   Installation scripts written in ML.  These get pre-compiled
+ *   and added to the bootfiles so they are guaranteed to be in
+ *   sync with the rest of the system.
+ *
+ * (C) 2003 The Fellowship of SML/NJ
+ *
+ * Author: Matthias Blume (blume@tti-c.org)
+ *)
+Library
+	structure LibInstall
+# if defined (OPSYS_UNIX)
+     	structure UnixLibInstall
+# elif defined(OPSYS_WIN32)
+	structure WinLibInstall
+# endif
+
+is
+	$/basis.cm
+	$/smlnj-lib.cm
+	$smlnj/cm.cm
+
+	installer/libinstall.sml
+
+# if defined (OPSYS_UNIX)
+     	installer/nixlibinstall.sml
+# elif defined(OPSYS_WIN32)
+	installer/winlibinstall.sml
+# else
+# error Unsupported operating system.
+# endif
