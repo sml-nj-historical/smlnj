@@ -23,6 +23,7 @@ signature SOCK_UTIL =
 	 * the minus sign (-) and period (.), where the period is used as a
 	 * domain separator.  
 	 *)
+    val addrFromString : string -> {host : hostname, port : port option} option
 
     exception BadAddr of string
 

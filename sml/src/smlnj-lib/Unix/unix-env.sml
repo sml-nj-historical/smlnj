@@ -13,13 +13,19 @@
 structure UnixEnv : UNIX_ENV =
   struct
 
+    structure SS = Substring
+
     local
-      fun isEqual #"=" = true | isEqual _ = false
+      fun notEqual #"=" = false | notEqual _ = true
+      val split = SS.splitl notEqual
     in
-    fun splitBinding s = (case (String.fields isEqual s)
-	   of [a, b] => (a, b)
-	    | _ => (s, "")
-	  (* end case *))
+    fun splitBinding s = let
+	  val (a, b) = split(SS.all s)
+	  in
+	    if SS.isEmpty b
+	      then (s, "")
+	      else (SS.string a, SS.string(SS.triml 1 b))
+	  end
     end
 
   (* return the value, if any, bound to the name. *)

@@ -79,6 +79,7 @@ structure ListMergeSort
 structure ListXProd
 structure ParserComb
 structure PathUtil
+structure PrimeSizes
 structure PropList
 structure Queue
 structure Rand
@@ -193,6 +194,7 @@ path-util-sig.sml
 path-util.sml
 plist-sig.sml
 plist.sml
+prime-sizes.sml
 queue-sig.sml
 queue.sml
 rand-sig.sml
