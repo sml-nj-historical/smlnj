@@ -81,11 +81,11 @@ Library
 	structure AsmFormatUtil		
 	functor ClusterEmit
 	signature CODE_STRING
-	signature OBJ_TYPE
 	signature GC_CELLS
 	functor GCCells
 	signature GC_TYPE
-	functor GCType
+	signature GC_MAP
+	functor GCMap
 	functor BBSched2
 	signature BBSCHED
 	functor SpanDependencyResolution
@@ -187,11 +187,11 @@ is
 	emit/code-string.sig
 	
 	(* Basic GC types stuff *)
-	gc-safety/gc-obj-type.sig
 	gc-safety/gc-cells.sig
 	gc-safety/gc-cells.sml
 	gc-safety/gc-type.sig
-	gc-safety/gc-type.sml
+	gc-safety/gc-map.sig
+	gc-safety/gc-map.sml
 	
 	(* Span dependency stuff *)
 	backpatch/backpatch.sml

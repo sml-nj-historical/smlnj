@@ -18,15 +18,7 @@ in
 
 val say = Control.Print.say
 
-fun sayt(INTt) = say "[I]"
-  | sayt(INT32t) = say "[I32]"
-  | sayt(FLTt) = say "[R]"
-  | sayt(PTRt (RPT k)) = say ("[PR"^(Int.toString(k))^"]")
-  | sayt(PTRt (FPT k)) = say ("[PF"^(Int.toString(k))^"]")
-  | sayt(PTRt (VPT)) = say "[PV]"
-  | sayt(FUNt) = say "[F]"
-  | sayt(CNTt) = say "[C]"
-  | sayt(DSPt) = say "[D]"
+val sayt = say o CPS.ctyToString
 
 fun numkindName (P.INT bits) = "i" ^ Int.toString bits
   | numkindName (P.UINT bits) = "u" ^ Int.toString bits

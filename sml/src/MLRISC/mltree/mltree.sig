@@ -15,18 +15,25 @@ signature MLTREE = sig
   structure PseudoOp : PSEUDO_OPS
   structure Region   : REGION
   structure Stream   : INSTRUCTION_STREAM
+  structure Basis    : MLTREE_BASIS
+  structure Util     : MLTREE_UTIL
      sharing Stream.P = PseudoOp
-
-  include MLTREE_BASIS
+     sharing Util.Basis = Basis
 
   type rextension 
   type fextension 
 
+  type ty  = Basis.ty
+  type fty = Basis.fty
   type var = int (* variable *)
   type src = var (* source variable *)
   type dst = var (* destination variable *)
   type reg = var (* physical register *)
 
+  datatype cond = datatype Basis.cond
+  datatype fcond = datatype Basis.fcond
+  datatype ext = datatype Basis.ext
+  datatype rounding_mode = datatype Basis.rounding_mode
 
   (* phi-functions for SSA form *)
   datatype phi =
@@ -54,8 +61,8 @@ signature MLTREE = sig
     | STORE_UNALIGNED of ty * rexp * rexp * Region.region
     | FSTORE of fty * rexp * fexp * Region.region	(* address, data *)
     | FSTORE_UNALIGNED of fty * rexp * fexp * Region.region
-    | BCC    of cond * ccexp * Label.label 
-    | FBCC   of fcond * ccexp * Label.label
+    | BCC    of Basis.cond * ccexp * Label.label 
+    | FBCC   of Basis.fcond * ccexp * Label.label
     | ANNOTATION of stm * Annotations.annotation
 
       (* The following are used internally by SSA optimizations; 
@@ -106,8 +113,8 @@ signature MLTREE = sig
     | SLL   of ty * rexp * rexp
 
       (* type promotion *)
-    | CVTI2I of ty * ext * rexp
-    | CVTF2I of ty * rounding_mode * fexp
+    | CVTI2I of ty * Basis.ext * ty * rexp
+    | CVTF2I of ty * Basis.rounding_mode * fty * fexp
 
       (* 
        * COND(ty,cc,e1,e2):
@@ -122,13 +129,13 @@ signature MLTREE = sig
 
     | SEQ of stm * rexp
 
-    | EXTENSION of ty * rextension * rexp list
+    | EXT of ty * rextension * rexp list
 
     | MARK of rexp * Annotations.annotation
 
       (* Used in RTL *)
     | RTLPC (* the program counter; used for describing relative addressing *)
-    | RTLMISC of misc_op ref * rexp list
+    | RTLMISC of Basis.misc_op ref * rexp list
 
   and fexp =
       FREG   of fty * src
@@ -143,23 +150,23 @@ signature MLTREE = sig
     | FNEG   of fty * fexp
     | FSQRT  of fty * fexp
 
-    | CVTI2F of fty * ext * rexp
-    | CVTF2F of fty * rounding_mode * fexp
+    | CVTI2F of fty * Basis.ext * ty * rexp
+    | CVTF2F of fty * Basis.rounding_mode * fty * fexp
     | FSEQ   of stm * fexp
 
-    | FEXTENSION of fty * fextension * fexp list
+    | FEXT of fty * fextension * fexp list
 
     | FMARK of fexp * Annotations.annotation
 
       (* used in RTL *)
-    | RTLFMISC of misc_op ref * fexp list
+    | RTLFMISC of Basis.misc_op ref * fexp list
 
   and ccexp =
       CC     of src
-    | CMP    of ty * cond * rexp * rexp 
-    | FCMP   of fty * fcond * fexp * fexp
+    | CMP    of ty * Basis.cond * rexp * rexp 
+    | FCMP   of fty * Basis.fcond * fexp * fexp
     | CCMARK of ccexp * Annotations.annotation
-    | RTLCCMISC of misc_op ref * ccexp list
+    | RTLCCMISC of Basis.misc_op ref * ccexp list
 
   and mlrisc = CCR of ccexp | GPR of rexp | FPR of fexp
 

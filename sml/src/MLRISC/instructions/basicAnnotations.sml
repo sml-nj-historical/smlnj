@@ -38,8 +38,12 @@ struct
    val DEFUSECC = A.new(SOME(fn x => "ccreg "^defUse x))
 
    val REGINFO = A.new(SOME(fn _ => "REGINFO")) : (int -> string) A.property
+   val SHOW_CELLSET = A.newFlag("SHOW_CELLSET") 
 
-   val NO_OPTIMIZATION = A.newFlag("NO_OPTIMIZATION") : unit A.property
-   val CALLGC = A.newFlag("CALLGC") : unit A.property
+   val NO_OPTIMIZATION = A.newFlag("NO_OPTIMIZATION") 
+   val CALLGC = A.newFlag("CALLGC") 
+   val BLOCK_NAMES = A.new(SOME(fn _ => "BLOCK_NAMES")) :
+                       A.annotations A.property
+   val EMPTY_BLOCK = A.newFlag("EMPTY_BLOCK")
 
 end

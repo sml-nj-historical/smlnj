@@ -167,13 +167,13 @@ struct
          | T.SRA(ty,a,b)  => T.SRA(ty, sim a, sim b)
          | T.SRL(ty,a,b)  => T.SRL(ty, sim a, sim b)
          | T.SLL(ty,a,b)  => T.SLL(ty, sim a, sim b)
-         | T.CVTI2I(ty,ext,a) => T.CVTI2I(ty,ext,sim a)
-         | T.CVTF2I(ty,round,a) => T.CVTF2I(ty,round,simF a)
+         | T.CVTI2I(ty,ext,ty',a) => T.CVTI2I(ty,ext,ty',sim a)
+         | T.CVTF2I(ty,round,fty,a) => T.CVTF2I(ty,round,fty,simF a)
          | T.COND(ty,cc,a,b) => T.COND(ty, simCC cc, sim a, sim b)
          | T.LOAD(ty,a,mem) => T.LOAD(ty, sim a, mem)
          | T.LOAD_UNALIGNED(ty,a,mem) => T.LOAD_UNALIGNED(ty, sim a, mem)
          | T.SEQ(stm,e) => T.SEQ(simStm stm, sim e)
-         | T.EXTENSION(ty, rext, es) => T.EXTENSION(ty, rext, map sim es)
+         | T.EXT(ty, rext, es) => T.EXT(ty, rext, map sim es)
          | T.MARK(e,an) => T.MARK(sim e, an)
          | e => e
  
@@ -205,7 +205,7 @@ struct
       fun SHIFT(e,f,ty,a,(T.LI 0 | T.LI32 0w0)) = a
         | SHIFT(e,f,ty,a as (T.LI 0 | T.LI32 0w0),b) = a
         | SHIFT(e,f,ty,a,b) = f(e,ty,a,b)
-      fun CVTI2I(e,ty,ext,a) = e
+      fun CVTI2I(e,ty,ext,ty',a) = e
    in (* perform algebraic simplification and constant folding *)
       case e of
         T.ADD(ty,a,b)  => ADD(e,add,ty,a,b)
@@ -240,7 +240,7 @@ struct
       | T.SRL(ty,a,b)  => SHIFT(e,srl,ty,a,b)
       | T.SLL(ty,a,b)  => SHIFT(e,sll,ty,a,b)
 
-      | T.CVTI2I(ty,ext,e) => CVTI2I(e,ty,ext,e)
+      | T.CVTI2I(ty,ext,ty',a) => CVTI2I(e,ty,ext,ty',a)
 
       | T.COND(ty,cc,a,b) => 
           (case evalcc cc of TRUE => a | FALSE => b | UNKNOWN => e)
@@ -276,7 +276,7 @@ struct
        end
    
    and simF e =
-       let val e = case e of
+       let val exp = case e of
              T.FLOAD(fty,e,mem) => T.FLOAD(fty,sim e,mem)
            | T.FLOAD_UNALIGNED(fty,e,mem) => T.FLOAD_UNALIGNED(fty,sim e,mem)
            | T.FADD(fty,a,b) => T.FADD(fty,simF a,simF b)
@@ -286,13 +286,16 @@ struct
            | T.FABS(fty,a)   => T.FABS(fty,simF a)
            | T.FNEG(fty,a)   => T.FNEG(fty,simF a)
            | T.FSQRT(fty,a)  => T.FSQRT(fty,simF a)
-           | T.CVTI2F(fty,ext,e) => T.CVTI2F(fty,ext,sim e)
-           | T.CVTF2F(fty,round,e) => T.CVTF2F(fty,round,simF e)
+           | T.CVTI2F(fty,ext,ty,e) => T.CVTI2F(fty,ext,ty,sim e)
+           | T.CVTF2F(fty,round,fty',e) => T.CVTF2F(fty,round,fty',simF e)
            | T.FSEQ(s,e) => T.FSEQ(simStm s,simF e)
-           | T.FEXTENSION(fty,fext,es) => T.FEXTENSION(fty,fext,map simF es)
+           | T.FEXT(fty,fext,es) => T.FEXT(fty,fext,map simF es)
            | T.FMARK(e,an) => T.FMARK(simF e,an)
            | e => e
-       in e end
+       in case exp of
+            T.FNEG(ty,T.FNEG(ty',e)) => if ty = ty' then e else exp
+          | exp => exp
+       end
 
   and simCC e =
       let val e = case e of

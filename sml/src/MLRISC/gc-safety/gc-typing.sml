@@ -4,7 +4,9 @@
 functor GCTyping
    (structure IR : MLRISC_IR
     structure GCProps : GC_PROPERTIES
+    structure GCMap : GC_MAP
     structure Props : INSN_PROPERTIES
+       sharing GCMap.GC = GCProps.GC
        sharing IR.I = GCProps.I = Props.I
    ) : GC_TYPING =
 struct
@@ -16,7 +18,7 @@ struct
    structure An  = Annotations 
 
    fun gcTyping(IR as G.GRAPH cfg) =
-       case #get GC.GCMAP (CFG.getAnnotations IR)
+       case #get GCMap.GCMAP (CFG.getAnnotations IR)
        of NONE => IR (* no gc map; do nothing *)
         | SOME gcmap =>
        let val lookup = Intmap.map gcmap

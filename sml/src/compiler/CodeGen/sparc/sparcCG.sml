@@ -6,7 +6,7 @@ structure SparcCG =
   ( structure MachSpec   = SparcSpec
     structure PseudoOps  = SparcPseudoOps
     structure CpsRegs    = SparcCpsRegs
-    structure InsnProps  = SparcProps(SparcInstr)
+    structure InsnProps  = SparcProps
     structure Asm        = SparcAsmEmitter
 
     structure MLTreeComp=
@@ -38,7 +38,7 @@ structure SparcCG =
          )
 
     structure RA = 
-       RegAlloc2
+       RegAlloc
          (structure I         = SparcInstr
           structure MachSpec  = SparcSpec
           structure Flowgraph = SparcFlowGraph

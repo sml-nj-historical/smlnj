@@ -18,6 +18,10 @@ These flags are set via the MLRISC_Control structure.
 	"x86-cfg-debug"	
 		Debug X86 register allocation
 
+        "asm-show-cellset"
+		Assembly listings show the resources defined and used
+		by CALL instructions
+
     counters:
         "ra-int-spills"
 		Counts the number of integer spill instructions

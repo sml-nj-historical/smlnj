@@ -111,13 +111,18 @@ sig
            }
 
    (*
-    * Spill coalescing 
+    * Spill propagation/coalescing phase 
     *)
-    val spillCoalescing : G.interferenceGraph -> G.node list -> unit
+   val spillPropagation : G.interferenceGraph -> G.node list -> G.node list
 
    (*
-    * Spill coloring 
+    * Spill coalescing phase
     *)
-    val spillColoring : G.interferenceGraph -> G.node list -> unit
+   val spillCoalescing : G.interferenceGraph -> G.node list -> unit
+
+   (*
+    * Spill coloring phase
+    *)
+   val spillColoring : G.interferenceGraph -> G.node list -> unit
 
 end

@@ -22,6 +22,11 @@ structure CmHook = struct
 	    { get = fn () => SOME 0, set = fn (x: int option) => () }
 	fun s_u (s: string) = ()
 	fun s's_u (s1: string, s2: string) = ()
+	fun server_start { name: string, cmd: string * string list,
+			   pathtrans: (string -> string) option,
+			   pref: int } = false
+	fun server_stop (s: string) = ()
+	fun server_kill (s: string) = ()
 
 	(* the hook itself *)
 	val hook = ref { stabilize = b's_b,
@@ -41,7 +46,10 @@ structure CmHook = struct
 			 showPending = u_u,
 			 listLibs = u_u,
 			 dismissLib = s_u,
-			 symval = s_iogs }
+			 symval = s_iogs,
+			 server_start = server_start,
+			 server_stop = server_stop,
+			 server_kill = server_kill }
 
 	fun gs label = let
 	    fun get' () = let
@@ -83,6 +91,9 @@ structure CmHook = struct
 		fun listLibs () = #listLibs (!hook) ()
 		fun dismissLib l = #dismissLib (!hook) l
 		fun symval s = #symval (!hook) s
+		fun server_start a = #server_start (!hook) a
+		fun server_stop s = #server_stop (!hook) s
+		fun server_kill s = #server_kill (!hook) s
 	    end
 	end
     end

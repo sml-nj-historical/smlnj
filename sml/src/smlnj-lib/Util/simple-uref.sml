@@ -40,7 +40,7 @@ structure SimpleURef : UREF =
 	  val p' = find p
           val q' = find q
 	  in
-	    if p' = q' then () else p' := PTR q'
+	    if p' = q' then false else (p' := PTR q'; true)
 	  end
  
     val union = link
@@ -48,7 +48,7 @@ structure SimpleURef : UREF =
     fun unify f (p, q) = let
 	  val v = f(!!p, !!q)
 	  in
-	    union (p, q); update (q, v)
+	    union (p, q) before update (q, v)
 	  end
 
   end (* SimpleURef *)

@@ -57,7 +57,7 @@ struct
    *)
   structure GCCells = 
       GCCells(structure C = Cells
-              structure GC = SMLGCType)
+              structure GCMap = SMLGCMap)
 
   val NONREF = SMLGCType.NONREF(ref CPS.INTt)
   val FLOAT  = SMLGCType.NONREF(ref CPS.FLTt)
@@ -96,10 +96,15 @@ struct
   val gcsafety = Control.MLRISC.getFlag "mlrisc-gcsafety"
 
   (*
-   * If this flag is on then directly generate SSA code.
-   * Otherwise use the default behavior.
+   * If this flag is on then split the entry block.
+   * This should be on for SSA optimizations. 
    *)
-  val directSSA = Control.MLRISC.getFlag "direct-ssa"
+  val splitEntry = Control.MLRISC.getFlag "split-entry-block"
+
+  (*
+   * This dummy annotation is used to get an empty block  
+   *)
+  val EMPTY_BLOCK = #create BasicAnnotations.EMPTY_BLOCK ()
 
   (*
    * The codegen function.
@@ -114,10 +119,12 @@ struct
             entryLabel,    (* define an external entry *) 
             exitBlock,     (* mark the end of a procedure *)
             pseudoOp,      (* emit a pseudo op *)
+            annotation,    (* add an annotation *)
             ... } = 
             MLTreeComp.selectInstructions(Flowgen.newStream())
       val maxAlloc = #1 o limits
       val instructionCount = #2 o limits
+      val splitEntry = !splitEntry
 
       (*
        * The natural address arithmetic width of the architecture. 
@@ -156,7 +163,16 @@ struct
       val typmap = Intmap.map typTbl
 
       fun mkGlobalTables(fk, f, _, _, _) =
-          (addLabelTbl (f, Label.newLabel(Int.toString f));
+          ((* internal label *)
+           addLabelTbl (f, Label.newLabel "");
+           (* external entry label *)
+           if splitEntry then
+             (case fk of
+                (CPS.CONT | CPS.ESCAPE) => 
+                    addLabelTbl (~f-1, Label.newLabel(Int.toString f))
+              | _ => ()
+             )
+           else ();
            case fk
                of CPS.CONT => addTypBinding(f, CPS.CNTt)
             | _ => addTypBinding(f, CPS.BOGt)
@@ -283,7 +299,8 @@ struct
                     raise e)) *)
             | regbind(CPS.INT i) = M.LI (i+i+1)
             | regbind(CPS.INT32 w) = M.LI32 w
-            | regbind(CPS.LABEL v) = laddr(functionLabel v, 0)
+            | regbind(CPS.LABEL v) = 
+                  laddr(functionLabel(if splitEntry then ~v-1 else v), 0)
             | regbind _ = error "regbind"
 
           (*
@@ -460,14 +477,6 @@ struct
           fun getObjLength(v) = 
             M.SRL(ity, getObjDescriptor(v), M.LI(D.tagWidth -1))
 
-          fun dst r  = let val r' = Cells.newReg() 
-                       in  alias(r',r); r' end
-          fun fdst f = let val f' = Cells.newFreg()
-                       in  alias(f',f); f' end
-          fun identity x = x
-          val (dst,fdst) = 
-              if !directSSA then (dst,fdst) else (identity,identity)
-
           (* 
            * Note: because formals are moved into fresh temporaries,
            * (formals intersection actuals) is empty. 
@@ -484,9 +493,9 @@ struct
                 )
               | gather(M.GPR(M.REG(ty,rd))::fmls,act::acts,cpRd,cpRs,f,m) = 
                 (case regbind act
-                   of M.REG(_,rs) => gather(fmls,acts,dst rd::cpRd,rs::cpRs,f,m)
+                   of M.REG(_,rs) => gather(fmls,acts,rd::cpRd,rs::cpRs,f,m)
                     | e => gather(fmls, acts, cpRd, cpRs, f, 
-                                  M.MV(ty, dst rd, e)::m)
+                                  M.MV(ty, rd, e)::m)
                  (*esac*))
               | gather(M.GPR(M.LOAD(ty,ea,r))::fmls,act::acts,cpRd,cpRs,f,m) =
                   gather(fmls,acts,cpRd,cpRs,f,
@@ -494,9 +503,9 @@ struct
               | gather(M.FPR(M.FREG(ty,fd))::fmls,act::acts,cpRd,cpRs,f,m) = 
                 (case fregbind act
                    of M.FREG(_,fs) => 
-                        gather(fmls,acts,cpRd,cpRs,(fdst fd,fs)::f,m)
+                        gather(fmls,acts,cpRd,cpRs,(fd,fs)::f,m)
                     | e => 
-                        gather(fmls,acts,cpRd,cpRs,f,M.FMV(ty, fdst fd, e)::m)
+                        gather(fmls,acts,cpRd,cpRs,f,M.FMV(ty, fd, e)::m)
                  (*esac*))
               | gather _ = error "callSetup.gather"
           in  gather(formals, actuals, [], [], [], [])
@@ -884,8 +893,8 @@ struct
             | gen(PURE(P.real{fromkind=P.INT 31, tokind}, [v], x, _, e), hp) = 
               (case tokind
                 of P.FLOAT 64 => (case v
-                     of INT n => falloc(x,M.CVTI2F(fty,M.SIGN_EXTEND,M.LI n),e, hp)
-                      | _ => falloc(x,M.CVTI2F(fty,M.SIGN_EXTEND,untag(true, v)), e, hp)
+                     of INT n => falloc(x,M.CVTI2F(fty,M.SIGN_EXTEND,ity,M.LI n),e, hp)
+                      | _ => falloc(x,M.CVTI2F(fty,M.SIGN_EXTEND,ity,untag(true, v)), e, hp)
                     (*esac*))
                  | _ => error "gen:PURE:P.real"
               (*esac*))
@@ -1275,14 +1284,22 @@ struct
                                               ...})) = 
                   let val regfmls as (M.GPR linkreg::regfmlsTl) = 
                           ArgP.standard(typmap f, tl)
+                      val entryLab = 
+                          if splitEntry then functionLabel(~f-1) else lab
                       val baseval = 
                         M.ADD(addrTy,linkreg, 
                               M.LABEL(LE.MINUS(
                                   LE.CONST MachineSpec.constBaseRegOffset,
-                                  LE.LABEL lab)))
+                                  LE.LABEL entryLab)))
                   in func := NONE;
                      pseudoOp PseudoOp.ALIGN4;
-                     entryLabel lab;
+                     if splitEntry then
+                       (entryLabel entryLab; 
+                        annotation EMPTY_BLOCK;
+                        defineLabel lab
+                       )
+                     else 
+                       entryLabel lab;
                      alignAllocptr f;
                      emit(assign(C.baseptr, baseval));
                      InvokeGC.stdCheckLimit stream
@@ -1319,9 +1336,9 @@ struct
           endCluster(
              if !gcsafety then 
                 let val gcmap = GCCells.getGCMap()
-                in  [#create SMLGCType.GCMAP gcmap,
+                in  [#create SMLGCMap.GCMAP gcmap,
                      #create 
-                        BasicAnnotations.REGINFO(SMLGCType.mapToString gcmap)
+                        BasicAnnotations.REGINFO(SMLGCMap.toString gcmap)
                     ]
                 end
              else []

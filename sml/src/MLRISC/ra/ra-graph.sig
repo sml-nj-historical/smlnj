@@ -103,7 +103,6 @@ sig
       | ALIASED of node       (* coalesced *)
       | COLORED of int        (* colored *)
       | SPILLED of int        (* spilled *)
-      | ALIASED_SPILL of node (* aliased spill node *)
 
   and node = 
     NODE of { number : int,		(* node number *)

@@ -6,7 +6,7 @@ structure PPCCG =
   ( structure MachSpec   = PPCSpec
     structure PseudoOps  = PPCPseudoOps
     structure CpsRegs    = PPCCpsRegs
-    structure InsnProps  = PPCProps(PPCInstr)
+    structure InsnProps  = PPCProps
     structure Asm        = PPCAsmEmitter
 
     structure MLTreeComp=
@@ -28,7 +28,7 @@ structure PPCCG =
                 structure Emitter = PPCMCEmitter)
 
     structure RA = 
-       RegAlloc2
+       RegAlloc
          (structure I         = PPCInstr
           structure MachSpec  = PPCSpec
           structure Flowgraph = PPCFlowGraph

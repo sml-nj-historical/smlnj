@@ -8,7 +8,7 @@ structure MLTreeUtil : MLTREE_UTIL =
 struct
 
   structure Basis = MLTreeBasis
-  structure B = Basis
+  structure B = MLTreeBasis
 
   fun swapCond cond =
       case cond of

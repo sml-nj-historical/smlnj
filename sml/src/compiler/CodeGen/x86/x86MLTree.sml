@@ -3,6 +3,8 @@ structure X86Instr =
   X86Instr(structure Const=SMLNJConstant
 	   structure Region=CPSRegions)
 
+structure X86Props = X86Props(X86Instr)
+
 structure X86Rewrite = X86Rewrite(X86Instr)
 
 structure X86Shuffle = X86Shuffle(X86Instr)

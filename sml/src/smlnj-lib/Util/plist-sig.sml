@@ -14,16 +14,19 @@ signature PROP_LIST =
     val clearHolder : holder -> unit
 
   (* newProp (selHolder, init)
-   * creates a nre property for objects of type 'a and returns
+   * creates a new property for objects of type 'a and returns
    * functions to get the property and clear it.  The function
    * selHolder is used to select the holder field from an object
    * and init is used to create the initial property value.
    * Typically, properties are reference cells, so that they can
-   * be modified.
+   * be modified.  The difference between peekFn and getFn is that
+   * peekFn returns NONE when the property has not yet been created,
+   * whereas getFn will allocate and initialize the property.
    *)
     val newProp : (('a -> holder) * ('a -> 'b)) -> {
-	    getFn : 'a -> 'b,
-	    clrFn : 'a -> unit
+	    peekFn : 'a -> 'b option,
+	    getFn  : 'a -> 'b,
+	    clrFn  : 'a -> unit
 	  }
 
     val newFlag : ('a -> holder) -> {

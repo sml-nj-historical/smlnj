@@ -6,10 +6,8 @@
 functor X86
   (structure X86Instr : X86INSTR
    structure X86MLTree : MLTREE
-     where Region = X86Instr.Region
-       and Constant = X86Instr.Constant
-       and type cond = MLTreeBasis.cond
-       and type fcond = MLTreeBasis.fcond   
+     sharing X86MLTree.Region = X86Instr.Region
+     sharing X86MLTree.Constant = X86Instr.Constant
    val tempMem : X86Instr.operand) : MLTREECOMP = 
 struct
   structure T = X86MLTree
@@ -316,7 +314,7 @@ fun prMLRisc s = print(concat(stm s))
       in  if isImmediate opnd1 andalso isImmediate opnd2 then
             cmpAndBranch(cc, moveToReg opnd1, opnd2)
           else if isImmediate opnd1 then
-            cmpAndBranch(MLTreeUtil.swapCond cc, opnd2, opnd1)
+            cmpAndBranch(T.Util.swapCond cc, opnd2, opnd1)
           else if isImmediate opnd2 then
             cmpAndBranch(cc, opnd1, opnd2)
           else case (opnd1, opnd2)
@@ -623,7 +621,7 @@ fun prMLRisc s = print(concat(stm s))
         (case fexp
           of T.FABS(_, t) => (emit(I.FLD(leafEA t)); mark(I.FUNARY(I.FABS),an))
            | T.FNEG(_, t) => (emit(I.FLD(leafEA t)); mark(I.FUNARY(I.FCHS),an))
-           | T.CVTI2F(_,_,t) => cvti2d(t,an)
+           | T.CVTI2F(_,_,_,t) => cvti2d(t,an)
          (*esac*))
       | gencode(fexp, UNARY(_, su), an) = let
           fun doit(oper, t) = (gencode(t, su, []); mark(I.FUNARY(oper),an))

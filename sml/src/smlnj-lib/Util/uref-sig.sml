@@ -39,7 +39,8 @@
  * consequence their contents will also be identical: in the case of link
  * and union it will be the contents of one of the two unioned elements,
  * in the case of unify the contents is determined by a binary
- * function parameter.
+ * function parameter.  The link, union, and unify functions return true
+ * when the elements were previously NOT equal.
  *)
 
 signature UREF =
@@ -68,22 +69,25 @@ signature UREF =
     val update : 'a uref * 'a -> unit
 	(* update(e, x) updates the contents of e to be x *)
 
-    val unify : ('a * 'a -> 'a) -> 'a uref * 'a uref -> unit
+    val unify : ('a * 'a -> 'a) -> 'a uref * 'a uref -> bool
 	(* unify f (e, e') makes e and e' equal; if v and v' are the 
 	 * contents of e and e', respectively, before unioning them, 
-	 * then the contents of the unioned element is f(v,v')
+	 * then the contents of the unioned element is f(v,v').  Returns
+	 * true, when elements were not equal prior to the call.
 	 *)
 
-    val union : 'a uref * 'a uref -> unit
+    val union : 'a uref * 'a uref -> bool
 	(* union (e, e') makes e and e' equal; the contents of the unioned
 	 * element is the contents of one of e and e' before the union operation.
 	 * After union(e, e') elements e and e' will be congruent in the
-	 * sense that they are interchangeable in any context.
+	 * sense that they are interchangeable in any context..  Returns
+	 * true, when elements were not equal prior to the call.
 	 *)
 
-    val link : 'a uref * 'a uref -> unit
+    val link : 'a uref * 'a uref -> bool
 	(* link (e, e') makes e and e' equal; the contents of the linked
-	 * element is the contents of e' before the link operation
+	 * element is the contents of e' before the link operation.  Returns
+	 * true, when elements were not equal prior to the call.
 	 *)
 
   end; (* UREF *)

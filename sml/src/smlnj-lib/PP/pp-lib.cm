@@ -14,9 +14,10 @@ Library
   functor PPStreamFn
   functor PPDebugFn
 
+(* devices *)
+  structure TextIOPP
   structure SimpleTextIODev
   structure HTMLDev
-
   structure StringToken
 
 is

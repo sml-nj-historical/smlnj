@@ -15,16 +15,13 @@
 functor Hppa
   (structure HppaInstr : HPPAINSTR
    structure HppaMLTree : MLTREE
-      where Region = HppaInstr.Region
-        and Constant = HppaInstr.Constant
-      where type cond = MLTreeBasis.cond
-        and type fcond = MLTreeBasis.fcond
-        and type rounding_mode = MLTreeBasis.rounding_mode
    structure MilliCode : HPPA_MILLICODE
       where I = HppaInstr
    structure LabelComp : LABEL_COMP 
       where I = HppaInstr
-        and T = HppaMLTree
+      sharing HppaMLTree.Region = HppaInstr.Region
+      sharing HppaMLTree.Constant = HppaInstr.Constant
+      sharing LabelComp.T = HppaMLTree
    val costOfMultiply : int ref
    val costOfDivision : int ref
   ) : MLTREECOMP =
@@ -386,7 +383,7 @@ struct
        and branch(_,T.CMP(ty,cc,T.LI n,e),lab,an) = (* optimize cmp immed *) 
              emitBranchCmpWithImmed(ty,cc,n,e,lab,an)
          | branch(cond,T.CMP(ty,cc,e1,e2 as T.LI _),lab,an) = (* commute *) 
-             branch(cond,T.CMP(ty,MLTreeUtil.swapCond cc,e2,e1),lab,an)
+             branch(cond,T.CMP(ty,T.Util.swapCond cc,e2,e1),lab,an)
          | branch(_,T.CMP(ty,cc,a,b),lab,an) = (* do the usual *)
              emitBranch(ty,cc,expr a,expr b,lab,an)
          | branch(cc,e,lab,an) = error "branch: what is the semantics?" 
@@ -744,16 +741,16 @@ struct
            | T.FSQRT(64,a)   => funary(I.FSQRT_D,a,t,an)
 
              (* conversions *)
-           | T.CVTF2F(ty,mode,e) =>
-               (case (ty,mode,Gen.fsize e) of
+           | T.CVTF2F(fty,mode,fty',e) =>
+               (case (fty,mode,fty') of
                   (64,T.TO_NEAREST,32) => fcnv(I.FCNVFF_SD,e,t,an)
                 | (32,_,64) => fcnv(I.FCNVFF_DS,e,t,an)
                 | (32,_,32) => doFexpr(e,t,an)
                 | (64,_,64) => doFexpr(e,t,an)
                 | _ => error "CVTF2F"
                )
-           | T.CVTI2F(32,_,e) => app emit(MilliCode.cvti2s{rs=expr e,fd=t})
-           | T.CVTI2F(64,_,e) => app emit(MilliCode.cvti2d{rs=expr e,fd=t})
+           | T.CVTI2F(32,_,_,e) => app emit(MilliCode.cvti2s{rs=expr e,fd=t})
+           | T.CVTI2F(64,_,_,e) => app emit(MilliCode.cvti2d{rs=expr e,fd=t})
 
              (* negation is implemented as subtraction *)
            | T.FNEG(ty,a)    => doFexpr(T.FSUB(ty,T.FREG(ty,zeroF),a),t,an)

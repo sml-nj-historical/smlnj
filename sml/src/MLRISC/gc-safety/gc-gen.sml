@@ -8,7 +8,7 @@
 functor GCGen
    (structure MLTreeComp : MLTREECOMP
     structure IR         : MLRISC_IR
-    structure GC         : GC_TYPE
+    structure GCMap      : GC_MAP
     structure InsnProps  : INSN_PROPERTIES
        sharing MLTreeComp.T.Constant = IR.I.Constant
        sharing MLTreeComp.T.PseudoOp = IR.CFG.P
@@ -20,12 +20,12 @@ struct
    structure T   = MLTreeComp.T
    structure IR  = IR
    structure CFG = IR.CFG
-   structure GC  = GC
+   structure GC  = GCMap.GC
    structure G   = Graph
    structure A   = Array
    structure Liveness = 
       GCLiveness(structure IR = IR
-                 structure GC = GC
+                 structure GCMap = GCMap
                  structure InsnProps = InsnProps)
 
    structure Gen = InstrGen
@@ -49,7 +49,7 @@ struct
        val table = Liveness.liveness IR
 
        (*
-        * Check if 
+        * Check if a block is a GC point
         *)
        fun isGCPoint an = #contains BasicAnnotations.CALLGC an
 
@@ -58,19 +58,19 @@ struct
         *)
        fun process(b,b' as CFG.BLOCK{annotations,insns,...}) =
            if isGCPoint(!annotations) then
-              let val stream = MLTreeComp.selectInstructions
-                                 (Gen.newStream insns)
-                  val {liveIn,liveOut} = A.sub(table,b)
-                  val roots = liveIn
-              in  if !debug then
-                     print("id="^Int.toString b^
-                           " roots="^Liveness.GCTypeMap.toString roots^"\n")
-                  else ();
-                  callgc{id     = b,
-                         label  = CFG.defineLabel b',
-                         roots  = liveIn,
-                         stream = stream}
-              end
+           let val stream = MLTreeComp.selectInstructions (Gen.newStream insns)
+               val {liveIn,liveOut} = A.sub(table,b)
+               val roots = liveIn
+           in  if !debug then
+                  print("id="^Int.toString b^
+                        " roots="^Liveness.GCTypeMap.toString roots^"\n")
+               else ();
+                  callgc{ id     = b,
+                          label  = CFG.defineLabel b',
+                          roots  = liveIn,
+                          stream = stream
+                        }
+           end
            else ()
            
        val _ = #forall_nodes cfg process

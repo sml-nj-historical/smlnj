@@ -38,7 +38,7 @@ structure URef : UREF =
 	  val p' = find p
           val q' = find q
 	  in
-	    if (p' = q') then () else p' := PTR q
+	    if (p' = q') then false else (p' := PTR q; true)
 	  end
 
     fun unify f (p, q) = let
@@ -47,18 +47,20 @@ structure URef : UREF =
 	  val newC = f (pc, qc)
           in
 	    if p' = q'
-	      then p' := ECR(newC, pr)
-	    else if pr = qr
-	      then (
-		q' := ECR(newC, qr+1);
-		p' := PTR q')
-	    else if pr < qr
-	      then (
-		q' := ECR(newC, qr);
-		p' := PTR q')
-	      else ((* pr > qr *)
-                p' := ECR(newC, pr);
-                q':= PTR p')
+	      then (p' := ECR(newC, pr); false)
+	      else (
+	        if pr = qr
+		  then (
+		    q' := ECR(newC, qr+1);
+		    p' := PTR q')
+		else if pr < qr
+		  then (
+		    q' := ECR(newC, qr);
+		    p' := PTR q')
+		  else ((* pr > qr *)
+		    p' := ECR(newC, pr);
+		    q':= PTR p');
+		true)
           end
 
     fun union (p, q) = let
@@ -66,7 +68,7 @@ structure URef : UREF =
           val q' = find q
           in
 	    if p' = q' 
-              then ()
+              then false
               else let
 		val ECR(pc, pr) = !p' and ECR(qc, qr) = !q'
 		in
@@ -76,7 +78,8 @@ structure URef : UREF =
 		      p' := PTR q')
 		  else if pr < qr
 		    then p' := PTR q'
-		    else q':= PTR p'
+		    else q':= PTR p';
+		  true
 		end
           end
 

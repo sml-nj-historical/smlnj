@@ -8,14 +8,10 @@
 functor PPC
   (structure PPCInstr : PPCINSTR
    structure PPCMLTree : MLTREE 
-      where Region = PPCInstr.Region
-        and Constant = PPCInstr.Constant
-        and type cond          = MLTreeBasis.cond
-        and type fcond         = MLTreeBasis.fcond
-        and type ext           = MLTreeBasis.ext
-        and type rounding_mode = MLTreeBasis.rounding_mode
    structure PseudoInstrs : PPC_PSEUDO_INSTR 
-      where I = PPCInstr 
+      sharing PPCMLTree.Region = PPCInstr.Region
+      sharing PPCMLTree.Constant = PPCInstr.Constant
+      sharing PseudoInstrs.I = PPCInstr 
 
    (* 
     * Support 64 bit mode? 
@@ -281,7 +277,7 @@ struct
             (*esac*);
              stmt(T.BCC(cc, T.CC CR0, lab),an))
          | stmt(T.BCC(cc, T.CMP(ty, _, e1 as T.LI _, e2), lab), an) = 
-           let val cc' = MLTreeUtil.swapCond cc
+           let val cc' = T.Util.swapCond cc
            in  stmt(T.BCC(cc', T.CMP(ty, cc', e2, e1), lab), an)
            end
          | stmt(T.BCC(_, cmp as T.CMP(ty, cond, _, _), lab), an) =
@@ -676,7 +672,8 @@ struct
           | T.FSUB(64, e1, e2) => fbinary(I.FSUB, e1, e2, ft, an)
           | T.FMUL(64, e1, e2) => fbinary(I.FMUL, e1, e2, ft, an)
           | T.FDIV(64, e1, e2) => fbinary(I.FDIV, e1, e2, ft, an)
-          | T.CVTI2F(64,_,e) => app emit (PseudoInstrs.cvti2d{reg=expr e,fd=ft})
+          | T.CVTI2F(64,_,_,e) => 
+               app emit (PseudoInstrs.cvti2d{reg=expr e,fd=ft})
 
             (* Single/double precision support *)
           | T.FABS((32|64), e) => funary(I.FABS, e, ft, an)

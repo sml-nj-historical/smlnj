@@ -18,6 +18,9 @@ Library
         structure Alpha32CG
         structure Alpha32CpsRegs
         structure Alpha32Instr
+	structure Alpha32Props
+	structure Alpha32FlowGraph
+	structure Alpha32AsmEmitter
 # endif
 
 # if not defined (LIGHT) orelse defined (ARCH_HPPA)
@@ -25,6 +28,9 @@ Library
         structure HppaCG
         structure HppaCpsRegs
         structure HppaInstr
+	structure HppaProps
+	structure HppaFlowGraph
+	structure HppaAsmEmitter
 # endif
 
 # if not defined (LIGHT) orelse defined (ARCH_PPC)
@@ -32,6 +38,9 @@ Library
         structure PPCCG
         structure PPCCpsRegs
         structure PPCInstr
+	structure PPCProps
+	structure PPCFlowGraph
+	structure PPCAsmEmitter
 # endif
 
 # if not defined (LIGHT) orelse defined (ARCH_SPARC)
@@ -39,6 +48,9 @@ Library
         structure SparcCG
         structure SparcCpsRegs
         structure SparcInstr
+	structure SparcProps
+	structure SparcFlowGraph
+	structure SparcAsmEmitter
 # endif
 
 # if not defined (LIGHT) orelse defined (ARCH_X86)
@@ -46,6 +58,9 @@ Library
         structure X86CG
         structure X86CpsRegs
         structure X86Instr
+ 	structure X86Props
+	structure X86FlowGraph
+	structure X86AsmEmitter
 # endif
 
 (**** no old-style code generators
@@ -68,8 +83,12 @@ Library
          * A.Leung.
          *)
         signature MACHINE_GEN
+        signature INVOKE_GC
+        signature CPSREGS
+
         structure CPSRegions
         structure SMLGCType
+        structure SMLGCMap
 
 is
 
@@ -296,7 +315,6 @@ CodeGen/cpscompile/cpsRegions.sml
 CodeGen/cpscompile/cpsRegs.sig
 CodeGen/cpscompile/frag.sig
 CodeGen/cpscompile/frag.sml
-CodeGen/cpscompile/functionNames.sml
 CodeGen/cpscompile/invokegc.sig
 CodeGen/cpscompile/invokegc.sml
 CodeGen/cpscompile/limit.sml
@@ -308,6 +326,7 @@ CodeGen/cpscompile/pseudoOpType.sig
 CodeGen/cpscompile/pseudoOpsBig.sml
 CodeGen/cpscompile/pseudoOpsLittle.sml
 CodeGen/cpscompile/smlnj-const.sml
+CodeGen/cpscompile/smlnj-gctype.sig
 CodeGen/cpscompile/smlnj-gctype.sml
 CodeGen/cpscompile/spill.sml
 CodeGen/hppa/hppaCG.sml

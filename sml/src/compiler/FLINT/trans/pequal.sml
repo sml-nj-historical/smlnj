@@ -191,9 +191,15 @@ fun atomeq (tyc, ty) =
   else if TU.equalTycon(tyc,BT.realTycon) then prim(PO.FEQLd,realeqty)
   else if TU.equalTycon(tyc,BT.stringTycon) then getStrEq()
   else if TU.equalTycon(tyc,BT.refTycon) then ptrEq(PO.PTREQL, ty) 
+(**********************
+ * For arrays under the new array representation, we need to compare
+ * the data pointers for equality.  polyequal does this comparison
+ * correctly, so use it as the fallback. (JHR)
+ *
   else if TU.equalTycon(tyc,BT.arrayTycon) then ptrEq(PO.PTREQL, ty)
   else if TU.equalTycon(tyc,BT.word8arrayTycon) then ptrEq(PO.PTREQL, ty)
   else if TU.equalTycon(tyc,BT.real64arrayTycon) then ptrEq(PO.PTREQL, ty)
+**********************)
   else raise Poly
 
 fun test(ty, 0) = raise Poly

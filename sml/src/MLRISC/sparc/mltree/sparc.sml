@@ -12,13 +12,10 @@
 functor Sparc
   (structure SparcInstr : SPARCINSTR
    structure SparcMLTree : MLTREE 
-      where Region = SparcInstr.Region
-        and Constant = SparcInstr.Constant
-        and type cond = MLTreeBasis.cond 
-        and type fcond = MLTreeBasis.fcond 
-        and type rounding_mode = MLTreeBasis.rounding_mode 
    structure PseudoInstrs : SPARC_PSEUDO_INSTR 
-      where I = SparcInstr
+      sharing SparcMLTree.Region = SparcInstr.Region
+      sharing SparcMLTree.Constant = SparcInstr.Constant
+      sharing PseudoInstrs.I = SparcInstr
    (* 
     * The client should also specify these parameters.
     * These are the estimated cost of these instructions.
@@ -203,7 +200,7 @@ struct
         | fcond T.?<= = I.FBULE
         | fcond T.<>  = I.FBLG
         | fcond T.?=  = I.FBUE
-        | fcond fc = error("fcond "^MLTreeUtil.fcondToString fc)
+        | fcond fc = error("fcond "^T.Util.fcondToString fc)
 
       fun mark'(i,[]) = i
         | mark'(i,a::an) = mark'(I.ANNOTATION{i=i,a=a},an)
@@ -236,7 +233,7 @@ struct
       fun fmoved(s,d,an) =
           if s = d then ()
           else mark(I.FCOPY{dst=[d],src=[s],tmp=NONE,impl=ref NONE},an)
-      fun fmoves(s,d,an) = error "fmoves"
+      fun fmoves(s,d,an) = fmoved(s,d,an) (* error "fmoves" for now!!! XXX *)
       fun fmoveq(s,d,an) = error "fmoveq"
 
       (* load word constant *)
@@ -420,8 +417,8 @@ struct
       and call(a,defs,uses,mem,an) =
       let val (r,i) = addr a
           fun live([],acc) = acc
-            | live(T.GPR(T.REG(32,r))::regs,acc) = live(regs, C.addReg(r,acc))
-            | live(T.FPR(T.FREG(64,f))::regs,acc) = live(regs, C.addFreg(f,acc))
+            | live(T.GPR(T.REG(_,r))::regs,acc) = live(regs, C.addReg(r,acc))
+            | live(T.FPR(T.FREG(_,f))::regs,acc) = live(regs, C.addFreg(f,acc))
             | live(T.CCR(T.CC 65)::regs,acc) = live(regs, C.addPSR(65,acc))
             | live(T.CCR(T.CC cc)::regs,acc) = live(regs, C.addReg(cc,acc))
             | live(T.GPR _::_,_) = error "live:GPR"
@@ -442,7 +439,7 @@ struct
           let val (cond,a,b) =
                   case a of
                     (T.LI _ | T.LI32 _ | T.CONST _ | T.LABEL _) => 
-                      (MLTreeUtil.swapCond cond,b,a)
+                      (T.Util.swapCond cond,b,a)
                   | _ => (cond,a,b)
           in  if V9 then
                  branchV9(cond,a,b,lab,an)
@@ -493,7 +490,7 @@ struct
         | stmt(T.FMV(_,d,e),an) = doFexpr(e,d,an)
         | stmt(T.CCMV(d,e),an) = doCCexpr(e,d,an)
         | stmt(T.COPY(_,dst,src),an) = copy(dst,src,an)
-        | stmt(T.FCOPY(64,dst,src),an) = fcopy(dst,src,an)
+        | stmt(T.FCOPY(_,dst,src),an) = fcopy(dst,src,an)
         | stmt(T.JMP(T.LABEL(LE.LABEL l),_),an) =
             mark(I.Bicc{b=I.BA,a=true,label=l,nop=false},an)
         | stmt(T.JMP(e,labs),an) = jmp(e,labs,an)
@@ -589,10 +586,10 @@ struct
 
               (* loads *) 
           | T.LOAD(8,a,mem) => load(I.LDUB,a,d,mem,cc,an)
-          | T.CVTI2I(_,T.SIGN_EXTEND,T.LOAD(8,a,mem)) =>
+          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(8,a,mem)) =>
                load(I.LDSB,a,d,mem,cc,an)
           | T.LOAD(16,a,mem) => load(I.LDUH,a,d,mem,cc,an)
-          | T.CVTI2I(_,T.SIGN_EXTEND,T.LOAD(16,a,mem)) =>
+          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(16,a,mem)) =>
                load(I.LDSH,a,d,mem,cc,an)
           | T.LOAD(32,a,mem) => load(I.LD,a,d,mem,cc,an)
           | T.LOAD(64,a,mem) => load(if V9 then I.LDX else I.LDD,a,d,mem,cc,an)
@@ -653,13 +650,13 @@ struct
           | T.FSQRT(128,a)  => funary(I.FSQRTq,a,d,an)
 
             (* floating point to floating point *)
-          | T.CVTF2F(ty,_,e) =>
-              (case (ty,Gen.fsize e) of
-                 (32,32) =>  doFexpr(e,d,an)
-               | (64,32) =>  funary(I.FsTOd,e,d,an)
+          | T.CVTF2F(ty,_,ty',e) =>
+              (case (ty,ty') of
+                 (32,32)  => doFexpr(e,d,an)
+               | (64,32)  => funary(I.FsTOd,e,d,an)
                | (128,32) => funary(I.FsTOq,e,d,an)
-               | (32,64) =>  funary(I.FdTOs,e,d,an)
-               | (64,64) =>  doFexpr(e,d,an)
+               | (32,64)  => funary(I.FdTOs,e,d,an)
+               | (64,64)  => doFexpr(e,d,an)
                | (128,64) => funary(I.FdTOq,e,d,an)
                | (32,128) => funary(I.FqTOs,e,d,an)
                | (64,128) => funary(I.FqTOd,e,d,an)
@@ -668,11 +665,11 @@ struct
               )
 
             (* integer to floating point *)
-          | T.CVTI2F(32,T.SIGN_EXTEND,e) =>  
+          | T.CVTI2F(32,T.SIGN_EXTEND,_,e) =>  
                app emit (P.cvti2s({i=opn e,d=d},reduceOpn))
-          | T.CVTI2F(64,T.SIGN_EXTEND,e) => 
+          | T.CVTI2F(64,T.SIGN_EXTEND,_,e) => 
                app emit (P.cvti2d({i=opn e,d=d},reduceOpn))
-          | T.CVTI2F(128,T.SIGN_EXTEND,e) =>  
+          | T.CVTI2F(128,T.SIGN_EXTEND,_,e) =>  
                app emit (P.cvti2q({i=opn e,d=d},reduceOpn))
 
           | T.FSEQ(s,e)     => (doStmt s; doFexpr(e,d,an))

@@ -69,13 +69,18 @@ struct
 
   open G 
 
-  val verbose = MLRiscControl.getFlag "ra-verbose"
+  val verbose       = MLRiscControl.getFlag "ra-verbose"
+  val ra_spill_coal = MLRiscControl.getCounter "ra-spill-coalescing"
+  val ra_spill_prop = MLRiscControl.getCounter "ra-spill-propagation"
 
   fun error msg = MLRiscErrorMsg.error("RACore", msg)
  
   (* No overflow checking necessary here *)
   fun x + y = W.toIntX(W.+(W.fromInt x, W.fromInt y))
   fun x - y = W.toIntX(W.-(W.fromInt x, W.fromInt y))
+
+  fun concat([], b) = b
+    | concat(x::a, b) = concat(a, x::b)
 
   (*
    * Bit Matrix routines
@@ -340,7 +345,6 @@ struct
             | ALIASED _ => "a"
             | COLORED c => "["^showReg c^"]"
             | SPILLED _ => "s"
-            | ALIASED_SPILL _ => "as"
            )
 
   fun show G (node as NODE{pri,...}) = 
@@ -450,7 +454,6 @@ struct
            | ALIASED _     => error "addEdge: ALIASED"
            | REMOVED       => error "addEdge: REMOVED"
            | SPILLED _     => error "addEdge: SPILLED"
-           | ALIASED_SPILL _ => error "addEdge: ALIASED_SPILL"
           )
   in  fn (x as NODE{number=xn, ...}, y as NODE{number=yn, ...}) => 
           if xn = yn then ()
@@ -479,7 +482,6 @@ struct
            | ALIASED _     => error "removeEdge: ALIASED"
            | REMOVED       => error "removeEdge: REMOVED"
            | SPILLED _     => error "removeEdge: SPILLED"
-           | ALIASED_SPILL _ => error "removeEdge: ALIASED_SPILL"
           )
   in  fn (x as NODE{number=xn, ...}, y as NODE{number=yn, ...}) => 
           if xn = yn then ()
@@ -611,7 +613,6 @@ struct
       fun num(NODE{color=ref(COLORED r),...}) = r
         | num(NODE{color=ref(ALIASED n),...}) = num n
         | num(NODE{color=ref(SPILLED s),number,...}) = ~1
-        | num(NODE{color=ref(ALIASED_SPILL s), number, ...}) = ~1 
         | num(NODE{number, color=ref PSEUDO,...}) = number
         | num _ = error "regmap"
       fun lookup r = num(getnode r) handle _ => r (* XXX *)
@@ -627,7 +628,6 @@ struct
       fun num(NODE{color=ref(COLORED r),...}) = r
         | num(NODE{color=ref(ALIASED n),...}) = num n
         | num(NODE{color=ref(SPILLED _),number,...}) = number
-        | num(NODE{color=ref(ALIASED_SPILL _), number, ...}) = number
         | num(NODE{number, color=ref PSEUDO,...}) = number
         | num _ = error "spillRegmap"
       fun lookup r = num(getnode r) handle _ => r (* XXX *)
@@ -643,7 +643,6 @@ struct
       fun num(NODE{color=ref(ALIASED n), ...}) = num n
         | num(NODE{color=ref(SPILLED ~1), number, ...}) = number
         | num(NODE{color=ref(SPILLED c), ...}) = c
-        | num(NODE{color=ref(ALIASED_SPILL n), ...}) = num n
         | num(NODE{number, ...}) = number
       fun lookup r = num(getnode r) handle _ => r (* XXX *)
   in  lookup 
@@ -828,7 +827,6 @@ struct
                NODE{color=ref(COLORED _),...} => loop adj (* can't be r! *)
              | NODE{color=ref(ALIASED _),...} => loop adj (* not real *)
              | NODE{color=ref(SPILLED _),...} => loop adj (* gone! *)
-             | NODE{color=ref(ALIASED_SPILL _),...} => loop adj (* gone! *)
              | NODE{degree,...} => (* PSEUDO or REMOVED *)
                 (!degree < K orelse member(n, r)) andalso loop adj
              )
@@ -905,11 +903,13 @@ struct
                    * Strictly speaking, the def/use points of the move
                    * should also be removed.  But since we never spill
                    * a coalesced node and only spilling makes use of these
-                   * def/use points, we are safe for now.  (NOTE to SELF:
-                   * I think it is not necessary to maintain these.
+                   * def/use points, we are safe for now.  
+                   *
+                   * New comment: with spill propagation, it is necessary
+                   * to keep track of the spilled program points.
                    *)
-         (* defsu := !defsu @ !defsv; 
-         usesu := !usesu @ !usesv; *)
+         defsu := concat(!defsu, !defsv); 
+         usesu := concat(!usesu, !usesv);
          case !ucol of
            PSEUDO => 
              (if !cntv > 0 then moveu := mergeMoveList(!movev, !moveu) else (); 
@@ -1245,15 +1245,10 @@ struct
    * in non-increasing order of move cost.
    *)
   fun spillCoalescing(GRAPH{bitMatrix, ...}) nodesToSpill = 
-  let val marker = SPILLED(~1)
-      fun mark [] = ()
-        | mark(NODE{color, ...}::ns) = (color := marker; mark ns)
-      val _ = mark nodesToSpill
-      fun chase(NODE{color=ref(ALIASED_SPILL n), ...}) = chase n
-        | chase(NODE{color=ref(ALIASED n), ...}) = chase n
+  let fun chase(NODE{color=ref(ALIASED n), ...}) = chase n
         | chase n = n
       fun collectMoves([], mv') = mv'
-        | collectMoves(NODE{movelist, number, ...}::ns, mv') =
+        | collectMoves(NODE{movelist, color=ref(SPILLED ~1), ...}::ns, mv') =
           let fun addMoves([], mv') = collectMoves(ns, mv')
                 | addMoves((mv as MV{dst,src,status=ref LOST, ...})::mvs, mv') =
                    (case (chase dst, chase src) of
@@ -1265,30 +1260,121 @@ struct
                    )
                 | addMoves(_::mvs, mv') = addMoves(mvs, mv')
           in  addMoves(!movelist, mv') end
+        | collectMoves(_::ns, mv') = collectMoves(ns, mv')
+
       val mvs = collectMoves(nodesToSpill, MV.EMPTY)
+
       val member = BM.member(!bitMatrix)
       val addEdge = BM.add(!bitMatrix)
+
       fun coalesceMoves(MV.EMPTY) = ()
         | coalesceMoves(MV.TREE(MV{dst, src, ...}, _, l, r)) =
-          let val dst as NODE{number=d, uses=u1, defs=d1, 
-                              color, adj=adj1, ...} = chase dst
-              val src as NODE{number=s, uses=u2, defs=d2, adj=adj2, ...} = 
-                              chase src
-              fun addEdges [] = ()
-                | addEdges(n::adj) = 
-                  (case chase n of
-                     n as NODE{color=ref(SPILLED ~1), number=t, ...} => 
-                     (if addEdge(s,t) then adj2 := n :: !adj2 else (); 
-                      addEdges adj)
-                   | _ => addEdges adj
+          let val dst as NODE{number=d, color, adj=adjDst,
+                              defs=defsDst, uses=usesDst, ...} = chase dst
+              val src as NODE{number=s, adj=adjSrc, 
+                              defs=defsSrc, uses=usesSrc, ...} = chase src
+              fun union([], adjSrc) = adjSrc
+                | union((n as NODE{color, adj=adjT, 
+                                   number=t, ...})::adjDst, adjSrc) = 
+                  (case !color of
+                     (SPILLED _ | PSEUDO) =>
+                       if addEdge(s, t) then 
+                          (adjT := src :: !adjT; union(adjDst, n::adjSrc))
+                       else union(adjDst, adjSrc)
+                   | COLORED _ =>
+                       if addEdge(s, t) then union(adjDst, n::adjSrc) 
+                       else union(adjDst, adjSrc)
+                   | _ => union(adjDst, adjSrc)
                   )
           in  if d = s orelse member(dst, src) then ()
               else ((* print(Int.toString d ^"<->"^Int.toString s^"\n"); *)
-                    color := ALIASED_SPILL src; addEdges(!adj1)
+                    ra_spill_coal := !ra_spill_coal + 1;
+                    color := ALIASED src; 
+                    adjSrc := union(!adjDst, !adjSrc);
+                    defsSrc := concat(!defsDst, !defsSrc);
+                    usesSrc := concat(!usesDst, !usesSrc)
                    );
               coalesceMoves(MV.merge(l,r))
           end
   in  coalesceMoves mvs
+  end
+
+  (*
+   * Spill propagation.
+   *)
+  fun spillPropagation(G as GRAPH{bitMatrix, ...}) nodesToSpill =
+  let val spillCoalescing = spillCoalescing G
+      exception SpillProp
+      val visited = Intmap.new(32, SpillProp) : bool Intmap.intmap
+      val hasBeenVisited = Intmap.mapWithDefault (visited, false)
+      val markAsVisited = Intmap.add visited
+      val member = BM.member(!bitMatrix)
+
+      fun chase(NODE{color=ref(ALIASED n), ...}) = chase n
+        | chase n = n
+ 
+      (* compute savings due to spill coalescing.
+       * The move list must be associated with a colorable node.
+       *)
+      fun coalescingSavings([], sc) = sc+sc
+        | coalescingSavings(MV{dst, src, status=ref LOST, cost, ...}::mvs, sc) =
+          (case (chase dst, chase src) of
+             (dst as NODE{number=d, color=ref(SPILLED ~1), ...},
+              src as NODE{number=s, ...}) => 
+               if d = s orelse member(dst, src) then coalescingSavings(mvs, sc)
+               else coalescingSavings(mvs, sc+cost)
+           | (dst as NODE{number=d, ...},
+              src as NODE{number=s, color=ref(SPILLED ~1),...}) => 
+               if d = s orelse member(dst, src) then coalescingSavings(mvs, sc)
+               else coalescingSavings(mvs, sc+cost)
+           | _ => coalescingSavings(mvs, sc)
+          )
+        | coalescingSavings(_::mvs, sc) = coalescingSavings(mvs, sc)
+
+      (* Insert all colorable neighbors into worklist *)
+      fun insert([], worklist) = worklist
+        | insert((node as NODE{color=ref PSEUDO, number, ...})::adj, worklist) =
+          if hasBeenVisited number then insert(adj, worklist)
+          else (markAsVisited (number, true);
+                insert(adj, node::worklist))
+        | insert(_::adj, worklist) = insert(adj, worklist)
+
+      val marker = SPILLED(~1)
+
+      (* Process all nodes from the worklist *)
+      fun propagate([], new, spilled) = (new, spilled)
+        | propagate(node::worklist, new, spilled) =
+          let val NODE{pri=ref spillcost, color, number, 
+                       adj, movelist, ...} = node
+              val savings = coalescingSavings(!movelist, 0)
+          in  if savings >= spillcost then  (* propagate spill *)
+                 (ra_spill_prop := !ra_spill_prop + 1;
+                  color := marker; (* spill the node *)
+                  (* print("Propagating "^Int.toString number^"\n"); *)
+                  propagate(insert(!adj, worklist), node::new, node::spilled)
+                 )
+              else
+                 propagate(worklist, new, spilled)
+          end
+
+      (* Initialize worklist *)
+      fun init([], worklist) = worklist
+        | init(NODE{adj, color=ref(SPILLED ~1), ...}::rest, worklist) =
+            init(rest, insert(!adj, worklist))
+        | init(_::rest, worklist) = init(rest, worklist)
+
+      (* 
+       * Iterate between spill coalescing and propagation 
+       *)
+      fun iterate(spillWorkList, spilled) = 
+      let val _ = spillCoalescing spillWorkList
+          val propagationWorkList = init(spillWorkList, []) 
+          val (newNodes, spilled) = propagate(propagationWorkList, [], spilled)
+      in  case newNodes of
+            [] => spilled
+          | _  => iterate(newNodes, spilled)
+      end
+  in  iterate(nodesToSpill, nodesToSpill)
   end
 
   (*
@@ -1302,8 +1388,7 @@ struct
       fun selectColor([], currLoc) = ()
         | selectColor(NODE{color as ref(SPILLED _), number, adj, ...}::nodes,
                       currLoc) = 
-          let fun chase(NODE{color=ref(ALIASED_SPILL n), ...}) = chase n 
-                | chase(NODE{color=ref(ALIASED n), ...}) = chase n 
+          let fun chase(NODE{color=ref(ALIASED n), ...}) = chase n 
                 | chase n = n
               fun neighbors [] = ()
                 | neighbors(n::ns) = 
@@ -1342,7 +1427,6 @@ struct
       fun set(r, NODE{color=ref(COLORED c),...}) = enter(r, c)
         | set(r, NODE{color=ref(ALIASED n),...}) = set(r, n)
         | set(r, NODE{color=ref(SPILLED _),...}) = enter(r,~1) (* XXX *)
-        | set(r, NODE{color=ref(ALIASED_SPILL _),...}) = enter(r,~1) (* XXX *)
         | set _ = error "finishRA"
   in  Intmap.app set nodes;
       case !deadCopies of

@@ -10,8 +10,6 @@
 
 functor MLTreeGen
     (structure T : MLTREE
-        where type cond  = MLTreeBasis.cond
-          and type fcond = MLTreeBasis.fcond
      val intTy : T.ty (* size of integer word *)
 
      (* This is a list of possible data widths to promote to.
@@ -66,10 +64,10 @@ struct
      | size(T.COND(ty,_,_,_)) = ty
      | size(T.LOAD(ty,_,_)) = ty
      | size(T.LOAD_UNALIGNED(ty,_,_)) = ty
-     | size(T.CVTI2I(ty,_,_)) = ty
-     | size(T.CVTF2I(ty,_,_)) = ty
+     | size(T.CVTI2I(ty,_,_,_)) = ty
+     | size(T.CVTF2I(ty,_,_,_)) = ty
      | size(T.SEQ(s,e)) = size e
-     | size(T.EXTENSION(ty,_,_)) = ty
+     | size(T.EXT(ty,_,_)) = ty
      | size(T.MARK(e,_)) = size e
      | size _ = raise SizeUnknown
 
@@ -83,10 +81,10 @@ struct
      | fsize(T.FABS(ty,_)) = ty
      | fsize(T.FNEG(ty,_)) = ty
      | fsize(T.FSQRT(ty,_)) = ty
-     | fsize(T.CVTI2F(ty,_,_)) = ty
-     | fsize(T.CVTF2F(ty,_,_)) = ty
+     | fsize(T.CVTI2F(ty,_,_,_)) = ty
+     | fsize(T.CVTF2F(ty,_,_,_)) = ty
      | fsize(T.FSEQ(_,e)) = fsize e
-     | fsize(T.FEXTENSION(ty,_,_)) = ty
+     | fsize(T.FEXT(ty,_,_)) = ty
      | fsize(T.FMARK(e,_)) = fsize e
      | fsize _ = raise SizeUnknown
 
@@ -150,7 +148,7 @@ struct
            T.COND(ty,T.CMP(ty,T.NE,T.REG(ty,r),T.LI 0),x,y)
        | T.COND(ty,T.CCMARK(cc,a),x,y) => T.MARK(T.COND(ty,cc,x,y),a)
        | T.COND(ty,T.CMP(t,cc,e1,e2),x as (T.LI 0 | T.LI32 0w0),y) => 
-           T.COND(ty,T.CMP(t,MLTreeUtil.negateCond cc,e1,e2),y,T.LI 0)
+           T.COND(ty,T.CMP(t,T.Util.negateCond cc,e1,e2),y,T.LI 0)
            (* we'll let others strength reduce the multiply *)
        | T.COND(ty,cc,e1,(T.LI 0 | T.LI32 0w0)) => 
            T.MULU(ty,T.COND(ty,cc,T.LI 1,T.LI 0),e1)
@@ -169,35 +167,32 @@ struct
        (* 
         * Default ways of converting integers to integers
         *)
-       | T.CVTI2I(ty,T.SIGN_EXTEND,e) => 
-         let val fromTy = size e
-         in  if fromTy = ty then e
-             else if rep = SE andalso fromTy < ty andalso 
-                     fromTy >= hd naturalWidths then e 
-             else
+       | T.CVTI2I(ty,T.SIGN_EXTEND,fromTy,e) => 
+         if fromTy = ty then e
+         else if rep = SE andalso fromTy < ty andalso 
+              fromTy >= hd naturalWidths then e 
+         else
              let val shift = T.LI(W - fromTy)
              in  T.SRA(W,T.SLL(W,e,shift),shift) 
              end 
-         end
-       | T.CVTI2I(ty,T.ZERO_EXTEND,e) => 
-         let val fromTy = size e
-         in  if fromTy <= ty then e
-             else case ty of (* ty < fromTy *)
-                    8  => T.ANDB(ty,e,T.LI32 0wxff) 
-                  | 16 => T.ANDB(ty,e,T.LI32 0wxffff) 
-                  | 32 => T.ANDB(ty,e,T.LI32 0wxffffffff) 
-                  | 64 => e
-                  | _  => raise T.Unsupported("unknown expression",exp)
-         end
+       | T.CVTI2I(ty,T.ZERO_EXTEND,fromTy,e) => 
+         if fromTy <= ty then e else 
+            (case ty of (* ty < fromTy *)
+                8  => T.ANDB(ty,e,T.LI32 0wxff) 
+              | 16 => T.ANDB(ty,e,T.LI32 0wxffff) 
+              | 32 => T.ANDB(ty,e,T.LI32 0wxffffffff) 
+              | 64 => e
+              | _  => raise T.Unsupported("unknown expression",exp)
+            )
 
        (* 
         * Converting floating point to integers.
         * The following rule handles the case when ty is not
         * one of the naturally supported widths on the machine.
         *)
-       | T.CVTF2I(ty,round,e) => 
+       | T.CVTF2I(ty,round,fty,e) => 
          let val ty' = promoteTy(exp,ty)
-         in  T.CVTI2I(ty,T.SIGN_EXTEND,T.CVTF2I(ty',round,e))
+         in  T.CVTI2I(ty,T.SIGN_EXTEND,ty',T.CVTF2I(ty',round,fty,e))
          end
 
        | exp => raise T.Unsupported("unknown expression",exp)

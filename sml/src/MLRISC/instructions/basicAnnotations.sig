@@ -55,6 +55,12 @@ sig
    val REGINFO : (int -> string) Annotations.property
 
     (*
+     * This annotation can be used to turn on pretty printing of cellsets
+     * inside assemblers
+     *)
+   val SHOW_CELLSET : unit Annotations.property
+
+    (*
      * Disable all optimizations in the cluster
      *)
    val NO_OPTIMIZATION : unit Annotations.property
@@ -63,5 +69,15 @@ sig
      * Mark basic block that is used for calling the GC
      *)
    val CALLGC : unit Annotations.property
+
+    (*
+     * Insert block names
+     *)
+   val BLOCK_NAMES : Annotations.annotations Annotations.property
+
+    (*
+     * This annotation inserts an empty basic block
+     *)
+   val EMPTY_BLOCK : unit Annotations.property
 
 end

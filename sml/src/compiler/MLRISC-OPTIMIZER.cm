@@ -71,5 +71,6 @@ is
   ../MLRISC/MLRISC-Visual.cm
   ../MLRISC/MLRISC-Graphs.cm
   ../MLRISC/MLRISC-ir.cm
+  ../MLRISC/MLRISC-Lib.cm
 
   CodeGen/optimizer/mlrisc-optimizer.sml
