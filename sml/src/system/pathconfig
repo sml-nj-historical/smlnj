@@ -12,6 +12,7 @@ viscomp-sparc.cm	../compiler
 viscomp-x86.cm		../compiler
 cm-lib.cm		../cm
 MLRISC.cm		../MLRISC
+MLRISC-Control.cm	../MLRISC
 MLRISC-Lib.cm		../MLRISC
 MLRISC-ir.cm		../MLRISC
 MLRISC-RA.cm		../MLRISC
