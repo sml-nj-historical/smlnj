@@ -57,7 +57,9 @@ TEX=    ../latex/annotations.tex \
 	../latex/ppc.tex \
 	../latex/mips.tex \
 	../latex/hppa.tex \
-	../latex/C6.tex
+	../latex/C6.tex \
+	../latex/mltree-ext.tex \
+	../latex/mltree-util.tex 
 
 all:	pictures $(HTML) makelinks
 

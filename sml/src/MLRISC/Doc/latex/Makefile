@@ -2,7 +2,7 @@
 # This file compiles the documentation 
 #
 
-TEX=	sml.tex mlrisc.tex mltexdoc.tex
+TEX= sml.tex mlrisc.tex mltexdoc.tex
 DVI=	$(TEX:.tex=.dvi)
 PS=	$(TEX:.tex=.ps)
 PDF=	$(TEX:.tex=.pdf)
@@ -43,7 +43,8 @@ mlrisc.dvi: annotations.tex graphics.tex instructions.tex mltree.tex \
 	requirements.tex INTRO.tex problem.tex mlrisc-compiler.tex \
 	mlrisc-ir-rep.tex backend-opt.tex sys-integration.tex \
 	optimizations.tex span-dep.tex mlrisc-md.tex line-counts.tex \
-	sparc.tex alpha.tex x86.tex ppc.tex mips.tex hppa.tex C6.tex
+	sparc.tex alpha.tex x86.tex ppc.tex mips.tex hppa.tex C6.tex \
+	mltree-ext.tex mltree-util.tex
 
 mltexdoc.dvi:	mltex.tex
 
