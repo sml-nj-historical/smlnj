@@ -104,7 +104,12 @@ is
 	util/sources.cm
 
 	(* compiler libraries *)
+	$smlnj/viscomp/basics.cm
+	$smlnj/viscomp/parser.cm
+	$smlnj/viscomp/elabdata.cm
+	$smlnj/viscomp/execute.cm
 	$smlnj/viscomp/core.cm
+	
 	$/pickle-lib.cm
 
 	(* auxiliary libraries *)

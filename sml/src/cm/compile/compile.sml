@@ -60,6 +60,7 @@ in
     struct
 
         val arch = Backend.architecture
+	val version = #version_id CompilerVersion.version
 
 	type notifier = GP.info -> SmlInfo.info -> unit
 
@@ -273,7 +274,8 @@ in
 			       cleanup = fn _ => () })
 		    fun save bfc = let
 			fun writer s = let
-			    val s = BF.write { arch = arch, nopickle = false,
+			    val s = BF.write { arch = arch, version = version,
+					       nopickle = false,
 					       stream = s, contents = bfc }
 			in pstats s; s
 			end
@@ -402,6 +404,7 @@ in
 					val m = GenModIdMap.mkMap' (stat, mm0)
 					val { contents, stats } =
 					    BF.read { arch = arch,
+						      version = version,
 						      stream = s,
 						      name = binname }
 				    in

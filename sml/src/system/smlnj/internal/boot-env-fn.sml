@@ -13,7 +13,7 @@ end
 
 functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 		  val architecture: string
-		  val cminit : string * DynamicEnv.dynenv * envrequest ->
+		  val cminit : string * DynamicEnv.env * envrequest ->
 		               (unit -> unit) option
 		  val cmbmake: string * bool -> unit) :> BOOTENV = struct
 

@@ -3,7 +3,7 @@
 
 signature TPROF =
 sig
-  val instrumDec : (StaticEnv.staticEnv * ElabUtil.compInfo)
+  val instrumDec : (StaticEnv.staticEnv * Absyn.dec CompInfo.compInfo)
                    -> Absyn.dec -> Absyn.dec
 
 end (* signature TPROF *)
@@ -37,7 +37,8 @@ val updateop =
   let val t = poly1(tupleTy[CONty(arrayTycon,[IBOUND 0]),
   			         intTy, IBOUND 0] --> unitTy)
    in VALvar{path=SP.SPATH[S.varSymbol "unboxedupdate"], typ=ref t,
-             access=A.nullAcc, info=II.mkPrimInfo(P.UNBOXEDUPDATE, t)}
+             access=A.nullAcc,
+	     info=II.mkPrimInfo(P.UNBOXEDUPDATE, t)}
   end
 
 val assignop = 
@@ -45,14 +46,16 @@ val assignop =
 			    intTy, IBOUND 0] --> unitTy)
 
    in VALvar{path=SP.SPATH[S.varSymbol ":="], typ=ref t,
-             access=A.nullAcc, info=II.mkPrimInfo(P.ASSIGN, t)}
+             access=A.nullAcc,
+	     info=II.mkPrimInfo(P.ASSIGN, t)}
   end
 
 val subop = 
   let val t = poly1(tupleTy[CONty(arrayTycon,[IBOUND 0]),
 			    intTy] --> IBOUND 0)
    in VALvar{path=SP.SPATH[S.varSymbol "subscript"], typ=ref t,
-             access=A.nullAcc, info=II.mkPrimInfo(P.SUBSCRIPT, t)}
+             access=A.nullAcc,
+	     info=II.mkPrimInfo(P.SUBSCRIPT, t)}
   end
 
 val derefop = 
@@ -159,13 +162,13 @@ fun instrumDec' (env, compInfo as {mkLvar=mkv, ...} : EU.compInfo) absyn =
 	       fun instrvb(vb as VB{pat,exp,tyvars,boundtvs}) =
 	            (case getvar pat
 		      of SOME(VALvar{info, path=SP.SPATH[n],...}) =>
-                           if (II.isPrimInfo info) then vb
+                           if II.isPrimInfo info then vb
                            else VB{pat=pat, tyvars=tyvars,
 			           exp=instrexp (n::clean names, 
                                                  ccvara) false exp,
   			           boundtvs=boundtvs}
                        | SOME(VALvar{info, ...}) =>
-                           if (II.isPrimInfo info) then vb
+                           if II.isPrimInfo info then vb
                            else VB{pat=pat, exp=instrexp sp false exp, 
                                    tyvars=tyvars, boundtvs=boundtvs}
 		       | _ => VB{pat=pat, exp=instrexp sp false exp, 
@@ -254,11 +257,11 @@ fun instrumDec' (env, compInfo as {mkLvar=mkv, ...} : EU.compInfo) absyn =
                        end
 
                    | exp as APPexp (f,a) =>
-                       let fun safe(VARexp(ref(VALvar{info, ...}), _)) = 
-                                 if II.isPrimInfo(info) then
-                                     (if II.isPrimCallcc(info) then false
-                                      else true)
-                                 else false
+                       let fun safe(VARexp(ref(VALvar{info, ...}), _)) =
+                               if II.isPrimInfo(info) then
+                                   (if II.isPrimCallcc(info) then false
+				    else true)
+                               else false
                              | safe(MARKexp(e,_)) = safe e
                              | safe(CONSTRAINTexp(e,_)) = safe e
                              | safe(SEQexp[e]) = safe e

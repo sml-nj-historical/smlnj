@@ -604,8 +604,10 @@ struct
 		fun writeBFC s (i, { code, data, env, inlinfo }) = let
 		    val { contents, stats } = getBFC i
 		    val { code = c, data = d, env = e, inlinfo = ii } = stats
+		    val v = #version_id CompilerVersion.version
 		in
-		    ignore (BF.write { arch = arch, nopickle = true,
+		    ignore (BF.write { arch = arch, version = v,
+				       nopickle = true,
 				       stream = s, contents = contents });
 		    { code = code + c, data = data + d,
 		      env = env + e, inlinfo = inlinfo + ii }

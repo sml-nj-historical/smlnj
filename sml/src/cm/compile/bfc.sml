@@ -30,6 +30,8 @@ struct
     type bfc = BF.bfContents
     type stats = { env: int, inlinfo: int, data: int, code: int }
 
+    val version = #version_id CompilerVersion.version
+
     fun new () = let
 	val m = ref SmlInfoMap.empty
 
@@ -41,8 +43,8 @@ struct
 	      | NONE => let
 		    val binname = SmlInfo.binname i
 		    fun reader s = let
-			val x = BF.read { arch = arch, stream = s,
-					  name = binname }
+			val x = BF.read { arch = arch, version = version,
+					  stream = s, name = binname }
 		    in
 			store (i, x);
 			x
@@ -62,7 +64,8 @@ struct
 	    (Seek.seek (s, offset);
 	     (* We can use an empty static env because no
 	      * unpickling will be done. *)
-	     #contents (BF.read { arch = arch, stream = s, name = descr }))
+	     #contents (BF.read { arch = arch, version = version,
+				  stream = s, name = descr }))
     in
 	SafeIO.perform { openIt = fn () => BinIO.openIn stable,
 			 closeIt = BinIO.closeIn,

@@ -284,6 +284,9 @@ structure Core =
 	    fun bt_install r = hook := r
 	end
 
+	val assign = ( InLine.:= )
+        val deref = ( InLine.! )
+
     end (* local *)
 
     val profile_sregister = ref(fn (x:Assembly.object,s:string)=>x)

@@ -5,7 +5,7 @@ structure Reconstruct : sig val expType : Absyn.exp -> Types.ty end =
 struct
 
 structure TU = TypesUtil
-open Absyn ElabUtil VarCon Types BasicTypes TypesUtil
+open Absyn (* ElabUtil *) VarCon Types BasicTypes TypesUtil
 
 fun bug msg = ErrorMsg.impossible("Reconstruct: "^msg)
 

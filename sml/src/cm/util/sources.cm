@@ -52,5 +52,6 @@ is
 	int-set.sml
 
 	$/basis.cm
+	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/core.cm
 	$/smlnj-lib.cm

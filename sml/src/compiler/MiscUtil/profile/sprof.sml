@@ -3,7 +3,7 @@
 
 signature SPROF =
 sig
-  val instrumDec : StaticEnv.staticEnv * CompInfo.compInfo ->
+  val instrumDec : StaticEnv.staticEnv * Absyn.dec CompInfo.compInfo ->
                      Source.inputSource -> Absyn.dec -> Absyn.dec
 
 end (* signature SPROF *)
@@ -26,7 +26,8 @@ in
  *)
 
 fun instrumDec (env, 
-        compInfo as {mkLvar, ...} : CompInfo.compInfo) source absyn = absyn
+		compInfo as {mkLvar, ...} : Absyn.dec CompInfo.compInfo)
+	       source absyn = absyn
 
 (* 
 

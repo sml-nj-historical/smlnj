@@ -18,8 +18,8 @@ in
 
 type symbol = S.symbol
 type staticEnv = SE.staticEnv
-type dynenv  = DE.dynenv
-type symenv = SY.symenv
+type dynenv  = DE.env
+type symenv = SY.env
 
 type environment = { static: staticEnv, dynamic: dynenv, symbolic: symenv }
 
@@ -162,7 +162,7 @@ local
 	    (case stampOf b
 		 of NONE => loop (l, denv, syenv)
 	       | SOME pid =>
-		     let val dy = DE.look dynamic pid
+		     let val dy = valOf (DE.look dynamic pid)
 			 val denv = DE.bind (pid, dy, denv)
 			 val sy = SY.look symbolic pid
 			 val syenv = case sy

@@ -1,24 +1,6 @@
 (* COPYRIGHT (c) 1995 AT&T Bell Laboratories *)
 (* control.sml *)
 
-
-structure Control_Print : PRINTCONTROL =
-struct
-    val printDepth = ref 5
-    val printLength = ref 12
-    val stringDepth = ref 70
-    val printLoop = ref true
-    val signatures = ref 2
-    val printOpens = ref true
-    val out = ref{
-		  say = fn s => TextIO.output(TextIO.stdOut,s),
-		  flush = fn () => TextIO.flushOut TextIO.stdOut
-		  }
-    val linewidth = ref 79
-    fun say s = #say (!out) s
-    fun flush() = #flush (!out) ()
-end
-
 structure Control_MC : MCCONTROL =
 struct
     val printArgs = ref false
@@ -66,7 +48,7 @@ struct
     val targeting = ref 0
     val lambdaprop = ref false
     val newconreps = ref true
-    val boxedconstconreps = ref false
+    val boxedconstconreps = ElabControl.boxedconstconreps
     val unroll_recur = ref true
     val sharepath = ref true
     val staticprof = ref false
@@ -120,13 +102,13 @@ struct
     val flinton = ref true
 
     val compdebugging = ref false
-    val mudebugging   = ref false
-    val eedebugging   = ref false
-    val insdebugging  = ref false
-    val smdebugging   = ref false
-    val emdebugging   = ref false
-    val esdebugging   = ref false
-    val etdebugging   = ref false
+    val mudebugging   = ElabControl.mudebugging
+    val eedebugging   = ElabControl.eedebugging
+    val insdebugging  = ElabControl.insdebugging
+    val smdebugging   = ElabControl.smdebugging
+    val emdebugging   = ElabControl.emdebugging
+    val esdebugging   = ElabControl.esdebugging
+    val etdebugging   = ElabControl.etdebugging
     val ecdebugging   = ref false
     val tmdebugging   = ref false
 end
@@ -143,34 +125,41 @@ structure Control : CONTROL =
 
     structure CG : CGCONTROL = Control_CG
 
-    val primaryPrompt = ref "- "
-    val secondaryPrompt = ref "= "
-    val printWarnings = ref true
-    val valueRestrictionLocalWarn = ref false
-    val valueRestrictionTopWarn = ref true
-    val multDefWarn = ref false
-    val shareDefError = ref true
-    val instantiateSigs = ref true
+    open BasicControl
+    (* provides: val printWarnings = ref true
+     *)
+    open ParserControl
+    (* provides: val primaryPrompt = ref "- "
+		 val secondaryPrompt = ref "= "
+		 val overloadKW = ref false
+		 val lazysml = ref false
+		 val quotation = ref false
+     *)
+    open ElabDataControl
+    (* provides: val saveLvarNames = ref false
+     *)
+    val valueRestrictionLocalWarn = ElabControl.valueRestrictionLocalWarn
+    val valueRestrictionTopWarn = ElabControl.valueRestrictionTopWarn
+    val multDefWarn = ElabControl.multDefWarn
+    val shareDefError = ElabControl.shareDefError
+    val instantiateSigs = ElabControl.instantiateSigs
     val debugging = ref false
-    val internals = ref false
-    val lazysml = ref false
+    val internals = ElabControl.internals
     val interp = ref false
 (*
     val debugLook = ref false
     val debugCollect = ref false
     val debugBind = ref false
 *)
-    val markabsyn = ref true
+    val markabsyn = ElabControl.markabsyn
     val trackExn = ref true
     val polyEqWarn = ref true (* warning message when call of polyEqual compiled *)
     val indexing = ref false
     val instSigs = ref true
-    val quotation = ref false  (* controls backquote quotation *)
-    val overloadKW = ref false	(* controls "overload" as a keyword *)
 
     val preserveLvarNames : bool ref = ref false
-    val saveit = ref false
-    val saveLvarNames : bool ref = saveit
+    (* these are really all the same ref cell: *)
+    val saveit : bool ref = saveLvarNames
     val saveAbsyn : bool ref = saveit
     val saveLambda : bool ref = saveit
     val saveConvert : bool ref = saveit

@@ -6,7 +6,7 @@ sig
 
   (* Invariant: transDec always applies to a top-level absyn declaration *) 
   val transDec : Absyn.dec * Access.lvar list 
-                 * StaticEnv.staticEnv * CompInfo.compInfo
+                 * StaticEnv.staticEnv * Absyn.dec CompInfo.compInfo
                  -> {flint: FLINT.prog,
                      imports: (PersStamps.persstamp 
                                * ImportTree.importTree) list}
@@ -97,12 +97,14 @@ exception NoCore
  *                               * ImportTree.importTree) list}             *
  ****************************************************************************)
 
-fun transDec (rootdec, exportLvars, env,
-	      compInfo as {errorMatch,error,...}: CompInfo.compInfo) =
+fun transDec
+	(rootdec, exportLvars, env,
+	 compInfo as {errorMatch,error,...}: Absyn.dec CompInfo.compInfo) =
 let 
 
 (** generate the set of ML-to-FLINT type translation functions *)
-val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty} = TT.genTT()
+val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty, markLBOUND} =
+    TT.genTT()
 fun toTcLt d = (toTyc d, toLty d)
 
 (** translating the typ field in DATACON into lty; constant datacons 
@@ -735,26 +737,38 @@ fun mkVar (v as V.VALvar{access, info, typ, path}, d) =
       mkAccInfo(access, info, fn () => toLty d (!typ), getNameOp path)
   | mkVar _ = bug "unexpected vars in mkVar"
 
-fun mkVE (v as V.VALvar {info=II.INL_PRIM(p, typ), ...}, ts, d) = 
-      (case (p, ts)
-        of (PO.POLYEQL, [t]) => eqGen(typ, t, toTcLt d)
-         | (PO.POLYNEQ, [t]) => composeNOT(eqGen(typ, t, toTcLt d), toLty d t)
-         | (PO.INLMKARRAY, [t]) => 
-                let val dict = 
-                      {default = coreAcc "mkNormArray",
-                       table = [([LT.tcc_real], coreAcc "mkRealArray")]}
-                 in GENOP (dict, p, toLty d typ, map (toTyc d) ts)
-                end
-	 | (PO.RAW_CCALL NONE, [a, b, c]) =>
-	   let val i = SOME { c_proto = CProto.decode b,
-			      ml_flt_args = CProto.flt_args a,
-			      ml_flt_res_opt = CProto.flt_res c }
-		   handle CProto.BadEncoding => NONE
-	    in PRIM (PO.RAW_CCALL i, toLty d typ, map (toTyc d) ts)
-	   end
-         | _ => transPrim(p, (toLty d typ), map (toTyc d) ts))
-  | mkVE (v, [], d) = mkVar(v, d)
-  | mkVE (v, ts, d) = TAPP(mkVar(v, d), map (toTyc d) ts)
+fun mkVE (v, ts, d) = let
+    fun otherwise () =
+	case ts of
+	    [] => mkVar (v, d)
+	  | _ => TAPP(mkVar(v, d), map (toTyc d) ts)
+in
+    case v of
+	V.VALvar { info, ... } =>
+	II.match info
+	   { inl_prim = fn (p, typ) =>
+	     (case (p, ts) of
+		  (PO.POLYEQL, [t]) => eqGen(typ, t, toTcLt d)
+		| (PO.POLYNEQ, [t]) =>
+		  composeNOT(eqGen(typ, t, toTcLt d), toLty d t)
+		| (PO.INLMKARRAY, [t]) => 
+                  let val dict = 
+			  {default = coreAcc "mkNormArray",
+			   table = [([LT.tcc_real], coreAcc "mkRealArray")]}
+                  in GENOP (dict, p, toLty d typ, map (toTyc d) ts)
+                  end
+		| (PO.RAW_CCALL NONE, [a, b, c]) =>
+		  let val i = SOME { c_proto = CProto.decode b,
+				     ml_flt_args = CProto.flt_args a,
+				     ml_flt_res_opt = CProto.flt_res c }
+			  handle CProto.BadEncoding => NONE
+		  in PRIM (PO.RAW_CCALL i, toLty d typ, map (toTyc d) ts)
+		  end
+		| _ => transPrim(p, (toLty d typ), map (toTyc d) ts)),
+	     inl_str = fn _ => otherwise (),
+	     inl_no = fn () => otherwise () }
+      | _ => otherwise ()
+end
 
 fun mkCE (TP.DATACON{const, rep, name, typ, ...}, ts, apOp, d) = 
   let val lt = toDconLty d typ
@@ -807,13 +821,17 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
       let val savedtvs = map ! boundtvs
 
           fun g (i, []) = ()
-            | g (i, (tv as ref (TP.OPEN _))::rest) = 
-                   (tv := TP.LBOUND{depth=d, num=i}; g(i+1,rest))
-            | g (i, (tv as ref (TP.LBOUND _))::res) =
-                   bug ("unexpected tyvar LBOUND in mkPE")
+            | g (i, (tv as ref (TP.OPEN _))::rest) = let
+		  val m = markLBOUND (d, i);
+	      in
+		  tv := TP.TV_MARK m;
+		  g (i+1, rest)
+	      end
+            | g (i, (tv as ref (TP.TV_MARK _))::res) =
+                   bug ("unexpected tyvar TV_MARK in mkPE")
             | g _ = bug "unexpected tyvar INSTANTIATED in mkPE"
 
-          val _ = g(0, boundtvs) (* assign the LBOUND tyvars *)
+          val _ = g(0, boundtvs) (* assign the TV_MARK tyvars *)
           val exp' = mkExp(exp, DI.next d)
 
           fun h ([], []) = ()

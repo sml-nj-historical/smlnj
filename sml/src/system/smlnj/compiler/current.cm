@@ -18,7 +18,7 @@ Library
 	signature SYMPATH
 	signature PERSSTAMPS
 	signature STATICENV
-	signature DYNENV
+	signature DYNAMICENV
 	signature SYMENV
 	signature ENVIRONMENT
 	signature ENVREF	

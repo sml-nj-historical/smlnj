@@ -45,11 +45,20 @@ fun log2 0 = 1 | log2 i = 1+log2(i div 2)
 val precision = significant + log2(maxexp-minexp) + 3
 
 (* A float is a WHOLE "fraction" and an exponent base TWO. *)
-type float = {frac : Bigint.bigint, exp : int}
+type float = {frac : IntInf.int, exp : int}
 
-val bigint = Bigint.bigint
-val plus = Bigint.+
-val times = Bigint.*
+val bigint = IntInf.fromInt
+val plus = IntInf.+
+val times = IntInf.*
+(* size of a bigint in bits;
+ *   bigsize 0 = 1
+ *   bigsize i = floor(log2(i))+1
+ * this means that:
+ *   bigsize i = floor(log2(2*i+1))  *)
+val bigone = IntInf.fromInt 1
+fun bigsize x = IntInf.log2 (plus (plus(x, x), bigone))
+fun getbit (b, w) =
+    IntInf.compare (IntInf.andb (IntInf.~>> (b, w), bigone), bigone) = EQUAL
 infix plus times
 
 (* Take a bigint and return a function that will represent the
@@ -61,8 +70,8 @@ infix plus times
    rounded. *)
 exception Bits
 fun makebits frac (start,width) =
-    let val s = Bigint.size frac
-	fun onebit b = Bigint.getbit(frac,s-1-b)
+    let val s = bigsize frac
+	fun onebit b = getbit(frac,Word.fromInt(s-1-b))
 	fun b true = 1
           | b false = 0
 	fun f 0 = b (onebit start)
@@ -75,12 +84,12 @@ fun makebits frac (start,width) =
 (* round a float to n significant digits *)
 local val one = bigint 1 in
 fun round (float as {frac=f,exp=e},n) =
-    let val shift = Bigint.size f + 1 - n
+    let val shift = bigsize f + 1 - n
     in
 	if shift <= 0 then float
-	else {frac = if Bigint.getbit(f,shift-1)
-		     then Bigint.>>(f, shift) plus one
-		     else Bigint.>>(f, shift),
+	else {frac = if getbit(f, Word.fromInt (shift-1))
+		     then IntInf.~>>(f, Word.fromInt shift) plus one
+		     else IntInf.~>>(f, Word.fromInt shift),
 	      exp = e + shift}
     end
 end
@@ -116,7 +125,7 @@ fun mult {frac=f1,exp=e1} {frac=f2,exp=e2} =
 (* Create a dynamic array of powers of ten *)
 structure DFA = DynamicArrayFn(
   struct open Array
-    type float = {frac : Bigint.bigint, exp : int}
+    type float = {frac : IntInf.int, exp : int}
     type elem = unit->float
     type array = elem array
     type vector = elem vector
@@ -219,7 +228,7 @@ fun realconst f =
     let val (sign,frac10,exp10) = getparts f
 	val float = raisepower(round({frac=frac10,exp=0},precision),exp10)
 	val (newf as {frac,exp}) = round(float,significant+1)
-	val size = Bigint.size frac
+	val size = bigsize frac
 	val bits = makebits frac
 	val exp = exp+size
     in transreal(

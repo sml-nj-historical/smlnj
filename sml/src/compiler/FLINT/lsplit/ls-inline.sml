@@ -4,7 +4,7 @@ signature LSPLIT_INLINE = sig
     type pid = PersStamps.persstamp
     type importTree = ImportTree.importTree
     type import = pid * importTree
-    type symenv = SymbolicEnv.symenv
+    type symenv = SymbolicEnv.env
 
     val inline: flint * import list * symenv -> flint * import list
 end
@@ -15,7 +15,7 @@ structure LSplitInline :> LSPLIT_INLINE = struct
     type pid = PersStamps.persstamp
     datatype importTree = datatype ImportTree.importTree
     type import = pid * importTree
-    type symenv = SymbolicEnv.symenv
+    type symenv = SymbolicEnv.env
 
     structure LK = LtyKernel
     structure LV = LambdaVar

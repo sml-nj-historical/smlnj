@@ -86,9 +86,10 @@ fun dumpTerm (printE, s, le) =
 val fcs : (FLINT.prog -> FLINT.prog) list ref = ref []
 
 (** compiling FLINT code into the binary machine code *)
-fun flintcomp(flint,
-	      compInfo as {error, sourceName=src, ...}: CompInfo.compInfo,
-	      splitting) = 
+fun flintcomp
+	(flint,
+	 compInfo as {error, sourceName=src, ...}: Absyn.dec CompInfo.compInfo,
+	 splitting) = 
   let fun err severity s =
  	error (0,0) severity (concat["Real constant out of range: ",s,"\n"])
 

@@ -13,13 +13,13 @@ signature COMPILE0 = sig
 
     val mkCompInfo :
 	{ source: Source.inputSource, transform: Absyn.dec -> Absyn.dec }
-	-> CompInfo.compInfo
+	-> Absyn.dec CompInfo.compInfo
 
     (** take ast, do semantic checks,
      ** then output the new env, absyn and pickles *)
     val elaborate : { ast: Ast.dec,
 		      statenv: StaticEnv.staticEnv,
-		      compInfo: CompInfo.compInfo }
+		      compInfo: Absyn.dec CompInfo.compInfo }
                     -> { absyn: Absyn.dec,
 			 newstatenv: StaticEnv.staticEnv,
  			 exportLvars: Access.lvar list,
@@ -31,8 +31,8 @@ signature COMPILE0 = sig
     val compile : { source: Source.inputSource,
 		    ast: Ast.dec,
 		    statenv: StaticEnv.staticEnv,
-                    symenv: SymbolicEnv.symenv,
-		    compInfo: CompInfo.compInfo, 
+                    symenv: SymbolicEnv.env,
+		    compInfo: Absyn.dec CompInfo.compInfo, 
                     checkErr: string -> unit,
                     splitting: int option}
                   -> { csegments: CodeObj.csegments,

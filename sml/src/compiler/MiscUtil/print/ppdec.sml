@@ -102,9 +102,9 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
                     (case StaticEnv.look (static, SymPath.last path)
                       of VALbind(VALvar{access=PATH (EXTERN pid, pos), ...}) =>
                            if isExport(lv, exportLvars)
-                           then (let val obj = 
-                                       xtract (DynamicEnv.look dynamic pid, 
-                                               pos)
+                           then (let val objv =
+					 valOf (DynamicEnv.look dynamic pid)
+				     val obj = xtract (objv, pos)
                                   in ppObj static ppstrm 
                                        (obj, ty, !printDepth);
 				     add_break ppstrm (1,0);

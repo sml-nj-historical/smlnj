@@ -6,6 +6,6 @@ sig
   structure Machine : MACHINE_GEN
   val architecture : string
   (* the int option gets passed to lambda-split phases (if any) *)
-  val flintcomp : FLINT.prog * CompInfo.compInfo * int option ->
+  val flintcomp : FLINT.prog * Absyn.dec CompInfo.compInfo * int option ->
       (CodeObj.csegments * FLINT.prog option)
 end (* CODEGENERATOR *)

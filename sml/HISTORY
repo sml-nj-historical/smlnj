@@ -14,6 +14,107 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/08/15 17:15:00 EDT
+Tag: blume-20010815-compreorg
+Description:
+
+This is a first cut at reorganizing the CM libraries that make up the
+core of the compiler.  The idea is to separate out pieces that could
+be used independently by tools, e.g., the parser, the typechecker, etc.
+
+The current status is a step in this direction, but it is not quite
+satisfactory yet.  Expect more changes in the future.
+
+Here is the current (new) organization...
+
+    What used to be $smlnj/viscomp/core.cm is now divided into
+    six CM libraries:
+
+         $smlnj/viscomp/basics.cm
+                       /parser.cm
+                       /elabdata.cm
+                       /elaborate.cm
+                       /execute.cm
+                       /core.cm
+
+    The CM files for these libraries live under src/system/smlnj/viscomp.
+    All these libraries are proxy libraries that contain precisely
+    one CM library component.  Here are the locations of the components
+    (all within the src/compiler tree):
+
+         Basics/basics.cm
+         Parse/parser.cm
+         ElabData/elabdata.cm
+         Elaborator/elaborate.cm
+         Execution/execute.cm
+         core.cm
+
+     [This organization is the same that has been used already
+     for a while for the architecture-specific parts of the visible
+     compiler and for the old version of core.cm.]
+
+     As you will notice, many source files have been moved from their
+     respective original locations to a new home in one of the above
+     subtrees.
+
+     The division of labor between the new libraries is the following:
+
+         basics.cm:
+            - Simple, basic definitions that pertain to many (or all) of
+              the other libraries.
+         parser.cm:
+            - The SML parser, producing output of type Ast.dec.
+            - The type family for Ast is also defined and exported here.
+         elabdata.cm:
+            - The datatypes that describe input and output of the elaborator.
+              This includes types, absyn, and static environments.
+         elaborator.cm:
+            - The SML/NJ type checker and elaborator.
+              This maps an Ast.dec (with a given static environment) to
+              an Absyn.dec (with a new static environment).
+            - This libraries implements certain modules that used to be
+              structures as functors (to remove dependencies on FLINT).
+         execute.cm:
+            - Everything having to do with executing binary code objects.
+            - Dynamic environments.
+         core.cm:
+            - SML/NJ-specific instantiations of the elaborator and MLRISC.
+            - Top-level modules.
+            - FLINT (this should eventually become its own library)
+
+Notes:
+
+I am not 100% happy with the way I separated the elaborator (and its
+data structures) from FLINT.  Two instances of the same problem:
+
+    1. Data structures contain certain fields that carry FLINT-specific
+       information.  I hacked around this using exn and the property list
+       module from smlnj-lib.  But the fact that there are middle-end
+       specific fields around at all is a bit annoying.
+
+    2. The elaborator calculates certain FLINT-related information.  I tried
+       to make this as abstract as I could using functorization, but, again,
+       the fact that the elaborator has to perform calculations on behalf
+       of the middle-end at all is not nice.
+
+    3. Having to used exn and property lists is unfortunate because it
+       weakens type checking.  The other alternative (parameterizing
+       nearly *everything*) is not appealing, though.
+
+I removed the "rebinding =" warning hack because due to the new organization
+it was awkward to maintain it.  As a result, the compiler now issues some of
+these warnings when compiling init.cmi during bootstrap compilation. On
+the plus side, you also get a warning when you do, for example:
+   val op = = Int32.+
+which was not the case up to now.
+
+I placed "assign" and "deref" into the _Core structure so that the
+code that deals with the "lazy" keyword can find them there.  This
+removes the need for having access to the primitive environment
+during elaboration.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/08/13
 Tag: blume-20010813-closures
 Description:

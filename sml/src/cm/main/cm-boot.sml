@@ -31,7 +31,6 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	  SpecificSymValFn (val arch = HostBackend.architecture
 			    val os = os)
 
-      val emptydyn = E.dynamicPart E.emptyEnv
       val system_values =
 	  ref (SrcPathMap.empty: E.dynenv IntMap.map SrcPathMap.map)
 
@@ -495,10 +494,11 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 				  [pos, hexp] =>
 				  (case (fromHex hexp, Int.fromString pos) of
 				       (SOME p, SOME i) =>
-				       (IM.insert (pm, i,
-						   DE.bind (p, DE.look de p,
-							    emptydyn))
-					handle DE.Unbound => pm)
+				       (case DE.look de p of
+					    NONE => pm
+					  | SOME obj => 
+					    IM.insert (pm, i,
+						       DE.singleton (p, obj)))
 				     | _ => pm)
 				| _ => pm
 			  end

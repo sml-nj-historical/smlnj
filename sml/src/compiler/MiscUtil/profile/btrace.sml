@@ -15,14 +15,13 @@ local
     structure EM = ErrorMsg
     structure VC = VarCon
     structure BT = BasicTypes
-    structure II = InlInfo
     structure EU = ElabUtil
 
     structure Dummy = BTImp		(* mention it, so it gets made! *)
 in
 
 signature BTRACE = sig
-    val instrument : SE.staticEnv * CompInfo.compInfo -> A.dec -> A.dec
+    val instrument : SE.staticEnv * A.dec CompInfo.compInfo -> A.dec -> A.dec
 end
 
 structure BTrace :> BTRACE = struct
@@ -41,7 +40,7 @@ structure BTrace :> BTRACE = struct
     val u_u_u_Ty = BT.unitTy --> u_u_Ty
     val iis_u_Ty = BT.tupleTy [BT.intTy, BT.intTy, BT.unitTy] --> BT.unitTy
 
-    fun instrument0 (senv, cinfo: CompInfo.compInfo) d = let
+    fun instrument0 (senv, cinfo: A.dec CompInfo.compInfo) d = let
 
 	val matchstring = #errorMatch cinfo
 
@@ -50,7 +49,7 @@ structure BTrace :> BTRACE = struct
 	fun tmpvar (n, t) = let
 	    val sy = Symbol.varSymbol n
 	in
-	    VC.VALvar { access = Access.namedAcc (sy, mkv), info = II.nullInfo,
+	    VC.VALvar { access = Access.namedAcc (sy, mkv), info = II.Null,
 			path = SP.SPATH [sy], typ = ref t }
 	end
 
@@ -150,7 +149,7 @@ structure BTrace :> BTRACE = struct
 	fun AUexp v = A.APPexp (VARexp v, uExp)	(* apply to unit *)
 
 	fun is_prim_exp (A.VARexp (ref (VC.VALvar v), _)) =
-	    II.isPrimInfo (#info v)
+	    II.isSimple (#info v)
 	  | is_prim_exp (A.CONexp _) = true
 	  | is_prim_exp (A.CONSTRAINTexp (e, _)) = is_prim_exp e
 	  | is_prim_exp (A.MARKexp (e, _)) = is_prim_exp e
@@ -284,9 +283,10 @@ structure BTrace :> BTRACE = struct
 	in
 	    case gv pat of
 		SOME (VC.VALvar { path = SP.SPATH [x], info, ... }) =>
-		if II.isPrimInfo info then vb else recur (cons (x, n))
+		if II.isSimple info then vb
+		else recur (cons (x, n))
 	      | SOME (VC.VALvar { info, ... }) =>
-		if II.isPrimInfo info then vb else recur n
+		if II.isSimple info then vb else recur n
 	      | _ => recur n
 	end
 

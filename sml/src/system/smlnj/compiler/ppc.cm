@@ -16,7 +16,7 @@ Library
 	signature SYMPATH
 	signature PERSSTAMPS
 	signature STATICENV
-	signature DYNENV
+	signature DYNAMICENV
 	signature SYMENV
 	signature ENVIRONMENT
 	signature ENVREF	
@@ -67,5 +67,9 @@ Library
 	(* the PPC backend *)
 	structure PPCBackend
 is
+	$smlnj/viscomp/basics.cm
+	$smlnj/viscomp/parser.cm
+	$smlnj/viscomp/elabdata.cm
+	$smlnj/viscomp/execute.cm
 	$smlnj/viscomp/core.cm
 	$smlnj/viscomp/ppc.cm

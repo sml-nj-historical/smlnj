@@ -119,13 +119,13 @@ hexnum=[0-9a-fA-F]+;
 <INITIAL>"'"("'"?)("_"|{num})?{id}
 			=> (TokTable.checkTyvar(yytext,yypos));
 <INITIAL>{id}	        => (TokTable.checkId(yytext, yypos));
-<INITIAL>{full_sym}+    => (if !Control.quotation
+<INITIAL>{full_sym}+    => (if !ParserControl.quotation
                             then if (has_quote yytext)
                                  then REJECT()
                                  else TokTable.checkSymId(yytext,yypos)
                             else TokTable.checkSymId(yytext,yypos));
 <INITIAL>{sym}+         => (TokTable.checkSymId(yytext,yypos));
-<INITIAL>{quote}        => (if !Control.quotation
+<INITIAL>{quote}        => (if !ParserControl.quotation
                             then (YYBEGIN Q;
                                   charlist := [];
                                   Tokens.BEGINQ(yypos,yypos+1))

@@ -1,0 +1,119 @@
+(* elaborate.cm
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *
+ * The SML/NJ elaborator.
+ *)
+Group (../../system/smlnj/viscomp/elaborate.cm)
+	structure ElabControl
+
+	signature PRIM_TYC
+	signature DEB_INDEX
+	signature BASICTYPES
+	signature TUPLES
+	signature TYPESUTIL
+	signature MODULE_ID
+	signature INSTANTIATE_PARAM
+	signature INSTANTIATE
+	signature EVALENTITY
+	signature ELABTOP
+
+	functor InstantiateFn
+	functor EvalEntityFn
+	functor TypecheckFn
+	functor SigMatchFn
+	functor ElabModFn
+	functor ElabTopFn
+
+	structure PrimTyc
+	structure DebIndex
+	structure CoreSym
+	structure BasicTypes
+	structure ModuleId
+	structure EntityEnv
+	structure Tuples
+	structure TypesUtil
+	structure ModuleUtil
+	structure ElabUtil
+	structure Lookup
+	structure SpecialSymbols
+	structure EntPathContext
+	structure ElabDebug
+	structure GenModIdMap
+
+	signature PPUTIL
+	signature PPTYPE
+	signature PPABSYN
+	signature PPMOD
+	signature PPVAL
+
+	structure PPUtil
+	structure PPType
+	structure PPAbsyn
+	structure PPModules
+	structure PPVal
+is
+
+	basics/elabcontrol.sml
+	basics/primtyc.sig
+	basics/primtyc.sml
+	basics/debindex.sig
+	basics/debindex.sml
+	basics/coresym.sml
+	basics/conrep.sml
+
+	types/basictypes.sig
+	types/basictypes.sml
+	types/tuples.sml
+	types/typesutil.sig
+	types/typesutil.sml
+	types/eqtypes.sml
+	types/unify.sml
+	types/overload.sml
+	types/overloadlit.sml
+	types/typecheck.sml
+
+	modules/moduleid.sml
+	modules/moduleutil.sig
+	modules/moduleutil.sml
+	modules/entityenv.sig
+	modules/entityenv.sml
+	modules/epcontext.sml
+	modules/expandtycon.sml
+	modules/sigmatch.sml
+	modules/instantiate.sml
+	modules/evalent.sml
+
+	statenv/lookup.sig
+	statenv/lookup.sml
+	statenv/genmap.sml
+
+	elaborate/tyvarset.sml
+	elaborate/elabutil.sig
+	elaborate/elabutil.sml
+	elaborate/specialsyms.sml
+	elaborate/elabtype.sig
+	elaborate/elabtype.sml
+	elaborate/precedence.sml
+	elaborate/elabcore.sml
+	elaborate/include.sml
+	elaborate/elabsig.sml
+	elaborate/elabdebug.sml
+	elaborate/elabmod.sml
+	elaborate/elabtop.sml
+
+	print/pputil.sig
+	print/pputil.sml
+	print/pptype.sml
+	print/ppval.sml
+	print/ppabsyn.sml
+	print/ppmod.sml
+
+	$smlnj/viscomp/elabdata.cm
+	$smlnj/viscomp/basics.cm
+	$smlnj/viscomp/parser.cm
+
+	$smlnj/MLRISC/MLRISC.cm
+
+	$/smlnj-lib.cm
+	$/basis.cm

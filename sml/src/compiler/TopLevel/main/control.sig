@@ -1,20 +1,6 @@
 (* COPYRIGHT (c) 1995 AT&T Bell Laboratories *)
 (* control.sig *)
 
-signature PRINTCONTROL =
-sig
-  val printDepth : int ref
-  val printLength : int ref
-  val stringDepth : int ref
-  val printLoop : bool ref
-  val signatures : int ref
-  val printOpens : bool ref
-  val out : {say : string -> unit, flush : unit -> unit} ref
-  val linewidth : int ref
-  val say : string -> unit 
-  val flush: unit -> unit
-end
-
 signature MCCONTROL =
 sig
   val printArgs : bool ref
@@ -155,10 +141,20 @@ sig
   structure Print : PRINTCONTROL
   structure FLINT : FLINTCONTROL
   val debugging : bool ref
-  val primaryPrompt : string ref
-  val secondaryPrompt : string ref
-  val printWarnings : bool ref
-     (* if false, suppress all warning messages *)
+
+  include BASIC_CONTROL
+  (* provides: val printWarnings : bool ref
+   *)
+  include PARSER_CONTROL
+  (* provides: val primaryPrompt : string ref
+	       val secondaryPrompt : string ref
+	       val overloadKW : bool ref
+	       val lazysml : bool ref
+	       val quotation : bool ref
+   *)
+  include ELABDATA_CONTROL
+  (* provides: val saveLvarNames : bool ref
+   *)
   val valueRestrictionLocalWarn : bool ref  (* default false *)
      (* warning message on failure of value restriction in local decls *)
   val valueRestrictionTopWarn : bool ref    (* default true *)
@@ -171,8 +167,6 @@ sig
      (* check signatures at declaration by instantiating them *)
   val internals : bool ref  (* default false *)
      (* print internal representations of types at top level *)
-  val lazysml : bool ref  (* default false *)
-     (* turn on lazy keywords and lazy declaration processing *)
   val interp : bool ref
      (* turn on interpreter -- defunct *)
 (*
@@ -181,15 +175,12 @@ sig
   val debugBind : bool ref
 *)
   val saveLambda : bool ref
-  val saveLvarNames : bool ref
   val preserveLvarNames : bool ref
   val markabsyn : bool ref
   val trackExn : bool ref
   val polyEqWarn : bool ref
   val indexing : bool ref
   val instSigs : bool ref
-  val quotation : bool ref
-  val overloadKW : bool ref
 
   val saveit : bool ref
   val saveAbsyn : bool ref
