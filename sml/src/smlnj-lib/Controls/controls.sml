@@ -12,6 +12,8 @@ structure Controls : CONTROLS =
 	    name = Atom.atom name,
 	    get = fn () => !ctl,
 	    set = fn v => ctl := v,
+	    set' = fn v => fn () => ctl := v,
+	    save'restore = fn () => let val v = !ctl in fn () => ctl := v end,
 	    priority = pri,
 	    obscurity = obscurity,
 	    help = help
@@ -28,31 +30,36 @@ structure Controls : CONTROLS =
     exception ValueSyntax of {tyName : string, ctlName : string, value : string}
 
     fun stringControl {tyName, fromString, toString} = let
-	  fun mk (Ctl{name, get, set, priority, obscurity, help}) = Ctl{
-		  name = name,
-		  get = fn () => toString(get()),
-		  set = fn sval => (case fromString sval
-		     of NONE => raise ValueSyntax{
-			    tyName = tyName,
-			    ctlName = Atom.toString name,
-			    value = sval
-			  }
-		      | SOME v => set v
-		    (* end case *)),
-		  priority = priority,
-		  obscurity = obscurity,
-		  help = help
-		}
-	  in
-	    mk
-	  end
+	  fun fromString' name s =
+	      case fromString s of
+		  NONE => raise ValueSyntax { tyName = tyName,
+					      ctlName = Atom.toString name,
+					      value = s }
+		| SOME v => v
+
+	  fun mk (Ctl{name, get, set, set', save'restore,
+		      priority, obscurity, help}) =
+	      Ctl { name = name,
+		    get = toString o get,
+		    set = set o fromString' name,
+		    set' = set' o fromString' name,
+		    save'restore = save'restore,
+		    priority = priority,
+		    obscurity = obscurity,
+		    help = help }
+    in
+	mk
+    end
 
     fun name (Ctl{name, ...}) = Atom.toString name
     fun get (Ctl{get, ...}) = get()
     fun set (Ctl{set, ...}, v) = set v
+    fun set' (Ctl{set', ...}, v) = set' v
     fun info (Ctl{priority, obscurity, help, ...}) = {
 	    priority = priority, obscurity = obscurity, help = help
 	  }
+
+    fun save'restore (Ctl{save'restore,...}) = save'restore ()
 
     fun compare (Ctl{priority=p1, ...}, Ctl{priority=p2, ...}) = let
 	  fun collate ([], []) = EQUAL

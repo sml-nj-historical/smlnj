@@ -12,7 +12,10 @@ structure ControlReps =
     datatype 'a control = Ctl of {
 	name : Atom.atom,		(* name of the control *)
 	set : 'a -> unit,		(* function to set the control's value *)
+	set' : 'a -> unit -> unit,      (* delayed set (error checking in 1st
+					 * stage, actual assignment in 2nd) *)
 	get : unit -> 'a,		(* return the control's value *)
+	save'restore: unit -> unit -> unit,
 	priority : priority,		(* control's priority *)
 	obscurity : int,		(* control's detail level; higher means *)
 					(* more obscure *)

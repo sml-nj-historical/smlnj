@@ -14,6 +14,35 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/09/27 22:08:00 CDT
+Tag: blume-20040927-controls
+Description:
+
+Added two pieces of functionality to the Controls interface:
+
+1.   val save'restore: 'a control -> unit -> unit
+
+   grabs the current value of the control in stage 1 and restores it
+   in stage 2.
+
+2.   val set' : 'a control * 'a -> unit -> unit
+
+   stores the given value into the control in stage 2 (i.e., delayed)
+   but does all error checking in stage 1.
+   (This is for string controls that need to do parse their argument --
+    something that might fail.  In some cases, notably in CM, one
+    already knows the intended argument but wants to delay the actual
+    assignment until a time when error recovery would be more difficult.)
+
+Changed the handling of controls in tool arguments to classes "sml" and
+"lazysml":
+   - use Controls.save'restore as a more robust way of restoring the
+     old value (in particular: without having to re-parse the string)
+   - use controls to handle the "overload" keyword in the init group
+     (I believe this change actually fixes a long-standing obscure bug.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/09/27 17:00:00 CDT
 Tag: blume-20040927-lazysml
 Description:

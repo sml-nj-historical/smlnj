@@ -371,32 +371,26 @@ structure PrivateTools : PRIVATETOOLS = struct
 			  | SOME subopts => let
 				fun fields c s =
 				    String.fields (fn c' => c = c') s
-				fun valsyn what { value, ctlName, tyName } =
-				    fail (concat ["error ", what,
-						  " controller: unable to parse value `",
-						  value, "' for ", ctlName,
-						  " : ", tyName])
-				fun set (what, c, v) =
-				    Controls.set (c, v)
+				fun set (c, v) =
+				    Controls.set' (c, v)
 				    handle Controls.ValueSyntax vse =>
-					   valsyn what vse
+					   fail (concat ["error setting \
+							 \ controller: \
+							 \unable to parse \
+							 \value `",
+							 #value vse, "' for ",
+							 #ctlName vse, " : ",
+							 #tyName vse])
 				fun mk (n, v) =
 				    case ControlRegistry.control
 					     BasicControl.topregistry
 					     (fields #"." n)
 				     of NONE =>
 					  err ("no such control: " ^ n)
-				      | SOME c => let
-					    fun sr () =
-						let val orig = Controls.get c
-						in
-						 fn () =>
-						    set ("restoring", c, orig)
-						end
-					    fun s () = set ("setting", c, v)
-					in
-					    { save'restore = sr, set = s }
-					end
+				      | SOME c =>
+					  { save'restore =
+					      fn () => Controls.save'restore c,
+					    set = set (c, v) }
 				fun loop ([], a) = a
 				  | loop (STRING nv :: r, a) =
 				      (case fields #"=" (#name nv) of
