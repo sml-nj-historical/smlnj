@@ -1,0 +1,185 @@
+(* -*- sml -*- *)
+
+structure A = CMAbsyn
+
+fun guard (test, (th, el)) =
+    A.GUARDIAN { test = test, then_part = th, else_part = el }
+
+fun arith (arith_op, left, right) =
+    A.ARITH { arith = arith_op, left = left, right = right }
+
+fun lconn (conn_op, left, right) =
+    A.LCONN { conn = conn_op, left = left, right = right }
+
+fun cmp (cmp_op, left, right) =
+    A.CMP { cmp = cmp_op, left = left, right = right }
+
+%%
+%term EOF
+    | ID of string
+    | STRING of string
+    | NUMBER of int
+    | ALIAS | GROUP | LIBRARY | IS
+    | LPAREN | RPAREN | COMMA | COLON
+    | IF | THEN | ELIF | ELSE | ENDIF
+    | STRUCTURE | SIGNATURE | FUNCTOR | FUNSIG
+    | DEFINED
+    | PLUS | MINUS | TIMES | DIV | MOD | UMINUS
+    | ANDALSO | ORELSE | NOT
+    | LT | LE | GT | GE | EQ | NE
+
+%nonterm description of A.description
+       | alias of A.description
+       | group of A.description
+       | opt_perm of string list
+       | idlist of string list
+       | lib_exports of A.export list
+       | exports of A.export list
+       | export of A.export
+       | guarded_exports of A.export list * A.export list
+       | else_exports of A.export list
+       | members of A.member list
+       | member of A.member
+       | guarded_members of A.member list * A.member list
+       | else_members of A.member list
+       | arithexp of A.arithexp
+       | boolexp of A.boolexp
+       | exp of A.boolexp
+       | ml_symbol of A.ml_symbol
+       | filename of A.filename
+       | cmpath of A.filename
+       | nativepath of A.filename
+
+%pos int
+%verbose
+%start description
+%eop EOF
+%noshift EOF
+
+%name CM
+
+%keyword ALIAS GROUP LIBRARY IS IF THEN ELIF ELSE ENDIF DEFINED
+  STRUCTURE SIGNATURE FUNCTOR FUNSIG
+
+%prefer THEN ELSE LPAREN
+
+%left ORELSE
+%left ANDALSO
+%nonassoc LT LE GT GE
+%nonassoc EQ NE
+%left PLUS MINUS
+%left TIMES DIV MOD
+%left UMINUS NOT
+
+%%
+
+description : alias				(alias)
+	    | group				(group)
+
+alias : ALIAS filename				(A.ALIAS filename)
+
+group : GROUP opt_perm exports IS members	(A.GROUP
+						  { permissions = opt_perm,
+						    exports = exports,
+						    members = members })
+      | LIBRARY opt_perm lib_exports IS members	(A.LIBRARY
+						  { permissions = opt_perm,
+						    exports = lib_exports,
+						    members = members })
+
+opt_perm : (* empty *)				([])
+	 | LPAREN idlist RPAREN			(idlist)
+
+idlist : ID					([ID])
+       | ID COMMA idlist			(ID :: idlist)
+
+lib_exports : export exports		        (export :: exports)
+
+exports : (* empty *)				([])
+	| export exports			(export :: exports)
+
+export : ml_symbol				(A.EXPORT ml_symbol)
+       | IF exp guarded_exports			(A.GUARDED_EXPORT
+						 (guard (exp,
+							 guarded_exports)))
+
+guarded_exports : THEN exports else_exports	((exports, else_exports))
+
+else_exports : ENDIF				([])
+	     | ELSE exports ENDIF		(exports)
+             | ELIF exp guarded_exports		([A.GUARDED_EXPORT
+						  (guard (exp,
+							  guarded_exports))])
+
+members : (* empty *)				([])
+	| member members			(member :: members)
+
+member : filename				(A.MEMBER { name = filename,
+							    class = NONE })
+       | filename COLON ID			(A.MEMBER { name = filename,
+							    class = SOME ID })
+       | IF exp guarded_members			(A.GUARDED_MEMBER
+						 (guard (exp,
+							 guarded_members)))
+
+guarded_members : THEN members else_members	((members, else_members))
+
+else_members : ENDIF				([])
+	     | ELSE members ENDIF		(members)
+	     | ELIF exp guarded_members		([A.GUARDED_MEMBER
+						  (guard (exp,
+							  guarded_members))])
+
+exp : boolexp					(boolexp)
+
+arithexp : NUMBER				(A.NUMBER NUMBER)
+	 | ID					(A.VARIABLE ID)
+	 | LPAREN arithexp RPAREN		(arithexp)
+	 | arithexp PLUS arithexp		(arith (A.PLUS,
+							arithexp1, arithexp2))
+	 | arithexp MINUS arithexp		(arith (A.MINUS,
+							arithexp1, arithexp2))
+	 | arithexp TIMES arithexp		(arith (A.TIMES,
+							arithexp1, arithexp2))
+	 | arithexp DIV arithexp		(arith (A.DIV,
+							arithexp1, arithexp2))
+	 | arithexp MOD arithexp		(arith (A.MOD,
+							arithexp1, arithexp2))
+	 | MINUS arithexp %prec UMINUS		(A.NEGATE arithexp)
+
+boolexp : DEFINED LPAREN ml_symbol RPAREN	(A.ML_DEFINED ml_symbol)
+	| DEFINED LPAREN ID RPAREN		(A.CM_DEFINED ID)
+	| LPAREN boolexp RPAREN			(boolexp)
+	| boolexp ANDALSO boolexp		(lconn (A.ANDALSO,
+							boolexp1, boolexp2))
+	| boolexp ORELSE boolexp		(lconn (A.ORELSE,
+							boolexp1, boolexp2))
+	| boolexp EQ boolexp			(lconn (A.BOOL_EQ,
+							boolexp1, boolexp2))
+	| boolexp NE boolexp			(lconn (A.BOOL_NE,
+							boolexp1, boolexp2))
+	| NOT boolexp				(A.NOT boolexp)
+	| arithexp LT arithexp			(cmp (A.LT,
+						      arithexp1, arithexp2))
+	| arithexp LE arithexp			(cmp (A.LE,
+						      arithexp1, arithexp2))
+	| arithexp GT arithexp			(cmp (A.GT,
+						      arithexp1, arithexp2))
+	| arithexp GE arithexp			(cmp (A.GE,
+						      arithexp1, arithexp2))
+	| arithexp EQ arithexp			(cmp (A.EQ,
+						      arithexp1, arithexp2))
+	| arithexp NE arithexp			(cmp (A.NE,
+						      arithexp1, arithexp2))
+
+ml_symbol : STRUCTURE ID			(A.STRUCTURE ID)
+	  | SIGNATURE ID			(A.SIGNATURE ID)
+	  | FUNCTOR ID				(A.FUNCTOR ID)
+	  | FUNSIG ID				(A.FUNSIG ID)
+
+filename : cmpath				(cmpath)
+	 | nativepath				(nativepath)
+
+cmpath : ID					(ID)
+
+nativepath : STRING				(STRING)
