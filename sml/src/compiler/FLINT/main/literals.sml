@@ -191,8 +191,8 @@ fun rlitcmp (RLIT(s1,i1), RLIT(s2,i2)) =
   if i1 < i2 then LESS
   else if i1 > i2 then GREATER else String.compare(s1, s2)
 structure RlitDict = BinaryMapFn(struct type ord_key = rlit
-                                       val compare = rlitcmp
-                                end)
+                                        val compare = rlitcmp
+                                 end)
 
 (* lifting all literals from a CPS program *)
 fun liftlits (body, root, offset) = 
@@ -203,7 +203,7 @@ fun liftlits (body, root, offset) =
 
       (* check if an lvar is used by the main program *)
       val refset : Intset.intset = Intset.new()
-      val used : lvar -> unit =  Intset.add refset
+      val used : lvar -> unit = Intset.add refset 
       val isUsed : lvar -> bool = Intset.mem refset
 
       (* memoize the information on which corresponds to what *)
@@ -399,6 +399,7 @@ fun liftlits (body, root, offset) =
                                           val t = 
                                             case rk 
                                              of RK_FBLOCK => PTRt(FPT n)
+                                              | RK_VECTOR => BOGt
                                               | _ => PTRt(RPT n)
                                        in fn ce => SELECT(i, rval, v, t, ce)
                                       end)
@@ -466,4 +467,8 @@ fun litsplit (fk, f, vl as [_,x], [CNTt, t as PTRt(RPT n)], body) =
 
 end (* toplevel local *)
 end (* Literals *)
+
+(*
+ * $Log$
+ *)
 
