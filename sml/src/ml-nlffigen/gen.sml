@@ -161,7 +161,7 @@ end = struct
 	  | dim_ty n = Con ("dg" ^ Int.toString (n mod 10),
 			    [dim_ty (n div 10)])
 
-	fun Suobj'rw sut = Con ("su_obj'", [sut, Type "rw"])
+	fun Suobj'rw p sut = Con ("su_obj" ^ p, [sut, Type "rw"])
 	fun Suobj'ro sut = Con ("su_obj'", [sut, Type "ro"])
 	fun Suobj''c sut = Con ("su_obj'", [sut, Type "'c"])
 
@@ -173,12 +173,12 @@ end = struct
 		case res of
 		    NONE => (Unit, [])
 		  | SOME (S.STRUCT t) => let
-			val ot = Suobj'rw (St t)
+			val ot = Suobj'rw "'" (St t)
 		    in
 			(ot, [ot])
 		    end
 		  | SOME (S.UNION t) => let
-			val ot = Suobj'rw (Un t)
+			val ot = Suobj'rw "'" (Un t)
 		    in
 			(ot, [ot])
 		    end
@@ -236,12 +236,12 @@ end = struct
 		case res of
 		    NONE => (Unit, [])
 		  | SOME (S.STRUCT t) => let
-			val ot = Suobj'rw (St t)
+			val ot = Suobj'rw p (St t)
 		    in
 			(ot, [ot])
 		    end
 		  | SOME (S.UNION t) => let
-			val ot = Suobj'rw (Un t)
+			val ot = Suobj'rw p (Un t)
 		    in
 			(ot, [ot])
 		    end
@@ -871,6 +871,12 @@ end = struct
 		  | oneArg (e, S.VOIDPTR) = e
 		  | oneArg (e, S.ARR _) = raise Fail "array argument type"
 		val c_exps = ListPair.map oneArg (ml_vars, args)
+		val (ml_vars, c_exps) =
+		    case res of
+			SOME (S.STRUCT _ | S.UNION _) =>
+			(EVar "x0" :: ml_vars,
+			 light ("obj", EVar "x0") :: c_exps)
+		      | _ => (ml_vars, c_exps)
 		val call = EApp (EVar "call",
 				 ETuple [EApp (EVar ("fptr_fn_" ^ name),
 					       ETuple []),
