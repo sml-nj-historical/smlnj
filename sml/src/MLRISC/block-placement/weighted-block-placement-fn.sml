@@ -23,8 +23,8 @@ functor WeightedBlockPlacementFn (
     structure ITbl = IntHashTable
     structure PQ = LeftPriorityQFn (
       struct
-	type priority = Freq.freq
-	val compare = Freq.compare
+	type priority = CFG.weight
+	val compare = Real.compare
 	type item = CFG.edge
 	fun priority (_, _, CFG.EDGE{w, ...}) = !w
       end)
@@ -49,7 +49,7 @@ functor WeightedBlockPlacementFn (
     fun head (CHAIN{hd, ...}) = #1 hd
     fun tail (CHAIN{tl, ...}) = #1 tl
     fun id (CHAIN{hd, ...}) = #1 hd	(* use node ID of head to identify chains *)
-    fun sameChain (CHAIN{hd=h1, ...}, CHAIN{hd=h2, ...}) = (h1 = h2)
+    fun sameChain (CHAIN{hd=h1, ...}, CHAIN{hd=h2, ...}) = (#1 h1 = #1 h2)
 
     fun blockToString (id', CFG.BLOCK{id, ...}) =
 	  concat["<", Int.toString id', ":", Int.toString id, ">"]
