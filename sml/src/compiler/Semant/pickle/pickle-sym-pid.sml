@@ -5,7 +5,7 @@ end = struct
     structure PU = PickleUtil
 
     local
-	val S = ~9	    (* dangerous! coordinate with PickleUtil! *)
+	val S = ~100	    (* dangerous! coordinate with PickleUtil! *)
     in
 	fun w_symbol s = let
 	    val $ = PU.$ S
@@ -22,9 +22,18 @@ end = struct
 		  | Symbol.LABspace => "h"
 		  | Symbol.TYVspace => "i"
 	in
-	    ns $ PU.w_string (Symbol.name s)
+	    ns $ [PU.w_string (Symbol.name s)]
 	end
     end
 
-    fun w_pid p = PU.w_string (Byte.bytesToString (PersStamps.toBytes p))
+    local
+	val P = ~101
+    in
+	fun w_pid p = let
+	    val $ = PU.$ P
+	    infix $
+	in
+	    "p" $ [PU.w_string (Byte.bytesToString (PersStamps.toBytes p))]
+	end
+    end
 end

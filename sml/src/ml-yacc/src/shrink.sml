@@ -1,6 +1,9 @@
 (* ML-Yacc Parser Generator (c) 1991 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
+ * Revision 1.2  2000/01/09 09:59:14  blume
+ * pickler bug fixes; some cosmetic changes
+ *
  * Revision 1.1.1.10  1999/04/17 18:56:12  monnier
  * version 110.16
  *
@@ -180,22 +183,24 @@ functor ShrinkLrTableFun(structure LrTable : LR_TABLE) : SHRINK_LR_TABLE =
                | ERROR =>  false
         structure ActionEntryList =
 	    struct
-		type entry = (term,action) pairlist * action
-		val rec eqlist =
-                      fn (EMPTY,EMPTY) => true
-                       | (PAIR (T t,d,r),PAIR(T t',d',r')) =>
-                             t=t' andalso d=d' andalso eqlist(r,r')
-                       | _ => false
-                 val rec gtlist =
-                            fn (PAIR _,EMPTY) => true
-                             | (PAIR(T t,d,r),PAIR(T t',d',r')) =>
-				     t>t' orelse (t=t' andalso
-                                       (gtAction(d,d') orelse
-					 (d=d' andalso gtlist(r,r'))))
-                             | _ => false
-		 val eq = fn ((l,a),(l',a')) => a=a' andalso eqlist(l,l')
-                 val gt = fn ((l,a),(l',a')) => gtAction(a,a')
-		                orelse (a=a' andalso gtlist(l,l'))
+		type entry = (term, action) pairlist * action
+		local
+		    fun eqlist (EMPTY, EMPTY) = true
+		      | eqlist (PAIR (T t,d,r),PAIR(T t',d',r')) =
+			t=t' andalso d=d' andalso eqlist(r,r')
+		      | eqlist _ = false
+		    fun gtlist (PAIR _,EMPTY) = true
+		      | gtlist (PAIR(T t,d,r),PAIR(T t',d',r')) =
+			t>t' orelse (t=t' andalso
+				     (gtAction(d,d') orelse
+				      (d=d' andalso gtlist(r,r'))))
+		      | gtlist _ = false
+		in
+		    fun eq ((l,a): entry, (l',a'): entry) =
+			a = a' andalso eqlist (l,l')
+		    fun gt ((l,a): entry, (l',a'): entry) =
+			gtAction(a,a') orelse (a=a' andalso gtlist(l,l'))
+		end
             end
 (*        structure GotoEntryList =
             struct

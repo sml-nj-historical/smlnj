@@ -1,6 +1,9 @@
 (* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
+ * Revision 1.2  2000/01/09 09:59:14  blume
+ * pickler bug fixes; some cosmetic changes
+ *
  * Revision 1.1.1.10  1999/04/17 18:56:12  monnier
  * version 110.16
  *
@@ -122,32 +125,24 @@ functor mkLalr ( structure IntGrammar : INTGRAMMAR
 (* rule_pos: calculate place in the rhs of a rule at which we should start
    placing lookahead ref cells *)
 
-		      val rule_pos = fn (RULE {rhs,...}) =>
-			case (rev rhs)
-			  of nil => 0
-			   | (TERM t) :: r => length rhs
-			   | (l as (NONTERM n) :: r) =>
-
-			      (* f assumes that everything after n in the
-				 rule has proven to be nullable so far.
-				 Remember that the rhs has been reversed,
-				 implying that this is true initially *)
-				
-					(* A -> .z t B y, where y is nullable *)
-
-			      let fun f (NONTERM b :: (r as (TERM _ :: _))) =
-					(length r)
-
-					(* A -> .z B C y *)
-
-				    | f (NONTERM c :: (r as (NONTERM b :: _))) =
-					 if nullable c then f r
-					 else (length r)
-
-					(* A -> .B y, where y is nullable *)
-
-				    | f (NONTERM b :: nil) = 0 
-			      in  f l
+		      fun rule_pos (RULE {rhs,...}) =
+			  case (rev rhs) of
+			      nil => 0
+			    | (TERM t) :: r => length rhs
+			    | (NONTERM n :: r) => let
+				  (* f assumes that everything after n in the
+				   * rule has proven to be nullable so far.
+				   * Remember that the rhs has been reversed,
+				   * implying that this is true initially *)
+				  (* A -> .z t B y, where y is nullable *)
+				  fun f (b, (r as (TERM _ :: _))) = length r
+				    (* A -> .z B C y *)
+				    | f (c, (NONTERM b :: r)) =
+				      if nullable c then f (b, r)
+				      else length r + 1
+				    (* A -> .B y, where y is nullable *)
+				    | f (_, []) = 0
+			      in  f (n, r)
 			      end
 			     
 		 	val check_rule = fn (rule as RULE {num,...}) =>

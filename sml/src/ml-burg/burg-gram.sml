@@ -210,9 +210,11 @@ end
 structure EC=
 struct
 open LrTable
+infix 5 $$
+fun x $$ y = y::x
 val is_keyword =
 fn _ => false
-val preferred_change = 
+val preferred_change : (term list * term list) list = 
 nil
 val noShift = 
 fn _ => false
@@ -239,9 +241,9 @@ local open Header in
 val errtermvalue=
 fn _ => MlyValue.VOID
 end
-val terms = (T 0) :: (T 1) :: (T 2) :: (T 3) :: (T 4) :: (T 5) :: (T 6
-) :: (T 7) :: (T 8) :: (T 9) :: (T 10) :: (T 11) :: (T 12) :: nil
-end
+val terms : term list = nil
+ $$ (T 12) $$ (T 11) $$ (T 10) $$ (T 9) $$ (T 8) $$ (T 7) $$ (T 6) $$ 
+(T 5) $$ (T 4) $$ (T 3) $$ (T 2) $$ (T 1) $$ (T 0)end
 structure Actions =
 struct 
 exception mlyAction of int

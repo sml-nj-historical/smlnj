@@ -1,6 +1,9 @@
 (* ML-Yacc Parser Generator (c) 1989, 1990 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
+ * Revision 1.2  2000/01/09 09:59:14  blume
+ * pickler bug fixes; some cosmetic changes
+ *
  * Revision 1.1.1.12  1999/12/07 17:56:19  monnier
  * version 110.25.1
  *
@@ -649,8 +652,10 @@ let val printAbsynRule = Absyn.printRule(say,sayln)
 	       val unmap = fn (symbol,_) =>
 		   let val name = symbolName symbol
                    in update(data,
-			     case SymbolHash.find(name,symbolHash)
-			     of SOME i => i,name)
+			     case SymbolHash.find(name,symbolHash) of
+				 SOME i => i
+			       | NONE => raise Fail "termToString",
+			     name)
                    end
 	       val _ = app unmap term
 	   in fn T i =>
@@ -664,8 +669,10 @@ let val printAbsynRule = Absyn.printRule(say,sayln)
 	       val unmap = fn (symbol,_) =>
 		    let val name = symbolName symbol
 		    in update(data,
-			      case SymbolHash.find(name,symbolHash)
-			      of SOME i => i-numTerms,name)
+			      case SymbolHash.find(name,symbolHash) of
+				  SOME i => i-numTerms
+				| NONE => raise Fail "nontermToString",
+			      name)
 		    end
 	       val _ = app unmap nonterm
 	   in fn NT i =>
@@ -754,10 +761,12 @@ precedences of the rule and the terminal are equal.
 
 	val symbolType = 
 	   let val data = array(numTerms+numNonterms,NONE : ty option)
-	       val unmap = fn (symbol,ty) =>
-		      update(data,
-			     case SymbolHash.find(symbolName symbol,symbolHash)
-			     of SOME i => i,ty)
+	       fun unmap (symbol,ty) =
+		   update(data,
+			  case SymbolHash.find(symbolName symbol,symbolHash) of
+			      SOME i => i
+			    | NONE => raise Fail "symbolType",
+			  ty)
 	       val _ = (app unmap term; app unmap nonterm)
 	   in fn NONTERM(NT i) =>
 		if DEBUG andalso (i<0 orelse i>=numNonterms)

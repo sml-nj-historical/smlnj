@@ -910,9 +910,10 @@ fun maketable (fins:(int * (int list)) list,
 	     let fun f ((l,e)::r) = if (e=t) then true else f r
 		   | f nil = false in f tcpairs end
 
-	 fun GetEndLeaf t = 
+	 fun GetEndLeaf t =
 	   let fun f ((tl,el)::r) = if (tl=t) then el else f r
-           in f tcpairs
+		 | f _ = raise Match
+	   in f tcpairs
 	   end
 	 fun GetTrConLeaves s =
 	   let fun f ((s',l)::r) = if (s = s') then l else f r
@@ -987,13 +988,42 @@ fun maketable (fins:(int * (int list)) list,
 
             val _ = say "val s = map f (rev (tl (rev s))) \n"
             val _ = say "exception LexHackingError \n"
-            val _ = say "fun look ((j,x)::r, i) = if i = j then x else look(r, i) \n"
+            val _ = say "fun look ((j,x)::r, i: int) = if i = j then x else look(r, i) \n"
             val _ = say "  | look ([], i) = raise LexHackingError\n"
 
         val _ = say "fun g {fin=x, trans=i} = {fin=x, trans=look(s,i)} \n"
  	 in res
 	end
 
+	fun makeTable args = let
+	    fun makeOne (a, b) = let
+		fun item (N i) = ("N", i)
+		  | item (T i) = ("T", i)
+		  | item (D i) = ("D", i)
+		fun makeItem x = let
+		    val (t, n) = item x
+		in
+		    app say ["(", t, " ", Int.toString n, ")"]
+		end
+		fun makeItems [] = ()
+		  | makeItems [x] = makeItem x
+		  | makeItems (hd :: tl) =
+		    (makeItem hd; say ","; makeItems tl)
+	    in
+		say "{fin = [";
+		makeItems b;
+		app say ["], trans = ", a, "}"]
+	    end
+	    fun mt ([], []) = ()
+	      | mt ([a], [b]) = makeOne (a, b)
+	      | mt (a :: a', b :: b') =
+		(makeOne (a, b); say ",\n"; mt (a', b'))
+	      | mt _ = raise Match
+	in
+	    mt args
+	end
+			
+(*
 	fun makeTable(nil,nil) = ()
 	  | makeTable(a::a',b::b') =
 	     let fun makeItems nil = ()
@@ -1014,6 +1044,7 @@ fun maketable (fins:(int * (int list)) list,
 		  then ()
 		  else (say ",\n"; makeTable(a',b')))
 	      end
+*)
 
 	fun msg x = TextIO.output(TextIO.stdOut, x)
 

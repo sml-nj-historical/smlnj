@@ -1,7 +1,7 @@
 structure UnpickleSymPid :> sig
     val r_symbol : UnpickleUtil.session * string UnpickleUtil.reader ->
 	Symbol.symbol UnpickleUtil.reader
-    val r_pid : string UnpickleUtil.reader ->
+    val r_pid : UnpickleUtil.session * string UnpickleUtil.reader ->
 	PersStamps.persstamp UnpickleUtil.reader
 end = struct
     fun r_symbol (session, r_string) = let
@@ -25,7 +25,16 @@ end = struct
 	s
     end
 
-    fun r_pid r_string () =
-	PersStamps.fromBytes (Byte.stringToBytes (r_string ()))
+    fun r_pid (session, r_string) = let
+	val m = UnpickleUtil.mkMap ()
+	fun p () = let
+	    fun rp #"p" =
+		PersStamps.fromBytes (Byte.stringToBytes (r_string ()))
+	      | rp _ = raise UnpickleUtil.Format
+	in
+	    UnpickleUtil.share session m rp
+	end
+    in
+	p
+    end
 end
-

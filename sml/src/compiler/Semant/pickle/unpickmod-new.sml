@@ -149,19 +149,15 @@ structure UnpickMod : UNPICKMOD = struct
 	val accM = UU.mkMap ()
 	val crM = UU.mkMap ()
 	val csM = UU.mkMap ()
-	val ltyM = UU.mkMap ()
-	val ltyListM = UU.mkMap ()
-	val tycM = UU.mkMap ()
-	val tycListM = UU.mkMap ()
-	val tkindM = UU.mkMap ()
-	val tkindListM = UU.mkMap ()
 	val nkM = UU.mkMap ()
 	val poM = UU.mkMap ()
 	val boolListM = UU.mkMap ()
+	val tkindM = UU.mkMap ()
+	val tkindListM = UU.mkMap ()
 
 	val boollist = list boolListM bool
 
-	val pid = UnpickleSymPid.r_pid string
+	val pid = UnpickleSymPid.r_pid (session, string)
 	    
 	fun access () = let
 	    fun a #"A" = lvar (int ())
@@ -197,44 +193,7 @@ structure UnpickMod : UNPICKMOD = struct
 	    share csM cs
 	end
 
-	fun lty () = let
-	    fun lt #"A" = LT.ltc_tyc (tyc ())
-	      | lt #"B" = LT.ltc_str (ltylist ())
-	      | lt #"C" = LT.ltc_fct (ltylist (), ltylist ())
-	      | lt #"D" = LT.ltc_poly (tkindlist (), ltylist ())
-	      | lt _ = raise Format
-	in
-	    share ltyM lt
-	end
-
-	and ltylist () = list ltyListM lty ()
-
-	and tyc () = let
-	    fun tc #"A" = LT.tcc_var (DI.di_fromint (int ()), int ())
-	      | tc #"B" = LT.tcc_nvar (int ())
-	      | tc #"C" = LT.tcc_prim (PT.pt_fromint (int ()))
-	      | tc #"D" = LT.tcc_fn (tkindlist (), tyc ())
-	      | tc #"E" = LT.tcc_app (tyc (), tyclist ())
-	      | tc #"F" = LT.tcc_seq (tyclist ())
-	      | tc #"G" = LT.tcc_proj (tyc (), int ())
-	      | tc #"H" = LT.tcc_sum (tyclist ())
-	      | tc #"I" = LT.tcc_fix ((int (), tyc (), tyclist ()), int ())
-	      | tc #"J" = LT.tcc_abs (tyc ())
-	      | tc #"K" = LT.tcc_box (tyc ())
-	      | tc #"L" = LT.tcc_tuple (tyclist ())
-	      | tc #"M" = LT.tcc_arrow (LT.ffc_var (bool (), bool ()),
-					tyclist (), tyclist ())
-	      | tc #"N" = LT.tcc_arrow (LT.ffc_fixed, tyclist (), tyclist ())
-	      | tc #"O" = LK.tc_inj (LK.TC_TOKEN (LK.token_key (int ()),
-						  tyc ()))
-	      | tc _ = raise Format
-	in
-	    share tycM tc
-	end
-
-	and tyclist () = list tycListM tyc ()
-
-	and tkind () = let
+	fun tkind () = let
 	    fun tk #"A" = LT.tkc_mono
 	      | tk #"B" = LT.tkc_box
 	      | tk #"C" = LT.tkc_seq (tkindlist ())
@@ -303,9 +262,8 @@ structure UnpickMod : UNPICKMOD = struct
     in
 	{ pid = pid, string = string, symbol = symbol,
 	  access = access, conrep = conrep, consig = consig,
-	  lty = lty, tyc = tyc, tkind = tkind,
-	  ltylist = ltylist, tyclist = tyclist,
-	  primop = primop, boollist = boollist }
+	  primop = primop, boollist = boollist,
+	  tkind = tkind, tkindlist = tkindlist }
     end
 
     fun mkEnvUnpickler arg = let
@@ -319,7 +277,7 @@ structure UnpickMod : UNPICKMOD = struct
 	fun list m r = UU.r_list session m r
 	fun option m r = UU.r_option session m r
 	val bool = UU.r_bool session
-	val pair = UU.r_pair
+	fun pair m fp p = UU.r_pair session m fp p
 	val int = UU.r_int session
 
 	fun share m f = UU.share session m f
@@ -381,10 +339,17 @@ structure UnpickMod : UNPICKMOD = struct
 	val eenvBindM = UU.mkMap ()
 	val envM = UU.mkMap ()
 	val milM = UU.mkMap ()
+	val spathM = UU.mkMap ()
+	val ipathM = UU.mkMap ()
+	val symSpecPM = UU.mkMap ()
+	val epTkPM = UU.mkMap ()
+	val sdIntPM = UU.mkMap ()
+	val evEntPM = UU.mkMap ()
+	val symBindPM = UU.mkMap ()
+	val envMilPM = UU.mkMap ()
 
-	val { pid, string, symbol,
-	      access, conrep, consig, lty, tyc, tkind, ltylist, tyclist,
-	      primop, boollist } = sharedStuff
+	val { pid, string, symbol, access, conrep, consig,
+	      primop, boollist, tkind, tkindlist } = sharedStuff
 
 	fun stamp () = let
 	    fun st #"A" = Stamps.STAMP { scope = Stamps.GLOBAL (globalPid ()),
@@ -421,8 +386,20 @@ structure UnpickMod : UNPICKMOD = struct
 	val symbollist = list symbolListM symbol
 	val symboloption = option symbolOptionM symbol
 
-	fun spath () = SP.SPATH (symbollist ())
-	fun ipath () = IP.IPATH (symbollist ())
+
+	fun spath () = let
+	    fun sp #"s" = SP.SPATH (symbollist ())
+	      | sp _ = raise Format
+	in
+	    share spathM sp
+	end
+
+	fun ipath () = let
+	    fun ip #"i" = IP.IPATH (symbollist ())
+	      | ip _ = raise Format
+	in
+	    share ipathM ip
+	end
 
 	val spathlist = list spathListM spath
 	val spathlistlist = list spathListListM spathlist
@@ -597,11 +574,11 @@ structure UnpickMod : UNPICKMOD = struct
 				  stamp = stamp (),
 				  symbols = symbollist (),
 				  elements = list elementsM
-				                 (pair (symbol, spec)) (),
+				            (pair symSpecPM (symbol, spec)) (),
 				  boundeps =
 				    ref (option bepsOM
-					 (list bepsLM (pair (entPath,
-							     tkind))) ()),
+					 (list bepsLM
+					  (pair epTkPM (entPath, tkind))) ()),
 				  lambdaty = ref NONE,
 				  typsharing = spathlistlist (),
 				  strsharing = spathlistlist () }
@@ -633,7 +610,7 @@ structure UnpickMod : UNPICKMOD = struct
 				      repl = bool (), scope = int () }
 	      | sp #"2" = M.STRspec { sign = Signature (), slot = int (),
 				      def = option spDefM
-				               (pair (strDef, int)) (),
+				               (pair sdIntPM (strDef, int)) (),
 				      entVar = entVar () }
 	      | sp #"3" = M.FCTspec { sign = fctSig (), slot = int (),
 				      entVar = entVar () }
@@ -772,7 +749,7 @@ structure UnpickMod : UNPICKMOD = struct
 	and entityEnv () = let
 	    fun eenv #"A" =
 		let
-		    val l = list eenvBindM (pair (entVar, entity)) ()
+		    val l = list eenvBindM (pair evEntPM (entVar, entity)) ()
 		    fun add ((v, e), z) = ED.insert (z, v, e)
 		    val ed = foldr add ED.empty l
 		in
@@ -832,14 +809,14 @@ structure UnpickMod : UNPICKMOD = struct
 	end
 
 	fun env () = let
-	    val bindlist = list envM (pair (symbol, binding)) ()
+	    val bindlist = list envM (pair symBindPM (symbol, binding)) ()
 	    fun bind ((s, b), e) = Env.bind (s, b, e)
 	in
 	    Env.consolidate (foldl bind Env.empty bindlist)
 	end
 
 	fun env' () = let
-	    val (e, mil) = pair (env, list milM modId) ()
+	    val (e, mil) = pair envMilPM (env, list milM modId) ()
 	    val ctxt = ModuleId.Set.addList (ModuleId.Set.empty, mil)
 	in
 	    { env = e, ctxt = ctxt }
@@ -894,17 +871,20 @@ structure UnpickMod : UNPICKMOD = struct
 	fun list m r = UU.r_list session m r
 	fun option m r = UU.r_option session m r
 
-	val pair = UU.r_pair
+	fun pair m fp p = UU.r_pair session m fp p
 	val int = UU.r_int session
 	val int32 = UU.r_int32 session
 	val word = UU.r_word session
 	val word32 = UU.r_word32 session
 	val bool = UU.r_bool session
 
-	val { pid, string, symbol,
-	      access, conrep, consig, lty, tyc, tkind, ltylist, tyclist,
-	      primop, boollist } = sharedStuff
+	val { pid, string, symbol, access, conrep, consig,
+	      primop, boollist, tkind, tkindlist } = sharedStuff
 
+	val ltyM = UU.mkMap ()
+	val ltyListM = UU.mkMap ()
+	val tycM = UU.mkMap ()
+	val tycListM = UU.mkMap ()
 	val valueM = UU.mkMap ()
 	val conM = UU.mkMap ()
 	val dconM = UU.mkMap ()
@@ -923,8 +903,48 @@ structure UnpickMod : UNPICKMOD = struct
 	val lexpOptionM = UU.mkMap ()
 	val fundecM = UU.mkMap ()
 	val tfundecM = UU.mkMap ()
-	val fdplM = UU.mkMap ()
-	val tfplM = UU.mkMap ()
+	val lvLtPM = UU.mkMap ()
+	val lvLtPLM = UU.mkMap ()
+	val lvTkPM = UU.mkMap ()
+	val lvTkPLM = UU.mkMap ()
+	val tycLvPM = UU.mkMap ()
+
+	fun lty () = let
+	    fun lt #"A" = LT.ltc_tyc (tyc ())
+	      | lt #"B" = LT.ltc_str (ltylist ())
+	      | lt #"C" = LT.ltc_fct (ltylist (), ltylist ())
+	      | lt #"D" = LT.ltc_poly (tkindlist (), ltylist ())
+	      | lt _ = raise Format
+	in
+	    share ltyM lt
+	end
+
+	and ltylist () = list ltyListM lty ()
+
+	and tyc () = let
+	    fun tc #"A" = LT.tcc_var (DI.di_fromint (int ()), int ())
+	      | tc #"B" = LT.tcc_nvar (int ())
+	      | tc #"C" = LT.tcc_prim (PT.pt_fromint (int ()))
+	      | tc #"D" = LT.tcc_fn (tkindlist (), tyc ())
+	      | tc #"E" = LT.tcc_app (tyc (), tyclist ())
+	      | tc #"F" = LT.tcc_seq (tyclist ())
+	      | tc #"G" = LT.tcc_proj (tyc (), int ())
+	      | tc #"H" = LT.tcc_sum (tyclist ())
+	      | tc #"I" = LT.tcc_fix ((int (), tyc (), tyclist ()), int ())
+	      | tc #"J" = LT.tcc_abs (tyc ())
+	      | tc #"K" = LT.tcc_box (tyc ())
+	      | tc #"L" = LT.tcc_tuple (tyclist ())
+	      | tc #"M" = LT.tcc_arrow (LT.ffc_var (bool (), bool ()),
+					tyclist (), tyclist ())
+	      | tc #"N" = LT.tcc_arrow (LT.ffc_fixed, tyclist (), tyclist ())
+	      | tc #"O" = LK.tc_inj (LK.TC_TOKEN (LK.token_key (int ()),
+						  tyc ()))
+	      | tc _ = raise Format
+	in
+	    share tycM tc
+	end
+
+	and tyclist () = list tycListM tyc ()
 
 	val lvar = int
 	val lvarlist = list lvarListM lvar
@@ -975,7 +995,7 @@ structure UnpickMod : UNPICKMOD = struct
 	and dict () = let
 	    fun d #"y" =
 		{ default = lvar (),
-		  table = list dictTableM (pair (tyclist, lvar)) () }
+		  table = list dictTableM (pair tycLvPM (tyclist, lvar)) () }
 	      | d _ = raise Format
 	in
 	    share dictM d
@@ -1018,7 +1038,9 @@ structure UnpickMod : UNPICKMOD = struct
 
 	and fundec () = let
 	    fun f #"a" =
-		(fkind (), lvar (), list fdplM (pair (lvar, lty)) (), lexp ())
+		(fkind (), lvar (),
+		 list lvLtPLM (pair lvLtPM (lvar, lty)) (),
+		 lexp ())
 	      | f _ = raise Format
 	in
 	    share fundecM f
@@ -1027,23 +1049,28 @@ structure UnpickMod : UNPICKMOD = struct
 	and fundeclist () = list fundecListM fundec ()
 
 	and tfundec () = let
-	    fun t #"b" = ({inline=F.IH_SAFE}, lvar (), list tfplM (pair (lvar, tkind)) (), lexp ())
+	    fun t #"b" = ({ inline = F.IH_SAFE }, lvar (),
+			  list lvTkPLM (pair lvTkPM (lvar, tkind)) (),
+			  lexp ())
 	      | t _ = raise Format
 	in
 	    share tfundecM t
 	end
 
 	and fkind () = let
-	    val fkfct = {isrec=NONE, known=false, inline=F.IH_SAFE, cconv=F.CC_FCT}
-	    fun fk #"2" = fkfct
-	      | fk #"3" = { isrec = Option.map (fn x => (x, F.LK_UNKNOWN)) (ltylistoption ()),
-			    cconv = F.CC_FUN(LT.ffc_var (bool (), bool ())),
+	    fun aug_unknown x = (x, F.LK_UNKNOWN)
+	    fun inlflag true = F.IH_ALWAYS
+	      | inlflag false = F.IH_SAFE
+	    fun fk #"2" = { isrec = NONE, cconv = F.CC_FCT,
+			    known = false, inline = F.IH_SAFE }
+	      | fk #"3" = { isrec = Option.map aug_unknown (ltylistoption ()),
+			    cconv = F.CC_FUN (LT.ffc_var (bool (), bool ())),
 			    known = bool (),
-			    inline = if bool () then F.IH_ALWAYS else F.IH_SAFE}
-	      | fk #"4" = { isrec = Option.map (fn x => (x, F.LK_UNKNOWN)) (ltylistoption ()),
+			    inline = inlflag (bool ()) }
+	      | fk #"4" = { isrec = Option.map aug_unknown (ltylistoption ()),
 			    cconv = F.CC_FUN LT.ffc_fixed,
 			    known = bool (),
-			    inline = if bool () then F.IH_ALWAYS else F.IH_SAFE}
+			    inline = inlflag (bool ()) }
 	      | fk _ = raise Format
 	in
 	    share fkindM fk
@@ -1110,7 +1137,8 @@ structure UnpickMod : UNPICKMOD = struct
 	    mkEnvUnpickler (session, symbollist, sharedStuff,
 			    c, fn () => raise Format)
 	val flint = mkFlintUnpickler (session, sharedStuff)
-	val symbind = UU.r_pair (pid, flint)
+	val pidFlintPM = UU.mkMap ()
+	val symbind = UU.r_pair session pidFlintPM (pid, flint)
 	val sblM = UU.mkMap ()
 	val sbl = UU.r_list session sblM symbind
 	fun symenvUnpickler () = SymbolicEnv.fromListi (sbl ())

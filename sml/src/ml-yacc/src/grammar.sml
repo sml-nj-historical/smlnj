@@ -1,6 +1,9 @@
 (* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
+ * Revision 1.2  2000/01/09 09:59:14  blume
+ * pickler bug fixes; some cosmetic changes
+ *
  * Revision 1.1.1.10  1999/04/17 18:56:11  monnier
  * version 110.16
  *
@@ -53,13 +56,14 @@ structure IntGrammar : INTGRAMMAR =
 				 rulenum: int,
 				 precedence: int option}
 		
-		val eqTerm = (op =)
-		val gtTerm = fn (T i,T j) => i>j
+		val eqTerm : term * term -> bool = (op =)
+		val gtTerm : term * term -> bool = fn (T i,T j) => i>j
 
-		val eqNonterm = (op =)
-		val gtNonterm = fn (NT i,NT j) => i>j
+		val eqNonterm : nonterm * nonterm -> bool = (op =)
+		val gtNonterm : nonterm * nonterm -> bool =
+		    fn (NT i,NT j) => i>j
 
-		val eqSymbol = (op =)
+		val eqSymbol : symbol * symbol -> bool = (op =)
 		val gtSymbol = fn (TERM (T i),TERM (T j)) => i>j
 				| (NONTERM (NT i),NONTERM (NT j)) => i>j
 				| (TERM _,NONTERM _) => false

@@ -3,8 +3,7 @@
  * garbage collector.  This new version is derived from the functor CallGC.
  * It can handle derived pointers as roots and it can also be used as 
  * callbacks.  These extra facilities are neccessary for global optimizations  
- * in the presence of GC.  (Also, I am afraid of changing the old version
- * since I'm not sure I understand every little detail in it.)
+ * in the presence of GC.  
  * 
  * -- Allen
  * 
@@ -25,6 +24,7 @@ struct
    structure St = T.Stream
    structure GC = SMLGCType
    structure Cells = Cells
+   structure A  = Array
 
    fun error msg = ErrorMsg.impossible("InvokeGC."^msg)
 
@@ -40,8 +40,17 @@ struct
 
    val addrTy = C.addressWidth
 
-   (* GcInfo encapsulates all the information needed to generate
-    * code to invoke gc 
+   (* The following datatype is used to encapsulates 
+    * all the information needed to generate code to invoke gc.
+    * The important fields are:
+    *    known     -- is the function a known (i.e. internal) function 
+    *    optimized -- if this is on, gc code generation is delayed until
+    *                 we have performed all optimizations.  This is false
+    *                 for normal SML/NJ use.
+    *    lab       -- a list of labels that belongs to the call gc block
+    *    boxed, float, int32 -- roots partitioned by types
+    *    regfmls   -- the roots
+    *    ret       -- how to return from the call gc block.
     *)
    datatype gcInfo =
       GCINFO of
@@ -69,12 +78,13 @@ struct
    val pty  = 32
 
    val sp   = Cells.stackptrR  (* stack pointer *)
-   val spR  = T.REG(32,sp)
-   val unit = T.LI 1          (* representation of ML's unit; 
-                               * this is used to initialize registers
-                               *)
-       (* callee-save registers 
-        *
+   val spR  = T.REG(addrTy,sp)
+   val unit = T.LI 1           (* representation of ML's unit; 
+                                * this is used to initialize registers.
+                                *)
+       (*
+        * Callee-save registers 
+        * All callee save registers are used in the gc calling convention.
         *)
    val calleesaves = List.take(C.miscregs, MS.numCalleeSaves)
 
@@ -95,6 +105,8 @@ struct
             T.LOAD(32, T.ADD(addrTy,C.stackptr,T.LI MS.startgcOffset), R.stack),
                    def, use, R.stack),
           #create MLRiscAnnotations.COMMENT "call gc")
+
+       (* val ZERO_FREQ = #create MLRiscAnnotations.EXECUTION_FREQ 0 *)
    end
 
    val CALLGC = #create MLRiscAnnotations.CALLGC ()
@@ -107,7 +119,10 @@ struct
    fun boxedDesc words   = dtoi(D.makeDesc(words, D.tag_record))
 
        (* the allocation pointer must always in a register! *)
-   val T.REG(_,allocptrR) = C.allocptr
+   val allocptrR = 
+       case C.allocptr of
+         T.REG(_,allocptrR) => allocptrR 
+       | _ => error "allocptr must be a register"
 
        (* what type of comparison to use for GC test? *)
    val gcCmp = if C.signedGCTest then T.GT else T.GTU
@@ -161,7 +176,7 @@ struct
        map (fn r => T.REG(32,r)) regs @ 
        map (fn i => T.LOAD(32, T.ADD(addrTy, spR, T.LI i), R.memory)) mem
             
-   (* The client communicate root pointers to the gc via the following set
+   (* The client communicates root pointers to the gc via the following set
     * of registers and memory locations.
     *)
    val gcrootSet = set gcParamRegs 
@@ -193,196 +208,21 @@ struct
    end
 
    (* 
-    * This function recomputes the base pointer address
+    * This function recomputes the base pointer address.
     *)
-   fun computeBasePtr(emit,defineLabel) =
+   fun computeBasePtr(emit,defineLabel,annotation) =
    let val returnLab = Label.newLabel ""
        val baseExp = 
            T.ADD(addrTy, C.gcLink,
                  T.LABEL(LE.MINUS(LE.CONST MS.constBaseRegOffset,
                                   LE.LABEL returnLab)))
    in  defineLabel returnLab;
+       (* annotation(ZERO_FREQ); *)
        emit(case C.baseptr of 
               T.REG(ty, bpt) => T.MV(ty, bpt, baseExp)
             | T.LOAD(ty, ea, mem) => T.STORE(ty, ea, baseExp, mem)
             | _ => error "computeBasePtr")
    end 
-
-
-   (*
-    * Functions to pack and unpack roots. 
-    *
-    * There are two types of records.  One contains boxed objects
-    * (ints and pointers) and another containing unboxed objects 
-    * (int32s and reals).  
-    *
-    *) 
-   local
-       fun allocF(emit, [], offset) = offset
-         | allocF(emit, f::fs, offset) =   
-           (emit(T.FSTORE(64, T.ADD(32, C.allocptr, T.LI offset), f, R.memory));
-            allocF(emit, fs, offset + 8))
-       fun allocR(emit, [], offset) = offset
-         | allocR(emit, i::is, offset) = 
-           (emit(T.STORE(32, T.ADD(32, C.allocptr, T.LI offset), i, R.memory));
-            allocR(emit, is, offset + 4))
-       fun doNothing _ = ()
-
-       (*
-        * Parallel copy dst <- src.  
-        * If pad is true then dst can have more
-        * elements than src.  The extra elements are padded with unit.
-        *)
-       fun move(emit, dst, src, pad) =
-       let fun copy([],[]) = ()
-             | copy(rd,rs) = emit(T.COPY(32,rd,rs))
-           fun loop([],[],rd,rs) = ([],rd,rs)
-             | loop([],src,rd,rs) = ([],rd,rs)
-             | loop(dst,[],rd,rs) = 
-                (if pad then dst else 
-                 error("missing src "^
-                       Int.toString(length dst)^" "^Int.toString(length src)), 
-                rd,rs)
-             | loop(T.REG(_,r)::dst,T.REG(_,s)::src,rd,rs) = 
-                 loop(dst,src,r::rd,s::rs)
-             | loop(T.REG(ty,r)::dst,e::src,rd,rs) =
-                 (emit(T.MV(ty,r,e)); loop(dst,src,rd,rs))
-             | loop(T.LOAD(ty,ea,mem)::dst,e::src,rd,rs) =
-                 (emit(T.STORE(ty,ea,e,mem)); loop(dst,src,rd,rs))
-             | loop _ = error "loop"
-           val (toPad,dst,src) = loop(dst,src,[],[])
-       in  copy(dst,src); toPad
-       end
-
-       (* Unpack objects from record, usable by both tagged
-        * and untagged objects.
-        *)
-       fun unpack(emit, record, int, float) () = 
-       let fun selectR(off) = T.LOAD(32,T.ADD(addrTy,record,T.LI off),R.memory)
-           fun selectF(off) = T.FLOAD(64,T.ADD(addrTy,record,T.LI off),R.memory)
-           fun doR([], offset) = ()
-             | doR(T.REG(t,r)::es, offset) = 
-               (emit(T.MV(t,r,selectR(offset))); doR(es, offset+4))
-             | doR(T.LOAD(t,ea,mem)::es, offset) = 
-               (emit(T.STORE(t,ea,selectR(offset),mem)); doR(es, offset+4))
-             | doR _ = error "unpack.doR"
-           fun doF([], offset) = offset
-             | doF(T.FREG(t,r)::es, offset) = 
-               (emit(T.FMV(t,r,selectF(offset))); doF(es, offset+8))
-             | doF(T.FLOAD(t,ea,mem)::es, offset) = 
-               (emit(T.FSTORE(t,ea,selectF(offset),mem)); doF(es, offset+8))
-             | doF _ = error "unpack.doF"
-       in  doR(int, doF(float, 0)) 
-       end 
-
-       (* Pack int32s + floats together into a raw64 record. 
-        * Return the record pointer, and the new heap pointer offset. 
-        *)
-       fun packUnboxed(emit, int32, float) = 
-       let val qwords = length float + (length int32 + 1) div 2
-           val desc   = unboxedDesc(qwords + qwords)
-           val _      = 
-               (* align the allocptr if we have floating point roots *)
-               case float of
-                 [] => ()
-               | _  => emit(T.MV(32, allocptrR, T.ORB(32, C.allocptr, T.LI 4)))
-           val _     = emit(T.STORE(pty, C.allocptr, T.LI desc, R.memory))
-           val _     = allocR(emit, int32, allocF(emit, float, 4))
-           val t     = Cells.newReg()
-       in  emit(T.MV(pty, t, T.ADD(addrTy, C.allocptr, T.LI 4)));
-           (T.REG(32,t), qwords * 8 + 4)
-       end
-
-       (* 
-        * Pack tagged objects into a single record. 
-        * Return the record pointer, and the new heap pointer offset.
-        *)
-       fun packBoxed(emit, hp, boxed) = 
-       let val words = length boxed
-           val desc  = boxedDesc(words)
-           val _     = emit(T.STORE(pty, T.ADD(addrTy, C.allocptr, T.LI hp), 
-                                    T.LI desc, R.memory))
-           val hp'   = allocR(emit, boxed, hp+4)
-           val t     = Cells.newReg()
-       in  emit(T.MV(pty, t, T.ADD(addrTy, C.allocptr, T.LI(hp+4))));
-           (T.REG(32,t), hp')
-       end
- 
-   in  
-       (*
-        * Initialize the list of roots with unit
-        *)
-       fun initRoots(emit,roots) = 
-           app (fn T.REG(ty,r) => emit(T.MV(ty,r,unit))
-                 | T.LOAD(ty,ea,mem) => emit(T.STORE(ty,ea,unit,mem))
-                 | _ => error "initRoots") roots
-
-       (*
-        * Pack all the roots together into the appropriate records.
-        * Invariant: gcRoots must be non-empty.
-        *) 
-       fun pack(emit, gcRoots, boxed, int32, float) =
-       let (* package up the unboxed things first *)
-           val (boxedIn,boxedOut,raw,hp,unpackRaw) = 
-               case (int32,float) of 
-                 ([],[]) => (boxed, boxed, ~1, 0, doNothing)
-               | _ => 
-                 let val (r, hp) = packUnboxed(emit, int32, float)
-                     val r'      = Cells.newReg()
-                     val r''     = T.REG(32,r')
-                 in  (r::boxed, r''::boxed, r', 
-                      hp, unpack(emit, r'', int32, float))
-                 end
-
-           val nGcRoots = length gcRoots
-           val nBoxed   = length boxedIn
-
-           (* package up the boxed things if necessary *)
-           val (rootsIn, rootsOut, cooked, hp, unpackBoxed) = 
-               if nBoxed > nGcRoots then
-               let fun take(0, l, front) = (rev front, l) 
-                     | take(n, x::xs, front) = take(n-1, xs, x::front)
-                     | take _ = error "take"
-                   val nRoots = nGcRoots - 1
-                   val (restIn, extraIn) = take(nRoots,boxedIn,[])
-                   val (restOut, extraOut) = take(nRoots,boxedOut,[])
-                   val (r, hp) = packBoxed(emit, hp, extraIn) 
-                   val r' = Cells.newReg()
-                   val r'' = T.REG(32,r')
-               in  (r::restIn, r''::restOut, r', 
-                    hp, unpack(emit, r'', extraOut, []))
-               end
-               else (boxedIn, boxedOut, ~1, hp, doNothing)
-
-           fun unpack() =
-           let fun get(r,(d as T.REG(_,r'))::dst,s::src,dst',src') =
-                   if r = r' then ([d],[s],rev dst'@dst,rev src'@src)
-                   else get(r,dst,src,d::dst',s::src')
-                 | get(r,d::dst,s::src,dst',src') =
-                     get(r,dst,src,d::dst',s::src') 
-                 | get(r,dst,src,dst',src') = ([],[],rev dst'@dst,rev src'@src) 
-               val (rawDst,rawSrc,rootsOut,gcRoots) = 
-                      get(raw,rootsOut,gcRoots,[],[])
-               val (cookedDst,cookedSrc,rootsOut,gcRoots) = 
-                      get(cooked,rootsOut,gcRoots,[],[])
-           in  (* copy the boxed record root to its temporary *)
-               move(emit,cookedDst,cookedSrc,false);
-               unpackBoxed();
-               (* copy the raw record root to its temporary *)
-               move(emit,rawDst,rawSrc,false);
-               unpackRaw();
-               (* copy the rest of the roots back to its original registers *)
-               move(emit,rootsOut,gcRoots,false)
-           end
-                
-       in  (* update the allocation pointer *)
-           if hp > 0 then 
-              emit(T.MV(pty, allocptrR, T.ADD(addrTy, C.allocptr, T.LI hp)))
-           else ();
-           (move(emit,gcRoots,rootsIn,true), unpack)
-       end
-
-   end
 
    (*====================================================================
     * Main functions
@@ -438,6 +278,264 @@ struct
    val optimizedKnwCheckLimit = genGcInfo(knownGcBlocks, true, true)
 
    (*
+    * An array for checking cycles  
+    *)
+   local
+      val N = (foldr Int.max 0 (#regs gcrootSet))+1
+   in
+      val clientRoots = A.array(N, ~1)
+      val stamp       = ref 0
+   end
+
+   (*
+    * This function packs boxed, int32 and float into gcroots.
+    * gcroots must be non-empty.  Return a function to unpack.
+    *)
+   fun pack(emit, gcroots, boxed, int32, float) =
+   let (* 
+        * Datatype binding describes the contents a gc root.
+        *)
+       datatype binding =
+         Reg     of Cells.cell               (* integer register *)
+       | Freg    of Cells.cell               (* floating point register*)
+       | Mem     of T.rexp * R.region        (* integer memory register *)
+       | Record  of {boxed: bool,            (* is it a boxed record *)
+                     words:int,              (* how many words *)
+                     reg: Cells.cell,        (* address of this record *)
+                     regTmp: Cells.cell,     (* temp used for unpacking *)
+                     fields: binding list    (* its fields *)
+                    }
+
+       (* 
+        * Translates rexp/fexp into bindings.
+        * Note: client roots from memory (XXX) should NOT be used without
+        * fixing a potential cycle problem in the parallel copies below.
+        * Currently, all architectures, including the x86, do not uses
+        * the LOAD(...) form.  So we are safe.
+        *)
+       fun bind(T.REG(32, r)) = Reg r
+         | bind(T.LOAD(32, ea, mem)) = Mem(ea, mem)  (* XXX *)
+         | bind(_) = error "bind"
+       fun fbind(T.FREG(64, r)) = Freg r
+         | fbind(_) = error "fbind"
+
+       val st     = !stamp 
+       val cyclic = st + 1
+       val _      = if st > 100000 then stamp := 0 else stamp := st + 2
+       val N = A.length clientRoots
+       fun markClients [] = ()
+         | markClients(T.REG(_, r)::rs) = 
+            (if r < N then A.update(clientRoots, r, st) else ();
+             markClients rs)
+         | markClients(_::rs) = markClients rs
+       fun markGCRoots [] = ()
+         | markGCRoots(T.REG(_, r)::rs) = 
+            (if A.sub(clientRoots, r) = st then
+                A.update(clientRoots, r, cyclic)
+             else (); 
+             markGCRoots rs)
+         | markGCRoots(_::rs) = markGCRoots rs
+
+       val _ = markClients boxed
+       val _ = markClients int32
+       val _ = markGCRoots gcroots
+
+       (*
+        * First, we pack all unboxed roots, if any, into a record. 
+        *) 
+       val boxedStuff = 
+           case (int32, float) of
+             ([], []) => map bind boxed
+           | _ =>
+             (* align the allocptr if we have floating point roots *)
+             (case float of
+                [] => ()
+              | _  => emit(T.MV(addrTy, allocptrR, 
+                                T.ORB(addrTy, C.allocptr, T.LI 4)));
+              (* If we have int32 or floating point stuff, package them
+               * up into a raw record.  Floating point stuff have to come first.
+               *)
+               let val qwords=length float + (length int32 + 1) div 2
+               in  Record{boxed=false, reg=Cells.newReg(), 
+                          regTmp=Cells.newReg(),
+                          words=qwords + qwords,
+                          fields=map fbind float @ map bind int32} 
+                      ::map bind boxed
+               end
+             )
+       (*
+        * Then, we check whether we have enough gc roots to store boxedStuff.
+        * If so, we are safe. Otherwise, we have to pack up some of the 
+        * boxed stuff into a record too.
+        *) 
+ 
+       val nBoxedStuff = length boxedStuff
+       val nGcRoots    = length gcroots
+
+       val bindings = 
+           if nBoxedStuff <= nGcRoots 
+           then boxedStuff (* good enough *)
+           else (* package up some of the boxed stuff *)
+           let val extra       = nBoxedStuff - nGcRoots + 1
+               val packUp      = List.take(boxedStuff, extra)
+               val don'tPackUp = List.drop(boxedStuff, extra)
+           in  Record{boxed=true, words=length packUp,
+                      regTmp=Cells.newReg(),
+                      reg=Cells.newReg(), fields=packUp}::don'tPackUp 
+           end
+ 
+       fun copy([], _) = ()
+         | copy(dst, src) = emit(T.COPY(32, dst, src))
+
+       (* 
+        * The following routine copies the client roots into the real gc roots.
+        * We have to make sure that cycles have correctly handled.  So we
+        * can't do a copy at a time!  But see XXX below.
+        *)
+       fun prolog(hp, unusedRoots, [], rds, rss) = 
+           let fun init [] = ()
+                 | init(T.REG(ty, rd)::roots) = 
+                     (emit(T.MV(ty, rd, unit)); init roots)
+                 | init(T.LOAD(ty, ea, mem)::roots) = 
+                     (emit(T.STORE(ty, ea, unit, mem)); init roots)
+                 | init _ = error "init"
+           in  (* update the heap pointer if we have done any allocation *)
+               if hp > 0 then  
+                  emit(T.MV(addrTy, allocptrR, 
+                            T.ADD(addrTy, C.allocptr, T.LI hp)))
+               else ();
+               (* emit the parallel copies *)
+               copy(rds, rss);
+               (*
+                * Any unused gc roots have to be initialized with unit.
+                * The following MUST come last. 
+                *)
+               init unusedRoots
+           end
+         | prolog(hp, T.REG(_,rd)::roots, Reg rs::bs, rds, rss) = 
+             (* copy client root rs into gc root rd  *)
+             prolog(hp, roots, bs, rd::rds, rs::rss)
+         | prolog(hp, T.REG(_,rd)::roots, Record(r as {reg,...})::bs,rds,rss) = 
+             (* make a record then copy *)
+             let val hp = makeRecord(hp, r)
+             in  prolog(hp, roots, bs, rd::rds, reg::rss)
+             end
+         (*| prolog(hp, T.LOAD(_,ea,mem)::roots, b::bs, rds, rss) = (* XXX *)
+             (* The following code is unsafe because of potential cycles!
+              * But luckly, it is unused XXX.
+              *)
+             let val (hp, e) = 
+                     case b of
+                       Reg r => (hp, T.REG(32, r))
+                     | Mem(ea, mem) => (hp, T.LOAD(32, ea, mem))
+                     | Record(r as {reg, ...}) => 
+                         (makeRecord(hp, r), T.REG(32,reg))
+                     | _ => error "floating point root"
+             in  emit(T.STORE(32, ea, e, mem)); 
+                 prolog(hp, roots, bs, rds, rss) 
+             end*)
+         | prolog _ = error "prolog"
+
+            (* Make a record and put it in reg *) 
+       and makeRecord(hp, {boxed, words, reg, fields, ...}) = 
+           let fun disp(n) = T.ADD(addrTy, C.allocptr, T.LI n)
+               fun alloci(hp, e) = emit(T.STORE(32, disp hp, e, R.memory))
+               fun allocf(hp, e) = emit(T.FSTORE(64, disp hp, e, R.memory))
+               fun alloc(hp, []) = ()
+                 | alloc(hp, b::bs) = 
+                   (case b of 
+                     Reg r => (alloci(hp, T.REG(32,r)); alloc(hp+4, bs))
+                   | Record{reg, ...} => 
+                      (alloci(hp, T.REG(32,reg)); alloc(hp+4, bs))
+                   | Mem(ea,m) => (alloci(hp, T.LOAD(32,ea,m)); alloc(hp+4,bs))
+                   | Freg r => (allocf(hp, T.FREG(64,r)); alloc(hp+8, bs))
+                   )
+               fun evalArgs([], hp) = hp
+                 | evalArgs(Record r::args, hp) = 
+                    evalArgs(args, makeRecord(hp, r))
+                 | evalArgs(_::args, hp) = evalArgs(args, hp)
+               (* MUST evaluate nested records first *)
+               val hp   = evalArgs(fields, hp)
+               val desc = if boxed then boxedDesc words else unboxedDesc words
+           in  emit(T.STORE(32, disp hp, T.LI desc, R.memory));
+               alloc(hp+4, fields);
+               emit(T.MV(addrTy, reg, disp(hp+4))); 
+               hp + 4 + Word.toIntX(Word.<<(Word.fromInt words,0w2))
+           end
+
+          (* Copy the gc roots back to client roots. 
+           * Again, to avoid potential cycles, we generate a single 
+           * parallel copy that moves the gc roots back to the client roots.
+           *)
+       fun epilog([], unusedGcRoots, rds, rss) = 
+             copy(rds, rss)
+         | epilog(Reg rd::bs, T.REG(_,rs)::roots, rds, rss) = 
+             epilog(bs, roots, rd::rds, rs::rss)
+         | epilog(Record{fields,regTmp,...}::bs, T.REG(_,r)::roots, rds, rss) = 
+              (* unbundle record *)
+              let val _   = emit(T.COPY(32, [regTmp], [r]))
+                  val (rds, rss) = unpack(regTmp, fields, rds, rss)
+              in  epilog(bs, roots, rds, rss) end
+         | epilog(b::bs, r::roots, rds, rss) = 
+             (assign(b, r); (* XXX *)
+              epilog(bs, roots, rds, rss)
+             )
+         | epilog _ = error "epilog"
+
+       and assign(Reg r, e)        = emit(T.MV(32, r, e))
+         | assign(Mem(ea, mem), e) = emit(T.STORE(32, ea, e, mem))
+         | assign _ = error "assign"
+
+           (* unpack fields from record *)
+       and unpack(recordR, fields, rds, rss) = 
+           let val record = T.REG(32, recordR)
+               fun disp n = T.ADD(addrTy, record, T.LI n)
+               fun sel n = T.LOAD(32, disp n, R.memory)
+               fun fsel n = T.FLOAD(64, disp n, R.memory)
+               val N = A.length clientRoots
+               (* unpack normal fields *)
+               fun unpackFields(n, [], rds, rss) = (rds, rss)
+                 | unpackFields(n, Freg r::bs, rds, rss) = 
+                     (emit(T.FMV(64, r, fsel n)); 
+                      unpackFields(n+8, bs, rds, rss))
+                 | unpackFields(n, Mem(ea, mem)::bs, rds, rss) = 
+                     (emit(T.STORE(32, ea, sel n, mem));  (* XXX *)
+                      unpackFields(n+4, bs, rds, rss))
+                 | unpackFields(n, Record{regTmp, ...}::bs, rds, rss) = 
+                     (emit(T.MV(32, regTmp, sel n));
+                      unpackFields(n+4, bs, rds, rss))
+                 | unpackFields(n, Reg rd::bs, rds, rss) = 
+                   if rd < N andalso A.sub(clientRoots, rd) = cyclic then  
+                   let val tmpR = Cells.newReg()
+                   in  (* print "WARNING: CYCLE\n"; *)
+                       emit(T.MV(32, tmpR, sel n));
+                       unpackFields(n+4, bs, rd::rds, tmpR::rss)
+                   end else
+                       (emit(T.MV(32, rd, sel n));
+                        unpackFields(n+4, bs, rds, rss))
+
+               (* unpack nested record *)
+               fun unpackNested(_, [], rds, rss) = (rds, rss)
+                 | unpackNested(n, Record{fields, regTmp, ...}::bs, rds, rss) = 
+                   let val (rds, rss) = unpack(regTmp, fields, rds, rss)
+                   in  unpackNested(n+4, bs, rds, rss)
+                   end
+                 | unpackNested(n, Freg _::bs, rds, rss) =
+                     unpackNested(n+8, bs, rds, rss)
+                 | unpackNested(n, _::bs, rds, rss) =
+                     unpackNested(n+4, bs, rds, rss)
+
+               val (rds, rss)= unpackFields(0, fields, rds, rss)
+           in  unpackNested(0, fields, rds, rss)
+           end
+
+       (* generate code *)
+   in  prolog(0, gcroots, bindings, [], []);
+       (* return the unpack function *)
+       fn () => epilog(bindings, gcroots, [], [])
+   end
+
+   (*
     * The following auxiliary function generates the actual call gc code. 
     * It packages up the roots into the appropriate
     * records, call the GC routine, then unpack the roots from the record.
@@ -476,11 +574,11 @@ struct
            | ([], _, _, _) => ([aRootReg], aRootReg::boxed) 
            | _  => (gcroots, boxed)
 
-       val (extraRoots,unpack) = pack(emit, gcroots, boxed, int32, float)
-   in  initRoots(emit, extraRoots);
-       annotation(CALLGC);
+       val unpack = pack(emit, gcroots, boxed, int32, float)
+   in  annotation(CALLGC);
+       (* annotation(ZERO_FREQ); *)
        emit(mark(gcCall));
-       if known then computeBasePtr(emit,defineLabel) else ();
+       if known then computeBasePtr(emit,defineLabel,annotation) else ();
        unpack();
        emit ret
    end
@@ -573,22 +671,25 @@ struct
                    moduleGcBlocks := MODULE{info=info, addrs=ref[l]} ::
                       (!moduleGcBlocks)
                end
+             | search _ = error "search"
        in  search(!moduleGcBlocks) 
        end
+         | find _ = error "find"
 
        (*
         * Generate a long jump to all external callgc routines 
         *)
        fun longJumps(MODULE{addrs=ref [],...}) = ()
          | longJumps(MODULE{info=GCINFO{lab,boxed,int32,float,...}, addrs}) =
-       let val regRoots  = map T.GPR (int32 @ boxed)
-           val fregRoots = map T.FPR float
-           val liveOut   = regRoots @ fregRoots
-           val l         = !lab
-       in  app defineLabel (!addrs) before addrs := [];
-           emit(T.JMP(T.LABEL(LE.LABEL l),[l]));
-           exitBlock liveOut
-       end
+           let val regRoots  = map T.GPR (int32 @ boxed)
+               val fregRoots = map T.FPR float
+               val liveOut   = regRoots @ fregRoots
+               val l         = !lab
+           in  app defineLabel (!addrs) before addrs := [];
+               emit(T.JMP(T.LABEL(LE.LABEL l),[l]));
+               exitBlock liveOut
+           end
+         | longJumps _ = error "longJumps"
 
    in  app find (!clusterGcBlocks) before clusterGcBlocks := [];
        app longJumps (!moduleGcBlocks);

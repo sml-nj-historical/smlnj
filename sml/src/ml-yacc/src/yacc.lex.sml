@@ -45,6 +45,7 @@ local val dict = [("%prec",PREC_TAG),("%term",TERM),
 	       ("%verbose",VERBOSE), ("%nodefault",NODEFAULT),
 	       ("%value",VALUE), ("%noshift",NOSHIFT),
 	       ("%header",PERCENT_HEADER),("%pure",PERCENT_PURE),
+	       ("%token_sig_info",PERCENT_TOKEN_SIG_INFO),
 	       ("%arg",PERCENT_ARG),
 	       ("%pos",PERCENT_POS)]
 in val lookup =
@@ -589,7 +590,7 @@ val s = [
 fun f x = x 
 val s = map f (rev (tl (rev s))) 
 exception LexHackingError 
-fun look ((j,x)::r, i) = if i = j then x else look(r, i) 
+fun look ((j,x)::r, i: int) = if i = j then x else look(r, i) 
   | look ([], i) = raise LexHackingError
 fun g {fin=x, trans=i} = {fin=x, trans=look(s,i)} 
 in Vector.fromList(map g 
@@ -708,12 +709,12 @@ type result = UserDeclarations.lexresult
 	exception LexerError (* raised if illegal leaf action tried *)
 end
 
-fun makeLexer yyinput = 
-let 
+fun makeLexer yyinput =
+let	val yygone0=1
 	val yyb = ref "\n" 		(* buffer *)
 	val yybl = ref 1		(*buffer length *)
 	val yybufpos = ref 1		(* location of next character to use *)
-	val yygone = ref 1		(* position in file of beginning of buffer *)
+	val yygone = ref yygone0	(* position in file of beginning of buffer *)
 	val yydone = ref false		(* eof found yet? *)
 	val yybegin = ref 1		(*Current 'start state' for lexer *)
 
@@ -728,48 +729,48 @@ let fun continue() : Internal.result =
 	| action (i,(node::acts)::l) =
 		case node of
 		    Internal.N yyk => 
-			(let val yytext = substring(!yyb,i0,i-i0)
+			(let fun yymktext() = substring(!yyb,i0,i-i0)
 			     val yypos = i0+ !yygone
 			open UserDeclarations Internal.StartStates
  in (yybufpos := i; case yyk of 
 
 			(* Application actions *)
 
-  100 => (Add yytext; YYBEGIN STRING; continue())
-| 103 => (Add yytext; continue())
-| 105 => (Add yytext; continue())
-| 108 => (Add yytext; dec commentLevel;
+  100 => let val yytext=yymktext() in Add yytext; YYBEGIN STRING; continue() end
+| 103 => let val yytext=yymktext() in Add yytext; continue() end
+| 105 => let val yytext=yymktext() in Add yytext; continue() end
+| 108 => let val yytext=yymktext() in Add yytext; dec commentLevel;
 		    if !commentLevel=0
 			 then BOGUS_VALUE(!lineno,!lineno)
 			 else continue()
-		   )
-| 11 => (Add yytext; continue())
-| 111 => (Add yytext; inc commentLevel; continue())
-| 114 => (Add yytext; continue())
+		    end
+| 11 => let val yytext=yymktext() in Add yytext; continue() end
+| 111 => let val yytext=yymktext() in Add yytext; inc commentLevel; continue() end
+| 114 => let val yytext=yymktext() in Add yytext; continue() end
 | 116 => (continue())
 | 119 => (dec commentLevel;
 		          if !commentLevel=0 then YYBEGIN A else ();
 			  continue ())
 | 122 => (inc commentLevel; continue())
 | 125 => (continue())
-| 127 => (Add yytext; YYBEGIN CODE; continue())
-| 129 => (Add yytext; continue())
-| 131 => (Add yytext; error inputSource (!lineno) "unclosed string";
- 	            inc lineno; YYBEGIN CODE; continue())
-| 134 => (Add yytext; continue())
-| 137 => (Add yytext; continue())
+| 127 => let val yytext=yymktext() in Add yytext; YYBEGIN CODE; continue() end
+| 129 => let val yytext=yymktext() in Add yytext; continue() end
+| 131 => let val yytext=yymktext() in Add yytext; error inputSource (!lineno) "unclosed string";
+ 	            inc lineno; YYBEGIN CODE; continue() end
+| 134 => let val yytext=yymktext() in Add yytext; continue() end
+| 137 => let val yytext=yymktext() in Add yytext; continue() end
 | 14 => (YYBEGIN A; HEADER (concat (rev (!text)),!lineno,!lineno))
-| 140 => (Add yytext;
+| 140 => let val yytext=yymktext() in Add yytext;
 			if substring(yytext,1,1)="\n" then inc lineno else ();
-		     	YYBEGIN F; continue())
-| 143 => (Add yytext; continue())
-| 145 => (Add yytext; YYBEGIN STRING; continue())
-| 147 => (Add yytext; error inputSource (!lineno) "unclosed string";
-		    YYBEGIN CODE; continue())
-| 16 => (Add yytext; inc lineno; continue())
-| 18 => (Add yytext; continue())
-| 2 => (Add yytext; YYBEGIN COMMENT; commentLevel := 1;
-		    continue() before YYBEGIN INITIAL)
+		     	YYBEGIN F; continue() end
+| 143 => let val yytext=yymktext() in Add yytext; continue() end
+| 145 => let val yytext=yymktext() in Add yytext; YYBEGIN STRING; continue() end
+| 147 => let val yytext=yymktext() in Add yytext; error inputSource (!lineno) "unclosed string";
+		    YYBEGIN CODE; continue() end
+| 16 => let val yytext=yymktext() in Add yytext; inc lineno; continue() end
+| 18 => let val yytext=yymktext() in Add yytext; continue() end
+| 2 => let val yytext=yymktext() in Add yytext; YYBEGIN COMMENT; commentLevel := 1;
+		    continue() before YYBEGIN INITIAL end
 | 20 => (inc lineno; continue ())
 | 25 => (continue())
 | 28 => (OF(!lineno,!lineno))
@@ -783,29 +784,29 @@ let fun continue() : Internal.result =
 | 5 => (YYBEGIN EMPTYCOMMENT; commentLevel := 1; continue())
 | 56 => (PREC(Hdr.RIGHT,!lineno,!lineno))
 | 66 => (PREC(Hdr.NONASSOC,!lineno,!lineno))
-| 70 => (lookup(yytext,!lineno,!lineno))
-| 73 => (TYVAR(yytext,!lineno,!lineno))
-| 77 => (IDDOT(yytext,!lineno,!lineno))
-| 8 => (Add yytext; YYBEGIN COMMENT; commentLevel := 1;
-		    continue() before YYBEGIN CODE)
-| 80 => (INT (yytext,!lineno,!lineno))
+| 70 => let val yytext=yymktext() in lookup(yytext,!lineno,!lineno) end
+| 73 => let val yytext=yymktext() in TYVAR(yytext,!lineno,!lineno) end
+| 77 => let val yytext=yymktext() in IDDOT(yytext,!lineno,!lineno) end
+| 8 => let val yytext=yymktext() in Add yytext; YYBEGIN COMMENT; commentLevel := 1;
+		    continue() before YYBEGIN CODE end
+| 80 => let val yytext=yymktext() in INT (yytext,!lineno,!lineno) end
 | 83 => (DELIMITER(!lineno,!lineno))
 | 85 => (COLON(!lineno,!lineno))
 | 87 => (BAR(!lineno,!lineno))
-| 90 => (ID ((yytext,!lineno),!lineno,!lineno))
+| 90 => let val yytext=yymktext() in ID ((yytext,!lineno),!lineno,!lineno) end
 | 92 => (pcount := 1; actionstart := (!lineno);
 		    text := nil; YYBEGIN CODE; continue() before YYBEGIN A)
-| 94 => (UNKNOWN(yytext,!lineno,!lineno))
-| 96 => (inc pcount; Add yytext; continue())
-| 98 => (dec pcount;
+| 94 => let val yytext=yymktext() in UNKNOWN(yytext,!lineno,!lineno) end
+| 96 => let val yytext=yymktext() in inc pcount; Add yytext; continue() end
+| 98 => let val yytext=yymktext() in dec pcount;
 		    if !pcount = 0 then
 			 PROG (concat (rev (!text)),!lineno,!lineno)
-		    else (Add yytext; continue()))
+		    else (Add yytext; continue()) end
 | _ => raise Internal.LexerError
 
 		) end )
 
-	val {fin,trans} = Vector.sub(Internal.tab, s)
+	val {fin,trans} = Unsafe.Vector.sub(Internal.tab, s)
 	val NewAcceptingLeaves = fin::AcceptingLeaves
 	in if l = !yybl then
 	     if trans = #trans(Vector.sub(Internal.tab,0))
@@ -821,8 +822,9 @@ let fun continue() : Internal.result =
 		     yybl := size (!yyb);
 		     scan (s,AcceptingLeaves,l-i0,0))
 	    end
-	  else let val NewChar = Char.ord(String.sub(!yyb,l))
-		val NewState = if NewChar<128 then Char.ord(String.sub(trans,NewChar)) else Char.ord(String.sub(trans,128))
+	  else let val NewChar = Char.ord(Unsafe.CharVector.sub(!yyb,l))
+		val NewChar = if NewChar<128 then NewChar else 128
+		val NewState = Char.ord(Unsafe.CharVector.sub(trans,NewChar))
 		in if NewState=0 then action(l,NewAcceptingLeaves)
 		else scan(NewState,NewAcceptingLeaves,l+1,i0)
 	end

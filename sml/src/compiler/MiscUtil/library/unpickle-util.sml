@@ -61,6 +61,16 @@ signature UNPICKLE_UTIL = sig
     (* the string is the pickle string *)
     val stringGetter : string -> charGetter
 
+    (* stringGetter' is a souped-up stringGetter:
+     *  It takes a function to produce (and re-produce) the pickle string
+     *  on demand and returns the actual charGetter together with a
+     *  "dropper" -- a function to let go of the pickle string.
+     *  When suspended unpickling resumes after the string got dropped,
+     *  the charGetter will automatically re-fetch the pickle string
+     *  using the function provided. *)
+    val stringGetter' : string option * (unit -> string) ->
+	{ getter: charGetter, dropper: unit -> unit }
+
     (* open the unpickling session - everything is parameterized by this;
      * the charGetter provides the bytes of the pickle *)
     val mkSession : charGetter -> session
@@ -109,9 +119,8 @@ signature UNPICKLE_UTIL = sig
     (* readers for parametric types need their own map *)
     val r_list : session -> 'v list map -> 'v reader -> 'v list reader
     val r_option : session -> 'v option map -> 'v reader -> 'v option reader
-
-    (* pairs are not shared, so we don't need a map here *)
-    val r_pair : 'a reader * 'b reader -> ('a * 'b) reader
+    val r_pair :
+	session -> ('a * 'b) map -> 'a reader * 'b reader -> ('a * 'b) reader
 
     (* The laziness generated here is in the unpickling.  In other words
      * unpickling state is not discarded until the last lazy value has been
@@ -149,6 +158,32 @@ structure UnpickleUtil :> UNPICKLE_UTIL = struct
 	fun cur () = !pos
     in
 	{ read = rd, seek = sk, cur = cur }
+    end
+
+    fun stringGetter' (initial, fetchString) = let
+	val pos = ref 0
+	val pstring_r = ref initial
+	fun grabString () =
+	    case !pstring_r of
+		SOME s => s
+	      | NONE => let
+		    val s = fetchString ()
+		in
+		    pstring_r := SOME s;
+		    s
+		end
+	fun dropper () = pstring_r := NONE
+	fun rd () = let
+	    val s = grabString ()
+	    val p = !pos
+	in
+	    pos := p + 1;
+	    String.sub (s, p) handle Subscript => raise Format
+	end
+	fun sk p = pos := p
+	fun cur () = !pos
+    in
+	{ getter = { read = rd, seek = sk, cur = cur }, dropper = dropper }
     end
 
     local
@@ -298,7 +333,12 @@ structure UnpickleUtil :> UNPICKLE_UTIL = struct
 	share session m ro
     end
 
-    fun r_pair (r_a, r_b) () = (r_a (), r_b ())
+    fun r_pair session m (r_a, r_b) () = let
+	fun p #"p" = (r_a (), r_b ())
+	  | p _ = raise Format
+    in
+	share session m p
+    end
 
     fun r_bool session () = let
 	fun rb #"t" = true

@@ -476,4 +476,4 @@ fi
 #
 # Get rid of preloads.standard
 #
-rm -f preloads.standard
+rm -f $ROOT/preloads.standard

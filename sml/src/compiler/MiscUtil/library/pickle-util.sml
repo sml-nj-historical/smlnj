@@ -30,15 +30,9 @@ signature PICKLE_UTIL = sig
     type 'ahm pickle
     type ('ahm, 'v) pickler = 'v -> 'ahm pickle
 
-    (* Combining pickles into one.  The resulting compound pickle will not
-     * automatically be subject to hash-consing.  Wrap it with $ to get
-     * that effect. *)
-    val & : 'ahm pickle * 'ahm pickle -> 'ahm pickle
-
     (* $ produces the pickle for one case (constructor) of a datatype.
      * The string must be one character long and the argument pickle
-     * should be the pickle for the constructor's arguments.  If there
-     * are no arguments, then use % instead of $.
+     * should be the pickle for the constructor's arguments.
      * Use the same tinfo for all constructors of the same datatype
      * and different tinfos for constructors of different types.
      *
@@ -56,13 +50,11 @@ signature PICKLE_UTIL = sig
      * long.  In this case the corresponding unpickling function must
      * be sure to get all those characters out of the input stream.
      * We actually do exploit this "feature" internally. *)
-    val $ : tinfo -> string * 'ahm pickle -> 'ahm pickle
-    val % : tinfo -> string -> 'ahm pickle
+    val $ : tinfo -> string * 'ahm pickle list -> 'ahm pickle
 
     (* "ah_share" is used to specify potential for "ad-hoc" sharing
-     * using the user-supplied map.  It is important that ah_share is
-     * applied to pickles constructed by $ or % but never to those
-     * constructed by &.  Ad-hoc sharing is used to break structural
+     * using the user-supplied map.
+     * Ad-hoc sharing is used to break structural
      * cycles, to identify parts of the value that the hash-conser cannot
      * automatically identify but which should be identified nevertheless,
      * or to identify those parts that would be too expensive to be left
@@ -166,6 +158,10 @@ structure PickleUtil :> PICKLE_UTIL = struct
 	(fc @ gc, CONCAT (fpr, gpr), state'')
     end
 
+    (* collapse a non-empty list of pickles into one *)
+    fun collapse (h, []) = h
+      | collapse (h, ht :: tt) = h & collapse (ht, tt)
+
     fun anyint_encode (n, negative) = let
 	(* this is essentially the same mechanism that's also used in
 	 * TopLevel/batch/binfile.sml (maybe we should share it) *)
@@ -204,21 +200,23 @@ structure PickleUtil :> PICKLE_UTIL = struct
 		     (HCM.insert (hcm, key, next), ahm, next + size c))
     end
 
-    fun dollar ti (c, p) (hcm, ahm, next) = let
-	val (codes, pr, (hcm', ahm', next')) = p (hcm, ahm, next + size c)
-	val key = (c, ti, codes)
-    in
-	case HCM.find (hcm, key) of
-	    SOME i => let
-		val brnum = int_encode i
-	    in
-		([i], CONCAT (backref, STRING brnum),
-		 (hcm, ahm, next + size_backref + size brnum))
-	    end
-	  | NONE =>
+    fun dollar ti (c, []) state = % ti c state
+      | dollar ti (c, plh :: plt) (hcm, ahm, next) = let
+	    val p = collapse (plh, plt)
+	    val (codes, pr, (hcm', ahm', next')) = p (hcm, ahm, next + size c)
+	    val key = (c, ti, codes)
+	in
+	    case HCM.find (hcm, key) of
+		SOME i => let
+		    val brnum = int_encode i
+		in
+		    ([i], CONCAT (backref, STRING brnum),
+		     (hcm, ahm, next + size_backref + size brnum))
+		end
+	      | NONE =>
 		([next], CONCAT (STRING c, pr),
 		 (HCM.insert (hcm', key, next), ahm', next'))
-    end
+	end
 
     fun ah_share { find, insert } w v (hcm, ahm, next) =
 	case find (ahm, v) of
@@ -290,19 +288,19 @@ structure PickleUtil :> PICKLE_UTIL = struct
 	    val op $ = dollar L
 	    fun wc [] = % L "N"
 	      | wc ((a, b, c, d, e) :: r) =
-		"C" $ w a & w b & w c & w d & w e & wc r
+		"C" $ [w a, w b, w c, w d, w e, wc r]
 	in
 	    case chop5 l of
 		([], []) => % L "0"
-	      | ([a], []) => "1" $ w a
-	      | ([a, b], []) => "2" $ w a & w b
-	      | ([a, b, c], []) => "3" $ w a & w b & w c
-	      | ([a, b, c, d], []) => "4" $ w a & w b & w c & w d
-	      | ([], r) => "5" $ wc r
-	      | ([a], r) => "6" $ w a & wc r
-	      | ([a, b], r) => "7" $ w a & w b & wc r
-	      | ([a, b, c], r) => "8" $ w a & w b & w c & wc r
-	      | ([a, b, c, d], r) => "9" $ w a & w b & w c & w d & wc r
+	      | ([a], []) => "1" $ [w a]
+	      | ([a, b], []) => "2" $ [w a, w b]
+	      | ([a, b, c], []) => "3" $ [w a, w b, w c]
+	      | ([a, b, c, d], []) => "4" $ [w a, w b, w c, w d]
+	      | ([], r) => "5" $ [wc r]
+	      | ([a], r) => "6" $ [w a, wc r]
+	      | ([a, b], r) => "7" $ [w a, w b, wc r]
+	      | ([a, b, c], r) => "8" $ [w a, w b, w c, wc r]
+	      | ([a, b, c, d], r) => "9" $ [w a, w b, w c, w d, wc r]
 	      | _ => raise Fail "PickleUtil.w_list: impossible chop"
 	end
     end
@@ -313,16 +311,24 @@ structure PickleUtil :> PICKLE_UTIL = struct
 	fun w_option arg = let
 	    val op $ = dollar O
 	    fun wo w NONE = % O "n"
-	      | wo w (SOME i) = "s" $ w i
+	      | wo w (SOME i) = "s" $ [w i]
 	in
 	    wo arg
 	end
     end
 
-    fun w_pair (wa, wb) (a, b) = wa a & wb b
+    local
+	val P = ~7
+    in
+	fun w_pair (wa, wb) (a, b) = let
+	    val op $ = dollar P
+	in
+	    "p" $ [wa a, wb b]
+	end
+    end
 
     local
-	val S = ~7
+	val S = ~8
     in
 	fun w_string s = let
 	    val op $ = dollar S
@@ -337,12 +343,12 @@ structure PickleUtil :> PICKLE_UTIL = struct
 	      | esc #"\255" = "\\\255"	(* need to escape backref char *)
 	      | esc c = String.str c
 	in
-	    (String.translate esc s ^ "\"") $ dummy_pickle
+	    (String.translate esc s ^ "\"") $ [dummy_pickle]
 	end
     end
 
     local
-	val B = ~8
+	val B = ~9
     in
 	fun w_bool true = % B "t"
 	  | w_bool false = % B "f"

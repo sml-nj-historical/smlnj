@@ -16,6 +16,7 @@ val PROG: (string) *  'a * 'a -> (svalue,'a) token
 val PREFER:  'a * 'a -> (svalue,'a) token
 val PREC_TAG:  'a * 'a -> (svalue,'a) token
 val PREC: (Header.prec) *  'a * 'a -> (svalue,'a) token
+val PERCENT_TOKEN_SIG_INFO:  'a * 'a -> (svalue,'a) token
 val PERCENT_ARG:  'a * 'a -> (svalue,'a) token
 val PERCENT_POS:  'a * 'a -> (svalue,'a) token
 val PERCENT_PURE:  'a * 'a -> (svalue,'a) token

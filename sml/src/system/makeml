@@ -1,7 +1,6 @@
 #!/bin/sh
 #
 
-
 ARCH=sparc
 OPSYS=solaris
 RUN_DIR=../../bin/.run
@@ -12,6 +11,7 @@ RUN_ARGS=""
 MODE=""
 BOOT_DIR=""
 rebuilt=no
+bare=no
 
 #
 # Set CM_PATHCONFIG_DEFAULT to ../../lib/pathconfig
@@ -37,7 +37,7 @@ fi
 
 #
 # Allocation size: This snippet should be kept consistent with that
-#	in config/install.sh
+#     in config/install.sh
 #
 case $ARCH in
   mips*) ALLOC=1M ;;
@@ -56,64 +56,68 @@ while [ "$#" != "0" ]
 do
   arg=$1; shift
   case $arg in
-    -bare) MODE="@SMLbare" ;;
+    -bare)
+	bare=yes
+	MODE="@SMLbare"
+	;;
     -rebuild)
-      if [ "$#" = "0" ]; then
-        echo "makeml: missing argument for \"-rebuild\" option"
-	exit 1
-      fi
-      rebuilt=yes
-      MODE="@SMLrebuild=$1"; shift
-    ;;
+	if [ "$#" = "0" ]; then
+	    echo "makeml: missing argument for \"-rebuild\" option"
+	    exit 1
+	fi
+	rebuilt=yes
+	MODE="@SMLrebuild=$1"; shift
+	;;
     -arch)
-      if [ "$#" = "0" ]; then
-        echo "makeml: missing argument for \"-arch\" option"
-	exit 1
-      fi
-      ARCH=$1; shift
-    ;;
+	if [ "$#" = "0" ]; then
+	    echo "makeml: missing argument for \"-arch\" option"
+	    exit 1
+	fi
+	ARCH=$1; shift
+	;;
     -opsys)
-      if [ "$#" = "0" ]; then
-        echo "makeml: missing argument for \"-opsys\" option"
-	exit 1
-      fi
-      OPSYS=$1; shift
-    ;;
+	if [ "$#" = "0" ]; then
+	    echo "makeml: missing argument for \"-opsys\" option"
+	    exit 1
+	fi
+	OPSYS=$1; shift
+	;;
     -o)
-      if [ "$#" = "0" ]; then
-        echo "makeml: missing argument for \"-o\" option"
-	exit 1
-      fi
-      HEAP_IMAGE=$1; shift
-    ;;
+	if [ "$#" = "0" ]; then
+	    echo "makeml: missing argument for \"-o\" option"
+	    exit 1
+	fi
+	HEAP_IMAGE=$1; shift
+	;;
     -run)
-      if [ "$#" = "0" ]; then
-        echo "makeml: missing argument for \"-run\" option"
-	exit 1
-      fi
-      RUN=$1; shift
-    ;;
+	if [ "$#" = "0" ]; then
+	    echo "makeml: missing argument for \"-run\" option"
+	    exit 1
+	fi
+	RUN=$1; shift
+	;;
     -alloc)
-      if [ "$#" = "0" ]; then
-        echo "makeml: missing argument for \"-alloc\" option"
-	exit 1
-      fi
-      ALLOC=$1; shift
-    ;;
+	if [ "$#" = "0" ]; then
+	    echo "makeml: missing argument for \"-alloc\" option"
+	    exit 1
+	fi
+	ALLOC=$1; shift
+	;;
     -boot)
-      if [ "$#" = "0" ]; then
-        echo "makeml: missing argument for \"-boot\" option"
-	exit 1
-      fi
-      BOOT_DIR=$1; shift
-    ;;
+	if [ "$#" = "0" ]; then
+	    echo "makeml: missing argument for \"-boot\" option"
+	    exit 1
+	fi
+	BOOT_DIR=$1; shift
+	;;
     @SML*)
-      RUN_ARGS="$RUN_ARGS $arg"
-    ;;
-    *) echo "makeml: unknown argument \"$arg\""
-       exit 1
-    ;;
-  esac
+	RUN_ARGS="$RUN_ARGS $arg"
+	;;
+    *)
+	echo "makeml: unknown argument \"$arg\""
+	exit 1
+	;;
+    esac
 done
 
 if [ x"$RUN" = x ]; then
@@ -163,17 +167,19 @@ fi
 # Now move the libraries, generate the pathconfig file, and delete the bootdir.
 #
 
-LIB_DIR=`pwd`/${HEAP_IMAGE}.lib
+if [ $bare = no ] ; then
+    LIB_DIR=`pwd`/${HEAP_IMAGE}.lib
 
-rm -rf $LIB_DIR
-mkdir $LIB_DIR
+    rm -rf $LIB_DIR
+    mkdir $LIB_DIR
 
-cd $BOOT_DIR
+    cd $BOOT_DIR
 
-for i in *.cm ; do
-    mv $i $LIB_DIR/$i
-    echo $i $i
-done >$LIB_DIR/pathconfig
+    for i in *.cm ; do
+	mv $i $LIB_DIR/$i
+	echo $i $i
+    done >$LIB_DIR/pathconfig
 
-cd ..
-rm -r $BOOT_DIR
+    cd ..
+    rm -r $BOOT_DIR
+fi

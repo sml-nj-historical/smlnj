@@ -1,6 +1,9 @@
 (* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
+ * Revision 1.2  2000/01/09 09:59:14  blume
+ * pickler bug fixes; some cosmetic changes
+ *
  * Revision 1.1.1.10  1999/04/17 18:56:12  monnier
  * version 110.16
  *
@@ -165,14 +168,17 @@ for all rules y such that reduce/reduce (x,y) or reduce/reduce (y,x)
 is true.
 *)
 
+    fun unREDUCE (REDUCE num) = num
+      | unREDUCE _ = raise Fail "bug: unexpected action (expected REDUCE)"
+
     val mergeReduces =
 	let val merge = fn state =>
 	  let fun f (j as (pair1 as (T t1,action1)) :: r1,
 		     k as (pair2 as (T t2,action2)) :: r2,result,errs) =
 	  	    if t1 < t2 then f(r1,k,pair1::result,errs)
 		    else if t1 > t2 then f(j,r2,pair2::result,errs)
-		    else let val REDUCE num1 = action1
-			     val REDUCE num2 = action2
+		    else let val num1 = unREDUCE action1
+			     val num2 = unREDUCE action2
 			     val errs = RR(T t1,state,num1,num2) :: errs
 			     val action = if num1 < num2 then pair1 else pair2
 		         in f(r1,r2,action::result,errs)
@@ -209,7 +215,7 @@ is true.
 			result,errs) =
 		if t1 < t2 then f(r1,reduces,pair1 :: result,errs)
 		else if t1 > t2 then f(shifts,r2,pair2 :: result,errs)
-		else let val REDUCE rulenum = action
+		else let val rulenum = unREDUCE action
 			 val (term1,_) = pair1
 		     in case (precedence term1,rulePrec rulenum)
 		      of (SOME i,SOME j) =>

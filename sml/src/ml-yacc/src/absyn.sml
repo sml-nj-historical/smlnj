@@ -1,6 +1,9 @@
 (* ML-Yacc Parser Generator (c) 1991 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
+ * Revision 1.2  2000/01/09 09:59:14  blume
+ * pickler bug fixes; some cosmetic changes
+ *
  * Revision 1.1.1.10  1999/04/17 18:56:11  monnier
  * version 110.16
  *
@@ -160,10 +163,10 @@ structure Absyn : ABSYN =
                  | f (PAPP(a,PVAR b)) = [a," ",b]
                  | f (PAPP(a,b)) = List.concat [lp,[a],sp,f b,rp]
 	         | f (PINT i) = [Int.toString i]
-                 | f (PLIST nil) = ["<bogus-list>"]
                  | f (PLIST l) =
-	              let fun scan (h :: nil) = [f h]
+	              let fun scan [h] = [f h]
                             | scan (h :: t) = f h :: ["::"] :: scan t
+			    | scan [] = [["<bogus-list>"]]
                       in List.concat (scan l)
                       end
                  | f (PTUPLE (a::r)) = 

@@ -164,13 +164,13 @@ in
 	 DTF, TYCON, T, II, VAR, SD, SG, FSG,  SP, EN,
 	 STR, F, STE, TCE, STRE, FE, EE, ED, EEV, FX,
 	 B, DCON, DICT, FPRIM, FUNDEC, TFUNDEC, DATACON, DTMEM, NRD,
-	 OVERLD, FCTC, SEN, FEN) =
+	 OVERLD, FCTC, SEN, FEN, SPATH, IPATH) =
 	(1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
 	 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 	 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
 	 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
 	 41, 42, 43, 44, 45, 46, 47, 48, 49,
-	 50, 51, 52, 53)
+	 50, 51, 52, 53, 54, 55)
 
     (* this is a bit awful...
      * (we really ought to have syntax for "functional update") *)
@@ -224,9 +224,6 @@ in
 			     mi = MIMap.insert (mi, x, v) } }
 
     infix 3 $
-    infixr 4 &
-    val op & = PU.&
-    val % = PU.%
 
     val int = PU.w_int
     val int32 = PU.w_int32
@@ -260,14 +257,15 @@ in
 
     fun numkind arg = let
 	val op $ = PU.$ NK
-	fun nk (P.INT i) = "A" $ int i
-	  | nk (P.UINT i) = "B" $ int i
-	  | nk (P.FLOAT i) = "C" $ int i
+	fun nk (P.INT i) = "A" $ [int i]
+	  | nk (P.UINT i) = "B" $ [int i]
+	  | nk (P.FLOAT i) = "C" $ [int i]
     in
 	nk arg
     end
 
     fun arithop oper = let
+	val op $ = PU.$ AO
 	fun arithopc P.+ = "\000"
 	  | arithopc P.- = "\001"
 	  | arithopc P.* = "\002"
@@ -282,10 +280,11 @@ in
 	  | arithopc P.XORB = "\011"
 	  | arithopc P.NOTB = "\012"
     in
-	% AO (arithopc oper)
+	arithopc oper $ []
     end
 
     fun cmpop oper = let
+	val op $ = PU.$ CO
 	fun cmpopc P.> = "\000"
 	  | cmpopc P.>= = "\001"
 	  | cmpopc P.< = "\002"
@@ -297,37 +296,37 @@ in
 	  | cmpopc P.EQL = "\008"
 	  | cmpopc P.NEQ = "\009"
     in
-	% CO (cmpopc oper)
+	cmpopc oper $ []
     end
 	    
     fun primop p = let
 	val op $ = PU.$ PO
 	fun ?n = String.str (Char.chr n)
-	fun fromto tag (from, to) = ?tag $ int from & int to
-	fun %?n = % PO (?n)
+	fun fromto tag (from, to) = ?tag $ [int from, int to]
+	fun %?n = ?n $ []
 	in
 	    case p of
 		P.ARITH { oper, overflow, kind } =>
-		    ?100 $ arithop oper & bool overflow & numkind kind
-	      | P.CMP { oper, kind } => ?101 $ cmpop oper & numkind kind
+		    ?100 $ [arithop oper, bool overflow, numkind kind]
+	      | P.CMP { oper, kind } => ?101 $ [cmpop oper, numkind kind]
 	      | P.TEST x => fromto 102 x
 	      | P.TESTU x => fromto 103 x
 	      | P.TRUNC x => fromto 104 x
 	      | P.EXTEND x => fromto 105 x
 	      | P.COPY x => fromto 106 x
-	      | P.INLLSHIFT kind => ?107 $ numkind kind
-	      | P.INLRSHIFT kind => ?108 $ numkind kind
-	      | P.INLRSHIFTL kind => ?109 $ numkind kind
+	      | P.INLLSHIFT kind => ?107 $ [numkind kind]
+	      | P.INLRSHIFT kind => ?108 $ [numkind kind]
+	      | P.INLRSHIFTL kind => ?109 $ [numkind kind]
 	      | P.ROUND { floor, fromkind, tokind } =>
-		    ?110 $ bool floor & numkind fromkind & numkind tokind
+		    ?110 $ [bool floor, numkind fromkind, numkind tokind]
 	      | P.REAL { fromkind, tokind } =>
-		    ?111 $ numkind fromkind & numkind tokind
+		    ?111 $ [numkind fromkind, numkind tokind]
 	      | P.NUMSUBSCRIPT { kind, checked, immutable } =>
-		    ?112 $ numkind kind & bool checked & bool immutable
+		    ?112 $ [numkind kind, bool checked, bool immutable]
 	      | P.NUMUPDATE { kind, checked } =>
-		    ?113 $ numkind kind & bool checked
-	      | P.INL_MONOARRAY kind => ?114 $ numkind kind
-	      | P.INL_MONOVECTOR kind => ?115 $ numkind kind
+		    ?113 $ [numkind kind, bool checked]
+	      | P.INL_MONOARRAY kind => ?114 $ [numkind kind]
+	      | P.INL_MONOVECTOR kind => ?115 $ [numkind kind]
 		    
 	      | P.MKETAG => %?0
 	      | P.WRAP => %?1
@@ -397,140 +396,132 @@ in
 
     fun consig arg = let
 	val op $ = PU.$ CS
-	fun cs (A.CSIG (i, j)) = "S" $ int i & int j
-	  | cs A.CNIL = % CS "N"
+	fun cs (A.CSIG (i, j)) = "S" $ [int i, int j]
+	  | cs A.CNIL = "N" $ []
     in
 	cs arg
     end
 
-    fun tkind x = let
-	val op $ = PU.$ TK
-	fun tk x =
-	    case LK.tk_out x of
-	    LK.TK_MONO => %TK "A"
-	  | LK.TK_BOX => %TK "B"
-	  | LK.TK_SEQ ks => "C" $ list tkind ks
-	  | LK.TK_FUN (ks, kr) => "D" $ list tkind ks & tkind kr
-    in
-	share TKs tk x
-    end
-
     fun mkAccess { lvar, isLocalPid } = let
 	val op $ = PU.$ A
-	fun access (A.LVAR i) = "A" $ lvar i
-	  | access (A.EXTERN p) = "B" $ pid p
+	fun access (A.LVAR i) = "A" $ [lvar i]
+	  | access (A.EXTERN p) = "B" $ [pid p]
 	  | access (A.PATH (a as A.EXTERN p, i)) =
 	    (* isLocalPid always returns false for in the "normal pickler"
 	     * case.  It returns true in the "repickle" case for the
 	     * pid that was the hash of the original whole pickle.
 	     * Since alpha-conversion has already taken place if we find
 	     * an EXTERN pid, we don't call "lvar" but "int". *)
-	    if isLocalPid p then "A" $ int i
-	    else "C" $ access a & int i
-	  | access (A.PATH (a, i)) = "C" $ access a & int i
-	  | access A.NO_ACCESS = % A "D"
+	    if isLocalPid p then "A" $ [int i]
+	    else "C" $ [access a, int i]
+	  | access (A.PATH (a, i)) = "C" $ [access a, int i]
+	  | access A.NO_ACCESS = "D" $ []
 
 	val op $ = PU.$ CR
-	fun conrep A.UNTAGGED = % CR "A"
-	  | conrep (A.TAGGED i) = "B" $ int i
-	  | conrep A.TRANSPARENT = %CR "C"
-	  | conrep (A.CONSTANT i) = "D" $ int i
-	  | conrep A.REF = %CR "E"
-	  | conrep (A.EXN a) = "F" $ access a
-	  | conrep A.LISTCONS = %CR "G"
-	  | conrep A.LISTNIL = %CR "H"
-	  | conrep (A.SUSP NONE) = %CR "I"
-	  | conrep (A.SUSP (SOME (a, b))) = "J" $ access a & access b
+	fun conrep A.UNTAGGED = "A" $ []
+	  | conrep (A.TAGGED i) = "B" $ [int i]
+	  | conrep A.TRANSPARENT = "C" $ []
+	  | conrep (A.CONSTANT i) = "D" $ [int i]
+	  | conrep A.REF = "E" $ []
+	  | conrep (A.EXN a) = "F" $ [access a]
+	  | conrep A.LISTCONS = "G" $ []
+	  | conrep A.LISTNIL = "H" $ []
+	  | conrep (A.SUSP NONE) = "I" $ []
+	  | conrep (A.SUSP (SOME (a, b))) = "J" $ [access a, access b]
     in
 	{ access = access, conrep = conrep }
     end
 
-    (* lambda-type stuff; this is used in both picklers *)
-    and lty alpha x = let
-	val lty = lty alpha
-	val tyc = tyc alpha
-	fun ltyI x = let
-	    val op $ = PU.$ LT
-	in
-	    case LK.lt_out x of
-		LK.LT_TYC tc => "A" $ tyc tc
-	      | LK.LT_STR l => "B" $ list lty l
-	      | LK.LT_FCT (ts1, ts2) => "C" $ list lty ts1 & list lty ts2
-	      | LK.LT_POLY (ks, ts) => "D" $ list tkind ks & list lty ts
-	      | LK.LT_IND _ => bug "unexpected LT_IND in mkPickleLty"
-	      | LK.LT_ENV _ => bug "unexpected LT_ENV in mkPickleLty"
-	      | LK.LT_CONT _ => bug "unexpected LT_CONT in mkPickleLty"
-	end
+    (* lambda-type stuff; some of it is used in both picklers *)
+    fun tkind x = let
+	val op $ = PU.$ TK
+	fun tk x =
+	    case LK.tk_out x of
+	    LK.TK_MONO => "A" $ []
+	  | LK.TK_BOX => "B" $ []
+	  | LK.TK_SEQ ks => "C" $ [list tkind ks]
+	  | LK.TK_FUN (ks, kr) => "D" $ [list tkind ks, tkind kr]
     in
-	share LTs ltyI x
-    (* if LK.ltp_norm x then 
-       else bug "unexpected complex lambda type in mkPickleLty" ltyI x *)
+	share TKs tk x
     end
 
-    and tyc alpha x = let
-	val tyc = tyc alpha
-	val lty = lty alpha
-	fun tycI x = let
-	    val op $ = PU.$ TC
+    fun mkLty lvar = let
+	fun lty x = let
+	    val op $ = PU.$ LT
+	    fun ltyI x =
+		case LK.lt_out x of
+		    LK.LT_TYC tc => "A" $ [tyc tc]
+		  | LK.LT_STR l => "B" $ [list lty l]
+		  | LK.LT_FCT (ts1, ts2) => "C" $ [list lty ts1, list lty ts2]
+		  | LK.LT_POLY (ks, ts) => "D" $ [list tkind ks, list lty ts]
+		  | LK.LT_IND _ => bug "unexpected LT_IND in mkPickleLty"
+		  | LK.LT_ENV _ => bug "unexpected LT_ENV in mkPickleLty"
+		  | LK.LT_CONT _ => bug "unexpected LT_CONT in mkPickleLty"
 	in
-	    case LK.tc_out x of
-		LK.TC_VAR (db, i) => "A" $ int (DI.di_toint db) & int i
-	      | LK.TC_NVAR n => "B" $ (int o alpha) n
-	      | LK.TC_PRIM t => "C" $ int (PT.pt_toint t)
-	      | LK.TC_FN (ks, tc) => "D" $ list tkind ks & tyc tc
-	      | LK.TC_APP (tc, l) => "E" $ tyc tc & list tyc l
-	      | LK.TC_SEQ l => "F" $ list tyc l
-	      | LK.TC_PROJ (tc, i) => "G" $ tyc tc & int i
-	      | LK.TC_SUM l => "H" $ list tyc l
-	      | LK.TC_FIX ((n, tc, ts), i) =>
-		"I" $ int n & tyc tc & list tyc ts & int i
-	      | LK.TC_ABS tc => "J" $ tyc tc
-	      | LK.TC_BOX tc => "K" $ tyc tc
-	      | LK.TC_TUPLE (_, l) => "L" $ list tyc l
-	      | LK.TC_ARROW (LK.FF_VAR (b1, b2), ts1, ts2) =>
-		"M" $ bool b1 & bool b2 & list tyc ts1 & list tyc ts2
-	      | LK.TC_ARROW (LK.FF_FIXED, ts1, ts2) =>
-		"N" $ list tyc ts1 & list tyc ts2
-	      | LK.TC_TOKEN (tk, t) => "O" $ int (LK.token_int tk) & tyc t
-	      | LK.TC_PARROW _ => bug "unexpected TC_PARROW in mkPickleLty"
-	      | LK.TC_IND _ => bug "unexpected TC_IND in mkPickleLty"
-	      | LK.TC_ENV _ => bug "unexpected TC_ENV in mkPickleLty"
-	      | LK.TC_CONT _ => bug "unexpected TC_CONT in mkPickleLty"
+	    share LTs ltyI x
+	end
+
+	and tyc x = let
+	    val op $ = PU.$ TC
+	    fun tycI x =
+		case LK.tc_out x of
+		    LK.TC_VAR (db, i) => "A" $ [int (DI.di_toint db), int i]
+		  | LK.TC_NVAR n => "B" $ [lvar n]
+		  | LK.TC_PRIM t => "C" $ [int (PT.pt_toint t)]
+		  | LK.TC_FN (ks, tc) => "D" $ [list tkind ks, tyc tc]
+		  | LK.TC_APP (tc, l) => "E" $ [tyc tc, list tyc l]
+		  | LK.TC_SEQ l => "F" $ [list tyc l]
+		  | LK.TC_PROJ (tc, i) => "G" $ [tyc tc, int i]
+		  | LK.TC_SUM l => "H" $ [list tyc l]
+		  | LK.TC_FIX ((n, tc, ts), i) =>
+			"I" $ [int n, tyc tc, list tyc ts, int i]
+		  | LK.TC_ABS tc => "J" $ [tyc tc]
+		  | LK.TC_BOX tc => "K" $ [tyc tc]
+		  | LK.TC_TUPLE (_, l) => "L" $ [list tyc l]
+		  | LK.TC_ARROW (LK.FF_VAR (b1, b2), ts1, ts2) =>
+			"M" $ [bool b1, bool b2, list tyc ts1, list tyc ts2]
+		  | LK.TC_ARROW (LK.FF_FIXED, ts1, ts2) =>
+			"N" $ [list tyc ts1, list tyc ts2]
+		  | LK.TC_PARROW _ => bug "unexpected TC_PARREW in mkPickleLty"
+		  | LK.TC_TOKEN (tk, t) => "O" $ [int (LK.token_int tk), tyc t]
+		  | LK.TC_IND _ => bug "unexpected TC_IND in mkPickleLty"
+		  | LK.TC_ENV _ => bug "unexpected TC_ENV in mkPickleLty"
+		  | LK.TC_CONT _ => bug "unexpected TC_CONT in mkPickleLty"
+	in
+	    share TCs tycI x
 	end
     in
-	share TCs tycI x
-    (* if LK.tcp_norm x then 
-       else bug "unexpected complex lambda tyc in mkPickleLty" tycI x *)
+	{ tyc = tyc, lty = lty }
     end
 
     (* the FLINT pickler *)
     fun flint flint_exp = let
 	val alphaConvert = mkAlphaConvert ()
 	val lvar = int o alphaConvert
-	val lty = lty alphaConvert
-	val tyc = tyc alphaConvert
 	val { access, conrep } = mkAccess { lvar = lvar,
 					    isLocalPid = fn _ => false }
+	val { lty, tyc } = mkLty lvar
+
 	val op $ = PU.$ V
-	fun value (F.VAR v) = "a" $ lvar v
-	  | value (F.INT i) = "b" $ int i
-	  | value (F.INT32 i32) = "c" $ int32 i32
-	  | value (F.WORD w) = "d" $ word w
-	  | value (F.WORD32 w32) = "e" $ word32 w32
-	  | value (F.REAL s) = "f" $ string s
-	  | value (F.STRING s) = "g" $ string s
+	fun value (F.VAR v) = "a" $ [lvar v]
+	  | value (F.INT i) = "b" $ [int i]
+	  | value (F.INT32 i32) = "c" $ [int32 i32]
+	  | value (F.WORD w) = "d" $ [word w]
+	  | value (F.WORD32 w32) = "e" $ [word32 w32]
+	  | value (F.REAL s) = "f" $ [string s]
+	  | value (F.STRING s) = "g" $ [string s]
 
 	fun con arg = let
 	    val op $ = PU.$ C
 	    fun c (F.DATAcon (dc, ts, v), e) =
-		"1" $ dcon (dc, ts) & lvar v & lexp e
-	      | c (F.INTcon i, e) = "2" $ int i & lexp e
-	      | c (F.INT32con i32, e) = "3" $ int32 i32 & lexp e
-	      | c (F.WORDcon w, e) = "4" $ word w & lexp e
-	      | c (F.WORD32con w32, e) = "5" $ word32 w32 & lexp e
-	      | c (F.REALcon s, e) = "6" $ string s & lexp e
-	      | c (F.STRINGcon s, e) = "7" $ string s & lexp e
-	      | c (F.VLENcon i, e) = "8" $ int i & lexp e
+		"1" $ [dcon (dc, ts), lvar v, lexp e]
+	      | c (F.INTcon i, e) = "2" $ [int i, lexp e]
+	      | c (F.INT32con i32, e) = "3" $ [int32 i32, lexp e]
+	      | c (F.WORDcon w, e) = "4" $ [word w, lexp e]
+	      | c (F.WORD32con w32, e) = "5" $ [word32 w32, lexp e]
+	      | c (F.REALcon s, e) = "6" $ [string s, lexp e]
+	      | c (F.STRINGcon s, e) = "7" $ [string s, lexp e]
+	      | c (F.VLENcon i, e) = "8" $ [int i, lexp e]
 	in
 	    c arg
 	end
@@ -538,44 +529,44 @@ in
 	and dcon ((s, cr, t), ts) = let
 	    val op $ = PU.$ DCON
 	in
-	    "x" $ symbol s & conrep cr & lty t & list tyc ts
+	    "x" $ [symbol s, conrep cr, lty t, list tyc ts]
 	end
 
 	and dict { default = v, table = tbls } = let
 	    val op $ = PU.$ DICT
 	in
-	    "y" $ lvar v & list (pair (list tyc, lvar)) tbls
+	    "y" $ [lvar v, list (pair (list tyc, lvar)) tbls]
 	end
 
 	and fprim (dtopt, p, t, ts) = let
 	    val op $ = PU.$ FPRIM
 	in
-	    "z" $ option dict dtopt & primop p & lty t & list tyc ts
+	    "z" $ [option dict dtopt, primop p, lty t, list tyc ts]
 	end
 
 	and lexp arg = let
 	    val op $ = PU.$ E
-	    fun l (F.RET vs) = "j" $ list value vs
+	    fun l (F.RET vs) = "j" $ [list value vs]
 	      | l (F.LET (vs, e1, e2)) =
-		"k" $ list lvar vs & lexp e1 & lexp e2
-	      | l (F.FIX (fdecs, e)) = "l" $ list fundec fdecs & lexp e
-	      | l (F.APP (v, vs)) = "m" $ value v & list value vs
-	      | l (F.TFN (tfdec, e)) = "n" $ tfundec tfdec & lexp e
-	      | l (F.TAPP (v, ts)) = "o" $ value v & list tyc ts
+		"k" $ [list lvar vs, lexp e1, lexp e2]
+	      | l (F.FIX (fdecs, e)) = "l" $ [list fundec fdecs, lexp e]
+	      | l (F.APP (v, vs)) = "m" $ [value v, list value vs]
+	      | l (F.TFN (tfdec, e)) = "n" $ [tfundec tfdec, lexp e]
+	      | l (F.TAPP (v, ts)) = "o" $ [value v, list tyc ts]
 	      | l (F.SWITCH (v, crl, cel, eo)) =
-		"p" $ value v & consig crl & list con cel & option lexp eo
+		"p" $ [value v, consig crl, list con cel, option lexp eo]
 	      | l (F.CON (dc, ts, u, v, e)) =
-		"q" $ dcon (dc, ts) & value u & lvar v & lexp e
+		"q" $ [dcon (dc, ts), value u, lvar v, lexp e]
 	      | l (F.RECORD (rk, vl, v, e)) =
-		"r" $ rkind rk & list value vl & lvar v & lexp e
+		"r" $ [rkind rk, list value vl, lvar v, lexp e]
 	      | l (F.SELECT (u, i, v, e)) =
-		"s" $ value u & int i & lvar v & lexp e
-	      | l (F.RAISE (u, ts)) = "t" $ value u & list lty ts
-	      | l (F.HANDLE (e, u)) = "u" $ lexp e & value u
+		"s" $ [value u, int i, lvar v, lexp e]
+	      | l (F.RAISE (u, ts)) = "t" $ [value u, list lty ts]
+	      | l (F.HANDLE (e, u)) = "u" $ [lexp e, value u]
 	      | l (F.BRANCH (p, vs, e1, e2)) =
-		"v" $ fprim p & list value vs & lexp e1 & lexp e2
+		"v" $ [fprim p, list value vs, lexp e1, lexp e2]
 	      | l (F.PRIMOP (p, vs, v, e)) =
-		"w" $ fprim p & list value vs & lvar v & lexp e
+		"w" $ [fprim p, list value vs, lvar v, lexp e]
 	in
 	    l arg
 	end
@@ -583,37 +574,39 @@ in
 	and fundec (fk, v, vts, e) = let
 	    val op $ = PU.$ FUNDEC
 	in
-	    "a" $ fkind fk & lvar v & list (pair (lvar, lty)) vts & lexp e
+	    "a" $ [fkind fk, lvar v, list (pair (lvar, lty)) vts, lexp e]
 	end
 
-	and tfundec (tfk, v, tvks, e) = let
+	and tfundec (_, v, tvks, e) = let
 	    val op $ = PU.$ TFUNDEC
 	in
-	    "b" $ lvar v & list (pair (lvar, tkind)) tvks & lexp e
+	    "b" $ [lvar v, list (pair (lvar, tkind)) tvks, lexp e]
 	end
 
 	and fkind arg = let
 	    val op $ = PU.$ FK
-	    fun fk { isrec, cconv=F.CC_FCT, known, inline } = %FK "2"
-	      | fk { isrec, cconv=F.CC_FUN fixed, known, inline } =
+	    fun isAlways F.IH_ALWAYS = true
+	      | isAlways _ = false
+	    fun strip (x, y) = x
+	    fun fk { cconv = F.CC_FCT, ... } = "2" $ []
+	      | fk { isrec, cconv = F.CC_FUN fixed, known, inline } =
 		case fixed of
 		    LK.FF_VAR (b1, b2) =>
-			"3" $ option (list lty) (Option.map (fn (x,y) => x) isrec) &
-			bool b1 & bool b2 & bool known &
-			bool (case inline of F.IH_ALWAYS => true | _ => false)
+			"3" $ [option (list lty) (Option.map strip isrec),
+			       bool b1, bool b2, bool known,
+			       bool (isAlways inline)]
 		  | LK.FF_FIXED =>
-			"4" $ option (list lty) (Option.map (fn (x,y) => x) isrec) &
-			bool known &
-			bool (case inline of F.IH_ALWAYS => true | _ => false)
+			"4" $ [option (list lty) (Option.map strip isrec),
+			       bool known, bool (isAlways inline)]
 	in
 	    fk arg
 	end
 
 	and rkind arg = let
 	    val op $ = PU.$ RK
-	    fun rk (F.RK_VECTOR tc) = "5" $ tyc tc
-	      | rk F.RK_STRUCT = %RK "6"
-	      | rk (F.RK_TUPLE _) = %RK "7"
+	    fun rk (F.RK_VECTOR tc) = "5" $ [tyc tc]
+	      | rk F.RK_STRUCT = "6" $ []
+	      | rk (F.RK_TUPLE _) = "7" $ []
 	in
 	    rk arg
 	end
@@ -662,24 +655,24 @@ in
 	    val op $ = PU.$ ST
 	in
 	    case scope of
-		Stamps.LOCAL => "A" $ int (alphaConvert count)
+		Stamps.LOCAL => "A" $ [int (alphaConvert count)]
 	      | Stamps.GLOBAL p =>
-		    if isLocalPid p then "A" $ int count
-		    else "B" $ pid p & int count
-	      | Stamps.SPECIAL s => "C" $ string s & int count
+		    if isLocalPid p then "A" $ [int count]
+		    else "B" $ [pid p, int count]
+	      | Stamps.SPECIAL s => "C" $ [string s, int count]
 	end
 
 	val entVar = stamp
 	val entPath = list entVar
 
 	val op $ = PU.$ MI
-	fun modId (MI.STRid { rlzn, sign }) = "1" $ stamp rlzn & stamp sign
-	  | modId (MI.SIGid s) = "2" $ stamp s
-	  | modId (MI.FCTid { rlzn, sign }) = "3" $ stamp rlzn & modId sign
+	fun modId (MI.STRid { rlzn, sign }) = "1" $ [stamp rlzn, stamp sign]
+	  | modId (MI.SIGid s) = "2" $ [stamp s]
+	  | modId (MI.FCTid { rlzn, sign }) = "3" $ [stamp rlzn, modId sign]
 	  | modId (MI.FSIGid { paramsig, bodysig }) =
-	    "4" $ stamp paramsig & stamp bodysig
-	  | modId (MI.TYCid a) = "5" $ stamp a
-	  | modId (MI.EENVid s) = "6" $ stamp s
+	    "4" $ [stamp paramsig, stamp bodysig]
+	  | modId (MI.TYCid a) = "5" $ [stamp a]
+	  | modId (MI.EENVid s) = "6" $ [stamp s]
 
 	val lvcount = ref 0
 	val lvlist = ref []
@@ -695,12 +688,15 @@ in
 	val { access, conrep } = mkAccess { lvar = int o anotherLvar,
 					    isLocalPid = isLocalPid }
 
-	fun spath (SP.SPATH p) = list symbol p
-	fun ipath (IP.IPATH p) = list symbol p
+	val op $ = PU.$ SPATH
+	fun spath (SP.SPATH p) = "s" $ [list symbol p]
+	val op $ = PU.$ IPATH
+	fun ipath (IP.IPATH p) = "i" $ [list symbol p]
 
 	val label = symbol
 
 	fun eqprop eqp = let
+	    val op $ = PU.$ EQP
 	    fun eqc T.YES = "\000"
 	      | eqc T.NO = "\001"
 	      | eqc T.IND = "\002"
@@ -709,24 +705,24 @@ in
 	      | eqc T.ABS = "\005"
 	      | eqc T.UNDEF = "\006"
 	in
-	    %EQP (eqc eqp)
+	    eqc eqp $ []
 	end
 
 	fun datacon (T.DATACON { name, const, typ, rep, sign, lazyp }) = let
 	    val op $ = PU.$ DATACON
 	in
-	    "c" $ symbol name & bool const & ty typ & conrep rep &
-	          consig sign & bool lazyp
+	    "c" $ [symbol name, bool const, ty typ, conrep rep,
+		   consig sign, bool lazyp]
 	end
 
 	and tyckind arg = let
 	    val op $ = PU.$ TYCKIND
-	    fun tk (T.PRIMITIVE pt) = "a" $ int (PT.pt_toint pt)
+	    fun tk (T.PRIMITIVE pt) = "a" $ [int (PT.pt_toint pt)]
 	      | tk (T.DATATYPE { index, family, stamps, root,freetycs }) =
-		"b" $ int index & option entVar root &
-		      dtypeInfo (stamps, family, freetycs)
-	      | tk (T.ABSTRACT tyc) = "c" $ tycon tyc
-	      | tk (T.FLEXTYC tps) = %TYCKIND "d" (* "f" $ tycpath tps *)
+		"b" $ [int index, option entVar root,
+		       dtypeInfo (stamps, family, freetycs)]
+	      | tk (T.ABSTRACT tyc) = "c" $ [tycon tyc]
+	      | tk (T.FLEXTYC tps) = "d" $ [] (* "f" $ tycpath tps *)
 	      (*** I (Matthias) carried through this message from Zhong:
 	       tycpath should never be pickled; the only way it can be
 	       pickled is when pickling the domains of a mutually 
@@ -734,8 +730,8 @@ in
 	       datatypes are not assigned accurate domains ... (ZHONG)
 	       the preceding code is just a temporary gross hack. 
 	       ***)
-	      | tk T.FORMAL = %TYCKIND "d"
-	      | tk T.TEMP = %TYCKIND "e"
+	      | tk T.FORMAL = "d" $ []
+	      | tk T.TEMP = "e" $ []
 	in
 	    tk arg
 	end
@@ -743,8 +739,8 @@ in
 	and dtypeInfo x = let
 	    val op $ = PU.$ DTI
 	    fun dti_raw (ss, family, freetycs) =
-		"a" $ list stamp (Vector.foldr (op ::) [] ss) &
-		      dtFamily family & list tycon freetycs
+		"a" $ [list stamp (Vector.foldr (op ::) [] ss),
+		       dtFamily family, list tycon freetycs]
 	in
 	    share (DTs (Vector.sub (#1 x, 0))) dti_raw x
 	end
@@ -752,8 +748,8 @@ in
 	and dtFamily x = let
 	    val op $ = PU.$ DTF
 	    fun dtf_raw { mkey, members, lambdatyc } =
-		"b" $ stamp mkey &
-		      list dtmember (Vector.foldr (op ::) [] members)
+		"b" $ [stamp mkey,
+		       list dtmember (Vector.foldr (op ::) [] members)]
 	in
 	    share (MBs (#mkey x)) dtf_raw x
 	end
@@ -761,14 +757,14 @@ in
 	and dtmember { tycname, dcons, arity, eq = ref e, lazyp, sign } = let
 	    val op $ = PU.$ DTMEM
 	in
-	    "c" $ symbol tycname & list nameRepDomain dcons & int arity &
-	          eqprop e & bool lazyp & consig sign
+	    "c" $ [symbol tycname, list nameRepDomain dcons, int arity,
+		   eqprop e, bool lazyp, consig sign]
 	end
 
 	and nameRepDomain { name, rep, domain } = let
 	    val op $ = PU.$ NRD
 	in
-	    "d" $ symbol name & conrep rep & option ty domain
+	    "d" $ [symbol name, conrep rep, option ty domain]
 	end
 
 	and tycon arg = let
@@ -777,12 +773,12 @@ in
 		let val id = MI.TYCid (#stamp x)
 		    fun gt_raw { stamp = s, arity, eq = ref eq, kind, path } =
 			case lookTYC id of
-			    SimpleStub => "A" $ modId id
-			  | NoStub => "B" $ stamp s & int arity & eqprop eq &
-				            tyckind kind & ipath path
-			  | PrimStub s => "I" $ string s & modId id
+			    SimpleStub => "A" $ [modId id]
+			  | NoStub => "B" $ [stamp s, int arity, eqprop eq,
+					     tyckind kind, ipath path]
+			  | PrimStub s => "I" $ [string s, modId id]
 			  | NodeStub (i, s) =>
-					    "J" $ int i & symbol s & modId id
+				"J" $ [int i, symbol s, modId id]
 		in
 		    share (MIs (id, NONE)) gt_raw x
 		end
@@ -791,18 +787,18 @@ in
 			val { stamp = s, tyfun, strict, path } = x
 			val T.TYFUN { arity, body } = tyfun
 		    in
-			"C" $ stamp s & int arity & ty body &
-			      list bool strict & ipath path
+			"C" $ [stamp s, int arity, ty body,
+			       list bool strict, ipath path]
 		    end
 		in
 		    share (MIs (MI.TYCid (#stamp x), NONE)) dt_raw x
 		end
 	      | tc (T.PATHtyc { arity, entPath = ep, path }) =
-		"D" $ int arity & entPath ep & ipath path
-	      | tc (T.RECORDtyc l) = "E" $ list label l
-	      | tc (T.RECtyc i) = "F" $ int i
-	      | tc (T.FREEtyc i) = "G" $ int i
-	      | tc T.ERRORtyc = %TC "H"
+		"D" $ [int arity, entPath ep, ipath path]
+	      | tc (T.RECORDtyc l) = "E" $ [list label l]
+	      | tc (T.RECtyc i) = "F" $ [int i]
+	      | tc (T.FREEtyc i) = "G" $ [int i]
+	      | tc T.ERRORtyc = "H" $ []
 	in
 	    tc arg
 	end
@@ -812,35 +808,35 @@ in
 	    fun ty (T.VARty (ref (T.INSTANTIATED t))) = ty t
 	      | ty (T.VARty (ref (T.OPEN _))) =
 		bug "uninstantiated VARty in pickmod"
-	      | ty (T.CONty (c, l)) = "a" $ tycon c & list ty l
-	      | ty (T.IBOUND i) = "b" $ int i
-	      | ty T.WILDCARDty = %T "c"
+	      | ty (T.CONty (c, l)) = "a" $ [tycon c, list ty l]
+	      | ty (T.IBOUND i) = "b" $ [int i]
+	      | ty T.WILDCARDty = "c" $ []
 	      | ty (T.POLYty { sign, tyfun = T.TYFUN { arity, body } }) =
-		"d" $ list bool sign & int arity & ty body
-	      | ty T.UNDEFty = %T "e"
+		"d" $ [list bool sign, int arity, ty body]
+	      | ty T.UNDEFty = "e" $ []
 	      | ty _ = bug "unexpected type in pickmod-ty"
 	in
 	    ty arg
 	end
 
 	val op $ = PU.$ II
-	fun inl_info (II.INL_PRIM (p, t)) = "A" $ primop p & option ty t
-	  | inl_info (II.INL_STR sl) = "B" $ list inl_info sl
-	  | inl_info II.INL_NO = %II "C"
+	fun inl_info (II.INL_PRIM (p, t)) = "A" $ [primop p, option ty t]
+	  | inl_info (II.INL_STR sl) = "B" $ [list inl_info sl]
+	  | inl_info II.INL_NO = "C" $ []
 	  | inl_info _ = bug "unexpected inl_info in pickmod"
 
 	val op $ = PU.$ VAR
 	fun var (V.VALvar { access = a, info, path, typ = ref t }) =
-	    "1" $ access a & inl_info info & spath path & ty t
+	    "1" $ [access a, inl_info info, spath path, ty t]
 	  | var (V.OVLDvar { name, options = ref p,
 			     scheme = T.TYFUN { arity, body } }) =
-	    "2" $ symbol name & list overld p & int arity & ty body
-	  | var V.ERRORvar = %VAR "3"
+	    "2" $ [symbol name, list overld p, int arity, ty body]
+	  | var V.ERRORvar = "3" $ []
 
 	and overld { indicator, variant } = let
 	    val op $ = PU.$ OVERLD
 	in
-	    "o" $ ty indicator & var variant
+	    "o" $ [ty indicator, var variant]
 	end
 
 	fun fsigId (M.FSIG { paramsig = M.SIG { stamp = ps, ... },
@@ -851,8 +847,8 @@ in
 
 	fun strDef arg = let
 	    val op $ = PU.$ SD
-	    fun sd (M.CONSTstrDef s) = "C" $ Structure s
-	      | sd (M.VARstrDef (s, p)) = "V" $ Signature s & entPath p
+	    fun sd (M.CONSTstrDef s) = "C" $ [Structure s]
+	      | sd (M.VARstrDef (s, p)) = "V" $ [Signature s, entPath p]
 	in
 	    sd arg
 	end
@@ -863,7 +859,7 @@ in
 	 *)
 	and Signature arg = let
 	    val op $ = PU.$ SG
-	    fun sg  M.ERRORsig = %SG "A"
+	    fun sg  M.ERRORsig = "A" $ []
 	      | sg (M.SIG x) = let
 		    val id = MI.SIGid (#stamp x)
 		    fun sig_raw x = let
@@ -873,18 +869,18 @@ in
 			val b = NONE		(* currently turned off *)
 		    in
 			case lookSIG id of
-			    SimpleStub => "B" $ modId id
+			    SimpleStub => "B" $ [modId id]
 			  | NoStub =>
-				"C" $ option symbol name & bool closed &
-				      bool fctflag & stamp sta &
-				      list symbol symbols &
-				      list (pair (symbol, spec)) elements &
-				      option (list (pair (entPath, tkind))) b &
-				      list (list spath) typsharing &
-				      list (list spath) strsharing
-			  | PrimStub s => "D" $ string s & modId id
+				"C" $ [option symbol name, bool closed,
+				       bool fctflag, stamp sta,
+				       list symbol symbols,
+				       list (pair (symbol, spec)) elements,
+				       option (list (pair (entPath, tkind))) b,
+				       list (list spath) typsharing,
+				       list (list spath) strsharing]
+			  | PrimStub s => "D" $ [string s, modId id]
 			  | NodeStub (i, s) =>
-				      "E" $ int i & symbol s & modId id
+				"E" $ [int i, symbol s, modId id]
 		    end
 		in
 		    share (MIs (id, NONE)) sig_raw x
@@ -895,22 +891,22 @@ in
 
 	and fctSig arg = let
 	    val op $ = PU.$ FSG
-	    fun fsg M.ERRORfsig = %FSG "a"
+	    fun fsg M.ERRORfsig = "a" $ []
 	      | fsg (fs as M.FSIG x) = let
 		    val id = fsigId fs
 		    fun fsig_raw x = let
 			val { kind, paramsig, paramvar, paramsym, bodysig } = x
 		    in
 			case lookFSIG id of
-			    SimpleStub => "b" $ modId id
+			    SimpleStub => "b" $ [modId id]
 			  | NoStub =>
-				"c" $ option symbol kind & Signature paramsig &
-				      entVar paramvar &
-				      option symbol paramsym &
-				      Signature bodysig
-			  | PrimStub s => "d" $ string s & modId id
+				"c" $ [option symbol kind, Signature paramsig,
+				       entVar paramvar,
+				       option symbol paramsym,
+				       Signature bodysig]
+			  | PrimStub s => "d" $ [string s, modId id]
 			  | NodeStub (i, s) =>
-				      "e" $ int i & symbol s & modId id
+				"e" $ [int i, symbol s, modId id]
 		    end
 		in
 		    share (MIs (id, NONE)) fsig_raw x
@@ -922,25 +918,25 @@ in
 	and spec arg = let
 	    val op $ = PU.$ SP
 	    fun sp (M.TYCspec { spec = t, entVar = v, repl, scope }) =
-		"1" $ tycon t & entVar v & bool repl & int scope
+		"1" $ [tycon t, entVar v, bool repl, int scope]
 	      | sp (M.STRspec { sign, slot, def, entVar = v }) =
-		"2" $ Signature sign & int slot &
-		      option (pair (strDef, int)) def & entVar v
+		"2" $ [Signature sign, int slot,
+		       option (pair (strDef, int)) def, entVar v]
 	      | sp (M.FCTspec { sign, slot, entVar = v }) =
-		"3" $ fctSig sign & int slot & entVar v
-	      | sp (M.VALspec { spec = t, slot }) = "4" $ ty t & int slot
+		"3" $ [fctSig sign, int slot, entVar v]
+	      | sp (M.VALspec { spec = t, slot }) = "4" $ [ty t, int slot]
 	      | sp (M.CONspec { spec = c, slot }) =
-		"5" $ datacon c & option int slot
+		"5" $ [datacon c, option int slot]
 	in
 	    sp arg
 	end
 
 	and entity arg = let
 	    val op $ = PU.$ EN
-	    fun en (M.TYCent t) = "A" $ tycEntity t
-	      | en (M.STRent t) = "B" $ strEntity t
-	      | en (M.FCTent t) = "C" $ fctEntity t
-	      | en M.ERRORent = %EN "D"
+	    fun en (M.TYCent t) = "A" $ [tycEntity t]
+	      | en (M.STRent t) = "B" $ [strEntity t]
+	      | en (M.FCTent t) = "C" $ [fctEntity t]
+	      | en M.ERRORent = "D" $ []
 	in
 	    en arg
 	end
@@ -948,26 +944,26 @@ in
 	and fctClosure (M.CLOSURE { param, body, env }) = let
 	    val op $ = PU.$ FCTC
 	in
-	    "f" $ entVar param & strExp body & entityEnv env
+	    "f" $ [entVar param, strExp body, entityEnv env]
 	end
 
 	and Structure arg = let
 	    val op $ = PU.$ STR
 	    fun str (M.STRSIG { sign, entPath = p }) =
-		"A" $ Signature sign & entPath p
-	      | str M.ERRORstr = %STR "B"
+		"A" $ [Signature sign, entPath p]
+	      | str M.ERRORstr = "B" $ []
 	      | str (M.STR (x as { sign = M.SIG sign, ... })) = let
 		    val id = MI.STRid { rlzn = #stamp (#rlzn x),
 				        sign = #stamp sign }
 		    fun s_raw { sign, rlzn, access = a, info } =
 			case lookSTR id of
-			    SimpleStub => "C" $ modId id & access a
+			    SimpleStub => "C" $ [modId id, access a]
 			  | NoStub =>
-				"D" $ Signature sign & strEntity rlzn &
-				      access a & inl_info info
-			  | PrimStub s => "I" $ string s & modId id
+				"D" $ [Signature sign, strEntity rlzn,
+				       access a, inl_info info]
+			  | PrimStub s => "I" $ [string s, modId id]
 			  | NodeStub (i, s) =>
-				 "J" $ int i & symbol s & modId id & access a
+				 "J" $ [int i, symbol s, modId id, access a]
 		in
 		    share (MIs (id, acc_pid (#access x))) s_raw x
 		end
@@ -978,19 +974,19 @@ in
 
 	and Functor arg = let
 	    val op $ = PU.$ F
-	    fun fct M.ERRORfct = %F "E"
+	    fun fct M.ERRORfct = "E" $ []
 	      | fct (M.FCT x) = let
 		    val id = MI.FCTid { rlzn = #stamp (#rlzn x),
 				        sign = fsigId (#sign x) }
 		    fun f_raw { sign, rlzn, access = a, info } =
 			case lookFCT id of
-			    SimpleStub => "F" $ modId id & access a
+			    SimpleStub => "F" $ [modId id, access a]
 			  | NoStub =>
-				"G" $ fctSig sign & fctEntity rlzn &
-				      access a & inl_info info
-			  | PrimStub s => "H" $ string s & modId id
+				"G" $ [fctSig sign, fctEntity rlzn,
+				       access a, inl_info info]
+			  | PrimStub s => "H" $ [string s, modId id]
 			  | NodeStub (i, s) =>
-				"I" $ int i & symbol s & modId id & access a
+				"I" $ [int i, symbol s, modId id, access a]
 		in
 		    share (MIs (id, acc_pid (#access x))) f_raw x
 		end
@@ -998,63 +994,63 @@ in
 	    fct arg
 	end
 
-	and stampExp (M.CONST s) = PU.$ STE ("a", stamp s)
-	  | stampExp (M.GETSTAMP s) = PU.$ STE ("b", strExp s)
-	  | stampExp M.NEW = %STE "c"
+	and stampExp (M.CONST s) = PU.$ STE ("a", [stamp s])
+	  | stampExp (M.GETSTAMP s) = PU.$ STE ("b", [strExp s])
+	  | stampExp M.NEW = "c" $ []
 
-        and tycExp (M.CONSTtyc t) = PU.$ TCE ("d", tycon t)
-	  | tycExp (M.FORMtyc t) = PU.$ TCE ("e", tycon t)
-	  | tycExp (M.VARtyc s) = PU.$ TCE ("f", entPath s)
+        and tycExp (M.CONSTtyc t) = PU.$ TCE ("d", [tycon t])
+	  | tycExp (M.FORMtyc t) = PU.$ TCE ("e", [tycon t])
+	  | tycExp (M.VARtyc s) = PU.$ TCE ("f", [entPath s])
 
         and strExp arg = let
 	    val op $ = PU.$ STRE
-	    fun stre (M.VARstr s) = "g" $ entPath s
-	      | stre (M.CONSTstr s) = "h" $ strEntity s
+	    fun stre (M.VARstr s) = "g" $ [entPath s]
+	      | stre (M.CONSTstr s) = "h" $ [strEntity s]
 	      | stre (M.STRUCTURE { stamp = s, entDec }) =
-		"i" $ stampExp s & entityDec entDec
-	      | stre (M.APPLY (f, s)) = "j" $ fctExp f & strExp s
-	      | stre (M.LETstr (e, s)) = "k" $ entityDec e & strExp s
-	      | stre (M.ABSstr (s, e)) = "l" $ Signature s & strExp e
+		"i" $ [stampExp s, entityDec entDec]
+	      | stre (M.APPLY (f, s)) = "j" $ [fctExp f, strExp s]
+	      | stre (M.LETstr (e, s)) = "k" $ [entityDec e, strExp s]
+	      | stre (M.ABSstr (s, e)) = "l" $ [Signature s, strExp e]
 	      | stre (M.CONSTRAINstr { boundvar, raw, coercion }) =
-		"m" $ entVar boundvar & strExp raw & strExp coercion
-	      | stre (M.FORMstr fs) = "n" $ fctSig fs
+		"m" $ [entVar boundvar, strExp raw, strExp coercion]
+	      | stre (M.FORMstr fs) = "n" $ [fctSig fs]
 	in
 	    stre arg
 	end
 
         and fctExp arg = let
 	    val op $ = PU.$ FE
-	    fun fe (M.VARfct s) = "o" $ entPath s
-	      | fe (M.CONSTfct e) = "p" $ fctEntity e
+	    fun fe (M.VARfct s) = "o" $ [entPath s]
+	      | fe (M.CONSTfct e) = "p" $ [fctEntity e]
 	      | fe (M.LAMBDA { param, body }) =
-		"q" $ entVar param & strExp body
+		"q" $ [entVar param, strExp body]
 	      | fe (M.LAMBDA_TP { param, body, sign }) =
-		"r" $ entVar param & strExp body & fctSig sign
-	      | fe (M.LETfct (e, f)) = "s" $ entityDec e & fctExp f
+		"r" $ [entVar param, strExp body, fctSig sign]
+	      | fe (M.LETfct (e, f)) = "s" $ [entityDec e, fctExp f]
 	in
 	    fe arg
 	end
 
         and entityExp arg = let
 	    val op $ = PU.$ EE
-	    fun ee (M.TYCexp t) = "t" $ tycExp t
-	      | ee (M.STRexp s) = "u" $ strExp s
-	      | ee (M.FCTexp f) = "v" $ fctExp f
-	      | ee M.ERRORexp = %EE "w"
-	      | ee M.DUMMYexp = %EE "x"
+	    fun ee (M.TYCexp t) = "t" $ [tycExp t]
+	      | ee (M.STRexp s) = "u" $ [strExp s]
+	      | ee (M.FCTexp f) = "v" $ [fctExp f]
+	      | ee M.ERRORexp = "w" $ []
+	      | ee M.DUMMYexp = "x" $ []
 	in
 	    ee arg
 	end
 
         and entityDec arg = let
 	    val op $ = PU.$ ED
-	    fun ed (M.TYCdec (s, x)) = "A" $ entVar s & tycExp x
-	      | ed (M.STRdec (s, x, n)) = "B" $ entVar s & strExp x & symbol n
-	      | ed (M.FCTdec (s, x)) = "C" $ entVar s & fctExp x
-	      | ed (M.SEQdec e) = "D" $ list entityDec e
-	      | ed (M.LOCALdec (a, b)) = "E" $ entityDec a & entityDec b
-	      | ed M.ERRORdec = %ED "F"
-	      | ed M.EMPTYdec = %ED "G"
+	    fun ed (M.TYCdec (s, x)) = "A" $ [entVar s, tycExp x]
+	      | ed (M.STRdec (s, x, n)) = "B" $ [entVar s, strExp x, symbol n]
+	      | ed (M.FCTdec (s, x)) = "C" $ [entVar s, fctExp x]
+	      | ed (M.SEQdec e) = "D" $ [list entityDec e]
+	      | ed (M.LOCALdec (a, b)) = "E" $ [entityDec a, entityDec b]
+	      | ed M.ERRORdec = "F" $ []
+	      | ed M.EMPTYdec = "G" $ []
 	in
 	    ed arg
 	end
@@ -1064,46 +1060,46 @@ in
 		val id = MI.EENVid s
 		fun mee_raw (s, r) =
 		    case lookEENV id of
-			SimpleStub => "D" $ modId id
-		      | NoStub => "E" $ stamp s & entityEnv r
-		      | PrimStub s => "F" $ string s & modId id
-		      | NodeStub (i, s) => "G" $ int i & symbol s & modId id
+			SimpleStub => "D" $ [modId id]
+		      | NoStub => "E" $ [stamp s, entityEnv r]
+		      | PrimStub s => "F" $ [string s,  modId id]
+		      | NodeStub (i, s) => "G" $ [int i, symbol s, modId id]
 	    in
 		share (MIs (id, NONE)) mee_raw (s, r)
 	    end
 	  | entityEnv (M.BINDeenv (d, r)) =
-	    PU.$ EEV ("A", list (pair (entVar, entity)) (ED.listItemsi d) &
-		           entityEnv r)
-	  | entityEnv M.NILeenv = %EEV "B"
-	  | entityEnv M.ERReenv = %EEV "C"
+	    PU.$ EEV ("A", [list (pair (entVar, entity)) (ED.listItemsi d),
+		           entityEnv r])
+	  | entityEnv M.NILeenv = "B" $ []
+	  | entityEnv M.ERReenv = "C" $ []
 
         and strEntity { stamp = s, entities, lambdaty = _, rpath } = let
 	    val op $ = PU.$ SEN
 	in
-	    "s" $ stamp s & entityEnv entities & ipath rpath
+	    "s" $ [stamp s, entityEnv entities, ipath rpath]
 	end
 
         and fctEntity fe = let
 	    val op $ = PU.$ FEN
 	    val { stamp = s, closure, lambdaty = _, tycpath = _, rpath } = fe
 	in
-	    "f" $ stamp s & fctClosure closure & ipath rpath
+	    "f" $ [stamp s, fctClosure closure, ipath rpath]
 	end
 
         and tycEntity x = tycon x
 
-        fun fixity Fixity.NONfix = %FX "N"
-	  | fixity (Fixity.INfix (i, j)) = PU.$ FX ("I", int i & int j)
+        fun fixity Fixity.NONfix = "N" $ []
+	  | fixity (Fixity.INfix (i, j)) = PU.$ FX ("I", [int i, int j])
 
 	val op $ = PU.$ B
-	fun binding (B.VALbind x) = "1" $ var x
-	  | binding (B.CONbind x) = "2" $ datacon x
-	  | binding (B.TYCbind x) = "3" $ tycon x
-	  | binding (B.SIGbind x) = "4" $ Signature x
-	  | binding (B.STRbind x) = "5" $ Structure x
-	  | binding (B.FSGbind x) = "6" $ fctSig x
-	  | binding (B.FCTbind x) = "7" $ Functor x
-	  | binding (B.FIXbind x) = "8" $ fixity x
+	fun binding (B.VALbind x) = "1" $ [var x]
+	  | binding (B.CONbind x) = "2" $ [datacon x]
+	  | binding (B.TYCbind x) = "3" $ [tycon x]
+	  | binding (B.SIGbind x) = "4" $ [Signature x]
+	  | binding (B.STRbind x) = "5" $ [Structure x]
+	  | binding (B.FSGbind x) = "6" $ [fctSig x]
+	  | binding (B.FCTbind x) = "7" $ [Functor x]
+	  | binding (B.FIXbind x) = "8" $ [fixity x]
 
 	fun env e = let
 	    val syms = ListMergeSort.uniqueSort symCmp (Env.symbols e)
