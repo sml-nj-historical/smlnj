@@ -14,8 +14,8 @@ signature BININFO = sig
     type complainer = GenericVC.ErrorMsg.complainer
     type region = GenericVC.SourceMap.region
 
-    val new : { group: AbsPath.t,
-	        stablepath: AbsPath.t,
+    val new : { group: SrcPath.t,
+	        stablename: string,
 	        error: complainer,
 		spec: string,
 		offset: int,
@@ -24,8 +24,8 @@ signature BININFO = sig
     val compare : info * info -> order
     val describe : info -> string
     val offset : info -> int
-    val group : info -> AbsPath.t
-    val stablepath : info -> AbsPath.t
+    val group : info -> SrcPath.t
+    val stablename : info -> string
     val share : info -> bool option
     val error : info -> complainer
 end
@@ -36,8 +36,8 @@ structure BinInfo :> BININFO = struct
     type region = GenericVC.SourceMap.region
 
     datatype info =
-	INFO of { group: AbsPath.t,
-		  stablepath: AbsPath.t,
+	INFO of { group: SrcPath.t,
+		  stablename: string,
 		  spec: string,
 		  offset: int,
 		  share: bool option,
@@ -49,16 +49,16 @@ structure BinInfo :> BININFO = struct
 
     fun compare (INFO i, INFO i') =
 	case Int.compare (#offset i, #offset i') of
-	    EQUAL => AbsPath.compare (#group i, #group i')
+	    EQUAL => SrcPath.compare (#group i, #group i')
 	  | unequal => unequal
 
     fun describe (INFO { group, spec, offset, ... }) =
-	concat [AbsPath.name group, "@", Int.toString offset, "(", spec, ")"]
+	concat [SrcPath.descr group, "@", Int.toString offset, "(", spec, ")"]
 
     fun group (INFO { group = g, ... }) = g
     fun offset (INFO { offset = os, ... }) = os
     fun share (INFO { share = s, ... }) = s
-    fun stablepath (INFO { stablepath = sp, ... }) = sp
+    fun stablename (INFO { stablename = sn, ... }) = sn
 
     fun error (INFO { error = e, ... }) = e
 end

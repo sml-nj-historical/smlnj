@@ -63,7 +63,7 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC) :> FULL_PERSSTATE =
 	fun (f o' g) (x, y) = f (g x, y)
 
 	fun exec_look (k, gp) = let
-	    fun descr (SML i) = SmlInfo.name i
+	    fun descr (SML i) = SmlInfo.descr i
 	      | descr (STABLE i) = BinInfo.describe i
 	    fun error (SML i) = SmlInfo.error gp i
 	      | error (STABLE i) = BinInfo.error i

@@ -7,8 +7,8 @@
  *)
 signature CM_SEMANT = sig
 
-    type context = AbsPath.context
-    type pathname = AbsPath.t
+    type context = SrcPath.context
+    type pathname = SrcPath.t
     type region = GenericVC.SourceMap.region
     type ml_symbol
     type cm_symbol
@@ -100,8 +100,8 @@ structure CMSemant :> CM_SEMANT = struct
     structure EM = GenericVC.ErrorMsg
     structure GG = GroupGraph
 
-    type pathname = AbsPath.t
-    type context = AbsPath.context
+    type pathname = SrcPath.t
+    type context = SrcPath.context
     type region = GenericVC.SourceMap.region
     type ml_symbol = Symbol.symbol
     type cm_symbol = string
@@ -124,9 +124,9 @@ structure CMSemant :> CM_SEMANT = struct
 	    (error ("expression raises exception: " ^ General.exnMessage exn);
 	     false)
 
-    fun file_native (s, d) = AbsPath.native { context = d, spec = s }
+    fun file_native (s, d) = SrcPath.native { context = d, spec = s }
     fun file_standard (gp: GeneralParams.info) (s, d) =
-	AbsPath.standard (#pcmode (#param gp)) { context = d, spec = s }
+	SrcPath.standard (#pcmode (#param gp)) { context = d, spec = s }
     fun cm_symbol s = s
     val ml_structure = Symbol.strSymbol
     val ml_signature = Symbol.sigSymbol
@@ -144,7 +144,7 @@ structure CMSemant :> CM_SEMANT = struct
 
     fun sgl2sll subgroups = let
 	fun sameSL (_, GG.GROUP g) (_, GG.GROUP g') =
-	    AbsPath.compare (#grouppath g, #grouppath g') = EQUAL
+	    SrcPath.compare (#grouppath g, #grouppath g') = EQUAL
 	fun add (x, l) =
 	    if List.exists (sameSL x) l then l else x :: l
 	fun oneSG (x as (_, GG.GROUP { kind, sublibs, ... }), l) =

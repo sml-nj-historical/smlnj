@@ -128,8 +128,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
     structure CM = struct
 
 	fun run sflag f s = let
-	    val c = AbsPath.cwdContext ()
-	    val p = AbsPath.native { context = c, spec = s }
+	    val c = SrcPath.cwdContext ()
+	    val p = SrcPath.native { context = c, spec = s }
 	    val { mod = basis, nomod = perv } = split (#get ER.pervasive ())
 	    val corenv = #get ER.core ()
 	    val bpspec = let
@@ -175,8 +175,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	    BootstrapCompile.compile
 	        { binroot = "xxx.bin.xxx",
 		  pcmodespec = "pathconfig",
-		  initgspec = "Init/spec.cmi",
-		  maingspec = "Libs/main.cm",
+		  initgspec = "spec.cmi",
+		  maingspec = "root.cm",
 		  stabilize = st }
 	fun setRetargetPervStatEnv x = ()
 	fun wipeOut () = ()

@@ -1,0 +1,29 @@
+(*
+ * Pathname handling for CM.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+Group
+	signature PATHCONFIG
+	structure PathConfig
+	signature SRCPATH
+	structure SrcPath
+	structure SrcPathMap
+	structure SrcPathSet
+is
+	pathconfig.sml
+	abspath.sml
+	abspathmap.sml
+	srcpath.sml
+	srcpathmap.sml
+	srcpathset.sml
+
+	../util/sources.cm
+#if defined(NEW_CM)
+	basis.cm
+	viscomp-lib.cm
+#else
+	../../compiler/viscomp-lib.cm
+#endif

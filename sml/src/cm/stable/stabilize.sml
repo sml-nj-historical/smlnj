@@ -21,8 +21,8 @@ in
 signature STABILIZE = sig
 
     val loadStable :
-	GP.info * (AbsPath.t -> GG.group option) * bool ref ->
-	AbsPath.t -> GG.group option
+	GP.info * (SrcPath.t -> GG.group option) * bool ref ->
+	SrcPath.t -> GG.group option
 
     val stabilize :
 	GP.info -> { group: GG.group, anyerrors: bool ref } ->
@@ -62,7 +62,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	fun add (((_, DG.SB_BNODE (n as DG.BNODE b)), _), m) = let
 	    val i = #bininfo b
 	in
-	    if AbsPath.compare (BinInfo.group i, group) = EQUAL then
+	    if SrcPath.compare (BinInfo.group i, group) = EQUAL then
 		IntBinaryMap.insert (m, BinInfo.offset i, n)
 	    else m
 	end
@@ -87,7 +87,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			     :: map (fn s => ("  " ^ s ^ "\n"))
 			            (StringSet.listItems wrapped))
 
-	    val bname = AbsPath.name o SmlInfo.binpath
+	    val bname = SmlInfo.binname
 	    val bsz = OS.FileSys.fileSize o bname
 
 	    fun cpb s i = let
@@ -227,7 +227,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		 * within libraries.  However, the spec in BinInfo.info
 		 * is only used for diagnostics and has no impact on the
 		 * operation of CM itself. *)
-		val spec = AbsPath.specOf (SmlInfo.sourcepath i)
+		val spec = SrcPath.specOf (SmlInfo.sourcepath i)
 		val locs = SmlInfo.errorLocation gp i
 		val offset = registerOffset (i, bsz i)
 	    in
@@ -244,7 +244,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		val relabs = if abs then "absolute" else "relative"
 		fun ppb pps =
 		    (PP.add_newline pps;
-		     PP.add_string pps (AbsPath.name p);
+		     PP.add_string pps (SrcPath.descr p);
 		     PP.add_newline pps;
 		     PP.add_string pps
     "(This means that in order to be able to use the result of stabilization";
@@ -256,14 +256,14 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    in
 		EM.errorNoFile (#errcons gp, anyerrors) SM.nullRegion
 		    EM.WARN
-		    (concat [AbsPath.name grouppath,
+		    (concat [SrcPath.descr grouppath,
 			     ": library referred to by ", relabs,
 			     " pathname:"])
 		    ppb
 	    end
 
 	    fun w_abspath p k m =
-		w_list w_string (AbsPath.pickle (warn_relabs p) (p, grouppath))
+		w_list w_string (SrcPath.pickle (warn_relabs p) (p, grouppath))
 		                k m
 
 	    fun w_bn (DG.PNODE p) k m = "p" :: w_primitive p k m
@@ -310,7 +310,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    val sz = size pickle
 	    val offset_adjustment = sz + 4
 
-	    fun mkStableGroup spath = let
+	    fun mkStableGroup sname = let
 		val m = ref SmlInfoMap.empty
 		fun sn (DG.SNODE (n as { smlinfo, ... })) =
 		    case SmlInfoMap.find (!m, smlinfo) of
@@ -320,15 +320,15 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			    val gi = map fsbn (#globalimports n)
 			    val sourcepath = SmlInfo.sourcepath smlinfo
 			    (* FIXME: see the comment near the other
-			     * occurence of AbsPath.spec... *)
-			    val spec = AbsPath.specOf sourcepath
+			     * occurence of SrcPath.spec... *)
+			    val spec = SrcPath.specOf sourcepath
 			    val offset =
 				getOffset smlinfo + offset_adjustment
 			    val share = SmlInfo.share smlinfo
 			    val locs = SmlInfo.errorLocation gp smlinfo
 			    val error = EM.errorNoSource grpSrcInfo locs
 			    val i = BinInfo.new { group = grouppath,
-						  stablepath = spath,
+						  stablename = sname,
 						  spec = spec,
 						  offset = offset,
 						  share = share,
@@ -367,18 +367,19 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    val memberlist = rev (!members)
 
 	    val gpath = #grouppath grec
-	    val spath = FilenamePolicy.mkStablePath policy gpath
+	    val sname = FilenamePolicy.mkStableName policy gpath
 	    fun work outs =
-		(Say.vsay ["[stabilizing ", AbsPath.name gpath, "]\n"];
+		(Say.vsay ["[stabilizing ", SrcPath.descr gpath, "]\n"];
 		 writeInt32 (outs, sz);
 		 BinIO.output (outs, Byte.stringToBytes pickle);
 		 app (cpb outs) memberlist;
-		 mkStableGroup spath)
+		 mkStableGroup sname)
 	in
-	    SOME (SafeIO.perform { openIt = fn () => AbsPath.openBinOut spath,
+	    SOME (SafeIO.perform { openIt = fn () => AutoDir.openBinOut sname,
 				   closeIt = BinIO.closeOut,
 				   work = work,
-				   cleanup = fn () => AbsPath.delete spath })
+				   cleanup = fn () =>
+				    (OS.FileSys.remove sname handle _ => ()) })
 	    handle exn => NONE
 	end
     in
@@ -401,9 +402,9 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 				  | loop ((p, GG.GROUP { grouppath, ... })
 					  :: t) =
 				    (PP.add_string pps
-				        (AbsPath.name grouppath);
+				        (SrcPath.descr grouppath);
 				     PP.add_string pps " (";
-				     PP.add_string pps (AbsPath.name p);
+				     PP.add_string pps (SrcPath.descr p);
 				     PP.add_string pps ")";
 				     PP.add_newline pps;
 				     loop t)
@@ -416,11 +417,11 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 				loop l
 			    end
 			    val errcons = #errcons gp
-			    val gname = AbsPath.name (#grouppath grec)
+			    val gdescr = SrcPath.descr (#grouppath grec)
 			in
 			    EM.errorNoFile (errcons, anyerrors) SM.nullRegion
 			       EM.COMPLAIN
-			       (gname ^ " cannot be stabilized")
+			       (gdescr ^ " cannot be stabilized")
 			       ppb;
 			    NONE
 			end
@@ -433,24 +434,24 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
 	val errcons = #errcons gp
 	val grpSrcInfo = (errcons, anyerrors)
-	val gname = AbsPath.name group
+	val gdescr = SrcPath.descr group
 	fun error l = EM.errorNoFile (errcons, anyerrors) SM.nullRegion
-	    EM.COMPLAIN (concat (gname :: ": " :: l)) EM.nullErrorBody
+	    EM.COMPLAIN (concat (gdescr :: ": " :: l)) EM.nullErrorBody
 
 	exception Format
 
 	val pcmode = #pcmode (#param gp)
 	val policy = #fnpolicy (#param gp)
 	val primconf = #primconf (#param gp)
-	val spath = FilenamePolicy.mkStablePath policy group
-	val _ = Say.vsay ["[checking stable ", gname, "]\n"]
+	val sname = FilenamePolicy.mkStableName policy group
+	val _ = Say.vsay ["[checking stable ", gdescr, "]\n"]
 
 	fun work s = let
 
 	    fun getGroup' p =
 		case getGroup p of
 		    SOME g => g
-		  | NONE => (error ["unable to find ", AbsPath.name p];
+		  | NONE => (error ["unable to find ", SrcPath.descr p];
 			     raise Format)
 
 	    (* for getting sharing right... *)
@@ -541,7 +542,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    end
 
 	    fun r_abspath () =
-		case AbsPath.unpickle pcmode (r_list r_string (), group) of
+		case SrcPath.unpickle pcmode (r_list r_string (), group) of
 		    SOME p => p
 		  | NONE => raise Format
 
@@ -595,7 +596,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		val error = EM.errorNoSource grpSrcInfo locs
 	    in
 		BinInfo.new { group = group,
-			      stablepath = spath,
+			      stablename = sname,
 			      error = error,
 			      spec = spec,
 			      offset = offset,
@@ -672,7 +673,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		       sublibs = sublibs }
 	end
     in
-	SOME (SafeIO.perform { openIt = fn () => AbsPath.openBinIn spath,
+	SOME (SafeIO.perform { openIt = fn () => BinIO.openIn sname,
 			       closeIt = BinIO.closeIn,
 			       work = work,
 			       cleanup = fn () => () })

@@ -8,7 +8,7 @@
 signature PARSE = sig
     val parse :
 	GeneralParams.param -> bool option ->
-	AbsPath.t -> (CMSemant.group * GeneralParams.info) option
+	SrcPath.t -> (CMSemant.group * GeneralParams.info) option
 end
 
 functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
@@ -39,15 +39,15 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 	(* The "group cache" -- we store "group options";  having
 	 * NONE registered for a group means that a previous attempt
 	 * to parse it had failed. *)
-	val gc = ref (AbsPathMap.empty: CMSemant.group option AbsPathMap.map)
+	val gc = ref (SrcPathMap.empty: CMSemant.group option SrcPathMap.map)
 
 	fun mparse (group, groupstack, pErrFlag, stabthis) =
-	    case AbsPathMap.find (!gc, group) of
+	    case SrcPathMap.find (!gc, group) of
 		SOME g => g
 	      | NONE => let
 		    val g = parse' (group, groupstack, pErrFlag, stabthis)
 		in
-		    gc := AbsPathMap.insert (!gc, group, g);
+		    gc := SrcPathMap.insert (!gc, group, g);
 		    g
 		end
 
@@ -55,7 +55,7 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 	    (* checking for cycles among groups and printing them nicely *)
 	    fun findCycle ([], _) = []
 	      | findCycle ((h as (g, (s, p1, p2))) :: t, cyc) =
-		if AbsPath.compare (g, group) = EQUAL then rev (h :: cyc)
+		if SrcPath.compare (g, group) = EQUAL then rev (h :: cyc)
 		else findCycle (t, h :: cyc)
 	    fun report ((g, (s, p1, p2)), hist) = let
 		fun pphist pps = let
@@ -65,7 +65,7 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 			in
 			    PrettyPrint.add_string pps s;
 			    PrettyPrint.add_string pps ": importing ";
-			    PrettyPrint.add_string pps (AbsPath.specOf g0);
+			    PrettyPrint.add_string pps (SrcPath.specOf g0);
 			    PrettyPrint.add_newline pps;
 			    loop (g, t)
 			end
@@ -76,7 +76,7 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 	    in
 		EM.error s (p1, p2) EM.COMPLAIN
 		           ("group hierarchy forms a cycle with " ^
-			    AbsPath.specOf group)
+			    SrcPath.specOf group)
 			   pphist
 	    end
 
@@ -99,13 +99,13 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 
 	    (* normal processing -- used when there is no cycle to report *)
 	    fun normal_processing () = let
-		val context = AbsPath.sameDirContext group
-		val filename = AbsPath.name group
-		val _ = Say.vsay ["[scanning ", filename, "]\n"]
+		val context = SrcPath.sameDirContext group
+		val _ = Say.vsay ["[scanning ", SrcPath.descr group, "]\n"]
 
 		fun work stream = let
 		    val source =
-			S.newSource (filename, 1, stream, false, errcons)
+			S.newSource (SrcPath.osstring group,
+				     1, stream, false, errcons)
 		    val sourceMap = #sourceMap source
 		    val _ = GroupReg.register groupreg (group, source)
 
@@ -238,7 +238,7 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 		end
 		val pro =
 		    SafeIO.perform { openIt =
-				        fn () => AbsPath.openTextIn group,
+				        fn () => SrcPath.openTextIn group,
 				     closeIt = TextIO.closeIn,
 				     work = work,
 				     cleanup = fn () => () }

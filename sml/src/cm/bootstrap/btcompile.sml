@@ -44,12 +44,10 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 
 	val keep_going = EnvConfig.getSet StdConfig.keep_going NONE
 
-	val ctxt = AbsPath.cwdContext ()
+	val ctxt = SrcPath.cwdContext ()
 
-	val pcmodespec = AbsPath.native { context = ctxt, spec = pcmodespec }
-	val binrootp = AbsPath.native { context = ctxt, spec = binroot }
-	val pidfile = AbsPath.joinDirFile { dir = binrootp, file = "RTPID" }
-	val listfile = AbsPath.joinDirFile { dir = binrootp, file = "BINLIST" }
+	val pidfile = OS.Path.joinDirFile { dir = binroot, file = "RTPID" }
+	val listfile = OS.Path.joinDirFile { dir = binroot, file = "BINLIST" }
 
 	val pcmode = let
 	    fun work s = let
@@ -59,7 +57,7 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 		    if line = "" then PathConfig.hardwire l
 		    else case String.tokens Char.isSpace line of
 			[a, s] => loop ((a, s) :: l)
-		      | _ => (Say.say [AbsPath.name pcmodespec,
+		      | _ => (Say.say [pcmodespec,
 				       ": malformed line (ignored)\n"];
 			      loop l)
 		end
@@ -67,13 +65,13 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 		loop []
 	    end
 	in
-	    SafeIO.perform { openIt = fn () => AbsPath.openTextIn pcmodespec,
+	    SafeIO.perform { openIt = fn () => TextIO.openIn pcmodespec,
 			     closeIt = TextIO.closeIn,
 			     work = work,
 			     cleanup = fn () => () }
 	end
 
-	fun stdpath s = AbsPath.standard pcmode { context = ctxt, spec = s }
+	fun stdpath s = SrcPath.standard pcmode { context = ctxt, spec = s }
 
 	val initgspec = stdpath initgspec
 	val maingspec = stdpath maingspec
@@ -184,27 +182,27 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 			    fun offset NONE = ["\n"]
 			      | offset (SOME i) = ["@", Int.toString i, "\n"]
 			    fun showBootFile (p, off) =
-				TextIO.output (s,
-					       concat (AbsPath.name p
-						       :: offset off))
+				TextIO.output (s, concat (p :: offset off))
 			in
 			    app showBootFile bootfiles
 			end
 		    in
 			Say.say ["Runtime System PID is: ", rtspid, "\n"];
 			SafeIO.perform { openIt = fn () =>
-					   AbsPath.openTextOut pidfile,
+					   AutoDir.openTextOut pidfile,
 					 closeIt = TextIO.closeOut,
 					 work = fn s =>
 					   TextIO.output (s, rtspid ^ "\n"),
 					 cleanup = fn () =>
-					   AbsPath.delete pidfile };
+					   OS.FileSys.remove pidfile
+					   handle _ => () };
 			SafeIO.perform { openIt = fn () =>
-					   AbsPath.openTextOut listfile,
+					   AutoDir.openTextOut listfile,
 					 closeIt = TextIO.closeOut,
 					 work = writeList,
 					 cleanup = fn () =>
-					   AbsPath.delete listfile };
+					   OS.FileSys.remove listfile
+					   handle _ => () };
 			true
 		    end
 		    else false

@@ -6,8 +6,8 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 signature SKELIO = sig
-    val read : AbsPath.t * TStamp.t -> Skeleton.decl option
-    val write : AbsPath.t * Skeleton.decl * TStamp.t -> unit
+    val read : string * TStamp.t -> Skeleton.decl option
+    val write : string * Skeleton.decl * TStamp.t -> unit
 end
 
 structure SkelIO :> SKELIO = struct
@@ -129,25 +129,25 @@ structure SkelIO :> SKELIO = struct
 	if nl = SOME #"\n" then r else raise FormatError
     end
 
-    fun read (ap, ts) =
-	if TStamp.needsUpdate { target = AbsPath.tstamp ap, source = ts } then
+    fun read (s, ts) =
+	if TStamp.needsUpdate { target = TStamp.fmodTime s, source = ts } then
 	    NONE
 	else
-	    SOME (SafeIO.perform { openIt = fn () => AbsPath.openBinIn ap,
+	    SOME (SafeIO.perform { openIt = fn () => BinIO.openIn s,
 				   closeIt = BinIO.closeIn,
 				   work = read_decl,
 				   cleanup = fn () => () })
 	    handle _ => NONE
 
-    fun write (ap, sk, ts) = let
+    fun write (s, sk, ts) = let
 	fun cleanup () =
-	    (AbsPath.delete ap;
-	     Say.say ["[writing ", AbsPath.name ap, " failed]\n"])
+	    (OS.FileSys.remove s handle _ => ();
+	     Say.say ["[writing ", s, " failed]\n"])
     in
-	SafeIO.perform { openIt = fn () => AbsPath.openBinOut ap,
+	SafeIO.perform { openIt = fn () => AutoDir.openBinOut s,
 			 closeIt = BinIO.closeOut,
 			 work = fn s => write_decl (s, sk),
 			 cleanup = cleanup };
-	AbsPath.setTime (ap, ts)
+	TStamp.setTime (s, ts)
     end
 end

@@ -17,21 +17,19 @@ signature SMLINFO = sig
     type region = GenericVC.SourceMap.region
     type source = GenericVC.Source.inputSource
 
-    val resync : unit -> unit		(* rebuild internal table *)
-
     val eq : info * info -> bool	(* compares sourcepaths *)
     val compare : info * info -> order	(* compares sourcepaths *)
 
     val info : GeneralParams.info ->
-	{ sourcepath: AbsPath.t,
-	  group: AbsPath.t * region,
+	{ sourcepath: SrcPath.t,
+	  group: SrcPath.t * region,
 	  share: bool option,
 	  split: bool }
 	-> info
 
-    val sourcepath : info -> AbsPath.t
-    val skelpath : info -> AbsPath.t
-    val binpath : info -> AbsPath.t
+    val sourcepath : info -> SrcPath.t
+    val skelname : info -> string
+    val binname : info -> string
     val error : GeneralParams.info -> info -> complainer
 
     val parsetree : GeneralParams.info -> info -> (ast * source) option
@@ -45,13 +43,13 @@ signature SMLINFO = sig
     val forgetParsetree : info -> unit
 
     (* evict all but the reachable nodes in the cache *)
-    val forgetAllBut : AbsPathSet.set -> unit
+    val forgetAllBut : SrcPathSet.set -> unit
 
     (* different ways of describing an sml file using group and source *)
     val spec : info -> string		(* sspec *)
     val fullSpec : info -> string	(* gspec(sspec) *)
-    val name : info -> string		(* sname *)
-    val fullName : info -> string	(* gname(sspec) *)
+    val descr : info -> string		(* sname *)
+    val fullDescr : info -> string	(* gname(sspec) *)
 
     val errorLocation : GeneralParams.info -> info -> string
 end
@@ -70,15 +68,15 @@ structure SmlInfo :> SMLINFO = struct
     type complainer = EM.complainer
 
     datatype persinfo =
-	PERS of { group: AbsPath.t * region,
+	PERS of { group: SrcPath.t * region,
 		  lastseen: TStamp.t ref,
 		  parsetree: (ast * source) option ref,
 		  skeleton: Skeleton.decl option ref }
 		      
     datatype info =
-	INFO of { sourcepath: AbsPath.t,
-		  skelpath: AbsPath.t,
-		  binpath: AbsPath.t,
+	INFO of { sourcepath: SrcPath.t,
+		  skelname: string,
+		  binname: string,
 		  persinfo: persinfo,
 		  share: bool option,
 		  split: bool }
@@ -86,8 +84,8 @@ structure SmlInfo :> SMLINFO = struct
     type ord_key = info
 
     fun sourcepath (INFO { sourcepath = sp, ... }) = sp
-    fun skelpath (INFO { skelpath = sp, ... }) = sp
-    fun binpath (INFO { binpath = bp, ... }) = bp
+    fun skelname (INFO { skelname = sn, ... }) = sn
+    fun binname (INFO { binname = bn, ... }) = bn
     fun share (INFO { share = s, ... }) = s
     fun split (INFO { split = s, ... }) = s
 
@@ -97,33 +95,21 @@ structure SmlInfo :> SMLINFO = struct
 	gerror gp group
 
     fun compare (INFO { sourcepath = p, ... }, INFO { sourcepath = p', ... }) =
-	AbsPath.compare (p, p')
+	SrcPath.compare (p, p')
     fun eq (i, i') = compare (i, i') = EQUAL
 
     fun lastseen (INFO { persinfo = PERS { lastseen, ... }, ... }) =
 	!lastseen
 
-    (* If files change their file ids, then CM will be seriously
-     * disturbed because the ordering relation will change.
-     * We'll asume that this won't happen in general.  However, we provide
-     * a "resync" function that -- at the very least -- should be run
-     * at startup time. *)
-    val knownInfo = ref (AbsPathMap.empty: persinfo AbsPathMap.map)
-
-    fun resync () = let
-	val l = AbsPathMap.listItemsi (!knownInfo)
-    in
-	AbsPath.newEra ();		(* force recalculation of file ids *)
-	knownInfo := foldl AbsPathMap.insert' AbsPathMap.empty l
-    end
+    val knownInfo = ref (SrcPathMap.empty: persinfo SrcPathMap.map)
 
     fun forgetParsetree (INFO { persinfo = PERS { parsetree, ... }, ... }) =
 	parsetree := NONE
 
     fun forgetAllBut reachable = let
-	fun isReachable (p, m) = AbsPathSet.member (reachable, p)
+	fun isReachable (p, m) = SrcPathSet.member (reachable, p)
     in
-	knownInfo := AbsPathMap.filteri isReachable (!knownInfo)
+	knownInfo := SrcPathMap.filteri isReachable (!knownInfo)
     end
 
     (* check timestamp and throw away any invalid cache *)
@@ -132,7 +118,7 @@ structure SmlInfo :> SMLINFO = struct
 	 * additions to the type! *)
 	val { group, lastseen, parsetree, skeleton } = pir
 	val ts = !lastseen
-	val nts = AbsPath.tstamp sourcepath
+	val nts = SrcPath.tstamp sourcepath
     in
 	if TStamp.needsUpdate { source = nts, target = ts } then
 	    (lastseen := nts;
@@ -144,23 +130,23 @@ structure SmlInfo :> SMLINFO = struct
     fun info (gp: GeneralParams.info) arg = let
 	val { sourcepath, group = gr as (group, region), share, split } = arg
 	val policy = #fnpolicy (#param gp)
-	val skelpath = FNP.mkSkelPath policy sourcepath
-	val binpath = FNP.mkBinPath policy sourcepath
+	val skelname = FNP.mkSkelName policy sourcepath
+	val binname = FNP.mkBinName policy sourcepath
 	val groupreg = #groupreg gp
 	fun newpersinfo () = let
-	    val ts = AbsPath.tstamp sourcepath
+	    val ts = SrcPath.tstamp sourcepath
 	    val pi = PERS { group = gr, lastseen = ref ts,
 			    parsetree = ref NONE, skeleton = ref NONE }
 	in
-	    knownInfo := AbsPathMap.insert (!knownInfo, sourcepath, pi);
+	    knownInfo := SrcPathMap.insert (!knownInfo, sourcepath, pi);
 	    pi
 	end
 	fun persinfo () =
-	    case AbsPathMap.find (!knownInfo, sourcepath) of
+	    case SrcPathMap.find (!knownInfo, sourcepath) of
 		NONE => newpersinfo ()
 	      | SOME (pi as PERS { group = gr' as (g, r), ... }) =>
-		    if AbsPath.compare (group, g) <> EQUAL then let
-			val n = AbsPath.name sourcepath
+		    if SrcPath.compare (group, g) <> EQUAL then let
+			val n = SrcPath.descr sourcepath
 		    in
 			if GroupReg.registered groupreg g then
 			    (gerror gp gr EM.COMPLAIN
@@ -180,8 +166,8 @@ structure SmlInfo :> SMLINFO = struct
 		    else (validate (sourcepath, pi); pi)
     in
 	INFO { sourcepath = sourcepath,
-	       skelpath = skelpath,
-	       binpath = binpath,
+	       skelname = skelname,
+	       binname = binname,
 	       persinfo = persinfo (),
 	       share = share,
 	       split = split }
@@ -191,7 +177,6 @@ structure SmlInfo :> SMLINFO = struct
      * not with checking time stamps *)
     fun getParseTree gp (i as INFO ir, quiet, noerrors) = let
 	val { sourcepath, persinfo = PERS { parsetree, ... }, ... } = ir
-	val name = AbsPath.name sourcepath
 	val err = if noerrors then (fn m => ())
 		  else (fn m => error gp i EM.COMPLAIN m EM.nullErrorBody)
     in
@@ -200,13 +185,15 @@ structure SmlInfo :> SMLINFO = struct
 	  | NONE => let
 		fun work stream = let
 		    val _ = if noerrors orelse quiet then ()
-			    else Say.vsay ["[parsing ", name, "]\n"]
+			    else Say.vsay ["[parsing ",
+					   SrcPath.descr sourcepath, "]\n"]
 		    val source =
-			Source.newSource (name, 1, stream, false, #errcons gp)
+			Source.newSource (SrcPath.osstring sourcepath,
+					  1, stream, false, #errcons gp)
 		in
 		    (SF.parse source, source)
 		end
-		fun openIt () = AbsPath.openTextIn sourcepath
+		fun openIt () = SrcPath.openTextIn sourcepath
 		val pto =
 		    SOME (SafeIO.perform { openIt = openIt,
 					   closeIt = TextIO.closeIn,
@@ -220,13 +207,13 @@ structure SmlInfo :> SMLINFO = struct
     end
 
     fun getSkeleton gp (i as INFO ir, noerrors) = let
-	val { sourcepath, skelpath, persinfo = PERS pir, ... } = ir
+	val { sourcepath, skelname, persinfo = PERS pir, ... } = ir
 	val { skeleton, lastseen, ... } = pir
     in
 	case !skeleton of
 	    SOME sk => SOME sk
 	  | NONE =>
-		(case SkelIO.read (skelpath, !lastseen) of
+		(case SkelIO.read (skelname, !lastseen) of
 		     SOME sk => (skeleton := SOME sk; SOME sk)
 		   | NONE =>
 			 (case getParseTree gp (i, false, noerrors) of
@@ -244,7 +231,7 @@ structure SmlInfo :> SMLINFO = struct
 				      else error gp i EM.COMPLAIN
 					         "error(s) in ML source file"
 						 EM.nullErrorBody
-				  else (SkelIO.write (skelpath, sk, !lastseen);
+				  else (SkelIO.write (skelname, sk, !lastseen);
 					skeleton := SOME sk);
 				  SOME sk
 			      end
@@ -259,12 +246,12 @@ structure SmlInfo :> SMLINFO = struct
 
     fun parsetree gp i = getParseTree gp (i, true, true)
 
-    fun spec (INFO { sourcepath, ... }) = AbsPath.specOf sourcepath
+    fun spec (INFO { sourcepath, ... }) = SrcPath.specOf sourcepath
     fun fullSpec (INFO { sourcepath, persinfo = PERS { group, ... }, ... }) =
-	concat [AbsPath.specOf (#1 group), "(", AbsPath.specOf sourcepath, ")"]
-    fun name (INFO { sourcepath, ... }) = AbsPath.name sourcepath
-    fun fullName (INFO { sourcepath, persinfo = PERS { group, ... }, ... }) =
-	concat [AbsPath.name (#1 group), "(", AbsPath.specOf sourcepath, ")"]
+	concat [SrcPath.specOf (#1 group), "(", SrcPath.specOf sourcepath, ")"]
+    fun descr (INFO { sourcepath, ... }) = SrcPath.descr sourcepath
+    fun fullDescr (INFO { sourcepath, persinfo = PERS { group, ... }, ... }) =
+	concat [SrcPath.descr (#1 group), "(", SrcPath.specOf sourcepath, ")"]
 
     fun errorLocation (gp: GeneralParams.info) (INFO i) = let
 	val { persinfo = PERS { group = (group, reg), ... }, ... } = i

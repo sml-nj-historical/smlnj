@@ -13,15 +13,15 @@ signature FILENAMEPOLICY = sig
     val colocate : policyMaker
     val separate : string -> policyMaker
 
-    val mkBinPath : policy -> AbsPath.t -> AbsPath.t
-    val mkSkelPath : policy -> AbsPath.t -> AbsPath.t
-    val mkStablePath : policy -> AbsPath.t -> AbsPath.t
+    val mkBinName : policy -> SrcPath.t -> string
+    val mkSkelName : policy -> SrcPath.t -> string
+    val mkStableName : policy -> SrcPath.t -> string
 end
 
 functor FilenamePolicyFn (val cmdir : string
 			  val skeldir : string) :> FILENAMEPOLICY = struct
 
-    type converter = AbsPath.t -> AbsPath.t
+    type converter = SrcPath.t -> string
 
     type policy = { bin: converter, skel: converter, stable: converter }
     type policyMaker = { arch: string, os: SMLofNJ.SysInfo.os_kind } -> policy
@@ -32,36 +32,37 @@ functor FilenamePolicyFn (val cmdir : string
       | kind2name SMLofNJ.SysInfo.UNIX = "unix"
       | kind2name SMLofNJ.SysInfo.WIN32 = "win32"
 
-    fun mkPolicy shift { arch, os } = let
-	fun cmpath d s = let
-	    val { dir = d0, file = f } = AbsPath.splitDirFile s
-	    val d1 = AbsPath.joinDirFile { dir = d0, file = cmdir }
-	    val d2 = AbsPath.joinDirFile { dir = d1, file = d }
+    fun mkPolicy shiftname { arch, os } = let
+	fun cmname d s = let
+	    val { dir = d0, file = f } = OS.Path.splitDirFile s
+	    val d1 = OS.Path.joinDirFile { dir = d0, file = cmdir }
+	    val d2 = OS.Path.joinDirFile { dir = d1, file = d }
 	in
-	    AbsPath.joinDirFile { dir = d2, file = f }
+	    OS.Path.joinDirFile { dir = d2, file = f }
 	end
 	val archos = concat [arch, "-", kind2name os]
-	val archosdep = cmpath archos o shift
+	val skel = cmname skeldir o SrcPath.osstring
+	val archosdep = cmname archos o shiftname
     in
-	{ skel = cmpath skeldir, bin = archosdep, stable = archosdep }
+	{ skel = skel, bin = archosdep, stable = archosdep }
     end
 
-    val colocate = mkPolicy (fn p => p)
+    val colocate = mkPolicy SrcPath.osstring
 
     fun separate root = let
-	fun shift p =
-	    case AbsPath.reAnchor (p, root) of
-		SOME p' => p'
-	      | NONE => (Say.say ["Failure: ", AbsPath.name p,
+	fun shiftname p =
+	    case SrcPath.reAnchoredName (p, root) of
+		SOME s => s
+	      | NONE => (Say.say ["Failure: ", SrcPath.descr p,
 				  " is not an anchored path!\n"];
 			 raise Fail "bad path")
     in
-	mkPolicy shift
+	mkPolicy shiftname
     end
 
-    fun mkBinPath (p: policy) s = #bin p s
-    fun mkSkelPath (p: policy) s = #skel p s
-    fun mkStablePath (p: policy) s = #stable p s
+    fun mkBinName (p: policy) s = #bin p s
+    fun mkSkelName (p: policy) s = #skel p s
+    fun mkStableName (p: policy) s = #stable p s
 end
 
 structure FilenamePolicy =

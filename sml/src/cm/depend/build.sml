@@ -13,7 +13,7 @@ signature BUILDDEPEND = sig
 	  gimports: impexp SymbolMap.map,
 	  smlfiles: SmlInfo.info list,
 	  localdefs: SmlInfo.info SymbolMap.map,
-	  subgroups: (AbsPath.t * GroupGraph.group) list,
+	  subgroups: (SrcPath.t * GroupGraph.group) list,
 	  reqpriv: GroupGraph.privileges }
 	* SymbolSet.set option		(* filter *)
 	* (string -> unit)		(* error *)
@@ -74,7 +74,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 			fun recur (_, []) = () (* shouldn't happen *)
 			  | recur (n'', (s, i') :: r) = let
 				val f' = SmlInfo.sourcepath i'
-				val n' = AbsPath.specOf f'
+				val n' = SrcPath.specOf f'
 				val _ =
 				    if SmlInfo.eq (i, i') then ()
 				    else recur (n', r)
@@ -87,7 +87,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 			    end
 		    in
 			PrettyPrint.add_newline pps;
-			recur (AbsPath.specOf f, history)
+			recur (SrcPath.specOf f, history)
 		    end
 		in
 		    SmlInfo.error gp i EM.COMPLAIN

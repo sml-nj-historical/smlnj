@@ -5,8 +5,13 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-Group
-	(* for the time being leave this empty *)
+Library
+	structure SparcCM
+	functor LinkCM
+
+	(* dummy stuff *)
+	signature CMTOOLS
+	signature COMPILATION_MANAGER
 is
 	(* the CM description file parser *)
 	parse/parse.sml
@@ -62,19 +67,13 @@ is
 	compile/exec.sml
 
 	(* overall control of CM *)
-	main/say.sml
-	main/envcfg.sml
-	main/stdcfg.sml
 	main/general-params.sml
 	main/filename-policy.sml
 	main/symval.sml
 	main/specific-symval-fn.sml
 
 	(* pathname abstraction *)
-	paths/abspath.sml
-	paths/pathconfig.sml
-	paths/abspathmap.sml
-	paths/abspathset.sml
+	paths/sources.cm
 
 	(* bootstrap compiler (formerly known as "batch") *)
 	bootstrap/build-initdg.sml

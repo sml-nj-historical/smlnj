@@ -143,7 +143,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 
     fun dostable (i, mkenv, gp: GeneralParams.info) = let
 	fun load be = let
-	    val stable = BinInfo.stablepath i
+	    val stable = BinInfo.stablename i
 	    val os = BinInfo.offset i
 	    val descr = BinInfo.describe i
 	    val _ = Say.vsay ["[consulting ", descr, "]\n"]
@@ -157,7 +157,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 		memo2envdelta memo
 	    end
 	in
-	    SOME (SafeIO.perform { openIt = fn () => AbsPath.openBinIn stable,
+	    SOME (SafeIO.perform { openIt = fn () => BinIO.openIn stable,
 				   closeIt = BinIO.closeIn,
 				   work = work,
 				   cleanup = fn () => () })
@@ -186,8 +186,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	case Option.map memo2envdelta (PS.recomp_look_sml (i, pids, gp)) of
 	    SOME d => SOME d
 	  | NONE => let
-		val binpath = SmlInfo.binpath i
-		val binname = AbsPath.name binpath
+		val binname = SmlInfo.binname i
 		val { stat, sym } = envs ()
 
 		fun save bfc = let
@@ -195,10 +194,10 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 			(BF.write { stream = s, content = bfc,
 				    keep_code = true };
 			 Say.vsay ["[wrote ", binname, "]\n"])
-		    fun cleanup () = AbsPath.delete binpath
+		    fun cleanup () = OS.FileSys.remove binname handle _ => ()
 		in
 		    SafeIO.perform { openIt =
-				         fn () => AbsPath.openBinOut binpath,
+				          fn () => AutoDir.openBinOut binname,
 				     closeIt = BinIO.closeOut,
 				     work = writer,
 				     cleanup = cleanup }
@@ -210,12 +209,12 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 			SmlInfo.error gp i EM.WARN
 			         ("failed to write " ^ binname) ppb
 		    end;
-		    AbsPath.setTime (binpath, SmlInfo.lastseen i)
+		    TStamp.setTime (binname, SmlInfo.lastseen i)
 		end
 
 		fun load () = let
-		    val bin_ts = AbsPath.tstamp binpath
-		    fun openIt () = AbsPath.openBinIn binpath
+		    val bin_ts = TStamp.fmodTime binname
+		    fun openIt () = BinIO.openIn binname
 		    fun reader s = BF.read { stream = s, name = binname,
 					     senv = stat, keep_code = true }
 		in
@@ -234,7 +233,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 		    case SmlInfo.parsetree gp i of
 			NONE => NONE
 		      | SOME (ast, source) => let
-			    val _ = Say.vsay ["[compiling ", SmlInfo.name i,
+			    val _ = Say.vsay ["[compiling ", SmlInfo.descr i,
 					      " -> ", binname, "...]\n"]
 			    val corenv = #corenv (#param gp)
 			    val cmData = PidSet.listItems pids
@@ -264,7 +263,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 				   in
 				       SmlInfo.error gp i EM.COMPLAIN
 				          ("exception raised while compiling "
-					   ^ SmlInfo.name i)
+					   ^ SmlInfo.descr i)
 					  ppb;
 				       NONE
 				   end

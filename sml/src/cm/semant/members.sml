@@ -20,8 +20,8 @@ signature MEMBERCOLLECTION = sig
 
     val empty : collection
 
-    val expandOne : GeneralParams.info * (AbsPath.t -> GroupGraph.group)
-	-> { sourcepath: AbsPath.t, group: AbsPath.t * region,
+    val expandOne : GeneralParams.info * (SrcPath.t -> GroupGraph.group)
+	-> { sourcepath: SrcPath.t, group: SrcPath.t * region,
 	     class: string option }
 	-> collection
     val sequential : collection * collection * (string -> unit) -> collection
@@ -31,7 +31,7 @@ signature MEMBERCOLLECTION = sig
 	GeneralParams.info
 	-> impexp SymbolMap.map * GroupGraph.privileges
 
-    val subgroups : collection -> (AbsPath.t * GroupGraph.group) list
+    val subgroups : collection -> (SrcPath.t * GroupGraph.group) list
 
     val num_look : GeneralParams.info -> collection -> string -> int
     val cm_look : GeneralParams.info -> collection -> string -> bool
@@ -56,7 +56,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		        gimports: impexp SymbolMap.map,
 		        smlfiles: smlinfo list,
 			localdefs: smlinfo SymbolMap.map,
-			subgroups: (AbsPath.t * GG.group) list,
+			subgroups: (SrcPath.t * GG.group) list,
 			reqpriv: GG.privileges }
 
     val empty =
@@ -134,7 +134,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 			    NONE => SS.empty
 			  | SOME ex => (if SS.isEmpty ex then
 					    w0 ("no module exports from " ^
-						AbsPath.name p)
+						SrcPath.descr p)
 					else ();
 					ex)
 		    fun addLD (s, m) = SymbolMap.insert (m, s, i)
@@ -154,7 +154,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	end
     in
 	if isSome class then noPrimitive ()
-	else case Primitive.fromString primconf (AbsPath.specOf sourcepath) of
+	else case Primitive.fromString primconf (SrcPath.specOf sourcepath) of
 	    SOME p => let
 		val exports = Primitive.exports primconf p
 		val env = Primitive.da_env primconf p

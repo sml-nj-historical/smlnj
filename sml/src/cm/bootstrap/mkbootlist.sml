@@ -6,6 +6,6 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 structure MkBootList =
-    MkListFn (type element = AbsPath.t * int option
-	      fun bininfo i = (BinInfo.stablepath i, SOME (BinInfo.offset i))
-	      fun smlinfo i = (SmlInfo.binpath i, NONE))
+    MkListFn (type element = string * int option
+	      fun bininfo i = (BinInfo.stablename i, SOME (BinInfo.offset i))
+	      fun smlinfo i = (SmlInfo.binname i, NONE))

@@ -13,12 +13,12 @@
  *)
 
 signature BUILD_INIT_DG = sig
-    val build : GeneralParams.info -> AbsPath.t ->
+    val build : GeneralParams.info -> SrcPath.t ->
 	{ rts: DependencyGraph.snode,
 	  core: DependencyGraph.snode,
 	  pervasive: DependencyGraph.snode,
 	  primitives: (string * DependencyGraph.snode) list,
-	  binpaths: AbsPath.t list } option
+	  binpaths: string list } option
 end
 
 structure BuildInitDG :> BUILD_INIT_DG = struct
@@ -34,12 +34,13 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 	val errcons = #errcons gp
 	val groupreg = #groupreg gp
 
-	val context = AbsPath.sameDirContext specgroup
-	val specname = AbsPath.name specgroup
-	val _ = Say.vsay ["[reading init spec from ", specname, "]\n"]
+	val context = SrcPath.sameDirContext specgroup
+	val _ = Say.vsay ["[reading init spec from ",
+			  SrcPath.descr specgroup, "]\n"]
 
 	fun work stream = let
-	    val source = S.newSource (specname, 1, stream, false, errcons)
+	    val source = S.newSource (SrcPath.osstring specgroup,
+				      1, stream, false, errcons)
 	    val sourceMap = #sourceMap source
 
 	    val _ = GroupReg.register groupreg (specgroup, source)
@@ -58,13 +59,13 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 		     else SOME (String.tokens sep line, newpos)
 	    end
 
-	    fun loop (split, m, bpl, pos) =
+	    fun loop (split, m, bnl, pos) =
 		case lineIn pos of
 		    NONE => (error (pos, pos) "unexpected end of file"; NONE)
 		  | SOME (line, newpos) => let
 			val error = error (pos, newpos)
 			fun sml (spec, split) = let
-			    val p = AbsPath.standard pcmode
+			    val p = SrcPath.standard pcmode
 				{ context = context, spec = spec }
 			in
 			    SmlInfo.info gp { sourcepath = p,
@@ -100,20 +101,20 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			    val n = DG.SNODE { smlinfo = i,
 					      localimports = li,
 					      globalimports = gi }
-			    val bpl' =
-				case bpl of
+			    val bnl' =
+				case bnl of
 				    NONE => NONE
-				  | SOME l => SOME (SmlInfo.binpath i :: l)
+				  | SOME l => SOME (SmlInfo.binname i :: l)
 			in
 			    loop (split,
 				  StringMap.insert (m, name, DG.SB_SNODE n),
-				  bpl', newpos)
+				  bnl', newpos)
 			end
 		    in
 			case line of
-			    [] => loop (split, m, bpl, newpos)
-			  | ["split"] => loop (true, m, bpl, newpos)
-			  | ["nosplit"] => loop (false, m, bpl, newpos)
+			    [] => loop (split, m, bnl, newpos)
+			  | ["split"] => loop (true, m, bnl, newpos)
+			  | ["nosplit"] => loop (false, m, bnl, newpos)
 			  | ["start"] => loop (split, m, SOME [], newpos)
 			  | ("bind" :: name :: file :: args)  =>
 				node (name, file, args)
@@ -123,14 +124,14 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 				       pervasive = look_snode pervasive,
 				       primitives =
 				         map (fn n => (n, look_snode n)) prims,
-				       binpaths = rev (getOpt (bpl, [])) }
+				       binpaths = rev (getOpt (bnl, [])) }
 			  | _ => (error "malformed line"; NONE)
 		    end
 	in
 	    loop (false, StringMap.empty, NONE, 1)
 	end
     in
-	SafeIO.perform { openIt = fn () => AbsPath.openTextIn specgroup,
+	SafeIO.perform { openIt = fn () => SrcPath.openTextIn specgroup,
 			 closeIt = TextIO.closeIn,
 			 work = work,
 			 cleanup = fn () => () }

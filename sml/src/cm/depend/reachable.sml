@@ -6,7 +6,7 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 signature REACHABLE = sig
-    val reachable : GroupGraph.group -> AbsPathSet.set
+    val reachable : GroupGraph.group -> SrcPathSet.set
 end
 
 structure Reachable :> REACHABLE = struct
@@ -17,8 +17,8 @@ structure Reachable :> REACHABLE = struct
 	    val { smlinfo, localimports = l, globalimports = g } = n
 	    val p = SmlInfo.sourcepath smlinfo
 	in
-	    if AbsPathSet.member (known, p) then known
-	    else foldl farsbnode (foldl snode (AbsPathSet.add (known, p)) l) g
+	    if SrcPathSet.member (known, p) then known
+	    else foldl farsbnode (foldl snode (SrcPathSet.add (known, p)) l) g
 	end
 
 	and farsbnode ((_, n), known) = sbnode (n, known)
@@ -28,6 +28,6 @@ structure Reachable :> REACHABLE = struct
 
 	fun impexp ((n, _), known) = farsbnode (n, known)
     in
-	SymbolMap.foldl impexp AbsPathSet.empty exports
+	SymbolMap.foldl impexp SrcPathSet.empty exports
     end
 end

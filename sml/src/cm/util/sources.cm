@@ -6,7 +6,7 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-Library
+Group
 	structure StringSet
 	structure StringMap
 	structure Symbol
@@ -18,6 +18,12 @@ Library
 	structure SafeIO
 	structure TStamp
 	structure Seek
+	signature ENVCONFIG
+	structure EnvConfig
+	signature SAY
+	structure Say
+	structure StdConfig
+	structure AutoDir
 
 	structure LibBase	(* from SML/NJ library *)
 	functor BinaryMapFn	(* from SML/NJ library *)
@@ -35,6 +41,10 @@ is
 	safeio.sml
 	tstamp.sml
 	seek.sml
+	envcfg.sml
+	stdcfg.sml
+	say.sml
+	autodir.sml
 
 #if defined(NEW_CM)
 	basis.cm

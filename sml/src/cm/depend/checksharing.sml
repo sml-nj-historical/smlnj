@@ -69,7 +69,7 @@ structure CheckSharing :> CHECKSHARING = struct
 	      | NONE => let
 		    val gs = foldl fsbn empty globalimports
 		    val ls = foldl sn gs localimports
-		    val s' = check (SmlInfo.share i, SmlInfo.name i, ls,
+		    val s' = check (SmlInfo.share i, SmlInfo.descr i, ls,
 				    SmlInfo.error gp i)
 		in
 		    smlmap := SmlInfoMap.insert (!smlmap, i, s');

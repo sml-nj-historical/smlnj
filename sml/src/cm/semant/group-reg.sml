@@ -11,23 +11,23 @@ signature GROUPREG = sig
     type groupreg
 
     val new : unit -> groupreg
-    val register : groupreg -> AbsPath.t * GenericVC.Source.inputSource -> unit
-    val lookup : groupreg -> AbsPath.t -> GenericVC.Source.inputSource
-    val registered : groupreg -> AbsPath.t -> bool
+    val register : groupreg -> SrcPath.t * GenericVC.Source.inputSource -> unit
+    val lookup : groupreg -> SrcPath.t -> GenericVC.Source.inputSource
+    val registered : groupreg -> SrcPath.t -> bool
     val error :
 	groupreg
-	-> AbsPath.t * GenericVC.SourceMap.region
+	-> SrcPath.t * GenericVC.SourceMap.region
 	-> GenericVC.ErrorMsg.complainer
 end
 
 structure GroupReg :> GROUPREG = struct
 
-    type groupreg = GenericVC.Source.inputSource AbsPathMap.map ref
+    type groupreg = GenericVC.Source.inputSource SrcPathMap.map ref
 
-    fun new () = ref AbsPathMap.empty : groupreg
+    fun new () = ref SrcPathMap.empty : groupreg
 
-    fun register gr (p, s) = gr := AbsPathMap.insert (!gr, p, s)
-    fun lookup gr p = valOf (AbsPathMap.find (!gr, p))
-    fun registered gr g = isSome (AbsPathMap.find (!gr, g))
+    fun register gr (p, s) = gr := SrcPathMap.insert (!gr, p, s)
+    fun lookup gr p = valOf (SrcPathMap.find (!gr, p))
+    fun registered gr g = isSome (SrcPathMap.find (!gr, g))
     fun error gr (g, r) = GenericVC.ErrorMsg.error (lookup gr g) r
 end

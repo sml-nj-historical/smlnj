@@ -84,7 +84,7 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
 	    SOME m => SOME (thunkify m, [i], [])
 	  | NONE => (execute (fetch_sml i, env,
 			      SmlInfo.error gp i EM.COMPLAIN,
-			      SmlInfo.name i,
+			      SmlInfo.descr i,
 			      fn m => PS.exec_memo_sml (i, m, sl, bl),
 			      [i], []))
 end

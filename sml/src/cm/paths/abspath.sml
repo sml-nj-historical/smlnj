@@ -17,7 +17,8 @@ signature ABSPATH = sig
     val cwdContext: unit -> context
     val sameDirContext: t -> context
 
-    val name : t -> string
+    val osstring : t -> string
+    val descr : t -> string
     val compare : t * t -> order
     val contextOf : t -> context
     val specOf : t -> string
@@ -25,7 +26,7 @@ signature ABSPATH = sig
 
     (* Replace the anchor context in the path argument with the
      * given context. Returns NONE if there was no anchor context. *)
-    val reAnchor : t * string -> t option
+    val reAnchoredName : t * string -> string option
 
     val native : { context: context, spec: string } -> t
     val standard : PathConfig.mode -> { context: context, spec: string } -> t
@@ -35,22 +36,9 @@ signature ABSPATH = sig
     val pickle : (bool -> unit) -> t * t -> string list
     val unpickle : PathConfig.mode -> string list * t -> t option
 
-    val joinDirFile : { dir: t, file: string } -> t
-    val splitDirFile : t -> { dir: t, file: string }
-    val dir : t -> t
-    val file : t -> string
-
-    val exists : t -> bool
     val tstamp : t -> TStamp.t
-    val setTime : t * TStamp.t -> unit
-    val delete : t -> unit
 
-    (* The open?Out functions automagically create any necessary directories
-     * and announce this activity. *)
     val openTextIn : t -> TextIO.instream
-    val openTextOut : t -> TextIO.outstream
-    val openBinIn : t -> BinIO.instream
-    val openBinOut : t -> BinIO.outstream
 end
 
 structure AbsPath :> ABSPATH = struct
@@ -199,7 +187,7 @@ structure AbsPath :> ABSPATH = struct
 	end
 
 	(* get the name as a string (calls elab, so don't cache externally!) *)
-	fun name p = #name (elab p)
+	fun osstring p = #name (elab p)
 
 	(* get the context back *)
 	fun contextOf (PATH { context = c, ... }) = c
@@ -289,89 +277,38 @@ structure AbsPath :> ABSPATH = struct
 	    u_p l
 	end
 
-	(* . and .. are not permitted as file parameter *)
-	fun joinDirFile { dir = PATH { context, spec, ... }, file } =
-	    if file = P.currentArc orelse file = P.parentArc then
-		impossible "AbsPath.joinDirFile: . or .."
-	    else fresh (context, P.joinDirFile { dir = spec, file = file })
+	fun tstamp p = TStamp.fmodTime (osstring p)
 
-	(* splitDirFile never walks past a context.
-	 * Moreover, it is an error to split something that ends in "..". *)
-	fun splitDirFile (PATH { context, spec, ... }) = let
-	    fun loop "" =
-		impossible "AbsPath.splitDirFile: tried to split a context"
-	      | loop spec = let
-		    val { dir, file } = P.splitDirFile spec
-		in
-		    if file = P.currentArc then loop dir
-		    else if file = P.parentArc then
-			impossible "AbsPath.splitDirFile: <path>/.."
-		    else (dir, file)
-		end
-	    val (dir, file) = loop spec
-	    val dir = if dir = "" then P.currentArc else dir
+	val openTextIn = TextIO.openIn o osstring
+
+	fun descr (PATH { spec, context, ... }) = let
+	    fun dir (x, l) =
+		case OS.Path.dir x of
+		    "" => l
+		  | d => d :: "/" :: l
+	    fun d_c (CONFIG_ANCHOR { config_name = n, ... }, l) =
+		"$" :: n :: "/" :: l
+	      | d_c (DIR_OF (PATH { spec, context, ... }), l) =
+		d_c (context, dir (spec, l))
+	      | d_c (THEN_CWD _, l) = "./" :: l
+	      | d_c (ROOT, l) = "/" :: l
 	in
-	    { dir = fresh (context, dir), file = file }
+	    concat (d_c (context, [spec]))
 	end
 
-	val dir = #dir o splitDirFile
-	val file = #file o splitDirFile
-
-	fun fileExists n = F.access (n, []) handle _ => false
-	fun fileModTime n = F.modTime n handle _ => Time.zeroTime
-
-	val exists = fileExists o name
-
-	fun tstamp p = let
-	    val n = name p
+	fun reAnchoredName (p, dirstring) = let
+	    fun path (PATH { context, spec, ... }) = let
+		fun mk c = P.concat (c, spec)
+	    in
+		Option.map mk (ctxt context)
+	    end
+	    and ctxt (CONFIG_ANCHOR { config_name = n, ... }) =
+		SOME (P.concat (dirstring, n))
+	      | ctxt (DIR_OF p) = Option.map P.dir (path p)
+	      | ctxt (THEN_CWD _) = (Say.say ["."]; NONE)
+	      | ctxt ROOT = (Say.say ["/"]; NONE)
 	in
-	    if fileExists n then TStamp.TSTAMP (fileModTime n)
-	    else TStamp.NOTSTAMP
+	    Option.map P.mkCanonical (path p)
 	end
-
-	fun setTime (p, TStamp.NOTSTAMP) = ()
-	  | setTime (p, TStamp.TSTAMP t) = F.setTime (name p, SOME t)
-
-	fun delete p = F.remove (name p) handle _ => ()
-
-	fun openOut fileopener ap = let
-	    val p = name ap
-	    fun generic (maker, pmaker, p) =
-		maker p
-		handle exn => let
-		    val { dir, ... } = P.splitDirFile p
-		in
-		    if dir = "" orelse fileExists dir then raise exn
-		    else (pmaker dir; maker p)
-		end
-	    fun makedirs dir = generic (F.mkDir, makedirs, dir)
-	    fun advertisemakedirs dir =
-		(Say.vsay ["[creating directory ", dir, " ...]\n"];
-		 makedirs dir)
-	in
-	    generic (fileopener, advertisemakedirs, p)
-	end
-
-	val openTextIn = TextIO.openIn o name
-	val openBinIn = BinIO.openIn o name
-	val openTextOut = openOut TextIO.openOut
-	val openBinOut = openOut BinIO.openOut
-    end
-
-    fun reAnchor (p, dirstring) = let
-	fun path (PATH { context, spec, ... }) = let
-	    fun mk c = PATH { context = c, spec = spec, cache = ref NONE }
-	in
-	    Option.map mk (ctxt context)
-	end
-	and ctxt (CONFIG_ANCHOR { config_name = n, ... }) =
-	    SOME (CONFIG_ANCHOR { config_name = n,
-				  fetch = fn () => P.concat (dirstring, n),
-				  cache = ref NONE })
-	  | ctxt (DIR_OF p) = Option.map DIR_OF (path p)
-	  | ctxt (THEN_CWD _) = NONE
-	  | ctxt ROOT = NONE
-    in
-	path p
     end
 end

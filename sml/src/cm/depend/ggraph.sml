@@ -31,6 +31,6 @@ structure GroupGraph = struct
 	GROUP of { exports: DependencyGraph.impexp SymbolMap.map,
 		   kind: kind,
 		   required: privileges,
-		   grouppath: AbsPath.t,
-		   sublibs: (AbsPath.t * group) list }
+		   grouppath: SrcPath.t,
+		   sublibs: (SrcPath.t * group) list }
 end

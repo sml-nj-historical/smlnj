@@ -77,18 +77,18 @@ signature PRIVATETOOLS = sig
     include TOOLS
 
     type smlsource =
-	{ sourcepath: AbsPath.t, history: class list, share: bool option }
+	{ sourcepath: SrcPath.t, history: class list, share: bool option }
 
     datatype expansion =
 	SMLSOURCE of smlsource
-      | GROUP of AbsPath.t
+      | GROUP of SrcPath.t
 
     datatype private_rule =
 	ISSML of bool option
       | ISGROUP
       | ISTOOL of class * rule
 
-    val expand : (string -> unit) -> AbsPath.t * class option -> expansion list
+    val expand : (string -> unit) -> SrcPath.t * class option -> expansion list
 end
 
 structure PrivateTools :> PRIVATETOOLS = struct
@@ -105,11 +105,11 @@ structure PrivateTools :> PRIVATETOOLS = struct
     type rule = fname * rulecontext -> item list
 
     type smlsource =
-	{ sourcepath: AbsPath.t, history: class list, share: bool option }
+	{ sourcepath: SrcPath.t, history: class list, share: bool option }
 
     datatype expansion =
 	SMLSOURCE of smlsource
-      | GROUP of AbsPath.t
+      | GROUP of SrcPath.t
 
     datatype private_rule =
 	ISSML of bool option
@@ -182,7 +182,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	(* apply a rule to a path within a given context *)
 	fun apply (rule, p, c) = let
 	    fun rctxt rf = let
-		val dir = AbsPath.contextName c
+		val dir = SrcPath.contextName c
 		val cwd = OS.FileSys.getDir ()
 	    in
 		SafeIO.perform { openIt = fn () => OS.FileSys.chDir dir,
@@ -201,7 +201,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	      | loop (acc, ((p, c), history) :: t) = let
 		    fun step (ISSML share) =
 			let
-			    val ap = AbsPath.native { context = context,
+			    val ap = SrcPath.native { context = context,
 						      spec = p }
 			    val src = { sourcepath = ap,
 				        history = rev history,
@@ -210,7 +210,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 			    loop (SMLSOURCE src :: acc, t)
 			end
 		      | step ISGROUP = let
-			    val ap = AbsPath.native { context = context,
+			    val ap = SrcPath.native { context = context,
 						      spec = p }
 			in
 			    loop (GROUP ap :: acc, t)
@@ -234,7 +234,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	end
 
 	fun expand0 (ap, NONE) =
-	    expand' (AbsPath.contextOf ap) [((AbsPath.specOf ap, NONE), [])]
+	    expand' (SrcPath.contextOf ap) [((SrcPath.specOf ap, NONE), [])]
 	  | expand0 (ap, SOME class0) = let
 		(* classes are case-insensitive, internally we use lowercase *)
 		val class = String.map Char.toLower class0
@@ -246,11 +246,11 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		  | ISGROUP =>
 			[GROUP ap]
 		  | ISTOOL (class, rule) => let
-			val c = AbsPath.contextOf ap
-			val l = apply (rule, AbsPath.specOf ap, c)
+			val c = SrcPath.contextOf ap
+			val l = apply (rule, SrcPath.specOf ap, c)
 			val l' = map (fn i => (i, [class])) l
 		    in
-			expand' (AbsPath.contextOf ap) l'
+			expand' (SrcPath.contextOf ap) l'
 		    end
 	    end
     in

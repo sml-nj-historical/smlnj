@@ -21,4 +21,8 @@ structure TStamp = struct
       | needsUpdate { source = NOTSTAMP, ... } = false
       | needsUpdate { source = TSTAMP st, target = TSTAMP tt } =
 	Time.compare (st, tt) <> EQUAL
+
+    fun fmodTime f = TSTAMP (OS.FileSys.modTime f) handle _ => NOTSTAMP
+    fun setTime (f, NOTSTAMP) = ()
+      | setTime (f, TSTAMP t) = OS.FileSys.setTime (f, SOME t)
 end
