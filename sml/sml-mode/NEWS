@@ -1,5 +1,8 @@
 Changes since 3.9.3:
 
+* Indentation rules improved.  New customizable variable
+  `sml-rightalign-and'.  Also `sml-symbol-indent' is now customizable.
+
 * New add-log support (try C-x 4 a from within an SML function).
 
 * Imenu support

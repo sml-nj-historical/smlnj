@@ -25,4 +25,22 @@
 
 * obey fixity directives.
 
-* right-align "and" with its correspondent.
+* dangling `case e' in stuff like
+
+  fun myfunction x = case x
+   of bla =>
+    | bli =>
+
+* deal with CPS kind of code ???
+
+  function1 (arg1, arg2, fn v1 =>
+  function2 (arg2, fn v2 =>
+  function3 (arg5, arg3, arg8, fn v3 =>
+  function4 (v1, v2, v3))))
+
+  or even just
+
+  F.LET (v1, foo,
+  F.LET (v2, bar,
+  F.LET (v3, baz,
+  F.RET [v1, v2, v3])))
