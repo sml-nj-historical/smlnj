@@ -100,6 +100,6 @@ structure LSplitInline :> LSPLIT_INLINE = struct
     fun inline args = let
 	val (e, i) = inline0 args
     in
-	(LContract.lcontract e, i)
+	((* LContract.lcontract *) e, i)
     end
 end
