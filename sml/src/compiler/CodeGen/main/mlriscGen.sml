@@ -34,7 +34,7 @@ functor MLRiscGen
 struct
   structure M : MLTREE = C.T
   structure P = CPS.P
-  structure LE = LabelExp
+  structure LE = M.LabelExp
   structure R = CPSRegions
   structure CG = Control.CG
   structure MS = MachineSpec
@@ -53,6 +53,10 @@ struct
 
   structure MkRecord = MkRecord(C)
 
+  type rexp = (unit, unit, unit, unit) M.rexp
+  type fexp = (unit, unit, unit, unit) M.fexp
+  type mlrisc = (unit, unit, unit, unit) M.mlrisc
+
   (*
    * GC Safety 
    *)
@@ -65,6 +69,13 @@ struct
   val REAL64 = SMLGCType.REAL64  (* untagged floats *)
   val PTR    = SMLGCType.PTR     (* boxed objects *)
   val NO_OPT = #create MLRiscAnnotations.NO_OPTIMIZATION ()
+
+  (*
+   * Convert kind to gc type
+   *)
+  fun kindToGC(CPS.P.INT 31) = I31
+    | kindToGC(CPS.P.UINT 31) = I31
+    | kindToGC(_) = I32 
 
   fun error msg = ErrorMsg.impossible ("MLRiscGen." ^ msg)
 
@@ -83,7 +94,7 @@ struct
   (*
    * Dedicated registers.
    *)
-  val dedicated' = 
+  val dedicated' : mlrisc list = 
     map (fn r => M.GPR(M.REG(ity,r))) C.dedicatedR @ 
     map (fn f => M.FPR(M.FREG(fty,f))) C.dedicatedF
 
@@ -95,6 +106,13 @@ struct
 
   (* 
    * If this flag is on then annotate the registers with GC type info.  
+   * Otherwise use the default behavior.
+   *)
+  val gctypes  = Control.MLRISC.getFlag "mlrisc-gc-types"
+
+  (*
+   * If this flag is on then perform optimizations before generating gc code. 
+   * If this flag is on then gctypes must also be turned on!
    * Otherwise use the default behavior.
    *)
   val gcsafety = Control.MLRISC.getFlag "mlrisc-gcsafety"
@@ -109,7 +127,12 @@ struct
    * This dummy annotation is used to get an empty block  
    *)
   val EMPTY_BLOCK = #create MLRiscAnnotations.EMPTY_BLOCK ()
+  
+  fun dummy _ = error "no extension"
 
+  val extender = 
+      M.EXTENDER{compileStm=dummy,compileRexp=dummy,compileFexp=dummy,
+                 compileCCexp=dummy}
   (*
    * The codegen function.
    *)
@@ -126,7 +149,7 @@ struct
             annotation,    (* add an annotation *)
             ... } = 
             MLTreeComp.selectInstructions
-               (Flowgen.newStream{compile=compile, flowgraph=NONE})
+               extender (Flowgen.newStream{compile=compile, flowgraph=NONE})
       val maxAlloc = #1 o limits
       val instructionCount = #2 o limits
       val splitEntry = !splitEntry
@@ -145,17 +168,37 @@ struct
        * versions of newReg that automatically update the GCMap.
        * Otherwise, we'll just use the normal version.
        *)
-      val (newReg,newFreg,markPTR) = 
-            if !gcsafety then
+      val gctypes = !gctypes
+      fun markNothing e = e
+      fun markNothing2(e,_) = e
+      val (newReg,newFreg,markGC,markPTR,markI32,markFLT) = 
+            if gctypes then
             let val gcMap = GCCells.newGCMap()
                 val enterGC = Intmap.add gcMap
+                val ptr = #create MLRiscAnnotations.MARK_REG
+                              (fn r => enterGC(r,PTR))
+                val i32 = #create MLRiscAnnotations.MARK_REG
+                              (fn r => enterGC(r,I32))
+                val i31 = #create MLRiscAnnotations.MARK_REG
+                              (fn r => enterGC(r,I32))
+                val flt = #create MLRiscAnnotations.MARK_REG
+                              (fn r => enterGC(r,REAL64))
+                fun markPtr e = M.MARK(e,ptr)
+                fun markI32 e = M.MARK(e,i32)
+                fun markFLT e = M.FMARK(e,flt)
+                fun ctyToAnn CPS.INTt = i31 
+                  | ctyToAnn CPS.INT32t = i32 
+                  | ctyToAnn CPS.FLTt = flt 
+                  | ctyToAnn _ = ptr 
+                fun markGC(e,cty) = M.MARK(e,ctyToAnn cty)
             in  GCCells.setGCMap gcMap;
                 (GCCells.newCell Cells.GP, 
                  GCCells.newCell Cells.FP,
-                 #create MLRiscAnnotations.MARK_REG(fn r => enterGC(r,PTR))
+                 markGC, markPtr, markI32, markFLT
                 )
             end
-            else (Cells.newReg, Cells.newFreg, NO_OPT)
+            else (Cells.newReg, Cells.newFreg, markNothing2, 
+                  markNothing, markNothing, markNothing)
 
       (*
        * Known functions have parameters passed in fresh temporaries. 
@@ -206,13 +249,6 @@ struct
                          C.allocptr, C.limitptr)
  
       (*
-       * Convert kind to gc type
-       *)
-      fun kindToGC(CPS.P.INT 31) = I31
-        | kindToGC(CPS.P.UINT 31) = I31
-        | kindToGC(_) = I32 
-
-      (*
        * Function for generating code for one cluster.
        *)
       fun genCluster(cluster) = 
@@ -232,8 +268,8 @@ struct
           (* 
            * {fp,gp}RegTbl -- mapping of lvars to registers  
            *)
-          val fpRegTbl : M.fexp Intmap.intmap = Intmap.new(2, RegMap)
-          val gpRegTbl : M.rexp Intmap.intmap = Intmap.new(32, RegMap)
+          val fpRegTbl : fexp Intmap.intmap = Intmap.new(2, RegMap)
+          val gpRegTbl : rexp Intmap.intmap = Intmap.new(32, RegMap)
           fun clearTables() =(Intmap.clear fpRegTbl; Intmap.clear gpRegTbl)
           val addExpBinding = Intmap.add gpRegTbl
           fun addRegBinding(x,r) = addExpBinding(x,M.REG(ity,r))
@@ -302,9 +338,8 @@ struct
           let val e = 
               M.ADD(addrTy, C.baseptr,
                     M.LABEL(LE.PLUS(LE.LABEL lab, 
-                            LE.CONST(k-MachineSpec.constBaseRegOffset))))
-          in  if !gcsafety then M.MARK(e,markPTR) else e
-          end
+                            LE.INT(k-MachineSpec.constBaseRegOffset))))
+          in  markPTR e end
 
           (*
            * A CPS register may be implemented as a physical 
@@ -428,7 +463,7 @@ struct
           end
 
           fun testLimit hp = 
-          let fun assignCC(M.CC cc, v) = emit(M.CCMV(cc, v))
+          let fun assignCC(M.CC(_, cc), v) = emit(M.CCMV(cc, v))
                 | assignCC _ = error "testLimit.assign"
           in  updtHeapPtr(hp);
               case C.exhausted 
@@ -449,7 +484,7 @@ struct
           in  case e 
               of M.REG _ => addTag(double e)
                | _ => let val tmp = newReg PTR
-                      in  M.SEQ(M.MV(ity, tmp, e), 
+                      in  M.LET(M.MV(ity, tmp, e),
                                 addTag(double (M.REG(ity,tmp))))
                       end
           end
@@ -581,8 +616,9 @@ struct
                  | P.<=  => M.LE
                  | P.neq => M.NE 
                  | P.eql => M.EQ 
+
     
-          fun branchToLabel(lab) = M.JMP(M.LABEL(LE.LABEL(lab)), [lab])
+          fun branchToLabel(lab) = M.JMP([],M.LABEL(LE.LABEL lab),[])
     
           local
             open CPS
@@ -610,7 +646,8 @@ struct
           and falloc(x, e, rest, hp) = 
              (case treeify x
                 of CpsTreeify.DEAD => gen(rest, hp)
-                 | CpsTreeify.TREEIFY => (addFregBinding(x,e); gen(rest, hp))
+                 | CpsTreeify.TREEIFY => 
+                      (addFregBinding(x,e); gen(rest, hp))
                  | CpsTreeify.COMPUTE => 
                    let val f = newFreg REAL64
                    in  addFregBinding(x, M.FREG(fty, f));  
@@ -637,7 +674,7 @@ struct
           and branch (cmp, [v,w], d, e, hp) = 
           let val trueLab = Label.newLabel""
           in  (* is single assignment great or what! *)
-              emit(M.BCC(cmp, M.CMP(32, cmp, regbind v, regbind w), trueLab));
+              emit(M.BCC([], M.CMP(32, cmp, regbind v, regbind w), trueLab));
               gen(e, hp);
               genlab(trueLab, d, hp)
           end
@@ -689,9 +726,10 @@ struct
                   val hp = 
                     if Word.andb(Word.fromInt hp, 0w4) <> 0w0 then hp+4 else hp
               in  addRegBinding(w, ptr);
+                  (* The components are floating points *)
                   MkRecord.frecord
                     {desc=M.LI desc, fields=vl', ans=ptr, mem=memDisambig w, 
-                     hp=hp, emit=emit};
+                     hp=hp, emit=emit, markPTR=markPTR, markComp=markFLT};
                   gen(e, hp + 4 + len*8)
               end
             | gen(RECORD(CPS.RK_VECTOR, vl, w, e), hp) = 
@@ -704,10 +742,12 @@ struct
                   val hdrM = memDisambig w
                   val dataM = hdrM (* Allen *)
               in  addRegBinding(w, hdrPtr);
+                  (* The components are boxed *)
                   MkRecord.record {
                       desc = M.LI(dataDesc), fields = contents,
                       ans = dataPtr,
-                      mem = dataM, hp = hp, emit=emit
+                      mem = dataM, hp = hp, emit=emit, 
+                      markPTR=markPTR, markComp=markPTR
                     };
                   MkRecord.record {
                       desc = M.LI hdrDesc,
@@ -716,22 +756,27 @@ struct
                           (tag(false, M.LI len), offp0)
                         ],
                       ans = hdrPtr,
-                      mem = hdrM, hp = hp + 4 + len*4, emit=emit
+                      mem = hdrM, hp = hp + 4 + len*4, emit=emit,
+                      markPTR=markPTR, markComp=markPTR
                     };
                   gen (e, hp + 16 + len*4)
               end
             | gen(RECORD(kind, vl, w, e), hp) = 
               let val len = length vl
-                  val desc = case (kind, len)
-                   of (CPS.RK_I32BLOCK, l) => dtoi(D.makeDesc (l, D.tag_raw32))
-                    | (_, l) => dtoi(D.makeDesc (l, D.tag_record))
+                  val (desc, markComp) =
+                      case (kind, len)
+                      of (CPS.RK_I32BLOCK, l) =>
+                           (dtoi(D.makeDesc (l, D.tag_raw32)), markI32)
+                       | (_, l) => 
+                           (dtoi(D.makeDesc (l, D.tag_record)), markPTR)
                   (*esac*)
                   val contents = map (fn (v,p) => (regbind v, p)) vl
                   val ptr = newReg PTR
               in  addRegBinding(w, ptr);
                   MkRecord.record 
                     {desc=M.LI desc, fields=contents, ans=ptr, 
-                     mem=memDisambig w, hp=hp, emit=emit};
+                     mem=memDisambig w, hp=hp, emit=emit,
+                     markPTR=markPTR, markComp=markComp};
                   gen(e, hp + 4 + len*4 )
               end
    
@@ -751,7 +796,7 @@ struct
                end
             | gen(SELECT(i, v, x, FLTt, e), hp) = 
                 falloc(x, M.FLOAD(fty, scale8(regbind v, INT i), R.real), e, hp)
-            | gen(SELECT(i, v, x, _, e), hp) = 
+            | gen(SELECT(i, v, x, t, e), hp) = 
               let val select = 
                     M.LOAD(ity,scale4(regbind v,INT i),getRegion(v,i))
               in
@@ -760,7 +805,8 @@ struct
                   *)
                  case treeify x
                   of CpsTreeify.COMPUTE => palloc(x, select, e, hp)
-                   | CpsTreeify.TREEIFY => (addExpBinding(x, select); gen(e,hp))
+                   | CpsTreeify.TREEIFY => 
+                        (addExpBinding(x, markGC(select,t)); gen(e,hp))
                    | CpsTreeify.DEAD => gen(e,hp)
               end
 
@@ -775,7 +821,7 @@ struct
                        ArgP.standard(typmap f, map grabty args)
               in  callSetup(formals, args);
                   testLimit hp;
-                  emit(M.JMP(dest, []));
+                  emit(M.JMP([], dest, []));
                   exitBlock(formals @ dedicated)
               end
             | gen(APP(func as LABEL f, args), hp) = 
@@ -838,7 +884,7 @@ struct
                   val labs = map (fn _ => Label.newLabel"") l
                   val tmpR = newReg I32 val tmp = M.REG(ity,tmpR)
               in  emit(M.MV(ity, tmpR, laddr(lab, 0)));
-                  emit(M.JMP(M.ADD(addrTy, tmp, M.LOAD(pty, scale4(tmp, v), 
+                  emit(M.JMP([], M.ADD(addrTy, tmp, M.LOAD(pty, scale4(tmp, v), 
                                                        R.readonly)), labs));
                   pseudoOp(PseudoOp.JUMPTABLE{base=lab, targets=labs});
                   ListPair.app (fn (lab, e) => genlab(lab, e, hp)) (labs, l)
@@ -935,8 +981,8 @@ struct
             | gen(PURE(P.real{fromkind=P.INT 31, tokind}, [v], x, _, e), hp) = 
               (case tokind
                 of P.FLOAT 64 => (case v
-                     of INT n => falloc(x,M.CVTI2F(fty,M.SIGN_EXTEND,ity,M.LI n),e, hp)
-                      | _ => falloc(x,M.CVTI2F(fty,M.SIGN_EXTEND,ity,untag(true, v)), e, hp)
+                     of INT n => falloc(x,M.CVTI2F(fty,ity,M.LI n),e, hp)
+                      | _ => falloc(x,M.CVTI2F(fty,ity,untag(true, v)), e, hp)
                     (*esac*))
                  | _ => error "gen:PURE:P.real"
               (*esac*))
@@ -954,18 +1000,18 @@ struct
             | gen(PURE(P.subscriptv, [v, INT i], x, t, e), hp) = 
               let val region = getRegion(v, 0)
                   (* get data pointer *)
-                  val a = M.LOAD(ity, regbind v, region)  
+                  val a = markPTR(M.LOAD(ity, regbind v, region))
                   val region' = region (* Allen *)
               in  palloc(x, M.LOAD(ity, scale4(a, INT i), region'), e, hp)
               end
             | gen(PURE(P.subscriptv, [v, w], x, _, e), hp) = 
               let (* get data pointer *)
-                  val a = M.LOAD(ity, regbind v, R.readonly) 
+                  val a = markPTR(M.LOAD(ity, regbind v, R.readonly))
               in  palloc(x, M.LOAD(ity, scale4(a, w), R.readonly), e, hp)
               end
             | gen(PURE(P.pure_numsubscript{kind=P.INT 8}, [v,i], x, _, e), hp) =
               let (* get data pointer *)
-                  val a = M.LOAD(ity, regbind v, R.readonly)  
+                  val a = markPTR(M.LOAD(ity, regbind v, R.readonly))  
               in int31alloc(x, 
                   tag(false,M.LOAD(8,scale1(a, i), R.memory)), e, hp) 
               end
@@ -979,8 +1025,10 @@ struct
                    | _ => M.ORB(ity, M.SLL(ity, untag(true, i),M.LI D.tagWidth),
                                 M.LI(dtoi D.desc_special))
                   val ptr = newReg PTR
-              in  MkRecord.record{desc=desc, fields=[(regbind v, offp0)],
-                                  ans=ptr, mem=memDisambig x, hp=hp, emit=emit};
+              in  (* What gc types are the components? *)
+                  MkRecord.record{desc=desc, fields=[(regbind v, offp0)],
+                                  ans=ptr, mem=memDisambig x, hp=hp, emit=emit,
+                                  markPTR=markPTR, markComp=markNothing};
                   addRegBinding(x, ptr);
                   gen(e, hp+8)
               end
@@ -1043,7 +1091,8 @@ struct
                       desc = M.LI hdrDesc,
                       fields = [(M.REG(ity,dataPtr), offp0), (mlZero, offp0)],
                       ans = hdrPtr,
-                      mem = hdrM, hp = hp + 8, emit=emit
+                      mem = hdrM, hp = hp + 8, emit=emit,
+                      markPTR=markPTR, markComp=markPTR (* boxed components *)
                     };
                   gen (e, hp + 20)
               end
@@ -1099,7 +1148,7 @@ struct
                   val tmpR = M.REG(ity,tmp)
                   val lab = Label.newLabel ""
               in  emit(M.MV(ity, tmp, regbind(INT32 0wx3fffffff)));
-                  emit(M.BCC(M.LEU, M.CMP(32, M.LEU, vreg, tmpR), lab));
+                  emit(M.BCC([], M.CMP(32, M.LEU, vreg, tmpR),lab));
                   updtHeapPtr hp;
                   emit(M.MV(ity, tmp, M.SLL(ity, tmpR, one)));
                   emit(M.MV(ity, tmp, M.ADDT(ity, tmpR, tmpR)));
@@ -1124,18 +1173,18 @@ struct
                 palloc (x, M.LOAD(ity, regbind v, R.memory), e, hp)
             | gen(LOOKER(P.subscript, [v,w], x, _, e), hp) = 
               let (* get data pointer *)
-                  val a = M.LOAD(ity, regbind v, R.readonly)  
+                  val a = markPTR(M.LOAD(ity, regbind v, R.readonly))
               in  palloc (x, M.LOAD(ity, scale4(a, w), R.memory), e, hp)
               end
             | gen(LOOKER(P.numsubscript{kind=P.INT 8},[v,i],x,_,e), hp) = 
               let (* get data pointer *)
-                  val a = M.LOAD(ity, regbind v, R.readonly)  
+                  val a = markPTR(M.LOAD(ity, regbind v, R.readonly))  
               in  int31alloc(x, 
                      tag(false, M.LOAD(8,scale1(a, i),R.memory)), e, hp)
               end
             | gen(LOOKER(P.numsubscript{kind=P.FLOAT 64}, [v,i], x, _, e), hp)=
               let (* get data pointer *)
-                  val a = M.LOAD(ity,regbind v, R.readonly)  
+                  val a = markPTR(M.LOAD(ity,regbind v, R.readonly))  
               in  falloc(x, M.FLOAD(fty,scale8(a, i),R.memory), e, hp)
               end
             | gen(LOOKER(P.gethdlr,[],x,_,e), hp) = palloc(x, C.exnptr, e, hp)
@@ -1160,7 +1209,7 @@ struct
                 gen(e, hp))
             | gen(SETTER(P.update, [v,i,w], e), hp) = 
               let (* get data pointer *)
-                  val a = M.LOAD(ity, regbind v, R.readonly)  
+                  val a = markPTR(M.LOAD(ity, regbind v, R.readonly))  
                   val tmpR = Cells.newReg() (* derived pointer! *)
                   val tmp = M.REG(ity, tmpR)
                   val ea = scale4(a, i)  (* address of updated cell *)
@@ -1173,20 +1222,20 @@ struct
                 gen(SETTER(P.update, args, e), hp)
             | gen(SETTER(P.unboxedupdate, [v, i, w], e), hp) = 
               let (* get data pointer *)
-                  val a = M.LOAD(ity, regbind v, R.readonly)  
+                  val a = markPTR(M.LOAD(ity, regbind v, R.readonly))  
               in  emit(M.STORE(ity, scale4(a, i), regbind w, R.memory));
                   gen(e, hp)
               end
             | gen(SETTER(P.numupdate{kind=P.INT 8}, [s,i,v], e), hp) = 
               let (* get data pointer *)
-                  val a = M.LOAD(ity, regbind s, R.readonly)  
+                  val a = markPTR(M.LOAD(ity, regbind s, R.readonly))  
                   val ea = scale1(a, i)
               in  emit(M.STORE(8,ea, untag(false, v), R.memory));
                   gen(e, hp)
               end
             | gen(SETTER(P.numupdate{kind=P.FLOAT 64},[v,i,w],e), hp) = 
               let (* get data pointer *)
-                  val a = M.LOAD(ity, regbind v, R.readonly)  
+                  val a = markPTR(M.LOAD(ity, regbind v, R.readonly))  
               in  emit(M.FSTORE(fty,scale8(a, i), fregbind w, R.memory)); 
                   gen(e, hp)
               end
@@ -1284,7 +1333,7 @@ struct
                          | P.fUE  => M.?= 
     
                   val cmp = M.FCMP(64, fcond, fregbind v, fregbind w) 
-              in  emit(M.FBCC(fcond, cmp, trueLab)); 
+              in  emit(M.BCC([], cmp, trueLab));
                   gen(e, hp);
                   genlab(trueLab, d, hp)
               end
@@ -1303,7 +1352,7 @@ struct
                             M.LOAD(ity,M.ADD(ity,M.REG(ity, r2),i),R.readonly))
                   fun unroll i = 
                       if i=n' then ()
-                      else (emit(M.BCC(M.NE, cmpWord(M.LI(i)), false_lab));
+                      else (emit(M.BCC([], cmpWord(M.LI(i)), false_lab));
                             unroll (i+4))
               in  emit(M.MV(ity, r1, M.LOAD(ity, regbind v, R.readonly)));
                   emit(M.MV(ity, r2, M.LOAD(ity, regbind w, R.readonly)));
@@ -1314,7 +1363,7 @@ struct
             | gen(BRANCH(P.boxed, [x], _, a, b), hp) = 
               let val lab = Label.newLabel""
                   val cmp = M.CMP(32, M.NE, M.ANDB(ity, regbind x, one), M.LI 0)
-              in  emit(M.BCC(M.NE, cmp, lab));
+              in  emit(M.BCC([], cmp, lab));
                   gen(a, hp);
                   genlab(lab, b, hp)
               end
@@ -1339,7 +1388,7 @@ struct
                       val baseval = 
                         M.ADD(addrTy,linkreg, 
                               M.LABEL(LE.MINUS(
-                                  LE.CONST MachineSpec.constBaseRegOffset,
+                                  LE.INT MachineSpec.constBaseRegOffset,
                                   LE.LABEL entryLab)))
                   in func := NONE;
                      pseudoOp PseudoOp.ALIGN4;
@@ -1354,7 +1403,7 @@ struct
                      emit(assign(C.baseptr, baseval));
                      InvokeGC.stdCheckLimit stream
                          {maxAlloc=4 * maxAlloc f, regfmls=regfmls, 
-                          regtys=tl, return=M.JMP(linkreg,[])};
+                          regtys=tl, return=M.JMP([], linkreg,[])};
                      clearTables();
                      initialRegBindingsEscaping(List.tl vl, regfmlsTl, List.tl tl);
                      initTypBindings e;
@@ -1381,15 +1430,18 @@ struct
       in
           initFrags cluster;
           beginCluster 0;
-          if !gcsafety then Intmap.clear(GCCells.getGCMap()) else ();
+          if gctypes then Intmap.clear(GCCells.getGCMap()) else ();
           fragComp();
           InvokeGC.emitLongJumpsToGCInvocation stream;
           endCluster(
-             if !gcsafety then 
+             if gctypes then 
                 let val gcmap = GCCells.getGCMap()
                 in  [#create SMLGCMap.GCMAP gcmap,
                      #create 
-                        MLRiscAnnotations.REGINFO(SMLGCMap.toString gcmap)
+                        MLRiscAnnotations.REGINFO(
+                           let val pr = SMLGCMap.toString gcmap
+                           in  fn (_,r) => pr r end
+                        )
                     ]
                 end
              else []

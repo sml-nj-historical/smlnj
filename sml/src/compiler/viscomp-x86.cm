@@ -28,6 +28,7 @@ CodeGen/x86/x86spec.sml
 basis.cm
 viscomp-core.cm
 comp-lib.cm
+MLRISC-Control.cm
 MLRISC.cm
 MLRISC-IA32.cm
 

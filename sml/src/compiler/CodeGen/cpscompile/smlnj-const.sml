@@ -5,3 +5,5 @@ structure SMLNJConstant = struct
   fun hash _ = 0w0
   fun == (x,y) = true
 end
+
+structure SMLNJLabelExp = LabelExp(SMLNJConstant)

@@ -11,6 +11,10 @@ structure X86CpsRegs : CPSREGS = struct
   structure T = X86MLTree
   structure C = X86Cells
 
+  type rexp = (unit, unit, unit, unit) T.rexp
+  type fexp = (unit, unit, unit, unit) T.fexp
+  type ccexp = (unit, unit, unit, unit) T.ccexp
+
   fun upto(from, to) = if from>to then [] else from::(upto (from+1,to))
   infix upto 
 
@@ -22,7 +26,8 @@ structure X86CpsRegs : CPSREGS = struct
   val edx = T.REG(32, C.edx)	val esi = T.REG(32, C.esi)
   val ebx = T.REG(32, C.ebx)	val edi = T.REG(32, C.edi)
 
-  fun regInMem i = T.LOAD(32, T.ADD(32, esp, T.LI i), CPSRegions.memory)
+  fun regInMem i = 
+      T.LOAD(32, T.ADD(32, esp, T.LI i), CPSRegions.memory) : rexp 
 
   val allocptr 	= edi
   val stdarg 	= ebp
@@ -36,19 +41,21 @@ structure X86CpsRegs : CPSREGS = struct
   val storeptr 	= regInMem 24
   val varptr  	= regInMem 28
 
-  val stdlink	= T.REG(32, GP 8)		(* vreg 0 *)
-  val stdclos	= T.REG(32, GP 9)		(* vreg 1 *)
+  val stdlink	= T.REG(32, GP 8) : rexp		(* vreg 0 *)
+  val stdclos	= T.REG(32, GP 9) : rexp		(* vreg 1 *)
 
   fun mkVregList(n, 0) = []
     | mkVregList(n, cnt) = T.REG(32, GP n)::mkVregList(n+1, cnt-1)
 
   (* miscregs = {ebx,ecx,edx,r10,r11,...r31} *)
-  val miscregs  = ebx::ecx::edx::mkVregList(10, X86Runtime.numVregs - 2)
+  val miscregs : rexp list = 
+      ebx::ecx::edx::mkVregList(10, X86Runtime.numVregs - 2)
 
   val calleesave = Array.fromList miscregs
   val exhausted = NONE
 
-  val floatregs = map (fn f => T.FREG(64,f)) ((FP 8) upto (FP 31))
+  val floatregs : fexp list = 
+      map (fn f => T.FREG(64,f)) ((FP 8) upto (FP 31))
   val savedfpregs = []
 
   val availR = map (fn T.REG(_,r) => r) [ebp, esi, ebx, ecx, edx, eax]

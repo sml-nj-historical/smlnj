@@ -9,6 +9,10 @@ struct
   structure T = HppaMLTree
   structure SL = SortedList
 
+  type rexp = (unit, unit, unit, unit) T.rexp
+  type fexp = (unit, unit, unit, unit) T.fexp
+  type ccexp = (unit, unit, unit, unit) T.ccexp
+
   (* HPPA register conventions 
      0     zero
      1	   caller-saves
@@ -28,32 +32,33 @@ struct
 
   val GP = HppaCells.GPReg
   val FP = HppaCells.FPReg
+  fun REG r = T.REG(32, GP r) : rexp
+  fun FREG f = T.FREG(64, FP f) : fexp
 
-  val stdarg	= T.REG(32,GP 11)
-  val stdcont	= T.REG(32,GP 12)
-  val stdclos	= T.REG(32,GP 10)
-  val stdlink	= T.REG(32,GP 9)
-  val baseptr	= T.REG(32,GP 8)
+  val stdarg	= REG(11)
+  val stdcont	= REG(12)
+  val stdclos	= REG(10)
+  val stdlink	= REG(9)
+  val baseptr	= REG(8)
 
-  val limitptr	= T.REG(32,GP 4)
-  val varptr	= T.REG(32,GP 7)
+  val limitptr	= REG(4)
+  val varptr	= REG(7)
   val exhausted	= NONE
-  val storeptr	= T.REG(32,GP 5)
-  val allocptr	= T.REG(32,GP 3)
-  val exnptr	= T.REG(32,GP 6)
+  val storeptr	= REG(5)
+  val allocptr	= REG(3)
+  val exnptr	= REG(6)
 
   val returnPtr	= GP 31
-  val gcLink	= T.REG(32,returnPtr)
-  val stackptr	= T.REG(32,GP 30)
+  val gcLink	= T.REG(32,returnPtr) : rexp
+  val stackptr	= REG(GP 30) 
 
-  val miscregs = 
-    map (fn r => T.REG(32,GP r)) 
-       [1,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,2]
-  val calleesave = Array.fromList miscregs
+  val miscregs =
+    map REG [1,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,2]
+  val calleesave = Array.fromList miscregs : rexp Array.array
 
   (* Note: We need at least one register for shuffling purposes. *)
   fun fromto(n, m) = if n>m then [] else n :: fromto(n+1, m)
-  val floatregs = map (fn f => T.FREG(64,FP f)) (fromto(6, 30))
+  val floatregs = map FREG (fromto(6, 30))
   val savedfpregs = []
 
   val allRegs = SL.uniq(fromto(GP 0,GP 31))

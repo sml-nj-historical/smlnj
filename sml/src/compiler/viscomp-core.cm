@@ -50,6 +50,7 @@ Library
 	structure Control
 	structure DefaultMachSpec
 	structure SMLNJConstant
+	structure SMLNJLabelExp
 	structure CodeString
 
 	functor PseudoOpsBig
@@ -346,4 +347,5 @@ ml-yacc-lib.cm
 smlnj-lib.cm
 comp-lib.cm
 pp-lib.cm
+MLRISC-Control.cm
 MLRISC.cm

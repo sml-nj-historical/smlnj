@@ -253,7 +253,7 @@ struct
             spillProh    = [],
             firstMemReg  = 0,
             numMemRegs   = 0,
-            mode         = Ra.SPILL_COLORING
+            mode         = Word.orb(Ra.SPILL_COLORING, Ra.HAS_PARALLEL_COPIES)
           },
           { cellkind     = I.C.FP,
             getreg       = FR.getreg,

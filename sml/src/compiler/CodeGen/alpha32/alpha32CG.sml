@@ -17,6 +17,7 @@ structure Alpha32CG =
              val mode32bit = true (* simulate 32 bit mode *)
              val multCost = ref 8 (* just guessing *)
              val useMultByConst = ref false (* just guessing *)
+             val SMLNJfloatingPoint = true (* must be true for SML/NJ *)
             )
 
     structure Alpha32Jumps =

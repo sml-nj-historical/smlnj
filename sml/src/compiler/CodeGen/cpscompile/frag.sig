@@ -8,7 +8,7 @@ signature FRAG = sig
   structure T : MLTREE
   datatype generated =
       UNGEN of CPS.lvar * CPS.lvar list * CPS.cty list * CPS.cexp
-    | GEN of T.mlrisc list
+    | GEN of (unit, unit, unit, unit) T.mlrisc list
 
   datatype frag =
       STANDARD of {func: CPS.function option ref, 

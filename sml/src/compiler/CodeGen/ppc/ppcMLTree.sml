@@ -5,7 +5,7 @@ structure PPCConst = SMLNJConstant
 
 (* specialised powerpc instruction set *)
 structure PPCInstr = 
-  PPCInstr(structure Const=PPCConst
+  PPCInstr(structure LabelExp=SMLNJLabelExp
 	   structure Region=CPSRegions)
 
 structure PPCProps = PPCProps(PPCInstr)
@@ -20,7 +20,7 @@ structure PPCFlowGraph =
 	    structure P=PPCPseudoOps
            )
 
-structure PPCStream = InstructionStreamFn(PPCPseudoOps)
+structure PPCStream = InstructionStream(PPCPseudoOps)
 
 structure PPCAsmEmitter=
   PPCAsmEmitter(structure Instr=PPCInstr
@@ -36,8 +36,7 @@ structure PPCMCEmitter =
 
 
 structure PPCMLTree = 
-  MLTreeF(structure Const=PPCConst
+  MLTreeF(structure LabelExp=SMLNJLabelExp
 	  structure R=CPSRegions
 	  structure S=PPCStream
-          type rextension=unit
-          type fextension=unit)
+         )

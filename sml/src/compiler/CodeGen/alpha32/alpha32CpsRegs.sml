@@ -8,33 +8,40 @@ structure Alpha32CpsRegs : CPSREGS =
 struct
   structure T = Alpha32MLTree
   structure SL = SortedList
+
+  type rexp = (unit, unit, unit, unit) T.rexp
+  type fexp = (unit, unit, unit, unit) T.fexp
+  type ccexp = (unit, unit, unit, unit) T.ccexp
+
   fun upto (from,to) = if from>to then [] else from::(upto (from+1,to))
   infix upto
 
   val GP = AlphaCells.GPReg
   val FP = AlphaCells.FPReg
 
-  val stdarg	= T.REG(32, GP 0)
-  val stdcont  	= T.REG(32, GP 1)
-  val stdclos	= T.REG(32, GP 2)
-  val stdlink	= T.REG(32, GP 3)
-  val baseptr   = T.REG(32, GP 4)
+  fun REG r = T.REG(32, GP r) : rexp
+  fun FREG f = T.FREG(64, FP f) : fexp
 
-  val limitptr 	= T.REG(32, GP 9)
-  val varptr	= T.REG(32, GP 10)
+  val stdarg	= REG(0) 
+  val stdcont  	= REG(1)
+  val stdclos	= REG(2)
+  val stdlink	= REG(3)
+  val baseptr   = REG(4)
+
+  val limitptr 	= REG(9)
+  val varptr	= REG(10)
   val exhaustedR = GP 11
-  val exhausted	= SOME(T.CC(exhaustedR))
-  val storeptr	= T.REG(32, GP 12)
-  val allocptr 	= T.REG(32, GP 13)
-  val exnptr	= T.REG(32, GP 14)
+  val exhausted	= SOME(T.CC(T.GT,exhaustedR)) : ccexp option
+  val storeptr	= REG(12) 
+  val allocptr 	= REG(13)
+  val exnptr	= REG(14)
 
-  val gcLink	= T.REG(32, GP 26)
-  val stackptr	= T.REG(32, GP 30)
+  val gcLink	= REG(26)
+  val stackptr	= REG(30)
 
-  val miscregs =  map (fn r => T.REG(32,GP r)) 
-          ((5 upto 8) @ (15 upto 25) @ [27])
+  val miscregs =  map REG ((5 upto 8) @ (15 upto 25) @ [27])
   val calleesave = Array.fromList(miscregs)
-  val floatregs = map (fn f => T.FREG(64,FP f)) (0 upto 28)
+  val floatregs = map FREG (0 upto 28)
   val savedfpregs = []
 
   val allRegs = SL.uniq(GP 0 upto GP 31)

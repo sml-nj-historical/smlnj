@@ -26,6 +26,7 @@ CodeGen/alpha32/alpha32spec.sml
 basis.cm
 viscomp-core.cm
 comp-lib.cm
+MLRISC-Control.cm
 MLRISC.cm
 MLRISC-ALPHA.cm
 

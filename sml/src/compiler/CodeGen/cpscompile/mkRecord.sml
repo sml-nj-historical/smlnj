@@ -21,6 +21,11 @@ struct
   val ity = 32
   val fty = 64
 
+  type rexp   = (unit, unit, unit, unit) T.rexp
+  type fexp   = (unit, unit, unit, unit) T.fexp
+  type stm    = (unit, unit, unit, unit) T.stm
+  type mlrisc = (unit, unit, unit, unit) T.mlrisc
+
   val T.REG(_, allocptrR) = C.allocptr
 
   fun ea(r, 0) = r
@@ -33,10 +38,17 @@ struct
     | pi(x as ref(R.PT.NAMED _),_) = x
     | pi(x,i) = R.PT.pi(x,i)
 
-  fun record {desc, fields, ans, mem, hp, emit} = let
-    fun getfield(r, CPS.SELp(n, p), mem) = 
+  fun record {desc, fields, ans, mem, hp, emit, markPTR, markComp} = let
+    fun getfield(r, CPS.SELp(n, CPS.OFFp 0), mem) = 
         let val mem = pi(mem,n)
-        in  getfield(T.LOAD(ity, indexEA(r, n), mem), p, mem) end
+        in  markComp(T.LOAD(ity, indexEA(r, n), mem)) end
+      | getfield(r, CPS.SELp(n, CPS.OFFp off), mem) = 
+        let val mem = pi(mem,n)
+        in  T.ADD(addrTy,markComp(T.LOAD(ity, indexEA(r, n), mem)),T.LI(off+4))
+        end
+      | getfield(r, CPS.SELp(n, p), mem) = 
+        let val mem = pi(mem,n)
+        in  getfield(markPTR(T.LOAD(ity, indexEA(r, n), mem)), p, mem) end
       | getfield(r, CPS.OFFp 0, _) = r
       | getfield(r, CPS.OFFp n, _) = T.ADD(addrTy, r, T.LI(n*4))
 
@@ -51,17 +63,18 @@ struct
     emit(T.MV(pty, ans, T.ADD(addrTy, C.allocptr, T.LI(hp+4))))
   end
 
-  fun frecord {desc, fields, ans, mem, hp, emit} = let
+  fun frecord {desc, fields, ans, mem, hp, emit, markPTR, markComp} = let
     fun fgetfield(T.FPR fp, CPS.OFFp 0, _) = fp
       | fgetfield(T.GPR r, path, mem) = let
 	  fun fea(r, 0) = r
 	    | fea(r, n) = T.ADD(addrTy, r, T.LI(n*8))
 
 	  fun chase(r, CPS.SELp(n, CPS.OFFp 0), mem) =
-		T.FLOAD(fty, fea(r,n), pi(mem,n))
+		markComp(T.FLOAD(fty, fea(r,n), pi(mem,n)))
 	    | chase(r, CPS.SELp(n,p), mem) =  
               let val mem = pi(mem,n)
-              in  chase(T.LOAD(ity, indexEA(r, n), mem), p, mem) end
+              in  chase(markPTR(T.LOAD(ity, indexEA(r, n), mem)), p, mem) 
+              end
 	in chase(r, path, mem)
 	end
 

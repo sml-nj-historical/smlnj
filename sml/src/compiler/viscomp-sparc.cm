@@ -28,5 +28,6 @@ CodeGen/sparc/sparcspec.sml
 basis.cm
 viscomp-core.cm
 comp-lib.cm
+MLRISC-Control.cm
 MLRISC.cm
 MLRISC-SPARC.cm

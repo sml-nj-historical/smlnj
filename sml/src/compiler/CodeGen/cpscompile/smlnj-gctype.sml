@@ -3,14 +3,14 @@ struct
 
    structure CPS = CPS
 
-   type objtype = CPS.cty 
+   type ty = int
   
    datatype gctype =
      CONST of int                  (* integer constant *)
-   | NONREF of objtype ref         (* non-reference value *)
-   | REF of objtype ref            (* a reference, pointer to a gc object *)
-   | ADD of int * gctype * gctype  (* address arithmetic + *)
-   | SUB of int * gctype * gctype  (* address arithmetic - *)
+   | NONREF of CPS.cty ref         (* non-reference value *)
+   | REF of CPS.cty ref            (* a reference, pointer to a gc object *)
+   | PLUS of ty * gctype * gctype   (* address arithmetic + *)
+   | MINUS of ty * gctype * gctype   (* address arithmetic - *)
    | BOT
    | TOP
 
@@ -21,8 +21,8 @@ struct
      | toString (CONST i) = int i
      | toString (NONREF(ref obj)) = CPS.ctyToString obj
      | toString (REF(ref obj)) =  CPS.ctyToString obj
-     | toString (ADD(ty,a,b)) = "("^toString a^"+"^toString b^")"
-     | toString (SUB(ty,a,b)) = "("^toString a^"-"^toString b^")"
+     | toString (PLUS(ty,a,b)) = "("^toString a^"+"^toString b^")"
+     | toString (MINUS(ty,a,b)) = "("^toString a^"-"^toString b^")"
 
    fun ==(x:gctype, y:gctype) = x = y
 
@@ -41,8 +41,32 @@ struct
   val I31    = NONREF(ref CPS.INTt)    (* tagged integers *)
   val I32    = NONREF(ref CPS.INT32t)  (* untagged integers *)
   val REAL64 = NONREF(ref CPS.FLTt)    (* untagged floats *)
-  val PTR    = REF(ref(CPS.PTRt(CPS.VPT))) (* boxed objects (pointers) *)
 
+  val PTR    = REF(ref(CPS.PTRt(CPS.VPT))) (* boxed objects (pointers) *)
+  val INT    = I32 (* untagged integer *)
+  val REAL32 = TOP (* unused in SML/NJ *)
+
+  fun ADD(_,TOP,x) = TOP
+    | ADD(_,x,TOP) = TOP
+    | ADD(ty,CONST i,CONST j) = (CONST(i+j) handle Overflow => INT)
+    | ADD(ty,CONST 0,b) = b
+    | ADD(ty,b,CONST 0) = b
+    | ADD(ty,CONST _,NONREF _) = INT
+    | ADD(ty,NONREF _,CONST _) = INT
+    | ADD(ty,x as NONREF a,y as NONREF b) = if a = b then x else INT
+    | ADD(ty,x,y)  = PLUS(ty,x,y)
+  fun SUB(_,TOP,x) = TOP
+    | SUB(_,x,TOP) = TOP
+    | SUB(ty,CONST i,CONST j) = (CONST(i-j) handle Overflow => INT)
+    | SUB(ty,a,CONST 0) = a
+    | SUB(ty,CONST _,NONREF _) = INT
+    | SUB(ty,NONREF _,CONST _) = INT
+    | SUB(ty,x as NONREF a,y as NONREF b) = if a = b then x else INT
+    | SUB(ty,x,y)  = MINUS(ty,x,y)
+
+  fun isRecoverable TOP = false
+    | isRecoverable BOT = false (* XXX *)
+    | isRecoverable _   = true
 end
 
 structure SMLGCMap = GCMap(SMLGCType)

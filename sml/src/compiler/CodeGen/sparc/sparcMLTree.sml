@@ -8,7 +8,7 @@ structure SparcConst = SMLNJConstant
 
 (* specialised sparc instruction set *)
 structure SparcInstr = 
-  SparcInstr(structure Const = SparcConst
+  SparcInstr(structure LabelExp = SMLNJLabelExp
 	     structure Region = CPSRegions
             )
 
@@ -26,7 +26,7 @@ structure SparcFlowGraph =
 	    structure P=SparcPseudoOps
            )
 
-structure SparcStream = InstructionStreamFn(SparcPseudoOps)
+structure SparcStream = InstructionStream(SparcPseudoOps)
 
 structure SparcAsmEmitter = 
   SparcAsmEmitter(structure Instr=SparcInstr
@@ -42,11 +42,9 @@ structure SparcMCEmitter =
 		 structure CodeString=CodeString)
 
 structure SparcMLTree = 
-  MLTreeF(structure Const=SparcConst
+  MLTreeF(structure LabelExp=SMLNJLabelExp
 	  structure R=CPSRegions
 	  structure S=SparcStream
-          type rextension = unit
-          type fextension = unit
          )
 
 

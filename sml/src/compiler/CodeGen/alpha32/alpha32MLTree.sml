@@ -2,7 +2,7 @@
 
 (* specialised alpha32 instruction set *)
 structure Alpha32Instr = 
-  AlphaInstr(structure Const=SMLNJConstant
+  AlphaInstr(structure LabelExp=SMLNJLabelExp
              structure Region=CPSRegions)
 
 structure Alpha32Props = AlphaProps(Alpha32Instr)
@@ -18,7 +18,7 @@ structure Alpha32FlowGraph =
 	    structure P=Alpha32PseudoOps
            )
 
-structure Alpha32Stream = InstructionStreamFn(Alpha32PseudoOps)
+structure Alpha32Stream = InstructionStream(Alpha32PseudoOps)
 
 structure Alpha32AsmEmitter=
   AlphaAsmEmitter(structure Instr=Alpha32Instr
@@ -33,11 +33,9 @@ structure Alpha32MCEmitter =
 		 structure CodeString=CodeString)
 
 structure Alpha32MLTree = 
-  MLTreeF(structure Const=SMLNJConstant
+  MLTreeF(structure LabelExp=SMLNJLabelExp
 	  structure R=CPSRegions
 	  structure S=Alpha32Stream
-          type rextension = unit
-          type fextension = unit
          )
 
 structure Alpha32PseudoInstrs =

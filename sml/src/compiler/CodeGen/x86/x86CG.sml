@@ -20,13 +20,12 @@ structure X86CG =
 
     fun error msg = MLRiscErrorMsg.error("X86CG",msg)
 
-    (* Should we target memory registers? *)
-    val targetMemoryRegisters = true
-
     structure MLTreeComp=
        X86(structure X86Instr=X86Instr
            structure X86MLTree=X86MLTree
            val tempMem=I.Displace{base=esp, disp=I.Immed 304, mem=stack}
+           datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
+           val arch = ref Pentium (* Lowest common denominator *)
           )
 
     structure X86Jumps = 
@@ -44,30 +43,14 @@ structure X86CG =
                  structure CodeString=CodeString)
 
     structure PrintFlowGraph=
-       PrintClusterFn(structure Flowgraph=X86FlowGraph
-                      structure Asm = X86AsmEmitter)
+       PrintCluster(structure Flowgraph=X86FlowGraph
+                    structure Asm = X86AsmEmitter)
 
     structure X86Spill = X86Spill(structure Instr=I structure Props=InsnProps)
 
     val toInt32 = Int32.fromInt
     fun cacheOffset r = I.Immed(toInt32(X86Runtime.vregStart + 
                                 Word.toIntX(Word.<<(Word.fromInt(r-8),0w2))))
-
-    val memRegsUsed = ref 0w0 : Word32.word ref
-
-    fun ea r = 
-        (memRegsUsed := Word32.orb(Word32.<<(0w1, Word.fromInt r),!memRegsUsed);
-         if targetMemoryRegisters then I.MemReg r 
-         else I.Displace{base=esp, disp=cacheOffset r, mem=stack}
-        )
- 
-    structure X86RewritePseudo=
-       X86RewritePseudo(structure Instr=X86Instr
-                        structure Flowgraph=X86FlowGraph
-                        structure Shuffle=X86Shuffle
-                        val ea = ea
-                       )
-
 
     val intSpillCnt = MLRiscControl.getCounter "ra-int-spills"
     val floatSpillCnt = MLRiscControl.getCounter "ra-float-spills"
@@ -94,6 +77,7 @@ structure X86CG =
           val isAffected = Intmap.mapWithDefault(affectedBlocks, false) 
           fun isDeadInstr(I.ANNOTATION{i, ...}) = isDeadInstr i 
             | isDeadInstr(I.MOVE{dst=I.Direct rd, ...}) = isDead rd
+            | isDeadInstr(I.MOVE{dst=I.MemReg rd, ...}) = isDead rd
             | isDeadInstr(I.COPY{dst=[rd], ...}) = isDead rd
             | isDeadInstr _ = false
           fun scan [] = ()
@@ -111,23 +95,56 @@ structure X86CG =
             else elim(instrs, i::code)
       in if Intmap.elems affectedBlocks > 0 then scan blocks else ()
       end
-    
+
+      (* This function finds out which pseudo memory registers are unused.
+       * Those that are unused are made available for spilling.
+       * The register allocator calls this function right before spilling 
+       * a set of nodes.
+       *)
+      local 
+         open RAGraph
+      in  
+         val firstSpill = ref true
+         fun spillInit(GRAPH{nodes, ...}, I.C.GP) = 
+             if !firstSpill then (* only do this once! *)
+             let val lookup = Intmap.map nodes
+                 fun find(r, free) =
+                     if r >= 10 then (* note, %8 and %9 are reserved! *)
+                        let val free = 
+                                case lookup r of
+                                  NODE{uses=ref [], defs=ref [], ...} => 
+                                     cacheOffset r::free
+                                | _ => free
+                        in  find(r-1, free) end
+                     else 
+                        free
+                 val free = find(31 (* X86Runtime.numVregs+8-1 *), [])
+              in firstSpill := false;
+                 X86StackSpills.setAvailableOffsets free
+              end 
+              else ()
+            | spillInit(GRAPH{nodes, ...}, _) = ()
+      end
+ 
       (* This is the generic register allocator *)
       structure Ra = 
         RegisterAllocator
          (ChowHennessySpillHeur)
-         (RADeadCodeElim
-            (ClusterRA
-               (structure Flowgraph = F
-                structure Asm = X86AsmEmitter
-                structure InsnProps = InsnProps
-               )
-            )
-            (fun cellkind I.C.GP = true | cellkind _ = false
-             val deadRegs = deadRegs
-             val affectedBlocks = affectedBlocks
-            )
-         )
+         (MemoryRA             (* for memory coalescing *)
+           (RADeadCodeElim     (* do the funky dead code elimination stuff *)
+              (ClusterRA
+                 (structure Flowgraph = F
+                  structure Asm = X86AsmEmitter
+                  structure InsnProps = InsnProps
+                 )
+              )
+              (fun cellkind I.C.GP = true | cellkind _ = false
+               val deadRegs = deadRegs
+               val affectedBlocks = affectedBlocks
+               val spillInit = spillInit
+              )
+           )
+        )
 
 
       (* -------------------------------------------------------------------
@@ -155,7 +172,7 @@ structure X86CG =
   
       fun spillFreg{src, reg, spillLoc, annotations} = 
          (floatSpillCnt := !floatSpillCnt + 1;
-          [I.FLD(I.FDirect(src)), I.FSTP(getFregLoc spillLoc)]
+          [I.FLDL(I.FDirect(src)), I.FSTPL(getFregLoc spillLoc)]
          )
 
       fun spillFcopyTmp{copy=I.FCOPY{dst, src, ...}, spillLoc, annotations} =
@@ -177,7 +194,7 @@ structure X86CG =
 
       fun reloadFreg{dst, reg, spillLoc, annotations} = 
           (floatReloadCnt := !floatReloadCnt + 1;
-           [I.FLD(getFregLoc spillLoc), I.FSTP(I.FDirect dst)]
+           [I.FLDL(getFregLoc spillLoc), I.FSTPL(I.FDirect dst)]
           )
 
       (* -------------------------------------------------------------------
@@ -203,31 +220,12 @@ structure X86CG =
   
       val getRegLoc' = X86StackSpills.getRegLoc
 
-      val firstSpill = ref true
-
       fun getRegLoc(spillLoc) = 
-          (* Is it a memory register? *)
-          if spillLoc >= 0 then I.MemReg spillLoc else
-          (* No, logical spill locations... *)
-          (if !firstSpill then
-             (* find out what pseudo memory registers are not used and can be 
-              * used for spill space. 
-              *) 
-             (firstSpill := false;
-              let fun loop(m,r,free) =
-                      if r >= 10 then (* note, 8 and 9 are reserved! *)
-                        if Word32.andb(m,Word32.<<(0w1,Word.fromInt r)) <> 0w0
-                        then loop(m,r-1,free)
-                        else ((* print ("["^Int.toString r^"]"); *)
-                              loop(m,r-1,cacheOffset r::free))
-                      else free
-                  val m    = !memRegsUsed
-                  val free = loop(m, 31 (* X86Runtime.numVregs+8-1 *), [])
-              in  X86StackSpills.setAvailableOffsets free
-              end 
-             ) else ();
-           I.Displace{base=esp, disp=getRegLoc' spillLoc, mem=spill}
-          )
+               (* Is it a memory register? *)
+          if spillLoc >= 0 then I.MemReg spillLoc 
+               (* No, logical spill locations... *)
+          else I.Displace{base=esp, disp=getRegLoc' spillLoc, mem=spill}
+          
   
       structure GR8 = GetReg(val nRegs=8 val available=X86CpsRegs.availR
                              val first=0)
@@ -277,7 +275,6 @@ structure X86CG =
 
       fun spillInit () = 
         (firstSpill := true;
-         memRegsUsed := 0w0;
          Intmap.clear affectedBlocks; 
          Intmap.clear deadRegs;
          X86StackSpills.init(); FR.reset(); GR8.reset())
@@ -298,12 +295,6 @@ structure X86CG =
   
           val _ = spillInit()
   
-          val (n,m) = X86RewritePseudo.rewrite 
-                       {firstPseudo=32, 
-                        originalRegmap=I.C.lookup regmap, 
-                        pruneCellSets=not targetMemoryRegisters 
-                       } cluster
-
           (* generic register allocator *)
 
           val cluster = Ra.ra
@@ -318,9 +309,9 @@ structure X86CG =
                             getreg    = GR8.getreg,
                             cellkind  = I.C.GP,   
                             dedicated = dedicatedR,
-                            spillProh = [(n,m)],
+                            spillProh = [],
                             firstMemReg= 8,
-                            numMemRegs= if targetMemoryRegisters then 24 else 0,
+                            numMemRegs= 24,
                             mode      = Ra.SPILL_PROPAGATION+Ra.SPILL_COLORING
                            },
                            {spill     = spillF,

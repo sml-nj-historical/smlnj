@@ -1,6 +1,6 @@
 (* specialised X86 instruction set *)
 structure X86Instr = 
-  X86Instr(structure Const=SMLNJConstant
+  X86Instr(structure LabelExp=SMLNJLabelExp
 	   structure Region=CPSRegions)
 
 structure X86Props = X86Props(X86Instr)
@@ -20,7 +20,7 @@ structure X86FlowGraph =
 	    structure P=X86PseudoOps
            )
 
-structure X86Stream = InstructionStreamFn(X86PseudoOps)
+structure X86Stream = InstructionStream(X86PseudoOps)
 
 
 (* Assembly code emmitter *)
@@ -40,9 +40,7 @@ structure X86MCEmitter =
 
 (* MLTree specialization *)
 structure X86MLTree = 
-  MLTreeF(structure Const=SMLNJConstant
+  MLTreeF(structure LabelExp=SMLNJLabelExp
 	  structure R=CPSRegions
 	  structure S=X86Stream
-          type rextension = unit
-          type fextension = unit
          )

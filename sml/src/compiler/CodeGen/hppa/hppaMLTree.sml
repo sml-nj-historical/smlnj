@@ -9,7 +9,7 @@ structure HppaConst = SMLNJConstant
 
 (* specialised hppa instruction set *)
 structure HppaInstr = 
-  HppaInstr(structure Const = HppaConst
+  HppaInstr(structure LabelExp = SMLNJLabelExp
 	    structure Region = CPSRegions)
 
 structure HppaShuffle = HppaShuffle(HppaInstr)
@@ -24,7 +24,7 @@ structure HppaFlowGraph =
 	    structure P=HppaPseudoOps
            )
 
-structure HppaStream = InstructionStreamFn(HppaPseudoOps)
+structure HppaStream = InstructionStream(HppaPseudoOps)
 
 structure HppaAsmEmitter = 
   HppaAsmEmitter(structure Instr=HppaInstr
@@ -40,10 +40,8 @@ structure HppaMCEmitter =
 
 
 structure HppaMLTree = 
-  MLTreeF(structure Const=HppaConst
+  MLTreeF(structure LabelExp=SMLNJLabelExp
 	  structure R=CPSRegions
 	  structure S=HppaStream
-          type rextension = unit 
-          type fextension = unit 
          )
 

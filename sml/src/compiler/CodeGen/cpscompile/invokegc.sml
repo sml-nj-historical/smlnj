@@ -1,4 +1,3 @@
-(* ---------------- compiler/CodeGen/cpscompile/invokegc.sml ------------------- *)
 (*
  * This module is responsible for generating code to invoke the 
  * garbage collector.  This new version is derived from the functor CallGC.
@@ -19,7 +18,7 @@ struct
 
    structure T  = C.T
    structure D  = MS.ObjDesc
-   structure LE = LabelExp
+   structure LE = T.LabelExp
    structure R  = CPSRegions
    structure S  = SortedList
    structure St = T.Stream
@@ -29,13 +28,18 @@ struct
 
    fun error msg = ErrorMsg.impossible("InvokeGC."^msg)
 
+   type mlrisc = (unit, unit, unit, unit) T.mlrisc
+   type stm    = (unit, unit, unit, unit) T.stm
+   type rexp   = (unit, unit, unit, unit) T.rexp
+   type fexp   = (unit, unit, unit, unit) T.fexp
+
    type t = { maxAlloc : int,
-              regfmls  : T.mlrisc list,
+              regfmls  : mlrisc list,
               regtys   : CPS.cty list,
-              return   : T.stm
+              return   : stm
             }
 
-   type stream = (T.stm,Cells.regmap) T.stream
+   type stream = (stm,Cells.regmap,mlrisc list) T.stream
 
    val debug = Control.MLRISC.getFlag "debug-gc";
 
@@ -55,14 +59,14 @@ struct
     *)
    datatype gcInfo =
       GCINFO of
-        {known     : bool,             (* known function ? *)
-         optimized : bool,             (* optimized? *)
-         lab       : Label.label ref,  (* labels to invoke GC *)
-         boxed     : T.rexp list,      (* locations with boxed objects *)
-         int32     : T.rexp list,      (* locations with int32 objects *)
-         float     : T.fexp list,      (* locations with float objects *)
-         regfmls   : T.mlrisc list,    (* all live registers *)
-         ret       : T.stm}            (* how to return *)
+        {known     : bool,            (* known function ? *)
+         optimized : bool,            (* optimized? *)
+         lab       : Label.label ref, (* labels to invoke GC *)
+         boxed     : rexp list,       (* locations with boxed objects *)
+         int32     : rexp list,       (* locations with int32 objects *)
+         float     : fexp list,       (* locations with float objects *)
+         regfmls   : mlrisc list,     (* all live registers *)
+         ret       : stm}             (* how to return *)
     | MODULE of
         {info: gcInfo,
          addrs: Label.label list ref} (* addrs associated with long jump *)
@@ -100,11 +104,11 @@ struct
    local val use = map T.GPR gcParamRegs 
          val def = case C.exhausted of NONE => use 
                                      | SOME cc => T.CCR cc::use
-   in  val gcCall = 
+   in  val gcCall : stm = 
           T.ANNOTATION(
           T.CALL(
             T.LOAD(32, T.ADD(addrTy,C.stackptr,T.LI MS.startgcOffset), R.stack),
-                   def, use, R.stack),
+                 [],  def, use, [], [], R.stack),
           #create MLRiscAnnotations.COMMENT "call gc")
 
        (* val ZERO_FREQ = #create MLRiscAnnotations.EXECUTION_FREQ 0 *)
@@ -190,7 +194,7 @@ struct
     *) 
    fun checkLimit(emit, maxAlloc) =
    let val lab = Label.newLabel ""
-       fun gotoGC(cc) = emit(T.ANNOTATION(T.BCC(gcCmp, cc, lab), unlikely))
+       fun gotoGC(cc) = emit(T.ANNOTATION(T.BCC([], cc, lab), unlikely))
    in  if maxAlloc < skidPad then
           (case C.exhausted of
              SOME cc => gotoGC cc
@@ -200,7 +204,7 @@ struct
        let val shiftedAllocPtr = T.ADD(addrTy,C.allocptr,T.LI(maxAlloc-skidPad))
            val shiftedTestLimit = T.CMP(pty, gcCmp, shiftedAllocPtr, C.limitptr)
        in  case C.exhausted of
-             SOME(cc as T.CC r) => 
+             SOME(cc as T.CC(_,r)) => 
                (emit(T.CCMV(r, shiftedTestLimit)); gotoGC(cc))
            | NONE => gotoGC(shiftedTestLimit)
            | _ => error "checkLimit"
@@ -215,7 +219,7 @@ struct
    let val returnLab = Label.newLabel ""
        val baseExp = 
            T.ADD(addrTy, C.gcLink,
-                 T.LABEL(LE.MINUS(LE.CONST MS.constBaseRegOffset,
+                 T.LABEL(LE.MINUS(LE.INT MS.constBaseRegOffset,
                                   LE.LABEL returnLab)))
    in  defineLabel returnLab;
        (* annotation(ZERO_FREQ); *)
@@ -299,7 +303,7 @@ struct
        datatype binding =
          Reg     of Cells.cell               (* integer register *)
        | Freg    of Cells.cell               (* floating point register*)
-       | Mem     of T.rexp * R.region        (* integer memory register *)
+       | Mem     of rexp * R.region          (* integer memory register *)
        | Record  of {boxed: bool,            (* is it a boxed record *)
                      words:int,              (* how many words *)
                      reg: Cells.cell,        (* address of this record *)
@@ -572,7 +576,10 @@ struct
        val (gcroots, boxed) = 
            case (gcroots, int32, float, boxed) of
              ([], [], [], []) => ([], []) (* it's okay *)
-           | ([], _, _, _) => ([aRootReg], aRootReg::boxed) 
+           | ([], _, _, _) => ([aRootReg], boxed @ [aRootReg]) 
+             (* put aRootReg last to reduce register pressure 
+              * during unpacking
+              *)
            | _  => (gcroots, boxed)
 
        val unpack = pack(emit, gcroots, boxed, int32, float)
@@ -595,6 +602,24 @@ struct
    end
 
    (*
+    * This function emits a comment that pretty prints the root set.
+    * This is used for debugging only.
+    *)
+   fun rootSetToString{boxed, int32, float} = 
+   let fun extract(T.REG(32, r)) = r
+         | extract _ = error "extract"
+       fun fextract(T.FREG(64, f)) = f
+         | fextract _ = error "fextract"
+       fun listify title f [] = ""
+         | listify title f l  = 
+             title^foldr (fn (x,"") => f x
+                           | (x,y)  => f x ^", "^y) "" (S.uniq l)^" "
+   in  listify "boxed=" (Cells.toString Cells.GP) (map extract boxed)^
+       listify "int32=" (Cells.toString Cells.GP) (map extract int32)^
+       listify "float=" (Cells.toString Cells.FP) (map fextract float)
+   end
+
+   (*
     * The following function is responsible for generating actual
     * GC calling code, with entry labels and return information.
     *)
@@ -607,17 +632,21 @@ struct
            | MODULE{info=GCINFO info,...} => info
            | _ => error "invokeGC:gcInfo"
 
-       val regfmls = if optimized then [] else regfmls
+       val liveout = if optimized then [] else regfmls
 
    in  if externalEntry then entryLabel (!lab) else defineLabel (!lab);
        (* When the known block is optimized, no actual code is generated
         * until later.
         *)
-       if optimized then (annotation(CALLGC); emit ret)
+       if optimized then 
+            (annotation(#create MLRiscAnnotations.GCSAFEPOINT
+                (rootSetToString{boxed=boxed, int32=int32, float=float})); 
+             emit ret
+            )
        else emitCallGC{stream=stream, known=known,
                        boxed=boxed, int32=int32, float=float, ret=ret};
-       exitBlock(case C.exhausted of NONE    => regfmls 
-                                   | SOME cc => T.CCR cc::regfmls)
+       exitBlock(case C.exhausted of NONE    => liveout 
+                                   | SOME cc => T.CCR cc::liveout)
    end
 
    (*
@@ -625,8 +654,8 @@ struct
     * same calling convention.
     *)
    fun sameCallingConvention
-          (GCINFO{boxed=b1, int32=i1, float=f1, ret=T.JMP(ret1, _), ...},
-           GCINFO{boxed=b2, int32=i2, float=f2, ret=T.JMP(ret2, _), ...}) =
+          (GCINFO{boxed=b1, int32=i1, float=f1, ret=T.JMP(_, ret1, _), ...},
+           GCINFO{boxed=b2, int32=i2, float=f2, ret=T.JMP(_, ret2, _), ...}) =
    let fun eqEA(T.REG(_, r1), T.REG(_, r2)) = r1 = r2
          | eqEA(T.ADD(_,T.REG(_,r1),T.LI i), T.ADD(_,T.REG(_,r2),T.LI j)) =  
              r1 = r2 andalso i = j
@@ -687,7 +716,7 @@ struct
                val liveOut   = regRoots @ fregRoots
                val l         = !lab
            in  app defineLabel (!addrs) before addrs := [];
-               emit(T.JMP(T.LABEL(LE.LABEL l),[l]));
+               emit(T.JMP([], T.LABEL(LE.LABEL l), []));
                exitBlock liveOut
            end
          | longJumps _ = error "longJumps"

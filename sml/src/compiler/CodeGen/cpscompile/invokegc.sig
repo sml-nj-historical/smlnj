@@ -17,34 +17,36 @@ sig
    structure Cells : CELLS
 
    type t = { maxAlloc : int,
-              regfmls  : T.mlrisc list,
+              regfmls  : (unit, unit, unit, unit) T.mlrisc list,
 	      regtys   : CPS.cty list,
-	      return   : T.stm
+	      return   : (unit, unit, unit, unit) T.stm
             }
+   type stream = ((unit, unit, unit, unit) T.stm, int Intmap.intmap,
+                  (unit, unit, unit, unit) T.mlrisc list) T.stream
 
       (* initialize the state before compiling a module *)
    val init : unit -> unit
 
       (* generate a check limit for standard function *)
-   val stdCheckLimit : (T.stm,int Intmap.intmap) T.stream -> t -> unit
+   val stdCheckLimit : stream -> t -> unit
 
       (* generate a check limit for known function *)
-   val knwCheckLimit : (T.stm,int Intmap.intmap) T.stream -> t -> unit
+   val knwCheckLimit : stream -> t -> unit
 
       (* generate a check limit for optimized, known function *)
-   val optimizedKnwCheckLimit : (T.stm,int Intmap.intmap) T.stream -> t -> unit
+   val optimizedKnwCheckLimit : stream -> t -> unit
 
       (* generate a long jump to call gc *)
-   val emitLongJumpsToGCInvocation : (T.stm,int Intmap.intmap) T.stream -> unit
+   val emitLongJumpsToGCInvocation : stream -> unit
 
       (* generate all GC invocation code in a module *)
-   val emitModuleGC : (T.stm,int Intmap.intmap) T.stream -> unit
+   val emitModuleGC : stream -> unit
 
       (* generate the actual GC invocation code *)
-   val callGC : (T.stm,int Intmap.intmap) T.stream -> 
-                {regfmls : T.mlrisc list, 
+   val callGC : stream -> 
+                {regfmls : (unit, unit, unit, unit) T.mlrisc list, 
                  regtys : CPS.cty list,
-                 ret : T.stm
+                 ret : (unit, unit, unit, unit) T.stm
                 }  -> unit
 
 end

@@ -30,8 +30,11 @@ functor MLTreeGen
 struct
 
    structure T = T
+   structure LE = T.LabelExp
 
    exception SizeUnknown
+
+   exception Unsupported of string
 
    fun error msg = MLRiscErrorMsg.error("MLTreeGen",msg)
 
@@ -41,18 +44,22 @@ struct
      | size(T.LI64 _) = intTy
      | size(T.LABEL _) = intTy
      | size(T.CONST _) = intTy
+     | size(T.NEG(ty,_)) = ty
      | size(T.ADD(ty,_,_)) = ty
      | size(T.SUB(ty,_,_)) = ty
      | size(T.MULS(ty,_,_)) = ty
      | size(T.DIVS(ty,_,_)) = ty
+     | size(T.QUOTS(ty,_,_)) = ty
      | size(T.REMS(ty,_,_)) = ty
      | size(T.MULU(ty,_,_)) = ty
      | size(T.DIVU(ty,_,_)) = ty
      | size(T.REMU(ty,_,_)) = ty
+     | size(T.NEGT(ty,_)) = ty
      | size(T.ADDT(ty,_,_)) = ty
      | size(T.SUBT(ty,_,_)) = ty
      | size(T.MULT(ty,_,_)) = ty
      | size(T.DIVT(ty,_,_)) = ty
+     | size(T.QUOTT(ty,_,_)) = ty
      | size(T.REMT(ty,_,_)) = ty
      | size(T.ANDB(ty,_,_)) = ty
      | size(T.ORB(ty,_,_)) = ty
@@ -63,17 +70,15 @@ struct
      | size(T.SLL(ty,_,_)) = ty
      | size(T.COND(ty,_,_,_)) = ty
      | size(T.LOAD(ty,_,_)) = ty
-     | size(T.LOAD_UNALIGNED(ty,_,_)) = ty
      | size(T.CVTI2I(ty,_,_,_)) = ty
      | size(T.CVTF2I(ty,_,_,_)) = ty
-     | size(T.SEQ(s,e)) = size e
-     | size(T.EXT(ty,_,_)) = ty
+     | size(T.LET(_,e)) = size e
+     | size(T.PRED(e,_)) = size e
+     | size(T.REXT(ty,_)) = ty
      | size(T.MARK(e,_)) = size e
-     | size _ = raise SizeUnknown
 
    fun fsize(T.FREG(ty,_)) = ty
      | fsize(T.FLOAD(ty,_,_)) = ty
-     | fsize(T.FLOAD_UNALIGNED(ty,_,_)) = ty
      | fsize(T.FADD(ty,_,_)) = ty
      | fsize(T.FSUB(ty,_,_)) = ty
      | fsize(T.FMUL(ty,_,_)) = ty
@@ -81,12 +86,23 @@ struct
      | fsize(T.FABS(ty,_)) = ty
      | fsize(T.FNEG(ty,_)) = ty
      | fsize(T.FSQRT(ty,_)) = ty
-     | fsize(T.CVTI2F(ty,_,_,_)) = ty
-     | fsize(T.CVTF2F(ty,_,_,_)) = ty
-     | fsize(T.FSEQ(_,e)) = fsize e
-     | fsize(T.FEXT(ty,_,_)) = ty
+     | fsize(T.FCOND(ty,_,_,_)) = ty
+     | fsize(T.CVTI2F(ty,_,_)) = ty
+     | fsize(T.CVTF2F(ty,_,_)) = ty
+     | fsize(T.FCOPYSIGN(ty,_,_)) = ty
+     | fsize(T.FPRED(e,_)) = fsize e
+     | fsize(T.FEXT(ty,_)) = ty
      | fsize(T.FMARK(e,_)) = fsize e
-     | fsize _ = raise SizeUnknown
+
+   fun condOf(T.CC(cc,_)) = cc
+     | condOf(T.CMP(_,cc,_,_)) = cc
+     | condOf(T.CCMARK(cc,_)) = condOf cc
+     | condOf _ = error "condOf"
+
+   fun fcondOf(T.FCC(fcc,_)) = fcc
+     | fcondOf(T.FCMP(_,fcc,_,_)) = fcc
+     | fcondOf(T.CCMARK(cc,_)) = fcondOf cc
+     | fcondOf _ = error "fcondOf"
 
    val W = intTy
 
@@ -99,56 +115,56 @@ struct
     * 
     * Lal showed me this neat trick!
     *)
-   fun arith rightShift (e:T.rexp,f,ty,a,b) = 
+   fun arith(rightShift,f,ty,a,b) = 
        let val shift = T.LI(W-ty)
        in  rightShift(W,f(W,T.SLL(W,a,shift),T.SLL(W,b,shift)),shift)
        end
 
    fun promoteTy(e,ty) =
    let fun loop([]) = 
-           raise T.Unsupported
-              ("can't promote integer width "^Int.toString ty,e)
+           raise Unsupported("can't promote integer width "^Int.toString ty)
          | loop(t::ts) = if t > ty then t else loop ts
    in  loop(naturalWidths) end
 
-   fun promote(e,f,ty,a,b) = f(promoteTy(e,ty),a,b) 
-
-   val signedArith   = arith T.SRA
-   val unsignedArith = arith T.SRL
-   val (promotableSignedArith, promotableUnsignedArith) = 
-         case naturalWidths of [] => (signedArith,unsignedArith)
-                             | _ =>  (promote,promote)
+   fun promotable rightShift (e, f, ty, a, b) =
+       case naturalWidths of 
+         [] => arith(rightShift,f,ty,a,b) 
+       | _  => f(promoteTy(e, ty), a, b)
 
    (*
     * Translate integer expressions of unknown types into the appropriate
     * term.
     *)
 
-   fun compile(exp) =
+   fun compileRexp(exp) =
        case exp of
+         T.CONST c => T.LABEL(T.LabelExp.CONST c)
+
          (* non overflow trapping ops *)
-         T.ADD(ty,a,b)  => promotableSignedArith(exp,T.ADD,ty,a,b)
-       | T.SUB(ty,a,b)  => promotableSignedArith(exp,T.SUB,ty,a,b)
-       | T.MULS(ty,a,b) => promotableSignedArith(exp,T.MULS,ty,a,b)
-       | T.DIVS(ty,a,b) => promotableSignedArith(exp,T.DIVS,ty,a,b)
-       | T.REMS(ty,a,b) => promotableSignedArith(exp,T.REMS,ty,a,b)
-       | T.MULU(ty,a,b) => promotableUnsignedArith(exp,T.MULU,ty,a,b)
-       | T.DIVU(ty,a,b) => promotableUnsignedArith(exp,T.DIVU,ty,a,b)
-       | T.REMU(ty,a,b) => promotableUnsignedArith(exp,T.REMU,ty,a,b)
+       | T.NEG(ty,a)    => T.SUB(ty,T.LI 0,a)
+       | T.ADD(ty,a,b)  => promotable T.SRA (exp,T.ADD,ty,a,b)
+       | T.SUB(ty,a,b)  => promotable T.SRA (exp,T.SUB,ty,a,b)
+       | T.MULS(ty,a,b) => promotable T.SRA (exp,T.MULS,ty,a,b)
+       | T.DIVS(ty,a,b) => promotable T.SRA (exp,T.DIVS,ty,a,b)
+       | T.REMS(ty,a,b) => promotable T.SRA (exp,T.REMS,ty,a,b)
+       | T.MULU(ty,a,b) => promotable T.SRL (exp,T.MULU,ty,a,b)
+       | T.DIVU(ty,a,b) => promotable T.SRL (exp,T.DIVU,ty,a,b)
+       | T.REMU(ty,a,b) => promotable T.SRL (exp,T.REMU,ty,a,b)
 
          (* for overflow trapping ops; we have to do the simulation *)
-       | T.ADDT(ty,a,b) => signedArith(exp,T.ADDT,ty,a,b)
-       | T.SUBT(ty,a,b) => signedArith(exp,T.SUBT,ty,a,b)
-       | T.MULT(ty,a,b) => signedArith(exp,T.MULT,ty,a,b)
-       | T.DIVT(ty,a,b) => signedArith(exp,T.DIVT,ty,a,b)
-       | T.REMT(ty,a,b) => signedArith(exp,T.REMT,ty,a,b)
+       | T.NEGT(ty,a)   => T.SUBT(ty,T.LI 0,a)
+       | T.ADDT(ty,a,b) => arith (T.SRA,T.ADDT,ty,a,b)
+       | T.SUBT(ty,a,b) => arith (T.SRA,T.SUBT,ty,a,b)
+       | T.MULT(ty,a,b) => arith (T.SRA,T.MULT,ty,a,b)
+       | T.DIVT(ty,a,b) => arith (T.SRA,T.DIVT,ty,a,b)
+       | T.REMT(ty,a,b) => arith (T.SRA,T.REMT,ty,a,b)
 
          (* conditional evaluation rules *)
-       | T.COND(ty,T.CC r,x,y) =>
-           T.COND(ty,T.CMP(ty,T.NE,T.REG(ty,r),T.LI 0),x,y)
+       | T.COND(ty,T.CC(cond,r),x,y) =>
+           T.COND(ty,T.CMP(ty,cond,T.REG(ty,r),T.LI 0),x,y)
        | T.COND(ty,T.CCMARK(cc,a),x,y) => T.MARK(T.COND(ty,cc,x,y),a)
        | T.COND(ty,T.CMP(t,cc,e1,e2),x as (T.LI 0 | T.LI32 0w0),y) => 
-           T.COND(ty,T.CMP(t,T.Util.negateCond cc,e1,e2),y,T.LI 0)
+           T.COND(ty,T.CMP(t,T.Basis.negateCond cc,e1,e2),y,T.LI 0)
            (* we'll let others strength reduce the multiply *)
        | T.COND(ty,cc,e1,(T.LI 0 | T.LI32 0w0)) => 
            T.MULU(ty,T.COND(ty,cc,T.LI 1,T.LI 0),e1)
@@ -182,7 +198,7 @@ struct
               | 16 => T.ANDB(ty,e,T.LI32 0wxffff) 
               | 32 => T.ANDB(ty,e,T.LI32 0wxffffffff) 
               | 64 => e
-              | _  => raise T.Unsupported("unknown expression",exp)
+              | _  => raise Unsupported("unknown expression")
             )
 
        (* 
@@ -195,7 +211,28 @@ struct
          in  T.CVTI2I(ty,T.SIGN_EXTEND,ty',T.CVTF2I(ty',round,fty,e))
          end
 
-       | exp => raise T.Unsupported("unknown expression",exp)
+       | exp => raise Unsupported("unknown expression")
+
+   fun compileFexp fexp = raise Unsupported("unknown expression")
+
+   fun mark(s,[]) = s
+     | mark(s,a::an) = mark(T.ANNOTATION(s,a),an)
+
+   fun compileStm (T.SEQ s) = s
+     | compileStm (T.IF(ctrl,cond,T.JMP(_,T.LABEL(LE.LABEL L),_),T.SEQ [])) = 
+           [T.BCC(ctrl,cond,L)]
+     | compileStm (T.IF(ctrl,cond,yes,no)) = 
+       let val L1 = Label.newLabel ""
+           val L2 = Label.newLabel ""
+       in  [T.BCC(ctrl,cond,L1),
+            no,
+            T.JMP([],T.LABEL(LE.LABEL L2),[]),
+            T.DEFINE L1,
+            yes,
+            T.DEFINE L2
+           ]
+       end
+     | compileStm stm = error "compileStm"
 
    (*
     * This function translations conditional expressions into a 
@@ -203,17 +240,21 @@ struct
     * Note: we'll actually take advantage of the fact that 
     * e1 and e2 are allowed to be eagerly evaluated. 
     *)
-   fun compileCond{exp=(ty,ccexp,e1,e2),defineLabel,stm,annotations,rd} =
+   fun compileCond{exp=(ty,ccexp,e1,e2),rd,an} =
    let val L1 = Label.newLabel ""
-       fun branch(T.CCMARK(cc,_)) = branch cc
-         | branch(T.CC _) = T.BCC(T.NE,ccexp,L1)
-         | branch(T.CMP(_,cc,_,_)) = T.BCC(cc,ccexp,L1)
-         | branch(T.FCMP(_,cc,_,_)) = T.FBCC(cc,ccexp,L1) 
-         | branch _ = error "compileCond"
-   in  stm(T.MV(ty,rd,e1),[]);         (* true value *)
-       stm(branch(ccexp),annotations); (* branch if true *)
-       stm(T.MV(ty,rd,e2),[]);         (* false value *)
-       defineLabel L1
+   in  [T.MV(ty,rd,e1),
+        mark(T.BCC([],ccexp,L1),an),
+        T.MV(ty,rd,e2),
+        T.DEFINE L1
+       ]
    end
-
+   fun compileFcond{exp=(fty,ccexp,e1,e2),fd,an} =
+   let val L1 = Label.newLabel ""
+   in  [T.FMV(fty,fd,e1),
+        mark(T.BCC([],ccexp,L1),an),
+        T.FMV(fty,fd,e2),
+        T.DEFINE L1
+       ]
+   end
+ 
 end
