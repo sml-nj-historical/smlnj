@@ -49,3 +49,17 @@ autoload $smlnj/compiler/minimal.cm
 
 # The Bootstrap Compilation Manager (structure CMB)
 #autoload $smlnj/cmb.cm
+
+# Cross-compiler version of CMB for alpha, hppa, ppc, sparc, x86
+# on unix, macos, and win32 (where applicable).
+#autoload $smlnj/cmb/alpha32-unix.cm
+#autoload $smlnj/cmb/hppa-unix.cm
+#autoload $smlnj/cmb/ppc-macos.cm
+#autoload $smlnj/cmb/ppc-unix.cm
+#autoload $smlnj/cmb/sparc-unix.cm
+#autoload $smlnj/cmb/x86-unix.cm
+#autoload $smlnj/cmb/x86-win32.cm
+
+# All cross-compiler versions of CMB at once (together with
+# their corresponding architecture-specific compiler structures):
+#autoload $smlnj/compiler/all.cm

@@ -14,6 +14,17 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/05/21 10:55:00 EDT
+Tag: blume-20020521-misc
+Description:
+
+- John tweaked runtime to be silent on heap export (except when
+  GC messages are on).
+- I added a few more things (cross-compiling versions of CMB) to
+  config/preloads (as suggestions).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/05/20 22:25:00 EDT
 Tag: blume-20020520-controls
 Description:
