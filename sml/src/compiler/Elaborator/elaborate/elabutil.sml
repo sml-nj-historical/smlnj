@@ -359,7 +359,7 @@ fun makeHANDLEexp(exp, rules, compInfo as {mkLvar=mkv, ...}: compInfo) =
     let val v = newVALvar(exnID, mkv)
         val r = RULE(VARpat v, RAISEexp(VARexp(ref(v),[]),UNDEFty))
 	val rules = completeMatch' r rules 
-     in HANDLEexp(exp, HANDLER(FNexp(rules,UNDEFty))) 
+     in HANDLEexp(exp, (rules,UNDEFty))
     end
 
 
@@ -479,7 +479,8 @@ fun recDecs (rvbs as [RVB {var as V.VALvar{access=A.LVAR v, ...},
                | SEQexp l => app findexp l
                | APPexp (a,b) => (findexp a; findexp b)
                | CONSTRAINTexp (x,_) => findexp x
-               | HANDLEexp (x, HANDLER h) => (findexp x; findexp h)
+               | HANDLEexp (x, (l, _)) =>
+		   (findexp x; app (fn RULE (_, x) => findexp x) l)
                | RAISEexp (x, _) => findexp x
                | LETexp (d, x) => (finddec d; findexp x)
                | CASEexp (x, l, _) => 

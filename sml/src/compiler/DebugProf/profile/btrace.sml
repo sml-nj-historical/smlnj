@@ -227,17 +227,15 @@ structure BTrace :> BTRACE = struct
 						  VARexp result]))
 		    end
 	    end
-	  | i_exp tail loc (A.HANDLEexp (e, A.HANDLER (A.FNexp (rl, t)))) = let
+	  | i_exp tail loc (A.HANDLEexp (e, (rl, t))) = let
 		val restore = tmpvar ("tmprestore", u_u_Ty)
 		fun rule (r as A.RULE (p, e)) =
 		    if is_raise_exp e then r
 		    else A.RULE (p, A.SEQexp [AUexp restore, i_exp tail loc e])
 	    in
 		LETexp (restore, saveexp,
-			A.HANDLEexp (i_exp false loc e,
-				     A.HANDLER (A.FNexp (map rule rl, t))))
+			A.HANDLEexp (i_exp false loc e, (map rule rl, t)))
 	    end
-	  | i_exp _ _ (A.HANDLEexp _) = impossible "bad HANDLEexp"
 	  | i_exp _ loc (A.RAISEexp (e, t)) =
 	    A.RAISEexp (i_exp false loc e, t)
 	  | i_exp tail loc (A.CASEexp (e, rl, b)) =
@@ -280,7 +278,9 @@ structure BTrace :> BTRACE = struct
 	    A.CONSTRAINTexp (i_exp tail loc e, t)
 	  | i_exp tail (n, _) (A.MARKexp (e, r)) =
 	    A.MARKexp (i_exp tail (n, r) e, r)
-	  | i_exp _ _ e = e
+	  | i_exp _ _ (e as (A.VARexp _ | A.CONexp _ | A.INTexp _ |
+			     A.WORDexp _ | A.REALexp _ | A.STRINGexp _ |
+			     A.CHARexp _)) = e
 
 	and i_dec loc (A.VALdec l) = A.VALdec (map (i_vb loc) l)
 	  | i_dec loc (A.VALRECdec l) = A.VALRECdec (map (i_rvb loc) l)
@@ -295,7 +295,9 @@ structure BTrace :> BTRACE = struct
 	    A.LOCALdec (i_dec loc d, i_dec loc d')
 	  | i_dec loc (A.SEQdec l) = A.SEQdec (map (i_dec loc) l)
 	  | i_dec (n, _) (A.MARKdec (d, r)) = A.MARKdec (i_dec (n, r) d, r)
-	  | i_dec _ d = d
+	  | i_dec _ (d as (A.TYPEdec _ | A.DATATYPEdec _ |
+			   A.SIGdec _ | A.FSIGdec _ | A.OPENdec _ |
+			   A.OVLDdec _ | A.FIXdec _)) = d
 
 	and i_rule tail loc (A.RULE (p, e)) = A.RULE (p, i_exp tail loc e)
 

@@ -526,10 +526,10 @@ in
 		then (CONSTRAINTexp(e',ty),ty)
 		else (exp,WILDCARDty)
 	   end
-       | HANDLEexp(e,HANDLER h) =>
+       | HANDLEexp(e, (rules, _)) =>
 	   let val (e',ety) = expType(e,occ,region)
-	       and (h',hty) = expType(h,occ,region)
-               val exp' = HANDLEexp(e',HANDLER h')
+	       and (rules',rty,hty) = matchType (rules, occ, region)
+               val exp' = HANDLEexp(e', (rules', rty))
 	    in (unifyTy(hty, exnTy --> ety); (exp',ety))
 	       handle Unify(mode) =>
 		 (if unifyErr{ty1=domain(prune hty), name1="handler domain",

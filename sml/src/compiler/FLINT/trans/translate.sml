@@ -1190,7 +1190,7 @@ and mkExp (exp, d) =
         | g (CONSTRAINTexp (e,_)) = g e
 
         | g (RAISEexp (e, ty)) = mkRaise(g e, tLty ty)
-        | g (HANDLEexp (e, HANDLER(FNexp(l, ty)))) =
+        | g (HANDLEexp (e, (l, ty))) =
              let val rootv = mkv()
                  fun f x = FN(rootv, tLty ty, x)
                  val l' = mkRules l
