@@ -11,7 +11,10 @@ sig
 	isFree: Types.tycon -> bool,
 	rpath: InvPath.path,
 	region: SourceMap.region,
-	compInfo: ElabUtil.compInfo }
+	compInfo: ElabUtil.compInfo,
+	elabStrbs: Ast.strb list * bool * StaticEnv.staticEnv *
+		   InvPath.path * SourceMap.region * ElabUtil.compInfo ->
+		   Absyn.dec * StaticEnv.staticEnv }
         -> Absyn.dec * StaticEnv.staticEnv (* * Modules.entityEnv ??? *)
 
   val elabDec : 
@@ -20,7 +23,10 @@ sig
 	compInfo: ElabUtil.compInfo,
 	dec: Ast.dec,
 	rpath: InvPath.path,
-	region: SourceMap.region }
+	region: SourceMap.region,
+	elabStrbs: Ast.strb list * bool * StaticEnv.staticEnv *
+		   InvPath.path * SourceMap.region * ElabUtil.compInfo ->
+		   Absyn.dec * StaticEnv.staticEnv }
       -> Absyn.dec * StaticEnv.staticEnv
 
   val debugging : bool ref
@@ -132,7 +138,7 @@ end
 
 (**** ABSTRACT TYPE DECLARATIONS ****)
 fun elabABSTYPEdec { atd = {abstycs,withtycs,body},env,context,isFree,
-                     rpath,region,compInfo} =
+                     rpath,region,compInfo,elabStrbs} =
   let val (datatycs,withtycs,_,env1) =
         ET.elabDATATYPEdec({datatycs=abstycs,withtycs=withtycs}, env,
                            [], EE.empty, isFree, rpath, region, compInfo)
@@ -140,7 +146,8 @@ fun elabABSTYPEdec { atd = {abstycs,withtycs,body},env,context,isFree,
       val (body,env2) = 
         elabDec { isFree = isFree, env = SE.atop (env1, env),
 		  compInfo = compInfo,
-		  dec = body, rpath = rpath, region = region }
+		  dec = body, rpath = rpath, region = region,
+		  elabStrbs = elabStrbs }
 
       (* datatycs will be changed to abstycs during type checking
 	 by changing the eqprop field *)
@@ -154,7 +161,7 @@ fun elabABSTYPEdec { atd = {abstycs,withtycs,body},env,context,isFree,
 
 (**** ELABORATE GENERAL (core) DECLARATIONS ****)
 and elabDec { isFree, env, compInfo as {mkLvar=mkv,error,errorMatch,...},
-	      dec, rpath, region } =
+	      dec, rpath, region, elabStrbs } =
 
 let
     val _ = debugmsg ">>ElabCore.elabDec"
@@ -721,7 +728,8 @@ let
   		    elabABSTYPEdec { atd = x, env = env, context = EU.TOP,
 				     isFree = isFree,
                                      rpath = rpath, region = region,
-				     compInfo = compInfo }
+				     compInfo = compInfo,
+				     elabStrbs = elabStrbs }
 	       in noTyvars(dec', env')
 	      end
 	   | ExceptionDec ebs => elabEXCEPTIONdec(ebs,env,region)
@@ -748,10 +756,23 @@ let
 	       end
 
 	   (* FIXME: the following two need to be implemented... *)
-	   | StrDec _ => bug "strdec"
+	   (* | StrDec _ => bug "strdec" *)
+	   (* | AbsDec _ => bug "absdec" *)
+	   | StrDec strbs =>
+	     let val (dec, env') =
+		     elabStrbs (strbs, true, env, rpath, region, compInfo)
+	     in
+		 (dec, env', TS.empty, no_updt)
+	     end
+	   | AbsDec strbs =>
+	     let val (dec, env') =
+		     elabStrbs (strbs, false, env, rpath, region, compInfo)
+	     in
+		 (dec, env', TS.empty, no_updt)
+	     end
+	   (* FIXME: FctDec *)
 	   | FctDec _ => bug "fctdec"
 
-	   | AbsDec _ => bug "absdec"
 	   | SigDec _ => bug "sigdec"
 	   | FsigDec _ => bug "fsigdec")
               

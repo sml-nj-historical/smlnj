@@ -1598,6 +1598,13 @@ and elabDecl0
 
    | AbstypeDec x =>
        (let val isFree = isFree (context, epContext)
+	    fun elabStrbs' (strbs, transp, env, rpath, region, ci) =
+		let val (dec, _, env', _) =
+			elabStrbs (strbs, transp, env, entEnv0, context,
+				   epContext, rpath, region, ci)
+		in
+		    (dec, env')
+		end
             val (decl, env', abstycs, withtycs) =
 		case  EC.elabABSTYPEdec { atd = x,
 					  env = env0,
@@ -1605,7 +1612,8 @@ and elabDecl0
 					  isFree = isFree,
 					  rpath = rpath,
 					  region = region,
-					  compInfo = compInfo } of
+					  compInfo = compInfo,
+					  elabStrbs = elabStrbs' } of
 		    (d as A.ABSTYPEdec x, e) =>
 		    (d, e, #abstycs x, #withtycs x)
 		  | _ => bug "elabDecl0:AbstypeDec"
@@ -1633,12 +1641,20 @@ and elabDecl0
 
    | dec =>
        (let val isFree = isFree (context, epContext)
+	    fun elabStrbs' (strbs, transp, env, rpath, region, ci) =
+		let val (dec, _, env', _) =
+			elabStrbs (strbs, transp, env, entEnv0, context,
+				   epContext, rpath, region, ci)
+		in
+		    (dec, env')
+		end
             val (decl,env') = EC.elabDec { env = env0,
 					   isFree = isFree,
 					   compInfo = compInfo,
 					   dec = dec,
 					   rpath = rpath,
-					   region = region }
+					   region = region,
+					   elabStrbs = elabStrbs' }
 		handle EE.Unbound => (debugmsg("$EC.elabDec");
 				      raise EE.Unbound)
             val _ = debugmsg (">>elabDecl0.dec[after EC.elabDec: top=" 

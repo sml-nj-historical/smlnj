@@ -232,7 +232,11 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
 	      | (VARty(ref(LITERAL _)) | VARty(ref(SCHEME _))) => ty
 	      | CONty(tyc,args) => CONty(tyc, map gen args) (*shareMap*)
 	      | WILDCARDty => WILDCARDty
-	      | _ => bug "generalizeTy -- bad arg"
+	      | UNDEFty => bug "generalizeTy -- UNDEFty"
+	      | t as POLYty _ => t (* can only happen with value-level
+				    * let-bound modules (?) -- Matthias *)
+	      | IBOUND _ => bug "generalizeTy -- IBOUND"
+	      | VARty (ref (TV_MARK _)) => bug "generalizeTy -- TV_MARK"
 
 	val _ = ppTypeDebug (">>gen: before: ",!typ)
 	val ty = gen(!typ)
@@ -261,7 +265,7 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
 	generalizedTyvars  (* return the tyvars that were generalized *)
     end
 
-  | generalizeTy _ = bug "generlizeTy - bad arg"
+  | generalizeTy _ = bug "generlizeTy - bad arg(2)"
   
 
 fun generalizePat(pat: pat, userbound: tyvar list, occ: occ, 
