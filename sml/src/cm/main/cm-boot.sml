@@ -245,19 +245,10 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      fun say_error () = Say.say ["SLAVE: error\n"]
 	      fun say_pong () = Say.say ["SLAVE: pong\n"]
 
-	      val home =
-		  case OS.Process.getEnv "HOME" of
-		      SOME h => (fn d => OS.Path.mkAbsolute { path = d,
-							      relativeTo = h })
-		    | NONE => (fn d =>
-			       (Say.say ["HOME not set!\n"];
-				raise Fail "HOME not set"))
-
 	      fun path (s, pcmode) = SrcPath.fromDescr pcmode s
 		  
 	      fun chDir d =
-		  (OS.FileSys.chDir (SrcPath.osstring (path (d, pcmode)));
-		   Say.say ["New dir: ", OS.FileSys.getDir (), "\n"])
+		  OS.FileSys.chDir (SrcPath.osstring (path (d, pcmode)))
 
 	      fun waitForStart () = let
 		  val line = TextIO.inputLine TextIO.stdIn

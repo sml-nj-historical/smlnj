@@ -147,9 +147,6 @@ end = struct
 		NONE => stdpath maingspec
 	      | SOME r => SrcPath.fromDescr pcmode r
 
-	val _ = Say.say ["CMB: maingspec = ", SrcPath.osstring maingspec,
-			 ", cwd = ", OS.FileSys.getDir (), "\n"]
-
 	val cmifile = valOf (SrcPath.reAnchoredName (initgspec, bootdir))
 	    handle Option => raise Fail "BootstrapCompile: cmifile"
 

@@ -189,7 +189,7 @@ structure Servers :> SERVERS = struct
 
     fun kill name =
 	shutdown (name, fn (S { proc = p, ... }) =>
-		           Unix.kill (p, Posix.Signal.kill))
+		           Unix.kill (p, Posix.Signal.term))
 
     fun start { name, cmd, pathtrans, pref } = let
 	val _ = stop name

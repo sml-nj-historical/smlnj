@@ -10,7 +10,7 @@
  *)
 structure Servers :> SERVERS = struct
     fun start _ = raise Fail "compile server facility not available"
-    fun stop _ = false
+    fun stop _ = ()
     fun kill _ = ()
     fun reset _ = Concur.reset ()
     fun dirbase _ = ()

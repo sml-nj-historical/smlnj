@@ -1,6 +1,6 @@
 (*
  * This is a stub providing "slave" functionality for CMB.
- * (We use dynamic linking technology to avoid loading target-compilers.cm
+ * (We use dynamic linking technology to avoid loading the target compiler
  *  on the slave side unless it is really needed.)
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
@@ -9,10 +9,10 @@
  *)
 structure CMBSlave = struct
     local
-	val loaded = ref StringSet.empty
+	val loaded = ref StringSet.empty (* remember what we already have *)
     in
 	fun slave load arch s = let
-	    val lib = arch ^ ".cm"
+	    val lib = arch ^ ".cm" (* eg. sparc-unix -> sparc-unix.cm *)
 	in
 	    if StringSet.member (!loaded, lib) then ()
 	    else if load lib then loaded := StringSet.add (!loaded, lib)
