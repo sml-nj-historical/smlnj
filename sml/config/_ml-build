@@ -27,14 +27,24 @@ trap 'rm -rf $smlfile $cmfile $listfile $linkargsfile @CMDIRARC@/*/$smlfile' 0 1
 
 usage() {
     echo ${thisscript}: $*
-    echo Usage: $thisscript root-group main-function heapfile
+    echo Usage: $thisscript '[-S setup] root-group [main-function [heapfile]]'
     exit 1
 }
+
+setup=
 
 while [ $# != 0 ] ; do
     case $1 in
     -D*|-U*|-C*)
 	dulist="$dulist $1"
+	shift
+	;;
+    -S)
+	shift
+	if [ $# = 0 ] ; then
+	    usage missing argument for -S
+	fi
+	setup=$1
 	shift
 	;;
     *)
@@ -43,18 +53,26 @@ while [ $# != 0 ] ; do
     esac
 done
 
-if [ $# = 3 ] ; then
-    setup=
-    root=$1
-    main=$2
-    heap=$3
-elif [ $# = 4 ] ; then
+if [ $# = 4 ] ; then
     setup=$1
     root=$2
     main=$3
     heap=$4
+elif [ $# = 3 ] ; then
+    root=$1
+    main=$2
+    heap=$3
+elif [ $# = 2 ] ; then
+    root=$1
+    main=$2
+    heap=`basename "$root" .cm`
+elif [ $# = 1 ] ; then
+    root=$1
+    # quick hack for now:
+    main=Test.main
+    heap=`basename "$root" .cm`
 else
-    usage wrong number of arguments
+    usage no CM description file specified
 fi
 
 rare=XYZ_XXX_0123
