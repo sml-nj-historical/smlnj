@@ -6,6 +6,6 @@
 structure HashConsAtom = HashConsGroundFn (
   struct
     type hash_key = Atom.atom
-    val sameKey = Atom.sameAtom
+    val sameKey = Atom.same
     val hashVal = Atom.hash
   end)

@@ -19,14 +19,23 @@ signature ATOM =
     val atom : string -> atom
     val atom' : substring -> atom
 	(* Map a string/substring to the corresponding unique atom. *)
+
     val toString : atom -> string
 	(* return the string representation of the atom *)
+
+    val same : (atom * atom) -> bool
     val sameAtom : (atom * atom) -> bool
-	(* return true if the atoms are the same *)
+	(* return true if the atoms are the same; we provide "sameAtom" for
+	 * backward compatibility.
+	 *)
+
     val compare : (atom * atom) -> order
 	(* compare two atoms for their relative order; note that this is
 	 * not lexical order!
 	 *)
+    val lexCompare : (atom * atom) -> order
+	(* compare two atoms for their lexical order *)
+
     val hash : atom -> word
 	(* return a hash key for the atom *)
 

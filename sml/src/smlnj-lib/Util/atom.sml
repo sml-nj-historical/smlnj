@@ -26,8 +26,11 @@ structure Atom :> ATOM =
     fun hash (ATOM{hash, ...}) = hash
 
   (* return true if the atoms are the same *)
-    fun sameAtom (ATOM{hash=h1, id=id1}, ATOM{hash=h2, id=id2}) =
+    fun same (ATOM{hash=h1, id=id1}, ATOM{hash=h2, id=id2}) =
 	  (h1 = h2) andalso (id1 = id2)
+
+  (* for backward compatibility *)
+    val sameAtom = same
 
   (* compare two names for their relative order; note that this is
    * not lexical order!
@@ -36,6 +39,9 @@ structure Atom :> ATOM =
 	if h1 = h2 then String.compare (id1, id2)
 	else if h1 < h2 then LESS
 	else GREATER
+
+  (* compare two atoms for their lexical order *)
+    fun lexCompare (ATOM{id=id1, ...}, ATOM{id=id2, ...}) = String.compare(id1, id2)
 
   (* the unique name hash table *)
     val tableSz = 64

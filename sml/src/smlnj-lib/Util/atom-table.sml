@@ -8,6 +8,6 @@
 structure AtomTable = HashTableFn (struct
       type hash_key = Atom.atom
       val hashVal = Atom.hash
-      val sameKey = Atom.sameAtom
+      val sameKey = Atom.same
     end);
 
