@@ -1,8 +1,12 @@
-(*
+(* cfg.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *
  * The control flow graph representation used for optimizations.
  *
  * -- Allen
  *)
+
 functor ControlFlowGraph
    (structure I : INSTRUCTIONS
     structure GraphImpl : GRAPH_IMPLEMENTATION
@@ -281,29 +285,89 @@ struct
     *  Pretty Printing and Viewing 
     *
     *========================================================================*)
-   fun show_edge(EDGE{k,w,a,...}) = 
-       let val kind = case k of
-                         JUMP      => ""
-                      |  FALLSTHRU => "fallsthru"
-                      |  BRANCH b => Bool.toString b
-                      |  SWITCH i => Int.toString i
-                      |  ENTRY    => "entry"
-                      |  EXIT     => "exit"
-                      |  FLOWSTO  => "flowsto"
-           val weight = "(" ^ W.toString (!w) ^ ")"
-       in  kind ^ weight 
-       end 
 
-   fun getString f x = 
-   let val buffer = StringOutStream.mkStreamBuf()
-       val S      = StringOutStream.openStringOut buffer
-       val _      = AsmStream.withStream S f x 
-   in  StringOutStream.getString buffer end
+    structure F = Format
 
-   fun show_block an block = 
-   let val text = getString (emit an) block
-   in  foldr (fn (x,"") => x | (x,y) => x^" "^y) ""
-            (String.tokens (fn #" " => true | _ => false) text)
-   end
+    fun show_edge (EDGE{k,w,a,...}) = let
+	  val kind = (case k
+		 of JUMP	=> "jump"
+        	  | FALLSTHRU	=> "fallsthru"
+        	  | BRANCH b	=> Bool.toString b
+        	  | SWITCH i	=> Int.toString i
+        	  | ENTRY	=> "entry"
+        	  | EXIT	=> "exit"
+        	  | FLOWSTO	=> "flowsto"
+		(* end case *))
+	  in
+	    F.format "%s(%d)" [F.STR kind, F.INT(!w)]
+	  end
+
+    fun getString f x = let
+	  val buffer = StringOutStream.mkStreamBuf()
+	  val S      = StringOutStream.openStringOut buffer
+	  val _      = AsmStream.withStream S f x 
+	  in
+	    StringOutStream.getString buffer
+	  end
+
+    fun show_block an block = let
+	  val text = getString (emit an) block
+	  in
+	    foldr (fn (x,"") => x | (x,y) => x^" "^y) ""
+              (String.tokens (fn #" " => true | _ => false) text)
+	  end
+
+    fun dump (outS, title, cfg as G.GRAPH g) = let
+	  fun pr str = TextIO.output(outS, str)
+	  fun prList [] = ()
+	    | prList [i] = pr i
+	    | prList (h::t) = (pr (h ^ ", "); prList t)
+	  val annotations = !(annotations cfg)
+	  val Asm.S.STREAM{emit,pseudoOp,defineLabel,annotation,...} = 
+        	AsmStream.withStream outS Asm.makeStream annotations
+	  fun showFreq (ref w) = F.format "[%s]" [F.STR(W.toString w)] 
+	  fun showEdge (blknum,e) = 
+		F.format "%d:%s" [F.INT blknum, F.STR(show_edge e)]
+	  fun showSucc (_, x, e) = showEdge(x,e)
+	  fun showPred (x, _, e) = showEdge(x,e) 
+	  fun showSuccs b = (
+		pr "\tsucc:     "; 
+        	prList (map showSucc (#out_edges g b)); 
+        	pr "\n")
+	  fun showPreds b = (
+        	pr "\tpred:     "; 
+        	prList (map showPred (#in_edges g b)); 
+        	pr "\n")
+	  fun printBlock (_, BLOCK{kind=START, id, freq, ...}) = (
+        	pr (F.format "ENTRY %d %s\n" [F.INT id, F.STR(showFreq freq)]);
+        	showSuccs id)
+            | printBlock (_, BLOCK{kind=STOP, id, freq, ...}) = (
+		pr (F.format "EXIT %d %s\n" [F.INT id, F.STR(showFreq freq)]);
+        	showPreds id)
+            | printBlock (
+		_, BLOCK{id, align, freq, insns, annotations, labels, ...}
+	      ) = (
+	       pr (F.format "BLOCK %d %s\n" [F.INT id, F.STR(showFreq freq)]);
+	       case !align of NONE => () | SOME p => (pr (P.toString p ^ "\n"));
+               app annotation (!annotations);
+               app defineLabel (!labels);
+               showSuccs id;
+               showPreds id;
+               List.app emit (List.rev (!insns)))
+	  fun printData () = let
+        	val INFO{data, ...} = #graph_info g
+		in
+		  List.app (pr o P.toString) (rev(!data))
+		end
+	  in
+	    pr(F.format "[ %s ]\n" [F.STR title]);
+	    List.app annotation annotations;
+	    (* printBlock entry; *)
+	    AsmStream.withStream outS (#forall_nodes g) printBlock;
+	    (* printBlock exit; *)
+	    AsmStream.withStream outS printData ();
+	    TextIO.flushOut outS
+	  end
+
 end
 
