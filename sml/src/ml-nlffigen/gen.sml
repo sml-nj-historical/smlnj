@@ -7,8 +7,8 @@
  * author: Matthias Blume (blume@research.bell-labs.com)
  *)
 local
-    val program = "ml-ffigen"
-    val version = "0.7"
+    val program = "ml-nlffigen"
+    val version = "0.8"
     val author = "Matthias Blume"
     val email = "blume@research.bell-labs.com"
     structure S = Spec
@@ -39,6 +39,10 @@ structure Gen :> sig
 end = struct
 
     val version = version
+
+    structure SS = StringSet
+    structure SM = StringMap
+    structure IM = IntRedBlackMap
 
     structure P = PrettyPrint
     structure PP = P.PP
@@ -96,6 +100,13 @@ end = struct
     fun arg_id s = "a_" ^ s
     fun enum_id n = "e_" ^ n
 
+    val $! = SS.exists
+    val $? = SM.find
+
+    val %? = IM.find
+
+    fun thetag (t: S.tag) t' = t = t'
+
     fun gen args = let
 	val { cfiles, match, mkidlsource, gensym_stem,
 	      dirname, cmfile, prefix, extramembers, libraryhandle, complete,
@@ -104,6 +115,9 @@ end = struct
 	      weightreq,
 	      namedargs = doargnames,
 	      target = { name = archos, sizes, shift, stdcall } } = args
+
+	val hash_cft = Hash.mkFHasher ()
+	val hash_mltype = Hash.mkTHasher ()
 
 	val (gensym_prefix, gensym_suffix) =
 	    if gensym_stem = "" then ("", "")
@@ -182,52 +196,55 @@ end = struct
 	    result
 	end
 
+	val structs =
+	    foldl (fn (s, m) => SM.insert (m, #tag s, s)) SM.empty structs
+
+	val unions =
+	    foldl (fn (u, m) => SM.insert (m, #tag u, u)) SM.empty unions
+
 	val (structs, unions) = let
-	    val sdone = ref []
-	    val udone = ref []
-	    val slist = ref []
-	    val ulist = ref []
+	    val sdone = ref SS.empty
+	    val udone = ref SS.empty
+	    val smap = ref SM.empty
+	    val umap = ref SM.empty
 	    val tq = ref []
-	    fun tag (t: S.tag) t' = t = t'
-	    fun s_tag t (s: S.s) = t = #tag s
-	    fun u_tag t (u: S.u) = t = #tag u
 	    fun ty_sched t = tq := t :: !tq
 	    fun fs_sched (S.OFIELD { spec = (_, t), ... }) = ty_sched t
 	      | fs_sched _ = ()
 	    fun f_sched { name, spec } = fs_sched spec
-	    fun senter takeit t =
-		if List.exists (tag t) (!sdone) then ()
-		else (sdone := t :: !sdone;
-		      case List.find (s_tag t) structs of
-			  SOME x => (if takeit then slist := x :: !slist
-				     else ();
+
+	    fun senter t =
+		if $! (thetag t) (!sdone) then ()
+		else (sdone := SS.add (!sdone, t);
+		      case $? (structs, t) of
+			  SOME x => (smap := SM.insert (!smap, t, x);
 				     app f_sched (#fields x))
 			| NONE => ())
-	    fun uenter takeit t =
-		if List.exists (tag t) (!udone) then ()
-		else (udone := t :: !udone;
-		      case List.find (u_tag t) unions of
-			  SOME x => (if takeit then ulist := x :: !ulist
-				     else ();
+
+	    fun uenter t =
+		if $! (thetag t) (!udone) then ()
+		else (udone := SS.add (!udone, t);
+		      case $? (unions, t) of
+			  SOME x => (umap := SM.insert (!umap, t, x);
 				     app f_sched (#largest x :: #all x))
 			| NONE => ())
+
 	    fun sinclude (s: S.s) =
-		if #exclude s then () else senter true (#tag s)
+		if #exclude s then () else senter (#tag s)
 	    fun uinclude (u: S.u) =
-		if #exclude u then () else uenter true (#tag u)
+		if #exclude u then () else uenter (#tag u)
 	    fun gty { src, name, spec } = ty_sched spec
 	    fun gvar { src, name, spec = (_, t) } = ty_sched t
 	    fun gfun { src, name, spec, argnames } = ty_sched (S.FPTR spec)
 	    fun loop [] = ()
 	      | loop tl = let
-		    fun ty (S.STRUCT t) = senter true t
-		      | ty (S.UNION t) = uenter true t
-		      | ty (S.PTR (_, S.STRUCT t)) = senter false t
-		      | ty (S.PTR (_, S.UNION t)) = uenter false t
+		    fun ty (S.STRUCT t) = senter t
+		      | ty (S.UNION t) = uenter t
+		      | ty (S.PTR (_, S.STRUCT t)) = ()
+		      | ty (S.PTR (_, S.UNION t)) = ()
 		      | ty (S.PTR (_, t)) = ty t
 		      | ty (S.FPTR { args, res }) =
-			(app ty args;
-			 case res of SOME x => ty x | NONE => ())
+			(app ty args; Option.app ty res)
 		      | ty (S.ARR { t, ... }) = ty t
 		      | ty (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 			    S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
@@ -240,23 +257,23 @@ end = struct
 		end
 	    and nextround () = loop (!tq)
 	in
-	    app sinclude structs;
-	    app uinclude unions;
+	    SM.app sinclude structs;
+	    SM.app uinclude unions;
 	    app gty gtys;
 	    app gvar gvars;
 	    app gfun gfuns;
 	    nextround ();
-	    (!slist, !ulist)
+	    (!smap, !umap)
 	end
 
 	exception Incomplete
 
 	fun get_struct t =
-	    case List.find (fn s => #tag s = t) structs of
+	    case $? (structs, t) of
 		SOME x => x
 	      | NONE => raise Incomplete
 	fun get_union t =
-	    case List.find (fn u => #tag u = t) unions of
+	    case $? (unions, t) of
 		SOME x => x
 	      | NONE => raise Incomplete
 
@@ -273,10 +290,8 @@ end = struct
 	  | stem S.VOIDPTR = "voidptr"
 	  | stem _ = raise Fail "bad stem"
 
-	fun sinsert (s: string, l) =
-	    case List.find (fn s' => s = s') l of
-		SOME _ => l
-	      | NONE => s :: l
+	fun taginsert (t, ss) =
+	    if $! (thetag t) ss then ss else SS.add (ss, t)
 
 	(* We don't expect many different function pointer types or
 	 * incomplete types in any given C interface, so using linear
@@ -288,19 +303,19 @@ end = struct
 		     S.VOIDPTR), a) = a
 	      | ty (S.STRUCT t, a as (f, s, u)) =
 		((ignore (get_struct t); a)
-		 handle Incomplete => (f, sinsert (t, s), u))
+		 handle Incomplete => (f, taginsert (t, s), u))
 	      | ty (S.UNION t, a as (f, s, u)) =
 		((ignore (get_union t); a)
-		 handle Incomplete => (f, s, sinsert (t, u)))
+		 handle Incomplete => (f, s, taginsert (t, u)))
 	      | ty ((S.PTR (_, t) | S.ARR { t, ... }), a) = ty (t, a)
 	      | ty (S.FPTR (cft as { args, res }), a) = let
 		    val a' = foldl ty a args
 		    val a'' = case res of NONE => a'
 					| SOME t => ty (t, a')
 		    val (f, s, u) = a''
+		    val cfth = hash_cft cft
 		in
-		    if List.exists (fn (cft', _) => cft = cft') f then a
-		    else ((cft, length f) :: f, s, u)
+		    (IM.insert (f, cfth, (cft, IM.numItems f)), s, u)
 		end
 	    fun fs (S.OFIELD { spec = (_, t), ... }, a) = ty (t, a)
 	      | fs (_, a) = a
@@ -313,19 +328,22 @@ end = struct
 	    fun gvar ({ src, name, spec = (_, t) }, a) = ty (t, a)
 	    fun gfun ({ src, name, spec, argnames }, a) = ty (S.FPTR spec, a)
 	in
-	    foldl gfun (foldl gvar
-		         (foldl gty (foldl u (foldl s ([], [], []) structs)
-					   unions)
+	    foldl gfun
+	          (foldl gvar
+			 (foldl gty
+				(SM.foldl
+				     u (SM.foldl
+					    s (IM.empty, SS.empty, SS.empty)
+					    structs)
+				     unions)
 				gtys)
 			 gvars)
 		  gfuns
 	end
 
 	fun incomplete t = let
-	    fun decide (K, tag: Spec.tag, l) =
-		if List.exists (fn tag' => tag = tag') l then
-		    SOME (K, tag)
-		else NONE
+	    fun decide (K, tag: Spec.tag, ss) =
+		if $! (thetag tag) ss then SOME (K, tag) else NONE
 	in
 	    case t of
 		S.STRUCT tag => decide ("S", tag, incomplete_structs)
@@ -451,10 +469,13 @@ end = struct
 		simple (stem t)
 	      | rtti_val (S.STRUCT t) = EVar (Styp t)
 	      | rtti_val (S.UNION t) = EVar (Utyp t)
-	      | rtti_val (S.FPTR cft) =
-		(case List.find (fn x => #1 x = cft) fptr_types of
-		     SOME (_, i) => EVar (fptr_rtti_qid i)
-		   | NONE => raise Fail "fptr type missing")
+	      | rtti_val (S.FPTR cft) = let
+		    val cfth = hash_cft cft
+		in
+		    case %? (fptr_types, cfth) of
+			SOME (_, i) => EVar (fptr_rtti_qid i)
+		      | NONE => raise Fail "fptr type missing"
+		end
 	      | rtti_val (S.PTR (S.RW, t)) =
 		(case incomplete t of
 		     SOME (K, tag) => EVar (isu_id (K, tag) ^ ".typ'rw")
@@ -468,10 +489,13 @@ end = struct
 		EApp (EVar "T.arr", ETuple [rtti_val t, dim_val d])
 	end
 
-	fun fptr_mkcall spec =
-	    case List.find (fn x => #1 x = spec) fptr_types of
+	fun fptr_mkcall spec = let
+	    val h = hash_cft spec
+	in
+	    case %? (fptr_types, h) of
 		SOME (_, i) => fptr_mkcall_qid i
 	      | NONE => raise Fail "missing fptr_type (mkcall)"
+	end
 
 	fun openPP0 nocredits (f, src) = let
 	    val dst = TextIO.openOut f
@@ -526,12 +550,14 @@ end = struct
 
 	val get_callop = let
 	    val ncallops = ref 0
-	    val callops = ref []
+	    val callops = ref IM.empty
 	    fun callop_sid i = "Callop_" ^ Int.toString i
 	    fun callop_qid i = callop_sid i ^ ".callop"
-	    fun get (ml_args_t, e_proto, ml_res_t) =
-		case List.find (fn (ep, _) => ep = e_proto) (!callops) of
-		    SOME (_, i) => callop_qid i
+	    fun get (ml_args_t, e_proto, ml_res_t) = let
+		val e_proto_hash = hash_mltype e_proto
+	    in
+		case %? (!callops, e_proto_hash) of
+		    SOME i => callop_qid i
 		  | NONE => let
 			val i = !ncallops
 			val sn = callop_sid i
@@ -540,7 +566,7 @@ end = struct
 			    openPP (file, NONE)
 		    in
 			ncallops := i + 1;
-			callops := (e_proto, i) :: !callops;
+			callops := IM.insert (!callops, e_proto_hash, i);
 			str (concat ["structure ", sn, " = struct"]);
 			Box 4;
 			pr_vdef ("callop",
@@ -553,6 +579,7 @@ end = struct
 			nl (); str "end"; nl (); closePP ();
 			callop_qid i
 		    end
+	    end
 	in
 	    get
 	end
@@ -1101,8 +1128,8 @@ end = struct
 		nl ()
 	    end
 	in
-	    app (pr_isu_def "S") incomplete_structs;
-	    app (pr_isu_def "U") incomplete_unions;
+	    SS.app (pr_isu_def "S") incomplete_structs;
+	    SS.app (pr_isu_def "U") incomplete_unions;
 	    closePP ()
 	end
 
@@ -1125,16 +1152,15 @@ end = struct
 	    closePP ()
 	end
 	val needs_iptr =
-	    case (incomplete_structs, incomplete_unions) of
-		([], []) => false
-	      | _ => true
+	    not (SS.isEmpty incomplete_structs andalso
+		 SS.isEmpty incomplete_unions)
     in
 
-	app pr_fptr_rtti fptr_types;
-	app pr_st_structure structs;
-	app pr_ut_structure unions;
-	app pr_s_structure structs;
-	app pr_u_structure unions;
+	IM.app pr_fptr_rtti fptr_types;
+	SM.app pr_st_structure structs;
+	SM.app pr_ut_structure unions;
+	SM.app pr_s_structure structs;
+	SM.app pr_u_structure unions;
 	app pr_t_structure gtys;
 	app pr_gvar gvars;
 	app pr_gfun gfuns;

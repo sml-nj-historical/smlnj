@@ -209,7 +209,18 @@ Command-line options for ml-nlffigen:
                 By specifying -match <r>, ml-nlffigen will also include
                 definitions that occur in recursively #include-d files
                 for which the AWK-style regular expression <r> matches
-                a prefix of their names.
+                their names.
+   -prefix <p>  Generated ML structure names will all have prefix <p>
+                (in addition to the usual "S_" or "U_" or "F_" ...)
+   -gensym <g>  Names "gensym-ed" by ml-nlffigen (for anonymous struct/union/
+                enums) will get an additional suffix _<g>.  (This should
+                be used if output from several indepdendent runs of 
+                ml-nlffigen are to coexist in the same ML program.)
+                    In addition to this, <g>_ will be prefixed (in addition
+                to any "-prefix"-specified prefix and the usual "IS_")
+                to structures representing incomplete pointer types.
+                The prefixing is *not* done to IS_-structures if the
+                "-incomplete" command line switch was also set.
    --           Terminate processing of options, remaining arguments are
                 taken to be C sources.
 

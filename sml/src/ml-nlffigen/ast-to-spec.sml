@@ -10,8 +10,10 @@ structure AstToSpec = struct
     structure A = Ast
     structure B = Bindings
 
-    structure SM = RedBlackMapFn (type ord_key = string
-				  val compare = String.compare)
+    structure SS = StringSet
+    structure SM = StringMap
+
+    datatype context = CONTEXT of { gensym: unit -> string, anon: bool }
 
     exception VoidType
     exception Ellipsis
@@ -46,15 +48,9 @@ structure AstToSpec = struct
 	    List.exists (fn f => f = srcFile) cfiles orelse
 	    match srcFile
 
-(*
-	fun isPublicName "" = false
-	  | isPublicName n = String.sub (n, 0) <> #"_"
-*)
+	fun includedSU (tag, loc) = (allSU orelse isThisFile loc)
 
-	fun includedSU (tag, loc) =
-	    (allSU orelse isThisFile loc) (* andalso isPublicName tag *)
-
-	fun includedTy (n, loc) = isThisFile loc (* andalso isPublicName n *)
+	fun includedTy (n, loc) = isThisFile loc
 
 	fun isFunction t = TypeUtil.isFunction tidtab t
 	fun getFunction t = TypeUtil.getFunction tidtab t
@@ -83,69 +79,112 @@ structure AstToSpec = struct
 
 	val structs = ref []
 	val unions = ref []
-	val gtys = ref []
-	val gvars = ref []
-	val gfuns = ref []
+	val gtys = ref SM.empty
+	val gvars = ref SM.empty
+	val gfuns = ref SM.empty
 	val enums = ref SM.empty
 
-	val seen_structs = ref []
-	val seen_unions = ref []
+	val seen_structs = ref SS.empty
+	val seen_unions = ref SS.empty
 
 	val nexttag = ref 0
-	val tags = Tidtab.uidtab () : string Tidtab.uidtab
+	val tags = Tidtab.uidtab () : (string * bool) Tidtab.uidtab
 
-	fun tagname (NONE, NONE, tid) =
+	fun mk_context_td tdname =
+	    let val next = ref 0
+	    in
+		CONTEXT
+		    { gensym =
+		      fn () => let
+			     val n = !next
+			 in
+			     next := n + 1;
+			     concat ["'",
+				     if n = 0 then "" else Int.toString n,
+				     tdname]
+			 end,
+		      anon = false }
+	    end
+
+	fun mk_context_su (parent_tag, anon) =
+	    let val next = ref 0
+	    in
+		CONTEXT { gensym =
+			  fn () => let
+				 val n = !next
+			     in
+				 next := n + 1;
+				 concat [parent_tag, "'", Int.toString n]
+			     end,
+			  anon = anon }
+	    end
+
+	val tl_context =
+	    let val next = ref 0
+	    in
+		CONTEXT { gensym =
+			  fn () => let
+				 val n = !next
+			     in
+				 next := n + 1;
+				 Int.toString n
+			     end,
+			  anon = true }
+	    end
+
+	fun tagname (SOME t, _, _) = (t, false)
+	  | tagname (NONE, CONTEXT { gensym, anon }, tid) =
 	    (case Tidtab.find (tags, tid) of
-		 SOME s => s
+		 SOME ta => ta
 	       | NONE => let
-		     val i = !nexttag
-		     val s = Int.toString i ^ gensym_suffix
+		     val t = gensym ()
 		 in
-		     nexttag := i + 1;
-		     Tidtab.insert (tags, tid, s);
-		     s
+		     Tidtab.insert (tags, tid, (t, anon));
+		     (t, anon)
 		 end)
-	  | tagname (NONE, SOME n, _) = "'" ^ n
-	  | tagname (SOME n, _, _) = n
 
-	fun valty A.Void = raise VoidType
-	  | valty A.Ellipses = raise Ellipsis
-	  | valty (A.Qual (q, t)) = valty t
-	  | valty (A.Numeric (_, _, A.SIGNED, A.CHAR, _)) = Spec.SCHAR
-	  | valty (A.Numeric (_, _, A.UNSIGNED, A.CHAR, _)) = Spec.UCHAR
-	  | valty (A.Numeric (_, _, A.SIGNED, A.INT, _)) = Spec.SINT
-	  | valty (A.Numeric (_, _, A.UNSIGNED, A.INT, _)) = Spec.UINT
-	  | valty (A.Numeric (_, _, A.SIGNED, A.SHORT, _)) = Spec.SSHORT
-	  | valty (A.Numeric (_, _, A.UNSIGNED, A.SHORT, _)) = Spec.USHORT
-	  | valty (A.Numeric (_, _, A.SIGNED, A.LONG, _)) = Spec.SLONG
-	  | valty (A.Numeric (_, _, A.UNSIGNED, A.LONG, _)) = Spec.ULONG
-	  | valty (A.Numeric (_, _, _, A.FLOAT, _)) = Spec.FLOAT
-	  | valty (A.Numeric (_, _, _, A.DOUBLE, _)) = Spec.DOUBLE
-	  | valty (A.Numeric _) = bug "numeric type not (yet) supported"
-	  | valty (A.Array (NONE, t)) = valty (A.Pointer t)
-	  | valty (A.Array (SOME (n, _), t)) =
+	fun reported_tagname (t, false) = t
+	  | reported_tagname (t, true) = t ^ gensym_suffix
+
+	fun valty C A.Void = raise VoidType
+	  | valty C A.Ellipses = raise Ellipsis
+	  | valty C (A.Qual (q, t)) = valty C t
+	  | valty C (A.Numeric (_, _, A.SIGNED, A.CHAR, _)) = Spec.SCHAR
+	  | valty C (A.Numeric (_, _, A.UNSIGNED, A.CHAR, _)) = Spec.UCHAR
+	  | valty C (A.Numeric (_, _, A.SIGNED, A.INT, _)) = Spec.SINT
+	  | valty C (A.Numeric (_, _, A.UNSIGNED, A.INT, _)) = Spec.UINT
+	  | valty C (A.Numeric (_, _, A.SIGNED, A.SHORT, _)) = Spec.SSHORT
+	  | valty C (A.Numeric (_, _, A.UNSIGNED, A.SHORT, _)) = Spec.USHORT
+	  | valty C (A.Numeric (_, _, A.SIGNED, A.LONG, _)) = Spec.SLONG
+	  | valty C (A.Numeric (_, _, A.UNSIGNED, A.LONG, _)) = Spec.ULONG
+	  | valty C (A.Numeric (_, _, _, A.FLOAT, _)) = Spec.FLOAT
+	  | valty C (A.Numeric (_, _, _, A.DOUBLE, _)) = Spec.DOUBLE
+	  | valty C (A.Numeric _) = bug "numeric type not (yet) supported"
+	  | valty C (A.Array (NONE, t)) = valty C (A.Pointer t)
+	  | valty C (A.Array (SOME (n, _), t)) =
 	    let val d = Int.fromLarge n
 	    in
 		if d < 0 then err "negative dimension"
-		else Spec.ARR { t = valty t, d = d, esz = sizeOf t }
+		else Spec.ARR { t = valty C t, d = d, esz = sizeOf t }
 	    end
-	  | valty (A.Pointer t) =
+	  | valty C (A.Pointer t) =
 	    (case getCoreType t of
 		 A.Void => Spec.VOIDPTR
-	       | A.Function f => fptrty f
-	       | _ => Spec.PTR (cobj t))
-	  | valty (A.Function f) = fptrty f
-	  | valty (A.StructRef tid) = typeref (tid, Spec.STRUCT, NONE)
-	  | valty (A.UnionRef tid) = typeref (tid, Spec.UNION, NONE)
-	  | valty (A.EnumRef tid) =
-	    typeref (tid, (* hack *) fn _ => Spec.SINT, NONE)
-	  | valty (A.TypeRef tid) =
-	    typeref (tid, fn _ => bug "missing typedef info", NONE)
-	  | valty A.Error = err "Error type"
+	       | A.Function f => fptrty C f
+	       | _ => Spec.PTR (cobj C t))
+	  | valty C (A.Function f) = fptrty C f
+	  | valty C (A.StructRef tid) = typeref (tid, Spec.STRUCT, C)
+	  | valty C (A.UnionRef tid) = typeref (tid, Spec.UNION, C)
+	  | valty C (A.EnumRef tid) =
+	    typeref (tid, (* hack *) fn _ => Spec.SINT, C)
+	  | valty C (A.TypeRef tid) =
+	    typeref (tid, fn _ => bug "missing typedef info", C)
+	  | valty C A.Error = err "Error type"
 
-	and valty_nonvoid t = valty t
+	and valty_nonvoid C t = valty C t
 	    handle VoidType => err "void variable type"
 
+(*
 	and valty_td (A.StructRef tid, tdname) =
 	    typeref (tid, Spec.STRUCT, tdname)
 	  | valty_td (A.UnionRef tid, tdname) =
@@ -153,8 +192,9 @@ structure AstToSpec = struct
 	  | valty_td (A.EnumRef tid, tdname) =
 	    typeref (tid, fn _ => Spec.SINT, tdname)
 	  | valty_td (t, _) = valty t
+*)
 
-	and typeref (tid, otherwise, tdname) =
+	and typeref (tid, otherwise, C) =
 	    case Tidtab.find (tidtab, tid) of
 		NONE => bug "tid not bound in tidtab"
 	      | SOME { name = SOME n, ntype = NONE, ... } => otherwise n
@@ -163,18 +203,19 @@ structure AstToSpec = struct
 	      | SOME { name, ntype = SOME nct, location, ... } =>
 		(case nct of
 		     B.Struct (tid, members) =>
-		     structty (tid, name, tdname, members, location)
+		     structty (tid, name, C, members, location)
 		   | B.Union (tid, members) =>
-		     unionty (tid, name, tdname, members, location)
+		     unionty (tid, name, C, members, location)
 		   | B.Enum (tid, edefs) => let
 			 fun one ({ name, uid, location, ctype, kind }, i) =
 			     { name = Symbol.name name, spec = i }
 			 val all = map one edefs
-			 val tn = tagname (name, tdname, tid)
+			 val (tn, anon) = tagname (name, C, tid)
+			 val rtn = reported_tagname (tn, anon)
 		     in
-			 enums := SM.insert (!enums, tn,
+			 enums := SM.insert (!enums, rtn,
 					     { src = srcOf location,
-					       tag = tn,
+					       tag = rtn,
 					       spec = all });
 			 Spec.SINT
 		     end
@@ -183,27 +224,28 @@ structure AstToSpec = struct
 			     case name of
 				 NONE => bug "missing name in typedef"
 			       | SOME n => n
-			 val res = valty_td (t, SOME n)
+			 val C' = mk_context_td n
+			 val res = valty C' t
 			 fun sameName { src, name, spec } = name = n
 		     in
-			 if includedTy (n, location) then
-			     case List.find sameName (!gtys) of
-				 SOME _ => ()
-			       | NONE =>
-				 gtys := { src = srcOf location,
-					   name = n, spec = res } :: !gtys
+			 if includedTy (n, location) andalso
+			    not (SM.inDomain (!gtys, n)) then
+			     gtys := SM.insert (!gtys, n,
+						{ src = srcOf location,
+						  name = n, spec = res })
 			 else ();
 			 res
 		     end)
 
-	and structty (tid, name, tdname, members, location) = let
-	    val tag = tagname (name, tdname, tid)
+	and structty (tid, name, C, members, location) = let
+	    val (tag_stem, anon) = tagname (name, C, tid)
+	    val tag = reported_tagname (tag_stem, anon)
 	    val ty = Spec.STRUCT tag
+	    val C' = mk_context_su (tag_stem, anon)
 	in
-	    case List.find (fn tag' => tag = tag') (!seen_structs) of
-		SOME _ => ()
-	      | NONE => let
-		    val _ = seen_structs := tag :: !seen_structs
+	    if SS.member (!seen_structs, tag) then ()
+	    else let
+		    val _ = seen_structs := SS.add (!seen_structs, tag)
 
 		    val fol = fieldOffsets (A.StructRef tid)
 		    val ssize = sizeOf (A.StructRef tid)
@@ -252,7 +294,7 @@ structure AstToSpec = struct
 				{ name = Symbol.name (#name m),
 				  spec = Spec.OFIELD
 					     { offset = bytoff,
-					       spec = cobj t,
+					       spec = cobj C' t,
 					       synthetic = false } } ::
 				build (rest, synth, (endp, false))
 			end
@@ -266,7 +308,7 @@ structure AstToSpec = struct
 			    { name = Symbol.name (#name m),
 			      spec = bfspec (bytoff, b,
 					     bitoff mod intalign,
-					     cobj t) } ::
+					     cobj C' t) } ::
 			    build (rest, synth, gap)
 			end
 		      | build ((t, NONE, SOME _) :: rest, synth, gap) =
@@ -278,7 +320,7 @@ structure AstToSpec = struct
 		in
 		    structs := { src = srcOf location,
 				 tag = tag, 
-				 anon = not (isSome name),
+				 anon = anon,
 				 size = Word.fromInt ssize,
 				 exclude = not (includedSU (tag, location)),
 				 fields = fields } :: !structs
@@ -286,8 +328,10 @@ structure AstToSpec = struct
 	    ty
 	end
 
-	and unionty (tid, name, tdname, members, location) = let
-	    val tag = tagname (name, tdname, tid)
+	and unionty (tid, name, C, members, location) = let
+	    val (tag_stem, anon) = tagname (name, C, tid)
+	    val tag = reported_tagname (tag_stem, anon)     
+	    val C' = mk_context_su (tag_stem, anon)
 	    val ty = Spec.UNION tag
 	    val lsz = ref 0
 	    val lg = ref { name = "",
@@ -298,22 +342,21 @@ structure AstToSpec = struct
 		val sz = sizeOf t
 		val e = { name = Symbol.name (#name m),
 			  spec = Spec.OFIELD { offset = 0,
-					       spec = cobj t,
+					       spec = cobj C' t,
 					       synthetic = false } }
 	    in
 		if sz > !lsz then (lsz := sz; lg := e) else ();
 		e
 	    end
 	in
-	    case List.find (fn tag' => tag = tag') (!seen_unions) of
-		SOME _ => ()
-	      | NONE => let
-		    val _ = seen_unions := tag :: !seen_unions
+	    if SS.member (!seen_unions, tag) then ()
+	    else let
+		    val _ = seen_unions := SS.add (!seen_unions, tag)
 		    val all = map mkField members
 		in
 		    unions := { src = srcOf location,
 				tag = tag,
-				anon = not (isSome name),
+				anon = anon,
 				size = Word.fromInt (sizeOf (A.UnionRef tid)),
 				largest = !lg,
 				exclude = not (includedSU (tag, location)),
@@ -322,28 +365,28 @@ structure AstToSpec = struct
 	    ty
 	end
 
-	and cobj t = (constness t, valty_nonvoid t)
+	and cobj C t = (constness t, valty_nonvoid C t)
 
-	and fptrty f = Spec.FPTR (cft f)
+	and fptrty C f = Spec.FPTR (cft C f)
 
-	and cft (res, args) =
+	and cft C (res, args) =
 	    { res = case getCoreType res of
 			A.Void => NONE
-		      | _ => SOME (valty_nonvoid res),
+		      | _ => SOME (valty_nonvoid C res),
 	      args = case args of
 			 [(arg, _)] => (case getCoreType arg of
 				       A.Void => []
-				     | _ => [valty_nonvoid arg])
+				     | _ => [valty_nonvoid C arg])
 		       | _ => let fun build [] = []
 				    | build [(x, _)] =
-				      ([valty_nonvoid x]
+				      ([valty_nonvoid C x]
 				       handle Ellipsis =>
 					      (warnLoc
 						   ("varargs not supported; \
 						    \ignoring the ellipsis\n");
 						   []))
 				    | build ((x, _) :: xs) =
-				      valty_nonvoid x :: build xs
+				      valty_nonvoid C x :: build xs
 			      in
 				  build args
 			      end }
@@ -360,14 +403,16 @@ structure AstToSpec = struct
 	    val anlo = Option.map (map (Symbol.name o #name)) ailo
 	in
 	    if n = "_init" orelse n = "_fini" orelse
-	       List.exists (fn { name, ... } => name = n) (!gfuns) then ()
+	       SM.inDomain (!gfuns, n) then ()
 	    else case #stClass f of
 		     (A.EXTERN | A.DEFAULT) =>
 		     (case getFunction (#ctype f) of
 			  SOME fs =>
-			  gfuns := { src = !curLoc,
-				     name = n, spec = cft fs, argnames = anlo }
-				   :: !gfuns
+			  gfuns := SM.insert (!gfuns, n,
+					      { src = !curLoc,
+						name = n,
+						spec = cft tl_context fs,
+						argnames = anlo })
 			| NONE => bug "function without function type")
 		   | (A.AUTO | A.REGISTER | A.STATIC) => ()
 	end
@@ -381,19 +426,19 @@ structure AstToSpec = struct
 		   | NONE =>
 		     let val n = Symbol.name (#name v)
 		     in
-			 if List.exists
-				(fn { name, ... } => name = n)
-				(!gvars) then ()
-			 else
-			     gvars := { src = !curLoc, name = n,
-					spec = cobj (#ctype v) } :: !gvars
+			 if SM.inDomain (!gvars, n) then ()
+			 else gvars := SM.insert
+					   (!gvars, n,
+					    { src = !curLoc, name = n,
+					      spec = cobj tl_context
+							  (#ctype v) })
 		     end)
 	      | (A.AUTO | A.REGISTER | A.STATIC) => ()
 
 	fun declaration (A.TypeDecl { tid, ... }) =
 	    (* Spec.SINT is an arbitrary choice; the value gets
 	     * ignored anyway *)
-	    (ignore (typeref (tid, fn _ => Spec.SINT, NONE))
+	    (ignore (typeref (tid, fn _ => Spec.SINT, tl_context))
 	     handle VoidType => ())	(* ignore type aliases for void *)
 	  | declaration (A.VarDecl (v, _)) = varDecl v
 
@@ -412,9 +457,9 @@ structure AstToSpec = struct
 	doast ast;
 	{ structs = !structs,
 	  unions = !unions,
-	  gtys = !gtys,
-	  gvars = !gvars,
-	  gfuns = !gfuns,
+	  gtys = SM.listItems (!gtys),
+	  gvars = SM.listItems (!gvars),
+	  gfuns = SM.listItems (!gfuns),
 	  enums = SM.listItems (!enums) } : Spec.spec
     end
 end

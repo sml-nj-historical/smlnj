@@ -75,16 +75,22 @@ structure Main = struct
 		ifile
 	    end
 
-	    val match =
+	    val match = let
+		fun matchString scanFn s = let
+		    val n = size s
+		    fun getc i =
+			if (i < n) then SOME (String.sub (s, i), i + 1)
+			else NONE
+		in
+		    case scanFn getc 0 of
+			NONE => false
+		      | SOME (x, k) => k = n
+		end
+	    in
 		case !regexp of
 		    NONE => (fn _ => false)
-		  | SOME re =>
-		    (fn s => let fun creader p =
-				     if p >= size s then NONE
-				     else SOME (String.sub (s, p), p + 1)
-			     in
-				 isSome (StringCvt.scanString (RE.prefix re) s)
-			     end)
+		  | SOME re => matchString (RE.prefix re)
+	    end
 	in
 	    Gen.gen { cfiles = cfiles,
 		      match = match,

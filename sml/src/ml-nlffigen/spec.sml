@@ -62,7 +62,8 @@ structure Spec = struct
 	fun uniq sel = let
 	    fun loop ([], a) = rev a
 	      | loop (h :: t, a) =
-		loop (t, if List.exists (fn x => sel x = sel h) a then a
+		loop (t, if List.exists
+				(fn x => (sel x : string) = sel h) a then a
 			 else h :: a)
 	in
 	    loop

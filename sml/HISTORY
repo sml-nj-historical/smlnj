@@ -14,6 +14,26 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/02/13 16:15:00 EST
+Tag: blume-20020213-various
+Description:
+
+1. More tweaks to ml-nlffigen:
+
+   - better internal datastructures (resulting in slight speedup)
+   - "-match" option requires exact match
+   - "localized" gensym counters (untagged structs/unions nested within
+     other structs/unions or within typedefs get a fresh counter; their
+     tag will be prefixed by a concatenation of their parents' tags)
+   - bug fixes (related to calculation of transitive closure of types
+     to be included in the output)
+
+2. Minor Basis updates:
+
+   - added implementations for List.collate and Option.app
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/02/11 15:55:00 EST
 Tag: blume-20020211-gensym
 Description:
