@@ -1,26 +1,27 @@
-(*
- * (Sample) Implementation of a plug-in module for back-tracing.
- * This module hooks itself into the core environment so that
- * btrace-annotated (see btrace.sml) code will invoke the provided
- * functions "enter", "push", "save", and "report".
+(* back-trace.sml
  *
- * This module keeps track of the dynamic call-chain of annotated modules
- * (those that were compiled with SMLofNJ.Internals.BTrace.mode set to true).
- * Non-tail calls are maintained in a stack-like fashion, and in addition
- * to this the module will also track tail-calls so that a sequence of
- * GOTO-like jumps from loop-cluster to loop-cluster can be shown.
+ *   A plug-in module for back-tracing.  This module hooks itself into
+ *   the core environment so that tdp-instrumented code will invoke the
+ *   provided functions "enter", "push", "save", and "report".
  *
- * This strategy, while certainly costly, has no more than constant-factor
- * overhead in space and time and will keep tail-recursive code tail-recursive.
+ *   This module keeps track of the dynamic call-chain of instrumented modules.
+ *   Non-tail calls are maintained in a stack-like fashion, and in addition
+ *   to this the module will also track tail-calls so that a sequence of
+ *   GOTO-like jumps from loop-cluster to loop-cluster can be shown.
  *
- *   Copyright (c) 2000 by Lucent Bell Laboratories
+ *   This strategy, while certainly costly, has no more than constant-factor
+ *   overhead in space and time and will keep tail-recursive code
+ *   tail-recursive.
  *
- * author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
+ *
+ * Author: Matthias Blume (blume@tti-c.org)
  *)
 structure BackTrace : sig
+    exception BTraceTriggered of unit -> string list
+    val trigger : unit -> 'a
+    val monitor : (unit -> unit) -> unit
     val install : unit -> unit
-    val bthandle : { work : unit -> 'a,
-		     hdl : exn * string list -> 'a } -> 'a
 end = struct
 
     structure M = IntRedBlackMap
@@ -184,12 +185,19 @@ end = struct
 
     exception BTraceTriggered of unit -> string list
 
-    fun bthandle { work, hdl } =
+    fun monitor work =
 	let val restore = save ()
+	    fun hdl (e, []) = raise e
+	      | hdl (e, hist) =
+		(Control.Print.say
+		     (concat ("\n*** BACK-TRACE ***\n" :: hist));
+		 Control.Print.say "\n";
+		 raise e)
 	in
 	    work ()
 	    handle e as BTraceTriggered do_report =>
-		     (restore (); hdl (e, do_report ()))
+		     (restore ();
+		      hdl (e, do_report ()))
 		 | e =>
 		   let val do_report = report ()
 		   in
@@ -198,13 +206,18 @@ end = struct
 		   end
 	end
 
+    val name = "btrace"
+
     fun install () =
-	SMLofNJ.Internals.BTrace.install
-	    { plugin = { name = "btrace",
-			 save = save,
-			 push = push,
-			 nopush = nopush,
-			 enter = enter,
-			 register = register },
-	      mktriggerexn = fn () => BTraceTriggered (report ()) }
+	let val plugin = { name = name, save = save,
+			   push = push, nopush = nopush,
+			   enter = enter, register = register }
+	    val monitor = { name = name, monitor = monitor }
+	    fun addto r x = r := x :: !r
+	in
+	    addto SMLofNJ.Internals.TDP.active_plugins plugin;
+	    addto SMLofNJ.Internals.TDP.active_monitors monitor
+	end
+
+    fun trigger () = raise BTraceTriggered (report ())
 end

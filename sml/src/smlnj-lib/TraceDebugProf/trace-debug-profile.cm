@@ -1,0 +1,19 @@
+(* trace-debug-profile.cm
+ *
+ *   Library of plug-in modules for tracing, debugging, and profiling.
+ *
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
+ *
+ * Author: Matthias Blume (blume@tti-c.org)
+ *)
+
+Library
+	structure BackTrace
+	structure Coverage
+is
+	back-trace.sml
+	coverage.sml
+
+	$/basis.cm
+	$/smlnj-lib.cm
+	$smlnj/compiler.cm

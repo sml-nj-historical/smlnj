@@ -10,7 +10,6 @@ Group (../../system/smlnj/viscomp/debugprof.cm)
 	structure Profile
 	structure TProf
 	structure SProf
-	structure BackTrace
 	structure TDPInstrument
 
 	functor ProfileFn
@@ -24,7 +23,6 @@ is
 	profile/tell-env.sml
 	profile/tprof.sml
 	profile/tdp-instrument.sml
-	profile/btimp.sml
 
 	types/reconstruct.sml
 

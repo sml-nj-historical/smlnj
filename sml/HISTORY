@@ -14,6 +14,43 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/15 15:45:00 CDT
+Tag: blume-20041015-coverage
+Description:
+
+* Test coverage tool added!
+* Further reorganization of tracing-, debugging-, and profiling support:
+
+    - moved original BTImp -- now called BackTrace -- into a separate
+      library called $/trace-debug-profile.cm
+    - eliminated all mentions of BTrace from SMLofNJ.Internals
+    - only the instrumentation mechanism is now left in the compiler proper
+    - BackTrace module is a plugin which is NOT plugged in by default
+    - Coverage module is another such plugin
+
+To get the benefits of any of these plugin modules, the code in
+question must be compiled with tdp instrumentation turned on.  This
+can be done by setting SMLofNJ.Internals.TDP.mode to true.
+(The ref cell is also controlled via the -Ctdp.instrument=... switch.)
+
+Plugins are selected at link time.  (Pre-compiled instrumented code
+can be re-loaded with different plugins in effect.)  When an
+instrumented module is linked, whatever plugins are at that time
+enabled will come into effect for that module.
+
+To enable the back-trace plugin, load library $/trace-debug-profile.cm
+and invoke BackTrace.install() (e.g., from the interactive prompt).
+To enable the coverage plugin, load the same library and invoke
+Coverage.install().
+
+Back-traces are generated automatically on uncaught exceptions and
+when the code in question explicitly invokes BackTrace.trigger().
+
+Coverage (and execution frequency-) information must be queried
+explicitly by calling Coverage.not_covered and Coverage.hot_spots.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/10/14 17:40:00 CDT
 Tag: blume-20041014-tdp-core
 Description:

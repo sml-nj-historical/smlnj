@@ -22,8 +22,11 @@ structure Internals : INTERNALS = struct
 
     structure TDP = struct
         type plugin = Core.tdp_plugin
+	type monitor = { name: string, monitor: (unit -> unit) -> unit }
 
 	val active_plugins = Core.tdp_active_plugins
+
+	val active_monitors = ref ([] : monitor list)
 
 	fun reserve n = Core.tdp_reserve n
 	fun reset () = Core.tdp_reset ()
@@ -33,17 +36,12 @@ structure Internals : INTERNALS = struct
 	val idk_non_tail_call = Core.tdp_idk_non_tail_call
 
 	val mode = ref false
-    end
 
-    structure BTrace = struct
-	local
-	    val te_hook = ref (fn () => Fail "bogus backtrace exception")
-	in
-	    fun install { plugin, mktriggerexn } =
-		(te_hook := mktriggerexn;
-		 TDP.active_plugins := plugin :: !TDP.active_plugins)
-	    fun trigger () = raise (!te_hook())
-	end
+	fun with_monitors work =
+	    let fun loop [] = work ()
+		  | loop ({ name, monitor } :: ms) = monitor (fn () => loop ms)
+	    in
+		loop (!active_monitors)
+	    end
     end
-
 end
