@@ -30,37 +30,38 @@ datatype flintkind = FK_WRAP | FK_REIFY | FK_DEBRUIJN | FK_NAMED | FK_CPS
 								   
 fun phase x = Stats.doPhase (Stats.makePhase x)
 	      
-val deb2names = phase "Compiler 056 deb2names" TvarCvt.debIndex2names
-val names2deb = phase "Compiler 057 names2deb" TvarCvt.names2debIndex
+val deb2names = phase "FLINT 056 deb2names" TvarCvt.debIndex2names
+val names2deb = phase "FLINT 057 names2deb" TvarCvt.names2debIndex
 		
-val lcontract = phase "Compiler 052 lcontract" LContract.lcontract
-(*  val lcontract' = phase "Compiler 052 lcontract'" LContract.lcontract *)
-val fcollect  = phase "Compiler 052a fcollect" Collect.collect
-val fcontract = phase "Compiler 052b fcontract"
+val lcontract = phase "FLINT 052 lcontract" LContract.lcontract
+(*  val lcontract' = phase "FLINT 052 lcontract'" LContract.lcontract *)
+val fcollect  = phase "FLINT 052a fcollect" Collect.collect
+val fcontract = phase "FLINT 052b fcontract"
 		      (fn (opts,lexp) => FContract.contract opts lexp)
 val fcontract = fn opts => fn lexp => fcontract(opts, fcollect lexp)
-val loopify   = phase "Compiler 057 loopify" Loopify.loopify
-val fixfix    = phase "Compiler 056 fixfix" FixFix.fixfix
-val split     = phase "Compiler 058 split" FSplit.split
+val loopify   = phase "FLINT 057 loopify" Loopify.loopify
+val fixfix    = phase "FLINT 056 fixfix" FixFix.fixfix
+val split     = phase "FLINT 058 split" FSplit.split
+val abcopt    = phase "FLINT 059 abcopt" ABCOpt.abcOpt
 		
-val typelift  = phase "Compiler 0535 typelift" Lift.typeLift
-val wformed   = phase "Compiler 0536 wformed" Lift.wellFormed
+val typelift  = phase "FLINT 0535 typelift" Lift.typeLift
+val wformed   = phase "FLINT 0536 wformed" Lift.wellFormed
 		
-val specialize= phase "Compiler 053 specialize" Specialize.specialize
-val wrapping  = phase "Compiler 054 wrapping" Wrapping.wrapping
-val reify     = phase "Compiler 055 reify" Reify.reify
-val recover   = phase "Compiler 05a recover" Recover.recover
+val specialize= phase "FLINT 053 specialize" Specialize.specialize
+val wrapping  = phase "FLINT 054 wrapping" Wrapping.wrapping
+val reify     = phase "FLINT 055 reify" Reify.reify
+val recover   = phase "FLINT 05a recover" Recover.recover
 
-val convert   = phase "Compiler 060 convert" Convert.convert
-val cpstrans  = phase "Compiler 065 cpstrans" CPStrans.cpstrans
-val cpsopt    = phase "Compiler 070 cpsopt" CPSopt.reduce
-val litsplit  = phase "Compiler 075 litsplit" Literals.litsplit
-val litToBytes = phase "Compiler 076 litToBytes" Literals.litToBytes
-val closure   = phase "Compiler 080 closure"  Closure.closeCPS
-val globalfix = phase "Compiler 090 globalfix" GlobalFix.globalfix
-val spill     = phase "Compiler 100 spill" Spill.spill
-val limit     = phase "Compiler 110 limit" Limit.nolimit
-val codegen   = phase "Compiler 120 cpsgen" Gen.codegen
+val convert   = phase "CPS 060 convert" Convert.convert
+val cpstrans  = phase "CPS 065 cpstrans" CPStrans.cpstrans
+val cpsopt    = phase "CPS 070 cpsopt" CPSopt.reduce
+val litsplit  = phase "CPS 075 litsplit" Literals.litsplit
+val litToBytes = phase "CPS 076 litToBytes" Literals.litToBytes
+val closure   = phase "CPS 080 closure"  Closure.closeCPS
+val globalfix = phase "CPS 090 globalfix" GlobalFix.globalfix
+val spill     = phase "CPS 100 spill" Spill.spill
+val limit     = phase "CPS 110 limit" Limit.nolimit
+val codegen   = phase "CPS 120 cpsgen" Gen.codegen
 
 (** pretty printing for the FLINT and CPS code *)
 val (prF, prC) = 
@@ -114,8 +115,9 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	    | ("fcontract+eta",_)	=>
 	      (fcontract {etaSplit=true, tfnInline=false} f,  fi, fk, p)
 	    | ("lcontract",_)		=> (lcontract f,  fi, fk, p)
-	   | ("fixfix",   _)		=> (fixfix f,     fi, fk, p)
+	    | ("fixfix",   _)		=> (fixfix f,     fi, fk, p)
 	    | ("loopify",  _)		=> (loopify f,    fi, fk, p)
+	    | ("abcopt",  _)		=> (abcopt f,    fi, fk, p)
 	    | ("specialize",FK_NAMED)	=> (specialize f, fi, fk, p)
 	    | ("wrap",FK_NAMED)		=> (wrapping f,	  fi, FK_WRAP, p)
 	    | ("reify",FK_WRAP)		=> (reify f,      fi, FK_REIFY, p)
@@ -225,7 +227,7 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
    in ({c0=nc0, cn=ncn, data=dseg}, fi)
   end (* function flintcomp *)
 
-val flintcomp = phase "Compiler 050 flintcomp" flintcomp
+val flintcomp = phase "FLINT 050 flintcomp" flintcomp
 
 end (* local *)
 end (* structure FLINTComp *)
