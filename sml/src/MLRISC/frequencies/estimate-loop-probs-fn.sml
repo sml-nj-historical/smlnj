@@ -35,7 +35,7 @@ functor EstimateLoopProbsFn (
 	  "disable-loop-probabilities",
 	  "when true, loop probability estimates are disabled")
     val dumpCFG = MLRiscControl.mkFlag (
-	  "dump-cfg-jump-chain-elim",
+	  "dump-cfg-after-loop-probabilities",
 	  "when true, flow graph is shown after loop probability estimates")
     val dumpStrm = MLRiscControl.debug_stream
 
