@@ -1,0 +1,29 @@
+\maybeclearpage
+\section{The {\cf OS.\-IO} structure}
+
+
+  The {\cf \small OS.\-IO} structure provides a general interface for polling I/O devices, which has been modelled after the Unix SVR4 poll interface.  A {\cf \small poll{\tt\_}\linebreak[0]desc}, created from an I/O descriptor, can be used to test for various polling conditions. 
+\begin{synopsis}
+\item {\kw{signature}} \textcf{CML\_\linebreak[0]OS\_\linebreak[0]IO}\label{sig-CML_OS_IO}
+\item {\STRUCTURE} \textcf{OS.IO: CML\_\linebreak[0]OS\_\linebreak[0]IO}\label{str-OS.IO}
+\end{synopsis}
+
+\begin{interface}
+\Nopagebreak
+\item {\index{OS_IO@OS\_\linebreak[0]IO!CML_OS_IO@\textcf{CML\_\linebreak[0]OS\_\linebreak[0]IO}}}{\cf OS{\tt\_}\linebreak[0]IO}\marginref{OS\_\linebreak[0]IO}{sig-OS_IO}{sigOSIO}\Nopagebreak
+\item {\index{pollEvt@pollEvt!CML_OS_IO@\textcf{CML\_\linebreak[0]OS\_\linebreak[0]IO}}}{\kw{val}} {\cf pollEvt: \(\mbox{\cf{}poll\_desc}\;\mbox{\cf{}list}\rightarrow \mbox{\cf{}poll\_info}\;\mbox{\cf{}list}\;\mbox{\cf{}event}\)}
+
+\end{interface}
+
+\begin{descr}
+\item {\index{pollEvt@pollEvt!CML_OS_IO@\textcf{CML\_\linebreak[0]OS\_\linebreak[0]IO}}}{\kw{val}} {\cf pollEvt: \(\mbox{\cf{}poll\_desc}\;\mbox{\cf{}list}\rightarrow \mbox{\cf{}poll\_info}\;\mbox{\cf{}list}\;\mbox{\cf{}event}\)}\label{val-CML_OS_IO.pollEvt}\linebreak[3]\hspace*{\fill}\mbox{~~~~\textrm{raises}~{\cf OS.\-Sys\-Err}}
+
+
+\begin{speccomment}
+\item {\cf \small poll\-Evt \mbox{\cf \small \textit{l}}         } 
+polls a list of poll descriptors \mbox{\cf \small \textit{l}}. 	This will raise {\cf \small OS.\-Sys\-Err} if, for example, 	one of the file descriptors refers to a closed file.\end{speccomment}
+\end{descr}
+
+\begin{seealso}
+{\cf OS} (\pageref{str-OS}), {\cf OS.\-IO} (\pageref{str-CML_OS.IO})
+\end{seealso}

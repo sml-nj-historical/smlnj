@@ -1,0 +1,42 @@
+(* parser.cm
+ *
+ * The part of the SML/NJ frontend that is concerned with parsing.
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *)
+Group (../../system/smlnj/viscomp/parser.cm)
+	signature PARSER_CONTROL
+	structure ParserControl
+
+	signature AST
+	signature ASTUTIL
+	signature MLPARSER
+	signature SMLFILE
+
+	structure Ast
+	structure AstUtil
+	structure MLParser
+	structure SmlFile
+is
+	ast/ast.sig
+	ast/ast.sml
+	ast/astutil.sig
+	ast/astutil.sml
+
+	lex/ml.lex
+	lex/tokentable.sml
+
+	parse/ml.grm
+
+	main/parsercontrol.sml
+	main/parser.sig
+	main/parser.sml
+	main/smlfile.sml
+
+	$smlnj/viscomp/basics.cm
+
+	$/ml-yacc-lib.cm
+
+	$/smlnj-lib.cm
+	$/controls-lib.cm
+	$/basis.cm

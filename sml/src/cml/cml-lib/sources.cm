@@ -1,0 +1,193 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
+ *
+ * Sources file for the CML version of smlnj-lib.cm.
+ * (Under the new CM, this file is the only subgroup of cm/smlnj-lib.cm.
+ * Clients compiled using the old CM cannot use cm/smlnj-lib.cm (because
+ * of a name conflict with the "real" smlnj-lib.cm) and must instead
+ * refer to sources.cm (i.e., this file) directly.
+ *)
+
+Group (cm/smlnj-lib.cm)
+
+(** CML specific modules **)
+  signature MULTICAST
+  signature SIMPLE_RPC
+  signature TRACE_CML
+
+  structure Multicast
+  structure SimpleRPC
+  structure TraceCML
+
+(* For the remainder of the export section, we really
+ * would like to write
+ *
+       library($/smlnj-lib.cm) - structure TimeLimit
+ *
+ * but this will not work under the old CM.  So for
+ * the time being, we use the long and clumsy form... *)
+
+(** Modules inherited from the SML/NJ Util Library **)
+
+  signature ARRAY_SORT
+  signature ATOM
+  signature BIT_ARRAY
+  signature BIT_VECTOR
+  signature CHAR_MAP
+  signature DYNAMIC_ARRAY
+  signature FIFO
+  signature FORMAT
+  signature FORMAT_COMB
+  signature GRAPH_SCC
+  signature HASH_KEY
+  signature HASH_TABLE
+  signature INT_INF
+  signature IO_UTIL		(* copied to avoid typing problems *)
+  signature GET_OPT
+  signature LIB_BASE
+  signature LIST_FORMAT
+  signature LIST_SORT
+  signature LIST_XPROD
+  signature MONO_ARRAY_SORT
+  signature MONO_DYNAMIC_ARRAY
+  signature MONO_HASH_TABLE
+  signature MONO_HASH2_TABLE
+  signature MONO_PRIORITYQ
+  signature ORD_KEY
+  signature ORD_MAP
+  signature ORD_SET
+  signature PARSER_COMB
+  signature PATH_UTIL
+  signature PRIORITY
+  signature PROP_LIST
+  signature QUEUE
+  signature RAND
+  signature RANDOM
+  signature SCAN
+  signature SPLAY_TREE
+  signature UREF
+
+  structure ArrayQSort
+  structure Atom		(* reimplemented *)
+  structure AtomBinaryMap		(* to be removed *)
+  structure AtomBinarySet		(* to be removed *)
+  structure AtomRedBlackMap
+  structure AtomRedBlackSet
+  structure AtomMap
+  structure AtomSet
+  structure AtomTable
+  structure BitArray
+(****
+  structure BitVector
+****)
+  structure CharMap
+  structure DynamicArray
+  structure Fifo
+  structure Format
+  structure FormatComb
+  structure HashString
+  structure HashTable
+  structure IntBinaryMap
+  structure IntBinarySet
+  structure IntHashTable
+  structure IntInf
+  structure IntListMap
+  structure IntListSet
+  structure IntRedBlackMap
+  structure IntRedBlackSet
+  structure IOUtil		(* copied to avoid typing problems *)
+  structure GetOpt
+  structure LibBase
+  structure ListFormat
+  structure ListMergeSort
+  structure ListXProd
+  structure ParserComb
+  structure PathUtil
+  structure PropList
+  structure Queue
+  structure Rand
+  structure Random
+  structure Scan
+  structure SimpleURef
+  structure SplayTree
+(* structure TimeLimit *)	(* not applicable for CML *)
+  structure URef
+  structure WordHashTable
+  structure WordRedBlackMap
+  structure WordRedBlackSet
+  structure PrimeSizes
+
+  functor ArrayQSortFn
+  functor BSearchFn
+  functor BinaryMapFn
+  functor BinarySetFn
+  functor DynamicArrayFn
+  functor GraphSCCFn
+  functor HashTableFn
+  functor Hash2TableFn
+  functor KeywordFn
+  functor LeftPriorityQFn
+  functor ListMapFn
+  functor ListSetFn
+  functor MonoArrayFn
+  functor RedBlackMapFn
+  functor RedBlackSetFn
+  functor SplayMapFn
+  functor SplaySetFn
+
+(** Modules from the SML/NJ Unix Library *)
+#if defined(OPSYS_UNIX)
+  signature UNIX_ENV
+  structure UnixEnv
+#endif
+
+(** Modules from the SML/NJ INet Library *)
+  signature SOCK_UTIL		(* copied to avoid typing problems *)
+  structure SockUtil		(* copied to avoid typing problems *)
+#if defined(OPSYS_UNIX)
+  signature UNIX_SOCK_UTIL
+  structure UnixSockUtil
+#endif
+is
+
+#if defined (NEW_CM)
+  $cml/basis.cm
+  $/smlnj-lib.cm
+# if defined(OPSYS_UNIX)
+    $/unix-lib.cm
+# endif
+  $cml/cml.cm
+  $cml-lib/trace-cml.cm		(* for trace-cml-sig.sml and trace-cml.sml *)
+#else
+  smlnj-lib.cm
+# if defined(OPSYS_UNIX)
+   unix-lib.cm
+# endif
+  ../src/cml.cm
+  trace-cml.cm		(* for trace-cml-sig.sml and trace-cml.sml *)
+#endif
+
+
+  SMLNJ-Util/cml-atom.sml
+  SMLNJ-Util/atom-binary-map.sml
+  SMLNJ-Util/atom-binary-set.sml
+  SMLNJ-Util/atom-map.sml
+  SMLNJ-Util/atom-redblack-map.sml
+  SMLNJ-Util/atom-redblack-set.sml
+  SMLNJ-Util/atom-set.sml
+  SMLNJ-Util/atom-sig.sml
+  SMLNJ-Util/atom-table.sml
+  SMLNJ-Util/io-util.sml
+  SMLNJ-Util/io-util-sig.sml
+  SMLNJ-INet/sock-util-sig.sml
+  SMLNJ-INet/sock-util.sml
+#if defined(OPSYS_UNIX)
+  SMLNJ-INet/unix-sock-util.sml
+#endif
+ 
+  multicast-sig.sml
+  multicast.sml
+  simple-rpc-sig.sml
+  simple-rpc.sml

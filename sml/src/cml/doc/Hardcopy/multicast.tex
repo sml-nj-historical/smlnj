@@ -1,0 +1,87 @@
+\maybeclearpage
+\section{The {\cf Multicast} structure}
+
+
+Multicast channels provide a mechanism for broadcasting a stream of messages to a collection of threads. Threads receive multicast messages via an \emph{output port}; each port receives its own copy of every message sent since the port was created. Multicast channels are particularly useful for communicating with a dynamically varying group of threads, since the sender does not need to know how many threads are listening. 
+\begin{synopsis}
+\item {\kw{signature}} \textcf{MULTICAST}\label{sig-MULTICAST}
+\item {\STRUCTURE} \textcf{Multicast: MULTICAST}\label{str-Multicast}
+\end{synopsis}
+
+\begin{interface}
+\Nopagebreak
+\item {\index{event@event!MULTICAST@\textcf{MULTICAST}}}{\kw{type}} \(\alpha\)~\textcf{event}= \(\alpha\mtoksep{}\mbox{\cf{}CML}.\mbox{\cf{}event}\)
+\Nopagebreak
+\item {\index{mchan@mchan!MULTICAST@\textcf{MULTICAST}}}{\kw{type}} \(\alpha\)~\textcf{mchan}
+\Nopagebreak
+\item {\index{port@port!MULTICAST@\textcf{MULTICAST}}}{\kw{type}} \(\alpha\)~\textcf{port}
+\Nopagebreak
+\item {\index{mChannel@mChannel!MULTICAST@\textcf{MULTICAST}}}{\kw{val}} {\cf mChannel: \(\mbox{\cf{}unit}\rightarrow \alpha\mtoksep{}\mbox{\cf{}mchan}\)}
+
+\Nopagebreak
+\item {\index{port@port!MULTICAST@\textcf{MULTICAST}}}{\kw{val}} {\cf port: \(\alpha\mtoksep{}\mbox{\cf{}mchan}\rightarrow \alpha\mtoksep{}\mbox{\cf{}port}\)}
+
+\Nopagebreak
+\item {\index{copy@copy!MULTICAST@\textcf{MULTICAST}}}{\kw{val}} {\cf copy: \(\alpha\mtoksep{}\mbox{\cf{}port}\rightarrow \alpha\mtoksep{}\mbox{\cf{}port}\)}
+
+\Nopagebreak
+\item {\index{recv@recv!MULTICAST@\textcf{MULTICAST}}}{\kw{val}} {\cf recv: \(\alpha\mtoksep{}\mbox{\cf{}port}\rightarrow \alpha\)}
+
+\Nopagebreak
+\item {\index{recvEvt@recvEvt!MULTICAST@\textcf{MULTICAST}}}{\kw{val}} {\cf recvEvt: \(\alpha\mtoksep{}\mbox{\cf{}port}\rightarrow \alpha\mtoksep{}\mbox{\cf{}event}\)}
+
+\Nopagebreak
+\item {\index{multicast@multicast!MULTICAST@\textcf{MULTICAST}}}{\kw{val}} {\cf multicast: \((\alpha\mtoksep{}\mbox{\cf{}mchan}\mtoksep{}\verb,*,\mtoksep{}\alpha)\rightarrow \mbox{\cf{}unit}\)}
+
+\end{interface}
+
+\begin{descr}
+\item {\index{mchan@mchan!MULTICAST@\textcf{MULTICAST}}}{\kw{type}} \(\alpha\)~\textcf{mchan}\label{ty-MULTICAST.mchan}
+
+\begin{speccomment}
+\item 
+
+          This is the type constructor for asynchronous multicast channels.     \end{speccomment}
+\item {\index{port@port!MULTICAST@\textcf{MULTICAST}}}{\kw{type}} \(\alpha\)~\textcf{port}\label{ty-MULTICAST.port}
+
+\begin{speccomment}
+\item 
+
+          This is the type constructor for output ports on an 	  asynchronous multicast channels.     \end{speccomment}
+\item {\index{mChannel@mChannel!MULTICAST@\textcf{MULTICAST}}}{\kw{val}} {\cf mChannel: \(\mbox{\cf{}unit}\rightarrow \alpha\mtoksep{}\mbox{\cf{}mchan}\)}\label{val-MULTICAST.mChannel}
+
+
+\begin{speccomment}
+\item {\cf \small m\-Channel \mbox{\cf \small \textit{()}}           } 
+creates a new multicast channel.     \end{speccomment}
+\item {\index{port@port!MULTICAST@\textcf{MULTICAST}}}{\kw{val}} {\cf port: \(\alpha\mtoksep{}\mbox{\cf{}mchan}\rightarrow \alpha\mtoksep{}\mbox{\cf{}port}\)}\label{val-MULTICAST.port}
+
+
+\begin{speccomment}
+\item {\cf \small port \mbox{\cf \small \textit{mc}}           } 
+creates a new output port on the channel \mbox{\cf \small \textit{mc}}. 	  The port receives those messages sent after it is created.     \end{speccomment}
+\item {\index{copy@copy!MULTICAST@\textcf{MULTICAST}}}{\kw{val}} {\cf copy: \(\alpha\mtoksep{}\mbox{\cf{}port}\rightarrow \alpha\mtoksep{}\mbox{\cf{}port}\)}\label{val-MULTICAST.copy}
+
+
+\begin{speccomment}
+\item {\cf \small copy \mbox{\cf \small \textit{p}}           } 
+creates a new output port on a channel that has the same state as the 	  port \mbox{\cf \small \textit{p}}. 	  I.\-e., the stream of messages seen on the two ports will 	  be the same. 	  This is useful when two threads need to see the same stream of 	  messages. 	  NOTE: if two (or more) independent threads are reading from \mbox{\cf \small \textit{p}} 	  at the time that {\cf \small copy} operation is performed, then 	  it may not be accurate.     \end{speccomment}
+\item {\index{recv@recv!MULTICAST@\textcf{MULTICAST}}}{\kw{val}} {\cf recv: \(\alpha\mtoksep{}\mbox{\cf{}port}\rightarrow \alpha\)}\label{val-MULTICAST.recv}
+
+
+\begin{speccomment}
+\item {\cf \small recv \mbox{\cf \small \textit{p}}           } 
+gets the next message from the port \mbox{\cf \small \textit{p}}. 	  The calling thread is blocked until there is a message available.     \end{speccomment}
+\item {\index{recvEvt@recvEvt!MULTICAST@\textcf{MULTICAST}}}{\kw{val}} {\cf recvEvt: \(\alpha\mtoksep{}\mbox{\cf{}port}\rightarrow \alpha\mtoksep{}\mbox{\cf{}event}\)}\label{val-MULTICAST.recvEvt}
+
+
+\begin{speccomment}
+\item {\cf \small recv\-Evt \mbox{\cf \small \textit{p}}           } 
+creates an event value that represents the {\cf \small recv} operation 	  on the port \mbox{\cf \small \textit{p}}.     \end{speccomment}
+\item {\index{multicast@multicast!MULTICAST@\textcf{MULTICAST}}}{\kw{val}} {\cf multicast: \((\alpha\mtoksep{}\mbox{\cf{}mchan}\mtoksep{}\verb,*,\mtoksep{}\alpha)\rightarrow \mbox{\cf{}unit}\)}\label{val-MULTICAST.multicast}
+
+
+\begin{speccomment}
+\item {\cf \small multicast (\mbox{\cf \small \textit{mc}}, \mbox{\cf \small \textit{v}})           } 
+multicasts the value \mbox{\cf \small \textit{v}} on the channel \mbox{\cf \small \textit{mc}}. 	  This is a nonblocking operation.\end{speccomment}
+\end{descr}
