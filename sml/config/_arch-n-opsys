@@ -126,7 +126,13 @@ case `uname -s` in
     esac
     ;;
   CYGWIN_NT*)
-    OPSYS=win32
+    # If the environment variable SMLNJ_CYGWIN_RUNTIME is defined,
+    # use cygwin as the runtime environment.
+    if [ "$SMLNJ_CYGWIN_RUNTIME" != "" ]; then
+       OPSYS=cygwin
+    else
+       OPSYS=win32
+    fi
     case `uname -m` in
        i386) ARCH=x86;;
        i486) ARCH=x86;;

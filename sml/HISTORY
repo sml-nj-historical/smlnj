@@ -13,6 +13,16 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/09/03 11:26:00 EST
+Tag: leunga-20040903-cygwin-install
+Description:
+
+   Added a patch to _arch-n-opsys to enable the Cygwin runtime.
+The Cygwin runtime is turned on by setting the environment
+variable SMLNJ_CYGWIN_RUNTIME to 1.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/08/31 17:15:00 CDT
 Tag: blume-20040831-core
