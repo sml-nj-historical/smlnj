@@ -1,0 +1,19 @@
+Group is
+
+#if defined (NEW_CM)
+  basis.cm
+#endif
+
+  ml-yacc-lib.cm
+
+  fol.lex
+  fol.grm
+
+  absyn.sml
+
+  interface.sml
+
+  parse.sml
+  link.sml
+
+
