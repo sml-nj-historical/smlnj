@@ -1815,13 +1815,12 @@ struct
           fun clusterAnnotations() = 
              if gctypes then 
                 let val gcmap = GCCells.getGCMap()
+                    fun enter(M.REG(_,r),ty) = !enterGC(r, ty)
+                      | enter _ = ()
                 in  !enterGC(allocptrR, SMLGCType.ALLOCPTR);
-                    case C.limitptr of
-                      M.REG(_,r) => !enterGC(r, SMLGCType.LIMITPTR)
-                    | _ => ();
-                    case C.baseptr of
-                      M.REG(_,r) => !enterGC(r, PTR)
-                    | _ => ();
+                    enter(C.limitptr, SMLGCType.LIMITPTR);
+                    enter(C.baseptr, PTR);
+                    enter(C.stdlink, PTR);
                     [#create SMLGCMap.GCMAP gcmap,
                      #create 
                         MLRiscAnnotations.REGINFO(

@@ -6,24 +6,36 @@
 
 (** liveness.sml - computes live variables **)
 
+(* I've moved the parameters of the functor to the function arguments 
+ * so that it is more flexible.
+ *
+ * -- Allen 4/28/00
+ *)
+
 signature LIVENESS = sig
 
   structure F : FLOWGRAPH
+  structure I : INSTRUCTIONS
+  structure C : CELLS
+    sharing F.I = I
+    sharing I.C = C
 
-  val liveness : F.block list * (int -> int) -> F.block list
+  val liveness : 
+      { defUse     : I.instruction -> C.cell list * C.cell list,
+        updateCell : C.cellset * C.cell list -> C.cellset,
+        getCell    : C.cellset -> C.cell list,
+        regmap     : C.cell -> C.cell,
+        blocks     : F.block list
+      } -> F.block list
 end
 
 
-functor Liveness
-    (structure Flowgraph : FLOWGRAPH
-     structure Instruction : INSTRUCTIONS
-     val defUse : Instruction.instruction -> int list * int list
-     val cellset : Instruction.C.cellset * int list -> Instruction.C.cellset
-     val regSet  : Instruction.C.cellset -> int list
-     sharing Flowgraph.I = Instruction) : LIVENESS = 
+functor Liveness(Flowgraph : FLOWGRAPH) : LIVENESS = 
 struct
 
   structure F  = Flowgraph
+  structure I  = F.I
+  structure C  = I.C
   structure SL = SortedList
 
   fun error msg = MLRiscErrorMsg.error("Liveness",msg)
@@ -34,7 +46,7 @@ struct
     in print msg; pr l
     end
 
-  fun liveness(blocks,regmap) = let
+  fun liveness{defUse,getCell,updateCell,regmap,blocks} = let
       fun codeBlocks [] = []
 	| codeBlocks((blk as F.BBLOCK _)::blks) = blk::codeBlocks blks
 	| codeBlocks(_::blks) = codeBlocks blks
@@ -66,7 +78,7 @@ struct
 		       Array.update(defArr,blknum,def))
 	      in
 		  defuse(rev(!insns),[],[]);
-		  liveIn:=cellset(!liveIn,[]);
+		  liveIn := updateCell(!liveIn,[]);
 		  init(n-1)
 	      end
 
@@ -76,20 +88,20 @@ struct
 		fun inSuccs([], acc) = acc
 		  | inSuccs((F.EXIT _,_)::sl, acc) = inSuccs(sl, acc)
 		  | inSuccs((F.BBLOCK{blknum,liveIn,...},_)::sl, acc) = 
-		      inSuccs(sl, SL.merge(regSet(!liveIn), acc))
+		      inSuccs(sl, SL.merge(getCell(!liveIn), acc))
 		val liveout = inSuccs(!succ, [])
-		val change = listNeq(regSet(!liveOut),liveout)
-	      in liveOut:=cellset(!liveOut,liveout); change
+		val change = listNeq(getCell(!liveOut),liveout)
+	      in liveOut:= updateCell(!liveOut,liveout); change
 	      end
 	    | outB _ = error "liveness.dataflow.outB"
 
 	  fun inB(F.BBLOCK{blknum,liveIn,liveOut,...}) = let
 	      val use    = Array.sub(useArr,blknum)
 	      val def    = Array.sub(defArr,blknum)
-	      val livein = SL.merge(use,SL.difference(regSet(!liveOut),def))
-	      val change = listNeq(regSet(!liveIn),livein)
+	      val livein = SL.merge(use,SL.difference(getCell(!liveOut),def))
+	      val change = listNeq(getCell(!liveIn),livein)
 	    in
-	      liveIn := cellset(!liveIn,livein); change
+	      liveIn := updateCell(!liveIn,livein); change
 	    end
 	    | inB _ = error "liveness.dataflow.inB"
 

@@ -1,4 +1,8 @@
 Group is
-  ../graphs/sources.cm
-  sources.cm
+  basis.cm
+  ../cm/Graphs.cm
+  ../cm/ir.cm
+  ../cm/Visual.cm
   test1.sml
+  test2.sml
+  test3.sml

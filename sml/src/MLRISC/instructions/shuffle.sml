@@ -24,7 +24,9 @@ struct
   fun shuffle{mvInstr, ea} {regmap, tmp, dst, src} = let
     fun mv{dst, src, instrs} = List.revAppend(mvInstr{dst=dst,src=src}, instrs)
     val TEMP = ~1
-    fun opnd dst = if dst = TEMP then Option.valOf tmp else ea dst
+    fun valOf(SOME x) = x
+      | valOf NONE = raise Option
+    fun opnd dst = if dst = TEMP then valOf tmp else ea dst
 
     (* perform unconstrained moves *)
     fun loop((p as (rd,rs))::rest, changed, used, done, instrs) = 
@@ -42,7 +44,7 @@ struct
 	   | (false, (rd,rs)::acc, instrs) => let
 	       fun rename(p as (a,b)) = if equal(rd, b) then (a, TEMP) else p
 	       val acc' = (rd, rs) :: map rename acc
-	       val instrs' = mv{dst=Option.valOf tmp,src=opnd rd,instrs=instrs}
+	       val instrs' = mv{dst=valOf tmp,src=opnd rd,instrs=instrs}
 	       val (_, acc'', instrs'') = 
 		 loop(acc', false, map #2 acc', [], instrs')
 	     in cycle(acc'', instrs'')

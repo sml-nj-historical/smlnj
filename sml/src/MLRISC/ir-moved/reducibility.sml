@@ -20,7 +20,7 @@ struct
        fun markIrreducible([_],_) = () (* simple cycles are reducible *)
          | markIrreducible(cycle,_) = 
            app (fn n => BitSet.set(irreducible,n)) cycle
-       val _ = GraphSCC.strong_components Derived markIrreducible ()
+       val _ = GraphSCC.scc Derived markIrreducible ()
        fun isReducible n =
        let val h = Array.sub(headers,n)
        in  not(BitSet.contains(irreducible,n)) end 

@@ -11,8 +11,13 @@ sig
 
       (* strongly connected components *)
 
-   val strong_components : ('n,'e,'g) Graph.graph -> 
-		    (Graph.node_id list * 'a -> 'a) -> 'a -> 'a
+   val scc : ('n,'e,'g) Graph.graph -> 
+	       (Graph.node_id list * 'a -> 'a) -> 'a -> 'a
+
+   val scc' : {N         : int,
+               nodes     : Graph.node_id list,
+               out_edges : Graph.node_id -> 'e Graph.edge list
+              } -> (Graph.node_id list * 'a -> 'a) -> 'a -> 'a
 
 end
 

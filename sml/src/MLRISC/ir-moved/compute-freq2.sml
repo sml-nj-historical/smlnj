@@ -83,8 +83,7 @@ struct
        in  app (fn b => nodeFreq(#node_info cfg b) := freq) scc
        end
 
-   in  GraphSCC.strong_components (ReversedGraphView.rev_view derived) 
-         process ();
+   in  GraphSCC.scc (ReversedGraphView.rev_view derived) process ();
        HT.appi (fn ((i,_,e),w) => 
                    edgeFreq e := (w * !(nodeFreq(#node_info cfg i))) div 100)
             edgeProbs

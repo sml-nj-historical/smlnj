@@ -9,7 +9,7 @@ functor ClusterViewer
    (structure ClusterGraph : CLUSTER_GRAPH
     structure GraphViewer  : GRAPH_VIEWER
     structure Asm          : INSTRUCTION_EMITTER
-       sharing ClusterGraph.F.I = Asm.I
+       sharing ClusterGraph.F.I = Asm.I 
    ) : CLUSTER_VIEWER =
 struct
 
@@ -18,15 +18,30 @@ struct
    structure W = ClusterGraph.W
    structure L = GraphLayout
    structure FMT = FormatInstruction(Asm)
+   structure G = Graph
 
    val outline = MLRiscControl.getFlag "view-outline"
 
-   fun view(clusterGraph) = 
+   fun view(clusterGraph as G.GRAPH cfg) = 
    let val F.CLUSTER{regmap,annotations,...} = 
                 ClusterGraph.cluster clusterGraph 
        val toString = FMT.toString (!annotations) (F.I.C.lookup regmap)
        fun graph _ = []
-       fun edge(_,_,ref w) = [L.LABEL(W.toString w), L.COLOR "red"]
+
+       val red = L.COLOR "red"
+       val yellow = L.COLOR "yellow"
+       val green = L.COLOR "green"
+       val ENTRY = hd(#entries cfg ())
+       val EXIT  = hd(#exits cfg ())
+
+       fun edge(i,j,ref w) = 
+       let val label = L.LABEL(W.toString w)
+           val color =
+               if i = ENTRY orelse j = EXIT then green (* special edge *)
+               else if i+1 = j then yellow (* fallsthru *)
+               else red
+       in  [label, color] end
+
        fun title(blknum,ref freq) = 
            " "^Int.toString blknum^" ("^W.toString freq^")"
        fun node(_,F.ENTRY{blknum,freq,...}) = 

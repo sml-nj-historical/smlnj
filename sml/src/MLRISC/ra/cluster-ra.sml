@@ -13,7 +13,8 @@ functor ClusterRA
    (structure Flowgraph : FLOWGRAPH
     structure Asm       : INSTRUCTION_EMITTER
     structure InsnProps : INSN_PROPERTIES
-      sharing Flowgraph.I = InsnProps.I = Asm.I
+    structure Spill : RA_SPILL
+      sharing Flowgraph.I = InsnProps.I = Asm.I = Spill.I 
       sharing Asm.P = Flowgraph.P
    ) : RA_FLOWGRAPH =
 struct
@@ -26,9 +27,7 @@ struct
    structure Core   = RACore
    structure A      = Array 
    structure UA     = Unsafe.Array (* okay, I'm cheating a bit here *)
-   structure Spill  = RASpill(structure InsnProps = InsnProps
-                              structure Asm       = Asm
-                             )
+   structure Spill  = Spill
 
    structure PrintCluster = PrintCluster
       (structure Flowgraph = F
@@ -381,7 +380,8 @@ struct
                         "RA #blocks="^Int.toString N^
                         " #insns="^Int.toString insns^
                         " #nodes="^Int.toString(Intmap.elems nodes)^
-                        " #edges="^Int.toString(Core.BM.size(!bitMatrix))^"\n")
+                        " #edges="^Int.toString(Core.BM.size(!bitMatrix))^
+                        " #moves="^Int.toString(length moves)^"\n")
               end
            else ();
            moves

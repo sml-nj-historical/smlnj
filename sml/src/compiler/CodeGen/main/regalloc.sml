@@ -232,6 +232,10 @@ struct
           (structure Flowgraph = F
            structure Asm = Asm
            structure InsnProps = InsnProps
+           structure Spill = RASpill
+             (structure Asm = Asm
+              structure InsnProps = InsnProps
+             )
           )
         )
 

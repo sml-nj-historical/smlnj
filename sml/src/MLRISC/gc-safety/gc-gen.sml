@@ -72,7 +72,7 @@ struct
                  returnLabel = CFG.defineLabel return,
                  roots       = liveIn,
                  stream      = stream
-               }
+               } handle _ => () (* continue on error *)
            end
            
    in  beginCluster 0;

@@ -13,6 +13,45 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Allen Leung
+Date: 2000/05/10 21:17 EDT
+Tag: leunga-20000510-moby-c--ssa
+Description:
+
+  Various bug fixes and new features for C--, Moby and MLRISC optimizations.
+None of these affect SML/NJ.
+
+1. Register Allocation
+
+    a. A new ra spilling module (ra/ra-spill-with-renaming) is implemented.
+       This module tries to remove local (i.e. basic block level) redundancies
+       during spilling.  
+
+    b. A new framework for performing region based register allocation.
+       Not yet entirely functional.
+
+2. X86
+
+   a. DefUse for POP was missing the stack pointer [found by Lal]
+   b. Reload for CALL was incorrect in X86Spill [found by John]
+   c. Various fixes in X86Spill so that it can be used correctly for 
+      the new spilling module.
+
+3. SSA/IR
+
+   a. New module ir/dj-dataflow.sml implements elimination based
+      data flow analysis.
+
+4. MLRiscGen
+
+   a. Fix for gc type annotation
+
+5. MDGen
+
+   Various fixes for machine description -> ml code translation.  For ssa
+   only.
+
+----------------------------------------------------------------------
+Name: Allen Leung
 Date: 2000/05/08 22:17 EDT
 Tag: leunga-20000508-labexp
 Description:

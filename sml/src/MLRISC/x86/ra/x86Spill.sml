@@ -171,26 +171,40 @@ functor X86Spill(structure Instr: X86INSTR
 
     (* This version assumes that the value of tmpR is killed *)
     fun withTmp(f, an) = 
-    let val tmpR = newReg()
-    in  {newReg=NONE,
-         proh=[tmpR], 
-         code=[I.MOVE{mvOp=I.MOVL, src=spillLoc, dst=I.Direct tmpR}, 
-               mark(f tmpR, an)
-              ]
-        }
-    end
+        case spillLoc of 
+          I.Direct tmpR =>  
+              {newReg=NONE,
+               proh=[], 
+               code=[mark(f tmpR, an)]
+              }
+        |  _ =>
+          let val tmpR = newReg()
+          in  {newReg=NONE,
+               proh=[tmpR], 
+               code=[I.MOVE{mvOp=I.MOVL, src=spillLoc, dst=I.Direct tmpR}, 
+                     mark(f tmpR, an)
+                    ]
+              }
+          end
 
     (* This version assumes that the value of tmpR is available afterwards *)
-    fun withTmp'(f, an) = 
-    let val tmpR = newReg()
-        val tmp  = I.Direct tmpR
-    in  {newReg=SOME tmpR,
-         proh=[tmpR], 
-         code=[I.MOVE{mvOp=I.MOVL, src=spillLoc, dst=I.Direct tmpR}, 
-               mark(f tmpR, an)
-              ]
-        }
-    end
+    fun withTmpAvail(f, an) =  
+        case spillLoc of
+           I.Direct tmpR =>
+            {newReg=SOME tmpR,
+             proh=[tmpR], 
+             code=[mark(f tmpR, an)]
+            }
+        |  _ =>
+            let val tmpR = newReg()
+                val tmp  = I.Direct tmpR
+            in  {newReg=SOME tmpR,
+                 proh=[tmpR], 
+                 code=[I.MOVE{mvOp=I.MOVL, src=spillLoc, dst=I.Direct tmpR}, 
+                       mark(f tmpR, an)
+                      ]
+                }
+            end
 
     fun replace(opn as I.Direct r) = if regmap r = reg then spillLoc else opn
       | replace opn         = opn
@@ -242,10 +256,10 @@ functor X86Spill(structure Instr: X86INSTR
     fun reloadPush(push, arg as I.Direct _, an) =
           done(push(replace arg), an)
       | reloadPush(push, arg, an) =
-          withTmp(fn tmpR => push(operand(tmpR, arg)), an)
+          withTmpAvail(fn tmpR => push(operand(tmpR, arg)), an)
 
     fun reloadReal(realOp, opnd, an) =
-          withTmp'(fn tmpR => realOp(operand(tmpR, opnd)), an)
+          withTmpAvail(fn tmpR => realOp(operand(tmpR, opnd)), an)
 
     fun reloadIt(instr, an) =
     case instr
@@ -255,6 +269,9 @@ functor X86Spill(structure Instr: X86INSTR
      | I.JCC{opnd, cond} => 
           withTmp(fn t => I.JCC{opnd=operand(t,opnd), cond=cond}, an)
      | I.CALL(opnd, defs, uses, mem) => 
+          withTmp(fn t => 
+              I.CALL(operand(t, opnd), defs, C.rmvReg(reg, uses), mem), an)
+(***
        let val tmpR = newReg()
        in  {proh=[tmpR],
             newReg=NONE,
@@ -263,21 +280,22 @@ functor X86Spill(structure Instr: X86INSTR
                   an)]
            }
        end
+***)
      | I.MOVE{mvOp, src as I.Direct _, dst as I.Direct _} => 
  	done(I.MOVE{mvOp=mvOp, src=replace src, dst=dst},an)
      | I.MOVE{mvOp, src, dst as I.Direct _} => 
- 	withTmp'(fn t =>I.MOVE{mvOp=mvOp, src=operand(t, src), dst=dst},an)
+ 	withTmpAvail(fn t =>I.MOVE{mvOp=mvOp, src=operand(t, src), dst=dst},an)
      | I.MOVE{mvOp, src as I.Direct _, dst} => 
 	if Props.eqOpn(dst, spillLoc) then {code=[], proh=[], newReg=NONE}
-	else withTmp
+	else withTmpAvail (* dst is not the spill reg *)
 	  (fn t => 
 	     I.MOVE{mvOp=mvOp, src=operand(t, src), dst=operand(t, dst)}, an)
      | I.MOVE{mvOp, src, dst} => 
-	withTmp
+	withTmpAvail (* dst is not the spill reg *)
 	 (fn t => 
 	    I.MOVE{mvOp=mvOp, src=operand(t, src), dst=operand(t, dst)}, an)
      | I.LEA{r32, addr} => 
-	withTmp'(fn tmpR => I.LEA{r32=r32, addr=operand(tmpR, addr)}, an)
+	withTmpAvail(fn tmpR => I.LEA{r32=r32, addr=operand(tmpR, addr)}, an)
      | I.CMPL{lsrc, rsrc} => reloadCmp(I.CMPL, lsrc, rsrc, an) 
      | I.CMPW{lsrc, rsrc} => reloadCmp(I.CMPW, lsrc, rsrc, an) 
      | I.CMPB{lsrc, rsrc} => reloadCmp(I.CMPB, lsrc, rsrc, an) 
@@ -304,9 +322,10 @@ functor X86Spill(structure Instr: X86INSTR
           I.MUL3{src1=operand(tmpR, src1), src2=src2, 
 		 dst=if regmap dst = reg then error "reload:MUL3" else dst}, an)
      | I.UNARY{unOp, opnd} => 
-	withTmp'(fn tmpR => I.UNARY{unOp=unOp, opnd=operand(tmpR, opnd)}, an)
+	withTmpAvail
+           (fn tmpR => I.UNARY{unOp=unOp, opnd=operand(tmpR, opnd)}, an)
      | I.SET{cond, opnd} => 
-	withTmp'(fn tmpR => I.SET{cond=cond, opnd=operand(tmpR, opnd)}, an)
+	withTmpAvail(fn tmpR => I.SET{cond=cond, opnd=operand(tmpR, opnd)}, an)
      | I.PUSHL arg => reloadPush(I.PUSHL, arg, an)
      | I.PUSHW arg => reloadPush(I.PUSHW, arg, an)
      | I.PUSHB arg => reloadPush(I.PUSHB, arg, an)
@@ -325,10 +344,11 @@ functor X86Spill(structure Instr: X86INSTR
      | I.FENV{fenvOp, opnd} => reloadReal(fn opnd => 
                                  I.FENV{fenvOp=fenvOp,opnd=opnd}, opnd, an)
      | I.FBINARY{binOp, src, dst} => 
-	withTmp'(fn tmpR => 
+	withTmpAvail(fn tmpR => 
 	         I.FBINARY{binOp=binOp, src=operand(tmpR, src), dst=dst}, an)
      | I.FIBINARY{binOp, src} => 
-	withTmp'(fn tmpR => I.FIBINARY{binOp=binOp, src=operand(tmpR, src)}, an)
+	withTmpAvail
+          (fn tmpR => I.FIBINARY{binOp=binOp, src=operand(tmpR, src)}, an)
      | I.ANNOTATION{i,a} => reloadIt(i, a::an)
      | _ => error "reload"
   in reloadIt(instr, [])

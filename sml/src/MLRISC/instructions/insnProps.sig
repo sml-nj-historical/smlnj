@@ -17,8 +17,8 @@ sig
                  | IK_COPY   (* parallel copy *)
                  | IK_CALL   (* call instructions *)
                  | IK_PHI    (* A phi node (SSA) *)
-                 | IK_SINK   (* A source node (SSA) *)
-                 | IK_SOURCE (* A sink node (SSA) *)
+                 | IK_SINK   (* A sink node (SSA) *)
+                 | IK_SOURCE (* A source node (SSA) *)
 
    val instrKind  : I.instruction -> kind
 

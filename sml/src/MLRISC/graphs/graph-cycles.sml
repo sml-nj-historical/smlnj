@@ -55,7 +55,7 @@ struct
            enumerateAll(0,scc,x)
        end
        
-   in  GraphSCC.strong_components graph processSCC x
+   in  GraphSCC.scc graph processSCC x
    end
 
 end

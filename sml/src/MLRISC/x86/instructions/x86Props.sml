@@ -169,7 +169,7 @@ struct
       | I.UNARY{opnd, ...}    => unary opnd
       | I.SET{opnd, ...}      => unary opnd
       | ( I.PUSHL arg | I.PUSHW arg | I.PUSHB arg ) => push arg
-      | I.POP arg	      => (operandDef arg, [])
+      | I.POP arg	      => (C.stackptrR::operandDef arg, [C.stackptrR])
       | I.CDQ		      => ([C.edx], [C.eax])
 
       | I.COPY{dst, src, tmp=SOME(I.Direct r), ...}   => (r::dst, src)

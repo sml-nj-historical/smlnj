@@ -30,8 +30,8 @@ sig
 
     (*
      * Interface for communicating with the new register allocator.
-     * It is expected that the service provide will cache enough information
-     * during build so that the rebuild and split phases can be execute
+     * It is expected that the services will cache enough information
+     * during build so that the rebuild and spill phases can be execute
      * quickly.
      *)
    val services : flowgraph ->

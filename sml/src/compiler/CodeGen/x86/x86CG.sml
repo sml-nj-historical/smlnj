@@ -148,6 +148,10 @@ structure X86CG =
                  (structure Flowgraph = F
                   structure Asm = X86AsmEmitter
                   structure InsnProps = InsnProps
+                  structure Spill = RASpill
+                     (structure Asm = X86AsmEmitter
+                      structure InsnProps = InsnProps
+                     )
                  )
               )
               (fun cellkind I.C.GP = true | cellkind _ = false

@@ -28,7 +28,8 @@ val _ = app (#add_edge g)
            (4,5,4)
           ] 
 
-val (dom,pdom) = Dom.dominator_trees G
-val {IDF,IDFs,DF} = DJ.dj_graph dom 
+val dom  = Dom.makeDominator G
+val pdom = Dom.makePostdominator G
+val IDFs = DJ.IDFs dom 
 
 end

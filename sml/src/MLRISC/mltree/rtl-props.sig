@@ -23,7 +23,6 @@ sig
 
    (* Return the def/use of an instruction.  *) 
    val defUse : { immed   : int -> C.cell, 
-                  label   : Label.label -> C.cell,
                   operand : I.operand -> C.cell
                 } -> 
                 I.instruction -> C.cell list * C.cell list (* dst/src *)
@@ -34,7 +33,6 @@ sig
     *) 
    val defUseWithCellKind : 
                 { immed   : int -> C.cell, 
-                  label   : Label.label -> C.cell,
                   operand : I.operand -> C.cell
                 } -> 
                 I.instruction -> 

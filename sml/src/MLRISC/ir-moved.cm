@@ -8,6 +8,7 @@ Library
 	signature CONTROL_DEPENDENCE_GRAPH
 	signature CONTROL_FLOW_GRAPH_RESTRUCTURE
 	signature DERIVED_GRAPH
+	signature DJ_DATAFLOW
 	signature DJ_GRAPH
 	signature DOMINANCE_FRONTIERS
 	signature DOMINATOR_TREE
@@ -20,6 +21,7 @@ Library
 	functor ComputeFrequencies2
 	functor ControlDependenceGraph
 	functor ControlFlowGraphRestructure
+	functor DJDataflow
 	functor DJGraph
 	functor DerivedGraph
 	functor DominanceFrontiers
@@ -47,6 +49,8 @@ is
 	ir/compute-freq2.sml
 	ir/derived-graph.sig
 	ir/derived-graph.sml
+        ir/dj-dataflow.sig
+        ir/dj-dataflow.sml
 	ir/djgraph.sig
 	ir/djgraph.sml
 	ir/dominance-frontier.sig

@@ -13,7 +13,7 @@ sig
    datatype const =
      IMMED of int           (* integer operand *)
    | OPERAND of I.operand   (* other operand *)
-   | LABEL of Label.label   (* a label *)
+   (*| LABEL of Label.label*)   (* a label *)
 
    exception NoLabel
    exception NoOperand
@@ -25,7 +25,7 @@ sig
    (* Lookup/create *)
    val immed   : operandTable -> int -> value
    val operand : operandTable -> I.operand -> value
-   val label   : operandTable -> Label.label -> value 
+   (*val label   : operandTable -> Label.label -> value*)
 
    (* Value number -> int/operand/label *)
    val const    : operandTable -> value -> const

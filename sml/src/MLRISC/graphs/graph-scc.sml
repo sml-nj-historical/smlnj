@@ -14,9 +14,8 @@ struct
    structure G = Graph
    structure A = Array
 
-   fun strong_components (G.GRAPH G) process S =
-   let val N = #capacity G ()
-       val onstack = Word8Array.array(N,0w0)
+   fun scc' {N, nodes, out_edges} process S =
+   let val onstack = Word8Array.array(N,0w0)
        val dfsnum = A.array(N,~1)
        fun dfs(v,num,stack,S) =
        let val dfsnum_v = num
@@ -36,7 +35,7 @@ struct
            val _ = A.update(dfsnum,v,dfsnum_v)
            val _ = Word8Array.update(onstack,v,0w1)
            val (num,stack,low_v,S) = 
-                  f(#out_edges G v,num+1,v::stack,dfsnum_v,S)
+                  f(out_edges v,num+1,v::stack,dfsnum_v,S)
            fun pop([],SCC,S) = ([],S)
              | pop(x::stack,SCC,S) =
                  let val SCC = x::SCC
@@ -49,13 +48,17 @@ struct
        in  (num,stack,dfsnum_v,low_v,S)
        end
        fun dfsAll([],S) = S
-         | dfsAll((n,_)::nodes,S) =
+         | dfsAll(n::nodes,S) =
            if A.sub(dfsnum,n) = ~1 then
               let val (_,_,_,_,S) = dfs(n,0,[],S)
               in  dfsAll(nodes,S) end
            else dfsAll(nodes,S)
-   in  dfsAll(#nodes G (),S)
+   in  dfsAll(nodes,S)
    end
+
+   fun scc (G.GRAPH G) =
+       scc' {N = #capacity G (), nodes= map #1 (#nodes G ()), 
+             out_edges= #out_edges G}
 
 end
 
