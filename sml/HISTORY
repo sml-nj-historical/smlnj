@@ -14,6 +14,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/09/20 17:28:00 EDT
+Tag: blume-20010920-slowfp
+Description:
+
+Allen says that x86-fast-fp is not safe yet, so I turned it off again...
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/09/20 17:20:00 EDT
 Tag: blume-20010920-canonicalpaths
 Description:
