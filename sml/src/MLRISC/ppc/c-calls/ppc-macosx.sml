@@ -336,7 +336,7 @@ functor PPCMacOSX_CCalls (
 	    | assignArgs ((Args locs') :: locs, (ARGS args') :: args, stms) =
 		raise Fail "ARGS constructor is obsolete"
 	    | assignArgs ((Args locs') :: locs, ARG exp :: args, stms) = let
-	      (* MLRISC expression for address inside the struct *)
+	      (* MLRISC expression for address inside the source struct *)
 		fun addr 0 = T.LOAD(wordTy, exp, memRg)
 		  | addr offset = T.LOAD(wordTy, T.ADD(wordTy, exp, T.LI offset), memRg)
 		fun copy ([], _, stms) = assignArgs(locs, args, stms)

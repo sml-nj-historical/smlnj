@@ -134,6 +134,7 @@ functor IA32SVID_CCalls (
       | resultsAndDefs (Ty.C_PTR) = (oneRes, callerSaves)
       | resultsAndDefs (Ty.C_ARRAY _) = (oneRes, callerSaves)
       | resultsAndDefs (Ty.C_STRUCT _) = (oneRes, callerSaves)
+    end (* local *)
 
 (**** START NEW CODE ****)
 
@@ -151,6 +152,7 @@ functor IA32SVID_CCalls (
 
     fun layout {conv, retTy, paramTys} = let
 	  in
+(*	    { argLocs, argMem, resLoc, structRetLoc }*)
 	    raise Fail "layout not implemented yet"
 	  end
 
@@ -185,7 +187,6 @@ functor IA32SVID_CCalls (
 	    copyOut(rest, gpr(sz, t)::results, T.COPY(sz,[t],[r])::stmts)
 	  end
       | copyOut _ = error "copyOut"
-    end (* local *)
 
     fun genCall ar = let
 	  val {
