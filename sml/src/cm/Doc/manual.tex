@@ -358,15 +358,67 @@ $a$ coincides with the first arc of $p$ can be abbreviated as {\tt
 \$/}$p$.
 \end{description}
 
-\subsection{Anchor configuration}
-\label{sec:anchors}
+\subsection{Anchor environments}
+\label{sec:anchor:env}
 
-The association of path name anchors with their corresponding
-directory names is a simple one-way mapping.  At startup time, this
-mapping is initialized by reading two configuration files: an
+Anchor names are resolved in the {\em anchor environment} that is in
+effect at the time the anchor is read.
+
+The basis for all anchor environments is the {\em root environment}.
+Conceptually, the root environments is a fixed mapping that binds
+every possible anchor to a mutable location.  The location can store a
+native directory name or can be marked ``undefined''.  Most locations
+initially start out undefined.  The contents of each location is
+configurable (see Section~\ref{sec:anchor:config}).
+
+At the time a CM description file $a${\tt .cm} refers to another
+library's or library component's description file $b${\tt .cm}, it can
+augment the current anchor environment with new bindings.  The new
+bindings are in effect while $b${\tt .cm} (including any description
+files {\it it}\/ mentions!) is being processed.  If a new binding
+binds an anchor name that was already bound in the current
+environment\footnote{which is technically always the case given our
+explanation of the root environment}, then the old binding is being
+hidden.  The effect is scoping for anchor names.
+
+Using CM's {\em tool parameter} mechanism (see
+Section~\ref{sec:toolparam}), a new binding is specified as a pair of
+anchor name and anchor value.  The value has the form of another path
+name (standard or native). Example:
+
+\begin{verbatim}
+  a.cm (bind:(anchor:lib value:$mystuff/a-lib)
+        bind:(anchor:support value:$lib)
+        bind:(anchor:utils value:/home/bob/stuff/ML/utils))
+\end{verbatim}
+
+As shown in this example, it is perfectly legal for the specification
+of the value to involve the use of another anchor.  That anchor will
+be resolved in the original anchor environment. Thus, a path anchored
+at {\tt \$lib} in {\tt a.cm} will be resolved using the binding for
+{\tt \$mystuff} that is currently in effect.  The point here is that a
+re-configuration of the root environment that affects {\tt \$mystuff}
+now also affects how {\tt \$lib} is resolved as it occurs within {\tt
+a.cm}.
+
+The list of {\tt bind:}-directives is processed ``in parallel,'' which
+means that {\tt \$support} is {\em not} being bound to\linebreak {\tt
+\$mystuff/a-lib/asupport} but will refer to the original meaning of
+{\tt \$lib}.
+
+The example also demonstrates that {\tt value:}-paths can be single
+anchors. In other words, the restriction that there has to be at least
+one arc after the anchor does not apply here.
+
+\subsection{Anchor configuration}
+\label{sec:anchor:config}
+
+Anchor configuration is concerned with the values that are stored in
+the root anchor environment.  At startup time, the root environment is
+initialized by reading two configuration files: an
 installation-specific one and a user-specific one.  After that, the
-mapping can be maintained using CM's interface functions {\tt
-CM.Anchor.anchor} and {\tt CM.Anchor.reset} (see
+contents of root locations can be maintained using CM's interface
+functions {\tt CM.Anchor.anchor} and {\tt CM.Anchor.reset} (see
 Section~\ref{sec:api}).
 
 The default location of the installation-specific configuration file
@@ -591,8 +643,9 @@ e.g., {\bf /} in Unix).  If it is specified as a relative path name,
 then it will be expanded by prepending the name of the current working
 directory.
 
-{\tt CM.Anchor.reset} erases the entire existing path configuration
-mapping.
+{\tt CM.Anchor.reset} erases the entire existing path configuration.
+After a call of this function has completed, all root environment
+locations are marked as being ``undefined''.
 
 \subsubsection*{Setting CM variables}
 
@@ -926,7 +979,7 @@ performed incrementally driven by input from the interactive top level
 loop.
 
 As far as sharing is concerned, the rule is that during one traversal
-each compilation unit will be executed at most once.  In other words,
+each compilation unit will be executed at most once.  This means that
 the same ``program'' will not see multiple instantiations of the same
 compilation unit (where ``program'' refers to the code managed by one
 call to {\tt CM.make} or {\tt CM.autoload}).  Each compilation unit
@@ -941,10 +994,10 @@ be active at the same time.
 ML source files in CM description files can be specified as being {\em
 private} or {\em shared}.  This is done by adding a {\em tool
 parameter} specification for the file in the library- or group
-description file (see Section~\ref{sec:classes}).  In other words, to
-mark an ML file as {\em private}, follow the file name with the word
-{\tt private} in parentheses.  For {\em shared} ML files, replace {\tt
-private} with {\tt shared}.
+description file (see Section~\ref{sec:classes}). To mark an ML file
+as {\em private}, follow the file name with the word {\tt private} in
+parentheses.  For {\em shared} ML files, replace {\tt private} with
+{\tt shared}.
 
 An ML source file that is not annotated will typically be treated as
 {\em shared} unless it statically depends on some other {\em private}
@@ -1083,16 +1136,16 @@ earlier (Section~\ref{sec:sharing}), the {\tt private} annotation
 means that dynamic state cannot be shared across such calls to {\tt
 CM.make} or {\tt CM.autoload}.
 
-The {\tt cm} class accepts one named parameter, labelled by the string
-{\tt version}.  The parameter itself must have the format of a version
-number.  CM will interpret this as a version request, thereby insuring
-that the imported library is not too old or too new. (See
-section~\ref{sec:versions} for more on this topic.)
+The {\tt cm} class understands two kinds of parameters.  The first is
+a named parameter labeled by the string {\tt version}.  It must have
+the format of a version number.  CM will interpret this as a version
+request, thereby insuring that the imported library is not too old or
+too new. (See section~\ref{sec:versions} for more on this topic.)
 
-Named sub-option lists are specified by a name string followed by a
-colon {\bf :} and a parenthesized list of other tool options.  If the
-list contains precisely one element, the parentheses may be omitted.
-Example:
+All named sub-option lists (for any class) are specified by a name
+string followed by a colon {\bf :} and a parenthesized list of other
+tool options.  If the list contains precisely one element, the
+parentheses may be omitted.  Example:
 
 \begin{verbatim}
     euler.cm (version:2.71828)
@@ -1113,6 +1166,14 @@ disambiguating rule is that the version that gets loaded first
 warnings or errors.  (See the discussion of {\tt CM.unshare} in
 section~\ref{sec:libreg} for how to to circumvent this restriction.)
 
+The second kind of parameter understood by {\tt cm} is a named
+parameter labeled by the string {\tt bind} (see
+Section~\ref{sec:anchor:env}).  It can occur arbitrarily many times
+and each occurence must be a suboption-list of the form {\tt
+(anchor:$a$ value:$v$)}.  The set of {\tt bind}-parameters augments
+the current anchor environment to form the environment that is used
+while processing the contents of the named CM description file.
+
 \subsection{Built-in tools}
 \label{sec:builtin-tools}
 
@@ -1131,7 +1192,7 @@ annotation will apply to the $f${\tt .sml} file.
 The tool invokes the {\tt ml-yacc} command if the targets are
 ``outdated''.  A target is outdated if it is missing or older than the
 source.  Unless anchored using the path anchor mechanism (see
-Section~\ref{sec:anchors}), the command {\tt ml-yacc} will be located
+Section~\ref{sec:anchor:env}), the command {\tt ml-yacc} will be located
 using the operating system's path search mechanism (e.g., the {\tt
 \$PATH} environment variable).
 
@@ -1146,7 +1207,7 @@ on without change to that file.
 
 The tool invokes the {\tt ml-lex} command if the target is outdated
 (just like in the case of ML-Yacc).  Unless anchored using the path
-anchor mechanism (see Section~\ref{sec:anchors}), the command {\tt
+anchor mechanism (see Section~\ref{sec:anchor:env}), the command {\tt
 ml-lex} will be located using the operating system's path search
 mechanism (e.g., the {\tt \$PATH} environment variable).
 
@@ -1161,7 +1222,7 @@ parameters are passed on without change to the target.
 
 The tool invokes the {\tt ml-burg} command if the target is outdated.
 Unless anchored using the path anchor mechanism (see
-Section~\ref{sec:anchors}), the command {\tt ml-lex} will be located
+Section~\ref{sec:anchor:env}), the command {\tt ml-lex} will be located
 using the operating system's path search mechanism (e.g., the {\tt
 \$PATH} environment variable).
 
@@ -1245,7 +1306,7 @@ tool, it is possible to specify target class and parameters using the
 {\tt class} and {\tt options} keyword parameters.
 
 The tool invokes the shell command {\tt make} on the target.  Unless
-anchored using the path anchor mechanism~\ref{sec:anchors}, the
+anchored using the path anchor mechanism~\ref{sec:anchor:env}, the
 command will be located using the operating system's path search
 mechanism (e.g., the {\tt \$PATH} environment variable).
 
@@ -1650,7 +1711,7 @@ the required side-effects to occur.)
 In our example, the shell command name for our tool is {\tt
 new-ml-yacc}.  When looking for this command in the file system, CM
 first tries to treat it as a path anchor (see
-section~\ref{sec:anchors}).  For example, suppose {\tt new-ml-yacc} is
+section~\ref{sec:anchor:env}).  For example, suppose {\tt new-ml-yacc} is
 mapped to {\tt /bin}.  In this case the command to be
 invoked would be {\tt /bin/new-ml-yacc}.  If path anchor resolution
 fails, then the command name will be used as-is.  Normally this
