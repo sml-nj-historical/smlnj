@@ -1,11 +1,10 @@
 (* COPYRIGHT 1996 AT&T Bell Laboratories. *)
 (* overload.sml *)
 
-signature OVERLOAD =
-sig
-  val resetOverloaded : unit -> unit
-  val pushOverloaded : VarCon.var ref * ErrorMsg.complainer -> Types.ty
-  val resolveOverloaded : StaticEnv.staticEnv -> unit
+signature OVERLOAD = sig
+    val new : unit ->
+	      { push : VarCon.var ref * ErrorMsg.complainer -> Types.ty,
+		resolve : StaticEnv.staticEnv -> unit }
 end  (* signature OVERLOAD *)
 
 structure Overload : OVERLOAD = 
@@ -19,10 +18,6 @@ local
   open VarCon Types
 in
 
-(* debugging *)
-val say = Control_Print.say
-val debugging = ref false
-fun debugmsg (msg: string) = if !debugging then (say msg; say "\n") else ()
 fun bug msg = EM.impossible("Overload: "^msg)
 
 type subst = (tyvar * tvKind) list
@@ -113,52 +108,48 @@ fun softUnify(ty1: ty, ty2: ty): unit =
 	  handle SoftUnify => (rollBack(!subst); raise SoftUnify)
     end
 
-exception Overld
-
-
 (* overloaded functions *)
+fun new () = let
+    val overloaded = ref (nil: (var ref * ErrorMsg.complainer * ty) list)
+    fun push (refvar as ref(OVLDvar{options,scheme,...}), err) = 
+	let val (scheme',ty) = copyScheme(scheme)
+	in
+	    overloaded := (refvar,err,ty) :: !overloaded;
+	    scheme'
+	end
+      | push _ = bug "overload.1"
 
-val overloaded = ref (nil: (var ref * ErrorMsg.complainer * ty) list)
+    (* this resolveOverloaded implements defaulting behavior -- if more
+     * than one variant matches the context type, the first one matching
+     * (which will always be the first variant) is used as the default *)
+    fun resolve env  =
+	let fun resolveOVLDvar(rv as ref(OVLDvar{name,options,...}),err,context) =
+		let fun firstMatch({indicator, variant}::rest) =
+			let val (nty,_) = TU.instantiatePoly indicator
+			in (softUnify(nty, context); rv := variant)
+			   handle SoftUnify => firstMatch(rest)
+			end
+		      | firstMatch(nil) =
+			(err EM.COMPLAIN "overloaded variable not defined at type"
+			     (fn ppstrm =>
+				 (PPType.resetPPType();
+				  PrettyPrint.newline ppstrm;
+				  PrettyPrint.string ppstrm "symbol: "; 
+				  PPUtil.ppSym ppstrm name;
+				  PrettyPrint.newline ppstrm;
+				  PrettyPrint.string ppstrm "type: ";
+				  PPType.ppType env ppstrm context));
+			     ())
 
-fun resetOverloaded () = overloaded := nil
-
-fun pushOverloaded (refvar as ref(OVLDvar{options,scheme,...}), err) = 
-     let val (scheme',ty) = copyScheme(scheme)
-      in overloaded := (refvar,err,ty) :: !overloaded;
-	 scheme'
-     end
-  | pushOverloaded _ = bug "overload.1"
-
-(* this resolveOverloaded implements defaulting behavior -- if more
- * than one variant matches the context type, the first one matching
- * (which will always be the first variant) is used as the default *)
-fun resolveOverloaded env  =
-    let fun resolveOVLDvar(rv as ref(OVLDvar{name,options,...}),err,context) =
-	    let fun firstMatch({indicator, variant}::rest) =
-		      let val (nty,_) = TU.instantiatePoly indicator
-		       in (softUnify(nty, context); rv := variant)
-			  handle SoftUnify => firstMatch(rest)
-		      end
-		  | firstMatch(nil) =
-		      (err EM.COMPLAIN "overloaded variable not defined at type"
-			(fn ppstrm =>
-			  (PPType.resetPPType();
-			   PrettyPrint.newline ppstrm;
-			   PrettyPrint.string ppstrm "symbol: "; 
-			   PPUtil.ppSym ppstrm name;
-			   PrettyPrint.newline ppstrm;
-			   PrettyPrint.string ppstrm "type: ";
-			   PPType.ppType env ppstrm context));
-		       ())
-
-	     in firstMatch(!options)
-	    end
-	  | resolveOVLDvar _ = bug "overload.2"
-
-     in app resolveOVLDvar (!overloaded); 
-	overloaded := nil
-    end
+		in firstMatch(!options)
+		end
+	      | resolveOVLDvar _ = bug "overload.2"
+	in
+	    app resolveOVLDvar (!overloaded)
+	end
+in
+    { push = push, resolve = resolve }
+end (* new *)
 
 end (* local *)
 end (* structure Overload *)
-

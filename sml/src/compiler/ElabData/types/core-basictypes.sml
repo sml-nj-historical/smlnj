@@ -34,9 +34,6 @@ structure CoreBasicTypes : sig
     val intTycon : Types.tycon
     val intTy : Types.ty
 
-    val wordTycon : Types.tycon
-    val wordTy : Types.ty
-
     val stringTycon : Types.tycon
     val stringTy : Types.ty
 
@@ -100,7 +97,6 @@ end = struct
     end
 
     val (intTycon, intTy) = pt2tct ("int", 0, T.YES, PTN.ptn_int)
-    val (wordTycon, wordTy) = pt2tct ("word", 0, T.YES, PTN.ptn_int)
     val (stringTycon, stringTy) = pt2tct ("string", 0, T.YES, PTN.ptn_string)
     val (charTycon, charTy) = pt2tct ("char", 0, T.YES, PTN.ptn_int)
     val (realTycon, realTy) = pt2tct ("real", 0, T.NO, PTN.ptn_real)

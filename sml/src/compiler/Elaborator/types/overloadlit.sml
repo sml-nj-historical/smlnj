@@ -6,16 +6,11 @@ signature OVERLOADLIT =
 sig
 
   (* functions for setting up, recording, and resolving literal overloadings *)
-  val reset : unit -> unit
-  val push  : Types.ty -> unit
-  val resolve : unit -> unit
+  val new : unit -> { push : Types.ty -> unit, resolve : unit -> unit }
 
   (* isLiteralTy is for checking compatability when instantiating 
      overloaded literal type variables *)
   val isLiteralTy : Types.litKind * Types.ty -> bool
-
-  val debugging : bool ref
-
 end  (* signature OVERLOADLIT *)
 
 structure OverloadLit : OVERLOADLIT = 
@@ -24,20 +19,6 @@ struct
   structure T = Types
   structure BT = BasicTypes
   structure TU = TypesUtil
-
-  (* debugging *)
-  val say = Control_Print.say
-  val debugging = ref false
-  fun debugmsg (msg: string) = if !debugging then (say msg; say "\n") else ()
-  fun bug msg = ErrorMsg.impossible("OverloadLit: "^msg)
-
-  (* list ref storing literal types for a given typecheck call *)
-  val lits = ref(nil: T.ty list)
-
-  fun reset () =
-      lits := []
-
-  fun push x = lits := x :: !lits
 
   (* eventually, these may be defined elsewhere, perhaps via some
      compiler configuration mechanism *)
@@ -61,14 +42,18 @@ struct
     | default T.CHAR = BT.charTy
     | default T.STRING = BT.stringTy
 
-  fun resolve () =
-      let fun resolveLit ty =
-	      case TU.prune ty
-		of T.VARty(tv as ref(T.LITERAL{kind,...})) =>
-		     tv := T.INSTANTIATED(default kind)
-		 | _ => () (* ok, must have been successfully instantiated *)
-       in app resolveLit (!lits)
-      end
+  fun new () = let
+      val lits = ref []
+      fun push x = lits := x :: !lits
+      fun resolve () =
+	  let fun resolveLit ty =
+		  case TU.prune ty
+		   of T.VARty(tv as ref(T.LITERAL{kind,...})) =>
+		      tv := T.INSTANTIATED(default kind)
+		    | _ => () (* ok, must have been successfully instantiated *)
+	  in app resolveLit (!lits)
+	  end
+  in { push = push, resolve = resolve }
+  end
 
 end (* structure OverloadLit *)
-

@@ -23,8 +23,8 @@ fun expType(VARexp(ref(VALvar{typ=ref ty,...}),insttys)) =
      (case typ
 	  of POLYty{tyfun,...} => TU.applyTyfun(tyfun,insttys)
 	   | _ => typ)
-  | expType(INTexp _) = intTy
-  | expType(WORDexp _) = wordTy
+  | expType(INTexp (_, t)) = t
+  | expType(WORDexp (_, t)) = t
   | expType(STRINGexp _) = stringTy
   | expType(CHARexp _) = charTy
   | expType(REALexp _) = realTy

@@ -17,14 +17,13 @@ functor TypecheckFn (val ii_ispure : II.ii -> bool
 struct
 
 local open Array List Types VarCon BasicTypes TypesUtil Unify Absyn
-           Overload ErrorMsg PrettyPrint PPUtil PPType PPAbsyn
+	   ErrorMsg PrettyPrint PPUtil PPType PPAbsyn
 
   structure SE = StaticEnv
   (* structure II = InlInfo *)
   structure DA = Access
   structure EU = ElabUtil
   structure ED = ElabDebug
-  structure OLL = OverloadLit
   structure PP = PrettyPrint
 	  
 in 
@@ -59,6 +58,9 @@ fun mkDummy0 () = BasicTypes.unitTy
  *)
 fun decType(env,dec,toplev,err,region) = 
 let
+
+val { push = oll_push, resolve = oll_resolve } = OverloadLit.new ()
+val { push = ol_push, resolve = ol_resolve } = Overload.new ()
 
 val ppType = PPType.ppType env
 val ppPat = PPAbsyn.ppPat env
@@ -294,8 +296,8 @@ fun patType(pat: pat, depth, region) : pat * ty =
 	      (typ := mkMETAtyBounded depth; (pat,!typ))
 			             (* multiple occurrence due to or-pat *)
        | VARpat(VALvar{typ, ...}) => (pat, !typ) 
-       | INTpat (_,ty) => (OLL.push ty; (pat,ty))
-       | WORDpat (_,ty) => (OLL.push ty; (pat,ty))
+       | INTpat (_,ty) => (oll_push ty; (pat,ty))
+       | WORDpat (_,ty) => (oll_push ty; (pat,ty))
        | REALpat _ => (pat,realTy)
        | STRINGpat _ => (pat,stringTy)
        | CHARpat _ => (pat,charTy)
@@ -417,14 +419,14 @@ in
 	      in (VARexp(r, insts), ty)
 	      end)
        | VARexp(refvar as ref(OVLDvar _),_) =>
- 	    (exp,pushOverloaded(refvar, err region))
+ 	    (exp, ol_push (refvar, err region))
        | VARexp(r as ref ERRORvar, _) => (exp, WILDCARDty)
        | CONexp(dcon as DATACON{typ,...},_) => 
            let val (ty,insts) = instantiatePoly typ
             in (CONexp(dcon,insts),ty)
            end
-       | INTexp (_,ty) => (OLL.push ty; (exp,ty))
-       | WORDexp (_,ty) => (OLL.push ty; (exp,ty))
+       | INTexp (_,ty) => (oll_push ty; (exp,ty))
+       | WORDexp (_,ty) => (oll_push ty; (exp,ty))
        | REALexp _ => (exp,realTy)
        | STRINGexp _ => (exp,stringTy)
        | CHARexp _ => (exp,charTy)
@@ -853,18 +855,13 @@ and strexpType (occ,region) (se as (APPstr{oper,arg,argtycs})) = se
 and strbType (occ,region) (STRB{str,def,name}) =
     STRB{str=str,def=strexpType (occ,region) def,name=name}
 
-val _ = debugmsg ">>decType: resetOverloaded"
-val _ = resetOverloaded()
-val _ = debugmsg ">>decType: OverloadedLit.reset"
-val _ = OLL.reset ()
 val _ = debugmsg ">>decType: calling decType0"
 val dec' = decType0(dec, if toplev then Root else (LetDef Root), region);
-val _ = debugmsg ">>decType: OverloadedLit.resolve"
-val _ = OLL.resolve ()
-val _ = debugmsg ">>decType: resolveOverloaded"
-val _ = resolveOverloaded env
-val _ = debugmsg "<<decType: returning"
- in dec'
+in
+    oll_resolve (); 
+    ol_resolve env;
+    debugmsg "<<decType: returning";
+    dec'
 end (* function decType *)
 
 val decType = Stats.doPhase (Stats.makePhase "Compiler 035 typecheck") decType

@@ -72,8 +72,8 @@ val intinfTy = CONty(intinfTycon, nil)
 val realTycon = (* mkpt("real", 0, NO, PTN.ptn_real) *) CBT.realTycon
 val realTy = (* CONty(realTycon, nil) *) CBT.realTy
 
-val wordTycon = (* mkpt("word", 0, YES, PTN.ptn_int31) *) CBT.wordTycon
-val wordTy = (* CONty(wordTycon, nil) *) CBT.wordTy
+val wordTycon = mkpt("word", 0, YES, PTN.ptn_int31)
+val wordTy = CONty(wordTycon, nil)
 
 val word8Tycon = mkpt("word8", 0, YES, PTN.ptn_int31)
 val word8Ty = CONty(word8Tycon, nil)
