@@ -28,6 +28,7 @@ structure GroupReg :> GROUPREG = struct
 
     fun register gr (p, s) = gr := SrcPathMap.insert (!gr, p, s)
     fun lookup gr p = valOf (SrcPathMap.find (!gr, p))
+	handle Option => raise Fail "GroupReg.lookup"
     fun registered gr g = isSome (SrcPathMap.find (!gr, g))
     fun error gr (g, r) = GenericVC.ErrorMsg.error (lookup gr g) r
 end

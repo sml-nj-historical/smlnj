@@ -430,7 +430,9 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
     fun loadStable (gp, getGroup, anyerrors) group = let
 
-	fun bn2env n = Statenv2DAEnv.cvtMemo (fn () => bn2statenv gp n)
+	val es2bs = GenericVC.CoerceEnv.es2bs
+	fun bn2env n =
+	    Statenv2DAEnv.cvtMemo (fn () => es2bs (bn2statenv gp n))
 
 	val errcons = #errcons gp
 	val grpSrcInfo = (errcons, anyerrors)

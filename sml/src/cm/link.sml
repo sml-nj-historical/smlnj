@@ -3,6 +3,7 @@
 functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
   local
+      structure AutoLoad = AutoLoad
       structure YaccTool = YaccTool
       structure LexTool = LexTool
       structure BurgTool = BurgTool
@@ -75,6 +76,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
        * dependency-analysis environments.  This can be achieved quite
        * conveniently by a "recompile" traversal for bnodes. *)
       fun bn2statenv gp i = #1 (#stat (valOf (RecompTraversal.bnode gp i)))
+	  handle Option => raise Fail "bn2statenv"
 
       (* exec_group is basically the same as ExecTraversal.group with
        * two additional actions to be taken:
@@ -89,7 +91,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	   else Say.say ("$Execute: required privileges are:\n" ::
 		     map (fn s => ("  " ^ s ^ "\n")) (StringSet.listItems rq));
 	   ExecTraversal.group gp g
-	   before FullPersstate.rememberShared gp)
+	   before FullPersstate.rememberShared ())
 
       fun recomp_runner gp g = isSome (RecompTraversal.group gp g)
 
@@ -113,6 +115,73 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			   true
 		       end)
 
+      fun loadit gp m =
+	  case RecompTraversal.impexpmap gp m of
+	      NONE => NONE
+	    | SOME { stat, sym } => let
+		  fun exec () =
+		      ExecTraversal.impexpmap gp m
+		      before FullPersstate.rememberShared ()
+	      in
+		  case exec () of
+		      NONE => NONE
+		    | SOME dyn => let
+			  val e = E.mkenv { static = stat, symbolic = sym,
+					    dynamic =dyn }
+			  val be = GenericVC.CoerceEnv.e2b e
+		      in
+			  SOME be
+		      end
+	      end
+
+      val theParam = ref (NONE: GeneralParams.param option)
+      fun param () =
+	  case !theParam of
+	      SOME p => p
+	    | NONE => let
+		  val { mod = basis, nomod = perv } =
+		      split (#get ER.pervasive ())
+		  val corenv = #get ER.core ()
+		  val bpspec = let
+		      val bogus = GenericVC.PersStamps.fromBytes
+			  (Byte.stringToBytes "0123456789abcdef")
+		  in
+		      { name = "basis",
+		        env = basis,
+			pidInfo = { statpid = bogus, sympid = bogus,
+				    ctxt = GenericVC.CMStaticEnv.empty } }
+		  end
+		  val primconf = Primitive.configuration [bpspec]
+		  val pcmode = PathConfig.hardwire
+		      [("smlnj-lib.cm", "/home/blume/ML/current/lib")]
+		  val fnpolicy =
+		      FilenamePolicy.colocate
+		          { os = os, arch = HostMachDepVC.architecture }
+		  val keep_going = EnvConfig.getSet StdConfig.keep_going NONE
+		  val p = { primconf = primconf,
+			    fnpolicy = fnpolicy,
+			    pcmode = pcmode,
+			    symenv = SSV.env,
+			    keep_going = keep_going,
+			    pervasive = perv,
+			    corenv = corenv,
+			    pervcorepids = PidSet.empty }
+	      in
+		  theParam := SOME p;
+		  p
+	      end
+
+      val al_greg = GroupReg.new ()
+      fun al_ginfo () = { param = param (),
+			  groupreg = al_greg,
+			  errcons = GenericVC.ErrorMsg.defaultConsumer () }
+
+      val al_manager = AutoLoad.mkManager (fn m => loadit (al_ginfo ()) m)
+
+      fun manager (ast, _, ter) = al_manager (ast, ter)
+
+      val _ = HostMachDepVC.Interact.installCompManager (SOME manager)
+
       (* Instantiate the stabilization mechanism. *)
       structure Stabilize =  StabilizeFn (val bn2statenv = bn2statenv
 					  val recomp = recomp_runner)
@@ -130,34 +199,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	fun run sflag f s = let
 	    val c = SrcPath.cwdContext ()
 	    val p = SrcPath.native { context = c, spec = s }
-	    val { mod = basis, nomod = perv } = split (#get ER.pervasive ())
-	    val corenv = #get ER.core ()
-	    val bpspec = let
-		val bogus = GenericVC.PersStamps.fromBytes
-		    (Byte.stringToBytes "0123456789abcdef")
-	    in
-		{ name = "basis",
-		  env = basis,
-		  pidInfo = { statpid = bogus, sympid = bogus,
-			      ctxt = GenericVC.CMStaticEnv.empty } }
-	    end
-	    val primconf = Primitive.configuration [bpspec]
-	    val pcmode = PathConfig.hardwire
-		[("smlnj-lib.cm", "/home/blume/ML/current/lib")]
-	    val fnpolicy =
-		FilenamePolicy.colocate { os = os,
-					  arch = HostMachDepVC.architecture }
-	    val keep_going = EnvConfig.getSet StdConfig.keep_going NONE
-	    val param = { primconf = primconf,
-			  fnpolicy = fnpolicy,
-			  pcmode = pcmode,
-			  symenv = SSV.env,
-			  keep_going = keep_going,
-			  pervasive = perv,
-			  corenv = corenv,
-			  pervcorepids = PidSet.empty }
 	in
-	    case Parse.parse param sflag p of
+	    case Parse.parse NONE (param ()) sflag p of
 		NONE => false
 	      | SOME (g, gp) => f gp g
 	end
@@ -165,6 +208,17 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	fun stabilize recursively = run (SOME recursively) stabilize_runner
 	val recomp = run NONE recomp_runner
 	val make = run NONE make_runner
+
+	fun autoload s = let
+	    val c = SrcPath.cwdContext ()
+	    val p = SrcPath.native { context = c, spec = s }
+	in
+	    case Parse.parse (SOME al_greg) (param ()) NONE p of
+		NONE => false
+	      | SOME (g, _) =>
+		    (AutoLoad.register (GenericVC.EnvRef.topLevel, g);
+		     true)
+	end
     end
 
     structure CMB = struct

@@ -21,5 +21,5 @@ signature FULL_PERSSTATE = sig
     val exec_memo_stable :
 	BinInfo.info * env * BinInfo.info list -> unit
 
-    val rememberShared : GeneralParams.info -> unit
+    val rememberShared : unit -> unit
 end

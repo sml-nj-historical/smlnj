@@ -21,6 +21,11 @@ signature BUILDDEPEND = sig
 	->
 	impexp SymbolMap.map		(* exports *)
 	* GroupGraph.privileges		(* required privileges (aggregate) *)
+
+    (* for the autoloader *)
+    type looker = Symbol.symbol -> DAEnv.env
+    val look : looker -> DAEnv.env -> looker
+    val processOneSkeleton : looker -> Skeleton.decl -> unit
 end
 
 structure BuildDepend :> BUILDDEPEND = struct
@@ -36,6 +41,8 @@ structure BuildDepend :> BUILDDEPEND = struct
 
     type impexp = DG.impexp
 
+    type looker = Symbol.symbol -> DAEnv.env
+
     fun look otherwise DE.EMPTY s = otherwise s
       | look otherwise (DE.BINDING (s', v)) s =
 	if S.eq (s, s') then v else otherwise s
@@ -44,6 +51,60 @@ structure BuildDepend :> BUILDDEPEND = struct
 	(case looker s of NONE => otherwise s | SOME v => v)
       | look otherwise (DE.FILTER (ss, e)) s =
 	if SymbolSet.member (ss, s) then look otherwise e s else otherwise s
+
+    fun evalOneSkeleton lookimport = let
+	(* build the lookup function for DG.env *)
+	val lookup = look lookimport
+
+	fun lookSymPath e (SP.SPATH []) = DE.EMPTY
+	  | lookSymPath e (SP.SPATH (p as (h :: t))) = let
+		(* again, if we don't find it here we just ignore
+		 * the problem and let the compiler catch it later *)
+		val lookup' = look (fn _ => DE.EMPTY)
+		fun loop (e, []) = e
+		  | loop (e, h :: t) = loop (lookup' e h, t)
+	    in
+		loop (lookup e h, t)
+	    end
+
+	(* "eval" -- compute the export environment of a skeleton *)
+	fun eval sk = let
+	    fun evalDecl e (SK.Bind (name, def)) =
+		DE.BINDING (name, evalModExp e def)
+	      | evalDecl e (SK.Local (d1, d2)) =
+		evalDecl (DE.LAYER (evalDecl e d1, e)) d2
+	      | evalDecl e (SK.Seq l) = evalSeqDecl e l
+	      | evalDecl e (SK.Par []) = DE.EMPTY
+	      | evalDecl e (SK.Par (h :: t)) =
+		foldl (fn (x, r) => DE.LAYER (evalDecl e x, r))
+		(evalDecl e h) t
+	      | evalDecl e (SK.Open s) = evalModExp e s
+	      | evalDecl e (SK.Ref s) =
+		(SS.app (ignore o lookup e) s; DE.EMPTY)
+
+	    and evalSeqDecl e [] = DE.EMPTY
+	      | evalSeqDecl e (h :: t) = let
+		    fun one (d, e') =
+			DE.LAYER (evalDecl (DE.LAYER (e', e)) d, e')
+		in
+		    foldl one (evalDecl e h) t
+		end
+
+	    and evalModExp e (SK.Var sp) = lookSymPath e sp
+	      | evalModExp e (SK.Decl l) = evalSeqDecl e l
+	      | evalModExp e (SK.Let (d, m)) =
+		evalModExp (DE.LAYER (evalSeqDecl e d, e)) m
+	      | evalModExp e (SK.Ign1 (m1, m2)) =
+		(ignore (evalModExp e m1); evalModExp e m2)
+	in
+	    evalDecl DE.EMPTY sk
+	end
+    in
+	eval
+    end
+
+    fun processOneSkeleton lookimport sk =
+	ignore (evalOneSkeleton lookimport sk)
 
     (* get the description for a symbol *)
     fun symDesc (s, r) =
@@ -164,52 +225,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 		  | NONE => lookfar ()
 	    end
 
-	    (* build the lookup function for DG.env *)
-	    val lookup = look lookimport
-
-	    fun lookSymPath e (SP.SPATH []) = DE.EMPTY
-	      | lookSymPath e (SP.SPATH (p as (h :: t))) = let
-		    (* again, if we don't find it here we just ignore
-		     * the problem and let the compiler catch it later *)
-		    val lookup' = look (fn _ => DE.EMPTY)
-		    fun loop (e, []) = e
-		      | loop (e, h :: t) = loop (lookup' e h, t)
-		in
-		    loop (lookup e h, t)
-		end
-
-	    (* "eval" -- compute the export environment of a skeleton *)
-	    fun eval sk = let
-		fun evalDecl e (SK.Bind (name, def)) =
-		    DE.BINDING (name, evalModExp e def)
-		  | evalDecl e (SK.Local (d1, d2)) =
-		    evalDecl (DE.LAYER (evalDecl e d1, e)) d2
-		  | evalDecl e (SK.Seq l) = evalSeqDecl e l
-		  | evalDecl e (SK.Par []) = DE.EMPTY
-		  | evalDecl e (SK.Par (h :: t)) =
-		    foldl (fn (x, r) => DE.LAYER (evalDecl e x, r))
-		          (evalDecl e h) t
-		  | evalDecl e (SK.Open s) = evalModExp e s
-		  | evalDecl e (SK.Ref s) =
-		    (SS.app (ignore o lookup e) s; DE.EMPTY)
-
-		and evalSeqDecl e [] = DE.EMPTY
-		  | evalSeqDecl e (h :: t) = let
-			fun one (d, e') =
-			    DE.LAYER (evalDecl (DE.LAYER (e', e)) d, e')
-		    in
-			foldl one (evalDecl e h) t
-		    end
-
-		and evalModExp e (SK.Var sp) = lookSymPath e sp
-		  | evalModExp e (SK.Decl l) = evalSeqDecl e l
-		  | evalModExp e (SK.Let (d, m)) =
-		    evalModExp (DE.LAYER (evalSeqDecl e d, e)) m
-		  | evalModExp e (SK.Ign1 (m1, m2)) =
-		    (ignore (evalModExp e m1); evalModExp e m2)
-	    in
-		evalDecl DE.EMPTY sk
-	    end
+	    val eval = evalOneSkeleton lookimport
 
 	    val e = case SmlInfo.skeleton gp i of
 		SOME sk => eval sk

@@ -71,6 +71,7 @@ is
 	main/filename-policy.sml
 	main/symval.sml
 	main/specific-symval-fn.sml
+	main/autoload.sml
 
 	(* pathname abstraction *)
 	paths/sources.cm

@@ -170,7 +170,7 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 		        { corenv = corenv }
 	    val stableflag = if stabilize then SOME true else NONE
 	in
-	    case Parse.parse param stableflag maingspec of
+	    case Parse.parse NONE param stableflag maingspec of
 		NONE => false
 	      | SOME (g, gp) =>
 		    if recomp gp g then let

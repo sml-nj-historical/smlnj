@@ -62,5 +62,7 @@ functor RecompPersstateFn
 	    else recomp_memo_stable0
 
 	fun bfc_fetch_sml i = #bfc (#1 (valOf (SmlInfoMap.find (!smlmap, i))))
+	    handle Option => raise Fail "bfc_fetch_sml"
 	fun bfc_fetch_stable i = #bfc (valOf (StableMap.find (!stablemap, i)))
+	    handle Option => raise Fail "bfc_fetch_stable"
     end

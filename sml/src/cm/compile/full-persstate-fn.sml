@@ -98,7 +98,7 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC) :> FULL_PERSSTATE =
 	fun exec_memo_stable (i, e, il) =
 	    exec_memo (STABLE i, e, map STABLE il)
 
-	fun rememberShared gp = let
+	fun rememberShared () = let
 	    fun retainShared (k, (e, d), m) = let
 		val m = discard (k, m)
 	    in

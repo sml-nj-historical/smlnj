@@ -97,7 +97,9 @@ structure Primitive :> PRIMITIVE = struct
 
     fun configuration l = let
 	fun gen_pinfo ({ name, env, pidInfo }, i) = let
-	    val (da_env, mkExports) = Statenv2DAEnv.cvt (E.staticPart env)
+	    val es2bs = GenericVC.CoerceEnv.es2bs
+	    val (da_env, mkExports) =
+		Statenv2DAEnv.cvt (es2bs (E.staticPart env))
 	in
 	    { name = name, exports = mkExports (), da_env = da_env,
 	      env = env, pidInfo = pidInfo,

@@ -19,6 +19,8 @@ in
 
 	val bnode : GP.info -> DG.bnode -> envdelta option
 	val group : GP.info -> GG.group -> result option
+	val impexpmap :
+	    GP.info -> DependencyGraph.impexp SymbolMap.map -> result option
 
 	(* if you go through the "snode" interface, then
 	 * you must reset explicitly when you are done. *)
@@ -122,12 +124,14 @@ in
 
 	fun impexp gp (n, _) = Option.map CT.env2result (farsbnode gp n)
 
-	fun group gp (GG.GROUP { exports, ... }) =
+	fun impexpmap gp m =
 	    (foldl (layerwork (#keep_going (#param gp),
 		               CT.rlayer,
 			       impexp gp))
 	           (SOME CT.empty)
-		   (SymbolMap.listItems exports))
+		   (SymbolMap.listItems m))
 	    before reset ()
+
+	fun group gp (GG.GROUP { exports, ... }) = impexpmap gp exports
     end
 end

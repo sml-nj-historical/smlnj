@@ -7,6 +7,7 @@
  *)
 signature PARSE = sig
     val parse :
+	GroupReg.groupreg option ->
 	GeneralParams.param -> bool option ->
 	SrcPath.t -> (CMSemant.group * GeneralParams.info) option
 end
@@ -27,12 +28,15 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 		     structure Lex = CMLex
 		     structure LrParser = LrParser)
 
-    fun parse param stabflag group = let
+    fun parse gropt param stabflag group = let
 
 	val stabthis = isSome stabflag
 	val staball = stabflag = SOME true
 
-	val groupreg = GroupReg.new ()
+	val groupreg =
+	    case gropt of
+		SOME r => r
+	      | NONE => GroupReg.new ()
 	val errcons = EM.defaultConsumer ()
 	val ginfo = { param = param, groupreg = groupreg, errcons = errcons }
 
