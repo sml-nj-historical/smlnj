@@ -1,5 +1,8 @@
-Front End
----------
+Front End Map
+-------------
+
+A color-coded map of the directory structure is available as
+a pdf file, or Omnigraffle source file.
 
 1. Lexing and Parsing
 ----------------------
@@ -149,11 +152,14 @@ Semant/
   apply functors defined in corresponding Elaborate/elaborate modules
   [these could be in Elaborator]
     elabmod.sml
-      module level elaboration (why not in Elaborator)
+      module level elaboration: defines ElabMod by calling ElabModFn defined
+      in Elaborate/elaborate/elabmod.sml (should go to Elaborator)
       see: Elaborator/elaborate/elabmod.sml
       defs: ElabMod
     elabtop.sml
-      top-level elaboration
+      top-level elaboration: defined ElabTop by calling ElabTopFn defined
+      in Elaborator/elaborate/elabtop.sml (should go to Elaborator)
+      see: Elaborator/elaborate/elabtop.sml
       defs: ElabTop
 
   Semant/modules/
@@ -605,6 +611,7 @@ TopLevel/
     control.sml
       defs: Control_MC, Control_CG, Control
     version.sml
+      records the compiler version and version date
       defs: CompilerVersion
     printhooks.sml
       defs: PrintHooks
@@ -613,7 +620,7 @@ TopLevel/
     code-generator.sig
       defs: CODEGENERATOR
     compile.sig
-      defs: COMPILE0, COMPILE0, TOP_COMPILE
+      defs: COMPILE0, COMPILE, TOP_COMPILE
     compile.sml
       defs: CompileF: CODEGENERATOR # CCONFIG # {cproto_conv : string} => COMPILE0
 
