@@ -1,0 +1,55 @@
+#!/bin/sh
+#
+# build script for ml-burg under the new runtime system.
+#
+# options:
+#   -o image		-- specify the name of the heap image, "ml-burg"
+#			   is the default.
+#   -sml path		-- specify the path to the sml executable, "../../bin/sml"
+#			   is the default.
+
+CMD="build"
+
+ROOT="ml-burg"
+HEAP_IMAGE=""
+BIN="../../bin"
+SML="$BIN/sml"
+
+#
+# process command-line options
+#
+ARGS=""
+while [ "$#" != "0" ]
+do
+    arg=$1
+    shift
+    case $arg in
+	-o)
+	    if [ "$#" = "0" ]; then
+		echo "$CMD: must supply image name for -o option"
+		exit 1
+	    fi
+	    HEAP_IMAGE=$1; shift
+	;;
+	-sml)
+	    if [ "$#" = "0" ]; then
+		echo "$CMD: must supply path for -sml option"
+		exit 1
+	    fi
+	    SML=$1; shift
+	;;
+	*)
+	    ARGS="$ARGS $arg"
+	;;
+    esac
+done
+
+if [ "$HEAP_IMAGE" = "" ]; then
+    HEAP_IMAGE="$ROOT"
+fi
+
+$SML $ARGS <<ZZZ
+  CM.make();
+  Main.export "$HEAP_IMAGE" : unit;
+ZZZ
+

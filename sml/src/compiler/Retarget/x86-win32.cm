@@ -1,0 +1,7 @@
+Group
+	structure X86Win32CMB
+	structure X86VisComp
+is
+	../viscomp-lib.cm
+	../../cm/cm-lib.cm
+	x86-win32.sml
