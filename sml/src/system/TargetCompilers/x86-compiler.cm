@@ -1,6 +1,0 @@
-Library
-	structure X86Compiler
-is
-	viscomp-core.cm
-	viscomp-x86.cm
-	x86-compiler.sml

@@ -1,8 +1,0 @@
-Library
-	structure HppaUnixCMB
-is
-	basis.cm
-	cm-lib.cm
-	full-cm.cm
-	viscomp-hppa.cm
-	hppa-unix.sml

@@ -1,6 +1,0 @@
-Library
-	structure HppaCompiler
-is
-	viscomp-core.cm
-	viscomp-hppa.cm
-	hppa-compiler.sml

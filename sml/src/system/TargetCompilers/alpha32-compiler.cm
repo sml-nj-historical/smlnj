@@ -1,6 +1,0 @@
-Library
-	structure Alpha32Compiler
-is
-	viscomp-core.cm
-	viscomp-alpha32.cm
-	alpha32-compiler.sml

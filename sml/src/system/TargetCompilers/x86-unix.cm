@@ -1,8 +1,0 @@
-Library
-	structure X86UnixCMB
-is
-	basis.cm
-	cm-lib.cm
-	full-cm.cm
-	viscomp-x86.cm
-	x86-unix.sml

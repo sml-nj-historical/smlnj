@@ -1,6 +1,0 @@
-Library
-	structure SparcCompiler
-is
-	viscomp-core.cm
-	viscomp-sparc.cm
-	sparc-compiler.sml
