@@ -91,7 +91,8 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 					  group = (specgroup, (pos, newpos)),
 					  sh_spec = Sharing.DONTCARE,
 					  setup = (NONE, NONE),
-					  locl = false }
+					  locl = false,
+					  controllers = [] }
 			in
 			    SmlInfo.parse_for_errors gp i;
 			    i

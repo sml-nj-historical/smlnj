@@ -25,12 +25,17 @@ signature SMLINFO = sig
 	  explicit_core_sym: Symbol.symbol option,
 	  extra_compenv: StaticEnv.staticEnv option }
 
+    type controller =
+	 { save'restore : unit -> unit -> unit,
+	   set : unit -> unit }
+
     type info_args =
 	{ sourcepath: SrcPath.file,
 	  group: SrcPath.file * region,
 	  sh_spec: Sharing.request,
 	  setup: string option * string option,
-	  locl: bool }
+	  locl: bool,
+	  controllers: controller list }
 
     val eq : info * info -> bool	(* compares sourcepaths *)
     val compare : info * info -> order	(* compares sourcepaths *)
@@ -69,6 +74,7 @@ signature SMLINFO = sig
     val attribs : info -> attribs
     val lastseen : info -> TStamp.t
     val setup : info -> string option * string option
+    val controllers : info -> controller list
     val is_local : info -> bool
     val setguid : info * string -> unit
     val guid : info -> string
@@ -117,11 +123,16 @@ structure SmlInfo :> SMLINFO = struct
 		     explicit_core_sym: Symbol.symbol option,
 		     extra_compenv: StaticEnv.staticEnv option }
 
+    type controller =
+	 { save'restore : unit -> unit -> unit,
+	   set : unit -> unit }
+
     type info_args = { sourcepath: SrcPath.file,
 		       group: SrcPath.file * region,
 		       sh_spec: Sharing.request,
 		       setup: string option * string option,
-		       locl: bool }
+		       locl: bool,
+		       controllers: controller list }
 
     type generation = unit ref
 
@@ -145,7 +156,8 @@ structure SmlInfo :> SMLINFO = struct
 		  sh_spec: Sharing.request,
 		  attribs: attribs,
 		  setup: string option * string option,
-		  locl:  bool }
+		  locl:  bool,
+		  controllers: controller list }
 
     type ord_key = info
 
@@ -165,6 +177,7 @@ structure SmlInfo :> SMLINFO = struct
 	sh_mode := m
     fun attribs (INFO { attribs = a, ... }) = a
     fun setup (INFO { setup = s, ... }) = s
+    fun controllers (INFO { controllers = c, ... }) = c
     fun is_local (INFO { locl, ... }) = locl
 
     fun gerror (gp: GeneralParams.info) = GroupReg.error (#groupreg gp)
@@ -225,7 +238,8 @@ structure SmlInfo :> SMLINFO = struct
     end
 
     fun info' attribs (gp: GeneralParams.info) arg = let
-	val { sourcepath, group = gr as (group, region), sh_spec, setup, locl }
+	val { sourcepath, group = gr as (group, region), sh_spec, setup,
+	      locl, controllers }
 	    = arg
 	val policy = #fnpolicy (#param gp)
 	fun mkSkelname () = FNP.mkSkelName policy sourcepath
@@ -322,7 +336,8 @@ structure SmlInfo :> SMLINFO = struct
 	       sh_spec = sh_spec,
 	       attribs = attribs,
 	       setup = setup,
-	       locl = locl }
+	       locl = locl,
+	       controllers = controllers }
     end
 
     fun info (split, noguid) =
@@ -333,13 +348,17 @@ structure SmlInfo :> SMLINFO = struct
     (* the following functions are only concerned with getting the data,
      * not with checking time stamps *)
     fun getParseTree gp (i as INFO ir, quiet, noerrors) = let
-	val { sourcepath, persinfo = PERS { parsetree, ... }, ... } = ir
+	val { sourcepath, persinfo = PERS { parsetree, ... },
+	      controllers, ... } =
+	    ir
 	val err = if noerrors then (fn m => ())
 		  else (fn m => error gp i EM.COMPLAIN m EM.nullErrorBody)
     in
 	case !parsetree of
 	    SOME pt => SOME pt
 	  | NONE => let
+		val orig_settings =
+		    map (fn c => #save'restore c ()) controllers
 		fun work stream = let
 		    val _ = if noerrors orelse quiet then ()
 			    else Say.vsay ["[parsing ",
@@ -378,14 +397,17 @@ structure SmlInfo :> SMLINFO = struct
 			else (source, source)
 		    end
 		in
+		    app (fn c => #set c ()) controllers;
 		    (SF.parse parse_source, source)
+		    before app (fn r => r ()) orig_settings
 		end
 		fun openIt () = TextIO.openIn (SrcPath.osstring sourcepath)
+		fun cleanup _ = app (fn r => r ()) orig_settings
 		val pto =
 		    SOME (SafeIO.perform { openIt = openIt,
 					   closeIt = TextIO.closeIn,
 					   work = work,
-					   cleanup = fn _ => () })
+					   cleanup = cleanup })
 		(* Counting the trees explicitly may be a bit slow,
 		 * but maintaining an accurate count is difficult, so
 		 * this method should be robust.  (I don't think that

@@ -306,55 +306,69 @@ in
 				  | SOME sy => CoreHack.rewrite (ast, sy)
 			    val cmData = PidSet.listItems pids
 			    val (pre, post) = SmlInfo.setup i
+			    val controllers = SmlInfo.controllers i
 			    val topLevel = EnvRef.loc ()
-			    val toplenv = #get topLevel ()
-					  before perform_setup "pre" pre
-			    (* clear error flag (could still be set from
-			     * earlier run) *)
-			    val _ = #anyErrors source := false
-			    (* we actually run the compiler here;
-			     * Binfile is not doing it anymore *)
-			    val err = EM.errors source
-			    fun check phase =
-				if EM.anyErrors err then
-				    raise CompileExn.Compile
-					      (phase ^ " failed")
-				else ()
-			    val cinfo = C.mkCompInfo { source = source,
-						       transform = fn x => x }
-			    val splitting = Control.LambdaSplitting.get' split
-			    val guid = SmlInfo.guid i
-			    val { csegments, newstatenv, exportPid,
-				  staticPid, imports, pickle = senvP,
-				  inlineExp, ... } =
-				C.compile { source = source, ast = ast,
-					    statenv = stat, symenv = sym,
-					    compInfo = cinfo, checkErr = check,
-					    splitting = splitting,
-					    guid = guid }
-			    val { hash = lambdaPid, pickle = lambdaP } =
-				PickMod.pickleFLINT inlineExp
-			    val lambdaP = case inlineExp of
-					      NONE => Byte.stringToBytes ""
-					    | SOME _ => lambdaP
-			    val bfc = BF.create
-				      { imports = imports,
-					exportPid = exportPid,
-					cmData = cmData,
-					senv = { pickle = senvP,
-						 pid = staticPid },
-					lambda = { pickle = lambdaP,
-						   pid = lambdaPid },
-					guid = guid,
-					csegments = csegments }
-			    val memo =
-				bfc2memo (bfc, SmlInfo.lastseen i, stat)
+			    val orig_settings =
+				map (fn c => #save'restore c ()) controllers
+			    val orig_toplenv = #get topLevel ()
+			    fun reset _ =
+				(#set topLevel orig_toplenv;
+				 app (fn r => r ()) orig_settings)
+			    fun work () = let
+				val _ = perform_setup "pre" pre
+				(* clear error flag (could still be set from
+				 * earlier run) *)
+				val _ = #anyErrors source := false
+				(* we actually run the compiler here;
+				 * Binfile is not doing it anymore *)
+				val err = EM.errors source
+				fun check phase =
+				    if EM.anyErrors err then
+					raise CompileExn.Compile
+						  (phase ^ " failed")
+				    else ()
+				val cinfo = C.mkCompInfo { source = source,
+							   transform = fn x => x }
+				val splitting = Control.LambdaSplitting.get' split
+				val guid = SmlInfo.guid i
+				val { csegments, newstatenv, exportPid,
+				      staticPid, imports, pickle = senvP,
+				      inlineExp, ... } =
+				    C.compile { source = source, ast = ast,
+						statenv = stat, symenv = sym,
+						compInfo = cinfo, checkErr = check,
+						splitting = splitting,
+						guid = guid }
+				val { hash = lambdaPid, pickle = lambdaP } =
+				    PickMod.pickleFLINT inlineExp
+				val lambdaP = case inlineExp of
+						  NONE => Byte.stringToBytes ""
+						| SOME _ => lambdaP
+				val bfc = BF.create
+					      { imports = imports,
+						exportPid = exportPid,
+						cmData = cmData,
+						senv = { pickle = senvP,
+							 pid = staticPid },
+						lambda = { pickle = lambdaP,
+							   pid = lambdaPid },
+						guid = guid,
+						csegments = csegments }
+				val memo =
+				    bfc2memo (bfc, SmlInfo.lastseen i, stat)
+			    in
+				perform_setup "post" post;
+				reset ();
+				storeBFC' (gp, i,
+					   { contents = bfc,
+					     stats = save bfc });
+				SOME memo
+			    end
 			in
-			    perform_setup "post" post;
-			    #set topLevel toplenv;
-			    storeBFC' (gp, i,
-				       { contents = bfc, stats = save bfc });
-			    SOME memo
+			    SafeIO.perform { openIt = fn () => (),
+					     work = work,
+					     closeIt = fn () => (),
+					     cleanup = reset }
 			end handle (EM.Error | CompileExn.Compile _)
 				   (* At this point we handle only
 				    * explicit compiler bugs and ordinary
