@@ -40,6 +40,8 @@ sig
 
   datatype rounding_mode = TO_NEAREST | TO_NEGINF | TO_POSINF | TO_ZERO
 
+  datatype div_rounding_mode = DIV_TO_NEGINF | DIV_TO_ZERO
+
   datatype ext = SIGN_EXTEND | ZERO_EXTEND
 
   (* Should be datatypes, but FLINT does not optimize them well *)

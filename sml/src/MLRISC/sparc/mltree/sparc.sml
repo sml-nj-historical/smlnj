@@ -593,8 +593,10 @@ struct
           | T.MULT(32,a,b) => extarith(P.smul32trap,
                                        Mult32.multiply,a,b,d,cc,COMMUTE)
           | T.DIVU(32,a,b) => extarith(P.udiv32,divu32,a,b,d,cc,NOCOMMUTE)
-          | T.DIVS(32,a,b) => extarith(P.sdiv32,divs32,a,b,d,cc,NOCOMMUTE)
-          | T.DIVT(32,a,b) => extarith(P.sdiv32trap,divt32,a,b,d,cc,NOCOMMUTE)
+          | T.DIVS(T.DIV_TO_ZERO,32,a,b) =>
+	                      extarith(P.sdiv32,divs32,a,b,d,cc,NOCOMMUTE)
+          | T.DIVT(T.DIV_TO_ZERO,32,a,b) =>
+	                      extarith(P.sdiv32trap,divt32,a,b,d,cc,NOCOMMUTE)
 
                (* 64 bit support *)
           | T.SRA(64,a,b) => shift(I.SRAX,a,b,d,cc,an)
@@ -612,8 +614,10 @@ struct
               (muldiv64(I.MULX,Mult64.multiply,a,b,d,CC_REG,COMMUTE,an);
                app emitInstruction trap64)
           | T.DIVU(64,a,b) => muldiv64(I.UDIVX,divu64,a,b,d,cc,NOCOMMUTE,an)
-          | T.DIVS(64,a,b) => muldiv64(I.SDIVX,divs64,a,b,d,cc,NOCOMMUTE,an)
-          | T.DIVT(64,a,b) => muldiv64(I.SDIVX,divt64,a,b,d,cc,NOCOMMUTE,an)
+          | T.DIVS(T.DIV_TO_ZERO,64,a,b) =>
+	                      muldiv64(I.SDIVX,divs64,a,b,d,cc,NOCOMMUTE,an)
+          | T.DIVT(T.DIV_TO_ZERO,64,a,b) =>
+	                      muldiv64(I.SDIVX,divt64,a,b,d,cc,NOCOMMUTE,an)
 
               (* loads *) 
           | T.LOAD(8,a,mem) => load(I.LDUB,a,d,mem,cc,an)

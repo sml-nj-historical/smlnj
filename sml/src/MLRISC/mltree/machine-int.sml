@@ -23,6 +23,8 @@ struct
    type machine_int = I.int
    type sz = int
 
+   datatype div_rounding_mode = DIV_TO_ZERO | DIV_TO_NEGINF
+
    val itow = Word.fromInt
 
    (* Parse hex or binary, but not octal, that's for wussies *)
@@ -178,12 +180,15 @@ struct
    val ADD   = signedBinOp I.+
    val SUB   = signedBinOp I.-
    val MULS  = signedBinOp I.*
-   val DIVS  = signedBinOp I.div
-   val QUOTS = signedBinOp I.quot
-   val REMS  = signedBinOp I.rem
+   fun DIVS (DIV_TO_ZERO, ty, x, y) = signedBinOp I.quot (ty, x, y)
+     | DIVS (DIV_TO_NEGINF, ty, x, y) = signedBinOp I.div (ty, x, y)
+   fun REMS (DIV_TO_ZERO, ty, x, y) = signedBinOp I.rem (ty, x, y)
+     | REMS (DIV_TO_NEGINF, ty, x, y) = signedBinOp I.mod (ty, x, y)
    val MULU  = unsignedBinOp I.*
    val DIVU  = unsignedBinOp I.div
+(*
    val QUOTU = unsignedBinOp I.quot
+*)
    val REMU  = unsignedBinOp I.rem
 
    val NEGT  = trappingUnaryOp I.~
@@ -191,9 +196,10 @@ struct
    val ADDT  = trappingBinOp I.+
    val SUBT  = trappingBinOp I.-
    val MULT  = trappingBinOp I.*
-   val DIVT  = trappingBinOp I.div
-   val QUOTT = trappingBinOp I.quot
-   val REMT  = trappingBinOp I.rem
+   fun DIVT (DIV_TO_ZERO, ty, x, y) = trappingBinOp I.quot (ty, x, y)
+     | DIVT (DIV_TO_NEGINF, ty, x, y) = trappingBinOp I.div (ty, x, y)
+   fun REMT (DIV_TO_ZERO, ty, x, y) = trappingBinOp I.rem (ty, x, y)
+     | REMT (DIV_TO_NEGINF, ty, x, y) = trappingBinOp I.mod (ty, x, y)
 
    fun NOTB(sz,x)   = narrow(sz,I.notb x)
    fun ANDB(sz,x,y) = narrow(sz,I.andb(x,y))

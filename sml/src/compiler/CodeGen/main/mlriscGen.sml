@@ -758,7 +758,8 @@ struct
               | (v, CPS.INT k) => (untag(signed, v), LI(k))
               | (v, w) => (untag(signed, v), untag(signed, w))
           in  tag(signed, 
-                  if signed then M.DIVT(ity, v, w) else M.DIVU(ity, v, w))
+                  if signed then M.DIVT(M.DIV_TO_ZERO,ity, v, w)
+		  else M.DIVU(ity, v, w))
           end
 
           fun int31lshift(CPS.INT k, w) =
@@ -1718,7 +1719,8 @@ struct
                 of P.+     => arith32(M.ADDT, v, w, x, e, 0)
                  | P.-     => arith32(M.SUBT, v, w, x, e, 0)
                  | P.*     => arith32(M.MULT, v, w, x, e, 0)
-                 | P./     => arith32(M.DIVT, v, w, x, e, 0)
+                 | P./     => arith32(fn(ty,x,y)=>M.DIVT(M.DIV_TO_ZERO,ty,x,y),
+				      v, w, x, e, 0)
                  | _ => error "P.arith{kind=INT 32, oper}, [v,w], ..."
               (*esac*))
             | gen(ARITH(P.arith{kind=P.INT 32, oper=P.~ }, [v], x, _, e), hp) =

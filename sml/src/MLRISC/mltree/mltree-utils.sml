@@ -90,6 +90,11 @@ struct
 
    and hash2(ty,x,y) = w ty + hashRexp x + hashRexp y
 
+   and hashm T.DIV_TO_ZERO = 0w158
+     | hashm T.DIV_TO_NEGINF = 0w159
+
+   and hash3(m,ty,x,y) = hashm m + w ty + hashRexp x + hashRexp y
+
    and hashRexp rexp =  
       case rexp of
       T.REG(ty, src) => w ty + wv src
@@ -101,9 +106,8 @@ struct
     | T.ADD x => hash2 x + 0w234
     | T.SUB x => hash2 x + 0w456
     | T.MULS x => hash2 x + 0w2131
-    | T.DIVS x => hash2 x + 0w156
-    | T.QUOTS x => hash2 x + 0w1565
-    | T.REMS x => hash2 x + 0w231
+    | T.DIVS x => hash3 x + 0w156
+    | T.REMS x => hash3 x + 0w231
     | T.MULU x => hash2 x + 0w123
     | T.DIVU x => hash2 x + 0w1234
     | T.REMU x => hash2 x + 0w211
@@ -111,9 +115,8 @@ struct
     | T.ADDT x => hash2 x + 0w1219
     | T.SUBT x => hash2 x + 0w999
     | T.MULT x => hash2 x + 0w7887
-    | T.DIVT x => hash2 x + 0w88884
-    | T.QUOTT x => hash2 x + 0w8884
-    | T.REMT x => hash2 x + 0w99
+    | T.DIVT x => hash3 x + 0w88884
+    | T.REMT x => hash3 x + 0w99
     | T.ANDB x => hash2 x + 0w12312
     | T.ORB x => hash2 x + 0w558
     | T.XORB x => hash2 x + 0w234
@@ -255,6 +258,9 @@ struct
 
   and eq2((a,b,c),(d,e,f)) = a=d andalso eqRexp(b,e) andalso eqRexp(c,f)
 
+  and eq3((m,a,b,c),(n,d,e,f)) =
+      m=n andalso a=d andalso eqRexp(b,e) andalso eqRexp(c,f)
+
   and eqRexp(T.REG(a,b),T.REG(c,d)) = a=c andalso eqCell(b,d)
     | eqRexp(T.LI a,T.LI b) = a=b 
     | eqRexp(T.LABEL a,T.LABEL b) = eqLabel(a,b)
@@ -264,9 +270,8 @@ struct
     | eqRexp(T.ADD x,T.ADD y) = eq2(x,y)
     | eqRexp(T.SUB x,T.SUB y) = eq2(x,y)
     | eqRexp(T.MULS x,T.MULS y) = eq2(x,y)
-    | eqRexp(T.DIVS x,T.DIVS y) = eq2(x,y)
-    | eqRexp(T.QUOTS x,T.QUOTS y) = eq2(x,y)
-    | eqRexp(T.REMS x,T.REMS y) = eq2(x,y)
+    | eqRexp(T.DIVS x,T.DIVS y) = eq3(x,y)
+    | eqRexp(T.REMS x,T.REMS y) = eq3(x,y)
     | eqRexp(T.MULU x,T.MULU y) = eq2(x,y)
     | eqRexp(T.DIVU x,T.DIVU y) = eq2(x,y)
     | eqRexp(T.REMU x,T.REMU y) = eq2(x,y)
@@ -274,9 +279,8 @@ struct
     | eqRexp(T.ADDT x,T.ADDT y) = eq2(x,y)
     | eqRexp(T.SUBT x,T.SUBT y) = eq2(x,y)
     | eqRexp(T.MULT x,T.MULT y) = eq2(x,y)
-    | eqRexp(T.DIVT x,T.DIVT y) = eq2(x,y)
-    | eqRexp(T.QUOTT x,T.QUOTT y) = eq2(x,y)
-    | eqRexp(T.REMT x,T.REMT y) = eq2(x,y)
+    | eqRexp(T.DIVT x,T.DIVT y) = eq3(x,y)
+    | eqRexp(T.REMT x,T.REMT y) = eq3(x,y)
     | eqRexp(T.ANDB x,T.ANDB y) = eq2(x,y)
     | eqRexp(T.ORB x,T.ORB y) = eq2(x,y)
     | eqRexp(T.XORB x,T.XORB y) = eq2(x,y)
@@ -477,9 +481,8 @@ struct
         | rexp(T.ADD x) = binary("+",x)
         | rexp(T.SUB x) = binary("-",x)
         | rexp(T.MULS x) = two("muls",x)
-        | rexp(T.DIVS x) = two("divs",x)
-        | rexp(T.QUOTS x) = two("quots",x)
-        | rexp(T.REMS x) = two("rems",x)
+        | rexp(T.DIVS x) = three("divs",x)
+        | rexp(T.REMS x) = three("rems",x)
         | rexp(T.MULU x) = two("mulu",x)
         | rexp(T.DIVU x) = two("divu",x)
         | rexp(T.REMU x) = two("remu",x)
@@ -487,9 +490,8 @@ struct
         | rexp(T.ADDT x) = two("addt",x)
         | rexp(T.SUBT x) = two("subt",x)
         | rexp(T.MULT x) = two("mult",x)
-        | rexp(T.DIVT x) = two("divt",x)
-        | rexp(T.QUOTT x) = two("quott",x)
-        | rexp(T.REMT x) = two("remt",x)
+        | rexp(T.DIVT x) = three("divt",x)
+        | rexp(T.REMT x) = three("remt",x)
         | rexp(T.ANDB x) = binary("&",x)
         | rexp(T.ORB x)  = binary("|",x)
         | rexp(T.XORB x) = binary("^",x)
@@ -574,6 +576,9 @@ struct
       (* Auxiliary functions *)
       and one(opcode,(t,x)) = opcode^ty t^"("^rexp x^")"
       and two(opcode,(t,x,y)) = opcode^ty t^pair(x,y)
+      and three(opcode,(m,t,x,y)) = opcode^dmr m^ty t^pair(x,y)
+      and dmr T.DIV_TO_ZERO = "{0}"
+	| dmr T.DIV_TO_NEGINF = "{-inf}"
       and binary(opcode,(t,x,y)) = parenRexp x^" "^opcode^ty t^" "^parenRexp y
       and unary(opcode,(t,x)) = opcode^ty t^" "^parenRexp x
       and pair(x,y) = "("^rexp x^","^rexp y^")"

@@ -597,7 +597,8 @@ struct
            | T.ADDT(32, e1, e2) => arithTrapping(I.ADD, e1, e2, rt, an)
            | T.SUBT(32, e1, e2) => arithTrapping(I.SUBF, e2, e1, rt, an)
            | T.MULT(32, e1, e2) => arithTrapping(I.MULLW, e1, e2, rt, an)
-           | T.DIVT(32, e1, e2) => divide(32,I.DIVW,divt32,e1,e2,rt,true,an)
+           | T.DIVT(T.DIV_TO_ZERO, 32, e1, e2) =>
+	                           divide(32,I.DIVW,divt32,e1,e2,rt,true,an)
     
            | T.SRA(32, e1, e2)  => sra(I.SRAW, I.SRAWI, e1, e2, rt, an)
            | T.SRL(32, e1, e2)  => srl32(e1, e2, rt, an)

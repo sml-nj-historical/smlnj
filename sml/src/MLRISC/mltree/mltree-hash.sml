@@ -73,6 +73,11 @@ struct
 
   and hash2(ty,x,y) = w ty + hashRexp x + hashRexp y
 
+  and hashm T.DIV_TO_ZERO = 0w158
+    | hashm T.DIV_TO_NEGINF = 0w159
+
+  and hash3(m,ty,x,y) = hashm m + w ty + hashRexp x + hashRexp y
+
   and hashRexp rexp =  
       case rexp
        of  T.REG(ty, src) => w ty + wv src
@@ -84,9 +89,8 @@ struct
 	| T.ADD x => hash2 x + 0w234
 	| T.SUB x => hash2 x + 0w456
 	| T.MULS x => hash2 x + 0w2131
-	| T.DIVS x => hash2 x + 0w156
-	| T.QUOTS x => hash2 x + 0w1565
-	| T.REMS x => hash2 x + 0w231
+	| T.DIVS x => hash3 x + 0w156
+	| T.REMS x => hash3 x + 0w231
 	| T.MULU x => hash2 x + 0w123
 	| T.DIVU x => hash2 x + 0w1234
 	| T.REMU x => hash2 x + 0w211
@@ -94,9 +98,8 @@ struct
 	| T.ADDT x => hash2 x + 0w1219
 	| T.SUBT x => hash2 x + 0w999
 	| T.MULT x => hash2 x + 0w7887
-	| T.DIVT x => hash2 x + 0w88884
-	| T.QUOTT x => hash2 x + 0w8884
-	| T.REMT x => hash2 x + 0w99
+	| T.DIVT x => hash3 x + 0w88884
+	| T.REMT x => hash3 x + 0w99
 	| T.ANDB x => hash2 x + 0w12312
 	| T.ORB x => hash2 x + 0w558
 	| T.XORB x => hash2 x + 0w234

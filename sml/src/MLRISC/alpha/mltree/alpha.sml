@@ -1006,12 +1006,14 @@ struct
                multiply(32,
                  fn{ra,rb,rc} => I.operate{oper=I.MULL,ra=ra,rb=rb,rc=rc},
                  Muls32.multiply,a,b,d,[],an) 
-          | T.DIVT(32,a,b) => divide(32,P.divlv,Mult32.divide,a,b,d,an)
+          | T.DIVT(T.DIV_TO_ZERO,32,a,b) =>
+	                      divide(32,P.divlv,Mult32.divide,a,b,d,an)
           | T.DIVU(32,a,b) => divide(32,P.divlu,Mulu32.divide,a,b,d,an)
-          | T.DIVS(32,a,b) => divide(32,P.divl,Muls32.divide,a,b,d,an)
-          | T.REMT(32,a,b) => pseudo(P.remlv,a,b,d)
+          | T.DIVS(T.DIV_TO_ZERO,32,a,b) =>
+	                      divide(32,P.divl,Muls32.divide,a,b,d,an)
+          | T.REMT(T.DIV_TO_ZERO,32,a,b) => pseudo(P.remlv,a,b,d)
           | T.REMU(32,a,b) => pseudo(P.remlu,a,b,d)
-          | T.REMS(32,a,b) => pseudo(P.reml,a,b,d)
+          | T.REMS(T.DIV_TO_ZERO,32,a,b) => pseudo(P.reml,a,b,d)
 
           | T.SLL(32,a,b) => sll32(a,b,d,an)
           | T.SRA(32,a,b) => sra(a,b,d,an)
@@ -1034,12 +1036,14 @@ struct
                multiply(64,
                  fn{ra,rb,rc} => I.operate{oper=I.MULQ,ra=ra,rb=rb,rc=rc},
                  Muls64.multiply,a,b,d,[],an) 
-          | T.DIVT(64,a,b) => divide(64,P.divqv,Mult64.divide,a,b,d,an)
+          | T.DIVT(T.DIV_TO_ZERO,64,a,b) =>
+	                      divide(64,P.divqv,Mult64.divide,a,b,d,an)
           | T.DIVU(64,a,b) => divide(64,P.divqu,Mulu64.divide,a,b,d,an)
-          | T.DIVS(64,a,b) => divide(64,P.divq,Muls64.divide,a,b,d,an)
-          | T.REMT(64,a,b) => pseudo(P.remqv,a,b,d)
+          | T.DIVS(T.DIV_TO_ZERO,64,a,b) =>
+	                      divide(64,P.divq,Muls64.divide,a,b,d,an)
+          | T.REMT(T.DIV_TO_ZERO,64,a,b) => pseudo(P.remqv,a,b,d)
           | T.REMU(64,a,b) => pseudo(P.remqu,a,b,d)
-          | T.REMS(64,a,b) => pseudo(P.remq,a,b,d)
+          | T.REMS(T.DIV_TO_ZERO,64,a,b) => pseudo(P.remq,a,b,d)
 
           | T.SLL(64,a,b) => sll64(a,b,d,an)
           | T.SRA(64,a,b) => sra(a,b,d,an)

@@ -7,6 +7,8 @@ sig
    type machine_int = IntInf.int 
    type sz = int (* width in bits *)
 
+   datatype div_rounding_mode = DIV_TO_ZERO | DIV_TO_NEGINF
+
    (* some common constants *)
    val int_0   : machine_int
    val int_1   : machine_int
@@ -79,14 +81,17 @@ sig
    val ADD   : sz * machine_int * machine_int -> machine_int
    val SUB   : sz * machine_int * machine_int -> machine_int
    val MULS  : sz * machine_int * machine_int -> machine_int
-   val DIVS  : sz * machine_int * machine_int -> machine_int
-   val QUOTS : sz * machine_int * machine_int -> machine_int
-   val REMS  : sz * machine_int * machine_int -> machine_int
+   val DIVS  : div_rounding_mode *
+	       sz * machine_int * machine_int -> machine_int
+   val REMS  : div_rounding_mode *
+	       sz * machine_int * machine_int -> machine_int
 
    (* unsigned operators *)
    val MULU  : sz * machine_int * machine_int -> machine_int
    val DIVU  : sz * machine_int * machine_int -> machine_int
+(*
    val QUOTU : sz * machine_int * machine_int -> machine_int
+*)
    val REMU  : sz * machine_int * machine_int -> machine_int
 
    (* Signed, trapping operators, may raise Overflow *)
@@ -95,9 +100,10 @@ sig
    val ADDT  : sz * machine_int * machine_int -> machine_int
    val SUBT  : sz * machine_int * machine_int -> machine_int
    val MULT  : sz * machine_int * machine_int -> machine_int
-   val DIVT  : sz * machine_int * machine_int -> machine_int
-   val QUOTT : sz * machine_int * machine_int -> machine_int
-   val REMT  : sz * machine_int * machine_int -> machine_int
+   val DIVT  : div_rounding_mode *
+	       sz * machine_int * machine_int -> machine_int
+   val REMT  : div_rounding_mode *
+	       sz * machine_int * machine_int -> machine_int
 
    (* bit operators *)
    val NOTB  : sz * machine_int -> machine_int

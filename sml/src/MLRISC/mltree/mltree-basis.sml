@@ -25,6 +25,8 @@ struct
 
   datatype rounding_mode = TO_NEAREST | TO_NEGINF | TO_POSINF | TO_ZERO
 
+  datatype div_rounding_mode = DIV_TO_NEGINF | DIV_TO_ZERO
+
   fun error(msg, oper) = MLRiscErrorMsg.error("MLTreeBasis",msg^": "^oper)
 
   nonfix <> < > >= <=

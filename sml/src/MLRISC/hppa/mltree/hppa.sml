@@ -741,7 +741,8 @@ struct
            | T.MULU(32,a,b) => muldiv(32,Mulu32.multiply,MC.mulu,a,b,t,true,an)
            | T.MULT(32,a,b) => muldiv(32,Mult32.multiply,MC.mulo,a,b,t,true,an)
            | T.DIVU(32,a,b)  => muldiv(32,divu32,MC.divu,a,b,t,false,an)
-           | T.DIVT(32,a,b)  => muldiv(32,divt32,MC.divo,a,b,t,false,an)
+           | T.DIVT(T.DIV_TO_ZERO,32,a,b) =>
+	                        muldiv(32,divt32,MC.divo,a,b,t,false,an)
 
            | T.LOAD(8,ea,mem) => load(8,I.LDB,I.LDBX,I.LDBX,ea,t,mem,an)
            | T.LOAD(16,ea,mem) => load(16,I.LDH,I.LDHX,I.LDHX_S,ea,t,mem,an)

@@ -46,7 +46,8 @@ struct
         (prInt(T.Constant.valueOf c) handle _ => T.Constant.toString c)
     | toStr(T.LI i, _) = prIntInf i
     | toStr(T.MULS(_,lexp1, lexp2), _) = toStr(lexp1, 2) ^ "*" ^ toStr(lexp2,2)
-    | toStr(T.DIVS(_,lexp1, lexp2), _) =  toStr(lexp1, 2) ^ "/" ^ toStr(lexp2,2)
+    | toStr(T.DIVS(T.DIV_TO_ZERO,_,lexp1, lexp2), _) =
+      toStr(lexp1, 2) ^ "/" ^ toStr(lexp2,2) (* what if DIV_TO_NEGINF ?? *)
     | toStr(T.SLL(_,lexp, cnt), prec) = toStr(lexp,2) ^ "<<" ^ toStr(cnt,2)
     | toStr(T.SRL(_,lexp, cnt), prec) = toStr(lexp,2) ^ ">>" ^ toStr(cnt,2)
     | toStr(T.ANDB(_,lexp, mask), prec) = 

@@ -878,14 +878,14 @@ struct
              | T.REMU(32, x, y) => rem(false, false, x, y)
 
              | T.MULS(32, x, y) => multiply(x, y)
-             | T.DIVS(32, x, y) => divide(true, false, x, y)
-             | T.REMS(32, x, y) => rem(true, false, x, y)
+             | T.DIVS(T.DIV_TO_ZERO, 32, x, y) => divide(true, false, x, y)
+             | T.REMS(T.DIV_TO_ZERO, 32, x, y) => rem(true, false, x, y)
 
              | T.ADDT(32, x, y) => (binaryComm(I.ADDL, x, y); trap())
              | T.SUBT(32, x, y) => (binary(I.SUBL, x, y); trap())
              | T.MULT(32, x, y) => (multiply(x, y); trap())
-             | T.DIVT(32, x, y) => divide(true, true, x, y)
-             | T.REMT(32, x, y) => rem(true, true, x, y)
+             | T.DIVT(T.DIV_TO_ZERO, 32, x, y) => divide(true, true, x, y)
+             | T.REMT(T.DIV_TO_ZERO, 32, x, y) => rem(true, true, x, y)
 
              | T.ANDB(32, x, y) => binaryComm(I.ANDL, x, y)
              | T.ORB(32, x, y)  => binaryComm(I.ORL, x, y)

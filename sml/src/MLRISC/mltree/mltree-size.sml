@@ -16,9 +16,8 @@ struct
      | size(T.ADD(ty,_,_)) = ty
      | size(T.SUB(ty,_,_)) = ty
      | size(T.MULS(ty,_,_)) = ty
-     | size(T.DIVS(ty,_,_)) = ty
-     | size(T.QUOTS(ty,_,_)) = ty
-     | size(T.REMS(ty,_,_)) = ty
+     | size(T.DIVS(_,ty,_,_)) = ty
+     | size(T.REMS(_,ty,_,_)) = ty
      | size(T.MULU(ty,_,_)) = ty
      | size(T.DIVU(ty,_,_)) = ty
      | size(T.REMU(ty,_,_)) = ty
@@ -26,9 +25,8 @@ struct
      | size(T.ADDT(ty,_,_)) = ty
      | size(T.SUBT(ty,_,_)) = ty
      | size(T.MULT(ty,_,_)) = ty
-     | size(T.DIVT(ty,_,_)) = ty
-     | size(T.QUOTT(ty,_,_)) = ty
-     | size(T.REMT(ty,_,_)) = ty
+     | size(T.DIVT(_,ty,_,_)) = ty
+     | size(T.REMT(_,ty,_,_)) = ty
      | size(T.ANDB(ty,_,_)) = ty
      | size(T.ORB(ty,_,_)) = ty
      | size(T.XORB(ty,_,_)) = ty

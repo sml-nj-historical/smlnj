@@ -14,6 +14,32 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/03/27 16:27:00 EST
+Tag: blume-20020327-mlrisc-divisions
+Description:
+
+Added support for all four division operations (ML's div, mod, quot,
+and rem) to MLRISC.  In the course of doing so, I also rationalized
+the naming (no more annoying switch-around of DIV and QUOT), by
+parameterizing the operation by div_rounding_mode (which can be either
+DIV_TO_ZERO or DIV_TO_NEGINF).
+
+The generic MLTreeGen functor takes care of compiling all four
+operations down to only round-to-zero div.
+
+Missing pieces:
+
+  * Doing something smarter than relying on MLTreeGen on architectures
+    like, e.g., the x86 where hardware division delivers both quotient and
+    remainder at the same time.  With this, the implementation of the
+    round-to-neginf operations could be further streamlined.
+
+  * Remove inlining support for div/mod/rem from the frontend and replace it
+    with primops that get carried through to the backend.  Do this for all
+    int and word types.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/03/25 17:25:00 EST
 Tag: blume-20020325-divmod
 Description:

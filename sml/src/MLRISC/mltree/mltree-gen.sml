@@ -80,10 +80,74 @@ functor MLTreeGen (
          [] => arith(rightShift,f,ty,a,b) 
        | _  => f(promoteTy(ty), a, b)
 
+   (* Implement division with round-to-negative-infinity in terms
+    * of division with round-to-zero. *)
+   fun divinf (xdiv, ty, aexp, bexp) = let
+       val a = Cells.newReg ()
+       val b = Cells.newReg ()
+       val q = Cells.newReg ()
+       val r = Cells.newReg ()
+       val zero = T.LI T.I.int_0
+       val one = T.LI T.I.int_1
+   in
+       T.LET (T.SEQ [T.MV (ty, a, aexp),
+		     T.MV (ty, b, bexp),
+		     T.MV (ty, q, xdiv (T.DIV_TO_ZERO, ty, T.REG (ty, a),
+					                   T.REG (ty, b))),
+		     T.IF (T.CMP (ty, T.Basis.GE, T.REG (ty, q), zero),
+			   T.SEQ [],
+			   T.IF (T.CMP (ty, T.Basis.EQ,
+					    T.REG (ty, a),
+					    T.MULS (ty, T.REG (ty, q),
+						        T.REG (ty, b))),
+				 T.SEQ [],
+				 T.MV (ty, q, T.SUB (ty, T.REG (ty, q),
+						         one))))],
+	      T.REG(ty,q))
+   end
+
+   (* Same for rem when rounding to negative infinity. *)
+   fun reminf (xdiv, ty, aexp, bexp) = let
+       val a = Cells.newReg ()
+       val b = Cells.newReg ()
+       val q = Cells.newReg ()
+       val r = Cells.newReg ()
+       val zero = T.LI T.I.int_0
+   in
+       T.LET (T.SEQ [T.MV (ty, a, aexp),
+		     T.MV (ty, b, bexp),
+		     T.MV (ty, q, xdiv (T.DIV_TO_ZERO, ty, T.REG (ty, a),
+					                   T.REG (ty, b))),
+		     T.MV (ty, r, T.SUB (ty, T.REG (ty, a),
+					     T.MULS (ty, T.REG (ty, q),
+						         T.REG (ty, b)))),
+		     T.IF (T.OR (T.CMP (ty, T.Basis.GE, T.REG (ty, q), zero),
+				 T.CMP (ty, T.Basis.EQ, T.REG (ty, r), zero)),
+			   T.SEQ [],
+			   T.MV (ty, r, T.ADD (ty, T.REG (ty, r),
+					           T.REG (ty, b))))],
+	      T.REG (ty, r))
+   end
+
+   (* Same for rem when rounding when rounding to zero. *)
+   fun remzero (xdiv, xmul, ty, aexp, bexp) = let
+       val a = Cells.newReg ()
+       val b = Cells.newReg ()
+   in
+       T.LET (T.SEQ [T.MV (ty, a, aexp),
+		     T.MV (ty, b, bexp)],
+	      T.SUB (ty, T.REG (ty, a),
+		         xmul (ty, T.REG (ty, b),
+			           xdiv (T.DIV_TO_ZERO, ty, T.REG (ty, a),
+					                    T.REG (ty, b)))))
+   end
+
    (*
     * Translate integer expressions of unknown types into the appropriate
     * term.
     *)
+
+   fun DIVREMz d (ty, a, b) = d (T.DIV_TO_ZERO, ty, a, b)
 
    fun compileRexp(exp) = 
        case exp of
@@ -94,19 +158,31 @@ functor MLTreeGen (
        | T.ADD(ty,a,b)  => promotable T.SRA (exp,T.ADD,ty,a,b)
        | T.SUB(ty,a,b)  => promotable T.SRA (exp,T.SUB,ty,a,b)
        | T.MULS(ty,a,b) => promotable T.SRA (exp,T.MULS,ty,a,b)
-       | T.DIVS(ty,a,b) => promotable T.SRA (exp,T.DIVS,ty,a,b)
-       | T.REMS(ty,a,b) => promotable T.SRA (exp,T.REMS,ty,a,b)
+       | T.DIVS(T.DIV_TO_ZERO,ty,a,b) =>
+	                   promotable T.SRA (exp,DIVREMz T.DIVS,ty,a,b)
+       | T.DIVS(T.DIV_TO_NEGINF,ty,a,b) => divinf (T.DIVS,ty,a,b)
+       | T.REMS(T.DIV_TO_ZERO,ty,a,b) =>
+	 if ty = intTy then remzero (T.DIVS,T.MULS,ty,a,b)
+	 else promotable T.SRA (exp,DIVREMz T.REMS,ty,a,b)
+       | T.REMS(T.DIV_TO_NEGINF,ty,a,b) => reminf (T.DIVS,ty,a,b)
        | T.MULU(ty,a,b) => promotable T.SRL (exp,T.MULU,ty,a,b)
        | T.DIVU(ty,a,b) => promotable T.SRL (exp,T.DIVU,ty,a,b)
-       | T.REMU(ty,a,b) => promotable T.SRL (exp,T.REMU,ty,a,b)
+       | T.REMU(ty,a,b) =>
+	 if ty = intTy then
+	     remzero (fn (_,ty,a,b) => T.DIVU (ty,a,b),T.MULU,ty,a,b)
+	 else promotable T.SRL (exp,T.REMU,ty,a,b)
 
          (* for overflow trapping ops; we have to do the simulation *)
        | T.NEGT(ty,a)   => T.SUBT(ty,zeroT,a)
        | T.ADDT(ty,a,b) => arith (T.SRA,T.ADDT,ty,a,b)
        | T.SUBT(ty,a,b) => arith (T.SRA,T.SUBT,ty,a,b)
        | T.MULT(ty,a,b) => arith (T.SRA,T.MULT,ty,a,b)
-       | T.DIVT(ty,a,b) => arith (T.SRA,T.DIVT,ty,a,b)
-       | T.REMT(ty,a,b) => arith (T.SRA,T.REMT,ty,a,b)
+       | T.DIVT(T.DIV_TO_ZERO,ty,a,b) => arith (T.SRA,DIVREMz T.DIVT,ty,a,b)
+       | T.DIVT(T.DIV_TO_NEGINF,ty,a,b) => divinf (T.DIVT,ty,a,b)
+       | T.REMT(T.DIV_TO_ZERO,ty,a,b) =>
+	 if ty = intTy then remzero (T.DIVT,T.MULS,ty,a,b)
+	 else arith (T.SRA,DIVREMz T.REMT,ty,a,b)
+       | T.REMT(T.DIV_TO_NEGINF,ty,a,b) => reminf (T.DIVT,ty,a,b)
 
          (* conditional evaluation rules *)
 (*** XXX: Seems wrong.
