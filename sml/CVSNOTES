@@ -1,0 +1,7 @@
+-*- outline -*-
+
+* from Zhong's dir
+	cd .../src/sml-nj
+	rm -rf **/CM
+	rm -r sml.* sml-cm.* *.sml bin.*
+	cvs -d ~cvs import -m '' smlnj/src/sml-nj FLINT v980311
