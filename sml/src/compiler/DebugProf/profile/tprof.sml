@@ -98,7 +98,7 @@ fun varexp(v as VALvar{typ=ref ty,path,...}) =
     (case TypesUtil.headReduceType ty
       of POLYty _ =>
 	 bug ("poly["^SP.toString path^"] in Prof")
-       | ty' => VARexp(ref v, [])) (* VARexp(ref v, SOME ty') *)
+       | ty' => VARexp(ref v, Types.UNDEFty)) (* VARexp(ref v, SOME ty') *)
   | varexp _ = bug "090924 in prof"
 
 fun clean (path as name::names) = if S.eq(name,anonSym) then names else path

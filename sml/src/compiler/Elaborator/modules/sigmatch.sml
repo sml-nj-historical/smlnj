@@ -155,99 +155,29 @@ fun ident _ = ()
 
 (* returns true and the new instantiations if actual type > spec type *)
 (* matches an abstract version of a type with its actual version *)
-fun absEqvTy (spec, actual, dinfo) : (ty list * tyvar list * ty * bool) =
+fun absEqvTy (spec, actual) : (ty * tyvar list * ty * bool) =
   let val actual = TU.prune actual
       val spec = TU.prune spec
       val (actinst, insttys0) = TU.instantiatePoly actual
       val (specinst, stys) = TU.instantiatePoly spec
       val _ = ListPair.app Unify.unifyTy (insttys0, stys)
 
-      (*
-       * This is a gross hack. Inlining-information such as primops 
-       * (or inline-able expressions) are propagated through signature
-       * matching. However, their types may change. The following code
-       * is to figure out the proper type application arguments, insttys.
-       * The typechecker does similar hack. We will clean this up in the
-       * future (ZHONG).
-       *
-       * Change: The hack is gone, but I am not sure whether the code
-       * below could be further simplified.  (INL_PRIM now has mandatory
-       * type information, and this type information is always correctly
-       * provided by prim.sml.)  (Blume, 1/2001)
-       *)
-(*
-      val insttys = 
-       (case dinfo 
-         of II.INL_PRIM(_, st) =>
-              (let val (actinst', insttys') = TU.instantiatePoly st
-                in Unify.unifyTy(actinst', actinst) handle _ => ();
-                   insttys'
-               end)
-          | _ =>insttys0)
-*)
-      val insttys = 
-(* PRIMOP: ii2ty no longer exists --
-	  case INS.Param.ii2ty dinfo of
-	      SOME st =>
-              (let val (actinst', insttys') = TU.instantiatePoly st
-               in
-		   Unify.unifyTy(actinst', actinst) handle _ => ();
-		   insttys'
-               end)
-            | NONE => *) insttys0
-
       val res = (Unify.unifyTy(actinst, specinst); true) handle _ => false
 
       val instbtvs = map TU.tyvarType insttys0
       (* should I use stys here instead, why insttys0 ? *)
 
-   in (insttys, instbtvs, specinst, res)
+   in (actinst, instbtvs, specinst, res)
   end
 
-fun eqvTnspTy (spec, actual, dinfo) : (ty list * tyvar list) = 
+fun eqvTnspTy (spec, actual) : (ty * tyvar list) = 
   let val actual = TU.prune actual
       val (actinst, insttys) = TU.instantiatePoly actual
-
-      (*
-       * This is a gross hack. Inlining-information such as primops 
-       * (or inline-able expressions) are propagated through signature
-       * matching. However, their types may change. The following code
-       * is to figure out the proper type application arguments, insttys.
-       * The typechecker does similar hack. We will clean this up in the
-       * future (ZHONG).
-       *
-       * Change: The hack is gone, but I am not sure whether the code
-       * below could be further simplified.  (INL_PRIM now has mandatory
-       * type information, and this type information is always correctly
-       * provided by prim.sml.)  (Blume, 1/2001)
-       *)
-(*
-      val insttys = 
-       (case dinfo 
-         of II.INL_PRIM(_, st) =>
-              (let val (actinst', insttys') = TU.instantiatePoly st
-                in Unify.unifyTy(actinst', actinst) handle _ => ();
-                   insttys'
-               end)
-          | _ =>insttys)
-*)
-(* PRIMOP: ii2ty no longer exists ---
-      val insttys = 
-	  case INS.Param.ii2ty dinfo of
-	      SOME st =>
-              (let val (actinst', insttys') = TU.instantiatePoly st
-               in
-		   Unify.unifyTy(actinst', actinst) handle _ => ();
-		   insttys'
-               end)
-            | NONE =>insttys
-*)
       val (specinst, stys) = TU.instantiatePoly spec
       val _ = ((Unify.unifyTy(actinst, specinst))
                handle _ => bug "unexpected types in eqvTnspTy")
       val btvs = map TU.tyvarType stys
-             
-   in (insttys, btvs)
+   in (actinst, btvs)
   end
 
 
@@ -280,24 +210,21 @@ val _ = let fun h pps sign =PPModules.ppSignature pps (sign,statenv,6)
          in debugPrint (showsigs) (s, h, specSig)
         end
 
-fun matchTypes (spec, actual, dinfo, name) : (T.ty list * T.tyvar list) = 
-  if TU.compareTypes(spec, actual) then 
-       let val (insttys, btvs) = eqvTnspTy(spec, actual, dinfo)
-        in (insttys, btvs)
-       end
-  else (err EM.COMPLAIN 
-            "value type in structure doesn't match signature spec"
-            (fn ppstrm =>
-                 (PPType.resetPPType();
-                  PP.newline ppstrm;
-                  app (PP.string ppstrm) ["  name: ", S.name name];
-                  PP.newline ppstrm;
-                  PP.string ppstrm "spec:   ";
-                  PPType.ppType statenv ppstrm spec;
-                  PP.newline ppstrm;
-                  PP.string ppstrm "actual: ";
-                  PPType.ppType statenv ppstrm actual));
-        ([],[]))
+fun matchTypes (spec, actual, name) : (T.ty list * T.tyvar list) = 
+    if TU.compareTypes(spec, actual) then eqvTnspTy(spec, actual)
+    else (err EM.COMPLAIN 
+              "value type in structure doesn't match signature spec"
+              (fn ppstrm =>
+                   (PPType.resetPPType();
+                    PP.newline ppstrm;
+                    app (PP.string ppstrm) ["  name: ", S.name name];
+                    PP.newline ppstrm;
+                    PP.string ppstrm "spec:   ";
+                    PPType.ppType statenv ppstrm spec;
+                    PP.newline ppstrm;
+                    PP.string ppstrm "actual: ";
+                    PPType.ppType statenv ppstrm actual));
+          ([],[]))
 
 fun complain s = err EM.COMPLAIN s EM.nullErrorBody
 fun complain' x = (complain x; raise BadBinding)
@@ -844,7 +771,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                        val acttyp = typeInOriginal("$actty(val/val)", acttyp)
                        val dacc = DA.selAcc(rootAcc, actslot)
                        val dinfo = II.sel(rootInfo, actslot)
-                       val (instys,btvs) = 
+                       val (insty,btvs) = 
                          matchTypes(spectyp, acttyp, dinfo, sym)
 
                        val spath = SP.SPATH[sym]
@@ -861,7 +788,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                                            access=acc, info=dinfo}
                                   val vb = 
                                     A.VB {pat=A.VARpat specvar,
-                                          exp=A.VARexp(ref actvar, instys),
+                                          exp=A.VARexp(ref actvar, insty),
                                           boundtvs=btvs, tyvars=ref []}
 
                                in ((A.VALdec [vb])::decs, specvar)
@@ -877,7 +804,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                                          rep, sign, lazyp}, slot} => 
                    let val spectyp = typeInMatched("$specty(val/con)", spectyp)
                        val acttyp = typeInOriginal("$actty(val/con)", acttyp)
-                       val (instys, btvs) = 
+                       val (insty, btvs) = 
                          matchTypes(spectyp, acttyp, II.Null, name)
 
                        val nrep = 
@@ -896,7 +823,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
 				      typ=ref spectyp}
                              val vb = 
                                A.VB {pat=A.VARpat specvar,
-                                     exp=A.CONexp(con, instys),
+                                     exp=A.CONexp(con, insty),
                                      boundtvs=btvs, tyvars=ref []}
                           in ((A.VALdec [vb])::decs, 
                               (B.VALbind specvar)::bindings)
@@ -1280,8 +1207,8 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
                    val srctyp = typeInSrc("$spec-srcty(packStr-val)", spectyp)
                    val dacc = DA.selAcc(rootAcc, s)
                    val dinfo = II.sel(rootInfo, s)
-                   val (instys, btvs, resinst, eqflag) = 
-                     absEqvTy(restyp, srctyp, dinfo)
+                   val (insty, btvs, resinst, eqflag) = 
+                     absEqvTy(restyp, srctyp)
 
                    val spath = SP.SPATH[sym]
                    val srcvar = VALvar{path=spath, typ=ref srctyp,
@@ -1296,7 +1223,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
 
                                val ntycs = TU.filterSet(resinst, abstycs)
                                val exp = 
-                                 A.PACKexp(A.VARexp(ref srcvar, instys),
+                                 A.PACKexp(A.VARexp(ref srcvar, insty),
                                            resinst, ntycs)
 
                                val vb = A.VB {pat=(A.VARpat resvar), exp=exp,
@@ -1304,7 +1231,6 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
 
                             in ((A.VALdec [vb])::decs, resvar)
                            end)
-
 
                    val bindings' = (B.VALbind nv)::bindings
                 in packElems(elems, entEnv, decs', bindings')

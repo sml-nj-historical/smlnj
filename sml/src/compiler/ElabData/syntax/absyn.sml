@@ -18,7 +18,7 @@ type region = Ast.region  (* = int * int *)
 datatype numberedLabel = LABEL of {name: S.symbol, number: int}
 
 datatype exp
-  = VARexp of var ref * ty list
+  = VARexp of var ref * ty
   | CONexp of datacon * ty list
   | INTexp of IntInf.int * ty
   | WORDexp of IntInf.int * ty

@@ -54,7 +54,7 @@ val _ = entertyp := POLYty{sign=[false],
 					 body=tupleTy[alpha,intTy] --> alpha}}
 
 
-val enterexp = VARexp(ref entervar, [])
+val enterexp = VARexp(ref entervar, Types.UNDEFty)
 
 fun clean names = names
 val err = ErrorMsg.impossible
@@ -177,7 +177,7 @@ and instrexp(line,names) =
                             path=SP.SPATH [xsym], 
 	                    typ=ref Types.UNDEFty}
 	  in FNexp([RULE(VARpat v, 
-			 enter(line,names,APPexp(e,VARexp(ref v, []))))],
+			 enter(line,names,APPexp(e,VARexp(ref v, Types.UNDEFty))))],
 		   Types.UNDEFty)
 	 end
        | etaexpand _ = err "etaexpand in sprof.sml"
@@ -206,8 +206,8 @@ val absyn' =instrdec((0,0),nil,absyn)
 
 in 
    LOCALdec(VALdec[VB{pat=VARpat entervar,
-		      exp=APPexp(APPexp(VARexp(ref derefop,[]),
-					VARexp(ref(registerVar),[])),
+		      exp=APPexp(APPexp(VARexp(ref derefop,Types.UNDEFty),
+					VARexp(ref(registerVar),Types.UNDEFty)),
 				 STRINGexp(concat(rev(!namelist)))),
 		      tyvars=ref nil,
 		      boundtvs=[]}], (* ZHONG? *)

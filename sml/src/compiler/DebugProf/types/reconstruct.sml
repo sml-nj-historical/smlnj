@@ -14,10 +14,12 @@ infix -->
 fun reduceType(POLYty{tyfun=TYFUN{body,arity},...}) = headReduceType body
   | reduceType ty = headReduceType ty
 
-fun expType(VARexp(ref(VALvar{typ=ref ty,...}),insttys)) =
+fun expType(VARexp(ref(VALvar{typ=ref ty,...}),ty')) = ty'
+(* PRIMOP
      (case ty
 	  of POLYty{tyfun,...} => TU.applyTyfun(tyfun,insttys)
 	   | _ => ty)
+*)
   | expType(VARexp _) = bug "varexp"
   | expType(CONexp(DATACON{typ,...},insttys)) =
      (case typ

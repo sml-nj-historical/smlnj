@@ -948,7 +948,7 @@ and mkVBs (vbs, d) =
         | eqTvs _ = false
 
       fun g (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
-                exp as VARexp (ref (w as (V.VALvar _)), instys),
+                exp as VARexp (ref (w as (V.VALvar _)), insty),
                 boundtvs=tvs, ...}, b) = 
               if eqTvs(tvs, instys) then LET(v, mkVar(w, d), b)
               else LET(v, mkPE(exp, d, tvs), b)
@@ -1120,7 +1120,7 @@ and mkExp (exp, d) =
 
       fun mkRules xs = map (fn (RULE(p, e)) => (fillPat(p, d), g e)) xs
 
-      and g (VARexp (ref v, ts)) = mkVE(v, ts, d)
+      and g (VARexp (ref v, ty)) = mkVE(v, ty, d)
 
         | g (CONexp (dc, ts)) = mkCE(dc, ts, NONE, d)
         | g (APPexp (CONexp(dc, ts), e2)) = mkCE(dc, ts, SOME(g e2), d)

@@ -125,7 +125,7 @@ structure BTrace :> BTRACE = struct
 	val bt_reserve_var = tmpvar ("<bt_reserve>", i_i_Ty)
 	val bt_module_var = tmpvar ("<bt_module>", BT.intTy)
 
-	fun VARexp v = A.VARexp (ref v, [])
+	fun VARexp v = A.VARexp (ref v, Types.UNDEFty)
 	fun INTexp i = A.INTexp (IntInf.fromInt i, BT.intTy)
 
 	val uExp = AU.unitExp
@@ -264,10 +264,10 @@ structure BTrace :> BTRACE = struct
 		    A.RAISEexp (A.CONexp (matchcon, []), t)
 		end
 	    in
-		A.FNexp ([A.RULE (A.VARpat arg,
-				  A.SEQexp [addexp,
-					    A.CASEexp (A.VARexp (ref arg, []),
-						       rl', true)]),
+		A.FNexp([A.RULE(A.VARpat arg,
+				A.SEQexp[addexp,
+					 A.CASEexp (A.VARexp (ref arg, Types.UNDEFty),
+						    rl', true)]),
 			  A.RULE (A.WILDpat, re)],
 			 t)
 	    end

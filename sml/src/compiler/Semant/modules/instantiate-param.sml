@@ -16,7 +16,7 @@ structure InstantiateParam : INSTANTIATE_PARAM = struct
 
     val tvi_exn = TVI.toExn
 
-(* PRIMOP:  no longer relevant, II.info does not contain type
+(* PRIMOP:  no longer needed
     fun ii2ty i =
 	InlInfo.match i { inl_prim = fn (_, t) => SOME t,
 			  inl_str = fn _ => NONE,

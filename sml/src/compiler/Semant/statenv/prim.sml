@@ -813,7 +813,7 @@ val inLine =
       fun mkVarElement((name, p, t),(symbols,elements,dacc,offset)) =
         let val s = S.varSymbol name
             val sp = M.VALspec{spec=t, slot=offset}
-            val d = II.mkPrimInfo p  (* PRIMOP *)
+            val d = II.mkPrimInfo(p,t)  (* PRIMOP *)
          in (s::symbols, (s,sp)::elements, d::dacc, offset+1)
         end
       
@@ -841,7 +841,7 @@ val inLine =
 		  (* lambdaty=ref(NONE), *)
 		  rpath=IP.IPATH[S.strSymbol "inLine"]},
 	    access=A.nullAcc,
-            info= II.mkStrInfo infList}
+            info=II.mkStrInfo infList}
   end
 
 (* priming structures: PrimTypes and InLine *)

@@ -96,7 +96,7 @@ val CONSexp = CONexp(consDcon,[])
 
 val unitExp = AbsynUtil.unitExp
 val unitPat = RECORDpat{fields = nil, flex = false, typ = ref UNDEFty}
-val bogusExp = VARexp(ref(V.mkVALvar(bogusID, A.nullAcc)), [])
+val bogusExp = VARexp(ref(V.mkVALvar(bogusID, A.nullAcc)), UNDEFty)
 
 (* Verifies that all the elements of a list are unique *)
 fun checkUniq (err,message,names) =
@@ -281,11 +281,11 @@ fun wrapRECdecGen (rvbs, compInfo as {mkLvar=mkv, ...} : compInfo) =
        case vars
         of [(v, nv, sym)] =>
             (VALdec [VB{pat=VARpat nv, boundtvs=[], tyvars=tyvars,
-                        exp=LETexp(odec, VARexp(ref v, []))}])
+                        exp=LETexp(odec, VARexp(ref v, UNDEFty))}])
          | _ => 
-          (let val vs = map (fn (v, _, _) => VARexp(ref v, [])) vars
+          (let val vs = map (fn (v, _, _) => VARexp(ref v, UNDEFty)) vars
                val rootv = newVALvar(internalSym, mkv)
-               val rvexp = VARexp(ref rootv, [])
+               val rvexp = VARexp(ref rootv, UNDEFty)
                val nvdec = 
                  VALdec([VB{pat=VARpat rootv, boundtvs=[], tyvars=tyvars,
                             exp=LETexp(odec, TUPLEexp vs)}])
@@ -324,7 +324,7 @@ fun FUNdec (completeMatch, fbl, region,
 		val vars = map getvar pats
 		fun not1(f,[a]) = a
 		  | not1(f,l) = f l
-		fun dovar valvar = VARexp(ref(valvar),[])
+		fun dovar valvar = VARexp(ref(valvar),UNDEFty)
 		fun doclause ({pats,exp,resultty=NONE}) =
 			      RULE(not1(TUPLEpat,pats), exp)
 		  | doclause ({pats,exp,resultty=SOME ty}) =
@@ -357,7 +357,7 @@ fun FUNdec (completeMatch, fbl, region,
 
 fun makeHANDLEexp(exp, rules, compInfo as {mkLvar=mkv, ...}: compInfo) =
     let val v = newVALvar(exnID, mkv)
-        val r = RULE(VARpat v, RAISEexp(VARexp(ref(v),[]),UNDEFty))
+        val r = RULE(VARpat v, RAISEexp(VARexp(ref(v),UNDEFty),UNDEFty))
 	val rules = completeMatch' r rules 
      in HANDLEexp(exp, HANDLER(FNexp(rules,UNDEFty))) 
     end

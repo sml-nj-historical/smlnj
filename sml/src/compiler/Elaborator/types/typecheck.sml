@@ -407,20 +407,7 @@ in
 	  let val (ty, insts) = instantiatePoly(!typ)
 	   in (VARexp(r, insts), ty)
 	  end
-(* PRIMOP: 
-	 (case ii2ty info of
-	      SOME st =>
-              let val (sty, insts) = instantiatePoly(st)
-		  val (nty, _) = instantiatePoly(!typ)
-              in
-		  unifyTy(sty, nty) handle _ => ();  (* ??? *)
-		  (VARexp(r, insts), sty)
-              end
-	    | NONE =>
-	      let val (ty, insts) = instantiatePoly(!typ)
-	      in (VARexp(r, insts), ty)
-	      end)
-*)
+
        | VARexp(refvar as ref(OVLDvar _),_) =>
  	    (exp,pushOverloaded(refvar, err region))
        | VARexp(r as ref ERRORvar, _) => (exp, WILDCARDty)

@@ -10,7 +10,7 @@ type region
 datatype numberedLabel = LABEL of {name: Symbol.symbol, number: int}
 
 datatype exp
-  = VARexp of VarCon.var ref * Types.ty list
+  = VARexp of VarCon.var ref * Types.ty (* instance type *)
   | CONexp of VarCon.datacon * Types.ty list
   | INTexp of IntInf.int * Types.ty
   | WORDexp of IntInf.int * Types.ty
