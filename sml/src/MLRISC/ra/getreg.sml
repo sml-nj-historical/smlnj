@@ -47,27 +47,29 @@ struct
           end
   in  checkPreferred pref end
 
-  fun getpair{pref,stamp:int,proh} = 
-  let (* if not, use the round robin scheme to look for a register *)
-      fun find(start) =
-          let val limit = Array.length allRegs
-              fun search r = 
-              if Array.sub(proh,r) <> stamp andalso
-                 Array.sub(proh,r+1) <> stamp andalso
-                 Array.sub(allRegs,r) andalso
-                 Array.sub(allRegs,r+1) then r 
-              else let val r = r+2
+  fun getpair{pref, stamp:int, proh} = let
+      (* if not, use the round robin scheme to look for a register *)
+      fun find(start) = let
+          val limit = Array.length allRegs
+          fun search r = 
+              if Array.sub(proh,r) <> stamp 
+		    andalso Array.sub(proh,r+1) <> stamp 
+		    andalso Array.sub(allRegs,r) 
+		    andalso Array.sub(allRegs,r+1) then r 
+              else let val r = r+1
                        val r = if r >= limit then first else r
                    in  if r = start then raise GetReg
                        else search r
                    end
               val found = search(start)
-              val next = found + 2
+              val next = found + 1
               val next = if next >= limit then first else next
-          in  lastReg := next;
-              found
-          end
-  in  find(!lastReg) end
+      in  
+	  lastReg := next;
+          found
+      end
+  in  find(!lastReg) 
+  end
 
 end
 
