@@ -48,16 +48,22 @@ structure SkelIO :> SKELIO = struct
 	    val ns = S.nameSpace n
 	    val prefix =
 		case ns of
-		    S.STRspace => "#"
-		  | S.SIGspace => "$"
-		  | S.FCTspace => "%"
-		  | S.FSIGspace => "&"
+		    S.SIGspace => ";"
+		  | S.FCTspace => "("
+		  | S.FSIGspace => ")"
+		  | S.STRspace => ""	(* this should be safe now *)
 		  | _ => raise InternalError
 	in
 	    prefix :: S.name n :: "." :: r
 	end
 
-	fun w_list w (l, r) = foldr w (";" :: r) l
+	fun w_list w ([], r) = "0" :: r
+	  | w_list w ([a], r) = "1" :: w (a, r)
+	  | w_list w ([a, b], r) = "2" :: w (a, w (b, r))
+	  | w_list w ([a, b, c], r) = "3" :: w (a, w (b, w (c, r)))
+	  | w_list w ([a, b, c, d], r) = "4" :: w (a, w (b, w (c, w (d, r))))
+	  | w_list w (a :: b :: c :: d :: e :: x, r) =
+	    "5" :: w (a, w (b, w (c, w (d, w (e, w_list w (x, r))))))
 
 	fun w_path (SP.SPATH p, r) = w_list w_name (p, r)
 
@@ -70,8 +76,9 @@ structure SkelIO :> SKELIO = struct
 	  | w_decl (SK.Ref s, r) = "r" :: w_list w_name (SS.listItems s, r)
 
 	and w_modExp (SK.Var p, r) = "v" :: w_path (p, r)
-	  | w_modExp (SK.Decl d, r) = "d" :: w_decl (d, r)
-	  | w_modExp (SK.Let (d, m), r) = "l" :: w_decl (d, w_modExp (m, r))
+	  | w_modExp (SK.Decl d, r) = "d" :: w_list w_decl (d, r)
+	  | w_modExp (SK.Let (d, m), r) =
+	    "l" :: w_list w_decl (d, w_modExp (m, r))
  	  | w_modExp (SK.Ign1 (m1, m2), r) =
 	    "i" :: w_modExp (m1, w_modExp (m2, r))
     in
@@ -92,19 +99,24 @@ structure SkelIO :> SKELIO = struct
 		loop ([], first)
 	    end
 	in
-	    fun r_name (SOME #"#") = get (S.strSymbol, rd ())
-	      | r_name (SOME #"$") = get (S.sigSymbol, rd ())
-	      | r_name (SOME #"%") = get (S.fctSymbol, rd ())
-	      | r_name (SOME #"&") = get (S.fsigSymbol, rd ())
-	      | r_name _ = raise FormatError
+	    fun r_name (SOME #";") = get (S.sigSymbol, rd ())
+	      | r_name (SOME #"(") = get (S.fctSymbol, rd ())
+	      | r_name (SOME #")") = get (S.fsigSymbol, rd ())
+	      | r_name first = get (S.strSymbol, first)
 	end
 
 	fun r_list r = let
-	    fun loop (accu, NONE) = raise FormatError
-	      | loop (accu, SOME #";") = rev accu
-	      | loop (accu, cur) = loop ((r cur) :: accu, rd ())
+	    fun n () = r (rd ())
+	    fun rl (SOME #"0") = []
+	      | rl (SOME #"1") = [n ()]
+	      | rl (SOME #"2") = [n (), n ()]
+	      | rl (SOME #"3") = [n (), n (), n ()]
+	      | rl (SOME #"4") = [n (), n (), n (), n ()]
+	      | rl (SOME #"5") =
+		n () :: n () :: n () :: n () :: n () ::	rl (rd ())
+	      | rl _ = raise FormatError
 	in
-	    fn first => loop ([], first)
+	    rl
 	end
 
 	fun r_path first = SP.SPATH (r_list r_name first)
@@ -118,8 +130,9 @@ structure SkelIO :> SKELIO = struct
 	  | r_decl _ = raise FormatError
 
 	and r_modExp (SOME #"v") = SK.Var (r_path (rd ()))
-	  | r_modExp (SOME #"d") = SK.Decl (r_decl (rd ()))
-	  | r_modExp (SOME #"l") = SK.Let (r_decl (rd ()), r_modExp (rd ()))
+	  | r_modExp (SOME #"d") = SK.Decl (r_list r_decl (rd ()))
+	  | r_modExp (SOME #"l") =
+	    SK.Let (r_list r_decl (rd ()), r_modExp (rd ()))
  	  | r_modExp (SOME #"i") = SK.Ign1 (r_modExp (rd ()), r_modExp (rd ()))
 	  | r_modExp _ = raise FormatError
 

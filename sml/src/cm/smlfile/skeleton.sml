@@ -25,7 +25,7 @@ structure Skeleton = struct
 
     and modExp =
 	Var of sympath
-      | Decl of decl
-      | Let of decl * modExp
+      | Decl of decl list		(* implicit Seq *)
+      | Let of decl list * modExp	(* implicit Seq *)
       | Ign1 of modExp * modExp
 end

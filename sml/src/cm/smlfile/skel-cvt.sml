@@ -1,5 +1,6 @@
 (*
  * Convert ASTs to CM's trimmed version thereof.
+ *   Very heavily revised.
  *
  *   Copyright (c) 1999 by Lucent Technologies, Bell Laboratories
  *   Copyright (c) 1995 by AT&T Bell Laboratories
@@ -28,12 +29,33 @@ structure SkelCvt :> SKELCVT = struct
     type symbol = Symbol.symbol
     type path = symbol list
 
+    (* function composition suitable for fold[lr]-arguments *)
     infix o'
     fun (f o' g) (x, y) = f (g x, y)
 
-    (* given a path, add an element to a set of module references *)
-    (* here we always ignore the last component -- it is not supposed to
-     * be a module (we could actually check, but we know from context) *)
+    (* make a Seq node when necessary *)
+    fun seq [] = Ref SS.empty
+      | seq [only] = only
+      | seq l = Seq l
+
+    (* make a Par node when necessary and stick it in front of a given dl *)
+    fun par ([], d) = d
+      | par ([only], d) = only :: d
+      | par (l, d) = Par l :: d
+
+    (* The main idea is to collect lists of decl ("dl"s).
+     * Normally, a dl will eventually become an argument to seq or par.
+     * As an important optimization, we always try to keep any "Ref s"
+     * at the front.  At the moment, however, we do not pay attention
+     * to whether a "Ref" commutes with a "Bind" and such.  In other words
+     * we are far from doing all conceivable optimizations. *)
+
+    (* add the head of a symbol path to a given set *)
+    fun s_addP ([], set) = set
+      | s_addP (head :: _, set) = SS.add (set, head)
+
+    (* same as s_addP except we ignore paths of length 1 because they
+     * do not involve module access. *)
     fun s_addMP ([], set) = set		(* can this happen at all? *)
       | s_addMP ([only], set) = set	(* no module name here *)
       | s_addMP (head :: _, set) = SS.add (set, head)
@@ -54,12 +76,12 @@ structure SkelCvt :> SKELCVT = struct
       | dl_addMP (head :: _, dl) = dl_addSym (head, dl)
 
     (* given a set of module references, add it to a decl list *)
-    fun dl_addS (s, a) =
-	if SS.isEmpty s then a
-	else case a of
+    fun dl_addS (s, dl) =
+	if SS.isEmpty s then dl
+	else case dl of
 	    [] => [Ref s]
-	  | Ref s' :: a => Ref (SS.union (s, s')) :: a
-	  | a => Ref s :: a
+	  | Ref s' :: dl' => Ref (SS.union (s, s')) :: dl'
+	  | _ => Ref s :: dl
 
     (* split initial ref set from a decl list *)
     fun split_dl [] = (SS.empty, [])
@@ -74,7 +96,7 @@ structure SkelCvt :> SKELCVT = struct
     (* local definitions *)
     fun local_dl ([], b, d) = join_dl (b, d)
       | local_dl (Ref s :: t, b, d) = dl_addS (s, local_dl (t, b, d))
-      | local_dl (l, b, d) = Local (Seq l, Seq b) :: d
+      | local_dl (l, b, d) = Local (seq l, seq b) :: d
 
     (* build a let expression *)
     fun letexp (dl, (s, e)) =
@@ -84,18 +106,22 @@ structure SkelCvt :> SKELCVT = struct
 		val dl'' = if SS.isEmpty s then dl'
 			   else rev (dl_addS (s, rev dl'))
 	    in
-		(s', Let (Seq dl'', e))
+		(s', Let (dl'', e))
 	    end
 
-    (* making a Ign1 where necessary ... *)
+    (* making an Ign1 where necessary ... *)
     fun ign (p1, NONE) = p1
       | ign ((s1, e1), SOME (s2, e2)) = (SS.union (s1, s2), Ign1 (e1, e2))
+
+    (* Open cancels Decl *)
+    fun open' (Decl dl, dl') = join_dl (dl, dl')
+      | open' (e, dl) = Open e :: dl
 
     (* generate a set of "parallel" bindings *)
     fun parbind f l d = let
 	val (s, bl) = foldl f (SS.empty, []) l
     in
-	dl_addS (s, Par bl :: d)
+	dl_addS (s, par (bl, d))
     end
 
     (* get the ref set from a type *)
@@ -186,7 +212,7 @@ structure SkelCvt :> SKELCVT = struct
 
     and spec_dl (MarkSpec (arg, _), d) = spec_dl (arg, d)
       | spec_dl (StrSpec l, d) = let
-	    (* this is strange: signature is not optional! *)
+	    (* strange case - optional: structure, mandatory: signature *)
 	    fun one ((n, g, c), (s, bl)) = let
 		val (s', e) = sigexp_p g
 		val s'' = SS.union (s, s')
@@ -197,7 +223,7 @@ structure SkelCvt :> SKELCVT = struct
 	    end
 	    val (s, bl) = foldr one (SS.empty, []) l
         in
-	    dl_addS (s, Par bl :: d)
+	    dl_addS (s, par (bl, d))
         end
       | spec_dl (TycSpec (l, _), d) = let
 	    fun one_s ((_, _, SOME t), s) = ty_s (t, s)
@@ -213,7 +239,7 @@ structure SkelCvt :> SKELCVT = struct
 	    end
 	    val (s, bl) = foldr one (SS.empty, []) l
 	in
-	    dl_addS (s, Par bl :: d)
+	    dl_addS (s, par (bl, d))
 	end
       | spec_dl (ValSpec l, d) = dl_addS (foldl (ty_s o' #2) SS.empty l, d)
       | spec_dl (DataSpec { datatycs, withtycs }, d) =
@@ -224,14 +250,13 @@ structure SkelCvt :> SKELCVT = struct
       | spec_dl (IncludeSpec g, d) = let
 	    val (s, e) = sigexp_p g
 	in
-	    dl_addS (s, Open e :: d)
+	    dl_addS (s, open' (e, d))
 	end
 
     and sigexp_p (VarSig s) = (SS.empty, Var (SP.SPATH [s]))
       | sigexp_p (AugSig (g, whspecs)) = let
 	    fun one_s (WhType (_, _, ty), s) = ty_s (ty, s)
-	      | one_s (WhStruct (_, head :: _), s) = SS.add (s, head)
-	      | one_s _ = raise Fail "skel-cvt/sigexp_p"
+	      | one_s (WhStruct (_, p), s) = s_addP (p, s)
 	    val (s, e) = sigexp_p g
 	in
 	    (foldl one_s s whspecs, e)
@@ -239,7 +264,7 @@ structure SkelCvt :> SKELCVT = struct
       | sigexp_p (BaseSig l) = let
 	    val (s, d) = split_dl (foldr spec_dl [] l)
 	in
-	    (s, Decl (Seq d))
+	    (s, Decl d)
 	end
       | sigexp_p (MarkSig (arg, _)) = sigexp_p arg
 
@@ -252,7 +277,7 @@ structure SkelCvt :> SKELCVT = struct
 	val (s, e) = sigexp_p g
     in
 	case nopt of
-	    NONE => dl_addS (s, Open e :: d)
+	    NONE => dl_addS (s, open' (e, d))
 	  | SOME n => dl_addS (s, Bind (n, e) :: d)
     end
 
@@ -285,7 +310,7 @@ structure SkelCvt :> SKELCVT = struct
       | strexp_p (BaseStr dec) = let
 	    val (s, dl) = split_dl (dec_dl (dec, []))
 	in
-	    (s, Decl (Seq dl))
+	    (s, Decl dl)
 	end
       | strexp_p (ConstrainedStr (s, c)) = ign (strexp_p s, sigexpc_p c)
       | strexp_p (AppStr (p, l) | AppStrI (p, l)) = let
@@ -354,21 +379,21 @@ structure SkelCvt :> SKELCVT = struct
       | dec_dl (LocalDec (bdg, body), d) =
 	local_dl (dec_dl (bdg, []), dec_dl (body, []), d)
       | dec_dl (SeqDec l, d) = foldr dec_dl d l
-      | dec_dl (OpenDec l, d) = Par (map (Open o Var o SP.SPATH) l) :: d
+      | dec_dl (OpenDec l, d) = par (map (Open o Var o SP.SPATH) l, d)
       | dec_dl ((OvldDec _ | FixDec _), d) = d
       | dec_dl (MarkDec (arg, _), d) = dec_dl (arg, d)
 
-    fun c_dec d = Seq (dec_dl (d, []))
+    fun c_dec d = seq (dec_dl (d, []))
 
     fun convert { tree, err } = let
 	(* build a function that will complain (once you call it)
 	 * about any existing restriction violations *)
-	fun newReg reg = let
+	fun complainCM reg = let
 	    fun sameReg (LocalDec (_, body), k) = sameReg (body, k)
 	      | sameReg (SeqDec l, k) = foldl sameReg k l
 	      | sameReg (OpenDec _, k) =
 		(fn () => (k (); err EM.COMPLAIN reg "toplevel open"))
-	      | sameReg (MarkDec (arg, reg), k) = newReg reg (arg, k)
+	      | sameReg (MarkDec (arg, reg), k) = complainCM reg (arg, k)
 	      | sameReg ((StrDec _ | AbsDec _ | FctDec _ | SigDec _ |
 			  FsigDec _), k) = k
 	      | sameReg (_, k) =
@@ -378,7 +403,10 @@ structure SkelCvt :> SKELCVT = struct
 	in
 	    sameReg
 	end
+
+	fun warn0 () = ()
+	val complain = complainCM (0, 0) (tree, warn0)
     in
-	{ complain = newReg (0, 0) (tree, fn () => ()), skeleton = c_dec tree }
+	{ complain = complain, skeleton = c_dec tree }
     end
 end

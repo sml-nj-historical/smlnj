@@ -185,28 +185,30 @@ structure BuildDepend :> BUILDDEPEND = struct
 
 	    (* "eval" -- compute the export environment of a skeleton *)
 	    fun eval sk = let
-		fun layer' f [] = DE.EMPTY
-		  | layer' f [x] = f x
-		  | layer' f (h :: t) =
-		    foldl (fn (x, r) => DE.LAYER (f x, r)) (f h) t
-
 		fun evalDecl e (SK.Bind (name, def)) =
 		    DE.BINDING (name, evalModExp e def)
 		  | evalDecl e (SK.Local (d1, d2)) =
 		    evalDecl (DE.LAYER (evalDecl e d1, e)) d2
-		  | evalDecl e (SK.Seq l) =
-		    foldl (fn (d, e') =>
-			   DE.LAYER (evalDecl (DE.LAYER (e', e)) d, e'))
-		          DE.EMPTY l
-		  | evalDecl e (SK.Par l) = layer' (evalDecl e) l
+		  | evalDecl e (SK.Seq l) = evalSeqDecl e l
+		  | evalDecl e (SK.Par []) = DE.EMPTY
+		  | evalDecl e (SK.Par (h :: t)) =
+		    foldl (fn (x, r) => DE.LAYER (evalDecl e x, r))
+		          (evalDecl e h) t
 		  | evalDecl e (SK.Open s) = evalModExp e s
 		  | evalDecl e (SK.Ref s) =
 		    (SS.app (ignore o lookup e) s; DE.EMPTY)
 
+		and evalSeqDecl e [] = DE.EMPTY
+		  | evalSeqDecl e (h :: t) =
+		    foldl (fn (d, e') =>
+			   DE.LAYER (evalDecl (DE.LAYER (e', e)) d, e'))
+		          (evalDecl e h)
+			  t
+
 		and evalModExp e (SK.Var sp) = lookSymPath e sp
-		  | evalModExp e (SK.Decl d) = evalDecl e d
+		  | evalModExp e (SK.Decl l) = evalSeqDecl e l
 		  | evalModExp e (SK.Let (d, m)) =
-		    evalModExp (DE.LAYER (evalDecl e d, e)) m
+		    evalModExp (DE.LAYER (evalSeqDecl e d, e)) m
 		  | evalModExp e (SK.Ign1 (m1, m2)) =
 		    (ignore (evalModExp e m1); evalModExp e m2)
 	    in

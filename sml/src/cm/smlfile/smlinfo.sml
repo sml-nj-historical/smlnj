@@ -201,7 +201,7 @@ structure SmlInfo :> SMLINFO = struct
 					skeleton := SOME sk);
 				  sk
 			      end
-			    | NONE => Skeleton.Seq []))
+			    | NONE => Skeleton.Ref SymbolSet.empty))
     end
 
     (* first check the time stamp, then do your stuff... *)
