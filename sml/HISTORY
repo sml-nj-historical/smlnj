@@ -13,6 +13,17 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/31 16:05:00 EST
+Tag: blume-20020131-sparc-ccalls
+Description:
+
+1. C-calls on Sparc needlessly allocated a huge chunk (96 bytes)
+   of extra stack space by mistake.  Fixed.
+
+2. Bug in logic of handling of command-line options in ml-nlffigen fixed.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2002/01/30
 Tag: leunga-20020130-nowhere-bug-fix

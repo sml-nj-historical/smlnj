@@ -163,7 +163,9 @@ struct
 	val regargwords = Int.min (nargwords, maxRegArgs)
 	val stackargwords = Int.max (nargwords, maxRegArgs) - maxRegArgs
 
-	val scratchstart = paramAreaOffset + 4 * (maxRegArgs + stackargwords)
+	val stackargsstart = paramAreaOffset + 4 * maxRegArgs
+
+	val scratchstart = stackargsstart + 4 * stackargwords
 
 	(* Copy struct or part thereof to designated area on the stack.
 	 * An already properly aligned address (relative to %sp) is
@@ -246,7 +248,8 @@ struct
 	    end
 
 	val (stackdelta, argsetupcode, copycode) = let
-	    fun loop ([], [], _, ss, asc, cpc) = (roundup (ss, 8), asc, cpc)
+	    fun loop ([], [], _, ss, asc, cpc) =
+		(roundup (Int.max (0, ss - stackargsstart), 8), asc, cpc)
 	      | loop (t :: tl, a :: al, n, ss, asc, cpc) = let
 		    fun wordassign a =
 			if n < 6 then T.MV (32, oreg n, a)

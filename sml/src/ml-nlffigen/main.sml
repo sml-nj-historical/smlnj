@@ -104,7 +104,7 @@ structure Main = struct
 	end
 
 	fun iscppopt opt =
-	    size opt < 2 andalso
+	    size opt > 2 andalso
 	    String.sub (opt, 0) = #"-" andalso
 	    Char.contains "IDU" (String.sub (opt, 1))
 
