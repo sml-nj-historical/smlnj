@@ -377,290 +377,270 @@ for extracting aliasing information from CPS.
 
    The default of n is 3.
 
-----------------------------------------------------------------------
+======================================================================
+Boot code and glue scripts
+======================================================================
+
+Size info in BOOTLIST
+
+  The BOOTLIST file now has an optional first line that specifies an
+  upper bound on the number of boot files and an upper bound on the
+  length of each individual name.  With this, there are no longer
+  hard-wired restrictions on these values in the runtime system.
+  (If the specification is missing in BOOTLIST, the runtime system
+  falls back to its old behavior, i.e., hard-wired defaults.)
+
+Allocation-size heuristics in .run-sml
+
+  The .run-sml scripts tries to read processor cache size from
+  /proc/cpuinfo.  This works on Linux and is important for small-cache
+  Celeron systems that suffer badly when allocation size is set too
+  high.
+
+Install script
+
+  - Written in a more modular fashion (using shell functions).
+  - Made more robust.
+  - Automagically fetches archive files over the network if they do not
+    exist locally.  Thus, you only need to fetch config.tar.gz yourself.
+    Unpack it and go!
+    (Requires "wget" or "lynx" to be installed on the system and a
+    live connection to the internet.  Moreover, the contents of
+    config/srcarchiveurl must be set properly.)
+    For CVS users, this may be convenient when fetching new sets of binfiles.
+  - Handles archive files with or without version number and compressed
+    with one of "gzip", "compress", or "bzip2".  Recognized suffixes are
+    ".tar.gz", ".tgz", ".tar", ".tar.Z", and ".tar.bz2".
+
+PIDMAP file
+
+  There is a file called PIDMAP in the bootfile directory.
+  It is used to minimize the amount of dynamic state that needs to be
+  stowed away for the purpose of sharing between interactive system
+  and user code.
+
+Building standalone programs
+
+  The command ml-build can be used to build standalone programs.
+  ml-build takes three arguments:
+
+     1. the name of the CM library that implements and exports the "main"
+        function of your program
+     2. the name of the "main" function of your program as exported by 1.
+        (The function must have a type that makes it suitable as an argument
+         to SMLofNJ.exportFn.)
+     3. the name of the heapfile to be generated
+
+Other build scripts
+
+  ml-{lex,yacc} build scripts now make use of the new mechanism for
+  building standalone programs.
+
+Fixpoint script
+
+  I added a re-written version of Dave's fixpt script to src/system.
+  Changes relative to the original version:
+    - sh-ified (not everybody has ksh)
+    - automatically figures out which architecture it runs on
+    - uses ./makeml a bit more cleverly
+    - never invokes ./installml (and, thus, does not clobber your
+      good and working installation of sml in case something goes wrong)
+    - accepts max iteration count using option "-iter <n>"
+    - accepts a "base" name using option "-base <base>"
+
+  It does not build any extraneous heap images but directly rebuilds
+  bin- and boot-hierarchies using makeml's "-rebuild" switch. Finally,
+  it can incorporate existing bin- and boot- hierarchies.  For example,
+  suppose the base is set to "sml" (which is the default).  Then it
+  successively builds
+
+          sml.bin.<arch>-unix and sml.boot.<arch>-unix
+  then    sml1.bin.<arch>-unix and sml1.boot.<arch>-unix
+  then    sml2.bin.<arch>-unix and sml2.boot.<arch>-unix
+  ...
+  then    sml<n>.bin.<arch>-unix and sml<n>.boot.<arch>-unix
+
+  and so on.  If any of these already exist, it will just use what's
+  there.  In particular, many people will have the initial set of bin
+  and boot files around, so this saves time for at least one full
+  rebuild.  Having sets of the form <base><k>.{bin,boot}.<arch>-unix for
+  <k>=1,2,... is normally not a good idea when invoking fixpt.  However,
+  they might be the result of an earlier partial run of fixpt (which
+  perhaps got accidentially killed).  In this case, fixpt will quickly
+  move through what exists before continuing where it left off earlier,
+  and, thus, saves a lot of time.
+
+Runtime system code
+
+  - fixed several gcc -Wall warnings that were caused by missing header
+    files, missing initializations, etc., in runtime (not all warnings
+    eliminated, though)
+  - hand to "un-fix" some of them later because they broke the HPPA compile
 
 ======================================================================
 CM
 ======================================================================
 
-Name: Matthias Blume
-Date: 2000/03/07 04:01:04
-Tag: blume_main_v110_26_2
-Description:
-- size info in BOOTLIST
-     * no fixed upper limits for number of bootfiles or length of
-       bootfile names in runtime
-     * falling back to old behavior if no BOOTLIST size info found
-- allocation size heuristics in .run-sml
-     * tries to read cache size from /proc/cpuinfo (this is important for
-        small-cache Celeron systems!)
-- install.sh robustified
-- CM manual updates
-- paranoid mode
-     * no more CMB.deliver() (i.e., all done by CMB.make())
-     * can re-use existing sml.boot.* files
-     * init.cmi now treated as library
-     * library stamps for consistency checks
-- sml.boot.<arch>-<os>/PIDMAP file
-     * This file is read by the CM startup code.  This is used to minimize
-       the amount of dynamic state that needs to be stowed away for the
-       purpose of sharing between interactive system and user code.
-- CM.Anchor.anchor instead of CM.Anchor.{set,cancel}
-     * Upon request by Elsa.  Anchors now controlled by get-set-pair
+Several manual updates
+
+  I always try to keep the manual in sync with CM's latest features.
+
+Bootstrap compilation
+
+  No more "CMB.deliver"
+
+    - All work is done by CMB.make (as it used to be in the old CM).
+    - CMB.make can be used even with existing bootfiles, i.e., bootfiles do
+      not have to be removed beforehand.
+    - In "paranoid mode" CM checks a stable libraries CRC checksum to
+      verify that it is "valid".  (In "normal mode", such checks do not
+      occur.)  Paranoid mode is used for bootstrap compilation.  This is
+      what makes it possible to re-use existing bootfiles.
+
+  Initial glue code (init.cmi)
+
+    - treated as a genuine library now
+    - there are no more "built-in" modules
+
+CM API
+
+  CM.Anchor.anchor instead of CM.Anchor.{set,cancel}
+     - Upon request by Elsa.  Anchors now controlled by get-set-pair
        like most other CM state variables.
-- Compiler.CMSA eliminated
-     * No longer supported by CM anyway.
-- fixed bugs in pickler that kept biting Stefan
-     * past refs to past refs (was caused by the possibility that
-       ad-hoc sharing is more discriminating than hash-cons sharing)
-     * integer overflow on LargeInt.minInt
-- ml-{lex,yacc} build scripts now use new mechanism
-  for building standalone programs
-- fixed several gcc -Wall warnings that were caused by missing header
-  files, missing initializations, etc., in runtime (not all warnings
-  eliminated, though)
 
-----------------------------------------------------------------------
-Name: Matthias Blume
-Date: 2000/03/09 10:23:53
-Tag: blume_main_v110p26p1_0
-Description:
+  CM tools:
+     - It is now possible to have tools that accept additional
+       "command line" parameters (specified in the .cm file at each
+       instance where the tool's class is used).
 
-* Complete re-organization of library names.  Many libraries have been
-consolidated so that they share the same path anchor.  For example,
-all MLRISC-related libraries are anchored at MLRISC, most libraries that
-are SML/NJ-specific are under "smlnj".  Notice that names like
-host-cmb.cm or host-compiler.cm no longer exist.  See system/README
-for a complete description of the new naming scheme.  Quick reference:
+     - The parser understands named parameters and recursive options.
 
-   host-cmb.cm        -> smlnj/cmb.cm
-   host-compiler.cm   -> smlnj/compiler.cm
-   full-cm.cm         -> smlnj/cm.cm
-   <arch>-<os>.cm     -> smlnj/cmb/<arch>-<os>.cm
-   <arch>-compiler.cm -> smlnj/compiler/<arch>.cm
+     - new "make" and "shell" tools added
+       * facilitate fairly seemless hookup to portions of code
+         managed using Makefiles or Shell scripts.
 
-* Bug fixes in CM.
-    - exceptions in user code are being passed through (i.e., reach top level)
-    - more bugs in paranoia mode fixed
-    - bug related to checking group owners fixed
+     - There are no classes "shared" or "private" anymore.  Instead,
+       the sharing annotation is now a parameter to the "sml" class.
 
-* New install.sh script that automagically fetches archive files:
-  The new file config/srcarchiveurl must contain the URL of the
-  (remote) directory that contains bin files (or other source archives).
-  If install.sh does not find the archive locally, it tries to get
-  it from that remote directory.
-  This should simplify installation further:  For machines that have
-  access to the internet, just fetch <version>-config.tgz, unpack it,
-  edit config/targets, and go (run config/install.sh).  The scipt will
-  fetch everything else that it might need all by itself.
+     - Tools.registerStdShellCmdTool (from smlnj/cm/tool.cm) takes an
+       additional argument called "template" which is an optional
+       string that specifiel the layout of the tool command line.  See
+       the CM manual for explanation.
 
-  For CVS users, this mechanism is not relevant for source archives, but
-  it is convenient for getting new sets of binfiles.
+     - A special-purpose tool can be "registered" by simply dropping
+       the corresponding <...>-tool.cm (and/or <...>-ext.cm) into the
+       same directory where the .cm file lives that uses this tool.
+       (The behavior/misfeature until now was to look for the tool
+       description files in the current working directory.)  As
+       before, tool description files could also be anchored -- in
+       which case they can live anywhere they like.  Following the
+       recent e-mail discussion, this change should make it easier to
+       have special-purpose tools that are shipped together with the
+       sources of the program that uses them.
+       Bug: such a tool does not get un-registered after being done
 
-  Archives should be tar files compressed with either gzip, compress, or
-  bzip2.  The script recognizes .tgz, .tar, tar.gz, tz, .tar.Z, and .tar.bz2.
-  
-----------------------------------------------------------------------
-Name: Matthias Blume
-Date: 2000/03/10 07:48:34
-Tag: blume_main_v110p26p1_1
-Description:
+Library names
 
-I added a re-written version of Dave's fixpt script to src/system.
-Changes relative to the original version:
-  - sh-ified (not everybody has ksh)
-  - automatically figures out which architecture it runs on
-  - uses ./makeml a bit more cleverly
-  - never invokes ./installml (and, thus, does not clobber your
-    good and working installation of sml in case something goes wrong)
-  - accepts max iteration count using option "-iter <n>"
-  - accepts a "base" name using option "-base <base>"
+  Library names have been completely re-organized.
+     Many libraries have been consolidated so that they share the same
+     path anchor.  For example, all MLRISC-related libraries are
+     anchored at MLRISC, most libraries that are SML/NJ-specific are
+     under "smlnj".  Notice that names like host-cmb.cm or
+     host-compiler.cm no longer exist.  See system/README for a
+     complete description of the new naming scheme.  Quick reference:
 
-It does not build any extraneous heap images but directly rebuilds
-bin- and boot-hierarchies using makeml's "-rebuild" switch. Finally,
-it can incorporate existing bin- and boot- hierarchies.  For example,
-suppose the base is set to "sml" (which is the default).  Then it
-successively builds
+        host-cmb.cm        -> smlnj/cmb.cm
+        host-compiler.cm   -> smlnj/compiler.cm
+        full-cm.cm         -> smlnj/cm.cm
+        <arch>-<os>.cm     -> smlnj/cmb/<arch>-<os>.cm
+        <arch>-compiler.cm -> smlnj/compiler/<arch>.cm
 
-        sml.bin.<arch>-unix and sml.boot.<arch>-unix
-then    sml1.bin.<arch>-unix and sml1.boot.<arch>-unix
-then    sml2.bin.<arch>-unix and sml2.boot.<arch>-unix
-...
-then    sml<n>.bin.<arch>-unix and sml<n>.boot.<arch>-unix
+CM bug fixes
 
-and so on.  If any of these already exist, it will just use what's
-there.  In particular, many people will have the initial set of bin
-and boot files around, so this saves time for at least one full
-rebuild.  Having sets of the form <base><k>.{bin,boot}.<arch>-unix for
-<k>=1,2,... is normally not a good idea when invoking fixpt.  However,
-they might be the result of an earlier partial run of fixpt (which
-perhaps got accidentially killed).  In this case, fixpt will quickly
-move through what exists before continuing where it left off earlier,
-and, thus, saves a lot of time.
+   - exceptions in user code are being passed through (i.e., reach top level)
+   - more bugs in paranoia mode fixed
+   - bug related to checking group owners fixed
+   - better error handling (suppresses many followup-messages)
 
-----------------------------------------------------------------------
-Name: Matthias Blume
-Date: 2000/03/14 14:15:32
-Tag: blume_main_v110p26p1_2
-Description:
+Internals
 
-1. Tools.registerStdShellCmdTool (from smlnj/cm/tool.cm) takes an
-additional argument called "template" which is an optional string that
-specifiel the layout of the tool command line.  See the CM manual for
-explanation.
+   "Global" modmap:
+     CM now maintains one "global" modmap that is used for all stable
+     libraries.  The use of such a global modmap maximizes sharing and
+     minimizes the need for re-traversing parts of environments during
+     modmap construction.  (However, this has minor impact since modmap
+     construction seems to account for just one percent or less of total
+     compile time.)
 
-2. A special-purpose tool can be "regisitered" by simply dropping the
-corresponding <...>-tool.cm (and/or <...>-ext.cm) into the same
-directory where the .cm file lives that uses this tool.  (The
-behavior/misfeature until now was to look for the tool description
-files in the current working directory.)  As before, tool description
-files could also be anchored -- in which case they can live anywhere
-they like.  Following the recent e-mail discussion, this change should
-make it easier to have special-purpose tools that are shipped together
-with the sources of the program that uses them.
+======================================================================
+Compiler Internals
+======================================================================
 
-----------------------------------------------------------------------
-Name: Matthias Blume
-Date: 2000/03/30 18:00:00 JST
-Tag: blume_main_v110p26p2_0
-Description:
+Environment data structures: major changes
 
-!!!!! WARNING !!!!!!
-!!  New binfiles  !!
-!!!!!!!!!!!!!!!!!!!!
+  No CMStaticEnv anymore.
+    - no CMEnv, no "BareEnvironment" (actually, _only_ BareEnvironment,
+      but it is called Environment), no conversions between different
+      kinds of static environments
 
-This update contains:
+    - There is still a notion of a "modmap", but such modmaps are generated
+      on demand at the time when they are needed.  This sounds slow, but I
+      sped up the code that generates modmaps enough for this not to lead to
+      a slowdown of the compiler (at least I didn't detect any).
 
-1. Moderate changes to CM:
+    - To facilitate rapid modmap generation, static environments now
+      contain an (optional) "modtree" structure.  Modtree annotations are
+      constructed by the unpickler during unpickling.  (This means that
+      the elaborator does not have to worry about modtrees at all.)
+      Modtrees have the advantage that they are compositional in the same
+      way as the environment data structure itself is compositional.
+      As a result, modtrees never hang on to parts of an environment that
+      has already been rendered "stale" by filtering or rebinding.
 
-   - Changes to CM's tools mechanism.  In particular, it is now possible
-   to have tools that accept additional "command line" parameters
-   (specified in the .cm file at each instance where the tool's class is
-   used).
-
-   This was done to accomodate the new "make" and "shell" tools which
-   facilitate fairly seemless hookup to portions of code managed using
-   Makefiles or Shell scripts.
-
-   There are no classes "shared" or "private" anymore.  Instead, the
-   sharing annotation is now a parameter to the "sml" class.
-
-   There is a bit of generic machinery for implementing one's own
-   tools that accept command-line parameters.  However, I am not yet fully
-   satisfied with that part, so expect changes here in the future.
-
-   All existing tools are described in the CM manual.
-
-   - Slightly better error handling.  (CM now surpresses many followup
-   error messages that tended to be more annoying than helpful.)
-
-2. Major changes to the compiler's static environment data structures.
-
-   - no CMStaticEnv anymore.
-        - no CMEnv, no "BareEnvironment" (actually, _only_ BareEnvironment,
-          but it is called Environment), no conversions between different
-          kinds of static environments
-
-   - There is still a notion of a "modmap", but such modmaps are generated
-     on demand at the time when they are needed.  This sounds slow, but I
-     sped up the code that generates modmaps enough for this not to lead to
-     a slowdown of the compiler (at least I didn't detect any).
-
-   - To facilitate rapid modmap generation, static environments now
-     contain an (optional) "modtree" structure.  Modtree annotations are
-     constructed by the unpickler during unpickling.  (This means that
-     the elaborator does not have to worry about modtrees at all.)
-     Modtrees have the advantage that they are compositional in the same
-     way as the environment data structure itself is compositional.
-     As a result, modtrees never hang on to parts of an environment that
-     has already been rendered "stale" by filtering or rebinding.
-
-   - I went through many, many trials and errors before arriving at the
-     current solution.  (The initial idea of "linkpaths" did not work.)
-     But the result of all this is that I have touched a lot of files that
-     depend on the "modules" and "types" data structures (most of the
-     elaborator). There were a lot of changes during my "linkpath" trials
-     that could have been reverted to their original state but weren't.
-     Please, don't be too harsh on me for messing with this code a bit more
-     than what was strictly necessary...  (I _did_ resist the tempation
-     of doing any "global reformatting" to avoid an untimely death at
-     Dave's hands. :)
-
-   - One positive aspect of the previous point:  At least I made sure that
-     all files that I touched now compile without warnings (other than
+   -  all files that I touched now compile without warnings (other than
      "polyEqual").
 
    - compiler now tends to run "leaner" (i.e., ties up less memory in
      redundant modmaps)
 
-----------------------------------------------------------------------
-Name: Matthias Blume
-Date: 2000/03/31 18:00:00 JST
-Tag: blume_main_v110p26p2_1
-Description:
+Stats phase "genmap" added
 
-This update contains:
+  - measures time spent during on-the-fly modmap generation
 
-1. A small change to CM's handling of stable libraries:
-   CM now maintains one "global" modmap that is used for all stable
-   libraries.  The use of such a global modmap maximizes sharing and
-   minimizes the need for re-traversing parts of environments during
-   modmap construction.  (However, this has minor impact since modmap
-   construction seems to account for just one percent or less of total
-   compile time.)
+Changes on behalf of CM
 
-2. I added a "genmap" phase to the statistics.  This is where I got the
-   "one percent" number (see above).
+  Compiler.CMSA eliminated
+     - No longer supported by CM anyway.
 
-3. CM's new tool parameter mechanism just became _even_ better. :)
-   - The parser understands named parameters and recursive options.
-   - The "make" and "shell" tools use these new features.
-     (This makes it a lot easier to cascade these tools.)
-   - There is a small syntax change: named parameters use a
+  Fixed bugs in pickler that kept biting Stefan
+     - past refs to past refs (was caused by the possibility that
+       ad-hoc sharing is more discriminating than hash-cons sharing)
+     - integer overflow on LargeInt.minInt
 
-       <name> : ( <option> ... )            or
-       <name> : <string>
+  Handling of "core" environment:
 
-     syntax.  Previously, named parameters were implemented in an
-     ad-hoc fashion by each tool individually (by parsing strings)
-     and had the form
+    I eliminated coreEnv from compInfo.  Access to the "Core"
+    structure is now done via the ordinary static environment that is
+    context to each compilation unit.
 
-       <name>=<string>
+    To this end, I arranged that instead of "structure Core" a
+    "structure _Core" is bound in the pervasive environment.  Core
+    access is done via _Core (which can never be accidentially rebound
+    because _Core is not a legal surface-syntax symbol).
 
-   See the CM manual for a full description of these issues.
+    The current solution is much cleaner because the core environment
+    is now simply part of the pervasive environment which is part of
+    every compilation unit's context anyway.  In particular, this
+    eliminates all special-case handling that was necessary until now
+    in order to deal with dynamic and symbolic parts of the core
+    environment.
 
-----------------------------------------------------------------------
-Name: Matthias Blume
-Date: 2000/04/03 16:05:00 JST
-Tag: blume_main_v110p26p2_2
-Description:
+    Remaining hackery (to bind the "magic" symbol _Core) is localized
+    in the compilation mananger's bootstrap compiler (actually: in the
+    "init group" handling).  See the comments in
+    src/system/smlnj/init/init.cmi for more details.
 
-I eliminated coreEnv from compInfo.  Access to the "Core" structure is
-now done via the ordinary static environment that is context to each
-compilation unit.
-
-To this end, I arranged that instead of "structure Core" as "structure
-_Core" is bound in the pervasive environment.  Core access is done via
-_Core (which can never be accidentially rebound because _Core is not a
-legal surface-syntax symbol).
-
-The current solution is much cleaner because the core environment is
-now simply part of the pervasive environment which is part of every
-compilation unit's context anyway.  In particular, this eliminates all
-special-case handling that was necessary until now in order to deal
-with dynamic and symbolic parts of the core environment.
-
-Remaining hackery (to bind the "magic" symbol _Core) is localized in the
-compilation mananger's bootstrap compiler (actually: in the "init group"
-handling).  See the comments in src/system/smlnj/init/init.cmi for
-more details.
-
-I also tried to track down all mentions of "Core" (as string argument
-to Symbol.strSymbol) in the compiler and replaced them with a
-reference to the new CoreSym.coreSym.  Seems cleaner since the actual
-name appears in one place only.
-
-Binfile and bootfile format have not changed, but the switchover from
-the old "init.cmi" to the new one is a bit tricky, so I supplied new
-bootfiles anyway.
-
+    I also tried to track down all mentions of "Core" (as string
+    argument to Symbol.strSymbol) in the compiler and replaced them
+    with a reference to the new CoreSym.coreSym.  Seems cleaner since
+    the actual name appears in one place only.
