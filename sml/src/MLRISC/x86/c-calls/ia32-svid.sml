@@ -21,7 +21,8 @@
  * Calling convention:
  *
  *    Return result:
- *	+ Integer and pointer results are returned in %eax
+ *	+ Integer and pointer results are returned in %eax.  Small
+ *	  integer results are not promoted.
  *	+ 64-bit integers (long long) returned in %eax/%edx
  *	+ Floating point results are returned in %st(0) (all types).
  *	+ Struct results are returned in space provided by the caller.
@@ -183,6 +184,11 @@ functor IA32SVID_CCalls (
       | FStk of T.fty * T.I.machine_int	(* floating-point argument in parameter area *)
       | Args of arg_location list
 
+    fun intResult iTy = (case #ty(sizeOfInt iTy)
+	   of 64 => raise Fail "register pair result"
+	    | ty => (SOME(Reg(ty, eax, NONE)), NONE, 0)
+	  (* end case *))
+
     fun layout {conv, retTy, paramTys} = let
 	(* get the location of the result (resLoc) and the offset of the first
 	 * parameter/argument.  If the result is a struct or union, then we also
@@ -193,16 +199,8 @@ functor IA32SVID_CCalls (
 		  | Ty.C_float => (SOME(FReg(fltTy, st0, NONE)), NONE, 0)
 		  | Ty.C_double => (SOME(FReg(dblTy, st0, NONE)), NONE, 0)
 		  | Ty.C_long_double => (SOME(FReg(xdblTy, st0, NONE)), NONE, 0)
-		  | Ty.C_unsigned Ty.I_long_long => raise Fail "register pair"
-		  | Ty.C_signed Ty.I_long_long => raise Fail "register pair"
-		  | Ty.C_unsigned _ =>
-		      (* Should we distinguish between different word
-		       * sized here? -- Matthias *)
-		      (SOME(Reg(wordTy,eax,NONE)),NONE,0)
-		  | Ty.C_signed _ =>
-		      (* Should we distinguish between different int
-		       * sized here? -- Matthias *)
-		      (SOME(Reg(wordTy,eax,NONE)),NONE,0)
+		  | Ty.C_unsigned iTy => intResult iTy
+		  | Ty.C_signed iTy => intResult iTy
 		  | Ty.C_PTR => (SOME(Reg(wordTy, eax, NONE)), NONE, 0)
 		  | Ty.C_ARRAY _ => error "array return type"
 		  | Ty.C_STRUCT tys => let
