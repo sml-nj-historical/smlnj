@@ -240,6 +240,7 @@ CodeGen/cpscompile/cpsRegions.sml
 CodeGen/cpscompile/cpsRegs.sig
 CodeGen/cpscompile/frag.sig
 CodeGen/cpscompile/frag.sml
+CodeGen/cpscompile/functionNames.sml
 CodeGen/cpscompile/memDisambig.sml
 CodeGen/cpscompile/mkRecord.sig
 CodeGen/cpscompile/mkRecord.sml

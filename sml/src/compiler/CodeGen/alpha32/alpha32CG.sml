@@ -1,3 +1,4 @@
+
 (* alpha32CG.sml --- 32 bit DEC alpha code generator
  *
  * COPYRIGHT (c) 1996 Bell Laboratories.
@@ -5,7 +6,7 @@
  *)
 functor Alpha32CG(structure Emitter : EMITTER_NEW
 		    where I = Alpha32Instr
-		    where F = Alpha32FlowGraph) :
+		    where F = Alpha32FlowGraph) : 
   sig
     structure MLTreeGen : CPSGEN 
     val finish : unit -> unit
@@ -16,6 +17,7 @@ struct
   structure C = Alpha32Cells
   structure R = Alpha32CpsRegs
   structure MLTree = Alpha32MLTree
+  structure B = Alpha32MLTree.BNames
   structure CG = Control.CG
 
   fun error msg = ErrorMsg.impossible ("Alpha32CG." ^ msg)
@@ -87,7 +89,7 @@ struct
     fun fmvInstr(fd, fs) = I.FOPERATE{oper=I.CPYS, fa=fs, fb=fs, fc=fd} 
 
 
-    fun spill (stClass, stOp, getLoc, newReg, rewrite) {regmap,instr,reg} = let
+    fun spill (stClass, stOp, getLoc, newReg, rewrite) {regmap,instr,reg,id:B.name} = let
       val offset = I.IMMop (getLoc(reg))
       fun spillInstr(src) = 
 	[stClass{stOp=stOp, r=src, b=C.stackptrR, d=offset, mem=stack}]
@@ -122,7 +124,7 @@ struct
 	  end
     end
 
-    fun reload (ldClass, ldOp, getLoc, newReg, rewrite) {regmap,instr,reg} = let
+    fun reload (ldClass, ldOp, getLoc, newReg, rewrite) {regmap,instr,reg,id:B.name} = let
       val offset = I.IMMop (getLoc(reg))
       fun reloadInstr(dst, rest) =
 	ldClass{ldOp=ldOp, r=dst, b=C.stackptrR, d=offset, mem=stack}::rest
@@ -158,6 +160,7 @@ struct
       Alpha32Ra.IntRa
         (structure RaUser = struct
            structure I = Alpha32Instr
+	   structure B = B
 
 	   val getreg = GR.getreg
 	   val spill = spill(I.STORE,I.STL, getRegLoc, C.newReg, 
@@ -175,6 +178,7 @@ struct
       Alpha32Ra.FloatRa
         (structure RaUser = struct
 	   structure I = Alpha32Instr
+	   structure B = B
 
 	   val getreg = FR.getreg
 	   val spill = spill (I.FSTORE, I.STT, getFregLoc, C.newFreg,
@@ -248,5 +252,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: alpha32CG.sml,v $
+ * Revision 1.3  1998/05/23 14:09:10  george
+ *   Fixed RCS keyword syntax
+ *
  *)

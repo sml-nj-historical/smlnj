@@ -20,6 +20,7 @@ functor Alpha32RegAlloc(structure P : INSN_PROPERTIES
     functor IntRa (structure RaUser : RA_USER_PARAMS
 		     where type I.operand = I.operand
 		       and type I.instruction = I.instruction
+		       and type B.name = F.B.name
 		     (* should be: where I = I -- bug 1205 *)) : sig
         datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
 	val ra : mode -> F.cluster -> F.cluster
@@ -27,6 +28,7 @@ functor Alpha32RegAlloc(structure P : INSN_PROPERTIES
     functor FloatRa (structure RaUser : RA_USER_PARAMS
 		       where type I.operand = I.operand
 		         and type I.instruction = I.instruction
+	 	         and type B.name = F.B.name
 		       (* should be: where I = I *)) : sig
         datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
         val ra : mode -> F.cluster -> F.cluster
@@ -90,6 +92,3 @@ end
 
 
 
-(*
- * $Log$
- *)

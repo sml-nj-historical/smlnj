@@ -11,6 +11,7 @@ signature FLOWGRAPH_GEN = sig
    structure I : INSTRUCTIONS
    structure P : INSN_PROPERTIES
    structure T : MLTREE
+   structure B : BLOCK_NAMES
    structure Pu : PSEUDO_OPS
 
    sharing I.C = C
@@ -56,6 +57,8 @@ signature FLOWGRAPH_GEN = sig
        **	must be kept together always.
        **)
 
+   val blockName : B.name -> unit
+
    val beginCluster : unit -> unit
 end
 
@@ -67,7 +70,8 @@ functor FlowGraphGen
    val codegen : Flowgraph.cluster -> unit
      sharing Flowgraph.I = InsnProps.I
      sharing MLTree.Constant = InsnProps.I.Constant
-     sharing MLTree.PseudoOp = Flowgraph.P) : FLOWGRAPH_GEN = 
+     sharing MLTree.PseudoOp = Flowgraph.P
+     sharing Flowgraph.B = MLTree.BNames) : FLOWGRAPH_GEN = 
 struct
 
   structure F = Flowgraph
@@ -75,30 +79,37 @@ struct
   structure I = Flowgraph.I
   structure C = I.C
   structure T = MLTree
+  structure B = MLTree.BNames
   structure Pu = T.PseudoOp
   
   type label = Label.label
 
   fun error msg = MLRiscErrorMsg.impossible ("FlowGraph." ^ msg)
 
-  (* block number generation *)
   val bblkCnt = ref 0 
-  fun nextBlkNum () = !bblkCnt before bblkCnt := !bblkCnt + 1
-
   val entryLabels = ref ([] : Label.label list)
+  val blkName  = ref B.default 
+  val currBlock : F.block option ref = ref NONE
+  val blockList : F.block list ref = ref []
+
+  fun nextBlkNum () = !bblkCnt before bblkCnt := !bblkCnt + 1
+  fun blockName name = 
+    (case !currBlock
+     of NONE => ()
+      | SOME blk => 
+         (currBlock := NONE; blockList := blk:: !blockList)
+     (*esac*);
+     blkName := name)
 
   (** Note - currBlock will always be a reference to a F.BLOCK{..} **)
   fun newBasicBlk init = 
       F.BBLOCK{blknum=nextBlkNum(),
+	       name= !blkName,
 	       liveIn=ref C.empty,
 	       liveOut=ref C.empty,
 	       succ=ref [],
 	       pred=ref [],
 	       insns=ref init}
-  val currBlock : F.block option ref = ref NONE
-
-  val blockList : F.block list ref = ref []
-
   local
     fun blockListAdd b = let
       val blocks = !blockList
@@ -251,9 +262,7 @@ struct
   fun beginCluster _ = 
     (entryLabels := [];
      bblkCnt := 0;
+     blkName := B.default;
      currBlock := NONE)
 end
 
-(*
- * $Log$
- *)

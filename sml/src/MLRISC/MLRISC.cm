@@ -9,6 +9,7 @@ control/mlrisc-view-style.sml
 
 mlrisc/asmEmit.sml
 mlrisc/asmStream.sml
+mlrisc/block-names.sig
 mlrisc/bbsched.sig
 mlrisc/bbsched2.sml
 mlrisc/cells.sig

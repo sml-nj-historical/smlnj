@@ -11,6 +11,7 @@ struct
   structure R = HppaCpsRegs
   structure CG = Control.CG
   structure Region = I.Region
+  structure B = HppaMLTree.BNames
 
   fun error msg = ErrorMsg.impossible ("HppaCG." ^ msg)
 
@@ -91,7 +92,7 @@ struct
        fregSpills := Intmap.new(8, FregSpills))
 
     (* spill general register *)
-    fun spillR {regmap, instr, reg} = let
+    fun spillR {regmap, instr, reg, id} = let
       val loc = getRegLoc reg
       fun spillInstr(r) = 
          [I.STORE{st=I.STW, b=C.stackptrR, d=I.IMMED(~loc), r=r, mem=stack}]
@@ -117,7 +118,7 @@ struct
     end
 
     (* reload general register *)
-    fun reloadR {regmap, instr, reg} = let
+    fun reloadR {regmap, instr, reg, id} = let
       val loc = getRegLoc(reg)
       fun reloadInstr(r) = 
           I.LOADI{li=I.LDW, i=I.IMMED(~loc), r=C.stackptrR, t=r, mem=stack}
@@ -132,7 +133,7 @@ struct
 	 end
     end
 
-    fun spillF {regmap, instr, reg} = let
+    fun spillF {regmap, instr, reg, id} = let
       val disp = getFregLoc reg
       val tmpR = C.asmTmpR
       fun spillInstrs(reg) = 
@@ -160,7 +161,7 @@ struct
 	 end
     end
 
-    fun reloadF {regmap, instr, reg} = let
+    fun reloadF {regmap, instr, reg, id:B.name} = let
       val disp = getFregLoc reg
       val tmpR = C.asmTmpR
       fun reloadInstrs(reg, rest) = 
@@ -192,6 +193,7 @@ struct
       HppaRa.IntRa
         (structure RaUser = struct
 	    structure I = HppaInstr
+	    structure B = B
 
             val getreg = GR.getreg
 	    val spill = spillR
@@ -208,6 +210,7 @@ struct
       HppaRa.FloatRa
         (structure RaUser = struct
 	    structure I = HppaInstr
+	    structure B = B 
 
 	    val getreg = FR.getreg
 	    val spill = spillF
@@ -290,5 +293,8 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: hppaCG.sml,v $
+ * Revision 1.3  1998/05/23 14:09:20  george
+ *   Fixed RCS keyword syntax
+ *
  *)

@@ -6,11 +6,13 @@
 
 functor MLTreeF(structure Const : CONSTANT
 		structure P : PSEUDO_OPS
-		structure R : REGION) : MLTREE =
+		structure R : REGION
+		structure B : BLOCK_NAMES) : MLTREE =
 struct
   structure Constant = Const
   structure PseudoOp = P
   structure Region = R
+  structure BNames = B
 
   datatype cond = LT | LTU | LE | LEU | EQ | NEQ | GE | GEU | GT | GTU
   datatype fcond =
@@ -96,11 +98,9 @@ struct
     | DEFINELABEL of Label.label
     | ENTRYLABEL of Label.label
     | CODE of stm list
+    | BLOCK_NAME of BNames.name
     | ORDERED of mltree list
     | ESCAPEBLOCK of mlrisc list 
     | ENDCLUSTER of int Intmap.intmap
 end (* MLTree *)
 
-(*
- * $Log$
- *)

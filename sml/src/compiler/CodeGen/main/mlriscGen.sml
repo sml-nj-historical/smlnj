@@ -12,6 +12,7 @@ functor MLRiscGen
    structure PseudoOp   : SMLNJ_PSEUDO_OP_TYPE
    structure MLTreeComp : MLTREECOMP 
      where type T.Constant.const = ConstType.const
+       and T.BNames = FunctionNames 
      sharing MLTreeComp.T = C.T
      sharing PseudoOp = MLTreeComp.T.PseudoOp) : CPSGEN =
 struct
@@ -542,6 +543,7 @@ struct
 		 updtHeapPtr(hp);
 		 callSetup(formals, args);
 		 comp(M.DEFINELABEL lab);
+		 comp(M.BLOCK_NAME(Int.toString f));
 		 alignAllocptr f;
 		 initialRegBindings(vl, formals, tl);
 		 initTypBindings e;
@@ -558,6 +560,7 @@ struct
 		 testLimit hp;
 		 emit(branchToLabel(lab));
 		 comp(M.DEFINELABEL lab);
+		 comp(M.BLOCK_NAME(Int.toString f));
 		 CallGc.knwCheckLimit 
 		   {maxAlloc=4*maxAlloc f, regfmls=formals, regtys=tl, 
 		    return=branchToLabel(lab)};
@@ -1009,6 +1012,7 @@ struct
 	      func := NONE;
 	      comp(M.ORDERED[M.PSEUDO_OP(PseudoOp.MARK),
 			     M.ENTRYLABEL lab]);
+	      comp(M.BLOCK_NAME(Int.toString f));
 	      alignAllocptr f;
 	      emit(assign(C.baseptr, baseval));
 	      CallGc.stdCheckLimit{maxAlloc=4 * maxAlloc f, regfmls=regfmls, 
@@ -1079,5 +1083,8 @@ struct
 end (* MLRiscGen *)
 
 (*
- * $Log$
+ * $Log: mlriscGen.sml,v $
+ * Revision 1.3  1998/05/23 14:09:26  george
+ *   Fixed RCS keyword syntax
+ *
  *)

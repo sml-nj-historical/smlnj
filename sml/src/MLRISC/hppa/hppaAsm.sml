@@ -150,12 +150,12 @@ struct
       | nullify false = ()
     fun bcond{cmp, bc, r1, r2, t, f, n} = 
       (emitCmp cmp;  emit (cond bc); nullify n; emit "\t"; 
-       eReg r1; comma(); eReg r2; comma(); eLabel t
-       (* emit "\n\tNOP" *))
+       eReg r1; comma(); eReg r2; comma(); eLabel t;
+       emit "\n\tNOP" )
     fun bcondi{cmpi, bc, i, r2, t, f, n} = 
       (emitCmpi cmpi; emit (cond bc); nullify n; emit "\t";
-       emit(ms i); comma(); eReg r2; comma(); eLabel t
-       (* emit "\n\tNOP" *))
+       emit(ms i); comma(); eReg r2; comma(); eLabel t;
+       emit "\n\tNOP")
 
     fun farith{fa, r1, r2, t} = let
       val oper = case fa of I.FADD => "\tFADD\t" | I.FSUB => "\tFSUB\t"
@@ -206,11 +206,11 @@ struct
       | I.BCOND arg			=> bcond arg
       | I.BCONDI arg			=> bcondi arg
       | I.B{lab,n}			=> (emit "\tB"; nullify n; 
-                                            emit "\t"; eLabel lab
-					    (* emit "\n\tNOP" *))
+                                            emit "\t"; eLabel lab;
+					    emit "\n\tNOP" )
       | I.FBCC{t,n, ...}		=> (emit "\tFBCC"; nullify n;
-                                            emit "\t"; eLabel t
-					    (* emit "\n\tNOP" *))
+                                            emit "\t"; eLabel t;
+					    emit "\n\tNOP")
 
       | I.BLE{d, sr, b, t, ...} => 
           (emit "\tBLE\t"; eOperand d;
@@ -218,12 +218,12 @@ struct
 	   emit "\n\tCOPY %r31,"; eReg t)
       | I.BL{x=I.LabExp(LE.LABEL lab, fs), t, n, ...} => 
 	  (emit "\tBL"; nullify n; 
-           emit "\t"; emitFieldSel fs; eLabel lab; comma(); eReg t
-	   (* emit "\n\tNOP" *))
+           emit "\t"; emitFieldSel fs; eLabel lab; comma(); eReg t;
+	   emit "\n\tNOP" )
       | I.BL _ => error "emitInstr:bl"
       | I.BV{x, b, n, ...} => 
-	  (emit "\tBV"; nullify n; emit "\t"; eReg x; paren(fn () => eReg b) 
-          (* ; emit "\n\tNOP" *))
+	  (emit "\tBV"; nullify n; emit "\t"; eReg x; paren(fn () => eReg b);
+           emit "\n\tNOP" )
       | I.LDIL{i, t} => (emit "\tLDIL\t"; eOperand i; comma(); eReg t)
       | I.LDO{i,b,t} => 
 	  (emit "\tLDO\t";  eOperand i; paren(fn () => eReg b); 
@@ -264,6 +264,3 @@ struct
 end
 
 
-(*
- * $Log$
- *)

@@ -16,7 +16,8 @@ structure Alpha32PseudoOps = PseudoOpsLittle(Alpha32Spec)
 (* Flowgraph data structure specialized to DEC alpha instructions *)
 structure Alpha32FlowGraph = 
   FlowGraph(structure I=Alpha32Instr
-	    structure P=Alpha32PseudoOps)
+	    structure P=Alpha32PseudoOps
+	    structure B=FunctionNames)
 
 structure Alpha32AsmEmitter=
   Alpha32AsmEmitter(structure Instr=Alpha32Instr
@@ -35,8 +36,12 @@ structure Alpha32XMCEmitter =
 structure Alpha32MLTree = 
   MLTreeF(structure Const=Alpha32Const
 	  structure P=Alpha32PseudoOps
-	  structure R=CPSRegions)
+	  structure R=CPSRegions
+	  structure B=FunctionNames)
 
 (*
- * $Log$
+ * $Log: alpha32MLTree.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
+ *
  *)
