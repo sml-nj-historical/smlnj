@@ -14,6 +14,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/31 17:15:00 CDT
+Tag: blume-20040831-core
+Description:
+
+Added some exports to src/compiler/core.cm upon request by J. Joemann.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/08/30 17:55:00 CDT
 Tag: blume-20040830-installer
 Description:
