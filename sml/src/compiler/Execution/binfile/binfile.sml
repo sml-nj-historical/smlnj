@@ -56,10 +56,6 @@
  *  length of l) followed by n (int * node) subcomponents.  Each component
  *  consists of the integer selector followed by the corresponding tree.
  *
- *  The size of the import tree area is only given implicitly. When reading
- *  this area, the reader must count the number of leaves and compare it
- *  with importCnt.
- *
  *  Integer values in the import tree area (lengths and selectors) are
  *  written in "packed" integer format. In particular, this means that
  *  Values in the range 0..127 are represented by only 1 byte.
@@ -85,9 +81,8 @@
  *  two.  The very first segment is the "data" segment -- responsible for
  *  creating literal constants on the heap.  The idea is that code in the
  *  data segment will be executed only once at link-time. Thus, it can
- *  then be garbage-collected immediatly. (In the future it is possible that
- *  the data segment will not contain executable code at all but some form
- *  of bytecode that is to be interpreted separately.)
+ *  then be garbage-collected immediatly. (In fact, the data segment does
+ *  not consist of machine code but of code for an internal bytecode engine.)
  *
  *  In the binfile, each code segment is represented by its size s (in
  *  bytes -- written as a 4-byte big-endian integer) followed by s bytes of
@@ -98,8 +93,9 @@
  *
  *  Linking is achieved by executing all code segments in sequential order.
  *
- *  The first code segment (i.e., the "data" segment) receives unit as
- *  its single argument.
+ *  Conceptually, the first code segment (i.e., the "data" segment) receives
+ *  unit as its single argument. (In reality this code segment consists of
+ *  bytecode which does not really receive any arguments.)
  *
  *  The second code segment receives a record as its single argument.
  *  This record has (importCnt+1) components.  The first importCnt

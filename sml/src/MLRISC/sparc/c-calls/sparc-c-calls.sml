@@ -68,6 +68,7 @@ struct
     val mem = T.Region.memory
     val stack = T.Region.memory
 
+    val maxRegArgs = 6
     val paramAreaOffset = 68
 
     fun LI i = T.LI (T.I.fromInt (32, i))
@@ -159,10 +160,10 @@ struct
 	    loop (paramTys, 0)
 	end
 
-	val regargwords = Int.min (nargwords, 6)
-	val stackargwords = Int.max (nargwords, 6) - 6
+	val regargwords = Int.min (nargwords, maxRegArgs)
+	val stackargwords = Int.max (nargwords, maxRegArgs) - maxRegArgs
 
-	val scratchstart = 92 + 4*stackargwords
+	val scratchstart = paramAreaOffset + 4 * (maxRegArgs + stackargwords)
 
 	(* Copy struct or part thereof to designated area on the stack.
 	 * An already properly aligned address (relative to %sp) is
@@ -377,7 +378,7 @@ struct
 	    
 	    val defs = g_regs @ a_regs @ l_reg :: f_regs
 	    (* A call instruction "uses" just the argument registers. *)
-	    val uses = List.take (a_regs, stackargwords)
+	    val uses = List.take (a_regs, regargwords)
 	in
 	    (defs, uses)
 	end
@@ -422,8 +423,14 @@ struct
 	      | SOME c =>
 		T.ANNOTATION (call, #create MLRiscAnnotations.COMMENT c)
 
+	val (sp_sub, sp_add) =
+	    if stackdelta = 0 then ([], []) else
+	    if paramAlloc { szb = stackdelta, align = 4 } then ([], [])
+	    else ([T.MV (32, sp, T.SUB (32, spreg, LI stackdelta))],
+		  [T.MV (32, sp, addli (spreg, stackdelta))])
+
 	val callseq =
-	    List.concat [[T.MV (32, sp, T.SUB (32, spreg, LI stackdelta))],
+	    List.concat [sp_sub,
 			 copycode,
 			 argsetupcode,
 			 sretsetup,
@@ -431,7 +438,7 @@ struct
 			 [call],
 			 srethandshake,
 			 restore,
-			 [T.MV (32, sp, addli (spreg, stackdelta))]]
+			 sp_add]
 			 
     in
 	{ callseq = callseq, result = result }

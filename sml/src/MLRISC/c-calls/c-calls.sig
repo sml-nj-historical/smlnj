@@ -31,7 +31,7 @@ signature C_CALLS =
    *	proto			-- the function's prototype
    *	paramAlloc		-- this callback takes the size and alignment
    *				   constraints on the parameter-passing area
-   *				   in the stack.  It it returns true, then the
+   *				   in the stack.  If it returns true, then the
    *				   space for the parameters is allocated by
    *				   client; otherwise genCall allocates the space.
    *    structRet		-- this callback thjes the size and alignment

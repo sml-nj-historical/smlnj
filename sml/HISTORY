@@ -15,6 +15,15 @@ Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/01/28
+Tag: blume-20020128-sparc-ccalls
+Description:
+
+- Fixed problem with calculation of "used" registers in sparc-c-calls.
+- Make use of the allocParam argument in sparc-c-calls.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/28
 Tag: blume-20020128-allocParam
 Description:
 
