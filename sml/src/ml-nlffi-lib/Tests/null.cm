@@ -1,8 +1,0 @@
-library
-	structure Null
-is
-	$/basis.cm
-	$/c.cm
-	null.c : shell (target:null.c.cm
-			ml-nlffigen -strname GenNull %s)
-	null-glue.sml

@@ -1,8 +1,8 @@
 FILES = pdb.c forward.c
 H = PDBHandle.pdb
-D = pdb
+D = FFI
 HF = ../pdbhandle.sml
 CF = pdb.cm
 
-pdb/pdb.cm: pdb.c forward.c
+$(D)/$(CF): $(FILES)
 	ml-nlffigen -include $(HF) -libhandle $(H) -dir $(D) -cmfile $(CF) $^

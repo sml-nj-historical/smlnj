@@ -13,6 +13,19 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/18
+Tag: blume-20020118-use-x86-fp
+Description:
+
+Now that x86-fast-fp seems to be working, I turned it back on again
+by default.  (Seems to work fine now, even with the FFI.)
+
+Other than that, I added some documentation about the FFI to
+src/ml-nlffigen/README and updated the FFI test examples in
+src/ml-nlffi-lib/Tests/*.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2002/01/17
 Tag: leunga-20020117-x86-fast-fp-call

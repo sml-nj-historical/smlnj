@@ -1,8 +1,0 @@
-library
-	structure Sin
-is
-	$/basis.cm
-	$/c.cm
-	sin.h : shell (target:sin.h.cm
-		       ml-nlffigen -strname GenSin -lambdasplit infinity %s)
-	sin-glue.sml (lambdasplit:infinity)

@@ -1,9 +1,9 @@
 library
-	library(pdb/pdb.cm)
+	library(FFI/pdb.cm)
 	structure PDBC
 is
 	$/basis.cm
 	$/c.cm
-	pdb/pdb.cm : make (-f pdb.make)
+	FFI/pdb.cm : make (-f pdb.make)
 
 	pdb-client.sml

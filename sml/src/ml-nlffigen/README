@@ -1,6 +1,6 @@
-Copyright (c) 2001, Lucent Technologies, Bell Laboratories
+Copyright (c) 2001, 2002, Lucent Technologies, Bell Laboratories
 
-author: Matthias Blume (blume@research.bell-labs.com)
+  author: Matthias Blume (blume@research.bell-labs.com)
 
 This directory contains ML-NLFFI-Gen, a glue-code generator for
 the new "NLFFI" foreign function interface.  The generator reads
@@ -172,3 +172,147 @@ Command-line options for ml-nlffigen:
    --           Terminate processing of options, remaining arguments are
                 taken to be C sources.
 
+----------------------------------------------------------------------
+
+Sample usage:
+
+Suppose we have a C interface defined in foo.h.
+
+1. Running ml-nlffigen:
+
+   It is best to let a tool such as Unix' "make" handle the invocation of
+   ml-nlffigen.  The following "Makefile" can be used as a template for
+   other projects:
+
+  +----------------------------------------------------------
+  |FILES = foo.h
+  |H = FooH.libh
+  |D = FFI
+  |HF = ../foo-h.sml
+  |CF = foo.cm
+  |
+  |$(D)/$(CF): $(FILES)
+  |	ml-nlffigen -include $(HF) -libhandle $(H) -dir $(D) -cmfile $(CF) $^
+  +----------------------------------------------------------
+
+   Suppose the above file is stored as "foo.make".  Running
+
+     $ make -f foo.make
+
+   will generate a subdirectory "FFI" full of ML files corresponding to
+   the definitions in foo.h.  Access to the generated ML code is gained
+   by refering to the CM library FFI/foo.cm; the .cm-file (foo.cm) is
+   also produced by ml-nlffigen.
+
+2. The ML code uses the library handle specified in the command line
+   (here: FooH.libh) for dynamic linking.  The type of FooH.libh must
+   be:
+
+        FooH.libh : string -> unit -> CMemory.addr
+
+   That is, FooH.libh takes the name of a symbol and produces that
+   symbol's suspended address.
+
+   The code that implements FooH.libh must be provided by the programmer.
+   In the above example, we assume that it is stored in file foo-h.sml.
+   The name of that file must appear in the generated .cm-file, hence the
+   "-include" command-line argument.
+
+   Notice that the name provided to ml-nlffigen must be relative to the
+   output directory.  Therefore, in our case it is "../foo-h.sml" and not
+   just foo-h.sml (because the full path would be FFI/../foo-h.sml).
+
+3. To actually implement FooH.libh, use the "DynLinkage" module.
+   Suppose the shared library's name is "/usr/lib/foo.so".  Here is
+   the corresponding contents of foo-h.sml:
+
+  +-------------------------------------------------------------
+  |structure FooH = struct
+  |    local 
+  |        val lh = DynLinkage.open_lib
+  |             { name = "/usr/lib/foo.so", global = true, lazy = true }
+  |    in
+  |        fun libh s = let
+  |            val sh = DynLinkage.lib_symbol (lh, s)
+  |        in
+  |            fn () => DynLinkage.addr sh
+  |        end
+  |    end
+  |end
+  +-------------------------------------------------------------
+
+   If all the symbols you are linking to are already available within
+   the ML runtime system, then you don't need to open a new shared
+   object.  As a result, your FooH implementation would look like this:
+
+  +-------------------------------------------------------------
+  |structure FooH = struct
+  |    fun libh s = let
+  |        val sh = DynLinkage.lib_symbol (DynLinkage.main_lib, s)
+  |    in
+  |        fn () => DynLinkage.addr sh
+  |    end
+  |end
+  +-------------------------------------------------------------
+
+   If the symbols your are accessing are strewn across several separate
+   shared objects, then there are two possible solutions:
+
+   a)  Open several shared libraries and perform a trial-and-error search
+       for every symbol you are looking up.  (The DynLinkage module raises
+       an exception (DynLinkError of string) if the lookup fails.  This
+       could be used to daisy-chain lookup operations.)
+
+       [Be careful:  Sometimes there are non-obvious inter-dependencies
+       between shared libraries.  Consider using DynLinkage.open_lib'
+       to express those.]
+
+   b)  A simpler and more robust way of accessing several shared libraries
+       is to create a new "summary" library object at the OS level.
+       Supposed you are trying to access /usr/lib/foo.so and /usr/lib/bar.so.
+       The solution is to make a "foobar.so" object by saying:
+
+        $ ld -shared -o foobar.so /usr/lib/foo.so /usr/lib/bar.so
+
+       The ML code then referes to foobar.so and the Linux dynamic loader
+       does the rest.
+
+4. To put it all together, let's wrap it up in a .cm-file.  For example,
+   if we simply want to directly make the ml-nlffigen-generated definitions
+   available to the "end user", we could write this wrapper .cm-file
+   (let's call it foo.cm):
+
+  +-------------------------------------------------------------
+  |library
+  |	library(FFI/foo.cm)
+  |is
+  |	$/basis.cm
+  |	$/c.cm
+  |	FFI/foo.cm : make (-f foo.make)
+  +-------------------------------------------------------------
+
+   Now, saying
+
+     $ sml -m foo.cm
+
+   is all one need's to do in order to compile.  (CM will automatically
+   invoke "make", so you don't have to run "make" separately.)
+
+   If the goal is not to export the "raw" ml-nlffigen-generated stuff
+   but rather something more nicely "wrapped", consider writing wrapper
+   ML code.  Suppose you have wrapper definitions for structure Foo_a
+   and structure Foo_b with code for those in wrap-foo-a.sml and
+   wrap-foo-b.sml.  In this case the corresponding .cm-file would
+   look like the following:
+
+  +-------------------------------------------------------------
+  |library
+  |	structure Foo_a
+  |	structure Foo_b
+  |is
+  |	$/basis.cm
+  |	$/c.cm
+  |	FFI/foo.cm : make (-f foo.make)
+  |	wrapper-foo-a.sml
+  |	wrapper-foo-b.sml
+  +-------------------------------------------------------------
