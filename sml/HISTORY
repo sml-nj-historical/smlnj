@@ -13,6 +13,32 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/03/19 14:40:00 EST
+Tag: leunga-20040319-cygwin-nlffi
+Description:
+
+Fixed the runtime so that ml-nlffi-lib runs on the cygwin version
+of SML/NJ.  The problem is that
+
+   lib = dlopen(NULL, ...)
+   f   = dlsym(lib, "malloc");
+
+does not work on Windows unless we explicitly export symbols 
+such as 'malloc' during linking.  We fixed this by explicitly 
+exporting the required symbols with the magic gcc incantation:
+
+    -Wl,--export-all cygwin.def
+
+where cygwin.def is a file containing all the symbols that
+we wish to export.   
+
+I suspect this is a Windows problem and we'll have to 
+do the same (somehow with windows compilers) when 
+we build the native win32 version with the system
+calls LoadLibrary/GetProcAddress. 
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/03/04 16:35:00 CST
 Tag: blume-20040304-intinf-fmt
