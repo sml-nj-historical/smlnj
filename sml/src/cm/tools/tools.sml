@@ -30,7 +30,7 @@ signature TOOLS = sig
     val registerClass : class * rule -> unit
 
     (* install "ML Source" class *)
-    val registerSmlClass : class * bool option -> unit
+    val registerSmlClass : class * Sharing.request -> unit
 
     (* install "CM Group" class *)
     val registerGroupClass : class -> unit
@@ -77,14 +77,15 @@ signature PRIVATETOOLS = sig
     include TOOLS
 
     type smlsource =
-	{ sourcepath: SrcPath.t, history: class list, share: bool option }
+	{ sourcepath: SrcPath.t, history: class list,
+	  sh_spec: Sharing.request }
 
     datatype expansion =
 	SMLSOURCE of smlsource
       | GROUP of SrcPath.t
 
     datatype private_rule =
-	ISSML of bool option
+	ISSML of Sharing.request
       | ISGROUP
       | ISTOOL of class * rule
 
@@ -105,14 +106,15 @@ structure PrivateTools :> PRIVATETOOLS = struct
     type rule = fname * rulecontext -> item list
 
     type smlsource =
-	{ sourcepath: SrcPath.t, history: class list, share: bool option }
+	{ sourcepath: SrcPath.t, history: class list,
+	  sh_spec: Sharing.request }
 
     datatype expansion =
 	SMLSOURCE of smlsource
       | GROUP of SrcPath.t
 
     datatype private_rule =
-	ISSML of bool option
+	ISSML of Sharing.request
       | ISGROUP
       | ISTOOL of class * rule
 
@@ -121,8 +123,8 @@ structure PrivateTools :> PRIVATETOOLS = struct
     fun registerClass (class, rule) =
 	classes := StringMap.insert (!classes, class, ISTOOL (class, rule))
 
-    fun registerSmlClass (class, share) =
-	classes := StringMap.insert (!classes, class, ISSML share)
+    fun registerSmlClass (class, shrq) =
+	classes := StringMap.insert (!classes, class, ISSML shrq)
 
     fun registerGroupClass class =
 	classes := StringMap.insert (!classes, class, ISGROUP)
@@ -177,7 +179,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	    case StringMap.find (!classes, class) of
 		SOME rule => rule
 	      | NONE => (error (concat ["unknown class \"", class, "\""]);
-			 ISSML NONE)
+			 ISSML Sharing.DONTCARE)
 
 	(* apply a rule to a path within a given context *)
 	fun apply (rule, p, c) = let
@@ -199,13 +201,13 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	fun expand' context = let
 	    fun loop (acc, []) = rev acc
 	      | loop (acc, ((p, c), history) :: t) = let
-		    fun step (ISSML share) =
+		    fun step (ISSML shrq) =
 			let
 			    val ap = SrcPath.native { context = context,
 						      spec = p }
 			    val src = { sourcepath = ap,
 				        history = rev history,
-					share = share }
+					sh_spec = shrq }
 			in
 			    loop (SMLSOURCE src :: acc, t)
 			end
@@ -227,7 +229,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		      | NONE =>
 			    (case defaultClassOf p of
 				 SOME class => step (class2rule class)
-			       | NONE => step (ISSML NONE))
+			       | NONE => step (ISSML Sharing.DONTCARE))
 		end
 	in
 	    fn l => loop ([], l)
@@ -240,9 +242,9 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		val class = String.map Char.toLower class0
 	    in
 		case class2rule class of
-		    ISSML share =>
+		    ISSML shrq =>
 			[SMLSOURCE { sourcepath = ap, history = [],
-				     share = share }]
+				     sh_spec = shrq }]
 		  | ISGROUP =>
 			[GROUP ap]
 		  | ISTOOL (class, rule) => let
@@ -325,9 +327,9 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	fun sfx (s, c) =
 	    registerClassifier (stdSfxClassifier { sfx = s, class = c })
     in
-	val _ = registerSmlClass ("sml", NONE)
-	val _ = registerSmlClass ("shared", SOME true)
-	val _ = registerSmlClass ("private", SOME false)
+	val _ = registerSmlClass ("sml", Sharing.DONTCARE)
+	val _ = registerSmlClass ("shared", Sharing.SHARED)
+	val _ = registerSmlClass ("private", Sharing.PRIVATE)
 	val _ = registerGroupClass "cm"
 	    
 	val _ = sfx ("sml", "sml")

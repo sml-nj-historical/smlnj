@@ -44,7 +44,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
     val % = PU.%
 
     (* type info *)
-    val (BN, SN, SBN, SS, SI, FSBN, IMPEXP) = (1, 2, 3, 4, 5, 6, 7)
+    val (BN, SN, SBN, SS, SI, FSBN, IMPEXP, SHM) = (1, 2, 3, 4, 5, 6, 7, 8)
 
     structure SSMap = BinaryMapFn
 	(struct
@@ -183,7 +183,9 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
 	    val filter = option symbolset
 
-	    val sh = option bool	(* sharing *)
+	    fun shm (Sharing.SHARE true) = %SHM "a"
+	      | shm (Sharing.SHARE false) = %SHM "b"
+	      | shm Sharing.DONTSHARE = %SHM "c"
 
 	    fun si i = let
 		(* FIXME: this is not a technical flaw, but perhaps one
@@ -195,10 +197,10 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		val spec = SrcPath.specOf (SmlInfo.sourcepath i)
 		val locs = SmlInfo.errorLocation gp i
 		val offset = registerOffset (i, bsz i)
-		val share = SmlInfo.share i
+		val sh_mode = SmlInfo.sh_mode i
 		val op $ = PU.$ SI
 	    in
-		"s" $ string spec & string locs & int offset & sh share
+		"s" $ string spec & string locs & int offset & shm sh_mode
 	    end
 
 	    fun primitive p =
@@ -298,14 +300,14 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			    val spec = SrcPath.specOf sourcepath
 			    val offset =
 				getOffset smlinfo + offset_adjustment
-			    val share = SmlInfo.share smlinfo
+			    val sh_mode = SmlInfo.sh_mode smlinfo
 			    val locs = SmlInfo.errorLocation gp smlinfo
 			    val error = EM.errorNoSource grpSrcInfo locs
 			    val i = BinInfo.new { group = grouppath,
 						  mkStablename = mksname,
 						  spec = spec,
 						  offset = offset,
-						  share = share,
+						  sh_mode = sh_mode,
 						  error = error }
 			    val n = DG.BNODE { bininfo = i,
 					       localimports = li,
@@ -451,6 +453,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    fun option m r = UU.r_option session m r
 	    val int = UU.r_int session
 	    fun share m r = UU.share session m r
+	    fun nonshare r = UU.nonshare session r
 	    val string = UU.r_string session
 	    val symbol = UU.r_symbol session
 	    val bool = UU.r_bool session
@@ -497,14 +500,21 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		          (String.sub (string (), 0)))
 		handle _ => raise Format
 
-	    val sh = option boolOptionM bool
+	    fun shm () = let
+		fun s #"a" = Sharing.SHARE true
+		  | s #"b" = Sharing.SHARE false
+		  | s #"c" = Sharing.DONTSHARE
+		  | s _ = raise Format
+	    in
+		nonshare s
+	    end
 
 	    fun si () = let
 		fun s #"s" =
 		    let val spec = string ()
 			val locs = string ()
 			val offset = int () + offset_adjustment
-			val share = sh ()
+			val sh_mode = shm ()
 			val error = EM.errorNoSource grpSrcInfo locs
 		    in
 			BinInfo.new { group = group,
@@ -512,7 +522,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 				      error = error,
 				      spec = spec,
 				      offset = offset,
-				      share = share }
+				      sh_mode = sh_mode }
 		    end
 		  | s _ = raise Format
 	    in

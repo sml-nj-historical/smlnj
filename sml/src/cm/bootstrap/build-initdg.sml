@@ -71,7 +71,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			    SmlInfo.info gp { sourcepath = p,
 					      group = (specgroup,
 						       (pos, newpos)),
-					      share = NONE,
+					      sh_spec = Sharing.DONTCARE,
 					      split = split }
 			end
 			fun bogus n = 

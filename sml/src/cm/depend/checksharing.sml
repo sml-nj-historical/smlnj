@@ -5,25 +5,25 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-signature CHECKSHARING = sig
-    val check : GroupGraph.group * GeneralParams.info -> bool
-end
-
-structure CheckSharing :> CHECKSHARING = struct
-
+local
     structure DG = DependencyGraph
     structure EM = GenericVC.ErrorMsg
     structure PP = PrettyPrint
+in
+  signature CHECKSHARING = sig
+    val check : DG.impexp SymbolMap.map * GeneralParams.info -> unit
+  end
 
-    val empty = StringSet.empty
+  structure CheckSharing :> CHECKSHARING = struct
 
-    fun check (GroupGraph.GROUP { exports, ... }, gp) = let
+    fun check (exports, gp) = let
 
-	val ok = ref true
-
-	fun check (NONE, _, s, _) = s
-	  | check (SOME false, x, s, _) = StringSet.add (s, x)
-	  | check (SOME true, x, s, err) = let
+	fun check (Sharing.DONTCARE, _, s, _) =
+	    (s, if StringSet.isEmpty s then Sharing.SHARE false
+		else Sharing.DONTSHARE)
+	  | check (Sharing.PRIVATE, x, _, _) =
+	    (StringSet.singleton x, Sharing.DONTSHARE)
+	  | check (Sharing.SHARED, x, s, err) = let
 		fun ppb pps = let
 		    fun loop [] = ()
 		      | loop (h :: t) =
@@ -38,55 +38,45 @@ structure CheckSharing :> CHECKSHARING = struct
 		    loop (StringSet.listItems s)
 		end
 	    in
-		if StringSet.isEmpty s then ()
+		if StringSet.isEmpty s then (s, Sharing.SHARE true)
 		else (err EM.COMPLAIN ("cannot share state of " ^ x) ppb;
-		      ok := false);
-		s
+		      (s, Sharing.DONTSHARE))
 	    end
 
 	val smlmap = ref SmlInfoMap.empty
-	val stablemap = ref StableMap.empty
 
-	fun bn (DG.PNODE _, s) = s
-	  | bn (DG.BNODE { bininfo = i, localimports, globalimports }, s) =
-	    case StableMap.find (!stablemap, i) of
-		SOME s' => StringSet.union (s, s')
-	      | NONE => let
-		    val gs = foldl fbn empty globalimports
-		    val ls = foldl bn gs localimports
-		    val s' = check (BinInfo.share i, BinInfo.describe i, ls,
-				    BinInfo.error i)
-		in
-		    stablemap := StableMap.insert (!stablemap, i, s');
-		    StringSet.union (s, s')
-		end
+	fun bn (DG.PNODE _) = StringSet.empty
+	  | bn (DG.BNODE { bininfo = i, ... }) =
+	    case BinInfo.sh_mode i of
+		Sharing.DONTSHARE => StringSet.singleton (BinInfo.describe i)
+	      | _ => StringSet.empty
 
-	and fbn ((_, n), s) = bn (n, s)
-
-	fun sn (DG.SNODE n, s) = let
-	    val { smlinfo = i, localimports, globalimports, ... } = n
+	fun sn (DG.SNODE n) = let
+	    val { smlinfo = i, localimports = li, globalimports = gi, ... } = n
+	    fun acc f (arg, s) = StringSet.union (f arg, s)
 	in
 	    case SmlInfoMap.find (!smlmap, i) of
-		SOME s' => StringSet.union (s, s')
+		SOME s => s
 	      | NONE => let
-		    val gs = foldl fsbn empty globalimports
-		    val ls = foldl sn gs localimports
-		    val s' = check (SmlInfo.share i, SmlInfo.descr i, ls,
-				    SmlInfo.error gp i)
+		    val gs = foldl (acc fsbn) StringSet.empty gi
+		    val ls = foldl (acc sn) gs li
+		    val (s, m) = check (SmlInfo.sh_spec i, SmlInfo.descr i, ls,
+					SmlInfo.error gp i)
 		in
-		    smlmap := SmlInfoMap.insert (!smlmap, i, s');
-		    StringSet.union (s, s')
+		    smlmap := SmlInfoMap.insert (!smlmap, i, s);
+		    SmlInfo.set_sh_mode (i, m);
+		    s
 		end
 	end
 
-	and sbn (DG.SB_BNODE n, s) = bn (n, s)
-	  | sbn (DG.SB_SNODE n, s) = sn (n, s)
+	and sbn (DG.SB_BNODE n) = bn n
+	  | sbn (DG.SB_SNODE n) = sn n
 
-	and fsbn ((_, n), s) = sbn (n, s)
+	and fsbn (_, n) = sbn n
 
-	fun impexp (n, _) = ignore (fsbn (n, StringSet.empty))
+	fun impexp (n, _) = ignore (fsbn n)
     in
-	SymbolMap.app impexp exports;
-	!ok
+	SymbolMap.app impexp exports
     end
+  end
 end

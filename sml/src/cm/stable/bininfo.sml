@@ -19,14 +19,14 @@ signature BININFO = sig
 	        error: complainer,
 		spec: string,
 		offset: int,
-		share: bool option } -> info
+		sh_mode: Sharing.mode } -> info
 
     val compare : info * info -> order
     val describe : info -> string
     val offset : info -> int
     val group : info -> SrcPath.t
     val stablename : info -> string
-    val share : info -> bool option
+    val sh_mode : info -> Sharing.mode
     val error : info -> complainer
 end
 
@@ -40,7 +40,7 @@ structure BinInfo :> BININFO = struct
 		  mkStablename: unit -> string,
 		  spec: string,
 		  offset: int,
-		  share: bool option,
+		  sh_mode: Sharing.mode,
 		  error: complainer }
 
     type ord_key = info
@@ -57,7 +57,7 @@ structure BinInfo :> BININFO = struct
 
     fun group (INFO { group = g, ... }) = g
     fun offset (INFO { offset = os, ... }) = os
-    fun share (INFO { share = s, ... }) = s
+    fun sh_mode (INFO { sh_mode = s, ... }) = s
     fun stablename (INFO { mkStablename = msn, ... }) = msn ()
 
     fun error (INFO { error = e, ... }) = e

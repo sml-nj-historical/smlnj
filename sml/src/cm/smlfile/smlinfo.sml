@@ -23,7 +23,7 @@ signature SMLINFO = sig
     val info : GeneralParams.info ->
 	{ sourcepath: SrcPath.t,
 	  group: SrcPath.t * region,
-	  share: bool option,
+	  sh_spec: Sharing.request,
 	  split: bool }
 	-> info
 
@@ -35,7 +35,9 @@ signature SMLINFO = sig
     val parsetree : GeneralParams.info -> info -> (ast * source) option
     val exports : GeneralParams.info -> info  -> SymbolSet.set option
     val skeleton : GeneralParams.info -> info -> Skeleton.decl option
-    val share : info -> bool option
+    val sh_spec : info -> Sharing.request
+    val set_sh_mode : info * Sharing.mode -> unit
+    val sh_mode : info -> Sharing.mode
     val split : info -> bool
     val lastseen : info -> TStamp.t
 
@@ -78,7 +80,8 @@ structure SmlInfo :> SMLINFO = struct
 		  mkSkelname: unit -> string,
 		  mkBinname: unit -> string,
 		  persinfo: persinfo,
-		  share: bool option,
+		  sh_spec: Sharing.request,
+		  sh_mode: Sharing.mode option ref,
 		  split: bool }
 
     type ord_key = info
@@ -86,7 +89,11 @@ structure SmlInfo :> SMLINFO = struct
     fun sourcepath (INFO { sourcepath = sp, ... }) = sp
     fun skelname (INFO { mkSkelname = msn, ... }) = msn ()
     fun binname (INFO { mkBinname = mbn, ... }) = mbn ()
-    fun share (INFO { share = s, ... }) = s
+    fun sh_spec (INFO { sh_spec = s, ... }) = s
+    fun sh_mode (INFO { sh_mode = ref (SOME m), ... }) = m
+      | sh_mode _ = EM.impossible "SmlInfo.sh_mode: "
+    fun set_sh_mode (INFO { sh_mode as ref NONE, ... }, m) = sh_mode := SOME m
+      | set_sh_mode _ = EM.impossible "SmlInfo.set_sh_mode"
     fun split (INFO { split = s, ... }) = s
 
     fun gerror (gp: GeneralParams.info) = GroupReg.error (#groupreg gp)
@@ -135,7 +142,7 @@ structure SmlInfo :> SMLINFO = struct
     end
 
     fun info (gp: GeneralParams.info) arg = let
-	val { sourcepath, group = gr as (group, region), share, split } = arg
+	val { sourcepath, group = gr as (group, region), sh_spec, split } = arg
 	val policy = #fnpolicy (#param gp)
 	fun mkSkelname () = FNP.mkSkelName policy sourcepath
 	fun mkBinname () = FNP.mkBinName policy sourcepath
@@ -176,7 +183,8 @@ structure SmlInfo :> SMLINFO = struct
 	       mkSkelname = mkSkelname,
 	       mkBinname = mkBinname,
 	       persinfo = persinfo (),
-	       share = share,
+	       sh_spec = sh_spec,
+	       sh_mode = ref NONE,
 	       split = split }
     end
 

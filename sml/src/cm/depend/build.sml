@@ -296,6 +296,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 		    SS.foldl addNodeFor SM.empty ss
 		end
     in
+	CheckSharing.check (exports, gp);
 	(exports, reqpriv)
     end
 end

@@ -293,16 +293,13 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
     in
 	case mparse (group, [], ref false, stabthis, NONE) of
 	    NONE => NONE
-	  | SOME g =>
-		if CheckSharing.check (g, ginfo) then
-		    let
-			val reach1 = Reachable.reachable g
-			val reach2 = Reachable.reachable' (pending ())
-			val reach = SrcPathSet.union (reach1, reach2)
-		    in
-			SmlInfo.forgetAllBut reach;
-			SOME (g, ginfo)
-		    end
-		else NONE
+	  | SOME g => let
+		val reach1 = Reachable.reachable g
+		val reach2 = Reachable.reachable' (pending ())
+		val reach = SrcPathSet.union (reach1, reach2)
+	    in
+		SmlInfo.forgetAllBut reach;
+		SOME (g, ginfo)
+	    end
     end
 end

@@ -46,8 +46,8 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC
 
 	fun start () = ref Map.empty
 
-	fun share (SML i) = SmlInfo.share i
-	  | share (STABLE i) = BinInfo.share i
+	fun sh_mode (SML i) = SmlInfo.sh_mode i
+	  | sh_mode (STABLE i) = BinInfo.sh_mode i
 
 	fun discard (k, m) =
 	    case Map.find (m, k) of
@@ -103,8 +103,8 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC
 			     (case Map.find (!persmap, k) of
 				  NONE => NONE
 				| SOME NONE =>
-				      (case share k of
-					   SOME true =>
+				      (case sh_mode k of
+					   Sharing.SHARE true =>
 					       error k EM.WARN
 					        (concat ["re-instantiating ",
 							 descr k,
@@ -113,8 +113,8 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC
 					 | _ => ();
 				       NONE)
 				| SOME (SOME (e, _)) =>
-					   (case share k of
-						SOME false =>
+					   (case sh_mode k of
+						Sharing.DONTSHARE =>
 						    (discard_pers k; NONE)
 					      | _ =>  SOME e))
 		       | SOME (e, _) => SOME e)
@@ -140,8 +140,8 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC
 	    fun retainShared (k, (e, d), (pm, tm)) = let
 		val m = discard (k, pm)
 	    in
-		case share k of
-		    SOME false => (pm, Map.insert (tm, k, (e, d)))
+		case sh_mode k of
+		    Sharing.DONTSHARE => (pm, Map.insert (tm, k, (e, d)))
 		  | _ => (Map.insert (m, k, SOME (e, ref Set.empty)), tm)
 	    end
 	    val pm = !persmap

@@ -122,11 +122,11 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 				 reqpriv = required }
 	        end
 	      | exp2coll (PrivateTools.SMLSOURCE src) = let
-		    val { sourcepath = p, history = h, share = s } = src
+		    val { sourcepath = p, history = h, sh_spec = s } = src
 		    val i = SmlInfo.info gp
 			{ sourcepath = p,
 			  group = group,
-			  share = s,
+			  sh_spec = s,
 			  split = true }
 		    val exports =
 			case SmlInfo.exports gp i of
