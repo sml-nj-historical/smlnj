@@ -68,7 +68,7 @@ in
 		end
 	end
 
-	and sbn (DG.SB_BNODE (n, _)) = bn n
+	and sbn (DG.SB_BNODE (n, _, _)) = bn n
 	  | sbn (DG.SB_SNODE n) = sn n
 
 	and fsbn (_, n) = sbn n

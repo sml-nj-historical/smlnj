@@ -136,7 +136,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			     NONE => ()
 			   | SOME (bnth, _, _) =>
 			     (case bnth () of
-				  (_, DG.SB_BNODE (DG.BNODE bn, _)) =>
+				  (_, DG.SB_BNODE (DG.BNODE bn, _, _)) =>
 				  em := StableMap.insert (!em, #bininfo bn,
 							  #smlinfo sn)
 				| _ => ()))

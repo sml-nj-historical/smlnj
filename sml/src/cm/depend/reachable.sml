@@ -55,7 +55,7 @@ structure Reachable :> REACHABLE = struct
 	
 	    and farsbnode ((_, n), ksf) = sbnode (n, ksf)
 		
-	    and sbnode (DG.SB_BNODE (DG.BNODE n, _), (known, stabfringe)) =
+	    and sbnode (DG.SB_BNODE (DG.BNODE n, _, _), (known, stabfringe)) =
 		(known, StableSet.add (stabfringe, #bininfo n))
 	      | sbnode (DG.SB_SNODE n, ksf) = snode (n, ksf)
 	in
@@ -158,7 +158,7 @@ structure Reachable :> REACHABLE = struct
 	    end
 	    fun get_bn ((nth, _, _), bnl) =
 		case nth () of
-		    (_, DG.SB_BNODE (n, _)) => n :: bnl
+		    (_, DG.SB_BNODE (n, _, _)) => n :: bnl
 		  | _ => bnl
 	    val bnl = SymbolMap.foldl get_bn [] exports
 	in

@@ -16,6 +16,7 @@ local
     structure PP = PrettyPrint
 
     type env = E.dynenv
+    type posmap = env IntMap.map
 in
     signature LINK = sig
 
@@ -45,8 +46,8 @@ in
     functor LinkFn (structure MachDepVC : MACHDEP_VC
 		    structure BFC : BFC
 		    sharing type MachDepVC.Binfile.bfContent = BFC.bfc
-		    val system_values : env SrcPathMap.map ref) :> LINK
-	where type bfc = BFC.bfc =
+		    val system_values : posmap SrcPathMap.map ref) :>
+	    LINK where type bfc = BFC.bfc =
     struct
 
 	exception Link of exn
@@ -124,20 +125,7 @@ in
 		raise Link exn
 	    end
 
-	    (* We invoke mk_de here and only if we don't have the value
-	     * available as a sysval.  This saves the (unnecessary) traversal
-	     * in the stable case. (Normally all sysval entries are from
-	     * stable libraries.) *)
-	    fun execute sysval (bfc, mk_de, gp: GP.info) =
-		case sysval (BF.exportPidOf bfc) of
-		    NONE => BF.exec (bfc, mk_de gp)
-		  | SOME de' => de'
-
-	    (* Construction of the environment is delayed until we are
-	     * sure we really REALLY need it.  This way we spare ourselves
-	     * the trouble of doing the ancestor traversal if we
-	     * end up finding out we already have the value in sysVal. *)
-	    fun link_stable sysval (i, mk_e, gp) = let
+	    fun link_stable (i, de) = let
 		val stable = BinInfo.stablename i
 		val os = BinInfo.offset i
 		val descr = BinInfo.describe i
@@ -147,7 +135,7 @@ in
 		    handle exn => exn_err ("unable to load library module",
 					   error, descr, exn)
 	    in
-		execute sysval (bfc, mk_e, gp)
+		BF.exec (bfc, de)
 		handle exn =>
 		    exn_err ("link-time exception in library code",
 			     error, descr, exn)
@@ -160,7 +148,7 @@ in
 		    case getE gp of
 			NONE => NONE
 		      | SOME e =>
-			    (SOME (execute (fn _ => NONE) (bfc, fn _ => e, gp))
+			    (SOME (BF.exec (bfc, e))
 			     handle exn =>
 				exn_err ("link-time exception in user program",
 					 SmlInfo.error gp i EM.COMPLAIN,
@@ -191,55 +179,72 @@ in
 	    fun registerGroup GG.ERRORGROUP = ()
 	      | registerGroup (g as GG.GROUP grec) = let
 		    val { grouppath, kind, sublibs, ... } = grec
+		    fun registerSublib NONE = ()
+		      | registerSublib (SOME i) =
+			registerGroup (#2 (List.nth (sublibs, i)) ())
 		    fun registerStableLib GG.ERRORGROUP = ()
 		      | registerStableLib (GG.GROUP sg) = let
 			    val { exports, grouppath = sgp, ... } = sg
-			    val sysvals =
-				let val (m', e) =
+			    val posmap =
+				let val (m', pm) =
 					SrcPathMap.remove (!system_values, sgp)
-				in system_values := m'; e
-				end handle LibBase.NotFound => emptyDyn
-
-			    fun sv (SOME pid) =
-				(SOME (DE.bind (pid, DE.look sysvals pid,
-						emptyDyn))
-				 handle DE.Unbound => NONE)
-			      | sv _ = NONE
+				in system_values := m'; pm
+				end handle LibBase.NotFound => IntMap.empty
 
 			    val localmap = ref StableMap.empty
 			    fun bn (DG.BNODE n) = let
 				val i = #bininfo n
 				val li = #localimports n
 				val gi = #globalimports n
+				fun mySysval () =
+				    IntMap.find (posmap, BinInfo.offset i)
 
-				fun new () = let
-				    val e0 = (fn _ => emptyDyn, [])
-				    fun join ((f, NONE), (e, l)) =
-					(fn gp => DE.atop (f gp emptyDyn,
-							   e gp),
-					 l)
-				      | join ((f, SOME (i, l')), (e, l)) =
-					(e, B (f, i, l') :: l)
-				    val ge = foldl join e0 (map lfbn gi)
-				    val le = foldl join ge (map bn li)
-				in
-				    case (BinInfo.sh_mode i, le) of
-					(Sharing.SHARE _, (e, [])) => let
-					    fun thunk gp =
-						link_stable sv (i, e, gp)
-					    val m_thunk = Memoize.memoize thunk
+				fun new () =
+				    case mySysval () of
+					(* We short-circuit traversal
+					 * construction (and the resulting
+					 * traversal) whenever we find a
+					 * node whose dynamic value was
+					 * created at bootstrap time.
+					 * This assumes that anything in
+					 * sysval can be shared -- which
+					 * is enforced by the way the
+					 * PIDMAP file is constructed. *)
+					SOME e => (fn gp => fn _ => e, NONE)
+				      | NONE => let
+					    val e0 = (fn _ => emptyDyn, [])
+					    fun join ((f, NONE), (e, l)) =
+						(fn gp =>
+						    DE.atop (f gp emptyDyn,
+							     e gp),
+						 l)
+					      | join ((f, SOME (i, l')),
+						      (e, l)) =
+						(e, B (f, i, l') :: l)
+					    val ge =
+						foldl join e0 (map lfbn gi)
+					    val le = foldl join ge (map bn li)
 					in
-					    (fn gp => fn _ => m_thunk gp, NONE)
+					    case (BinInfo.sh_mode i, le) of
+						(Sharing.SHARE _, (e, [])) =>
+						let fun thunk gp =
+							link_stable (i, e gp)
+						    val m_thunk =
+							Memoize.memoize thunk
+						in
+						    (fn gp => fn _ =>
+								 m_thunk gp,
+						     NONE)
+						end
+					      | (Sharing.SHARE _, _) =>
+						EM.impossible
+						   "Link: sh_mode inconsistent"
+					      | (Sharing.DONTSHARE, (e, l)) =>
+						(fn gp => fn e' =>
+						  link_stable
+						      (i, DE.atop (e', e gp)),
+						 SOME (i, l))
 					end
-				      | (Sharing.SHARE _, _) =>
-					EM.impossible
-					    "Link: sh_mode inconsistent"
-				      | (Sharing.DONTSHARE, (e, l)) =>
-					(fn gp => fn e' =>
-					 link_stable sv
-					  (i, fn gp => DE.atop (e', e gp), gp),
-					  SOME (i, l))
-				end
 			    in
 				case StableMap.find (!stablemap, i) of
 				    SOME (B (f, i, [])) =>
@@ -259,14 +264,15 @@ in
 					 end)
 			    end
 
-			    and fbn (_, n) = bn n
+			    and fbn (_, n, p) = (registerSublib p; bn n)
 
 			    and lfbn th = fbn (th ())
 
 			    fun sbn (DG.SB_SNODE n) =
 				EM.impossible "Link:SNODE in stable lib"
-			      | sbn (DG.SB_BNODE (n as DG.BNODE bnrec, _)) =
-				let val bininfo = #bininfo bnrec
+			      | sbn (DG.SB_BNODE (n as DG.BNODE bnrec, _, p)) =
+				let val _ = registerSublib p
+				    val bininfo = #bininfo bnrec
 				    val b as B (_, i, _) =
 					case bn n of
 					    (f, NONE) => B (f, bininfo, [])
@@ -285,11 +291,10 @@ in
 		in
 		    if SrcPathSet.member (!visited, grouppath) then ()
 		    else (visited := SrcPathSet.add (!visited, grouppath);
-			  app (registerGroup o force o #2) sublibs;
 			  case kind of
 			      GG.LIB { kind = GG.STABLE _, ... } =>
 			          registerStableLib g
-			    | _ => ())
+			    | _ => app (registerGroup o force o #2) sublibs)
 		end
 
 	    val _ = registerGroup group
@@ -314,7 +319,7 @@ in
 			m_th
 		    end
 
-	    fun sbn (DG.SB_BNODE (DG.BNODE { bininfo, ... }, _)) = let
+	    fun sbn (DG.SB_BNODE (DG.BNODE { bininfo, ... }, _, _)) = let
 		    val b = valOf (StableMap.find (!stablemap, bininfo))
 		    fun th gp = SOME (bnode b gp)
 			handle exn as Link _ => raise exn
@@ -368,7 +373,7 @@ in
 
 	fun newTraversal (x as (GG.ERRORGROUP, _)) = newTraversal0 x
 	  | newTraversal (x as (GG.GROUP { exports, ... }, _)) = let
-		val tth = Memoize.memoize (fn () => newTraversal0 x)
+		val tth = Memoize.memoize (fn () => (newTraversal0 x))
 	    in
 		{ group = fn gp => #group (tth ()) gp,
 		  exports = SymbolMap.mapi

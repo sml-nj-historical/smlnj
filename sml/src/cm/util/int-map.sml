@@ -1,6 +1,6 @@
 (*
  * Maps of integers.
- *  - just selects one possible implemenetation from the SML/NJ library.
+ *  - just selects one possible implementation from the SML/NJ library.
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
  *

@@ -116,7 +116,7 @@ struct
 	 * exports of that library. *)
 	fun oneB i (sy, (nth, _, _), m) =
 	    case nth () of
-		(_, DG.SB_BNODE (DG.BNODE n, _)) =>
+		(_, DG.SB_BNODE (DG.BNODE n, _, _)) =>
 		(* we blindly override existing info for the same bnode;
 		 * this means that the last guy wins... *)
 		StableMap.insert (m, #bininfo n, (i, sy))
@@ -174,7 +174,7 @@ struct
 	    val op $ = PU.$ SBN
 	in
 	    case x of
-		DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, ii) => let
+		DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, ii, _) => let
 		    val (i, sy) = inverseMap i
 		    val { statpid, sympid, ... } = ii
 		in
@@ -345,7 +345,7 @@ struct
 			    case SymbolMap.find (exports, sy) of
 				SOME (nth, _, _) =>
 				  (case nth () of
-				       (_, DG.SB_BNODE (_, x)) =>
+				       (_, DG.SB_BNODE (_, x, _)) =>
 				       StabModmap.addEnv (#statenv x ())
 				     | _ => raise Format)
 			      | NONE => raise Format
@@ -427,18 +427,24 @@ struct
 				case SymbolMap.find (slexp, sy) of
 				    SOME (nth, _, _) =>
 				      (case nth () of
-					   (_, DG.SB_BNODE (n, _)) => n
+					   (_, DG.SB_BNODE (n, _, _)) =>
+					   (n, SOME pos)
 					 | _ => raise Format)
 				  | NONE => raise Format
 			    end
-			  | sbn' #"3" = sn ()
+			  | sbn' #"3" = (sn (), NONE)
 			  | sbn' _ = raise Format
 		    in
 			share sbnM sbn'
 		    end
 
 		    and fsbn () = let
-			fun f #"f" = (filter (), sbn ())
+			fun f #"f" =
+			    let val f = filter ()
+				val (n, pos) = sbn ()
+			    in
+				(f, n, pos)
+			    end
 			  | f _ = raise Format
 		    in
 			share fsbnM f
@@ -459,13 +465,13 @@ struct
 				val sympid = pid ()
 				val allsyms = symbolset ()
 				fun ieth () = let
-				    val (f, n) = nth ()
+				    val (f, n, pos) = nth ()
 				    val ii = { statenv = ge,
 					       symenv = sye,
 					       statpid = statpid,
 					       sympid = sympid }
 				in
-				    (f, DG.SB_BNODE (n, ii))
+				    (f, DG.SB_BNODE (n, ii, pos))
 				end
 				val e = Statenv2DAEnv.cvtMemo ge
 				(* put a filter in front to avoid having
@@ -649,8 +655,8 @@ struct
 
 		fun sbn n k (s as (bnodes, snodes)) =
 		    case n of
-			DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, ii) => let
-			    val (pos, sy) = inverseMap i
+			DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, ii, _) =>
+			let val (pos, sy) = inverseMap i
 			    val bnodes' =
 				StableMap.insert (bnodes, i,
 						  ((pos, sy), #statenv ii))
@@ -768,7 +774,7 @@ struct
 		val op $ = PU.$ SBN
 	    in
 		case x of
-		    DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, _) => let
+		    DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, _, _) => let
 			val (pos, sy) = inverseMap i
 		    in
 			"2" $ [int pos, symbol sy]
@@ -791,7 +797,7 @@ struct
 		val op $ = PU.$ IMPEXP
 		val { statenv, symenv, statpid, sympid } =
 		    case nth () of
-			(_, DG.SB_BNODE (_, ii)) => ii
+			(_, DG.SB_BNODE (_, ii, _)) => ii
 		      | (_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })) =>
 			    getII smlinfo
 	    in

@@ -326,8 +326,9 @@ struct
 				case BF.exportPidOf bfc of
 				    NONE => ()
 				  | SOME pid =>
-					(TextIO.output (s, " ");
-					 TextIO.output (s, PS.toHex pid))
+				    app (fn str => TextIO.output (s, str))
+					[" ", Int.toString os,
+					 ":", PS.toHex pid]
 			    end
 			    fun writePidLine s (p, set) =
 				if StableSet.isEmpty set then ()

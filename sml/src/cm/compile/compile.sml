@@ -201,7 +201,7 @@ in
 	       * to do anything at all for SB_BNODEs:  Everything
 	       * is prepared ready to be used when the library
 	       * is unpickled: *)
-	      | sbnode gp (DG.SB_BNODE (_, ii)) = SOME ii
+	      | sbnode gp (DG.SB_BNODE (_, ii, _)) = SOME ii
 
 	    and fsbnode gp (f, n) =
 		case (sbnode gp n, f) of

@@ -10,14 +10,12 @@ structure DependencyGraph = struct
 
     type filter = SymbolSet.set option
 
-    type 'n far = filter * 'n
-
     datatype bnode =
 	BNODE of { bininfo: BinInfo.info,
 		   localimports: bnode list,
 		   globalimports: (unit -> farbnode) list }
 
-    withtype farbnode = bnode far
+    withtype farbnode = filter * bnode * int option
 
     datatype snode =
 	SNODE of { smlinfo: SmlInfo.info,
@@ -25,14 +23,14 @@ structure DependencyGraph = struct
 		   globalimports: farsbnode list }
 
     and sbnode =
-	SB_BNODE of bnode * IInfo.info
+	SB_BNODE of bnode * IInfo.info * int option
       | SB_SNODE of snode
 
-    withtype farsbnode = sbnode far
+    withtype farsbnode = filter * sbnode
 
     type impexp = (unit -> farsbnode) * DAEnv.env * SymbolSet.set
 
-    fun describeSBN (SB_BNODE (BNODE { bininfo = i, ... }, _)) =
+    fun describeSBN (SB_BNODE (BNODE { bininfo = i, ... }, _, _)) =
 	BinInfo.describe i
       | describeSBN (SB_SNODE (SNODE { smlinfo = i, ... })) =
 	SmlInfo.descr i
@@ -46,7 +44,7 @@ structure DependencyGraph = struct
 	SmlInfo.eq (i, i')
 
     fun sbeq (SB_SNODE n, SB_SNODE n') = seq (n, n')
-      | sbeq (SB_BNODE (n, _), SB_BNODE (n', _)) = beq (n, n')
+      | sbeq (SB_BNODE (n, _, _), SB_BNODE (n', _, _)) = beq (n, n')
       | sbeq _ = false
 end
 

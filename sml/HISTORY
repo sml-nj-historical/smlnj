@@ -14,6 +14,28 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/11/24 17:45:00 JST
+Tag: blume-20001124-link
+Description:
+
+Drastically improved link traversal code for the case that the dynamic
+value was already loaded at bootstrap time.  As a result, CM and CMB
+now both load blazingly fast -- even on a very slow machine.  Also,
+memory consumption has been further reduced by this.
+
+Warning: The format of the PIDMAP file has changed.  THerefore, to
+bootstrap you have to do this:
+
+1. Run CMB.make
+2. Make a symbolic link for the boot directory:
+     ln -s sml.boot.ARCH-OS xxx
+3. "Rebuild" the boot directory:
+     ./makeml -boot xxx -rebuild sml ; rm xxx
+4. Boot normally:
+      ./makeml
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/11/21 21:20:00 JST
 Tag: blume-20001121-tools
 Description:

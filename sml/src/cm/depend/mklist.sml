@@ -36,7 +36,7 @@ end = struct
 	    else do_list bnode l (do_list lazy_farbnode g k') m
 	end
 
-	and farbnode (_, n) = bnode n
+	and farbnode (_, n, _) = bnode n
 
 	and lazy_farbnode th = farbnode (th ())
 
@@ -48,7 +48,7 @@ end = struct
 	    else do_list snode l (do_list farsbnode g k') m
 	end
 
-	and farsbnode (_, DG.SB_BNODE (n, _)) = bnode n
+	and farsbnode (_, DG.SB_BNODE (n, _, _)) = bnode n
 	  | farsbnode (_, DG.SB_SNODE n) = snode n
 
 	fun impexp (nth, _, _) = farsbnode (nth ())

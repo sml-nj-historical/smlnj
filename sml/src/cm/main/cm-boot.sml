@@ -24,6 +24,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure F = OS.FileSys
       structure DG = DependencyGraph
       structure GG = GroupGraph
+      structure IM = IntMap
 
       val os = SMLofNJ.SysInfo.getOSKind ()
       val my_archos =
@@ -34,7 +35,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			    val os = os)
 
       val emptydyn = E.dynamicPart E.emptyEnv
-      val system_values = ref (SrcPathMap.empty: E.dynenv SrcPathMap.map)
+      val system_values =
+	  ref (SrcPathMap.empty: E.dynenv IntMap.map SrcPathMap.map)
 
       structure StabModmap = StabModmapFn ()
 
@@ -463,14 +465,23 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      fun readpidmap s = let
 		  fun loop m = let
 		      fun enter (d, pids) = let
-			  fun enter1 (hexp, e) =
-			      case GenericVC.PersStamps.fromHex hexp of
-				  SOME p => (DE.bind (p, DE.look de p, e)
-					     handle DE.Unbound => e)
-				| NONE => e
+			  fun enter1 (spec, pm) = let
+			      val fromHex = GenericVC.PersStamps.fromHex
+			  in
+			      case String.tokens (fn c => c = #":") spec of
+				  [pos, hexp] =>
+				  (case (fromHex hexp, Int.fromString pos) of
+				       (SOME p, SOME i) =>
+				       (IM.insert (pm, i,
+						   DE.bind (p, DE.look de p,
+							    emptydyn))
+					handle DE.Unbound => pm)
+				     | _ => pm)
+				| _ => pm
+			  end
 		      in
 			  SrcPathMap.insert (m, SrcPath.decode penv d,
-					     foldl enter1 emptydyn pids)
+					     foldl enter1 IM.empty pids)
 		      end
 		  in
 		      case TextIO.inputLine s of
@@ -479,8 +490,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				       d :: pids => loop (enter (d, pids))
 				     | _ => loop m)
 		  end
+		  val m = loop SrcPathMap.empty
 	      in
-		  system_values := loop SrcPathMap.empty
+		  system_values := m
 	      end
 	      
 	      val _ =

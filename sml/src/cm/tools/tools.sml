@@ -185,7 +185,7 @@ signature TOOLS = sig
     val defaultClassOf : string -> class option
 end
 
-structure PrivateTools :> PRIVATETOOLS = struct
+structure PrivateTools : PRIVATETOOLS = struct
 
     type class = string
 

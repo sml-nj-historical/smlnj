@@ -5,4 +5,9 @@
  *
  * author: Matthias Blume (blume@cs.princeton.edu)
  *)
-structure Tools = CM0.Tools
+local
+    structure SrcPath = SrcPath
+    structure String = String
+in
+    structure Tools :> TOOLS = CM0.Tools
+end

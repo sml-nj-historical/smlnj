@@ -87,7 +87,7 @@ functor AutoLoadFn (structure C : COMPILE
 		     NONE => NONE
 		   | SOME e' => SOME (E.concatEnv (e', e)))
 	in
-	    (* make sure that there are no stale value around... *)
+	    (* make sure that there are no stale values around... *)
 	    L.cleanup gp;
 	    SymbolMap.foldl one (SOME E.emptyEnv) m
 	end
@@ -152,7 +152,7 @@ functor AutoLoadFn (structure C : COMPILE
 	     SafeIO.perform
 	      { openIt = fn () => #get StdConfig.verbose () before
 	                          #set StdConfig.verbose false,
-	        closeIt = ignore o #set StdConfig.verbose,
+	        closeIt = #set StdConfig.verbose,
 		cleanup = fn _ => (),
 		work = fn _ =>
 	          (case loadit loadmap of
