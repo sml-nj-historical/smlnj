@@ -48,10 +48,7 @@ in
     Tokens.ERROR (msg, p + 1, p + size t)
 end
 
-val cm_ids = [("Alias", Tokens.ALIAS),
-	      ("ALIAS", Tokens.ALIAS),
-	      ("alias", Tokens.ALIAS),
-	      ("Group", Tokens.GROUP),
+val cm_ids = [("Group", Tokens.GROUP),
 	      ("GROUP", Tokens.GROUP),
 	      ("group", Tokens.GROUP),
 	      ("Library", Tokens.LIBRARY),
