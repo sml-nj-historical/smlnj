@@ -21,7 +21,15 @@ structure EnvConfig :> ENVCONFIG = struct
 	val session = "CM_" ^ session0
 	val default = session ^ "_DEFAULT"
 	val getEnv = Option.join o (Option.map cvt) o OS.Process.getEnv
-	val r = ref (getOpt (getEnv default, fallback))
+	(* Some config values are established not at bootstrap time
+	 * but at the time plugins are loaded.  For those it is necessary
+	 * to use a two-stage fallback strategy, testing the session
+	 * variable if there is no default variable, because the config
+	 * value will never witness a system startup (which is when
+	 * the session variable is usually checked). *)
+	val r = ref (case getEnv default of
+			 SOME v => v
+		       | NONE => getOpt (getEnv session, fallback))
 	fun get () = !r
 	fun set new = r := new
 	val reg = fn () => (reg ();
