@@ -702,8 +702,8 @@ element of the abstract data type {\tt CM.Library.lib}.
 
 {\tt CM.Library.descr} extracts a string describing the location of
 the CM description file associated with the given library.  The syntax
-of this string is the same as that being used by CM's master-slave
-protocol (see section~\ref{sec:pathencode}).
+of this string is almost the same as that being used by CM's
+master-slave protocol (see section~\ref{sec:pathencode}).
 
 {\tt CM.Library.osstring} produces a string denoting the given
 library's description file using the underlying operating system's
@@ -1125,16 +1125,51 @@ itself does not interpret the result but passes it on to the tool's
 rule function.  It is in each rule's own responsibility to assign
 meaning to its options.
 
-The {\tt sml} class accepts one parameter which must be either the
-word {\tt shared} or the word {\tt private}.  (Technically, the
-strings {\tt private} and {\tt shared} fall under the {\em filename}
-category from above, but the tool ignores that aspect and uses the
-name directly.) If {\tt shared} is specified, then dynamic state
-created by the compilation unit at link-time must be shared across
-invocations of {\tt CM.make} or {\tt CM.autoload}.  As explained
-earlier (Section~\ref{sec:sharing}), the {\tt private} annotation
-means that dynamic state cannot be shared across such calls to {\tt
-CM.make} or {\tt CM.autoload}.
+\subsubsection*{Parameters for class {\tt sml}}
+
+The {\tt sml} class accepts two optional parameters.  One is the {\em
+sharing annotation} that was explained earlier (see
+Section~\ref{sec:sharing}).  The sharing annotation must be one of the
+two strings {\tt shared} and {\tt private}.  If {\tt shared} is
+specified, then dynamic state created by the compilation unit at
+link-time must be shared across invocations of {\tt CM.make} or {\tt
+CM.autoload}.  The {\tt private} annotation, on the other hand, means
+that dynamic state cannot be shared across such calls to {\tt CM.make}
+or {\tt CM.autoload}.
+
+The other possible parameter for class {\tt sml} is a sub-option
+list labeled {\tt setup} and can be used to specify code that will be
+executed just before and just after the compiler is invoked for the
+ML source file.  Code to be executed before compilation is labeled
+{\tt pre}, code to be executed after compilation is complete is
+labeled {\tt post}; either part is optional.  Executable code itself
+is specified using strings that contain ML source text.
+
+For example, if one wishes to disable warning messages for a specific
+source file {\tt poorlywritten.sml} (but not for others), then one
+could write:
+
+\begin{verbatim}
+  poorlywritten.sml (setup:(pre: "local open Compiler.Control\n\
+                                 \   in val w = !printWarnings before\n\
+                                 \              printWarnings := false\n\
+                                 \  end;"
+                            post:"Compiler.Control.printWarnings := w;"))
+\end{verbatim}
+
+\noindent Note that neither the pre- nor the post-section will be
+executed if the ML file does not need to be compiled.
+
+The pre-section is compiled and executed in the current
+toplevel-environment while the post-section uses the
+toplevel-environment augmented with definitions from the pre-section.
+After the ML file has been compiled and the post-section (if present)
+has completed execution, definitions made by either section will be
+erased.  This means that setup code for other files {\em cannot} refer
+to them, and neither can code that in the future might be entered at
+top level.
+
+\subsubsection*{Parameters for class {\tt cm}}
 
 The {\tt cm} class understands two kinds of parameters.  The first is
 a named parameter labeled by the string {\tt version}.  It must have
@@ -1185,9 +1220,7 @@ file name suffixes are {\tt .grm} and {\tt .y}.  For a source file
 $f$, the tool produces two targets $f${\tt .sig} and $f${\tt .sml},
 both of which are always treated as ML source files.  Parameters are
 passed on without change to the $f${\tt .sml} file but not to the
-$f${\tt .sig} file.  This means that the parameter can either be the
-word {\tt private} or the word {\tt shared}, and that this sharing
-annotation will apply to the $f${\tt .sml} file.
+$f${\tt .sig} file.
 
 The tool invokes the {\tt ml-yacc} command if the targets are
 ``outdated''.  A target is outdated if it is missing or older than the
@@ -1920,30 +1953,56 @@ to finish what they are currently doing and bring them back to an
 \subsection{Pathname protocol encoding}
 \label{sec:pathencode}
 
-The master-slave protocol encodes pathnames in the following way:
+A path encoded by CM's master-slave protocol encoding does not only
+specify which file a path refers to but also, in some sense, specifies
+why CM constructed this path in the first place.  For example, the
+encoding {\tt a/b/c.cm:d/e.sml} represents the file {\tt a/b/d/e.sml}
+but also tells us that it was constructed by putting {\tt d/e.sml}
+into the context of description file {\tt a/b/c.cm}.  Thus, an encoded
+path name consists of one or more colon-separated ({\bf :}) sections,
+and each section consists of slash-separated ({\bf /}) arcs.  To find
+out what actual file a path refers to, it is necessary to erase all
+arcs that precede colons.
 
-A pathname consists of {\bf /}-separated arcs (like Unix patnames).
-The first arc can be interpreted relative to the current working directory,
-relative to the root of the file system, relative to the root of a
-volume (on systems that support separate volumes), or relative to a
-directory that corresponds to a pathname anchor.  The first character
-of the pathname is used to distinguish between these cases.
+The first section is special because it also specifies whether the
+whole path was relative or absolute, or whether it was an anchored
+path.
 
-\begin{itemize}
-\item If the name starts with {\bf ./}, then the name is relative to
-the working directory.
-\item If the name starts with {\bf /}, then the name is relative to
-the file system root.
-\item If the name starts with {\bf \%}, then the substring between this
-{\bf \%} and the first {\bf /} is used as the name of a volume and the
-remaining arcs are interpreted relative to the root of that volume.
-\item If the name starts with {\bf \$}, then the substring between
-this {\bf \$} and the first {\bf /} must be the name of a pathname
-anchor.  The remaining arcs are interpreted relative to the directory
-that (on the slave side) is denoted by the anchor.
-\item Any other name is interpreted relative to the current working
-directory.
-\end{itemize}
+\begin{description}
+\item[Anchored paths] start with a dollar-symbol {\bf \$}.  The name
+of the anchor is the string between this leading dollar-symbol and the
+first occurence of a slash {\bf /} within the first section.  The
+remaining arcs of the first section are interpreted relative to the
+current value of the anchor.
+\item[Absolute paths] start either with a percent-sign {\bf \%} or a
+slash {\bf /}.  The canonical form is the one with the percent-sign:
+it specifies the volume name between the {\bf \%} and the first slash.
+The common case where the volume name is empty (i.e, {\em always} on
+Unix systems), the path starts with {\bf /}.
+\item[Relative paths] are all other paths.
+\end{description}
+
+Encoded path names never contain white space.  Moreover, the encoding
+for path arcs, volume names, or anchor names does not contain special
+characters such as {\bf /}, {\bf \$}, {\bf \%}, {\bf :}, {\bf
+\verb|\|}, {\bf (}, and {\bf )}.  Instead, should white space or
+special characters occur in the non-encoded name, then they will be
+encoded using the escape-sequence \verb|\ddd| where {\tt ddd} is the
+decimal value of the respective character's ordinal number (i.e, the
+result of applying {\tt Char.ord}).
+
+The so-called {\em current} arc is encoded as {\bf .}, the {\em
+parent} arc uses {\bf ..} as its representation.  On some operating
+systems it can happen that although an arc is either {\tt .} or {\tt
+..}, it still does not actually refer to the current or the parent
+arc.  In such a case, CM will encode the dots in these names using the
+\verb|\ddd| method, too.
+
+When issuing progress messages, CM shows path names in a form that is
+almost the same as the protocol encoding.  The only difference is that
+arcs that precede colon-sign {\bf :} are enclosed within parentheses
+to emphasize that they are ``not really there''.  The same form is
+also used by {\tt CM.Library.descr}.
 
 \subsection{Parallel bootstrap compilation}
 

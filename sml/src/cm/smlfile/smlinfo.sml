@@ -43,13 +43,15 @@ signature SMLINFO = sig
     val info : GeneralParams.info ->
 	{ sourcepath: SrcPath.file,
 	  group: SrcPath.file * region,
-	  sh_spec: Sharing.request }
+	  sh_spec: Sharing.request,
+	  setup: string option * string option }
 	-> info
 
     val info' : attribs -> GeneralParams.info ->
 	{ sourcepath: SrcPath.file,
 	  group: SrcPath.file * region,
-	  sh_spec: Sharing.request }
+	  sh_spec: Sharing.request,
+	  setup: string option * string option }
 	-> info
 
     val sourcepath : info -> SrcPath.file
@@ -66,6 +68,7 @@ signature SMLINFO = sig
     val sh_mode : info -> Sharing.mode
     val attribs : info -> attribs
     val lastseen : info -> TStamp.t
+    val setup : info -> string option * string option
 
     (* forget a parse tree that we are done with *)
     val forgetParsetree : info -> unit
@@ -128,7 +131,8 @@ structure SmlInfo :> SMLINFO = struct
 		  mkBinname: unit -> string,
 		  persinfo: persinfo,
 		  sh_spec: Sharing.request,
-		  attribs: attribs }
+		  attribs: attribs,
+		  setup: string option * string option }
 
     type ord_key = info
 
@@ -147,6 +151,7 @@ structure SmlInfo :> SMLINFO = struct
     fun set_sh_mode (INFO { persinfo = PERS { sh_mode, ... }, ... }, m) =
 	sh_mode := m
     fun attribs (INFO { attribs = a, ... }) = a
+    fun setup (INFO { setup = s, ... }) = s
 
     fun gerror (gp: GeneralParams.info) = GroupReg.error (#groupreg gp)
 
@@ -205,7 +210,7 @@ structure SmlInfo :> SMLINFO = struct
     end
 
     fun info' attribs (gp: GeneralParams.info) arg = let
-	val { sourcepath, group = gr as (group, region), sh_spec } = arg
+	val { sourcepath, group = gr as (group, region), sh_spec, setup } = arg
 	val policy = #fnpolicy (#param gp)
 	fun mkSkelname () = FNP.mkSkelName policy sourcepath
 	fun mkBinname () = FNP.mkBinName policy sourcepath
@@ -249,7 +254,8 @@ structure SmlInfo :> SMLINFO = struct
 	       mkBinname = mkBinname,
 	       persinfo = persinfo (),
 	       sh_spec = sh_spec,
-	       attribs = attribs }
+	       attribs = attribs,
+	       setup = setup }
     end
 
     val info = info' { split = true, extra_compenv = NONE,

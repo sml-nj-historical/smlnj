@@ -13,6 +13,28 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/06/26 09:56:46 JST
+Tag: blume-20000626-setup
+Description:
+
+CM: - setup-parameter to "sml" added; this can be used to run arbitrary
+      ML code before and after compiling a file (e.g., to set compiler
+      flags)
+
+Compiler: - improved btrace API (in core.sml, internals.{sig,sml})
+          - associated changes to btrace.sml (BTrace instrumentation pass)
+          - cleaner implementation of btimp.sml (BTrace tracing and report
+            module)
+
+CM manual: * new path encoding documented
+           * description of setup-parameter to "sml" added
+
+The biggest user-visible change to back-tracing is that it is no
+longer necessary to compile all traced modules within the same
+session.  (This was a real limitation.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/06/24 12:40:00 JST
 Tag: blume-20000624-startup
 Description:

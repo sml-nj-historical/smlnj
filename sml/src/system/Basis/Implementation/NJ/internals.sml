@@ -31,13 +31,11 @@ structure Internals : INTERNALS =
 	    access
 	end
 	local
-	    val hook = ref { mkid = fn (s: string) => 0,
-			     reset = fn () => () }
+	    val hook = ref { reset = fn () => () }
 	in
-	    fun install { corefns, reset, mkid } =
-		(hook := { mkid = mkid, reset = reset };
+	    fun install { corefns, reset } =
+		(hook := { reset = reset };
 		 Core.bt_install corefns)
-	    fun mkid s = #mkid (!hook) s
 	    fun reset () = #reset (!hook) ()
 	end
 	fun report () = Core.bt_report () ()

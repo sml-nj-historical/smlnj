@@ -32,15 +32,14 @@ signature INTERNALS =
 	exception BTrace of unit -> string list
 	val install : { corefns: { save: unit -> unit -> unit,
 				   push: unit -> unit -> unit,
-				   add: int -> unit,
-				   register: int * string -> unit,
+				   add: int * int -> unit,
+				   reserve: int -> int,
+				   register: int * int * string -> unit,
 				   report: unit -> unit -> string list },
-			reset: unit -> unit,
-			mkid: string -> int }
+			reset: unit -> unit }
 		      -> unit
 	val mode : bool option -> bool	(* turn annotation pass on/off *)
 	val report : unit -> unit -> string list
-	val mkid : string -> int	(* "intern" a string *)
 	val trigger : unit -> 'a
 	(* The following is needed in evalloop.sml (or any other module
 	 * that explicitly handles the BTrace exception but hasn't itself

@@ -41,6 +41,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure Compile =
 	  CompileFn (structure MachDepVC = HostMachDepVC
 		     structure StabModmap = StabModmap
+		     val useStream = HostMachDepVC.Interact.useStream
 		     val compile_there = Servers.compile o SrcPath.descr)
 
       structure BFC =

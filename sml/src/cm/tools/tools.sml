@@ -53,12 +53,14 @@ signature CORETOOLS = sig
 		  opts: toolopts option,
 		  derived: bool }
 
+    type setup = string option * string option (* (pre, post) *)
+
     (* The goal of applying tools to members is to obtain an "expansion",
      * i.e., a list of ML-files and a list of .cm-files.  We also
      * obtain a list of "sources".  This is used to implement CM.sources,
      * i.e., to generate dependency information etc. *)
     type expansion =
-	 { smlfiles: (srcpath * Sharing.request) list,
+	 { smlfiles: (srcpath * Sharing.request * setup) list,
 	   cmfiles: (srcpath * Version.t option * rebindings) list,
 	   sources: (srcpath * { class: string, derived: bool}) list }
 
@@ -115,6 +117,11 @@ signature CORETOOLS = sig
 
     (* install a classifier *)
     val registerClassifier : classifier -> unit
+
+    (* grab all named options... *)
+    val parseOptions :
+	{ tool : string, keywords : string list, options : toolopts } ->
+	{ matches : string -> toolopts option, restoptions : string list }
 end
 
 signature PRIVATETOOLS = sig
@@ -151,11 +158,6 @@ signature TOOLS = sig
 
     (* query default class *)
     val defaultClassOf : string -> class option
-
-    (* grab all named options... *)
-    val parseOptions :
-	{ tool : string, keywords : string list, options : toolopts } ->
-	{ matches : string -> toolopts option, restoptions : string list }
 end
 
 structure PrivateTools :> PRIVATETOOLS = struct
@@ -187,8 +189,10 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		  opts: toolopts option,
 		  derived: bool }
 
+    type setup = string option * string option
+
     type expansion =
-	 { smlfiles: (srcpath * Sharing.request) list,
+	 { smlfiles: (srcpath * Sharing.request * setup) list,
 	   cmfiles: (srcpath * Version.t option * rebindings) list,
 	   sources: (srcpath * { class: string, derived: bool}) list }
 
@@ -288,18 +292,70 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	  | NONE => gen_loop (!gen_classifiers)
     end
 
+    fun parseOptions { tool, keywords, options } = let
+	fun err m = raise ToolError { tool = tool, msg = m }
+	fun isKW kw = List.exists (fn kw' => kw = kw') keywords
+	fun loop ([], m, ro) = { matches = fn kw => StringMap.find (m, kw),
+				 restoptions = rev ro }
+	  | loop (STRING { name, ... } :: t, m, ro) = loop (t, m, name :: ro)
+	  | loop (SUBOPTS { name, opts } :: t, m, ro) =
+	    if not (isKW name) then
+		raise err (concat ["keyword option `", name,
+				   "' not recognized"])
+	    else (case StringMap.find (m, name) of
+		      SOME _ => err (concat ["keyword option `", name,
+					     "' specified more than once"])
+		    | NONE => loop (t, StringMap.insert (m, name, opts), ro))
+    in
+	loop (options, StringMap.empty, [])
+    end
+
     fun smlrule { spec, context, mkNativePath } = let
 	val { name, mkpath, opts = oto, derived, ... } : spec = spec
-	fun err s = raise ToolError { tool = "sml", msg = s }
-	val srq = case oto of
-		      NONE => Sharing.DONTCARE
-		    | SOME [] => Sharing.DONTCARE
-		    | SOME [STRING { name = "shared", ... }] => Sharing.SHARED
-		    | SOME [STRING { name = "private",... }] => Sharing.PRIVATE
-		    | SOME l => err "invalid option(s)"
+	val tool = "sml"
+	fun err s = raise ToolError { tool = tool, msg = s }
+	val kw_setup = "setup"
+	val (srq, setup) =
+	    case oto of
+		NONE => (Sharing.DONTCARE, (NONE, NONE))
+	      | SOME to => let
+		    val { matches, restoptions } =
+			parseOptions { tool = tool,
+				       keywords = [kw_setup],
+				       options = to }
+		    val srq =
+			case restoptions of
+			    [] => Sharing.DONTCARE
+			  | ["shared"] => Sharing.SHARED
+			  | ["private"] => Sharing.PRIVATE
+			  | _ => err "invalid option(s)"
+		    val setup =
+			case matches kw_setup of
+			    NONE => (NONE, NONE)
+			  | SOME [] => (NONE, NONE)
+			  | SOME [STRING s] => (SOME (#name s), NONE)
+			  | SOME [SUBOPTS { name = "pre",
+					    opts = [STRING pre] }] =>
+			    (SOME (#name pre), NONE)
+			  | SOME [SUBOPTS { name = "post",
+					    opts = [STRING post] }] =>
+			    (NONE, SOME (#name post))
+			  | (SOME [SUBOPTS { name = "pre",
+					     opts = [STRING pre] },
+				   SUBOPTS { name = "post",
+					     opts = [STRING post] }] |
+			     SOME [SUBOPTS { name = "post",
+					     opts = [STRING post] },
+				   SUBOPTS { name = "pre",
+					     opts = [STRING pre] }]) =>
+			    (SOME (#name pre), SOME (#name post))
+			  | _ => err "invalid setup spec"
+		in
+		    (srq, setup)
+		end
 	val p = srcpath (mkpath name)
     in
-	({ smlfiles = [(p, srq)],
+	({ smlfiles = [(p, srq, setup)],
 	   sources = [(p, { class = "sml", derived = derived })],
 	   cmfiles = [] },
 	 [])
@@ -513,23 +569,5 @@ functor ToolsFn (val load_plugin : string -> bool
     in
 	registerClass (class, rule);
 	app sfx suffixes
-    end
-
-    fun parseOptions { tool, keywords, options } = let
-	fun err m = raise ToolError { tool = tool, msg = m }
-	fun isKW kw = List.exists (fn kw' => kw = kw') keywords
-	fun loop ([], m, ro) = { matches = fn kw => StringMap.find (m, kw),
-				 restoptions = rev ro }
-	  | loop (STRING { name, ... } :: t, m, ro) = loop (t, m, name :: ro)
-	  | loop (SUBOPTS { name, opts } :: t, m, ro) =
-	    if not (isKW name) then
-		raise err (concat ["keyword option `", name,
-				   "' not recognized"])
-	    else (case StringMap.find (m, name) of
-		      SOME _ => err (concat ["keyword option `", name,
-					     "' specified more than once"])
-		    | NONE => loop (t, StringMap.insert (m, name, opts), ro))
-    in
-	loop (options, StringMap.empty, [])
     end
 end

@@ -46,7 +46,7 @@ in its own right):
   * $smlnj/cm.cm			abbrev. for $smlnj/cm/full.cm
   * $smlnj/cmb.cm			abbrev. for $smlnj/cmb/current.cm
 
-  * $comp-lib.cm			Utility library for compiler
+  * $/comp-lib.cm			Utility library for compiler
 
   - $smlnj/viscomp/core.cm		Compiler core functionality
   - $smlnj/viscomp/{alpha32,hppa,ppc,sparc,x86}.cm
@@ -62,14 +62,11 @@ in its own right):
 					 Graph, Visual, etc. do not currently
 					 take part in the SML/NJ build.)
 
-  * ${mlyacc,mllex,mlburg}-tool.cm	CM plug-in libraries for common tools
-  * ${grm,lex,burg}-ext.cm		CM plug-in libraries for common file
+  * $/{mlyacc,mllex,mlburg}-tool.cm	CM plug-in libraries for common tools
+  * $/{grm,lex,burg}-ext.cm		CM plug-in libraries for common file
 					extensions
 
-Paths of the form $/foo/... are shorthands for $foo/foo/..., paths of
-the form $/singlearc can also be written as $singlearc (e.g.,
-$basis.cm instead of $/basis.cm).  The usefulness of the latter
-shorthand is controversial, so you should probably try to avoid it.
+Paths of the form $/foo/<more> are shorthands for $foo/foo/<more>.
 
 A more complete explanation of the $-notation can be found later in
 this document or in the CM manual.
@@ -343,15 +340,6 @@ Examples:
 
   $/foo/bar/baz.cm      (* same as $foo/foo/bar/baz.cm *)
   $/basis.cm            (* same as $basis.cm/basis.cm *)
-
-Currently, CM accepts one additional shorthand for the case where
-<path> has precisely one arc that coincides with <anchor>.  Here, the
-slash "/" can be ommitted, too.
-
-Examples:
-
-  $basis.cm             (* same as $/basis.cm or $basis.cm/basis.cm *)
-  $nw-ext.cm            (* same as $/nw-ext.cm or $nw-ext.cm/nw-ext.cm *)
 
 There used to be a notion of "implicit" anchors where in the case that
 <anchor> is a known anchor, paths of the form

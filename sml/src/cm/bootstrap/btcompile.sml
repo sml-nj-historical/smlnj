@@ -16,6 +16,7 @@ local
 in
 functor BootstrapCompileFn
 	    (structure MachDepVC : MACHDEP_VC
+	     val useStream : TextIO.instream -> unit
 	     val os : SMLofNJ.SysInfo.os_kind
 	     val load_plugin : SrcPath.dir -> string -> bool) :> sig
     val make' : string option -> bool
@@ -43,6 +44,7 @@ end = struct
 
     structure Compile = CompileFn (structure MachDepVC = MachDepVC
 				   structure StabModmap = StabModmap
+				   val useStream = useStream
 				   val compile_there =
 				       Servers.compile o SrcPath.encode)
 

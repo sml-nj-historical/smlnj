@@ -20,98 +20,85 @@
 structure BTImp : sig
 end = struct
 
-    exception NotFound
+    structure S = IntRedBlackSet
+    structure M = IntRedBlackMap
 
-    structure HT = IntHashTable
-    structure IS = IntRedBlackSet
-    structure IM = IntRedBlackMap
-    structure SM = RedBlackMapFn (struct
-	type ord_key = string val compare = String.compare
-    end)
+    datatype descr =
+	STEP of int
+      | LOOP of S.set
 
-    type intset = IS.set
+    type stage = { num: int, descr: descr }
 
-    datatype contents =
-	SINGLE of int
-      | CLUSTER of intset
+    type frame = { depth: int, map: int M.map, stages: stage list }
 
-    type stamp = unit ref
+    type history = frame * frame list
 
-    type node = stamp * contents
+    val cur : history ref =
+	ref ({ depth = 0, map = M.empty, stages = [] }, [])
 
-    type htable = node HT.hash_table
-
-    type stage = htable * node list ref
-
-    type history = stage list
-
-    val s2i_m = ref (SM.empty: int SM.map)
-    val i2s_m = ref (IM.empty: string IM.map)
+    val names = ref (M.empty: string M.map)
     val next = ref 0
 
-    fun reset () = (s2i_m := SM.empty; i2s_m := IM.empty; next := 0)
+    fun reset () = (names := M.empty; next := 0)
 
-    fun mkid s =
-	case SM.find (!s2i_m, s) of
-	    SOME i => i
-	  | NONE => let
-		val i = !next
-	    in
-		next := i + 1;
-		s2i_m := SM.insert (!s2i_m, s, i);
-		i
-	    end
+    fun reserve n = !next before next := !next + n
 
-    fun register (i, s) = let
-	fun insert () = i2s_m := IM.insert (!i2s_m, i, s)
+    fun register (module, fct, s) =
+	names := M.insert (!names, module + fct, s)
+
+    fun add (module, fct) = let
+	val i = module + fct
+	val (front, back) = !cur
+	val { depth, map, stages } = front
     in
-	case IM.find (!i2s_m, i) of
-	    NONE => insert ()
-	  | SOME s' =>
-	    if s = s' then ()
-	    else (print (concat ["BTrace: register: id clash between\n\t", s',
-				 "\nand\n\t", s, ";\nusing latter.\n"]);
-		  insert ())
+	case M.find (map, i) of
+	    SOME num => let
+		fun toSet (STEP i) = S.singleton i
+		  | toSet (LOOP s) = s
+		fun join (set, d) = S.union (set, toSet d)
+		fun finish (stages, c, []) =
+		    let val stage = { num = num, descr = LOOP (toSet c) }
+			val front' = { depth = depth,
+				       map = map,
+				       stages = stage :: stages }
+		    in
+			cur := (front', back)
+		    end
+		  | finish (stages, c, l) =
+		    let val s0 = foldl S.union S.empty l
+			val stage = { num = num, descr = LOOP (join (s0, c)) }
+			fun ins (i, m) = M.insert (m, i, num)
+			val front' = { depth = depth,
+				       map = S.foldl ins map s0,
+				       stages = stage :: stages }
+		    in
+			cur := (front', back)
+		    end
+		fun loop ([], setl) = finish ([], LOOP S.empty, setl)
+		  | loop ({ num = n', descr = d' } :: t, setl) =
+		    if num = n' then finish (t, d', setl)
+		    else loop (t, toSet d' :: setl)
+	    in
+		loop (stages, [])
+	    end
+	  | NONE => let
+		val num = case stages of
+			      [] => 0
+			    | s0 :: _ => #num s0 + 1
+		val stage = { num = num, descr = STEP i}
+		val front' = { depth = depth,
+			       map = M.insert (map, i, num),
+			       stages = stage :: stages }
+	    in
+		cur := (front' , back)
+	    end
     end
 
-    fun new_ht () = HT.mkTable (16, NotFound)
-
-    val cur = ref ([]: history)
-
-    fun add i =
-	case !cur of
-	    [] => ()
-	  | (ht, nlr) :: _ =>
-	    (case HT.find ht i of
-		 SOME (s, c) => let
-		     fun toSet (SINGLE i) = IS.singleton i
-		       | toSet (CLUSTER s) = s
-		     fun join (set, c) = IS.union (set, toSet c)
-		     fun finish (l, set) = let
-			 val n = (s, CLUSTER set)
-		     in
-			 nlr := n :: l;
-			 IS.app (fn i => HT.insert ht (i, n)) set
-		     end
-		     fun loop ([], set) = finish ([], set)
-		       | loop ((s', c) :: t, set) =
-			 if s = s' then finish (t, set)
-			 else loop (t, join (set, c))
-		 in
-		     loop (!nlr, toSet c)
-		 end
-	       | NONE => let
-		     val n = (ref (), SINGLE i)
-		     val l = n :: !nlr
-		 in
-		     HT.insert ht (i, n);
-		     nlr := l
-		 end)
-
     fun push () = let
-	val old = !cur
+	val old as (front, _) = !cur
+	val front' = { depth = #depth front + 1, map = M.empty, stages = [] }
     in
-	cur := (new_ht (), ref []) :: old;
+	cur := (front', op :: old);
 	fn () => cur := old
     end
 
@@ -122,44 +109,40 @@ end = struct
     end
 
     fun report () = let
-	val top = !cur
+	val (front, back) = !cur
 	fun do_report () = let
-	    val bot = !cur
-	    val isBot =
-		case bot of
-		    [] => (fn _ => false)
-		  | (_, bot_nlr) :: _ => (fn nlr => bot_nlr = nlr)
-	    fun name (what, pad, i) = let
-		val n = case IM.find (!i2s_m, i) of
-			    NONE => "???"
-			  | SOME s => s
+	    val (front', _) = !cur
+	    val bot_depth = #depth front'
+	    fun isBot (f: frame) = #depth f = bot_depth
+	    fun name (w, pad, i) = let
+		val n = getOpt (M.find (!names, i), "???")
 	    in
-		concat [what, pad, " ", n, "\n"]
+		concat [w, pad, " ", n, "\n"]
 	    end
-	    fun node (what, (_, SINGLE i), a) = name (what, "  ", i) :: a
-	      | node (what, (_, CLUSTER s), a) = let
+	    fun stage (w, { num, descr = STEP i }, a) = name (w, "  ", i) :: a
+	      | stage (w, { num, descr = LOOP s }, a) = let
 		    fun loop ([], a) = a
-		      | loop ([i], a) = name (what, "-\\", i) :: a
+		      | loop ([i], a) = name (w, "-\\", i) :: a
 		      | loop (h :: t, a) =
 			loop (t, name ("    ", " |", h) :: a)
-		    fun looph ([], a) = a
-		      | looph ([i], a) = name (what, "-(", i) :: a
-		      | looph (h :: t, a) =
+		    fun start ([], a) = a
+		      | start ([i], a) = name (w, "-(", i) :: a
+		      | start (h :: t, a) =
 			loop (t, name ("    ", " /", h) :: a)
 		in
-		    looph (IS.listItems s, a)
+		    start (S.listItems s, a)
 		end
 	    fun jumps ([], a) = a
-	      | jumps ([n], a) = node ("CALL", n, a)
-	      | jumps (h :: t, a) = jumps (t, node ("GOTO", h, a))
-	    fun calls ([], a) = a
-	      | calls ((_, nlr as ref nl) :: t, a) = let
-		    val a = jumps (nl, a)
+	      | jumps ([n], a) = stage ("CALL", n, a)
+	      | jumps (h :: t, a) = jumps (t, stage ("GOTO", h, a))
+	    fun calls (h, [], a) = jumps (#stages h, a)
+	      | calls (h, h' :: t, a) = let
+		    val a = jumps (#stages h, a)
 		in
-		    if isBot nlr then a else calls (t, a)
+		    if isBot h then a else calls (h', t, a)
 		end
 	in
-	    rev (calls (top, []))
+	    rev (calls (front, back, []))
 	end
     in
 	do_report
@@ -170,10 +153,10 @@ end = struct
 	    { corefns = { save = save,
 			  push = push,
 			  add = add,
+			  reserve = reserve,
 			  register = register,
 			  report = report },
-	      reset = reset,
-	      mkid = mkid }
+	      reset = reset }
 
     val _ = install ()
 end

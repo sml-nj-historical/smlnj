@@ -28,15 +28,18 @@ end
 
 structure BTrace :> BTRACE = struct
 
+    exception NoCore
+
     fun impossible s = EM.impossible ("BTrace: " ^ s)
 
     infix -->
     val op --> = BT.-->
 
-    val i_u_Ty = BT.intTy --> BT.unitTy
+    val i_i_Ty = BT.intTy --> BT.intTy
+    val ii_u_Ty = BT.tupleTy [BT.intTy, BT.intTy] --> BT.unitTy
     val u_u_Ty = BT.unitTy --> BT.unitTy
     val u_u_u_Ty = BT.unitTy --> u_u_Ty
-    val is_u_Ty = BT.tupleTy [BT.intTy, BT.unitTy] --> BT.unitTy
+    val iis_u_Ty = BT.tupleTy [BT.intTy, BT.intTy, BT.unitTy] --> BT.unitTy
 
     fun instrument0 (senv, cinfo: CB.compInfo) d = let
 
@@ -73,7 +76,7 @@ structure BTrace :> BTRACE = struct
 	    else (s, 0) :: l
 
 	fun getCore s = let
-	    fun err _ _ _ = impossible "getCore"
+	    fun err _ _ _ = raise NoCore
 	in
 	    Lookup.lookVal (senv, SP.SPATH [CoreSym.coreSym,
 					    Symbol.varSymbol s], err)
@@ -89,16 +92,19 @@ structure BTrace :> BTRACE = struct
 		VC.CON c => c
 	      | _ => impossible "getCoreCon"
 
+	val bt_reserve = getCoreVal "bt_reserve"
 	val bt_register = getCoreVal "bt_register"
 	val bt_save = getCoreVal "bt_save"
 	val bt_push = getCoreVal "bt_push"
 	val bt_add = getCoreVal "bt_add"
 	val matchcon = getCoreCon "Match"
 
-	val bt_register_var = tmpvar ("<bt_register>", is_u_Ty)
+	val bt_register_var = tmpvar ("<bt_register>", iis_u_Ty)
 	val bt_save_var = tmpvar ("<bt_save>", u_u_u_Ty)
 	val bt_push_var = tmpvar ("<bt_push>", u_u_u_Ty)
-	val bt_add_var = tmpvar ("<bt_add>", i_u_Ty)
+	val bt_add_var = tmpvar ("<bt_add>", ii_u_Ty)
+	val bt_reserve_var = tmpvar ("<bt_reserve>", i_i_Ty)
+	val bt_module_var = tmpvar ("<bt_module>", BT.intTy)
 
 	fun VARexp v = A.VARexp (ref v, [])
 	fun INTexp i = A.INTexp (IntInf.fromInt i, BT.intTy)
@@ -107,12 +113,16 @@ structure BTrace :> BTRACE = struct
 	val pushexp = A.APPexp (VARexp bt_push_var, uExp)
 	val saveexp = A.APPexp (VARexp bt_save_var, uExp)
 
-	fun mkaddexp id = A.APPexp (VARexp bt_add_var, INTexp id)
+	fun mkaddexp id = A.APPexp (VARexp bt_add_var,
+				    EU.TUPLEexp [VARexp bt_module_var,
+						 INTexp id])
 	fun mkregexp (id, s) =
 	    A.APPexp (VARexp bt_register_var,
-		      EU.TUPLEexp [INTexp id, A.STRINGexp s])
+		      EU.TUPLEexp [VARexp bt_module_var,
+				   INTexp id, A.STRINGexp s])
 
 	val regexps = ref []
+	val next = ref 0
 
 	fun mkadd (id, s) =
 	    (regexps := mkregexp (id, s) :: !regexps;
@@ -177,7 +187,8 @@ structure BTrace :> BTRACE = struct
 		val (n, r) = loc
 		val ms = matchstring r
 		val descr = concat (ms :: ": " :: dot (n, []))
-		val id = SMLofNJ.Internals.BTrace.mkid descr
+		val id = !next
+		val _ = next := id + 1
 		val addexp = mkadd (id, descr)
 		val arg = tmpvar ("fnvar", t)
 		val rl' = map (i_rule true loc) rl
@@ -281,7 +292,11 @@ structure BTrace :> BTRACE = struct
 
 	val d' = i_dec ([], (0, 0)) d
     in
-	A.LOCALdec (A.SEQdec [VALdec (bt_save_var, AUexp bt_save),
+	A.LOCALdec (A.SEQdec [VALdec (bt_reserve_var, AUexp bt_reserve),
+			      VALdec (bt_module_var,
+				      A.APPexp (VARexp bt_reserve_var,
+						INTexp (!next))),
+			      VALdec (bt_save_var, AUexp bt_save),
 			      VALdec (bt_push_var, AUexp bt_push),
 			      VALdec (bt_register_var, AUexp bt_register),
 			      VALdec (bt_add_var,
@@ -290,7 +305,9 @@ structure BTrace :> BTRACE = struct
     end
 
     fun instrument params d =
-	if SMLofNJ.Internals.BTrace.mode NONE then instrument0 params d
+	if SMLofNJ.Internals.BTrace.mode NONE then
+	    instrument0 params d
+	    handle NoCore => d		(* this takes care of core.sml *)
 	else d
 end
 

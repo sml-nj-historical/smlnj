@@ -1,6 +1,14 @@
+short term:
+- improve noweb tool (witness files, subdir)
+- change ml-yacc tool so that options can be passed independently to
+  .sig file and to .sml file
+- come up with some version of ml-build that does not produce a new
+  heap image if nothing had to be recompiled
+- remove unfortunate dependence of SrcPath module on Servers module
+
+long term:
 - Try to generalize CM by abstracting from programming language (and compiler),
   so it can work with Twelf, TILT, or things like HOL
 - Generic notification architecture (ErrorMsg module, Say module, ...)
 - handling of non-generalizability should move to later moment in time
-- lazy environment stubs
 - environment canonicalization

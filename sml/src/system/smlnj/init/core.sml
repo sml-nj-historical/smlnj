@@ -261,16 +261,18 @@ structure Core =
         (* backtrace generation hooks *)
         local
 	    val hook =
-		ref { save = fn () => fn () => (),
+		ref { reserve = fn (nfct: int) => 0,
+		      save = fn () => fn () => (),
 		      push = fn () => fn () => (),
-		      add = fn (i: int) => (),
-		      register = fn (i: int, s: string) => (),
+		      add = fn (module: int, fct: int) => (),
+		      register = fn (module: int, fct: int, s: string) => (),
 		      report = fn () => fn () => ([]: string list) }
 	    val ! = InLine.!
 	    infix :=
 	    val op := = InLine.:=
 	in
     	    (* entry points for use by BT-annotated modules: *)
+	    fun bt_reserve () = #reserve (!hook)
 	    fun bt_save () = #save (!hook)
 	    fun bt_push () = #push (!hook)
 	    fun bt_add () = #add (!hook)

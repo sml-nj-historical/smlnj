@@ -70,7 +70,8 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			    SmlInfo.info' attribs gp
 			      { sourcepath = p,
 			        group = (specgroup, (pos, newpos)),
-				sh_spec = Sharing.DONTCARE }
+				sh_spec = Sharing.DONTCARE,
+				setup = (NONE, NONE) }
 			end
 			fun bogus n = 
 			    DG.SNODE { smlinfo = sml (n, false, NONE,

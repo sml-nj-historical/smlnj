@@ -49,6 +49,7 @@ in
 
     functor CompileFn (structure MachDepVC : MACHDEP_VC
 		       structure StabModmap : STAB_MODMAP
+		       val useStream : TextIO.instream -> unit
 		       val compile_there : SrcPath.file -> bool) :>
 	COMPILE where type bfc = MachDepVC.Binfile.bfContent =
     struct
@@ -211,6 +212,14 @@ in
 		    if #keep_going (#param gp) then NONE else raise Abort
 
 		fun compile_here (stat, sym, pids, split) = let
+		    fun perform_setup _ NONE = ()
+		      | perform_setup what (SOME code) =
+			(Say.vsay ["[setup (", what, "): ", code, "]\n"];
+			 SafeIO.perform
+			     { openIt = fn () => TextIO.openString code,
+			       closeIt = TextIO.closeIn,
+			       work = useStream,
+			       cleanup = fn _ => () })
 		    fun save bfc = let
 			fun writer s =
 			    (BF.write { stream = s, content = bfc,
@@ -244,6 +253,9 @@ in
 				    NONE => ast
 				  | SOME sy => CoreHack.rewrite (ast, sy)
 			    val cmData = PidSet.listItems pids
+			    val (pre, post) = SmlInfo.setup i
+			    val toplenv = #get GenericVC.EnvRef.topLevel ()
+					  before perform_setup "pre" pre
 			    (* clear error flag (could still be set from
 			     * earlier run) *)
 			    val _ = #anyErrors source := false
@@ -256,6 +268,8 @@ in
 				  symenv = sym }
 			    val memo = bfc2memo (bfc, SmlInfo.lastseen i)
 			in
+			    perform_setup "post" post;
+			    #set GenericVC.EnvRef.topLevel toplenv;
 			    save bfc;
 			    storeBFC (i, bfc);
 			    SOME memo
