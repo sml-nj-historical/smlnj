@@ -14,6 +14,25 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/07/13 13:50:00 CDT
+Tag: blume-20040713-nlffi
+Description:
+
+- use paramAlloc to report c-calls with too many arguments
+  (for PPC version where parameter area is pre-allocated)
+- added ccall_maxargspace to machspec (to implement the above)
+- made "make" commend in CM's "make" tool configurable
+- added option (default: on) for passing the name of the SML/NJ's "bin"
+  directory to "make"; the call looks like this:
+
+     make <options> SMLNJ_BINDIR=<dir> <target>
+
+  This can be used by the Makefile to, e.g., pick the "right" version
+  of ml-nlffigen.
+- minor code tweaks
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/07/12 22:50:00 CDT
 Tag: blume-110_46_1-macosx-nlffi
 Description:

@@ -25,4 +25,6 @@ struct
   val VProcOffMSP = 4
   val InMLOffVSP = 8
   val LimitPtrMaskOffVSP = 200
+
+  val ccall_maxargspace = SOME (4096 - 24) (* 4k minus linkage area *)
 end

@@ -331,11 +331,19 @@ struct
            loop (defs, [], [])
        end (* srd *)
 
+       val paramAlloc =
+	   case MS.ccall_maxargspace of
+	       NONE => (fn { szb, align } => false)
+	     | SOME m => (fn { szb, align } =>
+			     if szb > m then
+				 error "argument list in C-call too big"
+			     else false)
+
        val { callseq, result } =
            CCalls.genCall
                { name = f, proto = p, structRet = sr,
                  saveRestoreDedicated = srd,
-                 paramAlloc = fn _ => false,
+                 paramAlloc = paramAlloc,
                  callComment =
                  SOME ("C prototype is: " ^ CProto.pshow p),
                  args = a }
