@@ -7,7 +7,7 @@ structure Option : OPTION =
   struct
     open Assembly (* for type 'a option *)
 
-    exception Option
+    exception Option = Option
 
     fun getOpt (SOME x, y) = x
       | getOpt (NONE, y) = y

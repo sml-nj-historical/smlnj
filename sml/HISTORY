@@ -7,6 +7,15 @@ description.
 
 The form of an entry should be:
 
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/04/22 16:35:00 CDT
+Tag: blume-20040422-Option
+Description:
+
+Made exception Option to be the same as exception Option.Option
+(as it should be).
+
+----------------------------------------------------------------------
 Name:
 Date: yyyy/mm/dd
 Tag: <post-commit CVS tag>
