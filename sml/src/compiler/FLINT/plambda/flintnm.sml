@@ -1,5 +1,5 @@
 (* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
-(* flintnm.sml *)
+(* monnier@cs.yale.edu *)
 
 (* Converting the Standard PLambda.lexp into the FLINT IL *)
 signature FLINTNM = 
@@ -12,7 +12,6 @@ struct
 
 local structure LT = PLambdaType
       structure FL = PFlatten		(* argument flattening *)
-      structure LV = LambdaVar
       structure DI = DebIndex
       structure PT = PrimTyc
       structure PO = PrimOp
@@ -25,6 +24,7 @@ in
 
 val say = Control.Print.say
 val mkv = LambdaVar.mkLvar
+val cplv = LambdaVar.dupLvar
 val ident = fn le : L.lexp => le
 
 val (iadd_prim, uadd_prim) = 
@@ -177,7 +177,8 @@ and tolexp (venv,d) lexp =
                 (* then translate each function in turn *)
                 val funs = map (fn ((f_lv,f_lty),L.FN(arg_lv,arg_lty,body)) =>
                                 #1(tofundec(venv', d, 
-					    f_lv, arg_lv, arg_lty, body, true)))
+					    f_lv, arg_lv, arg_lty, body, true))
+				 | _ => bug "non-function in L.FIX")
                                (ListPair.zip(ListPair.zip(lvs,ltys),lexps))
 
                 (* finally, translate the lexp *)
@@ -565,7 +566,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
 fun norm (lexp as L.FN(arg_lv,arg_lty,e)) =
     (#1(tofundec(LT.initLtyEnv, DI.top, mkv(), arg_lv, arg_lty, e, false))
     handle x => raise x)
-(*   | norm _ = bug "unexpected toplevel lexp" *)
+  | norm _ = bug "unexpected toplevel lexp"
 
 end (* toplevel local *)
 end (* structure FlintNM *)

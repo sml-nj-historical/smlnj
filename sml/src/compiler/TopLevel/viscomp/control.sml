@@ -178,7 +178,7 @@ structure Control : CONTROL =
     val overloadKW = ref false	(* controls "overload" as a keyword *)
 
     val preserveLvarNames : bool ref = ref false
-    val saveit = ref false 
+    val saveit = ref true
     val saveLvarNames : bool ref = saveit
     val saveAbsyn : bool ref = saveit
     val saveLambda : bool ref = saveit
