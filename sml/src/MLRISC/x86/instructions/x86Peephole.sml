@@ -33,8 +33,8 @@ struct
              | isStackPtr _ = false
 
 (*#line 35.8 "x86Peephole.peep"*)
-           fun isZeroLE le = ((Eval.valueOf le) = 0)handle _ => false
-
+           fun isZeroLE le = (((Eval.valueOf le) = 0) handle _ => false
+)
 
 (*#line 37.8 "x86Peephole.peep"*)
            fun isZero (I.Immed n) = n = 0
@@ -111,12 +111,12 @@ struct
                                                           and n = v_17
                                                           and rest = v_4
                                                       in (if ((CBase.sameColor (d_i, C.esp)) andalso (CBase.sameColor (d_j, C.esp)))
-                                                          then (if (m = n)
-                                                          then (loop (rest, instrs))
-                                                          else (if (m < n)
-                                                          then (loop (rest, (I.binary {binOp=I.ADDL, src=I.Immed (n - m), dst=I.Direct C.esp}) :: instrs))
-                                                          else (loop (rest, (I.binary {binOp=I.SUBL, src=I.Immed (m - n), dst=I.Direct C.esp}) :: instrs))))
-                                                          else (state_9 (v_0, v_3)))
+                                                            then (if (m = n)
+                                                               then (loop (rest, instrs))
+                                                               else (if (m < n)
+                                                                  then (loop (rest, (I.binary {binOp=I.ADDL, src=I.Immed (n - m), dst=I.Direct C.esp}) :: instrs))
+                                                                  else (loop (rest, (I.binary {binOp=I.SUBL, src=I.Immed (m - n), dst=I.Direct C.esp}) :: instrs))))
+                                                            else (state_9 (v_0, v_3)))
                                                       end
                                                     | _ => state_9 (v_0, v_3)
                                                     )
@@ -161,19 +161,19 @@ struct
                                                        (case v_30 of
                                                          I.Immed v_29 => 
                                                          (case v_29 of
-                                                          0 => 
-                                                          (case v_28 of
-                                                          I.MOVL => 
-                                                          let val base = v_27
-                                                          and dst_i = v_26
-                                                          and rest = v_4
-                                                          and src = v_8
-                                                          in (if (((CBase.sameColor (base, C.esp)) andalso (CBase.sameColor (dst_i, C.esp))) andalso (not (isStackPtr src)))
-                                                          then (loop (rest, (I.pushl src) :: instrs))
-                                                          else (state_9 (v_0, v_3)))
-                                                          end
-                                                          | _ => state_9 (v_0, v_3)
-                                                          )
+                                                           0 => 
+                                                           (case v_28 of
+                                                             I.MOVL => 
+                                                             let val base = v_27
+                                                                 and dst_i = v_26
+                                                                 and rest = v_4
+                                                                 and src = v_8
+                                                             in (if (((CBase.sameColor (base, C.esp)) andalso (CBase.sameColor (dst_i, C.esp))) andalso (not (isStackPtr src)))
+                                                                   then (loop (rest, (I.pushl src) :: instrs))
+                                                                   else (state_9 (v_0, v_3)))
+                                                             end
+                                                           | _ => state_9 (v_0, v_3)
+                                                           )
                                                          | _ => state_9 (v_0, v_3)
                                                          )
                                                        | _ => state_9 (v_0, v_3)
@@ -250,19 +250,19 @@ struct
                                                        (case v_9 of
                                                          I.Direct v_5 => 
                                                          (case v_8 of
-                                                          I.Immed v_7 => 
-                                                          (case v_7 of
-                                                          4 => 
-                                                          let val base = v_6
-                                                          and dst = v_1
-                                                          and dst_i = v_5
-                                                          and rest = v_4
-                                                          in (if (((CBase.sameColor (base, C.esp)) andalso (CBase.sameColor (dst_i, C.esp))) andalso (not (isStackPtr dst)))
-                                                          then (loop (rest, (I.pop dst) :: instrs))
-                                                          else (state_51 (v_0, v_1, v_2, v_3)))
-                                                          end
-                                                          | _ => state_51 (v_0, v_1, v_2, v_3)
-                                                          )
+                                                           I.Immed v_7 => 
+                                                           (case v_7 of
+                                                             4 => 
+                                                             let val base = v_6
+                                                                 and dst = v_1
+                                                                 and dst_i = v_5
+                                                                 and rest = v_4
+                                                             in (if (((CBase.sameColor (base, C.esp)) andalso (CBase.sameColor (dst_i, C.esp))) andalso (not (isStackPtr dst)))
+                                                                   then (loop (rest, (I.pop dst) :: instrs))
+                                                                   else (state_51 (v_0, v_1, v_2, v_3)))
+                                                             end
+                                                           | _ => state_51 (v_0, v_1, v_2, v_3)
+                                                           )
                                                          | _ => state_51 (v_0, v_1, v_2, v_3)
                                                          )
                                                        | _ => state_51 (v_0, v_1, v_2, v_3)

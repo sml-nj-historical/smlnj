@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Allen Leung
+Date: 2002/02/21 20:20:00 EST
+Tag: leunga-20020221-peephole
+
+Regenerated the peephole files.  Some contained typos in the specification
+and some didn't compile because of pretty printing bugs in the old version
+of 'nowhere'.
+
+----------------------------------------------------------------------
+Name: Allen Leung
 Date: 2002/02/19 20:20:00 EST
 Tag: leunga-20020219-mlrisc-tools
 Description:

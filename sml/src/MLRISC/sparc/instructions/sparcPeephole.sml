@@ -26,8 +26,8 @@ struct
    fun peephole instrs = 
        let 
 (*#line 21.8 "sparcPeephole.peep"*)
-           fun isZero (I.LAB le) = ((Eval.valueOf le) = 0)handle _ => false
-
+           fun isZero (I.LAB le) = (((Eval.valueOf le) = 0) handle _ => false
+)
              | isZero (I.REG r) = (CB.registerNum r) = 0
              | isZero (I.IMMED i) = i = 0
              | isZero _ = false
@@ -74,19 +74,19 @@ struct
 
 (*#line 31.8 "sparcPeephole.peep"*)
            fun loop (current, instrs) = 
-               let val v_3 = current
+               let val v_13 = current
                in 
-                  (case v_3 of
-                    op :: v_2 => 
-                    let val (v_1, v_0) = v_2
+                  (case v_13 of
+                    op :: v_12 => 
+                    let val (v_11, v_10) = v_12
                     in 
-                       let val i = v_1
-                           and rest = v_0
+                       let val i = v_11
+                           and rest = v_10
                        in (if (removable i)
                              then (loop (rest, instrs))
                              else 
-                             let val i = v_1
-                                 and rest = v_0
+                             let val i = v_11
+                                 and rest = v_10
                              in loop (rest, i :: instrs)
                              end)
                        end
