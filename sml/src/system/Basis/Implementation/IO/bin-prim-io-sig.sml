@@ -5,5 +5,8 @@
  *)
 signature BIN_PRIM_IO = sig
     include PRIM_IO
-    (* more to come here *)
+
+    val openRd : string -> reader
+    val openWr : string -> writer
+    val openApp : string -> writer
 end

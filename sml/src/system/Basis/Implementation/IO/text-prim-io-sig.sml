@@ -11,6 +11,9 @@ signature TEXT_PRIM_IO = sig
     val stdOut : unit -> writer
     val stdErr : unit -> writer
 
-    val strReader : string -> reader
+    val openRd : string -> reader
+    val openWr : string -> writer
+    val openApp : string -> writer
 
+    val strReader : string -> reader
 end

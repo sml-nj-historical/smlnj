@@ -35,8 +35,8 @@ structure SML90 :> SML90 =
     val sin = Math.sin
     val cos = Math.cos
     val arctan = Math.atan
-    fun ord s = Char.ord(String.sub(s, 0))
-    fun chr i = String.str(Char.chr i)
+    fun ord s = CharImp.ord(String.sub(s, 0))
+    fun chr i = String.str(CharImp.chr i)
     fun explode s = CharVector.foldr (fn (c, l) => String.str c :: l) [] s
     val implode = String.concat
 

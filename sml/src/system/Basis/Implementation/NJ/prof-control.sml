@@ -73,7 +73,7 @@ structure ProfControl : PROF_CONTROL =
 	      then ()
 	      else let val new = Array.array(n+n, 0)
 		in
-		  Array.copy{di=0, dst=new, len=NONE, si=0, src = old};
+		  Array.copy{di=0, dst=new, src = old};
 		  setTimeArray new
 		end
 	  end

@@ -8,6 +8,7 @@
 signature MONO_ARRAY2 =
   sig
     eqtype array
+    type vector
     type elem
     type region = {
                     base : array,

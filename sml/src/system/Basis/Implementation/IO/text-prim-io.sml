@@ -22,8 +22,31 @@ structure TextPrimIO : TEXT_PRIM_IO = struct
     fun mkReader { fd, name, chunkSize } =
 	raise Fail "mkReader not yet implemented"
 
-    fun mkWriter { fd, name, appendMode, chunkSize } =
+    fun mkWriter { fd, name, chunkSize } =
 	raise Fail "mkWriter not yet implemented"
+
+    local
+	open SMLBasis
+	(* are these right ? *)
+	val openRdFlags = OPEN_RD
+	val openWrFlags = OPEN_WR + OPEN_CREATE + OPEN_TRUNC
+	val openAppFlags = OPEN_WR + OPEN_CREATE + OPEN_APPEND
+    in
+        fun openRd fname =
+	    mkReader { fd = openFile (fname, openRdFlags),
+		       name = fname,
+		       chunkSize = NONE }
+
+	fun openWr fname =
+	    mkWriter { fd = openFile (fname, openWrFlags),
+		       name = fname,
+		       chunkSize = NONE }
+
+	fun openApp fname =
+	    mkWriter { fd = openFile (fname, openAppFlags),
+		       name = fname,
+		       chunkSize = NONE }
+    end
 
     fun stdIn () =
 	mkReader { fd = SMLBasis.getStdIn (),
@@ -32,12 +55,10 @@ structure TextPrimIO : TEXT_PRIM_IO = struct
     fun stdOut () =
 	mkWriter { fd = SMLBasis.getStdOut (),
 		   name = "<stdout>",
-		   appendMode = false,
 		   chunkSize = NONE }
     fun stdErr () =
 	mkWriter { fd = SMLBasis.getStdErr (),
 		   name = "<stderr>",
-		   appendMode = true,
 		   chunkSize = NONE }
 
     val strReader = openVector

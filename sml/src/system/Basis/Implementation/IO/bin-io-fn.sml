@@ -11,11 +11,16 @@ local
     structure Int = IntImp
     structure Position = PositionImp
 in
-functor BinIOFn (structure PrimIO : BIN_PRIM_IO) : BIN_IO = struct
+functor BinIOFn (structure PrimIO : BIN_PRIM_IO
+		     where type vector = Word8Vector.vector
+		     where type array = Word8Array.array
+		     where type pos = Position.int) : BIN_IO = struct
 
-    structure PIO = OSPrimIO.PrimIO
+    structure PIO = PrimIO
     structure A = Word8Array
+    structure AS = Word8ArraySlice
     structure V = Word8Vector
+    structure VS = Word8VectorSlice
     structure Pos = Position
 
   (* an element for initializing buffers *)
@@ -47,7 +52,7 @@ functor BinIOFn (structure PrimIO : BIN_PRIM_IO) : BIN_IO = struct
 	    (* end case *)
 	  end
 **)
-    val vecExtract = V.extract
+    val vecExtract = VS.vector o VS.slice
     val vecSub = V.sub
     val arrUpdate = A.update
     val empty = V.fromList[]
@@ -421,11 +426,10 @@ functor BinIOFn (structure PrimIO : BIN_PRIM_IO) : BIN_IO = struct
 		case !bufferMode
 		 of IO.NO_BUF => writeDirect ()
 		  | _ => let
-		      fun copyVec (src, srcI, srcLen, dst, dstI) = A.copyVec {
-			      src = src, si = srcI, len = SOME srcLen,
-			      dst = dst, di = dstI
-			    }
-		      in
+		      fun copyVec (src, srcI, srcLen, dst, dstI) =
+			  AS.copyVec { src = VS.slice (src, srcI, SOME srcLen),
+				       dst = dst, di = dstI }
+		    in
 			insert copyVec
 		      end
 		(* end case *)
@@ -547,7 +551,7 @@ functor BinIOFn (structure PrimIO : BIN_PRIM_IO) : BIN_IO = struct
 	      isClosedOut (strm, "setPosOut");
 	      case writer
 	       of PIO.WR{setPos=SOME f, ...} => (
-		    (f pos)
+		    (f pos; strm)
 		      handle ex => outputExn(strm, "setPosOut", ex))
 		| _ => outputExn(strm, "getPosOut", IO.RandomAccessNotSupported)
 	      (* end case *))
@@ -613,8 +617,7 @@ functor BinIOFn (structure PrimIO : BIN_PRIM_IO) : BIN_IO = struct
     fun flushOut strm = StreamIO.flushOut(!strm)
     fun closeOut strm = StreamIO.closeOut(!strm)
     fun getPosOut strm = StreamIO.getPosOut(!strm)
-    fun setPosOut (strm, p as StreamIO.OUTP{strm=strm', ...}) = (
-	  strm := strm'; StreamIO.setPosOut p)
+    fun setPosOut (strm, p) = strm := StreamIO.setPosOut p
 
     fun mkInstream (strm : StreamIO.instream) = ref strm
     fun getInstream (strm : instream) = !strm
@@ -626,13 +629,13 @@ functor BinIOFn (structure PrimIO : BIN_PRIM_IO) : BIN_IO = struct
 
   (** Open files **)
     fun openIn fname =
-	  mkInstream(StreamIO.mkInstream(OSPrimIO.openRd fname, empty))
+	  mkInstream(StreamIO.mkInstream(PIO.openRd fname, empty))
 	    handle ex => raise IO.Io{function="openIn", name=fname, cause=ex}
     fun openOut fname =
-	  mkOutstream(StreamIO.mkOutstream(OSPrimIO.openWr fname, IO.BLOCK_BUF))
+	  mkOutstream(StreamIO.mkOutstream(PIO.openWr fname, IO.BLOCK_BUF))
 	    handle ex => raise IO.Io{function="openOut", name=fname, cause=ex}
     fun openAppend fname =
-	  mkOutstream(StreamIO.mkOutstream(OSPrimIO.openApp fname, IO.NO_BUF))
+	  mkOutstream(StreamIO.mkOutstream(PIO.openApp fname, IO.NO_BUF))
 	    handle ex => raise IO.Io{function="openAppend", name=fname, cause=ex}
 
   end (* BinIOFn *)

@@ -36,7 +36,7 @@ structure InternalTimer : sig
 
     fun getTime () = 
         let val (usr, sys, gc) = SMLBasis.getCPUTime ()
-	 in { usr = usr, sys = sys, gc = gc }
+	 in { usr = PB.TIME usr, sys = PB.TIME sys, gc = PB.TIME gc }
 	end
 
     fun startCPUTimer () = CPUT(getTime())
@@ -44,10 +44,15 @@ structure InternalTimer : sig
 	  val {usr, sys, gc} = getTime()
 	  in
 	    { usr = Time.-(usr, u0),
-	      sys = Time.-(sys, s0),
-	      gc = Time.-(gc, g0)
+	      sys = Time.-(sys, s0)
+	      (* ,  gc = Time.-(gc, g0) *)
 	    }
 	  end
+    fun checkGCTime (CPUT { gc = g0, ... }) = let
+	val { gc, ... } = getTime ()
+    in
+	Time.- (gc, g0)
+    end
     val initCPUTime = ref(startCPUTimer ())
     fun totalCPUTimer () = !initCPUTime
 

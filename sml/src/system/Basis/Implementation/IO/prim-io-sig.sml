@@ -19,7 +19,6 @@ signature PRIM_IO = sig
     val mkWriter: {
 	    fd : OS.IO.iodesc,
 	    name : string,
-	    appendMode : bool,
 	    chunkSize : int option  (* default not specified *)
 	  } -> writer
 

@@ -8,6 +8,8 @@ local
     structure Int = IntImp
     structure Int32 = Int32Imp
     structure Time = TimeImp
+    structure PB = PreBasis
+    structure Char = CharImp
 in
 structure Date : DATE =
   struct
@@ -65,6 +67,7 @@ structure Date : DATE =
 	 *)
 	fun wrap f x = (f x) handle _ => raise Date
 
+(*
 	(* note: mkTime assumes the tm structure passed to it reflects
 	 * the local time zone
 	 *)
@@ -78,6 +81,7 @@ structure Date : DATE =
 (*	    = wrap (CInterface.c_function "SMLNJ-Date" "mkTime") *)
 	val strfTime : (string * tm) -> string = SMLBasis.strfTime  (* dbm: missing *)
 (*	    = wrap (CInterface.c_function "SMLNJ-Date" "strfTime") *)
+*)
 
 	fun year (DATE{year, ...}) = year
 	fun month (DATE{month, ...}) = month
@@ -185,21 +189,22 @@ structure Date : DATE =
 				     (* end case *)
 				     }
 
-	fun fromTM {
-		    tm_sec, tm_min, tm_hour, tm_mday, tm_mon,
-		    tm_year, tm_wday, tm_yday, tm_isdst
-		    } offset = DATE{
-				    year = baseYear + tm_year,
-				    month = InlineT.PolyVector.sub(monthTbl, tm_mon),
-				    day = tm_mday,
-				    hour = tm_hour,
-				    minute = tm_min,
-				    second = tm_sec,
-				    wday = InlineT.PolyVector.sub(dayTbl, tm_wday),
-				    yday = tm_yday,
-				    isDst = if (tm_isdst < 0) then NONE else SOME(tm_isdst <> 0),
-				    offset = offset
-				    }
+	fun fromTM { tm_sec, tm_min, tm_hour, tm_mday, tm_mon,
+		     tm_year, tm_wday, tm_yday, tm_isdst } offset = let
+	    val i = Int32.toInt
+	in
+	    DATE { year = baseYear + i tm_year,
+		   month = InlineT.PolyVector.sub(monthTbl, i tm_mon),
+		   day = i tm_mday,
+		   hour = i tm_hour,
+		   minute = i tm_min,
+		   second = i tm_sec,
+		   wday = InlineT.PolyVector.sub (dayTbl, i tm_wday),
+		   yday = i tm_yday,
+		   isDst = if ((tm_isdst : Int32.int) < 0) then NONE
+			   else SOME(tm_isdst <> 0),
+		   offset = offset }
+	end
 
 	(* takes two tm's and returns the second tm with 
 	 * its dst flag set to the first one's.
@@ -231,6 +236,7 @@ structure Date : DATE =
 		if (s>secInHDay) then secInHDay-s else s
 	    end
 
+(*
 	(* 
 	 * this function is meant as an analogue to 
 	 * mkTime, but constructs UTC time instead of localtime
@@ -256,15 +262,24 @@ structure Date : DATE =
 		    NONE => mkTime (tm)
 		  | SOME (offsetV) => mkGMTime (tm) + offsetToDiff (offsetV)
 	    end
+*)
 
+(*
 	val toTime = Time.fromSeconds o toSeconds
+*)
+	fun toTime _ = raise Fail "toTime not yet implemented"
 
-	fun fromTimeLocal (t) =
-	    fromTM (localTime (Time.toSeconds (t))) NONE
+	fun localOffset () = raise Fail "localOffset not yet implemented"
 
-	fun fromTimeOffset (t, offset) =
-	    fromTM (gmTime (Time.toSeconds (t) - Time.toSeconds(offset)))
-	    (SOME offset)
+	fun fromTimeLocal (PB.TIME t) =
+	    (* fromTM (localTime (Time.toSeconds (t))) NONE *)
+	    fromTM (SMLBasis.localTime t) NONE
+
+	fun fromTimeOffset (t, offset) = let
+	    val PB.TIME t' = Time.- (t, offset)
+	in
+	    fromTM (SMLBasis.gmTime t') (SOME offset)
+	end
 
 	fun fromTimeUniv (t) = fromTimeOffset (t,Time.zeroTime)
 
@@ -289,9 +304,11 @@ structure Date : DATE =
 		internalDate () handle Date => d
 	    end
 
-	fun toString d = ascTime (toTM d)
+	fun toString d = (* ascTime (toTM d) *)
+	    raise Fail "toString not yet implemented"
 	    
-	fun fmt fmtStr d = strfTime (fmtStr, toTM d)
+	fun fmt fmtStr d = (* strfTime (fmtStr, toTM d) *)
+	    raise Fail "fmt not yet implemented"
 	    
 	exception SCAN
 
@@ -333,16 +350,16 @@ val scan       : (getc : (char, 'a) StringCvt.reader) -> 'a -> (date * 'a) optio
 		    | NONE => raise SCAN)
 
 	    fun scanWeekDay cs =
-		(case (getc )
+		(case (getc cs)
 		   of (SOME(#"S", cs')) =>
 			(case (getc cs')
-			   of (#"u",cs'') => 
+			   of SOME (#"u",cs'') => 
 			      (case (getc cs'')
-				 of (#"n",cs''') => (Sun,cs''')
+				 of SOME (#"n",cs''') => (Sun,cs''')
 				  | _ => raise SCAN)
-			    | (#"a",cs'') => 
+			    | SOME (#"a",cs'') => 
 			      (case (getc cs'')
-				 of (#"t",cs''') => (Sat,cs''')
+				 of SOME (#"t",cs''') => (Sat,cs''')
 				  | _ => raise SCAN)
 			    | _ => raise SCAN
 			(* end case *))
@@ -353,13 +370,13 @@ val scan       : (getc : (char, 'a) StringCvt.reader) -> 'a -> (date * 'a) optio
 			(* end case *))
 		    | (SOME(#"T", cs')) =>
 			(case (getc cs')
-			   of (#"u",cs'') => 
+			   of SOME (#"u",cs'') => 
 			      (case (getc cs'')
-				 of (#"e",cs''') => (Tue,cs''')
+				 of SOME (#"e",cs''') => (Tue,cs''')
 				  | _ => raise SCAN)
-			    | (#"h",cs'') => 
+			    | SOME (#"h",cs'') => 
 			      (case (getc cs'')
-				 of (#"u",cs''') => (Thu,cs''')
+				 of SOME (#"u",cs''') => (Thu,cs''')
 				  | _ => raise SCAN)
 			    | _ => raise SCAN
 			(* end case *))
@@ -377,17 +394,17 @@ val scan       : (getc : (char, 'a) StringCvt.reader) -> 'a -> (date * 'a) optio
 		  (* end case *))
 
 	    fun scanMonth cs =
-		(case (getc cs')
+		(case (getc cs)
 		   of (SOME(#"J", cs')) =>
 		      (case (getc cs')
-			 of (#"a",cs'') => 
+			 of SOME (#"a",cs'') => 
 			    (case (getc cs'')
-			       of (#"n",cs''') => (Jan,cs''')
+			       of SOME (#"n",cs''') => (Jan,cs''')
 				| _ => raise SCAN)
-			  | (#"u",cs'') => 
+			  | SOME (#"u",cs'') => 
 			    (case (getc cs'')
-			       of (#"n",cs''') => (Jun,cs''')
-				| (#"l",cs''') => (Jul,cs''')
+			       of SOME (#"n",cs''') => (Jun,cs''')
+				| SOME (#"l",cs''') => (Jul,cs''')
 				| _ => raise SCAN)
 			  | _ => raise SCAN
 		      (* end case *))
@@ -398,22 +415,22 @@ val scan       : (getc : (char, 'a) StringCvt.reader) -> 'a -> (date * 'a) optio
 		      (* end case *))
 		  | (SOME(#"M", cs')) =>
 		      (case (getc cs')
-			 of (#"a",cs'') => 
+			 of SOME (#"a",cs'') => 
 			    (case (getc cs'')
-			       of (#"r",cs''') => (Mar,cs''')
-				| (#"y",cs''') => (May,cs''')
+			       of SOME (#"r",cs''') => (Mar,cs''')
+				| SOME (#"y",cs''') => (May,cs''')
 				| _ => raise SCAN)
 			  | _ => raise SCAN
 		      (* end case *))
 		  | (SOME(#"A", cs')) =>
 		      (case (getc cs')
-			 of (#"p",cs'') => 
+			 of SOME (#"p",cs'') => 
 			    (case (getc cs'')
-			       of (#"r",cs''') => (Apr,cs''')
+			       of SOME (#"r",cs''') => (Apr,cs''')
 				| _ => raise SCAN)
-			  | (#"u",cs'') => 
+			  | SOME (#"u",cs'') => 
 			    (case (getc cs'')
-			       of (#"g",cs''') => (Aug,cs''')
+			       of SOME (#"g",cs''') => (Aug,cs''')
 				| _ => raise SCAN)
 			  | _ => raise SCAN
 		      (* end case *))
@@ -440,6 +457,11 @@ val scan       : (getc : (char, 'a) StringCvt.reader) -> 'a -> (date * 'a) optio
 		  | _ => raise SCAN
 		(* end case *))
 
+	    fun scanDay cs = raise Fail "scanDay not yet implemented"
+	    fun scanNat cs = raise Fail "scanNat not yet implemneted"
+	    fun scanChar _ _ = raise Fail "scanChar not yet implemented"
+
+	    val cs = charStrm
 	    val cs = (PreBasis.skipWS getc cs)
 	    val (wday,cs) = scanWeekDay cs
 	    val cs = scanSp cs
@@ -455,7 +477,7 @@ val scan       : (getc : (char, 'a) StringCvt.reader) -> 'a -> (date * 'a) optio
 	    val cs = scanSp cs
 	    val (year,cs) = scanNum(4,NONE,cs)
 
-	 in SOME(DATE {year = year,
+	 in SOME(DATE {year = Int32.toInt year,
 		       month = month,
 		       day = day,
 		       hour = hour,
@@ -463,7 +485,7 @@ val scan       : (getc : (char, 'a) StringCvt.reader) -> 'a -> (date * 'a) optio
 		       second = second,
 		       offset = NONE,  (* ??? *)
 		       wday = wday,
-		       yday = yday(month,day,year),
+		       yday = yday(monthToInt month,day,Int32.toInt year),
 		       isDst = NONE},  (* ??? *)
 		  cs)
 	end

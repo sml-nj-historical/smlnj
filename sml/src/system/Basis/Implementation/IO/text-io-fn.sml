@@ -11,11 +11,15 @@ local
     structure Int = IntImp
     structure OS = OSImp
 in
-functor TextIOFn (structure PrimIO : TEXT_PRIM_IO) : TEXT_IO = struct
+functor TextIOFn (structure PrimIO : TEXT_PRIM_IO
+			where type vector = CharVector.vector
+			where type array = CharArray.array) : TEXT_IO = struct
 
     structure PIO = PrimIO
     structure A = CharArray
     structure V = CharVector
+    structure AS = CharArraySlice
+    structure VS = CharVectorSlice
 
   (* an element for initializing buffers *)
     val someElem = #"\000"
@@ -46,7 +50,8 @@ functor TextIOFn (structure PrimIO : TEXT_PRIM_IO) : TEXT_IO = struct
 	    (* end case *)
 	  end
 **)
-    val vecExtract = V.extract
+    (* val vecExtract = V.extract *)
+    val vecExtract = VS.vector o VS.slice
     val vecSub = V.sub
     val arrUpdate = A.update
     val substringBase = Substring.base
@@ -463,9 +468,8 @@ functor TextIOFn (structure PrimIO : TEXT_PRIM_IO) : TEXT_IO = struct
 
       (* a version of copyVec for BLOCK_BUF output of strings and substrings. *)
 	fun blockBufCopyVec (src, srcI, srcLen, dst, dstI) = (
-	      A.copyVec {
-		  src = src, si = srcI, len = SOME srcLen, dst = dst, di = dstI
-		};
+              AS.copyVec { dst = dst, di = dstI,
+			   src = VS.slice (src, srcI, SOME srcLen) };
 	      false)
 
 	fun output (strm as OSTRM os, v) = let
@@ -491,9 +495,9 @@ functor TextIOFn (structure PrimIO : TEXT_PRIM_IO) : TEXT_IO = struct
 			  in
 			    if (avail < dataLen)
 			      then let
-				val _ = A.copyVec{
-					src=v, si=0, len=SOME avail, dst=buf, di=i
-				      }
+				val _ = AS.copyVec
+					   { src = VS.slice (v, 0, SOME avail),
+					     dst = buf, di = i }
 				val _ = #writeArr os {buf=buf, i=0, sz=NONE}
 				      handle ex => (
 					pos := bufLen;
@@ -644,7 +648,7 @@ functor TextIOFn (structure PrimIO : TEXT_PRIM_IO) : TEXT_IO = struct
 	      isClosedOut (strm, "setPosOut");
 	      case writer
 	       of PIO.WR{setPos=SOME f, ...} => (
-		    (f pos)
+		    (f pos; strm)
 		      handle ex => outputExn(strm, "setPosOut", ex))
 		| _ => outputExn(strm, "getPosOut", IO.RandomAccessNotSupported)
 	      (* end case *))
@@ -674,9 +678,9 @@ functor TextIOFn (structure PrimIO : TEXT_PRIM_IO) : TEXT_IO = struct
 			  in
 			    if (avail < dataLen)
 			      then let
-				val _ = A.copyVec{
-					src=v, si=dataStart, len=SOME avail, dst=buf, di=i
-				      }
+				val _ = AS.copyVec
+				  { dst = buf, di = i,
+				    src = VS.slice (v, dataStart, SOME avail) }
 				val _ = #writeArr os {buf=buf, i=0, sz=NONE}
 				      handle ex => (
 					pos := bufLen;
@@ -765,8 +769,7 @@ functor TextIOFn (structure PrimIO : TEXT_PRIM_IO) : TEXT_IO = struct
     fun flushOut strm = StreamIO.flushOut(!strm)
     fun closeOut strm = StreamIO.closeOut(!strm)
     fun getPosOut strm = StreamIO.getPosOut(!strm)
-    fun setPosOut (strm, p as StreamIO.OUTP{strm=strm', ...}) = (
-	  strm := strm'; StreamIO.setPosOut p)
+    fun setPosOut (strm, p) = strm := StreamIO.setPosOut p
 
     fun mkInstream (strm : StreamIO.instream) = ref strm
     fun getInstream (strm : instream) = !strm
