@@ -1,8 +1,8 @@
 ;;; sml-proc.el --- Comint based interaction mode for Standard ML.
 
-;; Copyright (C) 1989       Lars Bo Nielsen
-;; Copyright (C) 1994-1997  Matthew J. Morley
 ;; Copyright (C) 1999,2000,03,04  Stefan Monnier
+;; Copyright (C) 1994-1997  Matthew J. Morley
+;; Copyright (C) 1989       Lars Bo Nielsen
 
 ;; $Revision$
 ;; $Date$
@@ -207,15 +207,19 @@ specified when running the command \\[sml-cd].")
   :type '(regexp))
 
 (defvar sml-error-regexp-alist
-  '(;; Poly/ML messages
+  `( ;; Poly/ML messages
     ("\\(Error\\|Warning:\\) in '\\(.+\\)', line \\([0-9]+\\)" 2 3)
     ;; Moscow ML
     ("File \"\\([^\"]+\\)\", line \\([0-9]+\\)\\(-\\([0-9]+\\)\\)?, characters \\([0-9]+\\)-\\([0-9]+\\):" 1 2 5)
-    ;; SML/NJ:  the file-pattern is anchored to avoid
-    ;; pathological behavior with very long lines.
-    ("^[-= ]*\\(.*[^\n)]\\)\\( (.*)\\)?:\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)? \\(Error\\|Warning\\): .*" 1 sml-make-error 3 4 6 7)
-    ;; SML/NJ's exceptions:  see above.
-    ("^ +\\(raised at: \\)?\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)" 2 sml-make-error 3 4 6 7))
+    ,@(if (not (fboundp 'compilation-fake-loc))
+	  ;; SML/NJ:  the file-pattern is anchored to avoid
+	  ;; pathological behavior with very long lines.
+	  '(
+	    ("^[-= ]*\\(.*[^\n)]\\)\\( (.*)\\)?:\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)? \\(Error\\|Warning\\): .*" 1 sml-make-error 3 4 6 7)
+	    ("^ +\\(raised at: \\)?\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)" 2 sml-make-error 3 4 6 7))
+	'(("^[-= ]*\\(.*[^\n)]\\)\\( (.*)\\)?:\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)? \\(Error\\|Warnin\\(g\\)\\): .*" 1 (3 . 6) (4 . 7) (9))
+	  ;; SML/NJ's exceptions:  see above.
+	  ("^ +\\(raised at: \\)?\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)" 2 (3 . 6) (4 . 7)))))
   "Alist that specifies how to match errors in compiler output.
 See `compilation-error-regexp-alist' for a description of the format.")
 
@@ -449,7 +453,6 @@ See variables `sml-use-command'."
   (if (= start end)
       (message "The region is zero (ignored)")
     (let* ((buf (sml-proc-buffer))
-	   (file (buffer-file-name))
 	   (marker (copy-marker start))
 	   (tmp (make-temp-file "sml")))
       (write-region start end tmp nil 'silently)
@@ -501,42 +504,6 @@ With a prefix argument AND-GO switch to the sml buffer as well
   "Send current paragraph to the inferior ML process, and go there."
   (interactive)
   (sml-send-function t))
-
-;;; H A C K   A T T A C K !   X E M A C S   V E R S U S   E M A C S
-
-(defun sml-drag-region (event)
-  "Highlight the text the mouse is dragged over, and send it to ML.
-This must be bound to a button-down mouse EVENT, currently \\[sml-drag-region].
-
-If you drag the mouse (ie, keep the mouse button depressed) the
-program text sent to the complier is delimited by where you started
-dragging the mouse, and where you release the mouse button.
-
-If you only click the mouse, the program text sent to the compiler is
-delimited by the current position of point and the place where you
-click the mouse.
-
-In either event, the values of both point and mark are left
-undisturbed once this operation is completed."
-  (interactive "e")
-  (let ((mark-ring)                     ;BAD: selection start gets cons'd
-        (pmark (point)))                ;where point is now
-    (if (fboundp 'mouse-track-default)
-        ;; Assume this is XEmacs, otherwise assume its Emacs
-        (save-excursion
-          (let ((zmacs-regions))
-            (set-marker (mark-marker) nil)
-            (mouse-track-default event)
-            (if (not (region-exists-p)) (push-mark pmark nil t))
-            (call-interactively 'sml-send-region)))
-      ;; Emacs: making this buffer-local ought to happen in sml-mode
-      (make-local-variable 'transient-mark-mode)
-      (save-excursion
-        (let ((transient-mark-mode 1))
-          (mouse-drag-region event)
-          (if (not mark-active) (push-mark pmark nil t))
-          (call-interactively 'sml-send-region))))))
-
 
 ;;; LOADING AND IMPORTING SOURCE FILES:
 
@@ -653,10 +620,12 @@ non-nil.  With prefix arg, always prompts."
 (defvar sml-endof-error-alist nil)
 
 (defun sml-update-cursor ()
-  ;; update buffer local variable
+  ;; Update buffer local variable.
   (set-marker sml-error-cursor (1- (process-mark (sml-proc))))
   (setq sml-endof-error-alist nil)
   (compilation-forget-errors)
+  (if (fboundp 'compilation-fake-loc)
+      (compilation-fake-loc (cdr sml-temp-file) (car sml-temp-file)))
   (if (markerp compilation-parsing-end)
       (set-marker compilation-parsing-end sml-error-cursor)
     (setq compilation-parsing-end sml-error-cursor)))
@@ -696,6 +665,7 @@ non-nil.  With prefix arg, always prompts."
       ;; taken from compile.el
       (list err filename linenum column))))
 
+(unless (fboundp 'compilation-fake-loc)
 (defadvice compilation-goto-locus (after sml-endof-error activate)
   (let* ((next-error (ad-get-arg 0))
 	 (err (car next-error))
@@ -711,7 +681,7 @@ non-nil.  With prefix arg, always prompts."
 	  (forward-char coldiff))
 	(sml-error-overlay nil pos (point))
 	(push-mark nil t (not sml-error-overlay))
-	(goto-char pos)))))
+	(goto-char pos))))))
 
 (defun sml-error-overlay (undo &optional beg end)
   "Move `sml-error-overlay' to the text region in the current buffer.
@@ -735,10 +705,6 @@ the overlay should simply be removed: \\[universal-argument] \
       (let ((beg (or beg (region-beginning)))
 	    (end (or end (region-end))))
 	(move-overlay sml-error-overlay beg end (current-buffer))))))
-
-;;; H A C K   A T T A C K !   X E M A C S   /   E M A C S   K E Y S
-
-;;(define-key sml-mode-map [(meta shift down-mouse-1)] 'sml-drag-region)
 
 (provide 'sml-proc)
 
