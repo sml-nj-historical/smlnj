@@ -14,7 +14,7 @@ CMD="build"
 ROOT="ml-lex"
 HEAP_IMAGE=""
 ARCH="heap"
-BIN="../../bin"
+BIN="${INSTALLDIR:-../..}/bin"
 SML="$BIN/sml"
 
 #

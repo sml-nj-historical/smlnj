@@ -80,10 +80,12 @@ fun fexp mf depth lexp = let
     fun lookup (F.VAR lv) = M.find(mf, lv)
       | lookup _ = NONE
 
+    fun S_rmv(x, s) = S.delete(s, x) handle NotFound => s
+
     fun addv (s,F.VAR lv) = S.add(s, lv)
       | addv (s,_) = s
     fun addvs (s,vs) = foldl (fn (v,s) => addv(s, v)) s vs
-    fun rmvs (s,lvs) = foldl (fn (l,s) => S.delete(s, l)) s lvs
+    fun rmvs (s,lvs) = foldl (fn (l,s) => S_rmv(l, s)) s lvs
 
     (* Looks for free vars in the primop descriptor.
      * This is normally unnecessary since these are special vars anyway *)
@@ -331,7 +333,7 @@ in case lexp
      | F.TFN ((tfk,f,args,body),le) =>
        let val (se,fve,le) = loop le
 	   val (sb,fvb,body) = loop body
-       in (sb + se, S.union(S.delete(fve, f), fvb),
+       in (sb + se, S.union(S_rmv(f, fve), fvb),
 	   F.TFN((tfk, f, args, body), le))
        end
      | F.TAPP (F.VAR f,args) =>
@@ -345,7 +347,7 @@ in case lexp
        let fun farm (dcon as F.DATAcon(dc,_,lv),le) =
 	       (* the binding might end up costly, but we count it as 1 *)
 	       let val (s,fv,le) = loop le
-	       in (1+s, fdcon(S.delete(fv, lv),dc), (dcon, le))
+	       in (1+s, fdcon(S_rmv(lv, fv),dc), (dcon, le))
 	       end
 	     | farm (dc,le) =
 	       let val (s,fv,le) = loop le in (s, fv, (dc, le)) end
@@ -366,11 +368,11 @@ in case lexp
        end
      | F.CON (dc,tycs,v,lv,le) =>
        let val (s,fv,le) = loop le
-       in (2+s, fdcon(addv(S.delete(fv, lv), v),dc), F.CON(dc, tycs, v, lv, le))
+       in (2+s, fdcon(addv(S_rmv(lv, fv), v),dc), F.CON(dc, tycs, v, lv, le))
        end
      | F.RECORD (rk,vs,lv,le) =>
        let val (s,fv,le) = loop le
-       in ((length vs)+s, addvs(S.delete(fv, lv), vs), F.RECORD(rk, vs, lv, le))
+       in ((length vs)+s, addvs(S_rmv(lv, fv), vs), F.RECORD(rk, vs, lv, le))
        end
      | F.SELECT (v,i,lv,le) =>
        let val (s,fv,le) = loop le
@@ -378,7 +380,7 @@ in case lexp
 	    of SOME(Arg(d,ac as ref(sp,ti))) =>
 	       ac := (sp + 1, OU.pow2(depth - d) + ti)
 	     | _ => ());
-	   (1+s, addv(S.delete(fv, lv), v), F.SELECT(v,i,lv,le))
+	   (1+s, addv(S_rmv(lv, fv), v), F.SELECT(v,i,lv,le))
        end
      | F.RAISE (F.VAR v,ltys) =>
        (* artificially high size estimate to discourage inlining *)
@@ -395,7 +397,7 @@ in case lexp
        end
      | F.PRIMOP (po,vs,lv,le) =>
        let val (s,fv,le) = loop le
-       in (1+s, fpo(addvs(S.delete(fv, lv), vs),po), F.PRIMOP(po,vs,lv,le))
+       in (1+s, fpo(addvs(S_rmv(lv, fv), vs),po), F.PRIMOP(po,vs,lv,le))
        end
 
      | F.APP _ => bug "bogus F.APP"

@@ -128,10 +128,10 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	      let val (f,fi) = split f in (f, fi, fk, p) end
 
 	    (* pseudo FLINT phases *)
-	    | ("pickle",   _)		=>
-	      (valOf(UnpickMod.unpickleFLINT(PickMod.pickleFLINT(SOME f))),
-	       UnpickMod.unpickleFLINT(PickMod.pickleFLINT fi),
-	       fk, p)
+(*	    | ("pickle",   _)		=> *)
+(*	      (valOf(UnpickMod.unpickleFLINT(PickMod.pickleFLINT(SOME f))), *)
+(*	       UnpickMod.unpickleFLINT(PickMod.pickleFLINT fi), *)
+(*	       fk, p) *)
 	    | ("collect",_) => (fcollect f, fi, fk, p)
 	    | _ =>
 	      ((case (p,fk)

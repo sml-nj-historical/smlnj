@@ -13,9 +13,9 @@ CMD="build"
 
 ROOT="ml-yacc"
 HEAP_IMAGE=""
-BIN="../../bin"
+BIN="${INSTALLDIR:-../..}/bin"
 # sml is used after "cd src"
-SML="../$BIN/sml"
+SML="$BIN/sml"
 
 #
 # determine the host architecture

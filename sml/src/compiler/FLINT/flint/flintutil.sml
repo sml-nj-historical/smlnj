@@ -214,10 +214,12 @@ fun copyfdec fdec =
 fun freevars lexp = let
     val loop = freevars
 
+    fun S_rmv(x, s) = S.delete(s, x) handle NotFound => s
+
     fun addv (s,F.VAR lv) = S.add(s, lv)
       | addv (s,_) = s
     fun addvs (s,vs) = foldl (fn (v,s) => addv(s, v)) s vs
-    fun rmvs (s,lvs) = foldl (fn (l,s) => S.delete (s, l)) s lvs
+    fun rmvs (s,lvs) = foldl (fn (l,s) => S_rmv (l, s)) s lvs
     fun singleton (F.VAR v) = S.singleton v
       | singleton _ = S.empty
 			  
@@ -237,27 +239,27 @@ in case lexp
 		   (loop le) fdecs),
 	    map #2 fdecs)
      | F.APP (f,args) => addvs(S.empty, f::args)
-     | F.TFN ((tfk,f,args,body),le) => S.union(S.delete(loop le, f), loop body)
+     | F.TFN ((tfk,f,args,body),le) => S.union(S_rmv(f, loop le), loop body)
      | F.TAPP (f,args) => singleton f
      | F.SWITCH (v,ac,arms,def) =>
        let fun farm ((dc,le),fv) =
 	       let val fvle = loop le
 	       in S.union(fv,
 			  case dc
-			   of F.DATAcon(dc,_,lv) => fdcon(S.delete(fvle, lv),dc)
+			   of F.DATAcon(dc,_,lv) => fdcon(S_rmv(lv, fvle),dc)
 			    | _ => fvle)
 	       end
 	   val fvs = case def of NONE => singleton v
 			       | SOME le => addv(loop le, v)
        in foldl farm fvs arms
        end
-     | F.CON (dc,tycs,v,lv,le) => fdcon(addv(S.delete(loop le, lv), v),dc)
-     | F.RECORD (rk,vs,lv,le) => addvs(S.delete(loop le, lv), vs)
-     | F.SELECT (v,i,lv,le) => addv(S.delete(loop le, lv), v)
+     | F.CON (dc,tycs,v,lv,le) => fdcon(addv(S_rmv(lv, loop le), v),dc)
+     | F.RECORD (rk,vs,lv,le) => addvs(S_rmv(lv, loop le), vs)
+     | F.SELECT (v,i,lv,le) => addv(S_rmv(lv, loop le), v)
      | F.RAISE (v,ltys) => singleton v
      | F.HANDLE (le,v) => addv(loop le, v)
      | F.BRANCH (po,vs,le1,le2) => fpo(addvs(S.union(loop le1, loop le2), vs), po)
-     | F.PRIMOP (po,vs,lv,le) => fpo(addvs(S.delete(loop le, lv), vs),po)
+     | F.PRIMOP (po,vs,lv,le) => fpo(addvs(S_rmv(lv, loop le), vs),po)
 end
 
 end (* top-level local *)

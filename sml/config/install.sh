@@ -56,7 +56,7 @@ SRCDIR=$ROOT/src		# where the source tree is rooted
 LIBDIR=$INSTALLDIR/lib		# where libraries live
 LIBLIST=$ROOT/liblist		# list of commands to stabilize libraries
 LIBMOVESCRIPT=$ROOT/libmove	# a temporary script
-LOCALPATHCONFIG=$ROOT/pathconfig # a temporary pathconfig file
+LOCALPATHCONFIG=$INSTALLDIR/pathconfig # a temporary pathconfig file
 
 #
 # the paths to ml-yacc, ml-burg, and ml-lex; needed to configure CM
@@ -317,7 +317,7 @@ if [ ! -x $RUNDIR/run.$ARCH-$OPSYS ]; then
   $MAKE -f mk.$ARCH-$OPSYS $EXTRA_DEFS
   if [ -x run.$ARCH-$OPSYS ]; then
     mv run.$ARCH-$OPSYS $RUNDIR
-    $MAKE MAKE=$MAKE clean
+    # $MAKE MAKE=$MAKE clean
   else
     echo "!!! Run-time system build failed for some reason."
     exit 1
@@ -353,7 +353,7 @@ else
 	    movelibs $ROOT/$BOOT_FILES/$lib $lib
 	done
 	cd $ROOT
-	rm -rf $BOOT_FILES
+	# rm -rf $BOOT_FILES
 
     else
 	echo "!!! Boot code did not produce heap image (sml.$HEAP_SUFFIX)."

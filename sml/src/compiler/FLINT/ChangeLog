@@ -1,3 +1,7 @@
+1999-07-10  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* opt/split.sml: don't burp when you can't split.
+
 1999-03-08  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* opt/split.sml (sexp): don't split HANDLE (it's incorrect).

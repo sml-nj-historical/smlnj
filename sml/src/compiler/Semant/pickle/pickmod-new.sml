@@ -386,6 +386,18 @@ in
 	cs arg
     end
 
+    fun tkind x = let
+	val op $ = PU.$ TK
+	fun tk x =
+	    case LK.tk_out x of
+	    LK.TK_MONO => %TK "A"
+	  | LK.TK_BOX => %TK "B"
+	  | LK.TK_SEQ ks => "C" $ list tkind ks
+	  | LK.TK_FUN (ks, kr) => "D" $ list tkind ks & tkind kr
+    in
+	share TKs tk x
+    end
+
     fun mkAccess lvar = let
 	val op $ = PU.$ A
 	fun access (A.LVAR i) = "A" $ lvar i
@@ -409,72 +421,67 @@ in
     end
 
     (* lambda-type stuff; this is used in both picklers *)
-    fun ltyI x = let
-	val op $ = PU.$ LT
+    and lty alpha x = let
+	val lty = lty alpha
+	val tyc = tyc alpha
+	fun ltyI x = let
+	    val op $ = PU.$ LT
+	in
+	    case LK.lt_out x of
+		LK.LT_TYC tc => "A" $ tyc tc
+	      | LK.LT_STR l => "B" $ list lty l
+	      | LK.LT_FCT (ts1, ts2) => "C" $ list lty ts1 & list lty ts2
+	      | LK.LT_POLY (ks, ts) => "D" $ list tkind ks & list lty ts
+	      | LK.LT_IND _ => bug "unexpected LT_IND in mkPickleLty"
+	      | LK.LT_ENV _ => bug "unexpected LT_ENV in mkPickleLty"
+	      | LK.LT_CONT _ => bug "unexpected LT_CONT in mkPickleLty"
+	end
     in
-	case LK.lt_out x of
-	    LK.LT_TYC tc => "A" $ tyc tc
-	  | LK.LT_STR l => "B" $ list lty l
-	  | LK.LT_FCT (ts1, ts2) => "C" $ list lty ts1 & list lty ts2
-	  | LK.LT_POLY (ks, ts) => "D" $ list tkind ks & list lty ts
-	  | LK.LT_IND _ => bug "unexpected LT_IND in mkPickleLty"
-	  | LK.LT_ENV _ => bug "unexpected LT_ENV in mkPickleLty"
-	  | LK.LT_CONT _ => bug "unexpected LT_CONT in mkPickleLty"
-    end
-
-    and lty x =
 	if LK.ltp_norm x then share LTs ltyI x
 	else (* bug "unexpected complex lambda type in mkPickleLty" *) ltyI x
-
-    and tycI x = let
-	val op $ = PU.$ TC
-    in
-	case LK.tc_out x of
-	    LK.TC_VAR (db, i) => "A" $ int (DI.di_toint db) & int i
-	  | LK.TC_NVAR (n, dp, i) =>
-		"B" $ int n & int (DI.dp_toint dp) & int i
-	  | LK.TC_PRIM t => "C" $ int (PT.pt_toint t)
-	  | LK.TC_FN (ks, tc) => "D" $ list tkind ks & tyc tc
-	  | LK.TC_APP (tc, l) => "E" $ tyc tc & list tyc l
-	  | LK.TC_SEQ l => "F" $ list tyc l
-	  | LK.TC_PROJ (tc, i) => "G" $ tyc tc & int i
-	  | LK.TC_SUM l => "H" $ list tyc l
-	  | LK.TC_FIX ((n, tc, ts), i) =>
-		"I" $ int n & tyc tc & list tyc ts & int i
-	  | LK.TC_ABS tc => "J" $ tyc tc
-	  | LK.TC_BOX tc => "K" $ tyc tc
-	  | LK.TC_TUPLE (_, l) => "L" $ list tyc l
-	  | LK.TC_ARROW (LK.FF_VAR (b1, b2), ts1, ts2) =>
-		"M" $ bool b1 & bool b2 & list tyc ts1 & list tyc ts2
-	  | LK.TC_ARROW (LK.FF_FIXED, ts1, ts2) =>
-		"N" $ list tyc ts1 & list tyc ts2
-	  | LK.TC_PARROW _ => bug "unexpected TC_PARREW in mkPickleLty"
-	  | LK.TC_TOKEN (tk, t) => "O" $ int (LK.token_int tk) & tyc t
-	  | LK.TC_IND _ => bug "unexpected TC_IND in mkPickleLty"
-	  | LK.TC_ENV _ => bug "unexpected TC_ENV in mkPickleLty"
-	  | LK.TC_CONT _ => bug "unexpected TC_CONT in mkPickleLty"
     end
 
-    and tyc x =
+    and tyc alpha x = let
+	val tyc = tyc alpha
+	val lty = lty alpha
+	fun tycI x = let
+	    val op $ = PU.$ TC
+	in
+	    case LK.tc_out x of
+		LK.TC_VAR (db, i) => "A" $ int (DI.di_toint db) & int i
+	      | LK.TC_NVAR n => "B" $ (int o alpha) n
+	      | LK.TC_PRIM t => "C" $ int (PT.pt_toint t)
+	      | LK.TC_FN (ks, tc) => "D" $ list tkind ks & tyc tc
+	      | LK.TC_APP (tc, l) => "E" $ tyc tc & list tyc l
+	      | LK.TC_SEQ l => "F" $ list tyc l
+	      | LK.TC_PROJ (tc, i) => "G" $ tyc tc & int i
+	      | LK.TC_SUM l => "H" $ list tyc l
+	      | LK.TC_FIX ((n, tc, ts), i) =>
+		"I" $ int n & tyc tc & list tyc ts & int i
+	      | LK.TC_ABS tc => "J" $ tyc tc
+	      | LK.TC_BOX tc => "K" $ tyc tc
+	      | LK.TC_TUPLE (_, l) => "L" $ list tyc l
+	      | LK.TC_ARROW (LK.FF_VAR (b1, b2), ts1, ts2) =>
+		"M" $ bool b1 & bool b2 & list tyc ts1 & list tyc ts2
+	      | LK.TC_ARROW (LK.FF_FIXED, ts1, ts2) =>
+		"N" $ list tyc ts1 & list tyc ts2
+	      | LK.TC_PARROW _ => bug "unexpected TC_PARROW in mkPickleLty"
+	      | LK.TC_TOKEN (tk, t) => "O" $ int (LK.token_int tk) & tyc t
+	      | LK.TC_IND _ => bug "unexpected TC_IND in mkPickleLty"
+	      | LK.TC_ENV _ => bug "unexpected TC_ENV in mkPickleLty"
+	      | LK.TC_CONT _ => bug "unexpected TC_CONT in mkPickleLty"
+	end
+    in
 	if LK.tcp_norm x then share TCs tycI x
 	else (* bug "unexpected complex lambda tyc in mkPickleLty" *) tycI x
-
-    and tkind x = let
-	val op $ = PU.$ TK
-	fun tk x =
-	    case LK.tk_out x of
-	    LK.TK_MONO => %TK "A"
-	  | LK.TK_BOX => %TK "B"
-	  | LK.TK_SEQ ks => "C" $ list tkind ks
-	  | LK.TK_FUN (ks, kr) => "D" $ list tkind ks & tkind kr
-    in
-	share TKs tk x
     end
 
     (* the FLINT pickler *)
     fun flint flint_exp = let
 	val alphaConvert = mkAlphaConvert ()
 	val lvar = int o alphaConvert
+	val lty = lty alphaConvert
+	val tyc = tyc alphaConvert
 	val { access, conrep } = mkAccess lvar
 
 	val op $ = PU.$ V
@@ -552,7 +559,7 @@ in
 	    "a" $ fkind fk & lvar v & list (pair (lvar, lty)) vts & lexp e
 	end
 
-	and tfundec (v, tvks, e) = let
+	and tfundec (tfk, v, tvks, e) = let
 	    val op $ = PU.$ TFUNDEC
 	in
 	    "b" $ lvar v & list (pair (lvar, tkind)) tvks & lexp e
@@ -560,15 +567,17 @@ in
 
 	and fkind arg = let
 	    val op $ = PU.$ FK
-	    fun fk F.FK_FCT = %FK "2"
-	      | fk (F.FK_FUN { isrec, fixed, known, inline }) =
+	    fun fk { isrec, cconv=F.CC_FCT, known, inline } = %FK "2"
+	      | fk { isrec, cconv=F.CC_FUN fixed, known, inline } =
 		case fixed of
 		    LK.FF_VAR (b1, b2) =>
-			"3" $ option (list lty) isrec &
-			bool b1 & bool b2 & bool known & bool inline
+			"3" $ option (list lty) (Option.map (fn (x,y) => x) isrec) &
+			bool b1 & bool b2 & bool known &
+			bool (case inline of F.IH_ALWAYS => true | _ => false)
 		  | LK.FF_FIXED =>
-			"4" $ option (list lty) isrec &
-			bool known & bool inline
+			"4" $ option (list lty) (Option.map (fn (x,y) => x) isrec) &
+			bool known &
+			bool (case inline of F.IH_ALWAYS => true | _ => false)
 	in
 	    fk arg
 	end

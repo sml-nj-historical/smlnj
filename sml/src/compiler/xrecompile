@@ -1,11 +1,13 @@
-#!/bin/sh
+#!/usr/bin/bash
 
 eval $(../../bin/.arch-n-opsys)
 
-./xmakeml &&
+mv sml.$HEAP_SUFFIX sml.$HEAP_SUFFIX.$$
+./xmakeml >/dev/null &&
 # ./buildcm sml &&
 mv bin.$ARCH-unix bin.$ARCH-unix.$$ &&
 ./xrun sml <<EOF
+	Compiler.Control.FLINT.check := false;
 	CMB.make();
 	Compiler.Stats.summary();
 EOF

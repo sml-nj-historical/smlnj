@@ -6,7 +6,7 @@ sig
     type flint = FLINT.prog
     val split: flint -> flint * flint option
 end
-
+    
 structure FSplit :> FSPLIT =
 struct
 
@@ -28,18 +28,20 @@ fun bug msg = ErrorMsg.impossible ("FSplit: "^msg)
 fun buglexp (msg,le) = (say "\n"; PP.printLexp le; say " "; bug msg)
 fun bugval (msg,v) = (say "\n"; PP.printSval v; say " "; bug msg)
 fun assert p = if p then () else bug ("assertion failed")
-
+				 
 type flint = F.prog
 val mklv = LambdaVar.mkLvar
 val cplv = LambdaVar.dupLvar
-
+	   
+fun S_rmv(x, s) = S.delete(s, x) handle NotFound => s
+						    
 fun addv (s,F.VAR lv) = S.add(s, lv)
   | addv (s,_) = s
 fun addvs (s,vs) = foldl (fn (v,s) => addv(s, v)) s vs
-fun rmvs (s,lvs) = foldl (fn (l,s) => S.delete(s, l)) s lvs
-
+fun rmvs (s,lvs) = foldl (fn (l,s) => S_rmv(l, s)) s lvs
+		   
 exception Unknown
-
+	  
 fun split (fdec as (fk,f,args,body)) = let
     val {getLty,addLty,...} = Recover.recover (fdec, false)
 
@@ -63,7 +65,7 @@ fun split (fdec as (fk,f,args,body)) = let
  *   This implies that fvI == S.empty, which in turn prevents us from
  *   mistakenly adding anything to leI.
  *)
-fun sexp env lexp =
+fun sexp env lexp =			(* fixindent *)
     let 
 	(* non-side effecting binds are copied to leI if exported *)
 	fun let1 (le,lewrap,lv,vs,effect) =
@@ -71,7 +73,7 @@ fun sexp env lexp =
 		val leE = lewrap o leE
 	    in if effect orelse not (S.member(fvI, lv))
 	       then (leE, leI, fvI, leRet)
-	       else (leE, lewrap leI, addvs(S.delete(fvI, lv), vs), leRet)
+	       else (leE, lewrap leI, addvs(S_rmv(lv, fvI), vs), leRet)
 	    end
 
     in case lexp
@@ -206,7 +208,7 @@ and sfdec env (leE,leI,fvI,leRet) (fk,f,args,body) =
 	   in if not(S.member(fvI, f)) then (nleE, leI, fvI, leRet)
 	      else (nleE,
 		    F.FIX([fdecI], F.FIX([nfdec], leI)),
-		    S.add(S.union(S.delete(fvI, f), S.intersection(env, fvbI)), fE),
+		    S.add(S.union(S_rmv(f, fvI), S.intersection(env, fvbI)), fE),
 		    leRet)
 	   end
     end
@@ -230,7 +232,7 @@ and stfn env (tfdec as (tfk,tf,args,body),le) =
 	       val nlE = fn e => F.TFN(ntfdec, leE e)
 	   in if not(S.member(fvI, tf)) then (nlE, leI, fvI, leRet)
 	      else (nlE, F.TFN(ntfdec, leI),
-		    S.delete(S.union(fvI, fvbI), tf), leRet)
+		    S_rmv(tf, S.union(fvI, fvbI)), leRet)
 	   end
 	 | (_,fvbIs) =>
 	   let (* tfdecE *)
@@ -257,7 +259,7 @@ and stfn env (tfdec as (tfk,tf,args,body),le) =
 	   in if not(S.member(fvI, tf)) then (nleE, leI, fvI, leRet)
 	      else (nleE,
 		    F.TFN((tfkI, tf, argsI, bodyI), leI),
-		    S.add(S.union(S.delete(fvI, tf), S.intersection(env, fvbI)), tfE),
+		    S.add(S.union(S_rmv(tf, fvI), S.intersection(env, fvbI)), tfE),
 		    leRet)
 	   end
     end

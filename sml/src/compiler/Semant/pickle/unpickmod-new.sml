@@ -207,7 +207,7 @@ structure UnpickMod : UNPICKMOD = struct
 
 	and tyc () = let
 	    fun tc #"A" = LT.tcc_var (DI.di_fromint (int ()), int ())
-	      | tc #"B" = LT.tcc_nvar (int (), DI.di_fromint (int ()), int ())
+	      | tc #"B" = LT.tcc_nvar (int ())
 	      | tc #"C" = LT.tcc_prim (PT.pt_fromint (int ()))
 	      | tc #"D" = LT.tcc_fn (tkindlist (), tyc ())
 	      | tc #"E" = LT.tcc_app (tyc (), tyclist ())
@@ -1010,20 +1010,23 @@ structure UnpickMod : UNPICKMOD = struct
 	and fundeclist () = list fundecListM fundec ()
 
 	and tfundec () = let
-	    fun t #"b" = (lvar (), list tfplM (pair (lvar, tkind)) (), lexp ())
+	    fun t #"b" = ({inline=F.IH_SAFE}, lvar (), list tfplM (pair (lvar, tkind)) (), lexp ())
 	      | t _ = raise Format
 	in
 	    share tfundecM t
 	end
 
 	and fkind () = let
-	    fun fk #"2" = F.FK_FCT
-	      | fk #"3" = F.FK_FUN { isrec = ltylistoption (),
-				     fixed = LT.ffc_var (bool (), bool ()),
-				     known = bool (), inline = bool () }
-	      | fk #"4" = F.FK_FUN { isrec = ltylistoption (),
-				     fixed = LT.ffc_fixed,
-				     known = bool (), inline = bool () }
+	    val fkfct = {isrec=NONE, known=false, inline=F.IH_SAFE, cconv=F.CC_FCT}
+	    fun fk #"2" = fkfct
+	      | fk #"3" = { isrec = Option.map (fn x => (x, F.LK_UNKNOWN)) (ltylistoption ()),
+			    cconv = F.CC_FUN(LT.ffc_var (bool (), bool ())),
+			    known = bool (),
+			    inline = if bool () then F.IH_ALWAYS else F.IH_SAFE}
+	      | fk #"4" = { isrec = Option.map (fn x => (x, F.LK_UNKNOWN)) (ltylistoption ()),
+			    cconv = F.CC_FUN LT.ffc_fixed,
+			    known = bool (),
+			    inline = if bool () then F.IH_ALWAYS else F.IH_SAFE}
 	      | fk _ = raise Format
 	in
 	    share fkindM fk
