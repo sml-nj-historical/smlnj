@@ -911,7 +911,7 @@ struct
         (* rtl: [[unOp fsize]] *)
 
     | FCMP of {i:bool,fsize:fsize, lsrc:operand, rsrc:operand}
-	asm: (if i then ``fcmp'' else ``fcmpi''; ``<fsize>\t<lsrc>, <rsrc>'')
+	asm: (if i then ``fcmpi'' else ``fcmp''; ``<fsize>\t<lsrc>, <rsrc>'')
         (* rtl: [["FCMP" fsize]] *)
 
    (* misc *)

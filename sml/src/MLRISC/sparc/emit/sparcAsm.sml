@@ -23,9 +23,9 @@ struct
    structure S  = S
    structure P  = S.P
    structure Constant = I.Constant
-
+   
    open AsmFlags
-
+   
    fun error msg = MLRiscErrorMsg.error("SparcAsmEmitter",msg)
    
    fun makeStream formatAnnotations =

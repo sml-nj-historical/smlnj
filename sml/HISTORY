@@ -13,6 +13,16 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/05/18 14:20:00 EDT
+Tag: leunga-20020518-mdl
+Description:
+
+o Made the mdl tool stuff compile and run again.
+o I've disabled all the stuff that depends on RTL specifications; they
+  are all badly broken anyway.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/05/17 16:49:00 EDT
 Tag: blume-20020517-controls

@@ -161,7 +161,7 @@ struct
        | I.FDirect _ => extension {opc=opc, opnd=memReg opnd}
        | I.Displace{base, disp, ...} => 
          let 
-(*#line 472.13 "x86/x86.mdl"*)
+(*#line 475.13 "x86/x86.mdl"*)
              val immed = immedOpnd {opnd=disp}
          in ()
          end
@@ -209,6 +209,7 @@ struct
      | emitInstr (I.TESTB{lsrc, rsrc}) = error "TESTB"
      | emitInstr (I.BITOP{bitOp, lsrc, rsrc}) = error "BITOP"
      | emitInstr (I.BINARY{binOp, src, dst}) = error "BINARY"
+     | emitInstr (I.SHIFT{shiftOp, src, dst, count}) = error "SHIFT"
      | emitInstr (I.CMPXCHG{lock, sz, src, dst}) = error "CMPXCHG"
      | emitInstr (I.MULTDIV{multDivOp, src}) = error "MULTDIV"
      | emitInstr (I.MUL3{dst, src2, src1}) = error "MUL3"
@@ -230,6 +231,10 @@ struct
      | emitInstr (I.FUCOMP operand) = error "FUCOMP"
      | emitInstr (I.FUCOMPP) = error "FUCOMPP"
      | emitInstr (I.FCOMPP) = error "FCOMPP"
+     | emitInstr (I.FCOMI operand) = error "FCOMI"
+     | emitInstr (I.FCOMIP operand) = error "FCOMIP"
+     | emitInstr (I.FUCOMI operand) = error "FUCOMI"
+     | emitInstr (I.FUCOMIP operand) = error "FUCOMIP"
      | emitInstr (I.FXCH{opnd}) = error "FXCH"
      | emitInstr (I.FSTPL operand) = error "FSTPL"
      | emitInstr (I.FSTPS operand) = error "FSTPS"
@@ -256,7 +261,7 @@ struct
      | emitInstr (I.FBINOP{fsize, binOp, lsrc, rsrc, dst}) = error "FBINOP"
      | emitInstr (I.FIBINOP{isize, binOp, lsrc, rsrc, dst}) = error "FIBINOP"
      | emitInstr (I.FUNOP{fsize, unOp, src, dst}) = error "FUNOP"
-     | emitInstr (I.FCMP{fsize, lsrc, rsrc}) = error "FCMP"
+     | emitInstr (I.FCMP{i, fsize, lsrc, rsrc}) = error "FCMP"
      | emitInstr (I.SAHF) = error "SAHF"
      | emitInstr (I.LAHF) = error "LAHF"
      | emitInstr (I.SOURCE{}) = ()
