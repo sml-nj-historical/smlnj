@@ -1,0 +1,303 @@
+Attached below you'll find a context diff to patch the compiler
+sources and one line in one file of the current (= old) CM sources.
+These changes should be completely benign -- I made them to accomodate
+my new implementation of CM.  (I just want to get the changes in now
+so I don't have to carry them through all the time.)
+
+These changes include:
+
+1. Slightly extended functionality of the ErrorMsg module.
+2. Parsing moved out of the Binfile module and made into a new
+   "Smlfile" module.  This is to have parsing be outside the
+   machine-dependent part of the compiler (so I don't have to
+   functorize the corresponding parts of CM).
+
+Apply the context diff that I include below sitting in the "src"
+directory:
+
+	patch -p1 <this-message
+
+There is also a brand-new file:
+
+	src/compiler/TopLevel/batch/smlfile.sml
+
+I put the contents below (before the context diff).
+
+--------- CONTENTS of src/compiler/TopLevel/batch/smlfile.sml --------
+(* COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies *)
+(* smlfile.sml *)
+signature SMLFILE = sig
+    exception Compile of string
+    val parseOne : Source.inputSource -> unit -> Ast.dec option
+    val parse : Source.inputSource -> Ast.dec
+end
+
+structure SmlFile :> SMLFILE = struct
+
+    exception Compile of string
+
+    structure FE = FrontEnd
+
+    val parsePhase = Stats.makePhase "Compiler 010 parse"
+
+    fun fail s = raise (Compile s)
+
+    fun parseOne source = let
+	val parser = FE.parse source
+	val parser = Stats.doPhase parsePhase parser (* for correct timing *)
+	fun doit () =
+	    case parser () of
+		FE.EOF => NONE
+	      | FE.ABORT => fail "syntax error"
+	      | FE.ERROR => fail "syntax error"
+	      | FE.PARSE ast => SOME ast
+    in
+	doit
+    end
+
+    fun parse source = let
+	val parser = FE.parse source
+	val parser = Stats.doPhase parsePhase parser (* for correct timing *)
+	fun loop asts = 
+	    case parser () of
+		FE.EOF => Ast.SeqDec(rev asts)
+	      | FE.ABORT => fail "syntax error"
+	      | FE.ERROR => fail "syntax error"
+	      | FE.PARSE ast => loop(ast::asts)
+    in
+	loop nil
+    end
+end
+--------- END of src/compiler/TopLevel/batch/smlfile.sml --------
+
+------------------------ context diff --------------------------------
+diff -c -r src.orig/cm/compile/cunit.sml src/cm/compile/cunit.sml
+*** src.orig/cm/compile/cunit.sml	Fri Oct 16 23:02:03 1998
+--- src/cm/compile/cunit.sml	Thu Jun  3 16:26:23 1999
+***************
+*** 218,224 ****
+  				 { linewidth = !Print.linewidth,
+  				   flush = Print.flush,
+  				   consumer = Print.say })
+! 	val ast = BF.parse source
+  	    handle BF.Compile msg => (TextIO.closeIn s; raise Compile msg)
+  		 | exn => (TextIO.closeIn s; raise exn)
+      in
+--- 218,224 ----
+  				 { linewidth = !Print.linewidth,
+  				   flush = Print.flush,
+  				   consumer = Print.say })
+! 	val ast = GenericVC.SmlFile.parse source
+  	    handle BF.Compile msg => (TextIO.closeIn s; raise Compile msg)
+  		 | exn => (TextIO.closeIn s; raise exn)
+      in
+diff -c -r src.orig/compiler/MiscUtil/util/errormsg.sig src/compiler/MiscUtil/util/errormsg.sig
+*** src.orig/compiler/MiscUtil/util/errormsg.sig	Thu Apr  9 03:39:16 1998
+--- src/compiler/MiscUtil/util/errormsg.sig	Thu Jun  3 16:08:59 1999
+***************
+*** 14,19 ****
+--- 14,22 ----
+      val defaultConsumer : unit -> PrettyPrint.ppconsumer
+      val nullErrorBody : PrettyPrint.ppstream -> unit
+      val error : Source.inputSource -> SourceMap.region -> complainer
++     (* with a known location string but without access to the actual source: *)
++     val errorNoSource :
++ 	PrettyPrint.ppconsumer * bool ref -> string -> complainer
+      val errorNoFile : PrettyPrint.ppconsumer * bool ref -> SourceMap.region
+                        -> complainer
+  
+diff -c -r src.orig/compiler/MiscUtil/util/errormsg.sml src/compiler/MiscUtil/util/errormsg.sml
+*** src.orig/compiler/MiscUtil/util/errormsg.sml	Thu Apr  9 03:39:16 1998
+--- src/compiler/MiscUtil/util/errormsg.sml	Thu Jun  3 16:09:30 1999
+***************
+*** 107,112 ****
+--- 107,115 ----
+        (ppmsg(errConsumer,(location_string source (p1,p2)),severity,msg,body);
+         record(severity,anyErrors))
+  
++   fun errorNoSource (cons, anyE) locs sev msg body =
++       (ppmsg (cons, locs, sev, msg, body); record (sev, anyE))
++ 
+    fun errorNoFile (errConsumer,anyErrors) ((p1,p2): region) severity msg body = 
+        (ppmsg(errConsumer,
+               if p2>0 then concat[Int.toString p1, "-", Int.toString p2] 
+diff -c -r src.orig/compiler/TopLevel/batch/binfile.sig src/compiler/TopLevel/batch/binfile.sig
+*** src.orig/compiler/TopLevel/batch/binfile.sig	Fri Oct 16 23:03:43 1998
+--- src/compiler/TopLevel/batch/binfile.sig	Thu Jun  3 15:51:05 1999
+***************
+*** 51,58 ****
+  	-> unit
+  
+      val exec: bfContent * denv -> env
+- 
+-     val parse: Source.inputSource -> Ast.dec
+  end (* signature BINFILE *)
+  
+  (*
+--- 51,56 ----
+diff -c -r src.orig/compiler/TopLevel/batch/binfile.sml src/compiler/TopLevel/batch/binfile.sml
+*** src.orig/compiler/TopLevel/batch/binfile.sml	Thu Dec 31 05:21:26 1998
+--- src/compiler/TopLevel/batch/binfile.sml	Thu Jun  3 15:52:41 1999
+***************
+*** 505,512 ****
+  		        dynamic = ndenv,
+  			symbolic = symenvOf bfc }
+  	end
+- 
+- 	val parse = C.parse
+      end
+  end
+  
+--- 505,510 ----
+diff -c -r src.orig/compiler/TopLevel/main/compile.sml src/compiler/TopLevel/main/compile.sml
+*** src.orig/compiler/TopLevel/main/compile.sml	Thu Apr 15 00:35:04 1999
+--- src/compiler/TopLevel/main/compile.sml	Thu Jun  3 15:57:44 1999
+***************
+*** 1,10 ****
+  (* COPYRIGHT (c) 1996 Bell Laboratories *)
+  (* compile.sml *)
+  
+- local
+-   exception Compile of string
+- in
+- 
+  functor CompileF(structure M  : CODEGENERATOR
+  		 structure CC : CCONFIG) : COMPILE0 =
+  struct
+--- 1,6 ----
+***************
+*** 28,34 ****
+  fun debugmsg msg =
+    if !debugging then (say msg; say "\n"; Control.Print.flush()) else ()
+  
+! exception Compile = Compile            (* raised during compilation only *)
+  exception SilentException = CC.SilentException     (* raised by CM *)
+  exception TopLevelException of exn     (* raised during executation only *)
+  exception TopLevelCallcc               (* raised during executation only *)
+--- 24,30 ----
+  fun debugmsg msg =
+    if !debugging then (say msg; say "\n"; Control.Print.flush()) else ()
+  
+! exception Compile = SmlFile.Compile	(* raised during compilation only *)
+  exception SilentException = CC.SilentException     (* raised by CM *)
+  exception TopLevelException of exn     (* raised during executation only *)
+  exception TopLevelCallcc               (* raised during executation only *)
+***************
+*** 68,98 ****
+   *                               PARSING                                     *
+   *****************************************************************************)
+  
+! (** take the input source and turn it into the concrete syntax *)
+! val parsePhase = ST.makePhase "Compiler 010 parse"
+! fun parseOne (source : source) =  
+!   let val parser = FE.parse source
+!       val parser = ST.doPhase parsePhase parser (* for correct timing *)
+!    in fn () =>
+!         case parser ()
+!          of FE.EOF => NONE
+!           | FE.ABORT => fail "syntax error"
+!           | FE.ERROR => fail "syntax error"
+!           | FE.PARSE ast => SOME ast
+!   end
+! 
+! fun parse (source : source) =
+!   let val parser = FE.parse source
+!       val parser = ST.doPhase parsePhase parser (* for correct timing *)
+!       fun loop asts = 
+! 	case parser()
+!          of FE.EOF => Ast.SeqDec(rev asts)
+! 	  | FE.ABORT => fail "syntax error"
+! 	  | FE.ERROR => fail "syntax error"
+! 	  | FE.PARSE ast => loop(ast::asts)
+!    in loop nil
+!   end
+! 
+  
+  (*****************************************************************************
+   *                               ELABORATION                                 *
+--- 64,71 ----
+   *                               PARSING                                     *
+   *****************************************************************************)
+  
+!     val parseOne = SmlFile.parseOne
+!     val parse = SmlFile.parse
+  
+  (*****************************************************************************
+   *                               ELABORATION                                 *
+***************
+*** 329,337 ****
+  
+  end (* local of CompileF *)
+  end (* functor CompileF *)
+- 
+- end (* local of exception Compile *)
+- 
+  
+  (*
+   * $Log$
+   * Revision 1.1  1999/06/20 03:14:55  blume
+   * installation instructions; keep_going off by default
+   *
+--- 302,307 ----
+diff -c -r src.orig/compiler/TopLevel/viscomp/generic-vc.sig src/compiler/TopLevel/viscomp/generic-vc.sig
+*** src.orig/compiler/TopLevel/viscomp/generic-vc.sig	Fri Oct 16 23:04:03 1998
+--- src/compiler/TopLevel/viscomp/generic-vc.sig	Thu Jun  3 16:00:03 1999
+***************
+*** 17,22 ****
+--- 17,23 ----
+      structure SourceMap : SOURCE_MAP
+      structure ErrorMsg : ERRORMSG
+      structure Symbol : SYMBOL
++     structure SymPath : SYMPATH
+      structure StaticEnv : STATICENV
+      structure DynamicEnv : DYNENV
+      structure BareEnvironment : ENVIRONMENT
+***************
+*** 36,41 ****
+--- 37,43 ----
+  	    -> PersStamps.persstamp
+      end
+      structure Ast : AST
++     structure SmlFile : SMLFILE
+  
+      structure PrintHooks : PRINTHOOKS
+  
+diff -c -r src.orig/compiler/TopLevel/viscomp/generic-vc.sml src/compiler/TopLevel/viscomp/generic-vc.sml
+*** src.orig/compiler/TopLevel/viscomp/generic-vc.sml	Fri Oct 16 23:04:03 1998
+--- src/compiler/TopLevel/viscomp/generic-vc.sml	Thu Jun  3 16:00:33 1999
+***************
+*** 12,17 ****
+--- 12,18 ----
+      structure SourceMap = SourceMap
+      structure ErrorMsg = ErrorMsg
+      structure Symbol = Symbol
++     structure SymPath = SymPath
+      structure StaticEnv = StaticEnv
+      structure DynamicEnv = DynamicEnv
+      structure BareEnvironment = Environment
+***************
+*** 32,37 ****
+--- 33,39 ----
+  	    #hash (PickMod.pickleEnv (context, CMStaticEnv.unCM se))
+      end
+      structure Ast = Ast
++     structure SmlFile = SmlFile
+  
+      structure PrintHooks : PRINTHOOKS = struct
+  	fun prAbsyn env d  = 
+Only in src/compiler: bin.x86-unix
+diff -c -r src.orig/compiler/viscomp-lib.cm src/compiler/viscomp-lib.cm
+*** src.orig/compiler/viscomp-lib.cm	Fri Apr 16 23:52:59 1999
+--- src/compiler/viscomp-lib.cm	Thu Jun  3 16:03:30 1999
+***************
+*** 30,35 ****
+--- 30,36 ----
+  TopLevel/batch/batchconfig.sml
+  TopLevel/batch/binfile.sig
+  TopLevel/batch/binfile.sml
++ TopLevel/batch/smlfile.sml
+  TopLevel/bootstrap/boot.sml
+  TopLevel/batch/cmsa.sig
+  TopLevel/batch/cmsa.sml
+--------------------- end of context diff ----------------------------
+

@@ -11,8 +11,8 @@ structure StdConfig = struct
 	val int = EnvConfig.new Int.fromString
     in
 	val verbose = bool ("VERBOSE", true)
-	val debug = bool ("DEBUG", true)
-	val keep_going = bool ("KEEP_GOING", true)
+	val debug = bool ("DEBUG", false)
+	val keep_going = bool ("KEEP_GOING", false)
 
 	val parse_caching = int ("PARSE_CACHING", 100)
     end

@@ -1,6 +1,8 @@
 Group
 	structure X
 	structure Y
+	structure A
 is
 	x.sml
 	x-y.sml
+	x-a.sml

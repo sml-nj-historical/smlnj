@@ -51,7 +51,7 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 	val pcmodespec = AbsPath.native { context = ctxt, spec = pcmodespec }
 	val binroot = AbsPath.native { context = ctxt, spec = binroot }
 
-	fun build_pcmode () = let
+	val pcmode = let
 	    val s = AbsPath.openTextIn pcmodespec
 	    fun loop l = let
 		val line = TextIO.inputLine s
@@ -66,8 +66,6 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 	in
 	    loop [] before TextIO.closeIn s
 	end
-
-	val pcmode = build_pcmode ()
 
 	val fnpolicy =
 	    FilenamePolicy.separate { root = binroot,
