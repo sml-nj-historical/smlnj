@@ -467,7 +467,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			  newline = newline,
 			  obsolete = obsolete,
 			  error = error,
-			  sync = sync}
+			  sync = sync,
+			  in_section2 = ref false }
 		    end
 
 		    fun inputc k = TextIO.input stream

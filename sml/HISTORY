@@ -14,6 +14,20 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/08 22:50:00 CDT
+Tag: blume-20041008-cmkw
+Description:
+
+Fixed handling of keywords in .cm files: After seeing "is" the lexer
+treats subsequent occurrences of "group", "library", "source", "is",
+"*", and "-" as ordinary identifiers rather than keywords.
+
+Most seriously, this fixes a problem with CM's "shell" tool.  The tool
+is supposed to accept a tool argument called "source", but this did
+not work because of the clash with the keyword.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/10/07 16:00:00 CDT
 Tag: blume-20041007-cleanup
 Description:

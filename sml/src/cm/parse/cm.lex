@@ -29,7 +29,8 @@ type lexarg = {
 	       newline: pos -> unit,
 	       obsolete: pos * pos -> unit,
 	       error: pos * pos -> string -> unit,
-	       sync: pos * string -> unit
+	       sync: pos * string -> unit,
+	       in_section2: bool ref
 	      }
 
 type arg = lexarg
@@ -53,38 +54,41 @@ in
     Tokens.ERROR (msg, p + 1, p + size t)
 end
 
-val cm_ids = [("Group", Tokens.GROUP),
-	      ("GROUP", Tokens.GROUP),
-	      ("group", Tokens.GROUP),
-	      ("Library", Tokens.LIBRARY),
-	      ("LIBRARY", Tokens.LIBRARY),
-	      ("library", Tokens.LIBRARY),
-	      ("IS", Tokens.IS),
-	      ("is", Tokens.IS),
-	      ("*", Tokens.STAR),
-	      ("-", Tokens.DASH),
-	      ("Source", Tokens.SOURCE),
-	      ("SOURCE", Tokens.SOURCE),
-	      ("source", Tokens.SOURCE)]
+fun plain t (_: bool ref, arg) = t arg : lexresult
+fun is_token (r, arg) = (r := true; Tokens.IS arg) : lexresult
+
+val cm_ids = [("Group", plain Tokens.GROUP),
+	      ("GROUP", plain Tokens.GROUP),
+	      ("group", plain Tokens.GROUP),
+	      ("Library", plain Tokens.LIBRARY),
+	      ("LIBRARY", plain Tokens.LIBRARY),
+	      ("library", plain Tokens.LIBRARY),
+	      ("IS", is_token),
+	      ("is", is_token),
+	      ("*", plain Tokens.STAR),
+	      ("-", plain Tokens.DASH),
+	      ("Source", plain Tokens.SOURCE),
+	      ("SOURCE", plain Tokens.SOURCE),
+	      ("source", plain Tokens.SOURCE)]
 
 val ml_ids = [("structure", Tokens.STRUCTURE),
 	      ("signature", Tokens.SIGNATURE),
 	      ("functor", Tokens.FUNCTOR),
 	      ("funsig", Tokens.FUNSIG)]
 
-val pp_ids = [("defined", Tokens.DEFINED),
-	      ("div", fn (x, y) => Tokens.MULSYM (S.DIV, x, y)),
-	      ("mod", fn (x, y) => Tokens.MULSYM (S.MOD, x, y)),
-	      ("andalso", Tokens.ANDALSO),
-	      ("orelse", Tokens.ORELSE),
-	      ("not", Tokens.NOT)]
+val pp_ids = [("defined", plain Tokens.DEFINED),
+	      ("div", plain (fn (x, y) => Tokens.MULSYM (S.DIV, x, y))),
+	      ("mod", plain (fn (x, y) => Tokens.MULSYM (S.MOD, x, y))),
+	      ("andalso", plain Tokens.ANDALSO),
+	      ("orelse", plain Tokens.ORELSE),
+	      ("not", plain Tokens.NOT)]
 
-fun idToken (t, p, idlist, default, chstate) =
+fun idToken (t, p, idlist, default, chstate, in_section2) =
     case List.find (fn (id, _) => id = t) ml_ids of
 	SOME (_, tok) => (chstate (); tok (p, p + size t))
       | NONE =>
 	    (case List.find (fn (id, _) => id = t) idlist of
-		 SOME (_, tok) => tok (p, p + size t)
+		 SOME (_, tok) => tok (in_section2, (p, p + size t))
 	       | NONE => default (t, p, p + size t))
 
 (* states:
@@ -118,7 +122,8 @@ fun idToken (t, p, idlist, default, chstate) =
         newline,
 	obsolete,
 	error,
-	sync });
+	sync,
+	in_section2 });
 
 idchars=[A-Za-z'_0-9];
 id=[A-Za-z]{idchars}*;
@@ -228,7 +233,7 @@ sharp="#";
 			      yypos, yypos + size yytext));
 
 <P>{id}                 => (idToken (yytext, yypos, pp_ids, Tokens.CM_ID,
-				     fn () => YYBEGIN PM));
+				     fn () => YYBEGIN PM, in_section2));
 <P>"/"                  => (obsolete (yypos, yypos + 1);
 			    Tokens.MULSYM (S.DIV, yypos, yypos + 1));
 <P>"%"                  => (obsolete (yypos, yypos + 1);
@@ -270,9 +275,10 @@ sharp="#";
 			     yytext);
 			    continue ());
 
-<INITIAL>{cmid}		=> (idToken (yytext, yypos, cm_ids,
+<INITIAL>{cmid}		=> (idToken (yytext, yypos,
+				     if !in_section2 then [] else cm_ids,
 				     Tokens.FILE_STANDARD,
-				     fn () => YYBEGIN M));
+				     fn () => YYBEGIN M, in_section2));
 
 
 <INITIAL>.		=> (error (yypos, yypos+1)
