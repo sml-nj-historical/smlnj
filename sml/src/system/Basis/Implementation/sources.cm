@@ -191,6 +191,9 @@ is
 
 	../TypesOnly/sources.cm
 
+        sml-basis-sig.sml
+        sml-basis.sml
+
 	NJ/cleanup.sig
 	NJ/cleanup.sml
 	NJ/smlnj.sml
