@@ -12,16 +12,19 @@ signature SMLINFO = sig
     type policy = Policy.policy
 
     type fileoffset = AbsPath.t * int
-    type stableinfo = { skeleton: Skeleton.decl, binary: fileoffset }
+
+    val resync : unit -> unit
 
     val info : policy ->
 	{ sourcepath: AbsPath.t,
 	  group: AbsPath.t,
-	  error: string -> unit,
+	  error: string -> (PrettyPrint.ppstream -> unit) -> unit,
 	  history: string list,
-	  share: bool option,
-	  stableinfo: stableinfo option }
+	  share: bool option }
 	-> info
+
+    val sourcepath : info -> AbsPath.t
+    val error : info -> string -> (PrettyPrint.ppstream -> unit) -> unit
 
     val exports : info -> SymbolSet.set
     val describe : info -> string
@@ -43,7 +46,7 @@ structure SmlInfo :> SMLINFO = struct
 	INFO of {
 		 sourcepath: AbsPath.t,
 		 group: AbsPath.t,
-		 error: string -> unit,	(* reports wrt. group description *)
+		 error: string -> (PrettyPrint.ppstream -> unit) -> unit,
 		 lastseen: TStamp.t ref,
 		 parsetree: { tree: parsetree, source: source } option ref,
 		 skelpath: AbsPath.t,
@@ -54,18 +57,51 @@ structure SmlInfo :> SMLINFO = struct
     type fileoffset = AbsPath.t * int
     type stableinfo = { skeleton: Skeleton.decl, binary: fileoffset }
 
-    fun info policy { sourcepath, group, error, history, share, stableinfo } =
-	case stableinfo of
-	    NONE => INFO {
-			  sourcepath = sourcepath,
-			  group = group,
-			  error = error,
-			  lastseen = ref TStamp.NOTSTAMP,
-			  parsetree = ref NONE,
-			  skelpath = Policy.mkSkelPath policy sourcepath,
-			  skeleton = ref NONE
-			 }
-	  | SOME si => Dummy.f ()
+    fun sourcepath (INFO { sourcepath = sp, ... }) = sp
+    fun error (INFO { error = e, ... }) = e
+
+    (* If files change their file ids, then CM will be seriously
+     * disturbed because the ordering relation will change.
+     * We'll asume that this won't happen in general.  However, we provide
+     * a "resync" function that -- at the very least -- should be run
+     * at startup time. *)
+    val knownInfo : info AbsPathMap.map ref = ref AbsPathMap.empty
+
+    fun resync () = let
+	val l = AbsPathMap.listItemsi (!knownInfo)
+    in
+	AbsPath.newEra ();		(* force recalculation of file ids *)
+	knownInfo := foldl AbsPathMap.insert' AbsPathMap.empty l
+    end
+
+    fun info policy { sourcepath, group, error, history, share } =
+	case AbsPathMap.find (!knownInfo, sourcepath) of
+	    SOME (i as INFO { group = g, error = e, ... }) =>
+		(if AbsPath.compare (group, g) <> EQUAL then
+		     let val n = AbsPath.name sourcepath
+		     in
+			 error (concat ["ML source file ", n,
+					" appears in more than one group"])
+			       EM.nullErrorBody;
+			 e (concat ["(previous occurence of ", n, ")"])
+			   EM.nullErrorBody
+		     end
+		 else ();
+		 i)
+	  | NONE => let
+		val i = INFO {
+			      sourcepath = sourcepath,
+			      group = group,
+			      error = error,
+			      lastseen = ref TStamp.NOTSTAMP,
+			      parsetree = ref NONE,
+			      skelpath = Policy.mkSkelPath policy sourcepath,
+			      skeleton = ref NONE
+			     }
+	    in
+		knownInfo := AbsPathMap.insert (!knownInfo, sourcepath, i);
+		i
+	    end
 
     (* check timestamp and throw away any invalid cache *)
     fun validate (INFO ir) = let
@@ -105,14 +141,15 @@ structure SmlInfo :> SMLINFO = struct
 		in
 		    SOME { tree = tree, source = source }
 		end handle SF.Compile msg => (TextIO.closeIn stream;
-					      error msg;
+					      error msg EM.nullErrorBody;
 					      NONE)
 		         | exn => (TextIO.closeIn stream; raise exn)
 	    in
 		TextIO.closeIn stream;
 		parsetree := pto;
 		pto
-	    end handle exn as IO.Io _ => (error (General.exnMessage exn);
+	    end handle exn as IO.Io _ => (error (General.exnMessage exn)
+					        EM.nullErrorBody;
 					  NONE) 
     end
 

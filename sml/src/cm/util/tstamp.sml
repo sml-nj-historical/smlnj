@@ -1,3 +1,10 @@
+(*
+ * CM timestamp semantics.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 structure TStamp = struct
 
     datatype t =

@@ -36,8 +36,8 @@ structure CMParse :> CMPARSE = struct
 	    { linewidth = !P.linewidth, flush = P.flush, consumer = P.say }
 	val source = S.newSource (filename, 1, stream, false, errcons)
 	val sourceMap = #sourceMap source
-	fun error region m =
-	    EM.error source region EM.COMPLAIN m EM.nullErrorBody
+	fun error' region m b = EM.error source region EM.COMPLAIN m b
+	fun error region m = error' region m EM.nullErrorBody
 
 	(* recParse returns a group (not an option)
 	 * and re-raises LrParser.ParseError.
@@ -50,10 +50,11 @@ structure CMParse :> CMPARSE = struct
 	      | SOME res => res
 
 	fun doMember (p, p1, p2, c, e) =
-	    CMSemant.member (recParse (p1, p2)) { sourcepath = p,
-						  group = group,
-						  class = c,
-						  error = e }
+	    CMSemant.member (recParse (p1, p2))
+	                    { sourcepath = p,
+			      group = group,
+			      class = c,
+			      error = e }
 
 	(* checking for cycles among groups and printing them nicely *)
 	val _ = let
@@ -152,7 +153,7 @@ structure CMParse :> CMPARSE = struct
 	val (parseResult, _) =
 	    CMParse.parse (lookAhead, tokenStream,
 			   fn (s,p1,p2) => error (p1, p2) s,
-			   (context, error, recParse, doMember))
+			   (context, error', error, recParse, doMember))
     in
 	TextIO.closeIn stream;
 	if !(#anyErrors source) then NONE

@@ -1,3 +1,10 @@
+(*
+ * A functor for making "standard" tools (e.g., yacctool, lextool, ...)
+ *
+ *   (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 signature STDTOOL = sig
     val command : string option -> string
 end

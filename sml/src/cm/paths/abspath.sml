@@ -11,6 +11,7 @@ signature ABSPATH = sig
     type t
 
     val revalidateCwd : unit -> unit
+    val newEra : unit -> unit
 
     val cwdContext: unit -> context
     val configContext: (unit -> string) -> context

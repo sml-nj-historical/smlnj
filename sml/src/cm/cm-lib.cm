@@ -20,6 +20,7 @@ is
 
 	(* dependency graphs *)
 	depend/graph.sml
+	depend/build.sml
 
 	(* handling SML source code *)
 	smlfile/policy.sml

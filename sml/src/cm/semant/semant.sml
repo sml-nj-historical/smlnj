@@ -46,7 +46,7 @@ signature CM_SEMANT = sig
     val emptyMembers : members
     val member : (pathname -> group)
 	-> { sourcepath: pathname, group: pathname, class: cm_symbol option,
-	     error: string -> unit }
+	     error: string -> (PrettyPrint.ppstream -> unit) -> unit }
 	-> members
     val members : members * members -> members
     val guarded_members :
@@ -157,8 +157,9 @@ structure CMSemant :> CM_SEMANT = struct
     fun member rparse arg env = let
 	val coll = MemberCollection.expandOne (getExports o rparse) arg
 	val error = #error arg
+	fun e0 s = error s GenericVC.ErrorMsg.nullErrorBody
     in
-	MemberCollection.sequential (env, coll, error)
+	MemberCollection.sequential (env, coll, e0)
     end
     fun members (m1, m2) env = m2 (m1 env)
     fun guarded_members (c, (m1, m2), error) env =

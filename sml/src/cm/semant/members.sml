@@ -20,7 +20,7 @@ signature MEMBERCOLLECTION = sig
 
     val expandOne : (AbsPath.t -> DependencyGraph.farnode SymbolMap.map)
 	-> { sourcepath: AbsPath.t, group: AbsPath.t, class: string option,
-	     error : string -> unit }
+	     error : string -> (PrettyPrint.ppstream -> unit) -> unit }
 	-> collection
     val sequential : collection * collection * (string -> unit) -> collection
 
@@ -33,6 +33,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 
     structure DG = DependencyGraph
     structure Symbol = GenericVC.Symbol
+    structure EM = GenericVC.ErrorMsg
 
     type smlinfo = SmlInfo.info
     type symbol = Symbol.symbol
@@ -73,7 +74,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 
     fun expandOne gexports { sourcepath, group, class, error } = let
 	fun noPrimitive () = let
-	    val expansions = PrivateTools.expand error (sourcepath, class)
+	    fun e0 s = error s EM.nullErrorBody
+	    val expansions = PrivateTools.expand e0 (sourcepath, class)
 	    fun exp2coll (PrivateTools.GROUP p) =
 		COLLECTION { subexports = gexports p,
 			     smlfiles = [],
@@ -84,7 +86,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 			Policy.default
 			{ sourcepath = p, group = group,
 			  error = error, history = h,
-			  share = s, stableinfo = NONE }
+			  share = s }
 		    val exports = SmlInfo.exports i
 		    fun addLD (s, m) = SymbolMap.insert (m, s, i)
 		    val ld = SymbolSet.foldl addLD SymbolMap.empty exports
@@ -94,7 +96,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 				 localdefs = ld }
 		end
 	    val collections = map exp2coll expansions
-	    fun combine (c1, c2) = sequential (c2, c1, error)
+	    fun combine (c1, c2) = sequential (c2, c1, e0)
 	in
 	    foldl combine empty collections
 	end

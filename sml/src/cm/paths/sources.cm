@@ -1,3 +1,10 @@
+(*
+ * CM-internal library for pathname handling.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 Library
 	signature ABSPATH
 	structure AbsPath

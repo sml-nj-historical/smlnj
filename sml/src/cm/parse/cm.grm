@@ -52,11 +52,13 @@ structure S = CMSemant
 
 %pos int
 %verbose
-%arg (context, error, recParse, doMember) :
+%arg (context, error', error, recParse, doMember) :
     S.context *
+    (pos * pos -> string -> (PrettyPrint.ppstream -> unit) -> unit) *
     (pos * pos -> string -> unit) *
     (pos * pos -> S.pathname -> S.group) *
-    (S.pathname * pos * pos * S.cm_symbol option * (string -> unit)
+    (S.pathname * pos * pos * S.cm_symbol option *
+     (string -> (PrettyPrint.ppstream -> unit) -> unit)
        -> S.members)
 %start description
 %eop EOF
@@ -111,9 +113,8 @@ export : ml_symbol				(S.export ml_symbol)
 						   error (expleft, expright)))
        | ERROR                                  (S.error_export
 						 (fn () =>
-						  error (ERRORleft,
-							 ERRORright)
-						    ERROR))
+						  error (ERRORleft, ERRORright)
+						        ERROR))
 
 guarded_exports : exports else_exports	        ((exports, else_exports))
 
@@ -130,24 +131,23 @@ member : pathname				(doMember (pathname,
 							   pathnameleft,
 							   pathnameright,
 							   NONE,
-							   error
-							   (pathnameleft,
-							    pathnameright)))
+							   error'
+							    (pathnameleft,
+							     pathnameright)))
        | pathname COLON word			(doMember (pathname,
 							   pathnameleft,
 							   pathnameright,
 							   SOME word,
-							   error
-							   (pathnameleft,
-							    wordright)))
+							   error'
+							    (pathnameleft,
+							     wordright)))
        | IF exp guarded_members			(S.guarded_members
 						 (exp, guarded_members,
 						  error (expleft, expright)))
        | ERROR                                  (S.error_member
 						 (fn () =>
-						  error (ERRORleft,
-							 ERRORright)
-						    ERROR))
+						  error (ERRORleft, ERRORright)
+						        ERROR))
 
 guarded_members : members else_members	        ((members, else_members))
 
