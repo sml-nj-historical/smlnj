@@ -7,15 +7,12 @@
  * of libcfuns.a).
  */
 
-#include <stdio.h>
-
 #ifdef OPSYS_UNIX
 #  include "ml-unixdep.h"	/* for the HAS_POSIX_LIBRARIES option flag */
 #endif
 #include "ml-base.h"
 #include "ml-values.h"
 #include "c-library.h"
-#include "c-globals-tbl.h"
 
 #define C_LIBRARY(lib)  extern c_library_t lib;
 #include "clib-list.h"

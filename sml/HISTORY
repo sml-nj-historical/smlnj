@@ -13,6 +13,20 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: David MacQueen
+Date: 2000/03/31 11:15:00 EST
+Tag: dbm-20000331-runtime_fix
+Description:
+
+This update contains:
+
+1. runtime/c-lib/c-libraries.c
+   includes added in revision 1.2 caused compilation errors on hppa-hpux
+
+2. fix for bug 1556
+   system/Basis/Implementation/NJ/internal-signals.sml
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/03/31 18:00:00 JST
 Tag: blume_main_v110p26p2_1
