@@ -133,12 +133,11 @@ struct
     val newDict : unit -> dict = ref o TcDict.mkDict
 
     fun recallOrCompute (dict, kenv, tyc, doit) =
-        (* what are the free vars of this tyc? *)
+        (* what are the valuations of tyc's free variables
+         * in kenv? *)
         (* (might not be available for some tycs) *)
-        case LK.tc_freevars tyc of
-            SOME fvs => let
-                (* get valuations of tyc's free variables in kenv *)
-                val ks_fvs = tkLookupFreeVars (kenv, fvs)
+        case LK.tkLookupFreeVars (kenv, tyc) of
+            SOME ks_fvs => let
                 (* encode those as a kind sequence *)
                 val k_fvs = tkc_seq ks_fvs
                 (* query the dictionary *)

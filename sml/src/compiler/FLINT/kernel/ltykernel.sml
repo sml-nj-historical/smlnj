@@ -385,9 +385,6 @@ fun tc_vs (r as ref(_ : int, _ : tycI, AX_NO)) = NONE
 fun lt_vs (r as ref(_ : int, _ : ltyI, AX_NO)) = NONE
   | lt_vs (r as ref(_ : int, _ : ltyI, AX_REG (_,x))) = SOME x
 
-(* unfortunately, the `temporary hack' is being exported now! *)
-val tc_freevars = tc_vs 
-
 (** converting from the hash-consing reps to the standard reps *)
 fun tk_outX (r as ref(_ : int, t : tkindI, _ : aux_info)) = t
 fun tc_outX (r as ref(_ : int, t : tycI, _ : aux_info)) = t
@@ -407,6 +404,50 @@ fun lt_cmp (t1, t2) = cmp(lt_table, t1, t2)
 
 (** get the hash key of each lty, only used by reps/coerce.sml; a hack *)
 fun lt_key (ref (h : int, _ : ltyI, _ : aux_info)) = h
+
+(***************************************************************************
+ *            UTILITY FUNCTIONS ON TKIND ENVIRONMENT                       *
+ ***************************************************************************)
+
+(** tkind environment: maps each tyvar, i.e., its debindex, to its kind *)
+type tkindEnv = tkind list list
+
+(** utility functions for manipulating the tkindEnv *)
+exception tkUnbound
+val initTkEnv : tkindEnv = []
+
+fun tkLookup (kenv, i, j) = 
+  let val ks = List.nth(kenv, i-1) handle _ => raise tkUnbound
+   in List.nth(ks, j) handle _ => raise tkUnbound
+  end
+
+fun tkInsert (kenv, ks) = ks::kenv
+
+(* strip any unused type variables out of a kenv, given a list of
+ * [encoded] free type variables.  the result is a "parallel list" of
+ * the kinds of those free type variables in the environment.
+ * This is meant to use the same representation of a kind environment
+ * as in ltybasic.
+ * --CALeague
+ *)
+fun tkLookupFreeVars (kenv, tyc) =
+    let
+	fun g (kenv, d, []) = []
+	  | g (kenv, d, ftv::ftvs) =
+	    let val (d', i') = tvDecode ftv
+		val kenv' = List.drop (kenv, d'-d)
+		    handle _ => raise tkUnbound
+		val k = List.nth (hd kenv', i')
+		    handle _ => raise tkUnbound
+		val rest = g (kenv', d', ftvs)
+	    in
+		k :: rest
+	    end
+
+        fun h ftvs = g (kenv, 1, ftvs)
+    in
+        Option.map h (tc_vs tyc)
+    end
 
 (***************************************************************************
  *            UTILITY FUNCTIONS ON TYC ENVIRONMENT                         *

@@ -106,10 +106,13 @@ val ltp_norm : lty -> bool
 val tc_depth : tyc * DebIndex.depth -> DebIndex.depth
 val tcs_depth: tyc list * DebIndex.depth -> DebIndex.depth
 
-(** accessing and decoding free variables *)
-type enc_tvar
-val tvDecode    : enc_tvar -> DebIndex.depth * DebIndex.index
-val tc_freevars : tyc -> enc_tvar list option
+(** utility functions on tkindEnv *)
+type tkindEnv 
+exception tkUnbound
+val initTkEnv        : tkindEnv
+val tkLookup         : tkindEnv * int * int -> tkind
+val tkInsert         : tkindEnv * tkind list -> tkindEnv
+val tkLookupFreeVars : tkindEnv * tyc -> tkind list option
                    
 (** utility functions for TC_ENV and LT_ENV types *)
 val tcc_env  : tyc * int * int * tycEnv -> tyc

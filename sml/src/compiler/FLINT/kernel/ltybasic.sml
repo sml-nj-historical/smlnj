@@ -253,41 +253,11 @@ val tc_unknown : tyc -> bool = LK.tc_unknown
  *            UTILITY FUNCTIONS ON TKIND ENVIRONMENT                       *
  ***************************************************************************)
 
-(** tkind environment: maps each tyvar, i.e., its debindex, to its kind *)
-type tkindEnv = tkind list list
-
-(** utility functions for manipulating the tkindEnv *)
-exception tkUnbound
-val initTkEnv : tkindEnv = []
-
-fun tkLookup (kenv, i, j) = 
-  let val ks = List.nth(kenv, i-1) handle _ => raise tkUnbound
-   in List.nth(ks, j) handle _ => raise tkUnbound
-  end
-
-fun tkInsert (kenv, ks) = ks::kenv
-
-(* strip any unused type variables out of a kenv, given a list of
- * [encoded] free type variables.  the result is a "parallel list" of
- * the kinds of those free type variables in the environment.
- * --CALeague
- *)
-fun tkLookupFreeVars (kenv, ftvs) =
-    let
-	fun g (kenv, d, []) = []
-	  | g (kenv, d, ftv::ftvs) =
-	    let val (d', i') = LtyKernel.tvDecode ftv
-		val kenv' = List.drop (kenv, d'-d)
-		    handle _ => raise tkUnbound
-		val k = List.nth (hd kenv', i')
-		    handle _ => raise tkUnbound
-		val rest = g (kenv', d', ftvs)
-	    in
-		k :: rest
-	    end
-    in
-	g (kenv, 1, ftvs)
-    end
+type tkindEnv = LK.tkindEnv
+exception tkUnbound = LK.tkUnbound
+val initTkEnv = LK.initTkEnv
+val tkLookup = LK.tkLookup
+val tkInsert = LK.tkInsert
 
 (***************************************************************************
  *            UTILITY FUNCTIONS ON TYC ENVIRONMENT                         *
