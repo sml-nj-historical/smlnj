@@ -42,13 +42,13 @@ rebuilt=no
 bare=no
 
 #
-# Set CM_PATHCONFIG_DEFAULT to ../../lib/pathconfig
+# Set CM_PATHCONFIG to ../../lib/pathconfig
 # (using an absolute path!)
 # ... unless it was already set at the time we run this script.
 #
 
-CM_PATHCONFIG_DEFAULT=${CM_PATHCONFIG_DEFAULT:-$twoup/lib/pathconfig}
-export CM_PATHCONFIG_DEFAULT
+CM_PATHCONFIG=${CM_PATHCONFIG:-$twoup/lib/pathconfig}
+export CM_PATHCONFIG
 
 #
 # use the arch-n-opsys script to determine the ARCH/OS if possible

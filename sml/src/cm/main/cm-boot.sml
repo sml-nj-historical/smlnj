@@ -638,32 +638,45 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	      | p (f, mk, "cm") = mk f
 	      | p (f, mk, e) = Say.say ["!* unable to process `", f,
 					"' (unknown extension `", e, "')\n"]
+	    fun inc n = n + 1
 
-	    fun show_controls (first, getarg, getval, pad) level = let
-		fun one (c : Controls.control, prev) = let
-		    val rname = #rname c
-		    val arg = getarg c
-		    val value = getval c
-		    val sz = size value
-		    val lw = !Control_Print.linewidth
-		    val padsz = lw - 6 - size arg
+	    fun show_controls (getarg, getval, padval) level = let
+		fun walk indent (ControlRegistry.RTree rt) = let
+		    open FormatComb
+		    val { help, ctls, subregs, path } = rt
+
+		    fun one c = let
+			val arg = concat (foldr (fn (s, r) => s :: "." :: r)
+						[getarg c] path)
+			val value = getval c
+			val sz = size value
+			val lw = !Control_Print.linewidth
+			val padsz = lw - 6 - size arg - indent
+		    in
+			if padsz < sz then
+			    let val padsz' = Int.max (lw, sz + 8 + indent)
+			    in
+				format' Say.say (sp (indent + 6) o
+						 text arg o nl o
+						 padval padsz' (text value) o
+						 nl)
+			    end
+			else format' Say.say (sp (indent + 6) o
+					      text arg o
+					      padval padsz (text value) o
+					      nl)
+		    end
 		in
-		    if prev = rname then ()
-		    else Say.say ["    ", rname, ":\n"];
-		    if padsz < sz then
-			let val padsz' = Int.max (lw, sz + 8)
-			in
-			    Say.say ["      ", arg, "\n",
-				     StringCvt.padLeft #" " padsz' value,
-				     "\n"]
-			end
-		    else Say.say ["      ", arg, pad padsz value, "\n"];
-		    rname
+		    case (ctls, subregs) of
+			([], []) => ()
+		      | _ => (format' Say.say
+				      (sp indent o text help o text ":" o nl);
+			      app one ctls;
+			      app (walk (indent + 1)) subregs)
 		end
-		val cl = Controls.controls level
 	    in
-		if List.null cl then ()
-		else (first (); ignore (foldl one "" cl))
+		walk 2 (ControlRegistry.controls
+			    (BasicControl.topregistry, Option.map inc level))
 	    end
 
 	    fun help level =
@@ -696,20 +709,19 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		     \    -h               (produce minimal help listing)\n\
 		     \    -h<level>        (help with obscurity limit)\n\
 		     \    -S               (list all current settings)\n\
-		     \    -s<level>        (limited list of settings)\n"];
-		show_controls (fn () => Say.say ["\n  controls:\n"],
-			       #name,
-			       fn c => concat ["(", #descr c, ")"],
-			       StringCvt.padLeft #" ")
+		     \    -s<level>        (limited list of settings)\n\n"];
+		show_controls (Controls.name,
+			       fn c => concat ["(", #help (Controls.info c),
+					       ")"],
+			       FormatComb.pad FormatComb.left)
 			      level)
 
 	    fun showcur level = let
 		fun nopad (_, s) = s
 	    in
-		show_controls (fn () => (),
-			       fn c => (#name c ^ "="),
-			       fn c => #get (#svar c) (),
-			       fn _ => fn s => s)
+		show_controls (fn c => (Controls.name c ^ "="),
+			       fn c => Controls.get c,
+			       fn _ => fn ff => ff)
 			      level
 	    end
 
@@ -730,15 +742,21 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		in
 		    if name = "" then bad ()
 		    else if is_config then
-			let val svar = #svar (Controls.control name)
+			let val names = String.fields (fn c => c = #".") name
+			    val look = ControlRegistry.control
+					   BasicControl.topregistry
 			in
-			    #set svar value
-			    handle Controls.FormatError { t, s } =>
-				   Say.say ["!* unable to parse value `", s,
-					    "' for ", name, " : ", t, "\n"]
-			end handle Controls.NoSuchControl =>
-				   Say.say ["!* no such control: ",
-					    name, "\n"]
+			    case look names of
+				NONE => Say.say ["!* no such control: ",
+						 name, "\n"]
+			      | SOME sctl =>
+				(Controls.set (sctl, value)
+				 handle Controls.ValueSyntax vse =>
+					Say.say ["!* unable to parse value `",
+						 #value vse, "' for ",
+						 #ctlName vse, " : ",
+						 #tyName vse, "\n"])
+			end
 		    else if value = "" then #set (SSV.symval name) (SOME 1)
 		    else (case Int.fromString value of
 			      SOME i => #set (SSV.symval name) (SOME i)

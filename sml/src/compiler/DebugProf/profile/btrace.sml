@@ -29,19 +29,31 @@ end
 
 structure BTrace :> BTRACE = struct
 
+    val priority = [10, 1]
+    val obscurity = 1
+    val prefix = "instrument"
+
+    val registry = ControlRegistry.new { help = "instrumentation" }
+
+    val _ = BasicControl.nest (prefix, registry)
+
+    val bool_cvt = { tyName = "bool",
+		     fromString = Bool.fromString,
+		     toString = Bool.toString }
+
     val enabled = let
-	val m = Controls.registry { name = "instrumentation",
-				    priority = [10, 1],
-				    obscurity = 1,
-				    prefix = "compiler-",
-				    default_suffix = NONE,
-				    mk_ename = NONE }
-	val r = Controls.group m Controls.bool
+	val r = ref false
+	val ctl = Controls.control { name = "btrace-mode",
+				     pri = priority,
+				     obscurity = obscurity,
+				     help = "backtrace instrumentation mode",
+				     ctl = r }
     in
-	Controls.new r { stem = "btrace-mode",
-			 descr = "backtrace instrumentation mode",
-			 fallback = false }
-	
+	ControlRegistry.register
+	    registry
+	    { ctl = Controls.stringControl bool_cvt ctl,
+	      envName = SOME "INSTUMENT_BTRACE_MODE" };
+	r
     end
 
     fun impossible s = EM.impossible ("BTrace: " ^ s)

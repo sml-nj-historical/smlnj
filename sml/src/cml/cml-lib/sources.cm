@@ -39,6 +39,7 @@ Group (cm/smlnj-lib.cm)
   signature DYNAMIC_ARRAY
   signature FIFO
   signature FORMAT
+  signature FORMAT_COMB
   signature GRAPH_SCC
   signature HASH_KEY
   signature HASH_TABLE
@@ -85,6 +86,7 @@ Group (cm/smlnj-lib.cm)
   structure DynamicArray
   structure Fifo
   structure Format
+  structure FormatComb
   structure HashString
   structure HashTable
   structure IntBinaryMap

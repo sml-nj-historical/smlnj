@@ -17,32 +17,54 @@ end
 
 structure Control_Print : PRINTCONTROL = struct
 
-    val m = Controls.registry { name = "compiler print settings",
-				priority = [10, 10, 2],
-				obscurity = 2,
-				prefix = "print-",
-				default_suffix = SOME "-default",
-				mk_ename = NONE }
+    val priority = [10, 10, 2]
+    val obscurity = 2
+    val prefix = "print"
 
-    val flag_r = Controls.group m Controls.bool
+    val registry = ControlRegistry.new { help = "compiler print settings" }
 
-    val int_r = Controls.group m Controls.int
+    val _ = BasicControl.nest (prefix, registry)
 
-    fun new (r, s, d, f) = Controls.new r { stem = s, descr = d, fallback = f }
+    val bool_cvt = { tyName = "bool",
+		     fromString = Bool.fromString,
+		     toString = Bool.toString }
+    val int_cvt = { tyName = "int",
+		    fromString = Int.fromString,
+		    toString = Int.toString }
 
-    val printDepth = new (int_r, "depth", "max print depth", 5)
-    val printLength = new (int_r, "length", "max print length", 12)
-    val stringDepth = new (int_r, "string-depth", "max string print depth", 70)
+    fun new (c, n, e, h, d) = let
+	val r = ref d
+	val ctl = Controls.control { name = n,
+				     pri = priority,
+				     obscurity = obscurity,
+				     help = h,
+				     ctl = r }
+    in
+	ControlRegistry.register
+	    registry
+	    { ctl = Controls.stringControl c ctl,
+	      envName = SOME ("PRINT_" ^ e) };
+	r
+    end
+
+    val printDepth =
+	new (int_cvt, "depth", "DEPTH", "max print depth", 5)
+    val printLength =
+	new (int_cvt, "length", "LENGTH", "max print length", 12)
+    val stringDepth =
+	new (int_cvt, "string-depth", "STRING_DEPTH",
+	     "max string print depth", 70)
     val printLoop =
-	new (flag_r, "loop", "print loop", true) (* ? *)
+	new (bool_cvt, "loop", "LOOP", "print loop", true) (* ? *)
     val signatures =
-	new (int_r, "signatures", "max signature expansion depth", 2) (* ? *)
-    val printOpens = new (flag_r, "opens", "print `open'", true)
+	new (int_cvt, "signatures", "SIGNATURES",
+	     "max signature expansion depth", 2) (* ? *)
+    val printOpens = new (bool_cvt, "opens", "OPENS", "print `open'", true)
     val out = ref{
 		  say = fn s => TextIO.output(TextIO.stdOut,s),
 		  flush = fn () => TextIO.flushOut TextIO.stdOut
 		  }
-    val linewidth = new (int_r, "linewidth",
+    val linewidth = new (int_cvt, "linewidth", "LINEWIDTH",
 			 "line-width hint for pretty printer", 79)
     fun say s = #say (!out) s
     fun flush() = #flush (!out) ()

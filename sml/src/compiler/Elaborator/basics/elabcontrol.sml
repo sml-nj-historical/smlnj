@@ -7,47 +7,61 @@
 structure ElabControl = struct
 
     local
-	val m0 = Controls.registry { name = "elaborator flags",
-				     priority = [10, 10, 8],
-				     obscurity = 6,
-				     prefix = "elab-",
-				     default_suffix = SOME "-default",
-				     mk_ename = NONE }
+	val priority = [10, 10, 7]
+	val clear = 2
+	val obscure = 6
+	val prefix = "elab"
 
-	val m = Controls.registry { name = "elaborator flags",
-				    priority = [10, 10, 8],
-				    obscurity = 2,
-				    prefix = "elab-",
-				    default_suffix = SOME "-default",
-				    mk_ename = NONE }
+	val registry = ControlRegistry.new { help = "elaborator flags" }
 
-	val b0 = Controls.group m0 Controls.bool
-	val b = Controls.group m Controls.bool
+	val _ = BasicControl.nest (prefix, registry)
 
-	fun new (r, s, d, f) =
-	    Controls.new r { stem = s, descr = d, fallback = f }
+	val bool_cvt = { tyName = "bool",
+			 fromString = Bool.fromString,
+			 toString = Bool.toString }
+
+	fun new ob (n, e, h, d) = let
+	    val r = ref d
+	    val ctl = Controls.control { name = n,
+					 pri = priority,
+					 obscurity = ob,
+					 help = h,
+					 ctl = r }
+	in
+	    ControlRegistry.register
+		registry
+		{ ctl = Controls.stringControl bool_cvt ctl,
+		  envName = SOME ("ELAB_" ^ e) };
+	    r
+	end
+
+	val cnew = new clear
+	val onew = new obscure
     in
 
-    val etdebugging = new (b0, "et-debugging", "?", false)
-    val esdebugging = new (b0, "es-debugging", "?", false)
-    val insdebugging = new (b0, "ins-debugging", "?", false)
-    val smdebugging = new (b0, "sm-debugging", "?", false)
-    val emdebugging = new (b0, "em-debugging", "?", false)
+    val etdebugging = onew ("et-debugging", "ET_DEBUGGING", "?", false)
+    val esdebugging = onew ("es-debugging", "ES_DEBUGGING", "?", false)
+    val insdebugging = onew ("ins-debugging", "INS_DEBUGGING", "?", false)
+    val smdebugging = onew ("sm-debugging", "SM_DEBUGGING", "?", false)
+    val emdebugging = onew ("em-debugging", "EM_DEBUGGING", "?", false)
 
-    val internals = new (b0, "internals", "?", false)
+    val internals = onew ("internals", "INTERNALS", "?", false)
 
-    val markabsyn = new (b0, "markabsyn", "?", true)
+    val markabsyn = onew ("markabsyn", "MARKABSYN", "?", true)
 
-    val boxedconstconreps = new (b0, "boxedconstreps", "?", false)
+    val boxedconstconreps = onew ("boxedconstreps", "BOXEDCONSTREPS",
+				  "?", false)
 
-    val multDefWarn = new (b, "mult-def-warn", "?", false)
-    val shareDefError = new (b, "share-def-error", "?", true)
+    val multDefWarn = cnew ("mult-def-warn", "MULT_DEF_WARN", "?", false)
+    val shareDefError = cnew ("share-def-error", "SHARE_DEF_WARN", "?", true)
     val valueRestrictionLocalWarn =
-	new (b, "value-restriction-local-warn", "?", false)
+	cnew ("value-restriction-local-warn", "VALUE_RESTRICTION_LOCAL_WARN",
+	      "?", false)
     val valueRestrictionTopWarn =
-	new (b, "value-restriction-top-warn", "?", true)
+	cnew ("value-restriction-top-warn", "VALUE_RESTRICTION_TOP_WARN",
+	      "?", true)
     val instantiateSigs =
-	new (b0, "instantiate-sigs", "?", true)
+	onew ("instantiate-sigs", "INSTANTIATE_SIGS", "?", true)
 
     end
 end

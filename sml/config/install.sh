@@ -149,12 +149,6 @@ cp config/preloads preloads.standard
 #
 MAKE=make
 
-#
-# Make sure we don't have any unpleasant surprises due to the installing
-# user's process environment:
-#
-unset CM_PATHCONFIG
-
 SHELL=/bin/sh
 vsay $this: Using shell $SHELL.
 
@@ -210,10 +204,10 @@ trap 'rm -f $tmpfiles' 0 1 2 3 15
 #
 # set the CM configuration variables (these are environment variables
 # that will be queried by the bootstrap code)
-# Especially important is CM_PATHCONFIG_DEFAULT.
+# Especially important is CM_PATHCONFIG.
 #
-CM_PATHCONFIG_DEFAULT=$LIBDIR/pathconfig
-export CM_PATHCONFIG_DEFAULT
+CM_PATHCONFIG=$LIBDIR/pathconfig
+export CM_PATHCONFIG
 
 #
 # the release version that we are installing
@@ -507,7 +501,7 @@ reglib() {
 	    echo movelib ${SRCFINALLOC} ${FINALLOC} >>${LIBMOVESCRIPT}
 	fi
     fi
-    echo ${ANCHOR} ${FINALCONFIGPATH} >>${CM_PATHCONFIG_DEFAULT}
+    echo ${ANCHOR} ${FINALCONFIGPATH} >>${CM_PATHCONFIG}
 }
 
 #
@@ -701,7 +695,7 @@ else
 	    cd $ROOT/$BOOT_FILES
 	    for anchor in * ; do
 		if [ -d $anchor ] ; then
-		    echo $anchor $anchor >>$CM_PATHCONFIG_DEFAULT
+		    echo $anchor $anchor >>$CM_PATHCONFIG
 		    move $anchor $LIBDIR/$anchor
 		fi
 	    done
@@ -739,19 +733,19 @@ for i in $TARGETS ; do
 	;;
       ml-yacc)
 	standalone ml-yacc ML-Yacc src
-	echo ml-yacc $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
+	echo ml-yacc $TOOLDIR >>$CM_PATHCONFIG
 	;;
       ml-lex)
 	standalone ml-lex ML-Lex
-	echo ml-lex $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
+	echo ml-lex $TOOLDIR >>$CM_PATHCONFIG
 	;;
       ml-burg)
 	standalone ml-burg ML-Burg
-	echo ml-burg $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
+	echo ml-burg $TOOLDIR >>$CM_PATHCONFIG
 	;;
       ml-nlffigen)
         echo standalone ml-nlffigen ML-NLFFI-Gen >>$LATESTANDALONES
-	echo ml-nlffigen $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
+	echo ml-nlffigen $TOOLDIR >>$CM_PATHCONFIG
 	;;
       smlnj-lib)
         unpack "SML/NJ Library" $SRCDIR smlnj-lib smlnj-lib
@@ -818,7 +812,7 @@ for i in $TARGETS ; do
       nowhere)
 	unpack "MLRISC Tools Library" $SRCDIR MLRISC MLRISC
         echo standalone nowhere NoWhere . MLRISC/Tools >>$LATESTANDALONES
-	echo nowhere $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
+	echo nowhere $TOOLDIR >>$CM_PATHCONFIG
 	;;
       doc)
 	echo Package doc is currently unavailable.
@@ -868,13 +862,13 @@ fi
 #
 # Finally, remove duplicate entries from pathconfig file...
 #
-if [ -f $CM_PATHCONFIG_DEFAULT ] ; then
-    cp $CM_PATHCONFIG_DEFAULT $PCEDITTMP
-    rm -f $CM_PATHCONFIG_DEFAULT
+if [ -f $CM_PATHCONFIG ] ; then
+    cp $CM_PATHCONFIG $PCEDITTMP
+    rm -f $CM_PATHCONFIG
     awk <$PCEDITTMP 'NF == 2 { mapping[$1] = $2 }
 NF != 2 { print $0 }
 END { for (i in mapping) print i, mapping[i] }' \
-      | sort >$CM_PATHCONFIG_DEFAULT
+      | sort >$CM_PATHCONFIG
 fi
 
 exit 0

@@ -13,6 +13,26 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/05/17 16:49:00 EDT
+Tag: blume-20020517-controls
+Description:
+
+0. John Reppy made several modifications to the SML/NJ library.
+   In particular, there is a shiny new controls-lib.cm.
+
+1. Pushed new controls interface through compiler so that everything
+   compiles again.
+
+2. Added FormatComb and FORMAT_COMB to the CML version of the
+   SML/NJ library (so that CML compiles again).
+
+3. Modified init scripts because XXX_DEFAULT environment variables
+   are no longer with us.  (Boot-time initialization is now done
+   using the same environment variables that are also used for
+   startup-time initialization of controls.)
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2002/05/15 09:20:10 EDT
 Tag: george-20020515-pseudo-op-decls

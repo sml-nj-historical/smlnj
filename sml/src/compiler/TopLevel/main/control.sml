@@ -3,42 +3,60 @@
 
 structure Control_MC : MCCONTROL =
 struct
-    val m = Controls.registry { name = "match-compiler settings",
-				priority = [10, 10, 4],
-				obscurity = 2,
-				prefix = "compiler-mc-",
-				default_suffix = SOME "-default",
-				mk_ename = NONE }
+    val priority = [10, 10, 4]
+    val obscurity = 2
+    val prefix = "compiler-mc"
 
-    val r = Controls.group m Controls.bool
+    val registry = ControlRegistry.new { help = "match compiler settings" }
 
-    fun flag (s, d, f) = Controls.new
-			     r { stem = s, descr = d, fallback = f }
+    val _ = BasicControl.nest (prefix, registry)
 
-    val printArgs = flag ("print-args", "arguments print mode", false)
-    val printRet = flag ("print-ret", "return print mode", false)
+    val bool_cvt = { tyName = "bool",
+		     fromString = Bool.fromString,
+		     toString = Bool.toString }
+
+    fun flag (n, e, h, d) = let
+	val r = ref d
+	val ctl = Controls.control { name = n,
+				     pri = priority,
+				     obscurity = obscurity,
+				     help = h,
+				     ctl = r }
+    in
+	ControlRegistry.register
+	    registry
+	    { ctl = Controls.stringControl bool_cvt ctl,
+	      envName = SOME ("COMPILER_MC_" ^ e) };
+	r
+    end
+
+    val printArgs = flag ("print-args", "PRINT_ARGS",
+			  "arguments print mode", false)
+    val printRet = flag ("print-ret", "PRINT_RET",
+			 "return print mode", false)
     val bindNoVariableWarn =
-	flag ("nobind-warn", "whether to warn if no variables get bound",
+	flag ("nobind-warn", "NOBIND_WARN",
+	      "whether to warn if no variables get bound",
 	      false)
     val bindNonExhaustiveWarn =
-	flag ("warn-non-exhaustive-bind",
+	flag ("warn-non-exhaustive-bind", "WARN_NON_EXHAUSTIVE_BIND",
 	      "whether to warn on non-exhaustive bind",
 	      true)
     val matchNonExhaustiveWarn =
-	flag ("warn-non-exhaustive-match",
+	flag ("warn-non-exhaustive-match", "WARN_NON_EXHAUSTIVE_MATCH",
 	      "whether to warn on non-exhaustive match",
 	      true)
     val matchNonExhaustiveError =
-	flag ("error-non-exhaustive-match",
+	flag ("error-non-exhaustive-match", "ERROR_NON_EXHAUSTIVE_MATCH",
 	      "whether non-exhaustive match is an error",
 	      false)
     (* matchExhaustiveError overrides matchExhaustiveWarn *)
     val matchRedundantWarn =
-	flag ("warn-redundant",
+	flag ("warn-redundant", "WARN_REDUNDANT",
 	      "whether to warn on redundant matches",
 	      true)
     val matchRedundantError =
-	flag ("error-redundant",
+	flag ("error-redundant", "ERROR_REDUNDANT",
 	      "whether a redundant match is an error",
 	      true)
     (* matchRedundantError overrides matchRedundantWarn *)
@@ -52,23 +70,44 @@ end
 
 structure Control_CG : CGCONTROL =
 struct
-    val m = Controls.registry { name = "code generator settings",
-				priority = [10, 11, 2],
-				obscurity = 6,
-				prefix = "cg-",
-				default_suffix = SOME "-default",
-				mk_ename = NONE }
+    val priority = [10, 11, 2]
+    val obscurity = 6
+    val prefix = "cg"
 
-    val b = Controls.group m Controls.bool
+    val registry = ControlRegistry.new { help = "code generator settings" }
 
-    val i = Controls.group m Controls.int
+    val _ = BasicControl.nest (prefix, registry)
 
-    val r = Controls.group m Controls.real
+    val b = { tyName = "bool",
+	      fromString = Bool.fromString,
+	      toString = Bool.toString }
+    val i = { tyName = "int",
+	      fromString = Int.fromString,
+	      toString = Int.toString }
+    val r = { tyName = "real",
+	      fromString = Real.fromString,
+	      toString = Real.toString }
+    val sl = { tyName = "string list",
+	       fromString = SOME o String.tokens Char.isSpace,
+	       toString = concat o foldr (fn (s, r) => " " :: s :: r) [] }
 
-    val sl = Controls.group m Controls.stringList
-
-    fun new (r, s, d, f) =
-	Controls.new r { stem = s, descr = d, fallback = f }
+    fun new (c, n, h, d) = let
+	val r = ref d
+	fun uc #"-" = #"_"
+	  | uc c = Char.toUpper c
+	fun en s = SOME ("CG_" ^ String.map uc s)
+	val ctl = Controls.control { name = n,
+				     pri = priority,
+				     obscurity = obscurity,
+				     help = h,
+				     ctl = r }
+    in
+	ControlRegistry.register
+	    registry
+	    { ctl = Controls.stringControl c ctl,
+	      envName = en n };
+	r
+    end
 
     val tailrecur = new (b, "tailrecur", "?", true)
     val recordopt = new (b, "recordopt", "?", true)
@@ -170,17 +209,33 @@ structure Control : CONTROL =
   struct
 
     local
-	val m = Controls.registry { name = "miscellaneous control settings",
-				    priority = [10, 10, 9],
-				    obscurity = 4,
-				    prefix = "control-",
-				    default_suffix = SOME "-default",
-				    mk_ename = NONE }
+	val priority = [10, 10, 9]
+	val obscurity = 4
+	val prefix = "control"
 
-	val b = Controls.group m Controls.bool
+	val registry = ControlRegistry.new
+			   { help = "miscellaneous control settings" }
 
-	fun new (r, s, d, f) =
-	    Controls.new r { stem = s, descr = d, fallback = f }
+	val _ = BasicControl.nest (prefix, registry)
+
+	val bool_cvt = { tyName = "bool",
+			 fromString = Bool.fromString,
+			 toString = Bool.toString }
+
+	fun new (n, e, h, d) = let
+	    val r = ref d
+	    val ctl = Controls.control { name = n,
+					 pri = priority,
+					 obscurity = obscurity,
+					 help = h,
+					 ctl = r }
+	in
+	    ControlRegistry.register
+		registry
+		{ ctl = Controls.stringControl bool_cvt ctl,
+		  envName = SOME ("CONTROL_" ^ e) };
+		r
+	end
     in
 
     structure Print : PRINTCONTROL = Control_Print
@@ -211,9 +266,9 @@ structure Control : CONTROL =
     val multDefWarn = ElabControl.multDefWarn
     val shareDefError = ElabControl.shareDefError
     val instantiateSigs = ElabControl.instantiateSigs
-    val debugging = new (b, "debugging", "?", false)
+    val debugging = new ("debugging", "DEBUGGING", "?", false)
     val internals = ElabControl.internals
-    val interp = new (b, "interp", "?", false)
+    val interp = new ("interp", "INTERP", "?", false)
 (*
     val debugLook = ref false
     val debugCollect = ref false
@@ -221,16 +276,17 @@ structure Control : CONTROL =
 *)
     val markabsyn = ElabControl.markabsyn
     val trackExn =
-	new (b, "track-exn",
+	new ("track-exn", "TRACK_EXN",
 	     "whether to generate code that tracks exceptions", true)
     (* warning message when call of polyEqual compiled: *)
     val polyEqWarn =
-	new (b, "poly-eq-warn",
+	new ("poly-eq-warn", "POLY_EQ_WARN",
 	     "wheter to warn when generating call of polyEqual", true)
-    val indexing = new (b, "indexing", "?", false)
-    val instSigs = new (b, "inst-sigs", "?", true)
+    val indexing = new ("indexing", "INDEXING", "?", false)
+    val instSigs = new ("inst-sigs", "INST_SIGS", "?", true)
 
-    val preserveLvarNames : bool ref = new (b, "preserve-names", "?", false)
+    val preserveLvarNames =
+	new ("preserve-names", "PRESERVE_NAMES", "?", false)
     (* these are really all the same ref cell: *)
     val saveit : bool ref = saveLvarNames
     val saveAbsyn : bool ref = saveit
@@ -251,29 +307,33 @@ structure Control : CONTROL =
 	  | show (Default NONE) = "on"
 	  | show (Default (SOME i)) = Int.toString i
 	local
-	    val m = Controls.registry { name = "cross-module inlining",
-					priority = [10, 10, 0, 1],
-					obscurity = 1,
-					prefix = "inline-",
-					default_suffix = SOME "-default",
-					mk_ename = NONE }
-	    val r = Controls.group m
-		    { tname = "Control.LambdaSplitting.globalsetting",
-		      fromString = parse, toString = show }
-	    val state_r = Controls.new r
-		    { stem = "split-aggressiveness",
-		      descr = "aggressiveness of lambda-splitter",
-		      fallback = Default NONE }
-	    val state = Controls.ref2var state_r
+	    val registry = ControlRegistry.new
+			       { help = "cross-module inlining" }
+
+	    val _ = BasicControl.nest ("inline", registry)
+
+	    val cvt = { tyName = "Control.LambdaSplitting.globalsetting",
+			fromString = parse, toString = show }
+	    val state_r = ref (Default NONE)
+	    val ctl = Controls.control
+			  { name = "split-aggressiveness",
+			    pri = [10, 10, 0, 1],
+			    obscurity = 1,
+			    help = "aggressiveness of lambda-splitter",
+			    ctl = state_r }
+	    val _ = ControlRegistry.register
+			registry
+			{ ctl = Controls.stringControl cvt ctl,
+			  envName = SOME "INLINE_SPLIT_AGGRESSIVENESS" }
 	in
-   	    val set = #set state
+   	    fun set x = Controls.set (ctl, x)
 	    fun get () =
-		case #get state () of
+		case Controls.get ctl of
 		    Off => NONE
 		  | Default d => d
 	    fun get' NONE = get ()
 	      | get' (SOME a) =
-		(case #get state () of
+		(case Controls.get ctl of
 		     Off => NONE
 		   | Default _ => a)
 	end

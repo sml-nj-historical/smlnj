@@ -32,6 +32,7 @@ is
 	$smlnj/init/init.cmi : cm
 
 	$/basis.cm
+	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/core.cm
 
 	(* need access to CM's "init" function *)
