@@ -5,7 +5,7 @@ signature FCONTRACT =
 sig
     
     (* needs Collect to be setup properly *)
-    val contract : FLINT.fundec * Stats.counter -> FLINT.fundec
+    val contract : FLINT.prog * Stats.counter -> FLINT.prog
 	
 end
 
@@ -145,14 +145,22 @@ end
  *   do the dead-code elimination, so you can only avoid fcontracting a
  *   a function if you can be sure that the body doesn't contain any dead-code,
  *   which is generally  not known).
- * - once a function is fcontracted it is marked as non-inlinable since
- *   fcontraction might have changed its shape considerably (via inlining).
+ * - once a function is fcontracted, its inlinable status is re-examined.
+ *   More specifically, if no inlining occured during its fcontraction, then
+ *   we assume that the code has just become smaller and should hence
+ *   still be considered inlinable.  On another hand, if inlining took place,
+ *   then we have to reset the inline-bit because the new body might
+ *   be completely different (i.e. much bigger) and inlining it might be
+ *   undesirable.
  *   This means that in the case of
  *       let fwrap x = body1 and f y = body2 in exp
- *   if fwrap is fcontracted before f, then fwrap cannot be inlined in f.
+ *   if fwrap is fcontracted before f and something gets inlined into it,
+ *   then fwrap cannot be inlined in f.
  *   To minimize the impact of this problem, we make sure that we fcontract
  *   inlinable functions only after fcontracting other mutually recursive
- *   functions.
+ *   functions.  One way to solve the problem more thoroughly would be
+ *   to keep the uncontracted fwrap around until f has been contracted.
+ *   Such a trick hasn't seemed necessary yet.
  * - at the very end of the optimization phase, cpsopt had a special pass
  *   that ignored the `NO_INLINE_INTO' hint (since at this stage, inlining
  *   into it doesn't have any undesirable side effects any more).  The present
@@ -226,7 +234,6 @@ fun click s c = (if !CTRL.misc = 1 then say s else (); Stats.addCounter c 1)
 (*  val c_eta	 = Stats.newCounter[] *)
 (*  val c_etasplit	 = Stats.newCounter[] *)
 (*  val c_branch	 = Stats.newCounter[] *)
-(*  val c_cstargs	 = Stats.newCounter[] *)
 (*  val c_dropargs	 = Stats.newCounter[] *)
 
 fun contract (fdec as (_,f,_,_), counter) = let
@@ -243,7 +250,6 @@ fun contract (fdec as (_,f,_,_), counter) = let
     fun click_eta      () = (click "e" counter)
     fun click_etasplit () = (click "E" counter)
     fun click_branch   () = (click "b" counter)
-    fun click_cstargs  () = (click "A" counter)
     fun click_dropargs () = (click "a" counter)
 
     fun click_lacktype () = (click "t" c_miss)
@@ -399,8 +405,17 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 	      * mutually recursive with its main function.  On another hand,
 	      * self recursion (C.recursive) is too dangerous to be inlined
 	      * except for loop unrolling *)
-	     else if (inline = F.IH_ALWAYS andalso not(S.member ifs g)) orelse
-		 (inline = F.IH_UNROLL andalso (S.member ifs g)) then
+	     (* unrolling is not as straightforward as it seems:
+	      * if you inline the function you're currently fcontracting,
+	      * you're asking for trouble: there is a hidden assumption
+	      * in the counting that the old code will be replaced by the new
+	      * code (and is hence dead).  If the function to be unrolled
+	      * has the only call to function f, then f might get simpleinlined
+	      * before unrolling, which means that unrolling will introduce
+	      * a second occurence of the `only call' but at that point f
+	      * has already been killed. *)
+	     else if (inline = F.IH_ALWAYS andalso not(S.member ifs g)) (*orelse
+		 (inline = F.IH_UNROLL andalso (S.member ifs g)) *) then
 		 let val nle =
 			 C.copylexp M.empty (F.LET(map #1 args, F.RET vs, body))
 		 in
@@ -424,11 +439,11 @@ in
 	let fun clet () =
 		loop m le
 		     (fn (m,F.RET vs) =>
-		      let fun simplesubst ((lv,v),m) =
+		      let fun simplesubst (lv,v,m) =
 			      let val sv = (val2sval m v) handle x => raise x
 			      in substitute(m, lv, sv, sval2val sv)
 			      end
-			  val nm = (foldl simplesubst m (zip(lvs, vs)))
+			  val nm = (ListPair.foldl simplesubst m (lvs, vs))
 		      in loop nm body cont
 		      end
 		       | (m,nle) =>
@@ -469,7 +484,7 @@ in
  			   clet()
  	       in case (lvs,body)
  		   of ([lv],le as F.SWITCH(F.VAR v,_,_,NONE)) =>
- 		      cassoc(lv, v, le, OU.id)
+ 		      cassoc(lv, v, le, fn x => x)
  		    | ([lv],F.LET(lvs,le as F.SWITCH(F.VAR v,_,_,NONE),rest)) =>
  		      cassoc(lv, v, le, fn le => F.LET(lvs,le,rest))
  		    | _ => clet()
@@ -555,43 +570,6 @@ in
 		else (m, fdec::fs, hs)
 	      | ceta (fdec,(m,fs,hs)) = (m,fdec::fs,hs)
 
-	    (* drop constant arguments if possible *)
-	    fun cstargs (f as ({inline=F.IH_ALWAYS,...},_,_,_):F.fundec) = f
-	      | cstargs (f as (fk,g,args,body):F.fundec) =
-		let val actuals = (C.actuals (C.get g)) handle x => raise x
-		    val cst =
-			ListPair.map
-			    (fn (NONE,_) => false
-			      | (SOME(F.VAR lv),(a,_)) =>
-				((case sval2val(lookup m lv)
-				  of F.VAR lv =>
-				     if used a andalso used lv then
-					 (C.use NONE (C.get lv); true)
-				     else false
-				   | _ => true)
-				    handle M.IntmapF => false)
-			      | (SOME v,(a,_)) => true)
-			    (actuals, args)
-		(* if all args are used, there's nothing we can do *)
-		in if List.all not cst then f else
-		    let fun newarg lv =
-			    let val nlv = cplv lv in C.new NONE nlv; nlv end
-			fun filter xs = OU.filter(cst, xs)
-			(* construct the new arg list *)
-			val nargs = ListPair.map
-					(fn ((a,t),true) => (newarg a,t)
-					  | ((a,t),false) => (a,t))
-					(args, cst)
-			(* construct the new body *)
-			val nbody =
-			    F.LET(map #1 (filter args),
-				  F.RET(map O.valOf (filter actuals)),
-				  body)
-		    in click_cstargs();
-			(fk, g, nargs, nbody)
-		    end
-		end
-
 	    (* add wrapper for various purposes *)
 	    fun wrap (f as ({inline=F.IH_ALWAYS,...},_,_,_):F.fundec,fs) = f::fs
 	      | wrap (f as (fk as {isrec,...},g,args,body):F.fundec,fs) =
@@ -614,36 +592,30 @@ in
 			    app (C.use NONE o C.get) nargs';
 			    nf'::nf::fs
 			end
-		    val used = map (used o #1) args
-		    in
+		in
 		    (* Don't introduce wrappers for escaping-only functions.
 		     * This is debatable since although wrappers are useless
 		     * on escaping-only functions, some of the escaping uses
 		     * might turn into calls in the course of fcontract, so
 		     * by not introducing wrappers here, we avoid useless work
 		     * but we also postpone useful work to later invocations. *)
-		    if C.called gi then
-			(* if some args are not used, let's drop them *)
-			if not (List.all OU.id used) then
-			    (click_dropargs();
-			     dropargs (fn xs => OU.filter(used, xs)))
-
-			(* eta-split: add a wrapper for escaping uses *)
-			else if C.escaping gi then
-			    (* like dropargs but keeping all args *)
-			    (click_etasplit(); dropargs OU.id)
-			    
-			else f::fs
-		    else f::fs
+		    if C.dead gi then fs else
+			let val used = map (used o #1) args
+			in if C.called gi then
+			    (* if some args are not used, let's drop them *)
+			    if not (List.all (fn x => x) used) then
+				(click_dropargs();
+				 dropargs (fn xs => OU.filter(used, xs)))
+				
+			    (* eta-split: add a wrapper for escaping uses *)
+			    else if C.escaping gi then
+				(* like dropargs but keeping all args *)
+				(click_etasplit(); dropargs (fn x => x))
+				
+			    else f::fs
+			   else f::fs
+			end
 		end
-
-	    (* junk unused funs *)
-	    val fs = List.filter (fn (_,f,_,_) =>
-				  used f orelse (click_deadlexp(); false))
-				 fs
-
-	    (* redirect cst args to their source value *)
-	    val fs = map cstargs fs
 
 	    (* add various wrappers *)
 	    val fs = foldl wrap [] fs
@@ -681,7 +653,7 @@ in
       | F.APP (f,vs) =>
 	let val nvs = ((map substval vs) handle x => raise x)
 	in case inline ifs (f, nvs)
-	    of (SOME(le,od),nifs) => cexp (d,od) ifs m le cont
+	    of (SOME(le,od),nifs) => cexp (d,od) nifs m le cont
 	     | (NONE,_) => cont(m,F.APP((substval f) handle x => raise x, nvs))
 	end
 	    

@@ -256,7 +256,7 @@ fun transform [] = bug "unexpected case in transform"
        let val nfk = 
              case fk 
               of {isrec=SOME(t,lk), known, inline, cconv} =>
-                   {isrec=SOME(map ltf t, lk), known=known, inline=inline,
+                   {isrec=SOME(map ltf t, lk), known=known, inline=IH_SAFE,
                            cconv=cconv} 
                | _ => fk
         in (nfk, v, map (fn (v,t) => (v,ltf t)) vts, #1(loop e))

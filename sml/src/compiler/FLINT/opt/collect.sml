@@ -16,7 +16,7 @@ sig
     val called    : info -> bool	(* known call uses *)
     val dead      : info -> bool	(* usenb = 0 ? *)
     val usenb     : info -> int		(* total nb of uses *)
-    val actuals   : info -> (FLINT.value option list) (* constant args *)
+    val callnb    : info -> int		(* total nb of calls *)
 
     (* self-referential (i.e. internal) uses *)
     val iusenb    : info -> int
@@ -99,19 +99,14 @@ fun ASSERT (true,_) = ()
 
 datatype info
   (* we keep track of calls and escaping uses *)
-  = Info of {calls: int ref, uses: int ref, int: (int * int) ref,
-	     args: (FLINT.lvar * (FLINT.value option)) option list ref option}
+  = Info of {calls: int ref, uses: int ref, int: (int * int) ref}
     
 exception NotFound
 	      
 val m : info M.intmap = M.new(128, NotFound)
 
 fun new args lv =
-    let val i = Info{uses=ref 0, calls=ref 0, int=ref(0,0),
-		     args=case args
-			   of SOME args =>
-			      SOME(ref(map (fn a => SOME(a, NONE)) args))
-			    | NONE => NONE}
+    let val i = Info{uses=ref 0, calls=ref 0, int=ref(0,0)}
     in M.add m (lv, i); i
     end
 
@@ -155,18 +150,12 @@ fun mergearg (NONE,a) = NONE
   | mergearg (SOME(fv,SOME b),a) =
     if a = b orelse a = F.VAR fv then SOME(fv,SOME b) else NONE
 
-fun actuals (Info{args=NONE,...}) = bug "no actuals (maybe a var?)"
-  | actuals (Info{args=SOME args,...}) = map (fn SOME(_,v) => v | _ => NONE) (!args)
-
-fun use call (Info{uses,calls,args,...}) =
+fun use call (Info{uses,calls,...}) =
     (inc uses;
      case call
-      of NONE => (case args of SOME args => args := map (fn _ => NONE) (!args)
-			     | _ => ())
+      of NONE => ()
       | SOME vals =>
-	(inc calls;
-	 case args of SOME args => args := ListPair.map mergearg (!args, vals)
-		    | _ => ()))
+	inc calls)
 
 fun unuse call (Info{uses,calls,...}) =
     (* notice the calls could be dec'd to negative values because a
@@ -180,6 +169,7 @@ fun unuse call (Info{uses,calls,...}) =
      else !uses = 0)
 
 fun usenb (Info{uses=ref uses,...}) = uses
+fun callnb (Info{calls=ref calls,...}) = calls
 fun used (Info{uses,...}) = !uses > 0
 fun dead (Info{uses,...}) = !uses = 0
 fun escaping (Info{uses,calls,...}) = !uses > !calls

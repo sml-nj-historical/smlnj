@@ -11,9 +11,6 @@ sig
     val fk_wrap : FLINT.fkind * FLINT.lty list option ->
 	              (FLINT.fkind * FLINT.fkind)
 
-    (* sometimes I get fed up rewriting the identity function *)
-    val id : 'a -> 'a
-
     (* this is a known APL function, but I don't know its real name *)
     val filter : bool list * 'a list -> 'a list
 end
@@ -41,8 +38,6 @@ in
       | filter (true::fs,x::xs)  = x::(filter(fs, xs))
       | filter (false::fs,x::xs) = (filter(fs, xs))
       | filter _ = bug "unmatched list length in filter"
-
-    fun id x = x
 
 end
 end
