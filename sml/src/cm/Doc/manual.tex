@@ -276,7 +276,7 @@ full name of the actual file system object referred to is {\tt
 stripped away during the resolution process; different anchors that
 map to the same directory still remain different.
 \item Otherwise, if the relative name appears in some description file
-whose name is {\it path}{\tt /}{it file}{\tt .cm}, then it will be
+whose name is {\it path}{\tt /}{\it file}{\tt .cm}, then it will be
 resolved relative to {\it path}, i.e., relative to the directory that
 contains the description file.
 \item If a non-anchored relative path is entered interactively, for
@@ -420,17 +420,16 @@ loading will actually succeed.)
 \subsubsection*{Flags}
 
 Several flags control the operation of CM.  Any invocation of the
-corresponding function reads the current value of the flag.  An
-invocation with {\tt NONE} just reads it, an invocation with {\tt
-SOME} $v$ reads it and then replaces it with a new value $v$.  It is
-always the old value that gets returned.
+corresponding {\tt get} function reads the current value of the flag.  An
+invocation of the {\tt set} function replaces the current value with
+the argument given to {\tt set}.
 
 \begin{verbatim}
-  val verbose : bool option -> bool
-  val debug : bool option -> bool
-  val keep_going : bool option -> bool
-  val parse_caching : int option -> int
-  val warn_obsolete : bool option -> bool
+  val verbose : { get: unit -> bool, set: bool -> unit }
+  val debug : { get: unit -> bool, set: bool -> unit }
+  val keep_going : { get: unit -> bool, set: bool -> unit }
+  val parse_caching : { get: unit -> int, set: int -> unit }
+  val warn_obsolete : { get: unit -> bool, set: bool -> unit }
 \end{verbatim}
 
 {\tt CM.verbose} can be used to turn off CM's progress messages.  The
@@ -492,6 +491,36 @@ Otherwise it will do nothing.
 
 {\tt CM.resetPathConfig} erases the entire existing path configuration
 mapping.
+
+\subsubsection*{Setting CM variables}
+
+CM variables are used by the conditional compilation system (see
+Section~\ref{sec:cmvars}).   Some of these variables are predefined,
+but the user can add new ones and alter or remove those that already
+exist.
+
+\begin{verbatim}
+  val symval : string ->
+        { get: unit -> int option, set: int option -> unit }
+\end{verbatim}
+
+Function {\tt CM.symval} returns a {\tt get}-{\tt set}-pair for the
+symbol whose name string was specified as the argument.  Note that the
+{\tt get}-{\tt set}-pair operates over type {\tt int option}; a value
+of {\tt NONE} means that the variable is not defined.
+
+\noindent Examples:
+\begin{verbatim}
+#get (CM.symval "X") ();       (* query value of X *)
+#set (CM.symval "Y") (SOME 1); (* set Y to 1 *)
+#set (CM.symval "Z") NONE;     (* remove definition for Z *)
+\end{verbatim}
+
+Some care is necessary as {\tt CM.symval} does not check whether the
+syntax of the argument string is valid.  (However, the worst thing
+that could happen is that the name of a variable cannot be written out
+in CM's description files and that, therefore, the associated value
+cannot be queried.)
 
 \subsubsection*{Status inspection}
 
@@ -577,7 +606,7 @@ Of course, this is not possible if the compilation unit in question
 has recently been recompiled or depends on another compilation unit
 whose code has recently been re-executed.  The programmer can
 explicitly mark certain ML files as {\em shared}, in which case CM
-will issue a warning whenever the unit's code gets re-executed.
+will issue a warning whenever the unit's code has to be re-executed.
 
 State created by compilation units marked as {\em private} is never
 shared across multiple calls to {\tt CM.make} or {\tt CM.autoload}.
@@ -633,7 +662,7 @@ CM will let them share code and dynamic state.
 \label{sec:classes}
 
 In addition to using existing ML source files, CM can also invoke
-tools that generate ML source code.  Examples for this are
+tools that generate ML source code.  Examples are
 program-generating programs such as ML-Yacc~\cite{tarditi90:yacc} or
 ML-Lex~\cite{appel89:lex}, literate programming tools like
 noweb~\cite{ramsey:simplified}, but also more generic ``generators''
@@ -669,7 +698,7 @@ descriptions, {\tt .grm} or {\tt .y} files as input to ML-Yacc, {\tt
 \section{Conditional compilation}
 \label{sec:preproc}
 
-In its description files, CM files offers a simple conditional
+In its description files, CM offers a simple conditional
 compilation facility inspired by the pre-processor for the C
 language~\cite{k&r2}.  However, it is not really a pre-processor, and
 the syntax of the controlling expressions is borrowed from SML.
@@ -698,6 +727,7 @@ Any expression (arithmetic or boolean) can be surrounded by
 parentheses to enforce precedence.
 
 \subsection{CM variables}
+\label{sec:cmvars}
 
 CM provides a number of names that stand for certain integers.  The
 exact set of provided variable names depends on SML/NJ version number,
@@ -730,6 +760,9 @@ Furthermore, the symbol {\tt SMLNJ\_VERSION} will be bound to the
 major version number of SML/NJ (i.e., the number before the first dot)
 and {\tt SMLNJ\_MINOR\_VERSION} will be bound to the system's minor
 version number (i.e., the number after the first dot).
+
+Using the {\tt CM.symval} interface one can define additional
+variables or modify existing ones.
 
 \subsection{Querying exported definitions}
 
@@ -788,30 +821,24 @@ remainder of the line after the word {\tt error}.
 
 \begin{tabbing}
 \nt{non-terminal}~\= \ar \kill
-\nt{letter} \> \ar \tl{A} \vb $\ldots$ \vb \tl{Z} \vb
-                   \tl{a} \vb $\ldots$ \vb \tl{z} \\
+\nt{letter} \> \ar \tl{A} \vb $\ldots$ \vb \tl{Z} \vb \tl{a} \vb $\ldots$ \vb \tl{z} \\
 \nt{digit}  \> \ar \tl{0} \vb $\ldots$ \vb \tl{9} \\
 \nt{ldau}   \> \ar \nt{letter} \vb \nt{digit} \vb \tl{'} \vb \tl{\_} \\
 \\
 \nt{number} \> \ar \nt{digit} \{\nt{digit}\} \\
 \nt{sym}    \> \ar \nt{letter} \{\nt{ldau}\} \\
 \\
-\nt{aatom}  \> \ar \nt{number} \vb \nt{sym} \vb \tl{(} \nt{asum} \tl{)} \vb
-                   \tl{$\tilde{~}$} \nt{aatom} \\
+\nt{aatom}  \> \ar \nt{number} \vb \nt{sym} \vb \tl{(} \nt{asum} \tl{)} \vb \tl{$\tilde{~}$} \nt{aatom} \\
 \nt{aprod}  \> \ar \{\nt{aprod} (\tl{*} \vb \tl{div} \vb \tl{mod})\} \nt{aatom} \\
 \nt{asum}   \> \ar \{\nt{asum} (\tl{+} \vb \tl{-})\} \nt{aprod} \\
 \\
-\nt{ns}     \> \ar \tl{structure} \vb \tl{signature} \vb \tl{functor} \vb
-                   \tl{funsig} \\
+\nt{ns}     \> \ar \tl{structure} \vb \tl{signature} \vb \tl{functor} \vb \tl{funsig} \\
 \nt{mlsym}  \> \ar {\em a Standard ML identifier} \\
-\nt{query}  \> \ar \tl{defined} \tl{(} \nt{sym} \tl{)} \vb
-                   \tl{defined} \tl{(} \nt{ns} \nt{mlsym} \tl{)} \vb \\
+\nt{query}  \> \ar \tl{defined} \tl{(} \nt{sym} \tl{)} \vb \tl{defined} \tl{(} \nt{ns} \nt{mlsym} \tl{)} \\
 \\
-\nt{acmp}   \> \ar \nt{aexp} (\ttl{<} \vb \ttl{<=} \vb \ttl{>} \vb \ttl{>=} \vb
-                              \ttl{=} \vb \ttl{<>}) \nt{aexp} \\
+\nt{acmp}   \> \ar \nt{aexp} (\ttl{<} \vb \ttl{<=} \vb \ttl{>} \vb \ttl{>=} \vb \ttl{=} \vb \ttl{<>}) \nt{aexp} \\
 \\
-\nt{batom}  \> \ar \nt{query} \vb \nt{acmp} \vb \tl{not} \nt{batom} \vb
-                   \tl{(} \nt{bdisj} \tl{)} \\
+\nt{batom}  \> \ar \nt{query} \vb \nt{acmp} \vb \tl{not} \nt{batom} \vb \tl{(} \nt{bdisj} \tl{)} \\
 \nt{bcmp}   \> \ar \nt{batom} [(\ttl{=} \vb \ttl{<>}) \nt{batom}] \\
 \nt{bconj}  \> \ar \{\nt{bcmp} \tl{andalso}\} \nt{bcmp} \\
 \nt{bdisj}  \> \ar \{\nt{bconj} \tl{orelse}\} \nt{bdisj} \\
@@ -822,14 +849,9 @@ remainder of the line after the word {\tt error}.
 \section{Access control}
 \label{sec:access}
 
-Access control is a new feature. At the moment, only the basic
-mechanisms are implemented, but there is no enforcement.  In other
-words, everybody is assumed to have every possible privilege.  CM
-merely reports which privileges "would have been required".
-
 The basic idea behind CM's access control is the following: In their
 description files groups and libraries can specify a list of
-privileges that the client must have in order to be able to use it.
+{\em privileges} that the client must have in order to be able to use it.
 Privileges at this level are just names (strings) and must be written
 in front of the initial keyword {\tt Library} or {\tt Group}.  If one
 group or library imports from another group or library, then
@@ -865,6 +887,11 @@ implemented) enforcement mechanism must ensure that anyone who
 stabilizes a library that wraps $P$ has permission to wrap $P$.
 
 Note that privileges cannot be wrapped at the level of CM groups.
+
+Access control is a new feature. At the moment, only the basic
+mechanisms are implemented, but there is no enforcement.  In other
+words, everybody is assumed to have every possible privilege.  CM
+merely reports which privileges "would have been required".
 
 \section{The pervasive environment and primitive modules}
 
@@ -996,11 +1023,11 @@ interactive top level after loading the {\tt cm-tools.cm} library
 (e.g., via {\tt CM.autoload}).
 
 The call to {\tt Tools.newCmdGetterSetter} makes a `command
-getter-setter'' which is a value of type {\tt string option ->
-string}. It can be invoked to query or set the command string for the
-tool.  Here, the default string is {\tt new-ml-yacc} and can be
-customized at startup time using the environment variable {\tt
-CM\_NYACC}.
+getter-setter'' which is a value of type {\tt \{ get: unit -> string,
+set: string -> unit \} }. It can be invoked to query or set the
+command string for the tool.  Here, the default string is {\tt
+new-ml-yacc} and can be customized at startup time using the
+environment variable {\tt CM\_NYACC}.
 
 {\tt Tools.registerStdShellCmdTool} creates the class and installs the
 tool for it.  The arguments must be specified as follows:

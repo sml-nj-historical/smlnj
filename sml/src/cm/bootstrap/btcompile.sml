@@ -13,6 +13,7 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
     val deliver' : string option -> bool
     val deliver : unit -> bool
     val reset : unit -> unit
+    val symval : string -> { get: unit -> int option, set: int option -> unit }
 end = struct
 
     structure EM = GenericVC.ErrorMsg
@@ -304,4 +305,5 @@ end = struct
 			 work = fn () => compile true arg,
 			 cleanup = fn () => () }
     fun deliver () = deliver' NONE
+    val symval = SSV.symval
 end
