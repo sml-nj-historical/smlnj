@@ -1,12 +1,13 @@
-(*
+(*  linkage-dlopen.sml
+ *
  * This module implements a high-level interface for dlopen.
  *   While addresses (those obtained by applying function "addr" below
  *   or addresses derived from those) will not remain valid across
  *   export{ML,Fn}/restart, handles *will* stay valid.
  *
- * (C) 2001, Lucent Technologies, Bell Laboratories
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
  *
- * author: Matthias Blume
+ * Author: Matthias Blume (blume@tti-c.org)
  *)
 structure DynLinkage :> DYN_LINKAGE = struct
 

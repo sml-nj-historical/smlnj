@@ -1,11 +1,11 @@
-(*
- * User-visible ML-side representation of certain primitive C types.
+(* mlrep-i32f64.sml
  *
- * x86/Sparc/PPC version (all ints: 32 bit, all floats: 64 bit)
+ *   User-visible ML-side representation of certain primitive C types.
+ *   x86/Sparc/PPC version (all ints: 32 bit, all floats: 64 bit)
  *
- *  (C) 2004 The Fellowship of SML/NJ
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
  *
- * author: Matthias Blume (blume@tti-c.org)
+ * Author: Matthias Blume (blume@tti-c.org)
  *)
 structure MLRep = struct
     structure Signed = Int32
@@ -13,6 +13,6 @@ structure MLRep = struct
     structure Real = Real64
 
     (* word-style bit-operations on integers... *)
-    structure SignedBitops = IntBitOps
-				 (structure I = Signed structure W = Unsigned)
+    structure SignedBitops =
+        IntBitOps (structure I = Signed structure W = Unsigned)
 end

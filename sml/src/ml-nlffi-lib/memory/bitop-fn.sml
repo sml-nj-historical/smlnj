@@ -1,10 +1,11 @@
-(*
- * Bit operations on integers (as if they were words).
+(* bitop-fn.sml
  *
- *  (C) 2002, Lucent Technologies, Bell Labs
+ *    Bit operations on integers as if they were words
+ *         (based on suggestions from Allen Leung).
  *
- * author: Matthias Blume (blume@research.bell-labs.com)
- *         (based on suggestions from Allen Leung)
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
+ *
+ * Author: Matthias Blume (blume@tti-c.org)
  *)
 functor IntBitOps (structure I : INTEGER structure W : WORD) : sig
 

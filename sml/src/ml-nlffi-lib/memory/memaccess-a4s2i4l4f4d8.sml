@@ -1,16 +1,16 @@
-(*
- * Primitives for "raw" memory access.
+(* memaccess-a4s2i4l4f4d8.sml
  *
- * x86-win32 version:
- *     addr char short  int  long float double
- *     4    1    2      4    4    4     8       (bytes)
+ *   Primitives for "raw" memory access.
+ *
+ *   x86/Sparc/PPC version:
+ *       addr char short  int  long float double
+ *       4    1    2      4    4    4     8       (bytes)
  *
  *   (C) 2004 The Fellowship of SML/NJ
  *
  * author: Matthias Blume (blume@tti-c.org)
  *)
-structure CMemory : CMEMORY = struct
-    exception OutOfMemory
+structure CMemAccess : CMEMACCESS = struct
 
     type addr = Word32.word
     val null = 0w0 : addr
@@ -61,32 +61,6 @@ structure CMemory : CMEMORY = struct
 	    (store_uchar (to, load_uchar from);
 	     bcopy { from = from + 0w1, to = to + 0w1, bytes = bytes - 0w1 })
 	else ()
-
-    local
-	structure DL = DynLinkage
-	fun main's s = DL.lib_symbol (DL.main_lib, s)
-	val malloc_h = main's "GlobalAlloc"
-	val free_h = main's "GlobalFree"
-	fun sys_malloc (n : Word32.word) = let
-	    val w_p = RawMemInlineT.rawccall :
-		      Word32.word * (Word32.word * Word32.word) *
-		                    (unit * word * word -> string) list
-		      -> Word32.word
-	    val a = w_p (DL.addr malloc_h, (0w0, n), [])
-	in
-	    if a = 0w0 then raise OutOfMemory else a
-	end
-	fun sys_free (a : Word32.word) = let
-	    val p_u = RawMemInlineT.rawccall :
-		      Word32.word * Word32.word * (unit * string -> unit) list
-		      -> unit
-	in
-	    p_u (DL.addr free_h, a, [])
-	end
-    in
-        fun alloc bytes = sys_malloc (Word.toLargeWord bytes)
-	fun free a = sys_free a
-    end
 
     (* types used in C calling convention *)
     type cc_addr = Word32.word

@@ -1,4 +1,4 @@
-(* memory.sig
+(* memory.sml
  *
  *   Primitives for "raw" memory access and allocation.
  *
@@ -6,7 +6,7 @@
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
-signature CMEMORY = sig
-    include CMEMACCESS
-    include CMEMALLOC where type addr' = addr
+structure CMemory : CMEMORY = struct
+    open CMemAccess
+    open CMemAlloc
 end
