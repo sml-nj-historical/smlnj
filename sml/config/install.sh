@@ -9,11 +9,13 @@
 # by M.Blume (2/2000).
 #
 
+this=$0
+
 #
 # get the target list
 #
 if [ ! -r config/targets ]; then
-    echo "!!! File config/targets is missing."
+    echo "$this: !!! File config/targets is missing."
     exit 1
 fi
 . config/targets
@@ -22,7 +24,7 @@ fi
 # create the preloads.standard file
 #
 if [ ! -r config/preloads ]; then
-    echo "!!! File config/preloads is missing."
+    echo "$this: !!! File config/preloads is missing."
     exit 1
 fi
 cp config/preloads preloads.standard
@@ -34,15 +36,15 @@ cp config/preloads preloads.standard
 MAKE=make
 
 SHELL=/bin/sh
-echo Using shell $SHELL.
+echo $this: Using shell $SHELL.
 
 #
 # set the SML root directory
 #
 REAL_PWD=`pwd`
 ROOT=${PWD:-$REAL_PWD}
-echo SML root is $ROOT.
-echo Installation directory is ${INSTALLDIR:=$ROOT}.
+echo $this: SML root is $ROOT.
+echo $this: Installation directory is ${INSTALLDIR:=$ROOT}.
 
 #
 # set the various directory and file pathname variables
@@ -90,24 +92,24 @@ export CM_PATHCONFIG_DEFAULT
 # the release version that we are installing
 #
 VERSION=`cat $CONFIGDIR/version`
-echo Installing version $VERSION.
+echo $this: Installing version $VERSION.
 
 #
 # the URL for the (usually remote) source archive
 #
 SRCARCHIVEURL=`cat $CONFIGDIR/srcarchiveurl`
-echo URL of source archive is $SRCARCHIVEURL.
+echo $this: URL of source archive is $SRCARCHIVEURL.
 
 #
 # Function to make a directory (and advertise such action).
 #
 makedir() {
     if [ ! -d $1 ] ; then
-	echo Making directory $1
+	echo $this: Making directory $1
 	if mkdir $1 ; then
 	    : everything is fine
 	else
-	    echo "!!! Unable to make directory $1!"
+	    echo "$this: !!! Unable to make directory $1!"
 	    exit 1
 	fi
     fi
@@ -120,7 +122,7 @@ makedir() {
 #   $3 - remote directory
 #
 askurl() {
-    echo Please, fetch $1 archive '('$VERSION-$2.'*)' from
+    echo $this: Please, fetch $1 archive '('$VERSION-$2.'*)' from
     echo '  ' $3
     echo "and then re-run this script!"
     exit 1
@@ -135,21 +137,22 @@ askurl() {
 #
 fetchurl() {
     getter=$1 ; shift
-    echo Fetching $1 from $2. Please stand by...
+    echo $this: Fetching $1 from $2. Please stand by...
     fetched=no
     for ext in tgz tar.gz tar.Z tz tar tar.bz2 ; do
 	try=$VERSION-$2.$ext
-	echo Trying $try ...
+	echo $this: Trying $try ...
 	if $getter $3 $try $ROOT/$try ; then
 	    fetched=yes
-	    echo Success.
+	    echo $this: Fetching $try was a success.
 	    break
 	else
 	    rm -f $ROOT/$try
 	fi
     done
     if [ $fetched = no ] ; then
-	echo No success.  You should try to do it manually now.
+	echo $this: Fetching $try was no success.
+	echo '  ' You should try to do it manually now.
 	askurl "$1" "$2" "$3"
     fi
 }
@@ -199,22 +202,22 @@ fetch_n_unpack() {
     larc=$ROOT/$VERSION-$4
     cd $2
     if [ -r $larc.tar.Z ] ; then
-	echo "Un-compress-ing and un-tar-ing $1 archive."
+	echo "$this: Un-compress-ing and un-tar-ing $1 archive."
 	zcat $larc.tar.Z | tar -xf -
     elif [ -r $larc.tar ] ; then
-	echo "Un-tar-ing $1 archive."
+	echo "$this: Un-tar-ing $1 archive."
 	tar -xf $larc.tar
     elif [ -r $larc.tar.gz ] ; then
-	echo "Un-gzip-ing and un-tar-ing $1 archive."
+	echo "$this: Un-gzip-ing and un-tar-ing $1 archive."
 	gunzip -c $larc.tar.gz | tar -xf -
     elif [ -r $larc.tar.bz2 ] ; then
-	echo "Un-bzip2-ing and un-tar-ing $1 archive."
+	echo "$this: Un-bzip2-ing and un-tar-ing $1 archive."
 	bunzip2 -c $larc.tar.bz2 | tar -xf -
     elif [ -r $larc.tgz ] ; then
-	echo "Un-gzip-ing and un-tar-ing $1 archive."
+	echo "$this: Un-gzip-ing and un-tar-ing $1 archive."
 	gunzip -c $larc.tgz | tar -xf -
     elif [ -r $larc.tz ] ; then
-	echo "Un-compress-ing and un-tar-ing $1 archive."
+	echo "$this: Un-compress-ing and un-tar-ing $1 archive."
 	zcat $larc.tz | tar -xf -
     elif [ $tryfetch = yes ] ; then
 	urlgetter
@@ -230,12 +233,12 @@ fetch_n_unpack() {
 unpack() {
     tryfetch=yes
     if [ -d $2/$3 ]; then
-	echo "The $1 tree already exists."
+	echo "$this: The $1 tree already exists."
     else
 	fetch_n_unpack "$1" "$2" "$3" "$4"
     fi
     if [ ! -d $2/$3 ]; then
-	echo "!!! Unable to unpack $1 archive."
+	echo "$this: !!! Unable to unpack $1 archive."
 	exit 1
     fi
 }
@@ -248,7 +251,7 @@ move() {
     if [ -d $1 ] ; then
 	if [ ! -d $2 ] ; then
 	    if [ -f $2 ] ; then
-		echo install.sh: $2 exists as a non-directory.
+		echo $this: $2 exists as a non-directory.
 		exit 1
 	    fi
 	    mkdir $2
@@ -280,9 +283,9 @@ movelibs() {
 	case $lib in
 	*.cm | *.cmi)
 	    if [ $lib != $2 ] ; then
-		echo "! Warning:" $lib specified relative to $2
+		echo "$this: Warning:" $lib specified relative to $2
 	    fi
-	    echo Moving library $lib to $LIBDIR
+	    echo $this: Moving library $lib to $LIBDIR
 	    makedir $LIBDIR/$2
 	    makedir $LIBDIR/$2/CM
 	    makedir $LIBDIR/$2/CM/$ARCH-unix
@@ -312,10 +315,10 @@ reglib() {
 	FINALLOCATION=$SRCDIR/$2
     fi
     if [ -d $FINALLOCATION/CM/$ARCH-unix ] ; then
-	echo "Library $1 already exists in $FINALLOCATION."
+	echo "$this: Library $1 already exists in $FINALLOCATION."
     else
-        echo "Scheduling library $1 to be built in $FINALLOCATION."
-        echo "andalso CM.stabilize false \"$1\"" >>$LIBLIST
+        echo "$this: Scheduling library $1 to be built in $FINALLOCATION."
+        echo "  andalso CM.stabilize false \"$1\"" >>$LIBLIST
         echo $1 $SRCDIR/$2 >>$LOCALPATHCONFIG
         if [ x$MOVE_LIBRARIES = xtrue ] ; then
 	    echo movelibs $SRCDIR/$2 $1 >>$LIBMOVESCRIPT
@@ -341,9 +344,9 @@ standalone() {
 	TARGETLOC=$TARGET
     fi
     if [ -r $HEAPDIR/$TARGET ] ; then
-	echo Target $TARGET already exists.
+	echo $this: Target $TARGET already exists.
     else
-	echo Building $TARGET.
+	echo $this: Building $TARGET.
 	unpack $2 $SRCDIR $1 $1
 	cd $SRCDIR/$1
 	./build
@@ -354,7 +357,7 @@ standalone() {
 		ln -s .run-sml $1
 	    fi
 	else
-	    echo "!!! Build of $TARGET failed."
+	    echo "$this: !!! Build of $TARGET failed."
 	fi
     fi
 }
@@ -371,24 +374,24 @@ done
 # install the script that tests the architecture, and make sure that it works
 #
 if [ -x $BINDIR/.arch-n-opsys ]; then
-    echo Script $BINDIR/.arch-n-opsys already exists.
+    echo $this: Script $BINDIR/.arch-n-opsys already exists.
 else
     cat $CONFIGDIR/_arch-n-opsys \
     | sed -e "s,@SHELL@,$SHELL,g" > $BINDIR/.arch-n-opsys
     chmod 555 $BINDIR/.arch-n-opsys
     if [ ! -x $BINDIR/.arch-n-opsys ]; then
-	echo "!!! Installation of $BINDIR/.arch-n-opsys failed."
+	echo "$this: !!! Installation of $BINDIR/.arch-n-opsys failed."
 	exit 1
     fi
 fi
 
 ARCH_N_OPSYS=`$BINDIR/.arch-n-opsys`
 if [ "$?" != "0" ]; then
-    echo "!!! Script $BINDIR/.arch-n-opsys fails on this machine."
-    echo "!!! You must patch this by hand and repeat the installation."
+    echo "$this: !!! Script $BINDIR/.arch-n-opsys fails on this machine."
+    echo "$this: !!! You must patch this by hand and repeat the installation."
     exit 2
 else
-    echo Script $BINDIR/.arch-n-opsys reports $ARCH_N_OPSYS.
+    echo $this: Script $BINDIR/.arch-n-opsys reports $ARCH_N_OPSYS.
 fi
 eval $ARCH_N_OPSYS
 
@@ -404,7 +407,7 @@ installdriver() {
 # for an outdated driver script, but not all "test" commands understand
 # the -nt comparison operator....)
 #   if [ -x $BINDIR/$ddst ]; then
-#	echo Script $BINDIR/$ddst already exists.
+#	echo $this: Script $BINDIR/$ddst already exists.
 #   else
 	rm -f $BINDIR/$ddst
 	cat $CONFIGDIR/$dsrc | \
@@ -414,7 +417,7 @@ installdriver() {
 	    > $BINDIR/$ddst
 	chmod 555 $BINDIR/$ddst
 	if [ ! -x $BINDIR/$ddst ]; then
-	    echo "!!! Installation of $BINDIR/${ddst} failed."
+	    echo "$this: !!! Installation of $BINDIR/${ddst} failed."
 	    exit 1
 	fi
 #   fi
@@ -449,7 +452,7 @@ case $OPSYS in
     linux)
 	EXTRA_DEFS=`$CONFIGDIR/chk-global-names.sh`
 	if [ "$?" != "0" ]; then
-	    echo "!!! Problems checking for underscores in global names."
+	    echo "$this: !!! Problems checking for underscores in asm names."
 	    exit 1
 	fi
 	EXTRA_DEFS="XDEFS=$EXTRA_DEFS"
@@ -466,16 +469,16 @@ BOOT_FILES=sml.boot.$ARCH-unix
 #
 unpack "run-time" $SRCDIR runtime runtime
 if [ -x $RUNDIR/run.$ARCH-$OPSYS ]; then
-    echo Run-time system already exists.
+    echo $this: Run-time system already exists.
 else
     cd $SRCDIR/runtime/objs
-    echo Compiling the run-time system.
+    echo $this: Compiling the run-time system.
     $MAKE -f mk.$ARCH-$OPSYS $EXTRA_DEFS
     if [ -x run.$ARCH-$OPSYS ]; then
 	mv run.$ARCH-$OPSYS $RUNDIR
 	# $MAKE MAKE=$MAKE clean
     else
-	echo "!!! Run-time system build failed for some reason."
+	echo "$this: !!! Run-time system build failed for some reason."
 	exit 1
     fi
 fi
@@ -485,7 +488,7 @@ cd $SRCDIR
 # boot the base SML system
 #
 if [ -r $HEAPDIR/sml.$HEAP_SUFFIX ]; then
-    echo Heap image $HEAPDIR/sml.$HEAP_SUFFIX already exists.
+    echo $this: Heap image $HEAPDIR/sml.$HEAP_SUFFIX already exists.
 else
     unpack bin $ROOT $BOOT_FILES $BOOT_FILES
     cd $ROOT/$BOOT_FILES
@@ -512,11 +515,11 @@ else
 	    rm -rf $BOOT_FILES
 
 	else
-	    echo "!!! Boot code did not produce heap image (sml.$HEAP_SUFFIX)."
+	    echo "$this !!! No heap image generated (sml.$HEAP_SUFFIX)."
 	    exit 1
 	fi
     else
-	echo "!!! Boot code failed, no heap image built (sml.$HEAP_SUFFIX)."
+	echo "$this !!! Boot code failed, no heap image (sml.$HEAP_SUFFIX)."
 	exit 1
     fi
 fi
@@ -532,7 +535,7 @@ echo 'OS.Process.exit (if true' >$LIBLIST
 # now build (or prepare to build) the individual targets
 #
 cd $SRCDIR
-echo Installing other targets.
+echo $this: Installing other targets.
 for i in $TARGETS ; do
     case $i in
       src-smlnj)
@@ -592,7 +595,7 @@ for i in $TARGETS ; do
 	build $ROOT
 	;;
       *)
-        echo "!!! Unknown target $i."
+        echo "$this: !!! Unknown target $i."
 	;;
     esac
 done
@@ -603,12 +606,12 @@ done
 # $SRCDIR, so we must consult $LOCALPATHCONFIG.
 #
 
-echo Compiling library code.
+echo $this: Compiling library code.
 echo 'then OS.Process.success else OS.Process.failure);' >>$LIBLIST
 if CM_LOCAL_PATHCONFIG=$LOCALPATHCONFIG $BINDIR/sml <$LIBLIST ; then
-    echo Libraries compiled successfully.
+    echo $this: Libraries compiled successfully.
 else
-    echo "!!! Something went wrong when compiling the libraries."
+    echo "$this: !!! Something went wrong when compiling the libraries."
     exit 1
 fi
 
@@ -617,7 +620,7 @@ fi
 #
 
 if [ -r $LIBMOVESCRIPT ] ; then
-    echo Moving libraries to $LIBDIR.
+    echo $this: Moving libraries to $LIBDIR.
     . $LIBMOVESCRIPT
 fi
 

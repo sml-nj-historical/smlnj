@@ -12,6 +12,44 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/03/10 07:48:34
+Tag: blume_main_v110p26p1_1
+Description:
+
+I added a re-written version of Dave's fixpt script to src/system.
+Changes relative to the original version:
+  - sh-ified (not everybody has ksh)
+  - automatically figures out which architecture it runs on
+  - uses ./makeml a bit more cleverly
+  - never invokes ./installml (and, thus, does not clobber your
+    good and working installation of sml in case something goes wrong)
+  - accepts max iteration count using option "-iter <n>"
+  - accepts a "base" name using option "-base <base>"
+
+It does not build any extraneous heap images but directly rebuilds
+bin- and boot-hierarchies using makeml's "-rebuild" switch. Finally,
+it can incorporate existing bin- and boot- hierarchies.  For example,
+suppose the base is set to "sml" (which is the default).  Then it
+successively builds
+
+        sml.bin.<arch>-unix and sml.boot.<arch>-unix
+then    sml1.bin.<arch>-unix and sml1.boot.<arch>-unix
+then    sml2.bin.<arch>-unix and sml2.boot.<arch>-unix
+...
+then    sml<n>.bin.<arch>-unix and sml<n>.boot.<arch>-unix
+
+and so on.  If any of these already exist, it will just use what's
+there.  In particular, many people will have the initial set of bin
+and boot files around, so this saves time for at least one full
+rebuild.  Having sets of the form <base><k>.{bin,boot}.<arch>-unix for
+<k>=1,2,... is normally not a good idea when invoking fixpt.  However,
+they might be the result of an earlier partial run of fixpt (which
+perhaps got accidentially killed).  In this case, fixpt will quickly
+move through what exists before continuing where it left off earlier,
+and, thus, saves a lot of time.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 00/03/10 02:20:00
 Tag: leunga-20000310-fix_x86_asm_ra

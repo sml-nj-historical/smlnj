@@ -1,5 +1,6 @@
 #!/bin/sh
 
+this=$0
 here=`pwd`
 cd ../..
 twoup=`pwd`
@@ -8,7 +9,7 @@ cd $here
 LINK=$twoup/bin/.link-sml
 
 if [ ! -x $LINK ] ; then
-    echo Link script $LINK is not operational.
+    echo $this: link script $LINK is not operational.
     exit 1
 fi
 
@@ -37,7 +38,7 @@ if [ -f $twoup/bin/.arch-n-opsys ]; then
     ARCH_N_OPSYS=`$twoup/bin/.arch-n-opsys`
     if [ "$?" = "0" ]; then
 	eval $ARCH_N_OPSYS
-	echo Architecture: $ARCH
+	echo $this: architecture = $ARCH
     fi
 fi
 
@@ -49,7 +50,7 @@ link() {
     if [ -d $1 ] ; then
 	if [ ! -d $2 ] ; then
 	    if [ -f $2 ] ; then
-		echo makeml: $2 exists as a non-directory.
+		echo $this: $2 exists as a non-directory
 		exit 1
 	    fi
 	    mkdir $2
@@ -72,7 +73,7 @@ while [ "$#" != "0" ] ; do
     case $arg in
     -run)
 	if [ "$#" = "0" ]; then
-	    echo "makeml: missing argument for \"-run\" option"
+	    echo "$this: missing argument for \"-run\" option"
 	    exit 1
 	fi
 	RUN="@SMLrun=$1"; shift
@@ -83,7 +84,7 @@ while [ "$#" != "0" ] ; do
 	;;
     -rebuild)
 	if [ "$#" = "0" ]; then
-	    echo "makeml: missing argument for \"-rebuild\" option"
+	    echo "$this: missing argument for \"-rebuild\" option"
 	    exit 1
 	fi
 	rebuilt=yes
@@ -91,21 +92,21 @@ while [ "$#" != "0" ] ; do
 	;;
     -o)
 	if [ "$#" = "0" ]; then
-	    echo "makeml: missing argument for \"-o\" option"
+	    echo "$this: missing argument for \"-o\" option"
 	    exit 1
 	fi
 	HEAP=$1; shift
 	;;
     -alloc)
 	if [ "$#" = "0" ]; then
-	    echo "makeml: missing argument for \"-alloc\" option"
+	    echo "$this: missing argument for \"-alloc\" option"
 	    exit 1
 	fi
 	ALLOC=$1; shift
 	;;
     -boot)
 	if [ "$#" = "0" ]; then
-	    echo "makeml: missing argument for \"-boot\" option"
+	    echo "$this: missing argument for \"-boot\" option"
 	    exit 1
 	fi
 	BOOT_DIR=$1; shift
@@ -114,7 +115,7 @@ while [ "$#" != "0" ] ; do
 	ARGS="$ARGS $arg"
 	;;
     *)
-	echo "makeml: unknown argument \"$arg\""
+	echo "$this: unknown argument \"$arg\""
 	exit 1
 	;;
     esac
@@ -131,12 +132,12 @@ then
 # If this was a -rebuild run, we have to quit now...
 #
     if [ $rebuilt = yes ] ; then
-	echo New binfiles are ready.
+	echo $this: New binfiles are ready.
 	exit 0
     fi
-    echo Heap image generated.
+    echo $this: Heap image generated.
 else
-    echo Something broke.
+    echo $this: Something broke.
     exit 1
 fi
 

@@ -5,6 +5,7 @@ tmpfile=pathconfig.tmp.$$
 
 trap 'rm -f $tmpfile; exit 1' 0 1 2 3 15
 
+this=$0
 here=`pwd`
 cd ../..
 twoup=`pwd`
@@ -24,7 +25,7 @@ if [ -f ../../bin/.arch-n-opsys ]; then
   if [ "$?" = "0" ]; then
     eval $ARCH_N_OPSYS
   else
-    echo "Cannot determine architecture/os."
+    echo "$this: Cannot determine architecture/os."
     exit 1
   fi
 fi
@@ -37,7 +38,7 @@ move() {
     if [ -d $1 ] ; then
 	if [ ! -d $2 ] ; then
 	    if [ -f $2 ] ; then
-		echo installml: $2 exists as a non-directory.
+		echo $this: $2 exists as a non-directory.
 		exit 1
 	    fi
 	    mkdir $2
@@ -57,12 +58,12 @@ HEAP_FILE=$STEM.$ARCH-$OPSYS
 LIB_DIR=$STEM.lib
 
 if [ ! -f $HEAP_FILE ] ; then
-    echo "The heap file $HEAP_FILE is missing."
+    echo "$this: The heap file $HEAP_FILE is missing."
     exit 1
 fi
 
 if [ ! -d $LIB_DIR ] ; then
-    echo "The library directory $LIB_DIR is missing."
+    echo "$this: The library directory $LIB_DIR is missing."
     exit 1
 fi
 
