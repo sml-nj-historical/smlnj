@@ -1,6 +1,6 @@
 Changes since 3.9.3:
 
-* New add-log support.
+* New add-log support (try C-x 4 a from within an SML function).
 
 * sml-bindings has disappeared.
 
@@ -20,12 +20,12 @@ Changes since 3.9.3:
 * mouse-2 to yank in *sml* should work again (but won't work for next-error
   any more).
 
-* Added a trivial CM major-mode.
+* New major-modes sml-cm-mode, sml-lex-mode and sml-yacc-mode.
 
 * sml-load-hook has disappeared as has inferior-sml-load-hook.
 
 * sml-mode-startup.el is now automatically generated and you're supposed to
-  `load' it from .emacs or siate-start.el.
+  `load' it from .emacs or site-start.el.
 
 * Minor bug fixes.
 

@@ -25,9 +25,4 @@
 
 * obey fixity directives.
 
-* right-align "and" with its correspondant.
-
-* find the enclosing function's name for add-change-log-entry.
-* add imenu support
-
-* sample indentations to be improved:
+* right-align "and" with its correspondent.

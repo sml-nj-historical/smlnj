@@ -1,3 +1,21 @@
+2000-10-06  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-mode.el: Make the toplevel closer to usual practice.
+	(sml-imenu-regexp, sml-imenu-create-index): New var and fun.
+	(sml-mode): Use them.
+	(sml-beginning-of-defun): Add `and' as function-leader.
+	(sml-lex-mode): New trivial mode.
+	(sml-yacc-bnf-face, sml-yacc-indent-action, sml-yacc-indent-pipe) 
+	(sml-yacc-indent-term, sml-yacc-font-lock-keywords) 
+	(sml-yacc-font-lock-defaults): New vars.
+	(sml-yacc-indent-line, sml-yacc-indentation, sml-yacc-mode): New funs.
+
+	* sml-mode.texi: Added yours truly to the list of authors.
+
+	* sml-mode.spec: New file.
+
+	* sml-defs.el (sml-outline-regexp): Slightly improved regexp.
+
 2000-08-24  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* sml-proc.el (inferior-sml-mode-map): Don't inherit from sml-bindings.
