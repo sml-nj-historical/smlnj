@@ -188,7 +188,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	      val p = case lpcth () of
 		  NONE => []
 		| SOME f => [f]
-	      val p = #get StdConfig.pathcfgspec () :: p
+	      val p = #get StdConfig.pathcfgspec () () :: p
 	      fun processOne f = let
 		  val work =  SrcPath.processSpecFile
 				  { env = penv, specfile = f, say = Say.say }

@@ -1,6 +1,14 @@
 #!@SHELL@
 
-BIN_DIR=@BINDIR@
+if [ x${SMLNJ_HOME} = x ] ; then
+    BIN_DIR=@BINDIR@
+else
+    if [ x${CM_PATHCONFIG} = x ] ; then
+	CM_PATHCONFIG=${SMLNJ_HOME}/lib/pathconfig
+	export CM_PATHCONFIG
+    fi
+    BIN_DIR=${SMLNJ_HOME}/bin
+fi
 
 SML=$BIN_DIR/sml
 LINK=$BIN_DIR/.link-sml

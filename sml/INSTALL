@@ -153,7 +153,7 @@ These are instructions for installing recent "working" versions of SML/NJ.
    2.7.  Can I move files to another directory after the fact?
    -----------------------------------------------------------
 
-   Yes.  But this requires two small tweaks (points 2. and 3. below).
+   Yes. 
 
    Here is the procedure:
 
@@ -164,21 +164,18 @@ These are instructions for installing recent "working" versions of SML/NJ.
 
         $ mv $d/{bin,lib} $e
 
-     2. Edit $e/bin/.run-sml and change the value of
-        the variable BIN_DIR to (the value of) $e/bin.
-        (If e=/usr/share/smlnj, then the value would have to be
-        /usr/share/smlnj/bin.)
+     2. Before running the "sml" command, set the environment variable
+        SMLNJ_HOME to point to $e:
 
-     3. Before running the "sml" command, set the environment variable
-        CM_PATHCONFIG to $e/lib.  You could do this globally, either
-        in a system-wide .profile or even by adding a line, e.g.,
+        $ export SMLNJ_HOME=$e
 
-           export CM_PATHCONFIG=/usr/share/smlnj/lib
+        If you want to put the contents of $e/lib somewhere else, then
+        point CM_PATHCONFIG to wherever the path configuration file
+        lives.  (The default is $SMLNJ_HOME/lib/pathconfig.)
 
-        to $e/bin/.run-sml.
-
-        Alternatively, each user who wants to run "sml" could set the
-        variable by him/herself.
+        You can also scatter around the contents of $e/lib.  If you do so,
+        you have to edit the path configuration file itself.  See the CM
+        manual for more information on path anchors and path configuration.
 
    2.8 Forcing the installer to use a particular URL getter program
    ----------------------------------------------------------------

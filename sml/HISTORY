@@ -14,6 +14,21 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/07/23 11:45:00
+Tag: blume-20020723-smlnj-home
+Description:
+
+Sml now senses the SMLNJ_HOME environment variable.  If this is set,
+then the bin dir is assumed to be in $SMLNJ_HOME/bin and (unless
+CM_PATHCONFIG is also set), the path configuration file is assumed
+to be in $SMLNJ_HOME/lib/pathconfig.  This way one can easily move
+the entire tree to some other place and everything will "just work".
+
+(Companion commands such as ml-build and ml-makedepend also sense this
+variable.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/07/12 21:19:00 EDT
 Tag: blume-20020712-liveness
 Description:

@@ -21,13 +21,21 @@ unset ENV
 #
 
 # the path of the directory in which executables (like this file) are kept.
-BIN_DIR=@BINDIR@
-if [ ! -d "$BIN_DIR" ]; then
-    cmddir=`dirname $0`
-    case "$cmddir" in
-    	/* ) BIN_DIR="$cmddir";;
-    	* ) BIN_DIR=`cd $cmddir; pwd` ;;
-    esac
+if [ x${SMLNJ_HOME} = x ] ; then
+    BIN_DIR=@BINDIR@
+    if [ ! -d "$BIN_DIR" ]; then
+	cmddir=`dirname $0`
+	case "$cmddir" in
+	    /* ) BIN_DIR="$cmddir";;
+	    * ) BIN_DIR=`cd $cmddir; pwd` ;;
+	esac
+    fi
+else
+    if [ x${CM_PATHCONFIG} = x ] ; then
+	CM_PATHCONFIG=${SMLNJ_HOME}/lib/pathconfig
+	export CM_PATHCONFIG
+    fi
+    BIN_DIR=${SMLNJ_HOME}/bin
 fi
 
 # the path of the directory in which the runtime system executables are kept.
