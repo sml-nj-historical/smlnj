@@ -14,6 +14,25 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/01/29
+Tag: blume-20020129-INSTALL
+Description:
+
+- Added somewhat detailed installation instructions (file INSTALL).
+- Fixed curl-detection bug in config/install.sh.
+- It is now possible to select the URL getter using the URLGETTER
+  environment variable:
+
+      not set / "unknown"      --> automatic detection (script tries wget,
+                                   curl, and lynx)
+      "wget" / "curl" / "lynx" --> use the specified program (script "knows"
+                                   how to properly invoke them)
+      other                    --> use $URLGETTER directly, it must take
+                                   precisely two command-line arguments
+                                   (source URL and destination file name)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/01/28
 Tag: blume-20020128-sparc-ccalls
 Description:

@@ -69,8 +69,6 @@ LATESTANDALONES=$ROOT/latestandalones # standalone programs to be built late
 LIBMOVESCRIPT=$ROOT/libmove	# a temporary script
 LOCALPATHCONFIG=$INSTALLDIR/pathconfig # a temporary pathconfig file
 
-URLGETTER=unknown
-
 #
 # The path to the dir where ml-yacc, ml-burg, ml-lex, ml-build, and
 # ml-makedepend live.  This path will be interpreted relative to $LIBDIR.
@@ -167,7 +165,7 @@ fetchurl() {
 	for ext in tar.gz tgz tar.Z tz tar tar.bz2 ; do
 	    try=$base.$ext
 	    echo $this: Trying $try ...
-	    if $getter $3 $try $ROOT/$try ; then
+	    if $getter $3/$try $ROOT/$try ; then
 		fetched=yes
 		echo $this: Fetching $try was a success.
 		break 2		# get out of both for-loops
@@ -183,16 +181,19 @@ fetchurl() {
     fi
 }
 
+# wrapper for wget
 usewget() {
-    wget -nv -O $3 $1/$2
+    wget -nv -O $2 $1
 }
 
+# wrapper for lynx
 uselynx() {
-    lynx -source $1/$2 >$3
+    lynx -source $1 >$2
 }
 
+# wrapper for curl
 usecurl() {
-    curl -s $1/$2 >$3
+    curl -s $1 >$2
 }
 
 testurlgetter() {
@@ -201,42 +202,65 @@ testurlgetter() {
 
 #
 # Function to check whether wget or lynx is available.
-# Set URLGETTER accordingly.
+# Set URLGETTER accordingly.  URLGETTER can be set externally
+# to either 'wget' or 'curl' or 'lynx' -- in which case the
+# corresponding command will be used (properly wrapped).  Any
+# other external setting will be passed directly to fetchurl (without
+# wrapping -- meaning it must take precisely two argumets: source and
+# destination, in that order).
 #
 urlgetter() {
-    if [ "$URLGETTER" = unknown ] ; then
-	if testurlgetter wget --help ; then
-	    URLGETTER="fetchurl usewget"
-	elif testurlgetter curl --help ; then
-	    URLGETTER="fetchurl usecurl"
-	elif testurlgetter lynx -help ; then
-	    URLGETTER="fetchurl uselynx"
-	else
-	    URLGETTER="askurl"
-	fi
-    fi
+    case ${URLGETTER:-unknown} in
+	fetchurl*)
+	    ;;
+	unknown)
+	    # automatically figure out which wrapper to use
+	    if testurlgetter wget --help ; then
+		URLGETTER="fetchurl usewget"
+	    elif testurlgetter curl -s -O file:///dev/null -o /dev/null ; then
+		URLGETTER="fetchurl usecurl"
+	    elif testurlgetter lynx -help ; then
+		URLGETTER="fetchurl uselynx"
+	    else
+		URLGETTER="askurl"
+	    fi
+	    ;;
+	wget|curl|lynx)
+	    # special getters we know how to wrap
+	    URLGETTER="fetchurl use${URLGETTER}"
+	    ;;
+	*)
+	    # other -- must be able to work without wrapper
+	    URLGETTER="fetchurl ${URLGETTER}"
+	    ;;
+    esac
 }
 
+# wrapper for tar
 un_tar() {
     echo "$this: Un-TAR-ing $1 archive."
     tar -xf $2
 }
 
+# wrapper for zcat followed by tar
 un_tar_Z() {
     echo "$this: Un-COMPRESS-ing and un-TAR-ing $1 archive."
     zcat $2 | tar -xf -
 }
 
+# wrapper for gunzip followed by tar
 un_tar_gz() {
     echo "$this: Un-GZIP-ing and un-TAR-ing $1 archive."
     gunzip -c $2 | tar -xf -
 }
 
+# wrapper for bunzip2 followed by tar
 un_tar_bz2() {
     echo "$this: Un-BZIP2-ing and un-TAR-ing $1 archive."
     bunzip2 -c $2 | tar -xf -
 }
 
+# unarchive archive without and with version number attached
 unarchive() {
     # $1: descriptive string, $2: archive, $3: unpacker
     if [ -r $ROOT/$2 ] ; then
@@ -682,6 +706,7 @@ for i in $TARGETS ; do
         reglib mlrisc-tools match-compiler.cm MLRISC/Tools
 	;;
       nowhere)
+	unpack "MLRISC Tools Library" $SRCDIR MLRISC MLRISC
         echo standalone nowhere NoWhere . MLRISC/Tools >>$LATESTANDALONES
 	echo nowhere $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
 	;;
