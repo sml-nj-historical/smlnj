@@ -14,6 +14,12 @@
 #
 PATH=/bin:/usr/bin
 
+# set locale variables so that sort works right
+#
+export LC_CTYPE LC_COLLATE
+LC_CTYPE=C
+LC_COLLATE=C
+
 CPP=${CPP:-/lib/cpp}
 
 PFIX=$1      # prefix: _SC_ or _PC_
