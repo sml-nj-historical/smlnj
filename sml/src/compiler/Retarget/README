@@ -1,0 +1,37 @@
+New setup for "RETARGET":
+
+To support cross-compilation for <arch>-<os>, the following files must be
+present in this directory:
+
+1. <arch>-<os>.sml, containing the following SML code:
+
+   structure <Arch><OS>CMB =
+       CMBFun (structure TargetCompiler = <Arch>VisComp
+	       val version = "batch (target: <arch>-<os>)"
+	       val targetosn = "<os>")
+
+2. <arch>-<os>.cm, containing the following CM group description:
+
+  Group
+	structure <Arch><OS>CMB
+  is
+	../viscomp-lib.cm
+	../../cm/cm-lib.cm
+	<arch>-<os>.sml
+
+
+Furthermore, the new combination should be registered in all.cm.
+
+To load the cross-compiler for <arch>-<os>, one must be in the
+compiler source directory, run SML/NJ and type
+
+	CMB.retarget { cpu = "<arch>", os = "<os>" };
+
+at the interactive prompt.
+
+(Note that this command is just a shorthand for
+   CMB.CM.make' ("Retarget/<arch>-<os>.cm", false);
+In other words, cross-compilers are ordinary CM modules.)
+
+---------------
+  M.Blume (5/1998)

@@ -1,0 +1,6 @@
+Group
+	structure MipsBigUnixCMB
+is
+	../viscomp-lib.cm
+	../../cm/cm-lib.cm
+	mipseb-unix.sml

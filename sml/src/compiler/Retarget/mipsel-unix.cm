@@ -1,0 +1,6 @@
+Group
+	structure MipsLittleUnixCMB
+is
+	../viscomp-lib.cm
+	../../cm/cm-lib.cm
+	mipsel-unix.sml
