@@ -104,7 +104,7 @@
 
 ;;; VERSION STRING
 
-(defconst sml-mode-version-string "sml-mode, version 3.9.1")
+(defconst sml-mode-version-string "sml-mode, version 3.9.2")
 
 (require 'cl)
 (require 'sml-util)

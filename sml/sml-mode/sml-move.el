@@ -250,7 +250,8 @@ Returns T if the move indeed moved through one sexp and NIL if not."
     (sml-forward-spaces)
     (let* ((point (point))
 	   (op (sml-forward-sym))
-	   (op-prec (sml-op-prec op 'forw)))
+	   (op-prec (sml-op-prec op 'forw))
+	   match)
       (cond
        ((not op)
 	(let ((point (point)))

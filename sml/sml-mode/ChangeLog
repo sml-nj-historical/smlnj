@@ -1,3 +1,12 @@
+1999-06-19  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* release: 3.9.2
+
+	* sml-proc.el (sml-error-regexp-alist): solved the pathological
+	  font-locking on long lines.
+
+	* sml-move.el (sml-forward-sexp): slightly improved.
+
 1999-06-17  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* sml-mode.el (sml-insert-form): Only add a space if needed.
