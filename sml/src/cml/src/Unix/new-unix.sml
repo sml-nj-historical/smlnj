@@ -85,6 +85,9 @@ structure Unix : UNIX =
                           PIO.dup2{old = oldout, new = newout};
                           PIO.close oldout);
 			PP.exece (cmd, base::argv, env)
+			  handle ex => (
+			  (* the exec failed, so we need to shutdown the child *)
+			    PP.exit 0w128)
 		      end
 		(* end case *))
           val _ = TextIO.flushOut TextIO.stdOut
