@@ -1,8 +1,10 @@
 (* copyright 1998 YALE FLINT PROJECT *)
+(* monnier@cs.yale.edu *)
 
 (* This module does various FIX-related transformations:
  * - FIXes are split into their strongly-connected components
  * - small non-recursive functions are marked inlinable
+ * - curried functions are uncurried
  *)
 
 signature FIXFIX =
@@ -10,11 +12,12 @@ sig
     val fixfix : FLINT.prog -> FLINT.prog
 end
 
-(* It could later be extended to also do:
- * - curried functrions are uncurried
+(* Maybe later:
  * - hoisting of inner functions out of their englobing function
  *   so that the outer function becomes smaller, giving more opportunity
  *   for inlining.
+ * - eta expand escaping functions
+ * - loop-preheader introduction
  *)
 
 structure FixFix :> FIXFIX =
@@ -25,7 +28,6 @@ local
     structure S = IntSetF
     structure M = IntmapF
     structure PP = PPFlint
-    structure LV = LambdaVar
     structure LK = LtyKernel
     structure LT = LtyExtern
 in
@@ -35,6 +37,8 @@ fun bug msg = ErrorMsg.impossible ("FixFix: "^msg)
 fun buglexp (msg,le) = (say "\n"; PP.printLexp le; say " "; bug msg)
 fun bugval (msg,v) = (say "\n"; PP.printSval v; say " "; bug msg)
 fun assert p = if p then () else bug ("assertion failed")
+
+val cplv = LambdaVar.dupLvar
 
 structure SccNode = struct
     type node = LambdaVar.lvar
@@ -92,7 +96,7 @@ fun fexp (fv,lexp) = let
 
     (* do the actual uncurrying *)
     fun uncurry (args as (fk,f,fargs)::_::_,body) =
-	let val f' = LV.mkLvar()	(* the new fun name *)
+	let val f' = cplv f	(* the new fun name *)
 
 	    fun getrtypes ([],rtys) = (NONE, rtys)
 	      | getrtypes ((fk,f,fargs:(F.lvar * F.lty) list)::rest,rtys) =
@@ -132,7 +136,7 @@ fun fexp (fv,lexp) = let
 		    end
 
 	    (* funarg renaming *)
-	    fun newargs fargs = map (fn (_,t) => (LV.mkLvar(),t)) fargs
+	    fun newargs fargs = map (fn (a,t) => (cplv a,t)) fargs
 
 	    (* create (curried) wrappers to be inlined *)
 	    fun recurry ([],args) = F.APP(F.VAR f', map (F.VAR o #1) args)
@@ -143,7 +147,7 @@ fun fexp (fv,lexp) = let
 				 F.FK_FUN{isrec=NONE, fixed=fixed,
 					  known=known, inline=true}
 		    val nfargs = newargs fargs
-		    val g = LV.mkLvar()
+		    val g = cplv f'
 		in F.FIX([(fk, g, nfargs, recurry(rest, args @ nfargs))],
 			 F.RET[F.VAR g])
 		end
@@ -198,7 +202,7 @@ in case lexp
 
 	   (* process the main lexp and make it into a dummy function.
 	    * The computation of the freevars is a little sloppy since `fv'
-	    * includes freevars of the continuation, but the unicity
+	    * includes freevars of the continuation, but the uniqueness
 	    * of varnames ensures that S.inter(fv, funs) gives the correct
 	    * result nonetheless. *)
 	   val (s,fv,le) = fexp(fv, le)
