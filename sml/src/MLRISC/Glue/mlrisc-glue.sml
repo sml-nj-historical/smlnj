@@ -1,13 +1,9 @@
-(*
- * SSA optimizer for doing experiments 
- *)
-
 functor MLRISCGlue
-   (structure E  : EMITTER_NEW
+   (structure Asm  : EMITTER_NEW
     structure F  : FLOWGRAPH
     structure P  : INSN_PROPERTIES
-       sharing P.I = E.I = F.I
-       sharing F.P = E.P
+       sharing P.I = Asm.I = F.I
+       sharing F.P = Asm.P
     val copyProp : F.cluster -> F.cluster
     val branchProb : P.I.instruction -> int
     val patchBranch : {instr:P.I.instruction,backwards:bool} -> 
@@ -29,7 +25,7 @@ struct
 
    structure GraphViewer = GraphViewerFn(AllDisplaysFn(val viewer = viewer))
 
-   structure FormatInsn = FormatInstructionFn(E)
+   structure FormatInsn = FormatInstructionFn(Asm)
 
    structure CFG = ControlFlowGraphFn
       (structure I = I
@@ -37,7 +33,7 @@ struct
        structure P = F.P
        structure W = FixedPointFn(val decimal_bits = 8)
        structure GraphImpl = DirectedGraph
-       structure Asm = E
+       structure Asm = Asm
       )
 
    structure CFG2Cluster = CFG2ClusterFn

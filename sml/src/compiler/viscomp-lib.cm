@@ -52,7 +52,7 @@ TopLevel/interact/intconfig.sml
 TopLevel/interact/interact.sig
 TopLevel/interact/interact.sml
 TopLevel/main/cconfig.sig
-TopLevel/main/codes.sig
+TopLevel/main/code-generator.sig
 TopLevel/main/code-obj.sig
 TopLevel/main/code-obj.sml
 TopLevel/main/compbasic.sig
@@ -277,9 +277,11 @@ CodeGen/hppa/hppaMillicode.sml
 CodeGen/hppa/hppagen.sml
 CodeGen/hppa/hppaspec.sml
 CodeGen/main/code-string.sml
-CodeGen/main/cpsgen.sig
+CodeGen/main/machine.sig
+CodeGen/main/machine-gen.sig
 CodeGen/main/machspec.sig
 CodeGen/main/machspec.sml
+CodeGen/main/mlrisc-export.sml
 CodeGen/main/mlriscGen.sml
 CodeGen/main/object-desc.sig
 CodeGen/main/object-desc.sml
@@ -332,4 +334,4 @@ MiscUtil/util/stats.sml
 
 ../ml-yacc/lib/sources.cm
 
-../MLRISC/MLRISC.cm
+MLRISC.cm

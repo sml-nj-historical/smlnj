@@ -67,7 +67,8 @@ functor FlowGraphGen
    structure InsnProps : INSN_PROPERTIES
    structure MLTree : MLTREE
 
-   val codegen : Flowgraph.cluster -> unit
+   val optimize : (Flowgraph.cluster -> Flowgraph.cluster) option ref
+   val output : Flowgraph.cluster -> unit
      sharing Flowgraph.I = InsnProps.I
      sharing MLTree.Constant = InsnProps.I.Constant
      sharing MLTree.PseudoOp = Flowgraph.P
@@ -181,6 +182,11 @@ struct
   end
 
   fun endCluster(regmap) = let
+      val codegen = 
+	(case !optimize
+	  of NONE => output
+	   | SOME optimizer => output o optimizer
+         (*esac*))
       exception LabTbl
       val labTbl : F.block Intmap.intmap = Intmap.new(16, LabTbl)
       val addLabTbl = Intmap.add labTbl
@@ -268,6 +274,9 @@ end
 
 (*
  * $Log: flowgen.sml,v $
+ * Revision 1.1.1.1  1998/11/16 21:47:21  george
+ *   Version 110.10
+ *
  * Revision 1.4  1998/07/25 03:08:17  george
  *   added to support block names in MLRISC
  *

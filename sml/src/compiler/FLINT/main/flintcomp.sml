@@ -1,7 +1,7 @@
 (* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
 (* flintcomp.sml *)
 
-functor FLINTComp (structure Gen: CPSGEN
+functor FLINTComp (structure Gen: MACHINE_GEN
                    val collect: unit -> CodeObj.code_object) : CODEGENERATOR =
 struct
 
@@ -16,6 +16,7 @@ local structure CB = CompBasic
       structure CpsSplit = CpsSplitFun (MachSpec) 
 in 
 
+structure Machine = Gen
 val architecture = Gen.MachSpec.architecture
 fun bug s = ErrorMsg.impossible ("FLINTComp:" ^ s)
 val say = Control.Print.say
@@ -124,5 +125,8 @@ end (* local *)
 end (* structure FLINTComp *)
 
 (*
- * $Log$
+ * $Log: flintcomp.sml,v $
+ * Revision 1.8  1999/01/11 16:53:25  george
+ *   new array representation support
+ *
  *)

@@ -107,15 +107,7 @@ sig
   val pollChecks : bool ref
   val pollRatioAtoI : real ref
 
-  datatype mlrisc_phase = 
-      NO_PHASE
-    | AFTER_INSTR_SEL
-    | AFTER_RA
-    | AFTER_SCHED
-    | PHASES of mlrisc_phase * mlrisc_phase
-  val printFlowgraph : mlrisc_phase ref
   val printFlowgraphStream : TextIO.outstream ref
-
   val memDisambiguate : bool ref
   val controlDependence : bool ref
 
@@ -191,6 +183,9 @@ end
 
 (*
  * $Log: control.sig,v $
+ * Revision 1.6  1999/01/11 16:53:41  george
+ *   new array representation support
+ *
  * Revision 1.3  1998/05/23 14:10:29  george
  *   Fixed RCS keyword syntax
  *

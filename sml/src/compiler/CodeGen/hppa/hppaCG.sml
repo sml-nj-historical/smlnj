@@ -1,11 +1,6 @@
 functor HppaCG(structure Emitter : EMITTER_NEW
 		 where P = HppaPseudoOps
-	         and I = HppaInstr) :
-		(*  and  structure I = HppaInstr -- redundant *)
-  sig
-    structure MLTreeGen : CPSGEN 
-    val finish : unit -> unit
-  end = 
+	         and I = HppaInstr) : MACHINE_GEN = 
 struct
   structure I = HppaInstr
   structure C = HppaCells
@@ -13,20 +8,23 @@ struct
   structure CG = Control.CG
   structure Region = I.Region
   structure B = HppaMLTree.BNames
+  structure F = HppaFlowGraph
+  structure MachSpec = HppaSpec
+  structure Asm = HppaAsmEmitter
 
   fun error msg = ErrorMsg.impossible ("HppaCG." ^ msg)
 
   structure HppaRewrite = HppaRewrite(HppaInstr)
 
   (* properties of instruction set *)
-  structure HppaProps = 
+  structure P = 
     HppaProps(structure HppaInstr = I 
 	      structure Shuffle = HppaShuffle)
 
   
   (* Label backpatching and basic block scheduling *)
   structure BBSched =
-    BBSched2(structure Flowgraph = HppaFlowGraph
+    BBSched2(structure Flowgraph = F
 	     structure Jumps = 
 	       HppaJumps(structure Instr=HppaInstr
 			 structure Shuffle=HppaShuffle)
@@ -34,14 +32,14 @@ struct
 
   (* flow graph pretty printing routine *)
   structure PrintFlowGraph = 
-     PrintFlowGraphFn (structure FlowGraph = HppaFlowGraph
-                       structure Emitter   = HppaAsmEmitter)
+     PrintFlowGraphFn (structure FlowGraph = F
+                       structure Emitter   = Asm)
   
   (* register allocation *)
   structure RegAllocation : 
     sig
-      val ra : HppaFlowGraph.cluster -> HppaFlowGraph.cluster
-      val cp : HppaFlowGraph.cluster -> HppaFlowGraph.cluster
+      val ra : F.cluster -> F.cluster
+      val cp : F.cluster -> F.cluster
     end =
   struct
    (* spill area management *)
@@ -184,10 +182,10 @@ struct
     structure FR = GetReg(val nRegs = 32 val available = R.availF)
 
     structure HppaRa = 
-      HppaRegAlloc(structure P = HppaProps
+      HppaRegAlloc(structure P = P
 		   structure I = HppaInstr
-		   structure F = HppaFlowGraph
-		   structure Asm = HppaAsmEmitter)
+		   structure F = F
+		   structure Asm = Asm)
 
     (* register allocation for general purpose registers *)
     structure IntRa = 
@@ -237,36 +235,15 @@ struct
     end
   end 
 
-  fun codegen cluster = let
-    fun phaseToMsg(CG.AFTER_INSTR_SEL) = "After instruction selection"
-      | phaseToMsg(CG.AFTER_RA) = "After register allocation"
-      | phaseToMsg(CG.AFTER_SCHED) = "After instruction scheduling"
-      | phaseToMsg _ = error "phaseToMsg"
-    val printGraph = PrintFlowGraph.printCluster (!CG.printFlowgraphStream)
-    fun doPhase (phase, f) cluster = let
-      fun show(CG.PHASES(ph1, ph2)) = show ph1 orelse show ph2
-	| show(ph) = (ph = phase)
-      val newCluster = f cluster
-    in
-      if show (!CG.printFlowgraph) then 
-	printGraph (phaseToMsg phase) newCluster 
-      else ();
-      newCluster
-    end
-    val instrSel = doPhase (CG.AFTER_INSTR_SEL, fn x => x)
-    val regAlloc = doPhase (CG.AFTER_RA, RegAllocation.ra)
-  in
-    case !CG.printFlowgraph 
-    of CG.NO_PHASE => (BBSched.bbsched o RegAllocation.ra) cluster
-     | phase => (BBSched.bbsched o regAlloc o instrSel) cluster
-  end
+  val optimizerHook : (F.cluster->F.cluster) option ref = ref NONE
 
   (* primitives for generation of HPPA instruction flowgraphs *)
   structure FlowGraphGen = 
-     FlowGraphGen(structure Flowgraph = HppaFlowGraph
-		  structure InsnProps = HppaProps
+     FlowGraphGen(structure Flowgraph = F
+		  structure InsnProps = P
 		  structure MLTree = HppaMLTree
-		  val codegen = codegen)
+		  val optimize = optimizerHook
+		  val output = BBSched.bbsched o RegAllocation.ra)
 
   structure HppaMillicode = 
     HppaMillicode(structure MLTree=HppaMLTree
@@ -290,11 +267,16 @@ struct
 	       structure ConstType=HppaConst
 	       structure PseudoOp=HppaPseudoOps)
 
+  val copyProp = RegAllocation.cp
+  val codegen = MLTreeGen.codegen
   val finish = BBSched.finish
 end
 
 (*
  * $Log: hppaCG.sml,v $
+ * Revision 1.6  1998/10/19 13:50:42  george
+ * *** empty log message ***
+ *
  * Revision 1.5  1998/10/06 13:59:59  george
  * Flowgraph has been removed from modules that do not need it -- [leunga]
  *

@@ -11,6 +11,8 @@ signature MACHDEP_VC = sig
     structure CMSA: CMSA
     structure Compile : COMPILE
     structure Interact : INTERACT
+    structure Machine : MACHINE
+    structure MLRISC : MLRISC_EXPORT
     val architecture: string
 end
 
