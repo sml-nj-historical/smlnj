@@ -10,8 +10,8 @@ local
   fun copy { from, to } = let
       val ins = TextIO.openIn from
       val outs = TextIO.openOut to
-      fun loop "" = (TextIO.closeIn ins; TextIO.closeOut outs)
-	| loop l = (TextIO.output (outs, l); next ())
+      fun loop NONE = (TextIO.closeIn ins; TextIO.closeOut outs)
+	| loop (SOME l) = (TextIO.output (outs, l); next ())
       and next () = loop (TextIO.inputLine ins)
   in
       next ()
