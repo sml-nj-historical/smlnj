@@ -31,7 +31,6 @@ is
 	smlfile/smlinfo.sml
 	smlfile/skeleton.sml
 	smlfile/skel-cvt.sml
-	smlfile/skel-opt.sml
 	smlfile/skel-io.sml
 	smlfile/skel-exports.sml
 

@@ -71,11 +71,9 @@ structure SkelIO :> SKELIO = struct
 
 	and w_modExp (SK.Var p, r) = "v" :: w_path (p, r)
 	  | w_modExp (SK.Decl d, r) = "d" :: w_decl (d, r)
-	  | w_modExp (SK.App (p, l), r) =
-	    "a" :: w_path (p, w_list w_modExp (l, r))
 	  | w_modExp (SK.Let (d, m), r) = "l" :: w_decl (d, w_modExp (m, r))
- 	  | w_modExp (SK.Con (m1, m2), r) =
-	    "c" :: w_modExp (m1, w_modExp (m2, r))
+ 	  | w_modExp (SK.Ign1 (m1, m2), r) =
+	    "i" :: w_modExp (m1, w_modExp (m2, r))
     in
 	BinIO.output (s, s2b (concat (version :: w_decl (d, ["\n"]))))
     end
@@ -121,10 +119,8 @@ structure SkelIO :> SKELIO = struct
 
 	and r_modExp (SOME #"v") = SK.Var (r_path (rd ()))
 	  | r_modExp (SOME #"d") = SK.Decl (r_decl (rd ()))
-	  | r_modExp (SOME #"a") =
-	    SK.App (r_path (rd ()), r_list r_modExp (rd ()))
 	  | r_modExp (SOME #"l") = SK.Let (r_decl (rd ()), r_modExp (rd ()))
- 	  | r_modExp (SOME #"c") = SK.Con (r_modExp (rd ()), r_modExp (rd ()))
+ 	  | r_modExp (SOME #"i") = SK.Ign1 (r_modExp (rd ()), r_modExp (rd ()))
 	  | r_modExp _ = raise FormatError
 
 	val firstline = inputLine s

@@ -205,11 +205,9 @@ structure BuildDepend :> BUILDDEPEND = struct
 
 		and evalModExp e (SK.Var sp) = lookSymPath e sp
 		  | evalModExp e (SK.Decl d) = evalDecl e d
-		  | evalModExp e (SK.App (sp, l)) =
-		    (app (ignore o evalModExp e) l; lookSymPath e sp)
 		  | evalModExp e (SK.Let (d, m)) =
 		    evalModExp (DE.LAYER (evalDecl e d, e)) m
-		  | evalModExp e (SK.Con (m1, m2)) =
+		  | evalModExp e (SK.Ign1 (m1, m2)) =
 		    (ignore (evalModExp e m1); evalModExp e m2)
 	    in
 		evalDecl DE.EMPTY sk
