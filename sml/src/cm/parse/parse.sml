@@ -199,7 +199,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 
 	fun mparse args = let
 	    val (group, vers, groupstack, pErrFlag, stabthis, curlib,
-		 ginfo, rb) = args
+		 ginfo, rb, error) = args
 	    fun getStable stablestack (ginfo, gpath, vers, rb) = let
 		(* This is a separate "findCycle" routine that detects
 		 * cycles among stable libraries.  These cycles should
@@ -265,7 +265,29 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		   | _ => SOME g)
 	in
 	    case SrcPathMap.find (!gc, group) of
-		SOME gopt => gopt
+		SOME gopt =>
+		  (case gopt of
+		       SOME (GG.GROUP { kind = GG.NOLIB { owner, ... },...}) =>
+		         let fun libname l =
+				 getOpt (Option.map SrcPath.descr l,
+					 "<toplevel>")
+			     fun eq (NONE, NONE) = true
+			       | eq (SOME p, SOME p') =
+				   SrcPath.compare (p, p') = EQUAL
+			       | eq _ = false
+			 in
+			     if eq (curlib, owner) then ()
+			     else (error (concat ["group ",
+						  SrcPath.descr group,
+						  " appears as member of \
+						  \two different libraries: ",
+						  libname owner, " and ",
+						  libname curlib, "\n"]);
+				   pErrFlag := true)
+				   
+			 end
+		     | _ => ();
+		   gopt)
 	      | NONE => let
 		    fun try_s () = getStable [] (ginfo, group, vers, rb)
 		    fun try_n () =
@@ -345,7 +367,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			 * this group. *)
 			if !mef andalso not keep_going then GG.ERRORGROUP
 			else case mparse (p, v, gs', mef, staball,
-					  curlib, ginfo, rb) of
+					  curlib, ginfo, rb, error (p1, p2)) of
 				 NONE => (mef := true; GG.ERRORGROUP)
 			       | SOME res => res
 		    end
@@ -482,7 +504,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	end
     in
 	SmlInfo.newGeneration ();
-	case mparse (group, NONE, [], ref false, stabthis, NONE, ginfo0, []) of
+	case mparse (group, NONE, [], ref false, stabthis, NONE, ginfo0, [],
+		     fn _ => ()) of
 	    NONE => NONE
 	  | SOME g => SOME (g, ginfo0)
     end

@@ -26,7 +26,7 @@
  */
 ml_val_t _ml_win32_PS_create_process(ml_state_t *msp, ml_val_t arg)
 {
-  char *str = STR_MLtoC(,arg);
+  char *str = STR_MLtoC(arg);
   PROCESS_INFORMATION pi;
   STARTUPINFO si;
   ml_val_t res;

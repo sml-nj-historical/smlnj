@@ -337,27 +337,43 @@ structure POSIX_IO =
 		   close = w_close }
 	end
 
+    local
+	fun c2w_vs cvs = let
+	    val (cv, s, l) = CharVectorSlice.base cvs
+	    val wv = Byte.stringToBytes cv
+	in
+	    Word8VectorSlice.slice (wv, s, SOME l)
+	end
+
+	(* hack!!!  This only works because CharArray.array and
+	 *          Word8Array.array are really the same internally. *)
+	val c2w_a : CharArray.array -> Word8Array.array = InlineT.cast
+
+	fun c2w_as cas = let
+	    val (ca, s, l) = CharArraySlice.base cas
+	    val wa = c2w_a ca
+	in
+	    Word8ArraySlice.slice (wa, s, SOME l)
+	end
+    in
+
     val mkBinReader = mkReader { mkRD = BinPrimIO.RD,
 				 cvtVec = fn v => v,
 				 cvtArrSlice = fn s => s }
 
     val mkTextReader = mkReader { mkRD = TextPrimIO.RD,
 				  cvtVec = Byte.bytesToString,
-				  cvtArrSlice =	(* gross hack!!! *)
-				    fn (s : CharArraySlice.slice) =>
-				       InlineT.cast s : Word8ArraySlice.slice }
+				  cvtArrSlice =	c2w_as }
 
     val mkBinWriter = mkWriter { mkWR = BinPrimIO.WR,
 				 cvtVecSlice = fn s => s,
 				 cvtArrSlice = fn s => s }
 
     val mkTextWriter = mkWriter { mkWR = TextPrimIO.WR,
-				  cvtVecSlice =	(* gross hack!!! *)
-				    fn (s : CharVectorSlice.slice) =>
-				       InlineT.cast s : Word8VectorSlice.slice,
-				  cvtArrSlice = (* gross hack!!! *)
-				    fn (s : CharArraySlice.slice) =>
-				       InlineT.cast s : Word8ArraySlice.slice }
+				  cvtVecSlice =	c2w_vs,
+				  cvtArrSlice = c2w_as }
+
+    end (* local *)
 
   end (* structure POSIX_IO *)
 end

@@ -222,6 +222,7 @@ installdriver() {
 	sed -e "s,@SHELL@,$SHELL,g" \
 	    -e "s,@BINDIR@,$BINDIR," \
 	    -e "s,@VERSION@,$VERSION," \
+	    -e "s,@CMDIRARC@,${CM_DIR_ARC:-dummy}," \
 	    > $BINDIR/$ddst
 	chmod 555 $BINDIR/$ddst
 	if [ ! -x $BINDIR/$ddst ]; then
@@ -250,11 +251,11 @@ fi
 eval $ARCH_N_OPSYS
 
 #
-# now install all the other driver scripts...
+# now install most of the other driver scripts
+#  (except ml-build, since we don't know $CM_DIR_ARC yet)
 #
 installdriver _run-sml .run-sml
 installdriver _link-sml .link-sml
-installdriver _ml-build ml-build
 installdriver _ml-makedepend ml-makedepend
 
 #
@@ -376,6 +377,11 @@ else
 	complain "$this !!! Boot code failed, no heap image (sml.$HEAP_SUFFIX)."
     fi
 fi
+
+#
+# now that we know CM_DIR_ARC we can install the ml-build driver...
+#
+installdriver _ml-build ml-build
 
 cd $ROOT
 

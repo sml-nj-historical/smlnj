@@ -19,6 +19,7 @@ struct entry {
   float weight;
   FILE *f;
   int (*baz) (float, int);
+  const int xyz;
   forwardptr fwd;
 };
 
