@@ -42,8 +42,8 @@ end = struct
 
     fun substitute rules = let
 	val rules =
-	    map (fn { prefix, substitutions } => { prefix = SS.all prefix,
-						   substitutions = substitutions })
+	    map (fn { prefix, substitutions } =>
+		    { prefix = SS.all prefix, substitutions = substitutions })
 		rules
 	fun doit s = let
 	    val len = size s
@@ -71,7 +71,8 @@ end = struct
 				     in
 					 case replace ss of
 					     NONE => finddosubst sl
-					   | SOME r => loop (j, j, SS.all r :: acc)
+					   | SOME r =>
+					     loop (j, j, SS.all r :: acc)
 				     end
 			     in
 				 if j > len then loop (i, len, acc)
@@ -88,8 +89,9 @@ end = struct
 	doit
     end
 
-    fun subfor p r ss = if Substring.compare (Substring.all p, ss) = EQUAL then SOME r
-			else NONE
+    fun subfor p r ss =
+	if Substring.compare (Substring.all p, ss) = EQUAL then SOME r
+	else NONE
 
     fun submap (plen, stopchar) m ss = let
 	val sslen = SS.size ss
@@ -102,14 +104,7 @@ end = struct
     fun subnsel (plen, stopchar, sel, sep) l ss = let
 	fun m numslice = let
 	    val nums = SS.string numslice
-	    fun concatWith sep l = (* String.concatWith sep l *)
-		let fun build [] = []
-		      | build [x] = [x]
-		      | build (x :: xs) = x :: sep :: build xs
-		in
-		    concat (build l)
-		end
-	    fun all () = SOME (concatWith sep (map sel l))
+	    fun all () = SOME (String.concatWith sep (map sel l))
 	    fun seli i =
 		SOME (sel (List.nth (l, i))
 		      handle General.Subscript => SS.string ss)

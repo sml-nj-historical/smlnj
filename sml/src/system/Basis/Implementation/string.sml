@@ -127,6 +127,12 @@ structure StringImp : STRING =
 	  (* end case *)
 	end (* concat *)
 
+  (* concatenate a list of strings, using the given separator string *)
+    fun concatWith _ [] = ""
+      | concatWith _ [x] = x
+      | concatWith sep (h :: t) =
+	concat (rev (foldl (fn (x, l) => x :: sep :: l) [h] t, []))
+
   (* implode a list of characters into a string *)
     fun implode [] = ""
       | implode cl =  let
@@ -194,8 +200,26 @@ structure StringImp : STRING =
 
   (* String comparisons *)
     fun isPrefix s1 s2 = PreString.isPrefix (s1, s2, 0, size s2)
-    fun compare (a, b) = PreString.cmp (a, 0, size a, b, 0, size b)
-    fun collate cmpFn (a, b) = PreString.collate cmpFn (a, 0, size a, b, 0, size b)
+    fun isSuffix s1 s2 =
+	let val sz2 = size s2
+	in
+	    PreString.isPrefix (s1, s2, sz2 - size s1, sz2)
+	end
+    fun isSubstring s1 s2 =   (* FIXME: should we do KMP or BM here... (?) *)
+	let val sz2 = size s2
+	    val stop = sz2 - size s1
+	    fun matches_at_or_after i =
+		i < stop andalso
+		(PreString.isPrefix (s1, s2, i, sz2) orelse
+		 matches_at_or_after (i + 1))
+	in
+	    matches_at_or_after 0
+	end
+
+    fun compare (a, b) =
+	PreString.cmp (a, 0, size a, b, 0, size b)
+    fun collate cmpFn (a, b) =
+	PreString.collate cmpFn (a, 0, size a, b, 0, size b)
 
   (* String greater or equal *)
     fun sgtr (a, b) = let

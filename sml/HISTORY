@@ -14,6 +14,22 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/03/15 16:40:00 EST
+Tag: blume-20020315-basis
+Description:
+
+Provided (preliminary?) implementations for
+
+  {String,Substring}.{concatWith,isSuffix,isSubstring}
+
+and
+
+  Substring.full
+
+Those are in the Basis spec but they were missing in SML/NJ.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/03/14 21:30:00 EST
 Tag: blume-20020314-controls
 Description:

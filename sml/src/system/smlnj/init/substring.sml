@@ -1,3 +1,4 @@
+
 (* substring.sml
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
@@ -61,7 +62,8 @@ structure Substring :> SUBSTRING
 	      else raise Core.Subscript
 	  end
       | extract (s, i, SOME n) = substring(s, i, n)
-    fun all s = SS(s, 0, stringSize s)
+    fun full s = SS(s, 0, stringSize s)
+    val all = full 			(* deprecated *)
 
     fun isEmpty (SS(_, _, 0)) = true
       | isEmpty _ = false
@@ -105,6 +107,18 @@ structure Substring :> SUBSTRING
 	  PreString.revConcat (length (0, [], ssl))
 	end
 	  
+  (* concatenate a list of substrings, using the given string as the
+   * separator *)
+    fun concatWith _ [] = ""
+      | concatWith _ [x] = string x
+      | concatWith sep (h :: t) = let
+	    val sep' = full sep
+	    fun loop ([], l) = concat (rev (l, []))
+	      | loop (h :: t, l) = loop (t, h :: sep' :: l)
+	in
+	    loop (t, [h])
+	end
+
   (* explode a substring into a list of characters *)
     fun explode (SS(s, i, n)) = let
 	  fun f(l, j) = if (j < i)
@@ -116,6 +130,17 @@ structure Substring :> SUBSTRING
 
   (* Substring comparisons *)
     fun isPrefix s1 (SS(s2, i2, n2)) = PreString.isPrefix (s1, s2, i2, n2)
+    fun isSuffix s1 (SS(s2, i2, n2)) =
+	PreString.isPrefix (s1, s2, i2 + n2 - stringSize s1, n2)
+    fun isSubstring s1 (SS(s2, i2, n2)) = (* FIXME: KMP or BM (?) *)
+	let val stop = i2 + n2 - stringSize s1
+	    fun matches_at_or_after i =
+		i < stop andalso
+		(PreString.isPrefix (s1, s2, i, n2) orelse
+		 matches_at_or_after (i + 1))
+	in
+	    matches_at_or_after i2
+	end
     fun compare (SS(s1, i1, n1), SS(s2, i2, n2)) =
 	  PreString.cmp (s1, i1, n1, s2, i2, n2)
     fun collate cmpFn (SS(s1, i1, n1), SS(s2, i2, n2)) =

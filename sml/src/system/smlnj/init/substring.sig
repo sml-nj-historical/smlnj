@@ -14,13 +14,15 @@ signature SUBSTRING =
     eqtype string
     type substring
 
-    val base : substring -> (string * int * int)
 
-    val string : substring -> string
-
+    val sub       : (substring * int) -> char
+    val size      : substring -> int
+    val base      : substring -> (string * int * int)
+    val extract   : (string * int * int option) -> substring
     val substring : (string * int * int) -> substring
-    val extract : (string * int * int option) -> substring
-    val all : string -> substring
+    val full      : string -> substring
+    val all       : string -> substring
+    val string    : substring -> string
 
     val isEmpty : substring -> bool
 
@@ -30,12 +32,13 @@ signature SUBSTRING =
     val trimr : int -> substring -> substring
 
     val slice   : (substring * int * int option) -> substring
-    val sub     : (substring * int) -> char
-    val size    : substring -> int
     val concat  : substring list -> string
+    val concatWith : string -> substring list -> string
     val explode : substring -> char list
 
     val isPrefix : string -> substring -> bool
+    val isSubstring : string -> substring -> bool
+    val isSuffix : string -> substring -> bool
     val compare  : (substring * substring) -> order
     val collate  : ((char * char) -> order) -> (substring * substring) -> order
 
@@ -57,9 +60,9 @@ signature SUBSTRING =
     val tokens : (char -> bool) -> substring -> substring list
     val fields : (char -> bool) -> substring -> substring list
 
+    val app   : (char -> unit) -> substring -> unit
     val foldl : ((char * 'a) -> 'a) -> 'a -> substring -> 'a
     val foldr : ((char * 'a) -> 'a) -> 'a -> substring -> 'a
-    val app   : (char -> unit) -> substring -> unit
 
   end
 end (* local *)
