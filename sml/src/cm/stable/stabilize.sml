@@ -43,10 +43,14 @@ functor StabilizeFn (val bn2statenv : statenvgetter
     val op & = PU.&
     val % = PU.%
 
-    datatype uitem =
-	USS of SymbolSet.set
-      | US of Symbol.symbol
-      | UBN of DG.bnode
+    (* type info *)
+    val (BN, SN, SBN, SS, SI, FSBN, IMPEXP) = (1, 2, 3, 4, 5, 6, 7)
+
+    structure SSMap = BinaryMapFn
+	(struct
+	     type ord_key = SymbolSet.set
+	     val compare = SymbolSet.compare
+	end)
 
     structure SNMap = BinaryMapFn
 	(struct
@@ -55,8 +59,15 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		 SmlInfo.compare (#smlinfo n, #smlinfo n')
 	end)
 
-    val initMap = SNMap.empty
-    val SNs = { find = SNMap.find, insert = SNMap.insert }
+    type 'a maps = { ss: 'a SSMap.map, sn: 'a SNMap.map }
+
+    val initMap = { ss = SSMap.empty, sn = SNMap.empty }
+    val SSs = { find = fn (m: 'a maps, k) => SSMap.find (#ss m, k),
+	        insert = fn ({ ss, sn }, k, v) =>
+		             { sn = sn, ss = SSMap.insert (ss, k, v) } }
+    val SNs = { find = fn (m: 'a maps, k) => SNMap.find (#sn m, k),
+	        insert = fn ({ ss, sn }, k, v) =>
+		             { ss = ss, sn = SNMap.insert (sn, k, v) } }
 
     fun genStableInfoMap (exports, group) = let
 	(* find all the exported bnodes that are in the same group: *)
@@ -163,7 +174,12 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    val bool = PU.w_bool
 	    val int = PU.w_int
 
-	    val symbolset = list symbol o SymbolSet.listItems
+	    fun symbolset ss = let
+		val op $ = PU.$ SS
+		fun raw_ss ss = "s" $ list symbol (SymbolSet.listItems ss)
+	    in
+		share SSs raw_ss ss
+	    end
 
 	    val filter = option symbolset
 
@@ -179,8 +195,10 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		val spec = SrcPath.specOf (SmlInfo.sourcepath i)
 		val locs = SmlInfo.errorLocation gp i
 		val offset = registerOffset (i, bsz i)
+		val share = SmlInfo.share i
+		val op $ = PU.$ SI
 	    in
-		string spec & string locs & int offset & sh (SmlInfo.share i)
+		"s" $ string spec & string locs & int offset & sh share
 	    end
 
 	    fun primitive p =
@@ -214,7 +232,6 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		list string pp
 	    end
 
-	    val BN = 1
 	    val op $ = PU.$ BN
 	    fun bn (DG.PNODE p) = "1" $ primitive p
 	      | bn (DG.BNODE { bininfo = i, ... }) = let
@@ -223,30 +240,33 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		    "2" $ int n & symbol sy
 		end
 
-	    local
-		val SN = 2
-		val SBN = 3
+	    fun sn n = let
+		fun raw_sn (DG.SNODE n) =
+		    "a" $ si (#smlinfo n) & list sn (#localimports n) &
+		    list fsbn (#globalimports n)
 	    in
-		fun sn n = let
-		    fun raw_sn (DG.SNODE n) =
-			"a" $ si (#smlinfo n) & list sn (#localimports n) &
-			      list fsbn (#globalimports n)
-		in
-		    share SNs raw_sn n
-		end
-
-		and sbn x = let
-		    val op $ = PU.$ SBN
-		in
-		    case x of
-			DG.SB_BNODE n => "a" $ bn n
-		      | DG.SB_SNODE n => "b" $ sn n
-		end
-
-		and fsbn (f, n) = filter f & sbn n
+		share SNs raw_sn n
 	    end
 
-	    fun impexp (s, (n, _)) = symbol s & fsbn n
+	    and sbn x = let
+		val op $ = PU.$ SBN
+	    in
+		case x of
+		    DG.SB_BNODE n => "a" $ bn n
+		  | DG.SB_SNODE n => "b" $ sn n
+	    end
+	
+	    and fsbn (f, n) = let
+		val op $ = PU.$ FSBN
+	    in
+		"f" $ filter f & sbn n
+	    end
+
+	    fun impexp (s, (n, _)) = let
+		val op $ = PU.$ IMPEXP
+	    in
+		"i" $ symbol s & fsbn n
+	    end
 
 	    fun w_exports e = list impexp (SymbolMap.listItemsi e)
 
@@ -438,14 +458,18 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    val stringListM = UU.mkMap ()
 	    val symbolListM = UU.mkMap ()
 	    val stringListM = UU.mkMap ()
+	    val ssM = UU.mkMap ()
 	    val ssoM = UU.mkMap ()
 	    val boolOptionM = UU.mkMap ()
+	    val siM = UU.mkMap ()
 	    val sgListM = UU.mkMap ()
 	    val snM = UU.mkMap ()
 	    val snListM = UU.mkMap ()
 	    val bnM = UU.mkMap ()
 	    val sbnM = UU.mkMap ()
+	    val fsbnM = UU.mkMap ()
 	    val fsbnListM = UU.mkMap ()
+	    val impexpM = UU.mkMap ()
 	    val impexpListM = UU.mkMap ()
 
 	    val stringlist = list stringListM string
@@ -459,8 +483,12 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
 	    val symbollist = list symbolListM symbol
 
-	    fun symbolset () =
-		SymbolSet.addList (SymbolSet.empty, symbollist ())
+	    fun symbolset () = let
+		fun s #"s" = SymbolSet.addList (SymbolSet.empty, symbollist ())
+		  | s _ = raise Format
+	    in
+		share ssM s
+	    end
 
 	    val filter = option ssoM symbolset
 
@@ -472,18 +500,23 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    val sh = option boolOptionM bool
 
 	    fun si () = let
-		val spec = string ()
-		val locs = string ()
-		val offset = int () + offset_adjustment
-		val share = sh ()
-		val error = EM.errorNoSource grpSrcInfo locs
+		fun s #"s" =
+		    let val spec = string ()
+			val locs = string ()
+			val offset = int () + offset_adjustment
+			val share = sh ()
+			val error = EM.errorNoSource grpSrcInfo locs
+		    in
+			BinInfo.new { group = group,
+				      mkStablename = mksname,
+				      error = error,
+				      spec = spec,
+				      offset = offset,
+				      share = share }
+		    end
+		  | s _ = raise Format
 	    in
-		BinInfo.new { group = group,
-			      mkStablename = mksname,
-			      error = error,
-			      spec = spec,
-			      offset = offset,
-			      share = share }
+		share siM s
 	    end
 
 	    fun sg () = getGroup' (abspath ())
@@ -530,19 +563,31 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		share sbnM sbn'
 	    end
 
-	    and fsbn () = (filter (), sbn ())
+	    and fsbn () = let
+		fun f #"f" = (filter (), sbn ())
+		  | f _ = raise Format
+	    in
+		share fsbnM f
+	    end
 
 	    and fsbnlist () = list fsbnListM fsbn ()
 
 	    fun impexp () = let
-		val sy = symbol ()
-		val (f, n) = fsbn ()	(* really reads farbnodes! *)
-		val e = bn2env n
-		(* put a filter in front to avoid having the FCTENV being
-		 * queried needlessly (this avoids spurious module loadings) *)
-		val e' = DAEnv.FILTER (SymbolSet.singleton sy, e)
+		fun ie #"i" =
+		    let val sy = symbol ()
+			val (f, n) = fsbn () (* really reads farbnodes! *)
+			val e = bn2env n
+			(* put a filter in front to avoid having the FCTENV
+			 * being queried needlessly (this avoids spurious
+			 * module loadings) *)
+			val e' = DAEnv.FILTER (SymbolSet.singleton sy, e)
+		    in
+			(* coerce to farsbnodes *)
+			(sy, ((f, DG.SB_BNODE n), e'))
+		    end
+		  | ie _ = raise Format
 	    in
-		(sy, ((f, DG.SB_BNODE n), e')) (* coerce to farsbnodes *)
+		share impexpM ie
 	    end
 
 	    val impexplist = list impexpListM impexp
