@@ -11,9 +11,8 @@ structure Controls : CONTROLS =
     fun control {name, pri, obscurity, help, ctl} = Ctl{
 	    name = Atom.atom name,
 	    get = fn () => !ctl,
-	    set = fn v => ctl := v,
-	    set' = fn v => fn () => ctl := v,
-	    save'restore = fn () => let val v = !ctl in fn () => ctl := v end,
+	    set = fn SOME v => (fn () => ctl := v)
+		   | NONE => let val v = !ctl in fn () => ctl := v end,
 	    priority = pri,
 	    obscurity = obscurity,
 	    help = help
@@ -29,48 +28,33 @@ structure Controls : CONTROLS =
    *)
     exception ValueSyntax of {tyName : string, ctlName : string, value : string}
 
-    fun stringControl {tyName, fromString, toString} = let
-	  fun fromString' name s =
-	      case fromString s of
-		  NONE => raise ValueSyntax { tyName = tyName,
-					      ctlName = Atom.toString name,
-					      value = s }
-		| SOME v => v
-
-	  fun mk (Ctl{name, get, set, set', save'restore,
-		      priority, obscurity, help}) =
-	      Ctl { name = name,
-		    get = toString o get,
-		    set = set o fromString' name,
-		    set' = set' o fromString' name,
-		    save'restore = save'restore,
-		    priority = priority,
-		    obscurity = obscurity,
-		    help = help }
-    in
-	mk
-    end
+    fun stringControl {tyName, fromString, toString} (Ctl c) =
+	let val {name, get, set, priority, obscurity, help} = c
+	    fun fromString' s =
+		case fromString s of
+		    NONE => raise ValueSyntax { tyName = tyName,
+						ctlName = Atom.toString name,
+						value = s }
+		  | SOME v => v
+	in
+	    Ctl { name = name,
+		  get = toString o get,
+		  set = set o Option.map fromString',
+		  priority = priority,
+		  obscurity = obscurity,
+		  help = help }
+	end
 
     fun name (Ctl{name, ...}) = Atom.toString name
     fun get (Ctl{get, ...}) = get()
-    fun set (Ctl{set, ...}, v) = set v
-    fun set' (Ctl{set', ...}, v) = set' v
-    fun info (Ctl{priority, obscurity, help, ...}) = {
-	    priority = priority, obscurity = obscurity, help = help
-	  }
+    fun set (Ctl{set, ...}, v) = set (SOME v) ()
+    fun set' (Ctl{set, ...}, v) = set (SOME v)
+    fun info (Ctl{priority, obscurity, help, ...}) =
+	{ priority = priority, obscurity = obscurity, help = help }
 
-    fun save'restore (Ctl{save'restore,...}) = save'restore ()
+    fun save'restore (Ctl{set,...}) = set NONE
 
-    fun compare (Ctl{priority=p1, ...}, Ctl{priority=p2, ...}) = let
-	  fun collate ([], []) = EQUAL
-	    | collate ([], _) = LESS
-	    | collate (_, []) = GREATER
-	    | collate (x::xs, y::ys) =
-		if (x = y) then collate(xs, ys)
-		else if (x < y) then LESS
-		else GREATER
-	  in
-	    collate (p1, p2)
-	  end
+    fun compare (Ctl{priority=p1, ...}, Ctl{priority=p2, ...}) =
+	List.collate Int.compare (p1, p2)
 
   end
