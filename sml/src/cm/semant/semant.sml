@@ -22,6 +22,8 @@ signature CM_SEMANT = sig
     type members			(* still conditional *)
     type exports			(* still conditional *)
 
+    type toolopt
+
     type complainer = string -> unit
 
     (* getting elements of primitive types (pathnames and symbols) *)
@@ -60,7 +62,7 @@ signature CM_SEMANT = sig
 	     mkpath: string -> pathname,
 	     group: pathname * region,
 	     class: cm_class option,
-	     tooloptions: string list option,
+	     tooloptions: toolopt list option,
 	     context: SrcPath.context }
 	-> members
     val members : members * members -> members
@@ -100,6 +102,10 @@ signature CM_SEMANT = sig
     val ge : aexp * aexp -> exp
     val eq : aexp * aexp -> exp
     val ne : aexp * aexp -> exp
+
+    (* tool options *)
+    val string : { name: string, mkpath: string -> pathname } -> toolopt
+    val subopts : { name: string, opts: toolopt list } -> toolopt
 end
 
 structure CMSemant :> CM_SEMANT = struct
@@ -124,6 +130,8 @@ structure CMSemant :> CM_SEMANT = struct
     type exp = environment -> bool
     type members = environment * pathname option -> MemberCollection.collection
     type exports = environment -> SymbolSet.set
+
+    type toolopt = PrivateTools.toolopt
 
     type complainer = string -> unit
 
@@ -275,4 +283,7 @@ structure CMSemant :> CM_SEMANT = struct
     fun ge (e1, e2) e = e1 e >= e2 e
     fun eq (e1: aexp, e2) e = e1 e = e2 e
     fun ne (e1: aexp, e2) e = e1 e <> e2 e
+
+    val string = PrivateTools.STRING
+    val subopts = PrivateTools.SUBOPTS
 end

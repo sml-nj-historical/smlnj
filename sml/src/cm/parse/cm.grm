@@ -52,8 +52,9 @@ structure S = CMSemant
        | owner of S.pathname option
        | class of S.cm_class
        | optclass of S.cm_class option
-       | toolopts of string list
-       | opttoolopts of string list option
+       | toolopts of S.toolopt list
+       | ptoolopts of S.toolopt list
+       | opttoolopts of S.toolopt list option
 
 %pos int
 %verbose
@@ -63,7 +64,7 @@ structure S = CMSemant
     (pos * pos -> unit) *
     (pos * pos -> string -> unit) *
     ({ name: string, mkpath: string -> S.pathname } *
-     pos * pos * S.cm_class option * string list option -> S.members) *
+     pos * pos * S.cm_class option * S.toolopt list option -> S.members) *
     S.pathname option *
     GeneralParams.info *
     S.group
@@ -157,10 +158,21 @@ members : (* empty *)				(S.emptyMembers)
 	| member members			(S.members (member, members))
 
 toolopts : (* empty *)                          ([])
-         | pathname toolopts                    (#name pathname :: toolopts)
+         | pathname toolopts                    (S.string pathname :: toolopts)
+	 | pathname COLON ptoolopts toolopts    (S.subopts
+						     { name = #name pathname,
+						       opts = ptoolopts }
+						 :: toolopts)
+	 | pathname COLON pathname toolopts     (S.subopts
+						     { name = #name pathname1,
+						       opts = [S.string
+								   pathname2] }
+						 :: toolopts)
+
+ptoolopts : LPAREN toolopts RPAREN              (toolopts)
 
 opttoolopts : (* empty *)                       (NONE)
-            | LPAREN toolopts RPAREN            (SOME toolopts)
+            | ptoolopts                         (SOME ptoolopts)
 
 optclass : (* empty *)                          (NONE)
          | COLON class                          (SOME class)

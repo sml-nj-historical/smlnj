@@ -50,5 +50,7 @@ end = struct
 	Env.fold bnd initial se
     end
 
+    val mkMap' = Stats.doPhase (Stats.makePhase "Compiler 923 genmap") mkMap'
+
     fun mkMap se = mkMap' (se, MI.emptyTmap)
 end

@@ -22,7 +22,8 @@ end
 
 functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		 val evictStale : unit -> unit
-		 structure Stabilize: STABILIZE) :> PARSE = struct
+		 structure StabModmap : STAB_MODMAP
+		 structure Stabilize : STABILIZE) :> PARSE = struct
 
     structure VerifyStable = VerStabFn (structure Stabilize = Stabilize)
 
@@ -89,7 +90,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
     end
 
     fun dismissLib l =
-	(sgc := #1 (SrcPathMap.remove (!sgc, l)))
+	(StabModmap.reset ();
+	 sgc := #1 (SrcPathMap.remove (!sgc, l)))
 	handle LibBase.NotFound => ()
 
     fun parse args = let

@@ -1,5 +1,5 @@
 (*
- * Reading, generating, and writing stable groups.
+ * Reading, generating, and writing stable libraries.
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
  *
@@ -35,6 +35,7 @@ signature STABILIZE = sig
 end
 
 functor StabilizeFn (structure MachDepVC : MACHDEP_VC
+		     structure StabModmap : STAB_MODMAP
 		     val recomp : GP.info -> GG.group ->
 			 (SmlInfo.info -> MachDepVC.Binfile.bfContent) option
 		     val getII : SmlInfo.info -> IInfo.info) :> STABILIZE =
@@ -290,16 +291,6 @@ struct
 		    val sublibm =
 			foldl SrcPathMap.insert' SrcPathMap.empty sublibs
 
-		    val mm = ref MI.emptyTmap
-
-		    fun resetMM () = mm := MI.emptyTmap
-
-		    fun addStatEnv se = let
-			val m = GenModIdMap.mkMap' (se, !mm)
-		    in
-			mm := m; m
-		    end
-
 		    fun context NONE = raise Format
 		      | context (SOME (sl, sy)) = let
 			    val ap = list2path sl
@@ -310,7 +301,7 @@ struct
 			      | GG.GROUP { exports, ... } =>
 				(case SymbolMap.find (exports, sy) of
 				     SOME ((_, DG.SB_BNODE (_, x)), _) =>
-				       addStatEnv (#statenv x ())
+				       StabModmap.addEnv (#statenv x ())
 				   | _ => raise Format)
 			end
 
@@ -415,8 +406,7 @@ struct
 				(* really reads farbnodes! *)
 				val (f, n) = fsbn ()
 				val ge = lazy_statenv ()
-				fun ge' () = ge () before resetMM ()
-				val ii = { statenv = Memoize.memoize ge',
+				val ii = { statenv = ge,
 					   symenv = lazy_symenv (),
 					   statpid = pid (),
 					   sympid = pid () }

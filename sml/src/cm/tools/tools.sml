@@ -30,14 +30,17 @@ signature CORETOOLS = sig
     type pathmaker = string -> srcpath
 
     (* case-by-case parameters that can be passed to tools... *)
-    type toolopts = string list option
+    datatype toolopt =
+	STRING of { name: string, mkpath: string -> srcpath }
+      | SUBOPTS of { name: string, opts: toolopts }
+    withtype toolopts = toolopt list
 
-    type tooloptcvt = toolopts -> toolopts
+    type tooloptcvt = toolopts option -> toolopts option
 
     (* A member specification consists of the actual string, an optional
      * class name, (optional) tool options, and a function to convert a
      * string to its correspondin gsrcpath. *)
-    type spec = string * pathmaker * class option * toolopts
+    type spec = string * pathmaker * class option * toolopts option
 
     (* The goal of applying tools to members is to obtain an "expansion",
      * i.e., a list of ML-files and a list of .cm-files. *)
@@ -88,7 +91,8 @@ signature CORETOOLS = sig
 
     (* perform filename extension *)
     val extend : extensionStyle ->
-		 (string * toolopts) -> (string * class option * toolopts) list
+		 (string * toolopts option) ->
+		 (string * class option * toolopts option) list
 
     (* check for outdated files; the pathname strings must be in
      * native syntax! *)
@@ -132,13 +136,10 @@ signature TOOLS = sig
     (* query default class *)
     val defaultClassOf : string -> class option
 
-    (* parse keyword tool options *)
+    (* grab all named options... *)
     val parseOptions :
-	{ tool : string, keywords : string list, options : string list } ->
-	{ matches : string -> string option, restoptions : string list }
-
-    (* tokenization by whitespace; backslash is escape character *)
-    val tokenize : string -> string list
+	{ tool : string, keywords : string list, options : toolopts } ->
+	{ matches : string -> toolopts option, restoptions : string list }
 end
 
 structure PrivateTools :> PRIVATETOOLS = struct
@@ -153,11 +154,14 @@ structure PrivateTools :> PRIVATETOOLS = struct
 
     type pathmaker = string -> srcpath
 
-    type toolopts = string list option
+    datatype toolopt =
+	STRING of { name: string, mkpath: string -> srcpath }
+      | SUBOPTS of { name: string, opts: toolopts }
+    withtype toolopts = toolopt list
 
-    type tooloptcvt = toolopts -> toolopts
+    type tooloptcvt = toolopts option -> toolopts option
 
-    type spec = string * pathmaker * class option * toolopts
+    type spec = string * pathmaker * class option * toolopts option
 
     type expansion = { smlfiles: (srcpath * Sharing.request) list,
 		       cmfiles: srcpath list }
@@ -260,14 +264,10 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	val srq = case oto of
 		      NONE => Sharing.DONTCARE
 		    | SOME [] => Sharing.DONTCARE
-		    | SOME ["shared"] => Sharing.SHARED
-		    | SOME ["private"] => Sharing.PRIVATE
-		    | SOME l =>
-		      raise ToolError { tool = "sml",
-					msg = concat ("invalid option(s): " ::
-						      foldr (fn (s, r) =>
-								" " :: s :: r)
-						            ["\n"] l) }
+		    | SOME [STRING { name = "shared", ... }] => Sharing.SHARED
+		    | SOME [STRING { name = "private",... }] => Sharing.PRIVATE
+		    | SOME l => raise ToolError { tool = "sml",
+						  msg = "invalid option(s)" }
     in
 	({ smlfiles = [(mkpath name, srq)], cmfiles = [] }, [])
     end
@@ -372,10 +372,16 @@ functor ToolsFn (val load_plugin : string -> bool
     fun registerStdShellCmdTool args = let
 	val { tool, class, suffixes, cmdStdPath,
 	      extensionStyle, template, dflopts } = args
-	val dflopts = getOpt (dflopts, [])
 	val template = getOpt (template, "%c %s")
 	fun rule { spec = (name, mkpath, _, oto), context, mkNativePath } = let
 	    val opts = getOpt (oto, dflopts)
+	    val sol = let		(* only use STRING optios for %o *)
+		fun so (SUBOPTS _) = NONE
+		  | so (STRING { name, mkpath }) =
+		    SOME (nativeSpec (mkpath name))
+	    in
+		List.mapPartial so opts
+	    end
 	    val nativename = nativeSpec (mkpath name)
 	    val tfiles = extend extensionStyle (nativename, oto)
 	    val partial_expansion =
@@ -404,7 +410,7 @@ functor ToolsFn (val load_plugin : string -> bool
 				val sl = String.str c :: sl
 			    in
 				case c of
-				    #"o" => select (n, t', sl, opts, fn x => x)
+				    #"o" => select (n, t', sl, sol, fn x => x)
 				  | #"t" => select (n, t', sl, tfiles, #1)
 				  | _ => fill (t', sl)
 			    end
@@ -433,43 +439,20 @@ functor ToolsFn (val load_plugin : string -> bool
     end
 
     fun parseOptions { tool, keywords, options } = let
-	fun match s = let
-	    fun loop [] = NONE
-	      | loop (kw0 :: kws) =
-		if String.isPrefix (kw0 ^ "=") s then
-		    SOME (kw0, String.extract (s, size kw0 + 1, NONE))
-		else loop kws
-	in
-	    loop keywords
-	end
-	fun loop ([], m) = (m, [])
-	  | loop (l as (h :: t), m) =
-	    (case match h of
-		 NONE => (m, l)
-	       | SOME (kw, value) =>
-		 (case StringMap.find (m, kw) of
-		      SOME _ =>
-		      raise ToolError
-				{ tool = tool,
-				  msg = concat ["keyword option `", kw,
-						"' specified more than once"] }
-		    | NONE => loop (t, StringMap.insert (m, kw, value))))
-	val (m, ro) = loop (options, StringMap.empty)
+	fun err m = raise ToolError { tool = tool, msg = m }
+	fun isKW kw = List.exists (fn kw' => kw = kw') keywords
+	fun loop ([], m, ro) = { matches = fn kw => StringMap.find (m, kw),
+				 restoptions = rev ro }
+	  | loop (STRING { name, ... } :: t, m, ro) = loop (t, m, name :: ro)
+	  | loop (SUBOPTS { name, opts } :: t, m, ro) =
+	    if not (isKW name) then
+		raise err (concat ["keyword option `", name,
+				   "' not recognized"])
+	    else (case StringMap.find (m, name) of
+		      SOME _ => err (concat ["keyword option `", name,
+					     "' specified more than once"])
+		    | NONE => loop (t, StringMap.insert (m, name, opts), ro))
     in
-	{ restoptions = ro, matches = fn kw => StringMap.find (m, kw) }
-    end
-
-    (* Tokenization of a "options=" value (or similar). Tokens are delimited
-     * by whitespace, but delimters can be protected using backslash. *)
-    fun tokenize s = let
-	fun add ([], tl) = tl
-	  | add (cl, tl) = implode (rev cl) :: tl
-	fun loop ([], cl, tl) = rev (add (cl, tl))
-	  | loop (#"\\" :: c :: cs, cl, tl) = loop (cs, c :: cl, tl)
-	  | loop (c :: cs, cl, tl) =
-	    if Char.isSpace c then loop (cs, [], add (cl, tl))
-	    else loop (cs, c :: cl, tl)
-    in
-	loop (explode s, [], [])
+	loop (options, StringMap.empty, [])
     end
 end

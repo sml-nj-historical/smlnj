@@ -15,5 +15,5 @@ structure YaccTool = struct
 	  extensionStyle =
 	      Tools.EXTEND [("sig", SOME "sml", fn _ => NONE),
 			    ("sml", SOME "sml", fn too => too)],
-	  dflopts = NONE }
+	  dflopts = [] }
 end

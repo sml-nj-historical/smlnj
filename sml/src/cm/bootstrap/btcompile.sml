@@ -38,7 +38,10 @@ end = struct
 		      root = SrcPath.descr grouppath }
       | init_servers GG.ERRORGROUP = ()
 
+    structure StabModmap = StabModmapFn ()
+
     structure Compile = CompileFn (structure MachDepVC = MachDepVC
+				   structure StabModmap = StabModmap
 				   val compile_there =
 				       Servers.compile o SrcPath.descr)
 
@@ -47,6 +50,7 @@ end = struct
     (* instantiate Stabilize... *)
     structure Stabilize =
 	StabilizeFn (structure MachDepVC = MachDepVC
+		     structure StabModmap = StabModmap
 		     fun recomp gp g = let
 			 val { store, get } = BFC.new ()
 			 val _ = init_servers g
@@ -64,6 +68,7 @@ end = struct
 
     (* ... and Parse *)
     structure Parse = ParseFn (structure Stabilize = Stabilize
+			       structure StabModmap = StabModmap
 			       val evictStale = Compile.evictStale
 			       fun pending () = SymbolMap.empty)
 
@@ -85,9 +90,37 @@ end = struct
 	MkBootList.group listName g
     end
 
+    local
+	fun internal_reset () =
+	    (Compile.reset ();
+	     Parse.reset ();
+	     StabModmap.reset ())
+    in
+        fun reset () =
+	    (Say.vsay ["[CMB reset]\n"];
+	     internal_reset ())
+	val checkDirbase = let
+	    val prev = ref NONE
+	    fun ck db =
+		(case !prev of
+		     NONE => prev := SOME db
+		   | SOME db' =>
+		     if db = db' then ()
+		     else (Say.vsay ["[new dirbase is `", db,
+				     "'; CMB reset]\n"];
+			   internal_reset ();
+			   prev := SOME db))
+	in
+	    ck
+	end
+    end
+
     fun mk_compile { deliver, root, dirbase = dbopt, paranoid } = let
 
+	val _ = StabModmap.reset ()
+
 	val dirbase = getOpt (dbopt, BtNames.dirbaseDefault)
+	val _ = checkDirbase dirbase
 	val pcmodespec = BtNames.pcmodespec
 	val initgspec = BtNames.initgspec
 	val maingspec = BtNames.maingspec
@@ -386,10 +419,6 @@ end = struct
     in
 	val _ = CMBSlaveHook.init archos slave
     end
-
-    fun reset () =
-	(Compile.reset ();
-	 Parse.reset ())
 
     val make' = compile
     fun make () = make' NONE

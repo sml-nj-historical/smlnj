@@ -14,5 +14,5 @@ structure BurgTool = struct
 	  template = NONE,
 	  extensionStyle =
 	      Tools.REPLACE (["burg"], [("sml", SOME "sml", fn too => too)]),
-	  dflopts = NONE }
+	  dflopts = [] }
 end

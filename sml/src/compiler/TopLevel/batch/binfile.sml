@@ -379,8 +379,7 @@ struct
 	      end
     in
 	fun read args = let
-	    val { name, stream = s, senv } = args
-	    val m = GenModIdMap.mkMap senv
+	    val { name, stream = s, modmap = m } = args
 	    fun context _ = m
 	    val { nExports = ne, lambdaSz = sa2,
 		  res1Sz, res2Sz, codeSz = cs, envSz = es,

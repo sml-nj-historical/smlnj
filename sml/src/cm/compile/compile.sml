@@ -48,6 +48,7 @@ in
     end
 
     functor CompileFn (structure MachDepVC : MACHDEP_VC
+		       structure StabModmap : STAB_MODMAP
 		       val compile_there : SrcPath.t -> bool) :>
 	COMPILE where type bfc = MachDepVC.Binfile.bfContent =
     struct
@@ -293,11 +294,15 @@ in
 				fun load () = let
 				    val ts = TStamp.fmodTime binname
 				    fun openIt () = BinIO.openIn binname
-				    fun reader s =
+				    fun reader s = let
+					val mm0 = StabModmap.get ()
+					val m = GenModIdMap.mkMap' (stat, mm0)
+				    in
 					(BF.read { stream = s,
 						   name = binname,
-						   senv = stat },
+						   modmap = m },
 					 ts)
+				    end
 					
 				in
 				    SOME (SafeIO.perform

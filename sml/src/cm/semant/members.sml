@@ -30,7 +30,7 @@ signature MEMBERCOLLECTION = sig
 	     mkpath: string -> SrcPath.t,
 	     group: SrcPath.t * region,
 	     class: string option,
-	     tooloptions: string list option,
+	     tooloptions: PrivateTools.toolopts option,
 	     context: SrcPath.context }
 	-> collection
     val sequential : collection * collection * (string -> unit) -> collection

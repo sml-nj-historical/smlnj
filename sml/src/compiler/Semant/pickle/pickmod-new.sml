@@ -25,7 +25,7 @@ signature PICKMOD = sig
      *     fully embedded in the environment to be pickled.  However, we
      *     must provide the original pid obtained from the first pickling
      *     because occurences of that pid have to be treated the same way
-     *     it was treated in step 1.
+     *     their "not-yet-occurrences" had been treated in step 1.
      *
      *  3. A set of environments that have already gone through an initial
      *     pickling-and-unpickling is pickled as part of a stable library.

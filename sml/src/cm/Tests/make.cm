@@ -1,2 +1,2 @@
 Group is
-  maketest.sml : make (class=cm options=shared -f maketest.mk)
+  maketest.sml : make (class:sml options:(shared) -f maketest.mk)

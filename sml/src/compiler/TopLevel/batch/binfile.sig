@@ -36,7 +36,7 @@ signature BINFILE = sig
 	-> bfContent
 
     val read:
-	{ name: string, stream: BinIO.instream, senv: senv } ->
+	{ name: string, stream: BinIO.instream, modmap: ModuleId.tmap } ->
 	bfContent
 
     val write:

@@ -9,6 +9,12 @@
  * of sharing there can be significant overlap--and space overhead--in what
  * each such map points to.  Modtrees do not have these problems.)
  *
+ * The embedding of modtrees into static environments follows the example
+ * of the control-flow in the original "cmstatenv.sml" module.  This means
+ * that not all possible branches of the environment data structure are
+ * explored when building modmaps.  I dearly hope that the original code
+ * was correct in its assumptions...
+ *
  * March 2000, Matthias Blume
  *)
 signature UNPICKMOD = sig

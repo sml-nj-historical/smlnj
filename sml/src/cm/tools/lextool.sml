@@ -14,5 +14,5 @@ structure LexTool = struct
 	  template = NONE,
 	  extensionStyle =
 	      Tools.EXTEND [("sml", SOME "sml", fn too => too)],
-	  dflopts = NONE }
+	  dflopts = [] }
 end

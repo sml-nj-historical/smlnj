@@ -13,7 +13,7 @@ Kyoto University}
 
 \title{{\bf CM}\\
 The SML/NJ Compilation and Library Manager \\
-{\it\small (for SML/NJ version 110.27 and later)} \\
+{\it\small (for SML/NJ version 110.26.3 and later)} \\
 User Manual}
 
 \setlength{\parindent}{0pt}
@@ -884,19 +884,29 @@ present, must be specified in the CM description file between
 parentheses following the name of the member and the optional member
 class.
 
-As far as CM's core tool mechanism is concerned, tool parameters are
-uninterpreted---they are just list of strings.  Each rule is
-responsible for assigning meaning to its own parameters.
+CM's core mechanism parses these tool options and breaks them up into
+a list of items, where each item is either a filename (i.e., {\em
+looks} like a filename) or a named list of sub-options.  However, CM
+itself does not interpret the result but passes it on to the tool's
+rule function.  It is in each rule's own responsibility to assign
+meaning to its options.
 
 The {\tt sml} class accepts one parameter which must be either the
-word {\tt shared} or the word {\tt private}.  If {\tt shared} is
-specified, then dynamic state created by the compilation unit at
-link-time must be shared across invocations of {\tt CM.make} or {\tt
-CM.autoload}.  As explained earlier (Section~\ref{sec:sharing}), the
-{\tt private} annotation means that dynamic state cannot be shared
-across such calls to {\tt CM.make} or {\tt CM.autoload}.
+word {\tt shared} or the word {\tt private}.  (Technically, the
+strings {\tt private} and {\tt shared} fall under the {\em filename}
+category from above, but the tool ignores that aspect and uses the
+name directly.) If {\tt shared} is specified, then dynamic state
+created by the compilation unit at link-time must be shared across
+invocations of {\tt CM.make} or {\tt CM.autoload}.  As explained
+earlier (Section~\ref{sec:sharing}), the {\tt private} annotation
+means that dynamic state cannot be shared across such calls to {\tt
+CM.make} or {\tt CM.autoload}.
 
 The {\tt cm} class does not accept any parameters.
+
+Named sub-option lists are specified by a name string followed by a
+colon {\bf :} and a parenthesized list of other tool options.  If the
+list contains precisely one element, the parentheses may be omitted.
 
 \subsection{Built-in tools}
 
@@ -908,7 +918,9 @@ file name suffixes are {\tt .grm} and {\tt .y}.  For a source file
 $f$, the tool produces two targets $f${\tt .sig} and $f${\tt .sml},
 both of which are always treated as ML source files.  Parameters are
 passed on without change to the $f${\tt .sml} file but not to the
-$f${\tt .sig} file.
+$f${\tt .sig} file.  This means that the parameter can either be the
+word {\tt private} or the word {\tt shared}, and that this sharing
+annotation will apply to the $f${\tt .sml} file.
 
 The tool invokes the {\tt ml-yacc} command if the targets are
 ``outdated''.  A target is outdated if it is missing or older than the
@@ -962,38 +974,38 @@ class specification.
 Consider the following example:
 
 \begin{verbatim}
-  foo.pp : shell (target=foo.sml options=shared
+  foo.pp : shell (target:foo.sml options:(shared)
                         /lib/cpp -P -Dbar=baz %s %t)
 \end{verbatim}
 
 This member specification says that file {\tt foo.sml} can be obtained
 from {\tt foo.pp} by running it through the C preprocessor {\tt cpp}.
 The fact that the target file is given as a tool parameter implies
-that the member itself is the source.  The {\tt options=} parameter
-lists the tool parameters to be used for that target.  The command
-line itself is given by the remaining non-keyword parameters.  Here, a
-single {\bf \%s} is replaced by the source file name, and a single {\bf
-\%t} is replaced by the target file name.
+that the member itself is the source.  The named parameter {\tt
+options} lists the tool parameters to be used for that target. (In the
+example, the parentheses around {\tt shared} are optional because it
+is the only element of the list.) The command line itself is given by
+the remaining non-keyword parameters.  Here, a single {\bf \%s} is
+replaced by the source file name, and a single {\bf \%t} is replaced
+by the target file name; any other string beginning with {\bf \%} is
+shortened by its first character.
 
 In the specification one can swap the positions of source and target
-(i.e., let member name be the target) by using a {\tt source=}
+(i.e., let member name be the target) by using a {\tt source}
 parameter:
 
 \begin{verbatim}
-  foo.sml : shell (source=foo.pp options=shared
+  foo.sml : shell (source:foo.pp options:shared
                          /lib/cpp -P -Dbar=baz %s %t)
 \end{verbatim}
 
-Exactly one of the {\tt source=} and {\tt target=} parameters must be
+Exactly one of the {\tt source} and {\tt target} parameters must be
 specified; the other one is taken to be the member name itself.  The
-target class can be given by writing a {\tt class=} parameter.
+target class can be given by writing a {\tt class} parameter whose
+single sub-option must be the desired class name.
 
-If the member name is written using {\em native path syntax}, then the
-source- or target-name in the parameter list is also considered to be
-using native syntax.  Although it is possible to enclose tool
-parameters in double quotes to avoid tokenization at delimiting
-characters, in this case this does not have the effect of switching
-from standard to native syntax.
+The usual distinction between native and standard filename syntax
+applies to any given {\tt source} or {\tt target} parameters.
 
 For example, if one were working on a Win32 system and the target file
 is supposed to be in the root directory on volume {\tt D:},
@@ -1001,32 +1013,19 @@ then one must use native syntax to write it.  One way of doing this
 would be:
 
 \begin{verbatim}
-  "D:\\foo.sml" : shell (source=foo.pp options=shared
+  "D:\\foo.sml" : shell (source : foo.pp options : shared
                                cpp -P -Dbar=baz %s %t)
 \end{verbatim}
 
-\noindent As a result, {\tt foo.pp} is also interpreted as a native
-path name (although in this case it does not make a difference).  Had
-we used the {\tt target=} version from above, it would {\em not} be
-sufficient to do the following:
+\noindent As a result, {\tt foo.sml} is interpreted using native
+syntax while {\tt foo.pp} uses standard conventions (although in this
+case it does not make a difference).  Had we used the {\tt target}
+version from above, one would have to write:
 
 \begin{verbatim}
-  foo.pp : shell ("target=D:\\foo.sml" options=shared
+  foo.pp : shell (target : "D:\\foo.sml" options : shared
                                  cpp -P -Dbar=baz %s %t)
 \end{verbatim}
-
-\noindent Since the member name {\tt foo.pp} is in standard syntax,
-the target name will also be interpreted this way regardless of the
-fact that the parameter uses double quotes.  The correct specification
-is:
-
-\begin{verbatim}
-  "foo.pp" : shell ("target=D:\\foo.sml" options=shared
-                                cpp -P -Dbar=baz %s %t)
-\end{verbatim}
-
-\noindent Notice that double quotes around the target parameter are still
-necessary because the name contains delimiters.
 
 The shell tool invokes its command whenever the target is outdated
 with respect to the source.
@@ -1037,21 +1036,22 @@ The Make tool (class {\tt make}) can (almost) be seen as a specialized
 version of the Shell tool.  It has no source and one target (the
 member itself) which is always considered outdated.  As with the Shell
 tool, it is possible to specify target class and parameters using the
-{\tt class=} and {\tt options=} keyword parameters.
+{\tt class} and {\tt options} keyword parameters.
 
 The tool invokes the shell command {\tt make} on the target.  Unless
 anchored using the path anchor mechanism~\ref{sec:anchors}, the
 command will be located using the operating system's path search
 mechanism (e.g., the {\tt \$PATH} environment variable).
 
-Any tool parameters beyond the initial {\tt class=} and {\tt options=}
-are given as additional command line arguments to {\tt make}.  The
-target name is always the last command line argument.
+Any parameters other than the {\tt class} and {\tt options}
+specifications must be plain strings and are given as additional
+command line arguments to {\tt make}.  The target name is always the
+last command line argument.
 
 Example:
 
 \begin{verbatim}
-  bar-grm : make (class=mlyacc -f bar-grm.mk)
+  bar-grm : make (class:mlyacc -f bar-grm.mk)
 \end{verbatim}
 
 Here, file {\tt bar-grm} is generated (and kept up-to-date) by
@@ -1061,14 +1061,14 @@ make -f bar-grm.mk bar-grm
 \end{verbatim}
 \noindent The target file is then treated as input for {\tt ml-yacc}.
 
-Cascading Shell- and Make-tools is tricky but possible.  Here is an
+Cascading Shell- and Make-tools is easily possible.  Here is an
 example that first uses Make to build {\tt bar.pp} and then filters
 the contens of {\tt bar.pp} through the C preprocessor to arrive at
 {\tt bar.sml}:
 
 \begin{verbatim}
-  bar.pp : make (class=shell
-                     "options=target=bar.sml cpp -Dbar=baz %s %t"
+  bar.pp : make (class:shell
+                     options:(target:bar.sml cpp -Dbar=baz %s %t)
                  -f bar-pp.mk)
 \end{verbatim}
 
@@ -1378,7 +1378,7 @@ val _ = Tools.registerStdShellCmdTool
     extensionStyle =
         Tools.EXTEND [("sig", SOME "sml", fn _ => NONE),
                       ("sml", SOME "sml", fn x => x)],
-    dflopts = NONE }
+    dflopts = [] }
 \end{verbatim}
 
 This code can either be packaged as a CM library or entered at the
@@ -1417,8 +1417,9 @@ The string is taken verbatim except for embedded \% format specifiers:
     targets---separated by single spaces---are inserted;
     if $n$ is not in the range between $0$ and the number of available
     targets, then {\bf \%$n$t} expands into itself) 
-  \item[\%$n$o] the $n$-th option; \\
-    ($n$ is specified as a decimal number, counting starts at $1$;
+  \item[\%$n$o] the $n$-th tool parameter; \\
+    (named sub-option parameters are ignored;
+     $n$ is specified as a decimal number, counting starts at $1$;
      if $n$ is $0$ (or missing), then all options---separated by single
      spaces---are inserted;
      if $n$ is not in the range between $0$ and the number of available
@@ -1426,7 +1427,7 @@ The string is taken verbatim except for embedded \% format specifiers:
   \item[\%$x$] the character $x$ (where $x$ is neither {\bf c}, nor
     {\bf s}, {\bf t}, or {\bf o})
   \end{description}
-If no template string is given it defaults to {\tt "\%c \%s"}.
+If no template string is given, then it defaults to {\tt "\%c \%s"}.
 \item[extensionStyle] a specification of how the names of files
 generated by the tool relate to the name of the tool input file; \\
 Currently, there are two possible cases:
@@ -1435,23 +1436,23 @@ Currently, there are two possible cases:
 {\it file} then for each suffix {\it sfx} in {\tt (map \#1 $l$)} there
 will be one tool output file named {\it file}{\tt .}{\it sfx}.  The
 list $l$ consists of triplets where the first component specifies the
-suffix string, where the second component optionally specifies the
-member class name of the corresponding derived file, and where the
+suffix string, the second component optionally specifies the
+member class name of the corresponding derived file, and the
 third component is a function to calculate tool options for the 
 target from those of the source. (Argument and result type of these
-functions is {\tt string list option}.)
+functions is {\tt Tools.toolopts option}.)
 \item ``{\tt Tools.REPLACE }$(l_1, l_2)$'' specifies that given the
 base name {\it base} there will be one tool output file {\it base}{\tt
 .}{\it sfx} for each suffix {\it sfx} in {\tt (map \#1 $l_2$)}.  Here,
 {\it base} is determined by the following rule: If the name of the
-tool input file has a suffix that occurs in $l_1$ then {\it base} is
-the name without that suffix.  Otherwise, the whole file name is taken
+tool input file has a suffix that occurs in $l_1$, then {\it base} is
+the name without that suffix.  Otherwise the whole file name is taken
 as {\it base} (just like in the case of {\tt Tools.EXTEND}).  As with
 {\tt Tools.EXTEND}, the second components of the elements of $l_2$ can
 optionally specify the member class name of the corresponding derived
-file and the third component maps source options to target options.
+file, and the third component maps source options to target options.
 \end{enumerate}
-\item[dflopts] an optional list of strings which is used for
+\item[dflopts] a list of strings which is used for
 substituting {\bf \%$n$o} fields in {\tt template} (see above) if no
 options were specified.  (Note that the value of {\tt dflopts} is never
 passed to the option mappers in {\tt Tools.EXTEND} or {\tt

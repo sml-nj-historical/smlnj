@@ -27,7 +27,7 @@ struct
     structure E = GenericVC.Environment
     type bfc = BF.bfContent
 
-    val estat = E.staticPart E.emptyEnv
+    val emap = GenericVC.ModuleId.emptyTmap
 
     fun new () = let
 	val m = ref SmlInfoMap.empty
@@ -41,7 +41,7 @@ struct
 		    val binname = SmlInfo.binname i
 		    fun reader s = let
 			val bfc = BF.read { stream = s, name = binname,
-					    senv = estat }
+					    modmap = emap }
 		    in
 			store (i, bfc);
 			bfc
@@ -61,7 +61,7 @@ struct
 	    (Seek.seek (s, offset);
 	     (* We can use an empty static env because no
 	      * unpickling will be done. *)
-	     BF.read { stream = s, name = descr, senv = estat })
+	     BF.read { stream = s, name = descr, modmap = emap })
     in
 	SafeIO.perform { openIt = fn () => BinIO.openIn stable,
 			 closeIt = BinIO.closeIn,

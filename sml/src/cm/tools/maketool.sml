@@ -15,6 +15,8 @@ structure MakeTool = struct
 	val kw_class = "class"
 	val kw_options = "options"
 
+	fun err m = raise ToolError { tool = tool, msg = m }
+
 	fun rule { spec, context, mkNativePath } = let
 	    val (str, pathmaker, _, too) = spec
 	    val (tclass, topts, mopts) =
@@ -27,8 +29,11 @@ structure MakeTool = struct
 				  keywords = [kw_class, kw_options],
 				  options = options }
 		    in
-			(matches kw_class,
-			 Option.map tokenize (matches kw_options),
+			(case matches kw_class of
+			     SOME [STRING { name, ... }] => SOME name
+			   | NONE => NONE
+			   | _ => err "invalid class specification",
+			 matches kw_options,
 			 restoptions)
 		    end
 	    val tname = nativeSpec (pathmaker str)
@@ -42,7 +47,7 @@ structure MakeTool = struct
 	    in
 		vsay ["[", cmd, "]\n"];
 		if OS.Process.system cmd = OS.Process.success then ()
-		else raise ToolError { tool = tool, msg = cmd }
+		else err cmd
 	    end
 	    fun rulefn () = (runcmd (); partial_expansion)
 	in

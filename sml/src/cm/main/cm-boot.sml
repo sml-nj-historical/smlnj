@@ -36,8 +36,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       val emptydyn = E.dynamicPart E.emptyEnv
       val system_values = ref (SrcPathMap.empty: E.dynenv SrcPathMap.map)
 
+      structure StabModmap = StabModmapFn ()
+
       structure Compile =
 	  CompileFn (structure MachDepVC = HostMachDepVC
+		     structure StabModmap = StabModmap
 		     val compile_there = Servers.compile o SrcPath.descr)
 
       structure BFC =
@@ -114,6 +117,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       (* Instantiate the stabilization mechanism. *)
       structure Stabilize =
 	  StabilizeFn (structure MachDepVC = HostMachDepVC
+		       structure StabModmap = StabModmap
 		       fun recomp gp g = let
 			   val { store, get } = BFC.new ()
 			   val _ = init_servers g
@@ -130,6 +134,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
        * parser. I'm not sure if this is the cleanest way, but it works
        * well enough. *)
       structure Parse = ParseFn (structure Stabilize = Stabilize
+				 structure StabModmap = StabModmap
 				 fun evictStale () =
 				     (Compile.evictStale ();
 				      Link.evictStale ())
@@ -296,7 +301,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	       Link.reset ();
 	       AutoLoad.reset ();
 	       Parse.reset ();
-	       SmlInfo.reset ())
+	       SmlInfo.reset ();
+	       StabModmap.reset ())
 
 	  fun initTheValues (bootdir, de, er, autoload_postprocess) = let
 	      val _ = let

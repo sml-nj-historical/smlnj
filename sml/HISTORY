@@ -14,6 +14,42 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/03/31 18:00:00 JST
+Tag: blume_main_v110p26p2_1
+Description:
+
+This update contains:
+
+1. A small change to CM's handling of stable libraries:
+   CM now maintains one "global" modmap that is used for all stable
+   libraries.  The use of such a global modmap maximizes sharing and
+   minimizes the need for re-traversing parts of environments during
+   modmap construction.  (However, this has minor impact since modmap
+   construction seems to account for just one percent or less of total
+   compile time.)
+
+2. I added a "genmap" phase to the statistics.  This is where I got the
+   "one percent" number (see above).
+
+3. CM's new tool parameter mechanism just became _even_ better. :)
+   - The parser understands named parameters and recursive options.
+   - The "make" and "shell" tools use these new features.
+     (This makes it a lot easier to cascade these tools.)
+   - There is a small syntax change: named parameters use a
+
+       <name> : ( <option> ... )            or
+       <name> : <string>
+
+     syntax.  Previously, named parameters were implemented in an
+     ad-hoc fashion by each tool individually (by parsing strings)
+     and had the form
+
+       <name>=<string>
+
+   See the CM manual for a full description of these issues.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/03/30 18:00:00 JST
 Tag: blume_main_v110p26p2_0
 Description:
