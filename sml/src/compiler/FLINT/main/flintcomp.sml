@@ -22,6 +22,8 @@ val say = Control.Print.say
 
 fun phase x = Stats.doPhase (Stats.makePhase x)
 
+val collLexp  = phase "Compiler 052 collect" (fn le => (Collect.collect le; le))
+val fconLexp  = phase "Compiler 052 fcontract" FContract.contract
 val lconLexp  = phase "Compiler 052 lcontract" LContract.lcontract 
 val specLexp  = phase "Compiler 053 specLexp" Specialize.specialize
 val wrapLexp  = phase "Compiler 054 wrapLexp" Wrapping.wrapLexp
@@ -43,7 +45,7 @@ val limit     = phase "Compiler 110 limit" Limit.nolimit
 val codegen   = phase "Compiler 120 cpsgen" Gen.codegen
 
 fun prGen (flag,printE) s e =
-  (if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e) else ();
+  (if !flag then (say ("\n\n[ After " ^ s ^ " ... ]\n\n"); printE e) else ();
    e)
 
 val prLexp  = prGen (CGC.printLambda, MCprint.printLexp)
@@ -81,6 +83,15 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
       val chkFlint = check (ChkFlint.checkTop, PPFlint.printFundec, "FLINT")
 
       val _ = (chkFlint (CGC.checkFlint,1,"1") o prFlint "Translation") flint
+
+      val _ = (PPFlint.LVarString := Collect.LVarString)
+      val _ = (prFlint "Collect" o collLexp) flint
+
+      val flint =
+	(chkFlint (CGC.checkFlint,1,"2") o prFlint "Fcontract" o fconLexp)
+	flint
+
+      val _ = (PPFlint.LVarString := LambdaVar.lvarName)
 
       val flint =
 	(chkFlint (CGC.checkFlint,1,"2") o prFlint "Lcontract" o lconLexp)
