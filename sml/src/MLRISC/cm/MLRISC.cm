@@ -95,6 +95,7 @@ Library
 	functor GetReg
 	functor GetReg2
 	functor InstructionStream
+	functor JumpChainElimFn
 	functor Liveness
 	functor MLTreeEval
 	functor MLTreeF
@@ -118,6 +119,7 @@ Library
 	functor RegisterAllocator
 	functor Shuffle
 	functor SpanDependencyResolution
+	functor WeightedBlockPlacementFn
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -259,6 +261,8 @@ is
 	../backpatch/vlBackPatch.sml
 	../block-placement/block-placement.sig
 	../block-placement/default-block-placement.sml
+	../block-placement/weighted-block-placement-fn.sml
+	../block-placement/jump-chain-elim-fn.sml
         ../c-calls/c-types.sml
         ../c-calls/c-calls.sig
  	../omit-frameptr/omit-frame-pointer.sig
