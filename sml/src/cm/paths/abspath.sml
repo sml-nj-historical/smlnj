@@ -34,6 +34,8 @@ signature ABSPATH = sig
     val native : { context: context, spec: string } -> t
     val standard : PathConfig.mode -> { context: context, spec: string } -> t
 
+    val fromDescr : PathConfig.mode -> string -> t
+
     (* the second path argument is the path of the group spec that
      * pickling is based upon. *)
     val pickle : (bool -> unit) -> t * t -> string list
@@ -101,7 +103,7 @@ structure AbsPath :> ABSPATH = struct
 			   cache: elaboration option ref,
 			   config_name: string }
       | DIR_OF of t
-      | ROOT
+      | ROOT of string			(* carries volume *)
 
     and t =
 	PATH of { context: context,
@@ -165,8 +167,20 @@ structure AbsPath :> ABSPATH = struct
 	  | validElab (SOME (e as { stamp, name, id })) =
 	    if Era.isThisEra stamp then SOME e else NONE
 
-	val rootName = P.toString { isAbs = true, arcs = [], vol = "" }
-	val rootId = ref (NONE: id option)
+	fun rootName vol = P.toString { isAbs = true, arcs = [], vol = vol }
+	val rootId = let
+	    val m = ref (StringMap.empty: id option ref StringMap.map)
+	in
+	    fn vol =>
+	    (case StringMap.find (!m, vol) of
+		 NONE => let
+		     val idr = ref NONE
+		 in
+		     m := StringMap.insert (!m, vol, idr);
+		     idr
+		 end
+	       | SOME idr => idr)
+	end
 
 	fun elabContext c =
 	    case c of
@@ -183,8 +197,9 @@ structure AbsPath :> ABSPATH = struct
 		in 
 		    { name = P.dir name, stamp = stamp, id = ref NONE }
 		end
-	      | ROOT => { stamp = Era.thisEra (),
-			  name = rootName, id = rootId }
+	      | ROOT vol => { stamp = Era.thisEra (),
+			      name = rootName vol,
+			      id = rootId vol }
 
 	and elab (PATH { context, spec, cache }) =
 	    case validElab (!cache) of
@@ -224,9 +239,9 @@ structure AbsPath :> ABSPATH = struct
 	(* make an abstract path from a native string *)
 	fun native { spec, context } = let
 	    val { isAbs, vol, arcs } = P.fromString spec
-	    val relSpec = P.toString { isAbs = false, vol = vol, arcs = arcs }
+	    val relSpec = P.toString { isAbs = false, vol = "", arcs = arcs }
 	in
-	    if isAbs then fresh (ROOT, relSpec)
+	    if isAbs then fresh (ROOT vol, relSpec)
 	    else fresh (context, relSpec)
 	end
 
@@ -247,7 +262,7 @@ structure AbsPath :> ABSPATH = struct
 	in
 	    case String.fields delim spec of
 		[""] => impossible "AbsPath.standard: zero-length name"
-	      | "" :: arcs => mk (arcs, ROOT)
+	      | "" :: arcs => mk (arcs, ROOT "")
 	      | [] => impossible "AbsPath.standard: no fields"
 	      | arcs as (arc1 :: _) =>
 		    (case PathConfig.configAnchor mode arc1 of
@@ -266,7 +281,7 @@ structure AbsPath :> ABSPATH = struct
 	fun pickle warn (path, gpath) = let
 	    fun p_p (PATH { spec, context, ... }) =
 		spec :: p_c context
-	    and p_c ROOT = (warn true; ["r"])
+	    and p_c (ROOT vol) = (warn true; [vol, "r"])
 	      | p_c (THEN_CWD _) = impossible "AbsPath.pickle: THEN_CWD"
 	      | p_c (CONFIG_ANCHOR { config_name = n, ... }) = [n, "a"]
 	      | p_c (DIR_OF p) =
@@ -280,7 +295,7 @@ structure AbsPath :> ABSPATH = struct
 	    fun u_p (s :: l) =
 		PATH { spec = s, context = u_c l, cache = ref NONE }
 	      | u_p [] = raise Format
-	    and u_c ["r"] = ROOT
+	    and u_c [vol, "r"] = ROOT vol
 	      | u_c ["c"] = DIR_OF gpath
 	      | u_c [n, "a"] =
 		(case PathConfig.configAnchor mode n of
@@ -306,10 +321,44 @@ structure AbsPath :> ABSPATH = struct
 	      | d_c (DIR_OF (PATH { spec, context, ... }), l) =
 		d_c (context, dir (spec, l))
 	      | d_c (THEN_CWD _, l) = "./" :: l
-	      | d_c (ROOT, l) = "/" :: l
+	      | d_c (ROOT "", l) = "/" :: l
+	      | d_c (ROOT vol, l) = "%" :: vol :: "/" :: l
 	in
 	    concat (d_c (context, [spec]))
 	end
+
+	fun fromDescr mode "" = fresh (cwdContext (), P.currentArc)
+	  | fromDescr mode d = let
+		val l = size d
+		fun split n =
+		    if n >= l then
+			(String.substring (d, 1, l), P.currentArc)
+		    else if String.sub (d, n) = #"/" then
+			(String.substring (d, 1, n - 1),
+			 String.extract (d, n + 1, NONE))
+		    else split (n + 1)
+	    in
+		case String.sub (d, 0) of
+		    #"$" => let
+			val (a, s) = split 1
+		    in
+			case PathConfig.configAnchor mode a of
+			    NONE => raise BadAnchor a
+			  | SOME fetch =>
+				fresh (CONFIG_ANCHOR { config_name = a,
+						       fetch = fetch,
+						       cache = ref NONE },
+				       s)
+		    end
+		  | #"/" => fresh (ROOT "", String.extract (d, 1, NONE))
+		  | #"." => fresh (cwdContext (), String.extract (d, 2, NONE))
+		  | #"%" => let
+			val (v, s) = split 1
+		    in
+			fresh (ROOT v, s)
+		    end
+		  | _ => fresh (cwdContext (), d)
+	    end
 
 	fun reAnchoredName (p, dirstring) = let
 	    fun path (PATH { context, spec, ... }) = let
@@ -320,8 +369,8 @@ structure AbsPath :> ABSPATH = struct
 	    and ctxt (CONFIG_ANCHOR { config_name = n, ... }) =
 		SOME (P.concat (dirstring, n))
 	      | ctxt (DIR_OF p) = Option.map P.dir (path p)
-	      | ctxt (THEN_CWD _) = (Say.say ["."]; NONE)
-	      | ctxt ROOT = (Say.say ["/"]; NONE)
+	      | ctxt (THEN_CWD _) = NONE
+	      | ctxt (ROOT _) = NONE
 	in
 	    path p
 	end

@@ -143,7 +143,7 @@ end = struct
 	val maingspec =
 	    case root of
 		NONE => stdpath maingspec
-	      | SOME r => stdpath r
+	      | SOME r => SrcPath.fromDescr pcmode r
 
 	val cmifile = valOf (SrcPath.reAnchoredName (initgspec, bootdir))
 	    handle Option => raise Fail "BootstrapCompile: cmifile"
@@ -307,7 +307,7 @@ end = struct
 			else false
 		    end
 		in
-		    SOME ((g, gp), thunk)
+		    SOME ((g, gp, pcmode), thunk)
 		end
 	end handle Option => (Compile.reset (); NONE)
 	    	   (* to catch valOf failures in "rt" *)
@@ -330,11 +330,11 @@ end = struct
 	fun slave (dirbase, root) =
 	    case mk_compile false (SOME root) (SOME dirbase) of
 		NONE => NONE
-	      | SOME ((g, gp), _) => let
+	      | SOME ((g, gp, pcmode), _) => let
 		    val trav = Compile.newSbnodeTraversal () gp
 		    fun trav' sbn = isSome (trav sbn)
 		in
-		    SOME (g, trav')
+		    SOME (g, trav', pcmode)
 		end
     in
 	val _ = CMBSlaveHook.init archos slave

@@ -194,14 +194,24 @@ structure Servers :> SERVERS = struct
 	else false
     end
 	
+    fun cwdstring () = let
+	val d = OS.FileSys.getDir ()
+    in
+	case OS.Process.getEnv "HOME" of
+	    NONE => d
+	  | SOME h => OS.Path.mkRelative { path = d, relativeTo = h }
+    end
+
+    fun namespec (p, s) = fname (SrcPath.descr p, s)
+
     fun compile p =
 	if not (!enabled) orelse !nservers = 0 then false
 	else let
-	    val f = SrcPath.osstring p
 	    val s = grab ()
+	    val f = namespec (p, s)
 	in
 	    Say.vsay ["[(", servName s, "): compiling ", f, "]\n"];
-	    send (s, concat ["compile ", fname (f, s), "\n"]);
+	    send (s, concat ["compile ", f, "\n"]);
 	    wait_status (s, true)
 	end
 
@@ -216,24 +226,25 @@ structure Servers :> SERVERS = struct
     end
 
     fun cm p = let
-	val d = OS.FileSys.getDir ()
-	val f = SrcPath.osstring p
-	fun st s =
-	    (Say.vsay ["[(", servName s, "): project ", f, "]\n"];
-	     send (s, concat ["cm ", fname (d, s), " ", fname (f, s), "\n"]);
-	     ignore (wait_status (s, false)))
+	val d = cwdstring ()
+	fun st s = let
+	    val f = namespec (p, s)
+	in
+	    Say.vsay ["[(", servName s, "): project ", f, "]\n"];
+	    send (s, concat ["cm ", d, " ", f, "\n"]);
+	    ignore (wait_status (s, false))
+	end
     in
 	startAll st
     end
 
     fun cmb { archos, root } = let
-	val d = OS.FileSys.getDir ()
-	val f = SrcPath.specOf root
+	val d = cwdstring ()
+	val f = SrcPath.descr root
 	fun st s =
 	    (Say.vsay ["[(", servName s, "): btcompile for ", archos,
 		       ", root = ", f, "]\n"];
-	     send (s, concat ["cmb ", archos, " ",
-			      fname (d, s), " ", fname (f, s), "\n"]);
+	     send (s, concat ["cmb ", archos, " ", d, " ", f, "\n"]);
 	     ignore (wait_status (s, false)))
     in
 	startAll st

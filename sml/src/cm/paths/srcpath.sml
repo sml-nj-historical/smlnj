@@ -47,6 +47,8 @@ signature SRCPATH = sig
     val native : { context: context, spec: string } -> t
     val standard : PathConfig.mode -> { context: context, spec: string } -> t
 
+    val fromDescr : PathConfig.mode -> string -> t
+
     val pickle : (bool -> unit) -> t * t -> string list
     val unpickle : PathConfig.mode -> string list * t -> t
 
@@ -91,6 +93,7 @@ structure SrcPath :> SRCPATH = struct
 
     val native = intern o AbsPath.native
     fun standard m = intern o AbsPath.standard m
+    fun fromDescr m = intern o AbsPath.fromDescr m
 
     val contextName = AbsPath.contextName
     fun contextOf (ap, _) = AbsPath.contextOf ap

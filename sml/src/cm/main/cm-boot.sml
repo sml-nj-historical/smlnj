@@ -244,7 +244,21 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      fun say_pong () = Say.say ["SLAVE: pong\n"]
 
 	      val touch = HostMachDepVC.Interact.useStream o TextIO.openString 
-		  
+
+	      val home =
+		  case OS.Process.getEnv "HOME" of
+		      SOME h => (fn d => OS.Path.mkAbsolute { path = d,
+							      relativeTo = h })
+		    | NONE => (fn d =>
+			       (Say.say ["HOME not set!\n"];
+				raise Fail "HOME not set"))
+
+	      fun chDir d0 =
+		  OS.FileSys.chDir (if OS.Path.isAbsolute d0 then d0
+				    else home d0)
+
+	      fun path (s, pcmode) = SrcPath.fromDescr pcmode s
+
 	      fun waitForStart () = let
 		  val line = TextIO.inputLine TextIO.stdIn
 	      in
@@ -261,24 +275,22 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      end handle _ => (say_error (); waitForStart ())
 
 	      and do_cmb (archos, d, f) = let
-		  val _ = OS.FileSys.chDir d
-		  val c = SrcPath.cwdContext ()
+		  val _ = chDir d
 		  val slave = CMBSlave.slave { load = autoload, touch = touch }
 	      in
 		  case slave archos (!dbr, f) of
 		      NONE => (say_error (); waitForStart ())
-		    | SOME (g, trav) => let
+		    | SOME (g, trav, cmb_pcmode) => let
 			  val _ = say_ok ()
 			  val index = Reachable.snodeMap g
 		      in
-			  workLoop (index, trav, c)
+			  workLoop (index, trav, cmb_pcmode)
 		      end
 	      end handle _ => (say_error (); waitForStart ())
 
 	      and do_cm (d, f) = let
-		  val _ = OS.FileSys.chDir d
-		  val c = SrcPath.cwdContext ()
-		  val p = SrcPath.native { context = c, spec = f }
+		  val _ = chDir d
+		  val p = path (f, pcmode)
 	      in
 		  case Parse.parse NONE (param ()) NONE p of
 		      NONE => (say_error (); waitForStart ())
@@ -288,22 +300,18 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			  val trav = Compile.newSbnodeTraversal () gp
 			  fun trav' sbn = isSome (trav sbn)
 		      in
-			  workLoop (index, trav', c)
+			  workLoop (index, trav', pcmode)
 		      end
 	      end handle _ => (say_error (); waitForStart ())
 
-	      and workLoop (index, trav, c) = let
-		  fun f2sn f =
-		      SrcPathMap.find (index,
-				       SrcPath.native { context = c,
-						        spec = f })
+	      and workLoop (index, trav, pcmode) = let
 		  fun loop () = let
 		      val line = TextIO.inputLine TextIO.stdIn
 		  in
 		      if line = "" then shutdown ()
 		      else case String.tokens Char.isSpace line of
 			  ["compile", f] => let
-			      val p = SrcPath.native { context = c, spec = f }
+			      val p = path (f, pcmode)
 			  in
 			      case SrcPathMap.find (index, p) of
 				  NONE => (say_error (); loop ())
