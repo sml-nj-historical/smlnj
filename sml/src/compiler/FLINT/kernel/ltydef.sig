@@ -13,20 +13,14 @@ signature LTYDEF =
 sig
 
 (** basic entities *)
+type tkind = LtyKernel.tkind
 type index = DebIndex.index
 type depth = DebIndex.depth
 type primtyc = PrimTyc.primtyc
 type tvar = LtyKernel.tvar
-
-type fflag = LtyKernel.fflag 
-type rflag = LtyKernel.rflag
-
-val default_fflag : fflag
-val default_rflag : rflag
-
-type tkind = LtyKernel.tkind
 type tyc = LtyKernel.tyc
 type lty = LtyKernel.lty
+type rawflag = bool * bool  (* should be equivalent to LtyKernel.rawflag *)
 
 (* 
  * FLINT tkind is roughly equivalent to the following ML datatype 
@@ -46,13 +40,13 @@ type lty = LtyKernel.lty
 val tkc_mono   : tkind
 val tkc_box    : tkind
 val tkc_seq    : tkind list -> tkind
-val tkc_fun    : tkind list * tkind -> tkind
+val tkc_fun    : tkind * tkind -> tkind
 
 (** tkind deconstructors *)
 val tkd_mono   : tkind -> unit
 val tkd_box    : tkind -> unit
 val tkd_seq    : tkind -> tkind list
-val tkd_fun    : tkind -> tkind list * tkind
+val tkd_fun    : tkind -> tkind * tkind
 
 (** tkind predicates *)
 val tkp_mono   : tkind -> bool
@@ -64,7 +58,7 @@ val tkp_fun    : tkind -> bool
 val tkw_mono   : tkind * (unit -> 'a) * (tkind -> 'a) -> 'a
 val tkw_box    : tkind * (unit -> 'a) * (tkind -> 'a) -> 'a
 val tkw_seq    : tkind * (tkind list -> 'a) * (tkind -> 'a) -> 'a
-val tkw_fun    : tkind * (tkind list * tkind -> 'a) * (tkind -> 'a) -> 'a
+val tkw_fun    : tkind * (tkind * tkind -> 'a) * (tkind -> 'a) -> 'a
 
 
 (* 
@@ -83,7 +77,7 @@ val tkw_fun    : tkind * (tkind list * tkind -> 'a) * (tkind -> 'a) -> 'a
  *      | TC_ABS of tyc                    (* currently not used *)
  *      | TC_BOX of tyc                    (* used by rep analysis only *)
  *      | TC_TUPLE of tyc list
- *      | TC_ARROW of fflag * tyc list * tyc list 
+ *      | TC_ARROW of rawflag * tyc list * tyc list 
  *
  * We treat tyc as an abstract type so we can no longer use 
  * pattern matching. Type applications (TC_APP) and projections 
@@ -106,7 +100,7 @@ val tcc_fix    : (int * tyc * tyc list) * int -> tyc
 val tcc_abs    : tyc -> tyc
 val tcc_box    : tyc -> tyc
 val tcc_tuple  : tyc list -> tyc
-val tcc_arrow  : fflag * tyc list * tyc list -> tyc
+val tcc_arrow  : rawflag * tyc list * tyc list -> tyc
 
 (** tyc deconstructors *)
 val tcd_var    : tyc -> index * int 
@@ -121,7 +115,7 @@ val tcd_fix    : tyc -> (int * tyc * tyc list) * int
 val tcd_abs    : tyc -> tyc 
 val tcd_box    : tyc -> tyc 
 val tcd_tuple  : tyc -> tyc list 
-val tcd_arrow  : tyc -> fflag * tyc list * tyc list 
+val tcd_arrow  : tyc -> rawflag * tyc list * tyc list 
 
 (** tyc predicates *)
 val tcp_var    : tyc -> bool
@@ -151,7 +145,7 @@ val tcw_fix    : tyc * ((int * tyc * tyc list) * int -> 'a) * (tyc -> 'a) -> 'a
 val tcw_abs    : tyc * (tyc -> 'a) * (tyc -> 'a) -> 'a
 val tcw_box    : tyc * (tyc -> 'a) * (tyc -> 'a) -> 'a
 val tcw_tuple  : tyc * (tyc list -> 'a) * (tyc -> 'a) -> 'a
-val tcw_arrow  : tyc * (fflag * tyc list * tyc list -> 'a) 
+val tcw_arrow  : tyc * (rawflag * tyc list * tyc list -> 'a) 
                      * (tyc -> 'a) -> 'a
                                       
 
@@ -209,13 +203,13 @@ val ltw_pst    : lty * ((int * lty) list -> 'a) * (lty -> 'a) -> 'a
 val ltc_var    : index * int -> lty
 val ltc_prim   : primtyc -> lty
 val ltc_tuple  : lty list -> lty
-val ltc_arrow  : fflag * lty list * lty list -> lty
+val ltc_arrow  : rawflag * lty list * lty list -> lty
 
 (** tyc-lty deconstructors *)
 val ltd_var    : lty -> index * int
 val ltd_prim   : lty -> primtyc
 val ltd_tuple  : lty -> lty list
-val ltd_arrow  : lty -> fflag * lty list * lty list
+val ltd_arrow  : lty -> rawflag * lty list * lty list
 
 (** tyc-lty predicates *)
 val ltp_var    : lty -> bool
@@ -227,7 +221,7 @@ val ltp_arrow  : lty -> bool
 val ltw_var    : lty * (index * int -> 'a) * (lty -> 'a) -> 'a
 val ltw_prim   : lty * (primtyc -> 'a) * (lty -> 'a) -> 'a
 val ltw_tuple  : lty * (tyc list -> 'a) * (lty -> 'a) -> 'a
-val ltw_arrow  : lty * (fflag * tyc list * tyc list -> 'a) 
+val ltw_arrow  : lty * (rawflag * tyc list * tyc list -> 'a) 
                      * (lty -> 'a) -> 'a
 
 

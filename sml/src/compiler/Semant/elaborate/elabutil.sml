@@ -44,7 +44,15 @@ datatype context
              (* within functor body *)
   | INSIG    (* within a signature body *)
 
-type compInfo = CompBasic.compInfo
+type compInfo =
+    {mkStamp: unit -> Stamps.stamp,
+     mkLvar: S.symbol option -> LambdaVar.lvar,
+     coreEnv: StaticEnv.staticEnv,
+     anyErrors: bool ref,
+     error: ErrorMsg.errorFn,
+     errorMatch: SourceMap.region -> string,
+     transform: Absyn.dec -> Absyn.dec,
+     sourceName : string}
 
 fun newVALvar(s, mkv) = V.mkVALvar(s, A.namedAcc(s, mkv))
 

@@ -186,14 +186,12 @@ fun tcLoop wflag (nx, ox) =
   getWTC(wflag, nx, ox, 
    (fn (TC_BOX nz, _) => 
           let (* major gross hack mode ON ----- *)
-(*
               val nz = case LU.tcWrap ox (* was nz *)
                         of NONE => nz
                          | SOME x => 
                              if tc_eqv(x, nx) then nz 
                              else (case tc_out x of TC_BOX z => z
                                                   | _ => nz)
-*)
               (* major gross hack mode OFF ----- *)
 
               val wp = tcLoop wflag (nz, ox)
@@ -244,7 +242,7 @@ fun tcLoop wflag (nx, ox) =
                 say "\n Type ox is : \n"; say (LT.tc_print ox); say "\n";
                 bug "unexpected TC_ABS in tcLoop")
 *)
-     | (TC_TUPLE (_, nxs), TC_TUPLE (_, oxs)) => 
+     | (TC_TUPLE nxs, TC_TUPLE oxs) => 
           let val wps = ListPair.map (tcLoop wflag) (nxs, oxs)
            in if opList wps then 
                 let val v = mkv()
@@ -258,8 +256,8 @@ fun tcLoop wflag (nx, ox) =
               else NONE
           end
      | (TC_ARROW _, TC_ARROW _) => 
-          let val (nx1, nx2) = LT.tcd_parrow nx
-              val (ox1, ox2) = LT.tcd_parrow ox
+          let val (nx1, nx2) = LU.tcd_arw nx
+              val (ox1, ox2) = LU.tcd_arw ox
               val wp1 = tcLoop (not wflag) (nx1, ox1)
               val wp2 = tcLoop wflag (nx2, ox2)
            in (case (wp1, wp2)
@@ -367,6 +365,14 @@ fun wrapOp (wenv, nt, ot, d) =
                        end
           in h
          end)
+
+(*
+val wrapOp  = 
+  fn x => Stats.doPhase(Stats.makePhase "Compiler 056 wrap") (wrapOp x)
+
+val unwrapOp  = 
+  fn x => Stats.doPhase(Stats.makePhase "Compiler 057 unwrap") (unwrapOp x)
+*)
 
 end (* toplevel local *)
 end (* structure Coerce *)

@@ -1534,10 +1534,10 @@ and getTkFct{sign as M.FSIG{paramvar, paramsig, bodysig, ...}, entEnv,
           val arg_tks = map #2 arg_eps
           val res_tks = map #2 res_eps
 
-       in LT.tkc_fun(arg_tks, LT.tkc_seq res_tks)
+       in LT.tkc_fun(LT.tkc_seq arg_tks, LT.tkc_seq res_tks)
       end
 
-  | getTkFct _ = LT.tkc_fun([], LT.tkc_seq [])
+  | getTkFct _ = LT.tkc_fun(LT.tkc_seq [], LT.tkc_seq [])
 
 (*** the generic instantiation function ***)
 and instGeneric{sign, entEnv, instKind, rpath, region, 

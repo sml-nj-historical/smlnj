@@ -5,10 +5,10 @@ signature TRANSLATE =
 sig
 
   (* Invariant: transDec always applies to a top-level absyn declaration *) 
-  val transDec : Absyn.dec * Access.lvar list 
-                 * StaticEnv.staticEnv * CompBasic.compInfo
-                 -> {flint: FLINT.prog,
-                     imports: PersStamps.persstamp list}
+  val transDec : Absyn.dec * Lambda.lvar list * StaticEnv.staticEnv * 
+                 ElabUtil.compInfo
+                 -> {genLambda: Lambda.lexp option list -> Lambda.lexp,
+                     importPids: PersStamps.persstamp list}
 
 end (* signature TRANSLATE *)
 
@@ -20,7 +20,7 @@ local structure B  = Bindings
       structure DA = Access
       structure DI = DebIndex
       structure EM = ErrorMsg
-      structure CB = CompBasic
+      structure EU = ElabUtil
       structure II = InlInfo
       structure LT = PLambdaType
       structure M  = Modules
@@ -118,7 +118,7 @@ fun CON' ((_, DA.REF, lt), ts, e) = APP (PRIM (PO.MAKEREF, lt, ts), e)
  ****************************************************************************)
 
 fun transDec (rootdec, exportLvars, env,
-	      compInfo as {coreEnv,errorMatch,error,...}: CB.compInfo) =
+	      compInfo as {coreEnv,errorMatch,error,...}: EU.compInfo) =
 let 
 
 (*
@@ -330,6 +330,10 @@ fun fillPat(pat, d) =
 
    in fill pat
   end (* function fillPat *)
+
+(*
+val fillPat = Stats.doPhase(Stats.makePhase "Compiler 047 4-fillPat") fillPat
+*)
 
 (** The runtime polymorphic equality and string equality dictionary. *)
 val eqDict =
@@ -632,7 +636,7 @@ fun transPrim (prim, lt, ts) =
                           COND(APP(cmpOp(LESSU),
                                    RECORD[vi,APP(lenOp seqtc, va)]),
                                APP(oper, RECORD[va,vi,vv]),
-                               mkRaise(coreExn "Subscript", LT.ltc_unit))))))
+                               mkRaise(coreExn "Subscript", lt_int))))))
               end
 
         | g (PO.NUMUPDATE{kind,checked=true}) =
@@ -654,7 +658,7 @@ fun transPrim (prim, lt, ts) =
                           COND(APP(cmpOp(LESSU),
                                    RECORD[vi,APP(lenOp tc1, va)]),
                                APP(oper', RECORD[va,vi,vv]),
-                               mkRaise(coreExn "Subscript", LT.ltc_unit))))))
+                               mkRaise(coreExn "Subscript", lt_int))))))
               end
 
         | g (PO.ASSIGN) = 
@@ -925,6 +929,10 @@ and mkFctbs (fbs, d) =
  *    val mkDec : A.dec * DI.depth -> L.lexp -> L.lexp                     *
  *                                                                         *
  ***************************************************************************)
+(*
+and mkDec x = Stats.doPhase(Stats.makePhase "Compiler 048 mkDec") mkDec0 x
+and mkExp x = Stats.doPhase(Stats.makePhase "Compiler 049 mkExp") mkExp0 x
+*)
 and mkDec (dec, d) = 
   let fun g (VALdec vbs) = mkVBs(vbs, d)
         | g (VALRECdec rvbs) = mkRVBs(rvbs, d)
@@ -976,7 +984,7 @@ and mkExp (exp, d) =
              (** NOTE: the above won't work for cross compiling to 
                        multi-byte characters **)
 
-        | g (RECORDexp []) = unitLexp
+        | g (RECORDexp []) = INT 0
         | g (RECORDexp xs) =
              if sorted xs then RECORD (map (fn (_,e) => g e) xs)
              else let val vars = map (fn (l,e) => (l,(g e, mkv()))) xs
@@ -1006,8 +1014,7 @@ and mkExp (exp, d) =
                  val nd = DI.next d
               in case (ks, tps)
                   of ([], []) => g e
-                   | _ => PACK(LT.ltc_poly(ks, [TT.toLty nd nty]), 
-                               ts, nts , g e)
+                   | _ => PACK(LT.ltc_poly(ks, [TT.toLty nd nty]), ts, nts , g e)
              end
 *)
         | g (SEQexp [e]) = g e
@@ -1056,6 +1063,9 @@ and mkExp (exp, d) =
  * closeLexp `closes' over all free (EXTERN) variables [`inlining' version]
  *  - make sure that all operations on various imparative data structures
  *    are carried out NOW and not later when the result function is called. 
+ * 
+ * val closeLexp : PLambda.lexp 
+ *                  -> (Lambda.lexp option list -> Lambda.lexp) * pid list 
  *)
 fun closeLexp body = 
   let (* free variable + pid + inferred lty *)
@@ -1064,17 +1074,41 @@ fun closeLexp body =
       (* the name of the `main' argument *)
       val imports = mkv ()
       val impVar = VAR (imports)
+
       val impLty = LT.ltc_str (map (fn (_, (_, lt)) => lt) l)
 
-      fun h ((_, (lvar, lt)) :: rest, i, lexp) =
+      fun h (_ :: xs, (_, (lvar, lt)) :: rest, i, lexp) =
             let val hdr = buildHdr lvar
                 val bindexp = LET(lvar, SELECT(i, impVar), hdr lexp)
-             in h (rest, i + 1, bindexp)
+             in h (xs, rest, i + 1, bindexp)
             end
-        | h ([], _, lexp) = FN (imports, impLty, lexp)
+        | h ([], [], _, lexp) = FN (imports, impLty, lexp)
+        | h _ = bug "unexpected arguments in close"
 
-      val plexp = h(l, 0, body)
-   in {flint = FlintNM.norm plexp, imports = (map #1 l)}
+      fun genLexp inls = 
+        let val plexp = h(inls, l, 0, body)
+
+      val _ = if !Control.CG.printLambda 
+              then (say "\n\n[After Translation into PLambda ...]\n\n";
+                    PPLexp.printLexp plexp)
+              else ()
+
+
+         in if !Control.CG.flinton then 
+              let val flexp = (FlintNM.norm plexp)
+
+      val _ = if !Control.CG.printLambda 
+              then (say "\n\n[After Translation into FLINT ...]\n\n";
+                    PPFlint.printFundec flexp)
+              else ()
+             
+               in (Flint2Lambda.transFundec flexp)
+              end
+            else NormLexp.normLexp plexp
+        end
+
+   in {genLambda = (fn inls => genLexp inls),
+       importPids = (map #1 l)}
   end 
 
 val exportLexp = SRECORD (map VAR exportLvars)
@@ -1084,4 +1118,50 @@ end (* function transDec *)
 
 end (* top-level local *)
 end (* structure Translate *)
+
+(*
+ * $Log: translate.sml,v $
+ * Revision 1.9  1997/08/15  16:05:26  jhr
+ *   Bug fix to lift free structure references outside closures [zsh].
+ *
+ * Revision 1.8  1997/05/05  20:00:17  george
+ *   Change the term language into the quasi-A-normal form. Added a new round
+ *   of lambda contraction before and after type specialization and
+ *   representation analysis. Type specialization including minimum type
+ *   derivation is now turned on all the time. Real array is now implemented
+ *   as realArray. A more sophisticated partial boxing scheme is added and
+ *   used as the default.
+ *
+ * Revision 1.7  1997/04/18  15:49:04  george
+ *   Cosmetic changes on some constructor names. Changed the shape for
+ *   FIX type to potentially support shared dtsig. -- zsh
+ *
+ * Revision 1.6  1997/04/08  19:42:15  george
+ *   Fixed a bug in inlineShift operations. The test to determine if the
+ *   shift amount is within range should always an UINT 31 comparison --
+ *   regardless of the entity being shifted.
+ *
+ * Revision 1.5  1997/03/25  13:41:44  george
+ *   Fixing the coredump bug caused by duplicate top-level declarations.
+ *   For example, in almost any versions of SML/NJ, typing
+ *           val x = "" val x = 3
+ *   would lead to core dump. This is avoided by changing the "exportLexp"
+ *   field returned by the pickling function (pickle/picklemod.sml) into
+ *   a list of lambdavars, and then during the pretty-printing (print/ppdec.sml),
+ *   each variable declaration is checked to see if it is in the "exportLvars"
+ *   list, if true, it will be printed as usual, otherwise, the pretty-printer
+ *   will print the result as <hiddle-value>.
+ * 						-- zsh
+ *
+ * Revision 1.4  1997/03/22  18:25:25  dbm
+ * Added temporary debugging code.  This could be cleaned out later.
+ *
+ * Revision 1.3  1997/02/26  21:54:48  george
+ *   Putting back the access-lifting code to avoid the "exportFn image blowup"
+ *   bug --- BUG 1142.
+ *
+ * Revision 1.1.1.1  1997/01/14  01:38:47  george
+ *   Version 109.24
+ *
+ *)
 

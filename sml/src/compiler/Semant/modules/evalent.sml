@@ -314,9 +314,7 @@ and evalStp (stpExp, depth, epc, entEnv,
              in #stamp(strEnt)
             end
 
-(*
 val evalApp = Stats.doPhase(Stats.makePhase "Compiler 044 x-evalApp") evalApp
-*)
 
 end (* toplevel local *)
 end (* structure EvalEntity *)

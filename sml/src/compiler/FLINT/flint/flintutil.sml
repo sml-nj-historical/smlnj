@@ -3,66 +3,17 @@
 
 signature FLINTUTIL = 
 sig
-  val rk_tuple : FLINT.rkind
-
-  val mketag : FLINT.tyc -> FLINT.primop
-  val wrap   : FLINT.tyc -> FLINT.primop
-  val unwrap : FLINT.tyc -> FLINT.primop
-
-  val WRAP   : FLINT.tyc * FLINT.value list 
-                         * FLINT.lvar * FLINT.lexp -> FLINT.lexp
-  val UNWRAP : FLINT.tyc * FLINT.value list 
-                         * FLINT.lvar * FLINT.lexp -> FLINT.lexp
-
-  val getEtagTyc   : FLINT.primop -> FLINT.tyc
-  val getWrapTyc   : FLINT.primop -> FLINT.tyc
-  val getUnWrapTyc : FLINT.primop -> FLINT.tyc
-
-  val copy : (unit -> FLINT.lvar) -> FLINT.prog -> FLINT.prog
-end (* signature FLINTUTIL *) 
+  val copy : (unit -> LambdaVar.lvar) -> FLINT.fundec -> FLINT.fundec
+end (* signature LEXPUTIL *) 
 
 
 structure FlintUtil : FLINTUTIL = 
 struct
 
 local structure EM = ErrorMsg
-      structure LT = LtyExtern
-      structure PO = PrimOp
-      structure DA = Access
-      open FLINT
+      open Access FLINT
+      fun bug msg = EM.impossible("FlintUtil: "^msg)
 in 
-
-fun bug msg = EM.impossible("FlintUtil: "^msg)
-
-val rk_tuple : rkind = RK_TUPLE (LT.default_rflag)
-
-(* a set of useful primops used by FLINT *)
-val tv0 = LT.ltc_tv 0
-val btv0 = LT.ltc_tyc(LT.tcc_box (LT.tcc_tv 0))
-val etag_lty = 
-  LT.ltc_ppoly ([LT.tkc_mono],
-        LT.ltc_arrow(LT.default_fflag, [LT.ltc_string], [LT.ltc_etag tv0]))
-fun wrap_lty tc =
-  LT.ltc_tyc(LT.tcc_arrow(LT.default_fflag, [tc], [LT.tcc_box tc]))
-fun unwrap_lty tc =
-  LT.ltc_tyc(LT.tcc_arrow(LT.default_fflag, [LT.tcc_box tc], [tc]))
-
-fun mketag tc = (NONE, PO.MKETAG, etag_lty, [tc])
-fun wrap tc = (NONE, PO.WRAP, wrap_lty tc, [])
-fun unwrap tc = (NONE, PO.WRAP, unwrap_lty tc, [])
-
-fun WRAP(tc, vs, v, e) = PRIMOP(wrap tc, vs, v, e)
-fun UNWRAP(tc, vs, v, e) = PRIMOP(unwrap tc, vs, v, e)
-
-(* the corresponding utility functions to recover the tyc *)
-fun getEtagTyc (_, _, lt, [tc]) = tc
-  | getEtagTyc _ = bug "unexpected case 2 in getEtagTyc"
-
-fun getWrapTyc (_, _, lt, []) = LT.ltd_tyc(#1(LT.ltd_parrow lt))
-  | getWrapTyc _ = bug "unexpected case in getWrapTyc"
-
-fun getUnWrapTyc (_, _, lt, []) = LT.ltd_tyc(#2(LT.ltd_parrow lt))
-  | getUnWrapTyc _ = bug "unexpected case in getUnWrapTyc"
 
 (* 
  * general alpha-conversion on lexp free variables remain unchanged
@@ -96,21 +47,21 @@ fun copy mkLvar = let
       end
 
     (* access *)
-    fun ca (DA.LVAR v, m) = DA.LVAR (look m v)
-      | ca (DA.PATH (a, i), m) = DA.PATH (ca (a, m), i)
+    fun ca (LVAR v, m) = LVAR (look m v)
+      | ca (PATH (a, i), m) = PATH (ca (a, m), i)
       | ca (a, _) = a
 
     (* conrep *)
-    fun ccr (DA.EXN a, m) = DA.EXN (ca (a, m))
+    fun ccr (EXN a, m) = EXN (ca (a, m))
       | ccr (cr, _) = cr
 
     (* dataconstr *)
     fun cdc ((s, cr, t), m) = (s, ccr (cr, m), t)
 
     (* con *)
-    fun ccon (DATAcon (dc, ts, v), m) = 
-          let val (nv, m') = rename(v, m)
-           in (DATAcon (cdc(dc, m), ts, nv), m')
+    fun ccon (DATAcon (dc, ts, vs), m) = 
+          let val (nvs, m') = renamevs(vs, m)
+           in (DATAcon (cdc(dc, m), ts, nvs), m')
           end
       | ccon x = x
 
@@ -120,10 +71,6 @@ fun copy mkLvar = let
           val ntbls = map (fn (x, v) => (x, look m v)) tbls
        in {default=nv, table=ntbls}
       end
-
-    (* primop *)
-    fun cprim (p as (NONE, _, _, _), m) = p
-      | cprim ((SOME d, p, lt, ts), m) = (SOME (dict(d, m)), p, lt, ts)
 
     (* value *)
     fun sv (VAR lv, m) = VAR (look m lv)
@@ -168,9 +115,9 @@ fun copy mkLvar = let
   	         | co (SOME x) = SOME (c (x, m))
  	    in SWITCH (sv (v, m), crl, map cc cel, co eo)
   	   end
-      | c (CON (dc, ts, u, v, le), m) = 
+      | c (CON (dc, ts, vs, v, le), m) = 
            let val (nv, nm) = rename(v, m)
-            in CON (cdc (dc, m), ts, sv (u, m), nv, c(le, nm))
+            in CON (cdc (dc, m), ts, svs (vs, m), nv, c(le, nm))
            end
       | c (RECORD (rk, vs, v, le), m) = 
            let val (nv, nm) = rename(v, m)
@@ -182,11 +129,25 @@ fun copy mkLvar = let
            end
       | c (RAISE (v, ts), m) = RAISE (sv (v, m), ts)
       | c (HANDLE (e, v), m) = HANDLE (c (e, m), sv (v, m))
-      | c (BRANCH (p, vs, e1, e2), m) = 
-           BRANCH (cprim(p, m), svs(vs, m), c(e1, m), c(e2, m))
-      | c (PRIMOP (p, vs, v, le), m) = 
+      | c (ETAG (t, u, v, le), m) = 
            let val (nv, nm) = rename(v, m)
-            in PRIMOP(cprim(p,m), svs(vs, m), nv, c(le, nm))
+            in ETAG (t, sv(u, m), nv, c(le, nm))
+           end
+      | c (PRIMOP(p, vs, v, le), m) = 
+           let val (nv, nm) = rename(v, m)
+            in PRIMOP(p, svs(vs, m), nv, c(le, nm))
+           end
+      | c (GENOP(d, p, vs, v, le), m) = 
+           let val (nv, nm) = rename(v, m)
+            in GENOP(dict(d, m), p, svs(vs, m), nv, c(le, nm))
+           end
+      | c (WRAP (t, u, v, le), m) = 
+           let val (nv, nm) = rename(v, m)
+            in WRAP (t, sv (u, m), nv, c(le, nm))   
+           end
+      | c (UNWRAP (t, u, v, le), m) = 
+           let val (nv, nm) = rename(v, m)
+            in UNWRAP (t, sv (u, m), nv, c(le, nm))   
            end
 
     and ctf ((v,args,le), m) = 

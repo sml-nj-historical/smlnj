@@ -1,9 +1,9 @@
-(* Copyright 1996 by Bell Laboratories *)
+(* Copyright 1996 by AT&T Bell Laboratories *)
 (* dynenv.sig *)
 
 signature DYNENV =
 sig
-  type object = CompBasic.object
+  type object (* = Unsafe.Object.object *)
   type dynenv
   exception Unbound  
   exception SpecialEnv
@@ -20,3 +20,12 @@ sig
 
 end (* signature DYNENV *)
 
+(*
+ * $Log: dynenv.sig,v $
+ * Revision 1.2  1997/06/30  19:37:22  jhr
+ *   Removed System structure; added Unsafe structure.
+ *
+ * Revision 1.1.1.1  1997/01/14  01:38:36  george
+ *   Version 109.24
+ *
+ *)

@@ -252,6 +252,11 @@ fun look (env,sym as Symbol.SYMBOL(is as (i,s))) =
    in f env
   end
 
+(*
+val look = fn x =>
+  Stats.doPhase (Stats.makePhase "Compiler 032 2-lookEnv ") look x
+*)
+
 fun bind (Symbol.SYMBOL(i,s),binding,env) = BIND (i,s,binding,env)
 
 exception NoSymbolList

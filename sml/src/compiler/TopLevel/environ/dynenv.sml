@@ -1,5 +1,13 @@
-(* Copyright 1996 by AT&T Bell Laboratories. *)
-(* dynenv.sml *)
+(* dynenv.sml
+ *
+ * Copyright 1996 by AT&T Bell Laboratories.
+ *
+ *)
+
+structure PersMap = MapF (struct
+    type elem=PersStamps.persstamp
+    fun pid1 < pid2 = (PersStamps.compare(pid1, pid2) = LESS)
+  end)
 
 structure DynamicEnv : DYNENV =
 struct
@@ -8,7 +16,7 @@ struct
 
   structure Map = PersMap
 
-  type object = CompBasic.object
+  type object = Unsafe.Object.object
 
   datatype dynenv = NORM of object Map.map * dynenv
                   | SPECIAL of (pid -> object) * dynenv
@@ -48,3 +56,12 @@ struct
 
 end (* structure DynamicEnv *)
 
+(*
+ * $Log: dynenv.sml,v $
+ * Revision 1.2  1997/06/30  19:37:23  jhr
+ *   Removed System structure; added Unsafe structure.
+ *
+ * Revision 1.1.1.1  1997/01/14  01:38:36  george
+ *   Version 109.24
+ *
+ *)

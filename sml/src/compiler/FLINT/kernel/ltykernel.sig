@@ -10,7 +10,7 @@ datatype tkindI
   = TK_MONO                                   (* ground mono tycon *)
   | TK_BOX				      (* boxed/tagged tycon *)
   | TK_SEQ of tkind list                      (* sequence of tycons *)
-  | TK_FUN of tkind list * tkind              (* tycon function *)
+  | TK_FUN of tkind * tkind                   (* tycon function *)
 
 (* definitions of named tyc variables *)
 type tvar = LambdaVar.lvar                    (* temporary, not used *)
@@ -32,8 +32,8 @@ datatype tycI
   | TC_SUM of tyc list                        (* sum tyc *)
   | TC_FIX of (int * tyc * tyc list) * int    (* recursive tyc *) 
 
-  | TC_TUPLE of rflag * tyc list              (* std record tyc *)
-  | TC_ARROW of fflag * tyc list * tyc list   (* std function tyc *)
+  | TC_TUPLE of tyc list                      (* std record tyc *)
+  | TC_ARROW of rawflag * tyc list * tyc list (* std function tyc *)
   | TC_PARROW of tyc * tyc                    (* special fun tyc, not used *)
 
   | TC_BOX of tyc                             (* boxed tyc *)
@@ -42,11 +42,7 @@ datatype tycI
   | TC_IND of tyc * tycI                      (* indirect tyc thunk *)
   | TC_ENV of tyc * int * int * tycEnv        (* tyc closure *)
 
-withtype fflag = bool * bool    (* is the calling convention fixed ? *)
-     and rflag = unit           (* record kind, not used at this moment *)
-
-val default_fflag : fflag       (* (true, true), fixed calling conventions *)
-val default_rflag : rflag       (* unit, just a template for the time being *)
+withtype rawflag = bool * bool    (* single or multiple arguments/results ? *)
 
 (* definition of lty *)
 type lty
@@ -115,15 +111,8 @@ val lt_norm : lty -> lty
 (** automatically flattening the argument or the result type *)
 val lt_autoflat : lty -> bool * lty list * bool
 
-(** automatically tupling up the multiple argument/result into a single one *)
-val tc_autotuple : tyc list -> tyc
-
 (** tcc_arw does automatic argument and result flattening *)
-val tcc_arw : fflag * tyc list * tyc list -> tyc
-
-(** automatic recursive boxing for representation analysis *)
-val tcc_wrap : tyc -> tyc       (* wrapping a tyc of any kind *)
-val tcc_box  : tyc -> tyc       (* wrapping a tyc of kind tkc_mono *)
+val tcc_arw : rawflag * tyc list * tyc list -> tyc
 
 end (* signature LTYKERNEL *)
 

@@ -44,7 +44,7 @@ datatype tkindI
   = TK_MONO                                    (* ground mono tycon *)
   | TK_BOX                                     (* boxed/tagged tycon *)
   | TK_SEQ of tkind list                       (* sequence of tycons *)
-  | TK_FUN of tkind list * tkind               (* tycon function *)
+  | TK_FUN of tkind * tkind                    (* tycon function *)
 
 withtype tkind = tkindI hash_cell              (* hash-consing-impl of tkind *)
 
@@ -52,7 +52,7 @@ withtype tkind = tkindI hash_cell              (* hash-consing-impl of tkind *)
 type tvar = LambdaVar.lvar                     (* temporary definitions *)
 val mkTvar = LambdaVar.mkLvar
 
-(** definitions of lambda type constructors *)
+(** definitions of lambda tycons and lambda types *)
 datatype tycI
   = TC_VAR of DebIndex.index * int             (* tyc variables *)
   | TC_NVAR of tvar * DebIndex.depth * int     (* named tyc variables *)
@@ -66,8 +66,8 @@ datatype tycI
   | TC_SUM of tyc list                         (* sum tyc *)
   | TC_FIX of (int * tyc * tyc list) * int     (* recursive tyc *)
 
-  | TC_TUPLE of rflag * tyc list               (* std record tyc *)
-  | TC_ARROW of fflag * tyc list * tyc list    (* std function tyc *)
+  | TC_TUPLE of tyc list                       (* std record tyc *)
+  | TC_ARROW of rawflag * tyc list * tyc list  (* std function tyc *)
   | TC_PARROW of tyc * tyc                     (* special fun tyc, not used *)
 
   | TC_BOX of tyc                              (* boxed tyc *)
@@ -76,21 +76,7 @@ datatype tycI
   | TC_IND of tyc * tycI                       (* indirect tyc thunk *)
   | TC_ENV of tyc * int * int * tycEnv         (* tyc closure *)
 
-withtype tyc = tycI hash_cell                  (* hash-consed tyc cell *)
-     and tycEnv = tyc     (* 
-                           * This really is (tyc list option * int) list,
-                           * it is encoded using SEQ[(PROJ(SEQ tcs),i)]
-                           * and SEQ[(PROJ(VOID, i))]. (ZHONG)
-                           *)
-
-     and fflag = bool * bool (* is the calling convention fixed ? *)
-     and rflag = unit     (* record kind, not used as of now *)
-
-val default_rflag = ()    (* a rflag template *)
-val default_fflag = (true,true)
-
-(** definitions of lambda types *)
-datatype ltyI          
+and ltyI          
   = LT_TYC of tyc                              (* monomorphic type *)
   | LT_STR of lty list                         (* structure record type *)
   | LT_FCT of lty list * lty list              (* functor arrow type *)
@@ -101,7 +87,18 @@ datatype ltyI
   | LT_IND of lty * ltyI                       (* a lty thunk and its sig *)
   | LT_ENV of lty * int * int * tycEnv         (* lty closure *)
 
-withtype lty = ltyI hash_cell                  (* hash-consed lty cell *)
+withtype tyc = tycI hash_cell                  (* hash-consed tyc cell *)
+
+     and lty = ltyI hash_cell                  (* hash-consed lty cell *)
+
+     and tycEnv = tyc     (* 
+                           * This really is (tyc list option * int) list,
+                           * it is encoded using SEQ[(PROJ(SEQ tcs),i)]
+                           * and SEQ[(PROJ(VOID, i))]. (ZHONG)
+                           *)
+
+     and rawflag = bool * bool (* are arguments/results raw or cooked ? *)
+
 
 (***************************************************************************
  *                   HASHCONSING IMPLEMENTATIONS                           *
@@ -185,7 +182,7 @@ local structure Weak = SMLofNJ.Weak
         let fun g (TK_MONO) = 0w1
               | g (TK_BOX) = 0w2
               | g (TK_SEQ ks) = combine (3::map getnum ks)
-              | g (TK_FUN(ks, k)) = combine (4::getnum k::(map getnum ks))
+              | g (TK_FUN(k1, k2)) = combine [4, getnum k1, getnum k2]
          in g tk
         end
 
@@ -202,7 +199,7 @@ local structure Weak = SMLofNJ.Weak
                      combine (8::n::i::(getnum t)::(map getnum ts))
               | g (TC_ABS t) = combine [9, getnum t]
               | g (TC_BOX t) = combine [10, getnum t]
-              | g (TC_TUPLE (_, ts)) = combine (11::(map getnum ts))
+              | g (TC_TUPLE ts) = combine (11::(map getnum ts))
               | g (TC_ARROW(rw, ts1, ts2)) = 
                      let fun h(true, true) = 10
                            | h(true, _) = 20
@@ -266,7 +263,7 @@ local structure Weak = SMLofNJ.Weak
 
       fun tc_aux tc = 
         let fun g (TC_VAR(d, i)) = AX_REG(true, [tvToInt(d, i)])
-              | g (TC_NVAR(v, d, i)) = baseAux (*** THIS IS WRONG ! ***)
+              | g (TC_NVAR(v, d, i)) = baseAux (*** incorrect ? ***)
               | g (TC_PRIM pt) = baseAux
               | g (TC_APP(ref(_, TC_FN _, AX_NO), _)) = AX_NO
               | g (TC_PROJ(ref(_, TC_SEQ _, AX_NO), _)) = AX_NO
@@ -287,7 +284,7 @@ local structure Weak = SMLofNJ.Weak
                      end
               | g (TC_ABS t) = getAux t
               | g (TC_BOX t) = getAux t
-              | g (TC_TUPLE (_, ts)) = fsmerge ts
+              | g (TC_TUPLE ts) = fsmerge ts
               | g (TC_ARROW(_, ts1, ts2)) = fsmerge (ts1@ts2)
               | g (TC_PARROW(t1, t2)) = fsmerge [t1, t2]
               | g (TC_CONT ts) = fsmerge ts
@@ -395,6 +392,18 @@ fun ltp_norm ((t as ref (i, _, AX_REG(b,_))) : lty) =  b
   | ltp_norm _ = false
 
 
+(** finding out the innermost binding depth for a tyc's free variables *)
+fun tc_depth (x, d) =
+  let val tvs = tc_vs x
+   in case tvs
+       of NONE => bug "unexpected case in tc_depth"
+        | SOME [] => DI.top
+        | SOME (a::_) => d + 1 - (#1(tvFromInt a))
+  end
+
+fun tcs_depth ([], d) = DI.top
+  | tcs_depth (x::r, d) = Int.max(tc_depth(x, d), tcs_depth(r, d))
+
 (** utility functions for tc_env and lt_env *)
 local fun tcc_env_int(x, 0, 0, te) = x
         | tcc_env_int(x, i, j, te) = tc_injX(TC_ENV(x, i, j, te))
@@ -467,16 +476,17 @@ val tcc_fn = tc_injX o TC_FN
 val tcc_app = tc_injX o TC_APP
 val tcc_seq = tc_injX o TC_SEQ
 val tcc_proj = tc_injX o TC_PROJ
+val tcc_sum = tc_injX o TC_SUM
 val tcc_fix = tc_injX o TC_FIX
 val tcc_abs = tc_injX o TC_ABS
-val tcc_tup  = tc_injX o TC_TUPLE
+val tcc_box = tc_injX o TC_BOX
+val tcc_tup = tc_injX o TC_TUPLE
 val tcc_parw = tc_injX o TC_PARROW
 val ltc_tyc = lt_injX o LT_TYC
 val ltc_str = lt_injX o LT_STR
 val ltc_pst = lt_injX o LT_PST
 val ltc_fct = lt_injX o LT_FCT
 val ltc_poly = lt_injX o LT_POLY
-val tcc_sum = tc_injX o TC_SUM
 
 (** the following function contains the procedure on how to
     flatten the arguments and results of an arbitrary FLINT function
@@ -492,20 +502,16 @@ fun isKnown tc =
 and tc_autoflat tc = 
   let val ntc = tc_whnm tc 
    in (case tc_outX ntc
-        of TC_TUPLE (_, [_]) => (* singleton record is not flattened to ensure
+        of TC_TUPLE [_] => (* singleton record is not flattened to ensure
                               isomorphism btw plambdatype and flinttype *)
              (true, [ntc], false)
-         | TC_TUPLE (_, ts) => 
-             if length ts < 10 then (true, ts, true)
-             else (true, [ntc], false)  (* ZHONG added the magic number 10 *)
+         | TC_TUPLE ts => (true, ts, true)
          | _ => if isKnown ntc then (true, [ntc], false)
                 else (false, [ntc], false))
   end
 
 and tc_autotuple [x] = x 
-  | tc_autotuple xs = 
-       if length xs < 10 then tcc_tup (default_rflag, xs)
-       else bug "fatal error with tc_autotuple"
+  | tc_autotuple xs = tcc_tup xs
 
 and tcs_autoflat (flag, ts) = 
   if flag then (flag, ts) 
@@ -530,67 +536,6 @@ and tcc_arw  (x as ((true, true), ts1, ts2)) = tc_injX (TC_ARROW x)
           val (nb2, nts2) = tcs_autoflat (b2, ts2)
        in tc_injX (TC_ARROW((nb1, nb2),  nts1, nts2))
       end
-
-(** tcc_wrap applies to tyc of all kinds *)
-and tcc_wrap t = 
-  let val nt = tc_whnm t
-   in (case tc_outX nt  (* follow the kind relationship *)
-        of TC_SEQ ts => tcc_seq (map tcc_wrap ts)
-         | TC_FN(ks, tc) =>  tcc_fn(ks, tcc_wrap tc)
-         | TC_APP(t, ts) => tcc_app(tcc_wrap t, map tcc_wrap ts)
-         | (TC_PROJ _ | TC_VAR _ | TC_NVAR _) => nt
-         | TC_PRIM pt => if PT.pt_arity pt > 0 then nt else tcc_box nt
-         | _ => tcc_box nt)
-  end (* function tc_wrap *)
-
-(** tcc_box only applies to tyc of kind tkc_mono *)     
-and tcc_box t = 
-  let val nt = tcc_uncv t (* must produce a whnm *)
-   in (case tc_outX nt
-        of (TC_VAR _ | TC_NVAR _ | TC_APP _ | TC_PROJ _) => nt
-         | (TC_FIX _ | TC_SUM _) => nt  (* simplification here *)
-         | TC_PRIM pt => if PT.unboxed pt then tc_injX(TC_BOX nt) else nt
-         | (TC_TUPLE _ | TC_ARROW _) => tc_injX(TC_BOX nt)
-         | TC_BOX _ => bug "unexpected TC_BOX in tcc_box"
-         | (TC_SEQ _ | TC_FN _) => bug "unexpected tyc (SEQ/FN) in tcc_box"
-         | _ => bug "unsupported tycs in tcc_box")
-  end
-
-(** tcc_uncv is to recursively box a tyc of kind tkc_mono *)
-and tcc_uncv t = 
-  let val nt = tc_whnm t
-   in (case tc_outX nt
-        of (TC_VAR _ | TC_NVAR _ | TC_APP _ | TC_PROJ _) => nt
-         | (TC_FIX _ | TC_SUM _ | TC_PRIM _) => nt  (* simplified here *)
-         | (TC_SEQ _ | TC_FN _) => bug "unexpected tyc (SEQ/FN) in tcc_box"
-         | TC_BOX x => x
-         | TC_TUPLE (rk, ts) => tcc_tup(rk, map tcc_uncv ts)
-(*
-         | TC_ARROW ((b1,b2), ts1, ts2) => 
-             let val nts1 = map tcc_uncv ts1
-                 val nts2 = map tcc_uncv ts2
-                 val nts1 = 
-                   case (b1, ts1)
-                    of (_, [t11, t12]) => [tcc_box t11, tcc_box t12]
-                     | (true, _) => tcc_box(tc_autotuple ts1) 
-                     | _ => bug "not implemented"
-                         
-*)
-         | TC_ARROW ((true,b2), [t11,t12], ts2) => 
-             let val nt11 = tcc_box t11
-                 val nt12 = tcc_box t12
-                 val t2 = tcc_box(tc_autotuple ts2)
-                 (* after boxing, all calling conventions are fixed ! *)
-              in tcc_arw((true,true),[nt11,nt12],[t2])
-             end
-         | TC_ARROW ((b1,b2), ts1, ts2) => 
-             let val t1 = tcc_box(tc_autotuple ts1)
-                 val t2 = tcc_box(tc_autotuple ts2)
-                 (* after boxing, all calling conventions are fixed ! *)
-              in tcc_arw((true,true),[t1],[t2])
-             end
-         | _ => bug "unsupported tycs in tcc_box")
-  end
 
 (** utility function to read the top-level of a tyc *)
 and tc_lzrd t = 
@@ -633,7 +578,7 @@ and tc_lzrd t =
                         tcc_fix((n, prop tc, map prop ts), i)
                    | TC_ABS tc => tcc_abs (prop tc)
                    | TC_BOX tc => tcc_box (prop tc)
-                   | TC_TUPLE (rk, tcs) => tcc_tup (rk, map prop tcs)
+                   | TC_TUPLE tcs => tcc_tup (map prop tcs)
                    | TC_ARROW (r, ts1, ts2) => 
                        tcc_arw (r, map prop ts1, map prop ts2)
                    | TC_PARROW (t1, t2) => tcc_parw (prop t1, prop t2)
@@ -770,7 +715,7 @@ fun tc_norm t = if (tcp_norm t) then t else
                      tcc_fix((n, tc_norm tc, map tc_norm ts), i)
                  | TC_ABS tc => tcc_abs(tc_norm tc)
                  | TC_BOX tc => tcc_box(tc_norm tc)
-                 | TC_TUPLE (rk, tcs) => tcc_tup(rk, map tc_norm tcs)
+                 | TC_TUPLE tcs => tcc_tup(map tc_norm tcs)
                  | TC_ARROW (r, ts1, ts2) => 
                      tcc_arw(r, map tc_norm ts1, map tc_norm ts2)
                  | TC_PARROW (t1, t2) => tcc_parw(tc_norm t1, tc_norm t2)
@@ -840,7 +785,7 @@ fun tc_eqv_gen (eqop1, eqop2, eqop3, eqop4) (t1, t2) =
          (eqop1(a1, a2)) andalso (eqlist(eqop2, b1, b2))
      | (TC_SEQ ts1, TC_SEQ ts2) => eqlist(eqop1, ts1, ts2)
      | (TC_SUM ts1, TC_SUM ts2) => eqlist(eqop1, ts1, ts2)
-     | (TC_TUPLE (_, ts1), TC_TUPLE (_, ts2)) => eqlist(eqop1, ts1, ts2)
+     | (TC_TUPLE ts1, TC_TUPLE ts2) => eqlist(eqop1, ts1, ts2)
      | (TC_ABS a, TC_ABS b) => eqop1(a, b)
      | (TC_ABS a, _) => eqop3(a, t2)
      | (_, TC_ABS b) => eqop3(t1, b)
@@ -949,24 +894,6 @@ fun lt_eqv_bx (x : lty, y) =
                 else seq(t1, t2)
             end)
   end (* function lt_eqv_bx *)
-
-(***************************************************************************
- *  UTILITY FUNCTIONS ON FINDING OUT THE DEPTH OF THE FREE TYC VARIABLES   *
- ***************************************************************************)
-(** finding out the innermost binding depth for a tyc's free variables *)
-fun tc_depth (x, d) =
-  let val tvs = tc_vs (tc_norm x) 
-      (* unfortunately we have to reduce everything to the normal form
-         before we can talk about its list of free type variables.
-       *)
-   in case tvs
-       of NONE => bug "unexpected case in tc_depth"
-        | SOME [] => DI.top
-        | SOME (a::_) => d + 1 - (#1(tvFromInt a))
-  end
-
-fun tcs_depth ([], d) = DI.top
-  | tcs_depth (x::r, d) = Int.max(tc_depth(x, d), tcs_depth(r, d))
 
 end (* toplevel local *)
 end (* abstraction LtyKernel *)
