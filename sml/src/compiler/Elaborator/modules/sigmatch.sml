@@ -170,13 +170,13 @@ fun absEqvTy (spec, actual) : (ty * tyvar list * ty * bool) =
    in (actinst, instbtvs, specinst, res)
   end
 
-fun eqvTnspTy (spec, actual) : (ty * tyvar list) = 
-  let val actual = TU.prune actual
-      val (actinst, insttys) = TU.instantiatePoly actual
-      val (specinst, stys) = TU.instantiatePoly spec
-      val _ = ((Unify.unifyTy(actinst, specinst))
+fun eqvTnspTy (specty: ty, actualty: ty) : (ty * tyvar list) = 
+  let val actualty = TU.prune actualty
+      val (actInst, actInstTvs) = TU.instantiatePoly actualty
+      val (specInst, specInstTvs) = TU.instantiatePoly specty
+      val _ = ((Unify.unifyTy(actInst, specInst))
                handle _ => bug "unexpected types in eqvTnspTy")
-      val btvs = map TU.tyvarType stys
+      val btvs = map TU.tyvarType specInstTvs
    in (actinst, btvs)
   end
 
