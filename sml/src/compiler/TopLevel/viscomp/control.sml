@@ -166,6 +166,8 @@ structure Control : CONTROL =
     val printWarnings = ref true
     val valueRestrictionLocalWarn = ref false
     val valueRestrictionTopWarn = ref true
+    val multDefWarn = ref false
+    val shareDefError = ref true
     val instantiateSigs = ref true
     val debugging = ref false
     val internals = ref false
@@ -198,5 +200,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: control.sml,v $
+ * Revision 1.4  1998/05/23 14:10:30  george
+ *   Fixed RCS keyword syntax
+ *
  *)

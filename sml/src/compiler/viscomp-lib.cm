@@ -8,6 +8,11 @@
  *)
 
 Library
+	signature GENERIC_VC
+	signature MACHDEP_VC
+
+	structure GenericVC
+
 	structure Alpha32XVisComp
 	structure Alpha32VisComp
 	structure HppaVisComp
@@ -16,6 +21,7 @@ Library
 	structure RS6000VisComp
 	structure SparcVisComp
 	structure X86VisComp
+
 	functor BootEnvF
 is
 
@@ -57,8 +63,10 @@ TopLevel/viscomp/mipsebvis.sml
 TopLevel/viscomp/mipselvis.sml
 TopLevel/viscomp/rs6000vis.sml
 TopLevel/viscomp/sparcvis.sml
-TopLevel/viscomp/viscomp.sig
-TopLevel/viscomp/viscomp.sml
+TopLevel/viscomp/generic-vc.sig
+TopLevel/viscomp/generic-vc.sml
+TopLevel/viscomp/machdep-vc.sig
+TopLevel/viscomp/machdep-vc.sml
 TopLevel/viscomp/x86vis.sml
 
 Parse/ast/ast.sig

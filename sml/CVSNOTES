@@ -19,38 +19,12 @@
 	cvs -d ~cvs import -m '' smlnj/src/sml-nj FLINT v980311
 
 * from tarballs
-	# untar the distribution
-	version=110.8
-	mkdir $version; cd $version
-	scp daffy:~ftp/pub/smlnj/working/$version/\*.gz .
-	mkdir src; cd src
-	ztar ../*.gz
-	mv bin.* ../../
-	mv config ../
-	cd ..
-	mv *-bin.* ../
-	rm *.gz
-	
-	# import this distribution into the CVS vendor branch
-	cvs -d ~cvs import -ko -m '$version' flint SMLNJ v110_8 | grep -v '^U '
-	
-	# find the files that got deleted and `cvs rm' them
-	cd ../smlnj; cvs update
-	cvs rm $(cvs -q rdiff -s -r SMLNJ -r v110_8 flint |
-				 sed -n -e 's/^File flint\/\(.*\) is removed;.*/\1/p')
-	cvs commit -m '110.8'
-	#cvs tag v110_6
-	#cd ..; rm -rf smlnj
-	
-	# check out a new copy, trying to merge the changes into the trunk
-	cd ../trunk
-	cvs update -P -d -jSMLNJ:yesterday -jSMLNJ
-	# list the conflicts
-	find -type f | xargs grep '^>>>>'
+	cd ~/flint; ./bin/smlnj-newrev 110.9.1
+	cd trunk
 	<... solve the problems if any ...>
 	# check correctness
 	rm -rf lib bin bin.* src/compiler/bin.*
-	link ../bin.x86-unix; config/install.sh
+	link ../110.9.1/bin.x86-unix; config/install.sh
 	cd src/compiler; link ../../../bin.x86-unix; ./xrecompile; ./xrecompile
 
 	cd ../..; cvs commit -m 'merged in 110.6 changes'
