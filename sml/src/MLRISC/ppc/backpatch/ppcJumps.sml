@@ -11,6 +11,10 @@ struct
 
   fun error msg = MLRiscErrorMsg.error("PPCJumps",msg)
 
+  val warn_long_branch =
+      MLRiscControl.mkFlag ("ppc-warn-long-branch",
+			    "whether to warn about long form of branch")
+
   val branchDelayedArch = false
 
   fun isSdi(I.ANNOTATION{i,...}) =isSdi i
@@ -198,7 +202,9 @@ struct
 		      | I.COUNTER{eqZero, cond} => error "expand:newBO:COUNTER"
 		    (*esac*))
 		in 
-		  print("emiting long form of branch"  ^ "\n");
+		  if !warn_long_branch then
+		      print("emiting long form of branch"  ^ "\n")
+		  else ();
 		 [I.bc{bo=newBO, bf=bf, bit=bit, addr=fall, fall=fall, LK=false},
 		  I.b{addr=addr, LK=LK}]
 		end

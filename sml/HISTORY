@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/09/24 16:22:00 CDT
+Tag: blume-20040924-ppc-long-branch
+Description:
+
+Turned message about "emiting long form of branch" off by default.
+Added a control flag to turn it back on when desired.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/09/24 16:05:00 CDT
 Tag: blume-20040924-rounding
 Description:
