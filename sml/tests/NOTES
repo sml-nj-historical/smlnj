@@ -1,3 +1,6 @@
-To supprest Autoloading chatter:
+1. To supprest Autoloading chatter (110.0.x):
 
   CM.verbose (SOME false);
+
+2. To avoid "stty: : Inappropriate I/O control operation" (e.g. on
+IRIX6, don't run under emacs (where $EMACS=t).

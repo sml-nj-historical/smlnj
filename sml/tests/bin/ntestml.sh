@@ -186,7 +186,7 @@ fi
 
 $ECHO -u2 ${CMD} Building special version of SML for $OPSYS ...
 $SML @SMLquiet @SMLdebug=/dev/null << xxx 1>/dev/null
-        CM.autoload "host-compiler.cm";
+(*      CM.autoload "host-compiler.cm";  (Compiler already autolaoded) *)
   	Compiler.Control.primaryPrompt:="";
   	Compiler.Control.secondaryPrompt:="";
         Compiler.Control.Print.printLength := 1000;
