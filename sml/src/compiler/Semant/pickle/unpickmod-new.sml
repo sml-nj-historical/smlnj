@@ -679,7 +679,7 @@ structure UnpickMod : UNPICKMOD = struct
 	end
 
 	and inl_info () = let
-	    fun ii #"A" = II.INL_PRIM (primop (), ty ())
+	    fun ii #"A" = II.INL_PRIM (primop ())
 	      | ii #"B" = II.INL_STR (iilist ())
 	      | ii #"C" = II.INL_NO
 	      | ii _ = raise Format

@@ -6,7 +6,7 @@ structure InlInfo : INL_INFO = struct
 
     fun bug s = ErrorMsg.impossible ("InlInfo: " ^ s)
 
-    exception E of PrimOp.primop * Types.ty
+    exception E of PrimOp.primop   (* PRIMOP *)
 
     type inl_info = II.ii
 
@@ -23,7 +23,7 @@ structure InlInfo : INL_INFO = struct
 
     fun prInfo i = let
 	fun loop (i, acc) =
-	    match i { inl_prim = fn (p, _) => PrimOp.prPrimop p :: acc,
+	    match i { inl_prim = fn p => PrimOp.prPrimop p :: acc,
 		      inl_no = fn () => "<InlNo>" :: acc,
 		      inl_str = fn [] => "{}" :: acc
 				 | h::t =>
@@ -40,10 +40,10 @@ structure InlInfo : INL_INFO = struct
 
     val isPrimInfo = II.isSimple
 
-    fun isPrimCallcc (II.Info (E ((PrimOp.CALLCC | PrimOp.CAPTURE), _))) = true
+    fun isPrimCallcc (II.Info (E (PrimOp.CALLCC | PrimOp.CAPTURE))) = true
       | isPrimCallcc _ = false
 
-    fun pureInfo (II.Info (E (p, _))) =
+    fun pureInfo (II.Info (E p)) =
 	let fun isPure PrimOp.CAST = true
 	      | isPure _ = false
 	(* val isPure = PrimOp.purePrimop *)

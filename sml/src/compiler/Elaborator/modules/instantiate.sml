@@ -48,7 +48,9 @@ signature INSTANTIATE_PARAM = sig
 
     val tvi_exn : { depth: DebIndex.depth, num: int, kind: tkind } -> exn
 
+(* PRIMOP
     val ii2ty : II.ii -> Types.ty option
+*)
 end
 
 signature INSTANTIATE =

@@ -13,7 +13,7 @@ end (* signature TYPECHECK *)
 
 (* functorized to factor out dependencies on FLINT... *)
 functor TypecheckFn (val ii_ispure : II.ii -> bool
-		     val ii2ty : II.ii -> Types.ty option) : TYPECHECK =
+	     (* PRIMOP: val ii2ty : II.ii -> Types.ty option *)) : TYPECHECK =
 struct
 
 local open Array List Types VarCon BasicTypes TypesUtil Unify Absyn
@@ -403,7 +403,11 @@ let fun boolUnifyErr { ty, name, message } =
 	end
 in
      case exp
-      of VARexp(r as ref(VALvar{typ, info, ...}), _) =>
+      of VARexp(r as ref(VALvar{typ, ...}), _) =>
+	  let val (ty, insts) = instantiatePoly(!typ)
+	   in (VARexp(r, insts), ty)
+	  end
+(* PRIMOP: 
 	 (case ii2ty info of
 	      SOME st =>
               let val (sty, insts) = instantiatePoly(st)
@@ -416,6 +420,7 @@ in
 	      let val (ty, insts) = instantiatePoly(!typ)
 	      in (VARexp(r, insts), ty)
 	      end)
+*)
        | VARexp(refvar as ref(OVLDvar _),_) =>
  	    (exp,pushOverloaded(refvar, err region))
        | VARexp(r as ref ERRORvar, _) => (exp, WILDCARDty)
