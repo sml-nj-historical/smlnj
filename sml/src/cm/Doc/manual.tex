@@ -1551,7 +1551,7 @@ Example:
 
 \begin{verbatim}
   project.nw (target:(name:main.sml options:(private))
-              target:(name:grammar class:mlyacc witness:grammar.wtn)
+              target:(name:grammar class:mlyacc)
               target:(name:parse.sml))
 \end{verbatim}
 
@@ -2022,7 +2022,7 @@ about, then it tries to load a plugin module named {\tt \$/}$c${\tt
 ends in suffix $s$ for which no explicit member class has been
 specified in the CM description file and for which automatic
 member classification fails, then it tries to load a plugin module
-named {\tt \$}$s${\tt -ext.cm} or {\tt ./}$s${\tt -ext.cm}.  The
+named {\tt \$/}$s${\tt -ext.cm} or {\tt ./}$s${\tt -ext.cm}.  The
 so-loaded module can then register the required tool which enables CM
 to successfully deal with the previously unknown member.
 
@@ -2032,8 +2032,8 @@ can find them.  This can be done in one of two ways:
 
 \begin{enumerate}
 \item For general-purpose tools that are installed in some central
-place, corresponding tool description files {\tt \$}$c${\tt -tool.cm}
-and {\tt \$}$s${\tt -ext.cm} should be registered using the path
+place, corresponding tool description files {\tt \$/}$c${\tt -tool.cm}
+and {\tt \$/}$s${\tt -ext.cm} should be registered using the path
 anchor mechanism.  If this is done, actual description files can be
 placed in arbitrary locations.
 \item For special-purpose tools that are part of a specific program
