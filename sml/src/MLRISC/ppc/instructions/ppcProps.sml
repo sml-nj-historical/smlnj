@@ -1,3 +1,8 @@
+(* ppcProps.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *)
+
 functor PPCProps
    ( structure PPCInstr : PPCINSTR
      structure MLTreeEval : MLTREE_EVAL where T = PPCInstr.T

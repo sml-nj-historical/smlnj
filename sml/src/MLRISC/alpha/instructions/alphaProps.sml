@@ -102,7 +102,7 @@ struct
             I.ANNOTATION{i=setTargets(i,labs),a=a}
       | setTargets(i,_) = i
 
-    fun negateConditional br = let
+    fun negateConditional (br, lab) = let
       fun revBranch I.BEQ  = I.BNE 
 	| revBranch I.BGE  = I.BLT 
 	| revBranch I.BGT  = I.BLE 
@@ -117,12 +117,11 @@ struct
 	| revFBranch I.FBGT  = I.FBLE 
 	| revFBranch I.FBLE  = I.FBGT 
 	| revFBranch I.FBLT  = I.FBGE 
-
     in
       case br
-      of I.INSTR(I.BRANCH{b,r,lab}) => I.branch{b=revBranch b,r=r,lab=lab}
-       | I.INSTR(I.FBRANCH{b,f,lab}) => I.fbranch{b=revFBranch b,f=f,lab=lab}
-       | I.ANNOTATION{i,a} => I.ANNOTATION{i=negateConditional i,a=a}
+      of I.INSTR(I.BRANCH{b,r,...}) => I.branch{b=revBranch b,r=r,lab=lab}
+       | I.INSTR(I.FBRANCH{b,f,...}) => I.fbranch{b=revFBranch b,f=f,lab=lab}
+       | I.ANNOTATION{i,a} => I.ANNOTATION{i=negateConditional(i, lab),a=a}
        | _ => raise NegateConditional
     end
 

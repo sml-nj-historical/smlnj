@@ -52,11 +52,13 @@ sig
    val eqOpn      : I.operand * I.operand -> bool
    val hashOpn    : I.operand -> word
 
-      (* Negate the branching condition; raises NegateConditional
-       * if it is impossible to negate
-       *)
-   exception NegateConditional
-   val negateConditional : I.instruction -> I.instruction
+  (* Given a conditional jump instruction and label, return a conditional
+   * jump that has the complimentary condition and that targets the given
+   * label.  If the given instruction is not a conditional jump, then
+   * the NegateConditional exception is raised.
+   *)
+    exception NegateConditional
+    val negateConditional : (I.instruction * Label.label) -> I.instruction
 
      (* definition/use for the RA *)
    val defUse     : CellsBasis.cellkind -> 

@@ -121,7 +121,11 @@ struct
           I.ANNOTATION{i=setTargets(i,labels),a=a}
     | setTargets(i,_) = i
 
-  fun negateConditional br = let
+  (* negate the branch.  Since the HPPA instruction representation tracks both
+   * the true and false target labels, we set the false label to be the
+   * old true label and set the true label to be the argument label.
+   *)
+  fun negateConditional (br, lab) = let
     fun revFcond I.?    = I.!?
       | revFcond I.!<=> = I.<=>
       | revFcond I.==   = I.!=
@@ -149,22 +153,25 @@ struct
       | revFcond I.!?   = I.?
       | revFcond I.<=>  = I.!<=>
       | revFcond _      = error "revFcond"
-  in
-    case br of 
-      I.INSTR(I.BCOND{cmp,bc,r1,r2,t,f,n,nop}) => 
-         I.bcond{bc=bc, r1=r1, r2=r2, t=t, f=f, n=n, nop=nop,
-		 cmp=case cmp of I.COMBT => I.COMBF | I.COMBF => I.COMBT}
-    | I.INSTR(I.BCONDI{cmpi,bc,i,r2,t,f,n,nop}) =>
-        I.bcondi{bc=bc, i=i, r2=r2, t=t, f=f, n=n, nop=nop,
-		 cmpi=case cmpi of I.COMIBT => I.COMIBF | I.COMIBF => I.COMIBT}
-    | I.INSTR(I.BB{bc,r,p,t,f,n,nop}) => 
-         I.bb{bc=case bc of I.BSET => I.BCLR | I.BCLR => I.BSET, 
-              r=r,p=p,t=t,f=f,n=n,nop=nop}
-    | I.INSTR(I.FBRANCH{cc,fmt,f1,f2,t,f,n,long}) =>
-        I.fbranch{cc=revFcond cc,fmt=fmt,f1=f1,f2=f2,t=t,f=f,n=n,long=long} 
-    | I.ANNOTATION{i,a} => I.ANNOTATION{i=negateConditional i,a=a}
-    | _ => raise NegateConditional
-  end
+    fun negate (I.INSTR(I.BCOND{cmp,bc,r1,r2,t,f,n,nop})) = I.bcond{
+	    bc=bc, r1=r1, r2=r2, t=lab, f=t, n=n, nop=nop,
+	    cmp=case cmp of I.COMBT => I.COMBF | I.COMBF => I.COMBT
+	  }
+    | negate (I.INSTR(I.BCONDI{cmpi,bc,i,r2,t,f,n,nop})) = I.bcondi{
+	    bc=bc, i=i, r2=r2, t=lab, f=t, n=n, nop=nop,
+	    cmpi=case cmpi of I.COMIBT => I.COMIBF | I.COMIBF => I.COMIBT
+	  }
+    | negate (I.INSTR(I.BB{bc,r,p,t,f,n,nop})) = I.bb{
+	    bc=case bc of I.BSET => I.BCLR | I.BCLR => I.BSET, 
+            r=r,p=p,t=lab,f=t,n=n,nop=nop
+	  }
+    | negate (I.INSTR(I.FBRANCH{cc,fmt,f1,f2,t,f,n,long})) =
+        I.fbranch{cc=revFcond cc,fmt=fmt,f1=f1,f2=f2,t=lab,f=t,n=n,long=long} 
+    | negate (I.ANNOTATION{i,a}) = I.ANNOTATION{i=negate i,a=a}
+    | negate _ = raise NegateConditional
+    in
+      negate br
+    end
 
   (*========================================================================
    *  Equality and hashing for operands

@@ -1,3 +1,8 @@
+(* sparcProps.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *)
+
 functor SparcProps
   (structure SparcInstr : SPARCINSTR
    structure MLTreeEval : MLTREE_EVAL where T = SparcInstr.T
@@ -123,16 +128,16 @@ struct
   fun revP I.PT = I.PN
     | revP I.PN = I.PT
 
-  fun negateConditional(I.INSTR(I.Bicc{b,a,label,nop})) =
-         I.bicc{b=revCond b,a=a,label=label,nop=nop}
-    | negateConditional(I.INSTR(I.FBfcc{b,a,label,nop})) =
-         I.fbfcc{b=revFcond b,a=a,label=label,nop=nop} 
-    | negateConditional(I.INSTR(I.BR{p,r,rcond,a,label,nop})) =
-         I.br{p=revP p,a=a,r=r,rcond=revRcond rcond,label=label,nop=nop} 
-    | negateConditional(I.INSTR(I.BP{b,cc,p,a,label,nop})) =
-         I.bp{p=revP p,a=a,b=revCond b,cc=cc,label=label,nop=nop} 
-    | negateConditional(I.ANNOTATION{i,a}) = 
-         I.ANNOTATION{i=negateConditional i,a=a}
+  fun negateConditional (I.INSTR(I.Bicc{b,a,nop,...}), lab) =
+         I.bicc{b=revCond b,a=a,label=lab,nop=nop}
+    | negateConditional (I.INSTR(I.FBfcc{b,a,nop,...}), lab) =
+         I.fbfcc{b=revFcond b,a=a,label=lab,nop=nop} 
+    | negateConditional (I.INSTR(I.BR{p,r,rcond,a,nop,...}), lab) =
+         I.br{p=revP p,a=a,r=r,rcond=revRcond rcond,label=lab,nop=nop} 
+    | negateConditional (I.INSTR(I.BP{b,cc,p,a,nop,...}), lab) =
+         I.bp{p=revP p,a=a,b=revCond b,cc=cc,label=lab,nop=nop} 
+    | negateConditional (I.ANNOTATION{i,a}, lab) = 
+         I.ANNOTATION{i=negateConditional(i, lab), a=a}
     | negateConditional _ = raise NegateConditional
 
   fun jump label = I.bicc{b=I.BA,a=true,label=label,nop=true}
