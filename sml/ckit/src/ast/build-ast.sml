@@ -899,29 +899,31 @@ let
              So, we might have to fix up the type!
 	     *)
  
-	  val (initExprOpt, ty) =
+	  (* DBM: return fixed id as well, to fix Bug 19 *)
+	  val (initExprOpt, ty, id) =
 	      case expr
-		of PT.EmptyExpr => (NONE, ty)
+		of PT.EmptyExpr => (NONE, ty, id)
 		 | _ => 
 		    let 
 		      val e = cnvInitExpression expr
 		      val _ = constCheckIE e
 		      val (e',ty') = checkInitializer(ty, e, auto)
-		     in 
-		       if equalType(ty', ty) then ()  (* nothing more to do *)
+		      val id' = 
+		       if equalType(ty', ty) then id (* no fix for id required *)
 		       else (* fix up type of id *)
-			 (case lookSym varSym of
-			    SOME(B.ID x) =>
-			      let val {name, uid, location, ctype, stClass, status, global, kind} = x
-				val id = 
-				  {name=name, uid=uid, location=location, ctype=ty',
-				   stClass=stClass, status=status, global=global, kind=kind}
-			      in
-				bindSym (varSym, ID id)
-			      end
-			  | _ => ()  (* can never arise: id must have ID binding *)
-			 );
-		       (SOME e', ty')
+			 (case lookSym varSym
+			    of SOME(B.ID x) =>
+				let val {name, uid, location, ctype, stClass,
+					 status, global, kind} = x
+				    val newid = {name=name, uid=uid, location=location,
+						 ctype=ty', stClass=stClass,
+						 status=status, global=global,
+						 kind=kind}
+				 in bindSym (varSym, ID newid);
+				    newid
+				end
+			     | _ => id)  (* can never arise: id must have ID binding *)
+		     in (SOME e', ty', id')
 		    end
 
 	  (* Now do storage size check: can't do it earlier, because type might

@@ -174,7 +174,9 @@ NUMBER: 19
 SUBMITTER: Alexey Loginov <alexey@cs.wisc.edu>
 DATE: 4/20/00
 TEST: 
-STATUS: open
+STATUS: fixed, DBM, 6/8/00
+  Return fixed-up id at the same time as the fixed type (fun processDecr
+  in ast/build-ast.sml)
 DESCRIPTION:  incomplete types
 
 A change to build-ast.sml since ckit 1.0b3 is annotating types of ids
