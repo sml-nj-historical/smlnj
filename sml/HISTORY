@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/31 16:10:00 CDT
+Tag: blume-20030931-primio-bat
+Description:
+
+1. Added openVector, nullRd, and nullWr to PRIM_IO.
+2. Improved .bat files (for Win32 port) to make things work under Win95.
+   (thanks to Aaron S. Hawley for this one)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/09/26 16:05:00 CDT
 Tag: blume-20030926-wrappriv
 Description:

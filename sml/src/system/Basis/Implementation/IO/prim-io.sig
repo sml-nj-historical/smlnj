@@ -3,7 +3,6 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
  *)
-
 signature PRIM_IO =
   sig
     type elem
@@ -51,9 +50,12 @@ signature PRIM_IO =
 	ioDesc     : OS.IO.iodesc option
       }
 
+    val openVector : vector -> reader
+
+    val nullRd : unit -> reader
+    val nullWr : unit -> writer
+
     val augmentReader : reader -> reader
     val augmentWriter : writer -> writer
 
   end
-
-
