@@ -65,25 +65,36 @@ functor LabelExp(Constant : CONSTANT) = struct
   (* This module should be parameterised, in order to generate
    * target label expressions for assembly code purposes.
    *)
-  fun parenthesize str = "(" ^ str ^ ")"
+(* operator precedences:
+   (Note: these differ from C's precedences)
+                2 MULT, DIV, LSHIFT, RSHIFT
+                1 AND, OR
+                0 PLUS, MINUS
+*)
 
-  fun pToString(lexp as LABEL _) = toString lexp
-    | pToString(lexp as INT _) = toString lexp
-    | pToString lexp = parenthesize(toString lexp)
+  fun parens (str, prec, op_prec) = 
+      if prec > op_prec then "(" ^ str ^ ")" else str
 
-  and toString(LABEL lab) = Label.nameOf lab 
-    | toString(CONST c) = 
+  and toString le = toStr(le, 0) 
+
+  and toStr(LABEL lab, _) = Label.nameOf lab 
+    | toStr(CONST c, _) = 
         if !resolveConstants then prInt(Constant.valueOf c)
         else Constant.toString c
-    | toString(INT i) = prInt i
-    | toString(PLUS(lexp1, lexp2)) =  pToString lexp1 ^ "+" ^ pToString lexp2
-    | toString(MINUS(lexp1, lexp2)) = pToString lexp1 ^ "-" ^ pToString lexp2
-    | toString(MULT(lexp1, lexp2)) = pToString lexp1 ^ "*" ^ pToString lexp2
-    | toString(DIV(lexp1, lexp2)) = pToString lexp1 ^ "/" ^ pToString lexp2
-    | toString(LSHIFT(lexp, cnt)) = pToString lexp ^ "<<" ^ Word.toString cnt
-    | toString(RSHIFT(lexp, cnt)) = pToString lexp ^ ">>" ^ Word.toString cnt
-    | toString(AND(lexp, mask)) = pToString lexp ^ "&" ^ Word.toString mask
-    | toString(OR(lexp, mask)) = pToString lexp ^ "|" ^ Word.toString mask
+    | toStr(INT i, _) = prInt i
+    | toStr(MULT(lexp1, lexp2), _) = toStr(lexp1, 2) ^ "*" ^ toStr(lexp2,2)
+    | toStr(DIV(lexp1, lexp2), _) =  toStr(lexp1, 2) ^ "/" ^ toStr(lexp2,2)
+    | toStr(LSHIFT(lexp, cnt), prec) = toStr(lexp,2) ^ "<<" ^ Word.toString cnt
+    | toStr(RSHIFT(lexp, cnt), prec) = toStr(lexp,2) ^ ">>" ^ Word.toString cnt
+    | toStr(AND(lexp, mask), prec) = 
+        parens(toStr(lexp,1) ^ "&" ^ Word.toString mask, prec, 1)
+    | toStr(OR(lexp, mask), prec) = 
+        parens(toStr(lexp, 1) ^ "|" ^ Word.toString mask, prec, 1)
+    | toStr(PLUS(lexp1, lexp2), prec) = 
+        parens(toStr(lexp1, 0) ^ "+" ^ toStr(lexp2, 0), prec, 0)
+    | toStr(MINUS(lexp1, lexp2), prec) = 
+        parens(toStr(lexp1, 0) ^ "-" ^ toStr(lexp2, 0), prec, 0)
+
 
   fun hash(LABEL(Label.Label{id,...})) = Word.fromInt id
     | hash(INT i) = Word.fromInt i

@@ -12,6 +12,16 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/05/08 22:17 EDT
+Tag: leunga-20000508-labexp
+Description:
+
+  Fermin has found a few assembly problems with constant expressions 
+  generated in LabelExp.  Mostly, the problems involve extra parentheses,
+  which choke on dumb assemblers.  This is his fix.
+
+----------------------------------------------------------------------
 Name: Dave MacQueen
 Date: 2000/04/09 14:00 EDT
 Tag: dbm-20000502-Version_110_28
