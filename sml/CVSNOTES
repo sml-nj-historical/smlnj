@@ -11,15 +11,22 @@
 	mkdir 110.6; cd 110.6
 	scp daffy:~ftp/pub/smlnj/working/110.6/\*.gz .
 	mkdir src; cd src
-	ztar ../110.6-*.gz
+	ztar ../*.gz
 	mv bin.* ../../
 	mv config ../
 	cd ..
 	mv *-bin.* ../
 	rm *.gz
+	
 	# import this distribution into the CVS vendor branch
 	cvs -qd ~cvs import -ko -m '110.6' flint SMLNJ v110_6 | grep -v '^U '
-
+	
+	# find the files that got deleted and `cvs rm' them
+	cd ..; cvs -d ~cvs co -d smlnj -r SMLNJ flint; cd smlnj
+	cvs rm $(cvs -q diff -s -r v110_6 | sed -n -e 's/^Index: //p')
+	cvs commit -m 'removed deleted files'
+	cvs tag v110_6
+	
 	# check out a new copy, trying to merge the changes into the trunk
 	cd ..; cvs co -ko -P -jSMLNJ:yesterday -jSMLNJ flint; cd flint
 	# list the conflicts
