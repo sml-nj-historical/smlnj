@@ -38,7 +38,7 @@ signature CONTROLS =
   (* this exception is raised to communicate that there is a syntax error
    * in a string representation of a control value.
    *)
-    exception ValueSyntax of {ctlName : string, value : string}
+    exception ValueSyntax of {tyName : string, ctlName : string, value : string}
 
   (* create a string control from a typed control *)
     val stringControl : 'a value_cvt -> 'a control -> string control

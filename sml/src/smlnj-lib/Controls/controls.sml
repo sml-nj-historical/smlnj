@@ -25,7 +25,7 @@ structure Controls : CONTROLS =
   (* this exception is raised to communicate that there is a syntax error
    * in a string representation of a control value.
    *)
-    exception ValueSyntax of {ctlName : string, value : string}
+    exception ValueSyntax of {tyName : string, ctlName : string, value : string}
 
     fun stringControl {tyName, fromString, toString} = let
 	  fun mk (Ctl{name, get, set, priority, obscurity, help}) = Ctl{
@@ -33,6 +33,7 @@ structure Controls : CONTROLS =
 		  get = fn () => toString(get()),
 		  set = fn sval => (case fromString sval
 		     of NONE => raise ValueSyntax{
+			    tyName = tyName,
 			    ctlName = Atom.toString name,
 			    value = sval
 			  }

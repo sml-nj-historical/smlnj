@@ -4,6 +4,9 @@ correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
 [2002-05-17]
+	Added tyName field to ValueSyntax exception in Controls module.
+
+[2002-05-17]
 	Added == and != operators to INT_INF interface.  These are a
 	placeholder until IntInf moves into the SML/NJ compiler.
 
