@@ -196,7 +196,7 @@ fun addKE(kenv, vs, ks) = RT.addKE
 
 (* val tkAbsGen : kenv * lvar list * tkind list * lvar * fkind 
                   -> kenv * ((lexp *lexp) -> lexp) *)
-val tkAbsGen = RT.tkAbsGen
+(* val tkAbsGen = RT.tkAbsGen *)
 
 
 (* val tkAbs: kenv * (tvar * tkind) list -> kenv * (lexp * lexp -> lexp) *)

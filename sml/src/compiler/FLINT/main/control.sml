@@ -11,8 +11,8 @@ struct
     val phases = ref ["lcontract", (* Cruder but quicker than fcontract *)
 		      "fixfix", "fcontract",
 		      "specialize", (* "fixfix", "split", *) "fcontract",
-		      "wrap", "reify",
-		      "loopify", "fixfix", "fcontract+eta"]
+		      "wrap", "loopify", "fixfix", "fcontract", "reify",
+		      "fcontract", "fixfix", "fcontract+eta"]
 			  
     val inlineThreshold = ref 16
     val splitThreshold  = ref 0

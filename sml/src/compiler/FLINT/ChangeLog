@@ -1,3 +1,17 @@
+2000-04-19  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* reps/typeoper.sml (tkAbsGen): Remove.
+
+	* opt/fixfix.sml (curry): Make sure that uncurrying will not make a
+	function recursive, but allow uncurrying a mix of functor and function
+	in some restricted cases.
+	(uncurry): Properly handle the new functor/function case.
+	(SWITCH): Don't change the ordering while folding over the arms.
+	Plus some cosmetic code movements to avoid long lines.
+
+	* main/control.sml (phases): Move loopify (and its fixfix) to before
+	`reify' (while still keeping a fixfix after reify).
+
 2000-04-07  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* opt/switchoff.sml: Remove.
