@@ -13,6 +13,71 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/07/19 16:36:29 EDT 2001
+Tag: george-20010719-simple-cells
+Description: 
+
+I have dramatically simplified the interface for CELLS in MLRISC.
+
+In summary, the cells interface is broken up into three parts:
+
+  1. CellsBasis : CELLS_BASIS
+
+	CellsBasis is a top level structure and common for all
+        architectures.  it contains the definitions of basic datatypes
+        and utility  functions over these types.
+
+  2. functor Cells() : CELLS
+
+	Cells generates an interface for CELLS that incorporates the
+	specific resources on the target architecture, such as the 
+	presence of special register classes, their number and size, 
+	and various useful substructures.
+
+  3. <ARCH>CELLS 
+	
+	e.g. SparcCells: SPARCCELLS
+
+        <ARCH>CELLS usually contains additional bindings for special
+	registers  on the architecture, such as:
+	
+		val r0 : cell		(* register zero *)
+		val y : cell		(* Y register *)
+		val psr : cell		(* processor status register *) 
+		...
+	
+        The structure returned by applying the Cells functor is opened
+        in this interface. 
+
+The main implication of all this is that the datatypes for cells is 
+split between CellsBasis and CELLS -- a fairly simple change for user
+code. 
+
+In the old scheme the CELLS interface had a definitional binding of
+the form:
+
+	signature CELLS = sig
+
+ 	   structure CellsBasis = CellsBasis
+	
+	   ...
+
+        end
+
+With all the sharing constraints that goes on in MLRISC, this old
+design  quickly leads to errors such as:
+
+	"structure definition spec inside of sharing ... "
+
+
+and appears to require an unacceptable amount of sharing and where
+constraint hackery.  
+
+I think this error message (the interaction of definitional specs and
+sharing) requires more explanation on our web page. 
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2001/07/19 15:00:00 EDT
 Tag: blume-20010719-libreorg
