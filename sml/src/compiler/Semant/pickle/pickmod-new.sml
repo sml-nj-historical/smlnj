@@ -951,7 +951,8 @@ in
 	fun inl_info i =
 	    II.match i { inl_prim = fn (p, t) => "A" $ [primop p, ty t],
 			 inl_str = fn sl => "B" $ [list inl_info sl],
-			 inl_no = fn () => "C" $ [] }
+			 inl_no = fn () => "C" $ [],
+			 inl_pgn = fn () => "D" $ [] }
 
 	val op $ = PU.$ VAR
 	fun var (V.VALvar { access = a, info, path, typ = ref t }) =

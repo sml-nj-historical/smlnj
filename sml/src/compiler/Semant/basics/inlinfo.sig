@@ -10,10 +10,12 @@ signature INL_INFO = sig
     val INL_PRIM : PrimOp.primop * Types.ty -> inl_info
     val INL_STR : inl_info list -> inl_info
     val INL_NO : inl_info
+    val INL_PGN: inl_info
 
     val match : inl_info ->
 		{ inl_prim: PrimOp.primop * Types.ty -> 'a,
 		  inl_str: inl_info list -> 'a,
+		  inl_pgn: unit -> 'a,
 		  inl_no: unit -> 'a } ->
 		'a
 

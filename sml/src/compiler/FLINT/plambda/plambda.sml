@@ -62,7 +62,7 @@ datatype lexp
   | STRING of string 
   | PRIM of PO.primop * lty * tyc list
   | GENOP of dict * PO.primop * lty * tyc list
- 
+
   | FN of lvar * lty * lexp
   | FIX of lvar list * lty list * lexp list * lexp
   | APP of lexp * lexp

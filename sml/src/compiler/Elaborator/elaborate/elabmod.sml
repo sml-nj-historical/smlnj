@@ -739,7 +739,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 
 		(* a plugin is a pair of "stamp" * "structure" *)
 		val resStr = M.STR { sign = sg, rlzn = rlzn,
-				     access = access, info = II.Null }
+				     access = access, info = II.Plugin }
 
 	    in
 		(A.SEQdec [], resStr, M.CONSTstr rlzn, EE.empty)

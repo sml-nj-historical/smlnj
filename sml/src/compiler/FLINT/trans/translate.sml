@@ -858,7 +858,8 @@ in
 		  end
 		| _ => transPrim(p, (toLty d typ), map (toTyc d) ts)),
 	     inl_str = fn _ => otherwise (),
-	     inl_no = fn () => otherwise () }
+	     inl_no = otherwise,
+	     inl_pgn = otherwise }
       | _ => otherwise ()
 end
 
@@ -878,7 +879,21 @@ fun mkCE (TP.DATACON{const, rep, name, typ, ...}, ts, apOp, d) =
   end 
 
 fun mkStr (s as M.STR { access, info, ... }, d) =
-    mkAccInfo(access, info, fn () => strLty(s, d, compInfo), NONE)
+    let fun normal _ =
+	    mkAccInfo(access, info, fn () => strLty(s, d, compInfo), NONE)
+	fun plugin () = let
+	    val slty = strLty (s, d, compInfo)
+	    val x = mkAccInfo (access, info, fn () => LT.ltc_obj, NONE)
+	in
+	    raise Fail "notyet: mkStr: plugin"
+	end
+    in
+	II.match info
+		 { inl_prim = normal,
+		   inl_no = normal,
+		   inl_str = normal,
+		   inl_pgn = plugin }
+    end
   | mkStr _ = bug "unexpected structures in mkStr"
 
 fun mkFct (f as M.FCT { access, info, ... }, d) =

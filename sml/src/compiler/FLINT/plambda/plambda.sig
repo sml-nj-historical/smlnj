@@ -31,7 +31,7 @@ datatype lexp
   | STRING of string
   | PRIM of PrimOp.primop * lty * tyc list
   | GENOP of dict * PrimOp.primop * lty * tyc list
- 
+
   | FN of lvar * lty * lexp
   | FIX of lvar list * lty list * lexp list * lexp
   | APP of lexp * lexp
@@ -59,4 +59,3 @@ datatype lexp
 withtype dict = {default: lexp, table: (tyc list * lexp) list}
 
 end (* signature PLAMBDA *)
-

@@ -1,4 +1,6 @@
-(* ml.lex
+(* -*- sml-lex -*-
+ *
+ * ml.lex
  *
  * Copyright 1989 by AT&T Bell Laboratories
  *)

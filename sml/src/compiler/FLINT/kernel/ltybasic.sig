@@ -49,6 +49,7 @@ val tcc_exn    : tyc
 val tcc_void   : tyc
 val tcc_unit   : tyc
 val tcc_bool   : tyc
+val tcc_obj    : tyc
 
 val tcc_tv     : int -> tyc
 val tcc_ref    : tyc -> tyc
@@ -65,6 +66,7 @@ val ltc_exn    : lty
 val ltc_void   : lty
 val ltc_unit   : lty
 val ltc_bool   : lty
+val ltc_obj    : lty
 
 val ltc_tv     : int -> lty
 val ltc_ref    : lty -> lty

@@ -682,6 +682,7 @@ structure UnpickMod : UNPICKMOD = struct
 	    fun ii #"A" = II.INL_PRIM (primop (), ty ())
 	      | ii #"B" = II.INL_STR (iilist ())
 	      | ii #"C" = II.INL_NO
+	      | ii #"D" = II.INL_PGN
 	      | ii _ = raise Format
 	in
 	    share iiM ii

@@ -154,6 +154,7 @@ and tolexp (venv,d) lexp =
       | L.APP (L.GENOP _,arg) => default_tovalues()
       | L.APP (L.FN (arg_lv,arg_lty,body), arg_le) =>
 	    tolexp (venv,d) (L.LET(arg_lv, arg_le, body))
+
       | L.APP (f,arg) =>
             (* first, evaluate f to a mere value *)
             tovalue(venv, d, f,

@@ -9,6 +9,7 @@ structure II = struct
     datatype ii =
 	Info of exn
       | List of ii list
+      | Plugin			(* structure generated from a plugin *)
       | Null
 
     local
@@ -19,7 +20,7 @@ structure II = struct
 
     fun sel (List l, i) =
 	(List.nth (l, i) handle Subscript => bug "Wrong field in II.List !")
-      | sel (Null, _) = Null
+      | sel ((Null | Plugin), _) = Null
       | sel (Info _, i) = bug "Unexpected selection from II.Info !"
     end
 end

@@ -13,18 +13,21 @@ structure InlInfo : INL_INFO = struct
     val INL_PRIM = II.Info o E
     val INL_STR = II.List
     val INL_NO = II.Null
+    val INL_PGN = II.Plugin
 
-    fun match i { inl_prim, inl_str, inl_no } =
+    fun match i { inl_prim, inl_str, inl_pgn, inl_no } =
 	case i of
 	    II.Info (E x) => inl_prim x
 	  | II.Info _ => bug "bogus Info node"
 	  | II.List l => inl_str l
+	  | II.Plugin => inl_pgn ()
 	  | II.Null => inl_no ()
 
     fun prInfo i = let
 	fun loop (i, acc) =
 	    match i { inl_prim = fn (p, _) => PrimOp.prPrimop p :: acc,
 		      inl_no = fn () => "<InlNo>" :: acc,
+		      inl_pgn = fn () => "<InlPlugin>" :: acc,
 		      inl_str = fn [] => "{}" :: acc
 				 | h::t =>
 				   "{" :: loop (h,

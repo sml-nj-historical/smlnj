@@ -239,6 +239,9 @@ fun map_primop p =
      | AP.RAW_RECORD{ fblock = false } => PKP (P.rawrecord (SOME RK_I32BLOCK))
      | AP.RAW_RECORD{ fblock = true } => PKP (P.rawrecord (SOME RK_FBLOCK))
      
+     (* At the CPS level, we turn cross-level cast into ordinary cast.
+      * This should not hurt here anymore. *)
+
      | _ => bug ("bad primop in map_primop: " ^ (AP.prPrimop p) ^ "\n"))
 
 (***************************************************************************

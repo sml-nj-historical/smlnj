@@ -85,6 +85,7 @@ val tcc_bool   =
       val tsig_bool = tcc_fn ([tkc_mono], tbool)
    in tcc_fix((1, tsig_bool, []), 0)
   end
+val tcc_obj    = tcc_prim PT.ptc_obj
 
 val tcc_list   =  (* not exported, used for the printing purpose *)
   let val alpha = tcc_var (DI.innermost, 0)
@@ -113,6 +114,7 @@ val ltc_exn    = ltc_tyc tcc_exn
 val ltc_void   = ltc_tyc tcc_void
 val ltc_unit   = ltc_tyc tcc_unit
 val ltc_bool   = ltc_tyc tcc_bool
+val ltc_obj    = ltc_tyc tcc_obj
 
 val ltc_tv     = ltc_tyc o tcc_tv
 val ltc_ref    = ltc_tyc o tcc_ref o ltd_tyc

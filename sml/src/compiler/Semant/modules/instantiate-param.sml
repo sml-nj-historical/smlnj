@@ -19,6 +19,7 @@ structure InstantiateParam : INSTANTIATE_PARAM = struct
     fun ii2ty i =
 	InlInfo.match i { inl_prim = fn (_, t) => SOME t,
 			  inl_str = fn _ => NONE,
+			  inl_pgn = fn () => NONE,
 			  inl_no = fn () => NONE }
 	  
 
