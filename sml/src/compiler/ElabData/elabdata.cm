@@ -4,7 +4,7 @@
  *
  * A library defining data structures used by the SML/NJ elaborator.
  *)
-Group (../../system/smlnj/viscomp/elabdata.cm)
+Group
 	signature ACCESS
 	signature TYPES
 	signature TYPESUTIL

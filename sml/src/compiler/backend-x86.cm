@@ -7,7 +7,7 @@
  * The present file is a group which gets referred to by the actual library
  * file in system/smlnj/viscomp/x86.cm.
  *)
-Group (../system/smlnj/viscomp/x86.cm)
+Group
 	structure X86StdCallBackend
 	structure X86CCallBackend
 

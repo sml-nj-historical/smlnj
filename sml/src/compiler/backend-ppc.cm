@@ -7,7 +7,7 @@
  * The present file is a group which gets referred to by the actual library
  * file in system/smlnj/viscomp/ppc.cm.
  *)
-Group (../system/smlnj/viscomp/ppc.cm)
+Group
 
 	structure PPCBackend
 

@@ -2,8 +2,7 @@
  *
  * Sources file for Pretty printer device library.
  *)
-
-Group (../pp-lib.cm)
+Group
 
   structure TextIOPP
   structure SimpleTextIODev

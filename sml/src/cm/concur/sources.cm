@@ -4,11 +4,11 @@
  *  - remote compile servers (Unix only; communication via
  *    pipes and shared file system)
  *
- * (C) 1999 Lucent Technologies, Bell Laboratories
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
  *
- * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ * Author: Matthias Blume (blume@tti-c.org)
  *)
-Group (../../system/smlnj/internal/cm-lib.cm) is
+Group is
 	concur.sml
 	servers.sig
 # if defined (OPSYS_UNIX)

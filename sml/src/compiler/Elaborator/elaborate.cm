@@ -4,7 +4,7 @@
  *
  * The SML/NJ elaborator.
  *)
-Group (../../system/smlnj/viscomp/elaborate.cm)
+Group
 	structure ElabControl
 
 	signature PRIM_TYC_NUM

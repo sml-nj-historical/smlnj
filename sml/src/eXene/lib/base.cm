@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *)
 
-Group (../eXene.cm)
+Group
 is
 
 #if defined (NEW_CM)

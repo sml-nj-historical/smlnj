@@ -1,3 +1,9 @@
+(* basis.cm
+ *
+ *   The Standard ML Basis Library.
+ *
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
+ *)
 (primitive)
 Library
 	(* Basis *)

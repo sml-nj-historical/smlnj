@@ -253,7 +253,7 @@ structure CMSemant :> CM_SEMANT = struct
 		case initgroup of
 		    GG.GROUP x => x
 		  | GG.ERRORGROUP =>
-		    EM.impossible "semant.sml: group: bad init group"
+		      EM.impossible "semant.sml: group: bad init group"
 	in
 	    #1 (valOf (SymbolMap.find (exports, PervAccess.pervStrSym)))
 	end

@@ -4,7 +4,7 @@
  *
  * Debugging and profiling instrumentation phases.
  *)
-Group (../../system/smlnj/viscomp/debugprof.cm)
+Group
 	signature PROFILE
 
 	structure Profile

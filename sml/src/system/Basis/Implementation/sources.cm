@@ -1,4 +1,10 @@
-Group (../basis.cm)
+(* sources.cm
+ *
+ *   The implementation of the Basis.
+ *
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
+ *)
+Group
 	signature ARRAY
 	signature ARRAY_SLICE
 	signature ARRAY2

@@ -15,7 +15,7 @@
  * The present file is a group which gets referred to by the actual library
  * file in system/smlnj/viscomp/core.cm.
  *)
-Group (../system/smlnj/viscomp/core.cm)
+Group
 	signature BACKEND
 
         (* To make it possible to dynamically link in the optimizer, 

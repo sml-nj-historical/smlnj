@@ -5,7 +5,7 @@
  * The library sources file for the EXene library level.
  *)
 
-Group (../eXene.cm)
+Group
 
     signature GEOMETRY
     signature EXENE_BASE

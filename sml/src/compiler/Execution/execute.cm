@@ -5,7 +5,7 @@
  * Library containing code related to code objects, binfile contents, and
  * execution (aka "linking").
  *)
-Group (../../system/smlnj/viscomp/execute.cm)
+Group
 	signature CODE_OBJ
 	signature DYNAMICENV
 	signature BINFILE
