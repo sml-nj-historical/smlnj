@@ -170,17 +170,11 @@ struct
           in List.foldl switch 0 targets; ()
           end
 
-      and fallsThru(id, blks) = let
-	fun fallThruEdge(to) = addEdge (id, to, CFG.FALLSTHRU)
-      in
+      and fallsThru(id, blks) = 
 	case blks
-	 of [] => fallThruEdge(EXIT)
-          | CFG.BLOCK{id=next, insns=ref(_::_), (*data=ref[], JHR *) ...}::_ => fallThruEdge(next)
-	  | CFG.BLOCK{id=next, ...} ::_ => error 
-	     (* if pseudo ops are alignment directives, this may not be an error *)
-	     (Fmt.format "Block %d falls through to pseudoOps in %d\n"
-	        [Fmt.INT id, Fmt.INT next])
-      end
+	 of [] => addEdge(id, EXIT, CFG.FALLSTHRU)
+	  | CFG.BLOCK{id=next, ...}::_ => addEdge(id, next, CFG.FALLSTHRU)
+        (*esac*)
 	     
       and addEdges [] = ()
 	| addEdges(CFG.BLOCK{id, insns=ref[], ...}::blocks) = fallsThru(id, blocks)
