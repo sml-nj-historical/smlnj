@@ -400,7 +400,7 @@ functor IA32SVID_CCalls (
 		then T.ANNOTATION(callStm, fpReturnValueInST0)
 		else callStm
 	(* code to pop the arguments from the stack *)
-	  val popArgs = if calleePops
+	  val popArgs = if calleePops orelse (explicitArgSzB = 0)
 		then []
 		else [T.MV(wordTy, sp, T.ADD(wordTy, spR, T.LI(IntInf.fromInt explicitArgSzB)))]
 	(* code to copy the result into fresh pseudo registers *)
