@@ -1,5 +1,4 @@
-CM.autoload "smlnj/cm.cm";
-CM.autoload "smlnj/cmb.cm";
+CM.autoload "$smlnj/cmb.cm";
 fun serv n =
     CM.Server.start { name = n, pref = 0, pathtrans = NONE,
 		      cmd = ("../../bin/sml", ["@CMslave"]) };

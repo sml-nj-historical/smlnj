@@ -12,8 +12,8 @@ structure CMBSlave = struct
 	val loaded = ref StringSet.empty (* remember what we already have *)
     in
 	fun slave load arch s = let
-	    val lib = concat ["$/smlnj/cmb/", arch, ".cm"]
-	    (* eg. sparc-unix -> $/smlnj/cmb/sparc-unix.cm *)
+	    val lib = concat ["$smlnj/cmb/", arch, ".cm"]
+	    (* eg. sparc-unix -> $smlnj/cmb/sparc-unix.cm *)
 	in
 	    if StringSet.member (!loaded, lib) then ()
 	    else if load lib then loaded := StringSet.add (!loaded, lib)

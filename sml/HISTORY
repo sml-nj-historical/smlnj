@@ -12,6 +12,15 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/06/12 11:40:00
+Tag: blume-20000612-parmakefix
+Description:
+
+More cleanup after changing the file naming scheme: This time I
+repaired the parallel make mechanism for CMB.make which I broke earlier.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2000/06/09 01:25:00
 Tag: leunga-20000609-various
