@@ -1766,8 +1766,14 @@ struct
 			      C_PTR),
 			     v :: vl) =
 			  (CCalls.ARG (regbind v), vl)
+(* this would recursively traverse all structures fields, but we don't want
+ * to do that...
 			| m (C_STRUCT tl, vl) = let val (al, vl') = ml (tl, vl)
 						in (CCalls.ARGS al, vl') end
+*)
+			(* instead, we just pass the struct's address... *)
+			| m (C_STRUCT _, v :: vl) =
+			  (CCalls.ARG (regbind v), vl)
 			| m (_, []) = error "RCC: not enough ML args"
 			| m _ = error "RCC: unexpected C-type"
 		      and ml (tl, vl) = let

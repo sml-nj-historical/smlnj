@@ -200,8 +200,8 @@ struct
 		   | Ty.C_long_double => fload(80, 10)
 		   | Ty.C_unsigned(cint) => load(intSz(cint))
 		   | Ty.C_signed(cint) => load(intSz(cint))
-		   | Ty.C_PTR => load(32, 8)
-		   | Ty.C_ARRAY _ => load(32, 8)
+		   | Ty.C_PTR => load(32, 4)
+		   | Ty.C_ARRAY _ => load(32, 4)
 		   | Ty.C_STRUCT fields => let
 		       val (i, args) = mkArgs(fields, i, [])
 		     in mkArgs(rest, i, ARGS args::acc)

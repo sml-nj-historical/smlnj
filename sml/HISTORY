@@ -14,6 +14,26 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/04/18 12:45:00 EDT
+Tag: blume-20010418-ccalls
+Description:
+
+ - fixed two off-by-4 errors in the x86-specific c-calls implementation
+   (this bug prevented structure arguments containing pointers from being
+    passed correctly)
+ - changed the raw-C-call code in mlriscGen.sml in such a way that
+   structure arguments are represented as a pointer to the beginning
+   of the structure (instead of having a series of synthesized arguments,
+   one for each structure member)
+
+ - made makeml script's verbosity level configurable via environment
+   variable (MAKEML_VERBOSITY)
+
+ - eliminteded placeholder implementations for f32l, w16s, i16s, and f32s
+   in rawmem-x86.sml; we are now using the real thing
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/03/22 16:25:00 EST
 Tag: blume-20010322-bootfiles
 Description:

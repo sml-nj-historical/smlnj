@@ -13,13 +13,30 @@ if [ ! -x $LINK ] ; then
     exit 1
 fi
 
+verbosity=${MAKEML_VERBOSITY:-"@SMLverbose"}
+
 ALLOC=1M
 ARCH=sparc
 HEAP="sml"
-VERBOSITY="@SMLverbose"
 ARGS=""
 MODE=""
 RUN=""
+
+case $verbosity in
+    true|yes|on|TRUE|YES|ON)
+	VERBOSITY="@SMLverbose"
+	;;
+    false|no|off|FALSE|NO|OFF)
+	VERBOSITY="@SMLquiet"
+	;;
+    @SML*)
+	VERBOSITY=$verbosity
+	;;
+    *)
+	# what?!?
+	VERBOSITY="@SMLverbose"
+	;;
+esac
 
 rebuilt=no
 bare=no
