@@ -23,7 +23,7 @@ linkargsfile=$xx-LINKARGS
 
 dulist=''
 
-trap 'rm -rf $smlfile $cmfile $listfile $linkargsfile' 0 1 2 3 15
+trap 'rm -rf $smlfile $cmfile $listfile $linkargsfile @CMDIRARC@/*/$smlfile' 0 1 2 3 15
 
 usage() {
     echo ${thisscript}: $*

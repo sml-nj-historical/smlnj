@@ -14,6 +14,21 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/05/19 22:10:00 CDT
+Tag: blume-20040519-ml-build
+Description:
+
+Arranged for ml-build to clean up after itself a little bit better.
+The script generates a temporary SML source file and compiles it using
+CM, so CM generates metadata (GUID, SKEL, objectfile) for it.  It now
+gets rid of those at the end, so they don't accumulate under .cm.
+
+This required a minor change to install.sh because the name of the
+metadata directory (default: .cm) is actually configurable at
+installation time.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/05/18 15:50:00 CDT
 Tag: blume-20040518-mkreader
 Description:
