@@ -111,20 +111,17 @@ functor PPCMacOSX_CCalls (
     val maxRegArgs = 6
     val paramAreaOffset = 68
 
-    fun LI i = T.LI (T.I.fromInt (32, i))
+    fun LI i = T.LI(T.I.fromInt (32, i))
 
-    val GP = C.GPReg
-    val FP = C.FPReg
+    fun reg r = C.GPReg r
+    fun freg r = C.FPReg r
 
-    fun greg r = GP r
-    fun oreg r = GP (r + 8)
-    fun freg r = FP r
+    fun reg32 r = T.REG(32, r)
+    fun freg64 r = T.FREG(64, r)
 
-    fun reg32 r = T.REG (32, r)
-    fun freg64 r = T.FREG (64, r)
-
-    val sp = oreg 6
-    val spreg = reg32 sp
+  (* stack pointer *)
+    val sp = reg1
+    val spR = reg32 sp
 
     fun addli (x, 0) = x
       | addli (x, d) = let
@@ -134,30 +131,47 @@ functor PPCMacOSX_CCalls (
 	     of T.ADD (_, r, T.LI d) =>
 		  T.ADD (32, r, T.LI (T.I.ADD (32, d, d')))
 	      | _ => T.ADD (32, x, T.LI d')
+	    (* end case *)
 	  end
 
     fun argaddr n = addli (spreg, paramAreaOffset + 4*n)
 
-  (* temp location for transfers through memory *)
-    val tmpaddr = argaddr 1
+  (* layout information for C types; note that stack and struct alignment
+   * are different for some types
+   *)
+    type layout_info = {
+	sz : int,
+	stkAlign : int,
+	structAlign : int
+      }
 
     fun roundup (i, a) = a * ((i + a - 1) div a)
 
-    fun intSizeAndAlign Ty.I_char = (1, 1)
-      | intSizeAndAlign Ty.I_short = (2, 2)
-      | intSizeAndAlign Ty.I_int = (4, 4)
-      | intSizeAndAlign Ty.I_long = (4, 4)
-      | intSizeAndAlign Ty.I_long_long = (8, 8)
+  (* layout information for integer types *)
+    local
+      fun layout n = {sz = n, stkAlign = n, structAlign = n}
+
+      fun intSizeAndAlign Ty.I_char = layout 1
+	| intSizeAndAlign Ty.I_short = layout 2
+	| intSizeAndAlign Ty.I_int = layout 4
+	| intSizeAndAlign Ty.I_long = layout 4
+	| intSizeAndAlign Ty.I_long_long = {sz = 8, stkAlign = 8, structAlign = 4}
+
+    in
 
   (* calculate size and alignment for a C type *)
     fun szal (T.C_unsigned ty) = intSizeAndAlign ty
       | szal (T.C_signed ty) = intSizeAndAlign ty
       | szal Ty.C_void = raise Fail "unexpected void type"
-      | szal Ty.C_float = (4, 4)
-      | szal Ty.C_PTR = (4, 4)
-      | szal Ty.C_double = (8, 8)
-      | szal (Ty.C_long_double) = (8, 8)
-      | szal (Ty.C_ARRAY(t, n)) = let val (s, a) = szal t in (n * s, a) end
+      | szal Ty.C_float = layout 4
+      | szal Ty.C_PTR = layout 4
+      | szal Ty.C_double = {sz = 8, stkAlign = 8, structAlign = 4}
+      | szal (Ty.C_long_double) = {sz = 8, stkAlign = 8, structAlign = 4}
+      | szal (Ty.C_ARRAY(t, n)) = let
+	  val a = szal t
+	  in
+	    {sz = n * #sz a, stkAlign = ?, structAlign = #structAlign a}
+	  end
       | szal (Ty.C_STRUCT l) = let
 (* FIXME: the rules for structs are more complicated (and they also depend
  * on the alignment mode).  In Power alignment, 8-byte quantites like
@@ -185,6 +199,37 @@ functor PPCMacOSX_CCalls (
 		end
 	  in
 	    pack (0, 1, l)
+	  end
+    end
+
+    datatype arg
+      = Simple of (Ty.c_type * arg_pos)		(* includes arrays *)
+      | Struct of arg list
+ 
+  (* layout arguments *)
+    fun layout argTys = let
+	  fun assign ([], _, _, offset, args) = (offset, List.rev args)
+	    | assign (x::xs, gprs, fprs, offset, args) = let
+		fun assignInt sz = (case (sz, gprs)
+		       of (_, []) =>
+			    assign(xs, [], fprs, 
+			| (8, [r]) =>
+			| (8, r1::r2::rs) =>
+			| (_, r::rs) =>
+		      (* end case *))
+		in
+		  case x
+		   of (Ty.C_unsigned _) => assignInt x
+		    | (Ty.C_signed _) => assignInt x
+		    | (Ty.C_PTR) => assignInt x
+		    | (Ty.C_float) => assignFlt x
+		    | (Ty.C_double) => assignFlt x
+		    | (Ty.C_long_double) => assignFlt x
+		    | (Ty.C_ARRAY(ty, n)) =>
+		    | (Ty.CSTRUCT tys) =>
+		  (* end case *)
+		end
+	  in
 	  end
 
     fun genCall { name, proto, paramAlloc, structRet, saveRestoreDedicated,
