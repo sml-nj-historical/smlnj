@@ -1,6 +1,9 @@
 library
   structure RL
+  structure ReadlineStream
 is
+  $/basis.cm
   $c/c.cm
   readline.cm
   rl.sml
+  stream.sml
