@@ -397,6 +397,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
 	exception Format
 
+	val pcmode = #pcmode (#param gp)
 	val policy = #fnpolicy (#param gp)
 	val spath = FilenamePolicy.mkStablePath policy group
 	val _ = Say.vsay ["[checking stable ", gname, "]\n"]
@@ -497,7 +498,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
 	val r_abspath = let
 	    fun r_abspath_raw () =
-		case AbsPath.unpickle (r_list r_string ()) of
+		case AbsPath.unpickle pcmode (r_list r_string ()) of
 		    SOME p => p
 		  | NONE => raise Format
 	    fun unUAP (UAP x) = x

@@ -39,45 +39,25 @@ in
 	    fun clearFailures () = failures := SmlInfoSet.empty
 	end
 
-	(* To implement "keep_going" we have two different ways to "fold"
-	 * a "layer" function over a list.  The _k version is to be used
-	 * if keep_going is true, otherwise the _s version applies.
-	 * Note that there is a bit of typing mystery in the way I use
-	 * these functions later: I had to be more verbose than I wanted
-	 * to because of the "value restriction rule" in SML'97. *)
-	fun foldlayer_k layer f = let
-	    fun loop r [] = r
-	      | loop NONE (h :: t) = (ignore (f h); loop NONE t)
-	      | loop (SOME e) (h :: t) =
-		case f h of
-		    NONE => loop NONE t
-		  | SOME e' => loop (SOME (layer (e', e))) t
-	in
-	    loop
-	end
-
-	fun foldlayer_s layer f NONE l = NONE
-	  | foldlayer_s layer f (SOME i) l = let
-		fun loop e [] = SOME e
-		  | loop e (h :: t) =
-		    case f h of
-			NONE => NONE
-		      | SOME e' => loop (layer (e', e)) t
-	    in
-		loop i l
-	    end
+	(* To implement "keep_going" we have two different ways of
+	 * combining a "work" function with a "layer" function.
+	 * One way is to give up and do no further work once there
+	 * is a result of NONE, the other one is to continue
+	 * working (but to ignore the results of such work). *)
+	fun layerwork (k, layer, work) (x, NONE) =
+	    (if k then ignore (work x) else (); NONE)
+	  | layerwork (k, layer, work) (x, SOME e) =
+	    case work x of
+		NONE => NONE
+	      | SOME e' => SOME (layer (e', e))
 
 	fun bnode (gp: GP.info) n = let
 
-	    val (glob, loc) = let
-		val globf = farbnode gp
-		val locf = Option.map CT.bnofilter o bnode gp
-		fun k f = foldlayer_k CT.blayer f
-		fun s f = foldlayer_s CT.blayer f
-	    in
-		if #keep_going (#param gp) then (k globf, k locf)
-		else (s globf, s locf)
-	    end
+	    val k = #keep_going (#param gp)
+	    val glob = foldl (layerwork (k, CT.blayer, farbnode gp))
+	    val loc =
+		foldl (layerwork (k, CT.blayer,
+				  Option.map CT.bnofilter o bnode gp))
 
 	    fun bn (DG.PNODE p) = SOME (CT.primitive gp p)
 	      | bn (DG.BNODE n) = let
@@ -99,15 +79,12 @@ in
 
 	fun snode gp (DG.SNODE n) = let
 
-	    val (glob, loc) = let
-		val globf = farsbnode gp
-		val locf = Option.map CT.nofilter o snode gp
-		fun k f = foldlayer_k CT.layer f
-		fun s f = foldlayer_s CT.layer f
-	    in
-		if #keep_going (#param gp) then (k globf, k locf)
-		else (s globf, s locf)
-	    end
+	    val k = #keep_going (#param gp)
+	    val glob =
+		foldl (layerwork (k, CT.layer, farsbnode gp))
+	    val loc =
+		foldl (layerwork (k, CT.layer,
+				  Option.map CT.nofilter o snode gp))
 
 	    val { smlinfo, localimports = li, globalimports = gi } = n
 	    val desc = SmlInfo.fullSpec smlinfo
@@ -131,14 +108,12 @@ in
 
 	fun impexp gp (n, _) = Option.map CT.env2result (farsbnode gp n)
 
-	fun group gp (GG.GROUP { exports, ... }) = let
-	    val fl =
-		if #keep_going (#param gp) then foldlayer_k else foldlayer_s
-	in
-	    (fl CT.rlayer (impexp gp)
-	                  (SOME CT.empty)
-			  (SymbolMap.listItems exports))
+	fun group gp (GG.GROUP { exports, ... }) =
+	    (foldl (layerwork (#keep_going (#param gp),
+		               CT.rlayer,
+			       impexp gp))
+	           (SOME CT.empty)
+		   (SymbolMap.listItems exports))
 	    before clearFailures ()
-	end
     end
 end

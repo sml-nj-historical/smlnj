@@ -31,6 +31,7 @@ structure S = CMSemant
        | alias of S.group
        | group of S.group
        | privspec of S.privilegespec
+       | grantspec of S.privilegespec -> S.privilegespec
        | opt_exports of S.exports option
        | exports of S.exports
        | export of S.exports
@@ -101,13 +102,17 @@ group : privspec GROUP opt_exports IS members   (S.group
 							 exportsright),
 						  gp))
 
+grantspec : (* empty *)                         (fn p => p)
+          | grantspec word                      (fn p =>
+						 S.grant (grantspec p, word,
+							  error (wordleft,
+								 wordright)))
+
 privspec : (* empty *)                          (S.initialPrivilegeSpec)
          | privspec word                        (S.require (privspec, word,
 							    error (wordleft,
 								   wordright)))
-         | privspec LPAREN word RPAREN          (S.grant (privspec, word,
-							  error (wordleft,
-								 wordright)))
+         | privspec LPAREN grantspec RPAREN     (grantspec privspec)
 
 exports : export				(export)
 	| export exports			(S.exports (export, exports))
@@ -195,7 +200,7 @@ ml_symbol : STRUCTURE ML_ID			(S.ml_structure ML_ID)
 	  | FUNCTOR ML_ID			(S.ml_functor ML_ID)
 	  | FUNSIG ML_ID			(S.ml_funsig ML_ID)
 
-pathname : FILE_STANDARD			(S.file_standard
+pathname : FILE_STANDARD			(S.file_standard gp
 						 (FILE_STANDARD, context))
 	 | FILE_NATIVE				(S.file_native
 						 (FILE_NATIVE, context))

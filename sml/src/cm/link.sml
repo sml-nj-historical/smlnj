@@ -21,7 +21,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
        * mechanism is really meant to serve a different purpose.
        *
        * We split the existing pervasive environment into two parts:
-       *  1. All ML module definitions -- this is the parts that will
+       *  1. All ML module definitions -- this is the part that will
        *     become available via a primitive called "basis".
        *  2. The remaining (non-modular) bindings.  Those will be
        *     used as our "pervasive" environment.
@@ -130,6 +130,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	    val primconf = Primitive.configuration { basis = basis }
 	    val param = { primconf = primconf,
 			  fnpolicy = FilenamePolicy.default,
+			  pcmode = PathConfig.default,
 			  keep_going = true,
 			  pervasive = perv,
 			  corenv = corenv }

@@ -9,7 +9,11 @@
  *)
 
 signature PATHCONFIG = sig
-    val configAnchor : string -> (unit -> string) option
+    type mode
+
+    val default : mode
+
+    val configAnchor : mode -> string -> (unit -> string) option
 end
 
 (*
@@ -18,8 +22,12 @@ end
  * the directory that contains the corresponding file.
  *)
 structure PathConfig :> PATHCONFIG = struct
+    type mode = Dummy.t
+
+    val default = Dummy.v
+
     (* this is bogus -- should not be hard-wired like this *)
-    fun configAnchor "smlnj-lib.cm" =
+    fun configAnchor _ "smlnj-lib.cm" =
 	SOME (fn () => "/home/blume/ML/current/lib")
-      | configAnchor _ = NONE
+      | configAnchor _ _ = NONE
 end

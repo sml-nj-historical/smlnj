@@ -25,7 +25,7 @@ signature CM_SEMANT = sig
 
     (* getting elements of primitive types (pathnames and symbols) *)
     val file_native : string * context -> pathname
-    val file_standard : string * context -> pathname
+    val file_standard : GeneralParams.info -> string * context -> pathname
     val cm_symbol : string -> cm_symbol
     val ml_structure : string -> ml_symbol
     val ml_signature : string -> ml_symbol
@@ -125,7 +125,8 @@ structure CMSemant :> CM_SEMANT = struct
 	     false)
 
     fun file_native (s, d) = AbsPath.native { context = d, spec = s }
-    fun file_standard (s, d) = AbsPath.standard { context = d, spec = s }
+    fun file_standard (gp: GeneralParams.info) (s, d) =
+	AbsPath.standard (#pcmode (#param gp)) { context = d, spec = s }
     fun cm_symbol s = s
     val ml_structure = Symbol.strSymbol
     val ml_signature = Symbol.sigSymbol

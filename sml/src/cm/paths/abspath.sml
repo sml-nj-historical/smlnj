@@ -15,7 +15,7 @@ signature ABSPATH = sig
     val newEra : unit -> unit
 
     val cwdContext: unit -> context
-    val configContext: (unit -> string) * string -> context
+    (* val configContext: (unit -> string) * string -> context *)
     val relativeContext: t -> context
 
     val name : t -> string
@@ -25,10 +25,10 @@ signature ABSPATH = sig
     val contextName : context -> string
 
     val native : { context: context, spec: string } -> t
-    val standard : { context: context, spec: string } -> t
+    val standard : PathConfig.mode -> { context: context, spec: string } -> t
 
     val pickle : t -> string list
-    val unpickle : string list -> t option
+    val unpickle : PathConfig.mode -> string list -> t option
 
     val joinDirFile : { dir: t, file: string } -> t
     val splitDirFile : t -> { dir: t, file: string }
@@ -209,7 +209,7 @@ structure AbsPath :> ABSPATH = struct
 	fun native { spec, context } = fresh (context, spec)
 
 	(* make an abstract path from a standard string *)
-	fun standard { spec, context } = let
+	fun standard mode { spec, context } = let
 	    fun delim #"/" = true
 	      | delim #"\\" = true		(* accept DOS-style, too *)
 	      | delim _ = false
@@ -227,7 +227,7 @@ structure AbsPath :> ABSPATH = struct
 		"" :: arcs => mk (true, arcs, context)
 	      | [] => mk (false, [], context) (* shouldn't happen *)
 	      | arcs as (arc1 :: _) =>
-		    (case PathConfig.configAnchor arc1 of
+		    (case PathConfig.configAnchor mode arc1 of
 			 NONE => mk (false, arcs, context)
 		       | SOME fetch => let
 			     val anchorcontext =
@@ -249,14 +249,14 @@ structure AbsPath :> ABSPATH = struct
 	    p_p p
 	end
 
-	fun unpickle l = let
+	fun unpickle mode l = let
 	    exception Format
 	    fun u_p (h :: t) =
 		PATH { context = u_c t, spec = h, cache = ref NONE }
 	      | u_p [] = raise Format
 	    and u_c ["c"] = cwdContext ()
 	      | u_c [n, "a"] =
-		(case PathConfig.configAnchor n of
+		(case PathConfig.configAnchor mode n of
 		     NONE => raise Format
 		   | SOME fetch => CONFIG_ANCHOR { fetch = fetch,
 						   cache = ref NONE,
