@@ -96,28 +96,30 @@ is guaranteed to point to a newly created empty file."
 ;; defmap ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun custom-create-map (m bs args)
-  (unless (keymapp m)
-    (setq bs (append m bs))
-    (setq m (make-sparse-keymap)))
-  (dolist (b bs)
-    (let ((key (car b))
-	  (binding (cdr b)))
-      (cond
-       ((symbolp key)
-	(substitute-key-definition key binding m global-map))
-       ((let ((o (lookup-key m key))) (or (null o) (numberp o)))
-	(define-key m key binding)))))
-  (while args
-    (let ((key (first args))
-	  (val (second args)))
-      (cond
-       ((eq key :inherit)
+  (let (inherit dense)
+    (while args
+      (let ((key (first args))
+	    (val (second args)))
 	(cond
-	 ((keymapp val) (set-keymap-parent m val))
-	 (t (set-keymap-parents m val))))
-       (t (error "Uknown argument %s in defmap" key))))
-    (setq args (cddr args)))
-  m)
+	 ((eq key :dense) (setq dense val))
+	 ((eq key :inherit) (setq inherit val))
+	 (t (message "Uknown argument %s in defmap" key))))
+      (setq args (cddr args)))
+    (unless (keymapp m)
+      (setq bs (append m bs))
+      (setq m (if dense (make-keymap) (make-sparse-keymap))))
+    (dolist (b bs)
+      (let ((key (car b))
+	    (binding (cdr b)))
+	(cond
+	 ((symbolp key)
+	  (substitute-key-definition key binding m global-map))
+	 ((let ((o (lookup-key m key))) (or (null o) (numberp o)))
+	  (define-key m key binding)))))
+    (cond
+     ((keymapp inherit) (set-keymap-parent m inherit))
+     ((consp inherit) (set-keymap-parents m inherit)))
+    m))
 
 (defmacro defmap (m bs doc &rest args)
   `(defconst ,m

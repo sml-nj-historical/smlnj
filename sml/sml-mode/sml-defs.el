@@ -37,16 +37,17 @@
   '((forward-sexp	. sml-user-forward-sexp)
     (backward-sexp	. sml-user-backward-sexp)
     ;; Text-formatting commands:
-    ("\C-c\C-m" . sml-insert-form)
-    ("\C-c\C-i" . sml-mode-info)
-    ("\M-|"     . sml-electric-pipe)
-    ("\;"       . sml-electric-semi)
-    ("\M-\t"    . sml-back-to-outer-indent)
-    ("\C-\M-\\" . sml-indent-region)
-    ("\t"       . sml-indent-line)	; ...except this one
+    ("\C-c\C-m"	. sml-insert-form)
+    ("\C-c\C-i"	. sml-mode-info)
+    ("\M-|"	. sml-electric-pipe)
+    ("\M-\ "	. sml-electric-pipe)
+    ("\;"	. sml-electric-semi)
+    ("\M-\t"	. sml-back-to-outer-indent)
+    ("\C-\M-\\"	. sml-indent-region)
+    ("\t"	. sml-indent-line)	; ...except this one
     ;; Process commands added to sml-mode-map -- these should autoload
-    ("\C-c\C-l" . sml-load-file)
-    ("\C-c`"    . sml-next-error))
+    ("\C-c\C-l"	. sml-load-file)
+    ("\C-c`"	. sml-next-error))
   "Generic bindings used in sml-mode and sml-inferior-mode.")
 
 (defmap sml-mode-map
@@ -194,6 +195,7 @@
 (defconst sml-symbol-indent
   '(("fn" . -3)
     ("of" . 1)
+    ("|" . -2)
     ;;("in" . 1)
     ("d=" . 2))
   "Special indentation alist for some symbols.")

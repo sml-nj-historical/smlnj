@@ -1,5 +1,8 @@
 1999-06-17  Stefan Monnier  <monnier@cs.yale.edu>
 
+	* sml-mode.el (sml-insert-form): Only add a space if needed.
+	(sml-electric-space): new command bound to M-SPC.
+
 	* sml-defs.el (sml-close-paren): added a second field that specifies when
 	  not to delegate.  Only used for `else'.
 

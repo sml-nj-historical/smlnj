@@ -116,33 +116,20 @@
 (defvar sml-indent-level 4
   "*Indentation of blocks in ML (see also `sml-structure-indent').")
 
-(defvar sml-structure-indent 4          ; Not currently an option.
-  "*Indentation of signature/structure/functor declarations.")
-
-(defvar sml-pipe-indent -2
-  "*Extra (usually negative) indentation for lines beginning with `|'.")
-
-(defvar sml-indent-args 4
+(defvar sml-indent-args sml-indent-level
   "*Indentation of args placed on a separate line.")
 
-(defvar sml-indent-align-args t
-  "*Whether the arguments should be aligned.")
+;; (defvar sml-indent-align-args t
+;;   "*Whether the arguments should be aligned.")
 
-(defvar sml-nested-if-indent t
-  "*Determine how nested if-then-else will be formatted:
-    If t: if exp1 then exp2               If nil:   if exp1 then exp2
-          else if exp3 then exp4                    else if exp3 then exp4
-          else if exp5 then exp6                         else if exp5 then exp6
-          else exp7                                           else exp7")
+;; (defvar sml-case-indent nil
+;;   "*How to indent case-of expressions.
+;;     If t:   case expr                     If nil:   case expr of
+;;               of exp1 => ...                            exp1 => ...
+;;                | exp2 => ...                          | exp2 => ...
 
-(defvar sml-case-indent nil
-  "*How to indent case-of expressions.
-    If t:   case expr                     If nil:   case expr of
-              of exp1 => ...                            exp1 => ...
-               | exp2 => ...                          | exp2 => ...
-
-The first seems to be the standard in SML/NJ, but the second
-seems nicer...")
+;; The first seems to be the standard in SML/NJ, but the second
+;; seems nicer...")
 
 (defvar sml-electric-semi-mode nil
   "*If t, `\;' will self insert, reindent the line, and do a newline.
@@ -312,12 +299,6 @@ Seek help (\\[describe-variable]) on individual variables to get current setting
 
 sml-indent-level (default 4)
     The indentation of a block of code.
-
-sml-pipe-indent (default -2)
-    Extra indentation of a line starting with \"|\".
-
-sml-case-indent (default nil)
-    Determine the way to indent case-of expression.
 
 sml-electric-semi-mode (default nil)
     If t, a `\;' will reindent line, and perform a newline.
@@ -529,11 +510,12 @@ If anyone has a good algorithm for this..."
 				   (sml-op-prec "|" 'back))
     (if (looking-at "|")
 	(if (sml-bolp) (current-column) (sml-indent-pipe))
-      (when (looking-at "\\(data\\|abs\\)type\\>")
-	(re-search-forward "="))
-      (sml-forward-sym)
-      (sml-forward-spaces)
-      (+ sml-pipe-indent (current-column)))))
+      (let ((pipe-indent (or (cdr (assoc "|" sml-symbol-indent)) -2)))
+	(when (looking-at "\\(data\\|abs\\)type\\>")
+	  (re-search-forward "="))
+	(sml-forward-sym)
+	(sml-forward-spaces)
+	(+ pipe-indent (current-column))))))
 
 (defun sml-find-forward (re)
   (sml-forward-spaces)
@@ -579,8 +561,7 @@ If anyone has a good algorithm for this..."
   (if (sml-dangling-sym)
       (sml-indent-default 'noindent)
     (sml-move-if (backward-word 1)
-		 (and sml-nested-if-indent
-		      (looking-at sml-agglomerate-re)))
+		 (looking-at sml-agglomerate-re))
     (current-column)))
 
 (defun sml-get-sym-indent (sym &optional style)
@@ -698,7 +679,7 @@ signature, structure, and functor by default.")
        (define-skeleton ,fsym
 	 ,(format "SML-mode skeleton for `%s..' expressions" name)
 	 ,interactor
-	 ,(concat " " name " ") >
+	 ,(concat name " ") >
 	 ,@elements))))
 (put 'sml-def-skeleton 'lisp-indent-function 2)
 
@@ -712,7 +693,7 @@ signature, structure, and functor by default.")
   _ "\nin" > "\nend" >)
 
 (sml-def-skeleton "case" "Case expr: "
-  str (if sml-case-indent "\nof " " of\n") > _ " => ")
+  str "\nof " > _ " => ")
 
 (sml-def-skeleton "signature" "Signature name: "
   str " =\nsig" > "\n" > _ "\nend" >)
@@ -742,6 +723,18 @@ signature, structure, and functor by default.")
 
 (defvar sml-last-form "let")
 
+(defun sml-electric-space ()
+  "Expand a symbol into an SML form, or just insert a space.
+If the point directly precedes a symbol for which an SML form exists,
+the corresponding form is inserted."
+  (interactive)
+  (let* ((point (point))
+	 (sym (sml-backward-sym)))
+    (if (not (and sym (assoc sym sml-forms-alist)))
+	(progn (goto-char point) (insert " "))
+      (delete-region (point) point)
+      (sml-insert-form sym nil))))
+
 (defun sml-insert-form (name newline)
   "Interactive short-cut to insert a common ML form.
 If a perfix argument is given insert a newline and indent first, or
@@ -761,6 +754,7 @@ completion from `sml-forms-alist'."
   (unless (or (not newline)
 	      (save-excursion (beginning-of-line) (looking-at "\\s-*$")))
     (insert "\n"))
+  (unless (/= ?w (char-syntax (char-before))) (insert " "))
   (let ((f (cdr (assoc name sml-forms-alist))))
     (cond
      ((commandp f) (command-execute f))
