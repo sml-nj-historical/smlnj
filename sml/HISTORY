@@ -13,6 +13,23 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/04/28 17:30:00 JST
+Tag: blume-20000428-pathconfig
+Description:
+
+1. I changed config/install.sh to remove duplicate entries from the
+   lib/pathconfig file at the end.  Moreover, the final version of
+   lib/pathconfig is sorted alphabetically.  The same (sorting) is done
+   in src/system/installml.
+
+2. The config/install.sh script now consistently uses relative
+   pathnames in lib/pathconfig whenever the anchor is in the lib
+   directory.  (So far this was true for the libraries that come
+   pre-compiled and bundled as part of the bootfiles but not for
+   libraries that are compiled by the script itself.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/04/26 13:10:00 JST
 Tag: blume-20000426-fun_suffix
 Description:

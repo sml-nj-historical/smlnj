@@ -89,8 +89,9 @@ if [ -f $pcfile ] ; then
 fi
 rm -f $pcfile
 cat $LIB_DIR/pathconfig >>$tmpfile
-awk <$tmpfile >$pcfile 'NF == 2 { mapping[$1] = $2 }
+awk <$tmpfile 'NF == 2 { mapping[$1] = $2 }
 NF != 2 { print $0 }
-END { for (i in mapping) print i, mapping[i] }'
+END { for (i in mapping) print i, mapping[i] }' \
+ | sort >$pcfile
 
 rm -r $LIB_DIR

@@ -67,6 +67,11 @@ URLGETTER=unknown
 TOOLDIR=$BINDIR
 
 #
+# A temporary file for post-editing the pathconfig file...
+#
+PCEDITTMP=/usr/tmp/pcedittmp.$$
+
+#
 # files to be deleted after we are done...
 #
 tmpfiles=""
@@ -74,6 +79,7 @@ tmpfiles="$tmpfiles $ROOT/preloads.standard"
 tmpfiles="$tmpfiles $LIBLIST"
 tmpfiles="$tmpfiles $LOCALPATHCONFIG"
 tmpfiles="$tmpfiles $LIBMOVESCRIPT"
+tmpfiles="$tmpfiles $PCEDITTMP"
 #
 # make sure we always clean up after ourselves...
 #
@@ -334,8 +340,10 @@ movelibs() {
 reglib() {
     if [ x$MOVE_LIBRARIES = xtrue ] ; then
 	FINALLOCATION=$LIBDIR/$1
+	FINALCONFIGPATH=$1
     else
 	FINALLOCATION=$SRCDIR/$2
+	FINALCONFIGPATH=$FINALLOCATION
     fi
     if [ -d $FINALLOCATION/CM/$ARCH-unix ] ; then
 	echo "$this: Library $1 already exists in $FINALLOCATION."
@@ -346,8 +354,8 @@ reglib() {
         if [ x$MOVE_LIBRARIES = xtrue ] ; then
 	    echo movelibs $SRCDIR/$2 $1 >>$LIBMOVESCRIPT
         fi
-	echo $1 $FINALLOCATION >>$CM_PATHCONFIG_DEFAULT
     fi
+    echo $1 $FINALCONFIGPATH >>$CM_PATHCONFIG_DEFAULT
 }
 
 #
@@ -644,12 +652,24 @@ else
 fi
 
 #
-# Finally, move the libraries to their final locations...
+# Move the libraries to their final locations...
 #
 
 if [ -r $LIBMOVESCRIPT ] ; then
     echo $this: Moving libraries to $LIBDIR.
     . $LIBMOVESCRIPT
+fi
+
+#
+# Finally, remove duplicate entries from pathconfig file...
+#
+if [ -f $CM_PATHCONFIG_DEFAULT ] ; then
+    cp $CM_PATHCONFIG_DEFAULT $PCEDITTMP
+    rm -f $CM_PATHCONFIG_DEFAULT
+    awk <$PCEDITTMP 'NF == 2 { mapping[$1] = $2 }
+NF != 2 { print $0 }
+END { for (i in mapping) print i, mapping[i] }' \
+      | sort >$CM_PATHCONFIG_DEFAULT
 fi
 
 exit 0
