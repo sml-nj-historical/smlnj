@@ -159,8 +159,7 @@ void InitHeap (ml_state_t *msp, bool_t isBoot, heap_params_t *params)
 	if (i == 0)
 	    max_sz = MAX_SZ1(params->allocSz * MAX_NUM_PROCS);
 	else
-/** NOTE: the following is bogus **/
-	    max_sz = (ratio * heap->gen[i-1]->arena[0]->maxSizeB) / 2;
+	    max_sz = heap->gen[i-1]->arena[0]->maxSizeB;
 	gen		=
 	heap->gen[i]	= NEW_OBJ(gen_t);
 	gen->heap	= heap;
