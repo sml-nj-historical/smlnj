@@ -17,19 +17,19 @@ structure Unix : UNIX =
     type signal = PS.signal
     datatype exit_status = datatype P.exit_status
 
-    datatype ('a, 'b) proc =
-	     PROC of { base: string,
-		       pid  : P.pid,
-		       infd : PIO.file_desc,
-		       outfd: PIO.file_desc,
-		       (* The following two elements are a temporary
-			* hack until the general interface is sorted out.
-			* The idea is to have "reap" close the most recently
-			* created stream.  If no stream has been created,
-			* then the file descriptors get closed directly. *)
-		       closein: (unit -> unit) ref,
-		       closeout: (unit -> unit) ref,
-		       exit_status: OS.Process.status option ref }
+    datatype 'stream stream =
+	UNOPENED of PIO.file_desc
+      | OPENED of { stream: 'stream, close: unit -> unit }
+
+    datatype proc_status =
+	DEAD of OS.Process.status
+      | ALIVE of P.pid
+
+    datatype ('instream, 'outstream) proc =
+	PROC of { base: string,
+		  instream: 'instream stream ref,
+		  outstream: 'outstream stream ref,
+		  status: proc_status ref }
 
     val fromStatus = P.fromStatus
 
@@ -93,20 +93,24 @@ structure Unix : UNIX =
 	    BinIO.StreamIO.mkInstream (
 	      fdBinReader (name, fd), Byte.stringToBytes ""))
 
-    fun setcloser (r, f, s) = (r := (fn () => f s); s)
+    fun streamOf (sel, sfx, opener, closer) (PROC p) =
+	case sel p of
+	    ref (OPENED s) => #stream s
+	  | r as ref (UNOPENED fd) =>
+	      let val s = opener (#base p ^ "_ext_" ^ sfx, fd)
+	      in
+		  r := OPENED { stream = s, close = fn () => closer s };
+		  s
+	      end
 
-    fun textInstreamOf (PROC { base, infd, closein, ... }) =
-	setcloser (closein, TextIO.closeIn,
-		   openTextInFD (base ^ "_exec_txt_in", infd))
-    fun binInstreamOf (PROC { base, infd, closein, ... }) =
-	setcloser (closein, BinIO.closeIn,
-		   openBinInFD (base ^ "_exec_bin_in", infd))
-    fun textOutstreamOf (PROC { base, outfd, closeout, ... }) =
-	setcloser (closeout, TextIO.closeOut,
-		   openTextOutFD (base ^ "_exec_txt_out", outfd))
-    fun binOutstreamOf (PROC { base, outfd, closeout, ... }) =
-	setcloser (closeout, BinIO.closeOut,
-		   openBinOutFD (base ^ "_exec_bin_out", outfd))
+    fun textInstreamOf p =
+	streamOf (#instream, "txt_in", openTextInFD, TextIO.closeIn) p
+    fun binInstreamOf p =
+	streamOf (#instream, "bin_in", openBinInFD, BinIO.closeIn) p
+    fun textOutstreamOf p =
+	streamOf (#outstream, "txt_out", openTextOutFD, TextIO.closeOut) p
+    fun binOutstreamOf p =
+	streamOf (#outstream, "bin_out", openBinOutFD, BinIO.closeOut) p
 
     fun streamsOf p = (textInstreamOf p, textOutstreamOf p)
 
@@ -149,18 +153,20 @@ structure Unix : UNIX =
             (* set the fds close on exec *)
             PIO.setfd (#infd p2, PIO.FD.flags [PIO.FD.cloexec]);
             PIO.setfd (#outfd p1, PIO.FD.flags [PIO.FD.cloexec]);
-            PROC { base = base, pid = pid, infd = infd, outfd = outfd,
-		   closein = ref (fn () => PIO.close infd),
-		   closeout = ref (fn () => PIO.close outfd),
-		   exit_status = ref NONE }
+	    PROC { base = base,
+		   instream = ref (UNOPENED infd),
+		   outstream = ref (UNOPENED outfd),
+		   status = ref (ALIVE pid) }
 	end
 
     fun execute (cmd, argv) = executeInEnv (cmd, argv, PE.environ())
 
-    fun kill (PROC{pid,...},signal) = P.kill (P.K_PROC pid, signal)
+    fun kill (PROC { status = ref (ALIVE pid), ... }, signal) =
+	  P.kill (P.K_PROC pid, signal)
+      | kill _ = ()			(* raise an exception here? *)
 
-    fun reap (PROC { exit_status = ref (SOME s), ... }) = s
-      | reap (PROC { exit_status, pid, closein, closeout, ... }) =
+    fun reap (PROC { status = ref (DEAD s), ... }) = s
+      | reap (PROC { status = status as ref (ALIVE pid), instream, outstream, ... }) =
 	let
             (* protect is probably too much; typically, one
              * would only mask SIGINT, SIGQUIT and SIGHUP
@@ -171,15 +177,16 @@ structure Unix : UNIX =
 		  | W_EXITSTATUS s => Word8Imp.toInt s
 		  | W_SIGNALED (PS.SIG s) => 256 + s
 		  | W_STOPPED (PS.SIG s) => (* should not happen! *) 512 + s
-	    val _ = !closein ()
-	    val _ = !closeout () handle _ => ()
+	    fun close (UNOPENED fd) = PIO.close fd
+	      | close (OPENED s) = #close s ()
+	    val _ = close (!instream)
+	    val _ = close (!outstream) handle _ => ()
 	    val s = waitProc ()
         in
-	    exit_status := SOME s;
+	    status := DEAD s;
 	    s
         end
 
     val exit = P.exit
 
   end (* structure Unix *)
-

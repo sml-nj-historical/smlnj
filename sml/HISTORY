@@ -14,6 +14,17 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/06/18 14:30:00 CDT
+Tag: blume-20040618-unix
+Description:
+
+Changed the implementation of structure Unix so that the same stream
+is returned every time one of the {text,bin}{In,Out}streamOf functions
+is invoked on the same proc.  This is not what the spec currently
+says -- although IMO it arguably should.  (See discussion below.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/06/17 18:15:00 CDT
 Tag: Release_110_46
 Description:
