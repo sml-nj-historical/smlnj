@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/03 14:25:00 CDT
+Tag: blume-20040803-callingconv
+Description:
+
+Added low-level support for choosing C calling conventions by
+twiddling the type of rawccall.  (See
+src/compiler/Semant/types/cproto.sml for details.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/08/02 15:55:00 CDT
 Tag: blume-20040802-backout
 Description:

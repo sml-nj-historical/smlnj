@@ -170,8 +170,7 @@ val v1 = T.IBOUND 0
 val v2 = T.IBOUND 1
 val v3 = T.IBOUND 2
 
-fun pa(t1,t2) =  BT.tupleTy [t1,t2]
-fun tp(t1,t2,t3) =  BT.tupleTy [t1,t2,t3]
+val tu = BT.tupleTy
 fun ar(t1,t2) = BT.--> (t1, t2)
 
 fun ap(tc,l) = T.CONty(tc, l)
@@ -207,27 +206,27 @@ fun chkSubv kind = P.NUMSUBSCRIPT{kind=kind, checked=true, immutable=true}
 fun update kind = P.NUMUPDATE {kind=kind, checked=false}
 fun chkUpdate kind = P.NUMUPDATE {kind=kind, checked=true}
 
-val numSubTy = p2(ar(pa(v1,i),v2))
-val numUpdTy = p2(ar(tp(v1,i,v2),u))
+val numSubTy = p2(ar(tu[v1,i],v2))
+val numUpdTy = p2(ar(tu[v1,i,v2],u))
 
 fun unf t = p0(ar(t,t))
-fun binf t = p0(ar(pa(t,t),t))
-fun binp t = p0(ar(pa(t,t),bo))
-fun shifter t = p0(ar(pa(t,w),t))
+fun binf t = p0(ar(tu[t,t],t))
+fun binp t = p0(ar(tu[t,t],bo))
+fun shifter t = p0(ar(tu[t,w],t))
 
 val w32_i32 = p0(ar(w32,i32))
 val w32_f64 = p0(ar(w32,f64))
-val w32w32_u = p0(ar(pa(w32,w32),u))
-val w32i32_u = p0(ar(pa(w32,i32),u))
-val w32f64_u = p0(ar(pa(w32,f64),u))
+val w32w32_u = p0(ar(tu[w32,w32],u))
+val w32i32_u = p0(ar(tu[w32,i32],u))
+val w32f64_u = p0(ar(tu[w32,f64],u))
 
 val i_x      = p1(ar(i,v1))
-val xw32_w32 = p1(ar(pa(v1,w32),w32))
-val xw32_i32 = p1(ar(pa(v1,w32),i32))
-val xw32_f64 = p1(ar(pa(v1,w32),f64))
-val xw32w32_u = p1(ar(tp(v1,w32,w32),u))
-val xw32i32_u = p1(ar(tp(v1,w32,i32),u))
-val xw32f64_u = p1(ar(tp(v1,w32,f64),u))
+val xw32_w32 = p1(ar(tu[v1,w32],w32))
+val xw32_i32 = p1(ar(tu[v1,w32],i32))
+val xw32_f64 = p1(ar(tu[v1,w32],f64))
+val xw32w32_u = p1(ar(tu[v1,w32,w32],u))
+val xw32i32_u = p1(ar(tu[v1,w32,i32],u))
+val xw32f64_u = p1(ar(tu[v1,w32,f64],u))
 
 val b_b = unf bo
 
@@ -302,18 +301,19 @@ val cc_b = binp BT.charTy
 
 (* The type of the RAW_CCALL primop (as far as the type checker is concerned)
  * is:
- *    word32 * 'a * 'b -> 'c
- * However, the primop cannot be used without having 'a, 'b, 'c monomorphically
- * instantiated.  In particular, 'a will be the type of the ML argument
- * list, 'c will be the type of the result, and 'b will be a type for
- * a fake argument.  The idea is that 'b will be instantiated with some ML
- * type that encodes the type of the actual C function in order to be able to
- * generate code according to the C calling convention.
+ *    word32 * 'a * 'b -> 'd
+ * However, the primop cannot be used without having 'a, 'b, and 'c
+ * monomorphically instantiated.  In particular, 'a will be the type of the
+ * ML argument list, 'c will be the type of the result, and 'b
+ * will be a type of a fake arguments.  The idea is that 'b will be
+ * instantiated with some ML type that encodes the type of the actual
+ * C function in order to be able to generate code according to the C
+ * calling convention.
  * (In other words, 'b will be a completely ad-hoc encoding of a CTypes.c_proto
  * value in ML types.  The encoding also contains information about
- * the intended re-entrancy of the call.)
+ * calling conventions and reentrancy.)
  *)
-val rccType = p3(ar(tp(w32,v1,v2),v3))
+val rccType = p3(ar(tu[w32,v1,v2],v3))
 
 in
 
@@ -333,29 +333,29 @@ val allPrimops =
        ("isolate",	 P.ISOLATE,     p1(ar(ar(v1,u),cnt(v1)))) :-:
        ("cthrow",	 P.THROW,      	p2(ar(ccnt(v1),ar(v1,v2)))) :-:
        ("!",		 P.DEREF,      	p1(ar(rf(v1),v1))) :-:
-       (":=",	         P.ASSIGN,      p1(ar(pa(rf(v1),v1),u))) :-:
+       (":=",	         P.ASSIGN,      p1(ar(tu[rf(v1),v1],u))) :-:
        ("makeref",	 P.MAKEREF,     p1(ar(v1,rf(v1)))) :-:
        ("boxed",	 P.BOXED,      	p1(ar(v1,bo))) :-:
        ("unboxed",	 P.UNBOXED,     p1(ar(v1,bo))) :-:
        ("cast",	         P.CAST,      	p2(ar(v1,v2))) :-:
-       ("=",		 P.POLYEQL,     ep1(ar(pa(v1,v1),bo))) :-:
-       ("<>",	         P.POLYNEQ,     ep1(ar(pa(v1,v1),bo))) :-:
-       ("ptreql",	 P.PTREQL,      p1(ar(pa(v1,v1),bo))) :-:
-       ("ptrneq",	 P.PTRNEQ,      p1(ar(pa(v1,v1),bo))) :-:
+       ("=",		 P.POLYEQL,     ep1(ar(tu[v1,v1],bo))) :-:
+       ("<>",	         P.POLYNEQ,     ep1(ar(tu[v1,v1],bo))) :-:
+       ("ptreql",	 P.PTREQL,      p1(ar(tu[v1,v1],bo))) :-:
+       ("ptrneq",	 P.PTRNEQ,      p1(ar(tu[v1,v1],bo))) :-:
        ("getvar",	 P.GETVAR,      p1(ar(u,v1))) :-:
        ("setvar",	 P.SETVAR,      p1(ar(v1,u))) :-:
-       ("setpseudo",	 P.SETPSEUDO,   p1(ar(pa(v1,i),u))) :-:
+       ("setpseudo",	 P.SETPSEUDO,   p1(ar(tu[v1,i],u))) :-:
        ("getpseudo",	 P.GETPSEUDO,   p1(ar(i,v1))) :-:
-       ("mkspecial",     P.MKSPECIAL,   p2(ar(pa(i,v1),v2))) :-:
+       ("mkspecial",     P.MKSPECIAL,   p2(ar(tu[i,v1],v2))) :-:
        ("getspecial",    P.GETSPECIAL,  p1(ar(v1,i))) :-:
-       ("setspecial",    P.SETSPECIAL,  p1(ar(pa(v1,i),u))) :-:
+       ("setspecial",    P.SETSPECIAL,  p1(ar(tu[v1,i],u))) :-:
        ("gethdlr",	 P.GETHDLR,     p1(ar(u,cnt(v1)))) :-:
        ("sethdlr",	 P.SETHDLR,     p1(ar(cnt(v1),u))) :-:
        ("gettag", 	 P.GETTAG,      p1(ar(v1,i))) :-:
        ("setmark",	 P.SETMARK,     p1(ar(v1,u))) :-:
        ("dispose",	 P.DISPOSE,     p1(ar(v1,u))) :-:
-       ("compose",	 P.INLCOMPOSE,  p3(ar(pa(ar(v2,v3),ar(v1,v2)),ar(v1,v3)))) :-:
-       ("before",	 P.INLBEFORE,   p2(ar(pa(v1,v2),v1))) :-:
+       ("compose",	 P.INLCOMPOSE,  p3(ar(tu[ar(v2,v3),ar(v1,v2)],ar(v1,v3)))) :-:
+       ("before",	 P.INLBEFORE,   p2(ar(tu[v1,v2],v1))) :-:
        ("ignore",        P.INLIGNORE,   p1(ar(v1,u))) :-:
        ("identity",      P.INLIDENTITY, p1(ar(v1,v1))) :-:
 			 
@@ -376,7 +376,7 @@ val allPrimops =
 
        (* I put this one back in so tprof can find it in _Core
 	* instead of having to construct it ... (Matthias) *)
-       ("unboxedupdate", P.UNBOXEDUPDATE, p1(ar(tp(ay(v1),i,v1),u))) :-:
+       ("unboxedupdate", P.UNBOXEDUPDATE, p1(ar(tu[ay(v1),i,v1],u))) :-:
        			 
        ("inlnot",	 P.INLNOT,      	        b_b) :-:
        ("floor",         P.ROUND{floor=true,
@@ -405,19 +405,19 @@ val allPrimops =
                                       immutable=true},  numSubTy) :-:
 
        (*** polymorphic array and vector ***)
-       ("mkarray",       P.INLMKARRAY,          p1(ar(pa(i,v1),ay(v1)))) :-:
-       ("arrSub", 	 P.SUBSCRIPT,      	p1(ar(pa(ay(v1),i),v1))) :-:
-       ("arrChkSub",	 P.INLSUBSCRIPT,      	p1(ar(pa(ay(v1),i),v1))) :-:
-       ("vecSub",	 P.SUBSCRIPTV,      	p1(ar(pa(vct(v1),i),v1))) :-:
-       ("vecChkSub",	 P.INLSUBSCRIPTV,      	p1(ar(pa(vct(v1),i),v1))) :-:
-       ("arrUpdate",	 P.UPDATE,      	p1(ar(tp(ay(v1),i,v1),u))) :-:
-       ("arrChkUpdate",  P.INLUPDATE,      	p1(ar(tp(ay(v1),i,v1),u))) :-:
+       ("mkarray",       P.INLMKARRAY,          p1(ar(tu[i,v1],ay(v1)))) :-:
+       ("arrSub", 	 P.SUBSCRIPT,      	p1(ar(tu[ay(v1),i],v1))) :-:
+       ("arrChkSub",	 P.INLSUBSCRIPT,      	p1(ar(tu[ay(v1),i],v1))) :-:
+       ("vecSub",	 P.SUBSCRIPTV,      	p1(ar(tu[vct(v1),i],v1))) :-:
+       ("vecChkSub",	 P.INLSUBSCRIPTV,      	p1(ar(tu[vct(v1),i],v1))) :-:
+       ("arrUpdate",	 P.UPDATE,      	p1(ar(tu[ay(v1),i,v1],u))) :-:
+       ("arrChkUpdate",  P.INLUPDATE,      	p1(ar(tu[ay(v1),i,v1],u))) :-:
 
        (* new array representations *)
 	("newArray0",	P.NEW_ARRAY0,		p1(ar(u,v1))) :-:
 	("getSeqData",	P.GET_SEQ_DATA,		p2(ar(v1, v2))) :-:
-	("recordSub",	P.SUBSCRIPT_REC,	p2(ar(pa(v1,i),v2))) :-:
-	("raw64Sub",	P.SUBSCRIPT_RAW64,	p1(ar(pa(v1,i),f64))) :-:
+	("recordSub",	P.SUBSCRIPT_REC,	p2(ar(tu[v1,i],v2))) :-:
+	("raw64Sub",	P.SUBSCRIPT_RAW64,	p1(ar(tu[v1,i],f64))) :-:
 
        (* *** conversion primops ***
 	*   There are certain duplicates for the same primop (but with
