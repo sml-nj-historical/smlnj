@@ -1019,23 +1019,29 @@ end
 	   (click "T"; INT 0)
      | (P.real{fromkind=P.INT 31,tokind=P.FLOAT 64}, [INT i]) =>
 	   (REAL(Int.toString i ^ ".0"))  (* isn't this cool? *)
-     | (P.funwrap,[VAR v]) => 
-          (case get(v) of {info=WRPinfo(P.fwrap,u),...} => (click "U"; u)
+     | (P.funwrap,[x as VAR v]) => 
+          (case get(v) of {info=WRPinfo(P.fwrap,u),...} =>
+			    (click "U"; use_less x; u)
                         | _ => raise ConstFold)
-     | (P.fwrap,[VAR v]) =>
-          (case get(v) of {info=WRPinfo(P.funwrap,u),...} => (click "U"; u)
+     | (P.fwrap,[x as VAR v]) =>
+          (case get(v) of {info=WRPinfo(P.funwrap,u),...} =>
+			  (click "U"; use_less x; u)
                         | _ => raise ConstFold)
-     | (P.iunwrap,[VAR v]) =>
-          (case get(v) of {info=WRPinfo(P.iwrap,u),...} => (click "U"; u)
+     | (P.iunwrap,[x as VAR v]) =>
+          (case get(v) of {info=WRPinfo(P.iwrap,u),...} =>
+			  (click "U"; use_less x; u)
                         | _ => raise ConstFold)
-     | (P.iwrap,[VAR v]) =>
-          (case get(v) of {info=WRPinfo(P.iunwrap,u),...} => (click "U"; u)
+     | (P.iwrap,[x as VAR v]) =>
+          (case get(v) of {info=WRPinfo(P.iunwrap,u),...} =>
+			  (click "U"; use_less x; u)
                         | _ => raise ConstFold)
-     | (P.i32unwrap,[VAR v]) =>
-          (case get(v) of {info=WRPinfo(P.i32wrap,u),...} => (click "U"; u)
+     | (P.i32unwrap,[x as VAR v]) =>
+          (case get(v) of {info=WRPinfo(P.i32wrap,u),...} =>
+			  (click "U"; use_less x; u)
                         | _ => raise ConstFold)
-     | (P.i32wrap,[VAR v]) =>
-          (case get(v) of {info=WRPinfo(P.i32unwrap,u),...} => (click "U"; u)
+     | (P.i32wrap,[x as VAR v]) =>
+          (case get(v) of {info=WRPinfo(P.i32unwrap,u),...} =>
+			  (click "U"; use_less x; u)
                         | _ => raise ConstFold)
      | _ => raise ConstFold
 

@@ -13,6 +13,16 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/05/09 16:35:00 EDT
+Tag: blume-20010509-cpscontract
+Description:
+
+Fixed a bug in the accounting code in cpsopt/contract.sml.  (The
+wrapper/unwrapper elimination did not decrement usage counts and some
+dead variables got overlooked by the dead-up logic.)
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2001/05/08  17:26:09 EDT
 Tag: george-20010508-omit-frameptr
