@@ -229,7 +229,7 @@ functor PPCMacOSX_CCalls (
 	  fun assign ([], offset, _, _, layout) = List.rev layout
 	    | assign (ty::tys, offset, availGPRs, availFPRs, layout) = (
 		case ty
-		 of CTy.C_void => error "unexpected void tyument type"
+		 of CTy.C_void => error "unexpected void argument type"
 		  | CTy.C_float => (case (availGPRs, availFPRs)
 		       of (_::gprs, fpr::fprs) =>
 			    assign (tys, offset+4, gprs, fprs, FReg(fltTy, fpr, SOME offset)::layout)
@@ -343,7 +343,7 @@ functor PPCMacOSX_CCalls (
 		  | addArgReg ((Args locs')::locs, argRegs) =
 		      addArgReg (locs, addArgReg(locs', argRegs))
 		  | addArgReg (_::locs, argRegs) = addArgReg(locs, argRegs)
-		  | addArgReg ([], argRegs) = rev argRegs
+		  | addArgReg ([], argRegs) = argRegs
 		val argRegs = addArgReg (locs, [])
 		in
 		  (argRegs, linkReg :: callerSaveRegs)
