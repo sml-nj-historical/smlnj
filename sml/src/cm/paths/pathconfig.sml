@@ -12,6 +12,8 @@ signature PATHCONFIG = sig
 
     val new : unit -> mode
     val set : mode * string * string -> unit
+    val cancel : mode * string -> unit
+    val reset : mode -> unit
 
     val configAnchor : mode -> string -> (unit -> string) option
 
@@ -28,8 +30,11 @@ structure PathConfig :> PATHCONFIG = struct
     type mode = string StringMap.map ref
 
     fun set (m, a, s) = m := StringMap.insert (!m, a, s)
+    fun reset m = m := StringMap.empty
+    fun cancel (m, a) = (m := #1 (StringMap.remove (!m, a)))
+	handle LibBase.NotFound => ()
 
-    fun new () = ref (StringMap.empty)
+    fun new () = ref StringMap.empty
 
     fun configAnchor m s =
 	case StringMap.find (!m, s) of
@@ -43,10 +48,10 @@ structure PathConfig :> PATHCONFIG = struct
 	    in
 		if line = "" then ()
 		else case String.tokens Char.isSpace line of
-		    [a, d] => (set (m, a, d);
-			       loop ())
-		  | _ => (Say.say [f, ": malformed line (ignored)\n"];
-			  loop ())
+		    [a, d] => (set (m, a, d); loop ())
+		  | ["-"] => (reset m; loop ())
+		  | [a] => (cancel (m, a); loop ())
+		  | _ => (Say.say [f, ": malformed line (ignored)\n"]; loop ())
 	    end
 	in
 	    loop ()

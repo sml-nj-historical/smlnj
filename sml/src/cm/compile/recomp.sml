@@ -235,8 +235,8 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 		    case SmlInfo.parsetree gp i of
 			NONE => NONE
 		      | SOME (ast, source) => let
-			    val _ = Say.vsay ["[compiling ", SmlInfo.descr i,
-					      " -> ", binname, "...]\n"]
+			    val _ =
+			       Say.vsay ["[compiling ", SmlInfo.descr i, "]\n"]
 			    val corenv = #corenv (#param gp)
 			    val cmData = PidSet.listItems pids
 			    (* clear error flag (could still be set from

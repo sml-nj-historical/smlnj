@@ -136,6 +136,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
       in
 	  fun setAnchor (a, s) = PathConfig.set (pcmode, a, s)
+	  fun cancelAnchor a = PathConfig.cancel (pcmode, a)
+	  fun resetPathConfig () = PathConfig.reset pcmode
 
 	  fun initPaths () = let
 	      val p =
@@ -317,7 +319,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				      EnvConfig.getSet StdConfig.keep_going,
 				   parse_caching =
 				      EnvConfig.getSet StdConfig.parse_caching,
-				   setAnchor = setAnchor })
+				   setAnchor = setAnchor,
+				   cancelAnchor = cancelAnchor,
+				   resetPathConfig = resetPathConfig })
 
 		  end
 	  end

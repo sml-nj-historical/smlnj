@@ -55,30 +55,38 @@ end = struct
 			       val pending = AutoLoad.getPending)
 
     (* copying an input file to an output file safely... *)
-    fun copyFile (inf, outf) = let
-	fun workIn ins = let
-	    fun workOut outs = let
+    fun copyFile (oi, ci, oo, co, inp, outp, eof) (inf, outf) = let
+	fun workIn is = let
+	    fun workOut os = let
 		val N = 4096
 		fun loop () =
-		    if TextIO.endOfStream ins then ()
-		    else (TextIO.output (outs, TextIO.inputN (ins, N));
-			  loop ())
+		    if eof is then () else (outp (os, inp (is, N)); loop ())
 	    in
 		loop ()
 	    end
 	in
-	    SafeIO.perform { openIt = fn () => AutoDir.openTextOut outf,
-			     closeIt = TextIO.closeOut,
+	    SafeIO.perform { openIt = fn () => oo outf,
+			     closeIt = co,
 			     work = workOut,
 			     cleanup = fn () =>
 			         (F.remove outf handle _ => ()) }
 	end
     in
-	SafeIO.perform { openIt = fn () => TextIO.openIn inf,
-			 closeIt = TextIO.closeIn,
+	SafeIO.perform { openIt = fn () => oi inf,
+			 closeIt = ci,
 			 work = workIn,
 			 cleanup = fn () => () }
     end
+
+    val copyTextFile =
+	copyFile (TextIO.openIn, TextIO.closeIn,
+		  AutoDir.openTextOut, TextIO.closeOut,
+		  TextIO.inputN, TextIO.output, TextIO.endOfStream)
+
+    val copyBinFile =
+	copyFile (BinIO.openIn, BinIO.closeIn,
+		  AutoDir.openBinOut, BinIO.closeOut,
+		  BinIO.inputN, BinIO.output, BinIO.endOfStream)
 
     fun compile deliver dbopt = let
 
@@ -103,7 +111,7 @@ end = struct
 			    P.toString { isAbs = false, vol = "",
 					 arcs = bootdir :: arc1 :: arcn }
 		    in
-			copyFile (p, bootpath)
+			copyBinFile (p, bootpath)
 		    end
 		in
 		    if copy andalso arc0 = bindir then doCopy () else ();
@@ -262,7 +270,7 @@ end = struct
 					 cleanup = fn () =>
 					   OS.FileSys.remove listfile
 					   handle _ => () };
-			copyFile (SrcPath.osstring initgspec, cmifile);
+			copyTextFile (SrcPath.osstring initgspec, cmifile);
 			Say.say ["Runtime System PID is: ", rtspid, "\n"])
 		      else ();
 		      true

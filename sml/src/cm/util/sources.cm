@@ -6,7 +6,7 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-Group (cm-lib.cm)
+Group (../cm-lib.cm)
 	structure StringSet
 	structure StringMap
 	structure Symbol
