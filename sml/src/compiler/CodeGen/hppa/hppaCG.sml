@@ -57,6 +57,7 @@ structure HppaCG =
              (structure I=HppaInstr
               structure P=InsnProps)
           structure Props = InsnProps
+	  structure Asm = HppaAsmEmitter
          )
 
     structure RA = 

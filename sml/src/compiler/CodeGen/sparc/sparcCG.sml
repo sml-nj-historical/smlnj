@@ -58,6 +58,7 @@ structure SparcCG =
              (structure I=SparcInstr
               structure P=InsnProps)
           structure Props = InsnProps
+	  structure Asm = SparcAsmEmitter
          )
 
     structure RA = 
