@@ -1,6 +1,7 @@
 Utility library
 ---------------
   Polymorphic version of dynamic arrays.
+  New hash table implementation/API.
 
 HTML Library
 ------------

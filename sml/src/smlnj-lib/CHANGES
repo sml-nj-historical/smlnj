@@ -3,6 +3,9 @@ correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
 
+[2001-02-22]
+	Fixed bug in {Int,Word}RedBlackMapFn.insert (bug 1591).
+
 [2000-12-13]
 	Added most of the bit operations to the IntInf module (Leung).
 

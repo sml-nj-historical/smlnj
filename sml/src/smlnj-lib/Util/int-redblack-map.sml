@@ -56,8 +56,8 @@ structure IntRedBlackMap :> ORD_MAP where type Key.ord_key = int =
 				    T(R, T(B,e,wk,w,f), zk, z, T(B,d,yk,y,b))
                 		| c => T(B, T(R,c,zk,z,d), yk, y, b)
 			      (* end case *))
-			  else if (xk = yk)
-			    then T(color, T(R, c, zk, x, d), yk, y, b)
+			  else if (xk = zk)
+			    then T(color, T(R, c, xk, x, d), yk, y, b)
 			    else (case ins d
 			       of T(R, e, wk, w, f) =>
 				    T(R, T(B,c,zk,z,e), wk, w, T(B,f,yk,y,b))
@@ -66,7 +66,7 @@ structure IntRedBlackMap :> ORD_MAP where type Key.ord_key = int =
 		      | _ => T(B, ins a, yk, y, b)
 		    (* end case *))
 		else if (xk = yk)
-		  then T(color, a, yk, x, b)
+		  then T(color, a, xk, x, b)
 		  else (case b
 		     of T(R, c, zk, z, d) =>
 			  if (xk < zk)
@@ -76,7 +76,7 @@ structure IntRedBlackMap :> ORD_MAP where type Key.ord_key = int =
 				| c => T(B, a, yk, y, T(R,c,zk,z,d))
 			      (* end case *))
 			  else if (xk = zk)
-			    then T(color, a, yk, y, T(R, c, zk, x, d))
+			    then T(color, a, yk, y, T(R, c, xk, x, d))
 			    else (case ins d
 			       of T(R, e, wk, w, f) =>
 				    T(R, T(B,a,yk,y,c), zk, z, T(B,e,wk,w,f))
