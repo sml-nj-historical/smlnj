@@ -1,6 +1,6 @@
 ;;; sml-move.el --- Buffer navigation functions for sml-mode
 
-;; Copyright (C) 1999-2000  Stefan Monnier <monnier@cs.yale.edu>
+;; Copyright (C) 1999, 2000, 2004  Stefan Monnier <monnier@gnu.org>
 ;;
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -228,8 +228,7 @@ PREC is the precedence currently looked for."
   (let ((parse-sexp-lookup-properties t)
 	(parse-sexp-ignore-comments t))
     (sml-backward-spaces)
-    (let* ((point (point))
-	   (op (sml-backward-sym))
+    (let* ((op (sml-backward-sym))
 	   (op-prec (sml-op-prec op 'back))
 	   match)
       (cond
@@ -262,8 +261,7 @@ Returns T if the move indeed moved through one sexp and NIL if not."
   (let ((parse-sexp-lookup-properties t)
 	(parse-sexp-ignore-comments t))
     (sml-forward-spaces)
-    (let* ((point (point))
-	   (op (sml-forward-sym))
+    (let* ((op (sml-forward-sym))
 	   (op-prec (sml-op-prec op 'forw))
 	   match)
       (cond
