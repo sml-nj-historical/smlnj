@@ -16,9 +16,10 @@ end
  * be careful to make sure that a dead variable will indeed not appear
  * in the output lexp since it might else reference other dead variables *)
 
-(* things that lcontract.sml did that fcontract doesn't do (yet):
+(* things that lcontract.sml does that fcontract doesn't do (yet):
  * - inline across DeBruijn depths
  * - elimination of let [dead-vs] = pure in body
+ * - contraction of let [v] = branch in switch
  *)
 
 (* things that cpsopt/eta.sml did that fcontract doesn't do:
@@ -62,6 +63,9 @@ datatype sval
   | Select of F.lvar * F.value * int
   | Con    of F.lvar * F.value * F.dcon
 
+
+(* this global map should really be replaced by a IntmapF that's passed
+ * around, as it was before, but there are some tricky issues *)
 exception NotFound
 val m : sval M.intmap = M.new(128, NotFound)
 
@@ -163,7 +167,17 @@ in
      of F.RET vs => F.RET(map substval vs)
 
       | F.LET (lvs,le,body) =>
-	let fun clet (F.LET(lvs1,le1,le2)) = F.LET(lvs1, le1, clet le2)
+	let fun clet' le = (* default rule for `clet' *)
+		(app (fn lv => addbind (lv, Val(F.VAR lv))) lvs;
+		 case loop body
+		  of F.RET vs => if vs = (map F.VAR lvs) then le
+				 else F.LET(lvs, le, F.RET vs)
+		   | nbody => F.LET(lvs, le, nbody))
+
+	    (* the case for LET should be improved.
+	     * Proper treatment of BRANCH should be possible once the real
+	     * inlining support is added *)
+	    fun clet (F.LET(lvs1,le1,le2)) = F.LET(lvs1, le1, clet le2)
 	      (* let associativity
 	       * !!BEWARE!! applying the associativity rule might
 	       * change the liveness of the bound variables *)
@@ -194,6 +208,16 @@ in
 		   then F.PRIMOP(po, vs, lv, nbody)
 		   else nbody
 		end
+
+	      (* | clet (le as F.BRANCH(po,vs,le1,le2)) =
+	       *   (case (lvs,body)
+	       *     of ([lv],F.SWITCH(F.VAR v,_,_,_)) =>
+	       * 	if lv = v andalso C.usenb lv = 1 then
+	       * 	    F.BRANCH(po,vs,clet le1, clet le2)
+	       * 	else
+	       * 	    clet' le
+	       *      | _ => clet' le) *)
+
 	      (* F.RAISE never returns so the body of the let could be
 	       * dropped on the floor, but since I don't propagate
 	       * types I can't come up with the right return type
@@ -205,12 +229,7 @@ in
 		(app (fn (lv,v) => substitute (lv, val2sval v, v))
 		     (ListPair.zip(lvs, vs));
 		     loop body)
-	      | clet le =
-		(app (fn lv => addbind (lv, Val(F.VAR lv))) lvs;
-		 case loop body
-		  of F.RET vs => if vs = (map F.VAR lvs) then le
-				 else F.LET(lvs, le, F.RET vs)
-		   | nbody => F.LET(lvs, le, nbody))
+	      | clet le = clet' le
 	in
 	    clet (loop le)
 	end
@@ -238,7 +257,7 @@ in
 					not (C.escaping g)) andalso
 				    vs = (map (F.VAR o #1) args)
 				then
-				    if null acc then
+				    if false andalso null acc then
 					let val g = F.VAR g
 					in (substitute (f, val2sval g, g); acc)
 					end
@@ -268,12 +287,15 @@ in
 	    val _ = app (fn fdec as (fk,f,args,body) =>
 			 addbind (f, Fun(f, body, args, fk, od)))
 			fs
-			
-	    (* recurse on the bodies *)
+
+	    (* contract the main body *)
+	    val nle = loop le
+
+	    (* contract the functions *)
 	    val fs = cfun fs []
-			  
-	    val nle = loop le		(* contract the main body *)
-	    val fs = List.filter (used o #2) fs (* junk newly unused funs *)
+
+	    (* junk newly unused funs *)
+	    val fs = List.filter (used o #2) fs
 	in
 	    if List.null fs
 	    then nle
@@ -319,6 +341,8 @@ in
 	  of sv as (Val(F.VAR lv) | Select(lv,_,_)) =>
 	     (let fun carm (F.DATAcon(dc,tycs,lv),le) =
 		      (addbind(lv, Val(F.VAR lv));
+		       (* here I should also temporarily bind sv to
+			* the corresponding Con *)
 		       (F.DATAcon(cdcon dc, tycs, lv), loop le))
 		    | carm (con,le) = (con, loop le)
 		  val narms = map carm arms
