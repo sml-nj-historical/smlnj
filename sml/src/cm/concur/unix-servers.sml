@@ -36,6 +36,9 @@ structure Servers :> SERVERS = struct
     end
     val enabled = ref false
 
+    val idle = ref ([]: server list)
+    val someIdle = ref (Concur.pcond ())
+
     local
 	val nservers = ref 0
 	val all = ref (IntMap.empty: server IntMap.map)
@@ -52,12 +55,17 @@ structure Servers :> SERVERS = struct
 	    val ns = !nservers - 1
 	in
 	    all := #1 (IntMap.remove (!all, servId s));
-	    nservers := ns
+	    nservers := ns;
+	    (* If this was the last server we need to wake up
+	     * everyone who is currently waiting to grab a server.
+	     * The "grab"-loop will then gracefully fail and
+	     * not cause a deadlock. *)
+	    if ns = 0 then
+		(Say.dsay ["No more servers -> back to sequential mode.\n"];
+		 Concur.signal (!someIdle))
+	    else ()
 	end
     end
-
-    val idle = ref ([]: server list)
-    val someIdle = ref (Concur.pcond ())
 
     (* This really shouldn't be here, but putting it into SrcPath would
      * create a dependency cycle.  Some better structuring will fix this. *)
@@ -70,6 +78,7 @@ structure Servers :> SERVERS = struct
 	    NONE => n
 	  | SOME f => if isAbsoluteDescr n then f n else n
 
+    (* protect some code segment from sigPIPE signals... *)
     fun pprotect work = let
 	val pipe = UnixSignals.sigPIPE
 	fun disable () = Signals.setHandler (pipe, Signals.IGNORE)
@@ -79,6 +88,7 @@ structure Servers :> SERVERS = struct
 			 work = fn _ => work (), cleanup = fn _ => () }
     end
 
+    (* Send a message to a slave. This must be sigPIPE-protected. *)
     fun send (s, msg) = let
 	val outs = servOuts s
     in
@@ -103,14 +113,18 @@ structure Servers :> SERVERS = struct
     (* Grab an idle server; wait if necessary; reinitialize condition
      * if taking the only server. *)
     fun grab () =
-	case !idle of
+	(* We need to check the following every time (at least the
+	 * "noServers" part) because it might be that all servers
+	 * have meanwhile gone away for some reason (crashed, etc.). *)
+	if not (!enabled) orelse noServers () then NONE
+	else case !idle of
 	    [] => (Concur.wait (!someIdle); grab ())
 	  | [only] =>
 		(Say.dsay ["Scheduler: taking last idle slave (",
 			   servName only, ").\n"];
 		 idle := [];
 		 someIdle := Concur.pcond ();
-		 only)
+		 SOME only)
 	  | first :: more => let
 		fun best (b, [], rest) = (b, rest)
 		  | best (b, s :: r, rest) = let
@@ -126,7 +140,7 @@ structure Servers :> SERVERS = struct
 			  servName b, ").\n"];
 		idle := rest;
 		show_idle ();
-		b
+		SOME b
 	    end
 
     fun wait_status (s, echo) = let
@@ -148,7 +162,7 @@ structure Servers :> SERVERS = struct
 		  | _ => "crashed"
 	in
 	    decommission s;
-	    Say.say ["! Slave ", name, " has ", what, ".\n"];
+	    Say.say ["[!Slave ", name, " has ", what, ".]\n"];
 	    delServer s
 	end
 
@@ -256,15 +270,15 @@ structure Servers :> SERVERS = struct
     end
 	
     fun compile p =
-	if not (!enabled) orelse noServers () then false
-	else let
-	    val s = grab ()
-	    val f = fname (p, s)
-	in
-	    Say.vsay ["[(", servName s, "): compiling ", f, "]\n"];
-	    send (s, concat ["compile ", f, "\n"]);
-	    wait_status (s, true)
-	end
+	case grab () of
+	    NONE => false
+	  | SOME s => let
+		val f = fname (p, s)
+	    in
+		Say.vsay ["[(", servName s, "): compiling ", f, "]\n"];
+		send (s, concat ["compile ", f, "\n"]);
+		wait_status (s, true)
+	    end
 
     fun reset is_int = (Concur.reset (); wait_all is_int)
 
