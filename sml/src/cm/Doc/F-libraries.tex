@@ -1,0 +1,231 @@
+% -*- latex -*-
+
+\section{Available libraries}
+
+Compiler and interactive system of SML/NJ consist of several hundred
+individual compilation units.  Like modules of application programs,
+these compilation units are also organized using CM libraries.  
+
+Some of the libraries that make up SML/NJ are actually the same ones
+that application programmers are likely to use, others exist for
+organizational purposes only.  There are ``plugin'' libraries---mainly
+for the CM ``tools'' subsystem---that will be automatically loaded on
+demand, and libraries such as {\tt \$smlnj/cmb.cm} can be used to
+obtain access to functionality that by default is not present.
+
+\subsection{Libraries for general programming}
+
+Libraries listed in the following table provide a broad palette of
+general-purpose programming tools\footnote{Recall that anchored paths
+of the form {\tt \$$/x[/\cdots]$} act as an abbreviation for {\tt
+\$$x/x[/\cdots]$}.}:
+
+\begin{center}
+\begin{tabular}{p{2.3in}||p{2.8in}|c|c}
+name & description & installed & loaded \\
+\hline\hline
+{\tt \$/basis.cm} & Standard Basis Library & always & auto \\
+\hline\hline
+{\tt \$/ml-yacc-lib.cm} & ML-Yacc library & always & no \\
+\hline\hline
+{\tt \$/smlnj-lib.cm} & SML/NJ general-purpose utility library &
+always & no \\
+\hline
+{\tt \$/unix-lib.cm} & SML/NJ Unix programming utility library &
+optional & no \\
+\hline
+{\tt \$/inet-lib.cm} & SML/NJ internet programming utility library &
+optional & no \\
+\hline
+{\tt \$/regexp-lib.cm} & SML/NJ regular expression library & optional
+& no \\
+\hline
+{\tt \$/reactive-lib.cm} & SML/NJ reactive programming library &
+optional & no \\
+\hline
+{\tt \$/pp-lib.cm} & SML/NJ pretty-printing library & always & no \\
+\hline
+{\tt \$/html-lib.cm} & SML/NJ HTML handling library & always & no
+\end{tabular}
+\end{center}
+
+\subsection{Libraries for controlling SML/NJ's operation}
+
+The following table lists those libraries that provide access to the
+so-called {\em visible compiler} infrastructure and to the compilation
+manager API.
+
+\begin{center}
+\begin{tabular}{p{2.3in}||p{2.5in}|c|c}
+name & description & installed & loaded \\
+\hline\hline
+{\tt \$smlnj/compiler.cm} \newline
+{\tt \$smlnj/compiler/current.cm} & visible compiler for current
+architecture & always & auto \\
+\hline\hline
+{\tt \$smlnj/cm.cm} \newline
+{\tt \$smlnj/cm/full.cm} & compilation manager & always & auto \\
+\hline
+{\tt \$smlnj/cm/tools.cm} & API for extending CM with new tools &
+always & no \\
+\hline\hline
+{\tt \$/mllex-tool.cm} & plugin library for class {\tt mllex} & always
+& on demand \\
+\hline
+{\tt \$/lex-ext.cm} & plugin library for extension {\tt .lex} & always
+& on demand \\
+\hline
+{\tt \$/mlyacc-tool.cm} & plugin library for class {\tt mlyacc} &
+always & on demand \\
+\hline
+{\tt \$/grm-ext.cm} & plugin library for extension {\tt .grm} & always
+& on demand \\
+\hline
+{\tt \$/mlburg-tool.cm} & plugin library for class {\tt mlburg} &
+always & on demand \\
+\hline
+{\tt \$/burg-ext.cm} & plugin library for extension {\tt .burg} &
+always & on demand \\
+\hline
+{\tt \$/noweb-tool.cm} & plugin library for class {\tt noweb} & always
+& on demand \\
+\hline
+{\tt \$/nw-ext.cm} & plugin library for extension {\tt .nw} & always &
+on demand \\
+\hline
+{\tt \$/make-tool.cm} & plugin library for class {\tt make} & always &
+on demand \\
+\hline
+{\tt \$/shell-tool.cm} & plugin library for class {\tt shell} & always
+& on demand \\
+\end{tabular}
+\end{center}
+
+\subsection{Libraries for SML/NJ compiler hackers}
+
+The following table lists libraries that provide access to the SML/NJ
+{\em bootstrap compiler}.  The bootstrap compiler is a derivative of
+the compilation manager.  In addition to being able to recompile
+SML/NJ for the ``host'' system there are also cross-compilers that
+can target all of SML/NJ's supported platforms.
+
+\begin{center}
+\begin{tabular}{p{2.3in}||p{2.8in}|c|c}
+name & description & installed & loaded \\
+\hline\hline
+{\tt \$smlnj/cmb.cm} \newline
+{\tt \$smlnj/cmb/current.cm} & bootstrap compiler for current
+architecture and OS & always & no \\
+\hline\hline
+{\tt \$smlnj/cmb/alpha32-unix.cm} & bootstrap compiler for Alpha/Unix
+systems & always & no \\
+\hline
+{\tt \$smlnj/cmb/hppa-unix.cm} & bootstrap compiler for HP-PA/Unix
+systems & always & no \\
+\hline
+{\tt \$smlnj/cmb/ppc-macos.cm} & bootstrap compiler for PowerPC/Unix
+systems & always & no \\
+\hline
+{\tt \$smlnj/cmb/ppc-unix.cm} & bootstrap compiler for PowerPC/MacOS
+systems & always & no \\
+\hline
+{\tt \$smlnj/cmb/sparc-unix.cm} & bootstrap compiler for Sparc/Unix
+systems & always & no \\
+\hline
+{\tt \$smlnj/cmb/x86-unix.cm} & bootstrap compiler for IA32/Unix
+systems & always & no \\
+\hline
+{\tt \$smlnj/cmb/x86-win32.cm} & bootstrap compiler for IA32/Win32
+systems & always & no \\
+\hline\hline
+{\tt \$smlnj/compiler/alpha32.cm} & visible compiler for
+Alpha-specific cross-compiler & always & no \\
+\hline
+{\tt \$smlnj/compiler/hppa.cm} & visible compiler for
+HP-PA-specific cross-compiler & always & no \\
+\hline
+{\tt \$smlnj/compiler/ppc.cm} & visible compiler for
+PowerPC-specific cross-compiler & always & no \\
+\hline
+{\tt \$smlnj/compiler/sparc.cm} & visible compiler for
+Sparc-specific cross-compiler & always & no \\
+\hline
+{\tt \$smlnj/compiler/x86.cm} & visible compiler for
+IA32-specific cross-compiler & always & no \\
+\hline
+{\tt \$smlnj/compiler/all.cm} & visible compilers for all
+architecture-specific cross-compilers and all cross-compilation
+bootstrap compilers & always & no \\
+\end{tabular}
+\end{center}
+
+\subsection{Internal libraries}
+
+For completeness, here is the list of other libraries that are part of
+SML/NJ's implementation:
+
+\begin{center}
+\begin{tabular}{p{2.9in}||p{2.2in}|c|c}
+name & description & installed & loaded \\
+\hline\hline
+{\tt \$MLRISC/Lib.cm} & utility library for MLRISC backend & always &
+no \\
+\hline 
+{\tt \$MLRISC/Control.cm} & control facilities for MLRISC backend &
+always & no \\
+\hline
+{\tt \$MLRISC/MLRISC.cm} & architecture-neutral core of MLRISC backend
+& always & no \\
+\hline
+{\tt \$MLRISC/ALPHA.cm} & Alpha-specific MLRISC backend & always & no \\
+\hline
+{\tt \$MLRISC/HPPA.cm} & HP-PA-specific MLRISC backend & always & no \\
+\hline
+{\tt \$MLRISC/PPC.cm} & PowerPC-specific MLRISC backend & always & no \\
+\hline
+{\tt \$MLRISC/SPARC.cm} & Sparc-specific MLRISC backend & always & no \\
+\hline 
+{\tt \$MLRISC/IA32.cm} & IA32-specific MLRISC backend & always & no \\
+\hline\hline
+{\tt \$/pickle-lib.cm} & utility library for compiler and CM & always & no \\
+\hline
+{\tt \$smlnj/viscomp/core.cm} & architecture-neutral core of compiler
+& always & no \\
+\hline
+{\tt \$smlnj/viscomp/alpha32.cm} & Alpha-specific part of compiler &
+always & no \\
+\hline
+{\tt \$smlnj/viscomp/hppa.cm} & HP-PA-specific part of compiler &
+always & no \\
+\hline
+{\tt \$smlnj/viscomp/ppc.cm} & PowerPC-specific part of compiler &
+always & no \\
+\hline
+{\tt \$smlnj/viscomp/sparc.cm} & Sparc-specific part of compiler &
+always & no \\
+\hline
+{\tt \$smlnj/viscomp/x86.cm} & IA32-specific part of compiler & always
+& no \\
+\hline \hline
+{\tt \$smlnj/init/init.cmi} & initial ``glue''; implementation of
+pervasive environment & always & no \\
+\hline \hline
+{\tt \$smlnj/internal/cm-sig-lib.cm} & signatures {\tt CM} and {\tt
+CMB} & always & no \\
+\hline
+{\tt \$smlnj/internal/srcpath-lib.cm} & implementation of an internal
+``source path'' abstraction used by the compilation manager & always &
+no \\
+\hline
+{\tt \$smlnj/internal/cm-lib.cm} & implementation of compilation
+manager (not yet specialized to specific backends) & always & no \\
+\hline
+{\tt \$smlnj/internal/host-compiler-0.cm} & selection of host-specific
+visible compiler and specialization of compilation manager & always &
+no \\
+\hline
+{\tt \$smlnj/internal/intsys.cm} & root library implementing the
+interactive system and glueing all the other parts together & always &
+no
+\end{tabular}
+\end{center}

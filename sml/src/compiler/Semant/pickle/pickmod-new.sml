@@ -727,7 +727,7 @@ in
 	in
 	    Stamps.Case	stampConverter s
 		{ fresh = fn i => "A" $ [int i],
-		  global = fn { pid = p, cnt } =>"B" $ [pid p, int cnt],
+		  global = fn { pid = p, cnt } => "B" $ [pid p, int cnt],
 		  special = fn s => "C" $ [string s] }
 	end
 

@@ -60,7 +60,11 @@ is
 	stable/verify.sml
 
 	(* tools for handling other source types *)
-	tools/tools.sml
+	tools/main/core-tools.sig
+	tools/main/private-tools.sig
+	tools/main/public-tools.sig
+	tools/main/private-tools.sml
+	tools/main/tools-fn.sml
 
 	(* concurrent/parallel/distributed make *)
 	concur/sources.cm
