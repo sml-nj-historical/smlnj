@@ -8,7 +8,11 @@
  *)
 functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 			    val os: SMLofNJ.SysInfo.os_kind) :> sig
-    val compile : string option -> bool
+    val recomp' : string option -> bool
+    val recomp : unit -> bool
+    val deliver' : string option -> bool
+    val deliver : unit -> bool
+    val reset : unit -> unit
 end = struct
 
     structure EM = GenericVC.ErrorMsg
@@ -29,7 +33,8 @@ end = struct
     structure RecompPersstate =
 	RecompPersstateFn (structure MachDepVC = MachDepVC
 			   val discard_code = true
-			   fun new_smlinfo (i, popt) = ())
+			   fun stable_value_present i = false
+			   fun new_smlinfo i = ())
 
     structure Recomp = RecompFn (structure PS = RecompPersstate)
     structure RT = CompileGenericFn (structure CT = Recomp)
@@ -43,7 +48,8 @@ end = struct
 		     fun warmup (i, p) = ()
 		     val recomp = recomp)
     (* ... and Parse *)
-    structure Parse = ParseFn (structure Stabilize = Stabilize)
+    structure Parse = ParseFn (structure Stabilize = Stabilize
+			       val pending = AutoLoad.getPending)
 
     fun listName p =
 	case OS.Path.fromString p of
@@ -59,7 +65,7 @@ end = struct
 	    end
 	  | _ => raise Fail "BootstrapCompile:listName: bad name"
 
-    fun compile dbopt = let
+    fun compile deliver dbopt = let
 
 	val dirbase = getOpt (dbopt, BtNames.dirbaseDefault)
 	val pcmodespec = BtNames.pcmodespec
@@ -76,7 +82,7 @@ end = struct
 	val ctxt = SrcPath.cwdContext ()
 
 	val pidfile = OS.Path.joinDirFile { dir = bootdir, file = "RTPID" }
-	val listfile = OS.Path.joinDirFile { dir = bootdir, file = "BINLIST" }
+	val listfile = OS.Path.joinDirFile { dir = bootdir, file = "BOOTLIST" }
 
 	val pcmode = PathConfig.new ()
 	val _ = PathConfig.processSpecFile (pcmode, pcmodespec)
@@ -181,8 +187,10 @@ end = struct
 					     #2 (#stat core)]),
 			  fnpolicy = mainfnpolicy }
 		        { corenv = corenv }
+	    val stab =
+		if deliver then SOME true else NONE
 	in
-	    case Parse.parse NONE param (SOME true) maingspec of
+	    case Parse.parse NONE param stab maingspec of
 		NONE => false
 	      | SOME (g, gp) =>
 		    if recomp gp g then let
@@ -210,8 +218,9 @@ end = struct
 			    cp ()
 			end
 		    in
-			Say.say ["Runtime System PID is: ", rtspid, "\n"];
-			SafeIO.perform { openIt = fn () =>
+		      Say.say ["Runtime System PID is: ", rtspid, "\n"];
+		      if deliver then
+		       (SafeIO.perform { openIt = fn () =>
 					   AutoDir.openTextOut pidfile,
 					 closeIt = TextIO.closeOut,
 					 work = fn s =>
@@ -235,8 +244,9 @@ end = struct
 					 work = cpCMI,
 					 cleanup = fn () =>
 					   OS.FileSys.remove cmifile
-					   handle _ => () };
-			true
+					   handle _ => () })
+		      else ();
+		      true
 		    end
 		    else false
 	end handle Option => (RT.reset (); false)
@@ -246,4 +256,13 @@ end = struct
 	    SOME x => main_compile x
 	  | NONE => false
     end
+
+    val recomp' = compile false
+    fun recomp () = recomp' NONE
+    val deliver' = compile true
+    fun deliver () = deliver' NONE
+    fun reset () =
+	(RecompPersstate.reset ();
+	 RT.resetAll ();
+	 Recomp.reset ())
 end

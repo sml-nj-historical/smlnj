@@ -11,7 +11,8 @@ local
 in
 functor RecompPersstateFn
     (structure MachDepVC : MACHDEP_VC
-     val new_smlinfo : SmlInfo.info * pid option -> unit
+     val new_smlinfo : SmlInfo.info -> unit
+     val stable_value_present : BinInfo.info * pid option -> bool
      val discard_code : bool) :> RECOMP_PERSSTATE = struct
 
 	structure MachDepVC = MachDepVC
@@ -50,23 +51,23 @@ functor RecompPersstateFn
 	    val ts = SmlInfo.lastseen i
 	    val tmemo = (memo, ts)
 	in
-	    new_smlinfo (i, BF.exportPidOf (#bfc memo));
+	    new_smlinfo i;
 	    smlmap := SmlInfoMap.insert (!smlmap, i, tmemo)
 	end
 
 	val recomp_memo_sml =
 	    if discard_code then
-		(fn x => (BF.discardCode (#bfc (#2 x)); recomp_memo_sml0 x))
+		(fn x => (BF.discardCode (#bfc (#2 x));
+			  recomp_memo_sml0 x))
 	    else recomp_memo_sml0
 
 	fun recomp_look_stable i = StableMap.find (!stablemap, i)
-	fun recomp_memo_stable0 (i, memo) =
-	    stablemap := StableMap.insert (!stablemap, i, memo)
-
-	val recomp_memo_stable =
-	    if discard_code then
-		(fn x => (BF.discardCode (#bfc (#2 x)); recomp_memo_stable0 x))
-	    else recomp_memo_stable0
+	fun recomp_memo_stable (i, memo) =
+	    (if discard_code orelse
+		 stable_value_present (i, BF.exportPidOf (#bfc memo))  then
+		 BF.discardCode (#bfc memo)
+	     else ();
+	     stablemap := StableMap.insert (!stablemap, i, memo))
 
 	fun bfc_fetch_sml i = #bfc (#1 (valOf (SmlInfoMap.find (!smlmap, i))))
 	    handle Option => raise Fail "bfc_fetch_sml"

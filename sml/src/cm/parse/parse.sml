@@ -12,7 +12,8 @@ signature PARSE = sig
 	SrcPath.t -> (CMSemant.group * GeneralParams.info) option
 end
 
-functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
+functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
+		 structure Stabilize: STABILIZE) :> PARSE = struct
 
     val lookAhead = 30
 
@@ -269,8 +270,14 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 	    NONE => NONE
 	  | SOME g =>
 		if CheckSharing.check (g, ginfo) then
-		    (SmlInfo.forgetAllBut (Reachable.reachable g);
-		     SOME (g, ginfo))
+		    let
+			val reach1 = Reachable.reachable g
+			val reach2 = Reachable.reachable' (pending ())
+			val reach = SrcPathSet.union (reach1, reach2)
+		    in
+			SmlInfo.forgetAllBut reach;
+			SOME (g, ginfo)
+		    end
 		else NONE
     end
 end

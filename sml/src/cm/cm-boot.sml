@@ -1,5 +1,7 @@
 functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
+  datatype envrequest = AUTOLOAD | BARE
+
   local
       structure YaccTool = YaccTool
       structure LexTool = LexTool
@@ -20,13 +22,14 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  SpecificSymValFn (structure MachDepVC = HostMachDepVC
 			    val os = os)
 
-      val warmup_hook = ref (NONE: E.dynenv option)
+      val emptydyn = E.dynamicPart E.emptyEnv
+      val system_values = ref emptydyn
 
       (* Instantiate the persistent state functor; this includes
        * the binfile cache and the dynamic value cache *)
       structure FullPersstate =
 	  FullPersstateFn (structure MachDepVC = HostMachDepVC
-			   val warmup_hook = warmup_hook)
+			   val system_values = system_values)
 
       (* Create two arguments appropriate for being passed to
        * CompileGenericFn. One instantiation of that functor
@@ -108,13 +111,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure Stabilize =
 	  StabilizeFn (val bn2statenv = bn2statenv
 		       val getPid = FullPersstate.pid_fetch_sml
-		       val warmup = FullPersstate.new_bininfo
 		       val recomp = recomp_runner)
 
       (* Access to the stabilization mechanism is integrated into the
        * parser. I'm not sure if this is the cleanest way, but it works
        * well enough. *)
-      structure Parse = ParseFn (structure Stabilize = Stabilize)
+      structure Parse = ParseFn (structure Stabilize = Stabilize
+				 val pending = AutoLoad.getPending)
 
       local
 	  type kernelValues =
@@ -178,7 +181,31 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	  fun al_manager' (ast, _, ter) = al_manager (ast, ter)
 
-	  fun initTheValues bootdir = let
+	  fun run sflag f s = let
+	      val c = SrcPath.cwdContext ()
+	      val p = SrcPath.standard pcmode { context = c, spec = s }
+	  in
+	      case Parse.parse NONE (param ()) sflag p of
+		  NONE => false
+		| SOME (g, gp) => f gp g
+	  end
+
+	  fun stabilize_runner gp g = true
+
+	  fun stabilize recursively = run (SOME recursively) stabilize_runner
+	  val recomp = run NONE recomp_runner
+	  val make = run NONE make_runner
+
+	  fun reset () =
+	      (FullPersstate.reset ();
+	       RT.resetAll ();
+	       ET.resetAll ();
+	       Recomp.reset ();
+	       Exec.reset ();
+	       AutoLoad.reset ();
+	       SmlInfo.forgetAllBut SrcPathSet.empty)
+
+	  fun initTheValues (bootdir, er) = let
 	      val _ = let
 		  fun listDir ds = let
 		      fun loop l =
@@ -262,50 +289,31 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			       pervasive = pervasive,
 			       corenv = corenv,
 			       pervcorepids = pervcorepids };
-		      HostMachDepVC.Interact.installCompManager
-		           (SOME al_manager');
-		      autoload "basis.cm";
-		      ()
+		      case er of
+			  BARE =>
+			      (make "basis.cm";
+			       make "host-compiler.cm";
+			       system_values := emptydyn)
+			| AUTOLOAD =>
+			      (HostMachDepVC.Interact.installCompManager
+			            (SOME al_manager');
+			       autoload "basis.cm";
+			       AutoLoadHook.autoloadHook := autoload)
 		  end
 	  end
       end
-
-      fun stabilize_runner gp g = true
   in
     structure CM = struct
-
-	fun run sflag f s = let
-	    val c = SrcPath.cwdContext ()
-	    val p = SrcPath.native { context = c, spec = s }
-	in
-	    case Parse.parse NONE (param ()) sflag p of
-		NONE => false
-	      | SOME (g, gp) => f gp g
-	end
-
-	fun stabilize recursively = run (SOME recursively) stabilize_runner
-	val recomp = run NONE recomp_runner
-	val make = run NONE make_runner
+	val stabilize = stabilize
+	val recomp = recomp
+	val make = make
 	val autoload = autoload
+	val reset = reset
     end
 
-    structure CMB = struct
-	structure BootstrapCompile =
-	    BootstrapCompileFn (structure MachDepVC = HostMachDepVC
-				val os = os)
-	val make' = BootstrapCompile.compile
-	fun make () = make' NONE
-	fun setRetargetPervStatEnv x = ()
-	fun wipeOut () = ()
-    end
-
-    fun init (bootdir, de) =
-	(warmup_hook := SOME de;
-	 initTheValues bootdir;
-	 warmup_hook := NONE;
+    fun init (bootdir, de, er) =
+	(system_values := de;
+	 initTheValues (bootdir, er);
 	 Cleanup.install initPaths)
   end
 end
-
-signature CMTOOLS = sig end
-signature COMPILATION_MANAGER = sig end

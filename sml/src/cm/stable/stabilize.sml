@@ -33,7 +33,6 @@ end
 
 functor StabilizeFn (val bn2statenv : statenvgetter
 		     val getPid : SmlInfo.info -> pid option
-		     val warmup : BinInfo.info * pid option -> unit
 		     val recomp : recomp) :> STABILIZE = struct
 
     datatype pitem =
@@ -279,13 +278,10 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		    "b" :: w_int n (w_symbol sy k) m
 		end
 
-	    fun w_pid p = w_string (Byte.bytesToString (Pid.toBytes p))
-
 	    fun w_sn_raw (DG.SNODE n) k =
-		w_option w_pid (getPid (#smlinfo n))
-		         (w_si (#smlinfo n)
-			       (w_list w_sn (#localimports n)
-				       (w_list w_fsbn (#globalimports n) k)))
+		w_si (#smlinfo n)
+		     (w_list w_sn (#localimports n)
+		                  (w_list w_fsbn (#globalimports n) k))
 
 	    and w_sn n = w_share w_sn_raw PSN n
 
@@ -640,15 +636,11 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		    end
 		  | _ => raise Format
 
-	    fun r_pid () = Pid.fromBytes (Byte.stringToBytes (r_string ()))
-
 	    (* this is the place where what used to be an
 	     * SNODE changes to a BNODE! *)
 	    fun r_sn_raw () = let
-		val popt = r_option r_pid ()
 		val i = r_si ()
 	    in
-		warmup (i, popt);
 		DG.BNODE { bininfo = i,
 			   localimports = r_list r_sn (),
 			   globalimports = r_list r_fsbn () }

@@ -6,13 +6,14 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 signature REACHABLE = sig
+    val reachable' : DependencyGraph.impexp SymbolMap.map -> SrcPathSet.set
     val reachable : GroupGraph.group -> SrcPathSet.set
 end
 
 structure Reachable :> REACHABLE = struct
     structure DG = DependencyGraph
 
-    fun reachable (GroupGraph.GROUP { exports, ... }) = let
+    fun reachable' exports = let
 	fun snode (DG.SNODE n, known) = let
 	    val { smlinfo, localimports = l, globalimports = g } = n
 	    val p = SmlInfo.sourcepath smlinfo
@@ -30,4 +31,6 @@ structure Reachable :> REACHABLE = struct
     in
 	SymbolMap.foldl impexp SrcPathSet.empty exports
     end
+
+    fun reachable (GroupGraph.GROUP { exports, ... }) = reachable' exports
 end

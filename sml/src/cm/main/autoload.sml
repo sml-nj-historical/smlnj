@@ -5,22 +5,25 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
+local
+    structure DG = DependencyGraph
+    structure BE = GenericVC.BareEnvironment
+    structure ER = GenericVC.EnvRef
+    structure GG = GroupGraph
+in
 signature AUTOLOAD = sig
 
-    val register : GenericVC.EnvRef.envref * GroupGraph.group -> unit
+    val register : ER.envref * GG.group -> unit
 
-    val mkManager : (DependencyGraph.impexp SymbolMap.map ->
-		     GenericVC.BareEnvironment.environment option)
-	-> GenericVC.Ast.dec * GenericVC.EnvRef.envref -> unit
+    val mkManager : (DG.impexp SymbolMap.map -> BE.environment option)
+	-> GenericVC.Ast.dec * ER.envref -> unit
+
+    val getPending : unit -> DG.impexp SymbolMap.map
 
     val reset : unit -> unit
 end
 
 structure AutoLoad :> AUTOLOAD = struct
-
-    structure DG = DependencyGraph
-    structure ER = GenericVC.EnvRef
-    structure BE = GenericVC.BareEnvironment
 
     (* We let the topLevel env *logically* sit atop the pending
      * autoload bindings.  This way we do not have to intercept every
@@ -30,7 +33,7 @@ structure AutoLoad :> AUTOLOAD = struct
 
     fun reset () = pending := SymbolMap.empty
 
-    fun register (ter: ER.envref, GroupGraph.GROUP { exports, ... }) = let
+    fun register (ter: ER.envref, GG.GROUP { exports, ... }) = let
 	val te = #get ter ()
 	(* toplevel bindings (symbol set) ... *)
 	val tss = foldl SymbolSet.add' SymbolSet.empty
@@ -75,4 +78,7 @@ structure AutoLoad :> AUTOLOAD = struct
 	    end
 	  | NONE => ()
     end
+
+    fun getPending () = !pending
+end
 end

@@ -6,11 +6,16 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 Library
+#if defined(NEW_CM)
+	functor LinkCM
+	functor BootstrapCompileFn
+#else
 	functor LinkCM
 
 	(* dummy stuff *)
 	signature CMTOOLS
 	signature COMPILATION_MANAGER
+#endif
 is
 	(* the CM description file parser *)
 	parse/parse.sml
@@ -104,6 +109,7 @@ is
 #endif
 
 #if defined(NEW_CM)
+	autoload-hook
 	cm-boot.sml
 #else
 	link.sml

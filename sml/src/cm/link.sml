@@ -55,13 +55,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  { mod = mk mods, nomod = mk nomods }
       end
 
-      val warmup_hook = ref (NONE: E.dynenv option)
+      val system_values = ref (E.dynamicPart E.emptyEnv)
 
       (* Instantiate the persistent state functor; this includes
        * the binfile cache and the dynamic value cache *)
       structure FullPersstate =
 	  FullPersstateFn (structure MachDepVC = HostMachDepVC
-			   val warmup_hook = warmup_hook)
+			   val system_values = system_values)
 
       (* Create two arguments appropriate for being passed to
        * CompileGenericFn. One instantiation of that functor
@@ -191,13 +191,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure Stabilize =
 	  StabilizeFn (val bn2statenv = bn2statenv
 		       val getPid = FullPersstate.pid_fetch_sml
-		       val warmup = FullPersstate.new_bininfo
 		       val recomp = recomp_runner)
 
       (* Access to the stabilization mechanism is integrated into the
        * parser. I'm not sure if this is the cleanest way, but it works
        * well enough. *)
-      structure Parse = ParseFn (structure Stabilize = Stabilize)
+      structure Parse = ParseFn (structure Stabilize = Stabilize
+				 val pending = AutoLoad.getPending)
 
       (* this is just a dummy argument to "run" (see below). *)
       fun stabilize_runner gp g = true
@@ -230,13 +230,16 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
     end
 
     structure CMB = struct
-	structure BootstrapCompile =
-	    BootstrapCompileFn (structure MachDepVC = HostMachDepVC
-				val os = os)
-	val make' = BootstrapCompile.compile
-	fun make () = make' NONE
-	fun setRetargetPervStatEnv x = ()
-	fun wipeOut () = ()
+	local
+	    structure BC =
+		BootstrapCompileFn (structure MachDepVC = HostMachDepVC
+				    val os = os)
+	in
+	    open BC
+	    fun setRetargetPervStatEnv x = ()
+	    val make' = deliver'
+	    val wipeOut = reset
+	end
     end
   end
 end

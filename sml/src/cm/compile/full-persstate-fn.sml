@@ -9,11 +9,12 @@ local
     structure E = GenericVC.Environment
     structure EM = GenericVC.ErrorMsg
     structure PP = PrettyPrint
+    structure DynE = DynamicEnv
 
     type env = GenericVC.Environment.dynenv
 in
 functor FullPersstateFn (structure MachDepVC : MACHDEP_VC
-			 val warmup_hook: env option ref) :> FULL_PERSSTATE =
+			 val system_values: env ref) :> FULL_PERSSTATE =
     struct
 	type env = env
 
@@ -54,33 +55,22 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC
 
 	fun discard_pers i = persmap := discard (i, !persmap)
 
-	fun new_info (i, popt) = let
-	    fun dlook (e, p) =
-		SOME (DynamicEnv.look e p) handle DynamicEnv.Unbound => NONE
-	in
-	    discard_pers i;
-	    case (!warmup_hook, popt) of
-		(SOME we, SOME pid) =>
-		    (case dlook (we, pid) of
-			 NONE => ()
-		       | SOME x => let
-			     val de =
-				 DynamicEnv.bind (pid, x, DynamicEnv.empty)
-			 in
-			     persmap := Map.insert (!persmap, i,
-						    SOME (de, ref Set.empty))
-			 end)
-	      | _ => ()
-	end
+	fun sysval NONE = NONE
+	  | sysval (SOME pid) =
+	    SOME (DynE.bind (pid, DynE.look (!system_values) pid,
+			     DynE.empty))
+	    handle DynE.Unbound => NONE
 
-	fun new_smlinfo (i, popt) = new_info (SML i, popt)
-	fun new_bininfo (i, popt) = new_info (STABLE i, popt)
+	fun stable_value_present (i, popt) =
+	    isSome (sysval popt) orelse isSome (Map.find (!persmap, STABLE i))
 
 	local
 	    structure RecompPersstate =
 		RecompPersstateFn (structure MachDepVC = MachDepVC
 				   val discard_code = false
-				   val new_smlinfo = new_smlinfo)
+				   val stable_value_present =
+				       stable_value_present
+				   val new_smlinfo = discard_pers o SML)
 	    val reset_recomp = RecompPersstate.reset
 	in
 	    open RecompPersstate
@@ -91,31 +81,35 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC
 	end
 
 	infix o'
-	fun (f o' g) (x, y) = f (g x, y)
+	fun (f o' g) (x, y, z) = f (g x, y, z)
 
-	fun exec_look (k, gp) = let
+	fun exec_look (k, gp, popt) = let
 	    fun descr (SML i) = SmlInfo.descr i
 	      | descr (STABLE i) = BinInfo.describe i
 	    fun error (SML i) = SmlInfo.error gp i
 	      | error (STABLE i) = BinInfo.error i
 	in
-	    case Map.find (!tmpmap, k) of
-		NONE =>
-		    (case Map.find (!persmap, k) of
-			 NONE => NONE
-		       | SOME NONE =>
-			     (if share k = SOME true then
-				  error k EM.WARN
-				  (concat ["re-instantiating ", descr k,
-					   " (sharing may be lost)"])
-				  EM.nullErrorBody
-			      else ();
-			      NONE)
-		       | SOME (SOME (e, _)) =>
-			     if share k = SOME false then
-				 (discard_pers k; NONE)
-			     else  SOME e)
-	      | SOME (e, _) => SOME e
+	    case sysval popt of
+		SOME e => SOME e
+	      | NONE =>
+		    (case Map.find (!tmpmap, k) of
+			 NONE =>
+			     (case Map.find (!persmap, k) of
+				  NONE => NONE
+				| SOME NONE =>
+				      (if share k = SOME true then
+					 error k EM.WARN
+					   (concat ["re-instantiating ",
+						    descr k,
+						    " (sharing may be lost)"])
+					   EM.nullErrorBody
+				       else ();
+					   NONE)
+				| SOME (SOME (e, _)) =>
+					   if share k = SOME false then
+					       (discard_pers k; NONE)
+					   else  SOME e)
+		       | SOME (e, _) => SOME e)
 	end
 
 	val exec_look_sml = exec_look o' SML

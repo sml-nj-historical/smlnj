@@ -54,6 +54,7 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
 	val e = BF.exec (bfc, mkdyn ())
 	val de = E.dynamicPart e
     in
+	BF.discardCode bfc;
 	memo de;
 	SOME (thunkify de, sl, bl)
     end handle exn => let
@@ -69,24 +70,32 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
     fun dostable (i, mkbenv, gp) =
 	case mkbenv () of
 	    NONE => NONE
-	  | SOME (benv, sl, bl) =>
-		(case PS.exec_look_stable (i, gp) of
-		     SOME m => SOME (thunkify m, [], [i])
-		   | NONE => (execute (PS.bfc_fetch_stable i, benv,
-				       BinInfo.error i EM.COMPLAIN,
-				       BinInfo.describe i,
-				       fn e => PS.exec_memo_stable (i, e, bl),
-				       [], [i])))
-			 
-    fun fetch_sml i =
-	PS.bfc_fetch_sml i handle e => (print "!!! fetch_sml\n"; raise e)
+	  | SOME (benv, sl, bl) => let
+		val bfc = PS.bfc_fetch_stable i
+	    in
+		case PS.exec_look_stable (i, gp, BF.exportPidOf bfc) of
+		    SOME m =>
+			(BF.discardCode bfc;
+			 SOME (thunkify m, [], [i]))
+		  | NONE => (execute (bfc, benv,
+				      BinInfo.error i EM.COMPLAIN,
+				      BinInfo.describe i,
+				      fn e => PS.exec_memo_stable (i, e, bl),
+				      [], [i]))
+	    end
 
-    fun dosml (i, (env, sl, bl), gp) =
-	case PS.exec_look_sml (i, gp) of
-	    SOME m => SOME (thunkify m, [i], [])
-	  | NONE => (execute (fetch_sml i, env,
+    fun dosml (i, (env, sl, bl), gp) = let
+	val bfc = PS.bfc_fetch_sml i
+	    handle e => (print "!!! fetch_sml\n"; raise e)
+    in
+	case PS.exec_look_sml (i, gp, BF.exportPidOf bfc) of
+	    SOME m =>
+		(BF.discardCode bfc;
+		 SOME (thunkify m, [i], []))
+	  | NONE => (execute (bfc, env,
 			      SmlInfo.error gp i EM.COMPLAIN,
 			      SmlInfo.descr i,
 			      fn m => PS.exec_memo_sml (i, m, sl, bl),
 			      [i], []))
+    end
 end
