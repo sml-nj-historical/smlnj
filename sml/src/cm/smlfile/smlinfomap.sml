@@ -1,0 +1,1 @@
+structure SmlInfoMap = BinaryMapFn (SmlInfo)

@@ -1,0 +1,1 @@
+structure SmlInfoSet = BinarySetFn (SmlInfo)

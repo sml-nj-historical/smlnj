@@ -1,0 +1,51 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.07 [en] (X11; I; Linux 2.2.7 i686) [Netscape]">
+</HEAD>
+<BODY bgcolor="#FFFFFF">
+
+<CENTER>
+<H1>
+<FONT COLOR="#aa0000">Label Expressions</FONT></H1></CENTER>
+
+A <font color="#ff0000"> label expression </font> is a constant
+expression defined in terms of labels.  MLRISC uses the type
+<tt>labexp</tt> to represent label expressions.  Label expressions
+are defined in the structure 
+<a href="../instructions/labelExp.sml" target=code> LabelExp </a>.
+<pp>
+The datatype <tt>labexp</tt> has the following definition:
+<pre>
+  datatype labexp = 
+      LABEL of Label.label
+    | CONST of int
+    | PLUS of labexp * labexp
+    | MINUS of labexp * labexp
+    | MULT of labexp * labexp
+    | DIV of labexp * labexp
+    | LSHIFT of labexp * word
+    | RSHIFT of labexp * word
+    | AND of labexp * word
+    | OR of labexp * word
+</pre>
+
+In addition, the following functions are defined in <tt>labexp</tt>:
+<ul>
+  <li> <tt>valueOf : labexp -> int</tt>  -- Returns the value associated with
+a label expression
+  <li> <tt>toString : labexp -> string</tt> -- Return the pretty printed representation of an expression
+  <li> <tt>hash    : labexp -> word</tt> -- Returns the hash value of an expression
+  <li> <tt>==      : labexp * labexp -> bool</tt> -- Tests whether two label expression are lexically identical
+</ul>
+
+
+<HR>
+    <FONT SIZE="-2">
+<ADDRESS>
+<A HREF="mailto:leunga@cs.nyu.edu">Allen Leung</A></ADDRESS>
+<BR>
+
+</BODY>
+</HTML>
