@@ -35,8 +35,6 @@
 #define COUNT_ALLOC(msp, nbytes)	/* null */
 #endif
 
-PVT bool_t ShrinkCheck (arena_t *ap, Word_t reqSzB);
-
 
 /* ML_CString:
  *
@@ -138,15 +136,14 @@ ml_val_t ML_AllocRaw32 (ml_state_t *msp, int nwords)
 		ap->reqSizeB += szb;
 		RELEASE_LOCK(MP_GCGenLock);
 		    InvokeGC (msp, 1);
-		    if (ShrinkCheck (ap, szb))
-			InvokeGC (msp, 1);
 		ACQUIRE_LOCK(MP_GCGenLock);
+		ap->reqSizeB = 0;
 	    }
 	    *(ap->nextw++) = desc;
 	    res = PTR_CtoML(ap->nextw);
 	    ap->nextw += nwords;
 	END_CRITICAL_SECT(MP_GCGenLock)
-	COUNT_ALLOC(msp, WORD_SZB*(nwords + 1));
+	COUNT_ALLOC(msp, szb);
     }
     else {
 	ML_AllocWrite (msp, 0, desc);
@@ -206,9 +203,8 @@ ml_val_t ML_AllocRaw64 (ml_state_t *msp, int nelems)
 		ap->reqSizeB += szb;
 		RELEASE_LOCK(MP_GCGenLock);
 		    InvokeGC (msp, 1);
-		    if (ShrinkCheck (ap, szb))
-			InvokeGC (msp, 1);
 		ACQUIRE_LOCK(MP_GCGenLock);
+		ap->reqSizeB = 0;
 	    }
 #ifdef ALIGN_REALDS
 	  /* Force REALD_SZB alignment (descriptor is off by one word) */
@@ -225,7 +221,7 @@ ml_val_t ML_AllocRaw64 (ml_state_t *msp, int nelems)
 	    res = PTR_CtoML(ap->nextw);
 	    ap->nextw += nwords;
 	END_CRITICAL_SECT(MP_GCGenLock)
-	COUNT_ALLOC(msp, WORD_SZB*(nwords + 1));
+	COUNT_ALLOC(msp, szb-WORD_SZB);
     }
     else {
 #ifdef ALIGN_REALDS
@@ -334,10 +330,9 @@ ml_val_t ML_AllocArray (ml_state_t *msp, int len, ml_val_t initVal)
 		ap->reqSizeB += szb;
 		RELEASE_LOCK(MP_GCGenLock);
 		    InvokeGCWithRoots (msp, gcLevel, &root, NIL(ml_val_t *));
-		    if (ShrinkCheck(ap, szb))
-			InvokeGCWithRoots (msp, 1, &root, NIL(ml_val_t *));
 		    initVal = root;
 		ACQUIRE_LOCK(MP_GCGenLock);
+		ap->reqSizeB = 0;
 #ifdef MP_SUPPORT
 	      /* check again to insure that we have sufficient space */
 		gcLevel = -1;
@@ -350,7 +345,7 @@ ml_val_t ML_AllocArray (ml_state_t *msp, int len, ml_val_t initVal)
 	    ap->nextw += len;
 	    ap->sweep_nextw = ap->nextw;
 	END_CRITICAL_SECT(MP_GCGenLock)
-	COUNT_ALLOC(msp, WORD_SZB*(len + 1));
+	COUNT_ALLOC(msp, szb);
     }
     else {
 	ML_AllocWrite (msp, 0, desc);
@@ -396,10 +391,9 @@ ml_val_t ML_AllocVector (ml_state_t *msp, int len, ml_val_t initVal)
 	    ap->reqSizeB += szb;
 	    RELEASE_LOCK(MP_GCGenLock);
 	        InvokeGCWithRoots (msp, gcLevel, &root, NIL(ml_val_t *));
-		if (ShrinkCheck(ap, szb))
-		    InvokeGCWithRoots (msp, 1, &root, NIL(ml_val_t *));
 	        initVal = root;
 	    ACQUIRE_LOCK(MP_GCGenLock);
+	    ap->reqSizeB = 0;
 #ifdef MP_SUPPORT
 	  /* check again to insure that we have sufficient space */
 	    if (AVAIL_SPACE(ap) <= szb+msp->ml_heap->allocSzB)
@@ -411,7 +405,7 @@ ml_val_t ML_AllocVector (ml_state_t *msp, int len, ml_val_t initVal)
 	    ap->nextw += len;
 	    ap->sweep_nextw = ap->nextw;
 	END_CRITICAL_SECT(MP_GCGenLock)
-	COUNT_ALLOC(msp, WORD_SZB*(len + 1));
+	COUNT_ALLOC(msp, szb);
     }
     else {
 	ML_AllocWrite (msp, 0, desc);
@@ -512,28 +506,3 @@ ml_val_t ML_CData (ml_state_t *msp, void *data, int nbytes)
     }
 
 } /* end of ML_CData */
-
-
-/********** Local routines **********/
-
-/* ShrinkCheck:
- *
- * This function checks to see if we need to do another GC to shrink the
- * heap.  It is a hack to work around a flaw in the sizing policy that can
- * lead to unbounded heap growth even when the live data is constant.
- */
-PVT bool_t ShrinkCheck (arena_t *ap, Word_t reqSzB)
-{
-    if ((ap->tospSizeB > ap->maxSizeB)
-    && (USED_SPACE(ap) + 2*reqSzB < ap->tospSizeB)) {
-      /* here the arena has grown beyond the soft max, while it would be
-       * possible to fit the twice request within the arena, so we force
-       * another GC.
-       */
-	ap->reqSizeB = reqSzB;
-	return TRUE;
-    }
-    else
-	return FALSE;
-
-} /* end of ShrinkCheck */

@@ -158,8 +158,10 @@ void InitHeap (ml_state_t *msp, bool_t isBoot, heap_params_t *params)
 	ratio = DfltRatios[i];
 	if (i == 0)
 	    max_sz = MAX_SZ1(params->allocSz * MAX_NUM_PROCS);
-	else
-	    max_sz = heap->gen[i-1]->arena[0]->maxSizeB;
+	else {
+	    max_sz = (5*max_sz)/2;
+	    if (max_sz > 64*ONE_MEG) max_sz = 64*ONE_MEG;
+	}
 	gen		=
 	heap->gen[i]	= NEW_OBJ(gen_t);
 	gen->heap	= heap;

@@ -115,7 +115,6 @@ ArenaName[j+1], minSz, prevOldSz[j], thisMinSz, ap->reqSizeB, newSz, ap->maxSize
 #endif
 	    if (newSz > ap->maxSizeB)
 		newSz = (minSz > ap->maxSizeB) ? minSz : ap->maxSizeB;
-	    ap->reqSizeB = 0;
 
 	    if (newSz > 0) {
 		ap->tospSizeB = RND_MEMOBJ_SZB(newSz);

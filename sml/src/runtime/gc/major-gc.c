@@ -115,6 +115,7 @@ PVT bigobj_desc_t *MajorGC_ForwardBigObj (
 	heap_t *heap, int maxGen, ml_val_t obj, aid_t id);
 PVT ml_val_t MajorGC_FwdSpecial (
 	heap_t *heap, aid_t maxAid, ml_val_t *obj, aid_t id, ml_val_t desc);
+PVT void TrimHeap (heap_t *heap, int maxCollectedGen);
 
 /* the symbolic names of the arenas */
 char		*ArenaName[NUM_ARENAS+1] = {
@@ -396,6 +397,8 @@ numBO1, numBO2, numBO3);
 #ifdef CHECK_HEAP
     CheckHeap(heap, maxSweptGen);
 #endif
+
+    TrimHeap (heap, maxCollectedGen);
 
 } /* end of MajorGC. */
 
@@ -990,3 +993,43 @@ SayDebug (" old object\n");
     return PTR_CtoML(new_obj);
 
 } /* end of MajorGC_FwdSpecial */
+
+
+/* TrimHeap:
+ *
+ * After a major collection, trim any arenas that are over their maximum
+ * size in allocated space, but under their maximum size in used space.
+ */
+PVT void TrimHeap (heap_t *heap, int maxCollectedGen)
+{
+    int			i, j;
+    gen_t		*gen;
+    arena_t		*ap;
+    Word_t		minSzB, newSzB;
+
+    for (i = 0;  i < maxCollectedGen;  i++) {
+	gen = heap->gen[i];
+	for (j = 0;  j < NUM_ARENAS;  j++) {
+	    ap = gen->arena[j];
+	    if (isACTIVE(ap) && (ap->tospSizeB > ap->maxSizeB)) {
+		minSzB = (i == 0)
+		    ? heap->allocSzB
+		    : heap->gen[i-1]->arena[j]->tospSizeB;
+		minSzB += (USED_SPACE(ap) + ap->reqSizeB);
+		if (minSzB < ap->maxSizeB)
+		    newSzB = ap->maxSizeB;
+		else {
+		    newSzB = RND_MEMOBJ_SZB(minSzB);
+		  /* the calculation of minSz here may return something bigger
+		   * that what flip.c computed!
+		   */
+		    if (newSzB > ap->tospSizeB)
+			newSzB = ap->tospSizeB;
+		}
+		ap->tospSizeB = newSzB;
+		ap->tospTop = (Addr_t)ap->tospBase + ap->tospSizeB;
+	    }
+	}
+    }
+
+} /* end of TrimHeap */
