@@ -1,8 +1,14 @@
 (* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
- * Revision 1.1.1.4  1998/06/05 19:40:02  monnier
- * 110.7
+ * Revision 1.1.1.5  1998/09/07 21:10:48  monnier
+ * 110.8
+ *
+ * Revision 1.2  1998/07/08 18:32:06  elsa
+ * Added support for the new percent identifier %token_sig_info.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:17  george
+ * Version 110.5
  *
  * Revision 1.1.1.1  1997/01/14 01:38:06  george
  *   Version 109.24
@@ -392,6 +398,7 @@ struct
    end
 end
 
+(* In utils.sig
 signature TABLE =
    sig
 	type 'a table
@@ -405,6 +412,7 @@ signature TABLE =
 	val make_list : 'a table -> (key * 'a) list
 	val fold : ((key * 'a) * 'b -> 'b) -> 'a table -> 'b -> 'b
    end
+*)
 
 functor Table (B : sig type key
 		      val gt : (key * key) -> bool
@@ -505,6 +513,7 @@ end;
 (* assumes that a functor Table with signature TABLE from table.sml is
    in the environment *)
 
+(* In utils.sig
 signature HASH =
   sig
     type table
@@ -516,6 +525,7 @@ signature HASH =
     val exists : elem * table -> bool
     val empty : table
   end
+*)
 
 (* hash: creates a hash table of size n which assigns each distinct member
    a unique integer between 0 and n-1 *)

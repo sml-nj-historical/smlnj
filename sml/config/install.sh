@@ -239,7 +239,7 @@ do
     echo "  building $TARGET"
     case $i in
       src-smlnj)
-        for src in compiler comp-lib MLRISC; do
+        for src in compiler comp-lib cm MLRISC; do
           $CONFIGDIR/unpack.sh $src $ROOT/src $src $ROOT/$VERSION-$src.tar
         done
       ;;
@@ -353,6 +353,20 @@ XXXX
           cd $LIBDIR
           echo "Alias $SRCDIR/smlnj-lib/Reactive/sources.cm" > reactive-lib.cm
 	fi
+      # make the PP library
+        cd $SRCDIR/smlnj-lib/PP
+        echo "$CM_MAKE_LIB" | $BINDIR/sml
+	if [ ! -f $LIBDIR/pp-lib.cm ]; then
+          cd $LIBDIR
+          echo "Alias $SRCDIR/smlnj-lib/PP/sources.cm" > pp-lib.cm
+	fi
+      # make the RegExp library
+        cd $SRCDIR/smlnj-lib/RegExp
+        echo "$CM_MAKE_LIB" | $BINDIR/sml
+	if [ ! -f $LIBDIR/regexp-lib.cm ]; then
+          cd $LIBDIR
+          echo "Alias $SRCDIR/smlnj-lib/RegExp/sources.cm" > regexp-lib.cm
+	fi
       ;;
       ml-yacc-lib)
         $CONFIGDIR/unpack.sh ML-Yacc $SRCDIR ml-yacc $ROOT/$VERSION-ml-yacc.tar
@@ -457,6 +471,12 @@ if [ "$ENABLE_AUTOLOADING" = "TRUE" ]; then
   fi
   if [ "$AUTOLOAD_SMLNJ_REACTIVE" = "TRUE" ]; then
     CMD="$CMD CM.autoload'(\"$LIBDIR/reactive-lib.cm\");"
+  fi
+  if [ "AUTOLOAD_SMLNJ_PP" = "TRUE" ]; then
+    CMD="$CMD CM.autoload'(\"$LIBDIR/pp-lib.cm\");"
+  fi
+  if [ "AUTOLOAD_SMLNJ_REGEXP" = "TRUE" ]; then
+    CMD="$CMD CM.autoload'(\"$LIBDIR/regexp-lib.cm\");"
   fi
   cd $ROOT
   $BINDIR/sml <<XXXX

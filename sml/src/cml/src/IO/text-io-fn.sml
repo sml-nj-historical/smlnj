@@ -107,7 +107,7 @@ functor TextIOFn (
 			    more = newMore, info = info
 			  }
 		    in
-		    (* note that we do not fill the newMore cell until
+		    (* note that we do not fill the more cell until
 		     * after the tail has been updated.  This ensures
 		     * that someone attempting to access the tail will
 		     * not acquire the lock until after we are done.

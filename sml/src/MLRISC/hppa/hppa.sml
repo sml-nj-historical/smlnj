@@ -511,3 +511,9 @@ struct
   val mlriscComp = stmAction
 end
 
+(*
+ * $Log: hppa.sml,v $
+ * Revision 1.3  1998/05/25 15:10:52  george
+ *   Fixed RCS keywords
+ *
+ *)

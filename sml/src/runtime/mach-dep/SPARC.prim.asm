@@ -60,6 +60,8 @@
  *		  +-------------------+
  *      roots+72: |        %i4        |
  *		  +-------------------+
+ *      roots+76: |        %o3-%o4    |
+ *		  +-------------------+
  */
 
 
@@ -104,10 +106,14 @@
 #define MISCREG10 %l6
 #define MISCREG11 %l7
 #define MISCREG12 %i4
-#define   TMPREG1 %o2
-#define   TMPREG2 %o3
+#define MISCREG13 %o3
+#define MISCREG14 %o4
+#define   ASMTMP  %o2   /* assembly temporary used in ML */
+#define   MASKREG %o5	/* also used to pass register mask to g.c. */
+#define   TMPREG1 ASMTMP
+#define   TMPREG2 %o3   /* %o3-%o4 are part of GC root set; use with care!!! */ 
 #define   TMPREG3 %o4
-#define   TMPREG4 %o5	/* also used to pass register mask to g.c. */
+#define   TMPREG4 MASKREG
 #define    GCLINK %o7	/* link register for return from g.c.  (ml_pc) */
 
 /* %o2 and %o3 are also used as for multiply and divide */
@@ -119,8 +125,8 @@
  *
  * The ML stack frame has the following layout (set up by restoreregs):
  *
- *			+-------------------+
- *	%fp = %sp+112:	|  empty            |
+ *			|                   |
+ *	%fp = %sp+112:	|  spill area       |
  *			+-------------------+
  *	%sp+108:	|   pseudo reg 2    |
  *			+-------------------+
@@ -154,7 +160,8 @@
  * Note that this must be a multiple of 8 bytes.  The size of the
  * stack frame is:
  */
-#define ML_FRAMESIZE (WINDOWSIZE+48)
+/* ##define ML_FRAMESIZE (WINDOWSIZE+48+4096) */
+#define ML_FRAMESIZE 4096
 
 #define MUL_OFFSET 72
 #define DIV_OFFSET 76
@@ -177,9 +184,9 @@
 #endif
 
 #define CHECKLIMIT(mask,label)			\
-		bl 	label;			\
+		blu	label;			\
 		nop;				\
-		set	mask,TMPREG4;		\
+		set	mask,MASKREG;		\
  		mov	STDLINK,GCLINK;		\
 		ba	CSYM(saveregs);		\
 		nop;				\
@@ -192,7 +199,7 @@
  * The return continuation for the ML signal handler.
  */
 ML_CODE_HDR(sigh_return_a)
-	set	RET_MASK,TMPREG4
+	set	RET_MASK,MASKREG
 	ba	set_request
 	set	REQ_SIG_RETURN,TMPREG3	/* (delay slot) */
 
@@ -201,7 +208,7 @@ ML_CODE_HDR(sigh_return_a)
  * standard two-argument function, thus the closure is in ml_cont (stdcont).
  */
 ENTRY(sigh_resume)
-	set	FUN_MASK,TMPREG4
+	set	FUN_MASK,MASKREG
 	ba	set_request
 	set	REQ_SIG_RESUME,TMPREG3	/* (delay slot) */
 
@@ -209,7 +216,7 @@ ENTRY(sigh_resume)
  * The return continuation for the ML poll handler.
  */
 ML_CODE_HDR(pollh_return_a)
-	set	RET_MASK,TMPREG4
+	set	RET_MASK,MASKREG
 	ba	set_request
 	set	REQ_POLL_RETURN,TMPREG3	/* (delay slot) */
 
@@ -217,22 +224,22 @@ ML_CODE_HDR(pollh_return_a)
  * Resume execution at the point at which a poll event occurred.
  */
 ENTRY(pollh_resume)
-	set	FUN_MASK,TMPREG4
+	set	FUN_MASK,MASKREG
 	ba	set_request
 	set	REQ_POLL_RESUME,TMPREG3	/* (delay slot) */
 
 ML_CODE_HDR(handle_a)
-	set	EXN_MASK,TMPREG4
+	set	EXN_MASK,MASKREG
 	ba	set_request
 	set	REQ_EXN,TMPREG3		/* (delay slot) */
 
 ML_CODE_HDR(return_a)
-	set	RET_MASK,TMPREG4
+	set	RET_MASK,MASKREG
 	ba	set_request
 	set	REQ_RETURN,TMPREG3		/* (delay slot) */
 
 ENTRY(request_fault)
-	set	EXN_MASK,TMPREG4
+	set	EXN_MASK,MASKREG
 	ba	set_request
 	set	REQ_FAULT,TMPREG3		/* (delay slot) */
 
@@ -240,19 +247,19 @@ ENTRY(request_fault)
  */
 ML_CODE_HDR(bind_cfun_a)
 	CHECKLIMIT(FUN_MASK,bind_cfun_v_limit)
-	set	FUN_MASK,TMPREG4
+	set	FUN_MASK,MASKREG
 	ba	set_request
 	set	REQ_BIND_CFUN,TMPREG3		/* (delay slot) */
 
 ML_CODE_HDR(build_literals_a)
 	CHECKLIMIT(FUN_MASK,build_literals_a_limit)
-	set	FUN_MASK,TMPREG4
+	set	FUN_MASK,MASKREG
 	ba	set_request
 	set	REQ_BUILD_LITERALS,TMPREG3	/* (delay slot) */
 
 ML_CODE_HDR(callc_a)
 	CHECKLIMIT(FUN_MASK,callc_a_limit)
-	set	FUN_MASK,TMPREG4
+	set	FUN_MASK,MASKREG
 	set	REQ_CALLC,TMPREG3
 	/* fall through */
 
@@ -260,7 +267,7 @@ set_request:				/* a quick return to run_ml().  TMPREG3 holds */
 					/* the request code. */
 	ld	[%sp+MLSTATE_OFFSET],TMPREG2	/* get MLState ptr from stack */
 	ld	[TMPREG2+VProcOffMSP],TMPREG1	/* TMPREG1 := VProcPtr */
-	st	TMPREG4,[TMPREG2+MaskOffMSP]	/* save the register mask */
+	st	MASKREG,[TMPREG2+MaskOffMSP]	/* save the register mask */
 	st	%g0,[TMPREG1+InMLOffVSP]	/* note that we have left ML code */
 	st	ALLOCPTR,[TMPREG2+AllocPtrOffMSP]
 	st	STOREPTR,[TMPREG2+StorePtrOffMSP]/* save storeptr */
@@ -296,12 +303,24 @@ set_request:				/* a quick return to run_ml().  TMPREG3 holds */
 	ret
 	restore				    /* restore C register window (delay slot) */
 
+/* ------------------------------------------------------------------- */
+/*
+ * This is the entry point for starting gc called from ML's code.
+ * I've added an adjustment to the return address.  The generated ML code
+ * uses the JMPL instruction, which does not add an offset of 8 to the
+ * correct return address.
+ *
+ * Allen (Jun 5 1998)
+ */
+ENTRY(saveregs0)
+	add	GCLINK, 8, GCLINK
 ENTRY(saveregs)
-	ld	[%sp+MLSTATE_OFFSET],TMPREG2  /* get MLState ptr from stack */
-	st	TMPREG4,[TMPREG2+MaskOffMSP]    /* save register mask */
+#define MLState ASMTMP
+	ld	[%sp+MLSTATE_OFFSET],MLState  /* get MLState ptr from stack */
+	st	MASKREG,[MLState+MaskOffMSP]    /* save register mask */
 #ifdef SOFT_POLL
 	/* free some regs */
-	std	MISCREG0,[TMPREG2+MiscRegOffMSP(0)]  /* save miscreg0,misreg1 */
+	std	MISCREG0,[MLState+MiscRegOffMSP(0)]  /* save miscreg0,misreg1 */
 #define	p0	MISCREG0
 #define	p1	MISCREG1
 #define pfreq	TMPREG4
@@ -312,7 +331,7 @@ ENTRY(saveregs)
 	tst	pfreq
 	be	check_for_gc			/* go check for real gc */
 	nop	/* (delay slot) */
-	ld	[TMPREG2+InPollHandlerOffMSP],p0	/* if we're in the handler */
+	ld	[MLState+InPollHandlerOffMSP],p0	/* if we're in the handler */
 	tst	p0
 	bne	reset_limit			/* ignore poll events */
 	nop	/* (delay slot) */
@@ -324,7 +343,7 @@ ENTRY(saveregs)
 	nop	/* (delay slot) */
 	/* event occurred, so set ml_pollHandlerPending */
 	set	1,p0
-	st	p0,[TMPREG2+PollPendingOffMSP]
+	st	p0,[MLState+PollPendingOffMSP]
 	ba	do_gc		/* and handle event in the C runtime */
 
 reset_limit:				/* reset limit ptr */
@@ -333,24 +352,24 @@ reset_limit:				/* reset limit ptr */
 
 check_for_gc:
 	/* ensure real limit is >= limit */
-	ld	[TMPREG2+RealLimitOffMSP],p0
+	ld	[MLState+RealLimitOffMSP],p0
 	sub	p0,LIMITPTR,p1
 	tst	p1
-	bge	ok_limit
+	bgeu	ok_limit
 	nop	/* (delay slot) */
 	mov	p0,LIMITPTR
 ok_limit:
 	add	p0,-4096,LIMITPTR
 /*	cmp	p0,ALLOCPTR  */
 	cmp 	LIMITPTR,ALLOCPTR
-	ble	do_gc	  	       	/* gc *//* should be a common case */
+	bleu	do_gc	  	       	/* gc *//* should be a common case */
 	nop			        /* (delay slot) */
     /* since a signal also sets limitptr == allocptr to force a trap, */
     /* we need to disambiguate poll-events/signals here */
 #undef  pfreq
 #define vsp     TMPREG4
-	ld	[TMPREG2+VProcOffMSP],vsp
-	ld	[TMPREG2+PollPendingOffMSP],p0
+	ld	[MLState+VProcOffMSP],vsp
+	ld	[MLState+PollPendingOffMSP],p0
 	ld	[vsp+NPendingOffVSP],p1
 	add	p0,p1,p0
 	ld	[vsp+NPendingSysOffVSP],p1
@@ -360,105 +379,119 @@ ok_limit:
 	nop	/* (delay slot) */
 
 no_gc:	/* an uneventful poll check, back to ML */
-	ldd	[TMPREG2+MiscRegOffMSP(0)],MISCREG0  /* reload miscregs */
+	ldd	[MLState+MiscRegOffMSP(0)],MISCREG0  /* reload miscregs */
 	jmp	GCLINK
 	subcc	ALLOCPTR,LIMITPTR,%g0	    /* Heap limit test (delay slot) */
 		
 do_gc:
-	st	LIMITPTR,[TMPREG2+LimitPtrOffMSP]
+	st	LIMITPTR,[MLState+LimitPtrOffMSP]
 
 #undef  vsp
 #undef  p0
 #undef  p1
 #endif /* SOFT_POLL */
-
-	ld	[TMPREG2+VProcOffMSP],TMPREG1	/* TMPREG1 := VProcPtr */
-	st	%g0,[TMPREG1+InMLOffVSP]	/* note that we have left ML code */
-	st	GCLINK,[TMPREG2+PCOffMSP]	/* resume pc */
+#define VProcPtr TMPREG4
+	ld	[MLState+VProcOffMSP],VProcPtr	/* TMPREG4 := VProcPtr */
+	st	%g0,[VProcPtr+InMLOffVSP]	/* note that we have left ML code */
+#undef VProcPtr
+	st	GCLINK,[MLState+PCOffMSP]	/* resume pc */
 	add	BASEPTR,-4096,BASEPTR		/* adjust the base code ptr (sub 4096) */
-	st	ALLOCPTR,[TMPREG2+AllocPtrOffMSP] /* save allocptr */
-	st	STOREPTR,[TMPREG2+StorePtrOffMSP] /* save storeptr */
-	std	STDARG,[TMPREG2+StdArgOffMSP]	/* save STDARG, stdcont */
-	std	STDCLOS,[TMPREG2+StdClosOffMSP]	/* save stdclos, baseptr */
-	st	VARPTR,[TMPREG2+VarPtrOffMSP]
-	st	STDLINK,[TMPREG2+LinkRegOffMSP]
-	st	EXNCONT,[TMPREG2+ExnPtrOffMSP]
+	st	ALLOCPTR,[MLState+AllocPtrOffMSP] /* save allocptr */
+	st	STOREPTR,[MLState+StorePtrOffMSP] /* save storeptr */
+	std	STDARG,[MLState+StdArgOffMSP]	/* save STDARG, stdcont */
+	std	STDCLOS,[MLState+StdClosOffMSP]	/* save stdclos, baseptr */
+	st	VARPTR,[MLState+VarPtrOffMSP]
+	st	STDLINK,[MLState+LinkRegOffMSP]
+	st	EXNCONT,[MLState+ExnPtrOffMSP]
 #ifndef SOFT_POLL  /* miscreg0 & miscreg1 saved above for SOFT_POLL */
-	std	MISCREG0,[TMPREG2+MiscRegOffMSP(0)]
+	std	MISCREG0,[MLState+MiscRegOffMSP(0)]
 #endif
-	std	MISCREG2,[TMPREG2+MiscRegOffMSP(2)]
-	std	MISCREG4,[TMPREG2+MiscRegOffMSP(4)]
-	std	MISCREG6,[TMPREG2+MiscRegOffMSP(6)]
-	std	MISCREG8,[TMPREG2+MiscRegOffMSP(8)]
-	std	MISCREG10,[TMPREG2+MiscRegOffMSP(10)]
-	st	MISCREG12,[TMPREG2+MiscRegOffMSP(12)]
+	std	MISCREG2,[MLState+MiscRegOffMSP(2)]
+	std	MISCREG4,[MLState+MiscRegOffMSP(4)]
+	std	MISCREG6,[MLState+MiscRegOffMSP(6)]
+	std	MISCREG8,[MLState+MiscRegOffMSP(8)]
+	std	MISCREG10,[MLState+MiscRegOffMSP(10)]
+	st	MISCREG12,[MLState+MiscRegOffMSP(12)]
+        st	MISCREG13,[MLState+MiscRegOffMSP(13)]
+        st	MISCREG14,[MLState+MiscRegOffMSP(14)]
         ld      [%sp+PSEUDOREG_OFFSET],%g6   /* save pseduo registers */
         ld      [%sp+PSEUDOREG_OFFSET+4],%g7
-        st      %g6,[TMPREG2+PseudoReg1OffMSP] 
-        st      %g7,[TMPREG2+PseudoReg2OffMSP] 
+        st      %g6,[MLState+PseudoReg1OffMSP] 
+        st      %g7,[MLState+PseudoReg2OffMSP] 
  	ldd	[%sp+64],%g6		  /* restore C registers %g6 & %g7. */
 	set	REQ_GC,%i0		  /* request GC */
 	ret
 	restore		    /* restore C register window (delay slot) */
+#undef MLState
 
+/* ------------------------------------------------------------------- */
+
+#define MLState ASMTMP
+#define VProcPtr TMPREG4
 ENTRY(restoreregs)
 	save	%sp,-SA(ML_FRAMESIZE),%sp
 	st	%i0,[%sp+MLSTATE_OFFSET]	/* save MLState ptr on stack */
-	set	CSYM(saveregs),TMPREG2
-	st	TMPREG2,[%sp+STARTGC_OFFSET]
-	mov	%i0,TMPREG2			/* transfer MLState ptr to tmpreg2 */
+	set	CSYM(saveregs0),ASMTMP
+	st	ASMTMP,[%sp+STARTGC_OFFSET]
+	mov	%i0,MLState			/* transfer MLState ptr to tmpreg4 */
 	std	ALLOCPTR,[%sp+64]		/* save C registers %g6 & %g7 */
-	set	_ml_mul,TMPREG1			/* set pointer to ml_mul */
-	st	TMPREG1,[%sp+MUL_OFFSET]
-	set	_ml_div,TMPREG1			/* set pointer to ml_div */
-	st	TMPREG1,[%sp+DIV_OFFSET]
-	set	_ml_umul,TMPREG1		/* set pointer to ml_umul */
-	st	TMPREG1,[%sp+UMUL_OFFSET]
-	set	_ml_udiv,TMPREG1		/* set pointer to ml_udiv */
-	st	TMPREG1,[%sp+UDIV_OFFSET]
-	ld	[TMPREG2+AllocPtrOffMSP],ALLOCPTR
-	ld	[TMPREG2+LimitPtrOffMSP],LIMITPTR
-	ld	[TMPREG2+StorePtrOffMSP],STOREPTR
-	ld	[TMPREG2+PCOffMSP],GCLINK
-	ldd	[TMPREG2+StdArgOffMSP],STDARG      /* stdarg and stdcont */
-	ldd	[TMPREG2+StdClosOffMSP],STDCLOS     /* stdclos and baseptr */
-	ld 	[TMPREG2+VarPtrOffMSP],VARPTR
-	ld	[TMPREG2+LinkRegOffMSP],STDLINK
-	ld	[TMPREG2+ExnPtrOffMSP],EXNCONT	/* restore exnptr */
-        ld      [TMPREG2+PseudoReg1OffMSP],MISCREG2 /* save pseduo registers */
-        ld      [TMPREG2+PseudoReg2OffMSP],MISCREG3
+	set	_ml_mul,TMPREG4			/* set pointer to ml_mul */
+	st	TMPREG4,[%sp+MUL_OFFSET]
+	set	_ml_div,TMPREG4			/* set pointer to ml_div */
+	st	TMPREG4,[%sp+DIV_OFFSET]
+	set	_ml_umul,TMPREG4		/* set pointer to ml_umul */
+	st	TMPREG4,[%sp+UMUL_OFFSET]
+	set	_ml_udiv,TMPREG4		/* set pointer to ml_udiv */
+	st	TMPREG4,[%sp+UDIV_OFFSET]
+	ld	[MLState+AllocPtrOffMSP],ALLOCPTR
+	ld	[MLState+LimitPtrOffMSP],LIMITPTR
+	ld	[MLState+StorePtrOffMSP],STOREPTR
+	ld	[MLState+PCOffMSP],GCLINK
+	ldd	[MLState+StdArgOffMSP],STDARG      /* stdarg and stdcont */
+	ldd	[MLState+StdClosOffMSP],STDCLOS     /* stdclos and baseptr */
+	ld 	[MLState+VarPtrOffMSP],VARPTR
+	ld	[MLState+LinkRegOffMSP],STDLINK
+	ld	[MLState+ExnPtrOffMSP],EXNCONT	/* restore exnptr */
+        ld      [MLState+PseudoReg1OffMSP],MISCREG2 /* save pseduo registers */
+        ld      [MLState+PseudoReg2OffMSP],MISCREG3
         st      MISCREG2,[%sp+PSEUDOREG_OFFSET]
         st      MISCREG3,[%sp+PSEUDOREG_OFFSET+4]
-	ldd	[TMPREG2+MiscRegOffMSP(0)],MISCREG0
-	ldd	[TMPREG2+MiscRegOffMSP(2)],MISCREG2
-	ldd	[TMPREG2+MiscRegOffMSP(4)],MISCREG4
-	ldd	[TMPREG2+MiscRegOffMSP(6)],MISCREG6
-	ldd	[TMPREG2+MiscRegOffMSP(8)],MISCREG8
-	ldd	[TMPREG2+MiscRegOffMSP(10)],MISCREG10
-	ld	[TMPREG2+MiscRegOffMSP(12)],MISCREG12
+	ldd	[MLState+MiscRegOffMSP(0)],MISCREG0
+	ldd	[MLState+MiscRegOffMSP(2)],MISCREG2
+	ldd	[MLState+MiscRegOffMSP(4)],MISCREG4
+	ldd	[MLState+MiscRegOffMSP(6)],MISCREG6
+	ldd	[MLState+MiscRegOffMSP(8)],MISCREG8
+	ldd	[MLState+MiscRegOffMSP(10)],MISCREG10
+	ld	[MLState+MiscRegOffMSP(12)],MISCREG12
 
 	sub	BASEPTR,-4096,BASEPTR	/* adjust the base code ptr (add 4096) */
-	ld	[TMPREG2+VProcOffMSP],TMPREG1	/* TMPREG1 := VProcPtr */
+	ld	[MLState+VProcOffMSP],VProcPtr	/* TMPREG4 := VProcPtr */
 	set	1,TMPREG2			/* note that we have entered ML code */
-	st	TMPREG2,[TMPREG1+InMLOffVSP]
-	ld	[TMPREG1+NPendingSysOffVSP],TMPREG2	/* check for pending signals */
-	ld	[TMPREG1+NPendingOffVSP],TMPREG3
+	st	TMPREG2,[VProcPtr+InMLOffVSP]
+	ld	[VProcPtr+NPendingSysOffVSP],TMPREG2	/* check for pending signals */
+	ld	[VProcPtr+NPendingOffVSP],TMPREG3
 	addcc	TMPREG2,TMPREG3,%g0
 	bne	pending_sigs
 	nop
+ml_go0:
+        /* Restore MISCREG13/14 before going; these are aliased to
+         * TMPREG2 and TMPREG3 
+         */
+	ld	[MLState+MiscRegOffMSP(13)],MISCREG13
+	ld	[MLState+MiscRegOffMSP(14)],MISCREG14
 CSYM(ml_go):					/* invoke the ML code */
 	jmp	GCLINK
 	subcc	ALLOCPTR,LIMITPTR,%g0	    /* Heap limit test (delay slot) */
 
 pending_sigs:	/* there are pending signals */
 					/* check if we are currently handling a signal */
-	ld	[TMPREG1+InSigHandlerOffVSP],TMPREG2
+	ld	[VProcPtr+InSigHandlerOffVSP],TMPREG2
 	tst	TMPREG2
-	bne	CSYM(ml_go)
+	bne	ml_go0
 	set	1,TMPREG2			    /* (delay slot) */
 					/* note that a handler trap is pending */
-	st	TMPREG2,[TMPREG1+HandlerPendingOffVSP]
-	ba	CSYM(ml_go)
+	st	TMPREG2,[VProcPtr+HandlerPendingOffVSP]
+	ba	ml_go0
 	mov	ALLOCPTR,LIMITPTR	    /* (delay slot) */
 
 
@@ -508,7 +541,7 @@ ML_CODE_HDR(array_a)
 	CONTINUE
 
 3:	/* here we do off-line allocation for big arrays */
-	set	FUN_MASK,TMPREG4
+	set	FUN_MASK,MASKREG
 	ba	set_request
 	set	REQ_ALLOC_ARRAY,TMPREG3	    /* (delayslot) */
 
@@ -535,7 +568,7 @@ ML_CODE_HDR(create_r_a)
 	CONTINUE
 
 1:	/* off-line allocation of big realarrays */
-	set	FUN_MASK,TMPREG4
+	set	FUN_MASK,MASKREG
 	ba	set_request
 	set	REQ_ALLOC_REALDARRAY,TMPREG3	/* (delayslot) */
 
@@ -560,7 +593,7 @@ ML_CODE_HDR(create_b_a)
 	CONTINUE
 
 1:	/* here we do off-line allocation for big bytearrays */
-	set	FUN_MASK,TMPREG4
+	set	FUN_MASK,MASKREG
 	ba	set_request
 	set	REQ_ALLOC_BYTEARRAY,TMPREG3	/* (delayslot) */
 
@@ -586,7 +619,7 @@ ML_CODE_HDR(create_s_a)
 	CONTINUE
 
 1:	/* here we do off-line allocation for big strings */
-	set	FUN_MASK,TMPREG4
+	set	FUN_MASK,MASKREG
 	ba	set_request
 	set	REQ_ALLOC_STRING,TMPREG3	/* (delayslot) */
 
@@ -618,7 +651,7 @@ ML_CODE_HDR(create_v_a)
 	CONTINUE
 
 1:	/* off-line allocation of big vectors */
-	set	FUN_MASK,TMPREG4
+	set	FUN_MASK,MASKREG
 	ba	set_request
 	set	REQ_ALLOC_VECTOR,TMPREG3	/* (delayslot) */
 
@@ -834,8 +867,8 @@ ML_CODE_HDR(try_lock_a)
 	???
 #else (MAX_PROCS == 1)
 	ld	[STDARG],TMPREG1	/* load previous value into tmpreg1 */
-	set	ML_false,TMPREG2	/* ML_false */
-	st	TMPREG2,[STDARG]	/* store ML_false into the lock */
+	set	ML_false,TMPREG4	/* ML_false */
+	st	TMPREG4,[STDARG]	/* store ML_false into the lock */
 	mov	TMPREG1,STDARG		/* return previous value of lock */
 	CONTINUE
 #endif

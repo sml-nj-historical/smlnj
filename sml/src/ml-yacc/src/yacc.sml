@@ -1,8 +1,14 @@
 (* ML-Yacc Parser Generator (c) 1989, 1990 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
- * Revision 1.1.1.4  1998/06/05 19:40:03  monnier
- * 110.7
+ * Revision 1.1.1.5  1998/09/07 21:10:49  monnier
+ * 110.8
+ *
+ * Revision 1.2  1998/07/08 18:32:09  elsa
+ * Added support for the new percent identifier %token_sig_info.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:17  george
+ * Version 110.5
  *
  * Revision 1.2  1997/07/25 16:01:29  jhr
  *   Fixed bug with long constructor names (#1237).
@@ -92,7 +98,11 @@ functor ParseGenFun(structure ParseGenParser : PARSE_GEN_PARSER
 
 			  term : (Header.symbol * ty option) list,
 			  nonterm : (Header.symbol * ty option) list,
-			  terms : Grammar.term list}
+			  terms : Grammar.term list,
+
+			  (* tokenInfo is the user inserted spec in
+			     the *_TOKEN sig*)
+			  tokenInfo : string option}
 			  
     structure SymbolHash = Hash(type elem = string
 	    		        val gt = (op >) : string*string -> bool)
@@ -155,11 +165,14 @@ functor ParseGenFun(structure ParseGenParser : PARSE_GEN_PARSER
 
     val printTokenStruct =
      fn (VALS {say, sayln, termToString, hasType,termvoid,terms,
-	       pureActions,...},
+	       pureActions,tokenInfo,...},
 	 NAMES {miscStruct,tableStruct,valueStruct,
 		tokenStruct,tokenSig,dataStruct,...}) =>
 		(sayln ("structure " ^ tokenStruct ^ " : " ^ tokenSig ^ " =");
 		 sayln "struct";
+		 (case tokenInfo of
+		      NONE => ()
+		    | _ => sayln ("open "^dataStruct^".Header"));
 	         sayln ("type svalue = " ^ dataStruct ^ ".svalue");
 		 sayln "type ('a,'b) token = ('a,'b) Token.token";
 		 let val f = fn term as T i =>
@@ -185,12 +198,13 @@ functor ParseGenFun(structure ParseGenParser : PARSE_GEN_PARSER
     (* function to print signatures out - takes print function which
 	does not need to insert line breaks *)
 
-    val printSigs = fn (VALS {term,...},
+    val printSigs = fn (VALS {term,tokenInfo,...},
 			NAMES {tokenSig,tokenStruct,miscSig,
 				dataStruct, dataSig, ...},
 			say) =>
-          say  ("signature " ^ tokenSig ^ " =\nsig\n\
-		 \type ('a,'b) token\ntype svalue\n" ^
+          say  ("signature " ^ tokenSig ^ " =\nsig\n"^
+		(case tokenInfo of NONE => "" | SOME s => (s^"\n"))^
+		 "type ('a,'b) token\ntype svalue\n" ^
 		 (List.foldr (fn ((s,ty),r) => String.concat [
 		    "val ", symbolName s,
 		    (case ty
@@ -458,6 +472,14 @@ let val printAbsynRule = Absyn.printRule(say,sayln)
 		 | f (_::r) = f r
 	   in f control
 	   end
+
+	val token_sig_info_decl =
+	    let fun f nil = NONE
+		  | f ((TOKEN_SIG_INFO s)::_) = SOME s
+		  | f (_::r) = f r
+	    in f control
+	    end
+
 	val arg_decl =
 	   let fun f nil = ("()","unit")
 		 | f ((PARSE_ARG s)::r) = s 
@@ -799,7 +821,8 @@ precedences of the rule and the terminal are equal.
 			       start=start,pureActions=pureActions,
 			       termToString=termToString,
 			       symbolToString=symbolToString,term=term,
-			       nonterm=nonterm,terms=terms}
+			       nonterm=nonterm,terms=terms,
+			       tokenInfo=token_sig_info_decl}
 
 	    val (NAMES {miscStruct,tableStruct,dataStruct,tokenSig,tokenStruct,dataSig,...}) = names
          in case header_decl

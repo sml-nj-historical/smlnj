@@ -333,7 +333,8 @@ The following classes of non-ML symbols are used:
 \begin{quote}
 \raggedright
 \tt
-                \%arg \%eop \%header \%keyword \%left \%name \%nodefault
+                \%arg \%eop \%header \%token\_sig\_info \%keyword
+		\%left \%name \%nodefault
                 \%nonassoc \%nonterm \%noshift \%pos \%prec \%prefer
                 \%pure \%right \%start \%subst \%term \%value \%verbose
 \end{quote}
@@ -365,6 +366,7 @@ This is the grammar for specifications:
 \mbox{cmd} & ::= & \mbox{{\tt \%arg} (Any-ML-pattern) {\tt :} ML-type} \\
  & | & \mbox{{\tt \%eop} symbol-list} \\
  & | & \mbox{{\tt \%header} code} \\
+ & | & \mbox{{\tt \%token\_sig\_info} code} \\
  & | & \mbox{{\tt \%keyword} symbol-list} \\
  & | & \mbox{{\tt \%left} symbol-list} \\
  & | & \mbox{{\tt \%name} identifier} \\
@@ -501,6 +503,23 @@ the declaration should always have the form:
         )
 \end{verbatim}
 \end{tt}
+\end{samepage}
+\item[{\tt \%token\_sig\_info}]
+\begin{samepage}
+You may add specifications to the signature \{parser name\}_TOKENS
+here.  This may be useful in adding structures or types that
+subsequently occur as arguments to various tokens.  The declartion
+should be of the form:
+\begin{tt}
+\begin{verbatim}
+%token_sig_info (type mytype
+                 structure MyStructure : MyStructure_sig
+                 ...
+                )
+\end{verbatim}
+\end{tt}
+Any specification you put here must be satisfied by the code you give
+in the user declarations.%
 \end{samepage}
 \item[{\tt \%left},{\tt \%right},{\tt \%nonassoc}]
 You should list the precedence declarations in order of increasing (tighter-binding)

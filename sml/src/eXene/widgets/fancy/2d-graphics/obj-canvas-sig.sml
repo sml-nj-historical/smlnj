@@ -37,7 +37,7 @@ signature OBJ_CANVAS =
 	      bbox : box option,
 	      fontServer : ScalableFont.font_server,
 	      sb : {hsb : Scrollbar.scrollbar, vsb : Scrollbar.scrollbar} option
-	    } -> ('1a object_canvas * Interact.in_env)
+	    } -> ('a object_canvas * Interact.in_env)
 
     val widgetOf : 'a object_canvas -> W.widget
 

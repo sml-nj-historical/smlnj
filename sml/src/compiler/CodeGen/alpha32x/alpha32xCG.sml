@@ -232,5 +232,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: alpha32xCG.sml,v $
+ * Revision 1.3  1998/05/23 14:09:14  george
+ *   Fixed RCS keyword syntax
+ *
  *)

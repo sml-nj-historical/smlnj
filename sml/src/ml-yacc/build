@@ -71,7 +71,7 @@ cd src
 $SML $ARGS <<ZZZ
   use "load";
   use "export-yacc.sml";
-  export "$HEAP_IMAGE" : unit;
+  ExportParseGen.export "$HEAP_IMAGE" : unit;
 ZZZ
 cd ..
 

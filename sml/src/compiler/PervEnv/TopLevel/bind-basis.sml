@@ -107,5 +107,8 @@ structure Word8Array = Word8Array
 structure Word8Vector = Word8Vector
 
 (*
- * $Log$
+ * $Log: bind-basis.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
+ *
  *)

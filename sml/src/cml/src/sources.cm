@@ -52,3 +52,9 @@ is
   Unix/sources.cm
   Sockets/sources.cm
 #endif
+
+#if defined (OPSYS_WIN32)
+  Win32/sources.cm
+#endif
+
+

@@ -1471,6 +1471,10 @@ end (* structure SigMatch *)
 
 
 (*
- * $Log$
+ * $Log: sigmatch.sml,v $
+ * Revision 1.3  1998/05/23 14:10:11  george
+ *   Fixed RCS keyword syntax
+ *
+ *
  *)
 

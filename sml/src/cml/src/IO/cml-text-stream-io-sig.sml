@@ -14,6 +14,6 @@ signature CML_TEXT_STREAM_IO =
     val inputNEvt    : (instream * int) -> (vector * instream) CML.event
     val inputEvt     : instream -> (vector * instream) CML.event
     val inputAllEvt  : instream -> (vector * instream) CML.event
-    val inputLineEvt : instream -> vector CML.event
+    val inputLineEvt : instream -> (vector * instream) CML.event
 
   end;

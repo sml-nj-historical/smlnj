@@ -1,8 +1,14 @@
 (* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
- * Revision 1.1.1.4  1998/06/05 19:39:59  monnier
- * 110.7
+ * Revision 1.1.1.5  1998/09/07 21:10:47  monnier
+ * 110.8
+ *
+ * Revision 1.2  1998/07/08 18:32:03  elsa
+ * Added support for the new percent identifier %token_sig_info.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:16  george
+ * Version 110.5
  *
  * Revision 1.1.1.1  1997/01/14 01:38:05  george
  *   Version 109.24
@@ -66,7 +72,8 @@ functor HeaderFun () : HEADER =
 	datatype control = NODEFAULT | VERBOSE | PARSER_NAME of symbol |
 			   FUNCTOR of string  | START_SYM of symbol |
 			   NSHIFT of symbol list | POS of string | PURE |
-			   PARSE_ARG of string * string
+			   PARSE_ARG of string * string |
+			   TOKEN_SIG_INFO of string
 			   
 	datatype declData = DECL of
 			{eop : symbol list,
@@ -106,6 +113,8 @@ functor HeaderFun () : HEADER =
 		      | (PARSE_ARG _,PARSE_ARG _) => (ignore "%arg"; l)
 		      | (START_SYM _,START_SYM s) => (ignore "%start"; l)
 		      | (POS _,POS _) => (ignore "%pos"; l)
+		      | (TOKEN_SIG_INFO _, TOKEN_SIG_INFO _)
+			 => (ignore "%token_sig_info"; l)
 		      | (NSHIFT a,NSHIFT b) => (NSHIFT (a@b)::t)
 		      | _ => h :: mergeControl(t,a)
 	      fun loop (nil,r) = r

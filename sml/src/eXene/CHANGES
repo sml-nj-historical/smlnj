@@ -43,7 +43,11 @@ LIBRARY CHANGES
     [08/01/96]
 
 WIDGET CHANGES
-  - Added 2D structure graphics canvas widget (widgets/fancy/2d-graphics).
+  - Removed old-style imperative type variables from signatures in 2D structured
+    graphics library.
+    [07/15/98]
+
+  - Added 2D structured graphics canvas widget (widgets/fancy/2d-graphics).
     [05/22/98]
 
   - Added RunEXene.parseDisplay.
