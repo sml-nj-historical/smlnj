@@ -64,7 +64,7 @@ struct
     val addLabel    = IntHashTable.insert labelMap
 
     (* Data in text segment is read-only *)
-    datatype segment_t = TEXT | DATA | RO_DATA
+    datatype segment_t = TEXT | DATA | RO_DATA | BSS
     val segmentF    = ref TEXT
 
     (* the block names *)
@@ -268,6 +268,7 @@ struct
        | PB.DATA_READ_ONLY => startSegment(RO_DATA)
        | PB.DATA => startSegment(DATA)
        | PB.TEXT => startSegment(TEXT)
+       | PB.BSS => startSegment(BSS)
        | PB.SECTION _ => 
 	  (case !segmentF
 	    of TEXT => error "addPseudoOp: SECTION in TEXT segment"
@@ -281,6 +282,7 @@ struct
        | PB.FLOAT _  => addData("FLOAT")
        | PB.ASCII _  => addData("ASCII")
        | PB.ASCIIZ _ => addData("ASCIIZ")
+       | PB.SPACE _  => addData("SPACE")
        | PB.IMPORT _ => addData("IMPORT")
        | PB.EXPORT _ => addData("EXPORT")
        | PB.EXT _ => addData("EXT")
