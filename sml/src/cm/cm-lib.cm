@@ -36,6 +36,7 @@ is
 	depend/reachable.sml
 	depend/checksharing.sml
 	depend/mklist.sml
+	depend/indegree.sml
 
 	(* handling SML source code *)
 	smlfile/smlinfo.sml

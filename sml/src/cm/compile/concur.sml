@@ -21,6 +21,7 @@ signature CONCUR = sig
 
     val fork : (unit -> 'a) -> 'a cond	(* termination condition with value *)
     val wait : 'a cond -> 'a
+    val wait' : int -> 'a cond -> 'a
     val inputReady : TextIO.instream -> unit cond
     val ucond : unit -> unit cond
     val signal : unit cond -> unit
@@ -31,7 +32,7 @@ end
 
 structure Concur :> CONCUR = struct
 
-    type tstate = unit SMLofNJ.Cont.cont
+    type tstate = unit SMLofNJ.Cont.cont * int
 
     datatype 'a cstate =
 	Arrived of 'a			(* value *)
@@ -39,18 +40,24 @@ structure Concur :> CONCUR = struct
 
     type 'a cond = 'a cstate ref
 
-    type 'a queue = ('a list * 'a list) ref
+    (* simple and brain-dead priority queue *)
+    type task_queue = tstate list ref
 
-    fun enqueue (x, q as ref (front, back)) = q := (front, x :: back)
+    fun enqueue (x as (_, xu), qr as ref q) = let
+	fun insert [] = [x]
+	  | insert ((h as (_, hu)) :: r) =
+	    if xu > hu then x :: h :: r else h :: insert r
+    in
+	qr := insert q
+    end
 
-    fun dequeue (ref ([], [])) = NONE
-      | dequeue (q as ref (x :: front, back)) = (q := (front, back); SOME x)
-      | dequeue (q as ref ([], back)) = (q := (rev back, []); dequeue q)
+    fun dequeue (ref []) = NONE
+      | dequeue (qr as ref (h :: t)) = (qr := t; SOME h)
 
-    val runable : tstate queue = ref ([], [])
+    val runable : task_queue = ref []
     val inputs = ref ([]: (unit cond * OS.IO.poll_desc) list)
 
-    fun reset () = (runable := ([], []); inputs := [])
+    fun reset () = (runable := []; inputs := [])
 
     (* we heavily favor non-I/O conditions, but that's ok for our purposes *)
 
@@ -89,25 +96,27 @@ structure Concur :> CONCUR = struct
 			(Say.say
 			 ["schedule_inputs failed to wake anybody up!\n"];
 			 raise Fail "concur")
-		  | SOME ts => SMLofNJ.Cont.throw ts ()
+		  | SOME (ts, _) => SMLofNJ.Cont.throw ts ()
 	    end
 
     fun schedule () =
 	case dequeue runable of
 	    NONE => schedule_inputs ()
-	  | SOME ts => SMLofNJ.Cont.throw ts ()
+	  | SOME (ts, _) => SMLofNJ.Cont.throw ts ()
 
-    fun wait (ref (Arrived x)) = x
-      | wait (c as ref (Waiting tsl)) =
-	(SMLofNJ.Cont.callcc (fn ts => (c := Waiting (ts :: tsl);
+    fun wait' _ (ref (Arrived x)) = x
+      | wait' u (c as ref (Waiting tsl)) =
+	(SMLofNJ.Cont.callcc (fn ts => (c := Waiting ((ts, u) :: tsl);
 					schedule ()));
-	 wait c)
+	 wait' u c)
+
+    fun wait c = wait' 0 c
 
     fun fork worker = let
 	val c = ref (Waiting [])
     in
 	SMLofNJ.Cont.callcc (fn return =>
-	  (SMLofNJ.Cont.callcc (fn ts => (enqueue (ts, runable);
+	  (SMLofNJ.Cont.callcc (fn ts => (enqueue ((ts, 0), runable);
 					  SMLofNJ.Cont.throw return c));
 	   wakeup (c, worker ());
 	   schedule ()))

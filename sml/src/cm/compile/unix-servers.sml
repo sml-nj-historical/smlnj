@@ -10,7 +10,10 @@
 structure Servers :> SERVERS = struct
 
     type pathtrans = (string -> string) option
-    type server = (string * Unix.proc) * pathtrans
+    datatype server = S of { name: string,
+			     proc: Unix.proc,
+			     pt: pathtrans,
+			     pref: int }
 
     val enabled = ref false
     val nservers = ref 0
@@ -19,13 +22,14 @@ structure Servers :> SERVERS = struct
     val idle = ref ([]: server list)
     val someIdle = ref (Concur.ucond ())
 
-    fun fname (n, (_, NONE)) = n
-      | fname (n, (_, SOME f)) = if OS.Path.isAbsolute n then f n else n
+    fun fname (n, S { pt = NONE, ... }) = n
+      | fname (n, S { pt = SOME f, ... }) =
+	if OS.Path.isAbsolute n then f n else n
 
-    fun servName ((n, _), _) = n
+    fun servName (S { name, ... }) = name
 
     fun send (s, msg) = let
-	val ((name, p), _) = s
+	val S { name, proc = p, ... } = s
 	val (_, outs) = Unix.streamsOf p
 	fun send0 m =
 	    (Say.dsay ["-> ", name, " : ", m];
@@ -58,15 +62,26 @@ structure Servers :> SERVERS = struct
 		 idle := [];
 		 someIdle := Concur.ucond ();
 		 only)
-	  | first :: more =>
-		(Say.dsay ["Scheduler: taking idle slave (",
-			   servName first, ").\n"];
-		 idle := more;
-		 show_idle ();
-		 first)
+	  | first :: more => let
+		fun best (b, [], rest) = (b, rest)
+		  | best (b, s :: r, rest) = let
+			val S { pref = bp, ... } = b
+			val S { pref = sp, ... } = s
+		    in
+			if sp > bp then best (s, r, b :: rest)
+			else best (b, r, s :: rest)
+		    end
+		val (b, rest) = best (first, more, [])
+	    in
+		Say.dsay ["Scheduler: taking idle slave (",
+			  servName b, ").\n"];
+		idle := rest;
+		show_idle ();
+		b
+	    end
 
     fun wait_status (s, echo) = let
-	val ((name, p), _) = s
+	val S { name, proc = p, ... } = s
 	val (ins, _) = Unix.streamsOf p
 
 	fun unexpected l = let
@@ -131,7 +146,7 @@ structure Servers :> SERVERS = struct
      * "ok" and marking the corresponding slave idle). *)
     fun wait_all () = let
 	val al = StringMap.listItems (!all)
-	fun ping (s as ((name, p), _)) = let
+	fun ping (s as S { name, proc = p, ... }) = let
 	    val (ins, _) = Unix.streamsOf p
 	    fun loop () = let
 		val line = TextIO.inputLine ins
@@ -151,8 +166,8 @@ structure Servers :> SERVERS = struct
 
     fun shutdown (name, method) = let
 	val (m, s) = StringMap.remove (!all, name)
-	val ((_, p), _) = s
-	val (_, il) = List.partition (fn ((n, _), _) => name = n) (!idle)
+	val S { proc = p, ... } = s
+	val (_, il) = List.partition (fn s => name = servName s) (!idle)
     in
 	method s;
 	ignore (Unix.reap p);
@@ -165,12 +180,13 @@ structure Servers :> SERVERS = struct
 	shutdown (name, fn s => send (s, "shutdown\n"))
 
     fun kill name =
-	shutdown (name, fn ((_, p), _) => Unix.kill (p, Posix.Signal.kill))
+	shutdown (name, fn (S { proc = p, ... }) =>
+		           Unix.kill (p, Posix.Signal.kill))
 
-    fun start { name, cmd, pathtrans } = let
+    fun start { name, cmd, pathtrans, pref } = let
 	val _ = stop name
 	val p = Unix.execute cmd
-	val s : server = ((name, p), pathtrans)
+	val s = S { name = name, proc = p, pt = pathtrans, pref = pref }
     in
 	if wait_status (s, false) then
 	    (all := StringMap.insert (!all, name, s);

@@ -12,7 +12,8 @@ signature SERVERS = sig
 
     (* add a compile server *)
     val start : { name: string, cmd: string * string list,
-		  pathtrans: (string -> string) option } -> bool
+		  pathtrans: (string -> string) option,
+		  pref: int } -> bool
 
     val stop : string -> unit
 

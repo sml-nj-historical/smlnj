@@ -182,7 +182,7 @@ in
 	    lw v0 l
 	end
 
-	fun mkTraversal (notify, storeBFC) = let
+	fun mkTraversal (notify, storeBFC, getUrgency) = let
 	    val localstate = ref SmlInfoMap.empty
 
 	    fun pervenv (gp: GP.info) = let
@@ -282,6 +282,7 @@ in
 			end
 		end (* compile_here *)
 		fun notlocal () = let
+		    val urgency = getUrgency i
 		    (* Ok, it is not in the local state, so we first have
 		     * to traverse all children before we can proceed... *)
 		    val k = #keep_going (#param gp)
@@ -292,8 +293,8 @@ in
 		    val li_cl =
 			map (fn li_n => Concur.fork (fn () => loc li_n)) li
 		    val e =
-			layerwork k Concur.wait
-			         (layerwork k Concur.wait
+			layerwork k (Concur.wait' urgency)
+			         (layerwork k (Concur.wait' urgency)
 				              (SOME (pervenv gp)) gi_cl)
 				 li_cl
 		in
@@ -395,8 +396,11 @@ in
 	    { sbnode = sbnode, impexp = impexp }
 	end
 
-	fun newTraversal (notify, storeBFC, GG.GROUP { exports, ... }) = let
-	    val { impexp, ... } = mkTraversal (notify, storeBFC)
+	fun newTraversal (notify, storeBFC, g) = let
+	    val GG.GROUP { exports, ... } = g
+	    val um = Indegree.indegrees g
+	    fun getUrgency i = getOpt (SmlInfoMap.find (um, i), 0)
+	    val { impexp, ... } = mkTraversal (notify, storeBFC, getUrgency)
 	    fun group gp = let
 		val k = #keep_going (#param gp)
 		fun loop ([], success) = success
@@ -423,7 +427,8 @@ in
 
 	fun newSbnodeTraversal () = let
 	    val { sbnode, ... } = mkTraversal (fn _ => fn _ => (),
-					       fn _ => ())
+					       fn _ => (),
+					       fn _ => 0)
 	    fun envdelta2ed { ii, ctxt } = { ii = ii, ctxt = ctxt () }
 	in
 	    fn gp => fn n => Option.map envdelta2ed (sbnode gp n)
