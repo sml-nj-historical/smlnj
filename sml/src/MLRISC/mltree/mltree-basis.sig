@@ -24,6 +24,11 @@ sig
    *)
   val swapCond : cond -> cond
 
+  (* Invert the conditional when swapping the two arguments
+   * of the comparision.  IMPORTANT: this is not the negation!
+   *)
+  val swapFcond : fcond -> fcond
+
   (* This is the negation! *)
   val negateCond : cond -> cond
 

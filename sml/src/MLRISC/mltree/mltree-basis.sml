@@ -26,6 +26,18 @@ struct
         LT  => GT | LTU => GTU | LE  => GE | LEU => GEU | EQ  => EQ 
       | NE  => NE | GE  => LE | GEU => LEU | GT  => LT | GTU => LTU
 
+  fun swapFcond fcond =
+      case fcond of
+        ?     => ?   | !<=>  => !<=> | ==    => ==
+      | ?=    => ?=  | !<>   => !<>  | !?>=  => !?<=
+      | <     => >   | ?<    => ?>   | !>=   => !<=
+      | !?>   => !?< | <=    => >=   | ?<=   => ?>=
+      | !>    => !<  | !?<=  => !?>= | >     => <
+      | ?>    => ?<  | !<=   => !>=  | !?<   => !?>
+      | >=    => <=  | ?>=   => ?<=  | !<    => !>
+      | !?=   => !?= | <>    => <>   | !=    => !=
+      | !?    => !?  | <=>   => <=>  | ?<>   => ?<>
+
   fun negateCond cond =
       case cond of
         LT  => GE | LTU => GEU | LE  => GT | LEU => GTU | EQ  => NE

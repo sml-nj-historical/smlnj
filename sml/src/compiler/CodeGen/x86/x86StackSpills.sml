@@ -2,6 +2,7 @@ signature X86STACKSPILLS = sig
   structure I : X86INSTR
   val init : unit -> unit
   val setAvailableOffsets : I.operand list -> unit
+  val setAvailableFPOffsets : I.operand list -> unit
   val getRegLoc : int -> I.operand
   val getFregLoc : int -> I.operand
 end
@@ -17,11 +18,13 @@ struct
   val spillOffset = ref initialSpillOffset
   val spillAreaSz = X86Runtime.spillAreaSz
   val availableOffsets = ref [] : I.operand list ref
+  val availableFPOffsets = ref [] : I.operand list ref
 
   (* Indicate that memory some memory registers are not used and
    * can be used for spilling.
    *)
   fun setAvailableOffsets offsets = availableOffsets := offsets
+  fun setAvailableFPOffsets offsets = availableFPOffsets := offsets
 
   fun newOffset n =
     if (n > spillAreaSz) then error "newOffset - spill area is too small"
@@ -34,6 +37,7 @@ struct
   fun init () = 
     (spillOffset:=initialSpillOffset; 
      availableOffsets := [];
+     availableFPOffsets := [];
      Intmap.clear spillTbl
     )
 
@@ -55,12 +59,16 @@ struct
   fun getFregLoc freg = 
       lookupTbl freg
         handle _ => 
-        let val offset = !spillOffset
-            val fromInt = Word.fromInt
-            val aligned = Word.toIntX(Word.andb(fromInt offset+0w7, fromInt ~8))
-            val operand = I.Immed(toInt32 aligned)
-        in  newOffset(aligned+8);
-            addTbl (freg, operand);
+        let val operand = 
+             case !availableFPOffsets of
+               [] =>
+               let val offset = !spillOffset
+                   val fromInt = Word.fromInt
+                   val aligned = Word.toIntX(Word.andb(fromInt offset+0w7, fromInt ~8))
+               in  newOffset(aligned+8); I.Immed(toInt32 aligned)
+               end
+             | off::offs => (availableFPOffsets := offs; off)
+        in  addTbl (freg, operand);
             operand
         end
 end

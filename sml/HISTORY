@@ -13,6 +13,49 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/11/10 18:00:00
+Tag: leunga-20001110-new-x86-fp
+
+A new x86 floating point code generator has been added.  
+By default this is turned off.  To turn this on, do:
+
+    CM.autoload "$smlnj/compiler.cm";
+    Compiler.Control.MLRISC.getFlag "x86-fast-fp" := true;
+
+Changes:
+
+1.  Changed FTAN to FPTAN so that the assembly output is correct.
+2.  Changed the extension callback for FTANGENT to generate:
+
+          fptan
+          fstp  %st(0)
+    instead of 
+          fptan
+          fstpl ftempmem
+
+3.  Numerous assembly fixes for x86.
+       
+5.  Cleaned up the machine code output module x86/x86MC.sml and added 
+    support for a whole bunch of instructions and addressing modes:
+
+      fadd/fsub/fsubr/fmul/fdiv/fdivr  %st, %st(n)
+      faddp/fsubp/fsubrp/fmulp/fdivp/fdivrp  %st, %st(n)
+      fadd/fsub/fsubr/fmul/fdiv/fdivr  %st(n), %st
+      fiadd/fisub/fisubr/fimul/fidiv/fidivr mem
+      fxch %st(n)
+      fld %st(n)
+      fst %st(n)
+      fst mem
+      fstp %st(n)
+      fucom %st(n)
+      fucomp %st(n)
+
+    All these are now generated when the fast fp mode is turned on.
+ 
+6.  Removed the dedicated registers %st(0), ..., %st(7) from X86CpsRegs
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/11/09 11:20:00 JST
 Tag: blume-20001109-scc

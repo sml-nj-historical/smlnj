@@ -57,7 +57,7 @@ structure X86CpsRegs : CPSREGS = struct
   val availR = map (fn T.REG(_,r) => r) [ebp, esi, ebx, ecx, edx, eax]
   val dedicatedR = map (fn T.REG(_,r) => r) [edi, esp]
   val availF = (FP 8) upto (FP 31)
-  val dedicatedF = map FP [0,1,2,3,4,5,6,7]
+  val dedicatedF = [] (* map FP [0,1,2,3,4,5,6,7] *)
   val signedGCTest = false
   val addressWidth = 32
 end

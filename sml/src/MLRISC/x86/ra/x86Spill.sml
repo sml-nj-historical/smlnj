@@ -346,6 +346,8 @@ functor X86Spill(structure Instr: X86INSTR
      | I.FSTPS opnd => reloadReal(I.FSTPS, opnd, an)
      | I.FSTL opnd => reloadReal(I.FSTL, opnd, an)
      | I.FSTS opnd => reloadReal(I.FSTS, opnd, an)
+     | I.FUCOM opnd => reloadReal(I.FUCOM, opnd, an)
+     | I.FUCOMP opnd => reloadReal(I.FUCOMP, opnd, an)
      | I.FENV{fenvOp, opnd} => reloadReal(fn opnd => 
                                  I.FENV{fenvOp=fenvOp,opnd=opnd}, opnd, an)
      | I.FBINARY{binOp, src, dst} => 
@@ -354,13 +356,50 @@ functor X86Spill(structure Instr: X86INSTR
      | I.FIBINARY{binOp, src} => 
 	withTmpAvail
           (fn tmpR => I.FIBINARY{binOp=binOp, src=operand(tmpR, src)}, an)
+
+       (* Pseudo fp instrctions *)
+     | I.FMOVE{fsize,src,dst} => 
+	withTmpAvail
+          (fn tmpR => I.FMOVE{fsize=fsize, src=operand(tmpR, src), 
+                              dst=operand(tmpR, dst)}, an)
+     | I.FILOAD{isize,ea,dst} => 
+	withTmpAvail
+          (fn tmpR => I.FILOAD{isize=isize, ea=operand(tmpR, ea), 
+                               dst=operand(tmpR, dst)}, an)
+     | I.FBINOP{fsize,binOp,lsrc,rsrc,dst} =>
+        withTmpAvail(fn tmpR =>
+           I.FBINOP{fsize=fsize, binOp=binOp, lsrc=operand(tmpR, lsrc),
+                    rsrc=operand(tmpR, rsrc), dst=operand(tmpR, dst)}, an)
+     | I.FIBINOP{isize,binOp,lsrc,rsrc,dst} =>
+        withTmpAvail(fn tmpR =>
+           I.FIBINOP{isize=isize, binOp=binOp, lsrc=operand(tmpR, lsrc),
+                     rsrc=operand(tmpR, rsrc), dst=operand(tmpR, dst)}, an)
+     | I.FUNOP{fsize,unOp,src,dst} =>
+        withTmpAvail(fn tmpR =>
+           I.FUNOP{fsize=fsize, unOp=unOp, src=operand(tmpR, src),
+                   dst=operand(tmpR, dst)}, an)
+     | I.FCMP{fsize,lsrc,rsrc} =>
+        withTmpAvail(fn tmpR =>
+           I.FCMP{fsize=fsize, 
+                  lsrc=operand(tmpR, lsrc), rsrc=operand(tmpR, rsrc)
+                 }, an)
+
      | I.ANNOTATION{i,a} => reloadIt(i, a::an)
      | _ => error "reload"
   in reloadIt(instr, [])
   end (*reload*)
 
   fun fspill(instr, regmap, reg, spillLoc) = 
-  let fun spillIt(instr, an) = 
+  let fun withTmp(f, fsize, an) =
+      let val tmpR = C.newFreg()
+          val tmp  = I.FPR tmpR
+      in  {proh=[tmpR], 
+           code=[mark(f tmp, an), 
+                 I.FMOVE{fsize=fsize, src=tmp, dst=spillLoc}],
+           newReg=SOME tmpR (* XXX Should we propagate the definition? *)
+          }
+      end
+      fun spillIt(instr, an) = 
       (case instr of 
          I.FSTPL _ => {proh=[], code=[mark(I.FSTPL spillLoc, an)], newReg=NONE}
        | I.FSTPS _ => {proh=[], code=[mark(I.FSTPS spillLoc, an)], newReg=NONE}
@@ -371,6 +410,37 @@ functor X86Spill(structure Instr: X86INSTR
 	 {proh=[],
 	  code=[mark(I.CALL(opnd, C.rmvFreg(reg,defs), uses, mem), an)],
 	  newReg=NONE}
+
+       (* Pseudo fp instrctions *)
+       | I.FMOVE{fsize as I.FP64,src,dst} => 
+          if Props.eqOpn(src,spillLoc) then 
+            {proh=[], code=[], newReg=NONE}
+          else
+            {proh=[],code=[mark(I.FMOVE{fsize=fsize,src=src,dst=spillLoc},an)],
+             newReg=NONE} (* XXX bad for single precision *)
+       | I.FMOVE _ => error "non-double precision not yet supported"
+       | I.FILOAD{isize,ea,dst} =>
+            {proh=[],code=[mark(I.FILOAD{isize=isize,ea=ea,dst=spillLoc},an)],
+             newReg=NONE} (* XXX bad for single precision *)
+       | I.FBINOP{fsize as I.FP64,binOp,lsrc,rsrc,dst} =>
+            {proh=[],code=[mark(I.FBINOP{fsize=fsize,binOp=binOp,
+                                         lsrc=lsrc, rsrc=rsrc,
+                                         dst=spillLoc},an)],
+             newReg=NONE}
+       | I.FBINOP{fsize,binOp,lsrc,rsrc,dst} =>
+          withTmp(fn tmpR =>
+                  I.FBINOP{fsize=fsize, binOp=binOp,
+                           lsrc=lsrc, rsrc=rsrc, dst=tmpR},
+                  fsize, an)
+       | I.FIBINOP{isize,binOp,lsrc,rsrc,dst} =>
+          withTmp(fn tmpR =>
+                  I.FIBINOP{isize=isize, binOp=binOp,
+                            lsrc=lsrc, rsrc=rsrc, dst=tmpR},
+                  I.FP64, an) (* XXX *)
+       | I.FUNOP{fsize,unOp,src,dst} =>
+          {proh=[],code=[mark(I.FUNOP{fsize=fsize,unOp=unOp,
+                                      src=src,dst=spillLoc},an)],
+                        newReg=NONE}
        | I.ANNOTATION{i,a} => spillIt(i, a::an)
        | _ => error "fspill"
       (*esac*))
@@ -378,17 +448,86 @@ functor X86Spill(structure Instr: X86INSTR
   end (* fspill *)
 
   fun freload(instr, regmap, reg, spillLoc) = 
-  let fun reloadIt(instr, an) = 
+  let fun rename(src as I.FDirect f) = 
+          if regmap f = reg then spillLoc else src 
+        | rename(src as I.FPR f) = 
+          if regmap f = reg then spillLoc else src 
+        | rename src = src
+
+      fun withTmp(fsize, f, an) = 
+          case spillLoc of 
+            I.FDirect _ => {newReg=NONE, proh=[], code=[mark(f spillLoc, an)]}
+          | I.FPR _ => {newReg=NONE, proh=[], code=[mark(f spillLoc, an)]}
+          |  _ =>
+            let val ftmpR = C.newFreg()
+                val ftmp  = I.FPR(ftmpR)
+            in  {newReg=NONE,
+                 proh=[ftmpR], 
+                 code=[I.FMOVE{fsize=fsize, src=spillLoc, dst=ftmp}, 
+                       mark(f ftmp, an)
+                      ]
+                }
+            end
+
+      fun reloadIt(instr, an) = 
       (case instr of 
          I.FLDT opnd => {code=[mark(I.FLDT spillLoc, an)], proh=[], newReg=NONE}
        | I.FLDL opnd => {code=[mark(I.FLDL spillLoc, an)], proh=[], newReg=NONE}
        | I.FLDS opnd => {code=[mark(I.FLDS spillLoc, an)], proh=[], newReg=NONE}
+       | I.FUCOM opnd => {code=[mark(I.FUCOM spillLoc, an)],proh=[],newReg=NONE}
+       | I.FUCOMP opnd => {code=[mark(I.FUCOMP spillLoc, an)],proh=[],newReg=NONE}
        | I.FBINARY{binOp, src=I.FDirect f, dst} => 
 	   if regmap f = reg then 
 	     {code=[mark(I.FBINARY{binOp=binOp, src=spillLoc, dst=dst}, an)],
 	      proh=[], 
               newReg=NONE}
 	   else error "freload:FBINARY"
+
+       (* Pseudo fp instructions.
+        *)
+       | I.FMOVE{fsize as I.FP64,src,dst} => 
+          if Props.eqOpn(dst,spillLoc) then 
+            {code=[], proh=[], newReg=NONE}
+          else
+            {code=[mark(I.FMOVE{fsize=fsize,src=spillLoc,dst=dst},an)], 
+                   proh=[], newReg=NONE}
+       | I.FMOVE _ => error "non-double precision not yet supported"
+       | I.FBINOP{fsize,binOp,lsrc,rsrc,dst} =>
+          {code=[mark(I.FBINOP{fsize=fsize,binOp=binOp,
+                               lsrc=rename lsrc, rsrc=rename rsrc,dst=dst},an)],
+                 proh=[], newReg=NONE}
+       | I.FIBINOP{isize,binOp,lsrc,rsrc,dst} =>
+          {code=[mark(I.FIBINOP{isize=isize,binOp=binOp,
+                                lsrc=rename lsrc,rsrc=rename rsrc,dst=dst},an)],
+                 proh=[], newReg=NONE}
+       | I.FUNOP{fsize,unOp,src,dst} =>
+          {code=[mark(I.FUNOP{fsize=fsize,unOp=unOp,
+                              src=rename src, dst=dst},an)], 
+                 proh=[], newReg=NONE}
+       | I.FCMP{fsize,lsrc,rsrc} =>
+          (* Make sure that both the lsrc and rsrc cannot be in memory *)
+          (case (lsrc, rsrc) of
+            (I.FPR fs1, I.FPR fs2) =>
+              (case (regmap fs1 = reg, regmap fs2 = reg) of
+                 (true, true) =>
+                 withTmp(fsize, 
+                    fn tmp => I.FCMP{fsize=fsize,lsrc=tmp, rsrc=tmp}, an)
+               | (true, false) =>
+                 {code=[mark(I.FCMP{fsize=fsize,lsrc=spillLoc,rsrc=rsrc},an)],
+                  proh=[], newReg=NONE}
+               | (false, true) =>
+                 {code=[mark(I.FCMP{fsize=fsize,lsrc=lsrc,rsrc=spillLoc},an)],
+                  proh=[], newReg=NONE}
+               | _ => error "fcmp.1"
+              )
+           | (I.FPR _, _) =>
+              withTmp(fsize, 
+                 fn tmp => I.FCMP{fsize=fsize,lsrc=tmp, rsrc=rsrc}, an)
+           | (_, I.FPR _) =>
+              withTmp(fsize, 
+                 fn tmp => I.FCMP{fsize=fsize,lsrc=rsrc, rsrc=tmp}, an)
+           | _ => error "fcmp.2"
+          )
        | I.CALL(opnd, defs, uses, mem) =>
 	 {proh=[],
 	  code=[mark(I.CALL(opnd, C.rmvFreg(reg,defs), uses, mem), an)],

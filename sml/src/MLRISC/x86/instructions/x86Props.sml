@@ -36,6 +36,10 @@ struct
     | moveInstr(I.FCOPY _) = true
     | moveInstr(I.MOVE{mvOp=I.MOVL, src=I.Direct _, dst=I.MemReg _, ...}) = true
     | moveInstr(I.MOVE{mvOp=I.MOVL, src=I.MemReg _, dst=I.Direct _, ...}) = true
+    | moveInstr(I.FMOVE{fsize=I.FP64,src=I.FPR _,dst=I.FPR _, ...}) = true
+    | moveInstr(I.FMOVE{fsize=I.FP64,src=I.FPR _,dst=I.FDirect _, ...}) = true
+    | moveInstr(I.FMOVE{fsize=I.FP64,src=I.FDirect _,dst=I.FPR _, ...}) = true
+    | moveInstr(I.FMOVE{fsize=I.FP64,src=I.FDirect _,dst=I.FDirect _, ...}) = true
     | moveInstr(I.ANNOTATION{i,...}) = moveInstr i
     | moveInstr _ = false 
 
@@ -47,6 +51,7 @@ struct
   *========================================================================*)
   fun moveTmpR(I.COPY{tmp=SOME(I.Direct r), ...}) = SOME r
     | moveTmpR(I.FCOPY{tmp=SOME(I.FDirect f), ...}) = SOME f
+    | moveTmpR(I.FCOPY{tmp=SOME(I.FPR f), ...}) = SOME f
     | moveTmpR(I.ANNOTATION{i,...}) = moveTmpR i
     | moveTmpR _ = NONE
 
@@ -54,6 +59,10 @@ struct
     | moveDstSrc(I.FCOPY{src, dst, ...}) = (dst, src)
     | moveDstSrc(I.MOVE{src=I.Direct rs, dst=I.MemReg rd, ...}) = ([rd], [rs])
     | moveDstSrc(I.MOVE{src=I.MemReg rs, dst=I.Direct rd, ...}) = ([rd], [rs])
+    | moveDstSrc(I.FMOVE{src=I.FPR rs, dst=I.FPR rd, ...}) = ([rd], [rs])
+    | moveDstSrc(I.FMOVE{src=I.FDirect rs, dst=I.FPR rd, ...}) = ([rd], [rs])
+    | moveDstSrc(I.FMOVE{src=I.FPR rs, dst=I.FDirect rd, ...}) = ([rd], [rs])
+    | moveDstSrc(I.FMOVE{src=I.FDirect rs, dst=I.FDirect rd, ...}) = ([rd], [rs])
     | moveDstSrc(I.ANNOTATION{i,...}) = moveDstSrc i
     | moveDstSrc _ = error "moveDstSrc"
 
@@ -96,7 +105,8 @@ struct
      | hashOpn(I.Direct r)  = Word.fromInt r
      | hashOpn(I.MemReg r)  = Word.fromInt r + 0w2123
      | hashOpn(I.ST f) = Word.fromInt f + 0w88
-     | hashOpn(I.FDirect f) = Word.fromInt f + 0w8888
+     | hashOpn(I.FPR f) = Word.fromInt f + 0w881
+     | hashOpn(I.FDirect f) = Word.fromInt f + 0w31245
      | hashOpn(I.Displace {base, disp, ...}) = 
          hashOpn disp + Word.fromInt base
      | hashOpn(I.Indexed {base, index, scale, disp, ...}) =
@@ -107,8 +117,9 @@ struct
      | eqOpn(I.LabelEA a,I.LabelEA b) = LE.==(a,b)
      | eqOpn(I.Direct a,I.Direct b) = a = b
      | eqOpn(I.MemReg a,I.MemReg b) = a = b
-     | eqOpn(I.ST a,I.ST b) = a = b
      | eqOpn(I.FDirect a,I.FDirect b) = a = b
+     | eqOpn(I.ST a,I.ST b) = a = b
+     | eqOpn(I.FPR a,I.FPR b) = a = b
      | eqOpn(I.Displace{base=a,disp=b,...},I.Displace{base=c,disp=d,...}) =
           a = c andalso eqOpn(b,d)
      | eqOpn(I.Indexed{base=a,index=b,scale=c,disp=d,...},
@@ -130,6 +141,9 @@ struct
       | operandAcc(_, acc) = acc
 
     fun operandUse opnd = operandAcc(opnd, [])
+
+    fun operandUse2(src1, src2) = ([], operandAcc(src1, operandUse src2))
+    fun operandUse3(x, y, z) = ([], operandAcc(x, operandAcc(y, operandUse y)))
 
     fun operandDef(I.Direct r) = [r]
       | operandDef(I.MemReg r) = [r]
@@ -191,6 +205,16 @@ struct
       | I.FIBINARY{src, ...}  => ([], operandUse src)
       | I.FENV{opnd, ...}     => ([], operandUse opnd)
       | I.FNSTSW	      => ([C.eax], [])
+      | I.FUCOM opnd          => float opnd
+      | I.FUCOMP opnd         => float opnd
+
+      | I.FMOVE{src, dst, ...} => operandUse2(src, dst) 
+      | I.FILOAD{ea, dst, ...} => operandUse2(ea, dst) 
+      | I.FCMP{lsrc, rsrc, ...} => operandUse2(lsrc, rsrc)
+      | I.FBINOP{lsrc, rsrc, dst, ...} => operandUse3(lsrc, rsrc, dst)
+      | I.FIBINOP{lsrc, rsrc, dst, ...} => operandUse3(lsrc, rsrc, dst)
+      | I.FUNOP{src, dst, ...} => operandUse2(src, dst)
+
       | I.SAHF		      => ([], [C.eax])
         (* This sets the low order byte, 
          * do potentially it may define *and* use 
@@ -204,7 +228,21 @@ struct
 
   fun defUseF instr = let
     fun operand(I.FDirect f) = [f]
+      | operand(I.FPR f) = [f]
       | operand _ = []
+
+    fun operandAcc(I.FDirect f, acc) = f::acc
+      | operandAcc(I.FPR f, acc) = f::acc
+      | operandAcc(_ , acc) = acc
+
+    fun fbinop(lsrc, rsrc, dst) = 
+    let val def = operand dst
+        val use = operandAcc(lsrc, operand rsrc)
+    in  (def, use) 
+    end
+
+    val fcmpTmp = [C.ST 0]
+
   in
     case instr
      of I.FSTPT opnd            => (operand opnd, [])  
@@ -215,10 +253,21 @@ struct
       | I.FLDT opnd		=> ([], operand opnd)
       | I.FLDL opnd		=> ([], operand opnd)
       | I.FLDS opnd		=> ([], operand opnd)
+      | I.FUCOM opnd            => ([], operand opnd)
+      | I.FUCOMP opnd           => ([], operand opnd)
       | I.CALL(_, defs, uses,_)	=> (#2 defs, #2 uses)
       | I.FBINARY{dst, src, ...}=> (operand dst, operand dst @ operand src)
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...}  => (f::dst, src)
+      | I.FCOPY{dst, src, tmp=SOME(I.FPR f), ...}  => (f::dst, src)
       | I.FCOPY{dst, src, ...}  => (dst, src)
+
+      | I.FMOVE{src, dst, ...} => (operand dst, operand src) 
+      | I.FILOAD{ea, dst, ...} => (operand dst, []) 
+      | I.FCMP{lsrc, rsrc, ...} => (fcmpTmp, operandAcc(lsrc, operand rsrc))
+      | I.FBINOP{lsrc, rsrc, dst, ...} => fbinop(lsrc, rsrc, dst)
+      | I.FIBINOP{lsrc, rsrc, dst, ...} => fbinop(lsrc, rsrc, dst)
+      | I.FUNOP{src, dst, ...} => (operand dst, operand src)
+
       | I.ANNOTATION{a=C.DEF_USE{cellkind=C.FP,defs,uses}, i, ...} => 
         let val (d,u) = defUseF i in (defs@d, u@uses) end
       | I.ANNOTATION{a, i, ...} => defUseF i

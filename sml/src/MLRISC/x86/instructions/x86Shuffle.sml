@@ -11,8 +11,12 @@ struct
         {mvInstr=fn{dst, src} => [I.MOVE{mvOp=I.MOVL, src=src, dst=dst}],
 	 ea=I.Direct}
 
+  (*
+   * These assume that the ''registers'' are mapped onto the memory
+   *)
+
   (* Note, this only works with double precision floating point *) 
-  val shufflefp' = 
+  val shufflefpNormalAndSlow = 
     Shuffle.shuffle
         {mvInstr=fn{dst, src} => [I.FLDL src, I.FSTPL dst],
 	 ea = I.FDirect}
@@ -21,7 +25,7 @@ struct
    * This version makes use of the x86 floating point stack for hardware
    * renaming! 
    *)
-  fun shufflefp{regmap, tmp, src, dst} = 
+  fun shufflefpNormal{regmap, tmp, src, dst} = 
   let val n =  length src
   in  if n <= 7 then 
          let fun gen(s::ss, d::ds, pushes, pops) = 
@@ -32,8 +36,21 @@ struct
                  end
                | gen(_, _, pushes, pops) = List.revAppend(pushes, pops)
          in  gen(src, dst, [], []) end
-      else shufflefp'{regmap=regmap, tmp=tmp, src=src, dst=dst}
+      else shufflefpNormalAndSlow{regmap=regmap, tmp=tmp, src=src, dst=dst}
   end
+
+  (*
+   * These assume that the ''registers'' are mapped onto the pseudo 
+   * %fpr register.  Only works with double precision floating point for 
+   * now...
+   *)
+  val shufflefpFast = 
+       Shuffle.shuffle
+         {mvInstr=fn{dst, src} => [I.FMOVE{fsize=I.FP64,src=src, dst=dst}],
+	  ea = I.FPR}
+
+  fun shufflefp(x as {tmp=SOME(I.FPR _), dst, src, regmap}) = shufflefpFast x
+    | shufflefp x = shufflefpNormal x
 
 end
 

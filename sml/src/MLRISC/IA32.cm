@@ -22,6 +22,7 @@ Library
 	functor X86
 	functor X86AsmEmitter
 	functor X86CompInstrExt
+	functor X86FP
 	functor X86FreqProps
 	functor X86Instr
 	functor X86Jumps
@@ -72,3 +73,4 @@ is
 	x86/ra/x86PseudoR.sml 
 	x86/backpatch/x86Jumps.sml 
 	x86/mltree/x86.sml
+	x86/mltree/x86-fp.sml

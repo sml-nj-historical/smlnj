@@ -18,6 +18,7 @@ sig
    | LabelEA of LabelExp.labexp
    | Direct of int
    | FDirect of int
+   | FPR of int
    | ST of int
    | MemReg of int
    | Displace of {base:int, disp:operand, mem:Region.region}
@@ -181,7 +182,8 @@ sig
    | FCHS
    | FSIN
    | FCOS
-   | FTAN
+   | FPTAN
+   | FPATAN
    | FSCALE
    | FRNDINT
    | FSQRT
@@ -194,6 +196,15 @@ sig
    | FNLDENV
    | FSTENV
    | FNSTENV
+   datatype fsize =
+     FP32
+   | FP64
+   | FP80
+   datatype isize =
+     I8
+   | I16
+   | I32
+   | I64
    datatype instruction =
      NOP
    | JMP of (operand * Label.label list)
@@ -228,6 +239,8 @@ sig
    | FBINARY of {binOp:fbinOp, src:operand, dst:operand}
    | FIBINARY of {binOp:fibinOp, src:operand}
    | FUNARY of funOp
+   | FUCOM of operand
+   | FUCOMP of operand
    | FUCOMPP
    | FCOMPP
    | FXCH of {opnd:int}
@@ -251,6 +264,14 @@ sig
    | FILDLL of operand
    | FNSTSW
    | FENV of {fenvOp:fenvOp, opnd:operand}
+   | FMOVE of {fsize:fsize, src:operand, dst:operand}
+   | FILOAD of {isize:isize, ea:operand, dst:operand}
+   | FBINOP of {fsize:fsize, binOp:fbinOp, lsrc:operand, rsrc:operand, dst:operand
+     }
+   | FIBINOP of {isize:isize, binOp:fibinOp, lsrc:operand, rsrc:operand
+     , dst:operand}
+   | FUNOP of {fsize:fsize, unOp:funOp, src:operand, dst:operand}
+   | FCMP of {fsize:fsize, lsrc:operand, rsrc:operand}
    | SAHF
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}
@@ -273,6 +294,7 @@ struct
    | LabelEA of LabelExp.labexp
    | Direct of int
    | FDirect of int
+   | FPR of int
    | ST of int
    | MemReg of int
    | Displace of {base:int, disp:operand, mem:Region.region}
@@ -436,7 +458,8 @@ struct
    | FCHS
    | FSIN
    | FCOS
-   | FTAN
+   | FPTAN
+   | FPATAN
    | FSCALE
    | FRNDINT
    | FSQRT
@@ -449,6 +472,15 @@ struct
    | FNLDENV
    | FSTENV
    | FNSTENV
+   datatype fsize =
+     FP32
+   | FP64
+   | FP80
+   datatype isize =
+     I8
+   | I16
+   | I32
+   | I64
    datatype instruction =
      NOP
    | JMP of (operand * Label.label list)
@@ -483,6 +515,8 @@ struct
    | FBINARY of {binOp:fbinOp, src:operand, dst:operand}
    | FIBINARY of {binOp:fibinOp, src:operand}
    | FUNARY of funOp
+   | FUCOM of operand
+   | FUCOMP of operand
    | FUCOMPP
    | FCOMPP
    | FXCH of {opnd:int}
@@ -506,6 +540,14 @@ struct
    | FILDLL of operand
    | FNSTSW
    | FENV of {fenvOp:fenvOp, opnd:operand}
+   | FMOVE of {fsize:fsize, src:operand, dst:operand}
+   | FILOAD of {isize:isize, ea:operand, dst:operand}
+   | FBINOP of {fsize:fsize, binOp:fbinOp, lsrc:operand, rsrc:operand, dst:operand
+     }
+   | FIBINOP of {isize:isize, binOp:fibinOp, lsrc:operand, rsrc:operand
+     , dst:operand}
+   | FUNOP of {fsize:fsize, unOp:funOp, src:operand, dst:operand}
+   | FCMP of {fsize:fsize, lsrc:operand, rsrc:operand}
    | SAHF
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}

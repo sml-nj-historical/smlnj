@@ -9,7 +9,7 @@ functor X86AsmEmitter(structure Instr : X86INSTR
                       structure Shuffle : X86SHUFFLE
                          where I = Instr
 
-(*#line 243.7 "x86/x86.md"*)
+(*#line 250.7 "x86/x86.md"*)
                       structure MemRegs : MEMORY_REGISTERS where I=Instr
                      ) : INSTRUCTION_EMITTER =
 struct
@@ -238,7 +238,8 @@ struct
      | asm_funOp (I.FCHS) = "fchs"
      | asm_funOp (I.FSIN) = "fsin"
      | asm_funOp (I.FCOS) = "fcos"
-     | asm_funOp (I.FTAN) = "ftan"
+     | asm_funOp (I.FPTAN) = "fptan"
+     | asm_funOp (I.FPATAN) = "fpatan"
      | asm_funOp (I.FSCALE) = "fscale"
      | asm_funOp (I.FRNDINT) = "frndint"
      | asm_funOp (I.FSQRT) = "fsqrt"
@@ -252,17 +253,26 @@ struct
      | asm_fenvOp (I.FSTENV) = "fstenv"
      | asm_fenvOp (I.FNSTENV) = "fnstenv"
    and emit_fenvOp x = emit (asm_fenvOp x)
+   and asm_fsize (I.FP32) = "s"
+     | asm_fsize (I.FP64) = "l"
+     | asm_fsize (I.FP80) = "t"
+   and emit_fsize x = emit (asm_fsize x)
+   and asm_isize (I.I8) = "8"
+     | asm_isize (I.I16) = "16"
+     | asm_isize (I.I32) = "32"
+     | asm_isize (I.I64) = "64"
+   and emit_isize x = emit (asm_isize x)
 
-(*#line 245.6 "x86/x86.md"*)
+(*#line 252.6 "x86/x86.md"*)
    val memReg = MemRegs.memReg regmap
 
-(*#line 246.6 "x86/x86.md"*)
+(*#line 253.6 "x86/x86.md"*)
    fun emitInt32 i = let
 
-(*#line 247.10 "x86/x86.md"*)
+(*#line 254.10 "x86/x86.md"*)
           val s = Int32.toString i
 
-(*#line 248.10 "x86/x86.md"*)
+(*#line 255.10 "x86/x86.md"*)
           val s = (if (i >= 0)
                  then s
                  else ("-" ^ (String.substring (s, 1, (size s) - 1))))
@@ -270,7 +280,10 @@ struct
        end
 
 
-(*#line 251.6 "x86/x86.md"*)
+(*#line 258.6 "x86/x86.md"*)
+   val {low=SToffset, ...} = C.cellRange C.FP
+
+(*#line 260.6 "x86/x86.md"*)
    fun emitScale 0 = emit "1"
      | emitScale 1 = emit "2"
      | emitScale 2 = emit "4"
@@ -293,6 +306,9 @@ struct
       | I.Direct r => emit_GP r
       | I.MemReg r => emit_operand (memReg opn)
       | I.ST f => emit_FP f
+      | I.FPR f => 
+        ( emit "%f"; 
+        emit (Int.toString ((regmap f) - SToffset)))
       | I.FDirect f => emit_operand (memReg opn)
       | I.Displace{base, disp, mem, ...} => 
         ( emit_disp disp; 
@@ -323,13 +339,13 @@ struct
      | emit_disp (I.ImmedLabel lexp) = emit_labexp lexp
      | emit_disp _ = error "emit_disp"
 
-(*#line 294.7 "x86/x86.md"*)
+(*#line 304.7 "x86/x86.md"*)
    fun stupidGas (I.ImmedLabel lexp) = emit_labexp lexp
      | stupidGas opnd = 
        ( emit "*"; 
        emit_operand opnd )
 
-(*#line 298.7 "x86/x86.md"*)
+(*#line 308.7 "x86/x86.md"*)
    fun isMemOpnd (I.MemReg _) = true
      | isMemOpnd (I.FDirect f) = true
      | isMemOpnd (I.LabelEA _) = true
@@ -337,10 +353,10 @@ struct
      | isMemOpnd (I.Indexed _) = true
      | isMemOpnd _ = false
 
-(*#line 304.7 "x86/x86.md"*)
+(*#line 314.7 "x86/x86.md"*)
    fun chop fbinOp = let
 
-(*#line 305.15 "x86/x86.md"*)
+(*#line 315.15 "x86/x86.md"*)
           val n = size fbinOp
        in 
           (
@@ -351,29 +367,53 @@ struct
        end
 
 
-(*#line 311.7 "x86/x86.md"*)
+(*#line 322.7 "x86/x86.md"*)
+   fun emit_fbinaryOp (binOp, src, dst) = (if (isMemOpnd src)
+          then 
+          ( emit_fbinOp binOp; 
+          emit "\t"; 
+          emit_operand src )
+          else 
+          ( emit (chop (asm_fbinOp binOp)); 
+          emit "\t"; 
+          
+          (
+           case (src, dst) of
+           (_, I.ST 32) => 
+           ( emit_operand src; 
+           emit ", %st" )
+         | (I.ST 32, I.ST _) => 
+           ( emit "%st, "; 
+           emit_operand dst )
+         | _ => error "emit_fbinaryOp"
+          )))
+
+(*#line 332.7 "x86/x86.md"*)
    val emit_dst = emit_operand
 
-(*#line 312.7 "x86/x86.md"*)
+(*#line 333.7 "x86/x86.md"*)
    val emit_src = emit_operand
 
-(*#line 313.7 "x86/x86.md"*)
+(*#line 334.7 "x86/x86.md"*)
    val emit_opnd = emit_operand
 
-(*#line 314.7 "x86/x86.md"*)
+(*#line 335.7 "x86/x86.md"*)
    val emit_opnd8 = emit_operand8
 
-(*#line 315.7 "x86/x86.md"*)
+(*#line 336.7 "x86/x86.md"*)
    val emit_rsrc = emit_operand
 
-(*#line 316.7 "x86/x86.md"*)
+(*#line 337.7 "x86/x86.md"*)
    val emit_lsrc = emit_operand
 
-(*#line 317.7 "x86/x86.md"*)
+(*#line 338.7 "x86/x86.md"*)
    val emit_addr = emit_operand
 
-(*#line 318.7 "x86/x86.md"*)
+(*#line 339.7 "x86/x86.md"*)
    val emit_src1 = emit_operand
+
+(*#line 340.7 "x86/x86.md"*)
+   val emit_ea = emit_operand
    fun emitInstr' instr = 
        (
         case instr of
@@ -521,32 +561,33 @@ struct
       | I.INTO => emit "into"
       | I.COPY{dst, src, tmp} => emitInstrs (Shuffle.shuffle {regmap=regmap, tmp=tmp, dst=dst, src=src})
       | I.FCOPY{dst, src, tmp} => emitInstrs (Shuffle.shufflefp {regmap=regmap, tmp=tmp, dst=dst, src=src})
-      | I.FBINARY{binOp, src, dst} => (if (isMemOpnd src)
-           then 
-           ( emit_fbinOp binOp; 
-           emit "\t"; 
-           emit_src src )
-           else 
-           ( emit (chop (asm_fbinOp binOp)); 
-           emit "\t"; 
-           emit_src src; 
-           emit ", "; 
-           emit_dst dst ))
+      | I.FBINARY{binOp, src, dst} => emit_fbinaryOp (binOp, src, dst)
       | I.FIBINARY{binOp, src} => 
         ( emit_fibinOp binOp; 
         emit "\t"; 
         emit_src src )
       | I.FUNARY funOp => emit_funOp funOp
+      | I.FUCOM operand => 
+        ( emit "fucom\t"; 
+        emit_operand operand )
+      | I.FUCOMP operand => 
+        ( emit "fucomp\t"; 
+        emit_operand operand )
       | I.FUCOMPP => emit "fucompp"
       | I.FCOMPP => emit "fcompp"
       | I.FXCH{opnd} => 
         ( emit "fxch\t"; 
-        (if (opnd = (C.ST 1))
-           then ()
-           else (emit_FP opnd)))
+        emit_FP opnd )
       | I.FSTPL operand => 
-        ( emit "fstpl\t"; 
-        emit_operand operand )
+        (
+         case operand of
+         I.ST _ => 
+         ( emit "fstp\t"; 
+         emit_operand operand )
+       | _ => 
+         ( emit "fstpl\t"; 
+         emit_operand operand )
+        )
       | I.FSTPS operand => 
         ( emit "fstps\t"; 
         emit_operand operand )
@@ -554,8 +595,15 @@ struct
         ( emit "fstps\t"; 
         emit_operand operand )
       | I.FSTL operand => 
-        ( emit "fstl\t"; 
-        emit_operand operand )
+        (
+         case operand of
+         I.ST _ => 
+         ( emit "fst\t"; 
+         emit_operand operand )
+       | _ => 
+         ( emit "fstl\t"; 
+         emit_operand operand )
+        )
       | I.FSTS operand => 
         ( emit "fsts\t"; 
         emit_operand operand )
@@ -567,8 +615,15 @@ struct
       | I.FLDPI => emit "fldpi"
       | I.FLDZ => emit "fldz"
       | I.FLDL operand => 
-        ( emit "fldl\t"; 
-        emit_operand operand )
+        (
+         case operand of
+         I.ST _ => 
+         ( emit "fld\t"; 
+         emit_operand operand )
+       | _ => 
+         ( emit "fldl\t"; 
+         emit_operand operand )
+        )
       | I.FLDS operand => 
         ( emit "flds\t"; 
         emit_operand operand )
@@ -589,6 +644,52 @@ struct
         ( emit_fenvOp fenvOp; 
         emit "\t"; 
         emit_opnd opnd )
+      | I.FMOVE{fsize, src, dst} => 
+        ( emit "fmove"; 
+        emit_fsize fsize; 
+        emit "\t"; 
+        emit_src src; 
+        emit ", "; 
+        emit_dst dst )
+      | I.FILOAD{isize, ea, dst} => 
+        ( emit "fiload"; 
+        emit_isize isize; 
+        emit "\t"; 
+        emit_ea ea; 
+        emit ", "; 
+        emit_dst dst )
+      | I.FBINOP{fsize, binOp, lsrc, rsrc, dst} => 
+        ( emit_fbinOp binOp; 
+        emit_fsize fsize; 
+        emit "\t"; 
+        emit_lsrc lsrc; 
+        emit ", "; 
+        emit_rsrc rsrc; 
+        emit ", "; 
+        emit_dst dst )
+      | I.FIBINOP{isize, binOp, lsrc, rsrc, dst} => 
+        ( emit_fibinOp binOp; 
+        emit_isize isize; 
+        emit "\t"; 
+        emit_lsrc lsrc; 
+        emit ", "; 
+        emit_rsrc rsrc; 
+        emit ", "; 
+        emit_dst dst )
+      | I.FUNOP{fsize, unOp, src, dst} => 
+        ( emit_funOp unOp; 
+        emit_fsize fsize; 
+        emit "\t"; 
+        emit_src src; 
+        emit ", "; 
+        emit_dst dst )
+      | I.FCMP{fsize, lsrc, rsrc} => 
+        ( emit "fcmp"; 
+        emit_fsize fsize; 
+        emit "\t"; 
+        emit_lsrc lsrc; 
+        emit ", "; 
+        emit_rsrc rsrc )
       | I.SAHF => emit "sahf"
       | I.ANNOTATION{i, a} => 
         ( comment (Annotations.toString a); 

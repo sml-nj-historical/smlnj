@@ -70,11 +70,30 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.FLDT opnd => I.FLDT(operand opnd)
      | I.FLDL opnd => I.FLDL(operand opnd)
      | I.FLDS opnd => I.FLDS(operand opnd)
+     | I.FUCOM opnd => I.FUCOM(operand opnd)
+     | I.FUCOMP opnd => I.FUCOMP(operand opnd)
      | I.FENV{fenvOp,opnd} => I.FENV{fenvOp=fenvOp, opnd=operand opnd}
      | I.FBINARY{binOp, src, dst} => 
 	I.FBINARY{binOp=binOp, src=operand src, dst=dst}
      | I.FIBINARY{binOp, src} => 
 	I.FIBINARY{binOp=binOp, src=operand src}
+
+       (* Pseudo floating point instructions *)
+     | I.FMOVE{fsize,src,dst} => 
+        I.FMOVE{fsize=fsize,src=operand src,dst=operand dst}
+     | I.FILOAD{isize,ea,dst} => 
+        I.FILOAD{isize=isize,ea=operand ea,dst=operand dst}
+     | I.FBINOP{fsize,binOp,lsrc,rsrc,dst} =>
+        I.FBINOP{fsize=fsize,binOp=binOp,
+                 lsrc=operand lsrc,rsrc=operand rsrc,dst=operand dst}
+     | I.FIBINOP{isize,binOp,lsrc,rsrc,dst} =>
+        I.FIBINOP{isize=isize,binOp=binOp,
+                  lsrc=operand lsrc,rsrc=operand rsrc,dst=operand dst}
+     | I.FUNOP{fsize,unOp,src,dst} =>
+        I.FUNOP{fsize=fsize,unOp=unOp,src=operand src,dst=operand dst}
+     | I.FCMP{fsize,lsrc,rsrc} =>
+        I.FCMP{fsize=fsize,lsrc=operand lsrc,rsrc=operand rsrc}
+
      | I.CMOV{cond, src, dst} => I.CMOV{cond=cond, src=operand src, dst=dst}
      | I.ANNOTATION{i,a}=> 
         I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),
@@ -116,6 +135,8 @@ functor X86Rewrite(Instr : X86INSTR) = struct
   fun frewriteUse(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
     fun foperand(opnd as I.FDirect f) = 
          if f=fs then I.FDirect ft else opnd
+      | foperand(opnd as I.FPR f) = 
+         if f=fs then I.FPR ft else opnd
       | foperand opnd = opnd
 
     fun replace f = if mapr f=fs then ft else f
@@ -128,6 +149,23 @@ functor X86Rewrite(Instr : X86INSTR) = struct
          I.CALL(opnd, defs, (ur, map replace uf, uc), mem)
      | I.FBINARY{binOp, src, dst} => 
 	 I.FBINARY{binOp=binOp, src=foperand src, dst=foperand dst}
+     | I.FUCOM opnd => I.FUCOM(foperand opnd)
+     | I.FUCOMP opnd => I.FUCOMP(foperand opnd)
+
+       (* Pseudo floating point instructions *)
+     | I.FMOVE{fsize,dst,src} =>
+        I.FMOVE{fsize=fsize,dst=dst,src=foperand src}
+     | I.FBINOP{fsize,binOp,lsrc,rsrc,dst} =>
+        I.FBINOP{fsize=fsize,binOp=binOp,
+                 lsrc=foperand lsrc,rsrc=foperand rsrc,dst=dst}
+     | I.FIBINOP{isize,binOp,lsrc,rsrc,dst} =>
+        I.FIBINOP{isize=isize,binOp=binOp,
+                  lsrc=foperand lsrc,rsrc=foperand rsrc,dst=dst}
+     | I.FUNOP{fsize,unOp,src,dst} =>
+        I.FUNOP{fsize=fsize,unOp=unOp,src=foperand src,dst=dst}
+     | I.FCMP{fsize,lsrc,rsrc} =>
+        I.FCMP{fsize=fsize,lsrc=foperand lsrc,rsrc=foperand rsrc}
+
      | I.ANNOTATION{i,a}=> 
          I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),
                         a=case a of
@@ -141,6 +179,8 @@ functor X86Rewrite(Instr : X86INSTR) = struct
   fun frewriteDef(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
     fun foperand(opnd as I.FDirect r) = 
          if r=fs then I.FDirect ft else opnd
+      | foperand(opnd as I.FPR r) = 
+         if r=fs then I.FPR ft else opnd
       | foperand opnd = opnd
     fun replace f = if mapr f = fs then ft else f
   in
@@ -154,6 +194,19 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.CALL(opnd, (dr,df,dc), uses, mem) => 
          I.CALL(opnd, (dr, map replace df, dc), uses, mem)
      | I.FBINARY{binOp, src, dst} => I.FBINARY{binOp=binOp, src=src, dst=foperand dst}
+
+       (* Pseudo floating point instructions *)
+     | I.FMOVE{fsize,src,dst} => 
+        I.FMOVE{fsize=fsize,src=src,dst=foperand dst}
+     | I.FILOAD{isize,ea,dst} => 
+        I.FILOAD{isize=isize,ea=ea,dst=foperand dst}
+     | I.FBINOP{fsize,binOp,lsrc,rsrc,dst} =>
+        I.FBINOP{fsize=fsize,binOp=binOp,lsrc=lsrc,rsrc=rsrc,dst=foperand dst}
+     | I.FIBINOP{isize,binOp,lsrc,rsrc,dst} =>
+        I.FIBINOP{isize=isize,binOp=binOp,lsrc=lsrc,rsrc=rsrc,dst=foperand dst}
+     | I.FUNOP{fsize,unOp,src,dst} =>
+        I.FUNOP{fsize=fsize,unOp=unOp,src=src,dst=foperand dst}
+
      | I.ANNOTATION{i,a}=> 
          I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),
                         a=case a of

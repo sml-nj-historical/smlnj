@@ -21,6 +21,8 @@ structure X86CG =
 
     fun error msg = MLRiscErrorMsg.error("X86CG",msg)
 
+    val fast_floating_point = MLRiscControl.getFlag "x86-fast-fp"
+
     structure MLTreeComp=
        X86(structure X86Instr=X86Instr
            structure X86MLTree=X86MLTree
@@ -36,6 +38,7 @@ structure X86CG =
                }
            datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
            val arch = ref Pentium (* Lowest common denominator *)
+           val fast_floating_point = fast_floating_point
           )
 
     structure Jumps = 
@@ -56,11 +59,22 @@ structure X86CG =
        PrintCluster(structure Flowgraph=X86FlowGraph
                     structure Asm = X86AsmEmitter)
 
+    structure X86FP = 
+       X86FP(structure X86Instr = X86Instr
+             structure X86Props = InsnProps
+             structure Flowgraph = X86FlowGraph
+             structure Liveness = Liveness(X86FlowGraph)
+             structure Asm = X86AsmEmitter
+            )
+
     structure X86Spill = X86Spill(structure Instr=I structure Props=InsnProps)
 
     val toInt32 = Int32.fromInt
     fun cacheOffset r = I.Immed(toInt32(X86Runtime.vregStart + 
                                 Word.toIntX(Word.<<(Word.fromInt(r-8),0w2))))
+    fun cacheFPOffset f = I.Immed(toInt32(X86Runtime.vFpStart + 
+                                Word.toIntX(Word.<<(Word.fromInt(f-40),0w3))))
+
 
     val intSpillCnt = MLRiscControl.getCounter "ra-int-spills"
     val floatSpillCnt = MLRiscControl.getCounter "ra-float-spills"
@@ -117,6 +131,7 @@ structure X86CG =
          open RAGraph
       in  
          val firstSpill = ref true
+         val firstFPSpill = ref true
          fun spillInit(GRAPH{nodes, ...}, I.C.GP) = 
              if !firstSpill then (* only do this once! *)
              let val lookup = Intmap.map nodes
@@ -135,7 +150,24 @@ structure X86CG =
                  X86StackSpills.setAvailableOffsets free
               end 
               else ()
-            | spillInit(GRAPH{nodes, ...}, _) = ()
+            | spillInit(GRAPH{nodes, ...}, I.C.FP) = 
+              if !firstFPSpill andalso !fast_floating_point then
+              let val lookup = Intmap.map nodes
+                 fun find(r, free) =
+                     if r >= 32+8 then 
+                        let val free = 
+                                case lookup r of
+                                  NODE{uses=ref [], defs=ref [], ...} => 
+                                     cacheFPOffset r::free
+                                | _ => free
+                        in  find(r-1, free) end
+                     else 
+                        free
+                 val free = find(63, [])
+              in firstFPSpill := false;
+                 X86StackSpills.setAvailableFPOffsets free
+              end 
+              else ()
       end
  
       (* This is the generic register allocator *)
@@ -166,19 +198,32 @@ structure X86CG =
       (* -------------------------------------------------------------------
        * Floating point stuff 
        * -------------------------------------------------------------------*)
-      structure FR = GetReg(val nRegs=32 
-                            val available=R.availF 
-                            val first=32)
+      val availF8 = map I.C.FPReg [0,1,2,3,4,5,6]
+      val KF32 = length R.availF
+      structure FR32 = GetReg(val nRegs=KF32 
+                              val available=R.availF 
+                              val first=I.C.ST 8)
 
-      val KF = length R.availF
-  
+      val availF8 = map I.C.FPReg [0,1,2,3,4,5,6] 
+      val KF8  = length availF8
+      structure FR8  = GetReg(val nRegs=KF8
+                              val available=availF8
+                              val first=I.C.ST 0)
+ 
+ 
+      (* -------------------------------------------------------------------
+       * Callbacks for floating point K=32 
+       * -------------------------------------------------------------------*)
       fun copyInstrF((rds as [_], rss as [_]), _) =
             [I.FCOPY{dst=rds, src=rss, tmp=NONE}]
         | copyInstrF((rds, rss), I.FCOPY{tmp, ...}) = 
             [I.FCOPY{dst=rds, src=rss, tmp=tmp}]
-  
+
+
       fun getFregLoc loc = 
-          I.Displace{base=esp, disp=X86StackSpills.getFregLoc loc, mem=spill}
+          if loc >= 0 then I.FDirect loc
+          else 
+            I.Displace{base=esp, disp=X86StackSpills.getFregLoc loc, mem=spill}
   
       (* spill floating point *)
       fun spillF{instr, reg, spillLoc, kill, regmap, annotations} = 
@@ -191,7 +236,7 @@ structure X86CG =
           [I.FLDL(I.FDirect(src)), I.FSTPL(getFregLoc spillLoc)]
          )
 
-      fun spillFcopyTmp{copy=I.FCOPY{dst, src, ...}, spillLoc, annotations} =
+     fun spillFcopyTmp{copy=I.FCOPY{dst, src, ...}, spillLoc, annotations} =
           (floatSpillCnt := !floatSpillCnt + 1;
            I.FCOPY{dst=dst, src=src, tmp=SOME(getFregLoc spillLoc)}
           )
@@ -213,6 +258,32 @@ structure X86CG =
            [I.FLDL(getFregLoc spillLoc), I.FSTPL(I.FDirect dst)]
           )
 
+      (* -------------------------------------------------------------------
+       * Callbacks for floating point K=7 
+       * -------------------------------------------------------------------*)
+      fun FMemReg f = if f >= 32+8 andalso f < 32+32 
+                       then I.FDirect f else I.FPR f
+
+      fun copyInstrF'((rds as [d], rss as [s]), _) =
+           [I.FMOVE{fsize=I.FP64,src=FMemReg s,dst=FMemReg d}]
+        | copyInstrF'((rds, rss), I.FCOPY{tmp, ...}) = 
+           [I.FCOPY{dst=rds, src=rss, tmp=tmp}]
+
+      fun spillFreg'{src, reg, spillLoc, annotations} = 
+          (floatSpillCnt := !floatSpillCnt + 1;
+           [I.FMOVE{fsize=I.FP64, src=FMemReg src, dst=getFregLoc spillLoc}]
+          )
+
+      fun renameF'{instr, fromSrc, toSrc, regmap} =
+          (floatRenameCnt := !floatRenameCnt + 1;
+           X86Spill.freload(instr, regmap, fromSrc, I.FPR toSrc)
+          )
+
+      fun reloadFreg'{dst, reg, spillLoc, annotations} = 
+          (floatReloadCnt := !floatReloadCnt + 1;
+           [I.FMOVE{fsize=I.FP64, dst=FMemReg dst, src=getFregLoc spillLoc}]
+          )
+ 
       (* -------------------------------------------------------------------
        * Integer 8 stuff 
        * -------------------------------------------------------------------*)
@@ -291,18 +362,87 @@ structure X86CG =
 
       fun spillInit () = 
         (firstSpill := true;
+         firstFPSpill := true;
          Intmap.clear affectedBlocks; 
          Intmap.clear deadRegs;
-         X86StackSpills.init(); FR.reset(); GR8.reset())
+         X86StackSpills.init(); 
+         if !fast_floating_point then FR8.reset() else FR32.reset(); 
+         GR8.reset())
 
       (* Dedicated + available registers *)
       fun mark(a, l) = app (fn r => Array.update(a, r, true)) l
 
-      val dedicatedR = Array.array(32,false)
-      val dedicatedF = Array.array(64,false)
+      val dedicatedR   = Array.array(32,false)
+      val dedicatedF32 = Array.array(64,false)
+      val dedicatedF8  = Array.array(64,false)
       val _ = mark(dedicatedR, R.dedicatedR)
-      val _ = mark(dedicatedF, R.dedicatedF)
+      val _ = mark(dedicatedF32, R.dedicatedF)
+
+      (* RA parameters *)
+
+      (* How to allocate integer registers:    
+       * Perform register alocation + memory allocation
+       *)
+      val RAInt = {spill     = spillR8,
+                   spillSrc  = spillReg,
+                   spillCopyTmp= spillCopyTmp,
+                   reload    = reloadR8,
+                   reloadDst = reloadReg,
+                   renameSrc = renameR8,
+                   copyInstr = copyInstrR,
+                   K         = K8,
+                   getreg    = GR8.getreg,
+                   cellkind  = I.C.GP,   
+                   dedicated = dedicatedR,
+                   spillProh = [],
+                   memRegs   = [(8,31)],
+                   mode      = Ra.SPILL_PROPAGATION+Ra.SPILL_COLORING
+                  } : Ra.raClient
+
+      (* How to allocate floating point registers:    
+       * Allocate all fp registers on the stack.  This is the easy way.
+       *)
+      val RAFP32 ={spill     = spillF,
+                   spillSrc  = spillFreg,
+                   spillCopyTmp= spillFcopyTmp,
+                   reload    = reloadF,
+                   reloadDst = reloadFreg,
+                   renameSrc = renameF,
+                   copyInstr = copyInstrF,
+                   K         = KF32,
+                   getreg    = FR32.getreg,
+                   cellkind  = I.C.FP,   
+                   dedicated = dedicatedF32,
+                   spillProh = [],
+                   memRegs   = [],
+                   mode      = Ra.SPILL_PROPAGATION
+                  } : Ra.raClient
+
+      (* How to allocate floating point registers:    
+       * Allocate fp registers on the %st stack.  Also perform
+       * memory allcoation.
+       *)
+       val RAFP8 ={spill     = spillF,
+                   spillSrc  = spillFreg',
+                   spillCopyTmp= spillFcopyTmp,
+                   reload    = reloadF,
+                   reloadDst = reloadFreg',
+                   renameSrc = renameF',
+                   copyInstr = copyInstrF',
+                   K         = KF8,
+                   getreg    = FR8.getreg,
+                   cellkind  = I.C.FP,   
+                   dedicated = dedicatedF8,
+                   spillProh = [],
+                   memRegs   = [(I.C.FPReg 8,I.C.FPReg 31)],
+                   mode      = Ra.SPILL_PROPAGATION+Ra.SPILL_COLORING
+                  } : Ra.raClient
+
+      (* Two RA modes, fast and normal *) 
+      val fast_fp = [RAInt, RAFP8]
+      val normal_fp = [RAInt, RAFP32]
  
+      (* The main ra routine *)
       fun ra(cluster as F.CLUSTER{regmap, ...}) = 
       let val printGraph = 
               if !x86CfgDebugFlg then 
@@ -314,38 +454,21 @@ structure X86CG =
           (* generic register allocator *)
 
           val cluster = Ra.ra
-                         [ {spill     = spillR8,
-                            spillSrc  = spillReg,
-                            spillCopyTmp= spillCopyTmp,
-                            reload    = reloadR8,
-                            reloadDst = reloadReg,
-                            renameSrc = renameR8,
-                            copyInstr = copyInstrR,
-                            K         = K8,
-                            getreg    = GR8.getreg,
-                            cellkind  = I.C.GP,   
-                            dedicated = dedicatedR,
-                            spillProh = [],
-                            memRegs   = [(8,31)],
-                            mode      = Ra.SPILL_PROPAGATION+Ra.SPILL_COLORING
-                           },
-                           {spill     = spillF,
-                            spillSrc  = spillFreg,
-                            spillCopyTmp= spillFcopyTmp,
-                            reload    = reloadF,
-                            reloadDst = reloadFreg,
-                            renameSrc = renameF,
-                            copyInstr = copyInstrF,
-                            K         = KF,
-                            getreg    = FR.getreg,
-                            cellkind  = I.C.FP,   
-                            dedicated = dedicatedF,
-                            spillProh = [],
-                            memRegs   = [],
-                            mode      = Ra.SPILL_PROPAGATION
-                           }] cluster
+                        (if !fast_floating_point then fast_fp else normal_fp)
+                        cluster
           val _ = removeDeadCode cluster
           val _ = printGraph "\t---After register allocation K=8---\n" cluster
+
+          (* Run the FP translation phase when fast floating point has
+           * been enabled
+           *)
+          val cluster = 
+               if !fast_floating_point andalso I.C.numCell I.C.FP () > 0 then 
+               let val cluster = X86FP.run cluster
+               in  printGraph "\t---After X86 FP translation ---\n" cluster;
+                   cluster
+               end
+               else cluster
       in  cluster
       end
 

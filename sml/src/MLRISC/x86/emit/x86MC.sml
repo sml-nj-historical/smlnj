@@ -82,6 +82,7 @@ struct
    and emit_MEM r = itow ((regmap r) - 64)
    and emit_CTRL r = itow ((regmap r) - 64)
    fun modrm {mod, reg, rm} = eWord8 ((op mod << 0wx6) + ((reg << 0wx3) + rm))
+   and reg {opc, reg} = eWord8 ((opc << 0wx3) + reg)
    and sib {ss, index, base} = eWord8 ((ss << 0wx6) + ((index << 0wx3) + base))
    and immed8 {imm} = eWord8 imm
    and immed32 {imm} = eWord32 imm
@@ -118,6 +119,8 @@ struct
      | emitInstr (I.FBINARY{binOp, src, dst}) = error "FBINARY"
      | emitInstr (I.FIBINARY{binOp, src}) = error "FIBINARY"
      | emitInstr (I.FUNARY funOp) = error "FUNARY"
+     | emitInstr (I.FUCOM operand) = error "FUCOM"
+     | emitInstr (I.FUCOMP operand) = error "FUCOMP"
      | emitInstr (I.FUCOMPP) = error "FUCOMPP"
      | emitInstr (I.FCOMPP) = error "FCOMPP"
      | emitInstr (I.FXCH{opnd}) = error "FXCH"
@@ -141,6 +144,12 @@ struct
      | emitInstr (I.FILDLL operand) = error "FILDLL"
      | emitInstr (I.FNSTSW) = error "FNSTSW"
      | emitInstr (I.FENV{fenvOp, opnd}) = error "FENV"
+     | emitInstr (I.FMOVE{fsize, src, dst}) = error "FMOVE"
+     | emitInstr (I.FILOAD{isize, ea, dst}) = error "FILOAD"
+     | emitInstr (I.FBINOP{fsize, binOp, lsrc, rsrc, dst}) = error "FBINOP"
+     | emitInstr (I.FIBINOP{isize, binOp, lsrc, rsrc, dst}) = error "FIBINOP"
+     | emitInstr (I.FUNOP{fsize, unOp, src, dst}) = error "FUNOP"
+     | emitInstr (I.FCMP{fsize, lsrc, rsrc}) = error "FCMP"
      | emitInstr (I.SAHF) = error "SAHF"
      | emitInstr (I.ANNOTATION{i, a}) = error "ANNOTATION"
      | emitInstr (I.SOURCE{}) = ()
