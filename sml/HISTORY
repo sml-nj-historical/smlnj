@@ -14,6 +14,23 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/05/13 16:40:00 EDT
+Tag: blume-20020513-pp-etc
+Description:
+
+A few minor bugfixes:
+
+  - Stopgap measure for bug recently reported by Elsa Gunter (ppDec).
+    (Bogus printouts for redefined bindings still occur.  Compiler
+    bug should no longer occur now.  We need to redo the prettyprinter
+    from scratch.)
+
+  - CM pathname printer now also adds escape sequences for ( and )
+
+  - commend and docu fixes for ml-nlffi
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/05/10 16:40:00 EDT
 Tag: blume-20020510-erg-textio
 Description:

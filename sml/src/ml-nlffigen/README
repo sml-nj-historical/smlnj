@@ -190,10 +190,14 @@ Command-line options for ml-nlffigen:
                 but can have negative impact on CM cutoff recompilation
                 performance if the programmer routinely removes the entire
                 tree of ml-nlffigen-generated files during development.)
+
+(*
+   -lambdasplit <x>   instructs ml-nlffigen to generate "lambdasplit"
    -ls <x>      options for all ML files (see CM manual for what this means;
                 it does not currently work anyway because cross-module
                 inlining is broken).
                 default: nothing
+*)
 
    -target <t>  Sets the target to <t> (which must be one of "sparc-unix",
    -t <t>       "x86-unix", or "x86-win32").
