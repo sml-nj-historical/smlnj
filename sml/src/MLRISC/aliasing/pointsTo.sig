@@ -1,52 +1,64 @@
 (*
- *  This module can be used to perform points-to analysis for
- *  a typed language.   It is inspired by Nevin's stuff, but for compile
- *  time-efficiency reasons we are using a unification based scheme.
- *  Closure based schemes seem to be too expensive to be practical.
+ *  This module can be used to perform points-to analysis for typed languages
  *
  * -- Allen
  *)
 signature POINTS_TO =
 sig
 
-   datatype kind = PI     (* projection *)
-                 | DOM    (* domain *)
-                 | RAN    (* co-domain (note: doesn't apply in CPS) *)
+   eqtype edgekind 
 
    datatype cell = 
-     LINK of loc                               (* union/find up link *)
-   | REF of int * (kind * int * loc) list ref  (* reference node *)
-   | TOP of int                                (* a collapsed node *)
-   | NAMED of string * loc
+     LINK  of region                             
+   | SREF  of int * edges ref
+   | WREF  of int * edges ref
+   | SCELL of int * edges ref
+   | WCELL of int * edges ref
+   | TOP   of {mutable:bool, id:int, name:string}
+      (* a collapsed node *)
+   withtype region = cell ref
+   and      edges  = (edgekind * int * region) list
 
-   withtype loc = cell ref
+   val reset    : (unit -> int) -> unit
 
-   val reset  : (unit -> int) -> unit
+   (* generate a new reference/immutable cell *)
+   val newSRef  : unit -> region  
+   val newWRef  : unit -> region  
+   val newSCell : unit -> region  
+   val newWCell : unit -> region  
 
-   val newRef : 'a -> loc  (* generate a new reference *)
-   val newTop : 'a -> loc  (* generate a new collapsed node *)
+   (* generate a new collapsed node *)
+   val newTop   : {mutable:bool,name:string} -> region  
 
    (*  
     * The following are methods for constructing the storage shape graph.
     *)
-   val pi     : loc * int -> loc  (* the ith projection *)
-   val dom    : loc * int -> loc  (* the ith domain *)
-   val ran    : loc * int -> loc  (* the ith range *)
-   val offset : loc * int -> loc  (* the ith offset *)
+   val pi     : region * int -> region (* the ith projection *)
+   val sub    : region * int -> region (* the ith subscript *)
+   val dom    : region * int -> region (* the ith domain *)
+   val ran    : region * int -> region (* the ith range *)
+   val offset : region * int -> region (* the ith offset *)
 
-   val unify  : loc * loc -> unit (* unify two locations *)
+   val unify     : region * region -> unit 
+   val interfere : region * region -> bool (* do they interfere? *) 
 
    (*   
     * More complex methods
     *)
-   val record : loc list -> loc        (* allocate a record *)
-   val mkref  : loc -> loc             (* allocate a reference *)
-   val app    : loc * loc list -> unit (* apply a function *)
-   val ret    : loc * loc list -> unit (* binds the return values *)
+   val mkRecord : region option * region list -> region    
+   val mkRef    : region option * region -> region        
+   val mkArray  : region option * region list -> region
+   val mkVector : region option * region list -> region
+   val mkLambda : region list -> region (* define a function *)
 
-   (*
-    * Pretty printing
-    *)
-   val toString : loc -> string
+   val app      : region * region list -> unit (* apply a function *)
+   val ret      : region * region list -> unit (* binds the return values *)
+
+   val strongUpdate    : region * int * region -> unit
+   val strongSubscript : region * int -> region 
+   val weakUpdate      : region * region -> unit
+   val weakSubscript   : region -> region
+
+   val toString  : region -> string
 
 end

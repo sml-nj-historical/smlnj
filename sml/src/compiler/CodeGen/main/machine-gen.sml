@@ -80,7 +80,6 @@ struct
                 structure C=CpsRegs
                 structure InvokeGC=InvokeGC
                 structure PseudoOp=PseudoOps
-                structure CpsTreeify=CpsTreeify
                 structure Flowgen=FlowGraphGen
                 val compile = compile
                )

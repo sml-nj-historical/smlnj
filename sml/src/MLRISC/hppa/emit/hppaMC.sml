@@ -616,16 +616,26 @@ struct
      | emitInstr (I.BCONDI{cmpi, bc, i, r2, n, nop, t, f}) = bcondi (cmpi, bc, i, r2, n, t, nop)
      | emitInstr (I.BB{bc, r, p, n, nop, t, f}) = branchOnBit (bc, r, p, n, t, nop)
      | emitInstr (I.B{lab, n}) = branchLink (0wx3a, 0, lab, 0wx0, n)
+     | emitInstr (I.LONGJUMP{lab, n, tmp, tmpLab}) = let
+
+(*#line 866.18 "hppa/hppa.md"*)
+          val offset = LabelExp.MINUS (LabelExp.LABEL lab, LabelExp.PLUS (LabelExp.LABEL tmpLab, LabelExp.INT 4))
+       in Label.setAddr (tmpLab, ( ! loc) + 4); 
+          branchLink (0wx3a, tmp, tmpLab, 0wx0, n); 
+          LongImmed {Op=0wxa, r=tmp, im21=assemble_21 (itow (LabelExp.valueOf offset))}; 
+          BranchVectored {Op=0wx3a, t=tmp, x=0, ext3=0wx6, n=n}
+       end
+
      | emitInstr (I.BE{b, d, sr, n, labs}) = let
 
-(*#line 853.18 "hppa/hppa.md"*)
+(*#line 882.18 "hppa/hppa.md"*)
           val (w, w1, w2) = assemble_17 (opn d)
        in BranchExternal {Op=0wx38, b=b, w1=w1, s=assemble_3 (itow sr), w2=w2, n=n, w=w}
        end
 
      | emitInstr (I.BV{x, b, labs, n}) = BranchVectored {Op=0wx3a, t=b, x=x, ext3=0wx6, n=n}
      | emitInstr (I.BLR{x, t, labs, n}) = BranchVectored {Op=0wx3a, t=t, x=x, ext3=0wx2, n=n}
-     | emitInstr (I.BL{x, t, defs, uses, mem, n}) = error "BL"
+     | emitInstr (I.BL{lab, t, defs, uses, mem, n}) = branchLink (0wx3a, t, lab, 0wx0, n)
      | emitInstr (I.BLE{d, b, sr, t, defs, uses, mem}) = 
        (
         case (d, t) of
@@ -643,7 +653,7 @@ struct
        )
      | emitInstr (I.FSTOREX{fstx, b, x, r, mem}) = let
 
-(*#line 924.18 "hppa/hppa.md"*)
+(*#line 953.18 "hppa/hppa.md"*)
           val (Op, uid, u, m) = emit_fstorex fstx
        in CoProcIndexed {Op=Op, b=b, x=x, s=0wx0, u=u, m=m, ls=0wx1, uid=uid, rt=r}
        end
@@ -656,7 +666,7 @@ struct
        )
      | emitInstr (I.FLOADX{flx, b, x, t, mem}) = let
 
-(*#line 942.18 "hppa/hppa.md"*)
+(*#line 971.18 "hppa/hppa.md"*)
           val (Op, uid, u, m) = emit_floadx flx
        in CoProcIndexed {Op=Op, b=b, x=x, s=0wx0, u=u, m=m, ls=0wx0, uid=uid, rt=t}
        end
@@ -667,7 +677,7 @@ struct
         I.XMPYU => FloatOp3Maj0E {sop=0wx2, f=0wx1, r1=r1, r2=r2, t=t, r11=0wx0, r22=0wx0}
       | _ => let
 
-(*#line 952.25 "hppa/hppa.md"*)
+(*#line 981.25 "hppa/hppa.md"*)
            val (sop, fmt) = emit_farith fa
         in FloatOp3Maj0C {sop=sop, r1=r1, r2=r2, t=t, n=0wx0, fmt=fmt}
         end
@@ -675,14 +685,14 @@ struct
        )
      | emitInstr (I.FUNARY{fu, f, t}) = let
 
-(*#line 960.18 "hppa/hppa.md"*)
+(*#line 989.18 "hppa/hppa.md"*)
           val (sop, fmt) = emit_funary fu
        in FloatOp0Maj0C {r=f, t=t, sop=sop, fmt=fmt}
        end
 
      | emitInstr (I.FCNV{fcnv, f, t}) = let
 
-(*#line 967.18 "hppa/hppa.md"*)
+(*#line 996.18 "hppa/hppa.md"*)
           val (sop, sf, df) = emit_fcnv fcnv
        in FloatOp1Maj0E {r=f, t=t, sop=sop, sf=sf, df=df, r2=0wx1, t2=0wx0}
        end

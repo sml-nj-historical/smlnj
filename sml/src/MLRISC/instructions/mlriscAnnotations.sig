@@ -17,11 +17,13 @@ sig
      * Currently, the annotation is recognized by the static branch prediction
      * module. 
      *)
+   exception BRANCHPROB of int
    val BRANCH_PROB : int Annotations.property (* in percentage (0-100)*) 
 
     (* The execution frequency of a basic block 
      * You can attach this at a basic block.
      *)
+   exception EXECUTIONFREQ of int
    val EXECUTION_FREQ : int Annotations.property
 
     (* No effect at all; this just allows you to insert comments *)
@@ -62,11 +64,13 @@ sig
     (*
      * Insert block names
      *)
+   exception BLOCKNAMES of Annotations.annotations
    val BLOCK_NAMES : Annotations.annotations Annotations.property
 
     (*
      * This annotation inserts an empty basic block
      *)
+   exception EMPTYBLOCK 
    val EMPTY_BLOCK : unit Annotations.property
 
     (* 

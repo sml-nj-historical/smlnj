@@ -73,6 +73,8 @@ struct
      rtl LDAH{r,b,d} = $r[r] := $r[b] + %d << 16
 
      (* Integer loads *)
+     rtl LDB{r,b,d,mem}    = $r[r] := sx (byte $m[disp(b,d):mem])
+     rtl LDW{r,b,d,mem}    = $r[r] := sx (word $m[disp(b,d):mem])
      rtl LDBU{r,b,d,mem}   = $r[r] := zx (byte $m[disp(b,d):mem])
      rtl LDWU{r,b,d,mem}   = $r[r] := zx (word $m[disp(b,d):mem])
      rtl LDL{r,b,d,mem}    = $r[r] := sx (dword $m[disp(b,d):mem])
@@ -298,7 +300,9 @@ struct
        | FBGE 0x36 | FBGT 0x37 
     
       datatype load! =  (* table C-1 *)
-         LDBU  0x02 
+         LDB
+       | LDW
+       | LDBU  0x02 
        | LDWU  0x04
        | LDL   0x28    
        | LDL_L 0x2A  

@@ -106,10 +106,11 @@ struct
                  [],  def, use, [], [], R.stack),
           #create MLRiscAnnotations.COMMENT "call gc")
 
-       (* val ZERO_FREQ = #create MLRiscAnnotations.EXECUTION_FREQ 0 *)
+       val ZERO_FREQ = #create MLRiscAnnotations.EXECUTION_FREQ 0
    end
 
    val CALLGC = #create MLRiscAnnotations.CALLGC ()
+   val NO_OPTIMIZATION = #create MLRiscAnnotations.NO_OPTIMIZATION ()
 
        (*
         * record descriptors
@@ -217,7 +218,7 @@ struct
                  T.LABEL(LE.MINUS(LE.INT MS.constBaseRegOffset,
                                   LE.LABEL returnLab)))
    in  defineLabel returnLab;
-       (* annotation(ZERO_FREQ); *)
+       annotation(ZERO_FREQ); 
        emit(case C.baseptr of 
               T.REG(ty, bpt) => T.MV(ty, bpt, baseExp)
             | T.LOAD(ty, ea, mem) => T.STORE(ty, ea, baseExp, mem)
@@ -579,9 +580,11 @@ struct
 
        val unpack = pack(emit, gcroots, boxed, int32, float)
    in  annotation(CALLGC);
-       (* annotation(ZERO_FREQ); *)
+       annotation(NO_OPTIMIZATION); 
+       annotation(ZERO_FREQ);
        emit(mark(gcCall));
        if known then computeBasePtr(emit,defineLabel,annotation) else ();
+       annotation(NO_OPTIMIZATION);
        unpack();
        emit ret
    end

@@ -133,21 +133,4 @@ sig
     *)
    val moveSavings : G.interferenceGraph -> (int -> int)
 
-   (*
-    * Spill propagation/coalescing phase 
-    *)
-   (*
-   val spillPropagation : G.interferenceGraph -> G.node list -> G.node list
-
-   (*
-    * Spill coalescing phase
-    *)
-   val spillCoalescing : G.interferenceGraph -> G.node list -> unit
-
-   (*
-    * Spill coloring phase
-    *)
-   val spillColoring : G.interferenceGraph -> G.node list -> unit
-   *)
-
 end

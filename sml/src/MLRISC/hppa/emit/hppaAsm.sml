@@ -413,6 +413,30 @@ struct
         emit_n n; 
         emit "\t"; 
         emit_label lab )
+      | I.LONGJUMP{lab, n, tmp, tmpLab} => 
+        (
+        ( emit "bl,n\t"; 
+        emit_label tmpLab; 
+        emit ", "; 
+        emit_GP tmp; 
+        emit "\n" ); 
+        
+        ( emit_label tmpLab; 
+        emit ":\n\t" ); 
+        
+        ( emit "addil "; 
+        emit_label lab; 
+        emit "-("; 
+        emit_label tmpLab; 
+        emit "+4), "; 
+        emit_GP tmp; 
+        emit "\n\t" ); 
+        
+        ( emit "bv"; 
+        emit_n n; 
+        emit "\t%r0("; 
+        emit_GP tmp; 
+        emit ")" ) )
       | I.BE{b, d, sr, n, labs} => 
         ( emit "be"; 
         emit_n n; 
@@ -439,12 +463,12 @@ struct
         emit "("; 
         emit_GP t; 
         emit ")" )
-      | I.BL{x, t, defs, uses, mem, n} => 
+      | I.BL{lab, t, defs, uses, mem, n} => 
         ( emit "bl"; 
         emit_n n; 
         emit "\t"; 
-        emit_operand x; 
-        emit "), "; 
+        emit_label lab; 
+        emit ", "; 
         emit_GP t; 
         emit_region mem; 
         emit_defs defs; 

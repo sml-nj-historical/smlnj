@@ -233,10 +233,12 @@ sig
    | BB of {bc:bitcond, r:int, p:int, n:bool, nop:bool, t:Label.label, f:Label.label
      }
    | B of {lab:Label.label, n:bool}
+   | LONGJUMP of {lab:Label.label, n:bool, tmp:int, tmpLab:Label.label
+     }
    | BE of {b:int, d:operand, sr:int, n:bool, labs:Label.label list}
    | BV of {x:int, b:int, labs:Label.label list, n:bool}
    | BLR of {x:int, t:int, labs:Label.label list, n:bool}
-   | BL of {x:operand, t:int, defs:C.cellset, uses:C.cellset, mem:Region.region
+   | BL of {lab:Label.label, t:int, defs:C.cellset, uses:C.cellset, mem:Region.region
      , n:bool}
    | BLE of {d:operand, b:int, sr:int, t:int, defs:C.cellset, uses:C.cellset
      , mem:Region.region}
@@ -491,10 +493,12 @@ struct
    | BB of {bc:bitcond, r:int, p:int, n:bool, nop:bool, t:Label.label, f:Label.label
      }
    | B of {lab:Label.label, n:bool}
+   | LONGJUMP of {lab:Label.label, n:bool, tmp:int, tmpLab:Label.label
+     }
    | BE of {b:int, d:operand, sr:int, n:bool, labs:Label.label list}
    | BV of {x:int, b:int, labs:Label.label list, n:bool}
    | BLR of {x:int, t:int, labs:Label.label list, n:bool}
-   | BL of {x:operand, t:int, defs:C.cellset, uses:C.cellset, mem:Region.region
+   | BL of {lab:Label.label, t:int, defs:C.cellset, uses:C.cellset, mem:Region.region
      , n:bool}
    | BLE of {d:operand, b:int, sr:int, t:int, defs:C.cellset, uses:C.cellset
      , mem:Region.region}

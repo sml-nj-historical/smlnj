@@ -26,11 +26,11 @@ struct
     | minSize(I.COMICLR_LDO _) = 8
     | minSize _            = 4
   
-  fun maxSize (I.BCOND _)  = 20
-    | maxSize (I.BCONDI _) = 20
-    | maxSize (I.BB _)     = 20
-    | maxSize (I.B _)	   = 16
-    | maxSize (I.FBRANCH _)= 24
+  fun maxSize (I.BCOND _)  = 16  (* BCOND+LONGJUMP *)
+    | maxSize (I.BCONDI _) = 16  (* BCONDI+LONGJUMP *)
+    | maxSize (I.BB _)     = 16  (* BB+LONGJUMP *)
+    | maxSize (I.B _)	   = 12  (* LONGJUMP *)
+    | maxSize (I.FBRANCH _)= 20
     | maxSize (I.COPY _)   = error "maxSize:COPY"
     | maxSize (I.FCOPY _)  = error "maxSize:FCOPY"
     | maxSize (I.ANNOTATION{i,...}) = maxSize i
@@ -70,7 +70,7 @@ struct
     in
        if im12 offset then 
           if nop then 8 else 4 
-       else if im17 offset then 8 else 20
+       else if im17 offset then 8 else 16
     end
     fun memDisp(c, short, long) = if im14(c) then short else long
   in
@@ -94,8 +94,8 @@ struct
       | I.BCOND{t, nop, ...}   => branch(t,nop)
       | I.BCONDI{t, nop, ...}  => branch(t,nop)
       | I.BB{t, nop, ...}      => branch(t,nop)
-      | I.B{lab, ...}          => if im17 (branchOffset lab) then 4 else 16
-      | I.FBRANCH{t, ...}      => if im17 (branchOffset t) then 12 else 24
+      | I.B{lab, ...}          => if im17 (branchOffset lab) then 4 else 12
+      | I.FBRANCH{t, ...}      => if im17 (branchOffset t) then 12 else 20
       | I.BLR{labs,...} => let
 	  val l = length labs * 8
 	  fun badOffsets(t::ts,n) =
@@ -117,20 +117,28 @@ struct
       | _  => error "sdiSize"
   end
 
+   (* Note: A better sequence would be to use ADDIL, however
+    * the expansion is done after register allocation and
+    * ADDIL defines %r1. 
+    *)
+
+   (*
   fun longJump{lab, n} = let
     val baseDisp =  LE.MINUS(LE.LABEL lab, LE.INT 8192)
     val labOpnd = (baseDisp, I.T)
     val baseptrR = 8
   in
-   (* Note: A better sequence would be to use ADDIL, however
-    * the expansion is done after register allocation and
-    * ADDIL defines %r1. 
-    *)
     [I.LDIL{i=I.HILabExp labOpnd, t=C.asmTmpR},
      I.LDO{i=I.LOLabExp labOpnd, b=C.asmTmpR, t=C.asmTmpR},
      I.ARITH{a=I.ADD, r1=baseptrR, r2=C.asmTmpR, t=C.asmTmpR},
      I.BV{x=0, labs=[lab], b=C.asmTmpR, n=n}]
   end
+    *)
+
+  fun longJump{lab, n} =
+    (print "longJump used\n";
+     [I.LONGJUMP{lab=lab, tmpLab=Label.newLabel "", n=n, tmp=C.asmTmpR}]
+    )
 
   fun split11 n = let
     val w = Word.fromInt(n)
@@ -210,7 +218,7 @@ struct
 	of (4,false) => [instr]
 	 | (8,true)  => [instr]
 	 | (8,_)     => [rev cmp, I.B{lab=t, n=n}]
-	 | (20,_)    => rev cmp :: longJump{lab=t, n=n}
+	 | (16,_)    => rev cmp :: longJump{lab=t, n=n}
         (*esac*)
       end
     | expand(instr as I.BCONDI{cmpi, bc, t, f, i, r2, n, nop}, size, _) = let
@@ -221,7 +229,7 @@ struct
 	  of (4,false) => [instr]
 	   | (8,true) => [instr]
 	   | (8,_) => [rev cmpi, I.B{lab=t, n=n}]
-	   | (20,_) => rev cmpi :: longJump{lab=t, n=n}
+	   | (16,_) => rev cmpi :: longJump{lab=t, n=n}
 	(*esac*)
       end
     | expand(instr as I.BB{bc, r, p, t, f, n, nop}, size, _) = let
@@ -231,17 +239,17 @@ struct
            (4,false) => [instr] 
          | (8,true) => [instr] 
          | (8,_) => [rev bc, I.B{lab=t,n=n}] 
-         | (20,_) => rev bc :: longJump{lab=t, n=n}
+         | (16,_) => rev bc :: longJump{lab=t, n=n}
       end    
     | expand(instr as I.B{lab=lab, n=n}, size, _) =
       (case size 
 	of 4 => [instr]
-         | 16 => longJump{lab=lab, n=n}
+         | 12 => longJump{lab=lab, n=n}
       (*esac*))
     | expand(instr as I.FBRANCH{t, f, n, ...}, size, _) =
       (case size 
 	of 12 => [instr]
-         | 24 => 
+         | 20 => 
 	     (* lets hope this sequence never gets generated sequence:
 			FTEST
 			allways trapping instruction

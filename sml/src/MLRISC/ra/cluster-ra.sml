@@ -45,38 +45,6 @@ struct
   
    val mode = 0w0
 
-   (*
-   local
-      val redundant_spills_on = MLRiscControl.getFlag "count-redundant-spills"
-      val red_reloads   = MLRiscControl.getCounter "redundant-reloads"
-   in fun countSpillsReloads nodesToSpill =
-      if !redundant_spills_on then
-      app (fn G.NODE{color=ref(G.ALIASED _), ...} => ()
-            | G.NODE{number, defs=ref defs, uses=ref uses, pri, ...} => 
-              let datatype defUse = DEF | USE
-                  val defsUses = 
-                        ListMergeSort.sort (fn ((a,_), (b,_)) => a < b)
-                          (map (fn pt => (pt,DEF)) defs @
-                           map (fn pt => (pt,USE)) uses)
-                  fun scan((a,b)::(rest as (c,d)::_)) =
-                      (if (a=c+1 orelse a=c+2) 
-                          andalso blockNum a = blockNum c then
-                          (case (b,d) of
-                            (DEF, USE) => red_reloads := !red_reloads + 1
-                          | (USE, USE) => red_reloads := !red_reloads + 1
-                          | _ => ()
-                          )
-                       else ();
-                       scan rest
-                      )
-                    | scan _ = ()
-              in  scan defsUses
-              end
-          ) nodesToSpill
-      else ()
-   end
-   *)
- 
    fun regmap(F.CLUSTER{regmap, ...}) = regmap
 
    fun dumpFlowgraph(msg, cluster, stream) =
@@ -100,7 +68,7 @@ struct
 
    fun services(cluster as F.CLUSTER{regmap, blocks, blkCounter, ...}) =
    let (* Create a graph based view of cluster *)
-       val N            = !blkCounter
+       val N = !blkCounter
 
        fun computeShift(0w0, max) = 0w31-max
          | computeShift(N, max) = computeShift(Word.>>(N, 0w1), Word.+(max,0w1))
@@ -384,12 +352,7 @@ struct
                    val _ = if pt >= progPt(blknum+1, 0) then 
                               error("mkNodes: too many instructions")
                            else ()
-                   (* fun fill i = 
-                       if i < A.length dtab then 
-                          (UA.update(dtab, i, []); fill(i+1))
-                       else () *)
-               in  (* fill i; *)
-                   (* If the block is escaping, then all liveout
+               in  (* If the block is escaping, then all liveout
                     * registers are considered used here.
                     *)
                    case !succ of
@@ -437,22 +400,6 @@ struct
         *)
        fun build(G, cellkind) = buildIt(cellkind, C.lookup regmap, G)
 
-       (*
-        * Grow a table 
-        *)
-       (*
-       fun grow(b, n) =
-       let (* val m = Word.toIntX(Word.>>(Word.fromInt(n+8),0w3)) *) 
-           val m = n+1
-       in  (* if A.length(A.sub(marked, b)) < m then
-              UA.update(marked, b, A.array(m, ~1))
-           else (); *)
-           if A.length(A.sub(defsTable, b)) < m then
-              UA.update(defsTable, b, A.array(m, []))
-           else ()
-       end 
-       *)
-
        (* 
         * Rebuild the interference graph;
         * We'll just do it from scratch for now.
@@ -461,9 +408,6 @@ struct
            (Core.clearNodes G;
             buildIt(cellkind, Core.regmap G, G)
            )
-
-       val regs = foldr(fn (r, "") => Int.toString r
-                         | (r, l)  => Int.toString r^","^l) ""
 
        (*
         * Spill a set of nodes and rewrite the flowgraph 
@@ -545,38 +489,6 @@ struct
                end
            val _ = markSpills nodesToSpill
 
-           (* Print all spill/reload locations *)
-           (* val _ = countSpillsReloads nodesToSpill *) 
-           (*
-           val _ = 
-              if !(MLRiscControl.getFlag "dump-spills") then
-              app 
-              (fn G.NODE{color=ref(G.ALIASED _), ...} => ()
-                | G.NODE{number, defs=ref defs, uses=ref uses, pri, ...} => 
-                  let fun pr pt = let val b = blockNum pt
-                                      val p = instrNum pt
-                                  in  Int.toString b^"."^Int.toString p end
-                      fun prs pts = foldr (fn (pt,"") => pr pt
-                                            | (pt,l) => pr pt^", "^l) "" pts
-                  in   case 
-                         (if List.exists 
-                           (fn def => List.exists (fn use => use=def-1) uses)
-                          defs then (print "DEF-USE "; true) else false,
-                          if List.exists 
-                          (fn use => List.exists (fn use2 => use=use2-1) uses)
-                          uses then (print " USE-USE "; true) else false) of
-                         (false,false) => ()
-                       | _ =>
-                          (print("Spilling ["^Int.toString(!pri)^
-                                 "] r"^Int.toString number);
-                           print(" defs="^prs(SortedList.uniq defs));
-                           print(" uses="^prs(SortedList.uniq uses));
-                           print "\n")
-                  end
-              ) nodesToSpill
-              else ()
-            *)
-
            (* Rewrite all affected blocks *)
            fun rewriteAll (blknum, _) =
                case A.sub(blockTable, blknum) of
@@ -586,7 +498,6 @@ struct
                                        instrs=instrs,
                                        annotations=annotations}
                   in  insns := instrs
-                      (* grow(blknum, length instrs) *)
                   end
                | _ => error "rewriteAll"
 

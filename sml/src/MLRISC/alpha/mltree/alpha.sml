@@ -876,7 +876,7 @@ struct
 
       (* generate a load byte with sign extension (page 4-48) *)
       and load8s(ea,rd,mem,an) = 
-          if !byteWordLoadStores then loadSigned(I.LDBU,8,ea,rd,mem,an)
+          if !byteWordLoadStores then load(I.LDB,ea,rd,mem,an)
           else loadSext(ea,rd,mem,1,I.EXTQH,56,an)
 
       (* generate a load 16 bit *)
@@ -886,7 +886,7 @@ struct
 
       (* generate a load 16 bit with sign extension *)
       and load16s(ea,rd,mem,an) = 
-          if !byteWordLoadStores then loadSigned(I.LDWU,16,ea,rd,mem,an) 
+          if !byteWordLoadStores then load(I.LDW,ea,rd,mem,an) 
           else loadSext(ea,rd,mem,2,I.EXTQH,48,an)
 
       (* generate a load 32 bit with sign extension *)
@@ -920,11 +920,13 @@ struct
 
       (* generate a store byte *)
       and store8(ea,data,mem,an) = 
-          storeUnaligned(ea,data,mem,I.INSBL,I.MSKBL,an)  
+          if !byteWordLoadStores then store(I.STB, ea, data, mem, an)
+          else storeUnaligned(ea,data,mem,I.INSBL,I.MSKBL,an)  
 
       (* generate a store16 *)
       and store16(ea,data,mem,an) = 
-          storeUnaligned(ea,data,mem,I.INSWL,I.MSKWL,an)  
+          if !byteWordLoadStores then store(I.STW, ea, data, mem, an)
+          else storeUnaligned(ea,data,mem,I.INSWL,I.MSKWL,an)  
 
       (* generate conversion from floating point to integer *)
       and cvtf2i(pseudo,rounding,e,rd,an) = 

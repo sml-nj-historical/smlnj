@@ -848,6 +848,35 @@ struct
         nullified: n = true
         delayslot candidate: false
 
+      (* 
+       * This composite instruction is generated only during span dependence
+       * resolution when trying to resolve conditional branches.
+       * The expanded sequence is 12 bytes long.
+       * Basically, the branch and link instruction jumps directly to 
+       * the next instruction at tmpLab, and put the address of tmpLab + 4
+       * into register tmp. The offset computation in addil computes the 
+       * actual address of lab.  
+       *)
+    | LONGJUMP of {lab:Label.label, n:bool, tmp: $GP, tmpLab:Label.label}  
+        asm: (``bl,n\t<tmpLab>, <tmp>\n'';
+              ``<tmpLab>:\n\t'';
+              ``addil <lab>-(<tmpLab>+4), <tmp>\n\t'';
+              ``bv<n>\t%r0(<tmp>)''
+             ) 
+        mc:  let val offset = 
+                    LabelExp.MINUS(LabelExp.LABEL lab, 
+                        LabelExp.PLUS(LabelExp.LABEL tmpLab, LabelExp.INT 4))
+             in (* set the location of tmpLab *)
+                 Label.setAddr(tmpLab, !loc+4); 
+                 branchLink(0wx3a,tmp,tmpLab,0w0,n);
+                 LongImmed{Op=0wxa,r=tmp,
+                           im21=assemble_21(itow(LabelExp.valueOf offset))};
+                 BranchVectored{Op=0wx3a,t=tmp,x=0,ext3=0w6,n=n}
+             end
+	rtl: [[ "B" ]]
+        nullified: n = true
+        delayslot candidate: false
+
     | BE of {b: $GP, d:operand, sr:int, n:bool, labs: Label.label list}
         asm: ``be<n>\t<d>(<sr>,<b>)''
         mc:  let val (w,w1,w2) = assemble_17(opn d)
@@ -870,10 +899,10 @@ struct
         nullified: n = true
         delayslot candidate: false
 
-    | BL of {x:operand,t: $GP, defs: C.cellset, uses:C.cellset, 
+    | BL of {lab:Label.label ,t: $GP, defs: C.cellset, uses:C.cellset, 
              mem:Region.region, n:bool}
-        asm: ``bl<n>\t<x>), <t><mem><emit_defs(defs)><emit_uses(uses)>''
-        (* not implemented *) 
+        asm: ``bl<n>\t<lab>, <t><mem><emit_defs(defs)><emit_uses(uses)>''
+        mc:  branchLink(0wx3a,t,lab,0w0,n)
         nullified: n = true
         delayslot candidate: false
 

@@ -21,8 +21,6 @@ struct
   val ity = 32
   val fty = 64
 
-  val T.REG(_, allocptrR) = C.allocptr
-
   fun ea(r, 0) = r
     | ea(r, n) = T.ADD(addrTy, r, T.LI n)
 
@@ -30,10 +28,9 @@ struct
     | indexEA(r, n) = T.ADD(addrTy, r, T.LI(n*4))
 
   fun pi(x as ref(R.PT.TOP _),_) = x
-    | pi(x as ref(R.PT.NAMED _),_) = x
     | pi(x,i) = R.PT.pi(x,i)
 
-  fun record {desc, fields, ans, mem, hp, emit, markPTR, markComp} = let
+  fun record {desc, fields, mem, hp, emit, markPTR, markComp} = let
     fun getfield(r, CPS.SELp(n, CPS.OFFp 0), mem) = 
         let val mem = pi(mem,n)
         in  markComp(T.LOAD(ity, indexEA(r, n), mem)) end
@@ -55,10 +52,10 @@ struct
   in
     emit(T.STORE(ity, ea(C.allocptr, hp), desc, pi(mem,~1)));
     storeFields(fields, hp+4, mem, 0);
-    emit(T.MV(pty, ans, T.ADD(addrTy, C.allocptr, T.LI(hp+4))))
+    hp + 4
   end
 
-  fun frecord {desc, fields, ans, mem, hp, emit, markPTR, markComp} = let
+  fun frecord {desc, fields, mem, hp, emit, markPTR, markComp} = let
     fun fgetfield(T.FPR fp, CPS.OFFp 0, _) = fp
       | fgetfield(T.GPR r, path, mem) = let
 	  fun fea(r, 0) = r
@@ -81,7 +78,7 @@ struct
   in
     emit(T.STORE(ity, ea(C.allocptr, hp), desc, pi(mem,~1)));
     fstoreFields(fields, hp+4, mem, 0);
-    emit(T.MV(pty, ans, T.ADD(addrTy, C.allocptr, T.LI(hp+4))))
+    hp + 4
   end	
 end
 

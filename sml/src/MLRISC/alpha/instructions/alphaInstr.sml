@@ -40,7 +40,9 @@ sig
    | FBGE
    | FBGT
    datatype load =
-     LDBU
+     LDB
+   | LDW
+   | LDBU
    | LDWU
    | LDL
    | LDL_L
@@ -283,7 +285,9 @@ struct
    | FBGE
    | FBGT
    datatype load =
-     LDBU
+     LDB
+   | LDW
+   | LDBU
    | LDWU
    | LDL
    | LDL_L

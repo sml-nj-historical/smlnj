@@ -93,29 +93,25 @@ struct
 
       (* Add an annotation *)
       fun annotation a =
-          case #peek MLRiscAnnotations.BLOCK_NAMES a of
-            SOME names => (endCurrBlock(); blockNames := names)
-          | NONE => 
-             (if #contains MLRiscAnnotations.EMPTY_BLOCK [a] then
-                (case !currBlock of
-                   F.BBLOCK _ => ()
-                 | _ => currBlock := newBasicBlock [];
-                 endCurrBlock())
-              else 
-                (case #peek MLRiscAnnotations.EXECUTION_FREQ a of
-                  SOME f =>
-                   (case !currBlock of
-                      F.BBLOCK{freq, ...} => freq := f
-                    |  _ => (currBlock := newBasicBlock []; annotation a)
-                   )
-                | NONE =>
-                   (case !currBlock of
+          case a of
+            MLRiscAnnotations.BLOCKNAMES names =>
+              (endCurrBlock(); blockNames := names)
+          | MLRiscAnnotations.EMPTYBLOCK =>
+              (case !currBlock of
+                 F.BBLOCK _ => ()
+               | _ => currBlock := newBasicBlock [];
+               endCurrBlock()
+              )
+          | MLRiscAnnotations.EXECUTIONFREQ f =>
+               (case !currBlock of
+                  F.BBLOCK{freq, ...} => freq := f
+                |  _ => (currBlock := newBasicBlock []; annotation a)
+               )
+          | a => (case !currBlock of
                      F.BBLOCK{annotations, ...} => 
                        annotations := a :: !annotations
-                   |  _ => (currBlock := newBasicBlock []; annotation a)
-                   )
-                )
-             )
+                 |  _ => (currBlock := newBasicBlock []; annotation a)
+                 )
  
       (* Add a comment *)
       fun comment msg = annotation(#create MLRiscAnnotations.COMMENT msg)

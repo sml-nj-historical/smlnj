@@ -9,6 +9,8 @@ struct
   structure A = Array
   structure W = Word
 
+  val debug = false
+
   open G RACore
 
   val ra_spill_coal = MLRiscControl.getCounter "ra-spill-coalescing"
@@ -126,6 +128,7 @@ struct
 
   (*
    * Spill propagation.
+   * This one uses a simple local lookahead algorithm.
    *)
   fun spillPropagation(G as GRAPH{bitMatrix, memRegs, ...}) nodesToSpill =
   let val spillCoalescing = spillCoalescing G
@@ -140,29 +143,112 @@ struct
        * The pinned flag is to prevent the spill node from coalescing
        * two different fixed memory registers.
        *)
-      fun coalescingSavings([], pinned, sc) = (pinned, sc+sc)
-        | coalescingSavings(MV{status=ref(CONSTRAINED | COALESCED), ...}::mvs,
-                            pinned, sc) = coalescingSavings(mvs, pinned, sc)
-        | coalescingSavings(MV{dst, src, cost, ...}::mvs, pinned, sc) =
-          let val NODE{number=d, color=dstCol, ...} = chase dst
-              val NODE{number=s, color=srcCol, ...} = chase src
-              fun savings(x) =
-                  if member(d, s) then coalescingSavings(mvs, pinned, sc) 
-                  else if x = ~1 then coalescingSavings(mvs, pinned, sc+cost)
-                  else if pinned >= 0 andalso pinned <> x then 
-                     (* already coalesced with another mem reg *)
-                     coalescingSavings(mvs, pinned, sc) 
-                  else
-                     (* coalescingSavings(mvs, x, sc+cost) *) (* XXX *)
-                     coalescingSavings(mvs, x, sc+cost)
-          in  if d = s then
-                 coalescingSavings(mvs, pinned, sc)
+      fun coalescingSavings
+           (node as NODE{number=me, movelist, pri=ref spillcost, ...}) =
+      let fun interferes(x,[]) = false
+            | interferes(x,NODE{number=y, ...}::ns) = 
+                 x = y orelse member(x,y) orelse interferes(x, ns)
+
+          fun moveSavings([], pinned, total) = (pinned, total+total)
+            | moveSavings(MV{status=ref(CONSTRAINED | COALESCED), ...}::mvs,
+                          pinned, total) = 
+                 moveSavings(mvs, pinned, total)
+            | moveSavings(MV{dst, src, cost, ...}::mvs, pinned, total) =
+              let val NODE{number=d, color=dstCol, ...} = chase dst
+                  val NODE{number=s, color=srcCol, ...} = chase src
+
+                  (* How much can be saved by coalescing with the memory 
+                   * location x.
+                   *)
+                  fun savings(x) =
+                      if member(d, s) then 
+                        (if debug then print "interfere\n" else (); 
+                         moveSavings(mvs, pinned, total))
+                      else if x = ~1 then 
+                        (if debug then print (Int.toString cost^"\n") else ();
+                         moveSavings(mvs, pinned, total+cost))
+                      else if pinned >= 0 andalso pinned <> x then 
+                        (* already coalesced with another mem reg *)
+                        (if debug then print "pinned\n" else ();
+                         moveSavings(mvs, pinned, total))
+                     else
+                        (if debug then print (Int.toString cost^"\n") else ();
+                         moveSavings(mvs, x, total+cost))
+
+                 val _ = if debug then
+                            (print("Savings "^Int.toString d^" <-> "^
+                                              Int.toString s^"=")
+                            ) else ()
+              in  if d = s then
+                    (if debug then print "0 (trivial)\n" else ();
+                     moveSavings(mvs, pinned, total)
+                    )
+                 else
+                    case (!dstCol, !srcCol) of
+                      (SPILLED x, PSEUDO) => savings(x)
+                    | (PSEUDO, SPILLED x) => savings(x)
+                    | _ => (if debug then print "0 (other)\n" else ();
+                            moveSavings(mvs, pinned, total))
+              end
+
+          (* Find initial budget *)
+          val _ = if debug then
+                      print("Trying to propagate "^Int.toString me^
+                            " spill cost="^Int.toString spillcost^"\n")
+                  else ()
+                  
+          val (pinned, savings) = moveSavings(!movelist, ~1, 0)
+          val budget = spillcost - savings
+          val S      = [node]
+
+          (* Find lookahead nodes *)
+          fun lookaheads([], L) = L
+            | lookaheads(MV{cost, dst, src, ...}::mvs, L) =
+              let val dst as NODE{number=d, ...} = chase dst
+                  val src as NODE{number=s, ...} = chase src
+                  fun check(n, node as NODE{color=ref PSEUDO, ...}) = 
+                      if n = me orelse member(n, me) then
+                          lookaheads(mvs, L)       
+                      else
+                          add(n, node, L, []) 
+                    | check _ = lookaheads(mvs, L)
+                  and add(x, x', (l as (c,n' as NODE{number=y, ...}))::L, L') =
+                       if x = y then 
+                          lookaheads(mvs, (cost+c, n')::List.revAppend(L', L))
+                       else add(x, x', L, l::L')
+                    | add(x, x', [], L') = 
+                          lookaheads(mvs, (cost, x')::L')
+              in  if d = me then check(s, src) else check(d, dst)
+              end
+
+          (* Now try to improve it by also propagating the lookahead nodes *)
+          fun improve([], pinned, budget, S) = (budget, S)
+            | improve((cost, node as NODE{number=n, movelist, pri, ...})::L, 
+                      pinned, budget, S) = 
+              if interferes(n, S) then
+                  (if debug then 
+                      print ("Excluding "^Int.toString n^" (interferes)\n")
+                   else ();
+                  improve(L, pinned, budget, S))
               else
-                 case (!dstCol, !srcCol) of
-                   (SPILLED x, PSEUDO) => savings(x)
-                 | (PSEUDO, SPILLED x) => savings(x)
-                 | _ => coalescingSavings(mvs, pinned, sc)
-          end
+              let val (pinned', savings) = moveSavings(!movelist, pinned, 0)
+                  val defUseSavings = cost+cost
+                  val spillcost     = !pri
+                  val budget' = budget - savings - defUseSavings + spillcost
+              in  if budget' <= budget then 
+                     (if debug then print ("Including "^Int.toString n^"\n")
+                      else ();
+                      improve(L, pinned', budget', node::S)
+                     )
+                  else
+                     (if debug then print ("Excluding "^Int.toString n^"\n")
+                      else ();
+                      improve(L, pinned, budget, S))
+              end
+
+      in  if budget <= 0 then (budget, S)
+          else improve(lookaheads(!movelist, []), pinned, budget, S)
+      end
 
       (* Insert all spillable neighbors onto the worklist *)
       fun insert([], worklist) = worklist
@@ -173,27 +259,36 @@ struct
                 insert(adj, node::worklist))
         | insert(_::adj, worklist) = insert(adj, worklist)
 
+      fun insertAll([], worklist) = worklist
+        | insertAll(NODE{adj, ...}::nodes, worklist) = 
+             insertAll(nodes, insert(!adj, worklist))
+
       val marker = SPILLED(~1)
 
       (* Process all nodes from the worklist *)
       fun propagate([], spilled) = spilled
-        | propagate((node as NODE{color as ref PSEUDO, 
-                                  pri=ref spillcost, number, 
-                                  adj, movelist, ...})::worklist, 
+        | propagate((node as NODE{color=ref PSEUDO, ...})::worklist, 
                     spilled) =
-          let val (pinned, savings) = coalescingSavings(!movelist, ~1, 0)
-          in  (* if (if pinned >= 0 then savings > spillcost
-                 else savings >= spillcost) *) (* XXX *)
-              if savings >= spillcost 
+          let val (budget, S) = coalescingSavings(node)
+              fun spillNodes([]) = ()
+                | spillNodes(NODE{color, ...}::nodes) = 
+                  (ra_spill_prop := !ra_spill_prop + 1;
+                   color := marker; (* spill the node *)
+                   spillNodes nodes
+                  )
+                    
+          in  if budget <= 0 
               then  (* propagate spill *)
-                 (ra_spill_prop := !ra_spill_prop + 1;
-                  color := marker; (* spill the node *)
-                  (* print("Propagating "^Int.toString number^" "^
-                        "savings="^Int.toString(savings)^
-                       " cost="^Int.toString spillcost^"\n"); *)
+                 (if debug then
+                    (print("Propagating ");
+                     app (fn NODE{number=x, ...} => print(Int.toString x^" "))
+                         S;
+                     print "\n") 
+                  else ();
+                  spillNodes S;
                   (* run spill coalescing *)
-                  spillCoalescing [node]; 
-                  propagate(insert(!adj, worklist), node::spilled)
+                  spillCoalescing S;
+                  propagate(insertAll(S, worklist), List.revAppend(S,spilled))
                  )
               else
                  propagate(worklist, spilled)
@@ -223,6 +318,7 @@ struct
 
   in  iterate(nodesToSpill, nodesToSpill)
   end
+
 
   (*
    * Spill coloring.

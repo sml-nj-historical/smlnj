@@ -107,7 +107,9 @@ struct
      | asm_fbranch (I.FBGE) = "fbge"
      | asm_fbranch (I.FBGT) = "fbgt"
    and emit_fbranch x = emit (asm_fbranch x)
-   and asm_load (I.LDBU) = "ldbu"
+   and asm_load (I.LDB) = "ldb"
+     | asm_load (I.LDW) = "ldw"
+     | asm_load (I.LDBU) = "ldbu"
      | asm_load (I.LDWU) = "ldwu"
      | asm_load (I.LDL) = "ldl"
      | asm_load (I.LDL_L) = "ldl_l"
@@ -281,7 +283,7 @@ struct
      | asm_osf_user_palcode (I.WRUNIQUE) = "wrunique"
    and emit_osf_user_palcode x = emit (asm_osf_user_palcode x)
 
-(*#line 459.7 "alpha/alpha.md"*)
+(*#line 463.7 "alpha/alpha.md"*)
    fun isZero (I.LABop le) = (LabelExp.valueOf le) = 0
      | isZero _ = false
    fun emitInstr instr = 

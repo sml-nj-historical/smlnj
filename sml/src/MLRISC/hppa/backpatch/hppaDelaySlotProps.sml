@@ -45,6 +45,7 @@ struct
              {nop=nop, n=n, nOn=if backward then D_TAKEN else D_FALLTHRU, 
               nOff=D_ALWAYS}
        | I.B{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
+       | I.LONGJUMP{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
        | I.BV{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
        | I.BE{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
        | I.BLR{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
@@ -64,8 +65,10 @@ struct
        | (I.BV{labs,b,x,...},false) => I.BV{labs=labs,b=b,x=x,n=n}
        | (I.BE{labs,b,d,sr,...},false) => I.BE{labs=labs,b=b,d=d,sr=sr,n=n}
        | (I.BLR{x,t,labs,...},false) => I.BLR{x=x,t=t,labs=labs,n=n}
-       | (I.BL{x,t,defs,uses,mem,...},false) => 
-            I.BL{x=x,t=t,defs=defs,uses=uses,mem=mem,n=n}
+       | (I.BL{lab,t,defs,uses,mem,...},false) => 
+            I.BL{lab=lab,t=t,defs=defs,uses=uses,mem=mem,n=n}
+       | (I.LONGJUMP{lab,tmp,tmpLab,...},false) => 
+            I.LONGJUMP{lab=lab,tmp=tmp,tmpLab=tmpLab,n=n}
        | (I.ANNOTATION{i,a},_) => 
            I.ANNOTATION{i=enableDelaySlot{instr=i,n=n,nop=nop},a=a}
        | _ => error "enableDelaySlot"
@@ -103,7 +106,7 @@ struct
 
     fun delaySlotCandidate{jmp,delaySlot=
              (I.BCOND _ | I.BCONDI _ | I.BB _ | I.FBRANCH _ | I.BV _ | I.BE _ |
-              I.COMCLR_LDO _ | I.COMICLR_LDO _ | I.B _ |
+              I.COMCLR_LDO _ | I.COMICLR_LDO _ | I.B _ | I.LONGJUMP _ |
               I.BLR _ | I.BL _ | I.BLE _)} = false
       | delaySlotCandidate{jmp=I.ANNOTATION{i,...},delaySlot} = 
            delaySlotCandidate{jmp=i,delaySlot=delaySlot}
@@ -118,6 +121,8 @@ struct
      | setTarget(I.BB{bc,r,p,n,nop,t,f,...},lab) = 
          I.BB{bc=bc,p=p,nop=nop,n=n,r=r,t=lab,f=f}
      | setTarget(I.B{n,...},lab) = I.B{n=n,lab=lab}
+     | setTarget(I.LONGJUMP{n, tmp, tmpLab, ...},lab) = 
+         I.LONGJUMP{n=n, tmp=tmp, tmpLab=tmpLab, lab=lab}
      | setTarget(I.ANNOTATION{i,a},lab) = I.ANNOTATION{i=setTarget(i,lab),a=a}
      | setTarget _ = error "setTarget"
 

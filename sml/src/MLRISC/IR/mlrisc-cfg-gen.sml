@@ -110,15 +110,13 @@ struct
 
        (* Add a new annotation *)
        fun annotation a = 
-           case #peek MLRiscAnnotations.BLOCK_NAMES a of
-              SOME names => 
+           case a of
+             MLRiscAnnotations.BLOCKNAMES names =>
                 (blockNames := names;
                  nextBlock()
                 )
-           |  NONE =>
-              if #contains MLRiscAnnotations.EMPTY_BLOCK [a] then
-                 nextBlock()
-              else
+           | MLRiscAnnotations.EMPTYBLOCK => nextBlock()
+           | a => 
               let val CFG.BLOCK{annotations,...} = getBlock()
               in  annotations := a :: !annotations
               end

@@ -28,10 +28,11 @@ struct
                   then D_TAKEN
                   else D_FALLTHRU), nOff=D_ALWAYS}
              | I.B{lab, n} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
+             | I.LONGJUMP{lab, n, tmp, tmpLab} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
              | I.BE{b, d, sr, n, labs} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
              | I.BV{x, b, labs, n} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
              | I.BLR{x, t, labs, n} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
-             | I.BL{x, t, defs, uses, mem, n} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
+             | I.BL{lab, t, defs, uses, mem, n} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
              | I.BLE{d, b, sr, t, defs, uses, mem} => {nop=false, n=false, nOn=D_NONE, nOff=D_ALWAYS}
              | I.FBRANCH{cc, fmt, f1, f2, t, f, n, long} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
              | _ => {nop=true, n=false, nOn=D_ERROR, nOff=D_NONE}
@@ -49,10 +50,11 @@ struct
              | I.BCONDI{cmpi, bc, i, r2, n, nop, t, f} => false
              | I.BB{bc, r, p, n, nop, t, f} => false
              | I.B{lab, n} => false
+             | I.LONGJUMP{lab, n, tmp, tmpLab} => false
              | I.BE{b, d, sr, n, labs} => false
              | I.BV{x, b, labs, n} => false
              | I.BLR{x, t, labs, n} => false
-             | I.BL{x, t, defs, uses, mem, n} => false
+             | I.BL{lab, t, defs, uses, mem, n} => false
              | I.BLE{d, b, sr, t, defs, uses, mem} => false
              | I.FBRANCH{cc, fmt, f1, f2, t, f, n, long} => false
              | I.BREAK{code1, code2} => false

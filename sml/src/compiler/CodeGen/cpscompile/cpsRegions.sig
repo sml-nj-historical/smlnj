@@ -2,7 +2,7 @@ signature CPS_REGION =
 sig
   structure PT : POINTS_TO = PointsTo
 
-  type region = PT.loc
+  type region = PT.region
 
   val stack     : region
   val spill     : region
@@ -10,5 +10,8 @@ sig
   val memory    : region
   val storelist : region
   val real      : region
+
   val toString  : region -> string
+
+  val reset     : unit -> unit
 end

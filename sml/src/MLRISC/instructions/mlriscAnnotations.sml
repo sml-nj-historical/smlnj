@@ -11,10 +11,16 @@ struct
 
     (* the branch probability of conditional branches *)
     (* in percentage *) 
-   val BRANCH_PROB = A.new(SOME(fn b => "branch("^Int.toString b^"%)"))
+   exception BRANCHPROB of int
+   val BRANCH_PROB = A.new'{create=BRANCHPROB, 
+                            get=fn BRANCHPROB b => b | e => raise e,
+                            toString=fn b => "branch("^Int.toString b^"%)"}
 
     (* the execution frequency of a basic block *)
-   val EXECUTION_FREQ = A.new(SOME(fn r => "freq("^Int.toString r^")"))
+   exception EXECUTIONFREQ of int
+   val EXECUTION_FREQ = A.new'{create=EXECUTIONFREQ,
+                               get=fn EXECUTIONFREQ x => x | e => raise e,
+                               toString=fn r => "freq("^Int.toString r^")"}
 
     (* no effect at all; just allows you to insert comments *)
    val COMMENT = A.new(SOME(fn s => s))
@@ -48,9 +54,16 @@ struct
    val NO_OPTIMIZATION = A.new(SOME(fn () => "NO_OPTIMIZATION"))
    val CALLGC = A.new(SOME(fn () => "CALLGC"))
    val GCSAFEPOINT = A.new(SOME(fn s => "GCSAFEPOINT: "^s))
-   val BLOCK_NAMES = A.new(SOME(fn _ => "BLOCK_NAMES")) :
-                       A.annotations A.property
-   val EMPTY_BLOCK = A.new(SOME(fn () => "EMPTY_BLOCK"))
+
+   exception BLOCKNAMES of A.annotations
+   val BLOCK_NAMES = A.new'{create=BLOCKNAMES,
+                            get=fn BLOCKNAMES n => n | e => raise e,
+                            toString=fn _ => "BLOCK_NAMES"}
+
+   exception EMPTYBLOCK 
+   val EMPTY_BLOCK = A.new'{create=fn () => EMPTYBLOCK,
+                            get=fn EMPTYBLOCK => () | e => raise e,
+                            toString=fn () => "EMPTY_BLOCK"}
 
    exception MARKREG of int -> unit
    val MARK_REG = A.new'{toString=fn _ => "MARK_REG",

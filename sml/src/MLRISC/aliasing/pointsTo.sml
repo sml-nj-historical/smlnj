@@ -1,67 +1,134 @@
 (*
- * This module performs flow insensitive points-to analysis for type-safe
- * languages.
+ * This module performs low-level flow insensitive points-to 
+ * analysis for type-safe languages.
  *)
 structure PointsTo : POINTS_TO =
 struct
 
-   datatype kind = PI | DOM | RAN 
+   datatype edgekind = PI | DOM | RAN | RECORD | MARK
 
-   datatype cell = LINK of loc
-                 | REF of int * (kind * int * loc) list ref
-                 | TOP of int
-                 | NAMED of string * loc
+   datatype cell = 
+     LINK  of region
+   | SREF  of int * edges ref
+   | WREF  of int * edges ref
+   | SCELL of int * edges ref
+   | WCELL of int * edges ref
+   | TOP   of {mutable:bool, id:int, name:string}
+      (* a collapsed node *)
 
-   withtype loc = cell ref
-
+   withtype region = cell ref
+   and      edges  = (edgekind * int * region) list
 
    fun error msg = MLRiscErrorMsg.error("PointsTo",msg)
 
-   fun greaterKind(PI,PI) = false   
-     | greaterKind(DOM,(PI | DOM)) = false
-     | greaterKind(RAN,(PI | DOM | RAN)) = false
-     | greaterKind _ = false
+   (* PI > DOM > RAN > RECORD *)
+   fun greaterKind(PI,_) = false   
+     | greaterKind(DOM,PI) = false
+     | greaterKind(RAN,(PI | DOM)) = false
+     | greaterKind(RECORD,(PI | DOM | RAN)) = false
+     | greaterKind(MARK,(PI | DOM | RAN | RECORD)) = false
+     | greaterKind _ = true
 
-   fun follows(k,i,k',i') = k=k' andalso i > i' orelse greaterKind(k,k')
+   fun less(k,i,k',i') = k=k' andalso i > i' orelse greaterKind(k,k')
 
-   val sort : (kind * int * loc) list -> (kind * int * loc) list = 
-      ListMergeSort.sort (fn ((k,i,_),(k',i',_)) => follows(k,i,k',i'))
+   val sort : (edgekind * int * region) list -> 
+              (edgekind * int * region) list = 
+      ListMergeSort.sort (fn ((k,i,_),(k',i',_)) => less(k,i,k',i'))
 
-   val newMem = ref(fn () => 0)
-
+   val newMem = ref(fn _ => error "newMem") : (unit -> int) ref
    fun reset f = newMem := f
 
-   fun newRef _ = ref(REF(!newMem(),ref []))
-   fun newTop _ = ref(TOP(!newMem()))
-
-   fun getList(ref(LINK x)) = getList x
-     | getList(ref(REF(_,l))) = l
-     | getList _ = error "getList"
+   fun newSRef() = ref(SREF(!newMem(),ref []))
+   fun newWRef() = ref(WREF(!newMem(),ref []))
+   fun newSCell() = ref(SCELL(!newMem(),ref []))
+   fun newWCell() = ref(WCELL(!newMem(),ref []))
+   fun newTop{name,mutable} = 
+     ref(TOP{mutable=mutable, id= !newMem(), name=name})
 
    fun find(ref(LINK x)) = find x
-     | find(ref(NAMED(_,x))) = find x
      | find x = x
 
-   fun getIth(k,i,ref(LINK x)) = getIth(k,i,x)
-     | getIth(k,i,ref(NAMED(_,x))) = getIth(k,i,x)
-     | getIth(k,i,x as ref(TOP _)) = x
-     | getIth(k,i,ref(REF(_,l))) = getIth'(k,i,l)
+   fun mut(ref(LINK x)) = mut x
+     | mut(r as ref(TOP{mutable=false, id, name})) = 
+       (r := TOP{mutable=true, id=id, name=name})
+     | mut(r as ref(SCELL x)) = r := SREF x
+     | mut(r as ref(WCELL x)) = r := WREF x
+     | mut _ = ()
 
-   and getIth'(k,i,list) =
-   let fun search((k',i',x)::l) = 
-             if k = k' andalso i = i' then find x else search l
-         | search [] = let val x = newRef() in list := (k,i,x) :: !list; x end
-   in  search(!list) end
+   and weak(ref(LINK x)) = weak x
+     | weak(ref(TOP _)) = ()
+     | weak(r as ref(SCELL x)) = (r := WCELL x; mergePis x)
+     | weak(r as ref(SREF x)) = (r := WREF x; mergePis x)
+     | weak _ = ()
 
-   fun unify(x,y) =
+   and mergePis(_,edges) = 
+       let val x = newSCell()
+           fun merge([],es') = es'
+             | merge((PI,_,y)::es,es') = (unify(x,y); merge(es, es'))
+             | merge(e::es,es') = merge(es,e::es')
+       in  edges := (PI,0,x)::merge(!edges, []) end
+
+   and getIth(k,i,ref(LINK x)) = getIth(k,i,x)
+     | getIth(k,i,r as ref(TOP _)) = r
+     | getIth(k,i,ref(SREF(_,edges))) = getIth'(k,i,edges)
+     | getIth(k,i,ref(WREF(_,edges))) = getIth'(k,i,edges)
+     | getIth(k,i,ref(SCELL(_,edges))) = getIth'(k,i,edges)
+     | getIth(k,i,ref(WCELL(_,edges))) = getIth'(k,i,edges)
+
+   and getIth'(k,i,edges) =
+       let fun search((k',i',x)::es) = 
+                 if k = k' andalso i = i' then find x else search es
+             | search [] = 
+               let val x = newSCell() 
+               in edges := (k,i,x) :: !edges; x end
+       in  search(!edges) end
+
+   and unify(x,y) =
    let val x = find x
        val y = find y
+       fun linkImmut(edges,x,y) = (x := LINK y; collapseAll(!edges,y))
+       fun linkMut(edges,x,y) = (x := LINK y; mut y; collapseAll(!edges,y))
+       fun linky(ex,ey,x,y) = (x := LINK y; ey := unifyList(!ex,!ey))
+       fun linkx(ex,ey,x,y) = (y := LINK x; ex := unifyList(!ex,!ey))
+       fun linkWREF(ex,ey,id,x,y) = 
+       let val ey = unifyList(!ex,!ey)
+           val n  = WREF(id,ref ey)
+       in  x := LINK y; y := n end
+
    in  if x = y then () else
        case (!x,!y) of
-         (TOP _,TOP _)       => (x := LINK y)
-       | (REF(_,u),TOP _)    => (x := LINK y; collapseAll(!u,y))
-       | (TOP _,REF(_,v))    => (y := LINK x; collapseAll(!v,x))
-       | (REF(_,u),REF(_,v)) => (y := LINK x; u := unifyList(!u,!v))
+         (TOP{mutable=false,...},TOP{mutable=false, ...}) => (x := LINK y)
+       | (TOP _, TOP _)           => (x := LINK y; mut y)
+
+       | (SREF(_,edges),  TOP _)  => linkMut(edges,x,y)
+       | (WREF(_,edges),  TOP _)  => linkMut(edges,x,y)
+       | (SCELL(_,edges), TOP _)  => linkImmut(edges,x,y)
+       | (WCELL(_,edges), TOP _)  => linkImmut(edges,x,y)
+
+       | (TOP _, SREF(_,edges))   => linkMut(edges,y,x)
+       | (TOP _, WREF(_,edges))   => linkMut(edges,y,x)
+       | (TOP _, SCELL(_,edges))  => linkImmut(edges,y,x)
+       | (TOP _, WCELL(_,edges))  => linkImmut(edges,y,x)
+
+       | (WREF(_,e1), WREF(_,e2)) => linky(e1,e2,x,y)
+       | (SREF(_,e1), WREF(_,e2)) => linky(e1,e2,x,y)
+       | (WCELL(_,e1),WREF(_,e2)) => linky(e1,e2,x,y)
+       | (SCELL(_,e1),WREF(_,e2)) => linky(e1,e2,x,y)
+
+       | (WREF(_,e1), SREF(_,e2))  => linkx(e1,e2,x,y)
+       | (SREF(_,e1), SREF(_,e2))  => linkx(e1,e2,x,y)
+       | (WCELL(_,e1),SREF(id,e2)) => linkWREF(e1,e2,id,x,y)
+       | (SCELL(_,e1),SREF(_,e2))  => linky(e1,e2,x,y)
+
+       | (WREF(_,e1), WCELL(_,e2)) => linkx(e1,e2,x,y)
+       | (SREF(_,e1), WCELL(id,e2)) => linkWREF(e1,e2,id,x,y)
+       | (WCELL(_,e1),WCELL(_,e2)) => linkx(e1,e2,x,y)
+       | (SCELL(_,e1),WCELL(_,e2)) => linky(e1,e2,x,y)
+
+       | (WREF(_,e1), SCELL(_,e2)) => linkx(e1,e2,x,y)
+       | (SREF(_,e1), SCELL(_,e2)) => linkx(e1,e2,x,y)
+       | (WCELL(_,e1),SCELL(_,e2)) => linkx(e1,e2,x,y)
+       | (SCELL(_,e1),SCELL(_,e2)) => linkx(e1,e2,x,y)
        | _ => error "unify"
    end
 
@@ -73,25 +140,35 @@ struct
              | merge(l,[]) = l
              | merge(a as (c as (k,i,x))::u,b as (d as (k',i',y))::v) =
                 if k=k' andalso i=i' then (unify(x,y); c::merge(u,v)) 
-                else if follows(k,i,k',i') then d::merge(a,v)
-                else c::merge(u,b)
+                else if less(k,i,k',i') then d::merge(a,v) else c::merge(u,b)
        in merge(sort l1,sort l2) end
 
    fun pi(x,i)  = getIth(PI,i,x)
    fun dom(x,i) = getIth(DOM,i,x)
    fun ran(x,i) = getIth(RAN,i,x)
+   fun sub(x,i) = (mut x; getIth(PI,i,x))
 
-   fun offset(x,i) = (unify(x,newTop()); find x)
+   fun offset(x,i) = (unify(x,newTop{mutable=false,name=""}); find x)
    
    and unifyAll(x,[]) = ()
      | unifyAll(x,(_,_,y)::l) = (unify(x,y); unifyAll(x,l)) 
 
-   fun record xs =
+   fun mkHeader(NONE,es) = es
+     | mkHeader(SOME h,es) = (PI,~1,h)::es
+
+   fun mkAlloc(header, xs) = 
    let fun collect(_,[],l) = l
          | collect(i,x::xs,l) = collect(i+1,xs,(PI,i,x)::l)
-   in  ref(REF(!newMem(),ref(collect(~1,xs,[])))) end
+   in  (!newMem(), ref(mkHeader(header,collect(0,xs,[])))) end
 
-   fun mkref x = ref(REF(!newMem(),ref[(PI,0,x)]))
+   fun mkRecord(header,xs) = ref(SCELL(mkAlloc(header, xs)))
+   fun mkRef(header,x)     = ref(SREF(mkAlloc(header, [x])))
+   fun mkArray(header,xs)  = ref(SREF(mkAlloc(header, xs)))
+   fun mkVector(header,xs) = ref(SCELL(mkAlloc(header, xs)))
+   fun mkLambda(xs) = 
+   let fun collect(_,[],l) = l
+         | collect(i,x::xs,l) = collect(i+1,xs,(DOM,i,x)::l)
+   in  ref(SCELL(!newMem(), ref(collect(0,xs,[])))) end
 
    fun app(f,xs) =
    let fun loop(_,[]) = ()
@@ -103,9 +180,27 @@ struct
          | loop(i,x::xs) = (unify(ran(f,i),x); loop(i+1,xs))
    in  loop(0,xs) end
 
-   fun toString(ref(LINK x)) = toString x
-     | toString(ref(REF(x,_))) = "ref"^Int.toString x
-     | toString(ref(TOP x)) = "top"^Int.toString x
-     | toString(ref(NAMED(n,_))) = n
+   fun strongUpdate(a,i,x) = unify(sub(a,i),x)
+   fun strongSubscript(a,i) = sub(a,i)
+   fun weakUpdate(a,x) = (weak a; unify(sub(a,0),a))
+   fun weakSubscript(a) = (weak a; sub(a,0))
+
+   fun interfere(x,y) = find x = find y
+
+   fun show(LINK x) = show(!x)
+     | show(SREF(id,es)) = "strong-ref("^Int.toString id^")"^edges es 
+     | show(WREF(id,es)) = "weak-ref("^Int.toString id^")"^edges es 
+     | show(SCELL(id,es)) = "strong("^Int.toString id^")"^edges es 
+     | show(WCELL(id,es)) = "weak("^Int.toString id^")"^edges es 
+     | show(TOP{name="",mutable=true,id,...}) = "var("^Int.toString id^")"
+     | show(TOP{name="",mutable=false,id,...}) = "const("^Int.toString id^")"
+     | show(TOP{name,...}) = name
+
+   and edges es =
+       foldr (fn ((PI,i,x),s) => "pi"^Int.toString i^"="^toString(x)^" "^s
+               | (_,s) => s)
+             "" (!es)
+
+   and toString r = show(!r)
 
 end
