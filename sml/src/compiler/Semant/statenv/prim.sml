@@ -163,6 +163,7 @@ fun ay t = T.CONty(BT.arrayTycon,[t])
 fun vct t = T.CONty(BT.vectorTycon,[t])
 
 val bo = BT.boolTy
+val f64 = BT.realTy
 val i = BT.intTy
 val u = BT.unitTy
 
@@ -265,6 +266,12 @@ val allPrimops =
        ("vecChkSub",	 P.INLSUBSCRIPTV,      	p1(ar(pa(vct(v1),i),v1))),
        ("arrUpdate",	 P.UPDATE,      	p1(ar(tp(ay(v1),i,v1),u))),
        ("arrChkUpdate",  P.INLUPDATE,      	p1(ar(tp(ay(v1),i,v1),u))),
+
+       (* new array representations *)
+	("newArray0",	P.NEW_ARRAY0,		p1(ar(u,v1))),
+	("getSeqData",	P.GET_SEQ_DATA,		p2(ar(v1, v2))),
+	("recordSub",	P.SUBSCRIPT_REC,	p2(ar(pa(v1,i),v2))),
+	("raw64Sub",	P.SUBSCRIPT_RAW64,	p1(ar(pa(v1,i),f64))),
 
        (* conversion primops *)
        ("test_32_31",    P.TEST(32,31),  	NONE),
@@ -453,7 +460,7 @@ val allPrimops =
        ("w32ne",	word32cmp P.NEQ,     	NONE),
        ("w32ChkRshift", P.INLRSHIFT(P.UINT 32), NONE),
        ("w32ChkRshiftl",P.INLRSHIFTL(P.UINT 32),NONE),       
-       ("w32ChkLshift", P.INLLSHIFT(P.UINT 32), NONE)       
+       ("w32ChkLshift", P.INLLSHIFT(P.UINT 32), NONE)
       ]
 
 end (* local *)
@@ -540,6 +547,15 @@ end (* structure PrimEnv *)
 
 (*
  * $Log: prim.sml,v $
+ * Revision 1.4  1998/11/23 20:10:19  jhr
+ *   New raw64Subscript primop.
+ *
+ * Revision 1.3  1998/10/28 18:25:17  jhr
+ *   New primops to support new array representation.
+ *
+ * Revision 1.2  1998/09/30 19:22:38  dbm
+ * new repl field in TYCspec (bug 1432)
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:36  george
  * Version 110.5
  *

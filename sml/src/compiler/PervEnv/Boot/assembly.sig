@@ -41,15 +41,12 @@ signature ASSEMBLY =
     exception Overflow
     exception SysErr of (string * int option)
 
-    val array0 : 'a array
-    val word8array0 : A.word8array
     val profCurrent : int ref
     val pollEvent : bool ref
     val pollFreq : int ref
     val pollHandler : (unit cont -> unit cont) ref
     val activeProcs : int ref
     val pstruct : object ref
-    val real64array0 : A.real64array
     val sighandler : ((int * int * unit cont) -> unit cont) ref
     val vector0 : 'a vector
 end
@@ -85,19 +82,22 @@ signature ASSEMBLYBOXED =
     exception Overflow
     exception SysErr of (string * int option)
 
-    val array0 : object array
-    val word8array0 : A.word8array
     val profCurrent : int ref
     val pollEvent : bool ref
     val pollFreq : int ref
     val pollHandler : (unit cont -> unit cont) ref
     val activeProcs : int ref
     val pstruct : object ref
-    val real64array0 : A.real64array
     val sighandler : ((int * int * unit cont) -> unit cont) ref
     val vector0 : object vector
 end
 
 (*
- * $Log$
+ * $Log: assembly.sig,v $
+ * Revision 1.2  1998/11/18 03:54:17  jhr
+ *  New array representations.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:05  george
+ * Version 110.5
+ *
  *)

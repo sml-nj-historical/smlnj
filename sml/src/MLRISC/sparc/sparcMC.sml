@@ -263,6 +263,9 @@ end
 
 (*
  * $Log: sparcMC.sml,v $
+ * Revision 1.4  1998/10/06 14:06:25  george
+ *  fixed up some machine description problems. [leunga]
+ *
  * Revision 1.3  1998/09/30 19:38:10  dbm
  * fixing sharing/defspec conflict
  *

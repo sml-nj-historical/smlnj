@@ -90,6 +90,11 @@ end
 
 (*
  * $Log: alpha32Cells.sml,v $
+ * Revision 1.4  1998/10/06 14:07:29  george
+ * Flowgraph has been removed from modules that do not need it.
+ * Changes to compiler/CodeGen/*/*{MLTree,CG}.sml necessary.
+ * 						[leunga]
+ *
  * Revision 1.3  1998/05/25 15:10:46  george
  *   Fixed RCS keywords
  *

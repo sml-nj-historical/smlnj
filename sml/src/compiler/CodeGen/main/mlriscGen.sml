@@ -85,25 +85,6 @@ struct
          | _ => addTypBinding(f, CPS.BOGt)
        (*esac*))
 
-    exception Strings and Reals
-    val stringTable : Label.label IntStrMap.intstrmap = IntStrMap.new (32,Strings)
-    val realTable : Label.label IntStrMap.intstrmap = IntStrMap.new (32,Reals)
-
-    local
-      fun find table frag s =
-	(IntStrMap.map table (StrgHash.hashString s,s))
-	  handle _ => let
-	      val lab = Label.newLabel""
-	    in
-	      Frag.add (lab, frag s);
-	      IntStrMap.add table (StrgHash.hashString s,s,lab);
-	      lab
-	    end
-    in
-      val findString = find stringTable Frag.STRINGfrag
-      val findReal = find realTable Frag.REALfrag
-    end
-
     fun genCluster(cluster) = let
       val _ = if !Control.debugging then app PPCps.printcps0 cluster else () 
 
@@ -148,7 +129,6 @@ struct
 
       fun grabty(CPS.VAR v) = typmap v
 	| grabty(CPS.LABEL v) = typmap v
-	| grabty(CPS.REAL _) = CPS.FLTt
 	| grabty(CPS.INT _) = CPS.INTt
 	| grabty(CPS.INT32 _) = CPS.INT32t
 	| grabty(CPS.VOID) = CPS.FLTt
@@ -174,15 +154,12 @@ struct
 	| regbind(CPS.INT i) = M.LI (i+i+1)
 	| regbind(CPS.INT32 w) = M.LI32 w
 	| regbind(CPS.LABEL v) = laddr(functionLabel v, 0)
-	| regbind(CPS.REAL f) = laddr(findReal f, 0)
-	| regbind(CPS.STRING s) = laddr(findString s, 0)
 	| regbind _ = error "regbind"
 
       fun fregbind(CPS.VAR v) = 
              ((M.FREG(Intmap.map fpRegTbl v)) handle e =>
                (print ("\n* can't find a fpregister for lvar " ^ (Int.toString v) ^ "\n");
                 raise e))
-	| fregbind(v as CPS.REAL _) = M.LOADD(regbind v, R.REAL)
 	| fregbind _ = error "fregbind"
 
       (* Add type bindings for each definition. This is used to determine
@@ -291,6 +268,7 @@ struct
 	     in M.SEQ(M.MV(tmp, e), addTag(double (M.REG tmp)))
 	     end
       end
+      val mlZero = tag(false, M.LI 0)
       fun untag(_, CPS.INT i) = M.LI(i)
 	| untag(true, v) = M.SRA(regbind v, M.LI 1, M.LR)
 	| untag(false, v) = M.SRL(regbind v, M.LI 1, M.LR)
@@ -341,7 +319,7 @@ struct
 	M.LOAD32(M.SUB(regbind v, M.LI 4, M.LR), getRegion(v, ~1))
 
       fun getObjLength(v) = 
-	M.SRA(getObjDescriptor(v), M.LI(D.tagWidth -1), M.LR)
+	M.SRL(getObjDescriptor(v), M.LI(D.tagWidth -1), M.LR)
 
       (* Note: because formals are moved into fresh temporaries,
        * (formals intersection actuals) is empty. 
@@ -456,13 +434,9 @@ struct
 	    gen(RECORD(CPS.RK_FBLOCK, vl, w, e), hp)
 	| gen(RECORD(CPS.RK_FBLOCK, vl, w, e), hp) = let
 	    val len = List.length vl
-	    val desc = 
-	      if len=1 then dtoi D.desc_reald 
-	      else dtoi(D.makeDesc(len, D.tag_realdarray))
+	    val desc = dtoi(D.makeDesc(len+len, D.tag_raw64))
 	    val vl' = 
-	      map (fn (x as CPS.REAL _, _) => 
-		        (M.GPR(regbind x), SELp(0, OFFp 0))
-	            | (x, p as SELp _) => (M.GPR(regbind x), p)
+	      map (fn (x, p as SELp _) => (M.GPR(regbind x), p)
 		    | (x, p as OFFp 0) => (M.FPR(fregbind x), p)
 		    | _ => error "gen:RECORD:RK_FBLOCK")
 	          vl
@@ -480,20 +454,44 @@ struct
 	      {desc=M.LI desc, fields=vl', ans=ptr, mem=memDisambig w, hp=hp};
 	    gen(e, hp + 4 + len*8)
 	  end
+	| gen(RECORD(CPS.RK_VECTOR, vl, w, e), hp) = let
+	    val len = length vl
+	    val hdrDesc = dtoi(D.desc_polyvec)
+	    val dataDesc = dtoi(D.makeDesc(len, D.tag_vec_data))
+	    val contents = map (fn (v,p) => (regbind v, p)) vl
+	    val dataPtr = newReg()
+	    val hdrPtr = newReg()
+	    val hdrM = memDisambig w
+	    val dataM = (case hdrM
+		   of R.RECORD[_, (_, dataM, _), _] => dataM
+		    | R.RO_MEM => R.RO_MEM
+		    | r => error("gen(RK_VECTOR): hdrM = " ^ R.toString r)
+		  (* end case *))
+	    in
+	      addRegBinding(w, hdrPtr);
+	      MkRecord.record {
+		  desc = M.LI dataDesc, fields = contents,
+		  ans = dataPtr,
+		  mem = dataM, hp = hp
+		};
+	      MkRecord.record {
+		  desc = M.LI hdrDesc,
+		  fields = [
+		      (M.REG dataPtr, CPS.OFFp 0),
+		      (tag(false, M.LI len), CPS.OFFp 0)
+		    ],
+		  ans = hdrPtr,
+		  mem = hdrM, hp = hp + 4 + len*4
+		};
+	      gen (e, hp + 16 + len*4)
+	    end
 	| gen(RECORD(kind, vl, w, e), hp) = let
 	    val len = length vl
 	    val desc = case (kind, len)
-	      of (CPS.RK_I32BLOCK, l) => dtoi(D.makeDesc (l*4, D.tag_string))
-	       | (CPS.RK_VECTOR, l) => dtoi(D.makeDesc (l, D.tag_record))
-	       | (_, 2) => dtoi D.desc_pair
+	      of (CPS.RK_I32BLOCK, l) => dtoi(D.makeDesc (l, D.tag_raw32))
 	       | (_, l) => dtoi(D.makeDesc (l, D.tag_record))
               (*esac*)
-	    val vl' = map (fn (v,p) => (regbind v, p)) vl
-	    (* pad strings *)
-	    val contents = case kind 
-	      of CPS.RK_I32BLOCK => vl' @ [(M.LI 0, OFFp 0)]
-	       | _ => vl'
-	      (*esac*)
+	    val contents = map (fn (v,p) => (regbind v, p)) vl
 	    val ptr = newReg()
 	  in
 	    addRegBinding(w, ptr);
@@ -569,6 +567,7 @@ struct
 		 r:=Frag.GEN formals;
 		 callSetup(formals, args);
 		 testLimit hp;
+(*** CAN WE REMOVE THIS BRANCH??? ***)
 		 emit(branchToLabel(lab));
 		 comp(M.DEFINELABEL lab);
 		 comp(M.BLOCK_NAME(Int.toString f));
@@ -591,7 +590,6 @@ struct
 		 testLimit hp;
 		 emit(branchToLabel(functionLabel f))
 	       end
-	     | _ => error "APP"
 	  (*esac*))
 	(*** SWITCH ***)
 	| gen(SWITCH(v, _, l), hp) = let
@@ -693,9 +691,6 @@ struct
 	        (*esac*))
 	     | _ => error "gen:PURE:P.real"
           (*esac*))
-	| gen(PURE(P.length, [v], x, _, e), hp) = alloc(x, getObjLength v, e, hp)
-	| gen(PURE(P.objlength, [v], x, _, e), hp) = 
-	    alloc(x, orTag(getObjLength(v)), e, hp)
 	| gen(PURE(P.pure_arith{oper, kind=P.FLOAT 64}, [v], x, _, e), hp) = let
 	    val r = fregbind v
 	  in
@@ -703,12 +698,31 @@ struct
 	     of P.~ => falloc(x, M.FNEGD(r), e, hp)
 	      | P.abs => falloc(x, M.FABSD(r), e, hp)
           end
-	| gen(PURE(P.subscriptv, [v, INT w], x, t, e), hp) = 
-	    gen(SELECT(w, v, x, t, e), hp)
-	| gen(PURE(P.subscriptv, [v, w], x, _, e), hp) =
-	    alloc(x, M.LOAD32(scale4(regbind v, w), R.RO_MEM), e, hp)
-	| gen(PURE(P.pure_numsubscript{kind=P.INT 8}, [a,i], x, _, e), hp) = 
-	    alloc(x, tag(false,M.LOAD8(scale1(regbind a, i), R.RW_MEM)), e, hp) 
+	| gen(PURE(P.objlength, [v], x, _, e), hp) = 
+	    alloc(x, orTag(getObjLength(v)), e, hp)
+	| gen(PURE(P.length, [v], x, t, e), hp) =
+	  (* array/vector length operation *)
+	    gen(SELECT(1, v, x, t, e), hp)
+	| gen(PURE(P.subscriptv, [v, INT i], x, t, e), hp) = let
+	    val region = getRegion(v, 0)
+	    val a = M.LOAD32(regbind v, region)  (* get data pointer *)
+	    val region' = (case region
+		   of (R.RECORD vl) => #1(List.nth(vl, i+1))
+		    | _ => R.RO_MEM
+		  (* end case *))
+	    in
+	      alloc(x, M.LOAD32(scale4(a, INT i), region'), e, hp)
+	    end
+	| gen(PURE(P.subscriptv, [v, w], x, _, e), hp) = let
+	    val a = M.LOAD32(regbind v, R.RO_MEM)  (* get data pointer *)
+	    in
+	      alloc (x, M.LOAD32(scale4(a, w), R.RO_MEM), e, hp)
+	    end
+	| gen(PURE(P.pure_numsubscript{kind=P.INT 8}, [v,i], x, _, e), hp) = let
+	    val a = M.LOAD32(regbind v, R.RO_MEM)  (* get data pointer *)
+	    in
+	      alloc(x, tag(false,M.LOAD8(scale1(a, i), R.RW_MEM)), e, hp) 
+	    end
 	| gen(PURE(P.gettag, [v], x, _, e), hp) = 
 	    alloc(x, 
 		  tag(false, M.ANDB(getObjDescriptor(v), M.LI(D.powTagWidth-1))),
@@ -727,7 +741,7 @@ struct
 	  end
 	| gen(PURE(P.makeref, [v], x, _, e), hp) = let
 	    val ptr = newReg()
-	    val tag = M.LI(dtoi(D.makeDesc(1, D.tag_array)))
+	    val tag = M.LI(dtoi D.desc_ref)
 	    val mem = memDisambig x
 	  in
 	    emit(M.STORE32(M.ADD(C.allocptr, M.LI hp), tag, mem));
@@ -749,6 +763,46 @@ struct
 	| gen(PURE(P.cast,[u],w,_,e), hp) = copy(w, u, e, hp)
 	| gen(PURE(P.getcon,[u],w,t,e), hp) = gen(SELECT(0,u,w,t,e), hp)
 	| gen(PURE(P.getexn,[u],w,t,e), hp) = gen(SELECT(0,u,w,t,e), hp)
+	| gen(PURE(P.getseqdata, [u], x, t, e), hp) = gen(SELECT(0,u,x,t,e), hp)
+	| gen(PURE(P.recsubscript, [v, INT w], x, t, e), hp) = 
+	    gen(SELECT(w, v, x, t, e), hp)
+	| gen(PURE(P.recsubscript, [v, w], x, _, e), hp) =
+	    alloc(x, M.LOAD32(scale4(regbind v, w), R.RO_MEM), e, hp)
+	| gen(PURE(P.raw64subscript, [v, INT i], x, _, e), hp) =
+	    gen(SELECT(i, v, x, FLTt, e), hp)
+	| gen(PURE(P.raw64subscript, [v, i], x, _, e), hp) =
+	    falloc(x, M.LOADD(scale8(regbind v, i),R.RO_MEM), e, hp)
+	| gen(PURE(P.newarray0, [_], x, t, e), hp) = let
+	    val hdrDesc = dtoi(D.desc_polyarr)
+	    val dataDesc = dtoi D.desc_ref
+	    val dataPtr = newReg()
+	    val hdrPtr = newReg()
+	    val hdrM = memDisambig x
+	    val (tagM, valM) = (case hdrM
+		   of R.RECORD[
+			_, (_, R.RECORD[(tagM, _, _), (valM, _, _)], _), _
+		      ] => (tagM, valM)
+		    | R.RO_MEM => (R.RO_MEM, R.RO_MEM)
+		    | r => error("gen(newarray0): hdrM = " ^ R.toString r)
+		  (* end case *))
+	    in
+	      addRegBinding(x, hdrPtr);
+	    (* gen code to allocate "ref()" for array data *)
+	      emit(M.STORE32(M.ADD(C.allocptr, M.LI hp), M.LI dataDesc, tagM));
+	      emit(M.STORE32(M.ADD(C.allocptr, M.LI(hp+4)), mlZero, valM));
+	      emit(M.MV(dataPtr, M.ADD(C.allocptr, M.LI(hp+4))));
+	    (* gen code to allocate array header *)
+	      MkRecord.record {
+		  desc = M.LI hdrDesc,
+		  fields = [
+		      (M.REG dataPtr, CPS.OFFp 0),
+		      (tag(false, mlZero), CPS.OFFp 0)
+		    ],
+		  ans = hdrPtr,
+		  mem = hdrM, hp = hp + 8
+		};
+	      gen (e, hp + 20)
+	    end
 	(*** ARITH ***)
 	| gen(ARITH(P.arith{kind=P.INT 31, oper}, args, x, _, e), hp) = 
 	  (updtHeapPtr hp;
@@ -825,19 +879,26 @@ struct
 	      | P./ => ordBinary(M.FDIVD, vl)
 	  end
 	(*** LOOKER ***)
-	| gen(LOOKER(P.!,[v],w,t,e), hp) = 
-	    gen(LOOKER(P.subscript, [v,INT 0], w, t, e), hp)
-	| gen(LOOKER(P.subscript, [v,w], x, _, e), hp) =
-	    alloc(x, M.LOAD32(scale4(regbind v, w),R.RW_MEM), e, hp)
-	| gen(LOOKER(P.numsubscript{kind=P.INT 8},[a,i],x,_,e), hp) = 
-	    alloc(x, tag(false, M.LOAD8(scale1(regbind a, i),R.RW_MEM)), e, hp)
+	| gen(LOOKER(P.!, [v], x, _, e), hp) = 
+	    alloc (x, M.LOAD32(regbind v, R.RW_MEM), e, hp)
+	| gen(LOOKER(P.subscript, [v,w], x, _, e), hp) = let
+	    val a = M.LOAD32(regbind v, R.RO_MEM)  (* get data pointer *)
+	    in
+	      alloc (x, M.LOAD32(scale4(a, w), R.RW_MEM), e, hp)
+	    end
+	| gen(LOOKER(P.numsubscript{kind=P.INT 8},[v,i],x,_,e), hp) = let
+	    val a = M.LOAD32(regbind v, R.RO_MEM)  (* get data pointer *)
+	    in
+	      alloc(x, tag(false, M.LOAD8(scale1(a, i),R.RW_MEM)), e, hp)
+	    end
+	| gen(LOOKER(P.numsubscript{kind=P.FLOAT 64}, [v,i], x, _, e), hp) = let
+	    val a = M.LOAD32(regbind v, R.RO_MEM)  (* get data pointer *)
+	    in
+	      falloc(x, M.LOADD(scale8(a, i),R.RW_MEM), e, hp)
+	    end
 	| gen(LOOKER(P.gethdlr,[],x,_,e), hp) = alloc(x, C.exnptr, e, hp)
 	| gen(LOOKER(P.getvar, [], x, _, e), hp) = alloc(x, C.varptr, e, hp)
 	| gen(LOOKER(P.deflvar, [], x, _, e), hp) = alloc(x, M.LI 0, e, hp)
-	| gen(LOOKER(P.numsubscript{kind=P.FLOAT 64}, [a, INT i], x, _, e), hp) =
-	    gen(SELECT(i, a, x, FLTt, e), hp)
-	| gen(LOOKER(P.numsubscript{kind=P.FLOAT 64}, [a,i], x, _, e), hp) =
-	    falloc(x, M.LOADD(scale8(regbind a, i),R.RW_MEM), e, hp)
 	| gen(LOOKER(P.getspecial, [v], x, _, e), hp) = 
 	    alloc(x, 
 		  orTag(M.SRA(getObjDescriptor(v),
@@ -847,37 +908,48 @@ struct
 	| gen(LOOKER(P.getpseudo, [i], x, _, e), hp) = 
 	    (print "getpseudo not implemented\n"; nop(x, i, e, hp))
 	(*** SETTER ***)
-	| gen(SETTER(P.update, [a,i,v], e), hp) = let
+	| gen(SETTER(P.assign, [a as VAR arr, v], e), hp) = let
+	    val ea = regbind a
+	    in
+	      recordStore(ea, hp);
+	      emit(M.STORE32(ea, regbind v, memDisambig arr));
+	      gen(e, hp+8)
+	    end
+	| gen(SETTER(P.unboxedassign, [a, v], e), hp) = 
+	   (emit(M.STORE32(regbind a, regbind v, R.RW_MEM));
+	    gen(e, hp))
+	| gen(SETTER(P.update, [v,i,w], e), hp) = let
+	    val a = M.LOAD32(regbind v, R.RO_MEM)  (* get data pointer *)
 	    val tmpR = newReg() 
 	    val tmp = M.REG tmpR
-	    val ea = scale4(regbind a, i)
-	    val VAR arr = a
-	  in
-	    emit(M.MV(tmpR, ea));
-	    recordStore(tmp, hp);
-	    emit(M.STORE32(tmp, regbind v, memDisambig arr));
-	    gen(e, hp+8)
-	  end
+	    val ea = scale4(a, i)  (* address of updated cell *)
+	    in
+	      emit(M.MV(tmpR, ea));
+	      recordStore(tmp, hp);
+	      emit(M.STORE32(tmp, regbind w, R.RW_MEM));
+	      gen(e, hp+8)
+	    end
 	| gen(SETTER(P.boxedupdate, args, e), hp) = 
 	    gen(SETTER(P.update, args, e), hp)
-	| gen(SETTER(P.unboxedupdate, [a, i, v], e), hp) = 
-	   (emit(M.STORE32(scale4(regbind a, i), regbind v, R.RW_MEM));
-	    gen(e, hp))
+	| gen(SETTER(P.unboxedupdate, [v, i, w], e), hp) = let
+	    val a = M.LOAD32(regbind v, R.RO_MEM)  (* get data pointer *)
+	    in
+	      emit(M.STORE32(scale4(a, i), regbind w, R.RW_MEM));
+	      gen(e, hp)
+	    end
 	| gen(SETTER(P.numupdate{kind=P.INT 8}, [s,i,v], e), hp) = let
-	   val ea = scale1(regbind s, i)
-	  in
-	    case v 
-	     of INT k => emit(M.STORE8(ea, M.LI k, R.RW_MEM))
-	      | _ => emit(M.STORE8(ea, untag(false, v), R.RW_MEM))
-	    (*esac*);
-	    gen(e, hp)
-	  end
-	| gen(SETTER(P.numupdate{kind=P.FLOAT 64},[a,i,v],e), hp) = let
-	    val VAR arr = a
-	  in
-	    emit(M.STORED(scale8(regbind a, i), fregbind v, memDisambig arr)); 
-	    gen(e, hp)
-	  end
+	    val a = M.LOAD32(regbind s, R.RO_MEM)  (* get data pointer *)
+	    val ea = scale1(a, i)
+	    in
+	      emit(M.STORE8(ea, untag(false, v), R.RW_MEM));
+	      gen(e, hp)
+	    end
+	| gen(SETTER(P.numupdate{kind=P.FLOAT 64},[v,i,w],e), hp) = let
+	    val a = M.LOAD32(regbind v, R.RO_MEM)  (* get data pointer *)
+	    in
+	      emit(M.STORED(scale8(a, i), fregbind w, R.RW_MEM)); 
+	      gen(e, hp)
+	    end
 	| gen(SETTER(P.setspecial, [v, i], e), hp) = let
 	    val ea = M.SUB(regbind v, M.LI 4, M.LR)
 	    val i' = case i
@@ -969,26 +1041,13 @@ struct
 	    fun cmpWord(i) = 
 	      M.CMP(M.NEQ, M.LOAD32(M.ADD(M.REG r1,i),R.RO_MEM), 
 		           M.LOAD32(M.ADD(M.REG r2,i),R.RO_MEM), M.LR)
-	    fun whileLoop () = let
-	      val iR = newReg()
-	      val i = M.REG iR
-	      val loopHead = Label.newLabel ""
-	    in
-	      emit(M.MV(iR, M.LI 0));
-	      comp(M.DEFINELABEL loopHead);
-	      emit(M.BCC(M.NEQ, cmpWord(i), false_lab));
-	      emit(M.MV(iR, M.ADD(i, M.LI 4)));
-	      emit(M.BCC(M.NEQ, M.CMP(M.NEQ, i, M.LI n', M.LR), loopHead))
-	    end
 	    fun unroll i = 
 	      if i=n' then ()
 	      else (emit(M.BCC(M.NEQ, cmpWord(M.LI(i)), false_lab));
 		    unroll (i+4))
-
           in
-	      emit(M.MV(r1, regbind v));
-	      emit(M.MV(r2, regbind w));
-	      (* if n' <= 2 then unroll 0 else whileLoop();*)
+	      emit(M.MV(r1, M.LOAD32(regbind v, R.RO_MEM)));
+	      emit(M.MV(r2, M.LOAD32(regbind w, R.RO_MEM)));
 	      unroll 0;
               gen(d, hp);
 	      genlab(false_lab, e, hp)
@@ -1020,8 +1079,7 @@ struct
 				      LE.LABEL lab)))
 	    in
 	      func := NONE;
-	      comp(M.ORDERED[M.PSEUDO_OP(PseudoOp.MARK),
-			     M.ENTRYLABEL lab]);
+	      comp(M.ENTRYLABEL lab);
 	      comp(M.BLOCK_NAME(Int.toString f));
 	      alignAllocptr f;
 	      emit(assign(C.baseptr, baseval));
@@ -1036,25 +1094,6 @@ struct
               print "************************************************* \n")
               else ();
 	      continue(gen(e, 0))
-	    end
-	  | fcomp(SOME(lab, Frag.REALfrag r)) =
-	      (comp(M.PSEUDO_OP
-		     (PseudoOp.REALCONST(lab, IEEEReal.realconst r)) )
-		 handle
-	          IEEEReal.BadReal _ =>
-		    err ErrorMsg.COMPLAIN ("real constant out of range: " ^ r)
-			ErrorMsg.nullErrorBody;
-	       continue ())
-	  | fcomp(SOME(lab, Frag.STRINGfrag s)) = let
-	      fun padString s = case ((size s) mod 4)
-		of 0 => (s ^ "\000\000\000\000")
-		 | 1 => (s ^ "\000\000\000")
-		 | 2 => (s ^ "\000\000")
-		 | 3 => (s ^ "\000")
-		 | _ => error ""
-		(*esac*)
-	      val pOp = PseudoOp.STRINGCONST(lab, size s, padString s)
-            in comp (M.PSEUDO_OP pOp); continue ()
 	    end
       in
 	fcomp (Frag.next())
@@ -1094,6 +1133,20 @@ end (* MLRiscGen *)
 
 (*
  * $Log: mlriscGen.sml,v $
+ * Revision 1.11  1998/11/23 20:09:42  jhr
+ *   Fixed length field of raw64 objects (should be in words); new raw64Subscript
+ *   primop.
+ *
+ * Revision 1.10  1998/11/18 03:53:11  jhr
+ *  New array representations.
+ *
+ * Revision 1.9  1998/10/28 18:20:49  jhr
+ *   Removed code generator support for STRING/REAL constants.
+ *
+ * Revision 1.8  1998/10/19 13:28:18  george
+ *   Known functions once again move their arguments to fresh temporaries.
+ *   The problem has to do with spilling and adjusting the regmask.
+ *
  * Revision 1.7  1998/10/15 17:56:54  george
  *   known functions do not move formals to fresh temps
  *

@@ -32,5 +32,8 @@ signature PROFILE =
   end;
 
 (*
- * $Log$
+ * $Log: profile.sig,v $
+ * Revision 1.3  1998/05/23 14:09:47  george
+ *   Fixed RCS keyword syntax
+ *
  *)

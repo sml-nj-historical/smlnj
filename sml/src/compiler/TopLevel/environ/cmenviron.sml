@@ -95,5 +95,8 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: cmenviron.sml,v $
+ * Revision 1.2  1998/06/02 17:39:26  george
+ *   Changes to integrate CM functionality into the compiler --- blume
+ *
  *)

@@ -117,6 +117,12 @@ end
 
 (*
  * $Log: hppaInstr.sig,v $
+ * Revision 1.4  1998/10/06 14:04:30  george
+ *   The instruction sequence FCMP, FTEST, FBCC is being replaced
+ *   by the composite instruction FBRANCH.  This makes scheduling and
+ *   other tasks easier.  Also, added BLR and BL in the instruction set.
+ * 							[leunga]
+ *
  * Revision 1.3  1998/05/25 15:10:55  george
  *   Fixed RCS keywords
  *

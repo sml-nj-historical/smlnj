@@ -503,6 +503,11 @@ end
 
 (*
  * $Log: binfile.sml,v $
+ * Revision 1.4  1998/10/16 14:03:44  george
+ *   Implemented a hierachical bin directory structure and
+ *   broke up the Compiler structure into a machine dependent
+ *   and independent parts. [blume]
+ *
  * Revision 1.3  1998/10/14 14:41:36  george
  *   bug fix from blume
  *

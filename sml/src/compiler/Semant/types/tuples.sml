@@ -105,5 +105,8 @@ fun isTUPLEtyc(RECORDtyc labels) = checklabels(1,labels)
 end (* structure Tuples *)
 
 (*
- * $Log$
+ * $Log: tuples.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:36  george
+ * Version 110.5
+ *
  *)

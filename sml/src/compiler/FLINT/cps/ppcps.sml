@@ -81,6 +81,8 @@ fun setterName P.unboxedupdate = "unboxedupdate"
   | setterName P.boxedupdate = "boxedupdate"
   | setterName P.update = "update"
   | setterName (P.numupdate{kind}) = ("numupdate" ^ numkindName kind)
+  | setterName P.unboxedassign = "unboxedassign"
+  | setterName P.assign = "assign"
   | setterName P.sethdlr = "sethdlr"
   | setterName P.setvar = "setvar"
   | setterName P.uselvar = "uselvar"
@@ -134,6 +136,10 @@ fun pureName P.length = "length"
   | pureName P.iunwrap = "iunwrap"
   | pureName P.i32wrap = "i32wrap"
   | pureName P.i32unwrap = "i32unwrap"
+  | pureName P.getseqdata = "getseqdata"
+  | pureName P.recsubscript = "recsubscript"
+  | pureName P.raw64subscript = "raw64subscript"
+  | pureName P.newarray0 = "newarray0"
 
 fun show0 say =
   let fun sayc (#"\n") = say "\\n"
@@ -275,6 +281,18 @@ end (* toplevel local *)
 end (* structure PPCps *)
 
 (*
- * $Log$
+ * $Log: ppcps.sml,v $
+ * Revision 1.4  1998/11/23 20:09:54  jhr
+ *   New raw64Subscript primop.
+ *
+ * Revision 1.3  1998/11/18 03:53:18  jhr
+ *  New array representations.
+ *
+ * Revision 1.2  1998/10/28 18:21:23  jhr
+ *   New primops to support new array representation.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:39:47  george
+ * Version 110.5
+ *
  *)
 

@@ -19,6 +19,7 @@
  */
 ml_val_t _ml_Date_strftime (ml_state_t *msp, ml_val_t arg)
 {
+    ml_val_t	fmt = REC_SEL(arg, 0);
     ml_val_t	res, date;
     struct tm	tm;
     char	buf[512];
@@ -35,10 +36,10 @@ ml_val_t _ml_Date_strftime (ml_state_t *msp, ml_val_t arg)
     tm.tm_yday	= REC_SELINT(date, 7);
     tm.tm_isdst	= REC_SELINT(date, 8);
 
-    sz = strftime (buf, sizeof(buf), REC_SELPTR(char, arg, 0), &tm);
+    sz = strftime (buf, sizeof(buf), STR_MLtoC(fmt), &tm);
     if (sz > 0) {
 	res = ML_AllocString(msp, sz);
-	strncpy (PTR_MLtoC(char, res), buf, sz);
+	strncpy (STR_MLtoC(res), buf, sz);
 	return res;
     }
     else

@@ -70,5 +70,8 @@ signature WIN32_IO =
 
 
 (*
- * $Log$
+ * $Log: win32-io.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:02  george
+ * Version 110.5
+ *
  *)

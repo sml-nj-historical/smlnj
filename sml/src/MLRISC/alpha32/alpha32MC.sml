@@ -279,6 +279,11 @@ struct
 
 (*
  * $Log: alpha32MC.sml,v $
+ * Revision 1.3  1998/10/06 14:07:30  george
+ * Flowgraph has been removed from modules that do not need it.
+ * Changes to compiler/CodeGen/*/*{MLTree,CG}.sml necessary.
+ * 						[leunga]
+ *
  * Revision 1.2  1998/09/30 19:34:21  dbm
  * fixing sharing/defspec conflict
  *

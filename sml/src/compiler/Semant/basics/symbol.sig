@@ -49,5 +49,8 @@ signature FASTSYMBOL =
 
 
 (*
- * $Log$
+ * $Log: symbol.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:35  george
+ * Version 110.5
+ *
  *)

@@ -13,7 +13,7 @@
 #include "cfun-proto-list.h"
 
 
-#define STREQ(s1, s2)	(strcmp((s1), (s2)) == 0)
+#define STREQ(s1, s2)	(strcmp((s1), STR_MLtoC(s2)) == 0)
 
 PVT void SetVMCache (ml_state_t *msp, ml_val_t arg);
 PVT void DoGC (ml_state_t *msp, ml_val_t arg);
@@ -36,7 +36,7 @@ ml_val_t _ml_RunT_gc_ctl (ml_state_t *msp, ml_val_t arg)
 {
     while (arg != LIST_nil) {
 	ml_val_t	cmd = LIST_hd(arg);
-	char		*oper = REC_SELPTR(char, cmd, 0);
+	ml_val_t	oper = REC_SEL(cmd, 0);
 	ml_val_t	cell = REC_SEL(cmd, 1);
 
 	if (STREQ("SetVMCache", oper))

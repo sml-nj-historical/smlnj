@@ -14,7 +14,7 @@ type csegments  = {c0 : Word8Vector.vector,
                    data : Word8Vector.vector, 
                    name : string option ref}
 type object     = Unsafe.Object.object            
-type executable = object Vector.vector -> object
+type executable = object -> object
 
 datatype importTree = ITNODE of (int * importTree) list
 
@@ -48,5 +48,11 @@ fun anyErrors ({anyErrors=ref b,...} : compInfo) = b
 end (* structure CompBasic *)
 
 (*
- * $Log$
+ * $Log: compbasic.sml,v $
+ * Revision 1.4  1998/10/28 18:25:42  jhr
+ *   New literal lifting and new Unsafe.Object API.
+ *
+ * Revision 1.3  1998/05/23 14:10:25  george
+ *   Fixed RCS keyword syntax
+ *
  *)

@@ -25,6 +25,6 @@ ml_val_t _ml_NetDB_gethostbyaddr (ml_state_t *msp, ml_val_t arg)
 
     return _util_NetDB_mkhostent (
 	msp,
-	gethostbyaddr (PTR_MLtoC(char, arg), sizeof(struct in_addr), AF_INET));
+	gethostbyaddr (STR_MLtoC(arg), sizeof(struct in_addr), AF_INET));
 
 } /* end of _ml_NetDB_gethostbyaddr */

@@ -88,7 +88,7 @@ PVT ml_val_t mkStatRep (ml_state_t *msp, struct stat *buf)
  */
 ml_val_t _ml_P_FileSys_stat (ml_state_t *msp, ml_val_t arg)
 {
-    char            *path = PTR_MLtoC(char, arg);
+    char            *path = STR_MLtoC(arg);
     int		    sts;
     struct stat     buf;
 
@@ -127,7 +127,7 @@ ml_val_t _ml_P_FileSys_fstat (ml_state_t *msp, ml_val_t arg)
  */
 ml_val_t _ml_P_FileSys_lstat (ml_state_t *msp, ml_val_t arg)
 {
-    char            *path = PTR_MLtoC(char, arg);
+    char            *path = STR_MLtoC(arg);
     int		    sts;
     struct stat     buf;
 

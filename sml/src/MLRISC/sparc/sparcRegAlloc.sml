@@ -83,6 +83,9 @@ end
 
 (*
  * $Log: sparcRegAlloc.sml,v $
+ * Revision 1.3  1998/10/06 14:06:27  george
+ *  fixed up some machine description problems. [leunga]
+ *
  * Revision 1.2  1998/09/30 19:38:39  dbm
  * fixing sharing/defspec conflict
  *

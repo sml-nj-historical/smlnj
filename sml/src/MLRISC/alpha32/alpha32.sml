@@ -715,6 +715,9 @@ end
 
 (*
  * $Log: alpha32.sml,v $
+ * Revision 1.7  1998/09/30 19:32:26  dbm
+ * fixing sharing/defspec conflict
+ *
  * Revision 1.6  1998/08/11 14:03:13  george
  *   Exposed emitInstr in MLTREECOMP to allow a client to directly
  *   inject native instructions into the flowgraph.

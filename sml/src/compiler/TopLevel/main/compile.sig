@@ -84,6 +84,11 @@ signature TOP_COMPILE = COMPILE0 where type cmstatenv = StaticEnv.staticEnv
 
 (*
  * $Log: compile.sig,v $
+ * Revision 1.4  1998/10/16 14:03:59  george
+ *   Implemented a hierachical bin directory structure and
+ *   broke up the Compiler structure into a machine dependent
+ *   and independent parts. [blume]
+ *
  * Revision 1.3  1998/05/23 14:10:26  george
  *   Fixed RCS keyword syntax
  *

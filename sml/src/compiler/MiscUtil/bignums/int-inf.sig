@@ -18,5 +18,8 @@ signature INT_INF =
   end (* signature INT_INF *)
 
 (*
- * $Log$
+ * $Log: int-inf.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:18  george
+ * Version 110.5
+ *
  *)

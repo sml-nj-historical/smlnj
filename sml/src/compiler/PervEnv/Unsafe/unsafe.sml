@@ -111,6 +111,9 @@ structure Unsafe :> UNSAFE =
 
 (*
  * $Log: unsafe.sml,v $
+ * Revision 1.3  1998/10/16 17:27:08  jhr
+ *   Modified comment.
+ *
  * Revision 1.2  1998/08/26 14:06:56  george
  *   CM changes from blume
  *

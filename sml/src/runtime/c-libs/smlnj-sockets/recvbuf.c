@@ -20,8 +20,9 @@
 ml_val_t _ml_Sock_recvbuf (ml_state_t *msp, ml_val_t arg)
 {
     int		sock = REC_SELINT(arg, 0);
-    char	*start = REC_SELPTR(char, arg, 1) + REC_SELINT(arg, 2);
+    ml_val_t	buf = REC_SEL(arg, 1);
     int		nbytes = REC_SELINT(arg, 3);
+    char	*start = STR_MLtoC(buf) + REC_SELINT(arg, 2);
     int		flag = 0;
     int		n;
 

@@ -1623,6 +1623,9 @@ end (* structure ElabMod *)
 
 (*
  * $Log: elabmod.sml,v $
+ * Revision 1.4  1998/09/30 19:04:59  dbm
+ * new repl field in TYCspec (bug 1432)
+ *
  * Revision 1.3  1998/05/23 14:10:01  george
  *   Fixed RCS keyword syntax
  *

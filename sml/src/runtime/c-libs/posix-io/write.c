@@ -19,11 +19,11 @@
 ml_val_t _ml_P_IO_write (ml_state_t *msp, ml_val_t arg)
 {
     int		fd = REC_SELINT(arg, 0);
-    char	*data = REC_SELPTR(char, arg, 1);
+    ml_val_t	data = REC_SEL(arg, 1);
     size_t	nbytes = REC_SELINT(arg, 2);
     ssize_t    	n;
 
-    n = write (fd, data, nbytes);
+    n = write (fd, STR_MLtoC(data), nbytes);
 
     CHK_RETURN (msp, n)
 

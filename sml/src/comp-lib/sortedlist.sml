@@ -56,5 +56,8 @@ fun difference(nil,_) = nil
 end
 
 (*
- * $Log$
+ * $Log: sortedlist.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:13  george
+ * Version 110.5
+ *
  *)

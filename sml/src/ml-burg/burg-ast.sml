@@ -4,8 +4,11 @@
  * Abstract syntax trees for BURG specifications.
  *
  * $Log$
- * Revision 1.1.1.4  1998/06/05 19:39:46  monnier
- * 110.7
+ * Revision 1.1.1.5  1999/04/17 16:22:21  monnier
+ * version 110.11
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:05  george
+ * Version 110.5
  *
  * Revision 1.1.1.1  1997/01/14 01:37:59  george
  *   Version 109.24

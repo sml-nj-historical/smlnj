@@ -46,7 +46,7 @@ fun pplist_nl ppstrm pr =
 
 fun C f x y = f y x;
 
-fun xtract (v, pos) = Vector.sub (Unsafe.Object.toTuple v, pos)
+fun xtract (v, pos) = Unsafe.Object.nth (v, pos)
 
 exception OVERLOAD
 
@@ -359,5 +359,11 @@ end (* local *)
 end (* structure PPDec *)
 
 (*
- * $Log$
+ * $Log: ppdec.sml,v $
+ * Revision 1.4  1998/10/28 18:22:54  jhr
+ *   New Unsafe.Object API.
+ *
+ * Revision 1.3  1998/05/23 14:09:44  george
+ *   Fixed RCS keyword syntax
+ *
  *)

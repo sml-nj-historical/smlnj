@@ -122,5 +122,9 @@ structure Unix : UNIX =
   end (* structure Unix *)
 
 (*
- * $Log$
+ * $Log: unix.sml,v $
+ * Revision 1.2  1998/08/17 19:21:38  george
+ *   Changed the type of TextIO.StreamIO.mkInstream to eliminate the option.
+ *   [appel]
+ *
  *)

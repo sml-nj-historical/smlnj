@@ -502,28 +502,36 @@ ENTRY(RestoreFPRegs)			/* floats address passed as parm */
  * Allocate and initialize a new array.	 This can cause GC.
  */
 ML_CODE_HDR(array_a)
-	CHECKLIMIT(FUN_MASK)
-	ldl	ATMP1,0(STDARG)	    /* atmp1 := length (tagged int) */
-	sra	ATMP1,1		    /* atmp1 := length (untagged int) */
-	subq	ATMP1,SMALL_OBJ_SZW,ATMP3
-	bgt	ATMP3,1f		    /* is this a small object? */
-	sll	ATMP1,TAG_SHIFTW,ATMP3    /* build descriptor in atmp3 */
-	or	ATMP3,MAKE_TAG(DTAG_array),ATMP3
+	CHECKLIMIT(FUN_MASK)	
+
+	ldl	ATMP1,0(STDARG)		    /* tmp1 := length in words */
+	sra	ATMP1,1,ATMP2		    /* tmp2 := length (untagged) */
+	subl	ATMP2,SMALL_OBJ_SZW,ATMP3   /* is this a small object? */
+	bgt	ATMP3,2f		    /* branch if large object */
+
+	ldl	STDARG,4(STDARG)	    /* initial value */
+	sll	ATMP2,TAG_SHIFTW,ATMP3	    /* build descriptor in tmp3 */
+	or	ATMP3,MAKE_TAG(DTAG_arr_data),ATMP3
 	stl	ATMP3,0(ALLOCPTR)	    /* store descriptor */
 	addq	ALLOCPTR,4		    /* allocptr++ */
-	ldl	ATMP2,4(STDARG)	    /* atmp2 := initial value */
-	mov	ALLOCPTR,STDARG
-	sll	ATMP1,2,ATMP1		    /* atmp1 := length in bytes */
-	addq	ATMP1,ALLOCPTR	    /* atmp1 is end of array */
-2:					    /* loop: */
-	stl	ATMP2,0(ALLOCPTR)		/* store next element */
-	addq	ALLOCPTR,4			/* allocptr++ */
-	subq	ALLOCPTR,ATMP1,ATMP4
-	bne	ATMP4,2b			/* if (allocptr != end) goto loop */
-					    /* end loop */
+	mov	ALLOCPTR,ATMP3		    /* array data ptr in tmp3 */
+1:	
+	stl	STDARG,0(ALLOCPTR)	    /* initialize array */ 
+	subl	ATMP2, 1, ATMP2
+	addq	ALLOCPTR,4
+	bne	ATMP2,1b
+
+	/* allocate array header */
+	mov	DESC_polyarr,ATMP2	    /* descriptor in tmp2 */
+	stl	ATMP2,0(ALLOCPTR)	    /* store descriptor */
+	addq	ALLOCPTR, 4		    /* allocptr++ */
+	mov	ALLOCPTR,STDARG		    /* result = header addr */
+	stl	ATMP3, 0(ALLOCPTR)	    /* store pointer to data */
+	stl	ATMP1, 4(ALLOCPTR)
+	addq	ALLOCPTR,8
 	CONTINUE
 
-1:	/* off-line allocation of big arrays */
+2:	/* off-line allocation of big arrays */
 	mov	FUN_MASK,PTRTMP
 	mov	REQ_ALLOC_ARRAY,ATMP1
 	br	set_request
@@ -533,21 +541,31 @@ ML_CODE_HDR(array_a)
  */
 ML_CODE_HDR(create_r_a)
 	CHECKLIMIT(FUN_MASK)
-	sra	STDARG,1,ATMP1	    /* atmp1 = length (untagged int) */
-	sll	ATMP1,1,ATMP2		    /* atmp2 = length in words */
+
+	sra	STDARG,1,ATMP2		    /* atmp2 = length (untagged int) */
+	sll	ATMP2,1,ATMP2		    /* atmp2 = length in words */
 	subl	ATMP2,SMALL_OBJ_SZW,ATMP3
 	bgt	ATMP3,1f		    /* is this a small object? */
-	sll	ATMP1,TAG_SHIFTW,ATMP3    /* build descriptor in atmp3 */
-	or	ATMP3,MAKE_TAG(DTAG_realdarray),ATMP3
+	/* allocate the data object */
+	sll	ATMP2,TAG_SHIFTW,ATMP1	    /* build data descriptor in tmp1 */
+	or	ATMP1, MAKE_TAG(DTAG_raw64),ATMP1
 #ifdef ALIGN_REALDS
 	or	ALLOCPTR,4,ALLOCPTR	    /* tag is unaligned, so that the */
 					    /* first element is 8-byte aligned */
 #endif
-	stl	ATMP3,0(ALLOCPTR)
-	addq	ALLOCPTR,4,STDARG	    /* pointer to new realarray */
-	sll	ATMP2,2		    /* atmp2 = length in bytes (no tag) */
-	addq	ATMP2,4		    /* plus tag */
-	addq	ALLOCPTR,ATMP2	    /* allocptr += total length */
+	stl	ATMP1,0(ALLOCPTR)	    /* store the descriptor */
+	addq	ALLOCPTR,4		    /* allocptr++ */
+	mov	ALLOCPTR,ATMP3		    /* tmp3 = data object */
+	sll	ATMP2, 2, ATMP2		    /* tmp2 = length in bytes */
+	addq	ALLOCPTR, ATMP2,ALLOCPTR    /* allocptr += length */
+	/* allocate the header object */
+	mov	DESC_real64arr,ATMP1
+	stl	ATMP1,0(ALLOCPTR)	    /* header descriptor */
+	addq	ALLOCPTR,4		    /* allocptr++ */
+	stl	ATMP3,0(ALLOCPTR)	    /* header data field */
+	stl	STDARG,4(ALLOCPTR)	    /* header length field */
+	mov	ALLOCPTR,STDARG		    /* stdarg = header object */
+	addq	ALLOCPTR,8
 	CONTINUE
 
 1:	/* off-line allocation of big realarrays */
@@ -560,18 +578,28 @@ ML_CODE_HDR(create_r_a)
  */
 ML_CODE_HDR(create_b_a)
 	CHECKLIMIT(FUN_MASK)
-	sra	STDARG,1,ATMP1	    /* atmp1 = length (untagged int) */
-	addq	ATMP1,3,ATMP2		    /* atmp2 = length in words */
+
+	sra	STDARG,1,ATMP2		  /* atmp2 = length (untagged int) */
+	addq	ATMP2,3,ATMP2		  /* atmp2 = length in words */
 	sra	ATMP2,2
 	subq	ATMP2,SMALL_OBJ_SZW,ATMP3 /* is this a small object? */
 	bgt	ATMP3,1f
-	sll	ATMP1,TAG_SHIFTW,ATMP3    /* build descriptor in atmp3 */
-	or	ATMP3,MAKE_TAG(DTAG_bytearray),ATMP3
-	stl	ATMP3,0(ALLOCPTR)
-	addq	ALLOCPTR,4,STDARG	    /* pointer to new bytearray */
-	sll	ATMP2,2		    /* atmp2 = length in bytes (no tag) */
-	addq	ATMP2,4		    /* plus tag */
-	addq	ALLOCPTR,ATMP2,ALLOCPTR  /* allocptr += total length */
+	/* allocate the data object */
+	sll	ATMP2,TAG_SHIFTW,ATMP1    /* build descriptor in atmp1 */
+	or	ATMP1,MAKE_TAG(DTAG_raw32),ATMP1
+	stl	ATMP1,0(ALLOCPTR)	  /* store the data descriptor */
+	addq	ALLOCPTR,4		  /* allocptr++ */
+	mov	ALLOCPTR,ATMP3		  /* tmp3 = data object */
+	sll	ATMP2,2		          /* tmp2 = length in bytes */
+	addq	ALLOCPTR,ATMP2,ALLOCPTR   /* allocptr += total length */
+	/* allocate the header object */
+	mov	DESC_word8arr,ATMP1	  /* header descriptor */
+	stl	ATMP1,0(ALLOCPTR)
+	addq	ALLOCPTR,4		  /* allocptr++ */
+	stl	ATMP3,0(ALLOCPTR)	  /* header data field */
+	stl	STDARG,4(ALLOCPTR)	  /* header length field */
+	mov	ALLOCPTR,STDARG		  /* stdarg = header object */
+	addq	ALLOCPTR,8		  /* allocptr += 2 */
 	CONTINUE
 1:					/* off-line allocation of big bytearrays */
 	mov	FUN_MASK,PTRTMP
@@ -583,19 +611,29 @@ ML_CODE_HDR(create_b_a)
  */
 ML_CODE_HDR(create_s_a)
 	CHECKLIMIT(FUN_MASK)
-	sra	STDARG,1,ATMP1	    /* atmp1 = length (untagged int) */
-	addq	ATMP1,4,ATMP2		    /* atmp2 = length in words */
+
+	sra	STDARG,1,ATMP2			/* tmp2 = length (untagged int) */
+	addq	ATMP2,4,ATMP2			/* atmp2 = length in words */
 	sra	ATMP2,2
 	subq	ATMP2,SMALL_OBJ_SZW,ATMP3
-	bgt	ATMP3,1f		    /* is this a small object? */
-	sll	ATMP1,TAG_SHIFTW,ATMP3    /* build descriptor in atmp3 */
-	or	ATMP3,MAKE_TAG(DTAG_string),ATMP3
-	stl	ATMP3,0(ALLOCPTR)
-	addq	ALLOCPTR,4,STDARG	    /* pointer to new string */
-	sll	ATMP2,2		    /* atmp2 = length in bytes (no tag) */
-	addq	ATMP2,4		    /* plus tag */
-	addq	ALLOCPTR,ATMP2	    /* allocptr += total length */
-	stl	zero,-4(ALLOCPTR)	    /* store zero in last word */
+	bgt	ATMP3,1f			/* is this a small object? */
+	
+	sll	ATMP2,TAG_SHIFTW,ATMP1		/* build descriptor in atmp3 */
+	or	ATMP1,MAKE_TAG(DTAG_raw32),ATMP1
+	stl	ATMP1,0(ALLOCPTR)		/* store the data descriptor */
+	addq	ALLOCPTR,4	 	        /* allocptr++ */
+	mov	ALLOCPTR,ATMP3			/* tmp3 = data object */
+	sll	ATMP2,2				/* tmp2 = length in bytes */
+	addq	ALLOCPTR,ATMP2,ALLOCPTR	        /* allocptr += total length */
+	stl	zero,-4(ALLOCPTR)		/* store zero in last word */
+	/* Allocate the header object */
+	mov	DESC_string, ATMP1		/* header descriptor */
+	stl	ATMP1,0(ALLOCPTR)
+	addq	ALLOCPTR,4			/* allocptr++ */
+	stl	ATMP3,0(ALLOCPTR)		/* header data field */
+	stl	STDARG,4(ALLOCPTR)		/* heder length field */
+	mov	ALLOCPTR,STDARG			/* stdarg = header object */
+	addq	ALLOCPTR,8
 	CONTINUE
 1:					/* off-line allocation of big strings */
 	mov	FUN_MASK,PTRTMP
@@ -608,25 +646,33 @@ ML_CODE_HDR(create_s_a)
  */
 ML_CODE_HDR(create_v_a)
 	CHECKLIMIT(FUN_MASK)
-	ldl	ATMP1,0(STDARG)	    /* atmp1 := length (tagged int) */
-	sra	ATMP1,1		    /* atmp1 := length (untagged) */
-	subq	ATMP1,SMALL_OBJ_SZW,ATMP2
-	bgt	ATMP2,1f	    /* is this a small object? */
-	sll	ATMP1,TAG_SHIFTW,ATMP2    /* build descriptor in atmp2 */
-	or	ATMP2,MAKE_TAG(DTAG_vector),ATMP2
-	stl	ATMP2,0(ALLOCPTR)	    /* store descriptor */
-	addq	ALLOCPTR,4		    /* allocptr++ */
-	ldl	ATMP2,4(STDARG)	    /* atmp2 := list */
-	mov	ALLOCPTR,STDARG	    /* stdarg := vector */
-	mov	ML_nil,ATMP3
-2:					    /* loop: */
-	ldl	ATMP1,0(ATMP2)	        /* atmp1 := hd(atmp2) */
-	ldl	ATMP2,4(ATMP2)	        /* atmp2 := tl(atmp2) */
-	stl	ATMP1,0(ALLOCPTR)	        /* store word in vector */
-	addq	ALLOCPTR,4		        /* allocptr++ */
-	subq	ATMP2,ATMP3,ATMP4
-	bne	ATMP4,2b			/* if (atmp2 <> nil) goto loop */
-					    /* end loop */
+
+	ldl	ATMP1,0(STDARG)		/* tmp1 := length (tagged int) */
+	sra	ATMP1,1,ATMP2		/* tmp2 := length (untagged) */
+	subq	ATMP2,SMALL_OBJ_SZW,ATMP3
+	bgt	ATMP3,1f		/* is this a small object? */
+	
+	sll	ATMP2,TAG_SHIFTW,ATMP2  /* build descriptor in tmp2 */
+	or	ATMP2,MAKE_TAG(DTAG_vec_data),ATMP2
+	stl	ATMP2,0(ALLOCPTR)	/* store descriptor */
+	addq	ALLOCPTR,4		/* allocptr++ */
+	ldl	ATMP2,4(STDARG)	        /* atmp2 := list */
+	mov	ALLOCPTR,STDARG		/* stdarg := vector */
+2:     /* loop: */
+	ldl	ATMP3,0(ATMP2)	        /* tmp3 := hd(tmp2) */
+	ldl	ATMP2,4(ATMP2)	        /* tmp2 := tl(tmp2) */
+	stl	ATMP3,0(ALLOCPTR)       /* store word in vector */
+	addq	ALLOCPTR,4		/* allocptr++ */
+	cmpeq	ATMP2,ML_nil,ATMP3	/* tmp3 := 1 if tmp2=ML_nil */
+	beq	ATMP3, 2b
+       /* allocate header object */
+	mov	DESC_polyvec,ATMP3	/* descriptor in tmp3 */
+	stl	ATMP3,0(ALLOCPTR)	/* store descriptor */
+	addq	ALLOCPTR,4		/* allocptr++ */
+	stl	STDARG,0(ALLOCPTR)	/* header data field */
+	stl	ATMP1,4(ALLOCPTR)	/* header length */
+	mov	ALLOCPTR, STDARG	/* result = header object */
+	addq	ALLOCPTR, 8		/* allocptr += 2 */
 	CONTINUE
 
 1:	/* off-line allocation for large vectors */

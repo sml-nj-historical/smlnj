@@ -19,6 +19,6 @@
  */
 ml_val_t _ml_NetDB_gethostbyname (ml_state_t *msp, ml_val_t arg)
 {
-    return _util_NetDB_mkhostent (msp, gethostbyname (PTR_MLtoC(char, arg)));
+    return _util_NetDB_mkhostent (msp, gethostbyname (STR_MLtoC(arg)));
 
 } /* end of _ml_NetDB_gethostbyname */

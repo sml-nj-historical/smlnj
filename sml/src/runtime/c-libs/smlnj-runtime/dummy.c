@@ -10,14 +10,13 @@
 #include "ml-values.h"
 #include "cfun-proto-list.h"
 
-
 /* _ml_RunT_dummy : string -> unit
  *
  * The string argument can be used as a unique marker.
  */
 ml_val_t _ml_RunT_dummy (ml_state_t *msp, ml_val_t arg)
 {
-    char	*s = PTR_MLtoC(char, arg);
+    char	*s = STR_MLtoC(arg);
 
     return ML_unit;
 

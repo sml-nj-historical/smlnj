@@ -15,16 +15,15 @@ structure Array : ARRAY =
 
     val maxLen = Core.max_length
 
-    val array0 : 'a array = Assembly.array0
     val array : int * 'a -> 'a array = InlineT.PolyArray.array
 (*
-    fun array (0, _) = array0
+    fun array (0, _) = InlineT.PolyArray.newArray0()
       | array (n, init) = 
           if InlineT.DfltInt.ltu(maxLen, n) then raise Core.Size 
           else Assembly.A.array (n, init)
 *)
 
-    fun tabulate (0, _) = array0
+    fun tabulate (0, _) = InlineT.PolyArray.newArray0()
       | tabulate (n, f : int -> 'a) : 'a array = 
           let val a = array(n, f 0)
               fun tab i = 
@@ -33,7 +32,7 @@ structure Array : ARRAY =
            in tab 1
           end
 
-    fun fromList [] = array0
+    fun fromList [] = InlineT.PolyArray.newArray0()
       | fromList (l as (first::rest)) = 
           let fun len(_::_::r, i) = len(r, i+2)
                 | len([x], i) = i+1
@@ -224,5 +223,11 @@ structure Array : ARRAY =
 
 
 (*
- * $Log$
+ * $Log: array.sml,v $
+ * Revision 1.2  1998/11/18 03:54:10  jhr
+ *  New array representations.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:03  george
+ * Version 110.5
+ *
  *)

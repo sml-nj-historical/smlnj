@@ -37,6 +37,7 @@ structure P = struct
     datatype setter
       = numupdate of {kind: numkind}
       | unboxedupdate | boxedupdate | update
+      | unboxedassign | assign
       | sethdlr | setvar | uselvar | setspecial
       | free | acclink | setpseudo | setmark
 
@@ -62,6 +63,7 @@ structure P = struct
       | subscriptv
       | gettag | mkspecial | wrap | unwrap | cast | getcon | getexn
       | fwrap | funwrap | iwrap | iunwrap | i32wrap | i32unwrap
+      | getseqdata | recsubscript | raw64subscript | newarray0
 
     local 
       fun ioper (op > : cmpop)  = (op <= : cmpop)
@@ -248,5 +250,17 @@ end (* top-level local *)
 end (* structure CPS *)
 
 (*
- * $Log$
+ * $Log: cps.sml,v $
+ * Revision 1.7  1998/11/23 20:09:53  jhr
+ *   New raw64Subscript primop.
+ *
+ * Revision 1.6  1998/11/18 03:53:16  jhr
+ *  New array representations.
+ *
+ * Revision 1.5  1998/10/28 18:21:22  jhr
+ *   New primops to support new array representation.
+ *
+ * Revision 1.4  1998/05/23 14:09:29  george
+ *   Fixed RCS keyword syntax
+ *
  *)

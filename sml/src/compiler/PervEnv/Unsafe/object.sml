@@ -13,10 +13,12 @@ structure Object :> UNSAFE_OBJECT =
    *)
     datatype representation
       = Unboxed
+      | Word32
       | Real
       | Pair
       | Record
-(*      | PolyVector	use Record for now *)
+      | Ref
+      | PolyVector
       | PolyArray	(* includes ref *)
       | ByteVector	(* includes Word8Vector.vector and CharVector.vector *)
       | ByteArray	(* includes Word8Array.array and CharArray.array *)
@@ -33,34 +35,82 @@ structure Object :> UNSAFE_OBJECT =
     fun rep obj = if (unboxed obj)
 	  then Unboxed
 	  else (case (InlineT.gettag obj)
-	     of 0x02 (* tag_pair *) => Pair
-	      | 0x06 (* tag_reald *) => Real
-	      | 0x12 (* tag_special *) => (case (InlineT.getspecial obj)
+	     of 0x02 (* tag_record *) =>
+		  if (InlineT.objlength obj = 2)
+		    then Pair
+		    else Record
+	      | 0x06 (* tag_vec_hdr *) => (case (InlineT.objlength obj)
+		 of 0 => PolyVector
+		  | 1 => ByteVector
+		  | _ => raise Fail "unknown vec_hdr"
+		(* end case *))
+	      | 0x0a (* tag_tag_arr_hdr *) => (case (InlineT.objlength obj)
+		 of 0 => PolyArray
+		  | 1 => ByteArray
+		  | 6 => RealArray
+		  | _ => raise Fail "unknown arr_hdr"
+		(* end case *))
+	      | 0x0e (* tag_arr_data/tag_ref *) =>
+		  if (InlineT.objlength obj = 1)
+		    then Ref
+		    else raise Fail "Unknown arr_data"
+	      | 0x12 (* tag_raw32 *) => Word32
+	      | 0x16 (* tag_raw64 *) => Real
+	      | 0x1a (* tag_special *) => (case (InlineT.getspecial obj)
 		 of (0 | 1) => Susp
 		  | (2 | 3) => WeakPtr
+		  | _ => raise Fail "unknown special"
 		(* end case *))
-	      | 0x22 (* tag_record *) => Record
-	      | 0x26 (* tag_array *) => PolyArray
-	      | 0x2a (* tag_string *) => ByteVector
-	      | 0x32 (* tag_bytearray *) => ByteArray
-	      | 0x36 (* tag_realdarray *) => RealArray
 	      | _ (* tagless pair *) => Pair
 	    (* end case *))
 
     exception Representation
 
-    fun toTuple obj = (case (rep obj)
-	   of Pair => #[
-		  InlineT.PolyVector.sub(InlineT.cast obj, 0),
-		  InlineT.PolyVector.sub(InlineT.cast obj, 1)
-		]
-	    | Real => #[InlineT.cast obj]
-	    | Record => ((InlineT.cast obj) : object vector)
-	    | RealArray => let
-		val arr : Real64Array.array = (InlineT.cast obj)
-		fun f i = toObject(InlineT.Real64Array.sub(arr, i))
+    fun length obj = (case (rep obj)
+	   of Pair => 2
+	    | Unboxed => raise Representation
+	    | _ => InlineT.objlength obj
+	  (* end case *))
+
+    fun nth (obj, n) = (case (rep obj)
+	   of Pair =>
+		if ((0 <= n) andalso (n < 2))
+		  then InlineT.recordSub(obj, n)
+		  else raise Representation
+	    | Record => let val len = InlineT.objlength obj
 		in
-		  Vector.tabulate(InlineT.Real64Array.length arr, f)
+		  if ((0 <= n) andalso (n < len))
+		    then InlineT.recordSub(obj, n)
+		    else raise Representation
+		end
+	    | Real => let val len = InlineT.Int31.rshift(InlineT.objlength obj, 1)
+		in
+		  if ((n < 0) orelse (len <= n))
+		    then raise Representation
+		  else if (n = 0)
+		    then obj	(* flat singleton tuple *)
+		    else InlineT.cast(InlineT.raw64Sub(obj, n))
+		end
+	    | _ => raise Representation
+	  (* end case *))
+
+    fun toTuple obj = (case (rep obj)
+	   of Pair => [
+		  InlineT.recordSub(obj, 0),
+		  InlineT.recordSub(obj, 1)
+		]
+	    | Record => let
+		fun f i = InlineT.recordSub(obj, i)
+		in
+		  List.tabulate (InlineT.objlength obj, f)
+		end
+	    | Real => let
+		val len = InlineT.Int31.rshift(InlineT.objlength obj, 1)
+		fun f i = (InlineT.cast(InlineT.raw64Sub(obj, i)) : object)
+		in
+		  if (len = 1)
+		    then [obj]
+		    else List.tabulate (len, f)
 		end
 	    | _ => raise Representation
 	  (* end case *))
@@ -69,12 +119,15 @@ structure Object :> UNSAFE_OBJECT =
 	    | _ => raise Representation
 	  (* end case *))
     fun toRef obj =
-	  if ((rep obj = PolyArray)
-	  andalso (InlineT.PolyArray.length(InlineT.cast obj) = 1))
+	  if (rep obj = Ref)
 	    then ((InlineT.cast obj) : object ref)
 	    else raise Representation
     fun toArray obj = (case (rep obj)
 	   of PolyArray => ((InlineT.cast obj) : object array)
+	    | _ => raise Representation
+	  (* end case *))
+    fun toVector obj = (case (rep obj)
+	   of PolyVector => ((InlineT.cast obj) : object vector)
 	    | _ => raise Representation
 	  (* end case *))
     fun toExn obj =
@@ -89,8 +142,7 @@ structure Object :> UNSAFE_OBJECT =
 	  then ((InlineT.cast obj) : int)
 	  else raise Representation
     fun toInt32 obj =
-	  if ((rep obj = ByteVector)
-	  andalso (InlineT.CharVector.length(InlineT.cast obj) = 4))
+	  if (rep obj = Word32)
 	    then ((InlineT.cast obj) : Int32.int)
 	    else raise Representation
     fun toWord  obj = if (unboxed obj)
@@ -100,8 +152,7 @@ structure Object :> UNSAFE_OBJECT =
 	  then ((InlineT.cast obj) : Word8.word)
 	  else raise Representation
     fun toWord32 obj =
-	  if ((rep obj = ByteVector)
-	  andalso (InlineT.CharVector.length(InlineT.cast obj) = 4))
+	  if (rep obj = Word32)
 	    then ((InlineT.cast obj) : Word32.word)
 	    else raise Representation
 
@@ -109,5 +160,17 @@ structure Object :> UNSAFE_OBJECT =
 
 
 (*
- * $Log$
+ * $Log: object.sml,v $
+ * Revision 1.4  1998/11/23 20:10:10  jhr
+ *   New raw64Subscript primop.
+ *
+ * Revision 1.3  1998/11/18 03:54:24  jhr
+ *  New array representations.
+ *
+ * Revision 1.2  1998/10/28 18:24:59  jhr
+ *   New Unsafe.Object API.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:01  george
+ * Version 110.5
+ *
  *)

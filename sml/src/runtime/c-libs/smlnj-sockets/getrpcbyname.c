@@ -23,7 +23,7 @@ ml_val_t _ml_NetDB_getrpcbyname (ml_state_t *msp, ml_val_t arg)
     ml_val_t	    name, aliases, res;
     struct rpcent   *rentry;
 
-    rentry = getrpcbyname (PTR_MLtoC(char, arg));
+    rentry = getrpcbyname (STR_MLtoC(arg));
 
     if (rentry == NIL(struct rpcent *))
 	return OPTION_NONE;

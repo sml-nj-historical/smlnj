@@ -38,5 +38,8 @@ structure InteractiveSystem : sig end = struct
 end
 
 (*
- * $Log$
+ * $Log: int-sys.sml,v $
+ * Revision 1.1  1998/08/26 14:07:16  george
+ *   CM changes from blume
+ *
  *)

@@ -91,6 +91,11 @@ end
 
 (*
  * $Log: alpha32RegAlloc.sml,v $
+ * Revision 1.6  1998/10/06 14:07:31  george
+ * Flowgraph has been removed from modules that do not need it.
+ * Changes to compiler/CodeGen/*/*{MLTree,CG}.sml necessary.
+ * 						[leunga]
+ *
  * Revision 1.5  1998/09/30 19:34:39  dbm
  * fixing sharing/defspec conflict
  *

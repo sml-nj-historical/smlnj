@@ -25,5 +25,8 @@ functor Alpha32Shuffle(I:ALPHA32INSTR) = struct
 end
 
 (*
- * $Log$
+ * $Log: alpha32Shuffle.sml,v $
+ * Revision 1.3  1998/05/25 15:10:51  george
+ *   Fixed RCS keywords
+ *
  *)

@@ -29,8 +29,12 @@ PVT char	*FileLists[] = {
 pers_id_t	RunTimePerID = {RUNTIME_PERID};
 
 
-/* The persistent ID list is stored in the PervStruct refcell.  It is a
- * list of (PerID, ML-object) pairs.
+/* The persistent ID list is stored in the PervStruct refcell.  It has
+ * the following ML type:
+ *
+ *    datatype runDynEnv
+ *      = NILrde
+ *      | CONSrde of (Word8Vector.vector * Object.object * runDynEnv)
  */
 #define PerIDList	(*PTR_MLtoC(ml_val_t, PervStruct))
 
@@ -77,7 +81,7 @@ void BootML (const char *binDir, heap_params_t *heapParams)
 
   /* boot the system */
     while (BinFileList != LIST_nil) {
-	strcpy(fname, PTR_MLtoC(char, LIST_hd(BinFileList)));
+	strcpy(fname, STR_MLtoC(LIST_hd(BinFileList)));
 	Say ("[Loading %s]\n", fname);
 	BinFileList = LIST_tl(BinFileList);
 	LoadBinFile (msp, binDir, fname);
@@ -386,16 +390,46 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
 	    Die ("cannot seek on bin file \"%s%c%s\"", binDir, PATH_ARC_SEP, fname);
     }
 
-  /* Read code objects and run them.  We add a comment string to each code
-   * object to mark which bin file it came from.  This code should be the
-   * same as that in ../c-libs/smlnj-runtime/mkcode.c.
+  /* Read code objects and run them.  The first code object will be the
+   * data segment.  We add a comment string to each code object to mark
+   * which bin file it came from.  This code should be the same as that
+   * in ../c-libs/smlnj-runtime/mkcode.c.
    */
-    isDataSeg = TRUE;
-    val = ML_nil;
+
     remainingCode = hdr.codeSzB;
+
+  /* read the size for the data object */
+    ReadBinFile (file, &thisSzB, sizeof(Int32_t), binDir, fname);
+    thisSzB = BIGENDIAN_TO_HOST(thisSzB);
+
+    remainingCode -= thisSzB + sizeof(Int32_t);
+    if (remainingCode < 0)
+	Die ("format error (data size mismatch) in bin file \"%s%c%s\"",
+	    binDir, PATH_ARC_SEP, fname);
+
+    if (thisSzB > 0) {
+	Byte_t		*dataObj = NEW_VEC(Byte_t, thisSzB);
+
+	ReadBinFile (file, dataObj, thisSzB, binDir, fname);
+	SaveCState (msp, &BinFileList, &importRec, NIL(ml_val_t *));
+	val = BuildLiterals (msp, dataObj, thisSzB);
+	FREE(dataObj);
+	RestoreCState (msp, &BinFileList, &importRec, NIL(ml_val_t *));
+    }
+    else {
+	val = ML_unit;
+    }
+  /* do a functional update of the last element of the importRec. */
+    for (i = 0;  i < importRecLen;  i++)
+	ML_AllocWrite(msp, i, PTR_MLtoC(ml_val_t, importRec)[i-1]);
+    ML_AllocWrite(msp, importRecLen, val);
+    val = ML_Alloc(msp, importRecLen);
+  /* do a GC, if necessary */
+    if (NeedGC (msp, PERID_LEN+REC_SZB(5)))
+	InvokeGCWithRoots (msp, 0, &BinFileList, &val, NIL(ml_val_t *));
+
     while (remainingCode > 0) {
-	int		strLen = strlen(fname);
-	int		padLen, extraLen;
+	int		strLen, padLen, extraLen;
 
       /* read the size for this code object */
 	ReadBinFile (file, &thisSzB, sizeof(Int32_t), binDir, fname);
@@ -406,6 +440,7 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
        * length byte is WORD_SZB bytes.  The padding is inserted between
        * the code and the string.
        */
+	strLen = strlen(fname);
 	if (strLen > 255)
 	    strLen = 255;
 	extraLen = strLen+1;  /* include byte for length */
@@ -420,34 +455,21 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
 
       /* allocate space and read code object */
 	codeObj = ML_AllocCode (msp, thisSzB+extraLen);
-	ReadBinFile (file, PTR_MLtoC(void, codeObj), thisSzB, binDir, fname);
+	ReadBinFile (file, STR_MLtoC(codeObj), thisSzB, binDir, fname);
 
       /* tack on the bin-file name as a comment string. */
-	memcpy (PTR_MLtoC(char, codeObj)+thisSzB+padLen, fname, strLen);
-	*(PTR_MLtoC(Byte_t, codeObj)+thisSzB+extraLen-1) = (Byte_t)strLen;
+	memcpy (STR_MLtoC(codeObj)+thisSzB+padLen, fname, strLen);
+	*(GET_SEQ_DATAPTR(Byte_t, codeObj)+thisSzB+extraLen-1) = (Byte_t)strLen;
 	
-	FlushICache (PTR_MLtoC(void, codeObj), thisSzB);
+	FlushICache (STR_MLtoC(codeObj), thisSzB);
       
       /* create closure */
-	REC_ALLOC1 (msp, closure, PTR_CtoML(PTR_MLtoC(ml_val_t, codeObj) + 1));
+	REC_ALLOC1 (msp, closure, GET_SEQ_DATA(codeObj));
 
       /* apply the closure to the import PerID vector */
-	if (isDataSeg) {
-	    SaveCState (msp, &BinFileList, &importRec, NIL(ml_val_t *));
-	    val = ApplyMLFn (msp, closure, val, TRUE);
-	    RestoreCState (msp, &BinFileList, &importRec, NIL(ml_val_t *));
-	  /* do a functional update of the last element of the importRec. */
-	    for (i = 0;  i < importRecLen;  i++)
-		ML_AllocWrite(msp, i, PTR_MLtoC(ml_val_t, importRec)[i-1]);
-	    ML_AllocWrite(msp, importRecLen, val);
-	    val = ML_Alloc(msp, importRecLen);
-	    isDataSeg = FALSE;
-	}
-	else {
-	    SaveCState (msp, &BinFileList, NIL(ml_val_t *));
-	    val = ApplyMLFn (msp, closure, val, TRUE);
-	    RestoreCState (msp, &BinFileList, NIL(ml_val_t *));
-	}
+	SaveCState (msp, &BinFileList, NIL(ml_val_t *));
+	val = ApplyMLFn (msp, closure, val, TRUE);
+	RestoreCState (msp, &BinFileList, NIL(ml_val_t *));
 
       /* do a GC, if necessary */
 	if (NeedGC (msp, PERID_LEN+REC_SZB(5)))
@@ -470,9 +492,9 @@ PVT void EnterPerID (ml_state_t *msp, pers_id_t *perID, ml_val_t obj)
 {
     ml_val_t	    mlPerID;
 
-  /* Allocate a string for the PerID */
+  /* Allocate space for the PerID */
     mlPerID = ML_AllocString (msp, PERID_LEN);
-    memcpy (PTR_MLtoC(char, mlPerID), (char *)perID, PERID_LEN);
+    memcpy (STR_MLtoC(mlPerID), (char *)perID, PERID_LEN);
 
   /* Allocate the list element */
     REC_ALLOC3(msp, PerIDList, mlPerID, obj, PerIDList);
@@ -483,10 +505,11 @@ PVT void EnterPerID (ml_state_t *msp, pers_id_t *perID, ml_val_t obj)
  */
 PVT ml_val_t LookupPerID (pers_id_t *perID)
 {
-    ml_val_t        p;
+    ml_val_t        p, id;
 
     for (p = PerIDList;  p != ML_unit;  p = REC_SEL(p, 2)) {
-	if (memcmp((char *)perID, REC_SELPTR(char, p, 0), PERID_LEN) == 0)
+	id = REC_SEL(p, 0);
+	if (memcmp((char *)perID, STR_MLtoC(id), PERID_LEN) == 0)
 	    return (REC_SEL(p, 1));
     }
 

@@ -45,7 +45,7 @@ ml_val_t _ml_win32_FS_find_next_file(ml_state_t *msp, ml_val_t arg)
  */
 ml_val_t _ml_win32_FS_find_first_file(ml_state_t *msp, ml_val_t arg)
 {
-  HANDLE h = FindFirstFile(PTR_MLtoC(char,arg),&wfd);
+  HANDLE h = FindFirstFile(STR_MLtoC(arg),&wfd);
   ml_val_t fname_opt, fname, w, res;
 
   if (h != INVALID_HANDLE_VALUE) {
@@ -73,7 +73,7 @@ ml_val_t _ml_win32_FS_find_close(ml_state_t *msp, ml_val_t arg)
  */
 ml_val_t _ml_win32_FS_set_current_directory(ml_state_t *msp, ml_val_t arg)
 {
-  return SetCurrentDirectory(PTR_MLtoC(char,arg)) ? ML_true : ML_false;
+  return SetCurrentDirectory(STR_MLtoC(arg)) ? ML_true : ML_false;
 }
 
 /* _ml_win32_FS_get_current_directory: unit -> string
@@ -94,32 +94,32 @@ ml_val_t _ml_win32_FS_get_current_directory(ml_state_t *msp, ml_val_t arg)
  */
 ml_val_t _ml_win32_FS_create_directory(ml_state_t *msp, ml_val_t arg)
 {
-  return CreateDirectory(PTR_MLtoC(char,arg),NULL) ? ML_true : ML_false;
+  return CreateDirectory(STR_MLtoC(arg),NULL) ? ML_true : ML_false;
 }
 
 /* _ml_win32_FS_remove_directory: string -> bool
  */
 ml_val_t _ml_win32_FS_remove_directory(ml_state_t *msp, ml_val_t arg)
 {
-  return RemoveDirectory(PTR_MLtoC(char,arg)) ? ML_true : ML_false;
+  return RemoveDirectory(STR_MLtoC(arg)) ? ML_true : ML_false;
 }
 
 /* _ml_win32_FS_get_file_attributes: string -> (word32 option)
  */
 ml_val_t _ml_win32_FS_get_file_attributes(ml_state_t *msp, ml_val_t arg)
 {
-  DWORD w = GetFileAttributes(PTR_MLtoC(char,arg));
+  DWORD w = GetFileAttributes(STR_MLtoC(arg));
   ml_val_t res, ml_w;
 
   if (w != 0xffffffff) {
 #ifdef DEBUG_WIN32
-    printf("_ml_win32_FS_get_file_attributes: returning file attrs for <%s> as SOME %x\n",PTR_MLtoC(char,arg),w);
+    printf("_ml_win32_FS_get_file_attributes: returning file attrs for <%s> as SOME %x\n",STR_MLtoC(arg),w);
 #endif
     WORD_ALLOC(msp,ml_w,w);
     OPTION_SOME(msp,res,ml_w);
   } else {
 #ifdef DEBUG_WIN32
-    printf("returning NONE as attrs for <%s>\n",PTR_MLtoC(char,arg));
+    printf("returning NONE as attrs for <%s>\n",STR_MLtoC(arg));
 #endif
     res = OPTION_NONE;
   }
@@ -150,7 +150,7 @@ ml_val_t _ml_win32_FS_get_full_path_name(ml_state_t *msp, ml_val_t arg)
   DWORD r;
   ml_val_t res;
 
-  r = GetFullPathName(PTR_MLtoC(char,arg),MAX_PATH,buf,&dummy);
+  r = GetFullPathName(STR_MLtoC(arg),MAX_PATH,buf,&dummy);
   if (r == 0 | r > MAX_PATH) {
     return  RAISE_SYSERR(msp,-1);
   }
@@ -196,7 +196,7 @@ ml_val_t _ml_win32_FS_get_low_file_size_by_name(ml_state_t *msp, ml_val_t arg)
   HANDLE h;
   ml_val_t res = OPTION_NONE;
 
-  h = CreateFile(PTR_MLtoC(char,arg),0,0,NULL,
+  h = CreateFile(STR_MLtoC(arg),0,0,NULL,
 		 OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,INVALID_HANDLE_VALUE);
   if (h != INVALID_HANDLE_VALUE) {
     DWORD lo;
@@ -237,7 +237,7 @@ ml_val_t _ml_win32_FS_get_file_time(ml_state_t *msp, ml_val_t arg)
   HANDLE h;
   ml_val_t res = OPTION_NONE;
 
-  h = CreateFile(PTR_MLtoC(char,arg),0,0,NULL,
+  h = CreateFile(STR_MLtoC(arg),0,0,NULL,
 		 OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,INVALID_HANDLE_VALUE);
   if (h != INVALID_HANDLE_VALUE) {
     FILETIME ft;
@@ -271,13 +271,15 @@ ml_val_t _ml_win32_FS_get_file_time(ml_state_t *msp, ml_val_t arg)
  */
 ml_val_t _ml_win32_FS_set_file_time(ml_state_t *msp, ml_val_t arg)
 {
-  HANDLE h;
-  ml_val_t res = ML_false;
-  char *fname = REC_SELPTR(char,arg,0);
-  ml_val_t time_rec = REC_SEL(arg,1);
+  HANDLE	h;
+  ml_val_t	res = ML_false;
+  ml_val_t	fname = REC_SEL(arg,0);
+  ml_val_t	time_rec = REC_SEL(arg,1);
 
-  h = CreateFile(fname,GENERIC_WRITE,0,NULL,
-		 OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,INVALID_HANDLE_VALUE);
+  h = CreateFile (
+	STR_MLtoC(fname), GENERIC_WRITE, 0 ,NULL,
+	OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, INVALID_HANDLE_VALUE);
+
   if (h != INVALID_HANDLE_VALUE) {
     FILETIME ft;
     SYSTEMTIME st;
@@ -304,15 +306,20 @@ ml_val_t _ml_win32_FS_set_file_time(ml_state_t *msp, ml_val_t arg)
  */
 ml_val_t _ml_win32_FS_delete_file(ml_state_t *msp, ml_val_t arg)
 {
-  return DeleteFile(PTR_MLtoC(char,arg)) ? ML_true : ML_false;
+  return DeleteFile(STR_MLtoC(arg)) ? ML_true : ML_false;
 }
 
 /* _ml_win32_FS_move_file: (string * string)->bool
  */
 ml_val_t _ml_win32_FS_move_file(ml_state_t *msp, ml_val_t arg)
 {
-  return MoveFile(REC_SELPTR(char,arg,0),REC_SELPTR(char,arg,1)) ? 
-             ML_true : ML_false;
+    ml_val_t	f1 = REC_SEL(arg, 0);
+    ml_val_t	f2 = REC_SEL(arg, 1);
+
+    if (MoveFile (STR_MLtoC(f1), STR_MLtoC(f2)))
+	return ML_true;
+    else
+	return ML_false;
 }
 
 /* _ml_win32_FS_get_temp_file_name: unit -> string option

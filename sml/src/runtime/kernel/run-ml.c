@@ -166,8 +166,8 @@ SayDebug ("run-ml: poll event\n");
 
 	      case REQ_BIND_CFUN:
 		msp->ml_arg = BindCFun (
-		    REC_SELPTR(char, msp->ml_arg, 0),
-		    REC_SELPTR(char, msp->ml_arg, 1));
+		    STR_MLtoC(REC_SEL(msp->ml_arg, 0)),
+		    STR_MLtoC(REC_SEL(msp->ml_arg, 1)));
 		SETUP_RETURN(msp);
 		break;
 
@@ -255,11 +255,7 @@ SayDebug("REQ_SIG_RESUME: arg = %#x\n", msp->ml_arg);
 		break;
 
 	      case REQ_BUILD_LITERALS:
-		SETUP_RETURN(msp);
-		msp->ml_liveRegMask = RET_MASK;
-		if (NeedGC (msp, 32*ONE_K))
-		    InvokeGC (msp, 0);
-		msp->ml_arg = BuildLiterals (msp, msp->ml_arg);
+		Die ("BUILD_LITERALS request");
 		break;
 
 	      default:
@@ -285,9 +281,9 @@ PVT void UncaughtExn (ml_val_t e)
     if (isUNBOXED(val))
 	sprintf (buf, "%d\n", INT_MLtoC(val));
     else {
-	Word_t	tag = OBJ_TAG(val);
-	if (tag == DTAG_string)
-	    sprintf (buf, "\"%.*s\"", OBJ_LEN(val), PTR_MLtoC(char, val));
+	ml_val_t	desc = OBJ_DESC(val);
+	if (desc == DESC_string)
+	    sprintf (buf, "\"%.*s\"", GET_SEQ_LEN(val), STR_MLtoC(val));
 	else
 	    sprintf (buf, "<unknown>");
     }
@@ -301,11 +297,11 @@ PVT void UncaughtExn (ml_val_t e)
 	} while (next != LIST_nil);
 	val = LIST_hd(traceBack);
 	sprintf (buf+strlen(buf), " raised at %.*s",
-	    OBJ_LEN(val), PTR_MLtoC(char, val));
+	    GET_SEQ_LEN(val), STR_MLtoC(val));
     }
 
     Die ("Uncaught exception %.*s with %s\n",
-	OBJ_LEN(name), PTR_MLtoC(char, name), buf);
+	GET_SEQ_LEN(name), GET_SEQ_DATAPTR(char, name), buf);
 
     Exit (1);
 

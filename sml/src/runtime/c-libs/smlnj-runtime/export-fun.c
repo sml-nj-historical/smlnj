@@ -21,11 +21,12 @@
 ml_val_t _ml_RunT_export_fun (ml_state_t *msp, ml_val_t arg)
 {
     char	fname[1024];
+    ml_val_t	mlName = REC_SEL(arg, 0);
     ml_val_t	funct = REC_SEL(arg, 1);
     FILE	*file;
     int		sts;
 
-    QualifyImageName (strcpy(fname, REC_SELPTR(char, arg, 0)));
+    QualifyImageName (strcpy(fname, STR_MLtoC(mlName)));
 
     if ((file = fopen(fname, "wb")) == NULL)
 	return RAISE_ERROR(msp, "unable to open file for writing");

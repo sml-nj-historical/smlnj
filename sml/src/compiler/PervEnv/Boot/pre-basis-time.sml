@@ -13,5 +13,8 @@ structure Time =
   end;
 
 (*
- * $Log$
+ * $Log: pre-basis-time.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:05  george
+ * Version 110.5
+ *
  *)

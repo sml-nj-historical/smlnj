@@ -83,9 +83,7 @@ structure Core =
            
 	  end (* structure A *)
 
-	  val array0 : 'a array = cast array0
 	  val vector0 : 'a vector = cast vector0
-	  val real64array0 : A.real64array = cast real64array0
 
       end (* structure Assembly *)
 
@@ -111,40 +109,27 @@ structure Core =
     local val ieql : int * int -> bool = InLine.i31eq
           val peql : 'a * 'a -> bool = InLine.ptreql
           val ineq : int * int -> bool = InLine.i31ne
-          val feql : real * real -> bool = InLine.f64eq
+	  val i32eq : int32 * int32 -> bool = InLine.i32eq
           val boxed : 'a -> bool = InLine.boxed
-          val length : 'a -> int = InLine.length
           val op + : int * int -> int = InLine.i31add
           val op - : int * int -> int = InLine.i31sub
           val op * : int * int -> int = InLine.i31mul
+	  val op := : 'a ref * 'a -> unit = InLine.:=
           val ordof : string * int -> int = InLine.ordof
           val cast : 'a -> 'b = InLine.cast
           val getObjTag : 'a -> int = InLine.gettag
-          val sub : 'a vector * int -> 'a = InLine.vecSub
+          val getObjLen : 'a -> int = InLine.objlength
+	  val getData : 'a -> 'b = InLine.getSeqData
+	  val recSub : ('a * int) -> 'b = InLine.recordSub
+          val vecLen : 'a -> int = InLine.length
+          val vecSub : 'a vector * int -> 'a = InLine.vecSub
           val andb : int * int -> int = InLine.i31andb
-	  val width_tags = 6  (* 4 tag bits plus "10" *)
 	  val lshift : int * int -> int = InLine.i31lshift
-          val stringCreate : int -> string = Assembly.A.create_s
-          val stringUpdate : string * int * char -> unit = InLine.store
-          val stringSub : string * int -> char = InLine.ordof
 
-          (* the type annotation is just to work around an bug - sm *)
+	  val width_tags = 7  (* 5 tag bits plus "10" *)
+
+        (* the type annotation is just to work around an bug - sm *)
           val ltu : int * int -> bool = InLine.i31ltu
-
-     (* all the string literals appeared in this file should be 
-      * called by the "dupstring" function first.
-      *)
-          fun dupstring (a : string) = let val len = length a
-              (* unsafe string create, no size check !!! but this is only
-	       * used for copying string literals.
-	       *)
-                val ss = stringCreate (len)
-                fun copy n = if ieql(n,len)
-		      then ()
-                      else (stringUpdate(ss, n, stringSub(a,n)); copy(n+1))
-		in
-		  copy 0; ss
-		end
 
     in 
 
@@ -154,14 +139,13 @@ structure Core =
        val max_length = lshift(1, 31 - width_tags) - 1
 
        fun mkNormArray (n, init) = 
-             if ieql(n, 0) then Assembly.array0
+             if ieql(n, 0) then InLine.newArray0()
              else if ltu(max_length, n) then raise Size 
                   else Assembly.A.array (n, init)
 
-       val rarray0 : real array = InLine.cast Assembly.real64array0
        val mkrarray : int -> real array = InLine.cast Assembly.A.create_r
-       fun mkRealArray(n : int, v : real) = 
-             if ieql(n, 0) then rarray0
+       fun mkRealArray (n : int, v : real) : real array =
+             if ieql(n, 0) then InLine.newArray0()
              else if ltu(max_length, n) then raise Size 
                   else let val x = mkrarray n
                            fun init i = 
@@ -172,8 +156,6 @@ structure Core =
                        end
 
        val vector0 = Assembly.vector0  (* needed to compile ``#[]'' *)
-
-       val dupstring = dupstring
 
       
       (* LAZY: The following definitions are essentially stolen from
@@ -193,76 +175,85 @@ structure Core =
        fun force (x : 'a susp) =
 	     if InLine.i31eq((InLine.getspecial x),TSUS)
 	      then let
-		 val y : 'a = InLine.arrSub (InLine.cast x, 0) ()
+		 val y : 'a = recSub (InLine.cast x, 0) ()
 		 in
-		   InLine.arrUpdate (InLine.cast x, 0, y);
+		   (InLine.cast x) := y;
 		   InLine.setspecial (InLine.cast x, TSES);
 		   y
 		 end
-	       else InLine.arrSub (InLine.cast x, 0)
+	       else recSub (InLine.cast x, 0)
 
 
        (* equality primitives *)
 
-       fun stringequal(a : string,b : string) =
-	  if peql(a,b) then true
-          else let
-	    val len = length a
-            in
-	      if ieql(len, length b)
-                 then let fun f 0 = true
-                            | f i = let val j = (op -)(i,1)
-                	             in if ieql(ordof(a,j),ordof(b,j))
-              	                        then f j else false
-              	                    end
-	               in f len
-                      end
-	         else false
-	    end
+    fun stringequal (a : string, b : string) =
+	  if peql(a,b)
+	    then true
+            else let
+	      val len = vecLen a
+              in
+	        if ieql(len, vecLen b)
+                  then let
+		    fun f 0 = true
+		      | f i = let
+			  val j = i-1
+			  in
+			    ieql(ordof(a,j),ordof(b,j)) andalso f j
+			  end
+	            in
+		      f len
+                    end
+	          else false
+	      end
 
-       fun polyequal (a : 'a, b : 'a) = peql(a,b)
-	    orelse (boxed a andalso boxed b
-	    andalso let val aTag = getObjTag a
-		        fun pairEq () = 
-                          let val bTag = getObjTag b
-		           in (ieql(bTag,0x02) orelse ineq(andb(bTag,0x3),0x2))
-			      andalso (let val (xa,ya) = cast a
-                                           val (xb,yb) = cast b
-                                        in polyequal(xa, xb)
- 			                   andalso polyequal(ya, yb)
-                                       end)
-		          end
-		     in case aTag
-		         of 0x02 (* tag_pair *) => pairEq()
-		          | 0x06 (* tag_reald *) => feql(cast a,cast b)
-		          | 0x12 (* tag_special *) => false
-		          | 0x22 (* tag_record *) => 
-                             if ieql(getObjTag b,aTag)
-			     then (ieql(length a,length b) andalso 
-                                   (let val x : 'a vector = cast a
-                                        val y : 'a vector = cast b
-                                        val lenm1 = (length x)-1
-         
-		  	                fun m (j : int) = 
-                                          if ieql(j,lenm1)
-				          then polyequal(sub(x,j),sub(y,j))
-				          else polyequal(sub(x,j),sub(y,j)) 
-                                             andalso m(j+1)
-                             (* 
-                              * must compare lengths, since vectors 
-                              * also use the record tag.
-                              *)
-                                     in m 0
-                                    end))
-                             else false
-                          | 0x26 (* tag_array *) => false
-                          | 0x2a (* tag_string *) => 
-                             stringequal(cast a,cast b)
-                          | 0x32 (* tag_word8array *) => false
-                          | 0x36 (* tag_realdarray *) => false
-                          | _ (* tagless pair *) => pairEq()
-                        (* end case *)
-                    end)
+    fun polyequal (a : 'a, b : 'a) = peql(a,b)
+	  orelse (boxed a andalso boxed b
+	    andalso let
+	      val aTag = getObjTag a
+	      fun pairEq () = let
+		    val bTag = getObjTag b
+		    in
+		      ((ieql(bTag, 0x02) andalso ieql(getObjLen b, 2))
+		        orelse ineq(andb(bTag, 0x3),0x2))
+		      andalso polyequal(recSub(a, 0), recSub(b, 0))
+		      andalso polyequal(recSub(a, 1), recSub(b, 1))
+		    end
+	      fun eqVecData (len, a, b) = let
+		    fun f i = ieql(i, len)
+			  orelse (polyequal(recSub(a, i), recSub(b, i))
+			    andalso f(i+1))
+		    in
+		      f 0
+		    end
+	      in
+		case aTag
+		 of 0x02 (* tag_record *) => let
+		      val aLen = getObjLen a
+		      in
+			(ieql(aLen, 2) andalso pairEq())
+			orelse (
+			  ieql(getObjTag b, 0x02) andalso ieql(getObjLen b, aLen)
+			  andalso eqVecData(aLen, a, b))
+		      end
+		  | 0x06 (* tag_vec_hdr *) => (
+		    (* length encodes element type *)
+		      case (getObjLen a)
+		       of 0 (* seq_poly *) => let
+			    val aLen = vecLen a
+			    val bLen = vecLen b
+			    in
+			      ieql(aLen, bLen)
+				andalso eqVecData(aLen, getData a, getData b)
+			    end
+			| 1 (* seq_word8 *) => stringequal(cast a, cast b)
+		      (* end case *))
+		  | 0x0a (* tag_arr_hdr *) => peql(getData a, getData b)
+		  | 0x0e (* tag_arr_data and tag_ref *) => false
+		  | 0x12 (* tag_raw32 *) => i32eq(cast a, cast b)
+		  | _ (* tagless pair *) => pairEq()
+		(* end case *)
+	      end)
+
     end (* local *)
 
     val profile_sregister = ref(fn (x:Assembly.object,s:string)=>x)
@@ -270,6 +261,12 @@ structure Core =
   end
 
 (*
- * $Log$
+ * $Log: core.sml,v $
+ * Revision 1.4  1998/11/18 03:54:19  jhr
+ *  New array representations.
+ *
+ * Revision 1.3  1998/05/23 14:09:57  george
+ *   Fixed RCS keyword syntax
+ *
  *
  *)

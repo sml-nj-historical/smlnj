@@ -30,22 +30,22 @@ PVT ml_val_t AllocBlastData (ml_state_t *msp, Addr_t sizeB);
 ml_val_t BlastOut (ml_state_t *msp, ml_val_t obj)
 {
     blast_res_t		res;
-    obj_info_t		info;
+    int			gen;
     ml_val_t		blastedObj;
 
   /* Collect allocation space */
     InvokeGCWithRoots (msp, 0, &obj, NIL(ml_val_t *));
 
-    info = GetObjInfo (obj);
+    gen = GetObjGen (obj);
 
-    if (info.gen == -1) {
+    if (gen == -1) {
       /* unboxed */
 	blastedObj = BlastUnboxed (msp, obj);
     }
     else { /* a regular ML object */
       /* do the blast GC */
 /* DEBUG  CheckHeap (msp->ml_heap, msp->ml_heap->numGens); */
-	res = BlastGC (msp, &obj, info.gen);
+	res = BlastGC (msp, &obj, gen);
 
       /* blast out the image */
 	blastedObj = BlastHeap (msp, obj, &res);
@@ -90,6 +90,7 @@ PVT ml_val_t BlastUnboxed (ml_state_t *msp, ml_val_t obj)
 	return ML_unit;
     else {
 	WR_Free(wr);
+	SEQHDR_ALLOC (msp, blastedObj, DESC_string, blastedObj, szB);
 	return blastedObj;
     }
 
@@ -299,8 +300,10 @@ PVT ml_val_t BlastHeap (ml_state_t *msp, ml_val_t obj, blast_res_t *info)
 
     if (WR_Error(wr))
 	return BLAST_ERROR;
-    else
+    else {
+	SEQHDR_ALLOC (msp, blastedObj, DESC_string, blastedObj, totSzB);
 	return blastedObj;
+    }
 
 } /* end of BlastHeap */
 
@@ -312,13 +315,14 @@ PVT ml_val_t BlastHeap (ml_state_t *msp, ml_val_t obj, blast_res_t *info)
 PVT ml_val_t AllocBlastData (ml_state_t *msp, Addr_t sizeB)
 {
     heap_t	    *heap = msp->ml_heap;
-    ml_val_t	    desc = MAKE_DESC(sizeB, DTAG_string);
+    int		    nWords = BYTES_TO_WORDS(sizeB);
+    ml_val_t	    desc = MAKE_DESC(nWords, DTAG_raw32);
     ml_val_t	    res;
 
 /** we probably should allocate space in the big-object region for these objects **/
     if (sizeB < heap->allocSzB-(8*ONE_K)) {
 	ML_AllocWrite (msp, 0, desc);
-	res = ML_Alloc (msp, sizeB/WORD_SZB);
+	res = ML_Alloc (msp, nWords);
 	return res;
     }
     else {

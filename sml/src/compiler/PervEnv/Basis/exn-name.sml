@@ -14,17 +14,7 @@ structure ExnName : sig
 
   end = struct
 
-    val string_tag = 0x2a
-
-  (* Normal exception names are strings; debugger exception names
-   * are pairs of the form string * int.
-   *)
-    fun normalExnName (x : Assembly.object) = (InlineT.gettag x = string_tag)
-
-    val exnName : exn -> string = InlineT.cast(
-	  fn (ref s, _,_) => if normalExnName (InlineT.cast s)
-		then s 
-		else let val (s,_) = InlineT.cast s in s end)
+    val exnName : exn -> string = InlineT.cast(fn (ref s, _,_) => s)
 
     fun exnMessage (OS.SysErr(s, NONE)) =
 	  "SysErr: " ^ s
@@ -58,5 +48,11 @@ structure ExnName : sig
   end
 
 (*
- * $Log$
+ * $Log: exn-name.sml,v $
+ * Revision 1.2  1998/11/18 03:54:13  jhr
+ *  New array representations.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:03  george
+ * Version 110.5
+ *
  *)

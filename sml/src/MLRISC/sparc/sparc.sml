@@ -453,6 +453,9 @@ end
 
 (* 
  * $Log: sparc.sml,v $
+ * Revision 1.4  1998/09/30 19:36:54  dbm
+ * fixing sharing/defspec conflict
+ *
  * Revision 1.3  1998/08/12 13:36:15  leunga
  *
  *

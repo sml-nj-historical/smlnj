@@ -17,41 +17,48 @@ structure ObjectDesc :> OBJECT_DESC =
     structure LW = LargeWord
 
   (* taken from runtime/tags.h *)
-    val tagWidth = 6		(* 4 minor tag bits plus 2 major tag bits *)
+    val tagWidth = 7		(* 5 minor tag bits plus 2 major tag bits *)
   (* one greater than the maximum length field value (sign should be 0) *)
     val maxLength = W.toInt(W.<<(0w1, W.-(0w31, W.fromInt tagWidth)))
     val powTagWidth = W.toInt(W.<<(0w1, W.fromInt tagWidth))
 
   (* tag values *)
     local
-      fun tagXLen(lTag, n) = W.orb(lTag, W.<<(n, 0w2))
+      fun mkTag t = W.orb(W.<<(t, 0w2), 0w2)
     in
-      fun tagWLen n  = tagXLen(0wx22, n)
-      fun tagWOLen n = tagXLen(0wx02, n)		  
-    end
-    val tag_record		= tagWLen 0w0
-    val tag_array		= tagWLen 0w1
-    val tag_string		= tagWLen 0w2
-    val tag_word8array		= tagWLen 0w4
-    val tag_realdarray		= tagWLen 0w5
-    val tag_cont                = tagWLen 0w6
-    val tag_block               = tagWLen 0w7
-    val tag_pair		= tagWOLen 0w0
-    val tag_reald		= tagWOLen 0w1
-    val tag_variant		= tagWOLen 0w3 (* currently not used *)
-    val tag_special		= tagWOLen 0w4
-    val tag_backptr		= tagWOLen 0w5
+    val tag_record	= mkTag 0w0
+    val tag_vec_hdr	= mkTag 0w1
+    val tag_vec_data	= tag_record
+    val tag_arr_hdr	= mkTag 0w2
+    val tag_arr_data	= mkTag 0w3
+    val tag_ref		= tag_arr_data
+    val tag_raw32	= mkTag 0w4
+    val tag_raw64	= mkTag 0w5
+    val tag_special	= mkTag 0w6
+    end (* local *)
 
   (* build a descriptor from a tag and length *)
     fun makeDesc (len, t) = 
 	  LW.orb(LW.<<(LW.fromInt len, W.fromInt tagWidth), W.toLargeWord t)
 
+  (* array/vector header codes *)
+    val seq_poly	= 0
+    val seq_word8	= 1
+    val seq_word16	= 2
+    val seq_word31	= 3
+    val seq_word32	= 4
+    val seq_real32	= 5
+    val seq_real64	= 6
+
   (* fixed descriptors *)
-    val desc_pair = makeDesc(2, tag_pair)
-    val desc_reald = makeDesc(2, tag_reald)
+    val desc_pair = makeDesc(2, tag_record)
+    val desc_ref = makeDesc(1, tag_ref)
+    val desc_real64 = makeDesc(2, tag_raw64)
+    val desc_polyvec = makeDesc(seq_poly, tag_vec_hdr)
+    val desc_polyarr = makeDesc(seq_poly, tag_arr_hdr)
+    val desc_special = makeDesc(0, tag_special)
 
   (* special descriptors *)
-    val desc_special = makeDesc(0, tag_special)
     val special_unevaled_susp	= 0
     val special_evaled_susp	= 1
     val special_weak		= 2
@@ -60,6 +67,12 @@ structure ObjectDesc :> OBJECT_DESC =
   end;
 
 (*
- * $Log$
+ * $Log: object-desc.sml,v $
+ * Revision 1.2  1998/11/18 03:53:13  jhr
+ *  New array representations.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
+ *
  *)
 

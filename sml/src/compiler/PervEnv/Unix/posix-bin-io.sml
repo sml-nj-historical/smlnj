@@ -13,5 +13,8 @@ structure BinIO :> BIN_IO
   = BinIOFn (structure OSPrimIO = PosixBinPrimIO);
 
 (*
- * $Log$
+ * $Log: posix-bin-io.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:00  george
+ * Version 110.5
+ *
  *)

@@ -26,11 +26,15 @@ signature PSEUDO_OPS = sig
      * location counter.
      *)
   
-  val removable : pseudo_op -> bool
-
 end
 
 
 (*
- * $Log$
+ * $Log: pseudoOps.sig,v $
+ * Revision 1.2  1998/12/21 17:05:02  jhr
+ *   Got rid of "removable" function.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:39:02  george
+ * Version 110.5
+ *
  *)

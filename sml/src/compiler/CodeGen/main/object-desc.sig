@@ -16,27 +16,27 @@ signature OBJECT_DESC =
 
   (* tag values *)
     val tag_record : tag
-    val tag_pair : tag
-    val tag_array : tag
-    val tag_string : tag
-    val tag_word8array : tag
-    val tag_reald : tag
-    val tag_realdarray : tag
-    val tag_cont : tag
-    val tag_block : tag
-    val tag_variant : tag (* currently not used *)
+    val tag_ref : tag
+    val tag_vec_hdr : tag
+    val tag_vec_data : tag
+    val tag_arr_hdr : tag
+    val tag_arr_data : tag
+    val tag_raw32 : tag
+    val tag_raw64 : tag
     val tag_special : tag
-    val tag_backptr : tag
 
   (* build a descriptor from a tag and length *)
     val makeDesc : (int * tag) -> LargeWord.word
 
   (* fixed descriptors *)
     val desc_pair : LargeWord.word
-    val desc_reald : LargeWord.word
+    val desc_ref : LargeWord.word
+    val desc_real64 : LargeWord.word
+    val desc_polyvec : LargeWord.word
+    val desc_polyarr : LargeWord.word
+    val desc_special : LargeWord.word	(* with 0 length *)
 
-  (* special descriptors *)
-    val desc_special : LargeWord.word
+  (* length codes for special descriptors *)
     val special_evaled_susp : int
     val special_unevaled_susp : int
     val special_weak : int
@@ -45,6 +45,12 @@ signature OBJECT_DESC =
   end;
 
 (*
- * $Log$
+ * $Log: object-desc.sig,v $
+ * Revision 1.2  1998/11/18 03:53:12  jhr
+ *  New array representations.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
+ *
  *)
 

@@ -4,5 +4,8 @@
 structure PLambdaType : LTYEXTERN = LtyExtern
 
 (*
- * $Log$
+ * $Log: plambdatype.sml,v $
+ * Revision 1.3  1998/05/23 14:09:40  george
+ *   Fixed RCS keyword syntax
+ *
  *)

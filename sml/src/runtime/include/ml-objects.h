@@ -27,24 +27,10 @@
 /* extract info from objects */
 #define OBJ_DESC(OBJ)		REC_SEL((OBJ), -1)
 #define OBJ_LEN(OBJ)		GET_LEN(OBJ_DESC(OBJ))
-#define OBJ_STR_LEN(OBJ)	GET_STR_LEN(OBJ_DESC(OBJ))
 #define OBJ_TAG(OBJ)		GET_TAG(OBJ_DESC(OBJ))
 
 
-/* static allocation of a constant ML string. 
- * NOTE that sizeof(s) includes the null terminator.
- */
-#define ML_STRING(name,str)				\
-    struct {						\
-	ml_val_t    desc;				\
-	char	    s[(sizeof(str)+2) & ~3];		\
-    } name = {						\
-	MAKE_DESC(sizeof(str)-1, DTAG_string),		\
-	str						\
-    }
-
-
-/** The size of an ML record (including descriptor) **/
+/** The size of an ML record in bytes (including descriptor) **/
 #define REC_SZB(n)	(((n)+1)*sizeof(ml_val_t))
 
 
@@ -77,7 +63,7 @@
 #define REC_ALLOC2(msp, r, a, b)	{			\
 	ml_state_t	*__msp = (msp);				\
 	ml_val_t	*__p = __msp->ml_allocPtr;		\
-	*__p++ = MAKE_DESC(2, DTAG_pair);			\
+	*__p++ = DESC_pair;					\
 	*__p++ = (a);						\
 	*__p++ = (b);						\
 	(r) = PTR_CtoML(__msp->ml_allocPtr + 1);		\
@@ -134,6 +120,16 @@
 	__msp->ml_allocPtr = __p;				\
     }
 
+#define SEQHDR_ALLOC(msp, r, desc, data, len)	{		\
+	ml_state_t	*__msp = (msp);				\
+	ml_val_t	*__p = __msp->ml_allocPtr;		\
+	*__p++ = (desc);					\
+	*__p++ = (data);					\
+	*__p++ = INT_CtoML(len);				\
+	(r) = PTR_CtoML(__msp->ml_allocPtr + 1);		\
+	__msp->ml_allocPtr = __p;				\
+    }
+
 #ifdef ALIGN_REALDS
 #define REAL64_ALLOC(msp, r, d) {				\
 	ml_state_t	*__msp = (msp);				\
@@ -165,7 +161,7 @@
 #define WORD_ALLOC(msp, p, w)	{				\
 	ml_state_t	*__msp = (msp);				\
 	ml_val_t	*__p = __msp->ml_allocPtr;		\
-	*__p++ = MAKE_DESC(WORD_SZB, DTAG_string);		\
+	*__p++ = MAKE_DESC(1, DTAG_raw32);			\
 	*__p++ = (ml_val_t)(w);					\
 	(p) = PTR_CtoML(__msp->ml_allocPtr + 1);		\
 	__msp->ml_allocPtr = __p;				\
@@ -200,25 +196,20 @@ extern ml_val_t ML_AllocBytearray (ml_state_t *msp, int len);
 extern ml_val_t ML_AllocRealdarray (ml_state_t *msp, int len);
 extern ml_val_t ML_AllocArray (ml_state_t *msp, int len, ml_val_t initVal);
 extern ml_val_t ML_AllocVector (ml_state_t *msp, int len, ml_val_t initVal);
+extern ml_val_t ML_AllocRaw32 (ml_state_t *msp, int len);
+extern void ML_ShrinkRaw32 (ml_state_t *msp, ml_val_t v, int nWords);
+extern ml_val_t ML_AllocRaw64 (ml_state_t *msp, int len);
 
 extern ml_val_t ML_SysConst (ml_state_t *msp, sysconst_tbl_t *tbl, int id);
 extern ml_val_t ML_SysConstList (ml_state_t *msp, sysconst_tbl_t *tbl);
 extern ml_val_t ML_AllocCData (ml_state_t *msp, int nbytes);
 extern ml_val_t ML_CData (ml_state_t *msp, void *data, int nbytes);
 
-extern bool_t ML_StringEq (ml_val_t a, ml_val_t b);
-
-extern ml_val_t BuildLiterals (ml_state_t *msp, ml_val_t start);
+extern ml_val_t BuildLiterals (ml_state_t *msp, Byte_t *lits, int len);
 
 extern ml_val_t _ML_string0[];
-extern ml_val_t _ML_array0[];
-extern ml_val_t _ML_bytearray0[];
-extern ml_val_t _ML_realarray0[];
 extern ml_val_t _ML_vector0[];
 #define ML_string0	PTR_CtoML(_ML_string0+1)
-#define ML_array0	PTR_CtoML(_ML_array0+1)
-#define ML_bytearray0	PTR_CtoML(_ML_bytearray0+1)
-#define ML_realarray0	PTR_CtoML(_ML_realarray0+1)
 #define ML_vector0	PTR_CtoML(_ML_vector0+1)
 
 #endif /* !_ML_OBJECTS_ */

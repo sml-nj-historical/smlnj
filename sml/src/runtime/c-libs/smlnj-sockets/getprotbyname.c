@@ -20,7 +20,7 @@ ml_val_t _ml_NetDB_getprotbyname (ml_state_t *msp, ml_val_t arg)
     ml_val_t	    name, aliases, res;
     struct protoent *pentry;
 
-    pentry = getprotobyname (PTR_MLtoC(char, arg));
+    pentry = getprotobyname (STR_MLtoC(arg));
 
     if (pentry == NIL(struct protoent *))
 	return OPTION_NONE;

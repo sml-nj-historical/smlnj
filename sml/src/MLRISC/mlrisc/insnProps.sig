@@ -77,5 +77,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: insnProps.sig,v $
+ * Revision 1.3  1998/05/25 15:11:04  george
+ *   Fixed RCS keywords
+ *
  *)

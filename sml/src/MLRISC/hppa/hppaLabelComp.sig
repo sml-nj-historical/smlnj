@@ -26,5 +26,8 @@ signature LABEL_COMP = sig
 end
 
 (*
- * $Log$
+ * $Log: hppaLabelComp.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
+ *
  *)

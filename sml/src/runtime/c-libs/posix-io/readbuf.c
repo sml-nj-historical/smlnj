@@ -18,8 +18,9 @@
 ml_val_t _ml_P_IO_readbuf (ml_state_t *msp, ml_val_t arg)
 {
     int		fd = REC_SELINT(arg, 0);
-    char	*start = REC_SELPTR(char, arg, 1) + REC_SELINT(arg, 3);
+    ml_val_t	buf = REC_SEL(arg, 1);
     int		nbytes = REC_SELINT(arg, 2);
+    char	*start = STR_MLtoC(buf) + REC_SELINT(arg, 3);
     int		n;
 
     n = read (fd, start, nbytes);

@@ -1106,6 +1106,9 @@ end (* structure ElabSig *)
 
 (*
  * $Log: elabsig.sml,v $
+ * Revision 1.4  1998/09/30 19:07:37  dbm
+ * fix bug 1432, types of TYCspec and TYCdef modified
+ *
  * Revision 1.3  1998/05/23 14:10:02  george
  *   Fixed RCS keyword syntax
  *

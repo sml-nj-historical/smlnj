@@ -422,6 +422,9 @@ structure NumScan : sig
 
 (*
  * $Log: num-scan.sml,v $
+ * Revision 1.2  1998/10/07 15:24:50  dbm
+ * Fix problems scanning real numbers: (1) .3 not accepted, (2) 3.E2 scanned as 300 instead of 3
+ *
  * Revision 1.1.1.1  1998/04/08 18:40:04  george
  * Version 110.5
  *

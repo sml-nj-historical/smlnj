@@ -14,5 +14,8 @@ signature UNSAFE_ARRAY =
 
 
 (*
- * $Log$
+ * $Log: unsafe-array.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:01  george
+ * Version 110.5
+ *
  *)

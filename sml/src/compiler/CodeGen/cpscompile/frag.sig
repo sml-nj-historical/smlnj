@@ -15,8 +15,6 @@ signature FRAG = sig
 		   fmlTyps: CPS.cty list}
     | KNOWNFUN of generated ref
     | KNOWNCHK of generated ref 
-    | STRINGfrag of string
-    | REALfrag of string
 
   val makeFrag : CPS.function * Label.label -> frag
   val next : unit -> (Label.label * frag) option
@@ -28,5 +26,11 @@ end (* FRAG *)
 
 
 (*
- * $Log$
+ * $Log: frag.sig,v $
+ * Revision 1.2  1998/10/28 18:20:37  jhr
+ *   Removed code generator support for STRING/REAL constants.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
+ *
  *)

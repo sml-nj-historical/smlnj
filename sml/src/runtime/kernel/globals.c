@@ -17,15 +17,27 @@
 void PatchAddrs ();
 #endif
 
-
 #ifndef SIZES_C64_ML32
+
+typedef struct {
+	ml_val_t	desc;
+	char		*s;
+	ml_val_t	len;
+} ml_string_t;
+
+#define ML_STRING(id, s)				\
+    ml_string_t id = {					\
+	DESC_string,					\
+	s,						\
+	INT_CtoML(sizeof(s))				\
+    }
 
 /* Exceptions are identified by (string ref) values */
 #define ML_EXNID(ex,name)				\
-    ML_STRING(CONCAT(ex,_s),name);			\
+    ML_STRING(CONCAT(ex,_s), name);			\
     ml_val_t CONCAT(ex,_id0) [2] = {			\
 	DESC_ref,					\
-	PTR_CtoML(CONCAT(ex,_s).s)			\
+	PTR_CtoML(&(CONCAT(ex,_s).s))			\
     }
 
 #define ASM_CLOSURE(name)				\
@@ -40,13 +52,29 @@ void PatchAddrs ();
  * to dynamically patch the static ML objects.
  */
 
+typedef struct {
+	ml_val_t	desc;
+	ml_val_t	s;
+	ml_val_t	len;
+} ml_string_t;
+
+#define ML_STRING(id,s)					\
+    PVT char CONCAT(id,_data)[] = s;			\
+    ml_string_t id = {					\
+	DESC_string, ML_unit, INT_CtoML(sizeof(s))	\
+    }
+
+#define PATCH_ML_STRING(id)				\
+    id.s = PTR_CtoML(CONCAT(id,_data))
+
 /* Exceptions are identified by (string ref) values */
 #define ML_EXNID(ex,name)				\
     ML_STRING(CONCAT(ex,_s),name);			\
     ml_val_t CONCAT(ex,_id0) [2] = { DESC_ref, }
 
 #define PATCH_ML_EXNID(ex)				\
-    CONCAT(ex,_id0)[1] = PTR_CtoML(CONCAT(ex,_s).s)
+    PATCH_ML_STRING(CONCAT(ex,_s));			\
+    CONCAT(ex,_id0)[1] = PTR_CtoML(&(CONCAT(ex,_s).s))
 
 #define ASM_CLOSURE(name)				\
     extern ml_val_t CONCAT(name,_a)[];			\
@@ -110,11 +138,8 @@ ml_val_t		MathVec = ML_unit;
 #endif
 
 /* aggregate structures of length zero */
-ml_val_t _ML_string0[2]		= {MAKE_DESC(0, DTAG_string), ML_unit};
-ml_val_t _ML_array0[2]		= {MAKE_DESC(0, DTAG_array), ML_unit};
-ml_val_t _ML_bytearray0[2]	= {MAKE_DESC(0, DTAG_bytearray), ML_unit};
-ml_val_t _ML_realarray0[2]	= {MAKE_DESC(0, DTAG_realdarray), ML_unit};
-ml_val_t _ML_vector0[2]		= {MAKE_DESC(0, DTAG_vector), ML_unit};
+ml_val_t _ML_string0[3]		= {DESC_string, ML_unit, INT_CtoML(0)};
+ml_val_t _ML_vector0[3]		= {DESC_polyvec, ML_unit, INT_CtoML(0)};
 
 ML_EXNID(_Div,"Div");
 ML_EXNID(_Overflow,"Overflow");
@@ -177,23 +202,20 @@ void AllocGlobals (ml_state_t *msp)
     RunVec = ML_Alloc(msp, RUNVEC_SZ);
 
   /* allocate the CStruct */
-#define CSTRUCT_SZ	15
+#define CSTRUCT_SZ	12
     ML_AllocWrite(msp,  0, MAKE_DESC(CSTRUCT_SZ, DTAG_record));
     ML_AllocWrite(msp,  1, RunVec);
     ML_AllocWrite(msp,  2, DivId);
     ML_AllocWrite(msp,  3, OverflowId);
     ML_AllocWrite(msp,  4, SysErrId);
-    ML_AllocWrite(msp,  5, ML_array0);
-    ML_AllocWrite(msp,  6, ML_bytearray0);
-    ML_AllocWrite(msp,  7, ProfCurrent);
-    ML_AllocWrite(msp,  8, PollEvent);
-    ML_AllocWrite(msp,  9, PollFreq);
-    ML_AllocWrite(msp, 10, MLPollHandler);
-    ML_AllocWrite(msp, 11, ActiveProcs);
-    ML_AllocWrite(msp, 12, PervStruct);
-    ML_AllocWrite(msp, 13, ML_realarray0);
-    ML_AllocWrite(msp, 14, MLSignalHandler);
-    ML_AllocWrite(msp, 15, ML_vector0);
+    ML_AllocWrite(msp,  5, ProfCurrent);
+    ML_AllocWrite(msp,  6, PollEvent);
+    ML_AllocWrite(msp,  7, PollFreq);
+    ML_AllocWrite(msp,  8, MLPollHandler);
+    ML_AllocWrite(msp,  9, ActiveProcs);
+    ML_AllocWrite(msp, 10, PervStruct);
+    ML_AllocWrite(msp, 11, MLSignalHandler);
+    ML_AllocWrite(msp, 12, ML_vector0);
     CStruct = ML_Alloc(msp, CSTRUCT_SZ);
 
   /* allocate 1-elem SRECORD just containing the CStruct */
@@ -247,11 +269,8 @@ void RecordGlobals ()
     RecordCSymbol ("CStruct.DivId",		DivId);
     RecordCSymbol ("CStruct.OverflowId",	OverflowId);
     RecordCSymbol ("CStruct.SysErrId",		SysErrId);
-    RecordCSymbol ("CStruct.array0",		ML_array0);
-    RecordCSymbol ("CStruct.bytearray0",	ML_bytearray0);
     RecordCSymbol ("CStruct.machine_id",	PTR_CtoML(machine_id.s));
     RecordCSymbol ("CStruct.PervStruct",	PervStruct);
-    RecordCSymbol ("CStruct.realarray0",	ML_realarray0);
     RecordCSymbol ("CStruct.MLSignalHandler",	MLSignalHandler);
     RecordCSymbol ("CStruct.vector0",		ML_vector0);
     RecordCSymbol ("CStruct.profCurrent",	ProfCurrent);
@@ -286,6 +305,8 @@ void RecordGlobals ()
  */
 void PatchAddrs ()
 {
+    PATCH_ML_STRING(machine_id);
+
     PATCH_ML_EXNID(_Div);
     PATCH_ML_EXNID(_Overflow);
     PATCH_ML_EXNID(SysErr);

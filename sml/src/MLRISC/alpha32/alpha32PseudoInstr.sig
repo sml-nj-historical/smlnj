@@ -16,5 +16,8 @@ signature ALPHA32_PSEUDO_INSTR = sig
 end 
 
 (*
- * $Log$
+ * $Log: alpha32PseudoInstr.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
+ *
  *)

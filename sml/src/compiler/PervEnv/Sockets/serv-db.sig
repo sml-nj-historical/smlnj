@@ -16,5 +16,8 @@ signature NET_SERV_DB =
   end
 
 (*
- * $Log$
+ * $Log: serv-db.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:57  george
+ * Version 110.5
+ *
  *)

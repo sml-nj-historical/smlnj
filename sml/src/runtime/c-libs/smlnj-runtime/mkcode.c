@@ -20,8 +20,7 @@ ml_val_t _ml_RunT_mkcode (ml_state_t *msp, ml_val_t arg)
 {
     ml_val_t    argCode = REC_SEL(arg,0);
     ml_val_t    argTag = REC_SEL(arg,1);
-
-    Word_t	nbytes = OBJ_LEN(argCode);
+    Word_t	nbytes = GET_SEQ_LEN(argCode);
     ml_val_t	code, closure, res;
 
     if (argTag == OPTION_NONE) {
@@ -32,19 +31,19 @@ ml_val_t _ml_RunT_mkcode (ml_state_t *msp, ml_val_t arg)
 	argCode = REC_SEL(arg,0);
       
       /* copy the string into the code object */
-	memcpy (PTR_MLtoC(char, code), PTR_MLtoC(char, argCode), nbytes);
+	memcpy (STR_MLtoC(code), STR_MLtoC(argCode), nbytes);
       
-	FlushICache (PTR_MLtoC(char, code), nbytes);
-      
-	REC_ALLOC1(msp, closure, PTR_CtoML(PTR_MLtoC(ml_val_t, code) + 1));
+	FlushICache (STR_MLtoC(code), nbytes);
+ 
+	REC_ALLOC1(msp, closure, GET_SEQ_DATA(code));
 	REC_ALLOC2(msp, res, argCode, closure);
-      
+ 
 	return res;
     }
     else {
       /* this object needs to be tagged */
 	ml_val_t	str = OPTION_get(argTag);
-	int		strLen = OBJ_LEN(str);
+	int		strLen = GET_SEQ_LEN(str);
 	int		padLen, extraLen;
 
       /* We use one byte for the length, so the longest string is 255
@@ -63,17 +62,17 @@ ml_val_t _ml_RunT_mkcode (ml_state_t *msp, ml_val_t arg)
 	argCode = REC_SEL(arg,0);
 	argTag = REC_SEL(arg,1);
 	str = OPTION_get(argTag);
-      
+ 
       /* copy the string into the code object */
-	memcpy (PTR_MLtoC(char, code), PTR_MLtoC(char, argCode), nbytes);
-	memcpy (PTR_MLtoC(char, code)+nbytes+padLen, PTR_MLtoC(char, str), strLen);
-	*(PTR_MLtoC(Byte_t, code)+nbytes+extraLen-1) = (Byte_t)strLen;
-      
-	FlushICache (PTR_MLtoC(void, code), nbytes);
-      
-	REC_ALLOC1(msp, closure, PTR_CtoML(PTR_MLtoC(ml_val_t, code) + 1));
+	memcpy (STR_MLtoC(code), STR_MLtoC(argCode), nbytes);
+	memcpy (STR_MLtoC(code)+nbytes+padLen, STR_MLtoC(str), strLen);
+	*(GET_SEQ_DATAPTR(Byte_t, code)+nbytes+extraLen-1) = (Byte_t)strLen;
+ 
+	FlushICache (STR_MLtoC(code), nbytes);
+ 
+	REC_ALLOC1(msp, closure, GET_SEQ_DATA(code));
 	REC_ALLOC2(msp, res, argCode, closure);
-      
+ 
 	return res;
     }
 

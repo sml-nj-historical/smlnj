@@ -164,6 +164,9 @@ end (* structure Overload *)
 
 (*
  * $Log: overload.sml,v $
+ * Revision 1.2  1998/08/11 15:26:28  dbm
+ * fix bug 1352
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:36  george
  * Version 110.5
  *

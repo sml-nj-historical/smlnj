@@ -17,7 +17,7 @@
 ml_val_t _ml_P_Process_exece (ml_state_t *msp, ml_val_t arg)
 {
     int             sts;
-    char*           path = REC_SELPTR(char, arg, 0);
+    ml_val_t        path = REC_SEL(arg, 0);
     ml_val_t        arglst = REC_SEL(arg, 1);
     ml_val_t	    envlst = REC_SEL(arg, 2);
     char            **argv, **envp;
@@ -32,15 +32,15 @@ ml_val_t _ml_P_Process_exece (ml_state_t *msp, ml_val_t arg)
 #endif
     argv = cp;
     for (p = arglst;  p != LIST_nil;  p = LIST_tl(p))
-        *cp++ = PTR_MLtoC(char, LIST_hd(p));
+        *cp++ = STR_MLtoC(LIST_hd(p));
     *cp++ = 0;  /* terminate the argv[] */
 
     envp = cp;
     for (p = envlst;  p != LIST_nil;  p = LIST_tl(p))
-        *cp++ = PTR_MLtoC(char, LIST_hd(p));
+        *cp++ = STR_MLtoC(LIST_hd(p));
     *cp++ = 0;  /* terminate the envp[] */
 
-    sts = execve(path,argv,envp);
+    sts = execve(STR_MLtoC(path), argv, envp);
 
     CHK_RETURN (msp, sts)
 

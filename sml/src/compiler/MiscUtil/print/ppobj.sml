@@ -40,14 +40,10 @@ fun bug msg = ErrorMsg.impossible("PPObj: "^msg)
 
 type object = Obj.object
 
-fun gettag obj = Obj.toInt (V.sub(Obj.toTuple obj, 0))
+fun gettag obj = Obj.toInt (Obj.nth(obj, 0))
 
 exception Switch
 
-(*
-fun switch(obj, GENtyc{kind=DATATYPE{index,family={members,...},...},...}) =
-    let val {tycname,dcons,...} = List.nth(members,index)
-*)
 fun switch(obj, dcons) = let
       fun chk (f, tag : int) =
 	    (f obj = tag) handle Obj.Representation => false
@@ -85,10 +81,10 @@ fun decon(obj, {rep,name,domain}) = (case rep
            (case domain 
              of SOME t => 
                  if (isRecTy t) orelse (isUbxTy t)
-                 then obj else V.sub(Obj.toTuple obj, 0)
+                 then obj else Obj.nth(obj, 0)
               | _ => bug "decon -- unexpected conrep-domain")
 
-       | A.TAGGED _ => V.sub(Obj.toTuple obj,1)
+       | A.TAGGED _ => Obj.nth(obj,1)
 (*     | A.TAGGEDREC _ =>
 	   let (* skip first element, i.e. discard tag *)
 	       val a = tuple obj
@@ -102,7 +98,7 @@ fun decon(obj, {rep,name,domain}) = (case rep
        | A.CONSTANT _ => Obj.toObject ()
        | A.TRANSPARENT => obj
        | A.REF => !(Obj.toRef obj)
-       | A.EXN _ => V.sub(Obj.toTuple obj,0)
+       | A.EXN _ => Obj.nth(obj,0)
        | A.LISTCONS => obj 
        | A.LISTNIL => bug "decon - constant datacon in decon"
        | A.SUSP _ => obj
@@ -269,7 +265,7 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 		 end
 	        else if TU.eqTycon(tyc,BT.contTycon) then add_string ppstrm  "cont"
 	        else if TU.eqTycon(tyc,BT.vectorTycon) then 
-		  ppVector(Obj.toTuple obj, hd argtys, membersOp, depth,
+		  ppVector(Obj.toVector obj, hd argtys, membersOp, depth,
 			  !Control.Print.printLength, accu)
 		  handle Obj.Representation => add_string ppstrm  "prim?"
 	        else if TU.eqTycon(tyc,BT.arrayTycon) then
@@ -383,16 +379,16 @@ and ppDcon(_,_,_,_,0,_,_,_) = add_string ppstrm  "#"
 		  fun prdcon() =
 		      case (fixity,dom)
 			of (F.INfix _,T.CONty(domTyc as T.RECORDtyc _, [tyL,tyR])) =>
-			   let val twoTuple = Obj.toTuple(decon(obj,dcon))
+			   let val [a, b] = Obj.toTuple(decon(obj,dcon))
 			    in if Tuples.isTUPLEtyc domTyc
 			       then (begin_block ppstrm INCONSISTENT 0;
-				     ppVal'(V.sub(twoTuple,0),tyL,
+				     ppVal'(a,tyL,
 					    membersOp,
 					    depth-1,F.NONfix,fixity,accu);
 				     add_break ppstrm (1,0);
 				     add_string ppstrm  dname;
 				     add_break ppstrm (1,0);
-				     ppVal'(V.sub(twoTuple,1),tyR,
+				     ppVal'(b,tyR,
 					    membersOp,
 					    depth-1,fixity, F.NONfix,accu);
 				     end_block ppstrm)
@@ -431,8 +427,8 @@ and ppList(obj:object, ty:T.ty, membersOp, depth:int, length: int,accu) =
     let fun list_case p =
 	    case switch(p, listDcons)
 	      of {domain=NONE,...} => NONE
-	       | dcon => let val pair = Obj.toTuple(decon(p, dcon))
-			  in SOME(V.sub(pair,0),V.sub(pair,1))
+	       | dcon => let val [a, b] = Obj.toTuple(decon(p, dcon))
+			  in SOME(a, b)
 			 end
        
        fun ppTail(p, len) =
@@ -460,8 +456,8 @@ and ppUrList(obj:object, ty:T.ty, membersOp, depth:int, length: int,accu) =
     let fun list_case p =
 	    case switch(p, ulistDcons)
 	      of {domain=NONE,...} => NONE
-	       | dcon => let val pair = Obj.toTuple(decon(p, dcon))
-			  in SOME(V.sub(pair,0),V.sub(pair,1))
+	       | dcon => let val [a, b] = Obj.toTuple(decon(p, dcon))
+			  in SOME(a, b)
 			 end
        
         fun ppTail(p, len) =
@@ -485,44 +481,44 @@ and ppUrList(obj:object, ty:T.ty, membersOp, depth:int, length: int,accu) =
         end_block ppstrm
     end
 
-and ppTuple(objs: object vector, tys: T.ty list, membersOp, depth:int, accu) : unit =
-    let fun ppFields(nf,[ty]) =
-	      ppValShare (V.sub(objs,nf),ty,membersOp,depth-1,accu)
-	  | ppFields(nf, ty::restty) = 
-	      (ppValShare (V.sub(objs,nf),ty,membersOp,depth-1,accu);
+and ppTuple(objs: object list, tys: T.ty list, membersOp, depth:int, accu) : unit =
+    let fun ppFields([f],[ty]) = ppValShare (f, ty, membersOp, depth-1, accu)
+	  | ppFields(f::restf, ty::restty) = 
+	      (ppValShare (f, ty, membersOp, depth-1, accu);
                add_string ppstrm (",");
                add_break ppstrm (0,0);
-	       ppFields(nf+1,restty))
-	  | ppFields(nf,[]) = ()
+	       ppFields(restf,restty))
+	  | ppFields([], []) = ()
+          | ppFields _ = bug "ppFields in ppval.sml"
      in begin_block ppstrm INCONSISTENT 1;
         add_string ppstrm ("("); 
-        ppFields(0,tys); 
+        ppFields(objs, tys); 
         add_string ppstrm (")");
         end_block ppstrm
     end
 
-and ppRecord(objs: object vector, labels: T.label list,
+and ppRecord(objs: object list, labels: T.label list,
 	     tys: T.ty list, membersOp, depth: int, accu) =
-    let fun ppFields(nf,[l],[ty]) = 
+    let fun ppFields([f],[l],[ty]) = 
 	      (begin_block ppstrm CONSISTENT 2;
                add_string ppstrm (Symbol.name l); 
                add_string ppstrm ("="); 
-               ppValShare (V.sub(objs,nf),ty,membersOp,depth-1,accu);
+               ppValShare (f, ty, membersOp, depth-1, accu);
                end_block ppstrm)
-	  | ppFields(nf, l::restl, ty::restty) = 
+	  | ppFields(f::restf, l::restl, ty::restty) = 
 	      (begin_block ppstrm CONSISTENT 2;
                add_string ppstrm (Symbol.name l); 
                add_string ppstrm ("="); 
-               ppValShare (V.sub(objs,nf),ty,membersOp,depth-1,accu);
+               ppValShare (f,ty,membersOp,depth-1,accu);
                end_block ppstrm;
 	       add_string ppstrm (","); 
                add_break ppstrm (0,0);
-               ppFields(nf+1,restl,restty))
-	  | ppFields(nf,[],[]) = ()
+               ppFields(restf,restl,restty))
+	  | ppFields([],[],[]) = ()
           | ppFields _ = bug "ppFields in ppval.sml"
      in begin_block ppstrm INCONSISTENT 1;
         add_string ppstrm ("{"); 
-        ppFields(0,labels,tys); 
+        ppFields(objs,labels,tys); 
         add_string ppstrm ("}");
         end_block ppstrm
     end
@@ -570,5 +566,14 @@ end (* structure PPObj *)
 
 
 (*
- * $Log$
+ * $Log: ppobj.sml,v $
+ * Revision 1.5  1998/11/18 03:53:25  jhr
+ *  New array representations.
+ *
+ * Revision 1.4  1998/10/28 18:22:56  jhr
+ *   New Unsafe.Object API.
+ *
+ * Revision 1.3  1998/05/23 14:09:45  george
+ *   Fixed RCS keyword syntax
+ *
  *)

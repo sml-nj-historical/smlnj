@@ -66,10 +66,12 @@ static ml_val_t mkValue (ml_state_t *msp, int val)
 ml_val_t _ml_P_FileSys_pathconf (ml_state_t *msp, ml_val_t arg)
 {
     int		val;
-    char        *pathname = REC_SELPTR(char, arg, 0);
-    name_val_t  *attr;
+    ml_val_t	mlPathname = REC_SEL(arg, 0);
+    ml_val_t	mlAttr = REC_SEL(arg, 1);
+    char	*pathname = STR_MLtoC(mlPathname);
+    name_val_t	*attr;
 
-    attr = _ml_posix_nv_lookup (REC_SELPTR(char, arg, 1), values, NUMELMS);
+    attr = _ml_posix_nv_lookup (STR_MLtoC(mlAttr), values, NUMELMS);
     if (!attr) {
 	errno = EINVAL;
 	return RAISE_SYSERR(msp, -1);
@@ -94,9 +96,10 @@ ml_val_t _ml_P_FileSys_fpathconf (ml_state_t *msp, ml_val_t arg)
 {
     int		val;
     int         fd = REC_SELINT(arg, 0);
+    ml_val_t	mlAttr = REC_SEL(arg, 1);
     name_val_t  *attr;
 
-    attr = _ml_posix_nv_lookup (REC_SELPTR(char, arg, 1), values, NUMELMS);
+    attr = _ml_posix_nv_lookup (STR_MLtoC(mlAttr), values, NUMELMS);
     if (!attr) {
 	errno = EINVAL;
 	return RAISE_SYSERR(msp, -1);

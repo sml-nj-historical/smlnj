@@ -268,6 +268,9 @@ end
 
 (*
  * $Log: flowgen.sml,v $
+ * Revision 1.4  1998/07/25 03:08:17  george
+ *   added to support block names in MLRISC
+ *
  * Revision 1.3  1998/05/25 15:11:03  george
  *   Fixed RCS keywords
  *

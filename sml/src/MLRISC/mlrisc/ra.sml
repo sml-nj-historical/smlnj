@@ -1187,6 +1187,9 @@ end (* functor *)
 
 (*
  * $Log: ra.sml,v $
+ * Revision 1.6  1998/10/16 12:49:51  george
+ *   Installed ~1 hack for C--
+ *
  * Revision 1.5  1998/09/30 19:36:34  dbm
  * fixing sharing/defspec conflict
  *
