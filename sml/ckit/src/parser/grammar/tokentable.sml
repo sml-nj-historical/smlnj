@@ -23,17 +23,26 @@ struct
   exception LexError
   val keywords : item AtomTable.hash_table = AtomTable.mkTable(64, Keyword)
     
-  val _ = let
+  local
     val insert = AtomTable.insert keywords
     fun ins (s, item) = insert (Atom.atom s, item)
 
+    fun idTok (s, pos, endPos) =
+	if TypeDefs.checkTdef(s) = true then 
+	    Tokens.TYPE_NAME(s,pos,endPos)
+	else Tokens.ID(s,pos,endPos)
+
     (* to enter GCC-style 'underscore'-versions of certain keywords *)
     fun insaug (s, item) = let
-	fun item' p = if ParseControl.underscoreKeywords then item p
-		      else (ParseControl.violation
-			    (concat ["gcc-style keywords '__", s, "' or '__",
-				     s, "__' are not allowed"]);
-			    raise LexError)
+	fun item' (p as (pos, endPos)) =
+	    case ParseControl.underscoreKeywords of
+		NONE => idTok (s, pos, endPos)
+	      | SOME true => item p
+	      | SOME false =>
+		(ParseControl.violation
+		     (concat ["gcc-style keywords '__", s, "' or '__",
+			      s, "__' are not allowed"]);
+		     raise LexError)
     in
 	ins ("__" ^ s, item');
 	ins ("__" ^ s ^ "__", item')
@@ -88,27 +97,23 @@ struct
     val dtokens =
 	[
 	 ]
-  in
-      app ins normaltokens;
-      app ins augmentabletokens;
-      app insaug augmentabletokens;
-      (* enter D keywords only when allowed...
-       * (I think the ParseControl test is done at the wrong time here.
-       *  - Blume) *)
-      if ParseControl.Dkeywords then app ins dtokens else ()
-  end
 
-  fun checkToken (s, pos) = let
-    val endPos = pos + size s
-    val name = Atom.atom s
+    val _ =
+	(app ins normaltokens;
+	 app ins augmentabletokens;
+	 app insaug augmentabletokens;
+	 (* enter D keywords only when allowed...
+	  * (I think the ParseControl test is done at the wrong time here.
+	  *  - Blume) *)
+	 if ParseControl.Dkeywords then app ins dtokens else ())
   in
-    case (AtomTable.find keywords name)
-      of (SOME tokFn) => tokFn(pos, endPos)
-       | NONE => 
-	   (if TypeDefs.checkTdef(s) = true then 
-	      Tokens.TYPE_NAME(s,pos,endPos)
-	    else Tokens.ID(s,pos,endPos))
-  (* end case *)
-  end
-
+      fun checkToken (s, pos) = let
+	  val endPos = pos + size s
+	  val name = Atom.atom s
+      in
+	  case (AtomTable.find keywords name) of
+	      SOME tokFn => tokFn(pos, endPos)
+	    | NONE => idTok (s, pos, endPos)
+      end
+  end (* local *)
 end

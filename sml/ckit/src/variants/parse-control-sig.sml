@@ -15,6 +15,9 @@ signature PARSECONTROL =
 	val violation : string -> unit
 	val Dkeywords : bool
         val parseDirective : bool
-	val underscoreKeywords : bool
+	val underscoreKeywords : bool option
+	(* NONE -> accept as normal identifiers;
+	 * SOME true -> accept as keywords;
+	 * SOME false -> reject as error *)
     end
 

@@ -23,7 +23,7 @@ struct
         TextIO.output(TextIO.stdOut,"\nERROR: in ANSI C " ^ str ^ "\n")
     val Dkeywords               = false
     val parseDirective = true   (* Chandra, 6/21/99 *)
-    val underscoreKeywords = true (* Blume *)
+    val underscoreKeywords = SOME true (* Blume *)
   end
 
   (* see type-check-control-sig.sml for description of these flags *)
