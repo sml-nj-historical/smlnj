@@ -313,7 +313,7 @@ IA32-Peephole.cm:
 
 	(* x86 *)
 	../x86/instructions/x86Peephole.sml
-	../x86/instructions/x86-leaf-opt.sml
+	(* ../x86/instructions/x86-leaf-opt.sml *)
 
 IA32-RTL.cm:
 
@@ -370,7 +370,7 @@ IR.cm:
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	MLTREE.cm
 
 	(* These provide a graph view for clusters.  Required if you 
@@ -409,37 +409,37 @@ IR.cm:
 	 *)
 	../Glue/mlrisc-glue.sig
 	../Glue/mlrisc-glue.sml
-ir.cm:
+ir-archive.cm:
         smlnj-lib.cm
 	Control.cm
 	Lib.cm
 	Graphs.cm
 
-	../ir/apt.sig
-	../ir/apt.sml
-	../ir/cdg.sig
-	../ir/cdg.sml
-	../ir/compute-freq.sig
-	../ir/compute-freq.sml
-	../ir/compute-freq2.sig
-	../ir/compute-freq2.sml
-	../ir/comp-djgraph.sml
-	../ir/derived-graph.sig
-	../ir/derived-graph.sml
-	../ir/dj-dataflow.sig
-	../ir/dj-dataflow.sml
-	../ir/djgraph.sig
-	../ir/djgraph.sml
-	../ir/dominance-frontier.sig
-	../ir/dominance-frontier.sml
-	../ir/dominator.sig
-	../ir/dominator.sml
-	../ir/reducibility.sig
-	../ir/reducibility.sml
-	../ir/loop-structure.sig
-	../ir/loop-structure.sml
-	../ir/ssa.sig
-	../ir/ssa.sml
+	../ir-archive/apt.sig
+	../ir-archive/apt.sml
+	../ir-archive/cdg.sig
+	../ir-archive/cdg.sml
+	../ir-archive/compute-freq.sig
+	../ir-archive/compute-freq.sml
+	../ir-archive/compute-freq2.sig
+	../ir-archive/compute-freq2.sml
+	../ir-archive/comp-djgraph.sml
+	../ir-archive/derived-graph.sig
+	../ir-archive/derived-graph.sml
+	../ir-archive/dj-dataflow.sig
+	../ir-archive/dj-dataflow.sml
+	../ir-archive/djgraph.sig
+	../ir-archive/djgraph.sml
+	../ir-archive/dominance-frontier.sig
+	../ir-archive/dominance-frontier.sml
+	../ir-archive/dominator.sig
+	../ir-archive/dominator.sml
+	../ir-archive/reducibility.sig
+	../ir-archive/reducibility.sml
+	../ir-archive/loop-structure.sig
+	../ir-archive/loop-structure.sml
+	../ir-archive/ssa.sig
+	../ir-archive/ssa.sml
 
 Lib.cm:
 (*
@@ -658,6 +658,7 @@ MLRISC.cm:
 	../emit/asmUtil.sml
 	../emit/cfgEmit.sml
 	../emit/code-string.sig
+	../emit/mc-emit.sig
 	
 	(* Basic GC types stuff *)
 	../gc-safety/gc-cells.sig
@@ -714,7 +715,7 @@ Opt.cm:
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	IR.cm
 	RTL.cm
 	SSA.cm
@@ -852,7 +853,7 @@ Sched.cm:
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	MLRISC.cm
 	RTL.cm
 	IR.cm
@@ -1000,7 +1001,7 @@ SSA.cm:
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	MLRISC.cm
 	IR.cm
 	GC.cm
@@ -1071,7 +1072,7 @@ VLIW.cm:
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	MLRISC.cm
 	IR.cm
 	

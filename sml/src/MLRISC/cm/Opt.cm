@@ -10,7 +10,7 @@ is
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	IR.cm
 	RTL.cm
 	SSA.cm
@@ -22,7 +22,7 @@ is
 	$/Lib.cm
 	$/Graphs.cm
 	$/Visual.cm
-	$/ir.cm
+	$/ir-archive.cm
 	$/IR.cm
 	$/RTL.cm
 	$/SSA.cm
@@ -36,7 +36,7 @@ is
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	IR.cm
 	RTL.cm
 	SSA.cm
@@ -49,7 +49,7 @@ is
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	IR.cm
 	RTL.cm
 	SSA.cm

@@ -10,7 +10,7 @@ is
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	MLRISC.cm
 	IR.cm
 #else
@@ -19,7 +19,7 @@ is
 	$/Lib.cm
 	$/Graphs.cm
 	$/Visual.cm
-	$/ir.cm
+	$/ir-archive.cm
 	$/MLRISC.cm
 	$/IR.cm
 #endif
@@ -30,7 +30,7 @@ is
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	MLRISC.cm
 	IR.cm
 #endif
@@ -40,7 +40,7 @@ is
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	MLRISC.cm
 	IR.cm
 #endif

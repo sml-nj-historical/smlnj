@@ -272,8 +272,8 @@ struct
    
    fun emitInstruction(I.ANNOTATION{i, ...}) = emitInstruction(i)
      | emitInstruction(I.INSTR(i)) = emitter(i)
-     | emitinstruction(I.LIVE _)  = ()
-     | emitinstruction(I.KILL _)  = ()
+     | emitInstruction(I.LIVE _)  = ()
+     | emitInstruction(I.KILL _)  = ()
    | emitInstruction _ = error "emitInstruction"
    
    in  S.STREAM{beginCluster=init,

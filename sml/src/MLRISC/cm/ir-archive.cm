@@ -1,11 +1,5 @@
 (* This file is created by makeallcm *)
 Library
-  signature LOOP_STRUCTURE
-  functor LoopStructure
-  signature CONTROL_DEPENDENCE_GRAPH
-  functor ControlDependenceGraph
-  signature DOMINATOR_TREE
-  functor DominatorTree
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -34,25 +28,28 @@ is
 	Lib.cm
 	Graphs.cm
 #endif
-	../ir/cdg.sig
-	../ir/cdg.sml
-	../ir/compute-freq.sig
-	../ir/compute-freq.sml
-	../ir/compute-freq2.sig
-	../ir/compute-freq2.sml
-	../ir/derived-graph.sig
-	../ir/derived-graph.sml
-	../ir/dj-dataflow.sig
-	../ir/dj-dataflow.sml
-	../ir/djgraph.sig
-	../ir/djgraph.sml
-	../ir/dominance-frontier.sig
-	../ir/dominance-frontier.sml
-	../ir/dominator.sig
-	../ir/dominator.sml
-	../ir/reducibility.sig
-	../ir/reducibility.sml
-	../ir/loop-structure.sig
-	../ir/loop-structure.sml
-	../ir/ssa.sig
-	../ir/ssa.sml
+	../ir-archive/apt.sig
+	../ir-archive/apt.sml
+	../ir-archive/cdg.sig
+	../ir-archive/cdg.sml
+	../ir-archive/compute-freq.sig
+	../ir-archive/compute-freq.sml
+	../ir-archive/compute-freq2.sig
+	../ir-archive/compute-freq2.sml
+	../ir-archive/comp-djgraph.sml
+	../ir-archive/derived-graph.sig
+	../ir-archive/derived-graph.sml
+	../ir-archive/dj-dataflow.sig
+	../ir-archive/dj-dataflow.sml
+	../ir-archive/djgraph.sig
+	../ir-archive/djgraph.sml
+	../ir-archive/dominance-frontier.sig
+	../ir-archive/dominance-frontier.sml
+	../ir-archive/dominator.sig
+	../ir-archive/dominator.sml
+	../ir-archive/reducibility.sig
+	../ir-archive/reducibility.sml
+	../ir-archive/loop-structure.sig
+	../ir-archive/loop-structure.sml
+	../ir-archive/ssa.sig
+	../ir-archive/ssa.sml
