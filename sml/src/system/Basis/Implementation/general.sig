@@ -41,5 +41,3 @@ signature GENERAL =
     val exnMessage: exn -> string
 
   end
-
-

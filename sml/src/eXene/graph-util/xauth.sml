@@ -34,7 +34,8 @@ structure XAuth : X_AUTH =
             LargeWord.toInt(Pack16Big.subVec(s, 0))
           end
     fun getData (s, i, n) = w8vextract (s, i, SOME n)
-    fun getString (s, i, n) = Byte.unpackStringVec (s, i, SOME n)
+    fun getString (s, i, n) =
+	Byte.unpackStringVec (Word8VectorSlice.slice (s, i, SOME n))
 
   (* the different family codes (from X.h and xc/lib/Xau/Xauth.h) *)
     val familyInternet	= 0

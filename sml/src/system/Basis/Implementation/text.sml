@@ -10,5 +10,7 @@ structure Text : TEXT =
     structure Substring = Substring
     structure CharVector = CharVector
     structure CharArray = CharArray
+    structure CharVectorSlice = CharVectorSlice
+    structure CharArraySlice = CharArraySlice
   end;
 

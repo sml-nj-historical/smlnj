@@ -3,7 +3,6 @@
  * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
  *
  *)
-
 functor MLTreeF(structure Constant  : CONSTANT
                 structure Region    : REGION
                 structure Extension : MLTREE_EXTENSION

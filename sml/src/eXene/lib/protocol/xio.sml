@@ -90,7 +90,7 @@ fun outMsgToStr OutFlush = "OutFlush"
   | outMsgToStr OutQuit = "OutQuit"
   | outMsgToStr (OutMsg v) = concat[
 	"OutMsg \"",
-	strToHex(Byte.unpackStringVec(v, 0, SOME 4)),
+	strToHex(Byte.unpackStringVec (Word8VectorSlice.slice (v, 0, SOME 4))),
 	"..\" (", Int.toString(W8V.length v), " bytes)"
       ]
 (* -DEBUG *)
@@ -142,7 +142,7 @@ val getMsg = fn () => let
       in
 	XDebug.trace (XDebug.ioTM, fn () => [
 	    "XIo.getMsg: buf = \"",
-	    strToHex(Byte.unpackStringVec(msg, 0, SOME 8)),
+	    strToHex(Byte.unpackStringVec (Word8VectorSlice.slice (msg, 0, SOME 8))),
 	    "..\", code = ", Word8.toString code,
 	    ", len = ", Int.toString(W8V.length msg), "\n"
 	  ]);

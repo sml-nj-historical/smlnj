@@ -16,6 +16,8 @@ signature PRIM_IO =
     type array
     type vector
     type elem
+    type vector_slice
+    type array_slice
     eqtype pos
 
     val compare : (pos * pos) -> order
@@ -24,9 +26,9 @@ signature PRIM_IO =
 	name       : string, 
 	chunkSize  : int,
 	readVec    : int -> vector,
-        readArr    : {buf : array, i : int, sz : int option} -> int,
+        readArr    : array_slice -> int,
 	readVecEvt : int -> vector event,
-	readArrEvt : {buf : array, i : int, sz : int option} -> int event,
+	readArrEvt : array_slice -> int event,
 	avail      : unit -> int option,
 	getPos     : (unit -> pos) option,
 	setPos     : (pos -> unit) option,
@@ -39,10 +41,10 @@ signature PRIM_IO =
     datatype writer = WR of {
 	name        : string,
 	chunkSize   : int,
-	writeVec    : {buf : vector, i : int, sz : int option} -> int,
-	writeArr    : {buf : array, i : int, sz : int option} -> int,
-	writeVecEvt : {buf : vector, i : int, sz : int option} -> int event,
-	writeArrEvt : {buf : array, i : int, sz : int option} -> int event,
+	writeVec    : vector_slice -> int,
+	writeArr    : array_slice -> int,
+	writeVecEvt : vector_slice -> int event,
+	writeArrEvt : array_slice -> int event,
 	getPos      : (unit -> pos) option,
 	setPos      : (pos -> unit) option,
         endPos      : (unit -> pos) option,

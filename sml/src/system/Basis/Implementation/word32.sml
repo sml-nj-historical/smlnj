@@ -52,6 +52,7 @@ structure Word32Imp : WORD =
     val >>   = W32.chkRshiftl
     val ~>>  = W32.chkRshift 
 
+    val ~   : word -> word = ~
     val min : word * word -> word = W32.min
     val max : word * word -> word = W32.max
 

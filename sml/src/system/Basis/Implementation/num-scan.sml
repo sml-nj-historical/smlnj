@@ -295,7 +295,7 @@ structure NumScan : sig
    * rest of the stream.
    *)
     fun fscan10 getc (d, cs) = let
-	  fun wordToReal w = InlineT.real(W.toIntX w)
+	  fun wordToReal w = InlineT.Real64.from_int31 (W.toIntX w)
 	  fun scan (accum, n, cs) = (case (getc cs)
 		 of (SOME(c, cs')) => let val d = code c
 		      in

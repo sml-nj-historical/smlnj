@@ -59,7 +59,6 @@ in
     val setmark 	: 'a -> unit = InLine.setmark 
     val dispose 	: 'a -> unit = InLine.dispose 
     val inlnot		: bool -> bool = InLine.inlnot
-    val real		: int -> real = InLine.real   
     val recordSub	: ('a * int) -> 'b = InLine.recordSub
     val raw64Sub	: ('a * int) -> real = InLine.raw64Sub
 
@@ -80,6 +79,9 @@ in
 
         val min    : real * real -> real  = InLine.f64min
         val max    : real * real -> real  = InLine.f64max
+
+	val from_int31 : int -> real      = InLine.real
+	val from_int32 : int32 -> real    = InLine.real32
       end
 
     structure IntInf =

@@ -94,43 +94,41 @@ signature SOCKET =
     type out_flags = {don't_route : bool, oob : bool}
     type in_flags = {peek : bool, oob : bool}
 
-    type 'a buf = {buf : 'a, i : int, sz : int option}
-
   (* Sock output operations *)
-    val sendVec	   : (('a, active stream) sock * Word8Vector.vector buf)
+    val sendVec	   : ('a, active stream) sock * Word8VectorSlice.slice
+		        -> int
+    val sendArr	   : ('a, active stream) sock * Word8ArraySlice.slice
 			-> int
-    val sendArr	   : (('a, active stream) sock * Word8Array.array buf)
+    val sendVec'   : ('a, active stream) sock * Word8VectorSlice.slice * out_flags
 			-> int
-    val sendVec'   : (('a, active stream) sock * Word8Vector.vector buf * out_flags)
+    val sendArr'   : ('a, active stream) sock * Word8ArraySlice.slice * out_flags
 			-> int
-    val sendArr'   : (('a, active stream) sock * Word8Array.array buf * out_flags)
+    val sendVecTo  : ('a, dgram) sock * 'a sock_addr * Word8VectorSlice.slice
 			-> int
-    val sendVecTo  : (('a, dgram) sock * 'a sock_addr * Word8Vector.vector buf)
+    val sendArrTo  : ('a, dgram) sock * 'a sock_addr * Word8ArraySlice.slice
 			-> int
-    val sendArrTo  : (('a, dgram) sock * 'a sock_addr * Word8Array.array buf)
+    val sendVecTo' : ('a, dgram) sock * 'a sock_addr * Word8VectorSlice.slice * out_flags
 			-> int
-    val sendVecTo' : (('a, dgram) sock * 'a sock_addr * Word8Vector.vector buf * out_flags)
-			-> int
-    val sendArrTo' : (('a, dgram) sock * 'a sock_addr * Word8Array.array buf * out_flags)
+    val sendArrTo' : ('a, dgram) sock * 'a sock_addr * Word8ArraySlice.slice * out_flags
 			-> int
 
   (* Sock input operations *)
-    val recvVec      : (('a, active stream) sock * int)
+    val recvVec      : ('a, active stream) sock * int
 			-> Word8Vector.vector
-    val recvArr	     : (('a, active stream) sock * Word8Array.array buf)
+    val recvArr	     : ('a, active stream) sock * Word8ArraySlice.slice
 			-> int
-    val recvVec'     : (('a, active stream) sock * int * in_flags)
+    val recvVec'     : ('a, active stream) sock * int * in_flags
 			-> Word8Vector.vector
-    val recvArr'     : (('a, active stream) sock * Word8Array.array buf * in_flags)
+    val recvArr'     : ('a, active stream) sock * Word8ArraySlice.slice * in_flags
 			-> int
-    val recvVecFrom  : (('a, dgram) sock * int)
-			-> (Word8Vector.vector * 'b sock_addr)
-    val recvArrFrom  : (('a, dgram) sock * {buf : Word8Array.array, i : int})
-			-> (int * 'a sock_addr)
-    val recvVecFrom' : (('a, dgram) sock * int * in_flags)
-			-> (Word8Vector.vector * 'b sock_addr)
-    val recvArrFrom' : (('a, dgram) sock * {buf : Word8Array.array, i : int} * in_flags)
-			-> (int * 'a sock_addr)
+    val recvVecFrom  : ('a, dgram) sock * int
+			-> Word8Vector.vector * 'b sock_addr
+    val recvArrFrom  : ('a, dgram) sock * Word8ArraySlice.slice
+			-> int * 'a sock_addr
+    val recvVecFrom' : ('a, dgram) sock * int * in_flags
+			-> Word8Vector.vector * 'b sock_addr
+    val recvArrFrom' : (('a, dgram) sock * Word8ArraySlice.slice * in_flags)
+			-> int * 'a sock_addr
 
   end
 end

@@ -13,6 +13,23 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name:  Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/17 16:30:00 CDT
+Tag: blume-20030917-real32-slices
+Description:
+
+Added an entry to the primitive environment
+(compiler/Semant/statenv/prim.sml) for int32->real64 conversion and
+added code to compiler/CodeGen/main/mlriscGen.sml to implement it.
+
+Removed some of the "magic" constants in real64.sml and replaced them
+with code that generates these values from their corresponding
+integer counterparts.
+
+Made all(?) the slice-related changes to the Basis and made everything
+compile again...
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/09/15 17:45:00 CDT
 Tag: blume-20030915-rbase

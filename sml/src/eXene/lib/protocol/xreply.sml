@@ -35,7 +35,8 @@ structure XReply =
 	      | r => (n + (4 - Word.toIntX r))
 	    (* end case *))
 
-      fun getString (bv, i, n) = Byte.unpackStringVec (bv, i, SOME n)
+      fun getString (bv, i, n) =
+	  Byte.unpackStringVec (Word8VectorSlice.slice (bv, i, SOME n))
 
       val get8 = W8.toLargeWord o W8V.sub
       fun getWord8 arg = Word.fromLargeWord(W8.toLargeWord(W8V.sub arg))

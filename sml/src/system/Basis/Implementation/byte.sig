@@ -12,8 +12,8 @@ signature BYTE = sig
     val bytesToString : Word8Vector.vector -> string
     val stringToBytes : string -> Word8Vector.vector
 
-    val unpackStringVec : Word8Vector.vector * int * int option -> string
-    val unpackString    : Word8Array.array * int * int option -> string
+    val unpackStringVec : Word8VectorSlice.slice -> string
+    val unpackString    : Word8ArraySlice.slice -> string
     val packString      : Word8Array.array * int * Substring.substring -> unit
 
 end

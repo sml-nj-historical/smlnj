@@ -82,20 +82,18 @@ structure PosixTextPrimIO : sig
 (** NOTE: could use unchecked operations here **)
 		  String.substring (src, p, m)
 		end
-	  fun readA {buf, i, sz} = let
+	  fun readA asl = let
 		val p = !pos
-		val m = (case sz
-		       of NONE => Int.min(CharArray.length buf-i, len-p)
-			| (SOME n) => Int.min(n, len-p)
-		      (* end case *))
-		in
-		  checkClosed ();
-		  pos := p+m;
-		  CharArraySlice.copyVec
-		      { src = CharVectorSlice.slice (src, p, SOME m),
-			dst = buf, di = i };
-		  m
-		end
+		val (buf, i, n) = CharArraySlice.base asl
+		val m = Int.min(n, len-p)
+	  in
+	      checkClosed ();
+	      pos := p+m;
+	      CharArraySlice.copyVec
+		  { src = CharVectorSlice.slice (src, p, SOME m),
+		    dst = buf, di = i };
+	      m
+	  end
 	  fun getPos () = (checkClosed(); !pos)
 	  in
 	    PrimIO.RD{

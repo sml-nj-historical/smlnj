@@ -36,23 +36,16 @@ structure Win32_IO : WIN32_IO =
 	fun vecF f (h,i) = 
 	    if i < 0 then raise Subscript else f(h,i)
 
-	fun bufF (f,lenF) (h,{buf,i,sz=NONE}) =
-	    let val alen = lenF buf
-	    in	if 0 <= i andalso i <= alen then 
-		    f(h,buf,alen-i,i)
-		else raise Subscript
-	    end
-	  | bufF (f,lenF) (h,{buf,i,sz=SOME sz}) = 
-	    let val alen = lenF buf
-	    in  if 0 <= i andalso 0 <= sz andalso i + sz <= alen then
-		    f(h,buf,sz,i)
-		else raise Subscript
-	    end
+	fun bufF (f, baseF) (h, sl) = let
+	    val (buf, i, sz) = baseF sl
+	in
+	    f (h, buf, sz, i)
+	end
 
 	val readVec = vecF readVec'
-	val readArr = bufF (readArr',Word8Array.length)
+	val readArr = bufF (readArr', Word8ArraySlice.base)
 	val readVecTxt = vecF readVecTxt'
-	val readArrTxt = bufF (readArrTxt',CharArray.length)
+	val readArrTxt = bufF (readArrTxt',CharArraySlice.base)
 
 	val close : hndl -> unit = cf "close"
 
@@ -99,10 +92,10 @@ structure Win32_IO : WIN32_IO =
 	val writeArrTxt' : (hndl * CharArray.array * int * int) -> int = 
 	    cf "write_arr_txt"
 
-	val writeVec = bufF (writeVec',Word8Vector.length)
-	val writeArr = bufF (writeArr',Word8Array.length)
-	val writeVecTxt = bufF (writeVecTxt',CharVector.length)
-	val writeArrTxt = bufF (writeArrTxt',CharArray.length)
+	val writeVec = bufF (writeVec',Word8VectorSlice.base)
+	val writeArr = bufF (writeArr',Word8ArraySlice.base)
+	val writeVecTxt = bufF (writeVecTxt',CharVectorSlice.base)
+	val writeArrTxt = bufF (writeArrTxt',CharArraySlice.base)
 
 	val cc = W32G.getConst "STD_HANDLE"
 	val STD_INPUT_HANDLE : word = cc "INPUT"

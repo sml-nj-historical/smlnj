@@ -11,7 +11,8 @@ functor ChanIOFn (
     structure AS : MONO_ARRAY_SLICE
       sharing type A.array = AS.array = PrimIO.array
       sharing type A.vector = V.vector = AS.vector = VS.vector = PrimIO.vector
-      sharing type VS.slice = AS.vector_slice
+      sharing type VS.slice = AS.vector_slice = PrimIO.vector_slice
+      sharing type AS.slice = PrimIO.array_slice
   ) : sig
 
     structure PrimIO : PRIM_IO
@@ -26,7 +27,6 @@ functor ChanIOFn (
     structure PrimIO = PrimIO
 
     val vextract = VS.vector o VS.slice
-    val aextract = AS.vector o AS.slice
 
   (* create a reader that is connected to the output port of a channel. *)
     fun mkReader ch = let
@@ -49,21 +49,8 @@ functor ChanIOFn (
 			isClosedEvt
 		      ]
 		  end)
-	  fun readArrEvt {buf, i, sz} = let
-		val bufLen = A.length buf
-	      (* note that since readVecEvt checks for length < 0, we don't
-	       * have to do those checks here.
-	       *)
-		val n = (case sz
-		       of NONE =>
-			    if (i < 0)
-			      then raise General.Subscript
-			      else bufLen - i
-			| (SOME n) =>
-			    if (i < 0) orelse (bufLen < i+n)
-			      then raise General.Subscript
-			      else n
-		      (* end case *))
+	  fun readArrEvt asl = let
+	        val (buf, i, n) = AS.base asl
 		in
 		  CML.wrap (readVecEvt n, fn v => (
 		    A.copyVec{dst=buf, di=i, src=v};
@@ -130,15 +117,14 @@ functor ChanIOFn (
 		    buffer())),
 		  closedEvt
 		]
-	  fun msg extract {buf, i, sz} = extract(buf, i, sz)
-	  fun writeVecEvt arg = let val v = msg vextract arg
+	  fun writeVecEvt arg = let val v = VS.vector arg
 		in
 		  CML.choose [
 		      closedEvt,
 		      CML.wrap (CML.sendEvt (ch', v), fn () => V.length v)
 		    ]
 		end
-	  fun writeArrEvt arg = let val v = msg aextract arg
+	  fun writeArrEvt arg = let val v = AS.vector arg
 		in
 		  CML.choose [
 		      closedEvt,

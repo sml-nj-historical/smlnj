@@ -82,6 +82,7 @@ signature REAL =
     val realFloor : real -> real
     val realCeil  : real -> real
     val realTrunc : real -> real
+    val realRound : real -> real
 
     val toInt : IEEEReal.rounding_mode -> real -> int
     val toLargeInt : IEEEReal.rounding_mode -> real -> LargeInt.int

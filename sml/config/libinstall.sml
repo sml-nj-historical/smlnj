@@ -63,6 +63,8 @@ end = struct
 
     fun fexists f = F.access (f, []) handle _ => false
 
+    fun rmfile f = F.remove f handle _ => ()
+
     (* several worklists for delayed execution *)
     val stablist : (unit -> bool) list ref = ref []
     val movlist  : (unit -> unit) list ref = ref []
@@ -239,9 +241,12 @@ end = struct
 		    (srcfinalloc, adir)
 	in
 	    if fexists finalloc then
-		say ["Library ", libname, " already exists in ",
-		     finalloc, "\n"]
-	    else if not (fexists (P.concat (adir, nrelname))) then
+		(say ["Library ", libname, " already existed in ",
+		      finalloc, ".  Will rebuild.\n"];
+		 rmfile finalloc)
+	    else ();
+	    if fexists srcfinalloc then	rmfile srcfinalloc else ();
+	    if not (fexists (P.concat (adir, nrelname))) then
 		fail ["Source tree for ", libname, " at ",
 		      P.concat (adir, nreldir), "(", relbase,
 		      ") does not exist.\n"]

@@ -20,26 +20,26 @@ signature CML_SOCKET =
 
   (* Sock input event constructors *)
     val recvVecEvt :
-	  (('a, active stream) sock * int) -> Word8Vector.vector CML.event
+	  ('a, active stream) sock * int -> Word8Vector.vector CML.event
     val recvArrEvt :
-	  (('a, active stream) sock * Word8Array.array buf) -> int CML.event
+	  ('a, active stream) sock * Word8ArraySlice.slice -> int CML.event
     val recvVecEvt' :
-	  (('a, active stream) sock * int * in_flags)
+	  ('a, active stream) sock * int * in_flags
 	    -> Word8Vector.vector CML.event
     val recvArrEvt' :
-	  (('a, active stream) sock * Word8Array.array buf * in_flags)
+	  ('a, active stream) sock * Word8ArraySlice.slice * in_flags
 	    -> int CML.event
     val recvVecFromEvt :
-	  (('a, dgram) sock * int)
+	  ('a, dgram) sock * int
 	    -> (Word8Vector.vector * 'b sock_addr) CML.event
     val recvArrFromEvt :
-	  (('a, dgram) sock * {buf : Word8Array.array, i : int})
+	  ('a, dgram) sock * Word8ArraySlice.slice
 	    -> (int * 'a sock_addr) CML.event
     val recvVecFromEvt' :
-	  (('a, dgram) sock * int * in_flags)
+	  ('a, dgram) sock * int * in_flags
 	    -> (Word8Vector.vector * 'b sock_addr) CML.event
     val recvArrFromEvt' :
-	  (('a, dgram) sock * {buf : Word8Array.array, i : int} * in_flags)
+	  ('a, dgram) sock * Word8ArraySlice.slice * in_flags
 	    -> (int * 'a sock_addr) CML.event
 
   end

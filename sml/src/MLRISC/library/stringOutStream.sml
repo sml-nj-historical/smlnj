@@ -17,18 +17,20 @@ struct
    fun setString (r,s)   = r := [s]     
 
    fun openStringOut buffer =
-   let 
+   let fun writeVec sl =
+	   (buffer := CharVectorSlice.vector sl :: !buffer;
+	    CharVectorSlice.length sl)
+       fun writeArr sl =
+	   (buffer := CharArraySlice.vector sl :: !buffer;
+	    CharArraySlice.length sl)
        val writer =
            TextPrimIO.WR 
                 { name       = "string stream",
                 chunkSize  = 512,
-                writeVec   = SOME (fn {buf, i, sz = SOME n} => 
-                                      (buffer := buf :: !buffer; n)
-                                   |  {buf, i, sz = NONE} =>
-                                      (buffer := buf :: !buffer; size buf)),
-                writeArr   = NONE,
-                writeVecNB = NONE,
-                writeArrNB = NONE,
+                writeVec   = SOME writeVec,
+                writeArr   = SOME writeArr,
+                writeVecNB = SOME (SOME o writeVec),
+                writeArrNB = SOME (SOME o writeArr),
                 block      = NONE,
                 canOutput  = NONE,
                 getPos     = NONE,

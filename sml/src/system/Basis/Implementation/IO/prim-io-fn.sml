@@ -31,7 +31,10 @@ functor PrimIO (
 
     type elem = A.elem
     type vector = V.vector
+    type vector_slice = VS.slice
     type array = A.array
+    type array_slice = AS.slice
+
     type pos = pos
 
     val compare = compare
@@ -40,9 +43,9 @@ functor PrimIO (
 	name      : string,
 	chunkSize : int,
 	readVec   : (int -> vector) option,
-        readArr   : ({buf : array, i : int, sz : int option} -> int) option,
+        readArr   : (array_slice -> int) option,
 	readVecNB : (int -> vector option) option,
-	readArrNB : ({buf : array, i : int, sz : int option} -> int option) option,
+	readArrNB : (array_slice -> int option) option,
 	block     : (unit -> unit) option,
 	canInput  : (unit -> bool) option,
 	avail     : unit -> int option,
@@ -57,10 +60,10 @@ functor PrimIO (
     datatype writer = WR of {
 	name       : string,
 	chunkSize  : int,
-	writeVec   : ({buf : vector, i : int, sz : int option} -> int) option,
-	writeArr   : ({buf : array, i : int, sz : int option} -> int) option,
-	writeVecNB : ({buf : vector, i : int, sz : int option} -> int option) option,
-	writeArrNB : ({buf : array, i : int, sz : int option} -> int option) option,
+	writeVec   : (vector_slice -> int) option,
+	writeArr   : (array_slice -> int) option,
+	writeVecNB : (vector_slice -> int option) option,
+	writeArrNB : (array_slice -> int option) option,
 	block      : (unit -> unit) option,
 	canOutput  : (unit -> bool) option,
 	getPos     : (unit -> pos) option,
@@ -79,39 +82,39 @@ functor PrimIO (
     fun augmentReader (RD rd) = let
 	  fun readaToReadv reada n = let
 		val a = A.array(n, someElem)
-		val n = reada{buf=a, i=0, sz=NONE}
+		val n = reada (AS.full a)
 		in
 	          AS.vector (AS.slice (a, 0, SOME n))
 		end
 	  fun readaToReadvNB readaNB n = let
 		val a = A.array(n, someElem)
 		in
-		  case readaNB{buf=a, i=0, sz=NONE}
+		  case readaNB (AS.full a)
 		   of SOME n' => SOME(AS.vector (AS.slice(a, 0, SOME n')))
 		    | NONE => NONE  
 		  (* end case *)
 		end
-	  fun readvToReada readv {buf, i, sz} = let
-		val nelems = (case sz of NONE => A.length buf - i | SOME n => n)
+	  fun readvToReada readv asl = let
+		val (a, start, nelems) = AS.base asl
 		val v = readv nelems
 		val len = V.length v
 		in
-		  A.copyVec {dst=buf, di=i, src=v};
+		  A.copyVec {dst=a, di=start, src=v};
 		  len
 		end
-	  fun readvToReadaNB readvNB {buf, i, sz} = let
-		val nelems = (case sz of NONE => A.length buf - i | SOME n => n)
-		in
-		  case readvNB nelems
-		   of SOME v => let
-			val len = V.length v
-			in
-			  A.copyVec {dst=buf, di=i, src=v};
-			  SOME len
-			end
-		    | NONE => NONE
-		  (* end case *)
-		end
+	  fun readvToReadaNB readvNB asl = let
+	      val (a, start, nelems) = AS.base asl
+	  in
+	      case readvNB nelems
+	       of SOME v => let
+		      val len = V.length v
+		  in
+		      A.copyVec {dst=a, di=start, src=v};
+		      SOME len
+		  end
+		| NONE => NONE
+	  (* end case *)
+	  end
 	  val readVec' = (case rd
 		 of {readVec=SOME f, ...} => SOME f
 		  | {readArr=SOME f, ...} => SOME(readaToReadv f)
@@ -161,41 +164,25 @@ functor PrimIO (
 	  end
 
     fun augmentWriter (WR wr) = let
-	  fun writevToWritea writev {buf, i, sz} = let
-		val v = AS.vector (AS.slice (buf, i, sz))
-		in
-		  writev{buf=v, i=0, sz=NONE}
-		end
-	  fun writeaToWritev writea {buf, i, sz} = let
-		val n = (case sz of NONE => V.length buf - i | (SOME n) => n)
-		in
-		  case n
-		   of 0 => 0
-		    | _ => let
-			val a = A.array(n, V.sub(buf, i))
-			in
-			  AS.copyVec { src = VS.slice (buf, i+1, SOME (n - 1)),
-				       dst = a,
-				       di = 1 };
-			  writea {buf=a, i=0, sz=NONE}
-			end
-		  (* end case *)
-		end
-	  fun writeaToWritevNB writeaNB {buf, i, sz} = let
-		val n = (case sz of NONE => V.length buf - i | (SOME n) => n)
-		in
-		  case n
-		   of 0 => SOME 0
-		    | _ => let
-			val a = A.array(n, V.sub(buf, i))
-			in
-			  AS.copyVec { src = VS.slice (buf, i+1, SOME (n-1)),
-				       dst = a,
-				       di = 1 };
-			  writeaNB {buf=a, i=0, sz=NONE}
-			end
-		  (* end case *)
-		end
+	  fun writevToWritea writev asl = writev (VS.full (AS.vector asl))
+	  fun writeaToWritev writea vsl =
+	      case VS.length vsl of
+		  0 => 0
+		| n => let val a = A.array (n, VS.sub (vsl, 0))
+		       in
+			   AS.copyVec { src = VS.subslice (vsl, 1, NONE),
+					dst = a, di = 1 };
+			   writea (AS.full a)
+		       end
+	  fun writeaToWritevNB writeaNB vsl =
+	      case VS.length vsl of
+		  0 => SOME 0
+		| n => let val a = A.array (n, VS.sub (vsl, 0))
+		       in
+			   AS.copyVec { src = VS.subslice (vsl, 1, NONE),
+					dst = a, di = 1 };
+			   writeaNB (AS.full a)
+		       end
 	  val writeVec' = (case wr
 		 of {writeVec=SOME f, ...} => SOME f
 		  | {writeArr=SOME f, ...} => SOME(writeaToWritev f)

@@ -66,6 +66,7 @@ structure Word8Imp : WORD =
     val op < : word * word -> bool = W8.<
     val op <= : word * word -> bool = W8.<=
 
+    val ~ : word -> word = ~
     fun min (w1, w2) = if (w1 < w2) then w1 else w2
     fun max (w1, w2) = if (w1 > w2) then w1 else w2
 

@@ -28,7 +28,12 @@ structure Real64Imp : REAL =
 	    | _ => true
 	  (* end case *))
 
-    val rbase = 1073741824.0	(* should be taken from CoreIntInf.base *)
+
+    val w31_r = InlineT.Real64.from_int32 o InlineT.Int32.copy_word31
+
+    val rbase = w31_r CoreIntInf.base
+    val intbound = w31_r 0wx40000000	(* not necessarily the same as rbase *)
+    val negintbound = ~intbound
 
   (* The next three values are computed laboriously, partly to
    * avoid problems with inaccurate string->float conversions
@@ -77,8 +82,8 @@ structure Real64Imp : REAL =
 
     fun isFinite x = negInf < x andalso x < posInf
     fun isNan x = Bool.not(x==x)
-    fun floor x = if x < 1073741824.0 andalso x >= ~1073741824.0
-	           then Assembly.A.floor x
+    fun floor x = if x < intbound andalso x >= negintbound then
+		      Assembly.A.floor x
 		  else if isNan x then raise General.Domain
 		  else raise General.Overflow
 
@@ -111,10 +116,11 @@ structure Real64Imp : REAL =
     val realFloor = realround IEEEReal.TO_NEGINF
     val realCeil = realround IEEEReal.TO_POSINF
     val realTrunc = realround IEEEReal.TO_ZERO
+    val realRound = realround IEEEReal.TO_NEAREST
     end
 
     val abs : real -> real = InlineT.Real64.abs
-    val fromInt : int -> real = InlineT.real
+    val fromInt : int -> real = InlineT.Real64.from_int31
 
     fun toInt IEEEReal.TO_NEGINF = floor
       | toInt IEEEReal.TO_POSINF = ceil
@@ -146,7 +152,7 @@ structure Real64Imp : REAL =
         else if x == y then IEEEReal.EQUAL 
 	else IEEEReal.UNORDERED
 
-(** This proably needs to be reorganized **)
+(** This probably needs to be reorganized **)
     fun class x =  (* does not distinguish between quiet and signalling NaN *)
       if signBit x
        then if x>negInf then if x == 0.0 then IEEEReal.ZERO

@@ -132,10 +132,10 @@ val _ = XDebug.trace(XDebug.ioTM, fn () => [
   ])
 (*-DEBUG*)
 	    val reply = SockUtil.recvVec (sock, len)
-	    fun getMsg () = Byte.unpackStringVec(
+	    fun getMsg () = Byte.unpackStringVec(Word8VectorSlice.slice(
 		  reply,
 		  0,
-		  SOME(Word8.toIntX(W8V.sub(hdr, 1))))
+		  SOME(Word8.toIntX(W8V.sub(hdr, 1)))))
 	    fun error msg = (Socket.close sock; MLXError.xerror msg)
 	    in
 	      case W8V.sub(hdr, 0)

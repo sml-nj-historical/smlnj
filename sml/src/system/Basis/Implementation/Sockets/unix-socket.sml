@@ -199,19 +199,8 @@ structure SocketImp : SOCKET =
 
     type 'a buf = {buf : 'a, i : int, sz : int option}
 
-    local
-      fun chk (len, buf, i, NONE) =
-	    if ((i < 0) orelse (len < i))
-	      then raise Subscript
-	      else (buf, i, len - i)
-	| chk (len, buf, i, SOME sz) =
-	    if ((i < 0) orelse (sz < 0) orelse (len-i < sz))
-	      then raise Subscript
-	      else (buf, i, sz)
-    in
-    fun vbuf {buf, i, sz} = chk (W8V.length buf, buf, i, sz)
-    fun abuf {buf, i, sz} = chk (W8A.length buf, buf, i, sz)
-    end (* local *)
+    val vbuf = Word8VectorSlice.base
+    val abuf = Word8ArraySlice.base
 
   (* default flags *)
     val dfltDon'tRoute = false
@@ -289,7 +278,7 @@ structure SocketImp : SOCKET =
 	    = sockFn "recv"
       fun recvV (_, 0, _, _) = W8V.fromList[]
 	| recvV (SOCK fd, nbytes, peek, oob) = if (nbytes < 0)
-	    then raise Subscript
+	    then raise Size
 	    else recvV' (fd, nbytes, peek, oob)
       val recvA : (int * w8array * int * int * bool * bool) -> int
 	    = sockFn "recvBuf"
@@ -325,20 +314,19 @@ structure SocketImp : SOCKET =
 	    = sockFn "recvBufFrom"
     in
     fun recvVecFrom (sock, sz) = recvFromV (sock, sz, dfltPeek, dfltOOB)
-    fun recvArrFrom (SOCK fd, {buf, i}) = let
-	  val (buf, i, sz) = abuf{buf=buf, i=i, sz=NONE}
-	  in
-	    if (sz > 0)
-	      then let
+    fun recvArrFrom (SOCK fd, asl) = let
+	val (buf, i, sz) = abuf asl
+    in
+	if sz > 0 then let
 		val (n, addr) = recvFromA(fd, buf, i, sz, dfltPeek, dfltOOB)
-	        in
-		  (n, ADDR addr)
-		end
-	      else (0, (ADDR(W8V.fromList[])))
-	  end
+	    in
+		(n, ADDR addr)
+	    end
+	else (0, ADDR(W8V.fromList[]))
+    end
     fun recvVecFrom' (sock, sz, {peek, oob}) = recvFromV (sock, sz, peek, oob)
-    fun recvArrFrom' (SOCK fd, {buf, i}, {peek, oob}) = let
-	  val (buf, i, sz) = abuf{buf=buf, i=i, sz=NONE}
+    fun recvArrFrom' (SOCK fd, asl, {peek, oob}) = let
+	  val (buf, i, sz) = abuf asl
 	  in
 	    if (sz > 0)
 	      then let val (n, addr) = recvFromA(fd, buf, i, sz, peek, oob)

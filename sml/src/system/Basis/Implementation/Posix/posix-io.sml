@@ -52,55 +52,28 @@ structure POSIX_IO =
 
     val read' : int * int -> Word8Vector.vector = cfun "read"
     val readbuf' : int * Word8Array.array * int * int -> int = cfun "readbuf"
-    fun readArr (fd, {buf, i, sz=NONE}) = let
-          val alen = Word8Array.length buf
-          in
-            if 0 <= i andalso i <= alen
-              then readbuf'(FS.intOf fd, buf, alen - i, i)
-              else raise Subscript
-          end
-      | readArr (fd, {buf, i, sz=SOME sz}) = let
-          val alen = Word8Array.length buf
-          in
-            if 0 <= i andalso 0 <= sz andalso i + sz <= alen
-              then readbuf'(FS.intOf fd, buf, sz, i)
-              else raise Subscript
-          end
+    fun readArr (fd, asl) = let
+	val (buf, i, len) = Word8ArraySlice.base asl
+    in
+	readbuf' (FS.intOf fd, buf, len, i)
+    end
     fun readVec (fd,cnt) = 
-          if cnt < 0 then raise Subscript else read'(FS.intOf fd, cnt)
+          if cnt < 0 then raise Size else read'(FS.intOf fd, cnt)
 
     val writevec' : (int * Word8Vector.vector * int * int) -> int = cfun "writebuf"
     val writearr' : (int * Word8Array.array * int * int) -> int = cfun "writebuf"
-    fun writeArr (fd,{buf, i, sz=NONE}) = let
-          val alen = Word8Array.length buf
-          in
-            if 0 <= i andalso i <= alen
-              then writearr'(FS.intOf fd, buf, alen-i, i)
-              else raise Subscript
-          end
-      | writeArr (fd,{buf, i, sz=SOME sz}) = let
-          val alen = Word8Array.length buf
-          in
-            if 0 <= i andalso 0 <= sz andalso i + sz <= alen
-              then writearr'(FS.intOf fd, buf, sz, i)
-              else raise Subscript
-          end
-    
-    fun writeVec (fd,{buf, i, sz=NONE}) = let
-          val vlen = Word8Vector.length buf
-          in
-            if 0 <= i andalso i <= vlen
-              then writevec'(FS.intOf fd, buf, vlen-i, i)
-              else raise Subscript
-          end
-      | writeVec (fd,{buf, i, sz=SOME sz}) = let
-          val vlen = Word8Vector.length buf
-          in
-            if 0 <= i andalso 0 <= sz andalso i + sz <= vlen
-              then writevec'(FS.intOf fd, buf, sz, i)
-              else raise Subscript
-          end
-    
+    fun writeArr (fd, asl) = let
+	val (buf, i, len) = Word8ArraySlice.base asl
+    in
+	writearr' (FS.intOf fd, buf, len, i)
+    end
+
+    fun writeVec (fd, vsl) = let
+	val (buf, i, len) = Word8VectorSlice.base vsl
+    in
+	writevec' (FS.intOf fd, buf, len, i)
+    end
+
     datatype whence = SEEK_SET | SEEK_CUR | SEEK_END
     val seek_set = osval "SEEK_SET"
     val seek_cur = osval "SEEK_CUR"

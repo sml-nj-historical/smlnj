@@ -9,8 +9,13 @@ functor PrimIO (
 
     structure Vector : MONO_VECTOR
     structure Array : MONO_ARRAY
-      sharing type Vector.vector = Array.vector
-      sharing type Vector.elem = Array.elem
+    structure VectorSlice : MONO_VECTOR_SLICE
+    structure ArraySlice : MONO_ARRAY_SLICE
+      sharing type Vector.vector = Array.vector =
+		   VectorSlice.vector = ArraySlice.vector
+      sharing type Vector.elem = Array.elem =
+		   VectorSlice.elem = ArraySlice.elem
+      sharing type ArraySlice.vector_slice = VectorSlice.slice
     val someElem : Vector.elem
     eqtype pos
     val compare : (pos * pos) -> order
@@ -25,6 +30,8 @@ functor PrimIO (
     type elem = A.elem
     type vector = V.vector
     type array = A.array
+    type array_slice = ArraySlice.slice
+    type vector_slice = VectorSlice.slice
     type pos = pos
 
     val compare = compare
@@ -33,9 +40,9 @@ functor PrimIO (
 	name       : string, 
 	chunkSize  : int,
 	readVec    : int -> vector,
-        readArr    : {buf : array, i : int, sz : int option} -> int,
+        readArr    : array_slice -> int,
 	readVecEvt : int -> vector event,
-	readArrEvt : {buf : array, i : int, sz : int option} -> int event,
+	readArrEvt : array_slice -> int event,
 	avail      : unit -> int option,
 	getPos     : (unit -> pos) option,
 	setPos     : (pos -> unit) option,
@@ -48,10 +55,10 @@ functor PrimIO (
     datatype writer = WR of {
 	name        : string,
 	chunkSize   : int,
-	writeVec    : {buf : vector, i : int, sz : int option} -> int,
-	writeArr    : {buf : array, i : int, sz : int option} -> int,
-	writeVecEvt : {buf : vector, i : int, sz : int option} -> int event,
-	writeArrEvt : {buf : array, i : int, sz : int option} -> int event,
+	writeVec    : vector_slice -> int,
+	writeArr    : array_slice -> int,
+	writeVecEvt : vector_slice -> int event,
+	writeArrEvt : array_slice -> int event,
 	getPos      : (unit -> pos) option,
 	setPos      : (pos -> unit) option,
         endPos      : (unit -> pos) option,
