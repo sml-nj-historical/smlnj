@@ -151,7 +151,15 @@ struct
      | appexp e = exp e
 
    and exp' NONE = nop
-     | exp'(SOME e) = exp e
+     | exp'(SOME e) = if isParenedExp e then exp e else paren(exp e)
+
+   and isParenedExp(IDexp _) = true
+     | isParenedExp(TUPLEexp []) = true
+     | isParenedExp(TUPLEexp [x]) = isParenedExp x
+     | isParenedExp(TUPLEexp _) = true
+     | isParenedExp(RECORDexp _) = true
+     | isParenedExp(LISTexp _) = true
+     | isParenedExp _ = false
 
    and isSym "+" = true
      | isSym "-" = true
@@ -247,7 +255,7 @@ struct
      | decl(VERSIONdecl _) = line(!"version ...")
      | decl(ASSEMBLYCASEdecl _) = line(!"assembly ...")
      | decl(INSTRUCTIONdecl cbs) = line(!"instruction" ++ 
-                                      tab' ~6 ++ bars (map consbind cbs))
+                                      tab' ~6 ++ consbinds cbs)
      | decl(DEBUGdecl _) = line(!"debug ...")
      | decl(RESOURCEdecl _) = line(!"resource ...")
      | decl(CPUdecl _) = line(!"cpu ...")
@@ -364,6 +372,8 @@ struct
 
    and funbind(FUNbind(id,c)) = bars (map (funclause id) c)
 
+   and funbinds fbs = ands (map funbind fbs) 
+
    and funclause id (CLAUSE(ps,g,e)) = 
         line(!(name id) ++ sp ++ ppats ps ++ sp ++ guard g ++ ! "=" ++ 
             sp ++ goodFunBreak ++ appexp e)
@@ -382,25 +392,33 @@ struct
 
    and fundecl [] = nop
      | fundecl fbs = (* nl ++ *) tab ++ ! "fun" ++ sp ++ settab ++ 
-                     ands (map funbind fbs) ++ unindent
+                     funbinds fbs ++ unindent
 
    and valbind (VALbind(p,e)) = 
          line(settab ++ pat p ++ sp ++ ! "=" ++ sp ++ appexp e ++ unindent)
 
+   and valbinds vbs = block(ands (map valbind vbs))
+
    and valdecl [] = nop
-     | valdecl vbs = tab ++ ! "val" ++ sp ++ block(ands (map valbind vbs))
+     | valdecl vbs = tab ++ ! "val" ++ sp ++ valbinds vbs 
  
    and datatypebind(DATATYPEbind{id,tyvars=ts,cbs,...}) =
        line(tyvars ts ++ ! id ++ ! "=") ++ 
-       tab' ~6 ++ bars (map consbind cbs)
+       tab' ~6 ++ consbinds cbs
      | datatypebind(DATATYPEEQbind{id,tyvars=ts,ty=t,...}) =
        line(tyvars ts ++ ! id ++ ! "=" ++ !"datatype" ++ ty t)
+
+   and datatypebinds ds = block(ands(map datatypebind ds))
+
+   and consbinds cbs = bars(map consbind cbs)
 
    and consbind(CONSbind{id,ty=NONE,...}) = line(! id)
      | consbind(CONSbind{id,ty=SOME t,...}) = line(! id ++ ! "of" ++ sp ++ ty t)
 
    and typebind(TYPEbind(id,ts,t)) =
        line (tyvars ts ++ !id ++ ! "=" ++ sp ++ ty t)
+
+   and typebinds tbs = block(ands (map typebind tbs))
 
    and tyvars []  = nop
      | tyvars [t] = tyvar t
@@ -414,10 +432,10 @@ struct
    and datatypedecl([],t) = tab ++ ! "type" ++ block(ands (map typebind t))
      | datatypedecl(d,t) =
        tab ++ ! "datatype" ++
-       block(ands(map datatypebind d)) ++
+       datatypebinds d ++
        (case t of
            [] => nop
-        |  _  => tab ++ ! "withtype" ++ block(ands (map typebind t))
+        |  _  => tab ++ ! "withtype" ++ typebinds t
        )
 
 end
