@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/02/27 12:29:00 EST
+Tag: blume-20020227-cdebug
+Description:
+
+- made types in structure C and C_Debug to be equal
+- got rid of code duplication (c-int.sml vs. c-int-debug.sml)
+- there no longer is a C_Int_Debug (C_Debug is directly derived from C)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/02/26 12:00:00 EST
 Tag: blume-20020226-ffi
 Description:

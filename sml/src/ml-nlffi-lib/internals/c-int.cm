@@ -21,8 +21,6 @@ Library
 	structure C_Int
 	signature C_DEBUG
 	structure C_Debug
-	signature C_INT_DEBUG
-	structure C_Int_Debug
 
 	signature ZSTRING
 	structure ZString
@@ -44,9 +42,7 @@ is
 	c.sml		(lambdasplit:infinity)
 	c-debug.sml	(lambdasplit:infinity)
 	c-int.sig	(lambdasplit:infinity)
-	c-int-debug.sig	(lambdasplit:infinity)
 	c-int.sml	(lambdasplit:infinity)
-	c-int-debug.sml	(lambdasplit:infinity)
 
 	../zstring.sig	(lambdasplit:infinity)
 	zstring.sml	(lambdasplit:infinity)
