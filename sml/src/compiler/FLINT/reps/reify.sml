@@ -269,3 +269,10 @@ end (* function reify *)
 
 end (* toplevel local *)
 end (* structure Reify *)
+
+(*
+ * $Log: reify.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:44  george
+ * Version 110.5
+ *
+ *)

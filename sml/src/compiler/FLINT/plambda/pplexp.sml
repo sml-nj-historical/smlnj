@@ -377,3 +377,10 @@ fun stringTag (VAR _) = "VAR"
 end (* toplevel local *)
 end (* struct PPLexp *)
 
+
+(*
+ * $Log: pplexp.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:38  george
+ * Version 110.5
+ *
+ *)

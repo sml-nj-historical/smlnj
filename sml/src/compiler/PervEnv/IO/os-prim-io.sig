@@ -1,4 +1,4 @@
-(* os-prim-io-sig.sml
+(* os-prim-io.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -34,8 +34,8 @@ signature OS_PRIM_IO =
 
 
 (*
- * $Log: os-prim-io-sig.sml,v $
- * Revision 1.1.1.1  1997/01/14 01:38:19  george
- *   Version 109.24
+ * $Log: os-prim-io.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
  *
  *)

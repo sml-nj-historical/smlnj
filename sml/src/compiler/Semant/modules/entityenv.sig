@@ -34,10 +34,7 @@ end (* signature ENTITY_ENV *)
 
 (*
  * $Log: entityenv.sig,v $
- * Revision 1.2  1997/09/23  03:51:58  dbm
- *   Added function atopSp (EntityEnv.Unbound fix).
- *
- * Revision 1.1.1.1  1997/01/14  01:38:41  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:26  george
+ * Version 110.5
  *
  *)

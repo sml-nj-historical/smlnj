@@ -27,11 +27,8 @@ signature POSIX_FLAGS =
 
 
 (*
- * $Log: posix-flags-sig.sml,v $
- * Revision 1.2  1997/12/16 16:17:51  jhr
- *   Name change: wordTo ==> fromWord in POSIX_FLAGS signature.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:22  george
- *   Version 109.24
+ * $Log: posix-flags.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

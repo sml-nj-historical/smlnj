@@ -1046,17 +1046,7 @@ end (* functor Contract *)
 
 (*
  * $Log: contract.sml,v $
- * Revision 1.3  1997/02/14  16:34:53  george
- *   Fixed a bug in constant folding
- *     P.arith{oper=P./,kind=P.INT 31}, [INT i, INT j]) to INT(i div j).
- *     It should really be quot(i,j).
- *     This bug manifest as incorrect results when evaluation 7 div ~4.
- *
- * Revision 1.2  1997/02/08  00:09:31  george
- *   Fixed bug in reduction of (TESTU(n,m) o COPY(p,n)) to COPY(p,m)
- *   when m = p.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:30  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:46  george
+ * Version 110.5
  *
  *)

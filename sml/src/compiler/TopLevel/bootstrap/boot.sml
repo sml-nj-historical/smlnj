@@ -15,7 +15,7 @@ local
   structure C  = VC.Compile
   structure BU = VC.BatchUtil
   structure SE = StaticEnv
-  structure SC = SCStaticEnv
+  structure CM = CMStaticEnv
   open ErrorMsg Modules ModuleUtil
 in
 
@@ -24,7 +24,7 @@ in
   val flush = Control.Print.flush
 
 
-  type scsenv = SC.staticEnv
+  type scsenv = CM.staticEnv
   type pid = PersStamps.persstamp
   type symenv = SymbolicEnv.symenv
 
@@ -32,7 +32,7 @@ in
 		  exportPid: pid option}
 
   infix //
-  val op // = SC.atop
+  val op // = CM.atop
 
   fun loadcomp (env,fname) : loadres =
       let val _ = say (concat ["[Elaborating ", fname, "]\n"])
@@ -46,7 +46,7 @@ in
 
           (* ZHONG commented this out, because why bother ?
 
- 	  val showenv = StaticEnv.atop(SC.unSC newenv, SC.unSC env)
+ 	  val showenv = StaticEnv.atop(CM.unCM newenv, CM.unCM env)
 	  fun show (Absyn.SEQdec decs) = app show decs
 	    | show (Absyn.MARKdec (d,_)) = show d
 	    | show absyn =
@@ -85,18 +85,20 @@ in
 
   (* some standard pathnames (in OS independent syntax) *)
   local
-    fun bootFile f = OS.Path.joinDirFile { dir = "Basis", file = f }
+    fun bootFile f = OS.Path.toString{
+	    isAbs=false, vol="", arcs=["PervEnv", "Boot", f]
+	  }
   in
     val assembly_sig = bootFile "assembly.sig"
     val dummy_sml = bootFile "dummy.sml"
     val core_sml = bootFile "core.sml"
   end (* local *)
 
-  fun scsenvSize env = StaticEnv.fold (fn(_,n) => n+1) 0 (SCStaticEnv.unSC env)
+  fun scsenvSize env = StaticEnv.fold (fn(_,n) => n+1) 0 (CMStaticEnv.unCM env)
 
   fun newBootEnv (load, bindir) =
       let val bootFiles = readBinFile(bindir,"BOOTSRC")
-	  val prim = SCStaticEnv.SC PrimEnv.primEnv
+	  val prim = CMStaticEnv.CM PrimEnv.primEnv
 	  val pids = ref (nil : pid list)
 
 	  fun ld(fname,env) =
@@ -111,13 +113,13 @@ in
 	      let fun many'([],env) = env
 		    | many'(fname::rest,env) =
 		        many'(rest,ld(fname,env//baseEnv)//env)
-	       in many'(files,SCStaticEnv.empty)
+	       in many'(files,CMStaticEnv.empty)
 	      end
 
 	  val sig_prim = ld(assembly_sig,prim) // prim
 	  val dummy_env = ld(dummy_sml,sig_prim) // sig_prim
 	  val core_env = ld(core_sml,dummy_env)
-	  val _ = #set EnvRef.core (SCStaticEnv.unSC core_env)
+	  val _ = #set EnvRef.core (CMStaticEnv.unCM core_env)
 	  val _ = VC.Boot.coreEnvRef := { static = core_env // dummy_env,
 					  dynamic = DynamicEnv.empty,
 					  symbolic = SymbolicEnv.empty }
@@ -252,8 +254,8 @@ in
 		   in ((pSE, pids), getVisComp pSE)
 		  end
 
-	  val pervStatEnv = SE.consolidate(SC.unSC pervStatEnv)
-	  val visCompEnv = SE.consolidate(SC.unSC visCompEnv)
+	  val pervStatEnv = SE.consolidate(CM.unCM pervStatEnv)
+	  val visCompEnv = SE.consolidate(CM.unCM visCompEnv)
 
 	  val vcSym = Symbol.strSymbol (sname (VC.architecture) ^ "VisComp")
 	  val vcBind as Bindings.STRbind(vcStr) =
@@ -324,3 +326,10 @@ in
 end (* local *)
 end (* functor BootEnvF *)
 
+
+(*
+ * $Log: boot.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:15  george
+ * Version 110.5
+ *
+ *)

@@ -134,13 +134,7 @@ end (* structure EntityEnv *)
 
 (*
  * $Log: entityenv.sml,v $
- * Revision 1.3  1997/09/30  02:27:03  dbm
- *   Added new constructor ERReenv for entityEnv for error recovery.
- *
- * Revision 1.2  1997/09/23  03:52:39  dbm
- *   Added function atopSp (EntityEnv.Unbound fix).
- *
- * Revision 1.1.1.1  1997/01/14  01:38:41  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:26  george
+ * Version 110.5
  *
  *)

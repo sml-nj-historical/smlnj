@@ -134,11 +134,7 @@ end
 
 (*
  * $Log: liveness.sml,v $
- * Revision 1.2  1997/09/17 17:14:59  george
- *   Successor and predecessor lists are now basic block lists. Should
- *   be careful not to touch blocks whose sole successor is the exit node.
+ * Revision 1.1.1.1  1998/04/08 18:39:02  george
+ * Version 110.5
  *
-# Revision 1.1.1.1  1997/04/19  18:14:20  george
-#   Version 109.27
-#
  *)

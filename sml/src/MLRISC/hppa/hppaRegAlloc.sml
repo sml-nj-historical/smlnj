@@ -80,21 +80,7 @@ end
 
 (*
  * $Log: hppaRegAlloc.sml,v $
- * Revision 1.6  1997/07/17 12:28:02  george
- *   The regmap is now represented as an int map rather than using arrays.
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
-# Revision 1.5  1997/07/15  15:44:05  dbm
-#   Change in where structure syntax.
-#
-# Revision 1.4  1997/07/02  13:22:17  george
-#   The register allocator now has a mode to do either copy-propagation
-#   or full register allocation + copy-propagation.
-#
-# Revision 1.3  1997/05/22  03:24:38  dbm
-#   Minor cleanup in SML '97 specs.  Still can't use "where structure"
-#   because of bug 1205.
-#
-# Revision 1.1.1.1  1997/04/19  18:14:23  george
-#   Version 109.27
-#
  *)

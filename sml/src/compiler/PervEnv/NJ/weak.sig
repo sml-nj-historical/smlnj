@@ -1,4 +1,4 @@
-(* weak-sig.sml
+(* weak.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -19,14 +19,8 @@ signature WEAK =
   end (* WEAK *)
 
 (*
- * $Log: weak-sig.sml,v $
- * Revision 1.2  1998/02/15 19:40:31  jhr
- *   Deleted SMLofNJ.Susp structure.
- *
- * Revision 1.1  1997/02/11 20:44:48  george
- *   Version 109.25.1
- *
- * Revision 1.1.1.1  1997/01/14  01:38:18  george
- *   Version 109.24
+ * $Log: weak.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

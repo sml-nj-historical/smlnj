@@ -102,10 +102,7 @@ end (* signature ELABUTIL *)
 
 (*
  * $Log: elabutil.sig,v $
- * Revision 1.2  1997/03/22  18:15:57  dbm
- * Added function hasModules, which is used in ElabMod to fix bug 905/952.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:35  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:25  george
+ * Version 110.5
  *
  *)

@@ -91,24 +91,7 @@ end
 
 (*
  * $Log: alpha32RegAlloc.sml,v $
- * Revision 1.6  1997/07/17 12:26:46  george
- *   The regmap is now represented as an int map rather than using arrays.
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
-# Revision 1.5  1997/07/15  15:38:12  dbm
-# *** empty log message ***
-#
-# Revision 1.4  1997/07/02  13:21:50  george
-#   The register allocator now has a mode to do either copy-propagation
-#   or full register allocation + copy-propagation.
-#
-# Revision 1.3  1997/05/22  03:22:00  dbm
-#   Minor change in SML '97 style sharing.  Still can't use where structure
-#   -- see bug 1205.
-#
-# Revision 1.2  1997/05/20  12:07:38  dbm
-#   SML '97 sharing, where structure.
-#
-# Revision 1.1.1.1  1997/04/19  18:14:22  george
-#   Version 109.27
-#
  *)

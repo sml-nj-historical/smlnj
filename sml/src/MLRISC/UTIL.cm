@@ -1,9 +1,9 @@
 (* When used in the SML/NJ system, this is an alias to:
-	 ../9-MiscUtil/util/UTIL.cm
+	 ../comp-lib/UTIL.cm
 
    When used as a standalone backend, this should be an
    alias to util/UTIL.cm
 *)
  
-alias ../MiscUtil/util/UTIL.cm
+alias ../comp-lib/UTIL.cm
 

@@ -188,24 +188,7 @@ cd $SRCDIR
 if [ -r $HEAPDIR/sml.$HEAP_SUFFIX ]; then
   echo "$HEAPDIR/sml.$HEAP_SUFFIX already exists"
 else
-  if [ ! -d $ROOT/$BIN_FILES ]; then
-    if [ -r $ROOT/$VERSION-$BIN_FILES.tar.Z ]; then
-      cd $ROOT
-      echo "unpacking bin files"
-      zcat $VERSION-$BIN_FILES.tar.Z | tar -xf -
-    elif [ -r $ROOT/$VERSION-$BIN_FILES.tar ]; then
-      cd $ROOT
-      echo "unpacking bin files"
-      tar -xf $VERSION-$BIN_FILES.tar
-    else
-      echo "!!! the bin files are missing"
-      exit 1
-    fi
-    if [ ! -d $ROOT/$BIN_FILES ]; then
-      echo "!!! unable to unpack bin files"
-      exit 1
-    fi
-  fi
+  $CONFIGDIR/unpack.sh bin $ROOT $BIN_FILES $ROOT/$VERSION-$BIN_FILES.tar
   cd $ROOT
   $RUNDIR/run.$ARCH-$OPSYS @SMLboot=$ROOT/$BIN_FILES @SMLalloc=$ALLOC <<XXXX
     $SET_FLAGS
@@ -243,7 +226,9 @@ do
     echo "  building $TARGET"
     case $i in
       src-smlnj)
-	$CONFIGDIR/unpack.sh src-smlnj $ROOT/src sml-nj $ROOT/$VERSION-sml-nj.tar
+ 	for src in compiler comp-lib MLRISC; do
+ 	  $CONFIGDIR/unpack.sh $src $ROOT/src $src $ROOT/$VERSION-$src.tar
+ 	done
       ;;
       sml-full)
 	if [ ! -d $ROOT/$BIN_FILES ]; then

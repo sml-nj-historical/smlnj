@@ -70,20 +70,7 @@ end
 
 (*
  * $Log: hppaCells.sml,v $
- * Revision 1.5  1998/02/17 02:50:21  george
- *   Added cellsetToRegs -- a mapping of cells to unique ids.
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
- * Revision 1.4  1997/07/17 12:27:21  george
- *   The regmap is now represented as an int map rather than using arrays.
- *   All temporary registers are now unique and generated using one counter.
- *
-# Revision 1.3  1997/07/03  13:54:15  george
-#   Added reserved floating point temporary.
-#
-# Revision 1.2  1997/06/13  15:27:15  george
-#   Implemented the cellset2string function.
-#
-# Revision 1.1.1.1  1997/04/19  18:14:22  george
-#   Version 109.27
-#
  *)

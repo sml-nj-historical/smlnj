@@ -696,46 +696,7 @@ end
 
 (*
  * $Log: alpha32.sml,v $
- * Revision 1.12  1998/02/16 13:57:41  george
- *   A register allocated temp is now associated with parallel COPYs
- *   instead of a dedicated register. The temp is used to break cycles.
+ * Revision 1.1.1.1  1998/04/08 18:39:00  george
+ * Version 110.5
  *
- * Revision 1.11  1997/09/17 20:00:54  george
- *   The AND operation with certain bit patterns is implemented using ZAP,
- *   and shifting by 1, 2, and 3, is implemented using ADDL, S4ADDL, and S8ADDL.
- * 							-- ken cline
- *
-# Revision 1.10  1997/09/17  17:10:10  george
-#   added support for MLRisc ENTRYLABEL
-#
-# Revision 1.9  1997/09/12  10:12:54  george
-#   provided support for unsigned comparisons in sml/nj checklimit
-#
-# Revision 1.8  1997/08/30  02:09:35  george
-#   Changed cvti2d to take an I.operand as argument instead of a register
-#
-# Revision 1.7  1997/08/29  11:19:43  george
-#   removed code to generate div-by-zero traps
-#
-# Revision 1.6  1997/08/29  10:57:42  george
-#   div, divlu, and cvti2d operations are now implemented using pseudo-
-#   instructions instead of floating point registers. The latter approach
-#   allocated space on the stack which could conflict with spills.
-#
-# Revision 1.5  1997/08/27  17:49:22  george
-#    Addition of immediate constants is performed by LDO instead of ADD.
-#    THis allows for larger constants.
-#
-# Revision 1.4  1997/07/28  20:03:42  george
-#   Added support for regions
-#
-# Revision 1.3  1997/07/17  12:24:41  george
-#   The regmap is now represented as an int map rather than using arrays.
-#
-# Revision 1.2  1997/07/10  03:59:43  george
-#   Added translation for MLTree.ORDERED.
-#
-# Revision 1.1.1.1  1997/04/19  18:14:21  george
-#   Version 109.27
-#
  *)

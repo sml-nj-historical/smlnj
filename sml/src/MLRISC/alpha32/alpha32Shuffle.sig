@@ -9,7 +9,7 @@ end
 
 (*
  * $Log: alpha32Shuffle.sig,v $
- * Revision 1.1  1998/02/16 14:00:18  george
- *   Version 110.2
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
  *)

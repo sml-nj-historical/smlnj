@@ -338,13 +338,7 @@ end (* structure Equal *)
 
 (*
  * $Log: pequal.sml,v $
-# Revision 1.1  1997/05/06  01:15:36  george
-#   Version 109.27+
-#
- * Revision 1.3  1997/03/17  19:00:08  dbm
- * Changes in datatype representation to support datatype replication.
- *
- * Revision 1.2  1997/02/26  21:53:28  george
- *    Fix a derived bug from the STRANGE-exception bug.
+ * Revision 1.1.1.1  1998/04/08 18:39:42  george
+ * Version 110.5
  *
  *)

@@ -5,15 +5,9 @@
  * Utility code for generating assembler code.
  *
  * $Log: asm-util.sml,v $
- * Revision 1.1.1.1  1997/04/19 18:14:23  george
- *   Version 109.27
+ * Revision 1.1.1.1  1998/04/08 18:39:02  george
+ * Version 110.5
  *
- * Revision 1.2  1996/09/16  13:09:37  george
- *   Incorrect use of Word.toInt. Changed it to Word.toIntX.
- *
- * Revision 1.1.1.1  1996/01/31  16:02:50  george
- * Version 109
- * 
  *)
 
 structure AsmUtil : sig

@@ -30,17 +30,7 @@ end  (* signature ASTUTIL *)
 
 (*
  * $Log: astutil.sig,v $
- * Revision 1.4  1997/11/24 20:22:45  dbm
- *   Eliminate resultId, returnId and Ast translation functions.
- *
- * Revision 1.3  1997/09/23  03:58:29  dbm
- *   Added transforms for EntityEnv.Unbound fix (bugs 1270, 1271).
- *
- * Revision 1.2  1997/01/28  23:20:43  jhr
- * Integer and word literals are now represented by IntInf.int (instead of
- * as strings).
- *
- * Revision 1.1.1.1  1997/01/14  01:38:43  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:19  george
+ * Version 110.5
  *
  *)

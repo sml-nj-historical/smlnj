@@ -68,16 +68,7 @@ end
 
 (*
  * $Log: hppaCpsRegs.sml,v $
- * Revision 1.3  1997/09/17 17:15:39  george
- *   dedicated registers are now part of the CPSREGS interface
- *
-# Revision 1.2  1997/07/03  13:56:58  george
-#   Added support for FCOPY.
-#
-# Revision 1.1  1997/04/19  18:17:47  george
-#   Version 109.27
-#
- * Revision 1.1.1.1  1997/01/14  01:38:34  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
  *
  *)

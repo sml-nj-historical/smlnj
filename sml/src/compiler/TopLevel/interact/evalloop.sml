@@ -9,7 +9,7 @@ local open Environment
       structure CB = CompBasic
       structure EM = ErrorMsg
       structure E  = Environment
-      structure SCS = SCStaticEnv      
+      structure CMS = CMStaticEnv      
       structure PP = PrettyPrint
       structure T = Time
       structure U = Unsafe
@@ -20,9 +20,9 @@ exception Interrupt
 type lvar = Access.lvar
 
 type interactParams = 
-   {compManagerHook : (CB.ast * EnvRef.SCenvref 
+   {compManagerHook : (CB.ast * EnvRef.CMenvref 
                                            * EnvRef.envref -> unit) option ref,
-          baseEnvRef      : EnvRef.SCenvref,
+          baseEnvRef      : EnvRef.CMenvref,
           localEnvRef     : EnvRef.envref,
           transform       : CB.absyn -> CB.absyn,
           instrument      : {source: CB.source,
@@ -76,7 +76,7 @@ fun evalLoop ({compManagerHook, baseEnvRef, localEnvRef, perform,
 
 let val parser = C.parseOne source
     val cinfo = C.mkCompInfo(source,#get EnvRef.core (),transform)
-    val baseEnvRefunSC = EnvRef.unSC baseEnvRef
+    val baseEnvRefunCM = EnvRef.unCM baseEnvRef
 
     fun checkErrors s = 
         if C.anyErrors cinfo then raise EM.Error else ()
@@ -90,7 +90,7 @@ let val parser = C.parseOne source
                   | SOME cm => cm (ast, baseEnvRef, localEnvRef)
 
                 val {static=statenv, dynamic=dynenv, symbolic=symenv} =
-                  E.layerEnv(#get localEnvRef (), #get baseEnvRefunSC ())
+                  E.layerEnv(#get localEnvRef (), #get baseEnvRefunCM ())
 
                 val splitting = !Control.lambdaSplitEnable
                 val {csegments, newstatenv, absyn, exportPid, exportLvars,
@@ -121,7 +121,7 @@ let val parser = C.parseOne source
 
              in PrettyPrint.with_pp (#errConsumer source)
                 (fn ppstrm => printer 
-                  (E.layerEnv(newLocalEnv, #get baseEnvRefunSC ()))
+                  (E.layerEnv(newLocalEnv, #get baseEnvRefunCM ()))
                   ppstrm (absyn, exportLvars));
                 #set localEnvRef newLocalEnv
             end
@@ -246,3 +246,10 @@ fun evalStream interactParams
 end (* top-level local *)
 end (* functor EvalLoopF *)
 
+
+(*
+ * $Log: evalloop.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
+ *
+ *)

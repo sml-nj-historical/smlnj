@@ -403,3 +403,10 @@ val lcontract = fn fdec => lcontract(lcontract(fdec, true), false)
 end (* toplevel local *)
 end (* structure LContract *)
 
+
+(*
+ * $Log: lcontract.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:40  george
+ * Version 110.5
+ *
+ *)

@@ -5,7 +5,7 @@ signature UNPICKMOD =
 sig
 
   val unpickleEnv:
-	SCStaticEnv.staticEnv *
+	CMStaticEnv.staticEnv *
 	{hash: PersStamps.persstamp, pickle: Word8Vector.vector}
 	-> StaticEnv.staticEnv
 
@@ -829,7 +829,7 @@ fun unpickleEnv (context0, pickle) =
         | nameRepDomain _ = raise Fail "    | nameRepDomain"
 
       and tycon #"X" = ?modId(fn UmodId id => 
-		      case SCStaticEnv.lookTYC context0 id
+		      case CMStaticEnv.lookTYC context0 id
                        of SOME t => %Utycon t)
         | tycon #"G" = ?stamp(fn Ustamp s =>
 		     R.int(fn a =>
@@ -980,7 +980,7 @@ fun unpickleEnv (context0, pickle) =
         | boundepsOption _ = raise Fail "    | boundepsOption"
 
       and Signature #"X" = ?modId(fn UmodId id =>
-	    case SCStaticEnv.lookSIG context0 id
+	    case CMStaticEnv.lookSIG context0 id
              of SOME t => %USignature t)
 
         | Signature #"S" =
@@ -1002,7 +1002,7 @@ fun unpickleEnv (context0, pickle) =
         | Signature _ = raise Fail "     | Signature"
 
       and fctSig #"X" = ?modId(fn UmodId id =>
-		      case SCStaticEnv.lookFSIG context0 id
+		      case CMStaticEnv.lookFSIG context0 id
                        of SOME t => %UfctSig t)
         | fctSig #"F" = 
              ?symbolOption(fn UsymbolOption k =>
@@ -1050,7 +1050,7 @@ fun unpickleEnv (context0, pickle) =
 
       and Structure #"X" = ?modId(fn UmodId id =>
 			    ?access(fn Uaccess a =>
-			         case SCStaticEnv.lookSTR context0 id
+			         case CMStaticEnv.lookSTR context0 id
 				   of SOME(M.STR{sign=s,rlzn=r,access=_,info=z})
 				       => %UStructure(M.STR{sign=s,rlzn=r,
 							    access=a,info=z})
@@ -1073,7 +1073,7 @@ fun unpickleEnv (context0, pickle) =
 
       and Functor #"X" = ?modId(fn UmodId id =>
 			  ?access(fn Uaccess a =>
-		               case SCStaticEnv.lookFCT context0 id
+		               case CMStaticEnv.lookFCT context0 id
 				 of SOME(M.FCT{sign=s,rlzn=r,access=_,info=z}) => 
 				       %UFunctor(M.FCT{sign=s,rlzn=r,access=a,info=z})
 				  | NONE =>
@@ -1170,7 +1170,7 @@ fun unpickleEnv (context0, pickle) =
 
       and entityEnv #"X" = 
             ?modId(fn UmodId id =>
-		       case SCStaticEnv.lookEENV context0 id
+		       case CMStaticEnv.lookEENV context0 id
                         of SOME e => %UentityEnv e
 		         | NONE => raise Fail "missing external entityEnv")
         | entityEnv #"M" = ?stamp(fn Ustamp s =>
@@ -1251,3 +1251,10 @@ fun unpickleEnv (context0, pickle) =
 end (* local *)
 end (* structure UnpickleMod *)
 
+
+(*
+ * $Log: unpickmod.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:34  george
+ * Version 110.5
+ *
+ *)

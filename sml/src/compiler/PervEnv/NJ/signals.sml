@@ -27,19 +27,7 @@ structure Signals :> SIGNALS =
 
 (*
  * $Log: signals.sml,v $
- * Revision 1.4  1997/09/04 19:42:09  jhr
- *   Split the Signal module into an internal and extarnal view.  Added hooks for
- *   initializing the signal handler tables, for programs (like CML) that need to
- *   bypass the standard clean-up mechanism.
- *
- * Revision 1.3  1997/02/26  21:00:28  george
- *    Defined a new top level Option structure. All 'a option related
- *    functions have been moved out of General.
- *
- * Revision 1.2  1997/01/31  20:39:48  jhr
- * Replaced uses of "abstraction" with opaque signature matching.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:20  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

@@ -37,10 +37,7 @@ end
 
 (*
  * $Log: cpsRegs.sig,v $
- * Revision 1.2  1997/09/17 17:15:25  george
- *   dedicated registers are now part of the CPSREGS interface
- *
- * Revision 1.1.1.1  1997/01/14  01:38:33  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
  *
  *)

@@ -1966,16 +1966,7 @@ end (* functor Closure *)
 
 (*
  * $Log: nclosure.sml,v $
- * Revision 1.3  1997/05/05  19:56:37  george
- *   Fix the bug 1019 by bundling up the mixed floats and int32 closures
- *   into two layers. This is inefficient but should make things work
- *   correctly. The rationale is that we don't encounter this kind of
- *   closures often. -- zsh
- *
- * Revision 1.2  1997/04/18  15:39:14  george
- *   Fixing the infinite loop bug reported by Dino Oliva -- zsh
- *
- * Revision 1.1.1.1  1997/01/14  01:38:32  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:45  george
+ * Version 110.5
  *
  *)

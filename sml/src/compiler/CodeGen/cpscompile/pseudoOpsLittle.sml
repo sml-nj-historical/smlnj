@@ -99,20 +99,7 @@ end
 
 (*
  * $Log: pseudoOpsLittle.sml,v $
- * Revision 1.5  1998/02/17 02:57:34  george
- *   Modified coercion for word based descriptors.
- *
- * Revision 1.4  1998/02/13 17:20:59  george
- *   Functorized pseudoOps over the machine spec to get access to the
- *   Tag structure.
- *
- * Revision 1.3  1998/02/12 18:04:07  jhr
- *   Fixed bug in the descriptor used for real literals.
- *
- * Revision 1.2  1997/06/13 15:29:23  george
- *   Improved the output of toString.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:34  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
  *
  *)

@@ -223,19 +223,7 @@ end (* structure PPUtil *)
 
 (*
  * $Log: pputil.sml,v $
- * Revision 1.5  1997/11/24 20:30:50  dbm
- *   Localize resultId, returnId.
- *
- * Revision 1.4  1997/09/30  02:36:20  dbm
- *   Replaced "Symbol.eq" by "S.eq".
- *
- * Revision 1.3  1997/09/24  04:09:28  dbm
- *   Corrected comment for findPath.
- *
- * Revision 1.2  1997/09/23  04:04:31  dbm
- *   Change definition of findPath for more accurate type path printing.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:44  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
  *
  *)

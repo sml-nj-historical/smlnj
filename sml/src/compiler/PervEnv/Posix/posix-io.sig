@@ -1,4 +1,4 @@
-(* posix-io-sig.sml
+(* posix-io.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -84,14 +84,8 @@ signature POSIX_IO =
   end (* signature POSIX_IO *)
 
 (*
- * $Log: posix-io-sig.sml,v $
- * Revision 1.3  1997/06/07 15:27:40  jhr
- *   SML'97 Basis Library changes (phase 3; Posix changes)
- *
- * Revision 1.2  1997/05/20  12:15:25  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:22  george
- *   Version 109.24
+ * $Log: posix-io.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

@@ -354,53 +354,7 @@ end (* structure PPDec *)
 
 (*
  * $Log: ppdec.sml,v $
- * Revision 1.12  1997/10/07  16:11:44  dbm
- *   Changed ppOpen to call PPModules.ppOpen for improved printing of
- *   top level open declarations.
- *
- * Revision 1.11  1997/10/02  22:20:15  dbm
- *   Minor cleanup of type decl printing.
- *
- * Revision 1.10  1997/09/23  04:01:48  dbm
- *   Fix pretty printing of type declarations (extra space) and signature
- *   constraints (unnecessary newline for short sigs).
- *
- * Revision 1.9  1997/09/17  21:35:15  dbm
- *   Print short signatures on same line.
- *
- * Revision 1.8  1997/08/26  20:50:42  appel
- * Fixed bug in which <hidden-value> had wrong type.
- *
- * Revision 1.7  1997/08/15  20:46:27  dbm
- *   Added code to detect top-level opens and print them in a short form
- *   or long form (with signatures, the default), according to the value
- *   of Control.printOpens.
- *
- * Revision 1.6  1997/07/15  16:19:53  dbm
- *   Adjust to changes in signature representation.
- *
- * Revision 1.5  1997/06/30  19:37:33  jhr
- *   Removed System structure; added Unsafe structure.
- *
- * Revision 1.4  1997/05/20  12:27:44  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.3  1997/03/25  13:41:45  george
- *   Fixing the coredump bug caused by duplicate top-level declarations.
- *   For example, in almost any versions of SML/NJ, typing
- *           val x = "" val x = 3
- *   would lead to core dump. This is avoided by changing the "exportLexp"
- *   field returned by the pickling function (pickle/picklemod.sml) into
- *   a list of lambdavars, and then during the pretty-printing (print/ppdec.sml),
- *   each variable declaration is checked to see if it is in the "exportLvars"
- *   list, if true, it will be printed as usual, otherwise, the pretty-printer
- *   will print the result as <hiddle-value>.
- * 						-- zsh
- *
- * Revision 1.2  1997/03/17  18:58:48  dbm
- * Changes in datatype representation to support datatype replication.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:43  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
  *
  *)

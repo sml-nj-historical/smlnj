@@ -31,11 +31,7 @@ structure OS_Process : OS_PROCESS =
 
 (*
  * $Log: os-process.sml,v $
- * Revision 1.2  1997/08/20 13:09:57  jhr
- *   Lifted OS independent atExit code into its own module, and fixed an
- *   infinite loop that occurred when an atExit action called exit.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:26  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:40:02  george
+ * Version 110.5
  *
  *)

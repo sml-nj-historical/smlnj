@@ -1,4 +1,4 @@
-(* int-inf-sig.sml
+(* int-inf.sig
  *
  * COPYRIGHT (c) 1995 by AT&T Bell Laboratories.  See COPYRIGHT file for details.
  *
@@ -18,8 +18,8 @@ signature INT_INF =
   end (* signature INT_INF *)
 
 (*
- * $Log: int-inf-sig.sml,v $
-# Revision 1.1  1997/01/28  23:20:12  jhr
-# Added IntInf:INT_INF to represent literals.
-#
+ * $Log: int-inf.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:18  george
+ * Version 110.5
+ *
  *)

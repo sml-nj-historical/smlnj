@@ -231,43 +231,7 @@ end (* structure Ast *)
 
 (*
  * $Log: ast.sml,v $
- * Revision 1.10  1997/11/24 20:02:55  dbm
- *   Ast constructor name changes.
- *   Add strexp constructor AppStrI (for resultId, returnId processing
- *     in elaborator).
- *
- * Revision 1.9  1997/10/26  23:14:54  dbm
- *   Changed argument of constructor StrSpec.  Signature is no longer optional.
- *
- * Revision 1.8  1997/08/25  23:03:34  walidt
- * Add in the names of new fixityparse and lazycomp files, in comments.
- *
- *
- * Merged the "lazy" extension to syntax with newest version.
- *
- * Revision 1.7  1997/08/02  02:22:06  dbm
- *   Added syntax for "include <sigexp>" and constrained strexp.
- *
- * Revision 1.6  1997/05/20  12:25:38  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.5  1997/04/14  21:34:42  dbm
- *   Generalized where spec associated with AugSig to accomodate multiple
- *   simultaneous definitions (and ultimately structure definitions in
- *   addition to type definitions).
- *
- * Revision 1.4  1997/03/17  18:56:33  dbm
- * New syntax (dbrhs) added for datatype replication.
- *
- * Revision 1.3  1997/01/31  15:13:44  dbm
- * Added sigConst datatype and modified VarFct, FctFct, AppFct, Strb to support
- * opaque signature constraints (":>").
- *
- * Revision 1.2  1997/01/28  23:20:42  jhr
- * Integer and word literals are now represented by IntInf.int (instead of
- * as strings).
- *
- * Revision 1.1.1.1  1997/01/14  01:38:42  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:19  george
+ * Version 110.5
  *
  *)

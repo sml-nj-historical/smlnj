@@ -1,4 +1,4 @@
-(* posix-filesys-sig.sml
+(* posix-filesys.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -140,14 +140,8 @@ signature POSIX_FILE_SYS =
   end (* signature POSIX_FILE_SYS *)
 
 (*
- * $Log: posix-filesys-sig.sml,v $
- * Revision 1.3  1997/06/07 15:27:39  jhr
- *   SML'97 Basis Library changes (phase 3; Posix changes)
- *
- * Revision 1.2  1997/05/20  12:14:34  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:22  george
- *   Version 109.24
+ * $Log: posix-filesys.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

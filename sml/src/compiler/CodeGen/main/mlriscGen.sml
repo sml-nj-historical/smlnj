@@ -1075,75 +1075,7 @@ end (* MLRiscGen *)
 
 (*
  * $Log: mlriscGen.sml,v $
- * Revision 1.22  1998/02/17 02:56:36  george
- *   MARKs are not generated for known functions.
- *
- * Revision 1.21  1998/02/15 19:41:24  jhr
- *   Changed references to System.Tags to MachSpec.ObjDesc.
- *
- * Revision 1.20  1998/01/08 22:35:43  dbm
- *   Fix for bug 1323 (bug1323.2.sml version) on hppa and alpha.
- *
- * Revision 1.19  1997/12/08 03:28:22  george
- *    allocptr not updated before Word32.div operation
- *
- * Revision 1.18  1997/12/01 20:05:43  george
- *   The allocation pointer must be update before word division operations,
- *   since they can trap. Note: It is a mistake to classify such operations
- *   as pure.
- *
- * Revision 1.17  1997/10/27  20:23:07  george
- * *** empty log message ***
- *
- * Revision 1.16  1997/10/27  01:42:42  george
- *   Fixed bug involving alignment of allocation pointer
- *
- * Revision 1.15  1997/10/03  09:40:39  george
- *   allocation pointer not updated before test(32,31)
- *
- * Revision 1.14  1997/09/17  17:15:29  george
- *   included dedicated registers in ESCAPEBLOCK
- *
- * Revision 1.13  1997/09/12  10:13:03  george
- *   Checklimit must be done with unsigned comparisons
- *
- * Revision 1.12  1997/08/27  17:53:54  george
- *    More accurate memory disambiguation maintenance.
- *
- * Revision 1.11  1997/08/13  15:57:52  george
- *   Fixed a bug in which the register counters were not being reset
- *   before memory disambiguation information was computed.
- *
- * Revision 1.10  1997/08/11  18:38:06  george
- *   Implemented correct but very conservative alias information for
- *   reference cells.
- *
- * Revision 1.9  1997/08/07  21:04:35  george
- *   fixed bugs in memory disambiguation
- *
- * Revision 1.8  1997/08/07  02:10:52  george
- *   Refined region information to the granularity of words  in the allocation space
- *
- * Revision 1.7  1997/08/03  14:16:01  george
- *    Allocation pointer increments are performed at function exit
- *    if possible.
- *
- * Revision 1.6  1997/07/28  20:05:02  george
- *   Added support for regions
- *
- * Revision 1.5  1997/07/17  12:37:12  george
- *   The regmap is now represented as an int map rather than using arrays.
- *
- * Revision 1.4  1997/07/10  04:03:00  george
- *   Translation of MARK and DEFINELABEL is now wrapped with ORDERED.
- *
- * Revision 1.3  1997/07/03  13:56:31  george
- *   Now we generate FCOPY.
- *
- * Revision 1.2  1997/05/20  12:17:56  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:34  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
  *
  *)

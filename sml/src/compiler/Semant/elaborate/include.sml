@@ -288,20 +288,7 @@ end (* structure Include *)
 
 (*
  * $Log: include.sml,v $
- * Revision 1.5  1997/10/26  23:13:24  dbm
- *   To allow more general "include <sigexp>" syntax, removed "closed=true"
- *   check from elabInclude's argument pattern.  Fixes bug 1207.
- *
- * Revision 1.4  1997/08/22  18:35:04  george
- *    Add the fctflag field to the signature datatype -- zsh
- *
- * Revision 1.3  1997/07/15  16:06:33  dbm
- *   Adjust to change in representation of signatures to remove extdefs.
- *
- * Revision 1.2  1997/05/20  12:19:38  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:35  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:25  george
+ * Version 110.5
  *
  *)

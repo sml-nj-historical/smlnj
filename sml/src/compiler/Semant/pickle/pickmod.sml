@@ -4,7 +4,7 @@
 signature PICKMOD =
 sig
   val pickleEnv : 
-        SCStaticEnv.staticEnv * StaticEnv.staticEnv 
+        CMStaticEnv.staticEnv * StaticEnv.staticEnv 
                   -> {hash: PersStamps.persstamp,
                       pickle: Word8Vector.vector, 
 	              exportLvars: Access.lvar list,
@@ -583,7 +583,7 @@ let val alphaConvert = alphaConverter ()
     and tycon (T.GENtyc{stamp=s, arity=a, eq=ref e, kind=k, path=p}) () =
 	  let val id = MI.TYCid s
 	   in W.identify(MIkey id)
-		(fn()=> case SCStaticEnv.lookTYC context0 id
+		(fn()=> case CMStaticEnv.lookTYC context0 id
 			 of SOME _ => "Xv" $ [modId id]
 			  | NONE => "Gv" $ [stamp s, int a, eqprop e, 
                                             tyckind k, ipath p])
@@ -655,7 +655,7 @@ let val alphaConvert = alphaConverter ()
 	 let val id = MI.SIGid m
 	  in W.identify (MIkey id)
 	      (fn () => 
-                case (SCStaticEnv.lookSIG context0 id)
+                case (CMStaticEnv.lookSIG context0 id)
 		 of SOME _ => "XE" $ [modId id]
 		  | NONE => "SE" $ [option symbol k, bool c, bool f,
                                     stamp m, list symbol l,
@@ -676,7 +676,7 @@ let val alphaConvert = alphaConverter ()
 	  let val id = fsigId fs
 	   in W.identify (MIkey id)
 		    (fn () => 
-                      case SCStaticEnv.lookFSIG context0 id
+                      case CMStaticEnv.lookFSIG context0 id
 		       of SOME _ => "XF" $ [modId id]
 		        | NONE => "FF" $ [option symbol k, Signature p, 
                                           entVar q, option symbol s, 
@@ -707,7 +707,7 @@ let val alphaConvert = alphaConverter ()
 	  let val id = MI.STRid{rlzn=st,sign=g}
 	   in W.identify (MIkey id)
 	      (fn () => 
-                case SCStaticEnv.lookSTR context0 id
+                case CMStaticEnv.lookSTR context0 id
 		  of NONE  => 
 		      ((* if isGlobalStamp st andalso isGlobalStamp g
 		       then say (String.concat["#pickmod: missed global structure ",
@@ -728,7 +728,7 @@ let val alphaConvert = alphaConverter ()
 	      val id = MI.FCTid{rlzn=m, sign=sigid}
 	   in W.identify (MIkey id)
 	      (fn () =>
-                case SCStaticEnv.lookFCT context0 id
+                case CMStaticEnv.lookFCT context0 id
 		  of NONE =>
 		      ((* if isGlobalStamp m andalso 
 			  (case sigid
@@ -789,7 +789,7 @@ let val alphaConvert = alphaConverter ()
     and entityEnv (M.MARKeenv(s,r)) () = 
 	  let val id = MI.EENVid s
 	   in W.identify(MIkey id)
-	      (fn() => case SCStaticEnv.lookEENV context0 id
+	      (fn() => case CMStaticEnv.lookEENV context0 id
 		        of SOME _ => "X4" $ [modId id]
 		         | NONE => "M4" $ [stamp s, entityEnv r])
           end
@@ -921,3 +921,10 @@ end (* toplevel local *)
 end (* structure PickMod *)
 
 
+
+(*
+ * $Log: pickmod.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:31  george
+ * Version 110.5
+ *
+ *)

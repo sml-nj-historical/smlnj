@@ -47,7 +47,7 @@ end (* signature ENVIRONMENT *)
 
 (*
  * $Log: environ.sig,v $
- * Revision 1.2  1997/02/26  21:50:09  george
- * *** empty log message ***
+ * Revision 1.1.1.1  1998/04/08 18:39:15  george
+ * Version 110.5
  *
  *)

@@ -335,16 +335,7 @@ structure SparcInstr =
 
 (*
  * $Log: sparcinstr.sml,v $
- * Revision 1.3  1997/08/19 14:47:01  george
- *    Bug fix for 1222 (ref assignment not performed before overflow).
- *
- * Revision 1.2  1997/05/05  19:57:35  george
- *   Add the allocation pointer to the list of source registers for the
- *   tvs instruction. This fixed the subtle bug on interactions between
- *   the allocation-pointer-adjustment instruction and the addi
- *   instruction. -- zsh
- *
- * Revision 1.1.1.1  1997/01/14  01:38:46  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:47  george
+ * Version 110.5
  *
  *)

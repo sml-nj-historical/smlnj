@@ -1,4 +1,4 @@
-(* text-io-sig.sml
+(* text-io.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -66,14 +66,8 @@ signature TEXT_IO =
   end;
 
 (*
- * $Log: text-io-sig.sml,v $
- * Revision 1.3  1997/11/18 17:19:45  jhr
- *   Added missing scanStream function.
- *
- * Revision 1.2  1997/05/20  12:13:50  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:19  george
- *   Version 109.24
+ * $Log: text-io.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
  *
  *)

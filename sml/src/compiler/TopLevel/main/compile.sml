@@ -50,9 +50,9 @@ type compInfo   = CB.compInfo          (* general compilation utilities *)
 fun mkCompInfo (s, se, tr)  = CB.mkCompInfo (s, se, tr, CC.mkMkStamp)
 val anyErrors   = CB.anyErrors
 
-type scstatenv  = CC.scstatenv         (* compressed static environment *)
-val toSC        = CC.toSC
-val fromSC      = CC.fromSC
+type cmstatenv  = CC.cmstatenv         (* compressed static environment *)
+val toCM        = CC.toCM
+val fromCM      = CC.fromCM
 
 type lvar       = DA.lvar              (* local id *)
 type pid        = PS.persstamp         (* persistant id *)
@@ -108,7 +108,7 @@ val pickUnpick =
 (** take ast, do semantic checks, and output the new env, absyn and pickles *)
 fun elaborate {ast=ast, statenv=senv, compInfo=cinfo} = 
   let (** the following should go away soon; it needs clean up **)
-      val bsenv = fromSC senv
+      val bsenv = fromCM senv
       val {ast=ast, compenv=_} =
         fixityparse {ast=ast,compenv=bsenv,compInfo=cinfo} 
       val {ast=ast} =
@@ -118,7 +118,7 @@ fun elaborate {ast=ast, statenv=senv, compInfo=cinfo} =
       val (absyn, nenv) = 
         if anyErrors (cinfo) then (A.SEQdec nil, SE.empty) else (absyn, nenv)
       val {hash,pickle,exportLvars,exportPid,newenv} = pickUnpick(senv,nenv)
-   in {absyn=absyn, newstatenv=toSC newenv, exportPid=exportPid, 
+   in {absyn=absyn, newstatenv=toCM newenv, exportPid=exportPid, 
        exportLvars=exportLvars, staticPid = hash, pickle=pickle}
   end (* function elaborate *)
 
@@ -143,7 +143,7 @@ val instrument = ST.doPhase (ST.makePhase "Compiler 039 instrument") instrument
 (** take the abstract syntax tree, generate the flint intermediate code *)
 fun translate{absyn, exportLvars, newstatenv, oldstatenv, compInfo} =
   (*** statenv used for printing Absyn in messages ***)
-  let val statenv = SE.atop (fromSC newstatenv, fromSC oldstatenv)
+  let val statenv = SE.atop (fromCM newstatenv, fromCM oldstatenv)
       val {flint, imports} = 
 	    Translate.transDec(absyn, exportLvars, statenv, compInfo)
    in {flint=flint, imports=imports} 
@@ -218,7 +218,7 @@ fun compile {source=source, ast=ast, statenv=oldstatenv, symenv=symenv,
               before check "translate"
 
       (** the following is a special hook for the case of linking the
-          runtime vector when compiling Basis/core.sml. (ZHONG)
+          runtime vector when compiling PervEnv/core.sml. (ZHONG)
        *)          
       val imports =
         (case (runtimePid, imports)
@@ -309,3 +309,10 @@ end (* functor CompileF *)
 
 end (* local of exception Compile *)
 
+
+(*
+ * $Log: compile.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:15  george
+ * Version 110.5
+ *
+ *)

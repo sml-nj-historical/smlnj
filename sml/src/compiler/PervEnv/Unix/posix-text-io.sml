@@ -14,10 +14,7 @@ structure TextIO :> TEXT_IO
 
 (*
  * $Log: posix-text-io.sml,v $
- * Revision 1.2  1997/01/31 20:39:51  jhr
- * Replaced uses of "abstraction" with opaque signature matching.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:25  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:40:00  george
+ * Version 110.5
  *
  *)

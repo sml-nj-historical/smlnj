@@ -116,20 +116,7 @@ end (* structure EntPathContext *)
 
 (*
  * $Log: epcontext.sml,v $
- * Revision 1.6  1997/09/23  03:53:36  dbm
- *   Rewrite for EntityEnv.Unbound fix (bugs 1270, 1271, etc.)
- *
- * Revision 1.5  1997/08/28  12:37:08  jhr
- *   Replaced insertNovwt witn insertSp [zsh]
- *
- * Revision 1.4  1997/08/22  18:37:41  george
- *   Add several new functions and simplifications to fix bug 1234, 1206, etc.
- *                                                              --- zsh
- *
- * Revision 1.2  1997/01/31  20:40:05  jhr
- * Replaced uses of "abstraction" with opaque signature matching.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:42  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:26  george
+ * Version 110.5
  *
  *)

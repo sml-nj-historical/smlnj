@@ -1,4 +1,4 @@
-(* inet-sock-sig.sml
+(* inet-sock.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -37,8 +37,8 @@ signature INET_SOCK =
 
 
 (*
- * $Log: inet-sock-sig.sml,v $
- * Revision 1.1.1.1  1997/01/14 01:38:24  george
- *   Version 109.24
+ * $Log: inet-sock.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:57  george
+ * Version 110.5
  *
  *)

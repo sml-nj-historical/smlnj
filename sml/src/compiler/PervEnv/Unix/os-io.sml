@@ -112,18 +112,7 @@ structure OS_IO : OS_IO =
 
 (*
  * $Log: os-io.sml,v $
- * Revision 1.4  1997/07/31 17:25:26  jhr
- *   We are now using 32-bit ints to represent the seconds portion of a
- *   time value.  This was required to handle the change in the type of
- *   Time.{to,from}{Seconds,Milliseconds,Microseconds}.
- *
- * Revision 1.3  1997/06/07  15:27:51  jhr
- *   SML'97 Basis Library changes (phase 3; Posix changes)
- *
- * Revision 1.2  1997/06/02  19:16:19  jhr
- *   SML'97 Basis Library changes (phase 2)
- *
- * Revision 1.1.1.1  1997/01/14  01:38:25  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:58  george
+ * Version 110.5
  *
  *)

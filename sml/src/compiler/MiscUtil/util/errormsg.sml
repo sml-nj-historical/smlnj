@@ -140,11 +140,7 @@ end  (* structure ErrorMsg *)
 
 (*
  * $Log: errormsg.sml,v $
- * Revision 1.2  1997/07/15  16:25:54  dbm
- *   Use new Control.printWarnings flag to make it possible to suppress all
- *   warning messages.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:48  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
  *
  *)

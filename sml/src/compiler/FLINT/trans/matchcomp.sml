@@ -1296,28 +1296,7 @@ end (* structure MatchComp *)
 
 (*
  * $Log: matchcomp.sml,v $
- * Revision 1.8  1997/07/15  16:23:16  dbm
- *   Added matchRedundantError flag, which is used to promote match redundant
- *   warning into an error.
- *
- * Revision 1.7  1997/05/05  20:00:13  george
- *   Change the term language into the quasi-A-normal form. Added a new round
- *   of lambda contraction before and after type specialization and
- *   representation analysis. Type specialization including minimum type
- *   derivation is now turned on all the time. Real array is now implemented
- *   as realArray. A more sophisticated partial boxing scheme is added and
- *   used as the default.
- *
- * Revision 1.6  1997/04/14  21:40:55  dbm
- *   Rearranged code to get err parameter to wordCon function so that a
- *   proper error message could be generated for out of range literal
- *   constants.  Fixes bug 1178.
- *
- * Revision 1.5  1997/03/22  18:24:10  dbm
- * Changed order of opens to open Lambda after Types, because Types now
- * has INT, WORD, etc. constructors (for type litKind).
- *
- * Revision 1.4  1997/02/26  21:54:29  george
- * *** empty log message ***
+ * Revision 1.1.1.1  1998/04/08 18:39:42  george
+ * Version 110.5
  *
  *)

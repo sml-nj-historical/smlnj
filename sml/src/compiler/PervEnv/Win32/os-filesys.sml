@@ -254,28 +254,7 @@ structure OS_FileSys : OS_FILE_SYS =
 
 (*
  * $Log: os-filesys.sml,v $
- * Revision 1.7  1997/12/09 03:43:56  dbm
- *   Add missing case in function access to eliminate nonexhaustive match
- *   exception in testing/basis/filesys.sml.
- *
- * Revision 1.6  1997/12/06  00:03:55  lorenz
- * basis compliance for OS.FileSys.*Dir functions.
- * closeDir bug fix.
- *
- * Revision 1.5  1997/10/03  22:21:23  jhr
- *   Tracking changes to Date structure.
- *
- * Revision 1.4  1997/09/08  20:41:49  jhr
- *   Tracked changes to the Date structure API.
- *
- * Revision 1.3  1997/06/25  18:54:18  george
- *   str no longer at top level
- *
- * Revision 1.2  1997/04/02  22:21:30  lorenz
- * implmented basis refinement of getDir and fullPath
- * (result paths now canonical)
- *
- * Revision 1.1.1.1  1997/01/14  01:38:26  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:40:01  george
+ * Version 110.5
  *
  *)

@@ -158,27 +158,7 @@ end (* signature MODULES *)
 
 (*
  * $Log: modules.sig,v $
- * Revision 1.8  1997/09/30  02:30:42  dbm
- *   New constructor ERReenv for entityEnv.  Used for error recovery.
- *
- * Revision 1.7  1997/09/17  21:31:30  dbm
- *   New symbol parameter for STRdec (modules/tests/12.sml).
- *
- * Revision 1.6  1997/08/22  18:35:01  george
- *    Add the fctflag field to the signature datatype -- zsh
- *
- * Revision 1.5  1997/07/15  16:10:33  dbm
- *   Representation changes associated with the rewriting of instantiate.sml.
- *
- * Revision 1.4  1997/05/20  12:23:13  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.3  1997/04/02  04:08:22  dbm
- *   Added CONSTRAINstr constructor to strExp type.  Fix for bug 12, propagating
- *   paths to type constructors defined in functors.
- *
- * Revision 1.2  1997/01/21  13:25:30  george
- *    Modify the entityExp definition to correctly implement the
- *    datatype generativity in functor body. -- from zsh
+ * Revision 1.1.1.1  1998/04/08 18:39:28  george
+ * Version 110.5
  *
  *)

@@ -746,26 +746,7 @@ end (* structure PPAbsyn *)
 
 (*
  * $Log: ppabsyn.sml,v $
- * Revision 1.7  1997/12/17 15:18:31  dbm
- *   Fix for bug 1326.  Added ERRORvar rule to a case expression.
- *
- * Revision 1.6  1997/11/11  05:27:38  dbm
- *   Fix expression printing, especially infix expressions.
- *
- * Revision 1.5  1997/07/15  16:19:26  dbm
- *   Adjust to changes in signature representation.
- *
- * Revision 1.4  1997/04/14  21:37:28  dbm
- *   Eliminated redundant final rule in function ppExp'.
- *
- * Revision 1.3  1997/04/10  14:39:40  dbm
- *   Added missing SELECT case to ppExp'.
- *
- * Revision 1.2  1997/01/28  23:20:46  jhr
- * Integer and word literals are now represented by IntInf.int (instead of
- * as strings).
- *
- * Revision 1.1.1.1  1997/01/14  01:38:43  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
  *
  *)

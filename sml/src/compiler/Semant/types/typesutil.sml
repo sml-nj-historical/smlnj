@@ -372,12 +372,12 @@ fun matchScheme(TYFUN{arity,body}: tyfun, target: ty) : ty =
 	        POLYty{sign = sign,
 		       tyfun = TYFUN{arity = arity',
 			        body = if arity>1
-				    then BT.tupleTy(ArrayExt.listofarray tyenv)
+				    then BT.tupleTy(Array.foldr (op ::) nil tyenv)
 				    else tyenv sub 0}})
 	   | ty => 
 	       (match(body,ty);
 	        if arity>1
-		then BT.tupleTy(ArrayExt.listofarray tyenv)
+		then BT.tupleTy(Array.foldr (op ::) nil tyenv)
 		else tyenv sub 0)
     end
 
@@ -866,3 +866,10 @@ fun dummyTyGen () : unit -> Types.ty =
 end (* local *)
 end (* structure TypesUtil *)
 
+
+(*
+ * $Log: typesutil.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:36  george
+ * Version 110.5
+ *
+ *)

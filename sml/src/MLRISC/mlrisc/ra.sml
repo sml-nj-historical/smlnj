@@ -1221,71 +1221,8 @@ end (* functor *)
 
 (*
  * $Log: ra.sml,v $
- * Revision 1.19  1998/02/17 02:54:13  george
- *   The spill and reload functions take a register map, incase
- *   the instruction needs to be rewritten to use fresh temps.
+ * Revision 1.1.1.1  1998/04/08 18:39:02  george
+ * Version 110.5
  *
- * Revision 1.18  1998/02/16 13:58:20  george
- *   A register allocated temp is now associated with parallel COPYs
- *   instead of a dedicated register. The temp is used to break cycles.
- *
- * Revision 1.17  1997/09/29 20:58:41  george
- *   Escaping blocks are now characterised by succ pointing to the EXIT block
- *
-# Revision 1.16  1997/09/17  17:15:07  george
-#   successor and predessor lists are now basic block lists instead of int lists
-#
-# Revision 1.15  1997/09/12  10:13:00  george
-#   fixed sutble bug with graph construction and parallel moves
-#
-# Revision 1.14  1997/09/04  15:19:51  george
-#   Made the hash table size for the bitmatrix approximately equal to the
-#   number of edges assuming E/N is approx K.
-#
-# Revision 1.13  1997/07/20  17:31:38  george
-#   bug fixes involving uses of SortedList
-#
-# Revision 1.12  1997/07/19  13:23:32  george
-#   Fixed a bug in which nodes are not created if a register is live
-#   coming into the cluster and live on exit, but never used.
-#
-# Revision 1.11  1997/07/18  00:30:20  george
-#   fixed bug in copy propagation
-#
-# Revision 1.10  1997/07/17  18:06:34  george
-#   fixed bug in writing out regmap during copy propagation
-#
-# Revision 1.9  1997/07/17  12:32:17  george
-#   I no longer assume that the pseudo registers are going to form a
-#   dense enumeration. Removed all uses of arrays and replaced them
-#   with integer maps. This turns out to be somewhat convenient when
-#   new registers are generated during spilling.
-#
-# Revision 1.8  1997/07/15  15:45:42  dbm
-#   Change in where structure syntax.
-#
-# Revision 1.7  1997/07/02  13:23:57  george
-#   Implemented a mode in which just copy propagation without register
-#   allocation is done. The copy-propagation continues until the first
-#   pessimistic spill is encountered.
-#
-# Revision 1.6  1997/06/30  19:35:51  jhr
-#   Removed System structure; added Unsafe structure.
-#
-# Revision 1.5  1997/06/10  13:52:06  george
-#   Fixed a bug in spilling of parallel copy instructions
-#
-# Revision 1.4  1997/05/22  03:26:05  dbm
-#   Added comment.  Can't use "where structure" yet because of bug 1205.
-#
-# Revision 1.3  1997/05/20  12:09:29  dbm
-#   SML '97 sharing, where structure.
-#
-# Revision 1.2  1997/04/19  18:51:09  george
-#   Version 109.27
-#
-# Revision 1.1.1.1  1997/04/19  18:14:21  george
-#   Version 109.27
-#
  *)
 

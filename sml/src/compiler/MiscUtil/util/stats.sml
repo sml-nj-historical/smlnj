@@ -211,13 +211,7 @@ structure Stats :> STATS =
 
 (*
  * $Log: stats.sml,v $
- * Revision 1.3  1997/02/11  15:16:22  george
- * moved stuff from System to SMLofNJ
- *
- * Revision 1.2  1997/01/31  20:40:10  jhr
- * Replaced uses of "abstraction" with opaque signature matching.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:50  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
  *
  *)

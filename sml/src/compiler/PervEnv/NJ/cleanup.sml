@@ -90,13 +90,7 @@ structure CleanUp : CLEAN_UP =
 
 (*
  * $Log: cleanup.sml,v $
- * Revision 1.2  1997/08/15 16:04:27  jhr
- *   Made the CleanUp.clean function visible outside the boot code.
- *
-# Revision 1.1  1997/02/11  20:44:45  george
-#   Version 109.25.1
-#
- * Revision 1.1.1.1  1997/01/14  01:38:14  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
  *
  *)

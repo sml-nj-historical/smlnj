@@ -322,7 +322,7 @@ fun eqOrigin(STR{rlzn={stamp=s1,...},...},
 
 
 (* 
- * The following functions are used in SCStaticEnv and module elaboration
+ * The following functions are used in CMStaticEnv and module elaboration
  * for building EntPathContexts.  They extract module ids from modules. 
  *)
 fun tycId(T.GENtyc{stamp,...}) = ModuleId.TYCid stamp
@@ -475,37 +475,7 @@ end (* structure ModuleUtil *)
 
 (*
  * $Log: moduleutil.sml,v $
- * Revision 1.10  1997/10/01  18:14:17  dbm
- *   Added error recovery case to mkStrDef.
- *
- * Revision 1.9  1997/09/30  02:32:34  dbm
- *   Made treatment of SIGINFO consistent with argument being a _reverse_
- *   entity path.
- *
- * Revision 1.8  1997/09/24  04:07:25  dbm
- *   Modified mkStrBase to fix "Compiler bug: ModuleUtil.strId" in bug1150.sml
- *   that arose after Zhong's fixes for EntityEnv.Unbound problem.
- *
- * Revision 1.7  1997/07/17  20:40:45  dbm
- *   Clean up mapDtMembs.
- *
- * Revision 1.6  1997/07/15  16:14:41  dbm
- *   Change in representation associated with new treatment of extdefs in
- *   signatures and the rewrite of instantiate.sml.
- *   Added getSignature names for use in build/boot.sml.
- *
- * Revision 1.5  1997/05/20  12:24:18  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.4  1997/03/24  22:19:30  dbm
- *   Fix for bug 1166.  Changed definition of descToTyc to interpret body
- *   of DEFtyc in EXTCONSTtyc case.
- *
- * Revision 1.3  1997/03/17  18:54:07  dbm
- * Changes in datatype representation to support datatype replication.
- *
- * Revision 1.2  1997/01/21  13:25:32  george
- *    Modify the entityExp definition to correctly implement the
- *    datatype generativity in functor body. -- from zsh
+ * Revision 1.1.1.1  1998/04/08 18:39:28  george
+ * Version 110.5
  *
  *)

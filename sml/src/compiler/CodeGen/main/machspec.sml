@@ -62,10 +62,7 @@ structure DefaultMachSpec : MACH_SPEC =
 
 (*
  * $Log: machspec.sml,v $
- * Revision 1.2  1998/02/12 20:48:24  jhr
- *   Removed obsloete asm-util.sml file.  Removed references to System.Tags.
- *
- * Revision 1.1.1.1  1997/01/14 01:38:29  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
  *
  *)

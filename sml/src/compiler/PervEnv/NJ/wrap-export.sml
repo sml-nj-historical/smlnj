@@ -34,10 +34,7 @@ structure WrapExport : sig
 
 (*
  * $Log: wrap-export.sml,v $
- * Revision 1.2  1997/08/13 17:23:13  jhr
- *   Minor clean-up of exportFn code.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:20  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

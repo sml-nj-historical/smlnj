@@ -177,13 +177,7 @@ end (* structure PPVal *)
 
 (*
  * $Log: ppval.sml,v $
- * Revision 1.3  1997/12/16 17:51:37  dbm
- *   Fix bug 1325.  Add ERRORvar case to ppVar.
- *
- * Revision 1.2  1997/11/11  05:28:38  dbm
- *   Fix variable printing: get rid of ": overload".
- *
- * Revision 1.1.1.1  1997/01/14  01:38:44  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:17  george
+ * Version 110.5
  *
  *)

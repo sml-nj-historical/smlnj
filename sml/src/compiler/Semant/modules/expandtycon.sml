@@ -82,15 +82,7 @@ end (* structure ExpandTycon *)
 
 (*
  * $Log: expandtycon.sml,v $
- * Revision 1.3  1997/04/02  04:06:45  dbm
- *   Removed redundant rule in function expandPath.
- *
- * Revision 1.2  1997/02/26  15:38:39  dbm
- * Fix bug 1141.  Added entityEnv parameter to expandTycon and rewrote body of
- * module so that the entityEnv parameter would be used if a path could not be
- * interpreted in the sigContext parameter.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:42  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:26  george
+ * Version 110.5
  *
  *)

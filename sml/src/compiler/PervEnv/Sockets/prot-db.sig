@@ -1,4 +1,4 @@
-(* prot-db-sig.sml
+(* prot-db.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -15,8 +15,8 @@ signature NET_PROT_DB =
   end
 
 (*
- * $Log: prot-db-sig.sml,v $
- * Revision 1.1.1.1  1997/01/14 01:38:24  george
- *   Version 109.24
+ * $Log: prot-db.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:57  george
+ * Version 110.5
  *
  *)

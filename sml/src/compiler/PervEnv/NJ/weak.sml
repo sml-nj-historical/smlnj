@@ -27,16 +27,7 @@ structure Weak :> WEAK =
 
 (*
  * $Log: weak.sml,v $
- * Revision 1.2  1998/02/15 19:40:32  jhr
- *   Deleted SMLofNJ.Susp structure.
- *
- * Revision 1.1  1997/02/11 20:44:49  george
- *   Version 109.25.1
- *
- * Revision 1.2  1997/01/31  20:39:45  jhr
- * Replaced uses of "abstraction" with opaque signature matching.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:18  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

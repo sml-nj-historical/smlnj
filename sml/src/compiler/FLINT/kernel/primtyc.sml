@@ -167,3 +167,10 @@ fun isvoid ((PT_INT31 | PT_INT32 | PT_REAL | PT_STRING), _, _) = false
 end (* toplevel local *)
 end (* structure PrimTyc *)
 
+
+(*
+ * $Log: primtyc.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:40  george
+ * Version 110.5
+ *
+ *)

@@ -910,53 +910,7 @@ end (* structure PPModules *)
 
 (*
  * $Log: ppmod.sml,v $
- * Revision 1.16  1997/11/24 20:30:05  dbm
- *   Localize resultStr.
- *
- * Revision 1.15  1997/10/07  16:12:49  dbm
- *   Added ppOpen for improved printing of top level open declarations.
- *   ppOpen is called once in print/ppdec.sml.
- *
- * Revision 1.14  1997/10/02  22:20:42  dbm
- *   Eliminate extra space in type spec printing.
- *
- * Revision 1.13  1997/09/30  02:35:33  dbm
- *   Error recovery for printing types.
- *   Changed "<paramname>" to "<param>" for printing functor signatures.
- *
- * Revision 1.12  1997/09/24  04:08:56  dbm
- *   Fix printing of functor signatures to prevent <resultStr> identifiers
- *   from being printed.
- *
- * Revision 1.11  1997/09/23  04:02:33  dbm
- *   Fix unnecessary newlines before short signature constraints.
- *
- * Revision 1.10  1997/09/17  21:36:11  dbm
- *   New symbol parameter for STRdec.
- *
- * Revision 1.9  1997/09/15  16:02:41  dbm
- *   Eliminated spurious call to BasicTypes.domain in ppConBinding
- *   (line 210).  This was causing failure when printing module internals.
- *
- * Revision 1.8  1997/08/22  18:34:58  george
- *   Add code to print the detailed entity expressions -- zsh
- *
- * Revision 1.6  1997/07/15  16:20:40  dbm
- *   Adjust to changes in signature representation.
- *
- * Revision 1.5  1997/05/20  12:28:05  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.4  1997/04/02  04:14:58  dbm
- *   Added CONSTRAINstr constructor to strExp.  Fix for bug 12.
- *   Eliminated spurious empty line when printing signatures containing
- *   datatypes.
- *
- * Revision 1.3  1997/03/17  18:59:09  dbm
- * Changes in datatype representation to support datatype replication.
- *
- * Revision 1.2  1997/01/21  13:25:36  george
- *    Modify the entityExp definition to correctly implement the
- *    datatype generativity in functor body. -- from zsh
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
  *
  *)

@@ -355,22 +355,7 @@ end
 
 (*
  * $Log: hppaMC.sml,v $
- * Revision 1.6  1998/02/17 02:51:15  george
- *   Added the nullify bit to all branch instructions -- leunga
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
- * Revision 1.5  1998/02/15 19:39:33  jhr
- *   Deleted unused references to System.Tags.
- *
- * Revision 1.4  1997/09/29 20:58:35  george
- *   Propagate region information through instruction set
- *
-# Revision 1.3  1997/07/17  12:27:48  george
-#   The regmap is now represented as an int map rather than using arrays.
-#
-# Revision 1.2  1997/04/19  18:39:11  george
-# Version 109.27
-#
-# Revision 1.1.1.1  1997/04/19  18:14:23  george
-#   Version 109.27
-#
  *)

@@ -79,7 +79,7 @@ structure NetDB : NET_DB =
 
 (*
  * $Log: net-db.sml,v $
- * Revision 1.1.1.1  1997/01/14 01:38:24  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:57  george
+ * Version 110.5
  *
  *)

@@ -1,4 +1,4 @@
-(* object-desc-sig.sml
+(* object-desc.sml
  *
  * COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies.
  *
@@ -61,8 +61,8 @@ structure ObjectDesc :> OBJECT_DESC =
 
 (*
  * $Log: object-desc.sml,v $
- * Revision 1.2  1998/02/15 19:40:49  jhr
- *   Added CVS Log.
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
  *
  *)
 

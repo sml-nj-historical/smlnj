@@ -2233,41 +2233,7 @@ end (* functor CPSgen *)
 
 (*
  * $Log: generic.sml,v $
- * Revision 1.8  1998/02/12 20:48:33  jhr
- *   Removed references to System.Tags.
- *
- * Revision 1.7  1998/01/07 15:17:34  dbm
- *   Fixing bug 1323. Wrapping and unwrapping primitives were usually ignored
- *   in the cpstrans phase before we perform the cps optimization. Unfortunately,
- *   they could lead to ill-typed CPS programs. To resolve this, I turn those
- *   sensitive wrap and unwrap primitives into "casts"; I leave the casts in the
- *   code; the cps generic phase will generate a move for each cast. In the
- *   long term, we have to think thoroughly about the meanings of these wrapping
- *   primitives and how they interface with compile-time optimizations.
- *
- * Revision 1.6  1997/12/01 20:04:37  george
- *   u31< and u31<= were implemented using rangeChk which is incorrect.
- *   This fixes the core dump associated with Array.tabulate(~1, fn i => i).
- *
- * Revision 1.5  1997/05/05  19:56:59  george
- *   Fix the bug 1175 (temporarily) by allowing illegal operations such
- *   as SELECT(INT 0, 0). This works but it is ugly; the assumption is
- *   that these buggy code will never be executed. -- zsh
- *
- * Revision 1.4  1997/03/06  19:08:10  george
- *   Fixed bugs associated with P.extend, P.trunc, P.copy, and P.test
- *   when the arguments are the same.
- *
- * Revision 1.3  1997/02/10  14:22:44  george
- *   A similar bug to the test and testu occurs with P./. i.e., it is possible
- *   for an argument register to be overwritten before being used.
- *
- * Revision 1.2  1997/02/08  12:33:05  george
- *   The implementations of testu and test had a bug. The register used
- *   to hold the argument could be overwritten when performing the overflow
- *   check.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:31  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:49  george
+ * Version 110.5
  *
  *)

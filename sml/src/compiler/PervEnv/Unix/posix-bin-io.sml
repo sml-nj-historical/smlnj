@@ -14,13 +14,7 @@ structure BinIO :> BIN_IO
 
 (*
  * $Log: posix-bin-io.sml,v $
- * Revision 1.3  1997/07/15 15:54:07  dbm
- *   Removed redundant where type definition.
- *
- * Revision 1.2  1997/01/31  20:39:50  jhr
- * Replaced uses of "abstraction" with opaque signature matching.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:25  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:40:00  george
+ * Version 110.5
  *
  *)

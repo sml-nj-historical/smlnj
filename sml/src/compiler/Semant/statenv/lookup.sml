@@ -160,13 +160,7 @@ end (* structure Lookup *)
 
 (*
  * $Log: lookup.sml,v $
- * Revision 1.3  1997/05/20  12:20:45  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.2  1997/05/05  19:55:11  george
- *    Turning off some measurement hooks - zsh
- *
- * Revision 1.1.1.1  1997/01/14  01:38:36  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:36  george
+ * Version 110.5
  *
  *)

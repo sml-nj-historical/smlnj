@@ -15,3 +15,10 @@ signature SYMENV = sig
     val singleton: pid * flint -> symenv
 
 end (* signature SYMENV *)
+
+(*
+ * $Log: symenv.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:15  george
+ * Version 110.5
+ *
+ *)

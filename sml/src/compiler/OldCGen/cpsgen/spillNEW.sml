@@ -546,11 +546,7 @@ end (* functor Spill *)
 
 (*
  * $Log: spillNEW.sml,v $
- * Revision 1.2  1997/03/22  18:05:23  dbm
- * Eta expanded definition of sortp in local declarations because of restriction
- * of type generalization required to fix bug 905.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:32  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:53  george
+ * Version 110.5
  *
  *)

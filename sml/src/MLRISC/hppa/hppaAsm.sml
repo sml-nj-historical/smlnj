@@ -254,26 +254,7 @@ end
 
 (*
  * $Log: hppaAsm.sml,v $
- * Revision 1.7  1998/02/17 02:50:02  george
- *   Added the nullify bit to all branch instructions -- leunga
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
- * Revision 1.6  1998/02/16 13:58:12  george
- *   A register allocated temp is now associated with parallel COPYs
- *   instead of a dedicated register. The temp is used to break cycles.
- *
- * Revision 1.5  1998/02/15 19:39:32  jhr
- *   Deleted unused references to System.Tags.
- *
- * Revision 1.4  1997/09/29 20:58:28  george
- *   Propagate region information through instruction set
- *
-# Revision 1.3  1997/07/17  12:27:08  george
-#   The regmap is now represented as an int map rather than using arrays.
-#
-# Revision 1.2  1997/07/03  13:53:38  george
-#   Added support for FCOPY.
-#
-# Revision 1.1.1.1  1997/04/19  18:14:22  george
-#   Version 109.27
-#
  *)

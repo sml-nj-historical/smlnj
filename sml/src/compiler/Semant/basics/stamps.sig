@@ -22,7 +22,7 @@ sig
   val newMap : exn -> '1a stampMap
 
   (* updateMap - add mapping to a stampMap *)
-  val updateMap : '2a stampMap -> stamp * '2a -> unit
+  val updateMap : 'a stampMap -> stamp * 'a -> unit
 
   (* applyMap - apply stampMap to a stamp *)
   val applyMap : 'a stampMap * stamp -> 'a
@@ -31,7 +31,7 @@ end (* signature STAMPS *)
 
 (*
  * $Log: stamps.sig,v $
- * Revision 1.1.1.1  1997/01/14  01:38:11  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:34  george
+ * Version 110.5
  *
  *)

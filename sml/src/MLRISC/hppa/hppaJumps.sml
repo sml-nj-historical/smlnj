@@ -272,29 +272,7 @@ end
 
 (*
  * $Log: hppaJumps.sml,v $
- * Revision 1.9  1998/02/17 02:51:05  george
- *   Added the nullify bit to all branch instructions -- leunga
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
- * Revision 1.8  1998/02/16 13:58:14  george
- *   A register allocated temp is now associated with parallel COPYs
- *   instead of a dedicated register. The temp is used to break cycles.
- *
- * Revision 1.7  1998/01/30 14:21:47  george
- *   missing case for expansion of span dependent loads
- *
- * Revision 1.6  1997/09/29 20:58:33  george
- *   Propagate region information through instruction set
- *
-# Revision 1.4  1997/07/17  12:27:35  george
-#   The regmap is now represented as an int map rather than using arrays.
-#
-# Revision 1.3  1997/07/03  13:54:29  george
-#   Added support for FCOPY.
-#
-# Revision 1.2  1997/04/19  18:39:10  george
-# Version 109.27
-#
-# Revision 1.1.1.1  1997/04/19  18:14:22  george
-#   Version 109.27
-#
  *)

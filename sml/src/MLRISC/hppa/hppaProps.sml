@@ -103,20 +103,7 @@ end
 
 (*
  * $Log: hppaProps.sml,v $
- * Revision 1.5  1998/02/17 02:51:29  george
- *   Added the nullify bit to all branch instructions -- leunga
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
- * Revision 1.4  1998/02/16 13:58:14  george
- *   A register allocated temp is now associated with parallel COPYs
- *   instead of a dedicated register. The temp is used to break cycles.
- *
- * Revision 1.3  1997/09/29 20:58:36  george
- *   Propagate region information through instruction set
- *
-# Revision 1.2  1997/07/02  13:22:04  george
-# *** empty log message ***
-#
-# Revision 1.1.1.1  1997/04/19  18:14:22  george
-#   Version 109.27
-#
  *)

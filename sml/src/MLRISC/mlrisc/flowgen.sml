@@ -252,25 +252,7 @@ end
 
 (*
  * $Log: flowgen.sml,v $
- * Revision 1.6  1997/09/29 20:58:39  george
- *   Changes to create a dense enumeration of block numbers
+ * Revision 1.1.1.1  1998/04/08 18:39:02  george
+ * Version 110.5
  *
-# Revision 1.5  1997/09/17  17:12:37  george
-#   Changes to adapt to the new flowgraph structure. Entry and Exit nodes
-#   are created as part of the graph.
-#
-# Revision 1.4  1997/07/17  12:29:06  george
-#   The regmap is now represented as an int map rather than using arrays.
-#
-# Revision 1.3  1997/07/10  04:00:48  george
-#   Added support for MLTree.ORDERED.
-#
-# Revision 1.2  1997/06/11  19:27:13  george
-#   Fixed a bug where an incorrect flowgraph would be created when the
-#   last block is terminated by a non-branching instruction, e.g. a
-#   trapping instruction.
-#
-# Revision 1.1.1.1  1997/04/19  18:14:20  george
-#   Version 109.27
-#
  *)

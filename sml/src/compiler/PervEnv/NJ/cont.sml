@@ -28,10 +28,7 @@ structure Cont : CONT =
 
 (*
  * $Log: cont.sml,v $
- * Revision 1.2  1998/02/10 21:52:33  jhr
- *   Deleted the Isolate structure (since isolate is now a primop).
- *
- * Revision 1.1  1997/02/11 20:44:47  george
- *   Version 109.25.1
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

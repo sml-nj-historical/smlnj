@@ -35,7 +35,7 @@ end
 
 (*
  * $Log: mlrisc-timing.sml,v $
- * Revision 1.1.1.1  1998/02/17 03:01:34  george
- *   Version 110.2 -- leunga
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
  *)

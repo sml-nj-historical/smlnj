@@ -172,10 +172,7 @@ end (* structure Limit *)
 
 (*
  * $Log: limit.sml,v $
- * Revision 1.2  1997/10/27  20:23:04  george
- * *** empty log message ***
- *
- * Revision 1.1.1.1  1997/01/14  01:38:31  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:53  george
+ * Version 110.5
  *
  *)

@@ -1,4 +1,4 @@
-(* profile-sig.sml
+(* profile.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -31,9 +31,9 @@ signature PROFILE =
 
   end;
 
-(* $Log: profile-sig.sml,v $
-# Revision 1.1  1997/09/22  19:50:59  jhr
-#   Changed Profiling API to use separate compiler and timer modes.
-#
+(*
+ * $Log: profile.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:18  george
+ * Version 110.5
+ *
  *)
-

@@ -17,8 +17,8 @@ TopLevel/environ/environ.sig
 TopLevel/environ/environ.sml
 TopLevel/environ/envref.sml
 TopLevel/environ/persmap.sml
-TopLevel/environ/scenviron.sig
-TopLevel/environ/scenviron.sml
+TopLevel/environ/cmenviron.sig
+TopLevel/environ/cmenviron.sml
 TopLevel/environ/symenv.sig
 TopLevel/environ/symenv.sml
 TopLevel/interact/evalloop.sig
@@ -75,6 +75,7 @@ Semant/elaborate/elabcore.sml
 Semant/elaborate/elabdebug.sml
 Semant/elaborate/elabmod.sml
 Semant/elaborate/elabsig.sml
+Semant/elaborate/elabtop.sml
 Semant/elaborate/elabtype.sig
 Semant/elaborate/elabtype.sml
 Semant/elaborate/elabutil.sig
@@ -82,10 +83,10 @@ Semant/elaborate/elabutil.sml
 Semant/elaborate/include.sml
 Semant/elaborate/precedence.sml
 Semant/elaborate/tyvarset.sml
-Semant/main/absyn.sig
-Semant/main/absyn.sml
-Semant/main/bindings.sml
-Semant/main/elabtop.sml
+Semant/syntax/absyn.sig
+Semant/syntax/absyn.sml
+Semant/syntax/varcon.sig
+Semant/syntax/varcon.sml
 Semant/modules/entityenv.sig
 Semant/modules/entityenv.sml
 Semant/modules/entpath.sml
@@ -103,11 +104,12 @@ Semant/pickle/pickmod.sml
 Semant/pickle/shareread.sml
 Semant/pickle/sharewrite.sml
 Semant/pickle/unpickmod.sml
+Semant/statenv/bindings.sml
 Semant/statenv/lookup.sig
 Semant/statenv/lookup.sml
 Semant/statenv/prim.sml
-Semant/statenv/scstatenv.sig
-Semant/statenv/scstatenv.sml
+Semant/statenv/cmstatenv.sig
+Semant/statenv/cmstatenv.sml
 Semant/statenv/statenv.sig
 Semant/statenv/statenv.sml
 Semant/types/basictypes.sig
@@ -119,12 +121,10 @@ Semant/types/types.sml
 Semant/types/typesutil.sig
 Semant/types/typesutil.sml
 Semant/types/unify.sml
-Semant/types/varcon.sig
-Semant/types/varcon.sml
-Semant/typing/overload.sml
-Semant/typing/overloadlit.sml
-Semant/typing/reconstruct.sml
-Semant/typing/typecheck.sml
+Semant/types/overload.sml
+Semant/types/overloadlit.sml
+Semant/types/reconstruct.sml
+Semant/types/typecheck.sml
 
 FLINT/clos/allocprof.sml
 FLINT/clos/cps-split.sml
@@ -208,8 +208,8 @@ CodeGen/alpha32/alpha32spec.sml
 CodeGen/alpha32x/alpha32xGen.sml
 CodeGen/alpha32x/alpha32xMC.sml
 CodeGen/alpha32x/alpha32xSpec.sml
+CodeGen/alpha32x/alpha32xCG.sml
 CodeGen/cpscompile/alignment.sml
-CodeGen/cpscompile/alpha32xCG.sml
 CodeGen/cpscompile/argPassing.sig
 CodeGen/cpscompile/argPassing.sml
 CodeGen/cpscompile/callgc.sig
@@ -310,35 +310,23 @@ MiscUtil/profile/profile.sml
 MiscUtil/profile/sprof.sml
 MiscUtil/profile/tell-env.sml
 MiscUtil/profile/tprof.sml
-MiscUtil/util/UTIL.cm
-MiscUtil/util/arrayext.sml
-MiscUtil/util/binary-dict.sml
-MiscUtil/util/crc.sml
-MiscUtil/util/dynamic.sml
+
 MiscUtil/util/errormsg.sig
 MiscUtil/util/errormsg.sml
 MiscUtil/util/feedback.sml
-MiscUtil/util/intmapf.sml
-MiscUtil/util/intset.sml
-MiscUtil/util/intstrmap.sig
-MiscUtil/util/intstrmap.sml
 MiscUtil/util/literal-to-num.sml
-MiscUtil/util/mapf.sml
-MiscUtil/util/ordkey.sig
 MiscUtil/util/pathnames.sig
 MiscUtil/util/pathnames.sml
-MiscUtil/util/pp.sml
-MiscUtil/util/ppqueue.sml
-MiscUtil/util/scc.sml
 MiscUtil/util/source.sig
 MiscUtil/util/source.sml
 MiscUtil/util/sourcemap.sig
 MiscUtil/util/sourcemap.sml
 MiscUtil/util/stats.sml
-MiscUtil/util/strghash.sml
-MiscUtil/util/union.sml
 
-MLRISC/MLRISC.cm
+../comp-lib/UTIL.cm 			
 
 ../ml-yacc/lib/sources.cm
+
+../MLRISC/MLRISC.cm
+
 

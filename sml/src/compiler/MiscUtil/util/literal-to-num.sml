@@ -60,8 +60,7 @@ structure LiteralToNum : LITERAL_TO_NUM =
 
 (*
  * $Log: literal-to-num.sml,v $
-# Revision 1.1  1997/01/28  23:20:53  jhr
-# Integer and word literals are now represented by IntInf.int (instead of
-# as strings).
-#
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
+ *
  *)

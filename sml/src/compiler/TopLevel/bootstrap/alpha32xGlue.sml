@@ -8,7 +8,7 @@ structure IntAlpha32X = IntShare(structure VC=Alpha32XVisComp)
 
 (*
  * $Log: alpha32xGlue.sml,v $
- * Revision 1.1.1.1  1997/01/14  01:38:09  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:15  george
+ * Version 110.5
  *
  *)

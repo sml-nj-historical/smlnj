@@ -9,10 +9,10 @@ signature BATCHUTIL =
     type 'iid cunit
     type pid = PersStamps.persstamp
 
-    type senv = SCEnv.Env.staticEnv
-    type symenv = SCEnv.Env.symenv
-    type denv = SCEnv.Env.dynenv
-    type env = SCEnv.Env.environment
+    type senv = CMEnv.Env.staticEnv
+    type symenv = CMEnv.Env.symenv
+    type denv = CMEnv.Env.dynenv
+    type env = CMEnv.Env.environment
 
     type csegments = {c0: Word8Vector.vector, 
                       cn: Word8Vector.vector list, 
@@ -57,3 +57,10 @@ signature BATCHUTIL =
     val execUnit: 'iid cunit * denv -> env
 
   end (* signature BATCHUTIL *)
+
+(*
+ * $Log: batchutil.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:15  george
+ * Version 110.5
+ *
+ *)

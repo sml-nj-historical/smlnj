@@ -29,8 +29,8 @@ struct
   fun useStream (stream: TextIO.instream) =
     EvalLoop.evalStream EvalLoop.stdParams ("<instream>", stream)
 
-  fun evalStream (stream: TextIO.instream, baseEnv: SCEnv.Env.environment) : 
-      SCEnv.Env.environment =
+  fun evalStream (stream: TextIO.instream, baseEnv: CMEnv.Env.environment) : 
+      CMEnv.Env.environment =
       let val r = ref Environment.emptyEnv
 	  val localEnvRef = {get=(fn()=> !r),set=(fn x=>r:=x)}
 	  val b = ref baseEnv
@@ -47,7 +47,7 @@ struct
 	      isolate= #isolate EvalLoop.stdParams,
 	      printer= #printer EvalLoop.stdParams})
 	    ("<instream>", stream);
-	  SCEnv.SC (#get localEnvRef ())
+	  CMEnv.CM (#get localEnvRef ())
       end
 
   (* These mUse functions should really be part of the Open Compiler *)
@@ -64,3 +64,10 @@ struct
       in repeat test 0 end
 
 end (* functor Interact *)
+
+(*
+ * $Log: interact.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
+ *
+ *)

@@ -131,12 +131,7 @@ end;
 
 (*
  * $Log: profile.sml,v $
- * Revision 1.2  1997/07/31  17:25:29  jhr
- *   We are now using 32-bit ints to represent the seconds portion of a
- *   time value.  This was required to handle the change in the type of
- *   Time.{to,from}{Seconds,Milliseconds,Microseconds}.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:44  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:17  george
+ * Version 110.5
  *
  *)

@@ -468,7 +468,7 @@ fun calc_strictness (arity, body) =
 	  | search(CONty(tycon, args)) = app search args
 	  | search _ = ()	(* for now... *)
      in search body;
-	ArrayExt.listofarray argument_found
+	Array.foldr (op ::) nil argument_found
     end
 
 
@@ -555,29 +555,7 @@ end (* structure ElabUtil *)
 
 (*
  * $Log: elabutil.sml,v $
- * Revision 1.8  1997/11/11  05:24:17  dbm
- *   Cleanup error messages (initial lower case).
- *
- * Revision 1.7  1997/09/05  04:42:19  dbm
- *   Changes in TyvarSet signature; TyvarSet not opened (bug 1246).
- *
- * Revision 1.6  1997/08/25  19:20:32  riccardo
- *   Added support for tagging code objects with their source/bin file name.
- *
- * Revision 1.5  1997/04/18  15:41:10  george
- *   Fixing bug936 (uncaught exception ltUbound) -- zsh
- *
- * Revision 1.4  1997/04/02  04:02:31  dbm
- * Minor change.  Name of local variable tvref changed to tyvars.
- *
- * Revision 1.3  1997/03/22  18:17:03  dbm
- * Added function hasModules, which is used in ElabMod to fix bug 905/952.
- *
- * Revision 1.2  1997/01/28  23:20:28  jhr
- * Integer and word literals are now represented by IntInf.int (instead of
- * as strings).
- *
- * Revision 1.1.1.1  1997/01/14  01:38:35  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:25  george
+ * Version 110.5
  *
  *)

@@ -885,35 +885,7 @@ functor TextIOFn (
 
 (*
  * $Log: text-io-fn.sml,v $
- * Revision 1.10  1997/11/18 17:19:44  jhr
- *   Added missing scanStream function.
- *
- * Revision 1.9  1997/10/01  14:52:22  jhr
- *   Minor code clean-up.
- *
- * Revision 1.8  1997/07/28  21:08:31  jhr
- *   ???
- *
- * Revision 1.7  1997/07/24  17:44:21  jhr
- *   Fixed bug with outputSubstr not handling line buffering properly (bug 1236).
- *
- * Revision 1.6  1997/07/15  15:53:23  dbm
- *   Change in where structure syntax.
- *
- * Revision 1.5  1997/05/20  12:13:25  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.4  1997/02/26  21:00:26  george
- *    Defined a new top level Option structure. All 'a option related
- *    functions have been moved out of General.
- *
- * Revision 1.3  1997/02/18  14:18:29  george
- *   Fixed bug related to random access (John).
- *
- * Revision 1.2  1997/01/28  23:12:48  jhr
- * Fixed bug in canInput, where an exception could escape.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:19  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
  *
  *)

@@ -1,4 +1,4 @@
-(* unsafe-sig.sml
+(* unsafe.sig
  *
  * Copyright (c) 1997 Bell Labs, Lucent Technologies.
  *
@@ -65,3 +65,10 @@ signature UNSAFE =
 
   end;
 
+
+(*
+ * $Log: unsafe.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:01  george
+ * Version 110.5
+ *
+ *)

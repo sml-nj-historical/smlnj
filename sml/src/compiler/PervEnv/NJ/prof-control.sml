@@ -135,16 +135,7 @@ structure ProfControl : PROF_CONTROL =
 
 (*
  * $Log: prof-control.sml,v $
- * Revision 1.4  1997/09/22 19:51:05  jhr
- *   Changed Profiling API to use separate compiler and timer modes.
- *
- * Revision 1.3  1997/06/30  19:36:29  jhr
- *   Removed System structure; added Unsafe structure.
- *
- * Revision 1.2  1997/01/28  23:14:30  jhr
- * Fixed bug in profile on/off control.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:20  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

@@ -129,3 +129,10 @@ val ltInsert : ltyEnv * LambdaVar.lvar * lty * depth -> ltyEnv
 
 end (* signature LTYBASIC *)
 
+
+(*
+ * $Log: ltybasic.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:40  george
+ * Version 110.5
+ *
+ *)

@@ -294,13 +294,7 @@ end (* structure SparcMCEmit *)
 
 (*
  * $Log: sparcmc.sml,v $
- * Revision 1.3  1998/02/12 20:48:49  jhr
- *   Removed references to System.Tags.
- *
- * Revision 1.2  1997/08/25 16:42:08  jhr
- *   Improved implementation of emitString.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:46  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:47  george
+ * Version 110.5
  *
  *)

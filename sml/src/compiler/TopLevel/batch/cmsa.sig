@@ -26,3 +26,10 @@ signature CMSA = sig
 
 end (* signature CMSA *)
 
+
+(*
+ * $Log: cmsa.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:15  george
+ * Version 110.5
+ *
+ *)

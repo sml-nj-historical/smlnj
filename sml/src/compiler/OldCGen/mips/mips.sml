@@ -1124,21 +1124,7 @@ end
 
 (*
  * $Log: mips.sml,v $
- * Revision 1.5  1998/02/12 20:48:38  jhr
- *   Removed references to System.Tags.
- *
- * Revision 1.4  1998/01/15 10:44:43  george
- *   Fix for bug 1335.
- *   ibranch did not deal with signed comparisions when the arguments
- *   were 32 bit words.
- *
- * Revision 1.3  1997/12/03 19:04:55  george
- *    removed rangeChk
- *
- * Revision 1.2  1997/05/20  12:22:18  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:38  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:47  george
+ * Version 110.5
  *
  *)

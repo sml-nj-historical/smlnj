@@ -14,3 +14,10 @@ signature ALPHA32_PSEUDO_INSTR = sig
    val cvti2d : {opnd:I.operand, fd:int} * reduceOpnd  -> I.instruction list
      (* convert longword to double *)
 end 
+
+(*
+ * $Log: alpha32PseudoInstr.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
+ *
+ *)

@@ -1,4 +1,4 @@
-(* smlnj-sig.sml
+(* smlnj.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -33,23 +33,8 @@ signature SML_OF_NJ =
 
 
 (*
- * $Log: smlnj-sig.sml,v $
- * Revision 1.6  1998/02/15 19:40:31  jhr
- *   Deleted SMLofNJ.Susp structure.
- *
- * Revision 1.5  1997/06/02 19:15:47  jhr
- *   Added getCmdName function.
- *
- * Revision 1.4  1997/04/10  14:35:47  dbm
- *   Changed return type of exportFn to unit.
- *
- * Revision 1.3  1997/03/03  17:10:41  george
- * moved callcc related functions to SMLofNJ.Cont
- *
- * Revision 1.2  1997/02/11  15:16:19  george
- * moved stuff from System to SMLofNJ
- *
- * Revision 1.1.1.1  1997/01/14  01:38:20  george
- *   Version 109.24
+ * $Log: smlnj.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

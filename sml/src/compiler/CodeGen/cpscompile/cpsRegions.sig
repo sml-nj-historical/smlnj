@@ -18,3 +18,10 @@ signature CPS_REGION = sig
   val trace : region * CPS.accesspath -> region
   val toString : region -> string
 end
+
+(*
+ * $Log: cpsRegions.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
+ *
+ *)

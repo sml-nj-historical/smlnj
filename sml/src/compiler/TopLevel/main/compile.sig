@@ -28,32 +28,32 @@ type compInfo   = CompBasic.compInfo   (* general compilation utilities *)
 val mkCompInfo  : source * statenv * (absyn -> absyn) -> compInfo
 val anyErrors   : compInfo -> bool
 
-type scstatenv                         (* compressed static environment *)
-val toSC        : statenv -> scstatenv   
-val fromSC      : scstatenv -> statenv 
+type cmstatenv                         (* compressed static environment *)
+val toCM        : statenv -> cmstatenv   
+val fromCM      : cmstatenv -> statenv 
 
 type lvar       = Access.lvar          (* local id *)
 type pid        = PersStamps.persstamp (* persistant id *)
 type pickle                            (* pickled format *)
 type hash                              (* environment hash id *)
-val makePid     : scstatenv * scstatenv -> pid
+val makePid     : cmstatenv * cmstatenv -> pid
 
 (** take the input source and turn it into the concrete syntax *)
 val parseOne    : source -> unit -> ast option (* incremental version *)
 val parse       : source -> ast
 
 (** take ast, do semantic checks, then output the new env, absyn and pickles *)
-val elaborate   : {ast: ast, statenv: scstatenv, compInfo: compInfo} 
-                   -> {absyn: absyn, newstatenv: scstatenv,
+val elaborate   : {ast: ast, statenv: cmstatenv, compInfo: compInfo} 
+                   -> {absyn: absyn, newstatenv: cmstatenv,
  	               exportLvars: lvar list, exportPid: pid option,
 		       staticPid: hash, pickle: pickle}
 
 (** elaborate as above, then keep on to compile into the binary code *)
-val compile     : {source: source, ast: ast, statenv: scstatenv, 
+val compile     : {source: source, ast: ast, statenv: cmstatenv, 
                    symenv: symenv, compInfo: compInfo, 
                    checkErr: string -> unit, runtimePid: pid option, 
                    splitting: bool}
-                   -> {csegments: csegments, newstatenv: scstatenv,
+                   -> {csegments: csegments, newstatenv: cmstatenv,
                        absyn: absyn (* for pretty printing only *),
                        exportPid: pid option, exportLvars: lvar list,
                        staticPid: hash, pickle: pickle, 
@@ -74,10 +74,17 @@ val execute     : {executable: executable, imports: pid list,
 
 end (* signature COMPILE0 *)
 
-signature COMPILE = COMPILE0 where type scstatenv = SCStaticEnv.staticEnv
+signature COMPILE = COMPILE0 where type cmstatenv = CMStaticEnv.staticEnv
                                and type pickle = Word8Vector.vector
                                and type hash = PersStamps.persstamp
 
-signature TOP_COMPILE = COMPILE0 where type scstatenv = StaticEnv.staticEnv
+signature TOP_COMPILE = COMPILE0 where type cmstatenv = StaticEnv.staticEnv
 
 
+
+(*
+ * $Log: compile.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:15  george
+ * Version 110.5
+ *
+ *)

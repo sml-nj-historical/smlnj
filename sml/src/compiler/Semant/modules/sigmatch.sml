@@ -1467,59 +1467,8 @@ end (* structure SigMatch *)
 
 (*
  * $Log: sigmatch.sml,v $
- * Revision 1.17  1998/01/06 22:49:53  dbm
- *   Slight bullet-proofing of checkTycBinding.  Do nothing if strTycon
- *   is ERRORtyc.
- *
- * Revision 1.16  1997/11/11  05:26:16  dbm
- *   Cleanup error messages.
- *
- * Revision 1.15  1997/10/02  19:55:25  dbm
- *   Added error recovery code that makes matchStr return ERRORstr if
- *   match failes.  Fixes a couple of secondary EntityEnv.Unbound exceptions
- *   (modules/tests/223.4.sml and 272.sml).
- *
- * Revision 1.14  1997/09/23  03:57:23  dbm
- *   Fix for EntityEnv.Unbound problem (bugs 1270, 1271).
- *   Fix for SML 97 semantics of structure definition and sharing specs.
- *
- * Revision 1.13  1997/09/17  21:33:01  dbm
- *   Rewrite checkSharing to fix bug 1280.
- *
- * Revision 1.12  1997/08/22  18:38:13  george
- *   Turn off the short-cut matching when the signature contains the
- *   the functor components (indicated by the fctflag). Carefully adjusting
- *   the epcontext based on the temproary entity variable used during
- *   signature matching and functor application. Fixing the bug on (spurious)
- *   dependency cycle in instantiate.
- * 							-- zsh
- *
- * Revision 1.10  1997/07/15  16:15:36  dbm
- *   Adjust to signature representation changes.
- *   Bug fix by Zhong.
- *
- * Revision 1.9  1997/06/24  14:29:56  jhr
- *   Zhong's fix for compiler bug in translate (unexpected tyvar INSTANTIATED in mkPE).
- *
- * Revision 1.8  1997/05/20  12:24:42  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.7  1997/05/05  19:55:13  george
- *    Turning off some measurement hooks - zsh
- *
- * Revision 1.6  1997/04/16  18:03:44  dbm
- *   Fix for bug 1190 (exception spec matched with value binding).
- *
- * Revision 1.5  1997/04/02  04:11:37  dbm
- *   Added rpath parameter to applyFct and replaced LETstr by CONSTRAINstr
- *   in body of matchStr.  Fix for bug 12.
- *
- * Revision 1.4  1997/03/17  18:54:41  dbm
- * Changes in datatype representation to support datatype replication.
- *
- * Revision 1.3  1997/02/26  21:52:01  george
- *    Fixing the secondary error message bug, BUG 1150, of fctId
- *    on "structure S = F()"  reported by Mikael Pettersson.
+ * Revision 1.1.1.1  1998/04/08 18:39:28  george
+ * Version 110.5
  *
  *)
 

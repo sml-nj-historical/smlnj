@@ -12,7 +12,7 @@ struct
   structure BootEnv = BootEnvF(VC)
 
   (* environment initializations *)
-  val _ = (#set VC.EnvRef.pervasive (SCEnv.SC (BootEnv.makePervEnv())))
+  val _ = (#set VC.EnvRef.pervasive (CMEnv.CM (BootEnv.makePervEnv())))
 
   (* establish default signal handlers *)
   local
@@ -36,3 +36,10 @@ struct
 
 end (* functor IntShare *)
 
+
+(*
+ * $Log: shareglue.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:15  george
+ * Version 110.5
+ *
+ *)

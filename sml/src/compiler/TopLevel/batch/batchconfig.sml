@@ -6,16 +6,16 @@ struct
   exception SilentException
   
   type statenv = StaticEnv.staticEnv
-  type scstatenv = SCStaticEnv.staticEnv
-  val toSC : statenv -> scstatenv = SCStaticEnv.SC
-  val fromSC : scstatenv -> statenv = SCStaticEnv.unSC
+  type cmstatenv = CMStaticEnv.staticEnv
+  val toCM : statenv -> cmstatenv = CMStaticEnv.CM
+  val fromCM : cmstatenv -> statenv = CMStaticEnv.unCM
    
   type pickle = Word8Vector.vector
   type hash = PersStamps.persstamp
   type lvar = Access.lvar
   type pid = PersStamps.persstamp
 
-  val pickUnpick : scstatenv * statenv ->
+  val pickUnpick : cmstatenv * statenv ->
                      {hash: hash, pickle: pickle, exportLvars: lvar list,
                       exportPid: pid option, newenv: statenv}
     = fn (compenv, newenv) =>
@@ -27,9 +27,16 @@ struct
              exportPid=exportPid, newenv=newenv'}
         end
 
-  val makePid : scstatenv * scstatenv -> pid 
-    = fn (context, se) => #hash (PickMod.pickleEnv (context, fromSC se))
+  val makePid : cmstatenv * cmstatenv -> pid 
+    = fn (context, se) => #hash (PickMod.pickleEnv (context, fromCM se))
 
   val mkMkStamp : unit -> (unit -> Stamps.stamp) = Stamps.new
 
 end (* structure BatchConfig *)
+
+(*
+ * $Log: batchconfig.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
+ *
+ *)

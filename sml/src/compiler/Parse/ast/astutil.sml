@@ -81,28 +81,7 @@ end (* structure *)
 
 (*
  * $Log: astutil.sml,v $
- * Revision 1.7  1997/12/02 05:42:41  dbm
- *   Removed fctRes, fsigRes, and fappRes functions, which are no longer
- *   exported or used.
- *
- * Revision 1.6  1997/11/24  20:23:21  dbm
- *   Eliminate resultId, returnId and Ast translation functions.
- *
- * Revision 1.5  1997/10/26  23:15:45  dbm
- *   Change in argument type of StrSpec: signature no longer optional.
- *
- * Revision 1.4  1997/09/23  03:58:58  dbm
- *   Added transforms for EntityEnv.Unbound fix.
- *
- * Revision 1.3  1997/09/15  16:00:54  dbm
- *   Added strSymbol "SMLofNJ" to paths for quoteDcon and antiquoteDcon
- *   to fix bug 1279 (frans not working).
- *
- * Revision 1.2  1997/01/28  23:20:43  jhr
- * Integer and word literals are now represented by IntInf.int (instead of
- * as strings).
- *
- * Revision 1.1.1.1  1997/01/14  01:38:43  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:19  george
+ * Version 110.5
  *
  *)

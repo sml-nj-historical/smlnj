@@ -46,3 +46,10 @@ struct
      I.FUNARY{fu=I.FCNVXF, f=fd, t=fd}]
 
 end
+
+(*
+ * $Log: hppaMillicode.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
+ *
+ *)

@@ -59,13 +59,7 @@ end (* signature PRIM_TYC *)
 
 (*
  * $Log: primtyc.sig,v $
- * Revision 1.2  1997/12/03 21:12:51  dbm
- *   Fix for Word8Array.array equality problem (basis/tests/word8array.sml,
- *   test1).
- *   Added ptc_obj, ptc_cfun, ptc_barray, ptc_rarray, ptc_slock, for use
- *   in basics/basictypes.sml to define objectTycon, etc.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:11  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:40  george
+ * Version 110.5
  *
  *)

@@ -221,13 +221,7 @@ end (* structure Eta *)
 
 (*
  * $Log: eta.sml,v $
- * Revision 1.2  1997/08/22  18:38:53  george
- *   Eta reduction should not be performed on functions that are
- *   NO_INLINE_INTO; neither should it be performed on two functions
- *   with different kinds.
- * 						-- zsh
- *
- * Revision 1.1.1.1  1997/01/14  01:38:31  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:46  george
+ * Version 110.5
  *
  *)

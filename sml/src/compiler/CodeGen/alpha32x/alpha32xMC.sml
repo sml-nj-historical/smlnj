@@ -281,31 +281,7 @@ struct
 
 (*
  * $Log: alpha32xMC.sml,v $
- * Revision 1.9  1998/02/12 18:55:58  jhr
- *   Removed obsolete reference to System.Tags.
- *
- * Revision 1.8  1997/09/17 20:01:13  george
- *    Added support for S4ADDL and S8ADDL
- *
- * Revision 1.7  1997/08/29  11:03:48  george
- *   Added code to handle the new LDS, CVTLQ, DIVL, and DIVLU instructions.
- *
- * Revision 1.6  1997/07/28  20:04:37  george
- *   Added support for regions
- *
- * Revision 1.5  1997/07/17  12:35:39  george
- *   The regmap is now represented as an int map rather than using arrays.
- *
- * Revision 1.4  1997/03/21  21:20:20  george
- *   got rid of LADDR has a pseudo-instruction to load labels
- *
- * Revision 1.3  1997/03/21  13:59:33  george
- *   added support for CALL_PAL
- *
- * Revision 1.2  1997/03/06  19:07:22  george
- *   Displacement values for memory instructions are no longer plain integers.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:09  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
  *
  *)

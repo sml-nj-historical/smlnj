@@ -1,4 +1,4 @@
-(* win32-filesys-sig.sml
+(* win32-filesys.sig
  *
  * COPYRIGHT (c) 1996 Bell Laboratories.
  *
@@ -56,8 +56,8 @@ signature WIN32_FILESYS =
     end
 
 (*
- * $Log: win32-filesys-sig.sml,v $
- * Revision 1.1.1.1  1997/01/14 01:38:26  george
- *   Version 109.24
+ * $Log: win32-filesys.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:03  george
+ * Version 110.5
  *
  *)

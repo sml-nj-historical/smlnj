@@ -10,10 +10,7 @@ end
 
 (*
  * $Log: hppaMillicode.sig,v $
- * Revision 1.2  1997/08/29 11:01:32  george
- *   Added mulu and cvti2d
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
-# Revision 1.1.1.1  1997/04/19  18:14:23  george
-#   Version 109.27
-#
  *)
