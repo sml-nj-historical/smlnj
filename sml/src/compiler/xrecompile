@@ -1,0 +1,8 @@
+#!/bin/sh
+
+./xmakeml &&
+./buildcm sml &&
+mv bin.x86-unix bin.x86-unix.$$ &&
+./xrun sml-cm <<EOF
+	CMB.make();
+EOF
