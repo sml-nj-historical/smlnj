@@ -3,6 +3,10 @@
  * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
  *
  * Collapse jumps to jumps.
+ *
+ * TODO:
+ *	check for jumps to the next block.
+ *	jump tables (SWITCH edges).
  *)
 
 functor JumpChainElimFn (
@@ -24,10 +28,12 @@ functor JumpChainElimFn (
     structure G = Graph
 
   (* flags *)
-    val disable = MLRiscControl.mkFlag ("disable-jump-chain-elim",
-					"whether jump chain elimination is disabled")
-    val dumpCFG = MLRiscControl.mkFlag ("dump-cfg-jump-chain-elim",
-					"whether flow graph is shown after jump chain elimination")
+    val disable = MLRiscControl.mkFlag (
+	  "disable-jump-chain-elim",
+	  "whether jump chain elimination is disabled")
+    val dumpCFG = MLRiscControl.mkFlag (
+	  "dump-cfg-jump-chain-elim",
+	  "whether flow graph is shown after jump chain elimination")
     val dumpStrm = MLRiscControl.debug_stream
 
     fun run (cfg, blocks) = let
@@ -92,18 +98,17 @@ functor JumpChainElimFn (
 		    | [(_, dst1, info as CFG.EDGE{k=CFG.BRANCH true, ...}), e2] => (
 			case followChain dst1
 			 of SOME(dst', lab) => (
-			      setTargets [lab, labelOf(#2 e2)];
+			      setTargets [labelOf(#2 e2), lab];
 			      set_out_edges (blkId, [(blkId, dst', info), e2]))
 			  | NONE => ()
 			(* end case *))
 		    | [e1, (_, dst2, info as CFG.EDGE{k=CFG.BRANCH true, ...})] => (
 			case followChain dst2
 			 of SOME(dst', lab) => (
-			      setTargets [lab, labelOf(#2 e1)];
+			      setTargets [labelOf(#2 e1), lab];
 			      set_out_edges (blkId, [e1, (blkId, dst', info)]))
 			  | NONE => ()
 			(* end case *))
-(* FIXME: do something about jump tables *)
 		    | _ => ()
 		  (* end case *)
 		end
