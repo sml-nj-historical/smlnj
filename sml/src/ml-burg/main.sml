@@ -3,6 +3,12 @@
  * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
  *
  * $Log$
+ * Revision 1.2  2000/03/07 03:59:09  blume
+ * build script now uses new mechanism for building stanalone programs
+ *
+ * Revision 1.1.1.8.4.1  2000/02/20 14:44:33  blume
+ * CMB.deliver merged with CMB.make; runtime boot code made more flexible
+ *
  * Revision 1.1.1.8  1999/04/17 18:56:04  monnier
  * version 110.16
  *
@@ -24,9 +30,7 @@
  * Version 109
  * 
  *)
-
-structure Main =
-  struct
+structure Main = struct
 
     fun main (cmdName, argv) = let
 	  fun help () = (
@@ -68,9 +72,4 @@ structure Main =
    * Takes a filename (something.burg) as argument, and produces something.sml
    *)
     fun doit s = main ("", [s])
-
-  (* create a stand-alone executable *)
-    fun export name = SMLofNJ.exportFn (name, main)
-
-  end;
-
+end
