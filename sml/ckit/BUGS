@@ -257,7 +257,7 @@ skip over unnamed members, as per C specs: diff of build-ast.sml (<new,>old) fol
 
 
 ----------------------------------------------------------------------
-NUMBER: 21
+NUMBER: 22
 SUBMITTER: Alexey Loginov <alexey@cs.wisc.edu>
 DATE: 5/25/00
 TEST: 
