@@ -283,6 +283,7 @@ structure UnpickMod : UNPICKMOD = struct
 	fun ctype () = let
 	    fun ct #"\020" = CTypes.C_ARRAY (ctype (), int ())
 	      | ct #"\021" = CTypes.C_STRUCT (ctypelist ())
+	      | ct #"\022" = CTypes.C_UNION (ctypelist ())
 	      | ct c =
 		Vector.sub (ctype_table, Char.ord c)
 		handle General.Subscript => raise Format

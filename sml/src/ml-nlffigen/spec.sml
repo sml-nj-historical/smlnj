@@ -39,7 +39,7 @@ structure Spec = struct
 	   exclude: bool }
     type u =
 	 { src: string,
-	   tag: tag, anon: bool, size: word, largest: field, all: field list,
+	   tag: tag, anon: bool, size: word, all: field list,
 	   exclude: bool }
 
     type gvar = { src: string, name: string, spec: cobj }

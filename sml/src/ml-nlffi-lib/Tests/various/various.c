@@ -1,3 +1,10 @@
+union u { int i; };
+
+void uf (union u u)
+{
+  return;
+}
+
 int f1 (void)
 {
   return 1;

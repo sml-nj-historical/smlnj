@@ -1,9 +1,9 @@
 (*
  * main.sml - Driver routine ("main") for ml-ffigen.
  *
- *  (C) 2001, Lucent Technologies, Bell Labs
+ *  (C) 2004  The Fellowship of SML/NJ
  *
- * author: Matthias Blume (blume@research.bell-labs.com)
+ * author: Matthias Blume (blume@tti-c.org)
  *)
 structure Main = struct
   local
@@ -21,7 +21,8 @@ structure Main = struct
     val target_table =
 	[tgt ("sparc-unix", SizesSparc.sizes, EndianBig.shift),
 	 tgt ("x86-unix", SizesX86.sizes, EndianLittle.shift),
-	 tgt ("x86-win32", SizesX86.sizes, EndianLittle.shift)
+	 tgt ("x86-win32", SizesX86.sizes, EndianLittle.shift),
+	 tgt ("ppc-unix", SizesPPC.sizes, EndianLittle.shift)
 	 (* needs to be extended ... *)
 	 ]
 

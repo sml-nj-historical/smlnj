@@ -13,6 +13,19 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/07/14 16:25:00 CDT
+Tag: blume-20040714-union
+Description:
+
+Added C_UNION to c-calls/c-types.sml and updated the machinery
+(ml-nlffigen, cproto.sml) that conveys C function interface
+information to the code generator.
+
+However, the actual architecture-specific implementation of function
+arguments and results that are C unions is still not implemented.
+
+----------------------------------------------------------------------
 Name: Allen Leung (leunga (at) reservoir (dot) com)
 Date: 2004/07/14 14:38:00 EST
 Tag: leunga-110_46_1-ppc-lwzu

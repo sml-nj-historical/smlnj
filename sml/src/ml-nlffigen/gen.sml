@@ -1,16 +1,16 @@
 (*
- * gen-new.sml - Generating and pretty-printing ML code implementing a
- *               typed interface to a C program.
+ * gen.sml - Generating and pretty-printing ML code implementing a
+ *           typed interface to a C program.
  *
- *  (C) 2001, Lucent Technologies, Bell Labs
+ *  (C) 2004  The Fellowship of SML/NJ
  *
- * author: Matthias Blume (blume@research.bell-labs.com)
+ * author: Matthias Blume (blume@tti-c.org)
  *)
 local
     val program = "ml-nlffigen"
-    val version = "0.9"
+    val version = "0.9.1"
     val author = "Matthias Blume"
-    val email = "blume@research.bell-labs.com"
+    val email = "blume@tti-c.org"
     structure S = Spec
 in
 
@@ -255,8 +255,7 @@ end = struct
 			| NONE => ())
 
 	    val senter = xenter (sdone, structs, smap, #fields)
-	    val uenter = xenter (udone, unions, umap,
-				 fn u => (#largest u :: #all u))
+	    val uenter = xenter (udone, unions, umap, #all)
 	    val eenter = xenter (edone, enums, emap, fn _ => [])
 
 	    fun sinclude (s: S.s) = if #exclude s then () else senter (#tag s)
@@ -357,8 +356,8 @@ end = struct
 	    fun f ({ name, spec }, a) = fs (spec, a)
 	    fun s ({ src, tag, size, anon, fields, exclude }, a) =
 		foldl f a fields
-	    fun u ({ src, tag, size, anon, largest, all, exclude }, a) =
-		foldl f a (largest :: all)
+	    fun u ({ src, tag, size, anon, all, exclude }, a) =
+		foldl f a all
 	    fun gty ({ src, name, spec }, a) = ty (spec, a)
 	    fun gvar ({ src, name, spec = (_, t) }, a) = ty (t, a)
 	    fun gfun ({ src, name, spec, argnames }, a) = ty (S.FPTR spec, a)
@@ -664,24 +663,24 @@ end = struct
 	      | encode (S.ARR _) = raise Fail "unexpected array"
 	      | encode (S.ENUM _) = E_sint
 	      | encode (S.STRUCT t) =
-		encode_fields (#fields (valOf ($? (structs, t))))
+		  encode_fields Unit (#fields (valOf ($? (structs, t))))
 	      | encode (S.UNION t) =
-		encode_fields [#largest (valOf ($? (unions, t)))]
+ 		  encode_fields E_sint (#all (valOf ($? (unions, t))))
 
-	    and encode_fields fields = let
+	    and encode_fields dummy fields = let
 		fun f0 (S.ARR { t, d = 0, ... }, a) = a
 		  | f0 (S.ARR { t, d = 1, ... }, a) = f0 (t, a)
 		  | f0 (S.ARR { t, d, esz }, a) =
-		    f0 (t, f0 (S.ARR { t = t, d = d - 1, esz = esz }, a))
+		      f0 (t, f0 (S.ARR { t = t, d = d - 1, esz = esz }, a))
 		  | f0 (t, a) = encode t :: a
 		fun f ({ spec = S.OFIELD { spec, ... }, name }, a) =
-		    f0 (#2 spec, a)
+		      f0 (#2 spec, a)
 		  | f (_, a) = a
 		val fel = foldr f [] fields
 	    in
 		case fel of
 		    [] => E_nullstruct
-		  | fel => Tuple (Unit :: fel)
+		  | fel => Tuple (dummy :: fel)
 	    end
 
 	    val e_arg = Tuple (Unit :: map encode args)
@@ -695,12 +694,12 @@ end = struct
 	    fun mlty (t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 			    S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
 			    S.FLOAT | S.DOUBLE)) =
-		Type ("CMemory.cc_" ^ stem t)
-	      | mlty (S.VOIDPTR | S.PTR _ | S.FPTR _ | S.STRUCT _) =
-		Type "CMemory.cc_addr"
+		  Type ("CMemory.cc_" ^ stem t)
+	      | mlty (S.VOIDPTR | S.PTR _ | S.FPTR _ | S.STRUCT _ | S.UNION _) =
+		  Type "CMemory.cc_addr"
 	      | mlty (S.ENUM _) = Type "CMemory.cc_sint"
 	      | mlty (S.UNIMPLEMENTED what) = unimp what
-	      | mlty (S.ARR _ | S.UNION _) = raise Fail "unexpected type"
+	      | mlty (S.ARR _) = raise Fail "unexpected type"
 
 	    fun wrap (e, n) =
 		EApp (EVar ("CMemory.wrap_" ^ n),
@@ -867,7 +866,7 @@ end = struct
 
 	fun pr_st_structure { src, tag, anon, size, fields, exclude } =
 	    pr_sue_t_structure (SOME src, tag, anon, T_SU size, "s", "S")
-	fun pr_ut_structure { src, tag, anon, size, largest, all, exclude } =
+	fun pr_ut_structure { src, tag, anon, size, all, exclude } =
 	    pr_sue_t_structure (SOME src, tag, anon, T_SU size, "u", "U")
 	fun pr_et_structure { src, tag, anon, descr, spec, exclude } =
 	    pr_sue_t_structure (SOME src, tag, anon, T_E, "e", "E")
@@ -984,7 +983,7 @@ end = struct
 
 	fun pr_s_structure { src, tag, anon, size, fields, exclude } =
 	    pr_su_structure (src, tag, fields, "s", "S")
-	fun pr_u_structure { src, tag, anon, size, largest, all, exclude } =
+	fun pr_u_structure { src, tag, anon, size, all, exclude } =
 	    pr_su_structure (src, tag, all, "u", "U")
 
 	fun pr_e_structure { src, tag, anon, descr, spec, exclude } = let
@@ -1207,9 +1206,9 @@ end = struct
 			SOME (t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 				    S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
 				    S.FLOAT | S.DOUBLE)) =>
-			EApp (EVar ("Cvt.ml_" ^ stem t), call)
+			  EApp (EVar ("Cvt.ml_" ^ stem t), call)
 		      | SOME (t as (S.STRUCT _ | S.UNION _)) =>
-			heavy ("obj", t, call)
+			  heavy ("obj", t, call)
 		      | SOME (S.ENUM ta) => EApp (EVar "Cvt.c2i_enum", call)
 		      | SOME (t as S.PTR _) => heavy ("ptr", t, call)
 		      | SOME (t as S.FPTR _) => heavy ("fptr", t, call)

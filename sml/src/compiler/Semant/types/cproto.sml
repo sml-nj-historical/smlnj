@@ -30,7 +30,8 @@
  * [T*]                 = string
  * ml object            = bool
  * [struct {}]          = exn
- * [struct{t1,...tn}]   = unit * [t1] * ... * [tn]
+ * [struct{t1,...,tn}]  = unit * [t1] * ... * [tn]
+ * [union{t1,...,tn}]   = int * [t1] * ... * [tn]
  * [void]               = unit
  *
  * Currently we don't encode arrays.  (C arrays are mostly like pointers
@@ -42,7 +43,7 @@
  *       (unit * [a1] * ... * [an] -> [r]) list
  * We use
  *       (unit * [a1] * ... * [an] -> [r]) list list
- * to specify a "stdcall" calling convention used by, e.g., Win32.
+ * to specify a reentrant call.
  * 
  * For n = 0 (C argument list is "(void)"), we use:
  *       (unit -> [r]) list     or      (unit -> [r]) list list
@@ -129,8 +130,11 @@ end = struct
 		    SOME tt => tt
 		  | NONE =>
 		    (case BT.getFields t of
-			 SOME (_ :: fl) =>
-			 (CT.C_STRUCT (map (#1 o dt) fl), P.CCI32)
+			 SOME (f1 :: fl) =>
+			   if TU.equalType (f1, BT.unitTy) then
+			       (CT.C_STRUCT (map (#1 o dt) fl), P.CCI32)
+			   else
+			       (CT.C_UNION (map (#1 o dt) fl), P.CCI32)
 		       | _ => bad ())
 
 	    fun rdt (t, ml_args) =
@@ -139,7 +143,8 @@ end = struct
 		else let val (ct, mt) = dt t
 		     in
 			 case ct of
-			     (CT.C_STRUCT _) => (ct, SOME mt, mt :: ml_args)
+			     (CT.C_STRUCT _ | CT.C_UNION _) =>
+			       (ct, SOME mt, mt :: ml_args)
 			   | _ => (ct, SOME mt, ml_args)
 		     end
 
@@ -184,7 +189,9 @@ end = struct
 	      | ct C_PTR = "T*"
 	      | ct (C_ARRAY(t,i)) = concat [ct t, "[", Int.toString i, "]"]
 	      | ct (C_STRUCT fl) =
-		concat ("{" :: foldr (fn (f, l) => ct f :: ";" :: l) ["}"] fl)
+  		concat ("s{" :: foldr (fn (f, l) => ct f :: ";" :: l) ["}"] fl)
+	      | ct (C_UNION fl) =
+  		concat ("u{" :: foldr (fn (f, l) => ct f :: ";" :: l) ["}"] fl)
 	    fun cp { conv, retTy, paramTys = a1 :: an } =
 		concat (ct retTy :: "(*)(" :: ct a1 ::
 			foldr (fn (a, l) => "," :: ct a :: l) [")"] an)

@@ -20,6 +20,7 @@ structure CTypes =
       | C_PTR
       | C_ARRAY of (c_type * int)
       | C_STRUCT of c_type list
+      | C_UNION of c_type list
 
     and c_int
       = I_char
