@@ -93,9 +93,10 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 				  | n as DG.SB_BNODE _ => (li, (NONE, n) :: gi)
 			    val (li, gi) = foldr one ([], []) args
 			    val i = sml (file, split)
+			    fun addTrap n = (n, ref false)
 			    val n = DG.SNODE { smlinfo = i,
-					      localimports = li,
-					      globalimports = gi }
+					      localimports = map addTrap li,
+					      globalimports = map addTrap gi }
 			in
 			    loop (split,
 				  StringMap.insert (m, name, DG.SB_SNODE n),

@@ -278,10 +278,26 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		    "b" :: w_int n (w_symbol sy k) m
 		end
 
-	    fun w_sn_raw (DG.SNODE n) k =
-		w_si (#smlinfo n)
-		     (w_list w_sn (#localimports n)
-		                  (w_list w_fsbn (#globalimports n) k))
+	    fun w_bool true k m = "t" :: k m
+	      | w_bool false k m = "f" :: k m
+
+	    fun w_sn_raw (DG.SNODE n) k = let
+		val i = #smlinfo n
+		val li = #localimports n
+		val gi = #globalimports n
+	    in
+		Say.say ["+++ w_sn_raw: ", SmlInfo.descr i, "\n"];
+		app (fn (DG.SNODE n, ref r) =>
+		      (Say.say ["     ", if r then "+" else "-",
+				SmlInfo.descr (#smlinfo n), "\n"])) li;
+		app (fn ((_, sbn), ref r) =>
+		      (Say.say ["      ", if r then "+" else "-",
+				DG.describeSBN sbn, "\n"])) gi;
+		w_si i (w_list w_sloci li (w_list w_sglobi gi k))
+	    end
+
+	    and w_sloci (n, ref r) k m = w_sn n (w_bool r k) m
+	    and w_sglobi (n, ref r) k m = w_fsbn n (w_bool r k) m
 
 	    and w_sn n = w_share w_sn_raw PSN n
 
@@ -293,9 +309,6 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    fun w_impexp (s, (n, _)) k = w_symbol s (w_fsbn n k)
 
 	    fun w_exports e = w_list w_impexp (SymbolMap.listItemsi e)
-
-	    fun w_bool true k m = "t" :: k m
-	      | w_bool false k m = "f" :: k m
 
 	    fun w_privileges p = w_list w_string (StringSet.listItems p)
 
@@ -321,8 +334,8 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		    case SmlInfoMap.find (!m, smlinfo) of
 			SOME n => n
 		      | NONE => let
-			    val li = map sn (#localimports n)
-			    val gi = map fsbn (#globalimports n)
+			    val li = map sloci (#localimports n)
+			    val gi = map sglobi (#globalimports n)
 			    val sourcepath = SmlInfo.sourcepath smlinfo
 			    (* FIXME: see the comment near the other
 			     * occurence of SrcPath.spec... *)
@@ -346,6 +359,9 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			    m := SmlInfoMap.insert (!m, smlinfo, n);
 			    n
 			end
+
+		and sloci (n, ref r) = (sn n, r)
+		and sglobi (n, ref r) = (fsbn n, r)
 
 		and sbn (DG.SB_SNODE n) = sn n
 		  | sbn (DG.SB_BNODE n) = n
@@ -642,13 +658,13 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
 	    (* this is the place where what used to be an
 	     * SNODE changes to a BNODE! *)
-	    fun r_sn_raw () = let
-		val i = r_si ()
-	    in
-		DG.BNODE { bininfo = i,
-			   localimports = r_list r_sn (),
-			   globalimports = r_list r_fsbn () }
-	    end
+	    fun r_sn_raw () =
+		DG.BNODE { bininfo = r_si (),
+			   localimports = r_list r_sloci (),
+			   globalimports = r_list r_sglobi () }
+
+	    and r_sloci () = (r_sn (), r_bool ())
+	    and r_sglobi () = (r_fsbn (), r_bool ())
 
 	    and r_sn () =
 		r_share r_sn_raw UBN (fn (UBN n) => n | _ => raise Format) ()

@@ -47,16 +47,19 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  structure E = ExecFn (structure PS = FullPersstate)
       in
 	  structure Recomp = E.Recomp
-	  structure RT = E.RecompTraversal
+	  structure TRT = E.RecompTraversal
+	  structure FRT = CompileGenericFn (structure CT = Recomp
+					    val thinTraversal = false)
 	  structure Exec = E.Exec
       end
 
-      structure ET = CompileGenericFn (structure CT = Exec)
+      structure ET = CompileGenericFn (structure CT = Exec
+				       val thinTraversal = false)
 
       (* The StabilizeFn functor needs a way of converting bnodes to
        * dependency-analysis environments.  This can be achieved quite
        * conveniently by a "recompile" traversal for bnodes. *)
-      fun bn2statenv gp i = #1 (#stat (valOf (RT.bnode gp i)))
+      fun bn2statenv gp i = #1 (#stat (valOf (TRT.bnode gp i)))
 	  handle Option => raise Fail "bn2statenv"
 
       (* exec_group is basically the same as ET.group with
@@ -74,13 +77,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	   ET.group gp g
 	   before FullPersstate.rememberShared ())
 
-      fun recomp_runner gp g = isSome (RT.group gp g)
+      fun recomp_runner gp g = isSome (FRT.group gp g)
 
       (* This function combines the actions of "recompile" and "exec".
        * When successful, it combines the results (thus forming a full
        * environment) and adds it to the toplevel environment. *)
       fun make_runner gp g =
-	  case RT.group gp g of
+	  case FRT.group gp g of
 	      NONE => false
 	    | SOME { stat, sym} =>
 		  (case exec_group gp g of
@@ -97,7 +100,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		       end)
 
       fun al_loadit gp m =
-	  case RT.impexpmap gp m of
+	  case TRT.impexpmap gp m of
 	      NONE => NONE
 	    | SOME { stat, sym } => let
 		  fun exec () =
@@ -223,7 +226,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	  fun reset () =
 	      (FullPersstate.reset ();
-	       RT.resetAll ();
+	       TRT.resetAll ();
+	       FRT.resetAll ();
 	       ET.resetAll ();
 	       Recomp.reset ();
 	       Exec.reset ();
@@ -276,7 +280,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		| SOME { rts, core, pervasive, primitives, ... } => let
 		      fun get n = let
 			  val { stat = (s, sp), sym = (sy, syp), ctxt, bfc } =
-			      valOf (RT.sbnode ginfo n)
+			      valOf (TRT.sbnode ginfo n)
 			  val d = Exec.env2result (valOf (ET.sbnode ginfo n))
 			  val env = E.mkenv { static = s, symbolic = sy,
 					      dynamic = d }

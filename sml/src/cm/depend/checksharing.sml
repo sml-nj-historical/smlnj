@@ -52,8 +52,8 @@ structure CheckSharing :> CHECKSHARING = struct
 	    case StableMap.find (!stablemap, i) of
 		SOME s' => StringSet.union (s, s')
 	      | NONE => let
-		    val gs = foldl fbn empty globalimports
-		    val ls = foldl bn gs localimports
+		    val gs = foldl bglobi empty globalimports
+		    val ls = foldl bloci gs localimports
 		    val s' = check (BinInfo.share i, BinInfo.describe i, ls,
 				    BinInfo.error i)
 		in
@@ -61,20 +61,29 @@ structure CheckSharing :> CHECKSHARING = struct
 		    StringSet.union (s, s')
 		end
 
+	and bglobi ((n, _), s) = fbn (n, s)
+	and bloci ((n, _), s) = bn (n, s)
+
 	and fbn ((_, n), s) = bn (n, s)
 
-	fun sn (DG.SNODE { smlinfo = i, localimports, globalimports }, s) =
+	fun sn (DG.SNODE n, s) = let
+	    val { smlinfo = i, localimports, globalimports, ... } = n
+	in
 	    case SmlInfoMap.find (!smlmap, i) of
 		SOME s' => StringSet.union (s, s')
 	      | NONE => let
-		    val gs = foldl fsbn empty globalimports
-		    val ls = foldl sn gs localimports
+		    val gs = foldl globi empty globalimports
+		    val ls = foldl loci gs localimports
 		    val s' = check (SmlInfo.share i, SmlInfo.descr i, ls,
 				    SmlInfo.error gp i)
 		in
 		    smlmap := SmlInfoMap.insert (!smlmap, i, s');
 		    StringSet.union (s, s')
 		end
+	end
+
+	and loci ((n, _), s) = sn (n, s)
+	and globi ((n, _), s) = fsbn (n, s)
 
 	and sbn (DG.SB_BNODE n, s) = bn (n, s)
 	  | sbn (DG.SB_SNODE n, s) = sn (n, s)

@@ -18,6 +18,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
     structure PP = PrettyPrint
     structure EM = GenericVC.ErrorMsg
     structure DE = GenericVC.DynamicEnv
+    structure CMSE = GenericVC.CMStaticEnv
 
     type pid = Pid.persstamp
     type bfc = BF.bfContent
@@ -293,4 +294,14 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
     end
 
     fun nestedTraversalReset () = ()
+
+    fun withAccessTrap r { envs, pids } = let
+	fun envs' () = let
+	    val { stat, sym } = envs ()
+	in
+	    { stat = CMSE.withAccessTrap (stat, r), sym = sym }
+	end
+    in
+	{ envs = envs', pids = pids }
+    end
 end

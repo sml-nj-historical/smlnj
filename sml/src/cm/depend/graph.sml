@@ -17,15 +17,15 @@ structure DependencyGraph = struct
     datatype bnode =
 	PNODE of primitive
       | BNODE of { bininfo: BinInfo.info,
-		   localimports: bnode list,
-		   globalimports: farbnode list }
+		   localimports: (bnode * bool) list,
+		   globalimports: (farbnode * bool) list }
 
     withtype farbnode = bnode filtered
 
     datatype snode =
 	SNODE of { smlinfo: SmlInfo.info,
-		   localimports: snode list,
-		   globalimports: farsbnode list }
+		   localimports: (snode * bool ref) list,
+		   globalimports: (farsbnode * bool ref) list }
 
     and sbnode =
 	SB_BNODE of bnode

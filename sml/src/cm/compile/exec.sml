@@ -16,7 +16,8 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : sig
 end = struct
 
   structure Recomp = RecompFn (structure PS = PS)
-  structure RecompTraversal = CompileGenericFn (structure CT = Recomp)
+  structure RecompTraversal = CompileGenericFn (structure CT = Recomp
+						val thinTraversal = true)
 
   structure Exec = struct
     structure E = GenericVC.Environment
@@ -108,5 +109,7 @@ end = struct
 	  | _ => NONE
 
     val nestedTraversalReset = RecompTraversal.reset
+
+    fun withAccessTrap r e = e
   end
 end

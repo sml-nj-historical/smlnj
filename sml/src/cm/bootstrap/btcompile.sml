@@ -39,7 +39,8 @@ end = struct
 			   fun new_smlinfo i = ())
 
     structure Recomp = RecompFn (structure PS = RecompPersstate)
-    structure RT = CompileGenericFn (structure CT = Recomp)
+    structure RT = CompileGenericFn (structure CT = Recomp
+				     val thinTraversal = false)
 
     fun recomp gp g = isSome (RT.group gp g)
 
