@@ -773,7 +773,6 @@ RA.cm:
 	MLRISC.cm
 	Control.cm
 	Lib.cm
-	ir.cm
 
 	(*../ra/ra-spill-gcm.sig
 	../ra/ra-spill-gcm.sml
