@@ -336,37 +336,32 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		      NONE => fnpolicy
 		    | SOME ao => FilenamePolicy.colocate_generic ao
 	      fun sourcesOf ((p, gth, _), (v, a)) =
-		  if SrcPathSet.member (v, p) then (v, a)
-		  else
-		      let val v = SrcPathSet.add (v, p)
-		      in case gth () of
-			     GG.ERRORGROUP => (v, a)
-			   | GG.GROUP { kind, sources, ... } => let
-				 fun add (p, x, a) =
-				     StringMap.insert
-					 (a, SrcPath.osstring p, x)
-				 val a = SrcPathMap.foldli add a sources
-				 fun sg subgroups =
-				     foldl sourcesOf (v, a) subgroups
-			     in
-				 case kind of
-				     GG.LIB { kind, version } =>
-				     (case kind of
-					  GG.STABLE _ => let
-					      val file = SrcPath.osstring p
-					      val (a, x) =
-						  StringMap.remove (a, file)
-					      val sfile =
-						  FilenamePolicy.mkStableName
+		  let val v' = SrcPathSet.add (v, p)
+		  in case gth () of
+			 GG.ERRORGROUP => (v', a)
+		       | GG.GROUP { kind, sources, ... } =>
+			 let fun add (p, x, a) =
+				 StringMap.insert (a, SrcPath.osstring p, x)
+			     fun sg l =
+				 if SrcPathSet.member (v, p) then (v, a)
+				 else foldl sourcesOf
+					    (v', SrcPathMap.foldli
+						     add a sources)
+					    l
+			 in case kind of
+				GG.LIB { kind, version } =>
+				(case kind of
+				     GG.STABLE _ =>
+				     let val f = SrcPath.osstring p
+					 val (a, x) = StringMap.remove (a, f)
+					 val sf = FilenamePolicy.mkStableName
 						      policy (p, version)
-					  in
-					      (v,
-					       StringMap.insert (a, sfile, x))
-					  end
-					| GG.DEVELOPED d => sg (#subgroups d))
-				   | GG.NOLIB n => sg (#subgroups n)
-			     end
-		      end
+				     in (v', StringMap.insert (a, sf, x))
+				     end
+				   | GG.DEVELOPED d => sg (#subgroups d))
+			      | GG.NOLIB n => sg (#subgroups n)
+			 end
+		  end
 	      val p = mkStdSrcPath group
 	      val gr = GroupReg.new ()
 	  in
@@ -381,8 +376,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 					      derived = false })))
 		       fun add (s, { class, derived }, l) =
 			   { file = s, class = class, derived = derived } :: l
-		   in
-		       SOME (StringMap.foldli add [] sm)
+		   in SOME (StringMap.foldli add [] sm)
 		   end
 		 | _ => NONE)
 	      before dropPickles ()

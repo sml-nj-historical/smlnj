@@ -14,6 +14,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/12/13 14:45:00 CST
+Tag: blume-20041213-ml-makedepend
+Description:
+
+Fixed bug in code for ml-makedepend.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/12/09 16:30:00 CST
 Tag: blume-20041209-statistics
 Description:
