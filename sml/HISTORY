@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2005/01/24 17:40:00 CST
+Tag: blume-20050124-mlyacc
+Description:
+
+Minor cleanup in ML-Yacc rule printing mechanism.  This should fix a
+problem with certain "as" patterns which previously got rendered
+using incorrect syntax.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2005/01/18 12:00:00 CST
 Tag: blume-20050118-profile
 Description:

@@ -310,12 +310,12 @@ let val printAbsynRule = Absyn.printRule(say,sayln)
 			   else	
 			       PAPP(valueStruct^"."^symString,
 			         if num=1 andalso pureActions
-				     then AS(PVAR symNum,PVAR symString)
+				     then AS(symNum,PVAR symString)
 				 else PVAR symNum),
-			     if num=1 then AS(PVAR (symString^"left"),
+			     if num=1 then AS(symString^"left",
 					      PVAR(symNum^"left"))
 			     else PVAR(symNum^"left"),
-			     if num=1 then AS(PVAR(symString^"right"),
+			     if num=1 then AS(symString^"right",
 					      PVAR(symNum^"right"))
 			     else PVAR(symNum^"right")]]
 	     end
@@ -324,8 +324,8 @@ let val printAbsynRule = Absyn.printRule(say,sayln)
 
 	(* construct case pattern *)
 
-	   val pat = PTUPLE[PINT i,PLIST(map mkToken numberedRhs @
-					   [PVAR "rest671"])]
+	   val pat = PTUPLE[PINT i,PLIST(map mkToken numberedRhs,
+					 SOME (PVAR "rest671"))]
 
 	(* remove terminals in argument list w/o types *)
 
@@ -356,7 +356,7 @@ let val printAbsynRule = Absyn.printRule(say,sayln)
 				  let val symString = symbolToString sym
 				      val symNum = symString ^ Int.toString num
 				  in VB(if num=1 then
-					     AS(PVAR symString,PVAR symNum)
+					     AS(symString,PVAR symNum)
 					else PVAR symNum,
 					EAPP(EVAR symNum,UNIT))
 				  end) (rev argsWithTypes),
