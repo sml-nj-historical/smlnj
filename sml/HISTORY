@@ -14,6 +14,17 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Allen Leung
+Date: 2002/03/11 10:30:00 EST
+Tag: leunga-20020310-runtime-string0
+Description:
+
+   The representation of the empty string now points to a 
+legal null terminated C string instead of unit.  It is now possible 
+to convert an ML string into C string with InlineT.CharVector.getData.  
+This compiles into one single machine instruction.
+
+----------------------------------------------------------------------
+Name: Allen Leung
 Date: 2002/03/10 23:55:00 EST
 Tag: leunga-20020310-x86-call
 Description:
