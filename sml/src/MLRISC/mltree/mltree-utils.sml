@@ -403,11 +403,7 @@ struct
             | g(t,r::rs) = f(t,r)^","^g(t,rs)
       in  g end
 
-      fun listify' f =
-      let fun g([]) = ""
-            | g([r]) = f(r)
-            | g(r::rs) = f(r)^","^g(rs)
-      in  g end
+      fun listify' f = (String.concatWith ",") o (List.map f)
 
       val srcRegs = listify srcReg 
       val dstRegs = listify dstReg 
@@ -436,30 +432,32 @@ struct
         | stm(T.COPY(ty,dst,src)) = copy(ty,dst,src)
         | stm(T.FCOPY(fty,dst,src)) = fcopy(fty,dst,src)
         | stm(T.JMP(ea,labels)) = "jmp "^rexp ea
+        | stm(T.BCC(a,lab)) = 
+             "bcc "^ccexp a^" "^Label.toString lab
         | stm(T.CALL{funct,targets,defs,uses,region,pops}) = 
               "call "^rexp funct
         | stm(T.FLOW_TO(s, targets)) =
               stm s^" ["^listify' Label.toString targets^"]"
         | stm(T.RET(flow)) = "ret"
-        | stm(T.STORE(ty,ea,e,mem)) = store(ty,"",ea,mem,e)
-        | stm(T.FSTORE(fty,ea,e,mem)) = fstore(fty,"",ea,mem,e)
-        | stm(T.BCC(a,lab)) = 
-             "bcc "^ccexp a^" "^Label.toString lab
         | stm(T.IF(a,b,T.SEQ [])) = "if "^ccexp a^" then "^stm b
         | stm(T.IF(a,b,c)) = "if "^ccexp a^" then "^stm b^" else "^stm c
+        | stm(T.STORE(ty,ea,e,mem)) = store(ty,"",ea,mem,e)
+        | stm(T.FSTORE(fty,ea,e,mem)) = fstore(fty,"",ea,mem,e)
+        | stm(T.REGION(s,cr)) = stm s^usectrl cr
         | stm(T.SEQ []) = "skip"
         | stm(T.SEQ s) = stms(";\n",s)
-        | stm(T.REGION(s,cr)) = stm s^usectrl cr
+	| stm(T.DEFINE lab) = Label.toString lab ^ ":"
         | stm(T.ANNOTATION(s, a)) = stm s 
-        | stm(T.PHI{preds, block}) = "phi["^i2s block^"]"
-        | stm(T.SOURCE) = "source"
-        | stm(T.SINK) = "sink"
-        | stm(T.RTL{e,...}) = stm e
         | stm(T.EXT x) = showSext (shower()) x
+	| stm(T.LIVE exps) = "live: " ^ mlriscs exps
+	| stm(T.KILL exps) = "kill: " ^ mlriscs exps
+        | stm(T.PHI{preds, block}) = "phi["^i2s block^"]"
         | stm(T.ASSIGN(ty,lhs,T.???)) = "define "^rexp lhs
         | stm(T.ASSIGN(ty,T.???,rhs)) = "use "^rexp rhs
         | stm(T.ASSIGN(ty,x,rhs)) = lhs x^" := "^rexp rhs
-        | stm _ = error "stm"
+        | stm(T.SOURCE) = "source"
+        | stm(T.SINK) = "sink"
+        | stm(T.RTL{e,...}) = stm e
 
       and stms(sep,[]) = ""
         | stms(sep,[s]) = stm s
