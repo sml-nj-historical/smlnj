@@ -1,0 +1,31 @@
+(*
+ * gen.cm - CM description file describing the ml-ffigen program.
+ *
+ *  (C) 2001, Lucent Technologies, Bell Labs
+ *
+ * author: Matthias Blume (blume@research.bell-labs.com)
+ *)
+Library
+	structure Main
+	structure Spec
+	structure Gen
+	structure AstToSpec
+is
+	$/basis.cm
+	$/smlnj-lib.cm
+	$/pp-lib.cm
+	$/ckit-lib.cm
+
+	spec.sml
+	pp.sml
+	gen.sml
+	ast-to-spec.sml
+	sizes-x86.sml
+	main.sml
+# if defined (LITTLE_ENDIAN)
+	endian-little.sml
+# elif defined (BIG_ENDIAN)
+	endian-big.sml
+# else
+# error endianness not defined
+# endif

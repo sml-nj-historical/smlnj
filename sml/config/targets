@@ -65,6 +65,28 @@ TARGETS="$TARGETS smlnj-lib"
 #
 #TARGETS="$TARGETS eXene"
 
+# pre-compile and install the C-Kit, which is a library for parsing and
+# type-checking C programs
+#
+#TARGETS="$TARGETS ckit"
+
+# pre-compile and install the ML-NLFFI Library, which is the core of
+# a new foreign function interface (where "foreign" functions are
+# "no longer foreign")
+# This library is necessary to compile and/or run programs that use
+# the new FFI.
+# This preview release currently works only under X86/Linux.
+#
+#TARGETS="$TARGETS ml-nlffi-lib"
+
+# build ML-NLFFI-Gen, a program generator tool used in conjunction with
+# the new "NLFFI" foreign function interface.  The tool generates ML
+# glue code from C source code.
+# (Requires ckit!)
+# This preview release currently works only under X86/Linux.
+#
+#TARGETS="$TARGETS ml-nlffigen"
+
 # unpack and install the documentation directory.
 #
 #TARGETS="$TARGETS doc"

@@ -56,6 +56,7 @@ RUNDIR=$BINDIR/.run		# where executables (i.e., the RTS) live
 SRCDIR=$ROOT/src		# where the source tree is rooted
 LIBDIR=$INSTALLDIR/lib		# where libraries live
 LIBLIST=$ROOT/liblist		# list of commands to stabilize libraries
+LATESTANDALONES=$ROOT/latestandalones # standalone programs to be built late
 LIBMOVESCRIPT=$ROOT/libmove	# a temporary script
 LOCALPATHCONFIG=$INSTALLDIR/pathconfig # a temporary pathconfig file
 
@@ -78,6 +79,7 @@ PCEDITTMP=$INSTALLDIR/pcedittmp.$$
 tmpfiles=""
 tmpfiles="$tmpfiles $ROOT/preloads.standard"
 tmpfiles="$tmpfiles $LIBLIST"
+tmpfiles="$tmpfiles $LATESTANDALONES"
 tmpfiles="$tmpfiles $LOCALPATHCONFIG"
 tmpfiles="$tmpfiles $LIBMOVESCRIPT"
 tmpfiles="$tmpfiles $PCEDITTMP"
@@ -594,6 +596,10 @@ for i in $TARGETS ; do
 	standalone ml-burg ML-Burg
 	echo ml-burg $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
 	;;
+      ml-nlffigen)
+        echo standalone ml-nlffigen ML-NLFFI-Gen >>$LATESTANDALONES
+	echo ml-nlffigen $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
+	;;
       smlnj-lib)
         unpack "SML/NJ Library" $SRCDIR smlnj-lib smlnj-lib
 
@@ -626,6 +632,16 @@ for i in $TARGETS ; do
       eXene)
         unpack EXene $SRCDIR eXene eXene
 	reglib eXene.cm eXene
+	;;
+      ckit)
+        unpack "C-Kit" $ROOT ckit ckit
+	reglib ckit-lib.cm ../ckit/src
+	;;
+      ml-nlffi-lib)
+        unpack "NLFFI Library" $SRCDIR ml-nlffi-lib ml-nlffi-lib
+	reglib memory.cm ml-nlffi-lib/memory
+	reglib c-int.cm ml-nlffi-lib/internals
+	reglib c.cm ml-nlffi-lib
 	;;
       doc)
 	unpack Doc $ROOT doc doc
@@ -660,6 +676,16 @@ fi
 if [ -r $LIBMOVESCRIPT ] ; then
     echo $this: Moving libraries to $LIBDIR.
     . $LIBMOVESCRIPT
+fi
+
+#
+# Build "late" standalone programs (i.e., those that must be built
+# after libraries are already in place):
+#
+
+if [ -r $LATESTANDALONES ] ; then
+    echo $this: Building late standalone programs.
+    . $LATESTANDALONES
 fi
 
 #

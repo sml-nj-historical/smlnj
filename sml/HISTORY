@@ -14,6 +14,37 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/05/11 14:35:00 EDT
+Tag: blume-20010511-ml-nlffi
+Description:
+
+I finally took the plunge and added my new FFI code to the main
+repository.  For x86-linux it is now ready for prime-time.
+
+There are two new subdirectories of "src":
+
+  - ml-nlffi-lib:
+       The utility library for programs using the FFI interface.
+       Here is the implementation of $/c.cm and its associated low-level
+       partners $/c-int.cm and $/memory.cm.
+  - ml-nlffigen:
+       A stand-alone program for generating ML glue code from C source
+       code.
+
+Building ml-nlffigen requires $/ckit-lib.cm.
+
+The config/install.sh script has been updates to do the Right Thing
+(hopefully).
+
+Notice that the source tree for the C-Kit will not be put under "src"
+but directly under the installation root directory.  (This is the
+structure that currently exists on the CVS server when you check out
+module "sml".)  Fortunately, config/install.sh knows about this oddity.
+
+Bugs: No documentation yet.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/05/09 16:35:00 EDT
 Tag: blume-20010509-cpscontract
 Description:
