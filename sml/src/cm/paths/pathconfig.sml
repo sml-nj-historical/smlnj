@@ -38,10 +38,20 @@ structure PathConfig :> PATHCONFIG = struct
 
     fun new () = ref StringMap.empty
 
-    fun configAnchor m s =
-	case StringMap.find (!m, s) of
+    fun configAnchor m s = let
+	fun look () = StringMap.find (!m, s)
+	fun get () =
+	    case look () of
+		SOME v => v
+	      (* Return a bogus value here that will later cause a failure
+	       * when actually opening a file.  We don't want to fail here
+	       * because the anchor may come back to life later. *)
+	      | NONE => concat ["$$undefined<", s, ">"]
+    in
+	case look () of
 	    NONE => NONE
-	  | SOME _ => SOME (fn () => valOf (StringMap.find (!m, s)))
+	  | SOME _ => SOME get
+    end
 
     fun processSpecFile (m, f) = let
 	fun work s = let

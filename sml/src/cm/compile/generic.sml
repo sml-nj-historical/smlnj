@@ -31,6 +31,11 @@ in
 
 	fun start () = (CT.start (), ref SmlInfoMap.empty)
 	fun finish (ctts, _) = CT.finish ctts
+	fun clearErrors (_, smlcache) =
+	    smlcache := SmlInfoMap.filter isSome (!smlcache)
+
+	fun clearStableErrors () =
+	    stablecache := StableMap.filter isSome (!stablecache)
 
 	(* To implement "keep_going" we have two different ways of
 	 * combining a "work" function with a "layer" function.
@@ -119,12 +124,17 @@ in
 	    Option.map CT.env2result (farsbnode ts gp n)
 	    before finish ts
 
+	(* Only "resume" and "group" clear stable errors; other
+	 * traversals must wait until "resume" or "group" has been
+	 * re-run. *)
 	fun resume getter gp m =
-	    foldl (layerwork (#keep_going (#param gp),
-			      CT.rlayer,
-			      resume1 gp o getter))
-	          (SOME CT.empty)
-		  (SymbolMap.listItems m)
+	    (clearStableErrors ();
+	     SymbolMap.app (clearErrors o #2 o getter) m;
+	     foldl (layerwork (#keep_going (#param gp),
+			       CT.rlayer,
+			       resume1 gp o getter))
+	           (SOME CT.empty)
+		   (SymbolMap.listItems m))
 
 	fun group gp (GG.GROUP { exports, ... }) = let
 	    val ts = start ()

@@ -289,13 +289,18 @@ end = struct
 	  | NONE => false
     end
 
-    val make' = compile false
-    fun make () = make' NONE
-    val deliver' = compile true
-    fun deliver () = deliver' NONE
     fun reset () =
 	(RecompPersstate.reset ();
 	 RT.reset ();
 	 Recomp.reset ();
 	 Parse.reset ())
+
+    val make' = compile false
+    fun make () = make' NONE
+    fun deliver' arg =
+	SafeIO.perform { openIt = fn () => (),
+			 closeIt = reset,
+			 work = fn () => compile true arg,
+			 cleanup = fn () => () }
+    fun deliver () = deliver' NONE
 end

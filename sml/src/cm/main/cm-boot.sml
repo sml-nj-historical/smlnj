@@ -129,8 +129,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val theValues = ref (NONE: kernelValues option)
 
       in
-	  fun setAnchor (a, s) = PathConfig.set (pcmode, a, s)
+	  fun setAnchor (a, s) =
+	      (PathConfig.set (pcmode, a, s); SrcPath.sync ())
+	  (* cancelling anchors cannot affect the order of existing paths
+	   * (it may invalidate some paths; but all other ones stay as
+	   * they are) *)
 	  fun cancelAnchor a = PathConfig.cancel (pcmode, a)
+	  (* same goes for reset because it just cancels all anchors... *)
 	  fun resetPathConfig () = PathConfig.reset pcmode
 
 	  fun showPending () = let

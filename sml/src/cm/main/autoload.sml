@@ -60,7 +60,7 @@ functor AutoLoadFn (structure RT : TRAVERSAL
     in
 	#set ter te';
 	pending :=
-	SymbolMap.unionWith #1 (SymbolMap.map addState exports, !pending)
+	   SymbolMap.unionWith #1 (SymbolMap.map addState exports, !pending)
     end
 
     fun mkManager get_ginfo (ast, ter: ER.envref) = let
@@ -158,7 +158,9 @@ functor AutoLoadFn (structure RT : TRAVERSAL
 			   (#set ter (BE.concatEnv (e, te));
 			    pending := noloadmap;
 			    Say.say ["[autoloading done]\n"])
-		     | NONE => Say.say ["[autoloading failed]\n"]) })
+		     | NONE => raise Fail "unable to load module(s)") }
+	      handle Fail msg =>
+		  Say.say ["[autoloading failed: ", msg, "]\n"])
     end
 
     fun getPending () = SymbolMap.map #1 (!pending)

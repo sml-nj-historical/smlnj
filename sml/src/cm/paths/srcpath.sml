@@ -69,8 +69,10 @@ structure SrcPath :> SRCPATH = struct
 
     fun sync () =
 	(AbsPath.newEra ();
-	 knownPaths := foldl AbsPathMap.insert' AbsPathMap.empty
-	                     (AbsPathMap.listItemsi (!knownPaths)))
+	 knownPaths :=
+	   AbsPathMap.foldli (fn (k, v, m) => AbsPathMap.insert (m, k, v))
+	                     AbsPathMap.empty
+			     (!knownPaths))
 
     fun clear () = knownPaths := AbsPathMap.empty
 
