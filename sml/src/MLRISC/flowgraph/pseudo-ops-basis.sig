@@ -17,6 +17,15 @@ signature PSEUDO_OPS_BASIS = sig
   val defineLabel : Label.label -> string
 
   val emitValue : {pOp: 'a pseudo_op, loc: int, emit: Word8.word -> unit} -> unit
+    (* emit value of pseudo op give current location counter and output
+     * stream. The value emitted should respect the endianness of the
+     * target machine.
+     *)
+
   val sizeOf : 'a pseudo_op * int -> int
+    (* Size of the pseudo_op in bytes given the current location counter
+     * The location counter is provided in case some pseudo ops are 
+     * dependent on alignment considerations.
+     *)
 end
 

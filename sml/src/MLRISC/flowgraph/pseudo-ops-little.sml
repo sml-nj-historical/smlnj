@@ -1,7 +1,10 @@
-(* Major bug: The x86 is padded with bytes, but something like the
- * alpha is padded with words. Should fix!
- * val nop : {sz: int, w: Word32.word}
+(* pseudo-ops-little.sml
+ *
+ * COPYRIGHT (c) 2001 Lucent Technologies, Bell Laboratories.
+ *
+ * Subset of pseudo-ops functions that are little endian sensitive
  *)
+
 functor PseudoOpsLittle
    ( structure T : MLTREE
      structure MLTreeEval : MLTREE_EVAL
@@ -9,11 +12,12 @@ functor PseudoOpsLittle
      val icache_alignment : int		(* cache line size *)
      val max_alignment : int option	(* maximum alignment for internal labels *)
      val nop: {sz:int, en:Word32.word}	(* encoding for noop *)
-    ) = 
+    ) : PSEUDO_OPS_ENDIAN = 
 struct
   structure W = Word
   structure T = T
   structure PB = PseudoOpsBasisTyp
+  type 'a pseudo_op = (T.labexp, 'a) PB.pseudo_op
 
   fun error msg = MLRiscErrorMsg.error ("PseudoOpsLittle.", msg)
 

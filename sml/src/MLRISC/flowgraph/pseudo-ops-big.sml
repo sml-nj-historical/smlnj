@@ -1,3 +1,10 @@
+(* pseudo-ops-big.sml
+ *
+ * COPYRIGHT (c) 2001 Lucent Technologies, Bell Laboratories.
+ *
+ * Subset of pseudo-ops functions that are little endian sensitive
+ *)
+
 functor PseudoOpsBig
    ( structure T : MLTREE
      structure MLTreeEval : MLTREE_EVAL 
@@ -5,12 +12,12 @@ functor PseudoOpsBig
      val  icache_alignment : int	(* cache line size *)
      val max_alignment : int option	(* maximum alignment for internal labels *)
      val nop: {sz:int, en:Word32.word}	(* encoding for noop *)
-    ) = 
+    ) : PSEUDO_OPS_ENDIAN =
 struct
   structure W = Word
   structure T = T
   structure PB = PseudoOpsBasisTyp
-
+  type 'a pseudo_op = (T.labexp, 'a) PB.pseudo_op
   fun error msg = MLRiscErrorMsg.error ("PseudoOpsBig.", msg)
 
   val >> = Word.>>

@@ -370,6 +370,8 @@ struct
                        pos,changed)
     in  scan(comp, pos, changed)
     end
+      | adjust(PSEUDO pOp::rest, pos, changed) = 
+	  adjust(rest, pos+P.sizeOf(pOp, pos), changed)
       | adjust(_::_, _, _) = error "adjust"
       | adjust([], _, changed) = changed
 
@@ -397,6 +399,7 @@ struct
 	    | process _ = error "process"
 	in foldl process loc comp
 	end
+      | emitCluster(PSEUDO pOp, loc) = (pseudoOp pOp; loc+P.sizeOf(pOp, loc))
       | emitCluster _ = error "emitCluster"
 
     (* The dataList is in reverse order, and the entries in each

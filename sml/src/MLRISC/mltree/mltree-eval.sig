@@ -1,3 +1,10 @@
+(* mltree-eval.sig
+ *
+ * COPYRIGHT (c) 2001 Lucent Technologies, Bell Laboratories.
+ *
+ * Utilites to evaluate and compare mltree expressions.
+ *)
+
 signature MLTREE_EVAL = sig
   structure T : MLTREE
 

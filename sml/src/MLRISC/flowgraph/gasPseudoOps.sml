@@ -1,3 +1,10 @@
+(* gasPseudoOps.sml
+ *
+ * COPYRIGHT (c) 2001 Lucent Technologies, Bell Laboratories.
+ *
+ * Implements the string related functions to emit pseudo-ops
+ * in the standard GAS syntax.
+ *)
 signature GAS_PSEUDO_OPS = sig
     structure T : MLTREE
     val lexpToString : T.labexp -> string

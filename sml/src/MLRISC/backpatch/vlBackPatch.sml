@@ -116,7 +116,7 @@ struct
       | labels (PSEUDO(pOp, rest), pos, chgd) = let
           val oldSz = P.sizeOf(pOp, pos)
           val newSz = (P.adjustLabels(pOp, pos); P.sizeOf(pOp, pos))
-        in labels(rest, pos + newSz, chgd orelse newSz<>oldSz)
+        in labels(rest, pos + newSz, chgd orelse newSz<>oldSz) (* XXXX???? *)
         end
       | labels (NIL, pos, chgd) = (pos, chgd)
 

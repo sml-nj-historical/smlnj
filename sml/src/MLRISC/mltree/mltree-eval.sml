@@ -1,3 +1,10 @@
+(* mltree-eval.sml
+ *
+ * COPYRIGHT (c) 2001 Lucent Technologies, Bell Laboratories.
+ *
+ * Utilites to evaluate and compare mltree expressions.
+ *)
+
 functor MLTreeEval
   (structure T : MLTREE  
    (* equality extensions *)

@@ -38,9 +38,10 @@ struct
       PSEUDO of P.pseudo_op
     | LABEL  of Label.label
     | CODE of  code list
-    | CLUSTER of {comp : compressed list}
 
-  val clusterList : compressed list ref = ref []
+  datatype cluster = CLUSTER of compressed list
+
+  val clusterList : cluster list ref = ref []
   val dataList : P.pseudo_op list ref = ref []
   fun cleanUp() = (clusterList := []; dataList := [])
 
@@ -74,57 +75,46 @@ struct
 	       CODE(mkCode(0, [], !insns, [])) :: compress rest)
 	end
   in
-    clusterList:=CLUSTER{comp = compress blocks}:: (!clusterList);
+    clusterList:=CLUSTER(compress blocks):: (!clusterList);
     dataList := !data @ !dataList
   end
 
 
 
   fun finish() = let
-    fun labels(PSEUDO pOp::rest, pos) = 
-          (P.adjustLabels(pOp, pos); labels(rest, pos+P.sizeOf(pOp,pos)))
-      | labels(LABEL lab::rest, pos) = 
-	 (Label.setAddr(lab,pos); labels(rest, pos))
-      | labels(CODE code::rest, pos) = let
-	  fun size(FIXED{size, ...}) = size
-	    | size(SDI{size, ...}) = !size
-	in labels(rest, List.foldl (fn (c, b) => size(c) + b) pos code)
+    fun labels(PSEUDO pOp::rest, pos, chgd) = 
+          (P.adjustLabels(pOp, pos); labels(rest, pos+P.sizeOf(pOp,pos), chgd))
+      | labels(LABEL lab::rest, pos, chgd) = 
+	 if Label.addrOf(lab) = pos then labels(rest, pos, chgd)
+	 else (Label.setAddr(lab, pos); labels(rest, pos, true))
+      | labels(CODE code::rest, pos, chgd) = let
+ 	  fun doCode(FIXED{size, ...}::rest, pos, changed) = 
+	        doCode(rest, pos+size, changed)
+	    | doCode(SDI{size, insn}::rest, pos, changed) = let
+	  	val newSize = J.sdiSize(insn, Label.addrOf, pos)
+ 	      in
+		  if newSize <= !size then doCode(rest, !size + pos, changed)
+		  else (size:=newSize; doCode(rest, newSize+pos, true))
+	       end
+	    | doCode([], pos, changed) = labels(rest, pos, changed)
+        in doCode(code, pos, chgd)
 	end
-      | labels(CLUSTER{comp, ...}::rest, pos) = labels(rest, labels(comp,pos))
-      | labels([], pos) = pos
+      | labels([], pos,chgd) = (pos, chgd)
 
-    fun adjust(CLUSTER{comp}::cluster, pos, changed) = let
-          fun f (PSEUDO pOp::rest, pos, changed) = 
-	        f(rest, pos+P.sizeOf(pOp,pos), changed)
-	    | f (LABEL _::rest, pos, changed) = f(rest, pos, changed)
-	    | f (CODE code::rest, pos, changed) = let
-		fun doCode(FIXED{size, ...}::rest, pos, changed) = 
-		      doCode(rest, pos+size, changed)
-		  | doCode(SDI{size, insn}::rest, pos, changed) = let
-	  	      val newSize = J.sdiSize(insn, Label.addrOf, pos)
- 	  	    in
-		      if newSize <= !size then doCode(rest, !size + pos, changed)
-		      else (size:=newSize; doCode(rest, newSize+pos, true))
-		    end
-		  | doCode([], pos, changed) = f(rest, pos, changed)
-              in doCode(code, pos, changed)
-	      end
-	    | f ([], pos, changed) = adjust(cluster, pos, changed)
-	    | f _ = error "adjust.f"
-        in f(comp, pos, changed)
-	end
-      | adjust(_::_, _, _) = error "adjust"
-      | adjust([], _, changed) = changed
+    fun clusterLabels clusters = let
+      fun f (CLUSTER cl, (pos, chgd)) = labels(cl, pos, chgd)
+    in List.foldl f (0, false) clusters
+    end
 
     fun fixpoint zl = let 
-      val size = labels(zl, 0)
-    in if adjust(zl, 0, false) then fixpoint zl else size
+      val (size, changed) = clusterLabels zl
+    in if changed then fixpoint zl else size
     end
 
     val Emitter.S.STREAM{emit,defineLabel,beginCluster,pseudoOp,...} = 
             Emitter.makeStream []
 
-    fun emitCluster(CLUSTER{comp},loc) = let
+    fun emitCluster(CLUSTER(comp),loc) = let
 	  fun process(PSEUDO pOp,loc) = (pseudoOp pOp; loc + P.sizeOf(pOp,loc))
 	    | process(LABEL lab,loc) = (defineLabel lab; loc)
 	    | process(CODE code,loc) = let
@@ -134,21 +124,37 @@ struct
 		       (emitInstrs(J.expand(insn, !size, loc)); !size + loc)
 	      in foldl e loc code
 	      end
-	    | process _ = error "process"
 	in foldl process loc comp
 	end
-      | emitCluster _ = error "emitCluster"
 
-    (* The dataList is in reverse order, and the entries in each
-     * are also in reverse 
-     *)
-    val compressed = rev (map PSEUDO (!dataList) @ !clusterList) before cleanUp()
+    fun initLabels(clusters) = let
+      fun init(PSEUDO(p)::rest, loc) = 
+	   (P.adjustLabels(p, loc); init(rest, loc + P.sizeOf(p, loc)))
+	| init(LABEL lab::rest, loc) = (Label.setAddr(lab,loc); init(rest, loc))
+	| init(CODE code::rest, loc) = let
+ 	   fun size(FIXED{size, ...}) = size
+	     | size(SDI{size, ...}) = !size
+          in
+	    init(rest, List.foldl (fn (c, b) => size(c) + b) loc code)
+          end
+        | init([], loc) = loc
+
+    in
+      List.foldl 
+        (fn (CLUSTER(cl), loc) => init(cl, loc)) 0 clusters
+    end
+
+    (* The dataList is in reverse order and the clusters are in reverse *)
+    fun dataCluster([], acc) = CLUSTER(acc)
+      | dataCluster(d::dl, acc) = dataCluster(dl, PSEUDO d::acc)
+    val compressed = 
+      rev (dataCluster(!dataList, []) :: !clusterList) before cleanUp()
   in
+    initLabels(compressed);
     beginCluster(fixpoint (compressed));
     foldl emitCluster 0 compressed; 
     ()
   end (*finish*)
-
 end (* bbsched2 *)
 
 

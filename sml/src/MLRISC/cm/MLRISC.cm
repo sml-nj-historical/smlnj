@@ -49,6 +49,7 @@ Library
 	signature PRINT_FLOWGRAPH
 	signature PSEUDO_OPS
 	signature PSEUDO_OPS_BASIS
+	signature PSEUDO_OPS_ENDIAN
 	signature RA
 	signature RA_CORE
 	signature RA_FLOWGRAPH
@@ -186,6 +187,7 @@ is
 	../mltree/mltree-hash.sml
 	../mltree/mltree-size.sig
 	../mltree/mltree-size.sml
+	../mltree/mltree-stream.sig
 	../mltree/mltree-stream.sml
 	../mltree/mltree-mult.sig
 	../mltree/mltree-mult.sml
@@ -207,6 +209,7 @@ is
 	../flowgraph/pseudo-ops-basis.sig
 	../flowgraph/pseudo-ops-basis-typ.sml
 	../flowgraph/pseudo-ops-big.sml
+	../flowgraph/pseudo-ops-endian.sig
 	../flowgraph/pseudo-ops-little.sml
 	../ra/getreg.sig
 	../ra/getreg.sml

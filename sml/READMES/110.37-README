@@ -29,6 +29,9 @@ MLRISC:
     but more should follow, such as MASM, and vendor assembler
     syntax, e.g. IBM as, Sun as, etc.
 
+    The new pseudo-ops design is used to add a string to the end
+    of the code stream that represents the file name.
+
   * Fix for a backpatching bug reported by Allen.
 
     Because the boundary between short and long span-dependent 
