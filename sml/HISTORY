@@ -12,6 +12,16 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2000/07/27 11:53:14 EDT
+
+Tag: lal-20000727-linux-ppc
+Description:
+
+ Made changes to support Linux PPC. 
+ p.s. I have confirmation that the 110.29 boot files work fine.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/07/27 17:40:00 JST
 Tag: blume-20000727-scripts
