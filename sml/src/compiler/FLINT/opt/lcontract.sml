@@ -54,6 +54,22 @@ fun pass1 fdec =
           in case s
               of NONE => ()
                | SOME _ => add(x, NONE)  (* depth no longer matters *)
+
+               (* Actually, depth does seem to matter, in one case at least.
+                * With  datatype equivalence turned on, we get a type error
+                * in CodeGen/cpscompile/mkRecord.sml.  The two types that
+                * fail to match are FIXes, and they are identical except
+                * that one has an argument which is TV(1,0) and the other
+                * has TV(2,0).  Previously, equivalence of two FIXes was
+                * always assumed to be true.  Now that we are checking,
+                * this discrepency pops up.  So there must still be a small 
+                * bug with inlining across different depths.  
+                *
+                * I've made it so that type errors do not halt compilation,
+                * so this type error will continue to occur when compiling
+                * the compiler.  Hopefully Zhong can look at this code
+                * soon.  --league, 30 March 1998
+                *)
 (*
                | SOME d => if (d=nd) then add(x, NONE)
                            else ()
