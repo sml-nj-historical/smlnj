@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/01/12 23:30:00 JST
+Tag: blume-20010112-bootfiles
+Description:
+
+Made a new set of bootfiles that goes with the current state of the
+repository.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/01/12 21:20:00 JST
 Tag: blume-20010112-sync
 Description:
