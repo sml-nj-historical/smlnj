@@ -1,7 +1,16 @@
-Changes since 3.9.3:
+Changes since 3.9.5:
+
+* No need to add the dir to your load-path any more.
+  The sml-mode-startup.el file does it for you.
+
+* Symbols like -> can be displayed as real arrows.  See sml-font-lock-symbols.
+
+* Fix some incompatibilities with the upcoming Emacs-21.4.
 
 * Indentation rules improved.  New customizable variable
   `sml-rightalign-and'.  Also `sml-symbol-indent' is now customizable.
+
+Changes since 3.9.3:
 
 * New add-log support (try C-x 4 a from within an SML function).
 

@@ -1,6 +1,6 @@
 2004-11-24  Stefan Monnier  <monnier@iro.umontreal.ca>
 
-	* Release version 3.9.6.
+	* Release version 4.0.
 
 2004-11-23  Stefan Monnier  <monnier@iro.umontreal.ca>
 
@@ -91,6 +91,8 @@
 	* makefile.pkg (test): Use elisp files in current dir.
 
 2000-12-24  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* Release version 3.9.5.
 
 	* Makefile (install): Also install .el files.
 	(dist): Don't rely on $CVSROOT.
@@ -184,17 +186,17 @@
 2000-02-18  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* sml-util.el (make-temp-dir, make-temp-file, temp-file-dir)
-	(delete-temp-dirs): Replaced by the make-temp-file from Emacs-21.
+	(delete-temp-dirs): Replace by the make-temp-file from Emacs-21.
 	(custom-create-map): Add :group arg and allow key to be a list.
-	(define-major-mode): Removed (use define-derived-mode instead).
+	(define-major-mode): Remove (use define-derived-mode instead).
 	(sml-builtin-nested-comments-flag): New var.
 	(concatq): Remove.
 
 	* sml-proc.el (sml-host-name): New var.
-	(sml-make-file-name): Replaced by `sml-compile-commands'.
+	(sml-make-file-name): Replace by `sml-compile-commands'.
 	(sml-config-file): New var.
 	(sml-compile-commands-alist): New var.
-	(inferior-sml-load-hook): Removed.
+	(inferior-sml-load-hook): Remove.
 	(sml-buffer): Query if the current buffer is not a *sml*.
 	(inferior-sml-mode): Use minor-mode-overriding-map-alist to disable
 	compilation-minor-mode's keybindings.
@@ -240,7 +242,7 @@
 
 1999-08-11  Stefan Monnier  <monnier@cs.yale.edu>
 
-	* release: Version 3.9.3
+	* Release version 3.9.3.
 
 	* sml-mode.texi: Somewhat update the doc.
 
@@ -277,7 +279,7 @@
 
 1999-06-19  Stefan Monnier  <monnier@cs.yale.edu>
 
-	* release: 3.9.2
+	* Release version 3.9.2
 
 	* sml-proc.el (sml-error-regexp-alist): Fix the pathological
 	font-locking on long lines.
@@ -338,7 +340,7 @@
 	smlnj as well as polyml prompts.
 	(sml-update-cursor, sml-send-command, inferior-sml-mode):
 	Make it work with compile.el's `next-error'.
-	(sml-temp-threshold): Dropped: Always use a temp file.
+	(sml-temp-threshold): Drop: always use a temp file.
 
 1999-06-10  Stefan Monnier  <monnier@cs.yale.edu>
 

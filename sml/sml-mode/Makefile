@@ -152,7 +152,7 @@ $(PACKAGE)-startup.el: $(ELFILES)
 ##
 
 TAG = $(shell echo v$(VERSION) | tr '.' '_')
-ftpdir=/home/ftp/pub/monnier/$(PACKAGE)
+ftpdir=/u/monnier/html/elisp/
 cvsmodule=$(shell cat CVS/Repository)
 cvsroot=$(shell cat CVS/Root)
 
