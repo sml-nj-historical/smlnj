@@ -375,18 +375,23 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	 Cleanup.install initPaths)
 
     fun procCmdLine () = let
-	fun p (f, "sml") = HostMachDepVC.Interact.useFile f
-	  | p (f, "sig") = HostMachDepVC.Interact.useFile f
-	  | p (f, "cm") = ignore (make f)
-	  | p (f, e) =
-		(print (concat ["!* unable to process `", f,
-				"' (unknown extension `", e, "')\n"]))
-	fun c f = (f, String.map Char.toLower
-		          (getOpt (OS.Path.ext f, "<none>")))
+	val autoload = ignore o autoload
+	val make = ignore o make
+	fun p (f, ("sml" | "sig"), mk) = HostMachDepVC.Interact.useFile f
+	  | p (f, "cm", mk) = mk f
+	  | p (f, e, mk) = Say.say ["!* unable to process `", f,
+				    "' (unknown extension `", e, "')\n"]
+	fun arg ("-a", _) = autoload
+	  | arg ("-m", _) = make
+	  | arg (f, mk) =
+	    (p (f,
+		String.map Char.toLower (getOpt (OS.Path.ext f, "<none>")),
+		mk);
+	     mk)
     in
 	case SMLofNJ.getArgs () of
 	    ["@CMslave"] => (#set StdConfig.verbose false; slave ())
-	  | l => app (p o c) l
+	  | l => ignore (foldl arg autoload l)
     end
 
     structure CM :> CM = struct
