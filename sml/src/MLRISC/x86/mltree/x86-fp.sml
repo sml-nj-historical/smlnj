@@ -976,7 +976,7 @@ struct
                                 }
                         ])
                  | gen((n,e)::rest, h, all as (NEWEDGE{entries, ...}::_)) = 
-                     gen(rest,h,
+                     gen(rest,n,
                          if n = h then 
                            (entries := e :: !entries; all)
                          else
