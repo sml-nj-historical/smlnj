@@ -1,0 +1,2 @@
+val it = () : unit
+221.sml:6.12 Error: unbound type constructor: t

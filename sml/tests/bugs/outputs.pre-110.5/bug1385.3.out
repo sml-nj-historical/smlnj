@@ -1,0 +1,8 @@
+val it = () : unit
+signature S1 = sig type t end
+signature S2 =
+  sig
+    structure A : sig type t end
+    structure B : sig type t end
+  end
+bug1385.3.sml:14.1-24.4 Error: structure def spec for B not matched

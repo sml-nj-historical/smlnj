@@ -1,0 +1,181 @@
+val it = () : unit
+infix 1 seq
+val seq = fn : 'a * 'b -> 'b
+val check = fn : bool -> string
+val check' = fn : (unit -> bool) -> string
+val range = fn : int * int -> (int -> bool) -> bool
+val checkrange = fn : int * int -> (int -> bool) -> string
+word32.sml:22.5-23.59 Warning: binding not exhaustive
+          add :: sub :: mul :: idiv :: <pat> :: <pat> = ...
+word32.sml:20.5-21.51 Warning: binding not exhaustive
+          gt :: lt :: ge :: le :: nil = ...
+val gt = fn : int * int -> bool
+val lt = fn : int * int -> bool
+val ge = fn : int * int -> bool
+val le = fn : int * int -> bool
+val add = fn : int * int -> int
+val sub = fn : int * int -> int
+val mul = fn : int * int -> int
+val idiv = fn : int * int -> int
+val imod = fn : int * int -> int
+opening Word32
+  type word = ?.word32
+  val wordSize : int
+  val toLargeWord : word -> Word32.word
+  val toLargeWordX : word -> Word32.word
+  val fromLargeWord : Word32.word -> word
+  val toLargeInt : word -> Int32.int
+  val toLargeIntX : word -> Int32.int
+  val fromLargeInt : Int32.int -> word
+  val toInt : word -> int
+  val toIntX : word -> int
+  val fromInt : int -> word
+  val orb : word * word -> word
+  val xorb : word * word -> word
+  val andb : word * word -> word
+  val notb : word -> word
+  val << : word * Word31.word -> word
+  val >> : word * Word31.word -> word
+  val ~>> : word * Word31.word -> word
+  val + : word * word -> word
+  val - : word * word -> word
+  val * : word * word -> word
+  val div : word * word -> word
+  val mod : word * word -> word
+  val compare : word * word -> order
+  val > : word * word -> bool
+  val >= : word * word -> bool
+  val < : word * word -> bool
+  val <= : word * word -> bool
+  val min : word * word -> word
+  val max : word * word -> word
+  val scan : StringCvt.radix
+             -> (char,'a) StringCvt.reader -> (word,'a) StringCvt.reader
+  val fromString : string -> word option
+  val fmt : StringCvt.radix -> word -> string
+  val toString : word -> string
+val > = fn : int * int -> bool
+val < = fn : int * int -> bool
+val >= = fn : int * int -> bool
+val <= = fn : int * int -> bool
+val + = fn : int * int -> int
+val - = fn : int * int -> int
+val * = fn : int * int -> int
+val div = fn : int * int -> int
+val mod = fn : int * int -> int
+val i2w = fn : int -> word
+val w2i = fn : word -> int
+val test1 = "OK" : string
+val test3 = "OK" : string
+val test5a = "OK" : string
+val test5b = "OK" : string
+val test6a = "OK" : string
+val test6b = "OK" : string
+val test7a = "OK" : string
+val test7b = "OK" : string
+val test8a = "OK" : string
+val test8b = "OK" : string
+val maxposint = 1073741823 : int
+val maxnegint = ~1073741824 : int
+val pwr2 = fn : int -> int
+val rwp = fn : int -> int -> int
+val itow = fn : int -> Word31.word
+val test9a = "OK" : string
+val test9b = "OK" : string
+val test9d = "OK" : string
+val test9e = "OK" : string
+val test9f = "OK" : string
+val test9g = "OK" : string
+val test9h = "OK" : string
+val test10a = "OK" : string
+val test10b = "OK" : string
+val test10c = "OK" : string
+val test10d = "OK" : string
+val test11a = "OK" : string
+val test11b = "OK" : string
+val test11c = "OK" : string
+val test11d = "OK" : string
+val test11e = "OK" : string
+val test11f = "OK" : string
+val test11g = "OK" : string
+val test11h = "OK" : string
+val test11i = "OK" : string
+opening Word32
+  type word = ?.word32
+  val wordSize : int
+  val toLargeWord : word -> Word32.word
+  val toLargeWordX : word -> Word32.word
+  val fromLargeWord : Word32.word -> word
+  val toLargeInt : word -> Int32.int
+  val toLargeIntX : word -> Int32.int
+  val fromLargeInt : Int32.int -> word
+  val toInt : word -> int
+  val toIntX : word -> int
+  val fromInt : int -> word
+  val orb : word * word -> word
+  val xorb : word * word -> word
+  val andb : word * word -> word
+  val notb : word -> word
+  val << : word * Word31.word -> word
+  val >> : word * Word31.word -> word
+  val ~>> : word * Word31.word -> word
+  val + : word * word -> word
+  val - : word * word -> word
+  val * : word * word -> word
+  val div : word * word -> word
+  val mod : word * word -> word
+  val compare : word * word -> order
+  val > : word * word -> bool
+  val >= : word * word -> bool
+  val < : word * word -> bool
+  val <= : word * word -> bool
+  val min : word * word -> word
+  val max : word * word -> word
+  val scan : StringCvt.radix
+             -> (char,'a) StringCvt.reader -> (word,'a) StringCvt.reader
+  val fromString : string -> word option
+  val fmt : StringCvt.radix -> word -> string
+  val toString : word -> string
+val test12a = "OK" : string
+val test12b = "OK" : string
+val test12c = "OK" : string
+val test12d = "OK" : string
+val test12e = "OK" : string
+val test12f = "OK" : string
+val test12q = "OK" : string
+val test12r = "OK" : string
+val test12s = "OK" : string
+val chk = fn : ('a -> word option) -> 'a * int -> string
+val chkScan = fn : StringCvt.radix -> string * int -> string
+val test13a =
+  ["OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK"]
+  : string list
+val test13b = ["OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK"]
+  : string list
+val test14a =
+  ["OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK"]
+  : string list
+val test14b = ["OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK"]
+  : string list
+val test15a =
+  ["OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK"]
+  : string list
+val test15b =
+  ["OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK"]
+  : string list
+val test16a =
+  ["OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK"]
+  : string list
+val test16b =
+  ["OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK"]
+  : string list
+val test17a =
+  ["OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK",
+   "OK","OK","OK","OK"] : string list
+val test17b = ["OK","OK","OK","OK","OK","OK","OK","OK","OK","OK","OK"]
+  : string list
+val test18 = "OK" : string
+val test19 = "OK" : string
+val test20 = "OK" : string
+val test21 = "OK" : string
+val test22 = "OK" : string

@@ -1,0 +1,3 @@
+val it = () : unit
+bug92.4.sml:16.16-16.27 Error: tycon arity for elem does not match specified arity
+

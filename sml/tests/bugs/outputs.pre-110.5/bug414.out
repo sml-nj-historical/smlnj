@@ -1,0 +1,6 @@
+val it = () : unit
+val test = fn : string -> {cd_in:unit -> unit, cd_out:unit -> unit}
+val cd_in = fn : unit -> unit
+val cd_out = fn : unit -> unit
+val it = () : unit
+val it = () : unit

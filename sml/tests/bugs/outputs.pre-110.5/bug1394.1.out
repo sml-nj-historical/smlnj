@@ -1,0 +1,4 @@
+val it = () : unit
+nonfix *
+bug1394.1.sml:4.7-4.12 Error: syntax error: deleting  RBRACE EQUALOP LBRACE
+bug1394.1.sml:4.12-4.18 Error: syntax error: deleting  ASTERISK EQUALOP INT

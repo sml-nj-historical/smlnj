@@ -1,0 +1,4 @@
+val it = () : unit
+signature S = sig val = : 'a * 'a -> bool end
+signature S' = sig val = : int end
+

@@ -1,0 +1,14 @@
+#
+# Modules to be pre-loaded into a "standard" system during bootstrap.
+#   Each line should have the form "command file" where "command" is
+#   either "autoload" or "make".
+#
+#   Copyright (c) 1999 by Lucent Bell Laboratories
+#
+# author: Matthias Blume (blume@cs.princeton.edu)
+#
+autoload $/basis.cm
+autoload $smlnj/cm.cm
+autoload $smlnj/cmb.cm
+autoload $smlnj/compiler.cm
+autoload $/smlnj-lib.cm

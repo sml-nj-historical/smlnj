@@ -1,0 +1,2 @@
+val it = () : unit
+bug1317.sml:4.16-4.20 Error: unbound signature: FSIG

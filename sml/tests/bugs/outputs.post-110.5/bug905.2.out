@@ -1,0 +1,13 @@
+val it = () : unit
+bug905.2.sml:4.3-4.18 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+bug905.2.sml:11.23-11.32 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: ?.X1 list ref * ?.X1 list
+  operand:         ?.X1 list ref * t list
+  in expression:
+    lr := x :: nil
+bug905.2.sml:25.3-25.24 Error: operator is not a function [tycon mismatch]
+  operator: ?.X1
+  in expression:
+    (A.get ()) ()
+

@@ -1,0 +1,7 @@
+val it = () : unit
+r017i-fl.sml:17.17-24.20 Error: operator and operand don't agree [literal]
+  operator domain: int ref * int
+  operand:         int ref * bool
+  in expression:
+    y := true
+

@@ -1,0 +1,13 @@
+val it = () : unit
+signature SIG = sig val e : real end
+funsig PROD(<param>: sig
+                       structure M : <sig>
+                       structure N : <sig>
+                     end) :
+           sig val e : real end
+structure S : sig val e : real end
+structure P : sig val e : real end
+functor Square : <sig>
+functor F : <sig>
+structure A : SIG
+val it = 0.0 : real

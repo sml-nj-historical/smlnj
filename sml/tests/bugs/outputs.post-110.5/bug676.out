@@ -1,0 +1,6 @@
+val it = () : unit
+val r = ref 0 : int ref
+val inc = fn : int ref -> unit
+val g = fn : unit -> int
+val it = {first=2,last=1} : {first:int, last:int}
+

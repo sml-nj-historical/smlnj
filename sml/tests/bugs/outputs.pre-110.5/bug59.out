@@ -1,0 +1,41 @@
+val it = () : unit
+val it = () : unit
+bug59.sml:1288.20-1288.47 Warning: binding not exhaustive
+          Lambda (v,X') = ...
+bug59.sml:1297.14-1297.40 Warning: binding not exhaustive
+          Appl (X1,X2) = ...
+bug59.sml:1196.9-1196.42 Warning: binding not exhaustive
+          Arrow (gamma,delta) = ...
+bug59.sml:1181.17-1181.51 Warning: binding not exhaustive
+          Arrow (alpha,beta) = ...
+bug59.sml:1216.6-1216.43 Warning: binding not exhaustive
+          Intersect (gamma,delta) = ...
+bug59.sml:1215.20-1215.59 Warning: binding not exhaustive
+          Intersect (alpha,beta) = ...
+signature UTILS = <sig>
+structure Utils : UTILS
+signature TYPEVAR = <sig>
+structure Typevar : TYPEVAR
+signature GNDVAR = <sig>
+structure Gndvar : GNDVAR
+signature TERM = <sig>
+structure Term : TERM
+signature TP = <sig>
+structure Tp : TP
+signature BASIS = <sig>
+structure Basis : BASIS
+signature PAIR = <sig>
+structure Pair : PAIR
+signature SUBST = <sig>
+structure Subst : SUBST
+signature EXPANSION = <sig>
+structure Expansion : EXPANSION
+signature LIFT = <sig>
+structure Lift : LIFT
+signature CHAIN = <sig>
+structure Chain : CHAIN
+signature UNIFY = <sig>
+structure Unify : UNIFY
+signature PP = <sig>
+structure Pp : PP
+structure Test : <sig>

@@ -1,0 +1,5 @@
+val it = () : unit
+val maxint = 4.50359962737E15 : real
+val realround = fn : real -> real
+val it = (0.0,0.0,1.0,1.0,1.0) : real * real * real * real * real
+val it = 599627370496.0 : real

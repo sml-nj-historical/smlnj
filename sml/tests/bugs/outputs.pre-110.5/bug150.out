@@ -1,0 +1,2 @@
+val it = () : unit
+bug150.sml:7.1 Error: syntax error found at END

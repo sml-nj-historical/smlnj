@@ -1,0 +1,7 @@
+val it = () : unit
+structure A :
+  sig
+    structure C : <sig>
+    val y : bool
+  end
+

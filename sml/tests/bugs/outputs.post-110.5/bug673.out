@@ -1,0 +1,27 @@
+val it = () : unit
+signature MONOID =
+  sig
+    type t
+    val plus : t * t -> t
+    val e : t
+  end
+funsig PROD(<param>: sig
+                       structure M : <sig>
+                       structure N : <sig>
+                     end) :
+           sig
+             type t
+             val plus : t * t -> t
+             val e : t
+           end
+functor Square : <sig>
+functor Prod : <sig>
+structure Int :
+  sig
+    type  t = int
+    val e : int
+    val plus : int * int -> int
+  end
+structure Int2 : MONOID
+val it = 0 : Int.t
+

@@ -1,0 +1,3 @@
+val it = () : unit
+datatype foo = A | B of foo
+val it = B A : foo

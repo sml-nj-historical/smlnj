@@ -1,0 +1,4 @@
+val it = () : unit
+structure Type : sig datatype ty = Tyc of string end
+structure P : sig val pp_type : ?.PrettyPrint.ppstream -> Type.ty -> unit end
+val test_type = bool : Type.ty

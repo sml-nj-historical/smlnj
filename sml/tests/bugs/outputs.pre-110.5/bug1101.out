@@ -1,0 +1,5 @@
+val it = () : unit
+val k = fn : 'a -> 'b -> 'a
+bug1101.sml:4.1-4.12 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+val f = fn : ?.X1 -> int

@@ -1,0 +1,16 @@
+val it = () : unit
+signature S1 = sig type t end
+signature S2 =
+  sig
+    structure T : sig type t end
+    datatype r = Kr of T.t
+  end
+signature S3 =
+  sig
+    type s
+    datatype t = Kt of s
+  end
+299.sml:21.9-26.11 Error: dependency cycle in instantiate
+
+uncaught exception Unbound
+  raised at: elaborate/elabmod.sml:1329.39-1329.49

@@ -1,0 +1,7 @@
+val it = () : unit
+val a = (0,0,0,0,0,0,0,0,0)
+  : int * int * int * int * int * int * int * int * int
+val b = (0,0,0,0,0,0,0,0,0,0)
+  : int * int * int * int * int * int * int * int * int * int
+val it = true : bool
+val it = true : bool

@@ -1,0 +1,8 @@
+val it = () : unit
+signature SIGA = sig type t end
+signature SIGB =
+  sig
+    datatype tt = TT
+    type  t = tt
+  end
+functor F : <sig>

@@ -1,0 +1,63 @@
+val it = () : unit
+signature FIELD =
+  sig
+    type elem
+    val zero : elem
+    val one : elem
+    val eq : elem * elem -> bool
+    val + : elem * elem -> elem
+    val * : elem * elem -> elem
+    val ~ : elem -> elem
+    exception Div
+    val inv : elem -> elem
+  end
+signature COMPLEX =
+  sig
+    type elem
+    val zero : elem
+    val one : elem
+    val eq : elem * elem -> bool
+    val + : elem * elem -> elem
+    val * : elem * elem -> elem
+    val ~ : elem -> elem
+    exception Div
+    val inv : elem -> elem
+    val complex : real * real -> elem
+    val - : elem * elem -> elem
+    val / : elem * elem -> elem
+    val re : elem -> real
+    val im : elem -> real
+    val abs : elem -> real
+    val conj : elem -> elem
+    val cis : real -> elem
+  end
+structure Cartesian : COMPLEX
+signature POLYNOMIAL =
+  sig
+    structure F :
+      sig
+        type elem
+        val zero : elem
+        val one : elem
+        val eq : elem * elem -> bool
+        val + : elem * elem -> elem
+        val * : elem * elem -> elem
+        val ~ : elem -> elem
+        exception Div
+        val inv : elem -> elem
+      end
+    type elem
+    val degree : elem -> int
+    val zero : elem
+    val one : elem
+    val x : elem
+    val const : F.elem -> elem
+    val poly : F.elem list -> elem
+    val coeff : elem -> F.elem list
+    val * : elem * elem -> elem
+    val + : elem * elem -> elem
+  end
+functor Polynomial : <sig>
+structure PC : POLYNOMIAL
+val xx = "before val p" : string
+val p = [(0.75,0.0),(2.0,0.0),(1.0,0.0)] : PC.elem

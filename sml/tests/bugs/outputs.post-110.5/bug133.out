@@ -1,0 +1,10 @@
+val it = () : unit
+bug133.sml:5.11-6.58 Warning: match nonexhaustive
+          (keyi,tri) :: alist => ...
+  
+bug133.sml:4.1-7.40 Warning: match nonexhaustive
+          ((key :: keys,x),Stree (xs,alist)) => ...
+  
+datatype 'a tree = Stree of 'a list * (string * 'a tree) list
+val insert = fn : (string list * 'a) * 'b tree -> 'b tree
+

@@ -1,0 +1,38 @@
+val it = () : unit
+signature S1 =
+  sig
+    type t
+    datatype d = D of t
+    val x : d
+  end
+signature S2 = sig type u end
+signature S4 =
+  sig
+    structure FOO :
+      sig
+        type t
+        datatype d = D of t
+        val x : d
+      end
+    structure BAR : sig type u end
+    sharing type FOO.t = BAR.u
+  end
+signature S3 =
+  sig
+    structure A : sig structure A1 : <sig> end
+    structure BAR :
+      sig
+        type t
+        datatype d = D of t
+        val x : d
+      end
+    structure B :
+      sig
+        structure FOO : <sig>
+        structure BAR : <sig>
+        sharing type FOO.t = BAR.u
+      end
+    sharing BAR = A.A1.A2.FOO
+  end
+functor F : <sig>
+

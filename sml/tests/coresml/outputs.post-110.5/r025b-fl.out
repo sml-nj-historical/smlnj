@@ -1,0 +1,7 @@
+val it = () : unit
+r025b-fl.sml:13.1-15.18 Error: expression doesn't match constraint [tycon mismatch]
+  expression: ?.u
+  constraint: ?.t
+  in expression:
+    A: ?.t
+

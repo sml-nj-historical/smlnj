@@ -1,0 +1,2 @@
+val it = () : unit
+bug1072.sml:6.16-6.25 Error: nonlocal path in type sharing: Y.t

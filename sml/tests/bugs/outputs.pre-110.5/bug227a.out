@@ -1,0 +1,3 @@
+val it = () : unit
+datatype 'a d = D1 | D2 of 'a d * 'a
+val it = true : bool

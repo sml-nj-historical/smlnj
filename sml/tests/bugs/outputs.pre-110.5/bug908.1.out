@@ -1,0 +1,4 @@
+val it = () : unit
+
+uncaught exception divide by zero
+  raised at: <file stdIn>

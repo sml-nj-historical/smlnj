@@ -1,0 +1,9 @@
+val it = () : unit
+signature S5 =
+  sig
+    structure A : sig end
+    structure B : sig end
+    sharing B = A
+  end
+functor F5 : <sig>
+

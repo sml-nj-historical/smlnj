@@ -1,0 +1,160 @@
+val it = () : unit
+infix 1 seq
+val seq = fn : 'a * 'b -> 'b
+val check = fn : bool -> string
+val check' = fn : (unit -> bool) -> string
+val range = fn : int * int -> (int -> bool) -> bool
+val checkrange = fn : int * int -> (int -> bool) -> string
+array2.sml:20.1-20.46 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * ('Z * 'Y -> int)
+  in expression:
+    tabulate (0,0,(fn (<pat>,<pat>) => <exp> div <exp>))
+array2.sml:25.1-25.78 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * (int * int -> int)
+  in expression:
+    tabulate (3,4,(fn args => (<exp>; <exp>)))
+array2.sml:61.29-61.35 Error: unbound variable or constructor: height
+array2.sml:62.29-62.34 Error: unbound variable or constructor: width
+array2.sml:86.1-86.30 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * (int * int -> int)
+  in expression:
+    tabulate (3,4,fill)
+array2.sml:90.9-90.38 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * (int * int -> int)
+  in expression:
+    tabulate (3,4,fill)
+array2.sml:91.9-92.43 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: {dst:'Z array, dst_col:int, dst_row:int, src:'Z region}
+  operand:         {dst:_, dst_col:'Y, dst_row:'X, src:_, src_reg:'W}
+  in expression:
+    copy {src=a2,dst=a2,src_reg=src_reg,dst_col=dst_col,dst_row=dst_row}
+array2.sml:139.5-140.52 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: {dst:'Z array, dst_col:int, dst_row:int, src:'Z region}
+  operand:         {dst:_, dst_col:'Y, dst_row:'X, src:_, src_reg:'W}
+  in expression:
+    copy {src=a1,dst=a1,src_reg=src_reg,dst_col=dst_col,dst_row=dst_row}
+array2.sml:168.1-168.30 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * (int * int -> int)
+  in expression:
+    tabulate (3,4,fill)
+array2.sml:171.5-173.63 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int -> unit
+  in expression:
+    app collect
+array2.sml:175.5-177.63 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * int -> unit
+  in expression:
+    appi collecti
+array2.sml:179.5-181.52 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * int -> unit
+  in expression:
+    appi collecti
+array2.sml:183.5-185.51 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * int -> unit
+  in expression:
+    appi collecti
+array2.sml:187.5-189.43 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * int -> unit
+  in expression:
+    appi collecti
+array2.sml:191.5-193.21 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * int -> unit
+  in expression:
+    appi collecti
+array2.sml:195.5-197.21 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * int -> unit
+  in expression:
+    appi collecti
+array2.sml:199.5-201.21 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * int -> unit
+  in expression:
+    appi collecti
+array2.sml:203.5-205.21 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * int -> unit
+  in expression:
+    appi collecti
+array2.sml:207.5-209.31 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * int -> unit
+  in expression:
+    appi collecti
+array2.sml:211.5-213.27 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * int -> unit
+  in expression:
+    appi collecti
+array2.sml:215.5-217.33 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * int -> unit
+  in expression:
+    appi collecti
+array2.sml:221.9-221.38 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * (int * int -> int)
+  in expression:
+    tabulate (3,4,fill)
+array2.sml:221.5-226.8 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int -> int
+  in expression:
+    modify (fn a => (collect <exp>; <exp> * <exp>))
+array2.sml:230.9-230.38 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * (int * int -> int)
+  in expression:
+    tabulate (3,4,fill)
+array2.sml:230.5-236.8 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * int -> int
+  in expression:
+    modifyi (fn args as (<pat>,<pat>,<pat>) => (collecti <exp>; <exp> * <exp>))
+array2.sml:289.9-289.38 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * (int * int -> int)
+  in expression:
+    tabulate (3,4,fill)
+array2.sml:296.9-296.38 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         int * int * (int * int -> int)
+  in expression:
+    tabulate (3,4,fill)
+array2.sml:300.9-302.66 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: int region
+  operand:         _ * 'Z
+  in expression:
+    (((foldi traversal) (fn <pat> => <exp>)) nil) (a3,reg)
+array2.sml:379.5-379.40 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         'Z -> unit
+  in expression:
+    appi ignore
+array2.sml:381.3-381.42 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: traversal
+  operand:         'Z * 'Y * 'X -> 'X
+  in expression:
+    modifyi (fn (_,_,a) => a)
+array2.sml:383.7-383.47 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: 'Z region
+  operand:         _ * _
+  in expression:
+    (((foldi RowMajor) (fn <pat> => <exp>)) 0) (a1,reg)
+array2.sml:385.4-385.44 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: 'Z region
+  operand:         _ * _
+  in expression:
+    (((foldi ColMajor) (fn <pat> => <exp>)) 0) (a1,reg)
+array2.sml:402.20-402.26 Error: unbound variable or constructor: height

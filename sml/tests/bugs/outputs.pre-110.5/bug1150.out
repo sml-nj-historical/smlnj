@@ -1,0 +1,2 @@
+val it = () : unit
+bug1150.sml:3.15-3.18 Error: unbound functor: F

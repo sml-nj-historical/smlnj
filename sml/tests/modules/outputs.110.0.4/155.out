@@ -1,0 +1,12 @@
+val it = () : unit
+signature S1 =
+  sig
+    eqtype t
+    val x : t
+  end
+signature S2 =
+  sig
+    structure A : sig end
+    structure C : sig structure A : <sig> end
+    sharing C.A = A
+  end

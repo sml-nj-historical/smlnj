@@ -1,0 +1,6 @@
+val it = () : unit
+bug1174.sml:24.9-29.8 Error: unmatched structure specification: str1
+bug1174.sml:24.9-29.8 Error: value type in structure doesn't match signature spec
+    name: h
+  spec:   ?.t -> int
+  actual: bool -> int

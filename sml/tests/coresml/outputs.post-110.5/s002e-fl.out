@@ -1,0 +1,3 @@
+val it = () : unit
+s002e-fl.sml:13.1-13.22 Error: duplicate exception declaration: one
+

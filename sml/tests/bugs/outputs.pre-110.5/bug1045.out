@@ -1,0 +1,3 @@
+val it = () : unit
+signature S = sig structure A : sig val x : int end end
+bug1045.sml:8.1-11.4 Error: unmatched value specification: x

@@ -1,0 +1,36 @@
+(* viscomp-ppc.cm *)
+
+(*
+ * This is the part of what used to be viscomp-lib.cm that is specific to
+ * to PPCs.
+ *   (M.Blume, 11/1999)
+ *
+ * This is now just a group which gets referred to by the actual library
+ * file in system/smlnj/viscomp/ppc.cm.
+ *   M.Blume (03/2000)
+ *)
+
+Group (../system/smlnj/viscomp/ppc.cm)
+	structure PPCVisComp
+        structure PPCCG
+        structure PPCCpsRegs
+        structure PPCInstr
+	structure PPCProps
+	structure PPCFlowGraph
+	structure PPCAsmEmitter
+is
+TopLevel/viscomp/ppcvis.sml
+CodeGen/ppc/ppcCG.sml
+CodeGen/ppc/ppcCpsRegs.sml
+CodeGen/ppc/ppcMLTree.sml
+CodeGen/ppc/ppcPseudoInstr.sml
+CodeGen/ppc/ppcgen.sml
+CodeGen/ppc/ppcspec.sml
+
+$/basis.cm
+$/smlnj-lib.cm
+$smlnj/viscomp/core.cm
+$MLRISC/Control.cm
+$MLRISC/MLRISC.cm
+$MLRISC/PPC.cm
+

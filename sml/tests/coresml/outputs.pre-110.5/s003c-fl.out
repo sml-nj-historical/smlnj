@@ -1,0 +1,2 @@
+val it = () : unit
+s003c-fl.sml:13.1-15.4 Error: duplicate type variable name: a

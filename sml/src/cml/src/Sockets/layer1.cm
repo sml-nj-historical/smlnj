@@ -1,0 +1,20 @@
+(* layer1.cm
+ *
+ * COPYRIGHT (c) 1996 AT&T Research.
+ *
+ *)
+
+Group
+  signature CML_SOCKET
+  structure PreSock
+  structure CML_Socket
+is
+
+../core-cml/sources.cm
+#if defined(OPSYS_UNIX)
+../Unix/sources.cm
+#endif
+
+pre-sock.sml
+cml-socket-sig.sml
+cml-socket.sml

@@ -1,0 +1,7 @@
+val it = () : unit
+bug1311.sml:5.3-5.30 Error: unbound type variable in type declaration: 'a
+bug1311.sml:6.27-6.43 Error: operator and operand don't agree [UBOUND match]
+  operator domain: 'a
+  operand:         'a
+  in expression:
+    cons y

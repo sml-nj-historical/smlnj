@@ -1,0 +1,4 @@
+val it = () : unit
+83.sml:37.1-40.4 Error: type x does not match definitional specification
+83.sml:53.1-56.4 Error: unmatched type specification: int
+83.sml:76.1-79.4 Error: structure def spec for A not matched

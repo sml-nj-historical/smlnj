@@ -1,0 +1,48 @@
+val it = () : unit
+signature ASIG =
+  sig
+    type g
+    type n
+    type 'a t
+    val newG : unit -> g
+    val newN : g -> n
+    val nodes : g -> n list
+    val empty : 'a t
+    val add : 'a t * n * 'a -> 'a t
+    val look : 'a t * n -> 'a option
+    val id : n -> string
+  end
+structure A : ASIG
+signature BSIG =
+  sig
+    structure A :
+      sig
+        type g
+        type n
+        type 'a t
+        val newG : unit -> g
+        val newN : g -> n
+        val nodes : g -> n list
+        val empty : 'a t
+        val add : 'a t * n * 'a -> 'a t
+        val look : 'a t * n -> 'a option
+        val id : n -> string
+      end
+    datatype t = B of {g:A.g, nstring:A.n -> string}
+    val mk : string list -> t
+  end
+ID of new node is: 1
+ID of new node is: 2
+ID of new node is: 3
+c
+b
+a
+structure B : BSIG
+functor C : <sig>
+structure C :
+  sig
+    structure A : <sig>
+    val show : B.t -> unit
+  end
+val test = () : unit
+

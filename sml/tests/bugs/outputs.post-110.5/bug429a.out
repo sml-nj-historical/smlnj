@@ -1,0 +1,29 @@
+val it = () : unit
+signature BB =
+  sig
+    type t
+    val x : t
+  end
+signature CC =
+  sig
+    structure B :
+      sig
+        type t
+        val x : t
+      end
+  end
+signature DD =
+  sig
+    structure B :
+      sig
+        type t
+        val x : t
+      end
+  end
+signature TT =
+  sig
+    structure D : sig structure B : <sig> end
+    val y : D.B.t
+  end
+functor F : <sig>
+

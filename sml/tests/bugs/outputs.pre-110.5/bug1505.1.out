@@ -1,0 +1,10 @@
+val it = () : unit
+signature S =
+  sig
+    datatype t = C
+    functor F : (<param>: <sig>) : <sig>
+  end
+bug1505.1.sml:9.1-12.4 Error: value type in structure doesn't match signature spec
+    name: v
+  spec:   ?.S.t
+  actual: ?.S.t

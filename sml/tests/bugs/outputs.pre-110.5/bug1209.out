@@ -1,0 +1,2 @@
+val it = () : unit
+val subst = fn : ('a -> unit) -> 'b

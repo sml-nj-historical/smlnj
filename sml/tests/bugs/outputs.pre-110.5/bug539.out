@@ -1,0 +1,6 @@
+val it = () : unit
+bug539.sml:5.1-7.4 Error: operator and operand don't agree [literal]
+  operator domain: string * string
+  operand:         int * string
+  in expression:
+    hd (! r) ^ "hi"

@@ -1,0 +1,4 @@
+val it = () : unit
+type  'a ID = 'a
+val f = fn : 'a -> 'a
+val g = fn : 'a -> 'b

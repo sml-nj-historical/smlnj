@@ -1,0 +1,7 @@
+val it = () : unit
+type A = int
+type x = A
+type y = A
+m003c-fl.sml:18.16 Error: unbound variable or constructor: y
+m003c-fl.sml:18.12 Error: unbound variable or constructor: x
+

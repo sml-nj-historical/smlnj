@@ -1,0 +1,6 @@
+Library
+	structure SparcCompiler
+is
+	$smlnj/viscomp/core.cm
+	$smlnj/viscomp/sparc.cm
+	sparc.sml

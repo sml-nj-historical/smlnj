@@ -1,0 +1,4 @@
+val it = () : unit
+signature A = sig end
+signature B = sig end
+

@@ -1,0 +1,28 @@
+val it = () : unit
+signature S1 =
+  sig
+    type t
+    val x : t
+  end
+signature S2 =
+  sig
+    structure A :
+      sig
+        type t
+        val x : t
+      end
+    type s
+    val y : s * A.t
+  end
+signature S3 =
+  sig
+    structure B : sig type r end
+    structure A :
+      sig
+        type t
+        val x : t
+      end
+    type s
+    val y : s * A.t
+    val z : B.r * A.t * s
+  end

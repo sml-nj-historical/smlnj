@@ -1,0 +1,12 @@
+val it = () : unit
+signature FORMULA =
+  sig
+    type formula
+    val NUM : formula
+  end
+bug35.1.sml:11.3-11.39 Error: right-hand-side of clause doesn't agree with function result type [tycon mismatch]
+  expression:  int * F.formula
+  result type:  F.formula
+  in declaration:
+    parse = (fn () => (0,F.NUM): F.formula)
+

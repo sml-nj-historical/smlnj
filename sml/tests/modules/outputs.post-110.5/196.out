@@ -1,0 +1,8 @@
+val it = () : unit
+functor T : <sig>
+structure B :
+  sig
+    structure B : <sig>
+    val x : B.A.t
+  end
+

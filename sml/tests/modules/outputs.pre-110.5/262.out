@@ -1,0 +1,4 @@
+val it = () : unit
+signature S = sig end
+functor Foo : <sig>
+262.sml:5.15-5.30 Error: structure C defined by partially applied functor

@@ -1,0 +1,5 @@
+val it = () : unit
+bug1323.2.sml:13.1-22.4 Warning: binding contains no variables
+          () = ...
+functor F : <sig>
+

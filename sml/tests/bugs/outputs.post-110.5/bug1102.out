@@ -1,0 +1,3 @@
+val it = () : unit
+bug1102.sml:3.1-8.4 Error: inconsistent equality properties in type sharing
+

@@ -1,0 +1,7 @@
+val it = () : unit
+bug1221.sml:3.37-3.64 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: Word32.word * Word32.word
+  operand:         word * word
+  in expression:
+    Word32.div (ten,ten)
+

@@ -1,0 +1,4 @@
+val it = () : unit
+datatype foo = A | B of foo ref
+val it = B (ref A) : foo
+

@@ -1,0 +1,6 @@
+val it = () : unit
+r015b-fl.sml:13.9-15.22 Error: types of rules don't agree [literal]
+  earlier rule(s): bool -> bool
+  this rule: int -> int
+  in rule:
+    y => y + 3

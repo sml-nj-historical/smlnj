@@ -1,0 +1,28 @@
+Group
+  signature OS_IO
+  signature OS_PROCESS 
+
+  structure Syscall
+  structure OS 
+  structure BinPrimIO
+  structure BinIO
+  structure TextPrimIO
+  structure TextIO
+  structure RunCML
+is
+  ../IO/sources.cm
+  ../glue/sources.cm
+  ../core-cml/sources.cm
+  os.cm 
+
+  syscall.sml
+  os.sml
+
+  win32-bin-prim-io.sml
+  win32-bin-io.sml
+  win32-text-prim-io.sml
+  win32-text-io.sml
+
+  win32-glue.sml
+
+  run-cml.sml

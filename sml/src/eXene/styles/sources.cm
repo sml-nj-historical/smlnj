@@ -1,0 +1,19 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ *)
+
+Group
+is
+
+cml-lib.cm
+cml.cm
+../lib/sources.cm
+
+quark-sig.sml
+quark.sml
+
+parse-resource-specs.sml
+(* styles-sig.sml *)
+styles-func.sml
+

@@ -1,0 +1,12 @@
+val it = () : unit
+signature FORMULA =
+  sig
+    type formula
+    val NUM : formula
+  end
+bug35E.sml:12.4-12.40 Error: expression and constraint don't agree (tycon mismatch)
+  expression: 'Z * ?.formula
+  constraint: ?.formula
+  in expression:
+    ((0 : 'Z),F.NUM)
+

@@ -1,0 +1,21 @@
+val it = () : unit
+val even = fn : int -> bool
+val odd = fn : int -> bool
+val it = true : bool
+val it = false : bool
+datatype 'a X = X of string
+val stripX = fn : 'a X -> string
+val it = fn : 'a -> string
+val it = "OK" : string
+val stripX666 = fn : 'a X -> 'a X
+val it = fn : 'a -> 'b X
+val it = X "000" : int X
+val it = fn : 'a -> 'b X
+val it = X "OK" : int X
+datatype XXX = A of int * int | B of int * int
+val a12 = A (1,2) : XXX
+val b12 = B (1,2) : XXX
+val strip = fn : XXX -> int * int
+val it = false : bool
+val it = true : bool
+

@@ -1,0 +1,3 @@
+val it = () : unit
+bug1268.sml:3.1-3.16 Error: unbound structure: Assembly in path Assembly.A.logb
+

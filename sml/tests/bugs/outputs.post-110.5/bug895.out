@@ -1,0 +1,4 @@
+val it = () : unit
+datatype unit = C
+val it = () : unit
+

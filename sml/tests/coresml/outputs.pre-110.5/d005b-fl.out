@@ -1,0 +1,10 @@
+val it = () : unit
+type Color
+type A = int
+val x = - : Color
+val y = - : Color
+d005b-fl.sml:20.16-20.23 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         Color * Color
+  in expression:
+    x = y

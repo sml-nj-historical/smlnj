@@ -1,0 +1,11 @@
+val it = () : unit
+functor F : <sig>
+functor G : <sig>
+structure B : sig end
+structure C : sig structure A : <sig> end
+structure D : sig structure A : <sig> end
+56.sml:27.16-27.31 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: C.A.t * C.A.t
+  operand:         C.A.t * D.A.t
+  in expression:
+    C.A.x = D.A.x

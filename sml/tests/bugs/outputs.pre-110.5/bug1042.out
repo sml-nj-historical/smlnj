@@ -1,0 +1,9 @@
+val it = () : unit
+signature SIG =
+  sig
+    datatype access_mode = A_EXEC | A_READ | A_WRITE
+    
+    sharing type access_mode = Posix.FileSys.access_mode
+  end
+bug1042.sml:11.3-12.18 Error: unmatched type specification: access
+Error: Compiler bug: ModuleUtil: tycId

@@ -1,0 +1,16 @@
+val it = () : unit
+signature INNER =
+  sig
+    datatype a = A
+    datatype b = B of a
+  end
+signature OUTER =
+  sig
+    structure Inner :
+      sig
+        datatype a = A
+        datatype b = B of a
+      end
+    type b = Inner.b
+  end
+functor Test : <sig>

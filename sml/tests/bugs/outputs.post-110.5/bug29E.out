@@ -1,0 +1,4 @@
+val it = () : unit
+<instream>:1.9-1.13 Error: unbound structure: Foo in path Foo.x
+[closing <instream>]
+

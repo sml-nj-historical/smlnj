@@ -1,0 +1,23 @@
+val it = () : unit
+datatype token = Key of string | Name of string
+exception SynError of string
+val $ = fn : string -> token list -> string * token list
+val id = fn : token list -> string * token list
+infix 3 >>
+val >> = fn : ('a -> 'b * 'c) * ('b -> 'd) -> 'a -> 'd * 'c
+infix ||
+val || = fn : ('a -> 'b) * ('a -> 'b) -> 'a -> 'b
+infix 5 ~~
+val ~~ = fn : ('a -> 'b * 'c) * ('c -> 'd * 'e) -> 'a -> ('b * 'd) * 'e
+val empty = fn : 'a -> 'b list * 'a
+val many = fn : ('a -> 'b * 'a) -> 'a -> 'b list * 'a
+val snd = fn : 'a * 'b -> 'b
+val many_sep = fn : ('a -> 'b * 'c) -> ('c -> 'd * 'a) -> 'a -> 'b list * 'c
+val parser = fn : ('a -> 'b * 'c list) -> 'a -> 'b
+datatype typ = Con of string * typ list | Var of string
+val parseTypeExp = fn : token list -> typ
+val t1 = [Name "a",Key "->",Name "b",Key "->",Name "c"] : token list
+val t2 = [Key "(",Name "a",Key "->",Name "b",Key ")",Key "->",Name "c"]
+  : token list
+val it = Con ("->",[Var "a",Con (#,#)]) : typ
+val it = Con ("->",[Con (#,#),Var "c"]) : typ

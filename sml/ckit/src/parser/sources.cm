@@ -1,0 +1,49 @@
+Group is
+
+#if defined(NEW_CM)
+        (* standard basis *)
+        basis.cm  
+        (* Compiler, up through 110.25 *)
+        host-compiler.cm
+#endif
+
+	(* ml-yacc *)
+	ml-yacc-lib.cm
+
+	(* standard library *)
+	smlnj-lib.cm
+
+	(* pretty printer library *)
+        pp-lib.cm
+
+        (* configuration *)
+        ../variants/sources.cm
+
+	(* utilitities *)
+	util/old-pp.sml
+	util/ascii.sml
+	util/sourcemap-sig.sml
+	util/sourcemap.sml
+	util/error-sig.sml
+	util/error.sml
+
+	(* lexer and parser *)
+	grammar/tdefs.sml
+        grammar/tokentable.sml
+	grammar/c.lex
+
+	parser-sig.sml
+        parser.sml
+	parse-tree-sig.sml	
+	parse-tree.sml
+
+        (* extensions *)
+#if (defined(d))
+        extensions/d/parse-tree-ext-sig.sml
+        extensions/d/parse-tree-ext.sml        
+	grammar/d.grm
+#else
+        extensions/c/parse-tree-ext-sig.sml
+        extensions/c/parse-tree-ext.sml        
+	grammar/c.grm
+#endif

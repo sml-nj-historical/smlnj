@@ -1,0 +1,9 @@
+val it = () : unit
+val x = {1=3} : {1:int}
+val y = 3 : int
+r005c-fl.sml:15.1-15.15 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: {1:int} * {1:int}
+  operand:         {1:int} * int
+  in expression:
+    x = y
+

@@ -1,0 +1,11 @@
+val it = () : unit
+signature SIG1 =
+  sig
+    type t
+    val x : t
+  end
+signature SIG2 = sig functor Foo : (X: <sig>) : <sig> end
+structure B : SIG2
+opening B
+  functor Foo : (X: <sig>) : <sig>
+

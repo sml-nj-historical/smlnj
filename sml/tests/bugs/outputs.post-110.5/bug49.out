@@ -1,0 +1,11 @@
+val it = () : unit
+signature Sig = sig type t end
+structure S1 : sig type t = int end
+functor G : <sig>
+structure S2 : sig datatype s = A of X.t end
+bug49.sml:11.1-11.16 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         S2.s * S2.s
+  in expression:
+    A 4 = A 4
+

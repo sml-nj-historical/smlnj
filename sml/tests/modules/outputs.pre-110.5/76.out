@@ -1,0 +1,5 @@
+val it = () : unit
+structure S : sig val x : 'a list end
+functor F : <sig>
+structure A : sig structure B : <sig> end
+structure S : sig val x : int list end

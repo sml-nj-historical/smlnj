@@ -1,0 +1,3 @@
+val it = () : unit
+datatype 'a T = B of int * 'a T | E
+val p = B (0,B (2,B #)) : 'a T

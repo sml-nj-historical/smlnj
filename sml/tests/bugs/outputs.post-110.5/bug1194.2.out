@@ -1,0 +1,4 @@
+val it = () : unit
+signature SS = sig datatype 'a t = K end
+functor F : <sig>
+

@@ -1,0 +1,8 @@
+val it = () : unit
+signature E =
+  sig
+    type 'a err
+    val OK : 'a -> 'a err
+    val map : ('a -> 'b) -> 'a err -> 'b err
+  end
+structure E1 : E

@@ -1,0 +1,16 @@
+Library 
+is
+
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+        $/basis.cm
+#else
+        basis.cm
+#endif
+#endif
+
+	MLRISC.cm
+	GC.cm
+	HPPA.cm
+	
+	(* Hppa specific backend *)

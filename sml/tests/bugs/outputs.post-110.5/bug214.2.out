@@ -1,0 +1,9 @@
+val it = () : unit
+functor F : <sig>
+structure Bug :
+  sig
+    datatype p = P of X.d
+    val bug : p
+  end
+val it = P (B A) : Bug.p
+

@@ -1,0 +1,7 @@
+val it = () : unit
+functor F : <sig>
+structure S :
+  sig
+    type  s = int
+    val x : s
+  end

@@ -1,0 +1,8 @@
+val it = () : unit
+signature S =
+  sig
+    type  s = int
+    type  'a t = bool * 'a
+    sharing type s = t
+  end
+

@@ -1,0 +1,6 @@
+val it = () : unit
+datatype lyst = CONS of (string * lyst) ref | NIL of string
+val a = CONS (ref ("foo",NIL "nil")) : lyst
+val it = () : unit
+val it = () : unit
+val a = CONS (ref ("foo",NIL "nil")) : lyst

@@ -1,0 +1,9 @@
+val it = () : unit
+signature S1 = sig type t end
+signature S2 =
+  sig
+    structure A : sig type t end
+    val x : A.t
+  end
+bug155.sml:15.1-18.4 Error: unmatched structure specification: A
+

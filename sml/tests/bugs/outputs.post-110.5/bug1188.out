@@ -1,0 +1,9 @@
+val it = () : unit
+datatype K = A of int | B of {one:int, two:string}
+val b = B {one=1,two="TWO"} : K
+bug1188.sml:5.1-5.7 Error: operator and operand don't agree [type mismatch]
+  operator domain: {two:'Y; 'Z}
+  operand:         K
+  in expression:
+    (fn {two=two,...} => two) b
+

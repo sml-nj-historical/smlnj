@@ -1,0 +1,5 @@
+val it = () : unit
+bug1261.sml:3.8-3.15 Error: syntax error: deleting  REC ID EQUALOP
+bug1261.sml:3.16-3.22 Error: syntax error: deleting  FN ID COLON
+bug1261.sml:3.23-3.28 Error: syntax error: deleting  TYVAR DARROW
+

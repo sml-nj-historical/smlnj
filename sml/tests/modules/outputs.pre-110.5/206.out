@@ -1,0 +1,9 @@
+val it = () : unit
+signature SIG = sig end
+functor F : <sig>
+functor G : <sig>
+structure B :
+  sig
+    structure A : <sig>
+    structure CMSA : <sig>
+  end

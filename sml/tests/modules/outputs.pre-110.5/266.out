@@ -1,0 +1,4 @@
+val it = () : unit
+signature X = sig end
+functor Apply : <sig>
+266.sml:10.8 Error: unbound structure: G

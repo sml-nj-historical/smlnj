@@ -1,0 +1,6 @@
+val it = () : unit
+val x = ref 0 : int ref
+val f = fn : int -> unit
+val it = () : unit
+val it = ref 1 : int ref
+

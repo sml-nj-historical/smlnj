@@ -1,0 +1,21 @@
+val it = () : unit
+signature SIG1 =
+  sig
+    type t
+    type u
+    datatype c = C of u
+    datatype d = D of t * c
+  end
+signature SIG2 = sig type s = int end
+signature SIG3 =
+  sig
+    structure A :
+      sig
+        type t
+        type u
+        datatype c = C of u
+        datatype d = D of t * c
+      end
+    structure B : sig type s = int end
+    sharing type A.c = B.s
+  end

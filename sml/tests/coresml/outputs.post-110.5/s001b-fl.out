@@ -1,0 +1,3 @@
+val it = () : unit
+s001b-fl.sml:13.9-13.39 Error: duplicate label in record: name
+

@@ -1,0 +1,3 @@
+val it = () : unit
+type  'a queue = 'a list * 'a list
+val empty = <poly-record> : 'a queue

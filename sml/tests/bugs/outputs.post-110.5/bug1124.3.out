@@ -1,0 +1,14 @@
+val it = () : unit
+signature SYNTAX =
+  sig
+    type  Name = string
+    datatype Prim = p_plus
+    datatype Atom = atom_int of int | atom_unit
+    datatype Exp = exp_atom of Atom | exp_var of Name
+    datatype M = m_dynamic of Exp
+  end
+bug1124.3.sml:22.8-23.26 Warning: match nonexhaustive
+          SOME (_,r) => ...
+  
+functor Eval : <sig>
+

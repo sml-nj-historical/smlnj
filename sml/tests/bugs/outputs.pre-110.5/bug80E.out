@@ -1,0 +1,2 @@
+val it = () : unit
+bug80E.sml:6.14-6.19 Error: unbound type constructor: type2

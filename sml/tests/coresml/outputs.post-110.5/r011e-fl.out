@@ -1,0 +1,7 @@
+val it = () : unit
+r011e-fl.sml:15.1-15.31 Error: expression doesn't match constraint [UBOUND match]
+  expression: 'a -> 'a
+  constraint: 'a -> 'b
+  in expression:
+    (fn x => x): 'a -> 'b
+

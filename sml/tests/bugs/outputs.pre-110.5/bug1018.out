@@ -1,0 +1,5 @@
+val it = () : unit
+val x = ~1073741824 : int
+
+uncaught exception overflow
+  raised at: <file stdIn>

@@ -1,0 +1,18 @@
+val it = () : unit
+signature ELEMENT =
+  sig
+    type t
+    val put : unit
+  end
+signature TERM =
+  sig
+    structure S :
+      sig
+        type t
+        val put : unit
+      end
+    type subst
+    sharing type S.t = subst
+  end
+functor Term : <sig>
+structure Terms : TERM

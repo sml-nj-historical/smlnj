@@ -1,0 +1,18 @@
+val it = () : unit
+signature CAT = sig datatype t = C end
+signature L_F = sig structure Cat : sig datatype t = C end end
+signature T1 =
+  sig
+    structure Cat : sig datatype t = C end
+    structure LF : sig structure Cat : <sig> end
+  end
+signature T2 =
+  sig
+    structure Cat : sig datatype t = C end
+    structure LF : sig structure Cat : <sig> end
+    structure X :
+      sig
+        structure Cat : <sig>
+        structure LF : <sig>
+      end
+  end

@@ -1,0 +1,8 @@
+val it = () : unit
+type stacktype
+val clear = - : stacktype
+val insert = fn : int * stacktype -> stacktype
+val isempty = fn : stacktype -> bool
+val y = - : stacktype
+val test = true : bool
+

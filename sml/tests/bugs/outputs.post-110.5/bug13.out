@@ -1,0 +1,12 @@
+val it = () : unit
+signature FOO =
+  sig
+    type T1
+    type T2
+    val x1 : T1
+    val x2 : T2
+    sharing type T2 = T1
+  end
+structure Foo : FOO
+val it = [-,-] : Foo.T2 list
+

@@ -1,0 +1,6 @@
+val it = () : unit
+functor F : <sig>
+bug965.sml:4.15-4.39 Error: value type in structure doesn't match signature spec
+    name: A
+  spec:   int * int -> ?.a
+  actual: int -> ?.a

@@ -1,0 +1,35 @@
+(* viscomp-alpha32.cm *)
+
+(*
+ * This is the part of what used to be viscomp-lib.cm that is specific to
+ * to Alphas.
+ *   (M.Blume, 11/1999)
+ *
+ * This is now just a group which gets referred to by the actual library
+ * file in system/smlnj/viscomp/alpha32.cm.
+ *   M.Blume (03/2000)
+ *)
+
+Group (../system/smlnj/viscomp/alpha32.cm)
+	structure Alpha32VisComp
+        structure Alpha32CG
+        structure Alpha32CpsRegs
+        structure Alpha32Instr
+	structure Alpha32Props
+	structure Alpha32FlowGraph
+	structure Alpha32AsmEmitter
+is
+TopLevel/viscomp/alpha32vis.sml
+CodeGen/alpha32/alpha32CG.sml
+CodeGen/alpha32/alpha32CpsRegs.sml
+CodeGen/alpha32/alpha32MLTree.sml
+CodeGen/alpha32/alpha32PseudoInstrs.sml
+CodeGen/alpha32/alpha32gen.sml
+CodeGen/alpha32/alpha32spec.sml
+
+$/basis.cm
+$/smlnj-lib.cm
+$smlnj/viscomp/core.cm
+$MLRISC/Control.cm
+$MLRISC/MLRISC.cm
+$MLRISC/ALPHA.cm

@@ -1,0 +1,9 @@
+val it = () : unit
+functor Dict : <sig>
+functor T : <sig>
+structure S :
+  sig
+    structure U : <sig>
+    val x : s -> U.dict
+  end
+

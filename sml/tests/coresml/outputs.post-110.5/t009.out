@@ -1,0 +1,21 @@
+val it = () : unit
+type person = {age:int, name:string}
+val p1 = {age=99,name="Peter"} : person
+val age1 = 99 : int
+val name1 = "Peter" : string
+val nameOfPerson = fn : {age:'a, name:'b} -> 'b
+val name1 = "Peter" : string
+val age = 99 : int
+val name = "Peter" : string
+val name = "Peter" : string
+val name = "Peter" : string
+val name1 = "Peter" : string
+val f = fn : person -> string
+val name1 = "Peter" : string
+val age1 = 99 : int
+val f = fn : {lab:int} -> int
+t009.sml:22.3-22.37 Error: unresolved flex record
+   (can't tell what fields there are besides #l1)
+t009.sml:22.3-22.37 Error: unresolved flex record
+   (can't tell what fields there are besides #l1)
+

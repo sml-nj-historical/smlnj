@@ -1,0 +1,5 @@
+val it = () : unit
+signature S1 = sig datatype d = D end
+structure GlobalS1 : sig datatype d = D end
+signature S2 = sig structure N : sig datatype d = D end end
+functor F : <sig>

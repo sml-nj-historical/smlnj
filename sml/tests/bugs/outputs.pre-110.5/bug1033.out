@@ -1,0 +1,5 @@
+val it = () : unit
+val x = ref 0wx0 : Word32.word ref
+val it = () : unit
+val it = () : unit
+val it = () : unit

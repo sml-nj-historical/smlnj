@@ -1,0 +1,7 @@
+val it = () : unit
+val f = fn : string * string -> string
+bug1149.sml:5.1-5.10 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: string * string
+  operand:         string
+  in expression:
+    f "a"

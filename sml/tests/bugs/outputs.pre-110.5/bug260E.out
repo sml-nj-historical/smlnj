@@ -1,0 +1,6 @@
+val it = () : unit
+val exp = fn : int -> int
+val a = 536870912 : int
+val minint = ~1073741824 : int
+
+uncaught exception overflow

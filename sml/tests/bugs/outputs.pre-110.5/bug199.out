@@ -1,0 +1,2 @@
+val it = () : unit
+bug199.sml:3.20-3.37 Error: unbound signature: AA

@@ -1,0 +1,16 @@
+val it = () : unit
+val arr = - : (int * int) Array2.array
+val upperRight = <poly-record>
+  : {base:(int * int) Array2.array, col:int, ncols:'a option, nrows:int option,
+     row:int}
+val rm = [((1,2),(1,2)),((1,1),(1,1)),((0,2),(0,2)),((0,1),(0,1))]
+  : ((int * int) * (int * int)) list
+val dup = fn : 'a * ('a * 'a) list -> ('a * 'a) list
+val rmResult = [((1,2),(1,2)),((1,1),(1,1)),((0,2),(0,2)),((0,1),(0,1))]
+  : ((int * int) * (int * int)) list
+val rmTest = true : bool
+val cm = [((1,2),(1,2)),((0,2),(0,2)),((1,1),(1,1)),((0,1),(0,1))]
+  : ((int * int) * (int * int)) list
+val cmResult = [((1,2),(1,2)),((0,2),(0,2)),((1,1),(1,1)),((0,1),(0,1))]
+  : ((int * int) * (int * int)) list
+val cmTest = true : bool

@@ -1,0 +1,2 @@
+val it = () : unit
+share2.sml:6.28-6.40 Error: nonlocal path in type sharing: int

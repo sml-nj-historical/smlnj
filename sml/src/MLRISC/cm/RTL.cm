@@ -1,0 +1,42 @@
+(*
+ *  This library contains modules that implements the RTL and related stuff
+ *)
+
+Library 
+	signature MLTREE_RTL
+	signature OPERAND_TABLE
+	signature RTL_BUILD
+	signature RTL_PROPERTIES
+	functor MLTreeRTL
+	functor OperandTable
+	functor RTLBuild
+is
+
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+        $/basis.cm
+        $/smlnj-lib.cm
+#else
+        basis.cm
+        smlnj-lib.cm
+#endif
+#else
+        smlnj-lib.cm
+#endif
+
+	
+	Control.cm
+	Lib.cm
+	MLRISC.cm
+	MLTREE.cm
+	
+	(* RTL *)
+	../mltree/mltree-rtl.sig
+	../mltree/mltree-rtl.sml
+	../mltree/rtl-props.sig
+	../mltree/rtl-build.sig
+	../mltree/rtl-build.sml
+
+	(* Operand tables *)
+	../mltree/operand-table.sig
+	../mltree/operand-table.sml

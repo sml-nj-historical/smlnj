@@ -1,0 +1,30 @@
+val it = () : unit
+signature ORD_KEY = sig type ord_key end
+signature SIG1 =
+  sig
+    type t
+    type u
+    datatype c = C of u
+    datatype d = D of t * c
+  end
+signature SIG2 =
+  sig
+    structure K : sig type ord_key end
+    type s = K.ord_key
+  end
+signature SIG3 =
+  sig
+    structure A :
+      sig
+        type t
+        type u
+        datatype c = C of u
+        datatype d = D of t * c
+      end
+    structure B :
+      sig
+        structure K : <sig>
+        type s = K.ord_key
+      end
+    sharing type A.c = B.s
+  end

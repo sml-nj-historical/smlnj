@@ -1,0 +1,4 @@
+val it = () : unit
+val x = 2 : int
+val it = 2 : int
+

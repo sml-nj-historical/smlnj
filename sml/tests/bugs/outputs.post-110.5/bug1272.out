@@ -1,0 +1,15 @@
+val it = () : unit
+signature Z = sig end
+signature S = sig structure A : sig end end
+signature T1 =
+  sig
+    structure B : sig structure A : <sig> end
+    structure A : sig end
+  end
+signature T2 =
+  sig
+    structure B : sig structure A : <sig> end
+    structure A : sig end
+  end
+bug1272.sml:22.1-27.4 Error: possibly inconsistent structure definitions at: C.A
+

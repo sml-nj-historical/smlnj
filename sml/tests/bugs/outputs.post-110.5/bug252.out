@@ -1,0 +1,4 @@
+val it = () : unit
+signature SIG1 = sig type  ty = int end
+signature SIG2 = sig type  ty = int end
+

@@ -1,0 +1,8 @@
+val it = () : unit
+signature S1 =
+  sig
+    type s
+    type t
+  end
+293.sml:12.3-13.31 Error: duplicate specifications for type s caused by include
+

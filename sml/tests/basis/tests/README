@@ -1,0 +1,37 @@
+This directory (tests/basis/tests) contains test cases for most of the
+required structures in the new SML Basis Library.
+1995-03-23, 1996-04-19, 1997-03-12, 2000-02-29
+
+The directory must contain this file "README" and three symbolic links:
+
+   testlink -> README
+   testcycl -> testcycl
+   testbadl -> exists.not
+
+It must not contain a file or directory named "exists.not".
+
+It must also contain two files
+
+   hardlinkA
+   hardlinkB
+
+which are hard links to the same file.
+
+To create the symbolic links, execute the following commands in
+this directory (tests/basis/tests).
+
+   ln -s README testlink
+   ln -s testcycl testcycl
+   ln -s exists.not testbadl 
+
+To create hardlinkA and hardlinkB, execute the following
+
+   touch hardlinkA
+   ln hardlinkA hardlinkB
+
+Note: the files testlink, testcycl, testbadl, hardlinkA and hardlinkB
+are not in the CVS repository for sml/tests.  They have to be manually
+created after the directory is checked out.
+
+Dave MacQueen
+29 Feb 2000

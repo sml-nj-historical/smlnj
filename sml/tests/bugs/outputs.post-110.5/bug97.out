@@ -1,0 +1,24 @@
+val it = () : unit
+signature IntMapSig =
+  sig
+    type 'a map
+    exception MapFail
+    val apply : 'a map * int -> 'a
+    val update : 'a map * int * 'a -> 'a map
+    val emptyMap : 'a map
+  end
+signature ValSig = sig type value end
+signature SymSig =
+  sig
+    eqtype sym
+    val hash : sym -> int
+  end
+functor SymTblFct : <sig>
+functor FastIntMap : <sig>
+functor ValFct : <sig>
+bug97.sml:70.20-70.25 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: char
+  operand:         sym
+  in expression:
+    ord s
+

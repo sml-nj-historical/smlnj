@@ -1,0 +1,3 @@
+val it = () : unit
+structure A : sig eqtype t end
+val f = fn : A.t -> bool

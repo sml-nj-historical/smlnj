@@ -1,0 +1,8 @@
+val it = () : unit
+val g = fn : string -> int -> int
+bug949.2.sml:4.1-4.5 Error: operator and operand don't agree [literal]
+  operator domain: string
+  operand:         int
+  in expression:
+    g 12
+

@@ -1,0 +1,7 @@
+val it = () : unit
+bug1316.2.sml:3.1-3.19 Error: right-hand-side of clause doesn't agree with function result type [circularity]
+  expression:  'Z -> 'Z
+  result type:  'Z
+  in declaration:
+    f = (fn arg => (fn <pat> => <exp>))
+

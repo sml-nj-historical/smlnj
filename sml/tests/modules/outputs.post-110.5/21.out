@@ -1,0 +1,9 @@
+val it = () : unit
+functor F1 : <sig>
+structure B1 :
+  sig
+    type  s = int list
+    val y : X.t list
+  end
+val x1 = 5 : int
+

@@ -1,0 +1,5 @@
+val it = () : unit
+functor G : <sig>
+structure B : sig structure E : <sig> end
+val foo = fn : B.E.u -> unit
+

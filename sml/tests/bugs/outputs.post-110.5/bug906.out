@@ -1,0 +1,16 @@
+val it = () : unit
+signature WIDGET =
+  sig
+    datatype valign = VCenter
+    type widget
+  end
+signature WIDGET_SET =
+  sig
+    structure W :
+      sig
+        datatype valign = VCenter
+        type widget
+      end
+    type  set_item = W.widget
+  end
+

@@ -1,0 +1,4 @@
+val it = () : unit
+val f = fn : unit -> ('a -> 'a) * ('b -> 'b)
+val f = fn : unit -> ('a -> 'a) * ('b -> 'b)
+

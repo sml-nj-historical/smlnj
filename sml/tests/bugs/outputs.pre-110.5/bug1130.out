@@ -1,0 +1,3 @@
+val it = () : unit
+datatype ('a,'b) Goo = A of 'a | B of 'b
+val it = A 1 : (int,'a) Goo

@@ -1,0 +1,7 @@
+val it = () : unit
+structure A :
+  sig
+    structure B : <sig>
+    type  variable = int
+  end
+

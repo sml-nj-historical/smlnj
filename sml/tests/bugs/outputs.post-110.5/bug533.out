@@ -1,0 +1,7 @@
+val it = () : unit
+val insert1 = fn
+  : {key:''a, value:'b} list -> {key:''a, value:'b} -> {key:''a, value:'b} list
+bug533.sml:23.2-23.58 Warning: binding not exhaustive
+          {key=_,value=foo} :: nil = ...
+val foo = 100 : int
+

@@ -1,0 +1,7 @@
+val it = () : unit
+val it = (0.0,0.0) : real * real
+val it = (0.0,0.0) : real * real
+val it = (0.0,0.0) : real * real
+val it = (0.0,0) : real * int
+val it = (0.0,"abc") : real * string
+

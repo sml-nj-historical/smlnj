@@ -1,0 +1,195 @@
+\section{The {\tt Sync\-Var} structure}
+
+
+The \texttt{Sync\-Var} structure provides \textbf{Id}-style synchronous variables (or memory cells).\- These variables have two states: \textit{empty} and \textit{full}.\- An attempt to read a value from an empty variable blocks the calling thread until there is a value available.\- An attempt to put a value into a variable that is full results in the \texttt{Put}\marginref{Put}{exn-SYNC_VAR.Put}{exnSYNCVARPut} exception being raised.\- There are two kinds of synchronous variables: I-variables are write-once, while M-variables are mutable.\- 
+\begin{synopsis}
+\item {\textbf{signature}} SYNC\_\linebreak[0]VAR\label{sig-SYNC_VAR}
+\item {\STRUCTURE} SyncVar: SYNC\_\linebreak[0]VAR\label{str-SyncVar}
+\end{synopsis}
+
+\begin{interface}
+\item {\index{Put@Put!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{exception}} Put
+
+\item {\index{ivar@ivar!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{type}} \(\alpha\)~ivar
+\item {\index{iVar@iVar!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt iVar: \(\mathrm{unit}\rightarrow \alpha\:\mathrm{ivar}\)}
+
+\item {\index{iPut@iPut!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt iPut: \((\alpha\:\mathrm{ivar}\:\verb,*,\:\alpha)\rightarrow \mathrm{unit}\)}
+
+\item {\index{iGet@iGet!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt iGet: \(\alpha\:\mathrm{ivar}\rightarrow \alpha\)}
+
+\item {\index{iGetEvt@iGetEvt!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt iGetEvt: \(\alpha\:\mathrm{ivar}\rightarrow \alpha\:\mathrm{event}\)}
+
+\item {\index{iGetPoll@iGetPoll!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt iGetPoll: \(\alpha\:\mathrm{ivar}\rightarrow \alpha\:\mathrm{option}\)}
+
+\item {\index{sameIVar@sameIVar!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt sameIVar: \((\alpha\:\mathrm{ivar}\:\verb,*,\:\alpha\:\mathrm{ivar})\rightarrow \mathrm{bool}\)}
+
+\item {\index{mvar@mvar!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{type}} \(\alpha\)~mvar
+\item {\index{mVar@mVar!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mVar: \(\mathrm{unit}\rightarrow \alpha\:\mathrm{mvar}\)}
+
+\item {\index{mVarInit@mVarInit!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mVarInit: \(\alpha\rightarrow \alpha\:\mathrm{mvar}\)}
+
+\item {\index{mPut@mPut!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mPut: \((\alpha\:\mathrm{mvar}\:\verb,*,\:\alpha)\rightarrow \mathrm{unit}\)}
+
+\item {\index{mTake@mTake!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mTake: \(\alpha\:\mathrm{mvar}\rightarrow \alpha\)}
+
+\item {\index{mTakeEvt@mTakeEvt!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mTakeEvt: \(\alpha\:\mathrm{mvar}\rightarrow \alpha\:\mathrm{event}\)}
+
+\item {\index{mGet@mGet!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mGet: \(\alpha\:\mathrm{mvar}\rightarrow \alpha\)}
+
+\item {\index{mGetEvt@mGetEvt!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mGetEvt: \(\alpha\:\mathrm{mvar}\rightarrow \alpha\:\mathrm{event}\)}
+
+\item {\index{mTakePoll@mTakePoll!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mTakePoll: \(\alpha\:\mathrm{mvar}\rightarrow \alpha\:\mathrm{option}\)}
+
+\item {\index{mGetPoll@mGetPoll!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mGetPoll: \(\alpha\:\mathrm{mvar}\rightarrow \alpha\:\mathrm{option}\)}
+
+\item {\index{mSwap@mSwap!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mSwap: \((\alpha\:\mathrm{mvar}\:\verb,*,\:\alpha)\rightarrow \alpha\)}
+
+\item {\index{mSwapEvt@mSwapEvt!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mSwapEvt: \((\alpha\:\mathrm{mvar}\:\verb,*,\:\alpha)\rightarrow \alpha\:\mathrm{event}\)}
+
+\item {\index{sameMVar@sameMVar!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt sameMVar: \((\alpha\:\mathrm{mvar}\:\verb,*,\:\alpha\:\mathrm{mvar})\rightarrow \mathrm{bool}\)}
+
+\end{interface}
+
+\begin{descr}
+\item {\index{Put@Put!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{exception}} Put\label{exn-SYNC_VAR.Put}
+
+
+\begin{speccomment}
+\item 
+
+	This exception is raised when an attempt is made to put a 	value into a value that is already full (see \texttt{i\-Put} and 	\texttt{m\-Put}).\-     \end{speccomment}
+\item {\index{ivar@ivar!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{type}} \(\alpha\)~ivar\label{ty-SYNC_VAR.ivar}
+
+\begin{speccomment}
+\item 
+
+	This is the type constructor for I-structured variables.\- 	I-structured variables are write-once variables that provide 	synchronization on read operations.\- 	They are especially useful for one-shot communications, such 	as reply messages in client/server protocols.\-     \end{speccomment}
+\item {\index{iVar@iVar!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt iVar: \(\mathrm{unit}\rightarrow \alpha\:\mathrm{ivar}\)}\label{val-SYNC_VAR.iVar}
+
+
+\begin{speccomment}
+\item {\tt i\-Var ()           } 
+creates a new empty I-variable.\-     \end{speccomment}
+\item {\index{iPut@iPut!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt iPut: \((\alpha\:\mathrm{ivar}\:\verb,*,\:\alpha)\rightarrow \mathrm{unit}\)}\label{val-SYNC_VAR.iPut}\hfill\textbf{raises}~\texttt{Put}
+
+
+\begin{speccomment}
+\item {\tt i\-Put (\textit{iv}, \textit{x})           } 
+fills the I-variable \textit{iv} with the value \textit{x}.\- 	  Any threads that are blocked on \textit{iv} will be resumed.\- 	  If \textit{iv} already has a value in it, then the \texttt{Put} 	  exception is raised.\-     \end{speccomment}
+\item {\index{iGet@iGet!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt iGet: \(\alpha\:\mathrm{ivar}\rightarrow \alpha\)}\label{val-SYNC_VAR.iGet}
+
+
+\begin{speccomment}
+\item {\tt i\-Get \textit{iv}           } 
+returns the contents of the I-variable \textit{iv}.\- 	  If the variable is empty, then the calling thread blocks until 	  the variable becomes full.\-     \end{speccomment}
+\item {\index{iGetEvt@iGetEvt!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt iGetEvt: \(\alpha\:\mathrm{ivar}\rightarrow \alpha\:\mathrm{event}\)}\label{val-SYNC_VAR.iGetEvt}
+
+
+\begin{speccomment}
+\item {\tt i\-Get\-Evt \textit{iv}           } 
+returns an event-value that represents the \texttt{i\-Get} 	  operation on \textit{iv}.\-     \end{speccomment}
+\item {\index{iGetPoll@iGetPoll!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt iGetPoll: \(\alpha\:\mathrm{ivar}\rightarrow \alpha\:\mathrm{option}\)}\label{val-SYNC_VAR.iGetPoll}
+
+
+\begin{speccomment}
+\item 
+
+	  This is a non-blocking version of \texttt{i\-Get}.\- 	  If the corresponding blocking form would block, then it returns 	  \texttt{NONE}; otherwise 	  it returns \texttt{SOME} 	  of the variable's contents.\-     \end{speccomment}
+\item {\index{sameIVar@sameIVar!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt sameIVar: \((\alpha\:\mathrm{ivar}\:\verb,*,\:\alpha\:\mathrm{ivar})\rightarrow \mathrm{bool}\)}\label{val-SYNC_VAR.sameIVar}
+
+
+\begin{speccomment}
+\item {\tt same\-IVar (\textit{iv1}, \textit{iv2})           } 
+returns {\tt true}, if the \textit{iv1} and \textit{iv2} are the 	  same I-variable.\-     \end{speccomment}
+\item {\index{mvar@mvar!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{type}} \(\alpha\)~mvar\label{ty-SYNC_VAR.mvar}
+
+\begin{speccomment}
+\item 
+
+	This is the type constructor for M-structured variables.\- 	Unlike \texttt{ivar} values, M-structured variables may be 	updated multiple times.\- 	Like I-variables, however, they may only be written if they 	are empty.\-     \end{speccomment}
+\item {\index{mVar@mVar!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mVar: \(\mathrm{unit}\rightarrow \alpha\:\mathrm{mvar}\)}\label{val-SYNC_VAR.mVar}
+
+
+\begin{speccomment}
+\item {\tt m\-Var ()           } 
+creates a new empty M-variable.\-     \end{speccomment}
+\item {\index{mVarInit@mVarInit!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mVarInit: \(\alpha\rightarrow \alpha\:\mathrm{mvar}\)}\label{val-SYNC_VAR.mVarInit}
+
+
+\begin{speccomment}
+\item {\tt m\-Var x           } 
+creates a new M-variable initialized to \textit{x}.\-     \end{speccomment}
+\item {\index{mPut@mPut!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mPut: \((\alpha\:\mathrm{mvar}\:\verb,*,\:\alpha)\rightarrow \mathrm{unit}\)}\label{val-SYNC_VAR.mPut}\hfill\textbf{raises}~\texttt{Put}
+
+
+\begin{speccomment}
+\item {\tt m\-Put (\textit{mv}, \textit{x})           } 
+fills the M-variable \textit{mv} with the value \textit{x}.\- 	  Any threads that are blocked on \textit{mv} will be resumed.\- 	  If \textit{mv} already has a value in it, then the \texttt{Put} 	  exception is raised.\-     \end{speccomment}
+\item {\index{mTake@mTake!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mTake: \(\alpha\:\mathrm{mvar}\rightarrow \alpha\)}\label{val-SYNC_VAR.mTake}
+
+
+\begin{speccomment}
+\item {\tt m\-Take \textit{mv}         } 
+removes and returns the contents of the M-variable \textit{mv} 	making it empty.\- 	If the variable is already empty, then the calling thread 	is blocked until a value is available.\-     \end{speccomment}
+\item {\index{mTakeEvt@mTakeEvt!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mTakeEvt: \(\alpha\:\mathrm{mvar}\rightarrow \alpha\:\mathrm{event}\)}\label{val-SYNC_VAR.mTakeEvt}
+
+
+\begin{speccomment}
+\item {\tt m\-Take\-Evt \textit{mv}           } 
+returns an event-value that represents the \texttt{m\-Take} 	  operation on \textit{mv}.\-     \end{speccomment}
+\item {\index{mGet@mGet!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mGet: \(\alpha\:\mathrm{mvar}\rightarrow \alpha\)}\label{val-SYNC_VAR.mGet}
+
+
+\begin{speccomment}
+\item {\tt m\-Get \textit{mv}           } 
+returns the contents of the M-variable \textit{mv} without emptying 	  the variable; if the variable is empty, then the thread blocks until 	  a value is available.\- 	  It is equivalent to the code: 	  
+\begin{code}
+let val x = mTake \textit{mv} in mPut(\textit{mv}, x); x end
+	  
+\end{code}
+     \end{speccomment}
+\item {\index{mGetEvt@mGetEvt!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mGetEvt: \(\alpha\:\mathrm{mvar}\rightarrow \alpha\:\mathrm{event}\)}\label{val-SYNC_VAR.mGetEvt}
+
+
+\begin{speccomment}
+\item {\tt m\-Get\-Evt \textit{mv}           } 
+returns an event-value that represents the \texttt{m\-Get} 	  operation on \textit{mv}.\-     \end{speccomment}
+\item {\index{mGetPoll@mGetPoll!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mGetPoll: \(\alpha\:\mathrm{mvar}\rightarrow \alpha\:\mathrm{option}\)}\label{val-SYNC_VAR.mGetPoll}
+
+
+\begin{speccomment}
+\item 
+
+	  These are non-blocking versions of \texttt{m\-Take} and 	  \texttt{m\-Get} (respectively).\- 	  If the corresponding blocking form would block, then they return 	  \texttt{NONE}; otherwise 	  they return \texttt{SOME} 	  of the variable's contents.\-     \end{speccomment}
+\item {\index{mSwap@mSwap!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mSwap: \((\alpha\:\mathrm{mvar}\:\verb,*,\:\alpha)\rightarrow \alpha\)}\label{val-SYNC_VAR.mSwap}
+
+
+\begin{speccomment}
+\item {\tt m\-Swap (\textit{mv}, \textit{new\-V})           } 
+puts the value \textit{new\-V} into the M-variable \textit{mv} and returns 	  the previous contents.\- 	  If the variable is empty, then the thread blocks until 	  a value is available.\- 	  It is equivalent to the code: 	  
+\begin{code}
+let val x = mTake \textit{mv} in mPut(\textit{mv}, \textit{new\-V}); x end
+	  
+\end{code}
+ 	  except that {\tt m\-Swap} is executed atomically.\-     \end{speccomment}
+\item {\index{mSwapEvt@mSwapEvt!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt mSwapEvt: \((\alpha\:\mathrm{mvar}\:\verb,*,\:\alpha)\rightarrow \alpha\:\mathrm{event}\)}\label{val-SYNC_VAR.mSwapEvt}
+
+
+\begin{speccomment}
+\item {\tt m\-Swap\-Evt \textit{mv}           } 
+returns an event-value that represents the \texttt{m\-Swap} 	  operation on \textit{mv} and \textit{new\-V}.\-     \end{speccomment}
+\item {\index{sameMVar@sameMVar!SYNC_VAR@SYNC\_\linebreak[0]VAR}}{\textbf{val}} {\tt sameMVar: \((\alpha\:\mathrm{mvar}\:\verb,*,\:\alpha\:\mathrm{mvar})\rightarrow \mathrm{bool}\)}\label{val-SYNC_VAR.sameMVar}
+
+
+\begin{speccomment}
+\item {\tt same\-MVar (\textit{mv1}, \textit{mv2})           } 
+returns {\tt true}, if \textit{mv1} and \textit{mv2} are the same 	  M-variable.\-   \end{speccomment}
+\end{descr}
+
+
+I-variables provide a useful mechanism for implementing the reply communication in request/reply protocols.\- They may also be used to implement incremental data structures and streams.\-
+
+A disciplined use of M-variables can provide an atomic read-modify-write operation.\-
+\begin{seealso}
+\texttt{CML}
+\end{seealso}

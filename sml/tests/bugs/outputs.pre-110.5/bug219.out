@@ -1,0 +1,2 @@
+val it = () : unit
+bug219.sml:3.9-3.24 Error: parentheses illegal around variable in AS pattern

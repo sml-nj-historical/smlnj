@@ -1,0 +1,15 @@
+val it = () : unit
+signature S =
+  sig
+    datatype t = A | B of t
+    val test : t -> unit
+  end
+structure A : S
+functor F : <sig>
+structure B :
+  sig
+    datatype t = A | B of X.t
+    val f : X.t -> bool
+  end
+val x = true : bool
+

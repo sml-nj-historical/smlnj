@@ -1,0 +1,20 @@
+val it = () : unit
+functor T : <sig>
+structure E :
+  sig
+    structure C : <sig>
+    datatype t = A | B
+    val b : 'a -> t
+    val f : real
+    val g : real
+    val h : real
+    val m : real
+    val p : real
+    val q : real
+    val s : t
+    val u : real
+  end
+val test =
+  ((1.0,1.0),(2.0,2.0),(3.0,3.0),(4.0,4.0),(5.0,5.0),(6.0,6.0),(7.0,7.0))
+  : (real * real) * (real * real) * (real * real) * (real * real)
+    * (real * real) * (real * real) * (real * real)

@@ -1,0 +1,5 @@
+Library
+	signature CMB
+	structure CMB
+is
+	$smlnj/cmb/current.cm

@@ -1,0 +1,64 @@
+val it = () : unit
+signature DECTREE_DT =
+  sig
+    type lab
+    type lvar
+    type longvar
+    type longcon
+    type longexcon
+    type scon
+    type pat
+    type type_info
+    type  RuleNum = int
+    type Decision
+    type ('a,'b) map
+    datatype 'a option = NONE | SOME of 'a
+    datatype DecisionTree
+      = CON_DECOMPOSE of {bind:lvar, child:DecisionTree, parent:lvar}
+      | CON_SWITCH of {arg:lvar, info:type_info,
+                       selections:(longcon,DecisionTree) map,
+                       wildcard:DecisionTree option}
+      | END of {environment:(longvar,lvar) map, ruleNum:RuleNum}
+      | EXCON_DECOMPOSE of {bind:lvar, child:DecisionTree, parent:lvar}
+      | EXCON_SWITCH of {arg:lvar, selections:(longexcon * DecisionTree) list,
+                         wildcard:DecisionTree}
+      | FAIL
+      | LAB_DECOMPOSE of {bind:lvar, child:DecisionTree, info:type_info,
+                          lab:lab, parent:lvar}
+      | SCON_SWITCH of {arg:lvar, selections:(scon,DecisionTree) map,
+                        wildcard:DecisionTree}
+  end
+signature MATCH_COMPILER =
+  sig
+    type lab
+    type lvar
+    type longvar
+    type longcon
+    type longexcon
+    type scon
+    type pat
+    type type_info
+    type  RuleNum = int
+    type Decision
+    type ('a,'b) map
+    datatype 'a option = NONE | SOME of 'a
+    datatype DecisionTree
+      = CON_DECOMPOSE of {bind:lvar, child:DecisionTree, parent:lvar}
+      | CON_SWITCH of {arg:lvar, info:type_info,
+                       selections:(longcon,DecisionTree) map,
+                       wildcard:DecisionTree option}
+      | END of {environment:(longvar,lvar) map, ruleNum:RuleNum}
+      | EXCON_DECOMPOSE of {bind:lvar, child:DecisionTree, parent:lvar}
+      | EXCON_SWITCH of {arg:lvar, selections:(longexcon * DecisionTree) list,
+                         wildcard:DecisionTree}
+      | FAIL
+      | LAB_DECOMPOSE of {bind:lvar, child:DecisionTree, info:type_info,
+                          lab:lab, parent:lvar}
+      | SCON_SWITCH of {arg:lvar, selections:(scon,DecisionTree) map,
+                        wildcard:DecisionTree}
+    val matchCompiler : lvar * pat list
+                        * {warnInexhaustive:bool, warnNoBindings:bool}
+                        -> DecisionTree
+    type StringTree
+    val layoutDecisionTree : DecisionTree -> StringTree
+  end

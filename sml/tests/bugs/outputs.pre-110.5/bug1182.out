@@ -1,0 +1,7 @@
+val it = () : unit
+datatype t = INT of int
+bug1182.sml:4.17-4.23 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: int
+  operand:         'Z -> 'Z
+  in expression:
+    INT ~

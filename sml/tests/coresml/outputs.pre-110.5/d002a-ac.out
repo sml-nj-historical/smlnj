@@ -1,0 +1,5 @@
+val it = () : unit
+val test1 = true : bool
+val test2 = true : bool
+val test3 = true : bool
+val alltrue = true : bool

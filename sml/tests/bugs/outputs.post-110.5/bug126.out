@@ -1,0 +1,5 @@
+val it = () : unit
+type  ('a,'b) map = ('a * 'b) list
+val plus = fn : (''a,'b) map * (''a,'b) map -> (''a,'b) map
+val insert = fn : (''a * 'b) list * (''a * 'b) -> (''a,'b) map
+

@@ -1,0 +1,7 @@
+val it = () : unit
+signature FOO =
+  sig
+    type TyVar
+    structure TVResult : sig datatype T = FAULT of TyVar list | IMP_OK end
+  end
+

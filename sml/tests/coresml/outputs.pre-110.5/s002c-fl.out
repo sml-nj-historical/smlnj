@@ -1,0 +1,2 @@
+val it = () : unit
+s002c-fl.sml:13.1-13.26 Error: duplicate type definition: x

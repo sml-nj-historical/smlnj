@@ -1,0 +1,3 @@
+val it = () : unit
+type  s0 = int -> int
+35.3.sml:8.16-8.22 Error: nonlocal path in type sharing: s0

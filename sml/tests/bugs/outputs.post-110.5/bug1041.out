@@ -1,0 +1,13 @@
+val it = () : unit
+signature XTERN =
+  sig
+    type T
+    val t : T
+  end
+structure W :
+  sig
+    type  word = word
+    val zero : word
+  end
+functor Ip_Flag_Extern : <sig>
+

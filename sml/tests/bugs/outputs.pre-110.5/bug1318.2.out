@@ -1,0 +1,11 @@
+val it = () : unit
+funsig FSIG(<param>: sig type info end) :
+           sig
+             type node
+             type info
+             val f : node -> info
+           end
+bug1318.2.sml:11.9-22.4 Error: value type in structure doesn't match signature spec
+    name: g
+  spec:   ?.node -> ?.info
+  actual: ?.S.node -> ?.S.info

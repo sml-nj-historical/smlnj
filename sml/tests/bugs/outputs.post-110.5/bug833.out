@@ -1,0 +1,12 @@
+val it = () : unit
+signature S = sig datatype dt = foo end
+functor I : <sig>
+structure A : sig datatype dt = foo end
+functor R : <sig>
+functor P : <sig>
+structure B : sig structure C : <sig> end
+opening B
+  structure C : sig datatype dt = foo end
+opening C
+  datatype dt = foo
+

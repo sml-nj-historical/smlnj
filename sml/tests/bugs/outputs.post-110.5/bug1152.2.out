@@ -1,0 +1,9 @@
+val it = () : unit
+structure A :
+  sig
+    eqtype t
+    structure B : <sig>
+    sharing type B.t = t
+  end
+val f = fn : A.t -> bool
+

@@ -1,0 +1,5 @@
+val it = () : unit
+stdIn:<nullRegion> Warning: match nonexhaustive
+          x :: nil => ...
+  
+functor Foo : <sig>

@@ -1,0 +1,3 @@
+val it = () : unit
+d006e-fl.sml:13.1-13.9 Error: syntax error: deleting  LET INT IN
+

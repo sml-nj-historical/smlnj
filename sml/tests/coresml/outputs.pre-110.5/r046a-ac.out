@@ -1,0 +1,5 @@
+val it = () : unit
+val r = {name="Foo",used=true} : {name:string, used:bool}
+val x = "Foo" : string
+val t = "Foo" : string
+val test = true : bool

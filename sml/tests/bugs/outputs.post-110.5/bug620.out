@@ -1,0 +1,4 @@
+val it = () : unit
+signature SIG = sig datatype d = D of unit end
+functor Twice : <sig>
+

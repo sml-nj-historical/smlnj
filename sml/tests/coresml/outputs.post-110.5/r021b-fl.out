@@ -1,0 +1,4 @@
+val it = () : unit
+exception exc_test of int
+r021b-fl.sml:15.5-15.17 Error: data constructor exc_test used without argument in pattern
+

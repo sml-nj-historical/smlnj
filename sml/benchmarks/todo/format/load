@@ -1,0 +1,12 @@
+app use [
+  "ctype-sig.sml",
+  "ctype.sml",
+  "makestring-sig.sml",
+  "makestring.sml",
+  "string-cvt-sig.sml",
+  "string-cvt.sml",
+  "format-sig.sml",
+  "format.sml",
+  "test.sml"
+];
+

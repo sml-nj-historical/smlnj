@@ -1,0 +1,8 @@
+val it = () : unit
+structure Ok :
+  sig
+    datatype t1 = c1 of t2 * t3
+    type  t2 = t1 list
+    type  t3 = t2 list
+  end
+

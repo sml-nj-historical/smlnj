@@ -1,0 +1,21 @@
+val it = () : unit
+signature INSTR = sig structure C : sig end end
+structure Instr : sig structure C : <sig> end
+signature FLOW =
+  sig
+    structure I : sig structure C : <sig> end
+    structure C : sig end
+  end
+structure Flow : FLOW
+signature E =
+  sig
+    structure I : sig structure C : <sig> end
+    structure F :
+      sig
+        structure I : <sig>
+        structure C : <sig>
+      end
+    sharing I = F.I
+  end
+functor BF : <sig>
+functor CG : <sig>

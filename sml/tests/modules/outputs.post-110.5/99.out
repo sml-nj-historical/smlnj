@@ -1,0 +1,9 @@
+val it = () : unit
+99.sml:5.3-15.22 Error: duplicate specifications for variable or constructor D in signature
+99.sml:5.3-15.22 Error: duplicate specifications for type constructor t in signature
+99.sml:5.3-15.22 Error: duplicate specifications for type constructor d in signature
+99.sml:5.3-15.22 Error: duplicate specifications for variable or constructor D in signature
+99.sml:5.3-15.22 Error: duplicate specifications for variable or constructor x in signature
+99.sml:5.3-15.22 Error: duplicate specifications for structure A in signature
+99.sml:5.3-15.22 Error: duplicate specifications for variable or constructor e in signature
+
