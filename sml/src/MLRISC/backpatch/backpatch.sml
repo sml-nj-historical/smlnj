@@ -34,13 +34,12 @@ struct
       PSEUDO of P.pseudo_op
     | LABEL  of Label.label
     | CODE of  code list
-    | CLUSTER of {comp : compressed list, regmap : int -> int}
+    | CLUSTER of {comp : compressed list}
 
   val clusterList : compressed list ref = ref []
   fun cleanUp() = clusterList := []
 
-  fun bbsched(cluster as F.CLUSTER{blocks, regmap, ...}) = let
-    val regmap = C.lookup regmap
+  fun bbsched(cluster as F.CLUSTER{blocks, ...}) = let
     fun compress(F.PSEUDO pOp::rest) = PSEUDO pOp::compress rest
       | compress(F.LABEL lab::rest) = LABEL lab:: compress rest
       | compress(F.BBLOCK{insns, ...}::rest) = let
@@ -65,7 +64,7 @@ struct
 	end
       | compress [] = []
       | compress _ = error "compress"
-  in clusterList:=CLUSTER{comp = compress blocks, regmap=regmap}:: (!clusterList)
+  in clusterList:=CLUSTER{comp = compress blocks}:: (!clusterList)
   end
 
   fun finish() = let
@@ -81,7 +80,7 @@ struct
       | labels(CLUSTER{comp, ...}::rest, pos) = labels(rest, labels(comp,pos))
       | labels([], pos) = pos
 
-    fun adjust(CLUSTER{comp, regmap}::cluster, pos, changed) = let
+    fun adjust(CLUSTER{comp}::cluster, pos, changed) = let
           fun f (PSEUDO pOp::rest, pos, changed) = 
 	        f(rest, pos+P.sizeOf(pOp,pos), changed)
 	    | f (LABEL _::rest, pos, changed) = f(rest, pos, changed)
@@ -89,7 +88,7 @@ struct
 		fun doCode(FIXED{size, ...}::rest, pos, changed) = 
 		      doCode(rest, pos+size, changed)
 		  | doCode(SDI{size, insn}::rest, pos, changed) = let
-	  	      val newSize = J.sdiSize(insn, regmap, Label.addrOf, pos)
+	  	      val newSize = J.sdiSize(insn, Label.addrOf, pos)
  	  	    in
 		      if newSize <= !size then doCode(rest, !size + pos, changed)
 		      else (size:=newSize; doCode(rest, newSize+pos, true))
@@ -112,8 +111,7 @@ struct
     val Emitter.S.STREAM{emit,defineLabel,beginCluster,pseudoOp,...} = 
             Emitter.makeStream []
 
-    fun emitCluster(CLUSTER{comp, regmap},loc) = let
-      val emit = emit regmap
+    fun emitCluster(CLUSTER{comp},loc) = let
       fun process(PSEUDO pOp,loc) = (pseudoOp pOp; loc + P.sizeOf(pOp,loc))
 	| process(LABEL lab,loc) = (defineLabel lab; loc)
 	| process(CODE code,loc) = let

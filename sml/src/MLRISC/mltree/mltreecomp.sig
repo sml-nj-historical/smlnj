@@ -19,7 +19,7 @@ sig
     * the user extensions.
     *)
    type reducer = 
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode) T.reducer
+     (I.instruction,C.cellset,I.operand,I.addressing_mode) T.reducer
 
    val compileSext : reducer -> {stm:T.sext, an:T.an list} -> unit
    val compileRext : reducer -> {e:T.ty * T.rext, rd:C.cell, an:T.an list} -> unit
@@ -37,8 +37,8 @@ sig
       sharing T.LabelExp = I.LabelExp
       sharing I.C = C
 
-   type instrStream = (I.instruction,C.regmap,C.cellset) T.stream  
-   type mltreeStream = (T.stm,C.regmap,T.mlrisc list) T.stream 
+   type instrStream = (I.instruction,C.cellset) T.stream  
+   type mltreeStream = (T.stm,T.mlrisc list) T.stream 
 
     (* 
      * The instruction selection phase converts an instruction stream

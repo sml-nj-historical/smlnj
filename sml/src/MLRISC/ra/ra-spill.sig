@@ -7,8 +7,8 @@ signature RA_SPILL =
 sig
 
    structure I : INSTRUCTIONS
-   structure C : CELLS
    structure G : RA_GRAPH = RAGraph
+   structure C : CELLS 
       sharing I.C = C
 
    type copyInstr =
@@ -21,9 +21,8 @@ sig
    type spill =
       {instr    : I.instruction,       (* instruction where spill is to occur *)
        reg      : C.cell,              (* register to spill *)
-       spillLoc : int,                 (* logical spill location *)
+       spillLoc : G.spillLoc,          (* logical spill location *)
        kill     : bool,                (* can we kill the current node? *)
-       regmap   : C.cell -> C.cell,    (* current register map *)
        annotations : Annotations.annotations ref (* annotations *)
       } ->
       {code     : I.instruction list,  (* instruction + spill code *)
@@ -37,7 +36,7 @@ sig
    type spillSrc =
       {src      : C.cell,              (* register to spill from *)
        reg      : C.cell,              (* the register *)
-       spillLoc : int,                 (* logical spill location *)
+       spillLoc : G.spillLoc,          (* logical spill location *)
        annotations : Annotations.annotations ref (* annotations *)
       } -> I.instruction list          (* spill code *)
 
@@ -46,7 +45,7 @@ sig
     *)
    type spillCopyTmp =
       {copy     : I.instruction,       (* copy to spill *)
-       spillLoc : int,                 (* logical spill location *)
+       spillLoc : G.spillLoc,          (* logical spill location *)
        annotations : Annotations.annotations ref (* annotations *)
       } -> I.instruction               (* spill code *)
 
@@ -57,8 +56,7 @@ sig
    type reload =
       {instr    : I.instruction,       (* instruction where spill is to occur *)
        reg      : C.cell,              (* register to spill *)
-       spillLoc : int,                 (* logical spill location *)
-       regmap   : C.cell -> C.cell,    (* current register map *)
+       spillLoc : G.spillLoc,          (* logical spill location *)
        annotations : Annotations.annotations ref (* annotations *)
       } ->
       {code     : I.instruction list,  (* instr + reload code *)
@@ -72,8 +70,7 @@ sig
    type renameSrc =
       {instr    : I.instruction,       (* instruction where spill is to occur *)
        fromSrc  : C.cell,              (* register to rename *)
-       toSrc    : C.cell,              (* register to rename to *)
-       regmap   : C.cell -> C.cell     (* current register map *)
+       toSrc    : C.cell               (* register to rename to *)
       } ->
       {code     : I.instruction list,  (* renamed instr *)
        proh     : C.cell list,         (* prohibited from future spilling *)
@@ -86,7 +83,7 @@ sig
    type reloadDst =
       {dst      : C.cell,              (* register to reload to *)
        reg      : C.cell,              (* the register *)
-       spillLoc : int,                 (* logical spill location *)
+       spillLoc : G.spillLoc,          (* logical spill location *)
        annotations : Annotations.annotations ref (* annotations *)
       } -> I.instruction list          (* reload code *)
 
@@ -105,11 +102,11 @@ sig
           renameSrc    : renameSrc, 
           copyInstr    : copyInstr,
           cellkind     : C.cellkind,
-          spillSet     : C.cell list IntHashTable.hash_table,
-          reloadSet    : C.cell list IntHashTable.hash_table,
-          killSet      : C.cell list IntHashTable.hash_table
+          spillSet     : C.cell list G.PPtHashTable.hash_table,
+          reloadSet    : C.cell list G.PPtHashTable.hash_table,
+          killSet      : C.cell list G.PPtHashTable.hash_table
         } -> 
-        { pt          : int,                         (* starting program pt *)
+        { pt          : G.programPoint,              (* starting program pt *)
           annotations : Annotations.annotations ref, (* annotations *)
           instrs      : I.instruction list           (* instructions to spill *)
         } -> 

@@ -8,12 +8,12 @@
 
 functor RADeadCodeElim
    (Flowgraph : RA_FLOWGRAPH)
-   ((* check for dead code on these cellkinds only *)
+   (  (* check for dead code on these cellkinds only *)
     val cellkind : Flowgraph.I.C.cellkind -> bool
-    (* Dead registers are stored here. *)
-    val deadRegs : bool IntHashTable.hash_table
-    (* Affected blocks *)
-    val affectedBlocks : bool IntHashTable.hash_table
+      (* Dead registers are stored here. *)
+    val deadRegs : bool IntHashTable.hash_table 
+      (* Affected blocks *)
+    val affectedBlocks : bool IntHashTable.hash_table 
     val spillInit : Flowgraph.G.interferenceGraph * Flowgraph.I.C.cellkind 
                       -> unit 
    ) : RA_FLOWGRAPH =

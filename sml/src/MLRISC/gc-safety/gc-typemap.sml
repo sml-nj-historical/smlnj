@@ -1,10 +1,9 @@
 functor GCTypeMap
-   (structure C : CELLS
-    structure GC : GC_TYPE
+   (GC : GC_TYPE
    ) : GC_TYPEMAP =
 struct
 
-   structure C  = C
+   structure C  = CellsBasis
    structure GC = GC
 
    fun error msg = MLRiscErrorMsg.error("GCTypeMap",msg)

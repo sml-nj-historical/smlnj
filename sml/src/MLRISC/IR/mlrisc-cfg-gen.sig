@@ -17,11 +17,10 @@ sig
     * This creates an emitter which can be used to build a CFG
     *)
    val builder : CFG.cfg -> 
-      { stream : (I.instruction -> unit,
-                  I.C.regmap,
+      { stream : (I.instruction,
                   Annotations.annotations,
-                  I.C.cellset,
-                  I.C.cell * I.C.cell,'e) S.stream,
+                  I.C.cellset
+                 ) S.stream,
         next   : CFG.cfg -> unit (* start with a new CFG *)
       }
 

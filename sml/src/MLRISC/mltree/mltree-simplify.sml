@@ -325,15 +325,17 @@ struct
       | T.SLL(ty,a,b)  => simplifyShift(a,b,fn _ =>
                              SHIFT(sll,true,LE.LSHIFT,ty,a,b))
 
-      | cvt as T.CVTI2I(ty,ext,ty',e) =>
-           if ty = ty' orelse identity_ext(ty,ext,e) then e else cvt
+      | cvt as T.SX(ty,ty',e) =>
+           if ty = ty' orelse identity_ext(ty,T.SIGN_EXTEND,e) then e else cvt
+      | cvt as T.ZX(ty,ty',e) =>
+           if ty = ty' orelse identity_ext(ty,T.ZERO_EXTEND,e) then e else cvt
 
       | T.COND(ty,cc,a,b) => 
           (case evalcc cc of TRUE => a | FALSE => b | UNKNOWN => exp)
       | exp => exp
    end
 
-   and simStm ==> (s as T.IF(ctrl,cc,s1,s2)) = (* dead code elimination *)
+   and simStm ==> (s as T.IF(cc,s1,s2)) = (* dead code elimination *)
         (case evalcc cc of
            TRUE => s1
          | FALSE => s2

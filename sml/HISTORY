@@ -13,6 +13,48 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: Thu Dec  7 22:01:04 EST 2000
+Tag:  leunga-20001207-cell-monster-hack
+Description:
+
+Major MLRISC internal changes.  Affect all clients.
+Summary:
+
+1.  Type CELLS.cell = int is now replaced by a datatype.
+    As a result, the old regmap is now gone.  Almost all interfaces
+    in MLRISC change as a consequence.
+
+2.  A new brand version of machine description tool (v3.0) that generates
+    modules expecting the new interface.  The old version is removed.
+
+3.  The RA interface has been further abstracted into two new functors.
+    RISC_RA and X86RA.  These functors have much simpler interfaces.
+    [See also directory MLRISC/demo.]  
+
+4.  Some other new source->source code generation tools are available: 
+
+    a. MLRISC/Tools/RewriteGen -- generate rewriters from rules.
+    b. MLRISC/Tools/WhereGen -- expands conditional pattern matching rules.
+       I use this tool to generate the peephole optimizers---with the new
+       cell type changes, peephole rules are becoming difficult to write
+       without conditional pattern matching.  
+
+5.  More Intmap -> IntHashTable change.  Previous changes by Matthias didn't
+    cover the entire MLRISC source tree so many things broke.  
+
+6.  CM files have been moved to the subdirectory MLRISC/cm.
+    They are moved because there are a lot of them and they clutter up the
+    root dir.
+
+7.  More detailed documentation to come...
+
+    NOTE: To rebuild from 110.30 (ftp distribution), you'll have to do
+    a makeml -rebuild first.  This is because of other other
+    changes that Matthias has made (see below).
+
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/11/30 23:12:00 JST
 Tag: blume-20001130-filereorg

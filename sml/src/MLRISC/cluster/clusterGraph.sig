@@ -24,7 +24,6 @@ sig
    val table          : cfg -> block Array.array
    val isTakenBranch  : edge_info Graph.edge -> bool
 
-   val regmap         : cfg -> I.C.regmap
    val annotations    : cfg -> Annotations.annotations ref
 
    val insns          : block -> I.instruction list ref

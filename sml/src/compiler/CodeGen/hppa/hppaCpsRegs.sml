@@ -45,10 +45,9 @@ struct
 
   val returnPtr	= GP 31
   val gcLink	= T.REG(32,returnPtr) 
-  val stackptr	= REG(GP 30) 
+  val stackptr	= REG(30)
 
-  val miscregs =
-    map REG [1,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,2]
+  val miscregs = map REG [1,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,2]
   val calleesave = Array.fromList miscregs 
 
   (* Note: We need at least one register for shuffling purposes. *)
@@ -61,19 +60,17 @@ struct
         ([stdlink, stdclos, stdarg, stdcont, gcLink] @ miscregs)
 
   local
-      structure ILS = IntListSet
-      fun l2s l = ILS.addList (ILS.empty, l)
-      val s2l = ILS.listItems
-      val -- = ILS.difference
+      structure SC = HppaCells.SortedCells
+      val -- = SC.difference
       infix --
   in
-      val allRegs = l2s (fromto(GP 0,GP 31))
-      val dedicatedR = s2l (allRegs -- l2s availR)
+      val allRegs = map GP (fromto(0,31))
+      val dedicatedR = SC.return (SC.uniq allRegs -- SC.uniq availR)
 
-      val availFs = l2s (fromto(FP 6, FP 30))
-      val allFRegs = l2s (fromto(FP 0,FP 31))
-      val dedicatedF = s2l (allFRegs -- availFs)
-      val availF = s2l availFs
+      val availFs = map FP (fromto(6, 30))
+      val allFRegs = map FP (fromto(0, 31))
+      val dedicatedF = SC.return (SC.uniq allFRegs -- SC.uniq availFs)
+      val availF = availFs
   end
 
   val signedGCTest = false

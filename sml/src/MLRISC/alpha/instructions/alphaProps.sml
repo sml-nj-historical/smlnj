@@ -14,7 +14,7 @@ struct
 
     fun error msg = MLRiscErrorMsg.impossible ("alphaProps."^msg)
 
-    val zeroR = 31
+    val zeroR = Option.valOf(C.zeroReg C.GP)
 
     datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL 
                   | IK_PHI | IK_SOURCE | IK_SINK
@@ -70,16 +70,17 @@ struct
       | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
       | branchTargets _ = error "branchTargets"
 
-    fun jump label = I.BRANCH{b=I.BR,r=31,lab=label}
+    fun jump label = I.BRANCH{b=I.BR,r=zeroR,lab=label}
 
     val immedRange = {lo= ~32768, hi = 32768}
     fun loadImmed{immed,t} = 
-        I.LDA{r=t,b=31,
+        I.LDA{r=t,b=zeroR,
               d=if #lo immedRange <= immed andalso immed <= #hi immedRange
               then I.IMMop immed else I.LABop(LE.INT immed)}
-    fun loadOperand{opn,t} = I.LDA{r=t,b=31,d=opn}
+    fun loadOperand{opn,t} = I.LDA{r=t,b=zeroR,d=opn}
 
-    fun setTargets(I.BRANCH{b=I.BR,r=31,...},[L]) = I.BRANCH{b=I.BR,r=31,lab=L}
+    fun setTargets(I.BRANCH{b=I.BR,r as C.CELL{id=31,...}, ...},[L]) = 
+             I.BRANCH{b=I.BR,r=r,lab=L}
       | setTargets(I.BRANCH{b,r,...},[F,T])  = I.BRANCH{b=b,r=r,lab=T}
       | setTargets(I.FBRANCH{b,f,...},[F,T]) = I.FBRANCH{b=b,f=f,lab=T}
       | setTargets(I.JMPL(x,_),labs)       = I.JMPL(x,labs)
@@ -114,13 +115,13 @@ struct
    (*========================================================================
     *  Equality and hashing for operands
     *========================================================================*)
-   fun hashOpn(I.REGop r) = Word.fromInt r
+   fun hashOpn(I.REGop r) = C.hashCell r
      | hashOpn(I.IMMop i) = Word.fromInt i
      | hashOpn(I.HILABop l) = I.LabelExp.hash l
      | hashOpn(I.LOLABop l) = I.LabelExp.hash l
      | hashOpn(I.LABop l) = I.LabelExp.hash l
 
-   fun eqOpn(I.REGop a,I.REGop b) = a = b
+   fun eqOpn(I.REGop a,I.REGop b) = C.sameColor(a,b)
      | eqOpn(I.IMMop a,I.IMMop b) = a = b
      | eqOpn(I.HILABop a,I.HILABop b) = I.LabelExp.==(a,b)
      | eqOpn(I.LOLABop a,I.LOLABop b) = I.LabelExp.==(a,b)
@@ -149,16 +150,16 @@ struct
 	 | I.FSTORE{b, ...} => ([], [b])
 	 (* branch instructions *)
 	 | I.JMPL ({r, b, ...},_) => ([r], [b])
-	 | I.JSR{r, b, defs, uses, ...} => (r:: #1 defs, b:: #1 uses)
-	 | I.BSR{r, defs, uses, ...} => (r:: #1 defs, #1 uses)
+	 | I.JSR{r, b, defs, uses, ...} => (r::C.getReg defs, b::C.getReg uses)
+	 | I.BSR{r, defs, uses, ...} => (r::C.getReg defs,C.getReg uses)
 	 | I.RET{r, b, ...} => ([r],[b])
 	 | I.BRANCH{b=I.BR, r, ...} => ([r], [])
 	 | I.BRANCH{r, ...} => ([], [r])
 	 (* operate *)
 	 | I.OPERATE arg => Oper arg
 	 | I.PSEUDOARITH {oper, ra, rb=I.REGop rb, rc, tmps} => 
-	     (rc:: #1 tmps, [ra, rb])
-	 | I.PSEUDOARITH {oper, ra, rb, rc, tmps} => (rc:: #1 tmps, [ra])
+	     (rc:: C.getReg tmps, [ra, rb])
+	 | I.PSEUDOARITH {oper, ra, rb, rc, tmps} => (rc:: C.getReg tmps, [ra])
 	 | I.OPERATEV arg => trap(Oper arg)
 	 | I.CMOVE{ra,rb,rc,...} => ([rc],Opn(rb,[ra,rc]))
 	 (* copy *)
@@ -168,7 +169,7 @@ struct
 	 | I.FOPERATEV _ => trap([], [])
 	 | I.TRAPB 	=> trap([],[])
 	 (* macro *)
-	 | I.CALL_PAL{def,use, ...} => (def, use)
+	 | I.CALL_PAL{def,use, ...} => (C.getReg def, C.getReg use)
          | I.ANNOTATION{a=C.DEF_USE{cellkind=C.GP,defs,uses}, i, ...} => 
            let val (d,u) = defUseR i in (defs@d, u@uses) end
          | I.ANNOTATION{a, i, ...} => defUseR i
@@ -184,13 +185,13 @@ struct
       | I.FSTORE{r, ...}			=> ([], [r])
       | I.FOPERATE{fa, fb, fc, ...}		=> ([fc], [fa, fb])
       | I.FUNARY{fb, fc, ...}		        => ([fc], [fb])
-      | I.PSEUDOARITH{tmps, ...}		=> (#2 tmps, [])
+      | I.PSEUDOARITH{tmps, ...}		=> (C.getFreg tmps, [])
       | I.FOPERATEV{fa, fb, fc, ...}		=> ([fc], [fa, fb, fc])
       | I.FCMOVE{fa,fb,fc,...}                  => ([fc], [fa, fb, fc])
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...} => (f::dst, src)
       | I.FCOPY{dst, src, ...}			=> (dst, src) 
-      | I.JSR{defs,uses, ...}	     => (#2 defs,#2 uses)
-      | I.BSR{defs,uses, ...}	     => (#2 defs,#2 uses)
+      | I.JSR{defs,uses, ...}	     => (C.getFreg defs,C.getFreg uses)
+      | I.BSR{defs,uses, ...}	     => (C.getFreg defs,C.getFreg uses)
       | I.ANNOTATION{a=C.DEF_USE{cellkind=C.FP,defs,uses}, i, ...} => 
         let val (d,u) = defUseF i in (defs@d, u@uses) end
       | I.ANNOTATION{a, i, ...} => defUseF i

@@ -3,11 +3,10 @@ struct
    structure I = Instr
    structure C = I.C
 
-   fun rwset(S,rw) = SortedList.uniq(map rw S)
-
-   fun rewriteUse(mapr : I.C.cell -> I.C.cell,instr,rs,rt) =  
-   let fun R r = if mapr r = rs then rt else r 
-       fun O(i as I.REG r) = if mapr r = rs then I.REG rt else i
+   fun rewriteUse(instr,rs,rt) =  
+   let fun match r = C.sameColor(r,rs) 
+       fun R r = if match r then rt else r 
+       fun O(i as I.REG r) = if match r then I.REG rt else i
          | O i = i
    in  case instr of
          I.LOAD{l,r,i,d,mem} => I.LOAD{l=l,r=R r,i=O i,d=d,mem=mem}
@@ -22,10 +21,12 @@ struct
        | I.MOVfcc{b,i,d} => I.MOVfcc{b=b,i=O i,d=R d}
        | I.MOVR{rcond,r,i,d} => I.MOVR{rcond=rcond,r=R r,i=O i,d=R d}
        | I.JMP{r,i,labs,nop} => I.JMP{r=R r,i=O i,labs=labs,nop=nop}
-       | I.JMPL{r,i,d,defs,uses=(A,B,C),nop,mem} => 
-            I.JMPL{r=R r,i=O i,d=d,defs=defs,uses=(rwset(A,R),B,C),nop=nop,mem=mem}
-       | I.CALL{defs,uses=(A,B,C),label,nop,mem} => 
-            I.CALL{defs=defs,uses=(rwset(A,R),B,C),label=label,nop=nop,mem=mem}
+       | I.JMPL{r,i,d,defs,uses,nop,mem} => 
+            I.JMPL{r=R r,i=O i,d=d,defs=defs,
+                   uses=C.CellSet.map {from=rs,to=rt} uses,nop=nop,mem=mem}
+       | I.CALL{defs,uses,label,nop,mem} => 
+            I.CALL{defs=defs,uses=C.CellSet.map {from=rs,to=rt} uses,
+                   label=label,nop=nop,mem=mem}
        | I.SAVE{r,i,d} => I.SAVE{r=R r,i=O i,d=d}
        | I.RESTORE{r,i,d} => I.RESTORE{r=R r,i=O i,d=d}
        | I.WRY{r,i} => I.WRY{r=R r,i=O i}
@@ -33,7 +34,7 @@ struct
        | I.COPY{src,dst,tmp,impl} => 
            I.COPY{src=map R src,dst=dst,tmp=tmp,impl=impl}
        | I.ANNOTATION{i,a} => 
-           I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),
+           I.ANNOTATION{i=rewriteUse(i,rs,rt),
                         a=case a of
                            C.DEF_USE{cellkind=C.GP,defs,uses} =>
                              C.DEF_USE{cellkind=C.GP,uses=map R uses,
@@ -42,8 +43,9 @@ struct
        | _ => instr
    end
 
-   fun rewriteDef(mapr : I.C.cell -> I.C.cell,instr,rs,rt) =
-   let fun R r = if mapr r = rs then rt else r 
+   fun rewriteDef(instr,rs,rt) =
+   let fun match r = C.sameColor(r,rs)
+       fun R r = if match r then rt else r 
        fun ea(SOME(I.Direct r)) = SOME(I.Direct(R r))
          | ea x = x 
    in  case instr of
@@ -54,17 +56,19 @@ struct
        | I.MOVicc{b,i,d} => I.MOVicc{b=b,i=i,d=R d}
        | I.MOVfcc{b,i,d} => I.MOVfcc{b=b,i=i,d=R d}
        | I.MOVR{rcond,r,i,d} => I.MOVR{rcond=rcond,r=r,i=i,d=R d}
-       | I.JMPL{r,i,d,defs=(A,B,C),uses,nop,mem} => 
-            I.JMPL{r=r,i=i,d=R d,defs=(rwset(A,R),B,C),uses=uses,nop=nop,mem=mem}
-       | I.CALL{defs=(A,B,C),uses,label,nop,mem} => 
-            I.CALL{defs=(rwset(A,R),B,C),uses=uses,label=label,nop=nop,mem=mem}
+       | I.JMPL{r,i,d,defs,uses,nop,mem} => 
+            I.JMPL{r=r,i=i,d=R d,defs=C.CellSet.map {from=rs,to=rt} defs,
+                   uses=uses,nop=nop,mem=mem}
+       | I.CALL{defs,uses,label,nop,mem} => 
+            I.CALL{defs=C.CellSet.map {from=rs,to=rt} defs,
+                   uses=uses,label=label,nop=nop,mem=mem}
        | I.SAVE{r,i,d} => I.SAVE{r=r,i=i,d=R d}
        | I.RESTORE{r,i,d} => I.RESTORE{r=r,i=i,d=R d}
        | I.RDY{d} => I.RDY{d=R d}
        | I.COPY{src,dst,tmp,impl} => 
            I.COPY{src=src,dst=map R dst,tmp=ea tmp,impl=impl}
        | I.ANNOTATION{i,a} => 
-           I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),
+           I.ANNOTATION{i=rewriteDef(i,rs,rt),
                         a=case a of
                            C.DEF_USE{cellkind=C.GP,defs,uses} =>
                              C.DEF_USE{cellkind=C.GP,uses=uses,
@@ -73,8 +77,9 @@ struct
        | _ => instr
    end
 
-   fun frewriteUse(mapr : I.C.cell -> I.C.cell,instr,rs,rt) = 
-   let fun R r = if mapr r = rs then rt else r 
+   fun frewriteUse(instr,rs,rt) = 
+   let fun match r = C.sameColor(r,rs)
+       fun R r = if match r then rt else r 
    in  case instr of
          I.FPop1{a,r,d} => I.FPop1{a=a,r=R r,d=d}
        | I.FPop2{a,r1,r2,d} => I.FPop2{a=a,r1=R r1,r2=R r2,d=d}
@@ -82,14 +87,16 @@ struct
        | I.FSTORE{s,r,i,d,mem} => I.FSTORE{s=s,r=r,i=i,d=R d,mem=mem}
        | I.FMOVicc{sz,b,r,d} => I.FMOVicc{sz=sz,b=b,r=R r,d=R d}
        | I.FMOVfcc{sz,b,r,d} => I.FMOVfcc{sz=sz,b=b,r=R r,d=R d}
-       | I.JMPL{r,i,d,defs,uses=(A,B,C),nop,mem} =>
-           I.JMPL{r=r,i=i,d=d,defs=defs,uses=(A,rwset(B,R),C),nop=nop,mem=mem}
-       | I.CALL{defs,uses=(A,B,C),label,nop,mem} =>
-           I.CALL{defs=defs,uses=(A,rwset(B,R),C),label=label,nop=nop,mem=mem}
+       | I.JMPL{r,i,d,defs,uses,nop,mem} =>
+           I.JMPL{r=r,i=i,d=d,defs=defs,
+                  uses=C.CellSet.map {from=rs,to=rt} uses,nop=nop,mem=mem}
+       | I.CALL{defs,uses,label,nop,mem} =>
+           I.CALL{defs=defs,uses=C.CellSet.map {from=rs,to=rt} uses,
+                  label=label,nop=nop,mem=mem}
        | I.FCOPY{src,dst,tmp,impl} => 
            I.FCOPY{src=map R src,dst=dst,tmp=tmp,impl=impl}
        | I.ANNOTATION{i,a} => 
-           I.ANNOTATION{i=frewriteUse(mapr,i,rs,rt),
+           I.ANNOTATION{i=frewriteUse(i,rs,rt),
                         a=case a of
                            C.DEF_USE{cellkind=C.FP,defs,uses} =>
                              C.DEF_USE{cellkind=C.FP,uses=map R uses,
@@ -98,8 +105,9 @@ struct
        | _ => instr
    end
 
-   fun frewriteDef(mapr : I.C.cell -> I.C.cell,instr,rs,rt) = 
-   let fun R r = if mapr r = rs then rt else r 
+   fun frewriteDef(instr,rs,rt) = 
+   let fun match r = C.sameColor(r,rs)
+       fun R r = if match r then rt else r 
        fun ea(SOME(I.FDirect r)) = SOME(I.FDirect(R r))
          | ea x = x 
    in  case instr of
@@ -108,14 +116,16 @@ struct
        | I.FLOAD{l,r,i,d,mem} => I.FLOAD{l=l,r=r,i=i,d=R d,mem=mem}
        | I.FMOVicc{sz,b,r,d} => I.FMOVicc{sz=sz,b=b,r=r,d=R d}
        | I.FMOVfcc{sz,b,r,d} => I.FMOVfcc{sz=sz,b=b,r=r,d=R d}
-       | I.JMPL{r,i,d,defs=(A,B,C),uses,nop,mem} =>
-           I.JMPL{r=r,i=i,d=d,defs=(A,rwset(B,R),C),uses=uses,nop=nop,mem=mem}
-       | I.CALL{defs=(A,B,C),uses,label,nop,mem} =>
-           I.CALL{defs=(A,rwset(B,R),C),uses=uses,label=label,nop=nop,mem=mem}
+       | I.JMPL{r,i,d,defs,uses,nop,mem} =>
+           I.JMPL{r=r,i=i,d=d,defs=C.CellSet.map {from=rs,to=rt} defs,
+                  uses=uses,nop=nop,mem=mem}
+       | I.CALL{defs,uses,label,nop,mem} =>
+           I.CALL{defs=C.CellSet.map {from=rs,to=rt} defs,
+                  uses=uses,label=label,nop=nop,mem=mem}
        | I.FCOPY{src,dst,tmp,impl} => 
            I.FCOPY{src=src,dst=map R dst,tmp=ea tmp,impl=impl}
        | I.ANNOTATION{i,a}=> 
-           I.ANNOTATION{i=frewriteDef(mapr,i,rs,rt),
+           I.ANNOTATION{i=frewriteDef(i,rs,rt),
                         a=case a of
                            C.DEF_USE{cellkind=C.FP,defs,uses} =>
                              C.DEF_USE{cellkind=C.FP,uses=uses,

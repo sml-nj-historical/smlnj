@@ -54,6 +54,13 @@
  *
  *)
 
+local
+
+   val debug = false
+   val tally = false 
+
+in
+
 structure RACore : RA_CORE =
 struct
 
@@ -62,16 +69,13 @@ struct
   structure W    = Word
   structure W8A  = Word8Array
   structure W8   = Word8
+  structure C    = RAGraph.C
 
   (* For debugging, uncomment Unsafe. *)
   structure UA   = Unsafe.Array 
   structure UW8A = Unsafe.Word8Array
 
   open G 
-
-  val debug = false
-(*  val tally = false *)
-
 
   val verbose       = MLRiscControl.getFlag "ra-verbose"
   val ra_spill_coal = MLRiscControl.getCounter "ra-spill-coalescing"
@@ -98,6 +102,7 @@ struct
   val MEMORY_COALESCING      = 
       SPILL_COALESCING + SPILL_COLORING + SPILL_PROPAGATION
 
+  val i2s = Int.toString
 
   local
 
@@ -363,20 +368,22 @@ struct
   fun chase(NODE{color=ref(ALIASED r), ...}) = chase r
     | chase x = x
 
-  fun colorOf(G.GRAPH{showReg,...}) (NODE{number, color, pri,...}) =
-       showReg number^
-           (case !color of
-              PSEUDO     => ""
-            | REMOVED    => "r"
-            | ALIASED _  => "a"
-            | COLORED c  => "["^showReg c^"]"
-	    | MEMREG  m  => "m" ^ "{" ^ Int.toString m ^ "}"
-            | SPILLED    => "s"
-            | SPILL_LOC c  => "s" ^ "{" ^ Int.toString c ^ "}"
-           (*esac*))
+  fun cellId(C.CELL{id, ...}) = id
+
+  fun col2s col =
+       case col of
+         PSEUDO     => ""
+       | REMOVED    => "r"
+       | ALIASED _  => "a"
+       | COLORED c  => "["^i2s c^"]"
+       | MEMREG (_,m)  => "m" ^ "{" ^ C.toString m ^ "}"
+       | SPILLED    => "s"
+       | SPILL_LOC c  => "s" ^ "{" ^ i2s c ^ "}"
+
+  fun node2s (NODE{cell, color, pri,...}) = i2s(cellId cell)^col2s(!color)
 
   fun show G (node as NODE{pri,...}) = 
-      colorOf G node^(if !verbose then "("^Int.toString(!pri)^")" else "")
+      node2s node^(if !verbose then "("^i2s(!pri)^")" else "")
 
   (*
    * Dump the interference graph
@@ -384,24 +391,23 @@ struct
   fun dumpGraph(G as G.GRAPH{nodes, showReg, K,...}) stream =
   let fun pr s = TextIO.output(stream, s)
       val show = show G
-      val colorOf = colorOf G
       fun prMove(MV{src, dst, status=ref(WORKLIST | BRIGGS_MOVE | GEORGE_MOVE),
                     cost,...}) = 
-            pr(colorOf(chase dst)^" <- "^colorOf(chase src)^
-               "("^Int.toString(cost)^") ")
+            pr(node2s(chase dst)^" <- "^node2s(chase src)^
+               "("^i2s(cost)^") ")
         | prMove _ = ()
 
       fun prAdj(n,n' as NODE{adj, degree, uses, defs,
                              color, pri, movecnt, movelist, ...}) =
           (pr(show n');
-           if !verbose then pr(" deg="^Int.toString(!degree)) else ();
+           if !verbose then pr(" deg="^i2s(!degree)) else ();
            (case !color of
               ALIASED n => (pr " => "; pr(show n); pr "\n")
             | _ =>
               (pr(" <-->");
                app (fn n => (pr " "; pr(show n))) (!adj); pr "\n";
                if !verbose andalso !movecnt > 0 then 
-                 (pr("\tmoves "^Int.toString(!movecnt)^": ");
+                 (pr("\tmoves "^i2s(!movecnt)^": ");
                   app prMove (!movelist);
                   pr "\n"
                  ) 
@@ -410,7 +416,7 @@ struct
            )
          )
  
-  in  pr("=========== K="^Int.toString K^" ===========\n");
+  in  pr("=========== K="^i2s K^" ===========\n");
       app prAdj (ListMergeSort.sort (fn ((x, _),(y, _)) => x > y)
                     (IntHashTable.listItemsi nodes))
   end
@@ -424,36 +430,54 @@ struct
   let val getnode = IntHashTable.lookup nodes
       val addnode = IntHashTable.insert nodes
 
+      fun colorOf(C.CELL{col=ref(C.MACHINE r), ...}) = r
+        | colorOf(C.CELL{id, ...}) = id
+
       fun defUse{defs, uses, pt, cost} =
-      let  fun def reg =
-           let val node as NODE{pri, defs,...} = getnode reg
-           in  pri := !pri + cost;(* increment the priority by the cost *)
-               defs := pt :: !defs;
-               node
+      let  fun def cell =
+           let val reg = colorOf cell
+           in  let val node as NODE{pri, defs,...} = getnode reg
+               in  pri := !pri + cost;(* increment the priority by the cost *)
+                   defs := pt :: !defs;
+                   node
+               end
+               handle _ =>
+               let val C.CELL{col, ...} = cell
+                   val col = case !col of
+                               C.MACHINE r => COLORED r
+                             | C.PSEUDO    => PSEUDO
+                             | C.ALIASED _ => error "newNodes.def ALIASED"
+                             | C.SPILLED   => error "newNodes.def SPILLED"
+                   val node = 
+                       NODE{number=reg,
+                            cell=cell, color=ref col, degree=ref 0,
+                            adj=ref [], movecnt=ref 0, movelist = ref [],
+                            movecost=ref 0, (* pair=false, *) pri=ref cost, 
+                            defs=ref [pt], uses=ref []}
+               in addnode(reg, node); node
+               end
            end
-           handle _ =>
-           let val col = if reg < firstPseudoR then COLORED(reg) else PSEUDO
-               val node = 
-                   NODE{number=reg, color=ref col, degree=ref 0,
-                        adj=ref [], movecnt=ref 0, movelist = ref [],
-                        movecost=ref 0, (* pair=false, *) pri=ref cost, 
-                        defs=ref [pt], uses=ref []}
-           in addnode(reg, node); node
-           end
-           fun use reg =
-           let val node as NODE{pri, uses,...} = getnode reg
-           in  pri := !pri + cost; (* increment the priority by the cost *)
-               uses := pt :: !uses
-           end
-           handle _ =>
-           let val col = if reg < firstPseudoR then COLORED(reg) else PSEUDO
-               val node = 
-                   NODE{number=reg, color=ref col, degree=ref 0,
-                        adj=ref [], movecnt=ref 0, movelist = ref [],
-                        movecost=ref 0, (* pair=false, *)
-                        pri=ref cost, defs=ref [], uses=ref[pt]
-                       }
-           in addnode(reg, node)
+           fun use cell =
+           let val reg = colorOf cell
+           in  let val node as NODE{pri, uses,...} = getnode reg
+               in  pri := !pri + cost; (* increment the priority by the cost *)
+                   uses := pt :: !uses
+               end
+               handle _ =>
+               let val C.CELL{col, ...} = cell
+                   val col = case !col of
+                               C.MACHINE r => COLORED r
+                             | C.PSEUDO    => PSEUDO
+                             | C.ALIASED _ => error "newNodes.use ALIASED"
+                             | C.SPILLED   => error "newNodes.use SPILLED"
+                   val node = 
+                       NODE{number=reg, color=ref col, degree=ref 0,
+                            adj=ref [], movecnt=ref 0, movelist = ref [],
+                            movecost=ref 0, (* pair=false, *)
+                            pri=ref cost, defs=ref [], uses=ref[pt], cell=cell
+                           }
+               in  addnode(reg, node)
+               end
            end
            fun defAll([],ds) = ds | defAll(r::rs,ds) = defAll(rs,def r::ds)
            fun useAll [] = () | useAll(r::rs) = (use r; useAll rs)
@@ -473,36 +497,39 @@ struct
    * Now we allow spilled node to be added to the edge; these do not
    * count toward the degree. 
    *)
-  fun addEdge(GRAPH{bitMatrix,...}) = let
-    val addBitMatrix = BM.add(!bitMatrix)
-
-    fun noEdges(COLORED _) = true
-      | noEdges(SPILLED) = true
-      | noEdges(SPILL_LOC _) = true
-      | noEdges(MEMREG _) = true
-      | noEdges _ = false
-
+  fun addEdge(GRAPH{bitMatrix,...}) = 
+  let val addBitMatrix = BM.add(!bitMatrix)
   in  fn (x as NODE{number=xn, color=colx, adj=adjx, degree=degx, ...}, 
           y as NODE{number=yn, color=coly, adj=adjy, degree=degy, ...}) => 
           if xn = yn then ()
           else if addBitMatrix(xn, yn) then
            (case (!colx, !coly) of
-		(PSEUDO,      PSEUDO) => (adjx := y :: !adjx; degx := !degx + 1;
-				          adjy := x :: !adjy; degy := !degy + 1)
-	      | (PSEUDO,   COLORED _) => (adjx := y :: !adjx; degx := !degx + 1)
-	      | (COLORED _,   PSEUDO) => (adjy := x :: !adjy; degy := !degy + 1)
-
-	      | (PSEUDO,    MEMREG _) => (adjx := y :: !adjx; adjy := x :: !adjy)
-	      | (PSEUDO,     SPILLED) => (adjx := y :: !adjx; adjy := x :: !adjy)
-	      | (PSEUDO, SPILL_LOC _) => (adjx := y :: !adjx; adjy := x :: !adjy)
-	      | (MEMREG _,    PSEUDO) => (adjx := y :: !adjx; adjy := x :: !adjy)
-	      | (SPILLED,     PSEUDO) => (adjx := y :: !adjx; adjy := x :: !adjy)
-	      | (SPILL_LOC _, PSEUDO) => (adjx := y :: !adjx; adjy := x :: !adjy)
-	      | _ => 
-		  if (noEdges (!colx) andalso noEdges(!coly)) then () 
-		  else error "addEge"
-	      )
-	  else () (* edge already there *)
+             (PSEUDO,      PSEUDO) => (adjx := y:: !adjx; degx := !degx+1;
+                                       adjy := x:: !adjy; degy := !degy+1)
+           | (PSEUDO,   COLORED _) => (adjx := y:: !adjx; degx := !degx+1)
+           | (PSEUDO,    MEMREG _) => (adjx := y:: !adjx; adjy := x:: !adjy)
+           | (PSEUDO, SPILL_LOC _) => (adjx := y:: !adjx; adjy := x:: !adjy)
+           | (PSEUDO,     SPILLED) => ()
+           | (COLORED _,   PSEUDO) => (adjy := x:: !adjy; degy := !degy+1)
+           | (COLORED _, COLORED _) => () (* x<>y, can't alias *)
+           | (COLORED _, MEMREG _) => () (* x<>y, can't alias *)
+           | (COLORED _, SPILL_LOC _) => () (* x<>y, can't alias *)
+           | (COLORED _,   SPILLED) => ()
+           | (MEMREG _,    PSEUDO) => (adjx := y:: !adjx; adjy := x:: !adjy)
+           | (MEMREG _, COLORED _) => ()   (* x<>y, can't alias *)
+           | (MEMREG _,  MEMREG _) => ()   (* x<>y, can't alias *)
+           | (MEMREG _, SPILL_LOC _) => () (* x<>y, can't alias *)
+           | (MEMREG _,   SPILLED) => ()
+           | (SPILL_LOC _, PSEUDO) => (adjx := y:: !adjx; adjy := x:: !adjy)
+           | (SPILL_LOC _, COLORED _) => ()     (* x<>y, can't alias *)
+           | (SPILL_LOC _, MEMREG _) => ()    (* x<>y, can't alias *)
+           | (SPILL_LOC _, SPILL_LOC _) => () (* x<>y, can't alias *)
+           | (SPILL_LOC _, SPILLED) => () (* x<>y, can't alias *)
+           | (SPILLED,  _) => ()
+           | (colx, coly) => 
+               error("addEdge x="^i2s xn^col2s colx^" y="^i2s yn^col2s coly)
+           )
+          else () (* edge already there *)
   end
 
   fun isFixedMem(SPILL_LOC _) = true
@@ -517,7 +544,7 @@ struct
    * Initialize a list of worklists
    *)
   fun initWorkLists 
-        (GRAPH{nodes, K, bitMatrix, regmap, pseudoCount, blockedCount,
+        (GRAPH{nodes, K, bitMatrix, pseudoCount, blockedCount,
                firstPseudoR, deadCopies, memMoves, mode, ...}) {moves} =
   let 
       (* Filter moves that already have an interference
@@ -540,56 +567,56 @@ struct
                            dst as NODE{number=y, color=ref colDst,...}, 
                            cost, ...})::mvs, 
                  mvs', mem) =
-	  if isFixed colSrc andalso isFixed colDst then
-	    filter(mvs, mvs', mem)
-	  else if isFixedMem colSrc orelse isFixedMem colDst then
-	    filter(mvs, mvs', mv::mem)
+          if isFixed colSrc andalso isFixed colDst then
+            filter(mvs, mvs', mem)
+          else if isFixedMem colSrc orelse isFixedMem colDst then
+            filter(mvs, mvs', mv::mem)
           else if member(x, y) then  
-	    filter(mvs, mvs', mem) 
+            filter(mvs, mvs', mem) 
           else 
-	    (setInfo(src, mv, cost);
-	     setInfo(dst, mv, cost);
-	     filter(mvs, MV.add(mv, mvs'), mem))
+            (setInfo(src, mv, cost);
+             setInfo(dst, mv, cost);
+             filter(mvs, MV.add(mv, mvs'), mem))
 
       (* like filter but does dead copy elimination *)
       fun filterDead([], mvs', mem, dead) = (mvs', mem, dead)
-	| filterDead((mv as 
+        | filterDead((mv as 
                   MV{src as NODE{number=x, color as ref colSrc, 
                                  pri, adj, uses,...},
-                     dst as NODE{number=y, color=ref colDst, 
+                     dst as NODE{number=y, cell=celly, color=ref colDst, 
                                  defs=dstDefs, uses=dstUses,...},
                      cost, ...})::mvs, 
                  mvs', mem, dead) =  
-	  if (isFixed colSrc andalso isFixed colDst) then
-	    filterDead(mvs, mvs', mem, dead)
-	  else if isFixedMem colSrc orelse isFixedMem colDst then
-	    filterDead(mvs, mvs', mv::mem, dead)
-	  else (case (colSrc, colDst, dstDefs, dstUses) 
-	    of (_, PSEUDO, ref [pt], ref [])=> 
-	       (* eliminate dead copy *)
-	       let fun decDegree [] = ()
-		     | decDegree(NODE{color=ref PSEUDO, degree, ...}::adj) =
-			 (degree := !degree - 1; decDegree adj)
-		     | decDegree(_::adj) = decDegree adj
-		   fun elimUses([], _, uses, pri, cost) = (uses, pri)
-		     | elimUses(pt::pts, pt' : int, uses, pri, cost) =
-		       if pt = pt' then elimUses(pts, pt', uses, pri-cost, cost)
-		       else elimUses(pts, pt', pt::uses, pri, cost)
-		   val (uses', pri') = elimUses(!uses, pt, [], !pri, cost);
-	       in  pri := pri';
-		   uses := uses';
-		   color := ALIASED src;
-		   decDegree(!adj);
-		   filterDead(mvs, mvs', mem, y::dead)
-	       end
-	     | _ =>  (* normal moves *)
-	       if member(x, y)     (* moves that interfere *)
-	       then filterDead(mvs, mvs', mem, dead) 
-	       else (setInfo(src, mv, cost);
-		     setInfo(dst, mv, cost);
-		     filterDead(mvs, MV.add(mv, mvs'), mem, dead)
-		    )
-	    )
+          if (isFixed colSrc andalso isFixed colDst) then
+            filterDead(mvs, mvs', mem, dead)
+          else if isFixedMem colSrc orelse isFixedMem colDst then
+            filterDead(mvs, mvs', mv::mem, dead)
+          else (case (colSrc, colDst, dstDefs, dstUses) 
+            of (_, PSEUDO, ref [pt], ref [])=> 
+               (* eliminate dead copy *)
+               let fun decDegree [] = ()
+                     | decDegree(NODE{color=ref PSEUDO, degree, ...}::adj) =
+                         (degree := !degree - 1; decDegree adj)
+                     | decDegree(_::adj) = decDegree adj
+                   fun elimUses([], _, uses, pri, cost) = (uses, pri)
+                     | elimUses(pt::pts, pt' : int, uses, pri, cost) =
+                       if pt = pt' then elimUses(pts, pt', uses, pri-cost, cost)
+                       else elimUses(pts, pt', pt::uses, pri, cost)
+                   val (uses', pri') = elimUses(!uses, pt, [], !pri, cost);
+               in  pri := pri';
+                   uses := uses';
+                   color := ALIASED src;
+                   decDegree(!adj);
+                   filterDead(mvs, mvs', mem, celly::dead)
+               end
+             | _ =>  (* normal moves *)
+               if member(x, y)     (* moves that interfere *)
+               then filterDead(mvs, mvs', mem, dead) 
+               else (setInfo(src, mv, cost);
+                     setInfo(dst, mv, cost);
+                     filterDead(mvs, MV.add(mv, mvs'), mem, dead)
+                    )
+            )
             
       (*
        * Scan all nodes in the graph and check which worklist they should
@@ -632,40 +659,6 @@ struct
   end
 
   (*
-   * Return a regmap that reflects the current interference graph.
-   * Spilled registers are given the special value ~1
-   *)
-  fun regmap(G.GRAPH{nodes,...}) = 
-  let val getnode = IntHashTable.lookup nodes
-      fun num(NODE{color=ref(COLORED r),...}) = r
-        | num(NODE{color=ref(ALIASED n),...}) = num n
-	| num(NODE{color=ref(SPILL_LOC _), ...}) = ~1
-	| num(NODE{color=ref(SPILLED), ...}) = ~1
-	| num(NODE{color=ref(MEMREG m), ...}) = m
-        | num(NODE{number, color=ref PSEUDO,...}) = number
-        | num _ = error "regmap"
-      fun lookup r = num(getnode r) handle e => r
-  in lookup 
-  end
-
-  (*
-   * Return a regmap that reflects the current interference graph, 
-   * during spilling.
-   *)
-  fun spillRegmap(G.GRAPH{nodes,...}) = 
-  let val getnode = IntHashTable.lookup nodes
-      fun num(NODE{color=ref(COLORED r),...}) = r
-        | num(NODE{color=ref(ALIASED n),...}) = num n
-	| num(NODE{color=ref(SPILL_LOC _), number, ...}) = number
-	| num(NODE{color=ref(SPILLED), number, ...}) = number
-	| num(NODE{color=ref(MEMREG _), number, ...}) = number
-        | num(NODE{number, color=ref PSEUDO,...}) = number
-        | num _ = error "spillRegmap"
-      fun lookup r = num(getnode r) handle e => r
-  in  lookup 
-  end
-
-  (*
    * Return a regmap that returns the current spill location
    * during spilling.
    *)
@@ -674,9 +667,20 @@ struct
       fun num(NODE{color=ref(ALIASED n), ...}) = num n
         | num(NODE{color=ref(SPILLED), number, ...}) = number
         | num(NODE{color=ref(SPILL_LOC s), number, ...}) = ~s
-        | num(NODE{color=ref(MEMREG m), number, ...}) = m
+        | num(NODE{color=ref(MEMREG(m, _)), number, ...}) = m
         | num(NODE{number, ...}) = number
-      fun lookup r = num(getnode r) handle e => r
+      fun lookup r = num(getnode r) handle _ => r
+  in  lookup 
+  end
+
+  fun spillLocToString(G.GRAPH{nodes,...}) = 
+  let val getnode = IntHashTable.lookup nodes
+      fun num(NODE{color=ref(ALIASED n), ...}) = num n
+        | num(NODE{color=ref(SPILLED), cell, ...}) = "spilled "^C.toString cell
+        | num(NODE{color=ref(SPILL_LOC s), number, ...}) = "frame "^i2s s
+        | num(NODE{color=ref(MEMREG(_,m)), ...}) = "memreg "^C.toString m 
+        | num(NODE{number, ...}) = "error "^i2s number
+      fun lookup r = num(getnode r) 
   in  lookup 
   end
 
@@ -741,7 +745,7 @@ struct
                     (* false, *) mv, fz, stack) = 
            (* normal edge *)
           (if debug then 
-           print("DecDegree "^show node^" d="^Int.toString(d-1)^"\n") else (); 
+           print("DecDegree "^show node^" d="^i2s(d-1)^"\n") else (); 
            degree := K - 1;
            (* node is now low degree!!! *)
            let val mv = enableMoves(!adj, mv)
@@ -953,13 +957,13 @@ struct
                | PSEUDO =>
                    (addEdge(t, u);
                     let 
-		      val d = !degree
+                      val d = !degree
                     in 
-		      if d = K then 
+                      if d = K then 
                         let val (mv, fz, stack) = lowDegree(t, mv, fz, stack)
                         in  union(adj, mv, fz, stack) 
-			end
-		      else (degree := d - 1; union(adj, mv, fz, stack))
+                        end
+                      else (degree := d - 1; union(adj, mv, fz, stack))
                     end
                    ) 
                | _ => union(adj, mv, fz, stack)
@@ -1029,7 +1033,7 @@ struct
                        COLORED _ => (v, u)
                      | _         => (u, v)
              val _ = if debug then print ("Coalescing "^show u^"<->"^show v
-                         ^" ("^Int.toString cost^")") else ()
+                         ^" ("^i2s cost^")") else ()
              val mv = MV.merge(l, r)
              fun coalesceIt(status, v) = 
                 (status := COALESCED;
@@ -1100,7 +1104,7 @@ struct
             node as NODE{number=me, degree, 
                          adj, movelist, movecnt as ref mc,...},
             fz, stack) = 
-      let val _ = if debug then print("Mark as frozen "^Int.toString me^"\n")
+      let val _ = if debug then print("Mark as frozen "^i2s me^"\n")
                   else ()
           (* eliminate all moves, return a list of nodes that
            * can be simplified
@@ -1178,7 +1182,7 @@ struct
                      in  if !blocked = 0 
                          then ((* print "[no freezing again]"; *) stack)
                          else ((* print("[freezing again "^
-                               Int.toString(!blocked)^"]"); *)
+                               i2s(!blocked)^"]"); *)
                                loop(FZ.merge(fz, newFz), FZ.EMPTY, stack))
                      end
                   | _ => 
@@ -1186,7 +1190,7 @@ struct
                      loop(fz, newFz, stack))
               end
       in  if !blocked = 0 then ((* print "[no freezing]"; *) stack)
-          else ((* print("[freezing "^Int.toString(!blocked)^"]"); *)
+          else ((* print("[freezing "^i2s(!blocked)^"]"); *)
                 loop(fz, FZ.EMPTY, stack))
       end
 
@@ -1304,8 +1308,8 @@ struct
                   in  color := COLORED col; spills
                   end handle _ => node::spills
           in  optimistic(stack, spills, stamp+1) 
-	  end
-	| optimistic _ = error "optimistic"
+          end
+        | optimistic _ = error "optimistic"
 
       (* Briggs' optimistic spilling heuristic, with biased coloring *)
       fun biasedColoring([], spills, stamp) = (spills, stamp)
@@ -1354,12 +1358,12 @@ struct
           in  biasedColoring(stack, spills, stamp+1) end
 
       val (spills, st) = 
-	if isOn(mode, BIASED_SELECTION)  then
-	  biasedColoring(stack, [], !stamp)
-	else if !spillFlag then
-	  optimistic(stack, [], !stamp)
-	else
-	  fastcoloring(stack, !stamp)
+        if isOn(mode, BIASED_SELECTION)  then
+          biasedColoring(stack, [], !stamp)
+        else if !spillFlag then
+          optimistic(stack, [], !stamp)
+        else
+          fastcoloring(stack, !stamp)
 
   in  stamp := st;
       case spills of
@@ -1391,20 +1395,20 @@ struct
           let val dst as NODE{color=ref dstCol, ...} = chase dst
               val src as NODE{color=ref srcCol, ...} = chase src
           in
-	    if isFixedMem(srcCol) andalso isFixedMem(dstCol) then
-	      setMove(dst, src, mv, cost)
-	    else (case (srcCol, dstCol)
-	      of (PSEUDO, _) =>
-		 if isFixedMem dstCol then setMove(dst, src, mv, cost) 
-		 else error "initMemMoves"
-	       | (_, PSEUDO) => 
-		 if isFixedMem srcCol then setMove(dst, src, mv, cost) 
-		 else error "initMemMoves"
-	       | (COLORED _, _) => 
-		 if isFixedMem dstCol then () else error "initMemMoves"
-	       | (_, COLORED _) => 
-		 if isFixedMem srcCol then () else error "initMemMoves"
-	       | _  => error "initMemMoves"
+            if isFixedMem(srcCol) andalso isFixedMem(dstCol) then
+              setMove(dst, src, mv, cost)
+            else (case (srcCol, dstCol)
+              of (PSEUDO, _) =>
+                 if isFixedMem dstCol then setMove(dst, src, mv, cost) 
+                 else error "initMemMoves"
+               | (_, PSEUDO) => 
+                 if isFixedMem srcCol then setMove(dst, src, mv, cost) 
+                 else error "initMemMoves"
+               | (COLORED _, _) => 
+                 if isFixedMem dstCol then () else error "initMemMoves"
+               | (_, COLORED _) => 
+                 if isFixedMem srcCol then () else error "initMemMoves"
+               | _  => error "initMemMoves"
              (*esac*));
               init mvs
           end
@@ -1422,8 +1426,9 @@ struct
   let exception Savings
       val savingsMap = IntHashTable.mkTable(32, Savings)
                : {pinned:int,cost:int} IntHashTable.hash_table
-      fun savings i = getOpt (IntHashTable.find savingsMap i,
-			      { pinned = ~1, cost = 0 })
+      val savings = IntHashTable.find savingsMap
+      val savings = fn r => case savings r of NONE => {pinned= ~1, cost=0}
+                                            | SOME s => s
       val addSavings = IntHashTable.insert savingsMap
       val member     = BM.member(!bitMatrix)
       fun incSavings(u, v, c) =
@@ -1437,10 +1442,10 @@ struct
           let val src as NODE{number=u, color=cu, ...} = chase src
               val dst as NODE{number=v, color=cv, ...} = chase dst
           in  case (!cu, !cv) 
-	      of (cu, PSEUDO) => 
-		 if isFixedMem (cu) then incSavings(v, u, cost) else ()
-	       | (PSEUDO, cv) => 
-		 if isFixedMem (cv) then incSavings(u, v, cost) else ()
+              of (cu, PSEUDO) => 
+                 if isFixedMem (cu) then incSavings(v, u, cost) else ()
+               | (PSEUDO, cv) => 
+                 if isFixedMem (cv) then incSavings(u, v, cost) else ()
                | _ => ();
               computeSavings mvs
           end
@@ -1449,39 +1454,49 @@ struct
   end
 
   (*
-   * Update the regmap, after finishing register allocation.
-   * All nodes must have been colored.
+   * Update the color of cells 
    *)
-  fun finishRA(GRAPH{regmap, nodes, deadCopies, ...}) = 
-  let val enter = IntHashTable.insert regmap
-      fun set(r, NODE{color=ref(COLORED c),...}) = enter(r, c)
-        | set(r, NODE{color=ref(ALIASED n),...}) = set(r, n)
-	| set(r, NODE{color=ref(SPILLED),...}) =  enter(r, ~1)
-	| set(r, NODE{color=ref(SPILL_LOC s),...}) =  enter(r, ~1)
-	| set(r, NODE{color=ref(MEMREG m),...}) =  enter(r, m)
-        | set(r, _) = error("finishRA "^Int.toString r)
-  in  IntHashTable.appi set nodes;
-      case !deadCopies of
-        [] => ()
-      | dead => app (fn r => enter(r, ~1)) dead
+  fun updateCellColors(GRAPH{nodes, deadCopies, ...}) = 
+  let fun enter(C.CELL{col, ...},c) = col := c
+      fun cellOf(NODE{cell, ...}) = cell
+      fun set(NODE{cell, color=ref(COLORED c),...}) = 
+            enter(cell, C.MACHINE c)
+        | set(NODE{cell, color=ref(ALIASED alias),...}) = 
+            enter(cell, C.ALIASED(cellOf alias))
+        | set(NODE{cell, color=ref(SPILLED),...}) = 
+            enter(cell, C.SPILLED)
+        | set(NODE{cell, color=ref(SPILL_LOC s),...}) = 
+            enter(cell, C.SPILLED)
+        | set(NODE{cell, color=ref(MEMREG(m, _)),...})= 
+            enter(cell, C.MACHINE m)
+        | set(NODE{cell, color=ref PSEUDO, ...}) = ()
+        | set(_) = error("updateCellColors")
+  in  IntHashTable.app set nodes
   end
 
   (*
-   * Update the regmap, after copy propagation
+   * Update aliases before spill rewriting.
    *)
-  fun finishCP(GRAPH{regmap, nodes,...}) =
-  let val enter = IntHashTable.insert regmap
-  in  IntHashTable.appi
-        (fn (r, node as NODE{color as ref(ALIASED _),...}) =>
-            (case chase node of
-               NODE{color=ref(COLORED c),...} => enter(r, c)
-             | NODE{color=ref PSEUDO, number,...} => enter(r, number)
-             | NODE{color=ref REMOVED, number,...} => enter(r, number)
-             | _ => error "finishCP"
-            )
-          | _ => ()
-        ) nodes
+  fun updateCellAliases(GRAPH{nodes, deadCopies, ...}) = 
+  let fun enter(C.CELL{col, ...},c) = col := c
+      fun cellOf(NODE{cell, ...}) = cell
+      fun set(NODE{cell, color=ref(COLORED c),...}) = ()
+        | set(NODE{cell, color=ref(ALIASED alias),...}) = 
+            enter(cell, C.ALIASED(cellOf alias))
+        | set(NODE{cell, color=ref(SPILLED),...}) = ()
+        | set(NODE{cell, color=ref(SPILL_LOC s),...}) = ()
+        | set(NODE{cell, color=ref(MEMREG _),...})= ()
+        | set(NODE{cell, color=ref PSEUDO, ...}) = ()
+        | set(_) = error("updateCellAliases")
+  in  IntHashTable.app set nodes
   end
+
+  fun markDeadCopiesAsSpilled(GRAPH{deadCopies, ...}) = 
+  let fun enter(C.CELL{col, ...},c) = col := c
+  in  case !deadCopies of
+        [] => ()
+      | dead => app (fn r => enter(r, C.SPILLED)) dead
+  end 
 
   (*
    * Clear the interference graph, but keep the nodes 
@@ -1509,3 +1524,5 @@ struct
   end (* local *)
 
 end 
+
+end (* local *)

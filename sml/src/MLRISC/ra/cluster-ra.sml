@@ -13,7 +13,8 @@ functor ClusterRA
    (structure Flowgraph : FLOWGRAPH
     structure Asm       : INSTRUCTION_EMITTER
     structure InsnProps : INSN_PROPERTIES
-    structure Spill : RA_SPILL
+      where C = CellsBasis
+    structure Spill : RA_SPILL 
       sharing Flowgraph.I = InsnProps.I = Asm.I = Spill.I 
       sharing Asm.P = Flowgraph.P
    ) : RA_FLOWGRAPH =
@@ -21,7 +22,6 @@ struct
    structure F      = Flowgraph
    structure I      = F.I
    structure W      = F.W
-   structure C      = I.C
    structure G      = RAGraph
    structure Props  = InsnProps
    structure Core   = RACore
@@ -35,6 +35,7 @@ struct
       )
 
    open G
+   structure C  = I.C
 
    fun isOn(flag,mask) = Word.andb(flag,mask) <> 0w0
 
@@ -43,10 +44,25 @@ struct
    type flowgraph = F.cluster (* flowgraph is a cluster *)
 
    fun error msg = MLRiscErrorMsg.error("ClusterRA", msg)
+
+   val i2s = Int.toString
   
    val mode = 0w0
 
-   fun regmap(F.CLUSTER{regmap, ...}) = regmap
+   fun uniqCells s = C.SortedCells.return(C.SortedCells.uniq s)
+
+   fun chaseCell(c as C.CELL{col=ref(C.MACHINE r),...}) = (c,r)
+     | chaseCell(C.CELL{col=ref(C.ALIASED c), ...}) = chaseCell c
+     | chaseCell(c as C.CELL{col=ref C.SPILLED, ...}) = (c,~1)
+     | chaseCell(c as C.CELL{col=ref C.PSEUDO, id, ...}) = (c,id)
+
+   fun colorOf(C.CELL{col=ref(C.MACHINE r),...}) = r
+     | colorOf(C.CELL{col=ref(C.ALIASED c), ...}) = colorOf c
+     | colorOf(C.CELL{col=ref C.SPILLED, ...}) = ~1
+     | colorOf(C.CELL{col=ref C.PSEUDO, id, ...}) = id
+
+   fun chase(NODE{color=ref(ALIASED n), ...}) = chase n
+     | chase n = n
 
    fun dumpFlowgraph(msg, cluster, stream) =
        PrintCluster.printCluster stream 
@@ -63,7 +79,7 @@ struct
          | loop(_::l,n) = loop(l,n+1)
    in  loop(l,0) end
 
-   fun services(cluster as F.CLUSTER{regmap, blocks, blkCounter, ...}) =
+   fun services(cluster as F.CLUSTER{blocks, blkCounter, ...}) =
    let (* Create a graph based view of cluster *)
        val N = !blkCounter
 
@@ -93,16 +109,23 @@ struct
        (*
         * Building the interference graph
         *) 
-       fun buildIt (cellkind, regmap, 
+       fun buildIt (cellkind,  
                     G as GRAPH{nodes, dedicated, mode, span, copyTmps, ...}) =
 
        let (* definitions indexed by block id+instruction id *)
            val defsTable    = A.array(N, A.array(0, [] : node list))
            val marked       = A.array(N, ~1)
+           val addEdge      = Core.addEdge G
 
-           (* copies indexed by source *)
-           val copyTable    = IntHashTable.mkTable(N, NotThere)
-           fun lookupCopy i = getOpt (IntHashTable.find copyTable i, [])
+           (* copies indexed by source  
+            * This table maps variable v to the program points where
+            * v is a source of a copy.
+            *)
+           val copyTable    = IntHashTable.mkTable(N, NotThere) 
+                : {dst:C.cell,pt:int} list IntHashTable.hash_table
+           val lookupCopy   = IntHashTable.find copyTable 
+           val lookupCopy   = fn r => case lookupCopy r of SOME c => c 
+                                                         | NONE => []
            val addCopy      = IntHashTable.insert copyTable
              
        
@@ -131,6 +154,12 @@ struct
            fun initialize(v,v',useSites) =
            let (* First we remove all definitions for all copies 
                 * with v as source.
+                *  When we have a copy and while we are processing v
+                *
+                *      x <- v
+                *
+                *  x does not really interfere with v at this point,
+                *  so we remove the definition of x temporarily.
                 *)
                fun markCopies([], trail) = trail
                  | markCopies({pt, dst}::copies, trail) = 
@@ -140,9 +169,10 @@ struct
                        val nodes = UA.sub(defs, i)
                        fun revAppend([], nodes) = nodes
                          | revAppend(n::ns, nodes) = revAppend(ns, n::nodes)
+                       val dstColor = colorOf dst
                        fun removeDst([], nodes') = nodes'
                          | removeDst((d as NODE{number=r,...})::nodes, nodes')=
-                           if r = dst then revAppend(nodes', nodes)
+                           if r = dstColor then revAppend(nodes', nodes)
                            else removeDst(nodes, d::nodes')
                        val nodes' = removeDst(nodes, [])
                    in  UA.update(defs, i, nodes');
@@ -150,7 +180,8 @@ struct
                    end
 
                (*
-                * Then we mark all use sites of v
+                * Then we mark all use sites of v with a fake definition so that
+                * the scanning will terminate correctly at these points.
                 *) 
                fun markUseSites([], trail) = trail
                  | markUseSites(pt::pts, trail) = 
@@ -174,7 +205,7 @@ struct
             * Perform incremental liveness analysis on register v 
             * and compute the span
             *)
-           fun liveness(v, v' as NODE{uses, ...}, addEdge) = 
+           fun liveness(v, v' as NODE{uses, ...}, cellV) = 
            let val st = !stamp
                val _  = stamp := st + 1
                fun foreachUseSite([], span) = span
@@ -243,7 +274,7 @@ struct
            val newNodes   = Core.newNodes G
            val getnode    = IntHashTable.lookup nodes
            val insnDefUse = Props.defUse cellkind
-           val getCell    = C.getCell cellkind
+           val getCell    = C.CellSet.get cellkind
 
            fun isDedicated r =
               Word.fromInt r < Word.fromInt(A.length dedicated) 
@@ -253,8 +284,15 @@ struct
            fun rmvDedicated regs =
            let fun loop([], rs') = rs'
                  | loop(r::rs, rs') = 
-               let val r = regmap r 
-               in  loop(rs, if isDedicated r then rs' else r::rs') end
+                   let fun rmv(r as C.CELL{col=ref(C.PSEUDO), ...}) =
+                             loop(rs, r::rs')
+                         | rmv(C.CELL{col=ref(C.ALIASED r), ...}) = rmv r
+                         | rmv(r as C.CELL{col=ref(C.MACHINE col), ...}) = 
+                             if isDedicated col then loop(rs, rs')
+                             else loop(rs, r::rs')
+                         | rmv(C.CELL{col=ref(C.SPILLED), ...}) = loop(rs,rs')
+                   in  rmv r 
+                   end
            in  loop(regs, []) end
  
            (*
@@ -266,37 +304,31 @@ struct
                        case (Props.moveTmpR insn, dst) of
                          (SOME r, _::dst) => 
                            (* Add a pseudo use for tmpR *)
-                         let fun chase(NODE{color=ref(ALIASED n), ...}) = 
-                                  chase n
-                               | chase n = n
-                         in  case chase(getnode r) of
-                               tmp as NODE{uses,defs=ref [d],...} =>
-                                  (uses := [d-1]; (dst, tmp::tmps)) 
-                             | _ => error "mkMoves"
-                         end
+                          (case chase(getnode(colorOf r)) of
+                             tmp as NODE{uses,defs=ref [d],...} =>
+                               (uses := [d-1]; (dst, tmp::tmps)) 
+                          | _ => error "mkMoves"
+                          )
                        | (_, dst) => (dst, tmps)
                    fun moves([], [], mv) = mv
                      | moves(d::ds, s::ss, mv) =
-                       if isDedicated d orelse isDedicated s 
-                       then moves(ds, ss, mv)
-                       else
-                       let fun chases(NODE{color=ref(ALIASED src), ...}, dst) =
-                                 chases(src, dst)
-                             | chases(src, dst) = chases'(src, dst)
-                           and chases'(src, NODE{color=ref(ALIASED dst), ...}) =
-                                 chases'(src, dst)
-                             | chases'(src, dst) = (src, dst)
-                           val (src as NODE{number=s, ...},
-                                dst as NODE{number=d, ...}) =
-                                   chases(getnode s, getnode d)
-                       in if d = s then moves(ds, ss, mv)
-                          else (addCopy(s, {dst=d, pt=pt}::lookupCopy s);
-                                moves(ds, ss, MV{dst=dst, src=src,
-                                                status=ref WORKLIST,
-                                                hicount=ref 0,
-                                                (* kind=REG_TO_REG, *)
-                                                cost=cost}::mv)
-                               )
+                       let val (d, cd) = chaseCell d
+                           val (s, cs) = chaseCell s
+                       in  if isDedicated cd orelse isDedicated cs
+                           then moves(ds, ss, mv)
+                           else if cd = cs then moves(ds, ss, mv)
+                           else 
+                             let val _ = 
+                                  addCopy(cs, {dst=d, pt=pt}::lookupCopy cs);
+                                 val dst = chase(getnode cd) 
+                                 val src = chase(getnode cs) 
+                             in  moves(ds, ss, MV{dst=dst, src=src,
+                                                   status=ref WORKLIST,
+                                                   hicount=ref 0,
+                                                   (* kind=REG_TO_REG, *)
+                                                   cost=cost}::mv
+                                      ) 
+                             end
                        end
                      | moves _ = error "moves"
                in  (moves(dst, src, mv), tmps) end
@@ -315,7 +347,8 @@ struct
                            val defs = newNodes{cost=w, pt=pt, 
                                                defs=defs, uses=uses}
                            val _    = UA.update(dtab, i, defs)
-                           val (mv, tmps) = mkMoves(insn, pt, d, u, w, mv, tmps)
+                           val (mv, tmps) = 
+                                 mkMoves(insn, pt, d, u, w, mv, tmps)
                        in  scan(rest, pt+1, i+1, mv, tmps)  
                        end
                    val (pt, i, mv, tmps) = 
@@ -328,7 +361,8 @@ struct
                     *)
                    case !succ of
                       [(F.EXIT _, _)] =>
-                      let val liveSet = rmvDedicated(getCell(!liveOut))
+                      let val liveSet = rmvDedicated(
+                                           uniqCells(getCell(!liveOut)))
                       in  newNodes{cost=w, pt=progPt(blknum, 0),
                                    defs=[], uses=liveSet}; ()
                       end
@@ -341,23 +375,24 @@ struct
           (* Add the edges *)
 
            val (moves, tmps) = mkNodes(blocks, [], [])
-           val addEdge = Core.addEdge G
        in  IntHashTable.appi
              (let val setSpan =
                   if isOn(mode,Core.COMPUTE_SPAN) then
-                  let val spanMap =
-			  IntHashTable.mkTable(IntHashTable.numItems nodes,
-					       NotThere)
+                  let val spanMap = IntHashTable.mkTable
+                                        (IntHashTable.numItems nodes, NotThere)
                       val setSpan = IntHashTable.insert spanMap
                       val _       = span := SOME spanMap
                   in  setSpan end
                   else fn _ => ()
-              in 
-		fn (v, v' as NODE{color=ref(PSEUDO | COLORED _), ...}) => 
-		     setSpan(v, liveness(v, v', addEdge))
-		 | (v, v' as NODE{color=ref(MEMREG _), ...}) => 
-                     setSpan(v, liveness(v, v', addEdge))
-		 | _ => ()
+              in  fn (v, v' as NODE{cell, color, ...}) =>
+                  let fun computeLiveness() = 
+                           setSpan(v, liveness(v, v', cell))
+                  in  case !color of
+                        PSEUDO => computeLiveness()
+                      | COLORED _ => computeLiveness()
+                      | MEMREG _ => computeLiveness()
+                      | _ => ()
+                  end
               end 
              ) nodes;
            if isOn(Core.SAVE_COPY_TEMPS, mode) then copyTmps := tmps else ();
@@ -369,18 +404,18 @@ struct
         * Build the interference graph initially.
         *)
        fun build(G, cellkind) = 
-       let val moves = buildIt(cellkind, C.lookup regmap, G)
+       let val moves = buildIt(cellkind, G)
        in  if !dump_size then
               let val GRAPH{nodes, bitMatrix,...} = G
                   val insns = 
                       foldr (fn (F.BBLOCK{insns,...},n) => length(!insns) + n 
                               | (_,n) => n) 0 blocks
               in  TextIO.output(!MLRiscControl.debug_stream,
-                        "RA #blocks="^Int.toString N^
-                        " #insns="^Int.toString insns^
-                        " #nodes="^Int.toString(IntHashTable.numItems nodes)^
-                        " #edges="^Int.toString(Core.BM.size(!bitMatrix))^
-                        " #moves="^Int.toString(length moves)^"\n")
+                        "RA #blocks="^i2s N^
+                        " #insns="^i2s insns^
+                        " #nodes="^i2s(IntHashTable.numItems nodes)^
+                        " #edges="^i2s(Core.BM.size(!bitMatrix))^
+                        " #moves="^i2s(length moves)^"\n")
               end
            else ();
            moves
@@ -392,29 +427,26 @@ struct
         *)
        fun rebuild(cellkind, G) = 
            (Core.clearNodes G;
-            buildIt(cellkind, Core.regmap G, G)
+            buildIt(cellkind, G)
            )
 
        (*
         * Spill a set of nodes and rewrite the flowgraph 
         *)
        fun spill{copyInstr, spill, spillSrc, spillCopyTmp, 
-                 reload, reloadDst, renameSrc, graph as G.GRAPH{regmap, ...}, 
+                 reload, reloadDst, renameSrc, graph,
                  cellkind, nodes=nodesToSpill} = 
        let (* Remove the interference graph now *)
            val _ = Core.clearGraph graph
 
            (* maps program point to registers to be spilled *)
            val spillSet = IntHashTable.mkTable(32, NotThere)
-			  : C.cell list IntHashTable.hash_table
 
            (* maps program point to registers to be reloaded *)
            val reloadSet = IntHashTable.mkTable(32, NotThere)
-			   : C.cell list IntHashTable.hash_table
 
            (* maps program point to registers to be killed *)
-           val killSet = IntHashTable.mkTable(32, NotThere)
-			 : C.cell list IntHashTable.hash_table
+           val killSet = IntHashTable.mkTable(32, NotThere) 
 
            val spillRewrite = Spill.spillRewrite
                               { graph=graph,
@@ -433,13 +465,13 @@ struct
 
            (* set of basic blocks that are affected *)
            val affectedBlocks = IntHashTable.mkTable(32, NotThere)
-				: bool IntHashTable.hash_table
 
            val addAffectedBlocks = IntHashTable.insert affectedBlocks
 
            fun ins set = let
                val add  = IntHashTable.insert set
-               fun look i = getOpt (IntHashTable.find set i, [])
+               val look = IntHashTable.find set
+               val look = fn r => case look r of SOME s => s | NONE => []
                fun enter(r, []) = ()
                  | enter(r, pt::pts) = 
                    (add (pt, r::look pt);
@@ -454,20 +486,21 @@ struct
            val insKillSet   = 
 	     let
                val add  = IntHashTable.insert killSet
-               fun look i = getOpt (IntHashTable.find killSet i, [])
+               val look = IntHashTable.find killSet
+               val look = fn r => case look r of SOME s => s | NONE => []
                fun enter(r, []) = ()
                  | enter(r, pt::pts) = (add(pt, r::look pt); enter(r, pts))
              in  enter 
              end
 
            (* Mark all spill/reload locations *)
-           fun markSpills(G.NODE{color, number, defs, uses, ...}) =
+           fun markSpills(G.NODE{color, number, cell, defs, uses, ...}) =
                let fun spillIt(defs, uses) = 
-                       (insSpillSet(number, defs);
-                        insReloadSet(number, uses);
+                       (insSpillSet(cell, defs);
+                        insReloadSet(cell, uses);
                         (* Definitions but no use! *) 
                         case uses of
-                           [] => insKillSet(number, defs)
+                           [] => insKillSet(cell, defs)
                          | _ => ()
                        )
 		   val d = !defs

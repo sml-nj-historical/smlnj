@@ -11,13 +11,6 @@ struct
 
    exception NoCandidate
 
-   (*
-    * This dummy node is used during spilling.
-    *)
-   val dummyNode = NODE{pri=ref 0,adj=ref [],degree=ref 0,movecnt=ref 0,
-                        color=ref PSEUDO, defs=ref [], uses=ref [],
-                        movecost=ref 0,movelist=ref [], number= ~1}
-
    val mode = RACore.NO_OPTIMIZATION
 
    fun init() = ()
@@ -58,10 +51,11 @@ struct
                       | _ => cost()
                in  if cost < lowestCost andalso not(hasBeenSpilled number)
                    then 
-                     if lowestCost >= infiniteCost then (* not a real node *)
-                        chaitin(rest, node, cost, spillWkl)
-                     else  
-                        chaitin(rest, node, cost, best::spillWkl)
+                     (case best of
+                        NONE => chaitin(rest, SOME node, cost, spillWkl)
+                      | SOME best => 
+                          chaitin(rest, SOME node, cost, best::spillWkl)
+                     )
                    else
                      chaitin(rest, best, lowestCost, node::spillWkl)
                end
@@ -72,10 +66,11 @@ struct
         (* val _ = print("["^Int.toString(length spillWkl)^"]") *)
 
         val (potentialSpillNode, cost, newSpillWkl) = 
-             chaitin(spillWkl, dummyNode, infiniteCost, [])
+             chaitin(spillWkl, NONE, infiniteCost, [])
     in  case (potentialSpillNode, newSpillWkl) of
-          (NODE{number= ~1, ...}, []) => {node=NONE, cost=cost, spillWkl=[]}
-        | (NODE{number= ~1, ...}, _) => raise NoCandidate
-        | (node, spillWkl) => {node=SOME node, cost=cost, spillWkl=spillWkl}
+          (NONE, []) => {node=NONE, cost=cost, spillWkl=[]}
+        | (NONE, _) => raise NoCandidate
+        | (SOME node, spillWkl) => 
+              {node=SOME node, cost=cost, spillWkl=spillWkl}
     end
 end

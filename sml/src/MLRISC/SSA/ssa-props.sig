@@ -9,12 +9,10 @@ sig
    structure I        : INSTRUCTIONS
    structure C        : CELLS
    structure RTL      : MLTREE_RTL
-   structure T        : MLTREE
    structure RTLProps : RTL_PROPERTIES
    structure OT       : OPERAND_TABLE
       sharing RTLProps.I   = OT.I = I
       sharing I.C          = C
-      sharing RTL.T        = T
       sharing RTLProps.RTL = RTL
 
    (* Create special nodes *)
@@ -38,9 +36,9 @@ sig
    (* Extract the naming constraints on the operands *)
    val namingConstraints :   
         { instr : I.instruction, dst : C.cell list, src : C.cell list } -> 
-        { dst    : (T.var * C.cell) list,  (* destination is fixed *)
-          src    : (T.var * C.cell) list,  (* source is fixed *)
-          dstsrc : (T.var * T.var) list    (* dst = src *)
+        { dst    : (RTL.T.var * C.cell) list,  (* destination is fixed *)
+          src    : (RTL.T.var * C.cell) list,  (* source is fixed *)
+          dstsrc : (RTL.T.var * RTL.T.var) list    (* dst = src *)
         }
 
    (* Rewrite the operands of an instruction *)
@@ -52,7 +50,5 @@ sig
    (* Make copies *)
    val copies : {kind: C.cellkind, dst:C.cell, src:C.cell} list -> 
                  I.instruction list
-   val copy   : {instr:I.instruction,dst:C.cell list,src:C.cell list} ->
-                 I.instruction
 end
 

@@ -24,8 +24,6 @@ struct
   
   fun error msg = MLRiscErrorMsg.error("ClusterGen",msg)
 
-  fun can'tUse _ = error "unimplemented"
-
   type flowgraph = F.cluster
 
   (* This rewritten version allows increment flowgraph updates *)
@@ -35,18 +33,16 @@ struct
 
       val freq = 1
 
-      val (blkCounter, regmap, annotations, blocks, entry, exit) = 
+      val (blkCounter, annotations, blocks, entry, exit) = 
           case flowgraph of
-            SOME(F.CLUSTER{blkCounter, regmap, annotations, blocks, 
+            SOME(F.CLUSTER{blkCounter, annotations, blocks, 
                            entry, exit, ...}) =>
-                  (ref(!blkCounter-2), 
-                   ref regmap, !annotations, ref(rev blocks),
+                  (ref(!blkCounter-2), !annotations, ref(rev blocks),
                    entry, exit)
-          | NONE => (ref 0, ref(C.regmap()), [], ref [], NOBLOCK, NOBLOCK)
+          | NONE => (ref 0, [], ref [], NOBLOCK, NOBLOCK)
 
       val currBlock   = ref NOBLOCK
       val blockNames  = ref [] : Annotations.annotations ref
-      val aliasF      = ref (IntHashTable.insert (!regmap))
       val entryLabels = ref [] : Label.label list ref
 
       fun nextBlockNum() = 
@@ -59,8 +55,8 @@ struct
           F.BBLOCK{blknum      = n,
                    freq        = ref freq, 
                    annotations = ref (!blockNames),
-                   liveIn      = ref C.empty,
-                   liveOut     = ref C.empty,
+                   liveIn      = ref C.CellSet.empty,
+                   liveOut     = ref C.CellSet.empty,
                    succ        = ref [],
                    pred        = ref [],
                    insns       = ref insns
@@ -125,17 +121,14 @@ struct
           findLiveOut (!blocks) := cellset
       end
 
-      (* Add an alias to the regmap *)
-      fun alias(v,r) = !aliasF(v,r)
-
       (* Start a new cluster *)
-      fun beginCluster _ = !regmap
+      fun beginCluster _ = ()
 
       (* End a cluster *)
       fun endCluster blockAnnotations =
       let exception LabelMap
-          val labelMap : F.block IntHashTable.hash_table =
-	      IntHashTable.mkTable(16, LabelMap)
+          val labelMap : F.block IntHashTable.hash_table = 
+                            IntHashTable.mkTable(16, LabelMap)
           val addLabelMap = IntHashTable.insert labelMap
 
           (* find the next code block *)
@@ -169,7 +162,11 @@ struct
                      edges)
                 end
 
-          fun lookupLabelMap i = getOpt (IntHashTable.find labelMap i, exitBlk)
+          val lookupLabelMap = IntHashTable.find labelMap
+          val lookupLabelMap = fn label => 
+                                  case lookupLabelMap label of 
+                                    SOME blk => blk
+                                  | NONE => exitBlk
 
           fun addPred blk (F.BBLOCK{pred, ...}, w) = pred := (blk,w) :: !pred
             | addPred blk (F.EXIT{pred, ...}, w) = pred := (blk,w) :: !pred
@@ -236,13 +233,10 @@ struct
              (* create a new cluster *)
           val cluster = 
               F.CLUSTER{blocks=allBlocks, entry=entryBlk, exit=exitBlk,
-                        blkCounter=ref(!blkCounter), regmap= !regmap, 
+                        blkCounter=ref(!blkCounter), 
                         annotations=ref(blockAnnotations @ annotations)}
 
-             (* reset regmap *)
           val _         = blkCounter := 0
-          val _         = regmap := C.regmap()  
-          val _         = aliasF := IntHashTable.insert (!regmap)
           val _         = entryLabels := []
       in  compile cluster
       end
@@ -256,9 +250,7 @@ struct
          pseudoOp     = pseudoOp,
          exitBlock    = exitBlock,
          annotation   = annotation,
-         comment      = comment,
-         alias        = alias,
-         phi          = can'tUse
+         comment      = comment
       }
   end
 

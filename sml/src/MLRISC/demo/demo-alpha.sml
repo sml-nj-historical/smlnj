@@ -43,7 +43,7 @@ struct
   structure T = MLTree
   structure C = I.C
 
-  type reduceOpnd = I.operand -> int
+  type reduceOpnd = I.operand -> C.cell
 
   (* reduceOpnd moves the operand to a register if it's not in one 
      already (handy).
@@ -53,7 +53,7 @@ struct
      Sigh ...
    *)
 
-  val temps = foldr C.addReg C.empty [23, 24, 25, 26, 28]
+  val temps = foldr C.addReg C.empty (map C.GPReg [23, 24, 25, 26, 28])
 
   fun pseudoArith instr ({ra, rb, rc}, reduceOpnd) =
       [I.PSEUDOARITH{oper=instr, ra=ra, rb=I.REGop(reduceOpnd rb), rc=rc, tmps=temps}]
@@ -175,7 +175,6 @@ structure AlphaBackEnd =
    (structure I          = AlphaInstr
     structure Flowgraph  = AlphaFlowGraph
     structure InsnProps  = AlphaProps(AlphaInstr)
-    structure Rewrite    = AlphaRewrite(AlphaInstr)
     structure Asm        = AlphaAsm
     structure MLTreeComp = AlphaMLTreeComp
 
@@ -183,48 +182,77 @@ structure AlphaBackEnd =
     val spill = UserRegion.spill
 
     (* I'm assuming only r31 and the stack pointer is dedicated *)
-    fun range(from,to) = if from > to then [] 
-                         else from::range(from+1,to)
-    val dedicatedRegs  = [I.C.stackptrR, I.C.GPReg 31]
-    val dedicatedFRegs = [I.C.FPReg 31]
-    val availRegs      = SortedList.difference(
-                            range(I.C.GPReg 0, I.C.GPReg 31),
-                            SortedList.uniq dedicatedRegs)
-    val availFRegs     = range(I.C.FPReg 0, I.C.FPReg 30)
+    structure RA =
+      RISC_RA
+      (structure I          = I
+       structure C          = I.C
+       structure Flowgraph  = Flowgraph
+       structure Asm        = Asm
+       structure Rewrite    = AlphaRewrite(AlphaInstr)
+       structure InsnProps  = InsnProps
+       structure Spill      = RASpill(structure Asm = Asm
+                                      structure InsnProps = InsnProps)
+       structure SpillHeur  = ChaitinSpillHeur
+       structure SpillTable = 
+         SpillTable  
+         (val initialSpillOffset = 0 (* This is probably wrong!!!!! *)
+          val spillAreaSz = 4000
+          val architecture = "Alpha"
+         )
 
-    val initialSpillOffset = 0 (* This is probably wrong!!!!! *)
-    val spillAreaSize = 4000
+       open SpillTable
+   
+       fun pure _ = false
+   
+       (* make copies *)
+       structure Int =
+       struct
+          val dedicated  = [I.C.stackptrR, I.C.GPReg 31]
+          val avail  = 
+               C.SortedCells.return(
+                 C.SortedCells.difference(
+                    C.SortedCells.uniq(
+                      C.Regs C.GP {from=0, to=31, step=1}),
+                    C.SortedCells.uniq dedicated))
 
-    fun pure _ = false
+          fun copy((rds as [_], rss as [_]), _) =
+              I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=NONE}
+            | copy((rds, rss), I.COPY{tmp, ...}) =
+              I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
+          (* spill register *)
+          fun spillInstr(_,r,loc) =
+              [I.STORE{stOp=I.STL, b=sp, d=I.IMMop(get loc), 
+                       r=r, mem=spill}]
 
-    (* make copies *)
-    fun copyR((rds as [_], rss as [_]), _) =
-        I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=NONE}
-      | copyR((rds, rss), I.COPY{tmp, ...}) =
-        I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
-    fun copyF((fds as [_], fss as [_]), _) =
-        I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=NONE}
-      | copyF((fds, fss), I.FCOPY{tmp, ...}) =
-        I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
+          (* spill copy temp *)
+          fun spillCopyTmp(_,I.COPY{tmp,dst,src,impl},loc) =
+              I.COPY{tmp=SOME(I.Displace{base=sp, disp=get loc}),
+                     dst=dst,src=src,impl=impl}
+      
+          (* reload register *)
+          fun reloadInstr(_,r,loc) =
+              [I.LOAD{ldOp=I.LDL, b=sp, d=I.IMMop(get loc), r=r, mem=spill}]
+       end
 
-    (* spill copy temp *)
-    fun spillCopyTmp(I.COPY{tmp,dst,src,impl},loc) =
-        I.COPY{tmp=SOME(I.Displace{base=sp, disp=loc}),
-               dst=dst,src=src,impl=impl}
-    fun spillFcopyTmp(I.FCOPY{tmp,dst,src,impl},loc) =
-        I.FCOPY{tmp=SOME(I.Displace{base=sp, disp=loc}),
-                dst=dst,src=src,impl=impl}
+       structure Float = 
+       struct
+          val dedicated = [I.C.FPReg 31]
+          val avail = C.Regs C.FP {from=0, to=30, step=1}
 
-    (* spill register *)
-    fun spillInstrR(r,offset) =
-        [I.STORE{stOp=I.STL, b=sp, d=I.IMMop offset, r=r, mem=spill}]
-    fun spillInstrF(r,offset) =
-        [I.FSTORE{stOp=I.STT, b=sp, d=I.IMMop offset, r=r, mem=spill}]
-
-    (* reload register *)
-    fun reloadInstrR(r,offset,rest) =
-        I.LOAD{ldOp=I.LDL, b=sp, d=I.IMMop offset, r=r, mem=spill}::rest
-    fun reloadInstrF(r,offset,rest) =
-        I.FLOAD{ldOp=I.LDT, b=sp, d=I.IMMop offset, r=r, mem=spill}::rest
+          fun copy((fds as [_], fss as [_]), _) =
+              I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=NONE}
+            | copy((fds, fss), I.FCOPY{tmp, ...}) =
+              I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
+      
+          fun spillCopyTmp(_,I.FCOPY{tmp,dst,src,impl},loc) =
+              I.FCOPY{tmp=SOME(I.Displace{base=sp, disp=getF loc}),
+                      dst=dst,src=src,impl=impl}
+          fun spillInstr(_,r,loc) =
+              [I.FSTORE{stOp=I.STT, b=sp, d=I.IMMop(getF loc), r=r, mem=spill}]
+      
+          fun reloadInstr(_,r,loc) =
+              [I.FLOAD{ldOp=I.LDT, b=sp, d=I.IMMop(getF loc), r=r, mem=spill}]
+       end
+      )
    )
 

@@ -14,7 +14,6 @@ sig
     * used to emit instruction into the instruction list.
     *)
    val newStream : I.instruction list ref -> 
-                     (I.instruction -> unit, C.regmap, Annotations.annotations,
-                      'a, 'b, 'c) S.stream
+                     (I.instruction, Annotations.annotations, 'a) S.stream
 
 end

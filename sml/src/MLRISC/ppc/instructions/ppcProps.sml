@@ -12,10 +12,15 @@ struct
                 | IK_PHI | IK_SOURCE | IK_SINK
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
+  (* This stupid architecture doesn't really have a dedicated zero register *)
+  fun zeroR() = C.Reg C.GP 0
+
   fun instrKind(I.BC _) = IK_JUMP
     | instrKind(I.BCLR _) = IK_JUMP
     | instrKind(I.B _) = IK_JUMP
-    | instrKind(I.ARITHI{oper=I.ORI, rt=0, ra=0, im=I.ImmedOp 0}) = IK_NOP
+    | instrKind(I.ARITHI{oper=I.ORI, rt, ra, im=I.ImmedOp 0}) = 
+         if C.registerId rt = 0 andalso C.registerId ra = 0 then IK_NOP
+         else IK_INSTR
     | instrKind(I.COPY _) = IK_COPY
     | instrKind(I.FCOPY _) = IK_COPY
     | instrKind(I.CALL _) = IK_CALL
@@ -30,7 +35,7 @@ struct
     | moveInstr(I.ANNOTATION{i,...}) = moveInstr i
     | moveInstr  _ = false
 
-  fun nop () = I.ARITHI{oper=I.ORI, rt=0, ra=0, im=I.ImmedOp 0}
+  fun nop () = I.ARITHI{oper=I.ORI, rt=zeroR(), ra=zeroR(), im=I.ImmedOp 0}
 
   fun moveTmpR(I.COPY{tmp as SOME(I.Direct r), ...}) = SOME r
     | moveTmpR(I.FCOPY{tmp as SOME(I.FDirect f), ...}) = SOME f
@@ -66,20 +71,20 @@ struct
 
   fun loadImmed{immed,t} = 
        I.ARITHI
-         {oper=I.ADDI, rt=t, ra=0, 
+         {oper=I.ADDI, rt=t, ra=zeroR(), 
           im=if #lo immedRange <= immed andalso immed <= #hi immedRange
              then I.ImmedOp immed else I.LabelOp(LE.INT immed)}
   fun loadOperand{opn,t} = 
-       I.ARITHI{oper=I.ADDI, rt=t, ra=0, im=opn}
+       I.ARITHI{oper=I.ADDI, rt=t, ra=zeroR(), im=opn}
 
   fun setTargets _ = error " setTargets"
 
   fun negateConditional _ = error "negateConditional"
 
-  fun hashOpn(I.RegOp r) = Word.fromInt r
+  fun hashOpn(I.RegOp r) = C.hashCell r
     | hashOpn(I.ImmedOp i) = Word.fromInt i
     | hashOpn(I.LabelOp l) = I.LabelExp.hash l
-  fun eqOpn(I.RegOp a,I.RegOp b) = a = b
+  fun eqOpn(I.RegOp a,I.RegOp b) = C.sameColor(a,b)
     | eqOpn(I.ImmedOp a,I.ImmedOp b) = a = b
     | eqOpn(I.LabelOp a,I.LabelOp b) = I.LabelExp.==(a,b)
     | eqOpn _ = false
@@ -103,7 +108,7 @@ struct
      | I.MFSPR{rt, ...} => ([rt], [])
      | I.TW{to, ra, si} => ([], operand(si,[ra]))
      | I.TD{to, ra, si} => ([], operand(si,[ra]))
-     | I.CALL{def, use, ...} => (#1 def, #1 use)
+     | I.CALL{def, use, ...} => (C.getReg def, C.getReg use)
      | I.COPY{dst, src, tmp, ...} => 
         (case tmp
 	  of NONE => (dst, src)
@@ -124,7 +129,7 @@ struct
      | I.FUNARY{ft, fb, ...}  => ([ft], [fb])
      | I.FARITH{ft, fa, fb, ...}  => ([ft], [fa, fb])
      | I.FARITH3{ft, fa, fb, fc, ...}  => ([ft], [fa, fb, fc])
-     | I.CALL{def, use, ...} => (#2 def, #2 use)
+     | I.CALL{def, use, ...} => (C.getFreg def,C.getFreg use)
      | I.FCOPY{dst, src, tmp, ...} => 
         (case tmp
 	  of SOME(I.FDirect f) => (f::dst, src)

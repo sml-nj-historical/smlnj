@@ -146,10 +146,8 @@ struct
   fun genCall{name, proto={conv="", retTy, paramTys}, structRet, args} = let
     fun push signed {sz, e} = let
       fun pushl rexp = T.EXT(ix(IX.PUSHL(rexp)))
-      fun signExtend(e) = 
-	if sz=32 then e else T.CVTI2I(32, T.SIGN_EXTEND, sz, e)
-      fun zeroExtend(e) = 
-	if sz=32 then e else T.CVTI2I(32, T.ZERO_EXTEND, sz, e)
+      fun signExtend(e) = if sz=32 then e else T.SX(32, sz, e)
+      fun zeroExtend(e) = if sz=32 then e else T.ZX(32, sz, e)
     in 
       pushl(if signed then signExtend(e) else zeroExtend(e))
     end
@@ -297,7 +295,7 @@ struct
     (* call defines callersave registers and uses result registers. *)
     fun mkCall defs = T.CALL{
 	    funct=name, targets=[], defs=defs, uses=[], 
-            cdefs=[], cuses=[], region=T.Region.memory
+            region=T.Region.memory
 	  }
 
     (* size to pop off on return *)

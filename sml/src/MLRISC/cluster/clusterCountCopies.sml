@@ -16,16 +16,15 @@ struct
 
    val copies = MLRiscControl.getCounter "copies"
 
-   fun run(cluster as F.CLUSTER{blocks, regmap, ...}) =
-   let val regmap = F.I.C.lookup regmap
-       fun loc _ = 0
+   fun run(cluster as F.CLUSTER{blocks, ...}) =
+   let fun loc _ = 0
 
        fun (* count(F.BBLOCK{freq=ref 0, ...}, n) = n
          | *) count(F.BBLOCK{insns, ...}, n) = 
            let fun scan([], n) = n
                  | scan(i::is, n) = 
                    if InsnProps.moveInstr i then
-                      scan(is, n + SdiJumps.sdiSize(i, regmap, loc, 0)) 
+                      scan(is, n + SdiJumps.sdiSize(i, loc, 0)) 
                    else scan(is, n)
            in  scan(!insns, n) end
          | count(_, n) = n

@@ -23,9 +23,8 @@ struct
    val outline = MLRiscControl.getFlag "view-outline"
 
    fun view(clusterGraph as G.GRAPH cfg) = 
-   let val F.CLUSTER{regmap,annotations,...} = 
-                ClusterGraph.cluster clusterGraph 
-       val toString = FMT.toString (!annotations) (F.I.C.lookup regmap)
+   let val F.CLUSTER{annotations,...} = ClusterGraph.cluster clusterGraph 
+       val toString = FMT.toString (!annotations)
        fun graph _ = []
 
        val red = L.COLOR "red"

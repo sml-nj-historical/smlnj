@@ -1,12 +1,12 @@
 signature HPPA_MILLICODE = sig
   structure I : HPPAINSTR
 
-  val divu : {rs:int, rt:int, rd:int} -> I.instruction list
-  val mulo : {rs:int, rt:int, rd:int} -> I.instruction list
-  val divo : {rs:int, rt:int, rd:int} -> I.instruction list
-  val mulu : {rs:int, rt:int, rd:int} -> I.instruction list
-  val cvti2s : {rs:int, fd:int} -> I.instruction list
-  val cvti2d : {rs:int, fd:int} -> I.instruction list
-  val cvti2q : {rs:int, fd:int} -> I.instruction list
+  val divu : {rs:I.C.cell, rt:I.C.cell, rd:I.C.cell} -> I.instruction list
+  val mulo : {rs:I.C.cell, rt:I.C.cell, rd:I.C.cell} -> I.instruction list
+  val divo : {rs:I.C.cell, rt:I.C.cell, rd:I.C.cell} -> I.instruction list
+  val mulu : {rs:I.C.cell, rt:I.C.cell, rd:I.C.cell} -> I.instruction list
+  val cvti2s : {rs:I.C.cell, fd:I.C.cell} -> I.instruction list
+  val cvti2d : {rs:I.C.cell, fd:I.C.cell} -> I.instruction list
+  val cvti2q : {rs:I.C.cell, fd:I.C.cell} -> I.instruction list
 end
 

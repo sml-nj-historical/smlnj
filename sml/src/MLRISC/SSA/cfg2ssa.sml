@@ -38,9 +38,7 @@ struct
    structure G    = Graph
    structure A    = Array
    structure W8A  = Word8Array
-
-   structure EDJ = E_DJGraph(Dom)
-   structure LDJ = L_DJGraph(Dom)
+   structure CDJ = CompressedDJGraph(Dom)
 
    fun error msg = MLRiscErrorMsg.error("CFG2SSA", msg)
 
@@ -57,11 +55,12 @@ struct
    val _ = removeUselessPhis := true (* by default, remove useless phi-nodes *)
    val debug = false
 
-   datatype ssa_variant = E_MINIMAL | MINIMAL | SEMI_PRUNED 
-                        | PRUNED | E_PRUNED | L_PRUNED
-   val ssa_variant = E_PRUNED
+   datatype ssa_variant = 
+              MINIMAL | SEMI_PRUNED | PRUNED 
+            | C_MINIMAL | C_PRUNED 
+   val ssa_variant = C_PRUNED
    val add_entry = true
-   val sanity_check = false
+   val sanity_check = true
 
    (*
     * Counters 
@@ -143,11 +142,12 @@ struct
        val gcmap = #get SSA.GCMap.GCMAP (!(CFG.annotations cfg))
 
        (* create a name table if we want to keep around the original name *)
-       val nameTbl     = if keepName then SOME(Intmap.new(37, NoName)) else NONE
+       val nameTbl     = if keepName then 
+                            SOME(IntHashTable.mkTable(37, NoName)) else NONE
        val SSA         = SSA.newSSA{cfg=cfg, dom=dom, 
                                     nameTbl=nameTbl, gcmap=gcmap}
        val cellKindTbl = SSA.cellKindTbl SSA
-       val addCellKind = Intmap.add cellKindTbl
+       val addCellKind = IntHashTable.insert cellKindTbl
        val regmap      = C.lookup (CFG.regmap cfg)
        val maxPos      = SSA.maxPos SSA
 
@@ -182,8 +182,8 @@ struct
            case gcmap of
               NONE => (fn _ => ())
            |  SOME map => 
-                let val lookup = Intmap.map map
-                    val add    = Intmap.add map
+                let val lookup = IntHashTable.lookup map
+                    val add    = IntHashTable.insert map
                 in  fn {from, to} => 
                        (lookup to; ()) handle _ => 
                         (add(to, lookup from) handle _ => ())
@@ -221,17 +221,15 @@ struct
                 (fn (r,S) =>
                   let val r = regmap r
                   in  if isZero r then S else r::S end)  
-                [] (C.cellsetToCells(CFG.liveOut block))
+                [] (C.CellSet.toCellList(CFG.liveOut block))
            )
 
        (*------------------------------------------------------------------
         * Initialize all the special tables 
         *------------------------------------------------------------------*)
        fun initTables() =
-       let val getOperands =
-               P.defUse{immed   = SSA.immed SSA,
-                        operand = SSA.operand SSA
-                       }
+       let val getOperands = 
+               P.defUse(SP.OT.makeNewValueNumbers(SSA.operandTbl SSA))
            fun getRegs([], rs) = rs
              | getRegs(v::vs, rs) = getRegs(vs, if v >= 0 then v::rs else rs)
            val updateCellKind = P.updateCellKind{update=addCellKind}
@@ -306,10 +304,7 @@ struct
                            (defsOf b))
            val LiveIDFs = 
                case ssa_variant of
-                 E_MINIMAL   => let val IDFs = EDJ.IDFs(EDJ.DJ Dom)
-                                    val addEntry = addEntry CFG
-                                in  addEntry IDFs end
-               | MINIMAL     => let val IDFs = DJ.IDFs(DJ.DJ Dom)
+                 MINIMAL     => let val IDFs = DJ.IDFs(DJ.DJ Dom)
                                     val addEntry = addEntry CFG
                                 in  addEntry IDFs end
                | SEMI_PRUNED => let val IDFs = DJ.IDFs(DJ.DJ Dom) 
@@ -317,8 +312,11 @@ struct
                                      | {defs,localLiveIn} => IDFs defs 
                                 end
                | PRUNED => DJ.LiveIDFs(DJ.DJ Dom) 
-               | E_PRUNED => if sanity_check then
-                             let val dj1 = EDJ.LiveIDFs(EDJ.DJ Dom) 
+               | C_MINIMAL   => let val IDFs = CDJ.IDFs(CDJ.DJ Dom)
+                                    val addEntry = addEntry CFG
+                                in  addEntry IDFs end
+               | C_PRUNED => if sanity_check then
+                             let val dj1 = CDJ.LiveIDFs(CDJ.DJ Dom) 
                                  val dj2 = DJ.LiveIDFs(DJ.DJ Dom) 
                              in  fn x =>
                                  let val idf1 = dj1 x
@@ -331,22 +329,7 @@ struct
                                            idf1)
                                  end
                              end
-                             else EDJ.LiveIDFs(EDJ.DJ Dom) 
-               | L_PRUNED => if sanity_check then
-                             let val dj1 = LDJ.LiveIDFs(LDJ.DJ Dom) 
-                                 val dj2 = DJ.LiveIDFs(DJ.DJ Dom) 
-                             in  fn x =>
-                                 let val idf1 = dj1 x
-                                     val idf2 = dj2 x
-                                     fun pr s = foldr (fn (x,l) =>
-                                           Int.toString x^" "^l) "" s
-                                 in  if SL.uniq idf1 = SL.uniq idf2 then idf1
-                                     else (print("IDF1="^pr idf1^"\n");
-                                           print("IDF2="^pr idf2^"\n");
-                                           idf1)
-                                 end
-                             end
-                             else LDJ.LiveIDFs(LDJ.DJ Dom) 
+                             else CDJ.LiveIDFs(CDJ.DJ Dom) 
            fun insertPhi(v, [], n) = n
              | insertPhi(v, defSites, n) = 
                let fun insert([], n) = n
@@ -382,14 +365,15 @@ struct
            val preds   = A.array(N, [])      (* predecessors of block N;
                                                 must be in the same order as the
                                                 arguments of phi-functions *)
-           val liveInSets = Intmap.new(3, NoLiveIn)
-           val lookupLiveInSet = Intmap.map liveInSets
+           val liveInSets = IntHashTable.mkTable(3, NoLiveIn)
+           val lookupLiveInSet = IntHashTable.lookup liveInSets
 
            val dominatingEntries = Dom.entryPos Dom
 
            (* Create the liveIn sets *)
            val _ = app (fn Z => 
-                         Intmap.add liveInSets (Z, Intmap.new(32,NoLiveIn))
+                         IntHashTable.insert liveInSets 
+                            (Z, IntHashTable.mkTable(32,NoLiveIn))
                        ) (#succ dom ENTRY)
 
            val defCounts = W8A.array(V, 0w1) (* count # of definitions *)
@@ -421,9 +405,9 @@ struct
             *)
            fun addLiveIn(r,Y) =
                let val L = lookupLiveInSet Y
-               in  Intmap.map L r handle _ =>
+               in  IntHashTable.lookup L r handle _ =>
                    let val v = newName r
-                       val _ = Intmap.add L (r,v)
+                       val _ = IntHashTable.insert L (r,v)
                    in  if isInitial Y then ()
                        else (* Y is not an ENTRY; add phi node *)
                        let fun addPreds([], vs') = rev vs'
@@ -549,20 +533,10 @@ struct
                            end 
                        in  case InsnProps.instrKind i of
                              InsnProps.IK_COPY =>
-                               if copyProp then (* copy propagation *)
+                                (* copy propagation *)
                                  (copy{dst=defs, src=uses};
                                   scan(id, insns, pos, DU)
                                  )
-                              else 
-                                let val (defs, uses) = 
-                                        simplifyCopies(defs,uses)
-                                in  case defs of
-                                      [] => scan(id, insns, pos, DU)
-                                    | _ => 
-                                       let val i = 
-                                           SP.copy{instr=i,dst=defs,src=uses}
-                                       in  addOp(i,defs,uses,pos) end
-                                end
                            | InsnProps.IK_JUMP => addOp(i,defs,uses,infPos)
                            | _ => addOp(i,defs,uses,pos)
                        end
@@ -613,8 +587,8 @@ struct
             * Insert a source definitions for all zero registers
             *)
            fun addZeroRegs(ENTRY) = 
-           let val L   = Intmap.new(16,NoLiveIn)
-               val add = Intmap.add L
+           let val L   = IntHashTable.mkTable(16,NoLiveIn)
+               val add = IntHashTable.insert L
                fun defineZero(k) = 
                    case C.zeroReg k of
                      SOME r => let val v = newName r
@@ -622,7 +596,7 @@ struct
                                    A.update(stacks,r,[v])
                                end
                    | NONE => ()
-           in  Intmap.add liveInSets (ENTRY, L);
+           in  IntHashTable.insert liveInSets (ENTRY, L);
                app defineZero C.cellkinds
            end
 
@@ -636,7 +610,7 @@ struct
                *)
            fun addSource(X, liveInSet) = 
            if isInitial X then 
-           let val LiveIn = Intmap.intMapToList liveInSet
+           let val LiveIn = IntHashTable.listItemsi liveInSet
                val liveInSet = 
                   ListMergeSort.sort (fn ((i,_),(j,_)) => i < j) LiveIn
 
@@ -662,7 +636,7 @@ struct
            end
            else ()
 
-           val _ = Intmap.app addSource liveInSets
+           val _ = IntHashTable.appi addSource liveInSets
 
                (* Now reserve space for extra phi nodes for live-in values *)
            val _ = SSA.reserve SSA (!ssaOpsCount); (* reserve space *)

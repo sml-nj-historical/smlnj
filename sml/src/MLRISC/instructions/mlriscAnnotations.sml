@@ -8,6 +8,7 @@ structure MLRiscAnnotations : MLRISC_ANNOTATIONS =
 struct
 
    structure A = Annotations
+   structure C = CellsBasis
 
     (* the branch probability of conditional branches *)
     (* in percentage *) 
@@ -32,24 +33,20 @@ struct
    in  g end
 
     (* control dependence use *)
-   exception CTRLDEF of int 
-   exception CTRLUSE of int
-   local
-      fun toString p = "p"^Int.toString p
-   in
-      val CTRL_USE = A.new'{create=CTRLUSE, 
-                            get=fn CTRLUSE x => x | e => raise e, 
-                            toString=toString}
-      val CTRL_DEF = A.new'{create=CTRLDEF, 
-                            get=fn CTRLDEF x => x | e => raise e, 
-                            toString=toString}
-   end
+   exception CTRLDEF of C.cell 
+   exception CTRLUSE of C.cell
+   val CTRL_USE = A.new'{create=CTRLUSE, 
+                         get=fn CTRLUSE x => x | e => raise e, 
+                         toString=C.toString}
+   val CTRL_DEF = A.new'{create=CTRLDEF, 
+                         get=fn CTRLDEF x => x | e => raise e, 
+                         toString=C.toString}
 
     (*
      * These annotations specifies definitions and uses                              * for a pseudo instruction.
      *)
    val REGINFO = A.new(SOME(fn _ => "REGINFO"))
-                  : ((int -> int) * int -> string) A.property
+                  : (C.cell -> string) A.property
 
    val NO_OPTIMIZATION = A.new(SOME(fn () => "NO_OPTIMIZATION"))
    val CALLGC = A.new(SOME(fn () => "CALLGC"))
@@ -65,7 +62,7 @@ struct
                             get=fn EMPTYBLOCK => () | e => raise e,
                             toString=fn () => "EMPTY_BLOCK"}
 
-   exception MARKREG of int -> unit
+   exception MARKREG of C.cell -> unit
    val MARK_REG = A.new'{toString=fn _ => "MARK_REG",
                          create=MARKREG,
                          get=fn MARKREG f => f | e => raise e

@@ -62,8 +62,7 @@ struct
     type node = block Graph.node
 
     datatype info = 
-        INFO of { regmap      : C.regmap,
-                  annotations : Annotations.annotations ref,
+        INFO of { annotations : Annotations.annotations ref,
                   firstBlock  : int ref,
                   reorder     : bool ref
                 }
@@ -80,7 +79,8 @@ struct
               (* escaping live out information *)
     val LIVEOUT = Annotations.new 
           (SOME(fn c => "Liveout: "^
-                        (LineBreak.lineBreak 75 (C.cellsetToString c))))
+                        (LineBreak.lineBreak 75 
+                            (C.CellSet.toString c))))
     exception Changed of string * (unit -> unit) 
     val CHANGED = Annotations.new'
           {create=Changed,
@@ -149,7 +149,7 @@ struct
     fun emitFooter (S.STREAM{comment,...}) (BLOCK{annotations,...}) = 
         (case #get LIVEOUT (!annotations) of
             SOME s => 
-            let val regs = String.tokens Char.isSpace(C.cellsetToString s)
+            let val regs = String.tokens Char.isSpace(C.CellSet.toString s)
                 val K = 7
                 fun f(_,[],s,l)    = s::l
                   | f(0,vs,s,l)    = f(K,vs,"   ",s::l)
@@ -161,11 +161,10 @@ struct
          |  NONE => ()
         ) handle Overflow => print("Bad footer\n")
 
-    fun emitStuff outline annotations regmap
+    fun emitStuff outline annotations 
            (block as BLOCK{insns,data,labels,...}) =
        let val S as S.STREAM{pseudoOp,defineLabel,emit,...} = 
                Asm.makeStream annotations
-           val emit = emit (I.C.lookup regmap)
        in  emitHeader S block;
            app (fn PSEUDO p => pseudoOp p
                  | LABEL l  => defineLabel l) (!data);
@@ -183,17 +182,15 @@ struct
     *
     *========================================================================*)
     fun cfg info = GraphImpl.graph("CFG",info,10)
-    fun new(regmap) =
-        let val info = INFO{ regmap      = regmap,  
-                             annotations = ref [],
+    fun new() =
+        let val info = INFO{ annotations = ref [],
                              firstBlock  = ref 0,
                              reorder     = ref false
                            }
         in  cfg info end
 
     fun subgraph(CFG as G.GRAPH{graph_info=INFO graph_info,...}) =
-        let val info = INFO{ regmap      = #regmap graph_info,
-                             annotations = ref [],
+        let val info = INFO{ annotations = ref [],
                              firstBlock  = #firstBlock graph_info,
                              reorder     = #reorder graph_info
                            }
@@ -222,8 +219,6 @@ struct
         in  signal(!annotations);
             reorder := true
         end 
-
-    fun regmap(G.GRAPH{graph_info=INFO{regmap,...},...}) = regmap
 
     fun annotations(G.GRAPH{graph_info=INFO{annotations=a,...},...}) = a
 
@@ -306,8 +301,8 @@ struct
        val _      = AsmStream.withStream S f x 
    in  StringOutStream.getString buffer end
 
-   fun show_block an regmap block = 
-   let val text = getString (emit an regmap) block
+   fun show_block an block = 
+   let val text = getString (emit an) block
    in  foldr (fn (x,"") => x | (x,y) => x^" "^y) ""
             (String.tokens (fn #" " => true | _ => false) text)
    end
@@ -334,13 +329,12 @@ struct
    val outline = MLRiscControl.getFlag "view-outline"
 
    fun viewStyle cfg =
-   let val regmap = regmap cfg
-       val an     = !(annotations cfg)
+   let val an     = !(annotations cfg)
        fun node (n,b as BLOCK{annotations,...}) = 
            if !outline then
-              L.LABEL(getString (emitOutline regmap) b) :: getStyle annotations
+              L.LABEL(getString emitOutline b) :: getStyle annotations
            else
-              L.LABEL(show_block an regmap b) :: getStyle annotations
+              L.LABEL(show_block an b) :: getStyle annotations
    in  { graph = fn _ => [],
          edge  = edgeStyle,
          node  = node
@@ -350,11 +344,10 @@ struct
    fun viewLayout cfg = L.makeLayout (viewStyle cfg) cfg
 
    fun subgraphLayout {cfg,subgraph = G.GRAPH subgraph} =
-   let val regmap = regmap cfg
-       val an     = !(annotations cfg)
+   let val an     = !(annotations cfg)
        fun node(n,b as BLOCK{annotations,...}) = 
           if #has_node subgraph n then
-             L.LABEL(show_block an regmap b) :: getStyle annotations
+             L.LABEL(show_block an b) :: getStyle annotations
           else
              L.COLOR "lightblue"::L.LABEL(headerText b) :: getStyle annotations
        fun edge(i,j,e) = 

@@ -77,7 +77,7 @@ struct
    structure L  = Label
    structure LE = I.LabelExp
    structure An = Annotations
-   structure SL = SortedList
+   structure SL = C.SortedCells
 
    type flowgraph = F.cluster
    type an = An.annotations
@@ -105,21 +105,6 @@ struct
    (* Annotation an instruction *)
    fun mark(instr, []) = instr
      | mark(instr, a::an) = mark(I.ANNOTATION{i=instr,a=a}, an)
-
-   val fpoffset = 32 (* hardwired for speed! *)
-
-   val _ = if fpoffset <> C.ST 0 then error "Bad encoding" else ()
-
-   fun ST n = (if sanityCheck andalso (n < 0 orelse n >= 8) then
-                  pr("WARNING BAD %st("^i2s n^")\n")
-               else ();
-               I.ST(n + fpoffset)
-              )
-   fun FXCH n = I.FXCH{opnd=n + fpoffset}
-
-   val ST0 = ST 0 
-   val ST1 = ST 1
-   val POP_ST = I.FSTPL ST0 (* Instruction to pop an entry *)
 
    (* Add pop suffix to a binary operator *)
    fun pop I.FADDL  = I.FADDP  | pop I.FADDS  = I.FADDP
@@ -163,13 +148,11 @@ struct
    (*-----------------------------------------------------------------------
     * Pretty print routines
     *-----------------------------------------------------------------------*)
-   fun fregToString f = "%f"^i2s(f-C.ST 0)
+   fun fregToString f = "%f"^i2s(C.registerNum f)
    fun fregsToString s =
         List.foldr (fn (r,"") => fregToString r | 
                        (r,s) => fregToString r^" "^s) "" s
    fun blknumOf(F.BBLOCK{blknum, ...}) = blknum
-
-   val fpoffset = 32
 
    (*-----------------------------------------------------------------------
     * A stack datatype that mimics the x86 floating point stack
@@ -183,11 +166,10 @@ struct
       val stack0 : stack
       val copy   : stack -> stack
       val clear  : stack -> unit
-      val toList : stack -> C.cell list
-      val fp     : stack * C.cell -> stnum
-      val st     : stack * stnum -> C.cell
-      val set    : stack * stnum * C.cell -> unit 
-      val push   : stack * C.cell -> unit
+      val fp     : stack * C.register_id -> stnum
+      val st     : stack * stnum -> C.register_id
+      val set    : stack * stnum * C.register_id -> unit 
+      val push   : stack * C.register_id -> unit
       val xch    : stack * stnum * stnum -> unit
       val pop    : stack -> unit
       val depth  : stack -> int
@@ -199,10 +181,11 @@ struct
    struct
       type stnum = int
       datatype stack =
-          STACK of { st  : C.cell A.array,   (* mapping %st -> %fp registers *)
-                     fp  : stnum A.array,    (* mapping %fp -> %st registers *)
-                     sp  : int ref           (* stack pointer *)
-                   } 
+          STACK of 
+          { st  : C.register_id A.array, (* mapping %st -> %fp registers *)
+            fp  : stnum A.array,    (* mapping %fp -> %st registers *)
+            sp  : int ref           (* stack pointer *)
+          } 
 
          (* Create a new stack *)
       fun create() = STACK{st=A.array(8,~1), fp=A.array(7,16), sp=ref ~1}
@@ -221,12 +204,6 @@ struct
          (* Depth of stack *)
       fun depth(STACK{sp, ...}) = !sp + 1
 
-      fun toList(STACK{sp, st, ...}) = 
-      let fun loop(~1, l) = l
-            | loop(i, l) = loop(i-1, A.sub(st, i)::l) 
-      in  loop(!sp, []) end
-
-
       fun nonFull(STACK{sp, ...}) = 
           if !sp >= 7 then error "stack overflow" else ()
 
@@ -234,12 +211,12 @@ struct
       fun st(STACK{st, sp, ...}, n) = A.sub(st, !sp - n)
 
          (* Given %fp(n), lookup the corresponding %st(n) *)
-      fun fp(STACK{fp, sp, ...}, n) = !sp - A.sub(fp, n-fpoffset)
+      fun fp(STACK{fp, sp, ...}, n) = !sp - A.sub(fp, n)
 
       fun stackToString stack = 
       let val depth = depth stack
           fun f i = if i >= depth then " ]"
-                    else "%st("^i2s i^")="^fregToString(st(stack,i))^" "^f(i+1)
+                    else "%st("^i2s i^")=%f"^i2s(st(stack,i))^" "^f(i+1)
       in  "[ "^f 0 end
 
       fun clear(STACK{st, fp, sp, ...}) = 
@@ -248,7 +225,7 @@ struct
           (* Set %st(n) := %f *)
       fun set(STACK{st, fp, sp, ...}, n, f) = 
           (A.update(st, !sp - n, f);
-           if f >= 0 then A.update(fp, f-fpoffset, !sp - n) else ()
+           if f >= 0 then A.update(fp, f, !sp - n) else ()
           )
 
          (* Pop one entry *) 
@@ -265,7 +242,7 @@ struct
           set(stack, n, f_m)
       end
 
-      fun kill(STACK{fp, ...}, f) = A.update(fp, f-fpoffset, 16)
+      fun kill(STACK{fp, ...}, f) = A.update(fp, C.registerNum f, 16)
 
       fun equal(st1, st2) =
       let val m = depth st1
@@ -289,6 +266,7 @@ struct
     * Of course, we have to be careful whenever we encounter other
     * instruction with a write.
     *-----------------------------------------------------------------------*)
+   (*
    structure ForwardPropagation :>
    sig
       type readbuffer 
@@ -313,7 +291,7 @@ struct
               }
 
       fun load(READ{pending, loads, ...}, fd, fsize, mem) = 
-          (A.update(loads, fd - fpoffset, SOME(fsize, mem));
+          (A.update(loads, fd, SOME(fsize, mem));
            pending := !pending + 1
           )
 
@@ -322,7 +300,7 @@ struct
        * we perform the load at this time. 
        *)
       fun getreg(READ{pending, loads, stack, ...}, isLastUse, fs, code) = 
-          case A.sub(loads, fs - fpoffset) of
+          case A.sub(loads, fs) of
             NONE => 
             let val n = ST.st(stack, fs)
             in  if isLastUse 
@@ -343,7 +321,7 @@ struct
        * We'll try to fold this into the operand
        *)
       fun getopnd(READ{pending, loads, stack,...}, isLastUse, I.FPR fs, code) =
-          (case A.sub(loads, fs - fpoffset) of
+          (case A.sub(loads, fs) of
             NONE => 
             let val n = ST.st(stack, fs)
             in  if isLastUse fs (* regmap XXX *)
@@ -367,6 +345,7 @@ struct
       fun flush(READ{pending=ref 0,...}, code) = code
 
    end (* struct *)
+    *)    
 
    (*-----------------------------------------------------------------------
     * Module to handle delayed stores.  
@@ -377,6 +356,7 @@ struct
     * This gives us an opportunity to rearrange the order of the stores
     * to eliminate unnecessary fxch.
     *-----------------------------------------------------------------------*)
+   (*
    structure DelayStore :>
    sig
       type writebuffer 
@@ -394,6 +374,7 @@ struct
                                stack=stack, pending=ref 0}
       fun flush(WRITE{pending=ref 0,...}, code) = code
    end (* struct *)
+   *)
 
    (*-----------------------------------------------------------------------
     * Main routine.
@@ -407,17 +388,28 @@ struct
     *     When necessary, split critical edges.
     *  5. Sacrifice a goat to make sure things don't go wrong.
     *-----------------------------------------------------------------------*)
-   fun run(cluster as F.CLUSTER{blocks, blkCounter, regmap, ...}) = 
-   let val regmap = C.lookup regmap
-       val regmaps = map regmap
-       val getCell = C.getCell C.FP (* extract the fp component of cellset*)
+   fun run(cluster as F.CLUSTER{blocks, blkCounter, ...}) = 
+   let val getCell = C.CellSet.get C.FP (*extract the fp component of cellset*)
+
+       val stTable = A.tabulate(8, fn n => I.ST(C.ST n))
+
+       fun ST n = (if sanityCheck andalso (n < 0 orelse n >= 8) then
+                      pr("WARNING BAD %st("^i2s n^")\n")
+                   else ();
+                   A.sub(stTable, n) 
+                  )
+       
+       fun FXCH n = I.FXCH{opnd=C.ST n} 
+
+       val ST0 = ST 0 
+       val ST1 = ST 1
+       val POP_ST = I.FSTPL ST0 (* Instruction to pop an entry *)
 
        (* Dump instructions *)
        fun dump instrs =
        let val Asm.S.STREAM{emit, ...} = 
                AsmStream.withStream (!MLRiscControl.debug_stream) 
                  Asm.makeStream []
-           val emit = emit regmap
        in  app emit (rev instrs)
        end 
 
@@ -427,7 +419,7 @@ struct
            val stream = StringOutStream.openStringOut buf
            val Asm.S.STREAM{emit, ...} = 
                AsmStream.withStream stream Asm.makeStream []
-           val _ = emit regmap instr
+           val _ = emit instr
            val s = StringOutStream.getString buf
            val n = String.size s
        in  if n = 0 then s else String.substring(s, 0, n - 1)
@@ -439,9 +431,8 @@ struct
         *------------------------------------------------------------------*) 
        val defUse = P.defUse C.FP   (* def/use properties *)
        val _ = Liveness.liveness{defUse=defUse,
-                                 updateCell=C.updateCell C.FP,
+                                 updateCell=C.CellSet.update C.FP,
                                  getCell=getCell,
-                                 regmap=regmap,
                                  blocks=blocks
                                 }
        (*------------------------------------------------------------------
@@ -453,12 +444,12 @@ struct
        let fun scan([], _, lastUse) = lastUse
              | scan(i::instrs, live, lastUse) = 
                let val (d, u)  = defUse i  
-                   val d       = SL.uniq(regmaps d)(* definitions *)
-                   val u       = SL.uniq(regmaps u)(* uses *)
-                   val dead    = SL.difference(d, live) 
+                   val d       = SL.uniq(d)(* definitions *)
+                   val u       = SL.uniq(u)(* uses *)
+                   val dead    = SL.return(SL.difference(d, live))
                    val live    = SL.difference(live, d)
-                   val last    = SL.difference(u, live)
-                   val live    = SL.merge(live, u)
+                   val last    = SL.return(SL.difference(u, live))
+                   val live    = SL.union(live, u)
                    val _ = 
                       if debug andalso debugLiveness then
                         (case last of
@@ -469,11 +460,11 @@ struct
                       else ()
                in  scan(instrs, live, (last,dead)::lastUse)
                end
-           val liveOutSet = SL.uniq(regmaps (getCell (!liveOut)))
+           val liveOutSet = SL.uniq(getCell (!liveOut))
            val _ = 
                if debug andalso debugLiveness then 
                   print("LiveOut("^i2s blknum^") = "^
-                fregsToString liveOutSet^"\n")
+                fregsToString(SL.return liveOutSet)^"\n")
                else ()
        in  scan(!insns, liveOutSet, [])
        end
@@ -495,7 +486,8 @@ struct
        exception NoEdgesToSplit
        val edgesToSplit    = IntHashTable.mkTable(32, NoEdgesToSplit)
        val addEdgesToSplit = IntHashTable.insert edgesToSplit
-       fun lookupEdgesToSplit i = getOpt (IntHashTable.find edgesToSplit i, [])
+       fun lookupEdgesToSplit b = 
+           getOpt(IntHashTable.find edgesToSplit b, [])
 
        (*------------------------------------------------------------------ 
         * Code for handling bindings between basic block
@@ -514,10 +506,10 @@ struct
         * list of elements with all non-physical registers removed
         *)
        fun removeNonPhysical cellSet = 
-       let fun loop([], S) = SL.uniq S
+       let fun loop([], S) = SL.return(SL.uniq S)
              | loop(f::fs, S) = 
-               let val f = regmap f 
-               in  loop(fs,if f-fpoffset <= 7 then f::S else S)
+               let val fx = C.registerNum f 
+               in  loop(fs,if fx <= 7 then f::S else S)
                end
        in  loop(getCell(!cellSet), []) 
        end
@@ -527,7 +519,7 @@ struct
         *)
        fun newStack fregs =
        let val stack = ST.create()
-       in  app (fn f => ST.push(stack, f)) (rev fregs);
+       in  app (fn f => ST.push(stack, C.registerNum f)) (rev fregs);
            stack
        end
  
@@ -540,7 +532,8 @@ struct
        let val stamp = !stampCounter
            val _     = stampCounter := !stampCounter - 1
            fun markLive [] = ()
-             | markLive(r::rs) = (A.update(useTbl, r, stamp); markLive rs)
+             | markLive(r::rs) = 
+               (A.update(useTbl, C.registerNum r, stamp); markLive rs)
            fun isLive f = A.sub(useTbl, f) = stamp
            fun loop(i, depth, code) = 
                if i >= depth then code else 
@@ -549,7 +542,7 @@ struct
                    then loop(i+1, depth, code)
                    else 
                      (if debug andalso !traceOn then
-                        pr("REMOVING "^fregToString f^" in %st("^i2s i^")"^
+                        pr("REMOVING %f"^i2s f^" in %st("^i2s i^")"^
                            " current stack="^ST.stackToString stack^"\n")
                       else ();
                       if i = 0 then 
@@ -788,7 +781,7 @@ struct
                )
              | splitAllDoneEdges(_::edges) = splitAllDoneEdges edges
 
-           (* The initial stack bindings are betermined by the live set. 
+           (* The initial stack bindings are determined by the live set. 
             * No compensation code is needed.
             *)
            fun fromLiveIn() =
@@ -796,7 +789,7 @@ struct
                    case liveInSet of
                      [] => ST.stack0
                    | _  => 
-                     (pr("liveIn="^C.cellsetToString' regmap (!liveIn)^"\n");
+                     (pr("liveIn="^C.CellSet.toString (!liveIn)^"\n");
                       newStack liveInSet 
                      )
                val stackOut = ST.copy stackIn
@@ -841,7 +834,7 @@ struct
         *------------------------------------------------------------------*)
        fun repairCriticalEdges
            (cluster as F.CLUSTER{blocks, entry, exit, annotations,
-                                 blkCounter, regmap}) =
+                                 blkCounter}) =
        let (* Data structure for recording critical edge splitting info *) 
            datatype compensationCode = 
              NEWEDGE of 
@@ -859,22 +852,21 @@ struct
            (* Repair code table; mapping from block id -> compensation code *)
            val repairCodeTable  = IntHashTable.mkTable(32, Nothing)
            val addRepairCode    = IntHashTable.insert repairCodeTable
-           fun lookupRepairCode i =
-	       getOpt (IntHashTable.find repairCodeTable i, [])
+           fun lookupRepairCode b = 
+                getOpt(IntHashTable.find repairCodeTable b,[])
 
            (* Repair code table; mapping from block id -> compensation code
             * These must be relocated...
             *)
            val repairCodeTable'  = IntHashTable.mkTable(32, Nothing)
            val addRepairCode'    = IntHashTable.insert repairCodeTable'
-           fun lookupRepairCode' i =
-	       getOpt (IntHashTable.find repairCodeTable' i, [])
+           fun lookupRepairCode' b = 
+                getOpt(IntHashTable.find repairCodeTable' b,[])
 
            (* Mapping from block id -> labels *)
            val labelTable  = IntHashTable.mkTable(32, Nothing)
            val addLabel    = IntHashTable.insert labelTable
-           fun lookupLabel i =
-	       getOpt (IntHashTable.find labelTable i, [])
+           fun lookupLabel b = getOpt(IntHashTable.find labelTable b, [])
 
            (* Scan code and insert labels *)
            fun insertLabels([], []) = ()
@@ -978,7 +970,7 @@ struct
                        val _ = 
                           if debug then
                               pr("LiveIn = "^
-                                C.cellsetToString' (C.lookup regmap) (!liveIn)^
+                                C.CellSet.toString (!liveIn)^
                                  "\n")
                           else ()
 
@@ -1166,8 +1158,11 @@ struct
                val newExit  = F.EXIT{blknum=n, freq=exitFreq, pred=exits}
                val n        = n+1
 
-               fun lookupLabel i =
-		   getOpt (IntHashTable.find labelTbl i, newExit)
+               val lookupLabel = IntHashTable.find labelTbl
+               val lookupLabel = 
+                   fn l => case lookupLabel l of
+                             SOME b => b
+                           | NONE   => newExit
 
                fun addPred b (F.BBLOCK{pred, ...},w) = pred := (b,w) :: !pred
                  | addPred b (F.EXIT{pred, ...},w) = pred := (b,w) :: !pred
@@ -1204,7 +1199,6 @@ struct
                val _ = app (addPred entry) (!entries)
 
            in  F.CLUSTER{blkCounter=ref n,
-                         regmap=regmap,
                          annotations=annotations,
                          blocks=blocks,
                          entry=newEntry,
@@ -1212,12 +1206,9 @@ struct
                         }
            end
 
-       in  if IntHashTable.numItems edgesToSplit > 0 then 
-              (insertLabels([], blocks);
-               IntHashTable.appi split edgesToSplit;
-               renumberBlocks()
-              )
-           else cluster
+       in  insertLabels([], blocks);
+           IntHashTable.appi split edgesToSplit;
+           renumberBlocks()
        end
 
 
@@ -1260,7 +1251,7 @@ struct
              | loop(stamp, instr::rest, (lastUse,dead)::lastUses, code) = 
                let fun mark(tbl, []) = ()
                      | mark(tbl, r::rs) = 
-                       (A.update(tbl, r, stamp); mark(tbl, rs))
+                       (A.update(tbl, C.registerNum r, stamp); mark(tbl, rs))
                in  mark(lastUseTbl,lastUse); (* mark all last uses *)
                    trans(stamp, instr, [], rest, dead, lastUses, code) 
                end
@@ -1286,27 +1277,28 @@ struct
                fun DONE code = 
                let fun kill([], code) = FINISH code
                      | kill(f::fs, code) = 
-                       (if debug andalso debugDead then
-                           pr("DEAD "^fregToString f^" in "^
-                              ST.stackToString stack^"\n")
-                        else ();
-                        (* not a physical register *)
-                        if f >= fpoffset + 8 then kill(fs, code)
-                        else
-                        let val i = ST.fp(stack, f)
-                        in  if debug andalso debugDead then
-                                pr("KILLING "^fregToString f^
-                                   "=%st("^i2s i^")\n")
-                            else ();
-                            if i < 0 then kill(fs, code) (* dead already *)
-                            else if i = 0 then 
-                              (ST.pop stack; kill(fs, POP_ST::code))
-                            else 
-                              (ST.xch(stack,0,i); ST.pop stack;
-                               kill(fs, I.FSTPL(ST i)::code)
-                              )
-                        end
-                       )
+                       let val fx = C.registerNum f 
+                       in  if debug andalso debugDead then
+                              pr("DEAD "^fregToString f^" in "^
+                                 ST.stackToString stack^"\n")
+                           else ();
+                           (* not a physical register *)
+                           if fx >= 8 then kill(fs, code)
+                           else
+                           let val i = ST.fp(stack, fx)
+                           in  if debug andalso debugDead then
+                                   pr("KILLING "^fregToString f^
+                                      "=%st("^i2s i^")\n")
+                               else ();
+                               if i < 0 then kill(fs, code) (* dead already *)
+                               else if i = 0 then 
+                                 (ST.pop stack; kill(fs, POP_ST::code))
+                               else 
+                                 (ST.xch(stack,0,i); ST.pop stack;
+                                  kill(fs, I.FSTPL(ST i)::code)
+                                 )
+                           end
+                       end
                in  kill(dead, code) 
                end
 
@@ -1316,7 +1308,7 @@ struct
                (* Is this value dead? *) 
                fun isDead f = 
                let fun loop [] = false
-                     | loop(r::rs) = f = r orelse loop rs
+                     | loop(r::rs) = C.sameColor(f,r) orelse loop rs
                in loop dead end
 
                (* Dump the stack before each intruction for debugging *)
@@ -1326,9 +1318,9 @@ struct
 
                (* Find the location of a source register *)
                fun getfs(f) = 
-               let val f = regmap f 
-                   val s = ST.fp(stack, f) 
-               in  (isLastUse f,s) end
+               let val fx = C.registerNum f 
+                   val s = ST.fp(stack, fx) 
+               in  (isLastUse fx,s) end
 
                (* Generate memory to memory move *)
                fun mmmove(fsize,src,dst) =
@@ -1338,15 +1330,15 @@ struct
                in  DONE code end
 
                (* Allocate a new register in %st(0) *)
-               fun alloc(f,code) = (ST.push(stack,f); code)
+               fun alloc(f,code) = (ST.push(stack,C.registerNum f); code)
 
                (* register -> register move *)
                fun rrmove(fs,fd) = 
-               if fs = fd then DONE code 
+               if C.sameColor(fs,fd) then DONE code 
                else
-               let val (dead,ss) = getfs fs and fd = regmap fd
+               let val (dead,ss) = getfs fs 
                in  if dead then              (* fs is dead *)
-                      (ST.set(stack,ss,fd);  (* rename fd to fs *)
+                      (ST.set(stack,ss,C.registerNum fd);  (* rename fd to fs *)
                        DONE code             (* no code is generated *)
                       )
                    else (* fs is not dead; push it onto %st(0);
@@ -1361,14 +1353,12 @@ struct
                 * Do dead code elimination here.
                 *)
                fun mrmove(fsize,src,fd) = 
-               let val fd = regmap fd
-               in  if isDead fd 
+                   if isDead fd 
                    then FINISH code (* value has been killed *)
                    else 
                       let val code = alloc(fd, code) 
                       in  DONE(mark(FLD(fsize,src),an)::code)
                       end 
-               end
 
                (* exchange %st(n) and %st(0) *)
                fun xch(n) = (ST.xch(stack,0,n); FXCH n)
@@ -1402,8 +1392,7 @@ struct
 
                (* Floating point integer load operator *)
                fun fiload{isize,ea,dst=I.FPR fd} = 
-                   let val fd   = regmap fd
-                       val code = alloc(fd, code) 
+                   let val code = alloc(fd, code) 
                        val code = mark(FILD(isize,ea),an)::code
                    in  DONE code
                    end
@@ -1430,7 +1419,7 @@ struct
 
                fun storeResult(fsize, dst, n, code) = 
                    case dst of
-                     I.FPR fd => (ST.set(stack, n, regmap fd); DONE code)
+                     I.FPR fd => (ST.set(stack, n, C.registerNum fd); DONE code)
                    | mem      => 
                       let val code = if n = 0 then code else xch n::code
                       in  ST.pop stack; DONE(FSTP(fsize, mem)::code) end
@@ -1669,10 +1658,8 @@ struct
 
                fun prCopy(dst, src) =
                    ListPair.app(fn (fd, fs) =>
-                      pr(fregToString(regmap fd)^"<-"^fregToString fs^" "))
+                      pr(fregToString(fd)^"<-"^fregToString fs^" "))
                         (dst, src)
-
-               fun okFreg f = f >= fpoffset andalso f < fpoffset+8
 
                (* Parallel copy magic.
                 * For each src registers, we find out 
@@ -1684,18 +1671,15 @@ struct
                fun fcopy{dst,src,tmp} =
                let fun loop([], [], copies, renames) = (copies, renames)
                      | loop(fd::fds, fs::fss, copies, renames) = 
-                       let val fd  = regmap fd
-                           val fs  = regmap fs     
-                       in  if okFreg fd andalso okFreg fs then ()
-                           else (prCopy(dst,src); error "bad copy");
-                           if isLastUse fs then 
-                             if A.sub(useTbl,fs) <> stamp 
-                                 (* unused *)
-                             then (A.update(useTbl,fs,stamp);
+                       let val fsx = C.registerNum fs
+                       in  if isLastUse fsx then 
+                             if A.sub(useTbl,fsx) <> stamp 
+                               (* unused *)
+                             then (A.update(useTbl,fsx,stamp);
                                    loop(fds, fss, copies, 
-                                        if fd = fs then renames 
+                                        if C.sameColor(fd,fs) then renames 
                                         else (fd, fs)::renames)
-                                  )
+                               )
                               else loop(fds, fss, (fd, fs)::copies, renames)
                            else loop(fds, fss, (fd, fs)::copies, renames)
                        end
@@ -1704,15 +1688,17 @@ struct
                    (* generate code for the copies *)
                    fun genCopy([], code) = code
                      | genCopy((fd, fs)::copies, code) = 
-                       let val ss   = ST.fp(stack, fs)
-                           val _    = ST.push(stack, fd)
+                       let val ss   = ST.fp(stack, C.registerNum fs)
+                           val _    = ST.push(stack, C.registerNum fd)
                            val code = I.FLDL(ST ss)::code 
                        in  genCopy(copies, code) end
 
                    (* perform the renaming; it must be done in parallel! *)
                    fun renaming(renames) = 
-                   let val ss = map (fn (_,fs) => ST.fp(stack,fs)) renames
-                   in  ListPair.app (fn ((fd,_),ss) => ST.set(stack,ss,fd))
+                   let val ss = map (fn (_,fs) => 
+                                        ST.fp(stack,C.registerNum fs)) renames
+                   in  ListPair.app (fn ((fd,_),ss) => 
+                               ST.set(stack,ss,C.registerNum fd))
                           (renames, ss)
                    end
 
@@ -1729,12 +1715,11 @@ struct
                in  renaming renames;
                    case tmp of
                      SOME(I.FPR f) => 
-                       let val f = regmap f
-                       in  if debug andalso debugDead 
-                           then pr("KILLING tmp "^fregToString f^"\n")
-                           else ();
-                           ST.kill(stack, f)     
-                       end
+                       (if debug andalso debugDead 
+                        then pr("KILLING tmp "^fregToString f^"\n")
+                        else ();
+                        ST.kill(stack, f)     
+                       )
                    | _ => ();
                    DONE code
                end
@@ -1819,7 +1804,7 @@ struct
            (* Dump the initial code *)
            val _ = if debug andalso !debugOn then
                     (pr("-------- block "^i2s blknum^" ----"^
-                         C.cellsetToString' regmap (!liveIn)^" "^
+                         C.CellSet.toString (!liveIn)^" "^
                          ST.stackToString stackIn^"\n");
                      dump (!insns)
                     )
@@ -1837,11 +1822,11 @@ struct
            (* Dump translation *)
            val _ = if debug andalso !debugOn then
                      (pr("-------- translation "^i2s blknum^"----"^
-                         C.cellsetToString' regmap (!liveIn)^" "^
+                         C.CellSet.toString (!liveIn)^" "^
                          ST.stackToString stackIn^"\n");
                       dump insns';
                       pr("-------- done "^i2s blknum^"----"^
-                         C.cellsetToString' regmap (!liveOut)^" "^
+                         C.CellSet.toString (!liveOut)^" "^
                          ST.stackToString stack^"\n")
                      )
                   else ()
@@ -1860,7 +1845,7 @@ struct
        (* If we found critical edges, then we have to split them... *)
        if IntHashTable.numItems edgesToSplit = 0 then cluster 
        else repairCriticalEdges(cluster)
-   end
+   end 
 
 end (* functor *)
 

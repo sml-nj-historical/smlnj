@@ -11,19 +11,17 @@ struct
 
    structure P = P
 
-   datatype ('a,'b,'c,'d,'e,'f) stream =
+   datatype ('a,'b,'c) stream =
       STREAM of
-      { beginCluster: int -> 'b,               (* start new compilation unit *)
-        endCluster  : 'c -> unit,              (* end compilation unit *)
-        emit        : 'a,                      (* emit instruction *)
+      { beginCluster: int -> unit,             (* start new compilation unit *)
+        endCluster  : 'b -> unit,              (* end compilation unit *)
+        emit        : 'a -> unit,              (* emit instruction *)
         pseudoOp    : P.pseudo_op -> unit,     (* emit a pseudo op *)
         defineLabel : Label.label -> unit,     (* define a local label *)
         entryLabel  : Label.label -> unit,     (* define an external label *)
         comment     : string -> unit,          (* emit comment *)
         annotation  : Annotations.annotation -> unit, (* add annotation *)
-        exitBlock   : 'd -> unit,              (* mark the end of a procedure *)
-        alias       : 'e -> unit,              (* generate alias information *)
-        phi         : 'f -> unit               (* generate phi-function *)
+        exitBlock   : 'c -> unit             (* mark the end of a procedure *)
       }
 
 end

@@ -45,8 +45,9 @@ struct
        val defsTbl     = SSA.defsTbl SSA
        val usesTbl     = SSA.usesTbl SSA
        val rtlTbl      = SSA.rtlTbl SSA
-       val cellKind    = Intmap.mapWithDefault(cellKindMap, C.GP)
-       val updateTy    = Intmap.add gcmap
+       val cellKind    = IntHashTable.find cellKindMap
+       val cellKind    = fn r => case cellKind r of SOME k => k | NONE => C.GP
+       val updateTy    = IntHashTable.insert gcmap
        val zeroR       = case C.zeroReg C.GP of 
                            SOME z => z
                          | NONE => ~1
@@ -60,7 +61,7 @@ struct
          | joins (x::xs) = GC.join(x, joins xs)
 
        fun initializeTypes() =
-           (Intmap.app (fn (r,t) => 
+           (IntHashTable.appi (fn (r,t) => 
                (BitSet.set(hasType,r); A.update(gcTypes, r, t))) gcmap;
             if zeroR >= 0 then A.update(gcTypes, zeroR, GC.CONST 0) else ()
            )

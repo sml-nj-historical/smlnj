@@ -63,7 +63,7 @@ struct
   fun im14 n = ~8192 <= n andalso n < 8192
   fun im17 n = ~65536 <= n andalso n < 65536
 
-  fun sdiSize(instr, regmap, labMap, loc) = let
+  fun sdiSize(instr, labMap, loc) = let
     fun branchOffset lab = ((labMap lab) - loc - 8) div 4
     fun branch(lab,nop) = let
       val offset = branchOffset lab
@@ -106,14 +106,14 @@ struct
       | I.COPY{impl=ref(SOME l), ...} => 4 * length l
       | I.FCOPY{impl=ref(SOME l), ...} => 4 * length l
       | I.COPY{dst, src, impl, tmp} => let
-	  val instrs = Shuffle.shuffle {regmap=regmap, tmp=tmp, dst=dst, src=src}
+	  val instrs = Shuffle.shuffle {tmp=tmp, dst=dst, src=src}
         in impl := SOME(instrs); 4 * length instrs
 	end
       | I.FCOPY{dst, src, impl, tmp} => let
-	  val instrs = Shuffle.shufflefp {regmap=regmap, tmp=tmp, dst=dst, src=src}
+	  val instrs = Shuffle.shufflefp {tmp=tmp, dst=dst, src=src}
         in impl := SOME instrs;  4 * length instrs
         end
-      | I.ANNOTATION{i,...} => sdiSize(i,regmap,labMap,loc)
+      | I.ANNOTATION{i,...} => sdiSize(i,labMap,loc)
       | _  => error "sdiSize"
   end
 

@@ -29,19 +29,19 @@ struct
    structure I   = CFG.I
    structure C   = I.C
    structure A   = Annotations
-   structure SL  = SortedList
+   structure SL  = C.SortedCells
    structure G   = Graph
 
    structure Liveness =
       Dataflow
          (struct
               structure CFG   = CFG
-              type domain     = C.cell list
+              type domain     = SL.sorted_cells
               val  forward    = false
-              val  bot        = []
-              val  ==         = op = : C.cell list * C.cell list -> bool
-              val  join       = SL.foldmerge
-              val  op +       = SL.merge
+              val  bot        = SL.empty
+              val  ==         = SL.eq
+              val  join       = List.foldr SL.union SL.empty 
+              val  op +       = SL.union
               val  op -       = SL.difference
               type dataflow_info = 
                   { liveOut : CFG.block Graph.node -> C.cell list,
@@ -54,7 +54,9 @@ struct
 
               fun prologue(cfg,{defUse,liveOut,...}:dataflow_info) (b,b') =
                   let val (def,use) = defUse(b,b')
-                      val live_out  = liveOut(b,b')
+                      val def       = SL.uniq def
+                      val use       = SL.uniq use
+                      val live_out  = SL.uniq(liveOut(b,b'))
                   in  { input    = live_out,
 	                output   = (live_out - def) + use,
 	                transfer = fn live_out => (live_out - def) + use
@@ -63,7 +65,8 @@ struct
 
               fun epilogue(cfg,{result, ...}:dataflow_info)
                           { node, input=liveOut, output=liveIn } = 
-                  result{block=node, liveIn=liveIn, liveOut=liveOut}
+                  result{block=node, liveIn=SL.return liveIn, 
+                                     liveOut=SL.return liveOut}
          end
         )
 

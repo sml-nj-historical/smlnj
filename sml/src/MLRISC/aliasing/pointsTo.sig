@@ -7,19 +7,20 @@ signature POINTS_TO =
 sig
 
    eqtype edgekind 
+   structure C : CELLS_BASIS = CellsBasis
 
    datatype cell = 
      LINK  of region                             
-   | SREF  of int * edges ref
-   | WREF  of int * edges ref
-   | SCELL of int * edges ref
-   | WCELL of int * edges ref
-   | TOP   of {mutable:bool, id:int, name:string}
+   | SREF  of C.cell * edges ref
+   | WREF  of C.cell * edges ref
+   | SCELL of C.cell * edges ref
+   | WCELL of C.cell * edges ref
+   | TOP   of {mutable:bool, id:C.cell, name:string}
       (* a collapsed node *)
    withtype region = cell ref
    and      edges  = (edgekind * int * region) list
 
-   val reset    : (unit -> int) -> unit
+   val reset    : (unit -> C.cell) -> unit
 
    (* generate a new reference/immutable cell *)
    val newSRef  : unit -> region  

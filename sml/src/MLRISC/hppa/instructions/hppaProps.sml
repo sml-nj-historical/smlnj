@@ -18,6 +18,9 @@ struct
                 | IK_PHI | IK_SOURCE | IK_SINK
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
+  val zeroR = Option.valOf(C.zeroReg C.GP)
+  val r31   = C.Reg C.GP 31
+
    (*========================================================================
     *  Instruction Kinds
     *========================================================================*)
@@ -83,8 +86,8 @@ struct
   fun loadImmed{immed,t} = 
       I.LDO{i=if #lo immedRange <= immed andalso immed <= #hi immedRange 
               then I.IMMED immed
-              else I.LabExp(LE.INT immed,I.F),b=0,t=t}
-  fun loadOperand{opn,t} = I.LDO{i=opn,b=0,t=t}
+              else I.LabExp(LE.INT immed,I.F),b=zeroR,t=t}
+  fun loadOperand{opn,t} = I.LDO{i=opn,b=zeroR,t=t}
 
   fun setTargets(I.BCOND{cmp,bc,r1,r2,t,f,n,nop},[F,T]) =
           I.BCOND{cmp=cmp,bc=bc,r1=r1,r2=r2,t=T,f=F,n=n,nop=nop}
@@ -129,6 +132,7 @@ struct
       | revFcond I.!=   = I.==
       | revFcond I.!?   = I.?
       | revFcond I.<=>  = I.!<=>
+      | revFcond _      = error "revFcond"
   in
     case br of 
       I.BCOND{cmp,bc,r1,r2,t,f,n,nop} => 
@@ -159,10 +163,15 @@ struct
      | hashOpn(I.LabExp(l,f)) = I.LabelExp.hash l + hashFieldSel f
      | hashOpn(I.HILabExp(l,f)) = I.LabelExp.hash l + hashFieldSel f + 0w10000
      | hashOpn(I.LOLabExp(l,f)) = I.LabelExp.hash l + hashFieldSel f + 0w20000
+     | hashOpn(I.REG r) = C.hashCell r
    fun eqOpn(I.IMMED i,I.IMMED j) = i = j
-     | eqOpn(I.LabExp(a,b),I.LabExp(c,d)) = b = d andalso I.LabelExp.==(a,c)
-     | eqOpn(I.HILabExp(a,b),I.HILabExp(c,d)) = b = d andalso I.LabelExp.==(a,c)
-     | eqOpn(I.LOLabExp(a,b),I.LOLabExp(c,d)) = b = d andalso I.LabelExp.==(a,c)
+     | eqOpn(I.REG x,I.REG y) = C.sameColor(x,y)
+     | eqOpn(I.LabExp(a,b),I.LabExp(c,d)) = 
+          b = d andalso I.LabelExp.==(a,c)
+     | eqOpn(I.HILabExp(a,b),I.HILabExp(c,d)) = 
+          b = d andalso I.LabelExp.==(a,c)
+     | eqOpn(I.LOLabExp(a,b),I.LOLabExp(c,d)) = 
+          b = d andalso I.LabelExp.==(a,c)
      | eqOpn _ = false
    
 
@@ -182,10 +191,10 @@ struct
       | I.ARITH {a, r1, r2, t, ...} => trap(a, [t], [r1,r2])
       | I.ARITHI {ai, r, t, ...}    => trapi(ai, [t], [r])
       | I.COMCLR_LDO{r1, r2, b, t1, t2, ...}=> 
-          if t1 = t2 then ([t1], [b, r1, r2])
+          if C.sameColor(t1,t2) then ([t1], [b, r1, r2])
           else ([t1, t2], [b, r1, r2, t2])
       | I.COMICLR_LDO{i1, r2, b, t1, t2, ...}=> 
-          if t1 = t2 then ([t1], [b, r2])
+          if C.sameColor(t1,t2) then ([t1], [b, r2])
           else ([t1, t2], [b, r2, t2])
       | I.SHIFTV {r, t, ...}        => ([t], [r])
       | I.SHIFT {r, t, ...}         => ([t], [r])
@@ -195,8 +204,9 @@ struct
       | I.BV {x, b, ...}	    => ([],  [x,b])
       | I.BE {b, ...}	            => ([],  [b])
       | I.BLR{x, t, ...}            => ([t], [x])
-      | I.BL{defs, uses, ...}       => (#1 defs, #1 uses)
-      | I.BLE{t, b, defs, uses, ...}=> (31 :: t :: #1 defs, b :: #1 uses)
+      | I.BL{defs, uses, ...}       => (C.getReg defs, C.getReg uses)
+      | I.BLE{t, b, defs, uses, ...}=>
+            (r31 :: t :: C.getReg defs, b :: C.getReg uses)
       | I.LDIL{i, t}		    => ([t], [])
       | I.LDO{b, t, ...}	    => ([t], [b])
       | I.COPY{dst, src, tmp=SOME(I.Direct r), ...} => (r::dst, src)
@@ -222,8 +232,8 @@ struct
        | I.FUNARY {f, t, ...}      => ([t], [f])
        | I.FCNV {f, t, ...}        => ([t], [f])
        | I.FBRANCH{f1, f2,...}	   => ([],  [f1, f2])
-       | I.BL{defs, uses, ...}     => (#2 defs, #2 uses)
-       | I.BLE{defs, uses, ...}    => (#2 defs, #2 uses)
+       | I.BL{defs, uses, ...}     => (C.getFreg defs, C.getFreg uses)
+       | I.BLE{defs, uses, ...}    => (C.getFreg defs, C.getFreg uses)
        | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...} => (f::dst, src)
        | I.FCOPY{dst, src, ...}    => (dst, src)
        | I.ANNOTATION{a=C.DEF_USE{cellkind=C.FP,defs,uses}, i, ...} => 

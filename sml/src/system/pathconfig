@@ -1,7 +1,7 @@
 root.cm			../system
 
 smlnj			../system/smlnj
-MLRISC			../MLRISC
+MLRISC			../MLRISC/cm
 pickle-lib.cm		../compiler/MiscUtil/library
 
 cm			../cm

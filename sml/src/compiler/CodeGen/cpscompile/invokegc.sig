@@ -21,7 +21,7 @@ sig
 	      regtys   : CPS.cty list,
 	      return   : T.stm
             }
-   type stream = (T.stm, Cells.regmap, T.mlrisc list) T.stream
+   type stream = (T.stm, T.mlrisc list) T.stream
 
       (* initialize the state before compiling a module *)
    val init : unit -> unit

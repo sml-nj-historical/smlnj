@@ -1,0 +1,29 @@
+(* MLRISC.cm
+ *
+ * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
+ *
+ * This library contains only the peephole optimization stuff.  
+ *)
+
+Library 
+	functor X86Peephole
+is
+
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+        $/basis.cm
+        $/smlnj-lib.cm
+#else
+        basis.cm
+        smlnj-lib.cm
+#endif
+#else
+        smlnj-lib.cm
+#endif
+
+	MLRISC.cm
+	Peephole.cm
+	IA32.cm
+
+	(* x86 *)
+	../x86/instructions/x86Peephole.sml

@@ -32,6 +32,7 @@ struct
    structure T = T
    structure Size = MLTreeSize(structure T = T val intTy = intTy)
    structure LE = T.LabelExp
+   structure C  = CellsBasis
 
    exception Unsupported of string
 
@@ -126,7 +127,7 @@ struct
        (* 
         * Default ways of converting integers to integers
         *)
-       | T.CVTI2I(ty,T.SIGN_EXTEND,fromTy,e) => 
+       | T.SX(ty,fromTy,e) => 
          if fromTy = ty then e
          else if rep = SE andalso fromTy < ty andalso 
               fromTy >= hd naturalWidths then e 
@@ -134,7 +135,7 @@ struct
              let val shift = T.LI(W - fromTy)
              in  T.SRA(W,T.SLL(W,e,shift),shift) 
              end 
-       | T.CVTI2I(ty,T.ZERO_EXTEND,fromTy,e) => 
+       | T.ZX(ty,fromTy,e) => 
          if fromTy <= ty then e else 
             (case ty of (* ty < fromTy *)
                 8  => T.ANDB(ty,e,T.LI32 0wxff) 
@@ -151,7 +152,7 @@ struct
         *)
        | T.CVTF2I(ty,round,fty,e) => 
          let val ty' = promoteTy(exp,ty)
-         in  T.CVTI2I(ty,T.SIGN_EXTEND,ty',T.CVTF2I(ty',round,fty,e))
+         in  T.SX(ty,ty',T.CVTF2I(ty',round,fty,e))
          end
 
        | exp => raise Unsupported("unknown expression")
@@ -162,14 +163,14 @@ struct
      | mark(s,a::an) = mark(T.ANNOTATION(s,a),an)
 
    fun compileStm (T.SEQ s) = s
-     | compileStm (T.IF(ctrl,cond,T.JMP(_,T.LABEL(LE.LABEL L),_),T.SEQ [])) = 
-           [T.BCC(ctrl,cond,L)]
-     | compileStm (T.IF(ctrl,cond,yes,no)) = 
+     | compileStm (T.IF(cond,T.JMP(T.LABEL(LE.LABEL L),_),T.SEQ [])) = 
+           [T.BCC(cond,L)]
+     | compileStm (T.IF(cond,yes,no)) = 
        let val L1 = Label.newLabel ""
            val L2 = Label.newLabel ""
-       in  [T.BCC(ctrl,cond,L1),
+       in  [T.BCC(cond,L1),
             no,
-            T.JMP([],T.LABEL(LE.LABEL L2),[]),
+            T.JMP(T.LABEL(LE.LABEL L2),[]),
             T.DEFINE L1,
             yes,
             T.DEFINE L2
@@ -186,7 +187,7 @@ struct
    fun compileCond{exp=(ty,ccexp,e1,e2),rd,an} =
    let val L1 = Label.newLabel ""
    in  [T.MV(ty,rd,e1),
-        mark(T.BCC([],ccexp,L1),an),
+        mark(T.BCC(ccexp,L1),an),
         T.MV(ty,rd,e2),
         T.DEFINE L1
        ]
@@ -194,7 +195,7 @@ struct
    fun compileFcond{exp=(fty,ccexp,e1,e2),fd,an} =
    let val L1 = Label.newLabel ""
    in  [T.FMV(fty,fd,e1),
-        mark(T.BCC([],ccexp,L1),an),
+        mark(T.BCC(ccexp,L1),an),
         T.FMV(fty,fd,e2),
         T.DEFINE L1
        ]

@@ -13,8 +13,9 @@ struct
    structure Dom   = Dom
    structure CFG   = CFG
    structure I     = CFG.I
+   structure C     = I.C
    structure G     = Graph 
-   structure IDefs = IDefs
+   structure IDefs = ComputeIDefs(I.C)
 
    fun idefs defUse cfg =
    let fun compute_def_use(b,CFG.BLOCK{insns,...}) =

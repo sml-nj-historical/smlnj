@@ -36,8 +36,8 @@ struct
    structure Region = I.Region
    structure A = MLRiscAnnotations
 
-   type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
-   type mltreeStream = (T.stm,C.regmap,T.mlrisc list) T.stream
+   type instrStream = (I.instruction,C.cellset) T.stream
+   type mltreeStream = (T.stm,T.mlrisc list) T.stream
 
    structure Gen = MLTreeGen(structure T = T
                              val intTy = 32
@@ -103,15 +103,15 @@ struct
         (instrStream as
          S.STREAM{emit, defineLabel, entryLabel, 
                   beginCluster, endCluster, annotation,
-                  exitBlock, pseudoOp, phi, alias, comment, ...}) =
+                  exitBlock, pseudoOp, comment, ...}) =
    let
        (* operand type and effective addresss *)
  
        val newReg  = C.newReg
        val newFreg = C.newFreg
        val CRReg   = C.Reg C.CR
-       val zeroR = 0  
-       val zeroF = C.FPReg 0
+       val zeroR = C.r0 
+       val zeroF = C.f0
        val zeroEA = I.Direct zeroR
        val zeroT = T.REG(32,zeroR)
        val zeroImmed = I.IMMED 0
@@ -169,7 +169,7 @@ struct
        (* load immediate *)
        fun loadImmed(n,t,an) =
            if im14 n 
-           then mark(I.LDO{i=I.IMMED n,b=0,t=t},an)
+           then mark(I.LDO{i=I.IMMED n,b=zeroR,t=t},an)
            else let val {hi,lo} = split11 n
                     val tmp = newReg()
                 in  emit(I.LDIL{i=I.IMMED hi,t=tmp});
@@ -179,7 +179,7 @@ struct
        (* load word constant into register t *)
        fun loadImmedw(w,t,an) =
            if Word32.<(w,0w8192) 
-           then mark(I.LDO{i=I.IMMED(Word32.toIntX w),b=0,t=t},an)
+           then mark(I.LDO{i=I.IMMED(Word32.toIntX w),b=zeroR,t=t},an)
            else let val {hi,lo} = split11w w
                     val tmp = newReg()
                 in  emit(I.LDIL{i=I.IMMED hi,t=tmp});
@@ -192,12 +192,12 @@ struct
 
        (* load constant *)
        fun loadConst(c,t,an) = 
-             mark(I.LDO{b=0,i=I.LabExp(LE.CONST c,I.F),t=t},an) (* XXX *)
+             mark(I.LDO{b=zeroR,i=I.LabExp(LE.CONST c,I.F),t=t},an) (* XXX *)
 
        (* convert an operand into a register *)
        fun reduceOpn i = 
             let val t = newReg()
-            in  emit(I.LDO{i=i,b=0,t=t}); t end
+            in  emit(I.LDO{i=i,b=zeroR,t=t}); t end
  
        (* emit parallel copies *)
        fun copy(dst,src,an) =
@@ -211,14 +211,14 @@ struct
  
        (* move register s to register t *)
        fun move(s,t,an) =
-           if s = t orelse t = zeroR then ()
-           else if s = zeroR then
+           if C.sameColor(s,t) orelse C.registerId t = 0 then ()
+           else if C.registerId s = 0 then
                 mark(I.LDO{i=zeroImmed,b=zeroR,t=t},an)
            else mark(I.COPY{src=[s],dst=[t],impl=ref NONE,tmp=NONE},an)
  
        (* move floating point register s to register t *)
        fun fmove(s,t,an) =
-           if s = t then ()
+           if C.sameColor(s,t) then ()
            else mark(I.FCOPY{src=[s],dst=[t],impl=ref NONE,tmp=NONE},an)
 
        (* generate millicode function call *)
@@ -268,10 +268,11 @@ struct
               DISPea(expr e,I.LabExp(LE.CONST c,I.F))
          | addr(scale,T.ADD(_,e,T.LABEL le)) = 
              let val rs = expr e
-             in  case ldLabelEA le of
+                 val (rt, opnd) = ldLabelEA le
+             in  case (C.registerId rt, opnd) of
                     (0, opnd) => DISPea(rs,opnd)
-                 |  (rt,I.IMMED 0) => INDXea(rs,rt)
-                 |  (rt,opnd) => 
+                 |  (_,I.IMMED 0) => INDXea(rs,rt)
+                 |  (_,opnd) => 
                      let val tmp = newReg()
                      in  emit(I.ARITH{a=I.ADD,r1=rs,r2=rt,t=tmp});
                          DISPea(tmp,opnd)
@@ -473,6 +474,7 @@ struct
                        | T.GEU => (I.COMIBF, I.LTU)
                        | T.GTU => (I.COMIBF, I.LEU)
                        | T.NE  => (I.COMIBF, I.EQ)
+                       | _     => error "emitBranchI"
                in  mark(I.BCONDI{cmpi=cmpi,bc=bc,i=n,r2=r2,t=t,f=f,
                                   n=false, nop=true},an);
                    defineLabel f
@@ -495,6 +497,7 @@ struct
                      | T.GEU => (I.COMBT, I.LEU, r2, r1)
                      | T.GTU => (I.COMBT, I.LTU, r2, r1)
                      | T.NE  => (I.COMBF, I.EQ, r1, r2)
+                     | _     => error "emitBranch"
            in  mark(I.BCOND{cmp=cmp,bc=bc,r1=r1,r2=r2,t=t,f=f,
                             n=false,nop=true},an);
                defineLabel f
@@ -515,10 +518,11 @@ struct
          | stmt(T.CCMV(t,e),an) = doCCexpr(e,t,an)
          | stmt(T.COPY(32,dst,src),an) = copy(dst,src,an)
          | stmt(T.FCOPY(64,dst,src),an) = fcopy(dst,src,an)
-         | stmt(T.JMP(ctrl,T.LABEL(LE.LABEL l),_),an) = goto(l,an)
-         | stmt(T.JMP(ctrl,ea,labs),an) = jmp(ea,labs,an)
+         | stmt(T.JMP(T.LABEL(LE.LABEL l),_),an) = goto(l,an)
+         | stmt(T.JMP(ea,labs),an) = jmp(ea,labs,an)
          | stmt(s as T.CALL _,an) = call(s,an)
-         | stmt(T.RET _,an) = mark(I.BV{labs=[],x=0,b=C.returnPtr,n=true},an)
+         | stmt(T.RET _,an) = 
+               mark(I.BV{labs=[],x=zeroR,b=C.returnPtr,n=true},an)
          | stmt(T.STORE(8,ea,t,mem),an) = store(I.STB,ea,expr t,mem,an)
          | stmt(T.STORE(16,ea,t,mem),an) = store(I.STH,ea,expr t,mem,an)
          | stmt(T.STORE(32,ea,t,mem),an) = store(I.STW,ea,expr t,mem,an)
@@ -526,7 +530,7 @@ struct
               fstore(32,I.FSTWS,I.FSTWX,I.FSTWX_S,ea,t,mem,an)
          | stmt(T.FSTORE(64,ea,t,mem),an) = 
               fstore(64,I.FSTDS,I.FSTDX,I.FSTDX_S,ea,t,mem,an)
-         | stmt(T.BCC(ctrl,cc,lab),an) = branch(cc,lab,an)
+         | stmt(T.BCC(cc,lab),an) = branch(cc,lab,an)
          | stmt(T.DEFINE l,_) = defineLabel l
          | stmt(T.ANNOTATION(i,a),an) = stmt(i,a::an)
          | stmt(T.EXT s,an) = 
@@ -539,14 +543,14 @@ struct
        and jmp(e,labs,an) = 
            let val (b,x) = 
                case addr(32,e) of
-                 DISPea(b,I.IMMED 0) => (b,0)
+                 DISPea(b,I.IMMED 0) => (b,zeroR)
                | DISPea(r,i) => let val b=newReg()
                                 in  emit(I.ARITHI{ai=I.ADDI,i=i,r=r,t=b});
-                                    (b,0)
+                                    (b,zeroR)
                                 end
                | INDXea(r1,r2) => let val b=newReg()
                                   in  emit(I.ARITH{a=I.ADD,r1=r1,r2=r2,t=b});
-                                      (b,0)
+                                      (b,zeroR)
                                   end
                | INDXSCALEDea(b,x) => (b,x)
            in mark(I.BV{b=b,x=x,n=true,labs=labs},an) end
@@ -652,6 +656,7 @@ struct
                         | T.GEU => I.LTU
                         | T.GTU => I.LEU
                         | T.NE  => I.EQ
+                        | _     => error "comclr"
                val tmp = newReg()
                val (b,i) = 
                   case yes of
@@ -662,7 +667,7 @@ struct
                   | T.LI32 w => let val {hi,lo} = split11w w
                                     val b = newReg()
                                 in  emit(I.LDIL{i=I.IMMED hi,t=b}); (b,lo) end
-                  | e        => (expr e,0)
+                  | e        => (expr e, 0)
                val t1 =
                   case no of
                    (T.LI 0 | T.LI32 0w0) => tmp (* false case is zero *)
@@ -845,9 +850,7 @@ struct
               entryLabel  = entryLabel,
               comment     = comment,
               annotation  = annotation,
-              exitBlock   = fn regs => exitBlock(cellset regs),
-              alias       = alias,
-              phi         = phi
+              exitBlock   = fn regs => exitBlock(cellset regs)
             }
    in  self()
    end

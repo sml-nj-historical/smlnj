@@ -30,7 +30,7 @@ struct
     * Partition the cluster into a set of clusters so that each can
     * be allocated independently.
     *)
-   fun partition(F.CLUSTER{blkCounter, blocks, entry, exit, regmap, 
+   fun partition(F.CLUSTER{blkCounter, blocks, entry, exit, 
                            annotations, ...}) 
         cellkind processRegion = 
        (* Number of basic blocks *)
@@ -46,11 +46,10 @@ struct
         * Unfortunately, I know of no way of avoiding this step because
         * we have to know which values are live across regions. 
         *)
-       val _ = Liveness.liveness{regmap=C.lookup regmap,
-                                 blocks=blocks,
+       val _ = Liveness.liveness{blocks=blocks,
                                  defUse=InsnProps.defUse cellkind,
-                                 getCell=C.getCell cellkind,
-                                 updateCell=C.updateCell cellkind
+                                 getCell=C.CellSet.get cellkind,
+                                 updateCell=C.CellSet.update cellkind
                                 }
 
        val F.ENTRY{succ=entrySucc, ...} = entry
@@ -181,8 +180,8 @@ struct
                        (* To save space, clear liveIn and 
                         * liveOut information (if it is not an exit)
                         *)
-                       liveIn := C.empty;
-                       if exit then () else liveOut := C.empty;
+                       liveIn := C.CellSet.empty;
+                       if exit then () else liveOut := C.CellSet.empty;
                        processNodes(nodes, trail)
                    end
                  | processNodes _ = error "processNodes"
@@ -197,8 +196,7 @@ struct
            val trail = makeSubgraph(blocks)
 
            val region = 
-               F.CLUSTER{regmap      = regmap, 
-                         blkCounter  = blkCounter,
+               F.CLUSTER{blkCounter  = blkCounter,
                          blocks      = blocks,
                          entry       = entry,
                          exit        = exit,

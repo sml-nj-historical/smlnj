@@ -5,7 +5,8 @@ functor SparcDelaySlots
    ) : DELAY_SLOT_PROPERTIES =
 struct
    structure I  = I
-   structure SL = SortedList
+   structure C  = I.C
+   structure SL = C.SortedCells
 
    fun error msg = MLRiscErrorMsg.error("SparcDelaySlotProps",msg)
 
@@ -48,13 +49,14 @@ struct
            I.ANNOTATION{i=enableDelaySlot{instr=i,n=n,nop=nop},a=a}
        | _ => error "enableDelaySlot"
 
-    val defUseI = P.defUse I.C.GP
-    val defUseF = P.defUse I.C.FP
-    val psr     = [I.C.psr] 
-    val fsr     = [I.C.fsr]
-    val y       = [I.C.y]
-    val everything = [I.C.y,I.C.psr,I.C.fsr]
-    fun conflict{regmap,src=i,dst=j} = 
+    val defUseI = P.defUse C.GP
+    val defUseF = P.defUse C.FP
+    val psr     = [C.psr] 
+    val fsr     = [C.fsr]
+    val y       = [C.y]
+    val zeroR   = Option.valOf(C.zeroReg C.GP)
+    val everything = [C.y,C.psr,C.fsr]
+    fun conflict{src=i,dst=j} = 
         let fun cc I.ANDCC  = true
               | cc I.ANDNCC = true
               | cc I.ORCC   = true
@@ -92,30 +94,21 @@ struct
             fun clash(defUse) =
                 let val (di,ui) = defUse i
                     val (dj,uj) = defUse j
-                in  case SL.intersect(di,uj) of
-                       [] => (case SL.intersect(di,dj) of
-                                [] => (case SL.intersect(ui,dj) of
-                                         [] => false
-                                       | _ => true)
-                              | _ => true)
-                    |  _ => true
+                in  SL.nonEmptyIntersection(di,uj) orelse
+                    SL.nonEmptyIntersection(di,dj) orelse
+                    SL.nonEmptyIntersection(ui,dj) 
                 end
+            fun toSL f i = let val (d,u) = f i
+                           in  (SL.uniq d, SL.uniq u) end
             fun defUseInt i = 
                 let val (d,u) = defUseI i
-                    val d     = SL.uniq(map regmap d)
-                    val u     = SL.uniq(map regmap u)
+                    val d     = SL.uniq d
+                    val u     = SL.uniq u
                     (* no dependence on register 0! *) 
-                    fun elim0(0::l) = l
-                      | elim0 l     = l
-                in  (elim0 d, elim0 u) end
-            fun defUseReal i = 
-                let val (d,u) = defUseF i
-                    val d     = SL.uniq(map regmap d)
-                    val u     = SL.uniq(map regmap u)
-                in  (d,u) end
+                in  (SL.rmv(zeroR,d), SL.rmv(zeroR,u)) end
         in  clash(defUseInt) orelse 
-            clash(defUseReal) orelse
-            clash(defUseOther)
+            clash(toSL defUseF) orelse
+            clash(toSL defUseOther)
         end
 
     fun delaySlotCandidate{jmp,delaySlot=

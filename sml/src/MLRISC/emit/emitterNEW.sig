@@ -21,7 +21,7 @@ signature EMITTER_NEW = sig
   structure P : PSEUDO_OPS
 
   val defineLabel  : Label.label -> unit
-  val emitInstr : I.instruction * int Intmap.intmap -> unit
+  val emitInstr : I.instruction * int IntHashTable.hash_table -> unit
   val comment : string -> unit
   val pseudoOp : P.pseudo_op -> unit
   val init : int -> unit

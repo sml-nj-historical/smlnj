@@ -22,9 +22,6 @@ sig
 
    val mode : G.mode
 
-    (* Extract the regmap from the flowgraph *)
-   val regmap : flowgraph -> C.regmap
-
     (* Dump the flograph to a stream *)
    val dumpFlowgraph : string * flowgraph * TextIO.outstream -> unit
 

@@ -102,30 +102,34 @@ struct
      | hashOpn(I.ImmedLabel le) = LE.hash le + 0w123
      | hashOpn(I.Relative i) = Word.fromInt i + 0w1232
      | hashOpn(I.LabelEA le) = LE.hash le + 0w44444
-     | hashOpn(I.Direct r)  = Word.fromInt r
-     | hashOpn(I.MemReg r)  = Word.fromInt r + 0w2123
-     | hashOpn(I.ST f) = Word.fromInt f + 0w88
-     | hashOpn(I.FPR f) = Word.fromInt f + 0w881
-     | hashOpn(I.FDirect f) = Word.fromInt f + 0w31245
+     | hashOpn(I.Direct r)  = C.hashCell r
+     | hashOpn(I.MemReg r)  = C.hashCell r + 0w2123
+     | hashOpn(I.ST f) = C.hashCell f + 0w88
+     | hashOpn(I.FPR f) = C.hashCell f + 0w881
+     | hashOpn(I.FDirect f) = C.hashCell f + 0w31245
      | hashOpn(I.Displace {base, disp, ...}) = 
-         hashOpn disp + Word.fromInt base
+         hashOpn disp + C.hashCell base
      | hashOpn(I.Indexed {base, index, scale, disp, ...}) =
-         Word.fromInt index + Word.fromInt scale + hashOpn disp
+         C.hashCell index + Word.fromInt scale + hashOpn disp
    fun eqOpn(I.Immed a,I.Immed b) = a = b
      | eqOpn(I.ImmedLabel a,I.ImmedLabel b) = LE.==(a,b)
      | eqOpn(I.Relative a,I.Relative b) = a = b
      | eqOpn(I.LabelEA a,I.LabelEA b) = LE.==(a,b)
-     | eqOpn(I.Direct a,I.Direct b) = a = b
-     | eqOpn(I.MemReg a,I.MemReg b) = a = b
-     | eqOpn(I.FDirect a,I.FDirect b) = a = b
-     | eqOpn(I.ST a,I.ST b) = a = b
-     | eqOpn(I.FPR a,I.FPR b) = a = b
+     | eqOpn(I.Direct a,I.Direct b) = C.sameColor(a,b)
+     | eqOpn(I.MemReg a,I.MemReg b) = C.sameColor(a,b)
+     | eqOpn(I.FDirect a,I.FDirect b) = C.sameColor(a,b)
+     | eqOpn(I.ST a,I.ST b) = C.sameColor(a,b)
+     | eqOpn(I.FPR a,I.FPR b) = C.sameColor(a,b)
      | eqOpn(I.Displace{base=a,disp=b,...},I.Displace{base=c,disp=d,...}) =
-          a = c andalso eqOpn(b,d)
+          C.sameColor(a,c) andalso eqOpn(b,d)
      | eqOpn(I.Indexed{base=a,index=b,scale=c,disp=d,...},
              I.Indexed{base=e,index=f,scale=g,disp=h,...}) =
-          b = f andalso c = g andalso a = e andalso eqOpn(d,h)
+          C.sameColor(b,f) andalso c = g
+          andalso sameCellOption(a,e) andalso eqOpn(d,h)
      | eqOpn _ = false
+   and sameCellOption(NONE, NONE) = true
+     | sameCellOption(SOME x, SOME y) = C.sameColor(x,y)
+     | sameCellOption _ = false
 
  (*========================================================================
   *  Definition and use (for register allocation mainly)
@@ -165,7 +169,8 @@ struct
     case instr
      of I.JMP(opnd, _)        => ([], operandUse opnd)
       | I.JCC{opnd, ...}      => ([], operandUse opnd)
-      | I.CALL(opnd,defs,uses,_)=> (#1 defs, operandAcc(opnd, #1 uses))
+      | I.CALL(opnd,defs,uses,_)=> 
+           (C.getReg defs, operandAcc(opnd, C.getReg uses))
       | I.MOVE{src, dst=I.Direct r, ...} => ([r], operandUse src)
       | I.MOVE{src, dst=I.MemReg r, ...} => ([r], operandUse src)
       | I.MOVE{src, dst, ...} => ([], operandAcc(dst, operandUse src))
@@ -174,7 +179,7 @@ struct
         | I.TESTL arg | I.TESTW arg | I.TESTB arg ) => cmptest arg 
       | I.BITOP{lsrc, rsrc, ...} => cmptest{lsrc=lsrc,rsrc=rsrc}
       | I.BINARY{binOp=I.XORL,src=I.Direct rs,dst=I.Direct rd,...} =>   
-           if rs=rd then ([rd],[]) else ([rd],[rs,rd])
+           if C.sameColor(rs,rd) then ([rd],[]) else ([rd],[rs,rd])
       | I.BINARY{src,dst,...} =>   
            (operandDef dst, operandAcc(src, operandUse dst))
       | I.ENTER _             => ([C.esp, C.ebp], [C.esp, C.ebp])
@@ -255,7 +260,7 @@ struct
       | I.FLDS opnd		=> ([], operand opnd)
       | I.FUCOM opnd            => ([], operand opnd)
       | I.FUCOMP opnd           => ([], operand opnd)
-      | I.CALL(_, defs, uses,_)	=> (#2 defs, #2 uses)
+      | I.CALL(_, defs, uses,_)	=> (C.getFreg defs, C.getFreg uses)
       | I.FBINARY{dst, src, ...}=> (operand dst, operand dst @ operand src)
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...}  => (f::dst, src)
       | I.FCOPY{dst, src, tmp=SOME(I.FPR f), ...}  => (f::dst, src)

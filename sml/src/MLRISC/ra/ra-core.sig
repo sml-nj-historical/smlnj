@@ -8,7 +8,7 @@
 signature RA_CORE = 
 sig
 
-   structure G  : RA_GRAPH
+   structure G  : RA_GRAPH = RAGraph
    structure BM :
    sig 
       val size   : G.bitMatrix -> int
@@ -43,14 +43,22 @@ sig
     * Function to create new nodes 
     *)
    val newNodes : G.interferenceGraph -> 
-        {cost:int,pt:G.programPoint,defs:int list,uses:int list} -> 
+        {cost:int,pt:G.programPoint,defs:G.C.cell list,uses:G.C.cell list} -> 
             G.node list (* defs *)
 
    (*
-    * Update regmap after finishing register allocation or copy propagation
+    * Update the colors of cell to reflect the current interference graph
     *)
-   val finishRA : G.interferenceGraph -> unit
-   val finishCP : G.interferenceGraph -> unit
+   val updateCellColors  : G.interferenceGraph -> unit
+   val updateCellAliases : G.interferenceGraph -> unit
+
+   val markDeadCopiesAsSpilled : G.interferenceGraph -> unit
+
+   (*
+    * Return the spill location id of the interference graph 
+    *)
+   val spillLoc : G.interferenceGraph -> int -> int
+   val spillLocToString : G.interferenceGraph -> int -> string
 
    (*
     * Create an initial set of worklists from a new interference graph
@@ -74,14 +82,6 @@ sig
     * Remove all adjacency lists from the nodes table.
     *)
    val clearNodes : G.interferenceGraph -> unit
-
-   (*
-    * Return a regmap function that reflects the current interference graph.
-    * Spilled registers are given the special value ~1
-    *)
-   val regmap      : G.interferenceGraph -> (int -> int)
-   val spillRegmap : G.interferenceGraph -> (int -> int)
-   val spillLoc    : G.interferenceGraph -> (int -> int)
 
    (* 
     * Simplify, Coalease and Freeze until the work list is done

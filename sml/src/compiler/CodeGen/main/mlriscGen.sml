@@ -77,7 +77,7 @@ struct
   val NO_OPT = [#create MLRiscAnnotations.NO_OPTIMIZATION ()]
 
   val enterGC = ref (fn _ => error "enterGC") : 
-                   (int * SMLGCType.gctype -> unit) ref
+                   (Cells.cell * SMLGCType.gctype -> unit) ref
 
   val ptr = #create MLRiscAnnotations.MARK_REG(fn r => !enterGC(r,PTR))
   val i32 = #create MLRiscAnnotations.MARK_REG(fn r => !enterGC(r,I32))
@@ -184,7 +184,6 @@ struct
           { beginCluster,  (* start a cluster *)
             endCluster,    (* end a cluster *)
             emit,          (* emit MLTREE stm *)
-            alias,         (* generate register alias *)
             defineLabel,   (* define a local label *)
             entryLabel,    (* define an external entry *) 
             exitBlock,     (* mark the end of a procedure *)
@@ -221,7 +220,7 @@ struct
 
       val _       = if gctypes then
                     let val gcMap = GCCells.newGCMap()
-                        val enterGCTy = IntHashTable.insert gcMap;
+                        val enterGCTy = Cells.HashTable.insert gcMap;
                     in  enterGC := enterGCTy;
                         GCCells.setGCMap gcMap 
                     end
@@ -808,7 +807,7 @@ struct
                  | P.<   => M.LT | P.<=  => M.LE
                  | P.neq => M.NE | P.eql => M.EQ 
     
-          fun branchToLabel(lab) = M.JMP([],M.LABEL(LE.LABEL lab),[])
+          fun branchToLabel(lab) = M.JMP(M.LABEL(LE.LABEL lab),[])
     
           local
             open CPS
@@ -939,7 +938,7 @@ struct
                      else ();
                      InvokeGC.stdCheckLimit stream
                          {maxAlloc=4 * maxAlloc f, regfmls=regfmls, 
-                          regtys=tys, return=M.JMP([], linkreg,[])};
+                          regtys=tys, return=M.JMP(linkreg,[])};
                      initialRegBindingsEscaping
                        (List.tl params, regfmlsTl, List.tl tys)
                  end
@@ -1086,7 +1085,7 @@ struct
           and branch (cmp, [v, w], yes, no, hp) = 
           let val trueLab = Label.newLabel""
           in  (* is single assignment great or what! *)
-              emit(M.BCC([], M.CMP(32, cmp, regbind v, regbind w), trueLab));
+              emit(M.BCC(M.CMP(32, cmp, regbind v, regbind w), trueLab));
               genCont(no, hp);
               genlab(trueLab, yes, hp)
           end
@@ -1095,7 +1094,7 @@ struct
           and branchOnBoxed(x, yes, no, hp) = 
               let val lab = Label.newLabel ""
                   val cmp = M.CMP(32, M.NE, M.ANDB(ity, regbind x, one), zero)
-              in  emit(M.BCC([], cmp, lab));
+              in  emit(M.BCC(cmp, lab));
                   genCont(yes, hp);
                   genlab(lab, no, hp)
               end
@@ -1112,7 +1111,7 @@ struct
                             M.LOAD(ity,M.ADD(ity,M.REG(ity, r2),i),R.readonly))
                   fun unroll i = 
                       if i=n' then ()
-                      else (emit(M.BCC([], cmpWord(M.LI(i)), false_lab));
+                      else (emit(M.BCC(cmpWord(M.LI(i)), false_lab));
                             unroll (i+4))
               in  emit(M.MV(ity, r1, M.LOAD(ity, regbind v, R.readonly)));
                   emit(M.MV(ity, r2, M.LOAD(ity, regbind w, R.readonly)));
@@ -1242,7 +1241,7 @@ struct
                                             formals, ctys))
                   else ();
                   testLimit hp;
-                  emit(M.JMP([], dest, []));
+                  emit(M.JMP(dest, []));
                   exitBlock(formals @ dedicated)
               end
 
@@ -1317,7 +1316,7 @@ struct
                   val labs = map (fn _ => Label.newLabel"") l
                   val tmpR = newReg I32 val tmp = M.REG(ity,tmpR)
               in  emit(M.MV(ity, tmpR, laddr(lab, 0)));
-                  emit(M.JMP([], M.ADD(addrTy, tmp, M.LOAD(pty, scale4(tmp, v), 
+                  emit(M.JMP(M.ADD(addrTy, tmp, M.LOAD(pty, scale4(tmp, v), 
                                                        R.readonly)), labs));
                   pseudoOp(PseudoOp.JUMPTABLE{base=lab, targets=labs});
                   ListPair.app (fn (lab, e) => genlabCont(lab, e, hp)) (labs, l)
@@ -1586,7 +1585,7 @@ struct
                   val lab = Label.newLabel ""
               in  emit(M.MV(ity, tmp, regbind(INT32 0wx3fffffff)));
                   updtHeapPtr hp;
-                  emit(M.BCC([], M.CMP(32, M.LEU, vreg, tmpR),lab));
+                  emit(M.BCC(M.CMP(32, M.LEU, vreg, tmpR),lab));
                   emit(M.MV(ity, tmp, M.SLL(ity, tmpR, one)));
                   emit(M.MV(ity, tmp, M.ADDT(ity, tmpR, tmpR)));
                   defineLabel lab;
@@ -1788,7 +1787,7 @@ struct
                          | P.fUE  => M.?= 
     
                   val cmp = M.FCMP(64, fcond, fregbind v, fregbind w) 
-              in  emit(M.BCC([], cmp, trueLab));
+              in  emit(M.BCC(cmp, trueLab));
                   genCont(e, hp);
                   genlab(trueLab, d, hp)
               end
@@ -1849,17 +1848,14 @@ struct
                     enter(C.stdlink, PTR);
                     [#create SMLGCMap.GCMAP gcmap,
                      #create 
-                        MLRiscAnnotations.REGINFO(
-                           let val pr = SMLGCMap.toString gcmap
-                           in  fn (_,r) => pr r end
-                        )
+                        MLRiscAnnotations.REGINFO(SMLGCMap.toString gcmap)
                     ]
                 end
              else []
       in
           initFrags cluster;
           beginCluster 0;
-          if gctypes then IntHashTable.clear(GCCells.getGCMap()) else ();
+          if gctypes then Cells.HashTable.clear(GCCells.getGCMap()) else ();
           fragComp();
           InvokeGC.emitLongJumpsToGCInvocation stream;
           endCluster(clusterAnnotations())

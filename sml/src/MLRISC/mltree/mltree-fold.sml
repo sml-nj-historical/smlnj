@@ -18,13 +18,12 @@ struct
            | T.FMV(fty,dst,e) => fexp(e,x)
            | T.COPY _  => x
            | T.FCOPY _ => x
-           | T.JMP(ctrls,e,cf) => rexp(e,x)
-           | T.BCC(ctrls,cc,l) => ccexp(cc,x)
+           | T.JMP(e,cf) => rexp(e,x)
+           | T.BCC(cc,l) => ccexp(cc,x)
            | T.CALL{funct,defs,uses,...} => 
                mlriscs(uses,mlriscs(defs,rexp(funct,x)))
            | T.RET _ => x
-           | T.JOIN _ => x
-           | T.IF(ctrls,cc,yes,no) => stm(no,stm(yes,ccexp(cc,x)))
+           | T.IF(cc,yes,no) => stm(no,stm(yes,ccexp(cc,x)))
            | T.STORE(ty,ea,d,r) => rexp(d,rexp(ea,x))
            | T.FSTORE(fty,ea,d,r) => fexp(d,rexp(ea,x))
            | T.REGION(s,ctrl) => stm(s,x)
@@ -34,6 +33,7 @@ struct
            | T.EXT s => 
                sext {stm=stm, rexp=rexp, fexp=fexp, ccexp=ccexp} (s,x)
            | T.PHI _ => x 
+           | T.ASSIGN(_,a,b) => rexp(b,rexp(a,x))
            | T.SOURCE _ => x 
            | T.SINK _ => x 
            | T.RTL _ => x
@@ -46,7 +46,7 @@ struct
              T.REG _ => x
            | T.LI _ => x
            | T.LI32 _ => x 
-           | T.LI64 _ => x 
+           | T.LIInf _ => x 
            | T.LABEL _ => x 
            | T.CONST _ => x
            | T.NEG(ty,a) => rexp(a,x)
@@ -69,11 +69,13 @@ struct
            | T.ANDB(ty,a,b) => rexp2(a,b,x)
            | T.ORB(ty,a,b) => rexp2(a,b,x)
            | T.XORB(ty,a,b) => rexp2(a,b,x)
+           | T.EQVB(ty,a,b) => rexp2(a,b,x)
            | T.NOTB(ty,a) => rexp(a,x)
            | T.SRA(ty,a,b) => rexp2(a,b,x)
            | T.SRL(ty,a,b) => rexp2(a,b,x)
            | T.SLL(ty,a,b) => rexp2(a,b,x)
-           | T.CVTI2I(t,ext,t',e) => rexp(e,x)
+           | T.SX(t,t',e) => rexp(e,x)
+           | T.ZX(t,t',e) => rexp(e,x)
            | T.CVTF2I(ty,mode,fty,e) => fexp(e,x)
            | T.COND(ty,cc,yes,no) => rexp(no,rexp(yes,ccexp(cc,x)))
            | T.LOAD(ty,ea,r) => rexp(ea,x)
@@ -82,6 +84,12 @@ struct
            | T.REXT(t,e) => 
                 rext{stm=stm, rexp=rexp, fexp=fexp, ccexp=ccexp} (t,e,x)
            | T.MARK(e,an) => rexp(e,x)
+           | T.OP(ty,oper,es) => rexps(es,x)
+           | T.ARG _ => x
+           | T.PARAM _ => x
+           | T.BITSLICE(_,_,e) => rexp(e, x)
+           | T.$(ty,k,e) => rexp(e, x)
+           | T.??? => x
       in doRexp(e,x) end
 
       and rexp2(a,b,x) = rexp(b,rexp(a,x))
@@ -123,6 +131,7 @@ struct
            | T.AND(a,b) => ccexp2(a,b,x)
            | T.OR(a,b) => ccexp2(a,b,x)
            | T.XOR(a,b) => ccexp2(a,b,x)
+           | T.EQV(a,b) => ccexp2(a,b,x)
            | T.CMP(ty,cond,a,b) => rexp2(a,b,x)
            | T.FCMP(ty,fcond,a,b) => fexp2(a,b,x)
            | T.CCMARK(e,an) => ccexp(e,x)

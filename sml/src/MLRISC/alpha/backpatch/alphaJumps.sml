@@ -47,33 +47,33 @@ struct
   fun immed8 n = n >= 0 andalso n < 256
   fun im8Oper le = if immed8 (LE.valueOf le) then 4 else 12
 
-  fun sdiSize(I.DEFFREG _, _, _, _) = 0
-    | sdiSize(I.LDA{d=I.LABop le, ...}, _, _, _) = im16load(LE.valueOf le)
-    | sdiSize(I.LOAD{d=I.LABop le, ...}, _, _, _) = im16Oper le
-    | sdiSize(I.STORE{d=I.LABop le, ...}, _, _, _) = im16Oper le
-    | sdiSize(I.FLOAD{d=I.LABop le, ...}, _, _, _) = im16Oper le
-    | sdiSize(I.FSTORE{d=I.LABop le, ...}, _, _, _) = im16Oper le
-    | sdiSize(I.OPERATE{rb=I.LABop le, ...}, _, _, _) = im8Oper le
-    | sdiSize(I.OPERATEV{rb=I.LABop le, ...}, _, _, _) = im8Oper le
-    | sdiSize(I.CMOVE{rb=I.LABop le, ...}, _, _, _) = im8Oper le
-    | sdiSize(I.COPY{impl=ref(SOME l),...}, _, _, _) = 4 * length l
-    | sdiSize(I.FCOPY{impl=ref(SOME l),...}, _, _, _) = 4 * length l
-    | sdiSize(I.COPY{dst, src, impl as ref NONE, tmp}, regmap, _, _) = let
-	val instrs = Shuffle.shuffle{regmap=regmap, tmp=tmp, dst=dst, src=src}
+  fun sdiSize(I.DEFFREG _, _, _) = 0
+    | sdiSize(I.LDA{d=I.LABop le, ...}, _, _) = im16load(LE.valueOf le)
+    | sdiSize(I.LOAD{d=I.LABop le, ...}, _, _) = im16Oper le
+    | sdiSize(I.STORE{d=I.LABop le, ...}, _, _) = im16Oper le
+    | sdiSize(I.FLOAD{d=I.LABop le, ...}, _, _) = im16Oper le
+    | sdiSize(I.FSTORE{d=I.LABop le, ...}, _, _) = im16Oper le
+    | sdiSize(I.OPERATE{rb=I.LABop le, ...}, _, _) = im8Oper le
+    | sdiSize(I.OPERATEV{rb=I.LABop le, ...}, _, _) = im8Oper le
+    | sdiSize(I.CMOVE{rb=I.LABop le, ...}, _, _) = im8Oper le
+    | sdiSize(I.COPY{impl=ref(SOME l),...}, _, _) = 4 * length l
+    | sdiSize(I.FCOPY{impl=ref(SOME l),...}, _, _) = 4 * length l
+    | sdiSize(I.COPY{dst, src, impl as ref NONE, tmp}, _, _) = let
+	val instrs = Shuffle.shuffle{tmp=tmp, dst=dst, src=src}
       in  impl := SOME instrs;  4 * length instrs
       end
-    | sdiSize(I.FCOPY{dst, src, impl as ref NONE, tmp}, regmap, _, _) = let
-        val instrs = Shuffle.shufflefp{regmap=regmap, tmp=tmp, dst=dst, src=src}
+    | sdiSize(I.FCOPY{dst, src, impl as ref NONE, tmp}, _, _) = let
+        val instrs = Shuffle.shufflefp{tmp=tmp, dst=dst, src=src}
       in impl := SOME(instrs); 4 * length instrs
       end
-    | sdiSize(I.ANNOTATION{i,...},x,y,z) = sdiSize(i,x,y,z)
+    | sdiSize(I.ANNOTATION{i,...},x,y) = sdiSize(i,x,y)
     | sdiSize _ = error "sdiSize"
 
  (* NOTE: All sdis must use a dedicated physical register as a 
   * temporaries, since sdi expansion is performed after register 
   * allocation.
   *)
-  val zeroR = 31
+  val zeroR = Option.valOf(C.zeroReg C.GP)
 
   fun expand(instr, size, pos) = let
     fun load(ldClass, ldOp, r, b, d as I.LABop le, mem) = 

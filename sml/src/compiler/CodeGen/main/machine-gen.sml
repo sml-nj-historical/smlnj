@@ -25,7 +25,7 @@ functor MachineGen
    structure BackPatch  : BBSCHED              (* machine code emitter *)
       where F.P = PseudoOps
         and F.I = Asm.I
-   structure RA         : REGALLOC             (* register allocator *)
+   structure RA         : CLUSTER_OPTIMIZATION  (* register allocator *)
       where F = BackPatch.F
   ) : MACHINE_GEN =
 struct
@@ -48,7 +48,7 @@ struct
 
    val mc      = phase "MLRISC BackPatch.bbsched" BackPatch.bbsched
    val finish  = phase "MLRISC BackPatch.finish" BackPatch.finish
-   val ra      = phase "MLRISC ra" RA.ra
+   val ra      = phase "MLRISC ra" RA.run
 
    val raPhase = ("ra",ra)
    val optimizerHook = ref [raPhase]

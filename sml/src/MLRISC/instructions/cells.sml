@@ -3,131 +3,224 @@
  * 
  * -- Allen.
  *) 
-functor CellsBasis
-   (eqtype cellkind
-    exception Cells
-    val unknown     : cellkind
-    val cellkindToString : cellkind -> string
-    val INT         : cellkind
-    val FLOAT       : cellkind
-    val firstPseudo : int
-    val kinds       : cellkind list
-    val physical    : {kind:cellkind,from:int,to:int} list
-   ) : CELLS_BASIS = 
+
+(*
+ * This functor is applied to create the cells structure for an  architecture
+ *)
+functor CellsCommon
+   (exception Cells
+    val firstPseudo   : int
+    val cellKindDescs : (CellsBasis.cellkind * CellsBasis.cellkindDesc) list
+   ) : CELLS_COMMON = 
 struct
-   type cellkind = cellkind
-   type cell = int
-   type ty   = int
-   type regmap = cell IntHashTable.hash_table
+
+   open CellsBasis CellsInternal
+
+   structure CellsBasis = CellsBasis
+
    exception Cells = Cells
 
-   val cellkinds = kinds
-   val cellkindToString = cellkindToString
+   fun error msg = MLRiscErrorMsg.error(exnName Cells, msg)
 
+   val cellkinds   = map (fn (kind,_) => kind) cellKindDescs
    val firstPseudo = firstPseudo
+   val name        = ref firstPseudo
 
-   val name = ref firstPseudo
-   val counters = map (fn _ => ref 0) kinds
+   val _ = app (fn (_, desc as DESC{physicalRegs, high, low, ...}) =>
+                let val n = high - low + 1
+                in  if n <= 0 then ()
+                    else let val a = Array.tabulate(n, fn nth =>
+                                   let val reg = nth + low
+                                   in  CELL{id=reg, col=ref(MACHINE reg), 
+                                       an=ref [], desc=desc} 
+                                   end)
+                         in  physicalRegs := a
+                         end
+                end) cellKindDescs
 
-   fun lookupCnt c =
-       let fun f(c'::cs,r::rs) = if c = c' then r else f(cs,rs)
-             | f _ = (print("lookupCnt "^cellkindToString c^"\n"); raise Cells)
-       in  f(kinds,counters) end
+   fun nextName() = let val id = !name in name := !name + 1; id end
 
-   fun cellRange k =
-   let fun find({kind,from,to}::rest) = 
-            if kind = k then {low=from,high=to}
-            else find rest
-         | find [] = raise Cells
-   in  find physical end
+   fun desc(k:cellkind) =
+   let fun loop [] = error("missing info for "^cellkindToString k)
+         | loop((kind,info)::defs) =
+           if kind = k then info else loop defs
+   in  loop cellKindDescs end
+
+   fun cellRange k = 
+   let val DESC{low,high,...} = desc k
+   in  {low=low,high=high} end
 
    fun Reg k =
-   let val {high,low} = cellRange k
-       val count = high-low+1
-   in  fn nth => if 0 <= nth andalso nth < count then nth+low
-                 else raise Cells
+   let val desc as DESC{low,kind,physicalRegs,...} = desc k
+   in  fn nth => Array.sub(!physicalRegs,nth) handle _ => raise Cells
    end
 
-   val GPReg = Reg INT
-   val FPReg = Reg FLOAT
+   fun Regs k =
+   let val Reg = Reg k
+       fun loop{from, to, step} =
+           if from > to then []
+           else Reg from :: loop{from=from+step, to=to, step=step}
+   in  loop end  
 
-   fun newCell c = 
-       let val cnt = lookupCnt c
+   fun Cell k =
+   let val desc as DESC{low,kind,physicalRegs,...} = desc k
+   in  fn reg => 
+           Array.sub(!physicalRegs,reg - low)  handle _ => raise Cells
+   end
+
+   val GPReg = Reg GP
+   val FPReg = Reg FP
+
+   (* Counters *)
+   fun newCell k = 
+       let val desc as DESC{counter,...} = desc k
        in  fn _ => 
            let val r = !name 
            in  name := r + 1; 
-               cnt := !cnt + 1;
-               r 
+               counter := !counter + 1;
+               CELL{id=r, col=ref PSEUDO, an=ref [], desc=desc}
            end
        end
 
-   local val cnt = lookupCnt INT
+   local val desc as DESC{counter, ...} = desc GP
    in fun newReg _ = 
       let val r = !name 
       in  name := r + 1; 
-          cnt := !cnt + 1;
-          r 
+          counter := !counter + 1;
+          CELL{id=r, col=ref PSEUDO, an=ref [], desc=desc}
       end
    end
 
-   local val cnt = lookupCnt FLOAT
+   local val desc as DESC{counter, ...} = desc FP
    in fun newFreg _ = 
       let val r = !name 
       in  name := r + 1; 
-          cnt := !cnt + 1;
-          r 
+          counter := !counter + 1;
+          CELL{id=r, col=ref PSEUDO, an=ref [], desc=desc}
       end
    end
 
-   fun newVar r' =
+   fun newVar (CELL{desc, an, ...}) =
    let val r = !name
-   in  name := r + 1; r    
+   in  name := r + 1; 
+       CELL{id=r, col=ref PSEUDO, an=ref(!an), desc=desc}    
    end
 
-   fun numCell c = let val cnt = lookupCnt c in fn () => !cnt end
+   fun cloneCell c =
+   let val CELL{desc, an, col, ...} = chase c
+       val r = !name
+   in  name := r + 1; 
+       CELL{id=r, col=ref(!col), an=ref(!an), desc=desc}    
+   end
+ 
+   fun numCell k = let val DESC{counter, ...} = desc k 
+                   in fn () => !counter end
 
    fun maxCell() = !name
 
-   fun regmap() = IntHashTable.mkTable (32,Cells)
-   (*
-   let val map = IntHashTable.mkTable(32,Cells)
-       val add = IntHasTable.insert map
-       (* initialize the regmap with physical register bindings *)
-       fun init [] = ()
-         | init({from,to,kind}::rest) = (ins(from,to); init rest)
-       and ins(r,limit) = if r > limit then () else (add(r,r); ins(r+1,limit))
-   in  init physical;
-       map
+   fun reset() = 
+       (app (fn (_,DESC{counter, ...}) => counter := 0) cellKindDescs;
+        name := firstPseudo
+       )
+
+   structure CellSet =
+   struct
+      type cellset = (cellkindDesc * cell list) list
+      val empty = []
+
+      fun same(DESC{counter=c1,...}, DESC{counter=c2,...}) = c1=c2
+
+      fun descOf (CELL{desc, ...}) = desc 
+
+      fun add (r, cellset:cellset) =
+      let val k = descOf r
+          fun loop [] = [(k,[r])]
+            | loop((x as (k',s))::cellset) = 
+               if same(k,k') then (k',r::s)::cellset 
+               else x::loop cellset
+      in  loop cellset end
+
+      fun rmv (r, cellset:cellset) =
+      let val k = descOf r
+          val c = registerId r
+          fun filter [] = []
+            | filter(r::rs) = if registerId r = c then filter rs 
+                              else r::filter rs
+          fun loop [] = []
+            | loop((x as (k',s))::cellset) = 
+               if same(k,k') then (k',filter s)::cellset else x::loop cellset
+      in  loop cellset end
+
+      fun get' k (cellset:cellset) =
+      let fun loop [] = []
+            | loop((x as (k',s))::cellset) = 
+               if same(k,k') then s else loop cellset
+      in  loop cellset end
+
+      fun get k = get'(desc k)
+
+      fun update' k (cellset:cellset,s) =
+      let fun loop [] = [(k,s)]
+            | loop((x as (k',_))::cellset) = 
+               if same(k,k') then (k',s)::cellset else x::loop cellset
+      in  loop cellset end
+
+      fun update k = update'(desc k)   
+
+      fun map {from,to} (cellset:cellset) =
+      let val CELL{desc=k,...} = from
+          val cf = registerId from 
+          fun trans r = if registerId r = cf then to else r
+          fun loop [] = []
+            | loop((x as (k',s))::cellset) = 
+               if same(k,k') then (k',List.map trans s)::cellset 
+               else x::loop cellset
+      in  loop cellset end
+
+      val toCellList : cellset -> cell list = 
+          List.foldr (fn ((_,S),S') => S @ S') [] 
+
+      (* Pretty print cellset *)
+      fun printSet(f,set,S) =
+      let fun loop([], S) = "}"::S
+            | loop([x], S) = f(chase x)::"}"::S
+            | loop(x::xs, S) = f(chase x)::" "::loop(xs, S)
+      in  "{"::loop(set, S) end
+
+      fun toString' cellset =
+      let fun pr cellset = 
+          let fun loop((DESC{kind, toString, ...},s)::rest, S)=
+                  (case s of
+                     [] => loop(rest, S)
+                   | _  => cellkindToString kind::"="::
+                           printSet(toString o registerId,s," "::loop(rest,S))
+                  )
+                | loop([],S) = S
+          in  String.concat(loop(cellset, [])) 
+          end
+      in  pr cellset end
+
+      val toString = toString'
    end
-    *)
 
-   fun lookup m i =
-       case IntHashTable.find m i of
-	   SOME i' => i'
-	 | NONE => i
+   type cellset = CellSet.cellset
+   val empty   = CellSet.empty
+   val getReg  = CellSet.get GP
+   val getFreg = CellSet.get FP
+   val addReg  = CellSet.add 
+   val addFreg = CellSet.add 
+   val rmvReg  = CellSet.rmv 
+   val rmvFreg = CellSet.rmv 
 
-   fun reset() = (app (fn r => r := 0) counters;
-                  name := firstPseudo
-                 )
+  (* Misc *)
+   fun zeroReg k = 
+   let val desc as DESC{zeroReg, physicalRegs, low, ...} = desc k
+   in  case zeroReg of 
+         NONE => NONE
+       | SOME r => SOME(Array.sub(!physicalRegs, r)) 
+   end
 
-   fun printSet f set = 
-   let fun g []     = ["}"]
-         | g [x]    = [f x,"}"]
-         | g (x::y) = f x::" "::g y
-   in  String.concat("{"::g set) end
-
-   fun printTuple(c::cs,s::sets) = c^"="^s^"  "^printTuple(cs,sets)
-     | printTuple _ = ""
-
-    (*
-     * These annotations specifies definitions and uses 
-     * for a pseudo instruction.
-     *)
-   exception DEF_USE of {cellkind:cellkind, defs:cell list, uses:cell list}
-   val DEFUSE = Annotations.new'
-                      {create=DEF_USE,
-                       get=fn DEF_USE x => x | e => raise e,
-                       toString=fn{cellkind,defs,uses} => 
-                          "DEFUSE"^cellkindToString cellkind
-                      }
+   fun defaultValues k = 
+   let val DESC{defaultValues, ...} = desc k
+   in  defaultValues end 
 end

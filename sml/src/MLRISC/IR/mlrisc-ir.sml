@@ -129,7 +129,6 @@ struct
    fun layoutCDG IR = CFG.viewLayout(cdg IR)
    fun layoutLoop (IR as G.GRAPH cfg) = 
        let val loop   = loop IR
-           val regmap = CFG.regmap IR
            val an     = !(CFG.annotations IR)
            fun mkNodes nodes =
               String.concat(map (fn i => Int.toString i^" ") nodes)
@@ -140,7 +139,7 @@ struct
                                 backedges,exits,...}) =
                [L.LABEL
                 ("nesting: "^Int.toString nesting^"\n"^
-                 CFG.show_block an regmap (#node_info cfg header)^
+                 CFG.show_block an (#node_info cfg header)^
                  "entry edges: "^mkEdges(Loop.entryEdges loop header)^"\n"^
                  "loop_nodes: "^mkNodes loop_nodes^"\n"^
                  "backedges: "^mkEdges backedges^"\n"^

@@ -29,7 +29,7 @@ sig
 	 {instr : I.instruction, n:bool, nop:bool} -> I.instruction
 
        (* is there any dependency conflict? *)
-   val conflict : {regmap:int->int,src:I.instruction,dst:I.instruction} -> bool
+   val conflict : {src:I.instruction,dst:I.instruction} -> bool
 
        (* can delaySlot fit within the delay slot of jmp? *)
    val delaySlotCandidate : 

@@ -25,15 +25,14 @@ struct
            | T.FMV(fty,dst,e) => T.FMV(fty,dst,fexp e)
            | T.COPY _  => s
            | T.FCOPY _ => s
-           | T.JMP(ctrls,e,cf) => T.JMP(ctrls,rexp e,cf)
-           | T.BCC(ctrls,cc,l) => T.BCC(ctrls,ccexp cc,l)
-           | T.CALL{funct,targets,defs,uses,cdefs,cuses,region} => 
+           | T.JMP(e,cf) => T.JMP(rexp e,cf)
+           | T.BCC(cc,l) => T.BCC(ccexp cc,l)
+           | T.CALL{funct,targets,defs,uses,region} => 
                T.CALL{funct=rexp funct,targets=targets,
                       defs=mlriscs defs,uses=mlriscs uses,
-                      cdefs=cdefs,cuses=cuses,region=region}
+                      region=region}
            | T.RET _ => s
-           | T.JOIN _ => s
-           | T.IF(ctrls,cc,yes,no) => T.IF(ctrls,ccexp cc,stm yes,stm no)
+           | T.IF(cc,yes,no) => T.IF(ccexp cc,stm yes,stm no)
            | T.STORE(ty,ea,d,r) => T.STORE(ty,rexp ea,rexp d,r)
            | T.FSTORE(fty,ea,d,r) => T.FSTORE(fty,rexp ea,fexp d,r)
            | T.REGION(s,ctrl) => T.REGION(stm s,ctrl)
@@ -46,6 +45,7 @@ struct
            | T.SOURCE _ => s 
            | T.SINK _ => s 
            | T.RTL _ => s
+           | T.ASSIGN(ty,x,y) => T.ASSIGN(ty,rexp x, rexp y)
       in doStm stm s end
    
       and stms ss = map stm ss
@@ -55,7 +55,7 @@ struct
              T.REG _ => e
            | T.LI _ => e
            | T.LI32 _ => e 
-           | T.LI64 _ => e 
+           | T.LIInf _ => e 
            | T.LABEL _ => e 
            | T.CONST _ => e
            | T.NEG(ty,x)   => T.NEG(ty,rexp x)
@@ -78,11 +78,13 @@ struct
            | T.ANDB(ty,x,y) => T.ANDB(ty,rexp x,rexp y)
            | T.ORB(ty,x,y) => T.ORB(ty,rexp x,rexp y)
            | T.XORB(ty,x,y) => T.XORB(ty,rexp x,rexp y)
+           | T.EQVB(ty,x,y) => T.EQVB(ty,rexp x,rexp y)
            | T.NOTB(ty,x) => T.NOTB(ty,rexp x)
            | T.SRA(ty,x,y) => T.SRA(ty,rexp x,rexp y)
            | T.SRL(ty,x,y) => T.SRL(ty,rexp x,rexp y)
            | T.SLL(ty,x,y) => T.SLL(ty,rexp x,rexp y)
-           | T.CVTI2I(t,ext,t',e) => T.CVTI2I(t,ext,t',rexp e)
+           | T.SX(t,t',e) => T.SX(t,t',rexp e)
+           | T.ZX(t,t',e) => T.ZX(t,t',rexp e)
            | T.CVTF2I(ty,mode,fty,e) => T.CVTF2I(ty,mode,fty,fexp e)
            | T.COND(ty,cc,yes,no) => T.COND(ty,ccexp cc,rexp yes,rexp no)
            | T.LOAD(ty,ea,r) => T.LOAD(ty,rexp ea,r)
@@ -91,6 +93,12 @@ struct
            | T.REXT(ty,e) => 
                 T.REXT(ty,rext {rexp=rexp, fexp=fexp, ccexp=ccexp, stm=stm} e)
            | T.MARK(e,an) => T.MARK(rexp e,an)
+           | T.$(ty,k,e) => T.$(ty,k,rexp e)
+           | T.ARG _ => e
+           | T.PARAM _ => e
+           | T.BITSLICE(ty,sl,e) => T.BITSLICE(ty,sl,rexp e)
+           | T.??? => T.???
+           | T.OP(ty,oper,es) => T.OP(ty,oper,rexps es)
       in doRexp rexp e end
 
       and rexps es = map rexp es
@@ -128,6 +136,7 @@ struct
            | T.AND(x,y) => T.AND(ccexp x,ccexp y)
            | T.OR(x,y) => T.OR(ccexp x,ccexp y)
            | T.XOR(x,y) => T.XOR(ccexp x,ccexp y)
+           | T.EQV(x,y) => T.EQV(ccexp x,ccexp y)
            | T.CMP(ty,cond,x,y) => T.CMP(ty,cond,rexp x,rexp y)
            | T.FCMP(ty,fcond,x,y) => T.FCMP(ty,fcond,fexp x,fexp y)
            | T.CCMARK(e,an) => T.CCMARK(ccexp e,an)

@@ -37,16 +37,17 @@ struct
            let val v = List.nth(uses,x)
            in  if v < 0 then 
                   (case const v of
-                     SP.OT.IMMED i => T.LI i
+                     SP.OT.INT i => T.LI i
+                   | SP.OT.INTINF i => T.LIInf i
                    | SP.OT.OPERAND opnd => error "useOf"
                   )
                else T.REG(ty,v) 
            end
-       fun stm(T'.MV(ty,x,e)) = T.MV(ty,defOf x,rexp e)
-         | stm(T'.STORE(ty,a,b,mem)) = T.STORE(ty,rexp a,rexp b,R.memory)
-         | stm(T'.RTL{e, ...}) = stm e
+       fun (* stm(T'.MV(ty,x,e)) = T.MV(ty,defOf x,rexp e)
+         | stm(T'.STORE(ty,a,b,mem)) = T.STORE(ty,rexp a,rexp b,R.memory) 
+         | *) stm(T'.RTL{e, ...}) = stm e 
          | stm s = error("stm: "^RTL.rtlToString s)
-       and rexp(T'.REG(ty,x)) = useOf(ty, x)
+       and (* rexp(T'.REG(ty,x)) = useOf(ty, x)
          | rexp(T'.LI i) = T.LI i
          | rexp(T'.LI32 i) = T.LI32 i
          | rexp(T'.ADD(ty,a,b)) = T.ADD(ty,rexp a, rexp b)
@@ -72,8 +73,8 @@ struct
          | rexp(T'.SRL(ty,a,b)) = T.SRL(ty,rexp a,rexp b)
          | rexp(T'.SLL(ty,a,b)) = T.SLL(ty,rexp a,rexp b)
          | rexp(T'.CVTI2I(ty,ext,ty',a)) = T.CVTI2I(ty,ext,ty',rexp a)
-         | rexp(T'.LOAD(ty,a,mem)) = T.LOAD(ty,rexp a,R.memory)
-         | rexp e = error("rexp: "^RTL.expToString e)
+         | rexp(T'.LOAD(ty,a,mem)) = T.LOAD(ty,rexp a,R.memory) 
+         | *) rexp e = error("rexp: "^RTL.expToString e) 
    in  stm rtl end
 
    (* 
@@ -93,9 +94,7 @@ struct
              entryLabel   = can'tUse,
              comment      = can'tUse,
              annotation   = can'tUse,
-             exitBlock    = can'tUse,
-             alias        = can'tUse,
-             phi          = can'tUse
+             exitBlock    = can'tUse
            }
 
        val S.STREAM{emit, ...} = MLTreeComp.selectInstructions instrStream
@@ -131,9 +130,7 @@ struct
     *)
    fun insert (SSA as G.GRAPH ssa) = 
    let val getOperands =
-           P.defUse{immed   = SSA.immed SSA,
-                    operand = SSA.operand SSA
-                   }
+           P.defUse(SP.OT.makeNewValueNumbers(SSA.operandTbl SSA))
        val pinnedUseTbl = SSA.pinnedUseTbl
        val pinnedDefTbl = SSA.pinnedDefTbl
        fun isPinnedUse r = W8A.sub(pinnedUseTbl,r) <> 0w0 handle _ => false
@@ -148,9 +145,9 @@ struct
        val renameVar = SSA.newRenamedVar SSA
 
        exception Renaming
-       val renameMap = Intmap.new(32, Renaming)
-       val lookupRenaming = Intmap.map renameMap
-       val addRenaming = Intmap.add renameMap
+       val renameMap = IntHashTable.mkTable(32, Renaming)
+       val lookupRenaming = IntHashTable.lookup renameMap
+       val addRenaming = IntHashTable.insert renameMap
 
        fun addInstrs(block, instrs) = 
        let val n = length instrs

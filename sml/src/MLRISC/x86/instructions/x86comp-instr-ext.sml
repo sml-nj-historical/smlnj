@@ -10,7 +10,7 @@ signature X86COMP_INSTR_EXT = sig
   structure I : X86INSTR
 
   type reducer = 
-    (I.instruction, I.C.regmap, I.C.cellset, I.operand, I.addressing_mode) T.reducer
+    (I.instruction, I.C.cellset, I.operand, I.addressing_mode) T.reducer
 
   val compileSext : 
      reducer 
@@ -33,7 +33,7 @@ struct
   type stm = (T.stm, T.rexp, T.fexp, T.ccexp) X.sext
 
   type reducer = 
-    (I.instruction, I.C.regmap, I.C.cellset, I.operand, I.addressing_mode) T.reducer
+    (I.instruction, I.C.cellset, I.operand, I.addressing_mode) T.reducer
 
   val esp = C.esp
   val espOpnd = I.Direct(esp)

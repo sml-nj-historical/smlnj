@@ -59,7 +59,7 @@ struct
        val SchedProps.CPU_INFO{defUse, ...} = cpu_info
 
        (* Regmap magic! *)
-       val regmap = Intmap.mapInt(CFG.regmap CFG)
+       val regmap = C.lookup(CFG.regmap CFG)
        val regmapDefs = map (fn (r,l) => (regmap r,l))
        val regmapUses = map regmap
        fun simplifyCopy(instr, dst, src) = 
@@ -161,11 +161,13 @@ struct
        val blockId    = ref 0 
        val nodeId     = ref 0 
        val blockMap   = A.array(#order cfg (), 0) 
-       val liveInMap  = Intmap.new(13, Nothing)
-       val liveOutMap = Intmap.new(13, Nothing)
-       val specialMap = Intmap.new(32, Nothing)
-       val addSpecial = Intmap.add specialMap
-       val isSpecial  = Intmap.mapWithDefault(specialMap, false)
+       val liveInMap  = IntHashTable.mkTable(13, Nothing)
+       val liveOutMap = IntHashTable.mkTable(13, Nothing)
+       val specialMap = IntHashTable.mkTable(32, Nothing)
+       val addSpecial = IntHashTable.insert specialMap
+       val isSpecial  = IntHashTable.find specialMap
+       val isSpecial  = fn b => case isSpecial b of SOME _ => true 
+                                                  | NONE => false
 
        (* Process a basic block in topological order of the region:
         *  1. create all the nodes in the DDG
@@ -224,7 +226,7 @@ struct
                    val liveInNode as (i,_) = 
                           createNode(SchedProps.source, 
                              map (fn r => (r,~1)) liveIn, [])
-                   val _ = Intmap.add liveInMap (bid, liveInNode)
+                   val _ = IntHashTable.insert liveInMap (bid, liveInNode)
                    val _ = addSpecial(i, true)
                    fun addOutputAndAnti j r =  
                         (app (fn i => if isSpecial j then () 
@@ -252,7 +254,7 @@ struct
                  let fun createLiveOutNode(liveOut) =
                      let val node as (i, _) = 
                             createNode(SchedProps.sink, [], liveOut)
-                     in  Intmap.add liveOutMap (bid, node);
+                     in  IntHashTable.insert liveOutMap (bid, node);
                          addSpecial(i, true);
                          node
                      end

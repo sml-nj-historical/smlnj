@@ -95,10 +95,7 @@ struct
            in  SSA.forallNodes SSA markRoot end
 
       fun removeDeadCode() =
-      let fun don'tuse _ = error "getOperands"
-          val getOperands = SP.RTLProps.defUse{immed=don'tuse, 
-                                               operand=don'tuse}
-          fun kill n = 
+      let fun kill n = 
               (codeRemoved := !codeRemoved +1; 
                (* print("SSA DCE: removing "^showOp n^"\n"); *)
                #remove_node ssa n 
@@ -109,7 +106,7 @@ struct
                (*
               (case A.sub(rtlTbl,n) of
                  (* simplify partially-dead parallel copies *)
-                 T.COPY _,
+                 T.COPY,
                  let fun simplify(t::ts,s::ss,d::ds,u::us,
                                   ts',ss',ds',us',ch) =
                          if W8A.sub(liveVar,t) <> 0w0 then 

@@ -58,7 +58,9 @@ struct
         fun chowHennessy spills =
         let (* Compute savings due to moves *)
             val spillSavings = RACore.moveSavings graph
-            val lookupSpan = Intmap.mapWithDefault (Option.valOf(!span),0) 
+            val lookupSpan = IntHashTable.find (Option.valOf(!span))
+            val lookupSpan = 
+                fn r => case lookupSpan r of SOME s => s | NONE => 0
             val _          = span := NONE
             fun loop([], L, pruned) = (L, pruned)
               | loop(node::rest, L, pruned) = 

@@ -51,8 +51,8 @@ struct
   structure P  = PseudoInstrs
   structure A  = MLRiscAnnotations
 
-  type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
-  type mltreeStream = (T.stm,C.regmap,T.mlrisc list) T.stream
+  type instrStream = (I.instruction,C.cellset) T.stream
+  type mltreeStream = (T.stm,T.mlrisc list) T.stream
 
   val intTy = if V9 then 64 else 32
   structure Gen = MLTreeGen(structure T = T
@@ -153,18 +153,21 @@ struct
 
   fun error msg = MLRiscErrorMsg.error("Sparc",msg)
 
+
+
   fun selectInstructions
        (instrStream as
         S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,
-                 beginCluster,endCluster,exitBlock,alias,phi,comment,...}) =
+                 beginCluster,endCluster,exitBlock,comment,...}) =
   let
       (* Flags *)
       val useBR          = !useBR
       val registerwindow = !registerwindow
 
-      val trap32 = PseudoInstrs.overflowtrap32 
-      val trap64 = PseudoInstrs.overflowtrap64 
-      val newReg = C.newReg
+      val trap32  = PseudoInstrs.overflowtrap32 
+      val trap64  = PseudoInstrs.overflowtrap64 
+      val zeroR   = C.r0
+      val newReg  = C.newReg
       val newFreg = C.newFreg
       fun immed13 n = ~4096 <= n andalso n < 4096
       fun immed13w w = let val x = W.~>>(w,0w12)
@@ -173,8 +176,7 @@ struct
       fun split n  = splitw(W.fromInt n)
 
      
-      val zeroOpn = I.REG 0 (* zero value operand *)
-      val _ = if C.psr <> 65 then error "Wrong encoding for psr" else ()
+      val zeroOpn = I.REG zeroR (* zero value operand *)
 
       fun cond T.LT  = I.BL
         | cond T.LTU = I.BCS
@@ -186,6 +188,7 @@ struct
         | cond T.GEU = I.BCC
         | cond T.GT  = I.BG
         | cond T.GTU = I.BGU
+        | cond _     = error "cond"
 
       fun rcond T.LT  = I.RLZ
         | rcond T.LE  = I.RLEZ
@@ -221,10 +224,10 @@ struct
 
       (* convert an operand into a register *)
       fun reduceOpn(I.REG r) = r
-        | reduceOpn(I.IMMED 0) = 0
+        | reduceOpn(I.IMMED 0) = zeroR
         | reduceOpn i = 
           let val d = newReg() 
-          in  emit(I.ARITH{a=I.OR,r=0,i=i,d=d}); d end
+          in  emit(I.ARITH{a=I.OR,r=zeroR,i=i,d=d}); d end
 
       (* emit parallel copies *)
       fun copy(dst,src,an) =
@@ -238,12 +241,12 @@ struct
 
       (* move register s to register d *)
       fun move(s,d,an) =
-          if s = d orelse d = 0 then ()
+          if C.sameColor(s,d) orelse C.registerId d = 0 then ()
           else mark(I.COPY{dst=[d],src=[s],tmp=NONE,impl=ref NONE},an)
 
       (* move floating point register s to register d *)
       fun fmoved(s,d,an) =
-          if s = d then ()
+          if C.sameColor(s,d) then ()
           else mark(I.FCOPY{dst=[d],src=[s],tmp=NONE,impl=ref NONE},an)
       fun fmoves(s,d,an) = fmoved(s,d,an) (* error "fmoves" for now!!! XXX *)
       fun fmoveq(s,d,an) = error "fmoveq"
@@ -252,7 +255,7 @@ struct
       fun loadImmedw(w,d,cc,an) =
       let val or = if cc <> REG then I.ORCC else I.OR
       in  if immed13w w then 
-             mark(I.ARITH{a=or,r=0,i=I.IMMED(W.toIntX w),d=d},an)
+             mark(I.ARITH{a=or,r=zeroR,i=I.IMMED(W.toIntX w),d=d},an)
           else let val {hi,lo} = splitw w
                in  if lo = 0 then 
                       (mark(I.SETHI{i=hi,d=d},an); genCmp0(cc,d))
@@ -266,7 +269,7 @@ struct
       (* load immediate *)
       and loadImmed(n,d,cc,an) =
       let val or = if cc <> REG then I.ORCC else I.OR
-      in  if immed13 n then mark(I.ARITH{a=or,r=0,i=I.IMMED n,d=d},an)
+      in  if immed13 n then mark(I.ARITH{a=or,r=zeroR,i=I.IMMED n,d=d},an)
           else let val {hi,lo} = split n
                in  if lo = 0 then 
                       (mark(I.SETHI{i=hi,d=d},an); genCmp0(cc,d))
@@ -280,13 +283,13 @@ struct
       (* load label expression *)
       and loadLabel(lab,d,cc,an) = 
       let val or = if cc <> REG then I.ORCC else I.OR 
-      in  mark(I.ARITH{a=or,r=0,i=I.LAB lab,d=d},an) end
+      in  mark(I.ARITH{a=or,r=zeroR,i=I.LAB lab,d=d},an) end
 
       (* emit an arithmetic op *)
       and arith(a,acc,e1,e2,d,cc,comm,trap,an) = 
       let val (a,d) = case cc of
                          REG    => (a,d)
-                      |  CC     => (acc,0)
+                      |  CC     => (acc,zeroR)
                       |  CC_REG => (acc,d)
       in  case (opn e1,opn e2,comm) of
             (i,I.REG r,COMMUTE)=> mark(I.ARITH{a=a,r=r,i=i,d=d},an)
@@ -393,7 +396,7 @@ struct
         | addr(T.ADD(_,T.LABEL l,e)) = (expr e,I.LAB l)
         | addr(T.ADD(_,e1,e2))       = (expr e1,I.REG(expr e2))
         | addr(T.SUB(ty,e,T.LI n))   = addr(T.ADD(ty,e,T.LI(~n)))
-        | addr(T.LABEL l)            = (0,I.LAB l)
+        | addr(T.LABEL l)            = (zeroR,I.LAB l)
         | addr a                     = (expr a,zeroOpn)
 
       (* emit an integer load *)
@@ -426,10 +429,9 @@ struct
       (* convert mlrisc to cellset *)
       and cellset mlrisc =
       let fun g([],set) = set
-            | g(T.GPR(T.REG(_,r))::regs,set) = g(regs,C.addReg(r,set))
-            | g(T.FPR(T.FREG(_,f))::regs,set) = g(regs,C.addFreg(f,set))
-            | g(T.CCR(T.CC(_,65))::regs,set) = g(regs,C.addPSR(65,set))
-            | g(T.CCR(T.CC(_,cc))::regs,set) = g(regs,C.addReg(cc,set))
+            | g(T.GPR(T.REG(_,r))::regs,set) = g(regs,C.CellSet.add(r,set))
+            | g(T.FPR(T.FREG(_,f))::regs,set) = g(regs,C.CellSet.add(f,set))
+            | g(T.CCR(T.CC(_,cc))::regs,set) = g(regs,C.CellSet.add(cc,set))
             | g(_::regs, set) = g(regs,set)
       in  g(mlrisc, C.empty) end
  
@@ -438,7 +440,7 @@ struct
       let val (r,i) = addr a
           val defs=cellset(defs)
           val uses=cellset(uses)
-      in  case (r,i) of
+      in  case (C.registerId r,i) of
             (0,I.LAB(LE.LABEL l)) =>
              mark(I.CALL{label=l,defs=C.addReg(C.linkReg,defs),uses=uses,
                          mem=mem,nop=true},an)
@@ -447,7 +449,7 @@ struct
       end
 
       (* emit an integer branch instruction *)
-      and branch(ctrl,T.CMP(ty,cond,a,b),lab,an) =
+      and branch(T.CMP(ty,cond,a,b),lab,an) =
           let val (cond,a,b) =
                   case a of
                     (T.LI _ | T.LI32 _ | T.CONST _ | T.LABEL _) => 
@@ -458,9 +460,10 @@ struct
               else 
                  (doExpr(T.SUB(ty,a,b),newReg(),CC,[]); br(cond,lab,an)) 
           end
-        | branch(ctrl,T.CC(cond,65),lab,an) = br(cond,lab,an)
-        | branch(ctrl,T.CC(cond,r),lab,an) = (genCmp0(CC,r); br(cond,lab,an))
-        | branch(ctrl,T.FCMP(fty,cond,a,b),lab,an) =
+        | branch(T.CC(cond,r),lab,an) = 
+              if C.sameCell(r, C.psr) then br(cond,lab,an)
+              else (genCmp0(CC,r); br(cond,lab,an))
+        | branch(T.FCMP(fty,cond,a,b),lab,an) =
           let val cmp = case fty of
                           32 => I.FCMPs
                         | 64 => I.FCMPd
@@ -500,10 +503,10 @@ struct
         | stmt(T.CCMV(d,e),an) = doCCexpr(e,d,an)
         | stmt(T.COPY(_,dst,src),an) = copy(dst,src,an)
         | stmt(T.FCOPY(_,dst,src),an) = fcopy(dst,src,an)
-        | stmt(T.JMP(ctrl,T.LABEL(LE.LABEL l),_),an) =
+        | stmt(T.JMP(T.LABEL(LE.LABEL l),_),an) =
             mark(I.Bicc{b=I.BA,a=true,label=l,nop=false},an)
-        | stmt(T.JMP(ctrl,e,labs),an) = jmp(e,labs,an)
-        | stmt(T.CALL{funct,targets,defs,uses,cdefs,cuses,region},an) = 
+        | stmt(T.JMP(e,labs),an) = jmp(e,labs,an)
+        | stmt(T.CALL{funct,targets,defs,uses,region,...},an) = 
             call(funct,targets,defs,uses,region,an)
         | stmt(T.RET _,an) = mark(I.RET{leaf=not registerwindow,nop=true},an)
         | stmt(T.STORE(8,a,d,mem),an)   = store(I.STB,a,d,mem,an)
@@ -513,7 +516,7 @@ struct
              store(if V9 then I.STX else I.STD,a,d,mem,an)
         | stmt(T.FSTORE(32,a,d,mem),an) = fstore(I.STF,a,d,mem,an)
         | stmt(T.FSTORE(64,a,d,mem),an) = fstore(I.STDF,a,d,mem,an)
-        | stmt(T.BCC(ctrl,cc,lab),an) = branch(ctrl,cc,lab,an)
+        | stmt(T.BCC(cc,lab),an) = branch(cc,lab,an)
         | stmt(T.DEFINE l,_) = defineLabel l
         | stmt(T.ANNOTATION(s,a),an) = stmt(s,a::an)
         | stmt(T.EXT s,an) = ExtensionComp.compileSext(reducer()) {stm=s, an=an}
@@ -525,8 +528,8 @@ struct
 
           (* convert an expression into a register *) 
       and expr(T.REG(_,r)) = r
-        | expr(T.LI 0)     = 0
-        | expr(T.LI32 0w0) = 0
+        | expr(T.LI 0)     = zeroR
+        | expr(T.LI32 0w0) = zeroR
         | expr e           = let val d = newReg()
                              in  doExpr(e,d,REG,[]); d end
 
@@ -606,11 +609,9 @@ struct
 
               (* loads *) 
           | T.LOAD(8,a,mem) => load(I.LDUB,a,d,mem,cc,an)
-          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(8,a,mem)) => 
-              load(I.LDSB,a,d,mem,cc,an)
+          | T.SX(_,_,T.LOAD(8,a,mem)) => load(I.LDSB,a,d,mem,cc,an)
           | T.LOAD(16,a,mem) => load(I.LDUH,a,d,mem,cc,an)
-          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(16,a,mem)) => 
-               load(I.LDSH,a,d,mem,cc,an)
+          | T.SX(_,_,T.LOAD(16,a,mem)) => load(I.LDSH,a,d,mem,cc,an)
           | T.LOAD(32,a,mem) => load(I.LD,a,d,mem,cc,an)
           | T.LOAD(64,a,mem) => 
                load(if V9 then I.LDX else I.LDD,a,d,mem,cc,an)
@@ -628,7 +629,7 @@ struct
 
          (* generate a comparison with zero *)
       and genCmp0(REG,_) = ()
-        | genCmp0(_,d) = emit(I.ARITH{a=I.SUBCC,r=d,i=zeroOpn,d=0})
+        | genCmp0(_,d) = emit(I.ARITH{a=I.SUBCC,r=d,i=zeroOpn,d=zeroR})
 
           (* convert an expression into a floating point register *) 
       and fexpr(T.FREG(_,r)) = r
@@ -695,12 +696,13 @@ struct
           | T.FEXT e => ExtensionComp.compileFext (reducer()) {e=e, fd=d, an=an}
           | e => doFexpr(Gen.compileFexp e,d,an)
 
-      and doCCexpr(T.CMP(ty,cond,e1,e2),65,an) =
-            doExpr(T.SUB(ty,e1,e2),newReg(),CC,an)
-        | doCCexpr(T.CMP _,d,an) = error "doCCexpr"
-        | doCCexpr(_,65,an) = error "doCCexpr"
-        | doCCexpr(T.CC(_,65),d,an) = error "doCCexpr"
-        | doCCexpr(T.CC(_,r),d,an) = move(r,d,an)
+      and doCCexpr(T.CMP(ty,cond,e1,e2),cc,an) =
+             if C.sameCell(cc,C.psr) then
+                  doExpr(T.SUB(ty,e1,e2),newReg(),CC,an)
+             else error "doCCexpr"
+        | doCCexpr(T.CC(_,r),d,an) = 
+             if C.sameColor(r,C.psr) then error "doCCexpr"
+             else move(r,d,an)
         | doCCexpr(T.CCMARK(e,A.MARKREG f),d,an) = (f d; doCCexpr(e,d,an))
         | doCCexpr(T.CCMARK(e,a),d,an) = doCCexpr(e,d,a::an)
         | doCCexpr(T.CCEXT e,d,an) =
@@ -741,9 +743,7 @@ struct
             entryLabel  = entryLabel,
             comment     = comment,
             annotation  = annotation,
-            exitBlock   = fn regs => exitBlock(cellset regs),
-            alias       = alias,
-            phi         = phi
+            exitBlock   = fn regs => exitBlock(cellset regs)
           }
   in  self()
   end

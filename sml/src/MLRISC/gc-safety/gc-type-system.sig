@@ -15,12 +15,12 @@ sig
 
    (* Given an RTL effect, return the change to gctype *)
    val effectOf : 
-        {lookup : RTL.T.var -> GC.gctype,
-         update : RTL.T.var * GC.gctype * 'e -> 'e
+        {lookup : RTL.var -> GC.gctype,
+         update : RTL.var * GC.gctype * 'e -> 'e
         } -> 
-        {action : RTL.action,
-         dst    : RTL.T.var list,
-         src    : RTL.T.var list,
+        {action : RTL.rtl,
+         dst    : RTL.var list,
+         src    : RTL.var list,
          effect : 'e
         } -> 'e
 

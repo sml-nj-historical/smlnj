@@ -36,48 +36,81 @@ structure Alpha32CG =
                 structure Emitter = Alpha32MCEmitter)
 
     structure RA = 
-       RegAlloc
+       RISC_RA
          (structure I         = Alpha32Instr
-          structure MachSpec  = Alpha32Spec
           structure Flowgraph = Alpha32FlowGraph
-          structure CpsRegs   = Alpha32CpsRegs
           structure InsnProps = InsnProps 
           structure Rewrite   = AlphaRewrite(Alpha32Instr)
           structure Asm       = Alpha32AsmEmitter
+          structure SpillHeur = ChaitinSpillHeur
+          structure Spill     = RASpill(structure InsnProps = InsnProps
+                                        structure Asm = Alpha32AsmEmitter)
 
-          val sp = I.C.stackptrR
+          val sp    = I.C.stackptrR
           val spill = CPSRegions.spill
+
+          structure SpillTable = SpillTable(Alpha32Spec)
+
+          val architecture = Alpha32Spec.architecture
+
+          val beginRA = SpillTable.spillInit
 
           fun pure _ = false
 
           (* make copies *)
-          fun copyR((rds as [_], rss as [_]), _) =
-              I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=NONE}
-            | copyR((rds, rss), I.COPY{tmp, ...}) =
-              I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
-          fun copyF((fds as [_], fss as [_]), _) =
-              I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=NONE}
-            | copyF((fds, fss), I.FCOPY{tmp, ...}) =
-              I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
+          structure Int = 
+          struct
+              val avail     = Alpha32CpsRegs.availR
+              val dedicated = Alpha32CpsRegs.dedicatedR
 
-          (* spill copy temp *)
-          fun spillCopyTmp(I.COPY{tmp,dst,src,impl},loc) =
-              I.COPY{tmp=SOME(I.Displace{base=sp, disp=loc}),
-                     dst=dst,src=src,impl=impl}
-          fun spillFcopyTmp(I.FCOPY{tmp,dst,src,impl},loc) =
-              I.FCOPY{tmp=SOME(I.Displace{base=sp, disp=loc}),
-                      dst=dst,src=src,impl=impl}
+              fun copy((rds as [_], rss as [_]), _) =
+                  I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=NONE}
+                | copy((rds, rss), I.COPY{tmp, ...}) =
+                  I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
 
-          (* spill register *)
-          fun spillInstrR(r,offset) =
-              [I.STORE{stOp=I.STL, b=sp, d=I.IMMop offset, r=r, mem=spill}]
-          fun spillInstrF(r,offset) =
-              [I.FSTORE{stOp=I.STT, b=sp, d=I.IMMop offset, r=r, mem=spill}]
+              (* spill copy temp *)
+              fun spillCopyTmp(an, I.COPY{tmp,dst,src,impl},loc) =
+                  I.COPY{tmp=SOME(I.Displace{base=sp, 
+                                             disp=SpillTable.getRegLoc loc}),
+                         dst=dst,src=src,impl=impl}
 
-          (* reload register *)
-          fun reloadInstrR(r,offset,rest) =
-              I.LOAD{ldOp=I.LDL, b=sp, d=I.IMMop offset, r=r, mem=spill}::rest
-          fun reloadInstrF(r,offset,rest) =
-              I.FLOAD{ldOp=I.LDT, b=sp, d=I.IMMop offset, r=r, mem=spill}::rest
+              (* spill register *)
+              fun spillInstr(_, r,loc) =
+                  [I.STORE{stOp=I.STL, b=sp,
+                           d=I.IMMop(SpillTable.getRegLoc loc), 
+                           r=r, mem=spill}]
+
+              (* reload register *)
+              fun reloadInstr(_, r,loc) =
+                  [I.LOAD{ldOp=I.LDL, b=sp, 
+                          d=I.IMMop(SpillTable.getRegLoc loc),
+                          r=r, mem=spill}]
+          end
+ 
+          structure Float =   
+          struct
+              val avail     = Alpha32CpsRegs.availF
+              val dedicated = Alpha32CpsRegs.dedicatedF
+
+              fun copy((fds as [_], fss as [_]), _) =
+                  I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=NONE}
+                | copy((fds, fss), I.FCOPY{tmp, ...}) =
+                  I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
+
+              fun spillCopyTmp(an, I.FCOPY{tmp,dst,src,impl},loc) =
+                  I.FCOPY{tmp=SOME(I.Displace{base=sp, 
+                                          disp=SpillTable.getFregLoc loc}),
+                          dst=dst,src=src,impl=impl}
+
+              fun spillInstr(_, r,loc) =
+                  [I.FSTORE{stOp=I.STT, b=sp, 
+                            d=I.IMMop(SpillTable.getFregLoc loc), 
+                            r=r, mem=spill}]
+
+              fun reloadInstr(_, r,loc) =
+                  [I.FLOAD{ldOp=I.LDT, b=sp,
+                           d=I.IMMop(SpillTable.getFregLoc loc), 
+                           r=r, mem=spill}]
+          end
          )
   )

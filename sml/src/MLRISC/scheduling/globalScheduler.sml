@@ -82,7 +82,7 @@ struct
        end
 
        fun liveOut(_, block) = 
-             map regmap (I.C.cellsetToCells (CFG.liveOut block))
+             map regmap (I.C.CellSet.toCellList (CFG.liveOut block))
 
        fun result{block=(_,CFG.BLOCK{annotations, ...}), liveIn, liveOut} = 
            annotations :=

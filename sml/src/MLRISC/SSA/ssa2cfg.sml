@@ -97,7 +97,9 @@ struct
        val defSiteTbl  = SSA.defSiteTbl SSA (* definition sites *)
        val blockTbl    = SSA.blockTbl SSA   (* block table *)
        val cellKindTbl = SSA.cellKindTbl SSA (* cellkinds *)
-       val cellKindOf  = Intmap.mapWithDefault(cellKindTbl, C.GP)
+       val cellKindOf  = IntHashTable.find cellKindTbl
+       val cellKindOf  = 
+            fn r => case cellKindOf r of SOME k => k | NONE => C.GP
        val {sources, phis, ops, sinks} = SSA.nodes SSA (* linearized ssa *)
 
        (*---------------------------------------------------------------------
@@ -108,9 +110,8 @@ struct
        val mkCopies          = SP.copies
        val namingConstraints = SP.namingConstraints
        val opnKind           = RP.opnKind 
-       val defUse            = RP.defUse{immed=SSA.immed SSA,
-                                         operand=SSA.operand SSA
-                                        }
+       val defUse            = RP.defUse(SP.OT.lookupValueNumbers
+                                         (SSA.operandTbl SSA))
        (* Should value d be in the resource r? *) 
        fun dstInReg(r) = isDedicatedDef r
        fun opDstInReg(k,r) = k = RP.FIX orelse isDedicatedDef r
@@ -123,7 +124,8 @@ struct
         * Temporary data structures 
         *---------------------------------------------------------------------*)
        val Value = A.array(V, ~1) (* current value of resources *)
-       val Resources = Intmap.new(32, Nothing) (* names of all resources *)
+               (* names of all resources *)
+       val Resources = IntHashTable.mkTable(32, Nothing) 
        val AvailIn  = A.array(N, [])
 
        (* Mark the value of a resource *)
@@ -143,7 +145,7 @@ struct
        let 
 
            (* Definitions of all resources *) 
-           val addResource   = Intmap.add Resources
+           val addResource   = IntHashTable.insert Resources
            val LocalAvailOut = A.array(N, [])
 
            (* Process a block *)
@@ -255,9 +257,11 @@ struct
            val _ = #forall_nodes dom processBlock 
 
            (* Definitions indexed by resource *)
-           val LocalDefs = Intmap.new(32, Nothing)
-           val lookupLocalDef = Intmap.mapWithDefault(LocalDefs, [])
-           val addLocalDef = Intmap.add LocalDefs
+           val LocalDefs = IntHashTable.mkTable(32, Nothing)
+           val lookupLocalDef = IntHashTable.find LocalDefs
+           val lookupLocalDef = 
+               fn r => case lookupLocalDef r of SOME d => d | NONE => []
+           val addLocalDef = IntHashTable.insert LocalDefs
 
            val _ = A.appi (fn (X, localAvailOut) =>  
                              app (fn (r,v) => 
@@ -266,7 +270,8 @@ struct
 
            (* val _ = if debug then
                    (print "Resources=";
-                    Intmap.app (fn (r, _) => print(showVal r^" ")) Resources;
+                    IntHashTable.appi 
+                       (fn (r, _) => print(showVal r^" ")) Resources;
                     print "\n"
                    ) else ()
             *)
@@ -343,7 +348,7 @@ struct
                cleanup localAvailOut
            end
 
-       in  Intmap.app availAnalysis Resources
+       in  IntHashTable.appi availAnalysis Resources
        end
 
        val _ = initialization()
@@ -569,7 +574,7 @@ struct
                else 
                let val loadConsts = 
                    case constOf src of
-                     SP.OT.IMMED i => 
+                     SP.OT.INT i => 
                        InsnProps.loadImmed{t=dst, immed=i}::loadConsts
                    | SP.OT.OPERAND opn => 
                        InsnProps.loadOperand{t=dst, opn=opn}::loadConsts

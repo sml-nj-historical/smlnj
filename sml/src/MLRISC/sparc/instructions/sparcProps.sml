@@ -12,6 +12,10 @@ struct
                 | IK_PHI | IK_SOURCE | IK_SINK
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
+  val zeroR = Option.valOf(C.zeroReg C.GP)
+  val r15   = C.Reg C.GP 15
+  val r31   = C.Reg C.GP 31
+
   (*========================================================================
    *  Instruction Kinds
    *========================================================================*)
@@ -120,17 +124,17 @@ struct
   val immedRange = {lo= ~4096, hi = 4095}
 
   fun loadImmed{immed,t} = 
-      I.ARITH{a=I.OR,r=0,i=
+      I.ARITH{a=I.OR,r=zeroR,i=
               if #lo immedRange <= immed andalso immed <= #hi immedRange 
               then I.IMMED immed else I.LAB(LE.INT immed),d=t}
-  fun loadOperand{opn, t} = I.ARITH{a=I.OR,r=0,i=opn, d=t}
+  fun loadOperand{opn, t} = I.ARITH{a=I.OR,r=zeroR,i=opn, d=t}
 
   fun moveInstr(I.COPY _)  = true
     | moveInstr(I.FCOPY _) = true
     | moveInstr(I.ANNOTATION{i,...}) = moveInstr i
     | moveInstr _          = false
 
-  fun nop() = I.SETHI{d=0, i=0}
+  fun nop() = I.SETHI{d=zeroR, i=0}
 
   (*========================================================================
    *  Parallel Move
@@ -148,12 +152,12 @@ struct
   (*========================================================================
    *  Equality and hashing
    *========================================================================*)
-   fun hashOpn(I.REG r) = Word.fromInt r
+   fun hashOpn(I.REG r) = C.hashCell r
      | hashOpn(I.IMMED i) = Word.fromInt i
      | hashOpn(I.LAB l) = I.LabelExp.hash l
      | hashOpn(I.LO l) = I.LabelExp.hash l
      | hashOpn(I.HI l) = I.LabelExp.hash l
-   fun eqOpn(I.REG a,I.REG b) = a = b
+   fun eqOpn(I.REG a,I.REG b) = C.sameColor(a,b)
      | eqOpn(I.IMMED a,I.IMMED b) = a = b
      | eqOpn(I.LAB a,I.LAB b) = I.LabelExp.==(a,b)
      | eqOpn(I.LO a,I.LO b) = I.LabelExp.==(a,b)
@@ -174,15 +178,16 @@ struct
         | I.SETHI {d,...} => ([d],[])
         | I.ARITH {r,i,d,...} => oper(i,[d],[r])
         | I.SHIFT {r,i,d,...} => oper(i,[d],[r])
-        | I.JMPL{defs,uses,d,r,i,...} => oper(i,d:: #1 defs,r:: #1 uses)
+        | I.JMPL{defs,uses,d,r,i,...} => 
+             oper(i,d:: C.getReg defs,r:: C.getReg uses)
         | I.BR{r,...} => ([],[r])
         | I.MOVicc{i,d,...} => oper(i,[d],[d])
         | I.MOVfcc{i,d,...} => oper(i,[d],[d])
         | I.MOVR{r,i,d,...} => oper(i,[d],[r,d])
-        | I.CALL{defs,uses,...} => (15 :: #1 defs, #1 uses)
+        | I.CALL{defs,uses,...} => (r15 :: C.getReg defs, C.getReg uses)
         | I.JMP{r,i,...} => oper(i,[],[r])
-        | I.RET{leaf=false,...} => ([],[31])
-        | I.RET{leaf=true,...} => ([],[15])
+        | I.RET{leaf=false,...} => ([],[r31])
+        | I.RET{leaf=true,...} => ([],[r15])
         | I.COPY{src,dst,tmp=SOME(I.Direct r),...} => (r::dst,src)
         | I.COPY{src,dst,...} => (dst,src)
         | I.SAVE{r,i,d} => oper(i,[d],[r])
@@ -204,8 +209,8 @@ struct
       | I.FPop1{r,d,...} => ([d],[r])
       | I.FPop2{r1,r2,d,...} => ([d],[r1,r2])
       | I.FCMP{r1,r2,...} => ([],[r1,r2])
-      | I.JMPL{defs,uses,...} => (#2 defs,#2 uses)
-      | I.CALL{defs,uses,...} => (#2 defs,#2 uses)
+      | I.JMPL{defs,uses,...} => (C.getFreg defs,C.getFreg uses)
+      | I.CALL{defs,uses,...} => (C.getFreg defs,C.getFreg uses)
       | I.FMOVicc{r,d,...} => ([d],[r,d])
       | I.FMOVfcc{r,d,...} => ([d],[r,d])
       | I.FCOPY{src,dst,tmp=SOME(I.FDirect r),...} => (r::dst,src)

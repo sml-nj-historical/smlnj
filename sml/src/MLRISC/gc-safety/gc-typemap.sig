@@ -1,10 +1,9 @@
 signature GC_TYPEMAP =
 sig
   
-   structure C  : CELLS
    structure GC : GC_TYPE
 
-   type typemap = (C.cell * GC.gctype) list
+   type typemap = (CellsBasis.cell * GC.gctype) list
 
    val empty    : typemap
    val fromList : typemap -> typemap

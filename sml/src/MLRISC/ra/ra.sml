@@ -39,26 +39,28 @@
 
 functor RegisterAllocator
    (SpillHeuristics : RA_SPILL_HEURISTICS) 
-   (Flowgraph : RA_FLOWGRAPH) : RA =
+   (Flowgraph : RA_FLOWGRAPH where C = CellsBasis) : RA =
 struct
 
    structure F      = Flowgraph
    structure I      = F.I
-   structure C      = I.C
    structure Core   = RACore
+   structure C      = I.C
    structure G      = Core.G
 
-   type getreg = { pref  : C.cell list,
+   type getreg = { pref  : C.cell_id list,
                    stamp : int,
                    proh  : int Array.array
-                 } -> C.cell
+                 } -> C.cell_id
 
    type mode = word
 
+   datatype spillLoc = datatype G.spillLoc
+
    type raClient =
    { cellkind     : C.cellkind,             (* kind of register *)
-     spillProh    : (C.cell * C.cell) list, (* don't spill these *)
-     memRegs      : (C.cell * C.cell) list, (* memory registers *)
+     spillProh    : C.cell list,            (* don't spill these *)
+     memRegs      : C.cell list,            (* memory registers *)
      K            : int,                    (* number of colors *)
      dedicated    : bool Array.array,       (* dedicated registers *)
      getreg       : getreg,                 (* how to find a color *)
@@ -81,11 +83,11 @@ struct
    val SPILL_COALESCING       = 0wx100
    val SPILL_COLORING         = 0wx200
    val SPILL_PROPAGATION      = 0wx400
-   val COPY_PROPAGATION       = 0wx800
 
    fun isOn(flag, mask) = Word.andb(flag,mask) <> 0w0
 
    open G
+   structure C      = I.C
 
    fun error msg = MLRiscErrorMsg.error("RegisterAllocator",msg)
 
@@ -116,6 +118,8 @@ struct
  *)
 
    exception NodeTable
+
+   val i2s = Int.toString
 
    (* This array is used for getreg.
     * We allocate it once. 
@@ -150,10 +154,7 @@ struct
        in  if numCell = 0
        then ()
        else
-       let (* extract the regmap and blocks from the flowgraph *)
-           val regmap = F.regmap flowgraph (* the register map *)
-    
-           (* the nodes table *)
+       let (* the nodes table *)
            val nodes  = IntHashTable.mkTable(numCell,NodeTable) 
            val mode   = if isOn(HAS_PARALLEL_COPIES, mode) then
                            Word.orb(Core.SAVE_COPY_TEMPS, mode) 
@@ -164,8 +165,7 @@ struct
                                    dedicated=dedicated,
                                    numRegs=numCell,
                                    maxRegs=C.maxCell,
-                                   regmap=regmap,
-                                   showReg=C.toString cellkind,
+                                   showReg=C.toString,
                                    getreg=getreg,
                                    getpair=fn _ => error "getpair",
                                    firstPseudoR=C.firstPseudo,
@@ -177,8 +177,9 @@ struct
                                   }
            val G.GRAPH{spilledRegs, pseudoCount, spillFlag, ...} = G
     
-           fun hasBeenSpilled i =
-	       getOpt (IntHashTable.find spilledRegs i, false)
+           val hasBeenSpilled = IntHashTable.find spilledRegs
+           val hasBeenSpilled = 
+               fn r => case hasBeenSpilled r of SOME _ => true | NONE => false
     
            fun logGraph(header,G) = 
                if !dump_graph then
@@ -196,17 +197,12 @@ struct
                val moves = buildMethod(G,cellkind)
                val worklists = 
                    (Core.initWorkLists G) {moves=moves} 
-           in  (* if !count_dead then
-                  IntHashTable.appi (fn (_,NODE{uses=ref [],...}) => dead := !dead + 1
-                               | _ => ()) nodes
-               else (); *)
-               logGraph("build",G);
+           in  logGraph("build",G);
                if debug then
                let val G.GRAPH{bitMatrix=ref(G.BM{elems, ...}), ...} = G
-               in  print ("done: nodes="^
-			  Int.toString(IntHashTable.numItems nodes)^ 
-                          " edges="^Int.toString(!elems)^
-                          " moves="^Int.toString(length moves)^
+               in  print ("done: nodes="^i2s(IntHashTable.numItems nodes)^ 
+                          " edges="^i2s(!elems)^
+                          " moves="^i2s(length moves)^
                           "\n")
                end else (); 
                worklists
@@ -239,8 +235,8 @@ struct
                    | SOME(best as NODE{defs,uses,...}) =>
                         print("Spilling node "^Core.show G best^
                               " cost="^Real.toString cost^
-                              " defs="^Int.toString(length(!defs))^
-                              " uses="^Int.toString(length(!uses))^"\n"
+                              " defs="^i2s(length(!defs))^
+                              " uses="^i2s(length(!uses))^"\n"
                              )
                   ) else ();
                {node=node,cost=cost,spillWkl=spillWkl}
@@ -356,10 +352,7 @@ struct
                in  (* check for actual spills *)
                    case spills of
                      [] => ()
-                   | spills => 
-                     (if isOn(mode,COPY_PROPAGATION) then ()
-                      else loop(actualSpills{spills=spills})
-                     )
+                   | spills => loop(actualSpills{spills=spills})
                end
     
                val {simplifyWkl, moveWkl, freezeWkl, spillWkl} = buildGraph G
@@ -367,21 +360,18 @@ struct
            in  loop(simplifyWkl, moveWkl, freezeWkl, spillWkl, [])
            end
     
-           fun initSpillProh(from,to) = 
+           fun initSpillProh(cells) = 
            let val markAsSpilled = IntHashTable.insert spilledRegs
-               fun loop r = 
-                   if r <= to then (markAsSpilled(r,true); loop(r+1)) else ()
-           in  loop from end
+               fun mark r = markAsSpilled(C.registerId r,true)
+           in  app mark cells end
     
        in  dumpFlowgraph(cfg_before_ra,"before register allocation");
-           app initSpillProh spillProh;
+           initSpillProh spillProh;
            main(G); (* main loop *)
-           (* update the regmap *)
+           (* update the colors for all cells *)
            logGraph("done",G);
-           if isOn(mode,COPY_PROPAGATION) 
-           then Core.finishCP G 
-           else Core.finishRA G
-           ;
+           Core.updateCellColors G;
+           Core.markDeadCopiesAsSpilled G;
            ra_count := !ra_count + 1;
            dumpFlowgraph(cfg_after_ra,"after register allocation");
            (* Clean up spilling *)

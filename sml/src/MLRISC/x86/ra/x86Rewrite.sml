@@ -2,37 +2,37 @@
  *
  * COPYRIGHT (c) 1997 Bell Labs
  *)
-functor X86Rewrite(Instr : X86INSTR) = struct
+functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
   structure I=Instr
   structure C=I.C
 
-  fun operand (mapr : I.C.cell -> I.C.cell,rs,rt) opnd =
+  fun operand (rs,rt) opnd =
     (case opnd
-     of I.Direct r => if mapr r=rs then I.Direct rt else opnd
+     of I.Direct r => if C.sameColor(r,rs) then I.Direct rt else opnd
       | I.Displace{base, disp, mem} => 
-	  if mapr base = rs then I.Displace{base=rt, disp=disp, mem=mem} 
+	  if C.sameColor(base,rs) then I.Displace{base=rt, disp=disp, mem=mem} 
           else opnd
       | I.Indexed{base as SOME b, index, scale, disp, mem} => let
-	  val base'= if mapr b = rs then SOME rt else base
-	  val index'=if mapr index=rs then rt else index
+	  val base'= if C.sameColor(b,rs) then SOME rt else base
+	  val index'=if C.sameColor(index,rs) then rt else index
 	in I.Indexed{base=base', index=index', scale=scale, disp=disp, mem=mem}
 	end
       | I.Indexed{base, index, scale, disp, mem=mem}  => 
-	if mapr index=rs then 
+	if C.sameColor(index,rs) then 
 	  I.Indexed{base=base, index=rt, scale=scale, disp=disp, mem=mem}
 	else opnd
       | _ => opnd
     (*esac*))
 
-  fun rewriteUse(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
-    val operand = operand (mapr, rs, rt)
-    fun replace r = if mapr r = rs then rt else r
+  fun rewriteUse(instr, rs, rt) = let
+    val operand = operand (rs, rt)
+    fun replace r = if C.sameColor(r,rs) then rt else r
   in
     case instr
     of I.JMP(opnd, labs) => I.JMP(operand opnd, labs)
      | I.JCC{cond, opnd} => I.JCC{cond=cond, opnd = operand opnd}
-     | I.CALL(opnd, defs, (ru,fu,cu), mem) => 
-         I.CALL(operand opnd, defs, (map replace ru, fu, cu), mem)
+     | I.CALL(opnd, defs, uses, mem) => 
+         I.CALL(operand opnd, defs, C.CellSet.map {from=rs,to=rt} uses, mem)
      | I.MOVE{mvOp, src, dst as I.Direct _} => 
          I.MOVE{mvOp=mvOp, src=operand src, dst=dst}
      | I.MOVE{mvOp, src, dst} => 
@@ -96,7 +96,7 @@ functor X86Rewrite(Instr : X86INSTR) = struct
 
      | I.CMOV{cond, src, dst} => I.CMOV{cond=cond, src=operand src, dst=dst}
      | I.ANNOTATION{i,a}=> 
-        I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),
+        I.ANNOTATION{i=rewriteUse(i,rs,rt),
                         a=case a of
                            C.DEF_USE{cellkind=C.GP,defs,uses} =>
                              C.DEF_USE{cellkind=C.GP,uses=map replace uses,
@@ -105,13 +105,14 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | _ => instr
   end (* rewriteUse *)
 
-  fun rewriteDef(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
-    fun operand(opnd as I.Direct r) = if mapr r=rs then I.Direct rt else opnd
-    fun replace r = if mapr r=rs then rt else r
+  fun rewriteDef(instr, rs, rt) = let
+    fun operand(opnd as I.Direct r) = 
+           if C.sameColor(r,rs) then I.Direct rt else opnd
+    fun replace r = if C.sameColor(r,rs) then rt else r
   in
     case instr 
-    of I.CALL(opnd, (dr,df,dc), uses, mem) => 
-         I.CALL(opnd, (map replace dr, df, dc), uses, mem)
+    of I.CALL(opnd, defs, uses, mem) => 
+         I.CALL(opnd, C.CellSet.map {from=rs,to=rt} defs, uses, mem)
      | I.MOVE{mvOp, src, dst} => I.MOVE{mvOp=mvOp, src=src, dst=operand dst}
      | I.LEA{r32, addr} => I.LEA{r32=replace r32, addr=addr}
      | I.BINARY{binOp, src, dst} => I.BINARY{binOp=binOp, src=src, dst=operand dst}
@@ -121,7 +122,7 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.COPY{dst, src, tmp} => I.COPY{dst=map replace dst, src=src, tmp=tmp}
      | I.CMOV{cond, src, dst} => I.CMOV{cond=cond, src=src, dst=replace dst}
      | I.ANNOTATION{i,a}=> 
-         I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),
+         I.ANNOTATION{i=rewriteDef(i,rs,rt),
                         a=case a of
                            C.DEF_USE{cellkind=C.GP,defs,uses} =>
                              C.DEF_USE{cellkind=C.GP,uses=uses,
@@ -132,21 +133,21 @@ functor X86Rewrite(Instr : X86INSTR) = struct
   end
 
 
-  fun frewriteUse(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
+  fun frewriteUse(instr, fs, ft) = let
     fun foperand(opnd as I.FDirect f) = 
-         if f=fs then I.FDirect ft else opnd
+         if C.sameColor(f,fs) then I.FDirect ft else opnd
       | foperand(opnd as I.FPR f) = 
-         if f=fs then I.FPR ft else opnd
+         if C.sameColor(f,fs) then I.FPR ft else opnd
       | foperand opnd = opnd
 
-    fun replace f = if mapr f=fs then ft else f
+    fun replace f = if C.sameColor(f,fs) then ft else f
   in
     case instr
     of I.FCOPY{dst, src, tmp,...} => I.FCOPY{dst=dst, src=map replace src, tmp=tmp}
      | I.FLDL opnd => I.FLDL(foperand opnd)
      | I.FLDS opnd => I.FLDS(foperand opnd)
-     | I.CALL(opnd, defs, (ur, uf, uc), mem) => 
-         I.CALL(opnd, defs, (ur, map replace uf, uc), mem)
+     | I.CALL(opnd, defs, uses, mem) => 
+         I.CALL(opnd, defs, C.CellSet.map {from=fs, to=ft} uses, mem)
      | I.FBINARY{binOp, src, dst} => 
 	 I.FBINARY{binOp=binOp, src=foperand src, dst=foperand dst}
      | I.FUCOM opnd => I.FUCOM(foperand opnd)
@@ -167,7 +168,7 @@ functor X86Rewrite(Instr : X86INSTR) = struct
         I.FCMP{fsize=fsize,lsrc=foperand lsrc,rsrc=foperand rsrc}
 
      | I.ANNOTATION{i,a}=> 
-         I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),
+         I.ANNOTATION{i=frewriteUse(i,fs,ft),
                         a=case a of
                            C.DEF_USE{cellkind=C.FP,defs,uses} =>
                              C.DEF_USE{cellkind=C.FP,uses=map replace uses,
@@ -176,13 +177,13 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | _ => instr
   end
 
-  fun frewriteDef(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
+  fun frewriteDef(instr, fs, ft) = let
     fun foperand(opnd as I.FDirect r) = 
-         if r=fs then I.FDirect ft else opnd
+         if C.sameColor(r,fs) then I.FDirect ft else opnd
       | foperand(opnd as I.FPR r) = 
-         if r=fs then I.FPR ft else opnd
+         if C.sameColor(r,fs) then I.FPR ft else opnd
       | foperand opnd = opnd
-    fun replace f = if mapr f = fs then ft else f
+    fun replace f = if C.sameColor(f,fs) then ft else f
   in
     case instr
     of I.FCOPY{dst, src, tmp, ...} => I.FCOPY{dst=map replace dst, src=src, tmp=tmp}
@@ -191,8 +192,8 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.FSTPS opnd => I.FSTPS(foperand opnd)
      | I.FSTL opnd => I.FSTL(foperand opnd)
      | I.FSTS opnd => I.FSTS(foperand opnd)
-     | I.CALL(opnd, (dr,df,dc), uses, mem) => 
-         I.CALL(opnd, (dr, map replace df, dc), uses, mem)
+     | I.CALL(opnd, defs, uses, mem) => 
+         I.CALL(opnd, C.CellSet.map {from=fs, to=ft} defs, uses, mem)
      | I.FBINARY{binOp, src, dst} => I.FBINARY{binOp=binOp, src=src, dst=foperand dst}
 
        (* Pseudo floating point instructions *)
@@ -208,7 +209,7 @@ functor X86Rewrite(Instr : X86INSTR) = struct
         I.FUNOP{fsize=fsize,unOp=unOp,src=src,dst=foperand dst}
 
      | I.ANNOTATION{i,a}=> 
-         I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),
+         I.ANNOTATION{i=frewriteDef(i,fs,ft),
                         a=case a of
                            C.DEF_USE{cellkind=C.FP,defs,uses} =>
                              C.DEF_USE{cellkind=C.FP,uses=uses,

@@ -30,16 +30,15 @@ struct
        val entryLabels  = ref [] : Label.label list ref
        fun can'tUse _   = error "unimplemented"
        exception NotFound
-       val labelMap = Intmap.new(32,NotFound)
-       val newLabel = Intmap.add labelMap
-       val lookupLabel = Intmap.map labelMap
+       val labelMap = IntHashTable.mkTable(32,NotFound)
+       val newLabel = IntHashTable.insert labelMap
+       val lookupLabel = IntHashTable.lookup labelMap
        val CFG    = ref CFG
-       val aliasF = ref can'tUse : (int * int -> unit) ref
 
        (* Initialization *)
        fun init _ =
        let val G.GRAPH cfg = !CFG
-       in  Intmap.clear labelMap;
+       in  IntHashTable.clear labelMap;
            #forall_nodes cfg 
              (fn (blockId,CFG.BLOCK{labels, ...}) =>
                   app (fn Label.Label{id, ...} => newLabel(id,blockId))
@@ -47,8 +46,7 @@ struct
            currentBlock := NOBLOCK;
            newBlocks := [];
            blockNames := [];
-           entryLabels := [];
-           aliasF := can'tUse
+           entryLabels := []
        end   
 
        val _ = init()
@@ -157,7 +155,9 @@ struct
            fun next(CFG.BLOCK{id,data=ref [],...}::_) = id
              | next _ = error "next"
 
-           val lookupLabelMap = Intmap.mapWithDefault(labelMap,EXIT)
+           val lookupLabelMap = IntHashTable.find labelMap
+           val lookupLabelMap = 
+                fn l => case lookupLabelMap l of SOME b => b | NONE => EXIT 
            val TRUE = CFG.BRANCH true
            val FALSE = CFG.BRANCH false
            val addEdge = #add_edge cfg
@@ -216,15 +216,7 @@ struct
           end
 
        (* Start a new cluster *)
-       fun beginCluster _ = 
-       let val regmap = CFG.regmap(!CFG)
-       in  init();
-           aliasF := Intmap.add regmap;
-           regmap
-       end
-
-       (* Add an alias *)
-       fun alias(v,r) = !aliasF(v,r)
+       fun beginCluster _ = init()
 
     in  {stream=S.STREAM
            {  beginCluster= beginCluster,
@@ -235,9 +227,7 @@ struct
               emit        = emit,
               exitBlock   = exitBlock,
               comment     = comment,
-              annotation  = annotation,
-              alias       = alias,
-              phi         = can'tUse
+              annotation  = annotation
            },
          next = next
         }

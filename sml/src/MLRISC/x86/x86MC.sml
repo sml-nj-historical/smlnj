@@ -28,8 +28,6 @@ struct
   (*
    * Sanity check! 
    *)
-  val fpoffset = 32
-  val _ = if C.FPReg 0 = fpoffset then () else error "Floating point encoding"
 
   val eax = 0   val esp = 4   
   val ecx = 1   val ebp = 5
@@ -48,25 +46,18 @@ struct
   in [shift(0w0), shift(0w8), shift(0w16), shift(0w24)]
   end
 
-  fun emitInstrs(instrs, regmap) = 
-    Word8Vector.concat(map (fn I => emitInstr(I, regmap)) instrs)
+  fun emitInstrs(instrs) = Word8Vector.concat(map emitInstr instrs)
 
-  and emitInstr(instr, regmap) = let
+  and emitInstr(instr) = let
     val error = 
         fn msg =>
            let val AsmEmitter.S.STREAM{emit,...} = AsmEmitter.makeStream []
-           in  emit regmap instr; error msg end
+           in  emit instr; error msg end
 
-    fun rNum r = let
-      val r' = regmap r
-    in if r' >=0 andalso r' <= 7 then r' 
-       else error ("rNum: bad register " ^ Int.toString r ^ " --> " ^
-                    Int.toString r')
-    end 
+    val rNum = C.physicalRegisterNum 
+    val fNum = C.physicalRegisterNum 
 
-    fun fNum f = regmap f - fpoffset
-
-    val memReg = MemRegs.memReg regmap
+    val memReg = MemRegs.memReg 
 
     datatype size = Zero | Bits8 | Bits32
     fun size i = 
@@ -182,7 +173,7 @@ struct
             of Bits32 => 
                (case dst
                 of I.Direct r =>
-                    if rNum r = eax then 
+                    if C.physicalRegisterNum r = eax then 
                       eBytes(W8.fromInt(8*opc2 + 5) :: eLong(i))
                     else 
                       encodeLongImm(0wx81, opc2, dst, i)
@@ -211,11 +202,11 @@ struct
       | test(bits, I.Immed(i), lsrc) =
          (case (lsrc, i >= 0 andalso i < 255) of 
            (I.Direct r, false) => 
-             if rNum r = eax then eBytes(0wxA9 :: eLong i) 
+             if C.physicalRegisterNum r = eax then eBytes(0wxA9 :: eLong i) 
              else encodeLongImm(0wxF7, 0, lsrc, i)
          | (_, false)  => encodeLongImm(0wxF7, 0, lsrc, i)
          | (I.Direct r, true) =>  (* 8 bit *)
-           let val r = rNum r 
+           let val r = C.physicalRegisterNum r
            in  if r = eax then eBytes[0wxA8, toWord8 i]
                else if r < 4 then 
                     (* unfortunately, only CL, DL, BL can be encoded *)
@@ -312,18 +303,16 @@ struct
              (case multDivOp of I.MULL => 4 | I.IDIVL => 7 | I.DIVL => 6)
        in encode(0wxf7, mulOp, src)
        end
-     | I.MUL3{dst, src1, src2} => let
-         val dst = rNum dst
-       in
-         case src2 
+     | I.MUL3{dst, src1, src2} => 
+        (case src2 
          of NONE => 
             (case src1
              of I.Immed(i) =>
                  (case size i
-                  of Bits32 => encodeLongImm(0wx69, dst, I.Direct(dst), i)
-                   | _ => encodeByteImm(0wx6b, dst, I.Direct(dst), i)
+                  of Bits32 => encodeLongImm(0wx69, rNum dst, I.Direct(dst), i)
+                   | _ => encodeByteImm(0wx6b, rNum dst, I.Direct(dst), i)
                   (*esac*))
-              | _ => eBytes(0wx0f::0wxaf::(eImmedExt(dst, src1)))
+              | _ => eBytes(0wx0f::0wxaf::(eImmedExt(rNum dst, src1)))
             (*esac*))
           | SOME i => 
             (case src1 
@@ -331,12 +320,12 @@ struct
               | I.ImmedLabel _ => error "mul3: ImmedLabel"
               | _ => 
                 (case size i
-                 of Bits32 => encodeLongImm(0wx69, dst, src1, i)
-                  | _ => encodeByteImm(0wx6b, dst, src1, i)
+                 of Bits32 => encodeLongImm(0wx69, rNum dst, src1, i)
+                  | _ => encodeByteImm(0wx6b, rNum dst, src1, i)
                  (*esac*))
             (*esac*))
         (*esac*)
-       end
+        )
      | I.UNARY{unOp, opnd} => 
        (case unOp
         of I.DECL => 
@@ -366,19 +355,11 @@ struct
      | I.CDQ => eByte(0x99)
      | I.INTO => eByte(0xce)
 
-     | I.COPY{dst, src, tmp, ...} => let
-        val instrs' = 
-          Shuffle.shuffle
-            {regmap=regmap, tmp=tmp, dst=dst, src=src}
-       in emitInstrs(instrs', regmap)
-       end
+     | I.COPY{dst, src, tmp, ...} => 
+          emitInstrs(Shuffle.shuffle {tmp=tmp, dst=dst, src=src})
 
-     | I.FCOPY{dst, src, tmp, ...} => let
-        val instrs' = 
-          Shuffle.shufflefp
-            {regmap=regmap, tmp=tmp, dst=dst, src=src}
-       in emitInstrs(instrs', regmap)
-       end
+     | I.FCOPY{dst, src, tmp, ...} => 
+          emitInstrs(Shuffle.shufflefp {tmp=tmp, dst=dst, src=src})
 
      (* floating *)
      | I.FBINARY{binOp, src=I.ST src, dst=I.ST dst} =>    
@@ -415,7 +396,9 @@ struct
             | (_, _) => error "FBINARY (src, dst) non %st(0)"
        in  eBytes[opc1, opc2]
        end
-     | I.FBINARY{binOp, src, dst=I.ST 32} => let
+     | I.FBINARY{binOp, src, dst=I.ST dst} => 
+       if C.physicalRegisterNum dst = 0 then
+       let
          val (opc, code) = 
            (case binOp of 
                 I.FADDL  => (0wxdc, 0) 
@@ -438,6 +421,7 @@ struct
            (*esac*))
        in encode(opc, code, src)
        end
+       else error "FBINARY"
      | I.FIBINARY{binOp, src} => 
        let val (opc, code) =
              case binOp of
@@ -505,7 +489,7 @@ struct
 
      (* misc *)
      | I.SAHF => eByte(0x9e)
-     | I.ANNOTATION{i,...} => emitInstr(i,regmap)
+     | I.ANNOTATION{i,...} => emitInstr i
      | _ => error "emitInstr"
   end 
 end

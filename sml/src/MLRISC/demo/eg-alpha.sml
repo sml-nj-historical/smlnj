@@ -13,13 +13,13 @@ in  codegen
        [T.MV(64, i,    T.REG(64, n)),
         T.MV(64, fact, T.LI 1),
         T.DEFINE loop,
-        T.BCC([], T.CMP(64, T.LE, T.REG(64, n), T.LI 0), exit),
+        T.BCC(T.CMP(64, T.LE, T.REG(64, n), T.LI 0), exit),
         T.MV(64, fact, T.MULS(64, T.REG(64, i), T.REG(64, fact))),
         T.MV(64, i,    T.SUB(64, T.REG(64, i), T.LI 1)),
-        T.JMP([], T.LABEL(LabelExp.LABEL loop), []),
+        T.JMP(T.LABEL(LabelExp.LABEL loop), []),
         T.DEFINE exit,
         T.MV(64, n, T.REG(64, fact)),
-        T.RET([], [])
+        T.RET []
        ]
       )
 end

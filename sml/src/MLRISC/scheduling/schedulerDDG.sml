@@ -31,12 +31,12 @@ struct
    datatype node = NODE of {instr: I.instruction, b:int,
                             defs:(C.cell * latency) list, uses:C.cell list}
 
-   type liveInMap  = node Graph.node Intmap.intmap
-   type liveOutMap = node Graph.node Intmap.intmap
+   type liveInMap  = node Graph.node IntHashTable.hash_table
+   type liveOutMap = node Graph.node IntHashTable.hash_table
    type block      = int
    type blockMap   = block Array.array (* mapping from block id -> block *)
-   type liveInMap  = node Graph.node Intmap.intmap
-   type liveOutMap = node Graph.node Intmap.intmap
+   type liveInMap  = node Graph.node IntHashTable.hash_table
+   type liveOutMap = node Graph.node IntHashTable.hash_table
 
    type ('node,'edge) internalInfo =
         {succ  : 'edge Graph.edge list Array.array,

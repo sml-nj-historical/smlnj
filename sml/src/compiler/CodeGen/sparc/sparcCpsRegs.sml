@@ -53,16 +53,14 @@ struct
         ([stdlink, stdclos, stdarg, stdcont, gcLink] @ miscregs)
 
   local
-      structure ILS = IntListSet
-      fun l2s l = ILS.addList (ILS.empty, l)
-      val s2l = ILS.listItems
-      val -- = ILS.difference
+      structure SC = SparcCells.SortedCells
+      val -- = SC.difference
       infix --
   in
-      val allRegs = l2s (fromto(GP 0,GP 31,1))
-      val dedicatedR = s2l (allRegs -- l2s availR)
+      val allRegs = map GP (fromto(0, 31, 1))
+      val dedicatedR = SC.return (SC.uniq allRegs -- SC.uniq availR)
 
-      val availF =  s2l (l2s (fromto(FP 0, FP 30, 2)))
+      val availF =  map FP (fromto(0, 30, 2))
       val dedicatedF = []
   end
 

@@ -5,8 +5,7 @@
 signature MC_EMIT = sig
   structure I : INSTRUCTIONS
 
-  val emitInstr : I.instruction * 
-       (I.C.cell -> I.C.cell) -> Word8Vector.vector
+  val emitInstr : I.instruction -> Word8Vector.vector
 end
 
   
@@ -32,7 +31,7 @@ struct
     | LABEL of Label.label * desc
     | NIL
 
-  datatype cluster = CLUSTER of {cluster: desc, regmap:C.cell -> C.cell}
+  datatype cluster = CLUSTER of {cluster: desc}
 
   fun error msg = MLRiscErrorMsg.error("vlBackPatch",msg)
 
@@ -40,8 +39,7 @@ struct
 
   fun cleanUp() = clusters := []
 
-  fun bbsched(F.CLUSTER{blocks, regmap,  ...}) = let
-    val regmap = C.lookup regmap
+  fun bbsched(F.CLUSTER{blocks, ...}) = let
     fun bytes([], p) = p
       | bytes([s], p) = BYTES(s, p)
       | bytes(s, p) = BYTES(W8V.concat s, p)
@@ -54,7 +52,7 @@ struct
 	     if Jumps.isSdi i then 
 	       bytes(rev b, SDI(i, ref(Jumps.minSize i), instrs(rest, [])))
 	     else
-	       instrs(rest, Emitter.emitInstr(i, regmap)::b)
+	       instrs(rest, Emitter.emitInstr(i)::b)
 	in instrs(rev(!insns), []) 
 	end 
       | f(F.ENTRY _::rest) = f rest
@@ -62,7 +60,7 @@ struct
       | f [] = NIL
   in
     clusters := 
-      CLUSTER{cluster=f blocks, regmap=regmap}:: !clusters
+      CLUSTER{cluster=f blocks}:: !clusters
   end
 
   fun finish() = let
@@ -84,10 +82,10 @@ struct
     end
       
     fun adjust([], pos) = () 
-      | adjust(CLUSTER{cluster, regmap}::rest, pos) = let
+      | adjust(CLUSTER{cluster}::rest, pos) = let
 	  fun f(pos, BYTES(s, rest)) = f(pos+W8V.length s, rest)
 	    | f(pos, SDI(instr, r as ref size, rest)) = let
-		val s = Jumps.sdiSize(instr, regmap, Label.addrOf, pos)
+		val s = Jumps.sdiSize(instr, Label.addrOf, pos)
 	      in
 		if s > size then r := s else ();
 		f (pos+size, rest)
@@ -108,22 +106,22 @@ struct
     val Asm.S.STREAM{emit,...} = Asm.makeStream []
 
     fun chunk(pos, []) = ()
-      | chunk(pos, CLUSTER{cluster, regmap}::rest) = let
-          fun outputInstr i = output (Emitter.emitInstr(nop, regmap))
+      | chunk(pos, CLUSTER{cluster}::rest) = let
+          fun outputInstr i = output (Emitter.emitInstr(nop))
           fun nops 0 = ()
 	    | nops n = 
 	       if n < 0 then error "chunk.nops"
 	       else (outputInstr(nop); nops(n-1))
 	  fun f(pos, BYTES(s,r)) = (output s; f(pos+W8V.length s,r))
 	    | f(pos, SDI(instr, ref size, r)) = let
-	        val emitInstrs = map (fn i => Emitter.emitInstr(i, regmap))
+	        val emitInstrs = map (fn i => Emitter.emitInstr(i))
 	        val instrs = emitInstrs (Jumps.expand(instr, size, pos))
 		val sum = List.foldl (fn (a,b) => (W8V.length a + b)) 0
 		val n = size - sum instrs
               in
 		if n > 0 then 
 		  (print ("\t\t\t Inserting " ^ Int.toString n ^ "nops\n");
-		   emit regmap instr)
+		   emit instr)
 		else ();
 		app output instrs;
 		if n < 0 then 

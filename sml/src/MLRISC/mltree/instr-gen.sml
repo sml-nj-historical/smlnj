@@ -23,9 +23,7 @@ struct
          entryLabel   = can'tUse,
          comment      = can'tUse,
          annotation   = can'tUse,
-         exitBlock    = can'tUse,
-         alias        = can'tUse,
-         phi          = can'tUse
+         exitBlock    = can'tUse
        }
    end 
 

@@ -1,7 +1,7 @@
 Group is
 #if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11028 
-  $basis.cm
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030 
+  $/basis.cm
 #else
   basis.cm
 #endif
@@ -13,3 +13,4 @@ Group is
   test1.sml
   test2.sml
   test3.sml
+  test4.sml

@@ -29,8 +29,6 @@ struct
     *)
    fun isTakenBranch(i,j,_) = i+1 <> j 
 
-   fun regmap(G.GRAPH{graph_info=INFO(F.CLUSTER{regmap, ...},_),...}) = regmap
-   fun regmap(G.GRAPH{graph_info=INFO(F.CLUSTER{regmap, ...},_),...}) = regmap
    fun annotations(G.GRAPH{graph_info=INFO(F.CLUSTER{annotations=a, ...},_),
                       ...}) = a
    (*

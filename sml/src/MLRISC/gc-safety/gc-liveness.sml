@@ -37,7 +37,7 @@ struct
 
           fun liveOut(gcmap,regmap,b as CFG.BLOCK{id,...}) = 
           let val cellset = CFG.liveOut(b)
-              val regs    = C.cellsetToCells cellset
+              val regs    = C.CellSet.toCellList cellset
           in  mk(gcmap,regmap,regs)
           end
 
@@ -86,7 +86,8 @@ struct
       val gcmap = #lookup GCMap.GCMAP an
       val regmap = CFG.regmap IR
       val table = A.array(#capacity cfg (),{liveIn=R.empty,liveOut=R.empty})
-      val gclookup = Intmap.mapWithDefault (gcmap,GC.TOP)
+      val gclookup = IntHashTable.find gcmap
+      val gclookup = fn r => case gclookup r of SOME t => t | NONE => GC.TOP
       val _ = Liveness.analyze(IR,(gclookup,C.lookup regmap,table))
   in  table
   end

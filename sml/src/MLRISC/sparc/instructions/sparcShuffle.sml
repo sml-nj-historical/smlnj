@@ -1,15 +1,16 @@
-functor SparcShuffle(I:SPARCINSTR) = struct
+functor SparcShuffle(I:SPARCINSTR) : SPARCSHUFFLE = 
+struct
   structure I = I
   structure W = Word32
   structure Shuffle = Shuffle(I)
-  type t = {regmap:I.C.cell->I.C.cell, tmp:I.ea option,
-            dst:I.C.cell list, src:I.C.cell list}
+  type t = {tmp:I.ea option, dst:I.C.cell list, src:I.C.cell list}
 
   fun error msg = MLRiscErrorMsg.error("SparcShuffle",msg)
   val mem = I.Region.memory
+  val zeroR = Option.valOf(I.C.zeroReg I.C.GP)
 
   fun move{src=I.Direct rs, dst=I.Direct rt} = 
-       [I.ARITH{a=I.OR, r=0, i=I.REG rs, d=rt}]
+       [I.ARITH{a=I.OR, r=zeroR, i=I.REG rs, d=rt}]
     | move{src=I.Displace{base, disp}, dst=I.Direct rt} =
        [I.LOAD{l=I.LD, r=base, i=I.IMMED disp, d=rt, mem=mem}] 
     | move{src=I.Direct rs, dst=I.Displace{base, disp}} = 

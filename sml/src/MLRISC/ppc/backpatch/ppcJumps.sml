@@ -42,7 +42,7 @@ struct
     | minSize(I.ANNOTATION{i,...}) = minSize i
     | minSize _ = 4
   
-  fun sdiSize(instr, regmap, labmap, loc) = let
+  fun sdiSize(instr, labmap, loc) = let
     fun signed16 n = ~32768 <= n andalso n < 32768
     fun signed12 n = ~2048 <= n andalso n < 2048
     fun signed14 n = ~8192 <= n andalso n < 8192
@@ -82,14 +82,14 @@ struct
      | I.COPY{impl=ref(SOME l), ...} => 4 * length l
      | I.FCOPY{impl=ref(SOME l), ...} => 4 * length l
      | I.COPY{dst, src, impl as ref NONE, tmp} => let
-	 val instrs = Shuffle.shuffle{regmap=regmap, tmp=tmp, dst=dst, src=src}
+	 val instrs = Shuffle.shuffle{tmp=tmp, dst=dst, src=src}
        in impl := SOME instrs; 4 * length instrs
        end
     | I.FCOPY{dst, src, impl as ref NONE, tmp} => let
-        val instrs = Shuffle.shufflefp{regmap=regmap, tmp=tmp, dst=dst, src=src}
+        val instrs = Shuffle.shufflefp{tmp=tmp, dst=dst, src=src}
       in impl := SOME(instrs); 4 * length instrs
       end
-    | I.ANNOTATION{i,...} => sdiSize(i,regmap,labmap,loc)
+    | I.ANNOTATION{i,...} => sdiSize(i,labmap,loc)
     | _ => error "sdiSize"
   end
 
@@ -174,7 +174,8 @@ struct
                 end
 	 | 12 => 
            let val (hi,lo) = split im
-	   in [I.ARITHI{oper=I.ADDIS, rt=C.asmTmpR, ra=0, im=I.ImmedOp hi},
+	   in [I.ARITHI{oper=I.ADDIS, rt=C.asmTmpR, ra=C.Reg C.GP 0, 
+                        im=I.ImmedOp hi},
 	       I.ARITHI{oper=I.ADDI,rt=C.asmTmpR,ra=C.asmTmpR,im=I.ImmedOp lo},
    	       I.ARITH{oper=cnv oper, rt=rt, ra=ra, rb=C.asmTmpR, OE=false, 
                        Rc=(oper = I.ANDI_Rc)}]

@@ -13,7 +13,7 @@ structure Viewer = GraphViewer(AllDisplays)
 structure L   = GraphLayout
 structure Dom = DominatorTree(DirectedGraph)
 structure DJ  = DJGraph(Dom)
-structure Dataflow = DJDataflow(DJ)
+structure Dataflow = DJDataflow(Dom)
 
 val _ = app (#add_node cfg)
           [(0,"0"),

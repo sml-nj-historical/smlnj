@@ -136,9 +136,11 @@ struct
   fun spillPropagation(G as GRAPH{bitMatrix, memRegs, ...}) nodesToSpill =
   let val spillCoalescing = spillCoalescing G
       exception SpillProp
-      val visited =
-	  IntHashTable.mkTable(32, SpillProp) : bool IntHashTable.hash_table
-      fun hasBeenVisited i = getOpt (IntHashTable.find visited i, false)
+      val visited = IntHashTable.mkTable(32, SpillProp) 
+                     : bool IntHashTable.hash_table
+      val hasBeenVisited = IntHashTable.find visited
+      val hasBeenVisited = fn r => case hasBeenVisited r of NONE => false
+                                                          | SOME _ => true
       val markAsVisited = IntHashTable.insert visited
       val member = BM.member(!bitMatrix)  
 
@@ -190,10 +192,10 @@ struct
                  else
                     case (!dstCol, !srcCol) of
 		      (SPILLED, PSEUDO) => savings(~1)
-		    | (MEMREG m, PSEUDO) => savings(m)
+		    | (MEMREG(m, _), PSEUDO) => savings(m)
 		    | (SPILL_LOC s, PSEUDO) => savings(~s)
 		    | (PSEUDO, SPILLED) => savings(~1)
-		    | (PSEUDO, MEMREG m) => savings(m)
+		    | (PSEUDO, MEMREG(m, _)) => savings(m)
 		    | (PSEUDO, SPILL_LOC s) => savings(~s)
                     | _ => (if debug then print "0 (other)\n" else ();
                             moveSavings(mvs, pinned, total))

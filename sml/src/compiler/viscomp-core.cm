@@ -64,7 +64,7 @@ Group (../system/smlnj/viscomp/core.cm)
 	functor PseudoOpsBig
 	functor PseudoOpsLittle
 	functor MachineGen
-	functor RegAlloc
+	functor SpillTable
 	functor FLINTComp
 	functor MachDepVCFun
 is
@@ -301,8 +301,7 @@ CodeGen/main/machspec.sml
 CodeGen/main/mlriscGen.sml
 CodeGen/main/object-desc.sig
 CodeGen/main/object-desc.sml
-CodeGen/main/regalloc.sig
-CodeGen/main/regalloc.sml
+CodeGen/main/spill-table.sml
 
 MiscUtil/bignums/bigint.sig
 MiscUtil/bignums/bigint.sml

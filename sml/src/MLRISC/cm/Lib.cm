@@ -1,0 +1,102 @@
+(*
+ * This is the MLRISC library
+ *)
+Library 
+	signature ANNOTATIONS
+	signature BITSET
+	signature CATNETABLE_LIST
+	signature FREQ
+	signature LINE_BREAK
+	signature PRIORITY_QUEUE
+	signature STRING_OUTSTREAM
+	structure Annotations
+	structure BitSet
+	structure CatnetableList
+	structure DynArray
+	structure Freq
+	structure HashArray
+	structure LineBreak
+	structure PriorityHeap
+	structure PriorityQueue
+	structure SortedList
+	structure StringOutStream
+is
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+        $/basis.cm
+        $/smlnj-lib.cm
+#else
+        basis.cm
+        smlnj-lib.cm
+#endif
+#else
+        smlnj-lib.cm
+#endif
+
+	Control.cm
+
+	../library/annotations.sig
+	../library/annotations.sml
+	../library/bitset.sig
+	../library/bitset.sml
+(*
+	../library/cache.sml
+ *)
+	../library/catlist.sml
+	../library/dynamic-array.sml
+(*
+	../library/dynamic-bitset.sml
+	../library/fixed-point.sig
+	../library/fixed-point.sml
+ *)
+	../library/freq.sig
+	../library/freq.sml
+	../library/hash-array.sml
+(*
+	../library/hash-table.sig
+	../library/hash-table.sml
+	../library/hashMap.sig
+	../library/hashMap.sml
+	../library/hashBag.sig
+	../library/hashBag.sml
+	../library/hashMultimap.sig
+	../library/hashMultimap.sml
+	../library/hashSet.sig
+	../library/hashSet.sml
+	../library/int-set.sml
+ *)
+ (*
+	../library/intmap.sig
+	../library/intmap.sml
+  *)
+	../library/heap.sml
+	../library/line-break.sml
+	../library/priQueue.sig
+	../library/priQueue.sml
+(*
+	../library/probability.sml
+	../library/randlist.sml
+	../library/regset.sig
+	../library/regset.sml
+	../library/sorting2.sml
+ *)
+	../library/sortedlist.sml
+	../library/stringOutStream.sig
+	../library/stringOutStream.sml
+(*
+	../library/susp.sml
+	../library/transaction-glue.sml
+	../library/transaction-log.sig
+	../library/transaction-log.sml
+	../library/transaction.sig
+	../library/transaction.sml
+	../library/tree-map.sml
+	../library/undoable-array.sml
+	../library/undoable-ref.sml
+	../library/union-find.sml
+	../library/uref.sml
+ *)
+ (*
+	../library/word64.sml
+  *)
+

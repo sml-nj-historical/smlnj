@@ -65,8 +65,7 @@ sig
    type node = block Graph.node
 
    datatype info = 
-       INFO of { regmap      : C.regmap,
-                 annotations : Annotations.annotations ref,
+       INFO of { annotations : Annotations.annotations ref,
                  firstBlock  : int ref, (* id of first block *)
                  reorder     : bool ref (* has the CFG been reordered? *)
                }
@@ -97,8 +96,8 @@ sig
    val branchOf          : edge_info -> bool option
 
                (* emit assembly *)
-   val emit       : Annotations.annotations -> C.regmap -> block -> unit  
-   val show_block : Annotations.annotations -> C.regmap -> block -> string 
+   val emit       : Annotations.annotations -> block -> unit  
+   val show_block : Annotations.annotations -> block -> string 
 
   (*========================================================================
    *
@@ -106,12 +105,11 @@ sig
    *
    *========================================================================*)
    val cfg      : info -> cfg      (* create a new cfg *) 
-   val new      : C.regmap -> cfg  (* create a new cfg *)
+   val new      : unit -> cfg      (* create a new cfg *)
    val subgraph : cfg -> cfg       (* mark as subgraph *)
    val init     : cfg -> unit      (* add start/stop nodes *)
    val changed  : cfg -> unit      (* mark cfg as changed *)  
 
-   val regmap         : cfg -> C.regmap
    val annotations    : cfg -> Annotations.annotations ref
    val liveOut        : block -> C.cellset
    val fallsThruFrom  : cfg * Graph.node_id -> Graph.node_id option

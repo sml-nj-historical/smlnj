@@ -63,7 +63,7 @@ Library
 	functor PseudoOpsBig
 	functor PseudoOpsLittle
 	functor MachineGen
-	functor RegAlloc
+	functor SpillTable
 	functor FLINTComp
 	functor MachDepVCFun
 is

@@ -44,7 +44,7 @@ struct
 
   val toInt32 = Int32.fromInt
 
-  fun getRegLoc (reg:int) = 
+  fun getRegLoc reg = 
       lookupTbl reg
         handle _ => 
         let val operand = 

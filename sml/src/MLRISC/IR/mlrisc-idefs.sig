@@ -12,13 +12,19 @@ sig
    structure Dom : DOMINATOR_TREE
    structure CFG : CONTROL_FLOW_GRAPH
    structure I   : INSTRUCTIONS
+   structure C   : CELLS
       sharing CFG.I = I
+      sharing C     = I.C
 
    val idefs : 
-       (I.instruction -> I.C.cell list * I.C.cell list) ->
+       (I.instruction -> C.cell list * C.cell list) ->
        CFG.cfg ->
-       { idefuse     : unit -> (I.C.cell list * I.C.cell list) Array.array,
-         ipostdefuse : unit -> (I.C.cell list * I.C.cell list) Array.array
+       { idefuse     : unit -> 
+           (C.SortedCells.sorted_cells * 
+            C.SortedCells.sorted_cells) Array.array,
+         ipostdefuse : unit -> 
+           (C.SortedCells.sorted_cells * 
+            C.SortedCells.sorted_cells) Array.array
        }
 end
 

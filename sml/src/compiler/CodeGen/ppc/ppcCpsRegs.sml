@@ -43,14 +43,12 @@ struct
          ([stdlink, stdclos, stdarg, stdcont] @ miscregs)
 
   local
-      structure ILS = IntListSet
-      fun l2s l = ILS.addList (ILS.empty, l)
-      val s2l = ILS.listItems
-      val -- = ILS.difference
+      structure SC = PPCCells.SortedCells
+      val -- = SC.difference
       infix --
   in
-      val allRegs = l2s (map GP (0 upto 31))
-      val dedicatedR = s2l (allRegs -- l2s availR)
+      val allRegs = map GP (0 upto 31)
+      val dedicatedR = SC.return (SC.uniq allRegs -- SC.uniq availR)
   end
 
   val availF = map FP (1 upto 31)

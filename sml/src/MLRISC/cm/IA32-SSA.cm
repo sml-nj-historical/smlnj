@@ -1,0 +1,22 @@
+Library 
+	functor X86SSAProps
+is
+
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+        $/basis.cm
+#else
+        basis.cm
+#endif
+#endif
+
+	Control.cm
+	MLRISC.cm
+	RTL.cm
+	SSA.cm
+	Region.cm
+	IA32.cm
+	IA32-RTL.cm
+	
+	(* X86 specific backend *)
+	../x86/SSA/x86SSAProps.sml

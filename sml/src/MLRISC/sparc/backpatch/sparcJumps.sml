@@ -82,7 +82,7 @@ struct
         instrLength(is,n+8)
     | instrLength(_::is,n) = instrLength(is,n+4)
 
-  fun sdiSize(instr, regmap, labMap, loc) = 
+  fun sdiSize(instr, labMap, loc) = 
   let fun oper(I.IMMED n,_) = 4
         | oper(I.REG _,_) = 4
         | oper(I.HI _,_) = 4
@@ -97,7 +97,8 @@ struct
         | delaySlot true = 4
       fun size instr =
       case instr of
-        I.ARITH{a=I.OR,r=0,i,...} => oper(i,8)
+        I.ARITH{a=I.OR,r,i,...} => 
+            if C.cellId r = 0 then oper(i,8) else oper(i,12)
       | I.ARITH{i,...} => oper(i,12)
       | I.SHIFT{i,...} => oper(i,12)
       | I.LOAD{i,...} => oper(i,12)
@@ -122,12 +123,12 @@ struct
       | I.FCOPY{impl=ref(SOME l), ...} => instrLength(l,0)
       | I.COPY{dst, src, impl, tmp} =>
         let val instrs = 
-          Shuffle.shuffle{regmap=regmap,tmp=tmp,dst=dst,src=src}
+          Shuffle.shuffle{tmp=tmp,dst=dst,src=src}
         in impl := SOME(instrs); 4 * length instrs
         end
       | I.FCOPY{dst, src, impl, tmp} => 
         let val instrs = 
-          Shuffle.shufflefp{regmap=regmap,tmp=tmp,dst=dst,src=src}
+          Shuffle.shufflefp{tmp=tmp,dst=dst,src=src}
         in impl := SOME instrs; instrLength(instrs,0)
         end
       | I.ANNOTATION{i,...} => size i
@@ -160,12 +161,14 @@ struct
       (I.COPY{impl=ref(SOME instrs),...},_) => instrs
     | (I.FCOPY{impl=ref(SOME instrs),...},_) => instrs
     | (instr,4) => [instr]
-    | (I.ARITH{a=I.OR,r=0,i,d},8) =>
+    | (I.ARITH{a=I.OR,r,i,d},8) =>
+        if C.cellId r = 0 then
         let val {lo,hi} = split i
         in  [I.SETHI{i=hi,d=C.asmTmpR},
              I.ARITH{a=I.OR,r=C.asmTmpR,i=I.IMMED lo,d=d}
             ]
         end
+        else error "ARITH"
     | (I.ARITH{a,r,i,d},12) =>
         expandImm(i,I.ARITH{a=a,r=r,i=I.REG C.asmTmpR,d=d})
     | (I.SHIFT{s,r,i,d},12) =>

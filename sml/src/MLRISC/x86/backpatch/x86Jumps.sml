@@ -73,7 +73,7 @@ struct
     | operand(I.LabelEA le) = LE.valueOf le
     | operand _ = error "operand"
 
-  fun sdiSize(instr, regmap, labmap, loc) = let
+  fun sdiSize(instr, labmap, loc) = let
     fun branch(opnd, short, long) = let
       val offset = operand opnd - loc
     in if imm8(offset - 2) then short else long
@@ -84,8 +84,8 @@ struct
     case instr
     of I.JMP(opnd, _) => branch(opnd, 2, 5)
      | I.JCC{opnd, ...} => branch(opnd, 2, 6)
-     | I.ANNOTATION{i,...} => sdiSize(i, regmap, labmap, loc)
-     | _ => Word8Vector.length(encode(instr, regmap))
+     | I.ANNOTATION{i,...} => sdiSize(i, labmap, loc)
+     | _ => Word8Vector.length(encode(instr))
   end  (*sdiSize*)
 
   fun expand(instr, size, loc) =

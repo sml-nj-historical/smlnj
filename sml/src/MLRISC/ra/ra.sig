@@ -9,15 +9,17 @@ sig
    structure I : INSTRUCTIONS
    structure C : CELLS
    structure F : RA_FLOWGRAPH 
-      sharing F.I = I
-      sharing I.C = C
+      sharing F.I   = I
+      sharing I.C   = C
 
-   type getreg = { pref  : C.cell list,
+   type getreg = { pref  : C.cell_id list,
                    stamp : int, 
                    proh  : int Array.array
-                 } -> C.cell
+                 } -> C.cell_id
 
    type mode = word
+
+   datatype spillLoc = datatype RAGraph.spillLoc
 
    (*
     * Optimizations/options:
@@ -29,7 +31,6 @@ sig
    val SPILL_COLORING       : mode
    val SPILL_COALESCING     : mode
    val SPILL_PROPAGATION    : mode
-   val COPY_PROPAGATION     : mode
    val HAS_PARALLEL_COPIES  : mode 
        (* The above MUST be used when spill coloring is used and
         * you have parallel copies in the program. Otherwise, phathom
@@ -44,8 +45,8 @@ sig
     *)
    type raClient = 
    { cellkind     : C.cellkind,             (* kind of register *)
-     spillProh    : (C.cell * C.cell) list, (* don't spill these (ranges) *)
-     memRegs      : (C.cell * C.cell) list, (* ranges of memory registers *)
+     spillProh    : C.cell list,            (* don't spill these *)
+     memRegs      : C.cell list,            (* memory registers *)
      K            : int,                    (* number of colors *)
      dedicated    : bool Array.array,       (* dedicated registers *)
      getreg       : getreg,                 (* how to find a color *)

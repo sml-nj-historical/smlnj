@@ -97,7 +97,7 @@ struct
        reachables    : W8A.array,                    (* reachable set *)
        rt            : SchedProps.reservation_table, (* reservation table *)
        sigma         : I.instruction list DA.array,
-       liveSet       : DDG.edge G.edge list Intmap.intmap,
+       liveSet       : DDG.edge G.edge list IntHashTable.hash_table,
        jumpScheduled : bool ref,
        jumpTime      : int ref,
        jumpNode      : DDG.node G.node ref
@@ -143,7 +143,7 @@ struct
                                              block id at this time *)
        val isProfitableTbl = A.array(M, 0)
        val profitabilityTbl = A.array(M, 0.0) (* priority of block *)
-       val liveSetTbl   = A.array(M, Intmap.new(0, NotLive))
+       val liveSetTbl   = A.array(M, IntHashTable.mkTable(0, NotLive))
 
        val stampCounter = ref 0
        fun newStamp() = 
@@ -231,8 +231,10 @@ struct
         * Add an instruction into the current live set of block bid.
         *)
        fun addInstrToLiveSet(i, i' as DDG.NODE{defs, uses, ...}, liveSet) =
-       let val lookupLiveSet = Intmap.mapWithDefault(liveSet, [])
-           val updateLiveSet = Intmap.add liveSet
+       let val lookupLiveSet = IntHashTable.find liveSet
+           val lookupLiveSet = fn b => case lookupLiveSet b of SOME x => x
+                                                             | NONE => []
+           val updateLiveSet = IntHashTable.insert liveSet
 
            fun rmvUse r = 
            let fun loop([], es') = es'
@@ -268,7 +270,9 @@ struct
             * that is currently live.  If so, the associated code motion is
             * illegal (without renaming)
             *)
-           val lookupLiveSet = Intmap.mapWithDefault(liveSet, [])
+           val lookupLiveSet = IntHashTable.find liveSet
+           val lookupLiveSet = fn b => case lookupLiveSet b of SOME x => x
+                                                             | NONE => []
             (*
              * Add an output- dependence edge between two nodes
              *)
@@ -345,7 +349,7 @@ struct
 
        (* Release the live-in node for block id *)
        fun releaseLiveIn(bid,liveSet) =
-       let val liveInNode as (j,j') = Intmap.map liveInMap bid
+       let val liveInNode as (j,j') = IntHashTable.lookup liveInMap bid
        in  if A.sub(issueTimeTbl, j) < 0 then
               (addInstrToLiveSet(j,j',liveSet);
                A.update(issueTimeTbl, j, 0);
@@ -358,7 +362,7 @@ struct
        (* Release the live-out node for block id *)
        fun releaseLiveOut(bid, liveSet) = 
        let val liveOutNode as (j,j' as DDG.NODE{instr,...}) = 
-               Intmap.map liveOutMap bid
+               IntHashTable.lookup liveOutMap bid
        in  case InsnProps.instrKind instr of 
               InsnProps.IK_SINK =>
               (addInstrToLiveSet(j,j',liveSet);
@@ -482,9 +486,11 @@ struct
            end
            val _  = markReachables b
            fun mergeIncomingBlocks() =
-           let val liveSet = Intmap.new(32,NotLive)
-               val lookupLiveSet = Intmap.mapWithDefault(liveSet, [])
-               val addLiveSet = Intmap.add liveSet
+           let val liveSet = IntHashTable.mkTable(32,NotLive)
+               val lookupLiveSet = IntHashTable.find liveSet
+               val lookupLiveSet = 
+                   fn b => case lookupLiveSet b of SOME x => x | NONE => []
+               val addLiveSet = IntHashTable.insert liveSet
                fun merge([], NONE) = (newTable 5, 0)
                  | merge([], SOME(_,t,rt)) = (rt, t+1)
                  | merge((Y,_,CFG.EDGE{w,...})::es,rt) = 
@@ -501,7 +507,7 @@ struct
                                           A.sub(maxTimeTbl,Y_id),
                                           A.sub(rtTbl,Y_id))
                               else rt
-                   in  Intmap.app (fn (r,es) => 
+                   in  IntHashTable.appi (fn (r,es) => 
                           addLiveSet(r, List.revAppend(es, lookupLiveSet r)))
                           liveSet_Y;
                        merge(es, rt)

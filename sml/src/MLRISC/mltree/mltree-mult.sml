@@ -5,9 +5,9 @@
  * -- Allen
  *)
 functor MLTreeMult
-  (structure T : MLTREE
-   structure I : INSTRUCTIONS
-      sharing I.Constant = T.Constant
+  (structure I : INSTRUCTIONS
+   structure T : MLTREE
+      sharing I.Constant   = T.Constant
 
    val intTy : int (* width of integer type *)
 

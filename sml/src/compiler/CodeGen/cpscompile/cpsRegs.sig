@@ -25,14 +25,14 @@ signature CPSREGS = sig
   val calleesave: T.rexp Array.array
   val exhausted : T.ccexp option
   val signedGCTest : bool
-  val addressWidth : int
+  val addressWidth : T.ty
 
   val miscregs  : T.rexp list
   val floatregs : T.fexp list
   val savedfpregs : T.fexp list
 
-  val dedicatedR : int list
-  val availR     : int list
-  val dedicatedF : int list
-  val availF     : int list
+  val dedicatedR : T.reg list
+  val availR     : T.reg list
+  val dedicatedF : T.reg list
+  val availF     : T.reg list
 end

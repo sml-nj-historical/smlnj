@@ -1,8 +1,9 @@
 (*
  * This makes a new cell module that automatically propagate gc type info.
  *)
-functor GCCells(structure C : CELLS
-                structure GCMap : GC_MAP) : GC_CELLS =
+functor GCCells(structure GCMap : GC_MAP
+                structure C : CELLS
+               ) : GC_CELLS =
 struct
 
    structure C  = C
@@ -28,7 +29,7 @@ struct
    fun newCell k = 
    let val new = C.newCell k
        val gcmap = getGCMap()
-       val add  = IntHashTable.insert gcmap
+       val add  = GCMap.C.HashTable.insert gcmap
        fun genVar gc =
        let val r = new()
        in  add(r,gc); r end
@@ -39,9 +40,9 @@ struct
     * Create a new GC map
     *)
    fun newGCMap() =
-   let val gcmap = IntHashTable.mkTable(129,GCMap.GCMap)
+   let val gcmap = GCMap.C.HashTable.mkTable(129,GCMap.GCMap)
    in  case C.zeroReg C.GP of
-         SOME r => IntHashTable.insert gcmap (r,GC.CONST 0)
+         SOME r => GCMap.C.HashTable.insert gcmap (r,GC.CONST 0)
        | _ => ();
        gcmap
    end

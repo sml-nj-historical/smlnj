@@ -10,8 +10,7 @@ signature FORMAT_INSTRUCTION =
 sig
    structure I  : INSTRUCTIONS
 
-   val toString : Annotations.annotations -> (I.C.cell -> I.C.cell) -> 
-                    I.instruction -> string
+   val toString : Annotations.annotations -> I.instruction -> string
 
 end
 
@@ -19,13 +18,13 @@ functor FormatInstruction(Asm : INSTRUCTION_EMITTER) : FORMAT_INSTRUCTION =
 struct
    structure I = Asm.I
 
-   fun toString an regmap insn =
+   fun toString an insn =
    let val buffer = StringOutStream.mkStreamBuf()
        val S      = StringOutStream.openStringOut buffer
        val ()     = AsmStream.withStream S 
                      (fn insn => 
                       let val Asm.S.STREAM{emit,...} = Asm.makeStream an
-                      in emit regmap insn
+                      in emit insn
                       end) insn
        val text   = StringOutStream.getString buffer
        fun isSpace #" "  = true

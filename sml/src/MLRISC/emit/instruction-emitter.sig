@@ -19,8 +19,6 @@ sig
     * Create a new stream.  The argument is a list of 
     * annotations that can affect the output format.
     *)
-   val makeStream : Annotations.annotations -> 
-                     ((int -> int) -> I.instruction -> unit,
-                      unit,'b,'c,'d,'e) S.stream
+   val makeStream : Annotations.annotations -> (I.instruction,'b,'c) S.stream
 
 end

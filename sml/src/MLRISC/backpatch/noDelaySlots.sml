@@ -32,7 +32,7 @@ struct
    fun enableDelaySlot{instr,n,nop} = instr 
 
        (* is there any dependency conflict? *)
-   fun conflict{regmap,src,dst} = true
+   fun conflict{src,dst} = true
 
        (* can delaySlot fit within the delay slot of jmp? *)
    fun delaySlotCandidate{jmp, delaySlot} = false

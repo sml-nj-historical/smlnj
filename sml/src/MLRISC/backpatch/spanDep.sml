@@ -47,18 +47,14 @@ struct
       PSEUDO of P.pseudo_op
     | LABEL  of Label.label
     | CODE of Label.label * code list
-    | CLUSTER of {comp : compressed list,
-                  regmap : C.cell -> C.cell
-                 }
+    | CLUSTER of {comp : compressed list}
 
   val clusterList : compressed list ref = ref []
   fun cleanUp() = clusterList := []
 
   fun bbsched(cluster as 
-              F.CLUSTER{blocks, regmap, blkCounter, ...}) = 
-  let val regmap = C.lookup regmap
-
-      fun blknumOf(F.BBLOCK{blknum,...}) = blknum
+              F.CLUSTER{blocks, blkCounter, ...}) = 
+  let fun blknumOf(F.BBLOCK{blknum,...}) = blknum
         | blknumOf(F.EXIT{blknum,...}) = blknum
         | blknumOf _ = error "blknumOf"
 
@@ -83,7 +79,7 @@ struct
       (* Is the instruction an empty copy *)
       fun isEmptyCopy instr = 
           Props.instrKind instr = Props.IK_COPY andalso
-          J.sdiSize(instr,regmap,Label.addrOf,0) = 0 
+          J.sdiSize(instr,Label.addrOf,0) = 0 
       (* 
        * Find the branch target of block blknum, return the first instruction
        * in the target block and its associated label. 
@@ -139,7 +135,7 @@ struct
                         (D.D_ALWAYS,delaySlot::rest) => 
                         if D.delaySlotCandidate{jmp=instr,
                                                 delaySlot=delaySlot} andalso
-                           not(D.conflict{regmap=regmap,src=delaySlot,dst=instr}) 
+                           not(D.conflict{src=delaySlot,dst=instr}) 
                         then scan(rest,[],0,
                                   mkCandidate1(instr,delaySlot)::
                                   group(nonSdiSize,nonSdiInstrs,code))
@@ -228,7 +224,7 @@ struct
                        (D.D_ALWAYS,delaySlot::body) => 
                         if not(D.delaySlotCandidate{jmp=jmp,
                                                    delaySlot=delaySlot}) orelse
-                           D.conflict{regmap=regmap,src=delaySlot,dst=jmp} 
+                           D.conflict{src=delaySlot,dst=jmp} 
                         then strategy2()
                         else scan(body,[],0,
                                   [mkCandidate1(eliminateNop jmp,delaySlot)])
@@ -244,7 +240,7 @@ struct
                       (D.D_TAKEN,SOME(delaySlot,label)) => 
                         if not(D.delaySlotCandidate{jmp=jmp,
                                               delaySlot=delaySlot}) orelse
-                          D.conflict{regmap=regmap,src=delaySlot,dst=jmp} 
+                          D.conflict{src=delaySlot,dst=jmp} 
                         then strategy3()
                         else scan(body,[],0,
                              [mkCandidate2(eliminateNop jmp,delaySlot,label)])
@@ -291,7 +287,7 @@ struct
       | compress [] = []
       | compress _ = error "compress"
   in  enterLabels blocks;
-      clusterList:=CLUSTER{comp = compress blocks, regmap=regmap}:: 
+      clusterList:=CLUSTER{comp = compress blocks}:: 
 		    (!clusterList)
   end
 
@@ -317,7 +313,7 @@ struct
 
     val delaySlotSize = D.delaySlotSize
 
-    fun adjust(CLUSTER{comp, regmap, ...}::cluster, pos, changed) = 
+    fun adjust(CLUSTER{comp, ...}::cluster, pos, changed) = 
     let fun scan(PSEUDO pOp::rest, pos, changed) = 
               scan(rest, pos+P.sizeOf(pOp,pos), changed)
 	  | scan(LABEL _::rest, pos, changed) = scan(rest, pos, changed)
@@ -331,7 +327,7 @@ struct
             case code of
               FIXED{size,...} => doCode(rest,pos+size,changed)
             | SDI{size, insn} =>
-              let val newSize = J.sdiSize(insn, regmap, Label.addrOf, pos)
+              let val newSize = J.sdiSize(insn, Label.addrOf, pos)
  	      in  if newSize <= !size then 
                      doCode(rest,!size + pos,changed)
 		  else (size:=newSize; doCode(rest, newSize+pos, true))
@@ -362,8 +358,7 @@ struct
     end
 
     val E.S.STREAM{defineLabel,pseudoOp,emit,beginCluster,...} = E.makeStream []
-    fun emitCluster(CLUSTER{comp, regmap},loc) = let
-      val emit = emit regmap
+    fun emitCluster(CLUSTER{comp},loc) = let
       val emitInstrs = app emit 
       fun process(PSEUDO pOp,loc) = (pseudoOp pOp; loc+P.sizeOf(pOp,loc))
 	| process(LABEL lab,loc) = (defineLabel lab; loc)

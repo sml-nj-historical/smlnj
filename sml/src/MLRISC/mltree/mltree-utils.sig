@@ -28,8 +28,8 @@ sig
    (*
     * Pretty printing 
     *)
-   val show : {def       : int -> string, 
-               use       : int -> string,
+   val show : {def       : T.var -> string, 
+               use       : T.var -> string,
                regionDef : T.Region.region -> string,
                regionUse : T.Region.region -> string
               } -> T.printer  

@@ -2,19 +2,19 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
   structure I = Instr
   structure C = I.C
 
-  fun ea(NONE, _, _, _) = NONE
-    | ea(e as SOME(I.Direct r), rs, rt, mapr : I.C.cell -> I.C.cell) = 
-       if mapr r=rs then SOME(I.Direct rt) else e 
-    | ea(e as SOME(I.FDirect r), rs, rt, mapr) = 
-       if mapr r=rs then SOME(I.FDirect rt) else e 
-    | ea(e as SOME(I.Displace{base, disp}), rs, rt, mapr) =
-       if mapr base=rs then SOME(I.Displace{base=rt, disp=disp}) 
+  fun ea(NONE, _, _) = NONE
+    | ea(e as SOME(I.Direct r), rs, rt) =
+       if C.sameColor(r,rs) then SOME(I.Direct rt) else e 
+    | ea(e as SOME(I.FDirect r), rs, rt) = 
+       if C.sameColor(r,rs) then SOME(I.FDirect rt) else e 
+    | ea(e as SOME(I.Displace{base, disp}), rs, rt) =
+       if C.sameColor(base,rs) then SOME(I.Displace{base=rt, disp=disp}) 
        else e 
 
-  fun rewriteUse(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
-    fun rplac r = if mapr r=rs then rt else r
+  fun rewriteUse(instr, rs, rt) = let
+    fun rplac r = if C.sameColor(r,rs) then rt else r
     fun rwOperand(opnd as I.RegOp r) = 
-         if mapr r = rs then I.RegOp rt else opnd
+         if C.sameColor(r,rs) then I.RegOp rt else opnd
       | rwOperand opnd = opnd
   in
     case instr
@@ -41,14 +41,14 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | I.MTSPR{rs, spr} => I.MTSPR{rs=rplac rs, spr=spr}
      | I.TW {to, ra, si} => I.TW{to=to, ra=rplac ra, si=rwOperand si}
      | I.TD {to, ra, si} => I.TD{to=to, ra=rplac ra, si=rwOperand si}
-     | I.CALL {def, use=(r,f,c), mem} => 
-          I.CALL{def=def, use=(map rplac r,f,c), mem=mem}
+     | I.CALL {def, use, mem} => 
+          I.CALL{def=def, use=C.CellSet.map {from=rs,to=rt} use, mem=mem}
      | I.COPY{dst, src, impl, tmp} =>
 	I.COPY{dst=dst, src=map rplac src, impl=impl, tmp=tmp}
      | I.FCOPY{dst, src, impl, tmp} =>
-	I.FCOPY{dst=dst, src=src, impl=impl, tmp=ea(tmp, rs, rt, mapr)}
+	I.FCOPY{dst=dst, src=src, impl=impl, tmp=ea(tmp, rs, rt)}
      | I.ANNOTATION{i,a} => 
-         I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),
+         I.ANNOTATION{i=rewriteUse(i,rs,rt),
                         a=case a of
                            C.DEF_USE{cellkind=C.GP,defs,uses} =>
                              C.DEF_USE{cellkind=C.GP,uses=map rplac uses,
@@ -57,8 +57,8 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | _ => instr
   end
 
-  fun rewriteDef(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
-    fun rplac r = if mapr r = rs then rt else r
+  fun rewriteDef(instr, rs, rt) = let
+    fun rplac r = if C.sameColor(r,rs) then rt else r
   in
     case instr
     of I.L {ld, rt, ra, d, mem} =>
@@ -74,12 +74,12 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | I.ROTATEI {oper, ra, rs, sh, mb, me} =>
 	I.ROTATEI {oper=oper, ra=rplac ra, rs=rs, sh=sh, mb=mb, me=me}
      | I.MFSPR {rt, spr} => I.MFSPR{rt=rplac rt, spr=spr}
-     | I.CALL {def=(r,f,c), use, mem} => 
-        I.CALL{def=(map rplac r, f, c), use=use, mem=mem}
+     | I.CALL {def, use, mem} => 
+        I.CALL{def=C.CellSet.map {from=rs,to=rt} def, use=use, mem=mem}
      | I.COPY {dst, src, impl, tmp} =>
-	I.COPY{dst=map rplac dst, src=src, impl=impl, tmp=ea(tmp,rs,rt,mapr)}
+	I.COPY{dst=map rplac dst, src=src, impl=impl, tmp=ea(tmp,rs,rt)}
      | I.ANNOTATION{i,a} => 
-        I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),
+        I.ANNOTATION{i=rewriteDef(i,rs,rt),
                         a=case a of
                            C.DEF_USE{cellkind=C.GP,defs,uses} =>
                              C.DEF_USE{cellkind=C.GP,uses=uses,
@@ -88,14 +88,14 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | _ => instr
   end
 
-  fun frewriteUse(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
-    fun rplac r = if mapr r = fs then ft else r
+  fun frewriteUse(instr, fs, ft) = let
+    fun rplac r = if C.sameColor(r,fs) then ft else r
   in
     case instr
     of I.STF {st, fs, ra, d, mem} =>
          I.STF{st=st, fs=rplac fs, ra=ra, d=d, mem=mem}
-     | I.CALL{def, use=(r,f,c), mem} => 
-         I.CALL{def=def, use=(r, map rplac f, c), mem=mem}
+     | I.CALL{def, use, mem} => 
+         I.CALL{def=def, use=C.CellSet.map {from=fs,to=ft} use, mem=mem}
      | I.FCOMPARE {cmp, bf, fa, fb} =>
 	 I.FCOMPARE{cmp=cmp, bf=bf, fa=rplac fa, fb=rplac fb}
      | I.FUNARY {oper, ft, fb, Rc} =>
@@ -107,7 +107,7 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | I.FCOPY {dst, src, impl, tmp} =>
 	 I.FCOPY{dst=dst, src=map rplac src, impl=impl, tmp=tmp}
      | I.ANNOTATION{i,a} => 
-         I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),
+         I.ANNOTATION{i=frewriteUse(i,fs,ft),
                         a=case a of
                            C.DEF_USE{cellkind=C.FP,defs,uses} =>
                              C.DEF_USE{cellkind=C.FP,uses=map rplac uses,
@@ -117,8 +117,8 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
   end
 
 
-  fun frewriteDef(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
-    fun rplac r = if mapr r = fs then ft else r
+  fun frewriteDef(instr, fs, ft) = let
+    fun rplac r = if C.sameColor(r,fs) then ft else r
   in
     case instr
     of I.LF{ld, ft, ra, d, mem} =>
@@ -130,12 +130,12 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | I.FARITH3{oper, ft, fa, fb, fc, Rc} =>
 	I.FARITH3{oper=oper, ft=rplac ft, fa=fa, fb=fb, fc=fc, Rc=Rc}
     (* CALL = BCLR {bo=ALWAYS, bf=0, bit=0, LK=true, labels=[] *)
-     | I.CALL{def=(r,f,c), use, mem} => 
-        I.CALL{def=(r, map rplac f, c), use=use, mem=mem}
+     | I.CALL{def, use, mem} => 
+        I.CALL{def=C.CellSet.map {from=fs,to=ft} def, use=use, mem=mem}
      | I.FCOPY {dst, src, impl, tmp} =>
-        I.FCOPY{dst=map rplac dst, src=src, impl=impl, tmp=ea(tmp,fs,ft,mapr)}
+        I.FCOPY{dst=map rplac dst, src=src, impl=impl, tmp=ea(tmp,fs,ft)}
      | I.ANNOTATION{i,a} => 
-        I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),
+        I.ANNOTATION{i=frewriteDef(i,fs,ft),
                         a=case a of
                            C.DEF_USE{cellkind=C.FP,defs,uses} =>
                              C.DEF_USE{cellkind=C.FP,uses=uses,

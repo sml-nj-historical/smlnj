@@ -9,8 +9,8 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 
   fun error msg = MLRiscErrorMsg.error("HppaRewrite",msg)
 
-  fun rewriteUse(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
-    fun replc r = if mapr r=rs then rt else r
+  fun rewriteUse(instr, rs, rt) = let
+    fun replc r = if C.sameColor(r,rs) then rt else r
   in
     case instr
     of I.STORE{st, b, d, r, mem} => 
@@ -22,13 +22,15 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.ARITH{a, r1, r2, t} => I.ARITH{a=a, r1=replc r1, r2=replc r2, t=t}
      | I.ARITHI{ai, r, i, t} => I.ARITHI{ai=ai, r=replc r, i=i, t=t}
      | I.COMCLR_LDO{cc, r1, r2, b, i, t1, t2} => 
-         if t1 <> 0 andalso t1 <> t2 andalso mapr t2 = rs then 
+         if C.registerId t1 <> 0 andalso not(C.sameColor(t1,t2)) 
+            andalso C.sameColor(t2,rs) then 
             error "rewriteUse: COMCLR_LDO"
          else
          I.COMCLR_LDO{cc=cc, r1=replc r1, r2=replc r2, b=replc b, i=i, 
                       t1=t1, t2=t2}
      | I.COMICLR_LDO{cc, i1, r2, b, i2, t1, t2} => 
-         if t1 <> 0 andalso t1 <> t2 andalso mapr t2 = rs then 
+         if C.registerId t1 <> 0 andalso not(C.sameColor(t1,t2)) 
+            andalso C.sameColor(t2,rs) then 
             error "rewriteUse: COMICLR_LDO"
          else
          I.COMICLR_LDO{cc=cc, i1=i1, r2=replc r2, b=replc b, i2=i2, 
@@ -44,10 +46,12 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.BV{x, b, labs, n} => I.BV{x=replc x, b=replc b, labs=labs,n=n} 
      | I.BE{b, d, sr, labs, n} => I.BE{b=replc b, d=d, sr=sr, labs=labs, n=n} 
      | I.BLR{x, t, labs, n} => I.BLR{x=replc x, t=t, labs=labs,n=n} 
-     | I.BLE{b, d, sr, t, defs, uses=(i,f), mem} => 
-	I.BLE{b=replc b, d=d, sr=sr, t=t, defs=defs, uses=(map replc i, f), mem=mem} 
-     | I.BL{lab, t, defs, uses=(i,f), mem, n} => 
-	I.BL{lab=lab, t=t, defs=defs, uses=(map replc i, f), mem=mem, n=n} 
+     | I.BLE{b, d, sr, t, defs, uses, mem} => 
+	I.BLE{b=replc b, d=d, sr=sr, t=t, defs=defs, 
+              uses=C.CellSet.map {from=rs,to=rt} uses, mem=mem} 
+     | I.BL{lab, t, defs, uses, mem, n} => 
+	I.BL{lab=lab, t=t, defs=defs, 
+             uses=C.CellSet.map {from=rs,to=rt} uses, mem=mem, n=n} 
      | I.LDO{b, t, i} => I.LDO{b=replc b, t=t, i=i} 
      | I.COPY{dst, src, tmp, impl} => 
 	I.COPY{dst=dst, src=map replc src, impl=impl, tmp=tmp}
@@ -61,7 +65,7 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.FLOADX{flx, b, x, t, mem} =>
 	I.FLOADX{flx=flx, b=replc b, x=replc x, t=t, mem=mem} 
      | I.ANNOTATION{i,a} => 
-        I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),
+        I.ANNOTATION{i=rewriteUse(i,rs,rt),
                         a=case a of
                            C.DEF_USE{cellkind=C.GP,defs,uses} =>
                              C.DEF_USE{cellkind=C.GP,uses=map replc uses,
@@ -70,8 +74,8 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | _ => instr
   end
 
-  fun rewriteDef(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
-    fun replc r = if mapr r=rs then rt else r
+  fun rewriteDef(instr, rs, rt) = let
+    fun replc r = if C.sameColor(r,rs) then rt else r
     fun ea (SOME(I.Direct r)) = SOME(I.Direct (replc r))
       | ea x = x
   in
@@ -81,12 +85,14 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.LOAD{l, r1, r2, t, mem} => I.LOAD{l=l,r1=r1,r2=r2,t=replc t,mem=mem} 
      | I.LOADI{li, i, r, t, mem} => I.LOADI{li=li,i=i,r=r,t=replc t,mem=mem} 
      | I.COMCLR_LDO{cc, r1, r2, b, i, t1, t2} => 
-         if t1 <> 0 andalso t1 <> t2 andalso mapr t2 = rs then 
+         if C.registerId t1 <> 0 andalso not(C.sameColor(t1,t2)) 
+            andalso C.sameColor(t2,rs) then 
             error "rewriteDef: COMCLR_LDO"
          else
           I.COMCLR_LDO{cc=cc, r1=r1, r2=r2, b=b, i=i, t1=replc t1, t2=replc t2} 
      | I.COMICLR_LDO{cc, i1, r2, b, i2, t1, t2} => 
-         if t1 <> 0 andalso t1 <> t2 andalso mapr t2 = rs then 
+         if C.registerId t1 <> 0 andalso not(C.sameColor(t1,t2)) 
+            andalso C.sameColor(t2,rs) then 
             error "rewriteDef: COMICLR_LDO"
          else
           I.COMICLR_LDO{cc=cc, i1=i1, r2=r2, b=b, i2=i2, 
@@ -94,16 +100,18 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.SHIFTV{sv, r, len, t} => I.SHIFTV{sv=sv, r=r, len=len, t=replc t}
      | I.SHIFT{s, r, p, len, t} => I.SHIFT{s=s, r=r, p=p, len=len, t=replc t}
      | I.BLR{x, t, labs, n} => I.BLR{x=x, t=replc t, labs=labs,n=n} 
-     | I.BLE{d, b, sr, t, defs=(i,f), uses, mem} => 
-        I.BLE{d=d, b=b, sr=sr, t=replc t, defs=(map replc i, f), uses=uses, mem=mem}
-     | I.BL{lab, t, defs=(i,f), uses=uses, mem, n} => 
-	I.BL{lab=lab, t=replc t, defs=(map replc i, f), uses=uses, mem=mem, n=n} 
+     | I.BLE{d, b, sr, t, defs, uses, mem} => 
+        I.BLE{d=d, b=b, sr=sr, t=replc t, 
+              defs=C.CellSet.map {from=rs,to=rt} defs, uses=uses, mem=mem}
+     | I.BL{lab, t, defs, uses, mem, n} => 
+	I.BL{lab=lab, t=replc t, 
+              defs=C.CellSet.map {from=rs,to=rt} defs, uses=uses, mem=mem, n=n} 
      | I.LDIL{i, t} => I.LDIL{i=i, t=replc t} 
      | I.LDO{i, b, t} => I.LDO{i=i, b=b, t=replc t}
      | I.COPY{dst, src, impl, tmp} =>
 	  I.COPY{dst=map replc dst, src=src, impl=impl, tmp=ea tmp}
      | I.ANNOTATION{i,a} => 
-          I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),
+          I.ANNOTATION{i=rewriteDef(i,rs,rt),
                         a=case a of
                            C.DEF_USE{cellkind=C.GP,defs,uses} =>
                              C.DEF_USE{cellkind=C.GP,uses=uses,
@@ -112,8 +120,8 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | _ => instr
   end
 
-  fun frewriteUse(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
-    fun replc r = if mapr r=fs then ft else r
+  fun frewriteUse(instr, fs, ft) = let
+    fun replc r = if C.sameColor(r,fs) then ft else r
   in
     case instr
     of I.FSTORE{fst, b, d, r, mem} =>
@@ -128,12 +136,14 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
          I.FBRANCH{cc=cc,fmt=fmt,f1=replc f1,f2=replc f2,t=t,f=f,n=n,long=long}
      | I.FCOPY{dst, src, tmp, impl} => 
 	I.FCOPY{dst=dst, src=map replc src, impl=impl, tmp=tmp}
-     | I.BLE{d, b, sr, t, defs=defs, uses=(i,f), mem} => 
-        I.BLE{d=d, b=b, sr=sr, t=replc t, defs=defs, uses=(i, map replc f), mem=mem}
-     | I.BL{lab, t, defs=defs, uses=(i,f), mem, n} => 
-	I.BL{lab=lab, t=t, defs=defs, uses=(i,map replc f), mem=mem, n=n} 
+     | I.BLE{d, b, sr, t, defs, uses, mem} => 
+        I.BLE{d=d, b=b, sr=sr, t=replc t, defs=defs, 
+             uses=C.CellSet.map {from=fs,to=ft} uses, mem=mem}
+     | I.BL{lab, t, defs, uses, mem, n} => 
+	I.BL{lab=lab, t=t, defs=defs, 
+             uses=C.CellSet.map {from=fs,to=ft} uses, mem=mem, n=n} 
      | I.ANNOTATION{i,a} => 
-        I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),
+        I.ANNOTATION{i=frewriteUse(i,fs,ft),
                         a=case a of
                            C.DEF_USE{cellkind=C.FP,defs,uses} =>
                              C.DEF_USE{cellkind=C.FP,uses=map replc uses,
@@ -143,8 +153,8 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
     (*esac*)
   end
 
-  fun frewriteDef(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
-    fun replc r = if mapr r=fs then ft else r
+  fun frewriteDef(instr, fs, ft) = let
+    fun replc r = if C.sameColor(r,fs) then ft else r
     fun ea (SOME(I.FDirect f)) = SOME(I.FDirect(replc f))
       | ea x  = x
   in
@@ -158,12 +168,14 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.FCNV{fcnv, f, t} => I.FCNV{fcnv=fcnv, f=f, t=replc t}
      | I.FCOPY{dst, src, impl, tmp} => 
 	I.FCOPY{dst=map replc dst, src=src, impl=impl, tmp=ea tmp}
-     | I.BLE{d, b, sr, t, defs=(i,f), uses, mem} => 
-        I.BLE{d=d, b=b, sr=sr, t=replc t, defs=(i, map replc f), uses=uses, mem=mem}
-     | I.BL{lab, t, defs=(i,f), uses=uses, mem, n} => 
-	I.BL{lab=lab, t=t, defs=(i, map replc f), uses=uses, mem=mem, n=n} 
+     | I.BLE{d, b, sr, t, defs, uses, mem} => 
+        I.BLE{d=d, b=b, sr=sr, t=replc t, 
+              defs=C.CellSet.map {from=fs,to=ft} defs, uses=uses, mem=mem}
+     | I.BL{lab, t, defs, uses, mem, n} => 
+	I.BL{lab=lab, t=t, 
+             defs=C.CellSet.map {from=fs,to=ft} defs, uses=uses, mem=mem, n=n} 
      | I.ANNOTATION{i,a} => 
-        I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),
+        I.ANNOTATION{i=frewriteDef(i,fs,ft),
                         a=case a of
                            C.DEF_USE{cellkind=C.FP,defs,uses} =>
                              C.DEF_USE{cellkind=C.FP,uses=uses,

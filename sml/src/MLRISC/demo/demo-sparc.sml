@@ -47,11 +47,11 @@ struct
   structure C = SparcInstr.C
 
   type format1 =
-       {r:int, i:I.operand, d:int} *
+       {r:C.cell, i:I.operand, d:C.cell} *
        (I.operand -> I.C.cell) -> I.instruction list
 
   type format2 =
-       {i:I.operand, d:int} *
+       {i:I.operand, d:C.cell} *
        (I.operand -> I.C.cell) -> I.instruction list
 
   fun error msg = MLRiscErrorMsg.impossible ("SparcPseudoInstrs."^msg)
@@ -59,12 +59,12 @@ struct
   fun umul32({r, i, d}, reduceOpnd) = [I.ARITH{a=I.UMUL,r=r,i=i,d=d}]
   fun smul32({r, i, d}, reduceOpnd) = [I.ARITH{a=I.SMUL,r=r,i=i,d=d}]
   fun udiv32({r,i,d},reduceOpnd) = 
-      [I.WRY{r=0,i=I.REG 0},I.ARITH{a=I.UDIV,r=r,i=i,d=d}]
+      [I.WRY{r=C.r0,i=I.REG(C.r0)},I.ARITH{a=I.UDIV,r=r,i=i,d=d}]
 
   fun sdiv32({r,i,d},reduceOpnd) =
   let val t1 = C.newReg()
   in  [I.SHIFT{s=I.SRA,r=r,i=I.IMMED 31,d=t1},
-       I.WRY{r=t1,i=I.REG 0},
+       I.WRY{r=t1,i=I.REG(C.r0)},
        I.ARITH{a=I.SDIV,r=r,i=i,d=d}
       ]
   end
@@ -118,65 +118,92 @@ structure SparcMLTreeComp =
  *---------------------------------------------------------------------------*)
 structure SparcBackEnd = 
    BackEnd
-   (structure I          = SparcInstr
-    structure Flowgraph  = SparcFlowGraph
-    structure InsnProps  = SparcProps(SparcInstr)
-    structure Rewrite    = SparcRewrite(SparcInstr)
-    structure Asm        = SparcAsm
+   (structure Flowgraph  = SparcFlowGraph
     structure MLTreeComp = SparcMLTreeComp
+    structure InsnProps  = SparcProps(SparcInstr)
+    structure Asm        = SparcAsm
 
-    val sp = I.C.stackptrR
-    val spill = UserRegion.spill
+    structure RA =
+      RISC_RA 
+      (structure I         = SparcInstr
+       structure Flowgraph = Flowgraph
+       structure Asm       = Asm
+       structure InsnProps = InsnProps
+       structure Spill     = RASpill(structure Asm = Asm
+                                     structure InsnProps = InsnProps)
+       structure Rewrite   = SparcRewrite(SparcInstr)
+       structure SpillHeur = ChaitinSpillHeur
+       structure C         = I.C
+ 
+       val sp = C.stackptrR
+       val spill = UserRegion.spill 
 
-    (* I'm assuming only r0 and the stack pointer is dedicated *)
-    fun range(from,to,step) = if from > to then [] 
-                              else from::range(from+step,to,step)
-    val dedicatedRegs  = [I.C.stackptrR, I.C.GPReg 0]
-    val dedicatedFRegs = []
-    val availRegs      = SortedList.difference(
-                            range(I.C.GPReg 0, I.C.GPReg 31, 1),
-                            SortedList.uniq dedicatedRegs)
-    val availFRegs     = range(I.C.FPReg 0, I.C.FPReg 31, 2)
+       structure SpillTable = SpillTable
+           (val initialSpillOffset = 0 (* This is probably wrong!!!!! *)
+            val spillAreaSz = 4000
+            val architecture = "Sparc" 
+           )
+       open SpillTable
+   
+       fun pure(I.ANNOTATION{i,...}) = pure i
+         | pure(I.LOAD _) = true
+         | pure(I.FLOAD _) = true
+         | pure(I.SETHI _) = true
+         | pure(I.SHIFT _) = true
+         | pure(I.FPop1 _) = true
+         | pure(I.FPop2 _) = true
+         | pure _ = false
+   
+       (* I'm assuming only r0 and the stack pointer is dedicated *)
+       structure Int =
+       struct
+           val dedicated  = [I.C.stackptrR, I.C.GPReg 0]
+           val avail = 
+             C.SortedCells.return
+              (C.SortedCells.difference(
+                C.SortedCells.uniq(
+                  C.Regs C.GP {from=0, to=31, step=1}),
+                C.SortedCells.uniq dedicated)
+              )
 
-    val initialSpillOffset = 0 (* This is probably wrong!!!!! *)
-    val spillAreaSize = 4000
+          fun copy((rds as [_], rss as [_]), _) =
+              I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=NONE}
+            | copy((rds, rss), I.COPY{tmp, ...}) =
+              I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
 
-    fun pure(I.ANNOTATION{i,...}) = pure i
-      | pure(I.LOAD _) = true
-      | pure(I.FLOAD _) = true
-      | pure(I.SETHI _) = true
-      | pure(I.SHIFT _) = true
-      | pure(I.FPop1 _) = true
-      | pure(I.FPop2 _) = true
-      | pure _ = false
+          (* spill copy temp *)
+          fun spillCopyTmp(_,I.COPY{dst,src,tmp,impl},loc) =
+              I.COPY{dst=dst, src=src, impl=impl,
+                     tmp=SOME(I.Displace{base=sp, disp=get loc})}
+       
+          (* spill register *)
+          fun spillInstr(_, d,loc) =
+              [I.STORE{s=I.ST, r=sp, i=I.IMMED(get loc), d=d, mem=spill}]
+           
+          (* reload register *)
+          fun reloadInstr(_,d,loc) =
+               [I.LOAD{l=I.LD, r=sp, i=I.IMMED(get loc), d=d, mem=spill}]
+       end
 
-    (* make copy *)
-    fun copyR((rds as [_], rss as [_]), _) =
-        I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=NONE}
-      | copyR((rds, rss), I.COPY{tmp, ...}) =
-        I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
-    fun copyF((fds as [_], fss as [_]), _) =
-        I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=NONE}
-      | copyF((fds, fss), I.FCOPY{tmp, ...}) =
-        I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
-
-    (* spill copy temp *)
-    fun spillCopyTmp(I.COPY{dst,src,tmp,impl},offset) =
-        I.COPY{dst=dst, src=src, impl=impl,
-               tmp=SOME(I.Displace{base=sp, disp=offset})}
-    fun spillFcopyTmp(I.FCOPY{dst,src,tmp,impl},offset) =
-        I.FCOPY{dst=dst, src=src, impl=impl,
-               tmp=SOME(I.Displace{base=sp, disp=offset})}
-
-    (* spill register *)
-    fun spillInstrR(d,offset) =
-        [I.STORE{s=I.ST, r=sp, i=I.IMMED offset, d=d, mem=spill}]
-    fun spillInstrF(d,offset) =
-        [I.FSTORE{s=I.STDF, r=sp, i=I.IMMED offset, d=d, mem=spill}]
-
-    (* reload register *)
-    fun reloadInstrR(d,offset,rest) =
-        I.LOAD{l=I.LD, r=sp, i=I.IMMED offset, d=d, mem=spill}::rest
-    fun reloadInstrF(d,offset,rest) =
-        I.FLOAD{l=I.LDDF, r=sp, i=I.IMMED offset, d=d, mem=spill}::rest
+       structure Float = 
+       struct
+          val dedicated = []
+          val avail     = C.Regs C.FP {from=0, to=31, step=2}
+   
+          fun copy((fds as [_], fss as [_]), _) =
+              I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=NONE}
+            | copy((fds, fss), I.FCOPY{tmp, ...}) =
+              I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
+   
+          fun spillCopyTmp(_,I.FCOPY{dst,src,tmp,impl},loc) =
+              I.FCOPY{dst=dst, src=src, impl=impl,
+                      tmp=SOME(I.Displace{base=sp, disp=getF loc})}
+   
+          fun spillInstr(_, d,loc) =
+              [I.FSTORE{s=I.STDF, r=sp, i=I.IMMED(getF loc), d=d, mem=spill}]
+   
+          fun reloadInstr(_,d,loc) =
+              [I.FLOAD{l=I.LDDF, r=sp, i=I.IMMED(getF loc), d=d, mem=spill}]
+       end
+      )
    )

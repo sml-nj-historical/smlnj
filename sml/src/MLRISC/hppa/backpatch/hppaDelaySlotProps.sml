@@ -8,7 +8,8 @@ functor HppaDelaySlots
    ) : DELAY_SLOT_PROPERTIES =
 struct
    structure I  = I
-   structure SL = SortedList
+   structure C  = I.C
+   structure SL = C.SortedCells
 
    fun error msg = MLRiscErrorMsg.error("HppaDelaySlotProps",msg)
 
@@ -75,31 +76,26 @@ struct
 
     val defUseI = P.defUse I.C.GP
     val defUseF = P.defUse I.C.FP
+    val zeroR   = Option.valOf(C.zeroReg C.GP) 
 
-    fun conflict{regmap,src=i,dst=j} = 
+    fun conflict{src=i,dst=j} = 
         let fun clash(defUse) =
                 let val (di,ui) = defUse i
                     val (dj,uj) = defUse j
-                in  case SL.intersect(di,uj) of
-                       [] => (case SL.intersect(di,dj) of
-                                [] => (case SL.intersect(ui,dj) of
-                                         [] => false
-                                       | _ => true)
-                              | _ => true)
-                    |  _ => true
+                in  SL.nonEmptyIntersection(di,uj) orelse
+                    SL.nonEmptyIntersection(di,dj) orelse
+                    SL.nonEmptyIntersection(ui,dj) 
                 end
             fun defUseInt i = 
                 let val (d,u) = defUseI i
-                    val d     = SL.uniq(map regmap d)
-                    val u     = SL.uniq(map regmap u)
+                    val d     = SL.uniq d
+                    val u     = SL.uniq u
                     (* no dependence on register 0! *) 
-                    fun elim0(0::l) = l
-                      | elim0 l     = l
-                in  (elim0 d, elim0 u) end
+                in  (SL.rmv(zeroR,d), SL.rmv(zeroR,u)) end
             fun defUseReal i = 
                 let val (d,u) = defUseF i
-                    val d     = SL.uniq(map regmap d)
-                    val u     = SL.uniq(map regmap u)
+                    val d     = SL.uniq d
+                    val u     = SL.uniq u
                 in  (d,u) end
         in  clash(defUseInt) orelse clash(defUseReal) 
         end

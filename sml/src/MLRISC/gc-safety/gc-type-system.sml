@@ -5,12 +5,13 @@
  *)
 functor GCTypeSystem
   (structure GCMap : GC_MAP
+   structure RTL   : MLTREE_RTL
    val isRecoverable : GCMap.GC.gctype -> bool
   ) : GC_TYPE_SYSTEM =
 struct
    structure GCMap = GCMap
    structure GC    = GCMap.GC
-   structure RTL   = MLTreeRTL
+   structure RTL   = RTL
    structure T     = RTL.T
 
    fun error msg = MLRiscErrorMsg.error("GCTypeSystem",msg)
@@ -48,10 +49,11 @@ struct
          | T(T.NOTB(t,a))     = unaryArith(t,a)
          | T(T.LOAD(t,ea,_))  = GC.TOP
          | T(T.COND(t,a,b,c)) = GC.TOP 
-         | T(T.CVTI2I _)      = GC.TOP 
+         | T(T.SX _)          = GC.TOP 
+         | T(T.ZX _)          = GC.TOP 
          | T(T.PRED(e, _))    = T e
-         | T(T.REXT(t,RTL.OP(misc_op,es))) = GC.INT
-         | T(T.REXT(t,RTL.FETCH(RTL.AGG(_,_,RTL.CELL(k,ty,e,_))))) = GC.TOP
+         (*| T(T.REXT(t,RTL.OP(misc_op,es))) = GC.INT
+         | T(T.REXT(t,RTL.FETCH(RTL.AGG(_,_,RTL.CELL(k,ty,e,_))))) = GC.TOP*)
          | T(e) = error("typeOf: "^ RTL.expToString e)
  
        and binaryArith(t,a,b) = 
@@ -84,9 +86,9 @@ struct
          | E(T.CALL _,e)         = e
          | E(T.RET _,e)          = e
          | E(T.MV(t,x,exp), e)   = update(x, typeOf lookup exp, e)
-         | E(T.IF(_,x,y,z), e)   = e
+         | E(T.IF(x,y,z), e)     = e
          | E(T.STORE _, e)       = e
-         | E(T.EXT(RTL.ASSIGN(loc,exp)),e) = 
+         (*| E(T.EXT(RTL.ASSIGN(loc,exp)),e) = 
             let val t = typeOf lookup exp
             in  case loc of
                   RTL.AGG(_,_,RTL.CELL("FP",_,T.REG(_,x),_)) => 
@@ -95,7 +97,7 @@ struct
                       update(x, GC.TOP, e)
                 | RTL.AGG(_,_,_) => e
             end
-         | E(T.EXT(RTL.PAR(a,b)), e) = E(b,E(a,e))
+         | E(T.EXT(RTL.PAR(a,b)), e) = E(b,E(a,e))*)
          | E(rtl, e) = err()
    in  E(action, effect) end
 

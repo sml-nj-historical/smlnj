@@ -6,6 +6,7 @@ sig
    structure C        : CELLS
    structure Constant : CONSTANT
    structure LabelExp : LABELEXP
+   structure Region   : REGION
       sharing Constant = LabelExp.Constant
 
    type operand         (* operand is abstract *)

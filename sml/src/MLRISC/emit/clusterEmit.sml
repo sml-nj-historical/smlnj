@@ -9,10 +9,9 @@ functor ClusterEmit
       where I = F.I and P = F.P) : ASSEMBLY_EMITTER = 
 struct
   type flowgraph = F.cluster
-  fun asmEmit(F.CLUSTER{blocks,regmap,annotations=an,...}) = 
+  fun asmEmit(F.CLUSTER{blocks,annotations=an,...}) = 
   let val E.S.STREAM{pseudoOp,defineLabel,emit,annotation,comment,...} = 
              E.makeStream (!an)
-      val emit = emit(E.I.C.lookup regmap)
       fun emitAn a = if Annotations.toString a = "" then () else annotation(a)
       fun emitIt(F.PSEUDO pOp) = pseudoOp pOp
         | emitIt(F.LABEL lab)  = defineLabel lab

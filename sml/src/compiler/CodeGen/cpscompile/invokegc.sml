@@ -20,8 +20,9 @@ struct
    structure D  = MS.ObjDesc
    structure LE = T.LabelExp
    structure R  = CPSRegions
-   structure S  = SortedList
+   structure S  = Cells.SortedCells
    structure St = T.Stream
+   structure SL = SortedList
    structure GC = SMLGCType
    structure Cells = Cells
    structure A  = Array
@@ -34,7 +35,7 @@ struct
               return   : T.stm
             }
 
-   type stream = (T.stm,Cells.regmap,T.mlrisc list) T.stream
+   type stream = (T.stm,T.mlrisc list) T.stream
 
    val debug = Control.MLRISC.getFlag "debug-gc";
 
@@ -104,7 +105,7 @@ struct
           T.CALL{
             funct=T.LOAD(32, T.ADD(addrTy,C.stackptr,T.LI MS.startgcOffset), 
                         R.stack),
-            targets=[], defs=def, uses=use, cdefs=[], cuses=[], region=R.stack},
+            targets=[], defs=def, uses=use, region=R.stack},
           #create MLRiscAnnotations.COMMENT "call gc")
 
        val ZERO_FREQ = #create MLRiscAnnotations.EXECUTION_FREQ 0
@@ -154,7 +155,7 @@ struct
     * Memory offsets must be relative to the stack pointer.
     *)
    fun set bindings = 
-   let fun isStackPtr sp = sp = Cells.stackptrR
+   let fun isStackPtr sp = Cells.sameColor(sp,Cells.stackptrR)
        fun live(T.REG(_,r)::es, regs, mem) = live(es, r::regs, mem)
          | live(T.LOAD(_, T.REG(_, sp), _)::es, regs, mem) =
            if isStackPtr sp then live(es, regs, 0::mem)
@@ -165,13 +166,14 @@ struct
          | live([], regs, mem) = (regs, mem)
          | live _ = error "live"
        val (regs, mem) = live(bindings, [], [])
-   in  {regs=S.uniq regs, mem=S.uniq mem} end
+   in  {regs=S.return(S.uniq regs), mem=SL.uniq mem} 
+   end
 
    fun difference({regs=r1,mem=m1}, {regs=r2,mem=m2}) =
-       {regs=S.difference(r1,r2), mem=S.difference(m1,m2)}
+       {regs=S.difference(r1,r2), mem=SL.difference(m1,m2)}
  
    fun setToString{regs,mem} =
-       "{"^foldr (fn (r,s) => Cells.toString Cells.GP r^" "^s) "" regs
+       "{"^foldr (fn (r,s) => Cells.toString r^" "^s) "" regs
           ^foldr (fn (m,s) => Int.toString m^" "^s) "" mem^"}"
 
    fun setToMLTree{regs,mem} =
@@ -191,7 +193,7 @@ struct
     *) 
    fun checkLimit(emit, maxAlloc) =
    let val lab = Label.newLabel ""
-       fun gotoGC(cc) = emit(T.ANNOTATION(T.BCC([], cc, lab), unlikely))
+       fun gotoGC(cc) = emit(T.ANNOTATION(T.BCC(cc, lab), unlikely))
    in  if maxAlloc < skidPad then
           (case C.exhausted of
              SOME cc => gotoGC cc
@@ -283,7 +285,8 @@ struct
     * An array for checking cycles  
     *)
    local
-      val N = (foldr Int.max 0 (#regs gcrootSet))+1
+      val N = 1 + foldr (fn (r,n) => Int.max(Cells.registerNum r,n)) 
+                     0 (#regs gcrootSet)
    in
       val clientRoots = A.array(N, ~1)
       val stamp       = ref 0
@@ -327,15 +330,19 @@ struct
        val N = A.length clientRoots
        fun markClients [] = ()
          | markClients(T.REG(_, r)::rs) = 
-            (if r < N then A.update(clientRoots, r, st) else ();
-             markClients rs)
+           let val rx = Cells.registerNum r
+           in  if rx < N then A.update(clientRoots, rx, st) else ();
+               markClients rs
+           end
          | markClients(_::rs) = markClients rs
        fun markGCRoots [] = ()
          | markGCRoots(T.REG(_, r)::rs) = 
-            (if A.sub(clientRoots, r) = st then
-                A.update(clientRoots, r, cyclic)
-             else (); 
-             markGCRoots rs)
+           let val rx = Cells.registerNum r
+           in  if A.sub(clientRoots, rx) = st then
+                  A.update(clientRoots, rx, cyclic)
+               else (); 
+               markGCRoots rs
+           end
          | markGCRoots(_::rs) = markGCRoots rs
 
        val _ = markClients boxed
@@ -507,14 +514,16 @@ struct
                      (emit(T.MV(32, regTmp, sel n));
                       unpackFields(n+4, bs, rds, rss))
                  | unpackFields(n, Reg rd::bs, rds, rss) = 
-                   if rd < N andalso A.sub(clientRoots, rd) = cyclic then  
-                   let val tmpR = Cells.newReg()
-                   in  (* print "WARNING: CYCLE\n"; *)
-                       emit(T.MV(32, tmpR, sel n));
-                       unpackFields(n+4, bs, rd::rds, tmpR::rss)
-                   end else
-                       (emit(T.MV(32, rd, sel n));
-                        unpackFields(n+4, bs, rds, rss))
+                   let val rdx = Cells.registerNum rd
+                   in  if rdx < N andalso A.sub(clientRoots, rdx) = cyclic then
+                       let val tmpR = Cells.newReg()
+                       in  (* print "WARNING: CYCLE\n"; *)
+                           emit(T.MV(32, tmpR, sel n));
+                           unpackFields(n+4, bs, rd::rds, tmpR::rss)
+                       end else
+                           (emit(T.MV(32, rd, sel n));
+                            unpackFields(n+4, bs, rds, rss))
+                   end
 
                (* unpack nested record *)
                fun unpackNested(_, [], rds, rss) = (rds, rss)
@@ -613,9 +622,9 @@ struct
          | listify title f l  = 
              title^foldr (fn (x,"") => f x
                            | (x,y)  => f x ^", "^y) "" (S.uniq l)^" "
-   in  listify "boxed=" (Cells.toString Cells.GP) (map extract boxed)^
-       listify "int32=" (Cells.toString Cells.GP) (map extract int32)^
-       listify "float=" (Cells.toString Cells.FP) (map fextract float)
+   in  listify "boxed=" Cells.toString (map extract boxed)^
+       listify "int32=" Cells.toString (map extract int32)^
+       listify "float=" Cells.toString (map fextract float)
    end
 
    (*
@@ -656,16 +665,16 @@ struct
     * same calling convention.
     *)
    fun sameCallingConvention
-          (GCINFO{boxed=b1, int32=i1, float=f1, ret=T.JMP(_, ret1, _), ...},
-           GCINFO{boxed=b2, int32=i2, float=f2, ret=T.JMP(_, ret2, _), ...}) =
-   let fun eqEA(T.REG(_, r1), T.REG(_, r2)) = r1 = r2
+          (GCINFO{boxed=b1, int32=i1, float=f1, ret=T.JMP(ret1, _), ...},
+           GCINFO{boxed=b2, int32=i2, float=f2, ret=T.JMP(ret2, _), ...}) =
+   let fun eqEA(T.REG(_, r1), T.REG(_, r2)) = Cells.sameColor(r1,r2)
          | eqEA(T.ADD(_,T.REG(_,r1),T.LI i), T.ADD(_,T.REG(_,r2),T.LI j)) =  
-             r1 = r2 andalso i = j
+             Cells.sameColor(r1,r2) andalso i = j
          | eqEA _ = false
-       fun eqR(T.REG(_,r1), T.REG(_,r2)) = r1 = r2
+       fun eqR(T.REG(_,r1), T.REG(_,r2)) = Cells.sameColor(r1,r2)
          | eqR(T.LOAD(_,ea1,_), T.LOAD(_,ea2,_)) = eqEA(ea1, ea2)
          | eqR _ = false
-       fun eqF(T.FREG(_,f1), T.FREG(_,f2)) = f1 = f2
+       fun eqF(T.FREG(_,f1), T.FREG(_,f2)) = Cells.sameColor(f1,f2)
          | eqF(T.FLOAD(_,ea1,_), T.FLOAD(_,ea2,_)) = eqEA(ea1, ea2)
          | eqF _ = false
 
@@ -718,7 +727,7 @@ struct
                val liveOut   = regRoots @ fregRoots
                val l         = !lab
            in  app defineLabel (!addrs) before addrs := [];
-               emit(T.JMP([], T.LABEL(LE.LABEL l), []));
+               emit(T.JMP(T.LABEL(LE.LABEL l), []));
                exitBlock liveOut
            end
          | longJumps _ = error "longJumps"

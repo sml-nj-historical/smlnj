@@ -2,13 +2,14 @@ functor AlphaShuffle(I:ALPHAINSTR) : ALPHASHUFFLE = struct
   structure I = I
   structure Shuffle = Shuffle(I)
 
-  type t = {regmap:I.C.cell->I.C.cell, tmp:I.ea option,
-            dst:I.C.cell list, src:I.C.cell list}
+  type t = {tmp:I.ea option, dst:I.C.cell list, src:I.C.cell list}
 
   val mem=I.Region.memory
 
+  val zeroR = I.REGop(Option.valOf(I.C.zeroReg I.C.GP))
+
   fun move{src=I.Direct rs, dst=I.Direct rd} = 
-        [I.OPERATE{oper=I.BIS, ra=rs, rb=I.REGop 31, rc=rd}]
+        [I.OPERATE{oper=I.BIS, ra=rs, rb=zeroR, rc=rd}]
     | move{src=I.Direct rs, dst=I.Displace{base, disp}} = 
 	[I.STORE{stOp=I.STL, r=rs, b=base, d=I.IMMop disp, mem=mem}]
     | move{src=I.Displace{base, disp}, dst=I.Direct rt} = 

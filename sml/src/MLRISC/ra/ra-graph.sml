@@ -7,6 +7,8 @@
 structure RAGraph : RA_GRAPH =
 struct
 
+  structure C = CellsBasis
+
   (* A new bit matrix datatype.
    * We use the small representation whenever possible to save space.
    *)
@@ -22,6 +24,22 @@ struct
 
   type programPoint = int
 
+  structure PPtHashTable = IntHashTable
+
+  type frame_offset = int
+  type logical_spill_id = int
+  datatype spillLoc = FRAME of logical_spill_id
+                    | MEM_REG of C.cell 
+
+  structure SpillLocHashTable = HashTableFn 
+     (type hash_key = spillLoc
+      fun hashVal(FRAME i) = Word.fromInt i
+        | hashVal(MEM_REG r) = C.hashCell r
+      fun sameKey(FRAME i, FRAME j) = i = j
+        | sameKey(MEM_REG x,MEM_REG y) = C.sameColor(x, y)
+        | sameKey _ = false
+      )
+
   type cost = int
 
   type mode = word
@@ -29,7 +47,6 @@ struct
   datatype interferenceGraph = 
    GRAPH of { bitMatrix    : bitMatrix ref,
               nodes        : node IntHashTable.hash_table,
-              regmap       : int IntHashTable.hash_table,
               K            : int,
               firstPseudoR : int,
               dedicated    : bool Array.array,
@@ -45,11 +62,11 @@ struct
               spilledRegs  : bool IntHashTable.hash_table,
               trail        : trailInfo ref,
 
-              showReg      : int -> string,
+              showReg      : C.cell -> string,
               numRegs      : int,
               maxRegs      : unit -> int,
  
-              deadCopies   : int list ref,
+              deadCopies   : C.cell list ref,
               copyTmps     : node list ref,
               memMoves     : move list ref,
               memRegs      : node list ref,
@@ -85,12 +102,13 @@ struct
       | REMOVED               (* removed from the interference graph *)
       | ALIASED of node       (* coalesced *)
       | COLORED of int        (* colored *)
-      | MEMREG of int         (* register implemented in memory *)
+      | MEMREG of int * C.cell(* register implemented in memory *)
       | SPILLED		      (* spilled *)
       | SPILL_LOC of int      (* spilled at logical location *)
 
   and node = 
-    NODE of { number : int,		(* node number *)
+    NODE of { number : int,  	        (* node number *)
+              cell   : C.cell,
 	      movecnt: int ref,		(* #moves this node is involved in *)
 	      movelist: move list ref,	(* moves associated with this node *)
 	      degree : int ref,		(* current degree *)
@@ -139,7 +157,7 @@ struct
   end
 
   (* Create a new interference graph *)
-  fun newGraph{nodes,regmap,K,firstPseudoR,dedicated,spillLoc,
+  fun newGraph{nodes,K,firstPseudoR,dedicated,spillLoc,
                getreg,getpair,showReg,maxRegs,numRegs,proh,
                memRegs,mode} =
   let (* lower triangular bitmatrix primitives *)
@@ -148,20 +166,20 @@ struct
 
       (* Make memory register nodes *)
       fun makeMemRegs [] = []
-        | makeMemRegs(ranges) = 
+        | makeMemRegs(cells) = 
           let val add = IntHashTable.insert nodes
-              fun loop(from, to, ns) = 
-                  if from > to then ns 
-                  else 
-                  let val node = 
-                      NODE{pri=ref 0,adj=ref [],degree=ref 0,movecnt=ref 0,
-                           color=ref(MEMREG from), defs=ref [], uses=ref [],
-                           movecost=ref 0,movelist=ref [], number=from}
-                  in  add(from, node); loop(from+1, to, node::ns)
+              fun loop([], ns) = ns
+                | loop(cell::cells, ns) = 
+                  let val id = C.registerId cell
+                      val node = 
+                      NODE{number=id,
+                           pri=ref 0,adj=ref [],degree=ref 0,movecnt=ref 0,
+                           color=ref(MEMREG(id,cell)), 
+                           defs=ref [], uses=ref [],
+                           movecost=ref 0,movelist=ref [], cell=cell}
+                  in  add(id, node); loop(cells, node::ns)
                   end
-              fun loop2([], ns) = ns
-                | loop2((from,to)::ranges, ns) = loop2(ranges, loop(from,to,ns))
-          in  loop2(ranges, [])
+          in  loop(cells, [])
           end 
 
       val memRegs = makeMemRegs memRegs
@@ -169,7 +187,6 @@ struct
   in  if !stampCounter > 10000000 then stampCounter := 0 else ();
       GRAPH{ bitMatrix    = ref bitMatrix,
              nodes        = nodes,
-             regmap       = regmap,
              K            = K,
              firstPseudoR = firstPseudoR,
              dedicated    = dedicated,
@@ -180,7 +197,7 @@ struct
              spillFlag    = ref false,
              spilledRegs  = IntHashTable.mkTable(2,Nodes),
              trail        = ref END,
-             showReg      = Int.toString,
+             showReg      = fn _ => raise Match,
              numRegs      = numRegs,
              maxRegs      = maxRegs,
              deadCopies   = ref [],

@@ -39,13 +39,11 @@ struct
      | showEdge(_, w) = "???"
 
    fun printCluster stream title 
-        (F.CLUSTER {blocks, regmap, entry, exit, annotations, ...}) = 
+        (F.CLUSTER {blocks, entry, exit, annotations, ...}) = 
    let fun pr str = TextIO.output(stream, str)
        val prList = printList stream
-       val regmap = C.lookup regmap
        val E.S.STREAM{emit,pseudoOp,defineLabel,annotation,...} = 
              AsmStream.withStream stream E.makeStream (!annotations)
-       val emit = emit regmap
 
        fun printBlock(F.ENTRY{blknum, succ, freq, ...}) = 
            (pr ("ENTRY " ^ Int.toString blknum ^ showFreq freq^"\n");
@@ -56,8 +54,8 @@ struct
                                insns, annotations, ...}) = 
            (pr ("BLOCK " ^ Int.toString blknum ^ showFreq freq ^ "\n");
             app annotation (!annotations);
-            pr ("\tlive in:  " ^ C.cellsetToString' regmap (!liveIn) ^ "\n");
-            pr ("\tlive out: " ^ C.cellsetToString' regmap (!liveOut) ^ "\n");
+            pr ("\tlive in:  " ^ C.CellSet.toString (!liveIn) ^ "\n");
+            pr ("\tlive out: " ^ C.CellSet.toString (!liveOut) ^ "\n");
             pr ("\tsucc:     "); prList (map showEdge (!succ)); pr "\n";
             pr ("\tpred:     "); prList (map showEdge (!pred)); pr "\n";
             app emit (rev (!insns)))

@@ -11,7 +11,7 @@ struct
 
   fun error msg = MLRiscErrorMsg.impossible("Alpha32PsuedoInstrs."^msg)
 
-  type reduceOpnd = I.operand -> int
+  type reduceOpnd = I.operand -> C.cell
 
   val floatTmpOffset = I.IMMop 96	(* runtime system dependent *)
   val floatTmpOffset8 = I.IMMop(96+8)		(* " *)
@@ -23,23 +23,29 @@ struct
   val zeroR = 31
 
   val makeCellset = List.foldl C.addReg C.empty 
-  val defs = makeCellset [0, 23, 24, 25, 26, 28]
-  val uses = makeCellset [16, 17]
+  val defs = makeCellset (map C.GPReg [0, 23, 24, 25, 26, 28])
+  val uses = makeCellset (map C.GPReg [16, 17])
   fun copyTmp() = SOME(I.Direct(C.newReg()))
 
+  val r16 = C.GPReg 16
+  val r17 = C.GPReg 17
+  val r26 = C.GPReg 26
+  val r27 = C.GPReg 27
+  val r0  = C.GPReg 0
+
   fun divlv({ra, rb, rc}, reduceOpnd) = 
-    [I.COPY{dst=[16, 17], src=[ra, reduceOpnd rb], impl=ref NONE, 
+    [I.COPY{dst=[r16, r17], src=[ra, reduceOpnd rb], impl=ref NONE, 
 	    tmp=copyTmp()},
-     I.LOAD{ldOp=I.LDL, r=27, b=sp, d=divlOffset, mem=stack},
-     I.JSR{r=26, b=27, d=0, defs=defs, uses=uses, mem=stack},
-     I.COPY{dst=[rc], src=[0], impl=ref NONE, tmp=NONE}]
+     I.LOAD{ldOp=I.LDL, r=r27, b=sp, d=divlOffset, mem=stack},
+     I.JSR{r=r26, b=r27, d=0, defs=defs, uses=uses, mem=stack},
+     I.COPY{dst=[rc], src=[r0], impl=ref NONE, tmp=NONE}]
 
   fun divlu({ra, rb, rc}, reduceOpnd) = 
-    [I.COPY{dst=[16, 17], src=[ra, reduceOpnd rb], impl=ref NONE, 
+    [I.COPY{dst=[r16, r17], src=[ra, reduceOpnd rb], impl=ref NONE, 
 	    tmp=copyTmp()},
-     I.LOAD{ldOp=I.LDL, r=27, b=sp, d=divluOffset, mem=stack},
-     I.JSR{r=26, b=27, d=0, defs=defs, uses=uses, mem=stack},
-     I.COPY{dst=[rc], src=[0], impl=ref NONE, tmp=NONE}]
+     I.LOAD{ldOp=I.LDL, r=r27, b=sp, d=divluOffset, mem=stack},
+     I.JSR{r=r26, b=r27, d=0, defs=defs, uses=uses, mem=stack},
+     I.COPY{dst=[rc], src=[r0], impl=ref NONE, tmp=NONE}]
 
   fun unimplemented _ = error "unimplemented pseudo-instr"
   val divl  = unimplemented

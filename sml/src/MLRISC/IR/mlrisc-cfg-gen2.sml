@@ -31,17 +31,17 @@ struct
 
    fun newStream{compile,flowgraph} =
    let val cfg = ref(case flowgraph of
-                       NONE => CFG.new(I.C.regmap())
+                       NONE => CFG.new()
                      | SOME cfg => cfg
                     )
        val {stream,next} = Builder.builder(!cfg)
        val S.STREAM{beginCluster,endCluster,pseudoOp,emit,exitBlock,
-                    comment,annotation,defineLabel,entryLabel,alias,phi,...} 
+                    comment,annotation,defineLabel,entryLabel,...} 
                       = stream
        fun endCFG a = 
        let val _      = endCluster a
            val oldCFG = !cfg
-           val newCFG = CFG.new(I.C.regmap())
+           val newCFG = CFG.new()
        in  cfg := newCFG;
            next newCFG;
            compile oldCFG
@@ -55,9 +55,7 @@ struct
                 comment     = comment,
                 annotation  = annotation,
                 defineLabel = defineLabel,
-                entryLabel  = entryLabel,
-                alias       = alias,
-                phi         = phi
+                entryLabel  = entryLabel
                }
    end
 

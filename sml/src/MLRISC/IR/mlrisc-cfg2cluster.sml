@@ -118,7 +118,7 @@ struct
         val EXIT    = case #exits cfg () of
                         [EXIT] => EXIT
                       | _ => raise Graph.NotSingleExit
-        val CFG.INFO{regmap,annotations,...} = #graph_info cfg
+        val CFG.INFO{annotations,...} = #graph_info cfg
         val _       = remove_entry_to_exit(ENTRY,EXIT,CFG)
         val A       = A.array(M,dummyNode)
         val nodes   = List.filter(fn (i,CFG.BLOCK{kind,...}) => 
@@ -139,7 +139,6 @@ struct
           | set_links _ = ()
         val _ = A.app set_links A
     in  F.CLUSTER{ blkCounter  = ref M,
-                   regmap      = regmap,
                    blocks      = blocks,
                    entry       = entry,
                    exit        = exit,
@@ -158,7 +157,7 @@ struct
         val EXIT    = case #exits cfg () of
                         [EXIT] => EXIT
                       | _ => raise Graph.NotSingleExit
-        val CFG.INFO{firstBlock,regmap=regmap,annotations,...} = 
+        val CFG.INFO{firstBlock,annotations,...} = 
                #graph_info cfg
         val A        = A.array(M,dummyNode)    (* new id -> F.block *)
         val A'       = A.array(M,~1)           (* new id -> old id *)
@@ -256,7 +255,6 @@ struct
           | set_links _ = ()
         val _ = A.app set_links A
     in  F.CLUSTER{ blkCounter  = ref(id+2),
-                   regmap      = regmap,
                    blocks      = blocks,
                    entry       = entry,
                    exit        = exit,

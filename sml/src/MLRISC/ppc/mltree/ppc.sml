@@ -33,11 +33,12 @@ struct
   structure C   = PPCInstr.C
   structure LE  = I.LabelExp
   structure W32 = Word32
+  structure A   = MLRiscAnnotations
 
   fun error msg = MLRiscErrorMsg.error("PPC",msg)
 
-  type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
-  type mltreeStream = (T.stm,C.regmap,T.mlrisc list) T.stream
+  type instrStream = (I.instruction,C.cellset) T.stream
+  type mltreeStream = (T.stm,T.mlrisc list) T.stream
 
   val (intTy,naturalWidths) = if bit64mode then (64,[32,64]) else (32,[32])
   structure Gen = MLTreeGen
@@ -60,7 +61,9 @@ struct
   fun SRLI32{r,i,d} = 
       I.ROTATEI{oper=I.RLWINM,ra=d,rs=r,sh=I.ImmedOp(32-i),mb=i,me=SOME(31)}
 
+  (*
   val _ = if C.lr = 80 then () else error "LR must be encoded as 80!"
+   *)
 
   (*  
    * Integer multiplication 
@@ -104,7 +107,7 @@ struct
   fun selectInstructions
       (S.STREAM{emit,comment,
                 defineLabel,entryLabel,pseudoOp,annotation,
-                beginCluster,endCluster,exitBlock,phi,alias,...}) =
+                beginCluster,endCluster,exitBlock,...}) =
   let (* mark an instruction with annotations *)
       fun mark'(instr,[]) = instr
         | mark'(instr,a::an) = mark'(I.ANNOTATION{i=instr,a=a},an)
@@ -115,6 +118,7 @@ struct
        * to this label.
        *)
       val trapLabel : Label.label option ref = ref NONE 
+      val zeroR = C.r0 
 
       val newReg = C.newReg
       val newFreg = C.newFreg
@@ -127,15 +131,15 @@ struct
       fun unsigned6  i = 0 <= i andalso i < 64
 
       fun move(rs,rd,an) =
-        if rs=rd then () 
+        if C.sameColor(rs,rd) then () 
         else mark(I.COPY{dst=[rd],src=[rs],impl=ref NONE,tmp=NONE},an)
 
       fun fmove(fs,fd,an) =
-        if fs=fd then () 
+        if C.sameColor(fs,fd) then () 
         else mark(I.FCOPY{dst=[fd],src=[fs],impl=ref NONE,tmp=NONE},an)
 
       fun ccmove(ccs,ccd,an) =
-        if ccd = ccs then () else mark(I.MCRF{bf=ccd, bfa=ccs},an)
+        if C.sameColor(ccd,ccs) then () else mark(I.MCRF{bf=ccd, bfa=ccs},an)
 
       fun copy(dst, src, an) =
           mark(I.COPY{dst=dst, src=src, impl=ref NONE, 
@@ -164,22 +168,23 @@ struct
       in (wtoi high, wtoi low) end
 
       fun loadImmedHiLo(0, lo, rt, an) =
-            mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=0, im=I.ImmedOp lo}, an)
+            mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=zeroR, im=I.ImmedOp lo}, an)
         | loadImmedHiLo(hi, lo, rt, an) = 
-           (mark(I.ARITHI{oper=I.ADDIS, rt=rt, ra=0, im=I.ImmedOp hi}, an);
+           (mark(I.ARITHI{oper=I.ADDIS, rt=rt, ra=zeroR, im=I.ImmedOp hi}, an);
             if lo = 0 then () 
                else emit(I.ARITHI{oper=I.ADDI, rt=rt, ra=rt, im=I.ImmedOp lo}))
 
       fun loadImmed(n, rt, an) = 
         if signed16 n then
-           mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=0 , im=I.ImmedOp n}, an)
+           mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=zeroR, im=I.ImmedOp n}, an)
         else let val (hi, lo) = split n
              in loadImmedHiLo(hi, lo, rt, an) end
 
       fun loadImmedw(w, rt, an) = 
           let val wtoi = Word32.toIntX
           in  if w < 0w32768 then 
-                 mark(I.ARITHI{oper=I.ADDI,rt=rt,ra=0,im=I.ImmedOp(wtoi w)}, an)
+                 mark(I.ARITHI{oper=I.ADDI,rt=rt,ra=zeroR,
+                               im=I.ImmedOp(wtoi w)}, an)
               else 
                let val hi = Word32.~>>(w, 0w16)
                    val lo = Word32.andb(w, 0w65535)
@@ -190,10 +195,11 @@ struct
           end
 
       fun loadLabel(lexp, rt, an) = 
-          mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=0, im=I.LabelOp lexp}, an)
+          mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=zeroR, im=I.LabelOp lexp}, an)
 
       fun loadConst(c, rt, an) = 
-          mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=0, im=I.LabelOp(LE.CONST c)}, an)
+          mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=zeroR, 
+                        im=I.LabelOp(LE.CONST c)}, an)
 
       fun immedOpnd range (e1, e2 as T.LI i) =
            (expr e1, if range i then I.ImmedOp i else I.RegOp(expr e2))
@@ -245,7 +251,7 @@ struct
 
        (* convert mlrisc to cellset: *)
        and cellset mlrisc =
-           let val addCCReg = C.addCell C.CC
+           let val addCCReg = C.CellSet.add 
                fun g([],acc) = acc
                  | g(T.GPR(T.REG(_,r))::regs,acc)  = g(regs,C.addReg(r,acc))
                  | g(T.FPR(T.FREG(_,f))::regs,acc) = g(regs,C.addFreg(f,acc))
@@ -262,14 +268,14 @@ struct
         | stmt(T.CCMV(ccd, ccexp), an) = doCCexpr(ccexp, ccd, an)
         | stmt(T.COPY(_, dst, src), an) = copy(dst, src, an)
         | stmt(T.FCOPY(_, dst, src), an) = fcopy(dst, src, an)
-        | stmt(T.JMP(ctrl, T.LABEL lexp, labs),an) =
+        | stmt(T.JMP(T.LABEL lexp, labs),an) =
              mark(I.B{addr=I.LabelOp lexp, LK=false},an)
-        | stmt(T.JMP(ctrl, rexp, labs),an) =
+        | stmt(T.JMP(rexp, labs),an) =
           let val rs = expr(rexp)
           in  emit(MTLR(rs));
               mark(I.BCLR{bo=I.ALWAYS,bf=CR0,bit=I.LT,LK=false,labels=labs},an)
           end
-        | stmt(T.CALL{funct, targets, defs, uses, cdefs, cuses, region}, an) = 
+        | stmt(T.CALL{funct, targets, defs, uses, region, ...}, an) = 
           let val defs=cellset(defs)
               val uses=cellset(uses)
            in emit(MTLR(expr funct));
@@ -278,8 +284,7 @@ struct
         | stmt(T.RET flow,an) = mark(RET,an)
         | stmt(T.STORE(ty,ea,data,mem),an) = store(ty,ea,data,mem,an)
         | stmt(T.FSTORE(ty,ea,data,mem),an) = fstore(ty,ea,data,mem,an)
-        | stmt(T.BCC(ctrl, cc, lab),an) =
-              branch(cc,lab,an)
+        | stmt(T.BCC(cc, lab),an) = branch(cc,lab,an)
         | stmt(T.DEFINE l, _) = defineLabel l
         | stmt(T.ANNOTATION(s,a),an) = stmt(s,a::an)
         | stmt(s, _) = doStmts(Gen.compileStm s)
@@ -539,17 +544,18 @@ struct
       and reduceOpn(I.RegOp r) = r
         | reduceOpn opn =
           let val rt = newReg()
-          in  emit(I.ARITHI{oper=I.ADDI, rt=rt, ra=0, im=opn});
+          in  emit(I.ARITHI{oper=I.ADDI, rt=rt, ra=zeroR, im=opn});
               rt
           end
 
       (* Reduce an expression, and returns the register that holds
        * the value.
        *)
-      and expr(rexp as T.REG(_,80)) =     
+      and expr(rexp as T.REG(_,r)) =     
+          if C.sameColor(C.lr, r) then
           let val rt = newReg()
           in  doExpr(rexp, rt, []); rt end 
-        | expr(T.REG(_,r)) = r
+          else r
         | expr(rexp) = 
           let val rt = newReg()
           in  doExpr(rexp, rt, []); rt end 
@@ -558,12 +564,13 @@ struct
        *    reduce the expression e, assigns it to rd,
        *    and annotate the expression with an
        *)
-      and doExpr(e, 80, an) = 
+      and doExpr(e, rt, an) =
+           if C.sameColor(rt,C.lr) then 
            let val rt = newReg() in doExpr(e,rt,[]); mark(MTLR rt,an) end
-        | doExpr(e, rt, an) =
+           else
            case e of
-             T.REG(_,80)  => mark(MFLR rt,an)
-           | T.REG(_,rs)  => move(rs,rt,an)
+             T.REG(_,rs)  => if C.sameColor(rs,C.lr) then mark(MFLR rt,an)
+                             else move(rs,rt,an)
            | T.LI i       => loadImmed(i, rt, an)
            | T.LI32 w     => loadImmedw(w, rt, an)
            | T.LABEL lexp => loadLabel(lexp, rt, an)
@@ -577,6 +584,7 @@ struct
            | T.ANDB(_,e1,T.NOTB(_,e2)) => arith(I.ANDC,e1,e2,rt,an)
            | T.ORB(_,e1,T.NOTB(_,e2))  => arith(I.ORC,e1,e2,rt,an)
            | T.XORB(_,e1,T.NOTB(_,e2)) => arith(I.EQV,e1,e2,rt,an)
+           | T.EQVB(_,e1,e2)           => arith(I.EQV,e1,e2,rt,an)
            | T.ANDB(_,T.NOTB(_,e1),e2) => arith(I.ANDC,e2,e1,rt,an)
            | T.ORB(_,T.NOTB(_,e1),e2)  => arith(I.ORC,e2,e1,rt,an)
            | T.XORB(_,T.NOTB(_,e1),e2) => arith(I.EQV,e2,e1,rt,an)
@@ -619,11 +627,8 @@ struct
 
               (* Misc *)
            | T.LET(s,e) => (doStmt s; doExpr(e, rt, an))
-           | T.MARK(e, a) => 
-             (case #peek MLRiscAnnotations.MARK_REG a of
-               SOME f => (f rt; doExpr(e,rt,an))
-             | NONE => doExpr(e,rt,a::an)
-             )
+           | T.MARK(e, A.MARKREG f) => (f rt; doExpr(e,rt,an))
+           | T.MARK(e, a) => doExpr(e,rt,a::an)
            | e => doExpr(Gen.compileRexp e,rt,an)
   
       (* Generate a floating point load *) 
@@ -709,11 +714,8 @@ struct
 	  | T.FSQRT(64, e)     => funary(I.FSQRT, e, ft, an)
 
             (* Misc *)
-          | T.FMARK(e, a) => 
-            (case #peek MLRiscAnnotations.MARK_REG a of
-              SOME f => (f ft; doFexpr(e,ft,an))
-            | NONE => doFexpr(e,ft,a::an)
-            )
+          | T.FMARK(e, A.MARKREG f) => (f ft; doFexpr(e,ft,an))
+          | T.FMARK(e, a) => doFexpr(e,ft,a::an)
           | _ => error "doFexpr"
 
        and ccExpr(T.CC(_,cc)) = cc
@@ -741,14 +743,11 @@ struct
           | T.FCMP(fty, fcc, e1, e2) => 
              mark(I.FCOMPARE{cmp=I.FCMPU, bf=ccd, fa=fexpr e1, fb=fexpr e2},an) 
           | T.CC(_,cc) => ccmove(cc,ccd,an)
-          | T.CCMARK(cc,a) => 
-            (case #peek MLRiscAnnotations.MARK_REG a of
-              SOME f => (f ccd; doCCexpr(cc,ccd,an))
-            | NONE => doCCexpr(cc,ccd,a::an)
-            )
+          | T.CCMARK(cc,A.MARKREG f) => (f ccd; doCCexpr(cc,ccd,an))
+          | T.CCMARK(cc,a) => doCCexpr(cc,ccd,a::an)
           | _ => error "doCCexpr: Not implemented"
    
-      and emitTrap() = emit(I.TW{to=31,ra=0,si=I.ImmedOp 0}) 
+      and emitTrap() = emit(I.TW{to=31,ra=zeroR,si=I.ImmedOp 0}) 
 
         val beginCluster = fn _ => (trapLabel := NONE; beginCluster(0))
         val endCluster = fn a =>
@@ -767,9 +766,7 @@ struct
          entryLabel   = entryLabel,
          comment      = comment,
          annotation   = annotation,
-         exitBlock    = fn mlrisc => exitBlock(cellset mlrisc),
-         alias        = alias,
-         phi          = phi
+         exitBlock    = fn mlrisc => exitBlock(cellset mlrisc)
        }
    end
     

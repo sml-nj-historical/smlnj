@@ -9,7 +9,7 @@
  *)
 
 functor Alpha
-   (structure AlphaInstr : ALPHAINSTR
+   (structure AlphaInstr : ALPHAINSTR 
     structure AlphaMLTree : MLTREE 
     structure PseudoInstrs : ALPHA_PSEUDO_INSTR
     structure ExtensionComp : MLTREE_EXTENSION_COMP
@@ -146,8 +146,8 @@ struct
 
   fun error msg = MLRiscErrorMsg.error("Alpha",msg) 
 
-  type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
-  type mltreeStream = (T.stm,C.regmap,T.mlrisc list) T.stream
+  type instrStream = (I.instruction,C.cellset) T.stream
+  type mltreeStream = (T.stm,T.mlrisc list) T.stream
 
   (*
    * This module is used to simulate operations of non-standard widths.
@@ -159,9 +159,8 @@ struct
                             val rep = SE
                            )
 
-  val zeroR   = C.GPReg 31
+  val zeroR   = C.r31
   val zeroOpn = I.REGop zeroR
-
 
   (*
    * Specialize the modules for multiplication/division 
@@ -289,7 +288,7 @@ struct
   datatype zeroOne   = ZERO | ONE | OTHER
   datatype commutative = COMMUTE | NOCOMMUTE
 
-  val zeroFR = C.FPReg 31
+  val zeroFR = C.f31 
   val zeroEA = I.Direct zeroR
   val zeroT  = T.LI 0
   val trapb = [I.TRAPB]
@@ -299,7 +298,7 @@ struct
         (instrStream as
          S.STREAM{emit,beginCluster,endCluster,
                   defineLabel,entryLabel,pseudoOp,annotation,
-                  exitBlock,phi,alias,comment,...}) =
+                  exitBlock,comment,...}) =
   let
       infix || && << >> ~>>
 
@@ -350,7 +349,7 @@ struct
 
       (* emit load immed *)
       fun loadImmed(n, base, rd, an) =
-      if n =0 then
+      if n = 0 then
          move(base, rd, an)
       else if ~32768 <= n andalso n < 32768 then
          mark(I.LDA{r=rd, b=base, d=I.IMMop n},an)
@@ -424,11 +423,11 @@ struct
                            [_] => NONE | _ => SOME(I.FDirect(newFreg()))},an)
 
       and move(s,d,an) = 
-          if s = d orelse d = zeroR then () else 
+          if C.sameCell(s,d) orelse C.sameCell(d,zeroR) then () else 
           mark(I.COPY{dst=[d],src=[s],impl=ref NONE,tmp=NONE},an)
 
       and fmove(s,d,an) = 
-          if s = d orelse d = zeroFR then () else 
+          if C.sameCell(s,d) orelse C.sameCell(d,zeroFR) then () else 
           mark(I.FCOPY{dst=[d],src=[s],impl=ref NONE,tmp=NONE},an)
 
        (* emit an sign extension op *)
@@ -929,8 +928,8 @@ struct
             (* On the alpha: all 32 bit values are already sign extended.
              * So no sign extension is necessary
              *)
-        | expr(T.CVTI2I(64, T.SIGN_EXTEND, 32, e)) = expr e
-        | expr(T.CVTI2I(64, T.ZERO_EXTEND, 32, e)) = expr e
+        | expr(T.SX(64, 32, e)) = expr e
+        | expr(T.ZX(64, 32, e)) = expr e
 
         | expr e = let val r = newReg()
                    in  doExpr(e,r,[]); r end
@@ -1032,15 +1031,12 @@ struct
           | T.NOTB(_,e) => arith(I.ORNOT,zeroT,e,d,an)
 
             (* loads *)
-          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(8,ea,mem)) => load8s(ea,d,mem,an)
-          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(16,ea,mem))=> load16s(ea,d,mem,an)
-          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(32,ea,mem))=> load32s(ea,d,mem,an)
-          | T.CVTI2I((8|16|32|64),T.ZERO_EXTEND,_,T.LOAD(8,ea,mem)) => 
-               load8(ea,d,mem,an)
-          | T.CVTI2I((16|32|64),T.ZERO_EXTEND,_,T.LOAD(16,ea,mem))=> 
-               load16(ea,d,mem,an)
-          | T.CVTI2I(64,T.ZERO_EXTEND,_,T.LOAD(64,ea,mem)) => 
-               load(I.LDQ,ea,d,mem,an)
+          | T.SX(_,_,T.LOAD(8,ea,mem)) => load8s(ea,d,mem,an)
+          | T.SX(_,_,T.LOAD(16,ea,mem))=> load16s(ea,d,mem,an)
+          | T.SX(_,_,T.LOAD(32,ea,mem))=> load32s(ea,d,mem,an)
+          | T.ZX((8|16|32|64),_,T.LOAD(8,ea,mem)) => load8(ea,d,mem,an)
+          | T.ZX((16|32|64),_,T.LOAD(16,ea,mem))=> load16(ea,d,mem,an)
+          | T.ZX(64,_,T.LOAD(64,ea,mem)) => load(I.LDQ,ea,d,mem,an)
           | T.LOAD(8,ea,mem) => load8(ea,d,mem,an)
           | T.LOAD(16,ea,mem) => load16(ea,d,mem,an)
           | T.LOAD(32,ea,mem) => load32s(ea,d,mem,an)
@@ -1070,8 +1066,8 @@ struct
             (* On the alpha: all 32 bit values are already sign extended.
              * So no sign extension is necessary
              *)
-          | T.CVTI2I(64, T.SIGN_EXTEND, 32, e) => doExpr(e, d, an)
-          | T.CVTI2I(64, T.ZERO_EXTEND, 32, e) => doExpr(e, d, an)
+          | T.SX(64, 32, e) => doExpr(e, d, an)
+          | T.ZX(64, 32, e) => doExpr(e, d, an)
 
           | T.PRED(e, c) => doExpr(e, d, A.CTRLUSE c::an)
           | T.REXT e => ExtensionComp.compileRext (reducer()) {e=e, an=an, rd=d}
@@ -1241,9 +1237,10 @@ struct
                 | T.<   => bcc(I.CMPTLTSU, I.FBNE)
                 | T.<=  => bcc(I.CMPTLESU, I.FBNE)
                 | T.?<  => bcc2(I.CMPTLTSU, I.FBNE, I.CMPTUNSU, I.FBNE)
-                | T.?<=  => bcc2(I.CMPTLESU, I.FBNE, I.CMPTUNSU, I.FBNE)
-                | T.<> => fall(I.CMPTEQSU, I.FBNE, I.CMPTUNSU, I.FBEQ)
-                | T.?= => bcc2(I.CMPTEQSU, I.FBNE, I.CMPTUNSU, I.FBNE)
+                | T.?<= => bcc2(I.CMPTLESU, I.FBNE, I.CMPTUNSU, I.FBNE)
+                | T.<>  => fall(I.CMPTEQSU, I.FBNE, I.CMPTUNSU, I.FBEQ)
+                | T.?=  => bcc2(I.CMPTEQSU, I.FBNE, I.CMPTUNSU, I.FBNE)
+                | _     => error "branch"
             end
           | e => mark(I.BRANCH{b=I.BNE,r=ccExpr e,lab=lab},an)
 
@@ -1279,6 +1276,7 @@ struct
         | branchIt0(T.GEU,e,lab,an) = (* always true! *) goto(lab,an)
         | branchIt0(T.LTU,e,lab,an) = (* always false! *) ()
         | branchIt0(T.LEU,e,lab,an) = br(I.BEQ,e,lab,an)  (* never < 0! *)
+        | branchIt0 _               = error "brnachIt0"
 
         (* Generate the operands for unsigned comparisons 
          * Mask out high order bits whenever necessary.
@@ -1326,6 +1324,7 @@ struct
               | T.LEU => unsignedCmp(ty,I.CMPULE,I.BNE)
               | T.GTU => unsignedCmp(ty,I.CMPULE,I.BEQ)
               | T.GEU => unsignedCmp(ty,I.CMPULT,I.BEQ)
+              | _     => error "branchItOther"
           end
 
          (* This function generates a conditional move:
@@ -1370,6 +1369,7 @@ struct
                 | (T.LEU,_,_)          => (I.CMOVEQ,cmp(T.GTU,a,b),x,y)
                 | (T.GTU,_,_)          => (I.CMOVEQ,cmp(T.LEU,a,b),x,y)
                 | (T.GEU,_,_)          => (I.CMOVEQ,cmp(T.LTU,a,b),x,y)
+                | _                    => error "cmove"
           in  mark(I.CMOVE{oper=oper,ra=ra,rb=opn x,rc=tmp},an); (* true case *)
               move(tmp, d, [])
           end
@@ -1415,6 +1415,7 @@ struct
               | T.GEU => unsignedCmp(ty,I.CMPULE,e2,e1,d)
               | T.LTU => unsignedCmp(ty,I.CMPULT,e1,e2,d)
               | T.LEU => unsignedCmp(ty,I.CMPULE,e1,e2,d)
+              | _     => error "compare"
           end
 
          (* generate an unconditional branch *)
@@ -1456,10 +1457,10 @@ struct
           | T.CCMV(r,e) => doCCexpr(e,r,an)
           | T.COPY(ty,dst,src) => copy(dst,src,an)
           | T.FCOPY(ty,dst,src) => fcopy(dst,src,an)
-          | T.JMP(ctrl,T.LABEL(LE.LABEL lab),_) => goto(lab,an)
-          | T.JMP(ctrl,e,labs) => mark(I.JMPL({r=zeroR,b=expr e,d=0},labs),an)
-          | T.BCC(ctrl,cc,lab) => branch(cc,lab,an)
-          | T.CALL{funct,targets,defs,uses,cdefs,cuses,region} => 
+          | T.JMP(T.LABEL(LE.LABEL lab),_) => goto(lab,an)
+          | T.JMP(e,labs) => mark(I.JMPL({r=zeroR,b=expr e,d=0},labs),an)
+          | T.BCC(cc,lab) => branch(cc,lab,an)
+          | T.CALL{funct,targets,defs,uses,region,...} => 
               call(funct,targets,defs,uses,region,an)
           | T.RET _ => mark(I.RET{r=zeroR,b=C.returnAddr,d=0},an)
           | T.STORE(8,ea,data,mem) => store8(ea,data,mem,an)
@@ -1511,9 +1512,7 @@ struct
            entryLabel  = entryLabel,
            comment     = comment,
            annotation  = annotation,
-           exitBlock   = fn regs => exitBlock(cellset regs),
-           alias       = alias,
-           phi         = phi
+           exitBlock   = fn regs => exitBlock(cellset regs)
          } 
    in  self()
    end

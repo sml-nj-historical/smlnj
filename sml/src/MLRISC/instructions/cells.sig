@@ -1,128 +1,141 @@
 (*
- * Description of registers and other updatable cells.
+ * This updated signature describes the abstractions on ``cells'', which
+ * denote storage cells in the machine architecture.
  *
- * IMPORTANT NOTE: 
- * All physical registers in the machine architecture 
- * all given unique encodings.  The encoding is not necessarily zero based.
- * For example, 0 may NOT represent floating point register 0. 
- *
- * This means that the client should not
- * use hard coded integers to represent physical registers, 
- * but should instead use the function:
- *
- *    Reg : cellkind -> int -> cell
- *
- * to compute the proper encoding.
- *
- * A call "Reg k n" returns the nth physical register of kind k.
- * For integer and float point registers, the functions:
- *
- *   GPReg : int -> cell
- *   FPReg : int -> cell
- *
- * can also be used as shortcuts.
- *
- * -- Allen.
- *) 
-signature CELLS_BASIS = 
+ * Allen Leung (12/2/00)
+ *)
+(*
+ * Things that are architecture specific.
+ *)
+signature CELLS_COMMON = 
 sig
-   eqtype cellkind 
-   type cell = int
-   type ty   = int
-   type regmap = cell IntHashTable.hash_table
+   include CELLS_BASIS
+   structure CellsBasis : CELLS_BASIS = CellsBasis
+         sharing type cellkind     = CellsBasis.cellkind   
+             and type cellkindDesc = CellsBasis.cellkindDesc
+             and type cellkindInfo = CellsBasis.cellkindInfo
+             and type cell         = CellsBasis.cell
+             and type HashTable.hash_table = CellsBasis.HashTable.hash_table
+         sharing SortedCells = CellsBasis.SortedCells
+
    exception Cells
 
    val cellkinds : cellkind list  (* list of all the cellkinds *)
 
-   val cellkindToString : cellkind -> string
-
-       (* first pseudo register *)
-   val firstPseudo : cell                    
-
-       (* returns the encoding for the nth physical register of the given kind,
-        * raises Cells if there is none.
-        *)
-   val Reg   : cellkind -> int -> cell
-   val GPReg : int -> cell (* Reg GP *)
-   val FPReg : int -> cell (* Reg FP *)
+   val firstPseudo : cell_id      (* first pseudo register *)
 
        (* given a cellkind returns its encoding range *)
    val cellRange : cellkind -> {low:int, high:int}
 
-       (* generate a new name for a virtual register *)
-   val newCell   : cellkind -> 'a -> cell 
+       (* Returns the nth physical register of the given kind,
+        * raises Cells if there are no physical register of the given number.
+        * Also raises Cells if the given number if outside of the range.
+        * NOTE: this function returns the same cell for the 
+        * same argument every time.   See also the function cloneCell below
+        *)
+   val Reg   : cellkind -> (register_num -> cell)
+
+       (* return a list of cells *)
+   val Regs  : cellkind -> {from:register_num, to:register_num, step:int} ->
+                 cell list
+
+       (* Same as Reg but we take the id instead.
+        * So, registerNum(Reg k r) = r, and
+        *     registerId(Cell k id) = id
+        *)
+   val Cell  : cellkind -> (register_id -> cell) 
+
+   val GPReg : int -> cell (* abbreviation for Reg GP *)
+   val FPReg : int -> cell (* abbreviation for Reg FP *)
+
+       (*
+        * Generate a new cell for a virtual register.  The new cell
+        * is a pseudo register that is distinct from any other registers.
+        * IMPORTANT: if you are using newCell, it is important to 
+        * partially apply it first to get a function.  Then uses this
+        * function generate new cells.  The first application takes
+        * time.
+        *)
+   val newCell   : cellkind -> ('a -> cell)
+   val newReg    : 'a -> cell  (* abbreviation for newCell GP *)
+   val newFreg   : 'a -> cell  (* abbreviation for newCell FP *)
 
        (* lookup the number of virtual registers in a cellkind *)
-   val numCell   : cellkind -> unit -> int              
+   val numCell   : cellkind -> (unit -> int) 
 
        (* the next virtual register name *) 
-   val maxCell   : unit -> cell
+   val maxCell   : unit -> cell_id
      
-       (* newCell GP *)
-   val newReg    : 'a -> cell              
-
-       (* newCell FP *)
-   val newFreg   : 'a -> cell              
-
-       (* Create a new register that has the same cellkind as the given one 
+       (* Given a cell c, create a new pseudo register that has the same 
+        * cellkind as c, and a new property list initialized 
+        * with the contents of c's properity list.
         * Note: the numCell kind is NOT updated!
         *)
-   val newVar    : cell -> cell
+   val newVar : cell -> cell
 
-       (* create a new regmap *)
-   val regmap    : unit -> regmap
-   val lookup    : regmap -> cell -> cell
+       (* This is the same as above, except that if the original
+        * cell is colored, then the new cell has the same color.
+        * Note that it is possible to have two cells (or more) with
+        * the same physical color.  In these cases they can be used
+        * to denote the same register, but they have different identities,   
+        * and different property lists.  This may be useful for 
+        * representing the same register used in different situations.  
+        * See the function Reg above.
+        *)
+   val cloneCell : cell -> cell
 
-       (* reset all counters *)
-   val reset     : unit -> unit
+       (* Reset all counters. *) 
+   val reset     : unit -> unit 
 
-        (* auxiliary functions *)
-   val printSet : (cell -> string) -> (cell list -> string)
-   val printTuple : string list * string list -> string
+   (* 
+    * Cell set represents a map from cellkind to sorted_cells.
+    *)
+   structure CellSet :
+   sig
+      type cellset 
+      (* cellset functions *)
+      val empty      : cellset
+      val add        : cell * cellset -> cellset
+      val rmv        : cell * cellset -> cellset
+      val get        : cellkind -> cellset -> cell list
+      val update     : cellkind -> cellset * cell list -> cellset
+      val map        : {from:cell,to:cell} -> cellset -> cellset
 
-    (*
-     * These annotations adds extract definitions and uses to an instruction
-     *)
-   exception DEF_USE of {cellkind:cellkind, defs:cell list, uses:cell list}
-   val DEFUSE : {cellkind:cellkind, defs:cell list, uses:cell list}
-                  Annotations.property
+      (* convert cellset into a list of cells *)
+      val toCellList : cellset -> cell list
+
+      (* pretty printing *)
+      val toString   : cellset -> string
+   end
+
+       (* Abbreviations for cellsets *)
+   type cellset = CellSet.cellset 
+
+   val empty      : cellset
+   val getReg     : cellset -> cell list 
+   val addReg     : cell * cellset -> cellset 
+   val rmvReg     : cell * cellset -> cellset
+   val getFreg    : cellset -> cell list 
+   val addFreg    : cell * cellset -> cellset
+   val rmvFreg    : cell * cellset -> cellset
+
+       (* Return a register that is always zero on the architecture,
+        * if one exists.  IMPORTANT: each call returns the same cell.
+        * See also cloneCell above.
+        *)
+   val zeroReg    : cellkind -> cell option  
+                           
+   val defaultValues : cellkind -> (register_id * int) list
+
 end
 
 (*
- * This is the abstract interface of cells
+ * This is the abstract interface of cells.
  *)
-signature CELLS = 
+signature CELLS =
 sig
-   include CELLS_BASIS
-   val GP   : cellkind  (* general purpose *)
-   val FP   : cellkind  (* floating point *)
-   val CC   : cellkind  (* condition code *)
-   val MEM  : cellkind  (* memory cell *)
-   val CTRL : cellkind  (* control dependence *)
-   val toString : cellkind -> cell -> string
-   val toStringWithType : cellkind -> cell * ty -> string
-   val stackptrR : cell                    (* stack pointer register *)
-   val asmTmpR : cell                      (* assembly temporary *)
-   val fasmTmp : cell                      (* floating point temporary *)
-   val zeroReg : cellkind -> cell option   (* register that contains 0 *)
-
-   type cellset
-
-      (* building a cellset *)
-   val empty      : cellset
-   val addCell    : cellkind -> cell * cellset -> cellset
-   val rmvCell    : cellkind -> cell * cellset -> cellset
-   val addReg     : cell * cellset -> cellset
-   val rmvReg     : cell * cellset -> cellset
-   val addFreg    : cell * cellset -> cellset
-   val rmvFreg    : cell * cellset -> cellset
-   val getCell    : cellkind -> cellset -> cell list
-   val updateCell : cellkind -> cellset * cell list -> cellset
-
-       (* pretty printing, the second one takes a regmap *)
-   val cellsetToString : cellset -> string
-   val cellsetToString' : (cell -> cell) -> cellset -> string
-
-       (* convert cellset into a list of cells *)
-   val cellsetToCells : cellset -> cell list
+   include CELLS_COMMON
+   val stackptrR     : cell (* stack pointer register *)
+   val asmTmpR       : cell (* assembly temporary *)
+   val fasmTmp       : cell (* floating point temporary *)
 end

@@ -36,7 +36,6 @@ signature FLOWGRAPH = sig
         blocks: block list, 
 	entry : block,
 	exit  : block,	  
-        regmap: C.regmap,
         blkCounter : int ref,
         annotations : Annotations.annotations ref
       }
@@ -76,7 +75,6 @@ struct
         blocks: block list, 
 	entry : block,
 	exit  : block,	  
-        regmap: C.regmap,
         blkCounter : int ref,
         annotations : Annotations.annotations ref
       }

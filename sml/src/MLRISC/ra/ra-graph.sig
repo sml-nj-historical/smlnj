@@ -7,6 +7,8 @@
 signature RA_GRAPH = 
 sig
 
+   structure C : CELLS_BASIS
+
   (*
    * The following are the data structures used in the register allocator.
    *)
@@ -36,13 +38,27 @@ sig
    *)
   type programPoint = int 
 
+  (* Hash table indexed by program point *)
+  structure PPtHashTable : MONO_HASH_TABLE 
+      where type Key.hash_key = programPoint
+
+  type frame_offset = int
+  type logical_spill_id = int
+
+  datatype spillLoc = 
+     FRAME   of logical_spill_id  (* spill to a new frame location *)
+   | MEM_REG of C.cell            (* spill to a memory register *)
+
+  (* Hash table indexed by spill location *)
+  structure SpillLocHashTable : MONO_HASH_TABLE 
+      where type Key.hash_key = spillLoc
+
   type mode = word
 
   datatype interferenceGraph = 
      GRAPH of 
      { bitMatrix    : bitMatrix ref,
        nodes        : node IntHashTable.hash_table,
-       regmap       : int IntHashTable.hash_table,
        K            : int,
        firstPseudoR : int,
        dedicated    : bool Array.array,
@@ -54,20 +70,19 @@ sig
        (* Info to undo a spill when an optimistic spill has occurred *)
        spillFlag    : bool ref,
 
-       (* registers that have been spilled*)
-       spilledRegs  : bool IntHashTable.hash_table,
-
+       spilledRegs  : bool IntHashTable.hash_table, 
+                           (*registers that have been spilled*)
        trail        : trailInfo ref,
 
        (* how to pretty print a register *)
-       showReg      : int -> string,
+       showReg      : C.cell -> string,
 
        (* how many registers there are? *)
        numRegs      : int,
        maxRegs      : unit -> int,
 
        (* dead copies *)
-       deadCopies   : int list ref,
+       deadCopies   : C.cell list ref,
        copyTmps     : node list ref,
        memMoves     : move list ref,
        memRegs      : node list ref,
@@ -113,7 +128,7 @@ sig
       | REMOVED               (* removed from the interference graph *)
       | ALIASED of node       (* coalesced *)
       | COLORED of int        (* colored *)
-      | MEMREG of int         (* register implemented in memory *)
+      | MEMREG of int * C.cell(* register implemented in memory *)
       | SPILLED		      (* spilled *)
       | SPILL_LOC of int      (* spilled at logical location *)
 
@@ -125,7 +140,8 @@ sig
         *)
 
   and node = 
-    NODE of { number : int,		(* node number *)
+    NODE of { number : int, 	        (* node number *)
+	      cell:    C.cell,
 	      movecnt: int ref,		(* #moves this node is involved in *)
 	      movelist: move list ref,	(* moves associated with this node *)
 	      degree : int ref,		(* current degree *)
@@ -145,13 +161,12 @@ sig
 
   (* Create a new interference graph *)
   val newGraph : { nodes        : node IntHashTable.hash_table,
-                   regmap       : int IntHashTable.hash_table,
                    numRegs      : int,
                    maxRegs      : unit -> int,
                    K            : int,
                    firstPseudoR : int,
                    dedicated    : bool Array.array,
-                   showReg      : int -> string,
+                   showReg      : C.cell -> string,
                    getreg       : 
                      {pref:int list,stamp:int,proh:int Array.array} -> int,
                    getpair      : 
@@ -159,7 +174,7 @@ sig
                    proh         : int Array.array,
                    mode         : mode,
                    spillLoc     : int ref,
-                   memRegs      : (int * int) list
+                   memRegs      : C.cell list
                  } -> interferenceGraph
 
 end

@@ -1,0 +1,22 @@
+Library 
+	functor SparcRTL
+	functor SparcRTLProps
+is
+
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+        $/basis.cm
+#else
+        basis.cm
+#endif
+#endif
+
+	Control.cm
+	MLRISC.cm
+	RTL.cm
+	Region.cm
+	SPARC.cm
+	
+	(* sparc specific backend *)
+	../sparc/mltree/sparcRTL.sml 
+	../sparc/mltree/sparcRTLProps.sml 

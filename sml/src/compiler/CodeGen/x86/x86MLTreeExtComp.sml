@@ -9,7 +9,7 @@ struct
    structure C = I.C
    structure Ext = SMLNJMLTreeExt
    type reducer = 
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode) T.reducer
+     (I.instruction,C.cellset,I.operand,I.addressing_mode) T.reducer
 
    val fast_fp = MLRiscControl.getFlag "x86-fast-fp"
 
@@ -34,8 +34,10 @@ struct
        | comp _ = MLRiscErrorMsg.impossible "compileFext" 
 
      fun fastComp{e=(64, fexp), fd:C.cell, an:T.an list} =     
-         let fun Freg f = if f >= 32+8 andalso f < 32+32 (* hardwired! *)
-                          then I.FDirect f else I.FPR f 
+         let fun Freg f = let val fx = C.registerNum f
+                          in  if fx >= 8  andalso fx < 32 (* hardwired! *)
+                              then I.FDirect f else I.FPR f 
+                          end
              val (unOp, f) =
                      case fexp of
                        Ext.FSINE f => (I.FSIN, f)

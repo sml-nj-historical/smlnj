@@ -1,9 +1,10 @@
 functor X86Shuffle(I : X86INSTR) : X86SHUFFLE =
 struct
   structure I = I
+  structure C = I.C
   structure Shuffle = Shuffle(I)
 
-  type t = {regmap:int->int, tmp:I.ea option, dst:int list, src:int list}
+  type t = {tmp:I.ea option, dst:C.cell list, src:C.cell list}
 
   exception foo
   val shuffle =
@@ -25,18 +26,16 @@ struct
    * This version makes use of the x86 floating point stack for hardware
    * renaming! 
    *)
-  fun shufflefpNormal{regmap, tmp, src, dst} = 
+  fun shufflefpNormal{tmp, src, dst} = 
   let val n =  length src
   in  if n <= 7 then 
          let fun gen(s::ss, d::ds, pushes, pops) = 
-                 let val s = regmap s and d = regmap d
-                 in  if s = d then gen(ss, ds, pushes, pops)
-                     else gen(ss, ds, I.FLDL(I.FDirect s)::pushes, 
+                 if C.sameColor(s,d) then gen(ss, ds, pushes, pops)
+                 else gen(ss, ds, I.FLDL(I.FDirect s)::pushes, 
                                       I.FSTPL(I.FDirect d)::pops)
-                 end
                | gen(_, _, pushes, pops) = List.revAppend(pushes, pops)
          in  gen(src, dst, [], []) end
-      else shufflefpNormalAndSlow{regmap=regmap, tmp=tmp, src=src, dst=dst}
+      else shufflefpNormalAndSlow{tmp=tmp, src=src, dst=dst}
   end
 
   (*
@@ -49,7 +48,7 @@ struct
          {mvInstr=fn{dst, src} => [I.FMOVE{fsize=I.FP64,src=src, dst=dst}],
 	  ea = I.FPR}
 
-  fun shufflefp(x as {tmp=SOME(I.FPR _), dst, src, regmap}) = shufflefpFast x
+  fun shufflefp(x as {tmp=SOME(I.FPR _), ...}) = shufflefpFast x
     | shufflefp x = shufflefpNormal x
 
 end

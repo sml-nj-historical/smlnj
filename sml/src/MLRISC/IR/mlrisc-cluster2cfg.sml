@@ -35,7 +35,7 @@ struct
     fun error msg = MLRiscErrorMsg.error("Cluster2CFG",msg)
 
     fun cluster2cfg
-         (F.CLUSTER{blocks, entry, exit, regmap, blkCounter, annotations,...})=
+         (F.CLUSTER{blocks, entry, exit, blkCounter, annotations,...})=
     let fun id(F.BBLOCK{blknum, ...}) = blknum
           | id(F.ENTRY {blknum, ...}) = blknum
           | id(F.EXIT {blknum, ...})  = blknum
@@ -48,8 +48,7 @@ struct
           | first_block []                        = error "first_block"
 
         val reorder = ref false
-        val info = CFG.INFO { regmap       = regmap,
-                              firstBlock   = ref(first_block blocks),
+        val info = CFG.INFO { firstBlock   = ref(first_block blocks),
                               reorder      = reorder,
                               annotations  = annotations
                              }

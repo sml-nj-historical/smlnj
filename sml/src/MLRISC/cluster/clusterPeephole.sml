@@ -12,10 +12,9 @@ struct
 
    val name = "Peephole optimization"
 
-   fun run(cluster as F.CLUSTER{blocks, regmap, ...}) =
-   let val peephole = PeepHole.peephole (F.I.C.lookup regmap)
-   in  app (fn F.BBLOCK{insns, ...} => insns := peephole(!insns)
-             | _ => ()) blocks;
-       cluster
-   end
+   fun run(cluster as F.CLUSTER{blocks, ...}) =
+       (app (fn F.BBLOCK{insns, ...} => insns := PeepHole.peephole(rev(!insns))
+              | _ => ()) blocks;
+        cluster
+       )
 end

@@ -5,11 +5,11 @@ struct
   structure C = Instr.C
 
   type format1 =
-       {r:int, i:I.operand, d:int} *
+       {r:C.cell, i:I.operand, d:C.cell} *
        (I.operand -> I.C.cell) -> I.instruction list
 
   type format2 =
-       {i:I.operand, d:int} *
+       {i:I.operand, d:C.cell} *
        (I.operand -> I.C.cell) -> I.instruction list
 
   fun error msg = MLRiscErrorMsg.impossible ("SparcPseudoInstrs."^msg)
@@ -28,8 +28,8 @@ struct
   fun umul_native({r, i, d}, reduceOpnd) =
       [I.ARITH{a=I.UMUL,r=r,i=i,d=d}]
 
-  val TNE = I.Ticc{t=I.BNE,cc=I.ICC,r=0,i=I.IMMED 7}
-  val TVS = I.Ticc{t=I.BVS,cc=I.ICC,r=0,i=I.IMMED 7}
+  val TNE = I.Ticc{t=I.BNE,cc=I.ICC,r=C.r0,i=I.IMMED 7}
+  val TVS = I.Ticc{t=I.BVS,cc=I.ICC,r=C.r0,i=I.IMMED 7}
 
       (* overflows iff Y != (d ~>> 31) *)
   fun smul_native({r, i, d}, reduceOpnd) =
@@ -38,19 +38,19 @@ struct
       in  [I.ARITH{a=I.SMUL,r=r,i=i,d=d},
            I.SHIFT{s=I.SRA,r=d,i=I.IMMED 31,d=t1},
            I.RDY{d=t2},
-           I.ARITH{a=I.SUBCC,r=t1,i=I.REG t2,d=0},
+           I.ARITH{a=I.SUBCC,r=t1,i=I.REG t2,d=C.r0},
            TNE
           ] 
       end
   fun udiv_native({r,i,d},reduceOpnd) = 
-      [I.WRY{r=0,i=I.REG 0},
+      [I.WRY{r=C.r0,i=I.REG C.r0},
        I.ARITH{a=I.UDIV,r=r,i=i,d=d}]
 
    (* May overflow if MININT div -1 *)
   fun sdiv_native({r,i,d},reduceOpnd) = 
       let val t1 = C.newReg()
       in  [I.SHIFT{s=I.SRA,r=r,i=I.IMMED 31,d=t1},
-           I.WRY{r=t1,i=I.REG 0},
+           I.WRY{r=t1,i=I.REG C.r0},
            I.ARITH{a=I.SDIVCC,r=r,i=i,d=d},
            TVS
           ]
@@ -60,17 +60,19 @@ struct
    * Registers %o2, %o3 are used to pass arguments to ml_mul and ml_div 
    * Result is returned in %o2.
    *)
+  val r10 = C.GPReg 10
+  val r11 = C.GPReg 11
 
   fun callRoutine(offset,reduceOpnd,r,i,d) =   
   let val addr = C.newReg()
-      val defs = C.addReg(10,C.empty) 
-      val uses = C.addReg(10,C.addReg(11,C.empty))
+      val defs = C.addReg(r10,C.empty) 
+      val uses = C.addReg(r10,C.addReg(r11,C.empty))
   in
-      [I.COPY{src=[r,reduceOpnd i],dst=[10,11],
+      [I.COPY{src=[r,reduceOpnd i],dst=[r10,r11],
                    tmp=SOME(I.Direct(C.newReg())),impl=ref NONE},
        I.LOAD{l=I.LD,r=C.stackptrR,i=offset,d=addr,mem=stack},
        I.JMPL{r=addr,i=I.IMMED 0,d=C.linkReg,defs=defs,uses=uses,nop=true,mem=stack},
-       I.COPY{src=[10],dst=[d],tmp=NONE,impl=ref NONE}
+       I.COPY{src=[r10],dst=[d],tmp=NONE,impl=ref NONE}
       ]
   end
 
@@ -96,7 +98,7 @@ struct
   val sdiv32trap = if native then sdiv_native else sdivtrap
 
   val overflowtrap32 = (* tvs 0x7 *)
-                       [I.Ticc{t=I.BVS,cc=I.ICC,r=0,i=I.IMMED 7}]
+                       [I.Ticc{t=I.BVS,cc=I.ICC,r=C.r0,i=I.IMMED 7}]
   val overflowtrap64 = [] (* not needed *)
 
 

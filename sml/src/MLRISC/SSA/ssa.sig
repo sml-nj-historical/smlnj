@@ -61,7 +61,7 @@ sig
    structure W          : FREQ
       sharing SP.I = CFG.I = MLTreeComp.I = I
       sharing SP.RTL = RTL
-      sharing MLTreeComp.T.Basis = RTL.T.Basis
+      sharing MLTreeComp.T = RTL.T
       sharing I.C = SP.C = C 
       sharing Dom = DJ.Dom
       sharing CFG.W = W
@@ -78,7 +78,7 @@ sig
    type cfg    = CFG.cfg         (* control flow graph *)
                   (* dominator tree *)
    type dom    = (CFG.block,CFG.edge_info,CFG.info) Dom.dominator_tree 
-   type nameTbl = {oldName:C.cell, index:int} Intmap.intmap 
+   type nameTbl = {oldName:C.cell, index:int} IntHashTable.hash_table 
 
    (*------------------------------------------------------------------------
     * An SSA op is an instruction 
@@ -109,18 +109,16 @@ sig
 
    (* create a new op; but does not add edges *)
    val newOp     : ssa -> {id   : ssa_id,        
-                           instr:I.instruction, 
-                           rtl  : RTL.rtl, 
+                           instr: I.instruction, 
+                           rtl  : rtl, 
                            defs : value list,
                            uses : value list,
                            block: block,
                            pos  : pos
                           } -> unit
    val reserve   : ssa -> int -> unit           (* reserve n nodes *)
-   val immed     : ssa -> int -> value          (* create a new immed value *)
-   val operand   : ssa -> I.operand -> value    (* create a new operand *)
-   (*val label     : ssa -> Label.label -> value*)  (* create a new label *)
-   (* insert all the graph edges *)
+   val immed     : ssa -> int -> value          (* lookup immed value *)
+   val operand   : ssa -> I.operand -> value    (* lookup perand *)
    val computeDefUseChains : ssa -> unit
 
    (*------------------------------------------------------------------------
@@ -146,7 +144,8 @@ sig
    val rtlTbl     : ssa -> rtl Array.array
    val succTbl    : ssa -> value Graph.edge list Array.array (* out edges *)
    val ssaOpTbl   : ssa -> ssa_op Array.array                (* node table *) 
-   val cellKindTbl: ssa -> C.cellkind Intmap.intmap (* cellkind table *)
+   val cellKindTbl: ssa -> C.cellkind IntHashTable.hash_table
+                              (* cellkind table *)
    val operandTbl : ssa -> SP.OT.operandTable       
    val minPos     : ssa -> int ref
    val maxPos     : ssa -> int ref

@@ -11,23 +11,43 @@ sig
    type value = int
 
    datatype const =
-     IMMED of int           (* integer operand *)
-   | OPERAND of I.operand   (* other operand *)
-   (*| LABEL of Label.label*)   (* a label *)
+     INT of int                        (* small integer operand *)
+   | INTINF of MachineInt.machine_int  (* large integer operand *)
+   | OPERAND of I.operand              (* other operand *)
 
-   exception NoLabel
+   type valueNumber =
+      { int     : int -> value,
+        word    : word -> value,
+        word32  : Word32.word -> value,
+        int32   : Int32.int -> value,
+        intinf  : IntInf.int -> value,
+        operand : I.operand -> value
+      }
+
    exception NoOperand
+   exception NoInt
+   exception NoIntInf
    exception NoConst
 
    (* Create a new table *)
    val create  : int ref -> operandTable 
 
-   (* Lookup/create *)
-   val immed   : operandTable -> int -> value
-   val operand : operandTable -> I.operand -> value
-   (*val label   : operandTable -> Label.label -> value*)
+   (* Lookup methods *)
 
    (* Value number -> int/operand/label *)
-   val const    : operandTable -> value -> const
+   val const       : operandTable -> value -> const
+   val int         : operandTable -> int -> value
+   val word        : operandTable -> word -> value
+   val int32       : operandTable -> Int32.int -> value
+   val word32      : operandTable -> Word32.word -> value
+   val intinf      : operandTable -> IntInf.int -> value
+   val operand     : operandTable -> I.operand -> value
+
+   (* Create new value numbers *)
+   val makeNewValueNumbers : operandTable -> valueNumber
+
+   (* Lookup but don't create *)
+   val lookupValueNumbers : operandTable -> valueNumber
+
 
 end

@@ -23,7 +23,7 @@ struct
    structure I = I
    structure C = I.C
    type reducer =
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode) T.reducer
+     (I.instruction,C.cellset,I.operand,I.addressing_mode) T.reducer
 
    fun unimplemented _ = MLRiscErrorMsg.impossible "SMLNJMLTreeExtComp" 
 

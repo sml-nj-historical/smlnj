@@ -7,13 +7,15 @@ struct
 
    datatype edgekind = PI | DOM | RAN | RECORD | MARK
 
+   structure C = CellsBasis
+
    datatype cell = 
      LINK  of region
-   | SREF  of int * edges ref
-   | WREF  of int * edges ref
-   | SCELL of int * edges ref
-   | WCELL of int * edges ref
-   | TOP   of {mutable:bool, id:int, name:string}
+   | SREF  of C.cell * edges ref
+   | WREF  of C.cell * edges ref
+   | SCELL of C.cell * edges ref
+   | WCELL of C.cell * edges ref
+   | TOP   of {mutable:bool, id:C.cell, name:string}
       (* a collapsed node *)
 
    withtype region = cell ref
@@ -35,7 +37,7 @@ struct
               (edgekind * int * region) list = 
       ListMergeSort.sort (fn ((k,i,_),(k',i',_)) => less(k,i,k',i'))
 
-   val newMem = ref(fn _ => error "newMem") : (unit -> int) ref
+   val newMem = ref(fn _ => error "newMem") : (unit -> C.cell) ref
    fun reset f = newMem := f
 
    fun newSRef() = ref(SREF(!newMem(),ref []))
@@ -197,12 +199,12 @@ struct
    fun toString r = show(!r, !maxLevels)
 
    and show(LINK x, lvl) = show(!x, lvl)
-     | show(SREF(id,es), lvl) = "sref"^Int.toString id^edges(es, lvl)
-     | show(WREF(id,es), lvl) = "wref"^Int.toString id^edges(es, lvl) 
-     | show(SCELL(id,es), lvl) = "s"^Int.toString id^edges(es, lvl) 
-     | show(WCELL(id,es), lvl) = "w"^Int.toString id^edges(es, lvl) 
-     | show(TOP{name="",mutable=true,id,...}, _) = "var"^Int.toString id
-     | show(TOP{name="",mutable=false,id,...}, _) = "const"^Int.toString id
+     | show(SREF(id,es), lvl) = "sref"^C.toString id^edges(es, lvl)
+     | show(WREF(id,es), lvl) = "wref"^C.toString id^edges(es, lvl) 
+     | show(SCELL(id,es), lvl) = "s"^C.toString id^edges(es, lvl) 
+     | show(WCELL(id,es), lvl) = "w"^C.toString id^edges(es, lvl) 
+     | show(TOP{name="",mutable=true,id,...}, _) = "var"^C.toString id
+     | show(TOP{name="",mutable=false,id,...}, _) = "const"^C.toString id
      | show(TOP{name,...}, _) = name
 
    and edges(es, ~1) = ""

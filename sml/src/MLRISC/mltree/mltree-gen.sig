@@ -28,13 +28,13 @@ sig
    val compileCond : 
        {exp : T.ty * T.ccexp * T.rexp * T.rexp,
         an  : Annotations.annotations,
-        rd : int
+        rd  : CellsBasis.cell
        } -> T.stm list
 
    val compileFcond : 
        {exp : T.fty * T.ccexp * T.fexp * T.fexp,
         an  : Annotations.annotations,
-        fd : int
+        fd  : CellsBasis.cell
        } -> T.stm list
 
 

@@ -16,6 +16,7 @@ struct
    structure G    = Graph
    structure Util = IR.Util
    structure A    = Array
+   structure C    = IR.I.C
 
    type flowgraph = IR.IR
  
@@ -30,22 +31,19 @@ struct
        val N = #capacity cfg ()
 
        (* Performs branch chaining *)  
-       val branchMap = Intmap.new(13, NoTarget) : G.node_id Intmap.intmap
-       val addBranch = Intmap.add branchMap 
-       val lookupBranch = Intmap.map branchMap
+       val branchMap = IntHashTable.mkTable(13, NoTarget)
+       val addBranch = IntHashTable.insert branchMap 
+       val lookupBranch = IntHashTable.lookup branchMap
 
        val visited = A.array(N, ~1)
        val stamp   = ref 0
 
        val changed = ref false
 
-       val regmap  = CFG.regmap IR
-       val lookup  = IR.I.C.lookup regmap
-
        fun isTrivialCopy(instr) =  
            let fun isTrivial([], []) = true
                  | isTrivial(d::ds, s::ss) =
-                   lookup d = lookup s andalso isTrivial(ds,ss)
+                   C.sameColor(d,s) andalso isTrivial(ds,ss)
                  | isTrivial _ = error "isTrivialCopy"
                val (dst, src) = InsnProps.moveDstSrc instr
            in  isTrivial(dst, src) 

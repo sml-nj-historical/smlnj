@@ -1,7 +1,7 @@
 signature X86SHUFFLE = sig
   structure I : X86INSTR
 
-  type t = {regmap:int->int, tmp:I.ea option, dst:int list, src:int list}
+  type t = {tmp:I.ea option, dst:I.C.cell list, src:I.C.cell list}
 
   val shuffle : t -> I.instruction list
   val shufflefp : t -> I.instruction list

@@ -9,6 +9,8 @@
 signature MLRISC_ANNOTATIONS =
 sig
 
+    structure C : CELLS_BASIS = CellsBasis
+
     (* 
      * The branch probability of conditional branches. 
      * The client can attach this with conditional branches.
@@ -39,16 +41,16 @@ sig
      * These annotations are currently recognized by the SSA optimization
      * modules.
      *)
-   exception CTRLDEF of int
-   exception CTRLUSE of int
-   val CTRL_DEF : int Annotations.property
-   val CTRL_USE : int Annotations.property
+   exception CTRLDEF of C.cell
+   exception CTRLUSE of C.cell
+   val CTRL_DEF : C.cell Annotations.property
+   val CTRL_USE : C.cell Annotations.property
 
     (*
      * This annotation can be used specify a pretty printing function for
      * assemblers
      *)
-   val REGINFO : ((int -> int) * int -> string) Annotations.property
+   val REGINFO : (C.cell -> string) Annotations.property
 
     (*
      * Disable all optimizations in the cluster
@@ -76,8 +78,8 @@ sig
     (* 
      * Enter information for a register.
      *)
-   exception MARKREG of int -> unit
-   val MARK_REG : (int -> unit) Annotations.property
+   exception MARKREG of C.cell -> unit
+   val MARK_REG : (C.cell -> unit) Annotations.property
 
     (*
      * Disable branch chaining optimization on a jump

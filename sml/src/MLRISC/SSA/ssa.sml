@@ -12,7 +12,7 @@ functor SSA
    structure DJ         : DJ_GRAPH
    structure GCMap      : GC_MAP
      sharing SSAProps.I = InsnProps.I = CFG.I = FormatInsn.I = MLTreeComp.I
-     sharing MLTreeComp.T.Basis = SSAProps.RTL.T.Basis
+     sharing MLTreeComp.T = SSAProps.RTL.T
   ) : SSA =
 struct
    structure CFG        = CFG
@@ -61,11 +61,11 @@ struct
    type pos    = int             (* position within a block *)
    type block  = Graph.node_id   (* block id *)
    type ssa_id = Graph.node_id   (* ssa id *)
-   type rtl    = SP.RTL.rtl      (* RTL *)
-   type const  = SP.OT.const     (* constants *)
+   type rtl    = RTL.rtl         (* RTL *)
+   type const  = OT.const        (* constants *)
    type cfg = CFG.cfg            (* control flow graph *)
    type dom = (CFG.block,CFG.edge_info,CFG.info) Dom.dominator_tree  
-   type nameTbl = {oldName:C.cell, index:int} Intmap.intmap 
+   type nameTbl = {oldName:C.cell, index:int} IntHashTable.hash_table 
 
    (*------------------------------------------------------------------------
     * An SSA op is an instruction 
@@ -87,7 +87,7 @@ struct
        defsTbl         : value list DA.array, 
        succTbl         : value Graph.edge list DA.array,
        ssaOpTbl        : ssa_op DA.array,
-       cellKindTbl     : C.cellkind Intmap.intmap,
+       cellKindTbl     : C.cellkind IntHashTable.hash_table,
        operandTbl      : OT.operandTable,
        nameTbl         : nameTbl option,
        gcmap           : GCMap.gcmap option,
@@ -140,12 +140,12 @@ struct
        val defSiteTbl  = DA.array(13, ~1)
        val blockTbl    = DA.array(13, ~1) 
        val posTbl      = DA.array(13, ~1) 
-       val rtlTbl      = DA.array(13, RTL.COPY)
+       val rtlTbl      = DA.array(13, T.SEQ [])
        val usesTbl     = DA.array(13, [])
        val defsTbl     = DA.array(13, [])
        val succTbl     = DA.array(13, [])
        val ssaOpTbl    = DA.array(13, InsnProps.nop())
-       val cellKindTbl = Intmap.new(13, NoCellKind) 
+       val cellKindTbl = IntHashTable.mkTable(13, NoCellKind) 
        val operandTbl  = OT.create nextImmed
        val nodeCount   = ref 0
        val edgeCount   = ref 0
@@ -163,7 +163,7 @@ struct
                  succTbl         = succTbl,
                  ssaOpTbl        = ssaOpTbl,
                  cellKindTbl     = cellKindTbl,
-                 operandTbl      = operandTbl,
+                 operandTbl      = operandTbl, 
                  nameTbl         = nameTbl,
                  gcmap           = gcmap,
                  nextImmed       = nextImmed,
@@ -338,7 +338,7 @@ struct
    let val {cfg, dom, ...} = info SSA   (* extracts the dominator *)
    in  dom cfg end
    fun cfg SSA = #cfg(info SSA)   (* extracts the CFG *)
-   fun immed SSA = OT.immed(#operandTbl(info SSA)) (* create a new operand *)
+   fun immed SSA = OT.int(#operandTbl(info SSA)) (* create a new operand *)
    (*fun label SSA = OT.label(#operandTbl(info SSA))*) (* create a new label *)
    fun const SSA = OT.const(#operandTbl(info SSA)) (* lookup const values *)
    fun operand SSA = OT.operand(#operandTbl(info SSA))
@@ -410,17 +410,21 @@ struct
     * Pretty printing a value
     *------------------------------------------------------------------------*)
    fun prInt i = if i < 0 then "-"^i2s(~i) else i2s i
+   fun prIntInf i = if IntInf.sign i < 0 then 
+                       "-"^IntInf.toString(IntInf.~ i) 
+                    else IntInf.toString i
    fun showVal SSA = 
    let val {nameTbl, cellKindTbl, gcmap, ...} = info SSA
        val const = const SSA
-       val cellKind = Intmap.mapWithDefault(cellKindTbl, C.GP)
+       val cellKind = IntHashTable.find cellKindTbl
+       val cellKind = fn r => case cellKind r of SOME k => k | NONE => C.GP 
 
        (* Display gc type if a gc map is present *)
        val showGC = 
            case gcmap of
              NONE => (fn r => "")
            | SOME gcmap => 
-             let val look = Intmap.map gcmap
+             let val look = IntHashTable.lookup gcmap
              in  fn r => ":"^GCMap.GC.toString(look r) handle _ => ":?" end
 
        (* Display fancy name if a name table is present *)
@@ -428,7 +432,7 @@ struct
            case nameTbl of
              NONE =>     (fn (k,v) => C.toString k v)
            | SOME tbl => 
-             let val look = Intmap.map tbl
+             let val look = IntHashTable.lookup tbl
              in  fn (k,v) => 
                     let val {oldName,index} = look v
                     in  C.toString k oldName^"."^i2s index end
@@ -445,7 +449,8 @@ struct
        fun show v = 
            if v >= 0 then lookupName v
            else (case const v of
-                  SP.OT.IMMED i => prInt i
+                  SP.OT.INT i => prInt i
+                | SP.OT.INTINF i => prIntInf i
                 | SP.OT.OPERAND opnd => "v"^i2s(~v)
                 (*| SP.OT.LABEL l => Label.nameOf l*)
                 ) handle SP.OT.NoConst => "?"^i2s(~v)
@@ -465,7 +470,9 @@ struct
                                          (C.lookup regmap)
        fun block b = "b"^i2s b
        fun blockOf ssa_id = block(DA.sub(blockTbl,ssa_id))
-       val cellKindOf = Intmap.mapWithDefault(cellKindTbl, C.GP)
+       val cellKindOf = IntHashTable.find cellKindTbl
+       val cellKindOf = 
+           fn r => case cellKindOf r of SOME k => k | NONE => C.GP 
 
        fun listify(vs, rs) =
        let fun h r = C.toString (cellKindOf r) r
@@ -505,8 +512,12 @@ struct
            | _ => 
               let fun def v = showVal(List.nth(defs, v))
                   fun use v = showVal(List.nth(uses, v))
-                  val ssa = #stm (RTL.showRTL{def=def, use=use,
-                                              regionDef=def, regionUse=use}) rtl
+                  val ssa = RTL.rtlToString rtl
+                  (* val ssa = #stm
+                               (RTL.showRTL{def=def, use=use,
+                                            regionDef=def, regionUse=use}) rtl
+                   *)
+
                   val ssa = if !showPos then 
                                ssa^" #"^prInt(DA.sub(posTbl, ssa_id))  
                             else ssa
@@ -525,14 +536,14 @@ struct
     *------------------------------------------------------------------------*)
    fun newRenamedVar SSA = 
    let val {nameTbl, cellKindTbl, gcmap, ...} = info SSA
-       val lookupCellKind = Intmap.map cellKindTbl
-       val addCellKind    = Intmap.add cellKindTbl
+       val lookupCellKind = IntHashTable.lookup cellKindTbl
+       val addCellKind    = IntHashTable.insert cellKindTbl
        val updateGC =
            case gcmap of
              NONE   => (fn (r, r') => r')
            | SOME m => 
-             let val lookup = Intmap.map m
-                 val add    = Intmap.add m
+             let val lookup = IntHashTable.lookup m
+                 val add    = IntHashTable.insert m
              in  fn (r,r') => (add(r', lookup r) handle _ => (); r') 
              end
        fun newVar r =
@@ -544,11 +555,13 @@ struct
    in  case nameTbl of
          NONE => newVar
        | SOME nameTbl =>
-         let val enterName = Intmap.add nameTbl
+         let val enterName = IntHashTable.insert nameTbl
              exception NoIndex
-             val indexTbl  = Intmap.new(31, NoIndex)
-             val addIndex  = Intmap.add indexTbl
-             val findIndex = Intmap.mapWithDefault(indexTbl,0)
+             val indexTbl  = IntHashTable.mkTable(31, NoIndex)
+             val addIndex  = IntHashTable.insert indexTbl
+             val findIndex = IntHashTable.find indexTbl
+             val findIndex = 
+                 fn r => case findIndex r of SOME i => i | NONE => 0
              fun newVarKeepName r = 
              let val r' = newVar r
                  val i  = findIndex r
@@ -568,8 +581,8 @@ struct
    in  case gcmap of
           NONE => C.newVar
         | SOME m => 
-          let val lookup = Intmap.map m
-              val add    = Intmap.add m
+          let val lookup = IntHashTable.lookup m
+              val add    = IntHashTable.insert m
           in  fn r => let val r' = C.newVar r
                       in  add(r', lookup r) handle _ => (); r' end
           end
@@ -790,7 +803,8 @@ struct
        val rtlTbl     = rtlTbl SSA
        val {edgeCount, ...} = info SSA
 
-       val cellKind = Intmap.mapWithDefault(cellKindTbl SSA,C.GP)
+       val cellKind = IntHashTable.find(cellKindTbl SSA)
+       val cellKind = fn r => case cellKind r of SOME k => k | NONE => C.GP
 
        fun isReplaceable k = k = C.GP orelse k = C.FP
 
@@ -860,7 +874,7 @@ struct
            let val i    = DA.sub(defSiteTbl, value)
                val defs = DA.sub(defsTbl, i)
            in  case (defs, constOf const) of
-                 ([_], SP.OT.IMMED imm) => (* only one value defined; okay *)
+                 ([_], SP.OT.INT imm) => (* only one value defined; okay *)
                   if (case DA.sub(usesTbl, i) of
                         [v] => v < 0  (* already a constant! don't fold *)
                       | _   => false) then false
