@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/05/21 16:00:00 EDT
+Tag: Release_110_40
+Description:
+
+New working release (110.40).  New bootfiles.
+
+[Also: John Reppy fixed GC bug 1131.]
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/05/21 12:35:00 EDT
 Tag: blume-20020521-cmdoc
 Description:
