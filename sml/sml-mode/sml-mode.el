@@ -199,10 +199,10 @@ Full documentation will be available after autoloading the function."))
 
 (defconst sml-font-lock-keywords
   `(;;(sml-font-comments-and-strings)
-    ("\\<\\(fun\\|and\\)\\s-+\\(\\sw+\\)"
+    ("\\<\\(fun\\|and\\)\\s-+\\('\\sw+\\s-+\\)*\\(\\sw+\\)"
      (1 font-lock-keyword-face)
-     (2 font-lock-function-def-face))
-    ("\\<\\(\\(data\\|abs\\|with\\|eq\\)?type\\)\\s-+\\('\\s-*\\sw+\\s-+\\)*\\(\\sw+\\)"
+     (3 font-lock-function-def-face))
+    ("\\<\\(\\(data\\|abs\\|with\\|eq\\)?type\\)\\s-+\\('\\sw+\\s-+\\)*\\(\\sw+\\)"
      (1 font-lock-keyword-face)
      (4 font-lock-type-def-face))
     ("\\<\\(val\\)\\s-+\\(\\sw+\\>\\s-*\\)?\\(\\sw+\\)\\s-*="
@@ -282,29 +282,7 @@ Full documentation will be available after autoloading the function."))
 ;;;###Autoload
 (defun sml-mode ()
   "Major mode for editing ML code.
-Tab indents for ML code.
-Comments are delimited with (* ... *).
-Blank lines and form-feeds separate paragraphs.
-Delete converts tabs to spaces as it moves back.
-
-For information on running an inferior ML process, see the documentation
-for inferior-sml-mode (set this up with \\[sml]).
-
-Customisation: Entry to this mode runs the hooks on sml-mode-hook.
-
-Variables controlling the indentation
-=====================================
-
-Seek help (\\[describe-variable]) on individual variables to get current settings.
-
-sml-indent-level (default 4)
-    The indentation of a block of code.
-
-sml-electric-semi-mode (default nil)
-    If t, a `\;' will reindent line, and perform a newline.
-
-Mode map
-========
+Entry to this mode runs the hooks on sml-mode-hook.
 \\{sml-mode-map}"
 
   (interactive)
@@ -399,18 +377,18 @@ If anyone has a good algorithm for this..."
   (interactive)
   (mark-paragraph))
 
-(defun sml-indent-region (begin end)
-  "Indent region of ML code."
-  (interactive "r")
-  (message "Indenting region...")
-  (save-excursion
-    (goto-char end) (setq end (point-marker)) (goto-char begin)
-    (while (< (point) end)
-      (skip-chars-forward "\t\n ")
-      (sml-indent-line)
-      (end-of-line))
-    (move-marker end nil))
-  (message "Indenting region... done"))
+;; (defun sml-indent-region (begin end)
+;;   "Indent region of ML code."
+;;   (interactive "r")
+;;   (message "Indenting region...")
+;;   (save-excursion
+;;     (goto-char end) (setq end (point-marker)) (goto-char begin)
+;;     (while (< (point) end)
+;;       (skip-chars-forward "\t\n ")
+;;       (sml-indent-line)
+;;       (end-of-line))
+;;     (move-marker end nil))
+;;   (message "Indenting region... done"))
 
 (defun sml-indent-line ()
   "Indent current line of ML code."
@@ -467,6 +445,9 @@ If anyone has a good algorithm for this..."
 	   (sml-point (point))
 	   (sym (save-excursion (sml-forward-sym))))
        (or
+	;; allow the user to override the indentation
+	(when (looking-at sml-fixindent-re) (current-indentation))
+
 	;; continued comment
 	(and (looking-at "\\*") (sml-find-comment-indent))
 

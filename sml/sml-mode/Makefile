@@ -61,6 +61,9 @@ TEXEXTS =  *.cps *.fns *.kys *.vr *.tp *.pg *.log *.aux *.toc *.cp *.ky *.fn
 .dvi.ps:
 	dvips -f $< >$@
 
+$(PACKAGE)-startup.el:  $(ELFILES)
+	$(EMACS) --batch --eval '(setq generated-autoload-file "'`pwd`'/$@")' -f batch-update-autoloads "."
+
 ######################################################################
 
 default: elcfiles

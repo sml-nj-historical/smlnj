@@ -1,3 +1,15 @@
+1999-06-21  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-defs.el (sml-bindings): removed bindings for TAB and M-C-\
+
+1999-06-19  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-mode.el (sml-font-lock-keywords): skip type vars in "fun 'a myfn"
+	(sml-calculate-indentation): add a hack to allow the user to manually
+	  override the indentation algorithm with a magic comment.
+
+	* sml-mode-startup.el: update the autoloads automatically.
+
 1999-06-19  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* release: 3.9.2

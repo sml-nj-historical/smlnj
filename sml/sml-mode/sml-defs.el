@@ -43,8 +43,8 @@
     ("\M-\ "	. sml-electric-pipe)
     ("\;"	. sml-electric-semi)
     ("\M-\t"	. sml-back-to-outer-indent)
-    ("\C-\M-\\"	. sml-indent-region)
-    ("\t"	. sml-indent-line)	; ...except this one
+    ;;("\C-\M-\\"	. sml-indent-region)
+    ;;("\t"	. sml-indent-line)	; ...except this one
     ;; Process commands added to sml-mode-map -- these should autoload
     ("\C-c\C-l"	. sml-load-file)
     ("\C-c`"	. sml-next-error))
@@ -120,6 +120,14 @@
 
 ;;
 ;; regexps
+;;
+
+(defvar sml-fixindent-re
+  (concat ".*" (regexp-quote comment-start)
+	  "[ \t]*fixindent[ \t]*"
+	  (regexp-quote comment-end))
+  "Regexp matching the magic string overriding indentation.")
+
 ;;
 
 (defun sml-syms-re (&rest syms)
