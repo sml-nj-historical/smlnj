@@ -31,8 +31,6 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 
     fun parse gropt param stabflag group = let
 
-	val _ = SrcPath.revalidateCwd ()
-
 	val stabthis = isSome stabflag
 	val staball = stabflag = SOME true
 

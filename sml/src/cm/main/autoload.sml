@@ -108,11 +108,24 @@ structure AutoLoad :> AUTOLOAD = struct
 	val loadmap = SymbolMap.filter isPicked pend
 	val noloadmap = SymbolMap.filter (not o isPicked) pend
     in
-	case loadit loadmap of
-	    SOME e =>
-		(#set ter (BE.concatEnv (e, te));
-		 pending := noloadmap)
-	  | NONE => ()
+	if SymbolMap.isEmpty loadmap then ()
+	else
+	    (Say.say ["[autoloading..."];
+	     SrcPath.revalidateCwd ();
+	     (* We temporarily turn verbosity off, so we need to wrap this
+	      * with a SafeIO.perform... *)
+	     SafeIO.perform
+	      { openIt = fn () =>
+	          EnvConfig.getSet StdConfig.verbose (SOME false),
+	        closeIt = ignore o (EnvConfig.getSet StdConfig.verbose) o SOME,
+		cleanup = fn () => (),
+		work = fn _ =>
+	          (case loadit loadmap of
+		       SOME e =>
+			   (#set ter (BE.concatEnv (e, te));
+			    pending := noloadmap;
+			    Say.say ["done]\n"])
+		     | NONE => Say.say ["failed]\n"]) })
     end
 
     fun getPending () = !pending

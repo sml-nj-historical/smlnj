@@ -44,7 +44,6 @@ structure PathConfig :> PATHCONFIG = struct
 		if line = "" then ()
 		else case String.tokens Char.isSpace line of
 		    [a, d] => (set (m, a, d);
-			       Say.vsay ["PathConfig: ", a, " -> ", d, "\n"];
 			       loop ())
 		  | _ => (Say.say [f, ": malformed line (ignored)\n"];
 			  loop ())

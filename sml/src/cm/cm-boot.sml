@@ -301,25 +301,27 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			      (HostMachDepVC.Interact.installCompManager
 			            (SOME al_manager');
 			       autoload "basis.cm";
-			       AutoLoadHook.autoloadHook := autoload)
+			       autoload "host-cm.cm";
+			       CmHook.init
+			         { stabilize = stabilize,
+				   recomp = recomp,
+				   make = make,
+				   autoload = autoload,
+				   reset = reset,
+				   verbose =
+				      EnvConfig.getSet StdConfig.verbose,
+				   debug =
+				      EnvConfig.getSet StdConfig.debug,
+				   keep_going =
+				      EnvConfig.getSet StdConfig.keep_going,
+				   parse_caching =
+				      EnvConfig.getSet StdConfig.parse_caching,
+				   setAnchor = setAnchor })
+
 		  end
 	  end
       end
   in
-    structure CM = struct
-	val stabilize = stabilize
-	val recomp = recomp
-	val make = make
-	val autoload = autoload
-	val reset = reset
-
-	val verbose = EnvConfig.getSet StdConfig.verbose
-	val debug = EnvConfig.getSet StdConfig.debug
-	val keep_going = EnvConfig.getSet StdConfig.keep_going
-	val parse_caching = EnvConfig.getSet StdConfig.parse_caching
-	val setAnchor = setAnchor
-    end
-
     fun init (bootdir, de, er) =
 	(system_values := de;
 	 initTheValues (bootdir, er);

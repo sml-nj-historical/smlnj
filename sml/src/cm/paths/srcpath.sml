@@ -22,12 +22,11 @@ signature SRCPATH = sig
      * the current state of the file system: *)
     val sync : unit -> unit
 
+    (* This makes sure CM knows what the current working directory is: *)
+    val revalidateCwd : unit -> unit
+
     (* This erases all persistent state: *)
     val clear : unit -> unit
-
-    (* This should be called at the beginning of every main operation
-     * to make sure CM knows what the current working directory is: *)
-    val revalidateCwd : unit -> unit
 
     val osstring : t -> string
     val descr : t -> string
@@ -36,6 +35,9 @@ signature SRCPATH = sig
     val specOf : t -> string
     val contextName : context -> string
     val sameDirContext : t -> context
+
+    (* This will be called at the beginning of most main operations.
+     * Therefore, it will automatically do the call to revalidateCwd. *)
     val cwdContext : unit -> context
 
     val native : { context: context, spec: string } -> t

@@ -54,28 +54,31 @@ end = struct
     structure Parse = ParseFn (structure Stabilize = Stabilize
 			       val pending = AutoLoad.getPending)
 
-    fun cpTextStreams (ins, outs) = let
-	val N = 4096
-	fun cp () =
-	    if TextIO.endOfStream ins then ()
-	    else (TextIO.output (outs,
-				 TextIO.inputN (ins, N));
-		  cp ())
+    (* copying an input file to an output file safely... *)
+    fun copyFile (inf, outf) = let
+	fun workIn ins = let
+	    fun workOut outs = let
+		val N = 4096
+		fun loop () =
+		    if TextIO.endOfStream ins then ()
+		    else (TextIO.output (outs, TextIO.inputN (ins, N));
+			  loop ())
+	    in
+		loop ()
+	    end
+	in
+	    SafeIO.perform { openIt = fn () => AutoDir.openTextOut outf,
+			     closeIt = TextIO.closeOut,
+			     work = workOut,
+			     cleanup = fn () =>
+			         (F.remove outf handle _ => ()) }
+	end
     in
-	cp ()
+	SafeIO.perform { openIt = fn () => TextIO.openIn inf,
+			 closeIt = TextIO.closeIn,
+			 work = workIn,
+			 cleanup = fn () => () }
     end
-
-    fun openTextStreams (inf, outf) () =
-	(TextIO.openIn inf, AutoDir.openTextOut outf)
-    fun closeTextStreams (ins, outs) =
-	(TextIO.closeIn ins; TextIO.closeOut outs)
-
-    fun copyFile (inf, outf) =
-	SafeIO.perform { openIt = openTextStreams (inf, outf),
-			 closeIt = closeTextStreams,
-			 work = cpTextStreams,
-			 cleanup = fn () =>
-			    (F.remove outf handle _ => ()) }
 
     fun compile deliver dbopt = let
 
@@ -243,7 +246,6 @@ end = struct
 			    app show bootstrings
 			end
 		    in
-		      Say.say ["Runtime System PID is: ", rtspid, "\n"];
 		      if deliver then
 		       (SafeIO.perform { openIt = fn () =>
 					   AutoDir.openTextOut pidfile,
@@ -260,7 +262,8 @@ end = struct
 					 cleanup = fn () =>
 					   OS.FileSys.remove listfile
 					   handle _ => () };
-			copyFile (SrcPath.osstring initgspec, cmifile))
+			copyFile (SrcPath.osstring initgspec, cmifile);
+			Say.say ["Runtime System PID is: ", rtspid, "\n"])
 		      else ();
 		      true
 		    end

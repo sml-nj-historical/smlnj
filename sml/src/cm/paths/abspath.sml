@@ -11,8 +11,8 @@ signature ABSPATH = sig
     type t
     type ord_key = t
 
-    val revalidateCwd : unit -> unit
     val newEra : unit -> unit
+    val revalidateCwd : unit -> unit
 
     val cwdContext: unit -> context
     val sameDirContext: t -> context
@@ -125,7 +125,10 @@ structure AbsPath :> ABSPATH = struct
 		end
 
 	fun cwdContext () =
-	    THEN_CWD { stamp = cwdStamp (), name = cwdName (), id = cwdId () }
+	    (revalidateCwd ();
+	     THEN_CWD { stamp = cwdStamp (),
+		        name = cwdName (),
+			id = cwdId () })
 
 	fun sameDirContext p = DIR_OF p
 

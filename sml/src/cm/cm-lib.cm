@@ -109,7 +109,7 @@ is
 #endif
 
 #if defined(NEW_CM)
-	autoload-hook
+	cm-hook.cm
 	cm-boot.sml
 #else
 	link.sml
