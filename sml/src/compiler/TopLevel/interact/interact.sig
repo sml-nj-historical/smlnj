@@ -7,6 +7,7 @@ sig
   val interact : unit -> unit
   val useFile  : string -> unit
   val useStream : TextIO.instream -> unit
+  val initialize : unit -> unit
   val evalStream : TextIO.instream * SCEnv.Env.environment -> 
                        SCEnv.Env.environment
 

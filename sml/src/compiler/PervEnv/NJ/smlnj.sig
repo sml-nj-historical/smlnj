@@ -12,6 +12,7 @@ signature SML_OF_NJ =
     structure Internals : INTERNALS
     structure SysInfo : SYS_INFO
     structure Weak : WEAK
+    structure Assert : ASSERT
 
     val exportML : string -> bool
     val exportFn : (string * ((string * string list) -> OS.Process.status)) -> unit

@@ -47,6 +47,7 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
 	    ("and"	, fn yypos => Tokens.AND(yypos,yypos+3)),
 	    ("abstype"	, fn yypos => Tokens.ABSTYPE(yypos,yypos+7)),
 	    ("as"	, fn yypos => Tokens.AS(yypos,yypos+2)),
+            ("assert"  , fn yypos => Tokens.ASSERT(yypos,yypos+6)),
 	    ("case"	, fn yypos => Tokens.CASE(yypos,yypos+4)),
 	    ("datatype"	, fn yypos => Tokens.DATATYPE(yypos,yypos+8)),
 	    ("else"	, fn yypos => Tokens.ELSE(yypos,yypos+4)),
@@ -92,6 +93,7 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
 
     val overloadHash = hashStr "overload"
     val lazyHash = hashStr "lazy"
+    val assertHash = hashStr "assert"
 
   (* look-up an identifier.  If the symbol is found, the corresponding token is
    * generated with the position of its begining. Otherwise it is a regular
@@ -110,6 +112,9 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
 	      else if ((not(!Control.Lazy.enabled))
 	      andalso (hash = lazyHash) andalso (str = "lazy"))
 	        then mkId()
+              else if ((not(!SMLofNJ.Assert.enable))
+              andalso (hash = assertHash) andalso (str = "assert"))
+                then mkId()
 	        else tokFn yypos
 	    end
 	      handle NotToken => mkId()
