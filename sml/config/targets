@@ -5,15 +5,12 @@
 # want.  Note that cml-lib requires cml.
 
 #
-# But first, decide where you want to have stable libraries stored.
-# If leave "dont_move_libraries" commented out, then the install script will
-# move all libraries out of the source tree and into the $LIBDIR
-# directory.  Thus, you can then delete the entire source tree without
-# losing functionality.  With "dont_move_libraries", libraries will stay
-# where they are (within the CM subdirectories of their respective source
-# directories).
-
-#dont_move_libraries
+# The install script will move all libraries out of the source tree
+# and into the $LIBDIR directory.  Thus, you can later delete the
+# entire source tree without losing functionality.
+# (Notice that the old "dont_move_libraries" directive broke a while ago
+# and has been removed.)
+#
 
 # (The base system consisting of runtime, compiler, and basic libraries
 # will always be built.)

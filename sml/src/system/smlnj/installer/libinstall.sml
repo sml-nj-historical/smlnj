@@ -35,6 +35,7 @@ end = struct
 				val compare = String.compare)
 
     fun say l = TextIO.output (TextIO.stdErr, concat l)
+    fun warn l = say ("WARNING: " :: l)
     fun fail l = (say ("FAILURE: " :: l);
 		  OS.Process.exit OS.Process.failure)
 
@@ -141,19 +142,22 @@ end = struct
 	      | NONE => fail ["no targetsfiles\n"]
 
 	(* parse the targets file *)
-	fun loop (mv, ml) =
+	fun loop ml =
 	    case TextIO.inputLine s of
-		NONE => (TextIO.closeIn s; (mv, ml))
+		NONE => (TextIO.closeIn s; ml)
 	      | SOME l =>
-		  if String.sub (l, 0) = #"#" then loop (mv, ml)
+		  if String.sub (l, 0) = #"#" then loop ml
 		  else (case String.tokens Char.isSpace l of
-			    ["dont_move_libraries"] => loop (false, ml)
-			  | ["move_libraries"] => loop (true, ml)
-			  | ["request", module] => loop (mv, module :: ml)
-			  | [] => loop (mv, ml)
+			    [x as ("dont_move_libraries" |
+				   "move_libraries")] =>
+			      (warn ["\"", x, "\" no longer supported",
+				     " (installer always moves libraries)\n"];
+			       loop ml)
+			  | ["request", module] => loop (module :: ml)
+			  | [] => loop ml
 			  | _ => fail ["ill-formed targets line: ", l])
 
-	val (move_libraries, modules) = loop (true, [])
+	val modules = loop []
 
 	(* now resolve dependencies; get full list of modules
 	 * in correct build order: *)
@@ -235,12 +239,9 @@ end = struct
 					     P.concat (arch_oskind, relbase)))
 	    val srcfinalloc = P.concat (adir, relloc)
 	    val (finalloc, finalconfigpath) =
-		if move_libraries then
-		    (P.concat (libdir,
+		(P.concat (libdir,
 			       P.concat (finalanchor, relloc)),
 		     finalanchor)
-		else
-		    (srcfinalloc, adir)
 	in
 	    if fexists finalloc then
 		(say ["Library ", libname, " already existed in ",
@@ -258,9 +259,7 @@ end = struct
 		 stablist := (fn () => CM.stabilize false libname)
 			     :: !stablist;
 		 #set (CM.Anchor.anchor anchor) (SOME adir);
-		 if move_libraries then
-		     movlist := movelib srcfinalloc finalloc :: !movlist
-		 else ();
+		 movlist := movelib srcfinalloc finalloc :: !movlist;
 		 write_cm_pathconfig (finalanchor, finalconfigpath))
 	end
 
