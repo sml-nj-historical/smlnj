@@ -1,0 +1,122 @@
+<!-- fifo.mldoc -->
+
+<!DOCTYPE ML-DOC SYSTEM>
+
+<COPYRIGHT OWNER="AT&AMP;T Bell Laboratories" YEAR=1996>
+<VERSION VERID="1.0" YEAR=1996 MONTH=5 DAY=29>
+<TITLE>The FIFO signature</TITLE>
+
+<SECT>
+<HEAD>The <CD/FIFO/ signature</HEAD>
+
+<PP>
+The <STRREF TOPID NOLINK/Fifo/ structure provides applicative first-in/first-out
+queues.
+These queues provide amortized constant-time insertion and deletion for
+single-threaded use.
+<STRUCTURE STRID="Fifo">
+  <SIGBODY SIGID="FIFO" FILE=FIFO-SIG>
+    <SPEC>
+      <TYPE><TYPARAM>'a<ID>fifo
+      <COMMENT>
+	Applicative first-in/first-out queues.
+    <SPEC>
+      <EXN>Dequeue
+      <COMMENT>
+	This exception is raised when attempting to remove an element from
+	and empty queue.
+    <SPEC>
+      <VAL>empty<TY>'a fifo
+        <COMMENT>
+        Is the empty queue.
+    <SPEC>
+      <VAL>isEmpty<TY>'a fifo -> bool
+        <COMMENT>
+          <PROTOTY>
+          isEmpty <ARG/q/
+          </PROTOTY>
+          returns <CD/true/, if the queue <ARG/q/ is empty.
+    <SPEC>
+      <VAL>enqueue<TY>('a fifo * 'a) -> 'a fifo
+        <COMMENT>
+          <PROTOTY>
+          enqueue (<ARG/q/, <ARG/a/)
+          </PROTOTY>
+          explain the use and semantics of enqueue HERE.
+    <SPEC>
+      <VAL>dequeue<TY>'a fifo -> ('a fifo * 'a)
+        <RAISES><EXNREF/Dequeue/
+        <COMMENT>
+          <PROTOTY>
+          dequeue <ARG/q/
+          </PROTOTY>
+          explain the use and semantics of dequeue HERE.
+    <SPEC>
+      <VAL>delete<TY>('a fifo * ('a -> bool)) -> 'a fifo
+        <COMMENT>
+          <PROTOTY>
+          delete (<ARG/q/, <ARG/f/)
+          </PROTOTY>
+          explain the use and semantics of delete HERE.
+    <SPEC>
+      <VAL>head<TY>'a fifo -> 'a
+        <RAISES><EXNREF/Dequeue/
+        <COMMENT>
+          <PROTOTY>
+          head <ARG/q/
+          </PROTOTY>
+          explain the use and semantics of head HERE.
+    <SPEC>
+      <VAL>peek<TY>'a fifo -> 'a option
+        <COMMENT>
+          <PROTOTY>
+          peek <ARG/q/
+          </PROTOTY>
+          explain the use and semantics of peek HERE.
+    <SPEC>
+      <VAL>length<TY>'a fifo -> int
+        <COMMENT>
+          <PROTOTY>
+          length <ARG/q/
+          </PROTOTY>
+          explain the use and semantics of length HERE.
+    <SPEC>
+      <VAL>contents<TY>'a fifo -> 'a list
+        <COMMENT>
+          <PROTOTY>
+          contents <ARG/q/
+          </PROTOTY>
+          explain the use and semantics of contents HERE.
+    <SPEC>
+      <VAL>app<TY>('a -> unit) -> 'a fifo -> unit
+        <COMMENT>
+          <PROTOTY>
+          app <ARG/f/ <ARG/q/
+          </PROTOTY>
+          explain the use and semantics of app HERE.
+    <SPEC>
+      <VAL>map<TY>('a -> 'b) -> 'a fifo -> 'b fifo
+        <COMMENT>
+          <PROTOTY>
+          map <ARG/f/ <ARG/q/
+          </PROTOTY>
+          explain the use and semantics of map HERE.
+    <SPEC>
+      <VAL>foldl<TY>(('a * 'b) -> 'b) -> 'b -> 'a fifo -> 'b
+        <COMMENT>
+          <PROTOTY>
+          foldl <ARG/f/ <ARG/a/ <ARG/q/
+          </PROTOTY>
+          explain the use and semantics of foldl HERE.
+    <SPEC>
+      <VAL>foldr<TY>(('a * 'b) -> 'b) -> 'b -> 'a fifo -> 'b
+        <COMMENT>
+          <PROTOTY>
+          foldr <ARG/f/ <ARG/a/ <ARG/q/
+          </PROTOTY>
+          explain the use and semantics of foldr HERE.
+  </SIGBODY>
+  <SEEALSO>
+    <STRREF TOPID/Queue/
+  </SEEALSO>
+</STRUCTURE>

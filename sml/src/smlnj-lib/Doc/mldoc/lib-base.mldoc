@@ -1,0 +1,48 @@
+<!-- lib-base.mldoc -->
+
+<!DOCTYPE ML-DOC SYSTEM>
+
+<COPYRIGHT OWNER="AT&AMP;T Bell Laboratories" YEAR=1996>
+<VERSION VERID="1.0" YEAR=1996 MONTH=5 DAY=29>
+<TITLE>The LibBase structure</TITLE>
+
+<SECT>
+<HEAD>The <CD/LibBase/ structure</HEAD>
+
+<PP>
+<!-- Some general introductory text -->
+
+<STRUCTURE STRID="LibBase">
+  <SIGBODY SIGID="LIB_BASE" FILE=LIB-BASE-SIG>
+    <SPEC>
+      <EXN>Unimplemented<TY>string
+    <SPEC>
+      <EXN>Impossible<TY>string
+    <SPEC>
+      <EXN>NotFound
+    <SPEC>
+      <VAL>failure<TY>{module : string, func : string, msg : string} -> 'a
+        <COMMENT>
+          <PROTOTY>
+          failure {<ARG/module/, <ARG/func/, <ARG/msg/}
+          </PROTOTY>
+          explain the use and semantics of failure HERE.
+    <SPEC>
+      <VAL>version<TY>{date : string, system : string, version_id : int list}
+        <COMMENT>
+          <PROTOTY>
+          version
+          </PROTOTY>
+          explain the use and semantics of version HERE.
+    <SPEC>
+      <VAL>banner<TY>string
+        <COMMENT>
+          <PROTOTY>
+          banner
+          </PROTOTY>
+          explain the use and semantics of banner HERE.
+<!-- optional SEEALSO; uncomment to use     -->
+<!-- <SEEALSO>    -->
+<!--   non-empty list of XREFS here   -->
+<!-- </SEEALSO>    -->
+</STRUCTURE>

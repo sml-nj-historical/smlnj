@@ -1,0 +1,22 @@
+/* cfun-list.h
+ *
+ * COPYRIGHT (c) 1996 Bell Laboratories, Lucent Technologies
+ *
+ * win32 C functions for processes
+ */
+
+#ifndef CLIB_NAME
+#define CLIB_NAME	"WIN32-PROCESS"
+#define CLIB_VERSION	"0.1"
+#define CLIB_DATE	"October 16, 1996"
+#endif
+
+CFUNC("system",\
+      _ml_win32_PS_system,\
+     "string->word32")
+CFUNC("exit_process",\
+      _ml_win32_PS_exit_process,\
+     "word32->'a")
+CFUNC("get_environment_variable",\
+      _ml_win32_PS_get_environment_variable,\
+     "string->string option")

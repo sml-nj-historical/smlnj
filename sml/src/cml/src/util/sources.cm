@@ -1,0 +1,10 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 1996 AT&T Research.
+ *)
+
+Group is
+  ../core-cml/sources.cm
+
+  result.sml
+

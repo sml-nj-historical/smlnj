@@ -1,0 +1,109 @@
+<!-- multicast.html -->
+
+<!-- COPYRIGHT (c) 1997 AT\|@AMP\|T Research. -->
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<TITLE>The Multicast structure</TITLE>
+</HEAD>
+<BODY>
+<H1><A NAME="top-of-document">The Concurrent ML Reference Manual</A></H1>
+<HR>
+
+<H3>The <CODE>Multicast</CODE> structure</H3>
+<P>
+Multicast channels provide a mechanism for broadcasting a stream of messages to a collection of threads. Threads receive multicast messages via an <EM>output port</EM>; each port receives its own copy of every message sent since the port was created. Multicast channels are particularly useful for communicating with a dynamically varying group of threads, since the sender does not need to know how many threads are listening. 
+<HR>
+<H4>Synopsis</H4>
+<BLOCKQUOTE>
+<CODE><B>signature </B><A NAME="MULTICAST:SIG:SPEC"><CODE>MULTICAST</CODE></A><BR>
+<B>structure </B><A NAME="Multicast:STR:SPEC"><CODE>Multicast</CODE></A><B> : </B>MULTICAST<BR>
+</CODE>
+</BLOCKQUOTE>
+<HR>
+<H4>Interface</H4>
+<BLOCKQUOTE>
+<CODE><B>type</B> 'a <A NAME="SIG:MULTICAST.event:TY:SPEC" HREF="#SIG:MULTICAST.event:TY">event</A> <B>=</B> 'a CML.event     <BR>
+<B>type</B> 'a <A NAME="SIG:MULTICAST.mchan:TY:SPEC" HREF="#SIG:MULTICAST.mchan:TY">mchan</A><BR>
+<B>type</B> 'a <A NAME="SIG:MULTICAST.port:TY:SPEC" HREF="#SIG:MULTICAST.port:TY">port</A><BR>
+<B>val</B> <A NAME="SIG:MULTICAST.mChannel:VAL:SPEC" HREF="#SIG:MULTICAST.mChannel:VAL">mChannel</A> <B>:</B> unit -&gt; 'a mchan         <BR>
+<B>val</B> <A NAME="SIG:MULTICAST.port:VAL:SPEC" HREF="#SIG:MULTICAST.port:VAL">port</A> <B>:</B> 'a mchan -&gt; 'a port         <BR>
+<B>val</B> <A NAME="SIG:MULTICAST.copy:VAL:SPEC" HREF="#SIG:MULTICAST.copy:VAL">copy</A> <B>:</B> 'a port -&gt; 'a port         <BR>
+<B>val</B> <A NAME="SIG:MULTICAST.recv:VAL:SPEC" HREF="#SIG:MULTICAST.recv:VAL">recv</A> <B>:</B> 'a port -&gt; 'a         <BR>
+<B>val</B> <A NAME="SIG:MULTICAST.recvEvt:VAL:SPEC" HREF="#SIG:MULTICAST.recvEvt:VAL">recvEvt</A> <B>:</B> 'a port -&gt; 'a event         <BR>
+<B>val</B> <A NAME="SIG:MULTICAST.multicast:VAL:SPEC" HREF="#SIG:MULTICAST.multicast:VAL">multicast</A> <B>:</B> ('a mchan * 'a) -&gt; unit         <BR>
+</CODE>
+</BLOCKQUOTE>
+<H4>Description</H4>
+<DL>
+<DT> <A NAME="SIG:MULTICAST.event:TY"><CODE><B>type</B> 'a event</CODE></A>
+<DD>
+<BR>
+
+<DT> <A NAME="SIG:MULTICAST.mchan:TY"><CODE><B>type</B> 'a mchan</CODE></A>
+<DD>
+This is the type constructor for asynchronous multicast channels.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:MULTICAST.port:TY"><CODE><B>type</B> 'a port</CODE></A>
+<DD>
+This is the type constructor for output ports on an 	  asynchronous multicast channels.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:MULTICAST.mChannel:VAL"><CODE>mChannel <VAR>()</VAR>
+          </CODE></A>
+<DD>
+creates a new multicast channel.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:MULTICAST.port:VAL"><CODE>port <VAR>mc</VAR>
+          </CODE></A>
+<DD>
+creates a new output port on the channel <VAR>mc</VAR>. 	  The port receives those messages sent after it is created.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:MULTICAST.copy:VAL"><CODE>copy <VAR>p</VAR>
+          </CODE></A>
+<DD>
+creates a new output port on a channel that has the same state as the 	  port <VAR>p</VAR>. 	  I.e., the stream of messages seen on the two ports will 	  be the same. 	  This is useful when two threads need to see the same stream of 	  messages. 	  NOTE: if two (or more) independent threads are reading from <VAR>p</VAR> 	  at the time that copy operation is performed, then 	  it may not be accurate.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:MULTICAST.recv:VAL"><CODE>recv <VAR>p</VAR>
+          </CODE></A>
+<DD>
+gets the next message from the port <VAR>p</VAR>. 	  The calling thread is blocked until there is a message available.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:MULTICAST.recvEvt:VAL"><CODE>recvEvt <VAR>p</VAR>
+          </CODE></A>
+<DD>
+creates an event value that represents the <A HREF="multicast.html#SIG:MULTICAST.recv:VAL:SPEC">recv</A> operation 	  on the port <VAR>p</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:MULTICAST.multicast:VAL"><CODE>multicast (<VAR>mc</VAR>, <VAR>v</VAR>)
+          </CODE></A>
+<DD>
+multicasts the value <VAR>v</VAR> on the channel <VAR>mc</VAR>. 	  This is a nonblocking operation.
+<BR>
+<BR>
+
+</DL>
+<HR>
+<HR>
+<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="multicast.html">TOP</A>
+   | <A HREF="cml-lib.html">Parent</A> | <A HREF="refman.html">Root</A>
+   ]</B>
+<P>
+<I>Last Modified January 29, 1997</I><BR>
+Copyright &copy; 1996 AT&amp;T <BR>
+<HR>
+</BODY>
+</HTML>

@@ -1,0 +1,26 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 1996 AT&T Research.
+ *)
+
+Group
+is
+
+  ../core-cml/sources.cm
+
+  prim-io-sig.sml
+  cml-stream-io-sig.sml
+  cml-text-stream-io-sig.sml
+  cml-imperative-io-sig.sml
+  cml-bin-io-sig.sml
+  cml-text-io-sig.sml
+
+  clean-io.sml
+  prim-io-fn.sml
+  bin-prim-io.sml
+  text-prim-io.sml
+  os-prim-io-sig.sml
+  bin-io-fn.sml
+  text-io-fn.sml
+  chan-io-fn.sml
+

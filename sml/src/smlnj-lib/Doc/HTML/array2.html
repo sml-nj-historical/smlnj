@@ -1,0 +1,85 @@
+<!-- array2.html -->
+
+<!-- COPYRIGHT (c) 1996 AT\|@AMP\|T Bell Laboratories. -->
+
+<HTML>
+<HEAD>
+  <TITLE>The ARRAY2 signature</TITLE>
+
+</HEAD>
+<BODY>
+<H1><A NAME="top-of-document">The SML/NJ Library Reference Manual</A></H1>
+<HR>
+
+<H3>The <CODE>ARRAY2</CODE> signature</H3>
+<HR>
+<H4>Synopsis</H4>
+<BLOCKQUOTE>
+<CODE><B>signature </B><A NAME="ARRAY2:SIG:SPEC"><CODE>ARRAY2</CODE></A><BR>
+</CODE>
+</BLOCKQUOTE>
+<HR>
+<H4>Interface</H4>
+<BLOCKQUOTE>
+<CODE><B>type</B> 'a <A HREF="#SIG:ARRAY2.array2:TY" NAME="SIG:ARRAY2.array2:TY:SPEC">array2</A><BR>
+<B>val</B> <A HREF="#SIG:ARRAY2.array:VAL" NAME="SIG:ARRAY2.array:VAL:SPEC">array</A> <B>:</B> (int * int * 'a) -&gt; 'a array2         <BR>
+<B>val</B> <A HREF="#SIG:ARRAY2.tabulate:VAL" NAME="SIG:ARRAY2.tabulate:VAL:SPEC">tabulate</A> <B>:</B> (int * int * ((int * int) -&gt; 'a)) -&gt; 'a array2         <BR>
+<B>val</B> <A HREF="#SIG:ARRAY2.sub:VAL" NAME="SIG:ARRAY2.sub:VAL:SPEC">sub</A> <B>:</B> ('a array2 * int * int) -&gt; 'a         <BR>
+<B>val</B> <A HREF="#SIG:ARRAY2.update:VAL" NAME="SIG:ARRAY2.update:VAL:SPEC">update</A> <B>:</B> ('a array2 * int * int * 'a) -&gt; unit         <BR>
+<B>val</B> <A HREF="#SIG:ARRAY2.dimensions:VAL" NAME="SIG:ARRAY2.dimensions:VAL:SPEC">dimensions</A> <B>:</B> 'a array2 -&gt; (int * int)         <BR>
+<B>val</B> <A HREF="#SIG:ARRAY2.row:VAL" NAME="SIG:ARRAY2.row:VAL:SPEC">row</A> <B>:</B> ('a array2 * int) -&gt; 'a Array.array         <BR>
+<B>val</B> <A HREF="#SIG:ARRAY2.column:VAL" NAME="SIG:ARRAY2.column:VAL:SPEC">column</A> <B>:</B> ('a array2 * int) -&gt; 'a Array.array         <BR>
+</CODE>
+</BLOCKQUOTE>
+<H4>Description</H4>
+<DL>
+  <DT> <A NAME="SIG:ARRAY2.array2:TY"><CODE><B>type</B> 'a array2</CODE></A>
+  <DD>
+    <BR>
+  <DT> <A NAME="SIG:ARRAY2.array:VAL"><CODE>array (<VAR>i</VAR>, <VAR>j</VAR>, <VAR>a</VAR>)           </CODE></A>
+  <DD>
+    explain the use and semantics of array HERE.     
+    <BR>
+    <BR>
+  <DT> <A NAME="SIG:ARRAY2.tabulate:VAL"><CODE>tabulate (<VAR>i</VAR>, <VAR>j</VAR>, <VAR>f</VAR>)           </CODE></A>
+  <DD>
+    explain the use and semantics of tabulate HERE.     
+    <BR>
+    <BR>
+  <DT> <A NAME="SIG:ARRAY2.sub:VAL"><CODE>sub (<VAR>ar</VAR>, <VAR>i</VAR>, <VAR>j</VAR>)           </CODE></A>
+  <DD>
+    explain the use and semantics of sub HERE.     
+    <BR>
+    <BR>
+  <DT> <A NAME="SIG:ARRAY2.update:VAL"><CODE>update (<VAR>ar</VAR>, <VAR>i</VAR>, <VAR>j</VAR>, <VAR>a</VAR>)           </CODE></A>
+  <DD>
+    explain the use and semantics of update HERE.     
+    <BR>
+    <BR>
+  <DT> <A NAME="SIG:ARRAY2.dimensions:VAL"><CODE>dimensions <VAR>ar</VAR>           </CODE></A>
+  <DD>
+    explain the use and semantics of dimensions HERE.     
+    <BR>
+    <BR>
+  <DT> <A NAME="SIG:ARRAY2.row:VAL"><CODE>row (<VAR>ar</VAR>, <VAR>i</VAR>)           </CODE></A>
+  <DD>
+    explain the use and semantics of row HERE.     
+    <BR>
+    <BR>
+  <DT> <A NAME="SIG:ARRAY2.column:VAL"><CODE>column (<VAR>ar</VAR>, <VAR>i</VAR>)           </CODE></A>
+  <DD>
+    explain the use and semantics of column HERE.
+    <BR>
+    <BR>
+</DL>
+<HR>
+<HR>
+<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="array2.html">TOP</A>
+   | <A HREF="">Parent</A> | <A HREF="">Root</A>
+   ]</B>
+<P>
+<I>Last Modified May 29, 1996</I><BR>
+Copyright &copy; 1996 AT&amp;T Research <BR>
+<HR>
+</BODY>
+</HTML>

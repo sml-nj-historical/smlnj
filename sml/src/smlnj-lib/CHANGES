@@ -1,0 +1,150 @@
+This is a list of changes to the SML/NJ Library; the version numbers
+correspond to SML/NJ releases.
+
+
+--------------------------------------------------------------------------------
+[1997-09-09] 109.30 --> 109.31
+------------------------------
+
+Added the Reactive library, which supports reactive scripting.  This is a
+first cut, and hasn't been extensively tested.
+
+Changed the names of SockUtil.sock{Recv,Send}* to SockUtil.{recv,send}*
+(since the sock prefix was redundant).
+
+Added some bug fixes to IntListSet that had previously been added to
+the ListSetFn implementation.
+
+
+--------------------------------------------------------------------------------
+[1997-07-17] 109.29 --> 109.30
+------------------------------
+
+Added a missing case to {ListSetFn,IntListSet}.isSubset.
+
+The bug fix for unionWith was broken.  I think I've got it right this
+time.
+
+
+--------------------------------------------------------------------------------
+[1997-07-17] 109.29 --> 109.30
+------------------------------
+
+Fixed a bug in the binary-tree and splay-tree implementations of the
+unionWith[i] and intersectWith[i] functions.  The bug caused the order
+of arguments to the merging function to be wrong in some cases.
+
+Fixed uses of System.Unsafe.
+
+Removed Array2:ARRAY2 from Util library, since the basis now defines these.
+
+Added MonoArrayFn functor for easy creation of monomorphic array structures.
+
+Added Atom.atom' operation for turning substrings into atoms.
+
+
+--------------------------------------------------------------------------------
+[1997-06-13] 109.28 --> 109.29
+------------------------------
+
+Added collate operation to ORD_MAP signature.
+
+Added compare operation to ORD_SET signature.
+
+Changed the type of and intersectWith[i] in the ORD_MAP signature to be
+more general.
+
+Changed the type of the map function in the ORD_SET signature to return
+a new set (instead of a list).
+
+
+--------------------------------------------------------------------------------
+[1997-05-22] 109.27 --> 109.28
+------------------------------
+
+Changed various sharing constraints to "where type" definitions to
+compile in SML'97.
+
+Added AtomBinaryMap and AtomBinarySet structures to Util library.
+
+
+--------------------------------------------------------------------------------
+[1997-03-03] 109.25.1 --> 109.25.2
+----------------------------------
+
+Changed Util/time-limit.sml to reflect new location of callcc/throw.
+
+
+--------------------------------------------------------------------------------
+[1997-02-25] 109.25 --> 109.25.1
+--------------------------------
+
+Added a bunch of new operations to the ordered map modules (BinaryMapFn,
+IntBinaryMap, ListMapFn, IntListFn, and SplayMapFn).  The new operations
+are:
+    val unionWith  : ('a * 'a -> 'a) -> ('a map * 'a map) -> 'a map
+    val unionWithi : (Key.ord_key * 'a * 'a -> 'a) -> ('a map * 'a map) -> 'a map
+    val intersectWith  : ('a * 'a -> 'a) -> ('a map * 'a map) -> 'a map
+    val intersectWithi : (Key.ord_key * 'a * 'a -> 'a) -> ('a map * 'a map) -> 'a map
+    val filter  : ('a -> bool) -> 'a map -> 'a map
+    val filteri : (Key.ord_key * 'a -> bool) -> 'a map -> 'a map
+    val mapPartial  : ('a -> 'b option) -> 'a map -> 'b map
+    val mapPartiali : (Key.ord_key * 'a -> 'b option) -> 'a map -> 'b map
+
+Added IOUtil : IO_UTIL structure to the Util library.  This provides
+support for dynamically rebinding stdIn and stdOut.
+
+Added KeywordFn functor to the Util library.  This provides support for
+implementing scanners, where keyword recognition is done outside the
+basic lexical analysis.
+
+Fixed several bugs in the ListSetFn functor.
+
+
+--------------------------------------------------------------------------------
+[1997-01-10] 109.23 --> 109.24
+------------------------------
+
+Changed the HASH_TABLE, MONO_HASH_TABLE, MONO_HASH2_TABLE, and ORD_MAP
+interfaces to provide two forms of the listItems function.  listItemsi
+returns a list of (key, value) pairs and listItems returns just the values.
+The previous version of listItems was like listItemsi.
+
+Added a missing case for BASEFONT in CheckHTMLFn.check.
+
+
+--------------------------------------------------------------------------------
+[1996-12-07] 109.21.1 --> 109.22
+--------------------------------
+
+Changed the MONO_DYNAMIC_ARRAY signature to make array an eqtype (also changed
+the implementation of DynamicArrayFn).
+
+Fixed a bug in Array2.column
+
+
+--------------------------------------------------------------------------------
+[1996-10-18] 109.19 --> 109.20
+------------------------------
+
+Added functions for sending/receiving strings over TCP sockets to the
+SockUtil structure.
+
+Fixed a bug with reading on a closed socket in SockUtil.sockRecvVec
+
+Fixed a bug in the implementation of the intersection operation
+in binary sets (BinarySetFn and IntBinarySet).
+
+
+--------------------------------------------------------------------------------
+[1996-10-01] 109.18 --> 109.19
+------------------------------
+
+Updated the HTML library to the August 21 version of the 3.2 DTD.
+
+Added html-defaults.sml to the HTML Library.
+
+Added Parsing combinators to the Util library.
+
+Added Socket utilities to the Unix library.
+

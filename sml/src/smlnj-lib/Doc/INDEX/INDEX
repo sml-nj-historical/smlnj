@@ -1,0 +1,389 @@
+@FILES
+  {"ord-map"; "The ORD_MAP signature";}
+  {"random"; "The RANDOM signature";}
+  {"list-format"; "The LIST_FORMAT signature";}
+  {"listsort"; "The LIST_SORT signature";}
+  {"fifo"; "The FIFO signature";}
+  {"rand"; "The RAND signature";}
+  {"format"; "The FORMAT signature";}
+  {"char-map"; "The CHAR_MAP signature";}
+  {"splaytree"; "The SPLAY_TREE signature";}
+  {"mono-array-sort"; "The MONO_ARRAY_SORT signature";}
+  {"ord-key"; "The ORD_KEY signature";}
+  {"ord-set"; "The ORD_SET signature";}
+  {"mono-hash-table"; "The MONO_HASH_TABLE signature";}
+  {"mono-hash2-table"; "The MONO_HASH2_TABLE signature";}
+  {"array2"; "The ARRAY2 signature";}
+  {"atom"; "The ATOM signature";}
+  {"uref"; "The UREF signature";}
+  {"array-sort"; "The ARRAY_SORT signature";}
+  {"queue"; "The QUEUE signature";}
+  {"list-xprod"; "The LIST_XPROD signature";}
+  {"mono-dynamic-array"; "The MONO_DYNAMIC_ARRAY signature";}
+  {"hash-table"; "The HASH_TABLE signature";}
+  {"hash-key"; "The HASH_KEY signature";}
+  {"bit-array"; "The BIT_ARRAY signature";}
+  {"bit-vector"; "The BIT_VECTOR signature";}
+  {"lib-base"; "The LIB_BASE signature";}
+@SIGNATURE ORD_SET "ord-set" {
+  @STRUCTURE Key ORD_KEY
+  @TYPES 
+    @TYPE item
+    @TYPE set
+  @VALS 
+    exists
+    foldl
+    find
+    singleton
+    filter
+    foldr
+    equal
+    difference
+    listItems
+    map
+    app
+    isSubset
+    numItems
+    delete
+    addList
+    intersection
+    member
+    add
+    union
+    isEmpty
+    empty
+}
+@SIGNATURE RANDOM "random" {
+  @TYPES 
+    @TYPE rand
+  @VALS 
+    randInt
+    randRange
+    rand
+    randReal
+    fromString
+    randNat
+    toString
+}
+@SIGNATURE FIFO "fifo" {
+  @TYPES 
+    @TYPE fifo
+  @EXCEPTIONS 
+    Dequeue
+  @VALS 
+    foldl
+    length
+    peek
+    foldr
+    enqueue
+    contents
+    map
+    app
+    head
+    delete
+    isEmpty
+    dequeue
+    empty
+}
+@SIGNATURE RAND "rand" {
+  @VALS 
+    random
+    randMin
+    mkRandom
+    randMax
+    norm
+    range
+}
+@SIGNATURE ARRAY_SORT "array-sort" {
+  @TYPES 
+    @TYPE array
+  @VALS 
+    sort
+    sorted
+}
+@SIGNATURE LIST_XPROD "list-xprod" {
+  @VALS 
+    foldX
+    mapX
+    appX
+}
+@SIGNATURE FORMAT "format" {
+  @TYPES 
+    @DATATYPE fmt_item { ATOM LINT INT LWORD WORD WORD8 BOOL CHR STR REAL LREAL LEFT RIGHT}
+  @EXCEPTIONS 
+    BadFormat
+    BadFmtList
+  @VALS 
+    format
+    scanf
+    sscanf
+    formatf
+}
+@SIGNATURE HASH_TABLE "hash-table" {
+  @TYPES 
+    @TYPE hash_table
+  @VALS 
+    find
+    fold
+    filter
+    mapi
+    appi
+    map
+    listItems
+    remove
+    mkTable
+    app
+    numItems
+    insert
+    lookup
+    copy
+    bucketSizes
+    foldi
+    filteri
+}
+@SIGNATURE HASH_KEY "hash-key" {
+  @TYPES 
+    @TYPE hash_key
+  @VALS 
+    hashVal
+    sameKey
+}
+@SIGNATURE BIT_ARRAY "bit-array" {
+  @INCLUDE MONO_ARRAY
+  @VALS 
+    clrBit
+    getBits
+    equal
+    eqBits
+    extend0
+    extend1
+    lshift
+    setBit
+    fromString
+    rshift
+    bits
+    notb
+    orb
+    complement
+    andb
+    intersection
+    union
+    toString
+    xorb
+    isZero
+}
+@SIGNATURE MONO_ARRAY_SORT "mono-array-sort" {
+  @STRUCTURE A MONO_ARRAY
+  @VALS 
+    sort
+    sorted
+}
+@SIGNATURE ARRAY2 "array2" {
+  @TYPES 
+    @TYPE array2
+  @VALS 
+    update
+    row
+    column
+    array
+    tabulate
+    dimensions
+    sub
+}
+@SIGNATURE ATOM "atom" {
+  @TYPES 
+    @TYPE atom
+  @VALS 
+    hash
+    atom
+    sameAtom
+    compare
+    toString
+}
+@SIGNATURE BIT_VECTOR "bit-vector" {
+  @INCLUDE MONO_VECTOR
+  @VALS 
+    getBits
+    extend0
+    eqBits
+    equal
+    extend1
+    lshift
+    fromString
+    rshift
+    bits
+    orb
+    notb
+    andb
+    toString
+    xorb
+    isZero
+}
+@SIGNATURE LIB_BASE "lib-base" {
+  @EXCEPTIONS 
+    Unimplemented
+    NotFound
+    Impossible
+  @VALS 
+    version
+    banner
+    failure
+}
+@SIGNATURE UREF "uref" {
+  @TYPES 
+    @TYPE uref
+  @VALS 
+    !!
+    update
+    equal
+    link
+    uRef
+    union
+    unify
+}
+@SIGNATURE ORD_MAP "ord-map" {
+  @STRUCTURE Key ORD_KEY
+  @TYPES 
+    @TYPE map
+  @VALS 
+    foldri
+    foldl
+    find
+    mapPartiali
+    filter
+    foldr
+    mapi
+    appi
+    mapPartial
+    map
+    listItems
+    remove
+    app
+    numItems
+    insert
+    foldli
+    filteri
+    empty
+}
+@SIGNATURE LIST_SORT "listsort" {
+  @VALS 
+    sort
+    sorted
+    uniqueSort
+}
+@SIGNATURE MONO_HASH_TABLE "mono-hash-table" {
+  @STRUCTURE Key HASH_KEY
+  @TYPES 
+    @TYPE hash_table
+  @VALS 
+    find
+    fold
+    filter
+    mapi
+    appi
+    remove
+    listItems
+    map
+    mkTable
+    app
+    numItems
+    insert
+    lookup
+    copy
+    bucketSizes
+    foldi
+    filteri
+}
+@SIGNATURE LIST_FORMAT "list-format" {
+  @VALS 
+    scanList
+    formatList
+}
+@SIGNATURE QUEUE "queue" {
+  @TYPES 
+    @TYPE queue
+  @EXCEPTIONS 
+    Dequeue
+  @VALS 
+    foldl
+    length
+    peek
+    foldr
+    enqueue
+    mkQueue
+    map
+    contents
+    app
+    head
+    delete
+    isEmpty
+    dequeue
+}
+@SIGNATURE MONO_HASH2_TABLE "mono-hash2-table" {
+  @STRUCTURE Key1 HASH_KEY
+  @STRUCTURE Key2 HASH_KEY
+  @TYPES 
+    @TYPE hash_table
+  @VALS 
+    find
+    fold
+    filter
+    mapi
+    appi
+    map
+    listItems
+    remove
+    mkTable
+    app
+    numItems
+    insert
+    copy
+    lookup1
+    bucketSizes
+    lookup2
+    foldi
+    filteri
+}
+@SIGNATURE MONO_ARRAY
+@SIGNATURE SPLAY_TREE "splaytree" {
+  @TYPES 
+    @DATATYPE splay { SplayObj SplayNil}
+  @VALS 
+    join
+    splay
+}
+@SIGNATURE MONO_DYNAMIC_ARRAY "mono-dynamic-array" {
+  @TYPES 
+    @TYPE elem
+    @TYPE array
+  @VALS 
+    update
+    truncate
+    bound
+    subArray
+    array
+    fromList
+    tabulate
+    default
+    sub
+}
+@SIGNATURE CHAR_MAP "char-map" {
+  @TYPES 
+    @TYPE char_map
+  @VALS 
+    mapStrChr
+    mkCharMap
+    mapChr
+}
+@SIGNATURE MONO_VECTOR
+@SIGNATURE ORD_KEY "ord-key" {
+  @TYPES 
+    @TYPE ord_key
+  @VALS 
+    compare
+}
+@STRUCTURE Fifo "fifo" FIFO
+@STRUCTURE Atom "atom" ATOM
+@STRUCTURE URef "uref" UREF
+@STRUCTURE Queue "queue" QUEUE
+@STRUCTURE SimpleURef "uref" UREF
