@@ -13,6 +13,32 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Allen Leung
+Date: 2000/04/04 19:39:00 EST
+Tag: leunga-20000404-x86-asm
+Description:
+
+1.  Fixed a problem in X86 assembly.
+
+    Things like
+
+       jmp %eax
+       jmp (%eax)
+
+    should be output as
+
+       jmp *%eax
+       jmp *(%eax)
+
+2.  Assembly output
+
+      Added a new flag 
+
+          "asm-indent-copies" (default to false)
+
+      When this flag is on, parallel copies will be indented an extra level.
+
+----------------------------------------------------------------------
+Name: Allen Leung
 Date: 2000/04/04 03:18:00 EST
 Tag: leunga-20000404-C--Moby
 Description:

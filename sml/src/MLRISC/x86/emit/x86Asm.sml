@@ -22,6 +22,7 @@ struct
    
    val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
    val show_region  = MLRiscControl.getFlag "asm-show-region"
+   val indent_copies = MLRiscControl.getFlag "asm-indent-copies"
    
    fun error msg = MLRiscErrorMsg.error("X86AsmEmitter",msg)
    
@@ -35,7 +36,8 @@ struct
        fun emit s = (tabbing(!tabs); tabs := 0; newline := false; emit' s)
        fun nl() = (tabs := 0; if !newline then () else (newline := true; emit' "\n"))
        fun comma() = emit ","
-       fun tab() = tabs := !tabs + 1
+       fun tab() = tabs := 1
+       fun indent() = tabs := 2
        fun ms n = let val s = Int.toString n
                   in  if n<0 then "-"^String.substring(s,1,size s-1)
                       else s
@@ -273,10 +275,11 @@ struct
 
 (*#line 243.7 "x86/x86.md"*)
    fun stupidGas (I.ImmedLabel lexp) = emit_labexp lexp
-     | stupidGas (I.LabelEA _) = error "stupidGas"
-     | stupidGas opnd = emit_operand opnd
+     | stupidGas opnd = 
+       ( emit "*"; 
+       emit_operand opnd )
 
-(*#line 248.7 "x86/x86.md"*)
+(*#line 247.7 "x86/x86.md"*)
    fun isMemOpnd (I.MemReg _) = true
      | isMemOpnd (I.FDirect f) = true
      | isMemOpnd (I.LabelEA _) = true
@@ -284,10 +287,10 @@ struct
      | isMemOpnd (I.Indexed _) = true
      | isMemOpnd _ = false
 
-(*#line 254.7 "x86/x86.md"*)
+(*#line 253.7 "x86/x86.md"*)
    fun chop fbinOp = let
 
-(*#line 255.15 "x86/x86.md"*)
+(*#line 254.15 "x86/x86.md"*)
           val n = size fbinOp
        in 
           (
@@ -298,29 +301,27 @@ struct
        end
 
 
-(*#line 261.7 "x86/x86.md"*)
+(*#line 260.7 "x86/x86.md"*)
    val emit_dst = emit_operand
 
-(*#line 262.7 "x86/x86.md"*)
+(*#line 261.7 "x86/x86.md"*)
    val emit_src = emit_operand
 
-(*#line 263.7 "x86/x86.md"*)
+(*#line 262.7 "x86/x86.md"*)
    val emit_opnd = emit_operand
 
-(*#line 264.7 "x86/x86.md"*)
+(*#line 263.7 "x86/x86.md"*)
    val emit_rsrc = emit_operand
 
-(*#line 265.7 "x86/x86.md"*)
+(*#line 264.7 "x86/x86.md"*)
    val emit_lsrc = emit_operand
 
-(*#line 266.7 "x86/x86.md"*)
+(*#line 265.7 "x86/x86.md"*)
    val emit_addr = emit_operand
 
-(*#line 267.7 "x86/x86.md"*)
+(*#line 266.7 "x86/x86.md"*)
    val emit_src1 = emit_operand
-   fun emitInstr instr = 
-       ( tab (); 
-       
+   fun emitInstr' instr = 
        (
         case instr of
         I.NOP => emit "nop"
@@ -338,6 +339,11 @@ struct
         emit_region region; 
         emit_defs cellset1; 
         emit_uses cellset2 )
+      | I.ENTER{src1, src2} => 
+        ( emit "enter\t"; 
+        emit_operand src1; 
+        emit ", "; 
+        emit_operand src2 )
       | I.LEAVE => emit "leave"
       | I.RET operand => 
         ( emit "ret"; 
@@ -528,11 +534,12 @@ struct
       | I.ANNOTATION{i, a} => 
         ( emitInstr i; 
         comment (Annotations.toString a))
-       ); 
-       nl ())
-          and emitInstrs [] = ()
-            | emitInstrs (i::is) =
-           (emitInstr i; app (fn i => (tab(); emitInstr i)) is)
+       )
+          and emitInstr i = (tab(); emitInstr' i; nl())
+          and emitInstrIndented i = (indent(); emitInstr' i; nl())
+          and emitInstrs instrs =
+           app (if !indent_copies then emitInstrIndented
+                else emitInstr) instrs
       in  emitInstr end
    
    in  S.STREAM{beginCluster=init,

@@ -22,6 +22,7 @@ struct
    
    val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
    val show_region  = MLRiscControl.getFlag "asm-show-region"
+   val indent_copies = MLRiscControl.getFlag "asm-indent-copies"
    
    fun error msg = MLRiscErrorMsg.error("SparcAsmEmitter",msg)
    
@@ -35,7 +36,8 @@ struct
        fun emit s = (tabbing(!tabs); tabs := 0; newline := false; emit' s)
        fun nl() = (tabs := 0; if !newline then () else (newline := true; emit' "\n"))
        fun comma() = emit ","
-       fun tab() = tabs := !tabs + 1
+       fun tab() = tabs := 1
+       fun indent() = tabs := 2
        fun ms n = let val s = Int.toString n
                   in  if n<0 then "-"^String.substring(s,1,size s-1)
                       else s
@@ -279,9 +281,7 @@ struct
 (*#line 479.7 "sparc/sparc.md"*)
    fun emit_cc false = ()
      | emit_cc true = emit "cc"
-   fun emitInstr instr = 
-       ( tab (); 
-       
+   fun emitInstr' instr = 
        (
         case instr of
         I.LOAD{l, d, r, i, mem} => 
@@ -566,11 +566,12 @@ struct
       | I.ANNOTATION{i, a} => 
         ( emitInstr i; 
         comment (Annotations.toString a))
-       ); 
-       nl ())
-          and emitInstrs [] = ()
-            | emitInstrs (i::is) =
-           (emitInstr i; app (fn i => (tab(); emitInstr i)) is)
+       )
+          and emitInstr i = (tab(); emitInstr' i; nl())
+          and emitInstrIndented i = (indent(); emitInstr' i; nl())
+          and emitInstrs instrs =
+           app (if !indent_copies then emitInstrIndented
+                else emitInstr) instrs
       in  emitInstr end
    
    in  S.STREAM{beginCluster=init,

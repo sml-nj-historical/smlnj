@@ -151,7 +151,7 @@ sig
    | JMP of (operand * Label.label list)
    | JCC of {cond:cond, opnd:operand}
    | CALL of (operand * C.cellset * C.cellset * Region.region)
-   | ENTER of (operand * operand)
+   | ENTER of {src1:operand, src2:operand}
    | LEAVE
    | RET of operand option
    | MOVE of {mvOp:move, src:operand, dst:operand}
@@ -354,7 +354,7 @@ struct
    | JMP of (operand * Label.label list)
    | JCC of {cond:cond, opnd:operand}
    | CALL of (operand * C.cellset * C.cellset * Region.region)
-   | ENTER of (operand * operand)
+   | ENTER of {src1:operand, src2:operand}
    | LEAVE
    | RET of operand option
    | MOVE of {mvOp:move, src:operand, dst:operand}

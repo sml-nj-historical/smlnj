@@ -89,6 +89,7 @@ struct
      | emitInstr (I.JMP(operand, label)) = error "JMP"
      | emitInstr (I.JCC{cond, opnd}) = error "JCC"
      | emitInstr (I.CALL(operand, cellset1, cellset2, region)) = error "CALL"
+     | emitInstr (I.ENTER{src1, src2}) = error "ENTER"
      | emitInstr (I.LEAVE) = error "LEAVE"
      | emitInstr (I.RET operand) = error "RET"
      | emitInstr (I.MOVE{mvOp, src, dst}) = error "MOVE"
