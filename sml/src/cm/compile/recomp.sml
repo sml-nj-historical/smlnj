@@ -267,10 +267,16 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 			    SOME (memo2envdelta memo)
 			end handle BF.Compile _ => NONE
 		                 | e => let
-				       fun ppb pps =
-					   (PP.add_newline pps;
-					    PP.add_string pps
-					       (General.exnMessage e))
+				       fun ppb pps = let
+					   fun loop [] = ()
+					     | loop (h :: t) =
+					       (PP.add_newline pps;
+						PP.add_string pps h;
+						loop t)
+				       in
+					   loop (General.exnMessage e ::
+						 SMLofNJ.exnHistory e)
+				       end
 				   in
 				       SmlInfo.error gp i EM.COMPLAIN
 				          ("exception raised while compiling "
