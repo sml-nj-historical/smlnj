@@ -193,6 +193,8 @@ and `unicode'."
 	(list ;; (cons "\\" (make-char 'japanese-jisx0208 38 75))
 	      (cons "->" (make-char 'japanese-jisx0208 34 42))
 	      ;; (cons "<-" (make-char 'japanese-jisx0208 34 43))
+	      (cons ">=" (make-char 'japanese-jisx0208 33 102))
+	      (cons "<=" (make-char 'japanese-jisx0208 33 101))
 	      (cons "=>" (make-char 'japanese-jisx0208 34 77))))
    ;; Or a unicode font.
    (and (fboundp 'decode-char)
@@ -200,6 +202,8 @@ and `unicode'."
 	(list ;; (cons "\\" (decode-char 'ucs 955))
 	      (cons "->" (decode-char 'ucs 8594))
 	      ;; (cons "<-" (decode-char 'ucs 8592))
+	      (cons ">=" (decode-char 'ucs 8805))
+	      (cons "<=" (decode-char 'ucs 8804))
 	      (cons "=>" (decode-char 'ucs 8658))
 	      ;; (cons "::" (decode-char 'ucs 8759))
 	      ))))
