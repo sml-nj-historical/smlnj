@@ -16,40 +16,44 @@ end
 
 structure ParserControl : PARSER_CONTROL = struct
 
-    val m = Controls.module { name = "parser settings",
-			      priority = [10, 10, 3],
-			      obscurity = 3,
-			      prefix = "parser-",
-			      default_suffix = SOME "-default",
-			      mk_ename = NONE }
+    val m = Controls.registry { name = "parser settings",
+				priority = [10, 10, 3],
+				obscurity = 3,
+				prefix = "parser-",
+				default_suffix = SOME "-default",
+				mk_ename = NONE }
 
-    val string_r = Controls.registry m Controls.string
+    val string_r = Controls.group m Controls.string
 
-    val flag_r = Controls.registry m Controls.bool
+    val flag_r = Controls.group m Controls.bool
 
     val primaryPrompt =
-	Controls.new_ref string_r
-			 { stem = "primary-prompt",
-			   descr = "primary prompt",
-			   fallback = "- " }
+	Controls.new string_r
+		     { stem = "primary-prompt",
+		       descr = "primary prompt",
+		       fallback = "- " }
 
     val secondaryPrompt =
-	Controls.new_ref string_r
-			 { stem = "secondary-prompt",
-			   descr = "secondary prompt",
-			   fallback = "= " }
+	Controls.new string_r
+		     { stem = "secondary-prompt",
+		       descr = "secondary prompt",
+		       fallback = "= " }
 
     val lazysml =
-	Controls.new_ref flag_r
-			 { stem = "lazy-keyword",
-			   descr = "whether `lazy' is considered a keyword",
-			   fallback = false }
+	Controls.new flag_r
+		     { stem = "lazy-keyword",
+		       descr = "whether `lazy' is considered a keyword",
+		       fallback = false }
 
-    val overloadKW = ref false
+    val overloadKW =
+	Controls.new flag_r
+		     { stem = "overload",
+		       descr = "whether (_)overload keyword is enabled",
+		       fallback = false }
 
     val quotation =
-	Controls.new_ref flag_r
-			 { stem = "quotations",
-			   descr = "whether (anti-)quotations are recognized",
-			   fallback = false }
+	Controls.new flag_r
+		     { stem = "quotations",
+		       descr = "whether (anti-)quotations are recognized",
+		       fallback = false }
 end

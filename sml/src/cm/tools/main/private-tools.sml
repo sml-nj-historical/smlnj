@@ -344,21 +344,15 @@ structure PrivateTools : PRIVATETOOLS = struct
 		    val splitting = let
 			fun invalid () = err "invalid lambdasplit spec"
 			fun spec (s: fnspec) =
-			    case #name s of
-				"default" => UseDefault
-			      | "on" => Suggest (SOME 0)
-			      | "off" => Suggest NONE
-			      | "infinity" => Suggest (SOME 100000000)
-			      | n =>
-				(case Int.fromString n of
-				     SOME i => Suggest (SOME i)
-				   | NONE => invalid ())
+			    case LSplitArg.arg (#name s) of
+				SOME ls => ls
+			      | NONE => invalid ()
 		    in
 			case matches kw_lambdasplit of
 			    NONE => UseDefault
 			  | SOME [] => Suggest (SOME 0)(* == "on" *)
 			  | SOME [STRING x] => spec x
-			  | _ => err "invalid lambdasplit spec"
+			  | _ => invalid ()
 		    end
 		in
 		    (srq, setup, splitting, noguid, locl)

@@ -9,18 +9,16 @@ end
 
 structure BasicControl : BASIC_CONTROL = struct
 
-    val m = Controls.module { name = "basic compiler settings",
-			      priority = [10, 10, 1],
-			      obscurity = 1,
-			      prefix = "compiler-",
-			      default_suffix = SOME "-default",
-			      mk_ename = NONE }
+    val m = Controls.registry { name = "basic compiler settings",
+				priority = [10, 10, 1],
+				obscurity = 1,
+				prefix = "compiler-",
+				default_suffix = SOME "-default",
+				mk_ename = NONE }
 
-    val flag_r = Controls.registry m { tname = "bool",
-				       parse = Bool.fromString,
-				       show = Bool.toString }
+    val flag_r = Controls.group m Controls.bool
 
-    val printWarnings = Controls.new_ref flag_r
+    val printWarnings = Controls.new flag_r
 			{ stem = "print-warnings",
 			  descr = "whether warnings get generated",
 			  fallback = true }

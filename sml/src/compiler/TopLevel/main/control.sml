@@ -3,16 +3,16 @@
 
 structure Control_MC : MCCONTROL =
 struct
-    val m = Controls.module { name = "match-compiler settings",
-			      priority = [10, 10, 4],
-			      obscurity = 2,
-			      prefix = "compiler-mc-",
-			      default_suffix = SOME "-default",
-			      mk_ename = NONE }
+    val m = Controls.registry { name = "match-compiler settings",
+				priority = [10, 10, 4],
+				obscurity = 2,
+				prefix = "compiler-mc-",
+				default_suffix = SOME "-default",
+				mk_ename = NONE }
 
-    val r = Controls.registry m Controls.bool
+    val r = Controls.group m Controls.bool
 
-    fun flag (s, d, f) = Controls.new_ref
+    fun flag (s, d, f) = Controls.new
 			     r { stem = s, descr = d, fallback = f }
 
     val printArgs = flag ("print-args", "arguments print mode", false)
@@ -52,23 +52,23 @@ end
 
 structure Control_CG : CGCONTROL =
 struct
-    val m = Controls.module { name = "code generator settings",
-			      priority = [10, 11, 2],
-			      obscurity = 6,
-			      prefix = "cg-",
-			      default_suffix = SOME "-default",
-			      mk_ename = NONE }
+    val m = Controls.registry { name = "code generator settings",
+				priority = [10, 11, 2],
+				obscurity = 6,
+				prefix = "cg-",
+				default_suffix = SOME "-default",
+				mk_ename = NONE }
 
-    val b = Controls.registry m Controls.bool
+    val b = Controls.group m Controls.bool
 
-    val i = Controls.registry m Controls.int
+    val i = Controls.group m Controls.int
 
-    val r = Controls.registry m Controls.real
+    val r = Controls.group m Controls.real
 
-    val sl = Controls.registry m Controls.stringList
+    val sl = Controls.group m Controls.stringList
 
     fun new (r, s, d, f) =
-	Controls.new_ref r { stem = s, descr = d, fallback = f }
+	Controls.new r { stem = s, descr = d, fallback = f }
 
     val tailrecur = new (b, "tailrecur", "?", true)
     val recordopt = new (b, "recordopt", "?", true)
@@ -170,17 +170,17 @@ structure Control : CONTROL =
   struct
 
     local
-	val m = Controls.module { name = "miscellaneous control settings",
-				  priority = [10, 10, 9],
-				  obscurity = 4,
-				  prefix = "control-",
-				  default_suffix = SOME "-default",
-				  mk_ename = NONE }
+	val m = Controls.registry { name = "miscellaneous control settings",
+				    priority = [10, 10, 9],
+				    obscurity = 4,
+				    prefix = "control-",
+				    default_suffix = SOME "-default",
+				    mk_ename = NONE }
 
-	val b = Controls.registry m Controls.bool
+	val b = Controls.group m Controls.bool
 
 	fun new (r, s, d, f) =
-	    Controls.new_ref r { stem = s, descr = d, fallback = f }
+	    Controls.new r { stem = s, descr = d, fallback = f }
     in
 
     structure Print : PRINTCONTROL = Control_Print
@@ -251,19 +251,20 @@ structure Control : CONTROL =
 	  | show (Default NONE) = "on"
 	  | show (Default (SOME i)) = Int.toString i
 	local
-	    val m = Controls.module { name = "cross-module inlining",
-				      priority = [10, 10, 0, 1],
-				      obscurity = 1,
-				      prefix = "inline-",
-				      default_suffix = SOME "-default",
-				      mk_ename = NONE }
-	    val r = Controls.registry m
+	    val m = Controls.registry { name = "cross-module inlining",
+					priority = [10, 10, 0, 1],
+					obscurity = 1,
+					prefix = "inline-",
+					default_suffix = SOME "-default",
+					mk_ename = NONE }
+	    val r = Controls.group m
 		    { tname = "Control.LambdaSplitting.globalsetting",
-		      parse = parse, show = show }
-	    val state = Controls.new r
+		      fromString = parse, toString = show }
+	    val state_r = Controls.new r
 		    { stem = "split-aggressiveness",
 		      descr = "aggressiveness of lambda-splitter",
 		      fallback = Default NONE }
+	    val state = Controls.ref2var state_r
 	in
    	    val set = #set state
 	    fun get () =

@@ -30,19 +30,17 @@ end
 structure BTrace :> BTRACE = struct
 
     val enabled = let
-	val m = Controls.module { name = "instrumentation",
-				  priority = [10, 1],
-				  obscurity = 1,
-				  prefix = "compiler-",
-				  default_suffix = NONE,
-				  mk_ename = NONE }
-	val r = Controls.registry m { tname = "bool",
-				      parse = Bool.fromString,
-				      show = Bool.toString }
+	val m = Controls.registry { name = "instrumentation",
+				    priority = [10, 1],
+				    obscurity = 1,
+				    prefix = "compiler-",
+				    default_suffix = NONE,
+				    mk_ename = NONE }
+	val r = Controls.group m Controls.bool
     in
-	Controls.new_ref r { stem = "btrace-mode",
-			     descr = "backtrace instrumentation mode",
-			     fallback = false }
+	Controls.new r { stem = "btrace-mode",
+			 descr = "backtrace instrumentation mode",
+			 fallback = false }
 	
     end
 

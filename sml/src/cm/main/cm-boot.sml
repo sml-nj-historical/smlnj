@@ -642,15 +642,15 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 
 	    fun show_controls (first, getarg, getval, pad) level = let
 		fun one (c : Controls.control, prev) = let
-		    val mname = #mname c
+		    val rname = #rname c
 		    val arg = getarg c
 		    val value = getval c
 		    val sz = size value
 		    val lw = !Control_Print.linewidth
 		    val padsz = lw - 6 - size arg
 		in
-		    if prev = mname then ()
-		    else Say.say ["    ", mname, ":\n"];
+		    if prev = rname then ()
+		    else Say.say ["    ", rname, ":\n"];
 		    if padsz < sz then
 			let val padsz' = Int.max (lw, sz + 8)
 			in
@@ -659,7 +659,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 				     "\n"]
 			end
 		    else Say.say ["      ", arg, pad padsz value, "\n"];
-		    mname
+		    rname
 		end
 		val cl = Controls.controls level
 	    in

@@ -9,28 +9,28 @@ structure StdConfig = struct
     local
 	structure C = Controls
 
-	val m = C.module { name = "Compilation Manager (CM)",
-			   priority = [10, 2],
-			   obscurity = 2,
-			   prefix = "cm-",
-			   default_suffix = SOME "-default",
-			   mk_ename = NONE }
+	val m = C.registry { name = "Compilation Manager (CM)",
+			     priority = [10, 2],
+			     obscurity = 2,
+			     prefix = "cm-",
+			     default_suffix = SOME "-default",
+			     mk_ename = NONE }
 
-	fun new typespec individual = let
-	    val r = C.registry m typespec
+	fun new typespec = let
+	    val r = C.group m typespec
 	in
-	    C.new r individual
+	    fn individual => C.ref2var (C.new r individual)
 	end
 
 	val bool = new C.bool
 	val int = new C.int
 	val string = new C.string
 	val stringoptthunk = new { tname = "string",
-				   parse = fn s => SOME (fn () => SOME s),
-				   show = fn th =>
-					     (case th () of
-						  SOME s => s
-						| NONE => "(not set)") }
+				   fromString = fn s => SOME (fn () => SOME s),
+				   toString = fn th =>
+						 (case th () of
+						      SOME s => s
+						    | NONE => "(not set)") }
     in
         val verbose =
 	    bool { stem = "verbose", fallback = true,

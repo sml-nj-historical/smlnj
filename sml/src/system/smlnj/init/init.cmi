@@ -39,6 +39,9 @@
 #      do without it)
 #  - A line that says "nosplit" disables cross-module inlining (aka
 #    "lambda-splitting") until the next line that says "split".
+#  - A "split" can take an additional argument of the same form that
+#    is used for the "lambdasplit" option to SML files in CM.
+#    If no argument is given, it is assumed to be "default".
 #  - The (single) "rts-placeholder" line acts mostly like a "bind" line.
 #    Its purpose is to specify the module that plays the role of a
 #    placeholder for the runtime system.

@@ -13,6 +13,44 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/14 21:30:00 EST
+Tag: blume-20020314-controls
+Description:
+
+Controls:
+---------
+
+1. Factored out the recently-added Controls : CONTROLS stuff and put
+   it into its own library $/controls-lib.cm.  The source tree for
+   this is under src/smlnj-lib/Controls.
+
+2. Changed the names of types and functions in this interface, so they
+   make a bit more "sense":
+
+      module -> registry
+      'a registry -> 'a group
+
+3. The interface now deals in ref cells only.  The getter/setter interface
+   is (mostly) gone.
+
+4. Added a function that lets one register an already-existing ref cell.
+
+5. Made the corresponding modifications to the rest of the code so that
+   everything compiles again.
+
+6. Changed the implementation of Controls.MLRISC back to something closer
+   to the original.  In particular, this module (and therefore MLRISC)
+   does not depend on Controls.  There now is some link-time code in
+   int-sys.sml that registers the MLRISC controls with the Controls
+   module.
+
+CM:
+---
+
+  * One can now specify the lambda-split aggressiveness in init.cmi.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2002/03/13 17:30:00 EST
 Tag: leunga-20020313-x86-fp-unary
@@ -75,7 +113,7 @@ Changes:
   provides a bit more "stability":  Once CM has seen a compilation
   unit, it keeps its identity constant (as long as you do not delete
   those crucial CM/GUID/* files).  This means that when you change
-  and interface, compiler, then go back to the old interface, and
+  an interface, compile, then go back to the old interface, and
   compile again, you arrive at the original pid.
 
   There now also is a mechanism that instructs CM to use the plain

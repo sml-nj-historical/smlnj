@@ -80,3 +80,7 @@ is
 
 	(* glue code (build the interactive system) *)
 	int-sys.sml
+
+	(* need access to the Controls module (for registering
+	 * MLRISC controls: *)
+	$/controls-lib.cm

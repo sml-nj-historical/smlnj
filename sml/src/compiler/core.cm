@@ -281,4 +281,5 @@ $smlnj/MLRISC/MLRISC.cm
 (* Other libaries. *)
 $/basis.cm
 $/smlnj-lib.cm
+$/controls-lib.cm
 $/pickle-lib.cm

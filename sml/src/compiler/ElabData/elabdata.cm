@@ -111,4 +111,5 @@ is
 	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/parser.cm
 	$/smlnj-lib.cm
+	$/controls-lib.cm
 	$/basis.cm

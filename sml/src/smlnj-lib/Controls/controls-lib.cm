@@ -1,0 +1,17 @@
+(* controls-lib.cm
+ *   An implementation of "controls" -- representing environment-configurable
+ *   global state (flags, options, ...) of a program.
+ *
+ * COPYRIGHT (c) 2002 Lucent Technologies, Bell Laboratories
+ *
+ * author: Matthias Blume
+ *)
+Library
+	signature CONTROLS
+	structure Controls
+is
+	controls.sig
+	controls.sml
+
+	$/smlnj-lib.cm
+	$/basis.cm

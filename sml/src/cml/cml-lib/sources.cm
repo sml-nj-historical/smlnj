@@ -67,7 +67,6 @@ Group (cm/smlnj-lib.cm)
   signature SCAN
   signature SPLAY_TREE
   signature UREF
-  signature CONTROLS
 
   structure ArrayQSort
   structure Atom		(* reimplemented *)
@@ -117,7 +116,6 @@ Group (cm/smlnj-lib.cm)
   structure WordRedBlackMap
   structure WordRedBlackSet
   structure PrimeSizes
-  structure Controls
 
   functor ArrayQSortFn
   functor BSearchFn

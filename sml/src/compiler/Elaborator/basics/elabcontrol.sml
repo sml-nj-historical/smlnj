@@ -7,25 +7,25 @@
 structure ElabControl = struct
 
     local
-	val m0 = Controls.module { name = "elaborator flags",
-				   priority = [10, 10, 8],
-				   obscurity = 6,
-				   prefix = "elab-",
-				   default_suffix = SOME "-default",
-				   mk_ename = NONE }
+	val m0 = Controls.registry { name = "elaborator flags",
+				     priority = [10, 10, 8],
+				     obscurity = 6,
+				     prefix = "elab-",
+				     default_suffix = SOME "-default",
+				     mk_ename = NONE }
 
-	val m = Controls.module { name = "elaborator flags",
-				  priority = [10, 10, 8],
-				  obscurity = 2,
-				  prefix = "elab-",
-				  default_suffix = SOME "-default",
-				  mk_ename = NONE }
+	val m = Controls.registry { name = "elaborator flags",
+				    priority = [10, 10, 8],
+				    obscurity = 2,
+				    prefix = "elab-",
+				    default_suffix = SOME "-default",
+				    mk_ename = NONE }
 
-	val b0 = Controls.registry m0 Controls.bool
-	val b = Controls.registry m Controls.bool
+	val b0 = Controls.group m0 Controls.bool
+	val b = Controls.group m Controls.bool
 
 	fun new (r, s, d, f) =
-	    Controls.new_ref r { stem = s, descr = d, fallback = f }
+	    Controls.new r { stem = s, descr = d, fallback = f }
     in
 
     val etdebugging = new (b0, "et-debugging", "?", false)

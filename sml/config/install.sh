@@ -763,6 +763,8 @@ for i in $TARGETS ; do
 	    #reglib html-lib.cm html-lib.cm smlnj-lib/HTML
 	# ... and don't make the PP library ...
 	    #reglib pp-lib.cm pp-lib.cm smlnj-lib/PP
+	# ... and don't make the controls library ...
+	    #reglib controls-lib.cm controls-lib.cm smlnj-lib/Controls
 	# make the Unix library
 	    reglib unix-lib.cm unix-lib.cm smlnj-lib/Unix
 	# make the INet library

@@ -7,17 +7,17 @@ sig
     val mlrisc_phases : string list ref        (* the optimization phases *)
     val debug_stream  : TextIO.outstream ref   (* debugging output goes here *)
 
-(*
-        (* Flags and counters *)
-    val counters      : (string * int ref) list ref
-    val ints          : (string * int ref) list ref
-    val flags         : (string * bool ref) list ref
-    val reals         : (string * real ref) list ref
-    val strings       : (string * string ref) list ref
-    val stringLists   : (string * string list ref) list ref
-    val timings       : (string * cpu_time ref) list ref
+    type 'a entry = { stem: string, descr: string, cell: 'a ref }
 
-*)
+        (* Flags and counters *)
+    val counters    : int entry list ref
+    val ints        : int entry list ref
+    val flags       : bool entry list ref
+    val reals       : real entry list ref
+    val strings     : string entry list ref
+    val stringLists : string list entry list ref
+    val timings     : cpu_time entry list ref
+
     val mkCounter    : string * string -> int ref
     val mkInt        : string * string -> int ref
     val mkFlag       : string * string -> bool ref
@@ -46,89 +46,67 @@ sig
 
 end
 
-structure MLRiscControl : MLRISC_CONTROL =
-struct
-   type cpu_time = {gc:Time.time,usr:Time.time,sys:Time.time}
+structure MLRiscControl : MLRISC_CONTROL = struct
+    type cpu_time = {gc:Time.time,usr:Time.time,sys:Time.time}
 
-   val mlrisc        = ref false
-   val mlrisc_phases = ref [] : string list ref
-   val debug_stream  = ref TextIO.stdOut
+    val mlrisc        = ref false
+    val mlrisc_phases = ref [] : string list ref
+    val debug_stream  = ref TextIO.stdOut
 
-(*
-   val counters      = ref [] : (string * int ref) list ref
-   val ints          = ref [] : (string * int ref) list ref
-   val flags         = ref [("mlrisc",mlrisc)] : (string * bool ref) list ref
-   val reals         = ref [] : (string * real ref) list ref
-   val strings       = ref [] : (string * string ref) list ref
-   val stringLists   = ref [("mlrisc-phases",mlrisc_phases)] 
-                         : (string * string list ref) list ref
-   val timings       = ref [] : (string * cpu_time ref) list ref
-   local
-      fun get(list,name : string,[],default) = 
-             let val r = ref default in list := (name,r) :: !list; r end
-        | get(list,name,(n,r)::rest,default) = 
-             if name = n then r else get(list,name,rest,default)      
-   in
-      fun getCounter name = get(counters,name,!counters,0)
-      fun getInt name     = get(ints,name,!ints,0)
-      fun getFlag name    = get(flags,name,!flags,false)
-      fun getReal name    = get(reals,name,!reals,0.0)
-      fun getString name  = get(strings,name,!strings,"")
-      fun getStringList name  = get(stringLists,name,!stringLists,[])
-      fun getTiming name  = get(timings,name,!timings,
-                                 {gc =Time.zeroTime,
-                                  usr=Time.zeroTime,
-                                  sys=Time.zeroTime})
-   end
-*)
+    type 'a entry = { stem: string, descr: string, cell: 'a ref }
 
-    structure C = Controls
+    val counters      = ref [] : int entry list ref
+    val ints          = ref [] : int entry list ref
+    val flags         = ref [{ stem = "mlrisc", descr = "?", cell = mlrisc }]
+    val reals         = ref [] : real entry list ref
+    val strings       = ref [] : string entry list ref
+    val stringLists   = ref [{ stem = "phases", descr = "MLRISC Phases",
+			       cell = mlrisc_phases }]
+    val timings       = ref [] : cpu_time entry list ref
+    local
+	fun mk (list, fallback) (stem' : string, descr) = let
+	    fun loop [] =
+		let val cell = ref fallback
+		in
+		    list := { stem = stem', descr = descr, cell = cell }
+			    :: !list;
+	            cell
+		end
+	      | loop ({ stem, descr, cell } :: t) =
+		if stem = stem' then cell else loop t
+	in
+	    loop (!list)
+	end
+    in
+        fun mkCounter x = mk (counters, 0) x
+	fun mkInt x = mk (ints, 0) x
+	fun mkFlag x = mk (flags, false) x
+	fun mkReal x = mk (reals, 0.0) x
+	fun mkString x = mk (strings, "") x
+	fun mkStringList x = mk (stringLists, []) x
+	fun mkTiming x = mk (timings, {gc =Time.zeroTime,
+                                       usr=Time.zeroTime,
+                                       sys=Time.zeroTime}) x
+    end
 
-    val m0 = C.noconfig
-    val m = C.module { name = "MLRISC",
-		       priority = [10, 3],
-		       obscurity = 3,
-		       prefix = "mlrisc-",
-		       default_suffix = SOME "-default",
-		       mk_ename = NONE }
-
-    val counter_r = C.registry m0 C.int
-    val int_r =	C.registry m C.int 
-    val flag_r = C.registry m C.bool
-    val real_r = C.registry m C.real
-    val string_r = C.registry m C.string
-    val stringList_r = C.registry m C.stringList
-    val timing_r =
-	C.registry m0 { tname = "timing",
-			parse = fn _ => (NONE : cpu_time option),
-			show = fn _ => "<timing>" }
-
-    fun mkCounter (stem, descr) =
-	C.new_ref counter_r { stem = stem, descr = descr, fallback = 0 }
-    fun mkInt (stem, descr) =
-	C.new_ref int_r { stem = stem, descr = descr, fallback = 0 }
-    fun mkFlag (stem, descr) =
-	C.new_ref flag_r { stem = stem, descr = descr, fallback = false }
-    fun mkReal (stem, descr) =
-	C.new_ref real_r { stem = stem, descr = descr, fallback = 0.0 }
-    fun mkString (stem, descr) =
-	C.new_ref string_r { stem = stem, descr = descr, fallback = "" }
-    fun mkStringList (stem, descr) =
-	C.new_ref stringList_r { stem = stem, descr = descr, fallback = [] }
-    fun mkTiming (stem, descr) =
-	C.new_ref timing_r { stem = stem, descr = descr,
-			     fallback = { gc = Time.zeroTime,
-					  usr = Time.zeroTime,
-					  sys = Time.zeroTime } }
-
-
-    val counter = C.acc_ref counter_r
-    val int = C.acc_ref int_r
-    val flag = C.acc_ref flag_r
-    val real = C.acc_ref real_r
-    val string = C.acc_ref string_r
-    val stringList = C.acc_ref stringList_r
-    val timing = C.acc_ref timing_r
+    local
+	fun find list stem' = let
+	    fun loop [] =
+		raise Fail ("Control.MLRISC: no such control: " ^ stem')
+	      | loop ({ stem, descr, cell } :: t) =
+		if stem = stem' then cell else loop t
+	in
+	    loop (!list)
+	end
+    in
+        val counter = find counters
+	val int = find ints
+	val flag = find flags
+	val real = find reals
+	val string = find strings
+	val stringList = find stringLists
+	val timing = find timings
+    end
 
     local
 	fun old_for mkFoo s = mkFoo (s, s ^ " setting")

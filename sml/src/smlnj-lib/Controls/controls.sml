@@ -14,78 +14,83 @@ structure Controls :> CONTROLS = struct
 
     type 'a var = { get : unit -> 'a, set : 'a -> unit }
     type svar = string var
-    type control = { mname: string, priority: int list, obscurity: int,
+    type control = { rname: string, priority: int list, obscurity: int,
 		     name : string, descr : string, svar : svar }
 
-    type 'a tinfo =
-	 { tname : string, parse : string -> 'a option, show : 'a -> string }
+    type 'a tinfo = { tname : string,
+		      fromString : string -> 'a option,
+		      toString : 'a -> string }
 
-    datatype module =
+    datatype registry =
 	NOCONFIG
-      | MODULE of { name : string, priority : int list, obscurity : int,
-		    prefix : string,
-		    default_suffix : string option,
-		    mk_ename : (string -> string) option }
+      | REGISTRY of { name : string, priority : int list, obscurity : int,
+		      prefix : string,
+		      default_suffix : string option,
+		      mk_ename : (string -> string) option }
 
-    type 'a registry =
+    type 'a group =
 	 { new : { stem : string, descr : string, fallback : 'a } -> 'a ref,
+	   reg : { stem : string, descr : string, cell : 'a ref } -> unit,
 	   acc : string -> 'a ref,
 	   sacc : string -> svar }
 	 
     val noconfig = NOCONFIG
-    val module = MODULE
+    val registry = REGISTRY
 
     val configurers : (unit -> unit) list ref = ref []
     val controls : control M.map ref = ref M.empty
 
-    fun r2v r = { get = fn () => !r, set = fn x => r := x }
+    fun ref2var r = { get = fn () => !r, set = fn x => r := x }
 
-    fun registry NOCONFIG { tname, parse, show } =
-	let val reg = ref M.empty
+    fun group NOCONFIG { tname, fromString, toString } =
+	let val m = ref M.empty
 	    fun cvt s =
-		case parse s of
+		case fromString s of
 		    SOME x => x
 		  | NONE => raise FormatError { t = tname, s = s }
 	    fun new { stem, descr, fallback } =
-		case M.find (!reg, stem) of
+		case M.find (!m, stem) of
 		    SOME r => r
 		  | NONE => let
 			val r = ref fallback
 		    in
-			reg := M.insert (!reg, stem, r);
+			m := M.insert (!m, stem, r);
 			r
 		    end
+	    fun reg { stem, descr, cell } =
+		case M.find (!m, stem) of
+		    SOME _ => raise Fail (concat ["Controls.register: ",
+						  stem, " already registered\n"])
+		  | NONE => m := M.insert (!m, stem, cell)
 	    fun acc stem =
-		case M.find (!reg, stem) of
+		case M.find (!m, stem) of
 		    SOME r => r
 		  | NONE => raise NoSuchControl
 	    fun sacc stem = let
-		val { get, set } = r2v (acc stem)
+		val { get, set } = ref2var (acc stem)
 	    in
-		{ get = show o get, set = set o cvt }
+		{ get = toString o get, set = set o cvt }
 	    end
 	in
-	    { new = new, acc = acc, sacc = sacc }
+	    { new = new, reg = reg, acc = acc, sacc = sacc }
 	end
-      | registry (MODULE m) { tname, parse, show } = let
-	    val { name = mname, priority, obscurity,
-		  prefix, default_suffix, mk_ename } = m
+      | group (REGISTRY r) { tname, fromString, toString } = let
+	    val { name = rname, priority, obscurity,
+		  prefix, default_suffix, mk_ename } = r
 	    fun cvt s =
-		case parse s of
+		case fromString s of
 		    SOME x => x
 		  | NONE => raise FormatError { t = tname, s = s }
-	    fun var2svar { get, set } = { get = show o get, set = set o cvt }
+	    fun var2svar { get, set } =
+		{ get = toString o get, set = set o cvt }
 	    fun upcase_underscore s =
-		let fun tr #"-" = "_"
-		      | tr c = String.str (Char.toUpper c)
-		in String.translate tr s
-		end
+		String.map (fn #"-" => #"_" | c => Char.toUpper c) s
 	    val mken = getOpt (mk_ename, upcase_underscore)
-	    val reg = ref M.empty
+	    val m = ref M.empty
 	    fun getUsing looker = Option.map cvt o looker
 	    val getEnv = getUsing OS.Process.getEnv
-	    fun new { stem, descr, fallback } =
-		case M.find (!reg, stem) of
+	    fun mk (mkcell, stem, descr, fallback) =
+		case M.find (!m, stem) of
 		    SOME r => r
 		  | NONE => let
 			val name = prefix ^ stem
@@ -96,32 +101,34 @@ structure Controls :> CONTROLS = struct
 			    case Option.join (Option.map getEnv default) of
 				SOME v => v
 			      | NONE => getOpt (getEnv ename, fallback)
-			val r = ref initial
-			val var as { get, set } = r2v r
+			val r = mkcell initial
+			val var as { get, set } = ref2var r
 			fun configure () = Option.app set (getEnv ename)
 			val control =
-			    { mname = mname,
+			    { rname = rname,
 			      priority = priority, obscurity = obscurity,
 			      name = name, descr = descr, svar = var2svar var }
 		    in
 			controls := M.insert (!controls, name, control);
 			configurers := configure :: !configurers;
-			reg := M.insert (!reg, stem, r);
+			m := M.insert (!m, stem, r);
 			r
 		    end
+	    fun new { stem, descr, fallback } = mk (ref, stem, descr, fallback)
+	    fun reg { stem, descr, cell = cell as ref fallback } =
+		ignore (mk (fn v => (cell := v; cell), stem, descr, fallback))
 	    fun acc stem =
-		case M.find (!reg, stem) of
+		case M.find (!m, stem) of
 		    SOME r => r
 		  | NONE => raise NoSuchControl
 	in
-	    { new = new, acc = acc, sacc = var2svar o r2v o acc }
+	    { new = new, reg = reg, acc = acc, sacc = var2svar o ref2var o acc }
 	end
 
-    fun new_ref (r : 'a registry) = #new r
-    fun acc_ref (r : 'a registry) = #acc r
-    fun new r = r2v o new_ref r
-    fun acc r = r2v o acc_ref r
-    fun sacc (r : 'a registry) = #sacc r
+    fun new (r : 'a group) = #new r
+    fun reg (r : 'a group) = #reg r
+    fun acc (r : 'a group) = #acc r
+    fun sacc (r : 'a group) = #sacc r
 
     fun control name =
 	case M.find (!controls, name) of
@@ -147,16 +154,16 @@ structure Controls :> CONTROLS = struct
 
     fun init () = app (fn cnf => cnf ()) (!configurers)
 
-    val bool =
-	{ tname = "bool", parse = Bool.fromString, show = Bool.toString }
-    val int =
-	{ tname = "int", parse = Int.fromString, show = Int.toString }
-    val real =
-	{ tname = "real", parse = Real.fromString, show = Real.toString }
-    val string =
-	{ tname = "string", parse = SOME, show = fn x => x }
+    val bool = { tname = "bool",
+		 fromString = Bool.fromString, toString = Bool.toString }
+    val int = { tname = "int",
+		fromString = Int.fromString, toString = Int.toString }
+    val real = { tname = "real",
+		 fromString = Real.fromString, toString = Real.toString }
+    val string = { tname = "string",
+		   fromString = SOME, toString = fn x => x }
     val stringList =
 	{ tname = "string list",
-	  parse = SOME o String.tokens Char.isSpace,
-	  show = concat o foldr (fn (s, r) => " " :: s :: r) [] }
+	  fromString = SOME o String.tokens Char.isSpace,
+	  toString = concat o foldr (fn (s, r) => " " :: s :: r) [] }
 end

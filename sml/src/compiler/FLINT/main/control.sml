@@ -3,21 +3,21 @@
 structure FLINT_Control (* : FLINTCONTROL *) =
 struct
    local
-       val m = Controls.module { name = "optimizer (FLINT) settings",
-				 priority = [10, 11, 1],
-				 obscurity = 5,
-				 prefix = "flint-",
-				 default_suffix = SOME "-default",
-				 mk_ename = NONE }
+       val m = Controls.registry { name = "optimizer (FLINT) settings",
+				   priority = [10, 11, 1],
+				   obscurity = 5,
+				   prefix = "flint-",
+				   default_suffix = SOME "-default",
+				   mk_ename = NONE }
 
-       val flag_r = Controls.registry m Controls.bool
+       val flag_r = Controls.group m Controls.bool
 
-       val int_r = Controls.registry m Controls.int
+       val int_r = Controls.group m Controls.int
 
-       val stringList_r = Controls.registry m Controls.stringList
+       val stringList_r = Controls.group m Controls.stringList
 
        fun new (r, s, d, f) =
-	   Controls.new_ref r { stem = s, descr = d, fallback = f }
+	   Controls.new r { stem = s, descr = d, fallback = f }
    in
 
     val print	        = new (flag_r, "print", "show IR", false)

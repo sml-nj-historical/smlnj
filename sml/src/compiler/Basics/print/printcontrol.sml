@@ -17,19 +17,18 @@ end
 
 structure Control_Print : PRINTCONTROL = struct
 
-    val m = Controls.module { name = "compiler print settings",
-			      priority = [10, 10, 2],
-			      obscurity = 2,
-			      prefix = "print-",
-			      default_suffix = SOME "-default",
-			      mk_ename = NONE }
+    val m = Controls.registry { name = "compiler print settings",
+				priority = [10, 10, 2],
+				obscurity = 2,
+				prefix = "print-",
+				default_suffix = SOME "-default",
+				mk_ename = NONE }
 
-    val flag_r = Controls.registry m Controls.bool
+    val flag_r = Controls.group m Controls.bool
 
-    val int_r = Controls.registry m Controls.int
+    val int_r = Controls.group m Controls.int
 
-    fun new (r, s, d, f) =
-	Controls.new_ref r { stem = s, descr = d, fallback = f }
+    fun new (r, s, d, f) = Controls.new r { stem = s, descr = d, fallback = f }
 
     val printDepth = new (int_r, "depth", "max print depth", 5)
     val printLength = new (int_r, "length", "max print length", 12)

@@ -42,6 +42,38 @@ structure InteractiveSystem : sig end = struct
 
     val _ = UseHook.useHook := Backend.Interact.useFile
 
+    local
+	(* register the MLRISC controls with the central controls
+	 * facility... *)
+	structure C = Controls
+
+	val m0 = C.noconfig
+	val m = C.registry { name = "MLRISC",
+			     priority = [10, 3],
+			     obscurity = 3,
+			     prefix = "mlrisc-",
+			     default_suffix = SOME "-default",
+			     mk_ename = NONE }
+
+	val counter_r = C.group m0 C.int
+	val int_r =	C.group m C.int 
+	val flag_r = C.group m C.bool
+	val real_r = C.group m C.real
+	val string_r = C.group m C.string
+	val stringList_r = C.group m C.stringList
+	val timing_r = C.group m0
+	      { tname = "timing",
+		fromString = fn _ => (NONE : Control.MLRISC.cpu_time option),
+		toString = fn _ => "<timing>" }
+    in
+	val _ = app (C.reg counter_r) (!Control.MLRISC.counters)
+	val _ = app (C.reg int_r) (!Control.MLRISC.ints)
+	val _ = app (C.reg flag_r) (!Control.MLRISC.flags)
+	val _ = app (C.reg real_r) (!Control.MLRISC.reals)
+	val _ = app (C.reg string_r) (!Control.MLRISC.strings)
+	val _ = app (C.reg stringList_r) (!Control.MLRISC.stringLists)
+	val _ = app (C.reg timing_r) (!Control.MLRISC.timings)
+    end
 
     (* add cleanup code that resets the internal timers and stats
      * when resuming from exportML... *)
