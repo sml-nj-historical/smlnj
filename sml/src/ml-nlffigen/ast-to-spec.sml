@@ -10,6 +10,9 @@ structure AstToSpec = struct
     structure A = Ast
     structure B = Bindings
 
+    structure SM = RedBlackMapFn (type ord_key = string
+				  val compare = String.compare)
+
     exception VoidType
     exception Ellipsis
 
@@ -26,16 +29,26 @@ structure AstToSpec = struct
 	val { ast, tidtab, errorCount, warningCount,
 	      auxiliaryInfo = { aidtab, implicits, env } } = bundle
 
+	fun realFunctionDefComing sy = let
+	    fun isTheDef (A.DECL (A.FunctionDef (id, _, _), _, _)) =
+		Symbol.equal (#name id, sy)
+	      | isTheDef _ = false
+	in
+	    List.exists isTheDef ast
+	end
+
 	fun isThisFile SourceMap.UNKNOWN = false
 	  | isThisFile (SourceMap.LOC { srcFile, ... }) = srcFile = idlfile
 
+(*
 	fun isPublicName "" = false
 	  | isPublicName n = String.sub (n, 0) <> #"_"
+*)
 
 	fun includedSU (tag, loc) =
-	    (allSU orelse isThisFile loc) andalso isPublicName tag
+	    (allSU orelse isThisFile loc) (* andalso isPublicName tag *)
 
-	fun includedTy (n, loc) = isThisFile loc andalso isPublicName n
+	fun includedTy (n, loc) = isThisFile loc (* andalso isPublicName n *)
 
 	fun isFunction t = TypeUtil.isFunction tidtab t
 	fun getFunction t = TypeUtil.getFunction tidtab t
@@ -67,6 +80,7 @@ structure AstToSpec = struct
 	val gtys = ref []
 	val gvars = ref []
 	val gfuns = ref []
+	val enums = ref SM.empty
 
 	val seen_structs = ref []
 	val seen_unions = ref []
@@ -132,7 +146,13 @@ structure AstToSpec = struct
 		     structty (tid, name, members, location)
 		   | B.Union (tid, members) =>
 		     unionty (tid, name, members, location)
-		   | B.Enum (tid, _) => Spec.SINT (* for now (hack) *)
+		   | B.Enum (tid, edefs) => let
+			 fun one ({ name, uid, location, ctype, kind }, i) =
+			     enums := SM.insert (!enums, Symbol.name name, i)
+		     in
+			 app one edefs;
+			 Spec.SINT (* for now (hack) *)
+		     end
 		   | B.Typedef (_, t) => let
 			 val res = valty t
 			 val n = 
@@ -286,25 +306,33 @@ structure AstToSpec = struct
 			A.Void => NONE
 		      | _ => SOME (valty_nonvoid res),
 	      args = case args of
-			 [arg] => (case getCoreType arg of
+			 [(arg, _)] => (case getCoreType arg of
 				       A.Void => []
 				     | _ => [valty_nonvoid arg])
 		       | _ => let fun build [] = []
-				    | build [x] =
+				    | build [(x, _)] =
 				      ([valty_nonvoid x]
 				       handle Ellipsis =>
 					      (warnLoc
 						   ("varargs not supported; \
 						    \ignoring the ellipsis\n");
 						   []))
-				    | build (x :: xs) =
+				    | build ((x, _) :: xs) =
 				      valty_nonvoid x :: build xs
 			      in
 				  build args
 			      end }
 
-	fun functionName (f: A.id) = let
+	fun ft_argnames (res, args) =
+	    let val optids = map (fn (_, optid) => optid) args
+	    in
+		if List.exists (not o isSome) optids then NONE
+		else SOME (map valOf optids)
+	    end
+
+	fun functionName (f: A.id, ailo: A.id list option) = let
 	    val n = Symbol.name (#name f)
+	    val anlo = Option.map (map (Symbol.name o #name)) ailo
 	in
 	    if n = "_init" orelse n = "_fini" orelse
 	       List.exists (fn { name, ... } => name = n) (!gfuns) then ()
@@ -312,7 +340,8 @@ structure AstToSpec = struct
 		     (A.EXTERN | A.DEFAULT) =>
 		     (case getFunction (#ctype f) of
 			  SOME fs =>
-			  gfuns := { name = n, spec = cft fs } :: !gfuns
+			  gfuns := { name = n, spec = cft fs, argnames = anlo }
+				   :: !gfuns
 			| NONE => bug "function without function type")
 		   | (A.AUTO | A.REGISTER | A.STATIC) => ()
 	end
@@ -320,9 +349,11 @@ structure AstToSpec = struct
 	fun varDecl (v: A.id) =
 	    case #stClass v of
 		(A.EXTERN | A.DEFAULT) =>
-		if isFunction (#ctype v) then
-		    functionName v
-		else let val n = Symbol.name (#name v)
+		(case getFunction (#ctype v) of
+		     SOME fs => if realFunctionDefComing (#name v) then ()
+				else functionName (v, ft_argnames fs)
+		   | NONE =>
+		     let val n = Symbol.name (#name v)
 		     in
 			 if List.exists
 				(fn { name, ... } => name = n)
@@ -330,7 +361,7 @@ structure AstToSpec = struct
 			 else
 			     gvars := { name = n,
 					spec = cobj (#ctype v) } :: !gvars
-		     end
+		     end)
 	      | (A.AUTO | A.REGISTER | A.STATIC) => ()
 
 	fun declaration (A.TypeDecl { tid, ... }) =
@@ -341,7 +372,8 @@ structure AstToSpec = struct
 	  | declaration (A.VarDecl (v, _)) = varDecl v
 
 	fun coreExternalDecl (A.ExternalDecl d) = declaration d
-	  | coreExternalDecl (A.FunctionDef (f, _, _)) = functionName f
+	  | coreExternalDecl (A.FunctionDef (f, argids, _)) =
+	    functionName (f, SOME argids)
 	  | coreExternalDecl (A.ExternalDeclExt _) = ()
 
 	fun externalDecl (A.DECL (d, _, l)) =
@@ -356,6 +388,8 @@ structure AstToSpec = struct
 	  unions = !unions,
 	  gtys = !gtys,
 	  gvars = !gvars,
-	  gfuns = !gfuns }
+	  gfuns = !gfuns,
+	  enums = SM.foldri (fn (n, i, l) => { name = n, spec = i } :: l)
+			    [] (!enums) } : Spec.spec
     end
 end

@@ -38,13 +38,16 @@ structure Spec = struct
 
     type gvar = { name: string, spec: cobj }
 
-    type gfun = { name: string, spec: cft }
+    type gfun = { name: string, spec: cft, argnames: string list option }
 
     type gty = { name: string, spec: ctype }
+
+    type enum = { name: string, spec: LargeInt.int }
 
     type spec = { structs: s list,
 		  unions: u list,
 		  gtys: gty list,
 		  gvars: gvar list,
-		  gfuns: gfun list }
+		  gfuns: gfun list,
+		  enums: enum list }
 end

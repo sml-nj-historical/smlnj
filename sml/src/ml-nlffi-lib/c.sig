@@ -24,8 +24,8 @@ signature C = sig
      * types -- even in the "light" case.) *)
     type ('t, 'c) obj
 
-    (* an alternative "light-weight" version that does not carry RTI at
-     * the cost of requiring explicit passing of RTI for certain operations *)
+    (* an alternative "light-weight" version that does not carry RTTI at
+     * the cost of requiring explicit passing of RTTI for certain operations *)
     type ('t, 'c) obj'
 
     (* constness property, to be substituted for 'c *)
@@ -231,28 +231,28 @@ signature C = sig
     (* sub-structure for dealing with run-time type info *)
     structure T : sig
 
-	(* Our RTI itself is statically typed!
-	 * The RTI for a value stored in ('t, 'c) obj has
+	(* Our RTTI itself is statically typed!
+	 * The RTTI for a value stored in ('t, 'c) obj has
 	 * the following type: *)
 	type 't typ
 
-	(* get the RTI from an actual object *)
+	(* get the RTTI from an actual object *)
 	val typeof : ('t, 'c) obj -> 't typ
 
-	(* constructing new RTI from existing RTI *)
+	(* constructing new RTTI from existing RTTI *)
 	val pointer : 't typ -> ('t, rw) ptr typ
 	val target  : ('t, 'c) ptr typ -> 't typ
 	val arr     : 't typ * 'n Dim.dim -> ('t, 'n) arr typ
 	val elem    : ('t, 'n) arr typ -> 't typ
 	val ro      : ('t, 'c) ptr typ -> ('t, ro) ptr typ
 
-	(* calculating the size of an object given its RTI *)
+	(* calculating the size of an object given its RTTI *)
 	val sizeof : 't typ -> 't S.size
 
 	(* dimension of array type *)
 	val dim : ('t, 'n) arr typ -> 'n Dim.dim
 
-	(* RTI for simple things *)
+	(* RTTI for simple things *)
 	val schar  : schar typ
 	val uchar  : uchar typ
 	val sint   : sint typ
@@ -364,7 +364,7 @@ signature C = sig
 	val voidptr' : rw voidptr_obj' * voidptr -> unit
 
 	(* When storing, voidptr is compatible with any ptr type
-	 * (just like in C).  This should eliminate most need for RTI in
+	 * (just like in C).  This should eliminate most need for RTTI in
 	 * practice. *)
 	val ptr_voidptr : (('t, 'pc) ptr, rw) obj * voidptr -> unit
 
@@ -407,7 +407,7 @@ signature C = sig
 	val inject' : ('t, 'c) ptr' -> voidptr
 
 	(* the opposite is not safe, but C makes it not only easy but also
-	 * almost necessary; we use our RTI interface to specify the pointer
+	 * almost necessary; we use our RTTI interface to specify the pointer
 	 * type (not the element type!) *)
 	val cast : ('t, 'c) ptr T.typ -> voidptr -> ('t, 'c) ptr
 
@@ -463,7 +463,7 @@ signature C = sig
     structure Arr : sig
 	
 	(* array subscript;
-	 * since we have RTI, we can actually make this safe:  we raise
+	 * since we have RTTI, we can actually make this safe:  we raise
 	 * General.Subscript for out-of-bounds access;
 	 * for unchecked access, go through arr_decay and ptr_sub *)
 	val sub : (('t, 'n) arr, 'c) obj * int -> ('t, 'c) obj

@@ -393,10 +393,11 @@ let
        if isArray retTy
 	   then error "Return type of function cannot be array type."
        else ();
-       let val argTys = 
+       let fun withName f (t, n) = (f t, n)
+	   val argTys = 
 	   if convert_function_args_to_pointers then
-	       List.map preArgConv argTys
-	   else List.map cnvFunctionToPointer2Function argTys
+	       List.map (withName preArgConv) argTys
+	   else List.map (withName cnvFunctionToPointer2Function) argTys
         in 
 	  Ast.Function(retTy, argTys)
        end)
@@ -1060,8 +1061,17 @@ let
 
 	 | PT.FuncDecr (decr,lst) =>
 	    let fun folder (dt,decr) =
-		  let val ty = (dt2ct o #1) (processDeclarator (dt,decr))
-		   in cnvCtype (false, ty)
+		  let val (dty, argIdOpt, loc) = processDeclarator (dt, decr)
+		      val (ty, sc) = cnvType (false, dty)
+		      fun mkId n = { name = Sym.object n,
+				     uid = Pid.new (),
+				     location = loc,
+				     ctype = ty,
+				     stClass = sc,
+				     status = Ast.DECLARED,
+				     kind = Ast.NONFUN,
+				     global = false }
+		   in (ty, Option.map mkId argIdOpt)
 		  end
 		val argTys = List.map folder lst
 	     in mungeTyDecr(mkFunctionCt(ty, argTys), decr) 
@@ -1306,22 +1316,6 @@ let
 
 	(* insert function name in global scope *)
 	val argTys' = #1 (ListPair.unzip (#1 (unzip3 argTyScIdLocList')))
-        (* ASSERT: argument type list is null iff not a prototype style defn *)
-	val funTy' = mkFunctionCt (retType', if null krParams then argTys' else nil)
-	val funSym = Sym.func funName
-	val (status, newTy, uidOpt) =
-	     checkIdRebinding(funSym, funTy', Ast.DEFINED, {globalBinding=true})
-	val uid = case uidOpt of
-	  SOME uid => uid
-	| NONE => Pid.new()
-	val funId = {name = funSym, uid = uid, location = funLoc,
-		     ctype = funTy', stClass = sc, status = status,
-		     kind = Ast.FUNCTION{hasFunctionDef = true}, global = true}
-	val binding = ID funId
-
-	val _ = bindSymGlobal(funSym, binding)
-        (* note: we've already pushed a local env for the function args, so 
-           we are no longer at top level -- we must use bindSymGlobal here! *)
 
 	(* insert the arguments in the local symbol table *)
 	val argPids =
@@ -1344,6 +1338,26 @@ let
 		    end
 	     in List.map bindArg argTyScIdLocList'
 	    end
+
+        (* ASSERT: argument type list is null iff not a prototype style defn *)
+	val funTy' = mkFunctionCt (retType',
+				   if null krParams then
+				       ListPair.zip (argTys', map SOME argPids)
+				   else nil)
+	val funSym = Sym.func funName
+	val (status, newTy, uidOpt) =
+	     checkIdRebinding(funSym, funTy', Ast.DEFINED, {globalBinding=true})
+	val uid = case uidOpt of
+	  SOME uid => uid
+	| NONE => Pid.new()
+	val funId = {name = funSym, uid = uid, location = funLoc,
+		     ctype = funTy', stClass = sc, status = status,
+		     kind = Ast.FUNCTION{hasFunctionDef = true}, global = true}
+	val binding = ID funId
+
+	val _ = bindSymGlobal(funSym, binding)
+        (* note: we've already pushed a local env for the function args, so 
+           we are no longer at top level -- we must use bindSymGlobal here! *)
 
 	(* set new function context (labels and returns) *)
 	val _ = newFunction retType'
@@ -2494,10 +2508,20 @@ end old code ******)
 		       fun process (dt, decl) =
 			   let
 			       (*dpo: ignore storage class in translating type *)
-			       val ty = (dt2ct o #1) (processDeclarator (dt, decl))
-			       val ty = cnvCtype (false, ty)
+			       val (dty, argIdOpt, loc) =
+				   processDeclarator (dt, decl)
+			       val (ty, sc) = cnvType (false, dty)
+			       fun mkId n = { name = Sym.object n,
+					      uid = Pid.new (),
+					      location = loc,
+					      ctype = ty,
+					      stClass = sc,
+					      status = Ast.DECLARED,
+					      kind = Ast.NONFUN,
+					      global = false }
+						 
 			   in
-			       ty
+			       (ty, Option.map mkId argIdOpt)
 			   end
 		       val argTys = List.map process params
 		    in mkFunctionCt (retTy, argTys)

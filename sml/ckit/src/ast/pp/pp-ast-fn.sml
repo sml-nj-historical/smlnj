@@ -243,7 +243,20 @@ functor PPAstFn (structure PPAstAdornment : PPASTADORNMENT) : PP_AST = struct
 		 )
 	     | Array (opt,ct) => loop (idsOpt,ct,Arr opt::stk)
 	     | Pointer ct =>  loop (idsOpt,ct,Ptr::stk)
-	     | Function (ct,cts) => loop (EMPTY,ct,Fun (cts,idsOpt)::stk)
+	     | Function (ct,cts) => let
+		   val optids = map #2 cts(* optional ids *)
+		   val cts = map #1 cts(* types *)
+		   fun useaux () = loop (EMPTY,ct,Fun (cts,idsOpt)::stk)
+	       in
+		   case idsOpt of
+		       EMPTY => let
+		       in
+			   if List.exists (not o isSome) optids then useaux ()
+			   else loop (EMPTY, ct,
+				      Fun(cts,ANSI(map valOf optids))::stk)
+		       end
+		     | _ => useaux ()
+	       end
 	     | EnumRef tid => 
 		 (case Tidtab.find (tidtab,tid)
 		    of SOME {ntype=SOME (B.Enum _),...} => 

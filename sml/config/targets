@@ -50,6 +50,9 @@ TARGETS="$TARGETS ml-lex"
 # (everything except smlnj-lib.cm, aka Util, itself)
 TARGETS="$TARGETS smlnj-lib"
 
+# pre-compile and install CM "portable graph" utility library
+#TARGETS="$TARGETS pgraph-util"
+
 # pre-compile and install Concurrent ML, which is a library for message-passing
 # concurrency.
 #

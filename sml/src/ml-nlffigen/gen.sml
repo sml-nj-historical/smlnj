@@ -8,7 +8,7 @@
  *)
 local
     val program = "ml-ffigen"
-    val version = "0.3"
+    val version = "0.4"
     val author = "Matthias Blume"
     val email = "blume@research.bell-labs.com"
     structure S = Spec
@@ -25,6 +25,7 @@ structure Gen :> sig
 		allSU: bool,
 		lambdasplit: string option,
 		wid: int,
+		weightreq: bool option,	(* true -> heavy, false -> light *)
 		target : { name  : string,
 			   sizes : Sizes.sizes,
 			   shift : int * int * word -> word,
@@ -34,6 +35,8 @@ end = struct
     structure P = PrettyPrint
     structure PP = P.PP
     val Tuple = P.TUPLE
+    fun Record [] = P.Unit
+      | Record l = P.RECORD l
     val Con = P.CON
     val Arrow = P.ARROW
     val Type = P.Type
@@ -41,13 +44,20 @@ end = struct
     val Un = P.Un
     val Unit = P.Unit
     val ETuple = P.ETUPLE
+    fun ERecord [] = P.ETUPLE []
+      | ERecord l = P.ERECORD l
     val EVar = P.EVAR
     val EApp = P.EAPP
     val EConstr = P.ECONSTR
     val ESeq = P.ESEQ
     fun EWord w = EVar ("0wx" ^ Word.toString w)
     fun EInt i = EVar (Int.toString i)
+    fun ELInt i = EVar (LargeInt.toString i)
     fun EString s = EVar (concat ["\"", String.toString s, "\""])
+
+    val writeto = "write_to"
+
+    val sint_ty = Type "MLRep.SInt.int"
 
     val dontedit = "(* This file has been generated automatically. \
 		   \DO NOT EDIT! *)"
@@ -65,7 +75,16 @@ end = struct
 	      signame, strname,
 	      allSU, lambdasplit,
 	      wid,
+	      weightreq,
 	      target = { name = archos, sizes, shift, stdcall } } = args
+
+	val (doheavy, dolight) =
+	    case weightreq of
+		NONE => (true, true)
+	      | SOME true => (true, false)
+	      | SOME false => (false, true)
+
+	val doargnames = true		(* FIXME: customizable *)
 
 	val credits = mkCredits (idlfile, archos)
 
@@ -76,7 +95,7 @@ end = struct
 
 	val spec = AstToSpec.build (astbundle, sizes, idlfile, allSU, shift)
 
-	val { structs, unions, gvars, gfuns, gtys } = spec
+	val { structs, unions, gvars, gfuns, gtys, enums } = spec
 
 	fun openPP f =
 	    PP.openStream (SimpleTextIODev.openDev { dst = TextIO.openOut f,
@@ -126,9 +145,15 @@ end = struct
 		((ignore (get_union t); a)
 		 handle Incomplete => (f, s, sinsert (t, u)))
 	      | ty ((S.PTR (_, t) | S.ARR { t, ... }), a) = ty (t, a)
-	      | ty (S.FPTR cft, a as (f, s, u)) =
-		if List.exists (fn (cft', _) => cft = cft') f then a
-		else ((cft, length f) :: f, s, u)
+	      | ty (S.FPTR (cft as { args, res }), a) = let
+		    val a' = foldl ty a args
+		    val a'' = case res of NONE => a'
+					| SOME t => ty (t, a')
+		    val (f, s, u) = a''
+		in
+		    if List.exists (fn (cft', _) => cft = cft') f then a
+		    else ((cft, length f) :: f, s, u)
+		end
 	    fun fs (S.OFIELD { spec = (_, t), ... }, a) = ty (t, a)
 	      | fs (_, a) = a
 	    fun f ({ name, spec }, a) = fs (spec, a)
@@ -137,7 +162,7 @@ end = struct
 		foldl f a (largest :: all)
 	    fun gty ({ name, spec }, a) = ty (spec, a)
 	    fun gvar ({ name, spec = (_, t) }, a) = ty (t, a)
-	    fun gfun ({ name, spec }, a) = ty (S.FPTR spec, a)
+	    fun gfun ({ name, spec, argnames }, a) = ty (S.FPTR spec, a)
 	in
 	    foldl gfun (foldl gvar
 		         (foldl gty (foldl u (foldl s ([], [], []) structs)
@@ -200,8 +225,8 @@ end = struct
 	end
 
 	and wtn_ty_p p (t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
-				S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
-				S.FLOAT | S.DOUBLE | S.VOIDPTR)) =
+			      S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+			      S.FLOAT | S.DOUBLE | S.VOIDPTR)) =
 	    Type (stem t)
 	  | wtn_ty_p p (S.STRUCT t) = Con ("su", [St t])
 	  | wtn_ty_p p (S.UNION t) = Con ("su", [Un t])
@@ -218,7 +243,7 @@ end = struct
 
 	and wtn_ty' t = wtn_ty_p "'" t
 
-	fun topfunc_ty p { args, res } = let
+	fun topfunc_ty p ({ args, res }, argnames) = let
 	    fun topty S.SCHAR = Type "MLRep.SChar.int"
 	      | topty S.UCHAR = Type "MLRep.UChar.word"
 	      | topty S.SINT = Type "MLRep.SInt.int"
@@ -232,25 +257,32 @@ end = struct
 	      | topty (S.STRUCT t) = Con ("su_obj" ^ p, [St t, Type "'c"])
 	      | topty (S.UNION t) = Con ("su_obj" ^ p, [Un t, Type "'c"])
 	      | topty t = wtn_ty_p p t
-	    val (res_t, extra_arg_t) =
+	    val (res_t, extra_arg_t, extra_argname) =
 		case res of
-		    NONE => (Unit, [])
+		    NONE => (Unit, [], [])
 		  | SOME (S.STRUCT t) => let
 			val ot = Suobj'rw p (St t)
 		    in
-			(ot, [ot])
+			(ot, [ot], [writeto])(* hack -- check for nameclash *)
 		    end
 		  | SOME (S.UNION t) => let
 			val ot = Suobj'rw p (Un t)
 		    in
-			(ot, [ot])
+			(ot, [ot], [writeto])(* hack *)
 		    end
-		  | SOME t => (topty t, [])
+		  | SOME t => (topty t, [], [])
+	    val argtyl = map topty args
+	    val aggreg_argty =
+		case (doargnames, argnames) of
+		    (true, SOME nl) =>
+		    Record (ListPair.zip (extra_argname @ nl,
+					  extra_arg_t @ argtyl))
+		  | _ => Tuple (extra_arg_t @ argtyl)
 	in
-	    Arrow (Tuple (extra_arg_t @ map topty args), res_t)
+	    Arrow (aggreg_argty, res_t)
 	end
 
-	fun  rti_ty t = Con ("T.typ", [wtn_ty t])
+	fun  rtti_ty t = Con ("T.typ", [wtn_ty t])
 
 	fun  obj_ty p (t, c) = Con ("obj" ^ p, [wtn_ty t, c])
 
@@ -268,29 +300,29 @@ end = struct
 	local
 	    fun simple v = EVar ("T." ^ v)
 	in
-	    fun rti_val (t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
-			       S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
-			       S.FLOAT | S.DOUBLE | S.VOIDPTR)) =
+	    fun rtti_val (t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
+				S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+				S.FLOAT | S.DOUBLE | S.VOIDPTR)) =
 		simple (stem t)
-	      | rti_val (S.STRUCT t) = EVar (concat ["S_", t, ".typ"])
-	      | rti_val (S.UNION t) = EVar (concat ["U_", t, ".typ"])
-	      | rti_val (S.FPTR cft) =
+	      | rtti_val (S.STRUCT t) = EVar (concat ["S_", t, ".typ"])
+	      | rtti_val (S.UNION t) = EVar (concat ["U_", t, ".typ"])
+	      | rtti_val (S.FPTR cft) =
 		(case List.find (fn x => #1 x = cft) fptr_types of
-		     SOME (_, i) => EVar ("fptr_rti_" ^ Int.toString i)
+		     SOME (_, i) => EVar ("fptr_rtti_" ^ Int.toString i)
 		   | NONE => raise Fail "fptr type missing")
-	      | rti_val (S.PTR (S.RW, t)) =
+	      | rtti_val (S.PTR (S.RW, t)) =
 		(case incomplete t of
 		     SOME (K, tag) =>
 		     EVar (istruct (K, tag) ^ ".typ'rw")
-		   | NONE => EApp (EVar "T.pointer", rti_val t))
-	      | rti_val (S.PTR (S.RO, t)) =
+		   | NONE => EApp (EVar "T.pointer", rtti_val t))
+	      | rtti_val (S.PTR (S.RO, t)) =
 		(case incomplete t of
 		     SOME (K, tag) =>
 		     EVar (istruct (K, tag) ^ ".typ'ro")
 		   | NONE => EApp (EVar "T.ro",
-				   EApp (EVar "T.pointer", rti_val t)))
-	      | rti_val (S.ARR { t, d, ... }) =
-		EApp (EVar "T.arr", ETuple [rti_val t, dim_val d])
+				   EApp (EVar "T.pointer", rtti_val t)))
+	      | rtti_val (S.ARR { t, d, ... }) =
+		EApp (EVar "T.arr", ETuple [rtti_val t, dim_val d])
 	end
 
 	fun do_sig_file () = let
@@ -332,11 +364,11 @@ end = struct
 		    pr_tdef ("t_f_" ^ name, wtn_ty t)
 		  | pr_field_typ _ = ()
 
-		fun pr_field_rti { name, spec = S.OFIELD { spec = (c, t),
-							   synthetic = false,
-							   offset } } =
-		    pr_vdecl ("typ_f_" ^ name, rti_ty t)
-		  | pr_field_rti _ = ()
+		fun pr_field_rtti { name, spec = S.OFIELD { spec = (c, t),
+							    synthetic = false,
+							    offset } } =
+		    pr_vdecl ("typ_f_" ^ name, rtti_ty t)
+		  | pr_field_rtti _ = ()
 
 		fun pr_field_acc0 (name, p, t) =
 		    pr_vdecl (concat ["f_", name, p],
@@ -365,20 +397,24 @@ end = struct
 		nl (); str (concat ["(* size for this ", su, " *)"]);
 		pr_vdecl ("size", Con ("S.size", [Con ("su", [StUn tag])]));
 		nl ();
-		nl (); str (concat ["(* RTI for this ", su, " *)"]);
+		nl (); str (concat ["(* RTTI for this ", su, " *)"]);
 		pr_vdecl ("typ", Con ("T.typ", [Con ("su", [StUn tag])]));
 		nl ();
 		nl (); str "(* witness types for fields *)";
 		app pr_field_typ fields;
 		nl ();
-		nl (); str "(* RTI for fields *)";
-		app pr_field_rti fields;
-		nl ();
-		nl (); str "(* field accessors *)";
-		app (pr_field_acc "") fields;
-		nl ();
-		nl (); str "(* field accessors (lightweight variety) *)";
-		app (pr_field_acc "'") fields;
+		nl (); str "(* RTTI for fields *)";
+		app pr_field_rtti fields;
+		if doheavy then
+		    (nl ();
+		     nl (); str "(* field accessors *)";
+		     app (pr_field_acc "") fields)
+		else ();
+		if dolight then
+		    (nl ();
+		     nl (); str "(* field accessors (lightweight variety) *)";
+		     app (pr_field_acc "'") fields)
+		else ();
 		endBox ();
 		nl (); str (concat ["end (* structure ", K, "_", tag, " *)"])
 	    end
@@ -388,21 +424,22 @@ end = struct
 	    fun pr_union_structure { tag, size, anon, largest, all } =
 		pr_su_structure (Un, "U", "union", tag, all)
 
-	    fun pr_gty_rti { name, spec } =
-		pr_vdecl ("typ_t_" ^ name, rti_ty spec)
+	    fun pr_gty_rtti { name, spec } =
+		pr_vdecl ("typ_t_" ^ name, rtti_ty spec)
 
 	    fun pr_gvar_obj { name, spec = (c, t) } =
 		pr_vdecl ("g_" ^ name, Arrow (Unit, obj_ty "" (t, rwro c)))
 
-	    fun pr_gfun_rti { name, spec } =
-		pr_vdecl ("typ_fn_" ^ name, rti_ty (S.FPTR spec))
+	    fun pr_gfun_rtti { name, spec, argnames } =
+		pr_vdecl ("typ_fn_" ^ name, rtti_ty (S.FPTR spec))
 
-	    fun pr_gfun_fptr { name, spec } =
+	    fun pr_gfun_fptr { name, spec, argnames } =
 		pr_vdecl ("fptr_fn_" ^ name,
 			  Arrow (Unit, wtn_ty (S.FPTR spec)))
 
-	    fun pr_gfun_func p { name, spec } =
-		pr_vdecl (concat ["fn_", name, p], topfunc_ty p spec)
+	    fun pr_gfun_func p { name, spec, argnames } =
+		pr_vdecl (concat ["fn_", name, p],
+			  topfunc_ty p (spec, argnames))
 
 	    fun pr_isu (K, tag) =
 		(nl ();
@@ -410,6 +447,8 @@ end = struct
 			      " : POINTER_TO_INCOMPLETE_TYPE"]))
 	    fun pr_istruct tag = pr_isu ("S", tag)
 	    fun pr_iunion tag = pr_isu ("U", tag)
+
+	    fun pr_enum_const { name, spec } = pr_vdecl ("e_" ^ name, sint_ty)
 	in
 	    (* Generating the signature file... *)
 	    str dontedit;
@@ -425,21 +464,25 @@ end = struct
 	    app pr_struct_structure structs;
 	    app pr_union_structure unions;
 	    if not (List.null cgtys) then
-		(nl (); nl (); str "(* RTI for typedefs *)";
-		 app pr_gty_rti cgtys)
+		(nl (); nl (); str "(* RTTI for typedefs *)";
+		 app pr_gty_rtti cgtys)
 	    else ();
 	    if not (List.null gvars) then
 		(nl (); nl (); str "(* object handles for global variables *)";
 		 app pr_gvar_obj gvars)
 	    else ();
 	    if not (List.null gfuns) then
-		(nl (); nl (); str "(* RTI for global function(-pointer)s *)";
-		 app pr_gfun_rti gfuns;
+		(nl (); nl (); str "(* RTTI for global function(-pointer)s *)";
+		 app pr_gfun_rtti gfuns;
 		 nl (); nl (); str "(* global function pointers *)";
 		 app pr_gfun_fptr gfuns;
 		 nl (); nl (); str "(* global functions *)";
-		 app (pr_gfun_func "'") gfuns;
-		 app (pr_gfun_func "") gfuns)
+		 if dolight then app (pr_gfun_func "'") gfuns else ();
+		 if doheavy then app (pr_gfun_func "") gfuns else ())
+	    else ();
+	    if not (List.null enums) then
+		(nl (); nl (); str "(* enum constants *)";
+		 app pr_enum_const enums)
 	    else ();
 	    endBox ();
 	    nl (); str (concat ["end (* signature ", signame, " *)"]);
@@ -517,7 +560,7 @@ end = struct
 	    fun pr_union_tag_copy { tag, size, anon, largest, all } =
 		pr_su_tag_copy ("u", tag)
 
-	    fun pr_fptr_rti ({ args, res }, i) = let
+	    fun pr_fptr_rtti ({ args, res }, i) = let
 
 		(* cproto encoding *)
 		fun List t = Con ("list", [t])
@@ -594,8 +637,8 @@ end = struct
 				S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
 				S.FLOAT | S.DOUBLE)) =
 		    Type ("CMemory.cc_" ^ stem t)
-		  | mlty (S.VOIDPTR | S.PTR _ | S.FPTR _ |
-			  S.STRUCT _) = Type "CMemory.cc_addr"
+		  | mlty (S.VOIDPTR | S.PTR _ | S.FPTR _ | S.STRUCT _) =
+		    Type "CMemory.cc_addr"
 		  | mlty (S.ARR _ | S.UNION _) = raise Fail "unexpected type"
 
 		fun wrap (e, n) =
@@ -662,7 +705,7 @@ end = struct
 			    fun iunwrap (K, tag, t) r =
 				EApp (EApp (EVar (istruct (K, tag) ^
 						  ".cast'"),
-					    rti_val t),
+					    rtti_val t),
 				      punwrap "vcast" r)
 			    val res_wrap =
 				case t of
@@ -694,7 +737,7 @@ end = struct
 		val arg_e = ETuple (extra_arg_e @ args_el)
 	    in
 		nl ();
-		str (concat ["val ", "fptr_rti_", Int.toString i, " = let"]);
+		str (concat ["val ", "fptr_rtti_", Int.toString i, " = let"]);
 		VBox 4;
 		pr_vdef ("callop",
 			  EConstr (EVar "RawMemInlineT.rawccall",
@@ -712,7 +755,7 @@ end = struct
 		VBox 4;
 		nl (); ppExp (EConstr (EApp (EVar "mk_fptr_typ",
 					     EVar "mkcall"),
-				       rti_ty (S.FPTR { args = args,
+				       rtti_ty (S.FPTR { args = args,
 							res = res })));
 		endBox ();
 		nl (); str "end"
@@ -726,11 +769,11 @@ end = struct
 							   offset } } =
 		    pr_tdef ("t_f_" ^ name, wtn_ty t)
 		  | pr_field_typ _ = ()
-		fun pr_field_rti { name, spec = S.OFIELD { spec = (c, t),
+		fun pr_field_rtti { name, spec = S.OFIELD { spec = (c, t),
 							   synthetic = false,
 							   offset } } =
-		    pr_vdef ("typ_f_" ^ name, rti_val t)
-		  | pr_field_rti _ = ()
+		    pr_vdef ("typ_f_" ^ name, rtti_val t)
+		  | pr_field_rtti _ = ()
 
 		fun pr_bf_acc (name, p, sign,
 			       { offset, constness, bits, shift }) =
@@ -769,11 +812,11 @@ end = struct
 		    if synthetic then ()
 		    else let
 			    val maker = concat ["mk_", rwro c, "_field"]
-			    val rtival = EVar ("typ_f_" ^ name)
+			    val rttival = EVar ("typ_f_" ^ name)
 			in
 			    pr_fdef ("f_" ^ name,
 				     [EVar "x"],
-				     EApp (EApp (EApp (EVar maker, rtival),
+				     EApp (EApp (EApp (EVar maker, rttival),
 						 EInt offset),
 					   EVar "x"))
 			end
@@ -787,9 +830,9 @@ end = struct
 		Box 4;
 		nl (); str (concat ["open ", K, "_", tag]);
 		app pr_field_typ fields;
-		app pr_field_rti fields;
-		app pr_field_acc' fields;
-		app pr_field_acc fields;
+		app pr_field_rtti fields;
+		if dolight then app pr_field_acc' fields else ();
+		if doheavy then app pr_field_acc fields else ();
 		endBox ();
 		nl (); str "end"
 	    end
@@ -799,8 +842,8 @@ end = struct
 	    fun pr_union_structure { tag, size, anon, largest, all } =
 		pr_su_structure (Un, "u", "U", tag, size, all)
 
-	    fun pr_gty_rti { name, spec } =
-		pr_vdef ("typ_t_" ^ name, rti_val spec)
+	    fun pr_gty_rtti { name, spec } =
+		pr_vdef ("typ_t_" ^ name, rtti_val spec)
 
 	    fun pr_addr (prefix, name) =
 		pr_vdef (prefix ^ name,
@@ -810,7 +853,7 @@ end = struct
 	    fun pr_gvar_addr { name, spec } = pr_addr ("gh_", name)
 
 	    fun pr_gvar_obj { name, spec = (c, t) } = let
-		val rwobj = EApp (EApp (EVar "mk_obj", rti_val t),
+		val rwobj = EApp (EApp (EVar "mk_obj", rtti_val t),
 				  EApp (EVar "D.addr", EVar ("gh_" ^ name)))
 		val obj = case c of S.RW => rwobj
 				  | S.RO => EApp (EVar "ro", rwobj)
@@ -818,18 +861,20 @@ end = struct
 		pr_fdef ("g_" ^ name, [ETuple []], obj)
 	    end
 
-	    fun pr_gfun_rti { name, spec } =
-		pr_vdef ("typ_fn_" ^ name, rti_val (S.FPTR spec))
+	    fun pr_gfun_rtti { name, spec, argnames } =
+		pr_vdef ("typ_fn_" ^ name, rtti_val (S.FPTR spec))
 
-	    fun pr_gfun_addr { name, spec } = pr_addr ("fnh_", name)
+	    fun pr_gfun_addr { name, spec, argnames } = pr_addr ("fnh_", name)
 
-	    fun pr_gfun_fptr { name, spec } =
+	    fun pr_gfun_fptr { name, spec, argnames } =
 		pr_fdef ("fptr_fn_" ^ name,
 			 [ETuple []],
 			 EApp (EApp (EVar "mk_fptr", EVar ("typ_fn_" ^ name)),
 			       EApp (EVar "D.addr", EVar ("fnh_" ^ name))))
 
-	    fun pr_gfun_func is_light { name, spec = { args, res } } = let
+	    fun pr_gfun_func is_light x = let
+		val { name, spec = { args, res }, argnames } = x
+		(* FIXME: use argnames! *)
 		val p = if is_light then "'" else ""
 		val ml_vars =
 		    rev (#1 (foldl (fn (_, (l, i)) =>
@@ -842,7 +887,7 @@ end = struct
 		fun light (what, e) = app0 ("Light." ^ what, e)
 		fun heavy (what, t, e) =
 		    if is_light then e
-		    else EApp (EApp (EVar ("Heavy." ^ what), rti_val t), e)
+		    else EApp (EApp (EVar ("Heavy." ^ what), rtti_val t), e)
 		    
 		fun oneArg (e, t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 				     S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
@@ -859,12 +904,13 @@ end = struct
 		  | oneArg (e, S.VOIDPTR) = e
 		  | oneArg (e, S.ARR _) = raise Fail "array argument type"
 		val c_exps = ListPair.map oneArg (ml_vars, args)
-		val (ml_vars, c_exps) =
+		val (ml_vars, c_exps, extra_argname) =
 		    case res of
 			SOME (S.STRUCT _ | S.UNION _) =>
 			(EVar "x0" :: ml_vars,
-			 light ("obj", EVar "x0") :: c_exps)
-		      | _ => (ml_vars, c_exps)
+			 light ("obj", EVar "x0") :: c_exps,
+			 [writeto])
+		      | _ => (ml_vars, c_exps, [])
 		val call = EApp (EVar "call",
 				 ETuple [EApp (EVar ("fptr_fn_" ^ name),
 					       ETuple []),
@@ -885,8 +931,13 @@ end = struct
 		      | SOME (t as S.FPTR _) => heavy ("fptr", t, call)
 		      | SOME (S.ARR _) => raise Fail "array result type"
 		      | (NONE | SOME S.VOIDPTR) => call
+		val argspat =
+		    case (doargnames, argnames) of
+			(true, SOME nl) =>
+			ERecord (ListPair.zip (extra_argname @ nl, ml_vars))
+		      | _ => ETuple ml_vars
 	    in
-		pr_fdef (concat ["fn_", name, p], [ETuple ml_vars], ml_res)
+		pr_fdef (concat ["fn_", name, p], [argspat], ml_res)
 	    end
 
 	    fun pr_isu_arg (K, tag) =
@@ -922,6 +973,9 @@ end = struct
 		pr_pre_su ("S", "s", S.STRUCT, St, tag, size)
 	    fun pr_pre_union { tag, size, anon, largest, all } =
 		pr_pre_su ("U", "u", S.UNION, Un, tag, size)
+
+	    fun pr_enum_const { name, spec } =
+		pr_vdef ("e_" ^ name, EConstr (ELInt spec, sint_ty))
 	in
 	    (* Generating the functor file... *)
 	    str dontedit;
@@ -975,14 +1029,14 @@ end = struct
 	    app pr_struct_tag_copy structs;
 	    app pr_union_tag_copy unions;
 
-	    (* other local stuff (to define RTI for function pointers) *)
+	    (* other local stuff (to define RTTI for function pointers) *)
 	    nl (); str "local";
 	    VBox 4;
 	    nl (); str "structure D = DynLinkage";
 	    nl (); str "open C.Dim C_Int";
 
 	    (* low-level call operations for all function pointers *)
-	    app pr_fptr_rti fptr_types;
+	    app pr_fptr_rtti fptr_types;
 
 	    (* the library handle (handle on shared object) *)
 	    nl (); str "val so_h = library";
@@ -1002,17 +1056,19 @@ end = struct
 	    (* ML structurse corresponding to C union declarations *)
 	    app pr_union_structure unions;
 
-	    (* RTI for C typedefs *)
-	    app pr_gty_rti cgtys;
+	    (* RTTI for C typedefs *)
+	    app pr_gty_rtti cgtys;
 	    (* (suspended) objects for global variables *)
 	    app pr_gvar_obj gvars;
-	    (* RTI for function pointers corresponding to global C functions *)
-	    app pr_gfun_rti gfuns;
+	    (* RTTI for pointers corresponding to global C functions *)
+	    app pr_gfun_rtti gfuns;
 	    (* (suspended) function pointers for global C functions *)
 	    app pr_gfun_fptr gfuns;
 	    (* ML functions corresponding to global C functions *)
-	    app (pr_gfun_func true) gfuns;(* light *)
-	    app (pr_gfun_func false) gfuns;(* heavy *)
+	    if dolight then app (pr_gfun_func true) gfuns else ();
+	    if doheavy then app (pr_gfun_func false) gfuns else ();
+	    (* enum constants *)
+	    app pr_enum_const enums;
 	    endBox ();
 	    nl (); str "end";		(* local *)
 	    endBox ();

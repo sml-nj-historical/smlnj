@@ -354,7 +354,8 @@ struct
 	     | (_, TypeRef _) => eq (ty1, reduceTypedef tidtab ty2)
 	     | _ => false
 	and eql ([],[]) = true
-	  | eql (ty1::tyl1,ty2::tyl2) = eq (ty1,ty2) andalso eql (tyl1,tyl2)
+	  | eql ((ty1,_)::tyl1,(ty2,_)::tyl2) =
+	    eq (ty1,ty2) andalso eql (tyl1,tyl2)
 	  | eql _ = false
     in eq (ty1,ty2) end
 
@@ -477,6 +478,11 @@ struct
 	 (* enumeration types are always compatible with the underlying implementation type, 
 	  assume in this frontend to the int *)
 	 | _ => NONE)
+
+      fun composeid (NONE, x2) = x2
+	| composeid (x1, NONE) = x1
+	| composeid (x1 as SOME (i1: Ast.id), SOME (i2: Ast.id)) =
+	  if Symbol.equal (#name i1, #name i2) then x1 else NONE
 	     
       fun compose (ty1,ty2) = 
 	let val ty1 = if pointer_compatibility_quals then ty1 else getCoreType tidtab ty1
@@ -512,14 +518,14 @@ struct
 		   (case compose (ct1, ct2) of
 		      (NONE, eml) => (NONE, eml)
 		    | (SOME ct, eml) => (SOME(Function(ct, nil)), eml))
-	    | (Function(ct1, [Void]), Function(ct2, nil)) => (* first is Void-arg-prototype *)
+	    | (Function(ct1, [(Void, _)]), Function(ct2, nil)) => (* first is Void-arg-prototype *)
 		   (case compose (ct1, ct2) of
 		      (NONE, eml) => (NONE, eml)
-		    | (SOME ct, eml) => (SOME(Function(ct, [Void])), eml))
-	    | (Function(ct1, nil), Function(ct2, [Void])) => (* second is Void-arg-prototype *)
+		    | (SOME ct, eml) => (SOME(Function(ct, [(Void,NONE)])), eml))
+	    | (Function(ct1, nil), Function(ct2, [(Void,_)])) => (* second is Void-arg-prototype *)
 		   (case compose (ct1, ct2) of
 		      (NONE, eml) => (NONE, eml)
-		    | (SOME ct, eml) => (SOME(Function(ct, [Void])), eml))
+		    | (SOME ct, eml) => (SOME(Function(ct, [(Void,NONE)])), eml))
 	    | (Function(ct1, ctl1), Function(ct2, nil)) => (* first is prototype *)
 		   (case (compose(ct1, ct2), checkArgs ctl1) of
 		      ((SOME ct,eml), fl) => (SOME(Function(ct, ctl1)), if fl then eml else (em1()) :: eml)
@@ -551,8 +557,8 @@ struct
 		if Tid.equal (tid1, tid2) then (SOME ty1, nil) else (NONE, nil)
 	    | _ => (NONE, nil)
 	end
-      and checkArgs (Ellipses :: _) = true
-	| checkArgs (ct :: ctl) = (case compose(ct, functionArgConv tidtab ct) of
+      and checkArgs ((Ellipses, _) :: _) = true
+	| checkArgs ((ct, _) :: ctl) = (case compose(ct, functionArgConv tidtab ct) of
 				    (NONE, _) => false
 				  | (SOME _, _) => checkArgs ctl
 				      (* H & S, p 154, midpage:
@@ -564,12 +570,13 @@ struct
 				      )
 	| checkArgs nil = true
 	and composel ([],[]) = (SOME nil, nil)
-	  | composel ([Ast.Ellipses], [Ast.Ellipses]) = (SOME([Ast.Ellipses]), nil)
-	  | composel ([Ast.Ellipses], _) = (NONE,  ["Use of ellipses does not match."])
-	  | composel (_, [Ast.Ellipses]) = (NONE,  ["Use of ellipses does not match."])
-	  | composel (ty1::tyl1,ty2::tyl2) = 
+	  | composel ([(Ast.Ellipses, _)], [(Ast.Ellipses, _)]) = (SOME([(Ast.Ellipses,NONE)]), nil)
+	  | composel ([(Ast.Ellipses, _)], _) = (NONE,  ["Use of ellipses does not match."])
+	  | composel (_, [(Ast.Ellipses, _)]) = (NONE,  ["Use of ellipses does not match."])
+	  | composel ((ty1, id1)::tyl1,(ty2, id2)::tyl2) = 
 	  (case (compose (ty1,ty2), composel (tyl1,tyl2)) of
-	     ((SOME ty, eml1), (SOME tyl, eml2)) => (SOME(ty :: tyl), eml1@eml2)
+	     ((SOME ty, eml1), (SOME tyl, eml2)) =>
+	     (SOME((ty, composeid (id1, id2)) :: tyl), eml1@eml2)
 	   | ((_, eml1), (_, eml2)) => (NONE, eml1@eml2))
 	  | composel _ = (NONE, ["Function types have different numbers of arguments."])
     in compose (ty1,ty2) end
@@ -707,8 +714,9 @@ struct
   fun checkFn tidtab (funTy, argTys, isZeroExprs) =
     (case getFunction tidtab funTy of
        NONE => (Ast.Void, ["Called object is not a function."], argTys)
-     | SOME(retTy, paramTys) =>
+     | SOME(retTy, paramTysIdOpts) =>
       let
+	val paramTys = map #1 paramTysIdOpts
 	val paramTys = case paramTys
 	  of [Ast.Void] => nil (* a function with a single void argument is a function of no args *)
 	| _ => paramTys

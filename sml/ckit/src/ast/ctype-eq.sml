@@ -51,7 +51,8 @@ struct
     | eqCType(Error, Error) = true
     | eqCType _ = false
   
- and eqCTypeList(ct1 :: ctl1, ct2 :: ctl2) = eqCType(ct1, ct2) andalso eqCTypeList(ctl1, ctl2)
+ and eqCTypeList((ct1, _) :: ctl1, (ct2, _) :: ctl2) =
+     eqCType(ct1, ct2) andalso eqCTypeList(ctl1, ctl2)
    | eqCTypeList(nil, nil) = true
    | eqCTypeList _ = false
 

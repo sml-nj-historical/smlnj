@@ -15,6 +15,7 @@ structure PrettyPrint = struct
 	ARROW of mltype * mltype
       | TUPLE of mltype list
       | CON of string * mltype list
+      | RECORD of (string * mltype) list
 
     val Unit = TUPLE []
     fun Type t = CON (t, [])
@@ -46,6 +47,7 @@ structure PrettyPrint = struct
 	CON (String.extract (k, 4, NONE), [simplify n])
       | simplify (ARROW (t1, t2)) = ARROW (simplify t1, simplify t2)
       | simplify (TUPLE tl) = TUPLE (map simplify tl)
+      | simplify (RECORD ml) = RECORD (map (fn (n, t) => (n, simplify t)) ml)
       | simplify (CON (k, tl)) = CON (k, map simplify tl)
 
     fun ppType0 s (t as ARROW _, c) =
@@ -82,6 +84,23 @@ structure PrettyPrint = struct
 	    if paren then PP.string s ")" else ();
 	    PP.closeBox s
 	end
+      | ppType0 s (RECORD [], _) = PP.string s "{}"
+      | ppType0 s (RECORD tl, _) = let
+	    fun loop [] = ()		(* cannot happen *)
+	      | loop [(n, t)] = (PP.string s (n ^ " : ");
+				 ppType0 s (t, C_COMMA))
+	      | loop ((n, t) :: tl) = (PP.string s (n ^ " : ");
+				       ppType0 s (t, C_COMMA);
+				       PP.string s ",";
+				       PP.space s 1;
+				       loop tl)
+	in
+	    PP.openHVBox s (PP.Rel 2);
+	    PP.string s "{ ";
+	    loop tl;
+	    PP.string s " }";
+	    PP.closeBox s
+	end
       | ppType0 s (CON (k, []), _) = PP.string s k
       | ppType0 s (CON (k, [t]), _) =
 	(PP.openHBox s;
@@ -112,6 +131,7 @@ structure PrettyPrint = struct
 
     datatype mlexp =
 	ETUPLE of mlexp list
+      | ERECORD of (string * mlexp) list
       | EVAR of string
       | EAPP of mlexp * mlexp
       | ECONSTR of mlexp * mltype
@@ -125,12 +145,32 @@ structure PrettyPrint = struct
 	    fun loop [] = ()
 	      | loop [x] = ppExp0 s (x, EC_COMMA)
 	      | loop (x :: xl) =
-		(ppExp0 s (x, EC_COMMA); PP.string s ","; PP.space s 1; loop xl)
+		(ppExp0 s (x, EC_COMMA); PP.string s ","; PP.space s 1;
+		 loop xl)
 	in
 	    PP.openHVBox s (PP.Rel 1);
 	    PP.string s "(";
 	    loop xl;
 	    PP.string s ")";
+	    PP.closeBox s
+	end
+      | ppExp0 s (ERECORD [], _) = PP.string s "{}"
+      | ppExp0 s (ERECORD xl, _) = let
+	    fun loop [] = ()
+	      | loop [(n, x)] = (PP.string s (n ^ " =");
+				 PP.space s 1;
+				 ppExp0 s (x, EC_COMMA))
+	      | loop ((n, x) :: xl) = (PP.string s (n ^ " =");
+				       PP.space s 1;
+				       ppExp0 s (x, EC_COMMA);
+				       PP.string s ",";
+				       PP.space s 1;
+				       loop xl)
+	in
+	    PP.openHVBox s (PP.Rel 2);
+	    PP.string s "{ ";
+	    loop xl;
+	    PP.string s " }";
 	    PP.closeBox s
 	end
       | ppExp0 s (EVAR v, _) = PP.string s v

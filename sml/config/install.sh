@@ -191,6 +191,10 @@ uselynx() {
     lynx -source $1/$2 >$3
 }
 
+usecurl() {
+    curl -s $1/$2 >$3
+}
+
 testurlgetter() {
     (exec >/dev/null 2>&1 ; exec $*)
 }
@@ -203,6 +207,8 @@ urlgetter() {
     if [ "$URLGETTER" = unknown ] ; then
 	if testurlgetter wget --help ; then
 	    URLGETTER="fetchurl usewget"
+	elif testurlgetter curl --help ; then
+	    URLGETTER="fetchurl usecurl"
 	elif testurlgetter lynx -help ; then
 	    URLGETTER="fetchurl uselynx"
 	else
@@ -655,6 +661,10 @@ for i in $TARGETS ; do
 	reglib memory.cm memory.cm ml-nlffi-lib/memory
 	reglib c-int.cm c-int.cm ml-nlffi-lib/internals
 	reglib c.cm c.cm ml-nlffi-lib
+	;;
+      pgraph-util)
+	unpack "CM source code" $SRCDIR cm cm
+	reglib pgraph-util.cm pgraph-util.cm cm/pgraph
 	;;
       doc)
 	unpack Doc $ROOT doc doc

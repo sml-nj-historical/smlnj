@@ -127,7 +127,15 @@ Version 1.0, 15/Mar/2000
   (see src/ast/sizes[-sig].sml).  A utility program (src/c-util/sizes.c)
   can be used to generate sizes info for a given compiler/platform
   combination.
-  
+
+Version 1.x (x > 0), Halloween 2001 (boo! :-), M.Blume
+-----------
+* Changed the "Function" constructor of type Ast.ctype to carry optional
+  argument identifiers.
+* Changed the return type of TypeUtil.getFunction accordingly.
+* Type equality ignores the argument names.
+* TypeUtil.composite tries to preserve argument names but gives up
+  if there is a mismatch.
 
 ======================================================================
 Bug fix history

@@ -5,8 +5,8 @@ is
 	$/basis.cm
 	$/c.cm
 	pdb.c : shell (target:pdb.c.cm
-	       ml-nlffigen -strname GenPDB -allSU -lambdasplit infinity %s)
+	       ml-nlffigen -heavy -strname GenPDB -allSU -lambdasplit infinity %s)
 	forward.c : shell (target:forward.c.cm
-	       ml-nlffigen -strname GenForward -allSU -lambdasplit infinity %s)
+	       ml-nlffigen -heavy -strname GenForward -allSU -lambdasplit infinity %s)
 	pdb-glue.sml	(lambdasplit: infinity)
 	pdb-client.sml

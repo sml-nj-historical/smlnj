@@ -13,6 +13,43 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/10/31 15:25:00 EST
+Tag: blume-20011031-pgraph
+Description:
+
+CKIT:
+* Changed the "Function" constructor of type Ast.ctype to carry optional
+  argument identifiers.
+* Changed the return type of TypeUtil.getFunction accordingly.
+* Type equality ignores the argument names.
+* TypeUtil.composite tries to preserve argument names but gives up quickly
+  if there is a mismatch.
+
+installation script:
+* attempts to use "curl" if available (unless "wget" is available as well)
+
+CM:
+* has an experimental implementation of "portable graphs" which I will
+  soon propose as an implementation-independent library format
+* there are also new libraries $/pgraph.cm and $/pgraph-util.cm
+
+NLFFI-LIB:
+* some cleanup (all cosmetic)
+
+NLFFIGEN:
+* temporarily disabled the mechanism that suppresses ML output for
+  C definitions whose identifiers start with an underscore character
+* generate val bindings for enum constants
+* user can request that only one style (light or heavy) is being used;
+  default is to use both (command-line arguments: -heavy and -light)
+* fixed bug in handling of function types involving incomplete pointers
+* generate ML entry points that take record arguments (i.e., using
+  named arguments) for C functions that have a prototype with named
+  arguments
+  (see changes to CKIT)
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2001/10/27 20:34:00 EDT
 Tag: leunga-20011027-x86-fast-fp-call

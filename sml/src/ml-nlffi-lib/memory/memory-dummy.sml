@@ -5,7 +5,7 @@
  *
  *   (C) 2000, Lucent Technologies, Bell Laboratories
  *
- * author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ * author: Matthias Blume (blume@research.bell-labs.com)
  *)
 structure CMemory : CMEMORY = struct
     type addr = Word32.word

@@ -307,6 +307,12 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	  val recomp = run mkStdSrcPath NONE recomp_runner
 	  val make = run mkStdSrcPath NONE (make_runner true)
 
+	  fun to_portable s =
+	      Option.map
+		  ToPortable.export
+		  (Parse.parse (parse_arg
+				    (GroupReg.new (), NONE, mkStdSrcPath s)))
+
 	  fun sources archos group = let
 	      val policy =
 		  case archos of
@@ -710,6 +716,10 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	val symval = SSV.symval
 	val load_plugin = cwd_load_plugin 
 	val mk_standalone = mk_standalone
+
+	structure Graph = struct
+	    val graph = to_portable
+	end
     end
 
     structure Tools = ToolsFn (val load_plugin' = load_plugin'

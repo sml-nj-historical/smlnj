@@ -10,5 +10,6 @@ Library
 	signature CMB
 is
 	$/basis.cm
+	$/pgraph.cm
 	cm.sig
 	cmb.sig

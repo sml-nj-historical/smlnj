@@ -59,7 +59,7 @@ sig
   val isNonPointerFunction : bool type_util
   (* check if a type is a function (but not a function pointer) *)
 
-  val getFunction : ((Ast.ctype * Ast.ctype list) option) type_util
+  val getFunction : ((Ast.ctype * (Ast.ctype * Ast.id option) list) option) type_util
   (* if type can be considered a function then returns return type and
    * list of argument types;
    * and otherwise returns NONE.

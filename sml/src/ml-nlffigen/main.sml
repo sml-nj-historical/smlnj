@@ -73,19 +73,30 @@ structure Main = struct
 		("c" | "h") :: (l as (_ :: _)) => finish (rev l)
 	      | l => finish (rev l)
 	end
-	fun proc ([hfile],
-		  sgf, stf, cmf, sgn, stn, asu, wid, lsp, t) =
+
+	val sgf = ref NONE
+	val stf = ref NONE
+	val cmf = ref NONE
+	val sgn = ref NONE
+	val stn = ref NONE
+	val asu = ref false
+	val wid = ref NONE
+	val lsp = ref NONE
+	val target = ref default_target
+	val wrq = ref NONE
+
+	fun proc [hfile] =
 	    let val ifile = OS.FileSys.tmpName ()
 		val cpp_tmpl = getOpt (OS.Process.getEnv "FFIGEN_CPP",
 				       "gcc -E -U__GNUC__ %s > %t")
 		val cpp = substitute (cpp_tmpl, hfile, ifile)
 		val hfile_file = OS.Path.file hfile
-		val sgf = getOpt (sgf, hfile_file ^ ".sig")
-		val stf = getOpt (stf, hfile_file ^ ".sml")
-		val cmf = getOpt (cmf, hfile_file ^ ".cm")
+		val sgf = getOpt (!sgf, hfile_file ^ ".sig")
+		val stf = getOpt (!stf, hfile_file ^ ".sml")
+		val cmf = getOpt (!cmf, hfile_file ^ ".cm")
 		val (g_sgn, g_stn) = mangle hfile_file
-		val sgn = getOpt (sgn, g_sgn)
-		val stn = getOpt (stn, g_stn)
+		val sgn = getOpt (!sgn, g_sgn)
+		val stn = getOpt (!stn, g_stn)
 		val _ = if OS.Process.system cpp <> OS.Process.success then
 			    raise Fail ("C-preprocessor failed: " ^ cpp)
 			else ()
@@ -97,41 +108,26 @@ structure Main = struct
 			  cmfile = cmf,
 			  signame = sgn,
 			  strname = stn,
-			  allSU = asu,
-			  lambdasplit = lsp,
-			  wid = getOpt (wid, 75),
-			  target = t }
+			  allSU = !asu,
+			  lambdasplit = !lsp,
+			  weightreq = !wrq,
+			  wid = getOpt (!wid, 75),
+			  target = !target }
 		handle e => (OS.FileSys.remove ifile handle _ => (); raise e);
 		OS.FileSys.remove ifile handle _ => ();
 		OS.Process.success
 	    end
-	  | proc ("-sigfile" :: f :: l,
-		  _, stf, cmf, sgn, stn, asu, wid, lsp, t) =
-	    proc (l, SOME f, stf, cmf, sgn, stn, asu, wid, lsp, t)
-	  | proc ("-strfile" :: f :: l,
-		  sgf, _, cmf, sgn, stn, asu, wid, lsp, t) =
-	    proc (l, sgf, SOME f, cmf, sgn, stn, asu, wid, lsp, t)
-	  | proc ("-cmfile" :: f :: l,
-		  sgf, stf, _, sgn, stn, asu, wid, lsp, t) =
-	    proc (l, sgf, stf, SOME f, sgn, stn, asu, wid, lsp, t)
-	  | proc ("-signame" :: n :: l,
-		  sgf, stf, cmf, _, stn, asu, wid, lsp, t) =
-	    proc (l, sgf, stf, cmf, SOME n, stn, asu, wid, lsp, t)
-	  | proc ("-strname" :: n :: l,
-		  sgf, stf, cmf, sgn, _, asu, wid, lsp, t) =
-	    proc (l, sgf, stf, cmf, sgn, SOME n, asu, wid, lsp, t)
-	  | proc ("-allSU" :: l,
-		  sgf, stf, cmf, sgn, stn, _, wid, lsp, t) =
-	    proc (l, sgf, stf, cmf, sgn, stn, true, wid, lsp, t)
-	  | proc ("-width" :: i :: l,
-		  sgf, stf, cmf, sgn, stn, asu, _, lsp, t) =
-	    proc (l, sgf, stf, cmf, sgn, stn, asu, Int.fromString i, lsp, t)
-	  | proc ("-lambdasplit" :: s :: l,
-		  sgf, stf, cmf, sgn, stn, asu, wid, _, t) =
-	    proc (l, sgf, stf, cmf, sgn, stn, asu, wid, SOME s, t)
-	  | proc ("-target" :: tg :: l,
-		  sgf, stf, cmf, sgn, stn, asu, wid, lsp, _) =
-	    proc (l, sgf, stf, cmf, sgn, stn, asu, wid, lsp, find_target tg)
+	  | proc ("-sigfile" :: f :: l) = (sgf := SOME f; proc l)
+	  | proc ("-strfile" :: f :: l) = (stf := SOME f; proc l)
+	  | proc ("-cmfile" :: f :: l) = (cmf := SOME f; proc l)
+	  | proc ("-signame" :: n :: l) = (sgn := SOME n; proc l)
+	  | proc ("-strname" :: n :: l) = (stn := SOME n; proc l)
+	  | proc ("-allSU" :: l) = (asu := true; proc l)
+	  | proc ("-width" :: i :: l) = (wid := Int.fromString i; proc l)
+	  | proc ("-lambdasplit" :: s :: l) = (lsp := SOME s; proc l)
+	  | proc ("-target" :: tg :: l) = (target := find_target tg; proc l)
+	  | proc ("-light" :: l) = (wrq := SOME false; proc l)
+	  | proc ("-heavy" :: l) = (wrq := SOME true; proc l)
 	  | proc _ =
 	    raise Fail
 	     (concat ["usage: ", arg0,
@@ -140,8 +136,7 @@ structure Main = struct
 	    \ \\\n\t[-width linewidth] [-lambdasplit spec] [-target arch-os] \
 	    \ \\\n    idlfile"])
     in
-	proc (args, NONE, NONE, NONE, NONE, NONE, false, NONE, NONE,
-	      default_target)
+	proc args
     end
   in
     fun main args = main0 args

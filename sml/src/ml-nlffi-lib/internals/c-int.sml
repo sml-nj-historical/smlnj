@@ -4,7 +4,7 @@
  *
  *   (C) 2001, Lucent Technologies, Bell Laboratories
  *
- * author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ * author: Matthias Blume (blume@research.bell-labs.com)
  *)
 local
 (* We play some games here with first calling C_Int simply C and then
@@ -58,13 +58,13 @@ structure C :> C_INT = struct
 	val ~~ = MLRep.UInt.notb
     in
 
-    type ('t, 'c) obj = addr * objt	(* RTI for stored value *)
+    type ('t, 'c) obj = addr * objt	(* RTTI for stored value *)
     type ('t, 'c) obj' = addr
 
     type ro = unit
     type rw = unit
 
-    type ('t, 'c) ptr = addr * objt	(* RTI for target value *)
+    type ('t, 'c) ptr = addr * objt	(* RTTI for target value *)
     type ('t, 'c) ptr' = addr
 
     type ('t, 'n) arr = unit
@@ -480,7 +480,6 @@ structure C :> C_INT = struct
 	    val m = (~~0w0 << lr) >> l
 	    val im = ~~ m
 	in
-
 	    { a = a, l = l, r = r, lr = lr, m = m, im = im } : bf
 	end
 	fun mk_bf acc (a, _: objt) = mk_bf' acc a

@@ -44,6 +44,8 @@ is
 	depend/indegree.sml
 	depend/index.sml
 
+	depend/to-portable.sml
+
 	(* handling SML source code *)
 	smlfile/smlinfo.sml
 	smlfile/smlinfoset.sml
@@ -114,3 +116,4 @@ is
 
 	(* auxiliary libraries *)
 	$/ml-yacc-lib.cm
+	$/pgraph.cm

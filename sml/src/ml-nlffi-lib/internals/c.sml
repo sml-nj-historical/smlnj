@@ -4,6 +4,6 @@
  *
  *   (C) 2001, Lucent Technologies, Bell Laboratories
  *
- * author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ * author: Matthias Blume (blume@research.bell-labs.com)
  *)
 structure C : C = C_Int

@@ -7,7 +7,7 @@
  *
  *   (C) 2001, Lucent Technologies, Bell Laboratories
  *
- * author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ * author: Matthias Blume (blume@research.bell-labs.com)
  *)
 signature C_INT = sig
 
@@ -19,7 +19,7 @@ signature C_INT = sig
      * needs explicit type constraint *)
     val mk_su_size : word -> 's S.size
 
-    (* make struct or union RTI given its corresponding size *)
+    (* make struct or union RTTI given its corresponding size *)
     val mk_su_typ : 's su S.size -> 's su T.typ
 
     (* make function pointer type give the ML function that
@@ -42,7 +42,7 @@ signature C_INT = sig
     val mk_ro_field : 'm T.typ -> int -> ('s, 'c) su_obj -> ('m, ro) obj
 
     (* light version *)
-    (* NOTE: We do not pass RTI to the light version (which would
+    (* NOTE: We do not pass RTTI to the light version (which would
      * internally throw it away anyway).  This means that we
      * will need an explicit type constraint. *)
     val mk_field' : int -> ('s, 'ac) su_obj' -> ('m, 'rc) obj'
@@ -81,7 +81,7 @@ signature C_INT = sig
     val pcast : addr -> ('t, 'c) ptr'
     val fcast : addr -> 'f fptr'
 
-    (* unsafe low-level array subscript that does not require RTI *)
+    (* unsafe low-level array subscript that does not require RTTI *)
     val unsafe_sub : int ->		(* element size *)
 		     (('t, 'n) arr, 'c) obj' * int ->
 		     ('t, 'n) obj'

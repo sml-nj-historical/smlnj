@@ -5,9 +5,9 @@
  *   This library is a helper library for use by automatically generated
  *   code.  (An auxiliary tool produces this code directly from C code.)
  *
- *   (C) 2000, Lucent Technologies, Bell Laboratories
+ *   (C) 2001, Lucent Technologies, Bell Laboratories
  *
- * author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ * author: Matthias Blume (blume@research.bell-labs.com)
  *)
 c-int
 Library

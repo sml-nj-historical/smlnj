@@ -131,7 +131,7 @@ struct
                                        * signednessTag
     | Array of (LargeInt.int * expression) option * ctype
     | Pointer of ctype
-    | Function of ctype * ctype list
+    | Function of ctype * (ctype * id option) list
     | StructRef of tid (* reference to a tid bound by a struct decl *)
     | UnionRef of tid  (* reference to a tid bound by a union decl *)
     | EnumRef of tid   (* reference to a tid bound by a enumeration decl *)
