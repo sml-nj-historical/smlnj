@@ -242,10 +242,14 @@ struct
 	val Graph.GRAPH graph = !cfg
 	val CFG.INFO{data, ...} = #graph_info graph
 
-	fun addAlignment () = let
-	  val CFG.BLOCK{align, ...} = newBlock(1)
-	in align := SOME p
-	end
+	fun addAlignment () = 
+	  (case !segmentF
+           of TEXT => let
+		val CFG.BLOCK{align, ...} = newBlock(1)
+              in align := SOME p
+    	      end
+	    | _ => data := p :: !data
+	  (*esac*))
 
 	fun startSegment(seg) = (data := p :: !data; segmentF := seg)
 
