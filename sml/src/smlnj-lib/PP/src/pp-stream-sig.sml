@@ -23,6 +23,7 @@ signature PP_STREAM =
     val openStream  : device -> stream
     val flushStream : stream -> unit
     val closeStream : stream -> unit
+    val getDevice   : stream -> device
 
     val openHBox   : stream -> unit
     val openVBox   : stream -> indent -> unit

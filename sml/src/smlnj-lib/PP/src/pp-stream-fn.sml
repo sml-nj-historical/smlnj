@@ -311,24 +311,25 @@ functor PPStreamFn (
   (* Set the size of the element on the top of the scan stack.  The isBreak
    * flag is set to true for breaks and false for boxes.
    *)
-    fun setSize (strm, isBreak) =
+    fun setSize (strm, isBreak) = (
 	(* NOTE: scanStk should never be empty *)
-	case strm of
-	    PP { scanStk as ref [], ... } =>
-	      raise Fail "PPStreamFn:setSize: impossible: scanStk is empty"
-	  | PP{leftTot, rightTot, scanStk as ref((leftTot', elem)::r), ...} =>
-	    (* check for obsolete elements *)
-	    if (leftTot' < !leftTot)
-	      then clearScanStk strm
-	      else (case (elem, isBreak)
-		 of ({sz, tok=BREAK _, ...}, true) => (
-		      sz := !sz + !rightTot;
-		      scanStk := r)
-		  | ({sz, tok=BEGIN _, ...}, false) => (
-		      sz := !sz + !rightTot;
-		      scanStk := r)
-		  | _ => ()
-		(* end case *))
+	  case strm
+	   of PP { scanStk as ref [], ... } =>
+		raise Fail "PPStreamFn:setSize: impossible: scanStk is empty"
+	    | PP{leftTot, rightTot, scanStk as ref((leftTot', elem)::r), ...} =>
+	      (* check for obsolete elements *)
+		if (leftTot' < !leftTot)
+		  then clearScanStk strm
+		  else (case (elem, isBreak)
+		     of ({sz, tok=BREAK _, ...}, true) => (
+			  sz := !sz + !rightTot;
+			  scanStk := r)
+		      | ({sz, tok=BEGIN _, ...}, false) => (
+			  sz := !sz + !rightTot;
+			  scanStk := r)
+		      | _ => ()
+		    (* end case *))
+	  (* end case *))
 
     fun pushScanElem (strm as PP{scanStk, rightTot, ...}, setSz, tok) = (
 	  enqueueTok (strm, tok);
@@ -371,8 +372,6 @@ functor PPStreamFn (
 	    else raise Fail "unmatched close box"
 
     fun ppBreak (strm as PP{rightTot, ...}, arg) = (
-(**** CAML code
-****)
 	  pushScanElem (strm, true, {
 	      sz = ref(~(!rightTot)), tok = BREAK arg, len = #nsp arg
 	    }))
@@ -428,6 +427,7 @@ functor PPStreamFn (
 
     fun flushStream strm = ppFlush(strm, false)
     fun closeStream (strm as PP{closed, ...}) = (flushStream strm; closed := true)
+    fun getDevice (PP{dev, ...}) = dev
 
     fun openHBox strm = ppOpenBox (strm, Abs 0, HBOX)
     fun openVBox strm indent = ppOpenBox (strm, indent, VBOX)
