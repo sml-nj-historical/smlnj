@@ -875,9 +875,6 @@ If nil, align it with previous cases."
 (defconst sml-yacc-font-lock-defaults
   (cons sml-yacc-font-lock-keywords (cdr sml-font-lock-defaults)))
 
-(defun sml-yacc-bnf-p ()
-  
-
 (defun sml-yacc-indent-line ()
   "Indent current line of ML-Yacc code."
   (let ((savep (> (current-column) (current-indentation)))
