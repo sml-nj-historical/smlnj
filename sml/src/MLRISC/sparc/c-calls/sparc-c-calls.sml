@@ -137,6 +137,18 @@ struct
 	in
 	    pack (0, 1, l)
 	end
+      | szal (Ty.C_UNION l) =
+	let (* m: current max size
+	     * a: current total alignment *)
+	    fun overlay (m, a, []) = (roundup (m, a), a)
+	      | overlay (m, a, t :: tl) =
+		let val (ts, ta) = szal t
+		in
+		    overlay (Int.max (m, ts), Int.max (a, ta), tl)
+		end
+	in
+	    overlay (0, 1, l)
+	end
 
 (**** START NEW CODE ****)
 
@@ -173,7 +185,8 @@ struct
 					String.toString conv, "\""])
 	val res_szal =
 	    case retTy of
-		(Ty.C_long_double | Ty.C_STRUCT _) => SOME (szal retTy)
+		(Ty.C_long_double | Ty.C_STRUCT _ | Ty.C_UNION _) =>
+		  SOME (szal retTy)
 	      | _ => NONE
 
 	val nargwords = let
@@ -199,7 +212,8 @@ struct
 	 * in to_off. *)
 	fun struct_copy (sz, al, ARG a, t, to_off, cpc) =
 	    (* Two main cases here:
-	     *   1. t is C_STRUCT _: in this case "a" computes the address
+	     *   1. t is C_STRUCT _ or C_UNION _;
+	     *      in this case "a" computes the address
 	     *      of the struct to be copied.
 	     *   2. t is some other non-floating type; "a" computes the
 	     *      the corresponding value (i.e., not its address).
@@ -218,7 +232,7 @@ struct
 		     Ty.C_unsigned Ty.I_long_long) => ldst 64
 		  | (Ty.C_ARRAY _) =>
 		    error "ARRAY within gather/scatter struct"
-		  | (Ty.C_STRUCT _) =>
+		  | (Ty.C_STRUCT _ | Ty.C_UNION _) =>
 		    (* Here we have to do the equivalent of a "memcpy". *)
 		    let val from = a (* argument is address of struct *)
 			fun cp (ty, incr) = let
@@ -246,6 +260,7 @@ struct
 		  | (Ty.C_float | Ty.C_double | Ty.C_long_double) =>
 		    error "floating point type does not match ARG"
 	    end
+(*
 	  | struct_copy (_, _, ARGS args, Ty.C_STRUCT tl, to_off, cpc) =
 	    (* gather/scatter case *)
 	    let fun loop ([], [], _, cpc) = cpc
@@ -261,8 +276,9 @@ struct
 	    in
 		loop (tl, args, to_off, cpc)
 	    end
+*)
 	  | struct_copy (_, _, ARGS _, _, _, _) =
-	    error "gather/scatter for non-struct"
+	      error "gather/scatter (ARGS) not supported (obsolete)"
 	  | struct_copy (sz, al, FARG a, t, to_off, cpc) =
 	    let fun fldst ty =
 		   T.FSTORE (ty, addli (spreg, to_off), a, stack) :: cpc
@@ -371,7 +387,7 @@ struct
 				     T.FSTORE (128, ssaddr, a, stack) :: cpc,
 				     ss' + 16)
 			end
-		      | (t as Ty.C_STRUCT _, a) => let
+		      | (t as (Ty.C_STRUCT _ | Ty.C_UNION _), a) => let
 			    (* copy entire struct into scratch space
 			     * (aligned according to struct's alignment
 			     * requirements).  The address of the scratch
@@ -418,7 +434,7 @@ struct
 		Ty.C_float => [T.FPR (T.FREG (32, FP 0))]
 	      | Ty.C_double => [T.FPR (T.FREG (64, FP 0))] (* %f0/%f1 *)
 	      | Ty.C_long_double => []
-	      | Ty.C_STRUCT _ => []
+	      | (Ty.C_STRUCT _ | Ty.C_UNION _) => []
 	      | Ty.C_ARRAY _ => error "array return type"
 	      | (Ty.C_PTR | Ty.C_void |
 		 Ty.C_signed (Ty.I_int | Ty.I_long) |
