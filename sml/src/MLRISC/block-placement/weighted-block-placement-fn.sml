@@ -251,82 +251,85 @@ functor WeightedBlockPlacementFn (
 		nd as (blkId, CFG.BLOCK{kind=CFG.NORMAL, insns, freq, ...}),
 		(next as (nextId, _)) :: rest,
 		l
-	      ) = (
-		case #out_edges graph blkId
-		 of [(_, dst, e as CFG.EDGE{k, w, a})] => (
-		      case (dst = nextId, k)
-		       of (false, CFG.FALLSTHRU) => (
-			  (* rewrite edge as JUMP and add jump insn *)
-			    setEdges (blkId, [(blkId, dst, updEdge(e, CFG.JUMP))]);
-			    insns := IP.jump(labelOf dst) :: !insns)
-			| (true, CFG.JUMP) =>
-			    if (nextId <> exitId)
-			      then (
-			      (* rewrite edge as FALLSTHRU and remove jump insn *)
-				setEdges (blkId,
-				  [(blkId, dst, updEdge(e, CFG.FALLSTHRU))]);
-				insns := tl(!insns))
-			      else () (* do not rewrite jumps to STOP block *)
-			| _ => ()
-		      (* end case *);
-		      patch (next, rest, nd::l))
-		  | [(_, dst1, e1 as CFG.EDGE{k=CFG.BRANCH b, ...}),
-		      (_, dst2, e2)
-		    ] => (case (dst1 = nextId, dst2 = nextId, b)
-		       of (false, false, _) => let
-			  (* here, we have to introduce a new block that
-			   * jumps to the false target.
-			   *)
-			    fun rewrite (trueId, trueE, falseId, falseE) = let
-				  val CFG.EDGE{w, a, ...} = falseE
-				  val nd' as (id, CFG.BLOCK{insns=i, ...}) =
-					CFG.newNode cfg (!w)
-				  in
-				  (* initialize the new block *)
-				    i := [IP.jump(labelOf falseId)];
-				    setEdges (id, [
-					(id, falseId, CFG.EDGE{
-					  w = ref(!w), a = ref[], k=CFG.JUMP})
-				      ]);
-				  (* rewrite the out edges of the old block *)
-				    setEdges (blkId, [
-					(blkId, trueId, trueE),
-					(blkId, id, CFG.EDGE{
-					    k=CFG.BRANCH false, w=w, a=a
-					  })
-				      ]);
-				  (* rewrite the old jump instruction *)
-				    updJmp (fn i =>
-				      IP.setBranchTargets{
-					  i=i, t=labelOf trueId, f=labelOf id
-					}) insns;
-				    patch (next, rest, nd'::nd::l)
-				  end
-			    in
-			      if b
-				then rewrite (dst1, e1, dst2, e2)
-				else rewrite (dst2, e2, dst1, e1)
-			    end
-			| (true, _, true) => (
-			    setEdges (blkId, [
-				(blkId, dst1, updEdge(e1, CFG.BRANCH false)),
-				(blkId, dst2, updEdge(e2, CFG.BRANCH true))
-			      ]);
-			    flipJmp (insns, labelOf dst2);
-			    patch (next, rest, nd::l))
-			| (false, _, false) => (
-			    setEdges (blkId, [
-				(blkId, dst1, updEdge(e1, CFG.BRANCH true)),
-				(blkId, dst2, updEdge(e2, CFG.BRANCH false))
-			      ]);
-			    flipJmp (insns, labelOf dst1);
-			    patch (next, rest, nd::l))
-			| _ => patch (next, rest, nd::l)
-		      (* end case *))
-		  | _ => patch (next, rest, nd::l)
-		(* end case *))
+	      ) = let
+		fun continue () = patch (next, rest, nd::l)
+		in
+		  case #out_edges graph blkId
+		   of [(_, dst, e as CFG.EDGE{k, w, a})] => (
+			case (dst = nextId, k)
+			 of (false, CFG.FALLSTHRU) => (
+			    (* rewrite edge as JUMP and add jump insn *)
+			      setEdges (blkId, [(blkId, dst, updEdge(e, CFG.JUMP))]);
+			      insns := IP.jump(labelOf dst) :: !insns)
+			  | (true, CFG.JUMP) =>
+			      if (nextId <> exitId)
+				then (
+				(* rewrite edge as FALLSTHRU and remove jump insn *)
+				  setEdges (blkId,
+				    [(blkId, dst, updEdge(e, CFG.FALLSTHRU))]);
+				  insns := tl(!insns))
+				else () (* do not rewrite jumps to STOP block *)
+			  | _ => ()
+			(* end case *);
+			continue())
+		    | [(_, dst1, e1 as CFG.EDGE{k=CFG.BRANCH b, ...}),
+			(_, dst2, e2)
+		      ] => (case (dst1 = nextId, dst2 = nextId, b)
+			 of (false, false, _) => let
+			    (* here, we have to introduce a new block that
+			     * jumps to the false target.
+			     *)
+			      fun rewrite (trueId, trueE, falseId, falseE) = let
+				    val CFG.EDGE{w, a, ...} = falseE
+				    val nd' as (id, CFG.BLOCK{insns=i, ...}) =
+					  CFG.newNode cfg (!w)
+				    in
+				    (* initialize the new block *)
+				      i := [IP.jump(labelOf falseId)];
+				      setEdges (id, [
+					  (id, falseId, CFG.EDGE{
+					    w = ref(!w), a = ref[], k=CFG.JUMP})
+					]);
+				    (* rewrite the out edges of the old block *)
+				      setEdges (blkId, [
+					  (blkId, trueId, trueE),
+					  (blkId, id, CFG.EDGE{
+					      k=CFG.BRANCH false, w=w, a=a
+					    })
+					]);
+				    (* rewrite the old jump instruction *)
+				      updJmp (fn i =>
+					IP.setBranchTargets{
+					    i=i, t=labelOf trueId, f=labelOf id
+					  }) insns;
+				      patch (next, rest, nd'::nd::l)
+				    end
+			      in
+				if b
+				  then rewrite (dst1, e1, dst2, e2)
+				  else rewrite (dst2, e2, dst1, e1)
+			      end
+			  | (true, _, true) => (
+			      setEdges (blkId, [
+				  (blkId, dst1, updEdge(e1, CFG.BRANCH false)),
+				  (blkId, dst2, updEdge(e2, CFG.BRANCH true))
+				]);
+			      flipJmp (insns, labelOf dst2);
+			      continue())
+			  | (false, _, false) => (
+			      setEdges (blkId, [
+				  (blkId, dst1, updEdge(e1, CFG.BRANCH true)),
+				  (blkId, dst2, updEdge(e2, CFG.BRANCH false))
+				]);
+			      flipJmp (insns, labelOf dst1);
+			      continue())
+			  | _ => continue()
+			(* end case *))
+		    | _ => continue()
+		  (* end case *)
+		  end
 	    | patch (nd, next::rest, l) = patch(next, rest, nd::l)
-	    | patch (_, [], l) = List.rev l
+	    | patch (nd, [], l) = List.rev(nd::l)
 	  val blocks = patch (hd blocks, tl blocks, [])
 	  in
 	    if !changed then CFG.changed cfg else ();
