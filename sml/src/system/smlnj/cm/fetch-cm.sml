@@ -1,5 +1,5 @@
 (*
- * Defining the "full" top-level structure CM by fetching it from CM0.
+ * Defining the top-level structure CM by fetching it from CM0.
  *
  * (C) 2000 Lucent Technologies, Bell Laboratories
  *

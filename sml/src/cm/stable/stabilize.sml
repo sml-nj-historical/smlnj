@@ -148,6 +148,22 @@ struct
      * hash is identical to the one that _would_ be created if one were
      * to re-build the library now. *)
     fun libStampOf (grouppath, export_nodes, sublibs) = let
+	fun sbn_cmp (DG.SB_BNODE (DG.BNODE n, _, _),
+		     DG.SB_BNODE (DG.BNODE n', _, _)) =
+	    BinInfo.compare (#bininfo n, #bininfo n')
+	  | sbn_cmp (DG.SB_BNODE _, DG.SB_SNODE _) = GREATER
+	  | sbn_cmp (DG.SB_SNODE _, DG.SB_BNODE _) = LESS
+	  | sbn_cmp (DG.SB_SNODE (DG.SNODE n), DG.SB_SNODE (DG.SNODE n')) =
+	    SmlInfo.compare (#smlinfo n, #smlinfo n')
+
+	(* To deal with the init group (where export nodes come in
+	 * in an ad-hoc order not derived from the export map),
+	 * we first sort the list of export nodes, thereby getting rid
+	 * of duplicates.  This should normally canonicalize the list.
+	 * However, the resulting order is unfortunately not persistent.
+	 * Most of the time this should not matter, though. *)
+	val export_nodes = ListMergeSort.uniqueSort sbn_cmp export_nodes
+
 	val inverseMap = mkInverseMap sublibs
 
 	val pid = PickleSymPid.w_pid

@@ -1,5 +1,5 @@
 (*
- * Library exporting the "full" structure CM.
+ * Library exporting structure CM.
  *
  * (C) 2000 Lucent Technologies, Bell Laboratories
  *
@@ -9,4 +9,4 @@ Library
 	signature CM
 	structure CM
 is
-	$smlnj/cm/full.cm
+	$smlnj/cm/cm.cm

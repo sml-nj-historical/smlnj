@@ -32,12 +32,10 @@ in
 	    else case String.tokens Char.isSpace line of
 		["cd", d] => (chDir d; say_ok (); waitForStart ())
 	      | ["cm", archos, f] => do_cm (archos, f)
-	      | ["cmb", archos] => reset_cmb archos
-	      | ["cmb", archos, f] => do_cmb (archos, f)
+	      | ["cmb", db, archos, f] => (dbr := db; do_cmb (archos, f))
+	      | ["reset_cmb", archos] => reset_cmb archos
 	      | ["ping"] => (say_pong (); waitForStart ())
 	      | ["finish"] => (say_ok (); waitForStart ())
-	      | ["dirbase", db] =>
-		    (say_ok (); dbr := db; waitForStart ())
 	      | ["shutdown"] => shutdown ()
 	      | _ => (say_error (); waitForStart ())
 	end handle _ => (say_error (); waitForStart ())
@@ -45,7 +43,7 @@ in
 	and reset_cmb archos = let
 	    val slave = CMBSlave.slave make
 	in
-	    ignore (slave archos NONE);
+	    ignore (slave archos NONE);	(* causes reset *)
 	    say_ok ();
 	    waitForStart ()
 	end
@@ -100,10 +98,9 @@ in
 			    end
 		    end
 		  | ["cm", archos, f] => do_cm (archos, f)
-		  | ["cmb", archos, f] => do_cmb (archos, f)
+		  | ["cmb", db, archos, f] => (dbr := db; do_cmb (archos, f))
+		  | ["reset_cmb", archos] => reset_cmb archos
 		  | ["finish"] => (say_ok (); waitForStart ())
-		  | ["dirbase", db] =>
-		    (say_ok (); dbr := db; waitForStart ())
 		  | ["ping"] => (say_pong (); loop ())
 		  | ["shutdown"] => shutdown ()
 		  | _ => (say_error (); loop ())

@@ -62,7 +62,13 @@ structure Concur :> CONCUR = struct
     fun enqueue (x as (_, xu), qr as ref q) = let
 	fun insert [] = [x]
 	  | insert ((h as (_, hu)) :: r) =
-	    if xu > hu then x :: h :: r else h :: insert r
+	    (* ">=" is important here. If we had used ">", then
+	     * the code in btcompile.sml would not perform as
+	     * desired.  In particular, the parser thread
+	     * would end up being scheduled first, effectively
+	     * preventing the "cmb" message to be sent to the
+	     * slaves. (With preemption this would not be a problem.) *)
+	    if xu >= hu then x :: h :: r else h :: insert r
     in
 	qr := insert q
     end

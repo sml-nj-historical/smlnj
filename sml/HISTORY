@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/03/22 15:10:00 EST
+Tag: blume-20010322-rawmem-parcm
+Description:
+
+1. All "raw memory access" primitives for the new FFI are implemented now
+   (at least on the x86).
+2. Some further cleanup of CM's parallel make mechanism.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/03/19 17:53:00 EST
 Tag: blume-20010319-parallel
 Description:

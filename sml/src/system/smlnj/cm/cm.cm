@@ -1,5 +1,5 @@
 (*
- * Library exporting the "full" structure CM.
+ * Library exporting structure CM.
  *
  * (C) 2000 Lucent Technologies, Bell Laboratories
  *
@@ -25,4 +25,4 @@ is
 	(* Here is the actual implementation... *)
 	$smlnj/internal/cm-sig-lib.cm
 	$smlnj/internal/host-compiler-0.cm
-	fetch-full-cm.sml
+	fetch-cm.sml

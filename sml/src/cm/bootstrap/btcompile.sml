@@ -31,11 +31,6 @@ struct
 
     val archos = concat [arch, "-", osname]
 
-    fun init_servers (GG.GROUP { grouppath, ... }) =
-	Servers.cmb { archos = archos,
-		      root = SrcPath.encode grouppath }
-      | init_servers GG.ERRORGROUP = ()
-
     structure StabModmap = StabModmapFn ()
 
     structure Compile = CompileFn (structure MachDepVC = MachDepVC
@@ -88,29 +83,29 @@ struct
 	MkBootList.group listName g
     end
 
-    local
-	fun internal_reset () =
-	    (Compile.reset ();
-	     Parse.reset ();
-	     StabModmap.reset ())
+    fun internal_reset () =
+	(Compile.reset ();
+	 Parse.reset ();
+	 StabModmap.reset ())
+
+    fun reset () =
+	(Say.vsay ["[CMB reset]\n"];
+	 Servers.withServers (fn () => Servers.cmb_reset { archos = archos });
+	 internal_reset ())
+
+    val checkDirbase = let
+	val prev = ref NONE
+	fun ck db =
+	    (case !prev of
+		 NONE => prev := SOME db
+	       | SOME db' =>
+		 if db = db' then ()
+		 else (Say.vsay ["[new dirbase is `", db,
+				 "'; CMB reset]\n"];
+		       internal_reset ();
+		       prev := SOME db))
     in
-        fun reset () =
-	    (Say.vsay ["[CMB reset]\n"];
-	     internal_reset ())
-	val checkDirbase = let
-	    val prev = ref NONE
-	    fun ck db =
-		(case !prev of
-		     NONE => prev := SOME db
-		   | SOME db' =>
-		     if db = db' then ()
-		     else (Say.vsay ["[new dirbase is `", db,
-				     "'; CMB reset]\n"];
-			   internal_reset ();
-			   prev := SOME db))
-	in
-	    ck
-	end
+	ck
     end
 
     fun mk_compile { master, root, dirbase = dbopt } = let
@@ -251,7 +246,7 @@ struct
 	    in
 		if master then
 		    case Stabilize.stabilize ginfo stabarg of
-			SOME g => g
+			SOME g => (Parse.reset (); g)
 		      | NONE => raise Fail "CMB: cannot stabilize init group"
 		else g0
 	    end
@@ -292,11 +287,37 @@ struct
 
 	    val lonely_master = master andalso Servers.noServers ()
 
-	    val initial_parse_arg =
-		if lonely_master then parse_arg (SOME true, true)
-		else parse_arg (NONE, master)
+	    val initial_parse_result =
+		if master then
+		    if lonely_master then
+			(* no slaves available; do everything alone *)
+			Parse.parse (parse_arg (SOME true, true))
+		    else
+			(* slaves available; we want master
+			 * and slave initialization to overlap, so
+			 * we do the master's parsing in its own
+			 * thread *)
+			let fun worker () = let
+				val c =
+				    Concur.fork
+					(fn () => Parse.parse
+						      (parse_arg (NONE, true)))
+			    in
+				Servers.cmb
+				    { dirbase = dirbase,
+				      archos = archos,
+				      root = SrcPath.encode maingspec };
+				Concur.wait c
+			    end
+			in
+			    Servers.withServers worker
+			end
+		else
+		    (* slave case *)
+		    Parse.parse (parse_arg (NONE, false))
+
 	in
-	    case Parse.parse initial_parse_arg of
+	    case initial_parse_result of
 		NONE => NONE
 	      | SOME (g, gp) => let
 		    fun finish (g, gp) = let
@@ -369,11 +390,6 @@ struct
 		    (* the following thunk is executed in "master" mode only;
 		     * slaves just throw it away *)
 		    fun compile_and_stabilize () = let
-			(* this ought to be consolidated (from 3 make 1)... *)
-			val _ = Servers.dirbase dirbase
-			val _ = Servers.cmb_new { archos = archos }
-			val _ = Servers.cmb { archos = archos,
-					      root = SrcPath.encode maingspec }
 
 			(* make compilation traversal and execute it *)
 			val { allgroups, ... } =
@@ -404,20 +420,21 @@ struct
 	(StabModmap.reset ();
 	 case mk_compile { master = true, root = NONE, dirbase = dbopt } of
 	     NONE => false
-	   | SOME (_, cas) => cas ())
+	   | SOME (_, thunk) => thunk ())
 
     local
-	fun slave NONE = (StabModmap.reset (); NONE)
+	fun slave NONE = (internal_reset (); NONE)
 	  | slave (SOME (dirbase, root)) =
-	    case mk_compile { master = false, root = SOME root,
-			      dirbase = SOME dirbase } of
-		NONE => NONE
-	      | SOME ((g, gp, penv), _) => let
-		    val trav = Compile.newSbnodeTraversal ()
-		    fun trav' sbn = isSome (trav sbn gp)
-		in
-		    SOME (g, trav', penv)
-		end
+	    (StabModmap.reset ();
+	     case mk_compile { master = false, root = SOME root,
+			       dirbase = SOME dirbase } of
+		 NONE => NONE
+	       | SOME ((g, gp, penv), _) => let
+		     val trav = Compile.newSbnodeTraversal ()
+		     fun trav' sbn = isSome (trav sbn gp)
+		 in
+		     SOME (g, trav', penv)
+		 end)
     in
 	val _ = CMBSlaveHook.init archos slave
     end
