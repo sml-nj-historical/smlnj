@@ -7,7 +7,6 @@ sig
   val interact : unit -> unit
   val useFile  : string -> unit
   val useStream : TextIO.instream -> unit
-  val useStreamSilently : string * TextIO.instream -> unit
   val evalStream : TextIO.instream * CMEnv.Env.environment -> 
                        CMEnv.Env.environment
 

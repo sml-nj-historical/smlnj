@@ -29,32 +29,6 @@ struct
   fun useStream (stream: TextIO.instream) =
     EvalLoop.evalStream EvalLoop.stdParams ("<instream>", stream)
 
-  fun useStreamSilently (name, stream) = 
-      let (* use the usual evalloop params, but substitute a 
-           * pretty-printer that does nothing.
-           *)
-          val {compManagerHook,
-               baseEnvRef,
-               localEnvRef,
-               transform,
-               instrument,
-               perform,
-               isolate,...} = EvalLoop.stdParams
-
-          val params : EvalLoop.interactParams = 
-              {compManagerHook = compManagerHook,
-               baseEnvRef = baseEnvRef,
-               localEnvRef = localEnvRef,
-               transform = transform,
-               instrument = instrument,
-               perform = perform,
-               isolate = isolate,
-               printer = fn _ => fn _ => fn _ => () (* no-op printer *)
-               }
-      in
-          EvalLoop.evalStream params (name, stream)
-      end
-
   fun evalStream (stream: TextIO.instream, baseEnv: CMEnv.Env.environment) : 
       CMEnv.Env.environment =
       let val r = ref Environment.emptyEnv
