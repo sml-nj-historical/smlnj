@@ -105,9 +105,9 @@ sig
           renameSrc    : renameSrc, 
           copyInstr    : copyInstr,
           cellkind     : C.cellkind,
-          spillSet     : C.cell list Intmap.intmap,
-          reloadSet    : C.cell list Intmap.intmap,
-          killSet      : C.cell list Intmap.intmap
+          spillSet     : C.cell list IntHashTable.hash_table,
+          reloadSet    : C.cell list IntHashTable.hash_table,
+          killSet      : C.cell list IntHashTable.hash_table
         } -> 
         { pt          : int,                         (* starting program pt *)
           annotations : Annotations.annotations ref, (* annotations *)

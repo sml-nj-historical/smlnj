@@ -154,7 +154,7 @@ struct
            val regmap = F.regmap flowgraph (* the register map *)
     
            (* the nodes table *)
-           val nodes  = Intmap.new(numCell,NodeTable) 
+           val nodes  = IntHashTable.mkTable(numCell,NodeTable) 
            val mode   = if isOn(HAS_PARALLEL_COPIES, mode) then
                            Word.orb(Core.SAVE_COPY_TEMPS, mode) 
                         else mode
@@ -177,7 +177,8 @@ struct
                                   }
            val G.GRAPH{spilledRegs, pseudoCount, spillFlag, ...} = G
     
-           val hasBeenSpilled = Intmap.mapWithDefault (spilledRegs,false)
+           fun hasBeenSpilled i =
+	       getOpt (IntHashTable.find spilledRegs i, false)
     
            fun logGraph(header,G) = 
                if !dump_graph then
@@ -196,13 +197,14 @@ struct
                val worklists = 
                    (Core.initWorkLists G) {moves=moves} 
            in  (* if !count_dead then
-                  Intmap.app (fn (_,NODE{uses=ref [],...}) => dead := !dead + 1
+                  IntHashTable.appi (fn (_,NODE{uses=ref [],...}) => dead := !dead + 1
                                | _ => ()) nodes
                else (); *)
                logGraph("build",G);
                if debug then
                let val G.GRAPH{bitMatrix=ref(G.BM{elems, ...}), ...} = G
-               in  print ("done: nodes="^Int.toString(Intmap.elems nodes)^ 
+               in  print ("done: nodes="^
+			  Int.toString(IntHashTable.numItems nodes)^ 
                           " edges="^Int.toString(!elems)^
                           " moves="^Int.toString(length moves)^
                           "\n")
@@ -366,7 +368,7 @@ struct
            end
     
            fun initSpillProh(from,to) = 
-           let val markAsSpilled = Intmap.add spilledRegs
+           let val markAsSpilled = IntHashTable.insert spilledRegs
                fun loop r = 
                    if r <= to then (markAsSpilled(r,true); loop(r+1)) else ()
            in  loop from end

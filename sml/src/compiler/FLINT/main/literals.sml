@@ -204,7 +204,7 @@ structure RlitDict = RedBlackMapFn(struct type ord_key = rlit
 (* lifting all literals from a CPS program *)
 fun liftlits (body, root, offset) = 
   let (* the list of record, string, or real constants *)
-      val m : info Intmap.intmap = Intmap.new(32, LitInfo)
+      val m : info IntHashTable.hash_table = IntHashTable.mkTable(32, LitInfo)
       val freevars : lvar list ref = ref []
       fun addv x = (freevars := (x :: (!freevars)))
 
@@ -214,12 +214,12 @@ fun liftlits (body, root, offset) =
       val isUsed : lvar -> bool = Intset.mem refset
 
       (* memoize the information on which corresponds to what *)
-      fun enter (v, i) = (Intmap.add m (v, i); addv v)
-      fun const (VAR v) = ((Intmap.map m v; true) handle _ => false)
+      fun enter (v, i) = (IntHashTable.insert m (v, i); addv v)
+      fun const (VAR v) = ((IntHashTable.lookup m v; true) handle _ => false)
         | const (INT _ | INT32 _ | REAL _ | STRING _) = true
         | const _ = bug "unexpected case in const"
 
-      fun cstlit (VAR v) = ((Intmap.map m v; true) handle _ => false)
+      fun cstlit (VAR v) = ((IntHashTable.lookup m v; true) handle _ => false)
         | cstlit (REAL _ | STRING _) = true
         | cstlit _ = false
 
@@ -359,14 +359,14 @@ fun liftlits (body, root, offset) =
             val toplit = 
               let fun g ([], z) = LI_TOP z
                     | g (x::r, z) = 
-                         (case Intmap.map m x
+                         (case IntHashTable.lookup m x
                            of ZZ_STR s => g(r, (LI_STRING s)::z)
                             | _ => g(r, (LI_VAR x)::z))
                in g(exports, [])
               end
 
             fun mklit (v, lit) = 
-              (case Intmap.map m v
+              (case IntHashTable.lookup m v
                 of (ZZ_FLT _) => (* float is wrapped *)
                      bug "currently we don't expect ZZ_FLT in mklit"
                      (* LI_F64BLOCK([s], v, lit) *)
@@ -393,7 +393,7 @@ fun liftlits (body, root, offset) =
 
                        fun mkhdr (v, (i, hh)) = 
                          let val nh = 
-                               (case Intmap.map m v
+                               (case IntHashTable.lookup m v
                                  of (ZZ_FLT _) => bug "ZZ_FLT in mkhdr"
                                       (* (fn ce => 
                                            (SELECT(i, rval, w, PTRt(FPT 1),

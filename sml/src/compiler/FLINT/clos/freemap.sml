@@ -123,7 +123,8 @@ fun cexp_freevars lookup cexp =
  *)
 fun freemapClose ce =
 let exception Freemap
-    val vars : lvar list Intmap.intmap = Intmap.new(32, Freemap)
+    val vars : lvar list IntHashTable.hash_table =
+	IntHashTable.mkTable(32, Freemap)
     val escapes = Intset.new()
     val escapesP = Intset.mem escapes
     fun escapesM(VAR v) = Intset.add escapes v
@@ -138,7 +139,7 @@ let exception Freemap
 		    val freel =
 			foldr (fn ((_,v,args,_,body),freel) =>
 			       (let val l = remove(uniq args,freevars body)
-				in  Intmap.add vars (v,l);
+				in  IntHashTable.insert vars (v,l);
 				    l::freel
 				end))
 			      [] l
@@ -164,7 +165,7 @@ let exception Freemap
 	          (app escapesM vl; 
 		   merge(clean vl,merge(freevars e1, freevars e2)))
 in  freevars ce;
-    (Intmap.map vars, Intset.mem escapes, Intset.mem known)
+    (IntHashTable.lookup vars, Intset.mem escapes, Intset.mem known)
 end
 
 (* temporary, for debugging 

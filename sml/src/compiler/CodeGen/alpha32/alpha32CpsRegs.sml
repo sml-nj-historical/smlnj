@@ -7,7 +7,6 @@
 structure Alpha32CpsRegs : CPSREGS = 
 struct
   structure T = Alpha32MLTree
-  structure SL = SortedList
 
   fun upto (from,to) = if from>to then [] else from::(upto (from+1,to))
   infix upto
@@ -40,13 +39,21 @@ struct
   val floatregs = map FREG (0 upto 28)
   val savedfpregs = []
 
-  val allRegs = SL.uniq(GP 0 upto GP 31)
-
   val availR = 
-    map (fn T.REG(_,r) => r)
-         ([gcLink, T.REG(32, GP exhaustedR), 
-	   stdlink, stdclos, stdarg, stdcont] @ miscregs)
-  val dedicatedR = SL.remove(SL.uniq availR, allRegs)
+      map (fn T.REG(_,r) => r)
+          ([gcLink, T.REG(32, GP exhaustedR), 
+	    stdlink, stdclos, stdarg, stdcont] @ miscregs)
+
+  local
+      structure ILS = IntListSet
+      fun l2s l = ILS.addList (ILS.empty, l)
+      val s2l = ILS.listItems
+      val -- = ILS.difference
+      infix --
+  in
+      val allRegs = l2s (GP 0 upto GP 31)
+      val dedicatedR = s2l (allRegs -- l2s availR)
+  end
 
   val availF = FP 0 upto FP 28
   val dedicatedF = map FP [29, 30, 31]

@@ -84,7 +84,7 @@ structure Collect :> COLLECT =
 struct
 local
     structure F  = FLINT
-    structure M  = Intmap
+    structure M  = IntHashTable
     structure FU = FlintUtil
     structure LV = LambdaVar
     structure PP = PPFlint
@@ -102,15 +102,15 @@ datatype info
     
 exception NotFound
 	      
-val m : info M.intmap = M.new(128, NotFound)
+val m : info M.hash_table = M.mkTable(128, NotFound)
 
 fun new args lv =
     let val i = Info{uses=ref 0, calls=ref 0, int=ref(0,0)}
-    in M.add m (lv, i); i
+    in M.insert m (lv, i); i
     end
 
 (* map related helper functions *)
-fun get lv = (M.map m lv)
+fun get lv = (M.lookup m lv)
 		  handle x as NotFound =>
 		  ((* say ("Collect: ERROR: get unknown var "^
 			(LV.lvarName lv)^
@@ -134,7 +134,7 @@ fun transfer (lv1,lv2) =
 	val i2 = get lv2
     in addto(i1, i2);
 	(* note the transfer by redirecting the map *)
-	M.add m (lv1, i2)
+	M.insert m (lv1, i2)
     end
 	       
 fun inc ri = (ri := !ri + 1)
@@ -179,7 +179,7 @@ fun ireset (Info{int,...}) = int := (0,0)
 
 (* Ideally, we should check that usenb = 1, but we may have been a bit
  * conservative when keeping the counts uptodate *)
-fun kill lv = (M.rmv m lv)
+fun kill lv = ignore (M.remove m lv) handle _ => ()
 
 (* ********************************************************************** *)
 (* ********************************************************************** *)

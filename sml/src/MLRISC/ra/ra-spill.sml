@@ -164,17 +164,20 @@ struct
        val regmap = Core.spillRegmap G (* This is the current regmap *)
        val spillLocOf = Core.spillLoc G
        val spillLocsOf = map spillLocOf
-       val getnode = Intmap.map nodes
+       val getnode = IntHashTable.lookup nodes
 
        val insnDefUse = P.defUse cellkind
 
        (* Merge prohibited registers *)
-       val enterSpill = Intmap.add spilledRegs
+       val enterSpill = IntHashTable.insert spilledRegs
        val addProh = app (fn r => enterSpill(r,true)) 
 
-       val getSpills  : int -> C.cell list = Intmap.mapWithDefault(spillSet,[])
-       val getReloads : int -> C.cell list = Intmap.mapWithDefault(reloadSet,[])
-       val getKills   : int -> C.cell list = Intmap.mapWithDefault(killSet,[])
+       val getSpills  : int -> C.cell list =
+	   fn i => getOpt (IntHashTable.find spillSet i, [])
+       val getReloads : int -> C.cell list =
+	   fn i => getOpt (IntHashTable.find reloadSet i, [])
+       val getKills   : int -> C.cell list =
+	   fn i => getOpt (IntHashTable.find killSet i, [])
 
        fun getLoc(G.NODE{color=ref(G.ALIASED n), ...}) = getLoc n
          | getLoc(G.NODE{color=ref(G.SPILLED), number, ...}) = number

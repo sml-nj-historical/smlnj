@@ -17,13 +17,14 @@ struct
 
     (* mapping of function names to a dense integer range *)
     exception FuncId
-    val funcToIdTbl : int Intmap.intmap = Intmap.new(numOfFuncs, FuncId)
-    val lookup = Intmap.map funcToIdTbl 
+    val funcToIdTbl : int IntHashTable.hash_table =
+	IntHashTable.mkTable(numOfFuncs, FuncId)
+    val lookup = IntHashTable.lookup funcToIdTbl 
 
     (* mapping of ids to functions *)
     val idToFuncTbl = Array.array(numOfFuncs, hd funcs)
     local
-      val add = Intmap.add funcToIdTbl
+      val add = IntHashTable.insert funcToIdTbl
       fun mkFuncIdTbl ([], _) = ()
 	| mkFuncIdTbl ((func as (_,f,_,_,_))::rest, id) = 
 	    (add (f, id);  

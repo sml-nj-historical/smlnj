@@ -3,7 +3,7 @@
 
 signature PPCPS =
 sig 
-  val printcps : (CPS.function * LtyDef.lty Intmap.intmap) -> unit
+  val printcps : (CPS.function * LtyDef.lty IntHashTable.hash_table) -> unit
   val printcps0: CPS.function -> unit
   val prcps : CPS.cexp -> unit
 
@@ -249,7 +249,7 @@ let fun ptv(v,t) = (say(LV.lvarName v); say " type ===>>>";
    
     val _ = if (!Control.CG.debugRep)
             then (say "************************************************\n";
-                  Intmap.app ptv m;
+                  IntHashTable.appi ptv m;
                   say "************************************************\n")
             else ()
 
@@ -265,7 +265,8 @@ let fun ptv(v,t) = (say(LV.lvarName v); say " type ===>>>";
 end
 
 exception NULLTABLE
-val nulltable : LtyDef.lty Intmap.intmap= Intmap.new(8,NULLTABLE)
+val nulltable : LtyDef.lty IntHashTable.hash_table =
+    IntHashTable.mkTable(8,NULLTABLE)
 
 fun printcps0 f = printcps(f,nulltable)
 

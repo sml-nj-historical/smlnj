@@ -46,7 +46,7 @@ struct
 
       val currBlock   = ref NOBLOCK
       val blockNames  = ref [] : Annotations.annotations ref
-      val aliasF      = ref (Intmap.add (!regmap))
+      val aliasF      = ref (IntHashTable.insert (!regmap))
       val entryLabels = ref [] : Label.label list ref
 
       fun nextBlockNum() = 
@@ -134,8 +134,9 @@ struct
       (* End a cluster *)
       fun endCluster blockAnnotations =
       let exception LabelMap
-          val labelMap : F.block Intmap.intmap = Intmap.new(16, LabelMap)
-          val addLabelMap = Intmap.add labelMap
+          val labelMap : F.block IntHashTable.hash_table =
+	      IntHashTable.mkTable(16, LabelMap)
+          val addLabelMap = IntHashTable.insert labelMap
 
           (* find the next code block *)
           fun nextCodeBlock((blk as F.BBLOCK _)::_) = blk
@@ -168,7 +169,7 @@ struct
                      edges)
                 end
 
-          val lookupLabelMap = Intmap.mapWithDefault (labelMap, exitBlk)
+          fun lookupLabelMap i = getOpt (IntHashTable.find labelMap i, exitBlk)
 
           fun addPred blk (F.BBLOCK{pred, ...}, w) = pred := (blk,w) :: !pred
             | addPred blk (F.EXIT{pred, ...}, w) = pred := (blk,w) :: !pred
@@ -241,7 +242,7 @@ struct
              (* reset regmap *)
           val _         = blkCounter := 0
           val _         = regmap := C.regmap()  
-          val _         = aliasF := Intmap.add (!regmap)
+          val _         = aliasF := IntHashTable.insert (!regmap)
           val _         = entryLabels := []
       in  compile cluster
       end

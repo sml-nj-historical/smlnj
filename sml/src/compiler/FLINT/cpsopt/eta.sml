@@ -114,12 +114,12 @@ fun sameName(x,VAR y) = LV.sameName(x,y)
   | sameName(x,LABEL y) = LV.sameName(x,y) 
   | sameName _ = ()
 exception M2
-val m : value Intmap.intmap = Intmap.new(32, M2)
-val name = Intmap.map m
+val m : value IntHashTable.hash_table = IntHashTable.mkTable(32, M2)
+val name = IntHashTable.lookup m
 fun rename(v0 as VAR v) = (rename(name v) handle M2 => v0)
   | rename(v0 as LABEL v) = (rename(name v) handle M2 => v0)
   | rename x = x
-fun newname x = (sameName x; Intmap.add m x)
+fun newname x = (sameName x; IntHashTable.insert m x)
 
 local val km : Intset.intset =  Intset.new()
 in

@@ -28,7 +28,7 @@ struct
    fun newCell k = 
    let val new = C.newCell k
        val gcmap = getGCMap()
-       val add  = Intmap.add gcmap
+       val add  = IntHashTable.insert gcmap
        fun genVar gc =
        let val r = new()
        in  add(r,gc); r end
@@ -39,9 +39,9 @@ struct
     * Create a new GC map
     *)
    fun newGCMap() =
-   let val gcmap = Intmap.new(129,GCMap.GCMap)
+   let val gcmap = IntHashTable.mkTable(129,GCMap.GCMap)
    in  case C.zeroReg C.GP of
-         SOME r => Intmap.add gcmap (r,GC.CONST 0)
+         SOME r => IntHashTable.insert gcmap (r,GC.CONST 0)
        | _ => ();
        gcmap
    end

@@ -18,7 +18,7 @@ struct
    type cellkind = cellkind
    type cell = int
    type ty   = int
-   type regmap = cell Intmap.intmap
+   type regmap = cell IntHashTable.hash_table
    exception Cells = Cells
 
    val cellkinds = kinds
@@ -88,10 +88,10 @@ struct
 
    fun maxCell() = !name
 
-   fun regmap() = Intmap.new(32,Cells)
+   fun regmap() = IntHashTable.mkTable (32,Cells)
    (*
-   let val map = Intmap.new(32,Cells)
-       val add = Intmap.add map
+   let val map = IntHashTable.mkTable(32,Cells)
+       val add = IntHasTable.insert map
        (* initialize the regmap with physical register bindings *)
        fun init [] = ()
          | init({from,to,kind}::rest) = (ins(from,to); init rest)
@@ -101,7 +101,10 @@ struct
    end
     *)
 
-   val lookup = Intmap.mapInt 
+   fun lookup m i =
+       case IntHashTable.find m i of
+	   SOME i' => i'
+	 | NONE => i
 
    fun reset() = (app (fn r => r := 0) counters;
                   name := firstPseudo

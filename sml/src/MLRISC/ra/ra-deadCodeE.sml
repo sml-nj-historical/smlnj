@@ -10,8 +10,10 @@ functor RADeadCodeElim
    (Flowgraph : RA_FLOWGRAPH)
    ((* check for dead code on these cellkinds only *)
     val cellkind : Flowgraph.I.C.cellkind -> bool
-    val deadRegs : bool Intmap.intmap (* Dead registers are stored here. *)
-    val affectedBlocks : bool Intmap.intmap (* Affected blocks *)
+    (* Dead registers are stored here. *)
+    val deadRegs : bool IntHashTable.hash_table
+    (* Affected blocks *)
+    val affectedBlocks : bool IntHashTable.hash_table
     val spillInit : Flowgraph.G.interferenceGraph * Flowgraph.I.C.cellkind 
                       -> unit 
    ) : RA_FLOWGRAPH =
@@ -35,8 +37,8 @@ struct
         * that are dead, and record their definition points.
         *)
        fun findDeadCode(G.GRAPH{nodes, copyTmps, mode, ...}) = 
-       let val dead     = Intmap.add deadRegs 
-           val affected = Intmap.add affectedBlocks
+       let val dead     = IntHashTable.insert deadRegs 
+           val affected = IntHashTable.insert affectedBlocks
            val affectedList = app (fn d => affected(blockNum d, true))
 
            (* Mark all copy temporaries *)
@@ -56,7 +58,7 @@ struct
              | enter _ = ()
 
        in  markCopyTmps(!copyTmps);
-           Intmap.app enter nodes;
+           IntHashTable.appi enter nodes;
            unmarkCopyTmps(!copyTmps);
            if isOn(mode, RACore.HAS_PARALLEL_COPIES) then ()
            else copyTmps := [] (* clean up now *)

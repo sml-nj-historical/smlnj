@@ -3,7 +3,7 @@
 
 signature FLATTEN = sig
   val flatten : {function: CPS.function,
-                 table: LtyDef.lty Intmap.intmap,
+                 table: LtyDef.lty IntHashTable.hash_table,
                  click: string -> unit} -> CPS.function
 end (* signature FLATTEN *)
 
@@ -53,14 +53,16 @@ val selectLty =
 exception NFLATTEN
 fun getty v =
   if type_flag then
-             (Intmap.map table v) handle _ =>
+             (IntHashTable.lookup table v) handle _ =>
                    (Control.Print.say ("NFLATTEN: Can't find the variable "^
                             (Int.toString v)^" in the table ***** \n");
                     raise NFLATTEN)
   else LT.ltc_void
 
-val addty = if type_flag then Intmap.add table else (fn _ => ())
-fun newty(f,t) = if type_flag then (Intmap.rmv table f; addty(f,t))
+val addty = if type_flag then IntHashTable.insert table else (fn _ => ())
+fun newty(f,t) = if type_flag then
+		     (ignore (IntHashTable.remove table f) handle _ => ();
+		      addty(f,t))
                  else ()
 fun mkv(t) = let val v = LV.mkLvar()
                  val _ = addty(v,t)
@@ -109,11 +111,11 @@ fun mkfnLty(_,_,nil) = bug "mkfnLty in nflatten"
 val maxregs = maxfree - MachSpec.numCalleeSaves
 
 local exception UsageMap
-      val m : info Intmap.intmap = Intmap.new(128, UsageMap)
-      val umap = Intmap.map m
+      val m: info IntHashTable.hash_table = IntHashTable.mkTable(128, UsageMap)
+      val umap = IntHashTable.lookup m
 in  
     fun get i = umap i handle UsageMap => MISCinfo
-    val enter = Intmap.add m
+    val enter = IntHashTable.insert m
 end
 
 fun select(VAR v,i) =

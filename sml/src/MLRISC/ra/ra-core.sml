@@ -412,7 +412,7 @@ struct
  
   in  pr("=========== K="^Int.toString K^" ===========\n");
       app prAdj (ListMergeSort.sort (fn ((x, _),(y, _)) => x > y)
-                    (Intmap.intMapToList nodes))
+                    (IntHashTable.listItemsi nodes))
   end
 
 
@@ -421,8 +421,8 @@ struct
    * Note: it is up to the caller to remove all dedicated registers.
    *)
   fun newNodes(G.GRAPH{nodes, firstPseudoR,  ...}) =
-  let val getnode = Intmap.map nodes
-      val addnode = Intmap.add nodes
+  let val getnode = IntHashTable.lookup nodes
+      val addnode = IntHashTable.insert nodes
 
       fun defUse{defs, uses, pt, cost} =
       let  fun def reg =
@@ -628,7 +628,7 @@ struct
                 else filter(moves, MV.EMPTY, [])
 
   in  memMoves := mem;  (* memory moves *)
-      collect(Intmap.values nodes, [], FZ.EMPTY, mvs, [], 0, 0)
+      collect(IntHashTable.listItems nodes, [], FZ.EMPTY, mvs, [], 0, 0)
   end
 
   (*
@@ -636,7 +636,7 @@ struct
    * Spilled registers are given the special value ~1
    *)
   fun regmap(G.GRAPH{nodes,...}) = 
-  let val getnode = Intmap.map nodes
+  let val getnode = IntHashTable.lookup nodes
       fun num(NODE{color=ref(COLORED r),...}) = r
         | num(NODE{color=ref(ALIASED n),...}) = num n
 	| num(NODE{color=ref(SPILL_LOC _), ...}) = ~1
@@ -653,7 +653,7 @@ struct
    * during spilling.
    *)
   fun spillRegmap(G.GRAPH{nodes,...}) = 
-  let val getnode = Intmap.map nodes
+  let val getnode = IntHashTable.lookup nodes
       fun num(NODE{color=ref(COLORED r),...}) = r
         | num(NODE{color=ref(ALIASED n),...}) = num n
 	| num(NODE{color=ref(SPILL_LOC _), number, ...}) = number
@@ -670,7 +670,7 @@ struct
    * during spilling.
    *)
   fun spillLoc(G.GRAPH{nodes,...}) = 
-  let val getnode = Intmap.map nodes
+  let val getnode = IntHashTable.lookup nodes
       fun num(NODE{color=ref(ALIASED n), ...}) = num n
         | num(NODE{color=ref(SPILLED), number, ...}) = number
         | num(NODE{color=ref(SPILL_LOC s), number, ...}) = ~s
@@ -1420,10 +1420,11 @@ struct
   fun moveSavings(GRAPH{memMoves=ref [], ...}) = (fn node => 0)
     | moveSavings(GRAPH{memMoves, bitMatrix, ...}) = 
   let exception Savings
-      val savingsMap = Intmap.new(32, Savings)
-               : {pinned:int,cost:int} Intmap.intmap
-      val savings = Intmap.mapWithDefault(savingsMap, {pinned= ~1, cost=0})
-      val addSavings = Intmap.add savingsMap
+      val savingsMap = IntHashTable.mkTable(32, Savings)
+               : {pinned:int,cost:int} IntHashTable.hash_table
+      fun savings i = getOpt (IntHashTable.find savingsMap i,
+			      { pinned = ~1, cost = 0 })
+      val addSavings = IntHashTable.insert savingsMap
       val member     = BM.member(!bitMatrix)
       fun incSavings(u, v, c) =
       let val {pinned, cost} = savings u
@@ -1452,14 +1453,14 @@ struct
    * All nodes must have been colored.
    *)
   fun finishRA(GRAPH{regmap, nodes, deadCopies, ...}) = 
-  let val enter = Intmap.add regmap
+  let val enter = IntHashTable.insert regmap
       fun set(r, NODE{color=ref(COLORED c),...}) = enter(r, c)
         | set(r, NODE{color=ref(ALIASED n),...}) = set(r, n)
 	| set(r, NODE{color=ref(SPILLED),...}) =  enter(r, ~1)
 	| set(r, NODE{color=ref(SPILL_LOC s),...}) =  enter(r, ~1)
 	| set(r, NODE{color=ref(MEMREG m),...}) =  enter(r, m)
         | set(r, _) = error("finishRA "^Int.toString r)
-  in  Intmap.app set nodes;
+  in  IntHashTable.appi set nodes;
       case !deadCopies of
         [] => ()
       | dead => app (fn r => enter(r, ~1)) dead
@@ -1469,8 +1470,8 @@ struct
    * Update the regmap, after copy propagation
    *)
   fun finishCP(GRAPH{regmap, nodes,...}) =
-  let val enter = Intmap.add regmap
-  in  Intmap.app    
+  let val enter = IntHashTable.insert regmap
+  in  IntHashTable.appi
         (fn (r, node as NODE{color as ref(ALIASED _),...}) =>
             (case chase node of
                NODE{color=ref(COLORED c),...} => enter(r, c)
@@ -1502,7 +1503,7 @@ struct
                        movecost, defs, uses, ...}) =
             (pri := 0; degree := 0; adj := []; movecnt := 0; movelist := [];
              defs := []; uses := []; movecost := 0)
-  in  Intmap.app init nodes
+  in  IntHashTable.appi init nodes
   end
 
   end (* local *)

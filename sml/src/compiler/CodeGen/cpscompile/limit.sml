@@ -20,24 +20,26 @@ val MAX_ALLOC = 1023  (* maximum number of words to allocate per check *)
 
 fun findescapes fl =
   let exception Limit
-      val m : fun_kind Intmap.intmap = Intmap.new(32,Limit)
-      val _ = app (fn (k,f,_,_,_) => Intmap.add m (f,k)) fl
-      val escapes = Intmap.map m 
+      val m : fun_kind IntHashTable.hash_table = IntHashTable.mkTable(32,Limit)
+      val _ = app (fn (k,f,_,_,_) => IntHashTable.insert m (f,k)) fl
+      val escapes = IntHashTable.lookup m 
    in {escapes = escapes,
-       check = fn f => case escapes f of KNOWN => Intmap.add m (f,KNOWN_CHECK)
-                                       | _ => ()}
+       check = fn f => case escapes f of
+			   KNOWN => IntHashTable.insert m (f,KNOWN_CHECK)
+                         | _ => ()}
   end
 
 (* path now counts instructions as well as allocations, for polling *)
 fun path escapes fl = 
   let exception Limit'
-      val b : cexp Intmap.intmap = Intmap.new(32,Limit')
-      val _ = app (Intmap.add b o (fn (_,f,_,_,body) => (f,body))) fl
-      val body = Intmap.map b
+      val b : cexp IntHashTable.hash_table = IntHashTable.mkTable(32,Limit')
+      val _ = app (IntHashTable.insert b o (fn (_,f,_,_,body) => (f,body))) fl
+      val body = IntHashTable.lookup b
 
-      val m : {known: fun_kind, alloc: int, instrs: int} Intmap.intmap = 
-	                                                  Intmap.new(32,Limit')
-      val look = Intmap.map m
+      val m : {known: fun_kind, alloc: int, instrs: int}
+		  IntHashTable.hash_table = 
+	          IntHashTable.mkTable(32,Limit')
+      val look = IntHashTable.lookup m
       val storeListSz = 2  (* size of store list entry *)
       fun g(d, RECORD(RK_FBLOCK,vl,_,e)) = g(d + (length(vl) * 2) + 2,e)
         | g(d, RECORD(RK_FCONT,vl,_,e)) = g(d + (length(vl) * 2) + 2,e)
@@ -72,9 +74,9 @@ fun path escapes fl =
              (case maxpath w
 	       of {known=KNOWN, alloc=n, instrs=i} => 
 		     if d+n > MAX_ALLOC
-		     then (Intmap.add m (w,{known=KNOWN_CHECK,
-					    alloc=n,
-					    instrs=i});
+		     then (IntHashTable.insert m (w,{known=KNOWN_CHECK,
+						     alloc=n,
+						     instrs=i});
 			   d)
                      else d+n
 	        | _ => d)
@@ -109,17 +111,17 @@ fun path escapes fl =
 		              val z = if n>MAX_ALLOC
 				      then {known=KNOWN_CHECK,alloc=n,instrs=i}
 				      else {known=KNOWN,alloc=n,instrs=i}
-		           in Intmap.add m (w,z);
+		           in IntHashTable.insert m (w,z);
 			      z
                           end
                | kind =>  let val bod = body w
-			      val z = (Intmap.add m (w,{known=kind,
-							alloc=0,
-							instrs=0});
+			      val z = (IntHashTable.insert m (w,{known=kind,
+								 alloc=0,
+								 instrs=0});
 				       {known=kind,
 					alloc=g(1,bod),
 					instrs=h(0,bod)})
-                          in Intmap.add m (w,z); z
+                          in IntHashTable.insert m (w,z); z
 		         end)
 
       val _ = app (fn (_, x, _, _, _) => (maxpath x; ())) fl;

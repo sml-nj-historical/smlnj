@@ -1,13 +1,29 @@
 short term:
-- come up with some version of ml-build that does not produce a new
-  heap image if nothing had to be recompiled
 - remove unfortunate dependence of SrcPath module on Servers module
 - binfile module (in compiler) should not have to worry about unpickling;
   (the current interface is just wrong)
 
+medium term:
+- compilation units must NOT be identified by their export pid because
+  under CM's semantics this pid is not necessarily unique;
+  the current behavior is actually seriously broken (although you
+  almost have to know how to trigger the bug in order to actually trigger it)
+- (Related to previous point) move the concept of source paths (SrcPath module)
+  much further down towards the basis of the system;
+  compilation units should be identifed by their abstract source path;
+  the compiler should uniformely talk about source paths (even for "use")
+- make traversal construction lazy somehow so that the autoloader does
+  not force lazy pickles (e.g., $/html-lib.cm should not show up when
+  touching CM or CM, but traversal construction screws this up)
+
 long term:
-- Try to generalize CM by abstracting from programming language (and compiler),
-  so it can work with Twelf, TILT, or things like HOL
-- Generic notification architecture (ErrorMsg module, Say module, ...)
+- Generic notification architecture (ErrorMsg module, Say module, ...);
+  this also relies on having the notion of source path available early
+- restructure binfiles and library files; implement a dynamic linker for
+  libraries that is much more light-weight than CM itself
+- implement dynamic loading of stable libraries via shared memory segments
+  (mmap); this requires help from the runtime system
 - handling of non-generalizability should move to later moment in time
 - environment canonicalization
+- Try to generalize CM by abstracting from programming language (and compiler),
+  so it can work with Twelf, TILT, or things like HOL

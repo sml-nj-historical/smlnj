@@ -41,8 +41,8 @@ sig
   datatype interferenceGraph = 
      GRAPH of 
      { bitMatrix    : bitMatrix ref,
-       nodes        : node Intmap.intmap,
-       regmap       : int Intmap.intmap,
+       nodes        : node IntHashTable.hash_table,
+       regmap       : int IntHashTable.hash_table,
        K            : int,
        firstPseudoR : int,
        dedicated    : bool Array.array,
@@ -54,7 +54,9 @@ sig
        (* Info to undo a spill when an optimistic spill has occurred *)
        spillFlag    : bool ref,
 
-       spilledRegs  : bool Intmap.intmap, (*registers that have been spilled*)
+       (* registers that have been spilled*)
+       spilledRegs  : bool IntHashTable.hash_table,
+
        trail        : trailInfo ref,
 
        (* how to pretty print a register *)
@@ -74,7 +76,7 @@ sig
        spillLoc     : int ref,
 
        (* span indexed by node id *)
-       span         : int Intmap.intmap option ref,
+       span         : int IntHashTable.hash_table option ref,
 
        (* mode *)
        mode         : mode,
@@ -142,8 +144,8 @@ sig
   val newBitMatrix : {edges : int, maxRegs : int} -> bitMatrix
 
   (* Create a new interference graph *)
-  val newGraph : { nodes        : node Intmap.intmap,
-                   regmap       : int Intmap.intmap,
+  val newGraph : { nodes        : node IntHashTable.hash_table,
+                   regmap       : int IntHashTable.hash_table,
                    numRegs      : int,
                    maxRegs      : unit -> int,
                    K            : int,

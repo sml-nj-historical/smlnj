@@ -493,9 +493,9 @@ struct
 
        (* Edges that need splitting *)
        exception NoEdgesToSplit
-       val edgesToSplit    = Intmap.new(32, NoEdgesToSplit)
-       val addEdgesToSplit = Intmap.add edgesToSplit
-       val lookupEdgesToSplit = Intmap.mapWithDefault(edgesToSplit, [])
+       val edgesToSplit    = IntHashTable.mkTable(32, NoEdgesToSplit)
+       val addEdgesToSplit = IntHashTable.insert edgesToSplit
+       fun lookupEdgesToSplit i = getOpt (IntHashTable.find edgesToSplit i, [])
 
        (*------------------------------------------------------------------ 
         * Code for handling bindings between basic block
@@ -857,21 +857,24 @@ struct
            exception Nothing
 
            (* Repair code table; mapping from block id -> compensation code *)
-           val repairCodeTable  = Intmap.new(32, Nothing)
-           val addRepairCode    = Intmap.add repairCodeTable
-           val lookupRepairCode = Intmap.mapWithDefault(repairCodeTable,[])
+           val repairCodeTable  = IntHashTable.mkTable(32, Nothing)
+           val addRepairCode    = IntHashTable.insert repairCodeTable
+           fun lookupRepairCode i =
+	       getOpt (IntHashTable.find repairCodeTable i, [])
 
            (* Repair code table; mapping from block id -> compensation code
             * These must be relocated...
             *)
-           val repairCodeTable'  = Intmap.new(32, Nothing)
-           val addRepairCode'    = Intmap.add repairCodeTable'
-           val lookupRepairCode' = Intmap.mapWithDefault(repairCodeTable',[])
+           val repairCodeTable'  = IntHashTable.mkTable(32, Nothing)
+           val addRepairCode'    = IntHashTable.insert repairCodeTable'
+           fun lookupRepairCode' i =
+	       getOpt (IntHashTable.find repairCodeTable' i, [])
 
            (* Mapping from block id -> labels *)
-           val labelTable  = Intmap.new(32, Nothing)
-           val addLabel    = Intmap.add labelTable
-           val lookupLabel = Intmap.mapWithDefault(labelTable, [])
+           val labelTable  = IntHashTable.mkTable(32, Nothing)
+           val addLabel    = IntHashTable.insert labelTable
+           fun lookupLabel i =
+	       getOpt (IntHashTable.find labelTable i, [])
 
            (* Scan code and insert labels *)
            fun insertLabels([], []) = ()
@@ -1051,8 +1054,8 @@ struct
             * right places.
             *)
            fun renumberBlocks() = 
-           let val labelTbl = Intmap.new(32, Nothing)
-               val addLabel = Intmap.add labelTbl
+           let val labelTbl = IntHashTable.mkTable(32, Nothing)
+               val addLabel = IntHashTable.insert labelTbl
                fun insertLabel(L.Label{id, ...},block) = addLabel(id, block)
 
                val entries = ref []
@@ -1163,7 +1166,8 @@ struct
                val newExit  = F.EXIT{blknum=n, freq=exitFreq, pred=exits}
                val n        = n+1
 
-               val lookupLabel = Intmap.mapWithDefault(labelTbl, newExit)
+               fun lookupLabel i =
+		   getOpt (IntHashTable.find labelTbl i, newExit)
 
                fun addPred b (F.BBLOCK{pred, ...},w) = pred := (b,w) :: !pred
                  | addPred b (F.EXIT{pred, ...},w) = pred := (b,w) :: !pred
@@ -1208,9 +1212,9 @@ struct
                         }
            end
 
-       in  if Intmap.elems edgesToSplit > 0 then 
+       in  if IntHashTable.numItems edgesToSplit > 0 then 
               (insertLabels([], blocks);
-               Intmap.app split edgesToSplit;
+               IntHashTable.appi split edgesToSplit;
                renumberBlocks()
               )
            else cluster
@@ -1854,7 +1858,7 @@ struct
    in  (* Translate all blocks *)
        rewriteAllBlocks(C.firstPseudo, blocks);
        (* If we found critical edges, then we have to split them... *)
-       if Intmap.elems edgesToSplit = 0 then cluster 
+       if IntHashTable.numItems edgesToSplit = 0 then cluster 
        else repairCriticalEdges(cluster)
    end
 

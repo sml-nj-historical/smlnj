@@ -5,7 +5,7 @@ signature EXPAND = sig
   val expand : {function: CPS.function,
 	        bodysize: int,
 		unroll: bool,
-		table: LtyDef.lty Intmap.intmap,
+		table: LtyDef.lty IntHashTable.hash_table,
 		afterClosure: bool, do_headers: bool,
 		click: string -> unit} -> CPS.function
 end (* signature EXPAND *)
@@ -71,12 +71,12 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
      exception NEXPAND
      fun getty v = 
        if type_flag
-       then (Intmap.map typtable v) handle _ =>
+       then (IntHashTable.lookup typtable v) handle _ =>
                   (Control.Print.say ("NEXPAND: Can't find the variable "^
                             (Int.toString v)^" in the typtable ***** \n");
                    raise NEXPAND)
        else LtyExtern.ltc_void
-     fun addty(f,t) = Intmap.add typtable (f,t)
+     fun addty(f,t) = IntHashTable.insert typtable (f,t)
    in
 
    fun mkv(t) = let val v = LV.mkLvar()
@@ -93,11 +93,11 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 
 
  local exception Expand
-       val m : info Intmap.intmap = Intmap.new(128,Expand)
-       val get' = Intmap.map m
- in    val note = Intmap.add m
+       val m : info IntHashTable.hash_table = IntHashTable.mkTable(128,Expand)
+       val get' = IntHashTable.lookup m
+ in    val note = IntHashTable.insert m
        fun get i = get' i handle Expand => Other 
-       fun discard_pass1_info() = Intmap.clear m
+       fun discard_pass1_info() = IntHashTable.clear m
  end
    fun getval(VAR v) = get v
      | getval(LABEL v) = get v
@@ -265,9 +265,9 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
    fun substitute(args,wl,e,alpha) =
     let 
 	exception Alpha
-        val vm : value Intmap.intmap = Intmap.new(16, Alpha)
-        fun look (v,default) = Intmap.map vm v handle Alpha => default
-        val enter = Intmap.add vm
+        val vm: value IntHashTable.hash_table = IntHashTable.mkTable(16, Alpha)
+        fun look (v,default) = getOpt (IntHashTable.find vm v, default)
+        val enter = IntHashTable.insert vm
 	fun use(v0 as VAR v) = look(v,v0)
 	  | use(v0 as LABEL v) = look(v,v0)
 	  | use x = x

@@ -4,16 +4,14 @@ local
 	fun one [] = "ok"
 	  | one ["m"] = Bool.toString (CMB.make ())
 	  | one ["m", f] = Bool.toString (CMB.make' (SOME f))
-	  | one ["d"] = Bool.toString (CMB.deliver ())
-	  | one ["d", f] = Bool.toString (CMB.deliver' (SOME f))
 	  | one ["r"] = (CMB.reset (); "reset")
 	  | one ["?", v] =
 	    getOpt (Option.map Int.toString (#get (CMB.symval v) ()),
 		    "not set")
-	  | one ["=", v] = (#set (CMB.symval v) NONE; "done")
+	  | one ["=", v] = (#set (CMB.symval v) NONE; v ^ " set to NONE")
 	  | one ["=", v, n] =
 	    (case Int.fromString n of
-		 x as SOME _ => (#set (CMB.symval v) x; "done")
+		 x as SOME _ => (#set (CMB.symval v) x; v ^ " set to " ^ n)
 	       | NONE => "bad number syntax")
 	  | one ["q"] = quit ()
 	  | one _ = "invalid command"

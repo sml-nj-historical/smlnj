@@ -30,7 +30,7 @@ exception NotFound
 
 fun loopify (prog as (progkind,progname,progargs,progbody)) = let
 
-    val m : info Intmap.intmap = Intmap.new(128, NotFound)
+    val m : info IntHashTable.hash_table = IntHashTable.mkTable(128, NotFound)
 
     (* tails: number of tail-recursive calls
      * calls: number of other calls
@@ -40,9 +40,9 @@ fun loopify (prog as (progkind,progname,progargs,progbody)) = let
     fun new (f,known,parent) =
 	let val i = I{tails=ref [], calls=ref [], icalls=ref [],
 		      tcp=ref known, parent=parent}
-	in Intmap.add m (f,i); i end
+	in IntHashTable.insert m (f,i); i end
 
-    fun get f = Intmap.map m f
+    fun get f = IntHashTable.lookup m f
 
 (* collect tries to determine what calls are tail recursive.
  * If a function f is always called in tail position in a function g,

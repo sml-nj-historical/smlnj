@@ -5,7 +5,7 @@ sig
 
    exception GCMap
 
-   type gcmap = GC.gctype Intmap.intmap
+   type gcmap = GC.gctype IntHashTable.hash_table
 
    val GCMAP       : gcmap Annotations.property
 

@@ -193,11 +193,28 @@ structure CMSemant :> CM_SEMANT = struct
 	    case gth () of
 		GG.GROUP { kind, sublibs, ... } =>
 		(case kind of
-		     GG.NOLIB _ => foldl add l sublibs
+		     GG.NOLIB _ => foldr add l sublibs
 		   | _ => add (x, l))
 	      | _ => l
     in
-	foldl oneSG [] subgroups
+	foldr oneSG [] subgroups
+    end
+
+    (* Filter out unused stuff and thunkify the group. *)
+    fun filt_th_sgl (sgl, imp_syms) = let
+	(* Add fake "structure <Pervasive>" so that we are sure not to lose
+	 * the initgroup when filtering. *)
+	val ss = SymbolSet.add (imp_syms, PervAccess.pervStrSym)
+	fun add ((_, GG.ERRORGROUP, _), l) = l
+	  | add ((p, g as GG.GROUP { exports, ... }, rb), l) = let
+		fun defined_here sy = SymbolMap.inDomain (exports, sy)
+	    in
+		if SymbolSet.exists defined_here ss then
+		    (p, fn () => g, rb) :: l
+		else l
+	    end
+    in
+	foldr add [] sgl
     end
 
     fun group arg = let
@@ -214,9 +231,9 @@ structure CMSemant :> CM_SEMANT = struct
 	in
 	    #1 (valOf (SymbolMap.find (exports, PervAccess.pervStrSym)))
 	end
-	val (exports, rp) = MemberCollection.build (mc, filter, gp, pfsbn ())
-	fun thunkify (p, g, rb) = (p, fn () => g, rb)
-	val subgroups = map thunkify (MemberCollection.subgroups mc)
+	val (exports, rp, isl) =
+	    MemberCollection.build (mc, filter, gp, pfsbn ())
+	val subgroups = filt_th_sgl (MemberCollection.subgroups mc, isl)
 	val { required = rp', wrapped = wr } = p
 	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
     in
@@ -244,9 +261,9 @@ structure CMSemant :> CM_SEMANT = struct
 	in
 	    #1 (valOf (SymbolMap.find (exports, PervAccess.pervStrSym)))
 	end
-	val (exports, rp) = MemberCollection.build (mc, filter, gp, pfsbn ())
-	fun thunkify (p, g, rb) = (p, fn () => g, rb)
-	val subgroups = map thunkify (MemberCollection.subgroups mc)
+	val (exports, rp, isl) =
+	    MemberCollection.build (mc, filter, gp, pfsbn ())
+	val subgroups = filt_th_sgl (MemberCollection.subgroups mc, isl)
 	val { required = rp', wrapped = wr } = p
 	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
     in

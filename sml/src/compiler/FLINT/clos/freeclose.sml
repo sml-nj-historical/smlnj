@@ -34,6 +34,15 @@ local
   end
 in
 
+    structure IS = IntRedBlackSet
+    structure IM = IntRedBlackMap
+    structure Nd = struct
+        type ord_key = int
+	val compare = Int.compare
+    end
+
+    structure SCC = GraphSCCFn (Nd)
+
 (***************************************************************************
  *  Misc and utility functions                                             *
  ***************************************************************************)
@@ -192,14 +201,70 @@ val fe' = procfix fe
 (***************************************************************************
  * Build the call graph and compute the scc number                         *
  ***************************************************************************)
+
+fun KUC x = (contP x) orelse (knownP x) orelse (usersP x)
+
+fun mkgraph f = let
+    fun comb ((xe, xf), (ye, yf)) = (IS.union (xe, ye), xf @ yf)
+    fun combe ((xe, xf), e) = (IS.union (xe, e), xf)
+    fun combf ((xe, xf), f) = (xe, xf @ f)
+    fun addKUC (s, v) = if KUC v then IS.add (s, v) else s
+    fun vl2sKUC l = let
+	fun loop ([], s) = s
+	  | loop (VAR v :: r, s) = loop (r, addKUC (s, v))
+	  | loop (_ :: r, s) = loop (r, s)
+    in
+	loop (l, IS.empty)
+    end
+    fun collect (SWITCH (_, _, el)) =
+	foldl (fn (x, a) => comb (collect x, a)) (IS.empty, []) el
+      | collect (SETTER (P.sethdlr, vl, e)) = combe (collect e, vl2sKUC vl)
+      | collect (RECORD (_, _, _, e) |
+		 SELECT (_, _, _, _, e) |
+		 OFFSET (_, _, _, e) |
+		 SETTER (_, _, e) |
+		 LOOKER (_, _, _, _, e) |
+		 ARITH (_, _, _, _, e) |
+		 PURE (_, _, _, _, e)) = collect e
+      | collect (BRANCH (_, _, _, x, y)) = comb (collect x, collect y)
+      | collect (APP (u, ul)) = (vl2sKUC (u :: ul), [])
+      | collect (FIX (fl, b)) = combf (collect b, fl)
+    fun dofun ((_, f, _, _, body), (m, all)) = let
+	val (es, fl) = collect body
+	val m' = IM.insert (m, f, IS.listItems es)
+	val all' = IS.add (all, f)
+    in
+	foldl dofun (m', all') fl
+    end
+    val (follow_map, allset) = dofun (f, (IM.empty, IS.empty))
+    val rootedges = IS.listItems allset
+    val root = (foldl Int.max 0 rootedges) + 1
+    val follow_map = IM.insert (follow_map, root, rootedges)
+    fun follow v = valOf (IM.find (follow_map, v))
+in
+    { root = root, follow = follow }
+end
+
+fun assNum (SCC.SIMPLE v, (i, nm)) =
+    (i + 1, IM.insert (nm, v, i))
+  | assNum (SCC.RECURSIVE vl, (i, nm)) =
+    (i + 1, foldl (fn (v, nm) => IM.insert (nm, v, i)) nm vl)
+
+(* first component is fake root node, it receives number ~1 *)
+val number_map = #2 (foldl assNum (~1, IM.empty) (SCC.topOrder (mkgraph fe')))
+
+fun sccnum x = valOf (IM.find (number_map, x))
+
+(*
 exception Unseen
 type info = {dfsnum : int ref, sccnum : int ref, edges : lvar list}
-val m : info Intmap.intmap = Intmap.new(32,Unseen)
-val lookup = Intmap.map m
+val m : info IntHashTable.hash_table = IntHashTable.mkTable(32,Unseen)
+val lookup = IntHashTable.lookup m
 val total : lvar list ref = ref nil
 
-fun addinfo(f,vl) = (total := (f :: (!total));
-                     Intmap.add m (f,{dfsnum=ref ~1,sccnum=ref ~1,edges=vl}))
+fun addinfo(f,vl) =
+    (total := (f :: (!total));
+     IntHashTable.insert m (f,{dfsnum=ref ~1,sccnum=ref ~1,edges=vl}))
 fun KUC x = (contP x) orelse (knownP x) orelse (usersP x)
 fun EC x = (contP x) orelse (escapesP x)
 
@@ -247,6 +312,7 @@ fun scc nodenum =
 val _ = makenode(fe')               (* Build the call graph *)
 val _ = app (fn x => (scc x; ())) (!total)   (* Compute the scc number *)
 val sccnum = ! o #sccnum o lookup
+*)
 fun samescc(x,n) = if n < 0 then false else ((sccnum x) = n)
 
 (***>>
@@ -354,9 +420,9 @@ fun overV(n,l1,l2) =
  *                 (2) lvar to freevar information                         *
  ***************************************************************************)
 exception STAGENUM
-val snum : snum Intmap.intmap = Intmap.new(32,STAGENUM)
-val addsn = Intmap.add snum   (* add the stage number for a fundef *)    
-val getsn = Intmap.map snum   (* get the stage number of a fundef *)
+val snum : snum IntHashTable.hash_table = IntHashTable.mkTable(32,STAGENUM)
+val addsn = IntHashTable.insert snum	(* add the stage number for a fundef *)
+val getsn = IntHashTable.lookup snum	(* get the stage number of a fundef *)
 
 fun findsn(v,d,[]) = (warn ("Fundef " ^ (LV.lvarName v)
                             ^ " unused in freeClose"); d)
@@ -373,16 +439,16 @@ fun findsn2(v,d,[]) = d
              
 
 exception FREEVMAP
-val vars : fvinfo Intmap.intmap = Intmap.new(32,FREEVMAP)
+val vars : fvinfo IntHashTable.hash_table = IntHashTable.mkTable(32,FREEVMAP)
 
-fun addEntry(v,l,x,s) = Intmap.add vars (v,{fv=l,lv=x,sz=s})
-val freeV = Intmap.map vars    (* get the freevar info *)
+fun addEntry(v,l,x,s) = IntHashTable.insert vars (v,{fv=l,lv=x,sz=s})
+val freeV = IntHashTable.lookup vars    (* get the freevar info *)
 val loopV = #lv o freeV        (* the free variables on the loop path *)
 
 (***>>
-  val vars : (lvar list * (lvar list option)) Intmap.intmap 
-                                               = Intmap.new(32, FREEVMAP)
-  val freeV = Intmap.map vars 
+  val vars : (lvar list * (lvar list option)) IntHashTable.hash_table
+                                           = IntHashTable.mkTable(32, FREEVMAP)
+  val freeV = IntHashTable.lookup vars 
   fun loopV v = (#2 (freeV v)) handle FREEVMAP => error "loopV in closure"
 <<***)
 
@@ -632,5 +698,3 @@ val freemapClose = Stats.doPhase(Stats.makePhase "Compiler 079 freemapClose")
 
 end
 end (* structure FreeClose *)
-
-

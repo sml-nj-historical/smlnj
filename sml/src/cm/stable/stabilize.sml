@@ -117,13 +117,18 @@ struct
 	fun oneB i (sy, (nth, _, _), m) =
 	    case nth () of
 		(_, DG.SB_BNODE (DG.BNODE n, _)) =>
+		(* we blindly override existing info for the same bnode;
+		 * this means that the last guy wins... *)
 		StableMap.insert (m, #bininfo n, (i, sy))
 	      | _ => m
+	(* ... but we want the first guy to win, so we do foldr
+	 * and count from the top. *)
 	fun oneSL (g as GG.GROUP { exports, ... }, (m, i)) =
-	    (SymbolMap.foldli (oneB i) m exports, i + 1)
-	  | oneSL (_, (m, i)) = (m, i + 1)
+	    (SymbolMap.foldli (oneB i) m exports, i - 1)
+	  | oneSL (_, (m, i)) = (m, i - 1)
 	fun oneSL' ((_, gth, _), a) = oneSL (gth (), a)
-	val (im, _) = foldl oneSL' (StableMap.empty, 0) sublibs
+	val (im, _) =
+	    foldr oneSL' (StableMap.empty, length sublibs - 1) sublibs
 	fun look i =
 	    case StableMap.find (im, i) of
 		SOME p => p

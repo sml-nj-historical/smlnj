@@ -36,7 +36,7 @@ Conversion Primops:
 
 signature CONTRACT = sig
   val contract : {function: CPS.function,
-                  table: LtyDef.lty Intmap.intmap,
+                  table: LtyDef.lty IntHashTable.hash_table,
                   click: string -> unit,
                   last: bool,
                   size: int ref}
@@ -216,14 +216,14 @@ fun argLty [] = LT.ltc_int
                   fn t => t))
   | argLty r = LT.ltc_str r (* this is INCORRECT !!!!!!! *)
 
-val addty = if type_flag then Intmap.add table else (fn _ => ())
+val addty = if type_flag then IntHashTable.insert table else (fn _ => ())
 
 in
 
 (* Only used when dropping args in reduce(FIX) case. *)
 fun getty v = 
   if type_flag then 
-             (Intmap.map table v) handle _ =>
+             (IntHashTable.lookup table v) handle _ =>
                    (Control.Print.say ("NCONTRACT: Can't find the variable "^
                             (Int.toString v)^" in the table ***** \n");
                     raise NCONTRACT)
@@ -238,7 +238,10 @@ fun grabty u =
   in  if type_flag then g u
       else LT.ltc_void
   end
-fun newty(f,t) = if type_flag then (Intmap.rmv table f; addty(f,t)) else ()
+fun newty(f,t) = if type_flag then
+		     (ignore (IntHashTable.remove table f) handle _ => ();
+		      addty(f,t))
+		 else ()
 fun mkv(t) = let val v = LV.mkLvar()
                  val _ = addty(v,t)
              in  v
@@ -270,12 +273,13 @@ end (* local *)
 
 
 local exception UsageMap
-in  val m : {info: info, used : int ref, called : int ref} Intmap.intmap =
-	          Intmap.new(128, UsageMap)
-    val get = fn i => Intmap.map m i 
+in  val m : {info: info, used : int ref, called : int ref}
+		IntHashTable.hash_table =
+	        IntHashTable.mkTable(128, UsageMap)
+    val get = fn i => IntHashTable.lookup m i 
 	        handle UsageMap => bug ("UsageMap on " ^ Int.toString i)
-    val enter = Intmap.add m
-    val rmv = Intmap.rmv m
+    val enter = IntHashTable.insert m
+    fun rmv i = ignore (IntHashTable.remove m i) handle _ => ()
 end
 
 fun use(VAR v) = inc(#used(get v))
@@ -403,8 +407,8 @@ end
 
 local
    exception Beta
-   val m2 : value Intmap.intmap = Intmap.new(32, Beta)
-   val mapm2 = Intmap.map m2
+   val m2 : value IntHashTable.hash_table = IntHashTable.mkTable(32, Beta)
+   val mapm2 = IntHashTable.lookup m2
 in
 
 fun ren(v0 as VAR v) = (ren(mapm2 v) handle Beta => v0)
@@ -420,7 +424,7 @@ fun newname (vw as (v,w)) =
        | f _ = ()
  in  if deadup then f (ren w) else ();
      rmv v;
-     sameLty vw; sameName vw; Intmap.add m2 vw
+     sameLty vw; sameName vw; IntHashTable.insert m2 vw
  end
 
 end (* local *)
@@ -1029,7 +1033,7 @@ end
 in  debugprint "Contract: "; debugflush();
     enterMISC0 fvar; app enterMISC0 fargs;
     pass1 cexp;
-    cpssize := Intmap.elems m;
+    cpssize := IntHashTable.numItems m;
     let val cexp' = reduce cexp
     in  debugprint "\n";
 	if debug

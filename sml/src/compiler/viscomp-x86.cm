@@ -31,8 +31,8 @@ CodeGen/x86/x86gen.sml
 CodeGen/x86/x86spec.sml
 
 $/basis.cm
+$/smlnj-lib.cm
 $smlnj/viscomp/core.cm
-$/comp-lib.cm
 $MLRISC/Control.cm
 $MLRISC/MLRISC.cm
 $MLRISC/IA32.cm

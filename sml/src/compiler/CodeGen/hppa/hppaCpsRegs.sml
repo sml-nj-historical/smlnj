@@ -7,7 +7,6 @@
 structure HppaCpsRegs : CPSREGS = 
 struct
   structure T = HppaMLTree
-  structure SL = SortedList
 
   (* HPPA register conventions 
      0     zero
@@ -57,18 +56,25 @@ struct
   val floatregs = map FREG (fromto(6, 30))
   val savedfpregs = []
 
-  val allRegs = SL.uniq(fromto(GP 0,GP 31))
-
   val availR = 
     map (fn T.REG(_,r) => r)
         ([stdlink, stdclos, stdarg, stdcont, gcLink] @ miscregs)
-  val dedicatedR = SL.remove(SL.uniq availR, allRegs)
 
-  val availF = SL.uniq(fromto(FP 6, FP 30))
+  local
+      structure ILS = IntListSet
+      fun l2s l = ILS.addList (ILS.empty, l)
+      val s2l = ILS.listItems
+      val -- = ILS.difference
+      infix --
+  in
+      val allRegs = l2s (fromto(GP 0,GP 31))
+      val dedicatedR = s2l (allRegs -- l2s availR)
 
-  val allFRegs = SL.uniq(fromto(FP 0,FP 31))
-
-  val dedicatedF = SL.remove(availF, allFRegs)
+      val availFs = l2s (fromto(FP 6, FP 30))
+      val allFRegs = l2s (fromto(FP 0,FP 31))
+      val dedicatedF = s2l (allFRegs -- availFs)
+      val availF = s2l availFs
+  end
 
   val signedGCTest = false
   val addressWidth = 32

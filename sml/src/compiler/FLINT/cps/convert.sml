@@ -313,15 +313,16 @@ fun convert fdec =
        end 
 
      local exception Rename
-           val m : value Intmap.intmap = Intmap.new(32, Rename)
+           val m : value IntHashTable.hash_table =
+	       IntHashTable.mkTable(32, Rename)
      in 
      (* F.lvar -> CPS.value *)
-     fun rename v = Intmap.map m v handle Rename => VAR v
+     fun rename v = IntHashTable.lookup m v handle Rename => VAR v
 
      (* F.lvar * CPS.value -> unit *) 
      fun newname (v, w) = 
        (case w of VAR w' => LV.sameName (v, w') | _ => ();
-        Intmap.add m (v, w))
+        IntHashTable.insert m (v, w))
 
      (* F.lvar list * CPS.value list -> unit *) 
      fun newnames (v::vs, w::ws) = (newname(v,w); newnames(vs, ws))
@@ -333,8 +334,10 @@ fun convert fdec =
 	 (* If the function is in the global renaming table and it's
 	  * renamed to itself, then it's most likely a while loop and
 	  * should *not* be eta-reduced *)
-	 if ((case Intmap.map m lv of VAR lv' => lv = lv' | _ => false)
-		 handle Rename => false) then NONE else
+	 if ((case IntHashTable.lookup m lv of
+		  VAR lv' => lv = lv'
+		| _ => false)
+	     handle Rename => false) then NONE else
 	     let fun h (x::xs, y::ys) = 
 		     if (veq(x, y)) andalso (not (veq(w, y)))
 		     then h(xs, ys) else NONE

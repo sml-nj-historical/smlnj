@@ -14,8 +14,7 @@ local structure DI = DebIndex
       structure LT = LtyExtern
       structure FU = FlintUtil
       structure PO = PrimOp
-      structure S  = Intset
-      structure M  = Intmap
+      structure M  = IntHashTable
       open FLINT
 in
 
@@ -46,10 +45,10 @@ datatype info
 
 exception LContPass1
 fun pass1 fdec = 
-  let val zz : (DI.depth option) Intmap.intmap = Intmap.new(32, LContPass1)
-      val add = Intmap.add zz
-      val get = Intmap.map zz
-      val rmv = Intmap.rmv zz
+  let val zz : (DI.depth option) M.hash_table = M.mkTable(32, LContPass1)
+      val add = M.insert zz
+      val get = M.lookup zz
+      fun rmv i = ignore (M.remove zz i) handle _ => ()
       fun enter(x, d) = add(x, SOME d)
       fun kill x = ((get x; rmv x) handle _ => ())
       fun mark nd x = 
@@ -96,7 +95,7 @@ fun pass1 fdec =
          in pse e
         end
 
-   in lpfd DI.top fdec; (cand, fn () => Intmap.clear zz)
+   in lpfd DI.top fdec; (cand, fn () => M.clear zz)
   end (* pass1 *)
 
 (************************************************************************
@@ -117,11 +116,11 @@ val (isCand, cleanUp) =
  if init then (fn _ => false, fn () => ()) else pass1 fdec
 
 exception LContract
-val m : (int ref * info) Intmap.intmap = Intmap.new(32, LContract)
+val m : (int ref * info) M.hash_table = M.mkTable(32, LContract)
 
-val enter = Intmap.add m
-val get = Intmap.map m
-val kill = Intmap.rmv m
+val enter = M.insert m
+val get = M.lookup m
+fun kill i = ignore (M.remove m i) handle _ => ()
 
 fun chkIn (v, info) = enter(v, (ref 0, info))
 
@@ -382,7 +381,7 @@ end (* branchopt local *)
 val d = DI.top
 val (fk, f, vts, e) = fdec
 in (fk, f, vts, #1 (loop e))
-   before (Intmap.clear m; cleanUp())
+   before (M.clear m; cleanUp())
 end (* function lcontract *)
 
 (** run the lambda contraction twice *)

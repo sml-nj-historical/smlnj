@@ -21,7 +21,7 @@
 
 signature ETASPLIT =
   sig val etasplit : {function: CPS.function,
-		      table: LtyDef.lty Intmap.intmap,
+		      table: LtyDef.lty IntHashTable.hash_table,
 		      click: string -> unit} -> CPS.function
   end (* signature ETASPLIT *)
 
@@ -50,29 +50,30 @@ val type_flag = (!Control.CG.checkcps1) andalso rep_flag
 exception SPLIT1
 fun getty v = 
   if type_flag 
-  then (Intmap.map typtable v) handle _ =>
+  then (IntHashTable.lookup typtable v) handle _ =>
                 (Control.Print.say ("SPLIT1: Can't find the variable "^
                             (Int.toString v)^" in the typtable ***** \n");
                  raise SPLIT1)
   else LtyExtern.ltc_void
 
-fun addty(f,t) = if type_flag then Intmap.add typtable (f,t) else ()
+fun addty(f,t) = if type_flag then IntHashTable.insert typtable (f,t) else ()
 fun copyLvar v = let val x = LV.dupLvar(v)
                   in (addty(x,getty v); x)
                  end
 
 local exception SPLIT2
-      val m : value Intmap.intmap = Intmap.new(32, SPLIT2)
-in  fun makealias x = (sameName x; Intmap.add m x)
-    fun alias (VAR v) = (SOME(Intmap.map m v) handle SPLIT2 => NONE)
+      val m : value IntHashTable.hash_table = IntHashTable.mkTable(32, SPLIT2)
+in  fun makealias x = (sameName x; IntHashTable.insert m x)
+    fun alias (VAR v) = (SOME(IntHashTable.lookup m v) handle SPLIT2 => NONE)
       | alias _ = NONE
 end
 
 local exception SPLIT3
-      val m : {used : int ref, called : int ref} Intmap.intmap =
-		 Intmap.new(32,SPLIT3)
-in  val get = Intmap.map m
-    fun enterFN(_,f,_,_,_) = Intmap.add m (f,{used=ref 0,called=ref 0})
+      val m : {used : int ref, called : int ref} IntHashTable.hash_table =
+		 IntHashTable.mkTable(32,SPLIT3)
+in  val get = IntHashTable.lookup m
+    fun enterFN(_,f,_,_,_) =
+	IntHashTable.insert m (f,{used=ref 0,called=ref 0})
       (* Perhaps I shouldn't bother to enterFN continuations... *)
     fun use (VAR v) =
       (let val {used=u,...} = get v

@@ -6,7 +6,9 @@ Library
 	signature BITSET
 	signature CATNETABLE_LIST
 	signature FREQ
+(*
 	signature INTMAP
+*)
 	signature PRIORITY_QUEUE
 	signature STRING_OUTSTREAM
 	structure Annotations
@@ -15,7 +17,9 @@ Library
 	structure DynArray
 	structure Freq
 	structure HashArray
+(*
 	structure Intmap
+*)
 	structure PriorityHeap
 	structure PriorityQueue
 	structure SortedList
@@ -65,8 +69,10 @@ is
 	library/hashSet.sml
 	library/int-set.sml
  *)
+(*
 	library/intmap.sig
 	library/intmap.sml
+*)
 	library/heap.sml
 	library/priQueue.sig
 	library/priQueue.sml

@@ -29,8 +29,8 @@ CodeGen/hppa/hppagen.sml
 CodeGen/hppa/hppaspec.sml
 
 $/basis.cm
+$/smlnj-lib.cm
 $smlnj/viscomp/core.cm
-$/comp-lib.cm
 $MLRISC/Control.cm
 $MLRISC/MLRISC.cm
 $MLRISC/HPPA.cm

@@ -29,7 +29,7 @@ sig
    eqtype cellkind 
    type cell = int
    type ty   = int
-   type regmap = cell Intmap.intmap
+   type regmap = cell IntHashTable.hash_table
    exception Cells
 
    val cellkinds : cellkind list  (* list of all the cellkinds *)

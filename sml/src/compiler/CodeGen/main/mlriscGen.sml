@@ -221,7 +221,7 @@ struct
 
       val _       = if gctypes then
                     let val gcMap = GCCells.newGCMap()
-                        val enterGCTy = Intmap.add gcMap;
+                        val enterGCTy = IntHashTable.insert gcMap;
                     in  enterGC := enterGCTy;
                         GCCells.setGCMap gcMap 
                     end
@@ -262,16 +262,18 @@ struct
        * external labels. 
        *)
       exception LabelBind and TypTbl
-      val labelTbl : Label.label Intmap.intmap = Intmap.new(32, LabelBind)
-      val functionLabel = Intmap.map labelTbl
-      val addLabelTbl = Intmap.add labelTbl
+      val labelTbl : Label.label IntHashTable.hash_table =
+	  IntHashTable.mkTable(32, LabelBind)
+      val functionLabel = IntHashTable.lookup labelTbl
+      val addLabelTbl = IntHashTable.insert labelTbl
 
       (* 
        * typTbl is a mapping of CPS.lvars to CPS types
        *) 
-      val typTbl  : CPS.cty Intmap.intmap = Intmap.new(32, TypTbl)
-      val addTypBinding = Intmap.add typTbl
-      val typmap = Intmap.map typTbl
+      val typTbl  : CPS.cty IntHashTable.hash_table =
+	  IntHashTable.mkTable(32, TypTbl)
+      val addTypBinding = IntHashTable.insert typTbl
+      val typmap = IntHashTable.lookup typTbl
 
       (*
        * mkGlobalTables define the labels and cty for all CPS functions
@@ -316,18 +318,21 @@ struct
            * genTbl -- is used to retrieve the parameter passing 
            * conventions once a function has been compiled.
            *)
-          val genTbl : Frag.frag Intmap.intmap = Intmap.new(clusterSize, GenTbl)
-          val addGenTbl = Intmap.add genTbl
-          val lookupGenTbl = Intmap.map genTbl
+          val genTbl : Frag.frag IntHashTable.hash_table =
+	      IntHashTable.mkTable(clusterSize, GenTbl)
+          val addGenTbl = IntHashTable.insert genTbl
+          val lookupGenTbl = IntHashTable.lookup genTbl
 
           (* 
            * {fp,gp}RegTbl -- mapping of lvars to registers  
            *)
-          val fpRegTbl : M.fexp Intmap.intmap = Intmap.new(2, RegMap)
-          val gpRegTbl : M.rexp Intmap.intmap = Intmap.new(32, RegMap)
-          val addExpBinding = Intmap.add gpRegTbl
+          val fpRegTbl : M.fexp IntHashTable.hash_table =
+	      IntHashTable.mkTable(2, RegMap)
+          val gpRegTbl : M.rexp IntHashTable.hash_table =
+	      IntHashTable.mkTable(32, RegMap)
+          val addExpBinding = IntHashTable.insert gpRegTbl
           fun addRegBinding(x,r) = addExpBinding(x,M.REG(ity,r))
-          val addFregBinding = Intmap.add fpRegTbl
+          val addFregBinding = IntHashTable.insert fpRegTbl
 
           (*
            * The following function is used to translate CPS into 
@@ -337,18 +342,19 @@ struct
            *)
           datatype treeify = TREEIFY | TREEIFIED | COMPUTE | DEAD
           exception UseCntTbl 
-          val useCntTbl : treeify Intmap.intmap = Intmap.new(32, UseCntTbl)
-          val treeify = Intmap.mapWithDefault(useCntTbl,DEAD)
-          val addCntTbl = Intmap.add useCntTbl
+          val useCntTbl : treeify IntHashTable.hash_table =
+	      IntHashTable.mkTable(32, UseCntTbl)
+          fun treeify i = getOpt (IntHashTable.find useCntTbl i, DEAD)
+          val addCntTbl = IntHashTable.insert useCntTbl
           fun markAsTreeified r = addCntTbl(r, TREEIFIED)
           (*
            * Reset the bindings and use count tables. These tables
            * can be reset at the same time.
            *)
           fun clearTables() =
-              (Intmap.clear gpRegTbl; 
-               Intmap.clear fpRegTbl; 
-               Intmap.clear useCntTbl
+              (IntHashTable.clear gpRegTbl; 
+               IntHashTable.clear fpRegTbl; 
+               IntHashTable.clear useCntTbl
               ) 
 
           (* 
@@ -434,7 +440,7 @@ struct
            * The following function looks up the MLTREE expression associated
            * with a general purpose value expression. 
            *)
-          val lookupGpRegTbl = Intmap.map gpRegTbl  
+          val lookupGpRegTbl = IntHashTable.lookup gpRegTbl  
 
           (*
            * This function resolve the address computation of the
@@ -477,7 +483,7 @@ struct
            * The following function looks up the MLTREE expression associated
            * with a floating point value expression. 
            *)
-          val lookupFpRegTbl = Intmap.map fpRegTbl
+          val lookupFpRegTbl = IntHashTable.lookup fpRegTbl
           fun fregbind(CPS.VAR v) = lookupFpRegTbl v
             | fregbind _ = error "fregbind"
 
@@ -1853,7 +1859,7 @@ struct
       in
           initFrags cluster;
           beginCluster 0;
-          if gctypes then Intmap.clear(GCCells.getGCMap()) else ();
+          if gctypes then IntHashTable.clear(GCCells.getGCMap()) else ();
           fragComp();
           InvokeGC.emitLongJumpsToGCInvocation stream;
           endCluster(clusterAnnotations())

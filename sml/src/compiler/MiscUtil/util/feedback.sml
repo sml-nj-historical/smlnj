@@ -27,7 +27,15 @@ structure Feedback :
 *)
 
 struct
-   
+
+(* I want to get rid of SortedList, so I fake the required routines here.
+ * Eventually, this module should be cleaned up!
+ *   - Matthias 11/2000 *)
+
+val sluniq = SortedList.uniq
+val slmember = SortedList.member
+val sldiff = SortedList.difference   
+
 type node = int * int list
 type graph = node list
 
@@ -45,7 +53,7 @@ fun forall nil f = () | forall (a::r) f = (f a; forall r f)
 fun filter f nil = nil | filter f (x::rest) = if f x then x::filter f rest
                                                      else filter f rest
 
-val normalize : graph -> graph = map (fn(n,e)=>(n,SortedList.uniq e))
+val normalize : graph -> graph = map (fn(n,e)=>(n,sluniq e))
 
 fun scc nil = nil   (* quickie special case; the general case still works
 		       but is slower *)
@@ -54,8 +62,8 @@ let exception Unseen
     type info = {dfsnum: int ref, 
 		 sccnum: int ref, 
 		 edges: int list}
-    val m : info Intmap.intmap = Intmap.new(32,Unseen)
-    val lookup = Intmap.map m
+    val m : info IntHashTable.hash_table = IntHashTable.mkTable(32,Unseen)
+    val lookup = IntHashTable.lookup m
 
     val compnums = ref 0 and id = ref 0
     val comps = ref (nil: (int * int list) list list)
@@ -99,7 +107,7 @@ let exception Unseen
 
  in (*print "\nInput: "; forall nodes (fn (i,_) => (print i; print " "));*)
     forall nodes
-     (fn (f,edges) => Intmap.add m 
+     (fn (f,edges) => IntHashTable.insert m 
               (f,{dfsnum=ref ~1, sccnum=ref ~1, edges=edges}));
     forall nodes (fn (vertex,edges) => scc' vertex);
 (*    print "\nOutput:";
@@ -184,14 +192,14 @@ fun feedback1 graph = case feedb(length graph, graph,MAXDEPTH)
                        of SOME set => set
  
 fun pruneMany (out,g) =
-   let val out' = SortedList.uniq out
-       fun pruneNode(n,e) = (n,SortedList.difference(e,out'))
+   let val out' = sluniq out
+       fun pruneNode(n,e) = (n,sldiff(e,out'))
     in map pruneNode g
    end
 
 fun selfloops ((n,e)::rest) = 
     let val (selfn,nonselfn) = selfloops rest
-     in if SortedList.member e n
+     in if slmember e n
          then (n::selfn,nonselfn)
          else (selfn,(n,e)::nonselfn)
     end   

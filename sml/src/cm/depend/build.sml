@@ -22,6 +22,7 @@ signature BUILDDEPEND = sig
 	->
 	impexp SymbolMap.map		(* exports *)
 	* GroupGraph.privileges		(* required privileges (aggregate) *)
+	* SymbolSet.set			(* imported symbols *)
 
     (* for the autoloader *)
     type looker = Symbol.symbol -> DAEnv.env
@@ -122,6 +123,11 @@ structure BuildDepend :> BUILDDEPEND = struct
 	fun release (i, r) = (bb := SmlInfoMap.insert (!bb, i, SOME r); r)
 	fun fetch i = SmlInfoMap.find (!bb, i)
 
+	(* We collect all imported symbols so that we can then narrow
+	 * the list of libraries. *)
+	val gi_syms = ref SymbolSet.empty
+	fun add_gi_sym s = gi_syms := SymbolSet.add (!gi_syms, s)
+
 	(* - get the result from the blackboard if it is there *)
 	(* - otherwise trigger analysis *)
 	(* - detect cycles using locking *)
@@ -172,9 +178,10 @@ structure BuildDepend :> BUILDDEPEND = struct
 		else li := n :: !li
 
 	    (* register a global import, maintain filter sets *)
-	    fun globalImport (f, n) = let
+	    fun globalImport (s, (f, n)) = let
 		fun sameN (_, n') = DG.sbeq (n, n')
 	    in
+		add_gi_sym s;
 		case List.find sameN (!gi) of
 		    NONE => gi := (f, n) :: !gi (* brand new *)
 		  | SOME (NONE, n') => () (* no filter -> no change *)
@@ -203,7 +210,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 		fun dontcomplain s = DE.EMPTY
 		fun lookfar () =
 		    case SM.find (imports, s) of
-			SOME (farnth, e, _) => (globalImport (farnth ());
+			SOME (farnth, e, _) => (globalImport (s, farnth ());
 						look dontcomplain e s)
 		      | NONE =>
 			    (* We could complain here about an undefined
@@ -275,12 +282,17 @@ structure BuildDepend :> BUILDDEPEND = struct
 
 	val exports =
 	    case fopt of
-		NONE =>
+		NONE => let
 		    (* There is no filter -- so we are in an ordinary
 		     * group and should export all gimports as well as
 		     * all local definitions.
 		     * No filter strengthening is necessary. *)
-		    SM.unionWith #1 (localmap, gimports)
+		    fun add (s, b, m) =
+			if SM.inDomain (localmap, s) then m
+			else (add_gi_sym s; SM.insert (m, s, b))
+		in
+		     SM.foldli add localmap gimports
+		end
 	      | SOME ss => let
 		    (* There is a filter.
 		     * We export only the things in the filter.
@@ -297,20 +309,23 @@ structure BuildDepend :> BUILDDEPEND = struct
 		    in
 			(nth', DE.FILTER (ss, e), SS.intersection (allsyms,ss))
 		    end
-		    val availablemap = SM.unionWith #1 (localmap, imports)
 		    fun addNodeFor (s, m) =
-			case SM.find (availablemap, s) of
+			case SM.find (localmap, s) of
 			    SOME n => SM.insert (m, s, strengthen n)
 			  | NONE =>
-				(* This should never happen since we
-				 * checked beforehand during
-				 * parsing/semantic analysis *)
-				EM.impossible "build: undefined export"
+			    (case SM.find (imports, s) of
+				 SOME n => (add_gi_sym s;
+					    SM.insert (m, s, strengthen n))
+			       | NONE => 
+				 (* This should never happen since we
+				  * checked beforehand during
+				  * parsing/semantic analysis *)
+				 EM.impossible "build: undefined export")
 		in
 		    SS.foldl addNodeFor SM.empty ss
 		end
     in
 	CheckSharing.check (exports, gp);
-	(exports, reqpriv)
+	(exports, reqpriv, !gi_syms)
     end
 end

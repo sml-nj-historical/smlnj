@@ -3,13 +3,13 @@ struct
 
    structure GC = GC
    exception GCMap
-   type gcmap = GC.gctype Intmap.intmap
+   type gcmap = GC.gctype IntHashTable.hash_table
 
    val GCMAP = Annotations.new(SOME(fn _ => "gcmap")) 
                  : gcmap Annotations.property
 
    fun toString gcmap =
-   let val lookup = Intmap.map gcmap
+   let val lookup = IntHashTable.lookup gcmap
        fun f r = "{"^GC.toString(lookup r)^"}" handle _ => "{?}"
    in  f end
 

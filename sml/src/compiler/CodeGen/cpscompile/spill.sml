@@ -153,10 +153,10 @@ fun partition f l =
  ***************************************************************************)
 
 exception SpillCtyMap
-val ctymap : cty Intmap.intmap = Intmap.new(32,SpillCtyMap)
-fun clearCtyMap() = Intmap.clear ctymap
-fun getty v = Intmap.mapWithDefault (ctymap,BOGt) v
-val addty = Intmap.add ctymap 
+val ctymap : cty IntHashTable.hash_table = IntHashTable.mkTable(32,SpillCtyMap)
+fun clearCtyMap() = IntHashTable.clear ctymap
+fun getty v = getOpt (IntHashTable.find ctymap v, BOGt)
+val addty = IntHashTable.insert ctymap 
 fun copyLvar v = let val p = (LV.dupLvar v, getty v) in addty p; p end
 fun floatP v = case (getty v) of FLTt => true | _ => false
 
@@ -177,9 +177,10 @@ val _ = clearCtyMap()
 val _ = app2 addty (vl,cl)
 val freevars = 
  let exception SpillFreemap
-     val m = Intmap.new(32, SpillFreemap) : lvar list Intmap.intmap
-     val _ = FreeMap.freemap (Intmap.add m) body
-  in fn x => ((Intmap.map m x) handle SpillFreemap => 
+     val m = IntHashTable.mkTable(32, SpillFreemap)
+	     : lvar list IntHashTable.hash_table
+     val _ = FreeMap.freemap (IntHashTable.insert m) body
+  in fn x => ((IntHashTable.lookup m x) handle SpillFreemap => 
                     (pr "compiler bugs in spill.sml:  "; 
                      (pr o Int.toString) x; pr "  \n";
                      raise SpillFreemap))
@@ -337,11 +338,12 @@ end
 local
   exception TooMany
   exception FloatSet
-  val floatset : bool Intmap.intmap = Intmap.new(32,FloatSet)
-  fun fltM(v,FLTt) = Intmap.add floatset (v,true)
+  val floatset : bool IntHashTable.hash_table =
+      IntHashTable.mkTable(32,FloatSet)
+  fun fltM(v,FLTt) = IntHashTable.insert floatset (v,true)
     | fltM _ = ()
-  val fltP = Intmap.mapWithDefault (floatset,false)
-  fun clearSet() = Intmap.clear floatset
+  fun fltP v = getOpt (IntHashTable.find floatset v, false)
+  fun clearSet() = IntHashTable.clear floatset
   val dummyM = fn _ => ()
   val dummyP = fn _ => true
 in
@@ -394,12 +396,13 @@ end (* local dec for the "check" function *)
  *****************************************************************************)
 fun improve cexp = 
   let exception Spillmap
-      val m : (int ref*int*value) Intmap.intmap = Intmap.new(32,Spillmap)
-      val enter = Intmap.add m
-      val lookup = Intmap.map m
+      val m : (int ref*int*value) IntHashTable.hash_table =
+	  IntHashTable.mkTable(32,Spillmap)
+      val enter = IntHashTable.insert m
+      val lookup = IntHashTable.lookup m
       fun get(VAR x) = (SOME(lookup x) handle Spillmap => NONE)
         | get _ = NONE
-      fun kill(VAR v) = Intmap.rmv m v
+      fun kill(VAR v) = (ignore (IntHashTable.remove m v) handle _ => ())
         | kill _ = ()
       fun use v = case get v of SOME(r as ref 0,i,w) => r := 1
 		              | SOME _ => kill v
@@ -437,7 +440,7 @@ fun improve cexp =
 	 | ARITH(i,vl,w,t,e) => ARITH(i,vl,w,t,g e)
 	 | PURE(i,vl,w,t,e) => PURE(i,vl,w,t,g e)
 
-      val count = (pass1 cexp; Intmap.elems m)
+      val count = (pass1 cexp; IntHashTable.numItems m)
 
       val _ = if (!CGoptions.debugcps) then
                 (pr "count="; (pr o Int.toString) count; pr "\n") 

@@ -30,15 +30,16 @@ struct
     if (n > spillAreaSz) then error "newOffset - spill area is too small"
     else spillOffset := n
   
-  val spillTbl : I.operand Intmap.intmap = Intmap.new(0, RegSpills)
-  val lookupTbl = Intmap.map spillTbl
-  val addTbl    = Intmap.add spillTbl
+  val spillTbl : I.operand IntHashTable.hash_table =
+      IntHashTable.mkTable(0, RegSpills)
+  val lookupTbl = IntHashTable.lookup spillTbl
+  val addTbl    = IntHashTable.insert spillTbl
 
   fun init () = 
     (spillOffset:=initialSpillOffset; 
      availableOffsets := [];
      availableFPOffsets := [];
-     Intmap.clear spillTbl
+     IntHashTable.clear spillTbl
     )
 
   val toInt32 = Int32.fromInt

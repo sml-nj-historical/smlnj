@@ -7,7 +7,6 @@
 structure SparcCpsRegs : CPSREGS = 
 struct
   structure T = SparcMLTree
-  structure SL = SortedList
   structure C = SparcCells
 
   val GP = C.GPReg
@@ -49,15 +48,24 @@ struct
   val floatregs = map FREG (fromto(0,31,2))
   val savedfpregs = []
 
-  val allRegs = SL.uniq(fromto(GP 0,GP 31,1))
-
   val availR = 
     map (fn T.REG(_,r) => r)
         ([stdlink, stdclos, stdarg, stdcont, gcLink] @ miscregs)
-  val dedicatedR = SL.remove(SL.uniq availR, allRegs)
 
-  val availF = SL.uniq(fromto(FP 0, FP 30, 2))
-  val dedicatedF = []
+  local
+      structure ILS = IntListSet
+      fun l2s l = ILS.addList (ILS.empty, l)
+      val s2l = ILS.listItems
+      val -- = ILS.difference
+      infix --
+  in
+      val allRegs = l2s (fromto(GP 0,GP 31,1))
+      val dedicatedR = s2l (allRegs -- l2s availR)
+
+      val availF =  s2l (l2s (fromto(FP 0, FP 30, 2)))
+      val dedicatedF = []
+  end
+
   val signedGCTest = false
   val addressWidth = 32
 end

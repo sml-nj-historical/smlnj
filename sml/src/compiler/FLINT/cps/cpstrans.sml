@@ -24,14 +24,14 @@ val unboxedfloat = MachSpec.unboxedFloats
 val untaggedint = MachSpec.untaggedInt
 
 exception CPSSUBST
-val M : value Intmap.intmap = Intmap.new(32,CPSSUBST)
-val addvl = Intmap.add M 
-fun mapvl v = ((Intmap.map M v) handle CPSSUBST => VAR v)
+val M : value IntHashTable.hash_table = IntHashTable.mkTable(32,CPSSUBST)
+val addvl = IntHashTable.insert M 
+fun mapvl v = ((IntHashTable.lookup M v) handle CPSSUBST => VAR v)
 
 exception CTYMAP
-val CT : cty Intmap.intmap = Intmap.new(32,CTYMAP)
-val addty = Intmap.add CT
-val getty = Intmap.map CT
+val CT : cty IntHashTable.hash_table = IntHashTable.mkTable(32,CTYMAP)
+val addty = IntHashTable.insert CT
+val getty = IntHashTable.lookup CT
 fun grabty(VAR v) = ((getty v) handle _ => BOGt)
   | grabty(REAL _) = FLTt
   | grabty(INT _) = INTt

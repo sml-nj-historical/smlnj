@@ -94,11 +94,13 @@ structure X86CG =
 
       (* For dead code elimination *)
       exception X86DeadCode
-      val affectedBlocks = Intmap.new(32,X86DeadCode) : bool Intmap.intmap
-      val deadRegs       = Intmap.new(32,X86DeadCode) : bool Intmap.intmap
+      val affectedBlocks =
+	  IntHashTable.mkTable(32,X86DeadCode) : bool IntHashTable.hash_table
+      val deadRegs       =
+	  IntHashTable.mkTable(32,X86DeadCode) : bool IntHashTable.hash_table
       fun removeDeadCode(F.CLUSTER{blocks, ...}) =
-      let val isDead = Intmap.mapWithDefault(deadRegs, false) 
-          val isAffected = Intmap.mapWithDefault(affectedBlocks, false) 
+      let fun isDead i = getOpt (IntHashTable.find deadRegs i, false)
+          fun isAffected i = getOpt (IntHashTable.find affectedBlocks i, false)
           fun isDeadInstr(I.ANNOTATION{i, ...}) = isDeadInstr i 
             | isDeadInstr(I.MOVE{dst=I.Direct rd, ...}) = isDead rd
             | isDeadInstr(I.MOVE{dst=I.MemReg rd, ...}) = isDead rd
@@ -117,8 +119,10 @@ structure X86CG =
             if isDeadInstr i then 
                ((* deadcode := !deadcode + 1; *) elim(instrs, code))
             else elim(instrs, i::code)
-      in if Intmap.elems affectedBlocks > 0 then 
-            (scan blocks; Intmap.clear deadRegs; Intmap.clear affectedBlocks)
+      in if IntHashTable.numItems affectedBlocks > 0 then 
+            (scan blocks;
+	     IntHashTable.clear deadRegs;
+	     IntHashTable.clear affectedBlocks)
          else ()
       end
 
@@ -134,7 +138,7 @@ structure X86CG =
          val firstFPSpill = ref true
          fun spillInit(GRAPH{nodes, ...}, I.C.GP) = 
              if !firstSpill then (* only do this once! *)
-             let val lookup = Intmap.map nodes
+             let val lookup = IntHashTable.lookup nodes
                  fun find(r, free) =
                      if r >= 10 then (* note, %8 and %9 are reserved! *)
                         let val free = 
@@ -152,7 +156,7 @@ structure X86CG =
               else ()
             | spillInit(GRAPH{nodes, ...}, I.C.FP) = 
               if !firstFPSpill andalso !fast_floating_point then
-              let val lookup = Intmap.map nodes
+              let val lookup = IntHashTable.lookup nodes
                  fun find(r, free) =
                      if r >= 32+8 then 
                         let val free = 
@@ -363,8 +367,8 @@ structure X86CG =
       fun spillInit () = 
         (firstSpill := true;
          firstFPSpill := true;
-         Intmap.clear affectedBlocks; 
-         Intmap.clear deadRegs;
+         IntHashTable.clear affectedBlocks; 
+         IntHashTable.clear deadRegs;
          X86StackSpills.init(); 
          if !fast_floating_point then FR8.reset() else FR32.reset(); 
          GR8.reset())

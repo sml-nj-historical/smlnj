@@ -332,7 +332,7 @@ MiscUtil/profile/btimp.sml
 
 MiscUtil/util/errormsg.sig
 MiscUtil/util/errormsg.sml
-MiscUtil/util/feedback.sml
+MiscUtil/util/feedback-new.sml
 MiscUtil/util/intstrmap.sig
 MiscUtil/util/intstrmap.sml
 MiscUtil/util/literal-to-num.sml
@@ -344,10 +344,15 @@ MiscUtil/util/sourcemap.sig
 MiscUtil/util/sourcemap.sml
 MiscUtil/util/stats.sml
 
+(* The following used to be in $/comp-lib.cm -- which I wanted to
+ * get rid of.  Eventually, someone should clean up all uses of
+ * structure SortedList -- either using IntListSet or IntRedBlackSet. *)
+MiscUtil/library/sortedlist.sml
+
 $/basis.cm
-$/ml-yacc-lib.cm
 $/smlnj-lib.cm
-$/comp-lib.cm
-$/pp-lib.cm
+$/ml-yacc-lib.cm
+$/pickle-lib.cm
 $MLRISC/Control.cm
 $MLRISC/MLRISC.cm
+$/pp-lib.cm

@@ -103,9 +103,9 @@ struct
        and sizeOfs([],hp)    = hp
          | sizeOfs(k::ks,hp) = Int.max(sizeOf(k,hp),sizeOfs(ks,hp))
 
-       val locMap = Intmap.new(37,NotFound) (* lvar -> loc *)
-       val look   = Intmap.map locMap
-       val bind   = Intmap.add locMap 
+       val locMap = IntHashTable.mkTable(37,NotFound) (* lvar -> loc *)
+       val look   = IntHashTable.lookup locMap
+       val bind   = IntHashTable.insert locMap 
 
        val newMem = Cells.newCell Cells.MEM
 

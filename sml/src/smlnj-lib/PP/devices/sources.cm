@@ -12,14 +12,14 @@ Group (../pp-lib.cm)
 
 is
 #if defined(NEW_CM)
+  ../src/sources.cm
   $/basis.cm
   $/smlnj-lib.cm
   $/html-lib.cm
-  ../src/sources.cm
 #else
+  ../src/sources.cm
   ../../Util/smlnj-lib.cm
   ../../HTML/html-lib.cm
-  ../src/sources.cm
 #endif
 
   textio-pp.sml

@@ -28,8 +28,8 @@ struct
 
   datatype interferenceGraph = 
    GRAPH of { bitMatrix    : bitMatrix ref,
-              nodes        : node Intmap.intmap,
-              regmap       : int Intmap.intmap,
+              nodes        : node IntHashTable.hash_table,
+              regmap       : int IntHashTable.hash_table,
               K            : int,
               firstPseudoR : int,
               dedicated    : bool Array.array,
@@ -42,7 +42,7 @@ struct
 
              (* Info to undo a spill when an optimistic spill has occurred *)
               spillFlag    : bool ref,
-              spilledRegs  : bool Intmap.intmap,
+              spilledRegs  : bool IntHashTable.hash_table,
               trail        : trailInfo ref,
 
               showReg      : int -> string,
@@ -55,7 +55,7 @@ struct
               memRegs      : node list ref,
 
               spillLoc     : int ref,
-              span         : int Intmap.intmap option ref,
+              span         : int IntHashTable.hash_table option ref,
               mode         : mode,
               pseudoCount  : int ref,
               blockedCount : int ref
@@ -149,7 +149,7 @@ struct
       (* Make memory register nodes *)
       fun makeMemRegs [] = []
         | makeMemRegs(ranges) = 
-          let val add = Intmap.add nodes
+          let val add = IntHashTable.insert nodes
               fun loop(from, to, ns) = 
                   if from > to then ns 
                   else 
@@ -178,7 +178,7 @@ struct
              proh         = proh,
              stamp        = stampCounter,
              spillFlag    = ref false,
-             spilledRegs  = Intmap.new(2,Nodes),
+             spilledRegs  = IntHashTable.mkTable(2,Nodes),
              trail        = ref END,
              showReg      = Int.toString,
              numRegs      = numRegs,

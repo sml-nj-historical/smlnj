@@ -13,6 +13,28 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/11/17 14:10:00 JST
+Tag: blume-20001117-pickle-lib
+Description:
+
+1. Eliminated comp-lib.cm
+2. Made pickle-lib.cm
+3. Eliminated all uses of intset.sml (from comp-lib.cm)
+4. Replaced all uses of intmap.{sig,sml} (from comp-lib.cm) with
+   equivalent constructs from smlnj-lib.cm (INtHashTable).
+5. Point 4. also goes for those uses of intmap.* in MLRISC.
+   Duplicated intmap modules thrown out.
+6. Hunted down all duplicated SCC code and replaced it with
+   equivalent stuff (GraphSCCFn from smlnj-lib.cm).
+7. Rewrote Feedback module.
+8. Moved sortedlist.sml into viscomp-lib.cm.  Eventually it
+   should be thrown out and equivalent modules from smlnj-lib.cm
+   should be used (IntRedBlackSet, IntListSet, ...).
+
+Confirmed that compiler compiles to fixpoint.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2000/11/10 18:00:00
 Tag: leunga-20001110-new-x86-fp

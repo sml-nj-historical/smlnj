@@ -19,7 +19,8 @@ val say = Control.Print.say
 
 (** obsolete table: used by cpsopt as a dummy template *)
 exception ZZZ
-val dummyTable : FLINT.lty Intmap.intmap = Intmap.new(32, ZZZ) 
+val dummyTable : FLINT.lty IntHashTable.hash_table =
+    IntHashTable.mkTable(32, ZZZ) 
 
 (** the main function reduce *)
 fun reduce (function, _, afterClosure) = 

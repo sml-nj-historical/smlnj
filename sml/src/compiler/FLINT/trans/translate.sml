@@ -174,11 +174,12 @@ type key = int
 
 (** hashkey of accesspath + accesspath + resvar *)
 type info = (key * int list * lvar) 
-val hashtable : info list Intmap.intmap = Intmap.new(32,HASHTABLE)    
+val hashtable : info list IntHashTable.hash_table =
+    IntHashTable.mkTable(32,HASHTABLE)    
 fun hashkey l = foldr (fn (x,y) => ((x * 10 + y) mod 1019)) 0 l
 
 fun buildHdr v = 
-  let val info = Intmap.map hashtable v
+  let val info = IntHashTable.lookup hashtable v
       fun h((_, l, w), hdr) = 
              let val le = foldl (fn (k,e) => SELECT(k,e)) (VAR v) l
 	      in fn e => hdr(LET(w, le, e))
@@ -188,11 +189,11 @@ fun buildHdr v =
 
 fun bindvar (v, [], _) =  v
   | bindvar (v, l, nameOp) = 
-      let val info = (Intmap.map hashtable v) handle _ => []
+      let val info = (IntHashTable.lookup hashtable v) handle _ => []
           val key = hashkey l
           fun h [] =  
                 let val u = mkvN nameOp
-                 in Intmap.add hashtable (v,(key,l,u)::info); u
+                 in IntHashTable.insert hashtable (v,(key,l,u)::info); u
                 end
             | h((k',l',w)::r) = 
                 if (k' = key) then (if (l'=l) then w else h r) else h r    

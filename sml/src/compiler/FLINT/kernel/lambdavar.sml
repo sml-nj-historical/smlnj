@@ -7,7 +7,7 @@ struct
 local 
 
 structure S = Symbol
-structure IM = Intmap
+structure IM = IntHashTable
 
 in
 
@@ -16,9 +16,9 @@ fun newLvar r () = (inc r; !r)
 val varcount = ref 0
 
 exception NoLvarName
-val lvarNames : string IM.intmap = IM.new(32, NoLvarName)
-val name = IM.map lvarNames
-val giveLvarName = IM.add lvarNames
+val lvarNames : string IM.hash_table = IM.mkTable(32, NoLvarName)
+val name = IM.lookup lvarNames
+val giveLvarName = IM.insert lvarNames
 
 type lvar = int      (* lambda variable id number *)
 

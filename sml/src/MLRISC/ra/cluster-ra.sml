@@ -101,9 +101,9 @@ struct
            val marked       = A.array(N, ~1)
 
            (* copies indexed by source *)
-           val copyTable    = Intmap.new(N, NotThere)
-           val lookupCopy   = Intmap.mapWithDefault(copyTable, [])
-           val addCopy      = Intmap.add copyTable
+           val copyTable    = IntHashTable.mkTable(N, NotThere)
+           fun lookupCopy i = getOpt (IntHashTable.find copyTable i, [])
+           val addCopy      = IntHashTable.insert copyTable
              
        
            val stamp = ref 0
@@ -241,7 +241,7 @@ struct
            end 
 
            val newNodes   = Core.newNodes G
-           val getnode    = Intmap.map nodes
+           val getnode    = IntHashTable.lookup nodes
            val insnDefUse = Props.defUse cellkind
            val getCell    = C.getCell cellkind
 
@@ -342,11 +342,13 @@ struct
 
            val (moves, tmps) = mkNodes(blocks, [], [])
            val addEdge = Core.addEdge G
-       in  Intmap.app 
+       in  IntHashTable.appi
              (let val setSpan =
                   if isOn(mode,Core.COMPUTE_SPAN) then
-                  let val spanMap = Intmap.new(Intmap.elems nodes, NotThere)
-                      val setSpan = Intmap.add spanMap
+                  let val spanMap =
+			  IntHashTable.mkTable(IntHashTable.numItems nodes,
+					       NotThere)
+                      val setSpan = IntHashTable.insert spanMap
                       val _       = span := SOME spanMap
                   in  setSpan end
                   else fn _ => ()
@@ -376,7 +378,7 @@ struct
               in  TextIO.output(!MLRiscControl.debug_stream,
                         "RA #blocks="^Int.toString N^
                         " #insns="^Int.toString insns^
-                        " #nodes="^Int.toString(Intmap.elems nodes)^
+                        " #nodes="^Int.toString(IntHashTable.numItems nodes)^
                         " #edges="^Int.toString(Core.BM.size(!bitMatrix))^
                         " #moves="^Int.toString(length moves)^"\n")
               end
@@ -403,13 +405,16 @@ struct
            val _ = Core.clearGraph graph
 
            (* maps program point to registers to be spilled *)
-           val spillSet = Intmap.new(32, NotThere) : C.cell list Intmap.intmap
+           val spillSet = IntHashTable.mkTable(32, NotThere)
+			  : C.cell list IntHashTable.hash_table
 
            (* maps program point to registers to be reloaded *)
-           val reloadSet = Intmap.new(32, NotThere) : C.cell list Intmap.intmap
+           val reloadSet = IntHashTable.mkTable(32, NotThere)
+			   : C.cell list IntHashTable.hash_table
 
            (* maps program point to registers to be killed *)
-           val killSet = Intmap.new(32, NotThere) : C.cell list Intmap.intmap
+           val killSet = IntHashTable.mkTable(32, NotThere)
+			 : C.cell list IntHashTable.hash_table
 
            val spillRewrite = Spill.spillRewrite
                               { graph=graph,
@@ -427,13 +432,14 @@ struct
                               }
 
            (* set of basic blocks that are affected *)
-           val affectedBlocks = Intmap.new(32, NotThere) : bool Intmap.intmap
+           val affectedBlocks = IntHashTable.mkTable(32, NotThere)
+				: bool IntHashTable.hash_table
 
-           val addAffectedBlocks = Intmap.add affectedBlocks
+           val addAffectedBlocks = IntHashTable.insert affectedBlocks
 
            fun ins set = let
-               val add  = Intmap.add set
-               val look = Intmap.mapWithDefault(set, [])
+               val add  = IntHashTable.insert set
+               fun look i = getOpt (IntHashTable.find set i, [])
                fun enter(r, []) = ()
                  | enter(r, pt::pts) = 
                    (add (pt, r::look pt);
@@ -447,8 +453,8 @@ struct
            val insReloadSet = ins reloadSet
            val insKillSet   = 
 	     let
-               val add  = Intmap.add killSet
-               val look = Intmap.mapWithDefault(killSet, [])
+               val add  = IntHashTable.insert killSet
+               fun look i = getOpt (IntHashTable.find killSet i, [])
                fun enter(r, []) = ()
                  | enter(r, pt::pts) = (add(pt, r::look pt); enter(r, pts))
              in  enter 
@@ -501,7 +507,7 @@ struct
 	       | REMOVED =>  error "mark: REMOVED"
              (*esac*))
        in 
-	 Intmap.app rewriteAll affectedBlocks;
+	 IntHashTable.appi rewriteAll affectedBlocks;
 	 app mark nodesToSpill;
 	 rebuild(cellkind, graph)
        end (* spill *)

@@ -41,7 +41,7 @@ signature MEMBERCOLLECTION = sig
     val build :
 	collection * SymbolSet.set option * GeneralParams.info *
 	DependencyGraph.farsbnode	(* pervasive env *)
-	-> impexp SymbolMap.map * GroupGraph.privileges
+	-> impexp SymbolMap.map * GroupGraph.privileges * SymbolSet.set
 
     val subgroups : collection -> subgroups
     val sources : collection ->
@@ -233,7 +233,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     fun build (COLLECTION c, fopt, gp, perv_fsbnode) =
 	BuildDepend.build (c, fopt, gp, perv_fsbnode)
       | build (ERRORCOLLECTION, _, _, _) =
-	(SymbolMap.empty, StringSet.empty)
+	(SymbolMap.empty, StringSet.empty, SymbolSet.empty)
 
     fun subgroups (COLLECTION { subgroups = sg, ... }) = sg
       | subgroups ERRORCOLLECTION = []

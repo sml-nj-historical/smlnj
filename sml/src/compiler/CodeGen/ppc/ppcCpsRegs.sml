@@ -7,7 +7,6 @@
 structure PPCCpsRegs : CPSREGS = 
 struct
   structure T = PPCMLTree
-  structure SL = SortedList
   fun upto (from,to) = if from>to then [] else from::(upto (from+1,to))
   infix upto
 
@@ -39,12 +38,20 @@ struct
   val floatregs = map FREG (1 upto 31)
   val savedfpregs = []
 
-  val allRegs = map GP (SL.uniq(0 upto 31))
-
   val availR = 
     map (fn T.REG(_,r) => r)
          ([stdlink, stdclos, stdarg, stdcont] @ miscregs)
-  val dedicatedR = SL.remove(SL.uniq availR, allRegs)
+
+  local
+      structure ILS = IntListSet
+      fun l2s l = ILS.addList (ILS.empty, l)
+      val s2l = ILS.listItems
+      val -- = ILS.difference
+      infix --
+  in
+      val allRegs = l2s (map GP (0 upto 31))
+      val dedicatedR = s2l (allRegs -- l2s availR)
+  end
 
   val availF = map FP (1 upto 31)
   val dedicatedF = [FP 0]

@@ -169,8 +169,8 @@ datatype dinfo
 
 type depth = DI.depth
 type info = (tyc list * lvar list) list   
-type itable = info Intmap.intmap   (* lvar -> (tyc list * lvar) *)
-type dtable = (depth * dinfo) Intmap.intmap  
+type itable = info IntHashTable.hash_table   (* lvar -> (tyc list * lvar) *)
+type dtable = (depth * dinfo) IntHashTable.hash_table  
 datatype infoEnv = IENV of (itable * (tvar * tkind) list) list * dtable 
 
 (****************************************************************************
@@ -178,20 +178,21 @@ datatype infoEnv = IENV of (itable * (tvar * tkind) list) list * dtable
  ****************************************************************************)
 (** initializing a new info environment : unit -> infoEnv *)
 fun initInfoEnv () = 
-  let val itable : itable = Intmap.new (32, ITABLE)  
-      val dtable : dtable = Intmap.new(32, DTABLE)
+  let val itable : itable = IntHashTable.mkTable (32, ITABLE)  
+      val dtable : dtable = IntHashTable.mkTable (32, DTABLE)
    in IENV ([(itable,[])], dtable)
   end
 
 (** register a definition of sth interesting into the info environment *)
-fun entDtable (IENV(_, dtable), v, ddinfo) = Intmap.add dtable (v, ddinfo)
+fun entDtable (IENV(_, dtable), v, ddinfo) =
+    IntHashTable.insert dtable (v, ddinfo)
 
 (** mark an lvar in the dtable as escape *)
 fun escDtable (IENV(_, dtable), v) = 
-  ((case Intmap.map dtable v
-     of (_, ESCAPE) => ()
-      | (d, _) => Intmap.add dtable (v, (d, ESCAPE)))
-   handle _ => ())
+    case IntHashTable.find dtable v of
+	SOME (_, ESCAPE) => ()
+      | SOME (d, _) => IntHashTable.insert dtable (v, (d, ESCAPE))
+      | NONE => ()
 
 (*
  * Register a dtable entry; modify the least upper bound of a particular
@@ -200,7 +201,7 @@ fun escDtable (IENV(_, dtable), v) =
  *)
 fun regDtable (IENV(kenv, dtable), v, infos) = 
   let val (dd, dinfo) = 
-        ((Intmap.map dtable v) handle _ => 
+        ((IntHashTable.lookup dtable v) handle _ => 
                 bug "unexpected cases in regDtable")
    in (case dinfo 
         of ESCAPE => ()
@@ -212,7 +213,7 @@ fun regDtable (IENV(kenv, dtable), v, infos) =
                         in CSTR nbnds
                        end
                  val ndinfo = foldr h dinfo infos
-              in Intmap.add dtable (v, (dd, ndinfo))
+              in IntHashTable.insert dtable (v, (dd, ndinfo))
              end)
   end (* function regDtable *)
 
@@ -222,7 +223,7 @@ fun regDtable (IENV(kenv, dtable), v, infos) =
  *)
 fun sumDtable(IENV(kenv, dtable), v, infos) = 
   let val (dd, dinfo) = 
-        ((Intmap.map dtable v) handle _ => 
+        ((IntHashTable.lookup dtable v) handle _ => 
                 bug "unexpected cases in sumDtable")
    in (case dinfo
         of ESCAPE => (dd, ESCAPE)
@@ -244,7 +245,8 @@ fun tcs_nvars tcs = SortedList.foldmerge (map LK.tc_nvars tcs)
 (** look and add a new type instance into the itable *)
 fun lookItable (IENV (itabs,dtab), d, v, ts, getlty, nv_depth) = 
   let val (dd, _) = 
-        ((Intmap.map dtab v) handle _ => bug "unexpected cases in lookItable")
+        ((IntHashTable.lookup dtab v)
+	 handle _ => bug "unexpected cases in lookItable")
 
       val nd = List.foldr Int.max dd (map nv_depth (tcs_nvars ts))
 
@@ -252,13 +254,13 @@ fun lookItable (IENV (itabs,dtab), d, v, ts, getlty, nv_depth) =
                       bug "unexpected itables in lookItable")
     
       val nts = map (fn t => LT.tc_adj(t, d, nd)) ts
-      val xi = (Intmap.map itab v) handle _ => []
+      val xi = getOpt (IntHashTable.find itab v, [])
 
       fun h ((ots,xs)::r) = if tcs_eqv(ots, nts) then (map VAR xs) else h r
         | h [] = let val oldt = getlty (VAR v)     (*** old type is ok ***)
                      val bb = LT.lt_inst(oldt, ts)
                      val nvs =  map mkv  bb
-                     val _ = Intmap.add itab (v, (nts, nvs)::xi)
+                     val _ = IntHashTable.insert itab (v, (nts, nvs)::xi)
                   in map VAR nvs
                  end
    in h xi
@@ -266,7 +268,7 @@ fun lookItable (IENV (itabs,dtab), d, v, ts, getlty, nv_depth) =
 
 (** push a new layer of type abstraction : infoEnv -> infoEnv *)
 fun pushItable (IENV(itables, dtable), tvks) = 
-  let val nt : itable = Intmap.new(32, ITABLE)
+  let val nt : itable = IntHashTable.mkTable(32, ITABLE)
    in (IENV((nt,tvks)::itables, dtable))
   end
 
@@ -277,7 +279,7 @@ fun pushItable (IENV(itables, dtable), tvks) =
 fun popItable (IENV([], _)) =
       bug "unexpected empty information env in popItable"
   | popItable (ienv as IENV((nt,_)::_, _)) = 
-      let val infos = Intmap.intMapToList nt
+      let val infos = IntHashTable.listItemsi nt
           fun h ((v,info), hdr) = 
             let val _ = regDtable(ienv, v, info)
                 fun g ((ts, xs), e) = LET(xs, TAPP(VAR v, ts), e)
@@ -290,11 +292,13 @@ fun popItable (IENV([], _)) =
 fun chkOutEsc (IENV([], _), v) =
       bug "unexpected empty information env in chkOut"
   | chkOutEsc (ienv as IENV((nt,_)::_, _), v) = 
-      let val info = (Intmap.map nt v) handle _ => []
+      let val info = getOpt (IntHashTable.find nt v, [])
           fun g ((ts, xs), e) = LET(xs, TAPP(VAR v, ts), e)
           val hdr = fn e => foldr g e info
-          val _ = Intmap.rmv nt v  (* so that v won't be considered again *)
-       in hdr
+      in
+	  (* remove this v so it won't be considered again *)
+	  ignore (IntHashTable.remove nt v) handle _ => ();
+	  hdr
       end
 
 fun chkOutEscs (ienv, vs) = 
@@ -308,7 +312,7 @@ fun chkOutNorm (IENV([], _), v, oks, d) =
       bug "unexpected empty information env in chkOut"
 
   | chkOutNorm (ienv as IENV((nt,_)::_, dtable), v, oks, d) = 
-      let val info = (Intmap.map nt v) handle _ => []
+      let val info = getOpt (IntHashTable.find nt v, [])
           val (_, dinfo) = sumDtable(ienv, v, info)
           val spinfo = 
             (case dinfo
@@ -330,7 +334,8 @@ fun chkOutNorm (IENV([], _), v, oks, d) =
                    end
                | _ => LET(xs, TAPP(VAR v, ts), e))
           val hdr = fn e => foldr mkhdr e info
-          val _ = Intmap.rmv nt v  (* so that v won't be considered again *)
+	  (* don't consider it again... *)
+	  val _ = IntHashTable.remove nt v handle _ => []
        in (hdr, spinfo)
       end
 

@@ -45,9 +45,9 @@ exception Unknown
 fun split (fdec as (fk,f,args,body)) = let
     val {getLty,addLty,...} = Recover.recover (fdec, false)
 
-    val m = Intmap.new(64, Unknown)
-    fun addpurefun f = Intmap.add m (f, false)
-    fun funeffect f = (Intmap.map m f) handle Uknown => true
+    val m = IntHashTable.mkTable(64, Unknown)
+    fun addpurefun f = IntHashTable.insert m (f, false)
+    fun funeffect f = (IntHashTable.lookup m f) handle Uknown => true
 
 (* sexp: env -> lexp -> (leE, leI, fvI, leRet)
  * - env: IntSetF.set	current environment

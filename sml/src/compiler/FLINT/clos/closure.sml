@@ -283,10 +283,10 @@ fun mutRec [] = false
  *                         STATIC ENVIRONMENT                               *
  ****************************************************************************)
 
-abstype env = Env of lvar list *                  (* values *)
-	             (lvar * closureRep) list *   (* closures *)
-                     lvar list *                  (* disposable cells *) 
-                     object Intmap.intmap         (* what map *)
+abstype env = Env of lvar list *                    (* values *)
+	             (lvar * closureRep) list *     (* closures *)
+                     lvar list *                    (* disposable cells *) 
+                     object IntHashTable.hash_table (* what map *)
 with
 
 (****************************************************************************
@@ -294,11 +294,11 @@ with
  ****************************************************************************)
 
 exception NotBound
-fun emptyEnv() = Env([],[],[],Intmap.new(32,NotBound))
+fun emptyEnv() = Env([],[],[],IntHashTable.mkTable(32,NotBound))
 
 (* add a new object to an environment *)
 fun augment(m as (v,obj),e as Env(valueL,closureL,dispL,whatMap)) =
-  (Intmap.add whatMap m;
+  (IntHashTable.insert whatMap m;
    case obj
     of Value _ => Env(v::valueL,closureL,dispL,whatMap)
      | Closure cr => Env(valueL,(v,cr)::closureL,dispL,whatMap)
@@ -393,9 +393,9 @@ fun printEnv(Env(valueL,closureL,dispL,whatMap)) =
   in  pr "Values:"; ilist valueL;
       pr "Closures:\n"; p(fn () => (),closureL,nil);
       pr "Disposable records:\n"; ilist dispL;
-      pr "Known function mapping:\n"; Intmap.app fp whatMap;
+      pr "Known function mapping:\n"; IntHashTable.appi fp whatMap;
       pr "Callee-save continuation mapping:\n";
-      Intmap.app cp whatMap
+      IntHashTable.appi cp whatMap
   end
 
 (****************************************************************************
@@ -404,7 +404,7 @@ fun printEnv(Env(valueL,closureL,dispL,whatMap)) =
 
 exception Lookup of lvar * env
 fun whatIs(env as Env(_,_,_,whatMap),v) =
-  Intmap.map whatMap v handle NotBound => raise Lookup(v,env)
+  IntHashTable.lookup whatMap v handle NotBound => raise Lookup(v,env)
 
 (* Add v to the access environment, v must be in whatMap already *)
 fun augvar(v,e as Env(valueL,closureL,dispL,whatMap)) = 

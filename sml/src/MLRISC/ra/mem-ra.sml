@@ -136,9 +136,10 @@ struct
   fun spillPropagation(G as GRAPH{bitMatrix, memRegs, ...}) nodesToSpill =
   let val spillCoalescing = spillCoalescing G
       exception SpillProp
-      val visited = Intmap.new(32, SpillProp) : bool Intmap.intmap
-      val hasBeenVisited = Intmap.mapWithDefault (visited, false)
-      val markAsVisited = Intmap.add visited
+      val visited =
+	  IntHashTable.mkTable(32, SpillProp) : bool IntHashTable.hash_table
+      fun hasBeenVisited i = getOpt (IntHashTable.find visited i, false)
+      val markAsVisited = IntHashTable.insert visited
       val member = BM.member(!bitMatrix)  
 
       (* compute savings due to spill coalescing.

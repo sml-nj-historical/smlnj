@@ -94,18 +94,20 @@ struct
    val initialSpillOffset = MachSpec.initialSpillOffset
    val spillOffset = ref initialSpillOffset
    val spillAreaSz = MachSpec.spillAreaSz
-   val regspills : int Intmap.intmap = Intmap.new(0,RegSpills)
-   val fregspills : int Intmap.intmap = Intmap.new(0,FregSpills)
-   val lookupReg  = Intmap.map regspills
-   val enterReg   = Intmap.add regspills
-   val lookupFreg = Intmap.map fregspills
-   val enterFreg  = Intmap.add fregspills
+   val regspills : int IntHashTable.hash_table =
+       IntHashTable.mkTable(0,RegSpills)
+   val fregspills : int IntHashTable.hash_table =
+       IntHashTable.mkTable(0,FregSpills)
+   val lookupReg  = IntHashTable.lookup regspills
+   val enterReg   = IntHashTable.insert regspills
+   val lookupFreg = IntHashTable.lookup fregspills
+   val enterFreg  = IntHashTable.insert fregspills
 
    fun spillInit() = 
       ((* Reset the regspills/fregspills map by need. *)
        if !spillOffset = initialSpillOffset then ()
-       else (Intmap.clear regspills; 
-             Intmap.clear fregspills 
+       else (IntHashTable.clear regspills; 
+             IntHashTable.clear fregspills 
             )
        ;
        spillOffset := initialSpillOffset

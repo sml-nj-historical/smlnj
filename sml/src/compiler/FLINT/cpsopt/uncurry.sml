@@ -74,13 +74,13 @@ fun checklimit(cl) =
 exception NEWETA
 fun getty v = 
   if type_flag 
-  then (Intmap.map typtable v) handle _ =>
+  then (IntHashTable.lookup typtable v) handle _ =>
                 (Control.Print.say ("NEWETA: Can't find the variable "^
                             (Int.toString v)^" in the typtable ***** \n");
                  raise NEWETA)
   else LT.ltc_void
 
-fun addty(f,t) = if type_flag then Intmap.add typtable (f,t) else ()
+fun addty(f,t) = if type_flag then IntHashTable.insert typtable (f,t) else ()
 fun mkv(t) = let val v = LV.mkLvar()
               in (addty(v,t); v)
              end

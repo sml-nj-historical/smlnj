@@ -101,7 +101,7 @@ is
 
 	(* compiler libraries *)
 	$smlnj/viscomp/core.cm
-	$/comp-lib.cm
+	$/pickle-lib.cm
 
 	(* auxiliary libraries *)
 	$/ml-yacc-lib.cm

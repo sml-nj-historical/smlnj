@@ -11,7 +11,7 @@ fun bug s = ErrorMsg.impossible ("LtyKernel:" ^ s)
  ***************************************************************************)
 
 (** hashconsing implementation basics *)
-local open SortedList
+local (* open SortedList *)
       val MVAL = 10000
       val BVAL = MVAL * 2 (* all index i start from 0 *)
 in 
@@ -42,8 +42,27 @@ datatype aux_info =
             * tvar list                 (* free named type vars *)
   | AX_NO                               (* no aux_info available *)
 
-val mergeTvs = merge
-val fmergeTvs = foldmerge
+(* these two are originally from SortedList -- which I wanted to get
+ * rid off.  -- Matthias  11/2000 *)
+fun mergeTvs (l, []) = l
+  | mergeTvs ([], l) = l
+  | mergeTvs (l as (h :: t), l' as (h' :: t')) =
+    if h < h' then h :: mergeTvs (t, l')
+    else if h = h' then h :: mergeTvs (t, t')
+    else h' :: mergeTvs (l, t')
+
+fun fmergeTvs [] = []
+  | fmergeTvs (h :: t) = let
+	fun loop ([], a) = a
+	  | loop (h :: t, a) = loop (t, mergeTvs (h, a))
+    in
+	loop (t, h)
+    end
+
+(*
+val mergeTvs = SortedList.merge
+val fmergeTvs = SortedList.foldmerge
+*)
 
 type 'a hash_cell = (int * 'a * aux_info) ref
 

@@ -26,21 +26,18 @@ is
 
 	$smlnj/cm/tools.cm
         (* We need the ml-yacc and ml-lex tool plugins here. They must
-         * always be "plugged in" because they are needed for -rebuild. *)
-	$/mlyacc-tool.cm
-	$/mllex-tool.cm
-	$/grm-ext.cm
-	$/lex-ext.cm
+         * always be "plugged in" because they are needed for -rebuild,
+	 * i.e., at a time when on-demand loading does not work yet. *)
+	$/grm-ext.cm		(* implies $/mlyacc-tool.cm *)
+	$/lex-ext.cm		(* implies $/mllex-tool.cm *)
         (* Technically, the ml-burg tool is not needed here.  It should
          * eventually be moved into the ML-Burg source tree and installed
          * from there. *)
-	$/mlburg-tool.cm
-	$/burg-ext.cm
+	$/burg-ext.cm		(* implies $/mlburg-tool.cm *)
         (* Technically, the noweb tool is not needed here.  It should
          * eventually be moved into the noweb source tree and installed
          * from there. *)
-	$/noweb-tool.cm
-	$/nw-ext.cm
+	$/nw-ext.cm		(* implies $/noweb-tool.cm *)
 	(* Register the make tool here. (Kinda unrealistic to hope that
 	 * Unix' make suddenly comes with a CM plugin... *)
 	$/make-tool.cm
