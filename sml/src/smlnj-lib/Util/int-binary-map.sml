@@ -148,6 +148,7 @@ in
           if key > x then T'(key,value,insert(left,x,v),right)
           else if key < x then T'(key,value,left,insert(right,x,v))
           else T{key=x,value=v,left=left,right=right,cnt= #cnt set}
+    fun insert' ((k, x), m) = insert(m, k, x)
 
     fun find (set, x) = let 
 	  fun mem E = NONE

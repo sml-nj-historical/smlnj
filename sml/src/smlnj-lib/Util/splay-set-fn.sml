@@ -54,6 +54,7 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
           in
             SET{nobj=cnt,root=ref t}
           end
+    fun add' (s, x) = add(x, s)
 
 	(* Insert a list of items.
 	 *)

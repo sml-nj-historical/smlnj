@@ -1,6 +1,7 @@
 (* sources.cm
  *
  * COPYRIGHT (c) 1996 AT&T Research.
+ * COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies
  *
  * The sources specification for the SML/NJ Utility library; part of the
  * SML/NJ Library suite.
@@ -17,6 +18,7 @@ signature FIFO
 signature FORMAT
 signature HASH_KEY
 signature HASH_TABLE
+signature INT_INF
 signature IO_UTIL
 signature LIB_BASE
 signature LIST_FORMAT
@@ -54,6 +56,7 @@ structure HashString
 structure HashTable
 structure IntBinaryMap
 structure IntBinarySet
+structure IntInf
 structure IntListMap
 structure IntListSet
 structure IOUtil
@@ -123,6 +126,8 @@ hash2-table-fn.sml
 keyword-fn.sml
 int-binary-map.sml
 int-binary-set.sml
+int-inf-sig.sml
+int-inf.sml
 int-list-map.sml
 int-list-set.sml
 io-util-sig.sml

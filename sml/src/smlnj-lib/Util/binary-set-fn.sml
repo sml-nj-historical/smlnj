@@ -147,6 +147,7 @@ functor BinarySetFn (K : ORD_KEY) : ORD_SET =
             LESS => T'(v,add(l,x),r)
           | GREATER => T'(v,l,add(r,x))
           | EQUAL => mkT(x,cnt,l,r)
+    fun add' (s, x) = add(x, s)
 
     fun concat3 (E,v,r) = add(r,v)
       | concat3 (l,v,E) = add(l,v)

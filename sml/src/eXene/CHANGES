@@ -23,6 +23,11 @@ STYLES
     [04/07/97]
 
 GRAPHICS UTILITIES
+  - created the GetDpy structure to provide support for getting the
+    display and authentication information for an application.  This
+    code was taken from the RunEXene structure in the widget utilities.
+    [01/27/98]
+
   - fixed alignment bug in X authorization code.
     [04/07/97]
 

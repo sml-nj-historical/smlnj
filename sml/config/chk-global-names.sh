@@ -20,7 +20,7 @@ if [ "$?" != "0" ]; then
     exit 1
 fi
 
-if `nm $TMP_FILE | grep -q "_main"`
+if `nm $TMP_FILE | grep -q -w "_main"`
   then echo "-DGLOBALS_HAVE_UNDERSCORE"
 fi             
 

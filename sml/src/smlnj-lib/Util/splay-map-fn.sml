@@ -45,6 +45,7 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
                 })
               }
           | (_,SplayNil) => raise LibBase.Impossible "SplayMapFn.insert SplayNil"
+    fun insert' ((k, x), m) = insert(m, k, x)
 
   (* Look for an item, return NONE if the item doesn't exist *)
     fun find (EMPTY,_) = NONE

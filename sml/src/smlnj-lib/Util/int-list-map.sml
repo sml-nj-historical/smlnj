@@ -29,6 +29,7 @@ structure IntListMap :> ORD_MAP where type Key.ord_key = Int.int =
 	  in
 	    f l
 	  end
+    fun insert' ((k, x), m) = insert(m, k, x)
 
   (* Look for an item, return NONE if the item doesn't exist *)
     fun find (l, key) = let

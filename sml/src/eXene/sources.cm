@@ -31,6 +31,7 @@ Library
     signature REGION
     signature X_AUTH
     signature COLOR_SPACE
+    signature GET_DPY
 
     structure BitmapIO
     structure Ellipse
@@ -39,6 +40,7 @@ Library
     structure Region
     structure XAuth
     structure ColorSpace
+    structure GetDpy
 
   (** from widgets **)
     signature ROOT

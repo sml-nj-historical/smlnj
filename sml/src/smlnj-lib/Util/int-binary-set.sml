@@ -153,6 +153,7 @@ structure IntBinarySet :> ORD_SET where type Key.ord_key = Int.int =
 	    | GREATER => T'(v,l,add(r,x))
 	    | EQUAL => mkT(x,cnt,l,r)
 	  (* end case *))
+    fun add' (s, x) = add(x, s)
 
     fun concat3 (E,v,r) = add(r,v)
       | concat3 (l,v,E) = add(l,v)

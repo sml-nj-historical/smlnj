@@ -16,8 +16,9 @@ signature ORD_MAP =
     val empty : 'a map
 	(* The empty map *)
 
-    val insert : 'a map * Key.ord_key * 'a -> 'a map
-	(* Insert an item.  *)
+    val insert  : 'a map * Key.ord_key * 'a -> 'a map
+    val insert' : ((Key.ord_key * 'a) * 'a map) -> 'a map
+	(* Insert an item. *)
 
     val find : 'a map * Key.ord_key -> 'a option
 	(* Look for an item, return NONE if the item doesn't exist *)

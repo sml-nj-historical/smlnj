@@ -14,6 +14,7 @@ Library
     signature REGION
     signature X_AUTH
     signature COLOR_SPACE
+    signature GET_DPY
 
     structure BitmapIO
     structure Ellipse
@@ -22,6 +23,7 @@ Library
     structure Region
     structure XAuth
     structure ColorSpace
+    structure GetDpy
 
 is
 
@@ -46,3 +48,6 @@ is
     xauth.sml
     color-space-sig.sml
     color-space.sml
+    get-dpy-sig.sml
+    get-dpy.sml
+

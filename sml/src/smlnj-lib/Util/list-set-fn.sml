@@ -29,6 +29,7 @@ functor ListSetFn (K : ORD_KEY) : ORD_SET =
 	  in
 	    f l
 	  end
+    fun add' (s, x) = add(x, s)
 
     fun union (s1, s2) = let
 	  fun merge ([], l2) = l2

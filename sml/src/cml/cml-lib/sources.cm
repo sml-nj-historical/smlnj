@@ -27,6 +27,7 @@ Library
   signature FORMAT
   signature HASH_KEY
   signature HASH_TABLE
+  signature INT_INF
   signature IO_UTIL		(* copied to avoid typing problems *)
   signature LIB_BASE
   signature LIST_FORMAT
@@ -64,6 +65,7 @@ Library
   structure HashTable
   structure IntBinaryMap
   structure IntBinarySet
+  structure IntInf
   structure IntListMap
   structure IntListSet
   structure IOUtil		(* copied to avoid typing problems *)

@@ -123,6 +123,7 @@
 #  else
 #    define GLOBAL(ID)	  .globl	CSYM(ID)
 #    define LABEL(ID)	  CONCAT(ID,:)
+#    define IMMED(ID)	  CONCAT($,ID)
 #    define ALIGN4        .align 2
 #    define WORD(W)       .word W
 #    define TEXT          .text
