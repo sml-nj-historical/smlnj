@@ -3,6 +3,9 @@
  * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
  *
  * $Log$
+ * Revision 1.3  2000/06/01 18:33:42  monnier
+ * bring revisions from the vendor branch to the trunk
+ *
  * Revision 1.2  2000/03/07 03:59:09  blume
  * build script now uses new mechanism for building stanalone programs
  *

@@ -4,6 +4,9 @@
  * Abstract syntax trees for BURG specifications.
  *
  * $Log$
+ * Revision 1.2  2000/06/01 18:33:42  monnier
+ * bring revisions from the vendor branch to the trunk
+ *
  * Revision 1.1.1.8  1999/04/17 18:56:03  monnier
  * version 110.16
  *

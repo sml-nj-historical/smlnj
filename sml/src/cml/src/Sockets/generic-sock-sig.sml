@@ -3,8 +3,11 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
  * $Log$
- * Revision 1.1  1997/10/04 23:33:11  monnier
- * Initial revision
+ * Revision 1.2  2000/06/01 18:33:22  monnier
+ * bring revisions from the vendor branch to the trunk
+ *
+ * Revision 1.1.1.1  1997/10/04 23:33:11  monnier
+ *
  *
  * Revision 1.2  1996/06/03  21:11:42  jhr
  * Sockets API cleanup.

@@ -266,6 +266,9 @@ structure Core =
 
 (*
  * $Log$
+ * Revision 1.3  2000/06/01 18:34:02  monnier
+ * bring revisions from the vendor branch to the trunk
+ *
  * Revision 1.2  2000/03/09 15:23:51  blume
  * merging back changes from blume_devel_v110_26_2
  *

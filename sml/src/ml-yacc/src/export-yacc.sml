@@ -3,6 +3,9 @@
  * ML-Yacc Parser Generator (c) 1991 Andrew W. Appel, David R. Tarditi
  *
  * $Log$
+ * Revision 1.3  2000/06/01 18:33:44  monnier
+ * bring revisions from the vendor branch to the trunk
+ *
  * Revision 1.2  2000/03/07 04:01:05  blume
  * - size info in BOOTLIST
  *      * no fixed upper limits for number of bootfiles or length of

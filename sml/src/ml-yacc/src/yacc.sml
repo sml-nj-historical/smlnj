@@ -1,6 +1,9 @@
 (* ML-Yacc Parser Generator (c) 1989, 1990 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
+ * Revision 1.3  2000/06/01 18:33:44  monnier
+ * bring revisions from the vendor branch to the trunk
+ *
  * Revision 1.2  2000/01/09 09:59:14  blume
  * pickler bug fixes; some cosmetic changes
  *
