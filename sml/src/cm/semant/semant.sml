@@ -148,8 +148,9 @@ structure CMSemant :> CM_SEMANT = struct
 	val filter = Option.map (applyTo mc) e
 	val (exports, rp) = MemberCollection.build (mc, filter, error, gp)
 	val subgroups = MemberCollection.subgroups mc
-	val { required = rp', granted } = p
-	val p' = { required = StringSet.union (rp, rp'), granted = granted }
+	val { required = rp', granted = gr } = p
+	val rp'' = StringSet.difference (StringSet.union (rp, rp'), gr)
+	val p' = { required = rp'', granted = gr }
     in
 	GG.GROUP { exports = exports, islib = false,
 		   privileges = p', grouppath = g,

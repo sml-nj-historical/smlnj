@@ -51,7 +51,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       val recomp_group = doall RecompTraversal.farsbnode
       fun exec_group arg =
 	  (DynTStamp.new ();
-	   doall ExecTraversal.farsbnode arg)
+	   (doall ExecTraversal.farsbnode arg)
+	   before FullPersstate.forgetNonShared ())
       fun make_group arg =
 	  (if recomp_group arg then exec_group arg else false)
   in

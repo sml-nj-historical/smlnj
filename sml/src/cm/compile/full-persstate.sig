@@ -22,4 +22,6 @@ signature FULL_PERSSTATE = sig
 	BinInfo.info * DynTStamp.dts * GeneralParams.info -> exec_memo option
     val exec_memo_stable :
 	BinInfo.info * exec_memo -> unit
+
+    val forgetNonShared : unit -> unit
 end

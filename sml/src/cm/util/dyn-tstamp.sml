@@ -42,7 +42,11 @@ structure DynTStamp :> DYNTSTAMP = struct
 
     fun noshare s = NOSHARE (StringSet.singleton s)
 
+    (* The only time we can encounter an old result of NOSHARE is
+     * during the same run of "make".  In this case, the old value
+     * certainly cannot be outdated. *)
     fun outdated { context = SHARE c, oldresult = SHARE r } = c > r
+      | outdated { oldresult = NOSHARE _, ... } = false
       | outdated _ = true
 
     fun join (SHARE x, SHARE y) = SHARE (if x > y then x else y)

@@ -60,11 +60,12 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
 	    memo m;
 	    SOME (thunkify m)
 	end handle exn => let
-	    fun pphist pps =
-		(PP.add_string pps (General.exnMessage exn);
+	    fun ppb pps =
+		(PP.add_newline pps;
+		 PP.add_string pps (General.exnMessage exn);
 		 PP.add_newline pps)
 	in
-	    error "exception in module initialization code" pphist;
+	    error ("link-time error in " ^ descr) ppb;
 	    NONE
 	end
     in
@@ -72,15 +73,19 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
 	    case DTS.can'tShare dts of
 		NONE => doit ()
 	      | SOME sl => let
-		    fun pphist [] pps = PP.add_newline pps
-		      | pphist (h :: t) pps =
-			(PP.add_newline pps;
-			 PP.add_string pps h;
-			 pphist t pps)
+		    fun ppb pps = let
+			fun loop [] = ()
+			  | loop (h :: t) =
+			    (PP.add_string pps h; PP.add_newline pps; loop t)
+		    in
+			PP.add_newline pps;
+			PP.add_string pps
+			        "because of dependence on private module(s):";
+			PP.add_newline pps;
+			loop sl
+		    end
 		in
-		    error
-		      "cannot share state: dependence on non-shareable modules"
-		      (pphist sl);
+		    error ("cannot share state of " ^ descr) ppb;
 		    NONE
 		end
 	else doit ()
@@ -98,16 +103,12 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
 				      BinInfo.describe i,
 				      fn m => PS.exec_memo_stable (i, m)))
 
-    fun dosml (i, e as { dyn, dts }, gp) = let
-	fun looksml () =
-	    Option.map thunkify (PS.exec_look_sml (i, dts, gp))
-    in
-	case looksml () of
-	    SOME d => SOME d
+    fun dosml (i, e as { dyn, dts }, gp) =
+	case PS.exec_look_sml (i, dts, gp) of
+	    SOME memo => SOME (thunkify memo)
 	  | NONE => execute (PS.bfc_fetch_sml i, e,
 			     SmlInfo.share i,
 			     SmlInfo.error gp i EM.COMPLAIN,
 			     SmlInfo.name i,
 			     fn m => PS.exec_memo_sml (i, m))
-    end
 end

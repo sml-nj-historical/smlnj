@@ -107,13 +107,9 @@ structure SmlInfo :> SMLINFO = struct
 	parsetree := NONE
 
     fun forgetAllBut reachable = let
-	val m0 = !knownInfo
-	fun retain (p, m) =
-	    case AbsPathMap.find (m0, p) of
-		NONE => m
-	      | SOME pi => AbsPathMap.insert (m, p, pi)
+	fun isReachable (p, m) = AbsPathSet.member (reachable, p)
     in
-	knownInfo := AbsPathSet.foldl retain AbsPathMap.empty reachable
+	knownInfo := AbsPathMap.filteri isReachable (!knownInfo)
     end
 
     fun info (gp: GeneralParams.info) arg = let
