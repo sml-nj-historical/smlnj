@@ -1,8 +1,37 @@
-structure Stablize = struct
-
+(*
+ * Reading, generating, and writing stable groups.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+local
     structure DG = DependencyGraph
     structure GG = GroupGraph
     structure EM = GenericVC.ErrorMsg
+    structure GP = GeneralParams
+    structure E = GenericVC.Environment
+in
+
+signature STABILIZE = sig
+
+    val loadStable :
+	GP.info * (AbsPath.t -> GG.group) ->
+	{ group: AbsPath.t, s: BinIO.instream, anyerrors: bool ref } ->
+	GG.group option
+
+    val stabilize :
+	GP.info ->
+	{ group: GG.group, s: BinIO.outstream, anyerrors: bool ref } ->
+	GG.group
+end
+
+functor StablizeFn
+    (val bn2statenv : GP.info -> DG.bnode -> E.staticEnv
+     val binSizeOf : SmlInfo.info -> int
+     val copyBin : BinIO.outstream -> SmlInfo.info -> unit) :> STABILIZE =
+struct
+
 
     datatype pitem =
 	PSS of SymbolSet.set
@@ -48,13 +77,12 @@ structure Stablize = struct
 	SymbolMap.foldl add IntBinaryMap.empty exports
     end
 
-    fun stabilize gp (g as GG.GROUP grec, binSizeOf, copyBin, outs) =
+    fun stabilize gp { group = g as GG.GROUP grec, s = outs, anyerrors } =
 	case #stableinfo grec of
 	    GG.STABLE _ => g
 	  | GG.NONSTABLE granted => let
 
-		(* this needs to be refined (perhaps) *)
-		val grpSrcInfo = (EM.defaultConsumer (), ref false)
+		val grpSrcInfo = (#errcons gp, anyerrors)
 
 		val exports = #exports grec
 		val islib = #islib grec
@@ -281,10 +309,11 @@ structure Stablize = struct
 		mkStableGroup ()
 	    end
 
-    fun g (getGroup, bn2env, group, s) = let
+    fun loadStable (gp, getGroup) { group, s, anyerrors } = let
 
-	(* we don't care about errors... (?) *)
-	val grpSrcInfo = (EM.defaultConsumer (), ref false)
+	val bn2env = #1 o Statenv2DAEnv.cvt o bn2statenv gp
+
+	val grpSrcInfo = (#errcons gp, anyerrors)
 
 	exception Format
 
@@ -509,3 +538,5 @@ structure Stablize = struct
 	SOME (unpickle_group ()) handle Format => NONE
     end
 end
+
+end (* local *)

@@ -12,8 +12,14 @@ signature PATHCONFIG = sig
     val configAnchor : string -> (unit -> string) option
 end
 
+(*
+ * The names of config anchors must be names of actual files.
+ * Function configAnchor will map the name of the anchor to
+ * the directory that contains the corresponding file.
+ *)
 structure PathConfig :> PATHCONFIG = struct
     (* this is bogus -- should not be hard-wired like this *)
-    fun configAnchor "smlnj" = SOME (fn () => "/home/blume/ML/current/lib")
+    fun configAnchor "smlnj-lib.cm" =
+	SOME (fn () => "/home/blume/ML/current/lib")
       | configAnchor _ = NONE
 end

@@ -1,6 +1,6 @@
 (*
  * "General" parameters that may differ from invocation to invocation of
- * CM.  The "params" type bundles them up so they can be passed around
+ * CM.  The "info" type bundles them up so they can be passed around
  * more conveniently.
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
@@ -15,5 +15,7 @@ structure GeneralParams = struct
 		   pervasive: GenericVC.Environment.environment,
 		   corenv: GenericVC.BareEnvironment.staticEnv }
 
-    type info = { param: param, groupreg: GroupReg.groupreg }
+    type info = { param: param,
+		  groupreg: GroupReg.groupreg,
+		  errcons: PrettyPrint.ppconsumer }
 end

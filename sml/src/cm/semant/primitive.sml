@@ -23,7 +23,7 @@ signature PRIMITIVE = sig
 
     (* the domain of (lookup p) must always properly include (exports p) *)
     val exports : configuration -> primitive -> SymbolSet.set
-    val lookup : configuration -> primitive -> Symbol.symbol -> DAEnv.value
+    val da_env : configuration -> primitive -> DAEnv.env
     val env : configuration -> primitive -> GenericVC.Environment.environment
     val pidInfo : configuration -> primitive
 	-> { statpid: GenericVC.PersStamps.persstamp,
@@ -49,7 +49,7 @@ structure Primitive :> PRIMITIVE = struct
 	BASIS
 
     type pinfo = { exports : SymbolSet.set,
-		   lookup : Symbol.symbol -> DE.value,
+		   da_env : DE.env,
 		   env : GenericVC.Environment.environment }
 
     type configuration = primitive -> pinfo
@@ -71,35 +71,14 @@ structure Primitive :> PRIMITIVE = struct
     fun reqpriv BASIS = reqpriv_basis
 
     fun exports (cfg: configuration) p = #exports (cfg p)
-    fun lookup (cfg: configuration) p = #lookup (cfg p)
+    fun da_env (cfg: configuration) p = #da_env (cfg p)
     fun env (cfg: configuration) p = #env (cfg p)
 
     fun configuration { basis } = let
-
 	fun gen_pinfo e = let
-	    fun l2s l = let
-		fun addModule (sy, set) =
-		    case Symbol.nameSpace sy of
-			(Symbol.STRspace | Symbol.SIGspace |
-			 Symbol.FCTspace | Symbol.FSIGspace) =>
-			SymbolSet.add (set, sy)
-		       | _ => set
-	    in
-		foldl addModule SymbolSet.empty l
-	    end
-	    
-	    fun cvt_fctenv look = cvt_result o look
-
-	    and cvt_result (BE.CM_ENV cme) =
-		SOME (DE.FCTENV (cvt_fctenv (#look cme)))
-	      | cvt_result BE.CM_NONE = NONE
-
-	    val sb = BE.staticPart (GenericVC.CoerceEnv.e2b e)
-	    val looker = cvt_fctenv (BE.cmEnvOfModule sb)
+	    val (da_env, mkExports) = Statenv2DAEnv.cvt (E.staticPart e)
 	in
-	    { exports = l2s (BE.catalogEnv sb),
-	      lookup = valOf o looker,
-	      env = e }
+	    { exports = mkExports (), da_env = da_env, env = e }
 	end
 
 	val basis_pinfo = gen_pinfo basis

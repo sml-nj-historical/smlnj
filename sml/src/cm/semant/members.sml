@@ -147,9 +147,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	else case Primitive.fromString (AbsPath.spec sourcepath) of
 	    SOME p => let
 		val exports = Primitive.exports primconf p
-		val plook = Primitive.lookup primconf p
+		val env = Primitive.da_env primconf p
 		fun addFN (s, m) = let
-		    val env = plook s
 		    val fsbn = (NONE, DG.SB_BNODE (DG.PNODE p))
 		in
 		    SymbolMap.insert (m, s, (fsbn, env))

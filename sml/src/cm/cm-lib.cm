@@ -24,6 +24,7 @@ is
 	depend/graph.sml
 	depend/build.sml
 	depend/da-env.sml
+	depend/se2dae.sml
 	depend/ggraph.sml
 	depend/reachable.sml
 	depend/checksharing.sml

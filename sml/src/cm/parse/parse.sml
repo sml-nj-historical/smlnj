@@ -18,7 +18,6 @@ structure CMParse :> CMPARSE = struct
     structure S = GenericVC.Source
     structure EM = GenericVC.ErrorMsg
     structure SM = GenericVC.SourceMap
-    structure P = GenericVC.Control.Print
 
     structure CMLrVals = CMLrValsFun (structure Token = LrParser.Token)
     structure CMLex = CMLexFun (structure Tokens = CMLrVals.Tokens)
@@ -30,7 +29,8 @@ structure CMParse :> CMPARSE = struct
     fun parse param group = let
 
 	val groupreg = GroupReg.new ()
-	val ginfo = { param = param, groupreg = groupreg }
+	val errcons = EM.defaultConsumer ()
+	val ginfo = { param = param, groupreg = groupreg, errcons = errcons }
 
 	(* The "group cache" -- we store "group options";  having
 	 * NONE registered for a group means that a previous attempt
@@ -83,9 +83,6 @@ structure CMParse :> CMPARSE = struct
 		val filename = AbsPath.name group
 		val _ = Say.vsay (concat ["[scanning ", filename, "]\n"])
 		val stream = TextIO.openIn filename
-		val errcons = { linewidth = !P.linewidth,
-			        flush = P.flush,
-				consumer = P.say }
 		val source = S.newSource (filename, 1, stream, false, errcons)
 		val sourceMap = #sourceMap source
 		val _ = GroupReg.register groupreg (group, source)

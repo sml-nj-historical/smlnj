@@ -55,7 +55,6 @@ end
 structure SmlInfo :> SMLINFO = struct
 
     structure Source = GenericVC.Source
-    structure Print = GenericVC.Control.Print
     structure SF = GenericVC.SmlFile
     structure EM = GenericVC.ErrorMsg
     structure FNP = FilenamePolicy
@@ -182,10 +181,7 @@ structure SmlInfo :> SMLINFO = struct
 		val _ = if noerrors orelse quiet then ()
 			else Say.vsay (concat ["[parsing ", name, "]\n"])
 		val source =
-		    Source.newSource (name, 1, stream, false,
-				      { linewidth = !Print.linewidth,
-				        flush = Print.flush,
-					consumer = Print.say })
+		    Source.newSource (name, 1, stream, false, #errcons gp)
 		val pto = let
 		    val tree = SF.parse source
 		in

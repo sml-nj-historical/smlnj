@@ -138,9 +138,12 @@ structure BuildDepend :> BUILDDEPEND = struct
 	     * As a side effect, this function registers local and
 	     * global imports. *)
 	    fun lookimport s = let
+		fun internalError s =
+		    EM.impossible "build/lookimport/lookfar"
 		fun lookfar () =
 		    case SM.find (imports, s) of
-			SOME (farn, e) => (globalImport farn; e)
+			SOME (farn, e) => (globalImport farn;
+					   look internalError e s)
 		      | NONE =>
 			    (* We could complain here about an undefined
 			     * name.  However, since CM doesn't have the
