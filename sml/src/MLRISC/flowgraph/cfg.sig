@@ -70,10 +70,17 @@ sig
    *	If the block ends with a call that has been wrapped with a FLOW_TO,
    *	then there will be one FALLSTHRU out edges and one or more FLOWSTO
    *	out edges.
+   *
+   *	Control-flow to outside the CFG is represented by edges to the unique
+   *	STOP node.  When such edges are to labels that are defined outside
+   *	the CFG, then JUMP, BRANCH, or SWITCH edges are used (as appropriate).
+   *	When such edges are to unkonwn places (e.g., traps, returns, and
+   *	indirect jumps), then an EXIT edge is used.  There should never be
+   *	a FALLSTHRU or ENTRY edge to the STOP node.
    *)
     and edge_kind	    (* edge kinds *)
-      = ENTRY			(* entry edge *) 
-      | EXIT            	(* exit edge *)
+      = ENTRY			(* edge from START node *) 
+      | EXIT            	(* unlabeled edge to STOP node *)
       | JUMP			(* unconditional jump *)
       | FALLSTHRU		(* falls through to next block *)  
       | BRANCH of bool		(* branch *) 
