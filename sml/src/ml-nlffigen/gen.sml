@@ -26,6 +26,7 @@ structure Gen :> sig
 		lambdasplit: string option,
 		wid: int,
 		weightreq: bool option,	(* true -> heavy, false -> light *)
+		namedargs: bool,
 		target : { name  : string,
 			   sizes : Sizes.sizes,
 			   shift : int * int * word -> word,
@@ -68,6 +69,23 @@ end = struct
     val commentsto = concat ["(* Send comments and suggestions to ",
 			     email, ". Thanks! *)"]
 
+    fun arg_id s = "a_" ^ s
+    fun su_id (K, tag) = concat [K, "_", tag]
+    fun isu_id (K, tag) = "I_" ^ su_id (K, tag)
+    fun Styp t = su_id ("S", t) ^ ".typ"
+    fun Utyp t = su_id ("U", t) ^ ".typ"
+    fun fptr_rtti_id n = "fptr_rtti_" ^ n
+    fun fieldtype_id n = "t_f_" ^ n
+    fun fieldrtti_id n = "typ_f_" ^ n
+    fun field_id (n, p) = concat ["f_", n, p]
+    fun typetype_id n = "typ_t_" ^ n
+    fun gvar_id n = "g_" ^ n
+    fun funrtti_id n = "typ_fn_" ^ n
+    fun fptr_id n = "fptr_fn_" ^ n
+    fun fun_id (n, p) = concat ["fn_", n, p]
+    fun enum_id n = "e_" ^ n
+    fun let_id c = "t_" ^ String.str c
+
     fun gen args = let
 
 	val { idlfile, idlsource,
@@ -76,6 +94,7 @@ end = struct
 	      allSU, lambdasplit,
 	      wid,
 	      weightreq,
+	      namedargs = doargnames,
 	      target = { name = archos, sizes, shift, stdcall } } = args
 
 	val (doheavy, dolight) =
@@ -83,8 +102,6 @@ end = struct
 		NONE => (true, true)
 	      | SOME true => (true, false)
 	      | SOME false => (false, true)
-
-	val doargnames = true		(* FIXME: customizable *)
 
 	val credits = mkCredits (idlfile, archos)
 
@@ -186,8 +203,6 @@ end = struct
 
 	val cgtys = List.filter (not o isSome o incomplete o #spec) gtys
 
-	fun istruct (K, tag) = concat ["I_", K, "_", tag]
-
 	fun rwro S.RW = Type "rw"
 	  | rwro S.RO = Type "ro"
 
@@ -233,7 +248,7 @@ end = struct
 	  | wtn_ty_p p (S.PTR (c, t)) =
 	    (case incomplete t of
 		 SOME (K, tag) =>
-		 Con (concat [istruct (K, tag), ".iptr", p], [rwro c])
+		 Con (concat [isu_id (K, tag), ".iptr", p], [rwro c])
 	       | NONE => Con ("ptr" ^ p, [wtn_ty t, rwro c]))
 	  | wtn_ty_p p (S.ARR { t, d, ... }) =
 	    Con ("arr", [wtn_ty t, dim_ty d])
@@ -263,19 +278,19 @@ end = struct
 		  | SOME (S.STRUCT t) => let
 			val ot = Suobj'rw p (St t)
 		    in
-			(ot, [ot], [writeto])(* hack -- check for nameclash *)
+			(ot, [ot], [writeto])(* FIXME -- check for nameclash *)
 		    end
 		  | SOME (S.UNION t) => let
 			val ot = Suobj'rw p (Un t)
 		    in
-			(ot, [ot], [writeto])(* hack *)
+			(ot, [ot], [writeto])(* FIXME *)
 		    end
 		  | SOME t => (topty t, [], [])
 	    val argtyl = map topty args
 	    val aggreg_argty =
 		case (doargnames, argnames) of
 		    (true, SOME nl) =>
-		    Record (ListPair.zip (extra_argname @ nl,
+		    Record (ListPair.zip (map arg_id (extra_argname @ nl),
 					  extra_arg_t @ argtyl))
 		  | _ => Tuple (extra_arg_t @ argtyl)
 	in
@@ -304,21 +319,19 @@ end = struct
 				S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
 				S.FLOAT | S.DOUBLE | S.VOIDPTR)) =
 		simple (stem t)
-	      | rtti_val (S.STRUCT t) = EVar (concat ["S_", t, ".typ"])
-	      | rtti_val (S.UNION t) = EVar (concat ["U_", t, ".typ"])
+	      | rtti_val (S.STRUCT t) = EVar (Styp t)
+	      | rtti_val (S.UNION t) = EVar (Utyp t)
 	      | rtti_val (S.FPTR cft) =
 		(case List.find (fn x => #1 x = cft) fptr_types of
-		     SOME (_, i) => EVar ("fptr_rtti_" ^ Int.toString i)
+		     SOME (_, i) => EVar (fptr_rtti_id (Int.toString i))
 		   | NONE => raise Fail "fptr type missing")
 	      | rtti_val (S.PTR (S.RW, t)) =
 		(case incomplete t of
-		     SOME (K, tag) =>
-		     EVar (istruct (K, tag) ^ ".typ'rw")
+		     SOME (K, tag) => EVar (isu_id (K, tag) ^ ".typ'rw")
 		   | NONE => EApp (EVar "T.pointer", rtti_val t))
 	      | rtti_val (S.PTR (S.RO, t)) =
 		(case incomplete t of
-		     SOME (K, tag) =>
-		     EVar (istruct (K, tag) ^ ".typ'ro")
+		     SOME (K, tag) => EVar (isu_id (K, tag) ^ ".typ'ro")
 		   | NONE => EApp (EVar "T.ro",
 				   EApp (EVar "T.pointer", rtti_val t)))
 	      | rtti_val (S.ARR { t, d, ... }) =
@@ -361,17 +374,17 @@ end = struct
 		fun pr_field_typ { name, spec = S.OFIELD { spec = (c, t),
 							   synthetic = false,
 							   offset } } =
-		    pr_tdef ("t_f_" ^ name, wtn_ty t)
+		    pr_tdef (fieldtype_id name, wtn_ty t)
 		  | pr_field_typ _ = ()
 
 		fun pr_field_rtti { name, spec = S.OFIELD { spec = (c, t),
 							    synthetic = false,
 							    offset } } =
-		    pr_vdecl ("typ_f_" ^ name, rtti_ty t)
+		    pr_vdecl (fieldrtti_id name, rtti_ty t)
 		  | pr_field_rtti _ = ()
 
 		fun pr_field_acc0 (name, p, t) =
-		    pr_vdecl (concat ["f_", name, p],
+		    pr_vdecl (field_id (name, p),
 			      Arrow (Con ("su_obj" ^ p, [StUn tag, Type "'c"]),
 				     t))
 
@@ -389,7 +402,7 @@ end = struct
 		    pr_bf_acc (name, p, "u", #constness bf)
 	    in
 		nl ();
-		nl (); str (concat ["structure ", K, "_", tag,
+		nl (); str (concat ["structure ", su_id (K, tag),
 				    " : sig (* ", su, " ", tag, " *)"]);
 		Box 4;
 		pr_tdef ("tag", StUn tag);
@@ -416,7 +429,8 @@ end = struct
 		     app (pr_field_acc "'") fields)
 		else ();
 		endBox ();
-		nl (); str (concat ["end (* structure ", K, "_", tag, " *)"])
+		nl (); str (concat ["end (* structure ",
+				    su_id (K, tag), " *)"])
 	    end
 
 	    fun pr_struct_structure { tag, size, anon, fields } =
@@ -425,30 +439,30 @@ end = struct
 		pr_su_structure (Un, "U", "union", tag, all)
 
 	    fun pr_gty_rtti { name, spec } =
-		pr_vdecl ("typ_t_" ^ name, rtti_ty spec)
+		pr_vdecl (typetype_id name, rtti_ty spec)
 
 	    fun pr_gvar_obj { name, spec = (c, t) } =
-		pr_vdecl ("g_" ^ name, Arrow (Unit, obj_ty "" (t, rwro c)))
+		pr_vdecl (gvar_id name, Arrow (Unit, obj_ty "" (t, rwro c)))
 
 	    fun pr_gfun_rtti { name, spec, argnames } =
-		pr_vdecl ("typ_fn_" ^ name, rtti_ty (S.FPTR spec))
+		pr_vdecl (funrtti_id name, rtti_ty (S.FPTR spec))
 
 	    fun pr_gfun_fptr { name, spec, argnames } =
-		pr_vdecl ("fptr_fn_" ^ name,
+		pr_vdecl (fptr_id name,
 			  Arrow (Unit, wtn_ty (S.FPTR spec)))
 
 	    fun pr_gfun_func p { name, spec, argnames } =
-		pr_vdecl (concat ["fn_", name, p],
+		pr_vdecl (fun_id (name, p),
 			  topfunc_ty p (spec, argnames))
 
 	    fun pr_isu (K, tag) =
 		(nl ();
-		 str (concat ["structure ", istruct (K, tag),
+		 str (concat ["structure ", isu_id (K, tag),
 			      " : POINTER_TO_INCOMPLETE_TYPE"]))
 	    fun pr_istruct tag = pr_isu ("S", tag)
 	    fun pr_iunion tag = pr_isu ("U", tag)
 
-	    fun pr_enum_const { name, spec } = pr_vdecl ("e_" ^ name, sint_ty)
+	    fun pr_enum_const { name, spec } = pr_vdecl (enum_id name, sint_ty)
 	in
 	    (* Generating the signature file... *)
 	    str dontedit;
@@ -526,10 +540,9 @@ end = struct
 
 	    fun pr_su_tag (su, tag, false) =
 		let fun build [] = Type su
-		      | build (h :: tl) = Con ("t_" ^ String.str h, [build tl])
+		      | build (h :: tl) = Con (let_id h, [build tl])
 		in
-		    pr_tdef (concat [su, "_", tag],
-			     build (rev (String.explode tag)))
+		    pr_tdef (su_id (su, tag), build (rev (String.explode tag)))
 		end
 	      | pr_su_tag (su, tag, true) =
 		(nl (); str "local";
@@ -539,8 +552,7 @@ end = struct
 		 endBox ();
 		 nl (); str "in";
 		 VBox 4;
-		 pr_tdef (concat [su, "_", tag],
-			  Type "X.t");
+		 pr_tdef (su_id (su, tag), Type "X.t");
 		 endBox ();
 		 nl (); str "end")
 
@@ -550,7 +562,7 @@ end = struct
 		pr_su_tag ("u", tag, anon)
 
 	    fun pr_su_tag_copy (k, tag) = let
-		val tn = concat [k, "_", tag]
+		val tn = su_id (k, tag)
 	    in
 		pr_tdef (tn, Type tn)
 	    end
@@ -655,8 +667,7 @@ end = struct
 		fun iwrap (K, tag, e) =
 		    EApp (EVar "CMemory.wrap_addr",
 			  EApp (EVar "reveal",
-				EApp (EVar (istruct (K, tag) ^ ".inject'"),
-				      e)))
+				EApp (EVar (isu_id (K, tag) ^ ".inject'"), e)))
 
 		fun suwrap e = pwrap (EApp (EVar "Ptr.|&!", e))
 
@@ -703,8 +714,7 @@ end = struct
 				EApp (EVar cast,
 				      EApp (EVar "CMemory.unwrap_addr", r))
 			    fun iunwrap (K, tag, t) r =
-				EApp (EApp (EVar (istruct (K, tag) ^
-						  ".cast'"),
+				EApp (EApp (EVar (isu_id (K, tag) ^ ".cast'"),
 					    rtti_val t),
 				      punwrap "vcast" r)
 			    val res_wrap =
@@ -737,7 +747,7 @@ end = struct
 		val arg_e = ETuple (extra_arg_e @ args_el)
 	    in
 		nl ();
-		str (concat ["val ", "fptr_rtti_", Int.toString i, " = let"]);
+		str (concat ["val ", fptr_rtti_id (Int.toString i), " = let"]);
 		VBox 4;
 		pr_vdef ("callop",
 			  EConstr (EVar "RawMemInlineT.rawccall",
@@ -767,12 +777,12 @@ end = struct
 		fun pr_field_typ { name, spec = S.OFIELD { spec = (c, t),
 							   synthetic = false,
 							   offset } } =
-		    pr_tdef ("t_f_" ^ name, wtn_ty t)
+		    pr_tdef (fieldtype_id name, wtn_ty t)
 		  | pr_field_typ _ = ()
 		fun pr_field_rtti { name, spec = S.OFIELD { spec = (c, t),
 							   synthetic = false,
 							   offset } } =
-		    pr_vdef ("typ_f_" ^ name, rtti_val t)
+		    pr_vdef (fieldrtti_id name, rtti_val t)
 		  | pr_field_rtti _ = ()
 
 		fun pr_bf_acc (name, p, sign,
@@ -780,7 +790,7 @@ end = struct
 		    let val maker =
 			    concat ["mk_", rwro constness, "_", sign, "bf", p]
 		    in
-			pr_fdef (concat ["f_", name, p],
+			pr_fdef (field_id (name, p),
 				 [EVar "x"],
 				 EApp (EApp (EVar maker,
 					     ETuple [EInt offset,
@@ -793,7 +803,7 @@ end = struct
 		    let val { synthetic, spec = (c, t), offset, ... } = x
 		    in
 			if synthetic then ()
-			else pr_fdef (concat ["f_", name, "'"],
+			else pr_fdef (field_id (name, "'"),
 				      [EConstr (EVar "x",
 						Suobj''c (StUn tag))],
 				      EConstr (EApp (EApp (EVar "mk_field'",
@@ -812,9 +822,9 @@ end = struct
 		    if synthetic then ()
 		    else let
 			    val maker = concat ["mk_", rwro c, "_field"]
-			    val rttival = EVar ("typ_f_" ^ name)
+			    val rttival = EVar (fieldrtti_id name)
 			in
-			    pr_fdef ("f_" ^ name,
+			    pr_fdef (field_id (name, ""),
 				     [EVar "x"],
 				     EApp (EApp (EApp (EVar maker, rttival),
 						 EInt offset),
@@ -826,9 +836,9 @@ end = struct
 		    pr_bf_acc (name, "", "u", bf)
 	    in
 		nl ();
-		str (concat ["structure ", K, "_", tag, " = struct"]);
+		str (concat ["structure ", su_id (K, tag), " = struct"]);
 		Box 4;
-		nl (); str (concat ["open ", K, "_", tag]);
+		nl (); str ("open " ^ su_id (K, tag));
 		app pr_field_typ fields;
 		app pr_field_rtti fields;
 		if dolight then app pr_field_acc' fields else ();
@@ -843,7 +853,7 @@ end = struct
 		pr_su_structure (Un, "u", "U", tag, size, all)
 
 	    fun pr_gty_rtti { name, spec } =
-		pr_vdef ("typ_t_" ^ name, rtti_val spec)
+		pr_vdef (typetype_id name, rtti_val spec)
 
 	    fun pr_addr (prefix, name) =
 		pr_vdef (prefix ^ name,
@@ -858,23 +868,22 @@ end = struct
 		val obj = case c of S.RW => rwobj
 				  | S.RO => EApp (EVar "ro", rwobj)
 	    in
-		pr_fdef ("g_" ^ name, [ETuple []], obj)
+		pr_fdef (gvar_id name, [ETuple []], obj)
 	    end
 
 	    fun pr_gfun_rtti { name, spec, argnames } =
-		pr_vdef ("typ_fn_" ^ name, rtti_val (S.FPTR spec))
+		pr_vdef (funrtti_id name, rtti_val (S.FPTR spec))
 
 	    fun pr_gfun_addr { name, spec, argnames } = pr_addr ("fnh_", name)
 
 	    fun pr_gfun_fptr { name, spec, argnames } =
-		pr_fdef ("fptr_fn_" ^ name,
+		pr_fdef (fptr_id name,
 			 [ETuple []],
-			 EApp (EApp (EVar "mk_fptr", EVar ("typ_fn_" ^ name)),
+			 EApp (EApp (EVar "mk_fptr", EVar (funrtti_id name)),
 			       EApp (EVar "D.addr", EVar ("fnh_" ^ name))))
 
 	    fun pr_gfun_func is_light x = let
 		val { name, spec = { args, res }, argnames } = x
-		(* FIXME: use argnames! *)
 		val p = if is_light then "'" else ""
 		val ml_vars =
 		    rev (#1 (foldl (fn (_, (l, i)) =>
@@ -897,8 +906,7 @@ end = struct
 		    EApp (EVar "ro'", light ("obj", e))
 		  | oneArg (e, S.PTR (_, t)) =
 		    (case incomplete t of
-			 SOME (K, tag) =>
-			 app0 (istruct (K, tag) ^ ".light", e)
+			 SOME (K, tag) => app0 (isu_id (K, tag) ^ ".light", e)
 		       | NONE => light ("ptr", e))
 		  | oneArg (e, S.FPTR _) = light ("fptr", e)
 		  | oneArg (e, S.VOIDPTR) = e
@@ -912,7 +920,7 @@ end = struct
 			 [writeto])
 		      | _ => (ml_vars, c_exps, [])
 		val call = EApp (EVar "call",
-				 ETuple [EApp (EVar ("fptr_fn_" ^ name),
+				 ETuple [EApp (EVar (fptr_id name),
 					       ETuple []),
 					 ETuple c_exps])
 		val ml_res =
@@ -926,7 +934,7 @@ end = struct
 		      | SOME (S.PTR (_, t)) =>
 			(case incomplete t of
 			     SOME (K, tag) =>
-			     app0 (istruct (K, tag) ^ ".heavy", call)
+			     app0 (isu_id (K, tag) ^ ".heavy", call)
 			   | NONE => heavy ("ptr", t, call))
 		      | SOME (t as S.FPTR _) => heavy ("fptr", t, call)
 		      | SOME (S.ARR _) => raise Fail "array result type"
@@ -934,20 +942,21 @@ end = struct
 		val argspat =
 		    case (doargnames, argnames) of
 			(true, SOME nl) =>
-			ERecord (ListPair.zip (extra_argname @ nl, ml_vars))
+			ERecord (ListPair.zip (map arg_id (extra_argname @ nl),
+					       ml_vars))
 		      | _ => ETuple ml_vars
 	    in
-		pr_fdef (concat ["fn_", name, p], [argspat], ml_res)
+		pr_fdef (fun_id (name, p), [argspat], ml_res)
 	    end
 
 	    fun pr_isu_arg (K, tag) =
-		(sp (); str (concat ["structure ", istruct (K, tag),
+		(sp (); str (concat ["structure ", isu_id (K, tag),
 				     " : POINTER_TO_INCOMPLETE_TYPE"]))
 	    fun pr_istruct_arg tag = pr_isu_arg ("S", tag)
 	    fun pr_iunion_arg tag = pr_isu_arg ("U", tag)
 
 	    fun pr_isu_def (kw, K, tag) = let
-		val n = istruct (K, tag)
+		val n = isu_id (K, tag)
 	    in
 		nl ();
 		str (concat [kw, " ", n, " = ", n])
@@ -958,9 +967,10 @@ end = struct
 	    fun pr_iunion_def tag = pr_isu_def ("structure", "U", tag)
 
 	    fun pr_pre_su (K, k, STUN, StUn, tag, size) =
-		(nl (); str (concat ["structure ", K, "_", tag, " = struct"]);
+		(nl (); str (concat ["structure ",
+				     su_id (K, tag), " = struct"]);
 		 VBox 4;
-		 pr_tdef ("tag", Type (concat [k, "_", tag]));
+		 pr_tdef ("tag", Type (su_id (k, tag)));
 		 pr_vdef ("size",
 			  EConstr (EApp (EVar "C_Int.mk_su_size", EWord size),
 				   Con ("C.S.size",
@@ -975,7 +985,7 @@ end = struct
 		pr_pre_su ("U", "u", S.UNION, Un, tag, size)
 
 	    fun pr_enum_const { name, spec } =
-		pr_vdef ("e_" ^ name, EConstr (ELInt spec, sint_ty))
+		pr_vdef (enum_id name, EConstr (ELInt spec, sint_ty))
 	in
 	    (* Generating the functor file... *)
 	    str dontedit;

@@ -203,15 +203,12 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	  fun getTheValues () = valOf (!theValues)
 	      handle Option => raise Fail "CMBoot: theParam not initialized"
 
-	  fun param () = let
-	      val v = getTheValues ()
-	  in
+	  fun param () =
 	      { fnpolicy = fnpolicy,
 		penv = penv,
 		symval = SSV.symval,
 		archos = my_archos,
 		keep_going = #get StdConfig.keep_going () }
-	  end
 
 	  val init_group = #init_group o getTheValues
 
@@ -307,11 +304,23 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	  val recomp = run mkStdSrcPath NONE recomp_runner
 	  val make = run mkStdSrcPath NONE (make_runner true)
 
-	  fun to_portable s =
+	  fun to_portable s = let
+	      val gp = mkStdSrcPath s
+	      fun nativesrc s = let
+		  val p = SrcPath.standard
+			      { err = fn s => raise Fail s, env = penv }
+			      { context = SrcPath.dir gp, spec = s }
+	      in
+		  SrcPath.osstring' (SrcPath.file p)
+	      end
+	      fun mkres (g, pl) = { graph = g, imports = pl,
+				    nativesrc = nativesrc }
+	  in
 	      Option.map
-		  ToPortable.export
+		  (mkres o ToPortable.export)
 		  (Parse.parse (parse_arg
 				    (GroupReg.new (), NONE, mkStdSrcPath s)))
+	  end
 
 	  fun sources archos group = let
 	      val policy =

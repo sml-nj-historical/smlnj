@@ -13,6 +13,20 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/11/14 11:52:00 EST
+Tag: blume-20011114-srcname
+Description:
+
+1. Routed the name of the current source file to mlriscgen where it
+   should be directly emitted into the code object.  (This last part
+   is yet to be done.)
+
+2. Some cleanup of the pgraph code to make it match the proposal that
+   I put out the other day.  (The proposal notwithstanding, things are
+   still in flux here.)
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2001/11/14 09:44:04 EST 
 Tag: 

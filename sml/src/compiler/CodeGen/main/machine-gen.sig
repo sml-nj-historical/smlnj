@@ -13,7 +13,10 @@ signature MACHINE_GEN = sig
 		where I = MLTreeComp.I
   structure MachSpec   : MACH_SPEC
 
-  val codegen : CPS.function list * (CPS.lvar -> (int * int))
-                * ErrorMsg.complainer -> unit
+  val codegen : { funcs: CPS.function list,
+		  limits: CPS.lvar -> int * int,
+		  err: ErrorMsg.complainer,
+		  srcname: string }
+		-> unit
 end (* MACHINE_GEN *)
 

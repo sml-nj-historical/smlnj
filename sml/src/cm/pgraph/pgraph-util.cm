@@ -9,6 +9,10 @@ Library
 	structure FormatPortable
 	structure ScanPortable
 	structure GenSML
+
+	signature PG_OPS
+	structure PGOps
+	structure ReconstructPortable
 is
 	$/basis.cm
 	$/smlnj-lib.cm
@@ -16,3 +20,5 @@ is
 	format.sml
 	scan.sml
 	gen-sml.sml
+	generic-ops.sml
+	reconstruct.sml

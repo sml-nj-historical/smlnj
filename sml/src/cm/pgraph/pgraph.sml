@@ -16,7 +16,7 @@ structure PortableGraph = struct
 	SYM of namespace * string
       | SYMS of varname list
       | IMPORT of { lib: varname, syms: varname }
-      | COMPILE of { src: string, env: varname, syms: varname, native: bool }
+      | COMPILE of { src: string * bool, env: varname, syms: varname }
       | FILTER of { env: varname, syms: varname }
       | MERGE of varname list
 

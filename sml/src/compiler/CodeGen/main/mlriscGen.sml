@@ -10,8 +10,12 @@
 
 signature MLRISCGEN = 
 sig
-  val codegen : 
-    CPS.function list * (CPS.lvar -> (int * int)) * ErrorMsg.complainer -> unit
+  val codegen : { funcs: CPS.function list,
+		  limits:  CPS.lvar -> int * int,
+		  err: ErrorMsg.complainer,
+(* FIXME: srcname should be used to emit the name string for the code object *)
+		  srcname: string }
+		-> unit
 end
 
 functor MLRiscGen
@@ -197,8 +201,12 @@ struct
   (*
    * The main codegen function.
    *)
-  fun codegen(funcs : CPS.function list, limits:CPS.lvar -> (int*int), err) = 
+  fun codegen args =
   let 
+      val { funcs : CPS.function list,
+	    limits:CPS.lvar -> (int*int),
+	    err,
+	    srcname } = args
       val maxAlloc = #1 o limits
       val splitEntry = !splitEntry
 

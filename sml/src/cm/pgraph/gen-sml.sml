@@ -1,3 +1,11 @@
+(* gen-sml.sml
+ *
+ * Generate SML source code for a given library.
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *
+ * author: Matthias Blume (blume@research.bell-labs.com)
+ *)
 local structure P = PortableGraph in
 structure GenSML : sig
     type typ = string
@@ -8,7 +16,7 @@ structure GenSML : sig
     exception ImportMismatch
 
     val gen : { graph: P.graph,
-		srcname: string -> string,
+		nativesrc: string -> string,
 		importstructs: string list,
 		outstream: TextIO.outstream,
 		exportprefix: string } -> unit
@@ -46,7 +54,7 @@ end = struct
 
     fun gen args = let
 	val { graph = P.GRAPH { imports, defs, export },
-	      srcname,
+	      nativesrc,
 	      importstructs,
 	      outstream = outs,
 	      exportprefix } = args
@@ -87,7 +95,7 @@ end = struct
 		    NONE => raise Unbound lib
 		  | SOME n => n
 	    fun fmt ((ns, n), (_, n')) =
-		out [ns, " ", n', " = ", lstruct, "__", n, "\n"]
+		out [ns, " ", n', " = ", lstruct, n, "\n"]
 	in
 	    genexport (ss, fmt)
 	end
@@ -95,11 +103,11 @@ end = struct
 	fun genimport ((ns, n), (_, n')) =
 	    out ["    ", ns, " ", n, " = ", n', "\n"]
 
-	fun compile (src, e, oss) = let
+	fun compile (src, native, e, oss) = let
 	    fun fmt ((ns, n), (_, n')) =
 		out [ns, " ", n', " = ", n, "\n"]
 	    fun copyfile src = let
-		val ins = TextIO.openIn (srcname src)
+		val ins = TextIO.openIn (if native then src else nativesrc src)
 		fun copy () =
 		    case TextIO.input ins of
 			"" => TextIO.closeIn ins
@@ -157,8 +165,8 @@ end = struct
 			  end
 			| P.IMPORT { lib, syms } =>
 			  ENV (import (lib, getSYMS syms))
-			| P.COMPILE { src, env, syms, native } =>
-			  ENV (compile (src, getENV env, getSYMS syms))
+			| P.COMPILE { src = (src, native), env, syms } =>
+			  ENV (compile (src, native, getENV env, getSYMS syms))
 			| P.FILTER { env, syms } =>
 			  ENV (filter (getENV env, getSYMS syms))
 			| P.MERGE el => let
@@ -175,7 +183,7 @@ end = struct
 	val ee = getENV dm export
 
 	fun libexport ((ns, n), (_, n')) =
-	    out [ns, " ", exportprefix, "__", n, " = ", n', "\n"]
+	    out [ns, " ", exportprefix, n, " = ", n', "\n"]
 
     in
 	out ["in\n"];

@@ -84,6 +84,7 @@ structure Main = struct
 	val lsp = ref NONE
 	val target = ref default_target
 	val wrq = ref NONE
+	val namedargs = ref false
 
 	fun proc [hfile] =
 	    let val ifile = OS.FileSys.tmpName ()
@@ -112,6 +113,7 @@ structure Main = struct
 			  lambdasplit = !lsp,
 			  weightreq = !wrq,
 			  wid = getOpt (!wid, 75),
+			  namedargs = !namedargs,
 			  target = !target }
 		handle e => (OS.FileSys.remove ifile handle _ => (); raise e);
 		OS.FileSys.remove ifile handle _ => ();
@@ -128,6 +130,7 @@ structure Main = struct
 	  | proc ("-target" :: tg :: l) = (target := find_target tg; proc l)
 	  | proc ("-light" :: l) = (wrq := SOME false; proc l)
 	  | proc ("-heavy" :: l) = (wrq := SOME true; proc l)
+	  | proc ("-namedargs" :: l) = (namedargs := true; proc l)
 	  | proc _ =
 	    raise Fail
 	     (concat ["usage: ", arg0,

@@ -1,3 +1,9 @@
+(* pgraph.cm
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *
+ * author: Matthias Blume (blume@research.bell-labs.com)
+ *)
 Library
 	structure PortableGraph
 is

@@ -12,6 +12,7 @@ structure ToPortable : sig
 		 PortableGraph.graph * SrcPath.file list
 end = struct
 
+    structure SS = SymbolSet
     structure GG = GroupGraph
     structure DG = DependencyGraph
     structure P = PortableGraph
@@ -34,8 +35,8 @@ end = struct
 	       | unequal => unequal)
 
     structure SSM = RedBlackMapFn
-	(type ord_key = SymbolSet.set
-	 val compare = SymbolSet.compare)
+	(type ord_key = SS.set
+	 val compare = SS.compare)
 
     structure IM = RedBlackMapFn
 	(type ord_key = SrcPath.file * string
@@ -44,9 +45,8 @@ end = struct
 		 EQUAL => String.compare (s, s')
 	       | unequal => unequal)
 
-    val ignoredSyms = SymbolSet.addList
-			  (SymbolSet.empty,
-			   [PervAccess.pervStrSym, CoreSym.coreSym])
+    val ignoredSyms = SS.addList (SS.empty,
+				  [PervAccess.pervStrSym, CoreSym.coreSym])
 
     fun export (GG.ERRORGROUP, _) = raise Fail "ToPortable.export ERRORGROUP"
       | export (GG.GROUP { exports, sublibs, grouppath, ... }, gp) = let
@@ -68,7 +68,7 @@ end = struct
 			    case find (m, i) of
 				NONE => insert (m, i, (p, ex))
 			      | SOME (p', ex') => 
-				insert (m, i, (p', SymbolSet.union (ex, ex')))
+				insert (m, i, (p', SS.union (ex, ex')))
 			val su = update (SmlInfoMap.find, SmlInfoMap.insert)
 			val bu = update (StableMap.find, StableMap.insert)
 			fun oneE (sy, (th, _, ex), (sm, bm)) =
@@ -84,7 +84,7 @@ end = struct
 			  | _ => (sm, bm)
 		    end
 		val (sm, bm) = mkInvMap sublibs
-		fun trim (p, ex) = (p, SymbolSet.difference (ex, ignoredSyms))
+		fun trim (p, ex) = (p, SS.difference (ex, ignoredSyms))
 		val sm = SmlInfoMap.map trim sm
 		val bm = StableMap.map trim bm
 	    in
@@ -106,8 +106,28 @@ end = struct
 
 	    fun relname i = let
 		val p = toAbsolute (SrcPath.osstring (SmlInfo.sourcepath i))
+		val s = OS.Path.mkRelative { path = p, relativeTo = groupdir }
+		val { arcs, isAbs, vol } = OS.Path.fromString s
+		fun badarc a =
+		    a <> OS.Path.currentArc andalso
+		    a <> OS.Path.parentArc andalso
+		    (a = "." orelse a = ".." orelse Char.contains a #"/")
+		fun toUnix [] = "."
+		  | toUnix (h :: t) = let
+			fun trans a =
+			    if a = OS.Path.currentArc then "."
+			    else if a = OS.Path.parentArc then ".."
+			    else a
+		    in
+			concat (rev (foldl (fn (a, l) =>
+					       trans a :: "/" :: l)
+					   [trans h] t))
+		    end
 	    in
-		OS.Path.mkRelative { path = p, relativeTo = groupdir }
+		if isAbs orelse vol <> "" orelse List.exists badarc arcs then
+		    (s, true)
+		else
+		    (toUnix arcs, false)
 	    end
 
 	    val gensym = let val next = ref 0
@@ -157,7 +177,7 @@ end = struct
 		case SSM.find (!sets, ss) of
 		    SOME v => v
 		  | NONE => let val v = gensym "ss"
-				val sl = SymbolSet.listItems ss
+				val sl = SS.listItems ss
 			    in
 				genBind (v, P.SYMS (map genSYM sl));
 				sets := SSM.insert (!sets, ss, v);
@@ -186,19 +206,26 @@ end = struct
 			    end
 	    end
 
+	    fun genFILTER' (vex as (v, ex), f) = let
+		val f' = SS.intersection (ex, f)
+	    in
+		if SS.equal (ex, f') then vex
+		else (genFILTER (v, f'), f')
+	    end
+
 	    fun unlayer l = let
 		fun loop ([], _, a) = rev a
 		  | loop ((h, hss) :: t, ss, a) = let
-			val i = SymbolSet.intersection (ss, hss)
-			val u = SymbolSet.union (ss, hss)
-			val f = SymbolSet.difference (hss, ss)
+			val i = SS.intersection (ss, hss)
+			val u = SS.union (ss, hss)
+			val f = SS.difference (hss, ss)
 		    in
-			if SymbolSet.isEmpty f then loop (t, u, a)
-			else if SymbolSet.isEmpty i then loop (t, u, h :: a)
+			if SS.isEmpty f then loop (t, u, a)
+			else if SS.isEmpty i then loop (t, u, h :: a)
 			else loop (t, u, genFILTER (h, f) :: a)
 		    end
 	    in
-		loop (l, SymbolSet.empty, [])
+		loop (l, SS.empty, [])
 	    end
 
 	    local
@@ -220,12 +247,11 @@ end = struct
 		val ss = genSYMS ex
 	    in
 		preventFilter (v, ss);
-		genBind (v, P.COMPILE { src = s, env = e, syms = ss,
-					native = true })(* for now! FIXME *)
+		genBind (v, P.COMPILE { src = s, env = e, syms = ss })
 	    end
 
 	    fun genIMPORT (lib, ex) =
-		if SymbolSet.isEmpty ex then ("dummy", ex)
+		if SS.isEmpty ex then ("dummy", ex)
 		else
 		    let val s = genSYMS ex
 		    in case IM.find (!imps, (lib, s)) of
@@ -269,16 +295,7 @@ end = struct
 		    end
 
 	    and fsbn (NONE, n) = sbn n
-	      | fsbn (SOME f, n) = let
-		    val vex as (v, ex) = sbn n
-		in
-		    if SymbolSet.isSubset (ex, f) then vex
-		    else let val f' = SymbolSet.intersection (f, ex)
-			     val v' = genFILTER (v, f')
-			 in
-			     (v', f')
-			 end
-		end
+	      | fsbn (SOME f, n) = genFILTER' (sbn n, f)
 
 	    and sbn (DG.SB_SNODE (n as DG.SNODE { smlinfo, ... })) =
 		(case smlImport smlinfo of
@@ -287,8 +304,7 @@ end = struct
 	      | sbn (DG.SB_BNODE (DG.BNODE { bininfo, ... }, _, _)) =
 		binImport bininfo
 
-	    fun impexp (th, _, ss) =
-		genFILTER (#1 (fsbn (th ())), ss)
+	    fun impexp (th, _, ss) = #1 (genFILTER' (fsbn (th ()), ss))
 
 	    val iel = SymbolMap.foldr (fn (ie, l) => impexp ie :: l) [] exports
 

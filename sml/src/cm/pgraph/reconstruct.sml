@@ -1,5 +1,11 @@
+(* reconstruct.sml
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *
+ * author: Matthias Blume (blume@research.bell-labs.com)
+ *)
 local structure P = PortableGraph in
-structure PGRecon :> sig
+structure ReconstructPortable :> sig
 
     type lib type env type sym type syms type misc
     type graph = P.graph
@@ -35,7 +41,7 @@ end = struct
 	fun Imp m (l, ss) =
 	    Bind (P.IMPORT { lib = l, syms = ss }, m)
 	fun Com m (s, e, ss, n) =
-	    Bind (P.COMPILE { src = s, env = e, syms = ss, native = n }, m)
+	    Bind (P.COMPILE { src = (s, n), env = e, syms = ss }, m)
 	fun Fil m (e, ss) =
 	    Bind (P.FILTER { env = e, syms = ss }, m)
 	fun Mer m el =

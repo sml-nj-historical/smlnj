@@ -1,29 +1,35 @@
+(* generic-ops.sml
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *
+ * author: Matthias Blume (blume@research.bell-labs.com)
+ *)
 signature PG_OPS = sig
 
     type ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
 
-    val SYM : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
+    val sym : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
 	      -> string -> string
 	      -> ('lib, 'env, 'sym, 'syms, 'export, 'misc) context * 'sym
-    val IMPORT : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
-		 -> 'lib -> 'syms
-		 -> ('lib, 'env, 'sym, 'syms, 'export, 'misc) context * 'env
-    val COMPILE : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
-		  -> string -> 'env -> 'syms
-		  -> ('lib, 'env, 'sym, 'syms, 'export, 'misc) context * 'env
-    val NCOMPILE : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
-		   -> string -> 'env -> 'syms
-		   -> ('lib, 'env, 'sym, 'syms, 'export, 'misc) context * 'env
-    val MERGE : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
-		-> 'env list
-		-> ('lib, 'env, 'sym, 'syms, 'export, 'misc) context * 'env
-    val FILTER : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
-		 -> 'env -> 'syms
-		 -> ('lib, 'env, 'sym, 'syms, 'export, 'misc) context * 'env
-    val SYMS : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
+    val syms : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
 	       -> 'sym list
 	       -> ('lib, 'env, 'sym, 'syms, 'export, 'misc) context * 'syms
-    val EXPORT : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
+    val import : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
+		 -> 'lib -> 'syms
+		 -> ('lib, 'env, 'sym, 'syms, 'export, 'misc) context * 'env
+    val compile : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
+		  -> string -> 'env -> 'syms
+		  -> ('lib, 'env, 'sym, 'syms, 'export, 'misc) context * 'env
+    val ncompile : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
+		   -> string -> 'env -> 'syms
+		   -> ('lib, 'env, 'sym, 'syms, 'export, 'misc) context * 'env
+    val merge : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
+		-> 'env list
+		-> ('lib, 'env, 'sym, 'syms, 'export, 'misc) context * 'env
+    val filter : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
+		 -> 'env -> 'syms
+		 -> ('lib, 'env, 'sym, 'syms, 'export, 'misc) context * 'env
+    val export : ('lib, 'env, 'sym, 'syms, 'export, 'misc) context
 		 -> 'env
 		 -> 'export
 end
@@ -48,14 +54,14 @@ structure PGOps : PG_OPS = struct
 	    in ({ Ops = Ops, Misc = Misc' }, res)
 	    end
     in
-    fun SYM C ns s = generic C #Sym (ns, s)
-    fun IMPORT C l ss = generic C #Imp (l, ss)
-    fun COMPILE C s e ss = generic C #Com (s, e, ss, false)
-    fun NCOMPILE C s e ss = generic C #Com (s, e, ss, true)
-    fun MERGE C el = generic C #Mer el
-    fun FILTER C e ss = generic C #Fil (e, ss)
-    fun SYMS C sl = generic C #Syms sl
-    fun EXPORT { Ops = { Sym, Imp, Com, Mer, Fil, Syms, Exp }, Misc } e =
+    fun sym c ns s = generic c #Sym (ns, s)
+    fun syms c sl = generic c #Syms sl
+    fun import c l ss = generic c #Imp (l, ss)
+    fun compile c s e ss = generic c #Com (s, e, ss, false)
+    fun ncompile c s e ss = generic c #Com (s, e, ss, true)
+    fun merge c el = generic c #Mer el
+    fun filter c e ss = generic c #Fil (e, ss)
+    fun export { Ops = { Sym, Imp, Com, Mer, Fil, Syms, Exp }, Misc } e =
 	Exp Misc e
     end
 end

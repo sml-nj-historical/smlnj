@@ -209,15 +209,13 @@ fun flintcomp
 	    val data = litToBytes dlit
             val _ = prC "cpsopt-code" function
 
-(** NOTE: we should be passing the source-code name (src) to the
- ** code generator somehow (for the second argument to code object allocation).
- **)
             fun gen fx = 
               let val fx = (prC "closure" o closure) fx
                   val carg = globalfix fx
                   val carg = spill carg
                   val (carg, limit) = limit carg
-               in codegen (carg, limit, err);
+               in codegen { funcs = carg, limits = limit, err = err,
+			    srcname = src };
                   collect ()
               end
 
@@ -232,4 +230,3 @@ val flintcomp = phase "FLINT 050 flintcomp" flintcomp
 
 end (* local *)
 end (* structure FLINTComp *)
-

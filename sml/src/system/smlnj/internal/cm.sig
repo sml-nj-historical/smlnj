@@ -70,6 +70,8 @@ signature CM = sig
 			string list option
 
     structure Graph : sig
-	val graph : string -> (PortableGraph.graph * Library.lib list) option
+	val graph : string -> { graph: PortableGraph.graph,
+				imports: Library.lib list,
+				nativesrc: string -> string } option
     end
 end
