@@ -169,12 +169,13 @@
 (defconst sml-indent-rule
   (sml-preproc-alist
    `(("struct" . 0)
-     (,sml-module-head-syms . ("d=" 0))
-     ("local" . ("in" 0))
+     (,sml-module-head-syms "d=" 0)
+     ("local" "in" 0)
      ;;("of" . (3 nil))
      ;;("else" . (sml-indent-level 0))
      ;;(("in" "fun" "and" "of") . (sml-indent-level nil))
-     (,sml-=-starter-syms . (nil))
+     ("if" "else" 0)
+     (,sml-=-starter-syms nil)
      (("abstype" "case" "datatype" "if" "then" "else" "sharing" "infix" "infixr"
        "let" "local" "nonfix" "open" "raise" "sig" "struct" "type" "val" "while"
        "do" "with" "withtype"))))
@@ -203,14 +204,14 @@
   "Symbols that should behave somewhat like opening parens.")
 
 (defconst sml-close-paren
-  `(("in" . "\\<l\\(ocal\\|et\\)\\>")
-    ("with" . "\\<abstype\\>")
-    ("withtype" . "\\<\\(abs\\|data\\)type\\>")
-    ("end" . ,sml-begin-symbols-re)
-    ("then" . "\\<if\\>")
-    ("else" . "\\<if\\>")
-    ("of" . "\\<case\\>")
-    ("d=" . nil))
+  `(("in" "\\<l\\(ocal\\|et\\)\\>")
+    ("with" "\\<abstype\\>")
+    ("withtype" "\\<\\(abs\\|data\\)type\\>")
+    ("end" ,sml-begin-symbols-re)
+    ("then" "\\<if\\>")
+    ("else" "\\<if\\>" (sml-bolp))
+    ("of" "\\<case\\>")
+    ("d=" nil))
   "Symbols that should behave somewhat like close parens.")
 
 (defconst sml-agglomerate-re "\\<else[ \t]+if\\>"

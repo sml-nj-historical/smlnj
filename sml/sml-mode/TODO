@@ -7,8 +7,6 @@
 
 * improve the run-sml to allow running on another machine and to take args
 
-* allow zero-indent after single-line `if a then b else'.
-
 * allow right-aligning "and" with its correspondant.
 
 * sample problematic indentations:

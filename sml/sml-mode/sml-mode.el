@@ -520,7 +520,7 @@ If anyone has a good algorithm for this..."
 (defun sml-indent-relative (sym data)
   (save-excursion
     (sml-forward-sym) (sml-backward-sexp nil)
-    (unless (cdr data) (sml-backward-spaces) (sml-backward-sym))
+    (unless (second data) (sml-backward-spaces) (sml-backward-sym))
     (+ (or (cdr (assoc sym sml-symbol-indent)) 0)
        (sml-delegated-indent))))
 
@@ -591,11 +591,11 @@ the parent at the end of this function."
   (save-excursion
     (let ((delegate (assoc sym sml-close-paren))
 	  (head-sym sym))
-      (when delegate
+      (when (and delegate (not (eval (third delegate))))
 	;;(sml-find-match-backward sym delegate)
 	(sml-forward-sym) (sml-backward-sexp nil)
 	(setq head-sym
-	      (if (cdr delegate)
+	      (if (second delegate)
 		  (save-excursion (sml-forward-sym))
 		(sml-backward-spaces) (sml-backward-sym))))
 
@@ -619,41 +619,30 @@ the parent at the end of this function."
 
 (defun sml-indent-default (&optional noindent)
   (let* ((sym-after (save-excursion (sml-forward-sym)))
-	 (prec-after (sml-op-prec sym-after 'back))
-	 (indent-after (or (cdr (assoc sym-after sml-symbol-indent)) 0))
 	 (_ (sml-backward-spaces))
 	 (sym-before (sml-backward-sym))
-	 (prec (or (sml-op-prec sym-before 'back) prec-after 100))
 	 (sym-indent (and sym-before (sml-get-sym-indent sym-before))))
     (if sym-indent
-	(if noindent (current-column) (+ sym-indent indent-after))
-      ;;(sml-forward-sym)
-      (while (and (not (sml-bolp))
-		  (sml-move-if (sml-backward-sexp (1- prec)))
-		  (not (sml-bolp)))
-	(while (sml-move-if (sml-backward-sexp prec))))
-;;       (or (and (not (sml-bolp))
-;; 	       ;; If we backed over an equal char which was not the
-;; 	       ;; polymorphic equality, then we did what amounts to
-;; 	       ;; delegate indent from `=' to the corresponding head, so we
-;; 	       ;; need to look at the preceding symbol and follow its
-;; 	       ;; intentation instructions.
-;; 	       (string-equal "d=" sym-before)
-;; 	       (let ((point (point)))
-;; 		 (sml-backward-spaces)
-;; 		 (let* ((sym (sml-backward-sym))
-;; 			(sym-indent (cdr (assoc-default sym sml-indent-rule))))
-;; 		   (when sym-indent
-;; 		     (if noindent (current-column)
-;; 		       (let ((sym-indent (sml-get-sym-indent sym 1)))
-;; 			 (if sym-indent (+ indent-after sym-indent)
-;; 			   (goto-char point)
-;; 			   (+ indent-after (current-column)))))))))
-      
-      (when noindent
-	(sml-move-if (sml-backward-spaces)
-		     (string-match sml-starters-re (or (sml-backward-sym) ""))))
-      (current-column))))
+	;; the previous sym is an indentation introducer: follow the rule
+	(let ((indent-after (or (cdr (assoc sym-after sml-symbol-indent)) 0)))
+	  (if noindent (current-column) (+ sym-indent indent-after)))
+      ;; default-default
+      (let* ((prec-after (sml-op-prec sym-after 'back))
+	     (prec (or (sml-op-prec sym-before 'back) prec-after 100)))
+	;; go back until you hit a symbol that has a lower prec than the
+	;; "current one", or until you backed over a sym that has the same prec
+	;; but is at the beginning of a line.
+	(while (and (not (sml-bolp))
+		    (sml-move-if (sml-backward-sexp (1- prec)))
+		    (not (sml-bolp)))
+	  (while (sml-move-if (sml-backward-sexp prec))))
+	;; the `noindent' case does back over an introductory symbol
+	;; such as `fun', ...
+	(when noindent
+	  (sml-move-if
+	   (sml-backward-spaces)
+	   (string-match sml-starters-re (or (sml-backward-sym) ""))))
+	(current-column)))))
 
 
 (defun sml-bolp ()

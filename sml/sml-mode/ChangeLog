@@ -1,3 +1,8 @@
+1999-06-17  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-defs.el (sml-close-paren): added a second field that specifies when
+	  not to delegate.  Only used for `else'.
+
 1999-06-16  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* sml-move.el (sml-(for|back)ward-sym): distinguishes between

@@ -227,7 +227,7 @@ Returns T if the move indeed moved through one sexp and NIL if not."
        ((and prec op-prec (>= prec op-prec)) nil)
        ;; special rules for nested constructs like if..then..else
        ((and (or (not prec) (and prec op-prec))
-	     (setq match (cdr (assoc op sml-close-paren))))
+	     (setq match (second (assoc op sml-close-paren))))
 	(sml-find-match-backward (concat "\\<" op "\\>") match))
        ;; don't back over open-parens
        ((assoc op sml-open-paren) nil)
