@@ -843,9 +843,9 @@ fun mkVE (v, ts, d) = let
 	  | _ => TAPP(mkVar(v, d), map (toTyc d) ts)
 in
     case v of
-	V.VALvar { typ=ref typ, info, ... } =>
+	V.VALvar { info, ... } =>
 	II.match info
-	   { inl_prim = fn p =>
+	   { inl_prim = fn (p, typ) =>
 	     (case (p, ts) of
 		  (PO.POLYEQL, [t]) => eqGen(typ, t, toTcLt d)
 		| (PO.POLYNEQ, [t]) =>

@@ -186,7 +186,6 @@ fun absEqvTy (spec, actual, dinfo) : (ty list * tyvar list * ty * bool) =
           | _ =>insttys0)
 *)
       val insttys = 
-(* PRIMOP: ii2ty no longer exists --
 	  case INS.Param.ii2ty dinfo of
 	      SOME st =>
               (let val (actinst', insttys') = TU.instantiatePoly st
@@ -194,7 +193,7 @@ fun absEqvTy (spec, actual, dinfo) : (ty list * tyvar list * ty * bool) =
 		   Unify.unifyTy(actinst', actinst) handle _ => ();
 		   insttys'
                end)
-            | NONE => *) insttys0
+            | NONE =>insttys0
 
       val res = (Unify.unifyTy(actinst, specinst); true) handle _ => false
 
@@ -231,7 +230,6 @@ fun eqvTnspTy (spec, actual, dinfo) : (ty list * tyvar list) =
                end)
           | _ =>insttys)
 *)
-(* PRIMOP: ii2ty no longer exists ---
       val insttys = 
 	  case INS.Param.ii2ty dinfo of
 	      SOME st =>
@@ -241,7 +239,7 @@ fun eqvTnspTy (spec, actual, dinfo) : (ty list * tyvar list) =
 		   insttys'
                end)
             | NONE =>insttys
-*)
+
       val (specinst, stys) = TU.instantiatePoly spec
       val _ = ((Unify.unifyTy(actinst, specinst))
                handle _ => bug "unexpected types in eqvTnspTy")
