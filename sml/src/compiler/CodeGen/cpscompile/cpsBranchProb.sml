@@ -128,7 +128,7 @@ structure CpsBranchProb : CPS_BRANCH_PROB = struct
 	     | _ => ()
 	    (*esac*);
 	    cexp e)
-	| cexp(CPS.RCC(_, _, _, _, e)) = cexp e
+	| cexp(CPS.RCC(_, _, _, _, _, _, e)) = cexp e
 	| cexp(FIX_) = error "cexp:FIX"
 
     in	 return ();  cexp e 

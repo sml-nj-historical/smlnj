@@ -261,7 +261,7 @@ struct
          | CPS.LOOKER(_,_,w,t,e)   => (fp(w,t); markfp e)
          | CPS.ARITH(_,_,w,t,e)    => (fp(w,t); markfp e)
          | CPS.PURE(p,_,w,t,e)     => (markPure(p,w); fp(w,t); markfp e)
-	 | CPS.RCC(_,_,w,t,e)      => (fp(w,t); markfp e)
+	 | CPS.RCC(_,_,_,_,w,t,e)  => (fp(w,t); markfp e)
          | CPS.BRANCH(_,_,_,e1,e2) => (markfp e1; markfp e2)
          | CPS.FIX _ => error "FIX in Spill.markfp"
 
@@ -341,7 +341,7 @@ struct
         | CPS.LOOKER(_,vl,w,t,e)   => uses(vl,def(w,freevars e))
         | CPS.ARITH(_,vl,w,t,e)    => uses(vl,def(w,freevars e))
         | CPS.PURE(_,vl,w,t,e)     => uses(vl,def(w,freevars e))
-        | CPS.RCC(_,vl,w,t,e)      => uses(vl,def(w,freevars e))
+        | CPS.RCC(_,_,_,vl,w,t,e)  => uses(vl,def(w,freevars e))
         | CPS.BRANCH(_,vl,c,e1,e2) => uses(vl,freevars e1 \/ freevars e2)
         | CPS.FIX _ => error "FIX in Spill.freevars"
 
@@ -467,7 +467,7 @@ struct
               | CPS.LOOKER(_,vl,w,t,e) => fx(vl, w, t, e, b)
               | CPS.ARITH(_,vl,w,t,e)  => fx(vl, w, t, e, b)
               | CPS.PURE(_,vl,w,t,e)   => fx(vl, w, t, e, b)
-              | CPS.RCC(_,vl,w,t,e)    => fx(vl, w, t, e, b+1)
+              | CPS.RCC(_,_,_,vl,w,t,e)=> fx(vl, w, t, e, b+1)
               | CPS.BRANCH(_,vl,c,x,y) => (uses(vl, n); gathers([x,y],b+1,n+1))
               | CPS.FIX _ => error "FIX in Spill.gather"
           end
@@ -622,7 +622,6 @@ struct
        *  spOff --- current available spill offset
        *
        * Return:
-       *  e      --- transformed cps expression 
        *  L      --- the set of live lvars in e 
        *  spills --- the number of spills
        *   
@@ -708,7 +707,7 @@ struct
           | CPS.LOOKER(p,vl,w,t,e) => scanOp(vl, w, e, b)
           | CPS.ARITH(p,vl,w,t,e)  => scanOp(vl, w, e, b)
           | CPS.PURE(p,vl,w,t,e)   => scanOp(vl, w, e, b)
-          | CPS.RCC(p,vl,w,t,e)    => scanOp(vl, w, e, b+1)
+          | CPS.RCC(k,l,p,vl,w,t,e)=> scanOp(vl, w, e, b+1)
           | CPS.BRANCH(p,vl,c,x,y) => scanStmt(vl,[x,y])
           | CPS.FIX _ => error "FIX in Spill.scan"
 
@@ -893,8 +892,8 @@ struct
                rewrite(vl,w,e, fn (vl,w,e) => CPS.ARITH(p,vl,w,t,e))
           | CPS.PURE(p,vl,w,t,e) =>  
                rewrite(vl,w,e,fn (vl,w,e) => CPS.PURE(p,vl,w,t,e))
-          | CPS.RCC(p,vl,w,t,e) =>  
-               rewrite(vl,w,e,fn (vl,w,e) => CPS.RCC(p,vl,w,t,e))
+          | CPS.RCC(k,l,p,vl,w,t,e) =>  
+               rewrite(vl,w,e,fn (vl,w,e) => CPS.RCC(k,l,p,vl,w,t,e))
           | CPS.BRANCH(p,vl,c,x,y) => 
                rewriteStmt(vl,[x,y], fn (vl,[x,y]) => CPS.BRANCH(p,vl,c,x,y))
           | CPS.FIX _ => error "FIX in Spill.rebuild"

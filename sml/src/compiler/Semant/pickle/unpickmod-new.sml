@@ -132,7 +132,8 @@ structure UnpickMod : UNPICKMOD = struct
 	  P.SUBSCRIPT_REC,
 	  P.SUBSCRIPT_RAW64,
 	  P.UNBOXEDASSIGN,
-	  P.RAW_CCALL NONE]
+	  P.RAW_CCALL NONE
+        ]
 
     val cmpop_table =
 	#[P.>, P.>=, P.<, P.<=, P.LEU, P.LTU, P.GEU, P.GTU, P.EQL, P.NEQ]
@@ -200,6 +201,8 @@ structure UnpickMod : UNPICKMOD = struct
 	val tkindListM = UU.mkMap ()
 	val ctypeM = UU.mkMap ()
 	val ctypeListM = UU.mkMap ()
+	val ccalltypeListM = UU.mkMap ()
+	val ccalltypeOptionM = UU.mkMap ()
 	val cciM = UU.mkMap ()
 
 	val boollist = list boolListM bool
@@ -290,13 +293,25 @@ structure UnpickMod : UNPICKMOD = struct
 
 	and ctypelist () = list ctypeListM ctype ()
 
+        fun ccalltype() = let
+            fun ct #"\000" = P.CCALL_INT32
+              | ct #"\001" = P.CCALL_REAL64
+              | ct #"\002" = P.CCALL_ML_PTR
+              | ct _       = raise Format
+        in  nonshare ct
+        end
+
+        and ccalltypelist () = list ccalltypeListM ccalltype ()
+        and ccalltypeoption () = option ccalltypeOptionM ccalltype ()
+
 	fun ccall_info () = let
 	    fun cp #"C" =
 		{ c_proto = { conv = string (),
 			      retTy = ctype (),
 			      paramTys = ctypelist () },
-		  ml_flt_args = boollist (),
-		  ml_flt_res_opt = booloption () }
+		  ml_args = ccalltypelist (),
+		  ml_res_opt = ccalltypeoption (),
+		  reentrant = bool () }
 	      | cp _ = raise Format
 	in
 	    share cciM cp
@@ -328,12 +343,14 @@ structure UnpickMod : UNPICKMOD = struct
 	      | po #"\116" = P.RAW_LOAD (numkind ())
 	      | po #"\117" = P.RAW_STORE (numkind ())
 	      | po #"\118" = P.RAW_CCALL (SOME (ccall_info ()))
+	      | po #"\119" = P.RAW_RECORD{tag=bool (),sz=int ()}
 	      | po c =
 		Vector.sub (primop_table, Char.ord c)
 		handle General.Subscript => raise Format
 	in
 	    share poM po
 	end
+
     in
 	{ pid = pid, string = string, symbol = symbol,
 	  access = access, conrep = conrep, consig = consig,

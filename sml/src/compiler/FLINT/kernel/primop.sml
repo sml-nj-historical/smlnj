@@ -106,9 +106,18 @@ datatype primop
      * information is for use by the backend, ML information is for
      * use by the CPS converter. *)
   | RAW_CCALL of { c_proto: CTypes.c_proto,
-		   ml_flt_args: bool list,
-		   ml_flt_res_opt: bool option } option
+		   ml_args: ccall_type list,
+		   ml_res_opt: ccall_type option,
+                   reentrant: bool
+                 } option
+   (* Allocate uninitialized storage on the heap.
+    * The record is meant to hold short-lived C objects, i.e., they
+    * are not ML pointers.  With the tag, the representation is 
+    * the same as RECORD with tag tag_raw32.  
+    *)
+  | RAW_RECORD of {tag:bool,sz:int}
 
+and ccall_type = CCALL_INT32 | CCALL_REAL64 | CCALL_ML_PTR
 
 (** default integer arithmetic and comparison operators *)
 val IADD = ARITH{oper=op +, overflow=true, kind=INT 31}
@@ -260,7 +269,8 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop (RAW_LOAD nk) = concat ["raw_load(", prNumkind nk, ")"]
   | prPrimop (RAW_STORE nk) = concat ["raw_store(", prNumkind nk, ")"]
   | prPrimop (RAW_CCALL _) = "raw_ccall"
-
+  | prPrimop (RAW_RECORD{tag,sz}) = 
+       "raw_record"^Int.toString sz^(if tag then "" else "_notag")
 
 (* should return more than just a boolean:
  * {Store,Continuation}-{read,write} *)

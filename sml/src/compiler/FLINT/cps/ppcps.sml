@@ -139,6 +139,7 @@ fun pureName P.length = "length"
   | pureName P.newarray0 = "newarray0"
   | pureName (P.rawrecord rk) = "rawrecord"^
                     (case rk of NONE => "" | SOME rk => rkstring rk)
+  | pureName (P.condmove b) = "condmove "^branchName b
 
 and rkstring rk = (case rk 
         of RK_VECTOR => "RK_VECTOR"
@@ -244,8 +245,10 @@ fun show0 say =
 		    indent (n+3) e1;
 		    space n; say "else\n";
 		    indent (n+3) e2)
-	      | RCC(p,vl,w,t,e) =>
+	      | RCC(k,l,p,vl,w,t,e) =>
 		   (space n; 
+                    if k = REENTRANT_RCC then say "reentrant " else ();
+                    if l = "" then () else (say l; say " ");
                     say "rcc("; sayvlist vl; say ") -> "; sayv(VAR w);
 		    sayt(t);nl(); f e)
          in f

@@ -221,6 +221,7 @@ CodeGen/cpscompile/argPassing.sig
 CodeGen/cpscompile/argPassing.sml
 CodeGen/cpscompile/cluster.sml
 CodeGen/cpscompile/cps-aliasing.sml
+CodeGen/cpscompile/cps-c-calls.sml
 CodeGen/cpscompile/cpsBranchProb.sml
 CodeGen/cpscompile/cpsRegions.sig
 CodeGen/cpscompile/cpsRegions.sml

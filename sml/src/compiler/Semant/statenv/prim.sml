@@ -189,6 +189,7 @@ val u = BT.unitTy
 val i32 = BT.int32Ty
 val w32 = BT.word32Ty
 val w8 = BT.word8Ty
+val s  = BT.stringTy
 
 fun p0 t = t
 fun p1 t = T.POLYty {sign=[false], tyfun=T.TYFUN {arity=1, body=t}}
@@ -218,6 +219,14 @@ val w32_f64 = p0(ar(w32,f64))
 val w32w32_u = p0(ar(pa(w32,w32),u))
 val w32i32_u = p0(ar(pa(w32,i32),u))
 val w32f64_u = p0(ar(pa(w32,f64),u))
+
+val i_x      = p1(ar(i,v1))
+val xw32_w32 = p1(ar(pa(v1,w32),w32))
+val xw32_i32 = p1(ar(pa(v1,w32),i32))
+val xw32_f64 = p1(ar(pa(v1,w32),f64))
+val xw32w32_u = p1(ar(tp(v1,w32,w32),u))
+val xw32i32_u = p1(ar(tp(v1,w32,i32),u))
+val xw32f64_u = p1(ar(tp(v1,w32,f64),u))
 
 val b_b = unf bo
 
@@ -289,8 +298,14 @@ val cc_b = binp BT.charTy
  * generate code according to the C calling convention.
  * (In other words, 'b will be a completely ad-hoc encoding of a CTypes.c_proto
  * value in ML types.)
+ *
+ * The reentrant version of the operator has an extra bool type parameter.
+ * Its value is ignored. 
  *)
 val rccType = p3(ar(tp(w32,v1,v2),v3))
+val rccType' = p3(ar(tp(s,v1,v2),v3))
+val reentrantRccType = p3(ar(BT.tupleTy[w32,v1,v2,bo],v3))
+val reentrantRccType' = p3(ar(BT.tupleTy[s,v1,v2,bo],v3))
 
 in
 
@@ -681,7 +696,43 @@ val allPrimops =
        ("rawi32s",      P.RAW_STORE (P.INT 32),   w32i32_u) :-:
        ("rawf32s",      P.RAW_STORE (P.FLOAT 32), w32f64_u) :-:
        ("rawf64s",      P.RAW_STORE (P.FLOAT 64), w32f64_u) :-:
-       ("rawccall",     P.RAW_CCALL NONE,         rccType)
+       ("rawccall",     P.RAW_CCALL NONE,         rccType) :-:
+       ("rawccall_direct", P.RAW_CCALL NONE,      rccType') :-:
+
+          (* Support for experimental reentrant C calls *)
+       ("rawccall_reentrant",  P.RAW_CCALL NONE,  reentrantRccType) :-:
+       ("rawccall_reentrant_direct",  P.RAW_CCALL NONE,  reentrantRccType') :-:
+
+          (* Support for direct construction of C objects on ML heap.
+           * rawrecord builds a record holding C objects on the heap.
+           * rawselectxxx index on this record.  They are of type:
+           *    'a * Word32.word -> Word32.word
+           * The 'a is to guarantee that the compiler will treat
+           * the record as a ML object, in case it passes thru a gc boundary.
+           * rawupdatexxx writes to the record.
+           *) 
+       ("rawrecord",    P.RAW_RECORD{tag=true,sz=4}, i_x) :-:
+       ("rawrecord_notag",P.RAW_RECORD{tag=false,sz=4}, i_x) :-:
+       ("rawrecord64",    P.RAW_RECORD{tag=true,sz=8}, i_x) :-:
+       ("rawrecord64_notag",P.RAW_RECORD{tag=false,sz=8}, i_x) :-:
+
+       ("rawselectw8",  P.RAW_LOAD (P.UINT 8), xw32_w32) :-:
+       ("rawselecti8",  P.RAW_LOAD (P.INT 8), xw32_i32) :-:
+       ("rawselectw16", P.RAW_LOAD (P.UINT 16), xw32_w32) :-:
+       ("rawselecti16", P.RAW_LOAD (P.INT 16), xw32_i32) :-:
+       ("rawselectw32", P.RAW_LOAD (P.UINT 32), xw32_w32) :-:
+       ("rawselecti32", P.RAW_LOAD (P.INT 32), xw32_i32) :-:
+       ("rawselectf32", P.RAW_LOAD (P.FLOAT 32), xw32_f64) :-:
+       ("rawselectf64", P.RAW_LOAD (P.FLOAT 64), xw32_f64) :-:
+
+       ("rawupdatew8",  P.RAW_STORE (P.UINT 8), xw32w32_u) :-:
+       ("rawupdatei8",  P.RAW_STORE (P.INT 8), xw32i32_u) :-:
+       ("rawupdatew16", P.RAW_STORE (P.UINT 16), xw32w32_u) :-:
+       ("rawupdatei16", P.RAW_STORE (P.INT 16), xw32i32_u) :-:
+       ("rawupdatew32", P.RAW_STORE (P.UINT 32), xw32w32_u) :-:
+       ("rawupdatei32", P.RAW_STORE (P.INT 32), xw32i32_u) :-:
+       ("rawupdatef32", P.RAW_STORE (P.FLOAT 32), xw32f64_u) :-:
+       ("rawupdatef64", P.RAW_STORE (P.FLOAT 64), xw32f64_u) 
 
 end (* local *)
 

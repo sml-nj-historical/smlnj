@@ -226,13 +226,16 @@ sig
        *     i_n2 -> k_n
        *        ...
        * 
-       *  and k_1 -> k_2
+       *  and the chain
+       *      k_1 -> k_2
        *      k_2 -> k_3
        *        ...
        *      k_n -> j
+       *
+       *  where k_1, ..., k_n are new basic blocks.
        * 
        *  Return the new edges 
-       *       k_1->j,...,k_n -> j 
+       *       k_1-> k_2, ..., k_n -> j 
        *
        *  and the new blocks 
        *       k_1, ..., k_n.
@@ -245,9 +248,9 @@ sig
    val splitEdges : cfg ->
                     { groups : (edge list * 
                                 I.instruction list (* reverse order *) 
-                               ) list,  (* i_11 -> j, ..., i_n1 -> j *)
+                               ) list,  
                       jump : bool
-                    } -> (node * edge) list  (* k_i and k_i -> j *)
+                    } -> (node * edge) list  (* k_i and k_i -> k_{i+1} *)
 
        (*
         *  Test if an edge is critical.  An edge i->j is critical iff 

@@ -86,6 +86,7 @@ structure P : sig
            (* allocate uninitialized words from the heap; optionally
             * initialize the tag.
             *)
+      | condmove of branch (* conditional move *)
 
     val opp : branch -> branch
 
@@ -160,13 +161,21 @@ datatype cexp
   | ARITH of P.arith * value list * lvar * cty * cexp
   | PURE of P.pure * value list * lvar * cty * cexp
   (* experimental "raw C call" (Blume, 1/2001) *)
-  | RCC of CTypes.c_proto * value list * lvar * cty * cexp
+  (* When non-empty, the string contains the linkage info, which
+   * is a string of the form:
+   *      shared library name/name of the C function. 
+   *) 
+  | RCC of rcc_kind * string * CTypes.c_proto * value list * lvar * cty * cexp
+and rcc_kind = FAST_RCC | REENTRANT_RCC
 withtype function = fun_kind * lvar * lvar list * cty list * cexp
 
 val combinepaths : accesspath * accesspath -> accesspath
 val lenp : accesspath -> int
 val ctyToString : cty -> string
 val hasRCC : cexp -> bool
+val sizeOf : cty -> int   (* size of its representation in bits *)
+val isFloat : cty -> bool (* is it a floating point type? *)
+val isTagged : cty -> bool 
 
 val BOGt : cty
 

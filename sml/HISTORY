@@ -13,6 +13,78 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/03/23 15:50:00 EST
+Tag: leunga-20020323-flint-cps-rcc-primops
+Description:
+
+  1. Changes to FLINT primops:
+
+    (* make a call to a C-function;
+     * The primop carries C function prototype information and specifies
+     * which of its (ML-) arguments are floating point. C prototype
+     * information is for use by the backend, ML information is for
+     * use by the CPS converter. *)
+  | RAW_CCALL of { c_proto: CTypes.c_proto,
+                   ml_args: ccall_type list,
+                   ml_res_opt: ccall_type option,
+                   reentrant : bool
+                 } option
+   (* Allocate uninitialized storage on the heap.
+    * The record is meant to hold short-lived C objects, i.e., they
+    * are not ML pointers.  With the tag, the representation is 
+    * the same as RECORD with tag tag_raw32 (sz=4), or tag_fblock (sz=8)
+    *)
+  | RAW_RECORD of {tag:bool,sz:int} 
+  and ccall_type = CCALL_INT32 | CCALL_REAL64 | CCALL_ML_PTR
+
+  2.  These CPS primops are now overloaded:
+
+       rawload of {kind:numkind}
+       rawstore of {kind:numkind}
+
+      The one argument form is:
+
+         rawload {kind} address
+
+      The two argument form is:
+       
+         rawload {kind} [ml object, byte-offset]
+
+  3. RAW_CCALL/RCC now takes two extra arguments:
+
+     a. The first is whether the C call is reentrant, i.e., whether
+        ML state should be saved and restored.
+     b. The second argument is a string argument specifying the name of
+        library and the C function.
+
+     These things are currently not handled in the code generator, yet.
+
+  4. In CProto,
+
+     An encoding type of "bool" means "ml object" and is mapped into 
+     C prototype of PTR.  Note that "bool" is different than "string", 
+     even though "string" is also mapped into PTR, because "bool"
+     is assigned an CPS type of BOGt, while "string" is assigned INT32t.
+
+  5. Pickler/unpicker
+
+     Changed to handle RAW_RECORD and newest RAW_CCALL
+
+  6. MLRiscGen,
+
+     1. Changed to handle the new rawload/rawstore/rawrecord operators.
+     2. Code for handling C Calls has been moved to a new module CPSCCalls,
+        in the file CodeGen/cpscompile/cps-c-calls.sml
+
+  7. Added the conditional move operator
+
+         condmove of branch
+
+     to cps.  Generation of this is still buggy so it is currently 
+     disabled.
+   
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2002/03/22 14:18:25 EST 
 Tag: george-20020322-cps-branch-prob

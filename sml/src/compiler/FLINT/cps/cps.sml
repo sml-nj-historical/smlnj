@@ -86,6 +86,7 @@ structure P = struct
       | getseqdata | recsubscript | raw64subscript | newarray0
       | rawrecord of record_kind option 
          (* allocate uninitialized words from the heap *)
+      | condmove of branch
 
     local 
       fun ioper (op > : cmpop)  = (op <= : cmpop)
@@ -196,7 +197,8 @@ datatype cexp
   | ARITH of P.arith * value list * lvar * cty * cexp
   | PURE of P.pure * value list * lvar * cty * cexp
   (* experimental "raw C call" (Blume, 1/2001) *)
-  | RCC of CTypes.c_proto * value list * lvar * cty * cexp
+  | RCC of rcc_kind * string * CTypes.c_proto * value list * lvar * cty * cexp
+and rcc_kind = FAST_RCC | REENTRANT_RCC
 withtype function = fun_kind * lvar * lvar list * cty list * cexp
 
 fun hasRCC(cexp) = let
@@ -217,6 +219,15 @@ in
    | ARITH(_, _, _, _, e) => hasRCC(e)
    | PURE(_, _, _, _, e) => hasRCC(e)
 end
+
+fun sizeOf(FLTt) = 64 
+  | sizeOf(INTt | INT32t | PTRt _ | FUNt | CNTt | DSPt) = 32
+
+fun isFloat(FLTt) = true
+  | isFloat(INTt | INT32t | PTRt _ | FUNt | CNTt | DSPt) = false
+
+fun isTagged(FLTt | INT32t) = false
+  | isTagged(INTt | PTRt _ | FUNt | CNTt | DSPt) = true
 
 fun ctyToString(INTt) =  "[I]"
   | ctyToString(INT32t) =  "[I32]"

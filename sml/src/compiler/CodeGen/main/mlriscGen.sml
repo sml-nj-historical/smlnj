@@ -73,6 +73,14 @@ struct
   structure Frag = Frag(M)      (* Decompose a compilation unit into clusters *)
 
   structure MemAliasing = MemAliasing(Cells) (* Memory aliasing *)
+
+  structure CPSCCalls =    (* C-Calls handling *)
+     CPSCCalls(structure MS = MachineSpec
+               structure C  = C
+               structure MLTreeComp = MLTreeComp
+               structure Cells = Cells
+               structure CCalls = CCalls 
+              )
    
   fun error msg = MLRiscErrorMsg.error("MLRiscGen", msg)
 
@@ -860,6 +868,25 @@ struct
                 of P.>   => M.GT | P.>=  => M.GE   
                  | P.<   => M.LT | P.<=  => M.LE
                  | P.neq => M.NE | P.eql => M.EQ 
+
+          fun real64Cmp(oper, v, w) = 
+          let  val fcond = 
+                      case oper
+                        of P.fEQ => M.==  
+                         | P.fULG => M.?<> 
+                         | P.fUN => M.?   
+                         | P.fLEG => M.<=> 
+                         | P.fGT => M.>   
+                         | P.fGE  => M.>=  
+                         | P.fUGT => M.?> 
+                         | P.fUGE => M.?>= 
+                         | P.fLT => M.<   
+                         | P.fLE  => M.<=  
+                         | P.fULT => M.?< 
+                         | P.fULE => M.?<= 
+                         | P.fLG => M.<>  
+                         | P.fUE  => M.?= 
+          in M.FCMP(64, fcond, fregbind v, fregbind w) end
     
           fun branchToLabel(lab) = M.JMP(M.LABEL lab,[])
     
@@ -937,7 +964,7 @@ struct
                      add(x,t); init e
                     )
                | ARITH(_,vl,x,t,e) => (addValues vl; add(x,t); init e)
-               | RCC(_,vl,x,t,e) => (addValues vl; add(x,t); init e)
+               | RCC(_,_,_,vl,x,t,e) => (addValues vl; add(x,t); init e)
                | PURE(p,vl,x,t,e) => 
                     (case p of
                        P.fwrap => hasFloats := true
@@ -1110,33 +1137,6 @@ struct
             | eqVal(INT x, INT y) = x = y
             | eqVal _ = false    
 
-              (* Perform conditional move folding *)
-              (*
-          and branch(cmp, [v,w], yes, no, hp) =
-              case (yes, no) of
-                (APP(f,fs), APP(g,gs)) => 
-                   if eqVal(f,g) then 
-                      let val cmp = M.CMP(32, cmp, regbind v, regbind w)
-                          fun condMove([],[]) = []
-                            | condMove(x::xs,y::ys) =
-                              if eqVal(x,y) then x::condMove(xs,ys)
-                              else
-                              let val v = LambdaVar.mkLvar()
-                                  val tmp = newReg PTR
-                              in emit(M.MV(32, tmp, 
-                                      M.COND(32, cmp, regbind x, regbind y)));
-                                  addRegBinding(v, tmp);
-                                  addTypBinding(v, grabty x);
-                                  VAR v::condMove(xs, ys)
-                              end 
-                            | condMove _ = error "condMove"
-                          val e = APP(f,condMove(fs, gs))
-                      in  gen(e, hp)
-                      end  
-                   else normalBranch(cmp, v, w, yes, no, hp)
-              | _ => normalBranch(cmp, v, w, yes, no, hp)
-              *)
-
               (* normal branches *)
           and branch (cv, cmp, [v, w], yes, no, hp) = 
           let val trueLab = newLabel ()
@@ -1179,7 +1179,47 @@ struct
                   genCont(yes, hp);
                   genlab(false_lab, no, hp)
               end
- 
+
+              (* conditional move *)
+          and condmove(oper, args, x, t, e, hp) = 
+              let  fun signed(oper, v, w) =
+                       M.CMP(32, signedCmp oper, regbind v, regbind w) 
+                   fun unsigned(oper, v, w) = 
+                       M.CMP(32, unsignedCmp oper, regbind v, regbind w) 
+                   fun equal(v, w) = 
+                       M.CMP(32, M.EQ, regbind v, regbind w) 
+                   fun notequal(v, w) = 
+                       M.CMP(32, M.NE, regbind v, regbind w) 
+                   fun unboxed x = 
+                       M.CMP(32, M.NE, M.ANDB(ity, regbind x, one), zero)
+                   fun boxed x = 
+                       M.CMP(32, M.EQ, M.ANDB(ity, regbind x, one), zero)
+                   val (cmp, a, b) = 
+                   case (oper, args) of
+                     (P.cmp{oper, kind=P.INT 31},[v,w,a,b]) =>
+                       (signed(oper,v,w), a, b)
+                   | (P.cmp{oper, kind=P.UINT 31},[v,w,a,b]) =>
+                       (unsigned(oper,v,w), a, b)
+                   | (P.cmp{oper, kind=P.INT 32},[v,w,a,b]) =>
+                       (signed(oper,v,w), a, b)
+                   | (P.cmp{oper, kind=P.UINT 32},[v,w,a,b]) =>
+                       (unsigned(oper,v,w), a, b)
+                   | (P.fcmp{oper, size=64},[v,w,a,b]) =>
+                       (real64Cmp(oper,v,w), a, b)
+                   | (P.peql,[v,w,a,b]) => (equal(v,w), a, b)
+                   | (P.pneq,[v,w,a,b]) => (notequal(v, w), a, b)
+                   | (P.boxed,[v,a,b]) => (boxed v, a, b)
+                   | (P.unboxed,[v,a,b]) => (unboxed v, a, b)
+                   | _ => error "condmove"
+              in  case t of
+                     FLTt => 
+                       computef64(x, 
+                          M.FCOND(64, cmp, fregbind a, fregbind b), e, hp)
+                   | _    => 
+                       defWithCty(t, x, M.COND(32, cmp, regbind a, regbind b),
+                                  e, hp)
+              end
+
           and arith(gc, oper, v, w, x, e, hp) = 
                def(gc, x, oper(ity, regbind v, regbind w), e, hp)
 
@@ -1346,18 +1386,17 @@ struct
               (*esac*))
 
 	  and rawload ((P.INT 32 | P.UINT 32), i, x, e, hp) =
-	      defI32 (x, M.LOAD (32, regbind i, R.memory), e, hp)
+	      defI32 (x, M.LOAD (32, i, R.memory), e, hp)
 	    | rawload (P.INT (sz as (8 | 16)), i, x, e, hp) =
-	      defI32 (x, SX32 (sz, M.LOAD (sz, regbind i, R.memory)), e, hp)
+	      defI32 (x, SX32 (sz, M.LOAD (sz, i, R.memory)), e, hp)
 	    | rawload (P.UINT (sz as (8 | 16)), i, x, e, hp) =
-	      defI32 (x, ZX32 (sz, M.LOAD (sz, regbind i, R.memory)), e, hp)
+	      defI32 (x, ZX32 (sz, M.LOAD (sz, i, R.memory)), e, hp)
 	    | rawload ((P.UINT sz | P.INT sz), _, _, _, _) =
 	      error ("rawload: unsupported size: " ^ Int.toString sz)
 	    | rawload (P.FLOAT 64, i, x, e, hp) =
-	      treeifyDefF64 (x, M.FLOAD (64, regbind i, R.memory), e, hp)
+	      treeifyDefF64 (x, M.FLOAD (64, i, R.memory), e, hp)
 	    | rawload (P.FLOAT 32, i, x, e, hp) =
-	      treeifyDefF64 (x, M.CVTF2F (64, 32,
-					  M.FLOAD (32, regbind i, R.memory)),
+	      treeifyDefF64 (x, M.CVTF2F (64, 32, M.FLOAD (32, i, R.memory)),
 			     e, hp)
 	    | rawload (P.FLOAT sz, _, _, _, _) =
 	      error ("rawload: unsupported float size: " ^ Int.toString sz)
@@ -1366,11 +1405,11 @@ struct
 			 P.INT (sz as (8 | 16 | 32))), i, x) =
 	      (* both address and value are 32-bit values; only sz bits
 	       * of the value are being stored *)
-	      emit (M.STORE (sz, regbind i, regbind x, R.memory))
+	      emit (M.STORE (sz, i, regbind x, R.memory))
 	    | rawstore ((P.UINT sz | P.INT sz), _, _) =
 	      error ("rawstore: unsupported int size: " ^ Int.toString sz)
 	    | rawstore (P.FLOAT (sz as (32 | 64)) , i, x) =
-	      emit (M.FSTORE (sz, regbind i, fregbind x, R.memory))
+	      emit (M.FSTORE (sz, i, fregbind x, R.memory))
 	    | rawstore (P.FLOAT sz, _, _) =
 	      error ("rawstore: unsupported float size: " ^ Int.toString sz)
 
@@ -1650,6 +1689,9 @@ struct
                   (* assign the address to x *)
                   treeifyAlloc(x, hp+4, e, hp+len*4+4)
               end
+
+            | gen(PURE(P.condmove cmp, vw, x, t, e), hp) = 
+                condmove(cmp, vw, x, t, e, hp)
  
             (*** ARITH ***)
             | gen(ARITH(P.arith{kind=P.INT 31, oper=P.~}, [v], x, _, e), hp) = 
@@ -1767,7 +1809,9 @@ struct
             | gen(LOOKER(P.getpseudo, [i], x, _, e), hp) = 
                 (print "getpseudo not implemented\n"; nop(x, i, e, hp))
             | gen(LOOKER(P.rawload { kind }, [i], x, _, e), hp) =
-                rawload (kind, i, x, e, hp)
+                rawload (kind, regbind i, x, e, hp)
+            | gen(LOOKER(P.rawload { kind }, [i,j], x, _, e), hp) =
+                rawload (kind, M.ADD(addrTy,regbind i, regbind j), x, e, hp)
                
             (*** SETTER ***)
             | gen(SETTER(P.rawupdate FLTt,[v,i,w],e),hp) =
@@ -1853,133 +1897,23 @@ struct
             | gen(SETTER(P.setpseudo,_,e), hp) = 
                 (print "setpseudo not implemented\n"; gen(e, hp))
             | gen (SETTER (P.rawstore { kind }, [i, x], e), hp) =
-                (rawstore (kind, i, x); gen (e, hp))
-	    | gen (RCC (p, vl, w, _, e), hp) = let
-		  val { retTy, paramTys, ... } = p
-		  fun build_args vl = let
-		      open CTypes
-		      fun m (C_double, v :: vl) =
-			  (CCalls.FARG (fregbind v), vl)
-			| m (C_float, v :: vl) =
-			  (CCalls.FARG (M.CVTF2F (32, 64, fregbind v)), vl)
-			| m ((C_unsigned (I_char | I_short | I_int | I_long) |
-			      C_signed (I_char | I_short | I_int | I_long) |
-			      C_PTR),
-			     v :: vl) =
-			  (CCalls.ARG (regbind v), vl)
-			| m (C_STRUCT _, v :: vl) =
-			  (* pass struct using the pointer to its beginning *)
-			  (CCalls.ARG (regbind v), vl)
-			| m (_, []) = error "RCC: not enough ML args"
-			| m _ = error "RCC: unexpected C-type"
-		      and ml (tl, vl) = let
-			  fun one (t, (ral, vl)) = let val (a, vl') = m (t, vl)
-						   in (a :: ral, vl') end
-			  val (ral, vl') = foldl one ([], vl) tl
-		      in
-			  (rev ral, vl')
-		      end
-		  in
-		      case ml (paramTys, vl) of
-			  (al, []) => al
-			| _ => error "RCC: too many ML args"
-		  end
-		  val (f, sr, a) =
-		      case (retTy, vl) of
-			  (CTypes.C_STRUCT _, fv :: srv :: avl) =>
-			  let val s = regbind srv
-			  in (regbind fv, fn _ => s, build_args avl)
-			  end
-			| (_, fv :: avl) =>
-			  (regbind fv,
-			   fn _ => error "RCC: unexpected struct return",
-			   build_args avl)
-			| _ => error "RCC: prototype/arglist mismatch"
-		  fun srd defs = let
-		      fun loop ([], s, r) = { save = s, restore = r }
-			| loop (M.GPR (M.REG (ty, g)) :: l, s, r) =
-			  if List.exists (sameRegAs g) C.ccallCallerSaveR then
-			      let val t = Cells.newReg ()
-			      in
-				  loop (l, M.COPY (ty, [t], [g]) :: s,
-					   M.COPY (ty, [g], [t]) :: r)
-			      end
-			  else loop (l, s, r)
-			| loop (M.FPR (M.FREG (ty, f)) :: l, s, r) =
-			  if List.exists (sameRegAs f) C.ccallCallerSaveF then
-			      let val t = Cells.newFreg ()
-			      in
-				  loop (l, M.FCOPY (ty, [t], [f]) :: s,
-					   M.FCOPY (ty, [f], [t]) :: r)
-			      end
-			  else loop (l, s, r)
-			| loop _ = error "saveRestoreDedicated: unexpected def"
-		  in
-		      loop (defs, [], [])
-		  end
-
-		  val { callseq, result } =
-		      CCalls.genCall
-			  { name = f, proto = p, structRet = sr,
-			    saveRestoreDedicated = srd,
-			    paramAlloc = fn _ => false,
-			    callComment =
-			    SOME ("C prototype is: " ^ CProto.pshow p),
-			    args = a }
-
-		  fun withVSP f = let
-		      val frameptr = C.frameptr vfp 
-
-		      val msp =
-			  M.LOAD (addrTy, ea (frameptr, MS.ML_STATE_OFFSET),
-				  R.stack)
-		      val vsp =
-			  M.LOAD (addrTy, ea (msp, MS.VProcOffMSP), R.memory)
-
-		      val vsp' = M.REG (addrTy, Cells.newReg ())     
-		      val inML = M.LOAD (ity, ea (vsp', MS.InMLOffVSP),
-					 R.memory)
-		      val LimitPtrMask =
-			  M.LOAD (32, ea (vsp', MS.LimitPtrMaskOffVSP),
-				  R.memory)
-		  in
-		      (* move vsp to its register *)
-		      emit (assign (vsp', vsp));   
-		      f { inML = inML, LimitPtrMask = LimitPtrMask }
-		  end
-
-	      in
-		  (* prepare for leaving ML *)
-		  withVSP (fn { inML, LimitPtrMask } =>
-			      ((* set vp_limitPtrMask to ~1 *)
-			       emit (assign (LimitPtrMask, LW 0wxffffffff));
-			       (* set vp_inML to 0 *)
-			       emit (assign (inML, LW 0w0))));
-
-		  (* now do the actual call! *)
-		  app emit callseq;
-
-		  (* come back to ML, restore proper limit pointer *)
-		  withVSP (fn { inML, LimitPtrMask } =>
-			      ((* set vp_inML back to 1 *)
-			       emit (assign (inML, LW 0w1));
-			       (* limitPtr := limitPtr & vp_limitPtrMask *)
-			       emit (assign (C.limitptr(vfp),
-					     M.ANDB (pty, LimitPtrMask,
-						          C.limitptr(vfp))))));
-
-		  case (result, retTy) of
-		      (([] | [_]), (CTypes.C_void | CTypes.C_STRUCT _)) =>
-		      defI31 (w, mlZero, e, hp)
-		    | ([], _) => error "RCC: unexpectedly few results"
-		    | ([M.FPR x], CTypes.C_float) =>
-		      treeifyDefF64 (w, M.CVTF2F (64, 32, x), e, hp)
-		    | ([M.FPR x], CTypes.C_double) =>
-		      treeifyDefF64 (w, x, e, hp)
-		    | ([M.FPR _], _) => error "RCC: unexpected FP result"
-		    | ([M.GPR x], _) => (* more sanity checking here ? *)
-		      defI32 (w, x, e, hp)
-		    | _ => error "RCC: unexpectedly many results"
+                (rawstore (kind, regbind i, x); gen (e, hp))
+            | gen (SETTER (P.rawstore { kind }, [i, j, x], e), hp) =
+                (rawstore (kind, M.ADD(addrTy, regbind i, regbind j), x); 
+                 gen (e, hp))
+	    | gen (RCC(arg as (_, _, _, _, w, t, e)), hp) = 
+              let val {result, hp} = 
+                      CPSCCalls.c_call 
+                          {stream=stream, regbind=regbind,
+                           fregbind=fregbind, typmap=typmap, vfp=vfp, hp=hp}
+                          arg
+              in  case (result, t) of  
+                    (NONE, _) => defI31 (w, mlZero, e, hp)
+		  | (SOME(M.FPR x),CPS.FLTt) => treeifyDefF64 (w, x, e, hp)
+                        (* more sanity checking here ? *)
+                  | (SOME(M.GPR x),CPS.INT32t) => defI32 (w, x, e, hp)
+                  | (SOME(M.GPR x),CPS.PTRt _) => defBoxed (w, x, e, hp)
+		  | _ => error "RCC: bad results"
 	      end
     
             (*** BRANCH  ***)
@@ -2034,24 +1968,7 @@ struct
                 branch(p, signedCmp oper, vw, e, d, hp)
             | gen(BRANCH(P.fcmp{oper,size=64}, [v,w], p, d, e), hp) =
               let val trueLab = newLabel ()
-                  val fcond = 
-                      case oper
-                        of P.fEQ => M.==  
-                         | P.fULG => M.?<> 
-                         | P.fUN => M.?   
-                         | P.fLEG => M.<=> 
-                         | P.fGT => M.>   
-                         | P.fGE  => M.>=  
-                         | P.fUGT => M.?> 
-                         | P.fUGE => M.?>= 
-                         | P.fLT => M.<   
-                         | P.fLE  => M.<=  
-                         | P.fULT => M.?< 
-                         | P.fULE => M.?<= 
-                         | P.fLG => M.<>  
-                         | P.fUE  => M.?= 
-    
-                  val cmp = M.FCMP(64, fcond, fregbind v, fregbind w) 
+                  val cmp     = real64Cmp(oper, v, w)
               in  emit(M.BCC(cmp, trueLab));
                   genCont(e, hp);
                   genlab(trueLab, d, hp)

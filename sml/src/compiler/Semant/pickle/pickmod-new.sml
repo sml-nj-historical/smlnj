@@ -140,13 +140,14 @@ in
 	 DTF, TYCON, T, II, VAR, SD, SG, FSG,  SP, EN,
 	 STR, F, STE, TCE, STRE, FE, EE, ED, EEV, FX,
 	 B, DCON, DICT, FPRIM, FUNDEC, TFUNDEC, DATACON, DTMEM, NRD,
-	 OVERLD, FCTC, SEN, FEN, SPATH, IPATH, STRID, FCTID, CCI, CTYPE) =
+	 OVERLD, FCTC, SEN, FEN, SPATH, IPATH, STRID, FCTID, CCI, CTYPE,
+         CCALL_TYPE) =
 	(1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
 	 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 	 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
 	 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
 	 41, 42, 43, 44, 45, 46, 47, 48, 49,
-	 50, 51, 52, 53, 54, 55, 56, 57, 58, 59)
+	 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60)
 
     (* this is a bit awful...
      * (we really ought to have syntax for "functional update") *)
@@ -332,17 +333,26 @@ in
 	  | CTypes.C_signed CTypes.I_long => %?12
 	  | CTypes.C_signed CTypes.I_long_long => %?13
 	  | CTypes.C_PTR => %?14
-
 	  | CTypes.C_ARRAY (t, i) => ?20 $ [ctype t, int i]
 	  | CTypes.C_STRUCT l => ?21 $ [list ctype l]
     end
 
+    fun ccall_type t =
+    let val op $ = PU.$ CCALL_TYPE
+    in  case t of
+          P.CCALL_INT32  => "\000" $ [] 
+        | P.CCALL_REAL64 => "\001" $ []
+        | P.CCALL_ML_PTR => "\002" $ []
+    end
+
     fun ccall_info { c_proto = { conv, retTy, paramTys },
-		     ml_flt_args, ml_flt_res_opt } = let
-	val op $ = PU.$ CCI
+		     ml_args, ml_res_opt, reentrant } = let
+	val op $ = PU.$ CCI 
     in
 	"C" $ [string conv, ctype retTy, list ctype paramTys,
-	       list bool ml_flt_args, option bool ml_flt_res_opt]
+	       list ccall_type ml_args, option ccall_type ml_res_opt,
+               bool reentrant
+              ]
     end
 	    
     fun primop p = let
@@ -376,6 +386,7 @@ in
 	      | P.RAW_LOAD kind => ?116 $ [numkind kind]
 	      | P.RAW_STORE kind => ?117 $ [numkind kind]
 	      | P.RAW_CCALL (SOME i) => ?118 $ [ccall_info i]
+	      | P.RAW_RECORD{tag,sz} => ?119 $ [bool tag,int sz]
 		    
 	      | P.MKETAG => %?0
 	      | P.WRAP => %?1

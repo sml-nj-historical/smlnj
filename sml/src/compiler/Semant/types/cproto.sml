@@ -28,6 +28,7 @@
  * [long long]          = Int32.int list
  * [unsigned long long] = Word32.word list
  * [T*]                 = string
+ * ml object            = bool
  * [struct {}]          = exn
  * [struct{t1,...tn}]   = unit * [t1] * ... * [tn]
  * [void]               = unit
@@ -54,16 +55,21 @@
  *)
 structure CProto : sig
     exception BadEncoding
-    (* decode the encoding described above *)
-    val decode : string -> Types.ty -> CTypes.c_proto
-
-    (* Construct an indicator list for the _actual_ ML arguments of
-     * a raw C call; the element is true if the corresponding argument
-     * is a floating-point argument. *)
-    val flt_args : Types.ty -> bool list
-
-    (* Figure out whether the result of a raw C call is floating-point. *)
-    val flt_res : Types.ty -> bool option
+    (* Decode the encoding described above.
+     * Construct an indicator list for the _actual_ ML arguments of
+     * a raw C call and the result type of a raw C call. 
+     * Each indicator specifies whether the arguments/result is
+     * a float pointer value, an 32-bit integer, or an ML pointer.
+     *)
+    val decode : string -> 
+                 { encoding : Types.ty,
+                   arg_ty   : Types.ty,
+                   res_ty   : Types.ty
+                 }  -> 
+                 { c_proto   : CTypes.c_proto,
+                   arg_types : PrimOp.ccall_type list,
+                   res_type  : PrimOp.ccall_type option
+                 }
 
     (* formatting of C type info (for debugging purposes) *)
     val tshow : CTypes.c_type -> string
@@ -84,13 +90,14 @@ end = struct
 	    if BT.isArrowType t then get t else NONE
 	end
 	fun bad () = raise BadEncoding
+	fun listTy t = T.CONty (BT.listTycon, [t])
     in
-        fun decode conv t = let
+        fun decode conv {encoding=t,arg_ty,res_ty} = let
 	    (* The type-mapping table: *)
-	    fun listTy t = T.CONty (BT.listTycon, [t])
 	    val m = [(BT.intTy,           CT.C_signed   CT.I_int),
 		     (BT.wordTy,          CT.C_unsigned CT.I_int),
 		     (BT.stringTy,        CT.C_PTR),
+		     (BT.boolTy,          CT.C_PTR),
 		     (BT.realTy,          CT.C_double),
 		     (listTy BT.realTy,   CT.C_float),
 		     (BT.charTy,          CT.C_signed   CT.I_char),
@@ -114,42 +121,62 @@ end = struct
 		else (t0, i)
 	      | unlist (t, i) = (t, i)
 
+            fun isMLTy t = TU.equalType (t, BT.boolTy)
+
 	    (* Given [T] (see above), produce the CTypes.c_type value
 	     * corresponding to T. *)
 	    fun dt t =
 		case look t of
-		    SOME ct => ct
+		    SOME ct => (ct, isMLTy t)
 		  | NONE =>
 		    (case BT.getFields t of
-			 SOME (_ :: fl) => CT.C_STRUCT (map dt fl)
-		       | _ => bad ())
+		      SOME (_ :: fl) => (CT.C_STRUCT (map (#1 o dt) fl), false)
+		    | _ => bad ()
+                    )
 
 	    val (fty, _) = unlist (t, 0)
+
+	    fun getTy(t, true) = PrimOp.CCALL_ML_PTR
+              | getTy(t, false) = 
+                if TU.equalType (t, BT.realTy) then PrimOp.CCALL_REAL64
+                else PrimOp.CCALL_INT32
+
+	    fun res_type(t, ml) =
+		if TU.equalType (t, BT.unitTy) then NONE
+		else SOME (getTy(t, ml))
+
+            fun getTys(t::tys, ml::mls) = getTy(t,ml) :: getTys(tys,mls)
+              | getTys(tys, []) = map (fn t => getTy(t,false)) tys
+              | getTys _ = []
+
+	    fun arg_types(t, ml) =
+		if TU.equalType (t, BT.unitTy) then [] (* no arg case *)
+		else case BT.getFields t of
+			 SOME fl => getTys (fl,ml) (* >1 arg case *)
+		       | NONE => getTys([t], ml)   (* 1 arg case *)
 	in
 	    (* Get argument types and result type; decode them.
 	     * Construct the corresponding CTypes.c_proto value. *)
 	    case getDomainRange fty of
 		NONE => bad ()
 	      | SOME (d, r) =>
-		{ conv = conv,
-		  retTy = dt r,
-		  paramTys = if TU.equalType (d, BT.unitTy) then []
-			     else case BT.getFields d of
-				      SOME (_ :: fl) => map dt fl
-				    | _ => bad () }
-	end
-
-	local
-	    fun isFlt t = TU.equalType (t, BT.realTy)
-	in
-	    fun flt_res t =
-		if TU.equalType (t, BT.unitTy) then NONE
-		else SOME (isFlt t)
-	    fun flt_args t =
-		if TU.equalType (t, BT.unitTy) then [] (* no arg case *)
-		else case BT.getFields t of
-			 SOME fl => map isFlt fl       (* >1 arg case *)
-		       | NONE => [isFlt t]             (* 1 arg case *)
+                let val (retTy, retML) = dt r
+                    val (argTys, argsML) =
+                        if TU.equalType (d, BT.unitTy) then ([], [])
+                        else case BT.getFields d of
+		               SOME (_ :: fl) =>
+                               let val args = map dt fl
+                               in  (map #1 args, map #2 args)
+                               end
+			     | _ => bad () 
+                in  {c_proto={ conv = conv,
+		               retTy = retTy,
+                               paramTys = argTys
+                             },
+                     arg_types=arg_types(arg_ty, argsML),
+                     res_type =res_type(res_ty, retML)
+                    }
+                end
 	end
 
 	local

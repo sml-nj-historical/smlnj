@@ -767,11 +767,19 @@ in
 			   table = [([LT.tcc_real], coreAcc "mkRealArray")]}
                   in GENOP (dict, p, toLty d typ, map (toTyc d) ts)
                   end
-		| (PO.RAW_CCALL NONE, [a, b, c]) =>
-		  let val i = SOME { c_proto = CProto.decode cproto_conv b,
-				     ml_flt_args = CProto.flt_args a,
-				     ml_flt_res_opt = CProto.flt_res c }
-			  handle CProto.BadEncoding => NONE
+		| (PO.RAW_CCALL NONE, a::b::c::extra) =>
+		  let val i = 
+                      let val {c_proto,arg_types,res_type} =
+                                 CProto.decode cproto_conv {encoding=b,
+                                                            arg_ty=a,
+                                                            res_ty=c}
+                      in  SOME { c_proto = c_proto,
+                                 ml_args = arg_types,
+                                 ml_res_opt = res_type,
+                                 reentrant=case extra of [] => false 
+                                                       | _  => true 
+                               }
+                      end handle CProto.BadEncoding => NONE
 		  in PRIM (PO.RAW_CCALL i, toLty d typ, map (toTyc d) ts)
 		  end
 		| _ => transPrim(p, (toLty d typ), map (toTyc d) ts)),
