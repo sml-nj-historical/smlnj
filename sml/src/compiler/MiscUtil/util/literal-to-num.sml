@@ -59,8 +59,5 @@ structure LiteralToNum : LITERAL_TO_NUM =
 
 
 (*
- * $Log: literal-to-num.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:16  george
- * Version 110.5
- *
+ * $Log$
  *)

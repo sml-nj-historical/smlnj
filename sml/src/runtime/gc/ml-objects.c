@@ -232,7 +232,7 @@ ml_val_t ML_AllocRaw64 (ml_state_t *msp, int nelems)
 
 /* ML_AllocCode:
  *
- * Allocate an uninitialized ML code string.  Assume that len > 1.
+ * Allocate an uninitialized ML code object.  Assume that len > 1.
  */
 ml_val_t ML_AllocCode (ml_state_t *msp, int len)
 {
@@ -253,9 +253,7 @@ ml_val_t ML_AllocCode (ml_state_t *msp, int len)
 	COUNT_ALLOC(msp, len);
     END_CRITICAL_SECT(MP_GCGenLock)
 
-    SEQHDR_ALLOC (msp, res, DESC_string, PTR_CtoML(dp->obj), len);
-
-    return res;
+    return PTR_CtoML(dp->obj);
 
 } /* end of ML_AllocCode. */
 

@@ -1230,9 +1230,6 @@ end (* structure ElabCore *)
 
 (*
  * $Log: elabcore.sml,v $
- * Revision 1.6  1998/09/30 19:03:20  dbm
- * fix defn of forceExp (bug 1446)
- *
  * Revision 1.5  1998/08/19 18:17:11  dbm
  * bug fixes for 110.9 [dbm]
  *

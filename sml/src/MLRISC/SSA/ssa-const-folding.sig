@@ -23,8 +23,5 @@ sig
 end
 
 (*
- * $Log: ssa-const-folding.sig,v $
- * Revision 1.1.1.1  1998/11/16 21:47:05  george
- *  Version 110.10
- *
+ * $Log$
  *)

@@ -115,8 +115,5 @@ end (* signature TYPES *)
 
 
 (*
- * $Log: types.sig,v $
- * Revision 1.3  1998/05/23 14:10:17  george
- *   Fixed RCS keyword syntax
- *
+ * $Log$
  *)

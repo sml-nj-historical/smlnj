@@ -639,9 +639,6 @@ functor BinIOFn (
 
 (*
  * $Log: bin-io-fn.sml,v $
- * Revision 1.4  1998/10/16 17:26:28  jhr
- *   Implemented multiple EOF support; changes to basis I/O API
- *
  * Revision 1.3  1998/08/17 19:21:16  george
  *   Changed the type of TextIO.StreamIO.mkInstream to eliminate the option.
  *   [appel]

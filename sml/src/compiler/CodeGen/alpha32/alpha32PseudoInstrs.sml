@@ -46,8 +46,5 @@ struct
 end
 
 (*
- * $Log: alpha32PseudoInstrs.sml,v $
- * Revision 1.3  1998/05/23 14:09:13  george
- *   Fixed RCS keyword syntax
- *
+ * $Log$
  *)

@@ -369,9 +369,6 @@ structure InlineT =
 
 (*
  * $Log: built-in.sml,v $
- * Revision 1.4  1998/11/23 20:10:04  jhr
- *   New raw64Subscript primop.
- *
  * Revision 1.3  1998/11/18 03:54:18  jhr
  *  New array representations.
  *

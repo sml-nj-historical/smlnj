@@ -280,9 +280,6 @@ struct
 
 (*
  * $Log: alpha32xMC.sml,v $
- * Revision 1.3  1998/10/06 13:59:58  george
- * Flowgraph has been removed from modules that do not need it -- [leunga]
- *
  * Revision 1.2  1998/09/30 18:52:42  dbm
  * removed sharing/defspec conflict
  *

@@ -278,9 +278,6 @@ end
 
 (*
  * $Log: callgc.sml,v $
- * Revision 1.10  1998/11/23 20:09:19  jhr
- *   Fixed length field of raw64 objects (should be in words).
- *
  * Revision 1.9  1998/11/18 03:53:04  jhr
  *  New array representations.
  *

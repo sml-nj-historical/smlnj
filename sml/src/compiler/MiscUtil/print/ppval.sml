@@ -177,9 +177,6 @@ end (* local *)
 end (* structure PPVal *)
 
 (*
- * $Log: ppval.sml,v $
- * Revision 1.3  1998/05/23 14:09:46  george
- *   Fixed RCS keyword syntax
- *
+ * $Log$
  *
  *)

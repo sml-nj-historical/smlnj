@@ -458,9 +458,6 @@ end (* structure ElabType *)
 
 (*
  * $Log: elabtype.sml,v $
- * Revision 1.5  1998/08/19 18:17:12  dbm
- * bug fixes for 110.9 [dbm]
- *
  * Revision 1.4  1998/07/22 20:17:34  dbm
  *   fix for bug 1412
  *

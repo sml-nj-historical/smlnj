@@ -27,8 +27,5 @@ struct
 end
 
 (*
- * $Log: graphViewer.sml,v $
- * Revision 1.1.1.1  1998/11/16 21:49:17  george
- *   Version 110.10
- *
+ * $Log$
  *)

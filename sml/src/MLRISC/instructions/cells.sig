@@ -52,9 +52,6 @@ end
 
 (*
  * $Log: cells.sig,v $
- * Revision 1.1.1.1  1998/11/16 21:48:41  george
- *   Version 110.10
- *
  * Revision 1.4  1998/10/06 14:07:45  george
  * Flowgraph has been removed from modules that do not need it.
  * Changes to compiler/CodeGen/*/*{MLTree,CG}.sml necessary.

@@ -36,9 +36,6 @@ structure Real64Vector : MONO_VECTOR
   end
 
 (*
- * $Log: real64-vector.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:40:03  george
- * Version 110.5
- *
+ * $Log$
  *)
 

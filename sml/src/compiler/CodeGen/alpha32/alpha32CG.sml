@@ -253,9 +253,6 @@ end
 
 (*
  * $Log: alpha32CG.sml,v $
- * Revision 1.5  1998/10/06 13:59:56  george
- * Flowgraph has been removed from modules that do not need it -- [leunga]
- *
  * Revision 1.4  1998/07/25 03:05:32  george
  *   changes to support block names in MLRISC
  *

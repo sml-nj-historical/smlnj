@@ -50,8 +50,5 @@ structure Win32_General : WIN32_GENERAL =
     end
 
 (*
- * $Log: win32-general.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:40:02  george
- * Version 110.5
- *
+ * $Log$
  *)

@@ -857,8 +857,5 @@ structure IntInf : INT_INF =
   end (* structure IntInf *)
 
 (*
- * $Log: int-inf.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:18  george
- * Version 110.5
- *
+ * $Log$
  *)

@@ -29,7 +29,8 @@ structure HppaAsmEmitter =
 
 structure HppaMCEmitter = 
   HppaMCEmitter(structure Instr=HppaInstr
-		structure Assembler=HppaAsmEmitter)
+		structure Assembler=HppaAsmEmitter
+		structure CodeString=CodeString)
 
 
 structure HppaMLTree = 

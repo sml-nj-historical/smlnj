@@ -57,11 +57,6 @@ end (* signature BINFILE *)
 
 (*
  * $Log: binfile.sig,v $
- * Revision 1.3  1998/10/16 14:03:43  george
- *   Implemented a hierachical bin directory structure and
- *   broke up the Compiler structure into a machine dependent
- *   and independent parts. [blume]
- *
  * Revision 1.2  1998/05/23 14:10:20  george
  *   Fixed RCS keyword syntax
  *

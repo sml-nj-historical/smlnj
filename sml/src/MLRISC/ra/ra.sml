@@ -1195,9 +1195,6 @@ end (* functor *)
 
 (*
  * $Log: ra.sml,v $
- * Revision 1.1.1.1  1998/11/16 21:49:10  george
- *   Version 110.10
- *
  * Revision 1.6  1998/10/16 12:49:51  george
  *   Installed ~1 hack for C--
  *

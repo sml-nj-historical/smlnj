@@ -42,9 +42,6 @@ end
 
 (*
  * $Log: delaySlotProps.sig,v $
- * Revision 1.1.1.1  1998/11/16 21:47:14  george
- *   Version 110.10
- *
  * Revision 1.2  1998/08/12 13:36:07  leunga
  *   Fixed the 2.0 + 2.0 == nan bug by treating FCMP as instrs with delay slots
  *

@@ -44,9 +44,6 @@ signature IMPERATIVE_IO =
 
 (*
  * $Log: imperative-io.sig,v $
- * Revision 1.2  1998/10/16 17:26:29  jhr
- *   Implemented multiple EOF support; changes to basis I/O API
- *
  * Revision 1.1.1.1  1998/04/08 18:39:55  george
  * Version 110.5
  *

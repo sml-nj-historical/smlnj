@@ -56,9 +56,6 @@ end
 
 (*
  * $Log: mlrisc-profiling.sml,v $
- * Revision 1.2  1998/11/18 03:52:22  jhr
- *   Changed Array.array0 to Array.array(0, -).
- *
  * Revision 1.1.1.2  1998/11/16 21:47:28  george
  *   Version 110.10
  *

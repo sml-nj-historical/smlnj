@@ -164,9 +164,6 @@ end (* signature CPS *)
 
 (*
  * $Log: cps.sig,v $
- * Revision 1.4  1998/11/23 20:09:52  jhr
- *   New raw64Subscript primop.
- *
  * Revision 1.3  1998/11/18 03:53:15  jhr
  *  New array representations.
  *

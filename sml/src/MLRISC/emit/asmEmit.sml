@@ -17,9 +17,6 @@ end
 
 (*
  * $Log: asmEmit.sml,v $
- * Revision 1.1.1.1  1998/11/16 21:48:19  george
- *  Version 110.10
- *
  * Revision 1.2  1998/10/06 14:07:42  george
  * Flowgraph has been removed from modules that do not need it.
  * Changes to compiler/CodeGen/*/*{MLTree,CG}.sml necessary.

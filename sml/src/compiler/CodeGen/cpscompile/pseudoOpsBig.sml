@@ -49,9 +49,6 @@ end
 
 (*
  * $Log: pseudoOpsBig.sml,v $
- * Revision 1.4  1998/12/21 17:04:55  jhr
- *   Got rid of "removable" function.
- *
  * Revision 1.3  1998/11/18 03:53:09  jhr
  *  New array representations.
  *

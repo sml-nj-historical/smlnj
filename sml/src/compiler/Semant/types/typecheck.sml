@@ -809,10 +809,7 @@ end (* local *)
 end (* structure Typecheck *)
 
 (*
- * $Log: typecheck.sml,v $
- * Revision 1.3  1998/05/23 14:10:16  george
- *   Fixed RCS keyword syntax
- *
+ * $Log$
  *)
 
 

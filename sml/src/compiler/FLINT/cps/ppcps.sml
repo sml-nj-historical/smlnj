@@ -282,9 +282,6 @@ end (* structure PPCps *)
 
 (*
  * $Log: ppcps.sml,v $
- * Revision 1.4  1998/11/23 20:09:54  jhr
- *   New raw64Subscript primop.
- *
  * Revision 1.3  1998/11/18 03:53:18  jhr
  *  New array representations.
  *

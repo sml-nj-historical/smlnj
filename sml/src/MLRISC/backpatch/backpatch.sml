@@ -130,10 +130,7 @@ end (* bbsched2 *)
 
 
 (*
- * $Log: backpatch.sml,v $
- * Revision 1.1.1.1  1998/11/16 21:47:14  george
- *   Version 110.10
- *
+ * $Log: bbsched2.sml,v $
  * Revision 1.2  1998/10/06 14:07:44  george
  * Flowgraph has been removed from modules that do not need it.
  * Changes to compiler/CodeGen/*/*{MLTree,CG}.sml necessary.

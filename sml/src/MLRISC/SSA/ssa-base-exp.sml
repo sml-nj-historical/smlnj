@@ -102,8 +102,5 @@ end
 structure SSABaseExp32 = SSABaseExpFn(val intTy = SSAExp.I32
                                       val uintTy = SSAExp.U32)
 (* 
- * $Log: ssa-base-exp.sml,v $
- * Revision 1.1.1.1  1998/11/16 21:47:06  george
- *  Version 110.10
- *
+ * $Log$
  *)

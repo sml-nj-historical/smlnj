@@ -337,8 +337,5 @@ end (* toplevel local *)
 end (* structure Equal *)
 
 (*
- * $Log: pequal.sml,v $
- * Revision 1.3  1998/05/23 14:09:42  george
- *   Fixed RCS keyword syntax
- *
+ * $Log$
  *)

@@ -13,9 +13,6 @@ end
 
 (*
  * $Log: mltreecomp.sig,v $
- * Revision 1.1.1.1  1998/11/16 21:49:03  george
- *   Version 110.10
- *
  * Revision 1.2  1998/08/11 14:03:24  george
  *   Exposed emitInstr in MLTREECOMP to allow a client to directly
  *   inject native instructions into the flowgraph.

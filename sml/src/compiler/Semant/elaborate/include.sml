@@ -289,9 +289,6 @@ end (* structure Include *)
 
 (*
  * $Log: include.sml,v $
- * Revision 1.4  1998/09/30 19:11:00  dbm
- * new repl field in TYCspec (bug 1432)
- *
  * Revision 1.3  1998/05/23 14:10:08  george
  *   Fixed RCS keyword syntax
  *

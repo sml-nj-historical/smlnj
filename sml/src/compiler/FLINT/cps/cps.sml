@@ -251,9 +251,6 @@ end (* structure CPS *)
 
 (*
  * $Log: cps.sml,v $
- * Revision 1.7  1998/11/23 20:09:53  jhr
- *   New raw64Subscript primop.
- *
  * Revision 1.6  1998/11/18 03:53:16  jhr
  *  New array representations.
  *

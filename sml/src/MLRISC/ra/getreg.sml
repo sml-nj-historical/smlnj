@@ -62,9 +62,6 @@ end
 
 (*
  * $Log: getreg.sml,v $
- * Revision 1.1.1.1  1998/11/16 21:49:10  george
- *   Version 110.10
- *
  * Revision 1.1.1.1  1998/04/08 18:39:02  george
  * Version 110.5
  *

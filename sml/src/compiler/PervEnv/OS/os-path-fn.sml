@@ -235,9 +235,6 @@ functor OS_PathFn (OSPathBase : sig
 
 (*
  * $Log: os-path-fn.sml,v $
- * Revision 1.2  1998/08/21 17:29:23  jhr
- *   Changed types of mkRelative and mkAbsolute to track basis changes.
- *
  * Revision 1.1.1.1  1998/04/08 18:39:56  george
  * Version 110.5
  *

@@ -10,9 +10,6 @@ end
 
 (*
  * $Log: pseudoOpType.sig,v $
- * Revision 1.3  1998/11/18 03:53:08  jhr
- *  New array representations.
- *
  * Revision 1.2  1998/10/28 18:20:39  jhr
  *   Removed code generator support for STRING/REAL constants.
  *
