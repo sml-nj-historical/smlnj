@@ -284,9 +284,10 @@ struct
                  (* pass struct using the pointer to its beginning *)
                  ([CCalls.ARG (regbind v)], vl)
 	     | m ((C_signed I_long_long | C_unsigned I_long_long), v :: vl) =
-	         ([CCalls.ARG (M.LOAD (ity, ea (regbind v, 4), R.memory)),
-		   CCalls.ARG (M.LOAD (ity, regbind v, R.memory))],
-		  vl)
+	       let fun field off =
+		       M.LOAD (ity, ea (regbind v, off), R.memory)
+	       in ([CCalls.ARG (field 8), CCalls.ARG (field 4)], vl)
+	       end
 	     | m (C_long_double, _) =
 	         error "RCC: unexpected long double argument"
 	     | m (C_ARRAY _, _) = error "RCC: unexpected array argument"
