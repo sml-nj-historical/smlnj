@@ -125,7 +125,7 @@ structure Stats :> STATS =
     local
       fun gettime () = let
 	  val { nongc, gc } =
-	      Timer.checkGCTime(Timer.totalCPUTimer())
+	      Timer.checkCPUTimes(Timer.totalCPUTimer())
       in
 	  (* This is a hack.
 	   * (This module deserves a complete rewrite!!) *)

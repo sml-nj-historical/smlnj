@@ -304,7 +304,7 @@ struct
           end
 	| call _ = error "pops<>0 not implemented"
 
-      and branch(T.CMP(_, _, T.LI _, T.LI _), _, _) = error "branch"
+      and branch(T.CMP(_, _, T.LI _, T.LI _), _, _) = error "branch(LI,LI)"
         | branch(T.CMP(ty, cc, e1 as T.LI _, e2), lab, an) = 
           let val cc' = T.Basis.swapCond cc
           in  branch(T.CMP(ty, cc', e2, e1), lab, an)

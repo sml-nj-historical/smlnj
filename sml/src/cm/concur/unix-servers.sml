@@ -15,12 +15,13 @@ structure Servers : SERVERS = struct
     structure P = Posix
 
     type pathtrans = (string -> string) option
-    datatype server = S of { id: int,
-			     name: string,
-			     proc: Unix.proc,
-			     pt: pathtrans,
-			     pref: int,
-			     decommissioned: bool ref }
+    datatype server =
+	     S of { id: int,
+		    name: string,
+		    proc: (TextIO.instream, TextIO.outstream) Unix.proc,
+		    pt: pathtrans,
+		    pref: int,
+		    decommissioned: bool ref }
 
     type server_handle = int * string	(* id and name *)
 
@@ -155,10 +156,10 @@ structure Servers : SERVERS = struct
 	     
 	fun serverExit () = let
 	    val what =
-		case pprotect (fn () => Unix.reap (servProc s)) of
-		    (P.Process.W_EXITED | P.Process.W_EXITSTATUS 0w0) =>
-			"shut down"
-		  | _ => "crashed"
+		if pprotect (fn () => Unix.reap (servProc s))
+		   = OS.Process.success
+		then "shut down"
+		else "crashed"
 	in
 	    decommission s;
 	    Say.say ["[!Slave ", name, " has ", what, ".]\n"];

@@ -18,7 +18,7 @@ struct
        fun run x = 
        let val timer = Timer.startCPUTimer()
            fun update timer = 
-           let val t = Timer.checkGCTime timer
+           let val t = Timer.checkCPUTimes timer
 	       val gc' = #usr (#gc t)
 	       val usr' = #usr (#nongc t)
 	       val sys' = Time.+ (#sys (#gc t), #sys (#nongc t))
