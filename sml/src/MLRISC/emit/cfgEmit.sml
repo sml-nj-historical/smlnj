@@ -20,7 +20,7 @@ struct
   structure CFG = CFG
 
   fun asmEmit (Graph.GRAPH graph, blocks) = let
-	val CFG.INFO{annotations=an, data, ...} = #graph_info graph
+	val CFG.INFO{annotations=an, data, decls, ...} = #graph_info graph
 	val E.S.STREAM{pseudoOp,defineLabel,emit,annotation,comment,...} = 
              E.makeStream (!an)
 	fun emitIt (id, CFG.BLOCK{labels, annotations=a, align, insns, ...}) = (
@@ -31,6 +31,7 @@ struct
 	and emitAn a = if Annotations.toString a = "" then () else annotation(a)
 	in
 	  List.app emitAn (!an);
+	  List.app pseudoOp (rev (!decls));
 	  pseudoOp(PseudoOpsBasisTyp.TEXT);
 	  List.app emitIt blocks;
 	  List.app pseudoOp (rev (!data))

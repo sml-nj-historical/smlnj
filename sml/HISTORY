@@ -13,6 +13,28 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/05/15 09:20:10 EDT
+Tag: george-20020515-pseudo-op-decls
+Description:
+
+	All pseudo-ops emitted before the first segment declaration
+such as TEXT, DATA, and BSS directives are assumed to be global
+declarations and are emitted first in the assembly file. This is
+useful in a number of situations where one has pseudo-ops that are not
+specific to any segment, and also works around the constraint that one
+cannot have client pseudo-ops in the TEXT segment.
+
+	Because no segment is associated with these declarations it is
+an error to allocate any space or objects before the first segment
+directive and an exception will be raised. However, we cannot make
+this check for client pseudo-ops.
+
+	These top level declarations are a field in the CFG graph_info.
+In theory you can continue to add to this field after the CFG has been
+built -- provided you know what you are doing;-)
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/05/13 16:40:00 EDT
 Tag: blume-20020513-pp-etc

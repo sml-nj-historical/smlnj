@@ -102,7 +102,8 @@ sig
        { annotations : Annotations.annotations ref,
          firstBlock  : int ref, (* id of first block (UNUSED?) *)
          reorder     : bool ref, (* has the CFG been reordered? *)
-         data        : P.pseudo_op list ref (* reverse order of generation *)
+         data        : P.pseudo_op list ref, (* reverse order of generation *)
+	 decls       : P.pseudo_op list ref (* pseudo-ops before first section *)
        }
 
    type cfg = (block,edge_info,info) Graph.graph

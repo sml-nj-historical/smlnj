@@ -69,8 +69,8 @@ struct
     val addLabel    = IntHashTable.insert labelMap
 
     (* Data in text segment is read-only *)
-    datatype segment_t = TEXT | DATA | RO_DATA | BSS
-    val segmentF    = ref TEXT
+    datatype segment_t = TEXT | DATA | RO_DATA | BSS | DECLS
+    val segmentF    = ref DECLS
 
     (* the block names *)
     val blockNames   = ref [] : Annotations.annotations ref
@@ -263,11 +263,12 @@ struct
        *)
       fun addPseudoOp p = let
 	val Graph.GRAPH graph = !cfg
-	val CFG.INFO{data, ...} = #graph_info graph
+	val CFG.INFO{data, decls, ...} = #graph_info graph
 
 	fun addAlignment () = 
 	  (case !segmentF
-           of TEXT => let
+           of DECLS => error "addAlignment: DECLS"
+            | TEXT => let
 		val CFG.BLOCK{align, ...} = newBlock 1.0
               in align := SOME p
     	      end
@@ -278,13 +279,22 @@ struct
 
 	fun addData () = data := p :: !data
 
-	fun chkAddData(seg) =
-	  (case !segmentF
-	   of TEXT => 
-	       error (Fmt.format "addPseudoOp: %s in TEXT segment" [Fmt.STR seg])
-	    | _ => addData()
-	  (*esac*))
+	fun chkAddData(seg) = let
+	    fun errmsg curr = 
+		Fmt.format "addPseudoOp: %s in %s segment" [Fmt.STR seg, Fmt.STR curr]
+        in
+	   case !segmentF
+           of DECLS => error(errmsg "DECLS")
+	    | TEXT => error(errmsg "TEXT")
+	    | _ => data := p :: !data
+	  (*esac*)
+        end
 
+	fun addDecl() =
+	    (case !segmentF
+	      of DECLS => decls := p :: !decls
+               | _ => data := p :: !data
+            (*esac*))
       in
 	case p
 	of PB.ALIGN_SZ _ => addAlignment()
@@ -298,7 +308,7 @@ struct
 
 	 | PB.DATA_READ_ONLY => startSegment(RO_DATA)
 	 | PB.DATA => startSegment(DATA)
-	 | PB.TEXT => startSegment(TEXT)
+	 | PB.TEXT => segmentF := TEXT
 	 | PB.BSS => startSegment(BSS)
 	 | PB.SECTION _ => 
 	    (case !segmentF
@@ -314,10 +324,14 @@ struct
 	 | PB.ASCII _  => chkAddData("ASCII")
 	 | PB.ASCIIZ _ => chkAddData("ASCIIZ")
 	 | PB.SPACE _  => chkAddData("SPACE")
-	 | PB.COMMENT _ => chkAddData("COMMENT")
-	 | PB.IMPORT _ => addData()
-	 | PB.EXPORT _ => addData()
-	 | PB.EXT _ => chkAddData("EXT")
+	 | PB.COMMENT _ => addDecl()
+	 | PB.IMPORT _ => addDecl()
+	 | PB.EXPORT _ => addDecl()
+	 | PB.EXT _ => 
+	     (case !segmentF 
+	       of TEXT => error "EXT in TEXT segment"
+		| _ => addDecl()
+             (*esac*))
       end
 
       fun defineLabel lab = 

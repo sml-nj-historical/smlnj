@@ -2078,6 +2078,7 @@ struct
       in
 	initFrags cluster;
 	beginCluster 0;
+	pseudoOp PB.TEXT;
 	fragComp();
 	InvokeGC.emitLongJumpsToGCInvocation stream;
 	compile(endCluster(clusterAnnotations()))
@@ -2090,6 +2091,7 @@ struct
 	Cells.reset();
 	ClusterAnnotation.useVfp := false;
 	beginCluster 0; 
+	pseudoOp PB.TEXT;
 	InvokeGC.emitModuleGC stream;
 	pseudoOp (PB.DATA_READ_ONLY);
 	pseudoOp (PB.EXT(CPs.FILENAME file));

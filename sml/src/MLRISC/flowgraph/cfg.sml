@@ -63,7 +63,8 @@ struct
         INFO of { annotations : Annotations.annotations ref,
                   firstBlock  : int ref,
                   reorder     : bool ref,
-		  data        : P.pseudo_op list ref
+		  data        : P.pseudo_op list ref,
+		  decls	      : P.pseudo_op list ref
                 }
 
     type cfg = (block,edge_info,info) Graph.graph
@@ -197,7 +198,8 @@ struct
         let val info = INFO{ annotations = ref [],
                              firstBlock  = ref 0,
                              reorder     = ref false,
-			     data        = ref []
+			     data        = ref [],
+			     decls       = ref []
                            }
         in  cfg info end
 
@@ -205,7 +207,8 @@ struct
         let val info = INFO{ annotations = ref [],
                              firstBlock  = #firstBlock graph_info,
                              reorder     = #reorder graph_info,
-			     data        = #data graph_info
+			     data        = #data graph_info,
+			     decls       = #decls graph_info
                            }
         in  UpdateGraphInfo.update CFG info end
 
