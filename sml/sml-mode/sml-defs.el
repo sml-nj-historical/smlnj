@@ -29,8 +29,12 @@
   "Editing SML code."
   :group 'languages)
 
-(defvar sml-outline-regexp "[ \t]*\\((\\*+\\|\\(let[ \t]+\\)?fun.\\)"
-  "Regexp matching a major heading.")
+(defvar sml-outline-regexp
+  ;; `st' and `si' are to match structure and signature.
+  "\\|s[ti]\\|[ \t]*\\(let[ \t]+\\)?\\(fun\\|and\\)\\>"
+  "Regexp matching a major heading.
+This actually can't work without extending `outline-minor-mode' with the
+notion of \"the end of an outline\".")
 
 ;;; 
 ;;; Internal defines

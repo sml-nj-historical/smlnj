@@ -37,7 +37,7 @@
 @center {SML mode, Version $Name$}
 @center {August 1999}
 @sp 2
-@author Author: Matthew J.@: Morley
+@author Authors: Matthew J.@: Morley and Stefan Monnier
 
 @page
 @vskip 0pt plus 1filll
