@@ -84,7 +84,7 @@ fi
 isnotin() {
     tested_x=$1
     shift
-    for set_y ; do
+    for set_y in "$@" ; do
 	if [ ${tested_x} = ${set_y} ] ; then
 	    return 1
 	fi
@@ -95,7 +95,7 @@ isnotin() {
 require() {
     require_who=$1
     shift
-    for required_x ; do
+    for required_x "$@" ; do
 	if isnotin ${required_x} ${TARGETS} ; then
 	    echo "Including ${required_x} (needed by ${require_who})."
 	    request ${required_x}

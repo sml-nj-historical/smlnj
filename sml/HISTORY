@@ -14,11 +14,24 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
-Date: 2002/02/15 16:00:00 EST
+Date: 2002/02/15 17:05:00
 Tag: Release_110_39
 Description:
 
+Last-minute retagging is becoming a tradition... :-(
+
+This is the working release 110.39.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/15 16:00:00 EST
+Tag: Release_110_39-orig
+Description:
+
 Working release 110.39.  New bootfiles.
+
+(Update: There was a small bug in the installer so it wouldn't work
+with all shells.  So I retagged. -Matthias)
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
