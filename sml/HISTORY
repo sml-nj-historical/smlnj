@@ -13,6 +13,14 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/08/10 23:35:00 EST
+Tag: leunga-110_48-ppc
+Description:
+
+   The IBM/MacOS syntax switch on PPC was incorrectly swapped.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/10/04 12:00:00 CDT
 Tag: Release_110_48
