@@ -35,6 +35,7 @@ structure IEEEReal : IEEE_REAL =
       | intToRM 1 = TO_ZERO
       | intToRM 2 = TO_POSINF
       | intToRM 3 = TO_NEGINF
+      | intToRM _ = raise Match (* shut up compiler *)
 
     fun setRoundingMode' m = (ctlRoundingMode (SOME m); ())
 

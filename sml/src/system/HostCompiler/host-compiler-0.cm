@@ -1,34 +1,40 @@
 cm-init
 Library
+	signature CM
 	structure Compiler
 	structure CMB
 	structure CM0
 is
-	(* library of visible compilers for various architectures *)
-	target-compilers.cm
-
 	(* library providing the implementation of CM *)
 	cm-lib.cm
 
 	(* based on current architecture, select Compiler *)
 
 # if defined(ARCH_ALPHA)
+	alpha32-compiler.cm
 	Select/alpha32-compiler.sml
 # elif defined(ARCH_MIPS)
 #   if defined(BIG_ENDIAN)
+	mipseb-compiler.cm
 	Select/mipseb-compiler.sml
 #   else
+	mipsel-compiler.cm
 	Select/mipsel-compiler.sml
 #   endif
 # elif defined(ARCH_HPPA)
+	hppa-compiler.cm
 	Select/hppa-compiler.sml
 # elif defined(ARCH_RS6000)
+	rs6000-compiler.cm
 	Select/rs6000-compiler.sml
 # elif defined(ARCH_PPC)
+	ppc-compiler.cm
 	Select/ppc-compiler.sml
 # elif defined(ARCH_SPARC)
+	sparc-compiler.cm
 	Select/sparc-compiler.sml
 # elif defined(ARCH_X86)
+	x86-compiler.cm
 	Select/x86-compiler.sml
 # else
 #   error Strange architecture!
@@ -37,29 +43,39 @@ is
 	(* based on current architecture and OS, select CMB *)
 
 # if defined(ARCH_ALPHA)
+	alpha32-unix.cm
 	Select/alpha32-unix-cmb.sml
 # elif defined(ARCH_MIPS)
 #   if defined(BIG_ENDIAN)
+	mipseb-unix.cm
 	Select/mipseb-unix-cmb.sml
 #   else
+	mipsel-unix.cm
 	Select/mipsel-unix-cmb.sml
 #   endif
 # elif defined(ARCH_HPPA)
+	hppa-unix.cm
 	Select/hppa-unix-cmb.sml
 # elif defined(ARCH_RS6000)
+	rs6000-unix.cm
 	Select/rs6000-unix-cmb.sml
 # elif defined(ARCH_PPC)
 #   if defined(OS_MACOS)
+	ppc-macos.cm
 	Select/ppc-macos-cmb.sml
 #   else
+	ppc-unix.cm
 	Select/ppc-unix-cmb.sml
 #   endif
 # elif defined(ARCH_SPARC)
+	sparc-unix.cm
 	Select/sparc-unix-cmb.sml
 # elif defined(ARCH_X86)
 #   if defined(OS_WIN32)
+	x86-win32.cm
 	Select/x86-win32-cmb.sml
 #   else
+	x86-unix.cm
 	Select/x86-unix-cmb.sml
 #   endif
 # else

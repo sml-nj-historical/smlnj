@@ -57,7 +57,7 @@ fun cmpEntPath (ep1, ep2) =
    in f(ep1,ep2)
   end
 
-structure EvDict = BinaryMapFn(struct type ord_key = entVar 
+structure EvDict = RedBlackMapFn(struct type ord_key = entVar 
                                      val compare = cmpEntVar
                               end)
 

@@ -11,18 +11,18 @@
 <FONT COLOR="#aa0000">Basic Compiler Graphs</FONT></H1></CENTER>
 
 <h2> Introduction </h2>
-In this section we describe the set of basic compiler specific graphs and
+In this section we describe the set of core compiler specific graphs and
 algorithms implemented in MLRISC.
 Mostly of these algorithms are parameterized with respect
 to the actual intermediate representation, and as such they
 do not provide many facilities that are provided by higher abstraction
-layers.  
-
+layers, such as in <a href="mlrisc-ir.html"> MLRISC IR </a>, 
+or in <a href="SSA.html"> SSA </a>.
 
 <h3> Dominator/Post-dominator Trees </h3>
 <font color="#ff00000">Dominance</font> 
 is a fundamental concept in compiler optimizations.
-Node <em>A</em> <<em>dominates</em> <em>B</em> 
+Node <em>A</em> <em>dominates</em> <em>B</em> 
 iff all paths from the start node
 to <em>B</em> intersects A.  A dual notion is the concept of {\em post-dominance}:
 <em>A</em> <font color="#ff0000">post-dominates</font> <em>B</em> iff all paths from <em>B</em> to the stop node
@@ -62,7 +62,7 @@ from a graph, the following function should be called.
  val dominator_trees : ('n,'e,'g) graph ->
          ('n,'e,'g) dominator_tree * ('n,'e,'g) postdominator_tree
 </pre>
-We use the algorithm of Tarjan and Lengauer~\cite{tarjan-lengauer}, which
+We use the algorithm of Tarjan and Lengauer, which
 runs in time <em>O(|V+E|\alpha(|V+E|))</em> where <em>\alpha</em> is the functional
 inverse of the Ackermann function.
 
@@ -97,7 +97,7 @@ The methods are packed into the following type:
 </pre>
 
 The query methods are as follows:
-\begin{methods}
+<ul>
   dominates(<em>a,b</em>)             & returns true iff <em>a</em> dominates <em>b</em> \\
   immediately\_dominates(<em>a,b</em>) & returns true iff <em>a</em> immediately dominates <em>b</em> \\
   strictly\_dominates(<em>a,b</em>)    & returns true iff <em>a</em> strictly dominates <em>b</em> \\
@@ -121,9 +121,9 @@ The query methods are as follows:
   tree \\
   control\_equivalent\_partitions & partitions the graph into
   a set of control equivalent nodes.
-\end{methods}
+</ul>
 
-The methods \sml{dom\_lca}, <tt>pdom_lca</tt> and 
+The methods <tt>dom\_lca</tt>, <tt>pdom_lca</tt> and 
 <tt>control_equivalent_partitions</tt> executes in <em>O(n)</em> time, where
 <em>n</em> is the size of the dominator tree.  The other methods run in <em>O(1)</em> time.
 
@@ -158,7 +158,7 @@ To build a control dependence graph, the functor
     ) : CONTROL_DEPENDENCE_GRAPH
 </pre>
 The control depedence graph is a subcomponent of the
-program dependence graph~\cite{PDG} commonly used in
+program dependence graph commonly used in
 modern compiler optimizations.
 
 <h3>Dominance Frontiers</h3>
@@ -187,7 +187,6 @@ It has the following signature.
  end
 </pre>
 
-We use the algorithm described in~\cite{SSA}.
 <h3>Iterated Dominance Frontiers</h3>
 
 <font color="#ff0000">Iterated dominance frontiers</font> (denoted as <em>DF^+</em>) are defined
@@ -240,9 +239,9 @@ building an intermediate data structure.
 
 Iterated dominance frontiers are used
 in many algorithms that deal with the notion of dominance.
-For example, the SSA construction algorithm uses iterated
+For example, our SSA construction algorithm uses iterated
 dominance frontiers to identify confluent points in the program
-where <em>\phi</em>-functions are to be placed.
+where <em>phi</em>-functions are to be placed.
 
 <h3>Loop Nesting Tree</h3>
 
@@ -443,13 +442,7 @@ are returned as arrays indexed by node ids.
 {\em Describe Tarjan's fast path algorithm and it's relationship
 with Gaussian elimination, interval analysis, etc.}
 
-
-
 <HR>
-    <FONT SIZE="-2">
-<ADDRESS>
-<A HREF="mailto:leunga@cs.nyu.edu">Allen Leung</A></ADDRESS>
-<BR>
 
 </BODY>
 </HTML>

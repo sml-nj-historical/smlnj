@@ -12,10 +12,19 @@
 # get the target list
 #
 if [ ! -r config/targets ]; then
-  echo "!!! File config/targets is missing."
-  exit 1;
+    echo "!!! File config/targets is missing."
+    exit 1
 fi
 . config/targets
+
+#
+# create the preloads.standard file
+#
+if [ ! -r config/preloads ]; then
+    echo "!!! File config/preloads is missing."
+    exit 1
+fi
+cp config/preloads preloads.standard
 
 #
 # some OSs have make in strange places
@@ -305,7 +314,7 @@ esac
 #
 # the name of the bin files directory
 #
-BOOT_FILES=comp.boot.$ARCH-unix
+BOOT_FILES=sml.boot.$ARCH-unix
 
 #
 # build the run-time system
@@ -380,7 +389,7 @@ echo Installing other targets.
 for i in $TARGETS ; do
     case $i in
       src-smlnj)
-	for src in compiler comp-lib cm MLRISC smlnj-lib ml-yacc system
+	for src in compiler cm MLRISC smlnj-lib ml-yacc system
 	do
 	    unpack $src $ROOT/src $src $ROOT/$VERSION-$src
         done
@@ -400,14 +409,14 @@ for i in $TARGETS ; do
 	# Don't make the Util library -- it came pre-made and has been
 	# installed when making the base system.  In other words, don't do...
 	    #reglib smlnj-lib.cm smlnj-lib/Util
+	# ... and don't make the HTML library ...
+	    #reglib html-lib.cm smlnj-lib/HTML
+	# ... and don't make the PP library ...
+	    #reglib pp-lib.cm smlnj-lib/PP
 	# make the Unix library
 	    reglib unix-lib.cm smlnj-lib/Unix
 	# make the INet library
 	    reglib inet-lib.cm smlnj-lib/INet
-	# make the HTML library
-	    reglib html-lib.cm smlnj-lib/HTML
-	# make the PP library
-	    reglib pp-lib.cm smlnj-lib/PP
 	# make the RegExp library
 	    reglib regexp-lib.cm smlnj-lib/RegExp
 	# make the Reactive library
@@ -464,3 +473,7 @@ if [ -r $LIBMOVESCRIPT ] ; then
     rm -f $LIBMOVESCRIPT
 fi
 
+#
+# Get rid of preloads.standard
+#
+rm -f preloads.standard

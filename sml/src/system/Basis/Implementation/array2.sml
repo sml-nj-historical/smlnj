@@ -152,8 +152,10 @@ structure Array2 :> ARRAY2 =
    * row-major order.
    *)
     fun iterateRM arg = let
-	  val {data, i, r, c, nr, nc} = chkRegion arg
-	  val ii = ref i and ri = ref r and ci = ref c
+	  val {data, i, r, c=cStart, nr, nc} = chkRegion arg
+	  val ii = ref i and ri = ref r and ci = ref cStart
+	  val rEnd = r+nr and cEnd = cStart+nc
+	  val rowDelta = #ncols(#base arg) - nc
 	  fun mkIndx (r, c) = let val i = !ii
 		in
 		  ii := i+1;
@@ -162,10 +164,14 @@ structure Array2 :> ARRAY2 =
 	  fun iter () = let
 		val r = !ri and c = !ci
 		in
-		  if (c < nc)
+		  if (c < cEnd)
 		    then (ci := c+1; mkIndx(r, c))
-		  else if (r+1 < nr)
-		    then (ci := 0; ri := r+1; iter())
+		  else if (r+1 < rEnd)
+		    then (
+		      ii := !ii + rowDelta;
+		      ci := cStart;
+		      ri := r+1;
+		      iter())
 		    else DONE
 		end
 	  in
@@ -175,10 +181,11 @@ structure Array2 :> ARRAY2 =
   (* this function generates a stream of indeces for the given region in
    * col-major order.
    *)
-    fun iterateCM (arg as {base={ncols, ...}, ...}) = let
-	  val {data, i, r, c, nr, nc} = chkRegion arg
-	  val delta = (nr*ncols) - 1
-	  val ii = ref i and ri = ref r and ci = ref c
+    fun iterateCM (arg as {base={ncols, nrows, ...}, ...}) = let
+	  val {data, i, r=rStart, c, nr, nc} = chkRegion arg
+	  val ii = ref i and ri = ref rStart and ci = ref c
+	  val rEnd = rStart+nr and cEnd = c+nc
+	  val delta = (nr * ncols) - 1
 	  fun mkIndx (r, c) = let val i = !ii
 		in
 		  ii := i+ncols;
@@ -187,10 +194,14 @@ structure Array2 :> ARRAY2 =
 	  fun iter () = let
 		val r = !ri and c = !ci
 		in
-		  if (r < nr)
+		  if (r < rEnd)
 		    then (ri := r+1; mkIndx(r, c))
-		  else if (c+1 < nc)
-		    then (ii := !ii-delta; ri := 0; ci := c+1; iter())
+		  else if (c+1 < cEnd)
+		    then (
+		      ii := !ii - delta;
+		      ri := rStart;
+		      ci := c+1;
+		      iter())
 		    else DONE
 		end
 	  in
@@ -287,4 +298,3 @@ structure Array2 :> ARRAY2 =
       | fold ColMajor = foldCM
 
   end
-

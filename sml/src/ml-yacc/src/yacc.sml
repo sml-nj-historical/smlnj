@@ -1,8 +1,11 @@
 (* ML-Yacc Parser Generator (c) 1989, 1990 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
- * Revision 1.1.1.10  1999/04/17 18:56:14  monnier
- * version 110.16
+ * Revision 1.1.1.11  1999/12/07 15:40:30  monnier
+ * version 110.25
+ *
+ * Revision 1.1.1.1  1999/07/15 17:52:56  george
+ *  Version 110.20
  *
  * Revision 1.1.1.1  1998/04/08 18:40:17  george
  * Version 110.5
@@ -234,7 +237,8 @@ functor ParseGenFun(structure ParseGenParser : PARSE_GEN_PARSER
 	     sayln "_ => false")
 
 	 val printTermList = fn (l : term list) =>
-	    (app (fn t => (sayterm t; say " :: ")) l; sayln "nil")
+           (sayln "nil"; app (fn t => (say " $$ "; sayterm t)) (rev l))
+
 
 	 fun printChange () =
 	    (sayln "val preferred_change = ";
@@ -287,6 +291,8 @@ functor ParseGenFun(structure ParseGenParser : PARSE_GEN_PARSER
 	    sayln "struct";
 	    say "open ";
 	    sayln tableStruct;
+            sayln "infix 5 $$";
+            sayln "fun x $$ y = y::x";
 	    sayln "val is_keyword =";
 	    printBoolCase keyword;
 	    printChange();

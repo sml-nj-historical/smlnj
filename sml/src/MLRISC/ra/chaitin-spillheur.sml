@@ -19,11 +19,15 @@ struct
                         color=ref PSEUDO, defs=ref [], uses=ref [],
                         movecost=ref 0,movelist=ref [], number= ~1}
 
+   val mode = Core.NO_OPTIMIZATION
+
+   fun init() = ()
+
    (*
     * Potential spill phase.
     * Find a cheap node to spill according to Chaitin's heuristic.
     *)
-    fun chooseSpillNode{hasBeenSpilled, spillWkl} = 
+    fun chooseSpillNode{graph, hasBeenSpilled, spillWkl} = 
     let fun chase(NODE{color=ref(ALIASED n),...}) = chase n
           | chase n = n
         val infiniteCost = 123456789.0

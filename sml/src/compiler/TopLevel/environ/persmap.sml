@@ -2,7 +2,7 @@
 (* persmap.sml *)
 
 structure PersMap : ORD_MAP = 
-  BinaryMapFn
+  RedBlackMapFn
     (struct
        type ord_key = PersStamps.persstamp
        val compare = PersStamps.compare

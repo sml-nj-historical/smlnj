@@ -12,8 +12,8 @@ struct
 local
     structure F  = FLINT
     structure O  = Option
-    structure M  = IntBinaryMap
-    structure S  = IntSetF
+    structure M  = IntRedBlackMap
+    structure S  = IntRedBlackSet
     structure OU = OptUtils
     structure LK = LtyKernel
     structure CTRL = Control.FLINT
@@ -58,7 +58,7 @@ in case le
        let val I{tcp,calls,icalls,...} = new(f, known, p)
 	   val _ = loop le
 	   val necalls = length(!calls)
-       in  collect f (if !tcp then S.add(f,tfs) else S.singleton f) body;
+       in  collect f (if !tcp then S.add'(f,tfs) else S.singleton f) body;
 	   icalls := List.take(!calls, length(!calls) - necalls)
        end
      | F.FIX(fdecs,le) =>
@@ -76,9 +76,9 @@ in case le
        end
      | F.APP(F.VAR f,vs) =>
        (let val I{tails,calls,tcp,parent,...} = get f
-       in if S.member tfs f then tails := vs::(!tails)
+       in if S.member(tfs, f) then tails := vs::(!tails)
 	  else (calls := vs::(!calls);
-		if S.member tfs parent then () else tcp := false)
+		if S.member(tfs, parent) then () else tcp := false)
        end handle NotFound => ())
      | F.TFN((_,_,body),le) => (collect p S.empty body; loop le)
      | F.TAPP _ => ()

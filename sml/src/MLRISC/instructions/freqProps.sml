@@ -9,7 +9,8 @@ struct
 
       (* Branch probability in percentage *)
    fun branchProb instr =
-      case #get BasicAnnotations.BRANCH_PROB (#2(Props.getAnnotations instr)) of
+      case #get MLRiscAnnotations.BRANCH_PROB  
+           (#2(Props.getAnnotations instr)) of
         SOME b => b
       | NONE => 50
 

@@ -10,14 +10,30 @@
 <H1>
 <FONT COLOR="#aa0000">SSA Optimizations</FONT></H1></CENTER>
 
-Static Single Assignment Form (SSA) is a sparse representation 
+All SSA optimization modules satisfy the signature
+<a href="../SSA/ssa-optimization.sig" target="code"> SSA_OPTIMIZATION </a>,
+which is defined as:
+<pre>
+signature SSA_OPTIMIZATION = sig
+   structure SSA : SSA 
 
+   val optimize : SSA.ssa -> SSA.ssa
+end
+</pre>
+
+The following SSA based scalar optimizations have been implemented in MLRISC.
+<ul>
+<li> <a href="../SSA/ssa-dead-code-elim.sml" target="code"> 
+      Dead code elimination </a>
+<li> <a href="../SSA/ssa-gvn.sml" target="code"> 
+     Global value numbering, constant folding, algebraic simplication </a>
+<li> <a href="../SSA/ssa-gcm.sml" target="code">
+    Global code motion </a>
+<li> <a href="../SSA/ssa-cond-const-prop.sml" target="code">
+    Conditional constant propagation </a>
+</ul>
 
 <HR>
-    <FONT SIZE="-2">
-<ADDRESS>
-<A HREF="mailto:leunga@cs.nyu.edu">Allen Leung</A></ADDRESS>
-<BR>
 
 </BODY>
 </HTML>

@@ -26,21 +26,30 @@ struct
    let val NOBLOCK      = CFG.newBlock(~1,ref 0)
        val currentBlock = ref NOBLOCK 
        val newBlocks    = ref [] : CFG.block list ref 
+       val blockNames   = ref [] : Annotations.annotations ref
        val entryLabels  = ref [] : Label.label list ref
        fun can'tUse _   = error "unimplemented"
        exception NotFound
        val labelMap = Intmap.new(32,NotFound)
        val newLabel = Intmap.add labelMap
+       val lookupLabel = Intmap.map labelMap
        val CFG    = ref CFG
        val aliasF = ref can'tUse : (int * int -> unit) ref
 
+       (* Initialization *)
        fun init _ =
-           (currentBlock := NOBLOCK;
-            newBlocks := [];
-            entryLabels := [];
-            Intmap.clear labelMap;
-            aliasF := can'tUse
-           ) 
+       let val G.GRAPH cfg = !CFG
+       in  Intmap.clear labelMap;
+           #forall_nodes cfg 
+             (fn (blockId,CFG.BLOCK{labels, ...}) =>
+                  app (fn Label.Label{id, ...} => newLabel(id,blockId))
+                      (!labels));
+           currentBlock := NOBLOCK;
+           newBlocks := [];
+           blockNames := [];
+           entryLabels := [];
+           aliasF := can'tUse
+       end   
 
        val _ = init()
 
@@ -49,8 +58,9 @@ struct
        fun newBlock() = 
        let val G.GRAPH cfg = !CFG
            val id = #new_id cfg ()
-           val b  = CFG.newBlock(id,ref 0)
+           val b as CFG.BLOCK{annotations,...} = CFG.newBlock(id,ref 0)
        in  currentBlock := b; 
+           annotations := !blockNames;
            newBlocks := b :: !newBlocks;
            #add_node cfg (id,b);
            b 
@@ -72,21 +82,48 @@ struct
        let val CFG.BLOCK{data,...} = newPseudoOpBlock()
        in  data := !data @ [p] end
 
+       (* Add a new label *)
        fun defineLabel(l as Label.Label{id=labelId,...}) = 
+       let val id = lookupLabel labelId
+           val G.GRAPH cfg = !CFG
+           val blk as CFG.BLOCK{insns, ...} = #node_info cfg id
+       in  currentBlock := blk;
+           newBlocks := blk :: !newBlocks;
+           insns := []; (* clear instructions *)
+           #set_out_edges cfg (id,[]) (* clear edges *)
+       end handle _ =>
        let val CFG.BLOCK{id,labels,...} = newPseudoOpBlock()
        in  labels := l :: !labels;
-           newLabel(labelId,id)
+           newLabel(labelId, id)
        end
 
+       (* Add a new entry label *)
        fun entryLabel l = (defineLabel l; entryLabels := l :: !entryLabels)
 
+       (* Add a new pseudo op *)
        fun pseudoOp p = insertOp(CFG.PSEUDO p)
 
-       fun annotation a = 
-       let val CFG.BLOCK{annotations,...} = getBlock()
-       in  annotations := a :: !annotations
-       end
+       fun nextBlock() =
+           case !currentBlock of
+              CFG.BLOCK{id= ~1,...} => ()
+           |  b => currentBlock := NOBLOCK
 
+       (* Add a new annotation *)
+       fun annotation a = 
+           case #peek MLRiscAnnotations.BLOCK_NAMES a of
+              SOME names => 
+                (blockNames := names;
+                 nextBlock()
+                )
+           |  NONE =>
+              if #contains MLRiscAnnotations.EMPTY_BLOCK [a] then
+                 nextBlock()
+              else
+              let val CFG.BLOCK{annotations,...} = getBlock()
+              in  annotations := a :: !annotations
+              end
+
+       (* Mark current block as exit *)
        fun exitBlock liveOut = 
        let fun setLiveOut(CFG.BLOCK{annotations,...}) = 
                  annotations := #create CFG.LIVEOUT liveOut :: !annotations
@@ -99,9 +136,11 @@ struct
             | b => setLiveOut b
        end
 
-       fun comment msg = annotation(#create BasicAnnotations.COMMENT msg)
+       (* Add a new comment *)
+       fun comment msg = annotation(#create MLRiscAnnotations.COMMENT msg)
 
-       fun emitInstr i =
+       (* Emit an instruction *)
+       fun emit i =
        let val CFG.BLOCK{insns,...} = getBlock()
        in  insns := i :: !insns;
            if InsnProps.instrKind i = InsnProps.IK_JUMP then
@@ -109,14 +148,17 @@ struct
            else () 
        end
 
-       fun finish(annotations) =
+       (* End current cluster *)
+       fun endCluster(annotations) =
        let val G.GRAPH cfg = !CFG
            val _ = CFG.init(!CFG) (* create entry/exit *)
+
            val ENTRY = hd(#entries cfg ())
            val EXIT = hd(#exits cfg ())
 
            fun next(CFG.BLOCK{id,data=ref [],...}::_) = id
              | next _ = error "next"
+
            val lookupLabelMap = Intmap.mapWithDefault(labelMap,EXIT)
            val TRUE = CFG.BRANCH true
            val FALSE = CFG.BRANCH false
@@ -174,22 +216,24 @@ struct
               init()
           end
 
-        fun beginGraph _ = 
-        let val regmap = CFG.regmap(!CFG)
-        in  init();
-            aliasF := Intmap.add regmap;
-            regmap
-        end
+       (* Start a new cluster *)
+       fun beginCluster _ = 
+       let val regmap = CFG.regmap(!CFG)
+       in  init();
+           aliasF := Intmap.add regmap;
+           regmap
+       end
 
-        fun alias(v,r) = !aliasF(v,r)
+       (* Add an alias *)
+       fun alias(v,r) = !aliasF(v,r)
 
     in  {stream=S.STREAM
-           {  beginCluster= beginGraph,
-              endCluster  = finish,
+           {  beginCluster= beginCluster,
+              endCluster  = endCluster,
               defineLabel = defineLabel,
               entryLabel  = entryLabel,
               pseudoOp    = pseudoOp,
-              emit        = emitInstr,
+              emit        = emit,
               exitBlock   = exitBlock,
               comment     = comment,
               annotation  = annotation,

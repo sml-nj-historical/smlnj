@@ -15,8 +15,8 @@ sig
    val ==    : 'n node_partition -> Graph.node_id * Graph.node_id -> bool
    val union : 'n node_partition -> ('n Graph.node * 'n Graph.node ->
                                         'n Graph.node) ->
-                                        Graph.node_id * Graph.node_id -> unit
-   val union': 'n node_partition -> Graph.node_id * Graph.node_id -> unit
+                                        Graph.node_id * Graph.node_id -> bool
+   val union': 'n node_partition -> Graph.node_id * Graph.node_id -> bool
 
 end
 

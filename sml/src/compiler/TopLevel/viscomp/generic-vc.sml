@@ -28,13 +28,11 @@ structure GenericVC : GENERIC_VC = struct
             : string list -> (PrettyPrint.ppstream -> 'a -> unit) -> unit
 	    = Unsafe.cast PPTable.install_pp
     end (* PPTable *)
-    structure MakePid = struct
-	fun makePid (context, se) =
-	    #hash (PickMod.pickleEnv { context = context,
-				       env = CMStaticEnv.unCM se })
-    end
     structure Ast = Ast
     structure SmlFile = SmlFile
+    structure Rehash = struct
+	val rehash = PickMod.repickleEnvHash
+    end
 
     structure PrintHooks : PRINTHOOKS = struct
 	fun prAbsyn env d  = 

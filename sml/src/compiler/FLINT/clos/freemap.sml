@@ -19,6 +19,12 @@ structure FreeMap : FREEMAP = struct
 
 local
   open CPS SortedList
+  structure Intset = struct
+    fun new() = ref IntRedBlackSet.empty
+    fun add set i = set := IntRedBlackSet.add(!set, i)
+    fun mem set i =  IntRedBlackSet.member(!set, i)
+    fun rmv set i = set := IntRedBlackSet.delete(!set, i)
+  end
 in 
 
 fun clean l = 

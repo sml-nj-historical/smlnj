@@ -178,6 +178,7 @@ functor TextIOFn (
 		    CleanIO.removeCleaner cleanTag;
 		    m := TERMINATED)
 		| (m as ref TERMINATED) => ()
+		| _ => raise Match (* shut up compiler *)
 	      (* end case *))
 
 	fun input (strm as ISTRM(buf, _)) =
@@ -399,6 +400,7 @@ functor TextIOFn (
 			    case extendStream (readVec buf, "inputLine", buf)
 			     of (EOS _) => last ()
 			      | (MORE rest) => scanData (rest, 0)
+			      | _ => raise Match (* shut up compiler *)
 			    (* end case *))
 			| TERMINATED => last ()
 		      (* end case *)

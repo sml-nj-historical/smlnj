@@ -276,13 +276,13 @@ structure Nfa : NFA =
 
 	fun start nfa = closure nfa (I.singleton 0)
 
-	fun chars (Nfa {moves,...}) state = 
-	    C.listItems 
- 	       (foldl (fn (Move (s1,SOME c,s2),s) => if (s1=state) 
-							 then C.add (s,c)
-						     else s
-	                | (_,s) => s)
- 		      C.empty moves)
+	fun chars (Nfa{moves,...}) state = let
+	      fun f (Move(s1, SOME c, s2), s) =
+		      if (s1 = state) then C.add(s, c) else s
+		| f (_, s) = s
+	      in
+		C.listItems (M.foldl f C.empty moves)
+	      end
 
     end
 

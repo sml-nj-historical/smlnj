@@ -12,12 +12,17 @@ sig
    
   type pickle
   type hash
+  type newContext
   type lvar = Access.lvar
   type pid = PersStamps.persstamp
 
   val pickUnpick : cmstatenv * statenv ->
-                     {hash: hash, pickle: pickle, exportLvars: lvar list,
-                      exportPid: pid option, newenv: statenv}
+      { hash: hash,
+        pickle: pickle,
+	exportLvars: lvar list,
+	exportPid: pid option,
+	newenv: statenv,
+	ctxt: newContext }
 
   val mkMkStamp : unit -> (unit -> Stamps.stamp)
 

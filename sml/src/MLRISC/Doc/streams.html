@@ -32,34 +32,35 @@ which is defined as:
 <pre>
 signature INSTRUCTION_STREAM = sig
    structure P : <a href="pseudo-ops.html">PSEUDO_OPS</a>
-   structure B : <a href="block-names.html">BLOCK_NAMES</a>
 
-   datatype ('a,'b,'c) stream =
+   datatype ('a,'b,'c,'d,'e,'f) stream =
       STREAM of
-         { init        : int -> unit,
-           finish      : 'c -> unit,
-           emit        : (int -> int) -> 'a -> unit,
-           pseudoOp    : P.pseudo_op -> unit,
-           defineLabel : Label.label -> unit, 
-           entryLabel  : Label.label -> unit, 
-           comment     : string -> unit,
-           blockName   : B.name -> unit,
-           annotation  : Annotations.annotation -> unit,
-           exitBlock   : 'b -> unit
-         }
+      { beginCluster: int -> 'b,  
+        endCluster  : 'c -> unit, 
+        emit        : 'a,        
+        pseudoOp    : P.pseudo_op -> unit,
+        defineLabel : Label.label -> unit,
+        entryLabel  : Label.label -> unit,
+        comment     : string -> unit,    
+        annotation  : Annotations.annotation -> unit,
+        exitBlock   : 'd -> unit,
+        alias       : 'e -> unit, 
+        phi         : 'f -> unit  
+      }
+
 end
 </pre>
 
 <h3> The protocol </h3>
 Instruction streams follow the following protocol:
 <ul>
-  <li> The method <tt>init</tt> should be called at the beginning of
+  <li> The method <tt>beginCluster</tt> should be called at the beginning of
         the stream to mark the start of a new compilation unit.  
          The integer passed to this method is the number
         of bytes in the stream.  This integer is only used for 
         machine code emitter, which uses it to allocate space for the
         code string.  
-  <li> The method <tt>finish</tt> should be called when the entire
+  <li> The method <tt>endCluster</tt> should be called when the entire
        compilation unit has been sent.
   <li> In between these calls, the following methods can be called in any
        order:
@@ -71,18 +72,13 @@ Instruction streams follow the following protocol:
    <li> <tt>entryLabel</tt> -- this method defines a label that
           also marks an procedure entry.
    <li> <tt>comment</tt> -- this emits a comment string
-   <li> <tt>blockName</tt> -- this changes the current block name
-   <li> <tt>annotation</tt> -- this method injects an annotation into
-          the current block.
+   <li> <tt>annotation</tt> -- this function attaches an annotation to 
+     the current basic block.
    <li> <tt>exitBlock</tt> -- 
           this marks the current block as an procedure exit.
   </ul>
 </ul>  
 <HR>
-    <FONT SIZE="-2">
-<ADDRESS>
-<A HREF="mailto:leunga@cs.nyu.edu">Allen Leung</A></ADDRESS>
-<BR>
 
 </BODY>
 </HTML>

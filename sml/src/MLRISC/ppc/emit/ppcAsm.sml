@@ -17,6 +17,8 @@ struct
    structure LE = LabelExp
    structure Constant = I.Constant
    
+   val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
+   
    fun error msg = MLRiscErrorMsg.error("PPCAsm",msg)
    
    fun makeStream formatAnnotations =
@@ -63,6 +65,13 @@ struct
    and emit_GP r = 
        ((emit (C.showGP (regmap r))); 
        (emitRegInfo r))
+   
+       fun emit_cellset(title,cellset) =
+       if !show_cellset then
+         (nl(); comment(title^C.cellsetToString' regmap cellset))
+       else ()
+       fun emit_defs cellset = emit_cellset("defs: ",cellset)
+       fun emit_uses cellset = emit_cellset("uses: ",cellset)
 
    fun asm_unary (I.NEG) = "neg"
      | asm_unary (I.EXTSB) = "extsb"
@@ -490,7 +499,9 @@ struct
         (emit_operand addr))
       | I.CALL{def, use, mem} => 
         ((emit "blrl"); 
-        (emit_region mem))
+        (emit_region mem); 
+        (emit_defs def); 
+        (emit_uses use))
       | I.COPY{dst, src, impl, tmp} => (emitInstrs (Shuffle.shuffle {regmap=regmap, tmp=tmp, dst=dst, src=src}))
       | I.FCOPY{dst, src, impl, tmp} => (emitInstrs (Shuffle.shufflefp {regmap=regmap, tmp=tmp, dst=dst, src=src}))
       | I.ANNOTATION{i, a} => 

@@ -17,6 +17,8 @@ struct
    structure LE = LabelExp
    structure Constant = I.Constant
    
+   val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
+   
    fun error msg = MLRiscErrorMsg.error("AlphaAsm",msg)
    
    fun makeStream formatAnnotations =
@@ -62,8 +64,7 @@ struct
        (emitRegInfo r))
    
        fun emit_cellset(title,cellset) =
-       if #contains BasicAnnotations.SHOW_CELLSET formatAnnotations
-       then 
+       if !show_cellset then
          (nl(); comment(title^C.cellsetToString' regmap cellset))
        else ()
        fun emit_defs cellset = emit_cellset("defs: ",cellset)

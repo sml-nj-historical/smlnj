@@ -163,11 +163,7 @@ struct
 	 | I.TRAPB 	=> trap([],[])
 	 (* macro *)
 	 | I.CALL_PAL{def,use, ...} => (def, use)
-         | I.ANNOTATION{a, i, ...} =>
-            (case #peek BasicAnnotations.DEFUSER a of
-               SOME(d,u) => (d,u)
-             | NONE => defUseR i
-            )
+         | I.ANNOTATION{a, i, ...} => defUseR i
 	 | _  		=> ([],[])
       end
 
@@ -186,11 +182,7 @@ struct
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...} => (f::dst, src)
       | I.FCOPY{dst, src, ...}			=> (dst, src) 
       | I.JSR(_,def,use, mem)	     => (#2 def,#2 use)
-      | I.ANNOTATION{a, i, ...} =>
-          (case #peek BasicAnnotations.DEFUSEF a of
-             SOME(d,u) => (d,u)
-           | NONE => defUseF i
-          )
+      | I.ANNOTATION{a, i, ...} => defUseF i
       | _ => ([],[])
 
     fun defUse C.GP = defUseR

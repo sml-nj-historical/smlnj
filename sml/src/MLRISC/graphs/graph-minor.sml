@@ -11,7 +11,7 @@ sig
    val minor : ('n,'e,'g) Graph.graph
             -> ('n * 'n * 'e Graph.edge list -> 'n)
             -> { view  : ('n,'e,'g) Graph.graph,
-                 union : Graph.node_id * Graph.node_id -> unit,
+                 union : Graph.node_id * Graph.node_id -> bool,
                  ==    : Graph.node_id * Graph.node_id -> bool,
                  partition : Graph.node_id -> Graph.node_id list 
                }

@@ -177,8 +177,8 @@ structure FContract :> FCONTRACT =
 struct
 local
     structure F  = FLINT
-    structure M  = IntBinaryMap
-    structure S  = IntSetF
+    structure M  = IntRedBlackMap
+    structure S  = IntRedBlackSet
     structure C  = Collect
     structure O  = Option
     structure DI = DebIndex
@@ -533,7 +533,7 @@ fun fcFix (fs,le) =
 				     else OU.transpose(!actuals)
 		       val nm = ListPair.foldl merge_actuals m (args, actuals)
 		       (* contract the body and create the resulting fundec *)
-		       val nbody = fcexp (S.add(f, ifs)) nm body #2
+		       val nbody = fcexp (S.add'(f, ifs)) nm body #2
 		       (* if inlining took place, the body might be completely
 			* changed (read: bigger), so we have to reset the
 			* `inline' bit *)
@@ -724,17 +724,17 @@ fun fcApp (f,vs) =
 		       click_copyinline();
 		       (app (unuseval m) vs);
 		       unusecall m g;
-		       fcexp (S.add(g, ifs)) m nle cont
+		       fcexp (S.add'(g, ifs)) m nle cont
 		   end
 
-	   in if C.usenb gi = 1 andalso not(S.member ifs g) then simpleinline()
+	   in if C.usenb gi = 1 andalso not(S.member(ifs, g)) then simpleinline()
 	      else case inline of
 		  F.IH_SAFE => noinline()
 		| F.IH_UNROLL => noinline()
 		| F.IH_ALWAYS =>
-		  if S.member ifs g then noinline() else copyinline()
+		  if S.member(ifs, g) then noinline() else copyinline()
 		| F.IH_MAYBE(min,ws) =>
-		  if S.member ifs g then noinline() else let
+		  if S.member(ifs, g) then noinline() else let
 		      fun value w _ (Val _ | Con _ | Record _) = w
 			| value w v (Fun (f,_,args,_,_)) =
 			  if C.usenb(C.get v) = 1 then w * 2 else w

@@ -3,8 +3,7 @@
 # build script for ml-yacc under the new runtime system.
 #
 # options:
-#   -arch arch		-- specify the architecture, "heap" is the default.
-#   -o image		-- specify the name of the heap image, "ml-lex.ARCH"
+#   -o image		-- specify the name of the heap image, "ml-yacc"
 #			   is the default.
 #   -sml path		-- specify the path to the sml executable, "../../bin/sml"
 #			   is the default.
@@ -13,19 +12,9 @@ CMD="build"
 
 ROOT="ml-yacc"
 HEAP_IMAGE=""
-BIN="../../bin"
-# sml is used after "cd src"
-SML="../$BIN/sml"
-
-#
-# determine the host architecture
-#
-ARCH_N_OPSYS=`$BIN/.arch-n-opsys`
-if [ $? != "0" ]; then
-  echo "$CMD: unable to determine architecture/operating system"
-  exit 1
-fi
-eval $ARCH_N_OPSYS
+TWOUP=`pwd`/../..
+BIN=${INSTALLDIR:-$TWOUP}/bin
+SML=$BIN/sml
 
 #
 # process command-line options
@@ -36,13 +25,6 @@ do
     arg=$1
     shift
     case $arg in
-	-arch)
-	    if [ "$#" = "0" ]; then
-		echo "$CMD: must supply architecture for -arch option"
-		exit 1
-	    fi
-	    ARCH=$1; shift
-	;;
 	-o)
 	    if [ "$#" = "0" ]; then
 		echo "$CMD: must supply image name for -o option"
@@ -69,8 +51,7 @@ fi
 
 cd src
 $SML $ARGS <<ZZZ
-  use "load";
-  use "export-yacc.sml";
+  CM.make "ml-yacc.cm";
   ExportParseGen.export "$HEAP_IMAGE" : unit;
 ZZZ
 cd ..

@@ -1,5 +1,7 @@
 cm-hook
 Library
+	signature MINIMAL_CM
 	structure CmHook
 is
+	minimal-cm.sig
 	cm-hook.sml

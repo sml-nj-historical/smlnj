@@ -10,7 +10,7 @@ struct
    structure I = PPCInstr
 
    fun branchProb(I.ANNOTATION{a, i, ...}) =
-        (case #peek BasicAnnotations.BRANCH_PROB a of
+        (case #peek MLRiscAnnotations.BRANCH_PROB a of
            SOME b => b
          | NONE => branchProb i
         )

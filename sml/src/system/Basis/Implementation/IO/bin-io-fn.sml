@@ -171,6 +171,7 @@ functor BinIOFn (
 		    CleanIO.removeCleaner cleanTag;
 		    m := TERMINATED)
 		| (m as ref TERMINATED) => ()
+		| _ => raise Match (* shut up compiler *)
 	      (* end case *))
 
 	fun input (strm as ISTRM(buf, _)) =

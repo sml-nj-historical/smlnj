@@ -17,6 +17,7 @@ signature CHAR_MAP
 signature DYNAMIC_ARRAY
 signature FIFO
 signature FORMAT
+signature GRAPH_SCC
 signature HASH_KEY
 signature HASH_TABLE
 signature INT_INF
@@ -64,6 +65,7 @@ structure HashString
 structure HashTable
 structure IntBinaryMap		(* to be removed *)
 structure IntBinarySet		(* to be removed *)
+structure IntHashTable
 structure IntInf
 structure IntListMap
 structure IntListSet
@@ -92,6 +94,7 @@ functor BSearchFn
 functor BinaryMapFn
 functor BinarySetFn
 functor DynamicArrayFn
+functor GraphSCCFn
 functor HashTableFn
 functor Hash2TableFn
 functor KeywordFn
@@ -140,6 +143,8 @@ fifo.sml
 fmt-fields.sml
 format-sig.sml
 format.sml
+graph-scc-sig.sml
+graph-scc.sml
 hash-key-sig.sml
 hash-string.sml
 hash-table-rep.sml
@@ -150,6 +155,7 @@ hash2-table-fn.sml
 keyword-fn.sml
 int-binary-map.sml
 int-binary-set.sml
+int-hash-table.sml
 int-inf-sig.sml
 int-inf.sml
 int-list-map.sml

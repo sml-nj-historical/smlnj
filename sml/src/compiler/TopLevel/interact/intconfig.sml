@@ -15,18 +15,22 @@ struct
   type hash = unit
   type lvar = Access.lvar
   type pid = PersStamps.persstamp
+  type newContext = unit
 
   val topCount = ref 0
-  val pickUnpick : cmstatenv * statenv ->
-                     {hash: hash, pickle: pickle, exportLvars: lvar list,
-                      exportPid: pid option, newenv: statenv}
-    = fn (compenv, newenv) =>
-       let val _ = topCount := !topCount + 1
-           val (newenv',hash,exportLvars,exportPid) = 
-             PickMod.dontPickle(newenv,!topCount)
-        in {hash=(),pickle=(),exportLvars=exportLvars,
-	    exportPid=exportPid,newenv=newenv'}
-       end
+
+  fun pickUnpick (compenv, newenv) = let
+      val _ = topCount := !topCount + 1
+      val (newenv', hash, exportLvars, exportPid) = 
+	  PickMod.dontPickle (newenv, !topCount)
+  in
+      { hash = (),
+        pickle = (),
+	exportLvars = exportLvars,
+	exportPid = exportPid,
+	newenv = newenv',
+	ctxt = () }
+  end
 
   val mkStamp = Stamps.new()
   val mkMkStamp : unit -> (unit -> Stamps.stamp) = fn () => mkStamp

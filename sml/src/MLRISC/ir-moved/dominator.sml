@@ -189,7 +189,7 @@ struct
                       val l = A.sub(levelsMap,w)+1
                   in  A.update(levelsMap,v,l);
                       #add_edge domtree (w,v,());
-                      buildGraph(i+1,l)  
+                      buildGraph(i+1,if l >= maxLevel then l else maxLevel)  
                   end
                else 
                  (A.update(levelsMap,v,0);

@@ -127,7 +127,7 @@ structure Memo :> sig
     val recallOrCompute : dict * tkindEnv * tyc * (unit -> tkind) -> tkind
 end =
 struct
-    structure TcDict = BinaryMapFn
+    structure TcDict = RedBlackMapFn
                            (struct
                                type ord_key = tyc
                                val compare = LK.tc_cmp

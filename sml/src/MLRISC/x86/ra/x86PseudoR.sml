@@ -17,8 +17,13 @@ signature X86REWRITE_PSEUDO = sig
      *       take care of.
      *
      *)
-  val rewrite : F.I.C.cell -> (F.I.C.cell -> F.I.C.cell) -> F.cluster -> 
-                F.I.C.cell * F.I.C.cell
+  val rewrite : 
+      { firstPseudo    : F.I.C.cell,
+        originalRegmap : F.I.C.cell -> F.I.C.cell,
+        pruneCellSets  : bool (* should we remove references to memory 
+                               * registers from all cell sets?
+                               *)
+      } -> F.cluster -> F.I.C.cell * F.I.C.cell
 end
 
 
@@ -33,7 +38,9 @@ struct
 
   fun error msg = MLRiscErrorMsg.error("X86RewritePseudo",msg)
 
-  fun rewrite firstPseudo origRegmap (F.CLUSTER{blocks, regmap, ...}) = let
+  fun rewrite {firstPseudo, originalRegmap, pruneCellSets} 
+              (F.CLUSTER{blocks, regmap, ...}) = 
+  let
     val first = C.newReg()
     val lookup = C.lookup regmap
     fun shuffle(dests, srcs, tmp)  = let
@@ -94,7 +101,7 @@ struct
 	        I.MOVE{mvOp=I.MOVL, src=src, dst=dst}::acc
 
 	    fun displace(base, disp, acc, mem) = 
-            let val base' = origRegmap base
+            let val base' = originalRegmap base
             in  if pseudoR base' then 
 	        let val tmpR = C.newReg()
 		    val newDisp = I.Displace{base=tmpR, disp=disp, mem=mem}
@@ -107,7 +114,7 @@ struct
 	      I.Indexed{base=base, index=index, scale=scale, disp=disp, mem=mem}
 
 	    fun indexed(NONE, index, scale, disp, acc, mem) = 
-                let val index' = origRegmap index
+                let val index' = originalRegmap index
                 in  if pseudoR index' then 
 		    let val tmpR = C.newReg()
 		        val newIndx = indexedEa(NONE, tmpR, scale, disp, mem)
@@ -116,8 +123,8 @@ struct
 		    else (indexedEa(NONE, index, scale, disp, mem), acc)
                 end
 	      | indexed(ba as SOME base, index, scale, disp, acc, mem) = 
-                let val base'  = origRegmap base
-                    val index' = origRegmap index
+                let val base'  = originalRegmap base
+                    val index' = originalRegmap index
 		    val b = pseudoR base'
 		    val i = pseudoR index'
 		in  if b andalso i then 
@@ -142,7 +149,7 @@ struct
 
 		end
 	    fun direct(r, acc) = 
-            let val r' = origRegmap r
+            let val r' = originalRegmap r
             in  if pseudoR r' then (ea r', acc) else (I.Direct r, acc) 
             end
 
@@ -160,6 +167,7 @@ struct
 
 	    fun memArg(I.Displace _) = true
 	      | memArg(I.Indexed _) = true
+	      | memArg(I.MemReg _) = true
 	      | memArg _ = false
 
 	    fun withTmp f =
@@ -185,7 +193,7 @@ struct
 		end
 	      | I.LEA{r32, addr} => let
 		  val (srcOpnd, acc1) = operand(addr, acc)
-                  val r32' = origRegmap r32
+                  val r32' = originalRegmap r32
 		in
 		  if pseudoR r32' then 
 		    withTmp(fn t =>
@@ -218,7 +226,10 @@ struct
 	      | I.CALL(opnd,def,use,mem) => let
 		  val (opnd1, acc1) = operand(opnd, acc)
 		  fun cellset(gp, fp, cc) =
-		    (List.filter (not o pseudoR) gp, fp, cc)
+                    if pruneCellSets then
+		      (List.filter (not o pseudoR) gp, fp, cc)
+                    else
+                      (gp, fp, cc)
 		in mark(I.CALL(opnd1, cellset def, cellset use, mem),an)::acc1
 		end
 	      | I.MULTDIV{multDivOp, src} => 
@@ -226,7 +237,7 @@ struct
                        fn opnd => I.MULTDIV{multDivOp=multDivOp, src=opnd}, an)
 	      | I.MUL3{dst, src1, src2} =>  let
 		  val (src1Opnd, acc1) = operand(src1, acc)
-                  val dst' = origRegmap dst
+                  val dst' = originalRegmap dst
 		in
 		  if pseudoR dst' then
 		    withTmp(fn t =>
@@ -257,8 +268,8 @@ struct
 		  fun f((instr as I.MOVE{mvOp, src, dst})::rest, acc) =
 		      (case (src, dst)
 			of (I.Direct s, I.Direct d) =>
-                        let val d' = origRegmap d   
-                            val s' = origRegmap s
+                        let val d' = originalRegmap d   
+                            val s' = originalRegmap s
 			in  if s'=d' then f(rest, acc) 
                             else if pseudoR d' andalso pseudoR s' then
 			            f(rest, withTmp(fn t =>
@@ -291,7 +302,7 @@ struct
           in  rewrite(instr,[])
 	  end (* subst *)
 	in insns := List.foldl subst [] (rev(!insns));
-	   resetLiveOut()
+	   if pruneCellSets then resetLiveOut() else ()
 	end (*doBlock*)
       | doBlock _ = ()
   in app doBlock blocks;  (first, C.newReg())

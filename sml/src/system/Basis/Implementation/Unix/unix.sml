@@ -115,7 +115,7 @@ structure Unix : UNIX =
           fun waitProc () = #2(protect P.waitpid (P.W_CHILD pid,[]))
           in
             TextIO.closeIn ins;
-            TextIO.closeOut outs;
+            TextIO.closeOut outs handle _ => ();
             waitProc ()
           end
 

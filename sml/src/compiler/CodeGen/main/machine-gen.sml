@@ -51,17 +51,12 @@ struct
    val bbsched = phase "MLRISC BackPatch.bbsched" BackPatch.bbsched
    val finish  = phase "MLRISC BackPatch.finish" BackPatch.finish
 
-   fun compile cluster = 
-   let val cluster = opt cluster
-       val cluster = ra cluster
-   in  bbsched cluster end 
-  
+ 
    (* Flowgraph generation *)
    structure FlowGraphGen =
        ClusterGen(structure Flowgraph = F
                   structure InsnProps = InsnProps
                   structure MLTree    = T
-                  val output = compile
                  )
 
    (* GC Invocation *)
@@ -71,6 +66,11 @@ struct
                structure MS    = MachSpec
               )
 
+   fun compile cluster = 
+   let val cluster = opt cluster
+       val cluster = ra cluster
+   in  bbsched cluster end 
+ 
    (* compilation of CPS to MLRISC *)
    structure MLTreeGen =
       MLRiscGen(structure MachineSpec=MachSpec
@@ -81,7 +81,9 @@ struct
                 structure PseudoOp=PseudoOps
                 structure CpsTreeify=CpsTreeify
                 structure Flowgen=FlowGraphGen
+                val compile = compile
                )
+
    val gen = phase "MLRISC MLTreeGen.codegen" MLTreeGen.codegen
 
    fun codegen x = 
@@ -91,6 +93,5 @@ struct
         BackPatch.cleanUp(); 
         gen x
        )
-   val copyProp = RA.cp
 
 end

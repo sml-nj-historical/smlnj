@@ -28,53 +28,52 @@ struct
                  structure GCMap = GCMap
                  structure InsnProps = InsnProps)
 
-   structure Gen = InstrGen
-      (structure MLTree = T
-       structure I = IR.I
+   structure Gen = CFGGen
+      (structure CFG       = CFG
+       structure MLTree    = T
+       structure InsnProps = InsnProps
       )
 
    type callgcCallback =
-        { id     : int,
-          label  : Label.label,
-          roots  : (C.cell * GC.gctype) list,
-          stream : (T.stm,C.regmap) T.stream
+        { id          : int,
+          gcLabel     : Label.label,
+          returnLabel : Label.label,
+          roots       : (C.cell * GC.gctype) list,
+          stream      : (T.stm,C.regmap) T.stream
         } -> unit
-
-   val debug = MLRiscControl.getFlag "debug-gc-gen"
 
    fun gcGen {callgc} (IR as G.GRAPH cfg) =
    let (*
         * Run gc-typed liveness analysis
         *)
        val table = Liveness.liveness IR
-
-       (*
-        * Check if a block is a GC point
-        *)
-       fun isGCPoint an = #contains BasicAnnotations.CALLGC an
-
+       val instrStream = Gen.newStream{compile=fn _ => (), flowgraph=SOME IR}
+       val stream as T.Stream.STREAM{beginCluster, endCluster, ...} = 
+           MLTreeComp.selectInstructions instrStream
+ 
        (*
         * For each gc-point, invoke the callback to generate GC code.
         *)
        fun process(b,b' as CFG.BLOCK{annotations,insns,...}) =
-           if isGCPoint(!annotations) then
-           let val stream = MLTreeComp.selectInstructions (Gen.newStream insns)
-               val {liveIn,liveOut} = A.sub(table,b)
+           case #get MLRiscAnnotations.CALLGC (!annotations) of
+             NONE => ()
+           | SOME _ =>
+           let val {liveIn,liveOut} = A.sub(table,b)
                val roots = liveIn
-           in  if !debug then
-                  print("id="^Int.toString b^
-                        " roots="^Liveness.GCTypeMap.toString roots^"\n")
-               else ();
-                  callgc{ id     = b,
-                          label  = CFG.defineLabel b',
-                          roots  = liveIn,
-                          stream = stream
-                        }
+               val return = #node_info cfg (hd(#succ cfg b))
+           in  CFG.changed IR;
+               callgc{ id          = b,
+                       gcLabel     = CFG.defineLabel b',
+                       returnLabel = CFG.defineLabel return,
+                       roots       = liveIn,
+                       stream      = stream
+                     }
            end
-           else ()
            
-       val _ = #forall_nodes cfg process
-   in  IR
+   in  beginCluster 0;
+       #forall_nodes cfg process;
+       endCluster [];
+       IR
    end
 
 end

@@ -10,24 +10,27 @@
 <H1>
 <FONT COLOR="#aa0000">ILP Optimizations</FONT></H1></CENTER>
 <h2> Introduction </h2>
-
+    This section is under construction.  A new scheduler framework
+for superscalars that ties into the machine description language
+is currently being developed.
 <h2> The ILP ToolBox </h2>
-
 <h3> List Scheduler </h3>
 <h3> Ranking Algorithms </h3>
+   Some more complex ranking algorithms (than say critical path) have been
+implemented.  These are:
 <ul>
  <li> The algorithm of <a href="../scheduling/PalemSimons.sig" target=code>
-      Palem and Simons </a> which appeared in TOPLAS '93.
+      Palem and Simons </a> which appeared in TOPLAS '93.  This algorithm
+      computes the modified deadlines of a set instructions, with
+      precedence, latency, and deadlines constraints.
+      
  <li> The algorithm of 
       <a href="../scheduling/LeungPalemPnueli.sig" target=code>
-      Leung, Palem, and Pnueli </a> which appeared in PACT '93.
+      Leung, Palem, and Pnueli </a> which appeared in PACT '98.
+      This algorithm computes the modified deadlines of a set of instructions,
+      with precedence, latency, release-times and deadline constraints.
 </ul>
-
-<HR>
-    <FONT SIZE="-2">
-<ADDRESS>
-<A HREF="mailto:leunga@cs.nyu.edu">Allen Leung</A></ADDRESS>
-<BR>
+<hr>
 
 </BODY>
 </HTML>

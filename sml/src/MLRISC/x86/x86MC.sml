@@ -83,6 +83,7 @@ struct
     fun sib{ss, index, base} = Word8.fromInt(ss*64 + index*8 + base)
 
     fun eImmedExt(opc, I.Direct r) = [modrm{mod=3, reg=opc, rm=rNum r}]
+      | eImmedExt(opc, opn as I.MemReg _) = eImmedExt(opc, memReg opn)
       | eImmedExt(opc, I.Displace{base, disp, ...}) = let
           val base = rNum base		(* XXX rNum may be done twice *)
 	  val immed = immedOpnd disp
@@ -176,6 +177,7 @@ struct
     of I.NOP => eByte 0x90
      | I.JMP(r as I.Direct _, _) => eBytes(0wxff :: eImmedExt(4, r))
      | I.JMP(d as I.Displace _, _) => eBytes(0wxff :: eImmedExt(4, d))
+     | I.JMP(m as I.MemReg _, _) => eBytes(0wxff :: eImmedExt(4, m))
      | I.JMP(i as I.Indexed _, _) => eBytes(0wxff :: eImmedExt(4, i))
      | I.JMP(I.Relative i, _) => ((let
          fun shortJmp() = eBytes[0wxeb, Word8.fromInt(i-2)]
@@ -185,7 +187,7 @@ struct
          | _ => shortJmp()
         (*esac*)
        end
-				     ) handle e => (print "JMP\n"; raise e))
+       ) handle e => (print "JMP\n"; raise e))
      | I.JCC{cond, opnd=I.Relative i} => let
 	 val code = 
 	   (case cond
@@ -217,6 +219,8 @@ struct
              | mv(I.Const c, dst) = mv(I.Immed(const c),dst)
              | mv(I.ImmedLabel le,dst) = mv(I.Immed(lexp le),dst)
              | mv(I.LabelEA le,dst) = error "MOVL: LabelEA"
+             | mv(src as I.MemReg _, dst) = mv(memReg src, dst)
+             | mv(src, dst as I.MemReg _) = mv(src, memReg dst)  
              | mv(src,dst) = arith(0wx88, 0) (src, dst)
        in  mv(src,dst) end
      | I.MOVE{mvOp=I.MOVB, dst, src=I.Immed(i)} =>
@@ -237,7 +241,7 @@ struct
      | I.LEA{r32, addr} => eBytes(0wx8d :: eImmedExt(rNum r32, addr))
      | I.CMP{lsrc, rsrc} => arith(0wx38, 7) (rsrc, lsrc)
      | I.BINARY{binOp, src, dst} => let
-	 fun shift(code) = 
+	 fun shift(code, src) = 
 	    (case src
 	     of I.Immed (1) => eBytes(0wxd1 :: eImmedExt(code, dst))
 	      | I.Immed (n) => 
@@ -245,6 +249,7 @@ struct
 	      | I.Direct r => 
 		 if rNum r <> ecx then  error "shift: Direct"
 		 else eBytes(0wxd3 :: eImmedExt(code, dst))
+	      | I.MemReg _ => shift(code, memReg src)
 	      | _  => error "shift"
 	     (*esac*))
        in
@@ -254,9 +259,9 @@ struct
 	   | I.AND => arith(0wx20, 4) (src, dst)
 	   | I.OR => arith(0w8, 1) (src, dst)
 	   | I.XOR => arith(0wx30, 6) (src, dst)
-	   | I.SHL => shift(4)
-	   | I.SAR => shift(7)
-	   | I.SHR => shift(5)
+	   | I.SHL => shift(4,src)
+	   | I.SAR => shift(7,src)
+	   | I.SHR => shift(5,src)
 	  (*esac*)
        end
      | I.MULTDIV{multDivOp, src} => let

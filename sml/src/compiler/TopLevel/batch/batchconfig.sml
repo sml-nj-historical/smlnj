@@ -14,20 +14,23 @@ struct
   type hash = PersStamps.persstamp
   type lvar = Access.lvar
   type pid = PersStamps.persstamp
+  type newContext = ModuleId.Set.set
 
-  val pickUnpick : cmstatenv * statenv ->
-                     {hash: hash, pickle: pickle, exportLvars: lvar list,
-                      exportPid: pid option, newenv: statenv}
-    = fn (compenv, newenv) =>
-        let val {hash,pickle,exportLvars,exportPid} = 
-              PickMod.pickleEnv { context = compenv, env = newenv }
-            val newenv' = 
-              UnpickMod.unpickleEnv { context = compenv,
-				      hash = hash,
-				      pickle = pickle}
-         in {hash=hash, pickle=pickle, exportLvars=exportLvars,
-             exportPid=exportPid, newenv=newenv'}
-        end
+  fun pickUnpick (compenv, newenv) = let
+      val { hash, pickle, exportLvars, exportPid } = 
+	  PickMod.pickleEnv { context = compenv, env = newenv }
+      val { env = newenv', ctxt } = 
+	  UnpickMod.unpickleEnv { context = compenv,
+				 hash = hash,
+				 pickle = pickle }
+  in
+      { hash = hash,
+        pickle = pickle,
+	exportLvars = exportLvars,
+	exportPid = exportPid,
+	newenv = newenv',
+	ctxt = ctxt }
+  end
 
   val mkMkStamp : unit -> (unit -> Stamps.stamp) = Stamps.new
 

@@ -24,6 +24,8 @@ struct
 
   type cost = int
 
+  type mode = word
+
   datatype interferenceGraph = 
    GRAPH of { bitMatrix    : bitMatrix ref,
               nodes        : node Intmap.intmap,
@@ -48,17 +50,27 @@ struct
               maxRegs      : unit -> int,
  
               deadCopies   : int list ref,
-              spillLoc     : int ref
+              copyTmps     : node list ref,
+              memMoves     : move list ref,
+              memRegs      : node list ref,
+
+              spillLoc     : int ref,
+              span         : int Intmap.intmap,
+              mode         : mode,
+              pseudoCount  : int ref,
+              blockedCount : int ref
             }
 
-  and moveStatus = MOVE | COALESCED | CONSTRAINED | LOST | WORKLIST
+  and moveStatus = BRIGGS_MOVE | GEORGE_MOVE
+                 | COALESCED | CONSTRAINED | LOST | WORKLIST
 
   and move = 
     MV of {src : node,			(* source register of move *)
 	   dst : node,			(* destination register of move *)
            (* kind: moveKind, *)        (* what kind of move *)
            cost : cost,                 (* cost *)
-	   status : moveStatus ref	(* coalesced? *)
+	   status : moveStatus ref,	(* coalesced? *)
+	   hicount : int ref	        (* neighbors of high degree *)
 	  }
 
   and moveKind = REG_TO_REG      (* register to register *)
@@ -125,11 +137,30 @@ struct
   end
 
   (* Create a new interference graph *)
-  fun newGraph{nodes,regmap,K,firstPseudoR,dedicated,
-               getreg,getpair,showReg,maxRegs,numRegs,proh} =
+  fun newGraph{nodes,regmap,K,firstPseudoR,dedicated,spillLoc,
+               getreg,getpair,showReg,maxRegs,numRegs,proh,
+               firstMemReg, numMemRegs,mode} =
   let (* lower triangular bitmatrix primitives *)
       (* NOTE: The average ratio of E/N is about 16 *)
       val bitMatrix = newBitMatrix{edges=numRegs * 16,maxRegs=maxRegs()}
+
+      (* Make memory register nodes *)
+      fun makeMemRegs(_, 0) = [] 
+        | makeMemRegs(reg, n) = 
+          let val add = Intmap.add nodes
+              fun loop(r, 0, ns) = ns
+                | loop(r, n, ns) =
+                  let val node = 
+                      NODE{pri=ref 0,adj=ref [],degree=ref 0,movecnt=ref 0,
+                           color=ref(SPILLED r), defs=ref [], uses=ref [],
+                           movecost=ref 0,movelist=ref [], number=r}
+                  in  add(r, node); loop(r+1, n-1, node::ns)
+                  end
+          in  loop(reg, n, [])
+          end 
+
+      val memRegs = makeMemRegs(firstMemReg, numMemRegs)
+
   in  if !stampCounter > 10000000 then stampCounter := 0 else ();
       GRAPH{ bitMatrix    = ref bitMatrix,
              nodes        = nodes,
@@ -148,7 +179,14 @@ struct
              numRegs      = numRegs,
              maxRegs      = maxRegs,
              deadCopies   = ref [],
-             spillLoc     = ref ~2
+             copyTmps     = ref [],
+             memMoves     = ref [],
+             memRegs      = ref memRegs,
+             spillLoc     = spillLoc,
+             span         = Intmap.new(2,Nodes),
+             mode         = mode,
+             pseudoCount  = ref 0,
+             blockedCount = ref 0
            }
   end
   

@@ -707,7 +707,11 @@ struct
            | T.COND(_,T.CMP(_,cond,x,y),yes,no) => 
                 comclr(cond,expr x,expr y,yes,no,t,an)
            | T.SEQ(s,e) => (doStmt s; doExpr(e,t,an))
-           | T.MARK(e,a) => doExpr(e,t,a::an)
+           | T.MARK(e,a) => 
+             (case #peek MLRiscAnnotations.MARK_REG a of
+               SOME f => (f t; doExpr(e,t,an))
+             | NONE => doExpr(e,t,a::an)
+             )
            | e => doExpr(Gen.compile e,t,an)
  
            (* convert an expression into a floating point register *) 
@@ -756,13 +760,20 @@ struct
            | T.FNEG(ty,a)    => doFexpr(T.FSUB(ty,T.FREG(ty,zeroF),a),t,an)
 
            | T.FSEQ(s,e)     => (doStmt s; doFexpr(e,t,an))
-           | T.FMARK(e,a)    => doFexpr(e,t,a::an)
-
+           | T.FMARK(e,a)    =>
+             (case #peek MLRiscAnnotations.MARK_REG a of
+               SOME f => (f t; doFexpr(e,t,an))
+             | NONE => doFexpr(e,t,a::an)
+             )
            | _               => error "doFexpr"
  
        and doCCexpr(T.CC r,t,an)  = move(r,t,an)
          | doCCexpr(T.CMP(ty,cond,e1,e2),t,an) = error "doCCexpr"
-         | doCCexpr(T.CCMARK(e,a),t,an) = doCCexpr(e,t,a::an)
+         | doCCexpr(T.CCMARK(e,a),t,an) = 
+           (case #peek MLRiscAnnotations.MARK_REG a of
+             SOME f => (f t; doCCexpr(e,t,an))
+           | NONE => doCCexpr(e,t,a::an)
+           )
          | doCCexpr e = error "doCCexpr"
  
        and ccExpr(T.CC r) = r

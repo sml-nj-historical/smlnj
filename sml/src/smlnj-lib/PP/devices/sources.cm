@@ -13,8 +13,9 @@ Group (../pp-lib.cm)
 is
 #if defined(NEW_CM)
   basis.cm
-  ../src/sources.cm
+  smlnj-lib.cm
   html-lib.cm
+  ../src/sources.cm
 #else
   ../../Util/smlnj-lib.cm
   ../../HTML/html-lib.cm

@@ -159,6 +159,9 @@ fun mkRaise(x, lt) =
 
 fun complain s = error (!region) s
 fun repErr x = complain EM.COMPLAIN x EM.nullErrorBody
+fun repPolyEq () = 
+    if !Control.polyEqWarn then complain EM.WARN "calling polyEqual" EM.nullErrorBody
+    else ()
 
 end (* markexn-local *)
 
@@ -379,7 +382,8 @@ val eqDict =
                       end))
 
       fun getPolyEq () = 
-        (case (!polyEqRef) 
+        (repPolyEq();
+	 case (!polyEqRef) 
           of SOME e => e
            | NONE => (let val e = coreAcc "polyequal"
                        in polyEqRef := (SOME e); e
@@ -387,7 +391,7 @@ val eqDict =
    in {getStrEq=getStrEq, getPolyEq=getPolyEq}
   end
 
-val eqGen = PEqual.equal (eqDict, env)
+val eqGen = PEqual.equal (eqDict, env) 
 
 (***************************************************************************
  *                                                                         *

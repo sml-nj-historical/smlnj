@@ -31,6 +31,8 @@ struct
 
   fun moveInstr(I.COPY _) = true
     | moveInstr(I.FCOPY _) = true
+    | moveInstr(I.MOVE{mvOp=I.MOVL, src=I.Direct _, dst=I.MemReg _, ...}) = true
+    | moveInstr(I.MOVE{mvOp=I.MOVL, src=I.MemReg _, dst=I.Direct _, ...}) = true
     | moveInstr(I.ANNOTATION{i,...}) = moveInstr i
     | moveInstr _ = false 
 
@@ -47,9 +49,10 @@ struct
 
   fun moveDstSrc(I.COPY{src, dst, ...}) = (dst, src)
     | moveDstSrc(I.FCOPY{src, dst, ...}) = (dst, src)
+    | moveDstSrc(I.MOVE{src=I.Direct rs, dst=I.MemReg rd, ...}) = ([rd], [rs])
+    | moveDstSrc(I.MOVE{src=I.MemReg rs, dst=I.Direct rd, ...}) = ([rd], [rs])
     | moveDstSrc(I.ANNOTATION{i,...}) = moveDstSrc i
     | moveDstSrc _ = error "moveDstSrc"
-
 
  (*=====================================================================
   *  Branches and Calls/Returns
@@ -88,6 +91,7 @@ struct
      | hashOpn(I.Relative i) = Word.fromInt i + 0w1232
      | hashOpn(I.LabelEA le) = LabelExp.hash le + 0w44444
      | hashOpn(I.Direct r)  = Word.fromInt r
+     | hashOpn(I.MemReg r)  = Word.fromInt r + 0w2123
      | hashOpn(I.FDirect f) = Word.fromInt f + 0w8888
      | hashOpn(I.Displace {base, disp, ...}) = hashOpn disp + Word.fromInt base
      | hashOpn(I.Indexed {base, index, scale, disp, ...}) =
@@ -98,6 +102,7 @@ struct
      | eqOpn(I.Relative a,I.Relative b) = a = b
      | eqOpn(I.LabelEA a,I.LabelEA b) = LabelExp.==(a,b)
      | eqOpn(I.Direct a,I.Direct b) = a = b
+     | eqOpn(I.MemReg a,I.MemReg b) = a = b
      | eqOpn(I.FDirect a,I.FDirect b) = a = b
      | eqOpn(I.Displace{base=a,disp=b,...},I.Displace{base=c,disp=d,...}) =
           a = c andalso eqOpn(b,d)
@@ -113,6 +118,7 @@ struct
 
   fun defUseR instr = let
     fun operandAcc(I.Direct r, acc) = r::acc
+      | operandAcc(I.MemReg r, acc) = r::acc
       | operandAcc(I.Displace{base, ...}, acc) = base::acc
       | operandAcc(I.Indexed{base=SOME b, index, ...}, acc) = b::index::acc
       | operandAcc(I.Indexed{base=NONE, index, ...}, acc) = index::acc
@@ -121,6 +127,7 @@ struct
     fun operandUse opnd = operandAcc(opnd, [])
 
     fun operandDef(I.Direct r) = [r]
+      | operandDef(I.MemReg r) = [r]
       | operandDef _ = []
 
     fun multdiv{src, multDivOp} = let
@@ -137,7 +144,8 @@ struct
      of I.JMP(opnd, _)        => ([], operandUse opnd)
       | I.JCC{opnd, ...}      => ([], operandUse opnd)
       | I.CALL(opnd,defs,uses,_)=> (#1 defs, operandAcc(opnd, #1 uses))
-      | I.MOVE{src, dst as I.Direct _, ...} => (operandDef dst, operandUse src)
+      | I.MOVE{src, dst=I.Direct r, ...} => ([r], operandUse src)
+      | I.MOVE{src, dst=I.MemReg r, ...} => ([r], operandUse src)
       | I.MOVE{src, dst, ...} => ([], operandAcc(dst, operandUse src))
       | I.LEA{r32, addr}      => ([r32], operandUse addr)
       | I.CMP{lsrc, rsrc}     => ([], operandAcc(lsrc, operandUse rsrc))
@@ -159,11 +167,7 @@ struct
       | I.FBINARY{src, ...}   => ([], operandUse src)
       | I.FNSTSW	      => ([C.eax], [])
       | I.SAHF		      => ([], [C.eax])
-      | I.ANNOTATION{a, i, ...} =>
-          (case #peek BasicAnnotations.DEFUSER a of
-             SOME(d,u) => (d,u)
-           | NONE => defUseR i
-          )
+      | I.ANNOTATION{a, i, ...} => defUseR i
       | _		      => ([], [])
   end (* defUseR *)
 
@@ -178,11 +182,7 @@ struct
       | I.FBINARY{dst, src, ...}=> (operand dst, operand dst @ operand src)
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...}  => (f::dst, src)
       | I.FCOPY{dst, src, ...}  => (dst, src)
-      | I.ANNOTATION{a, i, ...} =>
-          (case #peek BasicAnnotations.DEFUSEF a of
-             SOME(d,u) => (d,u)
-           | NONE => defUseF i
-          )
+      | I.ANNOTATION{a, i, ...} => defUseF i
       | _  => ([], [])
   end
 

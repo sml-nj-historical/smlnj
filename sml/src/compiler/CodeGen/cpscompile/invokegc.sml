@@ -24,6 +24,7 @@ struct
    structure S  = SortedList
    structure St = T.Stream
    structure GC = SMLGCType
+   structure Cells = Cells
 
    fun error msg = ErrorMsg.impossible("InvokeGC."^msg)
 
@@ -44,13 +45,14 @@ struct
     *)
    datatype gcInfo =
       GCINFO of
-        {known   : bool,             (* known function ? *)
-         lab     : Label.label ref,  (* labels to invoke for GC *)
-         boxed   : T.rexp list,      (* locations with boxed objects *)
-         int32   : T.rexp list,      (* locations with int32 objects *)
-         float   : T.fexp list,      (* locations with float objects *)
-         regfmls : T.mlrisc list,    (* all live registers *)
-         ret     : T.stm}            (* how to return *)
+        {known     : bool,             (* known function ? *)
+         optimized : bool,             (* optimized? *)
+         lab       : Label.label ref,  (* labels to invoke GC *)
+         boxed     : T.rexp list,      (* locations with boxed objects *)
+         int32     : T.rexp list,      (* locations with int32 objects *)
+         float     : T.fexp list,      (* locations with float objects *)
+         regfmls   : T.mlrisc list,    (* all live registers *)
+         ret       : T.stm}            (* how to return *)
     | MODULE of
         {info: gcInfo,
          addrs: Label.label list ref} (* addrs associated with long jump *)
@@ -92,10 +94,10 @@ struct
           T.CALL(
             T.LOAD(32, T.ADD(addrTy,C.stackptr,T.LI MS.startgcOffset), R.stack),
                    def, use, R.stack),
-          #create BasicAnnotations.COMMENT "call gc")
+          #create MLRiscAnnotations.COMMENT "call gc")
    end
 
-   val CALLGC = #create BasicAnnotations.CALLGC ()
+   val CALLGC = #create MLRiscAnnotations.CALLGC ()
 
        (*
         * record descriptors
@@ -110,7 +112,7 @@ struct
        (* what type of comparison to use for GC test? *)
    val gcCmp = if C.signedGCTest then T.GT else T.GTU
 
-   val unlikely = #create BasicAnnotations.BRANCH_PROB 0
+   val unlikely = #create MLRiscAnnotations.BRANCH_PROB 0
 
    val normalTestLimit = T.CMP(pty, gcCmp, C.allocptr, C.limitptr)
 
@@ -386,59 +388,63 @@ struct
     * Main functions
     *====================================================================*)
    fun init() =
-       (clusterGcBlocks := [];
-        knownGcBlocks   := [];
-        moduleGcBlocks  := []
+       (clusterGcBlocks        := [];
+        knownGcBlocks          := [];
+        moduleGcBlocks         := []
        )
 
-   fun genGcInfo (clusterRef,known) (St.STREAM{emit,...} : stream) 
-                 {maxAlloc, regfmls, regtys, return} =
-   let fun split([], [], boxed, int32, float) = (boxed, int32, float)
-         | split(T.GPR r::rl, CPS.INT32t::tl, b, i, f) = split(rl,tl,b,r::i,f)
-         | split(T.GPR r::rl, CPS.FLTt::tl, b, i, f) = error "split: T.GPR"
-         | split(T.GPR r::rl, _::tl, b, i, f) = split(rl,tl,r::b,i,f)
-         | split(T.FPR r::rl, CPS.FLTt::tl, b, i, f) = split(rl,tl,b,i,r::f)
-         | split _ = error "split"
+   (*
+    * Partition the root set into types 
+    *)
+   fun split([], [], boxed, int32, float) = 
+         {boxed=boxed, int32=int32, float=float}
+     | split(T.GPR r::rl, CPS.INT32t::tl, b, i, f) = split(rl,tl,b,r::i,f)
+     | split(T.GPR r::rl, CPS.FLTt::tl, b, i, f) = error "split: T.GPR"
+     | split(T.GPR r::rl, _::tl, b, i, f) = split(rl,tl,r::b,i,f)
+     | split(T.FPR r::rl, CPS.FLTt::tl, b, i, f) = split(rl,tl,b,i,r::f)
+     | split _ = error "split"
 
-       (* partition the root set into the appropriate classes *)
-       val (boxed, int32, float) = split(regfmls, regtys, [], [], [])
+   fun genGcInfo (clusterRef,known,optimized) (St.STREAM{emit,...} : stream) 
+                 {maxAlloc, regfmls, regtys, return} =
+   let (* partition the root set into the appropriate classes *)
+       val {boxed, int32, float} = split(regfmls, regtys, [], [], [])
 
    in  clusterRef := 
-          GCINFO{ known   = known,
-                  lab     = ref (checkLimit(emit,maxAlloc)),
-                  boxed   = boxed,
-                  int32   = int32,
-                  float   = float,
-                  regfmls = regfmls,
-                  ret     = return } :: (!clusterRef)
+          GCINFO{ known    = known,
+                  optimized=optimized,
+                  lab      = ref (checkLimit(emit,maxAlloc)),
+                  boxed    = boxed,
+                  int32    = int32,
+                  float    = float,
+                  regfmls  = regfmls,
+                  ret      = return } :: (!clusterRef)
    end
 
    (* 
     * Check-limit for standard functions, i.e.~functions with 
     * external entries.
     *)
-   val stdCheckLimit = genGcInfo (clusterGcBlocks, false)
+   val stdCheckLimit = genGcInfo (clusterGcBlocks, false, false)
 
    (*
     * Check-limit for known functions, i.e.~functions with entries from
     * within the same cluster.
     *)
-   val knwCheckLimit = genGcInfo (knownGcBlocks, true)
+   val knwCheckLimit = genGcInfo (knownGcBlocks, true, false)
 
    (*
-    * The following function is responsible for generating actual
-    * GC calling code.  It packages up the roots into the appropriate
-    * records, call the GC routine, then unpack the roots from the record.
+    * Check-limit for optimized, known functions.  
     *)
-   fun invokeGC(St.STREAM{emit,defineLabel,entryLabel,exitBlock,annotation,...},
-                externalEntry) gcInfo = 
-   let val {known, boxed, int32, float, regfmls, ret, lab} =
-           case gcInfo of
-             GCINFO info => info
-           | MODULE{info=GCINFO info,...} => info
-           | _ => error "invokeGC:gcInfo"
+   val optimizedKnwCheckLimit = genGcInfo(knownGcBlocks, true, true)
 
-       (* IMPORTANT NOTE:  
+   (*
+    * The following auxiliary function generates the actual call gc code. 
+    * It packages up the roots into the appropriate
+    * records, call the GC routine, then unpack the roots from the record.
+    *) 
+   fun emitCallGC{stream=St.STREAM{emit, annotation, defineLabel, ...}, 
+                  known, boxed, int32, float, ret} =
+   let (* IMPORTANT NOTE:  
         * If a boxed root happens be in a gc root register, we can remove
         * this root since it will be correctly targetted. 
         *
@@ -452,11 +458,11 @@ struct
 
        fun mark(call) =
            if !debug then
-              T.ANNOTATION(call,#create BasicAnnotations.COMMENT 
+              T.ANNOTATION(call,#create MLRiscAnnotations.COMMENT 
                  ("roots="^setToString gcrootAvail^
                   " boxed="^setToString boxedRoots))
            else call
-
+ 
        (* convert them back to MLTREE *)
        val boxed   = setToMLTree boxedRoots 
        val gcroots = setToMLTree gcrootAvail
@@ -470,15 +476,47 @@ struct
            | ([], _, _, _) => ([aRootReg], aRootReg::boxed) 
            | _  => (gcroots, boxed)
 
-       val _ = if externalEntry then entryLabel (!lab) else defineLabel (!lab)
        val (extraRoots,unpack) = pack(emit, gcroots, boxed, int32, float)
-
    in  initRoots(emit, extraRoots);
        annotation(CALLGC);
        emit(mark(gcCall));
        if known then computeBasePtr(emit,defineLabel) else ();
        unpack();
-       emit ret;
+       emit ret
+   end
+
+   (*
+    * The following function is responsible for generating only the
+    * callGC code.
+    *)
+   fun callGC stream {regfmls, regtys, ret} =
+   let val {boxed, int32, float} = split(regfmls, regtys, [], [], [])
+   in  emitCallGC{stream=stream, known=true, 
+                  boxed=boxed, int32=int32, float=float, ret=ret}
+   end
+
+   (*
+    * The following function is responsible for generating actual
+    * GC calling code, with entry labels and return information.
+    *)
+   fun invokeGC(stream as 
+                St.STREAM{emit,defineLabel,entryLabel,exitBlock,annotation,...},
+                externalEntry) gcInfo = 
+   let val {known, optimized, boxed, int32, float, regfmls, ret, lab} =
+           case gcInfo of
+             GCINFO info => info
+           | MODULE{info=GCINFO info,...} => info
+           | _ => error "invokeGC:gcInfo"
+
+       val regfmls = if optimized then [] else regfmls
+
+   in  if externalEntry then entryLabel (!lab) else defineLabel (!lab);
+       (* When the known block is optimized, no actual code is generated
+        * until later.
+        *)
+       if optimized then (annotation(CALLGC); emit ret)
+       else emitCallGC{stream=stream, known=known,
+                       boxed=boxed, int32=int32, float=float, ret=ret};
        exitBlock(case C.exhausted of NONE    => regfmls 
                                    | SOME cc => T.CCR cc::regfmls)
    end

@@ -26,8 +26,10 @@ in its own right):
 	- cm-hook.cm	- an internal library for organizational purposes
 	- cm-lib.cm	- the library that implements CM's functionality
 	* comp-lib.cm	- a helper library for the compiler, MLRISC, and CM
-	* host-cm.cm	- the library that exports the public interface to
+	* full-cm.cm	- the library that exports the public interface to
 			  the compilation manager (i.e., structure CM)
+	* minimal-cm.cm - exports a reduced version of structure CM;
+			  this one is pre-registered at the top level
 	* host-cmb.cm	- the library that exports the public interface to
 			  the bootstrap compiler (i.e., structure CMB)
 	- host-compiler-0.cm
@@ -39,16 +41,21 @@ in its own right):
 			  (In fact, its the "root" of the main hierarchy.)
 	* ml-yacc-lib.cm - needs no further comment
 	* smlnj-lib.cm	- needs no further comment
+	* <arch>-compiler.cm - exports the Compiler structure for the
+			   given architecture (<Arch>Compiler).
+	* <arch>-<os>.cm - exports <Arch><OS>CMB for the given architecture-
+			   OS combination.
 	* target-compilers.cm
 			- library exporting target-specific versions of
-			  structure Compiler and of structure CMB
-			  (The existence of this library is the moral
+			  structure Compiler and of structure CMB.
+			  This is a summary of all the <arch>-compiler.cm
+			  and <arch>-<os>.cm libraries above.
+			  (The existence of these libraries is the moral
 			   equivalent of "CMB.retarget" in the old CM.)
-	* viscomp-lib.cm - library that implements the compiler
-			  (At the moment, its interface is rather thin.  We
-			   should think about how to structure the interface
-			   in such a way that it becomes a useful equivalent
-			   to the old "full" compiler.)
+	* viscomp-core.cm - library that implements the machine-independent
+			  core of the compiler.
+	* viscomp-<arch>.cm - library that implements the visible compiler
+			   for a given architecture.
 
 * Before you can use the bootstrap compiler (CMB)...
 ----------------------------------------------------
@@ -90,6 +97,12 @@ just those modules that will actually go into the heap image, but
 CMB.deliver must also build the remaining files -- files that are part
 of libraries to be stabilized but which are not used by the compiler.
 
+You can reduce the number of extra files compiled and stabilized
+during CMB.deliver at the expense of not building any cross-compilers.
+For that, say
+	#set (CMB.symval "LIGHT") (SOME 1);
+before running CMB.deliver.
+
 After you have made the boot directory, if you want to continue
 developing the compiler (i.e., make changes to some sources,
 recompile, etc.), you must first get rid of that boot directory.
@@ -104,7 +117,7 @@ and
 
 	<prefix>.boot.<arch>-<os>
 
-respectively, with "comp" being the default for <prefix>.  To change
+respectively, with "sml" being the default for <prefix>.  To change
 the prefix, use CMB.make' and CMB.deliver' with the new prefix
 provided as the optional string argument to these functions.
 
@@ -113,7 +126,7 @@ provided as the optional string argument to these functions.
 
 The heap image is made by running the "makeml" script that you find
 here in this directory.  By default it will try to refer to the
-comp.boot.<arch>-<os> directory.  You can change this using the -boot
+sml.boot.<arch>-<os> directory.  You can change this using the -boot
 argument (which takes the full name of the boot directory to be used).
 
 The "feel" of using makeml should be mostly as it used to.  However,
@@ -149,18 +162,42 @@ separate directory whose name is derived from the name of the heap
 image.  The "testml" script that you also find here will run the heap
 image and instruct it to look for its libraries in that new library
 directory.
-"testml" takes the name of the heap image as its single argument.  It
-expects the library directory to be the one that makeml builds.
+
+"testml" takes the <prefix> of the heap image as its first
+argument. All other arguments are passed verbatim to the ML process.
+
+The <prefix> is the same as the one used when you did "makeml".  If
+you run "testml" without arguments, <prefix> defaults to "sml".
+Thus, if you just said "makeml" without argument you can also say
+"testml" without argument.  (Note that you _must_ supply the <prefix>
+argument if you intend to pass any additional arguments.)
 
 * Installing a heap image for more permanent use
 ------------------------------------------------
 
-Since you have been using the new CM already, it can be assumed that
-you have already set up a correct pathname configuration.  (For more
-information on pathname configurations, see below.)  With a correct
-pathname configuration in place, you can "install" a newly generated
-heap image by replacing the old image with the new one _AND AT THE
-SAME TIME_ replacing the old stable libaries with the new ones.
+You can "install" a newly generated heap image by replacing the old
+image with the new one _AND AT THE SAME TIME_ replacing the old stable
+libaries with the new ones.  To do this, run the "installml" script.
+
+Like "testml", "installml" also expects the <prefix> as its first
+argument.  <prefix> defaults to "sml" if no argument is specified.
+
+"installml" patches the ../../lib/pathconfig file to reflect any
+changes or additions to the path name mapping.
+
+Thus, after a successful CMB.deliver, you should say
+
+	./makeml
+
+to make the new heap image + libraries, then
+
+	./testml
+
+to make sure everything works, and finally
+
+	./installml
+
+to replace your existing compiler with the one you just built and tested.
 
 * Cross-compiling
 -----------------
@@ -194,6 +231,12 @@ exported by target-compilers.cm are:
 (PPCMacOSCMB is not very useful at the moment because there is no
 implementation of the basis library for the MacOS.)
 
+Alternatively, you can select just the one single structure that you
+are interested in by auto-loading <arch>-compiler.cm or <arch>-<os>.cm.
+<arch> currently ranges over "alpha32", "hppa", "ppc", "sparc", and "x86.
+<os> can be either "unix" or "macos" or "win32".
+(Obviously, not all combinations are valid.)
+
 * Path configuration
 --------------------
 
@@ -218,7 +261,7 @@ that is found on the path.  A new file in one of the directories early
 in the path can upset the program that hopes to find something under
 the same name later on the path.  Even when ignoring security-issues
 like trojan horses and such, this definitely opens the door for
-various unpleasant surprises.  (Who has not ever named a test version
+various unpleasant surprises.  (Who has never named a test version
 of a program "test" an found that it acts strangely only to discover
 later that /bin/test was run instead?)
 
@@ -249,20 +292,16 @@ will also be found "there" if the anchor has been re-set accordingly.
 
 During compilation of the compiler, CMB uses a path configuration that
 is read from the file "pathconfig" located here in this directory.
-Warning: The names in that pathconfig file are relative pathnames and
-will work only if you are in this directory.  (This will typically be
-the case since you are compiling the compiler. Normally, however, path
-configurations should map anchors to absolute pathnames.)
 
 At bootstrap time, the same anchors are mapped to the corresponding
 sub-directory of the "boot" directory: basis.cm is mapped to
-comp.boot.<arch>-<os>/basis.cm -- which means that CM will look for a
-library named comp.boot.<arch>-<os>/basis.cm/basis.cm -- and so forth.
+sml.boot.<arch>-<os>/basis.cm -- which means that CM will look for a
+library named sml.boot.<arch>-<os>/basis.cm/basis.cm -- and so forth.
 
 By the way, you will perhaps notice that there is no file
-	comp.boot.<arch>-<os>/basis.cm/basis.cm
+	sml.boot.<arch>-<os>/basis.cm/basis.cm
 but there _is_ the corresponding stable archive
-	comp.boot.<arch>-<os>/basis.cm/CM/<arch>-<os>/basis.cm
+	sml.boot.<arch>-<os>/basis.cm/CM/<arch>-<os>/basis.cm
 CM always looks for stable archives first.
 
 This mapping (from anchors to names in the boot directory) is the one
@@ -294,7 +333,7 @@ makeml will look for their global pathconfig file in
 
 For example, I always keep my "good" libraries in `pwd`/../../lib --
 where both the main "install" script and the "installml" script (see
-below) also put them -- so I don't have to do anything special about
+above) also put them -- so I don't have to do anything special about
 my pathconfig file.
 
 Once I have new heap image and libraries working, I replace the old
@@ -311,7 +350,8 @@ For convenience, there is a script called "installml" that automates
 this task.  Using the script has the added advantage that it will not
 clobber libraries that belong to other than the current architecture.
 (The rather heavy-handed "rm/mv" approach above will delete all stable
-libraries for all architectures.)
+libraries for all architectures.)  "installml" also patches the
+../../lib/pathconfig file as necessary.
 
 Of course, you can organize things differently for yourself -- the
 path configuration mechanism should be sufficiently flexible.
@@ -359,11 +399,6 @@ that.  The owner library is specified in parentheses after the "group"
 keyword.  If the specification is missing (that's the "old" syntax),
 then the the owner will be taken to be the interactive toplevel.
 
-There are several examples of this throughout the system's source
-hierarchy.  One notable case is MLRISC.  It should probably be made
-into a library of its own, but I leave this job to Lal.  At the moment
-MLRISC.cm is a sub-group of viscomp-lib.cm.
-
 * Pervasive environment, core environment, other "primitive" environments
 -------------------------------------------------------------------------
 
@@ -398,7 +433,7 @@ means that in order to be able to use the system, your paths must be
 properly configured.
 
 Two libraries get pre-registered at bootstap time: the basis library
-("basis.cm") and CM itself ("host-cm.cm").  The latter is crucial:
+("basis.cm") and CM itself ("minimal-cm.cm").  The latter is crucial:
 without it one wouldn't be able to register any other libraries
 via CM.autoload.  The registration of basis.cm is a mere convenience.
 
@@ -406,6 +441,8 @@ Here are some other useful libraries that are not pre-registered but
 which can easily be made accessible via CM.autoload (or, non-lazily,
 via CM.make):
 
+	full-cm.cm		- provides the actual ("full") structure CM
+				  as described in the CM manual
 	host-compiler.cm	- provides "structure Compiler"
 	host-cmb.cm		- provides "structure CMB"
 	target-compilers.cm	- provides "structure <Arch>Compiler" and

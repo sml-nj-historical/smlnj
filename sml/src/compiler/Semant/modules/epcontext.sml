@@ -31,7 +31,7 @@ structure Key =
     val compare = MI.cmp
   end
    
-structure D = BinaryMapFn(Key)
+structure D = RedBlackMapFn(Key)
 
 type entPathR = EP.entVar list  
 type pathmap = entPathR D.map 

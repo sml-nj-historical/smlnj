@@ -12,13 +12,19 @@ Library
 	signature FREQ
 	structure Freq
 	structure HashArray
+	signature INTMAP
+	structure Intmap
+	structure PriorityHeap
 	signature PRIORITY_QUEUE
 	structure PriorityQueue
-	signature STRING_STREAM
-	structure StringStream
+	structure SortedList
+	signature STRING_OUTSTREAM
+	structure StringOutStream
 	structure Word64
 is
+#if defined(NEW_CM)
 	basis.cm
+#endif
 	smlnj-lib.cm
 
 	library/annotations.sig
@@ -51,6 +57,9 @@ is
 	library/hashSet.sml
 	library/int-set.sml
  *)
+	library/intmap.sig
+	library/intmap.sml
+	library/heap.sml
 	library/priQueue.sig
 	library/priQueue.sml
 (*
@@ -60,7 +69,9 @@ is
 	library/regset.sml
 	library/sorting2.sml
  *)
-	library/stringStream.sml
+	library/sortedlist.sml
+	library/stringOutStream.sig
+	library/stringOutStream.sml
 (*
 	library/susp.sml
 	library/transaction-glue.sml

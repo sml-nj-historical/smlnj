@@ -158,6 +158,7 @@ struct
                | js    => add_switch(i,0,js)
            end
 
+           (*
            fun insert_postentries () = 
            let fun add_edge(i,j) =
                    #add_edge cfg 
@@ -174,7 +175,9 @@ struct
                    end
                 val entries = #out_edges cfg ENTRY
            in   app postentry entries end
+           *)
 
+           (*
            fun split_entries() =
            let fun split(i,j,e) = 
                    case #in_edges cfg j of
@@ -192,7 +195,15 @@ struct
                    end
                 val entries = #out_edges cfg ENTRY
            in   app split (#out_edges cfg ENTRY) end
+           *)
 
+           fun check_for_bad_entries() =
+               app (fn (i,j,e) =>
+                     case #in_edges cfg j of 
+                        [_] => () (* only edge from ENTRY, okay *)
+                     |  _ => 
+                        error("entry "^Int.toString j^" has internal edges") 
+                   ) (#out_edges cfg ENTRY)
 
            (* add edge from entry to exit *)
            fun insert_entry_to_exit () = 
@@ -200,7 +211,8 @@ struct
     in 
         add(entry::exit::blocks,[],[]);
         (* insert_postentries(); *)
-        split_entries();
+        (* split_entries(); *)
+        check_for_bad_entries();
         insert_entry_to_exit(); 
         CFG
     end

@@ -24,7 +24,22 @@ signature PICKMOD = sig
 	-> { hash: PersStamps.persstamp,
 	     pickle: Word8Vector.vector, 
 	     exportLvars: Access.lvar list,
-	     exportPid: PersStamps.persstamp option}
+	     exportPid: PersStamps.persstamp option }
+
+    (* Re-pickling is done for the purpose of getting the hash value
+     * of a "reduced" (filtered) version of another environment that
+     * has been pickled before.  During re-pickling, the LOCAL->GLOBAL
+     * translation for stamps and the LVAR->EXTERN translation for
+     * accesses is undone so that the resulting hash value is the
+     * same that one would have gotten if the current environment
+     * was pickled using "pickleEnv". The context for repickling is
+     * specified using a set of module IDs instead of an entire
+     * context environment.  The set will have to be obtained from the
+     * unpickling process of the original pickle. *)
+    val repickleEnvHash :
+	{ context: ModuleId.Set.set,
+	  env: StaticEnv.staticEnv,
+	  orig_hash: PersStamps.persstamp } -> PersStamps.persstamp
 
     val pickleFLINT:
         CompBasic.flint option
@@ -36,8 +51,10 @@ signature PICKMOD = sig
     type map
     val emptyMap : map
 
+    type env'n'ctxt = { env: StaticEnv.staticEnv, ctxt: ModuleId.Set.set }
+
     val envPickler :
-	ckey option context -> (map, StaticEnv.staticEnv) PickleUtil.pickler
+	ckey option context -> (map, env'n'ctxt) PickleUtil.pickler
 
     val symenvPickler : (map, SymbolicEnv.symenv) PickleUtil.pickler
 
@@ -386,10 +403,18 @@ in
 	cs arg
     end
 
-    fun mkAccess lvar = let
+    fun mkAccess { lvar, isLocalPid } = let
 	val op $ = PU.$ A
 	fun access (A.LVAR i) = "A" $ lvar i
 	  | access (A.EXTERN p) = "B" $ pid p
+	  | access (A.PATH (a as A.EXTERN p, i)) =
+	    (* isLocalPid always returns false for in the "normal pickler"
+	     * case.  It returns true in the "repickle" case for the
+	     * pid that was the hash of the original whole pickle.
+	     * Since alpha-conversion has already taken place if we find
+	     * an EXTERN pid, we don't call "lvar" but "int". *)
+	    if isLocalPid p then "A" $ int i
+	    else "C" $ access a & int i
 	  | access (A.PATH (a, i)) = "C" $ access a & int i
 	  | access A.NO_ACCESS = % A "D"
 
@@ -475,8 +500,8 @@ in
     fun flint flint_exp = let
 	val alphaConvert = mkAlphaConvert ()
 	val lvar = int o alphaConvert
-	val { access, conrep } = mkAccess lvar
-
+	val { access, conrep } = mkAccess { lvar = lvar,
+					    isLocalPid = fn _ => false }
 	val op $ = PU.$ V
 	fun value (F.VAR v) = "a" $ lvar v
 	  | value (F.INT i) = "b" $ int i
@@ -615,7 +640,7 @@ in
       | NodeStub of int * Symbol.symbol
 
     (* the environment pickler *)
-    fun mkEnvPickler (context0: stubinfo context) = let
+    fun mkEnvPickler (context0: stubinfo context, isLocalPid) = let
 
 	val { lookTYC, lookSIG, lookFSIG, lookSTR, lookFCT, lookEENV } =
 	    context0
@@ -627,7 +652,9 @@ in
 	in
 	    case scope of
 		Stamps.LOCAL => "A" $ int (alphaConvert count)
-	      | Stamps.GLOBAL p => "B" $ pid p & int count
+	      | Stamps.GLOBAL p =>
+		    if isLocalPid p then "A" $ int count
+		    else "B" $ pid p & int count
 	      | Stamps.SPECIAL s => "C" $ string s & int count
 	end
 
@@ -654,7 +681,8 @@ in
 	    j
 	end
 
-	val { access, conrep } = mkAccess (int o anotherLvar)
+	val { access, conrep } = mkAccess { lvar = int o anotherLvar,
+					    isLocalPid = isLocalPid }
 
 	fun spath (SP.SPATH p) = list symbol p
 	fun ipath (IP.IPATH p) = list symbol p
@@ -1072,8 +1100,12 @@ in
 	in
 	    list (pair (symbol, binding)) pairs
 	end
+
+	fun env'n'ctxt { env = e, ctxt } =
+	    pair (env, list modId) (e, ModuleId.Set.listItems ctxt)
     in
-	{ pickler = env, exportLvarsGetter = fn () => rev (!lvlist) }
+	{ pickler = env, pickler' = env'n'ctxt,
+	  exportLvarsGetter = fn () => rev (!lvlist) }
     end
 
     fun pickleEnv { context, env } = let
@@ -1089,7 +1121,8 @@ in
 		  lookTYC = cvt CMStaticEnv.lookTYC,
 		  lookEENV = cvt CMStaticEnv.lookEENV }
 
-	val { pickler, exportLvarsGetter } = mkEnvPickler c
+	val { pickler, exportLvarsGetter, ... } =
+	    mkEnvPickler (c, fn _ => false)
 	val pickle = Byte.stringToBytes (PU.pickle emptyMap (pickler env))
 	val exportLvars = exportLvarsGetter ()
 
@@ -1105,6 +1138,20 @@ in
 	  exportPid = exportPid }
     end
 
+    fun repickleEnvHash { context, env, orig_hash } = let
+	fun lk i =
+	    if ModuleId.Set.member (context, i) then SimpleStub else NoStub
+	val c = { lookSTR = lk, lookSIG = lk, lookFCT = lk,
+		  lookFSIG = lk, lookTYC = lk, lookEENV = lk }
+	fun isLocalPid p = PersStamps.compare (p, orig_hash) = EQUAL
+	val { pickler, ... } = mkEnvPickler (c, isLocalPid)
+	val pickle = Byte.stringToBytes (PU.pickle emptyMap (pickler env))
+    in
+	pickle2hash pickle
+    end
+
+    type env'n'ctxt = { env: StaticEnv.staticEnv, ctxt: ModuleId.Set.set }
+
     fun envPickler context = let
 	val { lookSTR, lookSIG, lookFCT, lookFSIG, lookTYC, lookEENV } =
 	    context
@@ -1119,9 +1166,9 @@ in
 		  lookFSIG = cvt lookFSIG,
 		  lookTYC = cvt lookTYC,
 		  lookEENV = cvt lookEENV }
-	val { pickler, ... } = mkEnvPickler c
+	val { pickler', ... } = mkEnvPickler (c, fn _ => false)
     in
-	pickler
+	pickler'
     end
 
     (* the dummy environment pickler *)

@@ -25,8 +25,8 @@ struct
 
 local
     structure F  = FLINT
-    structure S = IntSetF
-    structure M = IntBinaryMap
+    structure S = IntRedBlackSet
+    structure M = IntRedBlackMap
     structure PP = PPFlint
     structure LT = LtyExtern
     structure OU = OptUtils
@@ -78,10 +78,14 @@ fun fexp mf depth lexp = let
     fun lookup (F.VAR lv) = M.find mf lv
       | lookup _ = NONE
 
-    fun addv (s,F.VAR lv) = S.add(lv, s)
+    fun addv (s,F.VAR lv) = S.add'(lv, s)
       | addv (s,_) = s
     fun addvs (s,vs) = foldl (fn (v,s) => addv(s, v)) s vs
-    fun rmvs (s,lvs) = foldl S.rmv s lvs
+    fun rmvs (s,lvs) = 
+      let
+        fun rmv(item, set) = S.delete(set, item)
+      in  foldl rmv s lvs
+      end
 
     (* Looks for free vars in the primop descriptor.
      * This is normally unnecessary since these are special vars anyway *)
@@ -187,7 +191,7 @@ in case lexp
        in (s1 + s2, S.union(rmvs(fvl, lvs), fvb), F.LET(lvs, nbody, nle))
        end
      | F.FIX (fdecs,le) =>
-       let val funs = S.make(map #2 fdecs) (* set of funs defined by the FIX *)
+       let val funs = S.addList(S.empty, map #2 fdecs) (* set of funs defined by the FIX *)
 
 	   (* create call-counters for each fun and add them to fm *)
 	   val (fs,mf) = foldl (fn ((fk,f,args,body),(fs,mf)) =>
@@ -211,7 +215,7 @@ in case lexp
 		       val nm = M.insert(m, f, ([f'], 1, fk, fargs, fbody, cf, cs))
 		   (* now, retry ffun with the uncurried function *)
 		   in ffun((fk', f', fargs', fbody', ref 1),
-			   (s+1, fv, S.add(f', funs), nm))
+			   (s+1, fv, S.add'(f', funs), nm))
 		   end
 		 | _ =>	(* non-curried function *)
 		   let val newdepth =
@@ -225,10 +229,10 @@ in case lexp
 					   (mf,[]) args
 		       val (fs,ffv,body) = fexp mf newdepth body
 		       val ffv = rmvs(ffv, map #1 args) (* fun's freevars *)
-		       val ifv = S.inter(ffv, funs) (* set of rec funs ref'ed *)
+		       val ifv = S.intersection(ffv, funs) (* set of rec funs ref'ed *)
 		   in
 		       (fs + s, S.union(ffv, fv), funs,
-			M.insert(m,f,(S.members ifv, fs, fk, args, body, cf, cs)))
+			M.insert(m,f,(S.listItems ifv, fs, fk, args, body, cf, cs)))
 		   end
 
 	   (* process the main lexp and make it into a dummy function.
@@ -240,7 +244,7 @@ in case lexp
 	   val lename = LambdaVar.mkLvar()
 	   val m = M.insert(M.empty,
 			    lename, 
-			    (S.members(S.inter(fv, funs)), 0,
+			    (S.listItems(S.intersection(fv, funs)), 0,
 			     {inline=F.IH_SAFE, isrec=NONE, 
 			      known=true,cconv=F.CC_FCT},
 			     [], le, ref 0, []))
@@ -316,7 +320,7 @@ in case lexp
      | F.TFN ((f,args,body),le) =>
        let val (se,fve,le) = loop le
 	   val (sb,fvb,body) = loop body
-       in (sb + se, S.union(S.rmv(f, fve), fvb), F.TFN((f, args, body), le))
+       in (sb + se, S.union(S.delete(fve, f), fvb), F.TFN((f, args, body), le))
        end
      | F.TAPP (F.VAR f,args) =>
        (* The cost of TAPP is kinda hard to estimate.  It can be very cheap,
@@ -329,7 +333,7 @@ in case lexp
        let fun farm (dcon as F.DATAcon(dc,_,lv),le) =
 	       (* the binding might end up costly, but we count it as 1 *)
 	       let val (s,fv,le) = loop le
-	       in (1+s, fdcon(S.rmv(lv, fv),dc), (dcon, le))
+	       in (1+s, fdcon(S.delete(fv, lv),dc), (dcon, le))
 	       end
 	     | farm (dc,le) =
 	       let val (s,fv,le) = loop le in (s, fv, (dc, le)) end
@@ -350,11 +354,11 @@ in case lexp
        end
      | F.CON (dc,tycs,v,lv,le) =>
        let val (s,fv,le) = loop le
-       in (2+s, fdcon(addv(S.rmv(lv, fv), v),dc), F.CON(dc, tycs, v, lv, le))
+       in (2+s, fdcon(addv(S.delete(fv, lv), v),dc), F.CON(dc, tycs, v, lv, le))
        end
      | F.RECORD (rk,vs,lv,le) =>
        let val (s,fv,le) = loop le
-       in ((length vs)+s, addvs(S.rmv(lv, fv), vs), F.RECORD(rk, vs, lv, le))
+       in ((length vs)+s, addvs(S.delete(fv, lv), vs), F.RECORD(rk, vs, lv, le))
        end
      | F.SELECT (v,i,lv,le) =>
        let val (s,fv,le) = loop le
@@ -362,7 +366,7 @@ in case lexp
 	    of SOME(Arg(d,ac as ref(sp,ti))) =>
 	       ac := (sp + 1, OU.pow2(depth - d) + ti)
 	     | _ => ());
-	   (1+s, addv(S.rmv(lv, fv), v), F.SELECT(v,i,lv,le))
+	   (1+s, addv(S.delete(fv, lv), v), F.SELECT(v,i,lv,le))
        end
      | F.RAISE (F.VAR v,ltys) => (3, S.singleton v, lexp)
      | F.HANDLE (le,v) =>
@@ -377,7 +381,7 @@ in case lexp
        end
      | F.PRIMOP (po,vs,lv,le) =>
        let val (s,fv,le) = loop le
-       in (1+s, fpo(addvs(S.rmv(lv, fv), vs),po), F.PRIMOP(po,vs,lv,le))
+       in (1+s, fpo(addvs(S.delete(fv, lv), vs),po), F.PRIMOP(po,vs,lv,le))
        end
 
      | F.APP _ => bug "bogus F.APP"
@@ -387,7 +391,7 @@ end
 
 fun fixfix ((fk,f,args,body):F.prog) =
     let val (s,fv,nbody) = fexp M.empty 0 body
-	val fv = S.diff(fv, S.make(map #1 args))
+	val fv = S.diff(fv, S.addList(S.empty, map #1 args))
     in
 	(*  PPFlint.printLexp(F.RET(map F.VAR (S.members fv))); *)
 	assert(S.isEmpty(fv));

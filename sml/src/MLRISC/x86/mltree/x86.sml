@@ -378,7 +378,11 @@ fun prMLRisc s = print(concat(stm s))
              | (_, I.Direct _) => {lsrc=opnd1, rsrc=opnd2}
              | _ => {lsrc=moveToReg opnd1, rsrc=opnd2}),an)
       end
-    | reduceCC(T.CCMARK(e,a),rd,an) = reduceCC(e,rd,a::an)
+    | reduceCC(T.CCMARK(e,a),rd,an) = 
+      (case #peek MLRiscAnnotations.MARK_REG a of
+        SOME f => (f rd; reduceCC(e,rd,an))
+      | NONE => reduceCC(e,rd,a::an)
+      )
     | reduceCC _ = error "reduceCC" 
 
 
@@ -509,7 +513,12 @@ fun prMLRisc s = print(concat(stm s))
       | T.SRL(32, e1, e2) => shift(I.SHR, e1, e2, an)
       | T.SLL(32, e1, e2) => shift(I.SHL, e1, e2, an)
       | T.SEQ(stm, rexp)  => (reduceStm(stm,[]); reduceRegRd(rexp, rd, an))
-      | T.MARK(e,a) => reduceRegRd(e,rd,a::an)
+      | T.MARK(e,a) => 
+        (case #peek MLRiscAnnotations.MARK_REG a of
+          SOME f => (f rd; reduceRegRd(e,rd,an))
+        | NONE => reduceRegRd(e,rd,a::an)
+        )
+
   end (* reduceRegRd *)
 
   and reduceFexp(fexp, an) = let

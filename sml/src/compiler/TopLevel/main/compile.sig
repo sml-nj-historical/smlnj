@@ -37,6 +37,7 @@ type pid        = PersStamps.persstamp (* persistant id *)
 type import     = pid * CompBasic.importTree  (* import specification *)
 type pickle                            (* pickled format *)
 type hash                              (* environment hash id *)
+type newContext			       (* reduced context after pickling *)
 
 (** take the input source and turn it into the concrete syntax *)
 val parseOne    : source -> unit -> ast option (* incremental version *)
@@ -46,7 +47,8 @@ val parse       : source -> ast
 val elaborate   : {ast: ast, statenv: cmstatenv, compInfo: compInfo} 
                    -> {absyn: absyn, newstatenv: cmstatenv,
  	               exportLvars: lvar list, exportPid: pid option,
-		       staticPid: hash, pickle: pickle}
+		       staticPid: hash, pickle: pickle,
+		       ctxt: newContext}
 
 (** elaborate as above, then keep on to compile into the binary code *)
 val compile     : {source: source, ast: ast, statenv: cmstatenv, 
@@ -57,7 +59,8 @@ val compile     : {source: source, ast: ast, statenv: cmstatenv,
                        absyn: absyn (* for pretty printing only *),
                        exportPid: pid option, exportLvars: lvar list,
                        staticPid: hash, pickle: pickle, 
-                       inlineExp: flint option, imports: import list}
+                       inlineExp: flint option, imports: import list,
+		       ctxt: newContext}
 
 (** build the new symbolic environment *)
 val mksymenv    : pid option * flint option -> symenv 

@@ -27,7 +27,10 @@ structure SimpleURef : UREF =
 
     fun uRef x = ref (ECR x)
 
-    fun !! p = let val (ECR x) = !(find p) in x end
+    fun !! p = (case !(find p)
+	   of ECR x => x
+	    | _ => raise Match
+	  (* end case *))
       
     fun equal (p, p') = (find p = find p')
 

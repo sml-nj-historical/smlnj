@@ -1,6 +1,8 @@
 structure SMLGCType : SMLGCTYPE =
 struct
 
+   structure CPS = CPS
+
    type objtype = CPS.cty 
   
    datatype gctype =
@@ -21,6 +23,25 @@ struct
      | toString (REF(ref obj)) =  CPS.ctyToString obj
      | toString (ADD(ty,a,b)) = "("^toString a^"+"^toString b^")"
      | toString (SUB(ty,a,b)) = "("^toString a^"-"^toString b^")"
+
+   fun ==(x:gctype, y:gctype) = x = y
+
+   fun join(BOT, x) = x
+     | join(x, BOT) = x
+     | join(TOP, x) = TOP
+     | join(x, TOP) = TOP
+     | join(x, y)   = x  (* XXX *)
+
+   fun meet(BOT, x) = BOT 
+     | meet(x, BOT) = BOT 
+     | meet(TOP, x) = x 
+     | meet(x, TOP) = x 
+     | meet(x, y)   = x  (* XXX *)
+
+  val I31    = NONREF(ref CPS.INTt)    (* tagged integers *)
+  val I32    = NONREF(ref CPS.INT32t)  (* untagged integers *)
+  val REAL64 = NONREF(ref CPS.FLTt)    (* untagged floats *)
+  val PTR    = REF(ref(CPS.PTRt(CPS.VPT))) (* boxed objects (pointers) *)
 
 end
 

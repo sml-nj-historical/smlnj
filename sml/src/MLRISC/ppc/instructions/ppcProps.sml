@@ -105,11 +105,7 @@ struct
 	   | SOME(I.Direct r) => (r::dst, src)
 	(* | SOME(I.Displace{base, disp}) => (dst, base::src) *)
 	 (*esac*))
-     | I.ANNOTATION{a, i, ...} =>
-        (case #peek BasicAnnotations.DEFUSER a of
-           SOME(d,u) => (d,u)
-         | NONE => defUseR i
-        )
+     | I.ANNOTATION{a, i, ...} => defUseR i
      | _ => ([], [])
   end
 
@@ -127,11 +123,7 @@ struct
 	  of SOME(I.FDirect f) => (f::dst, src)
 	   | _ => (dst, src)
 	 (*esac*))
-     | I.ANNOTATION{a, i, ...} =>
-        (case #peek BasicAnnotations.DEFUSEF a of
-           SOME(d,u) => (d,u)
-         | NONE => defUseF i
-        )
+     | I.ANNOTATION{a, i, ...} => defUseF i
      | _ => ([], [])
     (*esac*))
 

@@ -7,12 +7,8 @@
  *)
 
 Library 
-	signature MLRISC_ERROR_MSG
-	structure MLRiscErrorMsg
-	signature MLRISC_CONTROL
-	structure MLRiscControl
-	signature MLRISC_TIMING
-	structure MLRiscTiming
+
+
 	signature CELLS_BASIS
 	signature CELLS
 	functor CellsBasisFn
@@ -31,8 +27,8 @@ Library
 	signature REGION
 	signature FREQUENCY_PROPERTIES
 	functor FreqProps
-	signature BASIC_ANNOTATIONS
-	structure BasicAnnotations
+	signature MLRISC_ANNOTATIONS
+	structure MLRiscAnnotations
 	signature MLRISC_REGION
 	structure MLRiscRegion
 	signature POINTS_TO
@@ -49,8 +45,6 @@ Library
 	signature FLOWGRAPH_GEN
 	signature MLTREE_MULT_DIV
 	functor MLTreeMult
-(*	signature INSTR_GEN		LG *)
-(*	functor InstrGen		LG *)
 	signature FLOWGRAPH
 	functor FlowGraph
 	functor ClusterGen
@@ -61,6 +55,7 @@ Library
 	signature LIVENESS
 	functor Liveness
 	structure ChaitinSpillHeur
+	structure ChowHennessySpillHeur
 	functor ClusterRA
 	signature RA_GRAPH
 	structure RAGraph
@@ -72,13 +67,13 @@ Library
 	signature RA_FLOWGRAPH
 	signature RA
 	functor RegisterAllocator
-
+	functor RADeadCodeElim
 	signature INSTRUCTION_EMITTER
 	signature ASSEMBLY_EMITTER
 	signature ASM_STREAM
 	structure AsmStream
 	signature ASM_FORMAT_UTIL
-	structure AsmFormatUtil		
+	structure AsmFormatUtil
 	functor ClusterEmit
 	signature CODE_STRING
 	signature GC_CELLS
@@ -95,19 +90,27 @@ Library
 	signature MC_EMIT
 	functor BackPatch
 
+	signature MLRISC_ERROR_MSG
+	structure MLRiscErrorMsg
+	signature MLRISC_CONTROL
+	structure MLRiscControl
+	signature MLRISC_TIMING
+	structure MLRiscTiming
+
 is
 
+#if defined(NEW_CM)
 	basis.cm
-	comp-lib.cm
+#endif
 	smlnj-lib.cm
 	
 	MLRISC-Lib.cm
 	
-	(* Core definitions. These are required *)
-	control/mlriscErrormsg.sml
-	control/mlrisc-control.sml
-	control/mlrisc-timing.sml
+        control/mlriscErrormsg.sml
+        control/mlrisc-control.sml
+        control/mlrisc-timing.sml
 	
+	(* Core definitions. These are required *)
 	instructions/cells.sig
 	instructions/cells.sml
 	instructions/rewrite.sig
@@ -123,8 +126,8 @@ is
 	instructions/region.sig
 	instructions/freqProps.sig
 	instructions/freqProps.sml
-	instructions/basicAnnotations.sig
-	instructions/basicAnnotations.sml
+	instructions/mlriscAnnotations.sig
+	instructions/mlriscAnnotations.sml
 	
 	(* New aliasing/memory disambiguation support *)
 	aliasing/mlriscRegion.sig
@@ -145,10 +148,6 @@ is
 	mltree/flowgen.sig
 	mltree/mltree-mult.sig
 	mltree/mltree-mult.sml
-(*
-	mltree/instr-gen.sig
-	mltree/instr-gen.sml
-*)
 	
 	(* Basic cluster stuff. These are required. *)
 	cluster/flowgraph.sml
@@ -160,8 +159,9 @@ is
 	ra/getreg.sml
 	ra/liveness.sml
 	
-        (* Prioritized Chaitin's spill heuristics *)
+        (* Spill heuristics *)
         ra/chaitin-spillheur.sml
+        ra/chow-hennessy-spillheur.sml
 
         (* RA's *)
         ra/cluster-ra.sml
@@ -177,6 +177,7 @@ is
         ra/ra-flowgraph.sig
         ra/ra.sig
         ra/ra.sml
+	ra/ra-deadCodeE.sml
 
 	(* Assembly machine code stuff *)
 	emit/instruction-emitter.sig
@@ -201,4 +202,5 @@ is
 	backpatch/noDelaySlots.sml
 	backpatch/sdi-jumps.sig
 	backpatch/vlBackPatch.sml
+
 	

@@ -158,6 +158,7 @@ structure Control : CONTROL =
 *)
     val markabsyn = ref true
     val trackExn = ref true
+    val polyEqWarn = ref true (* warning message when call of polyEqual compiled *)
     val indexing = ref false
     val instSigs = ref true
     val quotation = ref false  (* controls backquote quotation *)

@@ -285,14 +285,17 @@ fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
 (*DEBUG
 	     | _ => raise Fail "inconsistent internal signal state"
 DEBUG*)
-| info => let val act = (case info
-of NONE => "NONE"
- | SOME{act=IGNORE, ...} => "IGNORE"
- | SOME{act=DEFAULT, ...} => "DEFAULT"
-(* end case *))
-val msg = concat["inconsistent state ", act, " for signal ", Int.toString code]
-in raise Fail msg end
-	  (* end case *))
+	  | info => let
+		val act = (case info of
+			       NONE => "NONE"
+			     | SOME {act=IGNORE, ...} => "IGNORE"
+			     | SOME {act=DEFAULT, ...} => "DEFAULT"
+			     | SOME _ => "HANDLER")
+
+		val msg = concat ["inconsistent state ", act,
+				  " for signal ", Int.toString code]
+	    in raise Fail msg end
+    (* end case *))
 
   (* Install the root handler *)
     val _ = (Assembly.sighandler := sigHandler)

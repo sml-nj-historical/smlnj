@@ -17,6 +17,13 @@ struct
 structure W8V = Word8Vector
 
 local structure LV = LambdaVar
+      structure Intset = struct
+	type intset = IntRedBlackSet.set ref
+	fun new() = ref IntRedBlackSet.empty
+	fun add set i = set := IntRedBlackSet.add(!set, i)
+	fun mem set i =  IntRedBlackSet.member(!set, i)
+	fun rmv set i = set := IntRedBlackSet.delete(!set, i)
+      end
       open CPS
 in
 
@@ -190,7 +197,7 @@ fun fromRlit (RLIT(s, _)) = s
 fun rlitcmp (RLIT(s1,i1), RLIT(s2,i2)) = 
   if i1 < i2 then LESS
   else if i1 > i2 then GREATER else String.compare(s1, s2)
-structure RlitDict = BinaryMapFn(struct type ord_key = rlit
+structure RlitDict = RedBlackMapFn(struct type ord_key = rlit
                                         val compare = rlitcmp
                                  end)
 
@@ -469,6 +476,12 @@ end (* toplevel local *)
 end (* Literals *)
 
 (*
- * $Log$
+ * $Log: literals.sml,v $
+ * Revision 1.3  1999/11/29 16:33:19  george
+ * *** empty log message ***
+ *
+ * Revision 1.2  1999/11/01 13:53:27  george
+ *   parallel and distributed CM
+ *
  *)
 

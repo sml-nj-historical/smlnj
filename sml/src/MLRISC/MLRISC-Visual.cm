@@ -3,7 +3,7 @@
  *)
 
 Library
-	functor AllDisplaysFn
+	structure AllDisplays
 	structure daVinci
 	structure Dot
 	signature GRAPH_DISPLAY
@@ -12,7 +12,9 @@ Library
 	functor GraphViewerFn
 	structure VCG
 is
+#if defined(NEW_CM)
 	basis.cm
+#endif
 	MLRISC-Lib.cm
 	MLRISC-Graphs.cm
 

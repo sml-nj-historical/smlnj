@@ -8,13 +8,11 @@
  * -- Allen
  *)
 
-functor DerivedGraphFn
-   (structure Dom : DOMINATOR_TREE 
-    structure GraphImpl : GRAPH_IMPLEMENTATION): DERIVED_GRAPH =
+functor DerivedGraphFn(Dom : DOMINATOR_TREE): DERIVED_GRAPH =
 struct
    structure Dom = Dom
    structure G   = Graph
-   structure GI  = GraphImpl
+   structure GI  = Dom.GI
    structure A   = Array
 
    type ('n,'e) derived_graph = ('n,'e Graph.edge,unit) Graph.graph

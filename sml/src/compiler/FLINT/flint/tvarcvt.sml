@@ -150,11 +150,11 @@ struct
 
         fun extendEnv env d i [] = env
           | extendEnv env d i ((tv,_)::tvtks) =
-            extendEnv (IntBinaryMap.insert (env, tv, (d,i)))
+            extendEnv (IntRedBlackMap.insert (env, tv, (d,i)))
                       d (i+1) tvtks
 
         fun queryEnv env (tvar, currDepth) = 
-	  (case IntBinaryMap.find(env, tvar)
+	  (case IntRedBlackMap.find(env, tvar)
 	    of NONE => NONE
 	     | SOME(defnDepth, i) =>
 	         SOME (LT.tcc_var (DI.calc (currDepth, defnDepth), i))
@@ -275,7 +275,7 @@ struct
              ) : F.fundec
         end (* cvtFundec *)
     in
-        cvtFundec IntBinaryMap.empty DI.top
+        cvtFundec IntRedBlackMap.empty DI.top
     end (* names2debIndex_gen *)
 
     (* generate tables once per invocation 

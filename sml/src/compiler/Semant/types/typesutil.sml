@@ -717,7 +717,7 @@ fun mapTypeEntire f =
  * I am using a binary dictionary instead. (ZHONG)
  *)
 local
-  structure TycSet = BinaryMapFn(struct type ord_key = ST.stamp
+  structure TycSet = RedBlackMapFn(struct type ord_key = ST.stamp
 					val compare = ST.cmp
 				 end)
 in

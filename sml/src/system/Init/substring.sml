@@ -29,7 +29,7 @@ structure Substring :> SUBSTRING
     val op <= = InlineT.DfltInt.<=
     val op > = InlineT.DfltInt.>
     val op >= = InlineT.DfltInt.>=
-    val op = = InlineT.=
+(*    val op = = InlineT.= *)
     val unsafeSub = InlineT.CharVector.sub
     val stringSize = InlineT.CharVector.length
 

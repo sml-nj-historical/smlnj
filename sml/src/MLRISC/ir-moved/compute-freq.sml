@@ -73,7 +73,7 @@ struct
            A.update(entry_edges,header,entryEdges header) 
        end
 
-       fun propagate(0,_) = ()
+       fun propagate(0,_) = (print "Out of time\n")
          | propagate(n,[]) = ()
          | propagate(n,i::worklist) =
        let val _ = S.reset(marked,i)
@@ -131,6 +131,6 @@ struct
        #forall_nodes loop preprocess;
        propagate(TIMES * N, [ENTRY]);
        #forall_nodes cfg (fn (b,b') => nodeFreq b' := A.sub(nodeFreqs,b))
-   end
+   end handle Overflow => print "[Overflow]\n"
 
 end

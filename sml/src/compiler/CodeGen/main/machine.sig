@@ -9,8 +9,6 @@ signature MACHINE = sig
   structure Asm : INSTRUCTION_EMITTER
         where I = F.I and  P = F.P 
 
-  val copyProp :  F.cluster -> F.cluster
-
   val optimizerHook : (F.cluster -> F.cluster) option ref
 
   val finish : unit -> unit

@@ -7,6 +7,7 @@
 
 Library
 
+
 	signature PPCCELLS
 	structure PPCCells
 	signature PPCINSTR
@@ -22,7 +23,6 @@ Library
 	signature PPC_PSEUDO_INSTR
 	functor PPC
 	functor PPCRewrite
-
 is
 
 #if defined(NEW_CM)
@@ -31,8 +31,6 @@ is
 	MLRISC.cm
 	MLRISC-Lib.cm
 	smlnj-lib.cm
-
-	comp-lib.cm	(* should get rid of this eventually *)
 
 	(* PowerPC specific backend *)
 	ppc/instructions/ppcCells.sml

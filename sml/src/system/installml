@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# The tmpfile is for pathconfig editing (see below).
+tmpfile=pathconfig.tmp.$$
+
+trap 'rm -f $tmpfile; exit 1' 0 1 2 3 15
+
 MAIN_HEAP_DIR=../../bin/.heap
 MAIN_LIB_DIR=../../lib
 
@@ -54,5 +59,19 @@ for lib in $list ; do
 	mv $LIB_DIR/$lib $MAIN_LIB_DIR/$lib
     fi
 done
+
+# Update the pathconfig file in $MAIN_LIB_DIR
+#  The awk script below replaces the original binding in $pcfile
+#  with its fresh counterpart should there be one.  Other bindings
+#  are retained and brand new ones are added.
+pcfile=$MAIN_LIB_DIR/pathconfig
+if [ -f $pcfile ] ; then
+    cp $pcfile $tmpfile
+fi
+rm -f $pcfile
+cat $LIB_DIR/pathconfig >>$tmpfile
+awk <$tmpfile >$pcfile 'NF == 2 { mapping[$1] = $2 }
+NF != 2 { print $0 }
+END { for (i in mapping) print i, mapping[i] }'
 
 rm -r $LIB_DIR

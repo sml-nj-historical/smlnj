@@ -22,7 +22,7 @@ functor Sparc
     * The code generator will use alternative sequences that are
     * cheaper when their costs are lower.
     *)
-   val muluCost : int ref  (* cost of unsigned multiplication in cycles *)
+   val muluCost : int ref (* cost of unsigned multiplication in cycles *)
    val divuCost : int ref (* cost of unsigned division in cycles *)
    val multCost : int ref (* cost of trapping/signed multiplication in cycles *)
    val divtCost : int ref (* cost of trapping/signed division in cycles *)
@@ -601,7 +601,11 @@ struct
 
              (* misc *)
           | T.SEQ(s,e) => (doStmt s; doExpr(e,d,cc,an))
-          | T.MARK(e,a) => doExpr(e,d,cc,a::an)
+          | T.MARK(e,a) => 
+            (case #peek MLRiscAnnotations.MARK_REG a of
+              SOME f => (f d; doExpr(e,d,cc,an))
+            | NONE => doExpr(e,d,cc,a::an)
+            )
           | e => doExpr(Gen.compile e,d,cc,an)
 
          (* generate a comparison with zero *)
@@ -673,7 +677,11 @@ struct
                app emit (P.cvti2q({i=opn e,d=d},reduceOpn))
 
           | T.FSEQ(s,e)     => (doStmt s; doFexpr(e,d,an))
-          | T.FMARK(e,a)    => doFexpr(e,d,a::an)
+          | T.FMARK(e,a)    => 
+            (case #peek MLRiscAnnotations.MARK_REG a of
+              SOME f => (f d; doFexpr(e,d,an))
+            | NONE => doFexpr(e,d,a::an)
+            )
           | _               => error "doFexpr"
 
       and doCCexpr(T.CMP(ty,cond,e1,e2),65,an) =
@@ -682,7 +690,11 @@ struct
         | doCCexpr(_,65,an) = error "doCCexpr"
         | doCCexpr(T.CC 65,d,an) = error "doCCexpr"
         | doCCexpr(T.CC r,d,an) = move(r,d,an)
-        | doCCexpr(T.CCMARK(e,a),d,an) = doCCexpr(e,d,a::an)
+        | doCCexpr(T.CCMARK(e,a),d,an) = 
+          (case #peek MLRiscAnnotations.MARK_REG a of
+            SOME f => (f d; doCCexpr(e,d,an))
+          | NONE => doCCexpr(e,d,a::an)
+          )
         | doCCexpr e = error "doCCexpr"
 
       and ccExpr e = let val d = newReg() in doCCexpr(e,d,[]); d end

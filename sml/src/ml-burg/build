@@ -12,8 +12,9 @@ CMD="build"
 
 ROOT="ml-burg"
 HEAP_IMAGE=""
-BIN="../../bin"
-SML="$BIN/sml"
+TWOUP=`pwd`/../..
+BIN=${INSTALLDIR:-$TWOUP}/bin
+SML=$BIN/sml
 
 #
 # process command-line options
@@ -49,7 +50,7 @@ if [ "$HEAP_IMAGE" = "" ]; then
 fi
 
 $SML $ARGS <<ZZZ
-  CM.make "sources.cm";
+  CM.make "ml-burg.cm";
   Main.export "$HEAP_IMAGE" : unit;
 ZZZ
 

@@ -25,7 +25,7 @@ structure List : LIST =
     val op <= = InlineT.DfltInt.<=
     val op >  = InlineT.DfltInt.>
     val op >= = InlineT.DfltInt.>=
-    val op =  = InlineT.=
+(*    val op =  = InlineT.= *)
 
     datatype list = datatype list
 

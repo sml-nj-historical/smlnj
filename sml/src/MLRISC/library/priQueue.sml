@@ -40,6 +40,7 @@ struct
    end
 
    fun create less = PQ { less = less, root = ref EMPTY }
+   fun createN (less,_,_) = create less
 
    fun min (PQ { root = ref(NODE(x,_,_,_)), ... }) = x
      | min _ = raise EmptyPriorityQueue

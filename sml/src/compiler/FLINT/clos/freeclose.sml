@@ -26,6 +26,12 @@ structure FreeClose : FREECLOSE = struct
 local
   open Access CPS SortedList
   structure LV = LambdaVar
+  structure Intset = struct
+    fun new() = ref IntRedBlackSet.empty
+    fun add set i = set := IntRedBlackSet.add(!set, i)
+    fun mem set i =  IntRedBlackSet.member(!set, i)
+    fun rmv set i = set := IntRedBlackSet.delete(!set, i)
+  end
 in
 
 (***************************************************************************
@@ -113,6 +119,7 @@ fun freemapClose fe = let
  *      (6) KNOWN_REC        mutually recursive known function             *
  *                                                                         *
  ***************************************************************************)
+
 val escapes = Intset.new()
 val escapesP = Intset.mem escapes
 fun escapesM(VAR v) = Intset.add escapes v

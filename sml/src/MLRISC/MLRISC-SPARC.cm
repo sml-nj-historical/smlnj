@@ -6,6 +6,7 @@
  *)
 
 Library 
+
 	signature SPARCCELLS
 	structure SparcCells
 	signature SPARCINSTR
@@ -21,7 +22,6 @@ Library
 	functor Sparc
 	functor SparcRewrite
 	functor SparcDelaySlots
-
 is
 
 #if defined(NEW_CM)
@@ -30,8 +30,6 @@ is
 	MLRISC.cm
 	MLRISC-Lib.cm
 	smlnj-lib.cm
-
-	comp-lib.cm	(* should get rid of this eventually *)
 
 	(* Sparc specific backend *)
 	sparc/instructions/sparcCells.sml

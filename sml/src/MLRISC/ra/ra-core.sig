@@ -13,6 +13,12 @@ sig
    type move_queue
    type freeze_queue
 
+   val NO_OPTIMIZATION  : G.mode
+   val BIASED_SELECTION : G.mode
+   val DEAD_COPY_ELIM   : G.mode
+   val COMPUTE_SPAN     : G.mode
+   val SAVE_COPY_TEMPS  : G.mode
+
    (*
     * Basic functions
     *)
@@ -45,8 +51,7 @@ sig
     * and a list of moves 
     *)
    val initWorkLists : G.interferenceGraph -> 
-          { moves : G.move list,
-            deadCopyElim : bool
+          { moves : G.move list
           } -> 
           { simplifyWkl : G.node list, 
             moveWkl     : move_queue, 
@@ -104,11 +109,15 @@ sig
     *)
    val select : 
         G.interferenceGraph -> 
-           { biased : bool, (* use biased coloring too? *)
-             stack  : G.node list 
+           { stack  : G.node list 
            } ->
            { spills : G.node list (* actual spills *)
            }
+
+   (*
+    * Incorporate memory <-> register moves
+    *)
+   val initMemMoves : G.interferenceGraph -> unit
 
    (*
     * Spill propagation/coalescing phase 

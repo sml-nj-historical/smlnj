@@ -5,11 +5,13 @@
  *)
 signature UNPICKMOD = sig
 
+    type env'n'ctxt = { env: StaticEnv.staticEnv, ctxt: ModuleId.Set.set }
+
     val unpickleEnv :
 	{ context: CMStaticEnv.staticEnv,
 	  hash: PersStamps.persstamp,
 	  pickle: Word8Vector.vector }
-	-> StaticEnv.staticEnv
+	-> env'n'ctxt
 
     val unpickleFLINT : Word8Vector.vector -> CompBasic.flint option
 
@@ -24,7 +26,7 @@ signature UNPICKMOD = sig
 	{ prim_context: string -> CMStaticEnv.staticEnv option,
 	  node_context: int * Symbol.symbol -> CMStaticEnv.staticEnv option }
 	-> { symenv: SymbolicEnv.symenv UnpickleUtil.reader,
-	     env: StaticEnv.staticEnv UnpickleUtil.reader,
+	     env: env'n'ctxt UnpickleUtil.reader,
 	     symbol: Symbol.symbol UnpickleUtil.reader,
 	     symbollist: Symbol.symbol list UnpickleUtil.reader }
 end
@@ -51,6 +53,8 @@ structure UnpickMod : UNPICKMOD = struct
 
     structure UU = UnpickleUtil
     exception Format = UU.Format
+
+    type env'n'ctxt = { env: StaticEnv.staticEnv, ctxt: ModuleId.Set.set }
 
     (* The order of the entries in the following tables
      * must be coordinated with pickmod! *)
@@ -376,6 +380,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val edListM = UU.mkMap ()
 	val eenvBindM = UU.mkMap ()
 	val envM = UU.mkMap ()
+	val milM = UU.mkMap ()
 
 	val { pid, string, symbol,
 	      access, conrep, consig, lty, tyc, tkind, ltylist, tyclist,
@@ -832,12 +837,23 @@ structure UnpickMod : UNPICKMOD = struct
 	in
 	    Env.consolidate (foldl bind Env.empty bindlist)
 	end
+
+	fun env' () = let
+	    val (e, mil) = pair (env, list milM modId) ()
+	    val ctxt = ModuleId.Set.addList (ModuleId.Set.empty, mil)
+	in
+	    { env = e, ctxt = ctxt }
+	end
     in
-	env
+	{ envUnpickler = env, envUnpickler' = env' }
     end
 
     fun unpickleEnv { context, hash, pickle } = let
-	fun cvt lk i = case lk context i of SOME v => v | NONE => raise Format
+	val cs = ref ModuleId.Set.empty
+	fun cvt lk i =
+	    case lk context i of
+		SOME v => (cs := ModuleId.Set.add (!cs, i); v)
+	      | NONE => raise Format
 	fun dont _ = raise Format
 	val c = { lookSTR = cvt CMStaticEnv.lookSTR,
 		  lookSIG = cvt CMStaticEnv.lookSIG,
@@ -863,11 +879,12 @@ structure UnpickMod : UNPICKMOD = struct
 	val sharedStuff as { symbol, ... } = mkSharedStuff (session, import)
 	val symbolListM = UU.mkMap ()
 	val symbollist = UU.r_list session symbolListM symbol
-	val envUnpickler =
+	val { envUnpickler, ... } =
 	    mkEnvUnpickler (session, symbollist, sharedStuff,
 			    c, fn () => hash)
     in
-	envUnpickler ()
+	(* order of evaluation is important here! *)
+	{ env = envUnpickler (), ctxt = !cs }
     end
 
     fun mkFlintUnpickler (session, sharedStuff) = let
@@ -1086,7 +1103,7 @@ structure UnpickMod : UNPICKMOD = struct
 	    mkSharedStuff (session, A.LVAR)
 	val symbolListM = UU.mkMap ()
 	val symbollist = UU.r_list session symbolListM symbol
-	val envUnpickler =
+	val { envUnpickler', ... } =
 	    mkEnvUnpickler (session, symbollist, sharedStuff,
 			    c, fn () => raise Format)
 	val flint = mkFlintUnpickler (session, sharedStuff)
@@ -1095,7 +1112,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val sbl = UU.r_list session sblM symbind
 	fun symenvUnpickler () = SymbolicEnv.fromListi (sbl ())
     in
-	{ symenv = symenvUnpickler, env = envUnpickler,
+	{ symenv = symenvUnpickler, env = envUnpickler',
 	  symbol = symbol, symbollist = symbollist }
     end
 

@@ -48,18 +48,42 @@ struct
    structure Core   = RACore
    structure G      = Core.G
 
-   datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION 
-
-   datatype optimization = DEAD_COPY_ELIM
-                         | SPILL_PROPAGATION
-                         | SPILL_COALESCING
-                         | SPILL_COLORING
-                         | BIASED_SELECTION
-
    type getreg = { pref  : C.cell list,
                    stamp : int,
                    proh  : int Array.array
                  } -> C.cell
+
+   type mode = word
+
+   type raClient =
+   { cellkind     : C.cellkind,             (* kind of register *)
+     spillProh    : (C.cell * C.cell) list, (* don't spill these *)
+     K            : int,                    (* number of colors *)
+     dedicated    : bool Array.array,       (* dedicated registers *)
+     getreg       : getreg,                 (* how to find a color *)
+     copyInstr    : F.Spill.copyInstr,      (* how to make a copy *)
+     spill        : F.Spill.spill,          (* spill callback *)
+     spillSrc     : F.Spill.spillSrc,       (* spill callback *)
+     spillCopyTmp : F.Spill.spillCopyTmp,   (* spill callback *)
+     reload       : F.Spill.reload,         (* reload callback *)
+     reloadDst    : F.Spill.reloadDst,      (* reload callback *)
+     renameSrc    : F.Spill.renameSrc,      (* rename callback *)
+     firstMemReg  : C.cell,
+     numMemRegs   : int,
+     mode         : mode                    (* mode *)
+   } 
+
+   val debug = false
+
+   val NO_OPTIMIZATION   = 0wx0
+   val DEAD_COPY_ELIM    = Core.DEAD_COPY_ELIM
+   val BIASED_SELECTION  = Core.BIASED_SELECTION
+   val SPILL_COALESCING  = 0wx100
+   val SPILL_COLORING    = 0wx200
+   val SPILL_PROPAGATION = 0wx400
+   val COPY_PROPAGATION  = 0wx800
+
+   fun isOn(flag, mask) = Word.andb(flag,mask) <> 0w0
 
    open G
 
@@ -75,14 +99,19 @@ struct
    val debug_spill       = MLRiscControl.getFlag "ra-debug-spilling"
    val ra_count          = MLRiscControl.getCounter "ra-count"
    val rebuild_count     = MLRiscControl.getCounter "ra-rebuild"
+
+(*
    val count_dead        = MLRiscControl.getFlag "ra-count-dead-code"
    val dead              = MLRiscControl.getCounter "ra-dead-code"
+ *)
    val debug_stream      = MLRiscControl.debug_stream
 
    (*
     * Optimization flags
     *)
+(*
    val rematerialization = MLRiscControl.getFlag "ra-rematerialization"
+ *)
 
    exception NodeTable
 
@@ -95,57 +124,56 @@ struct
     * Register allocator.  
     *    spillProh is a list of registers that are not candidates for spills.
     *)
-   fun ra mode params flowgraph =
+   fun ra params flowgraph =
    let 
        (* Flowgraph methods *)
        val {build=buildMethod, spill=spillMethod, ...} = F.services flowgraph 
 
+       (* global spill location counter *)
+       val spillLoc=ref ~256
+
+       (* How to dump the flowgraph *)
+       fun dumpFlowgraph(flag, title) =
+           if !flag then F.dumpFlowgraph(title, flowgraph,!debug_stream) else ()
+
        (* Main function *)
        fun regalloc{getreg, K, dedicated, copyInstr,
-                    spill, reload, spillProh, cellkind, optimizations} =
-       if C.numCell cellkind () = 0 
+                    spill, spillSrc, spillCopyTmp, renameSrc,
+                    reload, reloadDst, spillProh, cellkind, mode, 
+                    firstMemReg, numMemRegs} =
+       let val numCell = C.numCell cellkind () 
+       in  if numCell = 0
        then ()
        else
-       let fun getOpt([], dce, sp, sc, scolor, bs) = (dce, sp, sc, scolor, bs)
-             | getOpt(DEAD_COPY_ELIM::opts, dce, sp, sc, scolor, bs) =
-                 getOpt(opts, true, sp, sc, scolor, bs)
-             | getOpt(SPILL_PROPAGATION::opts, dce, sp, sc, scolor, bs) =
-                 getOpt(opts, dce, true, sc, scolor, bs)
-             | getOpt(SPILL_COALESCING::opts, dce, sp, sc, scolor, bs) =
-                 getOpt(opts, dce, sp, true, scolor, bs)
-             | getOpt(SPILL_COLORING::opts, dce, sp, sc, scolor, bs) =
-                 getOpt(opts, dce, sp, sc, true, bs)
-             | getOpt(BIASED_SELECTION::opts, dce, sp, sc, scolor, bs) =
-                 getOpt(opts, dce, sp, sc, scolor, true)
-
-           val (deadCopyElim, spillProp, spillCoalescing, 
-                spillColoring, biasedSelection) =
-               getOpt(optimizations, false, false, false, false, false)
-
-           (* extract the regmap and blocks from the flowgraph *)
+       let (* extract the regmap and blocks from the flowgraph *)
            val regmap = F.regmap flowgraph (* the register map *)
     
            (* the nodes table *)
-           val nodes  = Intmap.new(32,NodeTable) 
+           val nodes  = Intmap.new(numCell,NodeTable) 
            (* create an empty interference graph *)
            val G      = G.newGraph{nodes=nodes, 
                                    K=K,
                                    dedicated=dedicated,
-                                   numRegs=C.numCell cellkind (),
+                                   numRegs=numCell,
                                    maxRegs=C.maxCell,
                                    regmap=regmap,
                                    showReg=C.toString cellkind,
                                    getreg=getreg,
                                    getpair=fn _ => error "getpair",
                                    firstPseudoR=C.firstPseudo,
-                                   proh=proh
+                                   proh=proh,
+                                   mode=Word.orb(Flowgraph.mode,
+                                         Word.orb(mode,SpillHeuristics.mode)),
+                                   spillLoc=spillLoc,
+                                   firstMemReg=firstMemReg,
+                                   numMemRegs=numMemRegs
                                   }
-           val G.GRAPH{spilledRegs,...} = G
+           val G.GRAPH{spilledRegs, pseudoCount, spillFlag, ...} = G
     
            val hasBeenSpilled = Intmap.mapWithDefault (spilledRegs,false)
     
            fun logGraph(header,G) = 
-               if !dump_graph then 
+               if !dump_graph then
                    (TextIO.output(!debug_stream,
                         "-------------"^header^"-----------\n");
                     Core.dumpGraph G (!debug_stream) 
@@ -156,14 +184,22 @@ struct
             * Build the interference graph 
             *) 
            fun buildGraph(G) = 
-           let val moves = buildMethod(G,cellkind)
-               val worklists = (Core.initWorkLists G) 
-                                 {moves=moves, deadCopyElim=deadCopyElim}
-           in  if !count_dead then
+           let val _ = if debug then print "build..." else ()
+               val moves = buildMethod(G,cellkind)
+               val worklists = 
+                   (Core.initWorkLists G) {moves=moves} 
+           in  (* if !count_dead then
                   Intmap.app (fn (_,NODE{uses=ref [],...}) => dead := !dead + 1
                                | _ => ()) nodes
-               else ();
+               else (); *)
                logGraph("build",G);
+               if debug then
+               let val G.GRAPH{bitMatrix=ref(G.BM{elems, ...}), ...} = G
+               in  print ("done: nodes="^Int.toString(Intmap.elems nodes)^ 
+                          " edges="^Int.toString(!elems)^
+                          " moves="^Int.toString(length moves)^
+                          "\n")
+               end else (); 
                worklists
            end
     
@@ -176,9 +212,12 @@ struct
                     app (fn n => print(Core.show G n^" ")) spillWkl;
                     print "\n"
                    )
+               (* Initialize if it is the first time we spill *)
+               val _ = if !spillFlag then () else SpillHeuristics.init()
+               (* Choose a node *)
                val {node,cost,spillWkl} =
                    SpillHeuristics.chooseSpillNode
-                       {hasBeenSpilled=hasBeenSpilled,
+                       {graph=G, hasBeenSpilled=hasBeenSpilled,
                         spillWkl=spillWkl}
                     handle SpillHeuristics.NoCandidate =>
                       (Core.dumpGraph G (!debug_stream);
@@ -206,35 +245,55 @@ struct
                fun loop [] = ()
                  | loop(NODE{color, ...}::ns) = (color := marker; loop ns)
            in  loop nodesToSpill end
- 
+
+           (* Mark nodes that are immediately aliased to mem regs;
+            * These are nodes that need also to be spilled
+            *)
+           fun markMemRegs [] = ()
+             | markMemRegs(NODE{number=r, color as ref(ALIASED
+                          (NODE{color=ref(col as SPILLED c), ...})), ...}::ns) =
+                (if c >= 0 then color := col else ();
+                 markMemRegs ns)
+             | markMemRegs(_::ns) = markMemRegs ns
+      
            (*
             * Actual spill phase.  
             *   Insert spill node and incrementally 
             *   update the interference graph. 
             *)
            fun actualSpills{spills} = 
-           let val _ = if spillProp orelse spillCoalescing orelse
-                          spillColoring then markSpillNodes spills
+           let val _ = if debug then print "spill..." else (); 
+               val _ = if isOn(mode, 
+                               SPILL_COALESCING+
+                               SPILL_PROPAGATION+
+                               SPILL_COLORING) then
+                           markSpillNodes spills
                        else ()
-               val spills = if spillProp then 
-                              Core.spillPropagation G spills else spills
-               val _ = if spillCoalescing then 
+               val _ = if isOn(mode,SPILL_PROPAGATION+SPILL_COALESCING) then   
+                          Core.initMemMoves G 
+                       else ()
+               val spills = if isOn(mode,SPILL_PROPAGATION) then   
+                               Core.spillPropagation G spills else spills
+               val _ = if isOn(mode,SPILL_COALESCING) then 
                           Core.spillCoalescing G spills else ()
-               val _ = if spillColoring then 
+               val _ = if isOn(mode,SPILL_COLORING) then 
                           Core.spillColoring G spills else ()
+               val _ = if isOn(mode,SPILL_COALESCING+SPILL_PROPAGATION) then 
+                          markMemRegs spills else ()
+               val _ = logGraph("actual spill",G);
                val {simplifyWkl,freezeWkl,moveWkl,spillWkl} =  
                     Core.initWorkLists G
                        {moves=spillMethod{graph=G, cellkind=cellkind,
-                                          spill=spill, reload=reload,
+                                          spill=spill, spillSrc=spillSrc,
+                                          spillCopyTmp=spillCopyTmp,
+                                          renameSrc=renameSrc,
+                                          reload=reload, reloadDst=reloadDst,
                                           copyInstr=copyInstr, nodes=spills
-                                         },
-                        deadCopyElim=deadCopyElim
+                                         }
                        }
-               val _ = if !cfg_after_spill then
-                         F.dumpFlowgraph("after spilling",
-                                         flowgraph,!debug_stream)
-                       else ()
+               val _ = dumpFlowgraph(cfg_after_spill,"after spilling")
            in  logGraph("rebuild",G);
+               if debug then print "done\n" else ();
                rebuild_count := !rebuild_count + 1;
                (simplifyWkl, moveWkl, freezeWkl, spillWkl, [])
            end
@@ -265,11 +324,15 @@ struct
                    in  case spillWkl of
                          [] => stack (* nothing to spill *)
                        |  _ => 
+                         if !pseudoCount = 0 (* all nodes simplified *)
+                         then stack 
+                         else
                          let val {node,spillWkl} = 
                                     chooseVictim{spillWkl=spillWkl}
-                         in  case node of 
+                         in  case node of  
                                SOME node => (* spill node and continue *)
-                               let val {moveWkl,freezeWkl,stack} = 
+                               let val _ = if debug then print "-" else () 
+                                   val {moveWkl,freezeWkl,stack} = 
                                        potentialSpill{node=node,stack=stack}
                                in  iterate([],moveWkl,freezeWkl,spillWkl,stack)
                                end 
@@ -281,15 +344,13 @@ struct
                    val stack = iterate
                           (simplifyWkl,moveWkl,freezeWkl,spillWkl,stack)
                    (* color the nodes *)
-                   val {spills} = (Core.select G)
-                                    {stack=stack, biased= biasedSelection}
+                   val {spills} = (Core.select G) {stack=stack} 
                in  (* check for actual spills *)
                    case spills of
                      [] => ()
                    | spills => 
-                     (case mode of
-                       REGISTER_ALLOCATION => loop(actualSpills{spills=spills})
-                     | COPY_PROPAGATION => ()
+                     (if isOn(mode,COPY_PROPAGATION) then ()
+                      else loop(actualSpills{spills=spills})
                      )
                end
     
@@ -304,23 +365,20 @@ struct
                    if r <= to then (markAsSpilled(r,true); loop(r+1)) else ()
            in  loop from end
     
-       in  if !cfg_before_ra then
-              F.dumpFlowgraph("before register allocation",
-                              flowgraph,!debug_stream)
-           else ();
+       in  dumpFlowgraph(cfg_before_ra,"before register allocation");
            app initSpillProh spillProh;
            main(G); (* main loop *)
            (* update the regmap *)
            logGraph("done",G);
-           case mode of
-             REGISTER_ALLOCATION => Core.finishRA G
-           | COPY_PROPAGATION => Core.finishCP G
+           if isOn(mode,COPY_PROPAGATION) 
+           then Core.finishCP G 
+           else Core.finishRA G
            ;
            ra_count := !ra_count + 1;
-           if !cfg_after_ra then 
-              F.dumpFlowgraph("after register allocation",
-                              flowgraph,!debug_stream) 
-           else ()
+           dumpFlowgraph(cfg_after_ra,"after register allocation");
+           (* Clean up spilling *)
+           SpillHeuristics.init() 
+       end
        end
 
        fun regallocs [] = ()

@@ -6,6 +6,7 @@
  *)
 
 Library
+
 	signature X86CELLS
 	structure X86Cells
 	signature X86INSTR
@@ -25,7 +26,6 @@ Library
 	functor X86RewritePseudo
 	functor X86Jumps
 	functor X86
-
 is
 
 #if defined(NEW_CM)
@@ -34,8 +34,6 @@ is
 	MLRISC.cm
 	MLRISC-Lib.cm
 	smlnj-lib.cm
-
-	comp-lib.cm	(* should get rid of this eventually *)
 
 	(* X86 specific backend *)
 	x86/instructions/x86Cells.sml

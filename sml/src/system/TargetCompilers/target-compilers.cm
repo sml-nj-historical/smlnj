@@ -1,6 +1,4 @@
 Library
-
-# if not defined (LIGHT)
 	structure Alpha32UnixCMB
 	structure HppaUnixCMB
 	structure PPCMacOSCMB
@@ -23,66 +21,17 @@ Library
 	structure MipsBigCompiler
 	structure RS6000Compiler
 *)
-# else
-
-#  if defined (ARCH_ALPHA32)
-	structure Alpha32UnixCMB
-	structure Alpha32Compiler
-#  endif
-
-#  if defined (ARCH_HPPA)
-	structure HppaUnixCMB
-	structure HppaCompiler
-#  endif
-
-#  if defined (ARCH_PPC)
-#   if defined (OPSYS_MACOS)
-	structure PPCMacOSCMB
-#   elif defined (OPSYS_UNIX)
-	structure PPCUnixCMB
-#   endif
-	structure PPCCompiler
-#  endif
-
-#  if defined (ARCH_SPARC)
-	structure SparcUnixCMB
-	structure SparcCompiler
-#  endif
-
-#  if defined (ARCH_X86)
-#   if defined (OPSYS_UNIX)
-	structure X86UnixCMB
-#   elif defined (OPSYS_WIN32)
-	structure X86Win32CMB
-#   endif
-	structure X86Compiler
-#  endif
-
-# endif
-
 is
-	basis.cm
-	cm-lib.cm
-	viscomp-lib.cm
+	alpha32-compiler.cm
+	hppa-compiler.cm
+	ppc-compiler.cm
+	sparc-compiler.cm
+	x86-compiler.cm
 
-	alpha32-compiler.sml
-	alpha32-unix.sml
-	hppa-compiler.sml
-	hppa-unix.sml
-	ppc-compiler.sml
-	ppc-macos.sml
-	ppc-unix.sml
-	sparc-compiler.sml
-	sparc-unix.sml
-	x86-compiler.sml
-	x86-unix.sml
-	x86-win32.sml
-
-(*
-	mipseb-compiler.sml
-	mipseb-unix.sml
-	mipsel-compiler.sml
-	mipsel-unix.sml
-	rs6000-compiler.sml
-	rs6000-unix.sml
-*)
+	alpha32-unix.cm
+	hppa-unix.cm
+	ppc-macos.cm
+	ppc-unix.cm
+	sparc-unix.cm
+	x86-unix.cm
+	x86-win32.cm

@@ -86,6 +86,14 @@ struct
 
 local open CPS 
       structure LV = LambdaVar
+      structure Intset = struct
+	type intset = IntRedBlackSet.set ref
+	fun new() = ref IntRedBlackSet.empty
+	fun add set i = set := IntRedBlackSet.add(!set, i)
+	fun mem set i =  IntRedBlackSet.member(!set, i)
+	fun rmv set i = set := IntRedBlackSet.delete(!set, i)
+      end
+
 in
 
 fun eta {function=(fkind,fvar,fargs,ctyl,cexp),

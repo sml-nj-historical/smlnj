@@ -12,7 +12,7 @@ structure StringImp : STRING =
     val op <= = InlineT.DfltInt.<=
     val op > = InlineT.DfltInt.>
     val op >= = InlineT.DfltInt.>=
-    val op = = InlineT.=
+(*    val op = = InlineT.= *)
     val unsafeSub = InlineT.CharVector.sub
     val unsafeUpdate = InlineT.CharVector.update
 
