@@ -157,6 +157,10 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  (* same goes for reset because it just cancels all anchors... *)
 	  fun resetPathConfig () = PathConfig.reset pcmode
 
+	  fun mkStdSrcPath s =
+	      SrcPath.standard pcmode { context = SrcPath.cwdContext (),
+				        spec = s }
+
 	  fun getPending () = let
 	      fun one (s, _) = let
 		  val nss = Symbol.nameSpaceToString (Symbol.nameSpace s)
@@ -201,8 +205,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      else ()
 
 	  fun autoload s = let
-	      val c = SrcPath.cwdContext ()
-	      val p = SrcPath.standard pcmode { context = c, spec = s }
+	      val p = mkStdSrcPath s
 	  in
 	      (case Parse.parse load_plugin (SOME al_greg) (param ()) NONE p of
 		   NONE => false
@@ -213,8 +216,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  end
 
 	  and run sflag f s = let
-	      val c = SrcPath.cwdContext ()
-	      val p = SrcPath.standard pcmode { context = c, spec = s }
+	      val p = mkStdSrcPath s
 	  in
 	      (case Parse.parse load_plugin NONE (param ()) sflag p of
 		   NONE => false
@@ -293,9 +295,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      in
 		  app (fn (x, d) => PathConfig.set (pcmode, x, d)) pairList
 	      end
-	      val initgspec =
-		  SrcPath.standard pcmode { context = SrcPath.cwdContext (),
-					    spec = BtNames.initgspec }
+	      val initgspec = mkStdSrcPath BtNames.initgspec
 	      val ginfo = { param = { primconf = Primitive.primEnvConf,
 				      fnpolicy = fnpolicy,
 				      pcmode = pcmode,
@@ -480,5 +480,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	val symval = SSV.symval
 	val load_plugin = load_plugin
     end
+
+    structure Tools = ToolsFn (val load_plugin = load_plugin
+			       val mkStdSrcPath = mkStdSrcPath)
   end
 end

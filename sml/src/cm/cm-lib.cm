@@ -14,7 +14,6 @@ Library
 
 	structure Sharing
 	signature TOOLS
-	functor ToolsFn
 is
 	(* the CM description file parser *)
 	parse/parse.sml

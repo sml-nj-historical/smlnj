@@ -80,16 +80,6 @@ signature CORETOOLS = sig
 	EXTEND of (string * class option) list
       | REPLACE of string list * (string * class option) list
 
-    type cmdController = { get: unit -> string, set: string -> unit }
-
-    val newCmdController : string * string -> cmdController
-
-    val registerStdShellCmdTool : { tool: string,
-				    class: string,
-				    suffixes: string list,
-				    command: cmdController,
-				    extensionStyle: extensionStyle } -> unit
-
     (* perform filename extension *)
     val extend : extensionStyle -> string -> (string * class option) list
 
@@ -115,6 +105,13 @@ end
 
 signature TOOLS = sig
     include CORETOOLS
+
+    (* Register a "standard" tool based on some shell command. *)
+    val registerStdShellCmdTool : { tool: string,
+				    class: string,
+				    suffixes: string list,
+				    cmdStdPath: string,
+				    extensionStyle: extensionStyle } -> unit
 
     (* query default class *)
     val defaultClassOf : string -> class option
@@ -161,10 +158,6 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	EXTEND of (string * class option) list
       | REPLACE of string list * (string * class option) list
 
-    type cmdController = { get: unit -> string, set: string -> unit }
-
-    fun newCmdController sp = EnvConfig.new SOME sp
-
     fun extend (EXTEND l) f = map (fn (s, co) => (concat [f, ".", s], co)) l
       | extend (REPLACE (ol, nl)) f = let
 	    val { base, ext } = OS.Path.splitBaseExt f
@@ -199,37 +192,6 @@ structure PrivateTools :> PRIVATETOOLS = struct
     in
 	fun registerClassifier (SFX_CLASSIFIER c) = add (c, sfx_classifiers)
 	  | registerClassifier (GEN_CLASSIFIER c) = add (c, gen_classifiers)
-    end
-
-    fun registerStdShellCmdTool args = let
-	val { tool, class, suffixes, command, extensionStyle } = args
-	fun rule { spec = (name, mkpath, _), context, mkNativePath } = let
-	    val nativename = nativeSpec (mkpath name)
-	    val targetfiles = extend extensionStyle nativename
-	    val partial_expansion =
-		({ smlfiles = [], cmfiles = [] },
-		 map (fn (f, co) => (f, mkNativePath, co)) targetfiles)
-	    fun runcmd () = let
-		val cmd =
-		    concat [#get (command: cmdController) (), " ", nativename]
-		val _ = Say.vsay ["[", cmd, "]\n"]
-	    in
-		if OS.Process.system cmd = OS.Process.success then ()
-		else raise ToolError { tool = tool, msg = cmd }
-	    end
-	    fun rulefn () =
-		(if outdated tool (map #1 targetfiles, nativename) then
-		     runcmd ()
-		 else ();
-		 partial_expansion)
-	in
-	    context rulefn
-	end
-	fun sfx s =
-	    registerClassifier (stdSfxClassifier { sfx = s, class = class })
-    in
-	registerClass (class, rule);
-	app sfx suffixes
     end
 
     (* query default class *)
@@ -337,7 +299,54 @@ structure PrivateTools :> PRIVATETOOLS = struct
     end
 end
 
-functor ToolsFn (val load_plugin : string -> bool) : TOOLS = struct
+functor ToolsFn (val load_plugin : string -> bool
+		 val mkStdSrcPath : string -> SrcPath.t) : TOOLS = struct
     open PrivateTools
     val defaultClassOf = defaultClassOf load_plugin
+
+    fun registerStdShellCmdTool args = let
+	val { tool, class, suffixes, cmdStdPath, extensionStyle } = args
+	fun mkCmdName () = let
+	    (* It is not enough to turn the string into a SrcPath.t
+	     * once.  This is because if there was no anchor in the
+	     * beginning, later additions of an anchor will go unnoticed.
+	     * This is different from how other files (ML source files)
+	     * behave: They, once the are found to be unanchored, should
+	     * never become anchored later (although an existing anchor
+	     * is allowed to change). *)
+	    val p = mkStdSrcPath cmdStdPath
+	    val n = SrcPath.osstring p
+	in
+	    (* If the resulting path is not absolute, then it cannot have
+	     * been anchored (configured). In this case we just use the
+	     * given string as-is. *)
+	    if OS.Path.isAbsolute n then n else cmdStdPath
+	end
+	fun rule { spec = (name, mkpath, _), context, mkNativePath } = let
+	    val nativename = nativeSpec (mkpath name)
+	    val targetfiles = extend extensionStyle nativename
+	    val partial_expansion =
+		({ smlfiles = [], cmfiles = [] },
+		 map (fn (f, co) => (f, mkNativePath, co)) targetfiles)
+	    fun runcmd () = let
+		val cmd = concat [mkCmdName (), " ", nativename]
+		val _ = Say.vsay ["[", cmd, "]\n"]
+	    in
+		if OS.Process.system cmd = OS.Process.success then ()
+		else raise ToolError { tool = tool, msg = cmd }
+	    end
+	    fun rulefn () =
+		(if outdated tool (map #1 targetfiles, nativename) then
+		     runcmd ()
+		 else ();
+		 partial_expansion)
+	in
+	    context rulefn
+	end
+	fun sfx s =
+	    registerClassifier (stdSfxClassifier { sfx = s, class = class })
+    in
+	registerClass (class, rule);
+	app sfx suffixes
+    end
 end
