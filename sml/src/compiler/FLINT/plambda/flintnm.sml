@@ -130,10 +130,10 @@ fun tofundec (venv,d,f_lv,arg_lv,arg_lty,body,isrec) =
 		    else LT.ltc_parrow(arg_lty, body_lty)
 
         val fkind = if isfct then F.FK_FCT
-                    else F.FK_FUN{isrec=rettype, 
+                    else F.FK_FUN{isrec=rettype,
                                   fixed=LT.ffc_var(arg_raw, body_raw),
                                   known=false,
-                                  inline=not isrec}
+                                  inline=false}
 			
     in ((fkind, f_lv, ListPair.zip(arg_lvs, map FL.ltc_raw arg_ltys), body''),
 	f_lty)

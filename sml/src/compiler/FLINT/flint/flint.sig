@@ -21,7 +21,7 @@ datatype fkind
       {isrec : lty list option,  (* is this function recursive ? *)
        fixed : fflag,            (* is calling convention fixed ? *)
        known : bool,             (* is this function known, default: false *)
-       inline: bool}             (* is this inlinable, default: not isrec *)
+       inline: bool}             (* should this be inlined, default: false *)
 
 (** classifying various kinds of records *)
 datatype rkind
