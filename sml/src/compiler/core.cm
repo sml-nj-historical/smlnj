@@ -278,15 +278,7 @@ $smlnj/MLRISC/Lib.cm			(* provides SortedList *)
 $smlnj/MLRISC/Control.cm
 $smlnj/MLRISC/Graphs.cm			
 $smlnj/MLRISC/MLRISC.cm
-
 $smlnj/MLRISC/Visual.cm
-(*
-/home/sml/Dev/george/SML-DEV/Prob/smlnj/src/MLRISC/cm/Visual.cm  
-			  (bind:(anchor:Lib.cm value:$smlnj/MLRISC)
-                           bind:(anchor:Control.cm value:$smlnj/MLRISC)
-                           bind:(anchor:Graphs.cm value:$smlnj/MLRISC)
-                           bind:(anchor:MLRISC.cm value:$smlnj/MLRISC))
-*)
 
 (* Other libaries. *)
 $/basis.cm

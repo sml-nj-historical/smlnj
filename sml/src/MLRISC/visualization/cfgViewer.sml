@@ -17,20 +17,37 @@ struct
        val CFG.INFO{annotations, ...} = #graph_info g
        val toString = FMT.toString (!annotations)
        fun graph _ = []
+       val colorScale = 
+	   Array.fromList
+	     ["#ccffff", "#99ffff", "#66ccff", "#54a9ff", "#ccff99", 
+	      "#ffff99", "#ffcc66", "#ff9966", "#cc6666", "#d14949",
+	      "#d14949"]
 
-       val red = L.COLOR "red"
-       val yellow = L.COLOR "yellow"
-       val green = L.COLOR "green"
+       fun weightRange([], min, max) = (min, max-min)
+	 | weightRange((_,_,CFG.EDGE{w, ...})::rest, min, max) = let
+	     val wt = !w
+           in
+	     if wt > max then weightRange(rest, min, wt)
+	     else if wt < min then weightRange(rest, wt, max)
+	     else weightRange(rest, min, max)
+           end
+
+       val (loWt, range) = weightRange( #edges g (), ~1.0, ~1.0)
 
        val ENTRY = hd(#entries g ())
        val EXIT  = hd(#exits g ())
 
+       val red = L.COLOR "#ff0000" 
+       val yellow = L.COLOR "yellow"
+       val green = L.COLOR "green"
+
        fun edge(i,j,CFG.EDGE{w, ...}) = 
        let val label = L.LABEL(Real.toString (!w))
-           val color =
-               if i = ENTRY orelse j = EXIT then green (* special edge *)
-               else if i+1 = j then yellow (* fallsthru *)
-               else red
+           val color = let
+	       val pos = floor (((!w - loWt) * 10.0 )/ range)  
+	    in
+	       L.COLOR(Array.sub(colorScale, pos))
+            end
        in  [label, color] end
 
        fun title(blknum,ref freq) = 

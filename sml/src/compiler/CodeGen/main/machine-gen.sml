@@ -103,7 +103,7 @@ struct
 			
    val graphical_view_size = 
       MLRiscControl.mkInt
-         ("cfg-graphical-view_size", 
+         ("cfg-graphical-view-size", 
 	  "minimium threshold for size of graphical view")
 			
    fun omitFramePointer(cfg as G.GRAPH graph) = let
