@@ -25,7 +25,8 @@ signature SMLINFO = sig
     val info : GeneralParams.info ->
 	{ sourcepath: AbsPath.t,
 	  group: AbsPath.t * region,
-	  share: bool option }
+	  share: bool option,
+	  split: bool }
 	-> info
 
     val sourcepath : info -> AbsPath.t
@@ -37,6 +38,7 @@ signature SMLINFO = sig
     val exports : GeneralParams.info -> info  -> SymbolSet.set option
     val skeleton : GeneralParams.info -> info -> Skeleton.decl option
     val share : info -> bool option
+    val split : info -> bool
     val lastseen : info -> TStamp.t
 
     (* forget a parse tree that we are done with *)
@@ -78,7 +80,8 @@ structure SmlInfo :> SMLINFO = struct
 		  skelpath: AbsPath.t,
 		  binpath: AbsPath.t,
 		  persinfo: persinfo,
-		  share: bool option }
+		  share: bool option,
+		  split: bool }
 
     type ord_key = info
 
@@ -86,6 +89,7 @@ structure SmlInfo :> SMLINFO = struct
     fun skelpath (INFO { skelpath = sp, ... }) = sp
     fun binpath (INFO { binpath = bp, ... }) = bp
     fun share (INFO { share = s, ... }) = s
+    fun split (INFO { split = s, ... }) = s
 
     fun gerror (gp: GeneralParams.info) = GroupReg.error (#groupreg gp)
 
@@ -123,7 +127,7 @@ structure SmlInfo :> SMLINFO = struct
     end
 
     fun info (gp: GeneralParams.info) arg = let
-	val { sourcepath, group = gr as (group, region), share } = arg
+	val { sourcepath, group = gr as (group, region), share, split } = arg
 	val policy = #fnpolicy (#param gp)
 	val skelpath = FNP.mkSkelPath policy sourcepath
 	val binpath = FNP.mkBinPath policy sourcepath
@@ -163,14 +167,16 @@ structure SmlInfo :> SMLINFO = struct
 	       skelpath = skelpath,
 	       binpath = binpath,
 	       persinfo = persinfo (),
-	       share = share }
+	       share = share,
+	       split = split }
     end
 
     (* check timestamp and throw away any invalid cache *)
     fun validate (INFO ir) = let
 	(* don't use "..." pattern to have the compiler catch later
 	 * additions to the type! *)
-	val { sourcepath, skelpath, binpath, persinfo = PERS pir, share } = ir
+	val { sourcepath, skelpath, binpath, persinfo = PERS pir,
+	      share, split } = ir
 	val { group, lastseen, parsetree, skeleton } = pir
 	val ts = !lastseen
 	val nts = AbsPath.tstamp sourcepath

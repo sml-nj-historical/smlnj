@@ -118,7 +118,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		    val i = SmlInfo.info gp
 			{ sourcepath = p,
 			  group = group,
-			  share = s }
+			  share = s,
+			  split = true }
 		    val exports =
 			case SmlInfo.exports gp i of
 			    NONE => SS.empty

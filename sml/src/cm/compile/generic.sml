@@ -18,6 +18,7 @@ in
 	type result = CT.result
 
 	val bnode : GP.info -> DG.bnode -> envdelta option
+	val snode : GP.info -> DG.snode -> envdelta option
 	val group : GP.info -> GG.group -> result option
 
     end = struct

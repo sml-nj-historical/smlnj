@@ -216,7 +216,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 			    val corenv = #corenv (#param gp)
 			    val cmData = PidSet.listItems pids
 			    val bfc = BF.create { runtimePid = NONE,
-						  splitting = true,
+						  splitting = SmlInfo.split i,
 						  cmData = cmData,
 						  ast = ast,
 						  source = source,
