@@ -14,6 +14,17 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/13 18:11:00 CDT
+Tag: blume-20030913-libinstall
+Description:
+
+Minor bugfix in config/libinstall (set anchor with path to
+standalone tool after installing it, otherwise libraries that
+need ml-lex or ml-yacc won't compile the first time the installer
+runs).
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/09/12 11:45:00 CDT
 Tag: blume-20030912-various
 Description:

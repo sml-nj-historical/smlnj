@@ -294,7 +294,8 @@ end = struct
 		     if fexists targetheaploc then
 			 (F.rename { old = targetheaploc,
 				     new = finalheaploc };
-			  instcmd target)
+			  instcmd target;
+			  #set (CM.Anchor.anchor target) (SOME bindir))
 		     else
 			 fail ["Built ", target, "; ", heapname,
 			       " still missing.\n"]
