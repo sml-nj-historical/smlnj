@@ -1,0 +1,28 @@
+@FILES
+  {"trace-cml"; "The TraceCML structure";}
+@SIGNATURE TRACE_CML "trace-cml" {
+  @TYPES 
+    @DATATYPE trace_to { TraceToOut TraceToErr TraceToNull TraceToFile TraceToStream}
+    @TYPE trace_module
+  @EXCEPTIONS 
+    NoSuchModule
+  @VALS 
+    traceOnly
+    traceRoot
+    status
+    traceModule
+    resetUncaughtFn
+    amTracing
+    watch
+    unwatch
+    traceOff
+    setUncaughtFn
+    nameOf
+    moduleOf
+    setTraceFile
+    setHandleFn
+    traceOn
+    watcher
+    trace
+}
+@STRUCTURE TraceCML "trace-cml" TRACE_CML

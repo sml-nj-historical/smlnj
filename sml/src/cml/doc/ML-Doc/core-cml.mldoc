@@ -1,0 +1,20 @@
+<!-- core-cml.mldoc -->
+
+<!DOCTYPE ML-DOC SYSTEM>
+
+<COPYRIGHT OWNER="Bell Labs, Lucent Technologies" YEAR=1998>
+<COPYRIGHT OWNER="AT&AMP;T Labs Research" YEAR=1997>
+<COPYRIGHT OWNER="John H. Reppy" YEAR=1991>
+<VERSION VERID="1.0" YEAR=1997 MONTH=1 DAY=30>
+<TITLE>Core CML Reference</TITLE>
+
+<SECTION>
+<HEAD>Core CML reference</HEAD>
+
+<INCLFILE FILE="cml">
+<INCLFILE FILE="sync-var">
+<INCLFILE FILE="mailbox">
+<INCLFILE FILE="os">
+<INCLFILE FILE="os-process">
+<INCLFILE FILE="os-io">
+</SECTION>

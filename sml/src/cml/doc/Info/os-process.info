@@ -1,0 +1,6 @@
+@FILES
+  {"os-process"; "The OS.Process structure";}
+@SIGNATURE CML_OS_PROCESS "os-process" {
+  @VALS 
+    systemEvt
+}
