@@ -76,13 +76,10 @@ in
 	    raise exn
 	end
 
-	fun execute (bfc, de) = let
-	    fun exec () = E.dynamicPart (BF.exec (bfc, de))
-	in
+	fun execute (bfc, de) =
 	    case sysval (BF.exportPidOf bfc) of
-		NONE => exec ()
+		NONE => BF.exec (bfc, de)
 	      | SOME de' => de'
-	end
 
 	fun memoize thunk = let
 	    val r = ref (fn _ => raise Fail "Link:memoize")

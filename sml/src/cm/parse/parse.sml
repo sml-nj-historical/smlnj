@@ -11,6 +11,8 @@ signature PARSE = sig
 	GeneralParams.param -> bool option ->
 	SrcPath.t -> (CMSemant.group * GeneralParams.info) option
     val reset : unit -> unit
+    val listLibs : unit -> unit
+    val dismissLib : SrcPath.t -> unit
 end
 
 functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
@@ -33,6 +35,17 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
     (* the "stable group cache" *)
     val sgc = ref (SrcPathMap.empty: CMSemant.group SrcPathMap.map)
     fun reset () = sgc := SrcPathMap.empty
+
+    fun listLibs () = let
+	fun show (sp, _) =
+	    Say.say [SrcPath.descr sp, "\n"]
+    in
+	SrcPathMap.appi show (!sgc)
+    end
+
+    fun dismissLib l =
+	(sgc := #1 (SrcPathMap.remove (!sgc, l)))
+	handle LibBase.NotFound => ()
 
     fun parse gropt param stabflag group = let
 

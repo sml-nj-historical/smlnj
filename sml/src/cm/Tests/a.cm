@@ -1,4 +1,4 @@
-(unsafe) blume Group is
+Group is
 # if defined(X_Y)
 #    error X_Y defined !
 # endif

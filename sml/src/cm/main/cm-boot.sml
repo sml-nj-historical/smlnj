@@ -210,6 +210,14 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		| SOME (g, gp) => f gp g
 	  end
 
+	  val listLibs = Parse.listLibs
+	  fun dismissLib l = let
+	      val c = SrcPath.cwdContext ()
+	      val p = SrcPath.standard pcmode { context = c, spec = l }
+	  in
+	      Parse.dismissLib p
+	  end
+
 	  fun stabilize_runner gp g = true
 
 	  fun stabilize recursively = run (SOME recursively) stabilize_runner
@@ -359,7 +367,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				   cancelAnchor = cancelAnchor,
 				   resetPathConfig = resetPathConfig,
 				   synchronize = SrcPath.sync,
-				   showPending = showPending })
+				   showPending = showPending,
+				   listLibs = listLibs,
+				   dismissLib = dismissLib })
 
 		  end
 	  end
