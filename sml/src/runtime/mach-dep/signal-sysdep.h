@@ -263,6 +263,7 @@ extern void SetFSR();
    /* info about siginfo_t is missing in the include files 4/17/2001 */
 #    define SIG_GetCode(info,scp) 0
 #    if defined(OPSYS_MACOS_10_1)
+       typedef void SigReturn_t;
 #      define SIG_GetPC(scp)	 ((scp)->sc_ir)
 #      define SIG_SetPC(scp, addr) {(scp)->sc_ir = (int) addr;}
      /* The offset of 17 is hardwired from reverse engineering the contents of
