@@ -788,7 +788,7 @@ package that comes with GNU Emacs and GNU XEmacs.
 Start your favourite ML compiler with the command
 
 @example
-@kbd{M-x sml}
+@kbd{M-x run-sml}
 @end example
 
 @noindent
@@ -823,7 +823,7 @@ of the program @emph{as you would type it at the shell}. You
 can always choose a program different to the default by invoking
 
 @example
-@kbd{C-u M-x sml}
+@kbd{C-u M-x run-sml}
 @end example
 
 @noindent
@@ -843,7 +843,7 @@ will interfere if you occasionally run a different compiler (e.g.,
 
 
 
-@deffn Command sml
+@deffn Command run-sml
 Launches ML as an inferior process in another buffer; if an ML process
 already exists, just switch to the process buffer. A prefix argument
 allows you to edit the command line to specify the program, and any
@@ -854,7 +854,7 @@ command line options.
 @defvr Hook inferior-sml-mode-hook
 Default: @code{nil}
 
-@kbd{M-x sml} runs @code{comint-mode-hook} and
+@kbd{M-x run-sml} runs @code{comint-mode-hook} and
 @code{inferior-sml-mode-hook} hooks in that order, but @emph{after} the
 compiler is started. Use @code{inferior-sml-mode-hook} to set any
 @code{comint} buffer-local configurations for SML mode you like.
@@ -880,22 +880,6 @@ will leave point wherever it was before. If you try @kbd{C-c C-s} before
 an ML process has been started, you'll just get an error message to the
 effect that there's no current process buffer.
 @end deffn
-
-
-@defvar sml-dedicated-frame
-@vindex sml-display-frame-alist
-Default: @code{(if window-system t nil)}
-
-If @code{t} this indicates to @code{switch-to-sml} and other functions
-that the interaction buffer where ML is running will be displayed on its
-own, dedicated frame; otherwise the interaction buffer will appear on
-the current frame, splitting the window if necessary. The default means
-SML mode will try and use a dedicated frame if you are running Emacs
-under X Windows (say), but not otherwise. The variable
-@code{sml-display-frame-alist} configures the dedicated frame's
-appearance (@kbd{C-h v sml-display-frame-alist} for details).
-@end defvar
-
 
 
 @deffn Command sml-cd
@@ -1228,5 +1212,466 @@ which creates a hook function @code{my-mosml-setup} and adds it to
 @code{sml-error-regexp} and its ilk (@pxref{Process Defaults}) are
 correctly initialised; I have to set @code{sml-program-name} explicitly
 here because that directory isn't on my (Unix) PATH. The story is
-simila
+similar if you use Poly/ML.
+Note, by the way, that order matters here: the @code{load-library} call
+comes first because the default for @code{sml-program-name} in
+@file{sml-mosml.el} is just @code{"mosml"}. 
 
+@c @example
+@c (eval-after-load "sml-proc" '(my-mosml-setup))
+@c @end example
+@c @noindent
+@c is perhaps a better way to achieve the same effect, but last time I
+@c looked this wouldn't work in XEmacs.
+
+The auxiliary libraries bundled with SML mode define commands
+@code{sml-mosml} and @code{sml-poly-ml} (there's also an
+@code{sml-smlnj} for uniformity); these commands prompt for suitable
+values for @code{sml-program-name} and @code{sml-default-arg} before
+starting the compiler and setting the other process defaults. A prefix
+argument will give you the builtin defaults with no questions asked.
+
+@menu
+* Hooks::               Creating them
+* Key Bindings::        Binding commands to keys
+* Menus::               Taking advantage of bitmapped screens
+* Highlighting::        Syntax colouring
+* Advanced Topics::     You may need to speak Emacs Lisp
+@end menu
+
+
+@c =============================================================== HOOKS
+
+@node Hooks, Key Bindings, Configuration, Configuration
+
+@section Hooks
+
+@c == Hooks, Key Bindings, Configuration, Configuration ================
+
+
+@noindent
+One way to set SML mode variables (@pxref{SML Mode
+Defaults,,Indentation Defaults}), and other defaults, is through the
+@code{sml-mode-hook} in your @file{.emacs}. A simple example:
+
+@lisp
+(defun my-sml-mode-hook () "Local defaults for SML mode"
+  (setq sml-indent-level 2)        ; conserve on horizontal space
+  (setq words-include-escape t)    ; \ loses word break status
+  (setq indent-tabs-mode nil))     ; never ever indent with tabs
+(add-hook 'sml-mode-hook 'my-sml-mode-hook)
+@end lisp
+@noindent
+The body of @code{my-sml-mode-hook} is a sequence of bindings. In this
+case it is not really necessary to set @code{sml-indent-level} in a hook
+because this variable is global (most SML mode variables are). With
+similar effect:
+
+@lisp
+(setq sml-indent-level 2)
+@end lisp
+@noindent
+anywhere in your @file{.emacs} file (but probably on
+@code{sml-load-hook}). The variable @code{indent-tabs-mode} is
+automatically made local to the current buffer whenever it is set
+explicitly, so it @emph{must} be set in a hook if you always want
+SML mode to behave like this. The same goes for the buffer-local
+@code{sml-error-overlay}; since this is globally @code{t} by default,
+set it globally @code{nil} if you never want errors highlighted:
+
+@lisp
+(setq-default sml-error-overlay nil)
+@end lisp
+@noindent
+Again, on @code{sml-load-hook} would probably be the best place.
+
+
+Another hook is @code{inferior-sml-mode-hook}. This can be used to
+control the behaviour of the interaction buffer through various
+variables meaningful to @file{comint}-based packages:
+
+@lisp
+(defun my-inf-sml-mode-hook () "Local defaults for inferior SML mode"
+  (add-hook 'comint-output-filter-functions 'comint-truncate-buffer)
+  (setq      comint-scroll-show-maximum-output t)
+  (setq      comint-input-autoexpand nil))
+(add-hook 'inferior-sml-mode-hook 'my-inf-sml-mode-hook)
+@end lisp
+@noindent
+Again, the body is a sequence of bindings. Unless you run several ML
+compilers simultaneously under one Emacs, this hook will normally only
+get run once. You might want to look up the documentation (@kbd{C-h v}
+and @kbd{C-h f}) for these buffer-local @code{comint} things.
+
+
+@c ======================================================== Key Bindings
+
+@node Key Bindings, Menus, Hooks, Configuration
+
+@section Key bindings
+
+@c == Key Bindings, Menus, Hooks, Configuration ========================
+
+
+@noindent
+Customisation (in Emacs) usually entails putting favourite commands on
+easily remembered keys. Two `keymaps' are defined in SML mode: one
+is effective in program text buffers (@code{sml-mode-map}) and the other
+is effective in interaction buffers (@code{inferior-sml-mode-map}).
+The initial design ensures that (many of) the default key bindings from
+the former keymap will also be available in the latter (e.g.,
+@kbd{C-c`}).
+
+Type @kbd{C-h m} in an SML mode buffer to find the default key
+bindings (and similarly in an ML interaction buffer), and use the hooks
+provided to install your preferred key bindings. Given that the keymaps
+are global (variables):
+
+@lisp
+(defun my-sml-load-hook () "Global defaults for SML mode"
+  (define-key   sml-mode-map "\C-cd" 'sml-cd)
+  (define-key   sml-mode-map "\C-co" 'sml-error-overlay))
+(add-hook 'sml-load-hook 'my-sml-load-hook)
+@end lisp
+@noindent
+This has the effect of binding @code{sml-cd} to the key @kbd{C-c d}, and
+the command @code{sml-error-overlay} to the key @kbd{C-c o}. If you want
+the same behaviour from @kbd{C-c d} in the ML buffer:
+
+@lisp
+(defun my-inf-sml-load-hook () "Global defaults for inferior SML mode"
+  (define-key inferior-sml-mode-map "\C-cd" 'sml-cd)
+  ;; NB. for SML/NJ '96
+  (setq sml-cd-command "OS.FileSys.chDir \"%s\""))
+(add-hook 'inferior-sml-load-hook 'my-inf-sml-load-hook)
+@end lisp
+
+There is nothing to stop you rebuilding the entire keymap for
+SML mode and the ML interaction buffer in your @file{.emacs} of
+course: SML mode won't define @code{sml-mode-map} or
+@code{inferior-sml-mode-map} if you have already done so. 
+
+
+@c =============================================================== Menus
+
+@node Menus, Highlighting, Key Bindings, Configuration
+
+@section Menus
+
+@c == Menus, Highlighting, Key Bindings, Configuration =================
+
+
+@noindent
+Menus are useful for fiddling with mode defaults and finding out what
+keys commands are on if you are forgetful (not all commands are listed
+in the menu). For menus to appear in the menu bar under GNU Emacs or GNU
+XEmacs, the editor must be able to find one of two packages---i.e., one
+or both must be on your @code{load-path}. The first option is
+@file{easymenu} which is distributed with GNU Emacs. Easy!
+
+The second option is @file{auc-menu} which was written by Per Abrahamsen
+and distributed with AUCTeX, but it is independently available from the
+IESD lisp archive@footnote{@url{ftp://sunsite.auc.dk/packages/auctex/}}
+at Aalborg. You'll also find @file{auc-menu} is available from the LCD
+archive@footnote{@url{ftp://archive.cis.ohio-state.edu/pub/gnu/emacs/elisp-archive/misc/}},
+the main repository for all Emacs Lisp. The advantage of @file{auc-menu}
+is that it works with XEmacs too.
+
+Notice that certain menu entries are not illuminated at first---these
+are generally functions that depend on there being an ML process running
+with which to communicate.
+
+
+@c ======================================================== Highlighting
+
+@node Highlighting, Advanced Topics, Menus, Configuration
+
+@section Syntax colouring
+
+@c == Highlighting, Advanced Topics, Menus, Configuration ==============
+
+
+@noindent
+Highlighting is very handy for picking out keywords in the program text,
+spotting misspelled kewyords, and, if you have Emacs' @file{ps-print}
+package installed (you usually do these days), obtaining pretty, even
+colourful code listings---quite properly for your colourful ML programs.
+
+@vindex sml-font-lock-extra-keywords
+@vindex sml-font-lock-auto-on
+
+Various highlight (hilite, if you spell real bad!) packages are
+available for GNU Emacs 19, and GNU XEmacs. SML mode can use either
+@file{hilit19} which only comes with Emacs, or @file{font-lock} which is
+the package of choice with XEmacs. If you are not familiar with these
+highlight packages you'll have to check their sources for installation
+guidelines, etc..
+
+Use @code{sml-load-hook} to tell Emacs which scheme you prefer for
+SML mode. For example:
+
+@lisp
+(add-hook 'sml-load-hook '(lambda () (require 'sml-font)))
+@end lisp
+
+@noindent
+This ensures the SML extensions to @file{font-lock} will be available
+once SML mode loads (from @file{sml-font.el}---if you prefer
+@file{hilit19} you should @code{(require 'sml-hilite)} instead.
+
+The variable @code{sml-font-lock-extra-keywords} is for further
+customising @file{font-lock} for SML mode. The value of the variable
+should be a list of strings, each of which is a regular expression that
+should match the desired keyword exactly. Here's an example:
+
+@lisp
+(setq sml-font-lock-extra-keywords 
+      '("\\babstraction\\b" "\\bfunsig\\b" "=>" "::"))))
+@end lisp
+
+@noindent
+The @code{\b} marks a word boundary, according to the syntax table
+defined for SML mode. Backslash must be quoted inside a string.
+@xref{Regexps,,,emacs,The Emacs Editor Manual}, for a summary of Emacs'
+regular expression syntax. 
+
+
+Finally, the variable @code{sml-font-lock-auto-on} can be used to
+control whether or not @file{font-lock} should be enabled by default in
+SML mode buffers; it is enabled by default. The @code{sml-hilite}
+package is customisable, but only with regard to colour changes.
+
+
+@c ===================================================== ADVANCED TOPICS
+
+@node Advanced Topics, , Highlighting, Configuration
+
+@section Advanced Topics
+
+@c == Advanced Topics, , Highlighting, Configuration ===================
+
+@menu
+* Forms::    These forms are bloody useless; can't we have better ones?
+* Indents::  I hate that indentation algorithm; can't I suppress it?
+* Multi ML:: Can SML mode handle more than one compiler running at once?
+* Other ML:: What needs to be done to support other ML compilers?
+@end menu
+
+
+@node Forms, Indents, Advanced Topics, Advanced Topics
+
+@flushright
+@emph{These forms are bloody useless; can't we have better ones?}
+@end flushright
+
+@sp 1
+@noindent
+You can indeed. @code{sml-insert-form} is extensible so all you need to
+do is create the macros yourself. Define a @emph{keybord macro}
+(@kbd{C-x (} <something> @kbd{C-x )}) and give it a suitable name:
+@code{sml-addto-forms-alist} prompts for a name, say @code{NAME}, and
+binds the macro @code{sml-form-NAME}. Thereafter @kbd{C-c @key{RET}
+NAME} will insert the macro at point, and @kbd{C-u C-c @key{RET} NAME}
+will insert the macro after a @code{newline-and-indent}. If you want to
+keep your macros from one editing session to the next, go to your
+@file{.emacs} file and call @code{insert-kbd-macro}; you'll need
+to add @code{NAME} to @code{sml-forms-alist} permanently yourself:
+
+@lisp
+(defun my-sml-load-hook () "Global defaults for SML mode"
+  ;; whatever else you do
+  (setq sml-forms-alist (cons '("NAME") sml-forms-alist)))
+@end lisp
+
+If you want to create templates like `case' that prompt for parameters
+you'll have to do some Lisp programming. The @code{tempo} package looks
+like a good stating point. You can always overwrite your own macros, but
+the builtin forms for `let', etc., can't be overwritten.
+
+
+@node Indents, Multi ML, Forms, Advanced Topics
+
+@sp 1
+@flushright
+@emph{I hate that indentation algorithm; can't I suppress it?}
+@end flushright
+
+@sp 1
+@noindent
+Ah, yes, a common complaint. It's actually very easy to use SML mode
+without the troublesome @code{sml-indent-line}:
+
+@lisp
+(defun my-sml-load-hook () "Global defaults for SML mode"
+  ;; whatever else you do
+  (fset 'sml-indent-line 'ignore))
+@end lisp
+@noindent
+though @code{indent-relative-maybe} may conceivable be more useful than
+@code{ignore}.
+
+
+@node Multi ML, Other ML, Indents, Advanced Topics
+
+@sp 1
+@flushright
+@emph{Can SML mode handle more than one compiler running at once?}
+@end flushright
+
+@findex sml-buffer
+@vindex sml-buffer
+@sp 1
+@noindent
+The question is whether you can! See the @code{sml-buffer} variable's
+on-line help (@kbd{C-h v sml-buffer}). Note that the SML mode
+compiler variables (@pxref{Process Defaults}) are all buffer-local, so
+you can even switch between different ML compilers, not just different
+invocations of the same one. Well, you @emph{can}.
+
+
+
+@node Other ML, , Multi ML, Advanced Topics
+
+@sp 1
+@flushright
+@emph{What needs to be done to support other ML compilers?}
+@end flushright
+
+@sp 1
+@noindent
+Not that much really, at least not to create minimal support. The
+interface between SML mode and the compiler is determined by the
+variables
+@code{sml-use-command},
+@code{sml-cd-command},
+@code{sml-prompt-regexp}
+(which are easy to get right), and
+@code{sml-error-regexp}, and
+@code{sml-error-parser} (which are more tricky). 
+The general template to follow in setting this up
+is in the files @file{sml-@{poly-ml,mosml@}.el}.
+These rules will not change, I hope:
+
+@itemize @bullet
+@item
+@code{sml-next-error} uses @code{sml-error-regexp} to locate the start
+of the next error report in the ML interaction buffer (@var{P})
+
+@item
+@code{sml-next-error} calls @code{sml-error-parser}, passing @var{P}, and
+expects up to five return values in this order:
+
+@enumerate
+@item file name in which the error occurs (@var{F})
+@item start line of the error (@var{L} > 0)
+@item start column of the error (@var{C})
+@item an Emacs Lisp expression to be @code{eval}'d 
+at (@var{L},@var{C}) in @var{F} (@var{EOE})
+@item the actual text of the one-line error report (@var{MSG})
+@end enumerate
+
+
+@item 
+@code{sml-error-parser} can assume that @var{P} is the start of the next
+error message that the user is interested in---since she defines this
+point by defining @code{sml-error-regexp}.
+
+@item
+What @code{sml-error-parser} returns is a list. In the event of problems,
+I foresee the following needs:
+
+@itemize -
+@item if the file is the standard input,
+return @code{("std_in" @var{L} @var{C})}
+@item if the file cannot be inferred,
+return @code{(nil @var{L} @var{C})}
+@item if @var{L}=0, or the start cannot be inferred,
+return @code{(@var{F} nil @var{C})}
+@item if the start column cannot be inferred,
+return @code{(@var{F} @var{L} 1)}
+@end itemize
+@end itemize
+
+There's no need to return anything else. However, if you do want the
+errorful text in @var{F} highlighted you should return a simple Lisp
+expression in the fourth argument that'll compute the region. @var{EOE}
+will be called with point at character (@var{L},@var{C}) in @var{F}, and
+should move point to the end of the errorful text. In fact, @var{EOE}
+can actually do anything you wish, but in the simplest cases it'll just
+@code{(forward-char 45)}, or
+
+@lisp
+(progn (forward-line 4) (forward-char 37))
+@end lisp
+@noindent
+etc.. If it does more, make sure it leaves point at the end of the
+region in @var{F}---use @code{save-excursion} if switching buffers.
+@var{MSG}, if returned, will be echoed in the minibuffer.
+
+@c ============================================================== CREDIT
+
+@c H A C K   A T T A C K   O N 
+@c page
+@c H A C K   A T T A C K   O F F
+
+@node Credits, Command Index, Configuration, Top
+
+@unnumbered Credit & Blame
+
+@c == Credits, Command Index, Configuration, Top =======================
+
+@noindent
+SML Mode was written originally by Lars Bo Nielsen for Emacs 18.5n;
+later hacked for comint by Olin Shivers (who called it @t{ml-mode});
+much later hacked by myself because it didn't seem to work@dots{} Fritz
+Knabe brilliantly posted the @code{hilit19} and @code{font-lock}
+functions on the net. Lars probably would recognise much of what
+remains, yet now there're menus, syntax highlighting, support for
+various ML compilers, Texinfo (hey!), and more than a little hope it'll
+work with a variety of Emacs 19s. But there are still things to do. Lars
+wrote:
+@quotation
+@emph{The indentation algorithm still can be fooled. I don't know if it will
+ever be 100% right, as this means it will have to actually parse all of
+the buffer up to the actual line [@dots{}].}
+@end quotation
+@noindent
+This is still the main cause of grief; SML's syntax is a nightmare for
+Emacs modes, and of course opinions vary about proper indentation. But
+there may be something we can do@dots{}
+
+@c ======================================================= COMMAND INDEX
+
+@headings singleafter
+
+@node Command Index, Variable Index, Credits, Top
+
+@unnumbered Command Index
+
+@c == Command Index, Variable Index, Credits, Top ======================
+
+@printindex fn
+
+@c ====================================================== VARIABLE INDEX
+
+@c node Variable Index, , Command Index, Top
+@node Variable Index, Key Index, Command Index, Top
+
+@unnumbered Variable Index
+
+@c == Variable Index, Key Index, Command Index, Top ====================
+
+@printindex vr
+
+@c =========================================================== KEY INDEX
+
+@node Key Index, , Variable Index, Top
+
+@unnumbered Key Index
+
+@c == Key Index, , Variable Index, Top =================================
+
+@printindex ky
+
+@contents
+@bye
