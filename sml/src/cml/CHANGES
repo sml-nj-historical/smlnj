@@ -1,5 +1,12 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
+
+[2002-10-01]
+	Fixed a bad space leak in the stream I/O implementations.  The
+	cleanup hooks were holding onto the initial buffer, which
+	meant that the entire buffer chain would remain live as long
+	as the stream was live.
+
 [2001-06-20]
 	Ported to SML/NJ 110.33 (in particular, the new CM).
 	Under the new CM, the CML library is known as $cml/cml.cm

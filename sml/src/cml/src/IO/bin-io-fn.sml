@@ -298,13 +298,16 @@ functor BinIOFn (
 		  then raise Size
 		  else tryInput (buf, pos, amount)
 	      end
-	fun closeIn (ISTRM(buf, _)) = (case (infoOfIBuf buf)
-	       of INFO{closed=ref true, ...} => ()
-		| (info as INFO{closed, reader=PIO.RD{close, ...}, ...}) => (
-		    terminate info;
-		    closed := true;
-		    close() handle ex => inputExn(info, "closeIn", ex))
-	      (* end case *))
+      (* close an input stream given its info structure; we need this function
+       * for the cleanup hook to avoid a space leak.
+       *)
+	fun closeInInfo (INFO{closed=ref true, ...}) = ()
+	  | closeInInfo (info as INFO{closed, reader=PIO.RD{close, ...}, ...}) = (
+(*** We need some kind of lock on the input stream to do this safely!!! ***)
+	      terminate info;
+	      closed := true;
+	      close() handle ex => inputExn(info, "closeIn", ex))
+	fun closeIn (ISTRM(buf, _)) = closeInInfo (infoOfIBuf buf)
 	fun endOfStream (ISTRM(buf as IBUF{more, ...}, pos)) = (
 	      case SV.mTake more
 	       of (next as MORE _) => (SV.mPut(more, next); false)
@@ -352,7 +355,7 @@ functor BinIOFn (
 		    (* end case *))
 	      val strm =  ISTRM(buf, 0)
 	      in
-		CleanIO.rebindCleaner (tag, fn () => closeIn strm);
+		CleanIO.rebindCleaner (tag, fn () => closeInInfo info);
 		strm
 	      end
 	fun getReader (ISTRM(buf, pos)) = let

@@ -305,14 +305,16 @@ functor TextIOFn (
 		  then raise Size
 		  else tryInput (buf, pos, amount)
 	      end
+      (* close an input stream given its info structure; we need this function
+       * for the cleanup hook to avoid a space leak.
+       *)
+	fun closeInInfo (INFO{closed=ref true, ...}) = ()
+	  | closeInInfo (info as INFO{closed, reader=PIO.RD{close, ...}, ...}) = (
 (*** We need some kind of lock on the input stream to do this safely!!! ***)
-	fun closeIn (ISTRM(buf, _)) = (case (infoOfIBuf buf)
-	       of INFO{closed=ref true, ...} => ()
-		| (info as INFO{closed, reader=PIO.RD{close, ...}, ...}) => (
-		    terminate info;
-		    closed := true;
-		    close() handle ex => inputExn(info, "closeIn", ex))
-	      (* end case *))
+	      terminate info;
+	      closed := true;
+	      close() handle ex => inputExn(info, "closeIn", ex))
+	fun closeIn (ISTRM(buf, _)) = closeInInfo (infoOfIBuf buf)
 	fun endOfStream (ISTRM(buf as IBUF{more, ...}, pos)) = (
 	      case SV.mTake more
 	       of (next as MORE _) => (SV.mPut(more, next); false)
@@ -345,23 +347,24 @@ functor TextIOFn (
 		      closed = closedFlg, getPos = getPos,
 		      tail = SV.mVarInit more, cleanTag = tag
 		    }
-
 (** What should we do about the position in this case ?? **)
 (** Suggestion: When building a stream with supplied initial data,
  ** nothing can be said about the positions inside that initial
  ** data (who knows where that data even came from!).
  **) 
 	      val basePos = if (V.length data = 0) then getPos () else NONE
-	      val buf = IBUF { basePos = basePos, data = data,
-			       info = info, more = more }
+	      val buf = IBUF {
+		      basePos = basePos, data = data,
+		      info = info, more = more
+		    }
 	      val strm =  ISTRM(buf, 0)
 	      in
 		(tag, strm)
 	      end
         fun mkInstream arg = let
-	      val (tag, strm) = mkInstream' arg
+	      val (tag, strm as ISTRM(IBUF{info, ...}, _)) = mkInstream' arg
 	      in
-		CleanIO.rebindCleaner (tag, fn () => closeIn strm);
+		CleanIO.rebindCleaner (tag, fn () => closeInInfo info);
 		strm
 	      end
 	fun getReader (ISTRM(buf, pos)) = let
