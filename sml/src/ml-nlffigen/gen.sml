@@ -71,6 +71,7 @@ end = struct
     fun EString s = EVar (concat ["\"", String.toString s, "\""])
 
     fun warn m = TextIO.output (TextIO.stdErr, "warning: " ^ m)
+    fun err m = raise Fail (concat ("gen: " :: m))
 
     fun unimp what = raise Fail ("unimplemented type: " ^ what)
     fun unimp_arg what = raise Fail ("unimplemented argument type: " ^ what)
@@ -663,9 +664,13 @@ end = struct
 	      | encode (S.ARR _) = raise Fail "unexpected array"
 	      | encode (S.ENUM _) = E_sint
 	      | encode (S.STRUCT t) =
-		  encode_fields Unit (#fields (valOf ($? (structs, t))))
+		  (case $? (structs, t) of
+		       SOME s => encode_fields Unit (#fields s)
+		     | NONE => err ["incomplete struct argument: struct ", t])
 	      | encode (S.UNION t) =
- 		  encode_fields E_sint (#all (valOf ($? (unions, t))))
+		  (case $? (unions, t) of
+		       SOME u => encode_fields E_sint (#all u)
+		     | NONE => err ["incomplete union argument: union", t])
 
 	    and encode_fields dummy fields = let
 		fun f0 (S.ARR { t, d = 0, ... }, a) = a

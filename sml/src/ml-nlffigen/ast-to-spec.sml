@@ -163,11 +163,11 @@ structure AstToSpec = struct
 	  | valty C (A.Numeric (_, _, _, A.FLOAT, _)) = Spec.FLOAT
 	  | valty C (A.Numeric (_, _, _, A.DOUBLE, _)) = Spec.DOUBLE
 	  | valty C (A.Numeric (_, _, A.SIGNED, A.LONGLONG, _)) =
-	    Spec.UNIMPLEMENTED "long long"
+	      Spec.UNIMPLEMENTED "long long"
 	  | valty C (A.Numeric (_, _, A.UNSIGNED, A.LONGLONG, _)) =
-	    Spec.UNIMPLEMENTED "unsigned long long"
+	      Spec.UNIMPLEMENTED "unsigned long long"
 	  | valty C (A.Numeric (_, _, _, A.LONGDOUBLE, _)) =
-	    Spec.UNIMPLEMENTED "long double"
+	      Spec.UNIMPLEMENTED "long double"
 	  | valty C (A.Array (NONE, t)) = valty C (A.Pointer t)
 	  | valty C (A.Array (SOME (n, _), t)) =
 	    let val d = Int.fromLarge n

@@ -169,9 +169,14 @@ structure Main = struct
 	proc args
     end
   in
+    fun hist [] = ()
+      | hist (h :: hs) =
+	  (TextIO.output (TextIO.stdErr, concat ["\t", h, "\n"]);
+	   hist hs)
     fun main args = main0 args
 	handle exn => (TextIO.output (TextIO.stdErr, General.exnMessage exn);
 		       TextIO.output (TextIO.stdErr, "\n");
+		       hist (SMLofNJ.exnHistory exn);
 		       OS.Process.failure)
   end
 end
