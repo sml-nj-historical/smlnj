@@ -1,0 +1,11 @@
+@FILES
+  {@EMPTY "core-cml"; "Core CML Reference";
+    @SECTION "Core CML reference" {
+       @FILE "cml"
+       @FILE "sync-var"
+       @FILE "mailbox"
+       @FILE "os"
+       @FILE "os-process"
+       @FILE "os-io"
+    }
+  }

@@ -1,0 +1,28 @@
+Library
+	signature MATCH_COMPILER
+	signature MATCH_GEN
+	structure TestMatchGen
+	functor MatchCompiler
+	functor MatchGen
+is
+
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+        $/basis.cm
+        $/smlnj-lib.cm
+#else
+        basis.cm
+        smlnj-lib.cm
+#endif
+#else
+        smlnj-lib.cm
+#endif
+	../PP/sources.cm
+	../FakeSMLAst/sources.cm
+
+	match-compiler.sig
+	match-compiler.sml
+	match-gen.sig
+	match-gen.sml
+
+	test-match-gen.sml

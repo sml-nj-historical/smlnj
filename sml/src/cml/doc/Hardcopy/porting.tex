@@ -1,0 +1,29 @@
+\section{Porting old CML programs}
+
+
+There have been substantial changes from version~0.9.8 of CML. Most of these changes are cosmetic name changes meant to track changes in the SML interfaces, and to rationalize naming conventions. In this section, we detail the changes to the CML interfaces, and describe correspondence between the old and new interfaces. \subsection{Backwards compatibility modules}
+
+
+To ease the transition from version~0.9.8 of CML to the new interfaces, we provide two backwards compatibility modules in the CML Library.\subsection{Name changes}
+
+
+  \begin{center}
+  \begin{tabular}{ll}
+\textbf{Old name } & \textbf{New name   } \\
+{\cf \small accept}\marginref{accept}{id-accept}{idaccept}	 & {\cf \small recv}\marginref{recv}{val-CML.recv}{valCMLrecv}    \\
+{\cf \small receive}\marginref{receive}{id-receive}{idreceive}	 & {\cf \small recv\-Evt}\marginref{recvEvt}{val-CML.recvEvt}{valCMLrecvEvt}    \\
+{\cf \small transmit}\marginref{transmit}{id-transmit}{idtransmit}	 & {\cf \small send\-Evt}\marginref{sendEvt}{val-CML.sendEvt}{valCMLsendEvt}    \\
+{\cf \small timout}\marginref{timout}{id-timout}{idtimout}	 & {\cf \small time\-Out\-Evt}\marginref{timeOutEvt}{val-CML.timeOutEvt}{valCMLtimeOutEvt}    \\
+{\cf \small wait\-Until}\marginref{waitUntil}{id-waitUntil}{idwaitUntil}	 & {\cf \small at\-Time\-Evt}\marginref{atTimeEvt}{val-CML.atTimeEvt}{valCMLatTimeEvt}    \\
+{\cf \small thread\-Wait}\marginref{threadWait}{id-threadWait}{idthreadWait}	 & {\cf \small join\-Evt}\marginref{joinEvt}{val-CML.joinEvt}{valCMLjoinEvt}    \\
+{\cf \small same\-Thread}\marginref{sameThread}{id-sameThread}{idsameThread}	 & {\cf \small same\-Tid}\marginref{sameTid}{val-CML.sameTid}{valCMLsameTid} \\
+  \end{tabular}
+  \end{center}
+\subsection{Input/output}
+
+
+The most significant changes to the CML interfaces have to do with input/output operations. In version~0.9.8, the structure {\cf \small CIO}\marginref{CIO}{id-CIO}{idCIO} provided an implementation of the SML/NJ {\cf \small IO}\marginref{IO}{id-IO}{idIO} signature extended with event-valued operations. The old SML I/O interface has been replaced with a new interface, which is described in the SML Basis Library Manual, and CML has followed suite.\subsection{Condition variables}
+\subsection{Polling}
+
+
+The only loss in function from version~0.9.8 is the elimination of the {\cf \small poll}\marginref{poll}{id-poll}{idpoll} operation, which provided a non-blocking form of {\cf \small sync}\marginref{sync}{val-CML.sync}{valCMLsync}. Instead of this operation, CML now provides non-blocking input operations on many of the basic communication types.

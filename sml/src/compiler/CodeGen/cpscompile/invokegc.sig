@@ -1,0 +1,52 @@
+(*
+ * This is an alternative module for generating GC code.
+ * There are a few improvements.
+ *
+ * All code to invoke GC is generated once at the end of the
+ * compilation unit---with one exception. For each cluster, a 
+ * call to GC is a jump  to the end of the cluster  where there 
+ * is another jump.
+ * Code to invoke GC for known functions is generated at the end of
+ * the cluster. This is important as there may be spilling across
+ * gc invocation calls.
+ *)
+
+signature INVOKE_GC =
+sig
+   structure T     : MLTREE
+   structure Cells : CELLS
+   structure CFG   : CONTROL_FLOW_GRAPH 
+
+   type t = { maxAlloc : int,
+              regfmls  : T.mlrisc list,
+	      regtys   : CPS.cty list,
+	      return   : T.stm
+            }
+   type stream = (T.stm, T.mlrisc list, CFG.cfg) T.stream
+
+      (* initialize the state before compiling a module *)
+   val init : unit -> unit
+
+      (* generate a check limit for standard function *)
+   val stdCheckLimit : stream -> t -> unit
+
+      (* generate a check limit for known function *)
+   val knwCheckLimit : stream -> t -> unit
+
+      (* generate a check limit for optimized, known function *)
+   val optimizedKnwCheckLimit : stream -> t -> unit
+
+      (* generate a long jump to call gc *)
+   val emitLongJumpsToGCInvocation : stream -> unit
+
+      (* generate all GC invocation code in a module *)
+   val emitModuleGC : stream -> unit
+
+      (* generate the actual GC invocation code *)
+   val callGC : stream ->
+                {regfmls : T.mlrisc list, 
+                 regtys : CPS.cty list,
+                 ret : T.stm
+                }  -> unit
+
+end

@@ -1,0 +1,74 @@
+\documentclass[titlepage,letterpaper]{article}
+\usepackage{times}
+
+\marginparwidth0pt\oddsidemargin0pt\evensidemargin0pt\marginparsep0pt
+\topmargin0pt\advance\topmargin by-\headheight\advance\topmargin by-\headsep
+\textwidth6.7in\textheight9.1in
+\columnsep0.25in
+
+\newcommand{\smlmj}{110}
+\newcommand{\smlmn}{35}
+
+\author{Matthias Blume \\
+Lucent Technologies, Bell Labs}
+
+\title{{\bf CM}\\
+The SML/NJ Compilation and Library Manager \\
+{\it\small (for SML/NJ version \smlmj.\smlmn~and later)} \\
+User Manual}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 3pt minus 2pt}
+
+\newcommand{\nt}[1]{{\it #1}}
+\newcommand{\tl}[1]{{\underline{\bf #1}}}
+\newcommand{\ttl}[1]{{\underline{\tt #1}}}
+\newcommand{\ar}{$\rightarrow$\ }
+\newcommand{\vb}{~$|$~}
+
+\begin{document}
+
+\bibliographystyle{alpha}
+
+\maketitle
+
+\pagebreak
+
+\tableofcontents
+
+\pagebreak
+
+\input{00-intro}
+\input{01-cm-model}
+\input{02-naming}
+\input{03-usage}
+\input{04-versions}
+\input{05-classes}
+\input{06-condcomp}
+\input{07-access}
+\input{08-pervenv}
+\input{09-files}
+\input{10-moretools}
+\input{11-parallel}
+\input{12-smlcmdline}
+\input{13-scripts}
+\input{14-dynlink}
+\input{15-history}
+
+\pagebreak
+
+\appendix
+
+\input{A-syntax}
+\input{B-cmsig}
+\input{C-predef}
+\input{D-envvar}
+\input{E-classes}
+\input{F-libraries}
+\input{G-toolslib}
+
+\pagebreak
+
+\bibliography{blume,appel,ml}
+
+\end{document}
