@@ -10,9 +10,11 @@
  *)
 
 functor WeightedBlockPlacementFn (
+
     structure CFG : CONTROL_FLOW_GRAPH
     structure InsnProps : INSN_PROPERTIES
-    sharing CFG.I = InsnProps.I 
+      where I = CFG.I
+
   ) : BLOCK_PLACEMENT = struct
 
     structure CFG = CFG
@@ -26,6 +28,11 @@ functor WeightedBlockPlacementFn (
 	type item = CFG.edge
 	fun priority (_, _, CFG.EDGE{w, ...}) = !w
       end)
+
+  (* flags *)
+    val dumpBlocks = MLRiscControl.getFlag "dump-block-list"
+    val dumpCFG = MLRiscControl.getFlag "dump-cfg-after-placement"
+    val dumpStrm = MLRiscControl.debug_stream
 
   (* sequences with constant-time concatenation *)
     datatype 'a seq
@@ -43,6 +50,16 @@ functor WeightedBlockPlacementFn (
     fun tail (CHAIN{tl, ...}) = #1 tl
     fun id (CHAIN{hd, ...}) = #1 hd	(* use node ID of head to identify chains *)
     fun sameChain (CHAIN{hd=h1, ...}, CHAIN{hd=h2, ...}) = (h1 = h2)
+
+    fun blockToString (id', CFG.BLOCK{id, ...}) =
+	  concat["<", Int.toString id', ":", Int.toString id, ">"]
+
+    fun chainToString (CHAIN{hd, blocks, ...}) = let
+	  fun seq (ONE blk, l) = blockToString blk :: l
+	    | seq (SEQ(s1, s2), l) = seq(s1, "," :: seq(s2, l))
+	  in
+	    concat("CHAIN{" :: blockToString hd :: ",[" :: seq(blocks, ["]}"]))
+	  end
 
   (* join two chains *)
     fun joinChains (CHAIN{blocks=b1, hd, ...}, CHAIN{blocks=b2, tl, ...}) =
@@ -107,7 +124,7 @@ functor WeightedBlockPlacementFn (
 	    (ITbl.foldi blockToNd [] tbl, gTbl)
 	  end
 
-    fun blockPlacement (G.GRAPH graph) = let
+    fun blockPlacement (cfg as G.GRAPH graph) = let
 	(* a map from block IDs to their chain *)
 	  val blkTbl : chain_ptr ITbl.hash_table = let
 		val tbl = ITbl.mkTable (#size graph (), Fail "blkTbl")
@@ -119,25 +136,31 @@ functor WeightedBlockPlacementFn (
 		  tbl
 		end
 	  val lookupChain = ITbl.lookup blkTbl
+	(* the unique exit node *)
+	  val exitId = hd(#exits graph ())
 	(* given an edge that connects two blocks, attempt to merge their chains.
-	 * We return true if a merge occurred.
+	 * We return true if a merge occurred.  We do not join exit edges so that
+	 * the exit and entry nodes end up in distinct chains.
 	 *)
-	  fun join (src, dst, _) = let
-		val cptr1 = lookupChain src
-		val chain1 = URef.!! cptr1
-		val cptr2 = lookupChain dst
-		val chain2 = URef.!! cptr2
-		in
-		  if (tail chain1 = src) andalso (dst = head chain2)
-		    then (
-		    (* the source block is the tail of its chain and the
-		     * destination block is the head of its chain, so we can
-		     * join the chains.
-		     *)
-		      ignore (unifyChainPtrs (cptr1, cptr2));
-		      true)
-		    else false (* we cannot join these chains *)
-		end
+	  fun join (src, dst, _) = if (dst = exitId)
+		then false
+		else let
+		  val cptr1 = lookupChain src
+		  val chain1 = URef.!! cptr1
+		  val cptr2 = lookupChain dst
+		  val chain2 = URef.!! cptr2
+		  in
+		    if (tail chain1 = src) andalso (dst = head chain2)
+		    andalso not(sameChain(chain1, chain2))
+		      then (
+		      (* the source block is the tail of its chain and the
+		       * destination block is the head of its chain, so we can
+		       * join the chains.
+		       *)
+			ignore (unifyChainPtrs (cptr1, cptr2));
+			true)
+		      else false (* we cannot join these chains *)
+		  end
 	(* merge chains until all of the edges have been examined; the remaining
 	 * edges cannot be fall-through.
 	 *)
@@ -174,9 +197,13 @@ functor WeightedBlockPlacementFn (
 		fun addKid (E{ign=ref true, ...}, l) = l
 		  | addKid (E{dst, ...}, l) = dfs (dst, l)
 		in
+		  mark := true;
 		  List.foldl addKid (chain::l) (!kids)
 		end
-	(* mark the exit node, since it should be last *)
+	(* mark the exit node, since it should be last.  Note that we
+	 * ensured above that the exit and entry nodes are in distinct
+	 * chains!
+	 *)
 	  val exitChain = let
 		val ND{chain, mark, ...} = lookupNd(hd(#exits graph ()))
 		in
@@ -189,7 +216,7 @@ functor WeightedBlockPlacementFn (
 	  val chains = List.foldl dfs chains chainNodes
 	  val chains = exitChain :: chains
 	(* extract the list of blocks from the chains list; the chains list is
-	 * in reverse order.
+	 * in reverse order.  The resulting list of blocks is in order.
 	 *)
 	  fun addChain (CHAIN{blocks, ...}, blks) = let
 		fun addSeq (ONE b, blks) = b::blks
@@ -214,9 +241,10 @@ functor WeightedBlockPlacementFn (
 		(* end case *))
 	  fun patch (
 		(blkId, CFG.BLOCK{kind=CFG.NORMAL, insns, ...}),
-		(next as (blkId', _)) :: rest
-	      ) = (case #out_edges graph blkId
-		 of [(_, dst, e as CFG.EDGE{k, w, a})] => (case (dst = blkId', k)
+		(next as (nextId, _)) :: rest
+	      ) = (
+		case #out_edges graph blkId
+		 of [(_, dst, e as CFG.EDGE{k, w, a})] => (case (dst = nextId, k)
 		       of (false, CFG.FALLSTHRU) => (
 			    (* rewrite edge as JUMP and add jump insn *)
 			    setEdges (blkId, [(blkId, dst, updEdge(e, CFG.JUMP))]);
@@ -230,7 +258,7 @@ functor WeightedBlockPlacementFn (
 		      (* end case *))
 		  | [(_, dst1, e1 as CFG.EDGE{k=CFG.BRANCH b, ...}),
 		      (_, dst2, e2)
-		    ] => (case (dst1 = blkId', b)
+		    ] => (case (dst1 = nextId, b)
 		       of (true, true) => (
 			    setEdges (blkId, [
 				(blkId, dst1, updEdge(e1, CFG.BRANCH false)),
@@ -246,11 +274,25 @@ functor WeightedBlockPlacementFn (
 			| _ => ()
 		      (* end case *))
 		  | _ => ()
-		(* end case *))
+		(* end case *);
+		patch (next, rest))
 	    | patch (_, next::rest) = patch(next, rest)
 	    | patch (_, []) = ()
 	  in
 	    patch (hd blocks, tl blocks);
+	    if !dumpBlocks
+	      then let
+		fun say s = TextIO.output(!dumpStrm, s)
+		in
+		  say "Block placement order:\n";
+		  List.app
+		    (fn b => say(concat["  ", blockToString b, "\n"]))
+		      blocks
+		end
+	      else ();
+	    if !dumpCFG
+	      then CFG.dump(!dumpStrm, "after block placement", cfg)
+	      else ();
 	    blocks
 	  end
 
