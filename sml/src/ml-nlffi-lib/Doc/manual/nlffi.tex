@@ -60,31 +60,44 @@ and {\tt enum}.
 Each generated ML structure contains the ML type and values necessary
 to manipulate the corresponding C item.
 
+%-------------------------------------------------------------------------
 \subsection{External variables}
 
-An external C variable $v$ is represented by an ML structure {\tt
-  G\_}$v$.  This structure contains one type and three values, all
-with fixed names:
+An external C variable $v$ of type $t_C$ is represented by an ML
+structure {\tt G\_}$v$.  This structure always contains a type {\tt t}
+encoding $t_C$ and a value {\tt obj'} providing (``light-weight'')
+access to the memory location that $v$ stands for in C.  If $t_C$ is
+{\em complete}, then {\tt G\_}$v$ will also contain a value {\tt obj}
+(the ``heavy-weight'' equivalent of {\tt obj'}) as well as value {\tt
+  typ} holding run-time type information corresponding to $t_C$ (and
+{\tt t}).
+
+\paragraph*{Details}
 
 \begin{description}\setlength{\itemsep}{0pt}
-\item[{\tt type t}] is the witness type for the {\tt obj}
-  value that represents $v$.
-\item[{\tt val typ}] is the run-time type information corresponding to
-  type {\tt t}.  The ML type of {\tt typ} is {\tt t C.T.typ}.
-\item[{\tt val obj}] is a function that returns the ML value
-  representing the C object (i.e., the memory location) referred to by
-  $v$.  Depending on whether or not $v$ was declared {\tt const}, the
-  type of {\tt obj} is either {\tt unit -> (t, C.ro) C.obj} or {\tt
-    unit -> (t, C.rw) C.obj}.  The result of {\tt obj()} is
-  ``heavy-weight,'' i.e., it implicitly carries run-time type
-  information.
+\item[{\tt type t}] is the type to be substituted for $\tau$ in {\tt
+    ($\tau$, $\zeta$) C.obj} to yield the correct type for ML values
+  representing C memory objects of type $t_C$ (i.e., $v$'s type).
+  (This assumes a properly instantiated $\zeta$ based on whether or
+  not the corresponding object was declared {\tt const}.)
+\item[!{\tt val typ}] is the run-time type information corresponding
+  to type {\tt t}.  The ML type of {\tt typ} is {\tt t C.T.typ}.  This
+  value is not present if $t_C$ is {\em incomplete}.
+\item[!{\tt val obj}] is a function that returns the ML-side
+  representative of the C object (i.e., the memory location) referred
+  to by $v$.  Depending on whether or not $v$ was declared {\tt
+    const}, the type of {\tt obj} is either {\tt unit -> (t, C.ro)
+    C.obj} or {\tt unit -> (t, C.rw) C.obj}.  The result of {\tt
+    obj()} is ``heavy-weight,'' i.e., it implicitly carries run-time
+  type information.  This value is not present if $t_C$ is {\em
+    incomplete}.
 \item[{\tt val obj'}] is analogous to {\tt val obj}, the only
   difference being that its result is ``light-weight,'' i.e., without
   run-time type information.  The type of {\tt val obj'} is
   either {\tt unit -> (t, C.ro) C.obj} or {\tt unit -> (t, C.rw) C.obj}.
 \end{description}
 
-\paragraph*{Examples}:
+\paragraph*{Examples}
 
 \begin{center}
 \begin{tabular}{c|c}
@@ -118,8 +131,106 @@ end
 
 \end{verbatim}
 \end{minipage}
+\\ \hline
+\begin{minipage}{2in}
+\begin{verbatim}
+extern struct str s1;
+/* str complete */
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure G_s1 : sig
+    type t   = (S_str.tag, rw) C.su_obj C.ptr
+    val typ  : t C.T.typ
+    val obj  : unit -> (t, C.rw) C.obj
+    val obj' : unit -> (t, C.rw) C.obj'
+end
+
+\end{verbatim}
+\end{minipage}
+\\ \hline
+\begin{minipage}{2in}
+\begin{verbatim}
+extern struct istr s2;
+/* istr incomplete */
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure G_s2 : sig
+    type t   = (ST_istr.tag, rw) C.su_obj C.ptr
+    val obj' : unit -> (t, C.rw) C.obj'
+end
+
+\end{verbatim}
+\end{minipage}
 \end{tabular}
 \end{center}
+
+%-------------------------------------------------------------------------
+\subsection{Functions}
+
+An external C function $f$ is represented by an ML structure {\tt
+  F\_}$f$.  This structure always contains at last three values: {\tt
+  typ}, {\tt fptr}, and {\tt f'}.  Variable {\tt typ} holds run-time
+type information regarding function pointers that share $f$'s
+prototype.  The most important part of this information is the code
+that implements native C calling conventions for these functions.
+Variable {\tt fptr} represents a C pointer to $f$.  And {\tt f'} is an
+ML function that dispatches a call of $f$ (through {\tt fptr}), using
+``light-weight'' types for arguments and results where this
+distinction is relevant.  If the result type of $f$ is {\em complete},
+then {\tt F\_}$f$ will also contain a function {\tt f}, using
+``heavy-weight'' argument- and result-types.
+
+\paragraph*{Details}
+
+\begin{description}\setlength{\itemsep}{0pt}
+\item[{\tt val typ}] holds run-time type information for pointers to
+  functions of the same prototype.  The ML type of {\tt typ} is {\tt
+    ($A$ -> $B$) C.fptr C.T.typ} where $A$ and $B$ are types encoding
+  $f$'s argument list and result type, respectively.
+\item[{\tt val fptr}] is a function that returns the (heavy-weight)
+  function pointer to $f$. The type of {\tt fptr} is {\tt unit -> ($A$
+    -> $B$) C.fptr}.  The encodings of argument- and result types is
+  the same as the one used for {\tt typ}.  Notice that even though
+  {\tt fptr} is a heavy-weight value carrying run-time type
+  information, pointer arguments within $A$ or $B$ still use the
+  light-weight version!
+\item[!{\tt val f}] is an ML function that dispatches a call to $f$
+  via {\tt fptr}.  For convenience, {\tt f} has built-in conversions
+  for arguments (from ML to C) and the result (from C to ML).  For
+  example, if $f$ has an argument of type {\tt double}, then {\tt f}
+  will take an argument of type {\tt MLRep.Real.real} in its place and
+  implicitly convert it to its C equivalent using {\tt
+    C.Cvt.c\_double}.  Similarly, if $f$ returns an {\tt unsigned
+    int}, then {\tt f} has a result type of {\tt MLRep.Unsigned.word}.
+  This is done for all types that have a conversion function in
+  {\tt C.Cvt}.
+  Pointer values (as well as the object argument used for {\tt
+    struct}- or {\tt union}-return values) are taken and returned in
+  their heavy-weight versions.  Function {\tt f} will not be generated
+  if the return type of $f$ is incomplete.
+\item[{\tt val f'}] is the light-weight equivalent to {\tt f}.  a
+  light-weight function.  The main difference is that pointer- and
+  object-values are passed and returned in their light-weight
+  versions.
+\end{description}
+
+\paragraph*{Examples}
+
+...
+
+\subsubsection{Type encoding rules for {\tt ($A$ -> $B$) C.fptr}}
+
+...
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %\appendix

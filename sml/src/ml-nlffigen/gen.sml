@@ -1089,7 +1089,7 @@ end = struct
 	end
 
 	fun pr_t_structure { src, name, spec } = let
-	    val rttiv = rtti_val spec
+	    val rttiv_opt = SOME (rtti_val spec) handle Incomplete => NONE
 	    val file = smlfile ("t-" ^ name)
 	    val { closePP, Box, endBox, str, nl, pr_tdef,
 		  pr_vdef, ... } =
@@ -1100,14 +1100,16 @@ end = struct
 	    nl (); str (tstruct ^ " = struct");
 	    Box 4;
 	    pr_tdef ("t", rtti_ty spec);
-	    pr_vdef ("typ", EConstr (rttiv, Type "t"));
+	    Option.app (fn rttiv =>
+			   pr_vdef ("typ", EConstr (rttiv, Type "t")))
+		       rttiv_opt;
 	    endBox ();
 	    nl (); str "end";
 	    nl (); str "end";
 	    nl ();
 	    closePP ();
 	    exports := tstruct :: !exports
-	end handle Incomplete => ()
+	end
 
 	fun pr_gvar { src, name, spec = (c, t) } = let
 	    val file = smlfile ("g-" ^ name)

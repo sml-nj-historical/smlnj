@@ -14,6 +14,18 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/07/21 18:20:00 CDT
+Tag: blume-20040721-nlffigen
+Description:
+
+- Fixed minor issue in ml-nlffigen: Now generate structure T_foo
+  for a typedef to an incomplete type, but leave out the "typ" member.
+  (This is just for consistency.)
+- Started to produce what is supposed to become better (i.e., comprehensive)
+  documentation of what ml-nlffigen does and produces.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/07/14 16:25:00 CDT
 Tag: blume-20040714-union
 Description:
