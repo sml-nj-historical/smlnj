@@ -150,11 +150,14 @@ struct
 
       (* Add an overflow trap *)
       fun trap() =
-      let val jmp = 
+      let 
+	  val jmp = 
             case !trapLabel of 
               NONE => let val label = Label.label "trap" ()
-                          val jmp   = I.jcc{cond=I.O, 
-                                            opnd=I.ImmedLabel(T.LABEL label)}
+                          val jmp   = 
+			      I.ANNOTATION{i=I.jcc{cond=I.O, 
+						   opnd=I.ImmedLabel(T.LABEL label)},
+					   a=MLRiscAnnotations.BRANCHPROB (Probability.unlikely)}
                       in  trapLabel := SOME(jmp, label); jmp end
             | SOME(jmp, _) => jmp
       in  emitInstruction jmp end

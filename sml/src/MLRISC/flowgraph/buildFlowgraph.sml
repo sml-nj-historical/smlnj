@@ -146,28 +146,41 @@ struct
       fun addEdge(from, to, kind) =
 	#add_edge graph (from, to, CFG.EDGE{k=kind, w=ref 0.0, a=ref[]})
 
+      fun addEdgeAn(from, to, kind, an) =
+	#add_edge graph (from, to, CFG.EDGE{k=kind, w=ref 0.0, a=ref an})
+
       fun target lab =
 	(case (IntHashTable.find labelMap (hashLabel lab))
 	  of SOME bId => bId 
 	   | NONE => EXIT)
 
-      fun jump(from, [Props.ESCAPES], _) = addEdge(from, EXIT, CFG.EXIT)
-	| jump(from, [Props.LABELLED lab], _) = addEdge(from, target lab, CFG.JUMP)
-	| jump(from, [Props.LABELLED lab, Props.FALLTHROUGH], blks) = let
-	   fun next(CFG.BLOCK{id, ...}::_) = id
-	     | next [] = error "jump.next"
-          in
-	    addEdge(from, target lab, CFG.BRANCH true);
-	    addEdge(from, next blks, CFG.BRANCH false)
-	  end
-	| jump(from, [f as Props.FALLTHROUGH, l as Props.LABELLED _], blks) = 
-	    jump(from, [l, f], blks)
-	| jump(from, targets, _) = let
-	    fun switch(Props.LABELLED lab, n) = 
-	         (addEdge(from, target lab, CFG.SWITCH(n)); n+1)
-	      | switch _ = error "jump.switch"
-          in List.foldl switch 0 targets; ()
-          end
+      val {get=getProb, ...} = MLRiscAnnotations.BRANCH_PROB
+
+      fun jump(from, instr, blocks) = let
+	fun branch(targetLab) = let
+	  val (_, an) = Props.getAnnotations instr
+  	  val an = List.filter
+		       (fn (MLRiscAnnotations.BRANCHPROB _) => true | _ => false)
+		       an
+	  fun next(CFG.BLOCK{id, ...}::_) = id
+	    | next [] = error "jump.next"
+        in
+	    addEdgeAn(from, target targetLab, CFG.BRANCH true, an);
+	    addEdge(from, next blocks, CFG.BRANCH false)
+        end
+      in
+	  case Props.branchTargets instr
+	   of [Props.ESCAPES] => addEdge(from, EXIT, CFG.EXIT)
+	    | [Props.LABELLED lab] => addEdge(from, target lab, CFG.JUMP)
+	    | [Props.LABELLED lab, Props.FALLTHROUGH] => branch(lab)
+	    | [Props.FALLTHROUGH, Props.LABELLED lab] =>  branch(lab)
+	    | targets =>  let
+		fun switch(Props.LABELLED lab, n) = 
+	            (addEdge(from, target lab, CFG.SWITCH(n)); n+1)
+		  | switch _ = error "jump.switch"
+              in List.foldl switch 0 targets; ()
+              end
+      end
 
       and fallsThru(id, blks) = 
 	case blks
@@ -178,7 +191,7 @@ struct
 	and addEdges [] = ()
 	  | addEdges(CFG.BLOCK{id, insns=ref[], ...}::blocks) = fallsThru(id, blocks)
 	  | addEdges(CFG.BLOCK{id, insns=ref(instr::_), ...}::blocks) = let
-	      fun doJmp () = jump(id, Props.branchTargets instr, blocks)
+	      fun doJmp () = jump(id, instr, blocks)
 	    in
 	     case Props.instrKind instr
 	      of Props.IK_JUMP => doJmp()

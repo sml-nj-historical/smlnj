@@ -55,6 +55,9 @@ struct
 	  (structure CFG = CFG   
 	   structure Shuffle = Shuffle)
 
+   structure ComputeFreqs = 
+      ComputeFreqsFn(structure CFG=CFG)
+
    structure BlockPlacement = 
       BlockPlacement
           (structure CFG = CFG 
@@ -83,6 +86,8 @@ struct
      else cfg
    end     
 
+   fun computeFreqs cfg = (ComputeFreqs.compute cfg;   cfg)
+
    type mlriscPhase = string * (CFG.cfg -> CFG.cfg) 
 
    fun phase x = Stats.doPhase (Stats.makePhase x)
@@ -92,6 +97,7 @@ struct
    val placement  = phase "MLRISC Block placement" BlockPlacement.blockPlacement
    val chainJumps = phase "MLRISC Jump chaining" JumpChaining.run
    val finish     = phase "MLRISC BackPatch.finish" BackPatch.finish 
+   val compFreqs  = phase "MLRISC Compute frequencies" computeFreqs
    val ra         = phase "MLRISC ra" RA.run
    val omitfp     = phase "MLRISC omit frame pointer" omitFramePointer
    val expandCpys = phase "MLRISC expand copies" ExpandCpys.run
@@ -99,7 +105,8 @@ struct
    val raPhase = ("ra",ra)
 
    val optimizerHook = 
-     ref [("ra", ra),
+     ref [("compFreqs", compFreqs),
+	  ("ra", ra),
 	  ("omitfp", omitfp),
 	  ("expand copies", expandCpys)
 	 ]

@@ -13,6 +13,8 @@ signature PROBABILITY =
     exception BadProb
 
     val never : prob	(* 0% probability *)
+    val unlikely : prob	(* very close to 0% *)
+    val likely : prob	(* very close to 100% *)
     val always : prob	(* 100% probability *)
 
     val prob : (int * int) -> prob
@@ -45,6 +47,8 @@ structure Probability :> PROBABILITY =
     exception BadProb
 
     val never = PROB(0w0, 0w0)
+    val unlikely = PROB(0w1, 0w1000)
+    val likely = PROB(0w999, 0w1000)
     val always = PROB(0w1, 0w1)
 
   (* Fast GCD on words.  This algorithm is based on the following
@@ -74,7 +78,7 @@ structure Probability :> PROBABILITY =
       | normalize (n, d) = (case Word.compare(n, d)
 	   of LESS => (case gcd(n, d)
 		 of 0w1 => PROB(n, d)
-		  | g => PROB(Word.div(n, g), g)
+		  | g => PROB(Word.div(n, g), Word.div(d, g))
 		(* end case *))
 	    | EQUAL => always
 	    | GREATER => raise BadProb
@@ -99,7 +103,7 @@ structure Probability :> PROBABILITY =
     fun divide (PROB(n, d), m) = if (m <= 0)
 	  then raise BadProb
 	  else if (n = 0w0) then never
-	  else normalize(d, n * Word.fromInt m)
+	  else normalize(n, d * Word.fromInt m)
 
     fun percent n =
 	  if (n < 0) then raise BadProb

@@ -11,6 +11,14 @@ Name:
 Date: yyyy/mm/dd
 Tag: <post-commit CVS tag>
 Description:
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/03/12 12 14:42:36 EST
+Tag: george-20020312-frequency-computation
+Description:
+	
+Integrated jump chaining and static block frequency into the
+compiler. More details and numbers later.
 
 ----------------------------------------------------------------------
 Name: Lal George

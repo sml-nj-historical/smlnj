@@ -141,7 +141,7 @@ struct
    val gcCmp = if C.signedGCTest then T.GT else T.GTU
 
    val unlikely =
-       #create MLRiscAnnotations.BRANCH_PROB (Probability.prob (1,1000))
+       #create MLRiscAnnotations.BRANCH_PROB Probability.unlikely
 
    val normalTestLimit =
        T.CMP(pty, gcCmp, C.allocptr, C.limitptr(vfp))
