@@ -56,7 +56,7 @@ struct
     val entryLabels = ref ([] : Label.label list)
     (* block id associated with a label*)
     val labelMap    = IntHashTable.mkTable(32, LabelNotFound)
-    val lookupLabel = IntHashTable.lookup labelMap
+    val findLabel   = IntHashTable.find labelMap
     val addLabel    = IntHashTable.insert labelMap
 
     (* the block name annotation *)
@@ -210,23 +210,18 @@ struct
     in data := !data @ [CFG.PSEUDO p]
     end
 
-    fun defineLabel lab = let
-      val id = lookupLabel (hashLabel lab)
-      val blk as CFG.BLOCK{insns, ...} = #node_info graph id
-    in
-      currentBlock := blk;
-      blockList := blk :: !blockList;
-      insns := [];
-      #set_out_edges graph (id, [])
-    end 
-      handle LabelNotFound => let
-            val CFG.BLOCK{id, labels, data, ...} = newPseudoOpBlock()
-          in 
-	    labels := lab :: !labels;
-	    data := !data @ [CFG.LABEL lab];	(* JHR *)
-	    addLabel(hashLabel lab, id)
-	  end
-       | e => (print (exnName e); raise e)
+    fun defineLabel lab = (case findLabel (hashLabel lab)
+	   of NONE => let
+        	val CFG.BLOCK{id, labels, data, ...} = newPseudoOpBlock()
+        	in 
+		  labels := lab :: !labels;
+		  data := !data @ [CFG.LABEL lab];	(* JHR *)
+		  addLabel(hashLabel lab, id)
+		end
+	    | SOME _ => error (concat[
+		  "multiple definitions of label \"", Label.toString lab, "\""
+		])
+	  (* end case *))
       
     fun entryLabel lab = (defineLabel lab; entryLabels := lab :: !entryLabels)
 
