@@ -22,11 +22,14 @@ signature SERVERS = sig
     (* reset scheduler and wait until all servers are idle *)
     val reset : unit -> unit
 
+    (* signal all servers that future cmb calls use a different dirbase *)
+    val dirbase : string -> unit
+
     (* signal all servers that we are starting with a new .cm file *)
     val cm : SrcPath.t -> unit
 
     (* signal all servers that we are starting with a new CMB.make *)
-    val cmb : { archos: string, dirbase: string } -> unit
+    val cmb : { archos: string, root: SrcPath.t } -> unit
 
     (* schedule a compilation *)
     val compile : SrcPath.t -> bool

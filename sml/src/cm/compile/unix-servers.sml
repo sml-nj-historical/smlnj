@@ -127,9 +127,7 @@ structure Servers :> SERVERS = struct
 		       | _ => loop (line :: report))
 	    end
 
-	and wait report = (Say.dsay ["Scheduler: ", name,
-				     " is waiting for slave response.\n"];
-			   Concur.wait (Concur.inputReady ins);
+	and wait report = (Concur.wait (Concur.inputReady ins);
 			   loop report)
     in
 	loop []
@@ -151,6 +149,7 @@ structure Servers :> SERVERS = struct
 	    fun loop () = let
 		val line = TextIO.inputLine ins
 	    in
+		Say.dsay ["<- ", name, ": ", line];
 		case String.tokens Char.isSpace line of
 		    ["SLAVE:", "pong"] => ()
 		  | _ => loop ()
@@ -209,11 +208,11 @@ structure Servers :> SERVERS = struct
     fun reset () = (Concur.reset (); wait_all ())
 
     fun startAll st = let
-	val _ = reset ()		(* redundant? *)
 	val l = !idle
 	val _ = idle := []
+	val tl = map (fn s => Concur.fork (fn () => st s)) l
     in
-	app st l
+	app Concur.wait tl
     end
 
     fun cm p = let
@@ -227,13 +226,23 @@ structure Servers :> SERVERS = struct
 	startAll st
     end
 
-    fun cmb { archos, dirbase = db } = let
+    fun cmb { archos, root } = let
 	val d = OS.FileSys.getDir ()
+	val f = SrcPath.specOf root
 	fun st s =
 	    (Say.vsay ["[(", servName s, "): btcompile for ", archos,
-		       ", dirbase = ", db, "]\n"];
+		       ", root = ", f, "]\n"];
 	     send (s, concat ["cmb ", archos, " ",
-			      fname (d, s), " ", db, "\n"]);
+			      fname (d, s), " ", fname (f, s), "\n"]);
+	     ignore (wait_status (s, false)))
+    in
+	startAll st
+    end
+
+    fun dirbase db = let
+	fun st s =
+	    (Say.vsay ["[(", servName s, "): dirbase ", db, "]\n"];
+	     send (s, concat ["dirbase ", db, "\n"]);
 	     ignore (wait_status (s, false)))
     in
 	startAll st

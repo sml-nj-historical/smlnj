@@ -55,7 +55,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	   structure L = Link
 	   structure BFC = BFC)
 
+      fun init_servers (GroupGraph.GROUP { grouppath, ... }) =
+	  Servers.cm grouppath
+
       fun recomp_runner gp g = let
+	  val _ = init_servers g
 	  fun store _ = ()
 	  val { group, ... } = Compile.newTraversal (Link.evict, store, g)
       in
@@ -68,6 +72,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
        * environment) and adds it to the toplevel environment. *)
       fun make_runner gp g = let
 	  val { store, get } = BFC.new ()
+	  val _ = init_servers g
 	  val { group = c_group, ... } =
 	      Compile.newTraversal (Link.evict, store, g)
 	  val { group = l_group, ... } = Link.newTraversal (g, get)
@@ -105,8 +110,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure Stabilize =
 	  StabilizeFn (structure MachDepVC = HostMachDepVC
 		       fun recomp gp g = let
-			   val GroupGraph.GROUP { grouppath, ... } = g
 			   val { store, get } = BFC.new ()
+			   val _ = init_servers g
 			   val { group, ... } =
 			       Compile.newTraversal (Link.evict, store, g)
 		       in
@@ -210,14 +215,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val c = SrcPath.cwdContext ()
 	      val p = SrcPath.standard pcmode { context = c, spec = s }
 	  in
-	      Servers.cm p;
 	      case Parse.parse NONE (param ()) sflag p of
 		  NONE => false
-		| SOME (g, gp) =>
-		      SafeIO.perform { openIt = fn () => (),
-				       closeIt = Servers.reset,
-				       work = fn () => f gp g,
-				       cleanup = fn () => () }
+		| SOME (g, gp) => f gp g
 	  end
 
 	  val listLibs = Parse.listLibs
@@ -235,6 +235,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val make = run NONE make_runner
 
 	  fun slave () = let
+
+	      val dbr = ref BtNames.dirbaseDefault
+
 	      fun shutdown () = OS.Process.exit OS.Process.success
 	      fun say_ok () = Say.say ["SLAVE: ok\n"]
 	      fun say_error () = Say.say ["SLAVE: error\n"]
@@ -248,19 +251,21 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		  if line = "" then shutdown ()
 		  else case String.tokens Char.isSpace line of
 		      ["cm", d, f] => do_cm (d, f)
-		    | ["cmb", archos, d, db] => do_cmb (archos, d, db)
+		    | ["cmb", archos, d, f] => do_cmb (archos, d, f)
 		    | ["ping"] => (say_pong (); waitForStart ())
 		    | ["finish"] => (say_ok (); waitForStart ())
+		    | ["dirbase", db] =>
+			  (say_ok (); dbr := db; waitForStart ())
 		    | ["shutdown"] => shutdown ()
 		    | _ => (say_error (); waitForStart ())
 	      end handle _ => (say_error (); waitForStart ())
 
-	      and do_cmb (archos, d, db) = let
+	      and do_cmb (archos, d, f) = let
 		  val _ = OS.FileSys.chDir d
 		  val c = SrcPath.cwdContext ()
 		  val slave = CMBSlave.slave { load = autoload, touch = touch }
 	      in
-		  case slave archos db of
+		  case slave archos (!dbr, f) of
 		      NONE => (say_error (); waitForStart ())
 		    | SOME (g, trav) => let
 			  val _ = say_ok ()
@@ -307,11 +312,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				  in
 				      if trav sbn then (say_ok (); loop ())
 				      else (say_error (); loop ())
-				  end handle _ => (say_error (); loop ())
+				  end
 			  end
 			| ["cm", d, f] => do_cm (d, f)
-			| ["cmb", archos, d, db] => do_cmb (archos, d, db)
+			| ["cmb", archos, d, f] => do_cmb (archos, d, f)
 			| ["finish"] => (say_ok (); waitForStart ())
+			| ["dirbase", db] =>
+			      (say_ok (); dbr := db; waitForStart ())
 			| ["ping"] => (say_pong (); loop ())
 			| ["shutdown"] => shutdown ()
 			| _ => (say_error (); loop ())

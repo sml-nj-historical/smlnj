@@ -41,12 +41,8 @@ in
 	    end
 
 	    fun impexp ((n, _), m) = fsb snode (n, m)
-	    val m = SymbolMap.foldl impexp M.empty exports
-	    fun show (i, u) =
-		Say.dsay [SmlInfo.descr i, ": ", Int.toString u, "\n"]
 	in
-	    M.appi show m;
-	    m
+	    SymbolMap.foldl impexp M.empty exports
 	end
     end
 end

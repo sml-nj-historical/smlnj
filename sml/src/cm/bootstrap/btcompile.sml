@@ -32,6 +32,9 @@ end = struct
     val osname = FilenamePolicy.kind2name os
     val archos = concat [arch, "-", osname]
 
+    fun init_servers (GroupGraph.GROUP { grouppath, ... }) =
+	Servers.cmb { archos = archos, root = grouppath }
+
     structure Compile = CompileFn (structure MachDepVC = MachDepVC
 				   val compile_there = Servers.compile)
 
@@ -43,6 +46,7 @@ end = struct
 		     structure MachDepVC = MachDepVC
 		     fun recomp gp g = let
 			 val { store, get } = BFC.new ()
+			 val _ = init_servers g
 			 val { group, ... } =
 			     Compile.newTraversal (fn _ => fn _ => (),
 						   store, g)
@@ -91,7 +95,7 @@ end = struct
 		  AutoDir.openBinOut, BinIO.closeOut,
 		  BinIO.inputN, BinIO.output, BinIO.endOfStream)
 
-    fun mk_compile deliver dbopt = let
+    fun mk_compile deliver root dbopt = let
 
 	val dirbase = getOpt (dbopt, BtNames.dirbaseDefault)
 	val pcmodespec = BtNames.pcmodespec
@@ -136,7 +140,10 @@ end = struct
 	fun stdpath s = SrcPath.standard pcmode { context = ctxt, spec = s }
 
 	val initgspec = stdpath initgspec
-	val maingspec = stdpath maingspec
+	val maingspec =
+	    case root of
+		NONE => stdpath maingspec
+	      | SOME r => stdpath r
 
 	val cmifile = valOf (SrcPath.reAnchoredName (initgspec, bootdir))
 	    handle Option => raise Fail "BootstrapCompile: cmifile"
@@ -237,11 +244,12 @@ end = struct
 	    val stab =
 		if deliver then SOME true else NONE
 	in
-	    Servers.cmb { archos = archos, dirbase = dirbase };
+	    Servers.dirbase dirbase;
 	    case Parse.parse NONE param stab maingspec of
 		NONE => NONE
 	      | SOME (g, gp) => let
 		    fun thunk () = let
+			val _ = init_servers g
 			fun store _ = ()
 			val { group = recomp, ... } =
 			    Compile.newTraversal (fn _ => fn _ => (), store, g)
@@ -310,7 +318,7 @@ end = struct
     end
 
     fun compile deliver dbopt =
-	case mk_compile deliver dbopt of
+	case mk_compile deliver NONE dbopt of
 	    NONE => false
 	  | SOME (_, thunk) =>
 		SafeIO.perform { openIt = fn () => (),
@@ -319,8 +327,8 @@ end = struct
 				 cleanup = fn () => () }
 
     local
-	fun slave dirbase =
-	    case mk_compile false (SOME dirbase) of
+	fun slave (dirbase, root) =
+	    case mk_compile false (SOME root) (SOME dirbase) of
 		NONE => NONE
 	      | SOME ((g, gp), _) => let
 		    val trav = Compile.newSbnodeTraversal () gp

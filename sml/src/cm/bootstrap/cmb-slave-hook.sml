@@ -8,7 +8,7 @@
 structure CMBSlaveHook = struct
     local
 	type slave =
-	    string ->
+	    (string * string) ->
 	    (GroupGraph.group * (DependencyGraph.sbnode -> bool)) option
 	val m = ref (StringMap.empty: slave StringMap.map)
     in

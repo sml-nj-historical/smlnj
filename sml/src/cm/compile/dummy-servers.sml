@@ -13,6 +13,7 @@ structure Servers :> SERVERS = struct
     fun stop _ = false
     fun kill _ = ()
     fun reset () = Concur.reset ()
+    fun dirbase _ = ()
     fun cm _ = ()
     fun cmb _ = ()
     fun compile _ = false
