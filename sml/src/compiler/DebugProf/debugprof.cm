@@ -1,0 +1,36 @@
+(* debugprof.cm
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *
+ * Debugging and profiling instrumentation phases.
+ *)
+Group
+	signature PROFILE
+
+	structure Profile
+	structure TProf
+	structure SProf
+	structure TDPInstrument
+
+	functor ProfileFn
+	functor ProfEnvFn
+is
+	profile/prof-env.sml
+	profile/profile-fn.sml
+	profile/profile.sig
+	profile/profile.sml
+	profile/sprof.sml
+	profile/tell-env.sml
+	profile/tprof.sml
+	profile/tdp-instrument.sml
+
+	types/reconstruct.sml
+
+	$smlnj/viscomp/basics.cm
+	$smlnj/viscomp/elabdata.cm
+
+	$smlnj/init/init.cmi : cm
+
+	$/smlnj-lib.cm
+	$/controls-lib.cm
+	$/basis.cm

@@ -1,0 +1,20 @@
+(*
+ * This is library $smlnj/MLRISC/Graphs.cm -- a proxy providing the
+ * services of $SMLNJ-MLRISC/Graphs.cm.
+ *   The path anchor $SMLNJ-MLRISC points to (implementation of the)
+ *   version of MLRISC that is used by SML/NJ.
+ *   This proxy takes care of binding path anchors internal to MLRISC
+ *   in such a way that they consistently point to the same version
+ *   of MLRISC.
+ *
+ *   Copyright (c) 2001 by Lucent Bell Laboratories
+ *
+ * author: Lal George (george@lucent.com)
+ *)     
+Library
+	library($SMLNJ-MLRISC/Graphs.cm)
+is
+	$SMLNJ-MLRISC/Graphs.cm
+                (bind:(anchor:Control.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:Lib.cm value:$SMLNJ-MLRISC))
+
