@@ -243,13 +243,18 @@ fun mkv(t) = let val v = LV.mkLvar()
                  val _ = addty(v,t)
              in  v
              end
+
+fun ltc_fun (x, y) = 
+  if (LT.ltp_tyc x) andalso (LT.ltp_tyc y) then LT.ltc_parrow(x, y)
+  else LT.ltc_pfct(x, y)
+
 fun mkfnLty(_,_,nil) = bug "mkfnLty in nflatten"
   | mkfnLty(k,CNTt::_,x::r) = 
-      LT.ltw_iscont(x, fn [t2] => (k,LT.ltc_fun(argLty r,t2))
+      LT.ltw_iscont(x, fn [t2] => (k,ltc_fun(argLty r,t2))
                         | _ => bug "unexpected mkfnLty", 
-             fn [t2] => (k,LT.ltc_fun(argLty r, LT.ltc_tyc t2))
+             fn [t2] => (k,ltc_fun(argLty r, LT.ltc_tyc t2))
               | _ => bug "unexpected mkfnLty", 
-             fn x => (k, LT.ltc_fun(argLty r,x)))
+             fn x => (k, ltc_fun(argLty r,x)))
   | mkfnLty(k,_,r) = (k, LT.ltc_cont([argLty r]))
 
 (* Only used in newname *)

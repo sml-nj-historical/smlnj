@@ -48,27 +48,10 @@ val rep_flag = MachSpec.representations
 val type_flag = (!Control.CG.checkcps1) andalso
                 (!Control.CG.checkcps1) andalso rep_flag
 
-val defaultArrow = LT.ltc_arw(LT.ltc_void,LT.ltc_void)
+val defaultArrow = LT.ltc_parrow(LT.ltc_void,LT.ltc_void)
 
 fun extendLty(t,[]) = t
   | extendLty(t,a) = defaultArrow
-     (*
-      (let val (t1, t2) = LT.lt_arrow t
-        in (case LT.lt_out t1
-	     of LT.LT_TYC tc =>
-                 (case LT.tc_out tc
-                   of LT.TC_TUPLE l => 
-                       let val l' = map LT.ltc_tyc l
-                        in LT.ltc_arw(LT.ltc_tup(l'@a),t2)
-                       end
-                    | _ => LT.ltc_arw(LT.ltc_tup(t1::a),t2))
-             | _ => LT.ltc_arw(LT.ltc_tup(t1::a),t2))
-       end) *)
-(* handle _ => 
-	     (if type_flag 
-	      then bug "extendLty on non user fun"
-	      else defaultArrow) *)
-
 
 (* count the number of GP and FP registers needed for a list of lvars *)
 val unboxedfloat = MachSpec.unboxedFloats

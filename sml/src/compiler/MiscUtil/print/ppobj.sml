@@ -75,16 +75,16 @@ fun isRecTy (T.VARty(ref (T.INSTANTIATED t))) = isRecTy t
   | isRecTy _ = false
 
 fun isUbxTy (T.VARty(ref (T.INSTANTIATED t))) = isUbxTy t
-  | isUbxTy (T.CONty(tc, _)) =
-      (TU.equalTycon(tc, BT.int32Tycon)) orelse 
-      (TU.equalTycon(tc, BT.word32Tycon))
+  | isUbxTy (T.CONty(tc as T.GENtyc _, [])) =
+      (TU.eqTycon(tc, BT.int32Tycon)) orelse 
+      (TU.eqTycon(tc, BT.word32Tycon))
   | isUbxTy _ = false
 
 fun decon(obj, {rep,name,domain}) = (case rep
       of A.UNTAGGED => 
            (case domain 
              of SOME t => 
-                 if (isRecTy t) orelse (isUbxTy t) 
+                 if (isRecTy t) orelse (isUbxTy t)
                  then obj else V.sub(Obj.toTuple obj, 0)
               | _ => bug "decon -- unexpected conrep-domain")
 
@@ -219,47 +219,11 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
               else
                (let fun zeros n = if n < 1 then [] else 0::(zeros (n-1))
                     val args = Vector.fromList (zeros arity)
-                   (*
-                    val _ = say "***printing poly-fun with arity = "
-                    val _ = say (Int.toString arity)
-                    val _ = say "\n"
-                    *)
-                    (*** ultra-super-gross hack (zsh) ***)
+
+(*
                  in (case (TU.headReduceType body) 
                      of T.CONty(T.RECORDtyc _, []) =>
                             bug "unexpected poly type in ppObj"
-(*
-                      | T.CONty(T.RECORDtyc _, [_]) =>
-                            let val tobj : int Vector.vector -> {a: object}
-                                       = U.cast obj
-                                val res1 = tobj args
-                                val res = Obj.toObject res1
-                             in ppVal'(res, body,membersOp,depth,l,r,accu)
-                            end
-                      | T.CONty(T.RECORDtyc _, [_,_]) =>
-                            let val tobj : int Vector.vector 
-                                      -> object * object = U.cast obj
-                                val res1 = tobj args
-                                val res = Obj.toObject res1
-                             in ppVal'(res, body,membersOp,depth,l,r,accu)
-                            end
-                      | T.CONty(T.RECORDtyc _, [_,_,_]) =>
-                            let val tobj : int Vector.vector 
-                                      -> object * object * object 
-                                  = U.cast obj
-                                val res1 = tobj args
-                                val res = Obj.toObject res1
-                             in ppVal'(res, body,membersOp,depth,l,r,accu)
-                            end
-                      | T.CONty(T.RECORDtyc _, [_,_,_,_]) =>
-                            let val tobj : int Vector.vector 
-                                      -> object * object * object * object
-                                  = U.cast obj
-                                val res1 = tobj args
-                                val res = Obj.toObject res1
-                             in ppVal'(res, body,membersOp,depth,l,r,accu)
-                            end
-*)
                       | T.CONty(T.RECORDtyc _, _) =>
                             add_string ppstrm "<poly-record>"
                       | _ => 
@@ -267,9 +231,16 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
                                        = Unsafe.cast obj
                                 val res = tobj args
                              in ppVal'(res, body,membersOp,depth,l,r,accu)
-                            end
-		  (* end case *))
+                            end)
                 end)
+*)
+                    val tobj : int Vector.vector -> object 
+                                = Unsafe.cast obj
+                    val res = tobj args
+                 in ppVal'(res, body,membersOp,depth,l,r,accu)
+                end)
+	
+
 	   | T.CONty(tyc as T.GENtyc{kind=T.PRIMITIVE _,...}, argtys) =>
 	      let fun ppWord s = PP.add_string ppstrm ("0wx"^s)
 	      in
@@ -333,8 +304,10 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
   			   SOME([BT.refTycon],[]),argtys',depth,l,r,accu)
 		    end))
 	       else let val argtys' = interpArgs(argtys,membersOp)
-		     in ppDcon(obj,(Vector.sub(stamps,index),Vector.sub(members,index)),
-                               SOME(transMembers (stamps,freetycs, root, family)),
+		     in ppDcon(obj,(Vector.sub(stamps,index),
+                                    Vector.sub(members,index)),
+                               SOME(transMembers (stamps, freetycs, 
+                                                  root, family)),
 			       argtys',depth,l,r,accu)
 		    end
 	   | T.CONty(tyc as T.RECORDtyc [], _) => add_string ppstrm  "()"

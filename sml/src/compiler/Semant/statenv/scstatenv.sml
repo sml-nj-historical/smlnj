@@ -228,7 +228,7 @@ structure SCStaticEnv : SCSTATICENV = struct
 
 	fun SC env0 = (env0, [env env0 emptyModmap])
 
-	val SC = Stats.doPhase (Stats.makePhase "Compiler 038 SCStatenv") SC
+	val SC = Stats.doPhase (Stats.makePhase "Compiler 038 scstatenv") SC
 
 	fun consolidate (e, _) = SC (SE.consolidate e)
     end (* local *)

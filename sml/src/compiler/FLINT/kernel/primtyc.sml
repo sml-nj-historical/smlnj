@@ -161,7 +161,7 @@ fun bxupd ((PT_INT31 | PT_INT32 | PT_REAL), _, _) = false
 fun ubxupd (PT_INT31, _, _) = true
   | ubxupd _ = false
 
-fun isvoid ((PT_INT31 | PT_INT32 | PT_REAL), _, _) = false
+fun isvoid ((PT_INT31 | PT_INT32 | PT_REAL | PT_STRING), _, _) = false
   | isvoid _ = true
 
 end (* toplevel local *)

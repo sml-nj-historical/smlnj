@@ -1676,7 +1676,7 @@ fun getTycPaths{sign as M.SIG{boundeps, ...},
 
 
 val instParam = 
-  Stats.doPhase (Stats.makePhase "Compiler 032 instParam") instParam
+  Stats.doPhase (Stats.makePhase "Compiler 032 instparam") instParam
 
 (*
 val instFmBody = 

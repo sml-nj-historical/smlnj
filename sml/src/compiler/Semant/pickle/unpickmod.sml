@@ -329,6 +329,7 @@ fun primop #"A" = ?arithop(fn Uarithop p =>
          | #"." => P.INL_ARRAY
          | #"/" => P.INL_VECTOR
          | #":" => P.ISOLATE
+         | #";" => P.WCAST
 	 | _ => raise Fail "    | primop")
 
 
