@@ -141,7 +141,7 @@ functor WeightedBlockPlacementFn (
 		end
 	  val lookupChain = ITbl.lookup blkTbl
 	(* the unique exit node *)
-	  val exitId = hd(#exits graph ())
+	  val exitId = CFG.exitId cfg
 	(* given an edge that connects two blocks, attempt to merge their chains.
 	 * We return true if a merge occurred.  We do not join exit edges so that
 	 * the exit and entry nodes end up in distinct chains.
