@@ -15,6 +15,7 @@ mlrisc/bbsched2.sml
 mlrisc/cells.sig
 mlrisc/constant.sig
 mlrisc/codeString.sml
+mlrisc/delaySlotProps.sig
 mlrisc/emitterNEW.sig
 mlrisc/mlriscErrormsg.sml
 mlrisc/flowgen.sml
@@ -39,6 +40,7 @@ mlrisc/region.sig
 mlrisc/scheduler.sig
 mlrisc/sdi-jumps.sig
 mlrisc/shuffle.sml
+mlrisc/spanDep.sml
 mlrisc/sparseSet.sml
 mlrisc/unionFind.sml
 
@@ -72,6 +74,22 @@ alpha32/alpha32RegAlloc.sml
 alpha32/alpha32Rewrite.sml
 alpha32/alpha32Shuffle.sig
 alpha32/alpha32Shuffle.sml
+
+sparc/sparc.sml
+sparc/sparcAsm.sml
+sparc/sparcCells.sig
+sparc/sparcCells.sml
+sparc/sparcInstr.sig
+sparc/sparcInstr.sml
+sparc/sparcJumps.sml
+sparc/sparcMC.sml
+sparc/sparcProps.sml
+sparc/sparcPseudoInstr.sig
+sparc/sparcRegAlloc.sml
+sparc/sparcRewrite.sml
+sparc/sparcShuffle.sig
+sparc/sparcShuffle.sml
+sparc/sparcDelaySlotProps.sml
 
 (*
 X86/X86.sml

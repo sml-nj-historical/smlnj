@@ -263,6 +263,13 @@ CodeGen/main/machspec.sml
 CodeGen/main/mlriscGen.sml
 CodeGen/main/object-desc.sig
 CodeGen/main/object-desc.sml
+CodeGen/sparc/sparcCG.sml
+CodeGen/sparc/sparcCpsRegs.sml
+CodeGen/sparc/sparcMLTree.sml
+CodeGen/sparc/sparcMask.sml
+CodeGen/sparc/sparcPseudoInstrs.sml
+CodeGen/sparc/sparcgen.sml
+CodeGen/sparc/sparcspec.sml
 
 OldCGen/coder/backpatch.sml
 OldCGen/coder/coder.sml
@@ -290,11 +297,6 @@ OldCGen/rs6000/rs6000gen.sml
 OldCGen/rs6000/rs6000instrset.sml
 OldCGen/rs6000/rs6000mc.sml
 OldCGen/rs6000/rs6000spec.sml
-OldCGen/sparc/sparc.sml
-OldCGen/sparc/sparcgen.sml
-OldCGen/sparc/sparcinstr.sml
-OldCGen/sparc/sparcmc.sml
-OldCGen/sparc/sparcspec.sml
 OldCGen/x86/x86.sml
 OldCGen/x86/x86coder.sig
 OldCGen/x86/x86gen.sml

@@ -24,6 +24,7 @@ Basis/vector.sig
 Basis/array.sig
 Basis/mono-vector.sig
 Basis/mono-array.sig
+Basis/text.sig
 Basis/list.sig
 Basis/list-pair.sig
 
@@ -93,6 +94,7 @@ Basis/real64-vector.sml
 Basis/real64-array.sml
 Basis/byte.sig
 Basis/byte.sml
+Basis/text.sml
 (*** SOME DAY WE NEED AN ENDIANESS #if HERE!!! ***)
 Basis/pack-word.sig
 Basis/pack-word-b16.sml
