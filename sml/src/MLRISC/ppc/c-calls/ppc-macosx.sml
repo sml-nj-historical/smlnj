@@ -141,103 +141,96 @@ functor PPCMacOSX_CCalls (
    * padding is based on the parameter-passing description on p. 35 of the
    * documentation and the alignment is from p. 31.
    *)
-    fun sizeOf CTy.I_char = {sz = 1, pad = 3, align = 1}
-      | sizeOf CTy.I_short = {sz = 2, pad = 2, align = 2}
-      | sizeOf CTy.I_int = {sz = 4, pad = 0, align = 4}
-      | sizeOf CTy.I_long = {sz = 4, pad = 0, align = 4}
-      | sizeOf CTy.I_long_long = {sz = 8, pad = 0, align = 8}
+    fun sizeOfInt CTy.I_char = {sz = 1, pad = 3, align = 1}
+      | sizeOfInt CTy.I_short = {sz = 2, pad = 2, align = 2}
+      | sizeOfInt CTy.I_int = {sz = 4, pad = 0, align = 4}
+      | sizeOfInt CTy.I_long = {sz = 4, pad = 0, align = 4}
+      | sizeOfInt CTy.I_long_long = {sz = 8, pad = 0, align = 8}
 
   (* sizes of other C types *)
     val sizeOfPtr = {sz = 4, pad = 0, align = 4}
 
-  (* compute the size and alignment information for fields of a struct
-   * or union; tys is the list
-   * of member types.  The alignment is what Apple calls the "embedding" alignment.
-   * The result has three parts:
-   *   sinfo = sz and align when fields are fields of a struct
-   *   uinfo = sz and align when fields are fields of a union
-   *   largest = the largest field  (relevant in case of a union)
-   * (This might be trimmed to just sinfo and largest since uinfo is
-   * currently used only internally within the implementation of
-   * fieldsInfo.)
-   *)
-    fun fieldsInfo tys = let
-	(* align the address to the given alignment, which must be a power of 2 *)
-	  fun alignAddr (addr, align) = let
-		val mask = Word.fromInt(align-1)
-		in
-		  Word.toIntX(Word.andb(Word.fromInt addr + mask, Word.notb mask))
-		end
-	  fun sz CTy.C_void = error "unexpected void argument type"
-	    | sz CTy.C_float = {sz = 4, align = 4}
-	    | sz CTy.C_double = {sz = 8, align = 8}
-	    | sz CTy.C_long_double = {sz = 8, align = 8}
-	    | sz (CTy.C_unsigned isz) = let
-		val {sz, align, ...} = sizeOf isz
-		in
-		  {sz = sz, align = align}
-		end
-	    | sz (CTy.C_signed isz) = let
-		val {sz, align, ...} = sizeOf isz
-		in
-		  {sz = sz, align = align}
-		end
-	    | sz CTy.C_PTR = {sz = 4, align = 4}
-	    | sz (CTy.C_ARRAY(ty, n)) = let
-		val {sz, align} = sz ty
-		in
-		  {sz = n*sz, align = align}
-		end
-	    | sz (CTy.C_STRUCT tys) = #sinfo (fsz tys)
-	    | sz (CTy.C_UNION tys) = #uinfo (fsz tys)
-	  and fsz [] = {sinfo = {sz = 0, align = 4},
-			uinfo = {sz = 0, align = 4},
-			largest = CTy.C_unsigned CTy.I_int }
-	    | fsz (first::rest) = let
-		  fun f ([], maxAlign, offset, maxSize, largest) =
-		        {sinfo = {sz = alignAddr(offset, maxAlign),
-				  align = maxAlign},
-			 uinfo = {sz = alignAddr(maxSize, maxAlign),
-				  align = maxAlign},
-			 largest = largest}
-		    | f (ty::tys, maxAlign, offset, maxSize, largest) = let
-			  val {sz, align} = sz ty
-			  val align = Int.min(align, 4)
-			  val offset = alignAddr(offset, align)
-			  val (largest', maxSize') =
-			      if sz > maxSize then (ty, sz)
-			      else (largest, maxSize)
-		      in
-			  f (tys, Int.max(maxAlign, align),
-			          offset+sz,
-				  maxSize', largest')
-		      end
-		  val {sz, align} = sz first
-	      in
-		  f (rest, align, sz, sz, first)
-	      end
+  (* align the address to the given alignment, which must be a power of 2 *)
+    fun alignAddr (addr, align) = let
+	  val mask = Word.fromInt(align-1)
 	  in
-	    fsz tys
+	    Word.toIntX(Word.andb(Word.fromInt addr + mask, Word.notb mask))
 	  end
 
-    fun sizeOfStruct tys = #sz (#sinfo (fieldsInfo tys))
+  (* compute the size and alignment information for a struct; tys is the list
+   * of member types.  The alignment is what Apple calls the "embedding" alignment.
+   * The total size is padded to agree with the struct's alignment.
+   *)
+    fun sizeOfStruct tys = let
+	  fun ssz [] = {sz = 0, align = 4}
+	    | ssz (first::rest) = let
+		fun f ([], maxAlign, offset) =
+		      {sz = alignAddr(offset, maxAlign), align = maxAlign}
+		  | f (ty::tys, maxAlign, offset) = let
+			val {sz, align} = sizeOfTy ty
+			val align = Int.min(align, 4)
+			val offset = alignAddr(offset, align)
+			in
+			  f (tys, Int.max(maxAlign, align), offset+sz)
+			end
+		val {sz, align} = sizeOfTy first
+		in
+		  f (rest, align, sz)
+		end
+	  in
+	    ssz tys
+	  end
+
+  (* the size alignment of a union type is the maximum of the sizes and alignments of the
+   * members.  The final size is padded to agree with the alignment.
+   *)
+    and sizeOfUnion tys = let
+	  fun usz [] = {sz = 0, align = 4}
+	    | usz (first::rest) = let
+		fun f ([], maxAlign, maxSz) =
+		      {sz = alignAddr(maxSz, maxAlign), align = maxAlign}
+		  | f (ty::tys, maxAlign, maxSz) = let
+			val {sz, align} = sizeOfTy ty
+			in
+			  f (tys, Int.max(maxAlign, align), Int.max(align, maxAlign))
+			end
+		val {sz, align} = sizeOfTy first
+		in
+		  f (rest, align, sz)
+		end
+	  in
+	    usz tys
+	  end
+
+    and sizeOfTy CTy.C_void = error "unexpected void argument type"
+      | sizeOfTy CTy.C_float = {sz = 4, align = 4}
+      | sizeOfTy CTy.C_double = {sz = 8, align = 8}
+      | sizeOfTy CTy.C_long_double = {sz = 8, align = 8}
+      | sizeOfTy (CTy.C_unsigned isz) = let
+	  val {sz, align, ...} = sizeOfInt isz
+	  in
+	    {sz = sz, align = align}
+	  end
+      | sizeOfTy (CTy.C_signed isz) = let
+	  val {sz, align, ...} = sizeOfInt isz
+	  in
+	    {sz = sz, align = align}
+	  end
+      | sizeOfTy CTy.C_PTR = {sz = 4, align = 4}
+      | sizeOfTy (CTy.C_ARRAY(ty, n)) = let
+	  val {sz, align} = sizeOfTy ty
+	  in
+	    {sz = n*sz, align = align}
+	  end
+      | sizeOfTy (CTy.C_STRUCT tys) = sizeOfStruct tys
+      | sizeOfTy (CTy.C_UNION tys) = sizeOfUnion tys
 
   (* compute the layout of a C call's arguments *)
     fun layout {conv, retTy, paramTys} = let
-	  fun gprRes isz = (case #sz(sizeOf isz)
+	  fun gprRes isz = (case #sz(sizeOfInt isz)
 		 of 8 => raise Fail "register pairs not yet supported"
 		  | _ => SOME resRegLoc
 		(* end case *))
-	  fun do_struct s = let
-	     val sz = sizeOfStruct s
-	     in
-	      (* Note that this is a place where the MacOS X and Linux ABIs differ.
-	       * In Linux, GPR3/GPR4 are used to return composite values of 8 bytes.
-	       *)
-	        (* if (sz > 4)
-		then *) (SOME resRegLoc, List.tl argGPRs, SOME{szb=sz, align=4})
-		(* else (SOME resRegLoc, argGPRs, NONE) *)
-	     end
 	  val (resLoc, argGPRs, structRet) = (case retTy
 		 of CTy.C_void => (NONE, argGPRs, NONE)
 		  | CTy.C_float => (SOME(FReg(fltTy, resFPR, NONE)), argGPRs, NONE)
@@ -247,34 +240,22 @@ functor PPCMacOSX_CCalls (
 		  | CTy.C_signed isz => (gprRes isz, argGPRs, NONE)
 		  | CTy.C_PTR => (SOME resRegLoc, argGPRs, NONE)
 		  | CTy.C_ARRAY _ => error "array return type"
-		  | CTy.C_STRUCT s => do_struct s
-		  | CTy.C_UNION u =>
-		      (* handle unions by pretending they are
-		       * structures that contain a single field
-		       * (i.e., the largest field of the union)
-		       *   -Matthias *)
-		      do_struct [#largest (fieldsInfo u)]
+		  | CTy.C_STRUCT s => let
+		      val sz = #sz(sizeOfStruct s)
+		      in
+		      (* Note that this is a place where the MacOS X and Linux ABIs differ.
+		       * In Linux, GPR3/GPR4 are used to return composite values of 8 bytes.
+		       *)
+			(SOME resRegLoc, List.tl argGPRs, SOME{szb=sz, align=4})
+		      end
+		  | CTy.C_UNION u => let
+		      val sz = #sz(sizeOfUnion u)
+		      in
+			(SOME resRegLoc, List.tl argGPRs, SOME{szb=sz, align=4})
+		      end
 		(* end case *))
 	  fun assign ([], offset, _, _, layout) = (offset, List.rev layout)
-	    | assign (ty::tys, offset, availGPRs, availFPRs, layout) = let
-		  fun do_struct tys' = let
-		      val sz = IntInf.fromInt(sizeOfStruct tys')
-		      fun assignMem (relOffset, availGPRs, fields) =
-			    if (relOffset < sz)
-			      then let
-				val (loc, availGPRs) = (case availGPRs
-				       of [] => (Stk(wordTy, offset+relOffset), [])
-					| r1::rs => (Reg(wordTy, r1, SOME(offset+relOffset)), rs)
-				      (* end case *))
-				in
-				  assignMem (relOffset+4, availGPRs, loc::fields)
-				end
-			      else assign (tys, offset+relOffset, availGPRs, availFPRs,
-				  Args(List.rev fields) :: layout)
-		      in
-			assignMem (0, availGPRs, [])
-		      end
-	        in
+	    | assign (ty::tys, offset, availGPRs, availFPRs, layout) = (
 		case ty
 		 of CTy.C_void => error "unexpected void argument type"
 		  | CTy.C_float => (case (availGPRs, availFPRs)
@@ -291,20 +272,18 @@ functor PPCMacOSX_CCalls (
 		  | CTy.C_long_double =>
 		      assignFPR (tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_unsigned isz =>
-		      assignGPR(sizeOf isz, tys, offset, availGPRs, availFPRs, layout)
+		      assignGPR(sizeOfInt isz, tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_signed isz =>
-		      assignGPR(sizeOf isz, tys, offset, availGPRs, availFPRs, layout)
+		      assignGPR(sizeOfInt isz, tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_PTR =>
 		      assignGPR(sizeOfPtr, tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_ARRAY _ =>
 		      assignGPR(sizeOfPtr, tys, offset, availGPRs, availFPRs, layout)
-		  | CTy.C_STRUCT tys' => do_struct tys'
-		  | CTy.C_UNION tys' =>
-	              (* Again, we treat a union as if it were a struct
-		       * with just a single field (the largest field of
-		       * the union).  Is this kosher?  -Matthias *)
-		      do_struct [#largest (fieldsInfo tys')]
-	        end
+		  | CTy.C_STRUCT tys' =>
+		      assignMem(sizeOfStruct tys', tys, offset, availGPRs, availFPRs, layout)
+		  | CTy.C_UNION tys' => 
+		      assignMem(sizeOfUnion tys', tys, offset, availGPRs, availFPRs, layout)
+		(* end case *))
 	(* assign a GP register and memory for an integer/pointer argument. *)
 	  and assignGPR ({sz, pad, ...}, args, offset, availGPRs, availFPRs, layout) = let
 		val (loc, availGPRs) = (case (sz, availGPRs)
@@ -328,6 +307,24 @@ functor PPCMacOSX_CCalls (
 		    | ([], []) => continue ([], [], FStk(dblTy, offset))
 		    | _ => error "FPRs exhausted before GPRs"
 		  (* end case *)
+		end
+	(* assign a argument locations to pass a composite argument (struct or union) *)
+	  and assignMem ({sz, ...}, args, offset, availGPRs, availFPRs, layout) = let
+		val sz = IntInf.fromInt sz
+		fun assignMem (relOffset, availGPRs, fields) =
+		      if (relOffset < sz)
+			then let
+			  val (loc, availGPRs) = (case availGPRs
+				 of [] => (Stk(wordTy, offset+relOffset), [])
+				  | r1::rs => (Reg(wordTy, r1, SOME(offset+relOffset)), rs)
+				(* end case *))
+			  in
+			    assignMem (relOffset+4, availGPRs, loc::fields)
+			  end
+			else assign (args, offset+relOffset, availGPRs, availFPRs,
+			    Args(List.rev fields) :: layout)
+		in
+		  assignMem (0, availGPRs, [])
 		end
 	  val (sz, argLocs) = assign (paramTys, 0, argGPRs, argFPRs, [])
 	  in {
