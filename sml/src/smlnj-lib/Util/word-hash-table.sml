@@ -1,8 +1,8 @@
-(* int-hash-table.sml
+(* word-hash-table.sml
  *
- * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2000 Bell Labs, Lucent Technologies.
  *
- * A specialization of the hash table functor to integer keys.
+ * A specialization of the hash table functor to word keys.
  *
  * AUTHOR:  John Reppy
  *	    Bell Labs
@@ -10,14 +10,14 @@
  *	    jhr@research.bell-labs.com
  *)
 
-structure IntHashTable :> MONO_HASH_TABLE where type Key.hash_key = int =
+structure WordHashTable :> MONO_HASH_TABLE where type Key.hash_key = word =
   struct
 
     structure Key =
       struct
-	type hash_key = int
-	fun sameKey (a : int, b) = (a = b)
-	fun hashVal a = Word.fromInt a
+	type hash_key = word
+	fun sameKey (a : word, b) = (a = b)
+	fun hashVal a = a
       end
 
     open Key

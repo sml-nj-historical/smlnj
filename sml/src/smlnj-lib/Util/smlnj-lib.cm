@@ -88,6 +88,9 @@ structure SimpleURef
 structure SplayTree
 structure TimeLimit
 structure URef
+structure WordHashTable
+structure WordRedBlackMap
+structure WordRedBlackSet
 
 functor ArrayQSortFn
 functor BSearchFn
@@ -209,3 +212,7 @@ splaytree.sml
 time-limit.sml
 uref-sig.sml
 uref.sml
+word-hash-table.sml
+word-redblack-map.sml
+word-redblack-set.sml
+

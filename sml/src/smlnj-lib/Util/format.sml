@@ -225,45 +225,59 @@ structure Format : FORMAT =
 		    | (BoolField, BOOL true) => padFn "true"
 		    | (StrField, ATOM s) => padFn(Atom.toString s)
 		    | (StrField, STR s) => padFn s
-		    | (RealField{prec, format=F_Format}, REAL r) => let
-		        val {sign, mantissa} = RealFormat.realFFormat(r, prec)
-		        val sign = doRealSign sign
-		        in
-		          if ((prec = 0) andalso (#base flags))
-			    then padFn(concat[sign, mantissa, "."])
-			    else padFn(sign ^ mantissa)
-		        end
-		    | (RealField{prec, format=E_Format isCap}, REAL r) => let
-		        val {sign, mantissa, exp} = RealFormat.realEFormat(r, prec)
-		        val sign = doRealSign sign
-		        val expStr = doExpSign(exp, isCap)
-		        in
-		          if ((prec = 0) andalso (#base flags))
-			    then padFn(concat(sign :: mantissa :: "." :: expStr))
-			    else padFn(concat(sign :: mantissa :: expStr))
-		        end
-		    | (RealField{prec, format=G_Format isCap}, REAL r) => let
-		        val prec = if (prec = 0) then 1 else prec
-		        val {sign, whole, frac, exp} =
-			      RealFormat.realGFormat(r, prec)
-		        val sign = doRealSign sign
-		        val expStr = (case exp
-			       of SOME e => doExpSign(e, isCap)
-			        | NONE => [])
-		        val num = if (#base flags)
-			        then let
-			          val diff = prec - ((size whole) + (size frac))
-			          in
-				    if (diff > 0)
-				      then zeroRPad(frac, (size frac)+diff)
-				      else frac
-			          end
-			      else if (frac = "")
-			        then ""
-			        else ("." ^ frac)
-		        in
-		          padFn(concat(sign::whole::frac::expStr))
-		        end
+		    | (RealField{prec, format}, REAL r) =>
+			if (Real.isFinite r)
+			  then (case format
+			     of F_Format => let
+				  val {sign, mantissa} =
+					RealFormat.realFFormat(r, prec)
+				  val sign = doRealSign sign
+				  in
+				    if ((prec = 0) andalso (#base flags))
+				      then padFn(concat[sign, mantissa, "."])
+				      else padFn(sign ^ mantissa)
+				  end
+			      | E_Format isCap => let
+				  val {sign, mantissa, exp} =
+					RealFormat.realEFormat(r, prec)
+				  val sign = doRealSign sign
+				  val expStr = doExpSign(exp, isCap)
+				  in
+				    if ((prec = 0) andalso (#base flags))
+				      then padFn(concat(sign :: mantissa :: "."
+					:: expStr))
+				      else padFn(concat(sign :: mantissa :: expStr))
+				  end
+			      | G_Format isCap => let
+				  val prec = if (prec = 0) then 1 else prec
+				  val {sign, whole, frac, exp} =
+					RealFormat.realGFormat(r, prec)
+				  val sign = doRealSign sign
+				  val expStr = (case exp
+					 of SOME e => doExpSign(e, isCap)
+					  | NONE => []
+					(* end csae *))
+				  val num = if (#base flags)
+					then let
+					  val diff =
+						prec - ((size whole) + (size frac))
+					  in
+					    if (diff > 0)
+					      then zeroRPad(frac, (size frac)+diff)
+					      else frac
+					  end
+					else if (frac = "")
+					  then ""
+					  else ("." ^ frac)
+				  in
+				    padFn(concat(sign::whole::frac::expStr))
+				  end
+			    (* end case *))
+			else if Real.==(Real.negInf, r)
+			  then doRealSign true ^ "inf"
+			else if Real.==(Real.posInf, r)
+			  then doRealSign false ^ "inf"
+			  else "nan"
 		    | (_, LEFT(w, arg)) => let
 		        val flags = {
 			        sign = (#sign flags), neg_char = (#neg_char flags),

@@ -67,13 +67,13 @@ match the stream at its current position with the regular
 expression. The reader returns <CD/NONE/ if there is not match at the
 current position of the stream.
     <SPEC>
-      <VAL>match<TY>(RegExpSyntax.syntax * ({pos : 'a, len : int} option MatchTree.match_tree -> 'b)) list -> (char,'a) StringCvt.reader -> ('b,'a) StringCvt.reader
+      <VAL>match<TY>(string * ({pos : 'a, len : int} option MatchTree.match_tree -> 'b)) list -> (char,'a) StringCvt.reader -> ('b,'a) StringCvt.reader
         <COMMENT>
           <PROTOTY>
           match <ARG/l/ <ARG/getc/
           </PROTOTY>
           Given a list <ARG/l/ of tuples made up of a regular
-expression (in abstract syntax) and a function from matching tree to values of type
+expression and a function from matching tree to values of type
 <CD/'b/, and given a character reader <ARG/getc/, this function
 returns a reader that attempts to match one of the given regular
 expressions at the current position of the stream. If a match is

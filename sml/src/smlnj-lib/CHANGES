@@ -2,6 +2,16 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
+[2000-09-02]
+	Added Word versions of hash tables (WordHashTable), finite
+	maps (WordRedBlackMap), and sets (WordRedBlackSet).
+
+[2000-09-02]
+	fixed bug in Format module (infinity caused infinite loop).
+
+[2000-07-19]
+	added anchored paths in CM files for NEW_CM.
+
 [2000-06-30]
 	added implementation of LWORD in Format module.
 
