@@ -388,8 +388,10 @@ or_pat_list : pat			([pat])
 	    | pat BAR or_pat_list	(pat :: or_pat_list)
 
 vb	: vb AND vb		(vb1 @ vb2)
-	| LAZY pat EQUALOP exp	([MarkVb(LVb{exp=exp, pat=pat}, (patleft,expright))])
-	| pat EQUALOP exp	([MarkVb(Vb{exp=exp, pat=pat}, (patleft,expright))])
+	| LAZY pat EQUALOP exp	([MarkVb(Vb{exp=exp, pat=pat, lazyp=true},
+	                                 (patleft,expright))])
+	| pat EQUALOP exp	([MarkVb(Vb{exp=exp, pat=pat, lazyp=false},
+	                                 (patleft,expright))])
 
 constraint :	 		(NONE)
 	   | COLON ty	 	(SOME ty)
@@ -398,30 +400,36 @@ rvb	: id constraint EQUALOP exp
 			  (let val (v,f) = var'n'fix id
 	                   in [MarkRvb(Rvb{var=v,fixity=SOME(f,(idleft,idright)),
 					   resultty=constraint,
-			       exp=exp},(idleft,expright))] end)
+			                   exp=exp,lazyp=false},
+                                       (idleft,expright))]
+                           end)
 	| OP id constraint EQUALOP exp
 			  ([MarkRvb(Rvb{var=varSymbol id,fixity=NONE,
-				       resultty=constraint,
-			       exp=exp},(OPleft,expright))])
-	| rvb AND rvb		(rvb1 @ rvb2)
+				        resultty=constraint,
+			                exp=exp,lazyp=false},
+				    (OPleft,expright))])
+	| rvb AND rvb     (rvb1 @ rvb2)
         | LAZY id constraint EQUALOP exp
                           (let val (v,f) = var'n'fix id
-                           in [MarkRvb(LRvb{var=v,fixity=SOME(f,(idleft,idright)),
+                           in [MarkRvb(Rvb{var=v,fixity=SOME(f,(idleft,idright)),
                                            resultty=constraint,
-                               exp=exp},(idleft,expright))] end)
+                                           exp=exp,lazyp=true},
+                                       (idleft,expright))]
+                           end)
         | LAZY OP id constraint EQUALOP exp
-                          ([MarkRvb(LRvb{var=varSymbol id,fixity=NONE,
-                                       resultty=constraint,
-                               exp=exp},(OPleft,expright))])
+                          ([MarkRvb(Rvb{var=varSymbol id,fixity=NONE,
+                                        resultty=constraint,
+                                        exp=exp,lazyp=true},
+				    (OPleft,expright))])
 
 
 fb'	: clause		([clause])
 	| clause BAR fb'	(clause :: fb')
 
-fb	: fb'			([MarkFb(Fb fb', (fb'left,fb'right))])
-	| LAZY fb'		([MarkFb(LFb fb', (fb'left,fb'right))])
-	| fb' AND fb		(MarkFb(Fb fb', (fb'left,fb'right)) :: fb)
-	| LAZY fb' AND fb	(MarkFb(LFb fb', (fb'left,fb'right)) :: fb)
+fb	: fb'			([MarkFb(Fb(fb',false), (fb'left,fb'right))])
+	| LAZY fb'		([MarkFb(Fb(fb',true), (fb'left,fb'right))])
+	| fb' AND fb		(MarkFb(Fb(fb',false), (fb'left,fb'right)) :: fb)
+	| LAZY fb' AND fb	(MarkFb(Fb(fb',true), (fb'left,fb'right)) :: fb)
 
 apats	: apat			([apat])
 	| apat apats		(apat :: apats) 
@@ -454,10 +462,11 @@ tyvar_pc: TYVAR	([MarkTyv(Tyv(tyvSymbol TYVAR), (TYVARleft,TYVARright))])
 db	: db AND db			(db1 @ db2)
 	| tyvars ident EQUALOP dbrhs	([Db{tyc=tycSymbol ident,
 					     tyvars=tyvars,
-					     rhs=dbrhs}])
-        | LAZY tyvars ident EQUALOP dbrhs       ([LDb{tyc=tycSymbol ident,
+					     rhs=dbrhs,lazyp=false}])
+        | LAZY tyvars ident EQUALOP dbrhs   
+	                                ([Db{tyc=tycSymbol ident,
                                              tyvars=tyvars,
-                                             rhs=dbrhs}])
+                                             rhs=dbrhs,lazyp=true}])
 
 dbrhs   : constrs			(Constrs constrs)
         | DATATYPE tycon		(Repl tycon)
@@ -532,7 +541,6 @@ spec	: STRUCTURE strspec	([StrSpec strspec])
 	| EQTYPE tyspec		([TycSpec(tyspec,true)])
 	| VAL valspec		([ValSpec valspec])
 	| EXCEPTION exnspec	([ExceSpec exnspec])
-	| fixity ops		([FixSpec {fixity=fixity, ops=ops}])
 	| SHARING sharespec	(sharespec)
 	| INCLUDE sign		([IncludeSpec sign])
 	| INCLUDE ident idents	(IncludeSpec(VarSig(FastSymbol.sigSymbol ident))
@@ -692,11 +700,17 @@ fct_exp: qid	(fn constraint => VarFct(qid fctSymbol,constraint))
 
 interdec: sdecs'	(markdec(sdecs',sdecs'left,sdecs'right))
 
-	| exp		(markdec(ValDec([Vb{exp=exp,pat=VarPat itsym}],nil),
+	| exp		(markdec(ValDec([Vb{exp=exp,pat=VarPat itsym,lazyp=false}],nil),
 				 expleft,expright))
 
 (*
  * $Log: ml.grm,v $
+ * Revision 1.3  1998/05/15 14:01:15  dbm
+ *   Replaced lazy field name by lazyp in Vb, Rbv, Db args.
+ *
+ * Revision 1.2  1998/05/15 03:27:06  dbm
+ *   Revised parsing of lazy keyword.  Use lazyp instead of LVb, etc.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:19  george
  * Version 110.5
  *

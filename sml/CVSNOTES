@@ -7,6 +7,7 @@
 	cvs -d ~cvs import -m '' smlnj/src/sml-nj FLINT v980311
 
 * from tarballs
+	# untar the distribution
 	mkdir 110.6; cd 110.6
 	scp daffy:~ftp/pub/smlnj/working/110.6/\*.gz .
 	mkdir src; cd src
@@ -16,7 +17,23 @@
 	cd ..
 	mv *-bin.* ../
 	rm *.gz
-	cvs -qd ~cvs import -m '110.6' flint SMLNJ v110_6 | grep -v '^U '
+	# import this distribution into the CVS vendor branch
+	cvs -qd ~cvs import -ko -m '110.6' flint SMLNJ v110_6 | grep -v '^U '
+
+	# check out a new copy, trying to merge the changes into the trunk
+	cd ..; cvs co -ko -P -jSMLNJ:yesterday -jSMLNJ flint; cd flint
+	# list the conflicts
+	find -type f | xargs grep '^>>>>'
+	<... solve the problems if any ...>
+	# check files that have been removed
+	changes=$(cvs -q diff -N -r v110_5_1 -r v110_6 | sed -n -e 's/^Index: //p')
+	cd ../110.6; for f in $changes; do if [ ! -f "$f" ]; then echo $f; fi; done
+	cd ../flint; cvs rm <..some or all of the above..>
+	# check correctness
+	link ../bin.x86-unix; config/install.sh
+	cd src/compiler; link ../../../bin.x86-unix; ./xrecompile; ./xrecompile
+
+	cd ../..; cvs commit -m 'merged in 110.6 changes'
 
 * /softs install
 ** original

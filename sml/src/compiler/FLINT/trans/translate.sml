@@ -127,12 +127,10 @@ fun coreLookup(id, env) =
 
 fun CON' ((_, DA.REF, lt), ts, e) = APP (PRIM (PO.MAKEREF, lt, ts), e)
   | CON' ((_, DA.SUSP (SOME(DA.LVAR d, _)), lt), ts, e) =
-     if !Control.Lazy.earlyDT
-     then bug "DA.SUSP in Translate.CON' while earlyDT is true."
-     else let val v   = mkv ()
-              val fe = FN (v, LT.ltc_tuple [], e)
-           in APP(TAPP (VAR d, ts), fe)
-          end
+      let val v   = mkv ()
+          val fe = FN (v, LT.ltc_tuple [], e)
+       in APP(TAPP (VAR d, ts), fe)
+      end
   | CON' x = CON x
 
 (*
@@ -349,11 +347,11 @@ fun fillPat(pat, d) =
             end
         | fill (VECTORpat(pats,ty)) = VECTORpat(map fill pats, ty)
         | fill (ORpat(p1, p2)) = ORpat(fill p1, fill p2)
-        | fill (CONpat(TP.DATACON{name, const, typ, rep, sign}, ts)) = 
-            CONpat(TP.DATACON{name=name, const=const, typ=typ, 
+        | fill (CONpat(TP.DATACON{name, const, typ, rep, sign, lazyp}, ts)) = 
+            CONpat(TP.DATACON{name=name, const=const, typ=typ, lazyp=lazyp,
                         sign=sign, rep=mkRep(rep, toDconLty d typ, name)}, ts)
-        | fill (APPpat(TP.DATACON{name, const, typ, rep, sign}, ts, pat)) = 
-            APPpat(TP.DATACON{name=name, const=const, typ=typ, sign=sign,
+        | fill (APPpat(TP.DATACON{name, const, typ, rep, sign, lazyp}, ts, pat)) = 
+            APPpat(TP.DATACON{name=name, const=const, typ=typ, sign=sign, lazyp=lazyp,
                        rep=mkRep(rep, toDconLty d typ, name)}, ts, fill pat)
         | fill xp = xp
 
@@ -1171,6 +1169,20 @@ end (* structure Translate *)
 
 (*
  * $Log: translate.sml,v $
+ * Revision 1.3  1998/05/20 18:40:37  george
+ *   We now use a new cross-module linkage conventions; the import
+ *   list of each module is now described as a tree which specifies
+ *   in details about which component of a structure is imported.
+ *   Also, each compilation unit now has a new data segment area,
+ *   this also affects the changes on linking conventions and the
+ *   binfile format. The new bin file format is described in
+ *   batch/batchutil.sml.
+ * 						-- zsh
+ *
+ * Revision 1.2  1998/05/15 03:16:35  dbm
+ *   Eliminate test of Control.Lazy.earlyDT (no longer exists).
+ *   Added lazyp flags where appropriate.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:40  george
  * Version 110.5
  *

@@ -20,25 +20,6 @@ structure Control : CONTROL =
         fun flush() = #flush (!out) ()
       end
 
-    structure Lazy : LAZYCONTROL =
-      struct
-	val enabled = ref false	     (* enable/disable lazy features *)
-        val printDebug = ref false   (* General Degubing Info *)
-        val printStats = ref false   (* General Statistics *)
-        val redGenFD1 = ref true 
-                            (* Reduce Generated Force-Delays at Ast Level *)
-        val redGenFD2 = ref true     
-                            (* Reduce Generated Force-Delays at matchcomp *)
-        val redAllFD1 = ref true     (* Reduce All Force-Delays at Ast Level *)
-        val redAllFD2 = ref true     (* Reduce All Force-Delays at machcomp *)
-        val inlineF = ref true	     (* Inline Force *)
-        val inlineD = ref true	     (* Inline Delay *)
-        val earlyDT = ref false	     (* Early (Ast) Dollar translate *)
-        val ok_MARK = ref true	     
-                            (* Correct treatment of MARK in translate *)
-        val earlyFP = ref true	     (* Early fixity parsing *)
-      end
- 
     structure MC : MCCONTROL =
     struct
       val printArgs = ref false
@@ -174,6 +155,7 @@ structure Control : CONTROL =
     val instantiateSigs = ref true
     val debugging = ref false
     val internals = ref false
+    val lazysml = ref false
     val interp = ref false
 (*
     val debugLook = ref false
@@ -203,6 +185,12 @@ end
 
 (*
  * $Log: control.sml,v $
+ * Revision 1.3  1998/05/20 18:32:35  george
+ *   Cosmetic change -- zsh
+ *
+ * Revision 1.2  1998/05/15 03:53:22  dbm
+ *   Structure Lazy and signature LAZYCONTROL replaced by val lazysml.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:14  george
  * Version 110.5
  *

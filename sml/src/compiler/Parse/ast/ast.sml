@@ -132,7 +132,6 @@ and spec = StrSpec of (symbol * sigexp * path option) list
 	 | ValSpec of (symbol * ty) list	          (* value *)
          | DataSpec of {datatycs: db list, withtycs: tb list} (* datatype *)
 	 | ExceSpec of (symbol * ty option) list	  (* exception *)
-	 | FixSpec of  {fixity: fixity, ops: symbol list} (* fixity *)
 	 | ShareStrSpec of path list			  (* structure sharing *)
 	 | ShareTycSpec of path list			  (* type sharing *)
 	 | IncludeSpec of sigexp			  (* include specif *)
@@ -158,24 +157,19 @@ and dec	= ValDec of (vb list * tyvar list)		(* values *)
 	| OpenDec of path list				(* open structures *)
 	| OvldDec of symbol * ty * exp list	(* overloading (internal) *)
         | FixDec of {fixity: fixity, ops: symbol list}  (* fixity *)
-        | ImportDec of string list		(* import (unused) *)
         | MarkDec of dec * region		(* mark a dec *)
 
 (* VALUE BINDINGS *)
-and vb = Vb of {pat:pat, exp:exp}
-       | LVb of {pat:pat, exp:exp}   (* ZIDO:  PWLE *)
+and vb = Vb of {pat: pat, exp: exp, lazyp: bool}
        | MarkVb of vb * region
 
 (* RECURSIVE VALUE BINDINGS *)
-and rvb = Rvb of {var:symbol, fixity: (symbol * region) option,
-		    exp:exp, resultty: ty option}
-          | LRvb of {var:symbol, fixity: (symbol * region) option,
-                    exp:exp, resultty: ty option}   (* ZIDO:  PWLE *)
-	  | MarkRvb of rvb * region
+and rvb = Rvb of {var: symbol, fixity: (symbol * region) option,
+		  exp: exp, resultty: ty option, lazyp: bool}
+	| MarkRvb of rvb * region
 
 (* RECURSIVE FUNCTIONS BINDINGS *)
-and fb = Fb of clause list
-       | LFb of clause list   (* ZIDO:  PWLE *)
+and fb = Fb of clause list * bool (* bool indicates whether lazy *)
        | MarkFb of fb * region
 
 (* CLAUSE: a definition for a single pattern in a function binding *)
@@ -186,8 +180,7 @@ and tb = Tb of {tyc : symbol, def : ty, tyvars : tyvar list}
        | MarkTb of tb * region
 
 (* DATATYPE BINDING *)
-and db = Db of {tyc : symbol, tyvars : tyvar list, rhs : dbrhs}
-       | LDb of {tyc : symbol, tyvars : tyvar list, rhs : dbrhs}   (* ZIDO:  PWLE *)
+and db = Db of {tyc : symbol, tyvars : tyvar list, rhs : dbrhs, lazyp : bool}
        | MarkDb of db * region
 
 (* DATATYPE BINDING RIGHT HAND SIDE *)
@@ -231,6 +224,10 @@ end (* structure Ast *)
 
 (*
  * $Log: ast.sml,v $
+ * Revision 1.2  1998/05/15 03:24:22  dbm
+ *   Eliminated obsolete FixSpec and ImportDec constructors.
+ *   Eliminated LVb, LRVb, LFb, LDb constructors.  Use lazyp flag instead.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:19  george
  * Version 110.5
  *
