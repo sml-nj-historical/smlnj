@@ -124,25 +124,32 @@ ml_val_t _ml_win32_IO_read_vec(ml_state_t *msp, ml_val_t arg)
 {
   HANDLE h = (HANDLE) WORD_MLtoC(REC_SEL(arg, 0));
   DWORD nbytes = (DWORD) REC_SELINT(arg, 1);
-  ml_val_t vec;
+  ml_val_t vec, res;
   DWORD n;
 
   /* allocate the vector; note that this might cause a GC */
-  vec = ML_AllocString (msp, nbytes);
+  vec = ML_AllocRaw32 (msp, BYTES_TO_WORDS (nbytes));
   if (ReadFile(h,PTR_MLtoC(void, vec),nbytes,&n,NULL)) {
-    if (n <= nbytes) {
-      PTR_MLtoC(ml_val_t, vec)[-1] = MAKE_DESC(n, DTAG_string);
+    if (n == 0) {
 #ifdef WIN32_DEBUG
-      if (n == 0)
-        SayDebug("_ml_win32_IO_read_vec: eof on device\n");
+      SayDebug("_ml_win32_IO_read_vec: eof on device\n");
 #endif
-      return vec;
+      return ML_string0;
     }
+    if (n < nbytes) {
+      /* we need to shrink the vector */
+      ML_ShrinkRaw32 (msp, vec, BYTES_TO_WORDS(n));
+    }
+    /* allocate header */
+    SEQHDR_ALLOC (msp, res, DESC_string, vec, n);
+    return res;
   }
+  else {
 #ifdef WIN32_DEBUG
-  SayDebug("_ml_win32_IO_read_vec: failing %d %d\n",n,nbytes);
+    SayDebug("_ml_win32_IO_read_vec: failing %d %d\n",n,nbytes);
 #endif
-  return RAISE_SYSERR(msp,-1);
+    return RAISE_SYSERR(msp,-1);
+  }
 }
 
 PVT void check_cntrl_c(BOOL read_OK,int bytes_read)
@@ -178,12 +185,12 @@ ml_val_t _ml_win32_IO_read_vec_txt(ml_state_t *msp, ml_val_t arg)
 {
   HANDLE h = (HANDLE) WORD_MLtoC(REC_SEL(arg, 0));
   DWORD nbytes = (DWORD) REC_SELINT(arg, 1);
-  ml_val_t vec;
+  ml_val_t vec, res;
   DWORD	n;
   BOOL flag = FALSE;
 
   /* allocate the vector; note that this might cause a GC */
-  vec = ML_AllocString (msp, nbytes);
+  vec = ML_AllocRaw32 (msp, BYTES_TO_WORDS (nbytes));
 
   if (IS_CONIN(h)) {
     flag = ReadConsole(h,PTR_MLtoC(void,vec),nbytes,&n,NULL);
@@ -200,24 +207,36 @@ ml_val_t _ml_win32_IO_read_vec_txt(ml_state_t *msp, ml_val_t arg)
     else {
       rm_CRs((char *)vec,&n);
     }
-    PTR_MLtoC(ml_val_t, vec)[-1] = MAKE_DESC(n, DTAG_string);
+
+    if (n == 0) {
+#ifdef WIN32_DEBUG
+      SayDebug("_ml_win32_IO_read_vec_txt: eof on device\n");
+#endif
+      return ML_string0;
+    }
+    if (n < nbytes) {
+      /* shrink buffer */
+      ML_ShrinkRaw32 (msp, vec, BYTES_TO_WORDS(n));
+    }
+    /* allocate header */
+    SEQHDR_ALLOC (msp, res, DESC_string, vec, n);
 #ifdef WIN32_DEBUG
     SayDebug("_ml_win32_IO_read_vec_txt: read %d\n",n);
 #endif
-    return vec;
-  } else {
-    if ((h == win32_stdin_handle) &&             /* input from stdin */
-	(GetFileType(h) == FILE_TYPE_PIPE) &&    /* but not console */
-        (GetLastError() == ERROR_BROKEN_PIPE)) { /* and pipe broken */
-      /* this is an EOF on redirected stdin (ReadFile failed) */
-      PTR_MLtoC(ml_val_t, vec)[-1] = MAKE_DESC(0, DTAG_string);
-      return vec;
-    } 
+    return res;
   }
+  else if ((h == win32_stdin_handle) &&             /* input from stdin */
+	   (GetFileType(h) == FILE_TYPE_PIPE) &&    /* but not console */
+	   (GetLastError() == ERROR_BROKEN_PIPE)) { /* and pipe broken */
+    /* this is an EOF on redirected stdin (ReadFile failed) */
+    return ML_string0;
+  }
+  else {
 #ifdef WIN32_DEBUG
-  SayDebug("_ml_win32_IO_read_vec_txt: failing on handle %x\n",h);
+    SayDebug("_ml_win32_IO_read_vec_txt: failing on handle %x\n",h);
 #endif
-  return RAISE_SYSERR(msp,-1);
+    return RAISE_SYSERR(msp,-1);
+  }
 }
 
 /* _ml_win32_IO_read_arr : (word32*word8array.array*int*int) -> int
@@ -233,8 +252,9 @@ ml_val_t _ml_win32_IO_read_vec_txt(ml_state_t *msp, ml_val_t arg)
 ml_val_t _ml_win32_IO_read_arr(ml_state_t *msp, ml_val_t arg)
 {
   HANDLE h = (HANDLE) WORD_MLtoC(REC_SEL(arg, 0));
-  Byte_t *start = REC_SELPTR(Byte_t,arg,1)+REC_SELINT(arg,3);
+  ml_val_t buf = REC_SEL(arg,1);
   DWORD nbytes = (DWORD) REC_SELINT(arg, 2);
+  Byte_t *start = STR_MLtoC(buf) + REC_SELINT(arg,3);
   DWORD n;
 
   if (ReadFile(h,PTR_MLtoC(void,start),nbytes,&n,NULL)) {
@@ -262,20 +282,21 @@ ml_val_t _ml_win32_IO_read_arr(ml_state_t *msp, ml_val_t arg)
 ml_val_t _ml_win32_IO_read_arr_txt(ml_state_t *msp, ml_val_t arg)
 {
   HANDLE h = (HANDLE) WORD_MLtoC(REC_SEL(arg, 0));
-  Byte_t *buf = REC_SELPTR(Byte_t,arg,1)+REC_SELINT(arg,3);
+  ml_val_t buf = REC_SEL(arg,1);
   DWORD	nbytes = (DWORD) REC_SELINT(arg, 2);
+  Byte_t *start = STR_MLtoC(buf) + REC_SELINT(arg,3);
   DWORD	n;
   BOOL flag;
 
   if (IS_CONIN(h)) {
-    flag = ReadConsole(h,PTR_MLtoC(void,buf),nbytes,&n,NULL);
+    flag = ReadConsole(h,PTR_MLtoC(void,start),nbytes,&n,NULL);
     check_cntrl_c(flag,n); 
   } else {
-    flag = ReadFile(h,PTR_MLtoC(void,buf),nbytes,&n,NULL);
+    flag = ReadFile(h,PTR_MLtoC(void,start),nbytes,&n,NULL);
   }
   if (flag) {
     if (IS_CONIN(h)) {
-      if (CRLF_EOFscan((char *)buf,&n)) {
+      if (CRLF_EOFscan((char *)start,&n)) {
 	n = 0;
       }
     } 
@@ -308,7 +329,8 @@ ml_val_t _ml_win32_IO_read_arr_txt(ml_state_t *msp, ml_val_t arg)
  */
 ml_val_t _ml_win32_IO_create_file(ml_state_t *msp, ml_val_t arg)
 {
-  char *name = REC_SELPTR(char,arg,0);
+  ml_val_t fname = REC_SEL(arg,0);
+  char *name = STR_MLtoC(fname);
   DWORD access = WORD_MLtoC(REC_SEL(arg,1));
   DWORD share = WORD_MLtoC(REC_SEL(arg,2));
   DWORD create = WORD_MLtoC(REC_SEL(arg,3));
@@ -333,14 +355,15 @@ ml_val_t _ml_win32_IO_create_file(ml_state_t *msp, ml_val_t arg)
 ml_val_t _ml_win32_IO_write_buf(ml_state_t *msp, ml_val_t arg)
 {
   HANDLE h = (HANDLE) WORD_MLtoC(REC_SEL(arg,0));
-  Byte_t *data = REC_SELPTR(Byte_t,arg,1) + REC_SELINT(arg,3);
-  DWORD nbytes = (DWORD) REC_SELINT(arg, 2);
-  DWORD	n;
+  ml_val_t buf = REC_SEL(arg,1);
+  size_t nbytes = REC_SELINT(arg,2);
+  Byte_t *start = (Byte_t *) (STR_MLtoC(buf) + REC_SELINT(arg, 3));
+  DWORD n;
 
 #ifdef WIN32_DEBUG
   SayDebug("_ml_win32_IO_write_buf: handle is %x\n", (unsigned int) h);
 #endif
-  if (WriteFile(h,PTR_MLtoC(void,data),nbytes,&n,NULL)) {
+  if (WriteFile(h,PTR_MLtoC(void,start),nbytes,&n,NULL)) {
 #ifdef WIN32_DEBUG
     if (n == 0)
       SayDebug("_ml_win32_IO_write_buf: eof on device\n");

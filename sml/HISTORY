@@ -13,6 +13,91 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (blume@tti-c.org)
+Date: 2003/08/11 15:45:00 CDT
+Tag: blume-20030811-windows
+Description:
+
+Version number bumped to 110.42.9.  NEW BOOTFILES!!!
+
+    http://smlnj.cs.uchicago.edu/dist/working/110.42.9/
+
+This patch restores SML/NJ's ability to run under win32.  There are a
+number of changes, including fixes for several bugs that had gone
+unnoticed until now:
+
+  - uname "CYGWIN_NT*" is recognized as win32 (This is relevant only when
+    trying to run the win32 version from within cygwin.)
+
+  - There are a number of simple .bat scripts that substitute for their
+    corresponding Unix shell-scripts.  (See below.)
+
+  - The internals of ml-build have been modified slightly.  The main
+    difference is that instead of calling ".link-sml" (or link-sml.bat)
+    using OS.Process.system, the ML process delegates this task back
+    to the script.  Otherwise problems arise in mixed environments such
+    as Cygwin where scripts look and work like Unix scripts, but
+    where OS.Process.system cannot run them.
+
+  - In CM, the srcpath pickler used native pathname syntax -- which
+    is incorrect in the case of cross-compilation.  The new pickle format
+    is independent of platform-specific naming conventions.
+
+  - Path configuration files (such as lib/pathconfig) can now choose
+    between native and standard syntax.  Placing a line of the form
+
+        standard!
+
+    into the file causes all subsequent paths to be interpreted using
+    CM standard pathname syntax (= Unix conventions); a line
+
+        native!
+
+    switches back to native style.  This was needed so that
+    path config files can be written portably, see src/system/pathconfig.
+
+  - Runtime system:
+
+      - win32-filesys.c:  get_file_time and set_file_time now
+        access modification time, not creation time.
+
+      - I/O code made aware of new array representation.
+
+      - Bug fixes in X86.prim.masm.
+
+   - src/system/makeml made aware of win32. (For use under cygwin
+        and other Unix-environments for windows.)
+
+   - In Basis, fixed off-by-one error in win32-io.sml (function vecF)
+     which caused BinIO.inputAll to fail consistently.
+
+.bat scripts:
+
+   Windows .bat scripts assume that SMLNJ_HOME is defined.
+
+   - sml.bat, ml-yacc.bat, ml-lex.bat:  Driver scripts for standalone
+     applications (sml, ml-yacc, ml-lex).
+   - ml-build.bat: analogous to ml-build.
+   - config\install.bat:  Analogous to config/install.sh.  This requires
+     that SMLNJ_HOME is set and that Microsoft Visual C is ready to use.
+     (nmake etc. must be on the path, and vcvars32 must have been run.)
+     Moreover, sources for ml-lex and ml-yacc need to exist under src,
+     and the bootfile hierarchy must have been unpacked under
+     sml.boot.x86-win32.
+     The script is very primitive and does a poor job at error checking.
+     It only installs the base system, ml-lex, and ml-yacc.  No other
+     libraries are being installed (i.e., you get only those that
+     are part of the compiler.)
+   - link-sml.bat:  analogous to .link-sml, but not currently used
+
+Unrelated bug fixes:
+
+  - ml-nlffigen now exports structures ST_* corresponding to incomplete
+    types.
+  - Added getDevice to PP/src/pp-debug-fn.sml.  (Would not compile
+    otherwise.)
+
+----------------------------------------------------------------------
 Name: Dave MacQueen (macqueen@cs.uchicago.edu)
 Date: 2003/06/17
 Tag: macqueen-20030617-bug895

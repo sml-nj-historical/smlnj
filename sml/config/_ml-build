@@ -19,10 +19,11 @@ xx=$$
 smlfile=$xx-export.sml
 cmfile=$xx-export.cm
 listfile=$xx-BOOTLIST
+linkargsfile=$xx-LINKARGS
 
 dulist=''
 
-trap 'rm -rf `find . -name $smlfile` $cmfile $listfile' 0 1 2 3 15
+trap 'rm -rf $smlfile $cmfile $listfile $linkargsfile' 0 1 2 3 15
 
 usage() {
     echo ${thisscript}: $*
@@ -61,8 +62,13 @@ Group structure ${rare} is \$/basis.cm ${root} ${smlfile}
 EOF
 
 # Invoke sml with special option that causes CM to do its magic.
-# (See src/cm/main/cm-boot.sml [function "mlbuild"] to see what's
-# going on.)
-$SML $dulist @CMbuild $root $cmfile $heap $listfile $LINK
+# Unless the heap image exists and is up-to-date CM will write the arguments
+# for the link script into $linkargsfile.
+# (See src/cm/main/cm-boot.sml [function "mlbuild"] for details.)
+if $SML $dulist @CMbuild $root $cmfile $heap $listfile $linkargsfile ; then
+    if [ -r $linkargsfile ]; then
+	$LINK `cat $linkargsfile`
+    fi
+fi
 
 exit $?

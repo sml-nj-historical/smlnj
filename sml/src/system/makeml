@@ -85,7 +85,11 @@ link() {
     fi
 }
 
-BOOT_DIR="sml.boot.${ARCH}-unix"
+if [ $OPSYS = win32 ] ; then
+    BOOT_DIR="sml.boot.${ARCH}-win32"
+else
+    BOOT_DIR="sml.boot.${ARCH}-unix"
+fi
 
 while [ "$#" != "0" ] ; do
     arg=$1; shift
@@ -157,10 +161,10 @@ done
 cd $BOOT_DIR
 
 echo $LINK $RUN \
-    @SMLboot=BOOTLIST @SMLheap=$here/$HEAP @SMLalloc=$ALLOC \
+    @SMLboot=BOOTLIST @SMLheap=$HEAP @SMLalloc=$ALLOC \
     $VERBOSITY $ARGS $MODE
 if $LINK $RUN \
-    @SMLboot=BOOTLIST @SMLheap=$here/$HEAP @SMLalloc=$ALLOC \
+    @SMLboot=BOOTLIST @SMLheap=$HEAP @SMLalloc=$ALLOC \
     $VERBOSITY $ARGS $MODE
 then
 #

@@ -43,7 +43,7 @@ is
 	$smlnj/cmb/sparc-unix.cm
 	select-sparc-unix.sml
 # elif defined(ARCH_X86)
-#   if defined(OS_WIN32)
+#   if defined(OPSYS_WIN32)
 	$smlnj/cmb/x86-win32.cm
 	select-x86-win32.sml
 #   else

@@ -120,19 +120,17 @@ PVT name_val_t class[] = {
  */
 ml_val_t _ml_win32_get_const(ml_state_t *msp, ml_val_t arg)
 {
-  char *s1 = (char *)REC_SEL(arg,0);
-  char *s2 = (char *)REC_SEL(arg,1);
+  char *s1 = STR_MLtoC(REC_SEL(arg,0));
+  char *s2 = STR_MLtoC(REC_SEL(arg,1));
   name_val_t *ptab, *res;
   int index;
   ml_val_t v;
 
-  printf("looking up: <%s,%s>: ", s1, s2);
   ptab = nv_lookup(s1, class, N_CLASSES);
   if (ptab) {
     index = ptab->data;
     ASSERT(index < TAB_SZ(table));
     if (res = nv_lookup(s2, table[index].ptab, table[index].sz)) {
-      printf("%x\n", res->data);
       WORD_ALLOC(msp,v,res->data);
       return v;
     }

@@ -259,9 +259,9 @@ ENTRY(set_request)
 	MOVL	(REGOFF(VProcOffMSP,temp),temp2)
 	MOVL	(IMMED(0), REGOFF(InMLOffVSP,temp2))
 	
-	MOVL	(misc0, REGOFF(Misc0RegOffMSP,temp))
-	MOVL	(misc1, REGOFF(Misc1RegOffMSP,temp))
-	MOVL	(misc2, REGOFF(Misc2RegOffMSP,temp))
+	MOVL	(misc0, REGOFF(Misc0OffMSP,temp))
+	MOVL	(misc1, REGOFF(Misc1OffMSP,temp))
+	MOVL	(misc2, REGOFF(Misc2OffMSP,temp))
 
 	/* Save vregs before stack frame is popped. (?? - Blume) */
 	MOVE	(limitptr,temp2, REGOFF(LimitPtrOffMSP,temp))
@@ -284,7 +284,7 @@ ENTRY(set_request)
 	TEXT
 	ALIGN4
 
-ENTRY(restoreregs)
+ENTRY(asm_restoreregs)
 	MOVL	(REGOFF(4,REG(esp)), temp) /* get argument (MLState ptr) */
 	CALLEE_SAVE
 
@@ -299,9 +299,10 @@ ENTRY(restoreregs)
 #define temp2 REG(ebx)
 	/* Allocate and initialize the ML stack frame. */
 	SUBL	(IMMED(ML_FRAME_SIZE), REG(esp))
-	MOVE	(REGOFF(ExnPtrOffMSP,temp),temp2,exncont)
-	MOVE	(REGOFF(LimitPtrOffMSP,temp),temp2,limitptr)
-	MOVE	(REGOFF(StorePtrOffMSP,temp),temp2,varptr)
+	MOVE	(REGOFF(ExnPtrOffMSP,temp),   temp2, exncont)
+	MOVE	(REGOFF(LimitPtrOffMSP,temp), temp2, limitptr)
+	MOVE	(REGOFF(StorePtrOffMSP,temp), temp2, storeptr)
+	MOVE	(REGOFF(VarPtrOffMSP,temp),   temp2, varptr)
 	LEA	(CSYM(saveregs),temp2)
 	MOVL	(temp2,start_gc)
 	MOVL	(temp,mlstate_ptr)
@@ -353,7 +354,7 @@ pending:
 	CMPL	(IMMED(0),REGOFF(InSigHandlerOffVSP,vsp))
 	JNE	restore_and_jmp_ml
 
-	MOVL	(IMMED(1),HandlerPendingOffVSP(vsp))
+	MOVL	(IMMED(1),REGOFF(HandlerPendingOffVSP,vsp))
 
 	/* must restore here because limitptr is on stack */
 	POPL	temp			/* restore temp to msp */
@@ -374,7 +375,7 @@ ML_CODE_HDR(array_a)
 	MOVL	(REGOFF(0,stdarg),temp)		/* temp := length in words */
 	SARL	(IMMED(1),temp)			/* temp := length untagged */
 	CMPL	(IMMED(SMALL_OBJ_SZW),temp)	/* small object? */
-	JGE	FLAB(ARRAR_A_LARGE)
+	JGE	FLAB(ARRAY_A_LARGE)
 
 #define temp1 misc0
 #define temp2 misc1
@@ -404,7 +405,7 @@ ANON_LAB:
 	ADDL	(IMMED(8),allocptr)
 
 	POPL	misc1
-	POPL	misc2
+	POPL	misc0
 	CONTINUE
 #undef temp1
 #undef temp2
@@ -424,7 +425,7 @@ ML_CODE_HDR(create_r_a)
 	SARL	(IMMED(1),temp)		/* temp := untagged length */
 	SHLL	(IMMED(1),temp)		/* temp := length in words */
 	CMPL	(IMMED(SMALL_OBJ_SZW),temp)
-	JGE	FANON_LAB
+	JGE	FLAB_ANON
 
 	ORL	(IMMED(4),allocptr)	/* align allocptr */
 
@@ -512,15 +513,15 @@ ML_CODE_HDR(create_s_a)
 #define temp1 misc0
 
 	MOVL	(temp,temp1)
-	SHLL	(IMMED(TAG_SHIFTW,temp1))
+	SHLL	(IMMED(TAG_SHIFTW),temp1)
 	ORL	(IMMED(MAKE_TAG(DTAG_raw32)),temp1)
 	MOVL	(temp1,REGOFF(0,allocptr))	/* store descriptor */
-	ADD	(IMMED(4),allocptr)
+	ADDL	(IMMED(4),allocptr)
 
 	MOVL	(allocptr,temp1)		/* temp1 is data obj */
 	SHLL	(IMMED(2),temp)			/* bytes len */
 	ADDL	(temp,allocptr)			/* allocptr += length */
-	MOVL	(IMMED(0),REGOFF(-4,allocptr))	/* zero out last word */
+	MOVL	(IMMED(0),REGOFF((-4),allocptr)) /* zero out last word */
 
 	/* allocate header obj */
 	MOVL	(IMMED(DESC_string),temp)	/* hdr descr */
@@ -537,7 +538,7 @@ ML_CODE_HDR(create_s_a)
 
 ANON_LAB:
 	MOVL	(IMMED(REQ_ALLOC_STRING),request_w)
-	MOVE	(stdlink, temp, gc)
+	MOVE	(stdlink, temp, pc)
 	JMP	CSYM(set_request)
 
 
@@ -655,34 +656,34 @@ ENTRY(FPEEnable)
 	/* Temp space.Keep stack aligned. */
 	SUBL	(IMMED(4), REG(esp))   
 	/* Store FP control word. */
-	fstcw	REGOFF(0,REG(esp))  
+	fstcw	IND_W_OFF(REG(esp),0)  
 	/* Keep undefined fields, clear others. */
 	ANDW	(IMMED(HEXLIT(f0c0)), REGOFF(0,REG(esp)))
 	/* Set fields (see above). */
 	ORW	(IMMED(HEXLIT(023f)), REGOFF(0,REG(esp)))	
-	fldcw	REGOFF(0,REG(esp)) /* Install new control word. */
+	fldcw	IND_W_OFF(REG(esp),0) /* Install new control word. */
 	ADDL	(IMMED(4), REG(esp))
 	RET
 
 ENTRY(fegetround)
       SUBL    (IMMED(4),REG(esp))         /* allocate temporary space */
-      FSTCW   REGOFF(0,REG(esp))          /* store fp control word */
+      FSTCW   IND_W_OFF(REG(esp),0)          /* store fp control word */
 	/* rounding mode is at bit 10 and 11 */
       SARL    (IMMED(10),REGOFF(0,REG(esp))) 
       ANDL    (IMMED(3),REGOFF(0,REG(esp)))  /* mask two bits */
       MOVL    (REGOFF(0,REG(esp)),REG(eax))  /* return rounding mode */
       ADDL    (IMMED(4),REG(esp))                /* deallocate space */
       RET
-  
+
 ENTRY(fesetround)
       SUBL    (IMMED(4),REG(esp))	/* allocate temporary space */
-      FSTCW   REGOFF(0,REG(esp))	/* store fp control word */
+      FSTCW   IND_W_OFF(REG(esp),0)	/* store fp control word */
 	/* Clear rounding field. */
       ANDW    (IMMED(HEXLIT(f3ff)),REGOFF(0,REG(esp)))
       MOVL    (REGOFF(8,REG(esp)),REG(eax))	/* new rounding mode */
       SALL    (IMMED(10),REG(eax))		/* move to right place */
       ORL     (REG(eax),REGOFF(0,REG(esp)))	/* new control word */
-      FLDCW   REGOFF(0,REG(esp))		/* load new control word */
+      FLDCW   IND_W_OFF(REG(esp),0)		/* load new control word */
       ADDL    (IMMED(4),REG(esp))		/* deallocate space */
       RET
 
@@ -702,7 +703,7 @@ ML_CODE_HDR(floor_a)
 	MOVW	(REG(ax), new_controlwd)
 	fldcw	new_controlwd		/* Install new control word. */
 
-	FLDD	REGOFF(0,stdarg)
+	fld	REAL8 PTR 0 [stdarg]
 	SUBL	(IMMED(4),REG(esp))
 	FISTPL	REGOFF(0,REG(esp))
 	POPL	stdarg
@@ -743,15 +744,15 @@ ML_CODE_HDR(scalb_a)
 /*	ADDL	(IMMED(4), REG(esp)) */		/* Discard copy of scalar. */
 
 	MOVL	(REGOFF(0,stdarg), temp)	/* Get pointer to real. */
-	FLDD	REGOFF(0,temp))			/* Load it into temp. */
+	fld	REAL8 PTR 0 [temp]		/* Load it into temp. */
 
 	fscale				/* Multiply exponent by scalar. */
 	MOVL	(IMMED(DESC_reald), REGOFF(0,allocptr))
-	FSTPD	REGOFF(4,allocptr)	/* Store resulting float. */
+	fstp	REAL8 PTR 4 [allocptr]	/* Store resulting float. */
 	ADDL	(IMMED(4),allocptr)	/* Allocate word for tag. */
 	MOVL	(allocptr, stdarg)	/* Return a pointer to the float. */
 	ADDL	(IMMED(8), allocptr)	/* Allocate room for float. */
-	FSTPD	(REGOFF(0,REG(esp))	/* ?? */
+	fstp	REAL8 PTR 0 [esp]	/* ?? */
 	ADDL	(IMMED(4),REG(esp))	/* discard copy of scalar */
 	CONTINUE
 

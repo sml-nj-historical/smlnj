@@ -829,7 +829,6 @@ end = struct
 		else
 		    ("open Tag",
 		     build (rev (String.explode tag)))
-		    
 	in
 	    str "local";
 	    Box 4;
@@ -874,7 +873,8 @@ end = struct
 	    pr_sue_t_structure (SOME src, tag, anon, T_E, "e", "E")
 
 	fun pr_sue_it_structure (tag, k, K) =
-	    pr_sue_t_structure (NONE, tag, false, T_INC, k, K)
+	    (pr_sue_t_structure (NONE, tag, false, T_INC, k, K);
+	     exports := ("structure " ^ SUE_Tstruct K tag) :: !exports)
 
 	fun pr_i_st_structure tag = pr_sue_it_structure (tag, "s", "S")
 	fun pr_i_ut_structure tag = pr_sue_it_structure (tag, "u", "U")
@@ -1101,8 +1101,7 @@ end = struct
 	    nl (); str (tstruct ^ " = struct");
 	    Box 4;
 	    pr_tdef ("t", rtti_ty spec);
-	    pr_vdef ("typ", EConstr (rttiv, Type "t"))
-	    handle Incomplete => ();
+	    pr_vdef ("typ", EConstr (rttiv, Type "t"));
 	    endBox ();
 	    nl (); str "end";
 	    nl (); str "end";

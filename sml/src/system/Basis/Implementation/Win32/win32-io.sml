@@ -34,7 +34,7 @@ structure Win32_IO : WIN32_IO =
 	    -> int = cf "read_arr_txt"
 
 	fun vecF f (h,i) = 
-	    if i <= 0 then raise Subscript else f(h,i)
+	    if i < 0 then raise Subscript else f(h,i)
 
 	fun bufF (f,lenF) (h,{buf,i,sz=NONE}) =
 	    let val alen = lenF buf

@@ -34,9 +34,12 @@ OBJS =		smlnj-runt-lib.obj \
 		export-heap.obj \
 		export-fun.obj \
 		gc-ctl.obj \
-		mkexec.obj \
-		sysinfo.obj \
 		itick.obj \
+		mkexec.obj \
+		mkliterals.obj \
+		record1.obj \
+		record-concat.obj \
+		sysinfo.obj \
 		setitimer.obj
 
 $(LIBRARY)	: $(VERSION) $(OBJS)
@@ -55,6 +58,9 @@ DEPENDENTS=$(INC_DIR)\ml-unixdep.h $(INC_DIR)\ml-base.h \
 
 smlnj-runt-lib.obj: smlnj-runt-lib.c $(DEPNEDENTS)
 	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c smlnj-runt-lib.c
+
+alloc-code.obj: alloc-code.c $(DEPENDENTS)
+	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c alloc-code.c
 
 argv.obj: argv.c $(DEPENDENTS)
 	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c argv.c
@@ -86,11 +92,23 @@ export-fun.obj: export-fun.c $(DEPENDENTS)
 gc-ctl.obj: gc-ctl.c $(DEPENDENTS)
 	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c gc-ctl.c
 
-sysinfo.obj: sysinfo.c $(DEPENDENTS)
-	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c sysinfo.c
-
 itick.obj: itick.c $(DEPENDENTS)
 	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c itick.c
+
+mkexec.obj: mkexec.c $(DEPENDENTS)
+	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c mkexec.c
+
+mkliterals.obj: mkliterals.c $(DEPENDENTS)
+	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c mkliterals.c
+
+record1.obj: record1.c $(DEPENDENTS)
+	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c record1.c
+
+record-concat.obj: record-concat.c $(DEPENDENTS)
+	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c record-concat.c
+
+sysinfo.obj: sysinfo.c $(DEPENDENTS)
+	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c sysinfo.c
 
 setitimer.obj: setitimer.c $(MACH_DIR)\win32-timers.h $(DEPENDENTS)
 	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c setitimer.c

@@ -173,10 +173,10 @@ struct
 
 	fun abspath p = let
 	    val op $ = PU.$ AP
-	    val l = SrcPath.pickle { warn = fn _ => () }
+	    val ll = SrcPath.pickle { warn = fn _ => () }
 			{ file = SrcPath.pre p, relativeTo = grouppath }
 	in
-	    "p" $ [list string l]
+	    "p" $ [list (list string) ll]
 	end
 
 	fun sn n = let
@@ -252,7 +252,8 @@ struct
 	    fun getGroup' (gp, p, vo, rb) =
 		case getGroup (gp, p, vo, rb) of
 		    SOME g => g
-		  | NONE => (error ["unable to find ", SrcPath.descr p];
+		  | NONE => (error ["unable to find ", SrcPath.descr p,
+				    " (", SrcPath.osstring p, ")"];
 			     raise Format)
 
 	    val { size = dg_sz, pickle = dg_pickle } = fetch_pickle s
@@ -279,6 +280,7 @@ struct
 	    val privilegesM = UU.mkMap ()
 	    val poM = UU.mkMap ()
 	    val stringListM = UU.mkMap ()
+	    val stringListListM = UU.mkMap ()
 	    val versionM = UU.mkMap ()
 	    val versionOptM = UU.mkMap ()
 	    val sgM = UU.mkMap ()
@@ -298,12 +300,14 @@ struct
 
 	    val stringlist = list stringListM string
 
+	    val stringlistlist = list stringListListM stringlist
+
 	    fun list2path c sl =
 		c (SrcPath.unpickle penv { pickled = sl, relativeTo = group })
 		handle SrcPath.Format => raise Format
 
 	    fun abspath () = let
-		fun ap #"p" = list2path SrcPath.file (stringlist ())
+		fun ap #"p" = list2path SrcPath.file (stringlistlist ())
 		  | ap _ = raise Format
 	    in
 		share apM ap
@@ -322,7 +326,7 @@ struct
 	    fun rb () = let
 		fun r #"b" =
 		    { anchor = string (),
-		      value = list2path (fn x => x) (stringlist ()) }
+		      value = list2path (fn x => x) (stringlistlist ()) }
 		  | r _ = raise Format
 	    in
 		share rbM r
@@ -828,8 +832,8 @@ struct
 		fun abspath p = let
 		    val op $ = PU.$ AP
 		in
-		    "p" $ [list string (prepath2list "library"
-						     (SrcPath.pre p))]
+		    "p" $ [list (list string) (prepath2list "library"
+							    (SrcPath.pre p))]
 		end
 
 		fun sn n = let
@@ -914,7 +918,8 @@ struct
 		    val op $ = PU.$ RB
 		in
 		    "b" $ [string anchor,
-			   list string (prepath2list "anchor binding" value)]
+			   list (list string)
+				(prepath2list "anchor binding" value)]
 		end
 
 		fun sg (p, gth, rbl) = let

@@ -111,9 +111,10 @@ signature SRCPATH = sig
     val encodingIsAbsolute : string -> bool
 
     val pickle : { warn: bool * string -> unit } ->
-		 { file: prefile, relativeTo: file } -> string list
+		 { file: prefile, relativeTo: file } -> string list list
 
-    val unpickle : env -> { pickled: string list, relativeTo: file } -> prefile
+    val unpickle : env ->
+		   { pickled: string list list, relativeTo: file } -> prefile
 end
 
 structure SrcPath :> SRCPATH = struct
@@ -459,22 +460,34 @@ structure SrcPath :> SRCPATH = struct
     fun processSpecFile { env = e, specfile = f, say } = let
 	val d = P.dir (F.fullPath f)
 	fun set x = set0 (fn n => P.mkAbsolute { path = n, relativeTo = d }) x
+	fun mknative true d = d
+	  | mknative false d = let
+		fun return (abs, arcs) =
+		    P.toString { vol = "", isAbs = abs, arcs = arcs }
+	    in
+		case String.fields (fn c => c = #"/") d of
+		    "" :: arcs => return (true, arcs)
+		  | arcs => return (false, arcs)
+	    end
 	fun work s = let
-	    fun loop () = let
+	    fun loop isnative = let
 		val line = TextIO.inputLine s
 	    in
 		if line = "" then ()
-		else if String.sub (line, 0) = #"#" then loop ()
+		else if String.sub (line, 0) = #"#" then loop isnative
 		else case String.tokens Char.isSpace line of
-			 [a, d] => (set (e, a, SOME d); loop ())
-		       | ["-"] => (#reset e (); loop ())
-		       | [a] => (set (e, a, NONE); loop ())
-		       | [] => loop ()
+			 ["!standard"] => loop false
+		       | ["!native"] => loop true
+		       | [a, d] => (set (e, a, SOME (mknative isnative d));
+				    loop isnative)
+		       | ["-"] => (#reset e (); loop isnative)
+		       | [a] => (set (e, a, NONE); loop isnative)
+		       | [] => loop isnative
 		       | _ => (say [f, ": malformed line (ignored)\n"];
-			       loop ())
+			       loop isnative)
 	    end
 	in
-	    loop ()
+	    loop true
 	end
     in
 	work
@@ -573,27 +586,24 @@ structure SrcPath :> SRCPATH = struct
 				      err = fn (_: string) => () })
 	fun p_p p = p_pf (pre0 p)
 	and p_pf { arcs, context, err } =
-	    P.toString { arcs = arcs, vol = "", isAbs = false } :: p_c context
-	and p_c (ROOT vol) = (warn true; [vol, "r"])
+	    arcs :: p_c context
+	and p_c (ROOT vol) = (warn true; [[vol, "r"]])
 	  | p_c (CWD _) = impossible "pickle: CWD"
-	  | p_c (ANCHOR { name, ... }) = [name, "a"]
-	  | p_c (DIR p) = if compare0 (p, gf) = EQUAL then (warn false; ["c"])
+	  | p_c (ANCHOR { name, ... }) = [[name, "a"]]
+	  | p_c (DIR p) = if compare0 (p, gf) = EQUAL then
+			      (warn false; [["c"]])
 			  else p_p p
     in
 	p_pf f
     end
 
     fun unpickle env { pickled, relativeTo } = let
-	fun u_pf (s :: l) =
-	    (case P.fromString s of
-		 { arcs, vol = "", isAbs = false } =>
-		 prefile (u_c l, arcs, fn _ => raise Format)
-	       | _ => raise Format)
+	fun u_pf (arcs :: l) = prefile (u_c l, arcs, fn _ => raise Format)
 	  | u_pf _ = raise Format
 	and u_p l = file0 (u_pf l)
-	and u_c [vol, "r"] = ROOT vol
-	  | u_c ["c"] = dir relativeTo
-	  | u_c [n, "a"] = ANCHOR (mk_anchor (env, n))
+	and u_c [[vol, "r"]] = ROOT vol
+	  | u_c [["c"]] = dir relativeTo
+	  | u_c [[n, "a"]] = ANCHOR (mk_anchor (env, n))
 	  | u_c l = DIR (u_p l)
     in
 	u_pf pickled
@@ -624,6 +634,8 @@ structure SrcPath :> SRCPATH = struct
 	      | arc0 :: arcs => let
 		    val arcs = map arc arcs
 		    fun xtr () = unesc (String.extract (arc0, 1, NONE))
+
+		    fun say l = TextIO.output (TextIO.stdErr, concat l)
 		in
 		    if arc0 = "" then file (ROOT "", arcs) 
 		    else

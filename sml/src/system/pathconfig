@@ -1,3 +1,5 @@
+!standard
+
 root.cm			../system
 
 smlnj			../system/smlnj

@@ -73,11 +73,7 @@ structure Win32_FileSys : WIN32_FILESYS =
 	    (year,month,dayOfWeek,day,hour,minute,second,milliSeconds)
 
 	val getFileTime : string -> time_rec option = cf "get_file_time"
-
-	fun getFileTime' s = 
-	    case getFileTime s of 
-		NONE => NONE
-	      | SOME t => SOME(trToSt t)
+	val getFileTime' = Option.map trToSt o getFileTime
 
 	val setFileTime : (string * time_rec) -> bool =  cf "set_file_time"
 	fun setFileTime' (name,sysTime) = setFileTime(name,stToTr sysTime)

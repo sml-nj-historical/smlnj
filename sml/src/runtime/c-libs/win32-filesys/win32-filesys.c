@@ -293,7 +293,7 @@ ml_val_t _ml_win32_FS_set_file_time(ml_state_t *msp, ml_val_t arg)
     st.wSecond = REC_SELINT(time_rec,6);
     st.wMilliseconds = REC_SELINT(time_rec,7);
     
-    if (SystemTimeToFileTime(&st,&ft) && SetFileTime(h,&ft,NULL,NULL)) {
+    if (SystemTimeToFileTime(&st,&ft) && SetFileTime(h,NULL,NULL,&ft)) {
       res = ML_true;
     }
     

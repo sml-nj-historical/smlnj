@@ -12,7 +12,9 @@ LIB =		libgc.lib
 MP_LIB =	libmp-gc.lib
 
 GC_OBJS =	init-gc.obj call-gc.obj minor-gc.obj major-gc.obj flip.obj gc-util.obj \
-		big-objects.obj ml-objects.obj obj-info.obj build-literals.obj $(CHECK_HEAP)
+		big-objects.obj ml-objects.obj obj-info.obj build-literals.obj \
+		record-ops.obj \
+		$(CHECK_HEAP)
 
 HEAP_IO_OBJS =	import-heap.obj export-heap.obj \
 		blast-in.obj blast-out.obj blast-gc.obj \
@@ -116,6 +118,13 @@ build-literals.obj: \
 		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-objects.h $(INC_DIR)\tags.h \
 		heap.h arena-id.h
 	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) build-literals.c
+
+record-ops.obj: \
+		record-ops.c \
+		$(OBJS_DIR)/ml-sizes.h \
+		$(INC_DIR)/ml-base.h $(INC_DIR)/ml-objects.h $(INC_DIR)/tags.h \
+		arena-id.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) record-ops.c
 
 obj-info.obj:	obj-info.c \
 		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h $(INC_DIR)\gc.h \

@@ -439,7 +439,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	  fun mlbuild buildargs =
 	      OS.Process.exit
 	      (case buildargs of
-		   [root, cmfile, heap, listfile, link] =>
+		   [root, cmfile, heap, listfile, linkargsfile] =>
 		   (case mk_standalone NONE { project = root,
 					      wrapper = cmfile,
 					      target = heap } of
@@ -448,18 +448,27 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		     | SOME [] => (Say.say ["Heap was already up-to-date.\n"];
 				   OS.Process.success)
 		     | SOME l => let
+			   fun wrf (f, l) = let
+			       val s = TextIO.openOut f
+			       fun wr str = TextIO.output (s, str ^ "\n")
+			   in
+			       app (fn str => TextIO.output (s, str ^ "\n")) l;
+			       TextIO.closeOut s
+			   end
+				       
+
 			   val s = TextIO.openOut listfile
 			   fun wr str = TextIO.output (s, str ^ "\n")
 			   val n = length l
 			   fun maxsz (s, n) = Int.max (size s, n)
 			   val m = foldl maxsz 0 l
 		       in
-			   wr (concat ["%", Int.toString n, " ",
-				       Int.toString m]);
-			   app wr l;
-			   TextIO.closeOut s;
-			   OS.Process.system (concat [link,
-						      " @SMLboot=", listfile])
+			   wrf (listfile, concat ["%", Int.toString n, " ",
+						  Int.toString m]
+					  :: l);
+			   wrf (linkargsfile,
+				[concat [" @SMLboot=", listfile]]);
+			   OS.Process.success
 		       end
 		       handle _ => OS.Process.failure)
 		 | _ => (Say.say ["bad arguments to @CMbuild\n"];
@@ -511,6 +520,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	      end
 
 	      val pidmapfile = P.concat (bootdir, BtNames.pidmap)
+
 	      fun readpidmap s = let
 		  fun loop m = let
 		      fun enter (d, pids) = let

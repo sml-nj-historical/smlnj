@@ -36,6 +36,7 @@ functor PPDebugFn (PP : sig
     val openStream = PP.openStream
     val flushStream = debug' "flushStream" PP.flushStream
     val closeStream = debug' "closeStream" PP.closeStream
+    val getDevice = PP.getDevice
 
     val openHBox   = debug' "openHBox" PP.openHBox
     val openVBox   = debug "openVBox" PP.openVBox

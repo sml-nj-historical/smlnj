@@ -25,7 +25,20 @@ structure InteractiveSystem : sig end = struct
     val _ = OS.FileSys.chDir OS.Path.parentArc
     
     (* environment initializations *)
-    val { heapfile, procCmdLine } = BootEnv.init bootdir
+    val { heapfile, procCmdLine } =
+	BootEnv.init bootdir
+	handle e as IO.Io { function, name, cause } =>
+	       (TextIO.output (TextIO.stdErr,
+			       concat ["IO exception: file = ", name,
+				       ", function = ", function,
+				       ", cause: ",
+				       General.exnMessage cause,
+				       "\n"]);
+		raise e)
+	     | e => (TextIO.output (TextIO.stdErr,
+				    concat ["exception raised during init phase: ",
+					    General.exnMessage e, "\n"]);
+		     raise e)
 	
     (* establish default signal handlers *)
     fun handleINT _ = !Unsafe.topLevelCont

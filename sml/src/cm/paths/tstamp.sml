@@ -28,4 +28,7 @@ structure TStamp = struct
 
     fun max (TSTAMP t, TSTAMP t') = TSTAMP (if Time.< (t, t') then t' else t)
       | max _ = NOTSTAMP
+
+    fun toString NOTSTAMP = "none"
+      | toString (TSTAMP t) = Time.toString t
 end
