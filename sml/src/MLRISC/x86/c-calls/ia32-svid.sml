@@ -115,7 +115,7 @@ functor IA32SVID_CCalls (
       val twoRes = [gpr(32, C.edx), gpr(32, C.eax)]
     in
   (* List of registers defined by a C Call; this is the result registers
-   * plus the caller save registers.
+   * plus the caller-save registers.
    * Multiple returns have most significant register first.
    *)
     fun resultsAndDefs (Ty.C_void) = ([], callerSaves)
@@ -141,8 +141,10 @@ functor IA32SVID_CCalls (
    * low end of the parameter area (see paramAreaOffset above).
    *)
     datatype arg_location
-      = Reg of T.ty * T.reg		(* integer/pointer argument in register *)
-      | FReg of T.fty * T.reg		(* floating-point argument in register *)
+      = Reg of T.ty * T.reg * T.I.machine_int option
+					(* integer/pointer argument in register *)
+      | FReg of T.fty * T.reg * T.I.machine_int option
+					(* floating-point argument in register *)
       | Stk of T.ty * T.I.machine_int	(* integer/pointer argument in parameter area *)
       | FStk of T.fty * T.I.machine_int	(* floating-point argument in parameter area *)
       | Args of arg_location list

@@ -19,7 +19,7 @@ signature C_CALLS =
       | ARGS of c_arg list
 	  (* list of arguments corresponding to the contents of a C struct *)
 
-  (* this constant is the offset from the SP to the low-address of the
+  (* this constant is the offset from the caller's SP to the low-address of the
    * parameter area (see the paramAlloc callback below).
    *)
     val paramAreaOffset : int
@@ -56,7 +56,7 @@ signature C_CALLS =
    *
    * WARNING: if the client's implementation of structRet uses the stack
    * pointer to address the struct-return area, then paramAlloc should always
-   * handle allocating space for the parameter area (i.e., eturn true).
+   * handle allocating space for the parameter area (i.e., return true).
    *)
     val genCall : {
 	    name  : T.rexp,
@@ -76,15 +76,18 @@ signature C_CALLS =
    * low end of the parameter area (see paramAreaOffset above).
    *)
     datatype arg_location
-      = Reg of T.ty * T.reg		(* integer/pointer argument in register *)
-      | FReg of T.fty * T.reg		(* floating-point argument in register *)
+      = Reg of T.ty * T.reg * T.I.machine_int option
+					(* integer/pointer argument in register *)
+      | FReg of T.fty * T.reg * T.I.machine_int option
+					(* floating-point argument in register *)
       | Stk of T.ty * T.I.machine_int	(* integer/pointer argument in parameter area *)
       | FStk of T.fty * T.I.machine_int	(* floating-point argument in parameter area *)
       | Args of arg_location list
 
     val layout : CTypes.c_proto -> {
-	    args : arg_location list,	(* argument/parameter assignment *)
-	    res : arg_location option	(* result location; NONE for void functions *)
+	    argLocs : arg_location list,	(* argument/parameter assignment *)
+	    resLoc : arg_location option,	(* result location; NONE for void functions *)
+	    structRet : {szb : int, align : int} option
 	  }
 
   (* Callee-save registers as defined in the C calling convention.  Note that

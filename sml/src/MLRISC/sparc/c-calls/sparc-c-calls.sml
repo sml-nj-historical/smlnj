@@ -144,8 +144,10 @@ struct
    * low end of the parameter area (see paramAreaOffset above).
    *)
     datatype arg_location
-      = Reg of T.ty * T.reg		(* integer/pointer argument in register *)
-      | FReg of T.fty * T.reg		(* floating-point argument in register *)
+      = Reg of T.ty * T.reg * T.I.machine_int option
+					(* integer/pointer argument in register *)
+      | FReg of T.fty * T.reg * T.I.machine_int option
+					(* floating-point argument in register *)
       | Stk of T.ty * T.I.machine_int	(* integer/pointer argument in parameter area *)
       | FStk of T.fty * T.I.machine_int	(* floating-point argument in parameter area *)
       | Args of arg_location list
