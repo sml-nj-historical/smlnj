@@ -1546,20 +1546,15 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 		  * in checkTycBinding in SigMatch.  Fixes bugs 1364 and
 		  * 1432. [DBM]
 		  *)
-		fun fixUpTycEnt (TYCspec { spec = GENtyc { kind, ...},
-					   repl, ... },
-				 ent as TYCent tyc) =
-		    let fun unwrap () = TYCent (TU.unWrapDefStar tyc)
-		    in
-			case kind of
-			    DATATYPE _ => unwrap ()
-		      (* possible indirect datatype repl.  See bug1432.7.sml *)
-			  | _ => if repl then unwrap ()
+		 fun fixUpTycEnt (TYCspec{spec=GENtyc{kind=DATATYPE _,...},...},
+				  TYCent(tyc)) =
+		       (* possible indirect datatype repl.  See bug1432.7.sml *)
+		       TYCent(TU.unWrapDefStar tyc)
+		   | fixUpTycEnt (TYCspec{repl=true,...}, TYCent(tyc)) =
 		       (* direct or indirect datatype repl.  Original spec
 			* was a datatype spec. See bug1432.1.sml *)
-				 else ent
-		    end
-		  | fixUpTycEnt (_, ent) = ent
+		       TYCent(TU.unWrapDefStar tyc)
+		   | fixUpTycEnt (_,ent) = ent
 
 		 fun mkEntEnv (baseEntC) = 
 		     foldl (fn ((sym,spec),(env,failCount)) => 

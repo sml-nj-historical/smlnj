@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/06/19 17:55:00 EDT
+Tag: blume-20010619-instantiate
+Description:
+
+This un-breaks the fix for bug 1432.
+(The bug was originally fixed in 110.9 but I broke it again some
+time after that.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/06/19 17:25:00 EDT
 Tag: blume-20010619-signals
 Description:
