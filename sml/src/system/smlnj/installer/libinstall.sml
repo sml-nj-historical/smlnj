@@ -30,6 +30,8 @@ end = struct
     structure SI = SMLofNJ.SysInfo
     structure SM = RedBlackMapFn (type ord_key = string
 				  val compare = String.compare)
+    structure SS = RedBlackSetFn (type ord_key = string
+				  val compare = String.compare)
 
     structure SCC = GraphSCCFn (type ord_key = string
 				val compare = String.compare)
@@ -136,32 +138,54 @@ end = struct
 	    [P.concat (configdir, "targets.customized"),
 	     P.concat (configdir, "targets")]
 
+	val allsrcfile = P.concat (configdir, "allsources")
+
 	val s =
 	    case List.find fexists targetsfiles of
 		SOME f => TextIO.openIn f
 	      | NONE => fail ["no targetsfiles\n"]
 
 	(* parse the targets file *)
-	fun loop ml =
+	fun loop (ml, allsrc) =
 	    case TextIO.inputLine s of
-		NONE => (TextIO.closeIn s; ml)
+		NONE => (TextIO.closeIn s; (ml, allsrc))
 	      | SOME l =>
-		  if String.sub (l, 0) = #"#" then loop ml
+		  if String.sub (l, 0) = #"#" then loop (ml, allsrc)
 		  else (case String.tokens Char.isSpace l of
 			    [x as ("dont_move_libraries" |
 				   "move_libraries")] =>
 			      (warn ["\"", x, "\" no longer supported",
 				     " (installer always moves libraries)\n"];
-			       loop ml)
-			  | ["request", module] => loop (module :: ml)
-			  | [] => loop ml
+			       loop (ml, allsrc))
+			  | ["request", "src-smlnj"] => loop (ml, true)
+			  | ["request", module] => loop (module :: ml, allsrc)
+			  | [] => loop (ml, allsrc)
 			  | _ => fail ["ill-formed targets line: ", l])
 
-	val modules = loop []
+	val (modules, allsrc) = loop ([], false)
 
 	(* now resolve dependencies; get full list of modules
 	 * in correct build order: *)
 	val modules = resolve (modules, depfile)
+
+	val moduleset = SS.addList (SS.empty, modules)
+
+	val srcmoduleset =
+	    if allsrc andalso fexists allsrcfile then
+		let val s = TextIO.openIn allsrcfile
+		    fun one (m, ms) =
+			if SS.member (ms, m) then ms else SS.add (ms, m)
+		    fun loop ms =
+			case TextIO.inputLine s of
+			    NONE => (TextIO.closeIn s; ms)
+			  | SOME l =>
+			    if String.sub (l, 0) = #"#" then loop ms
+			    else loop (foldl one ms
+					     (String.tokens Char.isSpace l))
+		in
+		    loop moduleset
+		end
+	    else moduleset
 
 	(* fetch and unpack source trees, using auxiliary helper command
 	 * which takes the root directory as its first and the module
@@ -171,8 +195,8 @@ end = struct
 		  | SOME cmd => let
 			val cmdline =
 			    concat (cmd :: " " :: smlnjroot :: " " ::
-				    foldr (fn (f, l) => " " :: f :: l)
-					  [] modules)
+				    SS.foldl (fn (f, l) => " " :: f :: l)
+					     [] srcmoduleset)
 		    in
 			if OS.Process.system cmdline = OS.Process.success
 			then ()
