@@ -10,6 +10,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
       structure E = GenericVC.Environment
       structure SE = GenericVC.StaticEnv
+      structure ER = GenericVC.EnvRef
+      structure BE = GenericVC.BareEnvironment
       structure CMSE = GenericVC.CMStaticEnv
       structure S = GenericVC.Symbol
 
@@ -51,14 +53,31 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	   ExecTraversal.group gp g
 	   before FullPersstate.rememberShared ())
 
-      fun make_group gp g =
-	  if isSome (recomp_group gp g) then exec_group gp g else NONE
+      fun recomp_runner gp g = isSome (recomp_group gp g)
+
+      fun make_runner gp g =
+	  case recomp_group gp g of
+	      NONE => false
+	    | SOME { stat, sym} =>
+		  (case exec_group gp g of
+		       NONE => false
+		     | SOME dyn => let
+			   val delta = E.mkenv { static = stat, symbolic = sym,
+						 dynamic = dyn }
+			   val base = #get ER.topLevel ()
+			   val new = BE.concatEnv (ER.unCMenv delta, base)
+		       in
+			   #set ER.topLevel new;
+			   Say.vsay ["[New bindings added.]\n"];
+			   true
+		       end)
 
       structure Stabilize =  StabilizeFn (val bn2statenv = bn2statenv
-					  fun recomp gp g =
-					      isSome (recomp_group gp g))
+					  val recomp = recomp_runner)
 
       structure Parse = ParseFn (structure Stabilize = Stabilize)
+
+      fun stabilize_runner gp g = true
   in
     structure CM = struct
 
@@ -67,8 +86,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	    val p = AbsPath.native { context = AbsPath.cwdContext (),
 				     spec = s }
 	    val { mod = basis, nomod = perv } =
-		split (#get GenericVC.EnvRef.pervasive ())
-	    val corenv = #get GenericVC.EnvRef.core ()
+		split (#get ER.pervasive ())
+	    val corenv = #get ER.core ()
 	    val primconf = Primitive.configuration { basis = basis }
 	    val param = { primconf = primconf,
 			  fnpolicy = FilenamePolicy.default,
@@ -77,14 +96,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			  corenv = corenv }
 	in
 	    case Parse.parse param sflag p of
-		NONE => NONE
+		NONE => false
 	      | SOME (g, gp) => f gp g
 	end
 
-	fun stabilize recursively =
-	    run (SOME recursively) (fn _ => fn _ => SOME ())
-	val recomp = run NONE recomp_group
-	val make = run NONE make_group
+	fun stabilize recursively = run (SOME recursively) stabilize_runner
+	val recomp = run NONE recomp_runner
+	val make = run NONE make_runner
     end
 
     structure CMB = struct

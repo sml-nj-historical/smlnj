@@ -17,6 +17,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
     structure BF = MachDepVC.Binfile
     structure PP = PrettyPrint
     structure EM = GenericVC.ErrorMsg
+    structure DE = GenericVC.DynamicEnv
 
     type pid = PID.persstamp
 
@@ -24,12 +25,21 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
     type symenv = E.symenv
 
     type benv = statenv
-    type env = { stat: statenv, sym: symenv, pids: PidSet.set }
-    type result = unit
+    type result = { stat: statenv, sym: symenv }
+    type env = { envs: result, pids: PidSet.set }
 
-    val empty = ()
-    fun env2result (_: env) = ()
-    fun rlayer ((), ()) = ()
+    val empty = { stat = E.staticPart E.emptyEnv,
+		  sym = E.symbolicPart E.emptyEnv }
+
+    fun env2result (e: env) = #envs e
+
+    fun rlayer (r, r') = let
+	fun r2e { stat, sym } = E.mkenv { static = stat, symbolic = sym,
+					  dynamic = DE.empty }
+	fun e2r e = { stat = E.staticPart e, sym = E.symbolicPart e }
+    in
+	e2r (E.concatEnv (r2e r, r2e r'))
+    end
 
     type 'e wpid = 'e * pid
 
@@ -51,10 +61,8 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 
     fun blayer (be, be') = E.layerStatic (be, be')
 
-    fun layer ({ stat, sym, pids }, { stat = stat', sym = sym', pids = p' }) =
-	{ stat = E.layerStatic (stat, stat'),
-	  sym = E.layerSymbolic (sym, sym'),
-	  pids = PidSet.union (pids, p') }
+    fun layer ({ envs, pids }, { envs = e', pids = p' }) =
+	{ envs = rlayer (envs, e'), pids = PidSet.union (pids, p') }
 
     fun bfilter (d: envdelta, s) =
 	E.filterStaticEnv (#1 (#stat d), SymbolSet.listItems s)
@@ -78,7 +86,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 		    statpid'
 		end
     in
-	{ stat = stat, sym = sym, pids = pidset (statpid', sympid) }
+	{ envs = { stat = stat, sym = sym }, pids = pidset (statpid', sympid) }
     end
 
     fun bnofilter (d: envdelta) = #1 (#stat d)
@@ -87,7 +95,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	val (stat, statpid) = #stat d
 	val (sym, sympid) = #sym d
     in
-	{ stat = stat, sym = sym, pids = pidset (statpid, sympid) }
+	{ envs = { stat = stat, sym = sym }, pids = pidset (statpid, sympid) }
     end
 
     fun primitive (gp: GeneralParams.info) p = let
@@ -103,7 +111,8 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
     fun pervasive (gp: GeneralParams.info) = let
 	val e = #pervasive (#param gp)
     in
-	{ stat = E.staticPart e, sym = E.symbolicPart e, pids = PidSet.empty }
+	{ envs = { stat = E.staticPart e, sym = E.symbolicPart e },
+	  pids = PidSet.empty }
     end
 
     fun bpervasive (gp: GeneralParams.info) =
@@ -153,7 +162,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 		   | SOME be => load be)
     end
 
-    fun dosml (i, { stat, sym, pids }, gp) =
+    fun dosml (i, { envs = { stat, sym }, pids }, gp) =
 	case Option.map memo2envdelta (PS.recomp_look_sml (i, pids, gp)) of
 	    SOME d => SOME d
 	  | NONE => let
