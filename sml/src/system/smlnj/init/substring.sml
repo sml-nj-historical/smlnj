@@ -61,7 +61,9 @@ structure Substring :> SUBSTRING
 	      else raise Core.Subscript
 	  end
       | extract (s, i, SOME n) = substring(s, i, n)
+
     fun all s = SS(s, 0, stringSize s)
+    val full = all
 
     fun isEmpty (SS(_, _, 0)) = true
       | isEmpty _ = false
@@ -169,6 +171,11 @@ structure Substring :> SUBSTRING
 	    (SS(s', i, indx-i), SS(s', indx, i+n-indx))
 	  end
 
+    fun isSubstring "" _ = true
+      | isSubstring s ss = size (#2 (position s ss)) <> 0
+
+    fun isSuffix s ss = stringSize s = size (#2 (position s ss))
+
     fun span (SS(s1, i1, n1), SS(s2, i2, n2)) =
 	  if ((s1 = s2) andalso (i1 <= i2+n2))
 	    then SS(s1, i1, (i2+n2)-i1)
@@ -230,6 +237,14 @@ structure Substring :> SUBSTRING
 	    iter i
 	  end
 
+    fun concatWith ssep l = let
+	val sep = full ssep
+	fun build [] = []
+	  | build [x] = [x]
+	  | build (x :: xs) = x :: sep :: build xs
+    in
+	concat (build l)
+    end
   end
 end
 
