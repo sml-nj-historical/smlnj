@@ -1,0 +1,69 @@
+============================================================================   
+A. The compilation function: string -> code-object
+   including the utility stuff --- compilation control ---
+
+   1. Lexer and parser and fixity stuff  (String --> Ast)
+   2. Elaborator  (Ast --> Absyn)
+         --- translation
+         --- modules
+         --- typechecker
+   3. Translation to FLINT (Absyn --> FLINT)
+         --- match compilation
+         --- source-level type to FLINT type
+   4. Optimizing FLINT (FLINT --> FLINT)
+   5. Representation Analysis (FLINT --> FLINTw)
+         --- inserting the wrapper
+         --- make all primitives concrete
+   6. <Temporary> FLINTw --> CPS
+         --- switch compilation
+         --- cps convert
+   7. <Temporary> CPS Optimizations (CPS --> CPS)
+   8. Closure Conversion (CPS --> CPS)
+   9. Spilling/LimitCheck/CodeGenerator
+  10. ML Risc
+
+  The top-level environment management:
+
+   how primitive types are dealt with ?
+   1. Pervasive / SML'97 Basis
+   2. Environment management ......
+        StaticEnv
+        DynamicEnv
+   3. Pickling and Unpickling ?
+
+  The runtime systems 
+============================================================================   
+B. How to recover the all-files.cm (or sources.cm) file after making 
+   dramatic changes to the directory structure. Notice that the difference
+   between all-files.cm and sources.cm is just the bootstrap glue files.
+
+   1. ls -1 */*.{sig,sml} */*/*.{sig,sml} | grep -v 0-Boot > xxx
+   2. grep -v 5-CPS/obsol xxx > yyy
+   3. Comment out 4-Translate/trans/translist.sml
+   4. Add 7-NewCGen/MLRISC/MLRISC.cm
+   5. Add 9-Misc/util/UTIL.cm
+   6. Add ../ml-yacc/lib/sources.cm
+   7. Delete 9-Misc/util/intmap.sig
+             9-Misc/util/intmap.sml
+             9-Misc/util/sort.sml
+             9-Misc/util/sortedlist.sml
+============================================================================   
+C. Organization for the future:
+
+   All files should follow conventions: filename.sig vs. filename.sml
+
+   0-BOOT
+     bootstrapping, basis library, ...
+   1-TOP
+     batch compilation
+     interactive environment     
+   2-ML  (PARSE, SEMANT)  
+     1-parse, ast
+     2-elaborate+typing, absyn
+     3-pickle
+     4-translation into FLINT ?
+   3-FLINT   (* middle-end: FLINT ===> Closure-converted FLINT *)
+   4-CGEN  
+   5-NCGEN
+============================================================================   
+   
