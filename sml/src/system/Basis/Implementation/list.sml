@@ -29,7 +29,7 @@ structure List : LIST =
 
     datatype list = datatype list
 
-    exception Empty
+    exception Empty = Empty
 
     val null = null
     val hd = hd
