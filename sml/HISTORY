@@ -29,7 +29,8 @@ Nick Carter <nbc@andrew.cmu.edu>.
      from the C file name without its directory.  This avoids silly things
      like "structure GL/GL".
      (Other silly names are still possible because ml-nlffigen does not do
-      a thorough check of whether generated names are legal ML identifiers.)
+      a thorough check of whether generated names are legal ML identifiers.
+      When in doubt, use command line arguments to force particular names.)
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
