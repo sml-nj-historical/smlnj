@@ -19,6 +19,8 @@ struct
 
     val paramAreaOffset = 0
 
+    val naturalIntSz = 32
+
     datatype arg_location
       = Reg of T.ty * T.reg * T.I.machine_int option
       | FReg of T.fty * T.reg * T.I.machine_int option
