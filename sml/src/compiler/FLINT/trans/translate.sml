@@ -444,25 +444,10 @@ fun composeNOT (eq, t) =
    in FN(v, argt, COND(APP(eq, VAR v), falseLexp, trueLexp))
   end
 
-fun intOp p = PRIM(p, lt_intop, [])
 fun cmpOp p = PRIM(p, lt_icmp, [])
 fun inegOp p = PRIM(p, lt_ineg, [])
 
-fun DIV(b,c) = APP(intOp(PO.IDIV), RECORD[b, c])
 val LESSU = PO.CMP{oper=PO.LTU, kind=PO.UINT 31}
-
-(* pure arith on int31 (guaranteed to not overflow) *)
-val pIADD = PO.ARITH { oper=PO.+, overflow = false, kind = PO.INT 31 }
-val pISUB = PO.ARITH { oper=PO.-, overflow = false, kind = PO.INT 31 }
-val pIMUL = PO.ARITH { oper=PO.*, overflow = false, kind = PO.INT 31 }
-fun pADD(b,c) = APP(intOp pIADD, RECORD [b, c])
-fun pSUB(b,c) = APP(intOp pISUB, RECORD [b, c])
-fun pMUL(b,c) = APP(intOp pIMUL, RECORD [b, c])
-
-fun CMP (cop, e1, e2) = APP (cmpOp cop, RECORD [e1, e2])
-fun EQ (e1, e2) = CMP (PO.IEQL, e1, e2)
-fun NONNEG e = CMP (PO.IGE, e, INT 0)
-fun ISZERO e = EQ (e, INT 0)
 
 val lt_len = LT.ltc_poly([LT.tkc_mono], [lt_arw(LT.ltc_tv 0, lt_int)])
 val lt_upd = 
@@ -511,6 +496,59 @@ fun inlineShift(shiftOp, kind, clear) =
 			  RECORD [vw, vcnt])))))
   end
 
+fun inlops nk = let
+    val (lt_arg, zero, overflow) =
+	case nk of
+	    PO.INT 31 => (LT.ltc_int, INT 0, true)
+	  | PO.UINT 31 => (LT.ltc_int, WORD 0w0, false)
+	  | PO.INT 32 => (LT.ltc_int32, INT32 0, true)
+	  | PO.UINT 32 => (LT.ltc_int32, WORD32 0w0, false)
+	  | PO.FLOAT 64 => (LT.ltc_real, REAL "0.0", false)
+	  | _ => bug "inlops: bad numkind"
+    val lt_argpair = lt_tup [lt_arg, lt_arg]
+    val lt_cmp = lt_arw (lt_argpair, lt_bool)
+    val lt_neg = lt_arw (lt_arg, lt_arg)
+    val less = PRIM (PO.CMP { oper = PO.<, kind = nk }, lt_cmp, [])
+    val greater = PRIM (PO.CMP { oper = PO.>, kind = nk }, lt_cmp, [])
+    val negate =
+	PRIM (PO.ARITH { oper = PO.~, overflow = overflow, kind = nk },
+	      lt_neg, [])
+in
+    { lt_arg = lt_arg, lt_argpair = lt_argpair, lt_cmp = lt_cmp,
+      less = less, greater = greater,
+      zero = zero, negate = negate }
+end
+
+fun inlminmax (nk, ismax) = let
+    val { lt_argpair, less, greater, lt_cmp, ... } = inlops nk
+    val x = mkv () and y = mkv () and z = mkv ()
+    val cmpop = if ismax then greater else less
+    val elsebranch =
+	case nk of
+	    PO.FLOAT _ => let
+		(* testing for NaN *)
+		val fequal =
+		    PRIM (PO.CMP { oper = PO.EQL, kind = nk }, lt_cmp, [])
+	    in
+		COND (APP (fequal, RECORD [VAR y, VAR y]), VAR x, VAR y)
+	    end
+	  | _ => VAR y
+in
+    FN (z, lt_argpair,
+	LET (x, SELECT (0, VAR z),
+	     LET (y, SELECT (1, VAR z),
+		  COND (APP (cmpop, RECORD [VAR x, VAR y]),
+			VAR x, elsebranch))))
+end
+
+fun inlabs nk = let
+    val { lt_arg, greater, zero, negate, ... } = inlops nk
+    val x = mkv ()
+in
+    FN (x, lt_arg,
+	COND (APP (greater, RECORD [VAR x, zero]),
+	      VAR x, APP (negate, VAR x)))
+end
 
 fun transPrim (prim, lt, ts) = 
   let fun g (PO.INLLSHIFT k) = inlineShift(lshiftOp, k, fn _ => lword0(k))
@@ -521,111 +559,10 @@ fun transPrim (prim, lt, ts) =
                in inlineShift(rshiftOp, k, clear)
               end
 
-        | g (PO.INLDIV) =
-	  (* This should give a slightly faster path through this
-	   * operation for the frequent case that the result is non-negative.
-	   * Some hardware calculates the remainder as part of the DIV
-	   * operation -- in which case we could save the MUL step.
-	   * This will have to be done in the backend because it is
-	   * architecture-specific. *)
-	  let val a = mkv () and b = mkv ()
-	      and q = mkv () and z = mkv ()
-	  in
-	      FN (z, lt_ipair,
-		  LET (a, SELECT (0, VAR z),
-		       LET (b, SELECT (1, VAR z),
-			    LET (q, DIV (VAR a, VAR b),
-				 COND (NONNEG (VAR q), VAR q,
-				       COND (EQ (VAR a, pMUL (VAR q, VAR b)),
-					     VAR q,
-					     pSUB (VAR q, INT 1)))))))
-	  end
-(*
-              let val a = mkv() and b = mkv() and z = mkv()
-               in FN(z, lt_ipair, 
-                    LET(a, SELECT(0, VAR z),
-                      LET(b, SELECT(1, VAR z),
-                        COND(APP(cmpOp(PO.IGE), RECORD[VAR b, INT 0]),
-                          COND(APP(cmpOp(PO.IGE), RECORD[VAR a, INT 0]),
-                               DIV(VAR a, VAR b),
-                               SUB(DIV(ADD(VAR a, INT 1), VAR b), INT 1)),
-                          COND(APP(cmpOp(PO.IGT), RECORD[VAR a, INT 0]),
-                               SUB(DIV(SUB(VAR a, INT 1), VAR b), INT 1),
-                               DIV(VAR a, VAR b))))))
-              end 
-*)
-        | g (PO.INLMOD) =
-	  (* Same here: Fast path for q >= 0.  However, since the remainder
-	   * is the intended result, we can't avoid the MUL.  On architectures
-	   * where r is directly available, this should rather be done
-	   * in the backend. *)
-	  let val a = mkv () and b = mkv ()
-	      and q = mkv () and r = mkv ()
-	      and z = mkv ()
-	  in
-	      FN (z, lt_ipair,
-		  LET (a, SELECT (0, VAR z),
-		       LET (b, SELECT (1, VAR z),
-			    LET (q, DIV (VAR a, VAR b),
-				 LET (r, pSUB (VAR a, pMUL (VAR q, VAR b)),
-				      COND (NONNEG (VAR q), VAR r,
-					    COND (ISZERO (VAR r), VAR r,
-						  pADD (VAR r, VAR b))))))))
-	  end
-(*
-              let val a = mkv() and b = mkv() and z = mkv()
-               in FN(z, lt_ipair,
-                    LET(a,SELECT(0, VAR z),
-                      LET(b,SELECT(1,VAR z),
-                        COND(APP(cmpOp(PO.IGE), RECORD[VAR b, INT 0]),
-                          COND(APP(cmpOp(PO.IGE), RECORD[VAR a, INT 0]),
-                               SUB(VAR a, MUL(DIV(VAR a, VAR b), VAR b)),
-                               ADD(SUB(VAR a,MUL(DIV(ADD(VAR a,INT 1), VAR b),
-                                                 VAR b)), VAR b)),
-                          COND(APP(cmpOp(PO.IGT), RECORD[VAR a,INT 0]),
-                               ADD(SUB(VAR a,MUL(DIV(SUB(VAR a,INT 1), VAR b),
-                                                 VAR b)), VAR b),
-                               COND(APP(cmpOp(PO.IEQL),RECORD[VAR a,
-                                                         INT ~1073741824]),
-                                    COND(APP(cmpOp(PO.IEQL),
-                                             RECORD[VAR b,INT 0]), 
-                                         INT 0,
-                                         SUB(VAR a, MUL(DIV(VAR a, VAR b),
-                                                    VAR b))),
-                                    SUB(VAR a, MUL(DIV(VAR a, VAR b),
-                                                   VAR b))))))))
-              end
-*)
-        | g (PO.INLREM) =
-              let val a = mkv() and b = mkv() and z = mkv()
-               in FN(z, lt_ipair,
-                    LET(a, SELECT(0,VAR z),
-                      LET(b, SELECT(1,VAR z),
-                          pSUB(VAR a, pMUL(DIV(VAR a,VAR b),VAR b)))))
-              end
+	| g (PO.INLMIN nk) = inlminmax (nk, false)
+	| g (PO.INLMAX nk) = inlminmax (nk, true)
+	| g (PO.INLABS nk) = inlabs nk
 
-        | g (PO.INLMIN) =
-              let val x = mkv() and y = mkv() and z = mkv()
-               in FN(z, lt_ipair,
-                    LET(x, SELECT(0,VAR z),
-                       LET(y, SELECT(1,VAR z),
-                         COND(APP(cmpOp(PO.ILT), RECORD[VAR x,VAR y]),
-                              VAR x, VAR y))))
-              end
-        | g (PO.INLMAX) =
-              let val x = mkv() and y = mkv() and z = mkv()
-               in FN(z, lt_ipair,
-                    LET(x, SELECT(0,VAR z),
-                       LET(y, SELECT(1,VAR z),
-                         COND(APP(cmpOp(PO.IGT), RECORD[VAR x,VAR y]),
-                              VAR x, VAR y))))
-              end
-        | g (PO.INLABS) =
-              let val x = mkv()
-               in FN(x, lt_int,
-                     COND(APP(cmpOp(PO.IGT), RECORD[VAR x,INT 0]),
-                          VAR x, APP(inegOp(PO.INEG), VAR x)))
-              end
         | g (PO.INLNOT) =
               let val x = mkv()
                in FN(x, lt_bool, COND(VAR x, falseLexp, trueLexp))
@@ -653,6 +590,12 @@ fun transPrim (prim, lt, ts) =
                   val x = mkv()
                in FN(x, argt, SELECT(0,VAR x))
               end
+	| g (PO.INLIGNORE) =
+	  let val argt =
+		  case ts of [a] => lt_tyc a
+			   | _ => bug "unexpected type for INLIGNORE"
+	  in FN (mkv (), argt, unitLexp)
+	  end
 
         | g (PO.INLSUBSCRIPTV) =
               let val (tc1, t1) = case ts of [z] => (z, lt_tyc z)

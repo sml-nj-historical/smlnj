@@ -96,7 +96,8 @@ fun arithName (P.arith{oper,kind}) =
 		  | P.fsin => "sin" | P.fcos => "cos" | P.ftan => "tan"
 		  | P.rshift => "rshift" | P.rshiftl => "rshiftl"
 	          | P.lshift => "lshift" | P.andb => "andb"
-		  | P.orb => "orb" | P.xorb => "xorb" | P.notb => "notb")
+		  | P.orb => "orb" | P.xorb => "xorb" | P.notb => "notb"
+		  | P.rem => "rem" | P.div => "div" | P.mod => "mod")
      ^ numkindName kind)
   | arithName(P.test arg) = "test_" ^ cvtParams arg
   | arithName(P.testu arg) = "testu_" ^ cvtParams arg

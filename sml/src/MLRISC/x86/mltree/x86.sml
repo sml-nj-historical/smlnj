@@ -12,7 +12,7 @@
  *
  * Some changes:
  *
- *  1.  REMU/REMS/REMT are now supported 
+ *  1.  REMU/REMS are now supported 
  *  2.  COND is supported by generating SETcc and/or CMOVcc; this
  *      may require at least a Pentium II to work.
  *  3.  Division by a constant has been optimized.   Division by
@@ -592,8 +592,9 @@ struct
                 | divide(signed, overflow, e1, e2) = 
                     divrem(signed, overflow, e1, e2, eax)
 
-              fun rem(signed, overflow, e1, e2) = 
-                    divrem(signed, overflow, e1, e2, edx)
+	      (* rem never causes overflow *)
+              fun rem(signed, e1, e2) = 
+                    divrem(signed, false, e1, e2, edx)
 
                   (* Makes sure the destination must be a register *)
               fun dstMustBeReg f = 
@@ -875,17 +876,16 @@ struct
 
              | T.MULU(32, x, y) => uMultiply(x, y)
              | T.DIVU(32, x, y) => divide(false, false, x, y)
-             | T.REMU(32, x, y) => rem(false, false, x, y)
+             | T.REMU(32, x, y) => rem(false, x, y)
 
              | T.MULS(32, x, y) => multiply(x, y)
              | T.DIVS(T.DIV_TO_ZERO, 32, x, y) => divide(true, false, x, y)
-             | T.REMS(T.DIV_TO_ZERO, 32, x, y) => rem(true, false, x, y)
+             | T.REMS(T.DIV_TO_ZERO, 32, x, y) => rem(true, x, y)
 
              | T.ADDT(32, x, y) => (binaryComm(I.ADDL, x, y); trap())
              | T.SUBT(32, x, y) => (binary(I.SUBL, x, y); trap())
              | T.MULT(32, x, y) => (multiply(x, y); trap())
              | T.DIVT(T.DIV_TO_ZERO, 32, x, y) => divide(true, true, x, y)
-             | T.REMT(T.DIV_TO_ZERO, 32, x, y) => rem(true, true, x, y)
 
              | T.ANDB(32, x, y) => binaryComm(I.ANDL, x, y)
              | T.ORB(32, x, y)  => binaryComm(I.ORL, x, y)

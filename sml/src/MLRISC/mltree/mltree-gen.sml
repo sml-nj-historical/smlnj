@@ -36,9 +36,8 @@ functor MLTreeGen (
    structure Size = MLTreeSize(structure T = T val intTy = intTy)
    structure C  = CellsBasis
 
-   exception Unsupported of string
-
    fun error msg = MLRiscErrorMsg.error("MLTreeGen",msg)
+   fun unsupported what = error ("unsupported: " ^ what)
 
    val zeroT = T.LI(T.I.int_0)
    fun LI i = T.LI(T.I.fromInt(intTy, i))
@@ -71,7 +70,7 @@ functor MLTreeGen (
 
    fun promoteTy(ty) =
    let fun loop([]) = 
-           raise Unsupported("can't promote integer width "^Int.toString ty)
+           unsupported("can't promote integer width "^Int.toString ty)
          | loop(t::ts) = if t > ty then t else loop ts
    in  loop(naturalWidths) end
 
@@ -79,6 +78,13 @@ functor MLTreeGen (
        case naturalWidths of 
          [] => arith(rightShift,f,ty,a,b) 
        | _  => f(promoteTy(ty), a, b)
+
+   fun isNatural w = let
+       fun loop [] = false
+	 | loop (h :: t) = h = w orelse w > h andalso loop t
+   in
+       loop naturalWidths
+   end
 
    (* Implement division with round-to-negative-infinity in terms
     * of division with round-to-zero. *)
@@ -106,8 +112,11 @@ functor MLTreeGen (
 	      T.REG(ty,q))
    end
 
-   (* Same for rem when rounding to negative infinity. *)
-   fun reminf (xdiv, ty, aexp, bexp) = let
+   (* Same for rem when rounding to negative infinity.
+    * The odd case is when a = MININT and b = -1 in which case the DIVS op
+    * will overflow.  But the subsequent MULS will overflow in such a way that
+    * the results cancel.  Thus, the correct result of 0 will come out. *)
+   fun reminf (ty, aexp, bexp) = let
        val a = Cells.newReg ()
        val b = Cells.newReg ()
        val q = Cells.newReg ()
@@ -116,16 +125,17 @@ functor MLTreeGen (
    in
        T.LET (T.SEQ [T.MV (ty, a, aexp),
 		     T.MV (ty, b, bexp),
-		     T.MV (ty, q, xdiv (T.DIV_TO_ZERO, ty, T.REG (ty, a),
-					                   T.REG (ty, b))),
+		     T.MV (ty, q, T.DIVS (T.DIV_TO_ZERO, ty, T.REG (ty, a),
+					                     T.REG (ty, b))),
 		     T.MV (ty, r, T.SUB (ty, T.REG (ty, a),
 					     T.MULS (ty, T.REG (ty, q),
 						         T.REG (ty, b)))),
-		     T.IF (T.OR (T.CMP (ty, T.Basis.GE, T.REG (ty, q), zero),
-				 T.CMP (ty, T.Basis.EQ, T.REG (ty, r), zero)),
+		     T.IF (T.CMP (ty, T.Basis.GE, T.REG (ty, q), zero),
 			   T.SEQ [],
-			   T.MV (ty, r, T.ADD (ty, T.REG (ty, r),
-					           T.REG (ty, b))))],
+			   T.IF (T.CMP (ty, T.Basis.EQ, T.REG (ty, r), zero),
+				 T.SEQ [],
+				 T.MV (ty, r, T.ADD (ty, T.REG (ty, r),
+					                 T.REG (ty, b)))))],
 	      T.REG (ty, r))
    end
 
@@ -162,13 +172,13 @@ functor MLTreeGen (
 	                   promotable T.SRA (exp,DIVREMz T.DIVS,ty,a,b)
        | T.DIVS(T.DIV_TO_NEGINF,ty,a,b) => divinf (T.DIVS,ty,a,b)
        | T.REMS(T.DIV_TO_ZERO,ty,a,b) =>
-	 if ty = intTy then remzero (T.DIVS,T.MULS,ty,a,b)
+	 if isNatural ty then remzero (T.DIVS,T.MULS,ty,a,b)
 	 else promotable T.SRA (exp,DIVREMz T.REMS,ty,a,b)
-       | T.REMS(T.DIV_TO_NEGINF,ty,a,b) => reminf (T.DIVS,ty,a,b)
+       | T.REMS(T.DIV_TO_NEGINF,ty,a,b) => reminf (ty,a,b)
        | T.MULU(ty,a,b) => promotable T.SRL (exp,T.MULU,ty,a,b)
        | T.DIVU(ty,a,b) => promotable T.SRL (exp,T.DIVU,ty,a,b)
        | T.REMU(ty,a,b) =>
-	 if ty = intTy then
+	 if isNatural ty then
 	     remzero (fn (_,ty,a,b) => T.DIVU (ty,a,b),T.MULU,ty,a,b)
 	 else promotable T.SRL (exp,T.REMU,ty,a,b)
 
@@ -179,10 +189,6 @@ functor MLTreeGen (
        | T.MULT(ty,a,b) => arith (T.SRA,T.MULT,ty,a,b)
        | T.DIVT(T.DIV_TO_ZERO,ty,a,b) => arith (T.SRA,DIVREMz T.DIVT,ty,a,b)
        | T.DIVT(T.DIV_TO_NEGINF,ty,a,b) => divinf (T.DIVT,ty,a,b)
-       | T.REMT(T.DIV_TO_ZERO,ty,a,b) =>
-	 if ty = intTy then remzero (T.DIVT,T.MULS,ty,a,b)
-	 else arith (T.SRA,DIVREMz T.REMT,ty,a,b)
-       | T.REMT(T.DIV_TO_NEGINF,ty,a,b) => reminf (T.DIVT,ty,a,b)
 
          (* conditional evaluation rules *)
 (*** XXX: Seems wrong.
@@ -237,7 +243,7 @@ functor MLTreeGen (
               | 16 => T.ANDB(ty,e,T.LI T.I.int_0xffff)
               | 32 => T.ANDB(ty,e,T.LI T.I.int_0xffffffff)
               | 64 => e
-              | _  => raise Unsupported("unknown expression")
+              | _  => unsupported("unknown expression")
             )
 
        (* 
@@ -255,9 +261,9 @@ functor MLTreeGen (
          let val ty' = promoteTy(ty)
          in  T.ZX(ty, ty', T.SLL(ty', data, shift)) end
 
-       | exp => raise Unsupported("unknown expression")
+       | exp => unsupported("unknown expression")
 
-   fun compileFexp fexp = raise Unsupported("unknown expression")
+   fun compileFexp fexp = unsupported("unknown expression")
 
    fun mark(s,[]) = s
      | mark(s,a::an) = mark(T.ANNOTATION(s,a),an)

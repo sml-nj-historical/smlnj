@@ -35,7 +35,7 @@ struct
   val TVS = I.ticc{t=I.BVS,cc=I.ICC,r=C.r0,i=I.IMMED 7}
 
       (* overflows iff Y != (d ~>> 31) *)
-  fun smul_native({r, i, d}, reduceOpnd) =
+  fun smult_native({r, i, d}, reduceOpnd) =
       let val t1 = C.newReg()
           val t2 = C.newReg()
       in  [I.arith{a=I.SMUL,r=r,i=i,d=d},
@@ -45,17 +45,29 @@ struct
            TNE
           ] 
       end
+
+  fun smul_native({r, i, d}, reduceOpnd) =
+      [I.arith{a=I.SMUL,r=r,i=i,d=d}]
+
   fun udiv_native({r,i,d},reduceOpnd) = 
       [I.wry{r=C.r0,i=I.REG C.r0},
        I.arith{a=I.UDIV,r=r,i=i,d=d}]
 
    (* May overflow if MININT div -1 *)
-  fun sdiv_native({r,i,d},reduceOpnd) = 
+  fun sdivt_native({r,i,d},reduceOpnd) = 
       let val t1 = C.newReg()
       in  [I.shift{s=I.SRA,r=r,i=I.IMMED 31,d=t1},
            I.wry{r=t1,i=I.REG C.r0},
            I.arith{a=I.SDIVCC,r=r,i=i,d=d},
            TVS
+          ]
+      end
+
+  fun sdiv_native({r,i,d},reduceOpnd) =
+      let val t1 = C.newReg()
+      in  [I.shift{s=I.SRA,r=r,i=I.IMMED 31,d=t1},
+           I.wry{r=t1,i=I.REG C.r0},
+           I.arith{a=I.SDIV,r=r,i=i,d=d}
           ]
       end
 
@@ -96,11 +108,13 @@ struct
 
      (* Generate native versions of the instructions *)
   val umul32 = if native then umul_native else umul
-  fun smul32 _ = error "smul32"
-  val smul32trap = if native then smul_native else smultrap
+  val smul32 : format1 =
+      if native then smul_native else (fn _ => error "smul32")
+  val smul32trap = if native then smult_native else smultrap
   val udiv32 = if native then udiv_native else udiv
-  fun sdiv32 _ = error "sdiv32"
-  val sdiv32trap = if native then sdiv_native else sdivtrap
+  val sdiv32 : format1 =
+      if native then sdiv_native else (fn _ => error "sdiv32")
+  val sdiv32trap = if native then sdivt_native else sdivtrap
 
   val overflowtrap32 = (* tvs 0x7 *)
                        [I.ticc{t=I.BVS,cc=I.ICC,r=C.r0,i=I.IMMED 7}]

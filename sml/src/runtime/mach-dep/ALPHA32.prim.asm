@@ -71,7 +71,7 @@
  *			+-------------------+
  *	sp+124		|    ml_divlu       |	
  *			+-------------------+ 
- *      sp+120          |    ml_divl        |
+ *      sp+120          |    ml_divlv       |
  *			+-------------------+
  *	sp+116		|   pseudo reg 2    |
  *			+-------------------+
@@ -112,7 +112,7 @@
 #define STARTGC_OFFSET	8
 #define REGSAVE_OFFSET	16
 #define PSEUDOREG_OFFSET 112
-#define	ML_DIVL_OFFSET 120
+#define	ML_DIVLV_OFFSET 120
 #define	ML_DIVLU_OFFSET	124
 
 #ifdef ALLIGN_ALLOCATION
@@ -265,8 +265,8 @@ ENTRY(restoreregs)
 	lda	$3,saveregs
 	stq	CARG0,MLSTATE_OFFSET(sp)	/* save MLState ptr for return to C */
 	stq	$3,STARTGC_OFFSET(sp)		/* so ML can find saveregs! */
-	lda     $3,ml_divl			/* address of ml_divl */
-	stl	$3,ML_DIVL_OFFSET(sp)
+	lda     $3,ml_divlv			/* address of ml_divlv */
+	stl	$3,ML_DIVLV_OFFSET(sp)
 	lda	$3,ml_divlu			/* address of ml_divlu */
 	stl	$3,ML_DIVLU_OFFSET(sp)
 	stq	$30,REGSAVE_OFFSET+72(sp)
@@ -662,10 +662,10 @@ ML_CODE_HDR(scalb_a)
 	mov	PTRTMP,STDARG
 	CONTINUE
 
-/* ml_divl
+/* ml_divlv
  * Incoming parameters in $16 and $17, result in $0	
  */
-ENTRY(ml_divl)			/* divide longword */
+ENTRY(ml_divlv)			/* divide longword */
 	beq $17, divZero        /* check for div-by-zero */
 	ornot $31, $17, $0	/* is divisor -1 */
 	bne $0, do_ml_divl	/* NO */

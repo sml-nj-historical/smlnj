@@ -62,7 +62,6 @@ struct
            | T.SUBT(ty,a,b) => rexp2(a,b,x)
            | T.MULT(ty,a,b) => rexp2(a,b,x)
            | T.DIVT(m,ty,a,b) => rexp2(a,b,x)
-           | T.REMT(m,ty,a,b) => rexp2(a,b,x)
            | T.ANDB(ty,a,b) => rexp2(a,b,x)
            | T.ORB(ty,a,b) => rexp2(a,b,x)
            | T.XORB(ty,a,b) => rexp2(a,b,x)

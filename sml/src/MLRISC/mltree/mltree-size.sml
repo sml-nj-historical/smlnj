@@ -26,7 +26,6 @@ struct
      | size(T.SUBT(ty,_,_)) = ty
      | size(T.MULT(ty,_,_)) = ty
      | size(T.DIVT(_,ty,_,_)) = ty
-     | size(T.REMT(_,ty,_,_)) = ty
      | size(T.ANDB(ty,_,_)) = ty
      | size(T.ORB(ty,_,_)) = ty
      | size(T.XORB(ty,_,_)) = ty

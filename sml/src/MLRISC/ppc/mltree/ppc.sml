@@ -97,6 +97,17 @@ struct
     )
     (val signed = false)
 
+  structure Muls32 = Multiply32
+    (val trapping = false
+     val multCost = multCost
+     fun addv{r1,r2,d}=[I.arith{oper=I.ADD,ra=r1,rb=r2,rt=d,Rc=false,OE=false}]
+     fun subv{r1,r2,d}=[I.arith{oper=I.SUBF,ra=r2,rb=r1,rt=d,Rc=false,OE=false}]
+     val sh1addv = NONE
+     val sh2addv = NONE
+     val sh3addv = NONE
+    )
+    (val signed = true)
+
   structure Mult32 = Multiply32
     (val trapping = true
      val multCost = multCost
@@ -514,6 +525,8 @@ struct
 
       and divu32 x = Mulu32.divide{mode=T.TO_ZERO,stm=doStmt} x 
 
+      and divs32 x = Muls32.divide{mode=T.TO_ZERO,stm=doStmt} x
+
       and divt32 x = Mult32.divide{mode=T.TO_ZERO,stm=doStmt} x 
 
           (* Generate optimized division code *)
@@ -594,6 +607,12 @@ struct
            | T.MULU(32, e1, e2) => multiply(32,I.MULLW,I.MULLI,
                                             Mulu32.multiply,e1,e2,rt,an)
            | T.DIVU(32, e1, e2) => divide(32,I.DIVWU,divu32,e1,e2,rt,false,an)
+
+	   | T.MULS(32, e1, e2) => multiply(32,I.MULLW,I.MULLI,
+					    Muls32.multiply,e1,e2,rt,an)
+	   | T.DIVS(T.DIV_TO_ZERO, 32, e1, e2) =>
+	                           divide(32,I.DIVW,divs32,e1,e2,rt,false,an)
+
            | T.ADDT(32, e1, e2) => arithTrapping(I.ADD, e1, e2, rt, an)
            | T.SUBT(32, e1, e2) => arithTrapping(I.SUBF, e2, e1, rt, an)
            | T.MULT(32, e1, e2) => arithTrapping(I.MULLW, e1, e2, rt, an)

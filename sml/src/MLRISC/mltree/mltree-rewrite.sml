@@ -72,7 +72,6 @@ struct
            | T.SUBT(ty,x,y) => T.SUBT(ty,rexp x,rexp y)
            | T.MULT(ty,x,y) => T.MULT(ty,rexp x,rexp y)
            | T.DIVT(m,ty,x,y) => T.DIVT(m,ty,rexp x,rexp y)
-           | T.REMT(m,ty,x,y) => T.REMT(m,ty,rexp x,rexp y)
            | T.ANDB(ty,x,y) => T.ANDB(ty,rexp x,rexp y)
            | T.ORB(ty,x,y) => T.ORB(ty,rexp x,rexp y)
            | T.XORB(ty,x,y) => T.XORB(ty,rexp x,rexp y)

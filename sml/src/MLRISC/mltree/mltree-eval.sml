@@ -100,7 +100,6 @@ struct
     | eqRexp(T.SUBT x,T.SUBT y) = eq2(x,y)
     | eqRexp(T.MULT x,T.MULT y) = eq2(x,y)
     | eqRexp(T.DIVT x,T.DIVT y) = eq3(x,y)
-    | eqRexp(T.REMT x,T.REMT y) = eq3(x,y)
     | eqRexp(T.ANDB x,T.ANDB y) = eq2(x,y)
     | eqRexp(T.ORB x,T.ORB y) = eq2(x,y)
     | eqRexp(T.XORB x,T.XORB y) = eq2(x,y)
@@ -218,7 +217,6 @@ struct
 	| rexp(T.SUBT(sz,x,y)) = I.SUBT(sz,rexp x,rexp y)
 	| rexp(T.MULT(sz,x,y)) = I.MULT(sz,rexp x,rexp y)
 	| rexp(T.DIVT(m,sz,x,y)) = I.DIVT(drm m,sz,rexp x,rexp y)
-	| rexp(T.REMT(m,sz,x,y)) = I.REMT(drm m,sz,rexp x,rexp y)
 
 	| rexp(T.NOTB(sz,x)) = I.NOTB(sz,rexp x)
 	| rexp(T.ANDB(sz,x,y)) = I.ANDB(sz,rexp x,rexp y)

@@ -83,7 +83,6 @@ struct
    (* unsigned, non-trapping version of multiply and divide *)
    structure Mulu32 = Multiply32
     (val trapping = false
-     val signed   = false
      val multCost = costOfMultiply
      val divCost  = costOfDivision
      fun addv{r1,r2,d} = [I.arith{a=I.ADD,r1=r1,r2=r2,t=d}]
@@ -93,6 +92,19 @@ struct
      val sh3addv = SOME(fn{r1,r2,d} => [I.arith{a=I.SH3ADDL,r1=r1,r2=r2,t=d}])
     )
     (val signed   = false)
+
+   (* signed, non-trapping version of multiply and divide *)
+   structure Muls32 = Multiply32
+    (val trapping = false
+     val multCost = costOfMultiply
+     val divCost  = costOfDivision
+     fun addv{r1,r2,d} = [I.arith{a=I.ADD,r1=r1,r2=r2,t=d}]
+     fun subv{r1,r2,d} = [I.arith{a=I.SUB,r1=r1,r2=r2,t=d}]
+     val sh1addv = SOME(fn{r1,r2,d} => [I.arith{a=I.SH1ADDL,r1=r1,r2=r2,t=d}])
+     val sh2addv = SOME(fn{r1,r2,d} => [I.arith{a=I.SH2ADDL,r1=r1,r2=r2,t=d}])
+     val sh3addv = SOME(fn{r1,r2,d} => [I.arith{a=I.SH3ADDL,r1=r1,r2=r2,t=d}])
+    )
+    (val signed   = true)
 
    fun error msg = MLRiscErrorMsg.error("Hppa",msg)
 
@@ -593,6 +605,7 @@ struct
             * d <- if r >= 0 then r else d
             *)
        and divu32 x = Mulu32.divide{mode=T.TO_ZERO,stm=doStmt} x
+       and divs32 x = Muls32.divide{mode=T.TO_ZERO,stm=doStmt} x
        and divt32 x = Mult32.divide{mode=T.TO_ZERO,stm=doStmt} x
        
        and muldiv(ty,genConst,milliFn,a,b,t,commute,an) =
@@ -739,8 +752,15 @@ struct
            | T.SRL(_,a,b)  => shift(I.EXTRU,I.VEXTRU,a,b,t,an)
            | T.SRA(_,a,b)  => shift(I.EXTRS,I.VEXTRS,a,b,t,an)
            | T.MULU(32,a,b) => muldiv(32,Mulu32.multiply,MC.mulu,a,b,t,true,an)
+           | T.MULS(32,a,b) => muldiv(32,Muls32.multiply,MC.mulu,a,b,t,true,an)
            | T.MULT(32,a,b) => muldiv(32,Mult32.multiply,MC.mulo,a,b,t,true,an)
            | T.DIVU(32,a,b)  => muldiv(32,divu32,MC.divu,a,b,t,false,an)
+(* FIXME: The following is a hack:  We use the trapping div in place of
+ *        the non-trapping since we currently expect that the non-trapping
+ *        div will only be used where there is some high-level reasoning
+ *        that the trapping div would in fact not trap.  *)
+           | T.DIVS(T.DIV_TO_ZERO,32,a,b) =>
+	                        muldiv(32,divs32,MC.divo,a,b,t,false,an)
            | T.DIVT(T.DIV_TO_ZERO,32,a,b) =>
 	                        muldiv(32,divt32,MC.divo,a,b,t,false,an)
 

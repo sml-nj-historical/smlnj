@@ -28,6 +28,7 @@ structure P : sig
     datatype arithop = + | - | * | / | ~ | abs 
                      | fsqrt | fsin | fcos | ftan 
 	             | lshift | rshift | rshiftl | andb | orb | xorb | notb
+		     | rem | div | mod
 
     datatype cmpop = > | >= | < | <= | eql | neq
 

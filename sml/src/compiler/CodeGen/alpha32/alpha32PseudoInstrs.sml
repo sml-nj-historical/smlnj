@@ -6,7 +6,7 @@ struct
   structure C = Instr.C
   structure CB = CellsBasis
 
-  fun error msg = MLRiscErrorMsg.impossible("Alpha32PsuedoInstrs."^msg)
+  fun error msg = MLRiscErrorMsg.impossible("Alpha32PseudoInstrs."^msg)
 
   type reduceOpnd = I.operand -> CB.cell
 
@@ -37,23 +37,24 @@ struct
      I.jsr{r=r26, b=r27, d=0, defs=defs, uses=uses, cutsTo=[], mem=stack},
      copy{dst=[rc], src=[r0], tmp=NONE}]
 
+  val divl = divlv			(* FIXME!!!! *)
+
   fun divlu({ra, rb, rc}, reduceOpnd) = 
     [copy{dst=[r16, r17], src=[ra, reduceOpnd rb],tmp=copyTmp()},
      I.load{ldOp=I.LDL, r=r27, b=sp, d=divluOffset, mem=stack},
      I.jsr{r=r26, b=r27, d=0, defs=defs, uses=uses, cutsTo=[], mem=stack},
      copy{dst=[rc], src=[r0], tmp=NONE}]
 
-  fun unimplemented _ = error "unimplemented pseudo-instr"
-  val divl  = unimplemented
-  val divqv = unimplemented
-  val divq  = unimplemented
-  val divqu = unimplemented
-  val remlv = unimplemented
-  val reml  = unimplemented
-  val remlu = unimplemented
-  val remqv = unimplemented
-  val remq  = unimplemented
-  val remqu = unimplemented
+  fun unimplemented what = error ("unimplemented pseudo-instr: " ^ what)
+  fun divqv _ = unimplemented "divqv"
+  fun divq _  = unimplemented "divq"
+  fun divqu _ = unimplemented "divqu"
+  fun remlv _ = unimplemented "remlv"
+  fun reml _  = unimplemented "reml"
+  fun remlu _ = unimplemented "remlu"
+  fun remqv _ = unimplemented "remqv"
+  fun remq _  = unimplemented "remq"
+  fun remqu _ = unimplemented "remqu"
      
   fun cvtlt({opnd, fd}, reduceOpnd) = 
   let val ra = reduceOpnd opnd
@@ -62,11 +63,11 @@ struct
        I.funary{oper=I.CVTQT, fb=fd, fc=fd}]
   end
 
-  val cvtls = unimplemented
-  val cvtqt = unimplemented
-  val cvtqs = unimplemented
-  val cvtsl = unimplemented
-  val cvttl = unimplemented
-  val cvtsq = unimplemented
-  val cvttq = unimplemented
+  fun cvtls _ = unimplemented "cvtls"
+  fun cvtqt _ = unimplemented "cvtqt"
+  fun cvtqs _ = unimplemented "cvtqs"
+  fun cvtsl _ = unimplemented "cvtsl"
+  fun cvttl _ = unimplemented "cvttl"
+  fun cvtsq _ = unimplemented "cvtsq"
+  fun cvttq _ = unimplemented "cvttq"
 end

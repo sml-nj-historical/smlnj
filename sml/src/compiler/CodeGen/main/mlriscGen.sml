@@ -750,17 +750,32 @@ struct
           in  addTag(mulOp(ity, v, w))
           end
 
-          fun int31div(signed, v, w) = 
+          fun int31div(signed, drm, v, w) = 
           let val (v, w) = 
               case (v, w) of
                 (CPS.INT k, CPS.INT j) => (LI k, LI j)
               | (CPS.INT k, w) => (LI k, untag(signed, w))
               | (v, CPS.INT k) => (untag(signed, v), LI(k))
               | (v, w) => (untag(signed, v), untag(signed, w))
-          in  tag(signed, 
-                  if signed then M.DIVT(M.DIV_TO_ZERO,ity, v, w)
-		  else M.DIVU(ity, v, w))
+          in
+	      (* The only way a 31-bit div can overflow is when the result gets retagged.
+	       * Therefore, we can use M.DIVS instead of M.DIVT. *)
+	      tag (signed, 
+                   if signed then M.DIVS (drm, ity, v, w)
+		   else M.DIVU (ity, v, w))
           end
+
+	  fun int31rem(signed, drm, v, w) = let
+              val (v, w) = case (v, w) of
+			       (CPS.INT k, CPS.INT j) => (LI k, LI j)
+			     | (CPS.INT k, w) => (LI k, untag(signed, w))
+			     | (v, CPS.INT k) => (untag(signed, v), LI(k))
+			     | (v, w) => (untag(signed, v), untag(signed, w))
+	  in
+	      tag (false,		(* will not overflow, so we tag like unsigned *)
+		   if signed then M.REMS (drm, ity, v, w)
+		   else M.REMU (ity, v, w))
+	  end
 
           fun int31lshift(CPS.INT k, w) =
                 addTag (M.SLL(ity, LI(k+k), untagUnsigned(w)))
@@ -1505,11 +1520,19 @@ struct
                  | P.UINT 31 => (case oper
                      of P.+    => defI31(x, int31add(M.ADD, v, w), e, hp)
                       | P.-    => defI31(x, int31sub(M.SUB, v, w), e, hp)
-                      | P.*    => defI31(x, int31mul(false, M.MULU, v, w), e, hp)
+                      | P.*    => defI31(x, int31mul(false, M.MULU, v, w),
+					 e, hp)
                       | P./    => (* This is not really a pure 
                                      operation -- oh well *)
                                  (updtHeapPtr hp;
-                                  defI31(x, int31div(false, v, w), e, 0))
+                                  defI31(x, int31div(false, M.DIV_TO_ZERO,
+						     v, w),
+					 e, 0))
+		      | P.rem => (* Neither is this -- oh well *)
+			         (updtHeapPtr hp;
+				  defI31(x, int31rem(false, M.DIV_TO_ZERO,
+						     v, w),
+					 e, 0))
                       | P.xorb => defI31(x, int31xor(v, w), e, hp)
                       | P.lshift  => defI31(x,int31lshift(v, w), e, hp)
                       | P.rshift  => defI31(x,int31rshift(M.SRA,v, w),e,hp)
@@ -1522,6 +1545,8 @@ struct
                       | P.*     => arith32(M.MULU, v, w, x, e, hp)
                       | P./     => (updtHeapPtr hp; 
                                     arith32(M.DIVU, v, w, x, e, 0))
+		      | P.rem   => (updtHeapPtr hp;
+				    arith32(M.REMU, v, w, x, e, 0))
                       | P.xorb  => arith32(M.XORB, v, w, x, e, hp)
                       | P.lshift => logical32(M.SLL, v, w, x, e, hp)
                       | P.rshift => logical32(M.SRA, v, w, x, e, hp)
@@ -1709,18 +1734,27 @@ struct
                     of P.+ => int31add(M.ADDT, v, w)
                      | P.- => int31sub(M.SUBT, v, w)
                      | P.* => int31mul(true, M.MULT, v, w)
-                     | P./ => int31div(true, v, w)
+                     | P./ => int31div(true, M.DIV_TO_ZERO, v, w)
+		     | P.div => int31div(true, M.DIV_TO_NEGINF, v, w)
+		     | P.rem => int31rem(true, M.DIV_TO_ZERO, v, w)
+		     | P.mod => int31rem(true, M.DIV_TO_NEGINF, v, w)
                      | _   => error "gen:ARITH INT 31"
                in  defI31(x, t, e, 0) end
               (*esac*))        
             | gen(ARITH(P.arith{kind=P.INT 32, oper}, [v,w], x, _, e), hp) =
               (updtHeapPtr hp;
                case oper
-                of P.+     => arith32(M.ADDT, v, w, x, e, 0)
-                 | P.-     => arith32(M.SUBT, v, w, x, e, 0)
-                 | P.*     => arith32(M.MULT, v, w, x, e, 0)
-                 | P./     => arith32(fn(ty,x,y)=>M.DIVT(M.DIV_TO_ZERO,ty,x,y),
-				      v, w, x, e, 0)
+                of P.+   => arith32(M.ADDT, v, w, x, e, 0)
+                 | P.-   => arith32(M.SUBT, v, w, x, e, 0)
+                 | P.*   => arith32(M.MULT, v, w, x, e, 0)
+                 | P./   => arith32(fn(ty,x,y)=>M.DIVT(M.DIV_TO_ZERO,ty,x,y),
+				    v, w, x, e, 0)
+		 | P.div => arith32(fn(ty,x,y)=>M.DIVT(M.DIV_TO_NEGINF,ty,x,y),
+				    v, w, x, e, 0)
+		 | P.rem => arith32(fn(ty,x,y)=>M.REMS(M.DIV_TO_ZERO,ty,x,y),
+				    v, w, x, e, 0)
+		 | P.mod => arith32(fn(ty,x,y)=>M.REMS(M.DIV_TO_NEGINF,ty,x,y),
+				    v, w, x, e, 0)
                  | _ => error "P.arith{kind=INT 32, oper}, [v,w], ..."
               (*esac*))
             | gen(ARITH(P.arith{kind=P.INT 32, oper=P.~ }, [v], x, _, e), hp) =

@@ -198,8 +198,6 @@ struct
    val MULT  = trappingBinOp I.*
    fun DIVT (DIV_TO_ZERO, ty, x, y) = trappingBinOp I.quot (ty, x, y)
      | DIVT (DIV_TO_NEGINF, ty, x, y) = trappingBinOp I.div (ty, x, y)
-   fun REMT (DIV_TO_ZERO, ty, x, y) = trappingBinOp I.rem (ty, x, y)
-     | REMT (DIV_TO_NEGINF, ty, x, y) = trappingBinOp I.mod (ty, x, y)
 
    fun NOTB(sz,x)   = narrow(sz,I.notb x)
    fun ANDB(sz,x,y) = narrow(sz,I.andb(x,y))

@@ -343,6 +343,7 @@ val allPrimops =
        ("dispose",	 P.DISPOSE,     p1(ar(v1,u))) :-:
        ("compose",	 P.INLCOMPOSE,  p3(ar(pa(ar(v2,v3),ar(v1,v2)),ar(v1,v3)))) :-:
        ("before",	 P.INLBEFORE,   p2(ar(pa(v1,v2),v1))) :-:
+       ("ignore",        P.INLIGNORE,   p1(ar(v1,u))) :-:
 			 
        			 
        ("length",	 P.LENGTH,     	p1(ar(v1,i))) :-:
@@ -465,14 +466,22 @@ val allPrimops =
        ("i31mul",	 int31 (P.* ),      	ii_i) :-:
        ("i31mul_8",	 int31 (P.* ),      	w8w8_w8) :-:
 
-       ("i31quot",	 int31 (P./),      	ii_i) :-:
-
+(*
        ("i31div",	 P.INLDIV,      	ii_i) :-:
        ("i31div_8",	 P.INLDIV,      	w8w8_w8) :-:
 
        ("i31mod",        P.INLMOD,      	ii_i) :-:
 
        ("i31rem",	 P.INLREM,      	ii_i) :-:
+*)
+       ("i31div",	 int31 (P.DIV),      	ii_i) :-:
+       ("i31div_8",	 int31 (P.DIV),      	w8w8_w8) :-:
+
+       ("i31mod",        int31 (P.MOD),      	ii_i) :-:
+
+       ("i31quot",	 int31 (P./),      	ii_i) :-:
+
+       ("i31rem",	 int31 (P.REM),      	ii_i) :-:
 
        ("i31orb",	 bits31 P.ORB,      	ii_i) :-:
        ("i31orb_8",	 bits31 P.ORB,      	w8w8_w8) :-:
@@ -511,22 +520,20 @@ val allPrimops =
        ("i31ge_c", 	 int31cmp (P.>=),       cc_b) :-:
 
        ("i31ltu",	 word31cmp P.LTU,      	ii_b) :-:
-
        ("i31geu",	 word31cmp P.GEU,      	ii_b) :-:
-
        ("i31eq",	 int31cmp P.EQL,      	ii_b) :-:
-
        ("i31ne",	 int31cmp P.NEQ,      	ii_b) :-:
 
-       ("i31max",	 P.INLMAX,      	ii_i) :-:
-
-       ("i31min",	 P.INLMIN,      	ii_i) :-:
-
-       ("i31abs",	 P.INLABS,      	i_i) :-:
+       ("i31min",	 P.INLMIN (P.INT 31),  	ii_i) :-:
+       ("i31max",	 P.INLMAX (P.INT 31),  	ii_i) :-:
+       ("i31abs",	 P.INLABS (P.INT 31), 	i_i) :-:
 
        (*** integer 32 primops ***)
        ("i32mul",        int32 (P.* ),      	i32i32_i32) :-:
+       ("i32div",        int32 (P.DIV),      	i32i32_i32) :-:
+       ("i32mod",        int32 (P.MOD),      	i32i32_i32) :-:
        ("i32quot",       int32 (P./),      	i32i32_i32) :-:
+       ("i32rem",        int32 (P.REM),      	i32i32_i32) :-:
        ("i32add",        int32 (P.+),      	i32i32_i32) :-:
        ("i32sub",        int32 (P.-),      	i32i32_i32) :-:
        ("i32orb",        bits32 P.ORB,      	i32i32_i32) :-:
@@ -541,6 +548,10 @@ val allPrimops =
        ("i32ge",         int32cmp (P.>=),       i32i32_b) :-:
        ("i32eq",         int32cmp (P.EQL),      i32i32_b) :-:
        ("i32ne",         int32cmp (P.NEQ),      i32i32_b) :-:
+
+       ("i32min",	 P.INLMIN (P.INT 32),  	i32i32_i32) :-:
+       ("i32max",	 P.INLMAX (P.INT 32),  	i32i32_i32) :-:
+       ("i32abs",	 P.INLABS (P.INT 32), 	i32_i32) :-:
 
        (*
         * WARNING: the lambda types in translate.sml are all wrong for  
@@ -575,6 +586,9 @@ val allPrimops =
        ("f64cos",	 purefloat64 P.FCOS,	 f64_f64) :-:
        ("f64tan",	 purefloat64 P.FTAN,	 f64_f64) :-:
        ("f64sqrt",	 purefloat64 P.FSQRT,    f64_f64) :-:
+
+       ("f64min",	 P.INLMIN (P.FLOAT 64),  f64f64_f64) :-:
+       ("f64max",	 P.INLMAX (P.FLOAT 64),  f64f64_f64) :-:
 
        (*** float64 array ***)	
        ("f64Sub",	 sub (P.FLOAT 64),       numSubTy) :-:
@@ -633,6 +647,7 @@ val allPrimops =
        (* word31 primops *)
        ("w31mul",	word31 (P.* ),      	ww_w) :-:
        ("w31div",	word31 (P./),      	ww_w) :-:
+       ("w31mod",	word31 (P.REM),      	ww_w) :-:
        ("w31add",	word31 (P.+),      	ww_w) :-:
        ("w31sub",	word31 (P.-),      	ww_w) :-:
        ("w31orb",	word31 P.ORB,      	ww_w) :-:
@@ -651,10 +666,14 @@ val allPrimops =
        ("w31ChkRshift", P.INLRSHIFT(P.UINT 31), ww_w) :-:
        ("w31ChkRshiftl",P.INLRSHIFTL(P.UINT 31),ww_w) :-:
        ("w31ChkLshift", P.INLLSHIFT(P.UINT 31), ww_w) :-:
+
+       ("w31min",	 P.INLMIN (P.UINT 31), 	ww_w) :-:
+       ("w31max",	 P.INLMAX (P.UINT 31), 	ww_w) :-:
        
        (*** word32 primops ***)
        ("w32mul",	word32 (P.* ),      	w32w32_w32) :-:
        ("w32div",	word32 (P./),      	w32w32_w32) :-:
+       ("w32mod",	word32 (P.REM),      	w32w32_w32) :-:
        ("w32add",	word32 (P.+),      	w32w32_w32) :-:
        ("w32sub",	word32 (P.-),      	w32w32_w32) :-:
        ("w32orb",	word32 P.ORB,      	w32w32_w32) :-:
@@ -673,6 +692,9 @@ val allPrimops =
        ("w32ChkRshift", P.INLRSHIFT(P.UINT 32), w32w_w32) :-:
        ("w32ChkRshiftl",P.INLRSHIFTL(P.UINT 32),w32w_w32) :-:
        ("w32ChkLshift", P.INLLSHIFT(P.UINT 32), w32w_w32) :-:
+
+       ("w32min",	 P.INLMIN (P.UINT 32), 	w32w32_w32) :-:
+       ("w32max",	 P.INLMAX (P.UINT 32), 	w32w32_w32) :-:
 
        (* experimental C FFI primops *)
        ("raww8l",       P.RAW_LOAD (P.UINT 8),    w32_w32) :-:

@@ -68,14 +68,14 @@ struct
 (*#line 46.4 "mltree-simplify.in"*)
            fun sim ==> exp = 
                   let val v_3 = exp
-                      fun state_170 e = e
-                      fun state_154 () = zeroT
-                      fun state_163 () = zeroT
-                      fun state_185 v_3 = 
+                      fun state_165 e = e
+                      fun state_149 () = zeroT
+                      fun state_158 () = zeroT
+                      fun state_180 v_3 = 
                           let val exp = v_3
                           in exp
                           end
-                      fun state_123 (v_1, v_4) = 
+                      fun state_118 (v_1, v_4) = 
                           let val b = v_4
                               and ty = v_1
                           in b
@@ -85,19 +85,19 @@ struct
                               and ty = v_1
                           in a
                           end
-                      fun state_153 v_1 = 
+                      fun state_148 v_1 = 
                           let val ty = v_1
                           in zeroT
                           end
-                      fun state_145 v_1 = 
+                      fun state_140 v_1 = 
                           let val ty = v_1
                           in zeroT
                           end
-                      fun state_162 v_1 = 
+                      fun state_157 v_1 = 
                           let val ty = v_1
                           in zeroT
                           end
-                      fun state_114 v_4 = 
+                      fun state_109 v_4 = 
                           let val b = v_4
                           in b
                           end
@@ -143,12 +143,12 @@ struct
                               and x = v_0
                           in x
                           end
-                      fun state_132 (v_1, v_4) = 
+                      fun state_127 (v_1, v_4) = 
                           let val b = v_4
                               and ty = v_1
                           in zeroT
                           end
-                      fun state_105 v_0 = 
+                      fun state_100 v_0 = 
                           let val a = v_0
                           in a
                           end
@@ -162,60 +162,60 @@ struct
                               and x = v_0
                           in x
                           end
-                      fun state_1763 (v_3, v_1, v_10, v_4) = (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
-                             then (state_123 (v_1, v_4))
-                             else (state_185 v_3))
-                      fun state_1490 (v_3, v_1, v_0, v_2) = (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
+                      fun state_1717 (v_3, v_1, v_10, v_4) = (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
+                             then (state_118 (v_1, v_4))
+                             else (state_180 v_3))
+                      fun state_1450 (v_3, v_1, v_0, v_2) = (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
                              then (state_15 (v_1, v_0))
-                             else (state_185 v_3))
-                      fun state_1315 (v_3, v_1, v_10) = (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
-                             then (state_153 v_1)
-                             else (state_185 v_3))
-                      fun state_1226 (v_3, v_1, v_10) = (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
-                             then (state_145 v_1)
-                             else (state_185 v_3))
-                      fun state_1051 (v_3, v_1, v_10) = (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
-                             then (state_162 v_1)
-                             else (state_185 v_3))
-                      fun state_937 (v_3, v_10, v_4) = (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
-                             then (state_114 v_4)
-                             else (state_185 v_3))
-                      fun state_839 (v_3, v_1, v_0, v_2) = (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
+                             else (state_180 v_3))
+                      fun state_1279 (v_3, v_1, v_10) = (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
+                             then (state_148 v_1)
+                             else (state_180 v_3))
+                      fun state_1192 (v_3, v_1, v_10) = (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
+                             then (state_140 v_1)
+                             else (state_180 v_3))
+                      fun state_1021 (v_3, v_1, v_10) = (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
+                             then (state_157 v_1)
+                             else (state_180 v_3))
+                      fun state_916 (v_3, v_10, v_4) = (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
+                             then (state_109 v_4)
+                             else (state_180 v_3))
+                      fun state_820 (v_3, v_1, v_0, v_2) = (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
                              then (state_43 v_1)
                              else (if ((IntInf.compare (v_2, lit_16)) = EQUAL)
                                 then (state_47 (v_1, v_0))
-                                else (state_185 v_3)))
-                      fun state_748 (v_3, v_1, v_0, v_2) = (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
+                                else (state_180 v_3)))
+                      fun state_731 (v_3, v_1, v_0, v_2) = (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
                              then (state_83 v_1)
                              else (if ((IntInf.compare (v_2, lit_16)) = EQUAL)
                                 then (state_87 (v_1, v_0))
-                                else (state_185 v_3)))
-                      fun state_657 (v_3, v_1, v_0, v_2) = (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
+                                else (state_180 v_3)))
+                      fun state_642 (v_3, v_1, v_0, v_2) = (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
                              then (state_21 v_1)
                              else (if ((IntInf.compare (v_2, lit_16)) = EQUAL)
                                 then (state_25 (v_1, v_0))
-                                else (state_185 v_3)))
-                      fun state_568 (v_3, v_1, v_10, v_4) = (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
-                             then (state_132 (v_1, v_4))
-                             else (state_185 v_3))
-                      fun state_452 (v_3, v_0, v_10) = (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
-                             then (state_105 v_0)
-                             else (state_185 v_3))
-                      fun state_363 (v_3, v_1, v_0, v_2) = (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
+                                else (state_180 v_3)))
+                      fun state_555 (v_3, v_1, v_10, v_4) = (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
+                             then (state_127 (v_1, v_4))
+                             else (state_180 v_3))
+                      fun state_441 (v_3, v_0, v_10) = (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
+                             then (state_100 v_0)
+                             else (state_180 v_3))
+                      fun state_354 (v_3, v_1, v_0, v_2) = (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
                              then (state_69 (v_1, v_0))
-                             else (state_185 v_3))
-                      fun state_186 (v_3, v_1, v_0, v_2) = (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
+                             else (state_180 v_3))
+                      fun state_181 (v_3, v_1, v_0, v_2) = (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
                              then (state_5 (v_1, v_0))
-                             else (state_185 v_3))
-                      fun state_1491 (v_3, v_1, v_0, v_4) = 
+                             else (state_180 v_3))
+                      fun state_1451 (v_3, v_1, v_0, v_4) = 
                           (case v_4 of
-                            T.LI v_2 => state_1490 (v_3, v_1, v_0, v_2)
-                          | _ => state_185 v_3
+                            T.LI v_2 => state_1450 (v_3, v_1, v_0, v_2)
+                          | _ => state_180 v_3
                           )
-                      fun state_187 (v_3, v_1, v_0, v_4) = 
+                      fun state_182 (v_3, v_1, v_0, v_4) = 
                           (case v_4 of
-                            T.LI v_2 => state_186 (v_3, v_1, v_0, v_2)
-                          | _ => state_185 v_3
+                            T.LI v_2 => state_181 (v_3, v_1, v_0, v_2)
+                          | _ => state_180 v_3
                           )
                   in 
                      (case v_3 of
@@ -237,11 +237,11 @@ struct
                                        and y = v_2
                                    in (if (ty = ty')
                                          then (T.ADD (ty, a, T.LI (I.ADD (ty, x, y))))
-                                         else (state_186 (v_3, v_1, v_0, v_2)))
+                                         else (state_181 (v_3, v_1, v_0, v_2)))
                                    end
-                                 | _ => state_185 v_3
+                                 | _ => state_180 v_3
                                  )
-                               | _ => state_187 (v_3, v_1, v_0, v_4)
+                               | _ => state_182 (v_3, v_1, v_0, v_4)
                                )
                             end
                           | T.LABEXP v_10 => 
@@ -252,8 +252,8 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.ADD (ty, x, y))
                               end
-                            | T.LI v_2 => state_186 (v_3, v_1, v_0, v_2)
-                            | _ => state_185 v_3
+                            | T.LI v_2 => state_181 (v_3, v_1, v_0, v_2)
+                            | _ => state_180 v_3
                             )
                           | T.LI v_10 => (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
                                then 
@@ -271,9 +271,9 @@ struct
                                         and y = v_2
                                     in T.LI (I.ADD (ty, x, y))
                                     end)
-                               | _ => state_185 v_3
+                               | _ => state_180 v_3
                                ))
-                          | _ => state_187 (v_3, v_1, v_0, v_4)
+                          | _ => state_182 (v_3, v_1, v_0, v_4)
                           )
                        end
                      | T.ADDT v_5 => 
@@ -288,8 +288,8 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.ADDT (ty, x, y))
                               end
-                            | T.LI v_2 => state_363 (v_3, v_1, v_0, v_2)
-                            | _ => state_185 v_3
+                            | T.LI v_2 => state_354 (v_3, v_1, v_0, v_2)
+                            | _ => state_180 v_3
                             )
                           | T.LI v_10 => (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
                                then 
@@ -308,12 +308,12 @@ struct
                                     in ((T.LI (I.ADDT (ty, x, y))) handle Overflow => exp
 )
                                     end)
-                               | _ => state_185 v_3
+                               | _ => state_180 v_3
                                ))
                           | _ => 
                             (case v_4 of
-                              T.LI v_2 => state_363 (v_3, v_1, v_0, v_2)
-                            | _ => state_185 v_3
+                              T.LI v_2 => state_354 (v_3, v_1, v_0, v_2)
+                            | _ => state_180 v_3
                             )
                           )
                        end
@@ -329,8 +329,8 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.ANDB (ty, x, y))
                               end
-                            | T.LI v_10 => state_452 (v_3, v_0, v_10)
-                            | _ => state_185 v_3
+                            | T.LI v_10 => state_441 (v_3, v_0, v_10)
+                            | _ => state_180 v_3
                             )
                           | T.LI v_2 => (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
                                then 
@@ -340,18 +340,18 @@ struct
                                else 
                                (case v_0 of
                                  T.LI v_10 => (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
-                                    then (state_105 v_0)
+                                    then (state_100 v_0)
                                     else 
                                     let val ty = v_1
                                         and x = v_10
                                         and y = v_2
                                     in T.LI (I.ANDB (ty, x, y))
                                     end)
-                               | _ => state_185 v_3
+                               | _ => state_180 v_3
                                ))
                           | T.NOTB v_2 => 
                             (case v_0 of
-                              T.LI v_10 => state_452 (v_3, v_0, v_10)
+                              T.LI v_10 => state_441 (v_3, v_0, v_10)
                             | T.NOTB v_10 => 
                               let val (v_7, v_9) = v_10
                               in 
@@ -364,16 +364,16 @@ struct
                                         and ty'' = v_6
                                     in (if ((ty = ty') andalso (ty' = ty''))
                                           then (T.NOTB (ty, T.ORB (ty, a, b)))
-                                          else (state_185 v_3))
+                                          else (state_180 v_3))
                                     end
                                  end
                               end
-                            | _ => state_185 v_3
+                            | _ => state_180 v_3
                             )
                           | _ => 
                             (case v_0 of
-                              T.LI v_10 => state_452 (v_3, v_0, v_10)
-                            | _ => state_185 v_3
+                              T.LI v_10 => state_441 (v_3, v_0, v_10)
+                            | _ => state_180 v_3
                             )
                           )
                        end
@@ -393,7 +393,7 @@ struct
                                 and ty = v_1
                             in a
                             end
-                          | _ => state_185 v_3
+                          | _ => state_180 v_3
                           )
                        end
                      | T.DIVS v_5 => 
@@ -409,7 +409,7 @@ struct
                                   and y = v_17
                               in T.LABEXP (T.DIVS (m, ty, x, y))
                               end
-                            | _ => state_185 v_3
+                            | _ => state_180 v_3
                             )
                           | T.LI v_17 => (if ((IntInf.compare (v_17, lit_16)) = EQUAL)
                                then 
@@ -427,11 +427,11 @@ struct
                                      and y = v_17
                                  in (if (y <> zero)
                                        then (T.LI (I.DIVS (dm m, ty, x, y)))
-                                       else (state_185 v_3))
+                                       else (state_180 v_3))
                                  end
-                               | _ => state_185 v_3
+                               | _ => state_180 v_3
                                ))
-                          | _ => state_185 v_3
+                          | _ => state_180 v_3
                           )
                        end
                      | T.DIVT v_5 => 
@@ -447,7 +447,7 @@ struct
                                   and y = v_17
                               in T.LABEXP (T.DIVT (m, ty, x, y))
                               end
-                            | _ => state_185 v_3
+                            | _ => state_180 v_3
                             )
                           | T.LI v_17 => (if ((IntInf.compare (v_17, lit_16)) = EQUAL)
                                then 
@@ -465,11 +465,11 @@ struct
                                      and y = v_17
                                  in (if (y <> zero)
                                        then (T.LI (I.DIVT (dm m, ty, x, y)))
-                                       else (state_185 v_3))
+                                       else (state_180 v_3))
                                  end
-                               | _ => state_185 v_3
+                               | _ => state_180 v_3
                                ))
-                          | _ => state_185 v_3
+                          | _ => state_180 v_3
                           )
                        end
                      | T.DIVU v_5 => 
@@ -484,7 +484,7 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.DIVU (ty, x, y))
                               end
-                            | _ => state_185 v_3
+                            | _ => state_180 v_3
                             )
                           | T.LI v_2 => (if ((IntInf.compare (v_2, lit_16)) = EQUAL)
                                then 
@@ -500,11 +500,11 @@ struct
                                      and y = v_2
                                  in (if (y <> zero)
                                        then (T.LI (I.DIVU (ty, x, y)))
-                                       else (state_185 v_3))
+                                       else (state_180 v_3))
                                  end
-                               | _ => state_185 v_3
+                               | _ => state_180 v_3
                                ))
-                          | _ => state_185 v_3
+                          | _ => state_180 v_3
                           )
                        end
                      | T.EQVB v_5 => 
@@ -519,8 +519,8 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.EQVB (ty, x, y))
                               end
-                            | T.LI v_10 => state_568 (v_3, v_1, v_10, v_4)
-                            | _ => state_185 v_3
+                            | T.LI v_10 => state_555 (v_3, v_1, v_10, v_4)
+                            | _ => state_180 v_3
                             )
                           | T.LI v_2 => (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
                                then 
@@ -531,19 +531,19 @@ struct
                                else 
                                (case v_0 of
                                  T.LI v_10 => (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
-                                    then (state_132 (v_1, v_4))
+                                    then (state_127 (v_1, v_4))
                                     else 
                                     let val ty = v_1
                                         and x = v_10
                                         and y = v_2
                                     in T.LI (I.EQVB (ty, x, y))
                                     end)
-                               | _ => state_185 v_3
+                               | _ => state_180 v_3
                                ))
                           | _ => 
                             (case v_0 of
-                              T.LI v_10 => state_568 (v_3, v_1, v_10, v_4)
-                            | _ => state_185 v_3
+                              T.LI v_10 => state_555 (v_3, v_1, v_10, v_4)
+                            | _ => state_180 v_3
                             )
                           )
                        end
@@ -559,8 +559,8 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.MULS (ty, x, y))
                               end
-                            | T.LI v_2 => state_657 (v_3, v_1, v_0, v_2)
-                            | _ => state_185 v_3
+                            | T.LI v_2 => state_642 (v_3, v_1, v_0, v_2)
+                            | _ => state_180 v_3
                             )
                           | T.LI v_10 => (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
                                then 
@@ -589,12 +589,12 @@ struct
                                               and y = v_2
                                           in T.LI (I.MULS (ty, x, y))
                                           end))
-                                  | _ => state_185 v_3
+                                  | _ => state_180 v_3
                                   )))
                           | _ => 
                             (case v_4 of
-                              T.LI v_2 => state_657 (v_3, v_1, v_0, v_2)
-                            | _ => state_185 v_3
+                              T.LI v_2 => state_642 (v_3, v_1, v_0, v_2)
+                            | _ => state_180 v_3
                             )
                           )
                        end
@@ -610,8 +610,8 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.MULT (ty, x, y))
                               end
-                            | T.LI v_2 => state_748 (v_3, v_1, v_0, v_2)
-                            | _ => state_185 v_3
+                            | T.LI v_2 => state_731 (v_3, v_1, v_0, v_2)
+                            | _ => state_180 v_3
                             )
                           | T.LI v_10 => (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
                                then 
@@ -641,12 +641,12 @@ struct
                                           in ((T.LI (I.MULT (ty, x, y))) handle Overflow => exp
 )
                                           end))
-                                  | _ => state_185 v_3
+                                  | _ => state_180 v_3
                                   )))
                           | _ => 
                             (case v_4 of
-                              T.LI v_2 => state_748 (v_3, v_1, v_0, v_2)
-                            | _ => state_185 v_3
+                              T.LI v_2 => state_731 (v_3, v_1, v_0, v_2)
+                            | _ => state_180 v_3
                             )
                           )
                        end
@@ -662,8 +662,8 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.MULU (ty, x, y))
                               end
-                            | T.LI v_2 => state_839 (v_3, v_1, v_0, v_2)
-                            | _ => state_185 v_3
+                            | T.LI v_2 => state_820 (v_3, v_1, v_0, v_2)
+                            | _ => state_180 v_3
                             )
                           | T.LI v_10 => (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
                                then 
@@ -692,12 +692,12 @@ struct
                                               and y = v_2
                                           in T.LI (I.MULU (ty, x, y))
                                           end))
-                                  | _ => state_185 v_3
+                                  | _ => state_180 v_3
                                   )))
                           | _ => 
                             (case v_4 of
-                              T.LI v_2 => state_839 (v_3, v_1, v_0, v_2)
-                            | _ => state_185 v_3
+                              T.LI v_2 => state_820 (v_3, v_1, v_0, v_2)
+                            | _ => state_180 v_3
                             )
                           )
                        end
@@ -716,7 +716,7 @@ struct
                             in ((T.LI (I.NEGT (ty, x))) handle Overflow => exp
 )
                             end
-                          | _ => state_185 v_3
+                          | _ => state_180 v_3
                           )
                        end
                      | T.NOTB v_5 => 
@@ -741,10 +741,10 @@ struct
                                    and ty' = v_7
                                in (if (ty = ty')
                                      then a
-                                     else (state_185 v_3))
+                                     else (state_180 v_3))
                                end
                             end
-                          | _ => state_185 v_3
+                          | _ => state_180 v_3
                           )
                        end
                      | T.ORB v_5 => 
@@ -759,8 +759,8 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.ORB (ty, x, y))
                               end
-                            | T.LI v_10 => state_937 (v_3, v_10, v_4)
-                            | _ => state_185 v_3
+                            | T.LI v_10 => state_916 (v_3, v_10, v_4)
+                            | _ => state_180 v_3
                             )
                           | T.LI v_2 => (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
                                then 
@@ -770,18 +770,18 @@ struct
                                else 
                                (case v_0 of
                                  T.LI v_10 => (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
-                                    then (state_114 v_4)
+                                    then (state_109 v_4)
                                     else 
                                     let val ty = v_1
                                         and x = v_10
                                         and y = v_2
                                     in T.LI (I.ORB (ty, x, y))
                                     end)
-                               | _ => state_185 v_3
+                               | _ => state_180 v_3
                                ))
                           | T.NOTB v_2 => 
                             (case v_0 of
-                              T.LI v_10 => state_937 (v_3, v_10, v_4)
+                              T.LI v_10 => state_916 (v_3, v_10, v_4)
                             | T.NOTB v_10 => 
                               let val (v_7, v_9) = v_10
                               in 
@@ -794,16 +794,16 @@ struct
                                         and ty'' = v_6
                                     in (if ((ty = ty') andalso (ty' = ty''))
                                           then (T.NOTB (ty, T.ANDB (ty, a, b)))
-                                          else (state_185 v_3))
+                                          else (state_180 v_3))
                                     end
                                  end
                               end
-                            | _ => state_185 v_3
+                            | _ => state_180 v_3
                             )
                           | _ => 
                             (case v_0 of
-                              T.LI v_10 => state_937 (v_3, v_10, v_4)
-                            | _ => state_185 v_3
+                              T.LI v_10 => state_916 (v_3, v_10, v_4)
+                            | _ => state_180 v_3
                             )
                           )
                        end
@@ -820,7 +820,7 @@ struct
                                   and y = v_17
                               in T.LABEXP (T.REMS (m, ty, x, y))
                               end
-                            | _ => state_185 v_3
+                            | _ => state_180 v_3
                             )
                           | T.LI v_17 => (if ((IntInf.compare (v_17, lit_16)) = EQUAL)
                                then 
@@ -838,49 +838,11 @@ struct
                                      and y = v_17
                                  in (if (y <> zero)
                                        then (T.LI (I.REMS (dm m, ty, x, y)))
-                                       else (state_185 v_3))
+                                       else (state_180 v_3))
                                  end
-                               | _ => state_185 v_3
+                               | _ => state_180 v_3
                                ))
-                          | _ => state_185 v_3
-                          )
-                       end
-                     | T.REMT v_5 => 
-                       let val (v_1, v_0, v_4, v_18) = v_5
-                       in 
-                          (case v_18 of
-                            T.LABEXP v_17 => 
-                            (case v_4 of
-                              T.LABEXP v_2 => 
-                              let val m = v_1
-                                  and ty = v_0
-                                  and x = v_2
-                                  and y = v_17
-                              in T.LABEXP (T.REMT (m, ty, x, y))
-                              end
-                            | _ => state_185 v_3
-                            )
-                          | T.LI v_17 => (if ((IntInf.compare (v_17, lit_16)) = EQUAL)
-                               then 
-                               let val a = v_4
-                                   and m = v_1
-                                   and ty = v_0
-                               in zeroT
-                               end
-                               else 
-                               (case v_4 of
-                                 T.LI v_2 => 
-                                 let val m = v_1
-                                     and ty = v_0
-                                     and x = v_2
-                                     and y = v_17
-                                 in (if (y <> zero)
-                                       then (T.LI (I.REMT (dm m, ty, x, y)))
-                                       else (state_185 v_3))
-                                 end
-                               | _ => state_185 v_3
-                               ))
-                          | _ => state_185 v_3
+                          | _ => state_180 v_3
                           )
                        end
                      | T.REMU v_5 => 
@@ -895,7 +857,7 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.REMU (ty, x, y))
                               end
-                            | _ => state_185 v_3
+                            | _ => state_180 v_3
                             )
                           | T.LI v_2 => (if ((IntInf.compare (v_2, lit_16)) = EQUAL)
                                then 
@@ -911,11 +873,11 @@ struct
                                      and y = v_2
                                  in (if (y <> zero)
                                        then (T.LI (I.REMU (ty, x, y)))
-                                       else (state_185 v_3))
+                                       else (state_180 v_3))
                                  end
-                               | _ => state_185 v_3
+                               | _ => state_180 v_3
                                ))
-                          | _ => state_185 v_3
+                          | _ => state_180 v_3
                           )
                        end
                      | T.SLL v_5 => 
@@ -930,8 +892,8 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.SLL (ty, x, y))
                               end
-                            | T.LI v_10 => state_1051 (v_3, v_1, v_10)
-                            | _ => state_185 v_3
+                            | T.LI v_10 => state_1021 (v_3, v_1, v_10)
+                            | _ => state_180 v_3
                             )
                           | T.LI v_2 => (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
                                then 
@@ -942,12 +904,12 @@ struct
                                else 
                                (case v_0 of
                                  T.LI v_10 => (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
-                                    then (state_162 v_1)
+                                    then (state_157 v_1)
                                     else 
                                     let val n = v_2
                                         and ty = v_1
                                     in (if (IntInf.<= (IntInf.fromInt ty, n))
-                                          then (state_163 ())
+                                          then (state_158 ())
                                           else 
                                           let val ty = v_1
                                               and x = v_10
@@ -959,14 +921,14 @@ struct
                                  let val n = v_2
                                      and ty = v_1
                                  in (if (IntInf.<= (IntInf.fromInt ty, n))
-                                       then (state_163 ())
-                                       else (state_185 v_3))
+                                       then (state_158 ())
+                                       else (state_180 v_3))
                                  end
                                ))
                           | _ => 
                             (case v_0 of
-                              T.LI v_10 => state_1051 (v_3, v_1, v_10)
-                            | _ => state_185 v_3
+                              T.LI v_10 => state_1021 (v_3, v_1, v_10)
+                            | _ => state_180 v_3
                             )
                           )
                        end
@@ -982,8 +944,8 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.SRA (ty, x, y))
                               end
-                            | T.LI v_10 => state_1226 (v_3, v_1, v_10)
-                            | _ => state_185 v_3
+                            | T.LI v_10 => state_1192 (v_3, v_1, v_10)
+                            | _ => state_180 v_3
                             )
                           | T.LI v_2 => (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
                                then 
@@ -994,19 +956,19 @@ struct
                                else 
                                (case v_0 of
                                  T.LI v_10 => (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
-                                    then (state_145 v_1)
+                                    then (state_140 v_1)
                                     else 
                                     let val ty = v_1
                                         and x = v_10
                                         and y = v_2
                                     in T.LI (I.SRA (ty, x, y))
                                     end)
-                               | _ => state_185 v_3
+                               | _ => state_180 v_3
                                ))
                           | _ => 
                             (case v_0 of
-                              T.LI v_10 => state_1226 (v_3, v_1, v_10)
-                            | _ => state_185 v_3
+                              T.LI v_10 => state_1192 (v_3, v_1, v_10)
+                            | _ => state_180 v_3
                             )
                           )
                        end
@@ -1022,8 +984,8 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.SRL (ty, x, y))
                               end
-                            | T.LI v_10 => state_1315 (v_3, v_1, v_10)
-                            | _ => state_185 v_3
+                            | T.LI v_10 => state_1279 (v_3, v_1, v_10)
+                            | _ => state_180 v_3
                             )
                           | T.LI v_2 => (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
                                then 
@@ -1034,12 +996,12 @@ struct
                                else 
                                (case v_0 of
                                  T.LI v_10 => (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
-                                    then (state_153 v_1)
+                                    then (state_148 v_1)
                                     else 
                                     let val n = v_2
                                         and ty = v_1
                                     in (if (IntInf.<= (IntInf.fromInt ty, n))
-                                          then (state_154 ())
+                                          then (state_149 ())
                                           else 
                                           let val ty = v_1
                                               and x = v_10
@@ -1051,14 +1013,14 @@ struct
                                  let val n = v_2
                                      and ty = v_1
                                  in (if (IntInf.<= (IntInf.fromInt ty, n))
-                                       then (state_154 ())
-                                       else (state_185 v_3))
+                                       then (state_149 ())
+                                       else (state_180 v_3))
                                  end
                                ))
                           | _ => 
                             (case v_0 of
-                              T.LI v_10 => state_1315 (v_3, v_1, v_10)
-                            | _ => state_185 v_3
+                              T.LI v_10 => state_1279 (v_3, v_1, v_10)
+                            | _ => state_180 v_3
                             )
                           )
                        end
@@ -1074,8 +1036,8 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.SUB (ty, x, y))
                               end
-                            | T.LI v_2 => state_1490 (v_3, v_1, v_0, v_2)
-                            | _ => state_185 v_3
+                            | T.LI v_2 => state_1450 (v_3, v_1, v_0, v_2)
+                            | _ => state_180 v_3
                             )
                           | T.LI v_10 => 
                             (case v_4 of
@@ -1099,14 +1061,14 @@ struct
                                              and ty' = v_6
                                          in (if (ty = ty')
                                                then a
-                                               else (state_185 v_3))
+                                               else (state_180 v_3))
                                          end
-                                         else (state_185 v_3))
-                                    | _ => state_185 v_3
+                                         else (state_180 v_3))
+                                    | _ => state_180 v_3
                                     )
-                                    else (state_185 v_3))
+                                    else (state_180 v_3))
                               end
-                            | _ => state_185 v_3
+                            | _ => state_180 v_3
                             )
                           | T.SUB v_10 => 
                             let val (v_7, v_9, v_13) = v_10
@@ -1122,14 +1084,14 @@ struct
                                        and y = v_2
                                    in (if (ty = ty')
                                          then (T.SUB (ty, a, T.LI (I.ADD (ty, x, y))))
-                                         else (state_1490 (v_3, v_1, v_0, v_2)))
+                                         else (state_1450 (v_3, v_1, v_0, v_2)))
                                    end
-                                 | _ => state_185 v_3
+                                 | _ => state_180 v_3
                                  )
-                               | _ => state_1491 (v_3, v_1, v_0, v_4)
+                               | _ => state_1451 (v_3, v_1, v_0, v_4)
                                )
                             end
-                          | _ => state_1491 (v_3, v_1, v_0, v_4)
+                          | _ => state_1451 (v_3, v_1, v_0, v_4)
                           )
                        end
                      | T.SUBT v_5 => 
@@ -1144,7 +1106,7 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.SUBT (ty, x, y))
                               end
-                            | _ => state_185 v_3
+                            | _ => state_180 v_3
                             )
                           | T.LI v_2 => (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
                                then 
@@ -1161,9 +1123,9 @@ struct
                                  in ((T.LI (I.SUBT (ty, x, y))) handle Overflow => exp
 )
                                  end
-                               | _ => state_185 v_3
+                               | _ => state_180 v_3
                                ))
-                          | _ => state_185 v_3
+                          | _ => state_180 v_3
                           )
                        end
                      | T.SX v_5 => 
@@ -1175,7 +1137,7 @@ struct
                                 and ty = v_1
                                 and ty' = v_0
                             in (if (ty = ty')
-                                  then (state_170 e)
+                                  then (state_165 e)
                                   else 
                                   let val ty = v_1
                                       and ty' = v_0
@@ -1188,7 +1150,7 @@ struct
                                 and ty = v_1
                                 and ty' = v_0
                             in (if (ty = ty')
-                                  then (state_170 e)
+                                  then (state_165 e)
                                   else 
                                   let val n = v_2
                                       and ty = v_1
@@ -1206,8 +1168,8 @@ struct
                                 and ty = v_1
                                 and ty' = v_0
                             in (if (ty = ty')
-                                  then (state_170 e)
-                                  else (state_185 v_3))
+                                  then (state_165 e)
+                                  else (state_180 v_3))
                             end
                           )
                        end
@@ -1223,8 +1185,8 @@ struct
                                   and y = v_2
                               in T.LABEXP (T.XORB (ty, x, y))
                               end
-                            | T.LI v_10 => state_1763 (v_3, v_1, v_10, v_4)
-                            | _ => state_185 v_3
+                            | T.LI v_10 => state_1717 (v_3, v_1, v_10, v_4)
+                            | _ => state_180 v_3
                             )
                           | T.LI v_2 => (if ((IntInf.compare (v_2, lit_11)) = EQUAL)
                                then 
@@ -1235,18 +1197,18 @@ struct
                                else 
                                (case v_0 of
                                  T.LI v_10 => (if ((IntInf.compare (v_10, lit_11)) = EQUAL)
-                                    then (state_123 (v_1, v_4))
+                                    then (state_118 (v_1, v_4))
                                     else 
                                     let val ty = v_1
                                         and x = v_10
                                         and y = v_2
                                     in T.LI (I.XORB (ty, x, y))
                                     end)
-                               | _ => state_185 v_3
+                               | _ => state_180 v_3
                                ))
                           | T.NOTB v_2 => 
                             (case v_0 of
-                              T.LI v_10 => state_1763 (v_3, v_1, v_10, v_4)
+                              T.LI v_10 => state_1717 (v_3, v_1, v_10, v_4)
                             | T.NOTB v_10 => 
                               let val (v_7, v_9) = v_10
                               in 
@@ -1259,16 +1221,16 @@ struct
                                         and ty'' = v_6
                                     in (if ((ty = ty') andalso (ty' = ty''))
                                           then (T.NOTB (ty, T.XORB (ty, a, b)))
-                                          else (state_185 v_3))
+                                          else (state_180 v_3))
                                     end
                                  end
                               end
-                            | _ => state_185 v_3
+                            | _ => state_180 v_3
                             )
                           | _ => 
                             (case v_0 of
-                              T.LI v_10 => state_1763 (v_3, v_1, v_10, v_4)
-                            | _ => state_185 v_3
+                              T.LI v_10 => state_1717 (v_3, v_1, v_10, v_4)
+                            | _ => state_180 v_3
                             )
                           )
                        end
@@ -1294,11 +1256,11 @@ struct
                                       and ty' = v_0
                                   in T.LI (I.ZX (ty, ty', n))
                                   end
-                                | _ => state_185 v_3
+                                | _ => state_180 v_3
                                 ))
                           end
                        end
-                     | _ => state_185 v_3
+                     | _ => state_180 v_3
                      )
                   end
            and simStm ==> (T.IF(T.TRUE, yes, no)) = yes

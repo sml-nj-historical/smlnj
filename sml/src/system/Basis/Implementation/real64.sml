@@ -266,8 +266,12 @@ structure Real64Imp : REAL =
   
     fun nextAfter _ = raise Fail "Real.nextAfter unimplemented"
 
+    val min : real * real -> real = InlineT.Real64.min
+    val max : real * real -> real = InlineT.Real64.max
+(*
     fun min(x,y) = if x<y orelse isNan y then x else y
     fun max(x,y) = if x>y orelse isNan y then x else y
+*)
 
     fun toDecimal _ = raise Fail "Real.toDecimal unimplemented"
     fun fromDecimal _ = raise Fail "Real.fromDecimal unimplemented"

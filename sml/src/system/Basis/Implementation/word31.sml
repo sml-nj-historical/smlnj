@@ -38,7 +38,7 @@ structure Word31Imp : WORD =
     val op + : word * word -> word = W31.+
     val op - : word * word -> word = W31.-
     val op div : word * word -> word = W31.div
-    fun op mod(a:word,b:word):word = a-(a div b)*b
+    val op mod : word * word -> word = W31.mod
 
     val <<  : word * word -> word = W31.chkLshift
     val >>  : word * word -> word = W31.chkRshiftl
@@ -53,8 +53,8 @@ structure Word31Imp : WORD =
     val op < : word * word -> bool = W31.<
     val op <= : word * word -> bool = W31.<=
 
-    fun min (w1, w2) = if (w1 < w2) then w1 else w2
-    fun max (w1, w2) = if (w1 > w2) then w1 else w2
+    val min : word * word -> word = W31.min
+    val max : word * word -> word = W31.max
 
     fun fmt radix = (NumFormat.fmtWord radix) o  W31.toLargeWord
     val toString = fmt StringCvt.HEX

@@ -1042,6 +1042,11 @@ end
      | (P.arith{oper=P./,...}, [INT i, INT 0]) => raise ConstFold
      | (P.arith{oper=P./,kind=P.INT 31}, [INT i, INT j]) =>
 		let val x = Int.quot(i, j) in x+x; click "L"; INT x end
+     | (P.arith{oper=P.div,...}, [v, INT 1]) => (click "K"; v)
+     | (P.arith{oper=P.div,...}, [INT i, INT 0]) => raise ConstFold
+     | (P.arith{oper=P.div,kind=P.INT 31}, [INT i, INT j]) =>
+		let val x = Int.div(i, j) in x+x; click "L"; INT x end
+     (* FIXME: should we do anything for mod or rem here? *)
      | (P.arith{oper=P.+,...}, [INT 0, v]) => (click "M"; v)
      | (P.arith{oper=P.+,...}, [v, INT 0]) => (click "N"; v)
      | (P.arith{oper=P.+,kind=P.INT 31}, [INT i, INT j]) =>

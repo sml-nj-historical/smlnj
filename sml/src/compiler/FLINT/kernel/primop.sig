@@ -132,6 +132,7 @@ datatype arithop
   | ABS | FSQRT | FSIN | FCOS | FTAN		(* floating point only *)
   | LSHIFT | RSHIFT | RSHIFTL			(* int only *)
   | ANDB | ORB | XORB | NOTB			(* int only *)
+  | REM | DIV | MOD			        (* int only *)
 
 datatype cmpop = > | >= | < | <= | LEU | LTU | GEU | GTU | EQL | NEQ
 
@@ -197,11 +198,13 @@ datatype primop
   | SETSPECIAL                 (* set the state of a special object *)
   | GETSPECIAL                 (* get the state of a special object *)
   | USELVAR | DEFLVAR
-  | INLDIV | INLMOD | INLREM   (* inline interger arithmetic *)
-  | INLMIN |INLMAX | INLABS    (* inline interger arithmetic *) 
+  | INLMIN of numkind          (* inline min *)
+  | INLMAX of numkind          (* inline max *)
+  | INLABS of numkind          (* inline abs *)
   | INLNOT                     (* inline bool not operator *)
   | INLCOMPOSE                 (* inline compose "op o"  operator *)
   | INLBEFORE                  (* inline "before" operator *) 
+  | INLIGNORE		       (* inline "ignore" function *)
   | INL_ARRAY                  (* inline polymorphic array allocation *)
   | INL_VECTOR                 (* inline polymorphic vector allocation *)
   | INL_MONOARRAY of numkind   (* inline monomorphic array allocation *)

@@ -118,10 +118,6 @@ struct
       | T.DIVT(m,ty,T.LI x,T.LI y) where y <> zero => T.LI(I.DIVT(dm m,ty,x,y))
       | T.DIVT(m,ty,T.LABEXP x,T.LABEXP y) => T.LABEXP(T.DIVT(m,ty,x,y))
 
-      | T.REMT(m,ty,a,T.LI 1i) => zeroT
-      | T.REMT(m,ty,T.LI x,T.LI y) where y <> zero => T.LI(I.REMT(dm m,ty,x,y))
-      | T.REMT(m,ty,T.LABEXP x,T.LABEXP y) => T.LABEXP(T.REMT(m,ty,x,y))
-
       | T.ANDB(_,_,b as T.LI 0i) => b
       | T.ANDB(_,a as T.LI 0i,_) => a
       | T.ANDB(ty,T.NOTB(ty',a),T.NOTB(ty'',b)) 

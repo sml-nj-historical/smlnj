@@ -14,6 +14,64 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/03/29 14:10:00 EST
+Tag: blume-20020329-inlprims
+Description:
+
+NEW BOOTFILES!!!    Version number bumped to 110.39.3.
+
+Primops have changed. This means that the bin/boot-file formats have
+changed as well.
+
+To make sure that there is no confusion, I made a new version.
+
+
+CHANGES:
+
+* removed REMT from mltree (remainder should never overflow).
+
+* added primops to deal with divisions of all flavors to the frontend
+
+* handled these primops all the way through so they map to their respective
+  MLRISC support
+
+* used these primops in the implementation of Int, Int32, Word, Word32
+
+* removed INLDIV, INLMOD, and INLREM as they are no longer necessary
+
+* parameterized INLMIN, INLMAX, and INLABS by a numkind
+
+* translate.sml now deals with all flavors of INL{MIN,MAX,ABS}, including
+  floating point
+
+* used INL{MIN,MAX,ABS} in the implementation of Int, Int32, Word, Word32,
+  and Real (but Real.abs maps to a separate floating-point-only primop)
+
+
+TODO items:
+
+* Hacked Alpha32 instruction selection, disabling the selection of REMx
+  instructions because the machine instruction encoder cannot handle
+  them.  (Hppa, PPC, and Sparc instruction selection did not handle
+  REM in the first place, and REM is supported by the x86 machine coder.)
+
+* Handle DIV and MOD with DIV_TO_NEGINF directly in the x86 instruction
+  selection phase.  (The two can be streamlined because the hardware
+  delivers both quotient and remainder at the same time anyway.)
+
+* Think about what to do with "valOf(Int32.minInt) div ~1" and friends.
+  (Currently the behavior is inconsistent both across architectures and
+  wrt. the draft Basis spec.)
+
+* Word8 should eventually be handled natively, too.
+
+* There seems to be one serious bug in mltree-gen.sml.  It appears, though,
+  as if there currently is no execution path that could trigger it in
+  SML/NJ.  (The assumptions underlying functions arith and promotable do not
+  hold for things like multiplication and division.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/03/27 16:27:00 EST
 Tag: blume-20020327-mlrisc-divisions
 Description:

@@ -116,7 +116,6 @@ struct
     | T.SUBT x => hash2 x + 0w999
     | T.MULT x => hash2 x + 0w7887
     | T.DIVT x => hash3 x + 0w88884
-    | T.REMT x => hash3 x + 0w99
     | T.ANDB x => hash2 x + 0w12312
     | T.ORB x => hash2 x + 0w558
     | T.XORB x => hash2 x + 0w234
@@ -280,7 +279,6 @@ struct
     | eqRexp(T.SUBT x,T.SUBT y) = eq2(x,y)
     | eqRexp(T.MULT x,T.MULT y) = eq2(x,y)
     | eqRexp(T.DIVT x,T.DIVT y) = eq3(x,y)
-    | eqRexp(T.REMT x,T.REMT y) = eq3(x,y)
     | eqRexp(T.ANDB x,T.ANDB y) = eq2(x,y)
     | eqRexp(T.ORB x,T.ORB y) = eq2(x,y)
     | eqRexp(T.XORB x,T.XORB y) = eq2(x,y)
@@ -491,7 +489,6 @@ struct
         | rexp(T.SUBT x) = two("subt",x)
         | rexp(T.MULT x) = two("mult",x)
         | rexp(T.DIVT x) = three("divt",x)
-        | rexp(T.REMT x) = three("remt",x)
         | rexp(T.ANDB x) = binary("&",x)
         | rexp(T.ORB x)  = binary("|",x)
         | rexp(T.XORB x) = binary("^",x)

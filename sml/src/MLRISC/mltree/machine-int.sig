@@ -102,8 +102,6 @@ sig
    val MULT  : sz * machine_int * machine_int -> machine_int
    val DIVT  : div_rounding_mode *
 	       sz * machine_int * machine_int -> machine_int
-   val REMT  : div_rounding_mode *
-	       sz * machine_int * machine_int -> machine_int
 
    (* bit operators *)
    val NOTB  : sz * machine_int -> machine_int

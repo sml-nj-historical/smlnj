@@ -114,12 +114,6 @@ structure UnpickMod : UNPICKMOD = struct
 	  P.GETSPECIAL,
 	  P.USELVAR,
 	  P.DEFLVAR,
-	  P.INLDIV,
-	  P.INLMOD,
-	  P.INLREM,
-	  P.INLMIN,
-	  P.INLMAX,
-	  P.INLABS,
 	  P.INLNOT,
 	  P.INLCOMPOSE,
 	  P.INLBEFORE,
@@ -132,7 +126,8 @@ structure UnpickMod : UNPICKMOD = struct
 	  P.SUBSCRIPT_REC,
 	  P.SUBSCRIPT_RAW64,
 	  P.UNBOXEDASSIGN,
-	  P.RAW_CCALL NONE
+	  P.RAW_CCALL NONE,
+	  P.INLIGNORE
         ]
 
     val cmpop_table =
@@ -140,7 +135,8 @@ structure UnpickMod : UNPICKMOD = struct
 
     val arithop_table =
 	#[P.+, P.-, P.*, P./, P.~, P.ABS, P.LSHIFT, P.RSHIFT, P.RSHIFTL,
-	  P.ANDB, P.ORB, P.XORB, P.NOTB, P.FSQRT, P.FSIN, P.FCOS, P.FTAN]
+	  P.ANDB, P.ORB, P.XORB, P.NOTB, P.FSQRT, P.FSIN, P.FCOS, P.FTAN,
+	  P.REM, P.DIV, P.MOD]
 
     val eqprop_table =
 	#[T.YES, T.NO, T.IND, T.OBJ, T.DATA, T.ABS, T.UNDEF]
@@ -345,6 +341,9 @@ structure UnpickMod : UNPICKMOD = struct
 	      | po #"\117" = P.RAW_STORE (numkind ())
 	      | po #"\118" = P.RAW_CCALL (SOME (ccall_info ()))
 	      | po #"\119" = P.RAW_RECORD { fblock = bool () }
+	      | po #"\120" = P.INLMIN (numkind ())
+	      | po #"\121" = P.INLMAX (numkind ())
+	      | po #"\122" = P.INLABS (numkind ())
 	      | po c =
 		Vector.sub (primop_table, Char.ord c)
 		handle General.Subscript => raise Format

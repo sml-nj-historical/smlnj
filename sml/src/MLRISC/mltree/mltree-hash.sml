@@ -99,7 +99,6 @@ struct
 	| T.SUBT x => hash2 x + 0w999
 	| T.MULT x => hash2 x + 0w7887
 	| T.DIVT x => hash3 x + 0w88884
-	| T.REMT x => hash3 x + 0w99
 	| T.ANDB x => hash2 x + 0w12312
 	| T.ORB x => hash2 x + 0w558
 	| T.XORB x => hash2 x + 0w234

@@ -113,13 +113,13 @@ signature MLTREE = sig
     | DIVU   of ty * rexp * rexp
     | REMU   of ty * rexp * rexp
 
-      (* trapping versions of above. These are all signed *)
+      (* overflow-trapping versions of above. These are all signed *)
     | NEGT   of ty * rexp
     | ADDT   of ty * rexp * rexp
     | SUBT   of ty * rexp * rexp
     | MULT   of ty * rexp * rexp
     | DIVT   of div_rounding_mode * ty * rexp * rexp
-    | REMT   of div_rounding_mode * ty * rexp * rexp
+    (* there is no REMT because remainder never overflows *)
 
       (* bit operations *)
     | ANDB   of ty * rexp * rexp

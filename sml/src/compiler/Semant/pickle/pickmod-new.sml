@@ -292,6 +292,9 @@ in
 	  | arithopc P.FSIN = "\014"
 	  | arithopc P.FCOS = "\015"
 	  | arithopc P.FTAN = "\016"
+	  | arithopc P.REM = "\017"
+	  | arithopc P.DIV = "\018"
+	  | arithopc P.MOD = "\019"
     in
 	arithopc oper $ []
     end
@@ -388,6 +391,10 @@ in
 	      | P.RAW_STORE kind => ?117 $ [numkind kind]
 	      | P.RAW_CCALL (SOME i) => ?118 $ [ccall_info i]
 	      | P.RAW_RECORD { fblock } => ?119 $ [bool fblock]
+
+	      | P.INLMIN kind => ?120 $ [numkind kind]
+	      | P.INLMAX kind => ?121 $ [numkind kind]
+	      | P.INLABS kind => ?122 $ [numkind kind]
 		    
 	      | P.MKETAG => %?0
 	      | P.WRAP => %?1
@@ -435,25 +442,20 @@ in
 	      | P.GETSPECIAL => %?40
 	      | P.USELVAR => %?41
 	      | P.DEFLVAR => %?42
-	      | P.INLDIV => %?43
-	      | P.INLMOD => %?44
-	      | P.INLREM => %?45
-	      | P.INLMIN => %?46
-	      | P.INLMAX => %?47
-	      | P.INLABS => %?48
-	      | P.INLNOT => %?49
-	      | P.INLCOMPOSE => %?50
-	      | P.INLBEFORE => %?51
-	      | P.INL_ARRAY => %?52
-	      | P.INL_VECTOR => %?53
-	      | P.ISOLATE => %?54
-	      | P.WCAST => %?55
-	      | P.NEW_ARRAY0 => %?56
-	      | P.GET_SEQ_DATA => %?57
-	      | P.SUBSCRIPT_REC => %?58
-	      | P.SUBSCRIPT_RAW64 => %?59
-	      | P.UNBOXEDASSIGN => %?60
-	      | P.RAW_CCALL NONE => %?61
+	      | P.INLNOT => %?43
+	      | P.INLCOMPOSE => %?44
+	      | P.INLBEFORE => %?45
+	      | P.INL_ARRAY => %?46
+	      | P.INL_VECTOR => %?47
+	      | P.ISOLATE => %?48
+	      | P.WCAST => %?49
+	      | P.NEW_ARRAY0 => %?50
+	      | P.GET_SEQ_DATA => %?51
+	      | P.SUBSCRIPT_REC => %?52
+	      | P.SUBSCRIPT_RAW64 => %?53
+	      | P.UNBOXEDASSIGN => %?54
+	      | P.RAW_CCALL NONE => %?55
+	      | P.INLIGNORE => %?56
     end
 
     fun consig arg = let
