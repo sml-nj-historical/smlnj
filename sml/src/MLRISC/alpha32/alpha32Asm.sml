@@ -6,13 +6,12 @@
 
 functor Alpha32AsmEmitter
   (structure Instr : ALPHA32INSTR
-   structure FlowGraph : FLOWGRAPH
-   structure Shuffle : ALPHA32SHUFFLE
-     sharing FlowGraph.I = Shuffle.I = Instr) : EMITTER_NEW = 
+   structure PseudoOps : PSEUDO_OPS 
+   structure Shuffle : ALPHA32SHUFFLE where I = Instr)  : EMITTER_NEW = 
 struct
   structure I = Instr
   structure C = I.C
-  structure F = FlowGraph
+  structure P = PseudoOps
   structure R = I.Region
 
   structure Constant = I.Constant
@@ -23,7 +22,7 @@ struct
 
   fun emit s = TextIO.output(!AsmStream.asmOutStream,s)
 
-  fun pseudoOp pOp = emit(F.P.toString pOp)
+  fun pseudoOp pOp = emit(P.toString pOp)
 
   fun defineLabel(lab) = emit(Label.nameOf lab ^ ":\n")
 
@@ -247,5 +246,11 @@ end
 
 
 (*
- * $Log$
+ * $Log: alpha32Asm.sml,v $
+ * Revision 1.2  1998/09/30 19:33:44  dbm
+ * fixing sharing/defspec conflict
+ *
+ * Revision 1.1.1.1  1998/04/08 18:39:00  george
+ * Version 110.5
+ *
  *)

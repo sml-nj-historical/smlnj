@@ -6,17 +6,23 @@
  *
  *)
 functor Hppa
-  (structure Flowgen : FLOWGRAPH_GEN
-   structure HppaInstr : HPPAINSTR
-   structure HppaMLTree : MLTREE
-   structure MilliCode : HPPA_MILLICODE
-   structure LabelComp : LABEL_COMP
-
+  (structure HppaInstr : HPPAINSTR
+   structure HppaMLTree : MLTREE where Region = HppaInstr.Region
+                                 and Constant = HppaInstr.Constant
+   structure Flowgen : FLOWGRAPH_GEN where I = HppaInstr
+                                     and T = HppaMLTree
+                                     and B = HppaMLTree.BNames
+   structure MilliCode : HPPA_MILLICODE where I = HppaInstr
+   structure LabelComp : LABEL_COMP where I = HppaInstr
+                                    and T = HppaMLTree
+(* DBM: sharing/defn conflict:
      sharing Flowgen.I = MilliCode.I = LabelComp.I = HppaInstr 
      sharing Flowgen.T = LabelComp.T = HppaMLTree
      sharing HppaMLTree.Region = HppaInstr.Region
      sharing HppaMLTree.Constant = HppaInstr.Constant
-     sharing HppaMLTree.BNames = Flowgen.B) : MLTREECOMP = 
+     sharing HppaMLTree.BNames = Flowgen.B
+*)
+  ) : MLTREECOMP = 
 struct
   structure I = HppaInstr
   structure F = Flowgen
@@ -293,9 +299,8 @@ struct
 	   | fcond T.<>   = I.?=
 	   | fcond T.?=   = I.<>
        in
-	 emit(I.FCMP(fcond cc, f1, f2)); 
-	 emit(I.FTEST);
-	 emit(I.FBCC{t=lab, f=fallThrough, n=true});
+	 emit(I.FBRANCH{cc=fcond cc,f1=f1,f2=f2,t=lab,f=fallThrough, n=true,
+                        long=false});
 	 F.defineLabel fallThrough
        end
   end
@@ -512,3 +517,16 @@ struct
   val mlriscComp = stmAction
 end
 
+(*
+ * $Log: hppa.sml,v $
+ * Revision 1.6  1998/09/30 19:35:03  dbm
+ * fixing sharing/defspec conflict
+ *
+ * Revision 1.5  1998/08/11 14:03:23  george
+ *   Exposed emitInstr in MLTREECOMP to allow a client to directly
+ *   inject native instructions into the flowgraph.
+ *
+ * Revision 1.3  1998/05/25 15:10:52  george
+ *   Fixed RCS keywords
+ *
+ *)

@@ -10,25 +10,22 @@
 
 
 
-functor Alpha32RegAlloc(structure P : INSN_PROPERTIES
-			structure F : FLOWGRAPH
-			structure I : INSTRUCTIONS where C = Alpha32Cells
-			structure Asm : EMITTER_NEW
-			   sharing Asm.F = F
-		  	   sharing P.I = F.I = Asm.I = I) :
+functor Alpha32RegAlloc(structure I : INSTRUCTIONS where C = Alpha32Cells
+			structure P : INSN_PROPERTIES where I = I
+			structure F : FLOWGRAPH where I = I 
+			structure Asm : EMITTER_NEW 
+			  where I = I and P = F.P) :
    sig
     functor IntRa (structure RaUser : RA_USER_PARAMS
-		     where type I.operand = I.operand
-		       and type I.instruction = I.instruction
-		       and type B.name = F.B.name
+		     where I = I
+		     where type B.name = F.B.name
 		     (* should be: where I = I -- bug 1205 *)) : sig
         datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
 	val ra : mode -> F.cluster -> F.cluster
       end
     functor FloatRa (structure RaUser : RA_USER_PARAMS
-		       where type I.operand = I.operand
-		         and type I.instruction = I.instruction
-	 	         and type B.name = F.B.name
+		       where I = I
+		       where type B.name = F.B.name
 		       (* should be: where I = I *)) : sig
         datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
         val ra : mode -> F.cluster -> F.cluster
@@ -94,6 +91,12 @@ end
 
 (*
  * $Log: alpha32RegAlloc.sml,v $
+ * Revision 1.5  1998/09/30 19:34:39  dbm
+ * fixing sharing/defspec conflict
+ *
+ * Revision 1.4  1998/07/25 03:08:13  george
+ *   added to support block names in MLRISC
+ *
  * Revision 1.3  1998/05/25 15:10:49  george
  *   Fixed RCS keywords
  *

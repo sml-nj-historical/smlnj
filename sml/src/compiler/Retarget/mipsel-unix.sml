@@ -1,4 +1,4 @@
 structure MipsLittleUnixCMB =
-    CMBFun (structure TargetCompiler = MipsLittleVisComp
+    CMBFun (structure TargetMachDepVC = MipsLittleVisComp
 	    val version = "batch (target: mipsel-unix)"
 	    val targetosn = "unix")

@@ -13,12 +13,15 @@ signature HPPACELLS = sig
 
   exception Cells
 
+  type register = int
   type regmap = int Intmap.intmap
   datatype cellclass = GP | FP | CC | CR | MEM | CTRL 
 
   val stackptrR : int			(* stack pointer register *)
   val asmTmpR : int			(* assembly temporary *)
   val fasmTmp : int			(* floating point temporary *)
+  val cr      : int -> int              (* control register *)
+  val sar     : int                     (* shift amount register *)
 
   val newCell : cellclass -> unit -> int (* generate a new name *)
   val numCell : cellclass -> unit -> int (* number of names in class *)
@@ -47,5 +50,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: hppaCells.sig,v $
+ * Revision 1.1  1998/05/19 15:49:20  george
+ *   Version 110.5
+ *
  *)

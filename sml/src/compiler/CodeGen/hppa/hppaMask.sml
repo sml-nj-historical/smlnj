@@ -40,12 +40,18 @@ structure HppaMask : REGMASK = struct
   in
     if bit= sentinel then error ("regMask - " ^ Int.toString reg)
     else Word.orb(mask,Word.<<(0w1,bit))
-  end
+  end 
 
   fun memMask _ = error "memMask"
 end
 
 
 (*
- * $Log$
+ * $Log: hppaMask.sml,v $
+ * Revision 1.4  1998/10/19 13:50:43  george
+ * *** empty log message ***
+ *
+ * Revision 1.3  1998/05/23 14:09:23  george
+ *   Fixed RCS keyword syntax
+ *
  *)

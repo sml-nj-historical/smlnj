@@ -17,14 +17,16 @@ struct
 
   val branchDelayedArch = false
 
-  fun minSize(I.COPY _)  = 0
-    | minSize(I.FCOPY _) = 0
-    | minSize _          = 4
-
+  fun minSize(I.COPY _)    = 0
+    | minSize(I.FCOPY _)   = 0
+    | minSize(I.FBRANCH _) = 12 (* FCMP/FTEST/B *)
+    | minSize(I.BLR{labs,...}) = 8 + 8 * length labs (* FCMP/FTEST/B *)
+    | minSize _            = 4
+  
   fun maxSize (I.BCOND _)  = 20
     | maxSize (I.BCONDI _) = 20
     | maxSize (I.B _)	   = 16
-    | maxSize (I.FBCC _)   = 16
+    | maxSize (I.FBRANCH _)= 24
     | maxSize (I.COPY _)   = error "maxSize:COPY"
     | maxSize (I.FCOPY _)  = error "maxSize:FCOPY"
     | maxSize _		   = 4
@@ -41,7 +43,8 @@ struct
     of I.BCOND _		=> true
      | I.BCONDI _		=> true
      | I.B _			=> true
-     | I.FBCC _			=> true
+     | I.FBRANCH _		=> true
+     | I.BLR _                  => true
      | I.LDO{i, ...}		=> opnd i
      | I.STORE{d, ...}		=> opnd d
      | I.ARITHI{i, ...}		=> opnd i
@@ -97,7 +100,14 @@ struct
       | I.BCOND{t, ...}  => branch t
       | I.BCONDI{t, ...} => branch t
       | I.B{lab, ...}    => if im17 (branchOffset lab) then 4 else 16
-      | I.FBCC{t, ...}   => if im17 (branchOffset t) then 4 else 16
+      | I.FBRANCH{t, ...}   => if im17 (branchOffset t) then 12 else 24
+      | I.BLR{labs,...} => let
+	  val l = length labs * 8
+	  fun badOffsets(t::ts,n) =
+	        not(im17(branchOffset t + n)) orelse badOffsets(ts,n+2)
+	    | badOffsets([],n) = false
+        in l + (if badOffsets(labs,2) then 20 else 8) 
+	end
       | I.COPY{impl=ref(SOME l), ...} => 4 * length l
       | I.FCOPY{impl=ref(SOME l), ...} => 4 * length l
       | I.COPY{dst, src, impl, tmp} => let
@@ -252,18 +262,25 @@ struct
 	of 4 => [instr]
          | 16 => longJump{lab=lab, n=n}
       (*esac*))
-    | expand(instr as I.FBCC{t, f, n}, size) =
+    | expand(instr as I.FBRANCH{t, f, n, ...}, size) =
       (case size 
-	of 4 => [I.B{lab=t, n=n}]
-         | 16 => 
+	of 12 => [instr]
+         | 24 => 
 	     (* lets hope this sequence never gets generated sequence:
 			FTEST
 			allways trapping instruction
 			B (f)
 			longJmp
 	      *)
-	        error "FBCC"
+	        error "FBRANCH"
       (*esac*))
+    | expand(I.BLR{labs,n,t,x,...},size) = 
+       (if size = 8 + 8 * length labs then
+           I.BLR{labs=[],n=n,t=t,x=x}::
+           I.NOP::
+           foldr (fn (l,is) => I.B{lab=l,n=true}::I.NOP::is) [] labs
+        else error "BLR"
+       )
     | expand(I.COPY{impl=ref(SOME instrs),...}, _) = instrs
     | expand(I.FCOPY{impl=ref(SOME instrs),...}, _) = instrs
     | expand _ = error "expand"
@@ -271,5 +288,8 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: hppaJumps.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
+ *
  *)

@@ -36,8 +36,6 @@ signature CML_TEXT_IO =
       where type vector = string
       where type elem = char
 
-    val getPosIn    : instream -> StreamIO.in_pos
-    val setPosIn    : (instream * StreamIO.in_pos) -> unit
     val mkInstream  : StreamIO.instream -> instream
     val getInstream : instream -> StreamIO.instream
     val setInstream : (instream * StreamIO.instream) -> unit

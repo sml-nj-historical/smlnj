@@ -37,7 +37,6 @@ type pid        = PersStamps.persstamp (* persistant id *)
 type import     = pid * CompBasic.importTree  (* import specification *)
 type pickle                            (* pickled format *)
 type hash                              (* environment hash id *)
-val makePid     : cmstatenv * cmstatenv -> pid
 
 (** take the input source and turn it into the concrete syntax *)
 val parseOne    : source -> unit -> ast option (* incremental version *)
@@ -84,5 +83,8 @@ signature TOP_COMPILE = COMPILE0 where type cmstatenv = StaticEnv.staticEnv
 
 
 (*
- * $Log$
+ * $Log: compile.sig,v $
+ * Revision 1.3  1998/05/23 14:10:26  george
+ *   Fixed RCS keyword syntax
+ *
  *)

@@ -1,5 +1,6 @@
 functor HppaCG(structure Emitter : EMITTER_NEW
-		 where F = HppaFlowGraph) :
+		 where P = HppaPseudoOps
+	         and I = HppaInstr) :
 		(*  and  structure I = HppaInstr -- redundant *)
   sig
     structure MLTreeGen : CPSGEN 
@@ -247,7 +248,7 @@ struct
 	| show(ph) = (ph = phase)
       val newCluster = f cluster
     in
-      if show (!CG.printFlowgraph) then
+      if show (!CG.printFlowgraph) then 
 	printGraph (phaseToMsg phase) newCluster 
       else ();
       newCluster
@@ -294,6 +295,12 @@ end
 
 (*
  * $Log: hppaCG.sml,v $
+ * Revision 1.5  1998/10/06 13:59:59  george
+ * Flowgraph has been removed from modules that do not need it -- [leunga]
+ *
+ * Revision 1.4  1998/07/25 03:05:34  george
+ *   changes to support block names in MLRISC
+ *
  * Revision 1.3  1998/05/23 14:09:20  george
  *   Fixed RCS keyword syntax
  *

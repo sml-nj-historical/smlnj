@@ -1,7 +1,8 @@
 functor AsmEmit
   (structure F : FLOWGRAPH
    structure E : EMITTER_NEW
-      sharing F = E.F) = 
+      sharing F.I = E.I
+      sharing F.P = E.P) = 
 struct
   structure PseudoOp = F.P
   fun asmEmit(F.CLUSTER{blocks, regmap, ...}) = let
@@ -15,5 +16,8 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: asmEmit.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
+ *
  *)

@@ -79,7 +79,7 @@ sig
    |  Ticc of  { t:branch, r:int, i:operand}
    |  FPop1 of { a:farith1, r:int, d:int }
    |  FPop2 of { a:farith2, r1:int, r2:int, d:int }
-   |  FCMP of  { cmp:fcmp, r1:int, r2:int }
+   |  FCMP of  { cmp:fcmp, r1:int, r2:int, nop:bool }
    |  COPY of  { dst:int list, src:int list, impl:instruction list option ref,
                  tmp:ea option}
    |  FCOPY of { dst:int list, src:int list, impl:instruction list option ref,
@@ -100,5 +100,8 @@ sig
 end
 
 (*
- * $Log$
+ * $Log: sparcInstr.sig,v $
+ * Revision 1.1.1.1  1998/08/05 19:38:49  george
+ *   Release 110.7.4
+ *
  *)

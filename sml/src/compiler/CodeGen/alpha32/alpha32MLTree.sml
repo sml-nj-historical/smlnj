@@ -21,16 +21,16 @@ structure Alpha32FlowGraph =
 
 structure Alpha32AsmEmitter=
   Alpha32AsmEmitter(structure Instr=Alpha32Instr
-		    structure FlowGraph=Alpha32FlowGraph
+		    structure PseudoOps=Alpha32PseudoOps
 		    structure Shuffle = Alpha32Shuffle)
 
 structure Alpha32MCEmitter = 
   Alpha32MCEmitter(structure Instr=Alpha32Instr
-		   structure FlowGraph=Alpha32FlowGraph)
+		   structure PseudoOps=Alpha32PseudoOps)
 
 structure Alpha32XMCEmitter = 
   Alpha32XMCEmitter(structure Instr=Alpha32Instr
-		   structure FlowGraph=Alpha32FlowGraph)
+		   structure PseudoOps=Alpha32PseudoOps)
 
 
 structure Alpha32MLTree = 
@@ -41,6 +41,9 @@ structure Alpha32MLTree =
 
 (*
  * $Log: alpha32MLTree.sml,v $
+ * Revision 1.2  1998/07/25 03:05:33  george
+ *   changes to support block names in MLRISC
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:54  george
  * Version 110.5
  *

@@ -205,7 +205,7 @@ fun getFctElem(sym, sign as SIG{elements,...},
 
 fun mkTyc(sym, sp, SIG{elements,...}, sInfo) =
       (case getSpec (elements, sym)
-        of TYCspec{spec,entVar=ev,scope} => 
+        of TYCspec{spec,entVar=ev,repl,scope} => 
              (case sInfo
                of SIGINFO ep => 
                     T.PATHtyc{arity=TU.tyconArity spec, entPath=rev(ev::ep),
@@ -474,5 +474,8 @@ end (* local *)
 end (* structure ModuleUtil *)
 
 (*
- * $Log$
+ * $Log: moduleutil.sml,v $
+ * Revision 1.3  1998/05/23 14:10:10  george
+ *   Fixed RCS keyword syntax
+ *
  *)

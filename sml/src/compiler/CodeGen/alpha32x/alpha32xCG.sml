@@ -7,7 +7,7 @@
 
 functor Alpha32XCG(structure Emitter : EMITTER_NEW
 		    where I = Alpha32Instr
-		    where F = Alpha32FlowGraph) :
+		    where P = Alpha32PseudoOps) : 
   sig
     structure MLTreeGen : CPSGEN 
     val finish : unit -> unit
@@ -231,3 +231,12 @@ struct
 end
 
 
+(*
+ * $Log: alpha32xCG.sml,v $
+ * Revision 1.4  1998/08/05 21:00:47  george
+ *   support for block names
+ *
+ * Revision 1.3  1998/05/23 14:09:14  george
+ *   Fixed RCS keyword syntax
+ *
+ *)

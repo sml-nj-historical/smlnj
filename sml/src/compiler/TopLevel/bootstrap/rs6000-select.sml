@@ -1,1 +1,2 @@
-structure Compiler = RS6000VisComp
+structure MachDepVC = RS6000VisComp
+

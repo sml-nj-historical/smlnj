@@ -331,7 +331,7 @@ functor TextIOFn (
 			else (SV.mPut(more, next); false)
 		    end
 	      (* end case *))
-	fun mkInstream' (reader, optData) = let
+	fun mkInstream' (reader, data) = let
 	      val PIO.RD{readVec, readVecEvt, getPos, setPos, ...} = reader
 	      val getPos = (case (getPos, setPos)
 		     of (SOME f, SOME _) => (fn () => SOME(f()))
@@ -345,21 +345,18 @@ functor TextIOFn (
 		      closed = closedFlg, getPos = getPos,
 		      tail = SV.mVarInit more, cleanTag = tag
 		    }
-	      val buf = (case optData
-		     of NONE => IBUF{
-			    basePos = getPos(), data=empty,
-			    info=info, more=more
-			  }
-(** What should we do about the position in this case ?? **)
+(** What should we do about the position when there is initial data?? **)
 (** Suggestion: When building a stream with supplied initial data,
  ** nothing can be said about the positions inside that initial
  ** data (who knows where that data even came from!).
  **) 
-		      | (SOME v) => IBUF{
-			    basePos = NONE, data=v,
-			    info=info, more=more}
-		    (* end case *))
-	      val strm =  ISTRM(buf, 0)
+	      val basePos = if (V.length data = 0)
+		    then getPos()
+		    else NONE
+	      val buf = IBUF{
+		      basePos = basePos, data = data, info = info, more = more
+		    }
+	      val strm = ISTRM(buf, 0)
 	      in
 		(tag, strm)
 	      end
@@ -385,30 +382,13 @@ functor TextIOFn (
 		  else (reader, V.concat(getData more))
 	      end
 
-      (** Position operations on instreams **)
-	datatype in_pos = INP of {
-	    base : pos,
-	    offset : int,
-	    info : info
-	  }
-
-	fun getPosIn (ISTRM(buf, pos)) = (case buf
+(** NOTE: this code works for Unix TextIO, but not for Windows!! **)
+	fun filePosIn (ISTRM(buf, pos)) = (case buf
 	       of IBUF{basePos=NONE, info, ...} =>
-		    inputExn (info, "getPosIn", IO.RandomAccessNotSupported)
-		| IBUF{basePos=SOME p, info, ...} => INP{
-		      base = p, offset = pos, info = info
-		    }
+		    inputExn (info, "filePosIn", IO.RandomAccessNotSupported)
+		| IBUF{basePos=SOME base, info, ...} =>
+		    Position.+(base, Position.fromInt pos)
 	      (* end case *))
-	fun filePosIn (INP{base, offset, ...}) =
-	      Position.+(base, Position.fromInt offset)
-	fun setPosIn (pos as INP{info as INFO{reader, ...}, ...}) = let
-	      val fpos = filePosIn pos
-	      val (PIO.RD rd) = reader
-	      in
-		terminate info;
-		valOf (#setPos rd) fpos;
-		mkInstream (PIO.RD rd, NONE)
-	      end
 
       (** Text stream specific operations **)
 	fun inputLine (ISTRM(buf as IBUF{data, ...}, pos)) = let
@@ -830,8 +810,6 @@ functor TextIOFn (
 	    SV.mPut(strm, StreamIO.findEOS buf)
 	  end
     fun endOfStream strm = StreamIO.endOfStream(SV.mGet strm)
-    fun getPosIn strm = StreamIO.getPosIn(SV.mGet strm)
-    fun setPosIn (strm, p) = mUpdate(strm, StreamIO.setPosIn p)
 
   (** Output operations **)
     fun output (strm, v) = StreamIO.output(SV.mGet strm, v)
@@ -857,7 +835,7 @@ functor TextIOFn (
 
   (** Open files **)
     fun openIn fname =
-	  mkInstream(StreamIO.mkInstream(OSPrimIO.openRd fname, NONE))
+	  mkInstream(StreamIO.mkInstream(OSPrimIO.openRd fname, empty))
 	    handle ex => raise IO.Io{function="openIn", name=fname, cause=ex}
     fun openOut fname = let
 	  val wr = OSPrimIO.openWr fname
@@ -876,7 +854,7 @@ functor TextIOFn (
 	  end
     fun outputSubstr (strm, ss) = StreamIO.outputSubstr (SV.mGet strm, ss)
     fun openString src =
-	  mkInstream(StreamIO.mkInstream(OSPrimIO.strReader src, NONE))
+	  mkInstream(StreamIO.mkInstream(OSPrimIO.strReader src, empty))
 	    handle ex => raise IO.Io{function="openIn", name="<string>", cause=ex}
 
     structure ChanIO = ChanIOFn(
@@ -886,7 +864,7 @@ functor TextIOFn (
 
   (* open an instream that is connected to the output port of a channel. *)
     fun openChanIn ch =
-	  mkInstream(StreamIO.mkInstream(ChanIO.mkReader ch, NONE))
+	  mkInstream(StreamIO.mkInstream(ChanIO.mkReader ch, empty))
 
   (* open an outstream that is connected to the input port of a channel. *)
     fun openChanOut ch =
@@ -896,7 +874,7 @@ functor TextIOFn (
     local
       structure SIO = StreamIO
       fun mkStdIn rebind = let
-	    val (tag, strm) = SIO.mkInstream'(OSPrimIO.stdIn(), NONE)
+	    val (tag, strm) = SIO.mkInstream'(OSPrimIO.stdIn(), empty)
 	    in
 	      if rebind
 		then CleanIO.rebindCleaner (tag, dummyCleaner)

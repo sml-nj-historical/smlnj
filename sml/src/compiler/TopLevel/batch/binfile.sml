@@ -391,9 +391,8 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 			  | _ => error "missing code objects")
 	    val penv = bytesIn (s, es)
 	    val _ =
-		if Word8Vector.length penv = es
-		    andalso BinIO.endOfStream s then ()
-		else error "missing/excess bytes in bin file"
+		if Word8Vector.length penv = es then ()
+		else error "missing bytes in bin file"
 	    val b'senv = UnpickMod.unpickleEnv (context, { hash = staticPid,
 							   pickle = penv })
 	    val senv = CMStaticEnv.CM b'senv
@@ -499,10 +498,15 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 	end
 
 	val parse = C.parse
-	val makePid = C.makePid
     end
 end
 
 (*
- * $Log$
+ * $Log: binfile.sml,v $
+ * Revision 1.3  1998/10/14 14:41:36  george
+ *   bug fix from blume
+ *
+ * Revision 1.2  1998/05/23 14:10:21  george
+ *   Fixed RCS keyword syntax
+ *
  *)

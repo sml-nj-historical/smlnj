@@ -86,7 +86,7 @@ functor RunCMLFn (G : OS_GLUE) : sig
 	(* unlink the SML print function *)
 	  SMLofNJ.Internals.prHook := (fn _ => ());
 	(* unlink the perv structure *)
-	  Unsafe.pStruct := Unsafe.Object.toObject ();
+	  Unsafe.pStruct := Unsafe.NILrde;
 	(* now export the wrapped main function *)
 	  exportFn' (fileName, E.wrapForExport (main, timeQ)))
 

@@ -1,13 +1,12 @@
 functor SparcAsmEmitter
    (structure Instr : SPARCINSTR
-    structure FlowGraph : FLOWGRAPH
-    structure Shuffle : SPARCSHUFFLE
-       sharing FlowGraph.I = Shuffle.I = Instr
+    structure PseudoOps : PSEUDO_OPS
+    structure Shuffle : SPARCSHUFFLE where I = Instr
    ) : EMITTER_NEW =
 struct
    structure I = Instr
    structure C = I.C
-   structure F = FlowGraph
+   structure P = PseudoOps
    structure R = I.Region
    structure Constant = I.Constant
 
@@ -17,7 +16,7 @@ struct
 
    fun emit s = TextIO.output(!AsmStream.asmOutStream,s)
 
-   fun pseudoOp pOp = emit(F.P.toString pOp)
+   fun pseudoOp pOp = emit(P.toString pOp)
 
    fun defineLabel lab = emit(Label.nameOf lab ^ ":\n")
 
@@ -52,14 +51,15 @@ struct
        val eOp  = eOp' eReg
        val eFop = eOp' fReg
 
-       fun eAddr(r,i) =
-            (emit "["; eReg r;
+       fun eAddr'(r,i) =
+            (eReg r;
              case i of
                (I.REG 0 | I.IMMED 0) => ()
              | I.IMMED n => (if n > 0 then emit "+" else (); eInt n)
-             | i => (emit "+"; eOp i);
-             emit "]"
+             | i => (emit "+"; eOp i)
             )
+
+       fun eAddr(r,i) = (emit "["; eAddr'(r,i); emit "]")
 
        fun arith3(x,cc,r,i,d) = 
           (tab(); emit x; if cc then emit "cc" else ();
@@ -72,6 +72,10 @@ struct
           (tab(); emit x; tab(); eAddr(r,i); comma(); fReg' d)
        fun eFstore(x,d,r,i) = 
           (tab(); emit x; tab(); fReg d; comma(); eAddr(r,i))
+       fun eJump(r,i,0) =
+           (emit "\tjmp\t"; eAddr'(r,i))
+         | eJump(r,i,d) =
+           (emit "\tjmpl\t"; eAddr'(r,i); comma(); eReg' d)
        fun eMem mem = comment(R.toString mem)
        fun eDelay false = ()
          | eDelay true  = emit "\n\tnop"
@@ -103,12 +107,12 @@ struct
          | store I.STB = "stb"
          | store I.STH = "sth"
          | store I.STD = "std"
-       fun fload I.LDF = "ldf" 
-         | fload I.LDDF = "lddf" 
-         | fload I.LDFSR = "ldfsr" 
-       fun fstore I.STF = "stf"
-         | fstore I.STDF = "stdf"
-         | fstore I.STFSR = "stfsr"
+       fun fload I.LDF = "ld" 
+         | fload I.LDDF = "ldd" 
+         | fload I.LDFSR = "ld" 
+       fun fstore I.STF = "st"
+         | fstore I.STDF = "std"
+         | fstore I.STFSR = "st"
        fun cond I.BA   = "a"
          | cond I.BN   = "n"
          | cond I.BNE  = "ne"
@@ -189,8 +193,8 @@ struct
                                     emita a; eLabel label; eDelay nop)
        | I.FBfcc { b, a, label, nop} => (tab(); emit(fbranch b); 
                                     emita a; eLabel label; eDelay nop)
-       | I.JMP  {r,i,nop,...} => (arith3("jmpl",false,r,i,0); eDelay nop)
-       | I.JMPL {d,r,i,nop,...} => (arith3("jmpl",false,r,i,d); eDelay nop)
+       | I.JMP  {r,i,nop,...} => (eJump(r,i,0); eDelay nop)
+       | I.JMPL {d,r,i,nop,...} => (eJump(r,i,d); eDelay nop)
        | I.CALL {label,nop,...} => (emit "\tcall\t"; eLabel label; eDelay nop)
        | I.RET{leaf=false,nop} => (emit "\tret"; eDelay nop) 
        | I.RET{leaf=true,nop} => (emit "\tretl"; eDelay nop)
@@ -209,9 +213,9 @@ struct
        | I.FPop2 {a,r1,r2,d} => 
            (tab(); emit(farith2 a); tab();
             fReg r1; comma(); fReg r2; comma(); fReg' d)
-       | I.FCMP {cmp,r1,r2} =>
+       | I.FCMP {cmp,r1,r2,nop} =>
            (tab(); emit(fcmp cmp); tab();
-            fReg r1; comma(); fReg r2)
+            fReg r1; comma(); fReg r2; eDelay nop)
        | I.COPY{src,dst,tmp,...} => 
            (app (fn i => emitInstr(i,regmap))
                 (Shuffle.shuffle{src=src,dst=dst,temp=tmp,regMap=rmap}))
@@ -220,8 +224,8 @@ struct
                 (Shuffle.shufflefp{src=src,dst=dst,temp=tmp,regMap=rmap}))
        | I.SAVE{r,i,d} => arith3("save",false,r,i,d)
        | I.RESTORE{r,i,d} => arith3("restore",false,r,i,d)
-       | I.RDY{d} => (emit "rd\t%y, "; eReg' d)
-       | I.WRY{r,i} => (emit "wr\t"; eReg r; comma(); eOp i; emit ", %y")
+       | I.RDY{d} => (emit "\trd\t%y, "; eReg' d)
+       | I.WRY{r,i} => (emit "\twr\t"; eReg r; comma(); eOp i; emit ", %y")
        (*
        | I.ANNOTATION(i,a) => (emitInstr(i,regmap); comment(I.A.toString a))
         *)
@@ -229,7 +233,3 @@ struct
        nl()
    end
 end  
-
-(*
- * $Log$
- *)

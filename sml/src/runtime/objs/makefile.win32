@@ -47,7 +47,7 @@ GEN_INCLUDES =	/I$(CONFIG_DIR) $(INCLUDES)
 
 OBJS =		c-libraries.obj win32-raise-syserr.obj \
                 ml-options.obj \
-		new-boot.obj load-ml.obj run-ml.obj globals.obj ml-state.obj \
+		boot.obj load-ml.obj run-ml.obj globals.obj ml-state.obj \
 		error.obj timers.obj win32-timers.obj \
 		qualify-name.obj swap-bytes.obj \
 		signal-util.obj prim.obj \
@@ -153,12 +153,12 @@ standalone.obj:	$(KERN_DIR)\standalone.c \
 		ml-sizes.h $(INC_DIR)\ml-base.h $(INC_DIR)\ml-limits.h
 	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) $(KERN_DIR)\standalone.c
 
-new-boot.obj:	$(KERN_DIR)\new-boot.c \
+boot.obj:	$(KERN_DIR)\boot.c \
 		$(INC_DIR)\ml-osdep.h $(INC_DIR)\cache-flush.h \
 		ml-sizes.h $(INC_DIR)\ml-base.h $(INC_DIR)\bin-file.h \
 		$(INC_DIR)\ml-objects.h $(INC_DIR)\ml-globals.h $(INC_DIR)\gc.h \
 		$(INC_DIR)\ml-limits.h
-	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) $(KERN_DIR)\new-boot.c
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) $(KERN_DIR)\boot.c
 
 load-ml.obj:	$(KERN_DIR)\load-ml.c \
 		ml-sizes.h \

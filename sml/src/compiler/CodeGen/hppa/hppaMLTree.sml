@@ -25,12 +25,12 @@ structure HppaFlowGraph =
 structure HppaAsmEmitter = 
   HppaAsmEmitter(structure Instr=HppaInstr
 		 structure Shuffle=HppaShuffle
-		 structure FlowGraph=HppaFlowGraph)
+		 structure PseudoOps=HppaPseudoOps)
 
 structure HppaMCEmitter = 
   HppaMCEmitter(structure Instr=HppaInstr
-					structure Assembler=HppaAsmEmitter
-		structure FlowGraph=HppaFlowGraph)
+		structure Assembler=HppaAsmEmitter)
+
 
 structure HppaMLTree = 
   MLTreeF(structure Const=HppaConst
@@ -41,6 +41,9 @@ structure HppaMLTree =
 
 (*
  * $Log: hppaMLTree.sml,v $
+ * Revision 1.2  1998/07/25 03:05:35  george
+ *   changes to support block names in MLRISC
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:55  george
  * Version 110.5
  *

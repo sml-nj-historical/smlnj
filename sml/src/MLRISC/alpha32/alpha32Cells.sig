@@ -13,6 +13,7 @@ signature ALPHA32CELLS = sig
 
   exception Cells
 
+  type register = int
   type regmap = int Intmap.intmap
   datatype cellclass = GP | FP | CC | CR | MEM | CTRL
 
@@ -48,5 +49,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: alpha32Cells.sig,v $
+ * Revision 1.1  1998/05/19 15:48:49  george
+ *   Version 110.5
+ *
  *)

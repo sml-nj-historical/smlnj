@@ -96,8 +96,8 @@ structure Unsafe :> UNSAFE =
     val cast = InlineT.cast
 
     (* actual representation of pStruct *)
-    datatype runDynEnv =
-	NILrde
+    datatype runDynEnv
+      = NILrde
       | CONSrde of Word8Vector.vector * Object.object * runDynEnv
 
     val pStruct : runDynEnv ref = InlineT.cast Assembly.pstruct
@@ -109,3 +109,12 @@ structure Unsafe :> UNSAFE =
   end;
 
 
+(*
+ * $Log: unsafe.sml,v $
+ * Revision 1.2  1998/08/26 14:06:56  george
+ *   CM changes from blume
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:01  george
+ * Version 110.5
+ *
+ *)

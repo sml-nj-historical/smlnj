@@ -11,10 +11,10 @@ signature LABELEXP = sig
     | MINUS of labexp * labexp
     | MULT of labexp * labexp
     | DIV of labexp * labexp
-    | LSHIFT of labexp * int
-    | RSHIFT of labexp * int
-    | AND of labexp * int
-    | OR of labexp * int
+    | LSHIFT of labexp * word
+    | RSHIFT of labexp * word
+    | AND of labexp * word
+    | OR of labexp * word
 
   val valueOf : labexp -> int
   val toString : labexp -> string
@@ -73,5 +73,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: labelExp.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:02  george
+ * Version 110.5
+ *
  *)

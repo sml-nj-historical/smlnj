@@ -6,13 +6,12 @@
 
 functor HppaAsmEmitter
   (structure Instr : HPPAINSTR
-   structure FlowGraph : FLOWGRAPH
-   structure Shuffle : HPPASHUFFLE
-       sharing FlowGraph.I = Shuffle.I = Instr) : EMITTER_NEW = 
+   structure PseudoOps : PSEUDO_OPS
+   structure Shuffle : HPPASHUFFLE where I = Instr) : EMITTER_NEW = 
 struct
   structure I = Instr
   structure C = I.C
-  structure F = FlowGraph
+  structure P = PseudoOps
   structure LE = LabelExp
   structure Constant = I.Constant
   structure Region = I.Region
@@ -27,7 +26,7 @@ struct
 
   fun comment msg = emit ("\t/* " ^ msg ^ " */")
   fun region r = comment(Region.toString r)
-  fun pseudoOp pOp = emit(F.P.toString pOp)
+  fun pseudoOp pOp = emit(P.toString pOp)
   fun init size = (comment ("Code Size = " ^ ms size); emit"\n")
     
   fun emitInstr(instr,regmap) = let
@@ -208,10 +207,10 @@ struct
       | I.B{lab,n}			=> (emit "\tB"; nullify n; 
                                             emit "\t"; eLabel lab;
 					    emit "\n\tNOP" )
-      | I.FBCC{t,n, ...}		=> (emit "\tFBCC"; nullify n;
-                                            emit "\t"; eLabel t;
-					    emit "\n\tNOP")
-
+      | I.FBRANCH{cc,f1,f2,t,n,...} =>
+	  (emit ("\tFCMP," ^ fcond cc ^"\t"); eFreg f1; comma(); eFreg f2;
+           emit "\n\tFTEST\n";
+           emit "\tB"; nullify n; emit "\t"; eLabel t; emit "\n\tNOP")
       | I.BLE{d, sr, b, t, ...} => 
           (emit "\tBLE\t"; eOperand d;
 	   paren(fn () => (emit(ms sr); comma(); eReg b));
@@ -224,6 +223,11 @@ struct
       | I.BV{x, b, n, ...} => 
 	  (emit "\tBV"; nullify n; emit "\t"; eReg x; paren(fn () => eReg b);
            emit "\n\tNOP" )
+      | I.BLR{x, t, n, labs, ...} => 
+          (emit "\tBLR"; nullify n; emit "\t"; eReg x; comma(); eReg t;
+           emit "\n\tNOP\n";
+           app (fn l => (emit "\tB,n\t"; eLabel l; emit "\n\tNOP\n")) labs
+          )
       | I.LDIL{i, t} => (emit "\tLDIL\t"; eOperand i; comma(); eReg t)
       | I.LDO{i,b,t} => 
 	  (emit "\tLDO\t";  eOperand i; paren(fn () => eReg b); 
@@ -247,9 +251,6 @@ struct
       | I.FUNARY{fu=I.FCPY, f, t} => funary("\tFCPY\t", f, t)
       | I.FUNARY{fu=I.FABS, f, t} => funary("\tFABS\t", f, t)
       | I.FUNARY{fu=I.FCNVXF, f, t} => funary("\tFCNVXF\t", f, t)
-      | I.FCMP(cc,f1,f2) => 
-	  (emit ("\tFCMP," ^ fcond cc ^"\t"); eFreg f1; comma(); eFreg f2)
-      | I.FTEST => emit "\tFTEST"
       | I.BREAK(i, j) => emit ("\tBREAK(" ^ ms i ^ ", " ^ ms j ^ ")")
       | I.NOP => emit "\tNOP"
       | I.COPY{dst, src, tmp, ...} => 
@@ -266,6 +267,12 @@ end
 
 (*
  * $Log: hppaAsm.sml,v $
+ * Revision 1.5  1998/09/30 19:35:22  dbm
+ * fixing sharing/defspec conflict
+ *
+ * Revision 1.4  1998/07/25 03:08:15  george
+ *   added to support block names in MLRISC
+ *
  * Revision 1.3  1998/05/25 15:10:53  george
  *   Fixed RCS keywords
  *

@@ -8,24 +8,20 @@
  * of a curried functor. 
  *)
 
-functor HppaRegAlloc(structure P : INSN_PROPERTIES
-		     structure F : FLOWGRAPH 
-		     structure I : INSTRUCTIONS where C = HppaCells
-		     structure Asm : EMITTER_NEW
-		         sharing Asm.F = F
-			 sharing P.I = F.I = Asm.I = I) :
+functor HppaRegAlloc(structure I : INSTRUCTIONS where C = HppaCells
+		     structure P : INSN_PROPERTIES where I = I
+		     structure F : FLOWGRAPH where I = I and P = P
+		     structure Asm : EMITTER_NEW where I = I and P = P) :
   sig
     functor IntRa (structure RaUser : RA_USER_PARAMS
-		     where type I.operand = I.operand
-		       and type I.instruction = I.instruction
-		       and type B.name = F.B.name) : sig
+		     where I = I
+		     where type B.name = F.B.name) : sig
       datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
       val ra : mode -> F.cluster -> F.cluster
      end
     functor FloatRa (structure RaUser : RA_USER_PARAMS
-		     where type I.operand = I.operand
-		       and type I.instruction = I.instruction
-		       and type B.name = F.B.name) : sig
+		     where I = I
+		     where type B.name = F.B.name) : sig
       datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
       val ra : mode -> F.cluster -> F.cluster
      end
@@ -84,6 +80,12 @@ end
 
 (*
  * $Log: hppaRegAlloc.sml,v $
+ * Revision 1.5  1998/09/30 19:36:10  dbm
+ * fixing sharing/defspec conflict
+ *
+ * Revision 1.4  1998/07/25 03:08:16  george
+ *   added to support block names in MLRISC
+ *
  * Revision 1.3  1998/05/25 15:10:59  george
  *   Fixed RCS keywords
  *

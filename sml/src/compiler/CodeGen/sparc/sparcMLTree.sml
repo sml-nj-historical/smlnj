@@ -30,12 +30,11 @@ structure SparcFlowGraph =
 structure SparcAsmEmitter = 
   SparcAsmEmitter(structure Instr=SparcInstr
 		  structure Shuffle=SparcShuffle
-		  structure FlowGraph=SparcFlowGraph)
+		  structure PseudoOps=SparcPseudoOps)
 
 structure SparcMCEmitter = 
   SparcMCEmitter(structure Instr=SparcInstr
-		 structure Assembler=SparcAsmEmitter
-		 structure FlowGraph=SparcFlowGraph)
+		 structure Assembler=SparcAsmEmitter)
 
 structure SparcMLTree = 
   MLTreeF(structure Const=SparcConst
@@ -45,5 +44,8 @@ structure SparcMLTree =
 
 
 (*
- * $Log$
+ * $Log: sparcMLTree.sml,v $
+ * Revision 1.1.1.1  1998/08/05 19:37:50  george
+ *   Release 110.7.4
+ *
  *)

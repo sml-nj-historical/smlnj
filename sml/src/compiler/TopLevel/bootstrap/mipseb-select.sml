@@ -1,1 +1,2 @@
-structure Compiler = MipsBigVisComp
+structure MachDepVC = MipsBigVisComp
+

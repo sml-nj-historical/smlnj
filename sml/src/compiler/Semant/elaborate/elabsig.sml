@@ -89,7 +89,7 @@ fun lookStrDef(env,spath,epContext,err) =
 
 fun closedDefs defs =
     not(List.exists
-          (fn ((_,TYCdef(_,_,true)) | (_,STRdef(_,VARstrDef _))) => true
+          (fn ((_,TYCdef{relative=true,...}) | (_,STRdef(_,VARstrDef _))) => true
 	    | _ => false)
 	  defs)
 
@@ -104,7 +104,7 @@ fun sortdefs(defs) =
 
 fun prepareDefs whereDefs =
     sortdefs(map (fn (def as STRdef(SP.SPATH p,_)) => (p,def)
-		   | (def as TYCdef(SP.SPATH p,_,_)) => (p,def))
+		   | (def as TYCdef{path=SP.SPATH p,...}) => (p,def))
 		 whereDefs)
 
 fun pushDefs(elements,defs,error,mkStamp) =
@@ -117,21 +117,37 @@ fun pushDefs(elements,defs,error,mkStamp) =
                   | loop(nil,this,others) = (sortdefs this,rev others)
              in loop(defs,nil,nil)
 	    end
-	fun applyTycDef(tspec as TYCspec{entVar,spec,...},TYCdef(spath,tyc,_)) =
+	fun applyTycDef(tspec as TYCspec{entVar,spec,...},
+			TYCdef{path=spath,tyc,...}) =
 	    case spec
-	      of T.GENtyc{kind=T.FORMAL,arity,...} =>
+	      of T.GENtyc{kind=T.FORMAL,arity,eq=eqp,path=tpath,...} =>
 		  if TU.tyconArity tyc = arity
-		  then TYCspec{entVar=entVar, spec=tyc, scope=SP.length spath}
+		  then TYCspec{entVar=entVar, spec=tyc, repl=false,
+			       scope=SP.length spath}
+		      (* DBM: we should check at this point that the
+		       * definition represented by TYCdef#tyc has the
+		       * appropriate equality property to match the
+		       * spec, but this does not seem to be feasible
+		       * without excessive work.  The problem is computing
+		       * whether tyc is an equality tycon, when it contains
+		       * PATHtycs, as in bug1433.2.sml. *)
 		  else (error ("where type definition has wrong arity: " ^
 			       SP.toString spath);
 			tspec)
                | T.GENtyc{kind=T.DATATYPE _,arity,...} =>
-		  (* We allow a where type to constrain a datatype spec,
+		  (* We allow a where type defn to constrain a datatype spec,
 		   * if rhs datatype is "compatible" with spec.  We use
-		   * an extremely weak notion of compatibility -- same arity. *)
+		   * an extremely weak notion of compatibility -- same arity.
+		   * The definition should be a compatible datatype 
+		   * (not checked here!), making this an indirect
+		   * datatype replication spec.
+		   *)
+                  (* tyc is DEFtyc! This will have to be unwrapped when the
+                   * signature is instantiated (bugs 1364, 1432).
+		   *)
 		   if arity = TU.tyconArity tyc
-		   then TYCspec{entVar=entVar, spec=tyc,
-				scope=SP.length spath}
+		   then TYCspec{entVar=entVar, spec=tyc, repl=true,
+				scope=SP.length spath (* ??? *)}
 		   else (error ("where type definition has wrong arity: " ^
 				SP.toString spath);
 			 tspec)
@@ -169,7 +185,7 @@ fun pushDefs(elements,defs,error,mkStamp) =
 	      (case defs
 		 of nil => rev elems  (* all defs consumed *)
 		  | _ => (* left-over defs *)
-		    (app (fn (_,TYCdef(p,_,_)) =>
+		    (app (fn (_,TYCdef{path=p,...}) =>
 			      (error (concat
 				      ["unbound left hand side in where type: ",
 				       SP.toString p]))
@@ -184,7 +200,7 @@ fun pushDefs(elements,defs,error,mkStamp) =
           | loop((elem as (sym,tspec as TYCspec _))::elems,defs,elems') =
 	      let val (localdefs,otherdefs) = findDefs(sym,defs)
 	       in case localdefs
-		    of [(nil,tycDef as TYCdef(spath,tyc,rel))] => 
+		    of [(nil,tycDef)] => 
 			 loop(elems,otherdefs,
 			      (sym,applyTycDef(tspec,tycDef))::elems')
                      | nil => loop(elems,defs,elem::elems')
@@ -264,15 +280,19 @@ fun elabWhere (sigexp,env,epContext,mkStamp,error,region) =
 			  val _ = EU.checkBoundTyvars(tvs',tvs,error region)
 			  val _ = TU.bindTyvars tvs
 			  val _ = TU.compressTy ty
+			  val stamp = mkStamp ()
+			  val path = IP.IPATH [List.last path]
+			  val strict = EU.calc_strictness(arity,ty)
 			  val (nty,relative) = MU.relativizeType epContext ty
 			  val tycon = 
-                            T.DEFtyc{stamp = mkStamp(),
-				     path=IP.IPATH [List.last path],
-				     strict=EU.calc_strictness(arity,ty),
+                            T.DEFtyc{stamp=stamp,
+				     path=path,
+				     strict=strict,
 				     tyfun=T.TYFUN{arity=arity,body=nty}}
-		       in loop1(rest,TYCdef(spath,tycon,relative)::defs)
+		       in loop1(rest,TYCdef{path=spath,tyc=tycon,
+					    relative=relative}::defs)
 		      end
-		  | loop1(WhStruct(lhs,rhs) ::rest,defs) =
+		  | loop1(WhStruct(lhs,rhs)::rest,defs) =
 		     (let val lhspath = SP.SPATH lhs
 			  val strDef =
 		           lookStrDef(env,SP.SPATH rhs,epContext,error region)
@@ -317,7 +337,7 @@ let
 fun elabTYPEspec(tspecs, env, elements, symbols, eqspec, region) =
   let val _ = debugmsg ">>elabTYPEspec"
       val err = error region
-      val eq = if eqspec then T.YES else T.IND
+      val eqprop = if eqspec then T.YES else T.IND
 
       fun loop([], env, elems, syms) = (env, elems, syms)
         | loop((name,tyvars,abbrev)::rest, env, elems, syms) = 
@@ -326,6 +346,13 @@ fun elabTYPEspec(tspecs, env, elements, symbols, eqspec, region) =
                 val tycon =
                   case abbrev
                    of SOME def =>
+		       if eqspec
+		       then (error region EM.COMPLAIN
+			      ("eqtype spec with a definition: " ^
+			       S.name name)
+			      EM.nullErrorBody;
+			     T.ERRORtyc)
+		       else
                         let val (ty,tvs') = ET.elabType(def,env,error,region)
                             val _ = EU.checkBoundTyvars(tvs',tvs,err)
                             val _ = TU.bindTyvars tvs
@@ -338,7 +365,7 @@ fun elabTYPEspec(tspecs, env, elements, symbols, eqspec, region) =
                         end
                     | NONE => T.GENtyc{stamp = mkStamp(),
                                        path = IP.IPATH [name],
-                                       arity = arity, eq = ref eq, 
+                                       arity = arity, eq = ref eqprop, 
                                        kind = T.FORMAL}
 
                 val ev = mkStamp()
@@ -346,7 +373,7 @@ fun elabTYPEspec(tspecs, env, elements, symbols, eqspec, region) =
                                      path=IP.IPATH[name]}
                 val env' = SE.bind(name, B.TYCbind etyc, env)
 
-                val ts = TYCspec{spec=tycon, entVar=ev,scope=0}
+                val ts = TYCspec{spec=tycon, entVar=ev, repl=false, scope=0}
                 val elems' = add(name, ts, elems, err)
 
              in loop(rest, env', elems', name::syms)
@@ -378,7 +405,7 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
 			    val ev = mkStamp()
 			    (* spec uses wrapped version of the PATHtyc!! *)
 			    val tspec = TYCspec{spec=TU.wrapDef(tyc,mkStamp()),
-						entVar=ev,scope=0}
+						entVar=ev,repl=true,scope=0}
 			    val elements' = 
                               add(name,tspec,elements,error region)
 			    val etyc = T.PATHtyc{arity=arity,entPath=[ev],
@@ -412,12 +439,12 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
 					in T.PATHtyc{arity=arity,
 						     entPath=prefix@[stamp],
 						     path=IP.IPATH[tycname]}
+				       end
 				   (* reconstructing the entPath for sibling
 				    * datatypes using the fact that the entVar
 				    * for a datatype spec is the same as the
 				    * stamp of the datatype.
 				    * See elabDATATYPEspec0 *)
-				       end
 			      | expandTyc tyc = tyc
 
 			    val expand = TU.mapTypeFull expandTyc
@@ -461,7 +488,7 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
 			    val ev = mkStamp()
 			    (* spec uses wrapped version of the PATHtyc!! *)
 			    val tspec = TYCspec{spec=TU.wrapDef(tyc',mkStamp()),
-						entVar=ev,scope=0}
+						entVar=ev,repl=true,scope=0}
 			    val elements' = add(name,tspec,elements,error region)
 			    val etyc = T.PATHtyc{arity=arity,entPath=[ev],
 						 path=IP.IPATH[name]}
@@ -492,7 +519,7 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
 			let (* add the type *)
 			    val ev = mkStamp()
 			    val tspec = M.TYCspec{spec=TU.wrapDef(tyc,mkStamp()),
-						  entVar=ev,scope=0}
+						  entVar=ev,repl=true,scope=0}
 				(* put in the constant tyc
 				   how to treat this in instantiate?*)
 			    val elements' = add(name,tspec,elements,error region)
@@ -599,7 +626,7 @@ fun elabDATATYPEspec0(dtycspec, env, elements, symbols, region) =
 
       fun addTycs([], env, elems, syms) = (env, elems, syms)
         | addTycs((ev,arity,tyc)::tycs, env, elems, syms) =
-            let val tspec = TYCspec{spec=tyc, entVar=ev, scope=0}
+            let val tspec = TYCspec{spec=tyc, entVar=ev, repl=false, scope=0}
                 val name = TU.tycName tyc
 		val _ = debugmsg ("--elabDATATYPEspec - name: "^ S.name name)
                 val elems' = add(name, tspec, elems, err)
@@ -1078,6 +1105,9 @@ end (* local *)
 end (* structure ElabSig *)
 
 (*
- * $Log$
+ * $Log: elabsig.sml,v $
+ * Revision 1.3  1998/05/23 14:10:02  george
+ *   Fixed RCS keyword syntax
+ *
  *
  *)

@@ -62,7 +62,6 @@ type pid        = PS.persstamp         (* persistant id *)
 type import     = pid * CB.importTree  (* import specification *)
 type pickle     = CC.pickle            (* pickled format *)
 type hash       = CC.hash              (* environment hash id *)
-val makePid     = CC.makePid
 
 fun fail s = raise (Compile s)
 
@@ -347,5 +346,8 @@ end (* local of exception Compile *)
 
 
 (*
- * $Log$
+ * $Log: compile.sml,v $
+ * Revision 1.5  1998/06/02 17:39:29  george
+ *   Changes to integrate CM functionality into the compiler --- blume
+ *
  *)

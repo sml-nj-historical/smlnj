@@ -15,21 +15,18 @@ signature STREAM_IO =
     type outstream
 
     type pos
-    type in_pos
     type out_pos
 
     val input       : instream -> (vector * instream)
     val input1      : instream -> (elem * instream) option
     val inputN      : (instream * int) -> (vector * instream)
-    val inputAll    : instream -> vector
+    val inputAll    : instream -> (vector * instream)
     val canInput    : (instream * int) -> int option
     val closeIn     : instream -> unit
     val endOfStream : instream -> bool
     val mkInstream  : (reader * vector) -> instream
     val getReader   : instream -> (reader * vector)
-    val getPosIn    : instream -> in_pos
-    val setPosIn    : in_pos -> instream
-    val filePosIn   : in_pos -> pos
+    val filePosIn   : instream -> pos
 
     val output        : (outstream * vector) -> unit
     val output1       : (outstream * elem) -> unit
@@ -46,5 +43,9 @@ signature STREAM_IO =
   end
 
 (*
- * $Log$
+ * $Log: stream-io.sig,v $
+ * Revision 1.3  1998/08/17 19:21:17  george
+ *   Changed the type of TextIO.StreamIO.mkInstream to eliminate the option.
+ *   [appel]
+ *
  *)

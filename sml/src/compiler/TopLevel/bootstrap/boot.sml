@@ -8,14 +8,14 @@ signature BOOTENV = sig
     val bootEnv: unit -> Environment.environment
 end
 
-functor BootEnvF (structure VC: VISCOMP
+functor BootEnvF (structure BF: BINFILE
+		  val architecture: string
 		  val setRetargetPervStatEnv: CMStaticEnv.staticEnv -> unit
 		  val cmbmake: string -> unit) :> BOOTENV = struct
 
     exception BootFailure
 
     structure Env = Environment
-    structure BF = VC.Binfile
     structure CMS = CMStaticEnv
     structure SE = StaticEnv
     structure DynE = DynamicEnv
@@ -107,10 +107,16 @@ functor BootEnvF (structure VC: VISCOMP
 	fun (st1, sy1) // (st2, sy2) =
 	    (CMS.atop (st1, st2), Env.layerSymbolic (sy1, sy2))
 
-	(* magic file names *)
-	val assembly_sig = "assembly.sig.bin"
-	val dummy_sml = "dummy.sml.bin"
-	val core_sml = "core.sml.bin"
+	local
+	    fun pb x =
+		OS.Path.toString { isAbs = false, vol = "",
+				   arcs = ["PervEnv", "Boot", x] }
+	in
+	    (* magic file names -- live in PervEnv/Boot *)
+	    val assembly_sig = pb "assembly.sig.bin"
+	    val dummy_sml = pb "dummy.sml.bin"
+	    val core_sml = pb "core.sml.bin"
+	end
 
 	val emptysym = Env.symbolicPart Env.emptyEnv
 
@@ -250,7 +256,7 @@ functor BootEnvF (structure VC: VISCOMP
 
 	val (bootdir, newbindir, ereq) =
 	    bootArgs (SMLofNJ.getAllArgs (),
-		      "bin." ^ VC.architecture, NONE, NORMAL)
+		      "bin." ^ architecture, NONE, NORMAL)
 	val bootdir = OS.Path.mkCanonical bootdir
 	val newbindir = Option.map OS.Path.mkCanonical newbindir
 

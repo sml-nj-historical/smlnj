@@ -30,8 +30,6 @@ signature IMPERATIVE_IO =
       sharing type vector = StreamIO.vector
       sharing type elem = StreamIO.elem
 
-    val getPosIn    : instream -> StreamIO.in_pos
-    val setPosIn    : (instream * StreamIO.in_pos) -> unit
     val mkInstream  : StreamIO.instream -> instream
     val getInstream : instream -> StreamIO.instream
     val setInstream : (instream * StreamIO.instream) -> unit
@@ -45,5 +43,8 @@ signature IMPERATIVE_IO =
   end;
 
 (*
- * $Log$
+ * $Log: imperative-io.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
+ *
  *)

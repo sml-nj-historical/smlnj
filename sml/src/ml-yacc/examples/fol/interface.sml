@@ -1,11 +1,8 @@
 (* Externally visible aspects of the lexer and parser 
  *
  * $Log$
- * Revision 1.1.1.5  1998/09/07 21:10:44  monnier
- * 110.8
- *
- * Revision 1.1.1.1  1998/04/08 18:40:15  george
- * Version 110.5
+ * Revision 1.1.1.6  1998/11/07 20:11:12  monnier
+ * version $version
  *
  * Revision 1.1.1.1  1997/01/14 01:38:03  george
  *   Version 109.24

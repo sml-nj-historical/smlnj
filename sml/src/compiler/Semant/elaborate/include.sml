@@ -142,8 +142,8 @@ and adjustElems(elements,tycmap) = map (adjustElem tycmap) elements
 and adjustElem tycmap (sym,spec) =
       let val nspec = 
             case spec
-             of TYCspec{spec=tycon, entVar=ev, scope=s} =>
-                  TYCspec{spec=adjustTyc(tycon,tycmap),entVar=ev, scope=s}
+             of TYCspec{spec=tycon, entVar=ev, repl=r, scope=s} =>
+                  TYCspec{spec=adjustTyc(tycon,tycmap),entVar=ev, repl=r, scope=s}
               | STRspec{sign, entVar=ev, def=d, slot=s} =>
                   STRspec{sign=adjustSig(sign,tycmap),entVar=ev,def=d,slot=s}
 		  (* BUG: def component may need adjustment? *)
@@ -160,8 +160,9 @@ and adjustElem tycmap (sym,spec) =
 
 fun addElem((name,nspec: M.spec), env, elems, syms, slot) =
   case nspec
-   of TYCspec{spec=tc, entVar=ev, scope=s} =>
-       (let val TYCspec{spec=otc,entVar=oev,scope=os} = MU.getSpec(elems,name)
+   of TYCspec{spec=tc, entVar=ev, repl=r, scope=s} =>
+       (let val TYCspec{spec=otc,entVar=oev,repl=or,scope=os} =
+	        MU.getSpec(elems,name)
          in case compatible(tc,otc)
              of KEEP_OLD => 
                   let val ntc = PATHtyc{arity=TU.tyconArity otc,
@@ -171,7 +172,7 @@ fun addElem((name,nspec: M.spec), env, elems, syms, slot) =
                   end
               | REPLACE =>
                   let val ntc = adjustTyc(tc, getMap())
-                      val nspec' = TYCspec{spec=ntc,entVar=oev,scope=s}
+                      val nspec' = TYCspec{spec=ntc,entVar=oev,repl=or,scope=s} (*?*)
                       val elems' = substElem((name,nspec'),elems)
 
                       val ntc = PATHtyc{arity=TU.tyconArity ntc,
@@ -191,7 +192,7 @@ fun addElem((name,nspec: M.spec), env, elems, syms, slot) =
                    val env' = SE.bind(name, B.TYCbind ntyc, env)
 
                    val spec' = TYCspec{spec=adjustTyc(tc, getMap()),
-                                       entVar=ev,scope=s}
+                                       entVar=ev,repl=r,scope=s}
                    val elems' = addElement((name,spec'), elems)
                    val syms' = name :: syms
                 in (env', elems', syms', slot)
@@ -287,6 +288,9 @@ end (* local *)
 end (* structure Include *)
 
 (*
- * $Log$
+ * $Log: include.sml,v $
+ * Revision 1.3  1998/05/23 14:10:08  george
+ *   Fixed RCS keyword syntax
+ *
  *
  *)

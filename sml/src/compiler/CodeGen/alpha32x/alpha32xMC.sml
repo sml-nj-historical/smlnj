@@ -6,11 +6,10 @@
 
 functor Alpha32XMCEmitter
   (structure Instr : ALPHA32INSTR
-   structure FlowGraph : FLOWGRAPH
-       sharing FlowGraph.I = Instr) : EMITTER_NEW =
+   structure PseudoOps : PSEUDO_OPS) : EMITTER_NEW =
 struct
   structure I = Instr
-  structure F = FlowGraph
+  structure P = PseudoOps
     structure C = I.C
 
     structure LE = LabelExp
@@ -45,7 +44,7 @@ struct
     fun emitstring s = Word8Vector.app emitbyte (Byte.stringToBytes s)
     fun comment msg = ()
     fun init n = (CodeString.init n;  loc:=0)
-    fun pseudoOp pOp = F.P.emitValue{pOp=pOp, loc= !loc, emit=emitbyte}
+    fun pseudoOp pOp = P.emitValue{pOp=pOp, loc= !loc, emit=emitbyte}
 
     open Label
     fun emitMCInstr(instr,regmap) = let
@@ -280,5 +279,11 @@ struct
   
 
 (*
- * $Log$
+ * $Log: alpha32xMC.sml,v $
+ * Revision 1.2  1998/09/30 18:52:42  dbm
+ * removed sharing/defspec conflict
+ *
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
+ *
  *)

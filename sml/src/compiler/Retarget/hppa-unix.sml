@@ -1,4 +1,4 @@
 structure HppaUnixCMB =
-    CMBFun (structure TargetCompiler = HppaVisComp
+    CMBFun (structure TargetMachDepVC = HppaVisComp
 	    val version = "batch (target: hppa-unix)"
 	    val targetosn = "unix")

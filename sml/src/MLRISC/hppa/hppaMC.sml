@@ -7,13 +7,14 @@
 
 functor HppaMCEmitter
   (structure Instr : HPPAINSTR
-   structure Assembler:EMITTER_NEW
-   structure FlowGraph : FLOWGRAPH
+   structure Assembler : EMITTER_NEW where I = Instr
+(* sharing/definiton conflict at Instr.Cells.regmap ----
        sharing Assembler.F = FlowGraph
-       sharing FlowGraph.I = Assembler.I = Instr) : EMITTER_NEW =
+       sharing FlowGraph.I = Assembler.I = Instr *)
+  ) : EMITTER_NEW =
 struct
   structure I = Instr
-  structure F = FlowGraph
+  structure P = Assembler.P
 
   val << = Word.<<
   val >> = Word.>>
@@ -42,7 +43,7 @@ struct
   fun emitWord w = (emitByte((w >> 0w8) & 0w255); emitByte(w & 0w255))
 
   fun defineLabel  lab = ()
-  fun pseudoOp pOp = F.P.emitValue{pOp=pOp, loc= !loc, emit=emitbyte}
+  fun pseudoOp pOp = P.emitValue{pOp=pOp, loc= !loc, emit=emitbyte}
   fun comment msg = ()
   fun init n = (CodeString.init n; loc:=0)
 
@@ -300,8 +301,8 @@ struct
 	   emitWord((0w3 << 0w13) ++ 0w2))
       | I.BLE _		  => error "BLE: not implemented"
       | I.B{lab, n, ...}  => branchLink(0wx3a, 0, lab, 0w0, nullify n)
-      | I.FBCC _	  => error "FBCC"
       | I.BV{b, x, n,...} => branchVectored(0wx3a, b, x, 0w6, nullify n)
+      | I.BLR{x, t, n,...} => branchVectored(0wx3a, t, x, 0w2, nullify n)
       | I.MTCTL{r, t}     => control(0w0, t, rNum r, 0w0, 0wxc2, 0w0)
       | I.FSTORE{fst, b, d, r, ...} =>
 	 (case fst
@@ -340,11 +341,15 @@ struct
 	    | I.FABS   => floatOpMaj0C(fNum f, 0w0, 0w3, 0w1, 0w0, 0w0, fNum t)
 	    | I.FCNVXF => floatOpMaj0E(fNum f, 0w0, 0w5, 0w0, 0w1, 0w4, fNum t)
 	 (*esac*))
-      | I.FCMP(cc, f1, f2) => 
-	    floatOpMaj0C(fNum f1, fNum f2, 0w0, 0w1, 0w2, 0w0, fcond cc)
-      | I.FTEST => 
-	 (emitWord(0wxc << 0w10); 
-	  emitWord((0w1 << 0w13) ++ (0w2 << 0w9) ++ (0w1 << 0w5)))
+      | I.FBRANCH{cc,f1,f2,n,t,f,long} =>
+        ( (* FCMP *)
+	 floatOpMaj0C(fNum f1, fNum f2, 0w0, 0w1, 0w2, 0w0, fcond cc);
+           (* FTEST *)
+	 emitWord(0wxc << 0w10); 
+	 emitWord((0w1 << 0w13) ++ (0w2 << 0w9) ++ (0w1 << 0w5));
+           (* B,n t *)
+         branchLink(0wx3a, 0, t, 0w0, nullify n)
+        )
       | I.BREAK(i, j) => 
 	 (emitWord((itow i & 0wx1fff) >> 0w3); 
 	  emitWord(((itow i & 0wx7) << 0w13) & (itow j & 0wx1f)))
@@ -358,5 +363,11 @@ end
  *)
 
 (*
- * $Log$
+ * $Log: hppaMC.sml,v $
+ * Revision 1.4  1998/09/30 19:35:40  dbm
+ * fixing sharing/defspec conflict
+ *
+ * Revision 1.3  1998/05/25 15:10:57  george
+ *   Fixed RCS keywords
+ *
  *)

@@ -1,1 +1,1 @@
-structure Compiler = SparcVisComp
+structure MachDepVC = SparcVisComp

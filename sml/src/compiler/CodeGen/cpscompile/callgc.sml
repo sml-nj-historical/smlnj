@@ -4,13 +4,13 @@
  *
  *)
 functor CallGc
-  (structure MLTreeComp : MLTREECOMP
-   structure Cells : CELLS
+  (structure Cells : CELLS
    structure C : CPSREGS where T.Region=CPSRegions
    structure MS: MACH_SPEC
-   structure ConstType : CONST_TYPE
-     sharing MLTreeComp.T = C.T
-     sharing type C.T.Constant.const = ConstType.const) : CALLGC = 
+   structure ConstType : CONST_TYPE where type const = C.T.Constant.const
+   structure MLTreeComp : MLTREECOMP where T = C.T
+(*     sharing MLTreeComp.T = C.T 
+     sharing type C.T.Constant.const = ConstType.const *)) : CALLGC = 
 struct
   structure T : MLTREE = MLTreeComp.T
   structure Const = ConstType
@@ -143,7 +143,7 @@ struct
   (* allocptr must always be in a registe *)
   val T.REG allocptrR = C.allocptr
 
-  fun invokeGC regmap (GCINFO{lab, maskRegs, fRegs, i32Regs, ret}) = let
+  fun invokeGC (external, regmap) (GCINFO{lab, maskRegs, fRegs, i32Regs, ret}) = let
     fun assign(T.REG r, v) = T.MV(r, v)
       | assign(T.LOAD32(ea, region), v) = T.STORE32(ea, v, region)
       | assign _ = error "assign"
@@ -186,7 +186,7 @@ struct
     in emit ret; comp(T.ESCAPEBLOCK live)
     end
   in
-    comp (T.ENTRYLABEL(!lab));
+    comp ((if external then T.ENTRYLABEL else T.DEFINELABEL)(!lab));
     case fRegs
      of [] => (callGC(); gcReturn())
       | _ => let
@@ -264,18 +264,24 @@ struct
       comp(T.ESCAPEBLOCK(liveOut @ dedicated))
     end
   in
-    (app (invokeGC regmap) (!knownGcBlocks)) before knownGcBlocks:=[];
+    (app (invokeGC (false,regmap)) (!knownGcBlocks)) before knownGcBlocks:=[];
     app emitLongJumps (collapse(!clusterGcBlocks, [])) 
     				before clusterGcBlocks:=[]
   end (*emitLongJumpsToGC*)
 
   fun emitInvokeGC regmap = 
-    (app (invokeGC regmap) (!moduleGcBlocks)) before moduleGcBlocks:=[]
+    (app (invokeGC (true,regmap)) (!moduleGcBlocks)) before moduleGcBlocks:=[]
 end
 
 
 
 
 (*
- * $Log$
+ * $Log: callgc.sml,v $
+ * Revision 1.7  1998/09/30 18:53:20  dbm
+ * removed sharing/defspec conflict
+ *
+ * Revision 1.6  1998/05/23 14:09:16  george
+ *   Fixed RCS keyword syntax
+ *
  *)

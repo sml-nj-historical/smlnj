@@ -32,8 +32,6 @@ signature TEXT_IO =
       where type vector = string
       and type elem = char
 
-    val getPosIn    : instream -> StreamIO.in_pos
-    val setPosIn    : (instream * StreamIO.in_pos) -> unit
     val mkInstream  : StreamIO.instream -> instream
     val getInstream : instream -> StreamIO.instream
     val setInstream : (instream * StreamIO.instream) -> unit
@@ -66,5 +64,8 @@ signature TEXT_IO =
   end;
 
 (*
- * $Log$
+ * $Log: text-io.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
+ *
  *)

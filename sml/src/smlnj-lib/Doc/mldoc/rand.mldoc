@@ -1,0 +1,63 @@
+<!-- rand.mldoc -->
+
+<!DOCTYPE ML-DOC SYSTEM>
+
+<COPYRIGHT OWNER="AT&AMP;T Bell Laboratories" YEAR=1996>
+<VERSION VERID="1.0" YEAR=1996 MONTH=5 DAY=29>
+<TITLE>The RAND signature</TITLE>
+
+<SECT>
+<HEAD>The <CD/RAND/ signature</HEAD>
+
+<PP>
+<!-- Some general introductory text -->
+
+<SIGNATURE SIGID="RAND">
+  <SIGBODY SIGID="RAND" FILE=RAND-SIG>
+    <SPEC>
+      <VAL>randMin<TY>real
+        <COMMENT>
+          <PROTOTY>
+          randMin
+          </PROTOTY>
+          explain the use and semantics of randMin HERE.
+    <SPEC>
+      <VAL>randMax<TY>real
+        <COMMENT>
+          <PROTOTY>
+          randMax
+          </PROTOTY>
+          explain the use and semantics of randMax HERE.
+    <SPEC>
+      <VAL>random<TY>real -> real
+        <COMMENT>
+          <PROTOTY>
+          random <ARG/r/
+          </PROTOTY>
+          explain the use and semantics of random HERE.
+    <SPEC>
+      <VAL>mkRandom<TY>real -> unit -> real
+        <COMMENT>
+          <PROTOTY>
+          mkRandom <ARG/r/ <ARG/()/
+          </PROTOTY>
+          explain the use and semantics of mkRandom HERE.
+    <SPEC>
+      <VAL>norm<TY>real -> real
+        <COMMENT>
+          <PROTOTY>
+          norm <ARG/r/
+          </PROTOTY>
+          explain the use and semantics of norm HERE.
+    <SPEC>
+      <VAL>range<TY>(int * int) -> real -> int
+        <COMMENT>
+          <PROTOTY>
+          range (<ARG/i/, <ARG/j/) <ARG/r/
+          </PROTOTY>
+          explain the use and semantics of range HERE.
+<!-- optional SEEALSO; uncomment to use     -->
+<!-- <SEEALSO>    -->
+<!--   non-empty list of XREFS here   -->
+<!-- </SEEALSO>    -->
+</SIGNATURE>

@@ -683,8 +683,8 @@ let val alphaConvert = alphaConverter ()
 	  end
       | fctSig M.ERRORfsig () = "EF" $ []
 
-    and spec (M.TYCspec{spec=t, entVar=v, scope=s}) () =
-	  "TG" $ [tycon t,entVar v,int s]
+    and spec (M.TYCspec{spec=t, entVar=v, repl=r, scope=s}) () =
+	  "TG" $ [tycon t,entVar v,bool r,int s]
       | spec (M.STRspec{sign=s, slot=d, def=e, entVar=v}) () =
 	  "SG" $ [Signature s, int d, option (tuple2 (strDef, int)) e, entVar v]
       | spec (M.FCTspec{sign=s, slot=d, entVar=v}) () =
@@ -922,5 +922,8 @@ end (* structure PickMod *)
 
 
 (*
- * $Log$
+ * $Log: pickmod.sml,v $
+ * Revision 1.4  1998/05/23 14:10:12  george
+ *   Fixed RCS keyword syntax
+ *
  *)

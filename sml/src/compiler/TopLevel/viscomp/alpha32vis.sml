@@ -4,8 +4,11 @@
  *
  *)
 
-structure Alpha32VisComp = VisComp(Alpha32MC)
+structure Alpha32VisComp = MachDepVCFun (Alpha32MC)
 
 (*
- * $Log$
+ * $Log: alpha32vis.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:14  george
+ * Version 110.5
+ *
  *)

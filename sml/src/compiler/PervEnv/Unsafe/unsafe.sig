@@ -54,13 +54,8 @@ signature UNSAFE =
 
     val cast : 'a -> 'b
 
-(** NOTE: we may want to move the actual representation from build/boot.sml to
- ** here.
- **)
-(** I have done just that.  -M.Blume (6/1998)
- **)
-    datatype runDynEnv =
-	NILrde
+    datatype runDynEnv
+      = NILrde
       | CONSrde of Word8Vector.vector * Object.object * runDynEnv
 
     val pStruct : runDynEnv ref
@@ -72,3 +67,12 @@ signature UNSAFE =
   end;
 
 
+(*
+ * $Log: unsafe.sig,v $
+ * Revision 1.2  1998/08/26 14:06:55  george
+ *   CM changes from blume
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:01  george
+ * Version 110.5
+ *
+ *)

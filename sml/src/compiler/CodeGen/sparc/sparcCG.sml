@@ -1,5 +1,5 @@
 functor SparcCG(structure Emitter : EMITTER_NEW
-		 where F = SparcFlowGraph) :
+		 where I = SparcInstr and P = SparcPseudoOps) :
   sig
     structure MLTreeGen : CPSGEN 
     val finish : unit -> unit
@@ -295,5 +295,8 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: sparcCG.sml,v $
+ * Revision 1.1.1.1  1998/08/05 19:37:50  george
+ *   Release 110.7.4
+ *
  *)

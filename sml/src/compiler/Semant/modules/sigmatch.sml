@@ -287,12 +287,17 @@ fun checkTycBinding(_,T.ERRORtyc,_) = ()
             then complain' ("tycon arity for " ^ specName
                             ^ " does not match specified arity")
             else (case (specKind, (* TU.unWrapDefStar *) strTycon)
-		      (* this call of unWrapDefStar causes bug 1364,
-		       * because it can't distinguish between ordinary 
-		       * DEFtycs and datatype replication DEFtycs.
-		       * Claim: it's not needed in Repl case, because
-                       * Repl datatypes are GENtycs.
-		       *)
+		     (* BUG: under certain circumstances (bug 1364), a DEFtyc
+		      * strTycon should not be unwrapped.  However, it
+		      * must be unwrapped if it is a DEFtyc created by
+		      * instantiating a direct or indirect datatype
+		      * replication spec (see bug 1432).
+		      * For direct datatype replication {\em declarations},
+		      * there is no problem because the replicated
+		      * datatype is a GENtyc.
+		      * The unwrapping of datatype relicants should be
+		      * performed in Instantiate, not here.
+		      *)
                    of (DATATYPE{index,family={members,...} ,...},
                        GENtyc{arity=a',kind=DATATYPE{index=index',
                               family={members=members',...}, ...},
@@ -651,7 +656,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                      raise EE.Unbound)
 
       in case spec
-          of TYCspec{spec=specTycon,entVar,scope} =>
+          of TYCspec{spec=specTycon,entVar,repl,scope} =>
               (let val _ = debugmsg(String.concat[">>matchElems TYCspec: ",
                                                   S.name sym, ", ",
                                                   ST.stampToString entVar])
@@ -1244,7 +1249,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
                 in packElems(elems, entEnv, decs, bindings')
                end)
 
-           | TYCspec{spec=specTycon,entVar=ev,scope} =>
+           | TYCspec{spec=specTycon,entVar=ev,repl,scope} =>
               (let val entEnv' = EE.bind(ev, EE.look(resEntEnv, ev), entEnv) 
                 in packElems(elems, entEnv', decs, bindings)
                end)
@@ -1477,4 +1482,18 @@ val applyFct =
 end (* local *)
 end (* structure SigMatch *)
 
+
+(*
+ * $Log: sigmatch.sml,v $
+ * Revision 1.5  1998/08/19 18:17:16  dbm
+ * bug fixes for 110.9 [dbm]
+ *
+ * Revision 1.4  1998/07/22 17:54:53  dbm
+ * fix error in compStr in chechSharing
+ *
+ * Revision 1.3  1998/05/23 14:10:11  george
+ *   Fixed RCS keyword syntax
+ *
+ *
+ *)
 

@@ -6,7 +6,7 @@
  *)
 functor Alpha32CG(structure Emitter : EMITTER_NEW
 		    where I = Alpha32Instr
-		    where F = Alpha32FlowGraph) : 
+		    where P = Alpha32PseudoOps) : 
   sig
     structure MLTreeGen : CPSGEN 
     val finish : unit -> unit
@@ -253,6 +253,9 @@ end
 
 (*
  * $Log: alpha32CG.sml,v $
+ * Revision 1.4  1998/07/25 03:05:32  george
+ *   changes to support block names in MLRISC
+ *
  * Revision 1.3  1998/05/23 14:09:10  george
  *   Fixed RCS keyword syntax
  *

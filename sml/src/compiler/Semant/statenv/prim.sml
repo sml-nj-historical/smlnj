@@ -36,7 +36,8 @@ local
 in
 
 fun mkTycElement (name: string, tyc) = 
-     (S.tycSymbol name, M.TYCspec{entVar=ST.special name, spec=tyc, scope=0})
+     (S.tycSymbol name, M.TYCspec{entVar=ST.special name, spec=tyc, repl=false,
+				  scope=0})
 
 (* 
  * Note: this function only applies to constructors but not exceptions;
@@ -90,7 +91,7 @@ val primTypes =
       val allElements = tycElements@conElements
       val allSymbols = map #1 allElements
 
-      val entities = foldr (fn ((_,M.TYCspec{spec,entVar,scope}),r) =>
+      val entities = foldr (fn ((_,M.TYCspec{spec,entVar,repl,scope}),r) =>
 			         EE.bind(entVar,M.TYCent spec,r)) 
                           EE.empty tycElements
 
@@ -461,7 +462,8 @@ end (* local *)
 val uList =
   let val ev = ST.special "uListVar"
       val allElements = 
-            [(S.tycSymbol "list", M.TYCspec{spec=BT.ulistTycon,entVar=ev,scope=0}),
+            [(S.tycSymbol "list", M.TYCspec{spec=BT.ulistTycon,entVar=ev,
+					    repl=false,scope=0}),
               mkConElement("nil", BT.unilDcon),
               mkConElement("::", BT.uconsDcon)]
       val allSymbols = map #1 allElements
@@ -537,5 +539,8 @@ end (* structure PrimEnv *)
 
 
 (*
- * $Log$
+ * $Log: prim.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:36  george
+ * Version 110.5
+ *
  *)

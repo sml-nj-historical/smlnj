@@ -1,0 +1,37 @@
+<!-- array-sort.mldoc -->
+
+<!DOCTYPE ML-DOC SYSTEM>
+
+<COPYRIGHT OWNER="AT&AMP;T Bell Laboratories" YEAR=1996>
+<VERSION VERID="1.0" YEAR=1996 MONTH=5 DAY=29>
+<TITLE>The ARRAY_SORT signature</TITLE>
+
+<SECT>
+<HEAD>The <CD/ARRAY_SORT/ signature</HEAD>
+
+<PP>
+<!-- Some general introductory text -->
+
+<SIGNATURE SIGID="ARRAY_SORT">
+  <SIGBODY SIGID="ARRAY_SORT" FILE=ARRAY-SORT-SIG>
+    <SPEC>
+      <TYPE><TYPARAM>'a<ID>array
+    <SPEC>
+      <VAL>sort<TY>(('a * 'a) -> order) -> 'a array -> unit
+        <COMMENT>
+          <PROTOTY>
+          sort <ARG/f/ <ARG/arr/
+          </PROTOTY>
+          explain the use and semantics of sort HERE.
+    <SPEC>
+      <VAL>sorted<TY>(('a * 'a) -> order) -> 'a array -> bool
+        <COMMENT>
+          <PROTOTY>
+          sorted <ARG/f/ <ARG/arr/
+          </PROTOTY>
+          explain the use and semantics of sorted HERE.
+<!-- optional SEEALSO; uncomment to use     -->
+<!-- <SEEALSO>    -->
+<!--   non-empty list of XREFS here   -->
+<!-- </SEEALSO>    -->
+</SIGNATURE>

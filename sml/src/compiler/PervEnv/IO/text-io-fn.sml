@@ -67,7 +67,17 @@ functor TextIOFn (
 	type writer = PIO.writer
 	type pos = PIO.pos
 
-      (*** Functional input streams ***)
+      (*** Functional input streams ***
+       ** We represent an instream by a pointer to a buffer and an offset
+       ** into the buffer.  The buffers are chained by the "more" field from
+       ** the beginning of the stream towards the end.  If the "more" field
+       ** is EOS, then it refers to an empty buffer (consuming the EOF marker
+       ** involves moving the stream from immeditaly in front of the EOS to
+       ** to the empty buffer).  A "more" field of TERMINATED marks a
+       ** terminated stream.  We also have the invariant that the "tail"
+       ** field of the "info" structure points to a more ref that is either
+       ** NOMORE or TERMINATED.
+       **)
 	datatype instream = ISTRM of (in_buffer * int)
 	and in_buffer = IBUF of {
 	    basePos : pos option,
@@ -77,6 +87,7 @@ functor TextIOFn (
 	  }
 	and more
 	  = MORE of in_buffer	(* forward link to additional data *)
+	  | EOS of in_buffer	(* End of stream marker *)
 	  | NOMORE		(* placeholder for forward link *)
 	  | TERMINATED		(* termination of the stream *)
 
@@ -104,34 +115,28 @@ functor TextIOFn (
       (* this exception is raised by readVecNB in the blocking case *)
 	exception WouldBlock
 
-	datatype more_data = EOF | DATA of in_buffer
-
 	fun extendStream (readFn, mlOp, buf as IBUF{more, info, ...}) = (let
 	      val INFO{getPos, tail, ...} = info
               val basePos = getPos()
 	      val chunk = readFn (chunkSzOfIBuf buf)
+	      val newMore = ref NOMORE
+	      val buf' = IBUF{
+		      basePos = basePos, data = chunk,
+		      more = newMore, info = info
+		    }
+	      val next = if (V.length chunk = 0) then EOS buf' else MORE buf'
 	      in
-		if (V.length chunk = 0)
-		  then EOF
-		  else let
-		    val newMore = ref NOMORE
-		    val buf' = IBUF{
-                            basePos = basePos, data = chunk,
-			    more = newMore, info = info
-			  }
-		    in
-		      more := MORE buf';
-		      tail := newMore;
-		      DATA buf'
-		    end
+		more := next;
+		tail := newMore;
+		next
 	      end
 		handle ex => inputExn(info, mlOp, ex))
 
 	fun getBuffer (readFn, mlOp) (buf as IBUF{more, info, ...}) = (
 	      case !more
-	       of TERMINATED => EOF
+	       of TERMINATED => (EOS buf)
 		| NOMORE => extendStream (readFn, mlOp, buf)
-		| (MORE buf') => DATA buf'
+		| more => more
 	      (* end case *))
 
       (* read a chunk that is at least the specified size *)
@@ -153,8 +158,9 @@ functor TextIOFn (
 		      if (pos < len)
 			then (vecExtract(data, pos, NONE), ISTRM(buf, len))
 			else (case (getBuf buf)
-			   of EOF => (empty, ISTRM(buf, len))
-			    | (DATA rest) => get (ISTRM(rest, 0))
+			   of (EOS buf) => (empty, ISTRM(buf, 0))
+			    | (MORE rest) => get (ISTRM(rest, 0))
+			    | _ => raise Fail "bogus getBuf"
 			  (* end case *))
 		    end
 	      in
@@ -170,10 +176,6 @@ functor TextIOFn (
 		| (m as ref TERMINATED) => ()
 	      (* end case *))
 
-      (* find the end of the stream *)
-	fun findEOS (IBUF{more=ref(MORE buf), ...}) = findEOS buf
-	  | findEOS (buf as IBUF{data, ...}) = ISTRM(buf, V.length data)
-
 	fun input (strm as ISTRM(buf, _)) =
 	      generalizedInput (getBuffer (readVec buf, "input")) strm
 	fun input1 (ISTRM(buf, pos)) = let
@@ -183,10 +185,11 @@ functor TextIOFn (
 		  then SOME(vecSub(data, pos), ISTRM(buf, pos+1))
 		  else (case !more
 		     of (MORE buf) => input1 (ISTRM(buf, 0))
+		      | (EOS _) => NONE
 		      | NOMORE => (
 			  case extendStream (readVec buf, "input1", buf)
-			   of EOF => NONE
-			    | (DATA rest) => input1 (ISTRM(rest, 0))
+			   of (MORE rest) => input1 (ISTRM(rest, 0))
+			    | _ => NONE
 			  (* end case *))
 		      | TERMINATED => NONE
 		    (* end case *))
@@ -205,10 +208,11 @@ functor TextIOFn (
 		    end
 	      and nextBuf (buf as IBUF{more, data, ...}, n) = (case !more
 		     of (MORE buf) => inputList (buf, 0, n)
+		      | (EOS buf) => ([], ISTRM(buf, 0))
 		      | NOMORE => (
 			  case extendStream (readVec buf, "inputN", buf)
-			   of EOF => ([], ISTRM(buf, V.length data))
-			    | (DATA rest) => inputList (rest, 0, n)
+			   of (MORE rest) => inputList (rest, 0, n)
+			    | _ => ([], ISTRM(buf, V.length data))
 			  (* end case *))
 		      | TERMINATED => ([], ISTRM(buf, V.length data))
 		    (* end case *))
@@ -218,7 +222,7 @@ functor TextIOFn (
 	      end
 	fun inputAll (strm as ISTRM(buf, _)) = let
 	      val INFO{reader=PIO.RD{avail, ...}, ...} = infoOfIBuf buf
- 	    (* read a chunk that is as large as the available input.  Note
+ 	    (* Read a chunk that is as large as the available input.  Note
 	     * that for systems that use CR-LF for #"\n", the size will be
 	     * too large, but this should be okay.
 	     *)
@@ -232,10 +236,15 @@ functor TextIOFn (
 		    end
 	      val bigInput =
 		    generalizedInput (getBuffer (bigChunk, "inputAll"))
-	      fun loop (v, strm) =
-		    if (V.length v = 0) then [] else v :: loop(bigInput strm)
-	      val data = V.concat (loop (bigInput strm))
-	      in data
+	      fun loop (v, strm) = if (V.length v = 0)
+		    then ([], strm)
+		    else let val (l, strm') = loop(bigInput strm)
+		      in
+			(v :: l, strm')
+		      end
+	      val (data, strm') = loop (bigInput strm)
+	      in
+		(V.concat data, strm')
 	      end
       (* Return SOME k, if k <= amount characters can be read without blocking. *)
 	fun canInput (strm as ISTRM(buf, pos), amount) = let
@@ -254,11 +263,12 @@ functor TextIOFn (
 		    end
 	      and nextBuf (IBUF{more, ...}, n) = (case !more
 		     of (MORE buf) => tryInput (buf, 0, n)
+		      | (EOS _) => SOME(amount - n)
 		      | TERMINATED => SOME(amount - n)
 		      | NOMORE => ((
 			  case extendStream (readVecNB, "canInput", buf)
-			   of EOF => SOME(amount - n)
-			    | (DATA b) => tryInput (b, 0, n)
+			   of (MORE b) => tryInput (b, 0, n)
+			    | _ => SOME(amount - n)
 			  (* end case *))
 			    handle IO.Io{cause=WouldBlock, ...} => SOME(amount - n))
 		    (* end case *))
@@ -276,12 +286,13 @@ functor TextIOFn (
 	      (* end case *))
 	fun endOfStream (ISTRM(buf, pos)) = (case buf
 	       of (IBUF{more=ref(MORE _), ...}) => false
+		| (IBUF{more=ref(EOS _), ...}) => true
 		| (IBUF{more, data, info=INFO{closed, ...}, ...}) =>
 		    if (pos = V.length data)
 		      then (case (!more, !closed)
 			 of (NOMORE, false) => (
 			      case extendStream (readVec buf, "endOfStream", buf)
-			       of EOF => true
+			       of (EOS _) => true
 				| _ => false
 			    (* end case *))
 			  | _ => true
@@ -317,17 +328,18 @@ functor TextIOFn (
 		      closed = closedFlg, getPos = getPos, tail = ref more,
 		      cleanTag = tag
 		    }
-	      val buf = 
-(** What should we do about the position in this case ?? **)
+(** What should we do about the position when there is initial data?? **)
 (** Suggestion: When building a stream with supplied initial data,
  ** nothing can be said about the positions inside that initial
  ** data (who knows where that data even came from!).
  **) 
-		        IBUF{
-			    basePos = NONE, data=data,
-			    info=info, more=more}
+	      val basePos = if (V.length data = 0)
+		    then getPos()
+		    else NONE
 	      in
-		ISTRM(buf, 0)
+		ISTRM(
+		  IBUF{basePos = basePos, data = data, info = info, more = more},
+		  0)
 	      end
 
 	fun getReader (ISTRM(buf, pos)) = let
@@ -344,63 +356,45 @@ functor TextIOFn (
 		  else (reader, V.concat(getData(!more)))
 	      end
 
-      (** Position operations on instreams **)
-	datatype in_pos = INP of {
-	    base : pos,
-	    offset : int,
-	    info : info
-	  }
-
-	fun getPosIn (ISTRM(buf, pos)) = (case buf
+      (* Get the underlying file position of a stream *)
+	fun filePosIn (ISTRM(buf, pos)) = (case buf
 	       of IBUF{basePos=NONE, info, ...} =>
-		    inputExn (info, "getPosIn", IO.RandomAccessNotSupported)
-		| IBUF{basePos=SOME p, info, ...} => INP{
-		      base = p, offset = pos, info = info
-		    }
+		    inputExn (info, "filePosIn", IO.RandomAccessNotSupported)
+		| IBUF{basePos=SOME base, info, ...} => let
+		    val INFO{reader=PIO.RD rd, readVec, ...} = info
+		    in
+		      case (#getPos rd, #setPos rd)
+		       of (SOME getPos, SOME setPos) => let
+			    val tmpPos = getPos()
+			    fun readN 0 = ()
+			      | readN n = (case V.length(readVec n)
+				   of 0 => inputExn (
+					  info, "filePosIn", Fail "bogus position")
+				    | k => readN(n-k)
+				  (* end case *))
+			    in
+			      setPos base;
+			      readN pos;
+			      getPos () before setPos tmpPos
+			    end
+			| _ => raise Fail "filePosIn: impossible"
+		      (* end case *)
+		    end
 	      (* end case *))
-	fun filePosIn (INP{base, offset=0, ...}) = base
-	  | filePosIn (INP{base, offset, info}) = let
-	      val INFO{reader=PIO.RD rd, readVec, ...} = info
-	      in
-		case (#getPos rd, #setPos rd)
-		 of (SOME getPos, SOME setPos) => let
-		      val tmpPos = getPos()
-		      fun readN 0 = ()
-			| readN n = (case V.length(readVec n)
-			     of 0 => inputExn (
-				    info, "filePosIn", Fail "bogus position")
-			      | k => readN(n-k)
-			    (* end case *))
-		      in
-			setPos base;
-			readN offset;
-			getPos () before setPos tmpPos
-		      end
-		  | _ => raise Fail "filePosIn: impossible"
-		(* end case *)
-	      end
-	fun setPosIn (pos as INP{info as INFO{reader, ...}, ...}) = let
-	      val fpos = filePosIn pos
-	      val (PIO.RD rd) = reader
-	      in
-		terminate info;
-		Option.valOf (#setPos rd) fpos;
-		mkInstream (PIO.RD rd, empty)
-	      end
 
       (** Text stream specific operations **)
-	fun inputLine (ISTRM(buf as IBUF{data, ...}, pos)) = let
+	fun inputLine (ISTRM(buf as IBUF{data, more, ...}, pos)) = let
 	      fun join (item, (list, strm)) = (item::list, strm)
-	      fun nextBuf (isEmpty, buf as IBUF{more, data, ...}) = let
-		    fun last () =
-			  (if isEmpty then [] else ["\n"], ISTRM(buf, V.length data))
+	      fun nextBuf (buf as IBUF{more, data, ...}) = let
+		    fun last () = (["\n"], ISTRM(buf, V.length data))
 		    in
 		      case !more
 		       of (MORE buf) => scanData (buf, 0)
+			| (EOS buf) => last ()
 			| NOMORE => (
 			    case extendStream (readVec buf, "inputLine", buf)
-			     of EOF => last ()
-			      | (DATA rest) => scanData (rest, 0)
+			     of (EOS _) => last ()
+			      | (MORE rest) => scanData (rest, 0)
 			    (* end case *))
 			| TERMINATED => last ()
 		      (* end case *)
@@ -408,7 +402,7 @@ functor TextIOFn (
 	      and scanData (buf as IBUF{data, more, ...}, i) = let
 		    val len = V.length data
 		    fun scan j = if (j = len)
-			    then join(vecExtract(data, i, NONE), nextBuf(false, buf))
+			    then join(vecExtract(data, i, NONE), nextBuf buf)
 			  else if (vecSub(data, j) = #"\n")
 			    then ([vecExtract(data, i, SOME(j+1-i))], ISTRM(buf, j+1))
 			    else scan (j+1)
@@ -416,7 +410,10 @@ functor TextIOFn (
 		      scan i
 		    end
 	      val (data, strm) = if (V.length data = pos)
-		    then nextBuf (true, buf)
+		    then (case getBuffer (readVec buf, "inputLine") buf
+		       of (EOS buf) => ([""], ISTRM(buf, 0))
+			| _ => nextBuf buf
+		      (* end case *))
 		    else scanData (buf, pos)
 	      in
 		(V.concat data, strm)
@@ -743,10 +740,9 @@ functor TextIOFn (
 	    strm := strm'; v
 	  end
     fun inputAll (strm : instream) = let
-	  val (s as StreamIO.ISTRM(buf, _)) = !strm
-	  val v = StreamIO.inputAll s
+	  val (v, s) = StreamIO.inputAll(!strm)
 	  in
-	    strm := StreamIO.findEOS buf; v
+	    strm := s; v
 	  end
     fun canInput (strm, n) = StreamIO.canInput (!strm, n)
     fun lookahead (strm : instream) = (case StreamIO.input1(!strm)
@@ -755,13 +751,18 @@ functor TextIOFn (
 	  (* end case *))
     fun closeIn strm = let
 	  val (s as StreamIO.ISTRM(buf as StreamIO.IBUF{data, ...}, _)) = !strm
+	(* find the end of the stream *)
+	  fun findEOS (StreamIO.IBUF{more=ref(StreamIO.MORE buf), ...}) =
+		findEOS buf
+	    | findEOS (StreamIO.IBUF{more=ref(StreamIO.EOS buf), ...}) =
+		findEOS buf
+	    | findEOS (buf as StreamIO.IBUF{data, ...}) =
+		StreamIO.ISTRM(buf, V.length data)
 	  in
 	    StreamIO.closeIn s;
-	    strm := StreamIO.findEOS buf
+	    strm := findEOS buf
 	  end
     fun endOfStream strm = StreamIO.endOfStream(! strm)
-    fun getPosIn strm = StreamIO.getPosIn(!strm)
-    fun setPosIn (strm, p) = (strm := StreamIO.setPosIn p)
 
   (** Output operations **)
     fun output (strm, v) = StreamIO.output(!strm, v)
@@ -879,5 +880,12 @@ functor TextIOFn (
   end (* TextIOFn *)
 
 (*
- * $Log$
+ * $Log: text-io-fn.sml,v $
+ * Revision 1.4  1998/10/16 17:26:31  jhr
+ *   Implemented multiple EOF support; changes to basis I/O API
+ *
+ * Revision 1.3  1998/08/17 19:21:18  george
+ *   Changed the type of TextIO.StreamIO.mkInstream to eliminate the option.
+ *   [appel]
+ *
  *)

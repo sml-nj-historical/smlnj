@@ -18,6 +18,12 @@ sig
     val int_reloads   : int ref
     val float_spills  : int ref
     val float_reloads : int ref
+    val ssa_repair1   : int ref
+    val ssa_repair2   : int ref
+    val ssa_repair3   : int ref
+    val ssa_repair4   : int ref
+    val ssa_repair5   : int ref
+    val ssa_repair6   : int ref
 
       (* profiling support *)
     val loop_multiplier : int ref    
@@ -57,6 +63,12 @@ struct
    val int_reloads   = ref 0
    val float_spills  = ref 0
    val float_reloads = ref 0
+   val ssa_repair1   = ref 0
+   val ssa_repair2   = ref 0
+   val ssa_repair3   = ref 0
+   val ssa_repair4   = ref 0
+   val ssa_repair5   = ref 0
+   val ssa_repair6   = ref 0
 
    val loop_multiplier        = ref 10
    val nontrapping_arithmetic = ref false
@@ -68,5 +80,8 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: mlrisc-control.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
+ *
  *)

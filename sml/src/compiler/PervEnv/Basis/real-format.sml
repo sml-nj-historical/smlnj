@@ -63,10 +63,13 @@ structure RealFormat : sig
 		if (x < 1.0) then scaleUp(10.0*x, dec e) else (x, e)
 	  fun scaleDn (x, e) =
 		if (x >= 10.0) then scaleDn(0.1*x, inc e) else (x, e)
-	  fun mkdigits (f, 0) = ([], if f < 5.0 then 0 else 1)
-	    | mkdigits (f, i) = let 
+	  fun mkdigits (f, 0, odd) = ([], if f < 5.0 then 0
+					  else if f > 5.0 then 1
+					  else odd)
+	    | mkdigits (f, i, _) = let 
 		val d = floor f
-		val (digits, carry) = mkdigits (10.0 * (f - real d), dec i)
+		val (digits, carry) = mkdigits (10.0 * (f - real d), dec i,
+						I.mod(d,2))
 		val (digit, c) = (case (d, carry)
 		       of (9, 1) => (0, 1)
 			| _ => (I.+(d, carry), 0)
@@ -79,7 +82,7 @@ structure RealFormat : sig
 		else if (f >= 10.0)
 		  then scaleDn (f, e)
 		  else (f, e)
-	  val (digits, carry) = mkdigits(f, max(0, min(precisionFn e, maxPrec)))
+	  val (digits, carry) = mkdigits(f, max(0, min(precisionFn e, maxPrec)),0)
 	  in
 	    case carry
 	     of 0 => (digits, e)
@@ -209,6 +212,7 @@ structure RealFormat : sig
 	then let
 	  val {sign, mantissa, exp} = realEFormat (r, prec)
 	  in
+	    (* minimum size exponent string, no padding *)
 	    concat[sign, mantissa, "E", atoi exp]
 	  end
         else fmtInfNan r
@@ -236,8 +240,8 @@ structure RealFormat : sig
 		      else ("." ^ frac, "")
  		  | (SOME e) => let
 		      val expStr = if I.<(e, 0)
-			    then "e~" ^ zeroLPad(atoi(I.~ e), 2)
-			    else "e" ^ zeroLPad(atoi e, 2)
+			    then "E~" ^ zeroLPad(atoi(I.~ e), 2)
+			    else "E" ^ zeroLPad(atoi e, 2)
  		      in
  			((if (frac = "") then "" else ("." ^ frac)), expStr)
  		      end
@@ -257,5 +261,8 @@ structure RealFormat : sig
   end
 
 (*
- * $Log$
+ * $Log: real-format.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:04  george
+ * Version 110.5
+ *
  *)

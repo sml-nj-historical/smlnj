@@ -14,6 +14,7 @@ INCLUDES =	-I$(INC_DIR) -I$(CLIB_DIR) -I../../objs
 MAKE =		make
 AR =		ar
 ARFLAGS =	rcv
+CPP =		/lib/cpp
 RANLIB =	ranlib
 
 LIBRARY =	libposix-filesys.a
@@ -64,7 +65,7 @@ $(VERSION) :
 pathconf.o : ml_pathconf.h
 
 ml_pathconf.h :
-	VERSION=$(VERSION) $(CONFIG_DIR)/gen-posix-names.sh _PC_ ml_pathconf.h
+	VERSION=$(VERSION) CPP="$(CPP)" $(CONFIG_DIR)/gen-posix-names.sh _PC_ ml_pathconf.h
 
 clean :
 	rm -f v-* *.o ml_pathconf.h $(LIBRARY)

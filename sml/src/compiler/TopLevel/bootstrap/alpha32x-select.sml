@@ -1,1 +1,2 @@
-structure Compiler = Alpha32XVisComp
+structure MachDepVC = Alpha32XVisComp
+

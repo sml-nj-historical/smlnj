@@ -61,7 +61,17 @@ functor BinIOFn (
 	type writer = PIO.writer
 	type pos = PIO.pos
 
-      (*** Functional input streams ***)
+      (*** Functional input streams ***
+       ** We represent an instream by a pointer to a buffer and an offset
+       ** into the buffer.  The buffers are chained by the "more" field from
+       ** the beginning of the stream towards the end.  If the "more" field
+       ** is EOS, then it refers to an empty buffer (consuming the EOF marker
+       ** involves moving the stream from immeditaly in front of the EOS to
+       ** to the empty buffer).  A "more" field of TERMINATED marks a
+       ** terminated stream.  We also have the invariant that the "tail"
+       ** field of the "info" structure points to a more ref that is either
+       ** NOMORE or TERMINATED.
+       **)
 	datatype instream = ISTRM of (in_buffer * int)
 	and in_buffer = IBUF of {
 	    basePos : pos option,
@@ -71,6 +81,7 @@ functor BinIOFn (
 	  }
 	and more
 	  = MORE of in_buffer	(* forward link to additional data *)
+	  | EOS of in_buffer	(* End of stream marker *)
 	  | NOMORE		(* placeholder for forward link *)
 	  | TERMINATED		(* termination of the stream *)
 
@@ -98,34 +109,28 @@ functor BinIOFn (
       (* this exception is raised by readVecNB in the blocking case *)
 	exception WouldBlock
 
-	datatype more_data = EOF | DATA of in_buffer
-
 	fun extendStream (readFn, mlOp, buf as IBUF{more, info, ...}) = (let
 	      val INFO{getPos, tail, ...} = info
               val basePos = getPos()
 	      val chunk = readFn (chunkSzOfIBuf buf)
+	      val newMore = ref NOMORE
+	      val buf' = IBUF{
+		      basePos = basePos, data = chunk,
+		      more = newMore, info = info
+		    }
+	      val next = if (V.length chunk = 0) then EOS buf' else MORE buf'
 	      in
-		if (V.length chunk = 0)
-		  then EOF
-		  else let
-		    val newMore = ref NOMORE
-		    val buf' = IBUF{
-                            basePos = basePos, data = chunk,
-			    more = newMore, info = info
-			  }
-		    in
-		      more := MORE buf';
-		      tail := newMore;
-		      DATA buf'
-		    end
+		more := next;
+		tail := newMore;
+		next
 	      end
 		handle ex => inputExn(info, mlOp, ex))
 
 	fun getBuffer (readFn, mlOp) (buf as IBUF{more, info, ...}) = (
 	      case !more
-	       of TERMINATED => EOF
+	       of TERMINATED => (EOS buf)
 		| NOMORE => extendStream (readFn, mlOp, buf)
-		| (MORE buf') => DATA buf'
+		| more => more
 	      (* end case *))
 
       (* read a chunk that is at least the specified size *)
@@ -147,8 +152,9 @@ functor BinIOFn (
 		      if (pos < len)
 			then (vecExtract(data, pos, NONE), ISTRM(buf, len))
 			else (case (getBuf buf)
-			   of EOF => (empty, ISTRM(buf, len))
-			    | (DATA rest) => get (ISTRM(rest, 0))
+			   of (EOS buf) => (empty, ISTRM(buf, 0))
+			    | (MORE rest) => get (ISTRM(rest, 0))
+			    | _ => raise Fail "bogus getBuf"
 			  (* end case *))
 		    end
 	      in
@@ -163,10 +169,6 @@ functor BinIOFn (
 		| (m as ref TERMINATED) => ()
 	      (* end case *))
 
-      (* find the end of the stream *)
-	fun findEOS (IBUF{more=ref(MORE buf), ...}) = findEOS buf
-	  | findEOS (buf as IBUF{data, ...}) = ISTRM(buf, V.length data)
-
 	fun input (strm as ISTRM(buf, _)) =
 	      generalizedInput (getBuffer (readVec buf, "input")) strm
 	fun input1 (ISTRM(buf, pos)) = let
@@ -176,10 +178,11 @@ functor BinIOFn (
 		  then SOME(vecSub(data, pos), ISTRM(buf, pos+1))
 		  else (case !more
 		     of (MORE buf) => input1 (ISTRM(buf, 0))
+		      | (EOS _) => NONE
 		      | NOMORE => (
 			  case extendStream (readVec buf, "input1", buf)
-			   of EOF => NONE
-			    | (DATA rest) => input1 (ISTRM(rest, 0))
+			   of (MORE rest) => input1 (ISTRM(rest, 0))
+			    | _ => NONE
 			  (* end case *))
 		      | TERMINATED => NONE
 		    (* end case *))
@@ -198,10 +201,11 @@ functor BinIOFn (
 		    end
 	      and nextBuf (buf as IBUF{more, data, ...}, n) = (case !more
 		     of (MORE buf) => inputList (buf, 0, n)
+		      | (EOS buf) => ([], ISTRM(buf, 0))
 		      | NOMORE => (
 			  case extendStream (readVec buf, "inputN", buf)
-			   of EOF => ([], ISTRM(buf, V.length data))
-			    | (DATA rest) => inputList (rest, 0, n)
+			   of (MORE rest) => inputList (rest, 0, n)
+			    | _ => ([], ISTRM(buf, V.length data))
 			  (* end case *))
 		      | TERMINATED => ([], ISTRM(buf, V.length data))
 		    (* end case *))
@@ -212,10 +216,7 @@ functor BinIOFn (
 
 	fun inputAll (strm as ISTRM(buf, _)) = let
 	      val INFO{reader=PIO.RD{avail, ...}, ...} = infoOfIBuf buf
- 	    (* read a chunk that is as large as the available input.  Note
-	     * that for systems that use CR-LF for #"\n", the size will be
-	     * too large, but this should be okay.
-	     *)
+ 	    (* Read a chunk that is as large as the available input. *)
 	      fun bigChunk _ = let
 		    val delta = (case avail()
 			   of NONE => chunkSzOfIBuf buf
@@ -226,10 +227,15 @@ functor BinIOFn (
 		    end
 	      val bigInput =
 		    generalizedInput (getBuffer (bigChunk, "inputAll"))
-	      fun loop (v, strm) =
-		    if (V.length v = 0) then [] else v :: loop(bigInput strm)
-	      val data = V.concat (loop (bigInput strm))
-	      in data
+	      fun loop (v, strm) = if (V.length v = 0)
+		    then ([], strm)
+		    else let val (l, strm') = loop(bigInput strm)
+		      in
+			(v :: l, strm')
+		      end
+	      val (data, strm') = loop (bigInput strm)
+	      in
+		(V.concat data, strm')
 	      end
       (* Return SOME k, if k <= amount characters can be read without blocking. *)
 	fun canInput (strm as ISTRM(buf, pos), amount) = let
@@ -248,11 +254,12 @@ functor BinIOFn (
 		    end
 	      and nextBuf (IBUF{more, ...}, n) = (case !more
 		     of (MORE buf) => tryInput (buf, 0, n)
+		      | (EOS _) => SOME(amount - n)
 		      | TERMINATED => SOME(amount - n)
 		      | NOMORE => ((
 			  case extendStream (readVecNB, "canInput", buf)
-			   of EOF => SOME(amount - n)
-			    | (DATA b) => tryInput (b, 0, n)
+			   of (MORE b) => tryInput (b, 0, n)
+			    | _ => SOME(amount - n)
 			  (* end case *))
 			    handle IO.Io{cause=WouldBlock, ...} => SOME(amount - n))
 		    (* end case *))
@@ -270,12 +277,13 @@ functor BinIOFn (
 	      (* end case *))
 	fun endOfStream (ISTRM(buf, pos)) = (case buf
 	       of (IBUF{more=ref(MORE _), ...}) => false
+		| (IBUF{more=ref(EOS _), ...}) => true
 		| (IBUF{more, data, info=INFO{closed, ...}, ...}) =>
 		    if (pos = V.length data)
 		      then (case (!more, !closed)
 			 of (NOMORE, false) => (
 			      case extendStream (readVec buf, "endOfStream", buf)
-			       of EOF => true
+			       of (EOS _) => true
 				| _ => false
 			    (* end case *))
 			  | _ => true
@@ -311,17 +319,18 @@ functor BinIOFn (
 		      closed = closedFlg, getPos = getPos, tail = ref more,
 		      cleanTag = tag
 		    }
-	      val buf = 
-(** What should we do about the position in this case ?? **)
+(** What should we do about the position when there is initial data?? **)
 (** Suggestion: When building a stream with supplied initial data,
  ** nothing can be said about the positions inside that initial
  ** data (who knows where that data even came from!).
  **) 
-		        IBUF{
-			    basePos = NONE, data=data,
-			    info=info, more=more}
+	      val basePos = if (V.length data = 0)
+		    then getPos()
+		    else NONE
 	      in
-		ISTRM(buf, 0)
+		ISTRM(
+		  IBUF{basePos = basePos, data = data, info = info, more = more},
+		  0)
 	      end
 	fun getReader (ISTRM(buf, pos)) = let
 	      val IBUF{data, info as INFO{reader, ...}, more, ...} = buf
@@ -337,30 +346,13 @@ functor BinIOFn (
 		  else (reader, V.concat(getData(!more)))
 	      end
 
-      (** Position operations on instreams **)
-	datatype in_pos = INP of {
-	    base : pos,
-	    offset : int,
-	    info : info
-	  }
-
-	fun getPosIn (ISTRM(buf, pos)) = (case buf
+      (* Get the underlying file position of a stream *)
+	fun filePosIn (ISTRM(buf, pos)) = (case buf
 	       of IBUF{basePos=NONE, info, ...} =>
-		    inputExn (info, "getPosIn", IO.RandomAccessNotSupported)
-		| IBUF{basePos=SOME p, info, ...} => INP{
-		      base = p, offset = pos, info = info
-		    }
+		    inputExn (info, "filePosIn", IO.RandomAccessNotSupported)
+		| IBUF{basePos=SOME b, info, ...} =>
+		    Position.+(b, Position.fromInt pos)
 	      (* end case *))
-	fun filePosIn (INP{base, offset, ...}) =
-	      Position.+(base, Position.fromInt offset)
-	fun setPosIn (pos as INP{info as INFO{reader, ...}, ...}) = let
-	      val fpos = filePosIn pos
-	      val (PIO.RD rd) = reader
-	      in
-		terminate info;
-		Option.valOf (#setPos rd) fpos;
-		mkInstream (PIO.RD rd, V.fromList[])
-	      end
 
 
       (*** Output streams ***)
@@ -591,10 +583,9 @@ functor BinIOFn (
 	    strm := strm'; v
 	  end
     fun inputAll (strm : instream) = let
-	  val (s as StreamIO.ISTRM(buf, _)) = !strm
-	  val v = StreamIO.inputAll s
+	  val (v, s) = StreamIO.inputAll(!strm)
 	  in
-	    strm := StreamIO.findEOS buf; v
+	    strm := s; v
 	  end
     fun canInput (strm, n) = StreamIO.canInput (!strm, n)
     fun lookahead (strm : instream) = (case StreamIO.input1(!strm)
@@ -603,13 +594,18 @@ functor BinIOFn (
 	  (* end case *))
     fun closeIn strm = let
 	  val (s as StreamIO.ISTRM(buf as StreamIO.IBUF{data, ...}, _)) = !strm
+	(* find the end of the stream *)
+	  fun findEOS (StreamIO.IBUF{more=ref(StreamIO.MORE buf), ...}) =
+		findEOS buf
+	    | findEOS (StreamIO.IBUF{more=ref(StreamIO.EOS buf), ...}) =
+		findEOS buf
+	    | findEOS (buf as StreamIO.IBUF{data, ...}) =
+		StreamIO.ISTRM(buf, V.length data)
 	  in
 	    StreamIO.closeIn s;
-	    strm := StreamIO.findEOS buf
+	    strm := findEOS buf
 	  end
     fun endOfStream strm = StreamIO.endOfStream(! strm)
-    fun getPosIn strm = StreamIO.getPosIn(!strm)
-    fun setPosIn (strm, p) = (strm := StreamIO.setPosIn p)
 
   (** Output operations **)
     fun output (strm, v) = StreamIO.output(!strm, v)
@@ -630,7 +626,7 @@ functor BinIOFn (
 
   (** Open files **)
     fun openIn fname =
-	  mkInstream(StreamIO.mkInstream(OSPrimIO.openRd fname, V.fromList[]))
+	  mkInstream(StreamIO.mkInstream(OSPrimIO.openRd fname, empty))
 	    handle ex => raise IO.Io{function="openIn", name=fname, cause=ex}
     fun openOut fname =
 	  mkOutstream(StreamIO.mkOutstream(OSPrimIO.openWr fname, IO.BLOCK_BUF))
@@ -642,5 +638,9 @@ functor BinIOFn (
   end (* BinIOFn *)
 
 (*
- * $Log$
+ * $Log: bin-io-fn.sml,v $
+ * Revision 1.3  1998/08/17 19:21:16  george
+ *   Changed the type of TextIO.StreamIO.mkInstream to eliminate the option.
+ *   [appel]
+ *
  *)

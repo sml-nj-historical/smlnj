@@ -18,13 +18,12 @@
  *)
 signature EMITTER_NEW = sig
   structure I : INSTRUCTIONS
-  structure F : FLOWGRAPH  
-    sharing F.I = I
+  structure P : PSEUDO_OPS
 
   val defineLabel  : Label.label -> unit
   val emitInstr : I.instruction * int Intmap.intmap -> unit
   val comment : string -> unit
-  val pseudoOp : F.P.pseudo_op -> unit
+  val pseudoOp : P.pseudo_op -> unit
   val init : int -> unit
 end  
 
@@ -32,5 +31,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: emitterNEW.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:02  george
+ * Version 110.5
+ *
  *)

@@ -8,12 +8,11 @@
  * of a curried functor. 
  *)
 
-functor SparcRegAlloc(structure P : INSN_PROPERTIES
-		     structure F : FLOWGRAPH 
-		     structure I : INSTRUCTIONS where C = SparcCells
-		     structure Asm : EMITTER_NEW
-		         sharing Asm.F = F
-			 sharing P.I = F.I = Asm.I = I) :
+functor SparcRegAlloc(structure I : INSTRUCTIONS where C = SparcCells
+		      structure P : INSN_PROPERTIES where I = I
+		      structure F : FLOWGRAPH where I = I 
+		      structure Asm : EMITTER_NEW where I = I and P=F.P
+		     ) :
   sig
     functor IntRa (structure RaUser : RA_USER_PARAMS
 		     where type I.operand = I.operand
@@ -83,5 +82,11 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: sparcRegAlloc.sml,v $
+ * Revision 1.2  1998/09/30 19:38:39  dbm
+ * fixing sharing/defspec conflict
+ *
+ * Revision 1.1.1.1  1998/08/05 19:38:49  george
+ *   Release 110.7.4
+ *
  *)

@@ -6,7 +6,8 @@
 structure SparcCells : SPARCCELLS = struct
   structure SL = SortedList
 
-  type regmap = int Intmap.intmap
+  type register = int
+  type regmap = register Intmap.intmap
   datatype cellclass = GP | FP | CC | Y | PSR | FSR | MEM | CTRL
 
   exception Cells
@@ -64,8 +65,8 @@ structure SparcCells : SPARCCELLS = struct
        else if r < 32 then "%i"^Int.toString(r-24)
        else "%r"^Int.toString r
     | cellToString(r,class) = prefix class^Int.toString r
-  and prefix GP   = "r"
-    | prefix FP   = "f"
+  and prefix GP   = "%r"
+    | prefix FP   = "%f"
     | prefix CC   = "cc"
     | prefix Y    = "%y"
     | prefix PSR  = "%psr"
@@ -105,8 +106,3 @@ structure SparcCells : SPARCCELLS = struct
   in (map ftrans fregs @ trans regs)
   end
 end
-
-
-(*
- * $Log$
- *)

@@ -11,14 +11,20 @@
  **)
 functor Alpha32
   (structure Alpha32Instr : ALPHA32INSTR
-   structure Alpha32MLTree : MLTREE
-   structure Flowgen : FLOWGRAPH_GEN
-   structure PseudoInstrs : ALPHA32_PSEUDO_INSTR 
+   structure Alpha32MLTree : MLTREE where Region = Alpha32Instr.Region
+                                    and Constant = Alpha32Instr.Constant
+   structure Flowgen : FLOWGRAPH_GEN where I = Alpha32Instr
+                                     and T = Alpha32MLTree
+                                     and B = Alpha32MLTree.BNames
+   structure PseudoInstrs : ALPHA32_PSEUDO_INSTR where I = Alpha32Instr
+(* DBM: sharing/defn conflict:
      sharing Alpha32Instr.Region = Alpha32MLTree.Region
      sharing Flowgen.I = PseudoInstrs.I =  Alpha32Instr
      sharing Flowgen.T=Alpha32MLTree 
      sharing Alpha32MLTree.Constant = Alpha32Instr.Constant
-     sharing Alpha32MLTree.BNames = Flowgen.B) : MLTREECOMP = 
+     sharing Alpha32MLTree.BNames = Flowgen.B
+*)
+  ) : MLTREECOMP = 
 struct
   structure F = Flowgen
   structure T = Alpha32MLTree
@@ -707,3 +713,16 @@ struct
 end
 
 
+(*
+ * $Log: alpha32.sml,v $
+ * Revision 1.6  1998/08/11 14:03:13  george
+ *   Exposed emitInstr in MLTREECOMP to allow a client to directly
+ *   inject native instructions into the flowgraph.
+ *
+ * Revision 1.4  1998/06/05 23:53:57  george
+ *   Fix for bug 1399 1361
+ *
+ * Revision 1.3  1998/05/25 15:10:44  george
+ *   Fixed RCS keywords
+ *
+ *)

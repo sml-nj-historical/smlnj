@@ -1,13 +1,9 @@
 functor SparcMCEmitter
   (structure Instr : SPARCINSTR
-   structure Assembler : EMITTER_NEW
-   structure FlowGraph : FLOWGRAPH
-       sharing Assembler.F = FlowGraph
-       sharing FlowGraph.I = Assembler.I = Instr) : EMITTER_NEW =
+   structure Assembler : EMITTER_NEW where I = Instr) : EMITTER_NEW =
 struct
-
    structure I = Instr
-   structure F = FlowGraph
+   structure P = Assembler.P
 
    val <<  = Word.<<
    val >>  = Word.>>
@@ -34,7 +30,7 @@ struct
    fun emitWord w = (emitByte((w >> 0w8) & 0wxff); emitByte(w & 0wxff))
   
    fun defineLabel lab = ()
-   fun pseudoOp pOp = F.P.emitValue{pOp=pOp, loc= !loc, emit=emitbyte}
+   fun pseudoOp pOp = P.emitValue{pOp=pOp, loc= !loc, emit=emitbyte}
    fun comment msg = ()
    fun init n = (CodeString.init n; loc:=0)
 
@@ -243,13 +239,15 @@ struct
              | I.FDIVs => 0w77
              | I.FsMULd => 0w57,
              r1,r2,d)
-       | I.FCMP{cmp,r1,r2} =>
-            fcmp(case cmp of 
+       | I.FCMP{cmp,r1,r2,nop} =>
+           (fcmp(case cmp of 
                    I.FCMPd => 0w82
                  | I.FCMPEd => 0w86
                  | I.FCMPs => 0w81
                  | I.FCMPEs => 0w85,
-                 r1,r2)
+                 r1,r2);
+            delaySlot nop
+           )
        | I.SAVE{r,i,d} => arith(0w60,r,i,d,false)
        | I.RESTORE{r,i,d} => arith(0w61,r,i,d,false)
        | I.RDY{d} => arith(0w40,0,I.REG 0,d,false)
@@ -264,5 +262,16 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: sparcMC.sml,v $
+ * Revision 1.3  1998/09/30 19:38:10  dbm
+ * fixing sharing/defspec conflict
+ *
+ * Revision 1.2  1998/08/12 13:36:25  leunga
+ *
+ *
+ *   Fixed the 2.0 + 2.0 == nan bug by treating FCMP as instrs with delay slots
+ *
+ * Revision 1.1.1.1  1998/08/05 19:38:49  george
+ *   Release 110.7.4
+ *
  *)

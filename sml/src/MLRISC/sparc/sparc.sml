@@ -25,15 +25,20 @@
  *)
 
 functor Sparc
-  (structure Flowgen : FLOWGRAPH_GEN
-   structure SparcInstr : SPARCINSTR
-   structure SparcMLTree : MLTREE
-   structure PseudoInstrs : SPARC_PSEUDO_INSTR
+  (structure SparcInstr : SPARCINSTR
+   structure SparcMLTree : MLTREE where Region = SparcInstr.Region
+                                  and Constant = SparcInstr.Constant
+   structure Flowgen : FLOWGRAPH_GEN where I = SparcInstr
+                                     and T = SparcMLTree
+                                     and B = SparcMLTree.BNames
+   structure PseudoInstrs : SPARC_PSEUDO_INSTR where I = SparcInstr
+(* DBM: sharing/defn conflict:
      sharing SparcInstr.Region = SparcMLTree.Region
      sharing Flowgen.I=PseudoInstrs.I=SparcInstr
      sharing Flowgen.T=SparcMLTree 
      sharing SparcMLTree.Constant = SparcInstr.Constant
      sharing SparcMLTree.BNames = Flowgen.B
+*)
    val overflowtrap : SparcInstr.instruction list
   ) : MLTREECOMP = 
 struct
@@ -55,6 +60,7 @@ struct
 
   fun error msg = MLRiscErrorMsg.impossible ("Sparc." ^ msg)
 
+  val emitInstr = F.emitInstr
   val emit = F.emitInstr
   fun newReg () = C.newReg()
   fun newFreg() = C.newFreg()
@@ -332,7 +338,7 @@ struct
 
    and fbranch(_,T.FCMP(cond,e1,e2,ord),lab) =
         let val (r1,r2) = order(genFexpr,e1,e2,ord)
-        in  emit(I.FCMP{cmp=I.FCMPd,r1=r1,r2=r2});
+        in  emit(I.FCMP{cmp=I.FCMPd,r1=r1,r2=r2,nop=true});
             emit(I.FBfcc{b=fcond cond,a=false,label=lab,nop=true})
         end
      | fbranch _ = error "fbranch"
@@ -446,5 +452,17 @@ struct
 end
 
 (* 
- * $Log$
+ * $Log: sparc.sml,v $
+ * Revision 1.3  1998/08/12 13:36:15  leunga
+ *
+ *
+ *   Fixed the 2.0 + 2.0 == nan bug by treating FCMP as instrs with delay slots
+ *
+ * Revision 1.2  1998/08/11 14:03:25  george
+ *   Exposed emitInstr in MLTREECOMP to allow a client to directly
+ *   inject native instructions into the flowgraph.
+ *
+ * Revision 1.1.1.1  1998/08/05 19:38:49  george
+ *   Release 110.7.4
+ *
  *)
