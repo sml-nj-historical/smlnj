@@ -23,7 +23,13 @@ Summary:
   CM has been revised extensively, and the modmap environment mechanism
   supporting stubbified pickles has been reworked completely.  The pathconfig
   file has been simplified.  Installation scripts have been further
-  modified.
+  modified.  See src/system/README and the latest version of the
+  CM manual at 
+
+   <//http://www.kurims.kyoto-u.ac.jp/~blume/SMLNJ-DEV/manual/index.html>
+   <//http://www.kurims.kyoto-u.ac.jp/~blume/SMLNJ-DEV/manual.ps>
+
+  for further information about these changes.
 
   MLRISC, and particularly the x86 back end have been modiefied extensively.
 
@@ -34,6 +40,20 @@ Summary:
     Some CM bugs (not recorded)
 
 
+  Distribution file names
+    Distribution file names have been simplified.  They no longer start
+    with the version number (e.g. "110.27-config.tar.gz" is now
+    simply "config.tar.gz").  The boot directory tarballs are now
+    "boot.alpha32-unix.tar.gz", etc. (i.e. no version number and the
+    "sml." prefix is dropped).  The new install script will restore
+    the usual name (e.g. "sml.boot.alpha32-unix" when the tarball is
+    unpacked.  [We dropped the initial "sml." for the boot tarballs to
+    get the file names under 28 characters because of a limitation of
+    the Bell Labs ftp server.]
+    The version README file is still named 110.27-README, however.
+
+
+----------------------------------------------------------------------
 The following change records are extracted from the CVS repository
 HISTORY file, which started in early March, 2000, so this doesn't
 cover changes between mid-December, 1999, when 110.26 was created, and
