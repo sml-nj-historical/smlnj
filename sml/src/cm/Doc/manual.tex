@@ -1222,6 +1222,70 @@ the contens of {\tt bar.pp} through the C preprocessor to arrive at
                  -f bar-pp.mk)
 \end{verbatim}
 
+\subsubsection*{Noweb}
+
+The {\tt noweb} class handles sources written for Ramsey's {\it noweb}
+literate programming facility~\cite{ramsey:simplified}.  Files ending
+with suffix {\tt .nw} are automatically recognized as belonging to
+this class.
+
+The noweb tool takes a list of targets.  Each target individually can
+have a variety of options.  A target is specified by a separate
+tool option labelled {\tt target}.  The tool option usually has the
+form of a sub-option list.  Recognized sub-options are:
+
+\begin{description}
+\item[name] the name of the target
+\item[root] the (optional) root tag for the target (given to the {\tt
+-R} command line switch for the {\tt notangle} command); if {\tt root}
+is missing, {\tt name} is used instead
+\item[class] the (optional) class of the target
+\item[options] (optional) options for the tool that handles the
+target's class
+\item[lineformat] a string that will be passed to the {\tt -L} command
+line option of {\tt notangle}
+\item[cpif] an optional boolean value (the word {\tt true} or {\tt
+false}); if set to {\tt true} then the target will not be overwritten
+if its contents would be unchanged\footnote{The tradeoff is between
+running {\tt notangle} too often or recompiling the result too
+often.}; default: {\tt true}
+\end{description}
+
+Example:
+
+\begin{verbatim}
+   project.nw (target:(name:main.sml options:(private) cpif:false)
+               target:(name:grammar class:mlyacc)
+               target:(name:parse.sml))
+\end{verbatim}
+
+In place of the sub-option list there can be a single string option
+which will be used for {\tt name} or even an unnamed parameter (i.e.,
+without the {\tt target} label).  If no targets are specified, the
+tool will assume two default targets by stripping the {\tt .nw}
+suffix (if present) from the source name and adding {\tt .sig} as well
+as {\tt .sml}.
+
+The following four examples are all equivalent:
+
+\begin{verbatim}
+   foo.nw (target:(name:foo.sig) target:(name:foo.sml))
+   foo.nw (target:foo.sig target:foo.sml)
+   foo.nw (foo.sig foo.sml)
+   foo.nw
+\end{verbatim}
+
+If {\tt lineformat} is missing, then a default based on the target
+class is used.  Currently only the {\tt sml} and {\tt cm} classes are
+known to CM; other classes can be added or removed by using the {\tt
+NowebTool.lineNumbering} controller function exported from library
+{\tt noweb-tool.cm}:
+
+\begin{verbatim}
+  val lineNumbering: string -> { get: unit -> string option,
+                                 set: string option -> unit }
+\end{verbatim}
+
 \section{Conditional compilation}
 \label{sec:preproc}
 

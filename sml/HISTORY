@@ -12,6 +12,21 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/05/01 19:05:00 JST
+Tag: blume-20000501-noweb
+Description:
+
+A new noweb tool has been added.  The existing system is entirely
+unaffected by this, but some CM users have asked for renewed noweb
+support.  Everything is documented in the CM manual.
+
+New (plugin) libraries:
+
+   noweb-tool.cm
+   nw-ext.cm
+
+----------------------------------------------------------------------
 Name: Dave MacQueen
 Date: 2000/04/30 12:40PM EDT
 Tag: dbm-20000430-bug_fixes

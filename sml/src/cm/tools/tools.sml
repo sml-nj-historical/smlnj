@@ -31,7 +31,7 @@ signature CORETOOLS = sig
 
     (* case-by-case parameters that can be passed to tools... *)
     datatype toolopt =
-	STRING of { name: string, mkpath: string -> srcpath }
+	STRING of { name: string, mkpath: pathmaker }
       | SUBOPTS of { name: string, opts: toolopts }
     withtype toolopts = toolopt list
 
@@ -155,7 +155,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
     type pathmaker = string -> srcpath
 
     datatype toolopt =
-	STRING of { name: string, mkpath: string -> srcpath }
+	STRING of { name: string, mkpath: pathmaker }
       | SUBOPTS of { name: string, opts: toolopts }
     withtype toolopts = toolopt list
 

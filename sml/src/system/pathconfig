@@ -21,3 +21,6 @@ mlburg-tool.cm		../cm/tools
 burg-ext.cm		../cm/tools
 make-tool.cm		../cm/tools
 shell-tool.cm		../cm/tools
+noweb-tool.cm		../cm/tools
+nw-ext.cm		../cm/tools
+

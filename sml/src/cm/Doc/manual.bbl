@@ -74,6 +74,11 @@ Robin Milner, Mads Tofte, Robert Harper, and David MacQueen.
 \newblock {\em The Definition of {Standard ML} (Revised)}.
 \newblock MIT Press, Cambridge, MA, 1997.
 
+\bibitem[Ram94]{ramsey:simplified}
+Norman Ramsey.
+\newblock Literate programming simplified.
+\newblock {\em IEEE Software}, 11(5):97--105, September 1994.
+
 \bibitem[RG99]{reppy99:basis}
 John Reppy and Emden Gansner.
 \newblock {S}tandard {ML} {B}asis {L}ibrary.
