@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/11/18 17:10 CST
+Tag: blume-20031118-basis-fiddle
+Description:
+
+- changed Timer interface to what might become the spec
+- POSIX_FLAGS -> BIT_FLAGS according to spec
+- some other minor discrepancies wrt. spec eliminated
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/11/06 12:00:00 CST
 Tag: Release_110_44
 Description:
