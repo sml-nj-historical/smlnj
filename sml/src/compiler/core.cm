@@ -1,0 +1,317 @@
+(* core.cm
+ *
+ * Copyright YALE FLINT PROJECT 1997
+ * and
+ * (C) 2001 Lucent Technologies, Bell labs
+ *
+ * This is the machine-independent "core" part of the compiler
+ * (but without the parser and elaborator data structures).
+ * Machine-dependent parts are in backend-<arch>.cm.
+ *
+ * The parser is in Parse/parser.cm.
+ * Elaborator data structures are in ElabData/elabdata.cm.
+ * Basic definitions are in Basics/basics.cm.
+ *
+ * The present file is a group which gets referred to by the actual library
+ * file in system/smlnj/viscomp/core.cm.
+ *)
+Group (../system/smlnj/viscomp/core.cm)
+	signature BACKEND
+
+        (* To make it possible to dynamically link in the optimizer, 
+         * we have to export the following to the library.
+         * A.Leung.
+         *)
+        signature MACHINE_GEN
+        signature INVOKE_GC
+        signature CPSREGS
+        signature SMLNJ_PSEUDO_OPS
+
+        structure CPSRegions
+        structure SMLGCType
+
+	structure Typecheck
+
+	(* To be able to separate machine-dependent parts of viscomp-lib.cm
+	 * from machine-independent parts, we must also export the
+	 * the following things.... *)
+
+	signature MACH_SPEC
+
+	structure DefaultMachSpec
+	structure SMLNJConstant
+	signature SMLNJ_MLTREE_EXT
+	structure SMLNJMLTreeExt
+        functor   SMLNJMLTreeExtComp
+        functor	  SMLNJPseudoOps
+	structure CodeString
+
+	functor MachineGen
+	functor SpillTable
+	functor FLINTComp
+	functor BackendFn
+
+	structure ClusterAnnotation
+
+	(* stuff that lived (or should have) in Frontend (aka GenericVC) *)
+	structure Control
+	structure SymbolicEnv
+	structure PrimEnv
+	structure Environment
+	structure EnvRef	
+	structure ModuleId
+	structure GenModIdMap
+	structure PickMod
+	structure UnpickMod
+	structure Rehash
+	structure PickleSymPid
+	structure UnpickleSymPid
+	structure CompilerPPTable
+	structure PrintHooks
+	structure CompilerVersion
+	structure CoreSym
+	structure FLINT
+
+        structure Types
+        structure EntityEnv
+        structure Modules
+        structure Stamps
+        structure Bindings
+        structure TypesUtil
+        structure VarCon
+        structure ModuleUtil
+        structure II
+        structure BasicTypes
+        structure PPType
+        structure Access
+	structure Unify
+
+	(* corresponding signatures *)
+	signature CONTROL
+	signature SYMENV
+	signature ENVIRONMENT
+	signature PRIM_ENV
+	signature ENVREF	
+	signature MODULE_ID
+	signature PICKMOD
+	signature UNPICKMOD
+	signature FLINT
+
+	signature TYPES
+	signature ENTITY_ENV
+	signature MODULES
+	signature STAMPS
+	signature BINDINGS
+	signature TYPESUTIL
+	signature VARCON
+	signature MODULEUTIL
+	signature BASICTYPES
+	signature PPTYPE
+	signature ACCESS
+	signature UNIFY
+is
+
+TopLevel/environ/environ.sig
+TopLevel/environ/environ.sml
+TopLevel/environ/symenv.sig
+TopLevel/environ/symenv.sml
+
+TopLevel/interact/envref.sml
+TopLevel/interact/evalloop.sig
+TopLevel/interact/evalloop.sml
+TopLevel/interact/interact.sig
+TopLevel/interact/interact.sml
+
+TopLevel/backend/backend.sig
+TopLevel/backend/backend-fn.sml
+
+TopLevel/main/control.sig
+TopLevel/main/control.sml
+TopLevel/main/cconfig.sig
+TopLevel/main/code-generator.sig
+TopLevel/main/compile.sig
+TopLevel/main/compile.sml
+TopLevel/main/version.sml
+TopLevel/main/printhooks.sml
+TopLevel/main/pptable.sml
+
+
+(* Semantic analysis (elaborator) specialized for SML/NJ. *)
+Semant/basics/inlinfo.sig
+Semant/basics/inlinfo.sml
+
+Semant/elaborate/elabmod.sml
+Semant/elaborate/elabtop.sml
+
+Semant/modules/instantiate-param.sml
+Semant/modules/instantiate.sml
+Semant/modules/sigmatch.sml
+Semant/modules/evalent.sml
+Semant/modules/module-plists.sml
+
+Semant/pickle/pickle-sym-pid.sml
+Semant/pickle/pickmod-new.sml
+Semant/pickle/unpickle-sym-pid.sml
+Semant/pickle/unpickmod-new.sml
+Semant/pickle/rehash.sml
+
+Semant/statenv/prim.sml
+
+Semant/types/tp-var-info.sml
+Semant/types/typecheck.sml
+Semant/types/cproto.sml
+
+
+(* The FLINT optimizer ("middle-end"). *)
+FLINT/clos/allocprof.sml
+FLINT/clos/cps-split.sml
+FLINT/clos/freemap.sml
+FLINT/clos/globalfix.sml
+FLINT/clos/closure.sml
+FLINT/clos/freeclose.sml
+FLINT/clos/staticprof.sml
+FLINT/clos/unrebind.sml
+FLINT/cps/convert.sml
+FLINT/cps/cps.sig
+FLINT/cps/cps.sml
+FLINT/cps/cpstrans.sml
+FLINT/cps/ppcps.sml
+FLINT/cps/switch.sml
+FLINT/cpsopt/contract.sml
+FLINT/cpsopt/cpsopt.sml
+FLINT/cpsopt/eta.sml
+FLINT/cpsopt/etasplit.sml
+FLINT/cpsopt/expand.sml
+FLINT/cpsopt/expandNEW.sml
+FLINT/cpsopt/flatten.sml
+FLINT/cpsopt/uncurry.sml
+FLINT/cpsopt/infcnv.sml
+FLINT/flint/chkflint.sml
+FLINT/flint/flint.sig
+FLINT/flint/flint.sml
+FLINT/flint/flintutil.sml
+FLINT/flint/ppflint.sig
+FLINT/flint/ppflint.sml
+FLINT/flint/tvarcvt.sml
+FLINT/kernel/primtyc.sig
+FLINT/kernel/primtyc.sml
+FLINT/kernel/ltybasic.sig
+FLINT/kernel/ltybasic.sml
+FLINT/kernel/ltydef.sig
+FLINT/kernel/ltydef.sml
+FLINT/kernel/ltydict.sml
+FLINT/kernel/ltyextern.sig
+FLINT/kernel/ltyextern.sml
+FLINT/kernel/ltykernel.sig
+FLINT/kernel/ltykernel.sml
+FLINT/kernel/primop.sig
+FLINT/kernel/primop.sml
+FLINT/main/flintcomp.sml
+FLINT/main/control.sml
+FLINT/main/literals.sml
+FLINT/opt/fixfix.sml
+FLINT/opt/collect.sml
+FLINT/opt/fcontract.sml
+FLINT/opt/optutils.sml
+FLINT/opt/lcontract.sml
+FLINT/opt/recover.sml
+FLINT/opt/specialize.sml
+FLINT/opt/loopify.sml
+FLINT/opt/split.sml
+FLINT/opt/lift.sml
+FLINT/opt/abcopt.sml
+FLINT/plambda/chkplexp.sml
+FLINT/plambda/flintnm.sml
+FLINT/plambda/pflatten.sig
+FLINT/plambda/pflatten.sml
+FLINT/plambda/plambda.sig
+FLINT/plambda/plambda.sml
+FLINT/plambda/plambdatype.sml
+FLINT/plambda/pplexp.sml
+FLINT/plambda/reorder.sml
+FLINT/reps/coerce.sml
+FLINT/reps/equal.sml
+FLINT/reps/reify.sml 
+FLINT/reps/rttype.sml
+FLINT/reps/typeoper.sml 
+FLINT/reps/wrapping.sml
+FLINT/trans/matchcomp.sml
+FLINT/trans/mccommon.sml
+FLINT/trans/pequal.sml
+FLINT/trans/tempexpn.sml
+FLINT/trans/translate.sml
+FLINT/trans/transtypes.sml
+
+FLINT/lsplit/ls-inline.sml
+
+
+(* The code generator (MLRISC specialized for SML/NJ). *)
+CodeGen/cpscompile/argPassing.sig
+CodeGen/cpscompile/argPassing.sml
+CodeGen/cpscompile/cluster.sml
+CodeGen/cpscompile/cps-aliasing.sml
+CodeGen/cpscompile/cps-c-calls.sml
+CodeGen/cpscompile/cpsBranchProb.sml
+CodeGen/cpscompile/cpsRegions.sig
+CodeGen/cpscompile/cpsRegions.sml
+CodeGen/cpscompile/cpsRegs.sig
+CodeGen/cpscompile/frag.sig
+CodeGen/cpscompile/frag.sml
+CodeGen/cpscompile/invokegc.sig
+CodeGen/cpscompile/invokegc.sml
+CodeGen/cpscompile/limit.sml
+CodeGen/cpscompile/memAliasing.sml
+CodeGen/cpscompile/memDisambig.sml
+CodeGen/cpscompile/smlnj-pseudoOps.sig
+CodeGen/cpscompile/smlnj-const.sml
+CodeGen/cpscompile/smlnj-gctype.sig
+CodeGen/cpscompile/smlnj-gctype.sml
+CodeGen/cpscompile/smlnj-mltreeext.sig
+CodeGen/cpscompile/smlnj-mltreeext.sml
+CodeGen/cpscompile/smlnj-pseudoOps.sml
+CodeGen/cpscompile/spill-new.sml
+CodeGen/main/clusterAnnotation.sml    (* temporary hack; see comment in file *)
+CodeGen/main/code-string.sml
+CodeGen/main/machine.sig
+CodeGen/main/machine-gen.sig
+CodeGen/main/machine-gen.sml
+CodeGen/main/machspec.sig
+CodeGen/main/machspec.sml
+CodeGen/main/mlriscGen.sml
+CodeGen/main/object-desc.sig
+CodeGen/main/object-desc.sml
+CodeGen/main/spill-table.sml
+
+(* Miscellaneous utilities. *)
+MiscUtil/bignums/realconst.sml
+MiscUtil/bignums/ieeereal.sml
+
+MiscUtil/print/ppdec.sml
+MiscUtil/print/ppobj.sml
+MiscUtil/print/pptable.sml
+
+MiscUtil/util/feedback.sml
+MiscUtil/util/literal-to-num.sml    (* uses CoreIntInf functionality *)
+
+(* Libraries that are part of the visible compiler framework. *)
+$smlnj/viscomp/basics.cm
+$smlnj/viscomp/parser.cm
+$smlnj/viscomp/elabdata.cm
+$smlnj/viscomp/elaborate.cm
+$smlnj/viscomp/debugprof.cm
+$smlnj/viscomp/execute.cm
+
+(* MLRISC libraries. *)
+$smlnj/MLRISC/Lib.cm			(* provides SortedList *)
+$smlnj/MLRISC/Control.cm
+$smlnj/MLRISC/Graphs.cm			
+$smlnj/MLRISC/MLRISC.cm
+$smlnj/MLRISC/Visual.cm
+
+(* Other libaries. *)
+$/basis.cm
+$/smlnj-lib.cm
+$/controls-lib.cm
+$/pickle-lib.cm
+
+$smlnj/init/init.cmi : cm          (* to gain access at CoreIntInf *)
