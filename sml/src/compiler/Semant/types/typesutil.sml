@@ -132,6 +132,10 @@ fun setTycPath(tycon,path) =
           DEFtyc{tyfun=tyfun,path=path,strict=strict,stamp=stamp}
       | _ => bugTyc("setTycName",tycon)
 
+fun eqRecordLabels(nil,nil) = true
+  | eqRecordLabels(x::xs,y::ys) = Symbol.eq(x,y) andalso eqRecordLabels(xs,ys)
+  | eqRecordLabels _ = false
+
 fun eqTycon (GENtyc g, GENtyc g') = Stamps.eq (#stamp g, #stamp g')
   | eqTycon (ERRORtyc,_) = true
   | eqTycon (_,ERRORtyc) = true
@@ -144,7 +148,7 @@ fun eqTycon (GENtyc g, GENtyc g') = Stamps.eq (#stamp g, #stamp g')
    * Also used in PPBasics to check data constructors of
    * a datatype.  Used elsewhere?
    *)
-  | eqTycon(RECORDtyc l1, RECORDtyc l2) = l1=l2
+  | eqTycon(RECORDtyc l1, RECORDtyc l2) = eqRecordLabels(l1,l2)
   | eqTycon _ = false
 
 	(* for now... *)
@@ -255,24 +259,36 @@ fun equalType(ty,ty') =
     end
 
 local
+  (* making dummy argument lists to be used in equalTycon *)
+    val generator = Stamps.newGenerator()
     fun makeDummyType() =
-	CONty(GENtyc{stamp = Stamps.special "dummy",
-		     path = IP.IPATH[S.tycSymbol "dummy"],
+	CONty(GENtyc{stamp = Stamps.fresh generator,
+		     path = IP.IPATH[Symbol.tycSymbol "dummy"],
 		     arity = 0, eq = ref YES, stub = NONE,
                      kind = PRIMITIVE (PrimTyc.ptc_void)},[])
          (*
           * Making dummy type is a temporary hack ! pt_void is not used
           * anywhere in the source language ... Requires major clean up 
           * in the future. (ZHONG)
+	  * DBM: shouldn't cause any problem here.  Only thing relevant
+	  * property of the dummy types is that they have different stamps
+	  * and their stamps should not agree with those of any "real" tycons.
           *)
-
-    fun makeargs 0 = []
-      | makeargs i = makeDummyType() :: makeargs(i-1)
-    val args = makeargs 10
-    fun dargs(0,_,d) = d
-      | dargs(n,a::r,d) = dargs(n-1,r,a::d)
-      | dargs(n,[],d) = dargs(n-1,[],makeDummyType()::d)
- in fun dummyargs n = dargs(n,args,[])
+    (* precomputing dummy argument lists
+     * -- perhaps a bit of over-optimization here. [dbm] *)
+    fun makeargs (0,args) = args
+      | makeargs (i,args) = makeargs(i-1, makeDummyType()::args)
+    val args10 = makeargs(10,[])  (* 10 dummys *)
+    val args1 = [hd args10]
+    val args2 = List.take (args10,2)
+    val args3 = List.take (args10,3)  (* rarely need more than 3 args *)
+ in fun dummyargs 0 = []    
+      | dummyargs 1 = args1
+      | dummyargs 2 = args2
+      | dummyargs 3 = args3
+      | dummyargs n =
+	if n <= 10 then List.take (args10,n) (* should be plenty *)
+	else makeargs(n-10,args10)  (* but make new dummys if needed *)
 end
 
 (* equalTycon.  This definition deals only partially with types that
@@ -283,11 +299,10 @@ fun equalTycon(ERRORtyc,_) = true
   | equalTycon(_,ERRORtyc) = true
   | equalTycon(t1,t2) =
      let val a1 = tyconArity t1 and a2 = tyconArity t2
-     in if a1<>a2 then false
-        else
-	  let val args = dummyargs a1
-	  in equalType(mkCONty(t1,args),mkCONty(t2,args))
-	  end
+      in if a1<>a2 then false
+         else let val args = dummyargs a1
+	       in equalType(mkCONty(t1,args),mkCONty(t2,args))
+	      end
      end
 
 (* instantiating polytypes *)

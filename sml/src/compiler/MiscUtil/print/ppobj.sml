@@ -272,9 +272,14 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 			  (printWithSharing ppstrm
 			    (obj,accu,
 			     fn (obj,accu) =>
-				ppArray(Obj.toArray obj, hd argtys, membersOp,
-					depth,
-					!Control.Print.printLength, accu))
+			        (case Obj.rep obj
+				  of Obj.PolyArray =>
+				     ppArray(Obj.toArray obj, hd argtys,
+					     membersOp, depth,
+					     !Control.Print.printLength, accu)
+				   | Obj.RealArray =>
+				     ppRealArray(Obj.toRealArray obj,
+					         !Control.Print.printLength)))
 			    handle Obj.Representation =>
 				   add_string ppstrm  "prim?")
 	              else add_string ppstrm  "prim?"
@@ -552,7 +557,7 @@ and ppVector(objs:object vector, ty:T.ty, membersOp, depth:int, length,accu) =
           end_block ppstrm
       end
 
-and ppArray (objs : object array, ty:T.ty, membersOp, depth:int, length,accu) =
+and ppArray (objs: object array, ty: T.ty, membersOp, depth: int, length, accu) =
       let val vectorLength  = Array.length objs
           val (len, closing) = 
 	        if length >= vectorLength then 
@@ -564,6 +569,22 @@ and ppArray (objs : object array, ty:T.ty, membersOp, depth:int, length,accu) =
                 else (add_string ppstrm  sep; breaker ();
 		      ppValShare (Array.sub (objs,index),ty,membersOp,
 				  depth-1,accu);
+		      printRest (",",fn () => add_break ppstrm (0,0), index + 1))
+       in begin_block ppstrm INCONSISTENT 1;
+	  add_string ppstrm "[|"; printRest("",fn () => (), 0);
+          end_block ppstrm
+      end
+and ppRealArray (objs : Real64Array.array, length: int) =
+      let val vectorLength  = Real64Array.length objs
+          val (len, closing) = 
+	        if length >= vectorLength then 
+		  (vectorLength,fn _ => add_string ppstrm "|]")
+		else (length,fn sep => (add_string ppstrm sep; 
+                                        add_string ppstrm "...|]"))
+          fun printRest(sep,breaker, index) =
+	        if index >= len then closing sep
+                else (add_string ppstrm  sep; breaker ();
+		      add_string ppstrm (Real.toString(Real64Array.sub(objs,index)));
 		      printRest (",",fn () => add_break ppstrm (0,0), index + 1))
        in begin_block ppstrm INCONSISTENT 1;
 	  add_string ppstrm "[|"; printRest("",fn () => (), 0);

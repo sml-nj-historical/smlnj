@@ -12,6 +12,24 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Dave MacQueen
+Date: 2000/04/30 12:40PM EDT
+Tag: dbm-20000430-bug_fixes
+Description:
+
+1. Fix for bug 1498
+   smlnj/src/system/Basis/Implementation/Unsafe/object.sig
+   smlnj/src/system/Basis/Implementation/Unsafe/object.sml
+     added toRealArray function
+   smlnj/src/compiler/MiscUtil/print/ppobj.sml
+     added check for tag Obj.RealArray to array printing case in ppObj
+
+2. Fix for bug 1510
+   smlnj/src/compiler/Semant/types/typesutil.sml
+     fixed definition of dummyargs (used by equalTycon) so that 
+     dummy args are distinct types
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/04/30 01:00:00 JST
 Tag: blume-20000430-versions

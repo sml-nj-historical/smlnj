@@ -45,7 +45,10 @@ signature UNSAFE_OBJECT =
     val toString : object -> string
     val toRef    : object -> object ref
     val toArray  : object -> object array
+    val toRealArray  : object -> Real64Array.array
+    val toByteArray  : object -> Word8Array.array
     val toVector : object -> object vector
+    val toByteVector : object -> Word8Vector.vector
     val toExn    : object -> exn
     val toReal   : object -> real
     val toInt    : object -> int

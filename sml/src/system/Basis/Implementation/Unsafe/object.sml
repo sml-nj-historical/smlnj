@@ -143,8 +143,20 @@ structure Object :> UNSAFE_OBJECT =
 	   of PolyArray => ((InlineT.cast obj) : object array)
 	    | _ => raise Representation
 	  (* end case *))
+    fun toRealArray obj = (case (rep obj)
+	   of RealArray => ((InlineT.cast obj) : Real64Array.array)
+	    | _ => raise Representation
+	  (* end case *))
+    fun toByteArray obj = (case (rep obj)
+	   of ByteArray => ((InlineT.cast obj) : Word8Array.array)
+	    | _ => raise Representation
+	  (* end case *))
     fun toVector obj = (case (rep obj)
 	   of PolyVector => ((InlineT.cast obj) : object vector)
+	    | _ => raise Representation
+	  (* end case *))
+    fun toByteVector obj = (case (rep obj)
+	   of ByteVector => ((InlineT.cast obj) : Word8Vector.vector)
 	    | _ => raise Representation
 	  (* end case *))
     fun toExn obj =
