@@ -47,6 +47,8 @@
  *    Function arguments:
  *	* arguments (except for floating-point values) are passed in
  *	  registers GPR3-GPR10
+ *
+ * Note also that stack frames are supposed to be 16-byte aligned.
  *)
 
 (* we extend the interface to support generating the stubs needed for
@@ -56,6 +58,23 @@
 signature PPC_MACOSX_C_CALLS =
   sig
     include C_CALLS
+
+(*
+    val genStub : {
+	    name  : T.rexp,
+            proto : CTypes.c_proto,
+	    paramAlloc : {szb : int, align : int} -> bool,
+            structRet : {szb : int, align : int} -> T.rexp,
+	    saveRestoreDedicated :
+	      T.mlrisc list -> {save: T.stm list, restore: T.stm list},
+	    callComment : string option,
+            args : c_arg list
+	  } -> {
+	    callseq : T.stm list,
+	    result: T.mlrisc list
+	  }
+*)
+
   end;
 
 functor PPCMacOSX_CCalls (
@@ -109,54 +128,64 @@ functor PPCMacOSX_CCalls (
 
     fun addli (x, 0) = x
       | addli (x, d) = let
-	    val d' = T.I.fromInt (32, d)
-	in
-	    case x of
-		T.ADD (_, r, T.LI d) =>
-		T.ADD (32, r, T.LI (T.I.ADD (32, d, d')))
+	  val d' = T.I.fromInt (32, d)
+	  in
+	    case x
+	     of T.ADD (_, r, T.LI d) =>
+		  T.ADD (32, r, T.LI (T.I.ADD (32, d, d')))
 	      | _ => T.ADD (32, x, T.LI d')
-	end
+	  end
 
     fun argaddr n = addli (spreg, paramAreaOffset + 4*n)
 
-    (* temp location for transfers through memory *)
+  (* temp location for transfers through memory *)
     val tmpaddr = argaddr 1
 
     fun roundup (i, a) = a * ((i + a - 1) div a)
 
-    (* calculate size and alignment for a C type *)
-    fun szal (Ty.C_void | Ty.C_float | Ty.C_PTR |
-	      Ty.C_signed (Ty.I_int | Ty.I_long) |
-	      Ty.C_unsigned (Ty.I_int | Ty.I_long)) = (4, 4)
-      | szal (Ty.C_double |
-	      Ty.C_signed Ty.I_long_long |
-	      Ty.C_unsigned Ty.I_long_long) = (8, 8)
-      | szal (Ty.C_long_double) = (16, 8)
-      | szal (Ty.C_signed Ty.I_char | Ty.C_unsigned Ty.I_char) = (1, 1)
-      | szal (Ty.C_signed Ty.I_short | Ty.C_unsigned Ty.I_short) = (2, 2)
-      | szal (Ty.C_ARRAY (t, n)) = let val (s, a) = szal t in (n * s, a) end
-      | szal (Ty.C_STRUCT l) =
-	let (* i: next free memory address (relative to struct start);
-	     * a: current total alignment,
-	     * l: list of struct member types *)
-	    fun pack (i, a, []) =
-		(* when we are done with all elements, the total size
-		 * of the struct must be padded out to its own alignment *)
+    fun intSizeAndAlign Ty.I_char = (1, 1)
+      | intSizeAndAlign Ty.I_short = (2, 2)
+      | intSizeAndAlign Ty.I_int = (4, 4)
+      | intSizeAndAlign Ty.I_long = (4, 4)
+      | intSizeAndAlign Ty.I_long_long = (8, 8)
+
+  (* calculate size and alignment for a C type *)
+    fun szal (T.C_unsigned ty) = intSizeAndAlign ty
+      | szal (T.C_signed ty) = intSizeAndAlign ty
+      | szal Ty.C_void = raise Fail "unexpected void type"
+      | szal Ty.C_float = (4, 4)
+      | szal Ty.C_PTR = (4, 4)
+      | szal Ty.C_double = (8, 8)
+      | szal (Ty.C_long_double) = (8, 8)
+      | szal (Ty.C_ARRAY(t, n)) = let val (s, a) = szal t in (n * s, a) end
+      | szal (Ty.C_STRUCT l) = let
+(* FIXME: the rules for structs are more complicated (and they also depend
+ * on the alignment mode).  In Power alignment, 8-byte quantites like
+ * long long and double are 4-byte aligned in structs.
+ *)
+	(* i: next free memory address (relative to struct start);
+	 * a: current total alignment,
+	 * l: list of struct member types
+	 *)
+	  fun pack (i, a, []) =
+	    (* when we are done with all elements, the total size
+	     * of the struct must be padded out to its own alignment
+	     *)
 		(roundup (i, a), a)
-	      | pack (i, a, t :: tl) = let
-		    val (ts, ta) = szal t (* size and alignment for member *)
+	    | pack (i, a, t :: tl) = let
+		val (ts, ta) = szal t (* size and alignment for member *)
 		in
-		    (* member must be aligned according to its own
-		     * alignment requirement; the next free position
-		     * is then at "aligned member-address plus member-size";
-		     * new total alignment is max of current alignment
-		     * and member alignment (assuming all alignments are
-		     * powers of 2) *)
-		    pack (roundup (i, ta) + ts, Int.max (a, ta), tl)
+		(* member must be aligned according to its own
+		 * alignment requirement; the next free position
+		 * is then at "aligned member-address plus member-size";
+		 * new total alignment is max of current alignment
+		 * and member alignment (assuming all alignments are
+		 * powers of 2) *)
+		  pack (roundup (i, ta) + ts, Int.max (a, ta), tl)
 		end
-	in
+	  in
 	    pack (0, 1, l)
-	end
+	  end
 
     fun genCall { name, proto, paramAlloc, structRet, saveRestoreDedicated,
 		  callComment, args } = let
