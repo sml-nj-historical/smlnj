@@ -23,6 +23,7 @@ structure StdConfig = struct
 			      Option.map (fn h => OS.Path.concat
 					   (h, ".smlnj-pathconfig"))
 			                 (OS.Process.getEnv "HOME"))
+	val warn_obsolete = bool ("WARN_OBSOLETE", true)
     end
 end
 

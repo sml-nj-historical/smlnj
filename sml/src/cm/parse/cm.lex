@@ -23,6 +23,7 @@ type lexarg = {
 	       getS: pos * (string * pos * pos -> lexresult) -> lexresult,
 	       handleEof: unit -> pos,
 	       newline: pos -> unit,
+	       obsolete: pos * pos -> unit,
 	       error: pos * pos -> string -> unit,
 	       sync: pos * string -> unit
 	      }
@@ -106,6 +107,7 @@ fun idToken (t, p, idlist, default, chstate) =
         newS, addS, addSC, addSN, getS,
         handleEof,
         newline,
+	obsolete,
 	error,
 	sync });
 
@@ -197,10 +199,14 @@ sharp="#";
 <P>"-"		        => (Tokens.MINUS (yypos, yypos + 1));
 <P>"*"		        => (Tokens.TIMES (yypos, yypos + 1));
 <P>"<>"		        => (Tokens.NE (yypos, yypos + 2));
+<P>"!="                 => (obsolete (yypos, yypos + 2);
+			    Tokens.NE (yypos, yypos+2));
 <P>"<="		        => (Tokens.LE (yypos, yypos + 2));
 <P>"<"		        => (Tokens.LT (yypos, yypos + 1));
 <P>">="		        => (Tokens.GE (yypos, yypos + 2));
 <P>">"		        => (Tokens.GT (yypos, yypos + 1));
+<P>"=="                 => (obsolete (yypos, yypos + 2);
+			    Tokens.EQ (yypos, yypos + 2));
 <P>"="		        => (Tokens.EQ (yypos, yypos + 1));
 <P>"~"		        => (Tokens.TILDE (yypos, yypos + 1));
 
@@ -214,6 +220,16 @@ sharp="#";
 
 <P>{id}                 => (idToken (yytext, yypos, pp_ids, Tokens.CM_ID,
 				     fn () => YYBEGIN PM));
+<P>"/"                  => (obsolete (yypos, yypos + 1);
+			    Tokens.DIV (yypos, yypos + 1));
+<P>"%"                  => (obsolete (yypos, yypos + 1);
+			    Tokens.MOD (yypos, yypos + 1));
+<P>"&&"                 => (obsolete (yypos, yypos + 2);
+			    Tokens.ANDALSO (yypos, yypos + 2));
+<P>"||"                 => (obsolete (yypos, yypos + 2);
+			    Tokens.ORELSE (yypos, yypos + 2));
+<P>"!"                  => (obsolete (yypos, yypos + 1);
+			    Tokens.NOT (yypos, yypos + 1));
 
 <M>({id}|{sym}+)        => (YYBEGIN INITIAL;
 			    Tokens.ML_ID (yytext, yypos, yypos + size yytext));

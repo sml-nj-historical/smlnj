@@ -56,9 +56,10 @@ structure S = CMSemant
 
 %pos int
 %verbose
-%arg (grouppath, context, error, doMember, curlib, gp) :
+%arg (grouppath, context, obsolete, error, doMember, curlib, gp) :
     S.pathname *
     S.context *
+    (pos * pos -> unit) *
     (pos * pos -> string -> unit) *
     (S.pathname * pos * pos * S.cm_class option -> S.members) *
     S.pathname option *
@@ -191,6 +192,9 @@ aexp : NUMBER				        (S.number NUMBER)
      | aexp DIV aexp		                (S.divide (aexp1, aexp2))
      | aexp MOD aexp		                (S.modulus (aexp1, aexp2))
      | TILDE aexp		                (S.negate aexp)
+     | MINUS aexp %prec TILDE                   (obsolete (MINUSleft,
+							   MINUSright);
+						 S.negate aexp)
 
 boolexp : DEFINED LPAREN ml_symbol RPAREN	(S.ml_defined ml_symbol)
 	| DEFINED LPAREN sym RPAREN		(S.cm_defined gp sym)

@@ -142,6 +142,11 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		     * data structures. *)
 		    fun error r m =
 			EM.error source r EM.COMPLAIN m EM.nullErrorBody
+		    fun obsolete r =
+			if EnvConfig.getSet StdConfig.warn_obsolete NONE then
+			    EM.error source r EM.WARN
+			      "old-style operator (obsolete)" EM.nullErrorBody
+			else ()
 
 		    (* recParse returns a group (not an option).
 		     * This function is used to parse sub-groups.
@@ -245,6 +250,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			  getS = getS,
 			  handleEof = handleEof,
 			  newline = newline,
+			  obsolete = obsolete,
 			  error = error,
 			  sync = sync}
 		    end
@@ -256,7 +262,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    val (parseResult, _) =
 			CMParse.parse (lookAhead, tokenStream,
 				       fn (s,p1,p2) => error (p1, p2) s,
-				       (group, context, error,
+				       (group, context, obsolete, error,
 					doMember, curlib, ginfo))
 		in
 		    if !(#anyErrors source) then NONE

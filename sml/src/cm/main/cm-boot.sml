@@ -346,6 +346,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				      EnvConfig.getSet StdConfig.debug,
 				   keep_going =
 				      EnvConfig.getSet StdConfig.keep_going,
+				   warn_obsolete =
+				      EnvConfig.getSet StdConfig.warn_obsolete,
 				   parse_caching =
 				      EnvConfig.getSet StdConfig.parse_caching,
 				   setAnchor = setAnchor,
