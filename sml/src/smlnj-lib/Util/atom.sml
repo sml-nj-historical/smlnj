@@ -46,44 +46,51 @@ structure Atom :> ATOM =
     fun h % m = Word.toIntX (Word.andb (h, m))
 
   (* Map a string or substring s to the corresponding unique atom. *)
-    fun atom0 (toString, hashString, sameString) s =
-	let val h = hashString s
-	    val tbl = !table
-	    val sz = Array.length tbl
-	    val indx = h % (Word.fromInt sz - 0w1)
-	    fun look ((a as ATOM { hash, id }) :: rest) =
-		  if hash = h andalso sameString (s, id) then a else look rest
-	      | look [] = 
-		let fun new (tbl, indx) =
-			let val a = ATOM { hash = h, id = toString s }
-			in Array.update (tbl, indx, a :: Array.sub (tbl, indx));
-			   a
-			end
-		in if !numItems < sz then new (tbl, indx)
-		   else let val newSz = sz + sz
-			    val newMask = Word.fromInt newSz - 0w1
-			    val newTbl = Array.array (newSz, [])
-			    fun ins (item as ATOM { hash, ... }) =
-				let val indx = hash % newMask
-				in Array.update
-				       (newTbl, indx,
-					item :: Array.sub (newTbl, indx))
-				end
-			in Array.app (app ins) tbl;
-			   table := newTbl;
-			   new (newTbl, h % newMask)
-			end
-		end
-	in look (Array.sub (tbl, indx))
-	end
+    fun atom0 (toString, hashString, sameString) s = let
+	  val h = hashString s
+	  val tbl = !table
+	  val sz = Array.length tbl
+	  val indx = h % (Word.fromInt sz - 0w1)
+	  fun look ((a as ATOM{hash, id}) :: rest) =
+		if (hash = h) andalso sameString(s, id)
+		  then a
+		  else look rest
+	    | look [] = let
+		fun new (tbl, indx) = let
+		      val a = ATOM {hash = h, id = toString s}
+		      in
+			Array.update (tbl, indx, a :: Array.sub (tbl, indx));
+			a
+		      end
+		in
+		  if !numItems < sz
+		    then new (tbl, indx)
+		    else let
+		      val newSz = sz + sz
+		      val newMask = Word.fromInt newSz - 0w1
+		      val newTbl = Array.array (newSz, [])
+		      fun ins (item as ATOM{hash, ...}) = let
+			    val indx = hash % newMask
+			    in
+			      Array.update (newTbl, indx, item :: Array.sub (newTbl, indx))
+			    end
+		      in
+			Array.app (app ins) tbl;
+			table := newTbl;
+			new (newTbl, h % newMask)
+		      end
+	      end
+	  in
+	    look (Array.sub (tbl, indx))
+	  end
 
   (* instantiate atom0 for the string case *)
     val atom = atom0 (fn s => s, HashString.hashString, op = )
 
   (* instantiate atom0 for the substring case *)
-    val atom' = atom0 (Substring.string,
-		       HashString.hashString',
-		       fn (ss, s) => Substring.compare (ss, Substring.full s)
-				     = EQUAL)
+    val atom' = atom0 (
+	  Substring.string,
+	  HashString.hashSubstring,
+	  fn (ss, s) => (Substring.compare(ss, Substring.full s) = EQUAL))
 
-  end (* signature ATOM *)
+  end (* structure Atom *)

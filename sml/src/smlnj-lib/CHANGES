@@ -1,6 +1,10 @@
 This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
+
+[2004-12-15]
+	Change HashString.hashString' to hashSubstring.
+
 [2004-12-09]
 	Added two simple statistics modules:
 	* RealOrderStats implements selection of arbitrary order
