@@ -22,7 +22,7 @@ structure Compiler = struct
     structure SmlFile = SmlFile
     structure Rehash = Rehash
     structure PrintHooks = PrintHooks
-    structure Version = CompilerVersion
+    structure Version = SMLNJVersion
 
     open Backend
 

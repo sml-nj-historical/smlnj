@@ -5,7 +5,7 @@
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
-structure CompilerVersion : sig
+structure SMLNJVersion : sig
 
     val version : {
             system : string,      	(* the system title *)
@@ -23,14 +23,20 @@ structure CompilerVersion : sig
 	    date = "%D"
 	  }
 
+    fun i2s 0 = "0"
+      | i2s n = let val o0 = ord #"0"
+		    fun loop (0, a) = implode a
+		      | loop (n, a) = loop (n div 10, chr (n mod 10 + o0) :: a)
+		in
+		    loop (n, [])
+		end
+
     fun f ([], l) = l
-      | f ([x : int], l) = (Int.toString x)::l
-      | f (x::r, l) = (Int.toString x) :: "." :: f(r, l)
+      | f ([x], l) = i2s x :: l
+      | f (x :: r, l) = i2s x :: "." :: f (r, l)
 
     val banner = concat (
 	    #system version :: "v" :: 
 	    f (#version_id version, [" [built: ", #date version, "]"]))
 
   end
-
-structure Version = CompilerVersion

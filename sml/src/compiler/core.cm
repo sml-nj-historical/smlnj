@@ -68,7 +68,7 @@ Group (../system/smlnj/viscomp/core.cm)
 	structure UnpickleSymPid
 	structure CompilerPPTable
 	structure PrintHooks
-	structure CompilerVersion
+	structure SMLNJVersion
 	structure CoreSym
 	structure FLINT
 
@@ -125,9 +125,6 @@ Group (../system/smlnj/viscomp/core.cm)
 	structure DebIndex
 is
 
-(* load the version tool (defines class "version" -- see below) *)
-TopLevel/main/versiontool.cm : tool
-
 TopLevel/environ/environ.sig
 TopLevel/environ/environ.sml
 TopLevel/environ/symenv.sig
@@ -150,11 +147,6 @@ TopLevel/main/compile.sig
 TopLevel/main/compile.sml
 TopLevel/main/printhooks.sml
 TopLevel/main/pptable.sml
-
-(* auto-generate the version file... *)
-TopLevel/main/version.template : version (target: TopLevel/main/version.sml
-                                          versionfile: ../../config/version
-                                          releasefile: ../../config/release)
 
 (* Semantic analysis (elaborator) specialized for SML/NJ. *)
 Semant/basics/inlinfo.sig
@@ -335,3 +327,5 @@ $/controls-lib.cm
 $/pickle-lib.cm
 
 $smlnj/init/init.cmi : cm          (* to gain access at CoreIntInf *)
+
+$smlnj/internal/smlnj-version.cm

@@ -23,7 +23,7 @@ functor SpecificSymValFn (val arch: string
 				("unknown architecture: " ^ arch)
 	    val env0 = SymVal.default
 			   { arch = arch, big = big, size = size, os = os,
-			     version = #version_id CompilerVersion.version }
+			     version = #version_id SMLNJVersion.version }
 	    val er = ref env0
 	in
 	    fun symval s = let

@@ -14,6 +14,24 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/09/30 10:55:00 CDT
+Tag: blume-20040930-version
+Description:
+
+* Moved the "version" magic into its own little library under
+src/system/smlnj/internal.  This avoids expensive reconstruction
+of a stable src/compiler/core.cm.
+
+* At the same time, structure CompilerVersion is now known as structure
+SMLNJVersion.
+
+* Arranged for the version tool to NOT kick in when rebuilding the system
+  (makeml -rebuild, fixpt).  Otherwise one would never reach a fixpoint.
+  Also, loading the versiontool does not work when rebuilding the system
+  because CM is not properly initialized at that time.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/09/29 14:00:00 CDT
 Tag: blume-20040929-autoversion
 Description:

@@ -608,7 +608,7 @@ struct
 		fun writeBFC s (i, { code, data, env, inlinfo }) = let
 		    val { contents, stats } = getBFC i
 		    val { code = c, data = d, env = e, inlinfo = ii } = stats
-		    val v = #version_id CompilerVersion.version
+		    val v = #version_id SMLNJVersion.version
 		in
 		    ignore (BF.write { arch = arch, version = v,
 				       nopickle = true,
