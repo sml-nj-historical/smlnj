@@ -284,9 +284,11 @@ functor IA32SVID_CCalls (
 	(* for functions that return a struct/union, pass the location
 	 * as an implicit first argument.
 	 *)
-	  val (args, argLocs) = (case structRetLoc
-		 of SOME pos => (ARG(structRet pos)::args, Stk(wordTy, 0)::argLocs)
-		  | NONE => (args, argLocs)
+	  val (args, argLocs, argMem') = (case structRetLoc
+		 of SOME pos => (ARG(structRet pos)::args,
+				 Stk(wordTy, 0)::argLocs,
+				 { szb = #szb argMem - 4, align = #align argMem })
+		  | NONE => (args, argLocs, argMem)
 		(* end case *))
 	(* generate instructions to copy arguments into argument area
 	 * using %esp to address the argument area.
@@ -376,7 +378,8 @@ functor IA32SVID_CCalls (
 	  val callStm = T.CALL{
 		  funct=name, targets=[], defs=defs, uses=[], 
 		  region = mem,
-		  pops = if calleePops then Int32.fromInt(#szb argMem) else 0
+		  pops = if calleePops then Int32.fromInt(#szb argMem)
+			 else Int32.fromInt (#szb argMem - #szb argMem')
 		}
 	  val callStm = (case callComment
 		 of NONE => callStm
@@ -396,7 +399,7 @@ functor IA32SVID_CCalls (
 	(* code to pop the arguments from the stack *)
 	  val popArgs = if calleePops
 		then []
-		else [T.MV(wordTy, sp, T.ADD(wordTy, spR, T.LI(IntInf.fromInt(#szb argMem))))]
+		else [T.MV(wordTy, sp, T.ADD(wordTy, spR, T.LI(IntInf.fromInt(#szb argMem'))))]
 	(* code to copy the result into fresh pseudo registers *)
 	  val (resultRegs, copyResult) = (case resLoc
 		 of NONE => ([], [])
