@@ -919,6 +919,22 @@ in
     lt_nvar_cvt
 end (* lt_nvar_cvt_gen *)
 
+(* make a type abstraction from nvar to lty *)
+fun lt_nvpoly(tvks, lt) = 
+    let 
+	fun frob ((tv,k)::tvks, n, ks, tvoffs) = 
+	    frob (tvks, n+1, k::ks, (tv,n)::tvoffs)
+	  | frob ([], _, ks, tvoffs) =
+	    (rev ks, rev tvoffs)
+		
+	val (ks, tvoffs) = frob (tvks, 0, [], [])
+	fun cmp ((tvar1,_), (tvar2,_)) = tvar1 > tvar2
+	val tvoffs = Sort.sort cmp tvoffs
+			       
+	(* temporarily gen() *)
+	val ltSubst = lt_nvar_cvt_gen() tvoffs (DI.next DI.top)
+    in ltc_poly(ks, map ltSubst lt)
+    end
 
 end (* top-level local *)
 end (* structure LtyExtern *)

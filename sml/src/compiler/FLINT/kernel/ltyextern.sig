@@ -54,6 +54,8 @@ val tc_nvar_elim_gen : unit -> (tvar * DebIndex.depth -> tyc option)
 val lt_nvar_elim_gen : unit -> (tvar * DebIndex.depth -> tyc option) 
                             -> DebIndex.depth -> lty -> lty
 
+(* !! BEWARE !!
+ * The `subst' argument is assumed to be sorted with increasing tvars *)
 val tc_nvar_subst_gen : unit -> (tvar * tyc) list -> tyc -> tyc
 val lt_nvar_subst_gen : unit -> (tvar * tyc) list -> lty -> lty
 
@@ -61,6 +63,8 @@ val tc_nvar_cvt_gen : unit -> (tvar * int) list
                            -> DebIndex.depth -> tyc -> tyc
 val lt_nvar_cvt_gen : unit -> (tvar * int) list 
                            -> DebIndex.depth -> lty -> lty
+(* The equivalent to ltc_poly for the nvar case *)
+val lt_nvpoly : (tvar * tkind) list * lty list -> lty
 
 (* special adjustment functions used during type specializations *)
 val lt_sp_adj : tkind list * lty * tyc list * int * int -> lty

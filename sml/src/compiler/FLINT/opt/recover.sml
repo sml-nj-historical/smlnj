@@ -6,7 +6,8 @@ signature RECOVER =
 sig 
   val recover : (FLINT.prog * bool) -> 
                   {getLty: FLINT.value -> FLINT.lty,
-                   cleanUp: unit -> unit}
+                   cleanUp: unit -> unit,
+		   addLty: (FLINT.lvar * FLINT.lty) -> unit}
 end (* signature SPECIALIZE *)
 
 structure Recover : RECOVER = 
@@ -24,7 +25,7 @@ fun ltInst (lt, ts) =
     of [x] => x
      | _ => bug "unexpected case in ltInst")
 
-(** there two functions are applicable to the types of primops and data
+(** these two functions are applicable to the types of primops and data
     constructors only (ZHONG) *)
 fun arglty (lt, ts) = 
   let val (_, atys, _) = LT.ltd_arrow(ltInst(lt, ts))
@@ -38,16 +39,12 @@ fun reslty (lt, ts) =
   end
 
 exception RecoverLty
-fun recover (fdec, postRep) = 
-  let val zz : (lty * DI.depth) Intmap.intmap = Intmap.new(32, RecoverLty)
-      val add = Intmap.add zz
+fun recover (fdec, postRep) =
+  let val zz : lty Intmap.intmap = Intmap.new(32, RecoverLty)
       val get = Intmap.map zz
-      fun addvar d (x, t) = add(x, (t, d))
-      fun addvars d vts = app (addvar d) vts
-      fun getlty (VAR v) = 
-            let val (t, od) = get v
-             in t (* LT.lt_adj(t, od, d) *)
-            end
+      val addv = Intmap.add zz
+      fun addvs vts = app addv vts
+      fun getlty (VAR v) = get v
         | getlty (INT _ | WORD _) = LT.ltc_int
         | getlty (INT32 _ | WORD32 _) = LT.ltc_int32
         | getlty (REAL _) = LT.ltc_real
@@ -55,28 +52,10 @@ fun recover (fdec, postRep) =
 
       val lt_nvar_cvt = LT.lt_nvar_cvt_gen()
 
-      fun lt_nvpoly(tvks, lt) = 
-          let 
-              fun frob ((tv,k)::tvks, n, ks, tvoffs) = 
-                  frob (tvks, n+1, k::ks, (tv,n)::tvoffs)
-                | frob ([], _, ks, tvoffs) =
-                  (rev ks, rev tvoffs)
-                      
-              val (ks, tvoffs) = frob (tvks, 0, [], [])
-              fun cmp ((tvar1,_), (tvar2,_)) = tvar1 > tvar2
-              val tvoffs = Sort.sort cmp tvoffs
-                                     
-                                        (* temporarily gen() *)
-              val ltSubst = LT.lt_nvar_cvt_gen() tvoffs (DI.next DI.top)
-          in LT.ltc_poly(ks, map ltSubst lt)
-          end
-
       (* loop : depth -> lexp -> lty list *)
-      fun loop d e = 
+      fun loop e = 
         let fun lpv u = getlty u
             fun lpvs vs = map lpv vs
-            val addv = addvar d
-            val addvs = addvars d
 
             fun lpd (fk, f, vts, e) = 
               (addvs vts; addv (f, LT.ltc_fkfun(fk, map #2 vts, lpe e)))
@@ -102,7 +81,7 @@ fun recover (fdec, postRep) =
               | lpe (FIX(fdecs, e)) = (lpds fdecs; lpe e)
               | lpe (APP(u, vs)) = #2(LT.ltd_fkfun (lpv u))
               | lpe (TFN((v, tvks, e1), e2)) = 
-                  (addv(v, lt_nvpoly(tvks, loop (DI.next d) e1));
+                  (addv(v, LT.lt_nvpoly(tvks, loop e1));
                    lpe e2)
               | lpe (TAPP(v, ts)) = LT.lt_inst (lpv v, ts)
               | lpe (RECORD(rk,vs,v,e)) = 
@@ -135,12 +114,11 @@ fun recover (fdec, postRep) =
         end (* function transform *)
 
       val (fkind, f, vts, e) = fdec
-      val d = DI.top
-      val _ = addvars d vts
+      val _ = addvs vts
       val atys = map #2 vts
-      val rtys = loop d e
-      val _ = addvar d (f, LT.ltc_fkfun(fkind, atys, rtys))
-  in {getLty=getlty, cleanUp=fn () => Intmap.clear zz}
+      val rtys = loop e
+      val _ = addv (f, LT.ltc_fkfun(fkind, atys, rtys))
+  in {getLty=getlty, cleanUp=fn () => Intmap.clear zz, addLty=addv}
  end (* function recover *)
 
 end (* local *)

@@ -250,7 +250,8 @@ val purePrimop =
    | (DISPOSE | MKSPECIAL | DEFLVAR | MARKEXN) => false
    | _ => true
 
-(* should return more than just a boolean *)
+(* should return more than just a boolean:
+ * {Store,Continuation}-{read,write} *)
 val effect =
  fn ARITH{overflow,...} => overflow
   | (INLRSHIFT _ | INLRSHIFTL _) => false
@@ -260,7 +261,6 @@ val effect =
   | (BOXED | UNBOXED) => false
   | (LENGTH | OBJLENGTH) => false
   | (CAST | WCAST) => false
-  | (MAKEREF | DEREF) => false
   | (INLMIN | INLMAX | INLNOT | INLCOMPOSE) => false
   | (INL_ARRAY | INL_VECTOR | INL_MONOARRAY _ | INL_MONOVECTOR _) => false
   | (WRAP | UNWRAP) => false
@@ -278,8 +278,3 @@ val mayRaise =
    | _ => false
 
 end  (* structure PrimOp *)
-
-
-(*
- * $Log$
- *)

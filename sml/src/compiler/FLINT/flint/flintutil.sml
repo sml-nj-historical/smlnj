@@ -24,6 +24,9 @@ sig
   val copy : (FLINT.tvar * FLINT.tyc) list ->
              FLINT.lvar IntmapF.intmap ->
              FLINT.lexp -> FLINT.lexp
+  val copyfdec : FLINT.fundec -> FLINT.fundec
+
+  val freevars : FLINT.lexp -> IntSetF.intset
 
   val dcon_eq : FLINT.dcon * FLINT.dcon -> bool
 
@@ -40,6 +43,8 @@ local structure EM = ErrorMsg
       structure M  = IntmapF
       structure A  = Access
       structure O  = Option
+      structure S  = IntSetF
+      structure F  = FLINT
       open FLINT
 in 
 
@@ -97,6 +102,8 @@ fun copy ta alpha le = let
 
     val tc_subst = LT.tc_nvar_subst_gen()
     val lt_subst = LT.lt_nvar_subst_gen()
+
+    val tmap_sort = Sort.sort (fn ((v1,_),(v2,_)) => v1 > v2)
 
     fun substvar alpha lv = ((M.lookup alpha lv) handle M.IntmapF => lv)
     fun substval alpha (VAR lv) = VAR(substvar alpha lv)
@@ -158,8 +165,9 @@ fun copy ta alpha le = let
        (* don't forget to rename the tvar also *)
        let val (nlv,nalpha) = newv(lv,alpha)
 	   val (nargs,ialpha) = newvs(map #1 args, nalpha)
-	   val ita = (ListPair.map (fn (t,nt) => (t, LT.tcc_nvar nt))
-				   (map #1 args, nargs)) @ ta
+	   val ita = tmap_sort ((ListPair.map
+				     (fn ((t,k),nt) => (t, LT.tcc_nvar nt))
+				     (args, nargs)) @ ta)
        in TFN((nlv, ListPair.zip(nargs, map #2 args), copy' ita ialpha body),
 		copy nalpha le)
        end
@@ -194,9 +202,59 @@ fun copy ta alpha le = let
        in PRIMOP(cpo po, map substval vs, nlv, copy nalpha le)
        end
     end
-in copy' ta alpha le
+in copy' (tmap_sort ta) alpha le
 end
+fun copyfdec fdec =
+    case copy [] M.empty (F.FIX([fdec], F.RET[]))
+     of F.FIX([nfdec], F.RET[]) => nfdec
+      | _ => bug "copyfdec"
 
+fun freevars lexp = let
+    val loop = freevars
+
+    fun addv (s,F.VAR lv) = S.add(lv, s)
+      | addv (s,_) = s
+    fun addvs (s,vs) = foldl (fn (v,s) => addv(s, v)) s vs
+    fun rmvs (s,lvs) = foldl S.rmv s lvs
+    fun singleton (F.VAR v) = S.singleton v
+      | singleton _ = S.empty
+			  
+    fun fpo (fv,(NONE:F.dict option,po,lty,tycs)) = fv
+      | fpo (fv,(SOME{default,table},po,lty,tycs)) =
+	addvs(addv(fv, F.VAR default), map (F.VAR o #2) table)
+	     
+    fun fdcon (fv,(s,Access.EXN(Access.LVAR lv),lty)) = addv(fv, F.VAR lv)
+      | fdcon (fv,_) = fv
+			   
+in case lexp
+    of F.RET vs => addvs(S.empty, vs)
+     | F.LET (lvs,body,le) => S.union(rmvs(loop le, lvs), loop body)
+     | F.FIX (fdecs,le) =>
+       rmvs((foldl (fn ((_,_,args,body),fv) =>
+		    S.union(rmvs(loop body, map #1 args), fv))
+		   (loop le) fdecs),
+	    map #2 fdecs)
+     | F.APP (f,args) => addvs(S.empty, f::args)
+     | F.TFN ((f,args,body),le) => S.union(S.rmv(f, loop le), loop body)
+     | F.TAPP (f,args) => singleton f
+     | F.SWITCH (v,ac,arms,def) =>
+       let fun farm ((dc,le),fv) =
+	       let val fvle = loop le
+	       in S.union(fv,
+			  case dc
+			   of F.DATAcon(dc,_,lv) => fdcon(S.rmv(lv, fvle),dc)
+			    | _ => fvle)
+	       end
+       in foldl farm (case def of NONE => S.empty | SOME le => loop le) arms
+       end
+     | F.CON (dc,tycs,v,lv,le) => fdcon(addv(S.rmv(lv, loop le), v),dc)
+     | F.RECORD (rk,vs,lv,le) => addvs(S.rmv(lv, loop le), vs)
+     | F.SELECT (v,i,lv,le) => addv(S.rmv(lv, loop le), v)
+     | F.RAISE (v,ltys) => singleton v
+     | F.HANDLE (le,v) => addv(loop le, v)
+     | F.BRANCH (po,vs,le1,le2) => fpo(addvs(S.union(loop le1, loop le2), vs), po)
+     | F.PRIMOP (po,vs,lv,le) => fpo(addvs(S.rmv(lv, loop le), vs),po)
+end
 
 end (* top-level local *)
 end (* structure FlintUtil *)

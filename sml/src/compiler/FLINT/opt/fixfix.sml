@@ -259,11 +259,13 @@ in case lexp
 		       else let val cs = map (fn ref(sp,ti) => sp + ti div 2) cs
 				val s' = foldl (op+) 0 cs
 		       in if s < 2*s' + ilthreshold
-			  then ((* say((Collect.LVarString f)^" = F.IH_MAYBE "^
-				    (Int.toString (s-ilthreshold))^
-				    (foldl (fn (i,s) => s^" "^
-					    (Int.toString i))
-				     "" cs)^"\n"); *)
+			  then ((*; say((Collect.LVarString f)^
+				" {"^(Int.toString(!cf))^
+				"} = F.IH_MAYBE "^
+				(Int.toString (s-ilthreshold))^
+				(foldl (fn (i,s) => s^" "^
+				        (Int.toString i))
+				       "" cs)^"\n"); *)
 				F.IH_MAYBE (s-ilthreshold, cs))
 			  else inline
 		       end

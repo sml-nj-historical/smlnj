@@ -13,9 +13,11 @@ struct
 local
     structure F  = FLINT
     structure S  = IntSetF
+    structure M  = IntmapF
+    structure O  = Option
     structure OU = OptUtils
     structure FU = FlintUtil
-    structure LT = LtyDef
+    structure LT = LtyExtern
     structure PO = PrimOp
     structure PP = PPFlint
 in
@@ -35,173 +37,256 @@ fun addv (s,F.VAR lv) = S.add(lv, s)
 fun addvs (s,vs) = foldl (fn (v,s) => addv(s, v)) s vs
 fun rmvs (s,lvs) = foldl S.rmv s lvs
 
-(*
-fun join (f,args,fdecI as (fkI,fI,argsI,bodyI),fdecE as (fkE,fE,argsE,bodyE)) =
-    let val (nfk,_) = OU.fk_wrap(fk, NONE)
-	val argsv = map (fn (v,t) => F.VAR v) args
-	val nbody =
-	    let val tmp = mklv()
-	    in F.LET([tmp], F.APP(F.VAR fE, argsv),
-		     F.APP(F.VAR fI, (F.VAR tmp)::argsv))
-	    end
-	val nfdec = (nfk,f,args,nbody)
-    in
-	SOME(fn e =>
-	     F.FIX([fdecE],
-		   F.FIX([fdecI],
-			 F.FIX([nfdec], e))),
-	     F.FIX([fdecI], F.FIX([nfdec], leI)),
-	     S.add(fE, rmvs(S.union(fvI, FU.freevars bodyI),
-	                    f::(map #1 args))))
-    end
-*)
 
 fun split (fdec as (fk,f,args,body)) = let
-    val {getLty, cleanUp} = Recover.recover (fdec, false)
+    val {getLty,addLty,...} = Recover.recover (fdec, false)
 
-(*
- * - copy inlinable elements into a second lexp (expI)
- * - make a `lexp -> lexp' wrapper expE that returns the original lexp
- *   with the argument as the last return-lexp
- * - go through expI bottom-up eliminating dead elements and collecting
- *   free variables
- * - return expE and expI along with expI's free variables
+(* sexp: env -> lexp -> (leE, leI, fvI, leRet)
+ * - env: IntSetF.set	current environment
+ * - lexp: lexp		expression to split
+ * - leRet: lexp	the core return expression of lexp
+ * - leE: lexp -> lexp	recursively split lexp:  leE leRet == lexp
+ * - leI: lexp option	inlinable part of lexp (if any)
+ * - fvI: IntSetF.set	free variables of leI:   FU.freevars leI == fvI
+ *
+ * sexp splits the lexp into an expansive part and an inlinable part.
+ * The inlinable part is guaranteed to be side-effect free.
+ * The expansive part doesn't bother to eliminate unused copies of
+ *   elements copied to the inlinable part.
+ * If the inlinable part cannot be constructed, leI is set to F.RET[].
+ *   This implies that fvI == S.empty, which in turn prevents us from
+ *   mistakenly adding anything to leI.
  *)
-fun sexp lexp =
-    case lexp
-     (* we can completely move both RET and TAPP to the I part *)
-     of F.RET vs =>
-	SOME(fn e => e, lexp, addvs(S.empty, vs))
-      | F.TAPP (F.VAR tf,tycs) =>
-	SOME(fn e => e, lexp, S.singleton tf)
+fun sexp env lexp =
+    let fun funeffect f = true		(* FIXME *)
 
-      (* other non-binding lexps result in unsplittable functions *)
-      | F.APP (F.VAR f,args) => NONE
-      | (F.APP _ | F.TAPP _) => bug "strange (T)APP"
-      | (F.SWITCH _ | F.RAISE _ | F.BRANCH _) => NONE
-
-      (* binding-lexps *)
-      | (F.LET (_,_,le) | F.FIX (_,le) | F.TFN (_,le) |
-	 F.CON (_,_,_,_,le) | F.RECORD (_,_,_,le) | F.SELECT (_,_,_,le) |
-	 F.HANDLE (le,_) | F.PRIMOP (_,_,_,le)) =>
-	case sexp le
-	 of NONE => NONE
-	  | SOME (leE,leI,fvI) => let
-
-		fun let1 (lewrap,lv,vs,effect) =
-		    let val leE = lewrap o leE
-		    in if effect orelse not (S.member fvI lv)
-		       then SOME(leE, leI, fvI)
-		       else SOME(leE, lewrap leI,
-				 addvs(S.rmv(lv, fvI), vs))
-		    end
-
-	    in case lexp
-		(* Functions definitions fall into the following categories:
-		 * - (mutually) recursive:  don't bother
-		 * - inlinable:  if exported, copy to leI
-		 * - non-inlinable non-recursive:  split recursively *)
-		of F.FIX (fs,_) =>
-		   let val leE = fn e => F.FIX(fs, leE e)
-		   in case fs
-		       of [({inline=(F.IH_ALWAYS | F.IH_MAYBE _),...},
-			    f,args,body)] =>
-			  if not (S.member fvI f)
-			  then SOME(leE, leI, fvI)
-			  else SOME(leE, F.FIX(fs, leI),
-				    rmvs(S.union(fvI, FU.freevars body),
-					 f::(map #1 args)))
-			| [fdec as (fk as {isrec=NONE,...},f,args,_)] =>
-			  (case sfdec fdec
-			    of (_, NONE) => SOME(leE, leI, fvI)
-			     | (fdecE as (fkE,fE,argsE,bodyE), SOME fdecI) =>
-			       let val fdecI as (fkI,fI,argsI,bodyI) =
-				       FU.copyfdec fdecI
-				   val (nfk,_) = OU.fk_wrap(fk, NONE)
-				   val nargs = map (fn (v,t) => (cplv v, t)) args
-				   val argsv = map (fn (v,t) => F.VAR v) nargs
-				   val nbody =
-				       let val tmp = mklv()
-				       in F.LET([tmp], F.APP(F.VAR fE, argsv),
-						F.APP(F.VAR fI, (F.VAR tmp)::argsv))
-				       end
-				   val nfdec = (nfk,f,nargs,nbody)
-			       in
-				   SOME(fn e => F.FIX([fdecE],
-						      F.FIX([fdecI],
-							    F.FIX([nfdec], e))),
-					F.FIX([fdecI], F.FIX([nfdec], leI)),
-					S.add(fE, rmvs(S.union(fvI, FU.freevars bodyI),
-							 f::(map #1 args))))
-			       end)
-			| _ => SOME(leE, leI, fvI)
-		   end
-
-		 (* TFNs are kinda like FIX except there's no recursion *)
-		 | F.TFN (tf,_) =>
-		   (* FIXME *)
-		   SOME(fn e => F.TFN(tf, leE e), leI, fvI)
-		   
-		 (* non-side effecting binds are copied to leI if exported *)
-		 | F.CON (dc,tycs,v,lv,_) =>
-		   let1(fn e => F.CON(dc, tycs, v, lv, e), lv, [v], false)
-		 | F.RECORD (rk,vs,lv,_) =>
-		   let1(fn e => F.RECORD(rk, vs, lv, e), lv, vs, false)
-		 | F.SELECT (v,i,lv,_) =>
-		   let1(fn e => F.SELECT(v, i, lv, e), lv, [v], false)
-		 | F.PRIMOP (po,vs,lv,_) =>
-		   let1(fn e => F.PRIMOP(po,vs,lv,e), lv, vs, PO.effect(#2 po))
-
-		 (* IMPROVEME: lvs should not be restricted to [lv] *)
-		 | F.LET (lvs as [lv],body as F.TAPP (v,tycs),_) =>
-		   let1(fn e => F.LET(lvs, body, e), lv, [v], false)
-		 | F.LET (lvs as [lv],body as F.APP (v,vs),_) =>
-		   let1(fn e => F.LET(lvs, body, e), lv, v::vs, true)
-		 | F.LET (lvs,body,_) =>
-		   SOME(fn e => F.LET(lvs, body, leE e), leI, fvI)
-
-		 | F.HANDLE (_,v) =>
-		   SOME(fn e => F.HANDLE(leE e, v), leI, fvI)
-		 | _ => bug "second match failed ?!?!"
+	(* non-side effecting binds are copied to leI if exported *)
+	fun let1 (le,lewrap,lv,vs,effect) =
+	    let val (leE,leI,fvI,leRet) = sexp (S.add(lv, env)) le
+		val leE = lewrap o leE
+	    in if effect orelse not (S.member fvI lv)
+	       then (leE, leI, fvI, leRet)
+	       else (leE, lewrap leI, addvs(S.rmv(lv, fvI), vs), leRet)
 	    end
 
+    in case lexp
+	(* we can completely move both RET and TAPP to the I part *)
+	of F.RECORD (rk,vs,lv,le as F.RET [F.VAR lv']) =>
+	   if lv' = lv
+	   then (fn e => e, lexp, addvs(S.empty, vs), lexp)
+	   else (fn e => e, le, S.singleton lv', le)
+	 | F.RET vs =>
+	   (fn e => e, lexp, addvs(S.empty, vs), lexp)
+	 | F.TAPP (F.VAR tf,tycs) =>
+	   (fn e => e, lexp, S.singleton tf, lexp)
 
-and sfdec (fdec as ({cconv=F.CC_FUN _,...},_,_,_)) = (fdec, NONE)
-  | sfdec (fdec as (fk as {inline,cconv,known,isrec},f,args,body)) =
-    case sexp body
-     of NONE => (fdec, NONE)
-      | SOME (leE,leI,fvI) =>
-	let val fvI = S.members(rmvs(fvI, map #1 args))
-	    val fE = cplv f
-	    val fI = cplv f
-	    val tmp = mklv()
-	    val bodyE = leE(F.RECORD(F.RK_STRUCT, map F.VAR fvI,
-				     tmp, F.RET[F.VAR tmp]))
-	    val argI = mklv()
-	    val (_,bodyI) = foldl (fn (lv,(n,le)) =>
-				   (n+1, F.SELECT(F.VAR argI, n, lv, le)))
-				  (0, leI) fvI
-	    val fkI = {inline=F.IH_ALWAYS, cconv=cconv, known=known, isrec=NONE}
-	    val argsI = (argI, LT.ltc_str(map (getLty o F.VAR) fvI))::args
-	in ((fk, fE, args, bodyE), SOME(fkI, fI, argsI, bodyI))
-	end
+	 (* recursive splittable lexps *)
+	 | F.FIX (fdecs,le) => sfix env (fdecs, le)
+	 | F.TFN (tfdec,le) => stfn env (tfdec, le)
 
-in case sfdec fdec
-    of (fdec,NONE) => (fdec, NONE)
-     | (fdecE as (fkE,fE,argsE,bodyE), SOME fdecI) =>
-       let val fdecI as (fkI,fI,argsI,bodyI) = FU.copyfdec fdecI
-	   val (nfk,_) = OU.fk_wrap(fk, NONE)
+	 (* binding-lexps *)
+	 | F.CON (dc,tycs,v,lv,le) =>
+	   let1(le, fn e => F.CON(dc, tycs, v, lv, e), lv, [v], false)
+	 | F.RECORD (rk,vs,lv,le) =>
+	   let1(le, fn e => F.RECORD(rk, vs, lv, e), lv, vs, false)
+	 | F.SELECT (v,i,lv,le) =>
+	   let1(le, fn e => F.SELECT(v, i, lv, e), lv, [v], false)
+	 | F.PRIMOP (po,vs,lv,le) =>
+	   let1(le, fn e => F.PRIMOP(po, vs, lv, e), lv, vs, PO.effect(#2 po))
+
+	 (* IMPROVEME: lvs should not be restricted to [lv] *)
+	 | F.LET(lvs as [lv],body as F.TAPP (v,tycs),le) =>
+	   let1(le, fn e => F.LET(lvs, body, e), lv, [v], false)
+	 | F.LET (lvs as [lv],body as F.APP (v,vs),le) =>
+	   let1(le, fn e => F.LET(lvs, body, e), lv, v::vs, true)
+
+	 | F.SWITCH (v,ac,[(dc as F.DATAcon(_,_,lv),le)],NONE) =>
+	   let1(le, fn e => F.SWITCH(v, ac, [(dc, e)], NONE), lv, [v], false)
+
+	 | F.LET (lvs,body,le) =>
+	   let val (leE,leI,fvI,leRet) = sexp (S.union(S.make lvs, env)) le
+	   in (fn e => F.LET(lvs, body, leE e), leI, fvI, leRet)
+	   end
+
+	 | F.HANDLE (le,v) =>
+	   let val (leE,leI,fvI,leRet) = sexp env le
+	   in (fn e => F.HANDLE(leE e, v), leI, fvI, leRet)
+	   end
+
+	 (* other non-binding lexps result in unsplittable functions *)
+	 | F.APP (F.VAR f,args) =>
+	   if funeffect f
+	   then (fn e => e, F.RET[], S.empty, lexp)
+	   else (fn e => e, lexp, addvs(S.singleton f, args), lexp)
+	 | (F.APP _ | F.TAPP _) => bug "strange (T)APP"
+	 | (F.SWITCH _ | F.RAISE _ | F.BRANCH _) =>
+	   (fn e => e, F.RET[], S.empty, lexp)
+    end
+
+(* Functions definitions fall into the following categories:
+ * - inlinable:  if exported, copy to leI
+ * - (mutually) recursive:  don't bother
+ * - non-inlinable non-recursive:  split recursively *)
+and sfix env (fdecs,le) =
+    let val nenv = S.union(S.make(map #2 fdecs), env)
+	val (leE,leI,fvI,leRet) = sexp nenv le
+	val nleE = fn e => F.FIX(fdecs, leE e)
+    in case fdecs
+	of [({inline=(F.IH_ALWAYS | F.IH_MAYBE _),...},f,args,body)] =>
+	   if not (S.member fvI f)
+	   then (nleE, leI, fvI, leRet)
+	   else (nleE, F.FIX(fdecs, leI),
+		 rmvs(S.union(fvI, FU.freevars body),
+		      f::(map #1 args)),
+		 leRet)
+	 | [fdec as (fk as {cconv=F.CC_FCT,...},_,_,_)] =>
+	   sfdec env (leE,leI,fvI,leRet) fdec
+
+	 | _ => (nleE, leI, fvI, leRet)
+    end
+
+and sfdec env (leE,leI,fvI,leRet) (fk,f,args,body) =
+    let val benv = S.union(S.make(map #1 args), env)
+	val (bodyE,bodyI,fvbI,bodyRet) = sexp benv body
+    in case bodyI
+	of F.RET[] =>
+	   (fn e => F.FIX([(fk, f, args, bodyE bodyRet)], e),
+	    leI, fvI, leRet)
+	 | _ =>
+	   let val fvbIs = S.members(S.diff(fvbI, benv))
+	       (* fdecE *)
+	       val fE = cplv f
+	       val fErets = (map F.VAR fvbIs)
+	       val bodyE = bodyE(F.RET fErets)
+	       (* val tmp = mklv()
+	       val bodyE = bodyE(F.RECORD(F.RK_STRUCT, map F.VAR fvbIs,
+					  tmp, F.RET[F.VAR tmp])) *)
+	       val fdecE = (fk, fE, args, bodyE)
+	       val fElty = LT.ltc_fct(map #2 args, map getLty fErets)
+	       val _ = addLty(fE, fElty)
+
+	       (* fdecI *)
+	       val fkI = {inline=F.IH_ALWAYS, cconv=F.CC_FCT,
+			  known=true, isrec=NONE}
+	       val argsI =
+		(map (fn lv => (lv, getLty(F.VAR lv))) fvbIs) @ args
+	       (* val argI = mklv()
+	       val argsI = (argI, LT.ltc_str(map (getLty o F.VAR) fvbIs))::args
+			    
+	       val (_,bodyI) = foldl (fn (lv,(n,le)) =>
+				      (n+1, F.SELECT(F.VAR argI, n, lv, le)))
+				     (0, bodyI) fvbIs *)
+	       val fdecI as (_,fI,_,_) = FU.copyfdec(fkI,f,argsI,bodyI)
+						    
+	       (* nfdec *)
+	       val (nfk,_) = OU.fk_wrap(fk, NONE)
+	       val nargs = map (fn (v,t) => (cplv v, t)) args
+	       val argsv = map (fn (v,t) => F.VAR v) nargs
+	       val nbody =
+		   let val lvs = map cplv fvbIs
+		   in F.LET(lvs, F.APP(F.VAR fE, argsv),
+			    F.APP(F.VAR fI, (map F.VAR lvs)@argsv))
+		   end
+		   (* let val lv = mklv()
+		   in F.LET([lv], F.APP(F.VAR fE, argsv),
+			    F.APP(F.VAR fI, (F.VAR lv)::argsv))
+		   end *)
+	       val nfdec = (nfk, f, nargs, nbody)
+			       
+	       (* and now, for the whole F.FIX *)
+	       fun nleE e =
+		   F.FIX([fdecE], F.FIX([fdecI], F.FIX([nfdec], leE e)))
+			
+	   in if not(S.member fvI f) then (nleE, leI, fvI, leRet)
+	      else (nleE,
+		    F.FIX([fdecI], F.FIX([nfdec], leI)),
+		    S.add(fE, S.union(S.rmv(f, fvI), S.inter(env, fvbI))),
+		    leRet)
+	   end
+    end
+
+(* TFNs are kinda like FIX except there's no recursion *)
+and stfn env (tfdec as (tf,args,body),le) =
+    let val nenv = S.add(tf, env)
+	val (leE,leI,fvI,leRet) = sexp nenv le
+	val (bodyE,bodyI,fvbI,bodyRet) = sexp nenv body
+    in case (bodyI, S.members(S.diff(fvbI, env)))
+	of ((F.RET _ | F.RECORD(_,_,_,F.RET _)),_) =>
+	   (* split failed *)
+	   (fn e => F.TFN((tf, args, bodyE bodyRet), leE e), leI, fvI, leRet)
+	 | (_,[]) =>
+	   (* everything was split out *)
+	   let val ntfdec = (tf, args, bodyE bodyRet)
+	   in (fn e => F.TFN(ntfdec, leE e),
+	       F.TFN(ntfdec, leI),
+	       S.rmv(tf, S.union(fvI, fvbI)),
+	       leRet)
+	   end
+	 | (_,fvbIs) =>
+	   let (* tfdecE *)
+	       val tfE = cplv tf
+	       val tfEvs = map F.VAR fvbIs
+	       val bodyE = bodyE(F.RET tfEvs)
+	       val tfElty = LT.lt_nvpoly(args, map getLty tfEvs)
+	       val _ = addLty(tfE, tfElty)
+
+	       (* tfdecI *)
+	       val argsI = map (fn (v,k) => (cplv v, k)) args
+	       val tmap = ListPair.map (fn (a1,a2) =>
+					(#1 a1, LT.tcc_nvar(#1 a2)))
+				       (args, argsI)
+	       val bodyI = FU.copy tmap M.empty
+				   (F.LET(fvbIs, F.TAPP(F.VAR tfE, map #2 tmap),
+					  bodyI))
+	       (* F.TFN *)
+	       fun nleE e =
+		   F.TFN((tfE, args, bodyE), F.TFN((tf, argsI, bodyI), leE e))
+
+	   in if not(S.member fvI tf) then (nleE, leI, fvI, leRet)
+	      else (nleE,
+		    F.TFN((tf, argsI, bodyI), leI),
+		    S.add(tfE, S.union(S.rmv(tf, fvI), S.inter(env, fvbI))),
+		    leRet)
+	   end
+    end
+
+(* here, we use B-decomposition, so the args should not be
+ * considered as being in scope *)
+val (bodyE,bodyI,fvbI,bodyRet) = sexp S.empty body
+in case (bodyI, bodyRet)
+    of (F.RET _,_) => ((fk, f, args, bodyE bodyRet), NONE)
+     | (_,F.RECORD (rk,vs,lv,F.RET[lv'])) =>
+       let val fvbIs = S.members fvbI
+
+	   (* fdecE *)
+	   val bodyE = bodyE(F.RECORD(rk, vs@(map F.VAR fvbIs), lv, F.RET[lv']))
+	   val fdecE as (_,fE,_,_) = (fk, cplv f, args, bodyE)
+
+	   (* fdecI *)
+	   val argI = mklv()
+	   val argLtys = (map getLty vs) @ (map (getLty o F.VAR) fvbIs)
+	   val argsI = [(argI, LT.ltc_str argLtys)]
+	   val (_,bodyI) = foldl (fn (lv,(n,le)) =>
+				  (n+1, F.SELECT(F.VAR argI, n, lv, le)))
+				 (length vs, bodyI) fvbIs
+	   val fdecI as (_,fI,_,_) = FU.copyfdec (fk, f, argsI, bodyI)
+
 	   val nargs = map (fn (v,t) => (cplv v, t)) args
-	   val argsv = map (fn (v,t) => F.VAR v) nargs
-	   val tmp = mklv()
        in
+	   (* (fdecE, SOME fdecI) *)
 	   ((fk, f, nargs,
 	     F.FIX([fdecE],
 		   F.FIX([fdecI],
-			 F.LET([tmp], F.APP(F.VAR fE, argsv),
-			       F.APP(F.VAR fI, (F.VAR tmp)::argsv))))),
+			 F.LET([argI],
+			       F.APP(F.VAR fE, map (F.VAR o #1) nargs),
+			       F.APP(F.VAR fI, [F.VAR argI]))))),
 	    NONE)
        end
+
+     | _ =>
+       (PPFlint.printLexp bodyRet;
+	bug "couldn't find the returned record")
+
 end
 
 end

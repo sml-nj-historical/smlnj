@@ -88,7 +88,7 @@ fun mcast (oldts, newts) =
  ****************************************************************************)
 (* reify : fundec -> fundec *)
 fun reify fdec = 
-let val {getLty=getlty, cleanUp} =  Recover.recover (fdec, false) 
+let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false) 
     val (tcf, ltf, clear) = LT.tnarrow_gen ()
 
     fun dcf ((name,rep,lt),ts) = (name,rep,lt_vfn)

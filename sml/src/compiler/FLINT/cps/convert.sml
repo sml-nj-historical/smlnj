@@ -278,7 +278,7 @@ fun rttys (MCONT{ts, ...}) = ts
  *                   convert : F.prog -> CPS.function                      *   
  ***************************************************************************)
 fun convert fdec = 
- let val {getLty=getlty, cleanUp} = Recover.recover (fdec, true)
+ let val {getLty=getlty, cleanUp, ...} = Recover.recover (fdec, true)
      val ctypes = map ctype
      fun res_ctys f = 
        let val lt = getlty (F.VAR f)

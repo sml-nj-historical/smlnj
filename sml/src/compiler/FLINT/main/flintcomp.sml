@@ -29,12 +29,14 @@ val deb2names = phase "Compiler 056 deb2names" TvarCvt.debIndex2names
 val names2deb = phase "Compiler 057 names2deb" TvarCvt.names2debIndex
 
 val lcontract = phase "Compiler 052 lcontract" LContract.lcontract
-val lcontract' = phase "Compiler 052 lcontract'" LContract.lcontract
+(*  val lcontract' = phase "Compiler 052 lcontract'" LContract.lcontract *)
 val fcollect  = phase "Compiler 052a fcollect" Collect.collect
 val fcontract = phase "Compiler 052b fcontract" FContract.contract
 val fcontract = fcontract o fcollect
 val loopify   = phase "Compiler 057 loopify" Loopify.loopify
 val fixfix    = phase "Compiler 056 fixfix" FixFix.fixfix
+
+val split     = phase "Compiler 058 split" FSplit.split
 
 val typelift  = phase "Compiler 0535 typelift" Lift.typeLift
 val wformed   = phase "Compiler 0536 wformed" Lift.wellFormed
@@ -113,6 +115,7 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	    | ("fcontract",_)		=> (fcontract f,  fk, p)
 	    | ("lcontract",_)		=> (lcontract f,  fk, p)
 	    | ("fixfix",   _)		=> (fixfix f,     fk, p)
+	    | ("split",   _)		=> (#1(split f),  fk, p)
 	    | ("loopify",  _)		=> (loopify f,    fk, p)
 	    | ("specialize",FK_NAMED)	=> (specialize f, fk, p)
 	    | ("wrap",FK_NAMED)		=> (wrapping f,	  FK_WRAP, p)
