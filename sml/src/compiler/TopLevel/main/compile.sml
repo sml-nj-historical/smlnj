@@ -96,6 +96,7 @@ val elaborate = ST.doPhase(ST.makePhase "Compiler 030 elaborate") elaborate
 fun instrument {source, senv, compInfo} =
       SProf.instrumDec (senv, compInfo) source 
       o TProf.instrumDec (senv, compInfo)
+      o BTrace.instrument (senv, compInfo)
 
 val instrument = ST.doPhase (ST.makePhase "Compiler 039 instrument") instrument
 

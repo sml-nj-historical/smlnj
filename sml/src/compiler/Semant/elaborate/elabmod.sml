@@ -98,15 +98,7 @@ fun seqEntDec ds =
 fun localEntDec(d1, d2) = seqEntDec [d1, d2] 
 
 (* special symbols *)
-val paramId = S.strSymbol "<param>"
-val functorId = S.fctSymbol "<functor>"
-val hiddenId = S.strSymbol "<hidden>"
-val tempStrId = S.strSymbol "<tempStr>"
-val tempFctId = S.fctSymbol "<tempFct>"
-val fctbodyId = S.strSymbol "<fctbody>"
-val anonfsigId = S.fsigSymbol "<anonfsig>"
-val resultId = S.strSymbol "<resultStr>"
-val returnId = S.strSymbol "<returnStr>"
+open SpecialSymbols
 
 fun stripMarkSigb(MarkSigb(sigb',region'),region) =
       stripMarkSigb(sigb',region')

@@ -27,6 +27,26 @@ signature INTERNALS =
   (* reset the total real and CPU time timers *)
     val resetTimers : unit -> unit
 
+  (* back-tracing control (experimental; M.Blume, 06/2000) *)
+    structure BTrace : sig
+	exception BTrace of unit -> string list
+	val install : { corefns: { save: unit -> unit -> unit,
+				   push: unit -> unit -> unit,
+				   add: int -> unit,
+				   register: int * string -> unit,
+				   report: unit -> unit -> string list },
+			reset: unit -> unit,
+			mkid: string -> int }
+		      -> unit
+	val mode : bool option -> bool	(* turn annotation pass on/off *)
+	val report : unit -> unit -> string list
+	val mkid : string -> int	(* "intern" a string *)
+	val trigger : unit -> 'a
+	(* The following is needed in evalloop.sml (or any other module
+	 * that explicitly handles the BTrace exception but hasn't itself
+	 * been compiled with mode=true) to make sure that the call
+	 * history is being unwound correctly. *)
+	val save : unit -> unit -> unit
+    end
+
   end;
-
-

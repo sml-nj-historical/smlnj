@@ -131,6 +131,7 @@ Semant/basics/sympaths.sig
 Semant/basics/sympaths.sml
 Semant/elaborate/elabcore.sml
 Semant/elaborate/elabdebug.sml
+Semant/elaborate/specialsyms.sml
 Semant/elaborate/elabmod.sml
 Semant/elaborate/elabsig.sml
 Semant/elaborate/elabtop.sml
@@ -326,6 +327,8 @@ MiscUtil/profile/profile.sml
 MiscUtil/profile/sprof.sml
 MiscUtil/profile/tell-env.sml
 MiscUtil/profile/tprof.sml
+MiscUtil/profile/btrace.sml
+MiscUtil/profile/btimp.sml
 
 MiscUtil/util/errormsg.sig
 MiscUtil/util/errormsg.sml

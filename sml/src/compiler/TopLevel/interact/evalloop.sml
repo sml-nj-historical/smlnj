@@ -168,50 +168,57 @@ fun interact (interactParams) : unit =
          | showhist C.SilentException = ()
          | showhist e = showhist' (edit(SMLofNJ.exnHistory e))
 
-       fun loop () =
-              evalLoop interactParams source
-              handle EndOfFile => (say "\n")
-                  | Interrupt => (say "\nInterrupt\n"; 
-                              flush(); loop())
-                  (* | EM.Error => (flush(); loop()) *)
-                  | C.Compile "syntax error" => (flush(); loop())
-                  | C.Compile s =>
-                     (say(concat["\nuncaught exception Compile: \"",
-                               s,"\"\n"]);
-                      flush(); loop())
-                  | C.TopLevelException C.TopLevelCallcc =>
-                     (say("Error: throw from one top-level expression \
-                          \into another\n");
-                      flush (); loop ())
-                  | C.TopLevelException EM.Error =>
-                     (flush (); loop ())
-                  | C.TopLevelException C.SilentException =>
-                     (flush (); loop ())
-                  | C.TopLevelException exn => let
-                        val msg = exnMsg exn
+       fun loop () = let
+	   (* save the current BTrace history... *)
+	   val bt_restore = SMLofNJ.Internals.BTrace.save ()
+       in
+           (evalLoop interactParams source
+	    (* make sure the BTrace history is being unwound correctly... *)
+	    handle e => (bt_restore (); raise e))
+           handle EndOfFile => (say "\n")
+                | Interrupt => (say "\nInterrupt\n"; 
+				flush(); loop())
+                (* | EM.Error => (flush(); loop()) *)
+                | C.Compile "syntax error" => (flush(); loop())
+                | C.Compile s =>
+                  (say(concat["\nuncaught exception Compile: \"",
+                              s,"\"\n"]);
+                   flush(); loop())
+                | C.TopLevelException C.TopLevelCallcc =>
+                  (say("Error: throw from one top-level expression \
+                       \into another\n");
+                   flush (); loop ())
+                | C.TopLevelException EM.Error =>
+                  (flush (); loop ())
+                | C.TopLevelException C.SilentException =>
+                  (flush (); loop ())
+                | C.TopLevelException exn => let
+                      val msg = exnMsg exn
                       val name = exnName exn
-                       in
-                           if (msg = name)
-                          then say (concat[
-                               "\nuncaught exception ", exnName exn, "\n"
-                               ])
-                          else say (concat[
-                               "\nuncaught exception ", exnName exn,
-                                 " [", exnMsg exn, "]\n"
-                               ]);
-                        showhist exn;
-                        flush(); 
-                        loop()
-                     end
-                  | C.SilentException => (flush (); loop ())
-                  | exn => (
-                      say (concat["\nuncaught exception ", 
-                                exnMsg exn, "\n"]);
+                  in
+                      if (msg = name)
+                      then say (concat
+				    ["\nuncaught exception ",
+				     exnName exn, "\n"])
+                      else say (concat
+				    ["\nuncaught exception ", exnName exn,
+				     " [", exnMsg exn, "]\n"]);
                       showhist exn;
                       flush(); 
-                      loop())
-
-     in loop()
+                      loop()
+                  end
+                | C.SilentException => (flush (); loop ())
+		| SMLofNJ.Internals.BTrace.BTrace r =>
+		  (say (concat ("*** BACK-TRACE ***\n" :: r ()));
+		   flush ();
+		   loop ())
+                | exn => (say (concat["\nuncaught exception ", 
+                                      exnMsg exn, "\n"]);
+			  showhist exn;
+			  flush();
+			  loop())
+       end
+    in loop()
     end (* fun interact *)
 
 fun isTermIn f = 

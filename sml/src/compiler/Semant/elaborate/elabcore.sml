@@ -86,7 +86,7 @@ fun stripExpAst(MarkExp(e,r'),r) = stripExpAst(e,r')
   | stripExpAst(FlatAppExp[{item,region,...}],r) = stripExpAst(item,region)
   | stripExpAst x = x
 
-val internalSym = S.varSymbol "<InternalVar>"
+val internalSym = SpecialSymbols.internalVarId
 
 val dummyFNexp =
     FNexp([RULE(WILDpat,RAISEexp(CONexp(V.bogusEXN,[]),UNDEFty))],UNDEFty)

@@ -33,7 +33,7 @@ fun for l f = app f l
 fun discard _ = ()
 fun single x = [x]
 
-val internalSym = S.varSymbol "<InternalVar>"
+val internalSym = SpecialSymbols.internalVarId
 
 (* elaboration context *)
 

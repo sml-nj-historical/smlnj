@@ -21,6 +21,28 @@ structure Internals : INTERNALS =
 
     val resetTimers = InternalTimer.resetTimers
 
+    structure BTrace = struct
+        exception BTrace of unit -> string list
+        val mode = let
+	    val state = ref false
+	    fun access NONE = !state
+	      | access (SOME change) = !state before state := change
+	in
+	    access
+	end
+	local
+	    val hook = ref { mkid = fn (s: string) => 0,
+			     reset = fn () => () }
+	in
+	    fun install { corefns, reset, mkid } =
+		(hook := { mkid = mkid, reset = reset };
+		 Core.bt_install corefns)
+	    fun mkid s = #mkid (!hook) s
+	    fun reset () = #reset (!hook) ()
+	end
+	fun report () = Core.bt_report () ()
+	fun trigger () = raise BTrace (report ())
+	fun save () = Core.bt_save () ()
+    end
+
   end;
-
-
