@@ -14,8 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/09/18 11:45:00 EDT
+Tag: Release_110_36 (retag)
+Description:
+
+Fixed mistake in config/preloads. Retagged as 110.36.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/09/18 09:40:00 EDT
-Tag: Release_110_36
+Tag: Release_110_36_orig (tag changed)
 Description:
 
 New version (110.36).  New bootfiles.
