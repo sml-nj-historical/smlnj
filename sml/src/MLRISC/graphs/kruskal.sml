@@ -22,8 +22,9 @@ struct
          | make_tree(M,u) =
             let val e as (i,j,_) = Q.deleteMin Q
             in  if P.== P (i,j) then 
+                   make_tree(M,u)
+                else
                    (P.union' P (i,j); make_tree(M-1,add_edge(e,u)))
-                else make_tree(M,u)
             end
    in  
        make_tree(#order G' (),u)
