@@ -5,8 +5,6 @@
 Library
 	signature INTMAP
 	signature CRC
-	signature SCCNODE
-	signature SCC
 	signature PICKLE_UTIL
 	signature UNPICKLE_UTIL
 
@@ -16,15 +14,12 @@ Library
 	structure SortedList
 	structure UnpickleUtil
 	structure PickleUtil
-
-	functor SCCUtilFun
 is
 
 intset.sml
 intmap.sig
 intmap.sml
 crc.sml
-scc.sml
 sortedlist.sml
 pickle-util.sml
 unpickle-util.sml

@@ -47,11 +47,10 @@ val cplv = LambdaVar.dupLvar
 val maxargs = CTRL.maxargs
 
 structure SccNode = struct
-    type node = LambdaVar.lvar
-    val eq = (op =)
-    val lt = (op <)
+    type ord_key = LambdaVar.lvar
+    val compare = Int.compare
 end
-structure SCC = SCCUtilFun (structure Node = SccNode)
+structure SCC = GraphSCCFn (SccNode)
 
 datatype info = Fun of int ref
 	      | Arg of int * (int * int) ref

@@ -13,6 +13,19 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/11/09 11:20:00 JST
+Tag: blume-20001109-scc
+Description:
+
+Eliminated some code duplication:
+
+1. Added "where" clause to GraphSCCFn in SML/NJ Library.
+   (Otherwise the functor is useless.)
+2. Used GraphSCCFn where SCCUtilFun was used previously.
+3. Got rid of SCCUtilFun (in comp-lib.cm).
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2000/11/06 09:02:21 EST 2000
 Tag: Release_110_30

@@ -8,7 +8,7 @@
  * author: Matthias Blume
  *) 
 
-functor GraphSCCFn (Nd: ORD_KEY) :> GRAPH_SCC =
+functor GraphSCCFn (Nd: ORD_KEY) :> GRAPH_SCC where Nd = Nd =
   struct
 
     structure Nd = Nd

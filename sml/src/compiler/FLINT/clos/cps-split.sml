@@ -99,10 +99,12 @@ functor CpsSplitFun (MachSpec: MACH_SPEC): CPSSPLIT = struct
 			   edges: node list ref,
 			   fv: A.lvar list }
 
-    fun lt (N n1, N n2) = (#id n1) < (#id n2)
-    fun eq (N n1, N n2) = (#id n1) = (#id n2)
+    structure SccNode = struct
+        type ord_key = node
+        fun compare (N n1, N n2) = Int.compare (#id n1, #id n2)
+    end
 
-    structure SCC = SCCUtilFun (type node = node val lt = lt val eq = eq)
+    structure SCC = GraphSCCFn (SccNode)
 
     fun scc (l, fv, e) = let
 	val root = N { id = ~1, function = NONE, edges = ref [], fv = fv }
