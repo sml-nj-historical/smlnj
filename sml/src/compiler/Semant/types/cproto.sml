@@ -59,7 +59,7 @@ structure CProto : sig
     val flt_args : Types.ty -> bool list
 
     (* Figure out whether the result of a raw C call is floating-point. *)
-    val flt_res : Types.ty -> bool
+    val flt_res : Types.ty -> bool option
 
     (* formatting of C type info (for debugging purposes) *)
     val tshow : CTypes.c_type -> string
@@ -135,7 +135,9 @@ end = struct
 	local
 	    fun isFlt t = TU.equalType (t, BT.realTy)
 	in
-	    val flt_res = isFlt
+	    fun flt_res t =
+		if TU.equalType (t, BT.unitTy) then NONE
+		else SOME (isFlt t)
 	    fun flt_args t =
 		if TU.equalType (t, BT.unitTy) then [] (* no arg case *)
 		else case BT.getFields t of

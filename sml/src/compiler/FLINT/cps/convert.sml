@@ -606,16 +606,24 @@ fun convert fdec =
 	     newname (v, lpvar a); loop(e,c))
 
 	  | F.PRIMOP ((_,AP.RAW_CCALL (SOME i),lt,ts),[f,a,_],v,e) => let
-		val { c_proto = p, ml_flt_args, ml_flt_res } = i
+		val { c_proto = p, ml_flt_args, ml_flt_res_opt } = i
 		fun cty true = FLTt
 		  | cty false = INT32t
-		val res_cty = cty ml_flt_res
 		val a' = lpvar a
-		val v' = mkv ()
-		fun rcc args =
-		    RCC (p, lpvar f :: map VAR args, v', res_cty,
-			 PURE(primwrap res_cty, [VAR v'], v, BOGt,
-			      loop (e, c)))
+		fun rcc args = let
+		    val al = lpvar f :: map VAR args
+		in
+		    case ml_flt_res_opt of
+			NONE => RCC (p, al, v, INTt, loop (e, c))
+		      | SOME rt => let
+			    val v' = mkv ()
+			    val res_cty = cty rt
+			in
+			    RCC (p, al, v', res_cty,
+				 PURE(primwrap res_cty, [VAR v'], v, BOGt,
+				      loop (e, c)))
+			end
+		end
 		fun build ([], rvl, _) = rcc (rev rvl)
 		  | build (ft :: ftl, rvl, i) = let
 			val t = cty ft

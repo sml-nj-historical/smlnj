@@ -790,6 +790,14 @@ struct
             | scale8(a, CPS.INT i) = M.ADD(ity, a, LI(i*8))
             | scale8(a, i) = M.ADD(ity, a, M.SLL(ity, stripTag(regbind i), 
                                                   LI(2)))
+
+	  (* zero-extend and sign-extend; these should just be synonyms
+	   * for M.ZX and M.SX, but the machine-code emitter does not
+	   * know how to handle those at the moment... *)
+	  fun ZX32 (sz, e) = (* M.ZX (32, sz, e) *)
+	      M.SRL (32, M.SLL (32, e, LI (32 - sz)), LI (32 - sz))
+	  fun SX32 (sz, e) = (* M.SX (32, sz, e) *)
+	      M.SRA (32, M.SLL (32, e, LI (32 - sz)), LI (32 - sz))
     
           (* add to storelist, the address where a boxed update has occured *)
           fun recordStore(tmp, hp) =
@@ -1291,19 +1299,12 @@ struct
                    end
               (*esac*))
 
-	  and rawload ((P.UINT (sz as (8 | 16 | 32)) |
-			P.INT (sz as 32)), i, x, e, hp) =
-	      defI32 (x, M.LOAD (sz, regbind i, R.memory), e, hp)
-	    | rawload (P.INT (sz as (8 | 16)), i, x, e, hp) = let
-		  val shft = LI (32 - sz)
-	      in
-		  defI32 (x, M.SRA (ity,
-				    M.SLL (ity,
-					   M.LOAD (sz, regbind i, R.memory),
-					   shft),
-				    shft),
-			  e, hp)
-	      end
+	  and rawload ((P.INT 32 | P.UINT 32), i, x, e, hp) =
+	      defI32 (x, M.LOAD (32, regbind i, R.memory), e, hp)
+	    | rawload (P.INT (sz as (8 | 16)), i, x, e, hp) =
+	      defI32 (x, SX32 (sz, M.LOAD (sz, regbind i, R.memory)), e, hp)
+	    | rawload (P.UINT (sz as (8 | 16)), i, x, e, hp) =
+	      defI32 (x, ZX32 (sz, M.LOAD (sz, regbind i, R.memory)), e, hp)
 	    | rawload ((P.UINT sz | P.INT sz), _, _, _, _) =
 	      error ("rawload: unsupported size: " ^ Int.toString sz)
 	    | rawload (P.FLOAT (sz as (32 | 64)), i, x, e, hp) =
@@ -1800,7 +1801,7 @@ struct
 			   build_args avl)
 			| _ => error "RCC: prototype/arglist mismatch"
 		  val { callseq, result } =
-		      CCalls.genCall
+		      CCalls.tmpsp_genCall
 			  { name = f, proto = p, structRet = sr, args = a }
 	      in
 		  (* just for testing... *)
@@ -1809,7 +1810,8 @@ struct
 		  (* now do it! *)
 		  app emit callseq;
 		  case (result, retTy) of
-		      ([], CTypes.C_void) => defI32 (w, zero, e, hp)
+		      (([] | [_]), (CTypes.C_void | CTypes.C_STRUCT _)) =>
+		      defI31 (w, mlZero, e, hp)
 		    | ([], _) => error "RCC: unexpectedly few results"
 		    | ([M.FPR x], (CTypes.C_float | CTypes.C_double)) =>
 		      treeifyDefF64 (w, x, e, hp)

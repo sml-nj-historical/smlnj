@@ -13,6 +13,18 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/01/10 21:55:00 JST
+Tag: blume-20010110-rcc
+Description:
+
+The RCC stuff now seems to work (but only on the x86).
+This required hacking of the c-calls interface (and -implementation) in
+MLRISC.
+
+Normal compiler users should be unaffected.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/01/09 01:20:00 JST
 Tag: blume-20010109-rcc
 Description:

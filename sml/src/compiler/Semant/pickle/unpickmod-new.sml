@@ -183,6 +183,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val int = UU.r_int session
 	val bool = UU.r_bool session
 	fun list m r = UU.r_list session m r
+	fun option m r = UU.r_option session m r
 	val string = UU.r_string session
 	val symbol = UnpickleSymPid.r_symbol (session, string)
 
@@ -194,6 +195,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val nkM = UU.mkMap ()
 	val poM = UU.mkMap ()
 	val boolListM = UU.mkMap ()
+	val boolOptionM = UU.mkMap ()
 	val tkindM = UU.mkMap ()
 	val tkindListM = UU.mkMap ()
 	val ctypeM = UU.mkMap ()
@@ -201,6 +203,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val cciM = UU.mkMap ()
 
 	val boollist = list boolListM bool
+	val booloption = option boolOptionM bool
 
 	val pid = UnpickleSymPid.r_pid (session, string)
 	    
@@ -293,7 +296,7 @@ structure UnpickMod : UNPICKMOD = struct
 			      retTy = ctype (),
 			      paramTys = ctypelist () },
 		  ml_flt_args = boollist (),
-		  ml_flt_res = bool () }
+		  ml_flt_res_opt = booloption () }
 	      | cp _ = raise Format
 	in
 	    share cciM cp

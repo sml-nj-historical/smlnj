@@ -107,7 +107,7 @@ datatype primop
      * use by the CPS converter. *)
   | RAW_CCALL of { c_proto: CTypes.c_proto,
 		   ml_flt_args: bool list,
-		   ml_flt_res: bool } option
+		   ml_flt_res_opt: bool option } option
 
 
 (** default integer arithmetic and comparison operators *)

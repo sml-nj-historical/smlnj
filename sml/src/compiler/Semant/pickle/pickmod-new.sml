@@ -340,11 +340,11 @@ in
     end
 
     fun ccall_info { c_proto = { conv, retTy, paramTys },
-		     ml_flt_args, ml_flt_res } = let
+		     ml_flt_args, ml_flt_res_opt } = let
 	val op $ = PU.$ CCI
     in
 	"C" $ [string conv, ctype retTy, list ctype paramTys,
-	       list bool ml_flt_args, bool ml_flt_res]
+	       list bool ml_flt_args, option bool ml_flt_res_opt]
     end
 	    
     fun primop p = let

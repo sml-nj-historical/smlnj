@@ -749,7 +749,7 @@ fun mkVE (v as V.VALvar {info=II.INL_PRIM(p, typ), ...}, ts, d) =
 	 | (PO.RAW_CCALL NONE, [a, b, c]) =>
 	   let val i = SOME { c_proto = CProto.decode b,
 			      ml_flt_args = CProto.flt_args a,
-			      ml_flt_res = CProto.flt_res c }
+			      ml_flt_res_opt = CProto.flt_res c }
 		   handle CProto.BadEncoding => NONE
 	    in PRIM (PO.RAW_CCALL i, toLty d typ, map (toTyc d) ts)
 	   end
