@@ -1,0 +1,27 @@
+Installation instructions for SML/NJ under MacOS X
+--------------------------------------------------
+
+To install SML/NJ under MacOS X on a machine that has the developer
+tools installed (i.e., which has a working C compiler), refer to
+our generic instructions in file INSTALL.
+
+For people without developer tools on their MacOS X box we prepared
+a disk image that contains a pre-compiled runtime system.  To install,
+download the image, mount it, and copy its contents (a directory named
+smlnj-xxx.xxx) to some location of your choice.  (The name smlnj-xxx.xxx
+is not important -- you can change it or simply copy the contents of
+this directory into some other directory.)
+
+At this point you should have some directory, e.g., /Users/joe/smlnj,
+that contains two subdirectories named "config" and "bin".  Open a
+terminal (or xterm if you have X11), cd to /Users/joe/smlnj
+and follow the instructions in file INSTALL beginning *after* the
+point where it asks you to gunzip and untar config.tgz.
+
+For example, if you are in a hurry and have good network connectivity,
+simply edit config/targets and then run config/install.sh.
+
+Once the installer finishes, you only need to keep the "bin" and "lib"
+subdirectories.  You can move them wherever you like (together!) as
+long as you set the variable SMLNJ_HOME to the name of the directory
+that holds them.

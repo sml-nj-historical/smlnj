@@ -1,0 +1,20 @@
+Installation instructions for SML/NJ under Cygwin 
+-------------------------------------------------
+
+1. Set SMLNJ_CYGWIN_RUNTIME=1 and export the environment variable.
+   E.g.,
+
+       SMLNJ_CYGWIN_RUNTIME=1
+       export SMLNJ_CYGWIN_RUNTIME
+
+   in Bourne sh and variants.  Or
+
+       setenv SMLNJ_CYGWIN_RUNTIME 1
+
+   in csh and variants.      
+    
+   When this is set SML/NJ will select the Cygwin runtime instead of
+   the default Windows runtime.
+
+2. Simply treat Cygwin as a Unix, and follow the usual installation
+   instructions.  
