@@ -6,7 +6,7 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 structure YaccTool = struct
-    val command = Tools.newCmdGetterSetter ("YACC", "ml-yacc")
+    val command = Tools.newCmdController ("YACC", "ml-yacc")
     val _ = Tools.registerStdShellCmdTool
 	{ tool = "ML-Yacc",
 	  class = "mlyacc",

@@ -209,10 +209,11 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			(error (p1, p2) (General.exnMessage exn);
 			 CMSemant.emptyGroup group)
 
-		    fun doMember (p, p1, p2, c) =
+		    fun doMember ({ name, mkpath }, p1, p2, c) =
 			CMSemant.member (ginfo, recParse (p1, p2))
-			         { sourcepath = p, class = c,
-				   group = (group, (p1, p2)) }
+			  { name = name, mkpath = mkpath,
+			    class = c, group = (group, (p1, p2)),
+			    context = context }
 
 		    (* Build the argument for the lexer; the lexer's local
 		     * state is encapsulated here to make sure the parser

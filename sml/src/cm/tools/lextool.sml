@@ -6,7 +6,7 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 structure LexTool = struct
-    val command = Tools.newCmdGetterSetter ("LEX", "ml-lex")
+    val command = Tools.newCmdController ("LEX", "ml-lex")
     val _ = Tools.registerStdShellCmdTool
 	{ tool = "ML-Lex",
 	  class = "mllex",

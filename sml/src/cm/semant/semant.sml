@@ -54,8 +54,9 @@ signature CM_SEMANT = sig
     val emptyMembers : members
     val member :
 	GeneralParams.info * (pathname option -> pathname -> group)
-	-> { sourcepath: pathname, group: pathname * region,
-	     class: cm_class option }
+	-> { name: string, mkpath: string -> pathname,
+	     group: pathname * region, class: cm_class option,
+	     context: SrcPath.context }
 	-> members
     val members : members * members -> members
     val guarded_members :

@@ -7,277 +7,156 @@
  *)
 signature TOOLS = sig
 
-    type fname = string
+    (* We don't make classes abstract.  It doesn't look like there
+     * would be much point to it. *)
     type class = string
+
+    (* We keep source paths abstract. Tool writers should not mess
+     * with their internals.
+     * The function that makes a srcpath from a string is passed as
+     * part of the input specification (type "spec").  Which function
+     * is originally being passed depends on which syntax was used for
+     * this member in its .cm-file.  Most tools will want to work on
+     * native pathname syntax (function "outdated" -- see below -- depends
+     * on native syntax!).  In these cases the tool should first convert
+     * the name to a srcpath and then get the native string back by 
+     * applying "nativeSpec". *)
+    type srcpath
+
+    val nativeSpec : srcpath -> string
 
     exception ToolError of { tool: string, msg: string }
 
-    type item = fname * class option
+    type pathmaker = string -> srcpath
 
-    (* A rule takes a file name (relative to the directory of the
-     * corresponding description file) and a rulecontext.  In general,
+    (* A member specification consists of the actual string, an optional
+     * class name, and a function to convert a string to its corresponding
+     * srcpath. *)
+    type spec = string * pathmaker * class option
+
+    (* The goal of applying tools to members is to obtain an "expansion",
+     * i.e., a list of ML-files and a list of .cm-files. *)
+    type expansion = { smlfiles: (srcpath * Sharing.request) list,
+		       cmfiles: srcpath list }
+
+    (* A partial expansion is an expansion with a list of things yet to be
+     * expanded... *)
+    type partial_expansion = expansion * spec list
+
+    (* A rule takes a spec and a rulecontext where the name name contained
+     * in the spec -- if relative -- is considered relative to the directory
+     * of the corresponding description file.  In general,
      * when coding a rule one would write a rule function and pass it to
      * the context, which will temporarily change the current working
      * directory to the one that holds the description file ("the context").
      * If this is not necessary for the rule to work correctly, then
      * one can simply ignore the context (this saves system call overhead
-     * during dependency analysis). *)
-    type rulefn = unit -> item list
-    type rulecontext = rulefn -> item list
-    type rule = fname * rulecontext -> item list
+     * during dependency analysis).
+     * If the rule yields a genuine partial expansion (where the resulting
+     * spec list is not empty), then it must pass the proper "path maker"
+     * along with each new name.  For most cases this will be the given
+     * "native path maker" because most rules work on native path names.
+     * Some rules, however, might want to use the same convention for
+     * derived specs that was used for the original spec. *)
+    type rulefn = unit -> partial_expansion
+    type rulecontext = rulefn -> partial_expansion
+    type rule =
+	{ spec: spec, mkNativePath: pathmaker, context: rulecontext } ->
+	partial_expansion
 
     (* install a class *)
     val registerClass : class * rule -> unit
 
-    (* This is a local copy of Sharing.request to allow this signature to be
-     * useful without access to Sharing.request. (We still need a separate
-     * structure "Sharing" because otherwise we get a dependency cycle.) *)
-    datatype sharingrequest = PRIVATE | SHARED | DONTCARE
-
-    (* install "ML Source" class *)
-    val registerSmlClass : class * sharingrequest -> unit
-
-    (* install "CM Group" class *)
-    val registerGroupClass : class -> unit
-
     (* classifiers are used when the class is not given explicitly *)
     datatype classifier =
 	SFX_CLASSIFIER of string -> class option
-      | GEN_CLASSIFIER of fname -> class option
+      | GEN_CLASSIFIER of string -> class option
 
     (* make a classifier which looks for a specific file name suffix *)
-    val stdSfxClassifier : { sfx: string, class: class } -> classifier
+    val stdSfxClassifier : { sfx: string , class: class } -> classifier
 
     (* two standard ways of dealing with filename extensions... *)
     datatype extensionStyle =
 	EXTEND of string list
       | REPLACE of string list * string list
 
-    type cmdGetterSetter = { get: unit -> string, set: string -> unit }
+    type cmdController = { get: unit -> string, set: string -> unit }
 
-    val newCmdGetterSetter : string * string -> cmdGetterSetter
+    val newCmdController : string * string -> cmdController
 
-    val registerStdShellCmdTool : { tool : string,
-				    class : string,
-				    suffixes : string list,
-				    command : cmdGetterSetter,
-				    extensionStyle : extensionStyle,
-				    sml : bool } -> unit
+    val registerStdShellCmdTool : { tool: string,
+				    class: string,
+				    suffixes: string list,
+				    command: cmdController,
+				    extensionStyle: extensionStyle,
+				    sml: bool } -> unit
 
     (* perform filename extension *)
-    val extend : extensionStyle -> fname -> fname list
+    val extend : extensionStyle -> string -> string list
 
-    (* check for outdated files *)
-    val outdated : string -> fname list * fname -> bool
+    (* check for outdated files; the pathname strings must be in
+     * native syntax! *)
+    val outdated : string -> string list * string -> bool
 
     (* install a classifier *)
     val registerClassifier : classifier -> unit
 
     (* query default class *)
-    val defaultClassOf : fname -> class option
+    val defaultClassOf : string -> class option
 end
 
 signature PRIVATETOOLS = sig
-
-    include TOOLS
-
-    type smlsource =
-	{ sourcepath: SrcPath.t, history: class list,
-	  sh_spec: Sharing.request }
-
-    datatype expansion =
-	SMLSOURCE of smlsource
-      | GROUP of SrcPath.t
-
-    datatype private_rule =
-	ISSML of Sharing.request
-      | ISGROUP
-      | ISTOOL of class * rule
-
-    val expand : (string -> unit) -> SrcPath.t * class option -> expansion list
+    include TOOLS where type srcpath = SrcPath.t
+    val expand : { error: string -> unit,
+		   spec: spec,
+		   context: SrcPath.context }
+	-> expansion
 end
 
 structure PrivateTools :> PRIVATETOOLS = struct
 
-    type fname = string
     type class = string
+
+    type srcpath = SrcPath.t
+
+    val nativeSpec = SrcPath.specOf
 
     exception ToolError of { tool: string, msg: string }
 
-    type item = fname * class option
+    type pathmaker = string -> srcpath
 
-    type rulefn = unit -> item list
-    type rulecontext = rulefn -> item list
-    type rule = fname * rulecontext -> item list
+    type spec = string * pathmaker * class option
 
-    type smlsource =
-	{ sourcepath: SrcPath.t, history: class list,
-	  sh_spec: Sharing.request }
+    type expansion = { smlfiles: (srcpath * Sharing.request) list,
+		       cmfiles: srcpath list }
 
-    datatype expansion =
-	SMLSOURCE of smlsource
-      | GROUP of SrcPath.t
+    type partial_expansion = expansion * spec list
 
-    datatype private_rule =
-	ISSML of Sharing.request
-      | ISGROUP
-      | ISTOOL of class * rule
+    type rulefn = unit -> partial_expansion
+    type rulecontext = rulefn -> partial_expansion
+    type rule =
+	{ spec: spec, mkNativePath: pathmaker, context: rulecontext } ->
+	partial_expansion
 
-    datatype sharingrequest = PRIVATE | SHARED | DONTCARE
-
-    val classes : private_rule StringMap.map ref = ref (StringMap.empty)
+    val classes : rule StringMap.map ref = ref StringMap.empty
 
     fun registerClass (class, rule) =
-	classes := StringMap.insert (!classes, class, ISTOOL (class, rule))
+	classes := StringMap.insert (!classes, class, rule)
 
-    fun registerSmlClass (class, shrq) = let
-	(* This seems clumsy, but we need to "translate" the local
-	 * sharingrequest value into a Sharing.request value... *)
-	val shrq =
-	    case shrq of
-		PRIVATE => Sharing.PRIVATE
-	      | SHARED => Sharing.SHARED
-	      | DONTCARE => Sharing.DONTCARE
-    in
-	classes := StringMap.insert (!classes, class, ISSML shrq)
-    end
-
-    fun registerGroupClass class =
-	classes := StringMap.insert (!classes, class, ISGROUP)
-
-    (* classifiers are used when the class is not given explicitly *)
     datatype classifier =
 	SFX_CLASSIFIER of string -> class option
-      | GEN_CLASSIFIER of fname -> class option
+      | GEN_CLASSIFIER of string -> class option
 
-    (* make a classifier which looks for a specific file name suffix *)
     fun stdSfxClassifier { sfx, class } =
 	SFX_CLASSIFIER (fn e => if sfx = e then SOME class else NONE)
-
-    (* install a classifier *)
-    val sfx_classifiers: (string -> class option) list ref = ref []
-    val gen_classifiers: (fname -> class option) list ref = ref []
-
-    local
-	fun add (x, r) = r := x :: (!r)
-    in
-	fun registerClassifier (SFX_CLASSIFIER c) = add (c, sfx_classifiers)
-	  | registerClassifier (GEN_CLASSIFIER c) = add (c, gen_classifiers)
-    end
-
-    (* query default class *)
-    fun defaultClassOf p = let
-	fun gen_loop [] = NONE
-	  | gen_loop (h :: t) =
-	    (case h p of
-		 NONE => gen_loop t
-	       | SOME c => SOME c)
-
-	fun sfx_loop e = let
-	    fun loop [] = gen_loop (!gen_classifiers)
-	      | loop (h :: t) =
-		(case h e of
-		     NONE => loop t
-		   | SOME c => SOME c)
-	in
-	    loop (!sfx_classifiers)
-	end
-    in
-	case OS.Path.ext p of
-	    SOME e => sfx_loop e
-	  | NONE => gen_loop (!gen_classifiers)
-    end
-
-    fun expand error = let
-
-	(* get the rule corresponding to a given class *)
-	fun class2rule class =
-	    case StringMap.find (!classes, class) of
-		SOME rule => rule
-	      | NONE => (error (concat ["unknown class \"", class, "\""]);
-			 ISSML Sharing.DONTCARE)
-
-	(* apply a rule to a path within a given context *)
-	fun apply (rule, p, c) = let
-	    fun rctxt rf = let
-		val dir = SrcPath.contextName c
-		val cwd = OS.FileSys.getDir ()
-	    in
-		SafeIO.perform { openIt = fn () => OS.FileSys.chDir dir,
-				 closeIt = fn () => OS.FileSys.chDir cwd,
-				 work = rf,
-				 cleanup = fn _ => () }
-		handle ToolError { tool, msg } =>
-		    (error (concat ["tool \"", tool, "\" failed: ", msg]); [])
-	    end
-	in
-	    rule (p, rctxt)
-	end
-
-	fun expand' context = let
-	    fun loop (acc, []) = rev acc
-	      | loop (acc, ((p, c), history) :: t) = let
-		    fun step (ISSML shrq) =
-			let
-			    val ap = SrcPath.native { context = context,
-						      spec = p }
-			    val src = { sourcepath = ap,
-				        history = rev history,
-					sh_spec = shrq }
-			in
-			    loop (SMLSOURCE src :: acc, t)
-			end
-		      | step ISGROUP = let
-			    val ap = SrcPath.native { context = context,
-						      spec = p }
-			in
-			    loop (GROUP ap :: acc, t)
-			end
-		      | step (ISTOOL (class, rule)) = let
-			    val l = apply (rule, p, context)
-			    val l' = map (fn i => (i, class :: history)) l
-			in
-			    loop (acc, l' @ t)
-			end
-		in
-		    case c of
-			SOME class => step (class2rule class)
-		      | NONE =>
-			    (case defaultClassOf p of
-				 SOME class => step (class2rule class)
-			       | NONE => step (ISSML Sharing.DONTCARE))
-		end
-	in
-	    fn l => loop ([], l)
-	end
-
-	fun expand0 (ap, NONE) =
-	    expand' (SrcPath.contextOf ap) [((SrcPath.specOf ap, NONE), [])]
-	  | expand0 (ap, SOME class0) = let
-		(* classes are case-insensitive, internally we use lowercase *)
-		val class = String.map Char.toLower class0
-	    in
-		case class2rule class of
-		    ISSML shrq =>
-			[SMLSOURCE { sourcepath = ap, history = [],
-				     sh_spec = shrq }]
-		  | ISGROUP =>
-			[GROUP ap]
-		  | ISTOOL (class, rule) => let
-			val c = SrcPath.contextOf ap
-			val l = apply (rule, SrcPath.specOf ap, c)
-			val l' = map (fn i => (i, [class])) l
-		    in
-			expand' (SrcPath.contextOf ap) l'
-		    end
-	    end
-    in
-	expand0
-    end
 
     datatype extensionStyle =
 	EXTEND of string list
       | REPLACE of string list * string list
+
+    type cmdController = { get: unit -> string, set: string -> unit }
+
+    fun newCmdController sp = EnvConfig.new SOME sp
 
     fun extend (EXTEND l) f = map (fn s => concat [f, ".", s]) l
       | extend (REPLACE (ol, nl)) f = let
@@ -304,34 +183,45 @@ structure PrivateTools :> PRIVATETOOLS = struct
 					   msg = "cannot access " ^ f }
     end
 
-    type cmdGetterSetter = { get: unit -> string, set: string -> unit }
+    val sfx_classifiers : (string -> class option) list ref = ref []
+    val gen_classifiers : (string -> class option) list ref = ref []
 
-    fun newCmdGetterSetter sp = EnvConfig.new SOME sp
+    local
+	fun add (x, r) = r := x :: (!r)
+    in
+	fun registerClassifier (SFX_CLASSIFIER c) = add (c, sfx_classifiers)
+	  | registerClassifier (GEN_CLASSIFIER c) = add (c, gen_classifiers)
+    end
 
-    fun registerStdShellCmdTool arg = let
-	val { tool, class, suffixes, command: cmdGetterSetter,
-	      extensionStyle, sml } = arg
-	fun rule (f, ctxt) = let
-	    val targetfiles = extend extensionStyle f
-	    val mkTarget =
-		if sml then (fn tf => (tf, SOME "sml"))
-		else (fn tf => (tf, NONE))
-	    val targets = map mkTarget targetfiles
+    fun registerStdShellCmdTool args = let
+	val { tool, class, suffixes, command, extensionStyle, sml } = args
+	fun rule { spec = (name, mkpath, _), context, mkNativePath } = let
+	    val nativename = nativeSpec (mkpath name)
+	    val targetfiles = extend extensionStyle nativename
+	    val partial_expansion =
+		if sml then
+		    ({ smlfiles =
+		        map (fn f => (mkNativePath f, Sharing.DONTCARE))
+			    targetfiles,
+		       cmfiles = [] },
+		     [])
+		else ({ smlfiles = [], cmfiles = [] },
+		      map (fn f => (f, mkNativePath, NONE)) targetfiles)
 	    fun runcmd () = let
-		val cmd = concat [#get command (), " ", f]
+		val cmd =
+		    concat [#get (command: cmdController) (), " ", nativename]
 		val _ = Say.vsay ["[", cmd, "]\n"]
 	    in
 		if OS.Process.system cmd = OS.Process.success then ()
 		else raise ToolError { tool = tool, msg = cmd }
 	    end
-	    fun rfun () =
-		(if outdated tool (targetfiles, f) then runcmd ()
+	    fun rulefn () =
+		(if outdated tool (targetfiles, nativename) then runcmd ()
 		 else ();
-		 targets)
+		 partial_expansion)
 	in
-	    ctxt rfun
+	    context rulefn
 	end
-
 	fun sfx s =
 	    registerClassifier (stdSfxClassifier { sfx = s, class = class })
     in
@@ -339,16 +229,85 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	app sfx suffixes
     end
 
-    (* registering standard classes and classifiers *)
+    (* query default class *)
+    fun defaultClassOf p = let
+	fun gen_loop [] = NONE
+	  | gen_loop (h :: t) =
+	    (case h p of
+		 NONE => gen_loop t
+	       | SOME c => SOME c)
+
+	fun sfx_loop e = let
+	    fun loop [] = gen_loop (!gen_classifiers)
+	      | loop (h :: t) =
+		(case h e of
+		     NONE => loop t
+		   | SOME c => SOME c)
+	in
+	    loop (!sfx_classifiers)
+	end
+    in
+	case OS.Path.ext p of
+	    SOME e => sfx_loop e
+	  | NONE => gen_loop (!gen_classifiers)
+    end
+
+    fun smlrule srq { spec = (name, mkpath, _), context, mkNativePath } =
+	({ smlfiles = [(mkpath name, srq)], cmfiles = [] }, [])
+    fun cmrule { spec = (name, mkpath, _), context, mkNativePath } =
+	({ smlfiles = [], cmfiles = [mkpath name] }, [])
+
+    fun expand { error, spec, context } = let
+	fun mkNativePath s = SrcPath.native { context = context, spec = s }
+	fun class2rule class =
+	    case StringMap.find (!classes, class) of
+		SOME rule => rule
+	      | NONE => (error (concat ["unknown class \"", class, "\""]);
+			 smlrule Sharing.DONTCARE)
+	fun expand1 (spec as (name, _, co)) = let
+	    val rule =
+		case co of
+		    SOME c0 => class2rule (String.map Char.toLower c0)
+		  | NONE =>
+			(case defaultClassOf name of
+			     SOME c => class2rule c
+			   | NONE => smlrule Sharing.DONTCARE)
+	    fun rcontext rf = let
+		val dir = SrcPath.contextName context
+		val cwd = OS.FileSys.getDir ()
+	    in
+		SafeIO.perform { openIt = fn () => OS.FileSys.chDir dir,
+				 closeIt = fn () => OS.FileSys.chDir cwd,
+				 work = rf,
+				 cleanup = fn _ => () }
+		handle ToolError { tool, msg } =>
+		    (error (concat ["tool \"", tool, "\" failed: ", msg]);
+		     ({ smlfiles = [], cmfiles = [] }, []))
+	    end
+	in
+	    rule { spec = spec, context = rcontext,
+		   mkNativePath = mkNativePath }
+	end
+	fun loop (expansion, []) = expansion
+	  | loop ({ smlfiles, cmfiles }, item :: items) = let
+		val ({ smlfiles = sfl, cmfiles = cfl }, il) = expand1 item
+	    in
+		loop ({ smlfiles = smlfiles @ sfl, cmfiles = cmfiles @ cfl},
+		      il @ items)
+	    end
+    in
+	loop ({ smlfiles = [], cmfiles = [] }, [spec])
+    end
+
     local
 	fun sfx (s, c) =
 	    registerClassifier (stdSfxClassifier { sfx = s, class = c })
     in
-	val _ = registerSmlClass ("sml", DONTCARE)
-	val _ = registerSmlClass ("shared", SHARED)
-	val _ = registerSmlClass ("private", PRIVATE)
-	val _ = registerGroupClass "cm"
-	    
+	val _ = registerClass ("sml", smlrule Sharing.DONTCARE)
+	val _ = registerClass ("shared", smlrule Sharing.SHARED)
+	val _ = registerClass ("private", smlrule Sharing.PRIVATE)
+	val _ = registerClass ("cm", cmrule)
+
 	val _ = sfx ("sml", "sml")
 	val _ = sfx ("sig", "sml")
 	val _ = sfx ("cm", "cm")

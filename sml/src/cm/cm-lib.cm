@@ -12,6 +12,7 @@ Library
 	functor LinkCM
 	functor BootstrapCompileFn
 
+	structure Sharing
 	signature TOOLS
 	structure Tools
 is

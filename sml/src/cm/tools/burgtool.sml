@@ -6,7 +6,7 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 structure BurgTool = struct
-    val command = Tools.newCmdGetterSetter ("BURG", "ml-burg")
+    val command = Tools.newCmdController ("BURG", "ml-burg")
     val _ = Tools.registerStdShellCmdTool
 	{ tool = "ML-Burg",
 	  class = "mlburg",

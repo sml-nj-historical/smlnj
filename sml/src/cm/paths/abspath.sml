@@ -264,7 +264,10 @@ structure AbsPath :> ABSPATH = struct
 	fun contextName c = #name (elabContext c)
 
 	(* get the spec back *)
-	fun specOf (PATH { spec = s, ... }) = s
+	fun specOf (PATH { spec = s, context = ROOT vol, ... }) =
+	    OS.Path.concat
+	      (OS.Path.toString { arcs = [], vol = vol,isAbs = true }, s)
+	  | specOf (PATH { spec = s, ... }) = s
 
 	(* compare pathnames efficiently *)
 	fun compare (p1, p2) = compareId (id p1, id p2)

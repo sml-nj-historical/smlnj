@@ -46,9 +46,7 @@ structure S = CMSemant
        | boolexp of S.exp
        | exp of S.exp
        | ml_symbol of S.ml_symbol
-       | pathname of S.pathname
-       | cmpath of S.pathname
-       | nativepath of S.pathname
+       | pathname of { name: string, mkpath: string -> S.pathname }
        | sym of S.cm_symbol
        | word of S.cm_symbol
        | owner of S.pathname option
@@ -61,7 +59,8 @@ structure S = CMSemant
     S.context *
     (pos * pos -> unit) *
     (pos * pos -> string -> unit) *
-    (S.pathname * pos * pos * S.cm_class option -> S.members) *
+    ({ name: string, mkpath: string -> S.pathname } *
+     pos * pos * S.cm_class option -> S.members) *
     S.pathname option *
     GeneralParams.info
 %start description
@@ -99,7 +98,8 @@ group : gprivspec owner opt_exports IS members (S.group
 						  members, gp))
 
 owner : (* empty *)                            (NONE)
-      | LPAREN pathname RPAREN                 (SOME pathname)
+      | LPAREN pathname RPAREN                 (SOME (#mkpath pathname
+						      (#name pathname)))
 
 wrapspec : (* empty *)                         (fn p => p)
           | wrapspec word                      (fn p =>
@@ -216,7 +216,11 @@ ml_symbol : STRUCTURE ML_ID			(S.ml_structure ML_ID)
 	  | FUNCTOR ML_ID			(S.ml_functor ML_ID)
 	  | FUNSIG ML_ID			(S.ml_funsig ML_ID)
 
-pathname : FILE_STANDARD			(S.file_standard gp
-						 (FILE_STANDARD, context))
-	 | FILE_NATIVE				(S.file_native
-						 (FILE_NATIVE, context))
+pathname : FILE_STANDARD			({ name = FILE_STANDARD,
+						   mkpath = fn n =>
+						     S.file_standard gp
+						       (n, context) })
+	 | FILE_NATIVE				({ name = FILE_NATIVE,
+						   mkpath = fn n =>
+						     S.file_native
+						       (n, context) })
