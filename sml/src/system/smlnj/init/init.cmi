@@ -90,9 +90,9 @@
 #
 #  Example:
 #   ...
-#   ifdef  ARCH_ALPHA32                  bind foo = foo-alpha32.sml (bar, baz)
-#   ifdef  ARCH_X86                      bind foo = foo-x86.sml (bar, baz)
-#   ifndef ARCH_ALPHA32 ifndef ARCH_X86  bind foo = foo-default.sml (bar, baz)
+#   ifdef  ARCH_ALPHA                  bind foo = foo-alpha32.sml (bar, baz)
+#   ifdef  ARCH_X86                    bind foo = foo-x86.sml (bar, baz)
+#   ifndef ARCH_ALPHA ifndef ARCH_X86  bind foo = foo-default.sml (bar, baz)
 #   ...
 #
 

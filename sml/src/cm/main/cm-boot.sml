@@ -364,6 +364,39 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			    make = make }
 	  end
 
+	  (* This function works on behalf of the ml-build script.
+	   * Having it here avoids certain startup-costs and also
+	   * keeps ML code together.  (It used to be part of the
+	   * script, but that proved difficult to maintain.) *)
+	  fun mlbuild buildargs =
+	      OS.Process.exit
+	      (case buildargs of
+		   [root, cmfile, heap, listfile, link] =>
+		   (case mk_standalone NONE { project = root,
+					      wrapper = cmfile,
+					      target = heap } of
+			NONE => (Say.say ["Compilation failed.\n"];
+				 OS.Process.failure)
+		     | SOME [] => (Say.say ["Heap was already up-to-date.\n"];
+				   OS.Process.success)
+		     | SOME l => let
+			   val s = TextIO.openOut listfile
+			   fun wr str = TextIO.output (s, str ^ "\n")
+			   val n = length l
+			   fun maxsz (s, n) = Int.max (size s, n)
+			   val m = foldl maxsz 0 l
+		       in
+			   wr (concat ["%", Int.toString n, " ",
+				       Int.toString m]);
+			   app wr l;
+			   TextIO.closeOut s;
+			   OS.Process.system (concat [link,
+						      " @SMLboot=", listfile])
+		       end
+		       handle _ => OS.Process.failure)
+		 | _ => (Say.say ["bad arguments to @CMbuild\n"];
+			 OS.Process.failure))
+
 	  fun al_ginfo () = { param = param (),
 			      groupreg = al_greg,
 			      errcons = EM.defaultConsumer (),
@@ -549,15 +582,19 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      | carg (_, f, mk) = p (f, mk,
 				 String.map Char.toLower
 					    (getOpt (OS.Path.ext f, "<none>")))
-	    fun arg ("-a", _) = autoload
-	      | arg ("-m", _) = make
-	      | arg (f, mk) = (carg (String.substring (f, 0, 2), f, mk)
-			       handle General.Subscript => ();
-			       mk)
+
+	    fun args ("-a" :: rest, _) = args (rest, autoload)
+	      | args ("-m" :: rest, _) = args (rest, make)
+	      | args ("@CMbuild" :: rest, _) = mlbuild rest
+	      | args (f :: rest, mk) =
+		(carg (String.substring (f, 0, 2), f, mk)
+		 handle General.Subscript => ();
+		 args (rest, mk))
+	      | args ([], _) = ()
 	in
 	    case SMLofNJ.getArgs () of
 		["@CMslave"] => (#set StdConfig.verbose false; slave ())
-	      | l => ignore (foldl arg autoload l)
+	      | l => args (l, autoload)
 	end
     in
 	initTheValues (bootdir, de, er,
