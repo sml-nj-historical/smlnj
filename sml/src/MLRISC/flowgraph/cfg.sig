@@ -121,7 +121,9 @@ sig
    *  Methods for manipulating basic blocks
    *
    *========================================================================*)
-   val newBlock          : int * weight ref -> block	(* empty *)
+   val newBlock          : int * weight ref -> block	(* new empty block *)
+   val newNode		 : cfg -> weight -> node	(* new empty block hooked *)
+							(* into the cfg *)
    val newStart          : int * weight ref -> block	(* start node *)
    val newStop           : int * weight ref -> block	(* stop node *)
    val copyBlock         : int * block -> block		(* copy a block *)

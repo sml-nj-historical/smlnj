@@ -128,6 +128,14 @@ struct
     fun newStart(id,freq) = newBlock'(id,START,[],freq)
     fun newStop(id,freq) = newBlock'(id,STOP,[],freq)
 
+    fun newNode (G.GRAPH graph) wt = let
+	  val id = #new_id graph ()
+	  val nd = (id, newBlock (id, ref wt))
+	  in
+	    #add_node graph nd;
+	    nd
+	  end
+
     fun branchOf(EDGE{k=BRANCH b,...}) = SOME b
       | branchOf _ = NONE
     fun edgeDir(_,_,e) = branchOf e
