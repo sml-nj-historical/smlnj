@@ -220,8 +220,9 @@ fun cexptrans(ce) =
           SETTER(p, map vtrans vl, cexptrans ce)
     | ARITH(p,vl,w,t,ce) => 
           (addty(w,t); ARITH(p, map vtrans vl, w, t, cexptrans ce))
-    | RCC(k,l,p,vl,w,t,ce) =>
-          (addty(w,t); RCC(k, l, p, map vtrans vl, w, t, cexptrans ce))
+    | RCC(k,l,p,vl,wtl,ce) =>
+          (app addty wtl;
+	   RCC(k, l, p, map vtrans vl, wtl, cexptrans ce))
 
     
   (*** this special case is a temporary hack; ask ZHONG for details *) 

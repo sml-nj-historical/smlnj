@@ -261,7 +261,7 @@ struct
          | CPS.LOOKER(_,_,w,t,e)   => (fp(w,t); markfp e)
          | CPS.ARITH(_,_,w,t,e)    => (fp(w,t); markfp e)
          | CPS.PURE(p,_,w,t,e)     => (markPure(p,w); fp(w,t); markfp e)
-	 | CPS.RCC(_,_,_,_,w,t,e)  => (fp(w,t); markfp e)
+	 | CPS.RCC(_,_,_,_,wtl,e)  => (app fp wtl; markfp e)
          | CPS.BRANCH(_,_,_,e1,e2) => (markfp e1; markfp e2)
          | CPS.FIX _ => error "FIX in Spill.markfp"
 
@@ -341,7 +341,8 @@ struct
         | CPS.LOOKER(_,vl,w,t,e)   => uses(vl,def(w,freevars e))
         | CPS.ARITH(_,vl,w,t,e)    => uses(vl,def(w,freevars e))
         | CPS.PURE(_,vl,w,t,e)     => uses(vl,def(w,freevars e))
-        | CPS.RCC(_,_,_,vl,w,t,e)  => uses(vl,def(w,freevars e))
+        | CPS.RCC(_,_,_,vl,wtl,e)  => uses(vl, foldl (fn((w,_),s) => def(w,s))
+						     (freevars e) wtl)
         | CPS.BRANCH(_,vl,c,e1,e2) => uses(vl,freevars e1 \/ freevars e2)
         | CPS.FIX _ => error "FIX in Spill.freevars"
 
@@ -467,7 +468,12 @@ struct
               | CPS.LOOKER(_,vl,w,t,e) => fx(vl, w, t, e, b)
               | CPS.ARITH(_,vl,w,t,e)  => fx(vl, w, t, e, b)
               | CPS.PURE(_,vl,w,t,e)   => fx(vl, w, t, e, b)
-              | CPS.RCC(_,_,_,vl,w,t,e)=> fx(vl, w, t, e, b+1)
+              | CPS.RCC(_,_,_,vl,wtl,e)=>
+		  let val b = b+1
+		  in uses (vl, n);
+		     app (fn (w, t) => def (w, t, b, n)) wtl;
+		     gather (e, b, n+1)
+		  end
               | CPS.BRANCH(_,vl,c,x,y) => (uses(vl, n); gathers([x,y],b+1,n+1))
               | CPS.FIX _ => error "FIX in Spill.gather"
           end
@@ -707,7 +713,14 @@ struct
           | CPS.LOOKER(p,vl,w,t,e) => scanOp(vl, w, e, b)
           | CPS.ARITH(p,vl,w,t,e)  => scanOp(vl, w, e, b)
           | CPS.PURE(p,vl,w,t,e)   => scanOp(vl, w, e, b)
-          | CPS.RCC(k,l,p,vl,w,t,e)=> scanOp(vl, w, e, b+1)
+          | CPS.RCC(k,l,p,vl,wtl,e)=>
+	    let val b = b+1
+		val (L,spOff) = scan(e,b,spOff)
+		val L = foldl (fn ((w, _), L) => kill (w, L)) L wtl
+		val L = addUses (vl, L)
+		val (L, spOff) = genSpills (L, spOff)
+	    in (L, spOff)
+	    end
           | CPS.BRANCH(p,vl,c,x,y) => scanStmt(vl,[x,y])
           | CPS.FIX _ => error "FIX in Spill.scan"
 
@@ -862,6 +875,14 @@ struct
           in  g(f(vs, w, e))
           end
 
+	  fun rewrite'(vs,wl,e,f) =
+	      let val e = rebuild e
+		  val e = foldl emitSpill e wl
+		  val e = foldl assignToSplitRecord e wl
+		  val (vs, g) = emitReloads vs
+	      in g (f (vs, wl, e))
+	      end
+
           fun rewriteRec(vl, w, e, f) =
           let val e = rebuild e
               val e = emitSpill(w, e)
@@ -906,8 +927,11 @@ struct
                rewrite(vl,w,e, fn (vl,w,e) => CPS.ARITH(p,vl,w,t,e))
           | CPS.PURE(p,vl,w,t,e) =>  
                rewrite(vl,w,e,fn (vl,w,e) => CPS.PURE(p,vl,w,t,e))
-          | CPS.RCC(k,l,p,vl,w,t,e) =>  
-               rewrite(vl,w,e,fn (vl,w,e) => CPS.RCC(k,l,p,vl,w,t,e))
+          | CPS.RCC(k,l,p,vl,wtl,e) =>  
+	      rewrite' (vl, map #1 wtl, e,
+			fn (vl, wl, e) => CPS.RCC (k, l, p, vl,
+						   ListPair.map (fn (w, (_, t)) => (w, t)) (wl, wtl),
+						   e))
           | CPS.BRANCH(p,vl,c,x,y) => 
                rewriteStmt(vl,[x,y],
 			   s'2 (fn (vl,x,y) => CPS.BRANCH(p,vl,c,x,y)))

@@ -100,7 +100,7 @@ val rec pass1 =
   | LOOKER(_,vl,_,_,e) => (app use vl; pass1 e)
   | ARITH(_,vl,_,_,e) => (app use vl; pass1 e)
   | PURE(_,vl,_,_,e) => (app use vl; pass1 e)
-  | RCC(_,_,_,vl,_,_,e) => (app use vl; pass1 e)
+  | RCC(_,_,_,vl,_,e) => (app use vl; pass1 e)
   | APP(f, vl) => (call f; app use vl)
   | FIX(l, e) =>
       let (* Any changes to dosplit had better be reflected here. *)
@@ -129,7 +129,7 @@ val rec reduce =
     | ARITH(i,vl,w,t,e) => ARITH(i, vl, w, t, reduce e)
     | PURE(i,vl,w,t,e) => PURE(i, vl, w, t, reduce e)
     | SETTER(i,vl,e) => SETTER(i, vl, reduce e)
-    | RCC(k,l,p,vl,w,t,e) => RCC(k, l, p, vl, w, t, reduce e)
+    | RCC(k,l,p,vl,wtl,e) => RCC(k, l, p, vl, wtl, reduce e)
     | (e as APP(f,vl)) => 
        (case alias f
 	  of NONE => e

@@ -991,7 +991,7 @@ struct
                      add(x,t); init e
                     )
                | ARITH(_,vl,x,t,e) => (addValues vl; add(x,t); init e)
-               | RCC(_,_,_,vl,x,t,e) => (addValues vl; add(x,t); init e)
+               | RCC(_,_,_,vl,wl,e) => (addValues vl; app add wl; init e)
                | PURE(p,vl,x,t,e) => 
                     (case p of
                        P.fwrap => hasFloats := true
@@ -1989,18 +1989,26 @@ struct
             | gen (SETTER (P.rawstore { kind }, [i, j, x], e), hp) =
                 (rawstore (kind, M.ADD(addrTy, regbind i, regbind j), x); 
                  gen (e, hp))
-	    | gen (RCC(arg as (_, _, _, _, w, t, e)), hp) = 
+	    | gen (RCC(arg as (_, _, _, _, wtl, e)), hp) = 
               let val {result, hp} = 
                       CPSCCalls.c_call 
                           {stream=stream, regbind=regbind,
                            fregbind=fregbind, typmap=typmap, vfp=vfp, hp=hp}
                           arg
-              in  case (result, t) of  
-                    (NONE, _) => defI31 (w, mlZero, e, hp)
-		  | (SOME(M.FPR x),CPS.FLTt) => treeifyDefF64 (w, x, e, hp)
+              in  case (result, wtl) of  
+                    ([], [(w, _)]) => defI31 (w, mlZero, e, hp)
+		  | ([M.FPR x],[(w,CPS.FLTt)]) => treeifyDefF64 (w, x, e, hp)
                         (* more sanity checking here ? *)
-                  | (SOME(M.GPR x),CPS.INT32t) => defI32 (w, x, e, hp)
-                  | (SOME(M.GPR x),CPS.PTRt _) => defBoxed (w, x, e, hp)
+                  | ([M.GPR x],[(w,CPS.INT32t)]) => defI32 (w, x, e, hp)
+                  | ([M.GPR x],[(w,CPS.PTRt _)]) => defBoxed (w, x, e, hp)
+		  | ([M.GPR x1, M.GPR x2],[(w1,CPS.INT32t),(w2,CPS.INT32t)]) =>
+		      let val (r1, r2) = (newReg I32, newReg I32)
+		      in addRegBinding(w1, r1);
+			 addRegBinding(w2, r2);
+			 emit(M.MV(ity,r1,x1));
+			 emit(M.MV(ity,r2,x2));
+			 gen(e,hp)
+		      end
 		  | _ => error "RCC: bad results"
 	      end
     

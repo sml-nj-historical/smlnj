@@ -130,6 +130,9 @@ fun equalUptoAlpha(ce1,ce2) =
               | samefields(nil,nil) = true
               | samefields _ = false
 	    fun samewith p = equ (p::pairs)
+	    fun samewith' args =
+		equ (ListPair.foldr (fn ((w, _), (w', _), l) => (w,w')::l)
+				    pairs args)
             fun all2 f (e::r,e'::r') = f(e,e') andalso all2 f (r,r')
               | all2 f (nil,nil) = true
               | all2 f _ = false
@@ -158,11 +161,11 @@ fun equalUptoAlpha(ce1,ce2) =
 		   i=i' andalso all2 same (vl,vl') andalso samewith(w,w')(e,e')
 	      | (PURE(i,vl,w,_,e),PURE(i',vl',w',_,e')) =>
 		   i=i' andalso all2 same (vl,vl') andalso samewith(w,w')(e,e')
-	      | (RCC(k,l,p,vl,w,_,e),RCC(k',l',p',vl',w',_,e')) =>
+	      | (RCC(k,l,p,vl,wtl,e),RCC(k',l',p',vl',wtl',e')) =>
 		(* We don't need to compare protocol info:  The protocols are
 		 * the same iff the functions and arguments are the same. *)
 		k = k' andalso l = l' andalso
-                all2 same (vl,vl') andalso samewith(w,w')(e,e')
+                all2 same (vl,vl') andalso samewith'(wtl,wtl')(e,e')
 	      | _ => false
         in  sameexp
         end
@@ -406,7 +409,7 @@ let val rec g1 =
   | PURE(p as P.fwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
   | PURE(p as P.funwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
   | PURE(i,vl,w,_,e) => (app use vl; enterMISC0 w; g1 e)
-  | RCC(k,l,p,vl,w,t,e) => (app use vl; enterMISC0 w; g1 e)
+  | RCC(k,l,p,vl,wtl,e) => (app use vl; app (enterMISC0 o #1) wtl; g1 e)
 in  g1
 end
 
@@ -459,7 +462,7 @@ fun drop_body(APP(f,vl)) = (call_less f; app use_less vl)
   | drop_body(LOOKER(_,vl,_,_,e)) = (app use_less vl; drop_body e)
   | drop_body(ARITH(_,vl,_,_,e)) = (app use_less vl; drop_body e)
   | drop_body(PURE(_,vl,_,_,e)) = (app use_less vl; drop_body e)
-  | drop_body(RCC(_,_,_,vl,_,_,e)) = (app use_less vl; drop_body e)
+  | drop_body(RCC(_,_,_,vl,_,e)) = (app use_less vl; drop_body e)
 end (* local *)
 
 
@@ -981,9 +984,9 @@ let val rec g' =
 			else PURE(i, vl', w, t, e')
 		    end)
       end
-   | RCC(k,l,p,vl,w,t,e) =>
+   | RCC(k,l,p,vl,wtl,e) =>
      (* leave raw C calls alone *)
-     RCC (k, l, p, map ren vl, w, t, g' e)
+       RCC (k, l, p, map ren vl, wtl, g' e)
    | BRANCH(i,vl,c,e1,e2) =>
       let val vl' = map ren vl
 

@@ -99,8 +99,8 @@ end = struct
 	      end
 	  | cexp (C.PURE (p, xl, v, t, e)) =
 	      C.PURE (p, xl, v, t, cexp e)
-	  | cexp (C.RCC (k, s, p, xl, v, t, e)) =
-	      C.RCC (k, s, p, xl, v, t, cexp e)
+	  | cexp (C.RCC (k, s, p, xl, vtl, e)) =
+	      C.RCC (k, s, p, xl, vtl, cexp e)
 
 	and function (fk, f, vl, tl, e) = (fk, f, vl, tl, cexp e)
     in

@@ -156,7 +156,7 @@ fun findFetch(v,k) body =
 	| f(SETTER(_,_,e)) = f e
 	| f(ARITH(_,_,_,_,e)) = f e
 	| f(PURE(_,_,_,_,e)) = f e
-	| f(RCC(_,_,_,_,_,_,e)) = f e
+	| f(RCC(_,_,_,_,_,e)) = f e
 	| f(SWITCH(_,_,el)) = not(List.exists (not o findFetch(v,k)) el)
 	| f _ = false
       and g(VAR v',SELp(i,_)) = if v=v' andalso i=k then raise Found else ()
@@ -205,7 +205,7 @@ val rec pass1 =
   | LOOKER(i,vl,w,_,e) => (app escape vl; pass1 e)
   | ARITH(i,vl,w,_,e) => (app escape vl; pass1 e)
   | PURE(i,vl,w,_,e) => (app escape vl; pass1 e)
-  | RCC(_,_,_,vl,w,_,e) => (app escape vl; pass1 e)
+  | RCC(_,_,_,vl,wtl,e) => (app escape vl; pass1 e)
   | APP(VAR f, vl) =>
       let fun loop (t::r,vl0 as (VAR v)::vl,n) =
 		    (case (t,get v)
@@ -243,7 +243,7 @@ val rec reduce =
    | SETTER(i,vl,e) => SETTER(i,vl,reduce e)
    | ARITH(i,vl,w,t,e) => ARITH(i,vl,w,t,reduce e)
    | PURE(i,vl,w,t,e) => PURE(i,vl,w,t,reduce e)
-   | RCC(k,l,p,vl,w,t,e) => RCC(k,l,p,vl,w,t,reduce e)
+   | RCC(k,l,p,vl,wtl,e) => RCC(k,l,p,vl,wtl,reduce e)
    | BRANCH(i,vl,c,e1,e2) => BRANCH(i,vl,c,reduce e1,reduce e2)
    | APP(f as VAR fv, vl) =>
         (case get fv

@@ -70,7 +70,7 @@ let fun rename rebind(VAR v) =
 		| LOOKER(i,vl,w,t,e) => LOOKER(i,map rename vl,w,t,h e)
 		| ARITH(i,vl,w,t,e) => ARITH(i,map rename vl,w,t,h e)
 		| PURE(i,vl,w,t,e) => PURE(i,map rename vl,w,t,h e)
-		| RCC(k,l,p,vl,w,t,e) => RCC(k, l, p, map rename vl, w, t, h e)
+		| RCC(k,l,p,vl,wtl,e) => RCC(k, l, p, map rename vl, wtl, h e)
        in  h 
       end
 

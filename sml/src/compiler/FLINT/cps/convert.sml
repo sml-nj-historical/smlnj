@@ -620,7 +620,7 @@ fun convert fdec =
 		fun cty AP.CCR64 = FLTt
 		  | cty AP.CCI32 = INT32t
 		  | cty AP.CCML = BOGt
-		  | cty AP.CCI64 = bug "CCI64 calling convention unimplemented"
+		  | cty AP.CCI64 = BOGt
 		val a' = lpvar a
                 val rcckind = if reentrant then REENTRANT_RCC else FAST_RCC
 		fun rcc args = let
@@ -631,12 +631,20 @@ fun convert fdec =
                         | _  => (lpvar f :: al, "")
 		in  case ml_res_opt of
 			NONE => RCC (rcckind, linkage, 
-                                     p, al, v, INTt, loop (e, c))
+                                     p, al, [(v, INTt)], loop (e, c))
+		      | SOME AP.CCI64 =>
+			let val (v1, v2) = (mkv (), mkv ())
+			in
+			    RCC (rcckind, linkage, p, al,
+				 [(v1, INT32t), (v2, INT32t)],
+				 recordNM([VAR v1, VAR v2],[INT32t,INT32t],
+					  v, loop (e, c)))
+			end
 		      | SOME rt => let
 			    val v' = mkv ()
 			    val res_cty = cty rt
 			in
-			    RCC (rcckind, linkage, p, al, v', res_cty,
+			    RCC (rcckind, linkage, p, al, [(v', res_cty)],
 				 PURE(primwrap res_cty, [VAR v'], v, BOGt,
 				      loop (e, c)))
 			end

@@ -89,9 +89,9 @@ functor CPSCCalls
               } -> 
                 (* arguments to RCC *)
               CPS.rcc_kind * string * CTypes.c_proto * CPS.value list * 
-              CPS.lvar * CPS.cty * CPS.cexp ->
+              (CPS.lvar * CPS.cty) list * CPS.cexp ->
                 (* return *)
-              { result : C.T.mlrisc option,  (* result *)
+              { result : C.T.mlrisc list,  (* result(s) *)
                 hp     : int                 (* heap pointer *)
               }
        end =
@@ -172,7 +172,7 @@ struct
         | CPS.LOOKER(_,vl,w,t,e)   => uses(vl,def(w,liveness e))
         | CPS.ARITH(_,vl,w,t,e)    => uses(vl,def(w,liveness e))
         | CPS.PURE(_,vl,w,t,e)     => uses(vl,def(w,liveness e))
-        | CPS.RCC(_,_,_,vl,w,t,e)  => uses(vl,def(w,liveness e))
+        | CPS.RCC(_,_,_,vl,wtl,e)  => uses(vl,foldl (fn ((w, _), s) => def (w, s)) (liveness e) wtl)
         | CPS.BRANCH(_,vl,c,e1,e2) => uses(vl,liveness e1 \/ liveness e2)
         | CPS.FIX _ => error "FIX in CPSCCalls.liveness"
    end
@@ -266,7 +266,7 @@ struct
                vfp, 
                hp
               } 
-              (reentrant, linkage, p, vl, w, _, e) =
+              (reentrant, linkage, p, vl, wtl, e) =
    let 
 
        val { retTy, paramTys, ... } = p : CTypes.c_proto
@@ -403,12 +403,16 @@ struct
        (* Find result *)
        val result = 
        case (result, retTy) of
-           (([] | [_]), (CTypes.C_void | CTypes.C_STRUCT _ | CTypes.C_UNION _)) => NONE
+           (([] | [_]), (CTypes.C_void | CTypes.C_STRUCT _ | CTypes.C_UNION _)) => []
          | ([], _) => error "RCC: unexpectedly few results"
-         | ([M.FPR x], CTypes.C_float) => SOME(M.FPR(M.CVTF2F (64, 32, x)))
-         | ([r as M.FPR x], CTypes.C_double) => SOME r
+         | ([M.FPR x], CTypes.C_float) => [M.FPR(M.CVTF2F (64, 32, x))]
+         | ([r as M.FPR x], CTypes.C_double) => [r]
          | ([M.FPR _], _) => error "RCC: unexpected FP result"
-         | ([r as M.GPR x], _) => SOME r (* more sanity checking here ? *)
+	 | ([r1 as M.GPR _, r2 as M.GPR _],
+	    (CTypes.C_signed CTypes.I_long_long |
+	     CTypes.C_unsigned CTypes.I_long_long)) =>
+	    [r1, r2]
+         | ([r as M.GPR x], _) => [r] (* more sanity checking here ? *)
          | _ => error "RCC: unexpectedly many results"
    in  { result = result,
          hp     = hp

@@ -115,7 +115,10 @@ functor PPCMacOSX_CCalls (
     val argGPRs = List.map C.GPReg [3, 4, 5, 6, 7, 8, 9, 10]
     val argFPRs = List.map C.FPReg [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
     val resGPR = C.GPReg 3
+    val resGPR2 = C.GPReg 4
     val resRegLoc = Reg(wordTy, resGPR, NONE)
+    val resRegLoc2 = Reg(wordTy, resGPR2, NONE)
+    val resRegLocPair = Args[resRegLoc, resRegLoc2]
     val resFPR = C.FPReg 1
 
   (* C callee-save registers *)
@@ -231,7 +234,7 @@ functor PPCMacOSX_CCalls (
   (* compute the layout of a C call's arguments *)
     fun layout {conv, retTy, paramTys} = let
 	  fun gprRes isz = (case #sz(sizeOfInt isz)
-		 of 8 => raise Fail "register pairs not yet supported"
+		 of 8 => SOME resRegLocPair
 		  | _ => SOME resRegLoc
 		(* end case *))
 	  val (resLoc, argGPRs, structRet) = (case retTy
@@ -406,6 +409,8 @@ functor PPCMacOSX_CCalls (
 		 of NONE => []
 		  | SOME(Reg(ty, r, _)) => [T.GPR(T.REG(ty, r))]
 		  | SOME(FReg(ty, r, _)) => [T.FPR(T.FREG(ty, r))]
+		  | SOME(Args[Reg(ty1,r1,_),Reg(ty2,r2,_)]) =>
+		      [T.GPR(T.REG(ty1,r1)), T.GPR(T.REG(ty2,r2))]
 		  | SOME _ => raise Fail "bogus result location"
 		(* end case *))
 	(* make struct return-area setup (if necessary) *)

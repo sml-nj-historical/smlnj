@@ -193,8 +193,8 @@ and proc(ce) =
            (app escapesM vl; PURE(p,vl,w,t,proc ce))
 	| SETTER(p,vl,ce) => 
            (app escapesM vl; SETTER(p,vl,proc ce))
-	| RCC(k, l, p, vl, w, t, ce) =>
-	    (app escapesM vl; RCC(k, l, p, vl, w, t, proc ce))
+	| RCC(k, l, p, vl, wtl, ce) =>
+	    (app escapesM vl; RCC(k, l, p, vl, wtl, proc ce))
 	| BRANCH(p,vl,c,e1,e2) =>
            (app escapesM vl; BRANCH(p,vl,c,proc e1,proc e2))
 
@@ -229,7 +229,7 @@ fun mkgraph f = let
 		 LOOKER (_, _, _, _, e) |
 		 ARITH (_, _, _, _, e) |
 		 PURE (_, _, _, _, e) |
-		 RCC (_, _, _, _, _, _, e)) = collect e
+		 RCC (_, _, _, _, _, e)) = collect e
       | collect (BRANCH (_, _, _, x, y)) = comb (collect x, collect y)
       | collect (APP (u, ul)) = (vl2sKUC (u :: ul), [])
       | collect (FIX (fl, b)) = combf (collect b, fl)
@@ -660,12 +660,13 @@ and freevars(n,sn,ce) =
            val wl' = overL(new,wl)
         in (SETTER(p,vl,ce'),free',wl',gsz,fsz)
        end
-    | RCC(k,l,p,vl,w,t,ce) =>
+    | RCC(k,l,p,vl,wtl,ce) =>
       let val (ce',free,wl,gsz,fsz) = freevars(n,sn,ce)
 	  val new = clean vl
-	  val free' = addV(new,sn,rmvsV(w,free))
-	  val wl' = overL(new,rmvL(w,wl))
-       in (RCC(k,l,p,vl,w,t,ce'),free',wl',gsz,fsz)
+	  val wtl' = map #1 wtl
+	  val free' = addV(new,sn, foldl rmvsV free wtl')
+	  val wl' = overL(new,foldl rmvL wl wtl')
+       in (RCC(k,l,p,vl,wtl,ce'),free',wl',gsz,fsz)
       end
     | BRANCH(p,vl,c,e1,e2) =>
        let val (e1',free1,wl1,gsz1,fsz1) = freevars(n,sn,e1)

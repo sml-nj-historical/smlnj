@@ -172,7 +172,8 @@ datatype cexp
    * is a string of the form:
    *      shared library name/name of the C function. 
    *) 
-  | RCC of rcc_kind * string * CTypes.c_proto * value list * lvar * cty * cexp
+  | RCC of rcc_kind * string * CTypes.c_proto * value list *
+	   (lvar * cty) list * cexp
 and rcc_kind = FAST_RCC | REENTRANT_RCC
 withtype function = fun_kind * lvar * lvar list * cty list * cexp
 

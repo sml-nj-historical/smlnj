@@ -260,7 +260,8 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
      | PURE(P.real{tokind=P.FLOAT 64,...},vl,w,_,e) =>
 		  (notereal w; prim(level,vl,e))
      | PURE(_,vl,w,_,e) => (noteother w; prim(level,vl,e))
-     | RCC(k,l,p,vl,w,t,e) => (noteother w; prim(level,vl,e)) (* ? *)
+     | RCC(k,l,p,vl,wtl,e) =>
+         (app (noteother o #1) wtl; prim(level,vl,e)) (* ? *)
 
 
    (*********************************************************************)
@@ -311,7 +312,8 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 	| ARITH(i,vl,w,t,e) => ARITH(i, map use vl, def w, t, g e)
 	| PURE(i,vl,w,t,e) => PURE(i, map use vl, def w, t, g e)
 	| SETTER(i,vl,e) => SETTER(i, map use vl, g e)
-	| RCC(k,l,p,vl,w,t,e) => RCC(k, l, p, map use vl, def w, t, g e)
+	| RCC(k,l,p,vl,wtl,e) =>
+	    RCC(k, l, p, map use vl, map (fn (w, t) => (def w, t)) wtl, g e)
 	| BRANCH(i,vl,c,e1,e2) => BRANCH(i, map use vl, def c, g e1, g e2)
 
     in  bind(args,wl); g e
@@ -481,7 +483,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 	ARITH(_,_,_,_,e) |
 	PURE(_,_,_,_,e) |
 	SETTER(_,_,e) |
-	RCC(_,_,_,_,_,_,e)) => pass2(d+2,u,e)
+	RCC(_,_,_,_,_,e)) => pass2(d+2,u,e)
      | BRANCH(i,vl,c,e1,e2) => (pass2(d+2,u,e1); 
 				pass2(d+2,u,e2))
 
@@ -526,7 +528,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
      | ARITH(i,vl,w,t,e) => ARITH(i, vl, w, t, gamma e)
      | PURE(i,vl,w,t,e) => PURE(i, vl, w, t, gamma e)
      | SETTER(i,vl,e) => SETTER(i, vl, gamma e)
-     | RCC(k,l,p,vl,w,t,e) => RCC(k, l, p, vl, w, t, gamma e)
+     | RCC(k,l,p,vl,wtl,e) => RCC(k, l, p, vl, wtl, gamma e)
      | BRANCH(i,vl,c,e1,e2) => BRANCH(i, vl, c,gamma e1, gamma e2)
 
 
@@ -555,7 +557,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
      | ARITH(i,vl,w,t,e) => ARITH(i,vl,w,t,beta e)
      | PURE(i,vl,w,t,e) => PURE(i,vl,w,t,beta e)
      | SETTER(i,vl,e) => SETTER(i,vl,beta e)
-     | RCC(k,l,p,vl,w,t,e) => RCC(k,l,p,vl,w,t,beta e)
+     | RCC(k,l,p,vl,wtl,e) => RCC(k,l,p,vl,wtl,beta e)
      | BRANCH(i,vl,c,e1,e2) => BRANCH(i,vl,c,beta e1,beta e2)
 
 

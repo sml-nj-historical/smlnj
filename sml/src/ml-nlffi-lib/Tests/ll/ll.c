@@ -12,3 +12,9 @@ void pll (int a, long long i, int b)
 {
   printf ("%d %lld %d\n", a, i, b);
 }
+
+long long a1 (long long i)
+{
+  return i + 1;
+}
+

@@ -251,12 +251,13 @@ fun show0 say =
 		    indent (n+3) e1;
 		    space n; say "else\n";
 		    indent (n+3) e2)
-	      | RCC(k,l,p,vl,w,t,e) =>
+	      | RCC(k,l,p,vl,wtl,e) =>
 		   (space n; 
                     if k = REENTRANT_RCC then say "reentrant " else ();
                     if l = "" then () else (say l; say " ");
-                    say "rcc("; sayvlist vl; say ") -> "; sayv(VAR w);
-		    sayt(t);nl(); f e)
+                    say "rcc("; sayvlist vl; say ") -> ";
+		    app (fn (w, t) => (sayv (VAR w); sayt(t))) wtl;
+		    nl(); f e)
          in f
         end
  in  indent

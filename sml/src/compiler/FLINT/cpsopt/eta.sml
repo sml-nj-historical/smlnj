@@ -144,7 +144,7 @@ val rec pass2 =
     | ARITH(i,vl,w,t,e) => ARITH(i,map rename vl, w, t, pass2 e)
     | PURE(i,vl,w,t,e) => PURE(i,map rename vl, w, t, pass2 e)
     | SETTER(i,vl,e) => SETTER(i,map rename vl, pass2 e)
-    | RCC(k,l,p,vl,w,t,e) => RCC (k, l, p, map rename vl, w, t, pass2 e)
+    | RCC(k,l,p,vl,wtl,e) => RCC (k, l, p, map rename vl, wtl, pass2 e)
     | FIX(l,e) =>
 	FIX(map (fn (fk,f,vl,cl,body) => (fk,f,vl,cl,pass2 body)) l,
 	    pass2 e)
@@ -164,8 +164,8 @@ val rec reduce =
     | PURE(i,vl,w,t,e) => 
           (addvt(w, t); PURE(i,map rename vl, w, t, reduce e))
     | SETTER(i,vl,e) => SETTER(i,map rename vl, reduce e)
-    | RCC (k,l,p,vl,w,t,e) => 
-          (addvt(w,t); RCC (k, l, p, map rename vl, w, t, reduce e))
+    | RCC (k,l,p,vl,wtl,e) => 
+          (app addvt wtl; RCC (k, l, p, map rename vl, wtl, reduce e))
     | FIX(l,e) =>
        let val _ = app addft l
            fun eta_elim nil = (nil,id,false)
