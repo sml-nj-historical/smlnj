@@ -13,6 +13,18 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2001/10/27 20:34:00 EDT
+Tag: leunga-20011027-x86-fast-fp-call
+Description:
+
+   Fixed the bug described in blume-20010920-slowfp.
+
+   The fix involves 
+      1. generating FCOPYs in FSTP in ia32-svid
+      2. marking a CALL with the appropriate annotation
+  
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2001/10/16 11:32:00 EDT
 Tag: blume-20011016-netbsd

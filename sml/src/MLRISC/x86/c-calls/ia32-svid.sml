@@ -44,6 +44,11 @@
 functor IA32SVID_CCalls
   (structure T : MLTREE
    val ix : (T.stm,T.rexp,T.fexp,T.ccexp) X86InstrExt.sext -> T.sext
+       (* Should we use allocate register on the floating point stack? 
+        * Note that this flag must match the one passed to the code generator 
+        * module.
+        *)
+   val fast_floating_point : bool ref
   ) : C_CALLS =
 struct
   structure T  = T
@@ -60,6 +65,11 @@ struct
 
   val mem = T.Region.memory
   val stack = T.Region.memory
+
+  (* This annotation is used to indicate that a call returns a fp value 
+   * in %st(0) 
+   *)
+  val fpReturnValueInST0 = #create MLRiscAnnotations.RETURN_ARG C.ST0
 
   (* map C integer types to their MLRisc type *)
   fun intTy (Ty.I_char) = 8
@@ -134,8 +144,15 @@ struct
     fun copyOut([], results, stmts) = (results, stmts)
       | copyOut (T.FPR(T.FREG(sz, f))::rest, results, stmts) = let
 	  val t = C.newFreg()
+          (* If we are using fast floating point mode then do NOT 
+           * generate FSTP.
+           * --- Allen 
+           *)
+          val stmt = if !fast_floating_point 
+                     then T.FCOPY(sz, [t], [f])
+                     else fstp(sz, T.FREG(sz, t))
 	in copyOut(rest, fpr(sz, t)::results, 
-		   fstp(sz, T.FREG(sz,t))::stmts)
+		   stmt::stmts)
 	end
       | copyOut (T.GPR(T.REG(sz, r))::rest, results, stmts) = let
 	  val t = C.newReg()
@@ -312,6 +329,21 @@ struct
 		NONE => callstm
 	      | SOME c => T.ANNOTATION (callstm,
 					#create MLRiscAnnotations.COMMENT c)
+        (* If return type is floating point then add an annotation RETURN_ARG 
+         * This is currently a hack.  Eventually MLTREE *should* support
+         * return arguments for CALLs.
+         * --- Allen
+         *)
+        fun markFpReturn callstm = T.ANNOTATION(callstm, fpReturnValueInST0)
+        val callstm =
+            if !fast_floating_point then
+               (case retTy
+                 of Ty.C_float => markFpReturn callstm
+               | Ty.C_double => markFpReturn callstm
+               | Ty.C_long_double => markFpReturn callstm
+               |  _ => callstm
+               )
+            else callstm
     in
 	save @ callstm :: restore
     end

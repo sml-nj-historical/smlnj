@@ -17,8 +17,11 @@ structure X86CG =
     structure Asm        = X86AsmEmitter
     structure Shuffle    = X86Shuffle
 
+    val fast_floating_point = MLRiscControl.getFlag "x86-fast-fp"
+
     structure CCalls     = 
-      IA32SVID_CCalls (structure T = X86MLTree  fun ix x = x)
+      IA32SVID_CCalls (structure T = X86MLTree  fun ix x = x
+                       val fast_floating_point = fast_floating_point)
 
     structure OmitFramePtr = 
       X86OmitFramePointer(structure I=X86Instr  
@@ -30,9 +33,6 @@ structure X86CG =
     val stack = CPSRegions.stack 
 
     fun error msg = MLRiscErrorMsg.error("X86CG",msg)
-
-    val fast_floating_point = MLRiscControl.getFlag "x86-fast-fp"
-
 
     fun base() = (* XXXX *)
       if !ClusterAnnotation.useVfp then X86CpsRegs.vfp else I.C.esp 
