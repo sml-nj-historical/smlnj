@@ -13,6 +13,17 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/10/24 14:00:00 EST
+Tag: leunga-20041024-x86-gas-fucomip
+Description:
+
+   John discovered a bug in the syntax of fucomip.
+   The opcodes FU?COMIP? have been changed to
+
+       fu?comip? %st(i), %st
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/10/20 15:06:00 CDT
 Tag: blume-20041020-standalone-backtrace

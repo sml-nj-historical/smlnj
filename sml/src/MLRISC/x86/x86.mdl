@@ -807,16 +807,16 @@ struct
 	``fcompp''
 
     | FCOMI of operand
-	``fcomi\t<operand>''
+	``fcomi\t<operand>, %st''
 
     | FCOMIP of operand
-	``fcomip\t<operand>''
+	``fcomip\t<operand>, %st''
 
     | FUCOMI of operand
-	``fucomi\t<operand>''
+	``fucomi\t<operand>, %st''
 
     | FUCOMIP of operand
-	``fucomip\t<operand>''
+	``fucomip\t<operand>, %st''
 
     | FXCH of {opnd: $FP}
 	``fxch\t<opnd>''

@@ -616,16 +616,20 @@ struct
        | I.FCOMPP => emit "fcompp"
        | I.FCOMI operand => 
          ( emit "fcomi\t"; 
-           emit_operand operand )
+           emit_operand operand; 
+           emit ", %st" )
        | I.FCOMIP operand => 
          ( emit "fcomip\t"; 
-           emit_operand operand )
+           emit_operand operand; 
+           emit ", %st" )
        | I.FUCOMI operand => 
          ( emit "fucomi\t"; 
-           emit_operand operand )
+           emit_operand operand; 
+           emit ", %st" )
        | I.FUCOMIP operand => 
          ( emit "fucomip\t"; 
-           emit_operand operand )
+           emit_operand operand; 
+           emit ", %st" )
        | I.FXCH{opnd} => 
          ( emit "fxch\t"; 
            emitCell opnd )
