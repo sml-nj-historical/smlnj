@@ -151,7 +151,7 @@ struct
 
         and dbind db = db
 
-        and tbind tb = tb
+        and tbind(TYPEbind(x,tvs,t)) = TYPEbind(x,tvs,ty t)
     in  { pat=pat,
           exp=exp,
           decl=decl,
