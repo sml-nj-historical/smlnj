@@ -89,6 +89,7 @@ Library
 	functor CFGExpandCopies
 (*	functor CFGView *)
 	functor Cells
+	functor CheckPlacementFn
 	functor ClusterRA
 	functor CompleteProbsFn
 	functor ComputeFreqsFn
@@ -273,6 +274,7 @@ is
 	../backpatch/vlBackPatch.sml
 	../block-placement/block-placement.sig
 	../block-placement/block-placement.sml
+	../block-placement/check-placement-fn.sml
 	../block-placement/default-block-placement.sml
 	../block-placement/weighted-block-placement-fn.sml
 	../block-placement/jump-chain-elim-fn.sml
