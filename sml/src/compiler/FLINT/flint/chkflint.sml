@@ -89,7 +89,7 @@ fun check phase envs lexp = let
   val ltEquiv = LT.lt_eqv_x (* should be LT.lt_eqv *)
 
   val ltTAppChk =
-      if !Control.CG.checkkinds then
+      if !Control.CG.checkKinds then
           LT.lt_inst_chk_gen()
       else
           fn (lt,ts,_) => LT.lt_inst(lt,ts)

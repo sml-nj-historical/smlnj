@@ -65,24 +65,30 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	    printE le handle x => (done () handle _ => (); raise x);
 	    done ()
 	end
+
+      (* checking for type errors in various phases. *)
       fun check (checkE,printE,chkId) (enableChk,lvl,logId) e =
 	(if !enableChk andalso checkE (e,lvl) then
-	   (dumpTerm (printE, "." ^ chkId ^ logId, e);
-	    bug (chkId ^ " typing errors " ^ logId))
+	   (dumpTerm (printE, "." ^ chkId ^ logId, e)
+            (* the following line will cause type errors to halt
+             * compilation.  i'd rather let it continue. --league
+             *)
+(* 	    bug (chkId ^ " typing errors " ^ logId) *)
+            )
 	 else ();
 	 e)
       val chkLexp = check (CheckLty.checkLty, MCprint.printLexp, "lambda")
       val chkFlint = check (ChkFlint.checkTop, PPFlint.printFundec, "FLINT")
 
-      val _ = (chkFlint (CGC.checkflint1,1,"1") o prFlint "Translation") flint
+      val _ = (chkFlint (CGC.checkFlint,1,"1") o prFlint "Translation") flint
 
       val flint =
-	(chkFlint (CGC.checkflint1,1,"2") o prFlint "Lcontract" o lconLexp)
+	(chkFlint (CGC.checkFlint,1,"2") o prFlint "Lcontract" o lconLexp)
 	flint
 
       val flint =
         if !CGC.specialize then
-           (chkFlint (CGC.checkflint1,1,"3") 
+           (chkFlint (CGC.checkFlint,1,"3") 
             o prFlint "Specialization" o specLexp) flint
         else flint
 

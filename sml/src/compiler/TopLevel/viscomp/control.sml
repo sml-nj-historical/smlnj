@@ -150,8 +150,11 @@ structure Control : CONTROL =
       val memDisambiguate = ref false
       val controlDependence = ref false
       val flinton = ref true
-      val checkflint1 = ref true
-      val checkkinds = ref false
+
+      (* FLINT internal type-checking controls *)
+      val checkFlint     = ref true
+      val checkDatatypes = ref true
+      val checkKinds     = ref true
 
       val compdebugging = ref false
       val mudebugging   = ref false
