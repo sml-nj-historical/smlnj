@@ -145,18 +145,6 @@ and tolexp (venv,d) lexp =
                    fn lty1 =>
                    tolexp (LT.ltInsert(venv,lvar,lty1,d), d) lexp2)
 
-      | L.TAPP (f,tycs) =>
-            (* similar to APP *)
-            tovalue(venv, d, f,
-                    fn (f_val,f_lty) =>
-                    let val r_lty = LT.lt_pinst(f_lty, tycs)
-                        val x = mkv()
-                        val u = F.VAR x
-		        val (vs,wrap) = (#2(FL.v_pflatten r_lty)) u
-                    in  (F.LET([x], F.TAPP(f_val, map FL.tcc_raw tycs),
-                               wrap(F.RET(vs))), r_lty)
-                    end)
-
       | L.RAISE (le, r_lty) => 
             tovalue(venv, d, le,
                     fn (le_val,le_lty) =>
@@ -445,6 +433,16 @@ and tolvar (venv,d,lvar,lexp,cont) =
             in  (F.TFN((lvar, map (fn tk => (mkv(), tk)) tks, body'), lexp'),
                  lty)
             end
+
+      | L.TAPP (f,tycs) =>
+            (* similar to APP *)
+            tovalue(venv, d, f,
+                    fn (f_val,f_lty) =>
+                    let val f_lty = LT.lt_pinst(f_lty, tycs)
+			val (c_lexp, c_lty) = cont(f_lty)
+                    in  (F.LET([lvar], F.TAPP(f_val, map FL.tcc_raw tycs),
+                               c_lexp), c_lty)
+                    end)
 
       | L.ETAG (le,lty) =>
             tovalue(venv, d, le,
