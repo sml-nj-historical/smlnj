@@ -269,7 +269,7 @@ fun interact () = let
 		 say "\n";
 		 non_bt_hdl e)
 	in
-	    SMLofNJ.Internals.BTrace.bthandle
+	    BackTrace.bthandle
 		{ work = fn () => evalLoop source,
 		  hdl = bt_hdl }
 	end

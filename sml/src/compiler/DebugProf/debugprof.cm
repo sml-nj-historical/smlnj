@@ -10,7 +10,7 @@ Group (../../system/smlnj/viscomp/debugprof.cm)
 	structure Profile
 	structure TProf
 	structure SProf
-	structure BTImp
+	structure BackTrace
 	structure TDPInstrument
 
 	functor ProfileFn

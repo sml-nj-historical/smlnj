@@ -123,6 +123,8 @@ Group (../system/smlnj/viscomp/core.cm)
 	structure LambdaVar
 	structure ChkFlint
 	structure DebIndex
+
+	structure BackTrace
 is
 
 TopLevel/environ/environ.sig

@@ -6,8 +6,7 @@
  * features that need to be exposed outside the boot directory.
  *)
 
-structure Internals : INTERNALS =
-  struct
+structure Internals : INTERNALS = struct
 
     structure CleanUp = CleanUp
     structure ProfControl = ProfControl
@@ -21,44 +20,30 @@ structure Internals : INTERNALS =
 
     val resetTimers = InternalTimer.resetTimers
 
+    structure TDP = struct
+        type plugin = Core.tdp_plugin
+
+	val active_plugins = Core.tdp_active_plugins
+
+	fun reserve n = Core.tdp_reserve n
+	fun reset () = Core.tdp_reset ()
+
+	val idk_entry_point = Core.tdp_idk_entry_point
+	val idk_tail_call = Core.tdp_idk_tail_call
+	val idk_non_tail_call = Core.tdp_idk_non_tail_call
+
+	val mode = ref false
+    end
+
     structure BTrace = struct
 	local
-	    fun mode0 (_ : bool option) : bool =
-		raise Fail "no btrace module hooked in"
-	    val hook = ref { reset = fn () => (), mode = mode0 }
+	    val te_hook = ref (fn () => Fail "bogus backtrace exception")
 	in
-	    fun install { corefns, reset, mode } =
-		(hook := { reset = reset, mode = mode };
-		 Core.tdp_install corefns)
-	    fun reset () = #reset (!hook) ()
-	    fun mode x = #mode (!hook) x
-	end
-	fun report () = Core.tdp_report () ()
-	fun save () = Core.tdp_save () ()
-	local
-	    exception BTraceTriggered of unit -> string list
-	in
-	    (* The following function must be compiled with BT-instrumentation
-	     * turned off because it relies on its exception handler to _not_
-	     * restore the bt-history! *)
-	    fun bthandle { work, hdl } = let
-		val restore = save ()
-	    in
-		work ()
-		handle e as BTraceTriggered do_report' =>
-		       (restore (); hdl (e, do_report' ()))
-		     | e => let
-			   val do_report = report ()
-		       in
-			   restore ();
-			   hdl (e, do_report ())
-		       end
-	    end
-	    fun trigger () = raise BTraceTriggered (report ())
-	    val idk_entry_point = Core.tdp_idk_entry_point
-	    val idk_tail_call = Core.tdp_idk_tail_call
-	    val idk_non_tail_call = Core.tdp_idk_non_tail_call
+	    fun install { plugin, mktriggerexn } =
+		(te_hook := mktriggerexn;
+		 TDP.active_plugins := plugin :: !TDP.active_plugins)
+	    fun trigger () = raise (!te_hook())
 	end
     end
 
-  end;
+end

@@ -38,27 +38,19 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 
     val bool_cvt = ControlUtil.Cvt.bool
 
-    val nextpri = ref 0
+    val enabled = SMLofNJ.Internals.TDP.mode
 
-    val enabled = let
-	val r = ref false
-	val p = !nextpri
-	val ctl = Controls.control { name = "instrument",
-				     pri = [p],
-				     obscurity = obscurity,
-				     help = "trace-, debug-, and profiling \
-					    \instrumentation mode",
-				     ctl = r }
-    in
-	nextpri := p + 1;
-	ControlRegistry.register
-	    registry
-	    { ctl = Controls.stringControl bool_cvt ctl,
-	      envName = SOME "TDP_INSTRUMENT" };
-	r
-    end
-
-    val _ = BTImp.install enabled
+    val p = 0
+    val ctl = Controls.control { name = "instrument",
+				 pri = [p],
+				 obscurity = obscurity,
+				 help = "trace-, debug-, and profiling \
+					\instrumentation mode",
+				 ctl = enabled }
+    val _ = ControlRegistry.register
+		registry
+		{ ctl = Controls.stringControl bool_cvt ctl,
+		  envName = SOME "TDP_INSTRUMENT" }
 
     fun impossible s = EM.impossible ("TDPInstrument: " ^ s)
 
@@ -363,7 +355,7 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 
 	val d' = i_dec ([], (0, 0)) d
     in
-	A.LOCALdec (A.SEQdec [VALdec (tdp_reserve_var, AUexp tdp_reserve),
+	A.LOCALdec (A.SEQdec [VALdec (tdp_reserve_var, VARexp tdp_reserve),
 			      VALdec (tdp_module_var,
 				      A.APPexp (VARexp tdp_reserve_var,
 						INTexp (!next))),

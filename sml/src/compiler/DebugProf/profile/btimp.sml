@@ -17,8 +17,10 @@
  *
  * author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure BTImp : sig
-    val install : bool ref -> unit
+structure BackTrace : sig
+    val install : unit -> unit
+    val bthandle : { work : unit -> 'a,
+		     hdl : exn * string list -> 'a } -> 'a
 end = struct
 
     structure M = IntRedBlackMap
@@ -54,11 +56,6 @@ end = struct
 	ref (NORMAL ({ depth = 0, map = M.empty, stages = [] }, []))
 
     val names = ref (M.empty: string M.map)
-    val next = ref 0
-
-    fun reset () = (names := M.empty; next := 0)
-
-    fun reserve n = !next before next := !next + n
 
     fun register (module, _: int, id, s) =
 	names := M.insert (!names, module + id, s)
@@ -185,18 +182,29 @@ end = struct
 	do_report
     end
 
-    fun install enabled = let
-	fun mode x = !enabled before Option.app (fn new => enabled := new) x
-    in
+    exception BTraceTriggered of unit -> string list
+
+    fun bthandle { work, hdl } =
+	let val restore = save ()
+	in
+	    work ()
+	    handle e as BTraceTriggered do_report =>
+		     (restore (); hdl (e, do_report ()))
+		 | e =>
+		   let val do_report = report ()
+		   in
+		       restore ();
+		       hdl (e, do_report ())
+		   end
+	end
+
+    fun install () =
 	SMLofNJ.Internals.BTrace.install
-	    { corefns = { save = save,
-			  push = push,
-			  nopush = nopush,
-			  enter = enter,
-			  reserve = reserve,
-			  register = register,
-			  report = report },
-	      reset = reset,
-	      mode = mode }
-    end
+	    { plugin = { name = "btrace",
+			 save = save,
+			 push = push,
+			 nopush = nopush,
+			 enter = enter,
+			 register = register },
+	      mktriggerexn = fn () => BTraceTriggered (report ()) }
 end

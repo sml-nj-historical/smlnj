@@ -27,35 +27,41 @@ signature INTERNALS =
   (* reset the total real and CPU time timers *)
     val resetTimers : unit -> unit
 
-  (* back-tracing control (experimental; M.Blume, 06/2000) *)
-    structure BTrace : sig
-	val install : { corefns: { save: unit -> unit -> unit,
-				   push: int * int -> unit -> unit,
-				   nopush: int * int -> unit,
-				   enter: int * int -> unit,
-				   reserve: int -> int,
-				   register: int * int * int * string -> unit,
-				   report: unit -> unit -> string list },
-			reset: unit -> unit,
-			mode: bool option -> bool }
-		      -> unit
-	val mode : bool option -> bool
-	val report : unit -> unit -> string list
-	val bthandle : { work : unit -> 'a,
-			 hdl : exn * string list -> 'a } -> 'a
-	(* The following is needed in evalloop.sml (or any other module
-	 * that explicitly handles the BTrace exception but hasn't itself
-	 * been compiled with mode=true) to make sure that the call
-	 * history is being unwound correctly. *)
-	val save : unit -> unit -> unit
-	(* Trigger an explicit back-trace.  The result will be reported
-	 * IN FULL by bthandle; intervening handlers and re-raisers are
-	 * completely ignored. *)
-	val trigger : unit -> 'a
+  (* generic trace/debug/profile control; M.Blume 10/2004 *)
+    structure TDP : sig
+	type plugin = { name: string,
+			save: unit -> unit -> unit,
+			push: int * int -> unit -> unit,
+			nopush: int * int -> unit,
+			enter: int * int -> unit,
+			register: int * int * int * string -> unit }
+(*
+	val new_plugin : plugin -> unit
+	val names2plugins : string list ->
+			    { plugins: plugin list,
+			      unavailable: string list,
+			      duplicate: string list }
+*)
+	val active_plugins : plugin list ref
+
+	(* reserve a number of IDs *)
+	val reserve : int -> int
+	(* reset the ID generator *)
+	val reset : unit -> unit
+
 	(* pre-defined ID kinds: *)
 	val idk_entry_point   : int
 	val idk_non_tail_call : int
 	val idk_tail_call     : int
+
+	(* ref cell controlling instrumentation mode *)
+	val mode : bool ref
+    end
+
+  (* back-tracing control; M.Blume, 10/2004 *)
+    structure BTrace : sig
+	val install : { plugin: TDP.plugin, mktriggerexn: unit -> exn} -> unit
+	val trigger : unit -> 'a
     end
 
   end;

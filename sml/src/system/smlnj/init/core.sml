@@ -259,35 +259,76 @@ structure Core =
 	      end)
 
         (* trace/debug/profile generation hooks *)
+        type tdp_plugin =
+	     { name     : string,	(* name identifying plugin *)
+	       save     : unit -> unit -> unit,
+	       push     : int * int -> unit -> unit,
+	       nopush   : int * int -> unit,
+	       enter    : int * int -> unit,
+	       register : int * int * int * string -> unit }
+
         local
-	    val hook =
-		ref { reserve = fn (nfct: int) => 0,
-		      save = fn () => fn () => (),
-		      push = fn (module: int, id: int) => fn () => (),
-		      enter = fn (module: int, id: int) => (),
-		      nopush = fn (module: int, id: int) => (),
-		      register = fn (module: int, id_kind: int,
-				     id: int, s: string) => (),
-		      report = fn () => fn () => ([]: string list) }
+	    val next = ref 0
+	    val hook = ref [] : tdp_plugin list ref
+
 	    val ! = InLine.!
 	    infix :=
 	    val op := = InLine.:=
+
+	    fun runwith a f = f a
+
+	    fun map f = let
+		fun loop [] = []
+		  | loop (h :: t) = f h :: loop t
+	    in
+		loop
+	    end
+
+	    fun app f = let
+		fun loop [] = ()
+		  | loop (h :: t) = (f h; loop t)
+	    in
+		loop
+	    end
+
+	    fun revmap f l = let
+		fun loop ([], a) = a
+		  | loop (h :: t, a) = loop (t, f h :: a)
+	    in
+		loop (l, [])
+	    end
+
+	    fun onestage sel () =
+		let val fns = map sel (!hook)
+		in
+		    fn arg => app (runwith arg) fns
+		end
+
+	    fun twostage sel () =
+		let val stage1_fns = map sel (!hook)
+		in
+		    fn arg =>
+		       let val stage2_fns = revmap (runwith arg) stage1_fns
+		       in
+			   fn () => app (runwith ()) stage2_fns
+		       end
+		end
 	in
+	    fun tdp_reserve n = let val r = !next in next := r + n; r end
+	    fun tdp_reset () = next := 0
+
 	    (* pre-defined kinds of IDs (to be passed to "register") *)
 	    val tdp_idk_entry_point = 0
 	    val tdp_idk_non_tail_call = 1
 	    val tdp_idk_tail_call = 2
 
-    	    (* entry points for use by BT-annotated modules: *)
-	    fun tdp_reserve () = #reserve (!hook)
-	    fun tdp_save () = #save (!hook)
-	    fun tdp_push () = #push (!hook)
-	    fun tdp_nopush () = #nopush (!hook)
-	    fun tdp_enter () = #enter (!hook)
-	    fun tdp_register () = #register (!hook)
-	    fun tdp_report () = #report (!hook)
-	    (* to install an implementation for back-tracing: *)
-	    fun tdp_install r = hook := r
+	    val tdp_save = twostage #save
+	    val tdp_push = twostage #push
+	    val tdp_nopush = onestage #nopush
+	    val tdp_enter = onestage #enter
+	    val tdp_register = onestage #register
+
+	    val tdp_active_plugins = hook
 	end
 
 	val assign = ( InLine.:= )

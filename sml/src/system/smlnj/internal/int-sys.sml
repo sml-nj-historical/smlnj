@@ -75,6 +75,9 @@ structure InteractiveSystem : sig end = struct
     (* initialize control *)
     val _ = ControlRegistry.init BasicControl.topregistry
 
+    (* install btrace implementation *)
+    val _ = BackTrace.install ()
+
     (* launch interactive loop *)
     val _ = (Control.Print.say "Generating heap image...\n";
 	     if SMLofNJ.exportML heapfile then
