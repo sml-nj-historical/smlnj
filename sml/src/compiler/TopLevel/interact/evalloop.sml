@@ -170,7 +170,7 @@ fun interact (interactParams) : unit =
 
        fun loop () =
               evalLoop interactParams source
-              handle EndOfFile => ()
+              handle EndOfFile => (say "\n")
                   | Interrupt => (say "\nInterrupt\n"; 
                               flush(); loop())
                   (* | EM.Error => (flush(); loop()) *)
