@@ -3,6 +3,9 @@ correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
 
+[2002-10-03]
+	Fixed bug in formating reals with the %g format.
+
 [2002-06-18]
 	Fixed a bug in MatchTree.nth (regexp library).  Thanks to
 	Sami Nopanen.

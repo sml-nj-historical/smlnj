@@ -270,7 +270,7 @@ structure Format : FORMAT =
 					  then ""
 					  else ("." ^ frac)
 				  in
-				    padFn(concat(sign::whole::frac::expStr))
+				    padFn(concat(sign::whole::num::expStr))
 				  end
 			    (* end case *))
 			else if Real.==(Real.negInf, r)
