@@ -54,6 +54,17 @@ signature C_CALLS =
    * one result, but some conventions may flatten larger arguments into
    * multiple registers (e.g., a register pair for long long results).
    *
+   * The implementation of genCall will return a statement sequence with the
+   * following order:
+   *
+   *	<argument area allocation>
+   *	<setup arguments>
+   *	<save dedicated registers>
+   *	<call C function>
+   *	<restore dedicated registers>
+   *	<free argument area>
+   *	<copy result into fresh registers>
+   *
    * WARNING: if the client's implementation of structRet uses the stack
    * pointer to address the struct-return area, then paramAlloc should always
    * handle allocating space for the parameter area (i.e., return true).
