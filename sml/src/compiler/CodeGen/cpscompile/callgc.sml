@@ -89,6 +89,7 @@ struct
 	 boxed : T.rexp list,	(* locations with boxed objects *)
 	 int32 : T.rexp list,	(* locations with int32 objects *)
 	 float: T.fexp list,	(* locations with float objects *)
+	 regfmls: T.mlrisc list,(* all live registers *)
 	 ret: T.stm}		(* how to return *)
     | MODULE of 
 	{info: gcInfo,
@@ -145,6 +146,7 @@ struct
       | maskList(T.GPR r::rl, t::tl, b, i, f) = 
         (case t
 	  of CPS.INT32t => maskList(rl, tl, b, r::i, f)
+	   | CPS.FLTt => error "checkLimit.maskList: T.GPR"
 	   | _ => maskList(rl, tl, r::b, i, f)
 	(*esac*))
       | maskList(T.FPR r::rl, CPS.FLTt::tl, b, i, f) = 
@@ -160,6 +162,7 @@ struct
 		boxed=boxed,
 		int32=int32,
 		float=float,
+		regfmls=regfmls,
 		ret=return} :: (!clusterRef)
     end
   in
@@ -171,7 +174,7 @@ struct
   val T.REG allocptrR = C.allocptr
 
   fun invokeGC (external, regmap) gcInfo = let
-    val {known, boxed, int32, float, ret, lab} =
+    val {known, boxed, int32, float, regfmls, ret, lab} =
       (case gcInfo
 	of GCINFO info => info
          | MODULE {info=GCINFO info, ...} => info
@@ -203,54 +206,52 @@ struct
       val liveMem = map Mem liveM
       val gcMem = map Mem gcM
 
-      fun doMem(liveRoots, gcRoots, tbl, dst, src, undo) = let
+      fun doMem(liveRoots, gcRoots, tbl, dst, src) = let
 	fun move(src::live, dst::gc, tbl) = 
 	     (assign(dst, src); move(live, gc, {loc=dst, value=src}::tbl))
-	  | move([], [], tbl) = (undo, tbl)
+	  | move([], [], tbl) = tbl
 	  | move([], dst::gc, tbl) = (assign(dst, None); move([], gc, tbl))
       in
-	copy(dst, src); move(liveRoots, gcRoots, tbl)
+	copy(dst, src);
+	(dst, src, move(liveRoots, gcRoots, tbl))
       end
 
-      fun doRecord(liveMem, gcRoots, tbl, dst, src, undo) = 
+      fun doRecord(live, gcRoots, tbl, dst, src) =
 	(case record
-	 of NONE => doMem(liveMem, gcRoots, tbl, dst, src, undo)
+	 of NONE => doMem(live, gcRoots, tbl, dst, src)
 	  | SOME(recd as Record{reg, ...}) => 
 	     (case gcRoots
 	       of Reg r::rest =>
-		   doMem(liveMem, rest, {loc=Reg r, value=recd}::tbl, 
-			 r::dst, reg::src, undo)
+		  (emit(T.COPY([r], [reg]));
+		   doMem(live, rest, {loc=Reg r, value=recd}::tbl, dst, src))
 		| Mem i::rest => 
 		   (emit(T.STORE32(stackEA i, T.REG reg, R.STACK));
-		    doMem(liveMem, rest, 
-			  {loc=Mem i, value=recd}::tbl, dst, src, undo))
+		    doMem(live, rest, {loc=Mem i, value=recd}::tbl, dst, src))
 	     (*esac*))
 	(*esac*))
 
-      fun doRaw(liveMem, gcRoots, dst, src, undo) = 
+      fun doRaw(live, gcRoots, dst, src) = 
        (case raw 
-	of NONE => doRecord(liveMem, gcRoots, [], dst, src, undo)
+	of NONE => doRecord(live, gcRoots, [], dst, src)
 	 | SOME(rw as Raw{reg, ...}) => 
 	   (case gcRoots
-	    of Reg r::rest => 
-		doRecord(liveMem, rest, 
-			 [{loc=Reg r, value=rw}], r::dst, reg::src, undo)
+	    of Reg r::rest =>
+	        (emit(T.COPY([r], [reg]));
+ 	 	 doRecord(live, rest, [{loc=Reg r, value=rw}], dst, src))
 	     | Mem i::rest => 
 		(emit(T.STORE32(stackEA i, T.REG reg, R.STACK));
-		 doRecord(liveMem, rest, 
-			  [{loc=Mem i, value=rw}], dst, src, undo))
+		 doRecord(live, rest, [{loc=Mem i, value=rw}], dst, src))
 	     | _ => error "doRaw"
 	  (*esac*))
        (*esac*))
 
       fun copyRegs(r::liveR, g::gcR, dst, src) = 
-	    copyRegs(liveR, gcR, g::dst, r::src)
-	| copyRegs([], [], dst, src) = 
-	    doRaw(liveMem, gcMem, dst, src, (src,dst))
-	| copyRegs([], gcR, dst, src) = 
-	    doRaw([], mapOnto(Reg, gcR, gcMem), dst, src, (src,dst))
-	| copyRegs(liveR, [], dst, src) = 
-	    doRaw(mapOnto(Reg, liveR, liveMem), gcMem, dst, src, (src,dst))
+	   copyRegs(liveR, gcR, g::dst, r::src)
+	| copyRegs(liveR, gcR, dst, src) = let
+	   val liveRegs = mapOnto(Reg, liveR, liveMem)
+	   val gcRoots = mapOnto(Reg, gcR, gcMem)
+	  in doRaw(liveRegs, gcRoots, dst, src)
+	  end
     in 
       copyRegs(liveR, gcR, [], [])
     end (* assignGcRoots *)
@@ -259,12 +260,10 @@ struct
      * We are conservative (read lazy) about memory disambiguation 
      * information and mark all regions as RW_MEM, which will mean
      * that none of these memory operations can be reordered.
+     * Probably doesn't matter anyway.
      *)
     fun zip() = let
       fun mkRaw64Array() = let
-	val len = length float + (length int32 + 1) div 2
-	val desc = dtoi(D.makeDesc(len + len, D.tag_raw64))
-	val ans = Cells.newReg()
 	fun storefields() = let
 	  fun storefloat(f, offset) =
 	    (emit(T.STORED(T.ADD(C.allocptr, T.LI offset), f, R.RW_MEM));
@@ -275,6 +274,9 @@ struct
 	in 
 	  List.foldl storeint32 (List.foldl storefloat 4 float) int32
 	end (*storefields*)
+	val len = length float + (length int32 + 1) div 2
+	val desc = dtoi(D.makeDesc(len + len, D.tag_raw64))
+	val ans = Cells.newReg()
       in
 	emit(T.MV(allocptrR, T.ORB(C.allocptr, T.LI 4))); (* align *)
 	emit(T.STORE32(C.allocptr, T.LI desc, R.RW_MEM));
@@ -285,9 +287,6 @@ struct
       end (* mkRaw64Array *)
 
       fun mkRecord(fields) = let
-	val len = length fields
-	val desc = T.LI(dtoi(D.makeDesc(length fields, D.tag_record)))
-	val ans = Cells.newReg()
 	fun getReg boxed = let
 	  fun f(Reg r) =  r
 	    | f(Raw{reg, ...}) = reg
@@ -300,6 +299,9 @@ struct
 	in (T.REG(f boxed), offp0)
 	end
 	val vl = map getReg fields
+	val len = length fields
+	val desc = T.LI(dtoi(D.makeDesc(len, D.tag_record)))
+	val ans = Cells.newReg()
       in 
 	MkRecord.record{desc=desc, fields=vl, ans=ans, mem=R.RW_MEM, hp=0};
 	emit(T.MV(allocptrR, T.ADD(C.allocptr, T.LI (len*4+4))));
@@ -320,31 +322,32 @@ struct
       else if nGcRoots = 0 then let
 	  val live = setToList liveRegs
 	  val empty = {regs=[], mem=[]}
-	  val recd = 
-	    (case raw 
+	  val recd =
+	    (case raw
 	     of NONE => mkRecord(rev(aRoot::live))
 	      | SOME rw => mkRecord(rev(aRoot::rw::live))
 	    (*esac*))
 	in assignGcRoots(empty, NONE, SOME recd, {regs=[aroot],mem=[]})
 	end
-      else let
-	  fun split(0, regs, mem, raw, acc) = 
-	       (mkRecord acc, {regs=regs, mem=mem}, raw)
-	    | split(n, r::regs, mem, raw, acc) = 
-	       split(n-1, regs, mem, raw, Reg r::acc)
-	    | split(n, [], m::mem, raw, acc) = 
-	       split(n-1, [], mem, raw, Mem m::acc)
-	    | split(n, [], [], SOME raw, acc) = 
-	       split(n-1, [], [], NONE, raw::acc)
-	    | split(n, [], [], NONE, acc) = error "zip.split"
+      else let (* nLiveRegs > nGcRoots *)
+	  fun split(0, regs, mem, raw, fields) = 
+	      (fields, {regs=regs,mem=mem}, raw)
+	    | split(n, r::regs, mem, raw, fields) = 
+	       split(n-1, regs, mem, raw, Reg r::fields)
+	    | split(n, regs, m::mem, raw, fields) = 
+	       split(n-1, regs, mem, raw, Mem m::fields)
+	    | split(n, [], [], SOME raw, fields) = 
+	       split(n-1, [], [], NONE, raw::fields)
+	    | split(n, [], [], NONE, _) = error "zip.split"
+
 	  val {regs, mem} = liveRegs
-	  val (recd, live, raw) = 
+	  val (fields, live, raw) = 
 	    split(nLiveRegs-nGcRoots+1, regs, mem, raw, [])
-	in assignGcRoots(live, raw, SOME recd, gcRoots)
+	in assignGcRoots(live, raw, SOME(mkRecord fields), gcRoots)
 	end
     end (*zip *)
 
-    fun unzip(undo, tbl) = let
+    fun unzip(dst, src, tbl) = let
       fun move {loc, value=Raw{orig, ...}} = let
 	   val tmp = Cells.newReg()
 	   fun srcAddr i = T.ADD(T.REG tmp, T.LI i)
@@ -368,10 +371,13 @@ struct
 	    fun srcValue i = T.LOAD32(T.ADD(T.REG tmp, T.LI i), R.RO_MEM)
 	    fun unbundle(elem, offset) = 
 	      (case elem
-	       of Raw{reg, ...} =>
-		   (emit(T.MV(reg, srcValue offset));  
-		    move{loc=Reg reg, value=elem};
+	       of Raw{reg, ...} => let
+		    val tmp = Cells.newReg()
+		  in
+		   (emit(T.MV(tmp, srcValue offset));  
+		    move{loc=Reg tmp, value=elem};
 		    offset+4)
+		  end
 	        | Reg r => 
 		   (emit(T.MV(r, srcValue(offset))); offset+4)
 		| Mem m => 
@@ -382,7 +388,8 @@ struct
 	    assign(Reg tmp, loc);  List.foldl unbundle 0 orig; ()
 	  end
 	| move{loc, value} = assign(value, loc)
-    in copy undo; app move tbl
+    in 
+      app move tbl;  copy(src, dst)
     end (* unzip *)
 
     fun callGc() = let
@@ -412,8 +419,7 @@ struct
       else ()
     end
     fun gcReturn () = let
-      val live' = map T.GPR allregs
-      val live = case C.exhausted of NONE => live' | SOME cc => T.CCR cc::live'
+      val live = case C.exhausted of NONE => regfmls | SOME cc => T.CCR cc::regfmls
     in emit ret; comp(T.ESCAPEBLOCK live)
     end
   in 
@@ -445,10 +451,17 @@ struct
 	    | eqF(T.LOADD(ea1, _), T.LOADD(ea2, _)) = eqEA(ea1, ea2)
 	    | eqF _ = false
 
-	  val eqRexp = ListPair.all eqR
+	  fun all pred = let
+	    fun allp (a::r1, b::r2) = pred(a,b) andalso (allp (r1, r2))
+	      | allp ([], []) = true
+	      | allp _ = false
+	  in allp
+	  end
+	    
+	  val eqRexp = all eqR
 	in 
 	  eqRexp (b1, b2) andalso  eqRexp (ret1::i1, ret2::i2) 
-	    andalso ListPair.all eqF (f1, f2)
+	    andalso all eqF (f1, f2)
 	end 
       | equal _ = false
 

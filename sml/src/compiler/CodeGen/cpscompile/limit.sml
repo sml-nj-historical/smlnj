@@ -46,6 +46,7 @@ fun path escapes fl =
         | g(d, SELECT(_,_,_,_,e)) = g(d, e)
         | g(d, OFFSET(_,_,_,e)) = g(d, e)
         | g(d, SWITCH(_,_,el)) = foldr Int.max 0 (map (fn e => g(d,e)) el)
+	| g(d, SETTER(P.assign, _, e)) = g(d+storeListSz, e)
         | g(d, SETTER(P.update,_,e)) = g(d+storeListSz, e)
         | g(d, SETTER(P.boxedupdate,_,e)) = g(d+storeListSz, e)
             (*** should be +0 when unboxedfloat is turned on ***)   
@@ -53,16 +54,18 @@ fun path escapes fl =
         | g(d, ARITH(P.arith{kind=P.INT _,...},_,_,_,e)) = g(d+1, e)   
 	| g(d, ARITH(P.testu _, _, _, _, e)) = g(d+1, e)
 	| g(d, ARITH(P.test _, _, _, _, e)) = g(d+1, e)
+        | g(d, ARITH(_,_,_,_,e)) = g(d,e)
         | g(d, PURE(P.pure_arith{kind=P.FLOAT 64,...},_,_,_,e)) = g(d+3, e)
         | g(d, PURE(P.real{tokind=P.FLOAT 64,...},_,_,_,e)) = g(d+3, e)       
-        | g(d, PURE(P.fwrap,_,_,_,e)) = g(d+3, e)     
+        | g(d, PURE(P.fwrap,_,_,_,e)) = g(d+4, e)     
         | g(d, PURE(P.iwrap,_,_,_,e)) = g(d+2, e)     
         | g(d, PURE(P.i32wrap,_,_,_,e)) = g(d+2, e)     
 	| g(d, PURE(P.newarray0,_,_,_,e)) = g(d+5, e)
+	| g(d, PURE(P.makeref, _, _, _, e)) = g(d+2, e)
+	| g(d, PURE(P.mkspecial, _, _, _, e)) = g(d+2, e)
         | g(d, LOOKER(P.numsubscript{kind=P.FLOAT 64},_,_,_,e)) = g(d+3, e)
         | g(d, SETTER(_,_,e)) = g(d,e)
         | g(d, LOOKER(_,_,_,_,e)) = g(d,e)
-        | g(d, ARITH(_,_,_,_,e)) = g(d,e)
         | g(d, PURE(_,_,_,_,e)) = g(d,e)
         | g(d, BRANCH(_,_,_,a,b)) = Int.max(g(d,a), g(d,b))
         | g(d, APP(LABEL w, _)) = 
@@ -96,9 +99,12 @@ fun path escapes fl =
         | h(d, FIX _) = error "8932.1 in limit"
 
       and maxpath w = look w handle Limit' =>
+	   (* Note that the heap may need to be aligned so g is
+	    * called with g(1, bod). Be conservative.
+	    *)
             (case escapes w
               of KNOWN => let val bod = body w
-			      val n = g(0, bod)
+			      val n = g(1, bod)
 		              val i = h(0, bod)
 		              val z = if n>MAX_ALLOC
 				      then {known=KNOWN_CHECK,alloc=n,instrs=i}
@@ -111,7 +117,7 @@ fun path escapes fl =
 							alloc=0,
 							instrs=0});
 				       {known=kind,
-					alloc=g(0,bod),
+					alloc=g(1,bod),
 					instrs=h(0,bod)})
                           in Intmap.add m (w,z); z
 		         end)
@@ -174,6 +180,9 @@ end (* structure Limit *)
 
 (*
  * $Log: limit.sml,v $
+ * Revision 1.1  1998/10/28 18:20:39  jhr
+ *   Removed code generator support for STRING/REAL constants.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:53  george
  * Version 110.5
  *
