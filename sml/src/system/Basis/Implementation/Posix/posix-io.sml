@@ -9,6 +9,7 @@
 local
     structure SysWord = SysWordImp
     structure Int = IntImp
+    structure Position = PositionImp
 in
 structure POSIX_IO =
   struct
@@ -131,19 +132,19 @@ structure POSIX_IO =
     structure FLock =
       struct
         datatype flock = FLOCK of {
-             l_type : lock_type,
-             l_whence : whence,
-             l_start : Position.int,
-             l_len : Position.int,
-             l_pid : pid option
+             ltype : lock_type,
+             whence : whence,
+             start : Position.int,
+             len : Position.int,
+             pid : pid option
            }
 
         fun flock fv = FLOCK fv
-        fun ltype (FLOCK{l_type,...}) = l_type
-        fun whence (FLOCK{l_whence,...}) = l_whence
-        fun start (FLOCK{l_start,...}) = l_start
-        fun len (FLOCK{l_len,...}) = l_len
-        fun pid (FLOCK{l_pid,...}) = l_pid
+        fun ltype (FLOCK fv) = #ltype fv
+        fun whence (FLOCK fv) = #whence fv
+        fun start (FLOCK fv) = #start fv
+        fun len (FLOCK fv) = #len fv
+        fun pid (FLOCK fv) = #pid fv
       end
 
     type flock_rep = s_int * s_int * Position.int * Position.int * s_int
@@ -156,12 +157,12 @@ structure POSIX_IO =
     val f_wrlck = osval "F_WRLCK"
     val f_unlck = osval "F_UNLCK"
 
-    fun flockToRep (FLock.FLOCK{l_type,l_whence,l_start,l_len,...}) = let
+    fun flockToRep (FLock.FLOCK{ltype,whence,start,len,...}) = let
           fun ltypeOf F_RDLCK = f_rdlck
             | ltypeOf F_WRLCK = f_wrlck
             | ltypeOf F_UNLCK = f_unlck
           in
-            (ltypeOf l_type,whToWord l_whence, l_start, l_len, 0)
+            (ltypeOf ltype,whToWord whence, start, len, 0)
           end
     fun flockFromRep (usepid,(ltype,whence,start,len,pid)) = let
           fun ltypeOf ltype = 
@@ -171,11 +172,11 @@ structure POSIX_IO =
                 else fail ("flockFromRep","unknown lock type "^(Int.toString ltype))
           in
             FLock.FLOCK { 
-              l_type = ltypeOf ltype,
-              l_whence = whFromWord whence,
-              l_start = start,
-              l_len = len,
-              l_pid = if usepid then SOME(POSIX_Process.PID pid) else NONE
+              ltype = ltypeOf ltype,
+              whence = whFromWord whence,
+              start = start,
+              len = len,
+              pid = if usepid then SOME(POSIX_Process.PID pid) else NONE
             }
           end
 
@@ -192,6 +193,171 @@ structure POSIX_IO =
     val fsync' : s_int -> unit = cfun "fsync"
     fun fsync fd = fsync' (FS.intOf fd)
 
+
+    (*
+     * Making readers and writers...
+     *   (code lifted from posix-bin-prim-io.sml and posix-text-prim-io.sml)
+     *)
+    fun announce s x y = (
+	  (*print "Posix: "; print (s:string); print "\n"; *)
+	  x y)
+
+    val bufferSzB = 4096
+
+    fun isRegFile fd = FS.ST.isReg(FS.fstat fd)
+
+    fun posFns (closed, fd) =
+	if isRegFile fd then
+	    let val pos = ref (Position.fromInt 0)
+		fun getPos () = !pos
+		fun setPos p =
+		    (if !closed then raise IO.ClosedStream else ();
+		     pos := announce "lseek" lseek (fd, p, SEEK_SET))
+		fun endPos () =
+		    (if !closed then raise IO.ClosedStream else ();
+		     FS.ST.size(announce "fstat" FS.fstat fd))
+		fun verifyPos () =
+		    let val curPos = lseek (fd, Position.fromInt 0, SEEK_CUR)
+		    in
+			pos := curPos; curPos
+		    end
+	    in
+		ignore (verifyPos ());
+		{ pos = pos,
+		  getPos = SOME getPos,
+		  setPos = SOME setPos,
+		  endPos = SOME endPos,
+		  verifyPos = SOME verifyPos }
+	    end
+	else { pos = ref (Position.fromInt 0),
+	       getPos = NONE, setPos = NONE, endPos = NONE, verifyPos = NONE }
+
+    fun mkReader { mkRD, cvtVec, cvtArrSlice } { fd, name, initBlkMode } =
+	let val closed = ref false
+            val {pos, getPos, setPos, endPos, verifyPos} = posFns (closed, fd)
+            val blocking = ref initBlkMode
+            fun blockingOn () = (setfl(fd, O.flags[]); blocking := true)
+	    fun blockingOff () = (setfl(fd, O.nonblock); blocking := false)
+	    fun incPos k = pos := Position.+(!pos, Position.fromInt k)
+	    fun r_readVec n =
+		let val v = announce "read" readVec(fd, n)
+		in
+		    incPos (Word8Vector.length v);
+		    cvtVec v
+		end
+	    fun r_readArr arg =
+		let val k = announce "readBuf" readArr(fd, cvtArrSlice arg)
+		in
+		    incPos k; k
+		end
+	    fun blockWrap f x =
+		(if !closed then raise IO.ClosedStream else ();
+		 if !blocking then () else blockingOn();
+		 f x)
+	    fun noBlockWrap f x =
+		(if !closed then raise IO.ClosedStream else ();
+		 if !blocking then blockingOff() else ();
+		 ((* try *) SOME (f x)
+			    handle (e as Assembly.SysErr(_, SOME cause)) =>
+				   if cause = POSIX_Error.again then NONE
+				   else raise e
+		  (* end try *)))
+	    fun r_close () =
+		if !closed then ()
+		else (closed:=true; announce "close" close fd)
+	    val isReg = isRegFile fd
+	    fun avail () =
+		if !closed then SOME 0
+		else if isReg then
+		    SOME(Position.-(FS.ST.size(FS.fstat fd), !pos))
+		else NONE
+	in
+	    mkRD { name = name,
+		   chunkSize = bufferSzB,
+		   readVec = SOME (blockWrap r_readVec),
+		   readArr = SOME (blockWrap r_readArr),
+		   readVecNB = SOME (noBlockWrap r_readVec),
+		   readArrNB = SOME (noBlockWrap r_readArr),
+		   block = NONE,
+		   canInput = NONE,
+		   avail = avail,
+		   getPos = getPos,
+		   setPos = setPos,
+		   endPos = endPos,
+		   verifyPos = verifyPos,
+		   close = r_close,
+		   ioDesc = SOME (FS.fdToIOD fd) }
+	end
+
+    fun mkWriter { mkWR, cvtVecSlice, cvtArrSlice }
+		 { fd, name, initBlkMode, appendMode, chunkSize } =
+	let val closed = ref false
+            val {pos, getPos, setPos, endPos, verifyPos} = posFns (closed, fd)
+	    fun incPos k = (pos := Position.+(!pos, Position.fromInt k); k)
+	    val blocking = ref initBlkMode
+	    val appendFS = O.flags(if appendMode then [O.append] else nil)
+	    fun updateStatus() =
+		let val flgs = if !blocking then appendFS
+			       else O.flags[O.nonblock, appendFS]
+		in
+		    announce "setfl" setfl(fd, flgs)
+		end
+	  fun ensureOpen () = if !closed then raise IO.ClosedStream else ()
+	  fun ensureBlock (x) =
+	      if !blocking = x then () else (blocking := x; updateStatus())
+	  fun writeVec' (fd, s) = writeVec (fd, cvtVecSlice s)
+	  fun writeArr' (fd, s) = writeArr (fd, cvtArrSlice s)
+	  fun putV x = incPos (announce "writeVec" writeVec' x)
+	  fun putA x = incPos (announce "writeArr" writeArr' x)
+	  fun write (put, block) arg =
+	      (ensureOpen();
+	       ensureBlock block; 
+	       put(fd, arg))
+	  fun handleBlock writer arg =
+	      SOME (writer arg)
+	      handle (e as Assembly.SysErr(_, SOME cause)) => 
+ 		     if cause = POSIX_Error.again then NONE else raise e
+	  fun w_close () =
+	      if !closed then ()
+	      else (closed:=true; announce "close" close fd)
+	in
+	    mkWR { name = name,
+		   chunkSize = chunkSize,
+		   writeVec = SOME(write(putV,true)),
+		   writeArr = SOME(write(putA,true)),
+		   writeVecNB = SOME(handleBlock(write(putV,false))),
+		   writeArrNB = SOME(handleBlock(write(putA,false))),
+		   block = NONE,
+		   canOutput = NONE,
+		   getPos = getPos,
+		   setPos = setPos,
+		   endPos = endPos,
+		   verifyPos = verifyPos,
+		   ioDesc = SOME (FS.fdToIOD fd),
+		   close = w_close }
+	end
+
+    val mkBinReader = mkReader { mkRD = BinPrimIO.RD,
+				 cvtVec = fn v => v,
+				 cvtArrSlice = fn s => s }
+
+    val mkTextReader = mkReader { mkRD = TextPrimIO.RD,
+				  cvtVec = Byte.bytesToString,
+				  cvtArrSlice =	(* gross hack!!! *)
+				    fn (s : CharArraySlice.slice) =>
+				       InlineT.cast s : Word8ArraySlice.slice }
+
+    val mkBinWriter = mkWriter { mkWR = BinPrimIO.WR,
+				 cvtVecSlice = fn s => s,
+				 cvtArrSlice = fn s => s }
+
+    val mkTextWriter = mkWriter { mkWR = TextPrimIO.WR,
+				  cvtVecSlice =	(* gross hack!!! *)
+				    fn (s : CharVectorSlice.slice) =>
+				       InlineT.cast s : Word8VectorSlice.slice,
+				  cvtArrSlice = (* gross hack!!! *)
+				    fn (s : CharArraySlice.slice) =>
+				       InlineT.cast s : Word8ArraySlice.slice }
+
   end (* structure POSIX_IO *)
 end
-

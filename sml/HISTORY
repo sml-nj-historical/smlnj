@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/05/18 15:50:00 CDT
+Tag: blume-20040518-mkreader
+Description:
+
+Added Posix.IO.mk{Bin,Text}{Reader,Writer} by lifting their respective
+implementations from internal modules PosixBinPrimIO and PosixTextPrimIO.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/05/11 14:35:00 CDT
 Tag: blume-20040511-win32sock
 Description:

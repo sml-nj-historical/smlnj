@@ -25,6 +25,7 @@ structure PosixTextPrimIO : sig
   end = struct
 
     structure PF = Posix.FileSys
+    structure PIO = Posix.IO
     structure BinPrimIO = PosixBinPrimIO
     structure PrimIO = TextPrimIO
 
@@ -32,18 +33,41 @@ structure PosixTextPrimIO : sig
 
     val bufferSzB = 4096
 
- (* If Char.char is really Word8.word, then very efficient versions of
-  * translateIn and translateOut are possible:
-  *)
-    val translateIn : BinPrimIO.PrimIO.reader -> PrimIO.reader = InlineT.cast
-    val translateOut : BinPrimIO.PrimIO.writer -> PrimIO.writer = InlineT.cast
+    val mkReader = PIO.mkTextReader
+    val mkWriter = PIO.mkTextWriter
 
-    fun openRd fname = translateIn(BinPrimIO.openRd fname)
-    fun openWr fname = translateOut(BinPrimIO.openWr fname)
-    fun openApp fname = translateOut(BinPrimIO.openApp fname)
+    fun announce s x y = (
+	  (*print "Posix: "; print (s:string); print "\n"; *)
+	  x y)
 
-    fun mkReader args = translateIn(BinPrimIO.mkReader args)
-    fun mkWriter args = translateOut(BinPrimIO.mkWriter args)
+    fun openRd name =
+	mkReader { fd = announce "openf"
+				 PF.openf (name, PIO.O_RDONLY, PF.O.flags []),
+		   name = name,
+		   initBlkMode = true }
+
+    val standardMode = PF.S.flags[	(* mode 0666 *)
+	    PF.S.irusr, PF.S.iwusr,
+	    PF.S.irgrp, PF.S.iwgrp,
+	    PF.S.iroth, PF.S.iwoth
+	  ]
+
+    fun createFile (name, mode, flags) =
+	announce "createf" PF.createf (name, mode, flags, standardMode)
+
+    fun openWr name =
+	mkWriter { fd = createFile (name, PIO.O_WRONLY, PF.O.trunc),
+		   name = name,
+		   initBlkMode = true,
+		   appendMode = false,
+		   chunkSize = bufferSzB }
+
+    fun openApp name =
+	mkWriter { fd = createFile (name, PIO.O_WRONLY, PF.O.append),
+		   name = name,
+		   initBlkMode = true,
+		   appendMode = true,
+		   chunkSize = bufferSzB }
 
     fun stdIn () = mkReader{
 	    fd		= PF.stdin,
