@@ -1,0 +1,145 @@
+@FILES
+  {"os"; "The OS structure";}
+  {"multicast"; "The Multicast structure";}
+  {"trace-cml"; "The TraceCML structure";}
+  {"cml"; "The CML structure";}
+  {"os-process"; "The OS.Process structure";}
+  {@EMPTY "cml-lib"; "CML Library Reference"; "trace-cml" "multicast"}
+  {@EMPTY "core-cml"; "Core CML Reference"; "os-io" "os-process" "os" "mailbox" "sync-var" "cml"}
+  {"sync-var"; "The SyncVar structure";}
+  {"porting"; "Porting old programs";}
+  {@EMPTY "basics"; "Basics"; "porting"}
+  {"os-io"; "The OS.IO structure";}
+  {@EMPTY "refman"; "The Concurrent Reference Manual"; "cml-lib" "core-cml" "basics"}
+  {"mailbox"; "The Mailbox structure";}
+@SIGNATURE CML_OS_IO "os-io" {
+  @VALS 
+    pollEvt
+}
+@SIGNATURE SYNC_VAR "sync-var" {
+  @TYPES 
+    @TYPE ivar
+    @TYPE mvar
+  @EXCEPTIONS 
+    Put
+  @VALS 
+    iGetPoll
+    mTakeEvt
+    iPut
+    mTake
+    mGetPoll
+    mPut
+    iGetEvt
+    iGet
+    mVarInit
+    mGetEvt
+    mGet
+    iVar
+    mVar
+    mSwapEvt
+    sameIVar
+    mSwap
+    mTakePoll
+    sameMVar
+}
+@SIGNATURE MULTICAST "multicast" {
+  @TYPES 
+    @TYPE port
+    @TYPE event
+    @TYPE mchan
+  @VALS 
+    port
+    mChannel
+    multicast
+    recvEvt
+    recv
+    copy
+}
+@SIGNATURE CML "cml" {
+  @TYPES 
+    @TYPE event
+    @TYPE thread_id
+    @TYPE chan
+  @VALS 
+    select
+    getTid
+    sendPoll
+    choose
+    guard
+    atTimeEvt
+    yield
+    recvPoll
+    compareTid
+    wrapHandler
+    channel
+    sendEvt
+    send
+    tidToString
+    spawnc
+    joinEvt
+    sameChannel
+    recvEvt
+    recv
+    never
+    alwaysEvt
+    hashTid
+    version
+    banner
+    timeOutEvt
+    sameTid
+    spawn
+    withNack
+    exit
+    wrap
+    sync
+}
+@SIGNATURE TRACE_CML "trace-cml" {
+  @TYPES 
+    @DATATYPE trace_to { TraceToOut TraceToErr TraceToNull TraceToFile TraceToStream}
+    @TYPE trace_module
+  @EXCEPTIONS 
+    NoSuchModule
+  @VALS 
+    traceOnly
+    traceRoot
+    status
+    traceModule
+    amTracing
+    resetUncaughtFn
+    watch
+    traceOff
+    unwatch
+    setUncaughtFn
+    nameOf
+    setTraceFile
+    moduleOf
+    traceOn
+    setHandleFn
+    watcher
+    trace
+}
+@SIGNATURE CML_OS_PROCESS "os-process" {
+  @VALS 
+    systemEvt
+}
+@SIGNATURE MAILBOX "mailbox" {
+  @TYPES 
+    @TYPE mbox
+  @VALS 
+    sameMailbox
+    recvPoll
+    send
+    recvEvt
+    recv
+    mailbox
+}
+@SIGNATURE CML_OS "os" {
+  @STRUCTURE Process CML_OS_PROCESS
+  @STRUCTURE IO CML_OS_IO
+}
+@STRUCTURE OS "os" CML_OS
+@STRUCTURE Multicast "multicast" MULTICAST
+@STRUCTURE TraceCML "trace-cml" TRACE_CML
+@STRUCTURE CML "cml" CML
+@STRUCTURE SyncVar "sync-var" SYNC_VAR
+@STRUCTURE Mailbox "mailbox" MAILBOX

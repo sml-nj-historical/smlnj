@@ -1,0 +1,14 @@
+(* sources.cm
+ *
+ * Sources file for Pretty printer device library.
+ *)
+
+Library
+
+  structure SimpleTextIODev
+  structure HTMLDev
+is
+  ../src/sources.cm
+  ../../HTML/sources.cm
+  simple-textio-dev.sml
+  html-dev.sml
