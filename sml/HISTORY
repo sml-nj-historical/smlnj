@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Lal George
+Date: 2001/07/31 10:03:23 EDT 2001
+Tag: george-20010731-x86-fmalloc
+Description: Fixed bug in x86 calls
+
+    There was a bug where call instructions would mysteriously
+    vanish. The call instruction had to be one that returned 
+    a floating point value.
+
+----------------------------------------------------------------------
+Name: Lal George
 Date: 2001/07/19 16:36:29 EDT 2001
 Tag: george-20010719-simple-cells
 Description: 
