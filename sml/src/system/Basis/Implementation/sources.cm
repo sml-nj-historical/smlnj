@@ -43,6 +43,7 @@ Group (../basis.cm)
 	signature TEXT_IO
 	signature TEXT_STREAM_IO
 	signature PACK_WORD
+	signature PACK_REAL
 	signature TEXT
 	signature SML90
 	signature BIT_FLAGS
@@ -126,6 +127,8 @@ Group (../basis.cm)
 	structure Real64VectorSlice
 	structure SML90
 	structure ExnName
+
+	functor PrimIO
 
 	(* SML/NJ specific *)
 	structure Signals
@@ -425,6 +428,8 @@ is
 	pack-word-l16.sml
 	pack-word-b32.sml
 	pack-word-l32.sml
+
+	pack-real.sig
 
 	IO/prim-io.sig
 	IO/prim-io-fn.sml

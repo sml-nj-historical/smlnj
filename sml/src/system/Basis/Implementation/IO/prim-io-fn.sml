@@ -6,22 +6,27 @@
 functor PrimIO (
 
     structure Vector : MONO_VECTOR
-    structure Array : MONO_ARRAY
-      where type vector = Vector.vector
-      where type elem = Vector.elem
     structure VectorSlice : MONO_VECTOR_SLICE
-      where type vector = Vector.vector
-      where type elem = Vector.elem
+    structure Array : MONO_ARRAY
     structure ArraySlice : MONO_ARRAY_SLICE
-      where type elem = Vector.elem
-      where type array = Array.array
-      where type vector = Vector.vector
-      where type vector_slice = VectorSlice.slice
+    sharing type Vector.elem = VectorSlice.elem = Array.elem = ArraySlice.elem
+    sharing type Vector.vector = VectorSlice.vector =
+		 Array.vector = ArraySlice.vector
+    sharing type VectorSlice.slice = ArraySlice.vector_slice
+    sharing type Array.array = ArraySlice.array
     val someElem : Vector.elem
     eqtype pos
-    val compare : (pos * pos) -> order
+    val compare : pos * pos -> order
 
-  ) : PRIM_IO = struct
+  ) :> PRIM_IO
+        where type elem = Vector.elem
+        where type vector = Vector.vector
+	where type vector_slice = VectorSlice.slice
+	where type array = Array.array
+	where type array_slice = ArraySlice.slice
+	where type pos = pos
+
+= struct
 
     structure A = Array
     structure AS = ArraySlice

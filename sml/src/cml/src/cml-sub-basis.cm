@@ -17,6 +17,8 @@ Group (cml-internal.cm)
 	structure BinIO
 	structure BinPrimIO
 	structure TextIO
-	structure TextPrimIO)
+	structure TextPrimIO
+
+	functor PrimIO)
 is
 	$/basis.cm

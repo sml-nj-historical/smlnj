@@ -44,8 +44,10 @@ Library
 	signature TEXT_IO
 	signature TEXT_STREAM_IO
 	signature PACK_WORD
+	signature PACK_REAL
 	signature TEXT
 	signature SML90
+	signature BIT_FLAGS
 
 	(* SML/NJ specific *)
 	signature SIGNALS
@@ -133,7 +135,8 @@ Library
 	structure Real64VectorSlice
 	structure Text
 	structure SML90
-	signature BIT_FLAGS
+
+	functor PrimIO
 
 	(* SML/NJ specific *)
 	structure Signals
