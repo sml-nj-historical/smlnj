@@ -54,10 +54,6 @@ struct
 
    exception NotThere
 
-   (*
-   val Asm.S.STREAM{emit, ...} = Asm.makeStream []
-    *)
-
    val dummyLabel = F.LABEL(Label.Label{id= ~1, addr=ref ~1, name=""})
 
    fun x + y = Word.toIntX(Word.+(Word.fromInt x, Word.fromInt y))
@@ -243,7 +239,7 @@ struct
                val _        = cleanup trail
            in  span
            end 
-    
+
            val newNodes   = Core.newNodes G
            val getnode    = Intmap.map nodes
            val insnDefUse = Props.defUse cellkind
@@ -354,11 +350,12 @@ struct
                       val _       = span := SOME spanMap
                   in  setSpan end
                   else fn _ => ()
-              in  fn (v, v' as NODE{color=ref(PSEUDO | COLORED _), ...}) => 
+              in 
+		fn (v, v' as NODE{color=ref(PSEUDO | COLORED _), ...}) => 
+		     setSpan(v, liveness(v, v', addEdge))
+		 | (v, v' as NODE{color=ref(MEMREG _), ...}) => 
                      setSpan(v, liveness(v, v', addEdge))
-                   | (v, v' as NODE{color=ref(SPILLED c), ...}) => 
-                     if c >= 0 then setSpan(v, liveness(v, v', addEdge)) else ()
-                   | _ => ()
+		 | _ => ()
               end 
              ) nodes;
            if isOn(Core.SAVE_COPY_TEMPS, mode) then copyTmps := tmps else ();
@@ -386,7 +383,7 @@ struct
            else ();
            moves
        end
- 
+
        (* 
         * Rebuild the interference graph;
         * We'll just do it from scratch for now.
@@ -434,8 +431,8 @@ struct
 
            val addAffectedBlocks = Intmap.add affectedBlocks
 
-           fun ins set = 
-           let val add  = Intmap.add set
+           fun ins set = let
+               val add  = Intmap.add set
                val look = Intmap.mapWithDefault(set, [])
                fun enter(r, []) = ()
                  | enter(r, pt::pts) = 
@@ -449,17 +446,16 @@ struct
            val insSpillSet  = ins spillSet
            val insReloadSet = ins reloadSet
            val insKillSet   = 
-           let val add  = Intmap.add killSet
+	     let
+               val add  = Intmap.add killSet
                val look = Intmap.mapWithDefault(killSet, [])
                fun enter(r, []) = ()
                  | enter(r, pt::pts) = (add(pt, r::look pt); enter(r, pts))
-           in  enter 
-           end
+             in  enter 
+             end
 
            (* Mark all spill/reload locations *)
-           fun markSpills [] = ()
-             | markSpills(
-                G.NODE{color, number, defs as ref d, uses as ref u, ...}::ns) =
+           fun markSpills(G.NODE{color, number, defs, uses, ...}) =
                let fun spillIt(defs, uses) = 
                        (insSpillSet(number, defs);
                         insReloadSet(number, uses);
@@ -468,45 +464,54 @@ struct
                            [] => insKillSet(number, defs)
                          | _ => ()
                        )
-               in  case !color of
-                     G.SPILLED c => spillIt(d, u)
-                   | G.PSEUDO => spillIt(d, u)
-                   | _ => ();
-                   markSpills ns
+		   val d = !defs
+		   val u = !uses
+               in  
+		 case !color 
+		 of G.SPILLED     => spillIt(d,u)
+	 	  | G.SPILL_LOC _ => spillIt(d,u)
+		  | G.MEMREG _    => spillIt(d,u)
+                  | G.PSEUDO      => spillIt(d,u)
+                  | _ => ()
                end
-           val _ = markSpills nodesToSpill
+           val _ = app markSpills nodesToSpill
 
            (* Rewrite all affected blocks *)
            fun rewriteAll (blknum, _) =
-               case A.sub(blockTable, blknum) of
-                  F.BBLOCK{annotations, insns as ref instrs, ...} => 
-                  let val instrs = 
-                          spillRewrite{pt=progPt(blknum, length instrs),
-                                       instrs=instrs,
-                                       annotations=annotations}
-                  in  insns := instrs
+	     (case A.sub(blockTable, blknum) 
+              of F.BBLOCK{annotations, insns as ref instrs, ...} => let
+                    val instrs = 
+		      spillRewrite{pt=progPt(blknum, length instrs),
+				   instrs=instrs,
+				   annotations=annotations}
+                  in insns := instrs
                   end
-               | _ => error "rewriteAll"
+              | _ => error "rewriteAll"
+             (*esac*))
 
-       in  Intmap.app rewriteAll affectedBlocks;
-           let val spilledMarker = SPILLED ~2
-               fun mark [] = ()
-                 | mark(G.NODE{number, color as ref(SPILLED c), ...}::rest)= 
-                     (if number <> c then color := spilledMarker else ();
-                      mark rest)
-                 | mark(G.NODE{color as ref PSEUDO, ...}::rest) =
-                      (color := spilledMarker; mark rest)
-                 | mark(_::rest) = mark rest 
-           in  mark nodesToSpill
-           end;
-           rebuild(cellkind, graph)
-       end
 
-   in  {build=build, spill=spill, 
-        programPoint=fn{block,instr} => progPt(block,instr),
-        blockNum=blockNum, 
-        instrNum=instrNum
-       }
-   end
-
+	   fun mark(G.NODE{color, ...}) = 
+	     (case !color
+	      of PSEUDO => color := SPILLED
+	       | SPILLED => ()
+	       | SPILL_LOC _ => ()
+               | ALIASED _ => ()
+	       | MEMREG _ => ()
+	       | COLORED _ => error "mark: COLORED"
+	       | REMOVED =>  error "mark: REMOVED"
+             (*esac*))
+       in 
+	 Intmap.app rewriteAll affectedBlocks;
+	 app mark nodesToSpill;
+	 rebuild(cellkind, graph)
+       end (* spill *)
+   in  
+     { build       = build, 
+       spill       = spill, 
+       programPoint= fn{block,instr} => progPt(block,instr),
+       blockNum    = blockNum, 
+       instrNum    = instrNum
+      }
+  end
 end
+

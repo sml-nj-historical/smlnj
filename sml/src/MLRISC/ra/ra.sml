@@ -132,7 +132,10 @@ struct
        val {build=buildMethod, spill=spillMethod, ...} = F.services flowgraph 
 
        (* global spill location counter *)
-       val spillLoc=ref ~256
+       (* Note: spillLoc cannot be zero as negative locations are
+        * returned to the client to indicate spill locations.
+	*)
+       val spillLoc=ref 1
 
        (* How to dump the flowgraph *)
        fun dumpFlowgraph(flag, title) =
@@ -245,7 +248,7 @@ struct
             * Mark spill nodes
             *)
            fun markSpillNodes nodesToSpill =
-           let val marker = SPILLED(~1)
+           let val marker = SPILLED
                fun loop [] = ()
                  | loop(NODE{color, ...}::ns) = (color := marker; loop ns)
            in  loop nodesToSpill end
@@ -255,8 +258,8 @@ struct
             *)
            fun markMemRegs [] = ()
              | markMemRegs(NODE{number=r, color as ref(ALIASED
-                          (NODE{color=ref(col as SPILLED c), ...})), ...}::ns) =
-                (if c >= 0 then color := col else ();
+                          (NODE{color=ref(col as MEMREG _), ...})), ...}::ns) =
+                (color := col;
                  markMemRegs ns)
              | markMemRegs(_::ns) = markMemRegs ns
       
@@ -276,16 +279,6 @@ struct
                val _ = if isOn(mode,SPILL_PROPAGATION+SPILL_COALESCING) then   
                           Core.initMemMoves G 
                        else ()
-               (*
-               val spills = if isOn(mode,SPILL_PROPAGATION) then   
-                               Core.spillPropagation G spills else spills
-               val _ = if isOn(mode,SPILL_COALESCING) then 
-                          Core.spillCoalescing G spills else ()
-               val _ = if isOn(mode,SPILL_COLORING) then 
-                          Core.spillColoring G spills else ()
-               val _ = if isOn(mode,SPILL_COALESCING+SPILL_PROPAGATION) then 
-                          markMemRegs spills else ()
-                *)
                val _ = logGraph("actual spill",G);
                val {simplifyWkl,freezeWkl,moveWkl,spillWkl} =  
                     Core.initWorkLists G

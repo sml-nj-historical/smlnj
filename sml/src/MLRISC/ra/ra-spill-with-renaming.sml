@@ -234,8 +234,9 @@ struct
        val getKills   : int -> C.cell list = Intmap.mapWithDefault(killSet,[])
 
        fun getLoc(G.NODE{color=ref(G.ALIASED n), ...}) = getLoc n
-         | getLoc(G.NODE{color=ref(G.SPILLED ~1), number, ...}) = number
-         | getLoc(G.NODE{color=ref(G.SPILLED c), ...}) = c
+         | getLoc(G.NODE{color=ref(G.SPILLED), number, ...}) = number
+         | getLoc(G.NODE{color=ref(G.MEMREG m), ...}) = m
+         | getLoc(G.NODE{color=ref(G.SPILL_LOC s), ...}) = ~s
          | getLoc(G.NODE{number, ...}) = number
 
        val parallelCopies = Word.andb(RACore.HAS_PARALLEL_COPIES, mode) <> 0w0

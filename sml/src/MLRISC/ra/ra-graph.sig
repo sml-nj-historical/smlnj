@@ -106,12 +106,14 @@ sig
                | REG_TO_EVEN     (* register to even register in pair *)
                | REG_TO_ODD      (* register to odd register in pair *)
 
-  and nodeStatus = 
+  and nodeStatus =
         PSEUDO                (* pseudo register *)
       | REMOVED               (* removed from the interference graph *)
       | ALIASED of node       (* coalesced *)
       | COLORED of int        (* colored *)
-      | SPILLED of int        (* spilled *)
+      | MEMREG of int         (* register implemented in memory *)
+      | SPILLED		      (* spilled *)
+      | SPILL_LOC of int      (* spilled at logical location *)
 
        (* Note on SPILLED:
         *  SPILLED ~1 means that the spill location is still undetermined

@@ -34,97 +34,100 @@ struct
 
   fun isOn(flag,mask) = Word.andb(flag,mask) <> 0w0
 
+  fun isMemLoc(SPILLED) = true
+    | isMemLoc(SPILL_LOC _) = true
+    | isMemLoc(MEMREG _) = true
+    | isMemLoc _ = false
   (*
    * Spill coalescing.
    * Coalesce non-interfering moves between spilled nodes, 
    * in non-increasing order of move cost.
    *)
-  fun spillCoalescing(GRAPH{bitMatrix, ...}) =
-  let val member = BM.member(!bitMatrix)
+  fun spillCoalescing(GRAPH{bitMatrix, ...}) = let
+      val member = BM.member(!bitMatrix)
       val addEdge = BM.add(!bitMatrix)
-  in  fn nodesToSpill =>
-      let 
-          (* Find moves between two spilled nodes *)
-          fun collectMoves([], mv') = mv'
-            | collectMoves(NODE{movelist, color=ref(SPILLED _), ...}::ns, mv') =
-              let fun ins([], mv') = collectMoves(ns, mv')
-                    | ins(MV{status=ref(COALESCED | CONSTRAINED), ...}::mvs,
-                          mv') = ins(mvs, mv')
-                    | ins((mv as MV{dst, src, ...})::mvs, mv') =
-                       (case (chase dst, chase src) of
-                          (NODE{color=ref(SPILLED x), number=d, ...},
-                           NODE{color=ref(SPILLED y), number=s, ...}) =>
-                              if d = s orelse            (* trival move *)
-                                 (x >= 0 andalso y >= 0) (* both are fixed *)
-                              then ins(mvs, mv')
-                              else ins(mvs, MV.add(mv, mv'))
-                        | _ => ins(mvs, mv')
-                       )
-              in  ins(!movelist, mv') end
-            | collectMoves(_::ns, mv') = collectMoves(ns, mv')
+  in 
+    fn nodesToSpill => let
+      (* Find moves between two spilled nodes *)
+      fun collectMoves([], mv') = mv'
+	| collectMoves(NODE{movelist, color, ...}::ns, mv') = let
+	    fun ins([], mv') = collectMoves(ns, mv')
+	      | ins(MV{status=ref(COALESCED | CONSTRAINED), ...}::mvs, mv') = 
+		  ins(mvs, mv')
+	      | ins((mv as MV{dst, src, ...})::mvs, mv') = let
+		  val NODE{color=ref cd, number=nd, ...} = chase dst
+		  val NODE{color=ref cs, number=ns, ...} = chase src
+		in
+		  if nd=ns then ins(mvs, mv')
+		  else (case (cd, cs)
+		    of (MEMREG _, MEMREG _) => ins(mvs, mv')
+		     |  _ => 
+			if isMemLoc cd andalso isMemLoc cs then
+			  ins(mvs, MV.add(mv, mv'))
+			else
+			  ins(mvs, mv')
+		   (*esac*))
+		end
+	  in 
+	    if isMemLoc (!color) then ins(!movelist, mv')
+	    else collectMoves(ns, mv')
+	  end
 
-          val mvs = collectMoves(nodesToSpill, MV.EMPTY)
+      (* Coalesce moves between two spilled nodes *)
+      fun coalesceMoves(MV.EMPTY) = ()
+	| coalesceMoves(MV.TREE(MV{dst, src, cost, ...}, _, l, r)) =
+	  let val dst as NODE{color=colorDst, ...} = chase dst
+	      val src = chase src
 
-          (* Coalesce moves between two spilled nodes *)
-          fun coalesceMoves(MV.EMPTY) = ()
-            | coalesceMoves(MV.TREE(MV{dst, src, cost, ...}, _, l, r)) =
-              let val dst as NODE{color=colorDst, ...} = chase dst
-                  val src = chase src
-    
-                  (* Make sure that dst is the non-mem reg node *)
-                  val (dst, src) =
-                       case !colorDst of
-                         SPILLED ~1 => (dst, src)
-                       | _ => (src, dst)
-    
-                  val dst as NODE{number=d, color=colorDst, adj=adjDst, 
-                                  defs=defsDst, uses=usesDst,  ...} = dst
-                  val src as NODE{number=s, color=colorSrc, adj=adjSrc, 
-                                  defs=defsSrc, uses=usesSrc, ...} = src
+	      (* Make sure that dst has not been assigned a spill location *)
+	      val (dst, src) =
+		case !colorDst of SPILLED => (dst, src) | _ => (src, dst)
 
-                  (* combine adjacency lists *)
-                  fun union([], adjSrc) = adjSrc
-                    | union((n as NODE{color, adj=adjT, 
-                                       number=t, ...})::adjDst, adjSrc) = 
-                      (case !color of
-                         (SPILLED _ | PSEUDO) =>
-                           if addEdge(s, t) then 
-                              (adjT := src :: !adjT; union(adjDst, n::adjSrc))
-                           else union(adjDst, adjSrc)
-                       | COLORED _ =>
-                           if addEdge(s, t) then union(adjDst, n::adjSrc) 
-                           else union(adjDst, adjSrc)
-                       | _ => union(adjDst, adjSrc)
-                      )
-                  val mvs = MV.merge(l,r)
-              in  if d = s then          (* trivial *)
-                     coalesceMoves mvs
-                  else
-                  (case !colorDst of
-                    SPILLED x =>
-                       if x >= 0 orelse  (* both dst and src are mem regs *)
-                          member(d, s)   (* they interfere *)
-                       then 
-                         ((* print("Bad "^Int.toString d ^
-                                   "<->"^Int.toString s^"\n")*))
-                       else 
-                         ((* print(Int.toString d ^"<->"^Int.toString s^"\n");*)
-                          ra_spill_coal := !ra_spill_coal + 1;
-                           (* unify *)
-                          colorDst := ALIASED src; 
-                          adjSrc := union(!adjDst, !adjSrc);
-                          if x >= 0 then ()
-                          else                      
-                            (defsSrc := concat(!defsDst, !defsSrc);
-                             usesSrc := concat(!usesDst, !usesSrc))
-                         )
-                   | _ => error "coalesceMoves"; 
-                   coalesceMoves mvs
-                  )
-              end
-     in  coalesceMoves mvs
+	      val dst as NODE{number=d, color=colorDst, adj=adjDst, 
+			      defs=defsDst, uses=usesDst,  ...} = dst
+	      val src as NODE{number=s, color=colorSrc, adj=adjSrc, 
+			      defs=defsSrc, uses=usesSrc, ...} = src
+
+	      (* combine adjacency lists *)
+	      fun union([], adjSrc) = adjSrc
+		| union((n as NODE{color, adj=adjT, 
+				   number=t, ...})::adjDst, adjSrc) = 
+		  (case !color of
+		     (SPILLED | MEMREG _ | SPILL_LOC _ | PSEUDO) =>
+		       if addEdge(s, t) then 
+			  (adjT := src :: !adjT; union(adjDst, n::adjSrc))
+		       else union(adjDst, adjSrc)
+		   | COLORED _ =>
+		       if addEdge(s, t) then union(adjDst, n::adjSrc) 
+		       else union(adjDst, adjSrc)
+		   | _ => union(adjDst, adjSrc)
+		  )
+
+	      val mvs = MV.merge(l,r)
+
+	      fun f() = 
+		((* print(Int.toString d ^"<->"^Int.toString s^"\n");*)
+		 ra_spill_coal := !ra_spill_coal + 1;
+		  (* unify *)
+		 colorDst := ALIASED src; 
+		 adjSrc := union(!adjDst, !adjSrc);
+		 defsSrc := concat(!defsDst, !defsSrc);
+		 usesSrc := concat(!usesDst, !usesSrc);
+		 coalesceMoves mvs)
+	  in  
+	      if d = s then coalesceMoves mvs
+	      else (case !colorDst 
+		of MEMREG _ => coalesceMoves mvs
+	         | SPILLED => 
+		    if member(d,s) then coalesceMoves mvs else f()
+		 | SPILL_LOC loc => 
+		    if member(d,s) then coalesceMoves mvs else f()
+		 | _ => error "coalesceMoves"
+               (*esac*))		      
+	  end
+     in coalesceMoves(collectMoves(nodesToSpill, MV.EMPTY))
      end
-  end
+  end (*spillCoalesce*)
 
   (*
    * Spill propagation.
@@ -185,8 +188,12 @@ struct
                     )
                  else
                     case (!dstCol, !srcCol) of
-                      (SPILLED x, PSEUDO) => savings(x)
-                    | (PSEUDO, SPILLED x) => savings(x)
+		      (SPILLED, PSEUDO) => savings(~1)
+		    | (MEMREG m, PSEUDO) => savings(m)
+		    | (SPILL_LOC s, PSEUDO) => savings(~s)
+		    | (PSEUDO, SPILLED) => savings(~1)
+		    | (PSEUDO, MEMREG m) => savings(m)
+		    | (PSEUDO, SPILL_LOC s) => savings(~s)
                     | _ => (if debug then print "0 (other)\n" else ();
                             moveSavings(mvs, pinned, total))
               end
@@ -263,7 +270,7 @@ struct
         | insertAll(NODE{adj, ...}::nodes, worklist) = 
              insertAll(nodes, insert(!adj, worklist))
 
-      val marker = SPILLED(~1)
+      val marker = SPILLED
 
       (* Process all nodes from the worklist *)
       fun propagate([], spilled) = spilled
@@ -298,9 +305,11 @@ struct
 
       (* Initialize worklist *)
       fun init([], worklist) = worklist
-        | init(NODE{adj, color=ref(SPILLED _), ...}::rest, worklist) =
-            init(rest, insert(!adj, worklist))
-        | init(_::rest, worklist) = init(rest, worklist)
+        | init(NODE{adj, color=ref(c), ...}::rest, worklist) =
+	   if isMemLoc (c) then 
+	     init(rest, insert(!adj, worklist))
+	   else 
+	     init(rest, worklist)
 
       (* 
        * Iterate between spill coalescing and propagation 
@@ -328,61 +337,59 @@ struct
    *    Spilled copy temporaries are assigned its own set of colors and
    * cannot share with another other nodes.   They can share colors with 
    * themselves however.
+   *
+   * spillLoc is the first available (logical) spill location.
    *)
-  fun spillColoring(GRAPH{spillLoc, copyTmps, mode, ...}) nodesToSpill = 
-  let val proh     = A.array(length nodesToSpill, ~1)
-      val firstLoc = !spillLoc
-      val _ = spillLoc := firstLoc - 1 (* allocate one location first *)
 
-      fun colorCopyTmps(tmps) =
-      let fun loop([], found) = found
-            | loop(NODE{color as ref(SPILLED ~1), ...}::tmps, found) = 
-                (color := SPILLED firstLoc; loop(tmps, true))
-            | loop(_::tmps, found) = loop(tmps, found)
-      in  if loop(tmps, false) then
-             (spillLoc := !spillLoc - 1; firstLoc - 1)
-          else firstLoc
-      end
+  fun spillColoring(GRAPH{spillLoc, copyTmps, mode, ...}) nodesToSpill = let
+    val proh = A.array(length nodesToSpill, ~1)
+    val firstColor= !spillLoc
 
-      fun selectColor([], firstColor, currLoc) = ()
-        | selectColor(NODE{color as ref(SPILLED ~1), number, adj, ...}::nodes,
-                      firstColor, currLoc) = 
-          let fun neighbors [] = ()
-                | neighbors(n::ns) = 
-                  let fun mark(NODE{color=ref(SPILLED loc), ...}) =
-                           (if loc >= ~1 then () (* no location yet *) 
-                            else A.update(proh, firstLoc - loc, number);
-                            neighbors ns
-                           )
-                        | mark(NODE{color=ref(ALIASED n), ...}) = mark n 
-                        | mark _ = neighbors ns
-                  in  mark n end
-              val _ = neighbors(!adj)
-              fun findColor(loc, startingPoint) = 
-                  let val loc = if loc < firstColor then !spillLoc + 1 else loc
-                  in  if A.sub(proh, firstLoc - loc) <> number then loc (* ok *)
-                      else if loc = startingPoint then (* new location *)
-                      let val loc = !spillLoc 
-                      in  spillLoc := loc - 1; loc end
-                      else findColor(loc - 1, startingPoint)
-                  end
-              val currLoc = if currLoc < firstColor then !spillLoc + 1 
-                            else currLoc
-              val loc = findColor(currLoc, currLoc)
-              (* val _ = print("Spill("^Int.toString number^")="^
-                            Int.toString loc^"\n") *)
-          in  color := SPILLED loc; (* mark with color *)
-              selectColor(nodes, firstColor, loc - 1)
-          end
-        | selectColor(_::nodes, firstColor, currLoc) = 
-              selectColor(nodes, firstColor, currLoc)
+    fun colorCopyTmps(tmps) = let
+      fun spillTmp(NODE{color as ref(SPILLED), ...}, found) = 
+	   (color := SPILL_LOC(firstColor); true)
+	| spillTmp(_, found) = found
+    in  
+      if List.foldl spillTmp false tmps then
+	(spillLoc := !spillLoc + 1; firstColor + 1)
+      else firstColor
+    end
 
-      (* color the copy temporaries first *)
-       val firstColor = if isOn(mode, RACore.HAS_PARALLEL_COPIES) 
-                        then colorCopyTmps(!copyTmps) else firstLoc
-      (* color the rest of the spilled nodes *)
-  in  selectColor(nodesToSpill, firstColor, !spillLoc) 
-  end
+    (* color the copy temporaries first *)
+    val firstColor = 
+      if isOn(mode, RACore.HAS_PARALLEL_COPIES) then
+	colorCopyTmps(!copyTmps) 
+      else firstColor
+
+    fun selectColor([], _, lastLoc) = (spillLoc := lastLoc)
+      | selectColor(NODE{color as ref(SPILLED), number, adj, ...}::nodes, 
+		    currLoc, lastLoc) = 
+        let
+          fun neighbors(NODE{color=ref(SPILL_LOC s), ...}) = 
+		A.update(proh, s - firstColor, number)
+	    | neighbors(NODE{color=ref(ALIASED n), ...}) = neighbors n
+	    | neighbors _ = ()
+
+	  val _ =  app neighbors (!adj)
+
+	  fun findColor(loc, startingPt) =
+	    if loc = lastLoc then findColor(firstColor, startingPt)
+	    else if A.sub(proh, loc-firstColor) <> number then (loc, lastLoc)
+  	    else if loc  = startingPt then (lastLoc, lastLoc+1)
+		 else findColor(loc+1, startingPt)
+
+	  val (loc, lastLoc) = findColor(currLoc + 1, currLoc)
+
+        in
+	  color := SPILL_LOC(loc); (* mark with color *)
+	  selectColor(nodes, loc, lastLoc)
+        end
+      | selectColor(_::nodes, currLoc, lastLoc) = 
+	  selectColor(nodes, currLoc, lastLoc)
+  in
+    (* color the rest of the spilled nodes *)
+    selectColor(nodesToSpill, firstColor, !spillLoc + 1)     
+  end (* spillColoring *)
 
   end (* local *)
   
@@ -405,10 +412,11 @@ struct
        * These are nodes that need also to be spilled
        *)
       fun markMemRegs [] = ()
-        | markMemRegs(NODE{number=r, color as ref(ALIASED
-                     (NODE{color=ref(col as SPILLED c), ...})), ...}::ns) =
-           (if c >= 0 then color := col else ();
-            markMemRegs ns)
+        | markMemRegs(NODE{number=r, 
+			   color as ref(ALIASED
+					(NODE{color=ref(col), ...})), ...}::ns) =
+	   (case col of MEMREG _ => color := col | _ => ();
+	    markMemRegs(ns))
         | markMemRegs(_::ns) = markMemRegs ns
  
       (*

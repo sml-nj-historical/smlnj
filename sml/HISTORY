@@ -11,6 +11,19 @@ Name:
 Date:
 Tag: <post-commit CVS tag>
 Description:
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2000/09/27 14:42:35 EDT
+Tag: george-20000927-nodestatus
+Description:
+
+Changed the type of the nodestatus, so that:
+
+	SPILLED(~1)		is now SPILLED
+	SPILLED(m) where m>=0   is now MEMREG(m)
+	SPILLED(s) where s<~1   is now SPILL_LOC(~s)
+ 
 ----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/09/07 14:45:00 JST

@@ -85,7 +85,9 @@ struct
       | REMOVED               (* removed from the interference graph *)
       | ALIASED of node       (* coalesced *)
       | COLORED of int        (* colored *)
-      | SPILLED of int        (* spilled *)
+      | MEMREG of int         (* register implemented in memory *)
+      | SPILLED		      (* spilled *)
+      | SPILL_LOC of int      (* spilled at logical location *)
 
   and node = 
     NODE of { number : int,		(* node number *)
@@ -153,7 +155,7 @@ struct
                   else 
                   let val node = 
                       NODE{pri=ref 0,adj=ref [],degree=ref 0,movecnt=ref 0,
-                           color=ref(SPILLED from), defs=ref [], uses=ref [],
+                           color=ref(MEMREG from), defs=ref [], uses=ref [],
                            movecost=ref 0,movelist=ref [], number=from}
                   in  add(from, node); loop(from+1, to, node::ns)
                   end

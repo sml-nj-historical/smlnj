@@ -39,9 +39,6 @@ sig
    (* add an edge to the interference graph *)
    val addEdge : G.interferenceGraph -> G.node * G.node -> unit
 
-   (* remove an edge from the interference graph *)
-   val removeEdge : G.interferenceGraph -> G.node * G.node -> unit
-
    (*
     * Function to create new nodes 
     *)
