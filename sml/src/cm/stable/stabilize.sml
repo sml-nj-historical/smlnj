@@ -35,30 +35,28 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		     val transfer_state : SmlInfo.info * BinInfo.info -> unit
 		     val recomp : recomp) :> STABILIZE = struct
 
-    datatype pitem =
-	PSS of SymbolSet.set
-      | PS of Symbol.symbol
-      | PSN of DG.snode
+    structure PU = PickleUtil
+    structure UU = UnpickleUtil
+
+    infix 3 $
+    infixr 4 &
+    val op & = PU.&
+    val % = PU.%
 
     datatype uitem =
 	USS of SymbolSet.set
       | US of Symbol.symbol
       | UBN of DG.bnode
 
-    fun compare (PS s, PS s') = SymbolOrdKey.compare (s, s')
-      | compare (PS _, _) = GREATER
-      | compare (_, PS _) = LESS
-      | compare (PSS s, PSS s') = SymbolSet.compare (s, s')
-      | compare (PSS _, _) = GREATER
-      | compare (_, PSS _) = LESS
-      | compare (PSN (DG.SNODE n), PSN (DG.SNODE n')) =
-	SmlInfo.compare (#smlinfo n, #smlinfo n')
-
-    structure Map =
-	BinaryMapFn (struct
-			 type ord_key = pitem
-			 val compare = compare
+    structure SNMap = BinaryMapFn
+	(struct
+	     type ord_key = DG.snode
+	     fun compare (DG.SNODE n, DG.SNODE n') =
+		 SmlInfo.compare (#smlinfo n, #smlinfo n')
 	end)
+
+    val initMap = SNMap.empty
+    val SNs = { find = SNMap.find, insert = SNMap.insert }
 
     fun genStableInfoMap (exports, group) = let
 	(* find all the exported bnodes that are in the same group: *)
@@ -156,76 +154,22 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		(reg, get)
 	    end
 
-	    fun w_list w_item [] k m =
-		"0" :: k m
-	      | w_list w_item [a] k m =
-		"1" :: w_item a k m
-	      | w_list w_item [a, b] k m =
-		"2" :: w_item a (w_item b k) m
-	      | w_list w_item [a, b, c] k m =
-		"3" :: w_item a (w_item b (w_item c k)) m
-	      | w_list w_item [a, b, c, d] k m =
-		"4" :: w_item a (w_item b (w_item c (w_item d k))) m
-	      | w_list w_item (a :: b :: c :: d :: e :: r) k m =
-		"5" :: w_item a (w_item b (w_item c (w_item d (w_item e
-						     (w_list w_item r k))))) m
+	    val int = PU.w_int
+	    val symbol = PU.w_symbol
+	    val share = PU.ah_share
+	    val option = PU.w_option
+	    val list = PU.w_list
+	    val string = PU.w_string
+	    val bool = PU.w_bool
+	    val int = PU.w_int
 
-	    fun w_option w_item NONE k m = "n" :: k m
-	      | w_option w_item (SOME i) k m = "s" :: w_item i k m
+	    val symbolset = list symbol o SymbolSet.listItems
 
-	    fun int_encode i = let
-		(* this is the same mechanism that's also used in
-		 * TopLevel/batch/binfile.sml (maybe we should share it) *)
-		val n = Word32.fromInt i
-		val // = LargeWord.div
-		val %% = LargeWord.mod
-		val !! = LargeWord.orb
-		infix // %% !!
-		val toW8 = Word8.fromLargeWord
-		fun r (0w0, l) = Word8Vector.fromList l
-		  | r (n, l) =
-		    r (n // 0w128, toW8 ((n %% 0w128) !! 0w128) :: l)
-	    in
-		Byte.bytesToString (r (n // 0w128, [toW8 (n %% 0w128)]))
-	    end
+	    val filter = option symbolset
 
-	    fun w_int i k m = int_encode i :: k m
+	    val sh = option bool	(* sharing *)
 
-	    fun w_share w C v k (i, m) =
-		case Map.find (m, C v) of
-		    SOME i' => "o" :: w_int i' k (i, m)
-		  | NONE => "n" :: w v k (i + 1, Map.insert (m, C v, i))
-
-	    fun w_symbol_raw s k m = let
-		val ns = case Symbol.nameSpace s of
-		    Symbol.SIGspace => "'"
-		  | Symbol.FCTspace => "("
-		  | Symbol.FSIGspace => ")"
-		  | Symbol.STRspace => ""
-		  | _ => GenericVC.ErrorMsg.impossible "stabilize:w_symbol"
-	    in
-		ns :: Symbol.name s :: "." :: k m
-	    end
-
-	    val w_symbol = w_share w_symbol_raw PS
-
-	    val w_ss = w_share (w_list w_symbol o SymbolSet.listItems) PSS
-
-	    val w_filter = w_option w_ss
-
-	    fun w_string s k m = let
-		fun esc #"\\" = "\\\\"
-		  | esc #"\"" = "\\\""
-		  | esc c = String.str c
-	    in
-		String.translate esc s :: "\"" :: k m
-	    end
-
-	    fun w_sharing NONE k m = "n" :: k m
-	      | w_sharing (SOME true) k m = "t" :: k m
-	      | w_sharing (SOME false) k m = "f" :: k m
-
-	    fun w_si i k = let
+	    fun si i = let
 		(* FIXME: this is not a technical flaw, but perhaps one
 		 * that deserves fixing anyway:  If we only look at spec,
 		 * then we are losing information about sub-grouping
@@ -236,14 +180,11 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		val locs = SmlInfo.errorLocation gp i
 		val offset = registerOffset (i, bsz i)
 	    in
-		w_string spec
-		   (w_string locs
-		         (w_int offset
-			       (w_sharing (SmlInfo.share i) k)))
+		string spec & string locs & int offset & sh (SmlInfo.share i)
 	    end
 
-	    fun w_primitive p k m =
-		String.str (Primitive.toIdent primconf p) :: k m
+	    fun primitive p =
+		string (String.str (Primitive.toIdent primconf p))
 
 	    fun warn_relabs p abs = let
 		val relabs = if abs then "absolute" else "relative"
@@ -267,51 +208,59 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		    ppb
 	    end
 
-	    fun w_abspath p k m =
-		w_list w_string (SrcPath.pickle (warn_relabs p) (p, grouppath))
-		                k m
+	    fun abspath p = let
+		val pp = SrcPath.pickle (warn_relabs p) (p, grouppath)
+	    in
+		list string pp
+	    end
 
-	    fun w_bn (DG.PNODE p) k m = "p" :: w_primitive p k m
-	      | w_bn (DG.BNODE { bininfo = i, ... }) k m = let
+	    val BN = 1
+	    val op $ = PU.$ BN
+	    fun bn (DG.PNODE p) = "1" $ primitive p
+	      | bn (DG.BNODE { bininfo = i, ... }) = let
 		    val (n, sy) = valOf (StableMap.find (inverseMap, i))
 		in
-		    "b" :: w_int n (w_symbol sy k) m
+		    "2" $ int n & symbol sy
 		end
 
-	    fun w_bool true k m = "t" :: k m
-	      | w_bool false k m = "f" :: k m
+	    local
+		val SN = 2
+		val SBN = 3
+	    in
+		fun sn n = let
+		    fun raw_sn (DG.SNODE n) =
+			"a" $ si (#smlinfo n) & list sn (#localimports n) &
+			      list fsbn (#globalimports n)
+		in
+		    share SNs raw_sn n
+		end
 
-	    fun w_sn_raw (DG.SNODE n) k =
-		w_si (#smlinfo n)
-		     (w_list w_sn (#localimports n)
-		                  (w_list w_fsbn (#globalimports n) k))
+		and sbn x = let
+		    val op $ = PU.$ SBN
+		in
+		    case x of
+			DG.SB_BNODE n => "a" $ bn n
+		      | DG.SB_SNODE n => "b" $ sn n
+		end
 
-	    and w_sn n = w_share w_sn_raw PSN n
+		and fsbn (f, n) = filter f & sbn n
+	    end
 
-	    and w_sbn (DG.SB_BNODE n) k m = "b" :: w_bn n k m
-	      | w_sbn (DG.SB_SNODE n) k m = "s" :: w_sn n k m
+	    fun impexp (s, (n, _)) = symbol s & fsbn n
 
-	    and w_fsbn (f, n) k = w_filter f (w_sbn n k)
+	    fun w_exports e = list impexp (SymbolMap.listItemsi e)
 
-	    fun w_impexp (s, (n, _)) k = w_symbol s (w_fsbn n k)
+	    fun privileges p = list string (StringSet.listItems p)
 
-	    fun w_exports e = w_list w_impexp (SymbolMap.listItemsi e)
-
-	    fun w_privileges p = w_list w_string (StringSet.listItems p)
-
-	    fun pickle_group () = let
-		fun w_sg (GG.GROUP { grouppath, ... }) = w_abspath grouppath
-		fun k0 m = []
-		val m0 = (0, Map.empty)
+	    fun group () = let
+		fun sg (GG.GROUP { grouppath, ... }) = abspath grouppath
 	    in
 		(* Pickle the sublibs first because we need to already
 		 * have them back when we unpickle BNODEs. *)
-		concat (w_list w_sg sublibs
-			    (w_exports exports
-			         (w_privileges required k0)) m0)
+		list sg sublibs & w_exports exports & privileges required
 	    end
 
-	    val pickle = pickle_group ()
+	    val pickle = PU.pickle initMap (group ())
 	    val sz = size pickle
 	    val offset_adjustment = sz + 4
 
@@ -444,7 +393,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    EM.COMPLAIN (concat ("(stable) " :: gdescr :: ": " :: l))
 	    EM.nullErrorBody
 
-	exception Format
+	exception Format = UU.Format
 
 	val pcmode = #pcmode (#param gp)
 	val policy = #fnpolicy (#param gp)
@@ -473,136 +422,60 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    end
 
 	    val sz = LargeWord.toIntX (Pack32Big.subVec (bytesIn 4, 0))
-	    val pickle = bytesIn sz
+	    val pickle = Byte.bytesToString (bytesIn sz)
 	    val offset_adjustment = sz + 4
 
-	    val rd = let
-		val pos = ref 0
-		fun rd () = let
-		    val p = !pos
-		in
-		    pos := p + 1;
-		    Byte.byteToChar (Word8Vector.sub (pickle, p))
-		    handle _ => raise Format
-		end
-	    in
-		rd
-	    end
+	    val session = UU.mkSession (UU.stringReader pickle)
 
-	    fun r_list r () =
-		case rd () of
-		    #"0" => []
-		  | #"1" => [r ()]
-		  | #"2" => [r (), r ()]
-		  | #"3" => [r (), r (), r ()]
-		  | #"4" => [r (), r (), r (), r ()]
-		  | #"5" => r () :: r () :: r () :: r () :: r () :: r_list r ()
-		  | _ => raise Format
+	    fun list m r = UU.r_list session m r
+	    fun option m r = UU.r_option session m r
+	    val int = UU.r_int session
+	    fun share m r = UU.share session m r
+	    val string = UU.r_string session
+	    val symbol = UU.r_symbol session
+	    val bool = UU.r_bool session
 
-	    fun r_bool () =
-		case rd () of
-		    #"t" => true
-		  | #"f" => false
-		  | _ => raise Format
+	    val stringListM = UU.mkMap ()
+	    val symbolListM = UU.mkMap ()
+	    val stringListM = UU.mkMap ()
+	    val ssoM = UU.mkMap ()
+	    val boolOptionM = UU.mkMap ()
+	    val sgListM = UU.mkMap ()
+	    val snM = UU.mkMap ()
+	    val snListM = UU.mkMap ()
+	    val bnM = UU.mkMap ()
+	    val sbnM = UU.mkMap ()
+	    val fsbnListM = UU.mkMap ()
+	    val impexpListM = UU.mkMap ()
 
-	    fun r_option r_item () =
-		case rd () of
-		    #"n" => NONE
-		  | #"s" => SOME (r_item ())
-		  | _ => raise Format
+	    val stringlist = list stringListM string
 
-	    fun r_int () = let
-		fun loop n = let
-		    val w8 = Byte.charToByte (rd ())
-		    val n' =
-			n * 0w128 + Word8.toLargeWord (Word8.andb (w8, 0w127))
-		in
-		    if Word8.andb (w8, 0w128) = 0w0 then n' else loop n'
-		end
-	    in
-		LargeWord.toIntX (loop 0w0)
-	    end
-
-	    fun r_share r_raw C unC () =
-		case rd () of
-		    #"o" => (case IntBinaryMap.find (!m, r_int ()) of
-				 SOME x => unC x
-			       | NONE => raise Format)
-		  | #"n" => let
-			val i = !next
-			val _ = next := i + 1
-			val v = r_raw ()
-		    in
-			m := IntBinaryMap.insert (!m, i, C v);
-			v
-		    end
-		  | _ => raise Format
-
-	    fun r_string () = let
-		fun loop l =
-		    case rd () of
-			#"\"" => String.implode (rev l)
-	              | #"\\" => loop (rd () :: l)
-		      | c => loop (c :: l)
-	    in
-		loop []
-	    end
-
-	    fun r_abspath () =
-		SrcPath.unpickle pcmode (r_list r_string (), group)
+	    fun abspath () =
+		SrcPath.unpickle pcmode (stringlist (), group)
 		handle SrcPath.Format => raise Format
 		     | SrcPath.BadAnchor a =>
 		       (error ["configuration anchor \"", a, "\" undefined"];
 			raise Format)
 
+	    val symbollist = list symbolListM symbol
 
-	    val r_symbol = let
-		fun r_symbol_raw () = let
-		    val (ns, first) =
-			case rd () of
-			    #"'" => (Symbol.sigSymbol, rd ())
-			  | #"(" => (Symbol.fctSymbol, rd ())
-			  | #")" => (Symbol.fsigSymbol, rd ())
-			  | c => (Symbol.strSymbol, c)
-		    fun loop (#".", l) = String.implode (rev l)
-		      | loop (c, l) = loop (rd (), c :: l)
-		in
-		    ns (loop (first, []))
-		end
-		fun unUS (US x) = x
-		  | unUS _ = raise Format
-	    in
-		r_share r_symbol_raw US unUS
-	    end
+	    fun symbolset () =
+		SymbolSet.addList (SymbolSet.empty, symbollist ())
 
-	    val r_ss = let
-		fun r_ss_raw () =
-		    SymbolSet.addList (SymbolSet.empty, r_list r_symbol ())
-		fun unUSS (USS s) = s
-		  | unUSS _ = raise Format
-	    in
-		r_share r_ss_raw USS unUSS
-	    end
+	    val filter = option ssoM symbolset
 
-	    val r_filter = r_option r_ss
+	    fun primitive () =
+		valOf (Primitive.fromIdent primconf
+		          (String.sub (string (), 0)))
+		handle _ => raise Format
 
-	    fun r_primitive () =
-		case Primitive.fromIdent primconf (rd ()) of
-		    NONE => raise Format
-		  | SOME p => p
+	    val sh = option boolOptionM bool
 
-	    fun r_sharing () =
-		case rd () of
-		    #"n" => NONE
-		  | #"t" => SOME true
-		  | #"f" => SOME false
-		  | _ => raise Format
-
-	    fun r_si () = let
-		val spec = r_string ()
-		val locs = r_string ()
-		val offset = r_int () + offset_adjustment
-		val share = r_sharing ()
+	    fun si () = let
+		val spec = string ()
+		val locs = string ()
+		val offset = int () + offset_adjustment
+		val share = sh ()
 		val error = EM.errorNoSource grpSrcInfo locs
 	    in
 		BinInfo.new { group = group,
@@ -613,16 +486,15 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			      share = share }
 	    end
 
-	    fun r_sg () = getGroup' (r_abspath ())
+	    fun sg () = getGroup' (abspath ())
 
-	    val sublibs = r_list r_sg ()
+	    val sublibs = list sgListM sg ()
 
-	    fun r_bn () =
-		case rd () of
-		    #"p" => DG.PNODE (r_primitive ())
-		  | #"b" => let
-			val n = r_int ()
-			val sy = r_symbol ()
+	    fun bn () = let
+		fun bn' #"1" = DG.PNODE (primitive ())
+		  | bn' #"2" = let
+			val n = int ()
+			val sy = symbol ()
 			val GG.GROUP { exports = slexp, ... } =
 			    List.nth (sublibs, n) handle _ => raise Format
 		    in
@@ -630,30 +502,41 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			    SOME ((_, DG.SB_BNODE (n as DG.BNODE _)), _) => n
 			  | _ => raise Format
 		    end
-		  | _ => raise Format
+		  | bn' _ = raise Format
+	    in
+		share bnM bn'
+	    end
 
 	    (* this is the place where what used to be an
 	     * SNODE changes to a BNODE! *)
-	    fun r_sn_raw () =
-		DG.BNODE { bininfo = r_si (),
-			   localimports = r_list r_sn (),
-			   globalimports = r_list r_fsbn () }
+	    fun sn () = let
+		fun sn' #"a" =
+		    DG.BNODE { bininfo = si (),
+			       localimports = snlist (),
+			       globalimports = fsbnlist () }
+		  | sn' _ = raise Format
+	    in
+		share snM sn'
+	    end
 
-	    and r_sn () =
-		r_share r_sn_raw UBN (fn (UBN n) => n | _ => raise Format) ()
+	    and snlist () = list snListM sn ()
 
 	    (* this one changes from farsbnode to plain farbnode *)
-	    and r_sbn () =
-		case rd () of
-		    #"b" => r_bn ()
-		  | #"s" => r_sn ()
-		  | _ => raise Format
+	    and sbn () = let
+		fun sbn' #"a" = bn ()
+		  | sbn' #"b" = sn ()
+		  | sbn' _ = raise Format
+	    in
+		share sbnM sbn'
+	    end
 
-	    and r_fsbn () = (r_filter (), r_sbn ())
+	    and fsbn () = (filter (), sbn ())
 
-	    fun r_impexp () = let
-		val sy = r_symbol ()
-		val (f, n) = r_fsbn ()	(* really reads farbnodes! *)
+	    and fsbnlist () = list fsbnListM fsbn ()
+
+	    fun impexp () = let
+		val sy = symbol ()
+		val (f, n) = fsbn ()	(* really reads farbnodes! *)
 		val e = bn2env n
 		(* put a filter in front to avoid having the FCTENV being
 		 * queried needlessly (this avoids spurious module loadings) *)
@@ -662,14 +545,18 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		(sy, ((f, DG.SB_BNODE n), e')) (* coerce to farsbnodes *)
 	    end
 
-	    fun r_exports () =
-		foldl SymbolMap.insert' SymbolMap.empty (r_list r_impexp ())
+	    val impexplist = list impexpListM impexp
 
-	    fun r_privileges () =
-		StringSet.addList (StringSet.empty, r_list r_string ())
+	    fun r_exports () =
+		foldl SymbolMap.insert' SymbolMap.empty (impexplist ())
+
+	    val stringlist = list stringListM string
+
+	    fun privileges () =
+		StringSet.addList (StringSet.empty, stringlist ())
 
 	    val exports = r_exports ()
-	    val required = r_privileges ()
+	    val required = privileges ()
 	    val simap = genStableInfoMap (exports, group)
 	in
 	    GG.GROUP { exports = exports,

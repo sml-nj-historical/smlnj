@@ -16,13 +16,20 @@ structure SkelIO :> SKELIO = struct
     structure SS = SymbolSet
     structure S = Symbol
     structure SP = GenericVC.SymPath
+    structure PU = PickleUtil
+    structure UU = UnpickleUtil
 
-    exception FormatError
+    infix 3 $
+    infixr 4 &
+    val op & = PU.&
+    val % = PU.%
+
+    exception Format = UU.Format
 
     val s2b = Byte.stringToBytes
     val b2c = Byte.byteToChar
 
-    val version = "Skeleton 1\n"
+    val version = "Skeleton 2\n"
 
     fun makeset l = SS.addList (SS.empty, l)
 
@@ -37,96 +44,90 @@ structure SkelIO :> SKELIO = struct
 	loop []
     end
 
-    (* We are consing up the whole output as a list of strings
-     * before concatenating it to form the final result and
-     * writing it out using one single `output' call. *)
-    fun w_name (n, r) =
-	(case S.nameSpace n of
-	     S.SIGspace => "'"		(* only tyvars could start like that *)
-	   | S.FCTspace => "("		(* no sym can start like that *)
-	   | S.FSIGspace => ")"		(* no sym can start like that *)
-	   | S.STRspace => ""		(* this should be safe now *)
-	   | _ => GenericVC.ErrorMsg.impossible "SkelIO.w_name")
-	 :: S.name n :: "." :: r
-
     fun write_decl (s, d) = let
 
-	(* foldl means that last element appears first in output! *)
-	fun w_list w (l, r) = foldl w (";" :: r) l
+	val symbol = PU.w_symbol
+	val list = PU.w_list
 
-	fun w_path (SP.SPATH p, r) = w_list w_name (p, r)
+	fun path (SP.SPATH p) = list symbol p
 
-	fun w_decl (SK.Bind (name, def), r) =
-	    "b" :: w_name (name, w_modExp (def, r))
-          | w_decl (SK.Local (x, y), r) = "l" :: w_decl (x, w_decl (y, r))
-	  | w_decl (SK.Par l, r) = "p" :: w_list w_decl (l, r)
-	  | w_decl (SK.Seq l, r) = "q" :: w_list w_decl (l, r)
- 	  | w_decl (SK.Open d, r) = "o" :: w_modExp (d, r)
-	  | w_decl (SK.Ref s, r) = "r" :: w_list w_name (SS.listItems s, r)
+	fun decl arg = let
+	    val D = 1
+	    val op $ = PU.$ D
+	    fun d (SK.Bind (name, def)) = "a" $ symbol name & modExp def
+	      | d (SK.Local (x, y)) = "b" $ decl x & decl y
+	      | d (SK.Par l) = "c" $ list decl l
+	      | d (SK.Seq l) = "d" $ list decl l
+	      | d (SK.Open d) = "e" $ modExp d
+	      | d (SK.Ref s) = "f" $ list symbol (SS.listItems s)
+	in
+	    d arg
+	end
 
-	and w_modExp (SK.Var p, r) = "v" :: w_path (p, r)
-	  | w_modExp (SK.Decl d, r) = "d" :: w_list w_decl (d, r)
-	  | w_modExp (SK.Let (d, m), r) =
-	    "l" :: w_list w_decl (d, w_modExp (m, r))
- 	  | w_modExp (SK.Ign1 (m1, m2), r) =
-	    "i" :: w_modExp (m1, w_modExp (m2, r))
+	and modExp arg = let
+	    val M = 2
+	    val op $ = PU.$ M
+	    fun m (SK.Var p) = "g" $ path p
+	      | m (SK.Decl d) = "h" $ list decl d
+	      | m (SK.Let (d, e)) = "i" $ list decl d & modExp e
+	      | m (SK.Ign1 (e1, e2)) = "j" $ modExp e1 & modExp e2
+	in
+	    m arg
+	end
+
+	val pickle = s2b (PU.pickle () (decl d))
     in
-	BinIO.output (s, s2b (concat (version :: w_decl (d, ["\n"]))))
+	BinIO.output (s, Byte.stringToBytes version);
+	BinIO.output (s, pickle)
     end
 
     fun read_decl s = let
 
-	fun rd () = Option.map b2c (BinIO.input1 s)
+	fun rd () =
+	    case BinIO.input1 s of
+		SOME w8 => b2c w8
+	      | NONE => raise Format
 
-	local
-	    fun get (ns, first) = let
-		fun loop (accu, NONE) = raise FormatError
-		  | loop ([], SOME #".") = raise FormatError
-		  | loop (accu, SOME #".") = ns (String.implode (rev accu))
-		  | loop (accu, SOME s) = loop (s :: accu, rd ())
-	    in
-		loop ([], first)
-	    end
+	val session = UU.mkSession rd
+
+	val symbol = UU.r_symbol session
+	fun list m r = UU.r_list session m r
+	fun share m f = UU.share session m f
+
+	val symbolListM = UU.mkMap ()
+	val declM = UU.mkMap ()
+	val declListM = UU.mkMap ()
+	val modExpM = UU.mkMap ()
+
+	val symbollist = list symbolListM symbol
+
+	fun path () = SP.SPATH (symbollist ())
+
+	fun decl () = let
+	    fun d #"a" = SK.Bind (symbol (), modExp ())
+	      | d #"b" = SK.Local (decl (), decl ())
+	      | d #"c" = SK.Par (decllist ())
+	      | d #"d" = SK.Seq (decllist ())
+	      | d #"e" = SK.Open (modExp ())
+	      | d #"f" = SK.Ref (makeset (symbollist ()))
+	      | d _ = raise Format
 	in
-	    fun r_name (SOME #"'") = get (S.sigSymbol, rd ())
-	      | r_name (SOME #"(") = get (S.fctSymbol, rd ())
-	      | r_name (SOME #")") = get (S.fsigSymbol, rd ())
-	      | r_name first = get (S.strSymbol, first)
+	    share declM d
 	end
 
-	(* lists are written in reverse order, so a tail-recursive
-	 * reader is exactly right because it undoes the reversal *)
-	fun r_list r first = let
-	    (* argument order important: side effects in arguments! *)
-	    fun rl (l, SOME #";") = l
-	      | rl (l, first) = rl (r first :: l, rd ())
+	and decllist () = list declListM decl ()
+
+	and modExp () = let
+	    fun m #"g" = SK.Var (path ())
+	      | m #"h" = SK.Decl (decllist ())
+	      | m #"i" = SK.Let (decllist (), modExp ())
+	      | m #"j" = SK.Ign1 (modExp (), modExp ())
+	      | m _ = raise Format
 	in
-	    rl ([], first)
+	    share modExpM m
 	end
-
-	fun r_path first = SP.SPATH (r_list r_name first)
-
-	fun r_decl (SOME #"b") = SK.Bind (r_name (rd ()), r_modExp (rd ()))
-	  | r_decl (SOME #"l") = SK.Local (r_decl (rd ()), r_decl (rd ()))
-	  | r_decl (SOME #"p") = SK.Par (r_list r_decl (rd ()))
-	  | r_decl (SOME #"q") = SK.Seq (r_list r_decl (rd ()))
- 	  | r_decl (SOME #"o") = SK.Open (r_modExp (rd ()))
-	  | r_decl (SOME #"r") = SK.Ref (makeset (r_list r_name (rd ())))
-	  | r_decl _ = raise FormatError
-
-	and r_modExp (SOME #"v") = SK.Var (r_path (rd ()))
-	  | r_modExp (SOME #"d") = SK.Decl (r_list r_decl (rd ()))
-	  | r_modExp (SOME #"l") =
-	    SK.Let (r_list r_decl (rd ()), r_modExp (rd ()))
- 	  | r_modExp (SOME #"i") = SK.Ign1 (r_modExp (rd ()), r_modExp (rd ()))
-	  | r_modExp _ = raise FormatError
-
-	val firstline = inputLine s
-	val r = if firstline = version then r_decl (rd ())
-		else raise FormatError
-	val nl = rd ()
     in
-	if nl = SOME #"\n" then r else raise FormatError
+	if inputLine s = version then decl () else raise Format
     end
 
     fun read (s, ts) =
