@@ -226,7 +226,7 @@ Full documentation will be available after autoloading the function."))
 (defun sml-get-depth-st ()
   (save-excursion
     (let* ((disp (if (eq (char-before) ?\)) (progn (backward-char) -1) nil))
-	   (foo (backward-char))
+	   (_ (backward-char))
 	   (disp (if (eq (char-before) ?\() (progn (backward-char) 0) disp))
 	   (pt (point)))
       (when disp
@@ -447,7 +447,6 @@ If anyone has a good algorithm for this..."
      ;; proper indentation of the next line.
      (when (looking-at "(\\*") (sml-forward-spaces))
      (let (data
-	   (sml-point (point))
 	   (sym (save-excursion (sml-forward-sym))))
        (or
 	;; Allow the user to override the indentation.
@@ -561,10 +560,10 @@ Point should be just before the symbol ORIG-SYM and is not preserved."
 	 (current-column))))
 
 (defun sml-get-indent (data sym)
-  (let ((head-sym (pop data)) d)
+  (let (d)
     (cond
      ((not (listp data)) data)
-     ((setq d (member sym data)) (second d))
+     ((setq d (member sym data)) (cadr d))
      ((and (consp data) (not (stringp (car data)))) (car data))
      (t sml-indent-level))))
 
@@ -605,7 +604,7 @@ Optional argument STYLE is currently ignored."
 	(when idata
 	  ;;(if (or style (not delegate))
 	  ;; normal indentation
-	  (let ((indent (sml-get-indent idata sym)))
+	  (let ((indent (sml-get-indent (cdr idata) sym)))
 	    (when indent (+ (sml-delegated-indent) indent)))
 	  ;; delgate indentation to the parent
 	  ;;(sml-forward-sym) (sml-backward-sexp nil)
@@ -613,10 +612,10 @@ Optional argument STYLE is currently ignored."
 	  ;;     (parent-indent (cdr (assoc parent-sym sml-indent-starters))))
 	  ;; check the special rules
 	  ;;(+ (sml-delegated-indent)
-	  ;; (or (sml-get-indent indent-data 1 'strict)
-	  ;; (sml-get-indent parent-indent 1 'strict)
-	  ;; (sml-get-indent indent-data 0)
-	  ;; (sml-get-indent parent-indent 0))))))))
+	  ;; (or (sml-get-indent (cdr indent-data) 1 'strict)
+	  ;; (sml-get-indent (cdr parent-indent) 1 'strict)
+	  ;; (sml-get-indent (cdr indent-data) 0)
+	  ;; (sml-get-indent (cdr parent-indent) 0))))))))
 	  )))))
 
 (defun sml-indent-default (&optional noindent)
@@ -809,10 +808,7 @@ signature, structure, and functor by default.")
 ;;
 
 (defun sml-forms-menu (menu)
-  (mapcar (lambda (x)
-	    (let ((name (car x))
-		  (fsym (cdr x)))
-	      (vector name fsym t)))
+  (mapcar (lambda (x) (vector (car x) (cdr x) t))
 	  sml-forms-alist))
 
 (defvar sml-last-form "let")
