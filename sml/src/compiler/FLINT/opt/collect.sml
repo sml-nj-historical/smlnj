@@ -1,10 +1,11 @@
 (* copyright 1998 YALE FLINT PROJECT *)
+(* monnier@cs.yale.edu *)
 
 signature COLLECT =
 sig
     
-    (* Collect information about variables and function uses
-     * the info is accumulated in the map `m' *)
+    (* Collect information about variables and function uses.
+     * The info is accumulated in the map `m' *)
     val collect : FLINT.fundec -> unit
 
     (* query functions *)
@@ -29,9 +30,13 @@ sig
     (* when creating a new var.  Used when alpha-renaming *)
     (* val copy   : FLINT.lvar * FLINT.lvar -> unit *)
 
-    (* fix up function to keep counts up-to-date when getting rid of a function.
-     * the fun arg is only called for free variables becoming dead. *)
-    val unusefdec : (FLINT.lvar -> unit) -> (FLINT.lvar * FLINT.lvar list * FLINT.lexp) -> unit
+    (* fix up function to keep counts up-to-date when getting rid of code.
+     * the arg is only called for *free* variables becoming dead.
+     * the first function returned just unuses an exp, while the
+     * second unuses a function declaration (f,args,body) *)
+    val unuselexp : (FLINT.lvar -> unit) -> 
+	((FLINT.lexp -> unit) *
+         ((FLINT.lvar * FLINT.lvar list * FLINT.lexp) -> unit))
     (* function to collect info about a newly created lexp *)
     val uselexp : FLINT.lexp -> unit
 
@@ -62,7 +67,6 @@ fun bugval (msg,v) = (say "\n"; PP.printSval v; say " "; bug msg)
 fun ASSERT (true,_) = ()
   | ASSERT (FALSE,msg) = bug ("assertion "^msg^" failed")
 
-	
 datatype info
   (* for functions we keep track of calls and escaping uses
    * and separately for external and internal (recursive) references *)
@@ -270,7 +274,7 @@ end
  * Once its scope has been processed, we can completely get rid of
  * the variable and corresponding info (after verifying that the count
  * is indeed exactly 1 (accomplished by the "kill" calls) *)
-fun unusefdec undertaker = let
+fun unuselexp undertaker = let
     (* val use = if inc then use else unuse *)
     fun uncall lv = unuse undertaker true lv
     val unuse = fn F.VAR lv => unuse undertaker false lv | _ => ()
@@ -347,13 +351,13 @@ fun unusefdec undertaker = let
 
 	  | le => buglexp("unexpected lexp", le)
 in
-    cfun
+    (cexp, cfun)
 end
 
 val uselexp = census new use NONE
 
 fun collect (fdec as (_,f,_,_)) =
-    (M.clear m;		(* start from a fresh state *)
+    (M.clear m;				(* start from a fresh state *)
      uselexp (F.FIX([fdec], F.RET[F.VAR f])))
 
 end
