@@ -1,5 +1,0 @@
-@FILES
-  {"array-qsort-fn"; "The ArrayQSortFn functor";}
-@SIGNATURE MONO_ARRAY_SORT
-@FUNCTOR ArrayQSortFn "array-qsort-fn" @EXTERNAL
-MONO_ARRAY_SORT

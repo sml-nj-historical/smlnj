@@ -1,7 +1,0 @@
-@FILES
-  {"parser-sig"; "The REGEXP_PARSER signature";}
-@SIGNATURE REGEXP_PARSER "parser-sig" {
-  @VALS 
-    scan
-}
-@STRUCTURE AwkSyntax "parser-sig" REGEXP_PARSER

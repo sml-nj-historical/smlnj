@@ -37,17 +37,47 @@ structure Control : CONTROL =
 
     structure MLRISC = MLRISC_Control
 
+    structure FLINT =
+    struct
+	val print	    = ref false
+	val printPhases	    = ref false
+	val phases	    = ref ["lcontract", "specialize",
+				   "fixfix", "fcontract",
+				   "wrap", "loopify", "fixfix", "fcontract",
+				   (* "names2deb", "typelift", "deb2names", *)
+				   "reify", "loopify", "fixfix", "fcontract",
+				   "fixfix", "fcontract"]
+
+	val inlineThreshold = ref 16
+	val unrollThreshold = ref 20
+	val maxargs	    = ref 6
+	val dropinvariant   = ref true
+
+	val specialize	    = ref true
+	val liftLiterals    = ref false
+	val sharewrap	    = ref true
+	val saytappinfo	    = ref false	(* for typelifting statistics *)
+			      
+	(* only for temporary debugging *)
+	val misc	    = ref 0
+			      
+	(* FLINT internal type-checking controls *)
+	val check	    = ref false	(* fails on MLRISC/sparc/sparcRegAlloc.sml *)
+	val checkDatatypes  = ref false	(* loops on the new cm.sml *)
+	val checkKinds	    = ref true
+    end
+
     structure CG : CGCONTROL =
     struct
       val tailrecur = ref true
       val recordopt = ref true
-      val specialize = ref true
       val tail = ref true
       val allocprof = ref false
       val closureprint = ref false
       val closureStrategy = ref 0
       val lambdaopt = ref true
-      val cpsopt = ref true
+      val cpsopt = ref [(* "first_contract", "eta", "uncurry", "etasplit",
+			"cycle_expand", *) "eta", "last_contract"]
       val rounds = ref 10
       val path = ref false
       val betacontract = ref true
@@ -91,7 +121,6 @@ structure Control : CONTROL =
       val spillGen = ref 0
       val foldconst = ref true
       val etasplit = ref true
-      val printLambda = ref false
       val printit = ref false
       val printsize = ref false
       val scheduling = ref true
@@ -104,7 +133,6 @@ structure Control : CONTROL =
       val rangeopt = ref false
       val icount = ref false
       val debugRep = ref false
-      val sharewrap = ref true
       val checklty1 = ref false
       val checklty2 = ref false
       val checklty3 = ref false
@@ -112,7 +140,6 @@ structure Control : CONTROL =
       val checkcps2 = ref false
       val checkcps3 = ref false
       val checkcps = ref false
-      val liftLiterals = ref false (* true *)
       val flatfblock = ref true
       val deadup = ref true
       val pollChecks = ref false
@@ -130,11 +157,6 @@ structure Control : CONTROL =
       val memDisambiguate = ref false
       val controlDependence = ref false
       val flinton = ref true
-
-      (* FLINT internal type-checking controls *)
-      val checkFlint     = ref false
-      val checkDatatypes = ref false
-      val checkKinds     = ref false
 
       val compdebugging = ref false
       val mudebugging   = ref false
@@ -183,11 +205,3 @@ structure Control : CONTROL =
     val lambdaSplitEnable = ref false
     val crossInlineEnable  = ref false
 end
-
-
-(*
- * $Log: control.sml,v $
- * Revision 1.4  1998/05/23 14:10:30  george
- *   Fixed RCS keyword syntax
- *
- *)

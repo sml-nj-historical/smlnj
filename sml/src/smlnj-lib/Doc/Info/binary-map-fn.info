@@ -1,6 +1,0 @@
-@FILES
-  {"binary-map-fn"; "The BinaryMapFn functor";}
-@SIGNATURE ORD_MAP
-@SIGNATURE ORD_KEY
-@FUNCTOR BinaryMapFn "binary-map-fn" ORD_KEY
-ORD_MAP

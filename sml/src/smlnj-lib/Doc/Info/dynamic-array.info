@@ -1,5 +1,0 @@
-@FILES
-  {"dynamic-array"; "The DynamicArrayFn functor";}
-@SIGNATURE MONO_DYNAMIC_ARRAY
-@FUNCTOR DynamicArrayFn "dynamic-array" @EXTERNAL
-MONO_DYNAMIC_ARRAY
