@@ -11,10 +11,9 @@ end
 
 functor MLRiscGen
  (  structure MachineSpec: MACH_SPEC
-    structure ConstType  : CONST_TYPE
     structure PseudoOp   : SMLNJ_PSEUDO_OP_TYPE
     structure C          : CPSREGS
-       where type T.Constant.const = ConstType.const
+       where type T.Constant.const = SMLNJConstant.const
        where T.Region = CPSRegions
        and T.BNames = FunctionNames 
        and T.PseudoOp = PseudoOp
@@ -33,12 +32,6 @@ struct
   structure D = MS.ObjDesc
   val dtoi = LargeWord.toInt	(* convert object descriptor to int *)
 
-  structure CallGc = 
-    CallGc(structure MLTreeComp=MLTreeComp
-	   structure Cells=Cells
-	   structure MS=MachineSpec
-	   structure C=C
-	   structure ConstType=ConstType)
 
   structure ArgP = 
     ArgPassing(structure Cells=Cells
@@ -52,6 +45,13 @@ struct
   structure MkRecord = 
     MkRecord(structure C=C
 	     structure MLTreeComp=MLTreeComp)
+
+  structure CallGc = 
+    CallGC(structure MLTreeComp=MLTreeComp
+	   structure Cells=Cells
+	   structure MS=MachineSpec
+	   structure C=C
+	   structure MkRecord=MkRecord)
 
   fun error msg = ErrorMsg.impossible ("MLRiscGen." ^ msg)
 
@@ -115,7 +115,7 @@ struct
 
       val memDisambig = 
 	if !CG.memDisambiguate then MemDisambiguate.build(cluster) 
-	else (fn _ => R.RO_MEM)
+	else (fn _ => R.RW_MEM)
 
       fun getRegion(CPS.VAR v, i) =	
 	   (case memDisambig v
@@ -471,6 +471,7 @@ struct
 	    val dataM = (case hdrM
 		   of R.RECORD[_, (_, dataM, _), _] => dataM
 		    | R.RO_MEM => R.RO_MEM
+		    | R.RW_MEM => R.RW_MEM
 		    | r => error("gen(RK_VECTOR): hdrM = " ^ R.toString r)
 		  (* end case *))
 	    in
@@ -789,7 +790,7 @@ struct
 		   of R.RECORD[
 			_, (_, R.RECORD[(tagM, _, _), (valM, _, _)], _), _
 		      ] => (tagM, valM)
-		    | R.RO_MEM => (R.RO_MEM, R.RO_MEM)
+		    | R.RW_MEM => (R.RW_MEM, R.RW_MEM)
 		    | r => error("gen(newarray0): hdrM = " ^ R.toString r)
 		  (* end case *))
 	    in
@@ -1074,8 +1075,8 @@ struct
 	  | fcomp(SOME(_, Frag.KNOWNFUN _)) = continue ()
 	  | fcomp(SOME(_, Frag.KNOWNCHK _)) = continue ()
 	  | fcomp(SOME(_, Frag.STANDARD{func=ref NONE, ...})) = continue ()
-	  | fcomp(SOME(lab, Frag.STANDARD{func as ref(SOME (zz as (_,f,vl,tl,e))), 
-					  ...})) = let
+	  | fcomp(SOME(lab, Frag.STANDARD arg)) = let
+	      val {func as ref(SOME (zz as (_,f,vl,tl,e))), ...} = arg
 	      val regfmls as (M.GPR linkreg::_) = ArgP.standard(typmap f, tl)
 	      val baseval = 
 		M.ADD(linkreg, 
@@ -1087,8 +1088,9 @@ struct
 	      comp(M.BLOCK_NAME(Int.toString f));
 	      alignAllocptr f;
 	      emit(assign(C.baseptr, baseval));
-	      CallGc.stdCheckLimit{maxAlloc=4 * maxAlloc f, regfmls=regfmls, 
-				   regtys=tl, return=M.JMP(linkreg,[])};
+	      CallGc.stdCheckLimit
+	         {maxAlloc=4 * maxAlloc f, regfmls=regfmls,  regtys=tl, 
+		  return=M.JMP(linkreg,[])};
 	      clearTables();
 	      initialRegBindingsEscaping(vl, regfmls, tl);
 	      initTypBindings e;
@@ -1131,12 +1133,15 @@ struct
   in
     app mkGlobalTables funcs;
     app genCluster (Cluster.cluster funcs);
-    emitMLRiscUnit (CallGc.emitInvokeGC)
+    emitMLRiscUnit (CallGc.emitModuleGC)
   end (* codegen *)
 end (* MLRiscGen *)
 
 (*
  * $Log: mlriscGen.sml,v $
+ * Revision 1.13  1999/02/23 20:22:06  george
+ *   bug fix to do with zero length arrays
+ *
  * Revision 1.12  1999/01/18 15:49:29  george
  *   support of interactive loading of MLRISC optimizer
  *

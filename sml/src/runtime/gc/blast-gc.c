@@ -322,17 +322,16 @@ SayDebug ("Completing blast GC (maxGen = %d of %d)\n", maxGen, heap->numGens);
     for (i = 0;  i < NumCRoots;  i++)
 	CheckRoot(CRoots[i]);
 
+    CheckRoot(&(msp->ml_arg));
+    CheckRoot(&(msp->ml_cont));
+    CheckRoot(&(msp->ml_closure));
+    CheckRoot(&(msp->ml_linkReg));
+    CheckRoot(&(msp->ml_pc));
     CheckRoot(&(msp->ml_exnCont));
     CheckRoot(&(msp->ml_varReg));
-#ifdef BASE_INDX
-    CheckRoot(&(msp->ml_baseReg));
-#endif
-    mask = msp->ml_liveRegMask;
-    for (i = 0;  mask != 0;  i++, mask >>= 1) {
-	if ((mask & 1) != 0)
-	    CheckRoot(&(msp->ml_roots[ArgRegMap[i]]));
-    }
-    CheckRoot(&(msp->ml_pc));
+    CheckRoot(&(msp->ml_calleeSave[0]));
+    CheckRoot(&(msp->ml_calleeSave[1]));
+    CheckRoot(&(msp->ml_calleeSave[2]));
 
   /* sweep the dirty pages of generations over maxGen */
     for (i = maxGen; i < heap->numGens;  i++) {

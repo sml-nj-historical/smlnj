@@ -19,8 +19,8 @@ signature CPSREGS = sig
   val baseptr	: T.rexp
   val storeptr 	: T.rexp 
   val stackptr 	: T.rexp 
-  val maskreg 	: T.rexp 
-
+  val gcLink	: T.rexp 
+  
   val calleesave: T.rexp Array.array
   val exhausted : T.ccexp option
 
@@ -36,6 +36,9 @@ end
 
 (*
  * $Log: cpsRegs.sig,v $
+ * Revision 1.4  1999/02/23 20:22:05  george
+ *   Got rid of gclinkreg
+ *
  * Revision 1.3  1998/05/23 14:09:17  george
  *   Fixed RCS keyword syntax
  *

@@ -24,7 +24,7 @@ struct
 
   val emit = MLTreeComp.mlriscComp
 
-  val dummyRegion = (R.RVAR 0, R.RO_MEM, CPS.OFFp 0)
+  val dummyRegion = (R.RVAR 0, R.RW_MEM, CPS.OFFp 0)
 
   val T.REG allocptrR = C.allocptr
 
@@ -37,11 +37,11 @@ struct
   fun record {desc, fields, ans, mem, hp} = let
     val descRegion::regions = 
       case mem
-      of R.RO_MEM => dummyRegion:: map (fn _ => dummyRegion) fields
+      of R.RW_MEM => dummyRegion:: map (fn _ => dummyRegion) fields
        | R.RECORD vl => vl
 
-    fun getfield(r, CPS.SELp(n, p), R.RO_MEM) = 
-	  getfield(T.LOAD32(indexEA(r, n), R.RO_MEM), p, R.RO_MEM)
+    fun getfield(r, CPS.SELp(n, p), R.RW_MEM) = 
+	  getfield(T.LOAD32(indexEA(r, n), R.RW_MEM), p, R.RW_MEM)
       | getfield(r, CPS.SELp(n, p), R.RECORD vl) = let
 	  val (def, root, ap) = List.nth(vl, n+1)
 	in getfield(T.LOAD32(indexEA(r, n), def), p, R.trace(root, ap))
@@ -66,7 +66,7 @@ struct
   fun frecord {desc, fields, ans, mem, hp} = let
     val descRegion::regions =
       case mem
-      of R.RO_MEM => dummyRegion:: map (fn _ => dummyRegion) fields
+      of R.RW_MEM => dummyRegion:: map (fn _ => dummyRegion) fields
        | R.RECORD vl => vl
 
     fun fgetfield(T.FPR fp, CPS.OFFp 0, _) = fp
@@ -74,8 +74,8 @@ struct
 	  fun fea(r, 0) = r
 	    | fea(r, n) = T.ADD(r, T.LI(n*8))
 
-	  fun chase(r, CPS.SELp(n, CPS.OFFp 0), R.RO_MEM) =
-		T.LOADD(fea(r,n), R.RO_MEM)
+	  fun chase(r, CPS.SELp(n, CPS.OFFp 0), R.RW_MEM) =
+		T.LOADD(fea(r,n), R.RW_MEM)
 	    | chase(r, CPS.SELp(n, CPS.OFFp 0), R.RECORD vl) = let
 		val (def, _, _) = List.nth(vl, n+1)
 	      in T.LOADD(fea(r, n), def)
@@ -84,8 +84,8 @@ struct
 		val (def, _, _) = List.nth(vl, n+i+1)
 	      in T.LOADD(fea(r, n), def)
 	      end
-	    | chase(r, CPS.SELp(n,p), R.RO_MEM) = 
-		chase(T.LOAD32(indexEA(r, n), R.RO_MEM), p, R.RO_MEM)
+	    | chase(r, CPS.SELp(n,p), R.RW_MEM) = 
+		chase(T.LOAD32(indexEA(r, n), R.RW_MEM), p, R.RW_MEM)
 	    | chase(r, CPS.SELp(j,p), R.RECORD vl) = let
 		val (def, root, ap) = List.nth(vl, j+1)
   	      in chase(T.LOAD32(indexEA(r,j), def), p, R.trace(root, ap))
@@ -110,6 +110,9 @@ end
 
 (*
  * $Log: mkRecord.sml,v $
+ * Revision 1.2  1998/09/30 18:53:58  dbm
+ * removed sharing/defspec conflict
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:54  george
  * Version 110.5
  *

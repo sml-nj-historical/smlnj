@@ -23,6 +23,10 @@
 #include "ml-sizes.h"
 #endif
 
+#ifndef _ML_STATE_
+#include "ml-state.h"
+#endif
+
 #ifndef _HEAP_
 #include "heap.h"
 #endif
@@ -31,7 +35,7 @@
 #define ORDER		0x00112233
 
 /* heap image version identifier (date in 00mmddyy form) */
-#define IMAGE_MAGIC	0x00082597
+#define IMAGE_MAGIC	0x00022499
 
 /* blasted heap image version identifier (date in 00mmddyy form) */
 #define BLAST_MAGIC	0x00070995
@@ -86,17 +90,12 @@ typedef struct {	    /* The image of an ML virtual processor.  The live */
 			    /* the varReg, exnCont and pc. */
     ml_val_t	sigHandler;	/* the contents of MLSignalHandler */
     ml_val_t	stdArg;
-    ml_val_t	stdClos;
     ml_val_t	stdCont;
-    ml_val_t	varReg;
-    ml_val_t	exnCont;
+    ml_val_t	stdClos;
     ml_val_t	pc;
-#if (CALLEESAVE > 0)
-    ml_val_t	calleeSaves[CALLEESAVE];
-#endif
-#if (FLOAT_CALLEESAVE > 0)
-    double	fpCalleeSaves[FLOAT_CALLEESAVE];
-#endif
+    ml_val_t	exnCont;
+    ml_val_t	varReg;
+    ml_val_t	calleeSave[CALLEESAVE];
 } ml_vproc_image_t;
 
 

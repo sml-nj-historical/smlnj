@@ -34,46 +34,6 @@
 extern ml_val_t		CInterfaceRootList;
 #endif
 
-#ifdef COUNT_REG_MASKS
-#define NUM_MASKS	64
-PVT struct {
-    Word_t	mask;
-    int		count;
-}	    Masks[NUM_MASKS];
-PVT	    NumMasks = 0;
-PVT	    NumOthers = 0;
-
-PVT void RecordMask (Word_t m)
-{
-    int		i;
-
-    for (i = 0;  (i < NumMasks) && (Masks[i].mask != m);  i++)
-	continue;
-    if (i < NumMasks)
-	Masks[i].count++;
-    else if (i < NUM_MASKS) {
-	NumMasks++;
-	Masks[i].mask = m;
-	Masks[i].count = 1;
-    }
-    else
-	NumOthers++;
-}
-
-void DumpMasks ()
-{
-    int		i;
-
-    SayDebug ("GC Masks:\n");
-    for (i = 0;  i < NumMasks;  i++) {
-	SayDebug ("  %#8x: %5d\n", Masks[i].mask, Masks[i].count);
-    }
-    if (NumOthers > 0)
-	SayDebug ("  ????????:  %5d\n", NumOthers);
-}
-#endif /* COUNT_REG_MASKS */
-
-
 
 /* InvokeGC:
  *
@@ -136,41 +96,27 @@ void InvokeGC (ml_state_t *msp, int level)
 	    j, msp->ml_allocPtr, msp->ml_limitPtr);
 #endif
 	    if (vsp->vp_mpState == MP_PROC_RUNNING) {
+		*rootsPtr++ = &(msp->ml_arg);
+		*rootsPtr++ = &(msp->ml_cont);
+		*rootsPtr++ = &(msp->ml_closure);
 		*rootsPtr++ = &(msp->ml_exnCont);
 		*rootsPtr++ = &(msp->ml_varReg);
-#ifdef BASE_INDX
-		*rootsPtr++ = &(msp->ml_baseReg);
-#endif
-		mask = msp->ml_liveRegMask;
-		for (i = 0;  mask != 0;  i++, mask >>= 1) {
-		    if ((mask & 1) != 0)
-			*rootsPtr++ = &(msp->ml_roots[ArgRegMap[i]]);
-		} /* for */
-#ifdef N_PSEUDO_REGS
-		for (i = 0; i < N_PSEUDO_REGS; i++)
-		    *rootsPtr++ = &(msp->ml_pseudoRegs[i]);
-#endif
+		*rootsPtr++ = &(msp->ml_calleeSave[0]);
+		*rootsPtr++ = &(msp->ml_calleeSave[1]);
+		*rootsPtr++ = &(msp->ml_calleeSave[2]);
 	    }
 	} /* for */
     }
 #else /* !MP_SUPPORT */
+    *rootsPtr++ = &(msp->ml_linkReg);
+    *rootsPtr++ = &(msp->ml_arg);
+    *rootsPtr++ = &(msp->ml_cont);
+    *rootsPtr++ = &(msp->ml_closure);
     *rootsPtr++ = &(msp->ml_exnCont);
     *rootsPtr++ = &(msp->ml_varReg);
-#ifdef BASE_INDX
-    *rootsPtr++ = &(msp->ml_baseReg);
-#endif
-    mask = msp->ml_liveRegMask;
-#ifdef COUNT_REG_MASKS
-    RecordMask (mask);
-#endif
-    for (i = 0;  mask != 0;  i++, mask >>= 1) {
-	if ((mask & 1) != 0)
-	    *rootsPtr++ = &(msp->ml_roots[ArgRegMap[i]]);
-    }
-#ifdef N_PSEUDO_REGS
-    for (i = 0; i < N_PSEUDO_REGS; i++)
-	*rootsPtr++ = &(msp->ml_pseudoRegs[i]);
-#endif
+    *rootsPtr++ = &(msp->ml_calleeSave[0]);
+    *rootsPtr++ = &(msp->ml_calleeSave[1]);
+    *rootsPtr++ = &(msp->ml_calleeSave[2]);
 #endif /* MP_SUPPORT */
     *rootsPtr = NIL(ml_val_t *);
 
@@ -201,11 +147,10 @@ void InvokeGC (ml_state_t *msp, int level)
 	    vsp = VProc[i];
 	    msp = vsp->vp_state;
 	    if (vsp->vp_mpState == MP_PROC_RUNNING)
-		*rootsPtr++ = &(msp->ml_pc);
+		*rootsPtr++ = &(msp->ml_linkReg);
 	}
 #else
 	ASSIGN(ProfCurrent, PROF_MAJOR_GC);
-	*rootsPtr++ = &(msp->ml_pc);
 #endif
 	*rootsPtr = NIL(ml_val_t *);
 	MajorGC (msp, roots, level);
@@ -309,38 +254,26 @@ void InvokeGCWithRoots (ml_state_t *msp, int level, ...)
 	    j, msp->ml_allocPtr, msp->ml_limitPtr);
 #endif
 	    if (vsp->vp_mpState == MP_PROC_RUNNING) {
+		*rootsPtr++ = &(msp->ml_arg);
+		*rootsPtr++ = &(msp->ml_cont);
+		*rootsPtr++ = &(msp->ml_closure);
 		*rootsPtr++ = &(msp->ml_exnCont);
 		*rootsPtr++ = &(msp->ml_varReg);
-#ifdef BASE_INDX
-		*rootsPtr++ = &(msp->ml_baseReg);
-#endif
-		mask = msp->ml_liveRegMask;
-		for (i = 0;  mask != 0;  i++, mask >>= 1) {
-		    if ((mask & 1) != 0)
-			*rootsPtr++ = &(msp->ml_roots[ArgRegMap[i]]);
-		} /* for */
-#ifdef N_PSEUDO_REGS
-                for (i = 0; i < N_PSEUDO_REGS; i++)
-                    *rootsPtr++ = &(msp->ml_pseudoRegs[i]);
-#endif
+		*rootsPtr++ = &(msp->ml_calleeSave[0]);
+		*rootsPtr++ = &(msp->ml_calleeSave[1]);
+		*rootsPtr++ = &(msp->ml_calleeSave[2]);
 	    }
 	} /* for */
     }
 #else /* !MP_SUPPORT */
+    *rootsPtr++ = &(msp->ml_arg);
+    *rootsPtr++ = &(msp->ml_cont);
+    *rootsPtr++ = &(msp->ml_closure);
     *rootsPtr++ = &(msp->ml_exnCont);
     *rootsPtr++ = &(msp->ml_varReg);
-#ifdef BASE_INDX
-    *rootsPtr++ = &(msp->ml_baseReg);
-#endif
-    mask = msp->ml_liveRegMask;
-    for (i = 0;  mask != 0;  i++, mask >>= 1) {
-	if ((mask & 1) != 0)
-	    *rootsPtr++ = &(msp->ml_roots[ArgRegMap[i]]);
-    }
-#ifdef N_PSEUDO_REGS
-    for (i = 0; i < N_PSEUDO_REGS; i++)
-	*rootsPtr++ = &(msp->ml_pseudoRegs[i]);
-#endif
+    *rootsPtr++ = &(msp->ml_calleeSave[0]);
+    *rootsPtr++ = &(msp->ml_calleeSave[1]);
+    *rootsPtr++ = &(msp->ml_calleeSave[2]);
 #endif /* MP_SUPPORT */
     *rootsPtr = NIL(ml_val_t *);
 
@@ -369,10 +302,11 @@ void InvokeGCWithRoots (ml_state_t *msp, int level, ...)
 	for (i = 0; i < MAX_NUM_PROCS; i++) {
 	    vsp = VProc[i];
 	    if (vsp->vp_mpState == MP_PROC_RUNNING)
-		*rootsPtr++ = &(vsp->vp_state->ml_pc);
+		*rootsPtr++ = &(vsp->vp_state->ml_linkReg);
 	}
 #else
 	ASSIGN(ProfCurrent, PROF_MAJOR_GC);
+	*rootsPtr++ = &(msp->ml_linkReg);
 	*rootsPtr++ = &(msp->ml_pc);
 #endif
 	*rootsPtr = NIL(ml_val_t *);

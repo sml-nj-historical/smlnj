@@ -55,7 +55,6 @@ signature MACH_SPEC =
 				(* in bytes *)
 
     val startgcOffset 	: int
-    val pseudoRegOffset : int
     val constBaseRegOffset : int
  
     val quasiStack : bool	(* default false *)
@@ -89,5 +88,8 @@ signature MACH_SPEC =
 
 
 (*
- * $Log$
+ * $Log: machspec.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:53  george
+ * Version 110.5
+ *
  *)

@@ -12,20 +12,21 @@
  *	$2	   no		standard closure
  *	$3	   no		standard link register
  *      $4	   no		base address register
- *	$5	   no		internal temporary (ptrtmp)
- *	$6-$8      no		miscellaneous registers
+ *	$5-$8      no		miscellaneous registers
  *	$9	   yes		heap limit pointer
  *	$10	   yes		var pointer
  *	$11	   yes		heap-limit comparison flag, and arith temporary
- *	$12	   yes		store list pointer  (not used)
+ *	$12	   yes		store list pointer
  *	$13	   yes		allocation pointer
  *	$14	   yes		exception continuation
- *	$15	   yes		instruction counter
- *	$16-$26    no		miscellaneous registers
- *	$27        no		gc link register
+ *	$15	   yes		miscellaneous register
+ *	$16-$25    no		miscellaneous registers
+ *	$26	   no		ml-pc
+ *	$27        no		miscellaneous register
  *	$28        no		assembler temporary
  *	$29         -		reserved for C (global pointer)
  *	$30         -		reserved for C (stack pointer)
+ *	$31	    -           constant zero
  */
 
 #include <regdef.h>
@@ -34,7 +35,6 @@
 #include "ml-values.h"
 #include "tags.h"
 #include "ml-request.h"
-#include "reg-mask.h"
 #include "ml-limits.h"
 #include "mlstate-offsets.h"	/** this file is generated **/
 
@@ -43,30 +43,16 @@
 #define STDCONT		$1	/* standard continuation (ml_cont) 	  	*/
 #define STDCLOS		$2	/* standard closure (ml_closure)             	*/
 #define STDLINK		$3	/* ptr to just-entered std function (ml_link)	*/
-#define BASEPTR		$4	/* pointer to base of code object - 4 */
-#define PTRTMP		$5	/* internal temporary 				*/
-#define MISCREG0	$6
-#define MISCREG1	$7
-#define MISCREG2	$8
+#define MISCREG0	$5
+#define MISCREG1	$6
+#define MISCREG2	$7
 #define LIMITPTR	$9	/* end of heap - 4096  (ml_limitptr)  	  	*/
 #define VARPTR		$10 	/* per-thread var pointer (ml_varptr)		*/
 #define NEEDGC		$11 	/* arith temp; also, heap-limit comparison flag	*/
 #define STOREPTR	$12 	/* store pointer  (ml_storeptr) 		*/
 #define ALLOCPTR	$13 	/* freespace pointer  (ml_allocptr) 		*/
 #define EXNCONT		$14 	/* exception handler (ml_exncont) 		*/
-/* #define icountr		$15 */
-#define MISCREG3	$16
-#define MISCREG4	$17
-#define MISCREG5	$18
-#define MISCREG6	$19
-#define MISCREG7	$20
-#define MISCREG8	$21
-#define MISCREG9	$22
-#define MISCREG10	$23
-#define MISCREG11	$24
-#define MISCREG12	$25
-#define GCLINK		$26	/* resumption point for restoreregs (ml_pc)	*/
-#define MISCREG13	$27
+#define PC		$26	/* address to return/goto in ML			*/
 /* assembler-temp $28 						 	*/
 /*      globalptr $29	   reserved for C and assembler			*/
 /*       stackptr $30        stack pointer 				*/
@@ -79,36 +65,7 @@
 #define ATMP2		$21
 #define ATMP3		$22
 #define ATMP4		$23
-
-/* The root registers in the ML state vector have the following layout,
- * where roots is guaranteed to be 8-byte aligned relative to the start
- * of the ML state vector (see "ml-state.h"):
- *
- ******** THIS IS OUT OF DATE *******
- *
- *			+-------------------+
- *	roots:   	|    ml_arg ($0)    |
- *			+-------------------+
- *	roots+4: 	|    ml_cont ($1)   |
- *			+-------------------+
- *	roots+8: 	|  ml_closure ($2)  |
- *			+-------------------+
- *	roots+12:	|  ml_linkReg ($3)  |
- *			+-------------------+
- *	roots+16:	|    ml_pc  ($27)   |
- *			+-------------------+
- *	roots+20:	|  icount ($15)     |
- *			+-------------------+
- *	roots+24:	| ($6,$7,$8,$16-26) |
- *			+-------------------+
- *	roots+80:	|  ml_varReg ($10)  |
- *			+-------------------+
- *      roots+84:	| ml_exncont ($14)  |
- *			+-------------------+
- *	roots+88:	|  ml_baseReg ($4)  |
- *			+-------------------+
- */
-
+#define PTRTMP		$24	
 
 /* The  ML stack frame has the following layout (set up by restoreregs):
  *			+-------------------+
@@ -128,7 +85,7 @@
  *			+-------------------+
  *      sp+80:		|     saved $29     |
  *			+-------------------+
- *      sp+72:		|     saved $26     |  is this needed??? - Ken Cline
+ *      sp+72:		|     saved $26     | 
  *			+-------------------+
  *      sp+64:		|     saved $15     |
  *			+-------------------+
@@ -166,24 +123,15 @@
 #  define ALLOCALIGN
 #endif
 
-#if (CALLEESAVE > 0)
-#define CONTINUE						\
-	    ALLOCALIGN						\
-	    cmplt	LIMITPTR,ALLOCPTR,NEEDGC;		\
+#define CONTINUE					\
+	    ALLOCALIGN					\
+	    cmplt	LIMITPTR,ALLOCPTR,NEEDGC;	\
             jmp		(STDCONT);
-#else
-#define CONTINUE						\
-	    ldl		STDLINK,0(STDCONT);			\
-	    ALLOCALIGN						\
-	    cmplt	LIMITPTR,ALLOCPTR,NEEDGC;		\
-	    jmp		(STDLINK)
-#endif
 
-#define CHECKLIMIT(mask)					\
-	    mov		mask,PTRTMP;				\
-	    beq		NEEDGC,3f;				\
-	    mov 	STDLINK,GCLINK;			\
-	    br		saveregs;				\
+#define CHECKLIMIT					\
+	    beq		NEEDGC,3f;			\
+	    mov		STDLINK, PC;			\
+	    br		saveregs;			\
 	 3:
 
 
@@ -199,8 +147,10 @@ fsr_bits:	.quad		0x8a70000000000000
  * The return continuation for the ML signal handler.
  */
 ML_CODE_HDR(sigh_return_a)
-	mov	RET_MASK,PTRTMP
 	mov	REQ_SIG_RETURN,ATMP1
+	mov	ML_unit, STDLINK
+	mov	ML_unit, STDCLOS
+	mov	ML_unit, PC
 	br	set_request
 
 
@@ -209,114 +159,95 @@ ML_CODE_HDR(sigh_return_a)
  * standard two-argument function, thus the closure is in ml_cont (%stdcont).
  */
 ENTRY(sigh_resume)
-	mov	RET_MASK,PTRTMP
 	mov	REQ_SIG_RESUME,ATMP1
+	mov	ML_unit, STDLINK
+	mov	ML_unit, STDCLOS
+	mov	ML_unit, PC
 	br	set_request
 
 /* pollh_return_a
  * The return continuation for the ML poll handler.
  */
 ML_CODE_HDR(pollh_return_a)
-	mov	RET_MASK,PTRTMP
 	mov	REQ_POLL_RESUME,ATMP1
+	mov	ML_unit, STDLINK
+	mov	ML_unit, STDCLOS
+	mov	ML_unit, PC
 	br	set_request
 
 /* pollh_resume:
  * Resume execution at the point at which a poll event occurred.
  */
 ENTRY(pollh_resume)
-	mov	RET_MASK,PTRTMP
 	mov	REQ_POLL_RETURN,ATMP1
+	mov	ML_unit, STDLINK
+	mov	ML_unit, STDCLOS
+	mov	ML_unit, PC
 	br	set_request
 
 ML_CODE_HDR(handle_a)
-	mov	EXN_MASK,PTRTMP
 	mov	REQ_EXN,ATMP1
+	mov	STDLINK, PC
 	br	set_request
 
 ML_CODE_HDR(return_a)
-	mov	RET_MASK,PTRTMP
 	mov	REQ_RETURN,ATMP1
+	mov	ML_unit, STDLINK
+	mov	ML_unit, STDCLOS
+	mov	ML_unit, PC
 	br	set_request
 
 ENTRY(request_fault)
-	mov	EXN_MASK,PTRTMP
 	mov	REQ_FAULT,ATMP1
+	mov	STDLINK, PC
 	br	set_request
 
 /* bind_cfun : (string * string) -> c_function
  */
 ML_CODE_HDR(bind_cfun_a)
-	CHECKLIMIT(FUN_MASK)
-	mov	FUN_MASK,PTRTMP
+	CHECKLIMIT
 	mov	REQ_BIND_CFUN,ATMP1
 	br	set_request
 
 ML_CODE_HDR(build_literals_a)
-	CHECKLIMIT(FUN_MASK)
-	mov	FUN_MASK,PTRTMP
+	CHECKLIMIT
 	mov	REQ_BUILD_LITERALS,ATMP1
 	br	set_request
 
 ML_CODE_HDR(callc_a)
-	CHECKLIMIT(FUN_MASK)
-	mov	FUN_MASK,PTRTMP
+	CHECKLIMIT
 	mov	REQ_CALLC,ATMP1
+	br	set_request
+
+	BEGIN_PROC(saveregs)
+ENTRY(saveregs)
+	mov	REQ_GC,ATMP1
+
 	/* fall through */
 
-set_request:			/* a quick return to run_ml(), ptrtmp holds */
-				/* the request code, and atmp1 holds the  */
-				/* live register mask. */
-
-	mov	PTRTMP,NEEDGC			/* save the register mask */
-	ldq	PTRTMP,MLSTATE_OFFSET(sp)	/* get the ML state ptr from the stack */
-	stl	NEEDGC,MaskOffMSP(PTRTMP)
+set_request:			
+	ldq	PTRTMP,MLSTATE_OFFSET(sp)	/* get the ML state ptr */
 	ldq	NEEDGC,VProcOffMSP(PTRTMP)	/* use NEEDGC for VProcPtr */
 	stl	zero,InMLOffVSP(NEEDGC)		/* note that we have left ML */
 	stl	ALLOCPTR,AllocPtrOffMSP(PTRTMP)
 	stl	LIMITPTR,LimitPtrOffMSP(PTRTMP)
 	stl	STOREPTR,StorePtrOffMSP(PTRTMP)
 	stl	STDLINK,LinkRegOffMSP(PTRTMP)
-	stl	STDLINK,PCOffMSP(PTRTMP)	/* address of called function */
+	stl	PC,PCOffMSP(PTRTMP)
 	stl	STDARG,StdArgOffMSP(PTRTMP)
 	stl	STDCLOS,StdClosOffMSP(PTRTMP)
 	stl	STDCONT,StdContOffMSP(PTRTMP)
 	stl	VARPTR,VarPtrOffMSP(PTRTMP)
 	stl	EXNCONT,ExnPtrOffMSP(PTRTMP)
 	mov	ATMP1,CRESULT				/* return request */
-#if (CALLEESAVE > 0)
-	stl	MISCREG0,MiscRegOffMSP(0)(PTRTMP)
-#if (CALLEESAVE > 1)
-	stl	MISCREG1,MiscRegOffMSP(1)(PTRTMP)
-#if (CALLEESAVE > 2)
-	stl	MISCREG2,MiscRegOffMSP(2)(PTRTMP)
-#if (CALLEESAVE > 3)
-	stl	MISCREG3,MiscRegOffMSP(3)(PTRTMP)
-#if (CALLEESAVE > 4)
-	stl	MISCREG4,MiscRegOffMSP(4)(PTRTMP)
-#if (CALLEESAVE > 5)
-	stl	MISCREG5,MiscRegOffMSP(5)(PTRTMP)
-#if (CALLEESAVE > 6)
-	stl	MISCREG6,MiscRegOffMSP(6)(PTRTMP)
-#if (CALLEESAVE > 7)
-	stl	MISCREG7,MiscRegOffMSP(7)(PTRTMP)
-#if (CALLEESAVE > 8)
-	stl	MISCREG8,MiscRegOffMSP(8)(PTRTMP)
-#endif
-#endif
-#endif
-#endif
-#endif
-#endif
-#endif
-#endif
-#endif
+	stl	MISCREG0,Misc0OffMSP(PTRTMP)
+	stl	MISCREG1,Misc1OffMSP(PTRTMP)
+	stl	MISCREG2,Misc2OffMSP(PTRTMP)
+	/* fall through */
+	.end saveregs
+
 					/* restore callee-save C registers */
 restore_c_regs:
-	ldl     ATMP1,PSEUDOREG_OFFSET(sp)
-	stl     ATMP1,PseudoReg1OffMSP(PTRTMP)
- 	ldl	ATMP1,PSEUDOREG_OFFSET+4(sp)
-	stl     ATMP1,PseudoReg2OffMSP(PTRTMP)
 	ldq	$30,REGSAVE_OFFSET+72(sp)
 	ldq	$29,REGSAVE_OFFSET+64(sp)
 	ldq	$26,REGSAVE_OFFSET+56(sp)
@@ -329,44 +260,6 @@ restore_c_regs:
         ldq     $9 ,REGSAVE_OFFSET(sp)
 	addq	sp,ML_FRAMESIZE				/* discard the stack frame */
 	jmp	($26)				/* return to run_ml() */
-
-	BEGIN_PROC(saveregs)
-ENTRY(saveregs)
-	mov	PTRTMP,NEEDGC		    /* save the register mask */
-	ldq	PTRTMP,MLSTATE_OFFSET(sp)   /* use ptrtmp to access ML state */
-	stl	NEEDGC,MaskOffMSP(PTRTMP)
-1:
-	ldq	NEEDGC,VProcOffMSP(PTRTMP)  /* use NEEDGC for VProcPtr */
-	stl	zero,InMLOffVSP(NEEDGC)	    /* note that we have left ML */
-	subl    BASEPTR,32764  		    /* adjust baseReg */
-	stl	ALLOCPTR,AllocPtrOffMSP(PTRTMP)
-	stl	LIMITPTR,LimitPtrOffMSP(PTRTMP)
-	stl	STOREPTR,StorePtrOffMSP(PTRTMP)
-	stl	STDARG,StdArgOffMSP(PTRTMP)
-	stl	STDCONT,StdContOffMSP(PTRTMP)
-	stl	STDCLOS,StdClosOffMSP(PTRTMP)
-	stl	GCLINK,PCOffMSP(PTRTMP)
-	stl	EXNCONT,ExnPtrOffMSP(PTRTMP)
-	stl	MISCREG0,MiscRegOffMSP(0)(PTRTMP)	/* save misc. roots */
-	stl	MISCREG1,MiscRegOffMSP(1)(PTRTMP)
-	stl	MISCREG2,MiscRegOffMSP(2)(PTRTMP)
-	stl	MISCREG3,MiscRegOffMSP(3)(PTRTMP)
-	stl	MISCREG4,MiscRegOffMSP(4)(PTRTMP)
-	stl	MISCREG5,MiscRegOffMSP(5)(PTRTMP)
-	stl	MISCREG6,MiscRegOffMSP(6)(PTRTMP)
-	stl	MISCREG7,MiscRegOffMSP(7)(PTRTMP)
-	stl	MISCREG8,MiscRegOffMSP(8)(PTRTMP)
-	stl	MISCREG9,MiscRegOffMSP(9)(PTRTMP)
-	stl	MISCREG10,MiscRegOffMSP(10)(PTRTMP)
-	stl	MISCREG11,MiscRegOffMSP(11)(PTRTMP)
-	stl	MISCREG12,MiscRegOffMSP(12)(PTRTMP)
-	stl	MISCREG13,MiscRegOffMSP(13)(PTRTMP)
-	stl	STDLINK,LinkRegOffMSP(PTRTMP)
-	stl	BASEPTR,BasePtrOffMSP(PTRTMP)		/* base reg */
-	stl	VARPTR,VarPtrOffMSP(PTRTMP)
-	mov	REQ_GC,CRESULT
-	br	restore_c_regs
-	.end	saveregs
 
 
 	BEGIN_PROC(restoreregs)
@@ -394,11 +287,6 @@ ENTRY(restoreregs)
         stq     $9,REGSAVE_OFFSET(sp)
 	mov     CARG0,PTRTMP			/* put MLState ptr in ptrtmp */
 
-	ldl 	ATMP1,PseudoReg1OffMSP(PTRTMP)
-	stl 	ATMP1,PSEUDOREG_OFFSET(sp)
-	ldl 	ATMP1,PseudoReg2OffMSP(PTRTMP)
-	stl 	ATMP1,PSEUDOREG_OFFSET+4(sp)
-
 	ldl	ALLOCPTR,AllocPtrOffMSP(PTRTMP)
 	ldl	LIMITPTR,LimitPtrOffMSP(PTRTMP)
 	ldl	STOREPTR,StorePtrOffMSP(PTRTMP)
@@ -410,25 +298,12 @@ ENTRY(restoreregs)
 	ldl	STDCONT,StdContOffMSP(PTRTMP)
 	ldl	STDCLOS,StdClosOffMSP(PTRTMP)
 	ldl	EXNCONT,ExnPtrOffMSP(PTRTMP)
-	ldl	MISCREG0,MiscRegOffMSP(0)(PTRTMP)
-	ldl	MISCREG1,MiscRegOffMSP(1)(PTRTMP)
-	ldl	MISCREG2,MiscRegOffMSP(2)(PTRTMP)
-	ldl	MISCREG3,MiscRegOffMSP(3)(PTRTMP)
-	ldl	MISCREG4,MiscRegOffMSP(4)(PTRTMP)
-	ldl	MISCREG5,MiscRegOffMSP(5)(PTRTMP)
-	ldl	MISCREG6,MiscRegOffMSP(6)(PTRTMP)
-	ldl	MISCREG7,MiscRegOffMSP(7)(PTRTMP)
-	ldl	MISCREG8,MiscRegOffMSP(8)(PTRTMP)
-	ldl	MISCREG9,MiscRegOffMSP(9)(PTRTMP)
-	ldl	MISCREG10,MiscRegOffMSP(10)(PTRTMP)
-	ldl	MISCREG11,MiscRegOffMSP(11)(PTRTMP)
-	ldl	MISCREG12,MiscRegOffMSP(12)(PTRTMP)
-	ldl	MISCREG13,MiscRegOffMSP(13)(PTRTMP)
+	ldl	MISCREG0,Misc0OffMSP(PTRTMP)
+	ldl	MISCREG1,Misc1OffMSP(PTRTMP)
+	ldl	MISCREG2,Misc2OffMSP(PTRTMP)
 	ldl	STDLINK,LinkRegOffMSP(PTRTMP)
+	ldl	PC,PCOffMSP(PTRTMP)
 	ldl	VARPTR,VarPtrOffMSP(PTRTMP)
-	ldl 	BASEPTR,BasePtrOffMSP(PTRTMP)
-	addl    BASEPTR,32764			/* adjust baseReg */
-	ldl	GCLINK,PCOffMSP(PTRTMP)
 						/* check for pending signals */
 	ldl	PTRTMP,NPendingSysOffVSP(NEEDGC)
 .set	noat
@@ -441,7 +316,7 @@ ENTRY(restoreregs)
 ENTRY(ml_go)
 	ALLOCALIGN
 	cmplt	LIMITPTR,ALLOCPTR,NEEDGC
-	jmp	(GCLINK)			/* jump to ML code */
+	jmp	(PC)			/* jump/return to ML code */
 	.end	ml_go
 
 pending_sigs:	/* there are pending signals */
@@ -502,7 +377,7 @@ ENTRY(RestoreFPRegs)			/* floats address passed as parm */
  * Allocate and initialize a new array.	 This can cause GC.
  */
 ML_CODE_HDR(array_a)
-	CHECKLIMIT(FUN_MASK)	
+	CHECKLIMIT
 
 	ldl	ATMP1,0(STDARG)		    /* tmp1 := length in words */
 	sra	ATMP1,1,ATMP2		    /* tmp2 := length (untagged) */
@@ -532,15 +407,15 @@ ML_CODE_HDR(array_a)
 	CONTINUE
 
 2:	/* off-line allocation of big arrays */
-	mov	FUN_MASK,PTRTMP
 	mov	REQ_ALLOC_ARRAY,ATMP1
+        mov	STDLINK, PC
 	br	set_request
 
 /* create_r : int -> realarray
  * Create a new realarray.
  */
 ML_CODE_HDR(create_r_a)
-	CHECKLIMIT(FUN_MASK)
+	CHECKLIMIT
 
 	sra	STDARG,1,ATMP2		    /* atmp2 = length (untagged int) */
 	sll	ATMP2,1,ATMP2		    /* atmp2 = length in words */
@@ -569,15 +444,15 @@ ML_CODE_HDR(create_r_a)
 	CONTINUE
 
 1:	/* off-line allocation of big realarrays */
-	mov	FUN_MASK,PTRTMP
 	mov	REQ_ALLOC_REALDARRAY,ATMP1
+        mov	STDLINK, PC
 	br	set_request
 
 /* create_b : int -> bytearray
  * Create a bytearray of the given length.
  */
 ML_CODE_HDR(create_b_a)
-	CHECKLIMIT(FUN_MASK)
+	CHECKLIMIT
 
 	sra	STDARG,1,ATMP2		  /* atmp2 = length (untagged int) */
 	addq	ATMP2,3,ATMP2		  /* atmp2 = length in words */
@@ -602,15 +477,15 @@ ML_CODE_HDR(create_b_a)
 	addq	ALLOCPTR,8		  /* allocptr += 2 */
 	CONTINUE
 1:					/* off-line allocation of big bytearrays */
-	mov	FUN_MASK,PTRTMP
 	mov	REQ_ALLOC_BYTEARRAY,ATMP1
+        mov	STDLINK, PC
 	br	set_request
 
 /* create_s : int -> string
  * Create a string of the given length (assume length >0).
  */
 ML_CODE_HDR(create_s_a)
-	CHECKLIMIT(FUN_MASK)
+	CHECKLIMIT
 
 	sra	STDARG,1,ATMP2			/* tmp2 = length (untagged int) */
 	addq	ATMP2,4,ATMP2			/* atmp2 = length in words */
@@ -636,8 +511,8 @@ ML_CODE_HDR(create_s_a)
 	addq	ALLOCPTR,8
 	CONTINUE
 1:					/* off-line allocation of big strings */
-	mov	FUN_MASK,PTRTMP
 	mov	REQ_ALLOC_STRING,ATMP1
+        mov	STDLINK, PC
 	br	set_request
 
 /* create_v_a : (int * 'a list) -> 'a vector
@@ -645,7 +520,7 @@ ML_CODE_HDR(create_s_a)
  * NOTE: the front-end ensures that list cannot be nil.
  */
 ML_CODE_HDR(create_v_a)
-	CHECKLIMIT(FUN_MASK)
+	CHECKLIMIT
 
 	ldl	ATMP1,0(STDARG)		/* tmp1 := length (tagged int) */
 	sra	ATMP1,1,ATMP2		/* tmp2 := length (untagged) */
@@ -676,8 +551,8 @@ ML_CODE_HDR(create_v_a)
 	CONTINUE
 
 1:	/* off-line allocation for large vectors */
-	mov	FUN_MASK,PTRTMP
 	mov	REQ_ALLOC_VECTOR,ATMP1
+        mov	STDLINK, PC
 	br	set_request
 
 /* Floating exceptions raised (assuming ROP's are never passed to functions):
@@ -766,7 +641,7 @@ ML_CODE_HDR(logb_a)
 	CONTINUE
 
 ML_CODE_HDR(scalb_a)
-	CHECKLIMIT(FUN_MASK)
+	CHECKLIMIT
 	ldl	PTRTMP,0(STDARG)	/* address of float */
 	ldq	ATMP2,0(PTRTMP)	/* get float */
 	ldl	ATMP1,4(STDARG)	/* get tagged n */

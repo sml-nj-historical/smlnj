@@ -10,7 +10,7 @@ struct
   structure Asm	     = PPCAsmEmitter
   structure MLTree   = PPCMLTree
   structure MachSpec = PPCSpec
-  structure CG = Control.CG
+  structure Ctrl = Control.MLRISC
 
   fun error msg = ErrorMsg.impossible ("PPCCG." ^ msg)
 
@@ -34,6 +34,11 @@ struct
   structure PrintFlowGraph = 
      PrintFlowGraphFn (structure FlowGraph = F
                        structure Emitter   = Asm)
+
+  val intSpillCnt = Ctrl.getInt "ra-int-spills"
+  val floatSpillCnt = Ctrl.getInt "ra-float-spills"
+  val intReloadCnt = Ctrl.getInt "ra-int-reloads"
+  val floatReloadCnt = Ctrl.getInt "ra-float-reloads"
 
   (* register allocation *)
   structure RegAllocation : 
@@ -82,6 +87,7 @@ struct
       fun spillInstr(src) = 
 	[I.ST{sz=I.Word, rs=src, ra=C.stackptrR, d=offset, mem=stack}]
     in
+      intSpillCnt := !intSpillCnt + 1;
       case instr
        of I.COPY{dst as [rd], src as [rs], tmp, impl} =>
 	  if rd=reg then
@@ -107,6 +113,7 @@ struct
       fun spillInstr(src) = 
 	[I.ST{sz=I.Double, rs=src, ra=C.stackptrR, d=offset, mem=stack}]
     in
+      floatSpillCnt := !floatSpillCnt + 1;
       case instr
       of I.FCOPY{dst as [fd], src as [fs], tmp, impl} => 	 (* reg = fd *)
        	  if reg=fd then
@@ -132,6 +139,7 @@ struct
       fun reloadInstr(dst, rest) =
 	I.L{sz=I.Word, rt=dst, ra=C.stackptrR, d=offset, mem=stack}::rest
     in 
+      intReloadCnt := !intReloadCnt + 1;
       case instr
       of I.COPY{dst=[rd], src=[rs], ...} =>	(* reg = rs *)
 	   {code=reloadInstr(rd, []),   proh=[]:int list}
@@ -147,6 +155,7 @@ struct
       fun reloadInstr(dst, rest) =
 	I.L{sz=I.Double, rt=dst, ra=C.stackptrR, d=offset, mem=stack}::rest
     in 
+      floatReloadCnt := !floatReloadCnt + 1;
       case instr
       of I.FCOPY{dst=[fd], src=[fs], ...} =>	(* reg = fs *)
 	   {code=reloadInstr(fd, []), proh=[]}
@@ -239,7 +248,6 @@ struct
 		      val rs6000flag=false)
 	       structure Cells=PPCCells
 	       structure C=PPCCpsRegs
-	       structure ConstType=PPCConst
 	       structure PseudoOp=PPCPseudoOps)
 
   val copyProp = RegAllocation.cp

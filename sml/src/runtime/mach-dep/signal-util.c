@@ -81,68 +81,28 @@ SayDebug("EnqueueSignal: numInQ = %d, sig = %d\n", vsp->vp_numInQ, sigCode);
 /* MakeResumeCont:
  *
  * Build the resume continuation for a signal or poll event handler.
- * Layout of the resumption continuation:
- *
- *                  resumption continuation
- *                            |
- *                            v
- *   +------------------+----+-+-+-+-+-+~+---------~
- *   |STRING| floatregs |DESC|1|2|3|4| |B| live regs
- *   +------------------+----+-+-+-+-+|+~+---------~
- *           ^                        |
- *           |________________________|
+ * This closure contains the address of the resume entry-point and
+ * the registers from the ML State.
  *
  * At least 4K avail. heap assumed.
  */
 ml_val_t MakeResumeCont (ml_state_t *msp, ml_val_t resume[])
 {
-    ml_val_t	fpRegs;
-    int		i, n, mask;
-
-#if (FLOAT_CALLEESAVE > 0)
-#  ifdef ALIGN_REALDS
-  /* Force REALD_SZB alignment */
-    msp->ml_allocPtr =
-	(ml_val_t *)(((Addr_t)(msp->ml_allocPtr) & ~(REALD_SZB-1))+WORD_SZB);
-#  endif
-#  if defined(TARGET_X86)
-    n = FP_STATE_SIZE;
-#  else
-    n = (REALD_SZB*FLOAT_CALLEESAVE)/WORD_SZB;
-    ML_AllocWrite(msp, 0, MAKE_DESC(n, DTAG_string));
-    SaveFPRegs ((Addr_t)(msp->ml_allocPtr) + WORD_SZB);
-    fpRegs = ML_Alloc(msp, n);
-#  endif /* TARGET_X86 */
-#else
-    fpRegs = ML_unit;
-#endif
-
   /* allocate the resumption closure */
-    ML_AllocWrite(msp, 1, PTR_CtoML(resume));
-    ML_AllocWrite(msp, 2, INT_CtoML(msp->ml_liveRegMask));
-    ML_AllocWrite(msp, 3, msp->ml_pc);
-    ML_AllocWrite(msp, 4, msp->ml_exnCont);
-    ML_AllocWrite(msp, 5, fpRegs);
-    n = 6;
+    ML_AllocWrite(msp,  0, MAKE_DESC(10, DTAG_record));
+    ML_AllocWrite(msp,  1, PTR_CtoML(resume));
+    ML_AllocWrite(msp,  2, msp->ml_arg);
+    ML_AllocWrite(msp,  3, msp->ml_cont);
+    ML_AllocWrite(msp,  4, msp->ml_closure);
+    ML_AllocWrite(msp,  5, msp->ml_linkReg);
+    ML_AllocWrite(msp,  6, msp->ml_pc);
+    ML_AllocWrite(msp,  7, msp->ml_exnCont);
+    ML_AllocWrite(msp,  8, msp->ml_varReg);
+    ML_AllocWrite(msp,  9, msp->ml_calleeSave[0]);
+    ML_AllocWrite(msp, 10, msp->ml_calleeSave[1]);
+    ML_AllocWrite(msp, 11, msp->ml_calleeSave[2]);
 
-#if  defined(BASE_INDX)
-    ML_AllocWrite(msp, n, msp->ml_baseReg);
-    n++;
-#endif
-
-  /* save the live registers */
-    mask = msp->ml_liveRegMask;
-    for (i = 0;  mask != 0;  i++, mask >>= 1) {
-	if (mask & 0x1) {
-	    ML_AllocWrite(msp, n, msp->ml_roots[ArgRegMap[i]]);
-	    n++;
-	}
-    }
-
- /* write the object descriptor */
-    ML_AllocWrite(msp, 0, MAKE_DESC(n-1, DTAG_record));
-
-    return ML_Alloc(msp, n-1);
+    return ML_Alloc(msp, 11);
 
 } /* end of MakeResumeCont */
 
@@ -193,24 +153,16 @@ SayDebug ("LoadResumeState:\n");
 
     contClosure = PTR_MLtoC(ml_val_t, msp->ml_closure);
 
-    mask		=
-    msp->ml_liveRegMask	= INT_MLtoC(contClosure[1]);
-    msp->ml_pc		= contClosure[2];
-    msp->ml_exnCont	= contClosure[3];
-#if (FLOAT_CALLEESAVE > 0)
-    RestoreFPRegs(PTR_MLtoC(Word_t, contClosure[4]));
-#endif
-    n = 5;
-#ifdef BASE_INDX
-    msp->ml_baseReg	= contClosure[n];
-    n++;
-#endif
-    for (i = 0;  mask != 0;  i++, mask >>= 1) {
-	if (mask & 0x1) {
-	    msp->ml_roots[ArgRegMap[i]] = contClosure[n];
-	    n++;
-	}
-    }
+    msp->ml_arg			= contClosure[2];
+    msp->ml_cont		= contClosure[3];
+    msp->ml_closure		= contClosure[4];
+    msp->ml_linkReg		= contClosure[5];
+    msp->ml_linkReg		= contClosure[6];
+    msp->ml_exnCont		= contClosure[7];
+    msp->ml_varReg		= contClosure[8];
+    msp->ml_calleeSave[0]	= contClosure[9];
+    msp->ml_calleeSave[1]	= contClosure[10];
+    msp->ml_calleeSave[2]	= contClosure[11];
 
 } /* end of LoadResumeState */
 

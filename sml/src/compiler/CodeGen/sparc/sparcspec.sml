@@ -17,10 +17,12 @@ struct
     val bigEndian	= true
     val spillAreaSz	= 3800
     val startgcOffset	= 100
-    val pseudoRegOffset = 104
     val constBaseRegOffset = 4096
 end
 
 (*
- * $Log$
+ * $Log: sparcspec.sml,v $
+ * Revision 1.1.1.1  1998/08/05 19:37:50  george
+ *   Release 110.7.4
+ *
  *)

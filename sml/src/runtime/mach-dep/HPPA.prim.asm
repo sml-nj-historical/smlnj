@@ -8,7 +8,6 @@
 #include "ml-values.h"
 #include "tags.h"
 #include "ml-request.h"
-#include "reg-mask.h"
 #include "ml-limits.h"
 #include "mlstate-offsets.h"	/** machine generated file **/
 
@@ -26,7 +25,7 @@ low address ...
 			+---------------------+
 	sp-40:		|     *ml_state	      |
 			+---------------------+
-	sp-32:		|    pseudoregs[2]    |
+	sp-32:		|     unused[2]       |
 			+---------------------+
 	sp-28:		|      startgc	      |	 		
 			+---------------------+
@@ -49,7 +48,6 @@ high addresses ...
 #define DIV_OFFSET		-20
 #define MUL_OFFSET		-24
 #define STARTGC_OFFSET  	-28
-#define PSEUDOREG_OFFSET 	-36
 #define MLSTATE_OFFSET		-40
 #define REGSAVE_OFFSET		-44
 #define UMUL_OFFSET		-112
@@ -82,70 +80,29 @@ high addresses ...
    This scheme adds 6 extra instructions to go from ML to C and back.
 */
 
-/* 
-   ml_roots layout in the struct ml_state (kernel/ml-state.h)
-			+---------------------+
-	root  -->	| ml_pc		      |
-			+---------------------+
-	 +4:		| ml_stdlink	      |
-			+---------------------+
-	 +8:		| ml_closure	      |
-			+---------------------+
-	+12:		| ml_arg	      |
-			+---------------------+
-	+16:		| ml_cont             |
-			+---------------------+
- 	+20:		| ml_varptr	      |
-			+---------------------+
-	+24:		| ml_baseptr	      |
-			+---------------------+
-	+28:		| ml_exnptr	      |
-			+---------------------+
-	+32:		| miscreg 0-15	      |
-			+---------------------+
-*/
-
 #define zero 		%r0
 #define miscreg0 	%r1
-#define miscreg14 	%r2
 #define allocptr 	%r3
 #define limitptr 	%r4
 #define storeptr 	%r5
 #define exnptr 		%r6
 #define varptr 		%r7
-#define baseptr 	%r8
 #define stdlink 	%r9
 #define stdclos		%r10
 #define stdarg 		%r11
 #define stdcont 	%r12
 #define miscreg1 	%r13
 #define miscreg2 	%r14
-#define miscreg3 	%r15
-#define miscreg4 	%r16
-#define miscreg5 	%r17
-#define miscreg6 	%r18
-#define miscreg7 	%r19
-#define maskreg		%r20
-#define miscreg15 	%r21
-#define miscreg8 	%r22
-#define miscreg9 	%r23
-#define miscreg10 	%r24
-#define miscreg11 	%r25
-#define miscreg12 	%r26
-#define reserved 	%r27
-#define miscreg13 	%r28
-#define asmTmp 		%r29
+
 #define sp 		%r30
-#define gclink		%r31
+#define pc		%r31
 
-
-
-#define tmp1 asmTmp
-#define tmp2 miscreg10
-#define tmp3 miscreg11
-#define tmp4 miscreg9
-#define carg0 miscreg12
-#define creturn miscreg13
+#define    tmp1 %r29
+#define    tmp2 %r24
+#define    tmp3 %r25
+#define    tmp4 %r23
+#define   carg0 %r26
+#define creturn %r28
 
 #define RSHIFT(r,n,t)     extrs      r, 31-(n), 32-(n), t
 #define LSHIFT(r,n,t)     zdep       r, 31-(n), 32-(n), t
@@ -153,142 +110,137 @@ high addresses ...
 #define LARGECONST(c, t) ldil L%c, t ! ldo R%c(t), t
 
 
-#if (CALLEESAVE > 0)
 #define CONTINUE        \
 	bv,n		zero(stdcont)
-#else
-#define CONTINUE ???
-#endif
 
-#define CHECKLIMIT(name,mask)						\
+#define CHECKLIMIT(name)						\
 	combt,<=,n      allocptr, limitptr, CSYM(CONCAT(L$$, name))	!\
-	ldi		mask, maskreg					!\
-	copy		stdlink, gclink					!\
+	copy		stdlink, pc					!\
 	b,n		saveregs1					!\
+	nop							        !\
         .label          CSYM(CONCAT(L$$, name))
 
-/* All code must be in the data segment, since we cannot distinguish
- * between a code and data segment offset.
- */
+
+	/******************************************************
+ 	   All code must be in the data segment, since we 
+	   cannot distinguish between a code and data segment 
+	   offset.
+	 ******************************************************/
+
 	.data
 
 SavedStackPtr	.word     0
 
 ML_CODE_HDR(sigh_return_a)
-	ldi	RET_MASK, maskreg
 	ldi	REQ_SIG_RETURN, tmp2
+	ldi	0+ML_unit, stdlink
+ 	ldi	0+ML_unit, stdclos
+	ldi	0+ML_unit, pc
 	b,n	set_request
 
 ENTRY(sigh_resume)
-	ldi	RET_MASK, maskreg
 	ldi	REQ_SIG_RESUME, tmp2
+	ldi	0+ML_unit, stdlink
+ 	ldi	0+ML_unit, stdclos
+	ldi	0+ML_unit, pc
 	b,n	set_request
 
 
 ML_CODE_HDR(pollh_return_a)
-	ldi	RET_MASK, maskreg
 	ldi	REQ_POLL_RETURN, tmp2
+	ldi	0+ML_unit, stdlink
+ 	ldi	0+ML_unit, stdclos
+	ldi	0+ML_unit, pc
 	b,n	set_request
 
 
 ENTRY(pollh_resume)
-	ldi	RET_MASK, maskreg
 	ldi	REQ_POLL_RESUME, tmp2
+	ldi	0+ML_unit, stdlink
+ 	ldi	0+ML_unit, stdclos
+	ldi	0+ML_unit, pc
 	b,n	set_request
 
 
 ML_CODE_HDR(handle_a)
-	ldi	EXN_MASK, maskreg
 	ldi	REQ_EXN, tmp2
+	copy	stdlink, pc
 	b,n	set_request
 
 ML_CODE_HDR(return_a)
-	ldi	RET_MASK, maskreg
 	ldi	REQ_RETURN, tmp2
+	ldi	0+ML_unit, stdlink
+ 	ldi	0+ML_unit, stdclos
+	ldi	0+ML_unit, pc
 	b,n	set_request
 
 ENTRY(request_fault)
-	ldi	EXN_MASK, maskreg
 	ldi	REQ_FAULT, tmp2
+	copy	stdlink, pc
 	b,n	set_request
 
 ML_CODE_HDR(bind_cfun_a)
-	CHECKLIMIT(bind_cfun_check, FUN_MASK)
-	ldi	FUN_MASK, maskreg
+	CHECKLIMIT(bind_cfun_check)
 	ldi	REQ_BIND_CFUN, tmp2
 	b,n	set_request
 
 ML_CODE_HDR(build_literals_a)
-	CHECKLIMIT(build_literals_check, FUN_MASK)
-	ldi	FUN_MASK, maskreg
+	CHECKLIMIT(build_literals_check)
 	ldi	REQ_BUILD_LITERALS, tmp2
 	b,n	set_request
 
 ML_CODE_HDR(callc_a)
-	CHECKLIMIT(callc_check, FUN_MASK)
-	ldi	FUN_MASK, maskreg
+	CHECKLIMIT(callc_check)
 	ldi	REQ_CALLC, tmp2
+	b,n	set_request
+
+/*
+   There are two entry points for saveregs --- saveregs0 and saveregs1.
+
+   Saveregs0 is called from inside ML to invoke a gc. This is
+   done using a BLE,n  instruction. The return address (in pc) with
+   nullification set, is at the wrong place unless one puts a NOP after 
+   the BLR,n. Saveregs0 is used to correct the off-by-four value in pc 
+   or %r31.
+
+   Saveregs1 is called internally (or everywhere else) where the return
+   address is standard link (stdlink) typically and needs no correction.
+
+*/
+	.export saveregs0,ENTRY
+ENTRY(saveregs0)
+	addi	0-4, pc, pc
+	ldi	0-4, tmp2
+	and	pc, tmp2, pc
+saveregs1
+	ldi	REQ_GC, tmp2
 	/* fall through */
 
-/* set_request --- a quick return to run_ml()  
- *	liveIn = {tmp2, maskreg}
- */
+
 set_request
 	ldil    L%SavedStackPtr, tmp1
 	ldo     R%SavedStackPtr(tmp1), tmp1	
         ldw     0(tmp1), sp			/* restore stack pointer */
 
 	ldw	MLSTATE_OFFSET(sp), tmp1
-	stw	maskreg, MaskOffMSP(tmp1)
-	ldw     VProcOffMSP(tmp1), maskreg	/* use maskreg as VProc ptr */
-	stw	zero, InMLOffVSP(maskreg)	/* leaving ML */
+	ldw     VProcOffMSP(tmp1), tmp4		/* use tmp4 as VProc ptr */
+	stw	zero, InMLOffVSP(tmp4)		/* leaving ML */
 	stw	allocptr, AllocPtrOffMSP(tmp1)
 	stw	limitptr, LimitPtrOffMSP(tmp1)
 	stw	storeptr, StorePtrOffMSP(tmp1)
 	stw	stdlink, LinkRegOffMSP(tmp1)
-	stw	stdlink, PCOffMSP(tmp1)		/* address of called function */
+	stw	pc, PCOffMSP(tmp1)		/* address of called function */
 	stw	stdarg, StdArgOffMSP(tmp1)
 	stw	stdclos, StdClosOffMSP(tmp1)
 	stw	stdcont, StdContOffMSP(tmp1)
 	stw	varptr, VarPtrOffMSP(tmp1)
 	stw	exnptr, ExnPtrOffMSP(tmp1)
 	copy	tmp2, creturn 			/* return request */
-#if (CALLEESAVE > 0)
-	stw	miscreg0,MiscRegOffMSP(0)(tmp1)
-#endif
-#if (CALLEESAVE > 1) 
-	stw	miscreg1,MiscRegOffMSP(1)(tmp1)
-#endif
-#if (CALLEESAVE > 2)
-	stw	miscreg2,MiscRegOffMSP(2)(tmp1)
-#endif
-#if (CALLEESAVE > 3)
-	stw	miscreg3,MiscRegOffMSP(3)(tmp1)
-#endif
-#if (CALLEESAVE > 4)
-	stw	miscreg4,MiscRegOffMSP(4)(tmp1)
-#endif
-#if (CALLEESAVE > 5)
-	stw	miscreg5,MiscRegOffMSP(5)(tmp1)
-#endif
-#if (CALLEESAVE > 6)
-	stw	miscreg6,MiscRegOffMSP(6)(tmp1)
-#endif
-#if (CALLEESAVE > 7)
-	stw	miscreg7,MiscRegOffMSP(7)(tmp1)
-#endif
-#if (CALLEESAVE > 8)
-	stw	miscreg8,MiscRegOffMSP(8)(tmp1)
-#endif
-#if (CALLEESAVE > 9)
-	???
-#endif
-				/* fall through */
+	stw	miscreg0,Misc0OffMSP(tmp1)
+	stw	miscreg1,Misc1OffMSP(tmp1)
+	stw	miscreg2,Misc2OffMSP(tmp1)
+						/* fall through */
 restore_c_regs
-	ldw	PSEUDOREG_OFFSET(sp), tmp2
-	stw	tmp2, PseudoReg1OffMSP(tmp1)
-	ldw	PSEUDOREG_OFFSET+4(sp), tmp2
-	stw	tmp2, PseudoReg2OffMSP(tmp1)
 	ldw	REGSAVE_OFFSET(sp), %r2
 	ldw	REGSAVE_OFFSET-4(sp), %r3
 	ldw	REGSAVE_OFFSET-8(sp), %r4
@@ -311,67 +263,6 @@ restore_c_regs
 	ldsid	(%r2), tmp1 
 	mtsp	tmp1, %sr1 
 	be,n	0(%sr1, %r2)
-
-/* 				saveregs
-
-     There are two entry points for saveregs --- saveregs0 and saveregs1.
-
-     Saveregs0 is called from inside ML to invoke a gc. This is
-   done using a BLE,n  instruction. The return address (in gclink) with
-   nullification set, is at the wrong place unless one puts a NOP after 
-   the BLR,n. Saveregs0 is used to correct the off-by-four value in gclink 
-   or %r31.
-
-     Saveregs1 is called internally (or everywhere else) where the return
-   address is standard link (stdlink) typically and needs no correction.
-
-*/
-	.export saveregs0,ENTRY
-ENTRY(saveregs0)
-	addi    0-4, gclink, gclink
-	/* fall through */
-
-saveregs1
-	ldil	L%SavedStackPtr, tmp1
-	ldo	R%SavedStackPtr(tmp1), tmp1
-	ldw     0(tmp1), sp			/* restore saved stack pointer */
-
-	ldw	MLSTATE_OFFSET(sp), tmp1
-	stw	maskreg, MaskOffMSP(tmp1)
-	ldw     VProcOffMSP(tmp1), maskreg 	/* use maskreg as Vproc ptr */
-	stw	zero, InMLOffVSP(maskreg)		      /* leaving ML */
-	stw	allocptr,  AllocPtrOffMSP(tmp1)
-	stw	limitptr,  LimitPtrOffMSP(tmp1)
-	stw	storeptr,  StorePtrOffMSP(tmp1)
-	stw	stdarg,    StdArgOffMSP(tmp1)
-	stw	stdcont,   StdContOffMSP(tmp1)
-	stw     stdclos,   StdClosOffMSP(tmp1)
-	stw	stdlink,   LinkRegOffMSP(tmp1)
-	stw	gclink,    PCOffMSP(tmp1)
-	stw	exnptr,    ExnPtrOffMSP(tmp1)
-	stw	miscreg0,  MiscRegOffMSP(0)(tmp1)
-	stw	miscreg1,  MiscRegOffMSP(1)(tmp1)
-	stw	miscreg2,  MiscRegOffMSP(2)(tmp1)
-	stw	miscreg3,  MiscRegOffMSP(3)(tmp1)
-	stw	miscreg4,  MiscRegOffMSP(4)(tmp1)
-	stw	miscreg5,  MiscRegOffMSP(5)(tmp1)
-	stw	miscreg6,  MiscRegOffMSP(6)(tmp1)
-	stw	miscreg7,  MiscRegOffMSP(7)(tmp1)
-	stw	miscreg8,  MiscRegOffMSP(8)(tmp1)
-	stw	miscreg9,  MiscRegOffMSP(9)(tmp1)
-	stw	miscreg10, MiscRegOffMSP(10)(tmp1)
-	stw	miscreg11, MiscRegOffMSP(11)(tmp1)
-	stw	miscreg12, MiscRegOffMSP(12)(tmp1)
-	stw	miscreg13, MiscRegOffMSP(13)(tmp1)
-	stw	miscreg14, MiscRegOffMSP(14)(tmp1)
-	stw	miscreg15, MiscRegOffMSP(15)(tmp1)
-	stw	varptr, VarPtrOffMSP(tmp1)
-	ldil    L%-8192, tmp3
-	ldo	R%-8192(tmp3), tmp3
-	add	tmp3, baseptr, baseptr
-	stw	baseptr, BasePtrOffMSP(tmp1)	
-	ldi	REQ_GC, creturn
-	b,n	restore_c_regs
 
 /* We need to find a way of creating a table of these constant
  * values, rather than computing them each time around.
@@ -420,66 +311,50 @@ restoreregs
 	STORE_CODE_ADDR(ml_umul, UMUL_OFFSET)
 	STORE_CODE_ADDR(saveregs0, STARTGC_OFFSET)
 
-	ldw	PseudoReg1OffMSP(tmp1), tmp2 
-	stw	tmp2,PSEUDOREG_OFFSET(sp)
-	ldw	PseudoReg2OffMSP(tmp1), tmp2
-	stw	tmp2,PSEUDOREG_OFFSET+4(sp)
-
 	ldw	AllocPtrOffMSP(tmp1), allocptr
 	ldw	LimitPtrOffMSP(tmp1), limitptr
 	ldw	StorePtrOffMSP(tmp1), storeptr
 	ldi	1, tmp2
-	ldw     VProcOffMSP(tmp1), maskreg
-	stw	tmp2,InMLOffVSP(maskreg)	 /* entering ML code */
+	ldw     VProcOffMSP(tmp1), tmp4
+	stw	tmp2,InMLOffVSP(tmp4)		 /* entering ML code */
 	ldw	StdArgOffMSP(tmp1), stdarg
 	ldw	StdContOffMSP(tmp1), stdcont
 	ldw	StdClosOffMSP(tmp1), stdclos
 	ldw	ExnPtrOffMSP(tmp1), exnptr
-	ldw 	BasePtrOffMSP(tmp1), baseptr
-	ldil	L%8192, tmp3
-	ldo	R%8192(tmp3), tmp3
-	add     tmp3, baseptr, baseptr		/* adjust baseptr */
-	ldw	MiscRegOffMSP(0)(tmp1), miscreg0
-	ldw	MiscRegOffMSP(1)(tmp1), miscreg1
-	ldw	MiscRegOffMSP(2)(tmp1), miscreg2
-	ldw	MiscRegOffMSP(3)(tmp1), miscreg3
-	ldw	MiscRegOffMSP(4)(tmp1), miscreg4
-	ldw	MiscRegOffMSP(5)(tmp1), miscreg5
-	ldw	MiscRegOffMSP(6)(tmp1), miscreg6
-	ldw	MiscRegOffMSP(7)(tmp1), miscreg7
-	ldw	MiscRegOffMSP(8)(tmp1), miscreg8
-	ldw	MiscRegOffMSP(9)(tmp1), miscreg9
-	ldw	MiscRegOffMSP(12)(tmp1), miscreg12
-	ldw	MiscRegOffMSP(13)(tmp1), miscreg13
-	ldw	MiscRegOffMSP(14)(tmp1), miscreg14
-	ldw	MiscRegOffMSP(15)(tmp1), miscreg15
+	ldw	Misc0OffMSP(tmp1), miscreg0
+	ldw	Misc1OffMSP(tmp1), miscreg1
+	ldw	Misc2OffMSP(tmp1), miscreg2
 	ldw	LinkRegOffMSP(tmp1), stdlink
 	ldw	VarPtrOffMSP(tmp1), varptr
-	ldw	PCOffMSP(tmp1), gclink
+	ldw	PCOffMSP(tmp1), pc
 						/* check for pending signals */
-	ldw	NPendingSysOffVSP(maskreg), tmp2
-	ldw	NPendingOffVSP(maskreg), tmp3
+	ldw	NPendingSysOffVSP(tmp4), tmp2
+	ldw	NPendingOffVSP(tmp4), tmp3
 	add	tmp2, tmp3, tmp2
         combf,= tmp2, zero, pending_sigs
 	nop				
 
 ml_go
-	ldw	MiscRegOffMSP(10)(tmp1), miscreg10	/* tmp2 */
-	ldw	MiscRegOffMSP(11)(tmp1), miscreg11	/* tmp3 */
-	mfsp	%sr5, tmp1				/* for indexed loads */
-	mtsp    tmp1, %sr3
-	bv,n	0(gclink)
+	mfsp	%sr5, tmp2  	  	       /* for indexed loads */
+	mtsp    tmp2, %sr3
+	/* The pc is used to compute the baseptr on return
+	 * to ML. The privelege level bits (30 and 31) need to be 
+	 * zeroed out before making the call.
+	 */
+	ldi	0-4, tmp2	
+	and	pc, tmp2, pc
+	bv,n	0(pc)
 
 pending_sigs
 	/* there are pending signals */
 	/* check if signals are masked */
-	ldw	InSigHandlerOffVSP(maskreg), tmp2
+	ldw	InSigHandlerOffVSP(tmp4), tmp2
 	combf,= tmp2, zero, ml_go
 	nop
 	
 	/* note that a handler trap is pending */
 	ldi	1, tmp2
-	stw	tmp2, HandlerPendingOffVSP(maskreg)
+	stw	tmp2, HandlerPendingOffVSP(tmp4)
 	copy	limitptr,allocptr	
 	b,n	ml_go
 END_PROC(restoreregs)
@@ -495,7 +370,7 @@ ENTRY(RestoreFPRegs)
  * array : (int * 'a) -> 'a array
  */
 ML_CODE_HDR(array_a)
-	CHECKLIMIT(array_check, FUN_MASK)
+	CHECKLIMIT(array_check)
 
 	ldw	0(stdarg), tmp1		    /* tmp1 := length (tagged int) */
         RSHIFT(tmp1, 1, tmp2)		    /* tmp2 := length : untagged int */
@@ -530,14 +405,14 @@ L$array_loop
 	addi	8, allocptr, allocptr	    /* allocptr += 2 */
 	CONTINUE
 L$array_offline			/* off-line allocation of big arrays */
-	ldi	FUN_MASK, maskreg
 	ldi	REQ_ALLOC_ARRAY, tmp2
+	copy	stdlink, pc
 	b,n	set_request
 
 
 
 ML_CODE_HDR(create_r_a)
-	CHECKLIMIT(creat_r_check,FUN_MASK)
+	CHECKLIMIT(creat_r_check)
 
 	RSHIFT(stdarg, 1, tmp2)		/* tmp2 = length (untagged int) */
 	LSHIFT(tmp2, 1, tmp2)		/* tmp2 = length in words */
@@ -569,14 +444,14 @@ ML_CODE_HDR(create_r_a)
 
 L$realarray_offline
 	/* off-line allocation of big realarrays */
-	ldi	FUN_MASK, maskreg
 	ldi	REQ_ALLOC_REALDARRAY, tmp2
+	copy	stdlink, pc
 	b,n	set_request
 
 
 
 ML_CODE_HDR(create_b_a)
-	CHECKLIMIT(create_b_checked, FUN_MASK)
+	CHECKLIMIT(create_b_checked)
 
 	RSHIFT(stdarg, 1, tmp2)		    /* tmp2 := length (untagged) */
 	addi	3, tmp2, tmp2		    /* tmp2 := length (words) */ 
@@ -606,14 +481,14 @@ ML_CODE_HDR(create_b_a)
 	CONTINUE
 
 L$bytearray_offline			    /* big object */
-	ldi	FUN_MASK, maskreg
 	ldi	REQ_ALLOC_BYTEARRAY, tmp2
+	copy	stdlink, pc
 	b,n	set_request
 
 
 
 ML_CODE_HDR(create_s_a)
-	CHECKLIMIT(create_s_checked, FUN_MASK)
+	CHECKLIMIT(create_s_checked)
 
 	RSHIFT(stdarg, 1, tmp2)		/* tmp2 := length: untagged int */
 	addi	4, tmp2, tmp2		/* tmp2 := length in words */
@@ -644,14 +519,14 @@ ML_CODE_HDR(create_s_a)
 	CONTINUE
 
 L$string_offline
-	ldi	FUN_MASK, maskreg
 	ldi	REQ_ALLOC_STRING, tmp2
+	copy	stdlink, pc
 	b,n	set_request
 
 
 
 ML_CODE_HDR(create_v_a)
-	CHECKLIMIT(create_v_checked,FUN_MASK)
+	CHECKLIMIT(create_v_checked)
 
 	ldw	0(stdarg), tmp1		/* tmp1 = tagged length */
 	RSHIFT(tmp1, 1, tmp2)		/* tmp2 = untagged length */
@@ -686,8 +561,8 @@ L$vector_loop
 	addi	8, allocptr, allocptr	/* allocptr += 2 */
 	CONTINUE
 L$vector_offline
-	ldi	FUN_MASK, maskreg
 	ldi	REQ_ALLOC_VECTOR, tmp2
+	copy	stdlink, pc
 	b,n	set_request
 
 /* logb --- extract and unbias the exponent */
@@ -705,7 +580,7 @@ ML_CODE_HDR(logb_a)
 
 /* scalb(u:real,v:int) = u * 2 ^ v */
 ML_CODE_HDR(scalb_a)
-	CHECKLIMIT(scalb_a_checked,FUN_MASK)
+	CHECKLIMIT(scalb_a_checked)
 	ldw	4(stdarg),tmp1		/* tmp1 := v tagged */
 	RSHIFT(tmp1, 1, tmp1)		/* tmp1 := v */
 	ldw	0(stdarg),stdarg	/* stdarg := u */
@@ -783,7 +658,7 @@ ML_CODE_HDR(floor_a)
 
 /* try_lock_a */
 ML_CODE_HDR(try_lock_a)
-	CHECKLIMIT(try_lock_check,FUN_MASK)
+	CHECKLIMIT(try_lock_check)
 	ldw	0(stdarg), tmp1
 	ldi	0+ML_true, tmp2
 	stw	tmp2, 0(stdarg)
@@ -792,7 +667,7 @@ ML_CODE_HDR(try_lock_a)
 
 
 ML_CODE_HDR(unlock_a)
-	CHECKLIMIT(unlock_check, FUN_MASK)
+	CHECKLIMIT(unlock_check)
 	ldi	0+ML_false, tmp1
 	stw	tmp1, 0(stdarg)
 	ldi	0+ML_unit, stdarg
@@ -830,8 +705,8 @@ ML_CODE_HDR(unlock_a)
 	ldw	0-8(sp), %r25			!\
 	ldw	0-4(sp), %r1			!\
 	addi	0-MILLI_LOCAL_AREA, sp, sp	!\
-	addi    0-4, gclink, gclink		!\
-	bv,n	0(gclink)
+	addi    0-4, pc, pc		!\
+	bv,n	0(pc)
 	
 #define InvokeMillicode(proc)		 \
 	millicodeSave			!\
