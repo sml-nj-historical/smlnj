@@ -137,32 +137,67 @@ functor PPCMacOSX_CCalls (
    *)
     val paramAreaOffset = 24
 
-  (* size and padding for integer types.  Note that the padding is based on the
-   * parameter-passing description on p. 35 of the documentation.
+  (* size, padding, and natural alignment for integer types.  Note that the
+   * padding is based on the parameter-passing description on p. 35 of the
+   * documentation and the alignment is from p. 31.
    *)
-    fun sizeOf CTy.I_char = {sz = 1, pad = 3}
-      | sizeOf CTy.I_short = {sz = 2, pad = 2}
-      | sizeOf CTy.I_int = {sz = 4, pad = 0}
-      | sizeOf CTy.I_long = {sz = 4, pad = 0}
-      | sizeOf CTy.I_long_long = {sz = 8, pad = 0}
+    fun sizeOf CTy.I_char = {sz = 1, pad = 3, align = 1}
+      | sizeOf CTy.I_short = {sz = 2, pad = 2, align = 2}
+      | sizeOf CTy.I_int = {sz = 4, pad = 0, align = 4}
+      | sizeOf CTy.I_long = {sz = 4, pad = 0, align = 4}
+      | sizeOf CTy.I_long_long = {sz = 8, pad = 0, align = 8}
 
   (* sizes of other C types *)
-    val sizeOfPtr = {sz = 4, pad = 0}
+    val sizeOfPtr = {sz = 4, pad = 0, align = 4}
 
+  (* compute the size and alignment information for a struct; tys is the list
+   * of member types.  The alignment is what Apple calls the "embedding" alignment.
+   *)
     fun sizeOfStruct tys = let
-(*
+	(* align the address to the given alignment, which must be a power of 2 *)
+	  fun alignAddr (addr, align) = let
+		val mask = Word.fromInt(align-1)
+		in
+		  Word.toIntX(Word.andb(Word.fromInt addr + mask, Word.notb mask))
+		end
 	  fun sz CTy.C_void = error "unexpected void argument type"
-	    | sz CTy.C_float = 4
-	    | sz CTy.C_double = 8
-	    | sz CTy.C_long_double = 8
-	    | sz CTy.C_unsigned isz = #sz(sizeOf isz)
-	    | sz CTy.C_signed isz = #sz(sizeOf isz)
-	    | sz CTy.C_PTR = 4
-	    | sz (CTy.C_ARRAY tys) = let
-	    | sz (CTy.C_STRUCT s) =
-*)
+	    | sz CTy.C_float = {sz = 4, align = 4}
+	    | sz CTy.C_double = {sz = 8, align = 8}
+	    | sz CTy.C_long_double = {sz = 8, align = 8}
+	    | sz (CTy.C_unsigned isz) = let
+		val {sz, align, ...} = sizeOf isz
+		in
+		  {sz = sz, align = align}
+		end
+	    | sz (CTy.C_signed isz) = let
+		val {sz, align, ...} = sizeOf isz
+		in
+		  {sz = sz, align = align}
+		end
+	    | sz CTy.C_PTR = {sz = 4, align = 4}
+	    | sz (CTy.C_ARRAY(ty, n)) = let
+		val {sz, align} = sz ty
+		in
+		  {sz = n*sz, align = align}
+		end
+	    | sz (CTy.C_STRUCT tys) = ssz tys
+	  and ssz [] = {sz = 0, align = 4}
+	    | ssz (first::rest) = let
+		fun f ([], maxAlign, offset) =
+		      {sz = alignAddr(offset, maxAlign), align = maxAlign}
+		  | f (ty::tys, maxAlign, offset) = let
+			val {sz, align} = sz ty
+			val align = Int.min(align, 4)
+			val offset = alignAddr(offset, align)
+			in
+			  f (tys, Int.max(maxAlign, align), offset+sz)
+			end
+		val {sz, align} = sz first
+		in
+		  f (rest, align, sz)
+		end
 	  in
-	    raise Fail "FIXME"
+	    #sz(ssz tys)
 	  end
 
   (* compute the layout of a C call's arguments *)
@@ -218,7 +253,7 @@ functor PPCMacOSX_CCalls (
 		  | CTy.C_STRUCT tys' => raise Fail "struct arguments not supported yet"
 		(* end case *))
 	(* assign a GP register and memory for an integer/pointer argument. *)
-	  and assignGPR ({sz, pad}, args, offset, availGPRs, availFPRs, layout) = let
+	  and assignGPR ({sz, pad, ...}, args, offset, availGPRs, availFPRs, layout) = let
 		val (loc, availGPRs) = (case (sz, availGPRs)
 		       of (8, _) => raise Fail "register pairs not yet supported"
 			| (_, []) => (Stk(wordTy, offset), [])
