@@ -70,7 +70,7 @@ request smlnj-lib
 # pre-compile and install the C-Kit, which is a library for parsing and
 # type-checking C programs
 #
-#request ckit
+request ckit
 
 # pre-compile and install the ML-NLFFI Library, which is the core of
 # a new foreign function interface (where "foreign" functions are
@@ -79,7 +79,7 @@ request smlnj-lib
 # the new FFI.
 # This preview release currently works only under X86/Linux.
 #
-#request ml-nlffi-lib
+request ml-nlffi-lib
 
 # build ML-NLFFI-Gen, a program generator tool used in conjunction with
 # the new "NLFFI" foreign function interface.  The tool generates ML
@@ -87,13 +87,13 @@ request smlnj-lib
 # (Requires ckit!)
 # This preview release currently works only under X86/Linux.
 #
-#request ml-nlffigen
+request ml-nlffigen
 
 # pre-compile and install the MLRISC Tools library.
 # This library is for parsing and pretty printing SML code.
 # It's used by various MLRISC code generator generator.
 #
-#request mlrisc-tools
+request mlrisc-tools
 
 # Build and install the 'nowhere' program translator.
 # This tool translates programs with conditional patterns (where clauses) 

@@ -9,7 +9,7 @@ Library
 	signature CELLS
 	signature CELLS_BASIS
 	signature CFG_OPTIMIZATION
-	signature CFG_VIEW
+(*	signature CFG_VIEW *)
 	signature CLIENT_PSEUDO_OPS
 	signature CODE_STRING
 	signature CONSTANT
@@ -84,7 +84,7 @@ Library
 	functor CFGCountCopies
 	functor CFGEmit
 	functor CFGExpandCopies
-	functor CFGView
+(*	functor CFGView *)
 	functor Cells
 	functor ClusterRA
 	functor ControlFlowGraph
@@ -128,13 +128,11 @@ is
 	$/smlnj-lib.cm
 	Control.cm
 	Graphs.cm
-	Visual.cm
 	Lib.cm
 #else
 	$/smlnj-lib.cm
 	$/Control.cm
 	$/Graphs.cm
-	$/Visual.cm
 	$/Lib.cm
 #endif
 #else
@@ -142,14 +140,12 @@ is
 	smlnj-lib.cm
 	Control.cm
 	Graphs.cm
-	Visual.cm
 	Lib.cm
 #endif
 #else
 	smlnj-lib.cm
 	Control.cm
 	Graphs.cm
-	Visual.cm
 	Lib.cm
 #endif
 	../instructions/cells.sig
@@ -201,8 +197,9 @@ is
 	../flowgraph/client-pseudo-ops.sig
 	../flowgraph/cfg.sig
 	../flowgraph/cfg.sml
-	../flowgraph/cfgView.sig
+(*	../flowgraph/cfgView.sig
 	../flowgraph/cfgView.sml
+*)
 	../flowgraph/cfgCountCopies.sml
 	../flowgraph/cfgExpandCopies.sml
 	../flowgraph/gasPseudoOps.sml
