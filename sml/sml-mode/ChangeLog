@@ -1,3 +1,11 @@
+1999-06-14  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-move.el (sml-(for|back)ward-sym): now also return the string if any
+	  and take care of the "op" special keyword.
+	(sml-op-prec): setup an alist for the infix operators.
+
+	* version 3.9.1:  sent to Roland McGrath.
+
 1999-06-13  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* sml-smlnj.el, sml-mosml.el, sml-poly-ml.el: removed.

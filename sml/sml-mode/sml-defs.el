@@ -50,7 +50,7 @@
   "Generic bindings used in sml-mode and sml-inferior-mode.")
 
 (defmap sml-mode-map
-  '(("\C-c\C-c" . sml-make)
+  '(("\C-c\C-c" . sml-compile)
     ("\C-c\C-s" . switch-to-sml)
     ("\C-c\C-r" . sml-send-region)
     ("\C-c\C-b" . sml-send-buffer))

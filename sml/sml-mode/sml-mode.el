@@ -509,7 +509,9 @@ If anyone has a good algorithm for this..."
 	       (+ (current-column) sml-indent-case-of)))
 
 	(and (looking-at sml-starters-re)
-	     (let ((sym (sml-move-read (sml-move-if (not (sml-backward-arg))))))
+	     (let ((sym (unless (save-excursion (sml-backward-arg))
+			  (sml-backward-spaces)
+			  (sml-backward-sym))))
 	       (if sym (sml-get-sym-indent sym)
 		 (sml-find-matching-starter sml-starters-re)
 		 (current-column))))
@@ -525,7 +527,7 @@ If anyone has a good algorithm for this..."
     (if (looking-at "|")
 	(if (sml-bolp) (current-column) (sml-indent-pipe))
       (cond
-       ((looking-at "datatype")
+       ((looking-at "datatype\\>")
 	(re-search-forward "=")
 	(forward-char))
        ((looking-at "case\\>")
@@ -588,7 +590,7 @@ the parent at the end of this function."
 		     indent)))
 	    ;; delgate indentation to the parent
 	    (sml-forward-sym) (sml-backward-sexp nil)
-	    (let* ((parent-sym (save-excursion (sml-move-read (sml-forward-sym))))
+	    (let* ((parent-sym (save-excursion (sml-forward-sym)))
 		   (parent-indent (sml-re-assoc sml-indent-starters parent-sym)))
 	      ;; check the special rules
 	      ;;(sml-move-if (backward-word 1)
@@ -608,10 +610,10 @@ the parent at the end of this function."
 	)))
 
 (defun sml-indent-default (&optional noindent)
-  (let* ((sym-after (save-excursion (sml-move-read (sml-forward-sym))))
+  (let* ((sym-after (save-excursion (sml-forward-sym)))
 	 (prec-after (sml-op-prec sym-after 'back))
 	 (_ (sml-backward-spaces))
-	 (sym-before (sml-move-read (sml-backward-sym)))
+	 (sym-before (sml-backward-sym))
 	 (prec (or (sml-op-prec sym-before 'back) prec-after 100))
 	 (sym-indent (and sym-before (sml-get-sym-indent sym-before))))
     (or (and sym-indent (if noindent (current-column) sym-indent))
@@ -630,7 +632,7 @@ the parent at the end of this function."
 		   (= prec 65) (string-equal "=" sym-before)
 	           (save-excursion
 		     (sml-backward-spaces)
-		     (let* ((sym (sml-move-read (sml-backward-sym)))
+		     (let* ((sym (sml-backward-sym))
 			    (sym-indent (sml-re-assoc sml-indent-starters sym)))
 		       (when sym-indent
 			 (if noindent

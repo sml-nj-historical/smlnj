@@ -40,7 +40,7 @@ ELFLAGS	= --eval '(setq load-path (append (list "." "$(elibdir)" "$(lispdir)") l
 ELC	= $(EMACS) -batch $(ELFLAGS) -f batch-byte-compile
 
 ELFILES	= sml-compat.el sml-util.el sml-defs.el sml-move.el sml-mode.el \
-	sml-proc.el sml-mosml.el sml-poly-ml.el sml-smlnj.el
+	sml-proc.el
 ELCFILES = $(ELFILES:.el=.elc)
 
 TEXEXTS =  *.cps *.fns *.kys *.vr *.tp *.pg *.log *.aux *.toc *.cp *.ky *.fn
