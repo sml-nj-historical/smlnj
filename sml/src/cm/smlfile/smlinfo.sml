@@ -15,6 +15,9 @@ signature SMLINFO = sig
 
     val resync : unit -> unit
 
+    val eq : info * info -> bool	(* compares sourcepaths *)
+    val compare : info * info -> order	(* compares sourcepaths *)
+
     val info : policy ->
 	{ sourcepath: AbsPath.t,
 	  group: AbsPath.t,
@@ -27,6 +30,8 @@ signature SMLINFO = sig
     val error : info -> string -> (PrettyPrint.ppstream -> unit) -> unit
 
     val exports : info -> SymbolSet.set
+    val skeleton : info -> Skeleton.decl
+
     val describe : info -> string
 end
 
@@ -59,6 +64,10 @@ structure SmlInfo :> SMLINFO = struct
 
     fun sourcepath (INFO { sourcepath = sp, ... }) = sp
     fun error (INFO { error = e, ... }) = e
+
+    fun compare (INFO { sourcepath = p, ... }, INFO { sourcepath = p', ... }) =
+	AbsPath.compare (p, p')
+    fun eq (i, i') = compare (i, i') = EQUAL
 
     (* If files change their file ids, then CM will be seriously
      * disturbed because the ordering relation will change.
@@ -187,6 +196,12 @@ structure SmlInfo :> SMLINFO = struct
 	 case getSkeleton i of
 	     NONE => SymbolSet.empty
 	   | SOME sk => SkelExports.exports sk)
+
+    fun skeleton i =
+	(validate i;
+	 case getSkeleton i of
+	     NONE => Skeleton.SeqDecl []
+	   | SOME sk => sk)
 
     fun describe (INFO { sourcepath, ... }) = AbsPath.name sourcepath
 end

@@ -163,7 +163,7 @@ structure SkelCvt :> SKELCVT = struct
 		VarFctExp (symbolModPath path, fsigexpConst constraint)
 	  | BaseFct { params, body, constraint } =>
 		BaseFctExp {
-			    params = map functorParams params,
+			    params = SeqDecl (map functorParams params),
 			    body = c_strexp body,
 			    constraint = sigexpConst constraint
 			   }
@@ -179,8 +179,8 @@ structure SkelCvt :> SKELCVT = struct
 	val c = c_sigexp constraint
     in
 	case symOpt of
-	    NONE => (NONE,c)
-	  | SOME sym => (SOME sym, c)
+	    NONE => OpenDecl [c]
+	  | SOME sym => StrDecl [{ name = sym, def = c, constraint = NONE }]
     end
 
     and sigexpConst sec =
@@ -198,7 +198,8 @@ structure SkelCvt :> SKELCVT = struct
 		    SS.add (x, head)
 		  | f _ = raise Fail "decl/convert/c_sigexp" 
 	    in
-		AugStrExp (c_sigexp se, foldr f SS.empty whspecs)
+		LetStrExp (DeclRef (foldr f SS.empty whspecs),
+			   c_sigexp se)
 	    end
 	  | BaseSig specList =>
 		BaseStrExp (SeqDecl (foldr c_spec [] specList))
@@ -215,7 +216,7 @@ structure SkelCvt :> SKELCVT = struct
 	    VarFsig symbol => VarFctExp (symbolModPath [symbol], NONE)
 	  | BaseFsig { param, result } =>
 		BaseFctExp {
-			    params = map functorParams param,
+			    params = SeqDecl (map functorParams param),
 			    body = c_sigexp result,
 			    constraint = NONE
 			   }

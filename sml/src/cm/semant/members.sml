@@ -81,10 +81,10 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	in
 	    Symbol.nameSpaceToString ns :: " " :: Symbol.name s :: r
 	end
-	fun se_error (s, x as ((_, n1), _), ((_, n2), _)) =
+	fun se_error (s, x as (fn1, _), (fn2, _)) =
 	    (error (concat (describeSymbol
-			    (s, [" imported from ", DG.describeNode n1,
-				 " and also from ", DG.describeNode n2])));
+			    (s, [" imported from ", DG.describeFarNode fn1,
+				 " and also from ", DG.describeFarNode fn2])));
 	     x)
 	val se_union = SymbolMap.unionWithi se_error
 	fun ld_error (s, f1, f2) =
@@ -136,7 +136,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		    val cmenv = Primitive.lookup p s
 		    val env = convertEnv cmenv
 		in
-		    SymbolMap.insert (m, s, ((NONE, DG.PNODE p), env))
+		    SymbolMap.insert (m, s, (DG.PNODE p, env))
 		end
 		val se = SymbolSet.foldl addFN SymbolMap.empty exports
 	    in

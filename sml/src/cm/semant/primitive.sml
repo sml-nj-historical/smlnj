@@ -10,6 +10,8 @@ signature PRIMITIVE = sig
 
     type primitive
 
+    val eq : primitive * primitive -> bool
+
     val fromString : string -> primitive option
     val toString : primitive -> string
 
@@ -21,6 +23,8 @@ end
 structure Primitive :> PRIMITIVE = struct
 
     datatype primitive = CORE | HELPER
+
+    fun eq (p1 : primitive, p2) = p1 = p2
 
     fun fromString "primitive_core" = SOME CORE
       | fromString "primitive_helper" = SOME HELPER

@@ -28,14 +28,11 @@ structure Skeleton = struct
       | BaseStrExp of decl
       | AppStrExp of sympath * strExp list
       | LetStrExp of decl * strExp  
-      | AugStrExp of strExp * SymbolSet.set
       | ConStrExp of strExp * strExp
 
     and fctExp = 
 	VarFctExp of sympath * fctExp option 
-      | BaseFctExp of { params: (symbol option * strExp) list,
-		        body: strExp,
-			constraint: strExp option }
+      | BaseFctExp of { params: decl, body: strExp, constraint: strExp option }
       | AppFctExp of sympath * strExp list * fctExp option
       | LetFctExp of decl * fctExp
 end

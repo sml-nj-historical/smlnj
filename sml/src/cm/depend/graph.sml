@@ -14,12 +14,13 @@ structure DependencyGraph = struct
     type filter = SymbolSet.set option
 
     datatype node =
-	PNODE of primitive
-      | NODE of { smlinfo: SmlInfo.info,
+	NODE of { smlinfo: SmlInfo.info,
 		  localimports: node list,
 		  globalimports: farnode list }
 
-    withtype farnode = filter * node
+    and farnode =
+	FARNODE of filter * node
+      | PNODE of primitive
 
     (* the filter is duplicated in each member of the map to
      * make it easier to build the global graph *)
@@ -40,6 +41,7 @@ structure DependencyGraph = struct
 
     withtype value = env
 
-    fun describeNode (PNODE p) = Primitive.toString p
-      | describeNode (NODE { smlinfo, ... }) = SmlInfo.describe smlinfo
+    fun describeNode (NODE { smlinfo, ... }) = SmlInfo.describe smlinfo
+
+    fun describeFarNode (farn: farnode) = (ignore Dummy.v; "blah")
 end

@@ -24,7 +24,7 @@ structure SkelIO :> SKELIO = struct
     val s2b = Byte.stringToBytes
     val b2c = Byte.byteToChar
 
-    val version = "Decl 9\n"
+    val version = "Decl 10\n"
 
     fun makeset l = SS.addList (SS.empty, l)
 
@@ -90,22 +90,14 @@ structure SkelIO :> SKELIO = struct
 	    "a" :: w_path (p, w_list w_strExp (l, r))
 	  | w_strExp (SK.LetStrExp (d, se), r) =
 	    "l" :: w_decl (d, w_strExp (se, r))
-	  | w_strExp (SK.AugStrExp (se, s), r) =
-	    "g" :: w_strExp (se, w_list w_name (SS.listItems s, r))
  	  | w_strExp (SK.ConStrExp (s1, s2), r) =
  	    "c" :: w_strExp (s1, w_strExp(s2, r))
 
 	and w_fctExp (SK.VarFctExp (p, fe), r) =
 	    "v" :: w_path (p, w_option w_fctExp (fe, r))
-	  | w_fctExp (SK.BaseFctExp { params, body, constraint }, r) = let
-		fun w_item ((mn, se), r) =
-		    w_option w_name (mn, w_strExp (se, r))
-	    in
-		"f" ::
-		w_list w_item (params,
-			       w_strExp (body,
-					 w_option w_strExp (constraint, r)))
-	    end
+	  | w_fctExp (SK.BaseFctExp { params, body, constraint }, r) =
+	    "f" :: w_decl (params,
+			   w_strExp (body, w_option w_strExp (constraint, r)))
 	  | w_fctExp (SK.AppFctExp (p, sel, feo), r) =
 	    "a" ::
 	    w_path (p, w_list w_strExp (sel, w_option w_fctExp (feo, r)))
@@ -182,8 +174,6 @@ structure SkelIO :> SKELIO = struct
 	    SK.AppStrExp (r_path (rd ()), r_list r_strExp (rd ()))
 	  | r_strExp (SOME #"l") =
 	    SK.LetStrExp (r_decl (rd ()), r_strExp (rd ()))
-	  | r_strExp (SOME #"g") =
-	    SK.AugStrExp (r_strExp (rd ()), makeset (r_list r_name (rd ())))
  	  | r_strExp (SOME #"c") =
  	    SK.ConStrExp (r_strExp (rd ()), r_strExp (rd ()))
 	  | r_strExp _ = raise FormatError
@@ -191,15 +181,9 @@ structure SkelIO :> SKELIO = struct
 	and r_fctExp (SOME #"v") =
 	    SK.VarFctExp (r_path(rd()), r_option r_fctExp(rd()))
 	  | r_fctExp (SOME #"f") =
-	    let
-		fun r_param first = (r_option r_name first, r_strExp (rd ()))
-	    in
-		SK.BaseFctExp {
-			       params = r_list r_param (rd ()),
-			       body = r_strExp (rd ()),
-			       constraint = r_option r_strExp (rd ())
-			      }
-	    end
+	    SK.BaseFctExp { params = r_decl (rd ()),
+			    body = r_strExp (rd ()),
+			    constraint = r_option r_strExp (rd ()) }
 	  | r_fctExp (SOME #"a") =
 	    SK.AppFctExp (r_path (rd ()),
 			  r_list r_strExp (rd ()),
