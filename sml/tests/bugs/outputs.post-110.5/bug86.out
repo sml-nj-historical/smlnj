@@ -1,0 +1,5 @@
+val it = () : unit
+val = = fn : ''a * ''a -> bool
+nonfix =
+val it = true : bool
+

@@ -1,0 +1,9 @@
+val it = () : unit
+bug607.sml:5.3-5.61 Error: operator and operand don't agree [literal]
+  operator domain: bool * bool
+  operand:         bool * int
+  in expression:
+    hd (! b) + 1
+bug607.sml:5.41 Error: overloaded variable not defined at type
+  symbol: +
+  type: bool

@@ -1,0 +1,2 @@
+val it = () : unit
+bug1190.sml:3.1-6.4 Error: unmatched exception specification: E

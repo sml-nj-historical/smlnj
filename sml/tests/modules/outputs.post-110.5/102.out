@@ -1,0 +1,7 @@
+val it = () : unit
+102.sml:11.5-11.12 Error: syntax error: deleting  OPEN ID DOT
+102.sml:11.12-12.10 Error: syntax error: deleting  ID VAL ID
+102.sml:12.11-12.14 Error: syntax error: deleting  COLON ID
+102.sml:16.5-17.9 Error: syntax error: deleting  OPEN ID OPEN
+102.sml:17.10-18.10 Error: syntax error: deleting  ID VAL ID
+

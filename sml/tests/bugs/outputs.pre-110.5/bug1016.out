@@ -1,0 +1,7 @@
+val it = () : unit
+signature S =
+  sig
+    type  t = int * int
+    datatype a = J of t | K of int
+  end
+structure H : S

@@ -1,0 +1,9 @@
+val it = () : unit
+signature SIG =
+  sig
+    type t
+    val x : t
+  end
+structure S : SIG
+val it = 3 : S.t
+

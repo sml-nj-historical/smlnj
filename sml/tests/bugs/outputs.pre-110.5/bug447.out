@@ -1,0 +1,7 @@
+val it = () : unit
+structure S :
+  sig
+    type  'a data = 'a list
+    type  'a value = 'a
+    val at : 'a data -> 'a
+  end

@@ -1,0 +1,7 @@
+val it = () : unit
+bug27E.sml:3.5-4.41 Error: clauses don't all have same number of patterns
+bug27E.sml:3.1-4.41 Error: rules don't agree (tycon mismatch)
+  expected: 'Z list -> 'Y -> 'Y
+  found:    ('X -> 'W) list * 'X -> 'V
+  rule:
+    (f :: fl,x) => compose fl (f x)

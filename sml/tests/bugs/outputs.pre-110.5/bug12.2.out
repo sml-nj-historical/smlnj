@@ -1,0 +1,8 @@
+val it = () : unit
+functor F : <sig>
+structure S :
+  sig
+    datatype r = C of t
+    val x : r
+  end
+val it = C 3 : S.r

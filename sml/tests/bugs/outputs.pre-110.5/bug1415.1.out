@@ -1,0 +1,4 @@
+val it = () : unit
+
+uncaught exception Date
+  raised at: boot/date.sml:60.41-60.45

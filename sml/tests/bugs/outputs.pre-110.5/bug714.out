@@ -1,0 +1,7 @@
+val it = () : unit
+val a = - : Word8Array.array
+val it = [0wx41,0wx41,0wx41,0wx41,0wx41] : Word8Array.elem list
+val it = () : unit
+val it = [0wx41,0wx41,0wx41,0wx42,0wx41] : Word8Array.elem list
+val it = () : unit
+val it = [0wx43,0wx41,0wx41,0wx42,0wx41] : Word8Array.elem list

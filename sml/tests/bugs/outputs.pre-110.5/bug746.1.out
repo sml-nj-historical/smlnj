@@ -1,0 +1,6 @@
+val it = () : unit
+datatype foo = bar of unit | baz of int
+datatype zip = biz of unit
+val it = bar () : foo
+val it = baz 3 : foo
+val it = biz () : zip

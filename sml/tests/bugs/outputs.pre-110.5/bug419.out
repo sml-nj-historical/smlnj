@@ -1,0 +1,20 @@
+val it = () : unit
+bug419.sml:4.7-4.15 Error: unbound structure: CML
+bug419.sml:8.10-8.17 Error: unbound variable or constructor: channel
+bug419.sml:9.10-9.17 Error: unbound variable or constructor: channel
+bug419.sml:10.10-10.17 Error: unbound variable or constructor: channel
+bug419.sml:12.6-12.10 Error: unbound variable or constructor: fold
+bug419.sml:21.24-21.28 Error: unbound variable or constructor: send
+bug419.sml:16.23-16.37 Error: unbound structure: CIO in path CIO.input_line
+bug419.sml:16.38-16.48 Error: unbound structure: CIO in path CIO.std_in
+bug419.sml:14.16-14.25 Error: unbound structure: CIO in path CIO.print
+bug419.sml:26.5-26.14 Error: unbound structure: CIO in path CIO.print
+bug419.sml:26.40-26.58 Error: unbound structure: Integer in path Integer.makestring
+bug419.sml:23.29-23.35 Error: unbound variable or constructor: accept
+bug419.sml:30.3-30.8 Error: unbound variable or constructor: spawn
+bug419.sml:29.3-29.8 Error: unbound variable or constructor: spawn
+bug419.sml:12.23-12.49 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: char
+  operand:         string
+  in expression:
+    ord "0"

@@ -1,0 +1,12 @@
+val it = () : unit
+structure S :
+  sig
+    datatype t = A
+    val x : t
+  end
+opening S
+  datatype t = A
+  val x : t
+structure S : sig end
+val it = A : t
+

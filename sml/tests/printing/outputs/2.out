@@ -1,0 +1,5 @@
+val it = () : unit
+datatype s = A | B of string
+datatype t = C of s list
+datatype d = D of t
+val p = C [B "b"] : t

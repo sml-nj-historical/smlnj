@@ -1,0 +1,5 @@
+val it = () : unit
+bug380.2.sml:3.21-8.15 Warning: match nonexhaustive
+          (t,s) :: r => ...
+  
+val exposeBug = fn : (string * int) list -> 'a

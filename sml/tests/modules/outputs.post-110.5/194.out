@@ -1,0 +1,5 @@
+val it = () : unit
+structure A : sig datatype t = K1 | K2 of t end
+signature S = sig structure B : sig datatype t = K end end
+signature S1 = sig structure B : sig type  t = t end end
+

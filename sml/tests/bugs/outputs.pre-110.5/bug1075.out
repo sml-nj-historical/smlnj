@@ -1,0 +1,9 @@
+val it = () : unit
+Creating profiled version of standard library
+val it = () : unit
+val f = fn : 'a -> int
+val it = () : unit
+val it = 3 : int
+ %time cumsec #call  name
+          .00     1  f.f
+val it = () : unit

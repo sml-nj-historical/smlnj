@@ -1,0 +1,4 @@
+val it = () : unit
+datatype 'a tree = Empty | Leaf of 'a
+type A = int
+type C = A tree

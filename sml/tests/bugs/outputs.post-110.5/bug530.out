@@ -1,0 +1,4 @@
+val it = () : unit
+type 'a foo
+val mkfoo = fn : unit -> 'a foo
+

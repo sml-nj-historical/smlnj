@@ -1,0 +1,6 @@
+val it = () : unit
+val it = 1e308 : real
+
+uncaught exception BadReal
+  raised at: bignums/realconst.sml:228.54-228.63
+

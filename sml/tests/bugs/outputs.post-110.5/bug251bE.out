@@ -1,0 +1,3 @@
+val it = () : unit
+bug251bE.sml:3.1-3.18 Error: duplicate exception declaration: E
+

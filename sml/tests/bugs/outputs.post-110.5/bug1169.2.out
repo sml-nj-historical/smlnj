@@ -1,0 +1,3 @@
+val it = () : unit
+val it = <poly-record> : string * ('a -> int)
+

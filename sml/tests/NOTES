@@ -1,0 +1,3 @@
+To supprest Autoloading chatter:
+
+  CM.verbose (SOME false);

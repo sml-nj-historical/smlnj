@@ -1,0 +1,5 @@
+val it = () : unit
+81.sml:5.17 Error: unbound type constructor: a
+81.sml:19.16-19.21 Error: unbound structure: D in path A.D.t
+81.sml:26.16-26.23 Error: unbound structure: Bogus in path Bogus.t
+

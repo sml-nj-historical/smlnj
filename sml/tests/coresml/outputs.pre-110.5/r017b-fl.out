@@ -1,0 +1,6 @@
+val it = () : unit
+r017b-fl.sml:20.34-20.39 Error: operator and operand don't agree [literal]
+  operator domain: bool * bool
+  operand:         bool * int
+  in expression:
+    y = 5

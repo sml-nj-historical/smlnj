@@ -1,0 +1,4 @@
+val it = () : unit
+type  'a CON = int
+val foo = fn : 'a -> _ CON
+val bar = fn : _ CON -> 'a

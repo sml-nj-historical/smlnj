@@ -1,0 +1,5 @@
+val it = () : unit
+bug1112.2.sml:2.7-2.19 Warning: match nonexhaustive
+          nil => ...
+  
+val x = 3 : int

@@ -1,0 +1,2 @@
+val it = () : unit
+structure A : sig val f : ?.A.t -> int end

@@ -1,0 +1,17 @@
+val it = () : unit
+signature S1 =
+  sig
+    eqtype t
+    val x : t
+  end
+signature S2 =
+  sig
+    structure A : sig end
+    structure C : sig structure A : <sig> end
+    sharing C.A = A
+  end
+1.sml:24.11-24.26 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: ?.t * ?.t
+  operand:         ?.t * ?.t
+  in expression:
+    A.x = B.C.A.x

@@ -1,0 +1,9 @@
+val it = () : unit
+val x = {name="Foo",used=true} : {name:string, used:bool}
+val y = {name="Foo",used=2} : {name:string, used:int}
+r005b-fl.sml:18.16-18.23 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: {name:string, used:bool} * {name:string, used:bool}
+  operand:         {name:string, used:bool} * {name:string, used:int}
+  in expression:
+    x = y
+

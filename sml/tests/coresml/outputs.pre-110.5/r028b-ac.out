@@ -1,0 +1,4 @@
+val it = () : unit
+type ('a,'b) func = 'a -> 'b
+val f = fn : ('a,'a) func
+val y = true : bool

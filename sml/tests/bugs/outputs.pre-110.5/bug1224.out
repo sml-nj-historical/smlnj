@@ -1,0 +1,11 @@
+val it = () : unit
+structure T :
+  sig
+    datatype 'a pref = PREF of {obj:'a}
+    val apply : ('a -> 'b) pref * 'a -> 'b
+    val f : ('a * 'b) * 'c -> 'b
+    val s : unit -> string
+    val t : unit -> string
+  end
+val it = "two" : string
+val it = "two" : string

@@ -1,0 +1,4 @@
+val it = () : unit
+signature SA = sig type t end
+signature SB = sig type 'a s end
+bug599.sml:13.1-18.4 Error: inconsistent arities in type sharing s = t : s has arity 1 and t has arity 0.

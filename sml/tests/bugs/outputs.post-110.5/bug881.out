@@ -1,0 +1,5 @@
+val it = () : unit
+functor F : <sig>
+structure B : sig type  t = t end
+val it = 3 : B.t
+

@@ -1,0 +1,8 @@
+val it = () : unit
+structure S : sig datatype t = A | B of t end
+structure T :
+  sig
+    datatype t = A | B of S.t
+    val f : S.t -> bool
+  end
+val x = true : bool

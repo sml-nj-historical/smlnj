@@ -1,0 +1,31 @@
+val it = () : unit
+structure A :
+  sig
+    type  ('a,'b) t = ('a * 'b) list
+    val dom : (''a,'b) t -> ''a list
+    val new : unit -> 'a list
+    val toList : 'a -> 'a
+  end
+signature ASIG =
+  sig
+    type ('a,'b) t
+    val new : unit -> (''a,'b) t
+  end
+signature BSIG =
+  sig
+    type ('a,'b) t
+    val dom : (''b,'a) t -> ''b list
+  end
+signature AB_SIG =
+  sig
+    type ('a,'b) t
+    val new : unit -> (''a,'b) t
+    val dom : (''b,'a) t -> ''b list
+  end
+structure goo : AB_SIG
+bug696.sml:34.5-34.33 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: (''Z,'Y) A.t
+  operand:         string option
+  in expression:
+    goo.dom (SOME "foo")
+

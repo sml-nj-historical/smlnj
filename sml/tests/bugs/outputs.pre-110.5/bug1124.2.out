@@ -1,0 +1,8 @@
+val it = () : unit
+signature SIG =
+  sig
+    datatype t1 = C1
+    datatype t2 = C2
+    datatype t3 = C3 | C4 of t1
+  end
+functor F : <sig>

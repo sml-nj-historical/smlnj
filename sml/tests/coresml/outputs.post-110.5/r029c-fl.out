@@ -1,0 +1,11 @@
+val it = () : unit
+datatype tree = Lf
+val y = Lf : tree
+datatype tree = Lf
+val x = Lf : tree
+r029c-fl.sml:18.1-18.17 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: tree * tree
+  operand:         tree * ?.tree
+  in expression:
+    x = y
+

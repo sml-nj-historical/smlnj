@@ -1,0 +1,9 @@
+val it = () : unit
+signature C1 =
+  sig
+    type R
+    val foo : R -> R
+  end
+bug855a.sml:6.26-6.33 Error: nonlocal path in structure sharing: T1
+bug855a.sml:6.26-6.33 Error: nonlocal path in structure sharing: T2
+

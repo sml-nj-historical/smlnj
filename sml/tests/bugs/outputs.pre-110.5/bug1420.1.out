@@ -1,0 +1,30 @@
+val it = () : unit
+signature CAT =
+  sig
+    eqtype cat
+    val c : cat
+  end
+signature L_F =
+  sig
+    eqtype t
+    structure Cat :
+      sig
+        type cat = t
+        val c : cat
+      end
+    val r : t
+  end
+signature S =
+  sig
+    structure Cat :
+      sig
+        eqtype cat
+        val c : cat
+      end
+    structure LF :
+      sig
+        eqtype t
+        structure Cat : <sig>
+        val r : t
+      end
+  end

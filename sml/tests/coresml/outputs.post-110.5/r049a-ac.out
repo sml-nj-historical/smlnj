@@ -1,0 +1,4 @@
+val it = () : unit
+type 'a t = {name:string, used:'a}
+val r = {name="Foo",used=true} : bool t
+

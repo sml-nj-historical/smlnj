@@ -1,0 +1,14 @@
+val it = () : unit
+functor F : <sig>
+structure S :
+  sig
+    type  s = int
+    val y : s
+  end
+structure S' :
+  sig
+    type  s = int
+    val y : s
+  end
+structure A : sig val a : bool end
+structure B : sig val a : int end

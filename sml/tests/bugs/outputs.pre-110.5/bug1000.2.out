@@ -1,0 +1,5 @@
+val it = () : unit
+structure U : sig datatype u = U end
+structure T : sig datatype t = T of U.u end
+val l = <hidden-value> : U.u
+val l = T U : T.t

@@ -1,0 +1,58 @@
+val it = () : unit
+infix 1 seq
+val seq = fn : 'a * 'b -> 'b
+val check = fn : bool -> string
+val check' = fn : (unit -> bool) -> string
+val range = fn : int * int -> (int -> bool) -> bool
+val checkrange = fn : int * int -> (int -> bool) -> string
+val a = #[0,1,2,3,4,5,6] : int vector
+val b = #[44,55,66] : int vector
+val c = #[0,1,2,3,4,5,6] : int vector
+val test1 = "OK" : string
+val test2 = "OK" : string
+val d =
+  #[0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,
+   2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,
+   5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1] : int vector
+val test3 = "OK" : string
+val test4a = "OK" : string
+val test4b = "OK" : string
+val test4c = "OK" : string
+val test5 = "OK" : string
+val test6a = "OK" : string
+val test6b = "OK" : string
+val test6c = "OK" : string
+val e =
+  #[0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,
+   2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,
+   5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,44,55,66,0,1,2,3,4,5,6,0,
+   1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,
+   4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1,2,3,4,5,6,
+   0,1,2,3,4,5,6,0,1,2,3,4,5,6,0,1] : int vector
+val test7 = "OK" : string
+val test8 = "OK" : string
+val f = #[44,55,66] : int vector
+val test9 = "OK" : string
+val test9a = "OK" : string
+val test9b = "OK" : string
+val test9c = "OK" : string
+val test9d = "OK" : string
+val test9e = "OK" : string
+val test9f = "OK" : string
+val test9g = "OK" : string
+val test9h = "OK" : string
+val test9i = "OK" : string
+val chkiter = fn
+  : ((int -> 'a) -> 'b -> ''c) -> (int -> 'a) -> 'b -> ''c * int -> string
+val chkiteri = fn
+  : ((int * 'a -> 'b) -> 'c -> ''d) -> ('a -> 'b) -> 'c -> ''d * int -> string
+val test10a = "OK" : string
+val test11a = "OK" : string
+val test11b = "OK" : string
+val test11c = "OK" : string
+val test11d = "OK" : string
+val test11e = "OK" : string
+val test11f = "OK" : string
+val test11g = "OK" : string
+val test11h = "OK" : string
+val test11i = "OK" : string

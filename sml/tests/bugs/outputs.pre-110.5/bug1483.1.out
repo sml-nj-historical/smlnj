@@ -1,0 +1,6 @@
+val it = () : unit
+bug1483.1.sml:4.15-4.20 Error: operator and operand don't agree [literal]
+  operator domain: int * int
+  operand:         int * int
+  in expression:
+    x + 1

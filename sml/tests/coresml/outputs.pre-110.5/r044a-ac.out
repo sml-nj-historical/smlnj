@@ -1,0 +1,7 @@
+val it = () : unit
+exception exc of string
+val r = {name=exc(-),used=true} : {name:exn, used:bool}
+r044a-ac.sml:17.1-17.39 Warning: binding not exhaustive
+          {name=exc x,used=test} = ...
+val x = "Foo" : string
+val test = true : bool

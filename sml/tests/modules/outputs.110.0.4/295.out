@@ -1,0 +1,18 @@
+val it = () : unit
+signature SIG0 = sig type s end
+signature SIG1 =
+  sig
+    structure S : sig type s end
+    type t = S.s
+  end
+signature SIG2 =
+  sig
+    type u
+    structure A :
+      sig
+        structure S : <sig>
+        type t = S.s
+      end
+    sharing type A.t = u
+  end
+functor F : <sig>

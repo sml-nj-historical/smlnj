@@ -1,0 +1,10 @@
+val it = () : unit
+d002a-ac.sml:16.3-16.13 Warning: binding contains no variables
+          () = ...
+d002a-ac.sml:15.3-15.13 Warning: binding contains no variables
+          () = ...
+val test1 = true : bool
+val test2 = true : bool
+val test3 = true : bool
+val alltrue = true : bool
+

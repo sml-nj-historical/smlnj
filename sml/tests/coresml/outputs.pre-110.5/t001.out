@@ -1,0 +1,16 @@
+val it = () : unit
+val it = 1 : int
+val it = 5 : int
+val it = 100 : int
+val fact = fn : int -> int
+val it = 24 : int
+val append2 = fn : 'a list * 'a list -> 'a list
+val it = [1,2,3,4,5,6] : int list
+val append = fn : 'a list -> 'a list -> 'a list
+val it = [1,2,3,4,5,6] : int list
+val reverse = fn : 'a list -> 'a list
+val it = [4,3,2,1] : int list
+val it = [false,true] : bool list
+val @ = fn : 'a list * 'a list -> 'a list
+infixr 5 @
+val it = [1,2,3,4,5,6] : int list

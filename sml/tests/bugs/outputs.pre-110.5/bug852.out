@@ -1,0 +1,23 @@
+val it = () : unit
+signature AM =
+  sig
+    type R
+    val plus : R -> R -> R
+    val zero : R
+  end
+signature MM =
+  sig
+    type R
+    val times : R -> R -> R
+    val one : R
+  end
+signature S1 =
+  sig
+    type R
+    val plus : R -> R -> R
+    val zero : R
+    val times : R -> R -> R
+    val one : R
+  end
+structure M : S1
+bug852.sml:16.20-16.38 Error: duplicate specifications for type constructor R in signature

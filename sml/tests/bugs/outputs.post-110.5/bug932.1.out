@@ -1,0 +1,4 @@
+val it = () : unit
+signature S = sig type  'a t = 'a list end
+structure T : S
+

@@ -1,0 +1,5 @@
+val it = () : unit
+signature X = sig end
+functor Apply : <sig>
+bug921.2.sml:9.24-9.29 Error: unbound functor: G
+bug921.2.sml:9.2-9.38 Error: unmatched functor specification: F

@@ -1,0 +1,115 @@
+val it = () : unit
+signature WR =
+  sig
+    type Wr
+    val to_stdout : unit -> Wr
+    val to_file : string -> Wr
+    val to_nowhere : unit -> Wr
+    val to_wrs : Wr list -> Wr
+    val to_fn : (string -> unit) -> (unit -> unit) -> Wr
+    val to_string : unit -> Wr
+    val extract_str : Wr -> string
+    val close : Wr -> unit
+    val write_wr : Wr -> string -> unit
+  end
+signature PP =
+  sig
+    structure Wr :
+      sig
+        type Wr
+        val to_stdout : unit -> Wr
+        val to_file : string -> Wr
+        val to_nowhere : unit -> Wr
+        val to_wrs : Wr list -> Wr
+        val to_fn : (string -> unit) -> (unit -> unit) -> Wr
+        val to_string : unit -> Wr
+        val extract_str : Wr -> string
+        val close : Wr -> unit
+        val write_wr : Wr -> string -> unit
+      end
+    type Pp
+    val pp_from_wr : Wr.Wr -> Pp
+    val wr_from_pp : Pp -> Wr.Wr
+    val pwrite : Pp -> string -> unit
+    val setb : Pp -> unit
+    val endb : Pp -> unit
+    val break : Pp -> bool -> int -> unit
+    val expbreak : Pp -> bool -> string -> unit
+    val set_margin : Pp -> int -> unit
+    val DEBUG : bool ref
+  end
+signature WRMGT =
+  sig
+    structure Wr :
+      sig
+        type Wr
+        val to_stdout : unit -> Wr
+        val to_file : string -> Wr
+        val to_nowhere : unit -> Wr
+        val to_wrs : Wr list -> Wr
+        val to_fn : (string -> unit) -> (unit -> unit) -> Wr
+        val to_string : unit -> Wr
+        val extract_str : Wr -> string
+        val close : Wr -> unit
+        val write_wr : Wr -> string -> unit
+      end
+    structure Pp :
+      sig
+        structure Wr : <sig>
+        type Pp
+        val pp_from_wr : Wr.Wr -> Pp
+        val wr_from_pp : Pp -> Wr.Wr
+        val pwrite : Pp -> string -> unit
+        val setb : Pp -> unit
+        val endb : Pp -> unit
+        val break : Pp -> bool -> int -> unit
+        val expbreak : Pp -> bool -> string -> unit
+        val set_margin : Pp -> int -> unit
+        val DEBUG : bool ref
+      end
+    val set_current_wr : Wr.Wr -> unit
+    val get_current_wr : unit -> Wr.Wr
+    val stdpp : unit -> Pp.Pp
+    val write : string -> unit
+    sharing Wr = Pp.Wr
+  end
+signature STRINGUTILS = sig end
+signature REGISTRY =
+  sig
+    type registeredtype
+    val register : string -> (registeredtype -> unit) -> unit
+    val registerflag : string -> registeredtype ref -> unit
+    val set_flag : string -> registeredtype -> unit
+    val set_all : registeredtype -> unit
+  end
+signature LISTUTILS =
+  sig
+    val memq : ('a -> 'a -> bool) -> 'a list -> 'a -> bool
+    val mapappend : ('a -> 'b list) -> 'a list -> 'b list
+    val mapunit : ('b -> 'a) -> 'b list -> unit
+    val mapunit_tuple : ('a -> unit) -> (unit -> unit) -> 'a list -> unit
+    val mapfold : ('a -> 'b) -> ('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+    val forall : ('a -> bool) -> 'a list -> bool
+    val forsome : ('a -> bool) -> 'a list -> bool
+    val filter : ('a -> bool) -> 'a list -> 'a list
+  end
+signature ID =
+  sig
+    type T
+    val intern : string -> T
+    val tostr : T -> string
+    val hashcode : T -> int
+    val new : unit -> T
+    val new_from : T -> T
+    val == : T -> T -> bool
+  end
+signature DEBUGUTILS =
+  sig
+    val wrap : bool ref
+               -> string
+                  -> (unit -> 'a) -> (unit -> unit) -> ('a -> unit) -> 'a
+  end
+bug428.sml:118.1-134.2 Error: duplicate specifications for structure Wr caused by include
+bug428.sml:118.1-134.2 Error: duplicate specifications for structure Pp caused by include
+bug428.sml:133.14-133.35 Error: nonlocal path in type sharing: bool
+

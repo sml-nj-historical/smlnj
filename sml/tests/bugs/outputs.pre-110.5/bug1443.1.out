@@ -1,0 +1,4 @@
+val it = () : unit
+val it = {exp=3,man=0.875} : {exp:int, man:real}
+val it = {exp=~1022,man=0.5} : {exp:int, man:real}
+val it = {exp=1,man=0.5} : {exp:int, man:real}

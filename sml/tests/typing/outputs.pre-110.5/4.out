@@ -1,0 +1,8 @@
+val it = () : unit
+val left = fn : 'a * 'b -> 'a
+val right = fn : 'a * 'b -> 'b
+4.sml:6.1-11.4 Error: operator and operand don't agree [literal]
+  operator domain: string -> string
+  operand:         int -> int
+  in expression:
+    (right later) (fn x => x + 2)

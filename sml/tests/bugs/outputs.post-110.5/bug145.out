@@ -1,0 +1,7 @@
+val it = () : unit
+val cl = ref [] : int ?.Cont.cont list ref
+val it = 42 : int
+
+uncaught exception TopLevelCallcc
+  raised at: build/compile.sml:378.30-378.44
+

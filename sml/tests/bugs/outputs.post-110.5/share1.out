@@ -1,0 +1,13 @@
+val it = () : unit
+signature S =
+  sig
+    type primop
+    sharing type primop = int 
+  end
+structure K : sig eqtype primop end
+signature T =
+  sig
+    structure L : ...
+    sharing L = K 
+  end
+

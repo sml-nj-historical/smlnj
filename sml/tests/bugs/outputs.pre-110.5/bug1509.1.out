@@ -1,0 +1,5 @@
+val it = () : unit
+bug1509.1.sml:3.1-3.26 Warning: binding not exhaustive
+          SOME x = ...
+val x = ~2147483648 : Int32.int
+val it = ~2147483648 : Int32.int

@@ -1,0 +1,7 @@
+val it = () : unit
+bug1326.sml:4.25 Error: unbound variable or constructor: g
+bug1326.sml:3.13-6.9 Error: types of rules don't agree [literal]
+  earlier rule(s): 'Z * 'Y -> 'X list
+  this rule: 'Z * 'Y -> int
+  in rule:
+    (x,_) => let val y = <errorvar> <exp> in 1 end

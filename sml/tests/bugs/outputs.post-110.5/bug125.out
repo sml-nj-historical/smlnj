@@ -1,0 +1,5 @@
+val it = () : unit
+type intset
+val empty_set = - : intset
+bug125.sml:9.1-9.4 Error: unbound variable or constructor: Set
+

@@ -1,0 +1,12 @@
+val it = () : unit
+bug1316.4.sml:3.21-4.48 Error: types of rules don't agree [circularity]
+  earlier rule(s): 'Z * 'Z list -> 'Z
+  this rule: 'Z * 'Z list -> 'Z list
+  in rule:
+    (x,L) => x + hd L :: (addList x) (tl L)
+bug1316.4.sml:3.1-4.48 Error: right-hand-side of clause doesn't agree with function result type [circularity]
+  expression:  'Z list -> 'Z
+  result type:  'Z list -> 'Z list
+  in declaration:
+    addList = (fn arg => (fn <pat> => <exp>))
+

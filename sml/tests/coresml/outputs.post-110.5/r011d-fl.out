@@ -1,0 +1,7 @@
+val it = () : unit
+r011d-fl.sml:15.1-15.15 Error: expression doesn't match constraint [literal]
+  expression: int
+  constraint: 'a
+  in expression:
+    1: 'a
+

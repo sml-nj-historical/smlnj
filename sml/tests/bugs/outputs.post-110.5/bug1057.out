@@ -1,0 +1,5 @@
+val it = () : unit
+bug1057.sml:4.1-4.30 Error: unresolved flex record (need to know the names of ALL the fields
+ in this context)
+  type: {x:int, y:string; 'Z}
+

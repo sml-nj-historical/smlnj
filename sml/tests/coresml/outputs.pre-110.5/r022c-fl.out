@@ -1,0 +1,4 @@
+val it = () : unit
+val f = fn : int -> int
+val three = 3 : int
+r022c-fl.sml:21.14-21.17 Error: unbound variable or constructor: one

@@ -1,0 +1,6 @@
+val it = () : unit
+r027d-fl.sml:15.21-15.37 Error: operator and operand don't agree [circularity]
+  operator domain: 'Z list
+  operand:         'Z
+  in expression:
+    fll xs

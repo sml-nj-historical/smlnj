@@ -1,0 +1,10 @@
+val it = () : unit
+signature S0 = sig exception Error of string end
+functor F : <sig>
+structure A : S0
+structure B :
+  sig
+    exception Error of string
+    val extend_env : 'a -> 'b
+    val extend_one : ''a * 'b * (''a -> 'b) -> ''a -> 'b
+  end

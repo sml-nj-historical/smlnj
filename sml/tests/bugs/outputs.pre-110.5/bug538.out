@@ -1,0 +1,147 @@
+val it = () : unit
+signature VARIABLES =
+  sig
+    datatype var = PREVBL of string | VBL of {name:string, stamp:int}
+    val varname : var -> string
+    type varenv
+    val newvar : string -> var
+    val empty_env : varenv
+    val lookup : varenv * string -> var option
+    val bind : string * var * varenv -> varenv
+  end
+structure Variables : VARIABLES
+structure Operators :
+  sig
+    datatype operator
+      = AND
+      | BAND
+      | BNOT
+      | BOR
+      | COUNT
+      | DIV
+      | EQ
+      | EXP
+      | GT
+      | GTE
+      | INTERSECTION
+      | IS_IN
+      | LT
+      | LTE
+      | MATCH
+      | MAX
+      | MIN
+      | MINUS
+      | MOD
+      | MUL
+      | NEQ
+      | NOT
+      | NOT_MATCH
+      | OR
+      | PLUS
+      | SET_EQ
+      | SET_MINUS
+      | SHL
+      | SHR
+      | SUBSE
+      | SUM
+      | UMINUS
+      | UNION
+      | XOR
+    val arity : operator -> int
+    val operName : operator -> string
+  end
+opening Variables
+  datatype var = PREVBL of string | VBL of {name:string, stamp:int}
+  val varname : var -> string
+  type varenv = (string * Variables.var) list
+  val newvar : string -> var
+  val empty_env : varenv
+  val lookup : varenv * string -> var option
+  val bind : string * var * varenv -> varenv
+opening Operators
+  datatype operator
+    = AND
+    | BAND
+    | BNOT
+    | BOR
+    | COUNT
+    | DIV
+    | EQ
+    | EXP
+    | GT
+    | GTE
+    | INTERSECTION
+    | IS_IN
+    | LT
+    | LTE
+    | MATCH
+    | MAX
+    | MIN
+    | MINUS
+    | MOD
+    | MUL
+    | NEQ
+    | NOT
+    | NOT_MATCH
+    | OR
+    | PLUS
+    | SET_EQ
+    | SET_MINUS
+    | SHL
+    | SHR
+    | SUBSE
+    | SUM
+    | UMINUS
+    | UNION
+    | XOR
+  val arity : operator -> int
+  val operName : operator -> string
+datatype exp
+  = APP of operator * exp list
+  | ENUM of string
+  | INT of int
+  | QUES of exp * exp * exp
+  | SET of exp list
+  | STR of string
+  | VAR of var
+val test = APP (PLUS,[INT 4,INT 3]) : exp
+datatype stmt = ASSERT of exp | CMPD of stmt list | FOR of var * exp * stmt
+val testprog = FOR (PREVBL "x",SET [INT #,INT #],ASSERT (APP (#,#))) : stmt
+val testprog2 =
+  FOR (PREVBL "x",SET [INT #,INT #],CMPD [ASSERT #,FOR #,ASSERT #]) : stmt
+bug538.sml:219.1-233.19 Warning: match nonexhaustive
+          APP (EQ,a :: b :: nil) => ...
+          APP (NEQ,a :: b :: nil) => ...
+          INT i => ...
+          STR s => ...
+          VAR v => ...
+          SET l => ...
+          QUES (e1,e2,e3) => ...
+          APP (oper,args) => ...
+  
+val prvar = fn : var -> string
+val ppexpr = fn : exp -> string
+val pplist = fn : exp list -> string
+val sp = fn : int -> string
+val ppstmt = fn : int * stmt -> string
+val prt = fn : stmt -> unit
+bug538.sml:276.10-276.57 Warning: binding not exhaustive
+          INTval vb = ...
+bug538.sml:276.10-276.57 Warning: binding not exhaustive
+          INTval va = ...
+bug538.sml:280.10-280.57 Warning: binding not exhaustive
+          INTval vb = ...
+bug538.sml:280.10-280.57 Warning: binding not exhaustive
+          INTval va = ...
+bug538.sml:284.10-284.81 Warning: binding not exhaustive
+          INTval vz = ...
+bug538.sml:284.10-284.81 Warning: binding not exhaustive
+          INTval vy = ...
+bug538.sml:284.10-284.81 Warning: binding not exhaustive
+          INTval vx = ...
+datatype value
+  = BOOLval of bool | INTval of int | SETval of value list | STRval of string
+val seval = fn : exp -> value
+val eaconv = fn : varenv -> exp -> exp
+val alphasub = fn : varenv * stmt -> stmt
+val aconv = fn : stmt -> stmt

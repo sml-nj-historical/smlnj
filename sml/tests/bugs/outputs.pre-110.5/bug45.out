@@ -1,0 +1,3 @@
+val it = () : unit
+datatype t = A of t
+val f = fn : t -> bool

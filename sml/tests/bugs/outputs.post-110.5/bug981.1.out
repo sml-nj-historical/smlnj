@@ -1,0 +1,4 @@
+val it = () : unit
+signature S = sig datatype d = A of int * int end
+structure X : S
+

@@ -1,0 +1,7 @@
+val it = () : unit
+bug106.sml:4.7-4.9 Error: argument of raise is not an exception [tycon mismatch]
+  raised: unit
+  in expression:
+    raise it
+bug106.sml:4.1-4.9 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)

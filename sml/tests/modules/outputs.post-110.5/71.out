@@ -1,0 +1,8 @@
+val it = () : unit
+signature S =
+  sig
+    type 'a t
+    val x : int t
+  end
+structure A : S
+

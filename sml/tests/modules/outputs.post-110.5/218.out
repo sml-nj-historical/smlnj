@@ -1,0 +1,5 @@
+val it = () : unit
+signature S = sig type  primop = int end
+structure K : sig type  primop = int end
+signature T = sig structure L : sig type  primop = int end end
+

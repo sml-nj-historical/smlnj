@@ -1,0 +1,25 @@
+val it = () : unit
+signature S2 =
+  sig
+    structure A : sig type s end
+    val x : A.s
+  end
+signature S3 =
+  sig
+    type u
+    val y : u
+  end
+functor F : <sig>
+functor G : <sig>
+signature S2 =
+  sig
+    structure A : sig type s end
+    val x : A.s
+  end
+signature S3 =
+  sig
+    type u
+    val y : u
+  end
+functor F : <sig>
+functor G : <sig>

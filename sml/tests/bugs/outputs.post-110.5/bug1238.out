@@ -1,0 +1,7 @@
+val it = () : unit
+signature M1 = sig type t end
+signature M2 = sig type t end
+signature S = sig structure M : sig type t end end
+functor Good : <sig>
+functor Bad : <sig>
+

@@ -1,0 +1,6 @@
+val it = () : unit
+bug1139.1.sml:5.6-7.9 Warning: match nonexhaustive
+          ((t,arg as {a=nil,e=e}),c) => ...
+  
+val f = () : unit
+

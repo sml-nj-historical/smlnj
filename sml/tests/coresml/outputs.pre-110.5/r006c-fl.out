@@ -1,0 +1,9 @@
+val it = () : unit
+r006c-fl.sml:13.1-23.4 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: ?.t * ?.t
+  operand:         ?.t * ?.t
+  in expression:
+    let datatype t = ...
+        
+     in A
+    end = A

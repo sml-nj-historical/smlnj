@@ -1,0 +1,17 @@
+val it = () : unit
+val e1 = fn : 'a -> 'b -> 'b
+val check = fn : bool -> string
+val check' = fn : (unit -> bool) -> string
+val range = fn : int * int -> (int -> bool) -> bool
+val checkrange = fn : int * int -> (int -> bool) -> string
+val test1 = "OK" : string
+val test2 = "OK" : string
+val test3 = "OK" : string
+val test4 = "OK" : string
+val test5 = "OK" : string
+val test6 = "OK" : string
+val test7 = "OK" : string
+val test8 = "OK" : string
+val test9 = "OK" : string
+val test10 = "OK" : string
+

@@ -1,0 +1,2 @@
+val it = () : unit
+bug190.sml:3.1-3.5 Error: unclosed string

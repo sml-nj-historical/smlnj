@@ -1,0 +1,16 @@
+val it = () : unit
+signature S1 =
+  sig
+    val x : unit
+    datatype t = K
+  end
+signature S2 =
+  sig
+    structure C :
+      sig
+        val x : unit
+        datatype t = K
+      end
+    val foo : C.t -> unit
+  end
+functor mkGraph : <sig>

@@ -1,0 +1,5 @@
+val it = () : unit
+bug71.sml:6.1-6.60 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+[opening bug71/y.sml]
+[use failed: Io: openIn failed on "bug71/y.sml", No such file or directory]

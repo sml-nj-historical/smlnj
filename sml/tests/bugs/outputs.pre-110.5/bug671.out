@@ -1,0 +1,4 @@
+val it = () : unit
+funsig FSIG(B: sig type t end) : sig val f : B.t end
+funsig FSIG(<param>: sig structure B : <sig> end) : sig val f : B.t end
+bug671.sml:11.48 Error: unbound type constructor: t

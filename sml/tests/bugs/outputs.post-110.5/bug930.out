@@ -1,0 +1,8 @@
+val it = () : unit
+signature S_SIG = sig end
+bug930.sml:6.1-10.4 Warning: match nonexhaustive
+          (nil,nil) => ...
+          (x,nil) => ...
+  
+structure S : S_SIG
+

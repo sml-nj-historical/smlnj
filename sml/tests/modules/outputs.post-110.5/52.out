@@ -1,0 +1,3 @@
+val it = () : unit
+52.sml:6.15-6.18 Error: unbound signature: FOO
+

@@ -1,0 +1,18 @@
+val it = () : unit
+signature S0 = sig type u end
+signature S1 =
+  sig
+    type t
+    val v : t
+  end
+functor F1 : <sig>
+structure D :
+  sig
+    structure B : <sig>
+    structure C : <sig>
+  end
+53.sml:46.18-46.25 Error: nonlocal path in structure sharing: D.B
+53.sml:44.9-52.4 Error: value type in structure doesn't match signature spec
+    name: v
+  spec:   ?.A.t
+  actual: ?.D.A.t

@@ -1,0 +1,16 @@
+val it = () : unit
+signature S1 =
+  sig
+    eqtype t
+    val x : t
+  end
+funsig FS1(A: sig
+                eqtype t
+                val x : t
+              end) :
+          sig structure C : <sig> end
+224.sml:17.11-17.26 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: ?.t * ?.t
+  operand:         ?.t * ?.B.t
+  in expression:
+    A.x = B.C.A.x

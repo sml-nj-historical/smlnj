@@ -1,0 +1,3 @@
+val it = () : unit
+bug64E.sml:4.1-4.4 Error: unclosed comment
+

@@ -1,0 +1,5 @@
+val it = () : unit
+bug1265.sml:3.15 Error: unbound signature: S
+bug1265.sml:3.23 Error: unbound signature: T
+bug1265.sml:3.19 Error: unbound structure: K
+

@@ -1,0 +1,11 @@
+val it = () : unit
+signature S =
+  sig
+    type U
+    type a
+    datatype 'a internal_address = Address of 'a
+    type  T = a internal_address
+    sharing type U = T
+  end
+functor f : <sig>
+

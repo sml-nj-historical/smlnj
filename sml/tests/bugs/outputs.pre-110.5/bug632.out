@@ -1,0 +1,9 @@
+val it = () : unit
+bug632.sml:4.1-4.23 Warning: match nonexhaustive
+          536870912 => ...
+  
+val foo = fn : int -> int
+bug632.sml:6.1-6.24 Warning: match nonexhaustive
+          ~536870913 => ...
+  
+val foo = fn : int -> int

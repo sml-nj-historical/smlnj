@@ -1,0 +1,6 @@
+val it = () : unit
+bug1112.3.sml:2.20-2.32 Warning: match nonexhaustive
+          nil => ...
+  
+val f = fn : 'a list -> int
+

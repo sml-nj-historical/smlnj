@@ -1,0 +1,2 @@
+val it = () : unit
+272.sml:31.16-31.48 Error: type point does not match definitional specification

@@ -1,0 +1,5 @@
+val it = () : unit
+val f = fn : unit -> 'a list
+stdIn:22.5-22.16 Warning: value restriction prevents type  variable generalization : 'Z
+Error: Compiler bug: PickMod: uninstatiated VARty in pickmod
+

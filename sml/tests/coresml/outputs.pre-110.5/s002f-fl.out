@@ -1,0 +1,2 @@
+val it = () : unit
+s002f-fl.sml:13.1-14.31 Error: duplicate type names in type declaration: color

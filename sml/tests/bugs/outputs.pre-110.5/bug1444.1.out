@@ -1,0 +1,6 @@
+val it = () : unit
+val d =
+  DATE
+    {day=1,hour=0,isDst=NONE,minute=0,month=Jan,offset=NONE,second=0,wday=Mon,
+     yday=0,year=1} : Date.date
+val it = "Mon Jan  1 00:00:00  0 '" : string

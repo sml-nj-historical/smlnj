@@ -1,0 +1,2 @@
+val it = () : unit
+val y = 800000000 : int

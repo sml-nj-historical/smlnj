@@ -1,0 +1,10 @@
+val it = () : unit
+functor OrdSet : <sig>
+structure Bad :
+  sig
+    type  'a elem = int * 'a
+    val eq : (int * 'a) * (int * 'b) -> bool
+    val gt : (int * 'a) * (int * 'b) -> bool
+  end
+bug92.1.sml:18.16-18.27 Error: tycon arity for elem does not match specified arity
+

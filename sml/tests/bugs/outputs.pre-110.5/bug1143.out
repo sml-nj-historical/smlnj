@@ -1,0 +1,4 @@
+val it = () : unit
+val maskr = ref 0wx3fff : word ref
+val it = 0wx3fff : word
+val it = 16383 : int

@@ -1,0 +1,9 @@
+val it = () : unit
+val a = [|0wx0|] : Word32.word array
+val it = () : unit
+val it = 0wx1 : Word32.word
+val it = 0wx1 : Word32.word
+val it = 0wx1 : Word32.word
+val it = 0wx1 : Word32.word
+val it = 0wx1 : Word32.word
+

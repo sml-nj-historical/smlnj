@@ -1,0 +1,6 @@
+val it = () : unit
+val z = false : bool
+val g = fn : int -> int
+val test = true : bool
+val five = 5 : int
+

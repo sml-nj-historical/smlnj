@@ -1,0 +1,8 @@
+val it = () : unit
+structure A :
+  sig
+    structure A1 : <sig>
+    structure A2 : <sig>
+  end
+val it = Bug(-) : exn
+

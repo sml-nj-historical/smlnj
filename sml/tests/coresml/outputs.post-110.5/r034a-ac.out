@@ -1,0 +1,6 @@
+val it = () : unit
+val x = (false,17) : bool * int
+r034a-ac.sml:14.1-14.18 Warning: binding not exhaustive
+          (false,w) = ...
+val w = 17 : int
+

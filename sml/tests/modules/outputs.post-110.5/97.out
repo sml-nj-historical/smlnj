@@ -1,0 +1,11 @@
+val it = () : unit
+signature S0 = sig type  t = int end
+signature S1 = sig type  t = bool end
+signature S3 =
+  sig
+    structure A : sig type  t = int end
+    structure B : sig type  t = bool end
+    sharing B = A
+  end
+functor F : <sig>
+

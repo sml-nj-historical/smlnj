@@ -1,0 +1,4 @@
+val it = () : unit
+signature A = sig type t end
+bug595.sml:11.9-11.28 Error: unmatched type specification: t
+

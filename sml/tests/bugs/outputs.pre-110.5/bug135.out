@@ -1,0 +1,22 @@
+val it = () : unit
+signature T =
+  sig
+    type Shut
+    type Open
+    val Shut : Open -> Shut
+    val Open : Shut -> Open
+  end
+signature U =
+  sig
+    type Shut
+    eqtype Open
+    val Shut : Open -> Shut
+    val Open : Shut -> Open
+  end
+functor absT : <sig>
+structure b : T
+bug135.sml:48.1-48.18 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         b.Shut * b.Shut
+  in expression:
+    b.Shut 3 = b.Shut 4

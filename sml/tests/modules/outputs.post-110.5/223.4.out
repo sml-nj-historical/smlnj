@@ -1,0 +1,7 @@
+val it = () : unit
+signature S = sig end
+funsig FS(<param>: sig structure X : <sig> end) : sig end
+functor F : <sig>
+functor G0 : <sig>
+223.4.sml:17.15-17.32 Error: unmatched structure specification: Z
+

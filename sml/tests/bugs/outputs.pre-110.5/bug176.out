@@ -1,0 +1,21 @@
+val it = () : unit
+signature INCLUDE_1 =
+  sig
+    type Ty
+    val x : Ty
+  end
+signature INCLUDE_2 =
+  sig
+    type Ty
+    val y : Ty
+  end
+signature BOTH =
+  sig
+    type T
+    type Ty
+    val x : Ty
+    val y : Ty
+    sharing type T = Ty
+    sharing type T = Ty
+  end
+functor F : <sig>

@@ -1,0 +1,8 @@
+val it = () : unit
+signature SIG1 =
+  sig
+    structure T : sig type t end
+    structure U : sig structure V : <sig> end
+  end
+structure S : SIG1
+

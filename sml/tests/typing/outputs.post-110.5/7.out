@@ -1,0 +1,8 @@
+val it = () : unit
+val f = fn : int -> int
+7.sml:5.1-5.6 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: int
+  operand:         real
+  in expression:
+    f 1.0
+

@@ -1,0 +1,9 @@
+val it = () : unit
+bug466.sml:5.5-7.8 Error: operator and operand don't agree [circularity]
+  operator domain: 'Z * {1:bool, 2:'X; 'Y}
+  operand:         'Z * 'X
+  in expression:
+    g (p,(fn <pat> => <exp>) q)
+bug466.sml:4.1-7.8 Error: unresolved flex record (need to know the names of ALL the fields
+ in this context)
+  type: {1:bool, 2:'Y; 'Z}

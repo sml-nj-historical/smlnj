@@ -1,0 +1,3 @@
+val it = () : unit
+5.sml:9.20-12.6 Error: unclosed comment
+5.sml:13.1 Error: syntax error found at EOF

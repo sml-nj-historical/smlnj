@@ -1,0 +1,4 @@
+val it = () : unit
+datatype foo = A
+type  t = int
+

@@ -1,0 +1,10 @@
+val it = () : unit
+signature S =
+  sig
+    type t
+    val x : t
+  end
+
+uncaught exception Unbound
+  raised at: translate/transmodules.sml:80.33-80.43
+             translate/translate.sml:129.39

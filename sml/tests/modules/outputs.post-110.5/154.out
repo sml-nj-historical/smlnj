@@ -1,0 +1,8 @@
+val it = () : unit
+signature S =
+  sig
+    structure A : sig end
+    structure B : sig end
+    sharing B = A
+  end
+

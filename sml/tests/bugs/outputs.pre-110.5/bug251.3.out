@@ -1,0 +1,2 @@
+val it = () : unit
+bug251.3.sml:3.1-4.51 Error: duplicate function name in val rec dec: f

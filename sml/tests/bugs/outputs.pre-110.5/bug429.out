@@ -1,0 +1,3 @@
+val it = () : unit
+std_in:115.1-134.1 Error: duplicate specifications for structure Wr in signature
+std_in:115.1-134.1 Error: duplicate specifications for structure Pp in signature

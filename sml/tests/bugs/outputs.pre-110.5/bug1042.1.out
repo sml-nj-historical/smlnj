@@ -1,0 +1,2 @@
+val it = () : unit
+bug1042.1.sml:6.16-6.55 Error: nonlocal path in type sharing: Posix.FileSys.access_mode

@@ -1,0 +1,9 @@
+val it = () : unit
+exception A
+exception B = A
+bug774.sml:5.11-5.36 Warning: match nonexhaustive
+          B => ...
+          A => ...
+  
+val one = 2 : int
+

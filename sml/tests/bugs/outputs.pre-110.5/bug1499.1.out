@@ -1,0 +1,5 @@
+val it = () : unit
+bug1499.1.sml:5.5-8.15 Error: duplicate specifications for type constructor t in signature
+
+uncaught exception Unbound
+  raised at: elaborate/elabmod.sml:1364.39-1364.49

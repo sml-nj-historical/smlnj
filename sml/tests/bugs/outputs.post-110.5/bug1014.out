@@ -1,0 +1,3 @@
+val it = () : unit
+bug1014.sml:3.41-3.49 Error: nonlocal path in type sharing: unit
+

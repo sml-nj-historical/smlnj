@@ -1,0 +1,3 @@
+val it = () : unit
+structure foo : sig datatype 'a group = GROUP of 'a list | SINGLE of 'a end
+

@@ -1,0 +1,9 @@
+val it = () : unit
+structure A : sig val x : bool ref end
+functor F : <sig>
+structure S :
+  sig
+    datatype d = ...
+    datatype e = ...
+  end
+

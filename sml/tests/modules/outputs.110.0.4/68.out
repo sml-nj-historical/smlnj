@@ -1,0 +1,10 @@
+val it = () : unit
+functor F : <sig>
+structure B :
+  sig end
+structure C :
+  sig structure A : <sig> end
+structure D :
+  sig structure A : <sig> end
+68.sml:19.15-19.24 Error: nonlocal path in structure sharing: C.A
+68.sml:19.15-19.24 Error: nonlocal path in structure sharing: D.A

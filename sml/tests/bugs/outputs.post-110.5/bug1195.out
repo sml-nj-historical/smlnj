@@ -1,0 +1,6 @@
+val it = () : unit
+bug1195.sml:3.1-9.11 Error: value type in structure doesn't match signature spec
+    name: app
+  spec:   CharVector.elem -> unit -> CharVector.vector -> unit
+  actual: (CharVector.elem -> unit) -> CharVector.vector -> unit
+

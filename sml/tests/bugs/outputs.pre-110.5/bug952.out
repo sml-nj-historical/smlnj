@@ -1,0 +1,8 @@
+val it = () : unit
+bug952.sml:4.7-4.22 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+bug952.sml:6.22-6.45 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: t * t list
+  operand:         t * ?.X1 list
+  in expression:
+    x :: ! ll

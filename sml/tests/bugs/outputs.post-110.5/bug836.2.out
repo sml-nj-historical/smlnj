@@ -1,0 +1,4 @@
+val it = () : unit
+val b = inf : real
+bug836.2.sml:4.7-4.17 Error: int constant too large
+

@@ -1,0 +1,3 @@
+val it = () : unit
+95.sml:12.1-17.4 Error: inconsistent arities in type sharing t = t : t has arity 2 and t has arity 1.
+95.sml:19.9-19.29 Error: inconsistent arities in type sharing t = t : t has arity 2 and t has arity 1.

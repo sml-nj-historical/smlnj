@@ -1,0 +1,6 @@
+val it = () : unit
+r011c-fl.sml:15.1-15.31 Error: pattern and constraint don't agree [UBOUND match]
+  pattern:    'a list
+  constraint:    'b list
+  in pattern:
+    x : 'a list : 'b list

@@ -1,0 +1,27 @@
+val it = () : unit
+signature Z = sig end
+signature S = sig structure A : sig end end
+signature T1 =
+  sig
+    structure B : sig structure A : <sig> end
+    structure A : sig end
+  end
+signature T2 =
+  sig
+    structure B : sig structure A : <sig> end
+    structure A : sig end
+  end
+signature V =
+  sig
+    structure C :
+      sig
+        structure B : <sig>
+        structure A : <sig>
+      end
+    structure D :
+      sig
+        structure B : <sig>
+        structure A : <sig>
+      end
+    sharing D = C
+  end

@@ -1,0 +1,3 @@
+val it = () : unit
+structure First : sig val x : int end
+structure Second : sig val y : int end

@@ -1,0 +1,6 @@
+val it = () : unit
+type stacktype
+val clear = - : stacktype
+val insert = fn : int * stacktype -> stacktype
+r020c-fl.sml:23.9-23.14 Error: unbound variable or constructor: stack
+

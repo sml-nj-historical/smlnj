@@ -1,0 +1,8 @@
+val it = () : unit
+datatype Branch = Leaf of int * bool
+val r = {noname=Leaf (2,true),used=true} : {noname:Branch, used:bool}
+r043b-fl.sml:18.1-18.48 Error: constructor and argument don't agree in pattern [tycon mismatch]
+  constructor: int * bool -> Branch
+  argument:    real * 'Z
+  in pattern:
+    Leaf (x : real,_)

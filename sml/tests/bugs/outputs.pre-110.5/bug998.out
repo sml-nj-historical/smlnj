@@ -1,0 +1,42 @@
+val it = () : unit
+signature MESSAGE_LANG =
+  sig
+    datatype agent_id = Japan | Kenya | UK | World
+    datatype commodity = Cars | Steel
+    eqtype state_attribute
+    datatype amount = Amount of int | Query
+    datatype statement = State_info of agent_id * state_attribute * amount
+    type message
+  end
+signature AGENT =
+  sig
+    structure Message_Lang :
+      sig
+        datatype agent_id = Japan | Kenya | UK | World
+        datatype commodity = Cars | Steel
+        eqtype state_attribute
+        datatype amount = Amount of int | Query
+        datatype statement = State_info of agent_id * state_attribute * amount
+        type message
+      end
+    type agent
+    val update_beliefs : agent -> Message_Lang.statement list -> agent
+  end
+signature AGENT_DYNAMICS =
+  sig
+    structure Agent :
+      sig
+        structure Message_Lang : <sig>
+        type agent
+        val update_beliefs : agent -> Message_Lang.statement list -> agent
+      end
+    val process_message : Agent.Message_Lang.message * Agent.agent
+                          -> Agent.agent
+    val core_functions : Agent.agent -> Agent.agent
+  end
+functor Neutral_Agent_Dynamics : <sig>
+bug998.sml:40.5-84.8 Warning: match nonexhaustive
+          NoStock (agent_id,cdy) => ...
+          NoMoney agent_id => ...
+  
+functor World_Agent_Dynamics : <sig>

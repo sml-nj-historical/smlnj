@@ -1,0 +1,8 @@
+val it = () : unit
+exception e
+val s = ref 0 : int ref
+bug183.sml:5.1-5.18 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+
+uncaught exception e
+  raised at: bug183.sml:5.16

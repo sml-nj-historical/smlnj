@@ -1,0 +1,18 @@
+val it = () : unit
+signature STO =
+  sig
+    type store
+    val update : (store -> 'a) -> 'a
+  end
+signature COMP =
+  sig
+    type 'a lift
+    val rap : 'a -> 'a lift
+    val uplift : 'a lift -> 'a lift
+  end
+functor F : <sig>
+structure Sto : STO
+structure CPS : COMP
+structure R : sig val x : store lift end
+val s2' = (["x"],[0]) : Sto.store
+

@@ -1,0 +1,7 @@
+val it = () : unit
+signature S =
+  sig
+    type 'a t
+    datatype 'a List = CONS of 'a t | NIL
+  end
+structure A : S

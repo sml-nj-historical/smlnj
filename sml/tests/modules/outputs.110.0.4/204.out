@@ -1,0 +1,9 @@
+val it = () : unit
+functor Dict : <sig>
+functor T : <sig>
+structure A :
+  sig
+    structure U : <sig>
+    datatype s = EE of U.dict | FF
+    val x : s
+  end

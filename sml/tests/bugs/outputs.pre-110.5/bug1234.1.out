@@ -1,0 +1,12 @@
+val it = () : unit
+signature S =
+  sig
+    type u
+    val y : u
+  end
+functor F : <sig>
+structure A :
+  sig
+    structure U : <sig>
+    val z : U.u
+  end

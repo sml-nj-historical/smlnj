@@ -1,0 +1,4 @@
+val it = () : unit
+exception exc_test of int
+val x = exc_test(-) : exn
+

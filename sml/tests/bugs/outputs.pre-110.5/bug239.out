@@ -1,0 +1,9 @@
+val it = () : unit
+signature A =
+  sig
+    type A
+    datatype Foo = FOO of A
+  end
+signature B = sig type B end
+signature C = sig datatype C = C of int -> int end
+functor XYZZY : <sig>

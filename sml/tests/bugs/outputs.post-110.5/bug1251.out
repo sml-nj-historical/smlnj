@@ -1,0 +1,7 @@
+val it = () : unit
+structure S :
+  sig
+    structure A : <sig>
+    structure B : <sig>
+  end
+

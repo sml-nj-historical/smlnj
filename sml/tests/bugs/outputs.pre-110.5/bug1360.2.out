@@ -1,0 +1,6 @@
+val it = () : unit
+val i = fn : 'a -> int
+val f = fn : (unit -> 'a) * ('a -> int) -> int
+
+uncaught exception FPRegEA
+  raised at: cps/generic.sml:98.67-98.74

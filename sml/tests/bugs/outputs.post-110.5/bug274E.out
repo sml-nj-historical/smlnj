@@ -1,0 +1,4 @@
+val it = () : unit
+bug274E.sml:4.7-4.24 Warning: value restriction prevents type  variable generalization : 'Z
+Error: Compiler bug: PickMod: uninstatiated VARty in pickmod
+

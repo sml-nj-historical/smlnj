@@ -1,0 +1,32 @@
+val it = () : unit
+signature S1 =
+  sig
+    structure A :
+      sig
+        eqtype t
+        val x : t
+      end
+    structure B : sig end
+    sharing B = A
+  end
+signature S2 =
+  sig
+    structure C :
+      sig
+        structure A : <sig>
+        structure B : <sig>
+        sharing B = A
+      end
+    structure D :
+      sig
+        eqtype t
+        val y : t
+      end
+    sharing D = C.B
+  end
+60.sml:22.20-22.37 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: ?.X.t * ?.X.t
+  operand:         ?.X.t * ?.X.t
+  in expression:
+    X.D.y = X.C.A.x
+

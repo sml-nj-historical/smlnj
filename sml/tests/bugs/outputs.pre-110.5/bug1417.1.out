@@ -1,0 +1,8 @@
+val it = () : unit
+signature DB =
+  sig
+    type foo = int
+    datatype partition_classes = STATIC_CLASSES of foo
+    datatype alloc_class = ALLOC_CLASS of unit
+  end
+Error: Compiler bug: TypesUtil: expandTyc:PATHtyc

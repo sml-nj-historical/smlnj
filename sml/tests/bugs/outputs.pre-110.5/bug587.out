@@ -1,0 +1,51 @@
+val it = () : unit
+signature SEQUENCE =
+  sig
+    exception LoopingError
+    type 'a sequence
+    val read : 'a sequence -> ('a * 'a sequence) option
+    val append : 'a list * 'a sequence -> 'a sequence
+    val add_to : 'a sequence -> 'a sequence -> unit
+    val app : ('a -> 'b) sequence -> 'a sequence -> 'b sequence
+    val value : 'a -> 'a sequence
+    val empty_sequence : unit -> 'a sequence
+  end
+signature SEMANTIC_VALUE =
+  sig
+    type 'a semantic_type
+    type semantic_value
+    type 'a sequence
+    exception SemanticValueError of string
+    val add_semantic_value : semantic_value -> semantic_value -> unit
+    val cast_from : 'a semantic_type -> semantic_value -> 'a sequence
+    val cast_to : 'a semantic_type -> 'a sequence -> semantic_value
+    val void_semantic_value : semantic_value
+  end
+funsig MK_SEMANTIC_VALUE(Sequence: sig
+                                     exception LoopingError
+                                     type 'a sequence
+                                     val read : 'a sequence
+                                                -> ('a * 'a sequence) option
+                                     val append : 'a list * 'a sequence
+                                                  -> 'a sequence
+                                     val add_to : 'a sequence
+                                                  -> 'a sequence -> unit
+                                     val app : ('a -> 'b) sequence
+                                               -> 'a sequence -> 'b sequence
+                                     val value : 'a -> 'a sequence
+                                     val empty_sequence : unit -> 'a sequence
+                                   end) :
+                        sig
+                          type 'a semantic_type
+                          type semantic_value
+                          type 'a sequence
+                          exception SemanticValueError of string
+                          val add_semantic_value : semantic_value
+                                                   -> semantic_value -> unit
+                          val cast_from : 'a semantic_type
+                                          -> semantic_value -> 'a sequence
+                          val cast_to : 'a semantic_type
+                                        -> 'a sequence -> semantic_value
+                          val void_semantic_value : semantic_value
+                        end
+functor MkWhole : <sig>

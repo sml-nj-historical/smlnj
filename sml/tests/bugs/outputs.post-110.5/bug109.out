@@ -1,0 +1,14 @@
+val it = () : unit
+signature EQSIG =
+  sig
+    type r
+    datatype s = S of r
+    datatype t = T of s
+    sharing type t = r
+  end
+bug109.sml:12.23-12.30 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         X.t * X.t
+  in expression:
+    x = x
+
