@@ -46,24 +46,24 @@ structure Array2 :> ARRAY2 =
 	   of 0 => {data = Assembly.array0, nrows = 0, ncols = 0}
 	    | n => {data = mkArray (n, v), nrows = nrows, ncols = ncols}
 	  (* end case *))
-    fun fromList [] = {data = Assembly.array0, nrows = 0, ncols = 0}
-      | fromList (row1 :: rest) = let
-	  val ncols = List.length row1
-	  fun chk ([], nrows, l) = (nrows, l)
-	    | chk (row::rest, nrows, l) = let
-		fun chkRow ([], n, revCol) = (
-		      if (n <> ncols) then raise General.Size else ();
-		      List.revAppend (revCol, l))
-		  | chkRow (x::r, n, revCol) = chkRow (r, n+1, x::revCol)
+    fun fromList rows = (case List.rev rows
+	   of [] => {data = Assembly.array0, nrows = 0, ncols = 0}
+	    | (lastRow::rest) => let
+		val nCols = List.length lastRow
+		fun chk ([], nRows, l) = (nRows, l)
+		  | chk (row::rest, nRows, l) = let
+		      fun chkRow ([], n) = (
+			    if (n <> nCols) then raise General.Size else ();
+			    l)
+			| chkRow (x::r, n) = x :: chkRow(r, n+1)
+		      in
+			chk (rest, nRows+1, chkRow(row, 0))
+		      end
+		val (nRows, data) = chk(rest, 1, lastRow)
 		in
-		  chk (rest, nrows+1, chkRow(row, 0, []))
+		  {data = Array.fromList data, nrows = nRows, ncols = nCols}
 		end
-	  val (nrows, flatList) = chk (rest, 1, [])
-	  in
-	    { data = Array.fromList(List.@(row1, flatList)),
-	      nrows = nrows, ncols = ncols
-	    }
-	  end
+	  (* end case *))
     fun tabulateRM (nrows, ncols, f) = (case chkSize (nrows, ncols)
 	   of 0 => {data = Assembly.array0, nrows = nrows, ncols = ncols}
 	    | n => let
@@ -288,3 +288,12 @@ structure Array2 :> ARRAY2 =
 
   end
 
+(*
+ * $Log: array2.sml,v $
+ * Revision 1.2  1998/08/21 17:28:58  jhr
+ *   Fixed bug in row function.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:03  george
+ * Version 110.5
+ *
+ *)

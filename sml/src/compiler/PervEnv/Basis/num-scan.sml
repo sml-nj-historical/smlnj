@@ -79,9 +79,35 @@ structure NumScan : sig
 				 * true, then signs (+, -, ~) are not okay.
 				 *)
 	xOkay : bool,		(* true if 0[xX] prefix is okay *)
+        ptOkay: bool,           (* true if can start with point *)
 	isDigit : word -> bool	(* returns true for allowed digits *)
       }
 
+    (* scanPrefix : prefix_pat -> (char,'a) reader -> 'a
+                    -> {neg: bool, next: word (* code *), rest: 'a} option
+       scans prefix for a number:
+       binPat(true)  {wOkay=true, xOkay=false, ptOkay=false, isBinDigit} =>
+	   (0[wW])?b (b binary digit)
+       binPat(false) {wOkay=true, xOkay=false, ptOkay=false, isBinDigit} =>
+	   [-~+]?b
+       octPat(true)  {wOkay=true, xOkay=false, ptOkay=false, isOctDigit} =>
+	   (0[wW])?o (o octal digit)
+       octPat(false) {wOkay=false, xOkay=false, ptOkay=false, isOctDigit} =>
+	   [-~+]?o
+       hexPat(true)  {wOkay=true, xOkay=true, ptOkay=false, isHexDigit} =>
+           (0[wW][xX])?h (h hex digit)
+       hexPat(false) {wOkay=false, xOkay=true, ptOkay=false, isHexDigit} =>
+	   [-~+]?(0[xX])?h
+       decPat(true,false) {wOkay=true, xOkay=false, ptOkay=false, isDecDigit} =>
+           (0[wW][xX])?d (d decimal digit)
+       decPat(false,false){wOkay=false, xOkay=false, ptOkay=false, isDecDigit} =>
+	   [-~+]?d
+       decPat(false,true) {wOkay=false, xOkay=false, ptOkay=true, isDecDigit} =>
+	   [-~+]?[.d]
+
+       Sign characters, initial 0x, 0w, etc are consumed.  The initial
+       digit or point code is returned as the value of next.
+     *)
     fun scanPrefix (p : prefix_pat) getc cs = let
 	  fun getNext cs = (case (getc cs)
 		 of NONE => NONE
@@ -122,7 +148,7 @@ structure NumScan : sig
 		  then SOME{neg=neg, next = c, rest = cs}
 		  else finish (neg, savedCS)
 	  and finish (neg, (c, cs)) =
-		if ((#isDigit p) c)
+		if ((#isDigit p) c) orelse ((c = ptCode) andalso (#ptOkay p))
 		  then SOME{neg=neg, next = c, rest = cs}
 		  else NONE
 	  in
@@ -140,10 +166,11 @@ structure NumScan : sig
     fun isDecDigit d = (d < 0w10)
     fun isHexDigit d = (d < 0w16)
 
-    fun binPat wOkay = {wOkay=wOkay, xOkay=false, isDigit=isBinDigit}
-    fun octPat wOkay = {wOkay=wOkay, xOkay=false, isDigit=isOctDigit}
-    fun decPat wOkay = {wOkay=wOkay, xOkay=false, isDigit=isDecDigit}
-    fun hexPat wOkay = {wOkay=wOkay, xOkay=true, isDigit=isHexDigit}
+    fun binPat wOkay = {wOkay=wOkay, xOkay=false, ptOkay=false, isDigit=isBinDigit}
+    fun octPat wOkay = {wOkay=wOkay, xOkay=false, ptOkay=false, isDigit=isOctDigit}
+    fun hexPat wOkay = {wOkay=wOkay, xOkay=true,  ptOkay=false, isDigit=isHexDigit}
+    fun decPat (wOkay,ptOkay) = {wOkay=wOkay, xOkay=false, ptOkay=ptOkay,
+				 isDigit=isDecDigit}
 
     fun scanBin isWord getc cs = (case (scanPrefix (binPat isWord) getc cs)
 	   of NONE => NONE
@@ -185,7 +212,7 @@ structure NumScan : sig
 		end
 	  (* end case *))
 
-    fun scanDec isWord getc cs = (case (scanPrefix (decPat isWord) getc cs)
+    fun scanDec isWord getc cs = (case (scanPrefix (decPat(isWord,false)) getc cs)
 	   of NONE => NONE
 	    | (SOME{neg, next, rest}) => let
 		fun cvt (w, rest) = (case (getc rest)
@@ -310,13 +337,9 @@ structure NumScan : sig
 		  | NONE => NONE
 		(* end case *))
 	  fun getFrac rest = (case (scan10 rest)
-		 of SOME(frac, n, rest) => (SOME(scaleDown(frac, n)), rest)
-		  | NONE => (NONE, rest)
+		 of SOME(frac, n, rest) => SOME(scaleDown(frac, n), rest)
+		  | NONE => NONE
 		(* end case *))
-	  fun combine (SOME whole, SOME frac) = R.+(whole, frac)
-	    | combine (SOME whole, NONE) = whole
-	    | combine (NONE, SOME frac) = frac
-	    | combine _ = raise Option.Option
 	  fun negate (true, num) = R.~ num
 	    | negate (false, num) = num
 	  fun scanExp cs = (case (getc cs)
@@ -338,64 +361,70 @@ structure NumScan : sig
 		      end
 		  | NONE => NONE
 		(* end case *))
-	  fun getExp cs = (case (getc cs)
-		 of (SOME(c, cs)) => if (code c = eCode)
-		      then (case (getc cs)
-			 of SOME(c, cs') => let
-			      val codeC = code c
-			      val (isNeg, cs) = if (codeC = minusCode)
-				      then (true, cs')
-				    else if (codeC = plusCode)
-				      then (false, cs')
-				      else (false, cs)
-			      in
-			        case scanExp cs
-				 of SOME(exp, cs) => SOME(isNeg, exp, cs)
-				  | NONE => NONE
-				(* end case *)
-			      end
-			  | NONE => NONE
-			(* end case *))
-		      else NONE
-		  | NONE => NONE
-		(* end case *))
+	  fun getExp(num,cs) =
+	      case (getc cs)
+	        of (SOME(c, cs1)) =>
+		    if (code c = eCode)
+		    then (case (getc cs1)
+			    of SOME(c, cs2) =>
+				let val codeC = code c
+				    val (isNeg, cs3) =
+					if (codeC = minusCode) then (true, cs2)
+					else if (codeC = plusCode)
+					  then (false, cs2)
+					else (false, cs1)  (* no sign *)
+				 in case scanExp cs3
+				      of SOME(exp, cs4) =>
+			                 SOME(if isNeg
+					        then scaleDown(num, exp)
+					        else scaleUp(num, exp),
+				              cs4)
+				       | NONE => SOME(num, cs)
+				   (* end case *)
+				end
+			     | NONE => SOME(num, cs)
+			 (* end case *))
+		    else SOME(num, cs)
+		 | NONE => SOME(num, cs)
+	     (* end case *)
 	  in
-	    case (scanPrefix (decPat false) getc cs)
+	    case (scanPrefix (decPat(false,true)) getc cs)
 	     of NONE => NONE
-	      | (SOME{neg, next, rest}) => let
-		  val (whole, hasPt, rest) = if (next = ptCode)
-			then (NONE, true, rest)
-			else let
-			  val (whole, rest) = (case fscan10 getc (next, rest)
-				 of SOME(whole, _, rest) => (SOME whole, rest)
-				  | NONE => (NONE, rest)
-				(* end case *))
-			  in
-			    case (getc rest)
-			     of SOME(#".", rest) => (whole, true, rest)
-			      | _ => (whole, false, rest)
-			    (* end case *)
-			  end
-		  val (frac, rest) = if hasPt then getFrac rest else (NONE, rest)
-		  val num = negate (neg, combine (whole, frac))
-		  in
-		    case (getExp rest)
-		     of (SOME(isNeg, exp, rest)) =>
-			  if isNeg
-			    then SOME(scaleDown(num, exp), rest)
-			    else SOME(scaleUp(num, exp), rest)
-		      | NONE => SOME(num, rest)
-		    (* end case *)
-		  end
-	    (* end case *)
+	      | (SOME{neg, next, rest}) =>
+		 if (next = ptCode) (* initial point after prefix *)
+		 then (case getFrac rest
+		         of SOME(frac, rest) => 
+		              getExp(negate(neg,frac),rest)
+		          | NONE => NONE (* initial point not followed by digit *)
+		      (* end case *))
+		 else (* ASSERT: next must be a digit *)
+		   (* get whole number part *)
+		   (case fscan10 getc (next, rest)
+		      of SOME(whole, _, rest) =>
+			   (case (getc rest)
+			     of SOME(#".", rest') =>
+				 (* whole part followed by point, get fraction *)
+				(case getFrac rest'
+				   of SOME(frac,rest'') => (* fraction exists *)
+				       getExp(negate(neg,R.+(whole,frac)),rest'')
+                                    | NONE =>
+				       (* no fraction -- point terminates num *)
+				       SOME(negate(neg,whole), rest)
+		                 (* end case *))
+			      | _ => getExp(negate(neg,whole),rest)
+			   (* end case *))
+		       | NONE => NONE (* ASSERT: this case can't happen *)
+		   (* end case *))
 	  end
-	    handle Option => NONE
 
   end;
 
 
 (*
- * $Log$
+ * $Log: num-scan.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:04  george
+ * Version 110.5
+ *
  *)
 
 
