@@ -69,7 +69,7 @@ struct
     | T.SOURCE{block, liveIn} => 0w123 + w block + ws liveIn
     | T.SINK{block, liveOut} => 0w423 + w block + ws liveOut
     | T.REGION(stm,ctrl) => hashStm stm + hashCtrl ctrl
-    | T.RTL{hash,...} => !hash
+    | T.RTL{hash,...} => hash
     | T.SEQ ss => hashStms(ss, 0w23)
     | _ => error "hashStm" 
 
@@ -212,7 +212,7 @@ struct
         a=a' andalso eqCCexp(b,b') andalso eqLabel(c,c')
     | eqStm(T.IF(a,b,c,d),T.IF(a',b',c',d')) = 
         a=a' andalso eqCCexp(b,b') andalso eqStm(c,c') andalso eqStm(d,d')
-    | eqStm(T.RTL{hash=x,...},T.RTL{hash=y,...}) = x=y
+    | eqStm(T.RTL{attribs=x,...},T.RTL{attribs=y,...}) = x=y
     | eqStm(T.REGION(a,b),T.REGION(a',b')) = b = b' andalso eqStm(a,a')
     | eqStm(T.EXT a,T.EXT a') = eqSext (equality()) (a,a')
     | eqStm _ = false

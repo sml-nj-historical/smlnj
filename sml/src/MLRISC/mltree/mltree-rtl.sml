@@ -321,15 +321,15 @@ struct
    in  #stm (Fold.fold{stm=stm,rexp=rexp, fexp=fexp, ccexp=ccexp}) rtl
    end
 
-   fun pin(T.RTL{attribs, hash, e}) = 
-        T.RTL{attribs=attribs || A_PINNED, hash=hash, e=e}
+   fun pin(x as T.RTL{attribs, ...}) = 
+        (attribs := (!attribs || A_PINNED); x)
      | pin _ = error "pin"
 
    (* Query functions *)
    fun isOn(a,flag) = Word.andb(a,flag) <> 0w0
 
    fun can'tMoveUp(T.RTL{attribs, ...}) = 
-          isOn(attribs, A_SIDEEFFECT || A_TRAPPING || A_PINNED)
+          isOn(!attribs, A_SIDEEFFECT || A_TRAPPING || A_PINNED)
      | can'tMoveUp(T.PHI _) = true
      | can'tMoveUp(T.SOURCE _) = true
      | can'tMoveUp(T.SINK _) = true
@@ -339,29 +339,29 @@ struct
      | can'tMoveDown(T.SOURCE _) = true
      | can'tMoveDown(T.SINK _) = true
      | can'tMoveDown(T.RTL{attribs, ...}) = 
-          isOn(attribs, A_SIDEEFFECT || A_BRANCH || A_JUMP || A_TRAPPING ||
+          isOn(!attribs, A_SIDEEFFECT || A_BRANCH || A_JUMP || A_TRAPPING ||
                         A_PINNED ||
                         A_LOOKER (* can be avoided with pure loads! XXX *))
 
    fun pinned(T.RTL{attribs, ...}) = 
-         isOn(attribs, A_SIDEEFFECT || A_TRAPPING || A_PINNED)
+         isOn(!attribs, A_SIDEEFFECT || A_TRAPPING || A_PINNED)
      | pinned(T.PHI _) = true
      | pinned(T.SOURCE _) = true
      | pinned(T.SINK _) = true
      | pinned _ = false
 
-   fun hasSideEffect(T.RTL{attribs, ...}) = isOn(attribs, A_SIDEEFFECT)
+   fun hasSideEffect(T.RTL{attribs, ...}) = isOn(!attribs, A_SIDEEFFECT)
      | hasSideEffect _ = false
    fun can'tBeRemoved(T.RTL{attribs, ...}) = 
-         isOn(attribs, A_SIDEEFFECT || A_BRANCH || A_JUMP)
+         isOn(!attribs, A_SIDEEFFECT || A_BRANCH || A_JUMP)
      | can'tBeRemoved(T.SOURCE _) = true
      | can'tBeRemoved(T.SINK _) = true
      | can'tBeRemoved _ = false
-   fun isConditionalBranch(T.RTL{attribs, ...}) = isOn(attribs,A_BRANCH)
+   fun isConditionalBranch(T.RTL{attribs, ...}) = isOn(!attribs,A_BRANCH)
      | isConditionalBranch _ = false
-   fun isJump(T.RTL{attribs, ...}) = isOn(attribs,A_JUMP)
+   fun isJump(T.RTL{attribs, ...}) = isOn(!attribs,A_JUMP)
      | isJump _ = false
-   fun isLooker(T.RTL{attribs, ...}) = isOn(attribs,A_LOOKER)
+   fun isLooker(T.RTL{attribs, ...}) = isOn(!attribs,A_LOOKER)
      | isLooker _ = false
 
    (*
@@ -373,7 +373,7 @@ struct
        val rtl = 
          case rtl of
            T.COPY _ => rtl
-         | _ => T.RTL{e=rtl,hash=ref(newHash()),attribs=attribs}
+         | _ => T.RTL{e=rtl,hash=newHash(),attribs=ref attribs}
    in  rtl 
    end
 

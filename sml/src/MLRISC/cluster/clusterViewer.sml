@@ -44,15 +44,18 @@ struct
 
        fun title(blknum,ref freq) = 
            " "^Int.toString blknum^" ("^W.toString freq^")"
+
+       fun ann(annotations) = 
+            List.foldl(fn (a,l) => "/* "^Annotations.toString a^" */\n"^l) ""
+                             (!annotations)
+
        fun node(_,F.ENTRY{blknum,freq,...}) = 
-              [L.LABEL("entry"^title(blknum,freq))]
+              [L.LABEL("entry"^title(blknum,freq)^"\n"^ann(annotations))]
          | node(_,F.EXIT{blknum,freq,...})  = 
               [L.LABEL("exit"^title(blknum,freq))]
          | node(_,F.BBLOCK{annotations,blknum,freq,insns,...}) =
               [L.LABEL(title(blknum,freq)^"\n"^
-                 List.foldl(fn (a,l) => 
-                               "/* "^Annotations.toString a^" */\n"^l) ""
-                             (!annotations)^
+                 ann(annotations)^
                  (if !outline then "" else
                  List.foldl (fn (i,t) => 
                              let val text = toString i

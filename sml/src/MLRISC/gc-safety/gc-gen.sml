@@ -55,6 +55,7 @@ struct
        fun dummy _ = error "no extension" 
        val stream as T.Stream.STREAM{beginCluster, endCluster, ...} = 
            MLTreeComp.selectInstructions instrStream
+       val cfgAnnotations = CFG.annotations IR
  
        (*
         * For each gc-point, invoke the callback to generate GC code.

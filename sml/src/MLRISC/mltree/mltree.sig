@@ -85,7 +85,7 @@ signature MLTREE = sig
     | PHI    of {preds:int list, block:int}
     | SOURCE of {block:int, liveIn:reg list}
     | SINK   of {block:int, liveOut:reg list}
-    | RTL    of {hash:word ref, attribs:Basis.attribs, e:stm}
+    | RTL    of {hash:word, attribs:Basis.attribs ref, e:stm}
    
   and rexp = 
       REG    of ty * reg            (* rtl *)

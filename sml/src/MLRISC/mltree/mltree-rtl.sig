@@ -30,7 +30,8 @@ sig
 
    structure T : MLTREE
    structure Util : MLTREE_UTILS 
-      sharing Util.T = T
+   structure Rewrite : MLTREE_REWRITE
+      sharing Util.T = Rewrite.T = T
       sharing RTLExt = T.Extension
       sharing Basis  = T.Basis
       sharing T.Region = Region

@@ -364,6 +364,7 @@ functor X86Spill(structure Instr: X86INSTR
       (case instr of 
          I.FSTPL _ => {proh=[], code=[mark(I.FSTPL spillLoc, an)], newReg=NONE}
        | I.FSTPS _ => {proh=[], code=[mark(I.FSTPS spillLoc, an)], newReg=NONE}
+       | I.FSTPT _ => {proh=[], code=[mark(I.FSTPT spillLoc, an)], newReg=NONE}
        | I.FSTL _ => {proh=[], code=[mark(I.FSTL spillLoc, an)], newReg=NONE}
        | I.FSTS _ => {proh=[], code=[mark(I.FSTS spillLoc, an)], newReg=NONE}
        | I.CALL(opnd, defs, uses, mem) =>

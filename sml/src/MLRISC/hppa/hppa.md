@@ -789,7 +789,7 @@ struct
          |  FARITH _        = 1
        and  FMPY  PA_700    = 2
          |  FMPY  PA_7100   = 2
-         |  FMPY  _         = 1
+         |  FMPY  _         = 2
        and  FDIV  PA_700    = 9
          |  FDIV  PA_7100   = 14
          |  FDIV  _         = 14

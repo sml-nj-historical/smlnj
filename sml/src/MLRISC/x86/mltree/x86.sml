@@ -175,8 +175,24 @@ struct
         | setZeroBit(T.SRA _)      = true
         | setZeroBit(T.SRL _)      = true
         | setZeroBit(T.SLL _)      = true
+        | setZeroBit(T.SUB _)      = true
+        | setZeroBit(T.ADDT _)     = true
+        | setZeroBit(T.SUBT _)     = true
         | setZeroBit(T.MARK(e, _)) = setZeroBit e
         | setZeroBit _             = false
+
+      fun setZeroBit2(T.ANDB _)     = true
+        | setZeroBit2(T.ORB _)      = true
+        | setZeroBit2(T.XORB _)     = true
+        | setZeroBit2(T.SRA _)      = true
+        | setZeroBit2(T.SRL _)      = true
+        | setZeroBit2(T.SLL _)      = true
+        | setZeroBit2(T.ADD(32, _, _)) = true (* can't use leal! *)
+        | setZeroBit2(T.SUB _)      = true
+        | setZeroBit2(T.ADDT _)     = true
+        | setZeroBit2(T.SUBT _)     = true
+        | setZeroBit2(T.MARK(e, _)) = setZeroBit2 e
+        | setZeroBit2 _             = false
 
       (* emit parallel copies for floating point *)
       fun fcopy(fty, [], [], _) = ()
@@ -602,18 +618,30 @@ struct
                    * only writes to the low order
                    * byte.  That's Intel architecture, folks.
                    *)
-                  zero eax;
-                  case (yes, no) of
-                    (1, 0) => (* normal case *)
+                  case (yes, no, cc) of
+                    (1, 0, T.LT) =>
+                     let val tmp = I.Direct(expr(T.SUB(32,t1,t2)))
+                     in  move(tmp, rdOpnd);
+                         emit(I.BINARY{binOp=I.SHRL,src=I.Immed 31,dst=rdOpnd})
+                     end
+                  | (1, 0, T.GT) =>
+                     let val tmp = I.Direct(expr(T.SUB(32,t1,t2)))
+                     in  emit(I.UNARY{unOp=I.NOTL,opnd=tmp});
+                         move(tmp, rdOpnd);
+                         emit(I.BINARY{binOp=I.SHRL,src=I.Immed 31,dst=rdOpnd})
+                     end
+                  | (1, 0, _) => (* normal case *)
                     let val cc = cmp(true, ty, cc, t1, t2, []) 
                     in  mark(I.SET{cond=cond cc, opnd=eax}, an);
+                        emit(I.BINARY{binOp=I.ANDL,src=I.Immed 255, dst=eax});
                         move(eax, rdOpnd)
                     end
-                  | (C1, C2)  => 
+                  | (C1, C2, _)  => 
                     (* general case; 
                      * from the Intel optimization guide p3-5 
                      *)
-                    let val cc = cmp(true, ty, cc, t1, t2, []) 
+                    let val _  = zero eax;
+                        val cc = cmp(true, ty, cc, t1, t2, []) 
                     in  case C1-C2 of
                           D as (1 | 2 | 3 | 4 | 5 | 8 | 9) =>
                           let val (base,scale) = 
@@ -720,7 +748,17 @@ struct
              | T.ADD(32, T.LI ~1, e) => unary(I.DECL, e)
              | T.ADD(32, e1, e2) => addition(e1, e2)
 
+               (* 32-bit addition but set the flag!
+                * This is a stupid hack for now.  
+                *)
+             | T.ADD(0, e, (T.LI 1|T.LI32 0w1)) => unary(I.INCL, e)
+             | T.ADD(0, (T.LI 1|T.LI32 0w1), e) => unary(I.INCL, e)
+             | T.ADD(0, e, T.LI ~1) => unary(I.DECL, e)
+             | T.ADD(0, T.LI ~1, e) => unary(I.DECL, e)
+             | T.ADD(0, e1, e2) => binaryComm(I.ADDL, e1, e2)
+
                (* 32-bit subtraction *)
+             | T.SUB(32, e, (T.LI 0 | T.LI32 0w0)) => doExpr(e, rd, an)
              | T.SUB(32, e, (T.LI 1 | T.LI32 0w1)) => unary(I.DECL, e)
              | T.SUB(32, e, T.LI ~1) => unary(I.INCL, e)
              | T.SUB(32, (T.LI 0 | T.LI32 0w0), e) => unary(I.NEGL, e)
@@ -797,14 +835,19 @@ struct
           * On the x86, TEST is superior to AND for doing the same thing,
           * since it doesn't need to write out the result in a register.
           *)
-     and cmpWithZero(cc as (T.EQ | T.NE), e as T.ANDB(ty, a, b))  = 
+     and cmpWithZero(cc as (T.EQ | T.NE), e as T.ANDB(ty, a, b), an) = 
             (case ty of
-               8 =>  test(I.TESTB, a, b)
-             | 16 => test(I.TESTW, a, b)
-             | 32 => test(I.TESTL, a, b)
-             | _  => (expr e; ())
-             ; cc)
-        | cmpWithZero(cc, e) = (expr e; cc)
+               8  => test(I.TESTB, a, b, an)
+             | 16 => test(I.TESTW, a, b, an)
+             | 32 => test(I.TESTL, a, b, an)
+             | _  => doExpr(e, newReg(), an); 
+             cc)  
+        | cmpWithZero(cc, e, an) = 
+          let val e = 
+                case e of (* hack to disable the lea optimization XXX *)
+                  T.ADD(_, a, b) => T.ADD(0, a, b)
+                | e => e
+          in  doExpr(e, newReg(), an); cc end
 
           (* Emit a test.
            *   The available modes are
@@ -821,12 +864,12 @@ struct
            * are one of EAX, ECX, EBX, or EDX, replace the TESTL instruction 
            * by TESTB.
            *)
-      and test(testopcode, a, b) = 
+      and test(testopcode, a, b, an) = 
           let val (_, opnd1, opnd2) = commuteComparison(T.EQ, true, a, b)
               (* translate r, r/m => r/m, r *)
               val (opnd1, opnd2) = 
                    if isMemOpnd opnd2 then (opnd2, opnd1) else (opnd1, opnd2)
-          in  emit(testopcode{lsrc=opnd1, rsrc=opnd2})
+          in  mark(testopcode{lsrc=opnd1, rsrc=opnd2}, an)
           end
 
          (* generate a condition code expression 
@@ -848,17 +891,20 @@ struct
            * we can also reorder the operands. 
            *)
       and cmp(swapable, ty, cc, t1, t2, an) = 
-          (case cc of
-             (T.EQ | T.NE) => 
-              (* Sometimes the comparison is not necessary because
-               * the bits are already set! 
-               *)
-              if isZero t1 andalso setZeroBit t2 then cmpWithZero(cc, t2)
-              else if isZero t2 andalso setZeroBit t1 then cmpWithZero(cc, t1)
-                   (* == and <> can be reordered *)
-              else genCmp(ty, true, cc, t1, t2, an) 
-           |  _ => genCmp(ty, swapable, cc, t1, t2, an)
-          )
+               (* == and <> can be always be reordered *)
+          let val swapable = swapable orelse cc = T.EQ orelse cc = T.NE
+          in (* Sometimes the comparison is not necessary because
+              * the bits are already set! 
+              *)
+             if isZero t1 andalso setZeroBit2 t2 then 
+                 if swapable then
+                    cmpWithZero(T.Basis.swapCond cc, t2, an)
+                 else (* can't reorder the comparison! *)
+                    genCmp(ty, false, cc, t1, t2, an)
+             else if isZero t2 andalso setZeroBit2 t1 then 
+                cmpWithZero(cc, t1, an)
+             else genCmp(ty, swapable, cc, t1, t2, an) 
+          end
 
           (* Give a and b which are the operands to a comparison (or test)
            * Return the appropriate condition code and operands.

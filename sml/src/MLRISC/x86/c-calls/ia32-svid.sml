@@ -6,7 +6,7 @@
  *
  * Register conventions:
  *
- *    %eax	return value
+ *    %eax	return value		(caller save)
  *    %ebx	global offset for PIC	(callee save)
  *    %ecx	scratch			(caller save)
  *    %edx	extra return/scratch	(caller save)
@@ -96,24 +96,31 @@ struct
     fun fpr(sz,f) = T.FPR(T.FREG(sz, f))
     fun gpr(sz,r) = T.GPR(T.REG(sz, r))
     val st0 = C.ST(0)
-    fun eax(sz) = [gpr(sz, C.eax)]
-    val eax32 = eax(32)
-    val pair = gpr(32, C.edx):: eax32
+  (* note that the caller saves includes the result register (%eax) *)
+    val callerSaves = [gpr(32, C.eax), gpr(32, C.ecx), gpr(32, C.edx)]
+    val oneRes = [gpr(32, C.eax)]
+    val twoRes = [gpr(32, C.edx), gpr(32, C.eax)]
   in
-   (* List of result registers; 
+   (* List of registers defined by a C Call; this is the result registers
+    * plus the caller save registers.
     * Multiple returns have most significant register first.
     *)
-    fun results(Ty.C_void) = []
-      | results(Ty.C_float) = [fpr(32, st0)]
-      | results(Ty.C_double) = [fpr(64, st0)]
-      | results(Ty.C_long_double) = [fpr(80, st0)]
-      | results(Ty.C_unsigned(Ty.I_long_long)) = pair
-      | results(Ty.C_signed(Ty.I_long_long)) =  pair
-      | results(Ty.C_unsigned i) = eax(intTy i)
-      | results(Ty.C_signed i) = eax(intTy i)
-      | results(Ty.C_PTR) = eax32
-      | results(Ty.C_ARRAY _) = eax32
-      | results(Ty.C_STRUCT _) = eax32
+    fun resultsAndDefs (Ty.C_void) = ([], callerSaves)
+      | resultsAndDefs (Ty.C_float) =
+	  ([fpr(32, st0)], fpr(32, st0) :: callerSaves)
+      | resultsAndDefs (Ty.C_double) =
+	  ([fpr(64, st0)], fpr(64, st0) :: callerSaves)
+      | resultsAndDefs (Ty.C_long_double) =
+	  ([fpr(80, st0)], fpr(80, st0) :: callerSaves)
+      | resultsAndDefs (Ty.C_unsigned(Ty.I_long_long)) =
+	  (twoRes, gpr(32, C.edx) :: callerSaves)
+      | resultsAndDefs (Ty.C_signed(Ty.I_long_long)) =
+	  (twoRes, gpr(32, C.edx) :: callerSaves)
+      | resultsAndDefs (Ty.C_unsigned i) = (oneRes, callerSaves)
+      | resultsAndDefs (Ty.C_signed i) = (oneRes, callerSaves)
+      | resultsAndDefs (Ty.C_PTR) = (oneRes, callerSaves)
+      | resultsAndDefs (Ty.C_ARRAY _) = (oneRes, callerSaves)
+      | resultsAndDefs (Ty.C_STRUCT _) = (oneRes, callerSaves)
 
     fun fstp (sz, f)  =
       (case sz
@@ -288,11 +295,10 @@ struct
      (*esac*))
 
     (* call defines callersave registers and uses result registers. *)
-    fun mkCall uses = let
-      val defs = [T.GPR(T.REG(32,C.ecx)), T.GPR(T.REG(32,C.edx))]
-    in T.CALL{funct=name, targets=[], defs=defs, uses=uses, 
-              cdefs=[], cuses=[], region=T.Region.memory}
-    end
+    fun mkCall defs = T.CALL{
+	    funct=name, targets=[], defs=defs, uses=[], 
+            cdefs=[], cuses=[], region=T.Region.memory
+	  }
 
     (* size to pop off on return *)
     fun argsSz(Ty.C_STRUCT fields::rest) = let
@@ -308,10 +314,12 @@ struct
       | argsSz [] = 0
 
     
-    val c_rets = results(retTy)
-    val (retRegs, cpyOut) = copyOut(c_rets, [], [])
-    val popArgs = T.MV(32, sp, T.ADD(32, T.REG(32,sp), T.LI(argsSz paramTys)))
-    val call = mkCall(c_rets)::popArgs::cpyOut
+    val (cRets, cDefs) = resultsAndDefs (retTy)
+    val (retRegs, cpyOut) = copyOut(cRets, [], [])
+    val call = mkCall(cDefs) :: (case argsSz paramTys
+         of 0 => cpyOut
+          | n => T.MV(32, sp, T.ADD(32, T.REG(32,sp), T.LI n)) :: cpyOut
+        (* end case *))
     val callSeq = pushArgs(paramTys, args, pushStructRetAddr(call))
   in {callseq=callSeq, result=retRegs}
   end
@@ -321,3 +329,4 @@ struct
 end
 
      
+

@@ -1,14 +1,7 @@
 (* 
- * The algorithm for dominance frontier and iterated dominance
- * frontier is due to Sreedhar, Gao and Lee.   The algorithm as cited
- * uses the DJgraph.  In order not to bother with constructing and 
- * maintaining the DJgraph, we'll just use a combination of the dominator tree
- * and the original cfg.  This alteration does not change the linear
- * complexity of the algorithm.  I'm also using a simple time stamp trick to 
- * avoid the data structure initialization step; this should make the
- * algorithm sublinear in N in practice, where N is the number of nodes 
- * in the CFG.
- *
+ * The algorithm for computing iterated dominance frontier.
+ * This is the algorithm by Sreedhar, Gao and Lee.   
+ * 
  * --Allen
  *)
 
@@ -21,13 +14,26 @@ struct
 
    type ('n,'e,'g) dj_graph = ('n,'e,'g) Dom.dominator_tree
 
+   fun error msg = MLRiscErrorMsg.error("DJGraph",msg)
+
+   val stats          = false (* collect statistics? *)
+   val visitCount     = MLRiscControl.getCounter "dj-visit-count"
+   val idfCount       = MLRiscControl.getCounter "dj-IDF-count"
+   val idfSize        = MLRiscControl.getCounter "dj-IDF-size"
+   val liveVisitCount = MLRiscControl.getCounter "dj-live-visit-count"
+   val maxBlockSize   = MLRiscControl.getCounter "dj-max-block-size"
+   val totalBlockSize = MLRiscControl.getCounter "dj-total-block-size"
+   val debug          = false
+
+   fun DJ x = x 
+
    (* Compute dominance frontier *)
    fun DF (D as G.GRAPH dom) =
    let val G.GRAPH cfg = Dom.cfg D
        val L           = Dom.max_levels D
        val N           = #capacity dom ()
        val levels      = Dom.levelsMap D
-       val in_DF       = A.array(N,0)  (* has appeared in the DF set? *)
+       val in_phi      = A.array(N,0)  (* has appeared in the DF set? *)
        val stamp       = ref 0
        fun new_stamp() = let val s = !stamp + 1 in stamp := s; s end
 
@@ -48,7 +54,7 @@ struct
            fun walk(z, S) = 
                let fun scan((_,y,_)::es,S) =
                        if A.sub(levels,y) <= level_x andalso
-                           unmarked(in_DF,y,stamp) then scan(es,y::S)
+                           unmarked(in_phi,y,stamp) then scan(es,y::S)
                        else scan(es,S)
                      | scan([],S) = S
                    val S = scan(#out_edges cfg z,S)
@@ -67,7 +73,7 @@ struct
        val L           = Dom.max_levels D
        val N           = #capacity dom ()
        val levels      = Dom.levelsMap D
-       val in_DF       = A.array(N,0)  (* has appeared in the DF set? *)
+       val in_phi      = A.array(N,0)  (* has appeared in the DF set? *)
        val stamp       = ref 0
        fun new_stamp() = let val s = !stamp + 1 in stamp := s; s end
 
@@ -80,11 +86,14 @@ struct
        val visited   = A.array(N,0)  (* has it been visited *)
        val piggybank = A.array(L,[]) (* nodes in the piggy bank *)
 
+       val n = ref 0
        (* 
         * This algorithm is described in POPL 95 
         *)
        fun IDFs xs =
        let val stamp = new_stamp()
+           val _ = if stats then (idfCount := !idfCount + 1; n := !visitCount) 
+                   else ()
            fun init([],l) = l
              | init(x::xs,l) = 
                let val l_x = A.sub(levels,x)
@@ -96,7 +105,7 @@ struct
            let fun scan([],S) = S
                  | scan((_,z,_)::es,S) =
                    let val level_z = A.sub(levels,z)
-                   in  if level_z <= level_x andalso unmarked(in_DF,z,stamp) 
+                   in  if level_z <= level_x andalso unmarked(in_phi,z,stamp) 
                        then (if A.sub(in_alpha,z) <> stamp 
                              then A.update(piggybank,level_z,
                                            z::A.sub(piggybank,level_z)) 
@@ -109,7 +118,8 @@ struct
                    visitSucc(es,if unmarked(visited,z,stamp)
                                 then visit(z,level_x,S) else S)
                val S = scan(#out_edges cfg y,S)
-           in  visitSucc(#out_edges dom y,S) 
+           in  if stats then visitCount := !visitCount + 1 else ();
+               visitSucc(#out_edges dom y,S) 
            end 
 
            fun visitAll(~1,S) = S
@@ -121,87 +131,84 @@ struct
                            visitAll(l,visit(x,A.sub(levels,x),S)))
 
            val L = init(xs,~1) 
-       in  visitAll(L,[])
+           val IDF = visitAll(L,[])
+       in  if stats then
+               (idfSize := !idfSize + length IDF;
+                maxBlockSize := Int.max(!maxBlockSize, N);
+                totalBlockSize := !totalBlockSize + N
+               )
+           else ();
+           if debug then print("N="^Int.toString N^" visits="^
+                               Int.toString(!visitCount - !n)^"\n") else ();
+           IDF
        end
 
    in  IDFs
    end
 
-
-   (* Compute iterated dominance frontier intersected with liveness.
-    * This is my special algorithm!  The idea is that when we find a
-    * new node b in IDF^+(S) we first check whether b is liveIn.  If not,
-    * we can prune the search right there.  If so, we continue as normal.
-    * Checking whether something is liveIn triggers the incremental liveness 
-    * routine.
-    *
-    * -- Allen
-    *)
    fun LiveIDFs(D as G.GRAPH dom) = 
    let val G.GRAPH cfg = Dom.cfg D
        val L           = Dom.max_levels D
        val N           = #capacity dom ()
        val levels      = Dom.levelsMap D
-       val in_DF       = A.array(N,0)  (* has appeared in the DF set? *)
+
+       val in_phi      = A.array(N,0)  (* has appeared in the DF set? *)
        val stamp       = ref 0
-       fun new_stamp() = let val s = !stamp + 1 in stamp := s; s end
+       fun new_stamp() = let val s = !stamp + 2 in stamp := s; s end
+
+       val in_alpha   = A.array(N,0)  (* has appeared in N_alpha? *)
+       val piggybank  = A.array(L,[]) (* nodes in the piggy bank *)
+       val liveIn     = A.array(N,0) (* is a variable live in *)
+       val visited    = A.array(N,0)
 
        fun unmarked(marked,i,stamp : int) =
            let val s = A.sub(marked,i)
            in  if s = stamp then false else (A.update(marked,i,stamp); true)
            end
 
-       val in_alpha  = A.array(N,0)  (* has appeared in N_alpha? *)
-       val visited   = A.array(N,0)  (* has it been visited *)
-       val piggybank = A.array(L,[]) (* nodes in the piggy bank *)
-
-       val isLocalLiveIn   = A.array(N,0) (* is a variable local live in *)
-       val visitedLiveness = A.array(N,0) (* visited for liveness *)
-
        fun LiveIDFs {defs, localLiveIn=[]} = [] (* special case *)
          | LiveIDFs {defs=xs, localLiveIn} = 
        let val stamp = new_stamp()
+           val _ = if stats then idfCount := !idfCount + 1 else ()
+           (* val n = ref 0
+           val m = ref 0 *)
 
-           fun initDefs([],l) = l
-             | initDefs(x::xs,l) = 
-               let val l_x = A.sub(levels,x)
+           fun initDefs([],maxLvl) = maxLvl
+             | initDefs(x::xs,maxLvl) =
+               let val lvl_x = A.sub(levels,x)
                in  A.update(in_alpha,x,stamp);
-                   A.update(piggybank,l_x,x::A.sub(piggybank,l_x));
-                   initDefs(xs,if l < l_x then l_x else l)
+                   A.update(piggybank,lvl_x,x::A.sub(piggybank,lvl_x));
+                   initDefs(xs,if maxLvl < lvl_x then lvl_x else maxLvl)
                end 
 
-           fun initLocalLiveIn([]) = ()
-             | initLocalLiveIn(x::xs) = 
-                (A.update(isLocalLiveIn,x,stamp); initLocalLiveIn xs)
+           fun markLiveIn(b) =
+           let fun markPred [] = ()
+                 | markPred((j,_,_)::es) = 
+                    (if A.sub(liveIn,j) <> stamp andalso
+                        A.sub(in_alpha,j) <> stamp then
+                       markLiveIn j 
+                     else (); 
+                     markPred es
+                    )
+           in  (* m := !m + 1; *)
+               A.update(liveIn,b,stamp);
+               if stats then liveVisitCount := !liveVisitCount + 1 else ();
+               markPred(#in_edges cfg b)
+           end
 
-           fun isLiveIn(b) =
-               A.sub(isLocalLiveIn,b) = stamp orelse
-               A.sub(visitedLiveness,b) <> stamp andalso
-               let (* mark first to prevent infinite loop *)
-                    val _ = A.update(visitedLiveness,b,stamp) 
-                   (* no definition in this block and 
-                    * some successor is live out?
-                    *)
-                   val result = A.sub(in_alpha,b) <> stamp 
-                                andalso isAllLiveOut(#out_edges cfg b) 
-               in  if result then (* cache result *)
-                      A.update(isLocalLiveIn,b,stamp) else ();  
-                   result 
-               end
+           fun initLiveIn [] = ()
+             | initLiveIn(x::xs) = (markLiveIn x; initLiveIn xs)
 
-           and isAllLiveOut [] = false
-             | isAllLiveOut((_,j,_)::es) = isLiveIn j orelse isAllLiveOut es
+           fun isLive b = A.sub(liveIn,b) = stamp
 
            fun visit(y,level_x,S) =
            let fun scan([],S) = S
                  | scan((_,z,_)::es,S) =
                    let val level_z = A.sub(levels,z)
-                   in  if level_z <= level_x andalso unmarked(in_DF,z,stamp) 
-                           (* z is a new IDF^+ candidate; 
-                            * make sure it is live.
-                            *)
-                          andalso isLiveIn z then
-                            (if A.sub(in_alpha,z) <> stamp 
+                   in  if level_z <= level_x andalso 
+                          isLive z andalso
+                          unmarked(in_phi,z,stamp) 
+                       then (if A.sub(in_alpha,z) <> stamp 
                              then A.update(piggybank,level_z,
                                            z::A.sub(piggybank,level_z)) 
                              else ();
@@ -210,7 +217,7 @@ struct
                    end
                fun visitSucc([],S) = S
                  | visitSucc((_,z,_)::es,S) = 
-                   visitSucc(es,if unmarked(visited,z,stamp)
+                   visitSucc(es,if isLive z andalso unmarked(visited,z,stamp)
                                 then visit(z,level_x,S) else S)
                val S = scan(#out_edges cfg y,S)
            in  visitSucc(#out_edges dom y,S) 
@@ -224,9 +231,9 @@ struct
                            A.update(piggybank,l,xs);
                            visitAll(l,visit(x,A.sub(levels,x),S)))
 
-           val _ = initLocalLiveIn(localLiveIn)
-           val L = initDefs(xs,~1) 
-       in  visitAll(L,[])
+           val L = initDefs(xs, ~1) 
+       in  initLiveIn(localLiveIn);
+           visitAll(L, [])
        end
 
    in  LiveIDFs

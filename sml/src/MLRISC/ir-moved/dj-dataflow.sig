@@ -4,13 +4,13 @@
 signature DJ_DATAFLOW = 
 sig
 
-   structure DJ : DJ_GRAPH
+   structure Dom : DOMINATOR_TREE
 
    val analyze : 
        { closure   : {y:Graph.node_id} -> unit,
          var_elim  : {y:Graph.node_id, z:Graph.node_id} -> unit,
          fixpoint  : {scc:Graph.node_id list} -> unit,
          compute   : {y:Graph.node_id, z:Graph.node_id} -> unit
-       } -> ('n,'e,'g) DJ.dj_graph -> unit
+       } -> ('n,'e,'g) Dom.dominator_tree -> unit
 
 end

@@ -316,18 +316,20 @@ struct
         emit ")"; 
         emit_region mem )
        )
+   and emit_operand8 (I.Direct r) = emit (C.showGPWithType (regmap r, 8))
+     | emit_operand8 opn = emit_operand opn
    and emit_disp (I.Immed 0) = ()
      | emit_disp (I.Immed i) = emitInt32 i
      | emit_disp (I.ImmedLabel lexp) = emit_labexp lexp
      | emit_disp _ = error "emit_disp"
 
-(*#line 291.7 "x86/x86.md"*)
+(*#line 294.7 "x86/x86.md"*)
    fun stupidGas (I.ImmedLabel lexp) = emit_labexp lexp
      | stupidGas opnd = 
        ( emit "*"; 
        emit_operand opnd )
 
-(*#line 295.7 "x86/x86.md"*)
+(*#line 298.7 "x86/x86.md"*)
    fun isMemOpnd (I.MemReg _) = true
      | isMemOpnd (I.FDirect f) = true
      | isMemOpnd (I.LabelEA _) = true
@@ -335,10 +337,10 @@ struct
      | isMemOpnd (I.Indexed _) = true
      | isMemOpnd _ = false
 
-(*#line 301.7 "x86/x86.md"*)
+(*#line 304.7 "x86/x86.md"*)
    fun chop fbinOp = let
 
-(*#line 302.15 "x86/x86.md"*)
+(*#line 305.15 "x86/x86.md"*)
           val n = size fbinOp
        in 
           (
@@ -349,25 +351,28 @@ struct
        end
 
 
-(*#line 308.7 "x86/x86.md"*)
+(*#line 311.7 "x86/x86.md"*)
    val emit_dst = emit_operand
 
-(*#line 309.7 "x86/x86.md"*)
+(*#line 312.7 "x86/x86.md"*)
    val emit_src = emit_operand
 
-(*#line 310.7 "x86/x86.md"*)
+(*#line 313.7 "x86/x86.md"*)
    val emit_opnd = emit_operand
 
-(*#line 311.7 "x86/x86.md"*)
+(*#line 314.7 "x86/x86.md"*)
+   val emit_opnd8 = emit_operand8
+
+(*#line 315.7 "x86/x86.md"*)
    val emit_rsrc = emit_operand
 
-(*#line 312.7 "x86/x86.md"*)
+(*#line 316.7 "x86/x86.md"*)
    val emit_lsrc = emit_operand
 
-(*#line 313.7 "x86/x86.md"*)
+(*#line 317.7 "x86/x86.md"*)
    val emit_addr = emit_operand
 
-(*#line 314.7 "x86/x86.md"*)
+(*#line 318.7 "x86/x86.md"*)
    val emit_src1 = emit_operand
    fun emitInstr' instr = 
        (
@@ -492,7 +497,7 @@ struct
         ( emit "set"; 
         emit_cond cond; 
         emit "\t"; 
-        emit_opnd opnd )
+        emit_opnd8 opnd )
       | I.CMOV{cond, src, dst} => 
         ( emit "cmov"; 
         emit_cond cond; 

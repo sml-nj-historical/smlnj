@@ -3,11 +3,10 @@
  * based algorithm.  I'm using the eager elimination method because in 
  * practice it is linear and is much easier to implement.  
  *)
-functor DJDataflow(DJ : DJ_GRAPH) : DJ_DATAFLOW = 
+functor DJDataflow(Dom : DOMINATOR_TREE) : DJ_DATAFLOW = 
 struct
 
-   structure DJ  = DJ
-   structure Dom = DJ.Dom
+   structure Dom = Dom
    structure G   = Graph
    structure A   = Array
 
@@ -15,12 +14,12 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("DJDataflow",msg)
 
-   fun analyze {closure, var_elim, fixpoint, compute} (DJ as G.GRAPH dom) =
-   let val L                  = Dom.max_levels DJ
+   fun analyze {closure, var_elim, fixpoint, compute} (Dom as G.GRAPH dom) =
+   let val L                  = Dom.max_levels Dom
        val N                  = #capacity dom ()
-       val CFG as G.GRAPH cfg = Dom.cfg DJ
-       val levelsMap          = Dom.levelsMap DJ
-       val idomsMap           = Dom.idomsMap DJ
+       val CFG as G.GRAPH cfg = Dom.cfg Dom
+       val levelsMap          = Dom.levelsMap Dom
+       val idomsMap           = Dom.idomsMap Dom
 
        (*
         * These store the current join edges during the graph reduction process

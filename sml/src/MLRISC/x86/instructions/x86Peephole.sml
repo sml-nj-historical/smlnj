@@ -78,17 +78,6 @@ struct
              else
                 loop(rest, i::instrs)
 
-             (* 
-              *   addl N, %esp
-              *   ret
-              * => 
-              *   ret N
-              *)
-           | (i as I.RET operand)::(j as I.BINARY{binOp=I.ADDL, src, dst}):: 
-           rest => if isStackPtr dst andalso isZeroOpt operand 
-                     then loop(rest, I.RET (SOME src)::instrs)
-                   else loop(rest, j::i::instrs)
-
            | i::rest => loop(rest, i::instrs)
            )
    in  loop(instrs, [])

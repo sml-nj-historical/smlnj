@@ -12,6 +12,41 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/08/7 19:31:00
+Tag: leunga-20000807-a-whole-bunch-of-stuff
+
+  Moby, C--, SSA, x86, machine descriptions etc.  Should only affect C--
+and Mobdy.
+
+1.  x86
+
+   a.  Fixes to peephole module by John and Dan.
+   b.  Assembly fix to SETcc by Allen.
+   c.  Fix to c-call by John.
+   d.  Fix to spilling by John.  (This one deals with the missing FSTPT case)
+   e.  Instruction selection optimization to SETcc as suggested by John.
+
+       For example,
+
+        MV(32, x, COND(32, CMP(32, LT, a, b), LI 1, LI 0))
+
+       should generate:
+
+        MOVL a, x
+        SUBL b, x
+        SHRL 31, x 
+
+2.  IR stuff
+
+     A bunch of new DJ-graph related algorithms added.  These
+     speed up SSA construction.
+
+3.  SSA + Scheduling
+
+     Added code for SSA and scheduling to the repository
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2000/07/27 11:53:14 EDT
 
