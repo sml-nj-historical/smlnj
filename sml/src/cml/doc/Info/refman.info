@@ -1,0 +1,6 @@
+@FILES
+  {@EMPTY "refman"; "The Concurrent Reference Manual";
+     @FILE "basics"
+     @FILE "core-cml"
+     @FILE "cml-lib"
+  }
