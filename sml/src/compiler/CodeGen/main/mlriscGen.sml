@@ -741,13 +741,13 @@ struct
             | int31xor(w, v as CPS.INT _) = int31xor (v,w)
             | int31xor(v, w) = addTag (M.XORB(ity, regbind v, regbind w))
 
-          fun int31mul(signed, v, w) = 
+          fun int31mul(signed, mulOp, v, w) = 
           let fun f(CPS.INT k, CPS.INT j) = (LI(k+k), LI(j))
                 | f(CPS.INT k, w) = (untag(signed,w), LI(k+k))
                 | f(v, w as CPS.INT _) = f(w, v)
                 | f(v, w) = (stripTag(regbind v), untag(signed,w))
               val (v, w) = f(v, w)
-          in  addTag(if signed then M.MULT(ity, v, w) else M.MULU(ity, v, w))
+          in  addTag(mulOp(ity, v, w))
           end
 
           fun int31div(signed, v, w) = 
@@ -1490,6 +1490,9 @@ struct
                      of P.xorb   => defI31(x, int31xor(v,w), e, hp)
                       | P.lshift => defI31(x, int31lshift(v,w), e, hp)
                       | P.rshift => defI31(x, int31rshift(M.SRA,v,w),e,hp)
+		      | P.+ => defI31(x, int31add(M.ADD, v, w), e, hp)
+		      | P.- => defI31(x, int31sub(M.SUB, v, w), e, hp)
+		      | P.* => defI31(x, int31mul(true, M.MULS, v, w), e, hp)
                       | _ => error "gen:PURE INT 31"
                     (*esac*))        
                  | P.INT 32  => (case oper
@@ -1501,7 +1504,7 @@ struct
                  | P.UINT 31 => (case oper
                      of P.+    => defI31(x, int31add(M.ADD, v, w), e, hp)
                       | P.-    => defI31(x, int31sub(M.SUB, v, w), e, hp)
-                      | P.*    => defI31(x, int31mul(false, v, w), e, hp)
+                      | P.*    => defI31(x, int31mul(false, M.MULU, v, w), e, hp)
                       | P./    => (* This is not really a pure 
                                      operation -- oh well *)
                                  (updtHeapPtr hp;
@@ -1704,7 +1707,7 @@ struct
                    case oper
                     of P.+ => int31add(M.ADDT, v, w)
                      | P.- => int31sub(M.SUBT, v, w)
-                     | P.* => int31mul(true, v, w)
+                     | P.* => int31mul(true, M.MULT, v, w)
                      | P./ => int31div(true, v, w)
                      | _   => error "gen:ARITH INT 31"
                in  defI31(x, t, e, 0) end

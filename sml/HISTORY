@@ -14,6 +14,43 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/03/25 17:25:00 EST
+Tag: blume-20020325-divmod
+Description:
+
+I improved (hopefully without breaking them) the implementation of Int.div,
+Int.mod, and Int.rem.   For this, the code in translate.sml now takes
+advantage of the following observations:
+
+  Let  q = x quot y      r = x rem y
+       d = x div  y      m = x mod y
+
+where "quot" is the round-to-zero version of integer division that
+hardware usually provides.  Then we have:
+
+     r = x - q * y        where neither the * nor the - will overflow
+     d = if q >= 0 orelse x = q * y then q else q - 1
+                          where neither the * nor the - will overflow
+     m = if q >= 0 orelse r = 0 then r else r + y
+                          where the + will not overflow
+
+This results in substantial simplification of the generated code.
+The following table shows the number of CFG nodes and edges generated
+for
+        fun f (x, y) = x OPER y
+        (* with OPER \in div, mod, quot, rem *)
+
+
+    OPER | nodes(old) | edges(old) | nodes(new) | edges(new)
+    --------------------------------------------------------
+     div |         24 |         39 |         12 |         16
+     mod |         41 |         71 |         12 |         16
+    quot |          8 |         10 |          8 |         10
+     rem |         10 |         14 |          8 |         10
+
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/03/25 22:06:00 EST
 Tag: blume-20020325-cprotobug
 Description:

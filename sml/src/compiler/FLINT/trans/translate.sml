@@ -448,11 +448,21 @@ fun intOp p = PRIM(p, lt_intop, [])
 fun cmpOp p = PRIM(p, lt_icmp, [])
 fun inegOp p = PRIM(p, lt_ineg, [])
 
-fun ADD(b,c) = APP(intOp(PO.IADD), RECORD[b, c])
-fun SUB(b,c) = APP(intOp(PO.ISUB), RECORD[b, c])
-fun MUL(b,c) = APP(intOp(PO.IMUL), RECORD[b, c])
 fun DIV(b,c) = APP(intOp(PO.IDIV), RECORD[b, c])
 val LESSU = PO.CMP{oper=PO.LTU, kind=PO.UINT 31}
+
+(* pure arith on int31 (guaranteed to not overflow) *)
+val pIADD = PO.ARITH { oper=PO.+, overflow = false, kind = PO.INT 31 }
+val pISUB = PO.ARITH { oper=PO.-, overflow = false, kind = PO.INT 31 }
+val pIMUL = PO.ARITH { oper=PO.*, overflow = false, kind = PO.INT 31 }
+fun pADD(b,c) = APP(intOp pIADD, RECORD [b, c])
+fun pSUB(b,c) = APP(intOp pISUB, RECORD [b, c])
+fun pMUL(b,c) = APP(intOp pIMUL, RECORD [b, c])
+
+fun CMP (cop, e1, e2) = APP (cmpOp cop, RECORD [e1, e2])
+fun EQ (e1, e2) = CMP (PO.IEQL, e1, e2)
+fun NONNEG e = CMP (PO.IGE, e, INT 0)
+fun ISZERO e = EQ (e, INT 0)
 
 val lt_len = LT.ltc_poly([LT.tkc_mono], [lt_arw(LT.ltc_tv 0, lt_int)])
 val lt_upd = 
@@ -511,7 +521,26 @@ fun transPrim (prim, lt, ts) =
                in inlineShift(rshiftOp, k, clear)
               end
 
-        | g (PO.INLDIV) =  
+        | g (PO.INLDIV) =
+	  (* This should give a slightly faster path through this
+	   * operation for the frequent case that the result is non-negative.
+	   * Some hardware calculates the remainder as part of the DIV
+	   * operation -- in which case we could save the MUL step.
+	   * This will have to be done in the backend because it is
+	   * architecture-specific. *)
+	  let val a = mkv () and b = mkv ()
+	      and q = mkv () and z = mkv ()
+	  in
+	      FN (z, lt_ipair,
+		  LET (a, SELECT (0, VAR z),
+		       LET (b, SELECT (1, VAR z),
+			    LET (q, DIV (VAR a, VAR b),
+				 COND (NONNEG (VAR q), VAR q,
+				       COND (EQ (VAR a, pMUL (VAR q, VAR b)),
+					     VAR q,
+					     pSUB (VAR q, INT 1)))))))
+	  end
+(*
               let val a = mkv() and b = mkv() and z = mkv()
                in FN(z, lt_ipair, 
                     LET(a, SELECT(0, VAR z),
@@ -524,8 +553,26 @@ fun transPrim (prim, lt, ts) =
                                SUB(DIV(SUB(VAR a, INT 1), VAR b), INT 1),
                                DIV(VAR a, VAR b))))))
               end 
-
+*)
         | g (PO.INLMOD) =
+	  (* Same here: Fast path for q >= 0.  However, since the remainder
+	   * is the intended result, we can't avoid the MUL.  On architectures
+	   * where r is directly available, this should rather be done
+	   * in the backend. *)
+	  let val a = mkv () and b = mkv ()
+	      and q = mkv () and r = mkv ()
+	      and z = mkv ()
+	  in
+	      FN (z, lt_ipair,
+		  LET (a, SELECT (0, VAR z),
+		       LET (b, SELECT (1, VAR z),
+			    LET (q, DIV (VAR a, VAR b),
+				 LET (r, pSUB (VAR a, pMUL (VAR q, VAR b)),
+				      COND (NONNEG (VAR q), VAR r,
+					    COND (ISZERO (VAR r), VAR r,
+						  pADD (VAR r, VAR b))))))))
+	  end
+(*
               let val a = mkv() and b = mkv() and z = mkv()
                in FN(z, lt_ipair,
                     LET(a,SELECT(0, VAR z),
@@ -548,13 +595,13 @@ fun transPrim (prim, lt, ts) =
                                     SUB(VAR a, MUL(DIV(VAR a, VAR b),
                                                    VAR b))))))))
               end
-
+*)
         | g (PO.INLREM) =
               let val a = mkv() and b = mkv() and z = mkv()
                in FN(z, lt_ipair,
                     LET(a, SELECT(0,VAR z),
                       LET(b, SELECT(1,VAR z),
-                          SUB(VAR a, MUL(DIV(VAR a,VAR b),VAR b)))))
+                          pSUB(VAR a, pMUL(DIV(VAR a,VAR b),VAR b)))))
               end
 
         | g (PO.INLMIN) =
