@@ -99,6 +99,7 @@ functor PPCDarwinPseudoOps (
 		  | 16 => "\t.short\t"
 		  | 32 => "\t.long\t"
 		  | 64 => error "INT64"
+		  | _ => error ("pop: INT sz = " ^ Int.toString sz)
 	        (* end case *))
 	  in
 	    String.concat (pop :: join i)
@@ -115,6 +116,7 @@ functor PPCDarwinPseudoOps (
 	  val pop = (case sz
 	         of 32 => "\t.single "
 		  | 64 => "\t.double "
+		  | _ => error ("pop: FLOAT sz = " ^ Int.toString sz)
 	        (* end case *))
 	  in
 	    String.concat (pop :: join f)

@@ -14,6 +14,19 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume@tti-c.org)
+Date: 2003/05/21 17:45:00 CDT
+Tag: blume-20030517-complete
+Description:
+
+Two changes:
+
+  1. Added a flag for controlling whether non-exhaustive bindings will
+     be treated as errors (default is false).
+  2. Cleaned up the *entire* source tree so that CMB.make goes through
+     without a single non-exhaustive match- or bind warning.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume@tti-c.org)
 Date: 2003/05/17 10:20:00 CDT
 Tag: blume-20030517-absyn
 Description:

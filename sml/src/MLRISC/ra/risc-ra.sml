@@ -151,6 +151,7 @@ struct
        else [I.COPY{k=CB.GP, sz=sz, dst=rds, src=rss, tmp=NONE}]
      | copy((rds, rss), I.COPY{tmp, sz, ...}) = 
         [I.COPY{k=CB.GP, sz=sz, dst=rds, src=rss, tmp=tmp}]
+     | copy _ = error "copy: COPY?"
 
    fun spillR S {annotations, kill=true, reg, spillLoc, instr} = 
          if pure instr then {code=[], proh=[], newReg=NONE}
@@ -212,6 +213,7 @@ struct
 	   proh=[],
 	   newReg=NONE}
        | reload(_, I.KILL _) = error "reloadR: KILL"
+       | reload (_, I.COPY _) = error "reloadR: COPY"
        | reload(instrAn, instr as I.INSTR _) = let
 	   val spillLoc = #opnd (getRegLoc(S, an, reg, spillLoc))
          in
@@ -246,6 +248,7 @@ struct
        else [I.COPY{k=CB.FP, sz=sz, dst=rds, src=rss, tmp=NONE}]
      | fcopy((rds, rss), I.COPY{tmp, sz, ...}) = 
         [I.COPY{k=CB.FP, sz=sz, dst=rds, src=rss, tmp=tmp}]
+     | fcopy _ = error "fcopy: COPY?"
 
    (* Spill floating point register *)
    fun spillF S {annotations, kill=true, reg, spillLoc, instr} = 
@@ -301,6 +304,7 @@ struct
 	   proh=[],
 	   newReg=NONE}
        | reload(_, I.KILL _) = error "reloadF: KILL"
+       | reload (_, I.COPY _) = error "reloadF: COPY"
        | reload(instrAn, instr as I.INSTR _) = 
 	   (inc floatReloadsCnt;
 	    SpillInstr.reload CB.FP (instr, reg, getFregLoc(S, an, spillLoc)))

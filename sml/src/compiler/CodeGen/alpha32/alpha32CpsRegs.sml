@@ -43,10 +43,15 @@ struct
   val floatregs = map FREG (0 upto 28)
   val savedfpregs = []
 
-  val availR = 
-      map (fn T.REG(_,r) => r)
+  val availR = let
+      fun get (T.REG (_, r)) = r
+	| get _ = MLRiscErrorMsg.error ("Alpha32CpsRegs","availR:get")
+  in
+      map get
           ([gcLink(false), T.REG(32, exhaustedR), 
-	    stdlink(false), stdclos(false), stdarg(false), stdcont(false)] @ miscregs)
+	    stdlink(false), stdclos(false), stdarg(false), stdcont(false)]
+	   @ miscregs)
+  end
 
   local
       structure SC = CellsBasis.SortedCells

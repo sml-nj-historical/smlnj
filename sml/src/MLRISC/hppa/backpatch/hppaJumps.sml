@@ -174,6 +174,7 @@ struct
 	     | 12 => [I.ldil{i=I.HILabExp lexp, t=C.asmTmpR},
 		      I.ldo{i=I.LOLabExp lexp, b=C.asmTmpR, t=C.asmTmpR},
 		      I.arith{a=I.ADD, r1=C.asmTmpR, r2=b, t=t}]
+	     | _ => error "LDO"
 	  (*esac*))
 	 | I.COMICLR_LDO{cc, i1=I.LabExp lexp, r2, t1, b, i2, t2} =>
 	   (case size 
@@ -184,6 +185,7 @@ struct
 		 I.comclr_ldo{cc=cc, r1=C.asmTmpR, r2=r2, t1=t1, 
 			      b=b, i=i2, t2=t2} 
 		]
+	     | _ => error "COMICLR_LDO"
 	  (*esac*))
 	 | I.STORE{st, d as I.LabExp lexp, b, r, mem} =>
 	  (case size 
@@ -192,6 +194,7 @@ struct
 		[I.ldil{i=I.HILabExp lexp, t=C.asmTmpR},
 		 I.arith{a=I.ADD, r1=C.asmTmpR, r2=b, t=C.asmTmpR},
 		 I.store{st=st, b=C.asmTmpR, d=I.LOLabExp lexp, r=r, mem=mem}]
+	    | _ => error "STORE"
 	  (*esac*))
 	 | I.STORE _ => error "expand:STORE" 
 	 | I.ARITHI{ai, r, i=I.LabExp lexp, t} =>
@@ -211,6 +214,7 @@ struct
 		     t=t,
 		     r1=C.asmTmpR,
 		     r2=r}]
+	     | _ => error "ARITHI"
 	   (*esac*))
 	 | I.LOADI{li, r, i=I.LabExp lexp, t, mem} =>
 	   (case size
@@ -218,6 +222,7 @@ struct
 	     | 12 => [I.ldil{i=I.HILabExp lexp, t=C.asmTmpR},
 		      I.arith{a=I.ADD, r1=C.asmTmpR, r2=r, t=C.asmTmpR},
 		      I.loadi{li=li, r=C.asmTmpR, i=I.LOLabExp lexp, t=t, mem=mem}]
+	     | _ => error "LOADI"
 	   (*esac*))
 	 | I.BCOND{cmp,bc, t, f, r1, r2, n, nop} => let
 	     fun rev I.COMBT=I.bcond{cmp=I.COMBF,bc=bc,t=f,f=f,r1=r1,r2=r2,n=true,nop=false}
@@ -228,6 +233,7 @@ struct
 	      | (8,true)  => [instr]
 	      | (8,_)     => [rev cmp, I.b{lab=t, n=n}]
 	      | (16,_)    => rev cmp :: longJump{lab=t, n=n}
+	      | _ => error "BCOND"
 	     (*esac*)
 	   end
 	 | I.BCONDI{cmpi, bc, t, f, i, r2, n, nop} => let
@@ -239,6 +245,7 @@ struct
 		| (8,true) => [instr]
 		| (8,_) => [rev cmpi, I.b{lab=t, n=n}]
 		| (16,_) => rev cmpi :: longJump{lab=t, n=n}
+		| _ => error "BCONDI"
 	     (*esac*)
 	   end
 	 | I.BB{bc, r, p, t, f, n, nop} => let
@@ -249,11 +256,13 @@ struct
 	      | (8,true) => [instr] 
 	      | (8,_) => [rev bc, I.b{lab=t,n=n}] 
 	      | (16,_) => rev bc :: longJump{lab=t, n=n}
+	      | _ => error "BB"
 	   end    
 	 |I.B{lab=lab, n=n} =>
 	   (case size 
 	     of 4 => [instr]
 	      | 12 => longJump{lab=lab, n=n}
+	      | _ => error "B"
 	   (*esac*))
 	 | I.FBRANCH{t, f, n, ...} =>
 	   (case size 
@@ -265,7 +274,8 @@ struct
 			     B (f)
 			     longJmp
 		   *)
-		     error "FBRANCH"
+		     error "FBRANCH(20)"
+	      | _ => error "FBRANCH"
 	   (*esac*))
 	 | I.BLR{labs,n,t,x,...} =>
 	    (if size = 8 + 8 * length labs then

@@ -166,7 +166,10 @@ struct
   (*
    * The allocation pointer.  This must be a register
    *)
-  val M.REG(_,allocptrR) = C.allocptr
+  val allocptrR =
+      case C.allocptr of
+	  M.REG(_,allocptrR) => allocptrR
+	| _ => error "allocptrR"
 
   (*
    * Dedicated registers.
@@ -560,6 +563,8 @@ struct
                 | eCopy([], [], [], [], xs', rl') = (xs', rl')
                 | eCopy([], [], rds, rss, xs', rl') = 
                    (emit(M.COPY(ity, rds, rss)); (xs', rl'))
+		| eCopy (([], _::_, _, _, _, _) | (_::_, [], _, _, _, _)) =
+		    error "eCopy"
 
               fun eOther(x::xs, M.GPR(r)::rl, xs', rl') = 
                   let val t = newReg PTR
@@ -569,6 +574,12 @@ struct
                 | eOther(x::xs, (M.FPR(M.FREG(_,f)))::rl, xs', rl') = 
                     eOther(xs, rl, x::xs', f::rl')
                 | eOther([], [], xs, rl) = (xs, rl)
+		| eOther (_, M.FPR _ :: _, _, _) =
+		    error "eOther: FPR but not FREG"
+		| eOther (_, M.CCR _ :: _, _, _) =
+		    error "eOther: CCR"
+		| eOther (([], _::_, _, _) | (_::_, [], _, _)) =
+		    error "eOther"
 
               fun eFcopy([], []) = ()
                 | eFcopy(xs, rl) = 
@@ -1015,7 +1026,11 @@ struct
                    )
               | _ =>
                  (* Standard function *)
-                 let val regfmls as (M.GPR linkreg::regfmlsTl) = formals
+                 let val regfmls = formals
+		     val (linkreg, regfmlsTl) =
+			 case formals of
+			     (M.GPR linkreg::regfmlsTl) => (linkreg, regfmlsTl)
+			   | _ => error "no linkreg for standard function"
                      val entryLab = 
                          if splitEntry then functionLabel(~f-1) else lab
                  in  
@@ -1155,15 +1170,16 @@ struct
 
               (* normal branches *)
           and branch (cv, cmp, [v, w], yes, no, hp) = 
-          let val trueLab = newLabel ()
-          in  (* is single assignment great or what! *)
-              emit
-	        (branchWithProb
-		   (M.BCC(M.CMP(32, cmp, regbind v, regbind w), trueLab), 
-		   brProb cv));
-              genCont(no, hp);
-              genlab(trueLab, yes, hp)
-          end
+              let val trueLab = newLabel ()
+              in  (* is single assignment great or what! *)
+		  emit
+	              (branchWithProb
+			(M.BCC(M.CMP(32, cmp, regbind v, regbind w), trueLab), 
+			 brProb cv));
+		      genCont(no, hp);
+		      genlab(trueLab, yes, hp)
+              end
+	    | branch _ = error "branch"
 
               (* branch if x is boxed *) 
           and branchOnBoxed(cv, x, yes, no, hp) = 
@@ -1350,8 +1366,12 @@ struct
            *)
           and externalApp(f, args, hp) = 
               let val ctys = map grabty args
-                  val formals as (M.GPR dest::_) = 
+                  val formals =
 		    ArgP.standard{fnTy=typmap f, vfp=vfp, argTys=ctys}
+		  val dest =
+		      case formals of
+			  (M.GPR dest::_) => dest
+			| _ => error "externalApp: dest"
               in  callSetup(formals, args);
                   if gctypes then
                     annotation(gcAnnotation(#create GCCells.GCLIVEOUT, 
@@ -1484,6 +1504,7 @@ struct
 		 | P.fsin => computef64(x, M.FEXT(fty, E.FSINE r), e, hp)
 		 | P.fcos => computef64(x, M.FEXT(fty, E.FCOSINE r), e, hp)
 		 | P.ftan => computef64(x, M.FEXT(fty, E.FTANGENT r), e, hp)
+		 | _ => error "unexpected primop in pure unary float64"
               end
             | gen(PURE(P.pure_arith{oper, kind=P.FLOAT 64}, [v,w], x, _, e), hp) = 
               let val v = fregbind v 
@@ -1494,6 +1515,7 @@ struct
                      | P.* => M.FMUL(fty, v, w)
                      | P.- => M.FSUB(fty, v, w)
                      | P./ => M.FDIV(fty, v, w)
+		     | _ => error "unexpected primop in pure binary float64"
               in  treeifyDefF64(x, t, e, hp)
               end
             | gen(PURE(P.pure_arith{oper=P.orb, kind}, [v,w], x, _, e), hp) = 
@@ -1553,6 +1575,7 @@ struct
                       | P.rshiftl=> logical32(M.SRL, v, w, x, e, hp)
                       | _ => error "gen:PURE UINT 32"
                     (*esac*))
+		 | _ => error "unexpected numkind in pure binary arithop"
               (*esac*))
             | gen(PURE(P.pure_arith{oper=P.notb, kind}, [v], x, _, e), hp) =
                (case kind 
@@ -1562,6 +1585,7 @@ struct
                                                LW 0wxFFFFFFFF), e, hp)
                  | P.UINT 31 => defI31(x,M.SUB(ity, zero, regbind v), e, hp)
                  | P.INT 31 => defI31(x,M.SUB(ity, zero, regbind v), e, hp)
+		 | _ => error "unexpected numkind in pure unary arithop"
               (*esac*))
             | gen(PURE(P.copy ft, [v], x, _, e), hp) =
                (case ft
@@ -1810,6 +1834,7 @@ struct
                      | P.* => M.FMUL(fty, v, w)
                      | P.- => M.FSUB(fty, v, w)
                      | P./ => M.FDIV(fty, v, w)
+		     | _ => error "unexpected primop in binary float64"
               in  treeifyDefF64(x, t, e, hp)
               end
             (*** LOOKER ***)
@@ -2046,12 +2071,14 @@ struct
            * execution starts at the first CPS function -- the frag 
            * is maintained as a queue.
            *)
-          fun initFrags (start::rest : CPS.function list) = 
-          let fun init(func as (fk, f, _, _, _)) = 
-                 addGenTbl (f, Frag.makeFrag(func, functionLabel f))
-          in  app init rest;
-              init start
-          end
+          fun initFrags (start::rest : CPS.function list) =
+              let fun init(func as (fk, f, _, _, _)) = 
+                      addGenTbl (f, Frag.makeFrag(func, functionLabel f))
+              in
+		  app init rest;
+		  init start
+              end
+	    | initFrags [] = error "initFrags"
 
           (*
            * Create cluster annotations.
@@ -2099,6 +2126,7 @@ struct
       end
 
       fun entrypoint ((_,f,_,_,_)::_) () = Label.addrOf (functionLabel f)
+	| entrypoint [] () = error "entrypoint: no functions"
   in  
     app mkGlobalTables funcs;
     app genCluster (Cluster.cluster funcs);

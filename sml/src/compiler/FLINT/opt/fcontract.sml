@@ -787,8 +787,11 @@ fun fcTapp (f,tycs) =
 		    ({cconv=F.CC_FCT,inline=F.IH_SAFE,isrec=NONE,known=false},
 		     mklv(), [],
 		     F.TFN((tfk, g, args, body), F.TAPP(F.VAR g, tycs)))
-		val F.LET(_,nprog,F.RET _) = #4(Specialize.specialize prog)
-	    in PP.printLexp nprog; nprog end
+	    in
+		case #4(Specialize.specialize prog) of
+		    F.LET(_,nprog,F.RET _) => (PP.printLexp nprog; nprog)
+		  | _ => bug "specialize"
+	    end
 
     in case (tfnInline,svf)
 	of (true,TFun(g,body,args,tfk as {inline,...})) =>

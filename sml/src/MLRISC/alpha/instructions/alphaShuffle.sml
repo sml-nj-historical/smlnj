@@ -3,6 +3,7 @@ functor AlphaShuffle(I:ALPHAINSTR) : ALPHASHUFFLE = struct
   structure Shuffle = Shuffle(I)
 
   type t = {tmp:I.ea option, dst:CellsBasis.cell list, src:CellsBasis.cell list}
+  fun error msg = MLRiscErrorMsg.error("AlphaShuffle",msg)
 
   val zeroR = I.REGop(Option.valOf(I.C.zeroReg CellsBasis.GP))
 
@@ -12,6 +13,7 @@ functor AlphaShuffle(I:ALPHAINSTR) : ALPHASHUFFLE = struct
 	[I.store{stOp=I.STL, r=rs, b=base, d=I.LABop disp, mem=mem}]
     | move{src=I.Displace{base, disp, mem}, dst=I.Direct rt} = 
 	[I.load{ldOp=I.LDL, r=rt, b=base, d=I.LABop disp, mem=mem}]
+    | move _ = error "move"
 
   fun fmove{src=I.FDirect fs, dst=I.FDirect fd} = 
         [I.foperate{oper=I.CPYS, fa=fs, fb=fs, fc=fd}]
@@ -19,6 +21,7 @@ functor AlphaShuffle(I:ALPHAINSTR) : ALPHASHUFFLE = struct
 	[I.fstore{stOp=I.STT, r=fs, b=base, d=I.LABop disp, mem=mem}]
     | fmove{src=I.Displace{base, disp, mem}, dst=I.FDirect ft} =
 	[I.fload{ldOp=I.LDT, r=ft, b=base, d=I.LABop disp, mem=mem}]
+    | fmove _ = error "fmove"
 
   val shuffle = Shuffle.shuffle {mvInstr=move, ea=I.Direct}
 

@@ -26,9 +26,11 @@ structure PrimeSizes : sig
 	  ]
 
     fun pick i = let
-	  fun f [(p, _)] = p
+	  fun f [] = raise Fail "PrimeSizes.pick: out of sequences"
+	    | f [(p, _)] = p
 	    | f ((hi, l)::r) = if (i < hi) then g l else f r
-	  and g [p] = p
+	  and g [] = raise Fail "PrimeSizes.pick: out of primes in sequence"
+	    | g [p] = p
 	    | g (p::r) = if (i < p) then p else g r
 	  in
 	    f primes

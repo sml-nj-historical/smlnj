@@ -868,48 +868,46 @@ struct
                      *)
                     let val _  = zero eax;
                         val cc = cmp(true, ty, cc, t1, t2, []) 
-                    in  case C1-C2 of
-                          D as (1 | 2 | 3 | 4 | 5 | 8 | 9) =>
-                          let val (base,scale) = 
-                                  case D of
-                                    1 => (NONE, 0)
-                                  | 2 => (NONE, 1)
-                                  | 3 => (SOME C.eax, 1)
-                                  | 4 => (NONE, 2)
-                                  | 5 => (SOME C.eax, 2)
-                                  | 8 => (NONE, 3)
-                                  | 9 => (SOME C.eax, 3)
-                              val addr = I.Indexed{base=base,
-                                                   index=C.eax,
-                                                   scale=scale,
-                                                   disp=I.Immed C2,
-                                                   mem=readonly}
-                              val tmpR = newReg()
-                              val tmp  = I.Direct tmpR
-                          in  emit(I.SET{cond=cond cc, opnd=eax}); 
-                              mark(I.LEA{r32=tmpR, addr=addr}, an);
-                              move(tmp, rdOpnd)
-                          end
-                        | D =>
-                           (emit(I.SET{cond=cond(T.Basis.negateCond cc), 
-                                       opnd=eax}); 
-                            emit(I.UNARY{unOp=I.DECL, opnd=eax});
-                            emit(I.BINARY{binOp=I.ANDL,
-                                          src=I.Immed D, dst=eax});
-                            if C2 = 0 then 
-                               move(eax, rdOpnd)
-                            else
-                               let val tmpR = newReg()
-                                   val tmp  = I.Direct tmpR
-                               in  mark(I.LEA{addr=
-                                         I.Displace{
-                                             base=C.eax,
-                                             disp=I.Immed C2,
-                                             mem=readonly},
-                                             r32=tmpR}, an);
-                                    move(tmp, rdOpnd)
-                                end
-                           )
+			fun c19 (base, scale) = let
+                            val addr = I.Indexed{base=base,
+                                                 index=C.eax,
+                                                 scale=scale,
+                                                 disp=I.Immed C2,
+                                                 mem=readonly}
+                            val tmpR = newReg()
+                            val tmp  = I.Direct tmpR
+                        in  emit(I.SET{cond=cond cc, opnd=eax}); 
+                            mark(I.LEA{r32=tmpR, addr=addr}, an);
+                            move(tmp, rdOpnd)
+                        end
+                    in
+			case C1-C2 of
+			    1 => c19 (NONE, 0)
+			  | 2 => c19 (NONE, 1)
+			  | 3 => c19 (SOME C.eax, 1)
+			  | 4 => c19 (NONE, 2)
+			  | 5 => c19 (SOME C.eax, 2)
+			  | 8 => c19 (NONE, 3)
+			  | 9 => c19 (SOME C.eax, 3)
+                          | D =>
+                            (emit(I.SET{cond=cond(T.Basis.negateCond cc), 
+					opnd=eax}); 
+                             emit(I.UNARY{unOp=I.DECL, opnd=eax});
+                             emit(I.BINARY{binOp=I.ANDL,
+                                           src=I.Immed D, dst=eax});
+                             if C2 = 0 then 
+				 move(eax, rdOpnd)
+                             else
+				 let val tmpR = newReg()
+                                     val tmp  = I.Direct tmpR
+				 in  mark(I.LEA{addr=
+						I.Displace{
+							   base=C.eax,
+							   disp=I.Immed C2,
+							   mem=readonly},
+						r32=tmpR}, an);
+                                 move(tmp, rdOpnd)
+                                 end)
                     end
               end (* setcc *)
     

@@ -345,6 +345,7 @@ struct
 	   val {visited, delta=d} = Option.getOpt(HT.find info nid, noInfo)
 	   fun sameDelta(NONE, NONE) = true
 	     | sameDelta(SOME i1: Int32.int option, SOME i2) = i1 = i2
+	     | sameDelta _ = false
 	 in 
 	   if visited then (if sameDelta(d, delta) then () else error "dfs")
 	   else let

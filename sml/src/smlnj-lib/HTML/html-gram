@@ -23,14 +23,17 @@ datatype deflist_item
   | DL_item of HTML.block
 
 fun groupDefListContents [] = []
-  | groupDefListContents [DL_tag tag] = [{dt=[tag], dd=HTML.BlockList[]}]
-  | groupDefListContents (DL_item blk :: r) =
-      {dt=[], dd=blk} :: (groupDefListContents r)
-  | groupDefListContents (DL_tag tag :: r) = let
-      val {dt, dd} :: r' = groupDefListContents r
-      in
-	{dt=tag::dt, dd=dd} :: r'
-      end
+  | groupDefListContents (h :: t) = let
+	fun gdlc (DL_tag tag, []) = ({dt=[tag],dd=HTML.BlockList[]},[])
+	  | gdlc (DL_tag tag, h :: t) = let
+		val ({ dt, dd}, r) = gdlc (h, t)
+	    in
+		({ dt = tag :: dt, dd = dd }, r)
+	    end
+	  | gdlc (DL_item blk, r) = ({dt=[],dd=blk},groupDefListContents r)
+    in
+	op :: (gdlc (h, t))
+    end
 
 (* A list of Text, paragraphs and blocks requires grouping the Text items and
  * making an implicit paragraph.  We cannot directly use TextList because of

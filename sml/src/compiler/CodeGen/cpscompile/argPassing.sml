@@ -26,6 +26,7 @@ struct
   fun fromto(i, j, regs) = let
     fun from(0, acc) = acc
       | from(n, x::xs) = from(n-1, xs)
+      | from(n, []) = error "fromto"
     fun to(k, []) = []
       | to(k, r::rs) = if k > j then [] else r::to(k+1, rs)
   in 
@@ -74,6 +75,7 @@ struct
     fun iter(CPS.FLTt::rest, regs, f::fregs) = f::iter(rest, regs, fregs)
       | iter(_::rest, r::regs, fregs) = r::iter(rest, regs, fregs)
       | iter([], _, _) = []
+      | iter _ = error "fixed: out of registers"
   in iter(argTys, gpregs(vfp), fpregs)
   end
 end

@@ -168,7 +168,10 @@ struct
     *)
    fun set bindings =
    let val theVfp = C.vfp
-       val T.REG (_, theFp) = C.frameptr false
+       val theFp = 
+	   case C.frameptr false of
+	       T.REG (_, theFp) => theFp
+	     | _ => error "theFp"
        (* At this point, theVfp will always eventually end up
 	* being theFp, but mlriscGen might pass in references to theVfp
 	* anyway (because of some RCC that happens to be in the cluster).

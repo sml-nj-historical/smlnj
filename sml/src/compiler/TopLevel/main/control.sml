@@ -40,6 +40,9 @@ struct
     val bindNonExhaustiveWarn =
 	flag ("warn-non-exhaustive-bind",
 	      "whether to warn on non-exhaustive bind", true)
+    val bindNonExhaustiveError =
+	flag ("error-non-exhaustive-bind",
+	      "whether non-exhaustive bind is an error", false)
     val matchNonExhaustiveWarn =
 	flag ("warn-non-exhaustive-match",
 	      "whether to warn on non-exhaustive match", true)

@@ -662,6 +662,7 @@ struct
          (I.RLWNM, SOME me) => rlwnm {ra=ra, rs=rs, sh=sh, mb=mb, me=me}
        | (I.RLDCL, _) => rldcl {ra=ra, rs=rs, sh=sh, mb=mb}
        | (I.RLDCR, _) => rldcr {ra=ra, rs=rs, sh=sh, mb=mb}
+       | _ => error "rotate"
        )
    and rotatei {oper, ra, rs, sh, mb, me} = 
        let val sh = emit_operand sh
@@ -677,6 +678,7 @@ struct
                mb=mb}
           | (I.RLDIMI, _) => rldimi {ra=ra, rs=rs, sh=(sh && 0wx1f), sh2=((sh << 0wx5) && 0wx1), 
                mb=mb}
+	  | _ => error "rotatei"
           )
        end
 

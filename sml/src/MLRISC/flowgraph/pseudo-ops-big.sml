@@ -85,6 +85,7 @@ struct
 	  | 2 => emitWord (toWord en)
 	  | 4 => (emitWord(toWord(Word32.andb(en, 0w65535))); 
 	 	  emitWord(toWord(Word32.>>(en, 0w16))))
+	  | n => error ("emitNop : sz = " ^ Int.toString n)
 
       fun insertNops 0 = ()
 	| insertNops n = 

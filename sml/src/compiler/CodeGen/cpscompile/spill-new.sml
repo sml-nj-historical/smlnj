@@ -792,6 +792,7 @@ struct
               val e  = e v'
           in  CPS.SELECT(i, CPS.VAR v, v', CPS.BOGt, e)
           end
+	| proj _ = error "SpillFn: proj"
 
       (*
        * generate 
@@ -869,23 +870,36 @@ struct
               else f(emitPathReloads vl, w, e)
           end
 
+	  (* wrappers -- make the match compiler shut up *)
+	  fun s1 f (v :: vs, es) = f (v, vs, es)
+	    | s1 _ _ = error "Spill: s1"
+
+	  fun e1 f ([v], w, e) = f (v, w, e)
+	    | e1 _ _ = error "Spill: e1"
+
+	  fun s'1 f (vs, [e]) = f (vs, e)
+	    | s'1 _ _ = error "Spill: s'1"
+
+	  fun s'2 f (vs, [x, y]) = f (vs, x, y)
+	    | s'2 _ _ = error "Spill: s'2"
+
           (*
            * Rewrite the expression
            *)
           val e = 
           case e of
             CPS.APP(v,args) => 
-               rewriteStmt(v::args, [], fn (v::args,_) => CPS.APP(v,args))
+               rewriteStmt(v::args, [], s1 (fn (v, args,_) => CPS.APP(v,args)))
           | CPS.SWITCH(v,c,es) => 
-               rewriteStmt([v], es, fn ([v], es) => CPS.SWITCH(v, c, es))
+               rewriteStmt([v], es, s1 (fn (v, _, es) => CPS.SWITCH(v, c, es)))
           | CPS.SELECT(i,v,w,t,e) =>  
-               rewrite([v], w, e, fn ([v],w,e) => CPS.SELECT(i,v,w,t,e))
+               rewrite([v], w, e, e1 (fn (v,w,e) => CPS.SELECT(i,v,w,t,e)))
           | CPS.OFFSET(i,v,w,e) =>    
-               rewrite([v], w, e, fn ([v],w,e) => CPS.OFFSET(i,v,w,e))
+               rewrite([v], w, e, e1 (fn (v,w,e) => CPS.OFFSET(i,v,w,e)))
           | CPS.RECORD(k,l,w,e) =>     
                rewriteRec(l,w,e,fn (l,w,e) => CPS.RECORD(k, l, w, e))
           | CPS.SETTER(p,vl,e) => 
-               rewriteStmt(vl,[e],fn (vl,[e]) => CPS.SETTER(p,vl,e))
+               rewriteStmt(vl, [e], s'1 (fn (vl,e) => CPS.SETTER(p,vl,e)))
           | CPS.LOOKER(p,vl,w,t,e) =>
                rewrite(vl,w,e, fn (vl,w,e) => CPS.LOOKER(p,vl,w,t,e))
           | CPS.ARITH(p,vl,w,t,e) => 
@@ -895,7 +909,8 @@ struct
           | CPS.RCC(k,l,p,vl,w,t,e) =>  
                rewrite(vl,w,e,fn (vl,w,e) => CPS.RCC(k,l,p,vl,w,t,e))
           | CPS.BRANCH(p,vl,c,x,y) => 
-               rewriteStmt(vl,[x,y], fn (vl,[x,y]) => CPS.BRANCH(p,vl,c,x,y))
+               rewriteStmt(vl,[x,y],
+			   s'2 (fn (vl,x,y) => CPS.BRANCH(p,vl,c,x,y)))
           | CPS.FIX _ => error "FIX in Spill.rebuild"
 
       in  e

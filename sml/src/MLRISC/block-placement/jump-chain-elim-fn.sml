@@ -114,7 +114,10 @@ functor JumpChainElimFn (
 	 *)
 	  fun doBlock (blkId, CFG.BLOCK{insns, kind=CFG.NORMAL, ...}) = let
 	        fun setTargets labs = let
-		      val jmp::r = !insns
+		      val (jmp, r) =
+			  case !insns of
+			      jmp :: r => (jmp, r)
+			    | [] => error "setTargets: empty insns"
                       val newJmp = 
 			  (case labs
 			    of [lab] => IP.setJumpTarget(jmp, lab)

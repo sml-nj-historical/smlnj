@@ -138,6 +138,7 @@ functor IA32SVID_CCalls (
     fun fstp (32, f) = T.EXT(ix(IX.FSTPS(f)))
       | fstp (64, f) = T.EXT(ix(IX.FSTPL(f)))
       | fstp (80, f) = T.EXT(ix(IX.FSTPT(f)))
+      | fstp (sz, f) = error ("fstp(" ^ Int.toString sz ^ ",_)")
 
   (* Copy (result) registers into fresh temporaries *)
     fun copyOut([], results, stmts) = (results, stmts)
@@ -206,6 +207,7 @@ functor IA32SVID_CCalls (
 		  case Word.andb(Word.fromInt sz, 0w1)
 		   of 0w0 => stmts
 		    | 0w1 => bumpSp(1)::stmts
+		    | _ => error ("pad16: sz=" ^ Int.toString sz)
 		  (*esac*)
 		end
 		fun mkStructArgs(fields, rexp) = let
@@ -274,6 +276,7 @@ functor IA32SVID_CCalls (
 			       of 32 => fst32(fexp)
 				| 64 => fst64(fexp)
 				| 80 => fst80(fexp)
+				| _ => error ("pushf: sz=" ^ Int.toString sz)
 			       (*esac*)) @ stmts
 			    fun pushb (rexp) = cont(PUSHB(rexp, stmts))
 			    fun pushw (rexp) = cont(PUSHW(rexp, stmts))
@@ -304,7 +307,10 @@ functor IA32SVID_CCalls (
 				 end
 			     | (Ty.C_STRUCT fields, ARGS rexps) =>
 				  cont(pushStruct(fields, rexps, stmts))
-			  end (* pushStruct *)
+			     | _ => error "pushStruct: ty<->arg mismatch"
+			  end
+			| pushStruct (([], _::_, _) | (_::_, [], _)) =
+			    error "pushStruct"
 		      in
 		        pushArgs(r1, r2,
 			  pad16(fields, pushStruct(fields, args, stmts)))
@@ -361,6 +367,7 @@ functor IA32SVID_CCalls (
 		fun pad16 bytes = (case Word.andb(Word.fromInt sz, 0w1)
 		       of 0w0 => sz
 			| 0w1 => sz+1
+			| _ => error ("argSz: " ^ Int.toString sz)
 		      (* end case *))
         	in
 		  pad16 sz + argsSz(rest)

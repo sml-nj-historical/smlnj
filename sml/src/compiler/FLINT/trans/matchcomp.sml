@@ -1197,11 +1197,14 @@ fun bindCompile (env, rules, finish, rootv, toTcLt, err) =
       val (code, _, _, exhaustive) = 
         doMatchCompile(rules, finish, rootv, toTcLt, err)
 
-      val nonexhaustiveF = !bindNonExhaustiveWarn andalso not exhaustive
+      val nonexhaustiveF =
+	  not exhaustive andalso
+	  (!bindNonExhaustiveWarn orelse !bindNonExhaustiveError)
       val noVarsF = !bindNoVariableWarn andalso noVarsIn rules
 
    in if nonexhaustiveF
-      then err EM.WARN ("binding not exhaustive" ^
+      then err (if !bindNonExhaustiveError then EM.COMPLAIN else EM.WARN)
+	       ("binding not exhaustive" ^
 	                (if noVarsF then " and contains no variables" else ""))
 		       (bindPrint(env,rules))
       else if noVarsF

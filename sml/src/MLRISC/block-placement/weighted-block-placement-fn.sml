@@ -231,6 +231,8 @@ functor WeightedBlockPlacementFn (
 	  val blocks = List.foldl addChain [] chains
 	  fun updEdge (CFG.EDGE{w, a, ...}, k) = CFG.EDGE{w=w, a=a, k=k}
 	  fun updJmp f (insns as ref(i::r)) = insns := f i :: r
+	    | updJmp _ (ref []) =
+	        raise Fail "WeightedBlockPlacementFn: updJmp: empty insns"
 	  fun flipJmp (insns, lab) =
 		updJmp (fn i => IP.negateConditional(i, lab)) insns
 	(* set to true if we change anything *)

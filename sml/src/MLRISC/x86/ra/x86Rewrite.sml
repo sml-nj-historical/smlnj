@@ -124,6 +124,7 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
   fun rewriteDef(instr, rs, rt) = let
     fun operand(opnd as I.Direct r) = 
 	if CB.sameColor(r,rs) then I.Direct rt else opnd
+      | operand _ = error "operand: not I.Direct"
     fun replace r = if CB.sameColor(r,rs) then rt else r
     fun rewriteX86Def(instr) =
      (case instr 

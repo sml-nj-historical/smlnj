@@ -2,6 +2,21 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
+[2003-05-22]
+	More cleanup (all in the name of eliminating incomplete matches):
+	  - in HTML/html-attrs-fn.sml: fill in missing patterns in two
+	    case expressions
+	  - in HTML/html-gram: rewrote function groupDefListContents
+	    to avoid the (unnecessary) incomplete match
+	  - in PP/devices/html-dev.sml: made the implementation of popStyle
+	    agree with the comment above it (popStyle on an empty
+	    stack is supposed to be a nop)
+	  - in PP/src/pp-stram-fn.sml: function setSize: handle case of
+	    an empty scatStk
+	  - in Util/prime-sizes.sml: raise Fail exceptions instead of
+	    Match exceptions when reaching the end of a list
+	    (Perhaps this should eventually be rewritten using an on-demand
+	     prime-number generator that kicks when needed.)
 
 [2003-05-22]
 	Cleanup logic in Scan.scanf function.

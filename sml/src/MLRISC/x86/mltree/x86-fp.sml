@@ -978,12 +978,13 @@ struct
            (* Split all edges entering targetId *)
            fun split(targetId, edges) = 
            let val stackIn = valOf(A.sub(bindingsIn,targetId))
-               fun log(s, t, e) = 
-               let val SOME stackOut = A.sub(bindingsOut,s)
-               in  pr("SPLIT "^i2s s^"->"^i2s t^" "^
-                      ST.stackToString stackOut^"->"^
-                      ST.stackToString stackIn^"\n")
-               end
+               fun log(s, t, e) =
+		   case A.sub (bindingsOut, s) of
+		       SOME stackOut =>
+		       (pr("SPLIT "^i2s s^"->"^i2s t^" "^
+			   ST.stackToString stackOut^"->"^
+			   ST.stackToString stackIn^"\n"))
+		     | NONE => error "split:stackOut"
                val _ = if debug andalso !traceOn then app log edges else ()
            in  if ST.depth stackIn = 0 then genPoppingCode(targetId, edges)
                else genRepairCode(targetId, stackIn, edges)
@@ -1458,8 +1459,8 @@ struct
                 * If a source is a last and unique use, then we
                 * can simply rename it to appropriate destination register.
                 *)
-               fun fcopy(I.COPY{dst,src,tmp,...}) =
-               let fun loop([], [], copies, renames) = (copies, renames)
+               fun fcopy(I.COPY{dst,src,tmp,...}) = let
+		   fun loop([], [], copies, renames) = (copies, renames)
                      | loop(fd::fds, fs::fss, copies, renames) = 
                        let val fsx = CB.registerNum fs
                        in  if isLastUse fsx then 
@@ -1502,17 +1503,18 @@ struct
 
                    val (copies, renames) = loop(dst, src, [], [])
                    val code = genCopy(copies, code)
-               in  renaming renames;
-                   case tmp of
-                     SOME(I.FPR f) => 
-                       (if debug andalso debugDead 
-                        then pr("KILLING tmp "^fregToString f^"\n")
-                        else ();
-                        ST.kill(stack, f)     
+                  in  renaming renames;
+                      case tmp of
+			  SOME(I.FPR f) => 
+			  (if debug andalso debugDead 
+                           then pr("KILLING tmp "^fregToString f^"\n")
+                           else ();
+                           ST.kill(stack, f)     
                        )
-                   | _ => ();
-                   DONE code
-               end
+			| _ => ();
+                      DONE code
+                  end
+		| fcopy _ = error "fcopy"
 
                fun call(instr, return) = let 
 		 val code = mark(I.INSTR instr, an)::code

@@ -305,7 +305,9 @@ struct
    *========================================================================*)
   fun replicate(I.ANNOTATION{i,a}) = I.ANNOTATION{i=replicate i,a=a}
     | replicate(I.COPY{k, sz, tmp=SOME _, dst, src}) =  let
-	  val tmp = case k of CB.GP => C.newReg() | CB.FP => C.newFreg()
+	  val tmp = case k of CB.GP => C.newReg()
+			    | CB.FP => C.newFreg()
+			    | _ => error "replicate: neither GP nor FP"
       in
         I.COPY{k=k, sz=sz, tmp=SOME(I.Direct(tmp)), dst=dst, src=src}
       end

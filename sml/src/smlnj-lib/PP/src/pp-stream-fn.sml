@@ -311,11 +311,13 @@ functor PPStreamFn (
   (* Set the size of the element on the top of the scan stack.  The isBreak
    * flag is set to true for breaks and false for boxes.
    *)
-    fun setSize (strm, isBreak) = let
+    fun setSize (strm, isBreak) =
 	(* NOTE: scanStk should never be empty *)
-	  val PP{leftTot, rightTot, scanStk as ref((leftTot', elem)::r), ...} = strm
-	  in
-	  (* check for obsolete elements *)
+	case strm of
+	    PP { scanStk as ref [], ... } =>
+	      raise Fail "PPStreamFn:setSize: impossible: scanStk is empty"
+	  | PP{leftTot, rightTot, scanStk as ref((leftTot', elem)::r), ...} =>
+	    (* check for obsolete elements *)
 	    if (leftTot' < !leftTot)
 	      then clearScanStk strm
 	      else (case (elem, isBreak)
@@ -327,7 +329,6 @@ functor PPStreamFn (
 		      scanStk := r)
 		  | _ => ()
 		(* end case *))
-	  end
 
     fun pushScanElem (strm as PP{scanStk, rightTot, ...}, setSz, tok) = (
 	  enqueueTok (strm, tok);

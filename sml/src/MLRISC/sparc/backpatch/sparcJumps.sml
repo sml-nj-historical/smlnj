@@ -58,6 +58,7 @@ struct
   fun minSize(I.ANNOTATION{i,...}) = minSize i
     | minSize(I.LIVE _)  = 0
     | minSize(I.KILL _)  = 0
+    | minSize (I.COPY _) = 0		(* ? *)
     | minSize(I.INSTR instr) = 
       (case instr
 	of (I.Bicc{nop=true,...}) => 8

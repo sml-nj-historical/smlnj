@@ -299,6 +299,7 @@ struct
              firstFPSpill := false
             )
         else ()
+      | spillInit _ = error "spillInit"
  
     (* This is the generic register allocator *)
     structure Ra = 
@@ -348,6 +349,7 @@ struct
           fcopy{dst=rds, src=rss, tmp=tmp}
       | copyInstrF(x, I.ANNOTATION{i,a}) = 
           I.ANNOTATION{i=copyInstrF(x, i), a=a}
+      | copyInstrF _ = error "copyInstrF"
 
     val copyInstrF = fn x => [copyInstrF x]
  
@@ -391,6 +393,7 @@ struct
         let val i = spillFcopyTmp S {copy=i, spillLoc=spillLoc, reg=reg,
                                      annotations=annotations}
         in  I.ANNOTATION{i=i, a=a} end
+     | spillFcopyTmp _ _ = error "spillFcopyTmp"
 
     (* rename floating point *)
     fun renameF{instr, fromSrc, toSrc} =
@@ -406,6 +409,7 @@ struct
 	    proh=[],
 	    newReg=NONE}
 	| reload(_, I.KILL _) = error "reloadF: KILL"
+	| reload (_, I.COPY _) = error "reloadF: COPY"
 	| reload(instrAn, instr as I.INSTR _) = 
   	   (inc floatReloadCnt;
 	    reloadFInstr(instr, reg, getFregLoc(S, an, spillLoc)))
@@ -434,6 +438,7 @@ struct
          fcopy{dst=rds, src=rss, tmp=tmp}
       | copyInstrF'(x, I.ANNOTATION{i, a}) =
          I.ANNOTATION{i=copyInstrF'(x,i), a=a}
+      | copyInstrF' _ = error "copyInstrF'"
 
     val copyInstrF' = fn x => [copyInstrF' x]
 
@@ -480,6 +485,7 @@ struct
          [copy{dst=rds, src=rss, tmp=tmp}]
       | copyInstrR(x, I.ANNOTATION{i, a}) = 
           copyInstrR(x, i) (* XXX *)
+      | copyInstrR _ = error "copyInstrR"
       
 
     fun getRegLoc(S, an, cell, Ra.FRAME loc) = 
@@ -548,6 +554,7 @@ struct
       | spillCopyTmp S {copy=I.ANNOTATION{i, a}, reg, spillLoc, annotations} =
         I.ANNOTATION{i=spillCopyTmp S {copy=i, reg=reg, spillLoc=spillLoc,
                                        annotations=annotations}, a=a}
+      | spillCopyTmp _ _ = error "spillCopyTmp(2)"
    
     fun renameR8{instr, fromSrc, toSrc} = 
         (inc intRenameCnt;
@@ -562,6 +569,7 @@ struct
 	    proh=[],
 	    newReg=NONE}
 	| reload(_, I.KILL _) = error "reload: KILL"
+	| reload (_, I.COPY _) = error "reload: COPY"
 	| reload(instrAn, instr as I.INSTR _)  = 
   	 ( inc intReloadCnt;
 	   reloadInstr(annotate(instrAn, instr), reg, #opnd(getRegLoc(S,an,reg,spillLoc)))

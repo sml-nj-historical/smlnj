@@ -273,28 +273,26 @@ fun lift (e, env, td, d, ad, rename) =
 		  | _ => bug "unexpected case in reslty"
 	    end
 
-	fun loopc env (VAR v) = 
-	    let 
-		val (v', t, fv) = newVar(v, env, td) (* Not checking for poly *)
+	fun loopcv env var v = let
+	    val (v', t, fv) = newVar(v, env, td) (* Not checking for poly *)
+	in
+	    (var v', t, fv, nil)   (* Check whether this is t or t' *)
+	end
 
-	    in  
-		(VAR v', t, fv, nil)   (* Check whether this is t or t' *)
-	    end
-	  | loopc env v =
-	    let
-		val t = 
-		    case v of
-			INT _ => LE.ltc_int
-		      | WORD _ => LE.ltc_int
-		      | (INT32 _ | WORD32 _) => LE.ltc_int32
-		      | REAL _  => LE.ltc_real
-		      | STRING _ => LE.ltc_string
-	    in
-		(v, t, nil, nil)
-	    end
+	fun loopc env v = let
+	    fun c t = (v, t, [], [])
+	in
+	    case v of
+		VAR v' => loopcv env VAR v'
+	      | INT _ => c LE.ltc_int
+	      | WORD _ => c LE.ltc_int
+	      | (INT32 _ | WORD32 _) => c LE.ltc_int32
+	      | REAL _  => c LE.ltc_real
+	      | STRING _ => c LE.ltc_string
+	end
 
 	fun lpacc env (LVAR v) = 
-	    let val (VAR v', _, fv, _) = loopc env (VAR v)
+	    let val (v', _, fv, _) = loopcv env (fn v => v) v
 	    in  (LVAR v', fv)
 	    end
 	  | lpacc env (PATH(a,i)) = 

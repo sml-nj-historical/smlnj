@@ -89,6 +89,7 @@ struct
 		| 16 => "\t.short\t"
 		| 32 => "\t.int\t"
 		| 64 => error "INT64"
+		| n => error ("unexpected INT size: " ^ Int.toString n)
 	      (* end case *))
 	in
 	  String.concat (pop :: join i)
@@ -109,6 +110,7 @@ struct
 	       of 32 => "\t.single "
 		| 64 => "\t.double "
 		| 128 => "\t.extended "
+		| n => error ("unexpected FLOAT size: " ^ Int.toString n)
 	      (* end case *))
 	in
 	  String.concat (pop :: join f)

@@ -184,6 +184,7 @@ struct
 		   I.arith{oper=cnv oper, rt=rt, ra=ra, rb=C.asmTmpR, OE=false, 
 			   Rc=(oper = I.ANDI_Rc)}]
 	       end
+	     | _ => error "ARITHI"
 	   (*esac*))
 	 | I.BC{bo, bf, bit, fall, addr, LK} => 
 	   (case size

@@ -725,7 +725,8 @@ struct
               case sz of
                 I.I8 => ``b''
               | I.I16 => ``w''
-              | I.I32 => ``l'';
+              | I.I32 => ``l''
+	      | I.I64 => error "CMPXCHG: I64";
               ``\t<src>, <dst>''
              )
 

@@ -60,11 +60,11 @@ struct
 	 (*esac*))
 
     (* remove moves that have been coalesced. *)
-    fun rmvCoalesced(rd::rds, rs::rss, mvs) = 
-        if equal(rd, rs) then rmvCoalesced(rds, rss, mvs)
-        else rmvCoalesced(rds, rss, (CELL rd, CELL rs)::mvs)
-      | rmvCoalesced([], [], mvs) = mvs
-  in rev (cycle (rmvCoalesced(dst, src, []), []))
+    val rmvCoalesced =
+	ListPair.foldl (fn (rd, rs, mvs) =>
+			   if equal (rd, rs) then mvs
+			   else (CELL rd, CELL rs) :: mvs) []
+  in rev (cycle (rmvCoalesced(dst, src), []))
   end
 end
 

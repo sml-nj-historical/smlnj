@@ -38,6 +38,7 @@ struct
      of T.LABEL lab => emit(I.b{lab=lab,n=true})
       | _ => emit(I.bv{b=rexp(exp), x=C.GPReg 0, labs=labs, n=true})
     (*esac*))
+    | doJmp _ = error "doJmp"
 
 end
 		      

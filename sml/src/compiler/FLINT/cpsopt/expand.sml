@@ -155,7 +155,10 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 						  record := (i,w)::(!record))
 			   | _ => ())
 
-   fun setsize(f,n) = case get f of Fun{size,...} => (size := n; n)
+   fun setsize(f,n) =
+       case get f of
+	   Fun{size,...} => (size := n; n)
+	 | _ => raise Fail "Expand: setsize: not a Fun"
 
    fun incsave(v,k) = case getval v
 		    of Arg{savings,...} => savings := !savings + k
@@ -171,8 +174,9 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 		       | _ => 0
 
    fun within f func arg =
-        case get f of Fun{within=w,...} => 
-	    (w := true; func arg before (w := false))
+        case get f of
+	    Fun{within=w,...} => (w := true; func arg before (w := false))
+	  | _ => raise Fail "Expand: within: f is not a Fun"
 
    val rec prim = fn (level,vl,e) =>
        let fun vbl(VAR v) = (case get v of Rec _ => 0 | _ => 1)
@@ -359,7 +363,8 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 			    | _ => 0)
 		| _ => save
 	  in  whatsave(acc + this - muldiv(acc,this,size),size, vl,al)
-	  end)
+	  end
+	| _ => raise Fail "Expand: whatsave: not Arg nor Sel")
      | whatsave(acc,size,_,_) = acc
 
    
@@ -418,6 +423,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 		   (predicted <= bodysize  
 		     orelse (!escape=0 andalso calls = 1))
   end
+ | should_expand _ = raise Fail "Expand: should_expand: unexpected argument"
 
    datatype decision = YES of {formals: lvar list, body: cexp} 
                      | NO of int  (* how many no's in a row *)
@@ -452,19 +458,21 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
      | FIX(l,ce) => 
 	   let fun fundef (NO_INLINE_INTO,_,_,_,_) = ()
 		 | fundef (fk,f,vl,cl,e) =
-	       let val Fun{level,within,escape=ref escape,...} = get f
-
-		   val u' = case u of UNROLL _ => UNROLL level | _ => u
-
-		   fun conform((VAR x)::r,z::l) = (x=z) andalso conform(r,l)
-		     | conform(_::r,_::l) = false
-		     | conform([],[]) = true
-		     | conform _ = false
-
-	       in  within := true; 
-		   pass2(0,u',e)
-		   before within := false
-	       end
+		   (case get f of
+			Fun{level,within,escape=ref escape,...} =>
+			let val u' = case u of UNROLL _ => UNROLL level
+					     | _ => u
+			    fun conform((VAR x)::r,z::l) =
+				(x=z) andalso conform(r,l)
+			      | conform(_::r,_::l) = false
+			      | conform([],[]) = true
+			      | conform _ = false
+			in
+			    within := true; 
+			    pass2(0,u',e)
+			    before within := false
+			end
+		      | _ => ())	(* cannot happen *)
 	   in  app fundef l;
 	       pass2(d+length l,u,ce)
 	   end
@@ -485,30 +493,32 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
      | e as APP(v,vl) => e
      | FIX(l,ce) =>
 	   let fun fundef (z as (NO_INLINE_INTO,_,_,_,_)) = z
-		 | fundef (fk,f,vl,cl,e) = 
-	       let val Fun{escape=ref escape,call,unroll_call,
-			   invariant=ref inv,...} = get f
-
-	       in  if escape = 0 andalso !unroll_call > 0
-			andalso (!call - !unroll_call > 1 
-				 orelse List.exists (fn t=>t) inv)
-		    then let val f'::vl' = map copyLvar (f::vl)
-			     fun drop(false::r,a::s) = a::drop(r,s)
-			       | drop(true::r,_::s) = drop(r,s)
-			       | drop _ = nil
-			     val newformals=label f' :: map VAR (drop(inv,vl'))
-			     val e' =substitute(newformals,
-						f :: drop(inv,vl),
-						gamma e,
-						false) 
-			 in  click "!"; debugprint(Int.toString f);
-			     enter 0 (fk,f',vl',cl,e');
-			     (fk,f,vl,cl,FIX([(fk,f',vl',cl,e')], 
-					     APP(label f', map VAR vl)))
-			 end
-		    else (fk,f,vl,cl,gamma e)
-			
-	       end
+		 | fundef (z as (fk,f,vl,cl,e)) =
+		   (case get f of
+			Fun{escape=ref escape,call,unroll_call,
+			    invariant=ref inv,...} =>
+			if escape = 0 andalso !unroll_call > 0
+			   andalso (!call - !unroll_call > 1 
+				    orelse List.exists (fn t=>t) inv)
+			then let val f' = copyLvar f
+				 val vl' = map copyLvar vl
+				 fun drop(false::r,a::s) = a::drop(r,s)
+				   | drop(true::r,_::s) = drop(r,s)
+				   | drop _ = nil
+				 val newformals=
+				     label f' :: map VAR (drop(inv,vl'))
+				 val e' =substitute(newformals,
+						    f :: drop(inv,vl),
+						    gamma e,
+						    false) 
+			     in
+				 click "!"; debugprint(Int.toString f);
+				 enter 0 (fk,f',vl',cl,e');
+				 (fk,f,vl,cl,FIX([(fk,f',vl',cl,e')], 
+						 APP(label f', map VAR vl)))
+			     end
+			else (fk,f,vl,cl,gamma e)
+		      | _ => z)		(* cannot happen *)
            in  FIX(map fundef l, gamma ce)
            end
      | SWITCH(v,c,l) => SWITCH(v, c, map gamma l)
@@ -533,7 +543,8 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 		  decisions := rest;
 		  substitute(vl,formals,body,true))
               | NO 1::rest => (decisions := rest; e)
-              | NO n :: rest => (decisions := NO(n-1)::rest; e))
+              | NO n :: rest => (decisions := NO(n-1)::rest; e)
+	      | [] => e (* cannot happen *))
      | FIX(l,ce) => 
 	   let fun fundef (z as (NO_INLINE_INTO,_,_,_,_)) = z
 		 | fundef (fk,f,vl,cl,e) = (fk,f,vl,cl,beta e)

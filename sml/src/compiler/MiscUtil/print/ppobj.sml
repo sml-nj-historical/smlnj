@@ -279,7 +279,9 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 					     !Control.Print.printLength, accu)
 				   | Obj.RealArray =>
 				     ppRealArray(Obj.toRealArray obj,
-					         !Control.Print.printLength)))
+					         !Control.Print.printLength)
+				   | _ => bug "array (neither Real nor Poly)"
+				     ))
 			    handle Obj.Representation =>
 				   add_string ppstrm  "prim?")
 	              else add_string ppstrm  "prim?"

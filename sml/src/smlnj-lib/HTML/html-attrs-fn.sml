@@ -170,6 +170,7 @@ functor HTMLAttrsFn (Err : HTML_ERROR) : HTML_ATTRS =
 			    NONE)
 			| someN => someN
 		      (* end case *))
+		  | SOME IMPLICIT => raise Fail "getNUMBER: IMPLICIT unexpected"
 		(* end case *))
 	  in
 	    get
@@ -184,6 +185,7 @@ functor HTMLAttrsFn (Err : HTML_ERROR) : HTML_ATTRS =
 			else  (
 			Err.badAttrVal (getContext attrVec) (attr, s);
 			NONE)
+		  | SOME IMPLICIT => raise Fail "getChar: IMPLICIT unexpected"
 		(* end case *))
 	  in
 	    get

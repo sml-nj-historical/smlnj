@@ -72,7 +72,8 @@ structure Stats :> STATS =
 		  allStats := insert(p,!allStats); p
 		end
 	  (* end case *))
-    fun addStat(STAT{tot=[c],...}) n = addCounter c n
+    fun addStat(STAT{tot = (c :: _),...}) n = addCounter c n
+      | addStat(STAT{tot = [], ... }) _ = ()
 
     val say = Control_Print.say
     val flush = Control_Print.flush

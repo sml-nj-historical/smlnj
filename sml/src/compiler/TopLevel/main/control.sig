@@ -7,6 +7,7 @@ sig
   val printRet : bool ref
   val bindNoVariableWarn : bool ref
   val bindNonExhaustiveWarn : bool ref
+  val bindNonExhaustiveError : bool ref
   val matchNonExhaustiveWarn : bool ref
   val matchNonExhaustiveError : bool ref
   val matchRedundantWarn : bool ref

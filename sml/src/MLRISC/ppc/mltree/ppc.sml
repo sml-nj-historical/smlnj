@@ -327,6 +327,7 @@ struct
 		| T.LEU => (I.FALSE, I.GT)
 		| T.GTU => (I.TRUE,  I.GT)
 		| T.GEU => (I.FALSE, I.LT)
+		| (T.SETCC | T.MISC_COND _) => error "branch(CMP)"
 	     (*esac*))
             val ccreg = if true then CR0 else newCCreg() (* XXX *)
 	    val addr = I.LabelOp(T.LABEL lab)
@@ -360,6 +361,7 @@ struct
               | (T.LE | T.LEU) => branch(I.FALSE, I.GT)
               | (T.GE | T.GEU) => branch(I.FALSE, I.LT)
               | (T.GT | T.GTU) => branch(I.TRUE, I.GT)
+	      | (T.SETCC | T.MISC_COND _) => error "branch(CC)"
           end  
         | branch(cmp as T.FCMP(fty, cond, _, _), lab, an) = 
           let val ccreg = if true then CR0 else newCCreg() (* XXX *)
@@ -389,6 +391,7 @@ struct
               | T.?<= => branch(I.FALSE,  ccreg, I.FG)
               | T.<>  => test2bits(I.FL, I.FG)
               | T.?=  => test2bits(I.FU, I.FE)
+	      | (T.SETFCC | T.MISC_FCOND _) => error "branch(FCMP)"
              (*esac*)
           end
         | branch _ = error "branch"

@@ -23,6 +23,7 @@ struct
            | T.CALL{funct,defs,uses,...} => 
                mlriscs(uses,mlriscs(defs,rexp(funct,x)))
            | T.RET _ => x
+	   | T.FLOW_TO (s, _) => stm(s,x)
            | T.IF(cc,yes,no) => stm(no,stm(yes,ccexp(cc,x)))
            | T.STORE(ty,ea,d,r) => rexp(d,rexp(ea,x))
            | T.FSTORE(fty,ea,d,r) => fexp(d,rexp(ea,x))
@@ -37,6 +38,8 @@ struct
            | T.SOURCE => x 
            | T.SINK => x 
            | T.RTL _ => x
+	   | T.LIVE ls => mlriscs (ls, x)
+	   | T.KILL ks => mlriscs (ks, x)
       in doStm(s,x) end
    
       and stms(ss,x) = foldr stm x ss

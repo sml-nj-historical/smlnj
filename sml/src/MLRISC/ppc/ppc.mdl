@@ -518,6 +518,7 @@ struct
           (I.RLWNM,SOME me) => rlwnm{ra,rs,sh,mb,me}
         | (I.RLDCL,_) => rldcl{ra,rs,sh,mb}
         | (I.RLDCR,_) => rldcr{ra,rs,sh,mb}
+	| _           => error "rotate"
         )
      | rotatei{oper,ra,rs,sh:operand,mb,me} =
         (case (oper,me) of
@@ -527,6 +528,7 @@ struct
         | (I.RLDICR,_)       => rldicr{ra,rs,sh=sh at [0..4],sh2=sh at [5],mb}
         | (I.RLDIC,_)        => rldic{ra,rs,sh=sh at [0..4],sh2=sh at [5],mb}
         | (I.RLDIMI,_)       => rldimi{ra,rs,sh=sh at [0..4],sh2=sh at [5],mb}
+	| _                  => error "rotatei"
         )
 
 

@@ -19,6 +19,11 @@ struct
    structure NodeSet = BitSet
 
    exception Dominator
+
+   fun singleEntryOf (G.GRAPH g) =
+       case #entries g () of
+	   [e] => e
+	 | _ => raise Dominator
    
    type node = G.node_id
 
@@ -47,9 +52,7 @@ struct
    fun tarjan_lengauer (name,edge_label) (origCFG,CFG as (G.GRAPH cfg)) =
    let val N           = #order cfg ()
        val M           = #capacity cfg ()
-       val r           = case #entries cfg () of
-                           [r] => r
-                         | _   => raise Dominator
+       val r           = singleEntryOf CFG
        val in_edges    = #in_edges cfg
        val succ        = #succ cfg
        val dfnum       = A.array (M, ~1)
@@ -239,12 +242,12 @@ struct
    end
 
 
-   fun prePostOrders(G.GRAPH dom) =
+   fun prePostOrders(g as G.GRAPH dom) =
    let val INFO{ preorder,postorder,...} = #graph_info dom
        (* Compute the preorder/postorder numbers *)
        fun computeThem() =
        let val N   = #capacity dom ()
-           val [r] = #entries dom ()
+           val r = singleEntryOf g
            val pre  = A.array(N,~1000000)
            val post = A.array(N,~1000000)
            fun computeNumbering(preorder,postorder,n) = 
@@ -280,20 +283,20 @@ struct
    in  fn i => A.sub(levelsMap,i) end
 
    (* Entry position *) 
-   fun entryPos(G.GRAPH D) =
+   fun entryPos(g as G.GRAPH D) =
    let val INFO{entryPos,...} = #graph_info D
    in  case !entryPos of
          SOME t => t
        | NONE => 
-         let val [ENTRY] = #entries D ()  
+         let val entry = singleEntryOf g
              val N       = #capacity D ()
-             val t       = A.array(N, ENTRY)
+             val t       = A.array(N, entry)
              fun init(X,Y) = 
                (A.update(t,X,Y);
                 app (fn Z => init(Z,Y)) (#succ D X)
                )
          in  entryPos := SOME t;
-             app (fn Z => init(Z,Z)) (#succ D ENTRY);
+             app (fn Z => init(Z,Z)) (#succ D entry);
              t
          end
    end
@@ -302,7 +305,9 @@ struct
    fun lca (Dom as G.GRAPH D) (a,b) =
    let val l_a = level Dom a 
        val l_b = level Dom b
-       fun idom i = case #in_edges D i of (j,_,_)::_ => j
+       fun idom i = case #in_edges D i of
+			(j,_,_)::_ => j
+		      | [] => raise Fail "DominatorTree:lca:idom: []"
        fun up_a(a,l_a) = if l_a > l_b then up_a(idom a,l_a-1) else a
        fun up_b(b,l_b) = if l_b > l_a then up_b(idom b,l_b-1) else b
        val a = up_a(a,l_a)

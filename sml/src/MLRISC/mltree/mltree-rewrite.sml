@@ -47,6 +47,8 @@ struct
            | T.SINK => s 
            | T.RTL _ => s
            | T.ASSIGN(ty,x,y) => T.ASSIGN(ty,rexp x, rexp y)
+	   | T.LIVE ls => T.LIVE (mlriscs ls)
+	   | T.KILL ks => T.KILL (mlriscs ks)
       in doStm stm s end
    
       and stms ss = map stm ss

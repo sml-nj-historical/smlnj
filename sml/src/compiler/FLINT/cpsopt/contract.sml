@@ -731,13 +731,15 @@ let val rec g' =
 		        else (click "i"; g' e)
               | SOME w' => (click "j"; newname(w,w'); g' e)
        else LOOKER(P.gethdlr,[],w,t,g (SOME(VAR w)) e))
-   | SETTER(P.sethdlr,[v as VAR vv],e) =>
-      let val v' as VAR vv' = ren v
+   | SETTER(P.sethdlr,[v],e) =>
+      let val v' = ren v
 	  val e' = g (SOME v') e
+	  fun sameVar (VAR x, VAR y) = x = y
+	    | sameVar _ = false
       in  if !CG.handlerfold
 	  then case hdlr 
-		 of SOME (v'' as VAR vv'') => 
-		     if vv'=vv'' then (click "k"; use_less v''; e')
+		 of SOME v'' => 
+		     if sameVar (v', v'') then (click "k"; use_less v''; e')
 		     else SETTER(P.sethdlr,[v'],e')
 		  | _ => SETTER(P.sethdlr,[v'],e')
 	  else SETTER(P.sethdlr,[v'],e')

@@ -80,6 +80,10 @@ struct
   *)
   val zeroR = Option.valOf(C.zeroReg CellsBasis.GP)
 
+  fun caseSize 4 { four, twelf } = four ()
+    | caseSize 12 { four, twelf } = twelf ()
+    | caseSize sz _ = error ("caseSize " ^ Int.toString sz)
+
   fun expand(I.ANNOTATION{i,...}, size, pos) = expand(i,size,pos)
     | expand(I.LIVE _, _, _) = []
     | expand(I.KILL _, _, _) = []
@@ -89,32 +93,44 @@ struct
        Shuffle.shufflefp{src=src, dst=dst, tmp=tmp}
     | expand(I.INSTR instr, size, pos) = let
 	fun load(ldClass, ldOp, r, b, d as I.LABop le, mem) = 
-	  (case size 
-	   of 4 => [ldClass{ldOp=ldOp, r=r, b=b, d=I.IMMop(Eval.valueOf le), mem=mem}]
-	    | 12 => let
-		val instrs = expand(I.lda{r=r, b=b, d=d}, 8, pos)
-	      in instrs @ [ldClass{ldOp=ldOp, r=r, b=r, d=I.IMMop 0, mem=mem}]
-	      end)
+	    caseSize size
+		{ four = fn () =>
+	             [ldClass{ldOp=ldOp, r=r, b=b,
+			      d=I.IMMop(Eval.valueOf le), mem=mem}],
+		  twelf = fn () => let
+		     val instrs = expand(I.lda{r=r, b=b, d=d}, 8, pos)
+	          in instrs @ [ldClass{ldOp=ldOp, r=r, b=r,
+				       d=I.IMMop 0, mem=mem}]
+		  end }
+	  | load _ = error "store"
 
-	fun store(stClass, stOp, r, b, d as I.LABop le, mem) = 
-	  (case size 
-	   of 4 => [stClass{stOp=stOp, r=r, b=b, d=I.IMMop(Eval.valueOf le), mem=mem}]
-	    | 12 => let
-		val instrs = expand(I.lda{r=C.asmTmpR, b=b, d=d}, 8, pos)
-	      in instrs @ [stClass{stOp=stOp, r=r, b=C.asmTmpR, d=I.IMMop 0, mem=mem}]
-	      end)
+	fun store(stClass, stOp, r, b, d as I.LABop le, mem) =
+	    caseSize size
+	        { four = fn () =>
+		     [stClass{stOp=stOp, r=r, b=b,
+			      d=I.IMMop(Eval.valueOf le), mem=mem}],
+		  twelf = fn () => let
+		     val instrs = expand(I.lda{r=C.asmTmpR, b=b, d=d}, 8, pos)
+		  in instrs @ [stClass{stOp=stOp, r=r, b=C.asmTmpR,
+				       d=I.IMMop 0, mem=mem}]
+		  end }
+	  | store _ = error "store"
 
 	fun operate(opClass, oper, ra, rb as I.LABop le, rc) =
-	  (case size
-	   of 4 => [opClass{oper=oper, ra=ra, rb=I.IMMop(Eval.valueOf le), rc=rc}]
-	    | 12 => let
-		val instrs = expand(I.lda{r=C.asmTmpR, b=zeroR, d=rb}, 8, pos)
-	      in instrs @ [opClass{oper=oper, ra=ra, rb=I.REGop C.asmTmpR, rc=rc}]
-	      end)
+	    caseSize size
+	        { four = fn () =>
+		     [opClass{oper=oper, ra=ra,
+			      rb=I.IMMop(Eval.valueOf le), rc=rc}],
+		  twelf = fn () => let
+		     val instrs = expand(I.lda{r=C.asmTmpR, b=zeroR, d=rb}, 8, pos)
+		  in instrs @ [opClass{oper=oper, ra=ra,
+				       rb=I.REGop C.asmTmpR, rc=rc}]
+		  end }
+	  | operate _ = error "operate"
       in
 
 	case instr
-	of I.LDA{r=rd, b=rs, d=I.LABop le} => 
+	of I.LDA{r=rd, b=rs, d=I.LABop le} =>
 	   (case size of
 	      4  => [I.lda{r=rd, b=rs, d=I.LOLABop le}]
 	    | 8  => [I.lda{r=rd, b=rs, d=I.LOLABop le},
@@ -127,13 +143,15 @@ struct
 	| I.FSTORE{stOp, r, b, d, mem} => store(I.fstore, stOp, r, b, d, mem)
 	| I.OPERATE{oper, ra, rb, rc} => operate(I.operate, oper, ra, rb, rc)
 	| I.OPERATEV{oper, ra, rb, rc} => operate(I.operatev, oper, ra, rb, rc)
-	| I.CMOVE{oper, ra, rb, rc} => 
-	  (case size
-	   of 4 => [I.INSTR instr]
-	    | 12 => 
-	      let val instrs = expand(I.lda{r=C.asmTmpR, b=zeroR, d=rb}, 8, pos)
-	      in  instrs @ [I.cmove{oper=oper, ra=ra, rb=I.REGop C.asmTmpR, rc=rc}]
-	      end)
+	| I.CMOVE{oper, ra, rb, rc} =>
+	    caseSize size
+		{ four = fn () => [I.INSTR instr],
+		  twelf = fn () => let
+		      val instrs = expand(I.lda{r=C.asmTmpR, b=zeroR, d=rb},
+					  8, pos)
+		  in  instrs @ [I.cmove{oper=oper, ra=ra,
+					rb=I.REGop C.asmTmpR, rc=rc}]
+		  end }
 	| _ => error "expand"
       end
     | expand _ = error "expand"

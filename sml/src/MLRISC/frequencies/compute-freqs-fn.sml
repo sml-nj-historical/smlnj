@@ -167,7 +167,10 @@ functor ComputeFreqsFn (
 		  end
 	  and followEdges [] = ()
 	    | followEdges ((_, dst, _)::r) = (dfs dst; followEdges r)
-	  val [root] = #entries methods ()
+	  val root =
+	      case #entries methods () of
+		  [root] => root
+		| _ => raise Fail "ComputeFreqsFn: root"
 	  in
 	  (* initialize edge probabilities *)
 	    CompleteProbs.completeProbs cfg;

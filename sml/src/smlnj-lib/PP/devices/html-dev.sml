@@ -116,12 +116,10 @@ structure HTMLDev : sig
     fun pushStyle (dev as DEV{emphStk, txt, ...}, sty) = (
 	  emphStk := (concatTxt dev, sty) :: !emphStk;
 	  txt := [])
-    fun popStyle (dev as DEV{emphStk, txt, ...}) = let
-	  val (tl, sty)::r = !emphStk
-	  in
-	    txt := wrapStyle (sty, concatTxt dev, tl);
-	    emphStk := r
-	  end
+    fun popStyle (DEV {emphStk as ref[], ...}) = ()
+      | popStyle (dev as DEV{emphStk as ref ((tl, sty) :: r), txt, ...}) =
+	 (txt := wrapStyle (sty, concatTxt dev, tl);
+	  emphStk := r)
  
   (* the default style for the device (this is the current style,
    * if the style stack is empty).

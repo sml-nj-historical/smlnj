@@ -37,6 +37,7 @@ struct
              | I.ImmedOp 0 =>
 	       if CellsBasis.registerId ra = 0 andalso eqTest(to) then IK_JUMP
 	       else IK_INSTR
+	     | _ => error "trapAlways: neither RegOp nor ImmedOp(0)"
           (*esac*))
       in
 	case instr

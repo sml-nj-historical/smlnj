@@ -348,10 +348,13 @@ struct
                  eBytes(0wx0f::0wxaf::(eImmedExt(rNum dstR, src)))
               | _ => error "imull"
             )
+	   | _ => error "binary"
        end
      | I.MULTDIV{multDivOp, src} => let
          val mulOp = 
-             (case multDivOp of I.MULL1 => 4 | I.IDIVL1 => 7 | I.DIVL1 => 6)
+             (case multDivOp of
+		  I.MULL1 => 4 | I.IDIVL1 => 7 | I.DIVL1 => 6
+		| I.IMULL1 => error "imull1")
        in encode(0wxf7, mulOp, src)
        end
      | I.MUL3{dst, src1, src2=i} => 
@@ -378,6 +381,7 @@ struct
              (*esac*))
          | I.NEGL => encode(0wxf7, 3, opnd)
          | I.NOTL => encode(0wxf7, 2, opnd)
+	 | _ => error "UNARY is not in DECL/INCL/NEGL,NOTL"
         (*esac*))
      | I.SET{cond,opnd} => 
          eBytes(0wx0f :: Word8.+(0wx90,condCode cond) :: eImmedExt(0, opnd))
@@ -424,6 +428,8 @@ struct
                   | I.FSUBL  => (0wxdc, 0wxe0 + dst)
                   | I.FDIVRL => (0wxdc, 0wxf8 + dst) (* gas XXX *)
                   | I.FDIVL  => (0wxdc, 0wxf0 + dst)
+
+		  | _ => error "FBINARY (0w0,_)"
                 )
             | (_, _) => error "FBINARY (src, dst) non %st(0)"
        in  eBytes[opc1, opc2]
@@ -486,6 +492,7 @@ struct
                 | I.FPATAN => 0wxf3
                 | I.FDECSTP => 0wxf6
                 | I.FINCSTP => 0wxf7
+		| _ => error "FUNARY"
                ]
      | I.FXCH{opnd} => encodeST(0wxd9, 25, opnd)
 
