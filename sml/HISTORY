@@ -14,6 +14,121 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/05/18 15:50:00 CDT
+Tag: blume-20040518-mkreader
+Description:
+
+Added Posix.IO.mk{Bin,Text}{Reader,Writer} by lifting their respective
+implementations from internal modules PosixBinPrimIO and PosixTextPrimIO.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/05/11 14:35:00 CDT
+Tag: blume-20040511-win32sock
+Description:
+
+Added previously missing support for many socket-related functions
+under win32.  Thanks to David Hansel <hansel@reactive-systems.com>
+for the voluminous patch!
+
+(I have not tested this patch under win32 yet.)
+
+Here is David's e-mail:
+
+Hi,
+
+Attached to this email you find a diff against sml/nj 110.45
+that will enable socket support under Windows.
+
+To apply the patch (using unix or cygwin)
+1) gunzip runtime.diff.gz
+2) "cd" into "src/runtime" in the source tree of a fresh
+   110.45 installation.
+3) patch -p 1 < [your/path/to]runtime.diff
+
+The code compiles fine but has NOT yet been extensively tested.  
+I only ran a few tests for basic socket client functionality 
+(which worked fine).  Especially the functions that use ioctl 
+are not tested at all and might not work (see below).
+
+I implemented this since we want to move to a newer version of sml/nj
+but need socket support in order to use it.  This is the first time I
+even had a look at the sml/nj source,  so please review my changes
+before making this part of the distribution!  Here are a few issues
+that I think might be better for someone to solve who is more 
+familiar with the sml/nj source (and socket programming):
+
+- getnetbyaddr.c and getnetbyname.c will raise a "not implemented"
+  exception since I could not figure out what the windows equivalent
+  of these functions is
+
+- In sockets-osdep.h there are a some #include statements that are
+  only used in a few files that include sockets-osdep.h
+
+- In smlnj-sock-lib.c, function init_fn() calls WSAStartup() but
+  does not process its return value since I don't know how to
+  report an error upwards.
+
+- It would probably be good to have a call to WSACleanup() when
+  the library is unloaded (if there is such a possibility).  
+  Otherwise I think Windows will take care of this automatically
+  when the process finishes.
+
+- I used ioctlsocket() as a replacement for ioctl() but I have
+  no idea if that is actually the proper replacement on Windows.
+
+- All these issues are marked in the code by "FIXME" comments.
+
+We use sml/nj extensively in our products and are quite happy 
+with it.  I hope this contribution will help you.  
+
+Keep up the good work!
+
+David
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/05/11 14:20:00 CDT
+Tag: blume-20040511-installml
+Description:
+
+Fixed two bugs in installml script.  (Thanks to Vesa A. Norrman for
+the patch.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/05/11 14:05:00 CDT
+Tag: blume-20040511-nlffi-netbsd
+Description:
+
+Added support for nlffi under netbsd.  (Thanks to Vesa A. Norrman for
+the patch.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/05/11 12:05:00 CDT
+Tag: blume-20040511-exports
+Description:
+
+As per request by Adam Chlipala <adam@hcoop.net>, extended various
+export lists in compiler-related .cm-files.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/05/11 11:35:00 CDT
+Tag: blume-20040511-allsource
+Description:
+
+The installer now honors the "src-smlnj" target again, although its meaning
+has changed from "all sources required for the compiler" to "all sources
+the installer knows about".  In other words, if you enable "src-smlnj"
+in the "targets" file, then the installer will pull in sources for
+everything.  (Notice that this refers to source code only.  Compiled
+code is still only installed for modules that were requested explicitly
+or which are required for other modules that were requested explicitly.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/04/23 17:40:00 CDT
 Tag: blume-20040423-ieee-scan
 Description:

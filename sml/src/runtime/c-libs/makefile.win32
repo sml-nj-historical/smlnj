@@ -17,7 +17,7 @@ VERSION =	v-dummy
 
 LIB_DIRS =	smlnj-runtime \
 		smlnj-signals \
-#		smlnj-sockets \
+		smlnj-sockets \
 		smlnj-prof \
 		smlnj-time \
 		smlnj-date \
@@ -47,9 +47,9 @@ clean :
 	$(MAKE) MAKE="$(MAKE)" clean
 	cd $(MAKEDIR)
 
-#	cd smlnj-sockets
-#	$(MAKE) MAKE="$(MAKE)" clean
-#	cd $(MAKEDIR)
+	cd smlnj-sockets
+	$(MAKE) MAKE="$(MAKE)" clean
+	cd $(MAKEDIR)
 
 	cd smlnj-prof
 	$(MAKE) MAKE="$(MAKE)" clean

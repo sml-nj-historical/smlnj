@@ -208,7 +208,8 @@ unpack() {
 	fetch_n_unpack "$1" "$2" "$3" "$4"
     fi
     if [ ! -d $2/$3 ]; then
-	complain "$this: !!! Unable to unpack $1 archive."
+	echo "$this: !!! Unable to unpack $1 archive."
+	exit 1
     fi
 }
 
@@ -225,11 +226,14 @@ do
       boot.*)
         unpack bootfiles $ROOT sml.$i $i
 	;;
-      src-smlnj)
-	for src in compiler cm MLRISC smlnj-lib ml-yacc system
-	do
-	    unpack $src $ROOT/src $src $src
-        done
+      compiler)
+	unpack compiler $ROOT/src compiler compiler
+	;;
+      cm)
+	unpack compiler $ROOT/src cm cm
+	;;
+      system)
+	unpack compiler $ROOT/src system system
 	;;
       ml-yacc)
 	unpack ML-Yacc $ROOT/src ml-yacc ml-yacc
@@ -273,6 +277,9 @@ do
       mlrisc-tools)
 	unpack "MLRISC Tools Library" $SRCDIR MLRISC MLRISC
 	;;
+      smlnj-c)
+	unpack "SML/NJ-C FFI" $SRCDIR smlnj-c smlnj-c
+	;;
       doc)
 	echo Package doc is currently unavailable.
 	# unpack Doc $ROOT doc doc
@@ -280,7 +287,8 @@ do
 	# build $ROOT
 	;;
       *)
-	complain Unknown package: ${i}.
+	echo Unknown package: ${i}.
+	exit 1
 	;;
     esac
 done

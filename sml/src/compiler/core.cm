@@ -73,6 +73,20 @@ Group (../system/smlnj/viscomp/core.cm)
 	structure CoreSym
 	structure FLINT
 
+        structure Types
+        structure EntityEnv
+        structure Modules
+        structure Stamps
+        structure Bindings
+        structure TypesUtil
+        structure VarCon
+        structure ModuleUtil
+        structure II
+        structure BasicTypes
+        structure PPType
+        structure Access
+	structure Unify
+
 	(* corresponding signatures *)
 	signature CONTROL
 	signature SYMENV
@@ -83,6 +97,19 @@ Group (../system/smlnj/viscomp/core.cm)
 	signature PICKMOD
 	signature UNPICKMOD
 	signature FLINT
+
+	signature TYPES
+	signature ENTITY_ENV
+	signature MODULES
+	signature STAMPS
+	signature BINDINGS
+	signature TYPESUTIL
+	signature VARCON
+	signature MODULEUTIL
+	signature BASICTYPES
+	signature PPTYPE
+	signature ACCESS
+	signature UNIFY
 is
 
 TopLevel/environ/environ.sig

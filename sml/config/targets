@@ -15,8 +15,9 @@
 # (The base system consisting of runtime, compiler, and basic libraries
 # will always be built.)
 
-# unpack the source code for the SML/NJ compiler; this is not required,
-# unless you are doing compiler hacking, but it may be interesting to look at.
+# unpack the source code for everything (including for the SML/NJ compiler
+# itself); this is not required,  unless you are doing compiler hacking,
+# but it may be interesting to look at.
 #
 #request src-smlnj
 

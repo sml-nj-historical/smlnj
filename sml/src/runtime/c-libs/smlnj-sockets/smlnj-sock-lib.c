@@ -4,6 +4,7 @@
  */
 
 #include "sockets-osdep.h"
+#include INCLUDE_SOCKET_H
 #include "ml-base.h"
 #include "c-library.h"
 #include "cfun-proto-list.h"
@@ -18,12 +19,26 @@ PVT cfunc_binding_t CFunTable[] = {
 #undef CFUNC
 
 
+void init_fn(int argc, char **argv)
+{
+#if defined(OPSYS_WIN32)
+  static int nCode = -1;
+  if( nCode!=0 )
+    {
+      WSADATA wsaData;
+      nCode = WSAStartup(MAKEWORD(1, 1), &wsaData);
+      /* FIXME: what to do if WSAStartup fails (nCode!=0)? */
+    }
+#endif
+}
+
+
 /* the Sockets library */
 c_library_t	    SMLNJ_Sock_Library = {
 	CLIB_NAME,
 	CLIB_VERSION,
 	CLIB_DATE,
-	NIL(clib_init_fn_t),
+        init_fn,
 	CFunTable
     };
 

@@ -3,11 +3,8 @@
  * COPYRIGHT (c) 1996 AT&T Research.
  */
 
-#include "ml-unixdep.h"
 #include "sockets-osdep.h"
-#include INCLUDE_TYPES_H
 #include INCLUDE_SOCKET_H
-#include INCLUDE_IN_H
 #include "ml-base.h"
 #include "ml-values.h"
 #include "ml-objects.h"

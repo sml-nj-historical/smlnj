@@ -3,9 +3,8 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  */
 
-#include "ml-unixdep.h"
 #include "sockets-osdep.h"
-#include <netdb.h>
+#include INCLUDE_SOCKET_H
 #include "ml-base.h"
 #include "ml-values.h"
 #include "ml-objects.h"
@@ -23,9 +22,14 @@
  */
 ml_val_t _ml_NetDB_getnetbyaddr (ml_state_t *msp, ml_val_t arg)
 {
+#if defined(OPSYS_WIN32)
+  /* FIXME:  getnetbyaddr() does not seem to exist under Windows.  What is
+     the equivalent? */
+  return RAISE_ERROR(msp, "<getnetbyaddr not implemented>");
+#else
     unsigned long   net = REC_SELWORD(arg, 0);
     int		    type = REC_SELINT(arg, 1);
 
     return _util_NetDB_mknetent (msp, getnetbyaddr(net, type));
-
+#endif
 } /* end of _ml_NetDB_getnetbyaddr */

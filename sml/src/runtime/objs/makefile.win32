@@ -64,7 +64,7 @@ CLIBS =		$(XCLIBS) \
 		$(CLIB_DIR)\win32-process\libwin32-process.lib \
 		$(CLIB_DIR)\smlnj-runtime\libsmlnj-runt.lib \
 		$(CLIB_DIR)\smlnj-signals\libsmlnj-sig.lib \
-#		$(CLIB_DIR)\smlnj-sockets\libsmlnj-sock.lib \
+		$(CLIB_DIR)\smlnj-sockets\libsmlnj-sock.lib \
 		$(CLIB_DIR)\smlnj-prof\libsmlnj-prof.lib \
 		$(CLIB_DIR)\smlnj-time\libsmlnj-time.lib \
 		$(CLIB_DIR)\smlnj-date\libsmlnj-date.lib \
@@ -122,7 +122,7 @@ clean:
 
 
 $(RUNTIME):	$(VERSION) main.obj $(OBJS) $(ALL_LIBS)
-	$(CC) /Fe$(RUNTIME) $(CFLAGS) $(LDFLAGS) main.obj $(OBJS) $(ALL_LIBS) $(LD_LIBS)
+	$(CC) /Fe$(RUNTIME) $(CFLAGS) $(LDFLAGS) main.obj $(OBJS) $(ALL_LIBS) $(LD_LIBS) wsock32.lib netapi32.lib
 
 $(VERSION):
 		($(MAKE) MAKE="$(MAKE)" clean)
@@ -465,7 +465,9 @@ $(CLIB_DIR)\smlnj-signals\libsmlnj-sig.lib: FORCE
 	cd $(MAKEDIR)
 
 $(CLIB_DIR)\smlnj-sockets\libsmlnj-sock.lib: FORCE
-	(cd $(CLIB_DIR)\smlnj-sockets; $(MAKE) $(LIB_MK_ARGS) libsmlnj-sock.lib)
+	cd $(CLIB_DIR)\smlnj-sockets
+	$(MAKE) $(LIB_MK_ARGS) libsmlnj-sock.lib
+	cd $(MAKEDIR)
 
 $(CLIB_DIR)\smlnj-prof\libsmlnj-prof.lib: FORCE
 	cd $(CLIB_DIR)\smlnj-prof
