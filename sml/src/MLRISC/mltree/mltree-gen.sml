@@ -91,10 +91,15 @@ functor MLTreeGen (
     * The logic is as follows:
     *    - if q > 0, then we are done since any rounding was
     *      at the same time TO_ZERO and TO_NEGINF
+    *      (This is the fast path that does not require calculating the remainder.)
     *    - otherwise we calculate r and see if it is zero; if so, no adjustment
     *    - finally if r and b have the same sign (i.e., r XOR b >= 0)
     *      we still don't need adjustment
-    *    - otherwise adjust *)
+    *    - otherwise adjust
+    *
+    * Instruction selection for machines (e.g., x86) where the hardware returns both
+    * q and r anyway should implement this logic directly.
+    *)
    fun divinf (xdiv, ty, aexp, bexp) = let
        val a = Cells.newReg ()
        val b = Cells.newReg ()
@@ -126,6 +131,10 @@ functor MLTreeGen (
    end
 
    (* Same for rem when rounding to negative infinity.
+    * Since we have to return (and therefore calculate) the remainder anyway,
+    * we can skip the q > 0 test because it will be caught by the samesign(r,b)
+    * test.
+    *
     * The odd case is when a = MININT and b = -1 in which case the DIVS op
     * will overflow and trap on some machines.  On others the result
     * will be bogus.  Should we fix that? *)
@@ -145,20 +154,17 @@ functor MLTreeGen (
 	  T.MV (ty, r, T.SUB (ty, T.REG (ty, a),
 			          T.MULS (ty, T.REG (ty, q),
 					      T.REG (ty, b)))),
-	  T.IF (T.CMP (ty, T.Basis.GT, T.REG (ty, q), zero),
+	  T.IF (T.CMP (ty, T.Basis.EQ, T.REG (ty, r), zero),
 		T.SEQ [],
-		T.IF (T.CMP (ty, T.Basis.EQ, T.REG (ty, r), zero),
+		T.IF (T.CMP (ty, T.Basis.GE,
+			         T.XORB (ty, T.REG (ty, b), T.REG (ty, r)),
+				 zero),
 		      T.SEQ [],
-		      T.IF (T.CMP (ty, T.Basis.GE,
-				   T.XORB (ty, T.REG (ty, b), T.REG (ty, r)),
-				   zero),
-			    T.SEQ [],
-			    T.MV (ty, r, T.ADD (ty, T.REG (ty, r),
-					            T.REG (ty, b))))))],
-	      T.REG (ty, r))
+		      T.MV (ty, r, T.ADD (ty, T.REG (ty, r), T.REG (ty, b)))))],
+	 T.REG (ty, r))
    end
 
-   (* Same for rem when rounding when rounding to zero. *)
+   (* Same for rem when rounding to zero. *)
    fun remzero (xdiv, xmul, ty, aexp, bexp) = let
        val a = Cells.newReg ()
        val b = Cells.newReg ()

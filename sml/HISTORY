@@ -14,6 +14,26 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/04/01 (no joke!) 17:07:00 EST
+Tag: blume-20020401-x86div
+Description:
+
+Added full support for div/mod/rem/quot on the x86, using the machine
+instruction's two results (without clumsily recomputing the remainder)
+directly where appropriate.
+
+Some more extensive power-of-two support was added to the x86 instruction
+selector (avoiding expensive divs, mods, and muls where they can be
+replaced with cheaper shifts and masks).  However, this sort of thing
+ought to be done earlier, e.g., within the CPS optimizer so that
+all architectures benefit from it.
+
+The compiler compiles to a fixed point, but changes might be somewhat
+fragile nevertheless.  Please, report any strange things that you might
+see wrt. div/mod/quot/rem...
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/03/29 17:22:00
 Tag: blume-20020329-div
 Description:

@@ -540,7 +540,7 @@ struct
                         )
               end
         
-                  (* Division or remainder: divisor must be in %edx:%eax pair *)
+              (* Division or remainder: divisor must be in %edx:%eax pair *)
               fun divrem(signed, overflow, e1, e2, resultReg) =
               let val (opnd1, opnd2) = (operand e1, operand e2)
                   val _ = move(opnd1, eax)
@@ -550,51 +550,183 @@ struct
                   move(resultReg, rdOpnd);
                   if overflow then trap() else ()
               end
-       
-                  (* Optimize the special case for division *) 
-              fun divide(signed, overflow, e1, e2 as T.LI n') = let
-		  val n = toInt32 n'
-                  val w = T.I.toWord32(32, n')
-                  fun isPowerOf2 w = W32.andb((w - 0w1), w) = 0w0 
-                  fun log2 n =  (* n must be > 0!!! *)
-                      let fun loop(0w1,pow) = pow
-                            | loop(w,pow) = loop(W32.>>(w, 0w1),pow+1)
-                      in loop(n,0) end
-              in  if n > 1 andalso isPowerOf2 w then 
-                     let val pow = T.LI(T.I.fromInt(32,log2 w))
-                     in  if signed then 
-                         (* signed; simulate round towards zero *)
-                         let val label = Label.anon()
-                             val reg1  = expr e1
-                             val opnd1 = I.Direct reg1
-                         in  if setZeroBit e1 then ()
-                             else emit(I.CMPL{lsrc=opnd1, rsrc=I.Immed 0});
-                             emit(I.JCC{cond=I.GE, opnd=immedLabel label});
-                             emit(if n = 2 then
-                                     I.UNARY{unOp=I.INCL, opnd=opnd1}
-                                  else
-                                     I.BINARY{binOp=I.ADDL, 
-                                              src=I.Immed(n - 1),
-                                              dst=opnd1});
-                             defineLabel label;
-                             shift(I.SARL, T.REG(32, reg1), pow)
-                         end
-                         else (* unsigned *)
-                            shift(I.SHRL, e1, pow)
-                     end
-                  else
-                       (* note the only way we can overflow is if
-                        * n = 0 or n = -1
-                        *)
-                     divrem(signed, overflow andalso (n = ~1 orelse n = 0), 
-                            e1, e2, eax)
-              end
-                | divide(signed, overflow, e1, e2) = 
-                    divrem(signed, overflow, e1, e2, eax)
+
+	      (* division with rounding towards negative infinity *)
+	      fun divinf0 (overflow, e1, e2) = let
+		  val o1 = operand e1
+		  val o2 = operand e2
+		  val l = Label.anon ()
+	      in
+		  move (o1, eax);
+		  emit I.CDQ;
+		  mark (I.MULTDIV { multDivOp = I.IDIVL1, src = regOrMem o2 },
+			an);
+		  if overflow then trap() else ();
+		  app emit [I.CMPL { lsrc = edx, rsrc = I.Immed 0 },
+			    I.JCC { cond = I.EQ, opnd = immedLabel l },
+			    I.BINARY { binOp = I.XORL,
+				       src = regOrMem o2,
+				       dst = edx },
+			    I.JCC { cond = I.GE, opnd = immedLabel l },
+			    I.UNARY { unOp = I.DECL, opnd = eax }];
+		  defineLabel l;
+		  move (eax, rdOpnd)
+	      end
+
+	      (* analyze for power-of-two-ness *)
+	      fun analyze i' = let
+		  val i = toInt32 i'
+	      in
+		  let val (isneg, a, w) =
+			  if i >= 0 then (false, i, T.I.toWord32 (32, i'))
+			  else (true, ~i, T.I.toWord32 (32, T.I.NEG (32,  i')))
+		      fun log2 (0w1, p) = p
+			| log2 (w, p) = log2 (W32.>> (w, 0w1), p + 1)
+		  in
+		      if w > 0w1 andalso W32.andb (w - 0w1, w) = 0w0 then
+			  (i, SOME (isneg, a,
+				    T.LI (T.I.fromInt32 (32, log2 (w, 0)))))
+		      else (i, NONE)
+		  end handle _ => (i, NONE)
+	      end
+
+	      (* Division by a power of two when rounding to neginf is the
+	       * same as an arithmetic right shift. *)
+	      fun divinf (overflow, e1, e2 as T.LI n') =
+		  (case analyze n' of
+		       (_, NONE) => divinf0 (overflow, e1, e2)
+		     | (_, SOME (false, _, p)) =>
+		       shift (I.SARL, T.REG (32, expr e1), p)
+		     | (_, SOME (true, _, p)) => let
+			   val reg = expr e1
+		       in
+			  emit(I.UNARY { unOp = I.NEGL, opnd = I.Direct reg });
+			  shift (I.SARL, T.REG (32, reg), p)
+		       end)
+		| divinf (overflow, e1, e2) = divinf0 (overflow, e1, e2)
+
+	      fun reminf0 (e1, e2) = let
+		  val o1 = operand e1
+		  val o2 = operand e2
+		  val l = Label.anon ()
+	      in
+		  move (o1, eax);
+		  emit I.CDQ;
+		  mark (I.MULTDIV { multDivOp = I.IDIVL1, src = regOrMem o2 },
+			an);
+		  app emit [I.CMPL { lsrc = edx, rsrc = I.Immed 0 },
+			    I.JCC { cond = I.EQ, opnd = immedLabel l }];
+		  move (edx, eax);
+		  app emit [I.BINARY { binOp = I.XORL,
+				       src = regOrMem o2, dst = eax },
+			    I.JCC { cond = I.GE, opnd = immedLabel l },
+			    I.BINARY { binOp = I.ADDL,
+				       src = regOrMem o2, dst = edx }];
+		  defineLabel l;
+		  move (edx, rdOpnd)
+	      end
+
+	      (* n mod (power-of-2) corresponds to a bitmask (AND). 
+	       * If the power is negative, then we must first negate
+	       * the argument and then again negate the result. *)
+	      fun reminf (e1, e2 as T.LI n') =
+		  (case analyze n' of
+		       (_, NONE) => reminf0 (e1, e2)
+		     | (_, SOME (false, a, _)) =>
+		       binaryComm (I.ANDL, e1,
+				           T.LI (T.I.fromInt32 (32, a - 1)))
+		     | (_, SOME (true, a, _)) => let
+			   val r1 = expr e1
+			   val o1 = I.Direct r1
+		       in
+			   emit (I.UNARY { unOp = I.NEGL, opnd = o1 });
+			   emit (I.BINARY { binOp = I.ANDL,
+					    src = I.Immed (a - 1),
+					    dst = o1 });
+			   unary (I.NEGL, T.REG (32, r1))
+		       end)
+		| reminf (e1, e2) = reminf0 (e1, e2)
+
+              (* Optimize the special case for division *) 
+              fun divide (signed, overflow, e1, e2 as T.LI n') =
+		  (case analyze n' of
+		       (n, SOME (isneg, a, p)) =>
+		       if signed then
+			   let val label = Label.anon ()
+			       val reg1 = expr e1
+			       val opnd1 = I.Direct reg1
+			   in
+			       if isneg then
+				   emit (I.UNARY { unOp = I.NEGL,
+						   opnd = opnd1 })
+			       else if setZeroBit e1 then ()
+			       else emit (I.CMPL { lsrc = opnd1,
+						   rsrc = I.Immed 0 });
+			       emit (I.JCC { cond = I.GE,
+					     opnd = immedLabel label });
+			       emit (if a = 2 then
+					 I.UNARY { unOp = I.INCL,
+						   opnd = opnd1 }
+				     else
+					 I.BINARY { binOp = I.ADDL,
+						    src = I.Immed (a - 1),
+						    dst = opnd1 });
+			       defineLabel label;
+			       shift (I.SARL, T.REG (32, reg1), p)
+			   end
+		       else shift (I.SHRL, e1, p)
+		     | (n, NONE) =>
+		       divrem(signed, overflow andalso (n = ~1 orelse n = 0),
+			      e1, e2, eax))
+		| divide (signed, overflow, e1, e2) =
+		  divrem (signed, overflow, e1, e2, eax)
 
 	      (* rem never causes overflow *)
-              fun rem(signed, e1, e2) = 
-                    divrem(signed, false, e1, e2, edx)
+              fun rem (signed, e1, e2 as T.LI n') =
+		  (case analyze n' of
+		       (n, SOME (isneg, a, _)) =>
+		       if signed then
+			   (* The following logic should work uniformely
+			    * for both isneg and not isneg.  It only uses
+			    * the absolute value (a) of the divisor.
+			    * Here is the formula:
+			    *    let p be a power of two and a = abs(p):
+			    *
+			    *    x % p = x - ((x < 0 ? x + a - 1 : x) & (-a))
+			    *
+			    * (That's what GCC seems to do.)
+			    *)
+			   let val r1 = expr e1
+			       val o1 = I.Direct r1
+			       val rt = newReg ()
+			       val tmp = I.Direct rt
+			       val l = Label.anon ()
+			   in
+			       move (o1, tmp);
+			       if setZeroBit e1 then ()
+			       else emit (I.CMPL { lsrc = o1,
+						   rsrc = I.Immed 0 });
+			       emit (I.JCC { cond = I.GE,
+					     opnd = immedLabel l });
+			       emit (I.BINARY { binOp = I.ADDL,
+						src = I.Immed (a - 1),
+						dst = tmp });
+			       defineLabel l;
+			       emit (I.BINARY { binOp = I.ANDL,
+						src = I.Immed (~a),
+						dst = tmp });
+			       binary (I.SUBL, T.REG (32, rt), T.REG (32, r1))
+			   end
+		       else
+			   if isneg then
+			       (* this is really strange... *)
+			       divrem (false, false, e1, e2, edx)
+			   else
+			       binaryComm (I.ANDL, e1,
+					   T.LI (T.I.fromInt32 (32, n - 1)))
+		     | (_, NONE) => divrem (signed, false, e1, e2, edx))
+		| rem(signed, e1, e2) =
+                  divrem(signed, false, e1, e2, edx)
 
                   (* Makes sure the destination must be a register *)
               fun dstMustBeReg f = 
@@ -605,7 +737,7 @@ struct
                   else f(rd, rdOpnd)
 
                   (* unsigned integer multiplication *)
-              fun uMultiply(e1, e2) = 
+              fun uMultiply0 (e1, e2) = 
                   (* note e2 can never be (I.Direct edx) *)
                   (move(operand e1, eax);
                    mark(I.MULTDIV{multDivOp=I.MULL1, 
@@ -613,6 +745,13 @@ struct
                    move(eax, rdOpnd)
                   )
         
+	      fun uMultiply (e1, e2 as T.LI n') =
+		  (case analyze n' of
+		       (_, SOME (false, _, p)) => shift (I.SHLL, e1, p)
+		     | _ => uMultiply0 (e1, e2))
+		| uMultiply (e1 as T.LI _, e2) = uMultiply (e2, e1)
+		| uMultiply (e1, e2) = uMultiply0 (e1, e2)
+
                   (* signed integer multiplication: 
                    * The only forms that are allowed that also sets the 
                    * OF and CF flags are:
@@ -625,7 +764,7 @@ struct
                    *      imul r32, r32/m32
                    * Note: destination must be a register!
                    *)
-              fun multiply(e1, e2) = 
+              fun multiply (e1, e2) = 
               dstMustBeReg(fn (rd, rdOpnd) =>
               let fun doit(i1 as I.Immed _, i2 as I.Immed _) =
                       (move(i1, rdOpnd);
@@ -656,6 +795,21 @@ struct
               in  doit(opnd1, opnd2)
               end
               )
+
+	      fun multiply_notrap (e1, e2 as T.LI n') =
+		  (case analyze n' of
+		       (_, SOME (isneg, _, p)) => let
+			   val r1 = expr e1
+			   val o1 = I.Direct r1
+		       in
+			   if isneg then
+			       emit (I.UNARY { unOp = I.NEGL, opnd = o1 })
+			   else ();
+			   shift (I.SHLL, T.REG (32, r1), p)
+		       end
+		     | _ => multiply (e1, e2))
+		| multiply_notrap (e1 as T.LI _, e2) = multiply_notrap (e2, e1)
+		| multiply_notrap (e1, e2) = multiply (e1, e2)
 
                  (* Emit a load instruction; makes sure that the destination
                   * is a register 
@@ -878,14 +1032,17 @@ struct
              | T.DIVU(32, x, y) => divide(false, false, x, y)
              | T.REMU(32, x, y) => rem(false, x, y)
 
-             | T.MULS(32, x, y) => multiply(x, y)
+             | T.MULS(32, x, y) => multiply_notrap (x, y)
              | T.DIVS(T.DIV_TO_ZERO, 32, x, y) => divide(true, false, x, y)
+	     | T.DIVS(T.DIV_TO_NEGINF, 32, x, y) => divinf (false, x, y)
              | T.REMS(T.DIV_TO_ZERO, 32, x, y) => rem(true, x, y)
+	     | T.REMS(T.DIV_TO_NEGINF, 32, x, y) => reminf (x, y)
 
              | T.ADDT(32, x, y) => (binaryComm(I.ADDL, x, y); trap())
              | T.SUBT(32, x, y) => (binary(I.SUBL, x, y); trap())
-             | T.MULT(32, x, y) => (multiply(x, y); trap())
+             | T.MULT(32, x, y) => (multiply (x, y); trap ())
              | T.DIVT(T.DIV_TO_ZERO, 32, x, y) => divide(true, true, x, y)
+	     | T.DIVT(T.DIV_TO_NEGINF, 32, x, y) => divinf (true, x, y)
 
              | T.ANDB(32, x, y) => binaryComm(I.ANDL, x, y)
              | T.ORB(32, x, y)  => binaryComm(I.ORL, x, y)
