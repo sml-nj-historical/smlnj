@@ -474,9 +474,9 @@ end = struct
 	    Arrow (aggreg_argty, res_t)
 	end
 
-	fun  rtti_ty t = Con ("T.typ", [wtn_ty t])
+	fun rtti_ty t = Con ("T.typ", [wtn_ty t])
 
-	fun  obj_ty p (t, c) = Con ("obj" ^ p, [wtn_ty t, c])
+	fun obj_ty p (t, c) = Con ("obj" ^ p, [wtn_ty t, c])
 
 	fun cro S.RW = Type "'c"
 	  | cro S.RO = Type "ro"
@@ -1104,9 +1104,11 @@ end = struct
 	    str "local open C.Dim C in";
 	    nl (); str (tstruct ^ " = struct");
 	    Box 4;
-	    pr_tdef ("t", rtti_ty spec);
+	    pr_tdef ("t", wtn_ty spec);
 	    Option.app (fn rttiv =>
-			   pr_vdef ("typ", EConstr (rttiv, Type "t")))
+			   pr_vdef ("typ",
+				    EConstr (rttiv,
+					     Con ("T.typ", [Type "t"]))))
 		       rttiv_opt;
 	    endBox ();
 	    nl (); str "end";

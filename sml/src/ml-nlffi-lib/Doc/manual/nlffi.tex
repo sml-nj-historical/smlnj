@@ -99,10 +99,15 @@ access to the memory location that $v$ stands for in C.  If $t_C$ is
 
 \subsubsection*{Examples}
 
+\begin{small}
 \begin{center}
 \begin{tabular}{c|c}
 C declaration & signature of ML-side representation \\ \hline\hline
-{\tt extern int i;}
+\begin{minipage}{2in}
+\begin{verbatim}
+extern int i;
+\end{verbatim}
+\end{minipage}
 &
 \begin{minipage}{4in}
 \begin{verbatim}
@@ -117,7 +122,11 @@ end
 \end{verbatim}
 \end{minipage}
 \\ \hline
-{\tt extern const double d;}
+\begin{minipage}{2in}
+\begin{verbatim}
+extern const double d;
+\end{verbatim}
+\end{minipage}
 &
 \begin{minipage}{4in}
 \begin{verbatim}
@@ -171,6 +180,7 @@ end
 \end{minipage}
 \end{tabular}
 \end{center}
+\end{small}
 
 %-------------------------------------------------------------------------
 \subsection{Functions}
@@ -425,7 +435,90 @@ end
 
 \subsection{Type definitions ({\tt typedef})}
 
-...
+In C a {\tt typedef} declaration associates a type name $t$ with a
+type $t_C$.  On the ML side, $t$ is represented by an ML structure
+{\tt T\_$t$}.  This structure contains a type abbreviation {\tt t} for
+the ML encoding of $t_C$ and, provided $t_C$ is not {\em incomplete},
+a value {\tt typ} of type {\tt t C.T.typ} with run-time type
+information regarding $t_C$.
+
+\subsubsection*{Examples}
+
+\begin{small}
+\begin{center}
+\begin{tabular}{c|c}
+C declaration & signature of ML-side representation \\ \hline\hline
+\begin{minipage}{2in}
+\begin{verbatim}
+typedef int t1;
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure T_t1 : sig
+    type t   = C.sint
+    val typ  : t C.T.typ
+end
+
+\end{verbatim}
+\end{minipage}
+\\ \hline
+\begin{minipage}{2in}
+\begin{verbatim}
+typedef struct s t2;
+/* s incomplete */
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure T_t2 : sig
+    type t  = ST_s.tag C.su
+end
+
+\end{verbatim}
+\end{minipage}
+\\ \hline
+\begin{minipage}{2in}
+\begin{verbatim}
+typedef struct s *t3;
+/* s incomplete */
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure T_t3 : sig
+    type t  = (ST_s.tag, C.rw) C.su_obj C.ptr
+end
+
+\end{verbatim}
+\end{minipage}
+\\ \hline
+\begin{minipage}{2in}
+\begin{verbatim}
+typedef struct t t4;
+/* t complete */
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure T_t4 : sig
+    type t  = ST_t.tag C.su
+    val typ : t T.typ
+end
+
+\end{verbatim}
+\end{minipage}
+\end{tabular}
+\end{center}
+\end{small}
 
 \subsection{{\tt struct} and {\tt union}}
 
