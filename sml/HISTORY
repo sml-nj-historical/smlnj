@@ -13,6 +13,21 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/27 17:20:00 CDT
+Tag: blume-20041027-x86-c-calls
+Description:
+
+This is the HISTORY entry for two earlier commits, both concerning
+the x86 c-calls code in MLRISC:
+
+  - added a missing LOAD in the code that deals with struct arguments
+  - made sure the caller does not add the wrong number of bytes to the
+    stack pointer after a call of a function returning a struct
+    (the callee already pops the implicit argument which points to
+     the space reserved for the result)
+
+----------------------------------------------------------------------
 Name: Allen Leung (leunga (at) reservoir (dot) com)
 Date: 2004/10/24 14:00:00 EST
 Tag: leunga-20041024-x86-gas-fucomip
