@@ -119,8 +119,10 @@ Group
   structure WordRedBlackSet
   structure PrimeSizes
 
+#if defined(NEW_CM)
   structure RealOrderStats
   structure UnivariateStats
+#endif
 
   functor ArrayQSortFn
   functor BSearchFn
