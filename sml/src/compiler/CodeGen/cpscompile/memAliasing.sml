@@ -73,6 +73,8 @@ struct
 
    exception NotFound
 
+   val top = CPSRegions.memory
+
    (*
     * Analyze a set of CPS functions
     *)
@@ -175,8 +177,10 @@ struct
              | mkRecord(C.RK_VECTOR,x,vs,hp) = mkVector(x,vs,hp) 
              | mkRecord(_,x,vs,hp) = mkNormalRecord(x,vs,hp) 
 
+           fun makeTop(m) = (PT.unify(m, top); top)
+
            (* CPS Pure Primitives *)
-           fun arrayptr v = PT.strongSubscript(value v, 0)
+           fun arrayptr v = PT.pi(value v, 0)
 
            fun mkspecial(x,v,hp) = mkNormalRecord(x,[(v,off0)],hp)
            fun fwrap(x,v,hp) = mkFRecord(x,[(v,off0)],hp)
@@ -185,35 +189,38 @@ struct
            fun newarray0(x,hp) = 
                bind(x,PT.mkRecord(NONE,[PT.mkRecord(NONE,[])]))
 
-           fun objlength(x,v) = bind(x, PT.strongSubscript(value v, ~1))
-           fun length(x,v) = bind(x, PT.strongSubscript(value v, 1))
-           fun arraysub(x,a,i) = bind(x,PT.weakSubscript(arrayptr a))
+           fun objlength(x,v) = bind(x, PT.pi(value v, ~1))
+           fun length(x,v) = bind(x, PT.pi(value v, 1))
+           fun arraysub(x,a,i) = makeTop(PT.weakSubscript(arrayptr a))
            fun subscriptv(x,a,i) = arraysub(x,a,i)
            fun subscript(x,a,i) = arraysub(x,a,i)
            fun pure_numsubscript(x,a,i) = arraysub(x,a,i)
-           fun gettag(x,v) = bind(x,PT.strongSubscript(value v, ~1))
+           fun gettag(x,v) = bind(x,PT.pi(value v, ~1))
            fun numsubscript8(x,a,i) = arraysub(x,a,i)
            fun numsubscriptf64(x,a,i) = arraysub(x,a,i)
-           fun getcon(x,v) = bind(x, PT.strongSubscript(value v,0))
-           fun getexn(x,v) = bind(x, PT.strongSubscript(value v,0))
+           fun getcon(x,v) = bind(x, PT.pi(value v,0))
+           fun getexn(x,v) = bind(x, PT.pi(value v,0))
            fun recsubscript(x,a,i) = arraysub(x,a,i)
            fun raw64subscript(x,a,i) = arraysub(x,a,i)
 
            (* CPS Looker Primitives *)
-           fun deref(x,v) = bind(x, PT.strongSubscript(value v, 0))
+           fun deref(x,v) = makeTop(PT.strongSubscript(value v, 0))
            fun gethdlr x = bind(x, PT.strongSubscript(exnptr, 0))
            fun getvar x = bind(x, PT.strongSubscript(varptr, 0))
 
            (* CPS Setter Primitives *)
-           fun supdate(a,x) = PT.strongUpdate(value a, 0, value x)
-           fun wupdate(a,x) = PT.weakUpdate(value a, value x)
+           fun supdate(a,x) = PT.strongUpdate(value a, 0, makeTop(value x))
+           fun wupdate(a,x) = PT.weakUpdate(value a, makeTop(value x))
+
+           fun arrayupdate(a,i,x) = PT.weakUpdate(arrayptr a,value x) 
 
            fun assign(a,x) = supdate(a,x) 
            fun unboxedassign(a,x) = supdate(a,x) 
-           fun update(a,i,x) = wupdate(a,x) 
-           fun boxedupdate(a,i,x) = wupdate(a,x) 
-           fun numupdate(a,i,x) = wupdate(a,x) 
-           fun numupdateF64(a,i,x) = wupdate(a,x) 
+           fun update(a,i,x) = arrayupdate(a,i,x) 
+           fun boxedupdate(a,i,x) = arrayupdate(a,i,x) 
+           fun unboxedupdate(a,i,x) = arrayupdate(a,i,x) 
+           fun numupdate(a,i,x) = arrayupdate(a,i,x) 
+           fun numupdateF64(a,i,x) = arrayupdate(a,i,x) 
            fun sethdlr x = PT.strongUpdate(exnptr, 0, value x)
            fun setvar  x = PT.strongUpdate(varptr, 0, value x)
 
@@ -282,8 +289,10 @@ struct
                  (unboxedassign(a,v); infer(k,hp))
              | infer(C.SETTER(P.update, [a,i,v], k),hp) = 
                  (update(a,i,v); infer(k,hp+storeListSize))
-             | infer(C.SETTER(P.boxedupdate, [a,i,v], k),hp) = 
+             | infer(C.SETTER(P.boxedupdate, [a,i,v], k), hp) = 
                  (boxedupdate(a,i,v); infer(k,hp+storeListSize))
+             | infer(C.SETTER(P.unboxedupdate, [a,i,v], k), hp) =
+                 (unboxedupdate(a,i,v); infer(k,hp))
              | infer(C.SETTER(P.numupdate{kind=P.INT _}, [a,i,v], k),hp) =
                  (numupdate(a,i,v); infer(k,hp))
              | infer(C.SETTER(P.numupdate{kind=P.FLOAT 64}, [a,i,v], k),hp) =
@@ -308,7 +317,6 @@ struct
        in infer(cexp, 0)
        end
 
-       val top = CPSRegions.memory
    in  if !Control.CG.memDisambiguate then
        (CPSRegions.reset();
         app defineFunction cpsFunctions;

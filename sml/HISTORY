@@ -13,6 +13,29 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/03/31 21:15:00 EST
+Tag: leunga-20000331-aliasing
+Description:
+
+This update contains a rewritten (and hopefully more correct) module 
+for extracting aliasing information from CPS.  
+
+   To turn on this feature:  
+
+        Compiler.Control.CG.memDisambiguate := true
+
+   To pretty print the region information with assembly
+
+       Compiler.Control.MLRISC.getFlag "asm-show-region" := true;
+
+   To control how many levels of aliasing information are printed, use:
+
+       Compiler.Control.MLRISC.getInt "points-to-show-level" := n
+
+   The default of n is 3.
+
+----------------------------------------------------------------------
 Name: David MacQueen
 Date: 2000/03/31 11:15:00 EST
 Tag: dbm-20000331-runtime_fix

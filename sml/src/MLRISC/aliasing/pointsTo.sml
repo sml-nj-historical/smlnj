@@ -146,7 +146,7 @@ struct
    fun pi(x,i)  = getIth(PI,i,x)
    fun dom(x,i) = getIth(DOM,i,x)
    fun ran(x,i) = getIth(RAN,i,x)
-   fun sub(x,i) = (mut x; getIth(PI,i,x))
+   fun sub(x,i) = let val m = getIth(PI,i,x) in mut m; m end
 
    fun offset(x,i) = (unify(x,newTop{mutable=false,name=""}); find x)
    
@@ -182,25 +182,39 @@ struct
 
    fun strongUpdate(a,i,x) = unify(sub(a,i),x)
    fun strongSubscript(a,i) = sub(a,i)
-   fun weakUpdate(a,x) = (weak a; unify(sub(a,0),a))
-   fun weakSubscript(a) = (weak a; sub(a,0))
+   fun weakUpdate(a,x) = 
+       let val elem = sub(a, 0)
+       in  weak elem; unify(elem, x) end
+   fun weakSubscript(a) = 
+       let val elem = sub(a, 0)
+       in  weak elem; elem end
 
    fun interfere(x,y) = find x = find y
 
-   fun show(LINK x) = show(!x)
-     | show(SREF(id,es)) = "strong-ref("^Int.toString id^")"^edges es 
-     | show(WREF(id,es)) = "weak-ref("^Int.toString id^")"^edges es 
-     | show(SCELL(id,es)) = "strong("^Int.toString id^")"^edges es 
-     | show(WCELL(id,es)) = "weak("^Int.toString id^")"^edges es 
-     | show(TOP{name="",mutable=true,id,...}) = "var("^Int.toString id^")"
-     | show(TOP{name="",mutable=false,id,...}) = "const("^Int.toString id^")"
-     | show(TOP{name,...}) = name
+   val maxLevels = MLRiscControl.getInt "points-to-show-max-levels"
+   val _ = maxLevels := 3
 
-   and edges es =
-       foldr (fn ((PI,i,x),s) => "pi"^Int.toString i^"="^toString(x)^" "^s
-               | (_,s) => s)
-             "" (!es)
+   fun toString r = show(!r, !maxLevels)
 
-   and toString r = show(!r)
+   and show(LINK x, lvl) = show(!x, lvl)
+     | show(SREF(id,es), lvl) = "sref"^Int.toString id^edges(es, lvl)
+     | show(WREF(id,es), lvl) = "wref"^Int.toString id^edges(es, lvl) 
+     | show(SCELL(id,es), lvl) = "s"^Int.toString id^edges(es, lvl) 
+     | show(WCELL(id,es), lvl) = "w"^Int.toString id^edges(es, lvl) 
+     | show(TOP{name="",mutable=true,id,...}, _) = "var"^Int.toString id
+     | show(TOP{name="",mutable=false,id,...}, _) = "const"^Int.toString id
+     | show(TOP{name,...}, _) = name
+
+   and edges(es, ~1) = ""
+     | edges(es, lvl) = 
+       let fun prInt i = if i < 0 then "-"^Int.toString(~i) else Int.toString i
+           fun add(a,"") = a
+             | add(a,b)  = a^","^b
+           fun cnv((PI,i,x),s) = add(prInt i^"->"^show(!x, lvl-1),s)
+             | cnv(_,s) = s
+       in  case foldr cnv "" (!es) of 
+             "" => "" 
+           | t  => if lvl = 0 then "..." else "["^t^"]" 
+       end
 
 end

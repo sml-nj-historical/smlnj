@@ -267,12 +267,10 @@ FLINT/trans/transtypes.sml
 
 FLINT/lsplit/ls-inline.sml
 
-(* CodeGen/cpscompile/alignment.sml *)
 CodeGen/cpscompile/argPassing.sig
 CodeGen/cpscompile/argPassing.sml
 CodeGen/cpscompile/cluster.sml
 CodeGen/cpscompile/cps-aliasing.sml
-(* CodeGen/cpscompile/cps-treeify.sml *)
 CodeGen/cpscompile/cpsRegions.sig
 CodeGen/cpscompile/cpsRegions.sml
 CodeGen/cpscompile/cpsRegs.sig
@@ -283,8 +281,6 @@ CodeGen/cpscompile/invokegc.sml
 CodeGen/cpscompile/limit.sml
 CodeGen/cpscompile/memAliasing.sml
 CodeGen/cpscompile/memDisambig.sml
-CodeGen/cpscompile/mkRecord.sig
-CodeGen/cpscompile/mkRecord.sml
 CodeGen/cpscompile/pseudoOpType.sig
 CodeGen/cpscompile/pseudoOpsBig.sml
 CodeGen/cpscompile/pseudoOpsLittle.sml
