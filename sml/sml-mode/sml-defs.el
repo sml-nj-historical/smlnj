@@ -110,7 +110,6 @@ notion of \"the end of an outline\".")
     ["-----" nil nil]
     ["SML mode help (brief)"       describe-mode t]
     ["SML mode *info*"             sml-mode-info t]
-    ["SML mode version"            sml-mode-version t]
     ["-----" nil nil]
     ["Remove overlay"    (sml-error-overlay 'undo) ;:active (sml-overlay-active-p)
      ]))
