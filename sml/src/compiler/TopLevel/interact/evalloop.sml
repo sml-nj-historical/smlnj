@@ -167,13 +167,10 @@ fun interact () = let
 			val msg = exnMsg exn
 			val name = exnName exn
                     in
-			if (msg = name)
-			then say (concat
-				      ["\nuncaught exception ",
-				       exnName exn, "\n"])
-			else say (concat
-				      ["\nuncaught exception ", exnName exn,
-				       " [", exnMsg exn, "]\n"]);
+			if msg = name then
+			    say (concat ["\nuncaught exception ", name, "\n"])
+			else say (concat ["\nuncaught exception ", name,
+					  " [", msg, "]\n"]);
 			showhist exn;
 			flush(); 
 			loop()
