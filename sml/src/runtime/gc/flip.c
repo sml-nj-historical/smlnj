@@ -75,7 +75,7 @@ SayDebug ("Flip generation %d: (%d GCs)\n", i+1, numGCs);
 		thisMinSz = ((Addr_t)(ap->frspTop) - (Addr_t)(ap->oldTop));
 	    }
 	    else {
-		ap->frspSizeB = 0;  /* to insure accurate stats */
+		ap->frspSizeB = 0;  /* to ensure accurate stats */
 		if ((ap->reqSizeB == 0) && (prevOldSz[j] == 0))
 		    continue;
 		else
@@ -106,7 +106,9 @@ SayDebug ("Flip generation %d: (%d GCs)\n", i+1, numGCs);
 	   * but the new size shouldn't exceed the maximum size for the arena
 	   * (unless minSz > maxSizeB).
 	   */
-	    newSz = minSz + ((thisMinSz * (g->ratio-1)) / numGCs);
+	    newSz = ap->reqSizeB + ((thisMinSz * g->ratio) / numGCs);
+	    if (newSz < minSz)
+		newSz = minSz;
 #ifdef VERBOSE
 SayDebug ("  %s: min = %d, prev = %d, thisMin = %d, req = %d, new = %d, max = %d\n",
 ArenaName[j+1], minSz, prevOldSz[j], thisMinSz, ap->reqSizeB, newSz, ap->maxSizeB);
