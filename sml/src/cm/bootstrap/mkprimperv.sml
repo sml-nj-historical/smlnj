@@ -1,8 +1,11 @@
-structure MkPrimPerv = struct
+functor MkPrimPervFn (structure MachDepVC: MACHDEP_VC) = struct
 
+    structure E = GenericVC.Environment
     structure S = GenericVC.Source
     structure EM = GenericVC.ErrorMsg
     structure SM = GenericVC.SourceMap
+    structure BF = MachDepVC.Binfile
+    structure DE = GenericVC.DynamicEnv
 
     fun mk (gp: GeneralParams.info) specgroup = let
 	val context = AbsPath.relativeContext (AbsPath.dir specgroup)
@@ -28,11 +31,14 @@ structure MkPrimPerv = struct
 	    else SOME (String.tokens sep line, newpos)
 	end
 
-	val boguspid = GenericVC.PersStamps.fromBytes
-	    (Byte.stringToBytes "0123456789abcdef")
-	fun bogus n = { name = n, env = GenericVC.Environment.emptyEnv,
-		        pidInfo = { statpid = boguspid, sympid = boguspid,
-				    ctxt = GenericVC.CMStaticEnv.empty } }
+	local
+	    val boguspid = GenericVC.PersStamps.fromBytes
+		(Byte.stringToBytes "0123456789abcdef")
+	in
+	    fun bogus n = { name = n, env = GenericVC.Environment.emptyEnv,
+			    pidInfo = { statpid = boguspid, sympid = boguspid,
+				        ctxt = GenericVC.CMStaticEnv.empty } }
+	end
 
 	fun loop (split, m, fl, pos) =
 	    case lineIn pos of
@@ -62,7 +68,20 @@ structure MkPrimPerv = struct
 			TextIO.closeOut s
 		    end
 
-		    fun compile (name, file, args) = Dummy.f ()
+		    fun compile (name, file, args) = let
+			fun one (arg, e) = E.layerEnv (#env (look arg), e)
+			val ctxt = foldl one E.emptyEnv args
+			val bfc = Dummy.f ()
+			val pi = { statpid = BF.staticPidOf bfc,
+				   sympid = BF.lambdaPidOf bfc,
+				   ctxt = E.staticPart ctxt }
+			val env = E.mkenv { static = BF.senvOf bfc,
+					    symbolic = BF.symenvOf bfc,
+					    dynamic = DE.empty }
+			val pspec = { name = name, env = env, pidInfo = pi }
+		    in
+			StringMap.insert (m, name, pspec)
+		    end
 		in
 		    case line of
 			[] => loop (split, m, fl, newpos)
