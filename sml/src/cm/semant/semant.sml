@@ -230,7 +230,7 @@ structure CMSemant :> CM_SEMANT = struct
 		else e0 (concat ["owner of subgroup (",
 				 libname owner,
 				 ") does not match current library (",
-				 libname curlib])
+				 libname curlib, ")"])
 	    end
 	  | checkowner _ = ()
     in
