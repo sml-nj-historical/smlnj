@@ -339,6 +339,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 
 	val _ = sfx ("sml", "sml")
 	val _ = sfx ("sig", "sml")
+	val _ = sfx ("fun", "sml")
 	val _ = sfx ("cm", "cm")
     end
 end

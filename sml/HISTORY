@@ -12,6 +12,14 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/04/26 13:10:00 JST
+Tag: blume-20000426-fun_suffix
+Description:
+
+Added ".fun" as a recognized file name suffix (for ML code).
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2000/04/25 17:00:00 EST
 Tag: leunga-20000425-alpha-ra
