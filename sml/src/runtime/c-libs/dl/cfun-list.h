@@ -15,4 +15,3 @@ CFUNC("dlopen",  _ml_U_Dynload_dlopen,  "string option * bool * bool -> Word32.w
 CFUNC("dlsym",   _ml_U_Dynload_dlsym,   "Word32.word * string -> Word32.word")
 CFUNC("dlclose", _ml_U_Dynload_dlclose, "Word32.word -> unit")
 CFUNC("dlerror", _ml_U_Dynload_dlerror, "unit -> string option")
-CFUNC("dldummy", _ml_U_Dynload_dldummy, "unit -> unit")

@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/02 14:45:00 CDT
+Tag: blume-20040802-nlffi-win32
+Description:
+
+Added NLFFI support for Win32, adapted from a patch provided by David
+Hansel.  This is currently completely untested.  Also, the issue
+concerning stdcall vs. ccall is still unresolved.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/07/30 17:55:00 CDT
 Tag: blume-20040730-various
 Description:

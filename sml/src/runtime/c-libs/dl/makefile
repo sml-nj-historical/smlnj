@@ -22,8 +22,7 @@ OBJS =	unix-dynload-lib.o \
 	dlopen.o \
 	dlclose.o \
 	dlsym.o \
-	dlerror.o \
-	dldummy.o
+	dlerror.o
 
 $(LIBRARY)	: $(VERSION) $(OBJS)
 	rm -rf $(LIBRARY)
