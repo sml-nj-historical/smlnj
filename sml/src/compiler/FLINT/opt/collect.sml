@@ -10,8 +10,8 @@ sig
 
     (* query functions *)
     val escaping  : FLINT.lvar -> bool	(* non-call uses *)
-    val usenb     : FLINT.lvar -> int	(* nb of non-recursive uses *)
     val called    : FLINT.lvar -> bool	(* known call uses *)
+    val usenb     : FLINT.lvar -> int	(* nb of non-recursive uses *)
     val actuals   : FLINT.lvar -> (FLINT.value option list) (* constant args *)
 
     (* inc the "true=call,false=use" count *)
@@ -97,7 +97,7 @@ datatype info
     
 exception NotFound
 	      
-val m : info M.intmap = M.new(128, NotFound)
+val m : info M.intmap = M.new(1024, NotFound)
 
 (* map related helper functions *)
 fun get lv = (M.map m lv)

@@ -57,7 +57,8 @@ fun bug s = ErrorMsg.impossible ("LtyPrim: " ^ s)
 fun say (s : string) = Control.Print.say s
 fun mkv _ = LV.mkLvar()
 val ident = fn le => le
-val fkfun = FK_FUN{isrec=NONE,known=false,inline=true, fixed=LT.ffc_fixed}
+val fkfun = {isrec=NONE, known=false, inline=IH_ALWAYS, cconv=CC_FUN LT.ffc_fixed}
+val fkfct = {isrec=NONE, known=false, inline=IH_SAFE, cconv=CC_FCT}
 
 fun mkarw(ts1, ts2) = LT.tcc_arrow(LT.ffc_fixed, ts1, ts2)
 
@@ -195,8 +196,8 @@ fun klookKE(kenv, i, j) =
 (* val tkAbsGen : kenv * lvar list * tkind list * lvar * fkind 
                   -> kenv * ((lexp *lexp) -> lexp) *)
 fun tkAbsGen (kenv, vs, ks, f, fk) = 
-  let val mkArgTy = case fk of FK_FUN _ => LT.ltc_tuple
-                             | FK_FCT => LT.ltc_str
+  let val mkArgTy = case fk of {cconv=CC_FUN _,...} => LT.ltc_tuple
+                             | {cconv=CC_FCT,...} => LT.ltc_str
       val argt = mkArgTy (map LT.tk_lty ks)
 
       val w = mkv()
@@ -210,7 +211,7 @@ fun tkAbsGen (kenv, vs, ks, f, fk) =
 (* val tkAbs: kenv * (tvar * tkind) list -> kenv * (lexp * lexp -> lexp) *)
 fun tkAbs (kenv, tvks, f) = 
   let val (vs, ks) = ListPair.unzip tvks
-   in tkAbsGen(kenv, vs, ks, f, FK_FCT)       
+   in tkAbsGen(kenv, vs, ks, f, fkfct)
   end
 
 (* val tkTfn: kenv * tkind list -> kenv * (lexp -> lexp) *)

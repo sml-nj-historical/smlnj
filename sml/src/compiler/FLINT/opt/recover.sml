@@ -64,8 +64,8 @@ fun recover (fdec, postRep) =
             fun lpd (fk, f, vts, e) = 
               (addvs vts; addv (f, LT.ltc_fkfun(fk, map #2 vts, lpe e)))
 
-            and lpds (fds as ((fk as FK_FUN{isrec=SOME _, ...},_,_,_)::_)) =
-                  let fun h ((fk as FK_FUN{isrec=SOME rts, ...}, 
+            and lpds (fds as ((fk as {isrec=SOME _, ...},_,_,_)::_)) =
+                  let fun h ((fk as {isrec=SOME (rts, _), ...}, 
                              f, vts, _) : fundec) = 
                             addv(f, LT.ltc_fkfun(fk, map #2 vts, rts)) 
                         | h _ = bug "unexpected case in lpds" 

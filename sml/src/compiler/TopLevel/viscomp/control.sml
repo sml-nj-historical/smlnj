@@ -41,11 +41,13 @@ structure Control : CONTROL =
     struct
 	val print	= ref false
 	val inlineThreshold = ref 20
+	val unrollThreshold = ref 20
 	val specialize	= ref true
 	val liftLiterals= ref false
 	val sharewrap	= ref true
 	val maxargs	= ref 10
-	val phases	= ref ["fcontract", "fixfix", "fcontract",
+	val phases	= ref ["fcontract", "fcontract",
+			       "specialize", "fixfix", "fcontract",
 			       "specialize", "fixfix", "fcontract",
 			       "wrap", "fixfix", "fcontract",
 			       "reify", "fixfix", "fcontract"]
@@ -55,7 +57,7 @@ structure Control : CONTROL =
 
 	(* FLINT internal type-checking controls *)
 	val check	= ref true
-	val checkDatatypes = ref true
+	val checkDatatypes = ref false	(* loops on the new cm.sml *)
 	val checkKinds	= ref true
     end
 

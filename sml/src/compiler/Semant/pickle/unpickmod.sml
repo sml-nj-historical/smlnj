@@ -656,20 +656,24 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
                            %Utfundec (v, tvks, e))))
       | tfundec _ = raise Fail "    | tfundec"
 
-    and fkind #"2" = %Ufkind (F.FK_FCT)
+    and fkind' (fixed,isrec,inline,known) =
+	{isrec=Option.map (fn ltys => (ltys,F.LK_UNKNOWN)) isrec,
+	 inline=if inline then F.IH_ALWAYS else F.IH_SAFE,
+	 cconv=F.CC_FUN fixed, known=known}
+    and fkind #"2" = %Ufkind {isrec=NONE, cconv=F.CC_FCT,
+			      inline=F.IH_SAFE, known=false}
       | fkind #"3" = ?ltyListOption (fn UltyListOption isrec =>
                       ?bool (fn Ubool b1 =>
                        ?bool (fn Ubool b2 =>
                         ?bool (fn Ubool known =>
                          ?bool (fn Ubool inline =>
-                          %Ufkind (F.FK_FUN{isrec=isrec, 
-                                            fixed=LT.ffc_var(b1, b2), 
-                                            known=known, inline=inline}))))))
+                          %Ufkind (fkind' (LT.ffc_var(b1, b2),
+					   isrec, inline, known)))))))
       | fkind #"4" = ?ltyListOption (fn UltyListOption isrec =>
                         ?bool (fn Ubool known =>
                          ?bool (fn Ubool inline =>
-                          %Ufkind (F.FK_FUN{isrec=isrec, fixed=LT.ffc_fixed,
-                                            known=known, inline=inline}))))
+                          %Ufkind (fkind' (LT.ffc_fixed,
+					   isrec, inline, known)))))
       | fkind _ = raise Fail "    | fkind"
 
     and rkind #"5" = ?tyc (fn Utyc tc => %Urkind (F.RK_VECTOR tc))

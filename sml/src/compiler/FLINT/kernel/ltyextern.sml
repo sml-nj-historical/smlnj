@@ -370,9 +370,9 @@ fun lt_swap t =
      | _ => bug "unexpected type in lt_swap")
 
 (** functions that manipulate the FLINT function and record types *)
-fun ltc_fkfun (FL.FK_FCT, atys, rtys) = 
+fun ltc_fkfun ({cconv=FL.CC_FCT, ...}: FL.fkind, atys, rtys) = 
       ltc_fct (atys, rtys)
-  | ltc_fkfun (FL.FK_FUN {fixed, ...}, atys, rtys) = 
+  | ltc_fkfun ({cconv=FL.CC_FUN fixed, ...}, atys, rtys) = 
       ltc_arrow(fixed, atys, rtys)
 
 fun ltd_fkfun lty = 

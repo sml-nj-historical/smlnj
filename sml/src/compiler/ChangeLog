@@ -1,3 +1,7 @@
+1998-11-05  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* TopLevel/viscomp/control.sig: add FLINT.unrollThreshold
+
 1998-10-27  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* TopLevel/viscomp/control.sml (listLiterals): turned it back off because

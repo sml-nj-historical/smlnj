@@ -4,6 +4,8 @@
 signature OPT_UTILS =
 sig
 
+    datatype ('a,'b) either = A of 'a | B of 'b
+
     (* takes the fk of a function and returns the fk of the wrapper
      * along with the new fk of the actual body *)
     val fk_wrap : FLINT.fkind * FLINT.lty list option ->
@@ -21,15 +23,18 @@ struct
 local structure F = FLINT
       structure LK = LtyKernel
 in
+    datatype ('a,'b) either = A of 'a | B of 'b
+
     fun bug msg = ErrorMsg.impossible ("OptUtils: "^msg)
 				  
-    fun fk_wrap (F.FK_FCT,_) = (F.FK_FCT, F.FK_FCT)
-      | fk_wrap (F.FK_FUN{isrec,known,fixed,inline},rtys') =
-	let val fixed' = case fixed
-			  of LK.FF_VAR(f1,f2) => LK.FF_VAR(true, f2)
-			   | LK.FF_FIXED => LK.FF_FIXED
-	in (F.FK_FUN{isrec=isrec, known=known, fixed=fixed, inline=true},
-	    F.FK_FUN{isrec=rtys', known=true, fixed=fixed', inline=inline})
+    fun fk_wrap ({inline,known,isrec,cconv},rtys') =
+	let val cconv' =
+		case cconv
+		 of F.CC_FUN(LK.FF_VAR(f1,f2)) => F.CC_FUN(LK.FF_VAR(true, f2))
+		  | (F.CC_FCT | F.CC_FUN(LK.FF_FIXED)) => cconv
+	    val isrec' = Option.map (fn ltys => (ltys, F.LK_UNKNOWN)) rtys'
+	in ({isrec=isrec, known=known, cconv=cconv, inline=F.IH_ALWAYS},
+	    {isrec=isrec', known=true, cconv=cconv', inline=inline})
 	end
 
     fun filter ([],[]) = []

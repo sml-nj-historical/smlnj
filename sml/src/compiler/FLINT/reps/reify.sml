@@ -108,9 +108,9 @@ let val {getLty, cleanUp} =  Recover.recover (fdec, false)
          fun lpfd (fk, f, vts, e) = 
            let val nfk = 
                  case fk 
-                  of FK_FUN{isrec=SOME lts, fixed, known, inline} =>
-                       FK_FUN{isrec=SOME(map ltf lts), fixed=fixed,
-                              known=known, inline=inline}
+                  of {isrec=SOME (lts,lk), cconv, known, inline} =>
+                       {isrec=SOME(map ltf lts, lk), cconv=cconv,
+			known=known, inline=inline}
                    | _ => fk
                val nvts = map (fn (v,t) => (v, ltf t)) vts
             in (nfk, f, nvts, loop e)

@@ -400,10 +400,10 @@ fun transform (ienv, d, ltfg, tcfg, gtd, did_flat) =
         | lpcon (c, e) = (c, loop e)
 
       (* lpfd : fundec -> fundec *** requires REWORK *** *)
-      and lpfd (fk as FK_FCT, f, vts, be) = 
+      and lpfd (fk as {cconv=CC_FCT, ...}, f, vts, be) = 
            (fk, f, map (fn (v,t) => (v, ltf t)) vts, 
                    lplets (map #1 vts, be, fn e => e))
-        | lpfd (fk as FK_FUN {fixed=fflag,isrec,known,inline}, f, vts, be) = 
+        | lpfd (fk as {cconv=CC_FUN fflag,isrec,known,inline}, f, vts, be) = 
            let (** first get the original arg and res types of f *)
                val (fflag', atys, rtys) = LT.ltd_arrow (getlty (VAR f))
 
@@ -431,10 +431,10 @@ fun transform (ienv, d, ltfg, tcfg, gtd, did_flat) =
 
                (** fix the isrec information *)
                val nisrec = case isrec of NONE => NONE
-                                        | SOME _ => SOME body_ltys
+                                        | SOME _ => SOME(body_ltys, LK_UNKNOWN)
                val nfixed = LT.ffc_fspec(fflag, (arg_raw, body_raw))
-               val nfk = FK_FUN {isrec=nisrec, fixed=nfixed,
-                                 known=known, inline=inline}
+               val nfk = {isrec=nisrec, cconv=CC_FUN nfixed,
+			  known=known, inline=inline}
 
             in (nfk, f, ListPair.zip(arg_lvs, arg_ltys), nnbe)
            end
@@ -603,7 +603,7 @@ fun transform (ienv, d, ltfg, tcfg, gtd, did_flat) =
 
 in 
 (case fdec
-  of (fk as FK_FCT, f, vts, e) => 
+  of (fk as {cconv=CC_FCT, ...}, f, vts, e) => 
       let val tcfg = fn (d : DI.depth) => fn (x : LD.tyc) => x
           val ltfg = fn (d : DI.depth) => fn (x : LD.lty) => x
           val ienv = initInfoEnv()
@@ -616,7 +616,7 @@ in
           (* if we did specialize, we run a round of lcontract on the result *)
           else nfdec
       end
-   | _ => bug "non FK_FCT program in specialize")
+   | _ => bug "non functor program in specialize")
 end (* function specialize *)
 
 end (* toplevel local *)

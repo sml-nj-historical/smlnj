@@ -22,14 +22,30 @@ type lvar = LV.lvar
 type fflag = LD.fflag
 type rflag = LD.rflag
 
+
+(* what kind of inlining behavior is desired for the function *)
+datatype ilhint
+  = IH_ALWAYS				(* inline whenever possible *)
+  | IH_UNROLL				(* only inline once within itself *)
+  | IH_SAFE				(* only if trivially size-safe *)
+
+(* what kind of recursive function (aka loop) is this *)
+datatype loopkind
+  = LK_UNKNOWN				(* something else *)
+  | LK_LOOP				(* loop wrapped in a preheader *)
+  | LK_WHILE				(* properly tail-recursive *)
+
+(* calling convention *)
+datatype cconv
+  = CC_FCT				(* it's a functor *)
+  | CC_FUN of fflag			(* it's a function *)
+
 (** classifying various kinds of functions *)
-datatype fkind 
-  = FK_FCT
-  | FK_FUN of 
-      {isrec : lty list option,  (* is this function recursive ? *)
-       fixed : fflag,            (* is calling convention fixed ? *)
-       known : bool,             (* is this function known, default: false *)
-       inline: bool}             (* should this be inlined, default: false *)
+type fkind
+ = {inline: ilhint,			(* when should it be inlined *)
+    known : bool,			(* are all the call sites known *)
+    cconv : cconv,			(* calling convention *)
+    isrec : (lty list * loopkind) option} (* is it recursive *)
 
 (** classifying various kinds of records *)
 datatype rkind

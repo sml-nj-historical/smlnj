@@ -165,10 +165,10 @@ fun check phase envs lexp = let
 	   prList tcPrint "\n** argument Tycs:\n" ts;
 	   []))
 
-  fun ltArrow (le,s) (isfct,alts,rlts) = 
-    (case isfct 
-      of NONE => LT.ltc_fct (alts,rlts)
-       | SOME raw => 
+  fun ltArrow (le,s) (cconv,alts,rlts) = 
+    (case cconv 
+      of CC_FCT => LT.ltc_fct (alts,rlts)
+       | CC_FUN raw => 
            (catchExn
              (fn () => LT.ltc_arrow (raw,alts,rlts))
              (le,
@@ -264,13 +264,10 @@ fun check phase envs lexp = let
                            typeof e, mismatch (le,"LET"))) e')
 	| FIX ([],e) =>
 	  (say "\n**** Warning: empty declaration list in FIX\n"; typeof e)
-	| FIX ((fd as ((FK_FUN{isrec=NONE,...} | FK_FCT), 
-                       _, _, _)) :: fds', e) => let
-	    val (fk, lv, _, _) = fd
-            val isfct = case fk of FK_FCT => NONE
-                                 | FK_FUN{fixed, ...} => SOME fixed
+	| FIX ((fd as (fk as {isrec=NONE,cconv,...}, 
+                       lv, _, _)) :: fds', e) => let
 	    val (alts,rlts) = typeofFn venv fd
-	    val lt = ltArrow (le,"non-rec FIX") (isfct,alts,rlts)
+	    val lt = ltArrow (le,"non-rec FIX") (cconv,alts,rlts)
 	    val ve = extEnv (lv,lt,venv)
 	    val venv' =
 	      if null fds' then ve
@@ -282,12 +279,12 @@ fun check phase envs lexp = let
 	    end
 	| FIX (fds,e) => let
             val isfct = false
-	    fun extEnv ((FK_FCT, _, _, _), _) =
+	    fun extEnv (({cconv=CC_FCT, ...}, _, _, _), _) =
                   bug "unexpected case in extEnv"
-              | extEnv ((FK_FUN {isrec,fixed,...}, lv, vts, _) : fundec, ve) =
+              | extEnv (({isrec,cconv,...}, lv, vts, _) : fundec, ve) =
 	      case (isrec, isfct)
-	       of (SOME lts, false) => let
-		    val lt = ltArrow (le,"FIX") (SOME fixed, 
+	       of (SOME (lts,_), false) => let
+		    val lt = ltArrow (le,"FIX") (cconv, 
                                                  map #2 vts, lts)
 		    in LT.ltInsert (ve,lv,lt,d)
 		    end
@@ -298,11 +295,10 @@ fun check phase envs lexp = let
 		    in errMsg (le, "in FIX: " ^ msg ^ LV.lvarName lv, ve)
 		    end
 	    val venv' = foldl extEnv venv fds
-	    fun chkDcl ((FK_FUN {isrec = NONE, ...}, _, _, _) : fundec) = ()
-	      | chkDcl (fd as (FK_FUN {isrec = SOME lts, ...}, _, _, _)) = let
+	    fun chkDcl (({isrec = NONE, ...}, _, _, _) : fundec) = ()
+	      | chkDcl (fd as ({isrec = SOME (lts,_), ...}, _, _, _)) = let
 		in ltsMatch (le,"FIX") (lts, #2 (typeofFn venv' fd))
 		end
-              | chkDcl _ = ()
 	    in
 	      app chkDcl fds;
 	      typeIn venv' e
@@ -467,7 +463,7 @@ fun checkTop ((fkind, v, args, lexp) : fundec, phase) = let
     foldl (fn ((v,t), ve) => LT.ltInsert (ve,v,t,DI.top)) LT.initLtyEnv args
   val err = check phase (LT.initTkEnv, ve, DI.top) lexp
   val err = case fkind
-     of FK_FCT => err
+     of {cconv=CC_FCT,...} => err
       | _ => (say "**** Not a functor at top level\n"; true)
   in err end
 

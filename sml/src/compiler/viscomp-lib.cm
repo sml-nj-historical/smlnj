@@ -200,7 +200,7 @@ FLINT/opt/fixfix.sml
 FLINT/opt/collect.sml
 FLINT/opt/fcontract.sml
 FLINT/opt/optutils.sml
-(* FLINT/opt/lcontract.sml *)
+FLINT/opt/lcontract.sml
 FLINT/opt/recover.sml
 FLINT/opt/specialize.sml
 FLINT/plambda/chkplexp.sml

@@ -12,6 +12,7 @@
 	cvs tag $VERSION
 	rm -rf tmp
 	
+
 * from Zhong's dir
 	cd .../src/sml-nj
 	rm -rf **/CM
@@ -38,16 +39,16 @@
 ** upgrade
 	cvs -q update
 	cd src/compiler
-	rm -r bin.*
-	./xrun <some sml-cm> <<EOF
+	rm -rf bin.*; ln -s ~/flint/bin.x86-unix
+	./xmakeml; rm bin.*
+	./xrun sml.x86-linux <<EOF
 		   CMB.make();
 	EOF
-	./xrecompile
-	rm sml*.*
+	# rm sml*.*
 	cd ../..
 	rm -r bin lib **/CM
 	config/install.sh
-	rm -rf bin.*/*
+	# rm -rf bin.*/*
 
 * diffs between release
 ** sml-nj/TopLevel/viscomp/control.sml

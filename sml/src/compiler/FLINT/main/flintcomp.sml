@@ -23,7 +23,7 @@ val say = Control.Print.say
 
 fun phase x = Stats.doPhase (Stats.makePhase x)
 
-(*  val lcontract = phase "Compiler 052 lcontract" LContract.lcontract  *)
+val lcontract = phase "Compiler 052 lcontract" LContract.lcontract 
 val fcollect  = phase "Compiler 052a fcollect" Collect.collect
 val fcontract = phase "Compiler 052b fcontract" FContract.contract
 val fcontract = fcontract o fcollect
@@ -95,7 +95,7 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
        * r:boot		whether it has gone through reify yet
        * l:string	last phase through which it went *)
       fun runphase (p as "fcontract",(f,r,l)) = (fcontract f, r, p)
-(*  	| runphase (p as "lcontract",(f,r,l)) = (lcontract f, r, p) *)
+	| runphase (p as "lcontract",(f,r,l)) = (lcontract f, r, p)
 	| runphase (p as "fixfix",(f,r,l)) = (fixfix f, r, p)
 	| runphase (p as "wrap",(f,false,l)) = (wrapping f, false, p)
 	| runphase (p as "specialize",(f,false,l)) = (specialize f, false, p)
@@ -118,13 +118,16 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
       fun print (f,r,l) = (prF l f; (f, r, l))
       fun check (f,r,l) = (chkF (r, l) f; (f, r, l))
 
-      fun runphase' (arg as (_,{1=f,...})) = ((runphase arg)
-				 handle x => (dumpTerm(PPFlint.printFundec,"FLINT.bug", f); raise x))
+      fun runphase' (arg as (p,{1=f,...})) =
+	  ((*  say("Phase "^p^"..."); *)
+	   (runphase arg) (*  before *)
+(*  	   say("..."^p^" Done.\n") *))
+	      handle x => (dumpTerm(PPFlint.printFundec,"FLINT.bug", f); raise x)
 
       (* the "id" phases is just added to do the print/check at the entrance *)
       val (flint,r,_) = foldl (check o print o runphase')
 			      (flint,false,"flintnm")
-			      ("id" :: !CTRL.phases)
+			      ((*  "id" :: *) !CTRL.phases)
       val flint = if r then flint else (say "\n!!Forgot reify!!\n"; reify flint)
 
 (*        val _ = (chkF (false,"1") o prF "Translation/Normalization") flint *)

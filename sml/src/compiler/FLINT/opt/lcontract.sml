@@ -63,7 +63,7 @@ fun pass1 fdec =
 
       fun cand x = (get x; true) handle _ => false
 
-      fun lpfd d (FK_FUN {isrec=SOME _,...}, v, vts, e) = lple d e
+      fun lpfd d ({isrec=SOME _,...}, v, vts, e) = lple d e
         | lpfd d (_, v, vts, e) = (enter(v, d); lple d e)
 
       and lple d e = 
@@ -255,9 +255,9 @@ fun transform [] = bug "unexpected case in transform"
      and lpfd (fk, v, vts, e) = 
        let val nfk = 
              case fk 
-              of FK_FUN{isrec=SOME t, known, inline, fixed} =>
-                   FK_FUN{isrec=SOME(map ltf t), known=known, inline=inline,
-                           fixed=fixed} 
+              of {isrec=SOME(t,lk), known, inline, cconv} =>
+                   {isrec=SOME(map ltf t, lk), known=known, inline=inline,
+                           cconv=cconv} 
                | _ => fk
         in (nfk, v, map (fn (v,t) => (v,ltf t)) vts, #1(loop e))
        end
@@ -311,7 +311,7 @@ fun transform [] = bug "unexpected case in transform"
               end
 
           | FIX(fdecs, e) =>
-              let fun g (FK_FUN {isrec=SOME _, ...} :fkind, v, _, _) =
+              let fun g ({isrec=SOME _, ...} :fkind, v, _, _) =
                          chkIn(v, StdExp)
                     | g ((_, v, vts, xe) : fundec) = 
                          chkIn(v, if isCand v then FunExp(od, map #1 vts, xe) 

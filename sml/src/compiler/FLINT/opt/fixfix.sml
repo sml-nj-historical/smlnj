@@ -30,6 +30,7 @@ local
     structure PP = PPFlint
     structure LT = LtyExtern
     structure OU = OptUtils
+    structure CTRL = Control.FLINT
 in
 
 val say = Control.Print.say
@@ -41,7 +42,7 @@ fun assert p = if p then () else bug ("assertion failed")
 val cplv = LambdaVar.dupLvar
 
 (* to limit the amount of uncurrying *)
-val maxargs = Control.FLINT.maxargs
+val maxargs = CTRL.maxargs
 
 structure SccNode = struct
     type node = LambdaVar.lvar
@@ -80,23 +81,19 @@ fun fexp (fv,lexp) = let
      * - r:bool indicates whether the head was recursive
      * - na:int gives the number of args still allowed *)
     fun curry (hd,r,na) (le as (F.FIX([(fk,f,args,body)], F.RET[F.VAR lv]))) =
-	if lv = f then
-	    case fk
-	     of F.FK_FCT => ([], le)	(* don't bother *)
-	      | F.FK_FUN {inline=true,...} => ([], le) (* don't bother *)
-	      | F.FK_FUN fk' =>
-		let val fisrec = isSome(#isrec fk')
-		    val na = na - length args
-		in if na >= 0 andalso (hd orelse r orelse not fisrec) then
-		    (* recursive functions are only accepted for uncurrying
-		     * if they are the head of the function or if the head
-		     * is already recursive *)
-		    let val (funs,body) =
-			    curry (false, r orelse fisrec, na) body
-		    in ((fk,f,args)::funs,body)
-		    end
-		   else ([], le)
+	if lv = f andalso #inline fk = F.IH_SAFE then
+	    let val fisrec = isSome(#isrec fk)
+		val na = na - length args
+	    in if na >= 0 andalso (hd orelse r orelse not fisrec) then
+		(* recursive functions are only accepted for uncurrying
+		 * if they are the head of the function or if the head
+		 * is already recursive *)
+		let val (funs,body) =
+			curry (false, r orelse fisrec, na) body
+		in ((fk,f,args)::funs,body)
 		end
+	       else ([], le)
+	    end
 	else
 	    (* this "never" occurs, but dead-code removal is not bullet-proof *)
 	    ([], le)
@@ -106,40 +103,23 @@ fun fexp (fv,lexp) = let
     fun uncurry (args as (fk,f,fargs)::_::_,body) =
 	let val f' = cplv f	(* the new fun name *)
 
-	    fun getrtypes ([],rtys) = (NONE, rtys)
-	      | getrtypes ((fk,f,fargs:(F.lvar * F.lty) list)::rest,rtys) =
-		case fk
-		 of F.FK_FUN{isrec=SOME rtys,...} =>
-		    let val fty = LT.ltc_fkfun(fk, map #2 fargs, rtys)
-			val (_,rtys) = getrtypes(rest, SOME rtys)
-		    in (SOME fty, rtys)
-		    end
-		  | _ =>
-		    let val rtys = Option.map (fn [lty] => #2(LT.ltd_fkfun lty)
-						| _ => bug "strange isrec") rtys
-			val (fty,rtys) = getrtypes(rest,rtys)
-			val fty = Option.map
-				      (fn lty =>
-				       LT.ltc_fkfun(fk, map #2 fargs, [lty]))
-				      fty
-		    in (fty,rtys)
-		    end
+	    (* find the rtys of the uncurried function *)
+	    fun getrtypes (({isrec=SOME(rtys,_),...}:F.fkind,_,_),_) = SOME rtys
+	      | getrtypes ((_,_,_),rtys) =
+		Option.map (fn [lty] => #2(LT.ltd_fkfun lty)
+			     | _ => bug "strange isrec") rtys
 
 	    (* create the new fkinds *)
-	    val (fty,rtys') = getrtypes(args, NONE)
-	    val (nfk,nfk') = OU.fk_wrap(fk, rtys')
+	    val (nfk,nfk') = OU.fk_wrap(fk, foldl getrtypes NONE args)
 
 	    (* funarg renaming *)
 	    fun newargs fargs = map (fn (a,t) => (cplv a,t)) fargs
 
 	    (* create (curried) wrappers to be inlined *)
 	    fun recurry ([],args) = F.APP(F.VAR f', map (F.VAR o #1) args)
-	      | recurry ((fk,f,fargs)::rest,args) =
-		let val fk = case fk
-			      of F.FK_FCT => fk
-			       | F.FK_FUN{isrec,fixed,known,inline} =>
-				 F.FK_FUN{isrec=NONE, fixed=fixed,
-					  known=known, inline=true}
+	      | recurry (({inline,isrec,known,cconv},f,fargs)::rest,args) =
+		let val fk = {inline=F.IH_ALWAYS, isrec=NONE,
+			      known=known, cconv=cconv}
 		    val nfargs = newargs fargs
 		    val g = cplv f'
 		in F.FIX([(fk, g, nfargs, recurry(rest, args @ nfargs))],
@@ -162,13 +142,10 @@ fun fexp (fv,lexp) = let
 	      | uncurry' ((fk,f,fargs)::rest,args) =
 		let val le = uncurry'(rest, args @ fargs)
 		in case fk
-		    of F.FK_FUN{isrec=SOME _, ...} =>
+		    of {isrec=SOME _,cconv,known,inline} =>
 		       let val nfargs = newargs fargs
-			   val fk = case fk
-				     of F.FK_FCT => fk
-				      | F.FK_FUN{isrec,fixed,known,inline} =>
-					F.FK_FUN{isrec=NONE, fixed=fixed,
-						 known=known, inline=true}
+			   val fk = {isrec=NONE, inline=F.IH_ALWAYS,
+				     known=known, cconv=cconv}
 		       in F.FIX([(fk, f, nfargs,
 				  recurry(rest, args @ nfargs))],
 				le)
@@ -202,7 +179,9 @@ in case lexp
 	   val (s,fv,le) = fexp(fv, le)
 	   val lename = LambdaVar.mkLvar()
 	   val m = M.singleton(lename, (S.members(S.inter(fv, funs)), 0,
-					F.FK_FCT, [], le))
+					{inline=F.IH_SAFE, isrec=NONE,
+					 known=true,cconv=F.CC_FCT},
+					[], le))
 
 	   (* process each fun *)
 	   fun ffun (fdec as (fk,f,args,body):F.fundec,(s,fv,funs,m)) =
@@ -234,22 +213,35 @@ in case lexp
 	   (* turns them back into flint code *)
 	   fun sccconvert (SCC.SIMPLE f,le) =
 	       (* a simple function.  Fix the fk accordingly *)
-	       let val (_,s,fk,args,body) = M.lookup m f
+	       let val (_,s,{isrec,cconv,known,inline},args,body) = M.lookup m f
 		   val fk =
-		       case fk
-			of F.FK_FCT => F.FK_FCT
-			 | F.FK_FUN {isrec,fixed,known,inline} =>
-			   (* small functions inlining heuristic *)
-			   let val small = s < !Control.FLINT.inlineThreshold
-			   in F.FK_FUN{isrec=NONE, fixed=fixed,
-				       known=known, inline=inline orelse small}
-			   end
+		       (* small functions inlining heuristic *)
+		       let val inline' =
+			       if inline = F.IH_SAFE andalso 
+				   s < !CTRL.inlineThreshold then
+				   F.IH_ALWAYS
+			       else inline
+		       in {isrec=NONE, inline=inline',
+			   known=known, cconv=cconv}
+		       end
 	       in F.FIX([(fk, f, args, body)], le)
 	       end
 	     | sccconvert (SCC.RECURSIVE fs,le) =
 	       let fun scfun f =
-		       let val (_,_,fk,args,body) = M.lookup m f
-		       in (fk, f, args, body) end
+		       let val (_,s,fk as {isrec,cconv,known,inline},args,le) =
+			       M.lookup m f
+			   val fk' =
+			       (* let's check for unroll opportunities.
+				* This heuristic is pretty bad since it doesn't
+				* take the number of rec-calls into account *)
+			       case (isrec,inline)
+				of (SOME(_,(F.LK_LOOP|F.LK_WHILE)),F.IH_SAFE) =>
+				   if s < !CTRL.unrollThreshold then
+				       {inline=F.IH_UNROLL, isrec=isrec,
+					cconv=cconv, known=known}
+				   else fk
+				 | _ => fk
+		       in (fk, f, args, le) end
 	       in F.FIX(map scfun fs, le)
 	       end
        in

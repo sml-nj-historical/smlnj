@@ -8,7 +8,9 @@ SML=sml.$(HEAP_SUFFIX)
 BINDIR=bin.$(BINDIR_SUFFIX)
 MLCMD=CMB.make()
 
-default: $(SML)
+default: sml
+sml: $(SML)
+sml-new: sml-new.$(HEAP_SUFFIX)
 
 $(BINDIR).new:
 	if [ -d $(BINDIR) ]; then \
@@ -20,15 +22,20 @@ $(BINDIR).new:
 $(SML): $(BINDIR)/COMPLIST
 	-rm -f $@
 	./xmakeml
+	[ -r $(SML) ]
 
 $(BINDIR)/COMPLIST: $(BINDIR).new
 
 cleannew: $(BINDIR).new
-	-rm $(BINDIR).new/*
+	-rm -r $(BINDIR).new/*
 
 recompile: $(SML)
 	mv $(BINDIR) $(BINDIR).old && mv $(BINDIR).new $(BINDIR)
 	-echo '$(MLCMD); Compiler.Stats.summary();' | ./xrun sml
+	mv $(BINDIR) $(BINDIR).new && mv $(BINDIR).old $(BINDIR)
+
+sml-new.$(HEAP_SUFFIX): recompile
+	mv $(BINDIR) $(BINDIR).old && mv $(BINDIR).new $(BINDIR)
 	if [ -f $(BINDIR)/COMPLIST ]; then \
 	    mv $(SML) sml-old.$(HEAP_SUFFIX) &&\
 	    ./xmakeml &&\

@@ -134,7 +134,7 @@ fun atomeq tc =
   else if isRef(tc) then ptrEq(PO.PTREQL, tc)
   else raise Poly
 
-val fkfun = FK_FUN{isrec=NONE, known=false, fixed=LT.ffc_rrflint, inline=true}
+val fkfun = {isrec=NONE, known=false, cconv=CC_FUN LT.ffc_rrflint, inline=IH_ALWAYS}
 
 fun test(tc, 0) = raise Poly
   | test(tc, depth) =

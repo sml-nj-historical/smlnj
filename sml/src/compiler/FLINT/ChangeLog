@@ -1,6 +1,22 @@
+1998-11-06  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* opt/fcontract.sml: added unrolling support
+
+	* reps/coerce.sml: replaced FK_FCT by fkfct, itself defined "sanely"
+
+	* opt/fixfix.sml: adapted to the new fkind and introduced unrolling
+
+1998-11-05  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* flint/flint.sig: changed fkind to have most annotations valid on
+	  functors as well.  It also adds a loopkind annotation as well as extends
+	  the inline boolean into a three-way alternative.
+
 1998-10-30  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* opt/fcontract.sml (dropcstargs): replace constant args by the constant.
+	(cexp): switched to a continuation passing style to implement the
+	  let-associativity rule in a better way.
 
 	* opt/fixfix.sml (curry): correctly handle "imposible" cases.
 

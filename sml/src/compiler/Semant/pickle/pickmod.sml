@@ -477,13 +477,13 @@ fun pickleFLINT fdecOp =
       and tfundec (v, tvks, e) () = 
             "15" $ [lvar v, list (tuple2(tvar, tkind)) tvks, lexp e]
 
-      and fkind (F.FK_FCT) () = "25" $ []
-        | fkind (F.FK_FUN {isrec, fixed=LK.FF_VAR(b1, b2), 
-                           known, inline}) () = 
-            "35" $ [option (list lty) isrec, bool b1, bool b2, bool known,
-                    bool inline]
-        | fkind (F.FK_FUN {isrec, fixed=LK.FF_FIXED, known, inline}) () = 
-            "45" $ [option (list lty) isrec, bool known, bool inline]
+      and fkind {cconv=F.CC_FCT, ...} () = "25" $ []
+        | fkind {isrec, cconv=F.CC_FUN(LK.FF_VAR(b1, b2)), known, inline} () = 
+            "35" $ [option (list lty) (Option.map #1 isrec),
+		    bool b1, bool b2, bool known, bool (inline = F.IH_ALWAYS)]
+        | fkind {isrec, cconv=F.CC_FUN LK.FF_FIXED, known, inline} () = 
+            "45" $ [option (list lty) (Option.map #1 isrec),
+		    bool known, bool (inline = F.IH_ALWAYS)]
 
       and rkind (F.RK_VECTOR tc) () = "55" $ [tyc tc]
         | rkind (F.RK_STRUCT) () = "65" $ []

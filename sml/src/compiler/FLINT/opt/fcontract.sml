@@ -22,7 +22,8 @@ end
  * - elimination of Con(Decon x)
  * - update counts when selecting a SWITCH alternative
  * - contracting RECORD(R.1,R.2) => R  (only if the type is easily available)
- * - dropping of arguments
+ * - dropping of dead arguments
+ * - elimination of constant arguments
  *)
 
 (* things that lcontract.sml does that fcontract doesn't do (yet):
@@ -43,7 +44,7 @@ end
  *)
 
 (* things that could also be added:
- * - elimination of dead vars in let (subsumes what lcontract does)
+ * - elimination of dead vars in let
  *)
 
 (* things that would require some type info:
@@ -109,6 +110,22 @@ end
  *   once.  In the future, maybe.
  *)
 
+(* Dropping useless arguments.
+ * Arguments whose value is constant (i.e. the function is known and each
+ * call site provides the same value for that argument (or the argument
+ * itself in the case of recursive calls) can be safely removed and replaced
+ * inside the body by a simple let binding.  The only problem is that the
+ * constant argument might be out of scope at the function definition site.
+ * It is obviously always possible to move the function to bring the argument
+ * in scope, but since we don't do any code motion here, we're stuck.
+ * If it wasn't for this little problem, we could do the cst-arg removal in
+ * collect (we don't gain anything from doing it here).
+ * The removal of dead arguments (args not used in the body) on the other
+ * hand can quite well be done in collect, the only problem being that it
+ * is convenient to do it after the cst-arg removal so that we can rely
+ * on deadarg to do the actual removal of the cst-arg.
+ *)
+
 (* Simple inlining (inlining called-once functions, which doesn't require
  * alpha-renaming) seems inoffensive enough but is not always desirable.
  * The typical example is wrapper functions introduced by eta-expand: they
@@ -155,6 +172,7 @@ local
     structure M  = IntmapF
     structure S  = IntSetF
     structure C  = Collect
+    structure O  = Option
     structure DI = DebIndex
     structure PP = PPFlint
     structure FU = FlintUtil
@@ -199,7 +217,7 @@ fun tycs_eq ([],[]) = true
  * ifs (inlined functions): records which functions we're currently inlining
  *     in order to detect loops
  * m: is a map lvars to their defining expressions (svals) *)
-fun cexp (cfg as (d,od)) ifs m le = let
+fun cexp (cfg as (d,od)) ifs m le cont = let
 
     val loop = cexp cfg ifs
 
@@ -287,11 +305,9 @@ fun cexp (cfg as (d,od)) ifs m le = let
 	(s, Access.EXN(Access.LVAR(substvar lv)), lty)
       | cdcon dc = dc
 
-    fun isrec (F.FK_FCT | F.FK_FUN{isrec=NONE,...}) = false
-      | isrec _ = true
-
-    fun inlinable F.FK_FCT = false
-      | inlinable (F.FK_FUN{inline,...}) = inline
+    fun zip ([],[]) = []
+      | zip (x::xs,y::ys) = (x,y)::(zip(xs,ys))
+      | zip _ = bug "bad zip"
 
     (* F.APP inlining (if any)
      * `ifs' is the set of function we are currently inlining
@@ -302,17 +318,19 @@ fun cexp (cfg as (d,od)) ifs m le = let
      *)
     fun inline ifs (f,vs) =
 	case ((val2sval m f) handle x => raise x)
-	 of Fun(g,body,args,fk,od) =>
+	 of Fun(g,body,args,{inline,...},od) =>
 	    (ASSERT(used g, "used "^(C.LVarString g));
-	     if C.usenb g = 1 andalso od = d andalso not(S.member ifs g)
+	     if d <> od then (NONE, ifs)
+	     else if C.usenb g = 1 andalso not(S.member ifs g) then
 							 
-	     (* simple inlining:  we should copy the body and then
-	      * kill the function, but instead we just move the body
-	      * and kill only the function name.  This inlining strategy
-	      * looks inoffensive enough, but still requires some care:
-	      * see comments at the begining of this file and in cfun *)
-	     then ((C.unuse (fn _ => ()) true g) handle x => raise x; ASSERT(not (used g), "killed");
-		   (SOME(F.LET(map #1 args, F.RET vs, body), od), ifs))
+		 (* simple inlining:  we should copy the body and then
+		  * kill the function, but instead we just move the body
+		  * and kill only the function name.  This inlining strategy
+		  * looks inoffensive enough, but still requires some care:
+		  * see comments at the begining of this file and in cfun *)
+		 (C.unuse (fn _ => ()) true g;
+		  ASSERT(not (used g), "killed");
+		  (SOME(F.LET(map #1 args, F.RET vs, body), od), ifs))
 		 
 	     (* aggressive inlining (but hopefully safe).  We allow
 	      * inlining for mutually recursive functions (isrec)
@@ -320,54 +338,58 @@ fun cexp (cfg as (d,od)) ifs m le = let
 	      * happen that a wrapper (that should be inlined) has to be made
 	      * mutually recursive with its main function.  On another hand,
 	      * self recursion (C.recursive) is too dangerous to be inlined
-	      * except for loop unrolling which we don't support yet *)
-	     else if inlinable fk andalso od = d andalso not(S.member ifs g) then
+	      * except for loop unrolling *)
+	     else if (inline = F.IH_ALWAYS andalso not(S.member ifs g)) orelse
+		 (inline = F.IH_UNROLL andalso (S.member ifs g)) then
 		 let val nle =
 			 C.copylexp M.empty (F.LET(map #1 args, F.RET vs, body))
-		 in 
+		 in
+		     (*  say ("\nInlining "^(C.LVarString g)); *)
 		     (app (unuseval (undertake m)) vs) handle x => raise x;
 		     (C.unuse (undertake m) true g) handle x => raise x;
-		     (SOME(nle, od), S.add(g, ifs))
+		     (SOME(nle, od),
+		      (* gross hack: to prevent further unrolling,
+		       * I pretend that the rest is not inside the body *)
+		      if inline = F.IH_UNROLL then S.rmv(g, ifs) else S.add(g, ifs))
 		 end
 	     else (NONE, ifs))
 	  | sv => (NONE, ifs)
 in
     case le
-     of F.RET vs => F.RET((map substval vs) handle x => raise x)
+     of F.RET vs => cont(m, F.RET(map substval vs) handle x => raise x)
 
       | F.LET (lvs,le,body) =>
-	let fun cassoc le = F.LET(lvs, le, body)
-	    (* default behavior *)
-	    fun clet () =
-		let val nle = loop m le
-		    val nm = foldl (fn (lv,m) => addbind(m, lv, Var(lv, NONE)))
-				   m lvs
-		in case loop nm body
-		    of F.RET vs => if vs = (map F.VAR lvs) then nle
-				   else F.LET(lvs, nle, F.RET vs)
-		     | nbody => F.LET(lvs, nle, nbody)
-		end
-	    val lopm = loop m
+	let fun clet () =
+		loop m le
+		     (fn (m,F.RET vs) =>
+		      let fun simplesubst ((lv,v),m) =
+			      let val sv = (val2sval m v) handle x => raise x
+			      in substitute(m, lv, sv, sval2val sv)
+			      end
+			  val nm = (foldl simplesubst m (zip(lvs, vs)))
+		      in loop nm body cont
+		      end
+		       | (m,nle) =>
+			 let val nm = (foldl (fn (lv,m) =>
+					      addbind(m, lv, Var(lv, NONE)))
+					     m lvs)
+			 in case loop nm body cont
+			     of F.RET vs => if vs = (map F.VAR lvs) then nle
+					    else F.LET(lvs, nle, F.RET vs)
+			      | nbody => F.LET(lvs, nle, nbody)
+			 end)
 	in case le
-	    (* apply let associativity  *)
-	    of F.LET(lvs1,le',le) => lopm(F.LET(lvs1, le', cassoc le))
-	     | F.FIX(fdecs,le) => lopm(F.FIX(fdecs, cassoc le))
-	     | F.TFN(tfdec,le) => lopm(F.TFN(tfdec, cassoc le))
-	     | F.CON(dc,tycs,v,lv,le) => lopm(F.CON(dc, tycs, v, lv, cassoc le))
-	     | F.RECORD(rk,vs,lv,le) => lopm(F.RECORD(rk, vs, lv, cassoc le))
-	     | F.SELECT(v,i,lv,le) => lopm(F.SELECT(v, i, lv, cassoc le))
-	     | F.PRIMOP(po,vs,lv,le) => lopm(F.PRIMOP(po, vs, lv, cassoc le))
-	     (* this is a hack originally meant to cleanup the BRANCH mess
-	      * introduced in flintnm (where each branch returns just true or
-	      * false which is generally only used as input to a SWITCH).
-	      * The present code does slightly more than clean up this case *)
- 	     | F.BRANCH (po,vs,le1,le2) =>
+	    of F.BRANCH (po,vs,le1,le2) =>
+	       (* this is a hack originally meant to cleanup the BRANCH mess
+		* introduced in flintnm (where each branch returns just true or
+		* false which is generally only used as input to a SWITCH).
+		* The present code does slightly more than clean up this case *)
  	       let fun known (F.RECORD(_,_,_,le)) = known le
 		     | known (F.CON(_,_,_,v,F.RET[F.VAR v'])) = (v = v')
 		     | known (F.RET[F.VAR v]) = false
 		     | known (F.RET[_]) = true
 		     | known _ = false
-		   fun cassoc (lv,v,body) wrap =
+		   fun cassoc (lv,v,body,wrap) =
  		       if lv = v andalso C.usenb lv = 1 andalso
 			   known le1 andalso known le2 then
 			   (* here I should also check that le1 != le2 *)
@@ -378,34 +400,20 @@ in
 						      body
  			       val nle2 = F.LET([nlv], le2, body2)
  			   in
- 			       lopm(wrap(F.BRANCH(po, vs, nle1, nle2)))
+ 			       loop m (wrap(F.BRANCH(po, vs, nle1, nle2))) cont
  			   end
  		       else
  			   clet()
  	       in case (lvs,body)
  		   of ([lv],le as F.SWITCH(F.VAR v,_,_,NONE)) =>
- 		      cassoc(lv, v, le) (fn x => x)
+ 		      cassoc(lv, v, le, OU.id)
  		    | ([lv],F.LET(lvs,le as F.SWITCH(F.VAR v,_,_,NONE),rest)) =>
- 		      cassoc(lv, v, le) (fn le => F.LET(lvs,le,rest))
+ 		      cassoc(lv, v, le, fn le => F.LET(lvs,le,rest))
  		    | _ => clet()
  	       end
-	     | F.RET vs =>
-	       let fun simplesubst ((lv,v),m) =
-			let val sv = (val2sval m v) handle x => raise x
-			in substitute(m, lv, sv, sval2val sv)
-			end
-	       in loop (foldl simplesubst m (ListPair.zip(lvs, vs))) body
-	       end
-	     | F.APP(f,vs) => clet()
-	     (* let-associativity can be annoying here.  I should really use
-	      * continuation passing style instead.
-	      * (case inline ifs (f, vs)
-	      * of (SOME(le,od),ifs) => cexp (d,od) ifs m (F.LET(lvs, le, body))
-	      *  | (NONE,_) => clet()) *)
-	     | (F.TAPP _ | F.SWITCH _ | F.RAISE _ | F.HANDLE _) =>
-	       clet()
+	     | _ => clet()
 	end
-	
+
       | F.FIX (fs,le) =>
 	let (* register dump bindings *)
 	    val m = foldl (fn (fdec as (_,f,_,_),m) =>
@@ -414,7 +422,7 @@ in
 
 	    (* The actual function contraction *)
 	    fun cfun (m,[]:F.fundec list,acc) = acc
-	      | cfun (m,fdec as (fk,f,args,body)::fs,acc) =
+	      | cfun (m,fdec as ({inline,cconv,known,isrec},f,args,body)::fs,acc) =
 		if used f then
 		    let (*  val _ = say ("\nEntering "^(C.LVarString f)) *)
 			(* make up the bindings for args inside the body *)
@@ -422,20 +430,16 @@ in
 			    addbind(m, lv, Var(lv, SOME lty))
 			val nm = foldl addnobind m args
 			(* contract the body and create the resulting fundec *)
-			val nbody = cexp cfg (S.add(f, ifs)) nm body
+			val nbody = cexp cfg (S.add(f, ifs)) nm body #2
 			(* The `inline' bit has to be turned off because
 			 * it applied to the function before contraction
 			 * but might not apply to its new form (inlining might
 			 * have increased its size substantially or made it
 			 * recursive in a different way which could make further
 			 * inlining even dangerous) *)
-			val nfk =
-			    case fk of F.FK_FCT => fk
-			      | F.FK_FUN {isrec,fixed,known,inline} =>
-				let val nknown = known orelse not(C.escaping f)
-				in F.FK_FUN{isrec=isrec, fixed=fixed,
-					    inline=false, known=nknown}
-				end
+			val nknown = known orelse not(C.escaping f)
+			val nfk = {isrec=isrec, cconv=cconv,
+				   inline=F.IH_SAFE, known=nknown}
 			(* update the binding in the map.  This step is not
 			 * not just a mere optimization but is necessary
 			 * because if we don't do it and the function
@@ -488,75 +492,76 @@ in
 	      | ceta (_,(m,hs)) = (m, hs)
 
 	    (* drop constant arguments if possible *)
-	    fun dropcstargs (f as (fk,g,args,body):F.fundec,fs) =
-		case fk
-		 of F.FK_FCT => f::fs (* we can't make inlinable fcts *)
-		  | F.FK_FUN{inline=true,...} => f::fs (* no use *)
-		  | fk =>
-		    let val cst =
-			    ListPair.map
-				(fn (NONE,_) => false
-				  | (SOME(F.VAR lv),(v,_)) =>
-				    ((lookup m lv;
-				      if used v andalso used lv then
-					  (C.use NONE lv; true)
-				      else false)
-					 handle M.IntmapF => false)
-				  | _ => true)
-				(C.actuals g, args)
-		    (* if all args are used, there's nothing we can do *)
-		    in if List.all not cst then f::fs else
-			let fun newarg lv =
-				let val nlv = cplv lv in C.new NONE nlv; nlv end
-			    fun filter xs = OU.filter(cst, xs)
-			    (* construct the new arg list *)
-			    val nargs = ListPair.map
-					    (fn ((a,t),true) => (newarg a,t)
-					      | ((a,t),false) => (a,t))
-					    (args, cst)
-			    (* construct the new body *)
-			    val nbody =
-				F.LET(map #1 (filter args),
-				      F.RET(map valOf (filter (C.actuals g))),
-				      body)
-			in (fk,g,nargs,nbody)::fs
-			end
+	    fun cstargs (f as ({inline=F.IH_ALWAYS,...},_,_,_):F.fundec) = f
+	      | cstargs (f as (fk,g,args,body):F.fundec) =
+		let val cst =
+			ListPair.map
+			    (fn (NONE,_) => false
+			      | (SOME(F.VAR lv),(v,_)) =>
+				((lookup m lv;
+				  if used v andalso used lv then
+				      (C.use NONE lv; true)
+				  else false)
+				     handle M.IntmapF => false)
+			      | _ => true)
+			    (C.actuals g, args)
+		(* if all args are used, there's nothing we can do *)
+		in if List.all not cst then f else
+		    let fun newarg lv =
+			    let val nlv = cplv lv in C.new NONE nlv; nlv end
+			fun filter xs = OU.filter(cst, xs)
+			(* construct the new arg list *)
+			val nargs = ListPair.map
+					(fn ((a,t),true) => (newarg a,t)
+					  | ((a,t),false) => (a,t))
+					(args, cst)
+			(* construct the new body *)
+			val nbody =
+			    F.LET(map #1 (filter args),
+				  F.RET(map valOf (filter (C.actuals g))),
+				  body)
+		    in (fk, g, nargs, nbody)
 		    end
+		end
 
-	    (* add droparg wrapper to drop dead arguments *)
-	    fun dropdeadargs (f as (fk,g,args,body):F.fundec,fs) =
-		case fk
-		 of F.FK_FCT => f::fs (* we can't make inlinable fcts *)
-		  | F.FK_FUN{inline=true,...} => f::fs (* no use *)
-		  | fk as F.FK_FUN{isrec,...} =>
-		    let val used = map (used o #1) args
-		    (* if all args are used, there's nothing we can do *)
-		    in if List.all OU.id used then f::fs else
-			let fun filter xs = OU.filter(used, xs)
+	    (* add wrapper for various purposes *)
+	    fun wrap (f as ({inline=F.IH_ALWAYS,...},_,_,_):F.fundec,fs) = f::fs
+	      | wrap (f as (fk as {isrec,...},g,args,body):F.fundec,fs) =
+		let fun dropargs filter =
+			let val (nfk,nfk') = OU.fk_wrap(fk, O.map #1 isrec)
 			    val args' = filter args
 			    val ng = cplv g
 			    val nargs = map (fn (v,t) => (cplv v, t)) args
 			    val nargs' = map #1 (filter nargs)
 			    val appargs = (map F.VAR nargs')
-
-			    val _ = C.new (SOME(map #1 args')) ng
-			    val _ = C.use (SOME appargs) ng
-			    val _ = app ((C.new NONE) o #1) nargs
-			    val _ = app (C.use NONE) nargs'
-
-			    val (nfk,nfk') = OU.fk_wrap(fk, isrec)
-			    val nf = (nfk, g, nargs,
-				      F.APP(F.VAR ng, appargs))
+			    val nf = (nfk, g, nargs, F.APP(F.VAR ng, appargs))
 			    val nf' = (nfk', ng, args', body)
-			in nf'::nf::fs
+			in
+			    C.new (SOME(map #1 args')) ng;
+			    C.use (SOME appargs) ng;
+			    app ((C.new NONE) o #1) nargs;
+			    app (C.use NONE) nargs';
+			    nf'::nf::fs
 			end
-		    end
+		    val used = map (used o #1) args
+		in
+		    (* if some args are not used, let's drop them *)
+		    if not (List.all OU.id used) then
+			dropargs (fn xs => OU.filter(used, xs))
 
-	    (* add wrappers to drop unused arguments *)
-	    val fs = foldl dropcstargs [] fs
+		    (* eta-split: add a wrapper for escaping uses *)
+		    else if C.escaping g andalso C.called g then
+			(* like dropargs but keeping all args *)
+			dropargs OU.id
 
-	    (* add wrappers to drop unused arguments *)
-	    val fs = foldl dropdeadargs [] fs
+		    else f::fs
+		end
+
+	    (* redirect cst args to their source value *)
+	    val fs = map cstargs fs
+
+	    (* add various wrappers *)
+	    val fs = foldl wrap [] fs
 
 	    (* register the new bindings (uncontracted for now) *)
 	    val nm = foldl (fn (fdec as (fk,f,args,body),m) =>
@@ -567,12 +572,12 @@ in
 
 	    (* move the inlinable functions to the end of the list *)
 	    val (f1s,f2s) =
-		List.partition (fn (F.FK_FUN{inline,...},_,_,_) => inline
+		List.partition (fn ({inline=F.IH_ALWAYS,...},_,_,_) => true
 				 | _ => false) fs
 	    val fs = f2s @ f1s
 
 	    (* contract the main body *)
-	    val nle = loop nm le
+	    val nle = loop nm le cont
 	    (* contract the functions *)
 	    val fs = cfun(nm, fs, [])
 	    (* junk newly unused funs *)
@@ -580,32 +585,31 @@ in
 	in
 	    case fs
 	     of [] => nle
-	      | [f1 as (F.FK_FUN{isrec=NONE,...},f,args,F.APP _),f2] =>
+	      | [f1 as ({isrec=NONE,...},_,_,_),f2] =>
 		(* gross hack: dropargs might have added a second
 		 * non-recursive function.  we need to split them into
-		 * 2 FIXes.  This is very ad-hoc *)
+		 * 2 FIXes.  This is _very_ ad-hoc *)
 		F.FIX([f2], F.FIX([f1], nle))
-	      | (F.FK_FUN{isrec=NONE,...},f,args,body)::_::_ =>
-		bug "gross hack failed"
 	      | _ => F.FIX(fs, nle)
 	end
 	    
       | F.APP (f,vs) =>
 	let val nvs = ((map substval vs) handle x => raise x)
 	in case inline ifs (f, nvs)
-	    of (SOME(le,od),ifs) => cexp (d,od) ifs m le
-	     | (NONE,_) => F.APP((substval f) handle x => raise x, nvs)
+	    of (SOME(le,od),nifs) => cexp (d,od) ifs m le cont
+	     | (NONE,_) => cont(m,F.APP((substval f) handle x => raise x, nvs))
 	end
 	    
       | F.TFN ((f,args,body),le) =>
-	let val nbody = cexp (DI.next d, DI.next od) ifs m body
+	let val nbody = cexp (DI.next d, DI.next od) ifs m body #2
 	    val nm = addbind(m, f, TFun(f, nbody, args, od))
-	    val nle = loop nm le
+	    val nle = loop nm le cont
 	in
 	    if used f then F.TFN((f, args, nbody), nle) else nle
 	end
 
-      | F.TAPP(f,tycs) => F.TAPP((substval f) handle x => raise x, tycs)
+      | F.TAPP(f,tycs) =>
+	cont(m, F.TAPP((substval f) handle x => raise x, tycs))
 
       | F.SWITCH (v,ac,arms,def) =>
 	(case ((val2sval m v) handle x => raise x)
@@ -627,13 +631,13 @@ in
 			   *   other opt-opportunities since it hides the
 			   *   previous binding. *)
 			  val nm = addbind(nm, lvc, Con(lvc, F.VAR lv, ndc, tycs))
-		      in (F.DATAcon(ndc, tycs, lv), loop nm le)
+		      in (F.DATAcon(ndc, tycs, lv), loop nm le #2)
 		      end
-		    | carm (con,le) = (con, loop m le)
+		    | carm (con,le) = (con, loop m le #2)
 		  val narms = map carm arms
-		  val ndef = Option.map (loop m) def
+		  val ndef = Option.map (fn le => loop m le #2) def
 	     in
-		  F.SWITCH(sval2val sv, ac, narms, ndef)
+		  cont(m, F.SWITCH(sval2val sv, ac, narms, ndef))
 	     end
 
 	   | Con (lvc,v,dc1,tycs1) =>
@@ -647,11 +651,12 @@ in
 		     if FU.dcon_eq(dc1, dc2) andalso tycs_eq(tycs1,tycs2) then
 			 (map killarm tl; (* kill the rest *)
 			  Option.map killle def; (* and the default case *)
-			  loop (substitute(m, lv, val2sval m v, F.VAR lvc)) le)
+			  loop (substitute(m, lv, val2sval m v, F.VAR lvc))
+			       le cont)
 		     else
 			 (* kill this arm and continue with the rest *)
 			 (kill lv le; carm tl)
-		   | carm [] = loop m (Option.valOf def)
+		   | carm [] = loop m (Option.valOf def) cont
 		   | carm _ = buglexp("unexpected arm in switch(con,...)", le)
 	     in carm arms
 	     end
@@ -660,9 +665,11 @@ in
 	     let fun kill le = ((#1 (C.unuselexp (undertake m))) le) handle x => raise x
 		 fun carm ((con,le)::tl) =
 		     if eqConV(con, v) then
-			  (map (kill o #2) tl; Option.map kill def; loop m le)
+			  (map (kill o #2) tl;
+			   Option.map kill def;
+			   loop m le cont)
 		     else (kill le; carm tl)
-		   | carm [] = loop m (Option.valOf def)
+		   | carm [] = loop m (Option.valOf def) cont
 	     in carm arms
 	     end
 	   | sv as (Fun _ | TFun _) =>
@@ -673,14 +680,14 @@ in
 	    fun ccon sv =
 		let val nv = sval2val sv
 		    val nm = addbind(m, lv, Con(lv, nv, ndc, tycs1))
-		    val nle = loop nm le
+		    val nle = loop nm le cont
 		in if used lv then F.CON(ndc, tycs1, nv, lv, nle) else nle
 		end
 	in case ((val2sval m v) handle x => raise x)
 	    of sv as (Decon (lvd,vc,dc2,tycs2)) =>
 	       if FU.dcon_eq(dc1, dc2) andalso tycs_eq(tycs1,tycs2) then
 		   let val sv = (val2sval m vc) handle x => raise x
-		   in loop (substitute(m, lv, sv, F.VAR lvd)) le
+		   in loop (substitute(m, lv, sv, F.VAR lvd)) le cont
 		   end
 	       else ccon sv
 	     | sv => ccon sv
@@ -711,13 +718,13 @@ in
 	in case g (0,svs)
 	    of SOME v => 
 	       let val sv = (val2sval m v) handle x => raise x
-	       in loop (substitute(m, lv, sv, F.INT 0)) le
+	       in loop (substitute(m, lv, sv, F.INT 0)) le cont
 	               before app (unuseval (undertake m)) vs
 	       end
 	     | _ => 
 	       let val nvs = map sval2val svs
 		   val nm = addbind(m, lv, Record(lv, nvs))
-		   val nle = loop nm le
+		   val nle = loop nm le cont
 	       in if used lv then F.RECORD(rk, nvs, lv, nle) else nle
 	       end
 	end
@@ -726,25 +733,27 @@ in
 	(case ((val2sval m v) handle x => raise x)
 	  of Record (lvr,vs) =>
 	     let val sv = (val2sval m (List.nth(vs, i))) handle x => raise x
-	     in loop (substitute(m, lv, sv, F.VAR lvr)) le
+	     in loop (substitute(m, lv, sv, F.VAR lvr)) le cont
 	     end
 	   | sv =>
 	     let val nv = sval2val sv
 		 val nm = addbind (m, lv, Select(lv, nv, i))
-		 val nle = loop nm le
+		 val nle = loop nm le cont
 	     in if used lv then F.SELECT(nv, i, lv, nle) else nle
 	     end)
 		     
-      | F.RAISE (v,ltys) => F.RAISE((substval v) handle x => raise x, ltys)
+      | F.RAISE (v,ltys) =>
+	cont(m, F.RAISE((substval v) handle x => raise x, ltys))
 
-      | F.HANDLE (le,v) => F.HANDLE(loop m le, (substval v) handle x => raise x)
+      | F.HANDLE (le,v) =>
+	cont(m, F.HANDLE(loop m le #2, (substval v) handle x => raise x))
 
       | F.BRANCH (po,vs,le1,le2) =>
 	let val nvs = ((map substval vs) handle x => raise x)
 	    val npo = cpo po
-	    val nle1 = loop m le1
-	    val nle2 = loop m le2
-	in F.BRANCH(npo, nvs, nle1, nle2)
+	    val nle1 = loop m le1 #2
+	    val nle2 = loop m le2 #2
+	in cont(m, F.BRANCH(npo, nvs, nle1, nle2))
 	end
 
       | F.PRIMOP (po,vs,lv,le) =>
@@ -752,7 +761,7 @@ in
 	    val nvs = ((map substval vs) handle x => raise x)
 	    val npo = cpo po
 	    val nm = addbind(m, lv, Var(lv,NONE))
-	    val nle = loop nm le
+	    val nle = loop nm le cont
 	in
 	    if impure orelse used lv
 	    then F.PRIMOP(npo, nvs, lv, nle)
@@ -762,7 +771,8 @@ end
 		 
 fun contract (fdec as (_,f,_,_)) =
     ((*  C.collect fdec; *)
-     case cexp (DI.top,DI.top) S.empty M.empty (F.FIX([fdec], F.RET[F.VAR f]))
+     case cexp (DI.top,DI.top) S.empty
+	       M.empty (F.FIX([fdec], F.RET[F.VAR f])) #2
       of F.FIX([fdec], F.RET[F.VAR f]) => fdec
        | fdec => bug "invalid return fundec")
 	    

@@ -36,9 +36,6 @@ val (iadd_prim, uadd_prim) =
 
 fun bug msg = ErrorMsg.impossible("FlintNM: "^msg)
 
-fun optmap f (SOME v)	= SOME (f v)
-  | optmap _ NONE	= NONE
-
 
 local val (trueDcon', falseDcon') = 
         let val lt = LT.ltc_arrow(LT.ffc_rrflint, [LT.ltc_unit], [LT.ltc_bool])
@@ -58,7 +55,7 @@ fun flint_prim (po as (d, p, lt, ts), vs, v, e) =
   (case p
     of (PO.BOXED  | PO.UNBOXED | PO.CMP _ | PO.PTREQL | 
         PO.PTRNEQ | PO.POLYEQL | PO.POLYNEQ) =>
-          (*** branch primops gets translated into F.BRANCH ***)
+          (*** branch primops get translated into F.BRANCH ***)
           F.LET([v], F.BRANCH(po, vs, boolLexp true, boolLexp false), e)
      | (PO.GETRUNVEC | PO.GETHDLR | PO.GETVAR | PO.DEFLVAR) =>
           (*** primops that take zero arguments; argument types
@@ -123,17 +120,19 @@ fun tofundec (venv,d,f_lv,arg_lv,arg_lty,body,isrec) =
 	(* construct the return type if necessary *)
 	val (body_raw, body_ltys, _) = FL.t_pflatten body_lty
 	val rettype = if not isrec then NONE
-		      else SOME(map FL.ltc_raw body_ltys)
+		      else SOME(map FL.ltc_raw body_ltys, F.LK_UNKNOWN)
 
-	val isfct = not (LT.ltp_tyc arg_lty andalso LT.ltp_tyc body_lty)
-	val f_lty = if isfct then LT.ltc_pfct(arg_lty, body_lty)
-		    else LT.ltc_parrow(arg_lty, body_lty)
-
-        val fkind = if isfct then F.FK_FCT
-                    else F.FK_FUN{isrec=rettype,
-                                  fixed=LT.ffc_var(arg_raw, body_raw),
-                                  known=false,
-                                  inline=false}
+	val (f_lty, fkind) =
+	    if (LT.ltp_tyc arg_lty andalso LT.ltp_tyc body_lty) then
+		(* a function *)
+		(LT.ltc_parrow(arg_lty, body_lty),
+		 {isrec=rettype, known=false, inline=F.IH_SAFE,
+		  cconv=F.CC_FUN(LT.ffc_var(arg_raw, body_raw))})
+	    else 
+		(* a functor *)
+		(LT.ltc_pfct(arg_lty, body_lty),
+		 {isrec=rettype, known=false, inline=F.IH_SAFE,
+		  cconv=F.CC_FCT})
 			
     in ((fkind, f_lv, ListPair.zip(arg_lvs, map FL.ltc_raw arg_ltys), body''),
 	f_lty)
@@ -226,7 +225,7 @@ and tolexp (venv,d) lexp =
 		    end
 	    in tovalue(venv, d, le,
 		       fn (v, lty) =>
-		       let val default = optmap (#1 o tolexp(venv,d)) default
+		       let val default = Option.map (#1 o tolexp(venv,d)) default
 			   val conlexps as ((_,lty)::_) = map f conlexps
 		       in (F.SWITCH(v, acs, map #1 conlexps, default), lty)
 		       end)
