@@ -37,10 +37,7 @@ case `uname -s` in
 	OPSYS=solaris
 	case `uname -p` in
 	  sparc) ARCH=sparc;;
-	  i386) ARCH=x86;;
-	  i486) ARCH=x86;;
-	  i586) ARCH=x86;;
-	  i686) ARCH=x86;;
+	  *86) ARCH=x86;;
 	  *) exit 1;;
 	esac
       ;;
@@ -71,7 +68,7 @@ case `uname -s` in
 	  V3.*) ARCH=alpha32x; OPSYS=osf1 ;;
 	  V4.*) ARCH=alpha32; OPSYS=dunix ;;
 	  *) exit 1 ;;
-	esac 
+	esac
         ;;
       *) exit 1 ;;
     esac 
@@ -79,10 +76,9 @@ case `uname -s` in
   Linux)
     OPSYS=linux
     case `uname -m` in
-      i386) ARCH=x86;;
-      i486) ARCH=x86;;
-      i586) ARCH=x86;;
-      i686) ARCH=x86;;
+      # As long as we do not natively support the amd64 architecture,
+      # we should fallback to the x86 compatibility mode.  --Stef
+      *86 | x86_64) ARCH=x86;;
       ppc)
 	ARCH=ppc
 	case `uname -r` in
@@ -97,10 +93,7 @@ case `uname -s` in
     OPSYS=freebsd
     HEAP_OPSYS=bsd
     case `uname -m` in
-      i386) ARCH=x86;;
-      i486) ARCH=x86;;
-      i586) ARCH=x86;;
-      i686) ARCH=x86;;
+      *86) ARCH=x86;;
       *) exit 1;;
     esac
     ;;
@@ -108,20 +101,14 @@ case `uname -s` in
     OPSYS=netbsd
     HEAP_OPSYS=bsd
     case `uname -m` in
-      i386) ARCH=x86;;
-      i486) ARCH=x86;;
-      i586) ARCH=x86;;
-      i686) ARCH=x86;;
+      *86) ARCH=x86;;
       *) exit 1;;
     esac
     ;;
   Windows_NT)
     OPSYS=win32
     case `uname -m` in
-      386) ARCH=x86;;
-      486) ARCH=x86;;
-      586) ARCH=x86;;
-      686) ARCH=x86;;
+      *86) ARCH=x86;;
       *) exit 1;;
     esac
     ;;
@@ -134,10 +121,7 @@ case `uname -s` in
        OPSYS=win32
     fi
     case `uname -m` in
-       i386) ARCH=x86;;
-       i486) ARCH=x86;;
-       i586) ARCH=x86;;
-       i686) ARCH=x86;;
+       *86) ARCH=x86;;
        *) exit 1;;
     esac
     ;;
