@@ -29,7 +29,7 @@ end = struct
     structure BF = MachDepVC.Binfile
 
     structure Compile = CompileFn (structure MachDepVC = MachDepVC
-				   fun compile_there _ = false)
+				   val compile_there = Servers.compile)
 
     structure BFC = BfcFn (structure MachDepVC = MachDepVC)
 
@@ -87,7 +87,7 @@ end = struct
 		  AutoDir.openBinOut, BinIO.closeOut,
 		  BinIO.inputN, BinIO.output, BinIO.endOfStream)
 
-    fun compile deliver dbopt = let
+    fun mk_compile deliver dbopt = let
 
 	val dirbase = getOpt (dbopt, BtNames.dirbaseDefault)
 	val pcmodespec = BtNames.pcmodespec
@@ -171,7 +171,7 @@ end = struct
 	val ginfo_nocore = { param = param_nocore, groupreg = groupreg,
 			     errcons = errcons }
 
-	fun main_compile arg = let
+	fun mk_main_compile arg = let
 	    val { rts, core, pervasive, primitives, binpaths } = arg
 
 	    val ovldR = GenericVC.Control.overloadKW
@@ -235,63 +235,96 @@ end = struct
 		if deliver then SOME true else NONE
 	in
 	    case Parse.parse NONE param stab maingspec of
-		NONE => false
+		NONE => NONE
 	      | SOME (g, gp) => let
-		    fun store _ = ()
-		    val { group = recomp, ... } =
-			Compile.newTraversal (fn _ => fn _ => (), store, g)
-		in
-		    if isSome (recomp gp) then let
-			val rtspid = PS.toHex (#statpid (#ii rts))
-			fun writeList s = let
-			    fun add ((p, flag), l) = let
-				val n = listName (p, true)
-			    in
-				if flag then n :: l else l
-			    end
-			    fun transcribe (p, NONE) = listName (p, true)
-			      | transcribe (p, SOME (off, desc)) =
-				concat [listName (p, false),
-					"@", Int.toString off, ":", desc]
-			    val bootstrings =
-				foldr add (map transcribe (MkBootList.group g))
-				      binpaths
-			    fun show str =
-				(TextIO.output (s, str);
-				 TextIO.output (s, "\n"))
-			in
-			    app show bootstrings
-			end
+		    fun thunk () = let
+			fun store _ = ()
+			val { group = recomp, ... } =
+			    Compile.newTraversal (fn _ => fn _ => (), store, g)
 		    in
-		      if deliver then
-		       (SafeIO.perform { openIt = fn () =>
-					   AutoDir.openTextOut pidfile,
-					 closeIt = TextIO.closeOut,
-					 work = fn s =>
-					   TextIO.output (s, rtspid ^ "\n"),
-					 cleanup = fn () =>
-					   OS.FileSys.remove pidfile
-					   handle _ => () };
-			SafeIO.perform { openIt = fn () =>
-					   AutoDir.openTextOut listfile,
-					 closeIt = TextIO.closeOut,
-					 work = writeList,
-					 cleanup = fn () =>
-					   OS.FileSys.remove listfile
-					   handle _ => () };
-			copyTextFile (SrcPath.osstring initgspec, cmifile);
-			Say.say ["Runtime System PID is: ", rtspid, "\n"])
-		      else ();
-		      true
+			if isSome (recomp gp) then let
+			    val rtspid = PS.toHex (#statpid (#ii rts))
+			    fun writeList s = let
+				fun add ((p, flag), l) = let
+				    val n = listName (p, true)
+				in
+				    if flag then n :: l else l
+				end
+				fun transcribe (p, NONE) = listName (p, true)
+				  | transcribe (p, SOME (off, desc)) =
+				    concat [listName (p, false),
+					    "@", Int.toString off, ":", desc]
+				val bootstrings =
+				    foldr add
+				          (map transcribe (MkBootList.group g))
+					  binpaths
+				fun show str =
+				    (TextIO.output (s, str);
+				     TextIO.output (s, "\n"))
+			    in
+				app show bootstrings
+			    end
+			in
+			    if deliver then
+				(SafeIO.perform
+				 { openIt = fn () =>
+				       AutoDir.openTextOut pidfile,
+				   closeIt = TextIO.closeOut,
+				   work = fn s =>
+				       TextIO.output (s, rtspid ^ "\n"),
+				   cleanup = fn () =>
+				       OS.FileSys.remove pidfile
+				       handle _ => () };
+				 SafeIO.perform
+				 { openIt = fn () =>
+				       AutoDir.openTextOut listfile,
+				   closeIt = TextIO.closeOut,
+				   work = writeList,
+				   cleanup = fn () =>
+				       OS.FileSys.remove listfile
+				       handle _ => () };
+				 copyTextFile (SrcPath.osstring initgspec,
+					       cmifile);
+				 Say.say ["Runtime System PID is: ",
+					  rtspid, "\n"])
+			    else ();
+			    true
+			end
+			else false
 		    end
-		    else false
+		in
+		    SOME ((g, gp), thunk, dirbase)
 		end
-	end handle Option => (Compile.reset (); false)
+	end handle Option => (Compile.reset (); NONE)
 	    	   (* to catch valOf failures in "rt" *)
     in
 	case BuildInitDG.build ginfo_nocore initgspec of
-	    SOME x => main_compile x
-	  | NONE => false
+	    SOME x => mk_main_compile x
+	  | NONE => NONE
+    end
+
+    fun compile deliver dbopt =
+	(Servers.disable ();		(* no parallel stuff during init *)
+	 case mk_compile deliver dbopt of
+	     NONE => false
+	   | SOME (_, thunk, db) =>
+		 (Servers.enable ();
+		  Servers.cmb db;
+		  thunk ()
+		  before Servers.waitforall ()))
+
+    local
+	fun slave dirbase =
+	    case mk_compile false (SOME dirbase) of
+		NONE => NONE
+	      | SOME ((g, gp), _, _) => let
+		    val trav = Compile.newSbnodeTraversal () gp
+		    fun trav' sbn = isSome (trav sbn)
+		in
+		    SOME (g, gp, trav')
+		end
+    in
+	val _ = CMBSlaveHook.init slave
     end
 
     fun reset () =

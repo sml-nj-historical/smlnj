@@ -3,8 +3,8 @@
  * "futures", but much less powerful).
  *   - uses no preemption
  *   - thread gives up control by waiting on a condition
- *   - conditions can signal thread termination and available input on some
- *     text stream
+ *   - conditions can signal thread termination, available input on some
+ *     text stream, or on some explicitly signalled "unit" condition
  *   - gives total priority to "local" computations
  *     (meaning that all threads must get stuck before I/O is even checked)
  * (This is just here to utilize some external concurrency, i.e., OS
@@ -65,12 +65,19 @@ structure Concur :> CONCUR = struct
 		val dl = map #2 il
 		(* since nothing else is there to do we can afford to wait *)
 		val pil = OS.IO.poll (dl, NONE)
-		fun wakeup_ready (pi, (c, pd), il') =
-		    if OS.IO.isIn pi then (wakeup (c, ()); il')
-		    else (c, pd) :: il'
-		val il' = ListPair.foldl wakeup_ready [] (pil, il)
+		fun isReady (_, pd) = let
+		    val pd_iod = OS.IO.pollToIODesc pd
+		    fun sameIod pi =
+			OS.IO.compare (pd_iod,
+				       OS.IO.pollToIODesc
+				         (OS.IO.infoToPollDesc pi)) = EQUAL
+		in
+		    List.exists sameIod pil
+		end
+		val (ready, notready) = List.partition isReady il
 	    in
-		inputs := il';
+		inputs := notready;
+		app (fn (c, _) => wakeup (c, ())) ready;
 		(* try to schedule again; if this fails it's bad *)
 		case dequeue runable of
 		    NONE =>

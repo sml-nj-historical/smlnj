@@ -205,70 +205,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  fun run sflag f s = let
 	      val c = SrcPath.cwdContext ()
 	      val p = SrcPath.standard pcmode { context = c, spec = s }
-	      val _ = Servers.start (c, p)
 	  in
 	      case Parse.parse NONE (param ()) sflag p of
 		  NONE => false
-		| SOME (g, gp) => f gp g
-	  end
-
-	  fun slave () = let
-	      fun shutdown () = OS.Process.exit OS.Process.success
-	      fun say_ok () = Say.say ["SLAVE: ok\n"]
-	      fun say_error () = Say.say ["SLAVE: error\n"]
-		  
-	      fun waitForStart () = let
-		  val line = TextIO.inputLine TextIO.stdIn
-	      in
-		  if line = "" then shutdown ()
-		  else case String.tokens Char.isSpace line of
-		      ["cm", d, f] => start (d, f)
-		    | ["shutdown"] => shutdown ()
-		    | _ => (say_error (); waitForStart ())
-	      end handle _ => (say_error (); waitForStart ())
-
-	      and start (d, f) = let
-		  val _ = OS.FileSys.chDir d
-		  val c = SrcPath.cwdContext ()
-		  val p = SrcPath.native { context = c, spec = f }
-	      in
-		  case Parse.parse NONE (param ()) NONE p of
-		      NONE => (say_error (); waitForStart ())
-		    | SOME x => (say_ok (); workLoop (x, c))
-	      end handle _ => (say_error (); waitForStart ())
-
-	      and workLoop ((g, gp), c) = let
-		  val index = Reachable.snodeMap g
-		  val trav = Compile.newSbnodeTraversal ()
-		  fun loop () = let
-		      val line = TextIO.inputLine TextIO.stdIn
-		  in
-		      if line = "" then shutdown ()
-		      else case String.tokens Char.isSpace line of
-			  ["compile", f] => let
-			      val p = SrcPath.native { context = c, spec = f }
-			  in
-			      case SrcPathMap.find (index, p) of
-				  NONE => (say_error (); loop ())
-				| SOME sn => let
-				      val sbn = DependencyGraph.SB_SNODE sn
-				  in
-				      case trav gp sbn of
-					  NONE => (say_error (); loop ())
-					| SOME _ => (say_ok (); loop ())
-				  end
-			  end
-			| ["cm", d, f] => start (d, f)
-			| ["finish"] => (say_ok (); waitForStart ())
-			| ["shutdown"] => shutdown ()
-			| _ => (say_error (); loop ())
-		  end handle _ => (say_error (); loop ())
-	      in
-		  loop ()
-	      end
-	  in
-	      say_ok ();		(* announce readiness *)
-	      waitForStart ()
+		| SOME (g, gp) =>
+		      (Servers.cm p;
+		       f gp g
+		       before Servers.waitforall ())
 	  end
 
 	  val listLibs = Parse.listLibs
@@ -284,6 +227,84 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  fun stabilize recursively = run (SOME recursively) stabilize_runner
 	  val recomp = run NONE recomp_runner
 	  val make = run NONE make_runner
+
+	  fun slave () = let
+	      fun shutdown () = OS.Process.exit OS.Process.success
+	      fun say_ok () = Say.say ["SLAVE: ok\n"]
+	      fun say_error () = Say.say ["SLAVE: error\n"]
+		  
+	      fun waitForStart () = let
+		  val line = TextIO.inputLine TextIO.stdIn
+	      in
+		  if line = "" then shutdown ()
+		  else case String.tokens Char.isSpace line of
+		      ["cm", d, f] => do_cm (d, f)
+		    | ["cmb", d, db] => do_cmb (d, db)
+		    | ["shutdown"] => shutdown ()
+		    | _ => (say_error (); waitForStart ())
+	      end handle _ => (say_error (); waitForStart ())
+
+	      and do_cmb (d, db) = let
+		  val _ = OS.FileSys.chDir d
+		  val c = SrcPath.cwdContext ()
+	      in
+		  case CMBSlave.slave make db of
+		      NONE => (say_error (); waitForStart ())
+		    | SOME (g, gp, trav) => let
+			  val _ = say_ok ()
+			  val index = Reachable.snodeMap g
+		      in
+			  workLoop (index, trav, gp, c)
+		      end
+	      end handle _ => (say_error (); waitForStart ())
+
+	      and do_cm (d, f) = let
+		  val _ = OS.FileSys.chDir d
+		  val c = SrcPath.cwdContext ()
+		  val p = SrcPath.native { context = c, spec = f }
+	      in
+		  case Parse.parse NONE (param ()) NONE p of
+		      NONE => (say_error (); waitForStart ())
+		    | SOME (g, gp) => let
+			  val _ = say_ok ()
+			  val index = Reachable.snodeMap g
+			  val trav = Compile.newSbnodeTraversal () gp
+			  fun trav' sbn = isSome (trav sbn)
+		      in
+			  workLoop (index, trav', gp, c)
+		      end
+	      end handle _ => (say_error (); waitForStart ())
+
+	      and workLoop (index, trav, gp, c) = let
+		  fun loop () = let
+		      val line = TextIO.inputLine TextIO.stdIn
+		  in
+		      if line = "" then shutdown ()
+		      else case String.tokens Char.isSpace line of
+			  ["compile", f] => let
+			      val p = SrcPath.native { context = c, spec = f }
+			  in
+			      case SrcPathMap.find (index, p) of
+				  NONE => (say_error (); loop ())
+				| SOME sn => let
+				      val sbn = DependencyGraph.SB_SNODE sn
+				  in
+				      if trav sbn then (say_ok (); loop ())
+				      else (say_error (); loop ())
+				  end
+			  end
+			| ["cm", d, f] => do_cm (d, f)
+			| ["finish"] => (say_ok (); waitForStart ())
+			| ["shutdown"] => shutdown ()
+			| _ => (say_error (); loop ())
+		  end handle _ => (say_error (); loop ())
+	      in
+		  loop ()
+	      end
+	  in
+	      say_ok ();		(* announce readiness *)
+	      waitForStart ()
+	  end
 
 	  fun reset () =
 	      (Compile.reset ();
@@ -427,7 +448,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				   listLibs = listLibs,
 				   dismissLib = dismissLib,
 				   symval = SSV.symval,
-				   server = Servers.add })
+				   server_start = Servers.start,
+				   server_stop = Servers.stop,
+				   server_kill = Servers.kill })
 
 		  end
 	  end

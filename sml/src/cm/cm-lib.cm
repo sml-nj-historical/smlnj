@@ -88,6 +88,8 @@ is
 	bootstrap/build-initdg.sml
 	bootstrap/btcompile.sml
 	bootstrap/mkbootlist.sml
+	bootstrap/cmb-slave-stub.sml
+	bootstrap/cmb-slave-hook.sml
 
 	(* CM-internal libraries *)
 	util/sources.cm

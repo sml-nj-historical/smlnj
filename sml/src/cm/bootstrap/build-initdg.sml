@@ -11,7 +11,6 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-
 signature BUILD_INIT_DG = sig
     val build : GeneralParams.info -> SrcPath.t ->
 	{ rts: DependencyGraph.sbnode,
