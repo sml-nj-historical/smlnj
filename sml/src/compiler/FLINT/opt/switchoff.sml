@@ -92,51 +92,45 @@ case tree of
     F.LET (assign as [x], 
 	   F.SWITCH(name as F.VAR(y), conds, handles, default), cont) =>
     let val (newCont, nextVariables) = inside cont
+	val optHandles = map (inCase nextVariables) handles
+	val optDefault = inDefault nextVariables default
     in
-	let 
-	    val optHandles = map (inCase nextVariables) handles
-	    val optDefault = inDefault nextVariables default
-	in
-	    if contains nextVariables x
-	    then (
-		  (*cannot optimize*)
-		  I.rmv nextVariables x;
-		  (F.LET(assign, 
-			 F.SWITCH
-			     (
-			      name, 
-			      conds, 
-			      optHandles,
-			      optDefault
-			      ), 
-			 newCont), 
-		   nextVariables)
-		  ) else (
-			  (*optimize*)			  
-			  I.add nextVariables (y, true);
-			  let val newFunID = (mklv())
-			      val newFunction = (F.VAR newFunID)
-			      val optimized =
-				  F.FIX
-				      (				     
-				       ({
-					inline = F.IH_ALWAYS,
-					known  = true, (*?*)
-					cconv  = F.CC_FUN LtyKernel.FF_FIXED,
-					isrec  = NONE
-					},
-				       newFunID, (x, getLty (F.VAR x))::nil, newCont)::nil,
-				       F.SWITCH(name,
-						conds,
-						map (putFunInCase newFunction) handles,
-						putFunInDefault newFunction default
-						)
-				       )
-			  in
-			       (optimized, nextVariables)
-			  end
-			      )			 
-	end
+	if contains nextVariables x
+	then (
+	      (*cannot optimize*)
+	      I.rmv nextVariables x;
+	      (F.LET(assign,
+		     F.SWITCH
+			 (
+			  name,
+			  conds,
+			  optHandles,
+			  optDefault
+			  ),
+			 newCont),
+	       nextVariables))
+	else (
+	      (*optimize*)
+	      I.add nextVariables (y, true);
+	      let val newFunID = (mklv())
+		  val newFunction = (F.VAR newFunID)
+		  val optimized =
+		      F.FIX
+			  (
+			   [({
+			     inline = F.IH_MAYBE(1, [2]),
+			     known  = true, (*?*)
+			     cconv  = F.CC_FUN LtyKernel.FF_FIXED,
+			     isrec  = NONE
+			     },
+			     newFunID, [(x, getLty (F.VAR x))], newCont)],
+			   F.SWITCH(name,
+				    conds,
+				    map (putFunInCase newFunction) handles,
+				    putFunInDefault newFunction default))
+	      in
+		  (optimized, nextVariables)
+	      end)
     end
   | F.LET (vars, exp, block) =>
     let val (optExpr, varExpr) = inside exp
