@@ -18,8 +18,8 @@ signature SERVERS = sig
 
     val kill : string -> unit
 
-    (* wait until all servers are ready *)
-    val waitforall : unit -> unit
+    (* reset scheduler and wait until all servers are idle *)
+    val reset : unit -> unit
 
     (* signal all servers that we are starting with a new .cm file *)
     val cm : SrcPath.t -> unit
@@ -29,6 +29,8 @@ signature SERVERS = sig
 
     (* schedule a compilation *)
     val compile : SrcPath.t -> bool
+
+    val evict : SmlInfo.info -> unit
 
     val withServers : (unit -> 'a) -> 'a
 end

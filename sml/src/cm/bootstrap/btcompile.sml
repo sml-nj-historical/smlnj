@@ -35,7 +35,9 @@ end = struct
 
     (* instantiate Stabilize... *)
     structure Stabilize =
-	StabilizeFn (fun destroy_state _ i = Compile.evict i
+	StabilizeFn (fun destroy_state _ i =
+			 (Compile.evict i;
+			  Servers.evict i)
 		     structure MachDepVC = MachDepVC
 		     fun recomp gp g = let
 			 val { store, get } = BFC.new ()
@@ -234,11 +236,8 @@ end = struct
 		        { corenv = corenv }
 	    val stab =
 		if deliver then SOME true else NONE
-
-	    (* We need to announce the project here because Parse.parse
-	     * may already invoke the compiler (because of "deliver"). *)
-	    val _ = Servers.cmb dirbase
 	in
+	    Servers.cmb dirbase;
 	    case Parse.parse NONE param stab maingspec of
 		NONE => NONE
 	      | SOME (g, gp) => let
@@ -313,7 +312,7 @@ end = struct
     fun compile deliver dbopt =
 	case mk_compile deliver dbopt of
 	    NONE => false
-	  | SOME (_, thunk) => thunk () before Servers.waitforall ()
+	  | SOME (_, thunk) => thunk () before Servers.reset ()
 
     local
 	fun slave dirbase =
@@ -323,7 +322,7 @@ end = struct
 		    val trav = Compile.newSbnodeTraversal () gp
 		    fun trav' sbn = isSome (trav sbn)
 		in
-		    SOME (g, gp, trav')
+		    SOME (g, trav', Compile.evict)
 		end
     in
 	val _ = CMBSlaveHook.init slave

@@ -35,10 +35,10 @@ structure Reachable :> REACHABLE = struct
 	    SymbolMap.foldl impexp empty exports
 	end
 
-	val snodeMap' =
+	fun snodeMap' (exports, acc) =
 	    reach { add = SrcPathMap.insert,
 		    member = SrcPathMap.inDomain,
-		    empty = SrcPathMap.empty }
+		    empty = acc } exports
     in
 	val reachable' =
 	    reach { add = fn (s, x, _) => SrcPathSet.add (s, x),
@@ -47,6 +47,18 @@ structure Reachable :> REACHABLE = struct
 
 	fun reachable (GroupGraph.GROUP { exports, ... }) = reachable' exports
 
-	fun snodeMap (GroupGraph.GROUP { exports, ... }) = snodeMap' exports
+	fun snodeMap g = let
+	    fun snm (g, (a, seen)) = let
+		val GroupGraph.GROUP { exports, sublibs, grouppath, ... } = g
+	    in
+		if SrcPathSet.member (seen, grouppath) then (a, seen)
+		else foldl (fn ((_, g), x) => snm (g, x))
+		           (snodeMap' (exports, a),
+			    SrcPathSet.add (seen, grouppath))
+			   sublibs
+	    end
+	in
+	    #1 (snm (g, (SrcPathMap.empty, SrcPathSet.empty)))
+	end
     end
 end

@@ -12,9 +12,10 @@ structure Servers :> SERVERS = struct
     fun start _ = raise Fail "compile server facility not available"
     fun stop _ = false
     fun kill _ = ()
-    fun waitforall () = ()
+    fun reset () = Concur.reset ()
     fun cm _ = ()
     fun cmb _ = ()
     fun compile _ = false
+    fun evict _ = ()
     fun withServers f = f ()
 end

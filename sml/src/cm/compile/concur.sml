@@ -24,6 +24,9 @@ signature CONCUR = sig
     val inputReady : TextIO.instream -> unit cond
     val ucond : unit -> unit cond
     val signal : unit cond -> unit
+
+    (* forget all waiting threads and input conditions *)
+    val reset : unit -> unit
 end
 
 structure Concur :> CONCUR = struct
@@ -46,6 +49,8 @@ structure Concur :> CONCUR = struct
 
     val runable : tstate queue = ref ([], [])
     val inputs = ref ([]: (unit cond * OS.IO.poll_desc) list)
+
+    fun reset () = (runable := ([], []); inputs := [])
 
     (* we heavily favor non-I/O conditions, but that's ok for our purposes *)
 

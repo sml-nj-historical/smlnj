@@ -8,8 +8,9 @@
 structure CMBSlaveHook = struct
     local
 	type res =
-	    GroupGraph.group * GeneralParams.info *
-	    (DependencyGraph.sbnode -> bool)
+	    GroupGraph.group *
+	    (DependencyGraph.sbnode -> bool) *
+	    (SmlInfo.info -> unit)
 	fun placeholder (s: string) = (NONE: res option)
 	val r = ref placeholder
     in

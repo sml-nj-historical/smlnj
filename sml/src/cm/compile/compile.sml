@@ -261,8 +261,6 @@ in
 		    case SmlInfo.parsetree gp i of
 			NONE => NONE
 		      | SOME (ast, source) => let
-			    val _ =
-			       Say.vsay ["[compiling ", SmlInfo.descr i, "]\n"]
 			    val corenv = #corenv (#param gp)
 			    val cmData = PidSet.listItems pids
 			    (* clear error flag (could still be set from
@@ -340,6 +338,9 @@ in
 				fun compile_again () =
 				    compile_here (stat, sym, pids)
 				fun compile () = let
+				    val _ =
+					Say.vsay ["[compiling ",
+						  SmlInfo.descr i, "]\n"]
 				    val sp = SmlInfo.sourcepath i
 				in
 				    if compile_there sp then

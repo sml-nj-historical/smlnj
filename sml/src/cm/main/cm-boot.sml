@@ -28,6 +28,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure BF = HostMachDepVC.Binfile
       structure P = OS.Path
       structure F = OS.FileSys
+      structure DG = DependencyGraph
 
       val os = SMLofNJ.SysInfo.getOSKind ()
 
@@ -104,6 +105,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure Stabilize =
 	  StabilizeFn (structure MachDepVC = HostMachDepVC
 		       fun recomp gp g = let
+			   val GroupGraph.GROUP { grouppath, ... } = g
 			   val { store, get } = BFC.new ()
 			   val { group, ... } =
 			       Compile.newTraversal (Link.evict, store, g)
@@ -113,7 +115,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			     | SOME _ => SOME get
 		       end
 		       fun destroy_state gp i =
-			   (Compile.evict i; Link.evict gp i)
+			   (Compile.evict i;
+			    Servers.evict i;
+			    Link.evict gp i)
 		       val getII = Compile.getII)
 
       (* Access to the stabilization mechanism is integrated into the
@@ -207,12 +211,12 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val c = SrcPath.cwdContext ()
 	      val p = SrcPath.standard pcmode { context = c, spec = s }
 	  in
+	      Servers.cm p;
 	      case Parse.parse NONE (param ()) sflag p of
 		  NONE => false
 		| SOME (g, gp) =>
-		      (Servers.cm p;
-		       f gp g
-		       before Servers.waitforall ())
+		      (f gp g
+		       before Servers.reset ())
 	  end
 
 	  val listLibs = Parse.listLibs
@@ -251,11 +255,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      in
 		  case CMBSlave.slave make db of
 		      NONE => (say_error (); waitForStart ())
-		    | SOME (g, gp, trav) => let
+		    | SOME (g, trav, evict) => let
 			  val _ = say_ok ()
 			  val index = Reachable.snodeMap g
 		      in
-			  workLoop (index, trav, gp, c)
+			  workLoop (index, trav, evict, c)
 		      end
 	      end handle _ => (say_error (); waitForStart ())
 
@@ -272,23 +276,32 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			  val trav = Compile.newSbnodeTraversal () gp
 			  fun trav' sbn = isSome (trav sbn)
 		      in
-			  workLoop (index, trav', gp, c)
+			  workLoop (index, trav', Compile.evict, c)
 		      end
 	      end handle _ => (say_error (); waitForStart ())
 
-	      and workLoop (index, trav, gp, c) = let
+	      and workLoop (index, trav, evict, c) = let
+		  fun f2sn f =
+		      SrcPathMap.find (index,
+				       SrcPath.native { context = c,
+						        spec = f })
 		  fun loop () = let
 		      val line = TextIO.inputLine TextIO.stdIn
 		  in
 		      if line = "" then shutdown ()
 		      else case String.tokens Char.isSpace line of
-			  ["compile", f] => let
+			  ["evict", f] =>
+			      (case f2sn f of
+				   NONE => loop ()
+				 | SOME (DG.SNODE { smlinfo, ... }) =>
+				       (evict smlinfo; loop ()))
+			| ["compile", f] => let
 			      val p = SrcPath.native { context = c, spec = f }
 			  in
 			      case SrcPathMap.find (index, p) of
 				  NONE => (say_error (); loop ())
 				| SOME sn => let
-				      val sbn = DependencyGraph.SB_SNODE sn
+				      val sbn = DG.SB_SNODE sn
 				  in
 				      if trav sbn then (say_ok (); loop ())
 				      else (say_error (); loop ())
@@ -473,7 +486,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		          (getOpt (OS.Path.ext f, "<none>")))
     in
 	case SMLofNJ.getArgs () of
-	    ["@CMslave"] => slave ()
+	    ["@CMslave"] => (#set StdConfig.verbose false; slave ())
 	  | l => app (p o c) l
     end
   end
