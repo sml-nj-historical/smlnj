@@ -2,7 +2,7 @@ Library
 	structure SMLNJVersion
 is
 
-# if defined (CMB_REBUILD)
+# if defined (CMB_REBUILD) orelse defined (CMB_SLAVE_MODE)
 
 	(* don't try to load the version tool, use what's there *)
 	version.sml
@@ -17,3 +17,5 @@ is
                                     releasefile: ../../../../config/release)
 
 # endif
+
+        $/basis.cm

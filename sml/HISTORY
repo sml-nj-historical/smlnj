@@ -14,6 +14,17 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/01 10:20:30 CDT
+Tag: blume-20041001-slave
+Description:
+
+Added hack to make slave mode work in the presence of the version
+tool.  (Still, since the master does two passes over the code for
+CMB.make, the release number gets bumped twice when slaves are
+attached.  I don't know if this is worth fixing...)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/09/30 10:55:00 CDT
 Tag: blume-20040930-version
 Description:

@@ -18,25 +18,14 @@ structure SMLNJVersion : sig
   end = struct
 
     val version = {
-	    system = "Standard ML of New Jersey ",
+	    system = "Standard ML of New Jersey",
 	    version_id = [%V],
 	    date = "%D"
 	  }
 
-    fun i2s 0 = "0"
-      | i2s n = let val o0 = ord #"0"
-		    fun loop (0, a) = implode a
-		      | loop (n, a) = loop (n div 10, chr (n mod 10 + o0) :: a)
-		in
-		    loop (n, [])
-		end
+    val banner = concat
+	  (#system version :: " v" ::
+	   String.concatWith "." (map Int.toString (#version_id version)) ::
+	   [" [built: ", #date version, "]"])
 
-    fun f ([], l) = l
-      | f ([x], l) = i2s x :: l
-      | f (x :: r, l) = i2s x :: "." :: f (r, l)
-
-    val banner = concat (
-	    #system version :: "v" :: 
-	    f (#version_id version, [" [built: ", #date version, "]"]))
-
-  end
+end
