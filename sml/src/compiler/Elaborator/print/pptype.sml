@@ -28,6 +28,7 @@ struct
 
 local 
       structure SP = SymPath
+      structure IP = InvPath
       structure BT = BasicTypes
       structure T = Types
       structure TU = TypesUtil
@@ -44,6 +45,8 @@ val pps = PP.add_string
 fun C f x y = f y x
 
 val internals = ElabControl.internals
+
+val unitPath = IP.extend(IP.empty,Symbol.tycSymbol "unit")
 
 fun boundTyvarName k =
     let val a = Char.ord #"a"
@@ -341,7 +344,7 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
                  pr=fn _ => fn ty => prty ty}
 		tys
 
-	and ppTUPLEty [] = pps "unit"
+	and ppTUPLEty [] = pps(effectivePath(unitPath,RECORDtyc [],env))
 	  | ppTUPLEty tys = 
 	      ppSequence ppstrm
 		 {sep = fn ppstrm => (PP.add_break ppstrm (1,0);
@@ -363,7 +366,8 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
 			       prty ty;
 			       end_block())
 
-	and ppRECORDty([],[]) = pps "unit"
+	and ppRECORDty([],[]) = pps(effectivePath(unitPath,RECORDtyc [],env))
+              (* this case should not occur *)
 	  | ppRECORDty(lab::labels, arg::args) =
 	      (begin_block PP.INCONSISTENT 1;
                pps "{";
