@@ -769,7 +769,7 @@ is
 Here, the file {\tt bar-client.sml} gets included if {\tt
 SMLNJ\_VERSION} is greater than 110 and {\tt new-foo.sml} exports a
 structure {\tt Bar} {\em or} if {\tt SMLNJ\_VERSION <= 110} and {\tt
-old-foo.sml} exports structure {\tt Bar}. Otherwise {\tt
+old-foo.sml} exports structure {\tt Bar}. \\ Otherwise {\tt
 no-bar-so-far.sml} gets included instead.  In addition, the export of
 structure {\tt Bar} is guarded by its own existence.  (Structure {\tt
 Bar} could also be defined by {\tt no-bar-so-far.sml} in which case it
@@ -895,6 +895,147 @@ same name as the module itself.
 Currently, the following primitive module names are known: {\tt
 built-in}, {\tt print-hook}, {\tt use-hook}, {\tt exn-info-hook}, {\tt
 core}, {\tt init-utils}.
+
+\section{Files}
+
+CM uses three kinds of files to store derived information during and
+between sessions:
+
+\begin{enumerate}
+\item {\it Skeleton files} are used to store a highly abbreviated
+version of each ML source file's abstract syntax tree---just barely
+sufficient to drive CM's dependency analysis.  Skeleton files are much
+smaller and easier to read than actual ML source code.  Therefore, the
+existence of valid skeleton files makes CM a lot faster because
+usually most parsing operations can be avoided that way.
+\item {\it Binfiles} are the SML/NJ equivalent of object files.  They
+contain executable code and a symbol table for the associated ML
+source file.
+\item {\it Library files} (sometimes called: {\em stablefiles})
+dependency graph, executable code, and symbol tables for an entire CM
+library including all of its components (groups).
+\end{enumerate}
+
+Normally, all these files are stored in a subdirectory of directory
+{\tt CM} which itself is a subdirectory of the directory where the
+original ML source file or---in the case of library files---the
+original CM description file is located.
+
+Skeleton files are machine- and operating system-independent.
+Therefore, they are always placed into the same directory {\tt
+CM/SKEL}. Parsing (for the purpose of dependency analysis) will be
+done only once even if the same file system is accessible from
+machines of different type.
+
+Binfiles and library files contain executable code and other
+information that is potentially system- and architecture-dependent.
+Therefore, they are stored under {\tt CM/}{\it arch}{\tt -}{\it os}
+where {\it arch} is a string indicating the type of the current
+CPU architecture and {\it os} a string denoting the current operating
+system type.
+
+Library files are a bit of an exception in the sense that they do not
+require any source files or any other derived files of the same
+library to exist.  As a consequence, the location of such a library
+file is best described as being relative to ``the location of the
+original CM description file if that description file still existed''.
+(Of course, nothing precludes the CM description file from actually
+existing, but in the presence of a corresponding library file CM will
+not take any notice.)
+
+\subsection{Time stamps}
+
+For skeleton files and binfiles, CM uses file system time stamps to
+determine whether a file has become outdated.  The rule is that in
+order to be considered ``up-to-date'' the time stamp on skeleton file
+and binfile has to be exactly the same as the one on the ML source
+file.  This guarantees that all changes to a source will be
+noticed\footnote{except for the pathological case where two different
+versions of the same source file have exactly the same time stamp}.
+
+CM also uses time stamps to decide whether tools such as ML-Yacc or
+ML-Lex need to be run (see Section~\ref{sec:tools}).  However, the
+difference is that a file is considered outdated if it is older than
+its source.  Some care on the programmers side is necessary since this
+scheme does not allow CM to detect the situation where a source file
+gets replaced by an older version of itself.
+
+\section{Tools}
+\label{sec:tools}
+
+CM's tool set is extensible: new tools can be added by writing a few
+lines of ML code.  The necessary hooks for this are provided by a
+structure {\tt Tools} which is exported by the {\tt cm-tools.cm}
+library.
+
+If the tool is implemented as a ``typical'' shell command, then all
+that needs to be done is a single call to:
+
+\begin{verbatim}
+Tools.registerStdShellCmdTool
+\end{verbatim}
+
+For example, suppose you have made a
+new, improved version of ML-Yacc (``New-ML-Yacc'') and want to
+register it under a class called {\tt nmlyacc}.  Here is what you
+write:
+
+\begin{verbatim}
+val command = Tools.newCmdGetterSetter ("NYACC", "new-ml-yacc")
+val _ = Tools.registerStdShellCmdTool
+  { tool = "New-ML-Yacc",
+    class = "nmlyacc",
+    suffixes = ["ngrm", "ny"],
+    command = command,
+    extensionStyle = Tools.EXTEND ["sig", "sml"],
+    sml = true }
+\end{verbatim}
+
+This code can either by packaged as a CM library or entered at the
+interactive top level after loading the {\tt cm-tools.cm} library
+(e.g., via {\tt CM.autoload}).
+
+The call to {\tt Tools.newCmdGetterSetter} makes a `command
+getter-setter'' which is a value of type {\tt string option ->
+string}. It can be invoked to query or set the command string for the
+tool.  Here, the default string is {\tt new-ml-yacc} and can be
+customized at startup time using the environment variable {\tt
+CM\_NYACC}.
+
+{\tt Tools.registerStdShellCmdTool} creates the class and installs the
+tool for it.  The arguments must be specified as follows:
+
+\begin{description}
+\item[tool] a descriptive name of the tool (used in error messages)
+\item[class] the name of the class; the string must not contain
+upper-case letters
+\item[suffixes] a list of file name suffixes that let CM automatically
+recognize files of the class
+\item[command] the command getter-setter from above
+\item[extensionStyle] a specification of how the names of files
+generated by the tool relate to the name of the tool input file; \\
+Currently, there are two possible cases:
+\begin{enumerate}
+\item ``{\tt Tools.EXTEND} $l$'' says that if the tool source file is
+{\it file} then for each suffix {\it sfx} in $l$ there will be one tool
+output file named {\it file}{\tt .}{\it sfx}.
+\item ``{\tt Tools.REPLACE }$(l_1, l_2)$'' specifies that given the
+base name {\it base} there will be one tool output file {\it base}{\tt
+.}{\it sfx} for each suffix {\it sfx} in $l_2$.  Here, {\it base} is
+determined by the following rule:  If the name of the tool input file
+has a suffix that occurs in $l_1$ then {\it base} is the name without
+that suffix.  Otherwise, the whole file name is taken as {\it base}
+(just like in the case of {\tt Tools.EXTEND}).
+\end{enumerate}
+\item[sml] a boolean flag that indicates whether or not the tool
+output is always to be considered ML source code; \\
+If the flag is set to {\tt false}, then CM will take the names of the
+output files and apply its usual classification mechanism---possibly
+resulting in cascaded tool application.
+\end{description}
+
+Less common kinds of rules can also be defined using the generic
+interface {\tt Tools.registerClass}.
 
 \section{Some history}
 

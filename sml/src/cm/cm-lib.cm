@@ -9,6 +9,9 @@
 Library
 	functor LinkCM
 	functor BootstrapCompileFn
+
+	signature TOOLS
+	structure Tools
 is
 	(* the CM description file parser *)
 	parse/parse.sml

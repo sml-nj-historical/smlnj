@@ -29,8 +29,13 @@ signature TOOLS = sig
     (* install a class *)
     val registerClass : class * rule -> unit
 
+    (* This is a local copy of Sharing.request to allow this signature to be
+     * useful without access to Sharing.request. (We still need a separate
+     * structure "Sharing" because otherwise we get a dependency cycle.) *)
+    datatype sharingrequest = PRIVATE | SHARED | DONTCARE
+
     (* install "ML Source" class *)
-    val registerSmlClass : class * Sharing.request -> unit
+    val registerSmlClass : class * sharingrequest -> unit
 
     (* install "CM Group" class *)
     val registerGroupClass : class -> unit
@@ -118,13 +123,24 @@ structure PrivateTools :> PRIVATETOOLS = struct
       | ISGROUP
       | ISTOOL of class * rule
 
+    datatype sharingrequest = PRIVATE | SHARED | DONTCARE
+
     val classes : private_rule StringMap.map ref = ref (StringMap.empty)
 
     fun registerClass (class, rule) =
 	classes := StringMap.insert (!classes, class, ISTOOL (class, rule))
 
-    fun registerSmlClass (class, shrq) =
+    fun registerSmlClass (class, shrq) = let
+	(* This seems clumsy, but we need to "translate" the local
+	 * sharingrequest value into a Sharing.request value... *)
+	val shrq =
+	    case shrq of
+		PRIVATE => Sharing.PRIVATE
+	      | SHARED => Sharing.SHARED
+	      | DONTCARE => Sharing.DONTCARE
+    in
 	classes := StringMap.insert (!classes, class, ISSML shrq)
+    end
 
     fun registerGroupClass class =
 	classes := StringMap.insert (!classes, class, ISGROUP)
@@ -327,9 +343,9 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	fun sfx (s, c) =
 	    registerClassifier (stdSfxClassifier { sfx = s, class = c })
     in
-	val _ = registerSmlClass ("sml", Sharing.DONTCARE)
-	val _ = registerSmlClass ("shared", Sharing.SHARED)
-	val _ = registerSmlClass ("private", Sharing.PRIVATE)
+	val _ = registerSmlClass ("sml", DONTCARE)
+	val _ = registerSmlClass ("shared", SHARED)
+	val _ = registerSmlClass ("private", PRIVATE)
 	val _ = registerGroupClass "cm"
 	    
 	val _ = sfx ("sml", "sml")
