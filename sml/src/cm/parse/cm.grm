@@ -52,14 +52,13 @@ structure S = CMSemant
 
 %pos int
 %verbose
-%arg (grouppath, context, error', error, recParse, doMember) :
+%arg (grouppath, context, error, recParse, doMember, gp) :
     S.pathname *
     S.context *
-    (pos * pos -> GenericVC.ErrorMsg.complainer) *
     (pos * pos -> string -> unit) *
     (pos * pos -> S.pathname -> S.group) *
-    (S.pathname * pos * pos * S.cm_symbol option *
-     GenericVC.ErrorMsg.complainer -> S.members)
+    (S.pathname * pos * pos * S.cm_symbol option -> S.members) *
+    GeneralParams.params
 %start description
 %eop EOF
 %noshift EOF
@@ -93,12 +92,14 @@ group : privspec GROUP opt_exports IS members   (S.group
 						  privspec, opt_exports,
 						  members,
 						  error (opt_exportsleft,
-							 opt_exportsright)))
+							 opt_exportsright),
+						  gp))
       | privspec LIBRARY exports IS members     (S.library
 						 (grouppath,
 						  privspec, exports, members,
 						  error (exportsleft,
-							 exportsright)))
+							 exportsright),
+						  gp))
 
 privspec : (* empty *)                          (S.initialPrivilegeSpec)
          | privspec word                        (S.require (privspec, word,
@@ -137,17 +138,11 @@ members : (* empty *)				(S.emptyMembers)
 member : pathname				(doMember (pathname,
 							   pathnameleft,
 							   pathnameright,
-							   NONE,
-							   error'
-							    (pathnameleft,
-							     pathnameright)))
+							   NONE))
        | pathname COLON word			(doMember (pathname,
 							   pathnameleft,
 							   pathnameright,
-							   SOME word,
-							   error'
-							    (pathnameleft,
-							     wordright)))
+							   SOME word))
        | IF exp guarded_members			(S.guarded_members
 						 (exp, guarded_members,
 						  error (expleft, expright)))

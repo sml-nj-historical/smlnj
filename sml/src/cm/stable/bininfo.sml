@@ -16,34 +16,33 @@ signature BININFO = sig
     val describe : info -> string
     val offset : info -> int
     val group : info -> AbsPath.t
-    val stablePath : info -> AbsPath.t
     val share : info -> bool option
-    val error : info -> complainer
+    val error : GeneralParams.params -> info -> complainer
 end
 
 structure BinInfo :> BININFO = struct
 
     type complainer = GenericVC.ErrorMsg.complainer
+    type region = GenericVC.SourceMap.region
 
     datatype info =
-	INFO of { group: AbsPath.t,
-		  stablePath: AbsPath.t,
+	INFO of { group: AbsPath.t * region,
 		  spec: string,
 		  offset: int,
-		  share: bool option,
-		  error: complainer }
+		  share: bool option }
 
     fun compare (INFO i, INFO i') =
 	case Int.compare (#offset i, #offset i') of
-	    EQUAL => AbsPath.compare (#group i, #group i')
+	    EQUAL => AbsPath.compare (#1 (#group i), #1 (#group i'))
 	  | unequal => unequal
 
-    fun describe (INFO { group, spec, offset, ... }) =
+    fun describe (INFO { group = (group, _), spec, offset, ... }) =
 	concat [AbsPath.name group, "@", Int.toString offset, "(", spec, ")"]
 
-    fun group (INFO { group = g, ... }) = g
+    fun group (INFO { group = (g, r), ... }) = g
     fun offset (INFO { offset = os, ... }) = os
-    fun stablePath (INFO { stablePath = p, ... }) = p
     fun share (INFO { share = s, ... }) = s
-    fun error (INFO { error = e, ... }) = e
+
+    fun error (gp: GeneralParams.params) (INFO { group, ... }) =
+	GroupReg.error (#groupreg gp) group
 end

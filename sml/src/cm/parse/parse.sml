@@ -25,12 +25,6 @@ structure CMParse :> CMPARSE = struct
 		     structure Lex = CMLex
 		     structure LrParser = LrParser)
 
-    (* The error function must look for the source using the GroupReg
-     * group register because the source must not be hard-wired into it
-     * (via closure creation).  The reason for this is that the error
-     * function will get cached in SmlInfo.info but the source will change
-     * when one re-runs the analysis. *)
-
     fun parse primconf group = let
 
 	val groupreg = GroupReg.new ()
@@ -94,13 +88,13 @@ structure CMParse :> CMPARSE = struct
 		val source = S.newSource (filename, 1, stream, false, errcons)
 		val sourceMap = #sourceMap source
 		val _ = GroupReg.register groupreg (group, source)
-		fun error' region sev m b = let
-		    val src = GroupReg.lookup groupreg group
-		in
-		    EM.error src region sev m b
-		end
-		fun error region m =
-		    error' region EM.COMPLAIN m EM.nullErrorBody
+
+		(* We can hard-wire the source into this
+		 * error function because the function is only for
+		 * immediate use and doesn't get stored into persistent
+		 * data structures. *)
+		fun error r m =
+		    EM.error source r EM.COMPLAIN m EM.nullErrorBody
 
 		(* recParse returns a group (not an option).
 		 * This function is used to parse aliases and sub-groups.
@@ -118,10 +112,10 @@ structure CMParse :> CMPARSE = struct
 		    (error (p1, p2) (General.exnMessage exn);
 		     CMSemant.emptyGroup group)
 
-		fun doMember (p, p1, p2, c, e) =
+		fun doMember (p, p1, p2, c) =
 		    CMSemant.member (params, recParse (p1, p2))
-		                    { sourcepath = p, group = group,
-				      class = c, error = e }
+		                    { sourcepath = p, class = c,
+				      group = (group, (p1, p2)) }
 
 		val lexarg = let
 		    (* local state *)
@@ -190,8 +184,8 @@ structure CMParse :> CMPARSE = struct
 		val (parseResult, _) =
 		    CMParse.parse (lookAhead, tokenStream,
 				   fn (s,p1,p2) => error (p1, p2) s,
-				   (group, context, error', error, recParse,
-				    doMember))
+				   (group, context, error, recParse,
+				    doMember, params))
 	    in
 		TextIO.closeIn stream;
 		if !(#anyErrors source) then NONE

@@ -13,8 +13,6 @@ is
 	parse/cm.grm
 	parse/cm.lex
 
-	semant/general-params.sml
-	semant/filename-policy.sml
 	semant/primitive.sml
 	semant/group-reg.sml
 
@@ -59,9 +57,15 @@ is
 	main/say.sml
 	main/envcfg.sml
 	main/stdcfg.sml
+	main/general-params.sml
+	main/filename-policy.sml
+
+	paths/abspath.sml
+	paths/pathconfig.sml
+	paths/abspathmap.sml
+	paths/abspathset.sml
 
 	(* CM-internal libraries *)
-	paths/sources.cm
 	util/sources.cm
 
 	(* compiler libraries *)

@@ -17,8 +17,9 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC) :> FULL_PERSSTATE =
 	    structure E = GenericVC.Environment
 	    structure DTS = DynTStamp
 
-	    infix o'
+	    infix o' o''
 	    fun (f o' g) (x, y) = f (g x, y)
+	    fun (f o'' g) (x, y, z) = f (g x, y, z)
 
 	    type exec_memo = { dyn: E.dynenv, dts: DTS.dts }
 
@@ -46,15 +47,15 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC) :> FULL_PERSSTATE =
 	    fun share (SML i) = SmlInfo.share i
 	      | share (STABLE i) = BinInfo.share i
 
-	    fun error (SML i) = SmlInfo.error i
-	      | error (STABLE i) = BinInfo.error i
+	    fun error gp (SML i) = SmlInfo.error gp i
+	      | error gp (STABLE i) = BinInfo.error gp i
 
-	    fun exec_look (i, s) =
+	    fun exec_look (i, s, gp) =
 		case find i of
 		    NONE => NONE
 		  | SOME (memo as { dts = s', ... }) => let
 			fun warn () =
-			    error i GenericVC.ErrorMsg.WARN
+			    error gp i GenericVC.ErrorMsg.WARN
 			          "re-instantiation (sharing may be lost)"
 			          GenericVC.ErrorMsg.nullErrorBody
 		    in
@@ -67,8 +68,8 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC) :> FULL_PERSSTATE =
 	    fun exec_memo (i, memo) =
 		if share i = SOME false then () else insert (i, memo)
 
-	    val exec_look_sml = exec_look o' SML
-	    val exec_look_stable = exec_look o' STABLE
+	    val exec_look_sml = exec_look o'' SML
+	    val exec_look_stable = exec_look o'' STABLE
 	    val exec_memo_sml = exec_memo o' SML
 	    val exec_memo_stable = exec_memo o' STABLE
 	end

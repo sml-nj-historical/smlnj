@@ -42,11 +42,11 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
 
     fun thunkify { dyn, dts } = { dyn = fn () => dyn, dts = dts }
 
-    fun lookstable (i, mkenv) =
+    fun lookstable (i, mkenv, gp) =
 	case mkenv () of
 	    NONE => NOTFOUND NONE
 	  | SOME (e as { dyn, dts }) =>
-		(case PS.exec_look_stable (i, dts) of
+		(case PS.exec_look_stable (i, dts, gp) of
 		     SOME memo => FOUND (thunkify memo)
 		   | NONE => NOTFOUND (SOME e))
 
@@ -94,17 +94,17 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
     fun dostable (i, e, gp) =
 	execute (PS.bfc_fetch_stable i, e,
 		 BinInfo.share i,
-		 BinInfo.error i EM.COMPLAIN,
+		 BinInfo.error gp i EM.COMPLAIN,
 		 BinInfo.describe i,
 		 fn m => PS.exec_memo_stable (i, m))
 
-    fun looksml (i, { dyn, dts }) =
-	Option.map thunkify (PS.exec_look_sml (i, dts))
+    fun looksml (i, { dyn, dts }, gp) =
+	Option.map thunkify (PS.exec_look_sml (i, dts, gp))
 
     fun dosml (i, e, gp) =
 	execute (PS.bfc_fetch_sml i, e,
 		 SmlInfo.share i,
-		 SmlInfo.error i EM.COMPLAIN,
+		 SmlInfo.error gp i EM.COMPLAIN,
 		 SmlInfo.name i,
 		 fn m => PS.exec_memo_sml (i, m))
 end

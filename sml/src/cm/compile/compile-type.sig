@@ -26,9 +26,17 @@ signature COMPILATION_TYPE = sig
 
     val primitive : Primitive.configuration -> Primitive.primitive -> envdelta
 
-    val lookstable : BinInfo.info * (unit -> benv option) -> lookstable_result
-    val dostable: BinInfo.info * benv * GeneralParams.params -> envdelta option
+    val lookstable :
+	BinInfo.info * (unit -> benv option) * GeneralParams.params
+	-> lookstable_result
+    val dostable:
+	BinInfo.info * benv * GeneralParams.params
+	-> envdelta option
 
-    val looksml : SmlInfo.info * env -> envdelta option
-    val dosml : SmlInfo.info * env * GeneralParams.params -> envdelta option
+    val looksml :
+	SmlInfo.info * env * GeneralParams.params
+	-> envdelta option
+    val dosml :
+	SmlInfo.info * env * GeneralParams.params
+	-> envdelta option
 end

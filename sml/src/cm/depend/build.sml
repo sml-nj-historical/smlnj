@@ -16,6 +16,7 @@ signature BUILDDEPEND = sig
 	  subgroups: GroupGraph.group list }
 	* SymbolSet.set option		(* filter *)
 	* (string -> unit)		(* error *)
+	* GeneralParams.params
 	->
 	impexp SymbolMap.map		(* exports *)
 end
@@ -46,7 +47,7 @@ structure BuildDepend :> BUILDDEPEND = struct
     fun symDesc (s, r) =
 	S.nameSpaceToString (S.nameSpace s) :: " " :: S.name s :: r
 
-    fun build (coll, fopt, error) = let
+    fun build (coll, fopt, error, gp) = let
 	val { imports, gimports, smlfiles, localdefs, subgroups } = coll
 
 	(* the "blackboard" where analysis results are announced *)
@@ -87,7 +88,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 			recur (AbsPath.spec f, history)
 		    end
 		in
-		    SmlInfo.error i EM.COMPLAIN
+		    SmlInfo.error gp i EM.COMPLAIN
 		         "cyclic ML dependencies" pphist;
 		    release (i, (DG.SNODE { smlinfo = i,
 					    localimports = [],
@@ -140,7 +141,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 		fun lookfar () =
 		    case SM.find (imports, s) of
 			SOME (farn, e) => (globalImport farn; e)
-		      | NONE => (SmlInfo.error i EM.COMPLAIN
+		      | NONE => (SmlInfo.error gp i EM.COMPLAIN
 				  (concat (AbsPath.spec f ::
 					   ": reference to unknown " ::
 					   symDesc (s, [])))
@@ -168,7 +169,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 		      | dotPath [s] = [S.name s]
 		      | dotPath (h :: t) = S.name h :: "." :: dotPath t
 		    fun complain s =
-			(SmlInfo.error i EM.COMPLAIN
+			(SmlInfo.error gp i EM.COMPLAIN
 			  (concat
 			   (AbsPath.spec f ::
 			    ": undefined " ::
@@ -217,7 +218,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 		evalDecl DE.EMPTY sk
 	    end
 
-	    val e = eval (SmlInfo.skeleton i)
+	    val e = eval (SmlInfo.skeleton gp i)
 	    val n = DG.SNODE { smlinfo = i,
 			       localimports = !li,
 			       globalimports = !gi }

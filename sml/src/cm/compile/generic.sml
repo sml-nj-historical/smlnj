@@ -73,7 +73,7 @@ in
 			loc ge li
 		    end
 		in
-		    case CT.lookstable (bininfo, mkenv) of
+		    case CT.lookstable (bininfo, mkenv, gp) of
 			CT.FOUND e => SOME e
 		      | CT.NOTFOUND (SOME le) => CT.dostable (bininfo, le, gp)
 		      | CT.NOTFOUND NONE => NONE
@@ -108,7 +108,7 @@ in
 	    case le of
 		NONE => NONE
 	      | SOME le =>
-		    (case CT.looksml (smlinfo, le) of
+		    (case CT.looksml (smlinfo, le, gp) of
 			 SOME e => SOME e
 		       | NONE => CT.dosml (smlinfo, le, gp))
 	end

@@ -14,6 +14,10 @@ signature GROUPREG = sig
     val register : groupreg -> AbsPath.t * GenericVC.Source.inputSource -> unit
     val lookup : groupreg -> AbsPath.t -> GenericVC.Source.inputSource
     val registered : groupreg -> AbsPath.t -> bool
+    val error :
+	groupreg
+	-> AbsPath.t * GenericVC.SourceMap.region
+	-> GenericVC.ErrorMsg.complainer
 end
 
 structure GroupReg :> GROUPREG = struct
@@ -25,4 +29,5 @@ structure GroupReg :> GROUPREG = struct
     fun register gr (p, s) = gr := AbsPathMap.insert (!gr, p, s)
     fun lookup gr p = valOf (AbsPathMap.find (!gr, p))
     fun registered gr g = isSome (AbsPathMap.find (!gr, g))
+    fun error gr (g, r) = GenericVC.ErrorMsg.error (lookup gr g) r
 end

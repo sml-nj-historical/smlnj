@@ -142,7 +142,7 @@ structure SkelIO :> SKELIO = struct
 	end handle _ => NONE
 
     fun write (ap, sk) = let
-	val s = AbsPath.openBinOut Say.vsay ap
+	val s = AbsPath.openBinOut ap
     in
 	(Interrupt.guarded (fn () => write_decl (s, sk));
 	 BinIO.closeOut s)

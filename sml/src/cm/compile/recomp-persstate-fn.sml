@@ -17,7 +17,7 @@ functor RecompPersstateFn (structure MachDepVC : MACHDEP_VC
 	val smlmap = ref (AbsPathMap.empty: recomp_memo AbsPathMap.map)
 	val stablemap = ref (StableMap.empty: recomp_memo StableMap.map)
 
-	fun recomp_look_sml (i, provided) = let
+	fun recomp_look_sml (i, provided, gp) = let
 	    fun isValid { bfc, ctxt } = let
 		val demanded = PidSet.addList (PidSet.empty, BF.cmDataOf bfc)
 	    in

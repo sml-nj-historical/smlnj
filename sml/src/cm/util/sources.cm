@@ -22,6 +22,7 @@ Library
 
 	structure LibBase	(* from SML/NJ library *)
 	functor BinaryMapFn	(* from SML/NJ library *)
+	functor BinarySetFn	(* from SML/NJ library *)
 is
 	stringset.sml
 	stringmap.sml

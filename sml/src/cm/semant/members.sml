@@ -14,19 +14,21 @@ signature MEMBERCOLLECTION = sig
     type symbol = Symbol.symbol
     type smlinfo = SmlInfo.info
     type impexp = DependencyGraph.impexp
+    type region = GenericVC.SourceMap.region
 
     type collection
 
     val empty : collection
 
     val expandOne : GeneralParams.params * (AbsPath.t -> GroupGraph.group)
-	-> { sourcepath: AbsPath.t, group: AbsPath.t,
-	     class: string option,
-	     error : GenericVC.ErrorMsg.complainer }
+	-> { sourcepath: AbsPath.t, group: AbsPath.t * region,
+	     class: string option }
 	-> collection
     val sequential : collection * collection * (string -> unit) -> collection
 
-    val build : collection * SymbolSet.set option * (string -> unit)
+    val build :
+	collection * SymbolSet.set option * (string -> unit) *
+	GeneralParams.params
 	-> impexp SymbolMap.map
 
     val subgroups : collection -> GroupGraph.group list
@@ -47,6 +49,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     type smlinfo = SmlInfo.info
     type symbol = Symbol.symbol
     type impexp = DG.impexp
+    type region = GenericVC.SourceMap.region
 
     datatype collection =
 	COLLECTION of { imports: impexp SymbolMap.map,
@@ -91,7 +94,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 
     fun expandOne (params, rparse) arg = let
 	val primconf = #primconf params
-	val { sourcepath, group, class, error } = arg
+	val { sourcepath, group, class } = arg
+	val error = GroupReg.error (#groupreg params) group
 	fun noPrimitive () = let
 	    fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
 	    fun w0 s = error EM.WARN s EM.nullErrorBody
@@ -106,13 +110,11 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	        end
 	      | exp2coll (PrivateTools.SMLSOURCE src) = let
 		    val { sourcepath = p, history = h, share = s } = src
-		    val i =  SmlInfo.info
-			params
-			{ sourcepath = p, group = group,
-			  error = error,
-			  history = h,
+		    val i =  SmlInfo.info params
+			{ sourcepath = p,
+			  group = group,
 			  share = s }
-		    val exports = SmlInfo.exports i
+		    val exports = SmlInfo.exports params i
 		    val _ = if SS.isEmpty exports then w0 "no module exports"
 			    else ()
 		    fun addLD (s, m) = SymbolMap.insert (m, s, i)
@@ -152,7 +154,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	  | NONE => noPrimitive ()
     end
 
-    fun build (COLLECTION c, fopt, error) = BuildDepend.build (c, fopt, error)
+    fun build (COLLECTION c, fopt, error, gp) =
+	BuildDepend.build (c, fopt, error, gp)
 
     fun subgroups (COLLECTION { subgroups = sg, ... }) = sg
 

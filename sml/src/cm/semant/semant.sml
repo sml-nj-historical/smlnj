@@ -9,6 +9,7 @@ signature CM_SEMANT = sig
 
     type context = AbsPath.context
     type pathname = AbsPath.t
+    type region = GenericVC.SourceMap.region
     type ml_symbol
     type cm_symbol
 
@@ -34,10 +35,12 @@ signature CM_SEMANT = sig
     (* getting the full analysis for a group/library *)
     val emptyGroup : pathname -> group
     val group :
-	pathname * privilegespec * exports option * members * complainer
+	pathname * privilegespec * exports option * members * complainer *
+	GeneralParams.params
 	-> group
     val library :
-	pathname * privilegespec * exports * members * complainer
+	pathname * privilegespec * exports * members * complainer *
+	GeneralParams.params
 	-> group
 
     (* assembling privilege lists *)
@@ -47,9 +50,10 @@ signature CM_SEMANT = sig
 
     (* constructing member collections *)
     val emptyMembers : members
-    val member : GeneralParams.params * (pathname -> group)
-	-> { sourcepath: pathname, group: pathname, class: cm_symbol option,
-	     error: GenericVC.ErrorMsg.complainer }
+    val member :
+	GeneralParams.params * (pathname -> group)
+	-> { sourcepath: pathname, group: pathname * region,
+	     class: cm_symbol option }
 	-> members
     val members : members * members -> members
     val guarded_members :
@@ -98,6 +102,7 @@ structure CMSemant :> CM_SEMANT = struct
 
     type pathname = AbsPath.t
     type context = AbsPath.context
+    type region = GenericVC.SourceMap.region
     type ml_symbol = Symbol.symbol
     type cm_symbol = string
 
@@ -138,10 +143,10 @@ structure CMSemant :> CM_SEMANT = struct
 		   subgroups = [] }
 	
 
-    fun group (g, p, e, m, error) = let
+    fun group (g, p, e, m, error, params) = let
 	val mc = applyTo MemberCollection.empty m
 	val filter = Option.map (applyTo mc) e
-	val exports = MemberCollection.build (mc, filter, error)
+	val exports = MemberCollection.build (mc, filter, error, params)
 	val subgroups = MemberCollection.subgroups mc
     in
 	GG.GROUP { exports = exports, islib = false,
@@ -149,10 +154,10 @@ structure CMSemant :> CM_SEMANT = struct
 		   subgroups = subgroups }
     end
 
-    fun library (g, p, e, m, error) = let
+    fun library (g, p, e, m, error, params) = let
 	val mc = applyTo MemberCollection.empty m
 	val filter = applyTo mc e
-	val exports = MemberCollection.build (mc, SOME filter, error)
+	val exports = MemberCollection.build (mc, SOME filter, error, params)
 	val subgroups = MemberCollection.subgroups mc
     in
 	GG.GROUP { exports = exports, islib = true,
@@ -180,7 +185,8 @@ structure CMSemant :> CM_SEMANT = struct
     fun emptyMembers env = env
     fun member (params, rparse) arg env = let
 	val coll = MemberCollection.expandOne (params, rparse) arg
-	val error = #error arg
+	val group = #group arg
+	val error = GroupReg.error (#groupreg params) group
 	fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
     in
 	MemberCollection.sequential (env, coll, e0)
