@@ -159,6 +159,41 @@ functor ListMapFn (K : ORD_KEY) :> ORD_MAP where type Key.ord_key = K.ord_key =
 	    merge (m1, m2, [])
 	  end
 
+    fun mergeWith f (m1 : 'a map, m2 : 'b map) = let
+	  fun merge (m1 as ((k1, x1)::r1), m2 as ((k2, x2)::r2), l) = (
+		case Key.compare (k1, k2)
+		 of LESS => mergef (k1, SOME x1, NONE, r1, m2, l)
+		  | EQUAL => mergef (k1, SOME x1, SOME x2, r1, r2, l)
+		  | GREATER => mergef (k2, NONE, SOME x2, m1, r2, l)
+		(* end case *))
+	    | merge ([], [], l) = List.rev l
+	    | merge ((k1, x1)::r1, [], l) = mergef (k1, SOME x1, NONE, r1, [], l)
+	    | merge ([], (k2, x2)::r2, l) = mergef (k2, NONE, SOME x2, [], r2, l)
+	  and mergef (k, x1, x2, r1, r2, l) = (case f (x1, x2)
+		 of NONE => merge (r1, r2, l)
+		  | SOME y => merge (r1, r2, (k, y)::l)
+		(* end case *))
+	  in
+	    merge (m1, m2, [])
+	  end
+    fun mergeWithi f (m1 : 'a map, m2 : 'b map) = let
+	  fun merge (m1 as ((k1, x1)::r1), m2 as ((k2, x2)::r2), l) = (
+		case Key.compare (k1, k2)
+		 of LESS => mergef (k1, SOME x1, NONE, r1, m2, l)
+		  | EQUAL => mergef (k1, SOME x1, SOME x2, r1, r2, l)
+		  | GREATER => mergef (k2, NONE, SOME x2, m1, r2, l)
+		(* end case *))
+	    | merge ([], [], l) = List.rev l
+	    | merge ((k1, x1)::r1, [], l) = mergef (k1, SOME x1, NONE, r1, [], l)
+	    | merge ([], (k2, x2)::r2, l) = mergef (k2, NONE, SOME x2, [], r2, l)
+	  and mergef (k, x1, x2, r1, r2, l) = (case f (k, x1, x2)
+		 of NONE => merge (r1, r2, l)
+		  | SOME y => merge (r1, r2, (k, y)::l)
+		(* end case *))
+	  in
+	    merge (m1, m2, [])
+	  end
+
   (* Apply a function to the entries of the map in map order. *)
     val appi = List.app
     fun app f l = appi (fn (_, item) => f item) l

@@ -17,6 +17,7 @@ signature CHAR_MAP
 signature DYNAMIC_ARRAY
 signature FIFO
 signature FORMAT
+signature FORMAT_COMB
 signature GRAPH_SCC
 signature HASH_KEY
 signature HASH_TABLE
@@ -63,6 +64,7 @@ structure CharMap
 structure DynamicArray
 structure Fifo
 structure Format
+structure FormatComb
 structure HashString
 structure HashTable
 structure IntBinaryMap		(* to be removed *)
@@ -150,6 +152,8 @@ fifo.sml
 fmt-fields.sml
 format-sig.sml
 format.sml
+format-comb-sig.sml
+format-comb.sml
 graph-scc-sig.sml
 graph-scc.sml
 hash-key-sig.sml
@@ -223,3 +227,4 @@ uref.sml
 word-hash-table.sml
 word-redblack-map.sml
 word-redblack-set.sml
+

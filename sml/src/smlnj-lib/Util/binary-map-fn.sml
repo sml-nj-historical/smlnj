@@ -303,9 +303,9 @@ in
 
     end (* local *)
 
-(* the following are generic implementations of the unionWith and intersectWith
- * operetions.  These should be specialized for the internal representations
- * at some point.
+(* the following are generic implementations of the unionWith, intersectWith,
+ * and mergeWith operetions.  These should be specialized for the internal
+ * representations at some point.
  *)
     fun unionWith f (m1, m2) = let
 	  fun ins  f (key, x, m) = (case find(m, key)
@@ -357,6 +357,41 @@ in
 	    if (numItems m1 > numItems m2)
 	      then intersect f (m1, m2)
 	      else intersect (fn (k, a, b) => f(k, b, a)) (m2, m1)
+	  end
+
+    fun mergeWith f (m1, m2) = let
+	  fun merge ([], [], m) = m
+	    | merge ((k1, x1)::r1, [], m) = mergef (k1, SOME x1, NONE, r1, [], m)
+	    | merge ([], (k2, x2)::r2, m) = mergef (k2, NONE, SOME x2, [], r2, m)
+	    | merge (m1 as ((k1, x1)::r1), m2 as ((k2, x2)::r2), m) = (
+		case Key.compare (k1, k2)
+		 of LESS => mergef (k1, SOME x1, NONE, r1, m2, m)
+		  | EQUAL => mergef (k1, SOME x1, SOME x2, r1, r2, m)
+		  | GREATER => mergef (k2, NONE, SOME x2, m1, r2, m)
+		(* end case *))
+	  and mergef (k, x1, x2, r1, r2, m) = (case f (x1, x2)
+		 of NONE => merge (r1, r2, m)
+		  | SOME y => merge (r1, r2, insert(m, k, y))
+		(* end case *))
+	  in
+	    merge (listItemsi m1, listItemsi m2, empty)
+	  end
+    fun mergeWithi f (m1, m2) = let
+	  fun merge ([], [], m) = m
+	    | merge ((k1, x1)::r1, [], m) = mergef (k1, SOME x1, NONE, r1, [], m)
+	    | merge ([], (k2, x2)::r2, m) = mergef (k2, NONE, SOME x2, [], r2, m)
+	    | merge (m1 as ((k1, x1)::r1), m2 as ((k2, x2)::r2), m) = (
+		case Key.compare (k1, k2)
+		 of LESS => mergef (k1, SOME x1, NONE, r1, m2, m)
+		  | EQUAL => mergef (k1, SOME x1, SOME x2, r1, r2, m)
+		  | GREATER => mergef (k2, NONE, SOME x2, m1, r2, m)
+		(* end case *))
+	  and mergef (k, x1, x2, r1, r2, m) = (case f (k, x1, x2)
+		 of NONE => merge (r1, r2, m)
+		  | SOME y => merge (r1, r2, insert(m, k, y))
+		(* end case *))
+	  in
+	    merge (listItemsi m1, listItemsi m2, empty)
 	  end
 
   (* this is a generic implementation of filter.  It should

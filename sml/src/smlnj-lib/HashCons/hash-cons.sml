@@ -79,4 +79,11 @@ structure HashCons :> HASH_CONS =
     fun consList tbl (id, cf) (l : 'b obj list) =
 	  insert (tbl, List.foldl (fn ({tag, ...}, sum) => sum <+ tag) id l, cf l)
 
+  (* consing for records *)
+    fun consR1 tbl (id, inj, prj) r = cons1 tbl (id, inj) (prj r)
+    fun consR2 tbl (id, inj, prj) r = cons2 tbl (id, inj) (prj r)
+    fun consR3 tbl (id, inj, prj) r = cons3 tbl (id, inj) (prj r)
+    fun consR4 tbl (id, inj, prj) r = cons4 tbl (id, inj) (prj r)
+    fun consR5 tbl (id, inj, prj) r = cons5 tbl (id, inj) (prj r)
+
   end

@@ -8,6 +8,9 @@ the library structure:
   -------------------------------------------------
   Util		smlnj-lib.cm		This is the general utility library.
 
+  Controls	controls-lib.cm		This is a library of support code
+					for managing application controls.
+
   HashCons	hash-cons-lib.cm	This is a library supporting hash-consing
 					of data structures and efficient sets and
 					maps using hash-consed keys.

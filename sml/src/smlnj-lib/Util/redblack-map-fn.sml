@@ -371,6 +371,49 @@ functor RedBlackMapFn (K : ORD_KEY) :> ORD_MAP where Key = K =
 	  in
 	    wrap intersect
 	  end
+
+    fun mergeWith mergeFn = let
+	  fun merge (t1, t2, n, result) = (case (next t1, next t2)
+		 of ((E, _), (E, _)) => (n, result)
+		  | ((E, _), (T(_, _, yk, y, _), r2)) =>
+		      mergef(yk, NONE, SOME y, t1, r2, n, result)
+		  | ((T(_, _, xk, x, _), r1), (E, _)) =>
+		      mergef(xk, SOME x, NONE, r1, t2, n, result)
+		  | ((T(_, _, xk, x, _), r1), (T(_, _, yk, y, _), r2)) => (
+		      case Key.compare(xk, yk)
+		       of LESS => mergef(xk, SOME x, NONE, r1, t2, n, result)
+			| EQUAL => mergef(xk, SOME x, SOME y, r1, r2, n, result)
+			| GREATER => mergef(yk, NONE, SOME y, t1, r2, n, result)
+		      (* end case *))
+		(* end case *))
+	  and mergef (k, x1, x2, r1, r2, n, result) = (case mergeFn(x1, x2)
+		 of NONE => merge (r1, r2, n, result)
+		  | SOME y => merge (r1, r2, n+1, addItem(k, y, result))
+		(* end case *))
+	  in
+	    wrap merge
+	  end
+    fun mergeWithi mergeFn = let
+	  fun merge (t1, t2, n, result) = (case (next t1, next t2)
+		 of ((E, _), (E, _)) => (n, result)
+		  | ((E, _), (T(_, _, yk, y, _), r2)) =>
+		      mergef(yk, NONE, SOME y, t1, r2, n, result)
+		  | ((T(_, _, xk, x, _), r1), (E, _)) =>
+		      mergef(xk, SOME x, NONE, r1, t2, n, result)
+		  | ((T(_, _, xk, x, _), r1), (T(_, _, yk, y, _), r2)) => (
+		      case Key.compare(xk, yk)
+		       of LESS => mergef(xk, SOME x, NONE, r1, t2, n, result)
+			| EQUAL => mergef(xk, SOME x, SOME y, r1, r2, n, result)
+			| GREATER => mergef(yk, NONE, SOME y, t1, r2, n, result)
+		      (* end case *))
+		(* end case *))
+	  and mergef (k, x1, x2, r1, r2, n, result) = (case mergeFn(k, x1, x2)
+		 of NONE => merge (r1, r2, n, result)
+		  | SOME y => merge (r1, r2, n+1, addItem(k, y, result))
+		(* end case *))
+	  in
+	    wrap merge
+	  end
     end (* local *)
 
     fun app f = let

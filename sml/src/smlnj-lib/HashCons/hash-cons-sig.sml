@@ -30,7 +30,27 @@ signature HASH_CONS =
 	  -> 'b obj * 'c obj * 'd obj * 'e obj -> 'a obj
     val cons5 : 'a tbl -> (word * ('b obj * 'c obj * 'd obj * 'e obj * 'f obj -> 'a))
 	  -> 'b obj * 'c obj * 'd obj * 'e obj * 'f obj -> 'a obj
+
     val consList : 'a tbl -> (word * ('b obj list -> 'a)) -> 'b obj list -> 'a obj
+
+  (* hash consing support for record types *)
+    val consR1 : 'a tbl -> (word * ('b obj -> 'a) * ('r -> 'b obj))
+	  -> 'r -> 'a obj
+    val consR2 : 'a tbl
+	  -> (word * ('b obj * 'c obj -> 'a) * ('r -> 'b obj * 'c obj))
+	    -> 'r -> 'a obj
+    val consR3 : 'a tbl
+	  -> (word * ('b obj * 'c obj * 'd obj -> 'a)
+	    * ('r -> 'b obj * 'c obj * 'd obj))
+	    -> 'r -> 'a obj
+    val consR4 : 'a tbl
+	  -> (word * ('b obj * 'c obj * 'd obj * 'e obj -> 'a)
+	    * ('r -> 'b obj * 'c obj * 'd obj * 'e obj))
+	    -> 'r -> 'a obj
+    val consR5 : 'a tbl
+	  -> (word * ('b obj * 'c obj * 'd obj * 'e obj * 'f obj -> 'a)
+	    * ('r -> 'b obj * 'c obj * 'd obj * 'e obj * 'f obj))
+	    -> 'r -> 'a obj
 
   end
 
