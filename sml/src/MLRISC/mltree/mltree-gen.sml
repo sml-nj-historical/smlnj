@@ -87,7 +87,14 @@ functor MLTreeGen (
    end
 
    (* Implement division with round-to-negative-infinity in terms
-    * of division with round-to-zero. *)
+    * of division with round-to-zero.
+    * The logic is as follows:
+    *    - if q > 0, then we are done since any rounding was
+    *      at the same time TO_ZERO and TO_NEGINF
+    *    - otherwise we calculate r and see if it is zero; if so, no adjustment
+    *    - finally if r and b have the same sign (i.e., r XOR b >= 0)
+    *      we still don't need adjustment
+    *    - otherwise adjust *)
    fun divinf (xdiv, ty, aexp, bexp) = let
        val a = Cells.newReg ()
        val b = Cells.newReg ()
@@ -96,26 +103,32 @@ functor MLTreeGen (
        val zero = T.LI T.I.int_0
        val one = T.LI T.I.int_1
    in
-       T.LET (T.SEQ [T.MV (ty, a, aexp),
-		     T.MV (ty, b, bexp),
-		     T.MV (ty, q, xdiv (T.DIV_TO_ZERO, ty, T.REG (ty, a),
-					                   T.REG (ty, b))),
-		     T.IF (T.CMP (ty, T.Basis.GE, T.REG (ty, q), zero),
-			   T.SEQ [],
-			   T.IF (T.CMP (ty, T.Basis.EQ,
-					    T.REG (ty, a),
-					    T.MULS (ty, T.REG (ty, q),
-						        T.REG (ty, b))),
-				 T.SEQ [],
-				 T.MV (ty, q, T.SUB (ty, T.REG (ty, q),
-						         one))))],
-	      T.REG(ty,q))
+       T.LET
+	(T.SEQ
+         [T.MV (ty, a, aexp),
+	  T.MV (ty, b, bexp),
+	  T.MV (ty, q, xdiv (T.DIV_TO_ZERO, ty, T.REG (ty, a), T.REG (ty, b))),
+	  T.IF (T.CMP (ty, T.Basis.GT, T.REG (ty, q), zero),
+		T.SEQ [],
+		T.SEQ
+		 [T.MV (ty, r, T.SUB (ty, T.REG (ty, a),
+				          T.MULS (ty, T.REG (ty, b),
+						      T.REG (ty, q)))),
+		  T.IF (T.CMP (ty, T.Basis.EQ, T.REG (ty, r), zero),
+			T.SEQ [],
+			T.IF (T.CMP (ty, T.Basis.GE,
+				     T.XORB (ty, T.REG (ty, b), T.REG (ty, r)),
+				     zero),
+			      T.SEQ [],
+			      T.MV (ty, q, T.SUB (ty, T.REG (ty, q),
+						      one))))])],
+	 T.REG (ty, q))
    end
 
    (* Same for rem when rounding to negative infinity.
     * The odd case is when a = MININT and b = -1 in which case the DIVS op
-    * will overflow.  But the subsequent MULS will overflow in such a way that
-    * the results cancel.  Thus, the correct result of 0 will come out. *)
+    * will overflow and trap on some machines.  On others the result
+    * will be bogus.  Should we fix that? *)
    fun reminf (ty, aexp, bexp) = let
        val a = Cells.newReg ()
        val b = Cells.newReg ()
@@ -123,19 +136,25 @@ functor MLTreeGen (
        val r = Cells.newReg ()
        val zero = T.LI T.I.int_0
    in
-       T.LET (T.SEQ [T.MV (ty, a, aexp),
-		     T.MV (ty, b, bexp),
-		     T.MV (ty, q, T.DIVS (T.DIV_TO_ZERO, ty, T.REG (ty, a),
-					                     T.REG (ty, b))),
-		     T.MV (ty, r, T.SUB (ty, T.REG (ty, a),
-					     T.MULS (ty, T.REG (ty, q),
-						         T.REG (ty, b)))),
-		     T.IF (T.CMP (ty, T.Basis.GE, T.REG (ty, q), zero),
-			   T.SEQ [],
-			   T.IF (T.CMP (ty, T.Basis.EQ, T.REG (ty, r), zero),
-				 T.SEQ [],
-				 T.MV (ty, r, T.ADD (ty, T.REG (ty, r),
-					                 T.REG (ty, b)))))],
+       T.LET
+	(T.SEQ
+	 [T.MV (ty, a, aexp),
+	  T.MV (ty, b, bexp),
+	  T.MV (ty, q, T.DIVS (T.DIV_TO_ZERO, ty, T.REG (ty, a),
+			                          T.REG (ty, b))),
+	  T.MV (ty, r, T.SUB (ty, T.REG (ty, a),
+			          T.MULS (ty, T.REG (ty, q),
+					      T.REG (ty, b)))),
+	  T.IF (T.CMP (ty, T.Basis.GT, T.REG (ty, q), zero),
+		T.SEQ [],
+		T.IF (T.CMP (ty, T.Basis.EQ, T.REG (ty, r), zero),
+		      T.SEQ [],
+		      T.IF (T.CMP (ty, T.Basis.GE,
+				   T.XORB (ty, T.REG (ty, b), T.REG (ty, r)),
+				   zero),
+			    T.SEQ [],
+			    T.MV (ty, r, T.ADD (ty, T.REG (ty, r),
+					            T.REG (ty, b))))))],
 	      T.REG (ty, r))
    end
 

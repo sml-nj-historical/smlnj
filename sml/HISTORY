@@ -14,6 +14,21 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/03/29 17:22:00
+Tag: blume-20020329-div
+Description:
+
+Fixed my broken div/mod logic.  Unfortunately, this means that the
+inline code for div/mod now has one more comparison than before.
+Fast paths (quotient > 0 or remainder = 0) are not affected, though.
+The problem was with quotient = 0, because that alone does not tell
+us which way the rounding went.  One then has to look at whether
+remainder and divisor have the same sign...  :(
+
+Anyway, I replaced the bootfiles with fresh ones...
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/03/29 14:10:00 EST
 Tag: blume-20020329-inlprims
 Description:
