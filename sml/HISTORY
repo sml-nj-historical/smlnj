@@ -13,6 +13,17 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Date: 2004/12/16 13:35:00 CST
+Tag: Release_110_52
+Description:
+
+Last-minute changes incorporated into 110.52.  Release tag moved.
+
+The changes:
+   - HashString.hashString' -> HashString.hashSubstring
+   - bug fix in UnivariateStats
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/12/15 23:40:00 CST
 Tag: blume-20041215-hashSubstring
@@ -26,7 +37,7 @@ Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/12/15 15:30:00 CST
-Tag: Release_110_52
+Tag: (Release_110_52)
 Description:
 
 New working version (110.52).  NEW BOOTFILES!
