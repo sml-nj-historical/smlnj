@@ -36,7 +36,7 @@ structure ${rare} = struct val _ = SMLofNJ.exportFn ("${heap}", ${main}) end
 EOF
 
 cat >$cmfile <<EOF
-Group structure ${rare} is basis.cm ${root} ${smlfile}
+Group structure ${rare} is \$/basis.cm ${root} ${smlfile}
 EOF
 
 cat >$mlscript <<EOF
@@ -55,7 +55,7 @@ ignore (OS.Process.exit ((case CM.mk_standalone NONE "${cmfile}" of
    handle _ => OS.Process.failure))
 EOF
 
-if $SML smlnj/cm/full.cm <$mlscript ; then
+if $SML '$smlnj/cm/full.cm' <$mlscript ; then
     $LINK @SMLboot=$listfile $
 else
     echo Compilation failed.
