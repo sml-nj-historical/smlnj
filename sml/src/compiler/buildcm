@@ -45,7 +45,7 @@ BIN="../../bin"
 CMPATH=""
 PROF=""
 CHECK=""
-STATS='Compiler.Stats.summarySp ();'
+STATS=""
 CURDIR=`pwd`
 cd ../cm/
 
@@ -117,6 +117,18 @@ do
 	    fi
 	    SML=$1; shift
 	;;
+	-note)
+	    if [ "$#" = "0" ]; then
+		echo "xmakeml: missing argument for \"-note\" option"
+		exit 1
+	    fi
+	    NOTE="$1\n"; shift
+	;;
+	-full)
+	    ARGS="$ARGS sml-full"
+	    NOTE="[-full]\n$NOTE"
+	    HEAP_IMAGE="sml-cm-full"
+	;;
 	-prof)
 	    PROF="local open Compiler.Profile in val _ = setMode ACTIVE end;"
 	    ;;
@@ -126,10 +138,7 @@ do
                    structure CheckItOut = CheckIt (Compiler);'
             ;;
 	-stats)
-	    STATS='Compiler.Stats.summarySp ();'
-	    ;;
-	-nostats)
-	    STATS=""
+	    STATS='Compiler.Stats.summary ();'
 	    ;;
 	*)
 	    ARGS="$ARGS $arg"
@@ -140,6 +149,9 @@ done
 #
 # split the pathname and build SML string list
 #
+if [ "$ARGS" = "" ]; then
+    ARGS="sml"
+fi
 
 SPACEPATH=`echo $CMPATH | sed -e 's/:/ /g'`
 PATHLIST=""
@@ -180,9 +192,11 @@ $SML $ARGS <<ZZZ
         val _ = Posix.FileSys.chdir "../cm/";
 	use "$tmp";
 	$STATS
+        Compiler.Stats.summary();
         val _ = Posix.FileSys.chdir "$CURDIR";
 	(SMLofNJ.exportML "$HEAP_IMAGE";
-         print (Compiler.banner ^ " [CM&CMB]\n");
+         print (Compiler.banner ^
+		"\n[built `date`]\n$NOTE[CM&CMB]\n");
          CM.procCmdLine ());
 ZZZ
 

@@ -5,8 +5,8 @@ ELAB=""
 FULL=""
 ALLOC=1M
 
-ARCH=sparc
-OPSYS=solaris
+ARCH=x86
+OPSYS=linux
 RUN_DIR=../../bin/.run
 OBJS_DIR=../runtime/objs
 HEAP_IMAGE=""
@@ -29,7 +29,17 @@ do
   arg=$1; shift
   case $arg in
     -elab) ELAB="@SMLelab" ;;
-    -full) FULL="@SMLfull" ;;
+    -full) 
+      FULL="@SMLfull" 
+      NOTE="[-full]\n$NOTE"
+    ;;
+    -note) 
+      if [ "$#" = "0" ]; then
+        echo "xmakeml: missing argument for \"-note\" option"
+	exit 1
+      fi
+      NOTE="$1\n"; shift
+    ;;
     -arch)
       if [ "$#" = "0" ]; then
         echo "xmakeml: missing argument for \"-arch\" option"
@@ -96,7 +106,7 @@ if [ "$RUN" = "" ]; then
   elif [ -x "$OBJS_DIR/$RUN_CMD" ]; then
     RUN="$OBJS_DIR/$RUN_CMD"
   else
-    echo "xmakeml: unable to find run-time system \"$RUN_CMD\""
+    echo "xmakeml: unable to find run-time system \"$RUN_DIR/$RUN_CMD\""
     exit 1
   fi
 fi
@@ -122,11 +132,12 @@ fi
 echo "$RUN @SMLboot=$BOOT_DIR @SMLalloc=$ALLOC $RUN_ARGS $ELAB $FULL"
       $RUN @SMLboot=$BOOT_DIR @SMLalloc=$ALLOC $RUN_ARGS $ELAB $FULL <<XXXX
 $SET_FLAGS
-val use = Compiler.Interact.useFile
+val use = Compiler.Interact.useFile;
 val _ = (SMLofNJ.exportML "$HEAP_IMAGE";
-	 print Compiler.banner; print "\n");
+	 print Compiler.banner; print "\n";
+         print "[built `date`]\n"; print "$NOTE");
 XXXX
-echo ""
+
 if [ -L ./bin.$ARCH-unix ]; then
   rm -f ./bin.$ARCH-unix
 fi
