@@ -86,16 +86,18 @@ struct
          cellkind,oper,region} 
                 rtl = 
    let fun word w = word32(Word.toLargeWord w)
-       fun binOp n (ty,x,y) = app(n,[int ty,rexp x,rexp y])
+       fun ternOp n (x,ty,y,z) = app(n,[x, int ty, rexp y, rexp z])
+       and binOp n (ty,x,y) = app(n,[int ty,rexp x,rexp y])
        and unaryOp n (ty,x) = app(n,[int ty,rexp x])
        and rexp(T.LI i) = app("LI",[intinf i])
          | rexp(T.NEG x) = unaryOp "NEG" x
          | rexp(T.ADD x) = binOp "ADD" x
          | rexp(T.SUB x) = binOp "SUB" x
          | rexp(T.MULS x) = binOp "MULS" x
-         | rexp(T.DIVS x) = binOp "DIVS" x
-         | rexp(T.REMS x) = binOp "REMS" x
-         | rexp(T.QUOTS x) = binOp "QUOTS" x
+(* FIXME
+         | rexp(T.DIVS x) = ternOp "DIVS" x
+         | rexp(T.REMS x) = ternOp "REMS" x	
+ *)
          | rexp(T.MULU x) = binOp "MULU" x
          | rexp(T.DIVU x) = binOp "DIVU" x
          | rexp(T.REMU x) = binOp "REMU" x
@@ -103,8 +105,9 @@ struct
          | rexp(T.ADDT x) = binOp "ADDT" x
          | rexp(T.SUBT x) = binOp "SUBT" x
          | rexp(T.MULT x) = binOp "MULT" x
-         | rexp(T.DIVT x) = binOp "DIVT" x
-         | rexp(T.REMT x) = binOp "REMT" x
+(* FIXME
+         | rexp(T.DIVT x) = ternOp "DIVT" x
+ *)
          | rexp(T.NOTB x) = unaryOp "NOTB" x 
          | rexp(T.ANDB x) = binOp "ANDB" x
          | rexp(T.ORB x) = binOp "ORB" x

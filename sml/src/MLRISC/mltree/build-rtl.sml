@@ -35,6 +35,7 @@ struct
    (* Integer operators *)
    fun unary f ty x = f(ty,x) 
    fun binary f ty (x, y) = f(ty,x,y)
+   fun ternary f ty (x, y, z) = f(ty, x, y, z)
 
    fun operand ty opn = opn 
    fun label ty label = label
@@ -67,9 +68,9 @@ struct
    val op -  = binary T.SUB
    val muls  = binary T.MULS
    val mulu  = binary T.MULU
-   val divs  = binary T.DIVS
+   val divs  = ternary T.DIVS
    val divu  = binary T.DIVU
-   val rems  = binary T.REMS
+   val rems  = ternary T.REMS
    val remu  = binary T.REMU
    fun ~ ty x = (op - ty) (intConst ty 0,x)
 

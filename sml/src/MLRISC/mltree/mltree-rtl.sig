@@ -21,6 +21,7 @@ sig
    type rtl  = T.stm
    type exp  = T.rexp
    type cond = T.ccexp
+   type div_rounding_mode = T.div_rounding_mode
 
    datatype pos = IN of int | OUT of int | IO of int * int (* def/use *)
 

@@ -35,7 +35,7 @@ struct
    type hasher   = T.hasher
    type equality = T.equality
    type printer  = T.printer
- 
+   type div_rounding_mode = T.div_rounding_mode
 
    val hashRTL     = Util.hashStm
    val eqRTL       = Util.eqStm

@@ -12,6 +12,7 @@ sig
    type region 
    type exp
    type bool
+   type div_rounding_mode
    
    val intConst  : ty -> int -> exp          (* integer constant *)
    val wordConst : ty -> Word32.word -> exp  (* word constant *)
@@ -36,17 +37,15 @@ sig
    val -     : ty -> exp * exp -> exp
    val muls  : ty -> exp * exp -> exp 
    val mulu  : ty -> exp * exp -> exp 
-   val divs  : ty -> exp * exp -> exp 
+   val divs  : ty -> div_rounding_mode * exp * exp -> exp 
    val divu  : ty -> exp * exp -> exp 
-   val quots : ty -> exp * exp -> exp 
-   val rems  : ty -> exp * exp -> exp 
+   val rems  : ty -> div_rounding_mode * exp * exp -> exp 
    val remu  : ty -> exp * exp -> exp 
 
    val addt  : ty -> exp * exp -> exp 
    val subt  : ty -> exp * exp -> exp 
    val mult  : ty -> exp * exp -> exp 
-   val divt  : ty -> exp * exp -> exp 
-   val remt  : ty -> exp * exp -> exp 
+   val divt  : ty -> div_rounding_mode * exp * exp -> exp 
 
    val notb  : ty -> exp -> exp
    val andb  : ty -> exp * exp -> exp 
