@@ -189,7 +189,7 @@ specified when running the command \\[sml-cd].")
   :group 'sml-proc
   :type '(regexp))
 
-(defconst sml-error-regexp-alist
+(defvar sml-error-regexp-alist
   '(;; Poly/ML messages
     ("\\(Error\\|Warning:\\) in '\\(.+\\)', line \\([0-9]+\\)" 2 3)
     ;; Moscow ML
@@ -198,7 +198,9 @@ specified when running the command \\[sml-cd].")
     ;; pathological behavior with very long lines.
     ("^[-= ]*\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)? \\(Error\\|Warning\\): .*" 1 sml-make-error 2 3 5 6)
     ;; SML/NJ's exceptions:  see above.
-    ("^ +\\(raised at: \\)?\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)" 2 sml-make-error 3 4 6 7)))
+    ("^ +\\(raised at: \\)?\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)" 2 sml-make-error 3 4 6 7))
+  "Alist that specifies how to match errors in compiler output.
+See `compilation-error-regexp-alist' for a description of the format.")
 
 ;; font-lock support
 (defconst inferior-sml-font-lock-keywords
@@ -407,7 +409,6 @@ This usually updates `sml-buffer' to a buffer named *CMD*."
                    (sml-args-to-list (substring string pos
                                                 (length string)))))))))
 
-;;;###autoload 
 (defun switch-to-sml (eob-p)
   "Switch to the ML process buffer.
 With prefix argument, positions cursor at point, otherwise at end of buffer."
@@ -419,7 +420,6 @@ With prefix argument, positions cursor at point, otherwise at end of buffer."
 
 ;; Fakes it with a "use <temp-file>;" if necessary.
 
-;;;###autoload 
 (defun sml-send-region (start end &optional and-go)
   "Send current region to the inferior ML process.
 Prefix argument means switch-to-sml afterwards.
@@ -462,7 +462,6 @@ If it's loaded into a buffer that is in one of these major modes, it's
 considered an ML source file by `sml-load-file'. Used by these commands
 to determine defaults.")
 
-;;;###autoload 
 (defun sml-send-buffer (&optional and-go)
   "Send buffer to inferior shell running ML process. 
 With a prefix argument switch to the sml buffer as well
@@ -527,7 +526,6 @@ undisturbed once this operation is completed."
   "Caches the (directory . file) pair used in the last `sml-load-file'
 or `sml-cd' command. Used for determining the default in the next one.")
 
-;;;###autoload 
 (defun sml-load-file (&optional and-go)
   "Load an ML file into the current inferior ML process. 
 With a prefix argument switch to sml buffer as well.

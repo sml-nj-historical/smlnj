@@ -3,9 +3,9 @@
 @comment "@(#)$Name$:$Id$"
 
 @comment Documentation for the GNU Emacs SML mode.
-@comment Copyright (C) 1999 (Anon)
+@comment Copyright (C) 1997-1999 Matthew J.@: Morley
 
-@comment This file is part of the pcl-cvs distribution.
+@comment This file is part of the sml-mode distribution.
 
 @comment sml-mode is free software; you can redistribute it and/or modify
 @comment it under the terms of the GNU General Public License as published by
@@ -31,11 +31,11 @@
 
 @titlepage
 @sp 5
-@center @titlefont{Editing and running Standard ML}
+@center @titlefont{Editing and Running Standard ML}
 @center @titlefont{under GNU Emacs}
 @sp 5
-@center {SML mode, Version 3.3}
-@center {April 1997}
+@center {SML mode, Version $Name$}
+@center {August 1999}
 @sp 2
 @author Author: Matthew J.@: Morley
 
@@ -77,7 +77,7 @@ Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
 @noindent
 You are looking at the top node of the Info tree documenting
-@sc{sml-mode} (Version 3.3). Not all functions are documented here, but
+@sc{sml-mode} (Version $Name$). Not all functions are documented here, but
 those that aren't you probably won't miss. All commands and settable
 variables have built-in documentation, as per usual Emacs conventions.
 @end ifinfo
@@ -88,7 +88,6 @@ variables have built-in documentation, as per usual Emacs conventions.
 * SML Mode::            Editing SML source
 * Interaction Mode::    Running ML processes
 * Configuration::       Menus, highlighting, setting defaults
-* Credits::             Credit and blame
 
 Indexes
 * Command Index::       Commands you can invoke
@@ -96,7 +95,7 @@ Indexes
 * Key Index::           Default keybindings
 
 Introduction
-* Distribution::        What this distribution contains
+* Contributors::        Who did what
 * Getting Started::     What to tell Emacs
 * Getting Help::        How Emacs can help
 
@@ -115,7 +114,6 @@ Interaction Mode
 Configuration
 * Hooks::               Creating hooks
 * Key Bindings::        Binding commands to keys
-* Menus::               Taking advantage of bitmapped screens
 * Highlighting::        Syntax colouring
 * Advanced Topics::     You may need to speak Emacs Lisp
 @end menu
@@ -188,110 +186,99 @@ Menus, and syntax and keyword highlighting supported for Emacs 19 and
 derivatives.
 @item
 Parsing errors from the inferior shell, and repositioning the
-source---much like the next-error function used in c-mode.
+source with next-error---just like in c-mode.
 @item
 SML mode can be easily configured to work with a number of Standard
 ML compilers, and other SML based tools.
 @end itemize
 
 @menu
-* Distribution::        What this distribution contains
+* Contributors::        Who did what
 * Getting Started::     What to tell Emacs
 * Getting Help::        How Emacs can help
 @end menu
 
 
 
-@c ======================================================== DISTRIBUTION
+@c ======================================================== CONTRIBUTORS
 
-@node Distribution, Getting Started, Introduction, Introduction
+@node Contributors, Getting Started, Introduction, Introduction
 
-@section The SML mode distribution
+@section Contributors to the SML mode
+@cindex Contributors
+@cindex Authors
 
-@c == Distribution, Getting Started, Introduction, Introduction ========
+Contributions to the package are welcome.  I have limited time to work
+on this project, but I will gladly add any code that you contribute to
+me to this package.
 
+Although the history of sml-mode is obscure, it seems that
+the following persons have made contributions to sml-mode:
 
-@noindent
-The distribution contains several Emacs Lisp files---this is for ease of
-maintenance, you can concatenate them if you're careful:
+@itemize @bullet
+@item
+Lars Bo Nielsen wrote the original version of the code, providing the
+sml editing mode and the inferior-sml support.
 
-@table @file
-@item sml-mode.el
-Main file, and should work in any Emacs editor or version post
-18.58---it only knows, or thinks it knows, about SML syntax and
-indentation.
+@item
+Olin Shivers (@samp{shivers@@ai.mit.edu}) hacked the inferior-sml support
+to use comint and call the whole thing ml-mode.
 
-@item sml-menus.el
-Menus to access user settable features of the mode, and for those who
-prefer menus over keys under Emacs 19 and derivatives.
+@item
+Steven Gilmore supposedly provided some early attempt at menubar support.
 
-@item sml-@{hilite,font@}.el
-Syntax highlighting functions to display keywords in a bold font,
-comments in italics, etc., using one of Emacs' two popular syntax
-colouring packages.
+@item
+Matthew J. Morley (@samp{matthew@@verisity.com}) was maintainer for
+a long time (until version 3.4) and provided many additions and fixes in
+all areas.
 
-@item sml-proc.el
-Process interaction requires the @file{comint} package (normally
-distributed with Emacs 19 and derivatives).
+@item
+Frederick Knabe (@samp{knabe@@ecrc.de}) provided the original code for
+font-lock and hilite support as well as for proper handling of nested
+comments and of all the string escape sequences.
 
-@item sml-@{poly-ml,mosml@}.el
-Auxiliary library support for Poly/ML and Moscow ML compilers. 
-@c Set these up to autoload from your @file{.emacs}.
+@item
+Matthias Blume (@samp{blume@@kurims.kyoto-u.ac.jp}) provided a sml-make
+which was replaced by sml-compile.
 
-@end table
+@item
+Monnier Stefan (@samp{monnier@@cs.yale.edu}) completely reworked the
+indentation engine as well as most of the rest of the code and is
+the current maintainer since after version 3.4.
 
-@noindent There is also the Texinfo generated @code{info} file:
-
-@table @file
-
-@item sml-mode.@{dvi,info@}
-@c itemx sml-mode.dvi
-This file---rudimentary SML mode documentation, and
-
-@item sml-site.el
-Configuration file for system-wide installation. Read and edit this file
-if you are installing SML mode for general use.
-
-@end table
+@end itemize
 
 
 @c ===================================================== GETTING STARTED
 
-@node Getting Started, Getting Help, Distribution, Introduction
+@node Getting Started, Getting Help, Contributors, Introduction
 
 @section Getting started
 
-@c == Getting Started, Getting Help, Distribution, Introduction ========
+@c == Getting Started, Getting Help, Contributors, Introduction ========
 
 
 @noindent
 With luck your system administrator will have installed SML mode
-somewhere convenient, so all you have to do is put the line
-
-@lisp
-(require 'sml-site)
-@end lisp
-
-@noindent
-in your @file{.emacs} configuration file and all will be well---you can
+somewhere convenient, so it will just magically all work---you can
 skip the rest of this getting started section. Otherwise you will need
 to tell Emacs where to find all the SML mode @file{.el} files, and
 when to use them. The where is addressed by locating the Lisp code on
 your Emacs Lisp load path---you may have to create a directory for this,
 say @file{/home/mjm/elisp}, and then insert the following lines in your
-@file{/home/mjm/.emacs} file@footnote{cf.@: commentary in the site
-initialisation file @file{sml-site.el}.}:
+@file{/home/mjm/.emacs} file:
 
 @lisp
-(setq load-path (cons "/home/mjm/elisp" load-path))
+(add-to-list 'load-path "/home/mjm/elisp")
 (autoload 'sml-mode "sml-mode" "Major mode for editing SML." t)
+(autoload 'run-sml "sml-proc" "Run an inferior SML process." t)
 @end lisp
 
 @noindent
 The first line adjusts Emacs' internal search path so it can locate the
-Lisp source you have copied to that directory; the second line tells
-Emacs to load the code automatically when it is needed. You can then
-switch any Emacs buffer into SML mode by entering the command
+Lisp source you have copied to that directory; the second and third
+lines tell Emacs to load the code automatically when it is needed. You
+can then switch any Emacs buffer into SML mode by entering the command
 
 @example
 M-x sml-mode
@@ -303,10 +290,7 @@ buffer in SML mode whenever you visit a file containing ML
 programs. The simplest way of achieving this is to put something like
 
 @lisp
-(setq auto-mode-alist
-      (append '(("\\.sml$" . sml-mode) 
-                ("\\.sig$" . sml-mode) 
-                ("\\.ML$"  . sml-mode)) auto-mode-alist))
+(add-to-list 'auto-mode-alist '("\\.\\(sml\\|sig\\)\\'" . sml-mode))
 @end lisp
 
 @noindent
@@ -318,11 +302,6 @@ you visit them.
 You may want to pre-compile the @file{sml-*.el} files (@kbd{M-x
 byte-compile-file}) for greater speed---byte compiled code loads and
 runs somewhat faster.
-
-@c If you are irritated by the fact that there are several @sc{sml}
-@c mode lisp files concatenate them in the order I listed them (but
-@c don't include @file{sml-site} which should be kept apart).
-
 
 
 @c ======================================================== GETTING HELP
@@ -387,14 +366,13 @@ Emacs hierarchy.)
 
 
 @noindent
-Now SML mode provides just a few additional editing commands. Most
-of the work (@pxref{Credits,,Credit & Blame}) has gone into implementing
-the indentation algorithm which, if you think about it, has to be
-complicated for a language like ML. @xref{SML Mode Defaults,,Indentation
-Defaults}, for details on how to control some of the behaviour of the
-indentation algorithm. Principal goodies are the `electric pipe'
-feature, and the ability to insert common SML forms (macros or
-templates).
+Now SML mode provides just a few additional editing commands. Most of
+the work has gone into implementing the indentation algorithm which, if
+you think about it, has to be complicated for a language like
+ML. @xref{SML Mode Defaults,,Indentation Defaults}, for details on how
+to control some of the behaviour of the indentation algorithm. Principal
+goodies are the `electric pipe' feature, and the ability to insert
+common SML forms (macros or templates).
 
 @menu
 * Basics::              On entering SML mode
@@ -438,19 +416,11 @@ bindings. @xref{Configuration}, for some examples.
 
 
 @defvr Hook sml-load-hook
-Default: @code{'sml-mode-version}
+Default: @code{nil}
 
 Another, maybe better, place for key bindings. This hook is only run when
 SML mode is loaded into Emacs. @xref{Configuration}.
 @end defvr
-
-
-@deffn Command sml-mode-version
-Prints the current version of SML mode in the mini-buffer, in case
-you need to know. I've put it on @code{sml-load-hook} so you can easily
-tell which version of SML mode you are running.
-@end deffn
-
 
 
 @c ========================================================= INDENTATION
@@ -470,17 +440,17 @@ adjusted to control the indentation algorithm (@pxref{SML Mode
 Defaults,,Customising SML Mode}, below).
 
 
-@deffn Command sml-indent-line
+@deffn Command indent-for-tab-command
 Key: @key{TAB}
 @kindex @key{TAB}
 
 This command indents the current line. If you set the indentation of the
-previous line by hand, @code{sml-indent-line} will indent relative to
+previous line by hand, @code{indent-for-tab-command} will indent relative to
 this setting.
 @end deffn
 
 
-@deffn Command sml-indent-region
+@deffn Command indent-region
 Key: @kbd{C-M-\}
 @kindex @kbd{C-M-\}
 
@@ -570,6 +540,15 @@ and the function name copied at the appropriate column. Generally, try
 it whenever a @code{|} is wanted---you'll like it!
 @end deffn
 
+@deffn Command sml-electric-space
+Key: @kbd{M-SPC}
+@kindex @kbd{M-SPC}
+
+When the point is after a keyword like `let', this inserts the
+corresponding predefined skeleton if one exists.  Else it just inserts a
+space.  Another way to insert those skeletons is to use
+@code{sml-insert-form}, described below.
+@end deffn
 
 @deffn Command sml-electric-semi
 Key: @kbd{;}
@@ -580,15 +559,12 @@ governed by the variable @code{sml-electric-semi-mode}.
 @end deffn
 
 
-@defvr {Command, Variable} sml-electric-semi-mode
+@defvr Variable sml-electric-semi-mode
 Default: @code{nil}
 
 If this variable is @code{nil}, @code{sml-electric-semi} just inserts a
 semi-colon, otherwise it inserts a semi-colon and a newline, and indents
-the newline for SML. The command toggles the value of the variable; if
-you give the command a prefix argument (i.e., @kbd{C-u M-x
-sml-electric-semi-mode}) this always disables the electric effect of
-@kbd{;}.
+the newline for SML.
 @end defvr
 
 
@@ -625,134 +601,18 @@ further details.
 
 @noindent
 Several variables try to control the indentation algorithm and other
-features of SML mode. For these user settable variables there is
-generally a function of the same name that does the job---look for them
-in the menu under @emph{Format/Mode Variables}.
+features of SML mode.  Most of them are still in flux so they are not
+described here yet.
+If the default values are not acceptable you can set these variables
+permanently in your @file{.emacs} file. @xref{Configuration}, for
+details and examples.
 
 
-@defvr {Command, Variable} sml-indent-level
+@defvr Variable sml-indent-level
 @findex sml-indent-level
 Default: @code{4}
 
-This variable controls the block indentation level. The command prompts
-for a numeric value unless a numeric prefix is provided instead. For
-example @kbd{M-2 M-x sml-indent-level} will set the variable to 2
-without prompting.
-@end defvr
-
-
-@defvr {Command, Variable} sml-pipe-indent
-@findex sml-pipe-indent
-Default: @code{-2}
-
-This variable adjusts the indentation level for lines that begin with a
-@code{|} (after any white space). The extra offset is usually negative.
-The command prompts for a numeric value unless a numeric prefix is
-provided instead.
-@end defvr
-
-
-@defvar sml-paren-lookback
-Default: @code{1000}
-
-The number of characters the indentation algorithm searches for an
-opening parenthesis. 1000 characters is about 30-40 lines; larger values
-mean slower indentation. If the value of the variable is @code{nil} this
-means the indentation algorithm won't look back at all.
-@end defvar
-
-
-If the default values are not acceptable you can set these variables
-permanently in your @file{.emacs} file. @xref{Configuration}, for
-details and examples. Three further variables control the behaviour of
-indentation.
-
-
-@defvr {Command, Variable} sml-case-indent
-@findex sml-case-indent
-Default: @code{nil}
-
-How to indent `case' expressions:
-
-@iftex
-@example
-@r{If @code{t}:}                                 @r{If @code{nil}:}
-case expr                           case expr of
-  of exp1 => ...                        exp1 => ...
-   | exp2 => ...                      | exp2 => ...
-@end example
-@end iftex
-@ifinfo
-@example
-If @code{t}:                             If @code{nil}:
-case expr                           case expr of
-  of exp1 => ...                        exp1 => ...
-   | exp2 => ...                      | exp2 => ...
-@end example
-@end ifinfo
-
-The first seems to be the standard in SML/NJ. The second is the (nicer?)
-default.
-@end defvr
-
-
-@defvr {Command, Variable} sml-nested-if-indent
-@findex sml-nested-if-indent
-Default: @code{nil}
-
-Nested `if-then-else' expressions have the following indentation
-depending on the value.
-
-@iftex
-@example
-@r{If @code{t}:}                               @r{If @code{nil}:}
-if exp1 then exp2                 if exp1 then exp2          
-else if exp3 then exp4            else if exp3 then exp4     
-else if exp5 then exp6                 else if exp5 then exp6
-     else exp7                              else exp7       
-@end example
-@end iftex
-@ifinfo
-@example
-If @code{t}:                           If @code{nil}:
-if exp1 then exp2                 if exp1 then exp2          
-else if exp3 then exp4            else if exp3 then exp4     
-else if exp5 then exp6                 else if exp5 then exp6
-     else exp7                              else exp7       
-@end example
-@end ifinfo
-@end defvr
-
-
-@defvr {Command, Variable} sml-type-of-indent
-@findex sml-type-of-indent
-Default: @code{t}
-
-Determines how to indent `let', `struct', etc..
-
-@iftex
-@example
-@r{If @code{t}:}                               @r{If @code{nil}:}
-fun foo bar = let                 fun foo bar = let
-                  val p = 4           val p = 4    
-              in                  in               
-                  bar + p             bar + p      
-              end                 end              
-@end example
-@end iftex
-@ifinfo
-@example
-If @code{t}:                           If @code{nil}:
-fun foo bar = let                 fun foo bar = let
-                  val p = 4           val p = 4    
-              in                  in               
-                  bar + p             bar + p      
-              end                 end              
-@end example
-@end ifinfo
-
-@code{sml-type-of-indent} will not have any effect if the starting
-keyword is the first word on the line.
+This variable controls the block indentation level.
 @end defvr
 
 @c end vtable
@@ -786,7 +646,7 @@ Defaults}, for some hints.
 
 @findex inferior-sml-mode
 @code{inferior-sml-mode} is a specialisation of the @file{comint}
-package that comes with GNU Emacs and GNU XEmacs.
+package that comes with Emacs and XEmacs.
 
 
 @menu
@@ -858,12 +718,6 @@ set this in your @file{.emacs} with, e.g.:
 (setq sml-program-name "nj-sml")
 @end lisp
 
-@noindent
-You probably shouldn't set this in @code{sml-mode-hook} because that
-will interfere if you occasionally run a different compiler (e.g.,
-@code{poly} or @code{hol90}).
-
-
 
 @deffn Command run-sml
 Launches ML as an inferior process in another buffer; if an ML process
@@ -913,16 +767,6 @@ directory to be changed, if the compiler can do this. The variable
 @end deffn
 
 
-
-@c @findex inferior-sml-mode
-@c It's unlikely you will ever need this, but @code{inferior-sml-mode} is
-@c the command that will put the current buffer into ML interaction mode.
-@c Note that if you try @kbd{C-c C-s} before an ML process has been
-@c started, you'll just get an error message to the effect that there's no
-@c current process buffer.
-
-
-
 @c ======================================================== SENDING TEXT
 
 @node ML Interaction, Tracking Errors, Running ML, Interaction Mode
@@ -962,24 +806,6 @@ Send the current region of text in the SML buffer.
 SML mode if you wish: it'll send the region and then switch-to-sml.
 @end deffn
 
-@deffn Command sml-drag-region
-Key: @kbd{M-S-down-mouse-1}
-@kindex @kbd{M-S-down-mouse-1}
-
-It's sometimes irritating to do all that @kbd{C-@@} and @kbd{C-c C-r}
-stuff to send regions to the ML process, so if you are running Emacs
-under X Windows (say) you can do the same job by holding down both the
-@key{SHIFT} and @key{META} keys, and dragging with mouse button one over
-the region. This will temporarily highlight the region as you move the
-mouse, like @code{mouse-drag-region} (i.e., @kbd{down-mouse-1}),
-and send the highlighted text straight into the jaws of the ML compiler.
-
-If you only click the mouse button, instead of dragging, the region of
-text sent to the compiler is delimited by the current position of point
-and the place where you click the mouse. In neither case will the
-command set the region.
-@end deffn
-
 @c @deffn Command sml-send-function
 @c @findex sml-send-function-and-go
 
@@ -996,53 +822,6 @@ Key: @kbd{C-c C-b}
 
 Send the contents of the current buffer to ML.
 @end deffn
-
-@c Two further commands are defined for you to bind to keys if you wish:
-@c @code{sml-send-region-and-go} and @code{sml-send-function-and-go}. Both
-@c automatically switch to the interaction buffer.
-
-
-By and large, Emacs can nowadays quite happily send large chunks of text
-to its subprocesses (@file{comint} does input splitting). However, it is
-still probably safest@footnote{XEmacs 19.11 users are warned that
-changing the default @code{sml-temp-threshold} may well cause XEmacs to
-hang; they seem to have fixed the problem in 19.12 and above.} to send
-larger program fragments to ML via the temporary file mechanism. This,
-for @code{sml-send-region} and other SML mode commands that use it
-in some way, takes advantage of the ML compiler's ability to open a file
-and compile the contents by making a temporary file of the indicated
-text. Two variables of interest are:
-
-
-@defvar sml-temp-threshold 
-Default: @code{0}
-
-Determines what constitutes a large program fragment. A value of 512,
-say, will declare half a kilobyte a suitable threshold and larger
-fragments will be sent via a temporary file. A value of 0 means
-@emph{all} text is sent via a temporary file; the value @code{nil}
-inhibits the temporary file mechanism altogether.
-@end defvar
-
-
-@defvar sml-temp-file 
-Default: @code{(make-temp-name "/tmp/ml")}
-
-A string that gives the name of the temporary file to use. This
-default ensures Emacs will invent a unique name for this purpose for
-use throughout the rest of the editing session. Only one temporary
-file is used. 
-@end defvar
-
-
-Another reason, you might well say @emph{the reason}, for using the
-temporary file mechanism is that error messages reported by the ML
-compiler (@pxref{Tracking Errors}) are generally useless to SML mode
-unless a real file is associated with the input (an embedded @emph{use
-file} will count as a real file). Of course, this all rather depends on
-the compiler producing sensible error messages, and on SML mode
-being able to parse them.
-
 
 @c ===================================================== TRACKING ERRORS
 
@@ -1061,52 +840,15 @@ one of the mechanisms provided for sending programs directly to the
 compiler---@pxref{ML Interaction}.
 
 
-@deffn Command sml-next-error
-@findex sml-skip-errors
-Key: @kbd{C-c`}
-@kindex @kbd{C-c`}
+@deffn Command next-error
+@findex next-error
+Key: @kbd{C-x`}
+@kindex @kbd{C-x`}
 
 Jump to the source location of the next error reported by the compiler.
-If the function bound to @code{sml-error-parser} returns a range of
-character positions for the location of the error in the source file,
-@code{sml-next-error} will put the mark at the end of the range with
-point at the beginning; it may also highlight the region specified; it
-will also echo the one-line text of the error message if the error
-parser returns one.@footnote{Does @code{sml-error-parser} return these
-nice things? The answer is complicated! @xref{Advanced Topics}, and the
-docstring @kbd{C-h v sml-error-parser}.}
-
-If you enter @kbd{C-u C-c`} instead, the command (a.k.a.@:
-@code{sml-skip-errors}) skips past all the remaining error messages and
-removes any error overlay in the current buffer. Note that @kbd{C-c`}
-also works in the ML interaction buffer (by default).
+All the usual error-navigation commands are available, see
+@pxref{Compilation Mode, , , emacs, The Emacs Editor Manual}.
 @end deffn
-
-
-@defvr {Variable, Command} sml-error-overlay
-@findex sml-error-overlay
-Default: @code{t}
-
-Legal default values for this buffer-local variable are @code{t} and
-@code{nil}. The variable attains a local value in each SML mode
-buffer when the default is @code{t}; in this case the local value is an
-overlay (or @emph{extent} in XEmacs speak), and this means
-@code{sml-next-error} will highlight errors in the buffer when it can.
-If the default is @code{nil} it stays that way and @code{sml-next-error}
-will not highlight anything, ever.
-
-The command @kbd{M-x sml-error-overlay} will set the overlay around the
-current region, or remove the overlay if a prefix argument is given
-(i.e., @kbd{C-u M-x sml-error-overlay} removes the overlay, but this
-functionality can be accessed from the menu to save typing).
-@end defvr
-
-
-Note that SML mode will usually locate errors relative to the start
-of the last major program fragment sent to the compiler (via
-@code{sml-load-file}, etc.), but if you don't use the temporary file
-mechanism to communicate text to the ML process (@pxref{Process
-Defaults}), errors will generally not be located at all.
 
 
 @c ==================================================== PROCESS DEFAULTS
@@ -1123,9 +865,7 @@ deliberately, so SML mode will work with a variety of ML compilers
 and ML-based tools. There are therefore a number of variables that may
 need to be set correctly before SML mode can speak to the compiler.
 Things are by default set up for Standard ML of New Jersey, but
-switching to a new system is quite easy---very easy if you are using
-Poly/ML or Moscow ML as these are supported by libraries bundled with
-SML mode.
+switching to a new system is quite easy.
 
 
 
@@ -1148,7 +888,7 @@ should.
 
 
 @defvar sml-prompt-regexp
-Default: @code{"^[\-=] *"}
+Default: @code{"^[-=>#] *"}
 
 Matches the ML compiler's prompt: @file{comint} uses this for various
 purposes.
@@ -1156,36 +896,20 @@ purposes.
 
 
 To customise error reportage for different ML compilers you need to set
-two further variables before @code{sml-next-error} can be useful:
+two further variables before @code{next-error} can be useful:
 
 
-@defvar sml-error-regexp
-Default: @code{sml-smlnj-error-regexp}
+@defvar sml-error-regexp-alist
 
-This is the regular expression for matching the start of an error
-message. The default matches the Standard ML of New Jersey compiler's
-Error and Warning messages. If you don't want stop at Warnings try, for
-example:
-@example
-  "^[-= ]*.+:[0-9]+\\.[0-9]+.+Error:"
-@end example
-If you're using Edinburgh (core) ML try @code{"^Parse error:"}.
+Alist that specifies how to match errors in compiler output.
+Each elt has the form (REGEXP FILE-IDX LINE-IDX [COLUMN-IDX FILE-FORMAT...])
+If REGEXP matches, the FILE-IDX'th subexpression gives the file name, and
+the LINE-IDX'th subexpression gives the line number.  If COLUMN-IDX is
+given, the COLUMN-IDX'th subexpression gives the column number on that line.
+If any FILE-FORMAT is given, each is a format string to produce a file name to
+try; %s in the string is replaced by the text matching the FILE-IDX'th
+subexpression.
 @end defvar
-
-
-@defvar sml-error-parser 
-Default: @code{'sml-smlnj-error-parser}
-
-The function that actually parses the error message. Again, the default
-is for SML/NJ. If you need to change this you may have to do a little
-Emacs Lisp programming.
-@end defvar
-
-
-Note that bundled libraries supply an @code{sml-mosml-error-parser} and
-an @code{sml-poly-ml-error-parser}, and set all the attendant compiler
-variables. @xref{Advanced Topics}, for tips on how to program your own
-compiler extension to SML mode.
 
 
 @c A typical way of (re)setting these variables correctly is to put
@@ -1196,18 +920,11 @@ compiler extension to SML mode.
 @c (setq sml-prompt-regexp "^[>#] *")
 @c @end example
 
-@c @noindent
-@c probably on @code{inferior-sml-load-hook} (but @pxref{Configuration},
-@c first).
-
-
 @c ======================================================= CONFIGURATION
 
-@node Configuration, Credits, Interaction Mode, Top
+@node Configuration, , Interaction Mode, Top
 
 @chapter Configuration Summary
-
-@c == Configuration, Credits, Interaction Mode, Top ===================
 
 @c @footnote{@url{http://www.ahl.co.uk/}}
 @c @footnote{@url{http://www.dina.kvl.dk/~sestoft/mosml.html}}
@@ -1215,48 +932,11 @@ compiler extension to SML mode.
 @noindent
 This (sort of pedagogic) section gives more information on how to
 configure SML mode: menus, key bindings, hooks and highlighting are
-discussed, along with a few other random topics. First, though, the
-auxiliary files @file{sml-poly-ml.el} and @file{sml-mosml.el} define
-defaults for these popular (?) ML compilers---Poly/ML and Moscow ML,
-respectively. One way to setup SML mode to use Moscow ML is to add
-to your @file{.emacs}:
-
-@example
-(defun my-mosml-setup () "Initialise inferior SML mode for Moscow ML."
-  (load-library "sml-mosml.el")
-  (setq sml-program-name "/home/mjm/mosml/bin/mosml"))
-(add-hook 'inferior-sml-load-hook 'my-mosml-setup)
-@end example
-
-@noindent 
-which creates a hook function @code{my-mosml-setup} and adds it to
-@code{inferior-sml-load-hook} so that the defaults for
-@code{sml-error-regexp} and its ilk (@pxref{Process Defaults}) are
-correctly initialised; I have to set @code{sml-program-name} explicitly
-here because that directory isn't on my (Unix) PATH. The story is
-similar if you use Poly/ML.
-Note, by the way, that order matters here: the @code{load-library} call
-comes first because the default for @code{sml-program-name} in
-@file{sml-mosml.el} is just @code{"mosml"}. 
-
-@c @example
-@c (eval-after-load "sml-proc" '(my-mosml-setup))
-@c @end example
-@c @noindent
-@c is perhaps a better way to achieve the same effect, but last time I
-@c looked this wouldn't work in XEmacs.
-
-The auxiliary libraries bundled with SML mode define commands
-@code{sml-mosml} and @code{sml-poly-ml} (there's also an
-@code{sml-smlnj} for uniformity); these commands prompt for suitable
-values for @code{sml-program-name} and @code{sml-default-arg} before
-starting the compiler and setting the other process defaults. A prefix
-argument will give you the builtin defaults with no questions asked.
+discussed, along with a few other random topics.
 
 @menu
 * Hooks::               Creating them
 * Key Bindings::        Binding commands to keys
-* Menus::               Taking advantage of bitmapped screens
 * Highlighting::        Syntax colouring
 * Advanced Topics::     You may need to speak Emacs Lisp
 @end menu
@@ -1284,7 +964,7 @@ Defaults,,Indentation Defaults}), and other defaults, is through the
 (add-hook 'sml-mode-hook 'my-sml-mode-hook)
 @end lisp
 @noindent
-The body of @code{my-sml-mode-hook} is a sequence of bindings. In this
+The body of @code{my-sml-mode-hook} is a sequence of assignments. In this
 case it is not really necessary to set @code{sml-indent-level} in a hook
 because this variable is global (most SML mode variables are). With
 similar effect:
@@ -1293,20 +973,10 @@ similar effect:
 (setq sml-indent-level 2)
 @end lisp
 @noindent
-anywhere in your @file{.emacs} file (but probably on
-@code{sml-load-hook}). The variable @code{indent-tabs-mode} is
+anywhere in your @file{.emacs} file. The variable @code{indent-tabs-mode} is
 automatically made local to the current buffer whenever it is set
 explicitly, so it @emph{must} be set in a hook if you always want
-SML mode to behave like this. The same goes for the buffer-local
-@code{sml-error-overlay}; since this is globally @code{t} by default,
-set it globally @code{nil} if you never want errors highlighted:
-
-@lisp
-(setq-default sml-error-overlay nil)
-@end lisp
-@noindent
-Again, on @code{sml-load-hook} would probably be the best place.
-
+SML mode to behave like this.
 
 Another hook is @code{inferior-sml-mode-hook}. This can be used to
 control the behaviour of the interaction buffer through various
@@ -1320,7 +990,7 @@ variables meaningful to @file{comint}-based packages:
 (add-hook 'inferior-sml-mode-hook 'my-inf-sml-mode-hook)
 @end lisp
 @noindent
-Again, the body is a sequence of bindings. Unless you run several ML
+Again, the body is a sequence of assignments. Unless you run several ML
 compilers simultaneously under one Emacs, this hook will normally only
 get run once. You might want to look up the documentation (@kbd{C-h v}
 and @kbd{C-h f}) for these buffer-local @code{comint} things.
@@ -1328,12 +998,9 @@ and @kbd{C-h f}) for these buffer-local @code{comint} things.
 
 @c ======================================================== Key Bindings
 
-@node Key Bindings, Menus, Hooks, Configuration
+@node Key Bindings, Highlighting, Hooks, Configuration
 
 @section Key bindings
-
-@c == Key Bindings, Menus, Hooks, Configuration ========================
-
 
 @noindent
 Customisation (in Emacs) usually entails putting favourite commands on
@@ -1351,14 +1018,12 @@ are global (variables):
 
 @lisp
 (defun my-sml-load-hook () "Global defaults for SML mode"
-  (define-key   sml-mode-map "\C-cd" 'sml-cd)
-  (define-key   sml-mode-map "\C-co" 'sml-error-overlay))
+  (define-key   sml-mode-map "\C-cd" 'sml-cd))
 (add-hook 'sml-load-hook 'my-sml-load-hook)
 @end lisp
 @noindent
-This has the effect of binding @code{sml-cd} to the key @kbd{C-c d}, and
-the command @code{sml-error-overlay} to the key @kbd{C-c o}. If you want
-the same behaviour from @kbd{C-c d} in the ML buffer:
+This has the effect of binding @code{sml-cd} to the key @kbd{C-c d}.
+If you want the same behaviour from @kbd{C-c d} in the ML buffer:
 
 @lisp
 (defun my-inf-sml-load-hook () "Global defaults for inferior SML mode"
@@ -1374,43 +1039,11 @@ course: SML mode won't define @code{sml-mode-map} or
 @code{inferior-sml-mode-map} if you have already done so. 
 
 
-@c =============================================================== Menus
-
-@node Menus, Highlighting, Key Bindings, Configuration
-
-@section Menus
-
-@c == Menus, Highlighting, Key Bindings, Configuration =================
-
-
-@noindent
-Menus are useful for fiddling with mode defaults and finding out what
-keys commands are on if you are forgetful (not all commands are listed
-in the menu). For menus to appear in the menu bar under GNU Emacs or GNU
-XEmacs, the editor must be able to find one of two packages---i.e., one
-or both must be on your @code{load-path}. The first option is
-@file{easymenu} which is distributed with GNU Emacs. Easy!
-
-The second option is @file{auc-menu} which was written by Per Abrahamsen
-and distributed with AUCTeX, but it is independently available from the
-IESD lisp archive@footnote{@url{ftp://sunsite.auc.dk/packages/auctex/}}
-at Aalborg. You'll also find @file{auc-menu} is available from the LCD
-archive@footnote{@url{ftp://archive.cis.ohio-state.edu/pub/gnu/emacs/elisp-archive/misc/}},
-the main repository for all Emacs Lisp. The advantage of @file{auc-menu}
-is that it works with XEmacs too.
-
-Notice that certain menu entries are not illuminated at first---these
-are generally functions that depend on there being an ML process running
-with which to communicate.
-
-
 @c ======================================================== Highlighting
 
-@node Highlighting, Advanced Topics, Menus, Configuration
+@node Highlighting, Advanced Topics, Key Bindings, Configuration
 
 @section Syntax colouring
-
-@c == Highlighting, Advanced Topics, Menus, Configuration ==============
 
 
 @noindent
@@ -1419,68 +1052,28 @@ spotting misspelled kewyords, and, if you have Emacs' @file{ps-print}
 package installed (you usually do these days), obtaining pretty, even
 colourful code listings---quite properly for your colourful ML programs.
 
-@vindex sml-font-lock-extra-keywords
-@vindex sml-font-lock-auto-on
-
-Various highlight (hilite, if you spell real bad!) packages are
-available for GNU Emacs 19, and GNU XEmacs. SML mode can use either
-@file{hilit19} which only comes with Emacs, or @file{font-lock} which is
-the package of choice with XEmacs. If you are not familiar with these
-highlight packages you'll have to check their sources for installation
-guidelines, etc..
-
-Use @code{sml-load-hook} to tell Emacs which scheme you prefer for
-SML mode. For example:
+The indentation scheme (strangely enough) also relies on the
+highlighting code to properly handle nested comments, which is yet
+another reason to turn on highlighting.  To turn on highlighting,
+use either of:
 
 @lisp
-(add-hook 'sml-load-hook '(lambda () (require 'sml-font)))
+M-x font-lock-mode
+(add-hook 'sml-mode-hook 'turn-on-font-lock)
+(global-font-lock-mode 1)
 @end lisp
 
-@noindent
-This ensures the SML extensions to @file{font-lock} will be available
-once SML mode loads (from @file{sml-font.el}---if you prefer
-@file{hilit19} you should @code{(require 'sml-hilite)} instead.
-
-The variable @code{sml-font-lock-extra-keywords} is for further
-customising @file{font-lock} for SML mode. The value of the variable
-should be a list of strings, each of which is a regular expression that
-should match the desired keyword exactly. Here's an example:
-
-@lisp
-(setq sml-font-lock-extra-keywords 
-      '("\\babstraction\\b" "\\bfunsig\\b" "=>" "::"))))
-@end lisp
-
-@noindent
-The @code{\b} marks a word boundary, according to the syntax table
-defined for SML mode. Backslash must be quoted inside a string.
-@xref{Regexps,,,emacs,The Emacs Editor Manual}, for a summary of Emacs'
-regular expression syntax. 
-
-
-Finally, the variable @code{sml-font-lock-auto-on} can be used to
-control whether or not @file{font-lock} should be enabled by default in
-SML mode buffers; it is enabled by default. The @code{sml-hilite}
-package is customisable, but only with regard to colour changes.
-
+The first will turn it on in the current buffer.
+The second will turn it on in all sml-mode buffers.
+The last will turn it on everywhere.
+This is valid for Emacs but maybe not for XEmacs.  Check font-lock
+documentation if you encounter problems.
 
 @c ===================================================== ADVANCED TOPICS
 
 @node Advanced Topics, , Highlighting, Configuration
 
 @section Advanced Topics
-
-@c == Advanced Topics, , Highlighting, Configuration ===================
-
-@menu
-* Forms::    These forms are bloody useless; can't we have better ones?
-* Indents::  I hate that indentation algorithm; can't I suppress it?
-* Multi ML:: Can SML mode handle more than one compiler running at once?
-* Other ML:: What needs to be done to support other ML compilers?
-@end menu
-
-
-@node Forms, Indents, Advanced Topics, Advanced Topics
 
 @flushright
 @emph{These forms are bloody useless; can't we have better ones?}
@@ -1502,57 +1095,42 @@ to add @code{NAME} to @code{sml-forms-alist} permanently yourself:
 @lisp
 (defun my-sml-load-hook () "Global defaults for SML mode"
   ;; whatever else you do
-  (setq sml-forms-alist (cons '("NAME") sml-forms-alist)))
+  (add-to-list 'sml-forms-alist '("NAME" . FUNCTION)))
 @end lisp
 
 If you want to create templates like `case' that prompt for parameters
-you'll have to do some Lisp programming. The @code{tempo} package looks
-like a good stating point. You can always overwrite your own macros, but
-the builtin forms for `let', etc., can't be overwritten.
+you'll have to do some Lisp programming. The @code{skeleton} package is
+a good stating point.  Better yet, you can reuse the wrappers used by
+sml-mode itself in your sml-load-hook:
 
+@lisp
+(add-hook 'sml-load-hook
+  (lambda ()
+    (sml-def-skeleton "case" "Case expr: "
+      str " of" \n _ " => ")))
+@end lisp
 
-@node Indents, Multi ML, Forms, Advanced Topics
+This will redefine `case' in order to leave the `of' on the first line.
+See the documentation of @code{skeleton-insert} to get a better
+understanding of how this works.
 
 @sp 1
 @flushright
-@emph{I hate that indentation algorithm; can't I suppress it?}
+@emph{I hate that indentation algorithm; can't I tweak it?}
 @end flushright
 
 @sp 1
 @noindent
-Ah, yes, a common complaint. It's actually very easy to use SML mode
-without the troublesome @code{sml-indent-line}:
+Ah, yes, of course, but this manual will not tell you how.
 
-@lisp
-(defun my-sml-load-hook () "Global defaults for SML mode"
-  ;; whatever else you do
-  (fset 'sml-indent-line 'ignore))
-@end lisp
-@noindent
-though @code{indent-relative-maybe} may conceivable be more useful than
-@code{ignore}.
-
-
-@node Multi ML, Other ML, Indents, Advanced Topics
 
 @sp 1
 @flushright
 @emph{Can SML mode handle more than one compiler running at once?}
 @end flushright
 
-@findex sml-buffer
-@vindex sml-buffer
-@sp 1
-@noindent
-The question is whether you can! See the @code{sml-buffer} variable's
-on-line help (@kbd{C-h v sml-buffer}). Note that the SML mode
-compiler variables (@pxref{Process Defaults}) are all buffer-local, so
-you can even switch between different ML compilers, not just different
-invocations of the same one. Well, you @emph{can}.
-
-
-
-@node Other ML, , Multi ML, Advanced Topics
+Sure, just rename the @samp{*sml*} buffer and then use @code{run-sml}
+as usual.
 
 @sp 1
 @flushright
@@ -1561,116 +1139,17 @@ invocations of the same one. Well, you @emph{can}.
 
 @sp 1
 @noindent
-Not that much really, at least not to create minimal support. The
-interface between SML mode and the compiler is determined by the
-variables
-@code{sml-use-command},
-@code{sml-cd-command},
-@code{sml-prompt-regexp}
-(which are easy to get right), and
-@code{sml-error-regexp}, and
-@code{sml-error-parser} (which are more tricky). 
-The general template to follow in setting this up
-is in the files @file{sml-@{poly-ml,mosml@}.el}.
-These rules will not change, I hope:
+Not much really.  Just add the right regular expressions to
+@code{sml-error-regexp-alist} and that should be all.
 
-@itemize @bullet
-@item
-@code{sml-next-error} uses @code{sml-error-regexp} to locate the start
-of the next error report in the ML interaction buffer (@var{P})
-
-@item
-@code{sml-next-error} calls @code{sml-error-parser}, passing @var{P}, and
-expects up to five return values in this order:
-
-@enumerate
-@item file name in which the error occurs (@var{F})
-@item start line of the error (@var{L} > 0)
-@item start column of the error (@var{C})
-@item an Emacs Lisp expression to be @code{eval}'d 
-at (@var{L},@var{C}) in @var{F} (@var{EOE})
-@item the actual text of the one-line error report (@var{MSG})
-@end enumerate
-
-
-@item 
-@code{sml-error-parser} can assume that @var{P} is the start of the next
-error message that the user is interested in---since she defines this
-point by defining @code{sml-error-regexp}.
-
-@item
-What @code{sml-error-parser} returns is a list. In the event of problems,
-I foresee the following needs:
-
-@itemize -
-@item if the file is the standard input,
-return @code{("std_in" @var{L} @var{C})}
-@item if the file cannot be inferred,
-return @code{(nil @var{L} @var{C})}
-@item if @var{L}=0, or the start cannot be inferred,
-return @code{(@var{F} nil @var{C})}
-@item if the start column cannot be inferred,
-return @code{(@var{F} @var{L} 1)}
-@end itemize
-@end itemize
-
-There's no need to return anything else. However, if you do want the
-errorful text in @var{F} highlighted you should return a simple Lisp
-expression in the fourth argument that'll compute the region. @var{EOE}
-will be called with point at character (@var{L},@var{C}) in @var{F}, and
-should move point to the end of the errorful text. In fact, @var{EOE}
-can actually do anything you wish, but in the simplest cases it'll just
-@code{(forward-char 45)}, or
-
-@lisp
-(progn (forward-line 4) (forward-char 37))
-@end lisp
-@noindent
-etc.. If it does more, make sure it leaves point at the end of the
-region in @var{F}---use @code{save-excursion} if switching buffers.
-@var{MSG}, if returned, will be echoed in the minibuffer.
-
-@c ============================================================== CREDIT
-
-@c H A C K   A T T A C K   O N 
-@c page
-@c H A C K   A T T A C K   O F F
-
-@node Credits, Command Index, Configuration, Top
-
-@unnumbered Credit & Blame
-
-@c == Credits, Command Index, Configuration, Top =======================
-
-@noindent
-SML Mode was written originally by Lars Bo Nielsen for Emacs 18.5n;
-later hacked for comint by Olin Shivers (who called it @t{ml-mode});
-much later hacked by myself because it didn't seem to work@dots{} Fritz
-Knabe brilliantly posted the @code{hilit19} and @code{font-lock}
-functions on the net. Lars probably would recognise much of what
-remains, yet now there're menus, syntax highlighting, support for
-various ML compilers, Texinfo (hey!), and more than a little hope it'll
-work with a variety of Emacs 19s. But there are still things to do. Lars
-wrote:
-@quotation
-@emph{The indentation algorithm still can be fooled. I don't know if it will
-ever be 100% right, as this means it will have to actually parse all of
-the buffer up to the actual line [@dots{}].}
-@end quotation
-@noindent
-This is still the main cause of grief; SML's syntax is a nightmare for
-Emacs modes, and of course opinions vary about proper indentation. But
-there may be something we can do@dots{}
 
 @c ======================================================= COMMAND INDEX
 
 @headings singleafter
 
-@node Command Index, Variable Index, Credits, Top
+@node Command Index, Variable Index, , Top
 
 @unnumbered Command Index
-
-@c == Command Index, Variable Index, Credits, Top ======================
 
 @printindex fn
 

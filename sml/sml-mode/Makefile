@@ -21,6 +21,7 @@ datadir = $(prefix)/share
 
 # the directory where you install third-party emacs packges
 lispdir = $(datadir)/emacs/site-lisp
+startupfile = $(lispdir)/site-start.el
 
 # the directory where you installed the elib .elc files.
 # This is only needed if your site-start.el (or default.el) does not
@@ -62,6 +63,7 @@ TEXEXTS =  *.cps *.fns *.kys *.vr *.tp *.pg *.log *.aux *.toc *.cp *.ky *.fn
 .SUFFIXES: .elc .el .info .ps .dvi .texi
 .PHONY: elcfiles info clean distclean default
 .PHONY: install_startup install_elc install install_el install_info
+.PHONY: dvi postscript
 
 .el.elc:
 	$(ELC) $<
@@ -97,16 +99,18 @@ install_info: $(PACKAGE).info
 
 install_startup:
 	$(MKDIR) $(lispdir)
-	if grep $(PACKAGE) $(lispdir)/site-start.el >/dev/null 2>&1 || \
+	if grep $(PACKAGE) $(startupfile) >/dev/null 2>&1 || \
 	   grep $(PACKAGE) $(lispdir)/default.el >/dev/null 2>&1; then \
 	    echo "!!! Check $(PACKAGE)-startup.el and merge it" \
-	    echo "!!! into your $(lispdir)/site-start.el file"; \
+	    echo "!!! into your $(startupfile) file"; \
 	else \
 	    sed 's|@elcdir@|$(elcdir)|' \
-		$(PACKAGE)-startup.el >>$(lispdir)/site-start.el ;\
+		$(PACKAGE)-startup.el >>$(startupfile) ;\
 	fi
 
-install_dvi: $(PACKAGE).dvi
+postscript: $(PACKAGE).ps
+dvi: $(PACKAGE).dvi
+install_dvi: dvi
 	$(MKDIR) $(docdir)
 	$(CP) *.dvi $(docdir)/
 

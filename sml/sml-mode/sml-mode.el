@@ -1,4 +1,4 @@
-;;; sml-mode.el. Major mode for editing (Standard) ML. Version 3.3(beta)
+;;; sml-mode.el. Major mode for editing (Standard) ML
 
 (defconst rcsid-sml-mode "@(#)$Name$:$Id$")
 
@@ -104,7 +104,7 @@
 
 ;;; VERSION STRING
 
-(defconst sml-mode-version-string "sml-mode, version 3.9.2")
+(defconst sml-mode-version "version $Name$")
 
 (require 'cl)
 (require 'sml-util)
@@ -290,12 +290,12 @@ Full documentation will be available after autoloading the function."))
 (defun sml-mode-version ()
   "This file's version number (sml-mode)."
   (interactive)
-  (message sml-mode-version-string))
+  (message sml-mode-version))
 
 ;;;###Autoload
 (defun sml-mode ()
   "Major mode for editing ML code.
-Entry to this mode runs the hooks on sml-mode-hook.
+Entry to this mode runs the hooks on `sml-mode-hook'.
 \\{sml-mode-map}"
 
   (interactive)

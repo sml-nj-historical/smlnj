@@ -15,7 +15,7 @@
 
 ;; the rest is the auto-generated autoloads
 
-;;;### (autoloads (sml-mode) "sml-mode" "sml-mode.el" (14249 59771))
+;;;### (autoloads (sml-mode) "sml-mode" "sml-mode.el" (14257 57462))
 ;;; Generated autoloads from sml-mode.el
 
 (autoload (quote sml-mode) "sml-mode" "\
@@ -25,8 +25,7 @@ Entry to this mode runs the hooks on sml-mode-hook.
 
 ;;;***
 
-;;;### (autoloads (sml-load-file sml-send-buffer sml-send-region
-;;;;;;  switch-to-sml run-sml) "sml-proc" "sml-proc.el" (14255 18522))
+;;;### (autoloads (run-sml) "sml-proc" "sml-proc.el" (14257 55157))
 ;;; Generated autoloads from sml-proc.el
 
 (autoload (quote run-sml) "sml-proc" "\
@@ -44,31 +43,6 @@ prompt. You can have several inferior ML process running, but only one
 current one -- given by `sml-buffer' (qv).
 
 \(Type \\[describe-mode] in the process buffer for a list of commands.)" t nil)
-
-(autoload (quote switch-to-sml) "sml-proc" "\
-Switch to the ML process buffer.
-With prefix argument, positions cursor at point, otherwise at end of buffer." t nil)
-
-(autoload (quote sml-send-region) "sml-proc" "\
-Send current region to the inferior ML process.
-Prefix argument means switch-to-sml afterwards.
-
-The region is written out to a temporary file and a \"use <temp-file>\" command
-is sent to the compiler.
-See variables `sml-use-command'." t nil)
-
-(autoload (quote sml-send-buffer) "sml-proc" "\
-Send buffer to inferior shell running ML process. 
-With a prefix argument switch to the sml buffer as well
-\(cf. `sml-send-region')." t nil)
-
-(autoload (quote sml-load-file) "sml-proc" "\
-Load an ML file into the current inferior ML process. 
-With a prefix argument switch to sml buffer as well.
-
-This command uses the ML command template `sml-use-command' to construct
-the command to send to the ML process; a trailing \";\\n\" will be added
-automatically." t nil)
 
 ;;;***
 

@@ -1,3 +1,9 @@
+1999-08-11  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* release: version 3.9.3
+
+	* sml-mode.texi:  somewhat updated the doc.
+
 1999-08-09  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* Makefile: updated to the version of pcl-cvs.
