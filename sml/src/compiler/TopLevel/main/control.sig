@@ -152,9 +152,8 @@ sig
 	       val lazysml : bool ref
 	       val quotation : bool ref
    *)
-  include ELABDATA_CONTROL
-  (* provides: val saveLvarNames : bool ref
-   *)
+  val saveLvarNames : bool ref
+
   val valueRestrictionLocalWarn : bool ref  (* default false *)
      (* warning message on failure of value restriction in local decls *)
   val valueRestrictionTopWarn : bool ref    (* default true *)

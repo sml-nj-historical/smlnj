@@ -6,8 +6,6 @@
  *)
 structure ElabControl = struct
 
-    val eedebugging = ref false
-    val mudebugging = ref false
     val etdebugging = ref false
     val esdebugging = ref false
     val insdebugging = ref false

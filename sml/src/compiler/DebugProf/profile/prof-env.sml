@@ -6,15 +6,22 @@
 
 signature PROF_ENV =
   sig
+    type env
     val prof: TellEnv.env -> string 
     val replace: {
-	    get: unit -> Environment.environment,
-	    set: Environment.environment -> unit
+	    get: unit -> env,
+	    set: env -> unit
 	  } -> unit
   end
 
-functor ProfEnv (Interact: INTERACT) : PROF_ENV =
+functor ProfEnvFn (type env
+		   val staticPart : env -> StaticEnv.staticEnv
+		   val eval : string * env -> env
+		   val layer : env * env -> env)
+	:> PROF_ENV where type env = env =
 struct
+
+  type env = env
 
   structure T = TellEnv
 
@@ -78,9 +85,9 @@ struct
 
   fun replace {get,set} = 
    let val e0 = get ()
-       val s = prof (Environment.staticPart e0)
-       val e1 = Interact.evalStream(TextIO.openString s, e0)
-    in set (Environment.concatEnv(e1,e0))
+       val s = prof (staticPart e0)
+       val e1 = eval(s, e0)
+    in set (layer (e1,e0))
    end
 
 

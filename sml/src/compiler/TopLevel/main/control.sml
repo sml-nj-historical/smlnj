@@ -102,8 +102,8 @@ struct
     val flinton = ref true
 
     val compdebugging = ref false
-    val mudebugging   = ElabControl.mudebugging
-    val eedebugging   = ElabControl.eedebugging
+    val mudebugging   = ElabDataControl.mudebugging
+    val eedebugging   = ElabDataControl.eedebugging
     val insdebugging  = ElabControl.insdebugging
     val smdebugging   = ElabControl.smdebugging
     val emdebugging   = ElabControl.emdebugging
@@ -135,9 +135,9 @@ structure Control : CONTROL =
 		 val lazysml = ref false
 		 val quotation = ref false
      *)
-    open ElabDataControl
-    (* provides: val saveLvarNames = ref false
-     *)
+
+    val saveLvarNames = ElabDataControl.saveLvarNames
+
     val valueRestrictionLocalWarn = ElabControl.valueRestrictionLocalWarn
     val valueRestrictionTopWarn = ElabControl.valueRestrictionTopWarn
     val multDefWarn = ElabControl.multDefWarn

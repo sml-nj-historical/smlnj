@@ -25,7 +25,7 @@ in
 
 (* debugging hooks *)
 val say = Control_Print.say
-val debugging = ElabControl.mudebugging (* ref false *)
+val debugging = ElabDataControl.mudebugging (* ref false *)
 fun debugmsg (msg: string) =
       if !debugging then (say msg; say "\n") else ()
 

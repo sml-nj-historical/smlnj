@@ -44,12 +44,12 @@ val bogusCON = T.DATACON{name=S.varSymbol "bogus",
 			 lazyp=false,
                          sign=A.CSIG(0,1)}
 
-fun mkBogusEXN exnTy = T.DATACON{name=S.varSymbol "bogus",
-				 typ=exnTy,
-				 rep=A.CONSTANT 0,
-				 const=true,
-				 lazyp=false,
-				 sign=A.CNIL}
+val bogusEXN = T.DATACON{name=S.varSymbol "bogus",
+			 typ=CoreBasicTypes.exnTy,
+			 rep=A.CONSTANT 0,
+			 const=true,
+			 lazyp=false,
+			 sign=A.CNIL}
 
 end (* local *)
 end (* structure VarCon *)

@@ -145,18 +145,16 @@ fun lookArTyc (env, path, arity, err) =
 		   T.ERRORtyc)
 	     else tycon)
 
-val bogusExn = V.mkBogusEXN BasicTypes.exnTy
-
 (*** looking for an exception ***)
 fun lookExn (env,path,err) : V.datacon =
       (case lookVal (env,path,err)
         of V.CON(c as T.DATACON{rep=(A.EXN _), ...}) => c
          | V.CON _ => 
              (otherError("found data constructor instead of exception", err);
-              bogusExn)
+              V.bogusEXN)
          | V.VAL _ => 
              (otherError("found variable instead of exception", err);
-              bogusExn))
+              V.bogusEXN))
 
 end (* local *)
 end (* structure Lookup *)

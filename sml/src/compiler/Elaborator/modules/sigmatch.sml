@@ -700,8 +700,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                  case spec
                   of TYCspec _ => bindings
                    | CONspec {slot=NONE, ...} => bindings
-                   | _ => (B.CONbind (VarCon.mkBogusEXN BasicTypes.exnTy))
-			  ::bindings
+                   | _ => B.CONbind VarCon.bogusEXN :: bindings
 
             in case kindOp
 		 of SOME kind =>

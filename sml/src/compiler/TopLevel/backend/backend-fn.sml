@@ -64,7 +64,14 @@ functor BackendFn (M : CODEGENERATOR) : BACKEND = struct
 		  val mkMkStamp = Stamps.newGenerator
 	      end)
 
-    structure Profile = ProfileFn (ProfEnv (Interact))
+    structure Profile =
+        ProfileFn (structure ProfEnv =
+		   ProfEnvFn (type env = Environment.environment
+			      val staticPart = Environment.staticPart
+			      val layer = Environment.concatEnv
+			      fun eval (s, e) =
+				  Interact.evalStream (TextIO.openString s, e))
+		   val pervasive = EnvRef.pervasive)
     structure Machine = M.Machine
     val architecture = M.architecture
 end

@@ -128,7 +128,9 @@ Semant/pickle/rehash.sml
 Semant/statenv/prim.sml
 
 Semant/types/tp-var-info.sml
+(*
 Semant/types/reconstruct.sml
+*)
 Semant/types/typecheck.sml
 Semant/types/cproto.sml
 
@@ -163,6 +165,8 @@ FLINT/flint/flintutil.sml
 FLINT/flint/ppflint.sig
 FLINT/flint/ppflint.sml
 FLINT/flint/tvarcvt.sml
+FLINT/kernel/primtyc.sig
+FLINT/kernel/primtyc.sml
 FLINT/kernel/ltybasic.sig
 FLINT/kernel/ltybasic.sml
 FLINT/kernel/ltydef.sig
@@ -259,6 +263,7 @@ MiscUtil/print/ppdec.sml
 MiscUtil/print/ppobj.sml
 MiscUtil/print/pptable.sml
 
+(*
 MiscUtil/profile/prof-env.sml
 MiscUtil/profile/profile-fn.sml
 MiscUtil/profile/profile.sig
@@ -268,6 +273,7 @@ MiscUtil/profile/tell-env.sml
 MiscUtil/profile/tprof.sml
 MiscUtil/profile/btrace.sml
 MiscUtil/profile/btimp.sml
+*)
 
 MiscUtil/util/feedback.sml
 MiscUtil/util/literal-to-num.sml
@@ -277,6 +283,7 @@ $smlnj/viscomp/basics.cm
 $smlnj/viscomp/parser.cm
 $smlnj/viscomp/elabdata.cm
 $smlnj/viscomp/elaborate.cm
+$smlnj/viscomp/debugprof.cm
 $smlnj/viscomp/execute.cm
 
 (* MLRISC libraries. *)

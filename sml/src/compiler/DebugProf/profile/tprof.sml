@@ -3,8 +3,13 @@
 
 signature TPROF =
 sig
-  val instrumDec : (StaticEnv.staticEnv * Absyn.dec CompInfo.compInfo)
-                   -> Absyn.dec -> Absyn.dec
+    (* The first (curried) argument is a function that should return true
+     * if the operator (specified via inlining info) can return multiple
+     * times.  In practical terms, this means call/cc. *)
+  val instrumDec :
+      (II.ii -> bool) ->
+      (StaticEnv.staticEnv * Absyn.dec CompInfo.compInfo)
+      -> Absyn.dec -> Absyn.dec
 
 end (* signature TPROF *)
 
@@ -16,14 +21,24 @@ local structure SP = SymPath
       structure M = Modules
       structure B = Bindings
       structure A = Access
-      structure II = InlInfo
-      structure P = PrimOp
+      (* structure II' = InlInfo *)
+      (* structure P = PrimOp *)
       structure S = Symbol
-      structure EU = ElabUtil
-      open Absyn ElabUtil VarCon Types BasicTypes 
+      open Absyn VarCon Types
+
+      val TUPLEexp = AbsynUtil.TUPLEexp
+      val TUPLEpat = AbsynUtil.TUPLEpat
+
+      structure BT = CoreBasicTypes
+      val intTy = BT.intTy
+      val unitTy = BT.unitTy
+      val tupleTy = BT.tupleTy
+      val refTycon = BT.refTycon
+      val arrayTycon = BT.arrayTycon
+      val --> = BT.-->
+      infix -->
 in
 
-infix -->
 
 fun bug s = ErrorMsg.impossible ("Prof: "^s)
 
@@ -33,46 +48,49 @@ val intreftype = CONty(refTycon, [intTy])
 fun poly1 ty = 
   POLYty{sign=[false], tyfun=TYFUN{arity=1, body=ty}}
 
+(* We get this stuff via CoreAccess now.  This way we don't need
+ * to know the actual primops.... *)
+(*
 val updateop = 
   let val t = poly1(tupleTy[CONty(arrayTycon,[IBOUND 0]),
-  			         intTy, IBOUND 0] --> unitTy)
+  			    intTy, IBOUND 0] --> unitTy)
    in VALvar{path=SP.SPATH[S.varSymbol "unboxedupdate"], typ=ref t,
              access=A.nullAcc,
-	     info=II.mkPrimInfo(P.UNBOXEDUPDATE, t)}
+	     info=II'.mkPrimInfo(P.UNBOXEDUPDATE, t)}
   end
 
 val assignop = 
-  let val t = poly1(tupleTy[CONty(refTycon,[IBOUND 0]),
-			    intTy, IBOUND 0] --> unitTy)
+  let val t = poly1(tupleTy[CONty(refTycon,[IBOUND 0]), intTy, IBOUND 0]
+		    --> unitTy)
 
    in VALvar{path=SP.SPATH[S.varSymbol ":="], typ=ref t,
              access=A.nullAcc,
-	     info=II.mkPrimInfo(P.ASSIGN, t)}
+	     info=II'.mkPrimInfo(P.ASSIGN, t)}
   end
 
 val subop = 
-  let val t = poly1(tupleTy[CONty(arrayTycon,[IBOUND 0]),
-			    intTy] --> IBOUND 0)
+  let val t = poly1(tupleTy[CONty(arrayTycon,[IBOUND 0]), intTy] --> IBOUND 0)
    in VALvar{path=SP.SPATH[S.varSymbol "subscript"], typ=ref t,
              access=A.nullAcc,
-	     info=II.mkPrimInfo(P.SUBSCRIPT, t)}
+	     info=II'.mkPrimInfo(P.SUBSCRIPT, t)}
   end
 
 val derefop = 
   let val t = poly1(CONty(refTycon,[IBOUND 0]) --> IBOUND 0)
    in VALvar{path=SP.SPATH [S.varSymbol "!"], typ=ref t,
-             access=A.nullAcc, info=II.mkPrimInfo(P.DEREF, t)}
+             access=A.nullAcc, info=II'.mkPrimInfo(P.DEREF, t)}
   end
 
 val addop = 
   let val t = (tupleTy[intTy,intTy] --> intTy)
    in VALvar{path=SP.SPATH[S.varSymbol "iadd"], typ=ref t,
-             access=A.nullAcc, info=II.mkPrimInfo(P.IADD, t)}
+             access=A.nullAcc, info=II'.mkPrimInfo(P.IADD, t)}
   end
+*)
 
 fun tmpvar(str,ty,mkv) = 
     let val sym = S.varSymbol str
-     in VALvar{access=A.namedAcc(sym, mkv), info=II.nullInfo,
+     in VALvar{access=A.namedAcc(sym, mkv), info=II.Null,
                path=SP.SPATH[sym], typ=ref ty}
     end
 
@@ -86,8 +104,16 @@ fun varexp(v as VALvar{typ=ref ty,path,...}) =
 fun clean (path as name::names) = if S.eq(name,anonSym) then names else path
   | clean x = x
 
-fun instrumDec' (env, compInfo as {mkLvar=mkv, ...} : EU.compInfo) absyn =
- let val countarrayvar = tmpvar("countarray",CONty(arrayTycon,[intTy]),mkv)
+fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
+ let fun getVar name = CoreAccess.getVar (env, name)
+     val updateop = getVar "unboxedupdate"
+     val assignop = getVar "assign"
+     val subop = getVar "subscript"
+     val derefop = getVar "deref"
+     val addop = getVar "iadd"
+
+     val mkv = #mkLvar (compInfo: Absyn.dec CompInfo.compInfo)
+     val countarrayvar = tmpvar("countarray", CONty(arrayTycon,[intTy]),mkv)
      val countarray = varexp countarrayvar
 
      val basevar = tmpvar("base", intTy, mkv)
@@ -162,13 +188,13 @@ fun instrumDec' (env, compInfo as {mkLvar=mkv, ...} : EU.compInfo) absyn =
 	       fun instrvb(vb as VB{pat,exp,tyvars,boundtvs}) =
 	            (case getvar pat
 		      of SOME(VALvar{info, path=SP.SPATH[n],...}) =>
-                           if II.isPrimInfo info then vb
+                           if II.isSimple info then vb
                            else VB{pat=pat, tyvars=tyvars,
 			           exp=instrexp (n::clean names, 
                                                  ccvara) false exp,
   			           boundtvs=boundtvs}
                        | SOME(VALvar{info, ...}) =>
-                           if II.isPrimInfo info then vb
+                           if II.isSimple info then vb
                            else VB{pat=pat, exp=instrexp sp false exp, 
                                    tyvars=tyvars, boundtvs=boundtvs}
 		       | _ => VB{pat=pat, exp=instrexp sp false exp, 
@@ -258,8 +284,8 @@ fun instrumDec' (env, compInfo as {mkLvar=mkv, ...} : EU.compInfo) absyn =
 
                    | exp as APPexp (f,a) =>
                        let fun safe(VARexp(ref(VALvar{info, ...}), _)) =
-                               if II.isPrimInfo(info) then
-                                   (if II.isPrimCallcc(info) then false
+                               if II.isSimple info then
+                                   (if mayReturnMoreThanOnce info then false
 				    else true)
                                else false
                              | safe(MARKexp(e,_)) = safe e
@@ -374,9 +400,9 @@ fun instrumDec' (env, compInfo as {mkLvar=mkv, ...} : EU.compInfo) absyn =
   in absyn2
  end
 
-fun instrumDec (env, compInfo) absyn = 
+fun instrumDec mrmto (env, compInfo) absyn = 
       if !SMLofNJ.Internals.ProfControl.profMode
-	then instrumDec' (env, compInfo) absyn
+	then instrumDec' mrmto (env, compInfo) absyn
 	else absyn
 
 end (* local *)

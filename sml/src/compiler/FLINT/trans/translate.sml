@@ -64,16 +64,6 @@ type pid = PersStamps.persstamp
 (** old-style fold for cases where it is partially applied *)
 fun fold f l init = foldr f init l
 
-(*
- * MAJOR CLEANUP REQUIRED ! The function mkv is currently directly taken 
- * from the LambdaVar module; I think it should be taken from the 
- * "compInfo". Similarly, should we replace all mkLvar in the backend
- * with the mkv in "compInfo" ? (ZHONG)
- *)
-val mkv = LambdaVar.mkLvar 
-fun mkvN NONE = mkv()
-  | mkvN (SOME s) = LambdaVar.namedLvar s
-
 (** sorting the record fields for record types and record expressions *)
 fun elemgtr ((LABEL{number=x,...},_),(LABEL{number=y,...},_)) = (x>y)
 fun sorted x = ListMergeSort.sorted elemgtr x 
@@ -101,6 +91,22 @@ fun transDec
 	(rootdec, exportLvars, env,
 	 compInfo as {errorMatch,error,...}: Absyn.dec CompInfo.compInfo) =
 let 
+
+(* We take mkLvar from compInfo.  This should answer Zhong's question... *)
+(*
+(*
+ * MAJOR CLEANUP REQUIRED ! The function mkv is currently directly taken 
+ * from the LambdaVar module; I think it should be taken from the 
+ * "compInfo". Similarly, should we replace all mkLvar in the backend
+ * with the mkv in "compInfo" ? (ZHONG)
+ *)
+val mkv = LambdaVar.mkLvar 
+fun mkvN NONE = mkv()
+  | mkvN (SOME s) = LambdaVar.namedLvar s
+*)
+
+val mkvN = #mkLvar compInfo
+fun mkv () = mkvN NONE
 
 (** generate the set of ML-to-FLINT type translation functions *)
 val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty, markLBOUND} =

@@ -14,6 +14,40 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/08/20 15:35:00 EDT
+Tag: blume-20010820-debugprof
+Description:
+
+!!!! NEW BOOTFILES !!!!
+
+This is another round of reorganizing the compiler sources.  This
+time the main goal was to factor out all the "instrumentation"
+passes (for profiling and backtracing) into their own library.
+The difficulty was to do it in such a way that it does not depend
+on elaborate.cm but only on elabdata.cm.
+
+Therefore there have been further changes to both elaborate.cm and
+elabdata.cm -- more "generic" things have been moved from the former
+to the latter.  As a result, I was forced to split the assignment
+of numbers indicating "primtyc"s into two portions: SML-generic and
+SML/NJ-specific.  Since it would have been awkward to maintain,
+I bit the bullet and actually _changed_ the mapping between these
+numbers and primtycs.  The bottom line of this is that you need
+a new set of bin- and bootfiles.
+
+I have built new bootfiles for all architectures, so doing a fresh
+checkout and config/install.sh should be all you need.
+
+The newly created library's name is
+
+    $smlnj/viscomp/debugprof.cm
+
+and its sources live under
+
+    src/compiler/DebugProf
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/08/15 17:15:00 EDT
 Tag: blume-20010815-compreorg
 Description:

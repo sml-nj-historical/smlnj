@@ -14,14 +14,16 @@ local
     structure SP = SymPath
     structure EM = ErrorMsg
     structure VC = VarCon
-    structure BT = BasicTypes
-    structure EU = ElabUtil
+    structure BT = CoreBasicTypes
+    structure AU = AbsynUtil
 
     structure Dummy = BTImp		(* mention it, so it gets made! *)
 in
 
 signature BTRACE = sig
-    val instrument : SE.staticEnv * A.dec CompInfo.compInfo -> A.dec -> A.dec
+    val instrument :
+	(Symbol.symbol -> bool) ->	(* isSpecial *)
+	SE.staticEnv * A.dec CompInfo.compInfo -> A.dec -> A.dec
 end
 
 structure BTrace :> BTRACE = struct
@@ -40,7 +42,7 @@ structure BTrace :> BTRACE = struct
     val u_u_u_Ty = BT.unitTy --> u_u_Ty
     val iis_u_Ty = BT.tupleTy [BT.intTy, BT.intTy, BT.unitTy] --> BT.unitTy
 
-    fun instrument0 (senv, cinfo: A.dec CompInfo.compInfo) d = let
+    fun instrument0 isSpecial (senv, cinfo: A.dec CompInfo.compInfo) d = let
 
 	val matchstring = #errorMatch cinfo
 
@@ -53,6 +55,7 @@ structure BTrace :> BTRACE = struct
 			path = SP.SPATH [sy], typ = ref t }
 	end
 
+(*
 	val isSpecial = let
 	    val l = [SpecialSymbols.paramId,
 		     SpecialSymbols.functorId,
@@ -67,6 +70,7 @@ structure BTrace :> BTRACE = struct
 	in
 	    fn s => List.exists (fn s' => Symbol.eq (s, s')) l
 	end
+*)
 	     
 	fun cons (s, []) = if isSpecial s then [] else [(s, 0)]
 	  | cons (s, l as ((s', m) :: t)) =
@@ -110,13 +114,13 @@ structure BTrace :> BTRACE = struct
 	fun VARexp v = A.VARexp (ref v, [])
 	fun INTexp i = A.INTexp (IntInf.fromInt i, BT.intTy)
 
-	val uExp = EU.unitExp
+	val uExp = AU.unitExp
 	val pushexp = A.APPexp (VARexp bt_push_var, uExp)
 	val saveexp = A.APPexp (VARexp bt_save_var, uExp)
 
 	fun mkmodidexp fctvar id =
 	    A.APPexp (VARexp fctvar,
-		      EU.TUPLEexp [VARexp bt_module_var, INTexp id])
+		      AU.TUPLEexp [VARexp bt_module_var, INTexp id])
 
 	val mkaddexp = mkmodidexp bt_add_var
 	val mkpushexp = mkmodidexp bt_push_var
@@ -124,7 +128,7 @@ structure BTrace :> BTRACE = struct
 
 	fun mkregexp (id, s) =
 	    A.APPexp (VARexp bt_register_var,
-		      EU.TUPLEexp [VARexp bt_module_var,
+		      AU.TUPLEexp [VARexp bt_module_var,
 				   INTexp id, A.STRINGexp s])
 
 	val regexps = ref []
@@ -342,9 +346,9 @@ structure BTrace :> BTRACE = struct
 		    d')
     end
 
-    fun instrument params d =
+    fun instrument isSpecial params d =
 	if SMLofNJ.Internals.BTrace.mode NONE then
-	    instrument0 params d
+	    instrument0 isSpecial params d
 	    handle NoCore => d		(* this takes care of core.sml *)
 	else d
 end

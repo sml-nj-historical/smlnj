@@ -88,10 +88,8 @@ fun stripExpAst(MarkExp(e,r'),r) = stripExpAst(e,r')
 
 val internalSym = SpecialSymbols.internalVarId
 
-val bogusExn = V.mkBogusEXN BasicTypes.exnTy
-
 val dummyFNexp =
-    FNexp([RULE(WILDpat,RAISEexp(CONexp(bogusExn,[]),UNDEFty))],UNDEFty)
+    FNexp([RULE(WILDpat,RAISEexp(CONexp(V.bogusEXN,[]),UNDEFty))],UNDEFty)
 
 (* LAZY *)
 (* clauseKind: used for communicating information about lazy fun decls
@@ -118,7 +116,7 @@ val bangExp = VARexp(ref bangVar,[])
 *)
 
 local
-    fun mkCoreExp name env = VARexp (ref (EU.getCoreVar(env, name)), [])
+    fun mkCoreExp name env = VARexp (ref (CoreAccess.getVar(env, name)), [])
 in
     val mkAssignExp = mkCoreExp "assign"
     val mkBangExp = mkCoreExp "deref"
@@ -188,7 +186,7 @@ let
 
 	    (* capture Match exn from coreEnv as a random exn for use internally
 	       in the Y combinator definition *)
-	    val exn = EU.getCoreExn(env,"Match")
+	    val exn = CoreAccess.getExn(env,"Match")
 
 	    (* val exn = V.bogusEXN (* see if this will work? *) *)
 

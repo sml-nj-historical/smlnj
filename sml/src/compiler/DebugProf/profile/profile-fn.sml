@@ -6,7 +6,9 @@
  *
  *)
 
-functor ProfileFn (ProfEnv: PROF_ENV) : PROFILE =
+functor ProfileFn (structure ProfEnv: PROF_ENV
+		   val pervasive : { get: unit -> ProfEnv.env,
+				     set: ProfEnv.env -> unit }) : PROFILE =
   struct
 
     structure PC = SMLofNJ.Internals.ProfControl
@@ -24,8 +26,9 @@ functor ProfileFn (ProfEnv: PROF_ENV) : PROFILE =
 	  if !pervDone then ()
           else (
 	    pervDone := true;
-	    Control.Print.say "Creating profiled version of standard library\n";
-	    ProfEnv.replace EnvRef.pervasive)
+	    Control_Print.say
+		"Creating profiled version of standard library\n";
+	    ProfEnv.replace pervasive)
     end
 
     fun setProfMode true = (doPerv(); profMode := true)
@@ -39,5 +42,3 @@ functor ProfileFn (ProfEnv: PROF_ENV) : PROFILE =
     val reset = Profile.reset
 
   end;
-
-

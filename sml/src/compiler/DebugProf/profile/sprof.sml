@@ -9,16 +9,7 @@ sig
 end (* signature SPROF *)
 
 
-structure SProf :> SPROF =
-struct
-
-local structure SP = SymPath
-      structure V = VarCon
-      structure M  = Modules
-      structure B  = Bindings
-      structure P = PrimOp
-      open Absyn VarCon Types BasicTypes
-in 
+structure SProf :> SPROF = struct
 
 (* 
  * WARNING: THE MAIN CODE IS CURRENTLY TURNED OFF; 
@@ -29,7 +20,20 @@ fun instrumDec (env,
 		compInfo as {mkLvar, ...} : Absyn.dec CompInfo.compInfo)
 	       source absyn = absyn
 
+end
+
+
 (* 
+
+struct
+
+local structure SP = SymPath
+      structure V = VarCon
+      structure M  = Modules
+      structure B  = Bindings
+      structure P = PrimOp
+      open Absyn VarCon Types BasicTypes
+in 
 
 infix -->
 val xsym = Symbol.varSymbol "x"
@@ -214,9 +218,9 @@ in
 
 end (* function instrumDec *)
 
-*)
-
 end (* local *)
 end (* structure SProf *)
+*)
+
 
 

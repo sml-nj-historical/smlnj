@@ -7,7 +7,7 @@ local
   structure EM = ErrorMsg
   structure SS = Substring
   structure EP = EntPath
-  structure BT = BasicTypes
+  structure BT = CoreBasicTypes
   structure SP = SymPath
   structure IP = InvPath
   structure S = Symbol
@@ -21,7 +21,7 @@ val sub = Array.sub
 val update = Array.update
 infix 9 sub
 
-val --> = BasicTypes.-->
+val --> = CoreBasicTypes.-->
 infix -->
 
 val say = Control_Print.say
@@ -261,7 +261,7 @@ local
 	CONty(GENtyc{stamp = Stamps.fresh generator,
 		     path = IP.IPATH[Symbol.tycSymbol "dummy"],
 		     arity = 0, eq = ref YES, stub = NONE,
-                     kind = PRIMITIVE (PrimTyc.pt_toint PrimTyc.ptc_void)},[])
+                     kind = PRIMITIVE CorePrimTycNum.ptn_void},[])
          (*
           * Making dummy type is a temporary hack ! pt_void is not used
           * anywhere in the source language ... Requires major clean up 

@@ -7,12 +7,9 @@
 Group (../../system/smlnj/viscomp/elaborate.cm)
 	structure ElabControl
 
-	signature PRIM_TYC
+	signature PRIM_TYC_NUM
 	signature DEB_INDEX
 	signature BASICTYPES
-	signature TUPLES
-	signature TYPESUTIL
-	signature MODULE_ID
 	signature INSTANTIATE_PARAM
 	signature INSTANTIATE
 	signature EVALENTITY
@@ -25,21 +22,12 @@ Group (../../system/smlnj/viscomp/elaborate.cm)
 	functor ElabModFn
 	functor ElabTopFn
 
-	structure PrimTyc
+	structure PrimTycNum
 	structure DebIndex
-	structure CoreSym
 	structure BasicTypes
-	structure ModuleId
-	structure EntityEnv
-	structure Tuples
-	structure TypesUtil
-	structure ModuleUtil
 	structure ElabUtil
-	structure Lookup
 	structure SpecialSymbols
-	structure EntPathContext
 	structure ElabDebug
-	structure GenModIdMap
 
 	signature PPUTIL
 	signature PPTYPE
@@ -55,38 +43,23 @@ Group (../../system/smlnj/viscomp/elaborate.cm)
 is
 
 	basics/elabcontrol.sml
-	basics/primtyc.sig
-	basics/primtyc.sml
 	basics/debindex.sig
 	basics/debindex.sml
-	basics/coresym.sml
 	basics/conrep.sml
+	basics/ptnum.sml
 
 	types/basictypes.sig
 	types/basictypes.sml
-	types/tuples.sml
-	types/typesutil.sig
-	types/typesutil.sml
 	types/eqtypes.sml
 	types/unify.sml
 	types/overload.sml
 	types/overloadlit.sml
 	types/typecheck.sml
 
-	modules/moduleid.sml
-	modules/moduleutil.sig
-	modules/moduleutil.sml
-	modules/entityenv.sig
-	modules/entityenv.sml
-	modules/epcontext.sml
 	modules/expandtycon.sml
 	modules/sigmatch.sml
 	modules/instantiate.sml
 	modules/evalent.sml
-
-	statenv/lookup.sig
-	statenv/lookup.sml
-	statenv/genmap.sml
 
 	elaborate/tyvarset.sml
 	elaborate/elabutil.sig

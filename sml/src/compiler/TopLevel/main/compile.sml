@@ -52,11 +52,28 @@ struct
      *                        ABSYN INSTRUMENTATION                          *
      *************************************************************************)
 
+    local
+	val isSpecial = let
+	    val l = [SpecialSymbols.paramId,
+		     SpecialSymbols.functorId,
+		     SpecialSymbols.hiddenId,
+		     SpecialSymbols.tempStrId,
+		     SpecialSymbols.tempFctId,
+		     SpecialSymbols.fctbodyId,
+		     SpecialSymbols.anonfsigId,
+		     SpecialSymbols.resultId,
+		     SpecialSymbols.returnId,
+		     SpecialSymbols.internalVarId]
+	in
+	    fn s => List.exists (fn s' => Symbol.eq (s, s')) l
+	end
+    in
     (** instrumenting the abstract syntax to do time- and space-profiling *)
     fun instrument {source, senv, compInfo} =
 	SProf.instrumDec (senv, compInfo) source 
-	o TProf.instrumDec (senv, compInfo)
-	o BTrace.instrument (senv, compInfo)
+	o TProf.instrumDec InlInfo.isPrimCallcc (senv, compInfo)
+	o BTrace.instrument isSpecial (senv, compInfo)
+    end
 
     val instrument =
 	Stats.doPhase (Stats.makePhase "Compiler 039 instrument") instrument

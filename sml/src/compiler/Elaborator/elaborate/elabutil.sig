@@ -51,8 +51,10 @@ sig
 
   val clean_pat : ErrorMsg.complainer -> Absyn.pat -> Absyn.pat
 
+(*
   val getCoreExn : (StaticEnv.staticEnv * string) -> VarCon.datacon
   val getCoreVar : (StaticEnv.staticEnv * string) -> VarCon.var
+*)
   val completeMatch : (StaticEnv.staticEnv * string)
 		      -> Absyn.rule list -> Absyn.rule list
   val completeMatch' : Absyn.rule -> Absyn.rule list -> Absyn.rule list

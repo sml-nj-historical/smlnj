@@ -26,6 +26,6 @@ sig
   val mkVALvar : Symbol.symbol * Access.access ->  var
 
   val bogusCON : datacon
-  val mkBogusEXN : Types.ty -> datacon
+  val bogusEXN : datacon
 
 end

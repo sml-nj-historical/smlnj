@@ -94,7 +94,7 @@ val NILexp = CONexp(nilDcon,[])
 val CONSpat = fn pat => APPpat(consDcon,[],pat)
 val CONSexp = CONexp(consDcon,[])
 
-val unitExp = RECORDexp nil
+val unitExp = AbsynUtil.unitExp
 val unitPat = RECORDpat{fields = nil, flex = false, typ = ref UNDEFty}
 val bogusExp = VARexp(ref(V.mkVALvar(bogusID, A.nullAcc)), [])
 
@@ -210,6 +210,8 @@ fun makeRECORDexp(fields,err) =
      in assign(0, sortRecord(fields',err)); RECORDexp(f(0,fields'))
     end
 
+val TUPLEexp = AbsynUtil.TUPLEexp
+(*
 fun TUPLEexp l = 
     let fun addlabels(i,e::r) = 
 	      (LABEL{number=i-1,name=(Tuples.numlabel i)},e) 
@@ -217,6 +219,7 @@ fun TUPLEexp l =
 	  | addlabels(_, nil) = nil
      in RECORDexp (addlabels(1,l))
     end
+*)
 
 fun TPSELexp(e, i) = 
     let val lab = LABEL{number=i-1, name=(Tuples.numlabel i)}
@@ -242,10 +245,7 @@ fun completeMatch'' rule [r as RULE(pat,MARKexp(_,(left,_)))] =
 fun completeMatch' (RULE(p,e)) =
     completeMatch'' (fn marker => RULE(p,marker e))
 
-exception NoCore
-
-val bogusExn = V.mkBogusEXN BasicTypes.exnTy
-
+(*
 fun getCoreExn(env,name) = 
     (case LU.lookVal(env,SP.SPATH[CoreSym.coreSym, varSymbol name],
 		     fn _ => fn s => fn _ => raise NoCore)
@@ -258,12 +258,14 @@ fun getCoreVar(env,name) =
 		     fn _ => fn _ => fn _ => raise NoCore)
       of V.VAL v => v
        | _ => raise Fail ("getCoreVar: not found: " ^ name))
+*)
 
 fun completeMatch(env,name) =
     completeMatch'' 
       (fn marker =>
           RULE(WILDpat, 
-	       marker(RAISEexp(CONexp(getCoreExn(env,name),[]), UNDEFty))))
+	       marker(RAISEexp(CONexp(CoreAccess.getExn(env,name),[]),
+			       UNDEFty))))
 
 val trivialCompleteMatch = completeMatch(SE.empty,"Match")
 
@@ -274,11 +276,14 @@ val whileSym = S.varSymbol "while"
 fun IFexp (a,b,c) =
     CASEexp(a, trivialCompleteMatch [RULE(TRUEpat,b), RULE(FALSEpat,c)],true)
 
+val TUPLEpat = AbsynUtil.TUPLEpat
+(*
 fun TUPLEpat l =
     let fun addlabels(i,e::r) = (Tuples.numlabel i, e) :: addlabels(i+1, r)
 	  | addlabels(_, nil) = nil
      in RECORDpat{fields=addlabels(1,l), flex=false, typ=ref UNDEFty}
     end
+*)
 
 fun wrapRECdecGen (rvbs, compInfo as {mkLvar=mkv, ...} : compInfo) = 
   let fun g (RVB{var=v as VALvar{path=SP.SPATH [sym], ...}, ...}, 

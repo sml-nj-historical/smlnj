@@ -7,20 +7,21 @@ struct
 local open Access Types Symbol 
       structure EM = ErrorMsg
       structure IP = InvPath
-      structure PT = PrimTyc
+      structure CBT = CoreBasicTypes
+      structure PTN = PrimTycNum
   fun bug msg = ErrorMsg.impossible("BasicTypes: "^msg)
 in
 
 (*** type and dataconstructor symbols ***)
-val unitSym      = tycSymbol "unit"
+val unitSym      = (* tycSymbol "unit" *) CBT.unitSym
 val boolSym      = tycSymbol "bool"
 val trueSym	 = varSymbol "true"
 val falseSym	 = varSymbol "false"
 val listSym	 = tycSymbol "list"
 val consSym	 = varSymbol "::"
 val nilSym	 = varSymbol "nil"
-val refConSym	 = varSymbol "ref"
-val refTycSym	 = tycSymbol "ref"
+val refConSym	 = (* varSymbol "ref" *) CBT.refConSym
+val refTycSym	 = (* tycSymbol "ref" *) CBT.refTycSym
 val fragSym      = tycSymbol "frag"
 val antiquoteSym = varSymbol "ANTIQUOTE"
 val quoteSym     = varSymbol "QUOTE"
@@ -31,13 +32,17 @@ val dollarSym    = varSymbol "$"     (* LAZY *)
 
 (*** function type constructor ***)
 infix -->
-val arrowStamp = Stamps.special "->"
+val arrowStamp = (* Stamps.special "->" *) CBT.arrowStamp
+val arrowTycon = CBT.arrowTycon
+val op --> = CBT.-->
+(*
 val arrowTycon =
     GENtyc { stamp = arrowStamp, path = IP.IPATH [tycSymbol "->"],
 	     arity = 2, eq = ref NO,
-	     kind = PRIMITIVE (PT.pt_toint (PT.ptc_arrow)),
+	     kind = PRIMITIVE PTN.ptn_arrow,
 	     stub = NONE}
 fun t1 --> t2 = CONty(arrowTycon,[t1,t2])
+*)
 fun isArrowType(CONty(GENtyc { stamp, ... }, _)) = Stamps.eq(stamp, arrowStamp)
   | isArrowType(VARty(ref(INSTANTIATED ty))) = isArrowType ty
   | isArrowType _ = false
@@ -49,70 +54,77 @@ fun range(CONty(_,[_,ty])) = ty
 
 (*** primitive types ***)
 
-fun mkpt (sym,arity,eqprop,pt) =
+fun mkpt (sym,arity,eqprop,ptn) =
     GENtyc{stamp = Stamps.special sym, path = IP.IPATH[tycSymbol sym],
 	   arity = arity, eq = ref eqprop,
-	   kind = PRIMITIVE (PT.pt_toint pt),
+	   kind = PRIMITIVE ptn,
 	   stub = NONE}
 
-val intTycon = mkpt ("int", 0, YES, PT.ptc_int31)
-val intTy = CONty(intTycon, nil)
+val intTycon = (* mkpt ("int", 0, YES, PTN.ptn_int31) *) CBT.intTycon
+val intTy = (* CONty(intTycon, nil) *) CBT.intTy
 
-val int32Tycon = mkpt ("int32", 0, YES, PT.ptc_int32)
+val int32Tycon = mkpt ("int32", 0, YES, PTN.ptn_int32)
 val int32Ty = CONty(int32Tycon, nil)
 
-val realTycon = mkpt("real", 0, NO, PT.ptc_real)
-val realTy = CONty(realTycon, nil)
+val realTycon = (* mkpt("real", 0, NO, PTN.ptn_real) *) CBT.realTycon
+val realTy = (* CONty(realTycon, nil) *) CBT.realTy
 
-val wordTycon = mkpt("word", 0, YES, PT.ptc_int31)
-val wordTy = CONty(wordTycon, nil)
+val wordTycon = (* mkpt("word", 0, YES, PTN.ptn_int31) *) CBT.wordTycon
+val wordTy = (* CONty(wordTycon, nil) *) CBT.wordTy
 
-val word8Tycon = mkpt("word8", 0, YES, PT.ptc_int31)
+val word8Tycon = mkpt("word8", 0, YES, PTN.ptn_int31)
 val word8Ty = CONty(word8Tycon, nil)
 
-val word32Tycon = mkpt("word32", 0, YES, PT.ptc_int32)
+val word32Tycon = mkpt("word32", 0, YES, PTN.ptn_int32)
 val word32Ty = CONty(word32Tycon, nil)
 
-val stringTycon = mkpt("string", 0, YES, PT.ptc_string)
-val stringTy = CONty(stringTycon, nil)
+val stringTycon = (* mkpt("string", 0, YES, PTN.ptn_string) *) CBT.stringTycon
+val stringTy = (* CONty(stringTycon, nil) *) CBT.stringTy
 
-val charTycon = mkpt("char", 0, YES, PT.ptc_int31)
-val charTy = CONty(charTycon, nil)
+val charTycon = (* mkpt("char", 0, YES, PTN.ptn_int31) *) CBT.charTycon
+val charTy = (* CONty(charTycon, nil) *) CBT.charTy
 
-val exnTycon = mkpt("exn", 0, NO, PT.ptc_exn)
-val exnTy = CONty(exnTycon, nil)
+val exnTycon = (* mkpt("exn", 0, NO, PTN.ptn_exn) *) CBT.exnTycon
+val exnTy = (* CONty(exnTycon, nil) *) CBT.exnTy
 
-val contTycon = mkpt("cont", 1, NO, PT.ptc_cont)
-val ccontTycon = mkpt("control_cont", 1, NO, PT.ptc_ccont)
+val contTycon = mkpt("cont", 1, NO, PTN.ptn_cont)
+val ccontTycon = mkpt("control_cont", 1, NO, PTN.ptn_ccont)
 
-val arrayTycon = mkpt("array", 1, OBJ, PT.ptc_array)
+val arrayTycon = (* mkpt("array", 1, OBJ, PTN.ptn_array) *) CBT.arrayTycon
 
-val vectorTycon = mkpt("vector", 1, YES, PT.ptc_vector)
+val vectorTycon = (* mkpt("vector", 1, YES, PTN.ptn_vector) *) CBT.vectorTycon
 
-val objectTycon = mkpt("object", 0, NO, PT.ptc_obj)
+val objectTycon = mkpt("object", 0, NO, PTN.ptn_obj)
 
-val c_functionTycon = mkpt("c_function", 0, NO, PT.ptc_cfun)
+val c_functionTycon = mkpt("c_function", 0, NO, PTN.ptn_cfun)
 
-val word8arrayTycon = mkpt("word8array", 0, OBJ, PT.ptc_barray)
+val word8arrayTycon = mkpt("word8array", 0, OBJ, PTN.ptn_barray)
 
-val real64arrayTycon = mkpt("real64array", 0, OBJ, PT.ptc_rarray)
+val real64arrayTycon = mkpt("real64array", 0, OBJ, PTN.ptn_rarray)
 
-val spin_lockTycon = mkpt("spin_lock", 0, NO, PT.ptc_slock)
+val spin_lockTycon = mkpt("spin_lock", 0, NO, PTN.ptn_slock)
 
 
 (*** building record and product types ***)
 
+val recordTy = CBT.recordTy
+(*
 fun recordTy(fields: (label * ty) list) : ty = 
     CONty(Tuples.mkRECORDtyc(map (fn (a,b) => a) fields),
 	  (map (fn(a,b)=>b) fields))
+*)
 
+val tupleTy = CBT.tupleTy
+(*
 fun tupleTy(tys: ty list) : ty =
     CONty(Tuples.mkTUPLEtyc(length tys), tys)
+*)
 
 fun getFields (CONty(RECORDtyc _, fl)) = SOME fl
   | getFields (VARty(ref(INSTANTIATED ty))) = getFields ty
   | getFields _ = NONE
 
+(*
 (* 
  * I believe that unitTycon only needs to be a DEFtyc because of
  * the "structure PrimTypes = struct open PrimTypes end" declaration
@@ -124,7 +136,9 @@ val unitTycon = DEFtyc{stamp=Stamps.special "unit",
 		       strict=[],path=IP.IPATH[unitSym]}
 (* val unitTycon = Tuples.mkTUPLEtyc 0 *)
 val unitTy = CONty(unitTycon, nil)
-
+*)
+val unitTycon = CBT.unitTycon
+val unitTy = CBT.unitTy
 
 (*** predefined datatypes ***)
 val alpha = IBOUND 0
@@ -133,9 +147,9 @@ val alpha = IBOUND 0
 
 (* bool *)
 
-val boolTy0 = CONty(RECtyc 0,nil)
-val boolStamp = Stamps.special "bool"
-val boolsign = CSIG(0,2)
+val boolStamp = (* Stamps.special "bool" *) CBT.boolStamp
+val boolsign = (* CSIG(0,2) *) CBT.boolsign
+(*
 val booleq = ref YES
 val kind = 
   DATATYPE{index=0, stamps= #[boolStamp], freetycs=[], root=NONE,
@@ -170,8 +184,13 @@ val trueDcon =
        rep = CONSTANT 1,
        typ = boolTy,
        sign = boolsign}
+*)
+val boolTycon = CBT.boolTycon
+val boolTy = CBT.boolTy
+val falseDcon = CBT.falseDcon
+val trueDcon = CBT.trueDcon
 
-
+(*
 (* references *)
 
 val refDom = alpha
@@ -201,6 +220,10 @@ val refDcon =
        typ = POLYty{sign = [false], tyfun = refTyfun},
        sign = refsign}
 val refPatType = POLYty {sign = [false], tyfun = refTyfun}
+*)
+val refTycon = CBT.refTycon
+val refPatType = CBT.refPatType
+val refDcon = CBT.refDcon
 
 
 (* lists *)
@@ -375,4 +398,3 @@ val suspPatType = POLYty {sign = [false], tyfun = suspTyfun}
 
 end (* local *)
 end (* structure BasicTypes *)
-

@@ -286,6 +286,9 @@ structure Core =
 
 	val assign = ( InLine.:= )
         val deref = ( InLine.! )
+	val unboxedupdate = InLine.unboxedupdate
+	val subscript = InLine.arrSub
+	val iadd = InLine.i31add
 
     end (* local *)
 

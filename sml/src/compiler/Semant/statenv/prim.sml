@@ -344,11 +344,14 @@ val allPrimops =
         *)
        (* So we take them out... (Matthias)
        ("boxedupdate",   P.BOXEDUPDATE,   ?) :-:
-       ("unboxedupdate", P.UNBOXEDUPDATE, ?) :-:
        ("getrunvec",	 P.GETRUNVEC,     ?) :-:
        ("uselvar",	 P.USELVAR,       ?) :-:
        ("deflvar",	 P.DEFLVAR,       ?) :-:
        *)
+
+       (* I put this one back in so tprof can find it in _Core
+	* instead of having to construct it ... (Matthias) *)
+       ("unboxedupdate", P.UNBOXEDUPDATE, p1(ar(tp(ay(v1),i,v1),u))) :-:
        			 
        ("inlnot",	 P.INLNOT,      	        b_b) :-:
        ("floor",         P.ROUND{floor=true,

@@ -13,7 +13,7 @@ local
 in
 
 val say = Control_Print.say
-val debugging = ElabControl.eedebugging (* ref false *)
+val debugging = ElabDataControl.eedebugging (* ref false *)
 fun debugmsg (msg: string) =
       if !debugging then (say msg; say "\n") else ()
 fun bug msg = ErrorMsg.impossible("EntityEnv: "^msg)

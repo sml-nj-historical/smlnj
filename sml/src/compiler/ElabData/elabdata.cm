@@ -5,9 +5,10 @@
  * A library defining data structures used by the SML/NJ elaborator.
  *)
 Group (../../system/smlnj/viscomp/elabdata.cm)
-	signature ELABDATA_CONTROL
 	signature ACCESS
 	signature TYPES
+	signature TYPESUTIL
+	signature TUPLES
 	signature ABSYN
 	signature SYMPATH
 	signature INVPATH
@@ -17,13 +18,19 @@ Group (../../system/smlnj/viscomp/elabdata.cm)
 	signature ENT_PATH
 	signature VARCON
 	signature MODULES
+	signature MODULEUTIL
+	signature MODULE_ID
 	signature BINDINGS
 	signature STATICENV
+	signature CORE_PRIM_TYC_NUM
 
 	structure ElabDataControl
 	structure Access
 	structure Types
+	structure TypesUtil
+	structure Tuples
 	structure Absyn
+	structure AbsynUtil
 	structure SymPath
 	structure InvPath
 	structure ConvertPaths
@@ -33,12 +40,21 @@ Group (../../system/smlnj/viscomp/elabdata.cm)
 	structure EntPath
 	structure VarCon
 	structure Modules
+	structure ModuleUtil
+	structure ModuleId
+	structure EntityEnv
+	structure EntPathContext
 	structure Bindings
 	structure StaticEnv
+	structure Lookup
 	structure CompInfo
 	structure II
+	structure CoreSym
+	structure CorePrimTycNum
+	structure CoreBasicTypes
+	structure GenModIdMap
+	structure CoreAccess
 is
-	main/edcontrol.sig
 	main/edcontrol.sml
 	main/compinfo.sml
 
@@ -50,27 +66,44 @@ is
 	basics/stamps.sml
 	basics/stampmap.sml
 	basics/ii.sml
+	basics/coresym.sml
+	basics/access.sig
+	basics/access.sml
+	basics/sympaths.sig
+	basics/sympaths.sml
+	basics/core-ptnum.sml
 
 	syntax/absyn.sig
 	syntax/absyn.sml
 	syntax/varcon.sig
 	syntax/varcon.sml
-	basics/access.sig
-	basics/access.sml
-	basics/sympaths.sig
-	basics/sympaths.sml
+	syntax/absynutil.sml
 
 	types/types.sig
 	types/types.sml
+	types/tuples.sml
+	types/core-basictypes.sml
+	types/typesutil.sig
+	types/typesutil.sml
 
 	modules/modules.sig
 	modules/modules.sml
 	modules/entpath.sml
+	modules/epcontext.sml
+	modules/moduleutil.sig
+	modules/moduleutil.sml
+	modules/moduleid.sml
+	modules/entityenv.sig
+	modules/entityenv.sml
 
 	statenv/bindings.sig
 	statenv/bindings.sml
 	statenv/statenv.sig
 	statenv/statenv.sml
+	statenv/lookup.sig
+	statenv/lookup.sml
+	statenv/genmap.sml
+	statenv/coreacc.sml
 
 	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/parser.cm
