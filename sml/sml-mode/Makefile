@@ -1,5 +1,7 @@
 # Makefile for emacs-lisp package
 
+# Copyright (C) 1998-1999  Stefan Monnier <monnier@cs.yale.edu>
+
 # This file is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
 # Free Software Foundation; either version 2, or (at your option) any
@@ -10,11 +12,15 @@
 # FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 # for more details.
 
-EMACS   = emacs
+# You should have received a copy of the GNU General Public License
+# along with GNU Emacs; see the file COPYING.  If not, write to
+# the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+
 prefix  = /usr/local
+datadir = $(prefix)/share
 
 # the directory where you install third-party emacs packges
-lispdir = $(prefix)/share/emacs/site-lisp
+lispdir = $(datadir)/emacs/site-lisp
 
 # the directory where you installed the elib .elc files.
 # This is only needed if your site-start.el (or default.el) does not
@@ -25,10 +31,18 @@ elibdir = $(lispdir)/elib
 infodir = $(prefix)/info
 docdir = $(prefix)/doc
 
+EMACS	= emacs
+MAKEINFO= makeinfo
+TEXI2DVI= texi2dvi
+SHELL	= /bin/sh
+DVIPS	= dvips
+CP	= cp
+MKDIR	= mkdir -p
+ETAGS	= etags
+
 ######################################################################
 ###        No changes below this line should be necessary          ###
 ######################################################################
-
 
 PACKAGE = sml-mode
 
@@ -53,13 +67,13 @@ TEXEXTS =  *.cps *.fns *.kys *.vr *.tp *.pg *.log *.aux *.toc *.cp *.ky *.fn
 	$(ELC) $<
 
 .texi.info:
-	makeinfo $<
+	$(MAKEINFO) $<
 
 .texi.dvi:
-	texi2dvi $<
+	$(TEXI2DVI) $<
 
 .dvi.ps:
-	dvips -f $< >$@
+	$(DVIPS) -f $< >$@
 
 ######################################################################
 
@@ -69,34 +83,40 @@ elcfiles: $(ELCFILES)
 info: $(PACKAGE).info
 
 install_elc: $(ELCFILES)
-	mkdir -p $(elcdir)
-	cp $(ELCFILES) $(elcdir)/
+	$(MKDIR) $(elcdir)
+	$(CP) $(ELCFILES) $(elcdir)/
 
 install_el:
-	mkdir -p $(eldir)
-	cp $(ELFILES) $(eldir)/
+	$(MKDIR) $(eldir)
+	$(CP) $(ELFILES) $(eldir)/
 
 install_info: $(PACKAGE).info
-	mkdir -p $(infodir)
-	cp *.info* $(infodir)/
+	$(MKDIR) $(infodir)
+	$(CP) *.info* $(infodir)/
 	-[ ! -w $(infodir)/dir ] || install-info $(PACKAGE).info $(infodir)/dir
 
 install_startup:
-	mkdir -p $(lispdir)
+	$(MKDIR) $(lispdir)
 	if grep $(PACKAGE) $(lispdir)/site-start.el >/dev/null 2>&1 || \
-	   grep $(PACKAGE) $(lispdir)/default.el >/dev/null 2>&1; then :; else \
-	    sed 's/@elcdir@/$(elcdir)/' \
+	   grep $(PACKAGE) $(lispdir)/default.el >/dev/null 2>&1; then \
+	    echo "!!! Check $(PACKAGE)-startup.el and merge it" \
+	    echo "!!! into your $(lispdir)/site-start.el file"; \
+	else \
+	    sed 's|@elcdir@|$(elcdir)|' \
 		$(PACKAGE)-startup.el >>$(lispdir)/site-start.el ;\
 	fi
 
 install_dvi: $(PACKAGE).dvi
-	mkdir -p $(docdir)
-	cp *.dvi $(docdir)/
+	$(MKDIR) $(docdir)
+	$(CP) *.dvi $(docdir)/
 
 install: install_elc install_info # install_el
 
 clean:
-	$(RM) .\#* $(TEXEXTS)
+	$(RM) *~ core .\#* $(TEXEXTS)
+
+TAGS tags:
+	$(ETAGS) $(ELFILES)
 
 distclean: clean
 	$(RM) *.elc *.dvi *.info* *.ps

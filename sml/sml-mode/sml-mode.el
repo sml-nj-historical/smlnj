@@ -113,11 +113,15 @@
 
 ;;; VARIABLES CONTROLLING INDENTATION
 
-(defvar sml-indent-level 4
-  "*Indentation of blocks in ML (see also `sml-structure-indent').")
+(defcustom sml-indent-level 4
+  "*Indentation of blocks in ML (see also `sml-structure-indent')."
+  :group 'sml
+  :type '(integer))
 
-(defvar sml-indent-args sml-indent-level
-  "*Indentation of args placed on a separate line.")
+(defcustom sml-indent-args sml-indent-level
+  "*Indentation of args placed on a separate line."
+  :group 'sml
+  :type '(integer))
 
 ;; (defvar sml-indent-align-args t
 ;;   "*Whether the arguments should be aligned.")
@@ -131,9 +135,11 @@
 ;; The first seems to be the standard in SML/NJ, but the second
 ;; seems nicer...")
 
-(defvar sml-electric-semi-mode nil
-  "*If t, `\;' will self insert, reindent the line, and do a newline.
-If nil, just insert a `\;'. (To insert while t, do: C-q \;).")
+(defcustom sml-electric-semi-mode nil
+  "*If non-nil, `\;' will self insert, reindent the line, and do a newline.
+If nil, just insert a `\;'. (To insert while t, do: C-q \;)."
+  :group 'sml
+  :type '(boolean))
 
 ;;; OTHER GENERIC MODE VARIABLES
 
@@ -201,14 +207,14 @@ Full documentation will be available after autoloading the function."))
   `(;;(sml-font-comments-and-strings)
     ("\\<\\(fun\\|and\\)\\s-+\\('\\sw+\\s-+\\)*\\(\\sw+\\)"
      (1 font-lock-keyword-face)
-     (3 font-lock-function-def-face))
+     (3 font-lock-function-name-face))
     ("\\<\\(\\(data\\|abs\\|with\\|eq\\)?type\\)\\s-+\\('\\sw+\\s-+\\)*\\(\\sw+\\)"
      (1 font-lock-keyword-face)
      (4 font-lock-type-def-face))
     ("\\<\\(val\\)\\s-+\\(\\sw+\\>\\s-*\\)?\\(\\sw+\\)\\s-*="
      (1 font-lock-keyword-face)
      ;;(6 font-lock-variable-def-face nil t)
-     (3 font-lock-variable-def-face))
+     (3 font-lock-variable-name-face))
     ("\\<\\(structure\\|functor\\|abstraction\\)\\s-+\\(\\sw+\\)"
      (1 font-lock-keyword-face)
      (2 font-lock-module-def-face))
@@ -219,25 +225,32 @@ Full documentation will be available after autoloading the function."))
     (,sml-keywords-regexp . font-lock-keyword-face))
   "Regexps matching standard SML keywords.")
 
-;; default faces values
-(flet ((def-face (face def)
-	 "Define a face for font-lock."
-	 (unless (boundp face)
-	   (set face (cond
-		      ((facep face) face)
-		      ((facep def) (copy-face def face))
-		      (t def))))))
-  (def-face 'font-lock-function-def-face 'font-lock-function-name-face)
-  (def-face 'font-lock-type-def-face 'font-lock-type-face)
-  (def-face 'font-lock-module-def-face 'font-lock-function-name-face)
-  (def-face 'font-lock-interface-def-face 'font-lock-type-face)
-  (def-face 'font-lock-variable-def-face 'font-lock-variable-name-face))
+(defface font-lock-type-def-face
+  '((t (:bold t)))
+  "Font Lock mode face used to highlight type definitions."
+  :group 'font-lock-highlighting-faces)
+(defvar font-lock-type-def-face 'font-lock-type-def-face
+  "Face name to use for type definitions.")
+
+(defface font-lock-module-def-face
+  '((t (:bold t)))
+  "Font Lock mode face used to highlight module definitions."
+  :group 'font-lock-highlighting-faces)
+(defvar font-lock-module-def-face 'font-lock-module-def-face
+  "Face name to use for module definitions.")
+
+(defface font-lock-interface-def-face
+  '((t (:bold t)))
+  "Font Lock mode face used to highlight interface definitions."
+  :group 'font-lock-highlighting-faces)
+(defvar font-lock-interface-def-face 'font-lock-interface-def-face
+  "Face name to use for interface definitions.")
 
 (defvar sml-syntax-prop-table
   (let ((st (make-syntax-table)))
-    (modify-syntax-entry ?l "(d" st)
-    (modify-syntax-entry ?s "(d" st)
-    (modify-syntax-entry ?d ")l" st)
+    ;;(modify-syntax-entry ?l "(d" st)
+    ;;(modify-syntax-entry ?s "(d" st)
+    ;;(modify-syntax-entry ?d ")l" st)
     (modify-syntax-entry ?\\ "." st)
     (modify-syntax-entry ?* "." st)
     st))

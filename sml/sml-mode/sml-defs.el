@@ -25,6 +25,10 @@
 ;;; Code
 ;;; 
 
+(defgroup sml ()
+  "Editing SML code."
+  :group 'languages)
+
 (defvar sml-outline-regexp "[ \t]*\\((\\*+\\|\\(let[ \t]+\\)?fun.\\)"
   "Regexp matching a major heading.")
 
@@ -48,7 +52,8 @@
     ;; Process commands added to sml-mode-map -- these should autoload
     ("\C-c\C-l"	. sml-load-file)
     ("\C-c`"	. sml-next-error))
-  "Generic bindings used in sml-mode and sml-inferior-mode.")
+  "Generic bindings used in sml-mode and sml-inferior-mode."
+  :group 'sml)
 
 (defmap sml-mode-map
   '(("\C-c\C-c" . sml-compile)
@@ -56,7 +61,8 @@
     ("\C-c\C-r" . sml-send-region)
     ("\C-c\C-b" . sml-send-buffer))
   "The keymap used in sml-mode."
-  :inherit sml-bindings)
+  :inherit sml-bindings
+  :group 'sml)
 
 (defsyntax sml-mode-syntax-table 
   '((?\*   . ". 23n")
@@ -108,7 +114,8 @@
     ["SML mode *info*"             sml-mode-info t]
     ["SML mode version"            sml-mode-version t]
     ["-----" nil nil]
-    ["Remove overlay"    (sml-error-overlay 'undo) :active (sml-overlay-active-p)]))
+    ["Remove overlay"    (sml-error-overlay 'undo) ;:active (sml-overlay-active-p)
+     ]))
 
 ;;; Make's sure they appear in the menu bar when sml-mode-map is active.
 ;; On the hook for XEmacs only -- see easy-menu-add in auc-menu.el.

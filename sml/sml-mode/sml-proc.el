@@ -38,14 +38,14 @@
 ;; Inferior-sml-mode is for interacting with an ML process run under
 ;; emacs. This uses the comint package so you get history, expansion,
 ;; backup and all the other benefits of comint. Interaction is
-;; achieved by M-x sml which starts a sub-process under emacs. You may
+;; achieved by M-x run-sml which starts a sub-process under emacs. You may
 ;; need to set this up for autoloading in your .emacs:
 
-;; (autoload 'sml "sml-proc" "Run an inferior ML process." t)
+;; (autoload 'run-sml "sml-proc" "Run an inferior ML process." t)
 
 ;; Exactly what process is governed by the variable sml-program-name
 ;; -- just "sml" by default. If you give a prefix argument (C-u M-x
-;; sml) you will be prompted for a different program to execute from
+;; run-sml) you will be prompted for a different program to execute from
 ;; the default -- if you just hit RETURN you get the default anyway --
 ;; along with the option to specify any command line arguments. Once
 ;; you select the ML program name in this manner, it remains the
@@ -66,38 +66,19 @@
 ;; region of text to the ML process, etc. Given a prefix argument to
 ;; these commands will switch you from the SML buffer to the ML
 ;; process buffer as well as sending the text. If you get errors
-;; reported by the compiler, C-c ` (sml-next-error) will step through
+;; reported by the compiler, C-x ` (next-error) will step through
 ;; the errors with you.
 
 ;; NOTE. There is only limited support for this as it obviously
 ;; depends on the compiler's error messages being recognised by the
 ;; mode. Error reporting is currently only geared up for SML/NJ,
-;; Moscow ML, and Poly/ML (see file sml-{mosml,poly-ml}.el). Look at
-;; the documentation for sml-error-parser and sml-next-error -- you
-;; may only need to modify the former to recover this feature for some
-;; other ML systems, along with sml-error-regexp.
+;; Moscow ML, and Poly/ML.  For other compilers, add the relevant
+;; regexp to sml-error-regexp-alist and send it to me.
 
-;; While small pieces of text can be fed quite happily into the ML
-;; process directly, lager pieces should (probably) be sent via a
-;; temporary file making use of the compiler's "use" command. 
-;; To be safe, we always use a temp file (which also improves error
-;; reporting).
-
-;;; FOR YOUR .EMACS
-
-;; Here  are some ideas for inferior-sml-*-hooks:
-
-;; (setq inferior-sml-load-hook
-;;       '(lambda() "Set global defaults for inferior-sml-mode"
-;;          (define-key inferior-sml-mode-map "\C-cd"    'sml-cd)
-;;          (define-key          sml-mode-map "\C-cd"    'sml-cd)
-;;          (define-key          sml-mode-map "\C-c\C-f" 'sml-send-function)
-
-;; (setq inferior-sml-mode-hook
-;;       '(lambda() "Inferior SML mode defaults"
-;;          (setq comint-scroll-show-maximum-output t
-;;                comint-scroll-to-bottom-on-output t
-;;                comint-input-autoexpand nil)))
+;; To send pieces of code to the underlying compiler, we never send the text
+;; directly but use a temporary file instead.  This breaks if the compiler
+;; does not understand `use', but has the benefit of allowing better error
+;; reporting.
 
 ;; ===================================================================
 
@@ -108,11 +89,19 @@
 (require 'comint)
 (require 'compile)
 
-(defvar sml-program-name "sml"
-  "*Program to run as ML.")
+(defgroup sml-proc ()
+  "Interacting with an SML process."
+  :group 'sml)
 
-(defvar sml-default-arg ""
-  "*Default command line option to pass, if any.")
+(defcustom sml-program-name "sml"
+  "*Program to run as ML."
+  :group 'sml-proc
+  :type '(string))
+
+(defcustom sml-default-arg ""
+  "*Default command line option to pass, if any."
+  :group 'sml-proc
+  :type '(string))
 
 (defvar sml-compile-command "CM.make()"
   "The command used by default by `sml-make'.")
@@ -195,39 +184,10 @@ Set this to nil if your compiler can't change directories.
 The format specifier \"%s\" will be converted into the directory name
 specified when running the command \\[sml-cd].")
 
-(defvar sml-prompt-regexp "^[-=>#] *"
-  "*Regexp used to recognise prompts in the inferior ML process.")
-
-(defvar sml-error-parser 'sml-smlnj-error-parser
-  "*This function parses an error message into a 3-5 element list:
-
-    \(file start-line start-col end-line-col err-msg\).
-
-The first three components are required by `sml-next-error', but the other
-two are optional. If the file associated with the input is the standard
-input stream, this function should probably return
-
-    \(\"std_in\" start-line start-col\).
-
-This function will be called in a context in which the match data \(see
-`match-data'\) are current for `sml-error-regexp'. The mode sets the
-default value to the function `sml-smlnj-error-parser'.
-
-In a step towards greater sml-mode modularity END-LINE-COL can be either
-
-  - the symbol nil \(in which case it is ignored\)
-
-or
-
-  - an Emacs Lisp expression that when `eval'd at \(start-line,start-col\)
-    will move point to the end of the errorful text in the file.
-
-Note that the compiler should return the full path name of the errorful
-file, and that this might require you to fiddle with the compiler's
-prettyprinting switches.")
-
-;; std_in:2.1-4.3 Error: operator and operand don't agree (tycon mismatch)
-;; std_in:2.1 Error: operator and operand don't agree (tycon mismatch)
+(defcustom sml-prompt-regexp "^[-=>#] *"
+  "*Regexp used to recognise prompts in the inferior ML process."
+  :group 'sml-proc
+  :type '(regexp))
 
 (defconst sml-error-regexp-alist
   '(;; Poly/ML messages
@@ -239,9 +199,6 @@ prettyprinting switches.")
     ("^[-= ]*\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)? \\(Error\\|Warning\\): .*" 1 sml-make-error 2 3 5 6)
     ;; SML/NJ's exceptions:  see above.
     ("^ +\\(raised at: \\)?\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)" 2 sml-make-error 3 4 6 7)))
-
-(defvar sml-error-regexp nil
-  "*Regexp for matching \(the start of\) an error message.")
 
 ;; font-lock support
 (defconst inferior-sml-font-lock-keywords
@@ -258,17 +215,21 @@ prettyprinting switches.")
 	      sml-error-regexp-alist))
   "Font-locking specification for inferior SML mode.")
 
-;; default faces values
-(defvar font-lock-prompt-face
-  (if (facep 'font-lock-prompt-face)
-      'font-lock-prompt-face
-    'font-lock-keyword-face))
-(defvar font-lock-command-face
-  (if (facep 'font-lock-command-face)
-      'font-lock-command-face
-    'font-lock-function-name-face))
+(defface font-lock-prompt-face
+  '((t (:bold t)))
+  "Font Lock mode face used to highlight prompts."
+  :group 'font-lock-highlighting-faces)
+(defvar font-lock-prompt-face 'font-lock-prompt-face
+  "Face name to use for prompts.")
 
-(defvar inferior-sml-font-lock-defaults
+(defface font-lock-command-face
+  '((t (:bold t)))
+  "Font Lock mode face used to highlight interactive commands."
+  :group 'font-lock-highlighting-faces)
+(defvar font-lock-command-face 'font-lock-command-face
+  "Face name to use for interactive commands.")
+
+(defconst inferior-sml-font-lock-defaults
   '(inferior-sml-font-lock-keywords nil nil nil nil))
 
 ;;; CODE
@@ -277,7 +238,8 @@ prettyprinting switches.")
   '(("\C-c\C-s"	. run-sml)
     ("\t"	. comint-dynamic-complete))
   "Keymap for inferior-sml mode"
-  :inherit (list sml-bindings comint-mode-map))
+  :inherit (list sml-bindings comint-mode-map)
+  :group 'sml-proc)
 
 
 ;; buffer-local
@@ -339,14 +301,6 @@ Variables controlling behaviour of this mode are
 
 `sml-prompt-regexp' (default \"^[\\-=] *\")
     Regexp used to recognise prompts in the inferior ML process.
-
-`sml-error-regexp' 
-   (default -- complicated)
-    Regexp for matching error messages from the compiler.
-
-`sml-error-parser' (default 'sml-smlnj-error-parser)
-    This function parses a error messages into a 3, 4 or 5 element list:
-    (file start-line start-col (end-line end-col) err-msg).
 
 You can send text to the inferior ML process from other buffers containing
 ML source.  
@@ -531,32 +485,7 @@ With a prefix argument switch to the sml buffer as well
   (interactive)
   (sml-send-function t))
 
-
-;;; Mouse control and handling dedicated frames for Inferior ML
-
-;; simplified from frame.el in Emacs: special-display-popup-frame...
-
-;; (defun sml-proc-frame ()
-;;   "Returns the current ML process buffer's frame, or creates one first."
-;;   (let ((buffer (sml-proc-buffer)))
-;;     (window-frame (display-buffer buffer))))
-
 ;;; H A C K   A T T A C K !   X E M A C S   V E R S U S   E M A C S
-
-;; Only these two functions have to dance around the inane differences 
-;; between Emacs and XEmacs (fortunately)
-
-;; (defun sml-warp-mouse (frame)
-;;   "Warp the pointer across the screen to upper right corner of FRAME."
-;;   (raise-frame frame)
-;;   (cond ((string-match "\\(Lucid\\|XEmacs\\)" emacs-version)
-;;          ;; LUCID (19.10) or later... set-m-pos needs a WINDOW
-;;          (set-mouse-position (frame-root-window frame) (1- (frame-width)) 0))
-;;         (t
-;;          ;; GNU, post circa 19.19... set-m-pos needs a FRAME
-;;          (set-mouse-position frame (1- (frame-width)) 0)
-;;          ;; probably not needed post 19.29
-;;          (if (fboundp 'unfocus-frame) (unfocus-frame)))))
 
 (defun sml-drag-region (event)
   "Highlight the text the mouse is dragged over, and send it to ML.
@@ -740,114 +669,11 @@ the overlay should simply be removed: \\[universal-argument] \
       (let ((ol sml-error-overlay))
 	(setq sml-error-overlay (make-overlay 0 0))
 	(overlay-put sml-error-overlay 'face (if (symbolp ol) ol 'region))))
-    (if undo
-	(move-overlay sml-error-overlay 1 1 (current-buffer))
+    (if undo (move-overlay sml-error-overlay 1 1 (current-buffer))
       ;; if active regions, signals mark not active if no region set
       (let ((beg (or beg (region-beginning)))
 	    (end (or end (region-end))))
 	(move-overlay sml-error-overlay beg end (current-buffer))))))
-
-;; ;;;###autoload 
-;; (defun sml-next-error (skip)
-;;   "Find the next error by parsing the inferior ML buffer. 
-;; A prefix argument means `sml-skip-errors' (qv) instead.
-
-;; Move the error message on the top line of the window\; put the cursor
-;; \(point\) at the beginning of the error source.
-
-;; If the error message specifies a range, and `sml-error-parser' returns
-;; the range, the mark is placed at the end of the range. If the variable
-;; `sml-error-overlay' is non-nil, the region will also be highlighted.
-
-;; If `sml-error-parser' returns a fifth component this is assumed to be
-;; a string to indicate the nature of the error: this will be echoed in
-;; the minibuffer.
-
-;; Error interaction only works if there is a real file associated with
-;; the input -- though of course it also depends on the compiler's error
-;; messages \(also see documantation for `sml-error-parser'\).
-
-;; However: if the last text sent went via `sml-load-file' (or the temp
-;; file mechanism), the next error reported will be relative to the start
-;; of the region sent, any error reports in the previous output being
-;; forgotten. If the text went directly to the compiler the succeeding
-;; error reported will be the next error relative to the location \(in
-;; the output\) of the last error. This odd behaviour may have a use...?"
-;;   (interactive "P")
-;;   (if skip (sml-skip-errors) (sml-do-next-error)))
-
-;; (defun sml-do-next-error ()
-;;   "The business end of `sml-next-error' (qv)"
-;;   (let ((case-fold-search nil)
-;;         ;; set this variable iff we called sml-next-error in a SML buffer
-;;         (sml-window (if (memq major-mode sml-source-modes) (selected-window)))
-;;         (proc-buffer (sml-proc-buffer)))
-;;     ;; undo (don't destroy) the previous overlay to be tidy
-;;     (sml-error-overlay 'undo 1 1
-;;                        (and sml-error-file (get-file-buffer sml-error-file)))
-;;     ;; go to interaction buffer but don't raise it's frame 
-;;     (pop-to-buffer (sml-proc-buffer))
-;;     ;; go to the last remembered error, and search for the next one.
-;;     (goto-char sml-error-cursor)
-;;     (if (not (re-search-forward sml-error-regexp (point-max) t))
-;;         ;; no more errors -- move point to the sml prompt at the end
-;;         (progn
-;;           (goto-char (point-max))
-;;           (if sml-window (select-window sml-window)) ;return there, perhaps
-;;           (message "No error message(s) found."))
-;;       ;; error found: point is at end of last match; set the cursor posn.
-;;       (set-marker sml-error-cursor (point))
-;;       ;; move the SML window's text up to this line
-;;       (set-window-start (get-buffer-window proc-buffer) (match-beginning 0))
-;;       (let* ((pos)
-;;              (parse (funcall sml-error-parser (match-beginning 0)))
-;;              (file (nth 0 parse))
-;;              (line0 (nth 1 parse))
-;;              (col0 (nth 2 parse))
-;;              (line/col1 (nth 3 parse))
-;;              (msg (nth 4 parse)))
-;;         ;; Give up immediately if the error report is scribble
-;;         (if (or (null file) (null line0))
-;;             (error "Failed to parse/locate this error properly!"))
-;;         ;; decide what to do depending on the file returned
-;;         (when (string= file "std_in")
-;; 	  ;; presently a fundamental limitation i'm afraid.
-;; 	  (error "Sorry, can't locate errors on std_in."))
-;; 	;; jump to the beginning
-;; 	(if (string= file (car sml-temp-file))
-;; 	    (let* ((maker (cdr sml-temp-file))
-;; 		   (buf (marker-buffer marker)))
-;; 	      (display-buffer buf)
-;; 	      (set-buffer buf)
-;; 	      (goto-char marker))
-;; 	  (unless (file-readable-p file) (error "Can't read %s" file))
-;;           ;; instead of (find-file-other-window file) to lookup the file
-;;           (find-file-other-window file)
-;;           ;; no good if the buffer's narrowed, still...
-;;           (goto-char (point-min)))
-;; 	;; jump to the error
-;; 	(forward-line (1- line0))
-;; 	(forward-char (1- col0))
-;; 	;; point is at start of error text; seek the end.
-;; 	(let ((start (point))
-;; 	      (end (and line/col1
-;; 			(condition-case nil
-;; 			    (progn (eval line/col1) (point))
-;; 			  (error nil)))))
-;; 	  ;; return to start anyway
-;; 	  (goto-char start)
-;; 	  ;; if point went to end, put mark there, and maybe highlight
-;; 	  (if end (progn (push-mark end t)
-;; 			 (sml-error-overlay nil start end)))
-;; 	  (setq sml-error-file file)   ; remember this for next time
-;; 	  (if msg (message msg))))))) ; echo the error/warning message
-
-;; (defun sml-skip-errors ()
-;;   "Skip past the rest of the errors."
-;;   (interactive)
-;;   (if (memq major-mode sml-source-modes) (sml-error-overlay 'undo))
-;;   (with-current-buffer (sml-proc-buffer) (sml-update-cursor))
-;;   (if (eq major-mode 'sml-inferior-mode) (goto-char (point-max))))
 
 ;;; H A C K   A T T A C K !   X E M A C S   /   E M A C S   K E Y S
 

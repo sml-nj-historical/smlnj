@@ -1,3 +1,11 @@
+1999-08-09  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* Makefile: updated to the version of pcl-cvs.
+
+	* sml-proc.el: eliminated some old unused code.
+
+	* sml-defs.el,sml-mode.el,sml-proc.el: added simple customize support.
+
 1999-07-07  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* sml-proc.el (sml-update-cursor): make sure it also works if compile.el
