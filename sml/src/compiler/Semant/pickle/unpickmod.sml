@@ -9,9 +9,9 @@ sig
 	{hash: PersStamps.persstamp, pickle: Word8Vector.vector}
 	-> StaticEnv.staticEnv
 
-  val unpickleLambda:
+  val unpickleFLINT:
         {hash: PersStamps.persstamp, pickle: Word8Vector.vector}
-	-> Lambda.lexp option
+	-> CompBasic.flint option
 
 end (* signature UNPICKMOD *)
 
@@ -25,9 +25,10 @@ local structure A  = Access
       structure ED = EntPath.EvDict
       structure II = InlInfo
       structure IP = InvPath
-      structure L  = Lambda
+      structure F  = FLINT
       structure LV = LambdaVar
-      structure LT = LtyDef  (* structure LK = LtyKernel *)
+      structure LT = LtyDef  
+      structure LK = LtyKernel
       structure M  = Modules 
       structure MI = ModuleId
       structure P  = PrimOp
@@ -81,6 +82,7 @@ datatype universal
   | Uinl_infoList of II.inl_info list
   | Ulty of LT.lty
   | UltyList of LT.lty list
+  | UltyListOption of LT.lty list option
   | UldTuple of LT.lty * DI.depth
   | UldOption of (LT.lty * DI.depth) option
   | UldOptionList of (LT.lty * DI.depth) option list
@@ -126,21 +128,32 @@ datatype universal
   | Utycon of T.tycon
   | UtyconList of T.tycon list
   | Uvar of V.var
-  | Ulexp of L.lexp
-  | UlexpOption of L.lexp option
+  | Ulexp of F.lexp
+  | UlexpOption of F.lexp option
+  | Ufundec of F.fundec
+  | UfundecList of F.fundec list
+  | UfundecOption of F.fundec option
+  | Utfundec of F.tfundec
+  | Ufkind of F.fkind
+  | Urkind of F.rkind
   | UintOption of int option
-  | UlexpList of L.lexp list
-  | Usval of L.value
-  | UsvalList of L.value list
-  | Ucon of L.con * L.lexp
-  | UconList of (L.con * L.lexp) list
+  | UlexpList of F.lexp list
+  | Ufprim of F.primop
+  | Udict of F.dict
+  | Ugenop of F.dict * F.primop
+  | Uvalue of F.value
+  | UvalueList of F.value list
+  | Ucon of F.con * F.lexp
+  | Udcon of F.dcon * LT.tyc list
+  | UconList of (F.con * F.lexp) list
   | Ulvar of LV.lvar
   | UlvarList of LV.lvar list
-
   | UtycsLvarPair of LT.tyc list * LV.lvar
   | UtycsLvarPairList of (LT.tyc list * LV.lvar) list
-  | Udict of {default : LV.lvar, table : (LT.tyc list * LV.lvar) list}
-
+  | UlvarLtyPair of LV.lvar * LT.lty
+  | UlvarLtyPairList of (LV.lvar * LT.lty) list
+  | UtvarTkPair of LV.lvar * LT.tkind
+  | UtvarTkPairList of (LV.lvar * LT.tkind) list
 
 (**************************************************************************
  *                      UTILITY FUNCTIONS                                 *
@@ -257,6 +270,10 @@ fun primop #"A" = ?arithop(fn Uarithop p =>
          %Uprimop(P.INL_MONOARRAY k))
   | primop #"V" = ?numkind(fn Unumkind k =>
          %Uprimop(P.INL_MONOVECTOR k))
+
+  | primop #"X" = %Uprimop(P.MKETAG)
+  | primop #"Y" = %Uprimop(P.WRAP)
+  | primop #"Z" = %Uprimop(P.UNWRAP)
 
   | primop x = %Uprimop(
        case x
@@ -398,6 +415,11 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
 
     and ltyList x = list (?lty,fn Ulty t => t, fn UltyList t => t, UltyList) x
 
+    and ltyListOption #"S" = 
+          ?ltyList (fn UltyList ts => %UltyListOption (SOME ts))
+      | ltyListOption #"N" = %UltyListOption (NONE)
+      | ltyListOption _ = raise Fail "   | ltyListOption"
+
     and intltyList x = list (?intltyTuple, fn UintltyTuple t => t,
 			     fn UintltyList t => t, UintltyList) x
 
@@ -432,7 +454,13 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
                     ?bool(fn Ubool b2 =>
                       ?tycList (fn UtycList ts1 => 
                       ?tycList (fn UtycList ts2 =>  
-                         %Utyc(LT.tcc_arrow((b1,b2),ts1, ts2))))))
+                         %Utyc(LT.tcc_arrow(LT.ffc_var(b1,b2),ts1, ts2))))))
+      | tyc #"N" = ?tycList (fn UtycList ts1 => 
+                      ?tycList (fn UtycList ts2 =>  
+                         %Utyc(LT.tcc_arrow(LT.ffc_fixed, ts1, ts2))))
+      | tyc #"O" = R.int (fn n =>
+                     ?tyc (fn Utyc tc =>
+                        %Utyc(LK.tc_inj (LK.TC_TOKEN (LK.token_key n, tc)))))
       | tyc _ = raise Fail "    | tyc"
 
     and tycList x = list (?tyc, fn Utyc t => t, fn UtycList t => t, UtycList) x
@@ -441,8 +469,9 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
       | tkind #"B" = %Utkind (LT.tkc_box)
       | tkind #"C" = ?tkindList (fn UtkindList ks => 
                         %Utkind (LT.tkc_seq ks))
-      | tkind #"D" = ?tkind (fn Utkind k1 =>
-                       ?tkind (fn Utkind k2 => %Utkind (LT.tkc_fun(k1, k2))))
+      | tkind #"D" = ?tkindList (fn UtkindList ks =>
+                       ?tkind (fn Utkind k => 
+                        %Utkind (LT.tkc_fun(ks, k))))
       | tkind _ = raise Fail "    | tkind"
 
     and tkindList x = 
@@ -464,152 +493,197 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
           list (?tycsLvarPair, fn UtycsLvarPair t => t,
                 fn UtycsLvarPairList t => t, UtycsLvarPairList) x
 
-    fun dict #"%" = R.int (fn v => 
+    fun con #"." = ?dcon (fn Udcon (dc, ts) =>
+		    ?lvar (fn Ulvar v  => 
+		     ?lexp (fn Ulexp e =>
+                      %Ucon (F.DATAcon (dc, ts, v), e))))
+      | con #"," = R.int (fn i => 
+                    ?lexp (fn Ulexp e => %Ucon (F.INTcon i, e)))
+      | con #"=" = int32 (fn i32 => 
+		    ?lexp (fn Ulexp e =>
+		     %Ucon (F.INT32con i32, e)))
+      | con #"?" = word (fn w =>
+		    ?lexp (fn Ulexp e =>
+		     %Ucon (F.WORDcon w, e)))
+      | con #">" = word32 (fn w32 =>
+		    ?lexp (fn Ulexp e =>
+		     %Ucon (F.WORD32con w32, e)))
+      | con #"<" = R.string (fn s =>
+		    ?lexp (fn Ulexp e =>
+		     %Ucon (F.REALcon s, e)))
+      | con #"'" = R.string (fn s =>
+		    ?lexp (fn Ulexp e =>
+		     %Ucon (F.STRINGcon s, e)))
+      | con #";" = R.int (fn i =>  
+                    ?lexp (fn Ulexp e => %Ucon (F.VLENcon i, e)))
+      | con _ = raise Fail "    | con"
+
+    and conList x =
+	list (?con, fn Ucon c => c, fn UconList l => l, UconList) x
+
+    and dcon #"^" = ?symbol(fn Usymbol s =>
+                     ?conrep (fn Uconrep cr =>
+                      ?lty (fn Ulty t =>
+                       ?tycList (fn UtycList ts => 
+                        %Udcon((s, cr, t), ts)))))
+      | dcon _ = raise Fail "    | dcon"
+
+    and dict #"%" = R.int (fn v => 
                       ?tycsLvarPairList (fn UtycsLvarPairList tbls => 
                             %Udict {default=v, table=tbls}))
+      | dict _ = raise Fail "    | dict"
 
-    fun sval #"a" = R.int (fn v => %Usval (L.VAR v))
-      | sval #"b" = R.int (fn i => %Usval (L.INT i))
-      | sval #"z" = int32 (fn i32 => %Usval (L.INT32 i32))
-      | sval #"c" = word (fn w => %Usval (L.WORD w))
-      | sval #"d" = word32 (fn w32 => %Usval (L.WORD32 w32))
-      | sval #"e" = R.string (fn s => %Usval (L.REAL s))
-      | sval #"f" = R.string (fn s => %Usval (L.STRING s))
-      | sval #"g" = ?primop (fn Uprimop p =>
-		     ?lty (fn Ulty t =>
-                      ?tycList (fn UtycList ts => 
-  		       %Usval (L.PRIM (p, t, ts)))))
-      | sval #"h" = ?dict (fn Udict nd => 
-                     ?primop (fn Uprimop p =>
-		     ?lty (fn Ulty t =>
-                      ?tycList (fn UtycList ts => 
-  		       %Usval (L.GENOP (nd, p, t, ts))))))
+    and value #"a" = R.int (fn v => %Uvalue (F.VAR v))
+      | value #"b" = R.int (fn i => %Uvalue (F.INT i))
+      | value #"c" = int32 (fn i32 => %Uvalue (F.INT32 i32))
+      | value #"d" = word (fn w => %Uvalue (F.WORD w))
+      | value #"e" = word32 (fn w32 => %Uvalue (F.WORD32 w32))
+      | value #"f" = R.string (fn s => %Uvalue (F.REAL s))
+      | value #"g" = R.string (fn s => %Uvalue (F.STRING s))
+      | value _ = raise Fail "    | value"
+
+    and fprim #"h" = ?primop (fn Uprimop p =>
+		      ?lty (fn Ulty t =>
+                       ?tycList (fn UtycList ts => 
+  		        %Ufprim (NONE, p, t, ts))))
+
+      | fprim #"i" = ?dict (fn Udict nd => 
+                      ?primop (fn Uprimop p =>
+		       ?lty (fn Ulty t =>
+                        ?tycList (fn UtycList ts => 
+  		         %Ufprim (SOME nd, p, t, ts)))))
+
+      | fprim _ = raise Fail "    | fprim"
+
+    and valueList x = 
+      list (?value, fn Uvalue v => v, fn UvalueList l => l, UvalueList) x
   
-    fun lexp #"i" = ?sval (fn Usval sv => %Ulexp (L.SVAL sv))
-      | lexp #"j" = R.int (fn v =>
-		     ?lty (fn Ulty t =>
-		      ?lexp (fn Ulexp e =>
-			%Ulexp (L.FN (v, t, e)))))
-      | lexp #"k" = ?lvarList (fn UlvarList vl =>
-		     ?ltyList (fn UltyList tl =>
-		      ?lexpList (fn UlexpList el =>
-		       ?lexp (fn Ulexp e =>
-			%Ulexp (L.FIX (vl, tl, el, e))))))
-      | lexp #"l" = ?sval (fn Usval v1 =>
-		     ?sval (fn Usval v2 =>
-		      %Ulexp (L.APP (v1, v2))))
-      | lexp #"m" = ?sval (fn Usval v =>
+    and lexp #"j" = ?valueList (fn UvalueList vs => %Ulexp (F.RET vs))
+      | lexp #"k" = ?lvarList (fn UlvarList vs =>
+                     ?lexp (fn Ulexp e1 =>
+                      ?lexp (fn Ulexp e2 => %Ulexp (F.LET(vs, e1, e2)))))
+      | lexp #"l" = ?fundecList (fn UfundecList fdecs =>
+                     ?lexp (fn Ulexp e =>
+                        %Ulexp  (F.FIX(fdecs, e))))
+      | lexp #"m" = ?value (fn Uvalue u =>
+		     ?valueList (fn UvalueList vs =>
+		      %Ulexp (F.APP (u, vs))))
+      | lexp #"n" = ?tfundec (fn Utfundec tfdec =>
+                     ?lexp (fn Ulexp e =>
+                      %Ulexp (F.TFN (tfdec, e))))
+      | lexp #"o" = ?value (fn Uvalue u =>
+                      ?tycList (fn UtycList ts =>
+                       %Ulexp (F.TAPP (u, ts))))
+      | lexp #"p" = ?value (fn Uvalue v =>
 		     ?consig (fn Uconsig crl =>
 		      ?conList (fn UconList cel =>
 		       ?lexpOption (fn UlexpOption eo =>
-			%Ulexp (L.SWITCH (v, crl, cel, eo))))))
-      | lexp #"n" = ?symbol (fn Usymbol s =>
-		     ?conrep (fn Uconrep cr =>
-		       ?lty (fn Ulty t =>
-                        ?tycList (fn UtycList ts =>
-			 ?sval (fn Usval v =>
-			   %Ulexp (L.CON ((s, cr, t), ts, v)))))))
-      | lexp #"o" = ?symbol (fn Usymbol s =>
-		     ?conrep (fn Uconrep cr =>
-		       ?lty (fn Ulty t =>
-                        ?tycList (fn UtycList ts =>
-			 ?sval (fn Usval v =>
-			   %Ulexp (L.DECON ((s, cr, t), ts, v)))))))
-      | lexp #"p" = 
-          ?svalList (fn UsvalList vl => 
-             ?tyc (fn Utyc tc => %Ulexp (L.VECTOR (vl, tc))))
-      | lexp #"q" = ?svalList (fn UsvalList vl => %Ulexp (L.RECORD vl))
-      | lexp #"r" = ?svalList (fn UsvalList vl => %Ulexp (L.SRECORD vl))
-      | lexp #"s" = ?sval (fn Usval v =>
-		     ?lty (fn Ulty t =>
-		      %Ulexp (L.RAISE (v, t))))
-      | lexp #"t" = ?lexp (fn Ulexp e =>
-		     ?sval (fn Usval v =>
-		      %Ulexp (L.HANDLE (e, v))))
-      | lexp #"u" = ?tyc (fn Utyc t =>
-                     ?bool(fn Ubool b =>
-		     ?sval (fn Usval v =>
-		      %Ulexp (L.WRAP (t, b, v)))))
-
-      | lexp #"v" = ?tyc (fn Utyc t =>
-                     ?bool(fn Ubool b =>
-		     ?sval (fn Usval v =>
-		      %Ulexp (L.UNWRAP (t, b, v)))))
-
-      | lexp #"w" = R.int (fn i =>
-			   ?sval (fn Usval v =>
-				  %Ulexp (L.SELECT (i, v))))
-
-      | lexp #"x" = ?tkindList(fn UtkindList ks =>
-                     ?lexp(fn Ulexp e =>
-                      %Ulexp(L.TFN(ks,e))))
-
-      | lexp #"y" = ?sval(fn Usval v =>
-                     ?tycList(fn UtycList ts =>
-                      %Ulexp(L.TAPP(v,ts))))
-
-      | lexp #"0" = R.int (fn v => 
-                     ?lexp(fn Ulexp e1 =>
-                       ?lexp(fn Ulexp e2 =>
-                          %Ulexp(L.LET(v, e1, e2)))))
-
-      | lexp #"1" = ?lty(fn Ulty t =>
-                     ?tycList(fn UtycList ts => 
-                     ?tycList(fn UtycList nts => 
-                       ?sval(fn Usval v =>
-                       %Ulexp(L.PACK(t,ts,nts,v))))))
-
-      | lexp #"2" = ?sval (fn Usval v =>
-		     ?lty (fn Ulty t =>
-		      %Ulexp (L.ETAG (v, t))))
-
+			%Ulexp (F.SWITCH (v, crl, cel, eo))))))
+      | lexp #"q" = ?dcon (fn Udcon (c, ts) =>
+	             ?value (fn Uvalue u =>
+                      ?lvar (fn Ulvar v => 
+                       ?lexp (fn Ulexp e =>
+			%Ulexp (F.CON (c, ts, u, v,e ))))))
+      | lexp #"r" = ?rkind (fn Urkind rk =>
+                     ?valueList (fn UvalueList vl => 
+                      ?lvar (fn Ulvar v =>
+                       ?lexp (fn Ulexp e =>
+                        %Ulexp (F.RECORD(rk, vl, v, e))))))
+      | lexp #"s" = ?value (fn Uvalue u =>
+                      R.int (fn i => 
+                       ?lvar (fn Ulvar v =>
+                        ?lexp (fn Ulexp e =>
+                         %Ulexp (F.SELECT(u, i, v, e))))))
+      | lexp #"t" = ?value (fn Uvalue v =>
+		     ?ltyList (fn UltyList ts =>
+		      %Ulexp (F.RAISE (v, ts))))
+      | lexp #"u" = ?lexp (fn Ulexp e =>
+		     ?value (fn Uvalue u =>
+		      %Ulexp (F.HANDLE (e, u))))
+      | lexp #"v" = ?fprim (fn Ufprim p => 
+                     ?valueList (fn UvalueList vs =>
+                      ?lexp (fn Ulexp e1 =>
+                       ?lexp (fn Ulexp e2 =>
+                        %Ulexp (F.BRANCH(p, vs, e1, e2))))))
+      | lexp #"w" = ?fprim (fn Ufprim p => 
+                     ?valueList (fn UvalueList vs =>
+                      ?lvar (fn Ulvar v =>
+                       ?lexp (fn Ulexp e =>
+                        %Ulexp (F.PRIMOP(p, vs, v, e))))))
       | lexp _ = raise Fail "    | lexp"
 
 
     and lexpList x =
 	list (?lexp, fn Ulexp e => e, fn UlexpList l => l, UlexpList) x
 
-    and svalList x = 
-        list (?sval, fn Usval v => v, fn UsvalList l => l, UsvalList) x
-
     and lexpOption #"S" = ?lexp (fn Ulexp e => %UlexpOption (SOME e))
       | lexpOption #"N" = %UlexpOption NONE
       | lexpOption _ = raise Fail "    | lexpOption"
 
-    and con #"." = ?symbol (fn Usymbol s =>
-		    ?conrep (fn Uconrep cr =>
-		      ?lty (fn Ulty t2 =>
-		       ?lexp (fn Ulexp e =>
-			%Ucon (L.DATAcon (s, cr, t2), e)))))
-      | con #"," = R.int (fn i => ?lexp (fn Ulexp e => %Ucon (L.INTcon i, e)))
-      | con #"=" = int32 (fn i32 => 
-		    ?lexp (fn Ulexp e =>
-		     %Ucon (L.INT32con i32, e)))
-      | con #"?" = word (fn w =>
-		    ?lexp (fn Ulexp e =>
-		     %Ucon (L.WORDcon w, e)))
-      | con #">" = word32 (fn w32 =>
-		    ?lexp (fn Ulexp e =>
-		     %Ucon (L.WORD32con w32, e)))
-      | con #"<" = R.string (fn s =>
-		    ?lexp (fn Ulexp e =>
-		     %Ucon (L.REALcon s, e)))
-      | con #"'" = R.string (fn s =>
-		    ?lexp (fn Ulexp e =>
-		     %Ucon (L.STRINGcon s, e)))
-      | con #";" = R.int (fn i => ?lexp (fn Ulexp e => %Ucon (L.VLENcon i, e)))
-      | con _ = raise Fail "    | con"
+    and fundec #"0" = ?fkind (fn Ufkind fk =>
+                       ?lvar (fn Ulvar v =>
+                        ?lvarLtyPairList (fn UlvarLtyPairList vts =>
+                         ?lexp (fn Ulexp e =>
+                           %Ufundec (fk, v, vts, e)))))
+      | fundec _ = raise Fail "    | fundec"
 
+    and fundecOption #"S" = ?fundec (fn Ufundec f => %UfundecOption (SOME f))
+      | fundecOption #"N" = %UfundecOption NONE
+      | fundecOption _ = raise Fail "    | fundecOption"
 
-    and conList x =
-	list (?con, fn Ucon c => c, fn UconList l => l, UconList) x
+    and fundecList x = 
+        list (?fundec, fn Ufundec x => x, fn UfundecList l => l,
+              UfundecList) x
+
+    and lvarLtyPair #"T" = ?lvar (fn Ulvar v => 
+                            ?lty (fn Ulty t => %UlvarLtyPair (v, t)))
+      | lvarLtyPair _ = raise Fail "   | lvarLtyPair"
+
+    and lvarLtyPairList x = 
+        list (?lvarLtyPair, fn UlvarLtyPair x => x, fn UlvarLtyPairList l => l,
+              UlvarLtyPairList) x
+
+    and tvarTkPair #"T" = ?lvar (fn Ulvar tv =>
+                           ?tkind (fn Utkind tk => %UtvarTkPair (tv, tk)))
+      | tvarTkPair _ = raise Fail "   | tvarTkPair"
+
+    and tvarTkPairList x = 
+        list (?tvarTkPair, fn UtvarTkPair x => x, fn UtvarTkPairList l => l,
+              UtvarTkPairList) x
+
+    and tfundec #"0" = ?lvar (fn Ulvar v =>
+                        ?tvarTkPairList (fn UtvarTkPairList tvks =>
+                         ?lexp (fn Ulexp e =>
+                           %Utfundec (v, tvks, e))))
+      | tfundec _ = raise Fail "    | tfundec"
+
+    and fkind #"2" = %Ufkind (F.FK_FCT)
+      | fkind #"3" = ?ltyListOption (fn UltyListOption isrec =>
+                      ?bool (fn Ubool b1 =>
+                       ?bool (fn Ubool b2 =>
+                        ?bool (fn Ubool known =>
+                         ?bool (fn Ubool inline =>
+                          %Ufkind (F.FK_FUN{isrec=isrec, 
+                                            fixed=LT.ffc_var(b1, b2), 
+                                            known=known, inline=inline}))))))
+      | fkind #"4" = ?ltyListOption (fn UltyListOption isrec =>
+                        ?bool (fn Ubool known =>
+                         ?bool (fn Ubool inline =>
+                          %Ufkind (F.FK_FUN{isrec=isrec, fixed=LT.ffc_fixed,
+                                            known=known, inline=inline}))))
+      | fkind _ = raise Fail "    | fkind"
+
+    and rkind #"5" = ?tyc (fn Utyc tc => %Urkind (F.RK_VECTOR tc))
+      | rkind #"6" = %Urkind (F.RK_STRUCT)
+      | rkind #"7" = %Urkind (FlintUtil.rk_tuple)
+      | rkind _ = raise Fail "    | rkind"
 
     fun ldOptionList x =
 	list (?ldOption, fn UldOption to => to,
 	      fn UldOptionList tol => tol, UldOptionList) x
 
  in {access=access, lexp=lexp, conrep=conrep, 
-     tkind=tkind, lexpOption=lexpOption, ldOptionList=ldOptionList}
+     tkind=tkind, fundecOption=fundecOption, ldOptionList=ldOptionList}
 end
 
 fun mkStamp globalPid =
@@ -629,10 +703,10 @@ fun mkStamp globalPid =
    in stamp
   end
 
-fun unpickleLambda({hash: PS.persstamp, pickle: Word8Vector.vector}) = 
+fun unpickleFLINT({hash: PS.persstamp, pickle: Word8Vector.vector}) = 
   let val stamp = mkStamp hash     (* ZHONG? *)
-      val {lexp, lexpOption, ...} = mkAccess(A.LVAR,stamp)
-      val UlexpOption result = R.root(pickle, lexpOption)
+      val {fundecOption, ...} = mkAccess(A.LVAR,stamp)
+      val UfundecOption result = R.root(pickle, fundecOption)
    in result
   end
 
@@ -645,7 +719,7 @@ fun unpickleEnv (context0, pickle) =
 
       fun import i = A.PATH (A.EXTERN globalPid, i)
       val stamp = mkStamp globalPid
-      val {access,lexp,conrep,tkind,ldOptionList,lexpOption} = 
+      val {access,lexp,conrep,tkind,ldOptionList,fundecOption} = 
              mkAccess(import,stamp)
 
 

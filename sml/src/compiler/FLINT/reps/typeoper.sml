@@ -34,7 +34,6 @@ struct
 
 local structure DI = DebIndex
       structure LT = LtyExtern
-      structure LU = LtyUtil
       structure LV = LambdaVar
       structure PO = PrimOp
       structure PT = PrimTyc
@@ -168,7 +167,7 @@ fun klookKE(kenv, i, j) =
  *                            MAIN FUNCTIONS                                *
  ****************************************************************************)
 
-val tkLty = LU.tkLty
+val tkLty = LT.tk_lty
  
 (* val tkLexp: kenv * tkind list -> kenv * (lexp -> lexp) *)
 fun tkLexpG (kenv, ks, record) = 
@@ -226,7 +225,7 @@ fun tcLexp (kenv, tc) =
 		else if (pt = PT.ptc_int32) then tcode_int32
 		     else tcode_void
 	   | (TC_VAR(i, j)) => SVAL(VAR(vlookKE(kenv, i, j)))
-	   | (TC_TUPLE [t1,t2]) =>
+	   | (TC_TUPLE (_, [t1,t2])) =>
 		(case (isFloat(kenv,t1), isFloat(kenv,t2))
 		  of (YES, YES) => tcode_fpair
 		   | ((NO, _) | (_, NO)) => tcode_pair
@@ -239,7 +238,7 @@ fun tcLexp (kenv, tc) =
 			    val test = APPg(ieq, RECORDg [e, tcode_realN 2])
 			 in COND(test, tcode_fpair, tcode_pair)
 			end)
-	   | (TC_TUPLE ts) => tcode_record
+	   | (TC_TUPLE (_, ts)) => tcode_record
 	   | (TC_ARROW (_,tc1,tc2)) => tcode_void
 	   | (TC_ABS tx) => loop tx
 	   | (TC_BOX tx) => loop tx           
@@ -256,16 +255,14 @@ fun tcLexp (kenv, tc) =
 		       of TC_FN (ks, _) => List.nth(ks, i)
 			| _ => bug "unexpected FIX tycs in tcLexp-loop")
 		 in case tk_out tk
-		     of TK_FUN(k1, _) => 
-			  (case tk_out k1
-			    of TK_SEQ ks => 
-				 (let val (_, hdr) = 
+		     of TK_FUN(ks, _) => 
+			  (let val (_, hdr) = 
 					tkLexpG(kenv, ks, LT.ltc_tuple)
-				   in hdr(tcode_void)
-				  end)
-			     | _ => bug "unexpected FIX tyc2 in tcLexp-loop")
+			    in hdr(tcode_void)
+			   end)
 		      | _ => tcode_void
 		end
+           | (TC_TOKEN _) => bug "TC_TOKEN tyc currently not supported"
 	   | (TC_SUM _) => bug "unexpected TC_SUM tyc in tcLexp-loop"
 	   | (TC_ENV _) => bug "unexpected TC_ENV tyc in tcLexp-loop"
 	   | (TC_CONT _) => bug "unexpected TC_CONT tyc in tcLexp-loop"
@@ -294,7 +291,7 @@ and isFloat (kenv, tc) =
 	(case (tc_out x)
 	  of (TC_PRIM pt) => 
 		if (pt = PT.ptc_real) then YES else NO
-	   | (TC_TUPLE ts) => NO
+	   | (TC_TUPLE (_, ts)) => NO
 	   | (TC_ARROW (_,tc1,tc2)) => NO
 	   | (TC_BOX tx) => NO     (* this requires further thoughts ! *)
 	   | (TC_FIX(_, i)) => NO
@@ -319,7 +316,7 @@ fun isPair (kenv, tc) =
   let fun loop x = 
 	(case (tc_out x)
 	  of (TC_PRIM pt) => NO
-	   | (TC_TUPLE [_,_]) => YES
+	   | (TC_TUPLE (_, [_,_])) => YES
 	   | (TC_TUPLE _) => NO
 	   | (TC_ARROW _) => NO
 	   | (TC_BOX tx) => NO     (* this requires further thoughts !!! *)
@@ -344,7 +341,7 @@ fun tcTag (kenv, tc) =
 	(case (tc_out x)
 	  of (TC_PRIM pt) => if PT.unboxed pt then NO else YES
 		    (* this is just an approximation *)
-	   | (TC_TUPLE ts) => NO
+	   | (TC_TUPLE (_, ts)) => NO
 	   | (TC_ARROW (_,tc1,tc2)) => YES
 	   | (TC_ABS tx) => loop tx
 	   | (TC_BOX tx) => loop tx
@@ -421,7 +418,7 @@ fun tgdd (kenv, i, tc) =
 (* val tcCoerce : kenv * tyc * bool * bool -> (lexp -> lexp) option *)
 fun tcCoerce (kenv, tc, wflag, b) = 
   (case tc_out tc
-    of TC_TUPLE ts =>
+    of TC_TUPLE (_, ts) =>
 	 let fun h([], i, e, el, 0) = NONE
 	       | h([], i, e, el, res) = 
 		   let val w = mkv()                 
@@ -460,7 +457,7 @@ fun tcCoerce (kenv, tc, wflag, b) =
 	  in h(ts, 0, SVAL(INT 0), [], 0)
 	 end
      | TC_ARROW _ => (* (tc1, tc2) => *)
-        let val (tc1, tc2) = LU.tcd_arw tc
+        let val (tc1, tc2) = LT.tcd_parrow tc
          in (case isPair(kenv, tc1)
               of (YES | NO) => NONE
                | (MAYBE e) =>
@@ -485,12 +482,12 @@ fun tcCoerce (kenv, tc, wflag, b) =
                      val (argt1, body1, hh1, ih1) = 
                        if wflag then (* wrapping *)
                          (lt_pair, WRAP(tc_pair, true, VAR m),
-                          fn le => WRAPcast(LU.tcc_arw(tc_pair,tc2), true, le),
+                          fn le => WRAPcast(LT.tcc_parrow(tc_pair,tc2), true, le),
                           ident)
                        else (* unwrapping *)
                          let val q = mkv()
                           in (lt_void, UNWRAP(tc_pair, true, VAR m),ident,
-                              fn le => UNWRAPcast(LU.tcc_arw(tc_pair, tc2),
+                              fn le => UNWRAPcast(LT.tcc_parrow(tc_pair, tc2),
                                                true, le))
                          end
 
@@ -499,7 +496,7 @@ fun tcCoerce (kenv, tc, wflag, b) =
                          (lt_bfpair, WRAPg(tc_fpair, true, 
                            RECORDg [UNWRAPg(tc_real, true, SELECT(0, VAR n)),
                                     UNWRAPg(tc_real, true, SELECT(1, VAR n))]),
-                          fn le => WRAPcast(LU.tcc_arw(tc_bfpair,tc2), true, le),
+                          fn le => WRAPcast(LT.tcc_parrow(tc_bfpair,tc2), true, le),
                           ident)
                        else
                          let val q = mkv()
@@ -507,7 +504,7 @@ fun tcCoerce (kenv, tc, wflag, b) =
                             RECORDg [WRAPg(tc_real, true, SELECT(0, VAR q)),
                                      WRAPg(tc_real, true, SELECT(1, VAR q))]),
                             ident,
-                            fn le => UNWRAPcast(LU.tcc_arw(tc_bfpair, tc2),
+                            fn le => UNWRAPcast(LT.tcc_parrow(tc_bfpair, tc2),
                                              true, le))
                          end
 
@@ -548,8 +545,8 @@ val realSub = PO.NUMSUBSCRIPT{kind=PO.FLOAT 64, checked=false, immutable=false}
 val realUpd = PO.NUMUPDATE{kind=PO.FLOAT 64, checked=false}
 
 fun arrSub(kenv, lt, tc) = 
-  let val nt = ltAppSt(lt, [tc])
-      val rnt = ltAppSt(lt, [LT.tcc_real])
+  let val nt = LT.lt_pinst_st(lt, [tc])
+      val rnt = LT.lt_pinst_st(lt, [LT.tcc_real])
    in (case isFloat(kenv, tc)
         of NO => (fn sv => APP(PRIM(PO.SUBSCRIPT, nt, []), sv))
          | YES => (fn sv => WRAPg(LT.tcc_real, true, 
@@ -564,8 +561,8 @@ fun arrSub(kenv, lt, tc) =
   end
 
 fun arrUpd(kenv, lt, tc) = 
-  let val nt = ltAppSt(lt, [tc])
-      val rnt = ltAppSt(lt, [LT.tcc_real])
+  let val nt = LT.lt_pinst_st(lt, [tc])
+      val rnt = LT.lt_pinst_st(lt, [LT.tcc_real])
    in (case isFloat(kenv,tc)
         of NO => (fn sv => APP(PRIM(PO.UPDATE, nt, []), sv))
          | YES => (fn sv => APPg(SVAL(PRIM(realUpd, rnt, [])), 

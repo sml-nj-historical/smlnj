@@ -5,13 +5,13 @@ Group is
 
 sources.cm
 
-1-TopLevel/bootstrap/alpha32glue.sml
-1-TopLevel/bootstrap/alpha32xGlue.sml
-1-TopLevel/bootstrap/hppaglue.sml
-1-TopLevel/bootstrap/mipsebglue.sml
-1-TopLevel/bootstrap/mipselglue.sml
-1-TopLevel/bootstrap/rs6000glue.sml
-1-TopLevel/bootstrap/sparcglue.sml
-1-TopLevel/bootstrap/x86glue.sml
+TopLevel/bootstrap/alpha32glue.sml
+TopLevel/bootstrap/alpha32xGlue.sml
+TopLevel/bootstrap/hppaglue.sml
+TopLevel/bootstrap/mipsebglue.sml
+TopLevel/bootstrap/mipselglue.sml
+TopLevel/bootstrap/rs6000glue.sml
+TopLevel/bootstrap/sparcglue.sml
+TopLevel/bootstrap/x86glue.sml
 
 

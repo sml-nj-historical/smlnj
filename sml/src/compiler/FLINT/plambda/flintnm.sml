@@ -15,18 +15,43 @@ local structure LT = PLambdaType
       structure LV = LambdaVar
       structure DI = DebIndex
       structure PT = PrimTyc
+      structure PO = PrimOp
       structure L  = PLambda
       structure F  = FLINT
+      structure FU = FlintUtil
       structure DA = Access
 in
 
 val say = Control.Print.say
 val mkv = LambdaVar.mkLvar
 val ident = fn le : L.lexp => le
+
+val (iadd_prim, uadd_prim) = 
+  let val lt_int = LT.ltc_int
+      val intOpTy = LT.ltc_parrow(LT.ltc_tuple[lt_int,lt_int],lt_int)
+      val addu = PO.ARITH{oper=PO.+, overflow=false, kind=PO.UINT 31}
+   in (L.PRIM(PO.IADD,intOpTy,[]), L.PRIM(addu, intOpTy, []))
+  end
+
 fun bug msg = ErrorMsg.impossible("FlintNM: "^msg)
 
 fun optmap f (SOME v)	= SOME (f v)
   | optmap _ NONE	= NONE
+
+(* force_raw freezes the calling conventions of a data constructor;
+   strictly used by the CON and DATAcon only 
+ *)
+fun force_raw (pty) = 
+  if LT.ltp_ppoly pty then
+    let val (ks, body) = LT.ltd_ppoly pty
+        val (aty, rty) = LT.ltd_parrow body
+     in LT.ltc_ppoly(ks,
+           LT.ltc_arrow(LT.ffc_rrflint, [FL.ltc_raw aty], [FL.ltc_raw rty]))
+    end
+  else 
+    let val (aty, rty) = LT.ltd_parrow pty
+     in LT.ltc_arrow(LT.ffc_rrflint, [FL.ltc_raw aty], [FL.ltc_raw rty])
+    end (* function force_raw *)
 
 fun tocon con =
     let val _ = 1
@@ -47,22 +72,27 @@ fun tofundec (venv,d,f_lv,arg_lv,arg_lty,body,isrec) =
         tolexp (LT.ltInsert(venv, arg_lv, arg_lty, d), d) body
 
         (* detuple the arg type *)
-	val (arg_ltys,arg_raw,unflatten,_) = FL.all_flatten arg_lty
+	val ((arg_raw, arg_ltys, _), unflatten) = FL.v_punflatten arg_lty
             
         (* now, we add tupling code at the beginning of the body *)
         val (arg_lvs, body'') = unflatten(arg_lv, body')
 
 	(* construct the return type if necessary *)
-	val (body_ltys,body_raw,_,_) = FL.all_flatten body_lty
+	val (body_raw, body_ltys, _) = FL.t_pflatten body_lty
 	val rettype = if not isrec then NONE
 		      else SOME(map FL.ltc_raw body_ltys)
 
 	val isfct = not (LT.ltp_tyc arg_lty andalso LT.ltp_tyc body_lty)
 	val f_lty = if isfct then LT.ltc_pfct(arg_lty, body_lty)
 		    else LT.ltc_parrow(arg_lty, body_lty)
+
+        val fkind = if isfct then F.FK_FCT
+                    else F.FK_FUN{isrec=rettype, 
+                                  fixed=LT.ffc_var(arg_raw, body_raw),
+                                  known=false,
+                                  inline=not isrec}
 			
-    in (({isrec=rettype, raw=(arg_raw, body_raw), isfct=isfct},
-	 f_lv, ListPair.zip(arg_lvs, map FL.ltc_raw arg_ltys), body''),
+    in ((fkind, f_lv, ListPair.zip(arg_lvs, map FL.ltc_raw arg_ltys), body''),
 	f_lty)
     end
 
@@ -120,13 +150,17 @@ and tolexp (venv,d) lexp =
             tovalue(venv, d, f,
                     fn (f_val,f_lty) =>
                     let val r_lty = LT.lt_pinst(f_lty, tycs)
-                    in (F.TAPP(f_val, map FL.tcc_raw tycs), r_lty)
+                        val x = mkv()
+                        val u = F.VAR x
+		        val (vs,wrap) = (#2(FL.v_pflatten r_lty)) u
+                    in  (F.LET([x], F.TAPP(f_val, map FL.tcc_raw tycs),
+                               wrap(F.RET(vs))), r_lty)
                     end)
 
       | L.RAISE (le, r_lty) => 
             tovalue(venv, d, le,
                     fn (le_val,le_lty) =>
-                    let val r_ltys = FL.ltc_flat r_lty
+                    let val (_, r_ltys, _) = FL.t_pflatten r_lty
                     in (F.RAISE(le_val, map FL.ltc_raw r_ltys), r_lty)
                     end)
 
@@ -137,7 +171,7 @@ and tolexp (venv,d) lexp =
                     in (F.HANDLE(body', h_val), body_lty)
                     end)
 
-      | L.SWITCH (le,acs,[],NONE) => raise Match
+      | L.SWITCH (le,acs,[],NONE) => bug "unexpected case in L.SWITCH"
 	    (* tovalue(venv, d, le, fn _ => (F.RET[], [])) *)
       | L.SWITCH (le,acs,[],SOME lexp) =>
 	    tovalue(venv, d, le, fn (v,lty) => tolexp (venv,d) lexp)
@@ -146,10 +180,9 @@ and tolexp (venv,d) lexp =
 		    let val (lv_lty,_) = LT.ltd_parrow(LT.lt_pinst(lty,tycs))
 			val newvenv = LT.ltInsert(venv,lvar,lv_lty,d)
 			val (le, le_lty) = tolexp (newvenv,d) le
-			val (lvars, le) = FL.v_unflatten lv_lty (lvar, le)
 		    in
-			((F.DATAcon((s,cr,FL.ltc_raw lty),
-				    map FL.tcc_raw tycs, lvars),
+			((F.DATAcon((s, cr, force_raw lty),
+				    map FL.tcc_raw tycs, lvar),
 			  le),
 			 le_lty)
 		    end
@@ -182,9 +215,23 @@ and tovalue (venv,d,lexp,cont) =
     in case lexp of
         (* for simple values, it's trivial *)
         L.VAR v => cont(F.VAR v, LT.ltLookup(venv, v, d))
-      | L.INT n => cont(F.INT n, LT.ltc_int)
+      | L.INT i => 
+         ((i+i+2; cont(F.INT i, LT.ltc_int)) handle Overflow => 
+            (let val z = i div 2
+                 val ne = L.APP(iadd_prim, L.RECORD [L.INT z, L.INT (i-z)])
+              in tovalue(venv, d, ne, cont)
+             end))
+      | L.WORD i => 
+         let val maxWord = 0wx20000000
+          in if Word.<(i, maxWord) then cont(F.WORD i, LT.ltc_int)
+             else let val x1 = Word.div(i, 0w2)
+                      val x2 = Word.-(i, x1)
+                      val ne = L.APP(uadd_prim, 
+                                     L.RECORD [L.WORD x1, L.WORD x2])
+                   in tovalue(venv, d, ne, cont)
+                  end
+         end
       | L.INT32 n => cont(F.INT32 n, LT.ltc_int32)
-      | L.WORD n => cont(F.WORD n, LT.ltc_int)
       | L.WORD32 n => cont(F.WORD32 n, LT.ltc_int32)
       | L.REAL x => cont(F.REAL x, LT.ltc_real)
       | L.STRING s => cont(F.STRING s, LT.ltc_string)
@@ -213,17 +260,18 @@ and tovalues (venv,d,lexp,cont) =
 	    lexps2values(venv,d,lexps,
 			 fn (vals,ltys) =>
 			 let val lty = LT.ltc_tuple ltys
-			     val ltys = FL.ltc_flat lty
+			     val (_, ltys, _) = FL.t_pflatten lty
 			 in
 			     (* detect the case where flattening is trivial *)
 			     if LT.lt_eqv(lty, LT.ltc_tuple ltys) then
 				 cont(vals,lty)
 			     else
 				 let val lv = mkv()
-				     val (vs,wrap) = FL.v_flatten lty (F.VAR lv)
+                                     val (_, pflatten) = FL.v_pflatten lty 
+				     val (vs,wrap) = pflatten (F.VAR lv)
 				     val (c_lexp,c_lty) = cont(vs, lty)
 				 in
-				     (F.RECORD(F.RK_RECORD,
+				     (F.RECORD(FU.rk_tuple,
 					       vals, lv, wrap c_lexp),
 				      c_lty)
 				 end
@@ -231,7 +279,7 @@ and tovalues (venv,d,lexp,cont) =
 			    
       | _ => tovalue(venv,d,lexp,
 		     fn (v, lty) =>
-		     let val (vs,wrap) = FL.v_flatten lty v
+		     let val (vs,wrap) = (#2(FL.v_pflatten lty)) v
 			 val (c_lexp, c_lty) = cont(vs, lty)
 		     in (wrap c_lexp, c_lty)
 		     end)
@@ -274,22 +322,67 @@ and tolvar (venv,d,lvar,lexp,cont) =
                              in (F.LET ([lv], F.RET [v], lexp'), lty)
                              end)
 
-        fun PO_helper (arg,f_lty,filler) =
-            (* first, turn args into values *)
-             tovalues(venv, d, arg,
-		     fn (arg_vals, arg_lty) =>
-		     (* now find the return type(s) *)
-		     let val (_, r_lty) = LT.ltd_parrow f_lty
-			 (* translate the continutation *)
-			 val (c_lexp, c_lty) = cont(r_lty)
-		     (* put the filling inbetween *)
-		     in (filler(arg_vals, c_lexp), c_lty)
-		     end)
+        fun PO_helper (arg,f_lty,tycs,filler) =
+            (* invariants: primop's types are always fully closed *)
+            let (* pty is the resulting FLINT type of the underlying primop,
+                   r_lty is the result PLambda type of this primop expression,
+                   and flat indicates whether we should flatten the arguments
+                   or not. The results of primops are never flattened.
+                 *)
+                val (pty, r_lty, flat) = 
+                  (case (LT.ltp_ppoly f_lty, tycs) 
+                    of (true, _) => 
+                         let val (ks, lt) = LT.ltd_ppoly f_lty
+                             val (aty, rty) = LT.ltd_parrow lt
+                             val r_lty = 
+                               LT.lt_pinst(LT.ltc_ppoly(ks, rty), tycs)
+
+                             val (_, atys, flat) = FL.t_pflatten aty 
+                             (*** you really want to have a simpler
+                                  flattening heuristics here; in fact,
+                                  primop can have its own flattening
+                                  strategy. The key is that primop's 
+                                  type never escape outside.
+                              ***)
+
+                             val atys = map FL.ltc_raw atys
+                             val nrty = FL.ltc_raw rty
+                             val pty = LT.ltc_arrow(LT.ffc_rrflint,atys,[nrty])
+                          in ( LT.ltc_ppoly(ks, pty), r_lty, flat)
+                         end
+                     | (false, []) => (* monomorphic case *)
+                         let val (aty, rty) = LT.ltd_parrow f_lty
+                             val (_, atys, flat) = FL.t_pflatten aty
+                             val atys = map FL.ltc_raw atys
+                             val nrty = FL.ltc_raw rty
+                             val pty = LT.ltc_arrow(LT.ffc_rrflint,atys,[nrty])
+                          in (pty, rty, flat)
+                         end
+                     | _ => bug "unexpected case in PO_helper")
+             in if flat then
+                 (* ZHONG asks: is the following definitely safe ?
+                    what would happen if ltc_raw is not an identity function ?
+                  *)
+                  tovalues(venv, d, arg,
+		     	   fn (arg_vals, arg_lty) =>
+		     	   let val (c_lexp, c_lty) = cont(r_lty)
+		     	   (* put the filling inbetween *)
+		     	   in (filler(arg_vals, pty, c_lexp), c_lty)
+		     	   end)  
+                else 
+                   tovalue(venv, d, arg,
+		     	   fn (arg_val, arg_lty) =>
+		     	   let val (c_lexp, c_lty) = cont(r_lty)
+		     	   (* put the filling inbetween *)
+		     	   in (filler([arg_val], pty, c_lexp), c_lty)
+		     	   end)   
+            end (* function PO_helper *)
 
         fun default_tolexp () =
             let val (lexp', lty) = tolexp (venv, d) lexp
                 val (c_lexp, c_lty) = cont(lty)
-                val (lvs,c_lexp') = FL.v_unflatten lty (lvar, c_lexp)
+                val (_, punflatten) = FL.v_punflatten lty 
+                val (lvs,c_lexp') = punflatten (lvar, c_lexp)
             in (F.LET(lvs, lexp', c_lexp'), c_lty)
             end
 
@@ -316,9 +409,9 @@ and tolvar (venv,d,lvar,lexp,cont) =
 
       (* this is were we really deal with primops *)
       | L.APP (L.PRIM ((po,f_lty,tycs)),arg) =>
-            PO_helper(arg, LT.lt_pinst(f_lty, tycs),
-                       fn (arg_vals,c_lexp) =>
-                       F.PRIMOP((po, FL.ltc_raw f_lty, map FL.tcc_raw tycs),
+            PO_helper(arg, f_lty, tycs,
+                       fn (arg_vals,pty, c_lexp) =>
+                       F.PRIMOP((NONE, po, pty, map FL.tcc_raw tycs),
 				arg_vals, lvar, c_lexp))
 
       | L.APP (L.GENOP({default,table},po,f_lty,tycs),arg) =>
@@ -333,40 +426,41 @@ and tolvar (venv,d,lvar,lexp,cont) =
                            (* then eval the table *)
                            f(table, [],
                              fn table' =>
-                             PO_helper(arg, LT.lt_pinst(f_lty, tycs),
-                                        fn (arg_vals,c_lexp) =>
-                                        F.GENOP({default=dflt_lv, table=table'},
-                                                (po, FL.ltc_raw f_lty, map FL.tcc_raw tycs),
+                             PO_helper(arg, f_lty, tycs,
+                                        fn (arg_vals,pty,c_lexp) =>
+                                        F.PRIMOP((SOME {default=dflt_lv, 
+                                                        table=table'},
+                                                  po, pty, 
+                                                  map FL.tcc_raw tycs),
 						arg_vals, lvar, c_lexp))))
             end
 
 
       | L.TFN (tks, body) =>
-            let val (body', body_lty) = tolexp (venv, DI.next d) body
+            let val (body', body_lty) =
+                  tovalue(venv, DI.next d, body, 
+                          fn (le_val, le_lty) => (F.RET [le_val], le_lty))
                 val lty = LT.ltc_ppoly(tks, body_lty)
                 val (lexp', lty) = cont(lty)
-            in (F.TFN((lvar, map (fn tk => (mkv(), tk)) tks, body'), lexp'),
-                lty)
+            in  (F.TFN((lvar, map (fn tk => (mkv(), tk)) tks, body'), lexp'),
+                 lty)
             end
 
       | L.ETAG (le,lty) =>
             tovalue(venv, d, le,
                     fn (le_lv, le_lty) =>
                     let val (c_lexp, c_lty) = cont(LT.ltc_etag lty)
-                    in (F.ETAG(FL.tcc_raw (LT.ltd_tyc lty), le_lv, 
-			       lvar, c_lexp), c_lty)
+                        val mketag = FU.mketag (FL.tcc_raw (LT.ltd_tyc lty))
+                    in (F.PRIMOP(mketag, [le_lv], lvar, c_lexp), c_lty)
                     end)
       | L.CON ((s,cr,lty),tycs,le) =>
-	    tovalues(venv, d, le,
-		     fn (vals,_) =>
+	    tovalue(venv, d, le,
+		     fn (v,_) =>
 		     let val r_lty = LT.lt_pinst(lty, tycs)
-			 val (vals,v_lty) = 
-                           let val (_,v_lty) = LT.ltd_parrow r_lty
-			    in (vals, v_lty)
-			   end
+                         val (_,v_lty) = LT.ltd_parrow r_lty
 			 val (c_lexp, c_lty) = cont(v_lty)
-		     in (F.CON((s, cr, FL.ltc_raw lty),
-			       map FL.tcc_raw tycs, vals, lvar, c_lexp),
+		     in (F.CON((s, cr, force_raw lty),
+			       map FL.tcc_raw tycs, v, lvar, c_lexp),
 			 c_lty)
 		     end)
 
@@ -384,7 +478,8 @@ and tolvar (venv,d,lvar,lexp,cont) =
 			fn (vals, ltys) =>
 			let val lty = LT.ltc_tuple ltys
 			    val (c_lexp, c_lty) = cont(lty)
-			in (F.RECORD(F.RK_RECORD, vals, lvar, c_lexp), c_lty)
+			in (F.RECORD(FU.rk_tuple,
+                                     vals, lvar, c_lexp), c_lty)
 			end)
       | L.SRECORD lexps =>
 	   lexps2values(venv,d,lexps,
@@ -418,8 +513,8 @@ and tolvar (venv,d,lvar,lexp,cont) =
 *)
 
       (* these ones shouldn't matter because they shouldn't appear *)
-(*       | L.WRAP _ => bug "unexpected WRAP in plamba" *)
-(*       | L.UNWRAP _ => bug "unexpected UNWRAP in plamba" *)
+(*       | L.WRAP _ => bug "unexpected WRAP in plambda" *)
+(*       | L.UNWRAP _ => bug "unexpected UNWRAP in plambda" *)
 
       | _ => default_tolexp ()
     end

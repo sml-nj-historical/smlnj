@@ -1073,9 +1073,10 @@ and elabSig {sigexp, nameOp, env, entEnv, epContext, region, compInfo} =
                 compInfo=compInfo}
 
 (*
-val elabSig = 
-  fn x => Stats.doPhase (Stats.makePhase "Compiler 032 5-elabSig") elabSig x
+val elabSigPhase = Stats.makePhase "Compiler 032 5-elabSig"
+val elabSig = fn x => Stats.doPhase elabSigPhase elabSig x
 *)
+
 end (* local *)
 end (* structure ElabSig *)
 

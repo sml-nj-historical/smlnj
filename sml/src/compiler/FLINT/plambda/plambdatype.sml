@@ -39,9 +39,6 @@ fun ltc_funN (r, x, y) =
   (if List.all ltp_tyc (x@y) then ltc_arrow(r, x, y)
    else ltc_fct(x, y))
 
-fun lt_pinst x = 
-  (case lt_inst x of [y] => y | _ => bug "unexpected lt_pinst")
-
 fun ltd_pfun t =
     if ltp_pfct t then ltd_pfct t
     else ltd_parrow t

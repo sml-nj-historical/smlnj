@@ -1,4 +1,4 @@
-(* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
+(* COPYRIGHT (c) 1997, 1998 YALE FLINT PROJECT *)
 (* chkflint.sml *)
 
 (* FLINT Type Checker *)
@@ -10,12 +10,14 @@ type typsys (* currently very crude, i.e., = int or phases *)
 
 val checkTop : FLINT.fundec * typsys -> bool
 val checkExp : FLINT.lexp * typsys -> bool
-val fname_ref : string ref  (* a filename hack *)
 
 end (* signature CHKFLINT *)
 
 structure ChkFlint : CHKFLINT = 
 struct
+
+(** which set of the typing rules to use while doing the typecheck *)
+type typsys = int (* currently very crude, use int for phases *)
 
 local structure LT = LtyExtern
       structure LV = LambdaVar
@@ -23,41 +25,41 @@ local structure LT = LtyExtern
       structure DI = DebIndex
       structure PP = PPFlint
       open FLINT
-in
-
-(** which set of the typing rules to use while doing the typecheck *)
-type typsys = int (* currently very crude, use int for phases *)
-
-(*** a hack of printing diagnostic output into a separate file ***) 
-val fname_ref : string ref = ref "yyy"
 
 fun bug s = ErrorMsg.impossible ("ChkFlint: "^s)
 val say = Control.Print.say
 val anyerror = ref false
-val clickerror = fn () => (anyerror := true)
 
 (****************************************************************************
  *                         BASIC UTILITY FUNCTIONS                          *
  ****************************************************************************)
-fun app2(f, [], []) = ()
-  | app2(f, a::r, b::z) = (f(a, b); app2(f, r, z))
-  | app2(f, _, _) = bug "unexpected list arguments in function app2"
 
-fun simplify(le,0) = RET [STRING "<-dummy->"]
-  | simplify(le,n) = 
-      let fun h le = simplify(le, n-1)
-          fun h1 (fk,v,args,le) = (fk,v,args,h le)
-          fun h2 (v,tvs,le) = (v,tvs,h le)
+fun foldl2 (f,a,xs,ys,g) = let
+  val rec loop =
+   fn (a, nil, nil) => a
+    | (a, x::xs, y::ys) => loop (f (x,y,a), xs, ys)
+    | (a, xs', _) => g (a, xs', length xs, length ys)
+  in loop (a,xs,ys) end
+
+fun simplify (le,0) = RET [STRING "<...>"]
+  | simplify (le,n) = 
+      let fun h le = simplify (le, n-1)
+          fun h1 (fk,v,args,le) = (fk, v, args, h le)
+          fun h2 (v,tvs,le) = (v, tvs, h le)
        in case le 
-           of LET(vs, e1, e2) => LET(vs, h e1, h e2)
-            | FIX(fdecs, b) => FIX(map h1 fdecs, h b)
-            | TFN(tdec, e) => TFN(h2 tdec, h e)
-            | SWITCH(v, l, dc, opp) => 
-               (let fun g(c, x) = (c, h x)
-                    fun f x = case x of SOME y => SOME(h y) | NONE => NONE
-                 in SWITCH(v, l, map g dc, f opp)
-                end)
-            | HANDLE(e, v) => HANDLE(h e, v)
+           of LET (vs,e1,e2) => LET (vs, h e1, h e2)
+            | FIX (fdecs,b) => FIX (map h1 fdecs, h b)
+            | TFN (tdec,e) => TFN (h2 tdec, h e)
+            | SWITCH (v,l,dc,opp) => 
+                let fun g (c,x) = (c, h x)
+                    val f = fn SOME y => SOME (h y) | NONE => NONE
+                 in SWITCH (v, l, map g dc, f opp)
+                end
+	    | CON (dc,tcs,vs,lv,le) => CON (dc, tcs, vs, lv, h le)
+	    | RECORD (rk,vs,lv,le) => RECORD (rk, vs, lv, h le)
+	    | SELECT (v,n,lv,le) => SELECT (v, n, lv, h le)
+            | HANDLE (e,v) => HANDLE (h e, v)
+	    | PRIMOP (po,vs,lv,le) => PRIMOP (po, vs, lv, h le)
             | _ => le
       end (* end of simplify *)
 
@@ -65,302 +67,347 @@ fun simplify(le,0) = RET [STRING "<-dummy->"]
 val tkPrint = say o LT.tk_print
 val tcPrint = say o LT.tc_print
 val ltPrint = say o LT.lt_print
-fun lePrint le = PP.printLexp (simplify(le, 3))
-fun svPrint sv = PP.printSval (sv)
+fun lePrint le = PP.printLexp (simplify (le, 3))
+val svPrint = PP.printSval
 
-(*** a hack for type checking ***)
-fun laterPhase i = (i > 20)
+fun error (le,g) = (
+    anyerror := true;
+    say "\n************************************************************\
+        \\n**** FLINT type checking failed: ";
+    g () before (say "\n** term:\n"; lePrint le))
+
+fun errMsg (le,s,r) = error (le, fn () => (say s; r))
+
+fun catchExn f (le,g) =
+  f () handle ex => error
+    (le, fn () => g () before say ("\n** exception " ^ exnName ex ^ " raised"))
+
+(*** a hack for type checkng ***)
+fun laterPhase i = i > 20
+
+fun check phase envs lexp = let
+  val ltEquiv = LT.lt_eqv_x (* should be LT.lt_eqv *)
+  fun ltTAppChk (lt, ts, kenv) = LT.lt_inst(lt, ts)
+
+  fun constVoid _ = LT.ltc_void
+  val (ltString,ltExn,ltEtag,ltVector,ltWrap) =
+    if laterPhase phase then
+      (LT.ltc_void, LT.ltc_void, constVoid, constVoid, constVoid)
+    else
+      (LT.ltc_string, LT.ltc_exn, LT.ltc_etag, LT.ltc_tyc o LT.tcc_vector, 
+       LT.ltc_tyc o LT.tcc_box)
+
+  fun prMsgLt (s,lt) = (say s; ltPrint lt)
+
+  fun prList f s t = let
+    val rec loop =
+     fn [] => say "<empty list>\n"
+      | [x] => (f x; say "\n")
+      | x::xs => (f x; say "\n* and\n"; loop xs)
+    in say s; loop t end
+
+  fun print2Lts (s,s',lt,lt') = (prList ltPrint s lt; prList ltPrint s' lt')
+
+  fun ltMatch (le,s) (t,t') =
+    if ltEquiv (t,t') then ()
+    else error
+      (le, fn () =>
+	      (prMsgLt (s ^ ": Lty conflict\n** types:\n", t);
+	       prMsgLt ("\n** and\n", t')))
+
+  fun ltsMatch (le,s) (ts,ts') =
+    foldl2 (fn (t,t',_) => ltMatch (le,s) (t,t'),
+	    (), ts, ts',
+	    fn (_,_,n,n') => error
+	       (le,
+		fn () => print2Lts
+	          (concat [s, ": type list mismatch (", Int.toString n, " vs ",
+			   Int.toString n', ")\n** expected types:\n"],
+		   "** actual types:\n",
+		   ts, ts')))
+
+  local
+    fun ltFnAppGen opr (le,s,msg) (t,ts) =
+      catchExn
+        (fn () => let val (xs,ys) = opr (LT.lt_arrowN t)
+		  (*** lt_arrowN may go away soon, and functors and functions
+		       have to be treated differently anyway, using different
+		       algorithms for comparing datatypes (probably)
+		   ***)
+	    in ltsMatch (le,s) (xs,ts); ys
+	    end)
+	(le, fn () => (prMsgLt (s ^ msg ^ "\n** type:\n", t); []))
+  in
+  fun ltFnApp (le,s) =
+      ltFnAppGen (fn x => x) (le,s,": Applying term of non-arrow type")
+  fun ltFnAppR (le,s) =
+      ltFnAppGen (fn (x,y) => (y,x)) (le,s,": Rev-app term of non-arrow type")
+  end
+
+  fun ltTyApp (le,s) (lt,ts,kenv) =
+    catchExn
+      (fn () => ltTAppChk (lt,ts,kenv))
+      (le,
+       fn () =>
+	  (prMsgLt (s ^ ": Kind conflict\n** function Lty:\n", lt);
+	   prList tcPrint "\n** argument Tycs:\n" ts;
+	   []))
+
+  fun ltArrow (le,s) (isfct,alts,rlts) = 
+    (case isfct 
+      of NONE => LT.ltc_fct (alts,rlts)
+       | SOME raw => 
+           (catchExn
+             (fn () => LT.ltc_arrow (raw,alts,rlts))
+             (le,
+              fn () =>
+              (print2Lts
+   	        (s ^ ": deeply polymorphic non-functor\n** parameter types:\n",
+  	         "** result types:\n",
+	         alts, rlts);
+	      LT.ltc_void))))
+
+(* typeInEnv : LT.tkindEnv * LT.ltyEnv * DI.depth -> lexp -> lty list *)
+  fun typeInEnv (kenv,venv,d) = let
+    fun extEnv (lv,lt,ve) = LT.ltInsert (ve,lv,lt,d)
+    fun bogusBind (lv,ve) = extEnv (lv,LT.ltc_void,ve)
+    fun typeIn venv' = typeInEnv (kenv,venv',d)
+    fun typeWith (v,t) = typeIn (LT.ltInsert (venv,v,t,d))
+    fun mismatch (le,s) (a,r,n,n') = errMsg
+	(le,
+	 concat [s, ": binding/result list mismatch\n** expected ",
+		 Int.toString n, " elements, got ", Int.toString n'],
+	 foldl bogusBind a r)
+
+    fun typeof le = let
+      fun typeofVar lv = LT.ltLookup (venv,lv,d)
+	  handle ltUnbound =>
+	      errMsg (le, "Unbound Lvar " ^ LV.lvarName lv, LT.ltc_void)
+      val typeofVal =
+       fn VAR lv => typeofVar lv
+	| (INT _ | WORD _) => LT.ltc_int
+	| (INT32 _ | WORD32 _) => LT.ltc_int32
+	| REAL _ => LT.ltc_real
+	| STRING _ => LT.ltc_string
+      fun typeofFn ve (_,_,vts,eb) = let
+	fun split ((lv,t), (ve,ts)) = (LT.ltInsert (ve,lv,t,d), t::ts)
+	val (ve',ts) = foldr split (ve,[]) vts
+	in (ts, typeIn ve' eb)
+	end
+
+      fun chkSnglInst (fp as (le,s)) (lt,ts) =
+	if null ts then lt
+	else case ltTyApp fp (lt,ts,kenv)
+	   of [] => LT.ltc_unit
+	    | [lt] => lt
+	    | lts => errMsg
+		(le,
+		 concat [s, ": inst yields ", Int.toString (length lts),
+			 " results instead of 1"],
+		 LT.ltc_void)
+      fun typeWithBindingToSingleRsltOfInstAndApp (s,lt,ts,vs,lv) e = let
+	val fp = (le,s)
+	val lt = case ltFnApp fp (chkSnglInst fp (lt,ts), map typeofVal vs)
+	   of [lt] => lt
+            | _ => errMsg
+               (le, 
+                concat [s, ": primop/dcon must return single result type "],
+                LT.ltc_void)
+(*
+	    | [] => LT.ltc_unit
+	    | lts => LT.ltc_tuple lts
+	            (*** until PRIMOPs start returning multiple results... ***)
+*)
+	in typeWith (lv,lt) e
+	end
+
+      fun matchAndTypeWith (s,v,lt,lt',lv,e) =
+	(ltMatch (le,s) (typeofVal v, lt); typeWith (lv, lt') e)
+      in case le
+       of RET vs => map typeofVal vs
+	| LET (lvs,e,e') =>
+	  typeIn (foldl2 (extEnv, venv, lvs, typeof e, mismatch (le,"LET"))) e'
+	| FIX ([],e) =>
+	  (say "\n**** Warning: empty declaration list in FIX\n"; typeof e)
+	| FIX ((fd as ((FK_FUN{isrec=NONE,...} | FK_FCT), 
+                       _, _, _)) :: fds', e) => let
+	    val (fk, lv, _, _) = fd
+            val isfct = case fk of FK_FCT => NONE
+                                 | FK_FUN{fixed, ...} => SOME fixed
+	    val (alts,rlts) = typeofFn venv fd
+	    val lt = ltArrow (le,"non-rec FIX") (isfct,alts,rlts)
+	    val ve = extEnv (lv,lt,venv)
+	    val venv' =
+	      if null fds' then ve
+	      else errMsg
+		(le,
+		 "multiple bindings in FIX, not all recursive",
+		 foldl (fn ((_,lv,_,_), ve) => bogusBind (lv,ve)) ve fds')
+	    in typeIn venv' e
+	    end
+	| FIX (fds,e) => let
+            val isfct = false
+	    fun extEnv ((FK_FCT, _, _, _), _) =
+                  bug "unexpected case in extEnv"
+              | extEnv ((FK_FUN {isrec,fixed,...}, lv, vts, _) : fundec, ve) =
+	      case (isrec, isfct)
+	       of (SOME lts, false) => let
+		    val lt = ltArrow (le,"FIX") (SOME fixed, 
+                                                 map #2 vts, lts)
+		    in LT.ltInsert (ve,lv,lt,d)
+		    end
+		| _ => let
+		    val msg =
+		      if isfct then "recursive functor "
+		      else "a non-recursive function "
+		    in errMsg (le, "in FIX: " ^ msg ^ LV.lvarName lv, ve)
+		    end
+	    val venv' = foldl extEnv venv fds
+	    fun chkDcl ((FK_FUN {isrec = NONE, ...}, _, _, _) : fundec) = ()
+	      | chkDcl (fd as (FK_FUN {isrec = SOME lts, ...}, _, _, _)) = let
+		in ltsMatch (le,"FIX") (lts, #2 (typeofFn venv' fd))
+		end
+              | chkDcl _ = ()
+	    in
+	      app chkDcl fds;
+	      typeIn venv' e
+	    end
+	| APP (v,vs) => ltFnApp (le,"APP") (typeofVal v, map typeofVal vs)
+	| TFN ((lv,tks,e), e') => let
+	    val ks = map #2 tks
+	    val lts = typeInEnv (LT.tkInsert (kenv,ks), venv, DI.next d) e
+	    in typeWith (lv, LT.ltc_poly (ks,lts)) e'
+	    end
+	| TAPP (v,ts) => ltTyApp (le,"TAPP") (typeofVal v, ts, kenv)
+	| SWITCH (_,_,[],_) => errMsg (le,"empty SWITCH",[])
+	| SWITCH (v, _, ce::ces, lo) => let
+	    val selLty = typeofVal v
+	    fun g lt = (ltMatch (le,"SWITCH branch 1") (lt,selLty); venv)
+	    fun brLts (c,e) = let
+	      val venv' = case c
+		 of DATAcon ((_,_,lt), ts, v) => let
+		      val fp = (le,"SWITCH DECON")
+		      val ct = chkSnglInst fp (lt,ts)
+		      val nts = ltFnAppR fp (ct, [selLty])
+		      in foldl2 (extEnv, venv, [v], nts, mismatch fp)
+		      end
+		  | (INTcon _ | WORDcon _) => g LT.ltc_int
+		  | (INT32con _ | WORD32con _) => g LT.ltc_int32
+		  | REALcon _ => g LT.ltc_real
+		  | STRINGcon _ => g ltString
+		  | VLENcon _ => g LT.ltc_int (* ? *)
+	      in typeIn venv' e
+	      end
+	    val ts = brLts ce
+	    fun chkBranch (ce,n) =
+	      (ltsMatch (le, "SWITCH branch " ^ Int.toString n) (ts, brLts ce);
+	       n+1)
+	    in
+	      foldl chkBranch 2 ces;
+	      case lo
+	       of SOME e => ltsMatch (le,"SWITCH else") (ts, typeof e)
+		| NONE => ();
+	      ts
+	    end
+	| CON ((_,_,lt), ts, u, lv, e) =>
+	  typeWithBindingToSingleRsltOfInstAndApp ("CON",lt,ts,[u],lv) e
+	| RECORD (rk,vs,lv,e) => let
+	    val lt = case rk
+	       of RK_VECTOR t => let
+		    val lt = LT.ltc_tyc t
+		    val match = ltMatch (le,"VECTOR")
+		    in
+		      app (fn v => match (lt, typeofVal v)) vs;
+		      ltVector t
+		    end
+		| RK_TUPLE _ => 
+		  if null vs then LT.ltc_unit
+		  else let
+		    fun chkMono v = let val t = typeofVal v
+			in
+			  if LT.ltp_fct t orelse LT.ltp_poly t then
+			    error (le, fn () =>
+			        prMsgLt
+				  ("RECORD: poly type in mono record:\n",t))
+			  else ();
+			  t
+			end
+		    in LT.ltc_tuple (map chkMono vs)
+		    end
+		| RK_STRUCT => LT.ltc_str (map typeofVal vs)
+	    in typeWith (lv,lt) e
+	    end
+	| SELECT (v,n,lv,e) => let
+	    val lt = catchExn
+		(fn () => LT.lt_select (typeofVal v, n))
+		(le,
+		 fn () =>
+		    (say "SELECT from wrong type or out of range"; LT.ltc_void))
+	    in typeWith (lv,lt) e
+	    end
+	| RAISE (v,lts) => (ltMatch (le,"RAISE") (typeofVal v, ltExn); lts)
+	| HANDLE (e,v) => let val lts = typeof e
+	    in ltFnAppR (le,"HANDLE") (typeofVal v, lts); lts
+	    end
+	| BRANCH ((_,_,lt,ts), vs, e1, e2) => 
+            let val fp = (le, "BRANCH")
+                val lt = 
+	          case ltFnApp fp (chkSnglInst fp (lt,ts), map typeofVal vs)
+	           of [lt] => lt
+                    | _ => errMsg
+                            (le, 
+                             "BRANCK : primop must return single result ",
+                             LT.ltc_void)
+                val _ = ltMatch fp (lt, LT.ltc_bool)
+                val lts1 = typeof e1
+                val lts2 = typeof e2
+             in ltsMatch fp (lts1, lts2);
+                lts1
+            end
+	| PRIMOP ((_,_,lt,ts), vs, lv, e) => 
+	  typeWithBindingToSingleRsltOfInstAndApp ("PRIMOP",lt,ts,vs,lv) e
+(*
+	| GENOP (dict, (_,lt,ts), vs, lv, e) =>
+	  (* verify dict ? *)
+	  typeWithBindingToSingleRsltOfInstAndApp ("GENOP",lt,ts,vs,lv) e
+	| ETAG (t,v,lv,e) =>
+	  matchAndTypeWith ("ETAG", v, ltString, ltEtag (LT.ltc_tyc t), lv, e)
+	| WRAP (t,v,lv,e) =>
+	  matchAndTypeWith ("WRAP", v, LT.ltc_tyc t, ltWrap t, lv, e)
+	| UNWRAP (t,v,lv,e) =>
+	  matchAndTypeWith ("UNWRAP", v, ltWrap t, LT.ltc_tyc t, lv, e)
+*)
+      end
+    in typeof end
+
+in
+  anyerror := false;
+  ignore (typeInEnv envs lexp);
+  !anyerror
+end
+
+in (* loplevel local *)
 
 (****************************************************************************
- *  MAIN FUNCTION --- val checkTop : Lambda.fundec * typsys -> bool         *
+ *  MAIN FUNCTION --- val checkTop : FLINT.fundec * typsys -> bool          *
  ****************************************************************************)
-fun checkTop ((fk,v,args,lexp), phase) = bug "not implemented"
-(*
-let 
-val ltEquiv = LT.lt_eqv_bx
-val ltAppChk = LT.lt_inst_chk
-val ltString = if laterPhase(phase) then LT.ltc_void else LT.ltc_string
-val ltExn = if laterPhase(phase) then LT.ltc_void else LT.ltc_exn
-fun ltEtag lt = if laterPhase(phase) then LT.ltc_void 
-                else LT.ltc_etag lt
-fun ltVector t = if laterPhase(phase) then LT.ltc_void
-                 else LT.ltc_tyc(LT.tcc_app(LT.tcc_vector,[t]))
-exception tcUnbound = LT.tcUnbound
-exception LtyArrow 
-exception LtySelect
-fun ltArrow lt = 
-  (LT.lt_arrow lt) handle _ => raise LtyArrow
-fun ltSel (lt, i) = 
-  (LT.lt_select(lt, i)) handle _ => raise LtySelect
-fun ltFun (t1, t2) = LT.ltc_fun(t1, t2)
+fun checkTop ((fkind, v, args, lexp) : fundec, phase) = let
+  val ve =
+    foldl (fn ((v,t), ve) => LT.ltInsert (ve,v,t,DI.top)) LT.initLtyEnv args
+  val err = check phase (LT.initTkEnv, ve, DI.top) lexp
+  val err = case fkind
+     of FK_FCT => err
+      | _ => (say "**** Not a functor at top level\n"; true)
+  in err end
 
-(** utility values and functions on ltyEnv *)
-type ltyEnv = LT.ltyEnv
-val initLtyEnv : ltyEnv = LT.initLtyEnv
-val ltLookup = LT.ltLookup
-val ltInsert = LT.ltInsert
+val checkTop =
+  Stats.doPhase (Stats.makePhase "Compiler 051 FLINTCheck") checkTop
 
-(** utility functions for type checking *)
-fun ltTyApp le s (lt, ts, kenv) = 
-      ((ltAppChk(lt, ts, kenv))
-       handle zz => 
-       (clickerror ();
-        say (s ^ "  **** Kind conflicting in lexp =====> \n    ");
-        case zz of LT.LtyAppChk => say "      exception LtyAppChk raised! \n"
-                 | LT.TkTycChk =>  say "      exception TkTycChk raised! \n"
-                 | _ => say "   other weird exception raised! \n";
-        say "\n \n"; lePrint le; say "\n For Types: \n";  
-        ltPrint lt; say "\n and   \n    "; 
-        app (fn x => (tcPrint x; say "\n")) ts;   say "\n \n";  
-        say "***************************************************** \n"; 
-        bug "fatal typing error in ltTyApp"))
-
-fun ltMatch le s (t1, t2) = 
-  (if ltEquiv(t1,t2) then ()
-   else (clickerror();
-         say (s ^ "  **** Lty conflicting in lexp =====> \n    ");
-         ltPrint t1; say "\n and   \n    "; ltPrint t2;
-         say "\n \n";  MCprint.printLexp le;
-         say "***************************************************** \n"))
-  handle zz => 
-  (clickerror();
-   say (s ^ "  **** Lty conflicting in lexp =====> \n    ");
-   say "uncaught exception found ";
-   say "\n \n";  MCprint.printLexp le; say "\n";  
-   ltPrint t1; say "\n and   \n    "; ltPrint t2; say "\n";  
-   say "***************************************************** \n")
-
-fun ltsMatch le s (ts1, ts2) = app2 (ltMatch le s) (ts1, ts2)
-
-fun ltFnApp le s (t1, t2) = 
-  let val (a1, b1) = 
-        ((ltArrow t1) handle zz =>
-            (clickerror ();
-             say (s ^ "  **** Applying Non-Arrow Type in lexp =====> \n    ");
-             case zz of LtyArrow => say "exception LtyArrow raised. \n"
-                      | tcUnbound => say "exception tcUnbound raised. \n" 
-                      | _ => say "other weird exceptions raised\n";
-             say "\n \n";  lePrint le; say "\n For Types \n";
-             ltPrint t1; say "\n and   \n    "; ltPrint t2; say "\n \n";  
-             say "***************************************************** \n"; 
-             bug "fatal typing error in ltFnApp"))
-
-   in ltMatch le s (a1, t2); b1
-  end
-
-fun ltFnAppR le s (t1, t2) =  (*** used for DECON lexps ***)
-  let val (a1, b1) = 
-        ((ltArrow t1) handle zz => 
-            (clickerror ();
-             say (s ^ "  **** Rev-Apply Non-Arrow Type in lexp =====> \n    ");
-             case zz of LtyArrow => say "exception LtyArrow raised. \n"
-                      | tcUnbound => say "exception tcUnbound raised. \n"
-                      | _ => say "other weird exceptions raised\n";
-             say "\n \n";  lePrint le; say "\n For Types \n";
-             ltPrint t1; say "\n and   \n    "; ltPrint t2; say "\n \n"; 
-             say "***************************************************** \n"; 
-             bug "fatal typing error in ltFnApp"))
-
-   in ltMatch le s (b1, t2); a1
-  end
-
-fun ltSelect le s (lt, i) = 
-  ((ltSel(lt, i))
-     handle zz => 
-       (clickerror ();
-        say (s ^ "  **** Select from a wrong-type lexp  =====> \n    ");
-        case zz of LtySelect => say "exception LtyArrow raised. \n"
-                 | tcUnbound => say "exception tcUnbound raised. \n"
-                 | _ => say "other weird exceptions raised\n";
-        say "\n \n";  lePrint le; say "\n \n";
-        say "Selecting "; say (Int.toString i); 
-        say "-th component from the type: \n     "; ltPrint lt; say "\n \n "; 
-        say "***************************************************** \n"; 
-        bug "fatal typing error in ltSelect"))
-
-(*
- * Right now, ltConChk does not check the case for DATAcon but this
- * will be fixed soon. (ZHONG)
- *)
-fun ltConChk le s (DATAcon ((_, rep, lt), ts, vs), root, venv, kenv, d) = 
-      let val nt = ltTyApp le "DECON" (lt, ts, kenv)
-          val nts = ltFnAppR le "DECON" (nt, [root])
-          fun h(env, v::r, x::s) = 
-                h(ltInsert(env, v, x, d), r, s)
-            | h(env, [], []) = env
-            | h _ = (say ("** SWI BINDINGS mismatch ** vs=" ^
-                     (Int.toString (length vs)) ^ "  e1s=" ^
-                     (Int.toString (length nts)) ^ " \n");
-                     bug "unexpected lambda code in ltConChk")
-       in h(venv, vs, nts)
-      end
-  | ltConChk le s (c, lt, venv, kenv, d) = 
-      let val nt = (case c of INT32con _ => LT.ltc_int32
-                            | WORD32con _ => LT.ltc_int32
-                            | REALcon _ => LT.ltc_real
-                            | STRINGcon _ => ltString
-                            |  _ => LT.ltc_int)
-       in ltMatch le s (nt, lt); venv
-      end
-
-(** check : tkindEnv * ltyEnv * DI.depth -> lexp -> lty list *)
-fun check (kenv, venv, d) = 
-  let fun lpsv (INT _) = LT.ltc_int
-        | lpsv (WORD _) = LT.ltc_int
-        | lpsv (INT32 _) = LT.ltc_int32
-        | lpsv (WORD32 _) = LT.ltc_int32
-        | lpsv (REAL _) = LT.ltc_real
-        | lpsv (STRING _) = ltString
-        | lpsv (VAR v) = 
-            (ltLookup(venv, v, d) 
-             handle LT.ltUnbound => 
-              (say ("** Lvar ** " ^ (LV.lvarName(v)) ^ " is unbound *** \n");
-               bug "unexpected lambda code in checkTop"))
-
-      fun loop le =
-       (case le
-         of RET vs => map lpsv sv
-          | APP(v, vs) => ltFnApp le "APP" (lpsv v, map lpsv vs)
-          | TAPP(sv, ts) => ltTyApp le "TAPP" (lpsv sv, ts, kenv)
-          | LET(vs, e1, e2) => 
-              let val ts = loop e1
-                  fun h(env, v::r, t::s) = 
-                        h(ltInsert(env,v,t,d), r, s)
-                    | h(env, [], []) = env
-                    | h _ = (say ("** LET BINDINGS mismatch ** vs=" ^
-                                  (Int.toString (length vs)) ^ "  e1s=" ^
-                                  (Int.toString (length ts)) ^ " \n");
-                             bug "unexpected lambda code in checkTop")
-                   val venv1 = h(venv, vs, ts)
-               in check (kenv, venv1, d) e2
-              end
-          | FIX (fs, eb) =>
-              let fun h (env, (_,v,t,_,_)::r) = h(ltInsert(env,v,t,d), r)
-                    | h (env, []) = env
-                  val venv1 = h(venv, fs)
-
-                  fun g (_,_,_,args,e) =
-                    let fun m (env, (v,t)::r) = m(ltInsert(env,v,t,d), r)
-                          | m (env, []) = env
-                        val venv2 = m(venv1, args)
-                        val argts = map #1 args
-                        val rests = check (kenv, venv2, d) e
-                     in LT.ltc_fun(argts, rests)
-                    end
-                  val nts = map g fs
-                  val _ = ltsMatch le "FIX1" (map #3 fs, nts)
-               in check (kenv, venv1, d) eb
-              end
-          | TFN((v,t,tvs,e), eb) => 
-              let val kenv1 = LT.tkInsert(kenv, map #2 tvs)
-                  (*** temporarily using the old format of type variables ***)
-                  val lts = check (kenv1, venv, DI.next d) e
-                  val nt = LT.ltc_poly(ks, lts)
-                  val _ = ltMatch le "TFN" (t, nt)
-                  val venv1 = ltInsert(venv,v,t,d)
-               in check (kenv, venv1, d) eb
-              end
-          | SWITCH(v, _, cl, opp) => 
-              let val root = lpsv v
-                  fun h (c, x) = 
-                    let val venv1 = ltConChk le "SWT1" (c, root, venv, kenv, d)
-                     in check (kenv, venv1, d) x
-                    end
-                  val ts = map h cl
-               in (case ts
-                    of [] => bug "empty switch in checkTop"
-                     | a::r => 
-                        (app (fn x => ltsMatch le "SWT2" (x, a)) r;
-                         case opp
-                          of NONE => a
-                           | SOME be => (ltsMatch le "SWT3" (loop be, a); a)))
-              end
-          | CON((_, rep, lt), ts, vs, v, eb) =>   
-              let val ts1 = ltTyApp le "CON" (lt, ts, kenv)
-                  val ts2 = map lpsv vs
-               in case ts1
-                   of [t1] => 
-                        let val nt = ltFnApp le "CON-A" (t1, ts2)
-                            val venv1 = ltInsert(venv, v, nt, d)
-                         in check (kenv, venv1, d) eb
-                        end
-                    | _ => bug "unexpected case in check CON"
-              end
-          | RECORD (RK_VECTOR t, vl) => 
-              let val ts = map lpsv vl
-               in app (fn x => ltMatch le "VECTOR" (x, LT.ltc_tyc t)) ts; 
-                  ltVector t
-              end
-          | RECORD (_, []) => LT.ltc_unit
-          | RECORD (RK_RECORD, vl) => LT.ltc_tuple (map lpsv vl)
-          | RECORD (RK_STRUCT, vl) => LT.ltc_str (map lpsv vl)
-
-          | SELECT(u, i, v, eb) => 
-              let val t = ltSelect le "SEL" (lpsv u, i)
-                  val venv1 = ltInsert(venv, v, t, d)
-               in check (kenv, venv1, d) eb
-              end
-
-          | ETAG(v, t) =>   (* v is string but the result should be eflag[t] *)
-              let val z = lpsv v   (* what do we check on e ? *)
-                  val _ = ltMatch le "ETAG1" (z, LT.ltc_string) 
-               in ltEtag t
-              end
-
-          | RAISE(v,t) => 
-              (ltMatch le "RAISE" (lpsv v, ltExn); t)
-
-          | HANDLE(e,sv) => 
-             let val ts = loop e
-                 val arg = ltFnAppR le "HANDLE" (lpsv sv, ts)
-              in ts
-             end
-
-          | PRIM((p, t, ts), vs, v, eb) => 
-             let val xx = ltTyApp (SVAL sv) "PRIM" (t, ts, kenv) 
-              in check (kenv, ltInsert(venv, v, t, d), d) eb
-             end
-
-          | GENOP(dict, (p, t, ts), vs, v, eb) => 
-             (* should check the consistency of dict here *)
-             ltTyApp (SVAL sv) "GENOP" (t, ts, kenv)
-
-          | PACK(lt, ts, nts, sv) => 
-              let val argTy = ltTyApp le "PACK-A" (lt, ts, kenv)
-               in ltMatch le "PACK-M" (argTy, lpsv sv);
-                  ltTyApp le "PACK-R" (lt, nts, kenv)
-              end
-
-          (** these two cases should never happen before wrapping *)
-          | WRAP(t, b, sv, v, eb) => 
-              (ltMatch le "WRAP" (lpsv sv, LT.ltc_tyc t); 
-               if laterPhase(phase) then LT.ltc_void
-               else LT.ltc_tyc(if b then LT.tcc_box t else LT.tcc_abs t))
-
-          | UNWRAP(t, b, sv, v, eb) => 
-              let val ntc = if laterPhase(phase) then LT.tcc_void
-                            else (if b then LT.tcc_box t else LT.tcc_abs t)
-                  val nt = LT.ltc_tyc ntc
-               in (ltMatch le "UNWRAP" (lpsv sv, nt); LT.ltc_tyc t)
-              end
-
-          | FN(v, t, e1) => 
-              let val venv' = ltInsert(venv, v, t, d)
-                  val res = check (kenv, venv', d) e1
-               in ltFun(t, res) (* handle both functions and functors *)
-              end)
-
-
-  in loop 
- end (* end-of-fn-check *)
-
-in 
-anyerror := false; check (LT.initTkEnv, initLtyEnv, DI.top) lexp; !anyerror;
-end (* end of function checkTop *)
-*)
-
-fun checkExp  _ = bug "checkExp not implemented yet"
+(****************************************************************************
+ *  MAIN FUNCTION --- val checkExp : FLINT.lexp * typsys -> bool            *
+ *  (currently unused?)                                                     *
+ ****************************************************************************)
+fun checkExp (le,phase) = check phase (LT.initTkEnv, LT.initLtyEnv, DI.top) le
 
 end (* toplevel local *)
 end (* structure ChkFlint *)
-

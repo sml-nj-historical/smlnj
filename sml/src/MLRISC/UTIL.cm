@@ -5,5 +5,5 @@
    alias to util/UTIL.cm
 *)
  
-alias ../9-MiscUtil/util/UTIL.cm
+alias ../MiscUtil/util/UTIL.cm
 

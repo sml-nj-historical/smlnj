@@ -3,14 +3,14 @@
 
 signature PEQUAL = 
 sig
-
+  type toTcLt = (Types.ty -> PLambdaType.tyc) * (Types.ty -> PLambdaType.lty)
   (* 
    * Constructing generic equality functions; the current version will
    * use runtime polyequal function to deal with abstract types. (ZHONG)
    *)
   val equal : {getStrEq : unit -> PLambda.lexp, 
                getPolyEq : unit -> PLambda.lexp} * StaticEnv.staticEnv 
-               -> (Types.ty * Types.ty * DebIndex.depth) -> PLambda.lexp
+               -> (Types.ty * Types.ty * toTcLt) -> PLambda.lexp
 
   val debugging : bool ref     
 
@@ -25,7 +25,6 @@ local structure DA = Access
       structure T  = Types
       structure BT = BasicTypes
       structure LT = PLambdaType
-      structure TT = TransTypes
       structure TU = TypesUtil
       structure SE = StaticEnv
       structure PO = PrimOp
@@ -37,6 +36,8 @@ in
 val debugging = ref false
 fun bug msg = ErrorMsg.impossible("Equal: "^msg)
 val say = Control.Print.say
+
+type toTcLt = (ty -> LT.tyc) * (ty -> LT.lty)
 
 val --> = BT.-->
 infix -->
@@ -51,22 +52,22 @@ val mkv = LambdaVar.mkLvar
 
 (** translating the typ field in DATACON into lty; constant datacons 
     will take ltc_unit as the argument *)
-fun toDconLty d ty =
+fun toDconLty (toTyc, toLty) ty =
   (case ty 
     of POLYty{sign, tyfun=TYFUN{arity, body}} =>
-         if BT.isArrowType body then TT.toLty d ty
-         else TT.toLty d (POLYty{sign=sign, 
-                               tyfun=TYFUN{arity=arity,
-                                              body=BT.-->(BT.unitTy, body)}})
-     | _ => if BT.isArrowType ty then TT.toLty d ty
-            else TT.toLty d (BT.-->(BT.unitTy, ty)))
+         if BT.isArrowType body then toLty ty
+         else toLty (POLYty{sign=sign, 
+                            tyfun=TYFUN{arity=arity,
+                                        body=BT.-->(BT.unitTy, body)}})
+     | _ => if BT.isArrowType ty then toLty ty
+            else toLty (BT.-->(BT.unitTy, ty)))
 
 (* 
  * Is TU.dconType necessary, or could a variant of transTyLty that 
  * just takes tyc and domain be used in transDcon??? 
  *)
-fun transDcon(tyc, {name,rep,domain}, d) =
-      (name, rep, toDconLty d (TU.dconType(tyc,domain)))
+fun transDcon(tyc, {name,rep,domain}, toTcLt) =
+      (name, rep, toDconLty toTcLt (TU.dconType(tyc,domain)))
 
 val (trueDcon', falseDcon') = 
   let val lt = LT.ltc_parrow(LT.ltc_unit, LT.ltc_bool)
@@ -145,7 +146,7 @@ exception Notfound
  *              equal --- the equality function generator                   *
  ****************************************************************************)
 fun equal ({getStrEq, getPolyEq}, env) 
-          (polyEqTy : ty, concreteType : ty, d) =
+          (polyEqTy : ty, concreteType : ty, toTcLc as (toTyc, toLty)) =
 let 
 
 val cache : (ty * lexp * lexp ref) list ref = ref nil
@@ -175,7 +176,7 @@ fun find ty =
       f (!cache)
   end
 
-fun eqTy ty = eqLty(TT.toLty d ty)
+fun eqTy ty = eqLty(toLty ty)
 fun ptrEq(p, ty) = PRIM(p, eqTy ty, [])
 fun prim(p, lt) = PRIM(p, lt, [])
 
@@ -218,7 +219,7 @@ fun test(ty, 0) = raise Poly
                          COND(loop(n,[ty]), loop(n+1,r), falseLexp)
                      | loop(_,nil) = trueLexp
 
-                   val lt = TT.toLty d ty
+                   val lt = toLty ty
                 in patch := FN(v, LT.ltc_tuple [lt,lt],
                              LET(x, SELECT(0, VAR v),
                                LET(y, SELECT(1, VAR v), 
@@ -261,7 +262,7 @@ fun test(ty, 0) = raise Poly
                                             in APP(test(argt, depth-1),
                                                    RECORD[VAR ww, VAR uu])
                                            end)))
-                           val lt = TT.toLty d ty
+                           val lt = toLty ty
                            val argty = LT.ltc_tuple [lt,lt]
                            val pty = LT.ltc_parrow(argty, boolty)
  
@@ -284,9 +285,9 @@ fun test(ty, 0) = raise Poly
                                       val sign = getCsig(dcons,0,0)
 
                                       fun concase dcon = 
-                                        let val tcs = map (TT.toTyc d) tyl
+                                        let val tcs = map toTyc tyl
                                             val ww = mkv() and uu = mkv()
-                                            val dc = transDcon(tyc,dcon,d)
+                                            val dc = transDcon(tyc,dcon,toTcLc)
                                             val dconx = DATAcon(dc, tcs, ww)
                                             val dcony = DATAcon(dc, tcs, uu)
                                          in (dconx,
@@ -328,8 +329,8 @@ in
 end handle Poly => 
   (GENOP({default=getPolyEq(),
           table=[([LT.tcc_string], getStrEq())]}, 
-         PO.POLYEQL, TT.toLty d polyEqTy, 
-         [TT.toTyc d concreteType]))
+         PO.POLYEQL, toLty polyEqTy, 
+         [toTyc concreteType]))
 
 
 end (* toplevel local *)                       

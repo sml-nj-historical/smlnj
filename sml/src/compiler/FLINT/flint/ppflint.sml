@@ -6,6 +6,7 @@ structure PPFlint :> PPFLINT =
 struct
     (** frequently used structures *)
     structure F = FLINT
+    structure FU = FlintUtil
     structure S = Symbol
     structure LV = LambdaVar
     structure LT = LtyExtern
@@ -26,10 +27,16 @@ struct
     infix &
     fun op& (f1,f2) () = (f1(); f2())
 
+    fun toStringFFlag ff = 
+      let fun h b = if b then "r" else "c"
+       in LT.ffw_var (ff, fn (b1,b2) => (h b1)^(h b2), fn _ => "f")
+      end
 
-    (** classifications of various kinds of functions: not used *)
-    fun toStringFKind ({isrec=SOME _, ...} : F.fkind) = "FK_REC"
-      | toStringFKind {isrec=_, ...} = "FK_ESCAPE"
+    fun toStringFKind (F.FK_FUN {isrec=SOME _, fixed, ...} : F.fkind) = 
+          "REC " ^ (toStringFFlag fixed)
+      | toStringFKind (F.FK_FUN {fixed, ...}) = 
+          "FUN " ^ (toStringFFlag fixed)
+      | toStringFKind (F.FK_FCT) = "FCT"
 (*
     fun toStringFKind F.FK_ESCAPE  = "FK_ESCAPE"
       | toStringFKind F.FK_KNOWN   = "FK_KNOWN"
@@ -43,8 +50,8 @@ struct
 
     (** classifications of various kinds of records *)
     fun toStringRKind (F.RK_VECTOR tyc) = "VECTOR[" ^ LT.tc_print tyc ^ "]"
-      | toStringRKind F.RK_RECORD = "RECORD"
       | toStringRKind F.RK_STRUCT = "STRUCT"
+      | toStringRKind (F.RK_TUPLE _) = "RECORD"
 
     val printRKind = say o toStringRKind
 
@@ -84,14 +91,11 @@ struct
     val printLtyList = PU.printClosedSequence parenCommaSep printLty
     val printTvTkList = PU.printClosedSequence ("[",",","]") printTvTk
 
-    fun appPrint prfun sepfun [] = ()
-      | appPrint prfun sepfun (x::xs) =
-	(prfun x;  app (fn y => (sepfun(); prfun y)) xs)
-
-    fun printDecon (F.DATAcon(_,_,[])) = ()
-      | printDecon (F.DATAcon((symbol,conrep,lty),tycs,lvars)) =
-	(* [<lvars>] = DECON(<symbol>,<conrep>,<lty>,[<tycs>]) *)
-	(printVarList lvars; 
+    fun printDecon (F.DATAcon((_,Access.CONSTANT _,_),_,_)) = () 
+        (* WARNING: a hack, but then what about constant exceptions ? *)
+      | printDecon (F.DATAcon((symbol,conrep,lty),tycs,lvar)) =
+	(* <lvar> = DECON(<symbol>,<conrep>,<lty>,[<tycs>]) *)
+	(printVar lvar; 
 	 say " = DECON("; 
 	 say (S.name symbol); say ",";
 	 say (Access.prRep conrep); say ",";
@@ -99,6 +103,10 @@ struct
 	 printTycList tycs; say ")"; 
 	 newline(); dent())
       | printDecon _ = ()
+
+    fun appPrint prfun sepfun [] = ()
+      | appPrint prfun sepfun (x::xs) =
+	(prfun x;  app (fn y => (sepfun(); prfun y)) xs)
 
     (** the definitions of the lambda expressions *)
 
@@ -201,14 +209,14 @@ struct
 		      pLexp lexp;  undent 4);
 		      undent 2)
 
-      | pLexp (F.CON ((symbol,_,_), tycs, values, lvar, body)) =
-	 (* <lvar> = CON(<symbol>, <tycs>, <values>)
+      | pLexp (F.CON ((symbol,_,_), tycs, value, lvar, body)) =
+	 (* <lvar> = CON(<symbol>, <tycs>, <value>)
 	  * <body>
 	  *)
 	 (printVar lvar; say " = CON(";
 	  say (S.name symbol); say ", ";
 	  printTycList tycs;  say ", ";
-	  printValList values;  say ")";  
+	  printSval value;  say ")";  
 	  newline();  dent();  pLexp body)
 	  
       | pLexp (F.RECORD (rkind, values, lvar, body)) =
@@ -231,11 +239,11 @@ struct
 	 
       | pLexp (F.RAISE (value, ltys)) =
 	 (* NOTE: I'm ignoring the lty list here. It is the return type 
-	  * of the raise expression.  
+	  * of the raise expression. (ltys temporarily being printed --v)
 	  *)
 	 (* RAISE(<value>) *)
 	 (say "RAISE(";
-	  printSval value; say ")")
+	  printSval value; say ") : "; printLtyList ltys)
 	 
       | pLexp (F.HANDLE (body, value)) =
 	 (* <body>
@@ -244,57 +252,64 @@ struct
 	 (pLexp body;  
 	  newline();  dent();
 	  say "HANDLE(";  printSval value;  say ")")
+
+      | pLexp (F.BRANCH ((d, primop, lty, tycs), values, body1, body2)) =
+	 (* IF PRIM(<primop>, <lty>, [<tycs>]) [<values>] THEN
+	  *   <body1>
+          * ELSE
+	  *   <body2>
+	  *)
+	 ((case d of NONE => say "IF PRIMOP("
+                   | _ => say "IF GENOP(");
+	  say (PO.prPrimop primop);  say ", ";
+	  printLty lty;  say ", ";
+	  printTycList tycs;  say ") ";
+	  printValList values;
+          say " THEN";
+	  newline();  dent(); pLexp body1; 
+          newline();  say "ELSE"; 
+          newline();  dent(); pLexp body2)
 	 
-      | pLexp (F.ETAG (tyc, value, lvar, body)) =
+      | pLexp (F.PRIMOP (p as (_, PO.MKETAG, _, _), [value], lvar, body)) =
 	 (* <lvar> = ETAG(<value>[<tyc>])
 	  * <body>
 	  *)
 	 (printVar lvar;  say " = ETAG(";
 	  printSval value;  say "[";
-	  printTyc tyc;  say "])";
+	  printTyc (FU.getEtagTyc p);  say "])";
 	  newline();  dent();  pLexp body)
-	 
-      | pLexp (F.PRIMOP ((primop, lty, tycs), values, lvar, body)) =
-	 (* <lvar> = PRIM(<primop>, <lty>, [<tycs>]) [<values>]
-	  * <body>
-	  *)
-	 (printVar lvar;  say " = PRIMOP(";
-	  say (PO.prPrimop primop);  say ", ";
-	  printLty lty;  say ", ";
-	  printTycList tycs;  say ") ";
-	  printValList values;
-	  newline();  dent();  pLexp body)
-	 
-      | pLexp (F.GENOP (dict, (primop, lty, tycs), values, lvar, body)) =
-	 (* NOTE: I'm ignoring the `dict' here. *)
-	 (* <lvar> = GENOP(<primop>, <lty>, [<tycs>]) [<values>]
-	  * <body>
-	  *)
-	 (printVar lvar;  say " = GENOP(";
-	  say (PO.prPrimop primop);  say ", ";
-	  printLty lty;  say ", ";
-	  printTycList tycs;  say ") ";
-	  printValList values;
-	  newline();  dent();  pLexp body)
-	 
-      | pLexp (F.WRAP (tyc, value, lvar, body)) =
+
+      | pLexp (F.PRIMOP (p as (_, PO.WRAP, _, _), [value], lvar, body)) =
 	 (* <lvar> = WRAP(<tyc>, <value>)
 	  * <body>
 	  *)
 	 (printVar lvar;  say " = WRAP(";
-	  printTyc tyc;  say ", ";
+	  printTyc (FU.getWrapTyc p);  say ", ";
 	  printSval value;  say ")";
 	  newline();  dent();  pLexp body)
-	 
-      | pLexp (F.UNWRAP (tyc, value, lvar, body)) =
+
+      | pLexp (F.PRIMOP (p as (_, PO.UNWRAP, _, []), [value], lvar, body)) =
 	 (* <lvar> = UNWRAP(<tyc>, <value>)
 	  * <body>
 	  *)
 	 (printVar lvar;  say " = UNWRAP(";
-	  printTyc tyc;  say ", ";
+	  printTyc (FU.getUnWrapTyc p);  say ", ";
 	  printSval value;  say ")";
 	  newline();  dent();  pLexp body)
 
+      | pLexp (F.PRIMOP ((d, primop, lty, tycs), values, lvar, body)) =
+	 (* <lvar> = PRIM(<primop>, <lty>, [<tycs>]) [<values>]
+	  * <body>
+	  *)
+	 (printVar lvar;  
+          (case d of NONE => say " = PRIMOP("
+                   | _ => say " = GENOP(");
+	  say (PO.prPrimop primop);  say ", ";
+	  printLty lty;  say ", ";
+	  printTycList tycs;  say ") ";
+	  printValList values;
+	  newline();  dent();  pLexp body)
+	 
     and printFundec (fkind, lvar, lvar_lty_list, body) =
 	(*  <lvar> : (<fkind>) <lty> =
 	 *    FN([v1 : lty1,
@@ -316,9 +331,9 @@ struct
 		   app (fn (lvar,lty) =>
 			(say ","; newline(); dent();
 			 printVar lvar; say " : "; printLty lty)) L));
-	      print "],"; newline();
+	      say "],"; newline();
 	      undent 2;  dent();
-	      pLexp body;
+	      pLexp body; say ")";
 	      undent 4)
 
     and printCase (con, lexp) =
@@ -329,6 +344,8 @@ struct
 	 pLexp lexp; undent 4)
 
     fun printLexp lexp = pLexp lexp before (newline(); newline())
+
+    fun printProg prog = (printFundec prog; newline())
 	 
 
 end (* structure PPFlint *)

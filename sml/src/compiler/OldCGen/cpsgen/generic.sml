@@ -1,12 +1,6 @@
 (* Copyright 1996 by Bell Laboratories *)
 (* generic.sml *)
 
-signature CPSGEN = sig
-  structure MachSpec : MACH_SPEC
-  val codegen : CPS.function list * (CPS.lvar -> (int * int))
-                * ErrorMsg.complainer -> unit
-end (* signature CPSGEN *)
-
 functor CPSgen(structure M: CMACHINE
 	       structure MachSpec : MACH_SPEC) : CPSGEN = 
 struct

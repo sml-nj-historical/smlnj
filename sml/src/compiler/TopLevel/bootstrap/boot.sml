@@ -12,7 +12,8 @@ struct
 
 local
   structure SS = Substring
-  structure Compile = VC.Compile
+  structure C  = VC.Compile
+  structure BU = VC.BatchUtil
   structure SE = StaticEnv
   structure SC = SCStaticEnv
   open ErrorMsg Modules ModuleUtil
@@ -33,16 +34,18 @@ in
   infix //
   val op // = SC.atop
 
-  fun load (env,fname) : loadres =
+  fun loadcomp (env,fname) : loadres =
       let val _ = say (concat ["[Elaborating ", fname, "]\n"])
 	  val stream = TextIO.openIn fname
 	  val source = Source.newSource (
 		fname, 1, stream, false, ErrorMsg.defaultConsumer ())
-	  val ast = Compile.parse source
-	  val compInfo = 
-               Compile.mkCompInfo(source, #get EnvRef.core (), fn x=>x)
-	  val {absyn, newenv, exportPid, ...} = 
-	       Compile.elaborate{compenv=env, compInfo = compInfo, ast=ast}
+	  val ast = C.parse source
+	  val cinfo = C.mkCompInfo(source, #get EnvRef.core (), fn x=>x)
+	  val {absyn, newstatenv=newenv, exportPid, ...} = 
+	       C.elaborate{statenv=env, compInfo = cinfo, ast=ast}
+
+          (* ZHONG commented this out, because why bother ?
+
  	  val showenv = StaticEnv.atop(SC.unSC newenv, SC.unSC env)
 	  fun show (Absyn.SEQdec decs) = app show decs
 	    | show (Absyn.MARKdec (d,_)) = show d
@@ -53,7 +56,8 @@ in
 				 dynamic = DynamicEnv.empty,
 				 symbolic = SymbolicEnv.empty}
 		      ppstrm (absyn,[]))
-       in show absyn handle _ => say "ppDec raised exception\n";
+           *)
+       in (* show absyn handle _ => say "ppDec raised exception\n"; *)
           TextIO.closeIn stream;
           {scsenv = newenv, exportPid = exportPid}
       end
@@ -81,7 +85,7 @@ in
 
   (* some standard pathnames (in OS independent syntax) *)
   local
-    fun bootFile f = OS.Path.joinDirFile { dir = "0-Boot", file = f }
+    fun bootFile f = OS.Path.joinDirFile { dir = "Basis", file = f }
   in
     val assembly_sig = bootFile "assembly.sig"
     val dummy_sml = bootFile "dummy.sml"
@@ -143,7 +147,7 @@ in
       end
 
   (* elabCompiler accumulates compiler environment atop the pervasive env *)
-  fun elabCompiler (pervEnv, bindir) =
+  fun elabCompiler (load, pervEnv, bindir) =
       let val srclist = readBinFile(bindir, "SRCLIST")
 	  (* don't elaborate the last file! it's the glue that hasn't
 	   * finished executing.
@@ -164,7 +168,7 @@ in
 		    flush ();
 		    raise ex)
 
-  val bindir = ref ("bin." ^ Compile.architecture)
+  val bindir = ref ("bin." ^ VC.architecture)
   val full = ref false
 
   val _ = 
@@ -203,14 +207,14 @@ in
                   say (concat ["Loading static bin for ", sourcename, "\n"])
                 val f = BinIO.openIn (tnamer sourcename)
 
-                val cu = VC.CUnitUtil.readUnit { name=tnamer sourcename,
+                val cu = BU.readUnit { name=tnamer sourcename,
                                                  stream = f,
                                                  pids2iid = fn _ => (),
                                                  senv = env0,
                                                  keep_code = false }
-                val exportPid = VC.CUnitUtil.exportCU cu
-                val senv = VC.CUnitUtil.senvCU cu
-                val symenv = VC.CUnitUtil.symenvCU cu
+                val exportPid = BU.exportCU cu
+                val senv = BU.senvCU cu
+                val symenv = BU.symenvCU cu
 
              in theSymEnv := SymbolicEnv.atop (symenv, !theSymEnv); 
                 BinIO.closeIn f;
@@ -218,7 +222,7 @@ in
             end
 
 	  fun getVisComp env0 =
-	      let val srcname = Compile.architecture ^ "vis.sml"
+	      let val srcname = VC.architecture ^ "vis.sml"
 		  val files = readBinFile(!bindir, "SRCLIST")
 		  fun f (env, fname :: rest) =
 		      let val {scsenv, ...} = getbin(env,fname)
@@ -236,8 +240,9 @@ in
 		  let val _ = say "\nNow elaborating boot directory\n"
  		      val savedOverloadKW = !VC.Control.overloadKW
  		      val _ = VC.Control.overloadKW := true
-		      val (pSE, pids) = newBootEnv (load, !bindir)
-		      val (vSE, morepids) = elabCompiler (pSE, !bindir)
+		      val (pSE, pids) = newBootEnv (loadcomp, !bindir)
+		      val (vSE, morepids) = 
+                        elabCompiler (loadcomp, pSE, !bindir)
  		   in VC.Control.overloadKW := savedOverloadKW;
  		      ((pSE, pids @ morepids), vSE)
 		  end
@@ -250,7 +255,7 @@ in
 	  val pervStatEnv = SE.consolidate(SC.unSC pervStatEnv)
 	  val visCompEnv = SE.consolidate(SC.unSC visCompEnv)
 
-	  val vcSym = Symbol.strSymbol (sname (Compile.architecture) ^ "VisComp")
+	  val vcSym = Symbol.strSymbol (sname (VC.architecture) ^ "VisComp")
 	  val vcBind as Bindings.STRbind(vcStr) =
 		SE.look(visCompEnv, vcSym)
 

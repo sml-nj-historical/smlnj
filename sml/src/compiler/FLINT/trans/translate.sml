@@ -5,10 +5,10 @@ signature TRANSLATE =
 sig
 
   (* Invariant: transDec always applies to a top-level absyn declaration *) 
-  val transDec : Absyn.dec * Lambda.lvar list * StaticEnv.staticEnv * 
-                 ElabUtil.compInfo
-                 -> {genLambda: Lambda.lexp option list -> Lambda.lexp,
-                     importPids: PersStamps.persstamp list}
+  val transDec : Absyn.dec * Access.lvar list 
+                 * StaticEnv.staticEnv * CompBasic.compInfo
+                 -> {flint: FLINT.prog,
+                     imports: PersStamps.persstamp list}
 
 end (* signature TRANSLATE *)
 
@@ -20,7 +20,7 @@ local structure B  = Bindings
       structure DA = Access
       structure DI = DebIndex
       structure EM = ErrorMsg
-      structure EU = ElabUtil
+      structure CB = CompBasic
       structure II = InlInfo
       structure LT = PLambdaType
       structure M  = Modules
@@ -29,7 +29,6 @@ local structure B  = Bindings
       structure PP = PrettyPrint
       structure S  = Symbol
       structure LN = LiteralToNum
-      structure TM = TransModules
       structure TT = TransTypes
       structure TP = Types
       structure TU = TypesUtil
@@ -75,20 +74,38 @@ fun elemgtr ((LABEL{number=x,...},_),(LABEL{number=y,...},_)) = (x>y)
 fun sorted x = Sort.sorted elemgtr x 
 fun sortrec x = Sort.sort elemgtr x
 
+(** an exception raised if coreEnv is not available *)
+exception NoCore
+
+(****************************************************************************
+ *                          MAIN FUNCTION                                   *
+ *                                                                          *
+ *  val transDec: Absyn.dec * Lambda.lexp * StaticEnv.staticEnv             *
+ *                * ElabUtil.compInfo                                       *
+ *                -> {genLambda : Lambda.lexp option list -> Lambda.lexp,   *
+ *                    importPids : PersStamps.persstamp list}               *
+ *                                                                          *
+ ****************************************************************************)
+
+fun transDec (rootdec, exportLvars, env,
+	      compInfo as {coreEnv,errorMatch,error,...}: CB.compInfo) =
+let 
+
+(** generate the set of ML-to-FLINT type translation functions *)
+val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty} = TT.genTT()
+fun toTcLt d = (toTyc d, toLty d)
+
 (** translating the typ field in DATACON into lty; constant datacons 
     will take ltc_unit as the argument *)
 fun toDconLty d ty =
   (case ty 
     of TP.POLYty{sign, tyfun=TP.TYFUN{arity, body}} =>
-         if BT.isArrowType body then TT.toLty d ty
-         else TT.toLty d (TP.POLYty{sign=sign, 
+         if BT.isArrowType body then toLty d ty
+         else toLty d (TP.POLYty{sign=sign, 
                                tyfun=TP.TYFUN{arity=arity,
                                               body=BT.-->(BT.unitTy, body)}})
-     | _ => if BT.isArrowType ty then TT.toLty d ty
-            else TT.toLty d (BT.-->(BT.unitTy, ty)))
-
-(** an exception raised if coreEnv is not available *)
-exception NoCore
+     | _ => if BT.isArrowType ty then toLty d ty
+            else toLty d (BT.-->(BT.unitTy, ty)))
 
 (** the special lookup functions for the Core environment *)
 fun coreLookup(id, env) = 
@@ -106,20 +123,6 @@ fun CON' ((_, DA.REF, lt), ts, e) = APP (PRIM (PO.MAKEREF, lt, ts), e)
            in APP(TAPP (VAR d, ts), fe)
           end
   | CON' x = CON x
-
-(****************************************************************************
- *                          MAIN FUNCTION                                   *
- *                                                                          *
- *  val transDec: Absyn.dec * Lambda.lexp * StaticEnv.staticEnv             *
- *                * ElabUtil.compInfo                                       *
- *                -> {genLambda : Lambda.lexp option list -> Lambda.lexp,   *
- *                    importPids : PersStamps.persstamp list}               *
- *                                                                          *
- ****************************************************************************)
-
-fun transDec (rootdec, exportLvars, env,
-	      compInfo as {coreEnv,errorMatch,error,...}: EU.compInfo) =
-let 
 
 (*
  * The following code implements the exception tracking and 
@@ -248,7 +251,7 @@ fun coreExn id =
 and coreAcc id =
   ((case coreLookup(id, coreEnv)
      of V.VAL(V.VALvar{access, typ, ...}) => 
-           mkAccT(access, TT.toLty DI.top (!typ))
+           mkAccT(access, toLty DI.top (!typ))
       | _ => bug "coreAcc in translate")
    handle NoCore => (say "WARNING: no Core access \n"; INT 0))
 
@@ -330,10 +333,6 @@ fun fillPat(pat, d) =
 
    in fill pat
   end (* function fillPat *)
-
-(*
-val fillPat = Stats.doPhase(Stats.makePhase "Compiler 047 4-fillPat") fillPat
-*)
 
 (** The runtime polymorphic equality and string equality dictionary. *)
 val eqDict =
@@ -636,7 +635,7 @@ fun transPrim (prim, lt, ts) =
                           COND(APP(cmpOp(LESSU),
                                    RECORD[vi,APP(lenOp seqtc, va)]),
                                APP(oper, RECORD[va,vi,vv]),
-                               mkRaise(coreExn "Subscript", lt_int))))))
+                               mkRaise(coreExn "Subscript", LT.ltc_unit))))))
               end
 
         | g (PO.NUMUPDATE{kind,checked=true}) =
@@ -658,7 +657,7 @@ fun transPrim (prim, lt, ts) =
                           COND(APP(cmpOp(LESSU),
                                    RECORD[vi,APP(lenOp tc1, va)]),
                                APP(oper', RECORD[va,vi,vv]),
-                               mkRaise(coreExn "Subscript", lt_int))))))
+                               mkRaise(coreExn "Subscript", LT.ltc_unit))))))
               end
 
         | g (PO.ASSIGN) = 
@@ -695,27 +694,27 @@ fun transPrim (prim, lt, ts) =
  *                                                                         *
  ***************************************************************************)
 fun mkVar (v as V.VALvar{access, info, typ, ...}, d) = 
-      mkAccInfo(access, info, fn () => TT.toLty d (!typ))
+      mkAccInfo(access, info, fn () => toLty d (!typ))
   | mkVar _ = bug "unexpected vars in mkVar"
 
 fun mkVE (v as V.VALvar {info=II.INL_PRIM(p, SOME typ), ...}, ts, d) = 
       (case (p, ts)
-        of (PO.POLYEQL, [t]) => eqGen(typ, t, d)
-         | (PO.POLYNEQ, [t]) => composeNOT(eqGen(typ, t, d), TT.toLty d t)
+        of (PO.POLYEQL, [t]) => eqGen(typ, t, toTcLt d)
+         | (PO.POLYNEQ, [t]) => composeNOT(eqGen(typ, t, toTcLt d), toLty d t)
          | (PO.INLMKARRAY, [t]) => 
                 let val dict = 
                       {default = coreAcc "mkNormArray",
                        table = [([LT.tcc_real], coreAcc "mkRealArray")]}
-                 in GENOP (dict, p, TT.toLty d typ, map (TT.toTyc d) ts)
+                 in GENOP (dict, p, toLty d typ, map (toTyc d) ts)
                 end
-         | _ => transPrim(p, (TT.toLty d typ), map (TT.toTyc d) ts))
+         | _ => transPrim(p, (toLty d typ), map (toTyc d) ts))
 
   | mkVE (v as V.VALvar {info=II.INL_PRIM(p, NONE), typ, ...}, ts, d) = 
-      (case ts of [] => transPrim(p, (TT.toLty d (!typ)), [])
+      (case ts of [] => transPrim(p, (toLty d (!typ)), [])
                 | [x] => 
                    (* a temporary hack to resolve the boot/built-in.sml file *)
-                   (let val lt = TT.toLty d (!typ)
-                        val nt = TT.toLty d x
+                   (let val lt = toLty d (!typ)
+                        val nt = toLty d x
                      in if LT.lt_eqv(LT.ltc_top, lt) 
                         then transPrim(p, nt, [])
                         else bug "unexpected primop in mkVE"
@@ -723,13 +722,13 @@ fun mkVE (v as V.VALvar {info=II.INL_PRIM(p, SOME typ), ...}, ts, d) =
                 | _ => bug "unexpected poly primops in mkVE")
 
   | mkVE (v, [], d) = mkVar(v, d)
-  | mkVE (v, ts, d) = TAPP(mkVar(v, d), map (TT.toTyc d) ts)
+  | mkVE (v, ts, d) = TAPP(mkVar(v, d), map (toTyc d) ts)
 
 fun mkCE (TP.DATACON{const, rep, name, typ, ...}, ts, apOp, d) = 
   let val lt = toDconLty d typ
       val rep' = mkRep(rep, lt)
       val dc = (name, rep', lt)
-      val ts' = map (TT.toTyc d) ts
+      val ts' = map (toTyc d) ts
    in if const then CON'(dc, ts', unitLexp)
       else (case apOp
              of SOME le => CON'(dc, ts', le)
@@ -741,11 +740,11 @@ fun mkCE (TP.DATACON{const, rep, name, typ, ...}, ts, apOp, d) =
   end 
 
 fun mkStr (s as M.STR{access, info, ...}, d) =
-      mkAccInfo(access, info, fn () => TM.strLty(s, d, compInfo))
+      mkAccInfo(access, info, fn () => strLty(s, d, compInfo))
   | mkStr _ = bug "unexpected structures in mkStr"
 
 fun mkFct (f as M.FCT{access, info, ...}, d) =
-      mkAccInfo(access, info, fn () => TM.fctLty(f, d, compInfo))
+      mkAccInfo(access, info, fn () => fctLty(f, d, compInfo))
   | mkFct _ = bug "unexpected functors in mkFct"
 
 fun mkBnd d =
@@ -817,7 +816,7 @@ and mkVBs (vbs, d) =
                   val rules = [(fillPat(pat, d), b), (WILDpat, unitLexp)]
                   val rootv = mkv()
                   fun finish x = LET(rootv, ee, x)
-               in MC.bindCompile(env, rules, finish, rootv, d, complain)
+               in MC.bindCompile(env, rules, finish, rootv, toTcLt d, complain)
               end
    in fold g vbs
   end
@@ -827,7 +826,7 @@ and mkRVBs (rvbs, d) =
                  exp, boundtvs=tvs, ...}, (vlist, tlist, elist)) = 
                let val ee = mkExp(exp, d) (* was mkPE(exp, d, tvs) *)
                        (* we no longer track type bindings at RVB anymore ! *)
-                   val vt = TT.toLty d ty
+                   val vt = toLty d ty
                 in (v::vlist, vt::tlist, ee::elist)
                end
         | g _ = bug "unexpected valrec bindings in mkRVBs"
@@ -871,7 +870,7 @@ and mkStrexp (se, d) =
         | g (STRstr bs) = SRECORD (map (mkBnd d) bs)
         | g (APPstr {oper, arg, argtycs}) = 
               let val e1 = mkFct(oper, d)
-                  val tycs = map (TT.tpsTyc d) argtycs
+                  val tycs = map (tpsTyc d) argtycs
                   val e2 = mkStr(arg, d)
                in APP(TAPP(e1, tycs), e2)
               end
@@ -884,12 +883,12 @@ and mkStrexp (se, d) =
 and mkFctexp (fe, d) = 
   let fun g (VARfct f) = mkFct(f, d)
         | g (FCTfct{param as M.STR{access=DA.LVAR v, ...}, argtycs, def}) = 
-              let val knds = map TT.tpsKnd argtycs
+              let val knds = map tpsKnd argtycs
                   val nd = DI.next d
                   val body = mkStrexp (def, nd)
                   val hdr = buildHdr v
                   (* binding of all v's components *)
-               in TFN(knds, FN(v, TM.strLty(param, nd, compInfo), hdr body))
+               in TFN(knds, FN(v, strLty(param, nd, compInfo), hdr body))
               end
         | g (LETfct (dec, b)) = mkDec (dec, d) (g b)
         | g (MARKfct (b, reg)) = withRegion reg g b
@@ -929,10 +928,6 @@ and mkFctbs (fbs, d) =
  *    val mkDec : A.dec * DI.depth -> L.lexp -> L.lexp                     *
  *                                                                         *
  ***************************************************************************)
-(*
-and mkDec x = Stats.doPhase(Stats.makePhase "Compiler 048 mkDec") mkDec0 x
-and mkExp x = Stats.doPhase(Stats.makePhase "Compiler 049 mkExp") mkExp0 x
-*)
 and mkDec (dec, d) = 
   let fun g (VALdec vbs) = mkVBs(vbs, d)
         | g (VALRECdec rvbs) = mkRVBs(rvbs, d)
@@ -952,8 +947,8 @@ and mkDec (dec, d) =
   end
 
 and mkExp (exp, d) = 
-  let val tTyc = TT.toTyc d
-      val tLty = TT.toLty d
+  let val tTyc = toTyc d
+      val tLty = toLty d
 
       fun mkRules xs = map (fn (RULE(p, e)) => (fillPat(p, d), g e)) xs
 
@@ -984,7 +979,7 @@ and mkExp (exp, d) =
              (** NOTE: the above won't work for cross compiling to 
                        multi-byte characters **)
 
-        | g (RECORDexp []) = INT 0
+        | g (RECORDexp []) = unitLexp
         | g (RECORDexp xs) =
              if sorted xs then RECORD (map (fn (_,e) => g e) xs)
              else let val vars = map (fn (l,e) => (l,(g e, mkv()))) xs
@@ -1008,13 +1003,14 @@ and mkExp (exp, d) =
         | g (PACKexp(e, ty, tycs)) = g e
 (*
              let val (nty, ks, tps) = TU.reformat(ty, tycs, d)
-                 val ts = map (TT.tpsTyc d) tps
+                 val ts = map (tpsTyc d) tps
                  (** use of LtyEnv.tcAbs is a temporary hack (ZHONG) **)
                  val nts = ListPair.map LtyEnv.tcAbs (ts, ks)
                  val nd = DI.next d
               in case (ks, tps)
                   of ([], []) => g e
-                   | _ => PACK(LT.ltc_poly(ks, [TT.toLty nd nty]), ts, nts , g e)
+                   | _ => PACK(LT.ltc_poly(ks, [toLty nd nty]), 
+                               ts, nts , g e)
              end
 *)
         | g (SEQexp [e]) = g e
@@ -1029,13 +1025,14 @@ and mkExp (exp, d) =
              let val rootv = mkv()
                  fun f x = FN(rootv, tLty ty, x)
                  val l' = mkRules l
-              in HANDLE(g e, MC.handCompile(env, l', f, rootv, d, complain))
+              in HANDLE(g e, MC.handCompile(env, l', f, 
+                                            rootv, toTcLt d, complain))
              end
 
         | g (FNexp (l, ty)) = 
              let val rootv = mkv()
                  fun f x = FN(rootv, tLty ty, x)
-              in MC.matchCompile (env, mkRules l, f, rootv, d, complain)
+              in MC.matchCompile (env, mkRules l, f, rootv, toTcLt d, complain)
              end
 
         | g (CASEexp (ee, l, isMatch)) = 
@@ -1044,8 +1041,8 @@ and mkExp (exp, d) =
                  fun f x = LET(rootv, ee', x)
                  val l' = mkRules l
               in if isMatch 
-                 then MC.matchCompile (env, l', f, rootv, d, complain)
-                 else MC.bindCompile (env, l', f, rootv, d, complain)
+                 then MC.matchCompile (env, l', f, rootv, toTcLt d, complain)
+                 else MC.bindCompile (env, l', f, rootv, toTcLt d, complain)
              end
 
         | g (LETexp (dc, e)) = mkDec (dc, d) (g e)
@@ -1063,9 +1060,6 @@ and mkExp (exp, d) =
  * closeLexp `closes' over all free (EXTERN) variables [`inlining' version]
  *  - make sure that all operations on various imparative data structures
  *    are carried out NOW and not later when the result function is called. 
- * 
- * val closeLexp : PLambda.lexp 
- *                  -> (Lambda.lexp option list -> Lambda.lexp) * pid list 
  *)
 fun closeLexp body = 
   let (* free variable + pid + inferred lty *)
@@ -1074,41 +1068,17 @@ fun closeLexp body =
       (* the name of the `main' argument *)
       val imports = mkv ()
       val impVar = VAR (imports)
-
       val impLty = LT.ltc_str (map (fn (_, (_, lt)) => lt) l)
 
-      fun h (_ :: xs, (_, (lvar, lt)) :: rest, i, lexp) =
+      fun h ((_, (lvar, lt)) :: rest, i, lexp) =
             let val hdr = buildHdr lvar
                 val bindexp = LET(lvar, SELECT(i, impVar), hdr lexp)
-             in h (xs, rest, i + 1, bindexp)
+             in h (rest, i + 1, bindexp)
             end
-        | h ([], [], _, lexp) = FN (imports, impLty, lexp)
-        | h _ = bug "unexpected arguments in close"
+        | h ([], _, lexp) = FN (imports, impLty, lexp)
 
-      fun genLexp inls = 
-        let val plexp = h(inls, l, 0, body)
-
-      val _ = if !Control.CG.printLambda 
-              then (say "\n\n[After Translation into PLambda ...]\n\n";
-                    PPLexp.printLexp plexp)
-              else ()
-
-
-         in if !Control.CG.flinton then 
-              let val flexp = (FlintNM.norm plexp)
-
-      val _ = if !Control.CG.printLambda 
-              then (say "\n\n[After Translation into FLINT ...]\n\n";
-                    PPFlint.printFundec flexp)
-              else ()
-             
-               in (Flint2Lambda.transFundec flexp)
-              end
-            else NormLexp.normLexp plexp
-        end
-
-   in {genLambda = (fn inls => genLexp inls),
-       importPids = (map #1 l)}
+      val plexp = h(l, 0, body)
+   in {flint = FlintNM.norm plexp, imports = (map #1 l)}
   end 
 
 val exportLexp = SRECORD (map VAR exportLvars)
@@ -1118,50 +1088,4 @@ end (* function transDec *)
 
 end (* top-level local *)
 end (* structure Translate *)
-
-(*
- * $Log: translate.sml,v $
- * Revision 1.9  1997/08/15  16:05:26  jhr
- *   Bug fix to lift free structure references outside closures [zsh].
- *
- * Revision 1.8  1997/05/05  20:00:17  george
- *   Change the term language into the quasi-A-normal form. Added a new round
- *   of lambda contraction before and after type specialization and
- *   representation analysis. Type specialization including minimum type
- *   derivation is now turned on all the time. Real array is now implemented
- *   as realArray. A more sophisticated partial boxing scheme is added and
- *   used as the default.
- *
- * Revision 1.7  1997/04/18  15:49:04  george
- *   Cosmetic changes on some constructor names. Changed the shape for
- *   FIX type to potentially support shared dtsig. -- zsh
- *
- * Revision 1.6  1997/04/08  19:42:15  george
- *   Fixed a bug in inlineShift operations. The test to determine if the
- *   shift amount is within range should always an UINT 31 comparison --
- *   regardless of the entity being shifted.
- *
- * Revision 1.5  1997/03/25  13:41:44  george
- *   Fixing the coredump bug caused by duplicate top-level declarations.
- *   For example, in almost any versions of SML/NJ, typing
- *           val x = "" val x = 3
- *   would lead to core dump. This is avoided by changing the "exportLexp"
- *   field returned by the pickling function (pickle/picklemod.sml) into
- *   a list of lambdavars, and then during the pretty-printing (print/ppdec.sml),
- *   each variable declaration is checked to see if it is in the "exportLvars"
- *   list, if true, it will be printed as usual, otherwise, the pretty-printer
- *   will print the result as <hiddle-value>.
- * 						-- zsh
- *
- * Revision 1.4  1997/03/22  18:25:25  dbm
- * Added temporary debugging code.  This could be cleaned out later.
- *
- * Revision 1.3  1997/02/26  21:54:48  george
- *   Putting back the access-lifting code to avoid the "exportFn image blowup"
- *   bug --- BUG 1142.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:47  george
- *   Version 109.24
- *
- *)
 

@@ -10,7 +10,7 @@ datatype tkindI
   = TK_MONO                                   (* ground mono tycon *)
   | TK_BOX				      (* boxed/tagged tycon *)
   | TK_SEQ of tkind list                      (* sequence of tycons *)
-  | TK_FUN of tkind * tkind                   (* tycon function *)
+  | TK_FUN of tkind list * tkind              (* tycon function *)
 
 (* definitions of named tyc variables *)
 type tvar = LambdaVar.lvar                    (* temporary, not used *)
@@ -19,6 +19,13 @@ val mkTvar : unit -> tvar                     (* temporary, not used *)
 (* definitions of tyc and tyc-environment *)
 type tyc
 type tycEnv 
+type token                                    (* a hook to add new tyc *)
+
+datatype fflag                                (* calling conventions *)
+  = FF_VAR of bool * bool                     (* is it fixed ? *)
+  | FF_FIXED                                  (* used after rep. analysis *)
+
+datatype rflag = RF_TMP                       (* tuple kind: a template *)
 
 datatype tycI
   = TC_VAR of DebIndex.index * int            (* tyc variable *)
@@ -32,17 +39,16 @@ datatype tycI
   | TC_SUM of tyc list                        (* sum tyc *)
   | TC_FIX of (int * tyc * tyc list) * int    (* recursive tyc *) 
 
-  | TC_TUPLE of tyc list                      (* std record tyc *)
-  | TC_ARROW of rawflag * tyc list * tyc list (* std function tyc *)
+  | TC_TUPLE of rflag * tyc list              (* std record tyc *)
+  | TC_ARROW of fflag * tyc list * tyc list   (* std function tyc *)
   | TC_PARROW of tyc * tyc                    (* special fun tyc, not used *)
 
   | TC_BOX of tyc                             (* boxed tyc *)
   | TC_ABS of tyc                             (* abstract tyc *)
+  | TC_TOKEN of token * tyc                   (* extensible token tyc *)
   | TC_CONT of tyc list                       (* std continuation tyc *)
   | TC_IND of tyc * tycI                      (* indirect tyc thunk *)
   | TC_ENV of tyc * int * int * tycEnv        (* tyc closure *)
-
-withtype rawflag = bool * bool    (* single or multiple arguments/results ? *)
 
 (* definition of lty *)
 type lty
@@ -74,12 +80,16 @@ val lt_cmp   : lty * lty -> order
 (** get the hash key of each lty, used by reps/coerce.sml; a hack! *)
 val lt_key   : lty -> int
 
-(** testing the equivalence for regular tkinds, tycs and ltys *)
+(** testing equivalence of tkinds, tycs, ltys, fflags, and rflags *)
 val tk_eqv   : tkind * tkind -> bool
 val tc_eqv   : tyc * tyc -> bool
 val lt_eqv   : lty * lty -> bool
+val ff_eqv   : fflag * fflag -> bool
+val rf_eqv   : rflag * rflag -> bool
 
 (** testing the equivalence for tycs and ltys with relaxed constraints *)
+val tc_eqv_x : tyc * tyc -> bool
+val lt_eqv_x : lty * lty -> bool
 val tc_eqv_bx: tyc * tyc -> bool
 val lt_eqv_bx: lty * lty -> bool
 
@@ -111,8 +121,25 @@ val lt_norm : lty -> lty
 (** automatically flattening the argument or the result type *)
 val lt_autoflat : lty -> bool * lty list * bool
 
-(** tcc_arw does automatic argument and result flattening *)
-val tcc_arw : rawflag * tyc list * tyc list -> tyc
+(** testing if a tyc is a unknown constructor *)
+val tc_unknown : tyc -> bool 
+
+(** automatically tupling up the multiple argument/result into a single one *)
+val tc_autotuple : tyc list -> tyc
+
+(** tcc_arw does automatic argument and result flattening, so go away *)
+val tcc_arw : fflag * tyc list * tyc list -> tyc
+
+(** token-related functions *)
+val token_name    : token -> string 
+val token_abbrev  : token -> string            (* used by tc_print *)
+val token_isvalid : token -> bool   
+val token_eq      : token * token -> bool      
+val token_int     : token -> int               (* for pickling *)
+val token_key     : int -> token
+
+(** primitive TC_WRAP constructor, built through the token facility *)
+val wrap_token    : token
 
 end (* signature LTYKERNEL *)
 

@@ -97,10 +97,11 @@ fun parse (source : source) =
  *****************************************************************************)
 
 (** several preprocessing phases done after parsing or after elaborations *)
-val fixityparse = 
-  ST.doPhase (ST.makePhase "Compiler 005 fixityparse") FixityParse.fixityparse
-val lazycomp = 
-  ST.doPhase (ST.makePhase "Compiler 006 lazycomp") LazyComp.lazycomp
+val fixityparse = (* ST.doPhase (ST.makePhase "Compiler 005 fixityparse") *) 
+  FixityParse.fixityparse
+val lazycomp = (* ST.doPhase (ST.makePhase "Compiler 006 lazycomp") *)
+  LazyComp.lazycomp
+
 val pickUnpick = 
   ST.doPhase (ST.makePhase "Compiler 036 pickUnpick") CC.pickUnpick
 
@@ -216,7 +217,7 @@ fun compile {source=source, ast=ast, statenv=oldstatenv, symenv=symenv,
               before check "translate"
 
       (** the following is a special hook for the case of linking the
-          runtime vector when compiling 0-Boot/core.sml. (ZHONG)
+          runtime vector when compiling Basis/core.sml. (ZHONG)
        *)          
       val imports =
         (case (runtimePid, imports)

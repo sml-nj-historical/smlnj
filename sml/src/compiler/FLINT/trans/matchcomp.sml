@@ -4,19 +4,21 @@
 signature MATCH_COMP =
 sig
 
+  type toTcLt = (Types.ty -> PLambdaType.tyc) * (Types.ty -> PLambdaType.lty)
+
   val bindCompile : 
         StaticEnv.staticEnv * (Absyn.pat * PLambda.lexp) list 
-          * (PLambda.lexp -> PLambda.lexp) * LambdaVar.lvar * DebIndex.depth
+          * (PLambda.lexp -> PLambda.lexp) * LambdaVar.lvar * toTcLt
           * ErrorMsg.complainer -> PLambda.lexp
 
   val matchCompile : 
         StaticEnv.staticEnv * (Absyn.pat * PLambda.lexp) list 
-          * (PLambda.lexp -> PLambda.lexp) * LambdaVar.lvar * DebIndex.depth
+          * (PLambda.lexp -> PLambda.lexp) * LambdaVar.lvar * toTcLt
           * ErrorMsg.complainer -> PLambda.lexp
 
   val handCompile : 
         StaticEnv.staticEnv * (Absyn.pat * PLambda.lexp) list 
-          * (PLambda.lexp -> PLambda.lexp) * LambdaVar.lvar * DebIndex.depth
+          * (PLambda.lexp -> PLambda.lexp) * LambdaVar.lvar * toTcLt
           * ErrorMsg.complainer -> PLambda.lexp
 
 end (* signature MATCH_COMP *)
@@ -32,7 +34,6 @@ local structure DA = Access
       structure PO = PrimOp
       structure MP = PPLexp
       structure EM = ErrorMsg
-      structure TT = TransTypes
       structure TP = Types
       structure LN = LiteralToNum
 
@@ -50,6 +51,7 @@ fun isthere(i,set) = SortedList.member set i
 
 fun bug s = EM.impossible ("MatchComp: " ^ s)
 val say = Control.Print.say
+type toTcLt = (ty -> LT.tyc) * (ty -> LT.lty)
 
 (*
  * MAJOR CLEANUP REQUIRED ! The function mkv is currently directly taken 
@@ -64,22 +66,15 @@ fun abstest1 _ = bug "abstest1 unimplemented"
 
 (** translating the typ field in DATACON into lty; constant datacons 
     will take ltc_unit as the argument *)
-fun toDconLty d ty =
+fun toDconLty toLty ty =
   (case ty 
     of TP.POLYty{sign, tyfun=TYFUN{arity, body}} =>
-         if BT.isArrowType body then TT.toLty d ty
-         else TT.toLty d (TP.POLYty{sign=sign, 
+         if BT.isArrowType body then toLty ty
+         else toLty (TP.POLYty{sign=sign, 
                                tyfun=TYFUN{arity=arity,
                                            body=BT.-->(BT.unitTy, body)}})
-     | _ => if BT.isArrowType ty then TT.toLty d ty
-            else TT.toLty d (BT.-->(BT.unitTy, ty)))
-
-fun mkDcon depth (DATACON {name, rep, typ, ...}) = 
-     (name, rep, toDconLty depth typ)
-
-fun vartolvar (VALvar{access=DA.LVAR v, typ,...}, depth) = 
-      (v, TT.toLty depth (!typ))
-  | vartolvar _ = bug "bug variable in mc.sml"
+     | _ => if BT.isArrowType ty then toLty ty
+            else toLty (BT.-->(BT.unitTy, ty)))
 
 (**************************************************************************)
 
@@ -179,27 +174,31 @@ fun patPaths (pat, constrs) =
    in constrPaths(constrs, patEnv, nil)
   end
 
-fun genRHSFun ([], rhs, _) = FN(mkv(), LT.ltc_unit, rhs)
-  | genRHSFun ([v], rhs, d) = 
-      let val (argvar,argt) = vartolvar(v, d)
-       in FN(argvar,argt,rhs)
-      end
-  | genRHSFun (vl, rhs, d) =
-      let val argvar = mkv()
-          fun foo (nil, n) = (rhs,nil)
-            | foo (v::vl, n) = 
-                let val (lv,lt) = vartolvar(v, d)
-                    val (le,tt) = foo(vl,n+1)
-                 in (LET(lv, SELECT(n,VAR argvar), le), lt :: tt)
-                end
-          val (body,tt) = foo(vl,0)
-       in FN(argvar, LT.ltc_tuple tt, body)
-      end
-	   
-fun preProcessPat depth (pat, rhs) =
+fun vartolvar (VALvar{access=DA.LVAR v, typ,...}, toLty) = (v, toLty (!typ))
+  | vartolvar _ = bug "bug variable in mc.sml"
+
+fun preProcessPat toLty (pat, rhs) =
   let val bindings = boundVariables pat
       val fname = mkv()
-      val rhsFun = genRHSFun (bindings, rhs, depth)
+
+      fun genRHSFun ([], rhs) = FN(mkv(), LT.ltc_unit, rhs)
+        | genRHSFun ([v], rhs) = 
+            let val (argvar,argt) = vartolvar(v, toLty)
+             in FN(argvar,argt,rhs)
+            end
+        | genRHSFun (vl, rhs) =
+            let val argvar = mkv()
+                fun foo (nil, n) = (rhs,nil)
+                  | foo (v::vl, n) = 
+                      let val (lv,lt) = vartolvar(v, toLty)
+                          val (le,tt) = foo(vl,n+1)
+                       in (LET(lv, SELECT(n,VAR argvar), le), lt :: tt)
+                      end
+                val (body,tt) = foo(vl,0)
+             in FN(argvar, LT.ltc_tuple tt, body)
+            end
+
+      val rhsFun = genRHSFun (bindings, rhs)
       val pats = orExpand pat
       fun expand nil = nil
         | expand (pat::rest) =
@@ -989,10 +988,10 @@ and pass1(RHS n, envin, rhs) = (RHS n, rhsbindings(n, rhs))
  * Given a decision tree for a match, a list of ?? and the name of the 
  * variable bound to the value to be matched, produce code for the match. 
  *)
-fun generate (dt, matchRep, rootVar, depth) =
+fun generate (dt, matchRep, rootVar, (toTyc, toLty)) = 
   let val (subtree, envout) = pass1(dt, [(0, [ROOTPATH])], matchRep)
-      val mkDcon' = mkDcon depth
-      val toTyc' = TT.toTyc depth 
+      fun mkDcon (DATACON {name, rep, typ, ...}) = 
+            (name, rep, toDconLty toLty typ)
       fun genpath (RECORDPATH paths, env) =
             RECORD (map (fn path => VAR(lookupPath (path, env))) paths)
         | genpath (PIPATH(n, path), env) = 
@@ -1000,7 +999,7 @@ fun generate (dt, matchRep, rootVar, depth) =
         | genpath (p as DELTAPATH(pcon, path), env) = 
             VAR(lookupPath(p, env))
         | genpath (VPIPATH(n, t, path), env) =
-            let val tc = toTyc' t
+            let val tc = toTyc t
                 val lt_sub = 
                   let val x = LT.ltc_vector (LT.ltc_tv 0)
                    in LT.ltc_poly([LT.tkc_mono], 
@@ -1010,7 +1009,7 @@ fun generate (dt, matchRep, rootVar, depth) =
                     RECORD[VAR(lookupPath(path, env)), INT n])
             end
         | genpath (VLENPATH (path, t), env) = 
-            let val tc = toTyc' t
+            let val tc = toTyc t
                 val lt_len = LT.ltc_poly([LT.tkc_mono], 
                                  [LT.ltc_parrow(LT.ltc_tv 0, LT.ltc_int)])
                 val argtc = LT.tcc_vector tc
@@ -1058,14 +1057,14 @@ fun generate (dt, matchRep, rootVar, depth) =
         | pass2 (ABSTEST0(path, con as (dc, _), yes, no), env, rhs) =
 (*          if isAnException con 
             then genswitch(VAR(lookupPath(path, env)), DA.CNIL, 
-                           [(DATAcon(mkDcon' dc),  pass2(yes, env, rhs))],
+                           [(DATAcon(mkDcon dc),  pass2(yes, env, rhs))],
                            SOME(pass2(no, env, rhs)))
             else *) 
             abstest0(path, con, pass2(yes,env,rhs), pass2(no,env,rhs)) 
         | pass2 (ABSTEST1(path, con as (dc, _), yes, no), env, rhs) =
 (*          if isAnException con 
             then genswitch(VAR(lookupPath(path, env)), DA.CNIL,
-                           [(DATAcon(mkDcon' dc),  pass2(yes, env, rhs))],
+                           [(DATAcon(mkDcon dc),  pass2(yes, env, rhs))],
                            SOME(pass2(no, env, rhs)))
             else *)
             abstest1(path, con, pass2(yes,env,rhs), pass2(no,env,rhs)) 
@@ -1074,18 +1073,18 @@ fun generate (dt, matchRep, rootVar, depth) =
       and pass2cases(path, nil, env, rhs) = nil
         | pass2cases(path, (pcon,subtree)::rest, env, rhs) = 
             let (** always implicitly bind a new variable at each branch. *)
-                val (ncon, nenv) = pconToCon(pcon, depth, path, env)
+                val (ncon, nenv) = pconToCon(pcon, path, env)
                 val res = (ncon, pass2(subtree, nenv, rhs))
              in res::(pass2cases(path, rest, env, rhs))
             end
 
-      and pconToCon(pcon, depth, path, env) =
+      and pconToCon(pcon, path, env) =
         (case pcon
           of DATApcon (dc, ts) => 
                let val newvar = mkv()
-                   val nts = map toTyc' ts
+                   val nts = map toTyc ts
                    val nenv = (DELTAPATH(pcon, path), newvar)::env
-                in (DATAcon (mkDcon depth dc, nts, newvar), nenv)
+                in (DATAcon (mkDcon dc, nts, newvar), nenv)
                end
            | VLENpcon(i, t) => (VLENcon i, env)
            | INTpcon i => (INTcon i, env)
@@ -1101,9 +1100,9 @@ fun generate (dt, matchRep, rootVar, depth) =
         | _ => pass2(subtree, [], matchRep)
   end
  
-fun doMatchCompile(rules, finish, rootvar, depth, err) = 
+fun doMatchCompile(rules, finish, rootvar, toTcLt as (_, toLty), err) = 
   let val lastRule = length rules - 1
-      val matchReps = map (preProcessPat depth) rules
+      val matchReps = map (preProcessPat toLty) rules
       val (matchRep,rhsRep) = 
         foldr (fn ((a,b),(c,d)) => (a@c,b::d)) ([], []) matchReps
 
@@ -1118,7 +1117,7 @@ fun doMatchCompile(rules, finish, rootvar, depth, err) =
       val redundantF = redundant(unusedRules, lastRule)
 
       fun g((fname, fbody), body) = LET(fname, fbody, body)
-      val code = foldr g (generate(dt, matchRep, rootvar, depth)) rhsRep
+      val code = foldr g (generate(dt, matchRep, rootvar, toTcLt)) rhsRep
 
    in (finish(code), unusedRules, redundantF, exhaustive)
   end
@@ -1191,12 +1190,12 @@ in
  * but this would cause warnings on constructions like
  * val _ = <exp>  and  val _:<ty> = <exp>.
  *)
-fun bindCompile (env, rules, finish, rootv, depth, err) =
+fun bindCompile (env, rules, finish, rootv, toTcLt, err) =
   let val _ = 
         if !printArgs then (say "MC called with:"; MP.printMatch env rules)
         else ()
       val (code, _, _, exhaustive) = 
-        doMatchCompile(rules, finish, rootv, depth, err)
+        doMatchCompile(rules, finish, rootv, toTcLt, err)
 
       val inexhaustiveF = !bindExhaustive andalso not exhaustive
       val noVarsF = !bindContainsVar andalso noVarsIn rules
@@ -1221,12 +1220,12 @@ fun bindCompile (env, rules, finish, rootv, depth, err) =
  *  a warning is printed.  If Control.MC.matchRedundantError is also
  *  set, the warning is promoted to an error message.
  *)
-fun handCompile (env, rules, finish, rootv, depth, err) =
+fun handCompile (env, rules, finish, rootv, toTcLt, err) =
   let val _ = 
         if !printArgs then (say "MC called with: "; MP.printMatch env rules)
         else ()
       val (code, unused, redundant, _) = 
-        doMatchCompile(rules, finish, rootv, depth, err)
+        doMatchCompile(rules, finish, rootv, toTcLt, err)
       val  redundantF= !matchRedundantWarn andalso redundant
 
    in if redundantF 
@@ -1251,12 +1250,12 @@ fun handCompile (env, rules, finish, rootv, depth, err) =
  * is promoted to an error. If the control flag Control.MC.matchExhaustive
  * is set, and match is inexhaustive, a warning is printed.   
  *)
-fun matchCompile (env, rules, finish, rootv, depth, err) =
+fun matchCompile (env, rules, finish, rootv, toTcLt, err) =
   let val _ = 
         if !printArgs then (say "MC called with: "; MP.printMatch env rules)
         else ()
       val (code, unused, redundant, exhaustive) = 
-        doMatchCompile(rules, finish, rootv, depth, err)
+        doMatchCompile(rules, finish, rootv, toTcLt, err)
 
       val nonexhaustiveF = 
 	  not exhaustive andalso
