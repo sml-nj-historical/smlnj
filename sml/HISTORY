@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/11/21 16:35:00 EST
+Tag: blume-20011121-foot-in-mouth
+Description:
+
+Removed the "Release_110_37" tag because of a serious bug.
+This will be re-tagged once the bug is fixed.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/11/21 16:14:00 EST
 Tag: blume-20011121-forgottenfile
 Description:
@@ -24,8 +33,12 @@ the CM manual source.)
 ----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2001/11/21 16:10:00 EST
-Tag: Release_110_37
+Tag: blume-20011121-invalid_110_37
 Description:
+
+Note: I removed the original tag "Release_110_37" from this commit
+      because we found a serious bug in all non-x86 backends.
+      - Matthias
 
 1. Modifications to the SML/NJ code generator and to the runtime system
    so that code object name strings are directly inserted into code
