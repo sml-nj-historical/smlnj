@@ -44,6 +44,8 @@ local structure EM = ErrorMsg
       (* structure II = InlInfo *)
       structure A = Access
 
+      structure Tbl = SymbolHashTable
+
       open Absyn Ast BasicTypes Access ElabUtil Types VarCon
    (*
       open BasicTypes Symbol Absyn Ast PrintUtil AstUtil BasicTypes TyvarSet
@@ -325,23 +327,13 @@ let
           *)
 	   let val (ps, tyv) = elabPatList(pats, env, region)
 	       fun freeOrVars (pat::pats) =
-		   let val tbl : (access * ty ref * int) IntStrMap.intstrmap =
-			   IntStrMap.new(16, FreeOrVars)
-		       fun symbToIntStr f symb =
-			   (f tbl (S.number symb, S.name symb))
-		       val ins =
-			   let val ins' = IntStrMap.add tbl
-			    in fn (symb, x) =>
-				 ins' (S.number symb, S.name symb, x)
-			   end
-		       val look =
-			   let val look' = IntStrMap.map tbl
-			    in fn symb => 
-			         look'(S.number symb, S.name symb)
-			   end
+		   let val tbl : (access * ty ref * int) Tbl.hash_table =
+			   Tbl.mkTable (16, FreeOrVars)
+		       fun ins kv = Tbl.insert tbl kv
+		       fun look k = Tbl.lookup tbl k
 		       fun errorMsg x = 
 			     error region EM.COMPLAIN
-			       ("variable " ^ x ^
+			       ("variable " ^ S.name x ^
 			        " does not occur in all branches of or-pattern")
 			       EM.nullErrorBody
 		       fun insFn (id, access, ty) =
@@ -351,13 +343,13 @@ let
 			     in ins (id, (access, ty, n+1)); (access,ty)
 			    end
 			    handle FreeOrVars => 
-				    (errorMsg(S.name id); (access0,ty0)))
+				    (errorMsg id; (access0,ty0)))
 		       fun checkFn (id, access0, ty0) = 
                            (let val (access, ty, _) = look id 
                              in (access, ty) 
                             end
 			    handle FreeOrVars => 
-				   (errorMsg(S.name id); (access0, ty0)))
+				   (errorMsg id; (access0, ty0)))
 		       fun doPat(insFn: (S.symbol*access*ty ref)
                                           ->access*ty ref) =
 			   let fun doPat' (VARpat(VALvar{access, info, path, 
@@ -388,11 +380,11 @@ let
 			      in doPat'
 			     end
 		     (* check that each variable occurs in each sub-pattern *)
-		       fun checkComplete m (_, id, (_, _, n:int)) =
+		       fun checkComplete m (id, (_, _, n:int)) =
 			   if (n = m) then () else (errorMsg id)
 		       val pats = (doPat insFn pat) :: 
                                       (map (doPat bumpFn) pats)
-		    in IntStrMap.app (checkComplete (length pats)) tbl;
+		    in Tbl.appi (checkComplete (length pats)) tbl;
 		       pats
 		   end (* freeOrVars *)
 		 | freeOrVars _ = bug "freeOrVars"

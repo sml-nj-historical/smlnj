@@ -20,17 +20,18 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
 
     exception NotToken
 
-    structure Tbl = IntStrMap
+    structure Tbl = WordStringHashTable
 
     val hashStr = HashString.hashString
 
     fun mkTable (sz, l) = let
-	  val t = Tbl.new (128, NotToken)
-	  fun ins (str, tok) = Tbl.add t (hashStr str, str, tok)
-	  in
-	    List.app ins l;
-	    t
-	  end
+	val t = Tbl.mkTable (sz, NotToken)
+	fun ins (str, tokfn) =
+	    Tbl.insert t ((hashStr str, str), tokfn)
+    in
+	List.app ins l;
+	t
+    end
 
     val symIdTbl = mkTable (16, [
 	    ("*"	, fn yypos => Tokens.ASTERISK(yypos,yypos+1)),
@@ -64,14 +65,20 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
 	    ("include"	, fn yypos => Tokens.INCLUDE(yypos,yypos+7)),
 	    ("infix"	, fn yypos => Tokens.INFIX(yypos,yypos+5)),
 	    ("infixr"	, fn yypos => Tokens.INFIXR(yypos,yypos+6)),
-	    ("lazy"	, fn yypos => Tokens.LAZY(yypos,yypos+4)),
+	    ("lazy"	, fn yypos =>
+			     if !ParserControl.lazysml then
+				 Tokens.LAZY(yypos,yypos+4)
+			     else raise NotToken),
 	    ("let"	, fn yypos => Tokens.LET(yypos,yypos+3)),
 	    ("local"	, fn yypos => Tokens.LOCAL(yypos,yypos+5)),
 	    ("nonfix"	, fn yypos => Tokens.NONFIX(yypos,yypos+6)),
 	    ("of"	, fn yypos => Tokens.OF(yypos,yypos+2)),
 	    ("op"	, fn yypos => Tokens.OP(yypos,yypos+2)),
 	    ("open"	, fn yypos => Tokens.OPEN(yypos,yypos+4)),
-	    ("overload"	, fn yypos => Tokens.OVERLOAD(yypos,yypos+8)),
+	    ("overload"	, fn yypos =>
+			     if !ParserControl.overloadKW then
+				 Tokens.OVERLOAD(yypos,yypos+8)
+			     else raise NotToken),
 	    ("raise"	, fn yypos => Tokens.RAISE(yypos,yypos+5)),
 	    ("rec"	, fn yypos => Tokens.REC(yypos,yypos+3)),
 	    ("sharing"	, fn yypos => Tokens.SHARING(yypos,yypos+7)),
@@ -99,35 +106,24 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
     fun checkId (str, yypos) = let
 	  val hash = hashStr str
 	  fun mkId () =
-		Tokens.ID(FastSymbol.rawSymbol(hash,str), yypos, yypos+size(str))
-	  in
-	    let
-	    val tokFn = Tbl.map idTbl (hash, str)
-	    in
-	      if ((not(!ParserControl.overloadKW))
-	         andalso (hash = overloadHash) andalso (str = "overload"))
-	        then mkId()
-	      else if ((not(!ParserControl.lazysml))
-	              andalso (hash = lazyHash) andalso (str = "lazy"))
-	        then mkId()
-	      else tokFn yypos
-	    end
-	      handle NotToken => mkId()
-	  end
+	      Tokens.ID(FastSymbol.rawSymbol(hash,str), yypos, yypos+size(str))
+    in
+	Tbl.lookup idTbl (hash, str) yypos
+	handle NotToken => mkId ()
+    end
 
     fun checkSymId (str, yypos) = let
-	  val hash = hashStr str
-	  in
-	    (Tbl.map symIdTbl (hash, str) yypos)
-	      handle NotToken =>
-		Tokens.ID(FastSymbol.rawSymbol(hash,str), yypos, yypos+size(str))
-	  end
+	val hash = hashStr str
+    in
+	Tbl.lookup symIdTbl (hash, str) yypos
+	handle NotToken =>
+	       Tokens.ID(FastSymbol.rawSymbol(hash,str), yypos, yypos+size(str))
+    end
 
     fun checkTyvar (str, yypos) = let
-	  val hash = hashStr str
-	  in
-	    Tokens.TYVAR (FastSymbol.rawSymbol(hash,str),yypos,yypos+size (str))
-	  end
+	val hash = hashStr str
+    in
+	Tokens.TYVAR (FastSymbol.rawSymbol(hash,str),yypos,yypos+size (str))
+    end
 
-  end
-
+end

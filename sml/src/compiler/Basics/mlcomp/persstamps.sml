@@ -1,12 +1,10 @@
-(* Copyright 1992 by AT&T Bell Laboratories *)
-(* persstamps.sml *)
-
-(* 
- * DBM: was an abstraction, but persstamp needs to be an equality type 
- * so that conrep is. 
+(* persstamps.sml
+ *
+ *   Persistent stamp abstraction.
+ *
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
  *)
-
-structure PersStamps : PERSSTAMPS = struct
+structure PersStamps :> PERSSTAMPS = struct
     datatype persstamp = PS of Word8Vector.vector
 
     val persStampSize = 16
@@ -39,4 +37,4 @@ structure PersStamps : PERSSTAMPS = struct
 	SOME (PS (Word8Vector.tabulate (persStampSize, onebyte)))
     end handle _ => NONE
 
-end (* structure PersStamps *)
+end

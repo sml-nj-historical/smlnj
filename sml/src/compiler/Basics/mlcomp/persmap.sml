@@ -7,5 +7,3 @@ structure PersMap : ORD_MAP =
        type ord_key = PersStamps.persstamp
        val compare = PersStamps.compare
      end)
-
-

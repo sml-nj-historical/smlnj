@@ -35,7 +35,8 @@ Group (../../system/smlnj/viscomp/basics.cm)
 	structure PrettyPrint
 	structure Stats
 	structure PrintUtil
-	structure IntStrMap
+	structure WordStringHashTable
+	structure SymbolHashTable
 
 	signature PIDENV
 	functor PidEnvFn
@@ -58,7 +59,6 @@ is
 	source/source.sml
 	source/sourcemap.sig
 	source/sourcemap.sml
-	source/pathnames.sig
 	source/pathnames.sml
 
 	errormsg/errormsg.sig
@@ -71,8 +71,8 @@ is
 	print/printutil.sml
 	print/pp-init.sml
 
-	miscutil/intstrmap.sig
-	miscutil/intstrmap.sml
+	miscutil/wordstr-hashtable.sml
+	miscutil/symbol-hashtable.sml
 
 	$/basis.cm
 	$/smlnj-lib.cm
