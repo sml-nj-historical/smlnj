@@ -30,10 +30,12 @@ fun reduce ty =
     | ty => ty
 
 fun notconst(_,true,_) = false
+(*
   | notconst(_,_,CONty(_,[t,_])) = 
       (case (reduce t) 
         of CONty(RECORDtyc nil,_) => false
          | _ => true)
+*)
   | notconst _ = true
 
 (* 
@@ -46,8 +48,8 @@ fun notconst(_,true,_) = false
 (* the first argument indicates whether this is a recursive datatypes *)
 fun infer false ([(_, false, CONty(_,[ty,_]))]) = 
       (case (reduce ty) 
-        of (CONty(RECORDtyc nil, _)) => ([CONSTANT 0], CSIG (0,1))
-         | _ => ([UNTAGGED], CSIG(1,0)) (* [TRANSPARENT] *)) 
+        of (* (CONty(RECORDtyc nil, _)) => ([CONSTANT 0], CSIG (0,1))
+         | *) _ => ([UNTAGGED], CSIG(1,0)) (* [TRANSPARENT] *)) 
       (* The TRANSPARENT conrep is temporarily turned off;
          it should be working very soon. Ask zsh. *)
 
@@ -61,9 +63,11 @@ fun infer false ([(_, false, CONty(_,[ty,_]))]) =
 
 	    | decide (ctag,vtag, (_,false,CONty(_,[ty,_]))::rest, reps) =
 		(case (reduce ty, multiple)
-		  of (CONty(RECORDtyc nil,_),_) => 
+		  of (*
+                     (CONty(RECORDtyc nil,_),_) => 
 		       decide(ctag+1, vtag, rest, (CONSTANT ctag) :: reps)
-                   | (_, true) =>  
+                   | *)
+                     (_, true) =>  
                        decide(ctag, vtag+1, rest, (TAGGED vtag) :: reps)
                    | (_, false) => 
                        decide(ctag, vtag+1, rest, (UNTAGGED :: reps)))

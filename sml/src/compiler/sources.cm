@@ -130,8 +130,8 @@ FLINT/clos/allocprof.sml
 FLINT/clos/cps-split.sml
 FLINT/clos/freemap.sml
 FLINT/clos/globalfix.sml
-FLINT/clos/nclosure.sml
-FLINT/clos/nfreeclose.sml
+FLINT/clos/closure.sml
+FLINT/clos/freeclose.sml
 FLINT/clos/staticprof.sml
 FLINT/clos/unrebind.sml
 FLINT/cps/convert.sml
@@ -172,6 +172,7 @@ FLINT/kernel/primop.sml
 FLINT/kernel/primtyc.sig
 FLINT/kernel/primtyc.sml
 FLINT/main/flintcomp.sml
+FLINT/main/literals.sml
 FLINT/opt/lcontract.sml
 (* FLINT/opt/fcontract.sml *)
 FLINT/opt/collect.sml
@@ -183,7 +184,6 @@ FLINT/plambda/pflatten.sig
 FLINT/plambda/pflatten.sml
 FLINT/plambda/plambda.sig
 FLINT/plambda/plambda.sml
-FLINT/plambda/plambdatype.sig
 FLINT/plambda/plambdatype.sml
 FLINT/plambda/pplexp.sml
 FLINT/plambda/reorder.sml

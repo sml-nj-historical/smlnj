@@ -352,11 +352,6 @@ fun lt_select(t, i) =
   (case lt_out t
     of LK.LT_STR ts => 
          ((List.nth(ts, i)) handle _ => bug "incorrect LT_STR in lt_select")
-     | LK.LT_PST ts => 
-         let fun h [] = bug "incorrect LT_PST in lt_select"
-               | h ((j,a)::r) = if i=j then a else h r
-          in h ts
-         end
      | LK.LT_TYC tc => ltc_tyc(tc_select(tc, i))
      | _ => bug "incorrect lambda types in lt_select")
 
@@ -443,7 +438,6 @@ fun tnarrow_gen () =
         (case lt_out t
           of LK.LT_TYC tc => ltc_tyc (tcf tc)
            | LK.LT_STR ts => ltc_str (map ltf ts)
-           | LK.LT_PST its => ltc_pst (map (fn (i, t) => (i, ltf t)) its)
            | LK.LT_FCT (ts1, ts2) => ltc_fct(map ltf ts1, map ltf ts2)
            | LK.LT_POLY (ks, xs) => 
                ltc_fct([ltc_str (map tk_lty ks)], map ltf xs)
@@ -520,7 +514,6 @@ fun twrap_gen bbb =
            | LK.LT_STR ts => ltc_str (map ltf ts)
            | LK.LT_FCT (ts1, ts2) => ltc_fct(map ltf ts1, map ltf ts2)
            | LK.LT_POLY (ks, xs) => ltc_poly(ks, map ltf xs)
-           | LK.LT_PST its => ltc_pst (map (fn (i, t) => (i, ltf t)) its)
            | LK.LT_CONT _ => bug "unexpected CNTs in lt_umap"
            | LK.LT_IND _ => bug "unexpected INDs in lt_umap"
            | LK.LT_ENV _ => bug "unexpected ENVs in lt_umap")

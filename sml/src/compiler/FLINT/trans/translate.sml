@@ -1157,7 +1157,7 @@ val (plexp, imports) = wrapPidInfo (body, Map.members (!persmap))
 
 fun prGen (flag,printE) s e =
   if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e) else ()
-val _ = prGen(Control.CG.printLambda, PPLexp.printLexp) "Translate" plexp
+val _ = prGen(Control.CG.printFlint, PPLexp.printLexp) "Translate" plexp
 
 (** normalizing the plambda expression into FLINT *)
 val flint = FlintNM.norm plexp
