@@ -17,7 +17,7 @@ structure ExnName : sig
 
   end = struct
 
-    val exnName : exn -> string = InlineT.cast(fn (ref s, _,_) => s)
+    val exnName : exn -> string = ExnInfoHook.exnName (* InlineT.cast(fn (ref s, _,_) => s) *)
 
     fun exnMessage (OS.SysErr(s, NONE)) =
 	  "SysErr: " ^ s
@@ -48,7 +48,6 @@ structure ExnName : sig
       | exnMessage Domain = "domain error"
       | exnMessage e = exnName e
 
-    val _ = ExnInfoHook.exnNameHook := exnName
     val _ = ExnInfoHook.exnMessageHook := exnMessage
 
   end
