@@ -1,4 +1,11 @@
-(* -*- sml -*- *)
+(* -*- sml -*-
+ *
+ * lexical analysis (ML-Lex specification) for CM description files
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 
 type svalue = Tokens.svalue
 type pos = int

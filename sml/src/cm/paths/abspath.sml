@@ -1,9 +1,9 @@
 (*
- * util/abspath.sml: Operations over abstract path names.
+ * Operations over abstract path names.
  *
- *   Copyright (c) 1999 by Lucent Bell Laboratories
+ * Copyright (c) 1999 by Lucent Technologies, Bell Laboratories
  *
- * author: Matthias Blume (blume@cs.princeton.edu)
+ * Author: Matthias Blume (blume@cs.princeton.edu)
  *)
 signature ABSPATH = sig
 

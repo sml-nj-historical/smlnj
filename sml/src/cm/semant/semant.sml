@@ -1,6 +1,14 @@
+(*
+ * semantic actions to go with the grammar for CM description files
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 signature CM_SEMANT = sig
 
     exception ExplicitError of string
+    exception ExpressionError of exn
 
     type pathname
     type ml_symbol
@@ -16,6 +24,7 @@ signature CM_SEMANT = sig
 
     type complainer = string -> unit
 
+    (* getting elements of primitive types (pathnames and symbols) *)
     val file_native : string * pathname -> pathname
     val file_standard : string * pathname -> pathname
     val cm_symbol : string -> cm_symbol
@@ -24,26 +33,31 @@ signature CM_SEMANT = sig
     val ml_functor : string -> ml_symbol
     val ml_funsig : string -> ml_symbol
 
+    (* getting the full analysis for a group/library (or an alias thereof) *)
     val alias : pathname -> group
     val group : perms * exports * members -> group
     val library : perms * exports * members -> group
 
+    (* assembling permission lists *)
     val initialPerms : perms
     val require : perms * cm_symbol * complainer -> perms
     val grant : perms * cm_symbol * complainer -> perms
 
+    (* constructing member collections *)
     val emptyMembers : members
     val member : pathname * cm_symbol option -> members
     val members : members * members -> members
     val guarded_members : exp * (members * members) -> members
     val error_member : string -> members
 
+    (* constructing export lists *)
     val emptyExports : exports
     val export : ml_symbol -> exports
     val exports : exports * exports -> exports
     val guarded_exports : exp * (exports * exports) -> exports
     val error_export : string -> exports
 
+    (* arithmetic (number-valued) expression *)
     val number : int -> aexp
     val variable : cm_symbol -> aexp
     val plus : aexp * aexp -> aexp
@@ -53,6 +67,7 @@ signature CM_SEMANT = sig
     val modulus : aexp * aexp -> aexp
     val negate : aexp -> aexp
 
+    (* (bool-valued) expressions *)
     val ml_defined : ml_symbol -> exp
     val cm_defined : cm_symbol -> exp
     val conj : exp * exp -> exp
@@ -66,49 +81,54 @@ signature CM_SEMANT = sig
     val ge : aexp * aexp -> exp
     val eq : aexp * aexp -> exp
     val ne : aexp * aexp -> exp
-
 end
 
 structure CMSemant :> CM_SEMANT = struct
 
     exception ExplicitError of string
+    exception ExpressionError of exn
+
+    structure Symbol = GenericVC.Symbol
+    structure SymPath = GenericVC.SymPath
 
     type pathname = AbsPath.t
-    type ml_symbol = ModName.t
+    type ml_symbol = Symbol.symbol
     type cm_symbol = string
 
     type group = unit
 
-    type environment = unit
-    fun num_look () _ = 0
-    fun ml_look () _ = false
-    fun cm_look () _ = false
+    type environment = MemberCollection.environment
 
     type perms = { required : StringSet.set, granted : StringSet.set }
 
     type aexp = environment -> int
     type exp = environment -> bool
-    type members = unit
-    type exports = environment -> ModName.set
+    type members = environment -> MemberCollection.collection
+    type exports = environment -> SymbolSet.set
 
     type complainer = string -> unit
+
+    fun saveEval (exp, env) =
+	exp env
+	handle exn =>
+	    raise ExpressionError exn
 
     fun file_native (s, d) = AbsPath.native { context = d, spec = s }
     fun file_standard (s, d) = AbsPath.standard { context = d, spec = s }
     fun cm_symbol s = s
-    val ml_structure = ModName.structMN
-    val ml_signature = ModName.sigMN
-    val ml_functor = ModName.functMN
-    val ml_funsig = ModName.funsigMN
+    val ml_structure = Symbol.strSymbol
+    val ml_signature = Symbol.sigSymbol
+    val ml_functor = Symbol.fctSymbol
+    val ml_funsig = Symbol.fsigSymbol
 
     fun alias (f: pathname) = ()
     fun group (p: perms, e: exports, m: members) = ()
     fun library (p: perms, e: exports, m: members) = ()
 
     local
-	val member = StringSet.member
+	val isMember = StringSet.member
 	fun sanity ({ required, granted }, s, error) =
-	    if member (required, s) orelse member (granted, s) then
+	    if isMember (required, s) orelse isMember (granted, s) then
 		error ("duplicate permission name: " ^ s)
 	    else ()
     in
@@ -122,20 +142,27 @@ structure CMSemant :> CM_SEMANT = struct
 	     { required = required, granted = StringSet.add (granted, s) })
     end
 
-    val emptyMembers = ()
-    fun member (f: pathname, c: cm_symbol option) = ()
-    fun members (m1: members, m2: members) = ()
-    fun guarded_members (c: exp, (m1: members, m2: members)) = ()
-    fun error_member (m: string) = ()
+    fun emptyMembers env = MemberCollection.empty
+    fun member (f, c) env = MemberCollection.expandOne (f, c)
+    fun members (m1, m2) env = let
+	val c1 = m1 env
+	val c2 = m2 (MemberCollection.envOf c1)
+    in
+	MemberCollection.sequential (c1, c2)
+    end
+    fun guarded_members (c, (m1, m2)) env =
+	if saveEval (c, env) then m1 env else m2 env
+    fun error_member m env = raise ExplicitError m
 
-    fun emptyExports env = ModName.empty
-    fun export s env = ModName.singleton s
-    fun exports (e1, e2) env = ModName.union (e1 env, e2 env)
-    fun guarded_exports (c, (e1, e2)) env = if c env then e1 env else e2 env
+    fun emptyExports env = SymbolSet.empty
+    fun export s env = SymbolSet.singleton s
+    fun exports (e1, e2) env = SymbolSet.union (e1 env, e2 env)
+    fun guarded_exports (c, (e1, e2)) env =
+	if saveEval (c, env) then e1 env else e2 env
     fun error_export m env = raise ExplicitError m
 
     fun number i _ = i
-    fun variable v e = num_look e v
+    fun variable v e = MemberCollection.num_look e v
     fun plus (e1, e2) e = e1 e + e2 e
     fun minus (e1, e2) e = e1 e - e2 e
     fun times (e1, e2) e = e1 e * e2 e
@@ -143,8 +170,8 @@ structure CMSemant :> CM_SEMANT = struct
     fun modulus (e1, e2) e = e1 e mod e2 e
     fun negate ex e = ~(ex e)
 
-    fun ml_defined s e = ml_look e s
-    fun cm_defined s e = cm_look e s
+    fun ml_defined s e = MemberCollection.ml_look e s
+    fun cm_defined s e = MemberCollection.cm_look e s
     fun conj (e1, e2) e = e1 e andalso e2 e
     fun disj (e1, e2) e = e1 e orelse e2 e
     fun beq (e1: exp, e2) e = e1 e = e2 e

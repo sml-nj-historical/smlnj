@@ -1,11 +1,17 @@
+(*
+ * Toplevel description file for new implementation of CM
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 Group
 	(* for the time being leave this empty *)
 is
 	parse/cm.grm
 	parse/cm.lex
 
-	semant/modname.sig
-	semant/modname.sml
+	semant/members.sml
 	semant/semant.sml
 
 	paths/pathconfig.sml
