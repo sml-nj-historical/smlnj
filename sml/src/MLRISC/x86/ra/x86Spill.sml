@@ -57,9 +57,6 @@ functor X86Spill(structure Instr: X86INSTR
   fun mark(instr,[]) = instr
     | mark(instr,a::an) = mark(I.ANNOTATION{i=instr,a=a},an)
 
-  fun nonMultBinOp(I.MULL|I.MULW|I.MULB|I.IMULL|I.IMULW|I.IMULB) = false
-    | nonMultBinOp _ = true
-
   val newReg = C.newReg
 
   (* XXX:: Need to go through all the cases where 'done' is used
@@ -116,25 +113,39 @@ functor X86Spill(structure Instr: X86INSTR
               code=[mark(I.BINARY{binOp=I.XORL, src=src, dst=spillLoc}, an)],
               newReg=NONE
              }
-      | I.BINARY{binOp, src, dst} => (* note: dst = reg *)
-          if immedOrReg src andalso nonMultBinOp binOp then  
-             {proh=[],
-              code=[(* I.MOVE{mvOp=I.MOVL, src=dst, dst=spillLoc}, XXX *)
-	            mark(I.BINARY{binOp=binOp, src=src, dst=spillLoc}, an)
-                   ],
-              newReg=NONE
-             }
-          else 
-	  let val tmpR = newReg()
-              val tmp  = I.Direct tmpR
-	  in  {proh=[tmpR],
-               code=[(* I.MOVE{mvOp=I.MOVL, src=dst, dst=spillLoc}, XXX *)
-                     I.MOVE{mvOp=I.MOVL, src=src, dst=tmp},
-	             mark(I.BINARY{binOp=binOp, src=tmp, dst=spillLoc}, an)
-                    ],
-               newReg=NONE
-              }
-	  end
+      | I.BINARY{binOp, src, dst} => let (* note: dst = reg *)
+	 fun multBinOp(I.MULL|I.MULW|I.MULB|I.IMULL|I.IMULW|I.IMULB) = true
+	   | multBinOp _ = false
+        in
+	  if multBinOp binOp then let
+  	     (* destination must remain a register *)
+	      val tmpR = newReg()
+	      val tmp = I.Direct tmpR
+	    in
+	      {proh=[tmpR],
+	       code=[I.MOVE{mvOp=I.MOVL, src=spillLoc, dst=tmp},
+		     I.BINARY{binOp=binOp, src=src, dst=tmp},
+		     I.MOVE{mvOp=I.MOVL, src=tmp, dst=spillLoc}],
+	       newReg=SOME tmpR
+	      }
+	    end
+	  else if immedOrReg src then
+	     (* can replace the destination directly *)
+	     done(I.BINARY{binOp=binOp, src=src, dst=spillLoc}, an)
+          else let
+	     (* a memory src and non multBinOp  
+	      * --- cannot have two memory operands
+	      *)
+	      val tmpR = newReg()
+	      val tmp = I.Direct tmpR
+	    in 
+	      { proh=[tmpR],
+	        code=[I.MOVE{mvOp=I.MOVL, src=src, dst=tmp},
+		      I.BINARY{binOp=binOp, src=tmp, dst=spillLoc}],
+		newReg=NONE
+	       }
+            end
+        end 
       | I.CMPXCHG{lock,sz,src,dst} => 
            if immedOrReg src then
                {proh=[],
