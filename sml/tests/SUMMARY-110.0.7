@@ -1,0 +1,149 @@
+Summary of Regression Discrepancies: 110.0.6
+(These are not necessarily all bugs!  These represent tests where the
+ output differed from the reference output.)
+
+======================================================================
+alpha32-aix
+-----------
+bugs
+ bug107.sml: Error message duplicated:
+   stdIn:<nullRegion> Error: Real constant out of range: real constant out of range: 1.0E309
+ bug905.6.sml: redundant error message
+ bug1248.1.sml, bug1248.2.sml: blastWrite of too large an array
+ bug1360.1-3: uncaught RegMap instead of FPRegEQ
+ bug1361.sml
+ bug1399.1.sml
+ bug1388.1.sml: div32 and quot32 are "OK"
+ bug1416.1.sml: Date.fmt
+ bug1444.1.sml: Date.toString
+ bug1509.1.sml: overflow exception
+
+basis (see also tests/basis/BASIS-110.0.1)
+ general.sml: "Io: openOut failed on ".", Is a directory"
+
+
+======================================================================
+hppa-hpux
+---------
+basis (the usual (basis/BASIS-110.0.1), plus)
+ general.sml:
+   Io: openOut failed on ".", Is a directory (instead of "Invalid argument")
+
+bugs
+ bug107.sml: Error message duplicated:
+   stdIn:<nullRegion> Error: Real constant out of range: real constant out of range: 1.0E309
+ bug627.sml: Assertion failure (kind == p->kind) at "blast-gc.c:814"
+ bug1248.1.sml, bug1248.2.sml: blastWrite of too large an array
+ bug1360.1-3.sml: uncaught RegMap instead of FPRegEQ
+ bug1388.1.sml: div32 and quot32 are "OK"
+ bug1416.1.sml: fixed?
+ bug1443.1.sml: man=0.0
+ bug1444.1.sml: Date.toString
+ bug1469.1.sml: different diagnostic output (not a bug in 110.0.7?)
+ bug1509.1.sml: overflow exception
+
+======================================================================
+mipseb-irix5
+------------
+bugs
+ bug905.6.sml: redundant error message "<toplevel>..."
+
+======================================================================
+rs6000-aix
+----------
+bugs
+ bug908.1.sml, bug908.2.sml: exception overflow instead of divide by zero
+ bug1075.sml: hangs calling Compiler.Profile.report
+ bug1248.1.sml, bug1248.2.sml: blastWrite of too large an array
+
+basis (the usual (basis/BASIS-110.0.1), plus)
+ general.sml:
+   Overflow instead of Div
+   overflow instead of "divide by zero"
+   Io: openOut failed on ".", Is a directory (instead of "Invalid argument")
+ word.sml: test12r, test12s  (Overflow instead of Div)
+ word8.sml: test12p, test12q  (Overflow instead of Div)
+ word32.sml: test12r, test12s  (Overflow instead of Div)
+
+coresml
+ t013.sml: (100 div 0) raises "overflow", not Div as expected
+ t013.sml: (100 mod 0) raises "overflow", not Div as expected
+
+
+======================================================================
+sparc-solaris
+-------------
+bugs
+ bug906.5.sml: redundant error message "<toplevel>..."
+ bug1248.1.sml, bug1248.2.sml: blastWrite of too large an array
+ bug1443.1.sml: man=0.0
+
+
+======================================================================
+x86-linux
+---------
+bugs
+ bug107.sml: additional line in exception trace
+ bug906.5.sml: redundant error message "<toplevel>..."
+ bug1248.1.sml, bug1248.2.sml: blastWrite of too large an array
+ bug1388.1.sml: div32, quot32, rem32 are "WRONG (DIV)"
+ bug1413.1.sml: "Bad file descriptor..." instead of "Bad file number..."
+ bug1416.1.sml: Date.fmt
+ bug1443.1.sml: man=0.0
+ bug1444.1.sml: Date.toString
+ bug1509.1.sml: uncaught exception divide by zero
+
+basis (the usual, plus)
+ general.sml: "Io: openOut failed on ".", Is a directory"
+
+
+======================================================================
+Notes
+------
+
+1. A number of bug cases raise uncaught exceptions that produce
+messages with either
+
+  "raised at: <file stdIn>" or
+  "raised at: <unknown file>"
+
+Which message is printed depends on whether the exception is raised in
+inlined code (<file stdIn>) or in a assembly primitive (unknown file),
+which in turn varies among the architectures.  The reference outputs
+all give the "<file stdIn>" form (in conformance with the behavior on
+mipseb-irix, rs6000-aix, x86-linux).
+
+The "raised at: <unknown file>" message occurs in the following cases:
+
+  sparc-solaris
+  -------------
+   bug908.1.sml
+   bug908.2.sml
+   bug1088.1.sml
+
+  hppa-hpux (all cases)
+  ---------
+   bug260.sml
+   bug279.sml
+   bug908.1.sml
+   bug908.2.sml
+   bug1018.sml
+   bug1088.1.sml
+
+  alpha32-aix
+  -----------
+   bug908.1.sml
+   bug908.2.sml
+
+
+2. bugs/tests/bug1145.sml has been reclassified as obsolete and moved
+to bugs/tests.obsolete.
+
+======================================================================
+Questions:
+---------
+bug1146.sml: what is expected behavior?
+  (is testing/bugs/outputs/bug1146.out correct?)
+
+bug1248.{1,2}.sml: this works only on mips, yet it is marked as
+  fixed in bugs.1201-1400.
