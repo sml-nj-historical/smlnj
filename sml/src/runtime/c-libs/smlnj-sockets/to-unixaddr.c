@@ -34,7 +34,7 @@ ml_val_t _ml_Sock_tounixaddr (ml_state_t *msp, ml_val_t arg)
     len = strlen(path)+sizeof(addr.sun_len)+sizeof(addr.sun_family)+1;
     addr.sun_len = len;
 #else
-    len = strlen(path)+sizeof(addr.sun_family);
+    len = strlen(path)+sizeof(addr.sun_family)+1;
 #endif
 
     data = ML_CData (msp, &addr, len);
