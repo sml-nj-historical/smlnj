@@ -22,6 +22,8 @@ sig
 
    type compiled_type_info = Env.env
 
+   val init   : unit -> unit
+
    val compileTypes : Ast.decl list -> compiled_type_info
 
    val compile : compiled_type_info -> Ast.clause list -> MC.compiled_dfa

@@ -14,6 +14,21 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/02/19 20:20:00 EST
+Tag: leunga-20020219-mlrisc-tools
+Description:
+
+   Minor bug fixes to the mlrisc-tools library:
+
+   1.  Fixed up parsing colon suffixed keywords
+   2.  Added the ability to shut the error messages up
+   3.  Reimplemented the pretty printer and fixed up/improved
+       the pretty printing of handle and -> types.
+   4.  Fixed up generation of literal symbols in the nowhere tool.
+   5.  Added some SML keywords to to sml.sty
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/02/19 16:20:00 EST
 Tag: blume-20020219-cmffi
 Description:

@@ -99,7 +99,7 @@ struct
                            block(line(! "then" ++ sp ++ exp y) ++
                                  tab ++ ! "else" ++ sp ++ exp z))
      | exp(RAISEexp e) = ! "raise" ++ exp e
-     | exp(HANDLEexp(e,c)) = exp e ++ ! "handle" ++ sp ++ clauses c
+     | exp(HANDLEexp(e,c)) = paren(exp e ++ sp ++ ! "handle" ++ sp ++ clauses c)
      | exp(CASEexp(e,c)) = 
            nl ++ line(! "(case" ++ sp ++ appexp e ++ sp ++ ! "of") 
            ++ tab' 2 ++ settab ++ block(clauses c) ++ unindent ++ tab ++ !!")"
@@ -309,7 +309,7 @@ struct
      | ty(TYVARty tv) = tyvar tv
      | ty(APPty(id,[t])) = pty t ++ sp ++ ident id
      | ty(APPty(id,tys)) = tuple(map ty tys) ++ sp ++ ident id
-     | ty(FUNty(x,y)) = ty x ++ !! " -> " ++ pty y
+     | ty(FUNty(x,y)) = ty x ++ !! " -> " ++ fty y
      | ty(TUPLEty []) = ! "unit"
      | ty(TUPLEty [t]) = ty t
      | ty(TUPLEty tys) = seq(nop,!! " * ",nop) (map pty tys)
@@ -330,6 +330,9 @@ struct
                                  | "code" => int i) 
      | ty(LAMBDAty(vars,t)) = !!"\\" ++ tuple(map ty vars) ++ !!"." ++ ty t 
 
+   and fty(t as FUNty _) = ty t
+     | fty t = pty t
+
    and pty(t as FUNty _) = paren(ty t)
      | pty(TUPLEty[t]) = pty t
      | pty(t as TUPLEty []) = ty t
@@ -345,7 +348,7 @@ struct
 
    and pat(IDpat id)   = if isSym id then !"op" ++ !id else !(name id)
      | pat(WILDpat)    = ! "_"
-     | pat(ASpat(id,p)) = !id ++ !"as" ++ sp ++ pat p
+     | pat(ASpat(id,p)) = paren(!id ++ !"as" ++ sp ++ pat p)
      | pat(LITpat l)   = literal l
      | pat(LISTpat(ps,NONE)) = list(map pat ps)
      | pat(LISTpat([],SOME p)) = pat p 
@@ -363,7 +366,7 @@ struct
      | pat(ORpat ps) = 
           if length ps > 10 
           then nl ++ tab ++ seq(! "(",! "|"++nl++tab,! ")") (map pat ps)
-          else seq(!! "(", ! "|", !! ")") (map pat ps)
+          else seq(!! "(", ! "|"++sp, !! ")") (map pat ps)
      | pat(ANDpat [p]) = pat p
      | pat(ANDpat ps) = seq(!! "(",sp ++ !"and" ++ sp, !!")") (map pat ps)
      | pat(NOTpat p) = !"not" ++ sp ++ pat p

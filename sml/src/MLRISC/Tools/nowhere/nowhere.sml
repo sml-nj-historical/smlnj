@@ -42,6 +42,8 @@ in
    let (* parse file *)
        val program = Parser.load filename
 
+       val ()      = MG.init()
+
        (* By default, we take after ML *)
        fun failure() = RAISEexp(ID "Match")
 

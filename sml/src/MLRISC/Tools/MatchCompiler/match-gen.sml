@@ -280,12 +280,14 @@ struct
       fun makeRealEq(x,y)   = A.APPexp(realEq,A.TUPLEexp[x,y])
    end
   
+   val nameCounter = ref 0
+   fun newName() = !nameCounter before nameCounter := !nameCounter + 1
+   fun init() = nameCounter := 0
+
    (* Generate ML code *)
    fun codeGen {root, dfa, fail=genFail, literals} =
    let (* make unique name for path variables *)
-       val nameCounter = ref 0
        val nameTbl = ref MC.Path.Map.empty
-       fun newName() = !nameCounter before nameCounter := !nameCounter + 1
 
        fun genLit (l as A.INTINFlit _) = 
            (case Literal.Map.find(!literals, l) of 
