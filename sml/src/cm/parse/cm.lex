@@ -23,7 +23,8 @@ type lexarg = {
 	       getS: pos * (string * pos * pos -> lexresult) -> lexresult,
 	       handleEof: unit -> pos,
 	       newline: pos -> unit,
-	       error: pos * pos -> string -> unit
+	       error: pos * pos -> string -> unit,
+	       sync: pos * string -> unit
 	      }
 
 type arg = lexarg
@@ -108,7 +109,8 @@ fun idToken (t, p, idlist, default, chstate) =
         newS, addS, addSC, addSN, getS,
         handleEof,
         newline,
-	error });
+	error,
+	sync });
 
 idchars=[A-Za-z'_0-9];
 id=[A-Za-z]{idchars}*;
@@ -254,3 +256,7 @@ sharp="#";
 <INITIAL>.		=> (error (yypos, yypos+1)
 			    ("illegal character: " ^ yytext);
 			    continue ());
+
+{eol}{sharp}{ws}*"line"{ws}+{neol}* => (newline yypos;
+					sync (yypos, yytext);
+					continue ());

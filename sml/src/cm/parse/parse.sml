@@ -187,6 +187,23 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 		    end
 		    (* handling line breaks *)
 		    fun newline pos = SM.newline sourceMap pos
+		    (* handling #line directives *)
+		    fun sync (p, t) = let
+			fun sep c = c = #"#" orelse Char.isSpace c
+			fun cvt s = getOpt (Int.fromString s, 0)
+			fun r (line, col, file) = SM.resynch sourceMap
+			    (p, { fileName = file, line = line, column = col })
+		    in
+			case String.tokens sep t of
+			    [_, line] =>
+				r (cvt line, NONE, NONE)
+			  | [_, line, file] =>
+				r (cvt line, NONE, SOME file)
+			  | [_, line, col, file] =>
+				r (cvt line, SOME (cvt col), SOME file)
+			  | _ => error (p, p + size t)
+				"illegal #line directive"
+		    end
 		in
 		    { enterC = enterC,
 		      leaveC = leaveC,
@@ -197,7 +214,8 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 		      getS = getS,
 		      handleEof = handleEof,
 		      newline = newline,
-		      error = error }
+		      error = error,
+		      sync = sync}
 		end
 
 		fun inputc k = TextIO.input stream
