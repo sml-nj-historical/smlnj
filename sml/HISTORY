@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2005/01/18 12:00:00 CST
+Tag: blume-20050118-profile
+Description:
+
+Made time profiling code (interrupt handler) in runtime system aware
+of new array representation.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2005/01/14 18:00:00 CST
 Tag: blume-20050114-heap2exec
 Description:

@@ -44,7 +44,7 @@ void DisableProfSignals ()
  */
 PVT SigReturn_t ProfSigHandler ()
 {
-    Word_t	*arr = PTR_MLtoC(Word_t, ProfCntArray);
+    Word_t	*arr = GET_SEQ_DATAPTR(Word_t, ProfCntArray);
     int		indx = INT_MLtoC(DEREF(ProfCurrent));
 
     arr[indx]++;
