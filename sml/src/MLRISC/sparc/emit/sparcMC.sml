@@ -49,6 +49,7 @@ struct
        in loc := i + 1; CodeString.update(i,Word8.fromLargeWord w) end
    
        fun doNothing _ = ()
+       fun getAnnotations () = error "getAnnotations"
    
        fun pseudoOp pOp = P.emitValue{pOp=pOp, loc= !loc,emit=eByte}
    
@@ -523,7 +524,8 @@ struct
                 entryLabel=doNothing,
                 comment=doNothing,
                 exitBlock=doNothing,
-                annotation=doNothing
+                annotation=doNothing,
+                getAnnotations=getAnnotations
                }
    end
 end

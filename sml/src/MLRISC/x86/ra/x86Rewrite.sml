@@ -31,8 +31,8 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
     case instr
     of I.JMP(opnd, labs) => I.JMP(operand opnd, labs)
      | I.JCC{cond, opnd} => I.JCC{cond=cond, opnd = operand opnd}
-     | I.CALL{opnd, defs, uses, cutsTo, mem} => 
-         I.CALL{opnd=operand opnd, defs=defs, 
+     | I.CALL{opnd, defs, uses, return, cutsTo, mem} => 
+         I.CALL{opnd=operand opnd, defs=defs, return=return,
                 uses=C.CellSet.map {from=rs,to=rt} uses, cutsTo=cutsTo,
                 mem=mem}
      | I.MOVE{mvOp, src, dst as I.Direct _} => 
@@ -54,8 +54,6 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
 	I.CMPXCHG{lock=lock, sz=sz, src=operand src, dst=operand dst}
      | I.MULTDIV{multDivOp, src} => 
 	I.MULTDIV{multDivOp=multDivOp, src=operand src}
-     | I.MUL3{dst, src1, src2 as NONE} => 
-	I.MUL3{dst=replace dst, src1=operand src1, src2=NONE}
      | I.MUL3{dst, src1, src2} => 
 	I.MUL3{dst=dst, src1=operand src1, src2=src2}
      | I.UNARY{unOp, opnd} => I.UNARY{unOp=unOp, opnd=operand opnd}
@@ -115,8 +113,9 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
     fun replace r = if C.sameColor(r,rs) then rt else r
   in
     case instr 
-    of I.CALL{opnd, defs, uses, cutsTo, mem} => 
-         I.CALL{opnd=opnd, cutsTo=cutsTo,
+    of I.CALL{opnd, defs, uses, return, cutsTo, mem} => 
+         I.CALL{opnd=opnd, cutsTo=cutsTo, 
+                return=C.CellSet.map {from=rs,to=rt} return,
                 defs=C.CellSet.map {from=rs,to=rt} defs, uses=uses, mem=mem}
      | I.MOVE{mvOp, src, dst} => I.MOVE{mvOp=mvOp, src=src, dst=operand dst}
      | I.LEA{r32, addr} => I.LEA{r32=replace r32, addr=addr}
@@ -153,8 +152,8 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
     of I.FCOPY{dst, src, tmp,...} => I.FCOPY{dst=dst, src=map replace src, tmp=tmp}
      | I.FLDL opnd => I.FLDL(foperand opnd)
      | I.FLDS opnd => I.FLDS(foperand opnd)
-     | I.CALL{opnd, defs, uses, cutsTo, mem} => 
-         I.CALL{opnd=opnd, defs=defs, cutsTo=cutsTo,
+     | I.CALL{opnd, defs, uses, return, cutsTo, mem} => 
+         I.CALL{opnd=opnd, defs=defs, return=return, cutsTo=cutsTo,
                 uses=C.CellSet.map {from=fs, to=ft} uses, mem=mem}
      | I.FBINARY{binOp, src, dst} => 
 	 I.FBINARY{binOp=binOp, src=foperand src, dst=foperand dst}
@@ -200,8 +199,9 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
      | I.FSTPS opnd => I.FSTPS(foperand opnd)
      | I.FSTL opnd => I.FSTL(foperand opnd)
      | I.FSTS opnd => I.FSTS(foperand opnd)
-     | I.CALL{opnd, defs, uses, cutsTo, mem} => 
+     | I.CALL{opnd, defs, uses, return, cutsTo, mem} => 
          I.CALL{opnd=opnd, defs=C.CellSet.map {from=fs, to=ft} defs, 
+                           return=C.CellSet.map {from=fs, to=ft} return,
                 uses=uses, cutsTo=cutsTo, mem=mem}
      | I.FBINARY{binOp, src, dst} => I.FBINARY{binOp=binOp, src=src, dst=foperand dst}
 

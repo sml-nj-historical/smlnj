@@ -175,7 +175,7 @@ struct
 		       spillLoc=spillLoc}
        )
 
-   fun spillTmp{annotations,copy,spillLoc} =
+   fun spillTmp{annotations,reg,copy,spillLoc} =
        (intSpillsCnt := !intSpillsCnt + 1;
         Int.spillCopyTmp(annotations,copy,spillLoc)
        )
@@ -198,7 +198,7 @@ struct
         Float.spillInstr(annotations,src,spillLoc)
        )
 
-   fun spillFtmp{annotations,copy,spillLoc} = 
+   fun spillFtmp{annotations,reg,copy,spillLoc} = 
        (floatSpillsCnt := !floatSpillsCnt + 1;
         Float.spillCopyTmp(annotations,copy,spillLoc) 
        )

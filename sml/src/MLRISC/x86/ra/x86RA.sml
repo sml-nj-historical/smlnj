@@ -137,6 +137,8 @@ functor X86RA
     datatype raPhase = SPILL_PROPAGATION 
                      | SPILL_COLORING
 
+    datatype spillOperandKind = SPILL_LOC | CONST_VAL
+
     (* Called before register allocation; perform your initialization here. *)
     val beforeRA : F.cluster -> spill_info
 
@@ -148,8 +150,14 @@ functor X86RA
        val memRegs   : I.C.cell list
        val phases    : raPhase list
 
-       val spillLoc  : spill_info * Annotations.annotations ref * 
-                       RAGraph.logical_spill_id -> I.operand
+       val spillLoc  : {info:spill_info,
+                        an  :Annotations.annotations ref,
+                        cell:I.C.cell, (* spilled cell *)
+                        id  :RAGraph.logical_spill_id
+                       } -> 
+                       { opnd: I.operand,
+                         kind: spillOperandKind
+                       }
 
        (* This function is called once before spilling begins *)
        val spillInit :  RAGraph.interferenceGraph -> unit
@@ -195,6 +203,8 @@ struct
     val floatRenameCnt = MLRiscControl.getCounter "ra-float-renames"
     val x86CfgDebugFlg = MLRiscControl.getFlag "x86-cfg-debug"
 
+    fun error msg = MLRiscErrorMsg.error("X86RA",msg)
+
 (*
     val deadcode = MLRiscControl.getCounter "x86-dead-code"
     val deadblocks = MLRiscControl.getCounter "x86-dead-blocks"
@@ -225,7 +235,7 @@ struct
     fun removeDeadCode(F.CLUSTER{blocks, ...}) =
     let val find = IntHashTable.find deadRegs
         fun isDead r = 
-            case find (C.registerId r) of
+            case find (C.cellId r) of
                SOME _ => true
             |  NONE   => false
         fun isAffected i = getOpt (IntHashTable.find affectedBlocks i, false)
@@ -340,13 +350,13 @@ struct
         end
        )
 
-   fun spillFcopyTmp S {copy=I.FCOPY{dst, src, ...}, spillLoc, 
+   fun spillFcopyTmp S {copy=I.FCOPY{dst, src, ...}, spillLoc, reg,
                         annotations=an} =
         (floatSpillCnt := !floatSpillCnt + 1;
          I.FCOPY{dst=dst, src=src, tmp=SOME(getFregLoc(S, an, spillLoc))}
         )
-     | spillFcopyTmp S {copy=I.ANNOTATION{i,a}, spillLoc, annotations} =
-        let val i = spillFcopyTmp S {copy=i, spillLoc=spillLoc, 
+     | spillFcopyTmp S {copy=I.ANNOTATION{i,a}, spillLoc, reg, annotations} =
+        let val i = spillFcopyTmp S {copy=i, spillLoc=spillLoc, reg=reg,
                                      annotations=annotations}
         in  I.ANNOTATION{i=i, a=a} end
 
@@ -431,8 +441,9 @@ struct
           copyInstrR(x, i) (* XXX *)
       
 
-    fun getRegLoc(S, an, Ra.FRAME loc) = Int.spillLoc(S, an, loc)
-      | getRegLoc(S, an, Ra.MEM_REG r) = I.MemReg r
+    fun getRegLoc(S, an, cell, Ra.FRAME loc) = 
+         Int.spillLoc{info=S, an=an, cell=cell, id=loc}
+      | getRegLoc(S, an, cell, Ra.MEM_REG r) = {opnd=I.MemReg r,kind=SPILL_LOC}
 
         (* No, logical spill locations... *)
 
@@ -444,27 +455,40 @@ struct
 
      (* register allocation for general purpose registers *)
     fun spillR8 S {instr, reg, spillLoc, kill, annotations=an} = 
-        (intSpillCnt := !intSpillCnt + 1;
-         X86Spill.spill(instr, reg, getRegLoc(S, an, spillLoc))
-        ) 
+        (case getRegLoc(S, an, reg, spillLoc) of
+          {opnd=spillLoc, kind=SPILL_LOC} => 
+           (intSpillCnt := !intSpillCnt + 1;
+            X86Spill.spill(instr, reg, spillLoc)
+           ) 
+        | _ => (* don't have to spill a constant *)
+           {code=[], newReg=NONE, proh=[]} 
+        )
 
     fun isMemReg r = let val x = C.registerNum r
                      in  x >= 8 andalso x < 32 end
  
     fun spillReg S {src, reg, spillLoc, annotations=an} = 
         let val _ = intSpillCnt := !intSpillCnt + 1;
-            val dstLoc = getRegLoc(S,an,spillLoc)
+            val {opnd=dstLoc,kind} = getRegLoc(S,an,reg,spillLoc)
             val isMemReg = isMemReg src
             val srcLoc = if isMemReg then I.MemReg src else I.Direct src
-        in  if InsnProps.eqOpn(srcLoc, dstLoc) then []
+        in  if kind=CONST_VAL orelse InsnProps.eqOpn(srcLoc, dstLoc) then []
             else if isMemReg then memToMemMove{dst=dstLoc, src=srcLoc}
             else [I.MOVE{mvOp=I.MOVL, src=srcLoc, dst=dstLoc}]
         end
 
-    fun spillCopyTmp S {copy=I.COPY{src, dst,...}, spillLoc, annotations=an} = 
-        (intSpillCnt := !intSpillCnt + 1;
-         I.COPY{dst=dst, src=src, tmp=SOME(getRegLoc(S, an, spillLoc))}
+    fun spillCopyTmp S {copy=I.COPY{src, dst,...}, 
+                        reg, spillLoc, annotations=an} = 
+        (case getRegLoc(S, an, reg, spillLoc) of
+           {opnd=tmp, kind=SPILL_LOC} =>
+            (intSpillCnt := !intSpillCnt + 1;
+             I.COPY{dst=dst, src=src, tmp=SOME tmp}
+            )
+         | _ => error "spillCopyTmp"
         )
+      | spillCopyTmp S {copy=I.ANNOTATION{i, a}, reg, spillLoc, annotations} =
+        I.ANNOTATION{i=spillCopyTmp S {copy=i, reg=reg, spillLoc=spillLoc,
+                                       annotations=annotations}, a=a}
    
     fun renameR8{instr, fromSrc, toSrc} = 
         (intRenameCnt := !intRenameCnt + 1;
@@ -473,12 +497,12 @@ struct
 
     fun reloadR8 S {instr, reg, spillLoc, annotations=an} = 
         (intReloadCnt := !intReloadCnt + 1;
-         X86Spill.reload(instr, reg, getRegLoc(S,an,spillLoc))
+         X86Spill.reload(instr, reg, #opnd(getRegLoc(S,an,reg,spillLoc)))
         ) 
 
     fun reloadReg S {dst, reg, spillLoc, annotations=an} = 
         let val _ = intReloadCnt := !intReloadCnt + 1
-            val srcLoc = getRegLoc(S, an, spillLoc)
+            val srcLoc = #opnd(getRegLoc(S, an, reg, spillLoc))
             val isMemReg = isMemReg dst
             val dstLoc = if isMemReg then I.MemReg dst else I.Direct dst
         in  if InsnProps.eqOpn(srcLoc,dstLoc) then []

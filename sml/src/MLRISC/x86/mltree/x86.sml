@@ -46,8 +46,11 @@ functor X86
     datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
     val arch : arch ref
     val cvti2f : 
-         (* source operand, guaranteed to be non-memory! *)
-         {ty: X86Instr.T.ty, src: X86Instr.operand} -> 
+         {ty: X86Instr.T.ty, 
+          src: X86Instr.operand, 
+             (* source operand, guaranteed to be non-memory! *)
+          an: Annotations.annotations ref (* cluster annotations *)
+         } -> 
          {instrs : X86Instr.instruction list,(* the instructions *)
           tempMem: X86Instr.operand,         (* temporary for CVTI2F *)
           cleanup: X86Instr.instruction list (* cleanup code *)
@@ -125,7 +128,7 @@ struct
    *)
   fun selectInstructions 
        (instrStream as
-        S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,
+        S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,getAnnotations,
                  beginCluster,endCluster,exitBlock,comment,...}) =
   let exception EA
 
@@ -281,16 +284,18 @@ struct
         | cond T.GE = I.GE | cond T.GEU = I.AE
         | cond T.GT = I.GT | cond T.GTU = I.A
 
+      fun zero dst = emit(I.BINARY{binOp=I.XORL, src=dst, dst=dst})
+
       (* Move and annotate *) 
       fun move'(src as I.Direct s, dst as I.Direct d, an) =
           if C.sameColor(s,d) then ()
           else mark(I.COPY{dst=[d], src=[s], tmp=NONE}, an)
+        | move'(I.Immed 0, dst as I.Direct d, an) = 
+            mark(I.BINARY{binOp=I.XORL, src=dst, dst=dst}, an)
         | move'(src, dst, an) = mark(I.MOVE{mvOp=I.MOVL, src=src, dst=dst}, an)
 
       (* Move only! *)  
       fun move(src, dst) = move'(src, dst, [])
-
-      fun zero dst = emit(I.BINARY{binOp=I.XORL, src=dst, dst=dst})
 
       val readonly = I.Region.readonly
 
@@ -528,8 +533,8 @@ struct
               fun divrem(signed, overflow, e1, e2, resultReg) =
               let val (opnd1, opnd2) = (operand e1, operand e2)
                   val _ = move(opnd1, eax)
-                  val oper = if signed then (emit(I.CDQ); I.IDIVL)
-                             else (zero edx; I.DIVL)
+                  val oper = if signed then (emit(I.CDQ); I.IDIVL1)
+                             else (zero edx; I.DIVL1)
               in  mark(I.MULTDIV{multDivOp=oper, src=regOrMem opnd2},an);
                   move(resultReg, rdOpnd);
                   if overflow then trap() else ()
@@ -578,12 +583,20 @@ struct
 
               fun rem(signed, overflow, e1, e2) = 
                     divrem(signed, overflow, e1, e2, edx)
-        
+
+                  (* Makes sure the destination must be a register *)
+              fun dstMustBeReg f = 
+                  if isMemReg rd then
+                  let val tmpR = newReg()
+                      val tmp  = I.Direct(tmpR)
+                  in  f(tmpR, tmp); move(tmp, rdOpnd) end
+                  else f(rd, rdOpnd)
+
                   (* unsigned integer multiplication *)
               fun uMultiply(e1, e2) = 
                   (* note e2 can never be (I.Direct edx) *)
                   (move(operand e1, eax);
-                   mark(I.MULTDIV{multDivOp=I.MULL, 
+                   mark(I.MULTDIV{multDivOp=I.MULL1, 
                                   src=regOrMem(operand e2)},an);
                    move(eax, rdOpnd)
                   )
@@ -592,56 +605,45 @@ struct
                    * The only forms that are allowed that also sets the 
                    * OF and CF flags are:
                    *
+                   *          (dst)  (src1)  (src2)
                    *      imul r32, r32/m32, imm8
+                   *          (dst)  (src) 
                    *      imul r32, imm8
                    *      imul r32, imm32
+                   *      imul r32, r32/m32
+                   * Note: destination must be a register!
                    *)
               fun multiply(e1, e2) = 
-              let fun doit(i1 as I.Immed _, i2 as I.Immed _, dstR, dst) =
-                      (move(i1, dst);
-                       mark(I.MUL3{dst=dstR, src1=i2, src2=NONE},an))
-                    | doit(rm, i2 as I.Immed _, dstR, dst) = 
-                        doit(i2, rm, dstR, dst)
-                    | doit(imm as I.Immed(i), rm, dstR, dst) =
-                       mark(I.MUL3{dst=dstR, src1=rm, src2=SOME i},an)
-                    | doit(r1 as I.Direct _, r2 as I.Direct _, dstR, dst) =
-                      (move(r1, dst);
-                       mark(I.MUL3{dst=dstR, src1=r2, src2=NONE},an))
-                    | doit(r1 as I.Direct _, rm, dstR, dst) =
-                      (move(r1, dst);
-                       mark(I.MUL3{dst=dstR, src1=rm, src2=NONE},an))
-                    | doit(rm, r as I.Direct _, dstR, dst) = 
-                       doit(r, rm, dstR, dst)
-                    | doit(rm1, rm2, dstR, dst) =
+              dstMustBeReg(fn (rd, rdOpnd) =>
+              let fun doit(i1 as I.Immed _, i2 as I.Immed _) =
+                      (move(i1, rdOpnd);
+                       mark(I.BINARY{binOp=I.IMULL, dst=rdOpnd, src=i2},an))
+                    | doit(rm, i2 as I.Immed _) = doit(i2, rm)
+                    | doit(imm as I.Immed(i), rm) =
+                           mark(I.MUL3{dst=rd, src1=rm, src2=i},an)
+                    | doit(r1 as I.Direct _, r2 as I.Direct _) =
+                      (move(r1, rdOpnd);
+                       mark(I.BINARY{binOp=I.IMULL, dst=rdOpnd, src=r2},an))
+                    | doit(r1 as I.Direct _, rm) =
+                      (move(r1, rdOpnd);
+                       mark(I.BINARY{binOp=I.IMULL, dst=rdOpnd, src=rm},an))
+                    | doit(rm, r as I.Direct _) = doit(r, rm)
+                    | doit(rm1, rm2) =
                        if equalRd rm2 then
                        let val tmpR = newReg()
                            val tmp  = I.Direct tmpR
                        in move(rm1, tmp);
-                          mark(I.MUL3{dst=tmpR, src1=rm2, src2=NONE},an);
-                          move(tmp, dst)
+                          mark(I.BINARY{binOp=I.IMULL, dst=tmp, src=rm2},an);
+                          move(tmp, rdOpnd)
                        end
                        else
-                         (move(rm1, dst);
-                          mark(I.MUL3{dst=dstR, src1=rm2, src2=NONE},an)
+                         (move(rm1, rdOpnd);
+                          mark(I.BINARY{binOp=I.IMULL, dst=rdOpnd, src=rm2},an)
                          )
                   val (opnd1, opnd2) = (operand e1, operand e2)
-              in  if isMemReg rd then (* destination must be a real reg *)
-                  let val tmpR = newReg()
-                      val tmp  = I.Direct tmpR
-                  in  doit(opnd1, opnd2, tmpR, tmp); 
-                      move(tmp, rdOpnd)
-                  end
-                  else
-                      doit(opnd1, opnd2, rd, rdOpnd) 
+              in  doit(opnd1, opnd2)
               end
-
-                 (* Makes sure the destination must be a register *)
-              fun dstMustBeReg f = 
-                  if isMemReg rd then
-                  let val tmpR = newReg()
-                      val tmp  = I.Direct(tmpR)
-                  in  f(tmpR, tmp); move(tmp, rdOpnd) end
-                  else f(rd, rdOpnd)
+              )
 
                  (* Emit a load instruction; makes sure that the destination
                   * is a register 
@@ -960,15 +962,29 @@ struct
           in  mark(testopcode{lsrc=opnd1, rsrc=opnd2}, an)
           end
 
+          (* %eflags <- src *)
+      and moveToEflags src =
+          if C.sameColor(src, C.eflags) then ()
+          else (move(I.Direct src, eax); emit(I.LAHF))
+
+          (* dst <- %eflags *) 
+      and moveFromEflags dst =
+          if C.sameColor(dst, C.eflags) then ()
+          else (emit(I.SAHF); move(eax, I.Direct dst))
+
          (* generate a condition code expression 
           * The zero is for setting the condition code!  
           * I have no idea why this is used.
           *)
       and doCCexpr(T.CMP(ty, cc, t1, t2), rd, an) = 
-          if C.sameColor(rd, C.eflags) then  
-             (cmp(false, ty, cc, t1, t2, an); ())
+          (cmp(false, ty, cc, t1, t2, an); 
+           moveFromEflags rd
+          ) 
+        | doCCexpr(T.CC(cond,rs), rd, an) = 
+          if C.sameColor(rs,C.eflags) orelse C.sameColor(rd,C.eflags) then
+             (moveToEflags rs; moveFromEflags rd)
           else
-             error "doCCexpr: cmp"
+             move'(I.Direct rs, I.Direct rd, an)
         | doCCexpr(T.CCMARK(e,A.MARKREG f),rd,an) = (f rd; doCCexpr(e,rd,an))
         | doCCexpr(T.CCMARK(e,a), rd, an) = doCCexpr(e,rd,a::an)
         | doCCexpr(T.CCEXT e, cd, an) = 
@@ -1047,22 +1063,33 @@ struct
 
           (* generate code for calls *)
       and call(ea, flow, def, use, mem, cutsTo, an) = 
-          mark(I.CALL{opnd=operand ea,defs=cellset(def),uses=cellset(use),
-                      cutsTo=cutsTo,mem=mem},an)
+      let fun return(set, []) = set
+            | return(set, a::an) =
+              case #peek A.RETURN_ARG a of 
+                SOME r => return(C.CellSet.add(r, set), an)
+              | NONE => return(set, an)
+      in  mark(I.CALL{opnd=operand ea,defs=cellset(def),uses=cellset(use),
+                      return=return(C.empty,an),cutsTo=cutsTo,mem=mem},an)
+      end
 
-          (* generate code for integer stores *)
-      and store8(ea, d, mem, an) = 
-          let val src = (* movb has to use %eax as source. Stupid x86! *)
+          (* generate code for integer stores; first move data to %eax 
+           * This is mainly because we can't allocate to registers like
+           * ah, dl, dx etc.
+           *)
+      and genStore(mvOp, ea, d, mem, an) =
+          let val src = 
                  case immedOrReg(operand d) of
                      src as I.Direct r =>
                        if C.sameColor(r,C.eax) 
                        then src else (move(src, eax); eax)
                    | src => src
-          in  mark(I.MOVE{mvOp=I.MOVB, src=src, dst=address(ea,mem)},an)
+          in  mark(I.MOVE{mvOp=mvOp, src=src, dst=address(ea,mem)},an)
           end
-      and store16(ea, d, mem, an) = 
-	mark(I.MOVE{mvOp=I.MOVW, src=immedOrReg(operand d), dst=address(ea, mem)}, an)
-
+ 
+          (* generate code for 8-bit integer stores *)
+          (* movb has to use %eax as source. Stupid x86! *)
+      and store8(ea, d, mem, an) = genStore(I.MOVB, ea, d, mem, an)
+      and store16(ea, d, mem, an) = genStore(I.MOVW, ea, d, mem, an)
       and store32(ea, d, mem, an) = 
             move'(immedOrReg(operand d), address(ea, mem), an)
 
@@ -1172,7 +1199,8 @@ struct
           in  if isMemOpnd opnd andalso (ty = 16 orelse ty = 32)
               then (INTEGER, ty, opnd, [])
               else 
-                let val {instrs, tempMem, cleanup} = cvti2f{ty=ty, src=opnd}
+                let val {instrs, tempMem, cleanup} = 
+                        cvti2f{ty=ty, src=opnd, an=getAnnotations()}
                 in  emits instrs;
                     (INTEGER, 32, tempMem, cleanup)
                 end
@@ -1735,15 +1763,16 @@ struct
 
       and self() =
           S.STREAM
-          {  beginCluster= beginCluster',
-             endCluster  = endCluster',
-             emit        = doStmt,
-             pseudoOp    = pseudoOp,
-             defineLabel = defineLabel,
-             entryLabel  = entryLabel,
-             comment     = comment,
-             annotation  = annotation,
-             exitBlock   = fn mlrisc => exitBlock(cellset mlrisc)
+          {  beginCluster   = beginCluster',
+             endCluster     = endCluster',
+             emit           = doStmt,
+             pseudoOp       = pseudoOp,
+             defineLabel    = defineLabel,
+             entryLabel     = entryLabel,
+             comment        = comment,
+             annotation     = annotation,
+             getAnnotations = getAnnotations,
+             exitBlock      = fn mlrisc => exitBlock(cellset mlrisc)
           }
 
   in  self()

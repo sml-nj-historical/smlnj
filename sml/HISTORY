@@ -11,6 +11,17 @@ Name:
 Date:
 Tag: <post-commit CVS tag>
 Description:
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2001/05/04 01:57:00 EDT
+Tag: leunga-20010504-sync
+Description:
+
+  MLRISC features.
+
+  1. Fix to CMPXCHG instructions.
+  2. Changed RA interface to allow annotations in callbacks.
+  3. Added a new method to the stream interface to allow annotations updates.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume

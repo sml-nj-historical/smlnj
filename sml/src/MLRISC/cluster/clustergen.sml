@@ -37,9 +37,9 @@ struct
           case flowgraph of
             SOME(F.CLUSTER{blkCounter, annotations, blocks, 
                            entry, exit, ...}) =>
-                  (ref(!blkCounter-2), !annotations, ref(rev blocks),
+                  (ref(!blkCounter-2), ref(!annotations), ref(rev blocks),
                    entry, exit)
-          | NONE => (ref 0, [], ref [], NOBLOCK, NOBLOCK)
+          | NONE => (ref 0, ref [], ref [], NOBLOCK, NOBLOCK)
 
       val currBlock   = ref NOBLOCK
       val blockNames  = ref [] : Annotations.annotations ref
@@ -113,6 +113,9 @@ struct
       (* Add a comment *)
       fun comment msg = annotation(#create MLRiscAnnotations.COMMENT msg)
 
+      (* Get the current list of annotations *)
+      fun getAnnotations() = annotations
+
       (* Mark a block as exit *)
       fun exitBlock cellset =
       let fun findLiveOut(F.BBLOCK{liveOut, ...}::_) = liveOut
@@ -126,7 +129,7 @@ struct
       fun beginCluster _ = ()
 
       (* End a cluster *)
-      fun endCluster blockAnnotations =
+      fun endCluster clusterAnnotations =
       let exception LabelMap
           val labelMap : F.block IntHashTable.hash_table = 
                             IntHashTable.mkTable(16, LabelMap)
@@ -232,26 +235,29 @@ struct
           val _ = insertEntryEdges() 
 
              (* create a new cluster *)
+          val _ = annotations := clusterAnnotations @ (!annotations)
           val cluster = 
               F.CLUSTER{blocks=allBlocks, entry=entryBlk, exit=exitBlk,
                         blkCounter=ref(!blkCounter), 
-                        annotations=ref(blockAnnotations @ annotations)}
+                        annotations=ref(!annotations)}
 
           val _         = blkCounter := 0
           val _         = entryLabels := []
+          val _         = annotations := []
       in  compile cluster
       end
 
   in  S.STREAM
       {  beginCluster = beginCluster,
-         endCluster   = endCluster,
-         emit         = emit,
-         defineLabel  = defineLabel,
-         entryLabel   = entryLabel,
-         pseudoOp     = pseudoOp,
-         exitBlock    = exitBlock,
-         annotation   = annotation,
-         comment      = comment
+         endCluster    = endCluster,
+         emit          = emit,
+         defineLabel   = defineLabel,
+         entryLabel    = entryLabel,
+         pseudoOp      = pseudoOp,
+         exitBlock     = exitBlock,
+         annotation    = annotation,
+         getAnnotations=getAnnotations,
+         comment       = comment
       }
   end
 

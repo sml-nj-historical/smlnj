@@ -415,7 +415,8 @@ struct
                    if same(tmp, regToSpill)
                    then ((* spilledCopyTmps := !spilledCopyTmps + 1; *)
                          [spillCopyTmp{copy=instr, spillLoc=spillLoc,
-                                      annotations=annotations}], [])
+                                       reg=regToSpill,
+                                       annotations=annotations}], [])
                    else spillCopyDst(pt,instr,regToSpill,spillLoc,kill,
                                      env, don'tOverwrite)
     

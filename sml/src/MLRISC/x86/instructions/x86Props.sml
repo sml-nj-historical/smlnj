@@ -160,12 +160,13 @@ struct
       val uses = operandUse src
     in
       case multDivOp
-       of (I.IDIVL | I.DIVL) => (eaxPair, C.edx::C.eax::uses)
-        | I.MULL => (eaxPair, C.eax::uses)
+       of (I.IDIVL1 | I.DIVL1) => (eaxPair, C.edx::C.eax::uses)
+        | I.MULL1 => (eaxPair, C.eax::uses)
     end
 
     fun unary opnd = (operandDef opnd, operandUse opnd)
     fun cmptest{lsrc, rsrc} = ([], operandAcc(lsrc, operandUse rsrc))
+    fun espOnly()  = let val sp = [C.stackptrR] in (sp, sp) end
     fun push arg = ([C.stackptrR], operandAcc(arg, [C.stackptrR]))
     fun float opnd = ([], operandUse opnd)
   in
@@ -190,13 +191,14 @@ struct
       | I.ENTER _             => ([C.esp, C.ebp], [C.esp, C.ebp])
       | I.LEAVE               => ([C.esp, C.ebp], [C.esp, C.ebp])
       | I.MULTDIV arg	      => multdiv arg
-      | I.MUL3{src1, src2=SOME _, dst}=> ([dst], operandUse src1)
-      | I.MUL3{src1, dst, ...}=> ([dst], dst::operandUse src1)
+      | I.MUL3{src1, dst, ...}=> ([dst], operandUse src1)
 
       | I.UNARY{opnd, ...}    => unary opnd
       | I.SET{opnd, ...}      => unary opnd
       | ( I.PUSHL arg | I.PUSHW arg | I.PUSHB arg ) => push arg
       | I.POP arg	      => (C.stackptrR::operandDef arg, [C.stackptrR])
+      | I.PUSHFD	      => espOnly()
+      | I.POPFD		      => espOnly()
       | I.CDQ		      => ([C.edx], [C.eax])
 
       | I.COPY{dst, src, tmp=SOME(I.Direct r), ...}   => (r::dst, src)
@@ -226,6 +228,7 @@ struct
       | I.FUNOP{src, dst, ...} => operandUse2(src, dst)
 
       | I.SAHF		      => ([], [C.eax])
+      | I.LAHF		      => ([C.eax], [])
         (* This sets the low order byte, 
          * do potentially it may define *and* use 
          *)

@@ -55,7 +55,7 @@ structure X86CG =
                 fun showCCext _ _ = ""
                )
            val tempMem = I.Displace{base=esp, disp=I.Immed 304, mem=stack}
-           fun cvti2f{src,ty} = (* ty is always 32 for SML/NJ *)
+           fun cvti2f{src,ty,an} = (* ty is always 32 for SML/NJ *)
                {instrs  = [I.MOVE{mvOp=I.MOVL, src=src, dst=tempMem}],
                 tempMem = tempMem, 
                 cleanup = []
@@ -104,6 +104,7 @@ structure X86CG =
                                 Word.toIntX(Word.<<(Word.fromInt(f-40),0w3))))
 
        datatype raPhase = SPILL_PROPAGATION | SPILL_COLORING
+       datatype spillOperandKind = SPILL_LOC | CONST_VAL
 
        structure Int =  
        struct
@@ -134,8 +135,10 @@ structure X86CG =
  
           val getRegLoc' = X86StackSpills.getRegLoc
  
-          fun spillLoc(S, an, loc) = 
-              I.Displace{base=esp, disp=getRegLoc' loc, mem=spill}
+          fun spillLoc{info, an, cell, id} = 
+              {opnd=I.Displace{base=esp, disp=getRegLoc' id, mem=spill},
+               kind=SPILL_LOC
+              }
  
        end
 

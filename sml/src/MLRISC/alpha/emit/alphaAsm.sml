@@ -50,6 +50,7 @@ struct
        fun entryLabel lab = defineLabel lab
        fun comment msg = (tab(); emit("/* " ^ msg ^ " */"))
        fun annotation a = (comment(Annotations.toString a); nl())
+       fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
        fun emit_region mem = comment(I.Region.toString mem)
        val emit_region = 
@@ -499,7 +500,8 @@ struct
                 entryLabel=entryLabel,
                 comment=comment,
                 exitBlock=doNothing,
-                annotation=annotation
+                annotation=annotation,
+                getAnnotations=getAnnotations
                }
    end
 end

@@ -45,6 +45,7 @@ sig
     *)
    type spillCopyTmp =
       {copy     : I.instruction,       (* copy to spill *)
+       reg      : C.cell,              (* the register *)
        spillLoc : G.spillLoc,          (* logical spill location *)
        annotations : Annotations.annotations ref (* annotations *)
       } -> I.instruction               (* spill code *)

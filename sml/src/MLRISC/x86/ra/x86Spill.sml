@@ -55,6 +55,9 @@ functor X86Spill(structure Instr: X86INSTR
   fun mark(instr,[]) = instr
     | mark(instr,a::an) = mark(I.ANNOTATION{i=instr,a=a},an)
 
+  fun nonMultBinOp(I.MULL|I.MULW|I.MULB|I.IMULL|I.IMULW|I.IMULB) = false
+    | nonMultBinOp _ = true
+
   val newReg = C.newReg
 
   (* XXX:: Need to go through all the cases where 'done' is used
@@ -65,8 +68,9 @@ functor X86Spill(structure Instr: X86INSTR
   let fun done(instr, an) = {code=[mark(instr, an)], proh=[], newReg=NONE}
       fun spillIt(instr,an) =
       case instr of 
-        I.CALL{opnd=addr, defs, uses, cutsTo, mem} =>
-          done(I.CALL{opnd=addr, defs=C.rmvReg(reg,defs), uses=uses, 
+        I.CALL{opnd=addr, defs, uses, return, cutsTo, mem} =>
+          done(I.CALL{opnd=addr, defs=C.rmvReg(reg,defs), 
+                                 return=return, uses=uses, 
                       cutsTo=cutsTo, mem=mem}, an)
       | I.MOVE{mvOp as (I.MOVZBL|I.MOVSBL|I.MOVZWL|I.MOVSWL), src, dst} => 
           let val tmpR = newReg() val tmp = I.Direct tmpR
@@ -111,7 +115,7 @@ functor X86Spill(structure Instr: X86INSTR
               newReg=NONE
              }
       | I.BINARY{binOp, src, dst} => (* note: dst = reg *)
-          if immedOrReg src then  
+          if immedOrReg src andalso nonMultBinOp binOp then  
              {proh=[],
               code=[(* I.MOVE{mvOp=I.MOVL, src=dst, dst=spillLoc}, XXX *)
 	            mark(I.BINARY{binOp=binOp, src=src, dst=spillLoc}, an)
@@ -290,9 +294,9 @@ functor X86Spill(structure Instr: X86INSTR
      | I.JCC{opnd=I.Direct _, cond} => done(I.JCC{opnd=spillLoc, cond=cond}, an)
      | I.JCC{opnd, cond} => 
           withTmp(fn t => I.JCC{opnd=operand(t,opnd), cond=cond}, an)
-     | I.CALL{opnd, defs, uses, cutsTo, mem} => 
+     | I.CALL{opnd, defs, uses, return, cutsTo, mem} => 
           withTmp(fn t => 
-              I.CALL{opnd=operand(t, opnd), defs=defs, 
+              I.CALL{opnd=operand(t, opnd), defs=defs, return=return,
                      uses=C.rmvReg(reg, uses), cutsTo=cutsTo, mem=mem}, an)
 (***
        let val tmpR = newReg()
@@ -430,9 +434,10 @@ functor X86Spill(structure Instr: X86INSTR
        | I.FSTPT _ => {proh=[], code=[mark(I.FSTPT spillLoc, an)], newReg=NONE}
        | I.FSTL _ => {proh=[], code=[mark(I.FSTL spillLoc, an)], newReg=NONE}
        | I.FSTS _ => {proh=[], code=[mark(I.FSTS spillLoc, an)], newReg=NONE}
-       | I.CALL{opnd, defs, uses, cutsTo, mem} =>
+       | I.CALL{opnd, defs, uses, return, cutsTo, mem} =>
 	 {proh=[],
-	  code=[mark(I.CALL{opnd=opnd, defs=C.rmvFreg(reg,defs), uses=uses, 
+	  code=[mark(I.CALL{opnd=opnd, defs=C.rmvFreg(reg,defs), 
+                            return=return, uses=uses, 
                             cutsTo=cutsTo, mem=mem}, an)],
 	  newReg=NONE}
 
@@ -553,9 +558,10 @@ functor X86Spill(structure Instr: X86INSTR
                  fn tmp => I.FCMP{fsize=fsize,lsrc=rsrc, rsrc=tmp}, an)
            | _ => error "fcmp.2"
           )
-       | I.CALL{opnd, defs, uses, cutsTo, mem} =>
+       | I.CALL{opnd, defs, uses, return, cutsTo, mem} =>
 	 {proh=[],
 	  code=[mark(I.CALL{opnd=opnd, defs=C.rmvFreg(reg,defs), 
+                            return=return,
                             uses=uses, cutsTo=cutsTo, mem=mem}, an)],
           newReg=NONE}
        | I.ANNOTATION{i,a} => reloadIt(i, a::an)

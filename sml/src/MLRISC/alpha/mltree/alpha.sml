@@ -294,7 +294,7 @@ struct
 
   fun selectInstructions
         (instrStream as
-         S.STREAM{emit,beginCluster,endCluster,
+         S.STREAM{emit,beginCluster,endCluster,getAnnotations,
                   defineLabel,entryLabel,pseudoOp,annotation,
                   exitBlock,comment,...}) =
   let
@@ -468,7 +468,7 @@ struct
 	      I.IMMop(toInt(n))
             else let val tmpR = newReg()
                  in  loadImmed(n,zeroR,tmpR,[]); I.REGop tmpR end
-        | opn(e as (T.CONST _ | T.LABEL _)) = I.LABop e
+        | opn(e as T.CONST _) = I.LABop e
         | opn(T.LABEXP x) = I.LABop x
         | opn e = I.REGop(expr e)
 
@@ -1493,15 +1493,16 @@ struct
 
       and self() = 
           S.STREAM
-         { beginCluster= beginCluster,
-           endCluster  = endCluster,
-           emit        = doStmt,
-           pseudoOp    = pseudoOp,
-           defineLabel = defineLabel,
-           entryLabel  = entryLabel,
-           comment     = comment,
-           annotation  = annotation,
-           exitBlock   = fn regs => exitBlock(cellset regs)
+         { beginCluster   = beginCluster,
+           endCluster     = endCluster,
+           emit           = doStmt,
+           pseudoOp       = pseudoOp,
+           defineLabel    = defineLabel,
+           entryLabel     = entryLabel,
+           comment        = comment,
+           annotation     = annotation,
+           getAnnotations = getAnnotations,
+           exitBlock      = fn regs => exitBlock(cellset regs)
          } 
    in  self()
    end

@@ -115,7 +115,7 @@ struct
 
    fun selectInstructions
         (instrStream as
-         S.STREAM{emit, defineLabel, entryLabel, 
+         S.STREAM{emit, defineLabel, entryLabel, getAnnotations,
                   beginCluster, endCluster, annotation,
                   exitBlock, pseudoOp, comment, ...}) =
    let
@@ -846,15 +846,16 @@ struct
 
        and self() =
           S.STREAM
-            { beginCluster= beginCluster,
-              endCluster  = endCluster,
-              emit        = doStmt,
-              pseudoOp    = pseudoOp,
-              defineLabel = defineLabel,
-              entryLabel  = entryLabel,
-              comment     = comment,
-              annotation  = annotation,
-              exitBlock   = fn regs => exitBlock(cellset regs)
+            { beginCluster   = beginCluster,
+              endCluster     = endCluster,
+              emit           = doStmt,
+              pseudoOp       = pseudoOp,
+              defineLabel    = defineLabel,
+              entryLabel     = entryLabel,
+              comment        = comment,
+              annotation     = annotation,
+              getAnnotations = getAnnotations,
+              exitBlock      = fn regs => exitBlock(cellset regs)
             }
    in  self()
    end

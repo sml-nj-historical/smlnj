@@ -219,17 +219,20 @@ struct
 
        (* Start a new cluster *)
        fun beginCluster _ = init()
+  
+       fun getAnnotations() = CFG.annotations(!CFG)
 
     in  {stream=S.STREAM
-           {  beginCluster= beginCluster,
-              endCluster  = endCluster,
-              defineLabel = defineLabel,
-              entryLabel  = entryLabel,
-              pseudoOp    = pseudoOp,
-              emit        = emit,
-              exitBlock   = exitBlock,
-              comment     = comment,
-              annotation  = annotation
+           {  beginCluster  = beginCluster,
+              endCluster    = endCluster,
+              defineLabel   = defineLabel,
+              entryLabel    = entryLabel,
+              pseudoOp      = pseudoOp,
+              emit          = emit,
+              exitBlock     = exitBlock,
+              comment       = comment,
+              annotation    = annotation,
+              getAnnotations= getAnnotations
            },
          next = next
         }

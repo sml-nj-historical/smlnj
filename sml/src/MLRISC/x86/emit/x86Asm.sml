@@ -9,7 +9,7 @@ functor X86AsmEmitter(structure Instr : X86INSTR
                       structure Shuffle : X86SHUFFLE
                          where I = Instr
 
-(*#line 507.7 "x86/x86.mdl"*)
+(*#line 509.7 "x86/x86.mdl"*)
                       structure MemRegs : MEMORY_REGISTERS where I=Instr
                      ) : INSTRUCTION_EMITTER =
 struct
@@ -53,6 +53,7 @@ struct
        fun entryLabel lab = defineLabel lab
        fun comment msg = (tab(); emit("/* " ^ msg ^ " */"))
        fun annotation a = (comment(Annotations.toString a); nl())
+       fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
        fun emit_region mem = comment(I.Region.toString mem)
        val emit_region = 
@@ -98,6 +99,8 @@ struct
      | asm_binaryOp (I.SHLL) = "shll"
      | asm_binaryOp (I.SARL) = "sarl"
      | asm_binaryOp (I.SHRL) = "shrl"
+     | asm_binaryOp (I.MULL) = "mull"
+     | asm_binaryOp (I.IMULL) = "imull"
      | asm_binaryOp (I.ADCL) = "adcl"
      | asm_binaryOp (I.SBBL) = "sbbl"
      | asm_binaryOp (I.ADDW) = "addw"
@@ -108,6 +111,8 @@ struct
      | asm_binaryOp (I.SHLW) = "shlw"
      | asm_binaryOp (I.SARW) = "sarw"
      | asm_binaryOp (I.SHRW) = "shrw"
+     | asm_binaryOp (I.MULW) = "mulw"
+     | asm_binaryOp (I.IMULW) = "imulw"
      | asm_binaryOp (I.ADDB) = "addb"
      | asm_binaryOp (I.SUBB) = "subb"
      | asm_binaryOp (I.ANDB) = "andb"
@@ -116,6 +121,8 @@ struct
      | asm_binaryOp (I.SHLB) = "shlb"
      | asm_binaryOp (I.SARB) = "sarb"
      | asm_binaryOp (I.SHRB) = "shrb"
+     | asm_binaryOp (I.MULB) = "mulb"
+     | asm_binaryOp (I.IMULB) = "imulb"
      | asm_binaryOp (I.BTSW) = "btsw"
      | asm_binaryOp (I.BTCW) = "btcw"
      | asm_binaryOp (I.BTRW) = "btrw"
@@ -153,9 +160,9 @@ struct
      | asm_binaryOp (I.LOCK_XADDW) = "lock\n\txaddw"
      | asm_binaryOp (I.LOCK_XADDL) = "lock\n\txaddl"
    and emit_binaryOp x = emit (asm_binaryOp x)
-   and asm_multDivOp (I.MULL) = "mull"
-     | asm_multDivOp (I.IDIVL) = "idivl"
-     | asm_multDivOp (I.DIVL) = "divl"
+   and asm_multDivOp (I.MULL1) = "mull"
+     | asm_multDivOp (I.IDIVL1) = "idivl"
+     | asm_multDivOp (I.DIVL1) = "divl"
    and emit_multDivOp x = emit (asm_multDivOp x)
    and asm_unaryOp (I.DECL) = "decl"
      | asm_unaryOp (I.INCL) = "incl"
@@ -261,26 +268,26 @@ struct
      | asm_isize (I.I64) = "64"
    and emit_isize x = emit (asm_isize x)
 
-(*#line 509.6 "x86/x86.mdl"*)
+(*#line 511.6 "x86/x86.mdl"*)
    val memReg = MemRegs.memReg
 
-(*#line 510.6 "x86/x86.mdl"*)
+(*#line 512.6 "x86/x86.mdl"*)
    fun emitInt32 i = 
        let 
-(*#line 511.10 "x86/x86.mdl"*)
+(*#line 513.10 "x86/x86.mdl"*)
            val s = Int32.toString i
 
-(*#line 512.10 "x86/x86.mdl"*)
+(*#line 514.10 "x86/x86.mdl"*)
            val s = (if (i >= 0)
                   then s
                   else ("-" ^ (String.substring (s, 1, (size s) - 1))))
        in emit s
        end
 
-(*#line 515.6 "x86/x86.mdl"*)
+(*#line 517.6 "x86/x86.mdl"*)
    val {low=SToffset, ...} = C.cellRange C.FP
 
-(*#line 517.6 "x86/x86.mdl"*)
+(*#line 519.6 "x86/x86.mdl"*)
    fun emitScale 0 = emit "1"
      | emitScale 1 = emit "2"
      | emitScale 2 = emit "4"
@@ -334,13 +341,13 @@ struct
      | emit_disp (I.ImmedLabel lexp) = emit_labexp lexp
      | emit_disp _ = error "emit_disp"
 
-(*#line 561.7 "x86/x86.mdl"*)
+(*#line 563.7 "x86/x86.mdl"*)
    fun stupidGas (I.ImmedLabel lexp) = emit_labexp lexp
      | stupidGas opnd = 
        ( emit "*"; 
          emit_operand opnd )
 
-(*#line 565.7 "x86/x86.mdl"*)
+(*#line 567.7 "x86/x86.mdl"*)
    fun isMemOpnd (I.MemReg _) = true
      | isMemOpnd (I.FDirect f) = true
      | isMemOpnd (I.LabelEA _) = true
@@ -348,10 +355,10 @@ struct
      | isMemOpnd (I.Indexed _) = true
      | isMemOpnd _ = false
 
-(*#line 571.7 "x86/x86.mdl"*)
+(*#line 573.7 "x86/x86.mdl"*)
    fun chop fbinOp = 
        let 
-(*#line 572.15 "x86/x86.mdl"*)
+(*#line 574.15 "x86/x86.mdl"*)
            val n = size fbinOp
        in 
           (case Char.toLower (String.sub (fbinOp, n - 1)) of
@@ -360,11 +367,11 @@ struct
           )
        end
 
-(*#line 578.7 "x86/x86.mdl"*)
-   fun isST32 (I.ST r) = (C.registerNum r) = 32
-     | isST32 _ = false
+(*#line 580.7 "x86/x86.mdl"*)
+   fun isST0 (I.ST r) = (C.registerNum r) = 0
+     | isST0 _ = false
 
-(*#line 582.7 "x86/x86.mdl"*)
+(*#line 584.7 "x86/x86.mdl"*)
    fun emit_fbinaryOp (binOp, src, dst) = (if (isMemOpnd src)
           then 
           ( emit_fbinOp binOp; 
@@ -374,7 +381,7 @@ struct
           ( emit (chop (asm_fbinOp binOp)); 
             emit "\t"; 
             
-            (case (isST32 src, isST32 dst) of
+            (case (isST0 src, isST0 dst) of
               (_, true) => 
               ( emit_operand src; 
                 emit ", %st" )
@@ -384,31 +391,31 @@ struct
             | _ => error "emit_fbinaryOp"
             )))
 
-(*#line 592.7 "x86/x86.mdl"*)
+(*#line 594.7 "x86/x86.mdl"*)
    val emit_dst = emit_operand
 
-(*#line 593.7 "x86/x86.mdl"*)
+(*#line 595.7 "x86/x86.mdl"*)
    val emit_src = emit_operand
 
-(*#line 594.7 "x86/x86.mdl"*)
+(*#line 596.7 "x86/x86.mdl"*)
    val emit_opnd = emit_operand
 
-(*#line 595.7 "x86/x86.mdl"*)
+(*#line 597.7 "x86/x86.mdl"*)
    val emit_opnd8 = emit_operand8
 
-(*#line 596.7 "x86/x86.mdl"*)
+(*#line 598.7 "x86/x86.mdl"*)
    val emit_rsrc = emit_operand
 
-(*#line 597.7 "x86/x86.mdl"*)
+(*#line 599.7 "x86/x86.mdl"*)
    val emit_lsrc = emit_operand
 
-(*#line 598.7 "x86/x86.mdl"*)
+(*#line 600.7 "x86/x86.mdl"*)
    val emit_addr = emit_operand
 
-(*#line 599.7 "x86/x86.mdl"*)
+(*#line 601.7 "x86/x86.mdl"*)
    val emit_src1 = emit_operand
 
-(*#line 600.7 "x86/x86.mdl"*)
+(*#line 602.7 "x86/x86.mdl"*)
    val emit_ea = emit_operand
    fun emitInstr' instr = 
        (case instr of
@@ -421,12 +428,13 @@ struct
            emit_cond cond; 
            emit "\t"; 
            stupidGas opnd )
-       | I.CALL{opnd, defs, uses, cutsTo, mem} => 
+       | I.CALL{opnd, defs, uses, return, cutsTo, mem} => 
          ( emit "call\t"; 
            stupidGas opnd; 
            emit_region mem; 
            emit_defs defs; 
            emit_uses uses; 
+           emit_cellset ("return", return); 
            emit_cutsTo cutsTo )
        | I.ENTER{src1, src2} => 
          ( emit "enter\t"; 
@@ -525,20 +533,12 @@ struct
            emit "\t"; 
            emit_src src )
        | I.MUL3{dst, src2, src1} => 
-         (case src2 of
-           NONE => 
-           ( emit "imul\t"; 
-             emit_src1 src1; 
-             emit ", "; 
-             emitCell dst )
-         | SOME i => 
-           ( emit "imul\t$"; 
-             emitInt32 i; 
-             emit ", "; 
-             emit_src1 src1; 
-             emit ", "; 
-             emitCell dst )
-         )
+         ( emit "imul\t$"; 
+           emitInt32 src2; 
+           emit ", "; 
+           emit_src1 src1; 
+           emit ", "; 
+           emitCell dst )
        | I.UNARY{unOp, opnd} => 
          ( emit_unaryOp unOp; 
            emit "\t"; 
@@ -564,6 +564,8 @@ struct
        | I.PUSHB operand => 
          ( emit "pushb\t"; 
            emit_operand operand )
+       | I.PUSHFD => emit "pushfd"
+       | I.POPFD => emit "popfd"
        | I.POP operand => 
          ( emit "popl\t"; 
            emit_operand operand )
@@ -700,6 +702,7 @@ struct
            emit ", "; 
            emit_rsrc rsrc )
        | I.SAHF => emit "sahf"
+       | I.LAHF => emit "lahf"
        | I.ANNOTATION{i, a} => 
          ( comment (Annotations.toString a); 
            nl (); 
@@ -723,7 +726,8 @@ struct
                 entryLabel=entryLabel,
                 comment=comment,
                 exitBlock=doNothing,
-                annotation=annotation
+                annotation=annotation,
+                getAnnotations=getAnnotations
                }
    end
 end

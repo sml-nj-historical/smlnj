@@ -49,6 +49,7 @@ struct
        in loc := i + 1; CodeString.update(i,Word8.fromLargeWord w) end
    
        fun doNothing _ = ()
+       fun getAnnotations () = error "getAnnotations"
    
        fun pseudoOp pOp = P.emitValue{pOp=pOp, loc= !loc,emit=eByte}
    
@@ -158,7 +159,7 @@ struct
        | I.FDirect _ => extension {opc=opc, opnd=memReg opnd}
        | I.Displace{base, disp, ...} => 
          let 
-(*#line 470.13 "x86/x86.mdl"*)
+(*#line 472.13 "x86/x86.mdl"*)
              val immed = immedOpnd {opnd=disp}
          in ()
          end
@@ -192,7 +193,7 @@ struct
    fun emitInstr (I.NOP) = error "NOP"
      | emitInstr (I.JMP(operand, list)) = error "JMP"
      | emitInstr (I.JCC{cond, opnd}) = error "JCC"
-     | emitInstr (I.CALL{opnd, defs, uses, cutsTo, mem}) = error "CALL"
+     | emitInstr (I.CALL{opnd, defs, uses, return, cutsTo, mem}) = error "CALL"
      | emitInstr (I.ENTER{src1, src2}) = error "ENTER"
      | emitInstr (I.LEAVE) = error "LEAVE"
      | emitInstr (I.RET option) = error "RET"
@@ -215,6 +216,8 @@ struct
      | emitInstr (I.PUSHL operand) = error "PUSHL"
      | emitInstr (I.PUSHW operand) = error "PUSHW"
      | emitInstr (I.PUSHB operand) = error "PUSHB"
+     | emitInstr (I.PUSHFD) = error "PUSHFD"
+     | emitInstr (I.POPFD) = error "POPFD"
      | emitInstr (I.POP operand) = error "POP"
      | emitInstr (I.CDQ) = error "CDQ"
      | emitInstr (I.INTO) = error "INTO"
@@ -257,6 +260,7 @@ struct
      | emitInstr (I.FUNOP{fsize, unOp, src, dst}) = error "FUNOP"
      | emitInstr (I.FCMP{fsize, lsrc, rsrc}) = error "FCMP"
      | emitInstr (I.SAHF) = error "SAHF"
+     | emitInstr (I.LAHF) = error "LAHF"
      | emitInstr (I.ANNOTATION{i, a}) = error "ANNOTATION"
      | emitInstr (I.SOURCE{}) = ()
      | emitInstr (I.SINK{}) = ()
@@ -273,7 +277,8 @@ struct
                 entryLabel=doNothing,
                 comment=doNothing,
                 exitBlock=doNothing,
-                annotation=doNothing
+                annotation=doNothing,
+                getAnnotations=getAnnotations
                }
    end
 end

@@ -1725,6 +1725,16 @@ struct
                    DONE code
                end
 
+               fun call return =
+               let val returnSet = SL.return(SL.uniq(getCell return))
+               in  case returnSet of
+                     [] => ()
+                   | [r] => ST.push(stack, C.registerNum r)
+                   | _   => 
+                     error "can't return more than one fp argument (yet)";
+                   DONE code
+               end
+
            in  case instr of
                  (* annotation handling *)
                  I.ANNOTATION{i,a} => 
@@ -1738,6 +1748,9 @@ struct
                | I.FILOAD x  => (log(); fiload x)
                | I.FCMP x    => (log(); fcmp x)
                | I.FCOPY x   => (log(); fcopy x)
+
+                 (* handle calling convention *)
+               | I.CALL{return, ...}    => (log(); call return)
 
                   (* 
                    * Catch instructions that absolutely 

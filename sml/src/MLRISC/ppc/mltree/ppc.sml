@@ -97,7 +97,7 @@ struct
     (val signed = true)
 
   fun selectInstructions
-      (S.STREAM{emit,comment,
+      (S.STREAM{emit,comment,getAnnotations,
                 defineLabel,entryLabel,pseudoOp,annotation,
                 beginCluster,endCluster,exitBlock,...}) =
   let (* mark an instruction with annotations *)
@@ -734,15 +734,16 @@ struct
            endCluster a)
 
    in  S.STREAM
-       { beginCluster = beginCluster,
-         endCluster   = endCluster,
-         emit         = doStmt,
-         pseudoOp     = pseudoOp,
-         defineLabel  = defineLabel,
-         entryLabel   = entryLabel,
-         comment      = comment,
-         annotation   = annotation,
-         exitBlock    = fn mlrisc => exitBlock(cellset mlrisc)
+       { beginCluster  = beginCluster,
+         endCluster    = endCluster,
+         emit          = doStmt,
+         pseudoOp      = pseudoOp,
+         defineLabel   = defineLabel,
+         entryLabel    = entryLabel,
+         comment       = comment,
+         annotation    = annotation,
+         getAnnotations=getAnnotations,
+         exitBlock     = fn mlrisc => exitBlock(cellset mlrisc)
        }
    end
     
