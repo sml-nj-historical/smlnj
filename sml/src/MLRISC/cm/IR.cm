@@ -1,29 +1,5 @@
+(* This file is created by makeallcm *)
 Library
-	signature DATAFLOW_ANALYZER 
-	signature DATAFLOW_PROBLEM 
-(*	signature CONTROL_FLOW_GRAPH_GEN	*)
-	signature CFG_UTIL 
-	signature CONTROL_FLOW_GRAPH 
-(*	signature CFG2CLUSTER			*)
-(*	signature CLUSTER2CFG			*)
-	signature FORMAT_INSTRUCTION 
-	signature MLRISC_IR_OPTIMIZATION 
-	signature MLRISC_IR 
-	signature LIVENESS_ANALYSIS 
-	functor BranchChaining
-(*	functor ControlFlowGraphGen		*)
-(*	functor CFGGen				*)
-	functor CFGUtil
-	functor ControlFlowGraph
-(*	functor CFG2Cluster
-	functor Cluster2CFG *)
-	functor Dataflow
-	functor FormatInstruction
-	functor MLRISC_IR
-	functor LivenessAnalysis
-	functor InsertPreheaders
-	functor ReshapeBranches
-
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -75,21 +51,14 @@ is
 	../IR/dataflow.sig
 	../IR/dataflow.sml
 	../IR/mlrisc-branch-chaining.sml
-(*
-	../IR/mlrisc-cfg-gen.sig
-	../IR/mlrisc-cfg-gen.sml
-	../IR/mlrisc-cfg-gen2.sml
-*)
 	../IR/mlrisc-cfg-util.sig
 	../IR/mlrisc-cfg-util.sml
-
-(*	../IR/mlrisc-cfg.sig
- *	../IR/mlrisc-cfg.sml
- *)
-
-(*	../IR/mlrisc-cluster2cfg.sml	*)
-(*	../IR/mlrisc-cfg2cluster.sml	*)
+	../IR/mlrisc-cpr.sml
 	../IR/mlrisc-format-insn.sml
+	../IR/idefs2.sig
+	../IR/idefs2.sml
+	../IR/mlrisc-idefs.sig
+	../IR/mlrisc-idefs.sml
 	../IR/mlrisc-ir.sig
 	../IR/mlrisc-ir.sml
 	../IR/mlrisc-ir-optimization.sig

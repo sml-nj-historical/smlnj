@@ -26,6 +26,5 @@ is
 	MLRISC.cm
 	Graphs.cm
 #endif
-	
 	../instructions/peephole.sig
-	../cluster/clusterPeephole.sml	(* move to flowgraph *)
+	../flowgraph/cfgPeephole.sml

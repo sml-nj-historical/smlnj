@@ -253,6 +253,7 @@ IA32.cm:
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+        Graphs.cm
 	MLTREE.cm
 
         (* c calls *)
@@ -383,15 +384,8 @@ IR.cm:
 	../IR/dataflow.sig
 	../IR/dataflow.sml
 	../IR/mlrisc-branch-chaining.sml
-	../IR/mlrisc-cfg-gen.sig
-	../IR/mlrisc-cfg-gen.sml
-	../IR/mlrisc-cfg-gen2.sml
 	../IR/mlrisc-cfg-util.sig
 	../IR/mlrisc-cfg-util.sml
-	../IR/mlrisc-cfg.sig
-	../IR/mlrisc-cfg.sml
-	../IR/mlrisc-cluster2cfg.sml
-	../IR/mlrisc-cfg2cluster.sml
 	../IR/mlrisc-cpr.sml
 	../IR/mlrisc-format-insn.sml
 	../IR/idefs2.sig
@@ -545,6 +539,8 @@ MLRISC.cm:
 
         smlnj-lib.cm
 	Control.cm
+ 	Graphs.cm
+	Visual.cm
 	Lib.cm
 
 	(* Core definitions. These are required *)
@@ -561,7 +557,8 @@ MLRISC.cm:
 	../instructions/shuffle.sig
 	../instructions/shuffle.sml
 	../instructions/constant.sig
-	../instructions/labels.sml
+	../instructions/label.sml
+	../instructions/label-sig.sml
 	../instructions/pseudoOps.sig
 	../instructions/region.sig
 	../instructions/freqProps.sig
@@ -587,7 +584,6 @@ MLRISC.cm:
 	../mltree/mltree-gen.sml
 	../mltree/mltree-size.sig
 	../mltree/mltree-size.sml
-	../mltree/flowgen.sig
 	../mltree/mltree-mult.sig
 	../mltree/mltree-mult.sml
 	../mltree/mltree-labexp.sig
@@ -596,12 +592,14 @@ MLRISC.cm:
 	../mltree/machine-int.sml
 	
 	(* Basic cluster stuff. These are required. *)
-	../cluster/flowgraph.sml
-	../cluster/clustergen.sml
-	../cluster/printCluster.sml
-	../cluster/clusterOptimization.sig
-	../cluster/clusterCountCopies.sml
-	../cluster/clusterExpandCopies.sml
+	../flowgraph/cfg-optimization.sig
+	../flowgraph/buildFlowgraph.sml
+	../flowgraph/cfg.sig
+	../flowgraph/cfg.sml
+	../flowgraph/cfgView.sig
+	../flowgraph/cfgView.sml
+	../flowgraph/cfgCountCopies.sml
+	../flowgraph/cfgExpandCopies.sml
 	
 	(* Core register allocator utilities *)
 	../ra/getreg.sig
@@ -634,14 +632,13 @@ MLRISC.cm:
 
         (* Cluster based RA's *)
         ../ra/cluster-ra.sml
-        ../ra/cluster-partitioner.sml
 
 	(* Assembly machine code stuff *)
 	../emit/instruction-emitter.sig
 	../emit/asmEmit.sig 
 	../emit/asmStream.sml
 	../emit/asmUtil.sml
-	../emit/clusterEmit.sml
+	../emit/cfgEmit.sml
 	../emit/code-string.sig
 	
 	(* Basic GC types stuff *)
@@ -657,6 +654,10 @@ MLRISC.cm:
 	../backpatch/noDelaySlots.sml
 	../backpatch/sdi-jumps.sig
 	../backpatch/vlBackPatch.sml
+
+	(* block placement *)
+	../block-placement/block-placement.sig
+	../block-placement/default-block-placement.sml
 
         (* c calls *)
         ../c-calls/c-types.sml
@@ -710,10 +711,11 @@ Peephole.cm:
  *)
         smlnj-lib.cm
 	MLRISC.cm
+	Graphs.cm
 
 	(* Peephole optimizations *)
 	../instructions/peephole.sig
-	../cluster/clusterPeephole.sml
+	../flowgraph/cfgPeephole.sml
 
 PPC.cm:
 (* 
@@ -894,6 +896,8 @@ SPARC.cm:
 	(* Sparc specific backend *)
 	../sparc/instructions/sparcCells.sml
 	../sparc/instructions/sparcInstr.sml
+	../sparc/instructions/sparcinstr-ext.sml
+	../sparc/instructions/sparccomp-instr-ext.sml
 	../sparc/instructions/sparcShuffle.sig
 	../sparc/instructions/sparcShuffle.sml
 	../sparc/instructions/sparcProps.sml
@@ -906,6 +910,8 @@ SPARC.cm:
 	../sparc/ra/sparcRewrite.sml
 	(* ../sparc/ra/sparcRegAlloc.sml *)
 	../sparc/backpatch/sparcDelaySlotProps.sml
+	../sparc/c-calls/sparc-c-calls.sml
+
 
 SPARC-GC.cm:
 

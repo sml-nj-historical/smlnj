@@ -1,12 +1,12 @@
 (* This file is created by makeallcm *)
 Library
 	signature SPARCCELLS
+	signature SPARCCOMP_INSTR_EXT
 	signature SPARCINSTR
 	signature SPARCSHUFFLE
 	signature SPARC_PSEUDO_INSTR
 	structure SparcCells
 	structure SparcInstrExt
-	functor Sparc_CCalls
 	functor Sparc
 	functor SparcAsmEmitter
 	functor SparcCompInstrExt
@@ -18,6 +18,7 @@ Library
 	functor SparcProps
 	functor SparcRewrite
 	functor SparcShuffle
+	functor Sparc_CCalls
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -46,11 +47,10 @@ is
 	Control.cm
 	Lib.cm
 #endif
-	../sparc/c-calls/sparc-c-calls.sml
 	../sparc/instructions/sparcCells.sml
+	../sparc/instructions/sparcInstr.sml
 	../sparc/instructions/sparcinstr-ext.sml
 	../sparc/instructions/sparccomp-instr-ext.sml
-	../sparc/instructions/sparcInstr.sml
 	../sparc/instructions/sparcShuffle.sig
 	../sparc/instructions/sparcShuffle.sml
 	../sparc/instructions/sparcProps.sml
@@ -62,3 +62,4 @@ is
 	../sparc/mltree/sparc.sml 
 	../sparc/ra/sparcRewrite.sml
 	../sparc/backpatch/sparcDelaySlotProps.sml
+	../sparc/c-calls/sparc-c-calls.sml
