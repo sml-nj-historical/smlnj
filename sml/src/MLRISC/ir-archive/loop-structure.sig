@@ -1,4 +1,7 @@
-(*
+(* loop-structure.sig
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies.
+ *
  * This module is responsible for locating loop structures (intervals).
  * All loops have only one single entry (via the header) but
  * potentially multiple exits, i.e. the header dominates all nodes
