@@ -81,8 +81,7 @@ struct
 
 (* val vector : 'a slice -> 'a vector *)
   fun vector (SL{base,start,stop}) =
-      Vector.tabulate((fn n => sub'(base,n+start)),
-		      stop-start)
+      Vector.tabulate(stop-start, fn n => sub'(base,n+start))
 
 (* val copy    : {src : 'a slice, dst : 'a Array.array, di : int} -> unit *)
   fun copy {src = SL{base,start,stop},dst,di} =
@@ -95,7 +94,7 @@ struct
 	           then (update'(dst,di+i,sub'(base, i));
 		         cp(i+1))
 	           else ()
-	    in app start
+	    in cp start
 	   end
       else let fun cp i =
                    if (i >= start)
@@ -120,7 +119,7 @@ struct
 (* val getItem : 'a slice -> ('a * 'a slice) option *)
   fun getItem (SL{base,start,stop}) =
       if stop<=start then NONE
-      else SOME(sub'(base, j'), SL{base=base,start=start+1,stop=stop})
+      else SOME(sub'(base, start), SL{base=base,start=start+1,stop=stop})
 
 (* val appi : (int * 'a -> unit) -> 'a slice -> unit *)
   fun appi f (SL{base,start,stop}) =
@@ -131,7 +130,7 @@ struct
       end
 
 (* val app  : ('a -> unit) -> 'a slice -> unit *)
-  fun appi f (SL{base,start,stop}) =
+  fun app f (SL{base,start,stop}) =
       let fun app i = if (i < stop)
 	      then (f (sub'(base, i)); app(i+1))
 	      else ()
@@ -155,7 +154,7 @@ struct
       end
 
 (* val foldl : ('a * 'b -> 'b) -> 'b -> 'a slice -> 'b *)
-  fun foldli f init (SL{base,start,stop}) = 
+  fun foldl f init (SL{base,start,stop}) = 
       let fun fold (i, accum) = if (i < stop)
 	      then fold (i+1, f (sub'(base, i), accum))
 	      else accum
@@ -163,7 +162,7 @@ struct
       end
 
 (* val foldr : ('a * 'b -> 'b) -> 'b -> 'a slice -> 'b *)
-  fun foldri f init (SL{base,start,stop}) =
+  fun foldr f init (SL{base,start,stop}) =
       let fun fold (i, accum) = if (i >= start)
 	      then fold (i-1, f (sub'(base, i), accum))
 	      else accum
@@ -211,7 +210,7 @@ struct
 	      then let val item = sub'(base, i)
 		    in if f item
 		       then SOME(item)
-		       else findi' (i+1)
+		       else find' (i+1)
 		   end
 	      else NONE
        in find' start
@@ -229,7 +228,7 @@ struct
       end
 
 (* val all : ('a -> bool) -> 'a slice -> bool *)
-  fun exists f (SL{base,start,stop}) =
+  fun all f (SL{base,start,stop}) =
       let fun all' i =
 	      if (i < stop)
 	      then if f(sub'(base, i))

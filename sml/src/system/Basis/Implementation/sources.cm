@@ -67,12 +67,14 @@ Group (../basis.cm)
 
 	(* Basis *)
 	structure Vector
+	structure VectorSlice
 	structure General
 	structure StringCvt
 	structure Text
 	structure List
 	structure ListPair
 	structure Array
+	structure ArraySlice
 	structure Array2
 	structure IEEEReal
 	structure IntImp

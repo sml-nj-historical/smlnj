@@ -35,6 +35,7 @@ struct
 
 (* val full : vector -> slice *)
   fun full base = SL{base=base,start=0,stop=InlineT.PolyVector.length base}
+(*
       let val blen = V.length base
        in if geu(start, blen)  (* checks start >= 0 *)
           then raise Core.Subscript
@@ -45,7 +46,7 @@ struct
 		      then raise Core.Subscript
 		      else SL{base=base,start=start,stop=start+n}
       end
-
+*)
 
 (* val slice : vector * int * int option -> slice *)
   fun slice (base,start,lenOp) =
@@ -73,6 +74,7 @@ struct
 
 (* val base : slice -> vector * int * int *)
   fun full base = SL{base=base,start=0,stop=V.length base}
+(*
       let val blen = V.length base
        in if geu(start, blen)  (* checks start >= 0 *)
           then raise Core.Subscript
@@ -83,11 +85,14 @@ struct
 		      then raise Core.Subscript
 		      else SL{base=base,start=start,stop=start+n}
       end
+*)
+
+(* val base : slice -> vector * int * int *)
+  fun base (SL { base, start, stop }) = (base, start, stop - start)
 
 (* val vector : slice -> vector *)
   fun vector (SL{base,start,stop}) =
-      Real64Vector.tabulate((fn n => sub'(base,n+start)),
-			    stop-start)
+      Real64Vector.tabulate(stop-start, fn n => sub'(base,n+start))
 
 (* utility functions *)
   fun checkLen n =
@@ -115,7 +120,7 @@ struct
 		in
 		  len (r, n + n', explode(start, l))
 		end
-	  in V.implode (len (vl, 0, []))
+	  in Real64Vector.fromList (len (vl, 0, []))
 	  end
 
 (* val isEmpty : slice -> bool *)
@@ -124,7 +129,7 @@ struct
 (* val getItem : slice -> (elem * slice) option *)
   fun getItem (SL{base,start,stop}) =
       if stop<=start then NONE
-      else SOME(sub'(base, j'), SL{base=base,start=start+1,stop=stop})
+      else SOME(sub'(base, start), SL{base=base,start=start+1,stop=stop})
 
 (* val appi : (int * elem -> unit) -> slice -> unit *)
   fun appi f (SL{base,start,stop}) =
@@ -135,7 +140,7 @@ struct
       end
 
 (* val app  : (elem -> unit) -> slice -> unit *)
-  fun appi f (SL{base,start,stop}) =
+  fun app f (SL{base,start,stop}) =
       let fun app i = if (i < stop)
 	      then (f (sub'(base, i)); app(i+1))
 	      else ()
@@ -182,7 +187,7 @@ struct
       end
 
 (* val foldl  : (elem * 'b -> 'b) -> 'b -> slice -> 'b *)
-  fun foldli f init (SL{base,start,stop}) = 
+  fun foldl f init (SL{base,start,stop}) = 
       let fun fold (i, accum) = if (i < stop)
 	      then fold (i+1, f (sub'(base, i), accum))
 	      else accum
@@ -217,7 +222,7 @@ struct
 	      then let val item = sub'(base, i)
 		    in if f item
 		       then SOME(item)
-		       else findi' (i+1)
+		       else find' (i+1)
 		   end
 	      else NONE
        in find' start
