@@ -287,20 +287,36 @@ struct
            (*
             * Create parallel move
             *)
-           fun mkMoves(insn, pt, dst, src, cost, mv, tmps) =
-               if Props.moveInstr insn then
-               let val (dst, tmps) = 
-                       case (Props.moveTmpR insn, dst) of
-                         (SOME r, _::dst) => 
+           fun mkMoves(insn, pt, cost, mv, tmps) =
+             (case insn of
+               I.ANNOTATION{i, ...} => 
+                  (* strip away the annotation.
+                   * Note: we are assuming annotations cannot change 
+                   * the semantics of the copies.
+                   *)
+                  mkMoves(i, pt, cost, mv, tmps)
+             | I.COPY{dst, src, k, ...} =>
+                  (* If it is a parallel copy, deal with the copy temporary
+                   * properly.  If it is a register, 
+                   * create a pseudo use site just below the end of 
+                   * the copy instruction.  This is to make sure that 
+                   * the temporary is colored properly.  If the copy temporary
+                   * doesn't exist or if it has been spilled, do nothing.
+                   *)
+               if k = cellkind then
+               let val tmps = 
+                       case Props.moveTmpR insn of
+                         SOME r => 
                            (* Add a pseudo use for tmpR *)
                           (case chase(getnode(colorOf r)) of
                              tmp as NODE{uses,defs=ref [d],...} =>
                              let fun prev{block,insn}={block=block,insn=insn-1}
-                             in  (uses := [prev d]; (dst, tmp::tmps)) 
+                             in  uses := [prev d]; 
+                                 tmp::tmps
                              end
                           | _ => error "mkMoves"
                           )
-                       | (_, dst) => (dst, tmps)
+                       | NONE => tmps
                    fun moves([], [], mv) = mv
                      | moves(d::ds, s::ss, mv) =
                        let val (d, cd) = chaseCell d
@@ -324,6 +340,8 @@ struct
                      | moves _ = error "moves"
                in  (moves(dst, src, mv), tmps) end
                else (mv, tmps)
+             |  _ => (mv, tmps)
+             )
 
            (* Add the nodes first *)
            fun mkNodes([], mv, tmps) = (mv, tmps)
@@ -340,8 +358,7 @@ struct
 			 val defs = newNodes{cost=w, pt=pt, 
 					     defs=defs, uses=uses}
 			 val _    = UA.update(dtab, i, defs)
-			 val (mv, tmps) = 
-			       mkMoves(insn, pt, d, u, w, mv, tmps)
+			 val (mv, tmps) = mkMoves(insn, pt, w, mv, tmps)
                          fun next{block,insn} = {block=block,insn=insn+1}
 		     in  scan(rest,next pt, i+1, mv, tmps)  
 		     end
