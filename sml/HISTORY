@@ -13,6 +13,20 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/08/09 12:21:00 EST
+Tag: leunga-110_47-dijsktra
+Description:
+
+Bug fix from Carl Hauser:
+
+single_source_shortest_paths in dijkstra.sml was observed to get wrong 
+answers (by comparing to single_source_shortest_paths in bellman-ford.sml).
+
+The problem is that following the expression A.update(dist,s,Num.zero) 
+it is necessary to update the priority queue using Q.decreaseWeight(Q,s).
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/08/06 18:10:00 CDT
 Tag: blume-20040806-cmdline

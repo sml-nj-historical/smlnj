@@ -27,6 +27,7 @@ struct
            else ()
        end
    in  A.update(dist,s,Num.zero);
+       Q.decreaseWeight(Q,s);
        (while true do
           app relax (#out_edges G (Q.deleteMin Q))
        ) handle Q.EmptyPriorityQueue => ();
