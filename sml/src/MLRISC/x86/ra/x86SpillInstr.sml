@@ -483,13 +483,12 @@ functor X86SpillInstr(structure Instr: X86INSTR
 	  newReg=NONE}
 
        (* Pseudo fp instrctions *)
-       | I.FMOVE{fsize as I.FP64,src,dst} => 
+       | I.FMOVE{fsize,src,dst} => 
 	  if Props.eqOpn(src,spillLoc) then 
 	    {proh=[], code=[], newReg=NONE}
 	  else
 	    {proh=[],code=[mark(I.FMOVE{fsize=fsize,src=src,dst=spillLoc},an)],
-	     newReg=NONE} (* XXX bad for single precision *)
-       | I.FMOVE _ => error "non-double precision not yet supported"
+	     newReg=NONE}
        | I.FILOAD{isize,ea,dst} =>
 	    {proh=[],code=[mark(I.FILOAD{isize=isize,ea=ea,dst=spillLoc},an)],
 	     newReg=NONE} (* XXX bad for single precision *)
@@ -568,13 +567,12 @@ functor X86SpillInstr(structure Instr: X86INSTR
 
 	 (* Pseudo fp instructions.
 	  *)
-	 | I.FMOVE{fsize as I.FP64,src,dst} => 
+	 | I.FMOVE{fsize,src,dst} => 
 	    if Props.eqOpn(dst,spillLoc) then 
 	      {code=[], proh=[], newReg=NONE}
 	    else
 	      {code=[mark(I.FMOVE{fsize=fsize,src=spillLoc,dst=dst},an)], 
 		     proh=[], newReg=NONE}
-	 | I.FMOVE _ => error "non-double precision not yet supported"
 	 | I.FBINOP{fsize,binOp,lsrc,rsrc,dst} =>
 	    {code=[mark(I.FBINOP{fsize=fsize,binOp=binOp,
 				 lsrc=rename lsrc, rsrc=rename rsrc,dst=dst},an)],
