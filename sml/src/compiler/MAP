@@ -209,7 +209,7 @@ Semant/
     typecheck.sml [FLINT]
       apply TypecheckFn defined in Elaborator/types/typecheck.sml (should eliminate)
       see: Elaborator/types/typecheck.sml
-      defs: TypeCheck
+      defs: Typecheck
 
 
 ElabData/
