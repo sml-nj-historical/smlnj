@@ -86,7 +86,8 @@ PVT SigReturn_t FaultHandler (
 #endif
 
     if (! SELF_VPROC->vp_inMLFlag) 
-	Die ("bogus fault not in ML: (%d, %#x)\n", signal, SIG_GetCode(info, scp));
+	Die ("bogus fault not in ML: sig = %d, code = %#x, pc = %#x)\n",
+	    signal, SIG_GetCode(info, scp), SIG_GetPC(scp));
 
    /* Map the signal to the appropriate ML exception. */
     if (INT_OVFLW(signal, code)) {
