@@ -15,9 +15,9 @@
 
 #define STREQ(s1, s2)	(strcmp((s1), STR_MLtoC(s2)) == 0)
 
-PVT void SetVMCache (ml_state_t *msp, ml_val_t arg);
-PVT void DoGC (ml_state_t *msp, ml_val_t arg);
-PVT void AllGC (ml_state_t *msp);
+PVT void SetVMCache (ml_state_t *msp, ml_val_t cell);
+PVT void DoGC (ml_state_t *msp, ml_val_t cell, ml_val_t *next);
+PVT void AllGC (ml_state_t *msp, ml_val_t *next);
 
 
 
@@ -39,20 +39,20 @@ ml_val_t _ml_RunT_gc_ctl (ml_state_t *msp, ml_val_t arg)
 	ml_val_t	oper = REC_SEL(cmd, 0);
 	ml_val_t	cell = REC_SEL(cmd, 1);
 
+	arg = LIST_tl(arg);
+
 	if (STREQ("SetVMCache", oper))
 	    SetVMCache (msp, cell);
 	else if (STREQ("DoGC", oper))
-	    DoGC (msp, cell);
+	    DoGC (msp, cell, &arg);
 	else if (STREQ("AllGC", oper))
-	    AllGC (msp);
+	    AllGC (msp, &arg);
 	else if (STREQ("Messages", oper)) {
 	    if (INT_MLtoC(DEREF(cell)) > 0)
 		GCMessages = TRUE;
 	    else
 		GCMessages = FALSE;
 	}
-
-	arg = LIST_tl(arg);
     }
 
     return ML_unit;
@@ -91,7 +91,7 @@ PVT void SetVMCache (ml_state_t *msp, ml_val_t arg)
  *
  * Force a garbage collection of the given level.
  */
-PVT void DoGC (ml_state_t *msp, ml_val_t arg)
+PVT void DoGC (ml_state_t *msp, ml_val_t arg, ml_val_t *next)
 {
     heap_t	*heap = msp->ml_heap;
     int		level = INT_MLtoC(DEREF(arg));
@@ -101,7 +101,7 @@ PVT void DoGC (ml_state_t *msp, ml_val_t arg)
     else if (heap->numGens < level)
 	level = heap->numGens;
 
-    InvokeGC (msp, level);
+    InvokeGCWithRoots (msp, level, next, NIL(ml_val_t *));
 
 } /* end of DoGC */
 
@@ -110,9 +110,9 @@ PVT void DoGC (ml_state_t *msp, ml_val_t arg)
  *
  * Force a garbage collection of all generations.
  */
-PVT void AllGC (ml_state_t *msp)
+PVT void AllGC (ml_state_t *msp, ml_val_t *next)
 {
-    InvokeGC (msp, msp->ml_heap->numGens);
+    InvokeGCWithRoots (msp, msp->ml_heap->numGens, next, NIL(ml_val_t *));
 
 } /* end of AllGC */
 
