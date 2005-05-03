@@ -69,12 +69,11 @@ sig_desc_t	SigTable[] = {
 };
 #define TABLE_SIZE	(sizeof(SigTable)/sizeof(sig_desc_t))
 
-
 /* the run-time system generated signals */
-sig_desc_t	RunTSignals[] = {
-	{ -1,		"RUNSIG_GC",	"GC" },
+sig_desc_t    RunTSignals[] = {
+	{ -1,           "RUNSIG_GC",    "GC" },
 };
-#define NUM_RUN_SIGS	(sizeof(RunTSignals)/sizeof(sig_desc_t))
+#define NUM_RUN_SIGS  (sizeof(RunTSignals)/sizeof(sig_desc_t))
 
 /* SortSignalTbl:
  */
@@ -84,7 +83,7 @@ sig_info_t *SortSignalTbl ()
     sig_desc_t	    **signals;
     sig_info_t	    *sigInfo;
 
-    signals = NEW_VEC(sig_desc_t *, TABLE_SIZE+NUM_RUN_SIGS);
+    signals = NEW_VEC(sig_desc_t *, TABLE_SIZE + NUM_RUN_SIGS);
 
   /* sort the signal table by increaseing signal number; the sort removes
    * duplicates by mapping to the first name.  We need this because some
@@ -115,14 +114,16 @@ sig_info_t *SortSignalTbl ()
 
   /* add the run-time system signals to the table */
     for (i = 0, j = n;  i < NUM_RUN_SIGS;  i++, j++) {
-	signals[j] = &(RunTSignals[i]);
-	signals[j]->sig = signals[n-1]->sig+i+1;
+      signals[j] = &(RunTSignals[i]);
+      signals[j]->sig = signals[n-1]->sig+i+1;
     }
+
 
     sigInfo = NEW_OBJ(sig_info_t);
     sigInfo->sigs	= signals;
     sigInfo->numSysSigs	= n;
     sigInfo->numRunSigs	= NUM_RUN_SIGS;
+    sigInfo->minSysSig	= signals[0]->sig;
     sigInfo->maxSysSig	= signals[n-1]->sig;
 
     return sigInfo;

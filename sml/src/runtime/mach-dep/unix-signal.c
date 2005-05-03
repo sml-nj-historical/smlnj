@@ -137,8 +137,13 @@ PVT SigReturn_t CSigHandler (
 #endif
     vproc_state_t   *vsp = SELF_VPROC;
 
-    EnqueueSignal(vsp, sig);
-    vsp->vp_numPendingSysSigs++;
+    vsp->vp_sigCounts[sig].nReceived++;
+    vsp->vp_totalSigCount.nReceived++;
+
+#ifdef SIGNAL_DEBUG
+SayDebug ("CSigHandler: sig = %d, pending = %d, inHandler = %d\n",
+sig, vsp->vp_handlerPending, vsp->vp_inSigHandler);
+#endif
 
     /* The following line is needed only when currently executing
      * "pure" C code.  But doing it anyway in all other cases will

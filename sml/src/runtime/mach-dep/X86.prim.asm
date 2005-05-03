@@ -306,9 +306,8 @@ ENTRY(restoreregs)
 	MOV_L(CONST(1),REGOFF(InMLOffVSP,vsp))
 
 	/* handle signals */
-	MOV_L(REGOFF(NPendingSysOffVSP,vsp),tmpreg)
-	ADD_L(REGOFF(NPendingOffVSP,vsp),tmpreg)
-	CMP_L(CONST(0),tmpreg)
+	MOV_L(REGOFF(SigsRecvOffVSP,vsp),tmpreg)
+	CMP_L(REGOFF(SigsHandledOffVSP,vsp),tmpreg)
 	
 #undef  tmpreg
 	JNE(pending)

@@ -445,11 +445,10 @@ CENTRY(restoreregs)
 	lwz	atmp3,PCOffMSP(atmp1)
 	mtlr	atmp3
 						/* check for pending signals */
-	lwz	atmp1,NPendingSysOffVSP(atmp2)
-	lwz	atmp3,NPendingOffVSP(atmp2)
-	add	atmp1,atmp1,atmp3
-	cmpi	CR0,atmp1,0
-	bf	CR0_EQ,pending_sigs
+	lwz	atmp1,SigsRecvOffVSP(atmp2)	  /* number of signals received */
+	lwz	atmp3,SigsHandledOffVSP(atmp2)	  /* number of signals handled */
+	cmp	CR0,atmp1,atmp3
+	bne	pending_sigs			  /* if not equal, then pending sigs */
 
 
 ENTRY(ml_go) 
@@ -463,9 +462,6 @@ ENTRY(ml_go)
 	blr				/* jump to ML code */
 
 pending_sigs:				/* there are pending signals */
-	lwz	atmp1,InSigHandlerOffVSP(atmp2)
-	cmpi	CR0,atmp1,0
-	bf 	CR0_EQ,CSYM(ml_go)
 					/* check if currently handling a signal */	
 	lwz	atmp1,InSigHandlerOffVSP(atmp2)
 	cmpi	CR0,atmp1,0

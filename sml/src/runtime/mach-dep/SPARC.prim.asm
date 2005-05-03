@@ -286,9 +286,9 @@ ENTRY(restoreregs)
 	ld	[MLState+VProcOffMSP],VProcPtr	/* TMPREG4 := VProcPtr */
 	set	1,TMPREG2			/* note that we have entered ML code */
 	st	TMPREG2,[VProcPtr+InMLOffVSP]
-	ld	[VProcPtr+NPendingSysOffVSP],TMPREG2	/* check for pending signals */
-	ld	[VProcPtr+NPendingOffVSP],TMPREG3
-	addcc	TMPREG2,TMPREG3,%g0
+	ld	[VProcPtr+SigsRecvOffVSP],TMPREG2	/* check for pending signals */
+	ld	[VProcPtr+SigsHandledOffVSP],TMPREG3
+	subcc	TMPREG2,TMPREG3,%g0
 	bne	pending_sigs
 	nop
 CSYM(ml_go):					/* invoke the ML code */

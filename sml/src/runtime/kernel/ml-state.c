@@ -95,24 +95,23 @@ PVT void InitVProcState (vproc_state_t *vsp)
 {
     int		i;
 
-    vsp->vp_heap		= vsp->vp_state->ml_heap;
-    vsp->vp_state->ml_vproc	= vsp;
-    vsp->vp_inMLFlag		= FALSE;
-    vsp->vp_handlerPending	= FALSE;
-    vsp->vp_inSigHandler	= FALSE;
-    vsp->vp_numPendingSysSigs	= 0;
-    vsp->vp_numPendingSigs	= 0;
-    vsp->vp_sigCode		= 0;
-    vsp->vp_sigCount		= 0;
-    vsp->vp_nextPendingSig	= 0;
-    vsp->vp_numInQ		= 0;
-    vsp->vp_gcSigState		= ML_SIG_IGNORE;
-    vsp->vp_gcTime0		= NEW_OBJ(Time_t);
-    vsp->vp_gcTime		= NEW_OBJ(Time_t);
+    vsp->vp_heap			= vsp->vp_state->ml_heap;
+    vsp->vp_state->ml_vproc		= vsp;
+    vsp->vp_inMLFlag			= FALSE;
+    vsp->vp_handlerPending		= FALSE;
+    vsp->vp_inSigHandler		= FALSE;
+    vsp->vp_totalSigCount.nReceived	= 0;
+    vsp->vp_totalSigCount.nHandled	= 0;
+    vsp->vp_sigCode			= 0;
+    vsp->vp_sigCount			= 0;
+    vsp->vp_nextPendingSig		= MIN_SYSTEM_SIG;
+    vsp->vp_gcSigState			= ML_SIG_IGNORE;
+    vsp->vp_gcTime0			= NEW_OBJ(Time_t);
+    vsp->vp_gcTime			= NEW_OBJ(Time_t);
 
-    for (i = 0;  i < NUM_SIGS;  i++) {
-	vsp->vp_pendingSigQ[i].sigNum = 0;
-	vsp->vp_pendingSigQ[i].count = 0;
+    for (i = 0;  i < SIGMAP_SZ;  i++) {
+	vsp->vp_sigCounts[i].nReceived = 0;
+	vsp->vp_sigCounts[i].nHandled = 0;
     }
 
   /* initialize the ML state, including the roots */

@@ -220,8 +220,9 @@ SayDebug ("run-ml: poll event\n");
 
 	      case REQ_SIG_RETURN:
 #ifdef SIGNAL_DEBUG
-SayDebug("REQ_SIG_RETURN: arg = %#x, pending = %d, inHandler = %d\n",
-msp->ml_arg, vsp->vp_handlerPending, vsp->vp_inSigHandler);
+SayDebug("REQ_SIG_RETURN: arg = %#x, pending = %d, inHandler = %d, nSigs = %d/%d\n",
+msp->ml_arg, vsp->vp_handlerPending, vsp->vp_inSigHandler,
+vsp->vp_totalSigCount.nHandled, vsp->vp_totalSigCount.nReceived);
 #endif
 	      /* throw to the continuation */
 		SETUP_THROW(msp, msp->ml_arg, ML_unit);

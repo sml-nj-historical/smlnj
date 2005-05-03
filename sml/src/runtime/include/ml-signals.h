@@ -6,11 +6,15 @@
 #ifndef _ML_SIGNALS_
 #define _ML_SIGNALS_
 
-typedef struct {		/* an item in the pending signal queue */
-    int		sigNum;		    /* the ID number of the pending signal */
-    int		count;		    /* the count of how many of this kind */
-				    /* of signal are pending. */
-} pending_sig_t;
+typedef struct {		/* counters for pending signals; we keep two counters */
+				/* to avoid race conditions */
+    unsigned int	nReceived;  /* the count of how many signals of this variety */
+				    /* have been received. This counter is incremented */
+				    /* the signal handler */
+    unsigned int	nHandled;  /* the count of how many of this kind of */
+				    /* signal have been handled.  This counter */
+				    /* is incremented by the main thread. */
+} sig_count_t;
 
 /* The state of ML signal handlers; these definitions must agree with
  * the values used in src/sml-nj/boot/smlnj/signals.sml.
@@ -21,11 +25,9 @@ typedef struct {		/* an item in the pending signal queue */
 
 /** Utility functions **/
 extern void ChooseSignal (vproc_state_t *vsp);
-extern void EnqueueSignal (vproc_state_t *vsp, int sigCode);
 extern ml_val_t MakeResumeCont (ml_state_t *msp, ml_val_t resume[]);
 extern ml_val_t MakeHandlerArg (ml_state_t *msp, ml_val_t resume[]);
 extern void LoadResumeState (ml_state_t *msp);
-extern bool_t GCSignal (vproc_state_t *vsp);
 
 /* OS dependent implementations of signal operations. */
 extern ml_val_t ListSignals (ml_state_t *msp);

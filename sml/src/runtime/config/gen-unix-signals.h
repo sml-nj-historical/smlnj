@@ -13,7 +13,8 @@ typedef struct {
 typedef struct {
     sig_desc_t	    **sigs;	/* an ordered vector of signal descriptions */
     int		    numSysSigs;	/* the number of system signals */
-    int		    numRunSigs;	/* the number of run-time signals. */
+    int		    numRunSigs; /* the number of runtime signals */
+    int		    minSysSig;	/* the minimum system signal number. */
     int		    maxSysSig;	/* the maximum system signal number. */
 } sig_info_t;
 

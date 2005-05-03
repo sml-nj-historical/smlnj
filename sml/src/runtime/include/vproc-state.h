@@ -40,16 +40,12 @@ struct vproc_state {
     bool_t	vp_inMLFlag;		/* True while executing ML code */
     bool_t	vp_handlerPending;	/* Is there a signal handler pending? */
     bool_t	vp_inSigHandler;	/* Is an ML signal handler active? */
-    int		vp_numPendingSysSigs;	/* number of pending system signals */
-    int		vp_numPendingSigs;	/* number of pending runtime system */
-					/* signals */
+    sig_count_t	vp_totalSigCount;	/* summary count for all system signals */
     int		vp_sigCode;		/* the code and count of the next */
     int		vp_sigCount;		/* signal to handle. */
-    pending_sig_t vp_pendingSigQ[NUM_SIGS]; /* the queue of pending signals. */
-    int		vp_nextPendingSig;	/* the index in the queue of the next */
+    sig_count_t	vp_sigCounts[SIGMAP_SZ]; /* counts of signals. */
+    int		vp_nextPendingSig;	/* the index in sigCounts of the next */
 					/* signal to handle. */
-    int		vp_numInQ;		/* the number of pending signals in */
-					/* the queue. */
     int		vp_gcSigState;		/* The state of the GC signal handler */
     Time_t	*vp_gcTime0;	    /* The cumulative CPU time at the start of */
 				    /* the last GC (see kernel/timers.c). */

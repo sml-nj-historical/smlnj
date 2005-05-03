@@ -25,19 +25,24 @@
  */
 void ChooseSignal (vproc_state_t *vsp)
 {
-    ASSERT(vsp->vp_numInQ > 0);
+    int		i, j, delta;
+
+  /* scan the signal counts looking for a signal that needs to be handled. */
+    i = vsp->vp_nextPendingSig;
+    j = 0;
+    do {
+	ASSERT (j++ < NUM_SIGS);
+	i++;
+	if (i == SIGMAP_SZ) i = MIN_SYSTEM_SIG;
+	delta = vsp->vp_sigCounts[i].nReceived - vsp->vp_sigCounts[i].nHandled;
+    } while (delta == 0);
+    vsp->vp_nextPendingSig = i;
 
   /* record the signal and count */
-    vsp->vp_sigCode = vsp->vp_pendingSigQ[vsp->vp_nextPendingSig].sigNum;
-    vsp->vp_sigCount = vsp->vp_pendingSigQ[vsp->vp_nextPendingSig].count;
-    if (IS_SYSTEM_SIG(vsp->vp_sigCode))
-	vsp->vp_numPendingSysSigs -= vsp->vp_sigCount;
-    else
-        vsp->vp_numPendingSigs -= vsp->vp_sigCount;
-
-  /* advance the pending queue */
-    if ((--vsp->vp_numInQ == 0) || (++vsp->vp_nextPendingSig == NUM_SIGS))
-	vsp->vp_nextPendingSig = 0;
+    vsp->vp_sigCode = i;
+    vsp->vp_sigCount = delta;
+    vsp->vp_sigCounts[i].nHandled += delta;
+    vsp->vp_totalSigCount.nHandled += delta;
 
 #ifdef SIGNAL_DEBUG
 SayDebug ("ChooseSignal: sig = %d, count = %d\n",
@@ -45,37 +50,6 @@ vsp->vp_sigCode, vsp->vp_sigCount);
 #endif
 
 } /* end of ChooseSignal */
-
-
-/* EnqueueSignal:
- *
- * Add a signal to the pending queue; if the signal is already present, then
- * bump its count.
- */
-void EnqueueSignal (vproc_state_t *vsp, int sigCode)
-{
-    int		i, j;
-
-#ifdef SIGNAL_DEBUG
-SayDebug("EnqueueSignal: numInQ = %d, sig = %d\n", vsp->vp_numInQ, sigCode);
-#endif
-
-    ASSERT(vsp->vp_numInQ >= 0);
-
-    for (i = vsp->vp_nextPendingSig, j = vsp->vp_numInQ;  --j >= 0; ) {
-	if (vsp->vp_pendingSigQ[i].sigNum == sigCode)
-	    break;
-	if (++i == NUM_SIGS) i = 0;
-    }
-    if (j < 0) {
-	vsp->vp_pendingSigQ[i].sigNum = sigCode;
-	vsp->vp_pendingSigQ[i].count = 1;
-	vsp->vp_numInQ++;
-    }
-    else
-	vsp->vp_pendingSigQ[i].count++;
-
-} /* end of EnqueueSignal */
 
 
 /* MakeResumeCont:
@@ -168,22 +142,3 @@ SayDebug ("LoadResumeState:\n");
     msp->ml_calleeSave[2]	= contClosure[9];
 
 } /* end of LoadResumeState */
-
-
-/* GCSignal:
- *
- * Record a garbage collection signal (if enabled).  Return true, if a signal
- * was recorded.
- */
-bool_t GCSignal (vproc_state_t *vsp)
-{
-    if (vsp->vp_gcSigState == ML_SIG_ENABLED) {
-	vsp->vp_numPendingSigs++;
-	EnqueueSignal (vsp, RUNSIG_GC);
-	return TRUE;
-    }
-    else
-	return FALSE;
-
-} /* end of GCSignal */
-

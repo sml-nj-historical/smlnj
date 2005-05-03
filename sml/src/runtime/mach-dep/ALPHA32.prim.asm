@@ -301,8 +301,9 @@ ENTRY(restoreregs)
 						/* check for pending signals */
 	ldl	PTRTMP,NPendingSysOffVSP(NEEDGC)
 .set	noat
-	ldl	$28,NPendingOffVSP(NEEDGC)
-	addq	PTRTMP,$28,PTRTMP
+	ldl	$28,SigsRecvOffVSP(NEEDGC)
+	ldl	PTRTMP,SigsHandledOffVSP(NEEDGC)
+	cmpeq	$28,PTRTMP,PTRTMP
 .set	at
 	bne	PTRTMP,pending_sigs 
 	.end	restoreregs

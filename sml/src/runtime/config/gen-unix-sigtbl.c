@@ -22,7 +22,7 @@ int main (void)
     FILE	    *f;
 
     sigInfo = SortSignalTbl ();
-    numSigs = sigInfo->numSysSigs+sigInfo->numRunSigs;
+    numSigs = sigInfo->numSysSigs + sigInfo->numRunSigs;
 
     f = OpenFile (DST_FILE, NIL(char *));
 
@@ -34,8 +34,8 @@ int main (void)
     }
     fprintf (f, "  /* Run-time signals */\n");
     for (i = sigInfo->numSysSigs;  i < numSigs;  i++) {
-	fprintf(f, "    { %s, \"%s\" },\n",
-	    sigInfo->sigs[i]->sigName, sigInfo->sigs[i]->shortName);
+      fprintf(f, "    { %s, \"%s\" },\n",
+          sigInfo->sigs[i]->sigName, sigInfo->sigs[i]->shortName);
     }
     fprintf (f, "};\n");
     fprintf (f, "PVT sysconst_tbl_t SigTbl = {\n");

@@ -322,10 +322,9 @@ restoreregs
 	ldw	VarPtrOffMSP(tmp1), varptr
 	ldw	PCOffMSP(tmp1), pc
 						/* check for pending signals */
-	ldw	NPendingSysOffVSP(tmp4), tmp2
-	ldw	NPendingOffVSP(tmp4), tmp3
-	add	tmp2, tmp3, tmp2
-        combf,= tmp2, zero, pending_sigs
+	ldw	SigsRecvOffVSP(tmp4), tmp2
+	ldw	SigsHandledOffVSP(tmp4), tmp3
+        combf,= tmp2, tmp3, pending_sigs
 	nop				
 
 ml_go

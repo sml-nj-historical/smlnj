@@ -60,8 +60,8 @@ int main (void)
     PVOFFSET("LimitPtrMask", vp_limitPtrMask);
     PVOFFSET("HandlerPending", vp_handlerPending);
     PVOFFSET("InSigHandler", vp_inSigHandler);
-    PVOFFSET("NPendingSys", vp_numPendingSysSigs);
-    PVOFFSET("NPending", vp_numPendingSigs);
+    PVOFFSET("SigsRecv", vp_totalSigCount.nReceived);
+    PVOFFSET("SigsHandled", vp_totalSigCount.nHandled);
 #endif /* !BYTECODE */
 
     CloseFile (f, "_MLSTATE_OFFSETS_");
