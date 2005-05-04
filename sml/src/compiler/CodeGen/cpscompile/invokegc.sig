@@ -25,6 +25,9 @@ sig
             }
    type stream = (TS.T.stm, TS.T.mlrisc list, CFG.cfg) TS.stream
 
+      (* List of registers which are used as the root of the GC *)
+   val gcParamRegs : TS.T.rexp list
+
       (* initialize the state before compiling a module *)
    val init : unit -> unit
 

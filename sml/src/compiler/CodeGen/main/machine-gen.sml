@@ -96,6 +96,21 @@ struct
 	   structure TS    = MLTreeComp.TS
 	  )
 
+   (*
+    * This module is used to check for gc bugs.
+    * It is turned off by default.   You can turn it on
+    * with the flag "check-gc", and turn on verbose debugging 
+    * with "debug-check-gc".
+    *)
+   structure CheckGC =
+      CheckGCFn
+          (structure Asm = Asm
+           structure CFG = CFG
+           structure InsnProps = InsnProps
+           structure CpsRegs   = CpsRegs
+           val gcParamRegs     = InvokeGC.gcParamRegs
+          )
+
    val graphical_view = 
       MLRiscControl.mkFlag
          ("cfg-graphical-view", 
@@ -132,14 +147,17 @@ struct
    val ra         = phase "MLRISC ra" RA.run
    val omitfp     = phase "MLRISC omit frame pointer" omitFramePointer
    val expandCpys = phase "MLRISC expand copies" ExpandCpys.run
+   val checkGC    = phase "MLRISC check GC" CheckGC.checkGC
    
    val raPhase = ("ra",ra)
 
    val optimizerHook = 
-     ref [("compFreqs", compFreqs),
+     ref [("checkgc", checkGC),
+          ("compFreqs", compFreqs),
 	  ("ra", ra),
 	  ("omitfp", omitfp),
-	  ("expand copies", expandCpys)
+	  ("expand copies", expandCpys),
+          ("checkgc", checkGC)
 	 ]
 
    fun compile cluster = let

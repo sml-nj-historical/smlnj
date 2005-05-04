@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2005/05/04 11:50:00 EST
+Tag: leunga-20050504-checkgc
+Description:
+
+Added a gc protocol checking phase.  This phase is enabled with 
+the flag "check-gc".  "debug-check-gc" turns on the verbose mode.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2005/05/04 10:45:00 CDT
 Tag: blume-20050504-intinf

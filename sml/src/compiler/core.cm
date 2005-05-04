@@ -260,6 +260,7 @@ FLINT/lsplit/ls-inline.sml
 (* The code generator (MLRISC specialized for SML/NJ). *)
 CodeGen/cpscompile/argPassing.sig
 CodeGen/cpscompile/argPassing.sml
+CodeGen/cpscompile/check-gc.sml
 CodeGen/cpscompile/cluster.sml
 CodeGen/cpscompile/cps-aliasing.sml
 CodeGen/cpscompile/cps-c-calls.sml

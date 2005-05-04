@@ -44,6 +44,10 @@ struct
 
    val addrTy = C.addressWidth
 
+   val ZERO_FREQ       = #create MLRiscAnnotations.EXECUTION_FREQ 0
+   val CALLGC          = #create MLRiscAnnotations.CALLGC ()
+   val NO_OPTIMIZATION = #create MLRiscAnnotations.NO_OPTIMIZATION ()
+
    (* The following datatype is used to encapsulates 
     * all the information needed to generate code to invoke gc.
     * The important fields are:
@@ -107,23 +111,20 @@ struct
        val use = map T.GPR gcParamRegs
        val def = case C.exhausted of NONE => use 
                                    | SOME cc => T.CCR cc::use
+       val call = 
+           T.CALL{
+              funct=T.LOAD(32, 
+		       T.ADD(addrTy,C.frameptr vfp, LI MS.startgcOffset),
+		       R.stack),
+              targets=[], defs=def, uses=use, region=R.stack,
+              pops=0}
+
+       (* mark it with a CALLGC annotation *)
+       val call = T.ANNOTATION(call, CALLGC)
    in
-       T.ANNOTATION(
-          T.CALL{
-            funct=
-	      T.LOAD(32, 
-		     T.ADD(addrTy,C.frameptr vfp, LI MS.startgcOffset),
-		     R.stack),
-            targets=[], defs=def, uses=use, region=R.stack,
-	    pops=0},
-          #create MLRiscAnnotations.COMMENT "call gc")
+       T.ANNOTATION(call, #create MLRiscAnnotations.COMMENT "call gc")
    end
    
-   val ZERO_FREQ = #create MLRiscAnnotations.EXECUTION_FREQ 0
-
-   val CALLGC = #create MLRiscAnnotations.CALLGC ()
-   val NO_OPTIMIZATION = #create MLRiscAnnotations.NO_OPTIMIZATION ()
-
        (*
         * record descriptors
         *)
