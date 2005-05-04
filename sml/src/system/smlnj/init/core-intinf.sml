@@ -489,31 +489,29 @@ end = struct
       | nth (n, _ :: xs) = nth (InLine.i31sub (n, 1), xs)
 
     (* divide DP number by digit; assumes u < i , i >= base/2 *)
-    fun natdivmod2 ((u,v), i) = let
-	fun low w = InLine.w31andb (w, maxDigitL)
-	fun high w = InLine.w31rshiftl (w, hBaseBits)
-	val vh = high v
-	val vl = low v
-	val ih = high i
-	val il = low i
+    fun natdivmod2 ((u,v), i) =
+	let fun low w = InLine.w31andb (w, maxDigitL)
+	    fun high w = InLine.w31rshiftl (w, hBaseBits)
+	    val (vh, vl) = (high v, low v)
+	    val (ih, il) = (high i, low i)
 
-	val q1 = InLine.w31div (u, ih)
-	val r1 = InLine.w31mod (u, ih)
-	val x = InLine.w31add (InLine.w31lshift (r1, hBaseBits), vh)
-	val y = InLine.w31mul (q1, il)
-	val (q1, r1) = if InLine.w31ge (x, y) then (q1, InLine.w31sub (x, y))
-		       else (InLine.w31sub (q1, 0w1),
-			     InLine.w31sub (InLine.w31add (x, i), y))
-	val q0 = InLine.w31div (r1, ih)
-	val r0 = InLine.w31mod (r1, ih)
-	val x = InLine.w31add (InLine.w31lshift (r0, hBaseBits), vl)
-	val y = InLine.w31mul (q0, il)
-	val (q0, r0) = if InLine.w31ge (x, y) then (q0, InLine.w31sub (x, y))
-		       else (InLine.w31sub (q0, 0w1),
-			     InLine.w31sub (InLine.w31add (x, i), y))
-    in
-	(InLine.w31add (InLine.w31lshift (q1, hBaseBits), q0), r0)
-    end
+	    fun adj (q, r, vx) =
+		let val x = InLine.w31add (InLine.w31lshift (r, hBaseBits), vx)
+		    val y = InLine.w31mul (q, il)
+		    fun loop (q, x) =
+			if InLine.w31ge (x, y) then (q, InLine.w31sub (x, y))
+			else loop (InLine.w31sub (q, 0w1), InLine.w31add (x, i))
+		in loop (q, x)
+		end
+
+	    val q1 = InLine.w31div (u, ih)
+	    val r1 = InLine.w31mod (u, ih)
+	    val (q1, r1) = adj (q1, r1, vh)
+	    val q0 = InLine.w31div (r1, ih)
+	    val r0 = InLine.w31mod (r1, ih)
+	    val (q0, r0) = adj (q0, r0, vl)
+	in (InLine.w31add (InLine.w31lshift (q1, hBaseBits), q0), r0)
+	end
 
     (* divide bignat by digit>0 *)
     fun natdivmodd (m, 0w1) = (m, 0w0) (* speedup *)
