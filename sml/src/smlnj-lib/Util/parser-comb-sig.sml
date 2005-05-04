@@ -45,6 +45,7 @@ signature PARSER_COMB =
     val oneOrMore  : ('a, 'strm) parser -> ('a list, 'strm) parser
 
     val option : ('a, 'strm) parser -> ('a option, 'strm) parser
+    val join   : ('a option, 'strm) parser -> ('a, 'strm) parser
 
     val token : (char -> bool) -> (string, 'strm) parser
 	  (* parse a token consisting of characters satisfying the predicate.

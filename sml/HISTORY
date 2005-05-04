@@ -14,6 +14,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2005/05/04 10:35:00 CDT
+Tag: blume-20050504-join
+Description:
+
+Added a "join" combinator to the ParserComb module in smlnj-lib.cm.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2005/02/28 23:40:00 CST
 Tag: blume-20050228-mVar
 Description:

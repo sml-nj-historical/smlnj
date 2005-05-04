@@ -106,6 +106,8 @@ structure ParserComb : PARSER_COMB =
 	    | NONE => SOME(NONE, strm)
 	  (* end case *))
 
+    fun join p = bind (p, fn SOME x => result x | NONE => failure)
+
   (* parse a token consisting of characters satisfying the predicate.
    * If this succeeds, then the resulting string is guaranteed to be
    * non-empty.
