@@ -186,6 +186,7 @@ extern char	*MLCmdName;	/* the command name used to invoke the runtime */
 extern bool_t	SilentLoad;
 extern bool_t   DumpObjectStrings;
 extern bool_t	GCMessages;
+extern bool_t	UnlimitedHeap;
 
 /* The table of virtual processor ML states */
 extern vproc_state_t	*VProc[];

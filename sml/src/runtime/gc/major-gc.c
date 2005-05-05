@@ -398,7 +398,8 @@ numBO1, numBO2, numBO3);
     CheckHeap(heap, maxSweptGen);
 #endif
 
-    TrimHeap (heap, maxCollectedGen);
+    if (! UnlimitedHeap)
+	TrimHeap (heap, maxCollectedGen);
 
 } /* end of MajorGC. */
 

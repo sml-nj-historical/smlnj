@@ -53,6 +53,12 @@ ml_val_t _ml_RunT_gc_ctl (ml_state_t *msp, ml_val_t arg)
 	    else
 		GCMessages = FALSE;
 	}
+	else if (STREQ("LimitHeap", oper)) {
+	    if (INT_MLtoC(DEREF(cell)) > 0)
+		UnlimitedHeap = FALSE;
+	    else
+		UnlimitedHeap = TRUE;
+	}
     }
 
     return ML_unit;

@@ -29,6 +29,7 @@ FILE		*BC_stdout = NULL;
 bool_t		SilentLoad = TRUE;
 bool_t          DumpObjectStrings = FALSE;
 bool_t		GCMessages = FALSE;
+bool_t		UnlimitedHeap = FALSE;
 char		**RawArgs;
 char		**CmdLineArgs;	/* does not include the command name (argv[0]) */
 char		*MLCmdName;	/* the command name used to invoke the runtime */

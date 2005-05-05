@@ -99,6 +99,8 @@ heap_params_t *ParseHeapParams (char **argv)
 		else if (params->cacheGen > MAX_NGENS)
 		    params->cacheGen = MAX_NGENS;
 	    }
+	    else if (MATCH("unlimited-heap"))
+		UnlimitedHeap = TRUE;	
 	}
 	if (errFlg)
 	    return NIL(heap_params_t *);
