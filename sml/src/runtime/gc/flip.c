@@ -106,7 +106,7 @@ SayDebug ("Flip generation %d: (%d GCs)\n", i+1, numGCs);
 	   * but the new size shouldn't exceed the maximum size for the arena
 	   * (unless minSz > maxSizeB).
 	   */
-	    newSz = ap->reqSizeB + ((thisMinSz * g->ratio) / numGCs);
+	    newSz = prevOldSz[j] + ap->reqSizeB + (g->ratio * (thisMinSz / numGCs));
 	    if (newSz < minSz)
 		newSz = minSz;
 #ifdef VERBOSE
