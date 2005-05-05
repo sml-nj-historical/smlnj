@@ -16,7 +16,8 @@ functor LeftPriorityQFn (P : PRIORITY) : MONO_PRIORITYQ =
 
     val empty  = Q(0, EMPTY)
 
-    fun singleton x = ND(1, x, EMPTY, EMPTY)
+    fun singletonHeap x = ND(1, x, EMPTY, EMPTY)
+    fun singleton x = Q(1, singletonHeap x)
 
     fun rank EMPTY = 0
       | rank (ND(r, _, _, _)) = r
@@ -33,7 +34,7 @@ functor LeftPriorityQFn (P : PRIORITY) : MONO_PRIORITYQ =
 	    | _ => mkNode(y, h21, mergeHeap(h1, h22))
 	  (* end case *))
 
-    fun insert (x, Q(n, h)) = Q(n+1, mergeHeap(singleton x, h))
+    fun insert (x, Q(n, h)) = Q(n+1, mergeHeap(singletonHeap x, h))
 
     fun next (Q(_, EMPTY)) = NONE
       | next (Q(n, ND(_, x, h1, h2))) = SOME(x, Q(n-1, mergeHeap(h1, h2)))
@@ -49,10 +50,10 @@ functor LeftPriorityQFn (P : PRIORITY) : MONO_PRIORITYQ =
       | isEmpty _ = false
 
     fun fromList [] = empty
-      | fromList [x] = Q(1, singleton x)
+      | fromList [x] = Q(1, singletonHeap x)
       | fromList l = let
 	  fun init ([], n, items) = (n, items)
-	    | init (x::r, n, items) = init (r, n+1, singleton x :: items)
+	    | init (x::r, n, items) = init (r, n+1, singletonHeap x :: items)
 	  fun merge ([], [h]) = h
 	    | merge ([], hl) = merge (hl, [])
 	    | merge ([h], hl) = merge (h::hl, [])

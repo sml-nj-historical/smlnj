@@ -15,6 +15,9 @@ signature MONO_PRIORITYQ =
 
     val empty : queue
 
+    val singleton : item -> queue
+	(* create a queue from a single item *)
+
     val fromList : item list -> queue
 	(* build a queue from a list of items *)
 

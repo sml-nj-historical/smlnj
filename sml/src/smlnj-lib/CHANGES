@@ -2,6 +2,9 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2005-05-05]
+	Added singleton function to MONO_PRIORITYQ interface.
+
 [2005-05-04]
 	Added the "join" combinator to ParserComb.
 
