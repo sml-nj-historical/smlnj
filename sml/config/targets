@@ -73,7 +73,7 @@ request mlrisc
 # pre-compile and install the C-Kit, which is a library for parsing and
 # type-checking C programs
 #
-#request ckit
+request ckit
 
 # pre-compile and install the ML-NLFFI Library, which is the core of
 # a new foreign function interface (where "foreign" functions are
