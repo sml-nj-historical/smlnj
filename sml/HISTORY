@@ -13,6 +13,16 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2005/05/09 21:55:00 CDT
+Tag: blume-20050509-word64
+Description:
+
+Added a hack to the existing hack known as Word64 to make fromString
+behave correctly.  I am still not sure whether Word64.scan will work
+as specified with respect to the interaction of radix and prefix.
+
+----------------------------------------------------------------------
 Name: Allen Leung (leunga (at) reservoir (dot) com)
 Date: 2005/05/04 11:50:00 EST
 Tag: leunga-20050504-checkgc

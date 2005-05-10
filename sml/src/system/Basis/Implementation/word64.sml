@@ -113,12 +113,36 @@ structure Word64 : WORD = struct
 
     (* piggy-back on intinf... *)
     fun scan rdx rdr s =
-	case IntInfImp.scan rdx rdr s of
-	    SOME (i, s') =>
-	      if i < 0 then NONE
-	      else if i > 0xffffffffffffffff then raise Overflow
-	      else SOME (fromLargeInt i, s')
-	  | NONE =>  NONE
+	let fun doword s = IntInfImp.scan rdx rdr s
+	    val xok = rdx = StringCvt.HEX
+	    fun startscan s0 =
+		case rdr s0 of
+		    SOME (#"0", s1) =>
+		      let fun wordor0 s =
+			      case doword s of
+				  NONE => SOME (0, s1)
+				| SOME (i, s') => SOME (i, s')
+			  fun saww s =
+			      case rdr s of
+				  SOME (#"x", s') =>
+				    if xok then wordor0 s'
+				    else SOME (0, s1)
+				| _ => wordor0 s
+		      in case rdr s1 of
+			     SOME (#"w", s2) => saww s2
+			   | SOME (#"x", s2) =>
+			       if xok then wordor0 s2
+			       else SOME (0, s1)
+			   | _ => doword s0
+		      end
+		  | _ => doword s0
+	in case startscan s of
+	       SOME (i, s') =>
+	         if i < 0 then NONE
+		 else if i > 0xffffffffffffffff then raise Overflow
+		 else SOME (fromLargeInt i, s')
+	     | NONE => NONE
+	end
 
     val fromString = PreBasis.scanString (scan StringCvt.HEX)
 
