@@ -916,6 +916,9 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	end
 
 	val cm_dir_arc = FilenamePolicy.cm_dir_arc
+
+	fun redump_heap s : unit =
+	    SMLofNJ.Cont.throw (!HostBackend.Interact.redump_heap_cont) s
     end
 
     structure Tools = ToolsFn (val load_plugin' = load_plugin'

@@ -80,4 +80,6 @@ signature CM = sig
 				imports: Library.lib list,
 				nativesrc: string -> string } option
     end
+
+    val redump_heap : string -> unit
 end

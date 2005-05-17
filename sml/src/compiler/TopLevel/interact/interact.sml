@@ -39,4 +39,10 @@ struct
 				!r))
   end
 
+  local open SMLofNJ.Cont
+  in val redump_heap_cont : string cont ref =
+	 ref (callcc (fn ret => (callcc (fn k => throw ret k);
+				 raise Fail "redump_heap_cont init")))
+  end
+
 end (* functor Interact *)

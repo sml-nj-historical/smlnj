@@ -14,6 +14,27 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2005/05/16 23:50:00 CDT
+Tag: blume-20050516-redump-heap
+Description:
+
+Added mechanism for re-creating a heap file for the interactive system
+after configuration variables have been changed.
+
+   CM.redump_heap : string -> unit
+
+This is much like SMLofNJ.exportML, but starting from the resulting
+heap does not return to the caller of CM.redump_heap but 
+restarts the interactive system from scratch.  The original call of
+CM.redump_heap does not return but ends the interactive session.
+Thus, CM.redump_heap is a lot like SMLofNJ.exportFn.
+
+Internally, redump_heap winds the dynamic execution context back to
+the point where the original heap image was created and re-executes
+the heap image generation code in the boot code.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2005/05/09 21:55:00 CDT
 Tag: blume-20050509-word64
 Description:

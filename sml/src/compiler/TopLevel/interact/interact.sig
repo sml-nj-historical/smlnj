@@ -4,6 +4,7 @@
 signature INTERACT =
 sig
   exception Interrupt
+
   val interact : unit -> unit
   val useFile  : string -> unit
   val useStream : TextIO.instream -> unit
@@ -17,5 +18,7 @@ sig
       { manageImport : Ast.dec * EnvRef.envref -> unit,
 	managePrint : Symbol.symbol * EnvRef.envref -> unit,
 	getPending : unit -> Symbol.symbol list } -> unit
+
+  val redump_heap_cont : string SMLofNJ.Cont.cont ref
 
 end  (* signature INTERACT *)
