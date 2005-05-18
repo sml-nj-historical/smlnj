@@ -72,8 +72,11 @@ overload * :   ('a * 'a -> 'a)
   as  I31.* and I32.* and CI64.* and CII.*
   and w8times and W31.* and W32.* and CW64.*
   and R64.*
+(*
 overload / : ('a * 'a -> 'a)
   as R64./
+*)
+val op / = R64./		(* temporary hack around overloading bug *)
 overload div : ('a * 'a -> 'a)
   as  I31.div and I32.div and CI64.div and CII.div
   and W8.div and W31.div and W32.div and CW64.div
