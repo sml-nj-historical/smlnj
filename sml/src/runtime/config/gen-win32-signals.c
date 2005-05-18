@@ -24,10 +24,13 @@ main ()
     f = OpenFile (DST_FILE, "_SYSTEM_SIGNALS_");
 
     fprintf (f, "#define NUM_SYSTEM_SIGS %2d\n", 0);
+    fprintf (f, "#define MIN_SYSTEM_SIG  %2d /* %s */\n",
+	     0, "none");
     fprintf (f, "#define MAX_SYSTEM_SIG  %2d /* %s */\n",
 	     0, "none");
     fprintf (f, "#define NUM_SIGS        %2d\n", NUM_SIGS);
     fprintf (f, "#define MAX_SIG         %2d\n", NUM_SIGS);
+    fprintf (f, "#define SIGMAP_SZ       %2d\n", NUM_SIGS+1);
     fprintf (f, "\n");
 
     /* the signals */

@@ -44,8 +44,8 @@ BOOL win32_generic_handler(int code)
 {
     vproc_state_t   *vsp = SELF_VPROC;
 
-    EnqueueSignal(vsp, code);
-    vsp->vp_numPendingSysSigs++;
+    vsp->vp_sigCounts[code].nReceived++;
+    vsp->vp_totalSigCount.nReceived++;
 
     vsp->vp_limitPtrMask = 0;
 

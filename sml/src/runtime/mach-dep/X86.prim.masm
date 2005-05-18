@@ -335,8 +335,8 @@ ENTRY(asm_restoreregs)
 	MOVL	(IMMED(1),REGOFF(InMLOffVSP,vsp))
 
 	/* handle signals */
-	MOV_L(REGOFF(SigsRecvOffVSP,vsp),tmpreg)
-	CMP_L(REGOFF(SigsHandledOffVSP,vsp),tmpreg)
+	MOVL	  (REGOFF(SigsRecvOffVSP,vsp),tmpreg)
+	CMPL	  (REGOFF(SigsHandledOffVSP,vsp),tmpreg)
 #undef tmpreg
 
 	JNE	pending
