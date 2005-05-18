@@ -428,6 +428,9 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	      before dropPickles ()
 	  end
 
+	  fun redump_heap s : unit =
+	      SMLofNJ.Cont.throw (!HostBackend.Interact.redump_heap_cont) s
+
 	  fun slave () = let
 	      val gr = GroupReg.new ()
 	      fun parse p = Parse.parse (slave_parse_arg (gr, NONE, p))
@@ -835,6 +838,8 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	      | args ("-E" :: rest, mk) = (show_envvars NONE; args_q (rest, mk))
 	      | args ("-q" :: _, _) = quit ()
 	      | args ("@CMbuild" :: rest, _) = mlbuild rest
+	      | args (["@CMredump", heapfile], _) =
+		  redump_heap heapfile
 	      | args (f :: rest, mk) =
 		(carg (String.substring (f, 0, 2)
 		         handle General.Subscript => "",
@@ -917,8 +922,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 
 	val cm_dir_arc = FilenamePolicy.cm_dir_arc
 
-	fun redump_heap s : unit =
-	    SMLofNJ.Cont.throw (!HostBackend.Interact.redump_heap_cont) s
+	val redump_heap = redump_heap
     end
 
     structure Tools = ToolsFn (val load_plugin' = load_plugin'

@@ -12,6 +12,12 @@
 # Author: Matthias Blume (blume@tti-c.org)
 #
 
+if [ x$1 = xnolib ] ; then
+    nolib=true
+else
+    nolib=false
+fi
+
 if [ x${INSTALL_QUIETLY} = xtrue ] ; then
     export CM_VERBOSE
     CM_VERBOSE=false
@@ -335,6 +341,15 @@ if [ -r "$HEAPDIR"/sml.$HEAP_SUFFIX ]; then
     # ignore requested arc name since we have to live with what is there:
     export CM_DIR_ARC
     CM_DIR_ARC=$ORIG_CM_DIR_ARC
+    # now re-dump the heap image:
+    vsay "$this: Re-creating a (customized) heap image..."
+    "$BINDIR"/sml @CMredump "$ROOT"/sml
+    cd "$ROOT"
+    if [ -r sml.$HEAP_SUFFIX ]; then
+	mv sml.$HEAP_SUFFIX "$HEAPDIR"
+    else
+	complain "$this !!! Unable to re-create heap image (sml.$HEAP_SUFFIX)."
+    fi
 else
     "$CONFIGDIR"/unpack "$ROOT" "$BOOT_ARCHIVE"
 
@@ -397,13 +412,15 @@ cd "$ROOT"
 #
 # Now do all the rest using the precompiled installer:
 #
-echo $this: Installing other libraries and programs:
-export ROOT INSTALLDIR CONFIGDIR BINDIR
-if "$BINDIR"/sml -m \$smlnj/installer.cm
-then
-    vsay $this: Installation complete.
-else
-    complain "$this: !!! Installation of libraries and programs failed."
+if [ $nolib = false ] ; then
+    echo $this: Installing other libraries and programs:
+    export ROOT INSTALLDIR CONFIGDIR BINDIR
+    if "$BINDIR"/sml -m \$smlnj/installer.cm
+    then
+	vsay $this: Installation complete.
+    else
+	complain "$this: !!! Installation of libraries and programs failed."
+    fi
 fi
 
 exit 0
