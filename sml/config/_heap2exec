@@ -1,0 +1,42 @@
+#!@SHELL@
+
+if [ x${SMLNJ_HOME} = x ] ; then
+    BIN_DIR="@BINDIR@"
+else
+    BIN_DIR=${SMLNJ_HOME}/bin
+fi
+
+ARCH_N_OPSYS=`"$BIN_DIR/.arch-n-opsys"`
+if [ "$?" != "0" ]; then
+  echo "$CMD: unable to determine architecture/operating system"
+  exit 1
+fi
+eval $ARCH_N_OPSYS
+
+RUNX=${BIN_DIR}/.run/runx.${ARCH}-${OPSYS}
+H2A=${BIN_DIR}/heap2asm
+
+if [ $# != 2 ] ; then
+    echo usage: $0 heapfile execfile
+    exit 1
+fi
+
+heapfile=$1
+execfile=$2
+
+if [ -f $RUNX ] ; then
+    if [ -f $H2A ]; then
+	${H2A} "$heapfile" "$execfile".s
+	cc -c "$execfile".s
+	ld -o "$execfile" ${RUNX} "$execfile".o -lc
+	rm "$execfile".[so]
+    else
+	echo $0: heap2asm is not installed
+	exit 2
+    fi
+else
+    echo $0: linkable runtime system object not available
+    exit 2
+fi
+
+exit 0
