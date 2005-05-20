@@ -39,6 +39,9 @@
 #define GET32(p)	\
     ((_B0(p) << 24) | (_B1(p) << 16) | (_B2(p) << 8) | _B3(p))
 
+/* the size of a list cons cell in bytes */
+#define CONS_SZB	(WORD_SZB*3)
+
 /* GetDouble:
  */
 PVT double GetDouble (Byte_t *p)
@@ -79,6 +82,20 @@ ml_val_t BuildLiterals (ml_state_t *msp, Byte_t *lits, int len)
     double	d;
     int		availSpace, spaceReq;
 
+/* A check that the available space is sufficient for the literal object that
+ * we are about to allocate.  Note that the conce cell has already been accounted
+ * for in availSpace (but not in spaceReq).
+ */
+#define GC_CHECK									\
+    do {										\
+	if ((spaceReq > availSpace) && NeedGC(msp, spaceReq+CONS_SZB)) {		\
+	    InvokeGCWithRoots (msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));	\
+	    availSpace = 0;								\
+	}										\
+	else										\
+	    availSpace -= spaceReq;							\
+    } while (0)
+
 #ifdef DEBUG_LITERALS
 SayDebug("BuildLiterals: lits = %#x, len = %d\n", lits, len);
 #endif
@@ -95,7 +112,7 @@ SayDebug("BuildLiterals: lits = %#x, len = %d\n", lits, len);
     availSpace = 0;
     while (TRUE) {
 	ASSERT(pc < len);
-	availSpace -= 3*WORD_SZB;	/* space for stack cons cell */
+	availSpace -= CONS_SZB;	/* space for stack cons cell */
 	if (availSpace < ONE_K) {
 	    if (NeedGC(msp, 64*ONE_K))
 		InvokeGCWithRoots (msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));
@@ -125,12 +142,7 @@ SayDebug("[%2d]: RAW32L(%d) [...]\n", pc-5, n);
 #endif
 	    ASSERT(n > 0);
 	    spaceReq = 4*(n+1);
-	    if ((spaceReq > availSpace) && NeedGC(msp, spaceReq)) {
-		InvokeGCWithRoots (msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));
-		availSpace = 0;
-	    }
-	    else
-		availSpace -= spaceReq;
+	    GC_CHECK;
 	    ML_AllocWrite (msp, 0, MAKE_DESC(n, DTAG_raw32));
 	    for (j = 1;  j <= n;  j++) {
 		i = GET32(lits); pc += 4;
@@ -155,12 +167,7 @@ SayDebug("[%2d]: RAW64L(%d) [...]\n", pc-5, n);
 #endif
 	    ASSERT(n > 0);
 	    spaceReq = 8*(n+1);
-	    if ((spaceReq > availSpace) && NeedGC(msp, spaceReq)) {
-		InvokeGCWithRoots (msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));
-		availSpace = 0;
-	    }
-	    else
-		availSpace -= spaceReq;
+	    GC_CHECK;
 #ifdef ALIGN_REALDS
 	  /* Force REALD_SZB alignment (descriptor is off by one word) */
 	    msp->ml_allocPtr = (ml_val_t *)((Addr_t)(msp->ml_allocPtr) | WORD_SZB);
@@ -186,13 +193,11 @@ SayDebug("\n");
 		break;
 	    }
 	    j = BYTES_TO_WORDS(n+1);  /* include space for '\0' */
-	    spaceReq = 4*(j+1);
-	    if ((spaceReq > availSpace) && NeedGC(msp, spaceReq)) {
-		InvokeGCWithRoots (msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));
-		availSpace = 0;
-	    }
-	    else
-		availSpace -= spaceReq;
+	  /* the space request includes space for the data-object header word and
+	   * the sequence header object.
+	   */
+	    spaceReq = WORD_SZB*(j+1+3);
+	    GC_CHECK;
 	  /* allocate the data object */
 	    ML_AllocWrite(msp, 0, MAKE_DESC(j, DTAG_raw32));
 	    ML_AllocWrite (msp, j, 0);  /* so word-by-word string equality works */
@@ -228,13 +233,11 @@ SayDebug("]\n");
 		LIST_cons(msp, stk, ML_vector0, stk);
 		break;
 	    }
-	    spaceReq = 4*(n+1);
-	    if ((spaceReq > availSpace) && NeedGC(msp, spaceReq)) {
-		InvokeGCWithRoots (msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));
-		availSpace = 0;
-	    }
-	    else
-		availSpace -= spaceReq;
+	  /* the space request includes space for the data-object header word and
+	   * the sequence header object.
+	   */
+	    spaceReq = WORD_SZB*(n+1+3);
+	    GC_CHECK;
 	  /* allocate the data object */
 	    ML_AllocWrite(msp, 0, MAKE_DESC(n, DTAG_vec_data));
 	  /* top of stack is last element in vector */
@@ -264,13 +267,7 @@ SayDebug("]\n");
 	    }
 	    else {
 		spaceReq = 4*(n+1);
-		if ((spaceReq > availSpace) && NeedGC(msp, spaceReq)) {
-		    InvokeGCWithRoots (
-			msp, 0, (ml_val_t *)&lits, &stk, NIL(ml_val_t *));
-		    availSpace = 0;
-		}
-		else
-		    availSpace -= spaceReq;
+		GC_CHECK;
 		ML_AllocWrite(msp, 0, MAKE_DESC(n, DTAG_record));
 	    }
 	  /* top of stack is last element in record */
