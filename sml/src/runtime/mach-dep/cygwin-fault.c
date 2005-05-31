@@ -50,11 +50,11 @@ PVT BOOL __stdcall ctrl_c_handler(DWORD type)
    {
       case CTRL_C_EVENT:
       case CTRL_BREAK_EVENT:
-         if (!cygwin_generic_handler(SIGINT)) {
+         if (cygwin_generic_handler(SIGINT)) {
             return TRUE;
          }
          return FALSE;
-      default: ;
+      default: 
          return FALSE;
    }
 }
