@@ -22,25 +22,38 @@
 
 #define SELF_VPROC      (VProc[0])
 
+/* generic handler for cygwin "signals" such as interrupt, alarm */
+/* returns TRUE if the main thread is running ML code */
+BOOL cygwin_generic_handler(int code)
+{
+   vproc_state_t   *vsp = SELF_VPROC;
+
+   vsp->vp_sigCounts[code].nReceived++;
+   vsp->vp_totalSigCount.nReceived++;
+
+   vsp->vp_limitPtrMask = 0;
+
+   if (vsp->vp_inMLFlag &&
+      (! vsp->vp_handlerPending) &&
+      (! vsp->vp_inSigHandler))
+   {
+      vsp->vp_handlerPending = TRUE;
+      SIG_ZeroLimitPtr();
+      return TRUE;
+   }
+   return FALSE;
+}
+
 PVT BOOL __stdcall ctrl_c_handler(DWORD type)
 {
    switch (type)
    {
       case CTRL_C_EVENT:
       case CTRL_BREAK_EVENT:
-      {  vproc_state_t * vsp = SELF_VPROC;
-         EnqueueSignal(vsp, SIGINT);
-         vsp->vp_numPendingSysSigs++;
-         if (vsp->vp_inMLFlag && 
-               (! vsp->vp_handlerPending) && 
-               (! vsp->vp_inSigHandler))
-         {
-            vsp->vp_handlerPending = TRUE;
-            SIG_ZeroLimitPtr(NULL);
+         if (!cygwin_generic_handler(SIGINT)) {
             return TRUE;
          }
          return FALSE;
-      }  break;
       default: ;
          return FALSE;
    }
@@ -58,7 +71,7 @@ void InitFaultHandlers(ml_state_t * msp)
 }
 
 /*
- * This filter is catches all exceptions. 
+ * This filter catches all exceptions. 
  */
 PVT int page_fault_handler
    (EXCEPTION_RECORD * exn, void * foo, CONTEXT * c, void * bar)

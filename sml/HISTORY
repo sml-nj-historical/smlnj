@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2005/05/31 16:47:00 EST
+Tag: leunga-20050531-cygwin-fault
+Description:
+
+Updated Cygwin's fault/signal handling to match the Windows version.  
+Updated the export list.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2005/05/18 13:35:00 CDT
 Tag: Release_110_54
