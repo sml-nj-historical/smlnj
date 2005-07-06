@@ -2,6 +2,12 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2005-07-06]
+	Refactored the pretty printing library.  The declarative way to
+	construct pretty-printing descriptions now sits on top of the
+	PP_STREAM interface.  Also removed "onNewline" function, which
+	was not implemented.
+
 [2005-05-05]
 	Added singleton function to MONO_PRIORITYQ interface.
 

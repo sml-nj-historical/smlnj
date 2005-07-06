@@ -1,38 +1,71 @@
 (* pp-desc-fn.sml
  *
- * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2005 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * All rights reserved.
  *
- * This interface provides a declarative way to specify pretty-printing.
+ * This functor implements a declarative way to specify pretty-printing
+ * (see pp-desc-sig.sml).
  *)
 
-functor PPDescFn (S : sig
-    include PP_STREAM
-      where type indent = PPDesc.indent
-      where type pp_desc = (token, style, device) PPDesc.pp_desc
-  end) :> PP_DESC =
+functor PPDescFn (PPS : PP_STREAM) :> PP_DESC =
   struct
 
-    structure PPS = S
-    structure D = PPDesc
+    structure PPS = PPS
 
-    type pp_desc = PPS.pp_desc
     type token = PPS.token
     type style = PPS.style
     type indent = PPS.indent
 
-    val hBox    = D.HBox
-    val vBox    = D.VBox
-    val hvBox   = D.HVBox
-    val hovBox  = D.HOVBox
-    val box     = D.Box
-    val token   = D.Token
-    val string  = D.String
-    val style   = D.Style
-    val break   = D.Break
-    fun space n = D.Break{nsp = n, offset = 0}
-    val cut     = D.Break{nsp = 0, offset = 0}
-    val newline = D.NewLine
-    val control = D.Control
+  (* The pp_desc type is a concrete representation of a PP layout. *)
+    datatype pp_desc
+      = HBox of pp_desc list
+      | VBox of (indent * pp_desc list)
+      | HVBox of (indent * pp_desc list)
+      | HOVBox of (indent * pp_desc list)
+      | Box of (indent * pp_desc list)
+      | Token of token
+      | String of string
+      | Style of (style * pp_desc list)
+      | Break of {nsp : int, offset : int}
+      | NewLine
+      | NBSpace of int
+      | Control of (PPS.device -> unit)
+
+  (* pretty print a description *)
+    fun description strm = let
+	  fun pp (HBox l) = (PPS.openHBox strm; ppList l; PPS.closeBox strm)
+	    | pp (VBox(i, l)) = (PPS.openVBox strm i; ppList l; PPS.closeBox strm)
+	    | pp (HVBox(i, l)) = (PPS.openHVBox strm i; ppList l; PPS.closeBox strm)
+	    | pp (HOVBox(i, l)) = (PPS.openHOVBox strm i; ppList l; PPS.closeBox strm)
+	    | pp (Box(i, l)) = (PPS.openBox strm i; ppList l; PPS.closeBox strm)
+	    | pp (Token tok) = PPS.token strm tok
+	    | pp (String s) = PPS.string strm s
+	    | pp (Style(sty, l)) = (
+		PPS.pushStyle(strm, sty); ppList l; PPS.popStyle strm)
+	    | pp (Break brk) = PPS.break strm brk
+	    | pp NewLine = PPS.newline strm
+	    | pp (NBSpace n) = PPS.nbSpace strm n
+	    | pp (Control ctlFn) = PPS.control strm ctlFn
+	  and ppList [] = ()
+	    | ppList (item::r) = (pp item; ppList r)
+	  in
+	    pp
+	  end
+
+  (* exported PP description constructors *)
+    val hBox    = HBox
+    val vBox    = VBox
+    val hvBox   = HVBox
+    val hovBox  = HOVBox
+    val box     = Box
+    val token   = Token
+    val string  = String
+    val style   = Style
+    val break   = Break
+    fun space n = Break{nsp = n, offset = 0}
+    val cut     = Break{nsp = 0, offset = 0}
+    val newline = NewLine
+    val control = Control
 
   end;
 

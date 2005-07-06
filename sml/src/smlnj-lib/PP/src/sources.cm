@@ -6,11 +6,13 @@
  *)
 Group
 
+  signature PP_DESC
   signature PP_DEVICE
   signature PP_TOKEN
   signature PP_STREAM
 
   functor PPStreamFn
+  functor PPDescFn
   functor PPDebugFn
 
 is
@@ -23,7 +25,9 @@ is
 
   pp-device-sig.sml
   pp-token-sig.sml
-  pp-desc.sml
+  pp-desc-fn.sml
   pp-stream-sig.sml
   pp-stream-fn.sml
   pp-debug-fn.sml
+  pp-desc-sig.sml
+

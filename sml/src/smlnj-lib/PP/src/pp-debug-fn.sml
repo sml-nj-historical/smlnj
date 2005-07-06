@@ -1,6 +1,7 @@
 (* pp-debug-fn.sml
  *
- * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2005 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * All rights reserved.
  *
  * A wrapper for the PPStreamFn, which dumps the current PP state prior
  * to each operation.
@@ -56,13 +57,7 @@ functor PPDebugFn (PP : sig
     val cut     = debug' "cut" PP.cut
     val newline = debug' "newline" PP.newline
     val nbSpace = debug "nbSpace" PP.nbSpace
-    val onNewline = debug "onNewline" PP.onNewline
     val control = debug "control" PP.control
-
-    type pp_desc = PP.pp_desc
-    val description = debug "description" PP.description
-
-    structure Desc = PP.Desc
 
   end;
 
