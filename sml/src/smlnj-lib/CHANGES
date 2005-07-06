@@ -3,6 +3,10 @@ correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
 [2005-07-06]
+	Added ANSITerm structure, which provides support for ANSI terminal
+	display attributes (e.g., red text).
+
+[2005-07-06]
 	Refactored the pretty printing library.  The declarative way to
 	construct pretty-printing descriptions now sits on top of the
 	PP_STREAM interface.  Also removed "onNewline" function, which
