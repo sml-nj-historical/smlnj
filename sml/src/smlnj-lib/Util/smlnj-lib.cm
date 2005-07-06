@@ -47,6 +47,7 @@ signature SCAN
 signature SPLAY_TREE
 signature UREF
 
+structure ANSITerm
 structure ArrayQSort
 structure Atom
 structure AtomBinaryMap		(* to be removed *)
@@ -123,6 +124,7 @@ is
   $/basis.cm
 #endif
 
+ansi-term.sml
 array-qsort-fn.sml
 array-qsort.sml
 array-sort-sig.sml
