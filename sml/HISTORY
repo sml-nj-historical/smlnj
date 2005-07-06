@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2005/07/06 00:45:00 CDT
+Tag: blume-20050706-slice-copy
+Description:
+
+Fixed reversed logic for deciding whether to "copy up" or "copy down"
+in *-array-slice.sml.
+
+----------------------------------------------------------------------
 Name: Allen Leung (leunga (at) reservoir (dot) com)
 Date: 2005/05/31 17:00:00 EST
 Tag: leunga-20050531-cygwin-fault-2

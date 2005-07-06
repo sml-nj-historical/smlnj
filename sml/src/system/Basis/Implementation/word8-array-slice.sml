@@ -108,7 +108,7 @@ structure Word8ArraySlice :> MONO_ARRAY_SLICE
 				       copyUp (s ++ 1, d ++ 1))
     in
 	if di < 0 orelse de > alength dst then raise Subscript
-	else if di < start then copyDn (stop -- 1, de -- 1)
+	else if di >= start then copyDn (stop -- 1, de -- 1)
 	else copyUp (start, di)
     end
 
