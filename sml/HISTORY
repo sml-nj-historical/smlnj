@@ -13,6 +13,14 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: John Reppy
+Date: 2005/07/06
+Tag:
+Description:
+
+Changes to the SML/NJ library.  See smlnj-lib/CHANGES for details.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2005/07/06 00:45:00 CDT
 Tag: blume-20050706-slice-copy
