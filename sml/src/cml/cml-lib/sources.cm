@@ -122,6 +122,7 @@ Group
 #if defined(NEW_CM)
   structure RealOrderStats
   structure UnivariateStats
+  structure ANSITerm
 #endif
 
   functor ArrayQSortFn
