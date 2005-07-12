@@ -2,6 +2,10 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2005-07-12]
+	Added ANSITermDev device that uses ANSI terminal display attributes
+	and added a ANSITermPP for pretty printing to such a device.
+
 [2005-07-06]
 	Added ANSITerm structure, which provides support for ANSI terminal
 	display attributes (e.g., red text).
