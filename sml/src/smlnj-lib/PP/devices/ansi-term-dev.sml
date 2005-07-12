@@ -151,11 +151,19 @@ structure ANSITermDev : sig
 
     fun defaultStyle _ = []
 
-    fun openDev {dst, wid} = let
-(* FIXME: compute mode based on file type *)val mode = true
+  (* return true if an outstream is a TTY *)
+    fun isTTY outS = let
+	  val (TextPrimIO.WR{ioDesc, ...}, _) =
+		TextIO.StreamIO.getWriter(TextIO.getOutstream outS)
 	  in
-	    DEV{dst = dst, wid = wid, mode = ref mode, stk = ref[]}
+	    case ioDesc
+	     of SOME iod => (OS.IO.kind iod = OS.IO.Kind.tty)
+	      | _ => false
 	  end
+
+    fun openDev {dst, wid} = DEV{
+	    dst = dst, wid = wid, mode = ref(isTTY dst), stk = ref[]
+	  }
 
   (* maximum printing depth (in terms of boxes) *)
     fun depth _ = NONE

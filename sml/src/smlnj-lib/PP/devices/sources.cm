@@ -5,11 +5,14 @@
 Group
 
   structure TextIOPP
+  structure ANSITermDev
+  structure ANSITermPP
   structure SimpleTextIODev
   structure HTMLDev
   structure StringToken
 
 is
+
 #if defined(NEW_CM)
   $/basis.cm
   $/smlnj-lib.cm
@@ -22,6 +25,8 @@ is
 #endif
 
   textio-pp.sml
+  ansi-term-dev.sml
+  ansi-term-pp.sml
   simple-textio-dev.sml
   string-token.sml
   html-dev.sml
