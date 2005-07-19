@@ -17,11 +17,16 @@ structure ANSITermDev : sig
    *)
     val openDev : {dst : TextIO.outstream, wid : int} -> device
 
-  (* enable styled output by passing true to this function.  It returns
-   * the previous state of the device.
+  (* enable/disable/query styled output.
+   *
+   *	styleMode (dev, NONE)	-- query current mode
+   *	styleMode (dev, SOME true)	-- enable styled output
+   *	styleMode (dev, SOME false)	-- disable styled output
+   *
+   * This function returns the previous state of the device.
    * NOTE: this function raises Fail if called while a style is active.
    *)
-    val enableStyles : (device * bool) -> bool
+    val styleMode : (device * bool option) -> bool
 
   end = struct
 
@@ -189,8 +194,9 @@ structure ANSITermDev : sig
   (* enable styled output by passing true to this function.  It returns
    * the previous state of the device.
    *)
-    fun enableStyles (DEV{stk = ref(_::_), ...}, _) =
+    fun styleMode (DEV{stk = ref(_::_), ...}, _) =
 	  raise Fail "attempt to change mode inside scope of style"
-      | enableStyles (DEV{mode as ref m, ...}, flg) = (mode := flg; m)
+      | styleMode (DEV{mode, ...}, NONE) = !mode
+      | styleMode (DEV{mode as ref m, ...}, SOME flg) = (mode := flg; m)
 
   end
