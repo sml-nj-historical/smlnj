@@ -26,6 +26,10 @@ tests, as well as hashing and ordered comparisons.
   <SIGBODY SIGID="ATOM" FILE=ATOM>
     <SPEC>
       <TYPE><ID>atom
+      <COMMENT>
+	<PP>
+	Atoms are uniquely represented strings that support fast
+	equality/inequality tests.
     <SPEC>
       <VAL>atom<TY>string -> atom
         <COMMENT>
