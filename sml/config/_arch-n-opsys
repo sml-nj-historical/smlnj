@@ -12,6 +12,7 @@ case `uname -s` in
     case `uname -r` in
       *.09.*) OPSYS=hpux9 ;;
       *.10.*) OPSYS=hpux ;;
+      *.11.*) OPSYS=hpux11; HEAP_OPSYS=hpux ;;
       *) exit 1 ;;
     esac
     ;; 

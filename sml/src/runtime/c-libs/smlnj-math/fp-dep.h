@@ -85,6 +85,11 @@ typedef int fe_rnd_mode_t;
 #  define fegetround()		fpgetround()
 #  define fesetround(RM)	fpsetround(RM)
 
+#elif defined(OPSYS_HPUX11)
+#  define _INCLUDE_HPUX_SOURCE
+#  include <fenv.h>
+typedef int fe_rnd_mode_t;
+
 #elif (defined(OPSYS_IRIX) || defined(OPSYS_IRIX5) || defined(OPSYS_NETBSD))
 #  include <ieeefp.h>
 #  define FE_TONEAREST		FP_RN
