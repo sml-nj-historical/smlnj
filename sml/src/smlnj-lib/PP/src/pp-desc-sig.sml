@@ -27,8 +27,11 @@ signature PP_DESC =
     val space   : int -> pp_desc
     val cut     : pp_desc
     val newline : pp_desc
+    val nbSpace : int -> pp_desc
 
     val control : (PPS.device -> unit) -> pp_desc
+
+    val description : PPS.stream * pp_desc -> unit
 
   end
 

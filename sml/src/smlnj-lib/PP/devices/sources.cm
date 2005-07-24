@@ -5,9 +5,9 @@
 Group
 
   structure TextIOPP
+  structure SimpleTextIODev
   structure ANSITermDev
   structure ANSITermPP
-  structure SimpleTextIODev
   structure HTMLDev
   structure StringToken
 

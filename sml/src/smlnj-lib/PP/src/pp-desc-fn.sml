@@ -7,8 +7,8 @@
  * (see pp-desc-sig.sml).
  *)
 
-functor PPDescFn (PPS : PP_STREAM) :> PP_DESC =
-  struct
+functor PPDescFn (PPS : PP_STREAM) : PP_DESC
+  = struct
 
     structure PPS = PPS
 
@@ -32,7 +32,7 @@ functor PPDescFn (PPS : PP_STREAM) :> PP_DESC =
       | Control of (PPS.device -> unit)
 
   (* pretty print a description *)
-    fun description strm = let
+    fun description (strm, ppd) = let
 	  fun pp (HBox l) = (PPS.openHBox strm; ppList l; PPS.closeBox strm)
 	    | pp (VBox(i, l)) = (PPS.openVBox strm i; ppList l; PPS.closeBox strm)
 	    | pp (HVBox(i, l)) = (PPS.openHVBox strm i; ppList l; PPS.closeBox strm)
@@ -49,7 +49,7 @@ functor PPDescFn (PPS : PP_STREAM) :> PP_DESC =
 	  and ppList [] = ()
 	    | ppList (item::r) = (pp item; ppList r)
 	  in
-	    pp
+	    pp ppd
 	  end
 
   (* exported PP description constructors *)
@@ -65,6 +65,7 @@ functor PPDescFn (PPS : PP_STREAM) :> PP_DESC =
     fun space n = Break{nsp = n, offset = 0}
     val cut     = Break{nsp = 0, offset = 0}
     val newline = NewLine
+    val nbSpace = NBSpace
     val control = Control
 
   end;
