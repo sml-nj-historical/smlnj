@@ -18,6 +18,14 @@ Date: 2005/07/27
 Tag:
 Description:
 
+Fixed ml-lex to recognize "\r" as representing carriage return.
+
+----------------------------------------------------------------------
+Name: John Reppy
+Date: 2005/07/27
+Tag:
+Description:
+
 Fixed ml-yacc to work on files with non-native end-of-line
 encodings (e.g., Windows text file on a Unix system).
 

@@ -71,6 +71,7 @@ see the COPYRIGHT NOTICE for details and restrictions.
         10/17/02 (jhr) changed bad character error message to properly
 		print the bad character.
         10/17/02 (jhr) fixed skipws to use Char.isSpace test.
+	07/27/05 (jhr) add \r as a recognized escape sequence.
  *)
 
 (* Subject: lookahead in sml-lex
@@ -436,6 +437,7 @@ fun AdvanceTok () : unit = let
       and escaped () = (case nextch()
 	     of #"b" => #"\008"
 	      | #"n" => #"\n"
+	      | #"r" => #"\r"
 	      | #"t" => #"\t"
 	      | #"h" => #"\128"
 	      | x => let
