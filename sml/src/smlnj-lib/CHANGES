@@ -2,6 +2,9 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2005-08-04]
+	Renamed graph-scc.sml to graph-scc-fn.sml.
+
 [2005-07-23]
 	Fix PP library to export ANSITermDev, ANSITermPP, PPDescFn, and
 	PP_DESC.  Also add nbSpace to PP_DESC signature.

@@ -159,7 +159,7 @@ format.sml
 format-comb-sig.sml
 format-comb.sml
 graph-scc-sig.sml
-graph-scc.sml
+graph-scc-fn.sml
 hash-key-sig.sml
 hash-string.sml
 hash-table-rep.sml

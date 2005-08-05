@@ -1,4 +1,4 @@
-(* graph-scc.sml
+(* graph-scc-fn.sml
  *
  * COPYRIGHT (c) 1999 Lucent Bell Laboratories.
  *
