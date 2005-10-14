@@ -94,6 +94,20 @@ fun reduceTy ty =
     of POLYty{tyfun=TYFUN{body,...},...} => reduceTy body
      | ty => ty)
 
+(* Given a list of data constructors; return its signature and a list
+   of value-carrying data constructors *)
+fun getCsig dcons = 
+  let fun isConst(DA.CONSTANT _) = true
+        | isConst(DA.LISTNIL) = true
+        | isConst _ = false
+
+      fun h ([], c, v, rds) = (DA.CSIG(v,c), rev rds)
+        | h ((dc as {rep=a,domain,name})::r, c, v, rds) = 
+               if isConst a then h(r, c+1, v, rds)
+  	       else h(r, c, v+1, dc::rds)
+   in h(dcons, 0, 0, [])
+  end
+
 fun expandREC (family as {members: T.dtmember vector, ...}, stamps, freetycs) =
   let fun g (RECtyc i) = 
            let val {tycname,dcons,arity,eq,lazyp,sign} =
@@ -289,20 +303,7 @@ fun test(ty, 0) = raise Poly
 			       of [] => bug "empty data types"
 (*                              | [dcon] => inside dcon       *)
 				| _ => let
-				      (* this is somewhat a hack !! *)
-				      (* val sign = map #rep dcons *)
-				      fun isConst(DA.CONSTANT _) =
-					  true
-					| isConst(DA.LISTNIL) = true
-					| isConst _ = false
-
-				      fun getCsig({rep=a,domain,name}::r,c,v)= 
-					  if isConst a then getCsig(r, c+1, v)
-					  else getCsig(r, c, v+1)
-					| getCsig([], c, v) = DA.CSIG(v,c)
-
-				      val sign = getCsig(dcons,0,0)
-
+				      val (sign, ndcons) = getCsig dcons
 				      fun concase dcon = 
 					  let val tcs = map toTyc tyl
 					      val ww = mkv()
@@ -318,10 +319,18 @@ fun test(ty, 0) = raise Poly
 							inside(dcon,ww,uu))],
 						      SOME(falseLexp)))
 					  end
+
 				  in
-				      SWITCH(VAR x, sign, 
-					     map concase dcons, NONE)
-				  end
+                                      case sign 
+                                       of DA.CSIG(0, _) => falseLexp
+                                        | DA.CSIG(_, 0) => 
+                                            SWITCH(VAR x, sign, 
+					      map concase ndcons, NONE)
+                                        | _ => 
+                                            SWITCH(VAR x, sign, 
+					      map concase ndcons, 
+                                                       SOME falseLexp)
+				 end
 
                           val root = APP(PRIM(PO.PTREQL, pty, []), 
                                          RECORD[VAR x, VAR y])
