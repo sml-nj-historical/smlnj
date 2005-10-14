@@ -606,7 +606,7 @@ functor X86SpillInstr(structure Instr: X86INSTR
 		   fn tmp => I.FCMP{i=i,fsize=fsize,lsrc=tmp, rsrc=rsrc}, an)
 	     | (_, I.FPR _) =>
 		withTmp(fsize, 
-		   fn tmp => I.FCMP{i=i,fsize=fsize,lsrc=rsrc, rsrc=tmp}, an)
+		   fn tmp => I.FCMP{i=i,fsize=fsize,lsrc=lsrc, rsrc=tmp}, an)
 	     | _ => error "fcmp.2"
 	    )
 	 | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} =>
