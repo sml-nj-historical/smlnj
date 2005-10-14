@@ -158,7 +158,8 @@ struct
    val esi = RegGP 6
    val edi = RegGP 7
    val stackptrR = RegGP 4
-   val ST = (fn x => RegFP x)
+   val ST = (fn x => RegFP x
+            )
    val ST0 = RegFP 0
    val asmTmpR = RegGP 0
    val fasmTmp = RegFP 0
