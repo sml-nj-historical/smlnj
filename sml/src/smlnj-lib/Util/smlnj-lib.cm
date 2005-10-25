@@ -22,6 +22,8 @@ signature GRAPH_SCC
 signature HASH_KEY
 signature HASH_TABLE
 signature INT_INF
+signature INTERVAL_DOMAIN
+signature INTERVAL_SET
 signature IO_UTIL
 signature GET_OPT
 signature LIB_BASE
@@ -108,6 +110,7 @@ functor DynamicArrayFn
 functor GraphSCCFn
 functor HashTableFn
 functor Hash2TableFn
+functor IntervalSetFn
 functor KeywordFn
 functor LeftPriorityQFn
 functor ListMapFn
@@ -181,6 +184,9 @@ int-list-map.sml
 int-list-set.sml
 int-redblack-map.sml
 int-redblack-set.sml
+interval-domain-sig.sml
+interval-set-fn.sml
+interval-set-sig.sml
 io-util-sig.sml
 io-util.sml
 getopt-sig.sml
