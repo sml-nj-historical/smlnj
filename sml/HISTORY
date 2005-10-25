@@ -14,6 +14,13 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2005/10/25
+Description:
+Added interval sets to utility library (signatures INTERVAL_DOMAIN
+and INTERVAL_SET, and functor IntervalSetFn).
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2005/10/14
 Description:
 Add Zhong Shao's fix for datatype equality functions.
