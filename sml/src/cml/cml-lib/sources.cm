@@ -44,6 +44,8 @@ Group
   signature HASH_KEY
   signature HASH_TABLE
   signature INT_INF
+  signature INTERVAL_DOMAIN
+  signature INTERVAL_SET
   signature IO_UTIL		(* copied to avoid typing problems *)
   signature GET_OPT
   signature LIB_BASE
@@ -133,6 +135,7 @@ Group
   functor GraphSCCFn
   functor HashTableFn
   functor Hash2TableFn
+  functor IntervalSetFn
   functor KeywordFn
   functor LeftPriorityQFn
   functor ListMapFn
