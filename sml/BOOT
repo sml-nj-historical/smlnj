@@ -1,6 +1,18 @@
 BOOT: the location of the latest boot files.
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2005/10/25 16:00:00 CDT
+Tag: Release_110_56
+Version: 110.56
+Location: http://smlnj.cs.uchicago.edu/dist/working/110.56/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2005/07/20 12:00:00 CDT
+Tag: Release_110_55
+Version: 110.55
+Location: http://smlnj.cs.uchicago.edu/dist/working/110.55/
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2005/05/18 12:00:00 CDT
 Tag: Release_110_54
 Version: 110.54
