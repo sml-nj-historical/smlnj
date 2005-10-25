@@ -10,7 +10,7 @@
 functor PPDescFn (S : PP_STREAM) : PP_DESC =
   struct
 
-    structure PPS = PPS
+    structure PPS = S
 
     type token = PPS.token
     type style = PPS.style
