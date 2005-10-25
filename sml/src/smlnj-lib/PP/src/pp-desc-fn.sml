@@ -7,8 +7,8 @@
  * (see pp-desc-sig.sml).
  *)
 
-functor PPDescFn (PPS : PP_STREAM) : PP_DESC
-  = struct
+functor PPDescFn (S : PP_STREAM) : PP_DESC =
+  struct
 
     structure PPS = PPS
 
