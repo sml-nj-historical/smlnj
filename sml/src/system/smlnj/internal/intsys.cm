@@ -1,0 +1,95 @@
+(* Copyright YALE FLINT PROJECT 1997 *)
+(* Copyright Bell Labs, Lucent Technologies 1999 *)
+(* intsys.cm *)
+
+(*
+ * Revised for using the new CM. (M.Blume, 7/1999)
+ *)
+
+(primitive)
+Library
+	(* bootstrap stuff *)
+	structure InteractiveSystem
+
+	(* export representatives for pro-forma libraries... *)
+	structure Compiler  (* $smlnj/compiler/compiler.cm *)
+	structure CM        (* $smlnj/cm.cm *)
+	structure CMB       (* $smlnj/cmb.cm *)
+	structure Tools
+	structure YaccTool
+	structure LexTool
+	structure BurgTool
+	structure NowebTool
+	structure MakeTool
+	structure ShellTool
+	structure DirTool
+	structure LibInstall (* $smlnj/installer.cm *)
+
+# if not defined(LIGHT)
+	(* export one representative from $smlnj/compiler/all.cm *)
+	structure Alpha32UnixCMB
+# endif 
+is
+	$smlnj/init/init.cmi : cm
+
+	$/basis.cm
+	$smlnj/viscomp/basics.cm
+	$smlnj/viscomp/core.cm
+
+	(* need access to CM's "init" function *)
+	$smlnj/internal/cm0.cm
+
+	(* Need access to the actual backend... *)
+	$smlnj/compiler.cm
+
+	(* these are just here so they get made... *)
+	$smlnj/compiler/compiler.cm
+	$smlnj/compiler/minimal-only.cm
+	$smlnj/cm.cm
+	$smlnj/cmb.cm
+	$smlnj-tdp/plugins.cm
+	$smlnj-tdp/back-trace.cm
+	$smlnj-tdp/coverage.cm
+
+	$smlnj/cm/tools.cm
+        (* We need the ml-yacc and ml-lex tool plugins here. They must
+         * always be "plugged in" because they are needed for -rebuild,
+	 * i.e., at a time when on-demand loading does not work yet. *)
+	$/grm-ext.cm		(* implies $/mlyacc-tool.cm *)
+	$/lex-ext.cm		(* implies $/mllex-tool.cm *)
+        (* Technically, the ml-burg tool is not needed here.  It should
+         * eventually be moved into the ML-Burg source tree and installed
+         * from there. *)
+	$/burg-ext.cm		(* implies $/mlburg-tool.cm *)
+        (* Technically, the noweb tool is not needed here.  It should
+         * eventually be moved into the noweb source tree and installed
+         * from there. *)
+	$/nw-ext.cm		(* implies $/noweb-tool.cm *)
+	(* Register the make tool here. (Kinda unrealistic to hope that
+	 * Unix' make suddenly comes with a CM plugin... *)
+	$/make-tool.cm
+	(* Same for shell tool... *)
+	$/shell-tool.cm
+
+	(* Register the "dir" tool.  Its classifier (but not the tool
+	 * itself) is always "plugged-in". *)
+	$/dir-tool.cm
+
+	(* The next is the installer.  It just needs to get compiled
+	 * so we know it is in sync with the rest of the code... *)
+	$smlnj/installer.cm
+
+# if not defined(LIGHT)
+	$smlnj/compiler/all.cm
+# endif
+
+	(* build boot environments *)
+	boot-env-fn.sml
+	boot-env.sml
+
+	(* glue code (build the interactive system) *)
+	int-sys.sml
+
+	(* need access to the Controls module (for registering
+	 * MLRISC controls: *)
+	$/controls-lib.cm
