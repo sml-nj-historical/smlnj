@@ -24,7 +24,7 @@ structure NumFormat : sig
     val op div = W.div
 
     fun mkDigit (w : Word32.word) =
-	  InlineT.CharVector.sub("0123456789abcdef", W.toInt w)
+	  InlineT.CharVector.sub("0123456789ABCDEF", W.toInt w)
 
     fun wordToBin w = let
 	  fun mkBit w = if (W.andb(w, 0w1) = 0w0) then #"0" else #"1"
