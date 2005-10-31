@@ -169,7 +169,7 @@ functor IntervalSetFn (D : INTERVAL_DOMAIN) : INTERVAL_SET =
 			      | EQUAL => (* a1 < a2 < b1 = b2 *)
 				  (a2, b1) :: meet (r1, r2)
 			      | GREATER => (* a1 < a2 < b1 & b2 < b1  *)
-				  (a2, b1) :: meet (cons(D.succ b2, b1, r1), r2)
+				  (a2, b2) :: meet (cons(D.succ b2, b1, r1), r2)
 			    (* end case *))
 		      (* end case *))
 		  | EQUAL => (case D.compare(b1, b2)

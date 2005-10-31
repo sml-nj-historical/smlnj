@@ -2,6 +2,9 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2005-10-31]
+	Fixed a bug in IntervalSetFn().intersect.
+
 [2005-10-25]
 	Added interval sets to utility library (signatures INTERVAL_DOMAIN
 	and INTERVAL_SET, and functor IntervalSetFn).
