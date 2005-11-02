@@ -67,6 +67,16 @@ if [ ! -d $LIB_DIR ] ; then
     exit 1
 fi
 
+#
+# create heap and lib directories, if necessary
+#
+if test ! -d $MAIN_HEAP_DIR ; then
+  mkdir -p $MAIN_HEAP_DIR
+fi
+if test ! -d $MAIN_LIB_DIR ; then
+  mkdir -p $MAIN_LIB_DIR
+fi
+
 # Moving the heap image to its place
 mv $HEAP_FILE $MAIN_HEAP_DIR/sml.$HEAP_SUFFIX
 
