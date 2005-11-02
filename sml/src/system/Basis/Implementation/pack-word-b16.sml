@@ -1,6 +1,6 @@
 (* pack-word-b16.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * Copyright (c) 2005 by The Fellowship of SML/NJ
  *
  * This is the non-native implementation of 16-bit big-endian packing
  * operations.
@@ -12,7 +12,7 @@ local
     structure LargeWord = LargeWordImp
     structure Word8 = Word8Imp
 in
-structure Pack16Big : PACK_WORD =
+structure PackWord16Big : PACK_WORD =
   struct
     structure W = LargeWord
     structure W8 = Word8

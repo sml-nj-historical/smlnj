@@ -122,10 +122,10 @@ Group
 	structure BinIO
 	structure BinPrimIO
 	structure IO
-	structure Pack16Big
-	structure Pack16Little
-	structure Pack32Big
-	structure Pack32Little
+	structure PackWord16Big
+	structure PackWord16Little
+	structure PackWord32Big
+	structure PackWord32Little
 	structure TextIO
 	structure TextPrimIO
 	structure Date

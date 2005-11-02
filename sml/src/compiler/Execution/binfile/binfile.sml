@@ -178,7 +178,7 @@ structure Binfile :> BINFILE = struct
 			       Int.toString(Word8Vector.length bv)])
 	end
 
-    fun readInt32 s = LargeWord.toIntX(Pack32Big.subVec(bytesIn(s, 4), 0))
+    fun readInt32 s = LargeWord.toIntX(PackWord32Big.subVec(bytesIn(s, 4), 0))
 
     fun readPackedInt32 s = let
 	fun loop n =

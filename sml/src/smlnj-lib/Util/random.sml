@@ -22,7 +22,7 @@ structure Random : RANDOM =
     structure LW  = LargeWord
     structure W8A = Word8Array
     structure W8V = Word8Vector
-    structure P   = Pack32Big
+    structure P   = PackWord32Big
 
     val << = Word31.<<
     val >> = Word31.>>

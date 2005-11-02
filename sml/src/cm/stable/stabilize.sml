@@ -98,7 +98,7 @@ struct
 	end
 
 	val libstamp = bytesIn libstamp_nbytes	(* ignored *)
-	val dg_sz = LargeWord.toIntX (Pack32Big.subVec (bytesIn 4, 0))
+	val dg_sz = LargeWord.toIntX (PackWord32Big.subVec (bytesIn 4, 0))
 	val dg_pickle = Byte.bytesToString (bytesIn dg_sz)
     in
 	{ size = dg_sz, pickle = dg_pickle }
@@ -971,7 +971,7 @@ struct
 			        
 		fun writeInt32 (s, i) = let
 		    val a = Word8Array.array (4, 0w0)
-		    val _ = Pack32Big.update (a, 0, LargeWord.fromInt i)
+		    val _ = PackWord32Big.update (a, 0, LargeWord.fromInt i)
 		in
 		    BinIO.output (s, Word8Array.vector a)
 		end
