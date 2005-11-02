@@ -44,7 +44,13 @@ PVT void EnterPerID (ml_state_t *msp, pers_id_t *perID, ml_val_t obj);
 PVT ml_val_t LookupPerID (pers_id_t *perID);
 PVT void ShowPerID (char *buf, pers_id_t *perID);
 
-# define HEX(c) (isdigit(c) ? (c) - '0' : (c) - 'a' + 10)
+static int HEX(int c)
+{
+  if (isdigit(c)) return c - '0';
+  if (c >= 'a' && c <= 'z') return c - 'a' + 10;
+  return c - 'A' + 10;
+}
+
 
 /* BootML:
  *

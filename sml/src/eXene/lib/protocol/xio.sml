@@ -124,7 +124,7 @@ fun outMsgToStr OutFlush = "OutFlush"
 		in
 		  case W8V.sub(msg, 0)
 		   of 0w1 => let  (* reply *)
-			val extraLen = LargeWord.toIntX(Pack32Big.subVec(msg, 1))
+			val extraLen = LargeWord.toIntX(PackWord32Big.subVec(msg, 1))
 			in
 			  if (extraLen > 0)
 			    then {
@@ -437,7 +437,7 @@ MLXError.impossible "[XIo.extractErr: bogus pending reply queue]"
  ** (i.e., GetInputFocus message).
  **)
 		      fun getSeqN () = let
-			    val shortSeqN = W.fromLargeWord(Pack16Big.subVec(msg, 1))
+			    val shortSeqN = W.fromLargeWord(PackWord16Big.subVec(msg, 1))
 			    val seqn' = W.orb(
 				  W.andb(lastReqIn, W.notb 0wxffff),
 				  shortSeqN)

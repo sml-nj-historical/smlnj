@@ -43,16 +43,16 @@ structure XReply =
       fun getInt8 arg = W8.toInt(W8V.sub arg)
       fun getSigned8 arg = W8.toIntX(W8V.sub arg)
 
-      fun get16 (s, i) = Pack16Big.subVec(s, i div 2)
+      fun get16 (s, i) = PackWord16Big.subVec(s, i div 2)
       fun getWord16 (s, i) = Word.fromLargeWord(get16(s, i))
       fun getInt16 (s, i) = LargeWord.toInt(get16(s, i))
-      fun getSigned16 (s, i) = LargeWord.toIntX(Pack16Big.subVecX(s, i div 2))
+      fun getSigned16 (s, i) = LargeWord.toIntX(PackWord16Big.subVecX(s, i div 2))
 
-      fun get32 (s, i) = Word32.fromLargeWord(Pack32Big.subVec(s, i div 4))
+      fun get32 (s, i) = Word32.fromLargeWord(PackWord32Big.subVec(s, i div 4))
       fun getSigned32 (s, i) =
-	    Int32.fromLarge(LargeWord.toLargeInt(Pack32Big.subVecX(s, i div 4)))
+	    Int32.fromLarge(LargeWord.toLargeInt(PackWord32Big.subVecX(s, i div 4)))
       fun getWord (s, i) = Word.fromLargeWord(get32(s, i))
-      fun getInt (s, i) = LargeWord.toIntX(Pack32Big.subVecX(s, i div 4))
+      fun getInt (s, i) = LargeWord.toIntX(PackWord32Big.subVecX(s, i div 4))
 
       val w8vextract = Word8VectorSlice.vector o Word8VectorSlice.slice
 

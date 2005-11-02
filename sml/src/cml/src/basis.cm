@@ -118,10 +118,10 @@ Library
 	structure Timer
 	structure IO
 	structure Option
-	structure Pack16Big
-	structure Pack16Little
-	structure Pack32Big
-	structure Pack32Little
+	structure PackWord16Big
+	structure PackWord16Little
+	structure PackWord32Big
+	structure PackWord32Little
 	structure Date
 	structure RealArray
 	structure RealArraySlice

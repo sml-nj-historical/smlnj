@@ -31,7 +31,7 @@ structure XAuth : X_AUTH =
     fun get16 (s, i) = let
           val s = w8vextract (s, i, SOME 2)
           in
-            LargeWord.toInt(Pack16Big.subVec(s, 0))
+            LargeWord.toInt(PackWord16Big.subVec(s, 0))
           end
     fun getData (s, i, n) = w8vextract (s, i, SOME n)
     fun getString (s, i, n) =

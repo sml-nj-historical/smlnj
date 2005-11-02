@@ -38,11 +38,11 @@ structure XRequest =
 	    put8(buf, i, Word8.fromLargeWord(Word.toLargeWord x))
       fun putSigned8 (buf, i, x) = put8(buf, i, Word8.fromInt x)
 
-      fun put16 (buf, i, x) = Pack16Big.update(v2a buf, i div 2, x)
+      fun put16 (buf, i, x) = PackWord16Big.update(v2a buf, i div 2, x)
       fun putWord16 (buf, i, x) = put16(buf, i, Word.toLargeWord x)
       fun putSigned16 (buf, i, x) = put16(buf, i, LargeWord.fromInt x)
 
-      fun put32 (buf, i, x) = Pack32Big.update(v2a buf, i div 4, x)
+      fun put32 (buf, i, x) = PackWord32Big.update(v2a buf, i div 4, x)
       fun putWord32 (buf, i, x) = put32(buf, i, Word.toLargeWord x)
       fun putSigned32 (buf, i, x) = put32(buf, i, LargeWord.fromInt x)
 

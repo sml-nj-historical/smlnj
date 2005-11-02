@@ -125,7 +125,7 @@ val _ = XDebug.trace(XDebug.ioTM, fn () => [
 val _ = XDebug.trace(XDebug.ioTM, fn () => ["reading connection reply header\n"])
 (*-DEBUG*)
 	    val hdr = SockUtil.recvVec (sock, 8)
-	    val len = 4 * LargeWord.toIntX(Pack16Big.subVec(hdr, 3))
+	    val len = 4 * LargeWord.toIntX(PackWord16Big.subVec(hdr, 3))
 (*+DEBUG*)
 val _ = XDebug.trace(XDebug.ioTM, fn () => [
     "reading connection reply body (", Int.toString len, " bytes)\n"

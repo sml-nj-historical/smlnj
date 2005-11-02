@@ -13,6 +13,17 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2005/11/02 16:25:00 CST
+Tag: blume-20051102-hex
+Description:
+
+* Runtime system bootstrap code now accepts hex digits in BOOTLIST
+  in either upper case or lower case format.
+* Pushed changes to names of Pack<N>{Big,Little} structures through
+  CML and eXene.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2005/11/02
 Description:
