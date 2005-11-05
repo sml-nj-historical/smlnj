@@ -32,16 +32,19 @@ signature INTERVAL_SET =
 
     val member : set * item -> bool
 
+  (* return the list of items in the set *)
+    val items : set -> item list
+
   (* return a list of intervals that represents the set *)
-    val list : set -> interval list
+    val intervals : set -> interval list
 
   (* add a single element to the set *)
     val add : set * item -> set
     val add' : item * set -> set
 
   (* add an interval to the set *)
-    val addInterval : set * interval -> set
-    val addInterval' : interval * set -> set
+    val addInt : set * interval -> set
+    val addInt' : interval * set -> set
 
   (* set operations *)
     val complement : set -> set
@@ -49,13 +52,21 @@ signature INTERVAL_SET =
     val intersect : (set * set) -> set
     val difference : (set * set) -> set
 
-  (* iterators *)
-    val app : (interval -> unit) -> set -> unit
-    val foldl : (interval * 'a -> 'a) -> 'a -> set -> 'a
-    val foldr : (interval * 'a -> 'a) -> 'a -> set -> 'a
-    val filter : (interval -> bool) -> set -> set
-    val all : (interval -> bool) -> set -> bool
-    val exists : (interval -> bool) -> set -> bool
+  (* iterators on elements *)
+    val app    : (item -> unit) -> set -> unit
+    val foldl  : (item * 'a -> 'a) -> 'a -> set -> 'a
+    val foldr  : (item * 'a -> 'a) -> 'a -> set -> 'a
+    val filter : (item -> bool) -> set -> set
+    val all    : (item -> bool) -> set -> bool
+    val exists : (item -> bool) -> set -> bool
+
+  (* iterators on intervals *)
+    val appInt    : (interval -> unit) -> set -> unit
+    val foldlInt  : (interval * 'a -> 'a) -> 'a -> set -> 'a
+    val foldrInt  : (interval * 'a -> 'a) -> 'a -> set -> 'a
+    val filterInt : (interval -> bool) -> set -> set
+    val allInt    : (interval -> bool) -> set -> bool
+    val existsInt : (interval -> bool) -> set -> bool
 
   (* ordering on sets *)
     val compare : set * set -> order

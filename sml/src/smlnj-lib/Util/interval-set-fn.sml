@@ -41,7 +41,7 @@ functor IntervalSetFn (D : INTERVAL_DOMAIN) : INTERVAL_SET =
 	    | _ => SET[(a, b)]
 	  (* end case *))
 
-    fun addInterval (SET l, (a, b)) = let
+    fun addInt (SET l, (a, b)) = let
 	  fun ins (a, b, []) = [(a, b)]
 	    | ins (a, b, (x, y)::r) = (case D.compare(b, x)
 		 of LESS => if (D.isSucc(b, x))
@@ -65,7 +65,7 @@ functor IntervalSetFn (D : INTERVAL_DOMAIN) : INTERVAL_SET =
 	      | _ => SET(ins (a, b, l))
 	    (* end case *)
 	  end
-    fun addInterval' (x, m) = addInterval (m, x)
+    fun addInt' (x, m) = addInt (m, x)
 
     fun add (SET l, a) = let
 	  fun ins (a, []) = [(a, a)]
@@ -199,15 +199,102 @@ functor IntervalSetFn (D : INTERVAL_DOMAIN) : INTERVAL_SET =
   (* FIXME: replace the following with a direct implementation *)
     fun difference (s1, s2) = intersect(s1, complement s2)
 
-    fun list (SET l) = l
-
-    fun app f (SET l) = List.app f l
-
-    fun foldl f init (SET l) = List.foldl f init l
-
-    fun foldr f init (SET l) = List.foldl f init l
-
+  (***** iterators on elements *****)
+    local
+      fun next [] = NONE
+	| next ((a, b)::r) =
+	    if D.compare(a, b) = EQUAL
+	      then SOME(a, r)
+	      else SOME(a, (D.succ a, b)::r)
+    in
+    fun items (SET l) = let
+	  fun list (l, items) = (case next l
+		 of NONE => List.rev items
+		  | SOME(x, r) => list(r, x::items)
+		(* end case *))
+	  in
+	    list (l, [])
+	  end
+    fun app f (SET l) = let
+	  fun appf l = (case next l
+		 of NONE => ()
+		  | SOME(x, r) => (f x; appf r)
+		(* end case *))
+	  in
+	    appf l
+	  end
+    fun foldl f = let
+	  fun foldf (l, acc) = (case next l
+		 of NONE => acc
+		  | SOME(x, r) => foldf(r, f(x, acc))
+		(* end case *))
+	  in
+	    fn init => fn (SET l) => foldf(l, init)
+	  end
+    fun foldr f init (SET l) = let
+	  fun foldf l = (case next l
+		 of NONE => init
+		  | SOME(x, r) => f (x, foldf r)
+		(* end case *))
+	  in
+	    foldf l
+	  end
     fun filter pred (SET l) = let
+	(* given an interval [a, b], filter its elements and add the subintervals that pass
+	 * the predicate to the list l.
+	 *)
+	  fun filterInt ((a, b), l) = let
+		fun lp (start, item, last, l) = let
+		      val next = D.succ item
+		      in
+			if pred next
+			  then if (D.compare(next, last) = EQUAL)
+			    then (start, next)::l
+			    else lp(start, next, last, l)
+			  else scan(D.succ next, last, (start, item)::l)
+		      end
+		and scan (next, last, l) = if pred next
+		      then lp (next, next, last, l)
+		      else if (D.compare(next, last) = EQUAL)
+			then l
+			else scan(D.succ next, last, l)
+		in
+		  scan (a, b, l)
+		end
+	(* filter the intervals *)
+	  fun filter' ([], l) = SET(List.rev l)
+	    | filter' (i::r, l) = filter' (r, filterInt (i, l))
+	  in
+	    filter' (l, [])
+	  end
+    fun all pred (SET l) = let
+	  fun all' l = (case next l
+		 of NONE => true
+		  | SOME(x, r) => (pred x andalso all' r)
+		(* end case *))
+	  in
+	    all' l
+	  end
+    fun exists pred (SET l) = let
+	  fun exists' l = (case next l
+		 of NONE => false
+		  | SOME(x, r) => (pred x orelse exists' r)
+		(* end case *))
+	  in
+	    exists' l
+	  end
+    end (* local *)
+
+  (***** Iterators on interfuns *****)
+    fun intervals (SET l) = l
+
+    fun appInt f (SET l) = List.app f l
+
+    fun foldlInt f init (SET l) = List.foldl f init l
+
+    fun foldrInt f init (SET l) = List.foldl f init l
+
+    fun filterInt pred (SET l) = let
 	  fun f' ([], l) = SET(List.rev l)
 	    | f' (i::r, l) = if pred i
 		then f'(r, i::l)
@@ -216,9 +303,9 @@ functor IntervalSetFn (D : INTERVAL_DOMAIN) : INTERVAL_SET =
 	    f' (l, [])
 	  end
 
-    fun exists pred (SET l) = List.exists pred l
+    fun existsInt pred (SET l) = List.exists pred l
 
-    fun all pred (SET l) = List.all pred l
+    fun allInt pred (SET l) = List.all pred l
 
     fun compare (SET l1, SET l2) = let
 	  fun comp ([], []) = EQUAL
