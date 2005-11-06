@@ -220,7 +220,7 @@ functor HTMLElementsFn (
 
     fun startTag file (tag, p1, p2) = let
 	  val ctx = {file=file, line=p1}
-	  val tag' = SS.triml 1 (SS.trimr 1 (SS.all tag))
+	  val tag' = SS.triml 1 (SS.trimr 1 (SS.full tag))
 	  val (name, attrs) = scanStartTag (ctx, tag')
 	  in
 	    case (find name, attrs)
@@ -236,7 +236,7 @@ functor HTMLElementsFn (
 
     fun endTag file (tag, p1, p2) = let
 	  val ctx = {file=file, line=p1}
-	  val name = SS.triml 2 (SS.trimr 1 (SS.all tag))
+	  val name = SS.triml 2 (SS.trimr 1 (SS.full tag))
 	  in
 	    case (find name)
 	     of NONE => (Err.badEndTag ctx (SS.string name); NONE)

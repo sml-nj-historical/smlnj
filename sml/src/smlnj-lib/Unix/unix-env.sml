@@ -20,7 +20,7 @@ structure UnixEnv : UNIX_ENV =
       val split = SS.splitl notEqual
     in
     fun splitBinding s = let
-	  val (a, b) = split(SS.all s)
+	  val (a, b) = split(SS.full s)
 	  in
 	    if SS.isEmpty b
 	      then (s, "")
