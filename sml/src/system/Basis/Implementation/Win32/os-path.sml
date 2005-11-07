@@ -40,7 +40,7 @@ structure OS_Path = OS_PathFn (
       fun validVolume (_,vol) = 
 	  (SS.isEmpty vol) orelse volPresent(SS.string vol)
 
-      val emptySS    = SS.all ""
+      val emptySS    = SS.full ""
 
       fun splitPath (vol, s) = 
 	  if (SS.size s >= 1) andalso (SS.sub(s, 0) = arcSepChar) then
@@ -49,8 +49,8 @@ structure OS_Path = OS_PathFn (
 
       fun splitVolPath "" = (false, emptySS, emptySS)
 	| splitVolPath s = 
-	  if volPresent s then splitPath (SS.splitAt (SS.all s, 2))
-	  else splitPath (emptySS, SS.all s)
+	  if volPresent s then splitPath (SS.splitAt (SS.full s, 2))
+	  else splitPath (emptySS, SS.full s)
 
       fun joinVolPath arg = 
 	  let fun checkVol vol = if (volPresent vol) then vol else raise Path

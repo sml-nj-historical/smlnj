@@ -48,7 +48,7 @@ fun mkFLEX(fields, depth) =
     OPEN{kind=FLEX fields, depth=depth, eq=false}
 
 fun extract_varname_info name =
-    let val name = SS.triml 1 (SS.all name)  (* remove leading "'" *)
+    let val name = SS.triml 1 (SS.full name)  (* remove leading "'" *)
 	val (name, eq) =
 	  if SS.sub(name,0) = #"'"      (* initial "'" signifies equality *) 
           then (SS.triml 1 name,true)

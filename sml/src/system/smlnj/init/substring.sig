@@ -21,7 +21,6 @@ signature SUBSTRING =
     val extract   : (string * int * int option) -> substring
     val substring : (string * int * int) -> substring
     val full      : string -> substring
-    val all       : string -> substring
     val string    : substring -> string
 
     val isEmpty : substring -> bool

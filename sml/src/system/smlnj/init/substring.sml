@@ -63,7 +63,6 @@ structure Substring :> SUBSTRING
 	  end
       | extract (s, i, SOME n) = substring(s, i, n)
     fun full s = SS(s, 0, stringSize s)
-    val all = full 			(* deprecated *)
 
     fun isEmpty (SS(_, _, 0)) = true
       | isEmpty _ = false

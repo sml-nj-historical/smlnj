@@ -52,7 +52,7 @@ functor OS_PathFn (OSPathBase : sig
       | concatArcs ([""], al2) = al2
       | concatArcs (a::al1, al2) = a :: concatArcs(al1, al2)
 
-    fun validVolume {isAbs, vol} = P.validVolume(isAbs, SS.all vol)
+    fun validVolume {isAbs, vol} = P.validVolume(isAbs, SS.full vol)
 
     fun fromString "" = {isAbs = false, vol = "", arcs = []}
       | fromString p = let
@@ -122,7 +122,7 @@ functor OS_PathFn (OSPathBase : sig
     
     fun splitBaseExt p = let
 	  val {dir, file} = splitDirFile p
-	  val (file', ext') = SS.splitr (fn c => c <> #".") (SS.all file)
+	  val (file', ext') = SS.splitr (fn c => c <> #".") (SS.full file)
 	  val fileLen = SS.size file'
 	  val (file, ext) =
 		if (fileLen <= 1) orelse (SS.isEmpty ext')

@@ -24,12 +24,12 @@ structure OS_Path = OS_PathFn (
 
     fun validVolume (_, vol)= Substring.isEmpty vol
 
-    val volSS = Substring.all ""
+    val volSS = Substring.full ""
 
   (* Note: we are guaranteed that this is never called with "" *)
     fun splitVolPath s = if (InlineT.CharVector.sub(s, 0) = #"/")
-	  then (true, volSS, Substring.triml 1 (Substring.all s))
-	  else (false, volSS, Substring.all s)
+	  then (true, volSS, Substring.triml 1 (Substring.full s))
+	  else (false, volSS, Substring.full s)
 
     fun joinVolPath (true, "", "") = "/"
       | joinVolPath (true, "", s) = "/" ^ s

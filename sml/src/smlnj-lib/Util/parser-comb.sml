@@ -55,7 +55,7 @@ structure ParserComb : PARSER_COMB =
 		  | _ => NONE
 		(* end case *))
 	  in
-	    eat (Substring.all s, strm)
+	    eat (Substring.full s, strm)
 	  end
 
     fun skipBefore pred p getc strm = let

@@ -38,7 +38,7 @@ fun makeString charlist = (concat(rev(!charlist)) before charlist := nil)
 
 local
   fun cvt radix (s, i) =
-	#1(valOf(IntInf.scan radix Substring.getc (Substring.triml i (Substring.all s))))
+	#1(valOf(IntInf.scan radix Substring.getc (Substring.triml i (Substring.full s))))
 in
 val atoi = cvt StringCvt.DEC
 val xtoi = cvt StringCvt.HEX

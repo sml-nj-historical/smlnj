@@ -122,7 +122,7 @@ structure Unix : UNIX =
                  PIO.close (#infd p1);
                  PIO.close (#outfd p2); 
                  PIO.close (#infd p2))
-            val base = SS.string(SS.taker (fn c => c <> #"/") (SS.all cmd))
+            val base = SS.string(SS.taker (fn c => c <> #"/") (SS.full cmd))
             fun startChild () =
 		case protect P.fork () of
 		    SOME pid =>  pid           (* parent *)

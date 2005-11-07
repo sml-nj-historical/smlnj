@@ -2,6 +2,10 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2005-11-07]
+	Internal change: replaced uses of the depreciated Substring.all
+	with the Substring.full
+
 [2005-11-05]
 	Tweaking of the interval set API.  Added iterators on items and
 	changed the iterators on intervals to have a "Int" suffix.

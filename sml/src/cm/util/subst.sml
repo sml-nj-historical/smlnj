@@ -43,7 +43,7 @@ end = struct
     fun substitute rules = let
 	val rules =
 	    map (fn { prefix, substitutions } =>
-		    { prefix = SS.all prefix, substitutions = substitutions })
+		    { prefix = SS.full prefix, substitutions = substitutions })
 		rules
 	fun doit s = let
 	    val len = size s
@@ -72,7 +72,7 @@ end = struct
 					 case replace ss of
 					     NONE => finddosubst sl
 					   | SOME r =>
-					     loop (j, j, SS.all r :: acc)
+					     loop (j, j, SS.full r :: acc)
 				     end
 			     in
 				 if j > len then loop (i, len, acc)
@@ -90,7 +90,7 @@ end = struct
     end
 
     fun subfor p r ss =
-	if Substring.compare (Substring.all p, ss) = EQUAL then SOME r
+	if Substring.compare (Substring.full p, ss) = EQUAL then SOME r
 	else NONE
 
     fun submap (plen, stopchar) m ss = let
