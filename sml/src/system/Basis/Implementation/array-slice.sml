@@ -34,7 +34,7 @@ structure ArraySlice : ARRAY_SLICE = struct
     fun update (SL { base, start, stop }, i, x) = let
 	val i' = start + i
     in
-	if i' <= start orelse i' > stop then raise Subscript
+	if i' < start orelse i' >= stop then raise Subscript
 	else uupd (base, i', x)
     end
 

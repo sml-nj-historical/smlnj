@@ -63,7 +63,7 @@ structure XServerAddr : sig
 		  | SOME(n, _) => n
 		(* end case *))
 	  val (hostname, rest) = let
-		val (a, b) = SS.splitl (fn #":" => false | _ => true) (SS.all s)
+		val (a, b) = SS.splitl (fn #":" => false | _ => true) (SS.full s)
 		in
 		  (SS.string a, SS.triml 1 b)
 		end

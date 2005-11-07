@@ -46,7 +46,7 @@ structure XRequest =
       fun putWord32 (buf, i, x) = put32(buf, i, Word.toLargeWord x)
       fun putSigned32 (buf, i, x) = put32(buf, i, LargeWord.fromInt x)
 
-      fun putString (buf, i, s) = Byte.packString(v2a buf, i, Substring.all s)
+      fun putString (buf, i, s) = Byte.packString(v2a buf, i, Substring.full s)
       fun putData (buf, i, bv) = W8A.copyVec{
 	      dst=v2a buf, di=i, src=bv
 	    }

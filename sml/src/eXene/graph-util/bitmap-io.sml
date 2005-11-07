@@ -51,7 +51,7 @@ structure BitmapIO : BITMAP_IO =
 		 of NONE => raise BitmapFileInvalid
 		  | SOME s => s
 		(* end case *))
-          val inputSS = SS.all o inputLine
+          val inputSS = SS.full o inputLine
 	  fun setWid ({wid, ht, x_hot, y_hot}, w) =
 		{wid=SOME w, ht=ht, x_hot=x_hot, y_hot=y_hot}
 	  fun setHt ({wid, ht, x_hot, y_hot}, h) =

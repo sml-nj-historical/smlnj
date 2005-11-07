@@ -130,9 +130,9 @@ structure Attrs : ATTRS =
 
   (* strip leading and trailing whitespace from a string. *)
     fun sstrip s = 
-          SS.dropr Char.isSpace (SS.dropl Char.isSpace (SS.all s))
+          SS.dropr Char.isSpace (SS.dropl Char.isSpace (SS.full s))
     fun strip s = SS.string (sstrip s)
-    fun skipWS s = SS.dropl Char.isSpace (SS.all s)
+    fun skipWS s = SS.dropl Char.isSpace (SS.full s)
 
     fun cvtBool s = (case (strip s)
 	   of ("true"|"yes"|"Yes"|"on"|"On") => true
@@ -141,7 +141,7 @@ structure Attrs : ATTRS =
 	  (* end case *))
 
     fun cvtInt s = let
-	  val s = StringCvt.skipWS SS.getc (SS.all s)
+	  val s = StringCvt.skipWS SS.getc (SS.full s)
 	  val start = if Char.isDigit(SS.sub (s, 0)) then 0 else 1
 	  val rad = if (SS.sub(s, start) = #"0")
 	              then (case SS.sub(s, start+1)

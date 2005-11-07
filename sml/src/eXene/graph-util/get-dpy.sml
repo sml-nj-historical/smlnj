@@ -20,7 +20,7 @@ structure GetDpy : GET_DPY =
   (* parse a string specifying a X display into its components. *)
     fun parseDisplay "" = {host="",dpy="0",screen="0"}
       | parseDisplay d = let
-          val (host,rest) = SS.splitl (fn c => c <> #":") (SS.all d)
+          val (host,rest) = SS.splitl (fn c => c <> #":") (SS.full d)
           val (dpy,scr) = SS.splitl (fn c => c <> #".") rest
           in
             if SS.size dpy < 2 then raise EXB.BadAddr "No display field"

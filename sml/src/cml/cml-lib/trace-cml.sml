@@ -51,7 +51,7 @@ structure TraceCML : TRACE_CML =
     structure SS = Substring
 
     fun findTraceModule name = let
-	  fun eq ss (TM{label, ...}) = (SS.compare(SS.all label, ss) = EQUAL)
+	  fun eq ss (TM{label, ...}) = (SS.compare(SS.full label, ss) = EQUAL)
 	  fun find ([], tm) = SOME tm
 	    | find (arc::rest, tm as TM{label, children, ...}) = let
 		val eqArc = eq arc
@@ -63,7 +63,7 @@ structure TraceCML : TRACE_CML =
 		end
 	  in
 	    find (
-	      SS.tokens (fn #"/" => true | _ => false) (SS.all name),
+	      SS.tokens (fn #"/" => true | _ => false) (SS.full name),
 	      traceRoot)
 	  end
 

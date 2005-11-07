@@ -193,7 +193,7 @@ structure ParseResourceSpecs : sig
 	  fun scan (ss, chunks) = let
 		val (prefix, rest) =
 		      SS.splitl (fn (#"\\" | #"\n") => false | _ => true) ss
-		fun add (c, rest) = scan (rest, (SS.all c)::prefix::chunks)
+		fun add (c, rest) = scan (rest, (SS.full c)::prefix::chunks)
 		in
 		  case (SS.getc rest)
 		   of NONE => (finish(prefix, chunks), false)
@@ -213,7 +213,7 @@ structure ParseResourceSpecs : sig
 		  (* end case *)
 		end
 	  in
-	    scan (SS.triml i (SS.all s), [])
+	    scan (SS.triml i (SS.full s), [])
 	  end
 
   (* decompose a resource specification string into a list

@@ -13,6 +13,18 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2005/11/07 17:05:00 CST
+Tag: blume-20051107-slice
+Description:
+
+Fixed erroneous out-of-bounds test in the "update" function of
+various *ArraySlice modules.  (Thanks to Vesa A. Norrman for pointing
+out the problem.)
+
+Pushed some Basis changes through ML-Lex, CML, and eXene.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2005/11/07
 Description:
