@@ -35,8 +35,8 @@ is
 
 	$smlnj/viscomp/basics.cm
 
-	$/ml-yacc-lib.cm
+	$smlnj/ml-yacc/ml-yacc-lib.cm
 
-	$/smlnj-lib.cm
-	$/controls-lib.cm
-	$/basis.cm
+	$smlnj/smlnj-lib/smlnj-lib.cm
+	$smlnj/smlnj-lib/controls-lib.cm
+	$smlnj/basis/basis.cm

@@ -12,9 +12,6 @@ is
 	$/basis.cm
 	$/smlnj-lib.cm
 	$/controls-lib.cm
-#if defined(UNSHARED_MLRISC)
-#else
-#endif
 #else
 	basis.cm
 #endif

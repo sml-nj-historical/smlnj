@@ -15,6 +15,8 @@ Library
 	library($SMLNJ-MLRISC/Graphs.cm)
 is
 	$SMLNJ-MLRISC/Graphs.cm
-                (bind:(anchor:Control.cm value:$SMLNJ-MLRISC)
-                 bind:(anchor:Lib.cm value:$SMLNJ-MLRISC))
+                (bind:(anchor:basis.cm value:$smlnj/basis)
+		 bind:(anchor:smlnj-lib.cm value:$smlnj/smlnj-lib)
+		 bind:(anchor:Control.cm value:$smlnj/MLRISC)
+                 bind:(anchor:Lib.cm value:$smlnj/MLRISC))
 

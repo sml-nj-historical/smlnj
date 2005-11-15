@@ -32,7 +32,7 @@ Library
 is
 	$smlnj/init/init.cmi : cm
 
-	$/basis.cm
+	$smlnj/basis/basis.cm
 	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/core.cm
 
@@ -92,4 +92,4 @@ is
 
 	(* need access to the Controls module (for registering
 	 * MLRISC controls: *)
-	$/controls-lib.cm
+	$smlnj/smlnj-lib/controls-lib.cm

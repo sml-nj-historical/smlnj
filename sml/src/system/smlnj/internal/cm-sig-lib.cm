@@ -9,7 +9,7 @@ Library
 	signature CM
 	signature CMB
 is
-	$/basis.cm
+	$smlnj/basis/basis.cm
 	$/pgraph.cm
 	cm.sig
 	cmb.sig

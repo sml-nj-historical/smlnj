@@ -98,7 +98,6 @@ trap 'cd "$ROOT"; rm -f $tmpfiles' 0 1 2 3 15
 #
 export CM_PATHCONFIG
 CM_PATHCONFIG=$LIBDIR/pathconfig
-
 #
 # the release version that we are installing
 #

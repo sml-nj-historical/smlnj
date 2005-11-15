@@ -20,5 +20,5 @@ crc.sml
 pickle-util.sml
 unpickle-util.sml
 
-$/basis.cm
-$/smlnj-lib.cm
+$smlnj/basis/basis.cm
+$smlnj/smlnj-lib/smlnj-lib.cm

@@ -142,6 +142,20 @@ end = struct
 	(app (fn f => f ()) (rev (!movlist)); true)
 	handle _ => false
 
+    (* fold a function over the contents of a pathconfig file: *)
+    fun pc_fold g m f =
+	let val s = TextIO.openIn f
+	    fun loop m =
+		case getInputTokens s of
+		    NONE => (TextIO.closeIn s; m)
+		  | SOME [k, v] => loop (g (m, k, v))
+		  | SOME l => (say ("funny line in " :: f :: ":" ::
+				    foldr (fn (x, l) => " " :: x :: l)
+					  ["\n"] l);
+			       loop m)
+	in loop m
+	end handle _ => m	(* in case file does not exist *)
+
     (* build those standalone programs that require libraries
      * and, therefore, must be compiled "late"... *)
     fun dolatesas () =
@@ -152,10 +166,35 @@ end = struct
     fun proc { smlnjroot, installdir, buildcmd, instcmd, unpack } = let
 	val smlnjroot = F.fullPath smlnjroot
 	val installdir = F.fullPath installdir
+        val libdir = P.concat (installdir, "lib")
 	val configdir = P.concat (smlnjroot, "config")
+        val srcdir = P.concat (smlnjroot, "src")
+	val bindir = P.concat (installdir, "bin")
+	val heapdir = P.concat (bindir, ".heap")
+	val cm_pathconfig = P.concat (libdir, "pathconfig")
 
 	(* dependency file: config/dependencies *)
 	val depfile = P.concat (configdir, "dependencies")
+
+	(* where to get additional path configurations *)
+	val extrapathconfig = P.concat (configdir, "extrapathconfig")
+
+	(* add an entry to lib/pathconfig *)
+	fun write_cm_pathconfig (a, p) = let
+	    val s = TextIO.openAppend cm_pathconfig
+	in
+	    TextIO.output (s, concat [a, " ", p, "\n"])
+	    before TextIO.closeOut s
+	end
+
+	(* augment anchor mapping with extra bindings: *)
+	val _ =
+	    pc_fold (fn ((), k, v) =>
+			(#set (CM.Anchor.anchor k)
+			      (SOME (P.concat (libdir, native v)));
+			 write_cm_pathconfig (k, v)))
+		    ()
+	            extrapathconfig
 
 	(* find and open first usable targetsfiles *)
 	val targetsfiles =
@@ -220,40 +259,16 @@ end = struct
 		      if upck (SS.listItems srcmoduleset) then ()
 		      else fail ["unpacking failed\n"]
 
-        val libdir = P.concat (installdir, "lib")
-        val srcdir = P.concat (smlnjroot, "src")
-	val bindir = P.concat (installdir, "bin")
-	val heapdir = P.concat (bindir, ".heap")
-	val cm_pathconfig = P.concat (libdir, "pathconfig")
-
-	(* add an entry to lib/pathconfig *)
-	fun write_cm_pathconfig (a, p) = let
-	    val s = TextIO.openAppend cm_pathconfig
-	in
-	    TextIO.output (s, concat [a, " ", p, "\n"])
-	    before TextIO.closeOut s
-	end
 
 	(* at the end, read lib/pathconfig and eliminate duplicate entries *)
 	fun uniqconfig () = let
-	    fun finish m = let
-		val s = TextIO.openOut cm_pathconfig
-		fun one (key, value) =
-		    TextIO.output (s, concat [key, " ", value, "\n"])
-	    in
-		SM.appi one m; TextIO.closeOut s
-	    end
-	    val s = TextIO.openIn cm_pathconfig
-	    fun loop m =
-		case getInputTokens s of
-		    NONE => (TextIO.closeIn s; finish m)
-		  | SOME [key, value] => loop (SM.insert (m, key, value))
-		  | SOME l => (say ("funny line in " :: cm_pathconfig :: ":" ::
-				    foldr (fn (x, l) => " " :: x :: l)
-					  ["\n"] l);
-			       loop m)
-	in
-	    loop SM.empty
+	    fun swallow (f, m) = pc_fold SM.insert m f
+	    fun finish m =
+		let val s = TextIO.openOut cm_pathconfig
+		    fun one (k, v) = TextIO.output (s, concat [k, " ", v, "\n"])
+		in SM.appi one m; TextIO.closeOut s
+		end
+	in finish (pc_fold SM.insert SM.empty cm_pathconfig)
 	end
 
 	(* register library to be built *)

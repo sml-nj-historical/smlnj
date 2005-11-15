@@ -15,7 +15,6 @@ Library
 	library($SMLNJ-MLRISC/Control.cm)
 is
 	$SMLNJ-MLRISC/Control.cm
-                (bind:(anchor:Control.cm value:$SMLNJ-MLRISC)
-                 bind:(anchor:Lib.cm value:$SMLNJ-MLRISC)
-                 bind:(anchor:MLTREE.cm value:$SMLNJ-MLRISC)
-                 bind:(anchor:MLRISC.cm value:$SMLNJ-MLRISC))
+                (bind:(anchor:basis.cm value:$smlnj/basis)
+		 bind:(anchor:smlnj-lib.cm value:$smlnj/smlnj-lib)
+		 bind:(anchor:controls-lib.cm value:$smlnj/smlnj-lib))

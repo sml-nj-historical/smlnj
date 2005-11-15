@@ -10,25 +10,22 @@
 ########################### BASICS ####################################
 
 # The SML Basis library:
-autoload $/basis.cm
+autoload $smlnj/basis/basis.cm
 
 # The Compilation Manager (structure CM)
 autoload $smlnj/cm.cm
 
 # The "Util" portion of the SML/NJ Library
-autoload $/smlnj-lib.cm
+autoload $smlnj/smlnj-lib/smlnj-lib.cm
 
 
 ##################### ADDITIONAL LIBRARIES ############################
 
 # The "Pretty-Printing" portion of the SML/NJ library
-#autoload $/pp-lib.cm
-
-# The "Regular Expression Matching" portion of the SML/NJ library
-#autoload $/regexp-lib.cm
+#autoload $smlnj/smlnj-lib/pp-lib.cm
 
 # The "Configurable Controls" portion of the SML/NJ library
-#autoload $/controls-lib.cm
+#autoload $smlnj/smlnj-lib/controls-lib.cm
 
 # The "HTML" portion of the SML/NJ library
 #autoload $/html-lib.cm

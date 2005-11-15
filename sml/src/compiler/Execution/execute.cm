@@ -32,4 +32,4 @@ is
 	binfile/binfile.sml
 
 	$smlnj/viscomp/basics.cm
-	$/basis.cm
+	$smlnj/basis/basis.cm

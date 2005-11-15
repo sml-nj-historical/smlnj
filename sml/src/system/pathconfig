@@ -10,12 +10,9 @@ pgraph.cm		../cm/pgraph
 cm			../cm
 compiler		../compiler
 
-basis.cm		../system/Basis
-smlnj-lib.cm		../smlnj-lib/Util
-ml-yacc-lib.cm		../ml-yacc/lib
-pp-lib.cm		../smlnj-lib/PP
-html-lib.cm		../smlnj-lib/HTML
-controls-lib.cm		../smlnj-lib/Controls
+SMLNJ-BASIS		../system/Basis
+SMLNJ-LIB		../smlnj-lib
+SMLNJ-ML-YACC-LIB	../ml-yacc/lib
 smlnj-tdp		../tools/TraceDebugProf
 
 mlyacc-tool.cm		../cm/tools/mlyacc

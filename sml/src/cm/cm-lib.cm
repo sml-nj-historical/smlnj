@@ -17,9 +17,9 @@ Group
 
 	structure StdConfig
 is
-	$/basis.cm
-	$/smlnj-lib.cm
-	$/controls-lib.cm
+	$smlnj/basis/basis.cm
+	$smlnj/smlnj-lib/smlnj-lib.cm
+	$smlnj/smlnj-lib/controls-lib.cm
 
 	(* the CM description file parser *)
 	parse/parse.sml
@@ -119,5 +119,5 @@ is
 	$/pickle-lib.cm
 
 	(* auxiliary libraries *)
-	$/ml-yacc-lib.cm
+	$smlnj/ml-yacc/ml-yacc-lib.cm
 	$/pgraph.cm

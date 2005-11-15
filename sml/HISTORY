@@ -13,6 +13,46 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2005/11/15 16:35:00 CST
+Tag: blume-22051115-libraries
+Description:
+
+This change affects the way the following libraries are tied into
+the system:
+
+   $/basis.cm
+   $/smlnj-lib.cm
+   $/pp-lib.cm
+   $/controls-lib.cm
+   $/html-lib.cm
+   $/ml-yacc-lib.cm
+
+These libraries are now internally (as seen from the source code
+of the implementation itself) known by the following names:
+
+   $smlnj/basis/basis.cm
+   $smlnj/smlnj-lib/smlnj-lib.cm
+   $smlnj/smlnj-lib/pp-lib.cm
+   $smlnj/smlnj-lib/controls-lib.cm
+   $smlnj/smlnj-lib/html-lib.cm
+   $smlnj/ml-yacc/ml-yacc-lib.cm
+
+This makes it possible to work with code that requires different
+versions of these libraries, and which refers to these libraries using
+their "default" names (i.e., the first set of names above).  In other
+words, one can un-define or re-define those default names without
+compromising the proper functioning of the compiler itself.
+
+A similar procedure had already been performed for several of the
+MLRISC libraries that are linked into the compiler.  I did some
+cleanup on this code.
+
+A new file in the config directory (named extrapathconfig) is
+responsible for setting up path anchors that the compiler itself does
+not need, but that are typically required by user code.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2005/11/07 17:05:00 CST
 Tag: blume-20051107-slice

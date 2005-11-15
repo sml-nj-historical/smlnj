@@ -8,7 +8,7 @@
 Library
 	structure X86UnixCMB
 is
-	$/basis.cm
+	$smlnj/basis/basis.cm
 	$smlnj/internal/cm-sig-lib.cm
 	$smlnj/internal/cm-lib.cm
 	$smlnj/compiler/x86.cm

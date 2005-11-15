@@ -8,7 +8,7 @@
 #
 
 # The SML Basis library:
-make $/basis.cm
+make $smlnj/basis/basis.cm
 
 # The Visisble Compiler (collection of structures)
 make $smlnj/compiler.cm

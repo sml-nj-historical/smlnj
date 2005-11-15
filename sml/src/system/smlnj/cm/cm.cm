@@ -20,7 +20,7 @@ is
 	 * to constructing the pickle environment for a library.
 	 * (The rule is that libraries that get mentioned early are
 	 * being favored.) *)
-	$/basis.cm
+	$smlnj/basis/basis.cm
 	$smlnj/internal/srcpath-lib.cm
 
 	(* Here is the actual implementation... *)

@@ -14,18 +14,10 @@ is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
-#if defined(UNSHARED_MLRISC)
-	Control.cm
-	Lib.cm
-	Graphs.cm
-	MLRISC.cm
-#else
 	$/Control.cm
 	$/Lib.cm
 	$/Graphs.cm
 	$/MLRISC.cm
-
-#endif
 #else
 	basis.cm
 	Control.cm

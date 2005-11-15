@@ -9,7 +9,7 @@ Library
 	structure DirTool
 	structure DirToolClassify
 is
-	$/basis.cm
+	$smlnj/basis/basis.cm
 	$smlnj/cm/tools.cm
 	tool.sml
 	classify.sml

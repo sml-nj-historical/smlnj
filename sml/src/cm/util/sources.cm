@@ -48,8 +48,8 @@ is
 	int-map.sml
 	int-set.sml
 
-	$/basis.cm
+	$smlnj/basis/basis.cm
 	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/core.cm
-	$/smlnj-lib.cm
-	$/controls-lib.cm
+	$smlnj/smlnj-lib/smlnj-lib.cm
+	$smlnj/smlnj-lib/controls-lib.cm

@@ -5,16 +5,6 @@ is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
-#if defined(UNSHARED_MLRISC)
-	$/smlnj-lib.cm
-	Control.cm
-	MLRISC.cm
-	RTL.cm
-	SSA.cm
-	Region.cm
-	IA32.cm
-	IA32-RTL.cm
-#else
 	$/smlnj-lib.cm
 	$/Control.cm
 	$/MLRISC.cm
@@ -23,7 +13,6 @@ is
 	$/Region.cm
 	$/IA32.cm
 	$/IA32-RTL.cm
-#endif
 #else
 	basis.cm
 	smlnj-lib.cm

@@ -56,18 +56,8 @@ sub dumpCMfiles()
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	\$/basis.cm
-#if defined(UNSHARED_MLRISC)
 END
-   foreach $f (@CMFILES) 
-   {  if ($SPECIAL_CM{$f})
-      { print OUT "\t\$/$f\n"; 
-      } else
-      { print OUT "\t$f\n"; 
-      } 
-   }
-   print OUT "#else\n";
    foreach $f (@CMFILES) {  print OUT "\t\$/$f\n"; }
-   print OUT "#endif\n";
    print OUT "#else\n";
    print OUT "\tbasis.cm\n";
    foreach $f (@CMFILES) {  print OUT "\t$f\n"; }

@@ -14,7 +14,7 @@ Library
 	structure Tools
 	structure Subst
 is
-	$/basis.cm
+	$smlnj/basis/basis.cm
 	$smlnj/internal/srcpath-lib.cm
 	$smlnj/internal/cm-lib.cm
 	$smlnj/internal/cm0.cm

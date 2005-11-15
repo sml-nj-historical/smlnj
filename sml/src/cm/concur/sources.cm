@@ -17,5 +17,5 @@ Group is
 	dummy-servers.sml
 # endif
 	../util/sources.cm
-	$/basis.cm
+	$smlnj/basis/basis.cm
 	$smlnj/internal/srcpath-lib.cm

@@ -8,6 +8,6 @@
 Library
 	structure ShellTool
 is
-	$/basis.cm
+	$smlnj/basis/basis.cm
 	$smlnj/cm/tools.cm
 	tool.sml
