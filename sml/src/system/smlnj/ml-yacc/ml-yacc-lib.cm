@@ -16,4 +16,9 @@ Library
 	library($SMLNJ-ML-YACC-LIB/ml-yacc-lib.cm)
 is
 	$SMLNJ-ML-YACC-LIB/ml-yacc-lib.cm
-		(bind:(anchor:basis.cm value:$smlnj/basis))
+		(bind:(anchor:basis.cm value:$SMLNJ-BASIS)
+		 bind:(anchor:smlnj-lib.cm value:$SMLNJ-LIB/Util)
+		 bind:(anchor:html-lib.cm value:$SMLNJ-LIB/HTML)
+		 bind:(anchor:pp-lib.cm value:$SMLNJ-LIB/PP)
+		 bind:(anchor:controls-lib.cm value:$SMLNJ-LIB/Controls)
+		 bind:(anchor:ml-yacc-lib.cm value:$SMLNJ-ML-YACC-LIB))
