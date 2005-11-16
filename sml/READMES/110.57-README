@@ -30,6 +30,8 @@ Libraries:
 - Renamed Pack<N>{Big,Little} to their correct names
   PackWord<N>{Big,Little}.
 - Changed hex digits to upper-case as required by the Basis spec.
+- EXene is now maintained by a group of people at K-State:
+  http://www.cis.ksu.edu/~stough/eXene/index.html
 
 Tools:
 ------
