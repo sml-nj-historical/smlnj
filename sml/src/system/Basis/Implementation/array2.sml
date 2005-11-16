@@ -11,6 +11,7 @@ structure Array2 :> ARRAY2 =
     val unsafeSub = InlineT.PolyArray.sub
 
     structure A = Array
+    structure AS = ArraySlice
 
     type 'a array = {
 	data : 'a A.array, nrows : int, ncols : int
@@ -145,8 +146,38 @@ structure Array2 :> ARRAY2 =
 	    {data = data, i = (row*ncols + col), r=row, c=col, nr=nr, nc=nc}
 	  end
 
-    fun copy {src : 'a region, dst, dst_row, dst_col} =
-	  raise Fail "Array2.copy unimplemented"
+    fun copy {src : 'a region, dst: 'a array, dst_row, dst_col} =
+	let val _ = chkRegion src
+	    val { base, row = srow, col = scol,
+		  nrows = snrows, ncols = sncols } = src
+	    val { data = bdata, ncols = bncols, nrows = bnrows } = base
+	    val { data = ddata, ncols = dncols, nrows = dnrows } = dst
+	    val src_nrows = getOpt (snrows, bnrows - srow)
+	    val src_ncols = getOpt (sncols, bncols - scol)
+	    fun dn (i, d, s) =
+		if i > 0 then
+		    ((* we might be better off doing this directly
+		      * instead of calling the ArraySlice module: *)
+		     AS.copy { src = AS.slice (bdata, s, SOME src_ncols),
+			       dst = ddata, di = d };
+		     dn (i-1, d + dncols, s + bncols))
+		else ()
+	    fun up (i, d, s) =
+		if i > 0 then
+		    (AS.copy { src = AS.slice (bdata, s, SOME src_ncols),
+			       dst = ddata, di = d };
+		     up (i-1, d - dncols, s - bncols))
+		else ()
+	in if src_nrows + dst_row > dnrows orelse src_ncols + dst_col > dncols
+	   then raise General.Subscript
+	   else if dst_row <= srow then
+	       dn (src_nrows,
+		   dst_row * dncols + dst_col,
+		   srow * bncols + scol)
+	   else up (src_nrows,
+		    (dst_row + src_nrows - 1) * dncols + dst_col,
+		    (srow + src_nrows - 1) * bncols + scol)
+	end
 
   (* this function generates a stream of indeces for the given region in
    * row-major order.
