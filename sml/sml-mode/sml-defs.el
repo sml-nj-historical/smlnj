@@ -1,6 +1,6 @@
 ;;; sml-defs.el --- Various definitions for sml-mode
 
-;; Copyright (C) 1999,2000,2003  Stefan Monnier <monnier@cs.yale.edu>
+;; Copyright (C) 1999,2000,2003,2005  Stefan Monnier <monnier@cs.yale.edu>
 ;;
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -98,14 +98,14 @@ notion of \"the end of an outline\".")
     ("Format/Mode Variables"
      ["indent region"             indent-region t]
      ["outdent"                   sml-back-to-outer-indent t]
-     ["-" nil nil]
-     ["set indent-level"          sml-indent-level t]
-     ["set pipe-indent"           sml-pipe-indent t]
-     ["--" nil nil]
-     ["toggle type-of-indent"     (sml-type-of-indent) t]
-     ["toggle nested-if-indent"   (sml-nested-if-indent) t]
-     ["toggle case-indent"        (sml-case-indent) t]
-     ["toggle electric-semi-mode" (sml-electric-semi-mode) t])
+     ;; ["-" nil nil]
+     ;; ["set indent-level"          sml-indent-level t]
+     ;; ["set pipe-indent"           sml-pipe-indent t]
+     ;; ["--" nil nil]
+     ;; ["toggle type-of-indent"     sml-type-of-indent t]
+     ;; ["toggle nested-if-indent"   sml-nested-if-indent t]
+     ;; ["toggle electric-semi-mode" sml-electric-semi-mode t]
+     )
     ["-----" nil nil]
     ["SML mode help (brief)"       describe-mode t]
     ["SML mode *info*"             sml-mode-info t]

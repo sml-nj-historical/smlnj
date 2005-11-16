@@ -1,3 +1,10 @@
+2005-11-16  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	* sml-defs.el (sml-mode-menu): Remove left over obsolete entries.
+
+	* sml-proc.el (inferior-sml-mode): Preserve the menu-bar of the
+	compilation minor mode, if any.
+
 2004-11-24  Stefan Monnier  <monnier@iro.umontreal.ca>
 
 	* Release version 4.0.
