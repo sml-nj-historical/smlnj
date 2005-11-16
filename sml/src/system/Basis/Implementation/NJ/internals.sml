@@ -22,7 +22,7 @@ structure Internals : INTERNALS = struct
 
     structure TDP = struct
         type plugin = Core.tdp_plugin
-	type monitor = { name: string, monitor: (unit -> unit) -> unit }
+	type monitor = { name: string, monitor: bool * (unit -> unit) -> unit }
 
 	val active_plugins = Core.tdp_active_plugins
 
@@ -37,9 +37,10 @@ structure Internals : INTERNALS = struct
 
 	val mode = ref false
 
-	fun with_monitors work =
+	fun with_monitors report_final_exn work =
 	    let fun loop [] = work ()
-		  | loop ({ name, monitor } :: ms) = monitor (fn () => loop ms)
+		  | loop ({ name, monitor } :: ms) =
+		      monitor (report_final_exn, fn () => loop ms)
 	    in
 		loop (!active_monitors)
 	    end

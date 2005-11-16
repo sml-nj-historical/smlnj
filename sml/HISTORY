@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2005/11/16 10:25:00 CST
+Tag: blume-22051116-btrace
+Description:
+
+Fixed problem with bogus exception message when using back-trace
+facility.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2005/11/15 22:35:00 CST
 Tag: blume-22051115-array2copy
 Description:

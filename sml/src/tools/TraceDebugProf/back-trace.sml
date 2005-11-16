@@ -184,23 +184,26 @@ end = struct
 
     exception BTraceTriggered of unit -> string list
 
-    fun monitor work =
+    fun monitor0 (report_final_exn, work) =
 	let val restore = save ()
 	    fun last (x, []) = x
 	      | last (_, x :: xs) = last (x, xs)
 	    fun emsg e =
 		case SMLofNJ.exnHistory e of
-		    [] => General.exnMessage e
-		  | (h :: t) =>
-		      concat [last (h, t), ": ", General.exnMessage e]
+		      [] => General.exnMessage e
+		    | (h :: t) =>
+		        concat [last (h, t), ": ", General.exnMessage e]
 	    fun hdl (e, []) =
-		  (Control.Print.say (emsg e ^ "\n\n");
+		  (if report_final_exn then
+		       Control.Print.say (emsg e ^ "\n\n")
+		   else ();
 		   raise e)
 	      | hdl (e, hist) =
 		  (Control.Print.say
 		       (concat ("\n*** BACK-TRACE ***\n" :: hist));
-		   Control.Print.say
-		       (concat ["\n", emsg e, "\n\n"]);
+		   if report_final_exn then
+		       Control.Print.say (concat ["\n", emsg e, "\n\n"])
+		   else ();
 		   raise e)
 	in
 	    work ()
@@ -215,13 +218,15 @@ end = struct
 		   end
 	end
 
+    fun monitor work = monitor0 (true, work)
+
     val name = "btrace"
 
     fun install () =
 	let val plugin = { name = name, save = save,
 			   push = push, nopush = nopush,
 			   enter = enter, register = register }
-	    val monitor = { name = name, monitor = monitor }
+	    val monitor = { name = name, monitor = monitor0 }
 	    fun addto r x = r := x :: !r
 	in
 	    addto SMLofNJ.Internals.TDP.active_plugins plugin;

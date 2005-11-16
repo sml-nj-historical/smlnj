@@ -34,7 +34,7 @@ signature INTERNALS = sig
 			enter: int * int -> unit,
 			register: int * int * int * string -> unit }
 
-	type monitor = { name: string, monitor: (unit -> unit) -> unit }
+	type monitor = { name: string, monitor: bool * (unit -> unit) -> unit }
 
 	val active_plugins : plugin list ref
 	val active_monitors : monitor list ref
@@ -52,6 +52,6 @@ signature INTERNALS = sig
 	(* ref cell controlling instrumentation mode *)
 	val mode : bool ref
 
-	val with_monitors : (unit -> unit) -> unit
+	val with_monitors : bool -> (unit -> unit) -> unit
     end
 end

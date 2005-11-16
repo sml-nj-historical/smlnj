@@ -245,7 +245,7 @@ fun withErrorHandling treatasuser { thunk, flush, cont = k } =
 		  (flush (); k e)
 	      | ExnDuringExecution exn => user_hdl exn
 	      | exn => if treatasuser then user_hdl exn else bug_hdl exn
-    in SMLofNJ.Internals.TDP.with_monitors thunk
+    in SMLofNJ.Internals.TDP.with_monitors false thunk
        handle e => non_bt_hdl e
     end
 
