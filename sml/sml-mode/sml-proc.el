@@ -1,6 +1,6 @@
 ;;; sml-proc.el --- Comint based interaction mode for Standard ML.
 
-;; Copyright (C) 1999,2000,03,04  Stefan Monnier
+;; Copyright (C) 1999, 2000, 2003, 2004, 2005  Stefan Monnier
 ;; Copyright (C) 1994-1997  Matthew J. Morley
 ;; Copyright (C) 1989       Lars Bo Nielsen
 
@@ -369,8 +369,12 @@ TAB file name completion, as in shell-mode, etc.."
 	 sml-error-regexp-alist)
     (compilation-minor-mode 1)
     ;; Eliminate compilation-minor-mode's map.
-    (add-to-list 'minor-mode-overriding-map-alist
-		 (cons 'compilation-minor-mode (make-sparse-keymap)))
+    (let ((map (make-sparse-keymap)))
+      (dolist (keys '([menu-bar] [follow-link]))
+        ;; Preserve some of the bindings.
+        (define-key map keys (lookup-key compilation-minor-mode-map keys)))
+      (add-to-list 'minor-mode-overriding-map-alist
+                   (cons 'compilation-minor-mode map)))
     ;; I'm sure people might kill me for that
     (setq compilation-error-screen-columns nil)
     (make-local-variable 'sml-endof-error-alist))
