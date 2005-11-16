@@ -2,5 +2,5 @@ library
 	structure VersionTool
 is
 	versiontool.sml
-	$smlnj/basis/basis.cm
+	$/basis.cm
 	$smlnj/cm/tools.cm

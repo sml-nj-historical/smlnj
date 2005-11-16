@@ -14,6 +14,25 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2005/11/15 21:35:00 CST
+Tag: blume-22051115-versiontool
+Description:
+
+Reversed change to src/system/smlnj/internals/versiontool.cm.  This
+file gets loaded as a tool -- by the equivalent of CM.make during the
+run of CMB.make.  Thus, CMB's path configuration is meaningless for
+it.  Instead, it has the status of "user code", so it should use
+$/basis.cm to refer to the Basis library.  (At least that's true for
+the purpose of bootstrapping the previous change.  In the future it
+might make sense to have versiontool.cm refer to
+$smlnj/basis/basis.cm, i.e., the version of the Basis that the
+compiler itself uses.)
+
+Also patched src/system/testml to have it activate those extra anchor
+bindings in config/extrapathconfig.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2005/11/15 16:35:00 CST
 Tag: blume-22051115-libraries
 Description:

@@ -19,6 +19,10 @@ heapdir=`dirname $HEAP_IMAGE`
 HEAP_IMAGE=`cd $heapdir; pwd`/$HEAP_IMAGE
 
 LIB_DIR=${HEAP_IMAGE}.lib
+LPC=${LIB_DIR}/local_pathconfig
 
-CM_PATHCONFIG=$LIB_DIR/pathconfig CM_LOCAL_PATHCONFIG=/dev/null \
+rm -f $LPC
+cp ../../config/extrapathconfig $LPC
+
+CM_PATHCONFIG=$LIB_DIR/pathconfig CM_LOCAL_PATHCONFIG=$LPC \
     $bin/sml @SMLload=$HEAP_IMAGE "$@"
