@@ -14,6 +14,18 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2005/11/19 23:35:00 CST
+Tag: blume-20051119-fish
+Description:
+
+Fixed a problem in config/install.sh where it tries to "fish" the
+name of the CM metadata directory from the wrong place (because
+the physical location of basis.cm has changed).  Also, corrected the
+path anchor for $/html-lib.cm.  (Thanks to M. Fluet for pointing out
+these problems.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2005/11/16 14:30:00 CST
 Tag: Release_110_57
 Description:

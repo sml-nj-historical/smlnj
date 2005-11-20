@@ -336,7 +336,7 @@ cd "$SRCDIR"
 #
 if [ -r "$HEAPDIR"/sml.$HEAP_SUFFIX ]; then
     vsay $this: Heap image $HEAPDIR/sml.$HEAP_SUFFIX already exists.
-    fish "$LIBDIR"/basis.cm
+    fish "$LIBDIR"/smlnj/basis
     # ignore requested arc name since we have to live with what is there:
     export CM_DIR_ARC
     CM_DIR_ARC=$ORIG_CM_DIR_ARC
@@ -352,7 +352,7 @@ if [ -r "$HEAPDIR"/sml.$HEAP_SUFFIX ]; then
 else
     "$CONFIGDIR"/unpack "$ROOT" "$BOOT_ARCHIVE"
 
-    fish "$ROOT"/"$BOOT_FILES"/basis.cm
+    fish "$ROOT"/"$BOOT_FILES"/smlnj/basis
 
     cd "$ROOT"
 
