@@ -129,7 +129,7 @@ This assumes that we are `looking-at' the OP."
   (let ((level 1)
 	(forward-sexp-function nil)
 	(either (concat this "\\|" match)))
-    (while (> level 0)
+    (while (and (not (eobp)) (> level 0))
       (forward-sexp 1)
       (while (not (or (eobp) (sml-looking-back-at either)))
 	(condition-case () (forward-sexp 1) (error (forward-char 1))))

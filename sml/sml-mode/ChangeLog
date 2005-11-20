@@ -1,3 +1,8 @@
+2005-11-20  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	* sml-move.el (sml-find-match-forward): Avoid infinite looping if the
+	construct is not properly closed (yet).
+
 2005-11-16  Stefan Monnier  <monnier@iro.umontreal.ca>
 
 	* sml-defs.el (sml-mode-menu): Remove left over obsolete entries.
