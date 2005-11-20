@@ -14,6 +14,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2005/11/19 13:45:00 CST
+Tag: Release_110_57
+Description:
+
+Moved release tag for 110.57.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2005/11/19 23:35:00 CST
 Tag: blume-20051119-fish
 Description:
@@ -27,10 +35,13 @@ these problems.)
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2005/11/16 14:30:00 CST
-Tag: Release_110_57
+Tag: blume-orig-110_57
 Description:
 
 New working version (110.57).  NEW BOOTFILES!
+
+UPDATE: The release tag has been moved to include a fix for a brown-paper-
+        bag glitch (see above).
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
