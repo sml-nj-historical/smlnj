@@ -79,6 +79,13 @@ is
 	 * so we know it is in sync with the rest of the code... *)
 	$smlnj/installer.cm
 
+	(* We add the HTML lib.  It gets compiled anyway (even though
+	 * the compiler does not need it) because of a static dependence
+	 * from a module in pp-lib.cm.  Since the code gets compiled,
+	 * we should arrange for it to show up in a sensible location.
+	 * That's why we mention it here. *)
+	$smlnj/smlnj-lib/html-lib.cm
+
 # if not defined(LIGHT)
 	$smlnj/compiler/all.cm
 # endif

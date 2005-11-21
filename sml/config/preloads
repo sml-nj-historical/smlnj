@@ -28,7 +28,7 @@ autoload $smlnj/smlnj-lib/smlnj-lib.cm
 #autoload $smlnj/smlnj-lib/controls-lib.cm
 
 # The "HTML" portion of the SML/NJ library
-#autoload $/html-lib.cm
+#autoload $smlnj/smlnj-lib/html-lib.cm
 
 
 ################## FOR SML/NJ COMPILER HACKERS ########################

@@ -14,6 +14,21 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2005/11/21 14:00:00 CST
+Tag: blume-20051121-html-lib
+Description:
+
+Enabling $/html-lib.cm in config/preloads did not work.  This is fixed
+now.  (Since the anchor mapping for html-lib.cm is not yet in effect
+at the time when config/preloads is processed, the library has to 
+be referred to by another name.  In 110.57 this would be
+$SMLNJ-LIB/HTML/html-lib.cm.  I arranged for $smlnj/smlnj-lib/html-lib.cm
+to be valid as well.)
+
+Thanks to Todd Wilson (Fresno) for alerting me to this issue.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2005/11/19 13:45:00 CST
 Tag: Release_110_57
 Description:
