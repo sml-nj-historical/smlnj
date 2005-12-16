@@ -90,17 +90,13 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			    val attribs =
 				{ split = s, is_rts = rts, extra_compenv = xe,
 				  explicit_core_sym = ecs, noguid = false }
-			    val i =
-				SmlInfo.info' attribs gp
-					{ sourcepath = p,
-					  group = (specgroup, (pos, newpos)),
-					  sh_spec = Sharing.DONTCARE,
-					  setup = (NONE, NONE),
-					  locl = false,
-					  controllers = [ovldC] }
-			in
-			    SmlInfo.parse_for_errors gp i;
-			    i
+			in SmlInfo.info' attribs gp
+					 { sourcepath = p,
+					   group = (specgroup, (pos, newpos)),
+					   sh_spec = Sharing.DONTCARE,
+					   setup = (NONE, NONE),
+					   locl = false,
+					   controllers = [ovldC] }
 			end
 			fun bogus n = 
 			    DG.SNODE { smlinfo = sml (n, LSC.UseDefault, NONE,

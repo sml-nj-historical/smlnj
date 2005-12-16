@@ -259,7 +259,7 @@ structure CMSemant :> CM_SEMANT = struct
 	end
 	val _ = MC.mkIndex (gp, g, mc)
 	val (exports, rp, isl) =
-	    MC.build (mc, filter, gp, pfsbn ())
+	    MC.build (g, mc, filter, gp, pfsbn ())
 	val subgroups = filt_th_sgl (MC.subgroups mc, isl)
 	val { required = rp', wrapped = wr } = p
     in
@@ -290,7 +290,7 @@ structure CMSemant :> CM_SEMANT = struct
 	end
 	val _ = MC.mkIndex (gp, g, mc)
 	val (exports, rp, isl) =
-	    MC.build (mc, filter, gp, pfsbn ())
+	    MC.build (g, mc, filter, gp, pfsbn ())
 	val subgroups = filt_th_sgl (MC.subgroups mc, isl)
 	val { required = rp', wrapped = wr } = p
     in

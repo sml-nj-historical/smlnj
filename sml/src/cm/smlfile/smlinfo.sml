@@ -65,7 +65,6 @@ signature SMLINFO = sig
     val error : GeneralParams.info -> info -> complainer
 
     val parsetree : GeneralParams.info -> info -> (ast * source) option
-    val parse_for_errors: GeneralParams.info -> info -> unit
     val exports : GeneralParams.info -> info  -> SymbolSet.set option
     val skeleton : GeneralParams.info -> info -> Skeleton.decl option
     val sh_spec : info -> Sharing.request
@@ -347,12 +346,11 @@ structure SmlInfo :> SMLINFO = struct
 
     (* the following functions are only concerned with getting the data,
      * not with checking time stamps *)
-    fun getParseTree gp (i as INFO ir, quiet, noerrors) = let
+    fun getParseTree gp (i as INFO ir, quiet) = let
 	val { sourcepath, persinfo = PERS { parsetree, ... },
 	      controllers, ... } =
 	    ir
-	val err = if noerrors then (fn m => ())
-		  else (fn m => error gp i EM.COMPLAIN m EM.nullErrorBody)
+	fun err m = error gp i EM.COMPLAIN m EM.nullErrorBody
     in
 	case !parsetree of
 	    SOME pt => SOME pt
@@ -360,46 +358,15 @@ structure SmlInfo :> SMLINFO = struct
 		val orig_settings =
 		    map (fn c => #save'restore c ()) controllers
 		fun work stream = let
-		    val _ = if noerrors orelse quiet then ()
+		    val _ = if quiet then ()
 			    else Say.vsay ["[parsing ",
 					   SrcPath.descr sourcepath, "]\n"]
-		    (* The logic is a bit tricky here:
-		     *  If "noerrors" is set we want to suppress error
-		     *  messages from the parser.  This is done using
-		     *  a dummy error consumer that does nothing.  However,
-		     *  if we do that we get a "source" object that has
-		     *  a dummy error consumer hard-wired into it.  As a
-		     *  result we also don't see error messages from the
-		     *  elaborator in this case -- bad.  So we make
-		     *  TWO "source" objects that share the same input
-		     *  stream but used different error consumers. *)
-		    val (source, parse_source) = let
-			val normal_ec = #errcons gp
-			val source =
-			    Source.newSource (SrcPath.osstring' sourcepath,
-					      1, stream, false, normal_ec)
-		    in
-			if noerrors then let
-			    val dummy_ec = { consumer = fn (x: string) => (),
-					    linewidth = #linewidth normal_ec,
-					    flush = fn () => () }
-			    val parse_source =
-				(* clone of "source", mute error consumer *)
-				{ sourceMap = #sourceMap source,
-				  fileOpened = #fileOpened source,
-				  interactive = #interactive source,
-				  sourceStream = #sourceStream source,
-				  anyErrors = #anyErrors source,
-				  errConsumer = dummy_ec }
-			in
-			    (source, parse_source)
-			end
-			else (source, source)
-		    end
-		in
-		    app (fn c => #set c ()) controllers;
-		    (SF.parse parse_source, source)
-		    before app (fn r => r ()) orig_settings
+		    val source =
+			Source.newSource (SrcPath.osstring' sourcepath,
+					  1, stream, false, #errcons gp)
+		in app (fn c => #set c ()) controllers;
+		   (SF.parse source, source)
+		   before app (fn r => r ()) orig_settings
 		end
 		fun openIt () = TextIO.openIn (SrcPath.osstring sourcepath)
 		fun cleanup _ = app (fn r => r ()) orig_settings
@@ -424,7 +391,7 @@ structure SmlInfo :> SMLINFO = struct
 	             | CompileExn.Compile msg => (err msg; NONE)
     end
 
-    fun getSkeleton gp (i as INFO ir, noerrors) = let
+    fun skeleton gp (i as INFO ir) = let
 	val { sourcepath, mkSkelname, persinfo = PERS pir, ... } = ir
 	val { skeleton, lastseen, ... } = pir
     in
@@ -436,37 +403,30 @@ structure SmlInfo :> SMLINFO = struct
 		case SkelIO.read (skelname, !lastseen) of
 		    SOME sk => (skeleton := SOME sk; SOME sk)
 		  | NONE =>
-			(case getParseTree gp (i, false, noerrors) of
+			(case getParseTree gp (i, false) of
 			     SOME (tree, source) => let
 				 fun err sv region s =
 				     EM.error source region sv s
-				              EM.nullErrorBody
+					      EM.nullErrorBody
 				 val { skeleton = sk, complain } =
-				     SkelCvt.convert { tree = tree,
-						       err = err }
-			     in
-				 if noerrors then () else complain ();
-				  if EM.anyErrors (EM.errors source) then
-					 if noerrors then ()
-					 else error gp i EM.COMPLAIN
-					         "error(s) in ML source file"
-						 EM.nullErrorBody
-				  else (SkelIO.write (skelname, sk, !lastseen);
-					skeleton := SOME sk);
-				  SOME sk
+				     SkelCvt.convert { tree = tree, err = err }
+			     in complain ();
+				if EM.anyErrors (EM.errors source) then
+				    error gp i EM.COMPLAIN
+					  "error(s) in ML source file"
+					  EM.nullErrorBody
+				else (SkelIO.write (skelname, sk, !lastseen);
+				      skeleton := SOME sk);
+				SOME sk
 			     end
 			   | NONE => NONE)
 	    end
     end
 
-    fun skeleton0 noerrors gp i = getSkeleton gp (i, noerrors)
- 
     (* we only complain at the time of getting the exports *)
-    fun exports gp i = Option.map SkelExports.exports (skeleton0 false gp i)
-    val skeleton = skeleton0 true
+    fun exports gp i = Option.map SkelExports.exports (skeleton gp i)
 
-    fun parsetree gp i = getParseTree gp (i, true, true)
-    fun parse_for_errors gp i = ignore (getParseTree gp (i, false, false))
+    fun parsetree gp i = getParseTree gp (i, true)
 
     fun descr (INFO { sourcepath, ... }) = SrcPath.descr sourcepath
 

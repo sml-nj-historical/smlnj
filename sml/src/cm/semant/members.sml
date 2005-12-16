@@ -40,7 +40,7 @@ signature MEMBERCOLLECTION = sig
     val sequential : collection * collection * (string -> unit) -> collection
 
     val build :
-	collection * SymbolSet.set * GeneralParams.info *
+	SrcPath.file * collection * SymbolSet.set * GeneralParams.info *
 	DependencyGraph.farsbnode	(* pervasive env *)
 	-> impexp SymbolMap.map * GroupGraph.privileges * SymbolSet.set
 
@@ -163,7 +163,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 			 sources = s_union (#sources c1, #sources c2),
 			 reqpriv = StringSet.union (#reqpriv c1, #reqpriv c2) }
 	end
-      | sequential _ = ERRORCOLLECTION
+      | sequential (ERRORCOLLECTION, _, _) = ERRORCOLLECTION
+      | sequential (_, ERRORCOLLECTION, _) = ERRORCOLLECTION
 
     fun expandOne { gp, rparse, load_plugin } arg = let
 	val { name, mkpath, group, class, tooloptions,
@@ -227,19 +228,19 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		case SmlInfo.exports gp i of
 		    NONE => SS.empty
 		  | SOME ex => (if SS.isEmpty ex then
-				    w0 ("no module exports from " ^
+				    e0 ("no module exports from " ^
 					SrcPath.descr p)
 				else ();
 				ex)
 	    fun addLD (s, m) = SM.insert (m, s, i)
 	    val ld = SS.foldl addLD SM.empty exports
-	in
-	    COLLECTION { imports = SM.empty,
-			 smlfiles = [(i, exports)],
-			 localdefs = ld,
-			 subgroups = [],
-			 sources = SrcPathMap.empty,
-			 reqpriv = StringSet.empty }
+	in if SS.isEmpty exports then ERRORCOLLECTION
+	   else COLLECTION { imports = SM.empty,
+			     smlfiles = [(i, exports)],
+			     localdefs = ld,
+			     subgroups = [],
+			     sources = SrcPathMap.empty,
+			     reqpriv = StringSet.empty }
 	end
 	val collections = map g_coll cmfiles @ map s_coll smlfiles
 	fun combine (c1, c2) = sequential (c2, c1, e0)
@@ -247,10 +248,12 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	foldl combine (empty msources) collections
     end
 
-    fun build (COLLECTION c, filter, gp, perv_fsbnode) =
-	BuildDepend.build (c, filter, gp, perv_fsbnode)
-      | build (ERRORCOLLECTION, _, _, _) =
-	(SM.empty, StringSet.empty, SS.empty)
+    fun build (g, COLLECTION c, filter, gp, perv_fsbnode) =
+	  if GroupReg.anyErrors (#groupreg gp) g then
+	      (SM.empty, StringSet.empty, SS.empty)
+	  else BuildDepend.build (c, filter, gp, perv_fsbnode)
+      | build (_, ERRORCOLLECTION, _, _, _) =
+	  (SM.empty, StringSet.empty, SS.empty)
 
     fun mkIndex (gp, g, COLLECTION c) = Index.mkIndex (gp, g, c)
       | mkIndex _ = ()
