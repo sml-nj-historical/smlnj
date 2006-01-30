@@ -6,6 +6,7 @@
  * usable in both C and assembly files.
  */
 
+#include <stdlib.h>
 #include <stdio.h>
 #include "gen.h"
 

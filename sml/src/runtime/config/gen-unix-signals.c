@@ -7,6 +7,7 @@
 
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "gen.h"
 #include "gen-unix-signals.h"
 
