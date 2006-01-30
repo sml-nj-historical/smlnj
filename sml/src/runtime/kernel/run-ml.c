@@ -4,6 +4,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 
 #include "ml-base.h"
 #include "ml-limits.h"
