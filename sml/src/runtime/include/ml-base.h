@@ -8,7 +8,9 @@
 #define _ML_BASE_
 
 /* macro concatenation (ANSI CPP) */
-#define CONCAT(a,b)	a ## b
+#ifndef CONCAT /* assyntax.h also defines CONCAT */
+#  define CONCAT(a,b)	a ## b
+#endif
 #define CONCAT3(a,b,c)	a ## b ## c
 
 #define ONE_K		1024

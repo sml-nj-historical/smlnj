@@ -274,6 +274,7 @@ extern void SetFSR();
 	  regs[17] = 0;			\
        }
 #    elif defined(OPSYS_MACOS_10_2)
+     /* see /usr/include/mach/ppc/thread_status.h */
 #      define SIG_GetPC(scp)		((scp)->uc_mcontext->ss.srr0)
 #      define SIG_SetPC(scp, addr)	{(scp)->uc_mcontext->ss.srr0 = (int) addr;}
      /* The offset of 17 is hardwired from reverse engineering the contents of
@@ -509,6 +510,17 @@ extern Addr_t *ML_X86Frame;   /* used to get at limitptr */
 #    define SIG_FAULT2		SIGSEGV
 #    define INT_DIVZERO(s, c)	((s) == SIGFPE)
 #    define SIG_ZeroLimitPtr(scp)  { ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+
+#  elif defined(OPSYS_DARWIN)
+    /** x86, Darwin **/
+#    define SIG_FAULT1		SIGFPE
+#    define INT_DIVZERO(s, c)	(((s) == SIGFPE) && ((c) == FPE_FLTDIV))
+#    define INT_OVFLW(s, c)	(((s) == SIGFPE) && ((c) == FPE_FLTOVF))
+    /* see /usr/include/mach/i386/thread_status.h */
+#    define SIG_GetCode(info,scp)	((info)->si_code)
+#    define SIG_GetPC(scp)		((scp)->uc_mcontext->ss.eip)
+#    define SIG_SetPC(scp, addr)	{ (scp)->uc_mcontext->ss.eip = (int) addr; }
+#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
 
 #  else
 #    error "unknown OPSYS for x86"

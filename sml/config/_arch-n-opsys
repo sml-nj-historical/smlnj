@@ -50,16 +50,17 @@ case `uname -s` in
     ARCH=ppc
     ;;
   Darwin)
-    case `uname -r` in
-      5*) OPSYS=darwin5; HEAP_OPSYS=darwin ;; # MacOS X 10.1
-      6*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.2
-      7*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.3
-      8*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.4
-      *) exit 1;;
-    esac
     case `uname -p` in
-      powerpc) ARCH=ppc;;
-      *) exit 1;;
+      powerpc)
+	ARCH=ppc
+	case `uname -r` in
+	  5*) OPSYS=darwin5; HEAP_OPSYS=darwin ;; # MacOS X 10.1
+	  6*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.2
+	  7*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.3
+	  8*) OPSYS=darwin;  HEAP_OPSYS=darwin ;; # MacOS X 10.4
+	*) exit 1;;
+	esac;;
+      i386) ARCH=x86; OPSYS=darwin; HEAP_OPSYS=darwin;; # MacOS X 10.4+
     esac
     ;;
   OSF1)

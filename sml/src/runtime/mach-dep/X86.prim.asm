@@ -15,6 +15,16 @@
 #include "ml-request.h"
 #include "ml-limits.h"
 	
+#if defined(OPSYS_DARWIN)
+/* Note: although the MacOS assembler claims to be the GNU assembler, it appears to be
+ * an old version (1.38), which uses different alignment directives.
+ */
+#undef ALIGNTEXT4
+#undef ALIGNDATA4
+#define ALIGNTEXT4	.align 2
+#define ALIGNDATA4	.align 2
+#endif
+
 /*
  *
  * The 386 registers are used as follows:
@@ -65,6 +75,8 @@
 #define stdlink		REGOFF(72,ESP)
 #define	stdclos		REGOFF(76,ESP)
 
+#define espsave		REGOFF(80,ESP)
+
 #define ML_STATE_OFFSET 176
 #define mlstate_ptr	REGOFF(ML_STATE_OFFSET, ESP)
 #define freg8           184	     /* double word aligned */ 
@@ -84,9 +96,6 @@ request_w:		/* place to put the request code */
 LABEL(CSYM(ML_X86Frame)) /* ptr to the ml frame (gives C access to limitptr) */
 	D_LONG 0		
 
-SavedSP:
-	D_LONG 0		/* Value of stack pointer to restore */
-
 
 #include "mlstate-offsets.h"	/** this file is generated **/
 
@@ -96,25 +105,29 @@ SavedSP:
  *  [true for gcc and dynix3 cc; untested for others]
  *
  * 	Caller save registers: eax, ecx, edx
- * 	Callee save registers: ebx, esi, edi, and ebp. 
+ * 	Callee save registers: ebx, esi, edi, and ebp.
+ *	Save frame pointer (ebx) first to match standard function prelude
  * 	Floating point state is caller-save.
  * 	Arguments passed on stack.  Rightmost argument pushed first.
  * 	Word-sized result returned in %eax.
+ *	On Darwin, stack frame must be multiple of 16 bytes
  */
 
 #define cresult	EAX
 
+#define CALLEE_SAVE_SZB 16	/* ebp, ebx, esi, edi */
+
 #define CALLEE_SAVE	\
+	PUSH_L(EBP);	\
 	PUSH_L(EBX);	\
 	PUSH_L(ESI);	\
-	PUSH_L(EDI);	\
-	PUSH_L(EBP)	
+	PUSH_L(EDI)
 
 #define CALLEE_RESTORE	\
-	POP_L(EBP);	\
 	POP_L(EDI);	\
 	POP_L(ESI);	\
-	POP_L(EBX) 
+	POP_L(EBX);	\
+	POP_L(EBP)
 
 /* MOVE copies one memory location to another, using a specified temporary. */
 
@@ -184,13 +197,13 @@ ML_CODE_HDR(return_a)
 	JMP(CSYM(set_request))
 
 /* Request a fault.  The floating point coprocessor must be reset
- * (thus trashing the FP registers) since we don't know whether a 
+ * (thus trashing the FP registers) since we do not know whether a 
  * value has been pushed into the temporary "register".	 This is OK 
  * because no floating point registers will be live at the start of 
  * the exception handler.
  */
 ENTRY(request_fault)
-	CALL(CSYM(FPEEnable))          /* Doesn't trash any general regs. */
+	CALL(CSYM(FPEEnable))          /* Does not trash any general regs. */
 	MOV_L(CONST(REQ_FAULT), request_w)
 	MOVE(stdlink,temp,pc)
 	JMP(CSYM(set_request))
@@ -248,27 +261,38 @@ ENTRY(set_request)
 	MOV_L(request_w,creturn)
 
 	/* Pop the stack frame and return to run_ml(). */
-	MOV_L(SavedSP, ESP)
+#if defined(OPSYS_DARWIN)
+	LEA_L(REGOFF(ML_FRAME_SIZE+12,ESP),ESP)
+#else
+	MOV_L(espsave, ESP)
+#endif
 	CALLEE_RESTORE
 	RET
 
 	SEG_TEXT
 	ALIGNTEXT4
 ENTRY(restoreregs)
-	MOV_L(4(ESP), temp)		/* Get argument (MLState ptr). */
+	MOV_L(REGOFF(4,ESP), temp)	/* Get argument (MLState ptr). */
 	CALLEE_SAVE
-
-	MOV_L(ESP, SavedSP)		/* save stack pointer */
-
-	/* Align on 8 byte boundary. Assumes that the stack
+#if defined(OPSYS_DARWIN)
+      /* MacOS X frames must be 16-byte aligned.  We have 20 bytes on
+       * the stack for the return PC and callee-saves, so we need a
+       * 12-byte pad.
+       */
+	SUB_L(CONST(ML_FRAME_SIZE+12), ESP)
+#else
+	/* Align sp on 8 byte boundary. Assumes that the stack
 	 * starts out being at least word aligned. But who knows ...
 	 */
+	MOV_L(ESP,EBX)
 	OR_L(CONST(4), ESP)		
 	SUB_L(CONST(4), ESP)		/* stack grows from high to low */
+	SUB_L(CONST(ML_FRAME_SIZE), ESP)
+	MOV_L(EBX,espsave)
+#endif
 	
 #define temp2	EBX
-	/* Allocate and initialize the ML stack frame. */
-	SUB_L(CONST(ML_FRAME_SIZE), ESP)
+      /* Initialize the ML stack frame. */
 	MOVE(REGOFF(ExnPtrOffMSP, temp),  temp2, exncont)
 	MOVE(REGOFF(LimitPtrOffMSP, temp), temp2, limitptr)
 	MOVE(REGOFF(StorePtrOffMSP, temp), temp2, storeptr)
@@ -300,7 +324,7 @@ ENTRY(restoreregs)
 
 #define	tmpreg	misc2
 
-	/* note that we're entering ML */
+	/* note that we are entering ML */
 	MOV_L(REGOFF(VProcOffMSP,temp),temp)  /* temp is now vsp */
 #define vsp	temp
 	MOV_L(CONST(1),REGOFF(InMLOffVSP,vsp))
