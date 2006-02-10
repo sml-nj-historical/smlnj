@@ -75,7 +75,7 @@
 #define stdlink		REGOFF(72,ESP)
 #define	stdclos		REGOFF(76,ESP)
 
-#define espsave		REGOFF(80,ESP)
+#define espsave		REGOFF(500,ESP)
 
 #define ML_STATE_OFFSET 176
 #define mlstate_ptr	REGOFF(ML_STATE_OFFSET, ESP)
