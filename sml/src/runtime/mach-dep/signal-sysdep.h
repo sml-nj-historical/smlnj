@@ -462,25 +462,8 @@ extern Addr_t *ML_X86Frame;   /* used to get at limitptr */
 
      typedef void SigReturn_t;
 
-#  elif defined(OPSYS_NETBSD)
-    /** x86, NetBSD **/
-/* NetBSD (including versions 1.0 and 1.1) generates SIGBUS rather
-   than SIGFPE for overflows.  The real fix is a trivial change to
-   kernel sources, which has already been reported (NetBSD internal
-   problem identification "port-i386/1833"). 
-
-   If you want to fix this on your NetBSD system.  Edit machdep.c in
-   directory /sys/arch/i386/i386, and find the line
-
-        setgate(&idt[  4], &IDTVEC(ofl),     0, SDT_SYS386TGT, SEL_KPL);
-
-   Change SEL_KPL to SEL_UPL.  With SEL_KPL, the int overflow trap is
-   not accessible at user level, and a protection fault occurs instead
-   (thus the seg fault).  SEL_UPL will allow user processes to generate
-   this trap.
-
-   For the change to take effect, recompile your kernel, install it
-   and reboot. */
+#  elif defined(OPSYS_NETBSD2)
+    /** x86, NetBSD (version 2.x) **/
 #    define SIG_FAULT1		SIGFPE
 #    define SIG_FAULT2		SIGBUS
 #    define INT_DIVZERO(s, c)	0
@@ -492,6 +475,18 @@ extern Addr_t *ML_X86Frame;   /* used to get at limitptr */
 #    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
 
      typedef void SigReturn_t;
+
+#  elif defined(OPSYS_NETBSD)
+    /** x86, NetBSD (version 3.x) **/
+#    define SIG_FAULT1		SIGFPE
+#    define SIG_FAULT2		SIGBUS
+#    define INT_DIVZERO(s, c)	0
+#    define INT_OVFLW(s, c)	(((s) == SIGFPE) || ((s) == SIGBUS))
+
+#    define SIG_GetCode(info, scp)	(info)
+#    define SIG_GetPC(scp)		(_UC_MACHINE_PC(scp))
+#    define SIG_SetPC(scp, addr)	{ _UC_MACHINE_SET_PC(scp, ((long) (addr))); }
+#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
 
 #  elif defined(OPSYS_SOLARIS)
      /** x86, Solaris */

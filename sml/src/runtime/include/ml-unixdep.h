@@ -95,7 +95,7 @@
 #define INCLUDE_FCNTL_H		<sys/fcntl.h>
 #endif
 
-#if defined(OPSYS_OSF1) || defined(OPSYS_DUNIX) || defined(OPSYS_AIX) || defined(OPSYS_LINUX) || defined(OPSYS_MKLINUX) || defined(OPSYS_FREEBSD) || defined(OPSYS_NETBSD) || defined(OPSYS_CYGWIN)
+#if defined(OPSYS_OSF1) || defined(OPSYS_DUNIX) || defined(OPSYS_AIX) || defined(OPSYS_LINUX) || defined(OPSYS_MKLINUX) || defined(OPSYS_FREEBSD) || defined(OPSYS_NETBSD) || defined(OPSYS_NETBSD2) || defined(OPSYS_CYGWIN)
 #  define INCLUDE_DIRENT_H	<dirent.h>
 #elif defined(OPSYS_MACH)
 #  define INCLUDE_DIRENT_H	<sys/dir.h>
@@ -306,7 +306,7 @@ extern char     *sys_errlist[];
 /* FreeBSD uses MAP_ANON for MAP_ANONYMOUS */
 #  define MAP_ANONYMOUS MAP_ANON
 
-#elif defined(OPSYS_NETBSD)
+#elif defined(OPSYS_NETBSD2) /* version 2.x */
 #  define OS_NAME	"BSD"
 #  define HAS_POSIX_LIBRARIES
 #  define HAS_BSD_SIGS
@@ -317,6 +317,19 @@ extern char     *sys_errlist[];
 #  define HAS_SCALBN
 #  define HAS_ILOGB
 #  define HAS_SIGCONTEXT
+#  define HAS_STRERROR
+
+#elif defined(OPSYS_NETBSD) /* version 3.x */
+#  define OS_NAME	"BSD"
+#  define HAS_POSIX_LIBRARIES
+#  define HAS_BSD_SIGS
+#  define HAS_GETRUSAGE
+#  define HAS_SETITIMER
+#  define HAS_MMAP
+#  define HAS_SELECT
+#  define HAS_SCALBN
+#  define HAS_ILOGB
+#  define HAS_UCONTEXT
 #  define HAS_STRERROR
 
 #elif (defined(TARGET_X86) && defined(OPSYS_CYGWIN))

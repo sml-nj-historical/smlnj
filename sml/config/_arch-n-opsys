@@ -101,7 +101,11 @@ case `uname -s` in
     esac
     ;;
   NetBSD)
-    OPSYS=netbsd
+    case `uname -r` in
+      2*) OPSYS=netbsd2;;
+      3*) OPSYS=netbsd;;
+      *) exit 1;;
+    esac
     HEAP_OPSYS=bsd
     case `uname -m` in
       *86) ARCH=x86;;

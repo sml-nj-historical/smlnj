@@ -46,7 +46,7 @@
 #    define OPSYS_ID    "darwin"
 #  elif (defined(OPSYS_DUNIX))
 #    define OPSYS_ID	"dunix"
-#  elif (defined(OPSYS_FREEBSD) || defined(OPSYS_NETBSD))
+#  elif (defined(OPSYS_FREEBSD) || defined(OPSYS_NETBSD) || defined(OPSYS_NETBSD2))
 #    define OPSYS_ID	"bsd"
 #  elif (defined(OPSYS_HPUX9))
 #    define OPSYS_ID	"hpux9"
