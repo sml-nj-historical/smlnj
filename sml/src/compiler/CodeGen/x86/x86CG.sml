@@ -22,9 +22,13 @@ structure X86CG =
 	MLRiscControl.mkFlag ("x86-fast-fp",
 			      "whether to use the fast-fp backend (x86)")
 
-    structure CCalls     = 
-      IA32SVID_CCalls (structure T = X86MLTree  fun ix x = x
-                       val fast_floating_point = fast_floating_point)
+    structure CCalls     = IA32SVID_CCalls (
+        structure T = X86MLTree
+        fun ix x = x
+	val fast_floating_point = fast_floating_point
+(* NOTE: the following need to be changed for MacOS X on Intel *)
+	val frameAlign = 4
+	val returnSmallStructsInRegs = false)
 
     structure OmitFramePtr = 
       X86OmitFramePointer(structure I=X86Instr  

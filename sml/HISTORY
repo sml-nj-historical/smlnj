@@ -14,6 +14,13 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2006/02/13
+Tag: jhr-20060213-intel-mac
+Description:
+Changed MLRISC x86 CCalls for partial support of MacOS X ABI.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2006/02/06
 Tag: jhr-20060206-intel-mac
 Description:

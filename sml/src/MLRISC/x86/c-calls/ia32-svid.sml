@@ -29,7 +29,8 @@
  *	  The address of this space is passed to the callee as an
  *	  implicit 0th argument, and on return %eax contains this
  *	  address.  The called function is responsible for removing
- *	  this argument from the stack.
+ *	  this argument from the stack using a "ret $4" instruction.
+ *	  NOTE: the MacOS X ABI returns small structs in %eax/%edx.
  *
  *    Function arguments:
  *	+ Arguments are pushed on the stack right to left.
@@ -51,6 +52,12 @@ functor IA32SVID_CCalls (
    * to the code generator module.
    *)
     val fast_floating_point : bool ref
+  (* alignment requirement for stack frames; should be a power of two
+   * that is at least four.
+   *)
+    val frameAlign : int
+  (* Should small structs/unions be returned in %eax/%edx? *)
+    val returnSmallStructsInRegs : bool
   ) : C_CALLS = struct
 
     structure T  = T
@@ -213,12 +220,16 @@ functor IA32SVID_CCalls (
 		  | Ty.C_STRUCT tys => let
 		      val {sz, align} = sizeOfStruct tys
 		      in
-			(SOME(Reg(wordTy, eax, NONE)), SOME{szb=sz, align=align}, 4)
+		        if (sz > 8) orelse (not returnSmallStructsInRegs)
+		          then (SOME(Reg(wordTy, eax, NONE)), SOME{szb=sz, align=align}, 4)
+		          else raise Fail "small struct return not implemented yet"
 		      end
 		  | Ty.C_UNION tys => let
 		      val {sz, align} = sizeOfUnion tys
 		      in
-			(SOME(Reg(wordTy, eax, NONE)), SOME{szb=sz, align=align}, 4)
+		        if (sz > 8) orelse (not returnSmallStructsInRegs)
+		          then (SOME(Reg(wordTy, eax, NONE)), SOME{szb=sz, align=align}, 4)
+		          else raise Fail "small union return not implemented yet"
 		      end
 		(* end case *))
 	  fun assign ([], offset, locs) = (List.rev locs, align4 offset)
@@ -260,8 +271,9 @@ functor IA32SVID_CCalls (
 		  (* end case *)
 		end
 	  val (argLocs, argSz) = assign (paramTys, argOffset, [])
+	  val argMem = {szb = alignAddr (argSz, frameAlign), align = frameAlign}
 	  in {
-	    argLocs = argLocs, argMem = {szb = argSz, align = 4},
+	    argLocs = argLocs, argMem = argMem,
 	    resLoc = resLoc, structRetLoc = structRetLoc
 	  } end
 
@@ -354,7 +366,7 @@ functor IA32SVID_CCalls (
 					  val tmp = C.newReg()
 					  val stms =
 						T.STORE(ty, offSP offset, T.REG(ty, tmp), stack)
-						  :: T.MV(ty, tmp, T.LOAD (ty, addr(offset - baseOffset), mem))
+						  :: T.MV(ty, tmp, T.LOAD(ty, addr(offset - baseOffset), mem))
 						  :: stms
 					  in
 					    copy (locs, stms)
@@ -382,7 +394,7 @@ functor IA32SVID_CCalls (
 		in
 		  f (args, argLocs, [])
 		end
-	(* the SVID specifies that the caller pops arguments, but a the callee
+	(* the SVID specifies that the caller pops arguments, but the callee
 	 * pops the arguments in a stdcall on Windows.  I'm not sure what other
 	 * differences there might be between the SVID and Windows ABIs. (JHR)
 	 *)
