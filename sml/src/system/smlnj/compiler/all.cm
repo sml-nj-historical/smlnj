@@ -72,6 +72,9 @@ Library
 	structure X86StdCallBackend
 	structure X86CCallBackend
 (*
+	structure X86IntelMacBackend
+*)
+(*
 	structure MipsLittleBackend
 	structure MipsBigBackend
 	structure RS6000Backend
@@ -85,6 +88,9 @@ Library
 	structure SparcUnixCMB
 	structure X86UnixCMB
 	structure X86Win32CMB
+(*
+	structure X86IntelMacCMB
+*)
 (*
 	structure MipsLittleUnixCMB
 	structure MipsBigUnixCMB
@@ -105,3 +111,6 @@ is
 	$smlnj/cmb/sparc-unix.cm
 	$smlnj/cmb/x86-unix.cm
 	$smlnj/cmb/x86-win32.cm
+(*
+	$smlnj/cmb/x86-intelmac.cm
+*)

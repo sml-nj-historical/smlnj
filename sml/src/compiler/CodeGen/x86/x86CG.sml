@@ -1,7 +1,15 @@
 (*
  * X86 specific backend.  This one uses the new RA8 scheme.
  *)
-structure X86CG = 
+local
+    val fast_floating_point =
+	MLRiscControl.mkFlag ("x86-fast-fp",
+			      "whether to use the fast-fp backend (x86)")
+in
+functor X86CG (structure CCallParams: sig val frameAlign : int
+					  val returnSmallStructsInRegs : bool
+				      end
+               val abi_variant: string option) =
   MachineGen
   ( structure I          = X86Instr
     structure C          = I.C
@@ -10,6 +18,7 @@ structure X86CG =
     structure CG         = Control.CG
 
     structure MachSpec   = X86Spec
+    val abi_variant      = abi_variant
     structure ClientPseudoOps = X86ClientPseudoOps
     structure PseudoOps  = X86PseudoOps
     structure Ext        = X86_SMLNJMLTreeExt(* x86-specific *)
@@ -18,17 +27,15 @@ structure X86CG =
     structure Asm        = X86AsmEmitter
     structure Shuffle    = X86Shuffle
 
-    val fast_floating_point =
-	MLRiscControl.mkFlag ("x86-fast-fp",
-			      "whether to use the fast-fp backend (x86)")
+    val fast_floating_point = fast_floating_point
 
     structure CCalls     = IA32SVID_CCalls (
         structure T = X86MLTree
         fun ix x = x
 	val fast_floating_point = fast_floating_point
 (* NOTE: the following need to be changed for MacOS X on Intel *)
-	val frameAlign = 4
-	val returnSmallStructsInRegs = false)
+	val frameAlign = CCallParams.frameAlign
+	val returnSmallStructsInRegs = CCallParams.returnSmallStructsInRegs)
 
     structure OmitFramePtr = 
       X86OmitFramePointer(structure I=X86Instr  
@@ -197,5 +204,5 @@ structure X86CG =
           val fastPhases  = [SPILL_PROPAGATION,SPILL_COLORING]
       end
     ) (* X86RA *)
-  ) 
-
+  ) (* X86CG *)
+end

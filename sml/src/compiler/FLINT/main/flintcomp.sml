@@ -23,6 +23,7 @@ in
 
 structure Machine = Gen
 val architecture = Gen.MachSpec.architecture
+val abi_variant = Gen.abi_variant
 fun bug s = ErrorMsg.impossible ("FLINTComp:" ^ s)
 val say = Control_Print.say
 	  

@@ -8,4 +8,5 @@ signature BACKEND = sig
     structure Interact : INTERACT
     structure Machine : MACHINE
     val architecture: string
+    val abi_variant: string option
 end

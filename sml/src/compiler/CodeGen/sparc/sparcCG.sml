@@ -4,6 +4,7 @@
 structure SparcCG = 
   MachineGen
   ( structure MachSpec   = SparcSpec
+    val abi_variant      = NONE
     structure T          = SparcMLTree
     structure CB	 = CellsBasis
     structure ClientPseudoOps = SparcClientPseudoOps

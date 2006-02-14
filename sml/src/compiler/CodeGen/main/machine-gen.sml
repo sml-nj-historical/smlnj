@@ -32,6 +32,8 @@ functor MachineGen
 		      where T = CpsRegs.T
    structure OmitFramePtr : OMIT_FRAME_POINTER 
 		      where CFG=RA.CFG
+
+   val abi_variant : string option
   ) : MACHINE_GEN =
 struct
 
@@ -45,6 +47,7 @@ struct
    structure Asm        = Asm
    structure Shuffle    = Shuffle
    structure MachSpec   = MachSpec
+   val abi_variant      = abi_variant
    structure MLTreeComp = MLTreeComp
 
 

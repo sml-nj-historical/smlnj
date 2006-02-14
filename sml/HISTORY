@@ -13,6 +13,17 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/02/14 17:30:00 CST
+Tag: blume-20060214-intel-mac
+Description:
+
+Hooked code for Darwin-specific Intel ABI into main compiler.
+(This is a temporary solution which relies on the fact that the
+compiler itself does not use NLFFI.  Eventually we need to divorce
+intel mac from generic x86 unix code and make separate sets of binaries.)
+
+----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2006/02/13
 Tag: jhr-20060213-intel-mac

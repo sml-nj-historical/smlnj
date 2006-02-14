@@ -46,9 +46,20 @@ is
 #   if defined(OPSYS_WIN32)
 	$smlnj/cmb/x86-win32.cm
 	select-x86-win32.sml
-#   else
+#   elif defined(OPSYS_UNIX)
+(*
+#     if defined(ABI_Darwin)
+        $smlnj/cmb/x86-intelmac.cm
+	select-x86-intelmac.sml
+#     else
+*)
 	$smlnj/cmb/x86-unix.cm
 	select-x86-unix.sml
+(*
+#     endif
+*)
+#   else
+#     error Unknown OS kind under x86!
 #   endif
 # else
 #   error Strange architecture and/or OS!

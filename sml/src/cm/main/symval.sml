@@ -17,7 +17,8 @@ signature SYMVAL = sig
 		    big: bool,
 		    size: int,
 		    os: SMLofNJ.SysInfo.os_kind,
-		    version: int list }
+		    version: int list,
+		    extra_syms: string list }
 	-> env
 end
 
@@ -34,7 +35,7 @@ structure SymVal :> SYMVAL = struct
 	 handle LibBase.NotFound => e)
       | define (e, s, SOME v) = StringMap.insert (e, s, v)
 
-    fun default { arch, big, size, os, version } = let
+    fun default { arch, big, size, os, version, extra_syms } = let
 	val arch_sym = "ARCH_" ^ arch
 	val endian_sym = if big then "BIG_ENDIAN" else "LITTLE_ENDIAN"
 	val size_sym = "SIZE_" ^ Int.toString size
@@ -52,13 +53,16 @@ structure SymVal :> SYMVAL = struct
 	val major_sym = "SMLNJ_VERSION"
 	val minor_sym = "SMLNJ_MINOR_VERSION"
 
-	val alldefs = [(arch_sym, 1),
-		       (endian_sym, 1),
-		       (size_sym, 1),
-		       (os_sym, 1),
-		       (major_sym, major),
-		       (minor_sym, minor),
-		       ("NEW_CM", 1)]
+	val alldefs =
+	    foldr (fn (s, l) => (s, 1) :: l)
+		  [(arch_sym, 1),
+		   (endian_sym, 1),
+		   (size_sym, 1),
+		   (os_sym, 1),
+		   (major_sym, major),
+		   (minor_sym, minor),
+		   ("NEW_CM", 1)]
+		  extra_syms
     in
 	foldl StringMap.insert' empty alldefs
     end

@@ -4,6 +4,7 @@
 structure PPCCG = 
   MachineGen
   ( structure MachSpec   = PPCSpec
+    val abi_variant      = NONE
     structure T		 = PPCMLTree
     structure CB	 = CellsBasis
     structure ClientPseudoOps = PPCClientPseudoOps

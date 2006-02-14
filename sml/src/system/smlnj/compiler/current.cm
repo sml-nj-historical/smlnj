@@ -123,7 +123,15 @@ is
 # elif defined(ARCH_X86)
 	$smlnj/compiler/x86.cm
 #   if defined(OPSYS_UNIX)
+(*
+#     if defined(ABI_Darwin)
+        x86-intelmac.sml
+#     else
+*)
 	x86-ccall.sml
+(*
+#     endif
+*)
 #   elif defined(OPSYS_WIN32)
 	x86-stdcall.sml
 #   else

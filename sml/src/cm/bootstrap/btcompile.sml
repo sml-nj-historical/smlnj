@@ -20,7 +20,8 @@ functor BootstrapCompileFn
 	     val load_plugin : SrcPath.dir -> string -> bool) =
 struct
     structure SSV = SpecificSymValFn (val arch = Backend.architecture
-				      val os = os)
+				      val os = os
+				      val abi_variant = Backend.abi_variant)
     structure P = OS.Path
     structure F = OS.FileSys
     structure BF = Binfile

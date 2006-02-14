@@ -6,6 +6,7 @@ structure Alpha32CG =
   ( structure I          = Alpha32Instr
     structure T          = Alpha32MLTree
     structure MachSpec   = Alpha32Spec
+    val abi_variant      = NONE
     structure ClientPseudoOps = Alpha32ClientPseudoOps
     structure PseudoOps  = Alpha32PseudoOps
     structure Ext        = SMLNJMLTreeExt(* generic extension *)

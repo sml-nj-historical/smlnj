@@ -6,7 +6,8 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 functor SpecificSymValFn (val arch: string
-			  val os: SMLofNJ.SysInfo.os_kind) =
+			  val os: SMLofNJ.SysInfo.os_kind
+			  val abi_variant: string option) =
     struct
 	local
 	    val (arch, big, size) =
@@ -21,9 +22,14 @@ functor SpecificSymValFn (val arch: string
 		  | "ppc" => ("PPC", true, 32)
 		  | arch => ErrorMsg.impossible
 				("unknown architecture: " ^ arch)
+	    val extra_syms =
+		case abi_variant of
+		    NONE => []
+		  | SOME s => ["ABI_" ^ s]
 	    val env0 = SymVal.default
 			   { arch = arch, big = big, size = size, os = os,
-			     version = #version_id SMLNJVersion.version }
+			     version = #version_id SMLNJVersion.version,
+			     extra_syms = extra_syms }
 	    val er = ref env0
 	in
 	    fun symval s = let

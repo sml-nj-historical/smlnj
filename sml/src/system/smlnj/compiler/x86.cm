@@ -94,6 +94,9 @@ Library
 	(* the x86 backend(s) *)
 	structure X86StdCallBackend
 	structure X86CCallBackend
+(*
+	structure X86IntelMacBackend
+*)
 is
 	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/parser.cm

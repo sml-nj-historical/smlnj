@@ -4,6 +4,7 @@
 structure HppaCG = 
   MachineGen
   ( structure MachSpec   = HppaSpec
+    val abi_variant      = NONE
     structure T          = HppaMLTree
     structure CB         = CellsBasis
     structure ClientPseudoOps = HppaClientPseudoOps

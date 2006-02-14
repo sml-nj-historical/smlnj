@@ -29,7 +29,8 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 
       structure SSV =
 	  SpecificSymValFn (val arch = HostBackend.architecture
-			    val os = os)
+			    val os = os
+			    val abi_variant = HostBackend.abi_variant)
 
       val system_values =
 	  ref (SrcPathMap.empty: E.dynenv IntMap.map SrcPathMap.map)

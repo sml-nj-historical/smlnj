@@ -12,6 +12,11 @@ signature MACHINE_GEN = sig
   structure Shuffle    : SHUFFLE 
 		where I = MLTreeComp.I
   structure MachSpec   : MACH_SPEC
+  val abi_variant : string option (* to distinguish between different ABIs
+				   * for same CPU/OSKind combination;
+				   * prime example: intel-based macs which
+				   * are x86/unix vs. intel-based linux
+				   * boxen. *)
 
   val codegen : { funcs: CPS.function list,
 		  limits: CPS.lvar -> int * int,

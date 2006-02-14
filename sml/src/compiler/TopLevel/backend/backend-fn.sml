@@ -85,4 +85,5 @@ functor BackendFn (structure M : CODEGENERATOR
 		   val pervasive = EnvRef.pervasive)
     structure Machine = M.Machine
     val architecture = M.architecture
+    val abi_variant = M.abi_variant
 end
