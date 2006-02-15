@@ -169,7 +169,7 @@ PVT char *fesetround (char *rm)
 }
 #define RMODE_EQ(RM1, RM2)	(strcmp((RM1), (RM2)) == 0)
 
-#elif defined(OPSYS_DARWIN) && defined(ARCH_PPC)
+#elif defined(OPSYS_DARWIN) && defined(TARGET_PPC)
 #   include <architecture/ppc/fp_regs.h>
 #   define FE_TONEAREST RN_NEAREST
 #   define FE_UPWARD RN_TOWARD_PLUS
