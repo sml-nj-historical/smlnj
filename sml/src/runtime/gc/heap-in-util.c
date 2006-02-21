@@ -11,6 +11,7 @@
 #include "ml-heap-image.h"
 #include "c-globals-tbl.h"
 #include "heap-input.h"
+#include <string.h>
 
 #ifndef SEEK_SET
 #  define SEEK_SET	0

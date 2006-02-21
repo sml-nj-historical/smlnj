@@ -13,6 +13,7 @@
 #include "ml-objects.h"
 #include "ml-limits.h"
 #include "ml-mp.h"
+#include <string.h>
 
 /* A macro to check for necessary GC; on MP systems, this needs to be
  * a loop, since other processors may steal the memory before the

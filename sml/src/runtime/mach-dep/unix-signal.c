@@ -73,10 +73,10 @@ void SetSignalState (vproc_state_t *vsp, int sigNum, int sigState)
 	if (IS_SYSTEM_SIG(sigNum)) {
 	    switch (sigState) {
 	      case ML_SIG_IGNORE:
-		SIG_SetHandler (sigNum, SIG_IGN);
+		SIG_SetIgnore (sigNum);
 		break;
 	      case ML_SIG_DEFAULT:
-		SIG_SetHandler (sigNum, SIG_DFL);
+		SIG_SetDefault (sigNum);
 		break;
 	      case ML_SIG_ENABLED:
 		SIG_SetHandler (sigNum, CSigHandler);
@@ -87,7 +87,6 @@ void SetSignalState (vproc_state_t *vsp, int sigNum, int sigState)
 	    } /* end switch */
 	}
 	else Die ("SetSignalState: unknown signal %d\n", sigNum);
-	    
     } /* end of switch */
 
 } /* end of SetSignalState */
@@ -121,11 +120,43 @@ int GetSignalState (vproc_state_t *vsp, int sigNum)
  *
  * The C signal handler for signals that are to be passed to the ML handler.
  */
+#if defined(HAS_POSIX_SIGS) && defined(HAS_UCONTEXT)
+
+PVT SigReturn_t CSigHandler (int sig, siginfo_t *si, void *c)
+{
+    ucontext_t	    *scp = (ucontext_t *)c;
+    vproc_state_t   *vsp = SELF_VPROC;
+
+    vsp->vp_sigCounts[sig].nReceived++;
+    vsp->vp_totalSigCount.nReceived++;
+
+#ifdef SIGNAL_DEBUG
+SayDebug ("CSigHandler: sig = %d, pending = %d, inHandler = %d\n",
+sig, vsp->vp_handlerPending, vsp->vp_inSigHandler);
+#endif
+
+    /* The following line is needed only when currently executing
+     * "pure" C code.  But doing it anyway in all other cases will
+     * not hurt... */
+    vsp->vp_limitPtrMask = 0;
+
+    if (vsp->vp_inMLFlag && (! vsp->vp_handlerPending) && (! vsp->vp_inSigHandler)) {
+	vsp->vp_handlerPending = TRUE;
+#ifdef USE_ZERO_LIMIT_PTR_FN
+	SIG_SavePC(vsp->vp_state, scp);
+	SIG_SetPC(scp, ZeroLimitPtr);
+#else /* we can adjust the heap limit directly */
+	SIG_ZeroLimitPtr(scp);
+#endif
+    }
+
+} /* end of CSigHandler */
+
+#else
+
 PVT SigReturn_t CSigHandler (
     int		    sig,
-#if (defined(TARGET_X86) && defined(OPSYS_LINUX))
-    SigContext_t    sc)
-#elif (defined(TARGET_PPC) && defined(OPSYS_LINUX))
+#if (defined(TARGET_PPC) && defined(OPSYS_LINUX))
     SigContext_t    *scp)
 #else
     SigInfo_t	    info,
@@ -161,6 +192,8 @@ sig, vsp->vp_handlerPending, vsp->vp_inSigHandler);
     }
 
 } /* end of CSigHandler */
+
+#endif
 
 
 /* SetSignalMask:

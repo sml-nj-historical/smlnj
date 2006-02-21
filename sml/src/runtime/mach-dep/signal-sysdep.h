@@ -76,25 +76,46 @@ typedef void SigReturn_t;
 typedef siginfo_t *SigInfo_t;
 typedef ucontext_t SigContext_t;
 
-#define SIG_Flags		SA_SIGINFO
-
 #elif defined(HAS_SIGCONTEXT)
 
 typedef int SigInfo_t;
 typedef struct sigcontext SigContext_t;
-#  define SIG_Flags		0
 #endif
 
 
 #if defined(HAS_POSIX_SIGS)
 /** POSIX signals **/
-#define SIG_SetHandler(sig, h)	{       		\
-	struct sigaction __svec;        		\
-	sigfillset(&(__svec.sa_mask));  		\
-	__svec.sa_flags = SIG_Flags;			\
-	__svec.sa_handler = (h);        		\
-	sigaction ((sig), &__svec, 0);  		\
-    }
+#  if defined(HAS_UCONTEXT)
+#    define SIG_SetHandler(sig, h)	{       		\
+	    struct sigaction __svec;        			\
+	    sigfillset(&(__svec.sa_mask));  			\
+	    __svec.sa_flags = SA_SIGINFO;			\
+	    __svec.sa_sigaction = (h);        			\
+	    sigaction ((sig), &__svec, 0);  			\
+	}
+#    define SIG_SetIgnore(sig)		{			\
+	    struct sigaction __svec;        			\
+	    __svec.sa_flags = 0;				\
+	    __svec.sa_handler = SIG_DFL;        		\
+	    sigaction ((sig), &__svec, 0);  			\
+	}
+#    define SIG_SetDefault(sig)		{			\
+	    struct sigaction __svec;        			\
+	    __svec.sa_flags = 0;				\
+	    __svec.sa_handler = SIG_IGN;        		\
+	    sigaction ((sig), &__svec, 0);  			\
+	}
+#  else
+#    define SIG_SetHandler(sig, h)	{       		\
+	    struct sigaction __svec;        			\
+	    sigfillset(&(__svec.sa_mask));  			\
+	    __svec.sa_flags = SIG_Flags;			\
+	    __svec.sa_sighandler = (h);        			\
+	    sigaction ((sig), &__svec, 0);  			\
+	}
+#    define SIG_SetIgnore(sig)	SIG_SetHandler(sig, SIG_IGN)
+#    define SIG_SetDefault(sig)	SIG_SetHandler(sig, SIG_DFL)
+#endif
 #define SIG_GetHandler(sig, h)  {				\
 	struct sigaction __svec;				\
 	sigaction ((sig), NIL(struct sigaction *), &__svec);	\
@@ -399,42 +420,13 @@ extern void SetFSR();
 
 #  define LIMITPTR_X86OFFSET	3	/* offset (words) of limitptr in ML stack */
 					/* frame (see X86.prim.asm) */
-extern Addr_t *ML_X86Frame;   /* used to get at limitptr */
+extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
 #  define SIG_InitFPE()    FPEEnable()
 
 #  if (defined(TARGET_X86) && defined(OPSYS_LINUX))
     /** X86, LINUX **/
-#    if (!defined(_SIGCONTEXT_H) && !defined(sigcontext_struct))
-      /* older versions of Linux don't define this in <signal.h> */
-	struct sigcontext {
-	    unsigned short gs, __gsh;
-	    unsigned short fs, __fsh;
-	    unsigned short es, __esh;
-	    unsigned short ds, __dsh;
-	    unsigned long edi;
-	    unsigned long esi;
-	    unsigned long ebp;
-	    unsigned long esp;
-	    unsigned long ebx;
-	    unsigned long edx;
-	    unsigned long ecx;
-	    unsigned long eax;
-	    unsigned long trapno;
-	    unsigned long err;
-	    unsigned long eip;
-	    unsigned short cs, __csh;
-	    unsigned long eflags;
-	    unsigned long esp_at_signal;
-	    unsigned short ss, __ssh;
-	    unsigned long i387;
-	    unsigned long oldmask;
-	    unsigned long cr2;
-	};
-#    endif
-
-#define INTO_OPCODE		0xce	/* the 'into' instruction is a single */
+#    define INTO_OPCODE		0xce	/* the 'into' instruction is a single */
 					/* instruction that signals Overflow */
-
 
 #    define SIG_FAULT1		SIGFPE
 #    define SIG_FAULT2		SIGSEGV
@@ -442,12 +434,11 @@ extern Addr_t *ML_X86Frame;   /* used to get at limitptr */
 #    define INT_OVFLW(s, c)	\
 	(((s) == SIGSEGV) && (((Byte_t *)c)[-1] == INTO_OPCODE))
 
-#    define SIG_GetCode(info,scp)	((scp)->eip)
+#    define SIG_GetCode(info,scp)	((scp)->uc_mcontext.gregs[REG_EIP])
 /* for linux, SIG_GetCode simply returns the address of the fault */
-#    define SIG_GetPC(scp)		((scp)->eip)
-#    define SIG_SetPC(scp,addr)		{ (scp)->eip = (long)(addr); }
+#    define SIG_GetPC(scp)		((scp)->uc_mcontext.gregs[REG_EIP])
+#    define SIG_SetPC(scp,addr)		{ (scp)->uc_mcontext.gregs[REG_EIP] = (long)(addr); }
 #    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
-     typedef void SigReturn_t;
 
 #  elif defined(OPSYS_FREEBSD)
     /** x86, FreeBSD **/

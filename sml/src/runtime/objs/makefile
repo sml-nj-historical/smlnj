@@ -355,37 +355,37 @@ FORCE:
 #
 gen-sizes:	$(CONFIG_DIR)/gen-sizes.c gen-common.o $(CONFIG_DIR)/gen.h \
 		$(INC_DIR)/ml-base.h
-	$(CC) $(DEFS) $(GEN_INCLUDES) -o gen-sizes $(CONFIG_DIR)/gen-sizes.c gen-common.o
+	$(CC) $(CFLAGS) $(DEFS) $(GEN_INCLUDES) -o gen-sizes $(CONFIG_DIR)/gen-sizes.c gen-common.o
 
 gen-regmask:	$(CONFIG_DIR)/gen-regmask.c gen-common.o $(CONFIG_DIR)/gen.h
-	$(CC) $(DEFS) $(GEN_INCLUDES) -o gen-regmask $(CONFIG_DIR)/gen-regmask.c gen-common.o
+	$(CC) $(CFLAGS) $(DEFS) $(GEN_INCLUDES) -o gen-regmask $(CONFIG_DIR)/gen-regmask.c gen-common.o
 
 gen-offsets:	$(CONFIG_DIR)/gen-offsets.c gen-common.o $(CONFIG_DIR)/gen.h \
 		ml-sizes.h system-signals.h \
 		$(INC_DIR)/ml-base.h $(INC_DIR)/vproc-state.h \
 		$(INC_DIR)/ml-roots.h $(INC_DIR)/ml-state.h
-	$(CC) $(DEFS) $(GEN_INCLUDES) -o gen-offsets $(CONFIG_DIR)/gen-offsets.c gen-common.o
+	$(CC) $(CFLAGS) $(DEFS) $(GEN_INCLUDES) -o gen-offsets $(CONFIG_DIR)/gen-offsets.c gen-common.o
 
 gen-bc-instr-def:	$(CONFIG_DIR)/gen-bc-instr-def.c \
 		gen-common.o $(CONFIG_DIR)/gen.h \
 		$(BC_DIR)/bc.h $(BC_DIR)/print-bc.h
-	$(CC) $(GEN_INCLUDES) -I$(BC_DIR) -o gen-bc-instr-def $(CONFIG_DIR)/gen-bc-instr-def.c gen-common.o
+	$(CC) $(CFLAGS) $(GEN_INCLUDES) -I$(BC_DIR) -o gen-bc-instr-def $(CONFIG_DIR)/gen-bc-instr-def.c gen-common.o
 
 gen-unix-signals:	$(CONFIG_DIR)/gen-unix-signals.c \
 		unix-signals.o gen-common.o \
 		$(CONFIG_DIR)/gen.h $(CONFIG_DIR)/gen-unix-signals.h
-	$(CC) $(GEN_INCLUDES) $(DEFS) -o gen-unix-signals $(CONFIG_DIR)/gen-unix-signals.c unix-signals.o gen-common.o
+	$(CC) $(CFLAGS) $(GEN_INCLUDES) $(DEFS) -o gen-unix-signals $(CONFIG_DIR)/gen-unix-signals.c unix-signals.o gen-common.o
 
 gen-unix-sigtbl:	$(CONFIG_DIR)/gen-unix-sigtbl.c \
 		gen-common.o unix-signals.o \
 		$(CONFIG_DIR)/gen.h $(CONFIG_DIR)/gen-unix-signals.h
-	$(CC) $(GEN_INCLUDES) $(DEFS) -o gen-unix-sigtbl $(CONFIG_DIR)/gen-unix-sigtbl.c unix-signals.o gen-common.o
+	$(CC) $(CFLAGS) $(GEN_INCLUDES) $(DEFS) -o gen-unix-sigtbl $(CONFIG_DIR)/gen-unix-sigtbl.c unix-signals.o gen-common.o
 
 gen-common.o:	$(CONFIG_DIR)/gen-common.c $(CONFIG_DIR)/gen.h
-	$(CC) -c $(GEN_INCLUDES) $(CONFIG_DIR)/gen-common.c
+	$(CC) -c $(CFLAGS) $(GEN_INCLUDES) $(CONFIG_DIR)/gen-common.c
 
 unix-signals.o:	$(CONFIG_DIR)/unix-signals.c $(CONFIG_DIR)/gen.h
-	$(CC) -c $(GEN_INCLUDES) $(DEFS) $(CONFIG_DIR)/unix-signals.c
+	$(CC) -c $(CFLAGS) $(GEN_INCLUDES) $(DEFS) $(CONFIG_DIR)/unix-signals.c
 
 
 #

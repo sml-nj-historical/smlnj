@@ -24,17 +24,12 @@
 
 /* local routines */
 PVT SigReturn_t FaultHandler (/* int sig, SigInfo_t code, SigContext_t *scp */);
-#if defined(TARGET_BYTECODE)
-PVT SigReturn_t PanicTrace (/* int sig, SigInfo_t code, SigContext_t *scp */);
-#endif
 
 
 /* InitFaultHandlers:
  */
 void InitFaultHandlers (ml_state_t *msp)
 {
-
-#ifndef TARGET_BYTECODE
 
   /** Set up the Div and Overflow faults **/
 #ifdef SIG_FAULT1
@@ -47,35 +42,18 @@ void InitFaultHandlers (ml_state_t *msp)
   /** Initialize the floating-point unit **/
     SIG_InitFPE ();
 
-#else /* TARGET_BYTECODE */
-/** **/ SIG_SetHandler (SIGINT, PanicTrace);
-        SIG_SetHandler (SIGBUS, PanicTrace);
-        SIG_SetHandler (SIGSEGV, PanicTrace);
-#endif /* !TARGET_BYTECODE */
-
 } /* end of InitFaultHandlers */
 
-
-#ifndef TARGET_BYTECODE
 
 /* FaultHandler:
  *
  * Handle arithmetic faults (e.g., divide by zero, integer overflow).
  */
-PVT SigReturn_t FaultHandler (
-    int		    signal,
-#if (defined(TARGET_X86) && defined(OPSYS_LINUX))
-    SigContext_t    sc)
-#elif (defined(TARGET_PPC) && defined(OPSYS_LINUX))
-    SigContext_t    *scp)
-#else
-    SigInfo_t	    info,
-    SigContext_t    *scp)
-#endif
+#if defined(HAS_POSIX_SIGS) && defined(HAS_UCONTEXT)
+
+PVT SigReturn_t FaultHandler (int signal, siginfo_t *si, void *c)
 {
-#if (defined(TARGET_X86) && defined(OPSYS_LINUX))
-    SigContext_t    *scp = &sc;
-#endif
+    ucontext_t	    *scp = (ucontext_t *)c;
     ml_state_t	    *msp = SELF_VPROC->vp_state;
     extern Word_t   request_fault[]; 
     int		    code = SIG_GetCode(info, scp);
@@ -107,44 +85,49 @@ PVT SigReturn_t FaultHandler (
 
 } /* end of FaultHandler */
 
-#endif /* !TARGET_BYTECODE */
+#else
 
-
-#if defined(TARGET_BYTECODE)
-extern void PrintRegs (FILE *);
-#ifdef INSTR_HISTORY
-extern void PrintInstrHistory (FILE *);
-#endif
-
-/* PanicTrace:
- * This signal handler prints a trace of the last few instructions executed
- * by the bytecode interpreter (for debugging purposes).
- */
-PVT SigReturn_t PanicTrace (
+PVT SigReturn_t FaultHandler (
     int		    signal,
-#if (defined(TARGET_X86) && defined(OPSYS_LINUX))
-    SigContext_t    sc)
+#if (defined(TARGET_PPC) && defined(OPSYS_LINUX))
+    SigContext_t    *scp)
 #else
     SigInfo_t	    info,
     SigContext_t    *scp)
 #endif
 {
-#if (defined(TARGET_X86) && defined(OPSYS_LINUX))
-    SigContext_t    *scp = &sc;
+    ml_state_t	    *msp = SELF_VPROC->vp_state;
+    extern Word_t   request_fault[]; 
+    int		    code = SIG_GetCode(info, scp);
+
+#ifdef SIGNAL_DEBUG
+    SayDebug ("Fault handler: sig = %d, inML = %d\n",
+	signal, SELF_VPROC->vp_inMLFlag);
 #endif
 
-    SayDebug ("**** PANIC: signal = %d, code = %#x ****\n",
-	signal, SIG_GetCode(info, scp));
-    PrintRegs(DebugF);
-#ifdef INSTR_HISTORY
-    PrintInstrHistory (DebugF);
-#endif
-    SayDebug ("\n");
+    if (! SELF_VPROC->vp_inMLFlag) 
+	Die ("bogus fault not in ML: sig = %d, code = %#x, pc = %#x)\n",
+	    signal, SIG_GetCode(info, scp), SIG_GetPC(scp));
 
-    Exit (1);
-}
-#endif
+   /* Map the signal to the appropriate ML exception. */
+    if (INT_OVFLW(signal, code)) {
+	msp->ml_faultExn = OverflowId;
+	msp->ml_faultPC = (Word_t)SIG_GetPC(scp);
+    }
+    else if (INT_DIVZERO(signal, code)) {
+	msp->ml_faultExn = DivId;
+	msp->ml_faultPC = (Word_t)SIG_GetPC(scp);
+    }
+    else
+	Die ("unexpected fault, signal = %d, code = %#x", signal, code);
 
+    SIG_SetPC (scp, request_fault);
+
+    SIG_ResetFPE (scp);
+
+} /* end of FaultHandler */
+
+#endif
 
 #if ((defined(TARGET_RS6000) || defined(TARGET_PPC)) && defined(OPSYS_AIX))
 
@@ -165,4 +148,4 @@ PVT int SIG_GetCode (SigInfo_t code, SigContext_t *scp)
 
 #endif
 
-#endif
+#endif /* !defined(__CYGWIN32__) */

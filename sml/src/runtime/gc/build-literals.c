@@ -6,6 +6,7 @@
 #include "ml-base.h"
 #include "ml-objects.h"
 #include "heap.h"
+#include <string.h>
 
 /* Codes for literal machine instructions (version 1):
  *   INT(i)		0x01 <i>

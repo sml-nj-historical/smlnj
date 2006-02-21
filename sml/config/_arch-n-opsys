@@ -79,9 +79,21 @@ case `uname -s` in
   Linux)
     OPSYS=linux
     case `uname -m` in
-      # As long as we do not natively support the amd64 architecture,
-      # we should fallback to the x86 compatibility mode.  --Stef
-      *86 | x86_64) ARCH=x86;;
+      *86)
+	ARCH=x86
+      # we no longer support Linux before the 2.2 kernel.
+	case `uname -r` in
+	  2.2.*) ;;
+	  2.3.*) ;;
+	  2.4.*) ;;
+	  2.5.*) ;;
+	  2.6.*) ;;
+	  *) exit 1 ;;
+	esac
+	;;
+    # As long as we do not natively support the amd64 architecture,
+    # we should fallback to the x86 compatibility mode.  --Stef
+      x86_64) ARCH=x86;;
       ppc)
 	ARCH=ppc
 	case `uname -r` in

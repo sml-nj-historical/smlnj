@@ -281,13 +281,15 @@ char *BO_AddrToCodeObjTag (Word_t pc)
  *
  * Return the tag of the given code object.
  */
-char *BO_GetCodeObjTag (bigobj_desc_t *bdp)
+Byte_t *BO_GetCodeObjTag (bigobj_desc_t *bdp)
 {
     Byte_t		*lastByte;
     int			kx;
 
     lastByte = (Byte_t *)(bdp->obj) + bdp->sizeB - 1;
     kx = *lastByte * WORD_SZB;
+
     return lastByte - kx + 1;
+
 } /* end of BO_GetCodeObjTag */
 

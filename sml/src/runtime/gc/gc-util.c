@@ -7,6 +7,7 @@
  */
 
 #include <stdarg.h>
+#include <string.h>
 #include "ml-base.h"
 #include "ml-limits.h"
 #include "ml-values.h"
