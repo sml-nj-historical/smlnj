@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2006/02/22 15:07:00 EST
+Tag: leunga-20060222-mdl-gen
+Description:
+
+  CM has changed.  Updated the script for rebuilding the MLRISC generated
+files.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2006/02/14 17:30:00 CST
 Tag: blume-20060214-intel-mac
