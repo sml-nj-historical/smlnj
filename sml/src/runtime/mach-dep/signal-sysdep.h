@@ -96,13 +96,13 @@ typedef struct sigcontext SigContext_t;
 #    define SIG_SetIgnore(sig)		{			\
 	    struct sigaction __svec;        			\
 	    __svec.sa_flags = 0;				\
-	    __svec.sa_handler = SIG_DFL;        		\
+	    __svec.sa_handler = SIG_IGN;        		\
 	    sigaction ((sig), &__svec, 0);  			\
 	}
 #    define SIG_SetDefault(sig)		{			\
 	    struct sigaction __svec;        			\
 	    __svec.sa_flags = 0;				\
-	    __svec.sa_handler = SIG_IGN;        		\
+	    __svec.sa_handler = SIG_DFL;        		\
 	    sigaction ((sig), &__svec, 0);  			\
 	}
 #  else
