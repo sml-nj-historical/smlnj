@@ -35,7 +35,6 @@ ml_val_t _ml_P_Process_exec (ml_state_t *msp, ml_val_t arg)
     *cp++ = 0;  /* terminate the argv[] */
 
     sts = execv(STR_MLtoC(path), argv);
-
     CHK_RETURN (msp, sts)
 
 } /* end of _ml_P_Process_exec */

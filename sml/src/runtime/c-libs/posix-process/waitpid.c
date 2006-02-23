@@ -21,8 +21,7 @@ ml_val_t _ml_P_Process_waitpid (ml_state_t *msp, ml_val_t arg)
     int       status, how, val;
     ml_val_t  r;
 
-    pid = waitpid(REC_SELINT(arg, 0), &status, REC_SELWORD(arg,1));
-
+    pid = waitpid(REC_SELINT(arg, 0), &status, REC_SELWORD(arg, 1));
     if (pid < 0)
 	return RAISE_SYSERR(msp, pid);
 
