@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2006/02/23
+Tag: jhr-20060223-x86-64
+Description:
+Changes to support building on x86-64 systems (using the 32-bit mode).
+Also cleaned up signal handling on Linux.  Support for pre-2.2 Linux
+kernels dropped.
+
+----------------------------------------------------------------------
 Name: Allen Leung (leunga (at) reservoir (dot) com)
 Date: 2006/02/22 15:07:00 EST
 Tag: leunga-20060222-mdl-gen
