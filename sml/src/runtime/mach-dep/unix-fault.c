@@ -56,7 +56,7 @@ PVT SigReturn_t FaultHandler (int signal, siginfo_t *si, void *c)
     ucontext_t	    *scp = (ucontext_t *)c;
     ml_state_t	    *msp = SELF_VPROC->vp_state;
     extern Word_t   request_fault[]; 
-    int		    code = SIG_GetCode(info, scp);
+    int		    code = SIG_GetCode(si, scp);
 
 #ifdef SIGNAL_DEBUG
     SayDebug ("Fault handler: sig = %d, inML = %d\n",
@@ -65,7 +65,7 @@ PVT SigReturn_t FaultHandler (int signal, siginfo_t *si, void *c)
 
     if (! SELF_VPROC->vp_inMLFlag) 
 	Die ("bogus fault not in ML: sig = %d, code = %#x, pc = %#x)\n",
-	    signal, SIG_GetCode(info, scp), SIG_GetPC(scp));
+	    signal, SIG_GetCode(si, scp), SIG_GetPC(scp));
 
    /* Map the signal to the appropriate ML exception. */
     if (INT_OVFLW(signal, code)) {
