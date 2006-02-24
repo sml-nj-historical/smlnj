@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/02/24 16:30:00 CST
+Tag: blume-20060224-ml-flex
+Description:
+
+Added ml-flex sources.  Partially integrated, but should not be
+turned on yet!  (Read: leave it commented-out in config/targets!)
+
+----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2006/02/23
 Tag: jhr-20060223-x86-64
