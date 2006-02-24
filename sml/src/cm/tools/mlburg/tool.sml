@@ -10,7 +10,7 @@ structure BurgTool = struct
 	{ tool = "ML-Burg",
 	  class = "mlburg",
 	  suffixes = ["burg"],
-	  cmdStdPath = "ml-burg",
+	  cmdStdPath = fn () => "ml-burg",
 	  template = NONE,
 	  extensionStyle =
 	      Tools.REPLACE (["burg"], [("sml", SOME "sml", fn too => too)]),

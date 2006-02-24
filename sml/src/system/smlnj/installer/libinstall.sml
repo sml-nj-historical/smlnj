@@ -437,6 +437,8 @@ end = struct
 	      sa ("ml-yacc", SOME "src")
 	  | one "ml-lex" =
 	      sa ("ml-lex", NONE)
+	  | one "ml-flex" =
+	      sa ("ml-flex", SOME "src")
 	  | one "ml-burg" =
 	      sa ("ml-burg", NONE)
 	  | one "heap2asm" =

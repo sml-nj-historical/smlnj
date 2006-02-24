@@ -33,6 +33,13 @@ structure StdConfig = struct
 
 	val nextpri = ref 0
 
+	val lib_pathconfig =
+	    OS.Path.toString { isAbs = false, vol = "",
+			       arcs = ["lib", "pathconfig"] }
+	val usr_lib_smlnj_pathconfig =
+	    OS.Path.toString { isAbs = true, vol = "",
+			       arcs = ["usr", "lib", "smlnj-pathconfig"] }
+    in
 	fun new (c, n, h, d) = let
 	    val r = ref d
 	    val p = !nextpri
@@ -50,13 +57,7 @@ structure StdConfig = struct
 	    { set = fn x => r := x,
 	      get = fn () => !r }
 	end
-	val lib_pathconfig =
-	    OS.Path.toString { isAbs = false, vol = "",
-			       arcs = ["lib", "pathconfig"] }
-	val usr_lib_smlnj_pathconfig =
-	    OS.Path.toString { isAbs = true, vol = "",
-			       arcs = ["usr", "lib", "smlnj-pathconfig"] }
-    in
+
         val verbose = new (bool_cvt, "verbose", "CM chattiness", true)
 	val debug = new (bool_cvt, "debug", "CM debug mode", false)
 	val keep_going = new (bool_cvt, "keep-going",

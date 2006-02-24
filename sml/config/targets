@@ -30,7 +30,11 @@ request ml-yacc
 # in the first place.
 
 
-# build ML-Lex
+# build new ML-Lex
+#
+#request ml-flex
+
+# build legacy ML-Lex
 #
 request ml-lex
 

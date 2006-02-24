@@ -25,8 +25,12 @@ signature TOOLS = sig
     val registerStdShellCmdTool : { tool: string,
 				    class: string,
 				    suffixes: string list,
-				    cmdStdPath: string,
+				    cmdStdPath: unit -> string,
 				    extensionStyle: extensionStyle,
 				    template: string option,
 				    dflopts: toolopts } -> unit
+
+    (* make a bool control *)
+    val boolcontrol : string * string * bool ->
+		      { get: unit -> bool, set: bool -> unit }
 end

@@ -49,7 +49,7 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
 					   derived = true })
 		     tfiles)
 	    fun runcmd () = let
-		val cmdname = mkCmdName cmdStdPath
+		val cmdname = mkCmdName (cmdStdPath ())
 		val cmd =
 		    Subst.substitute
 			[{ prefix = "%",
@@ -112,4 +112,7 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
         val _ = registerClass (toolclass, toolrule)
 	val _ = registerClass (suffixclass, suffixrule)
     end
+
+    fun boolcontrol (name, doc, default) =
+	StdConfig.new (ControlUtil.Cvt.bool, name, doc, default)
 end

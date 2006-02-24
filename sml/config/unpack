@@ -241,6 +241,9 @@ do
       ml-lex)
 	unpack ML-Lex "$ROOT"/src ml-lex ml-lex
 	;;
+      ml-flex)
+	unpack ML-FLex "$ROOT"/src ml-flex ml-flex
+	;;
       ml-burg)
         unpack ML-Burg "$ROOT"/src ml-burg ml-burg
 	;;
