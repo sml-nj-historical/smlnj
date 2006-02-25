@@ -1,6 +1,6 @@
 /* signal-sysdep.h
  *
- * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2006 The SML/NJ Fellowship.
  *
  * O.S. and machine dependent signal definitions for UNIX systems:
  *
@@ -14,6 +14,8 @@
  *   SIG_GetPC(scp)		get the PC from the context
  *   SIG_SetPC(scp, addr)	set the PC in the context to the address
  *   SIG_SetHandler(sig, h)	set the signal handler
+ *   SIG_SetDefault(sig)	set the handler for sig to SIG_DFL
+ *   SIG_SetIgnore(sig)		set the handler for sig to SIG_IGN
  *   SIG_GetHandler(sig, h)	get the current handler into h
  *   SIG_Flags			flags used when setting a handler
  *   SIG_ClearMask(mask)	clear the given signal mask.
@@ -137,6 +139,8 @@ typedef sigset_t SigMask_t;
 	__svec.sv_handler = (h);            		\
 	sigvec ((sig), &__svec, 0);         		\
     }
+#define SIG_SetIgnore(sig)	SIG_SetHandler(sig, SIG_IGN)
+#define SIG_SetDefault(sig)	SIG_SetHandler(sig, SIG_DFL)
 #define SIG_GetHandler(sig, h)  {			\
 	struct sigvec __svec;				\
 	sigvec ((sig), NIL(struct sigvec *), &__svec);	\
