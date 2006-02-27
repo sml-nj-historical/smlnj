@@ -17,14 +17,17 @@ structure ExpandFile : sig
 
     structure TIO = TextIO
     structure SS = Substring
+(*
     structure RE = RegExpFn (
       structure P = AwkSyntax
       structure E = BackTrackEngine)
     structure M = MatchTree
+*)
 
     type hook = TextIO.outstream -> unit
 
-    val placeholderRE = RE.compileString "[\\t ]*@([a-zA-Z][-a-zA-Z0-9_]*)@[\\t ]*"
+(*
+    val placeholderRE = RE.compileString "[\\t ]*@([a-zA-Z][-a-zA-Z0-9_]* )@[\\t ]*"
     val prefixPlaceholder = RE.prefix placeholderRE SS.getc
 
     fun findPlaceholder s = (case prefixPlaceholder(SS.full s)
@@ -32,6 +35,18 @@ structure ExpandFile : sig
 		SOME(SS.string(SS.slice(pos, 0, SOME len)))
 	    | _ => NONE
 	  (* end case *))
+*)
+
+    fun findPlaceholder s = let
+          val trim = SS.dropr Char.isSpace (SS.dropl Char.isSpace (SS.full s))
+	  val size = SS.size trim
+          in if size > 2 andalso
+		SS.isPrefix "@" trim andalso
+		SS.isSuffix "@" trim then
+	       SOME (SS.string (SS.slice (trim, 1, SOME (size - 2))))
+	     else
+	       NONE
+          end
 
   (* copy from inStrm to outStrm expanding placeholders *)
     fun copy (inStrm, outStrm, hooks) = let
@@ -69,3 +84,5 @@ structure ExpandFile : sig
 	    handle OpenOut => ())
 
   end
+
+

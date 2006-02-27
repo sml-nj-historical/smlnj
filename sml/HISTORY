@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/02/26 23:30:00 CST
+Tag: blume-20060226-ml-flex
+Description:
+
+Removed ml-flex' dependency on regexp-lib.cm.  Turned installation
+of ml-flex on by default.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2006/02/24 16:30:00 CST
 Tag: blume-20060224-ml-flex
 Description:

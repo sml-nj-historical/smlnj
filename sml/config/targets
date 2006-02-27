@@ -32,7 +32,7 @@ request ml-yacc
 
 # build new ML-Lex
 #
-#request ml-flex
+request ml-flex
 
 # build legacy ML-Lex
 #
