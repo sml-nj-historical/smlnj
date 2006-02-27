@@ -17,7 +17,6 @@
  *   SIG_SetDefault(sig)	set the handler for sig to SIG_DFL
  *   SIG_SetIgnore(sig)		set the handler for sig to SIG_IGN
  *   SIG_GetHandler(sig, h)	get the current handler into h
- *   SIG_Flags			flags used when setting a handler
  *   SIG_ClearMask(mask)	clear the given signal mask.
  *   SIG_AddToMask(mask, sig)	Add the given signal to the mask.
  *   SIG_isSet(mask, sig)	Return true, if the signal is in the mask.
@@ -111,8 +110,8 @@ typedef struct sigcontext SigContext_t;
 #    define SIG_SetHandler(sig, h)	{       		\
 	    struct sigaction __svec;        			\
 	    sigfillset(&(__svec.sa_mask));  			\
-	    __svec.sa_flags = SIG_Flags;			\
-	    __svec.sa_sighandler = (h);        			\
+	    __svec.sa_flags = 0;			\
+	    __svec.sa_handler = (h);        			\
 	    sigaction ((sig), &__svec, 0);  			\
 	}
 #    define SIG_SetIgnore(sig)	SIG_SetHandler(sig, SIG_IGN)
@@ -324,7 +323,6 @@ extern void SetFSR();
 #    define SIG_ResetFPE(scp)		{ (scp)->fpscr = 0x0; }
      typedef void SigReturn_t;
 
-#    define SIG_Flags		0
 #  elif (defined(TARGET_PPC) && defined(OPSYS_LINUX))
     /* PPC, Linux */
 
@@ -341,9 +339,6 @@ extern void SetFSR();
 #    define SIG_GetCode(info,scp)       ((scp)->regs->gpr[PT_FPSCR])
 #    define SIG_ResetFPE(scp)           { (scp)->regs->gpr[PT_FPSCR] = 0x0; }
      typedef void SigReturn_t;
-
-#    define SIG_Flags           0
-
 
 #  endif /* HOST_RS6000/HOST_PPC */
 
