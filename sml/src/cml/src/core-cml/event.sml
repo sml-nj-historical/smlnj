@@ -307,7 +307,7 @@ fun sayGrp (msg, eg) = let
 
   (* walk the event group tree, collecting the base events (with associated
    * ack flags), and a list of flag sets.  A flag set is a (cvar * ack flag list)
-   * pairs, where the flags are those associated with the events covered by the
+   * pair, where the flags are those associated with the events covered by the
    * nack cvar.
    *)
     fun collect grp = let
@@ -417,10 +417,7 @@ fun sayGrp (msg, eg) = let
 		  | _ => extRdy (r, doFns, n)
 		(* end case *))
 	  in
-	    case bl
-	     of [(bev, _)] => syncOnOneEvt bev
-	      | _ => (S.atomicBegin(); ext (bl, []))
-	    (* end case *)
+	    S.atomicBegin(); ext (bl, [])
 	  end
 
     fun sync ev = (case (force ev)

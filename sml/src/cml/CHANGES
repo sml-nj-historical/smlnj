@@ -1,6 +1,11 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2006-02-27]
+	Fixed bug with the combination of withNack and never, where the
+	negative acknowledgement is never generated.  Thanks to Heath
+	Putnam for the bug report and fix.
+
 [2005-02-28]
 	Fixed serious bug in structure Atom. (Must use mvar, not mailbox!)
 
