@@ -10,7 +10,7 @@ cm
 system
 ml-yacc
 ml-lex
-ml-flex
+lexgen
 ml-burg
 ml-nlffigen
 ml-nlffi-lib

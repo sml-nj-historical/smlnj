@@ -25,7 +25,7 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
     fun registerStdShellCmdTool args = let
 	val { tool, class, suffixes, cmdStdPath,
 	      extensionStyle, template, dflopts } = args
-	val template = getOpt (template, "%c %s")
+	val template = getOpt (template, "%c %u %s")
 	fun err m = raise ToolError { tool = tool, msg = m }
 	fun rule { spec, context, native2pathmaker, defaultClassOf, sysinfo } = let
 	    val { name, mkpath, opts = oto, derived, ... } : spec = spec
@@ -49,15 +49,19 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
 					   derived = true })
 		     tfiles)
 	    fun runcmd () = let
-		val cmdname = mkCmdName (cmdStdPath ())
+		val (csp, shelloptions) = cmdStdPath ()
+		val cmdname = mkCmdName csp
 		val cmd =
 		    Subst.substitute
 			[{ prefix = "%",
-			   substitutions = [Subst.subfor "%c" cmdname,
-					    Subst.subfor "%s" nativename,
-					    Subst.subfor "%%" "%",
-					    Subst.subnsel (1, #"o", fn x => x, " ") sol,
-					    Subst.subnsel (1, #"t", #1, " ") tfiles] }]
+			   substitutions =
+			     [Subst.subfor "%c" cmdname,
+			      Subst.subfor "%s" nativename,
+			      Subst.subfor "%%" "%",
+			      Subst.subnsel (1, #"o", fn x => x, " ") sol,
+			      Subst.subnsel (1, #"t", #1, " ") tfiles,
+			      Subst.subnsel (1, #"u", fn x => x, " ")
+					    shelloptions] }]
 			template
 	    in
 		Say.vsay ["[", cmd, "]\n"];

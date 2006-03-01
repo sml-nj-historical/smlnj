@@ -15,8 +15,9 @@ structure LexTool = struct
 	{ tool = "ML-Lex",
 	  class = "mllex",
 	  suffixes = ["lex", "l"],
-	  cmdStdPath = fn () => if #get legacy_control () then "ml-lex"
-				else "ml-flex",
+	  cmdStdPath = fn () => if #get legacy_control ()
+				then ("ml-lex", [])
+				else ("lexgen", ["--ml-lex-mode"]),
 	  template = NONE,
 	  extensionStyle = Tools.EXTEND [("sml", SOME "sml", fn too => too)],
 	  dflopts = [] }

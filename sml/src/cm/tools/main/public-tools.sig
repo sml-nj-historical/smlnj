@@ -25,7 +25,7 @@ signature TOOLS = sig
     val registerStdShellCmdTool : { tool: string,
 				    class: string,
 				    suffixes: string list,
-				    cmdStdPath: unit -> string,
+				    cmdStdPath: unit -> string * string list,
 				    extensionStyle: extensionStyle,
 				    template: string option,
 				    dflopts: toolopts } -> unit

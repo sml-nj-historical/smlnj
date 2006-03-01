@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/02/28 22:45:00 CST
+Tag: blume-20060228-lexgen
+Description:
+
+Removed ml-flex and added lexgen instead, using Aaron Turon's newly
+provided tarball.  The generated lexers still have problems.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2006/02/26 23:30:00 CST
 Tag: blume-20060226-ml-flex
 Description:

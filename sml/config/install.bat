@@ -21,7 +21,7 @@ copy config\link-sml.bat bin
 copy config\ml-build.bat bin
 copy config\sml.bat bin
 copy config\ml-lex.bat bin
-copy config\ml-flex.bat bin
+copy config\lexgen.bat bin
 copy config\ml-yacc.bat bin
 
 REM create heap image and lib hierarchy ("boot")
