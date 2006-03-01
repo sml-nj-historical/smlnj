@@ -99,7 +99,7 @@ structure SMLFunOutput : OUTPUT =
           end
 
     fun mkState actionVec (s, k) = let
-          val LO.State {id, label, final, next} = s
+          val LO.State {id, startState, label, final, next} = s
 	  fun addMatch (i, lastMatch) = let
 		val lastMatch' = if hasREJECT (Vector.sub (actionVec, i))
 				 then lastMatch
@@ -138,8 +138,8 @@ structure SMLFunOutput : OUTPUT =
 				else ML_Var "yyNO_MATCH"])
 		   | NONE =>  ML_App ("yystuck", [lastMatch])
 		 (* end case *))
-        (* if first state in machine, check for eof *)
-	  val errAct = if id = 0
+        (* if start state, check for eof *)
+	  val errAct = if startState
 		       then ML_If (ML_App("yyInput.eof", [ML_Var "strm"]),
 				   ML_App("UserDeclarations.eof", [ML_Var "yyarg"]),
 				   errAct')
@@ -219,8 +219,27 @@ structure SMLFunOutput : OUTPUT =
 				letl))
 		     else letl
 	  in  
-	    ML_Fun (actName i, ["strm", "lastMatch"], letr, k)
+	    ML_NewGroup (ML_Fun (actName i, ["strm", "lastMatch"], letr, k))
 	  end
+
+    structure SCC = GraphSCCFn (
+      struct
+        type ord_key = LO.dfa_state
+        fun compare (LO.State{id = id1, ...}, LO.State{id = id2, ...}) =
+	      Int.compare (id1, id2)
+      end)
+
+    fun mkStates (actions, dfa, startStates, k) = let
+          fun follow (LO.State {next, ...}) = 
+	        #2 (ListPair.unzip (!next))
+          val scc = SCC.topOrder' { roots = startStates, follow = follow }
+	  val mkState' = mkState actions
+	  fun mkGrp (SCC.SIMPLE state, k) = ML_NewGroup (mkState' (state, k))
+	    | mkGrp (SCC.RECURSIVE states, k) = 
+	        ML_NewGroup (List.foldr mkState' k states)
+          in
+            List.foldl mkGrp k scc
+          end
 
     fun lexerHook spec strm = let
           val LO.Spec {actions, dfa, startStates, ...} = spec
@@ -231,7 +250,9 @@ structure SMLFunOutput : OUTPUT =
 				 ML_Var "yyNO_MATCH"]))
 	  val innerExp = ML_Case (ML_RefGet (ML_Var "yyss"),
 				  List.map matchSS startStates)
-	  val statesExp = List.foldr (mkState actions) innerExp dfa
+	  val statesExp = mkStates 
+			    (actions, dfa, 
+			     #2 (ListPair.unzip startStates), innerExp)
 	  val lexerExp = Vector.foldri mkAction statesExp actions
           val ppStrm = TextIOPP.openOut {dst = strm, wid = 80}
           in

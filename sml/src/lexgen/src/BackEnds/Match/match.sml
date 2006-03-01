@@ -18,8 +18,8 @@ structure Match : OUTPUT =
     structure SIS = RegExp.SymSet
     structure LO = LexOutputSpec
 
-    fun match (LO.State{id, label, final, next}, []) = final
-      | match (LO.State{id, label, final, next}, sym::r) = let
+    fun match (LO.State{id, label, final, next, ...}, []) = final
+      | match (LO.State{id, label, final, next, ...}, sym::r) = let
 	  fun goto [] = []
 	    | goto ((syms, s)::r') = 
 	        if SIS.member (syms, sym) 

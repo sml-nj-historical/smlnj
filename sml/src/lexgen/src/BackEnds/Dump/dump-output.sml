@@ -16,7 +16,7 @@ structure DumpOutput : OUTPUT =
 
     fun nameOf (LO.State{id, ...}) = "Q" ^ Int.toString id
 
-    fun prState (s as LO.State{id, label, final, next}) = let
+    fun prState (s as LO.State{id, label, final, next, ...}) = let
           val name = (case final
 		       of [] => nameOf s
 			| id::_ => concat[nameOf s, " (act ", Int.toString id, ")"]

@@ -34,7 +34,7 @@ structure LexGen :
 	(* return the state that the re vector maps to and 
 	 * a flag set to true if the state is new.
 	 *)
-	  fun mkState (stateMap, res) = (case Map.find(stateMap, res)
+	  fun mkState (stateMap, res, asSS) = (case Map.find(stateMap, res)
 		 of NONE => let
 		      val id = !n
 		      fun addFinal (idx, re, finals) = 
@@ -42,7 +42,7 @@ structure LexGen :
 			    then idx :: finals
 			    else finals
 		      val q = LO.State {
-			      id = id, label = res,
+			      id = id, startState = asSS, label = res,
 			      final = Vector.foldri addFinal [] res,
 			      next = ref []
 			    }
@@ -55,7 +55,7 @@ structure LexGen :
 		(* end case *))
 	  fun initIter (states, stateMap, []) = (List.rev states, stateMap)
 	    | initIter (states, stateMap, vec::vecs) = let
-		val (_, q, stateMap') = mkState (stateMap, vec)
+		val (_, q, stateMap') = mkState (stateMap, vec, true)
                 in initIter (q :: states, stateMap', vecs)
                 end
 	  val (initStates, initStatemap) = initIter ([], Map.empty, startVecs)
@@ -65,7 +65,7 @@ structure LexGen :
 		      if Vector.all RE.isNone res (* if error transition *)
 		        then (stateMap, workList)
 		        else let
-			  val (isNew, q, stateMap) = mkState(stateMap, res)
+			  val (isNew, q, stateMap) = mkState (stateMap, res, false)
 			  in
 			    next := (edge, q) :: !next;
 			    if isNew

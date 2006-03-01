@@ -14,6 +14,7 @@ structure LexOutputSpec =
     datatype dfa_state
       = State of {
 	  id : int,
+	  startState : bool,
 	  label : RegExp.re Vector.vector,
 	  final : int list,	(* action vector indices *)
 	  next :  (RegExp.sym_set * dfa_state) list ref

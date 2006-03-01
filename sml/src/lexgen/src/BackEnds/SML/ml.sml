@@ -36,6 +36,7 @@ structure ML =
       | ML_RefGet of ml_exp
       | ML_RefPut of ml_exp * ml_exp
       | ML_Raw of ml_token list
+      | ML_NewGroup of ml_exp
 
     and ml_pat
       = ML_Wild
@@ -234,6 +235,7 @@ structure ML =
 			ppExp' e2))
 		  | (ML_Raw toks) => letBody(inLet, fn () => (
 		      hbox(); app (fn (Tok s) => str s) toks; close()))
+		  | (ML_NewGroup e) => ppExp(inLet, false, e)
 		(* end case *))
 	  and ppExp' e = ppExp(false, false, e)
 	  and ppPat p = let
