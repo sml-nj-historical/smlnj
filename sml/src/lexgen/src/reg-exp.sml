@@ -137,13 +137,13 @@ structure RegExp : REG_EXP =
       | mkClosure (re as Closure _) = re
       | mkClosure re = Closure re
 
-    fun mergeSIS (res, mop) = let
+    fun mergeSIS (inRes, mop) = let
           fun isSIS (SymSet _) = true
 	    | isSIS _ = false
-	  val (siss, res) = List.partition isSIS res
+	  val (siss, res) = List.partition isSIS inRes
 	  in case siss
-	      of []   => res
-	       | [re] => res
+	      of []   => inRes
+	       | [re] => inRes
 	       | sis::siss' => let
 		   fun wrapmop (SymSet s1, SymSet s2) = 
 		         SymSet (mop (s1, s2))
@@ -467,3 +467,5 @@ structure RegExp : REG_EXP =
           end
 
   end
+
+
