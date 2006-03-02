@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/03/01 22:15:00 CST
+Tag: blume-20060301-lexgen
+Description:
+
+Incorporated several bugfixes to lexgen.  Compiler now compiles to
+fixpoint when using lexgen instead of ml-lex.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2006/02/28 22:45:00 CST
 Tag: blume-20060228-lexgen
 Description:
