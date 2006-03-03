@@ -48,7 +48,7 @@ fun strToSym s = charToSym (String.sub (s, 0))
   | LEXSTATE of string
   | COUNT
   | REJECTTOK
-  | FULLCHARSET
+  | FULL
   | UNICODE
   | STRUCT
   | HEADER
@@ -112,6 +112,8 @@ Defs
 		(S.updArg (Defs, ACT))
 	| Defs UNICODE
 		(S.updClamp (Defs, S.NO_CLAMP))
+	| Defs FULL
+		(S.updClamp (Defs, S.CLAMP255))
 	| Defs COUNT
 		(Defs)
 	| Defs REJECTTOK

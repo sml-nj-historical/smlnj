@@ -84,6 +84,8 @@ id	= {alpha}({alpha} | {num} | "_" | "'")*;
 <DEFS> "%reject"=> (REJECTTOK(!yylineno, !yylineno));
 <DEFS> "%unicode" 
 		=> (UNICODE(!yylineno, !yylineno));
+<DEFS> "%full"
+		=> (lex());
 <DEFS> {id}	=> (ID(yytext, !yylineno, !yylineno));
 <DEFS> "="	=> (YYBEGIN RE; EQ(!yylineno, !yylineno));
 
@@ -150,3 +152,5 @@ id	= {alpha}({alpha} | {num} | "_" | "'")*;
 <ACTION> "\""   => (updAction "\""; inquote := not (!inquote); lex());
 <ACTION> [^;()\"\\]*
 		=> (updAction yytext; lex());
+
+

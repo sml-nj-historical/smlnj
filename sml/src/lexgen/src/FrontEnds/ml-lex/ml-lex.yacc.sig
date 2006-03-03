@@ -7,7 +7,7 @@ val ARG:  'a * 'a -> (svalue,'a) token
 val HEADER:  'a * 'a -> (svalue,'a) token
 val STRUCT:  'a * 'a -> (svalue,'a) token
 val UNICODE:  'a * 'a -> (svalue,'a) token
-val FULLCHARSET:  'a * 'a -> (svalue,'a) token
+val FULL:  'a * 'a -> (svalue,'a) token
 val REJECTTOK:  'a * 'a -> (svalue,'a) token
 val COUNT:  'a * 'a -> (svalue,'a) token
 val LEXSTATE: (string) *  'a * 'a -> (svalue,'a) token
