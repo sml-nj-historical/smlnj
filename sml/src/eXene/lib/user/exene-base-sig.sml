@@ -27,23 +27,23 @@ signature EXENE_BASE =
 
   (* server time *)
     structure XTime : sig
-	type time
-	val toReal : time -> real
-	val +  : (time * time) -> time
-	val -  : (time * time) -> time
-	val <  : (time * time) -> bool
-	val <= : (time * time) -> bool
-	val >  : (time * time) -> bool
-	val >= : (time * time) -> bool
+    type time
+    val toReal : time -> real
+    val +  : (time * time) -> time
+    val -  : (time * time) -> time
+    val <  : (time * time) -> bool
+    val <= : (time * time) -> bool
+    val >  : (time * time) -> bool
+    val >= : (time * time) -> bool
       end
 
   (* authentication information *)
     datatype authentication = AUTH of {
-	family : int,
-	addr : string,
-	dpy : string,
-	name : string,
-	data : Word8Vector.vector
+    family : int,
+    addr : string,
+    dpy : string,
+    name : string,
+    data : Word8Vector.vector
       }
 
   (** identity tests **)
@@ -72,7 +72,8 @@ signature EXENE_BASE =
     val sizeOfScr    : screen -> G.size
     val sizeMMOfScr  : screen -> G.size
     val depthOfScr   : screen -> int
-
+    
+  
     datatype display_class
       = StaticGray | GrayScale | StaticColor | PseudoColor | TrueColor | DirectColor
 
@@ -87,17 +88,17 @@ signature EXENE_BASE =
     val sizeOfPixmap  : pixmap -> G.size
     val sizeOfTile    : tile -> G.size
     val geomOfWin     : window
-	  -> {pos : G.point, sz : G.size, depth : int, border : int}
+      -> {pos : G.point, sz : G.size, depth : int, border : int}
     val geomOfPixmap  : pixmap
-	  -> {pos : G.point, sz : G.size, depth : int, border : int}
+      -> {pos : G.point, sz : G.size, depth : int, border : int}
     val geomOfTile    : tile
-	  -> {pos : G.point, sz : G.size, depth : int, border : int}
+      -> {pos : G.point, sz : G.size, depth : int, border : int}
 
 
   (** Images **)
     datatype image = IMAGE of {
-	sz : G.size,
-	data : Word8Vector.vector list list
+    sz : G.size,
+    data : Word8Vector.vector list list
       }
 
     exception BadImageData
@@ -164,8 +165,8 @@ signature EXENE_BASE =
 
   (* gravity (both window and bit) *)
     datatype gravity
-      = ForgetGravity		(* bit gravity only *)
-      | UnmapGravity		(* window gravity only *)
+      = ForgetGravity       (* bit gravity only *)
+      | UnmapGravity        (* window gravity only *)
       | NorthWestGravity
       | NorthGravity
       | NorthEastGravity

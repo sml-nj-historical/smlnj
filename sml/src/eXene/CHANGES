@@ -1,3 +1,78 @@
+eXene-2.0a
+------------------------
+
+GRAPHICS UTILITIES
+  - modifications to xauth.sml to unpack IP addresses from Xauth file 
+     to strings for comparison; if "localhost" is specified as the
+     host to connect to, search Xauth file by the actual hostname.
+    [Feb 2005]
+
+LIBRARY CHANGES
+  - modified createSimpleTopWin to return channel on which X window
+     managers may notify the window of deletion events:
+       val createSimpleTopWin : Display.screen -> {
+          geom : Geometry.win_geom,
+          border : ColorServer.color,
+          backgrnd : ColorServer.color
+       } -> (window * WindowEnv.in_env * WindowEnv.client_msg CML.chan)
+    [Jan 2005]
+
+  - added ICCC.xrdbOfScr, whereby an application may retrieve the strings
+     stored in the RESOURCE_MANAGER property of the root window by xrdb.
+       val xrdbOfScr    : EXB.screen -> string list
+    [May 2004]
+
+WIDGET CHANGES
+  - routers in composite widgets now have buffered output channels;
+     this is an attempt at deadlock avoidance. (More to come on this...)
+    [Nov 2004]
+
+  - added the following to Widget Root, which widgets can use to obtain
+     resource specifications from xrdb, merge resource styles, and parse
+     command line arguments more easily.
+
+    Insert all of the resource specifications of the first style into
+    the second style, effectively giving priority to the specifications
+    of the first style.
+     val mergeStyles : style * style -> style
+
+    Create a style from the stings stored by xrdb in the RESOURCE_MANAGER
+    property of the root window.
+     val styleFromXRDB : root -> style
+
+    The following provide support for command line argument "parsing":
+     datatype optName 
+        = OPT_NAMED of string   (* custom options: retrieve by name *)
+        | OPT_RESSPEC of string (* resource options: convert to a style *)
+     type argName = string (* option spec string in argv *)
+     datatype optKind
+        = OPT_NOARG of string (* as XrmoptionNoArg. optname will assume this 
+                                value if argName is specified in argv *)
+        | OPT_ISARG     (* as XrmoptionIsArg:     value is option string itself *)
+        | OPT_STICKYARG (* as XrmoptionStickyArg: value is chars immediately
+                           following option *)
+        | OPT_SEPARG    (* as XrmoptionSepArg:    value is next argument in argv *)
+        | OPT_RESARG    (* as XrmoptionResArg:    resource and value in next 
+                           argument in argv *)
+        | OPT_SKIPARG   (* as XrmSkipArg:         ignore this option and next 
+                           argument in argv *)
+        | OPT_SKIPLINE  (* as XrmSkipLine:        ignore this option and the 
+                           rest of argv *)
+     datatype optVal
+        = OPT_ATTRVAL of (string * AV.attr_type)
+        | OPT_STRING of string
+     (* option specification table: name for searching, name in argv, 
+        kind of option, and type of option *)
+     type optSpec = (optName * argName * optKind * AV.attr_type) list
+     type optDb
+     type attr_value
+     val parseCommand : optSpec -> string list -> optDb * string list
+     val findNamedOpt : optDb -> optName -> root -> attr_value list
+     val findNamedOptStrings : optDb -> optName -> string list
+     val styleFromOptDb : root * optDb -> style
+
+    [May 2004]
+
 eXene-1.0
 ------------------------
 

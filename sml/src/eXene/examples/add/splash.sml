@@ -8,9 +8,6 @@ structure Splash =
     local 
       open Geometry EXeneBase Drawing Widget 
 
-      val min = Int.min
-      val max = Int.max
-
       fun bbox [] = RECT{x=0,y=0,wid=0,ht=0}
         | bbox (PT{x,y}::pts) = let
         fun bb (minx,miny,maxx,maxy,[]) = 

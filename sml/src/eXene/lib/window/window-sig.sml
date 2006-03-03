@@ -37,39 +37,41 @@ signature WINDOW =
 
 (**** OBSOLETE ****
     val allocSimpleTopWin : Display.screen
-	  -> (window * WindowEnv.in_env * ({
-	      geom : Geometry.win_geom,
-	      border : ColorServer.color,
-	      backgrnd : ColorServer.color
-	    } -> window))
+      -> (window * WindowEnv.in_env * ({
+          geom : Geometry.win_geom,
+          border : ColorServer.color,
+          backgrnd : ColorServer.color
+        } -> window))
     val allocSimpleSubwin : window
-	  -> (window * ({
-	      geom : Geometry.win_geom,
-	      border : ColorServer.color option,
-	      backgrnd : ColorServer.color option
-	    } -> window))
+      -> (window * ({
+          geom : Geometry.win_geom,
+          border : ColorServer.color option,
+          backgrnd : ColorServer.color option
+        } -> window))
 **** OBSOLETE ****)
 
     val createSimpleTopWin : Display.screen -> {
-	      geom : Geometry.win_geom,
-	      border : ColorServer.color,
-	      backgrnd : ColorServer.color
-	    } -> (window * WindowEnv.in_env)
+          geom : Geometry.win_geom,
+          border : ColorServer.color,
+          backgrnd : ColorServer.color
+        (* modified ddeboer Jul 2004; orginal: *
+        } -> (window * WindowEnv.in_env) *)
+        } -> (window * WindowEnv.in_env * unit CML.chan)
     val createSimpleSubwin : window -> {
-	      geom : Geometry.win_geom,
-	      border : ColorServer.color option,
-	      backgrnd : ColorServer.color option
-	    } -> window
+          geom : Geometry.win_geom,
+          border : ColorServer.color option,
+          backgrnd : ColorServer.color option
+        } -> window
     val createTransientWin : window -> {
-	      geom : Geometry.win_geom,
-	      border : ColorServer.color,
-	      backgrnd : ColorServer.color
-	    } -> (window * WindowEnv.in_env)
+          geom : Geometry.win_geom,
+          border : ColorServer.color,
+          backgrnd : ColorServer.color
+        } -> (window * WindowEnv.in_env)
     val createSimplePopupWin : Display.screen -> {
-	      geom : Geometry.win_geom,
-	      border : ColorServer.color,
-	      backgrnd : ColorServer.color
-	    } -> (window * WindowEnv.in_env)
+          geom : Geometry.win_geom,
+          border : ColorServer.color,
+          backgrnd : ColorServer.color
+        } -> (window * WindowEnv.in_env)
     val createInputOnlyWin : window -> Geometry.rect -> window
 
   (* raise this exception on operations, such as drawing, that are illegal for
@@ -78,13 +80,13 @@ signature WINDOW =
 
   (* set the properties of a top-level window *)
     val setWMProperties : window -> {
-	      win_name : string option,
-	      icon_name : string option,
-	      argv : string list,
-	      size_hints : XProps.size_hints list,
-	      wm_hints : XProps.wm_hints list,
-	      class_hints : {res_class : string, res_name : string} option
-	    } -> unit
+          win_name : string option,
+          icon_name : string option,
+          argv : string list,
+          size_hints : XProps.size_hints list,
+          wm_hints : XProps.wm_hints list,
+          class_hints : {res_class : string, res_name : string} option
+        } -> unit
 
   (* set the window-manager protocols for a window *)
     val setWMProtocols : window -> XProtTypes.atom list -> bool
@@ -102,13 +104,13 @@ signature WINDOW =
     val setCursor : window -> Cursor.cursor option -> unit
 
     val setBackground : window -> ColorServer.color option -> unit
-	(* set the background color attribute of the window.  Note that this does
-	 * not have an immediate affect on the window's contents, but if it is done
-	 * before the window is mapped, the window will come up with the right color.
-	 *)
+    (* set the background color attribute of the window.  Note that this does
+     * not have an immediate affect on the window's contents, but if it is done
+     * before the window is mapped, the window will come up with the right color.
+     *)
 
     val changeWinAttrs : window -> window_attr list -> unit
-	(* Set various window attributes *)
+    (* Set various window attributes *)
 
     val mapWin : window -> unit
     val unmapWin : window -> unit
@@ -118,4 +120,7 @@ signature WINDOW =
     val screenOfWin : window -> Display.screen
     val displayOfWin : window -> Display.display
 
+    (* added ddeboer, Jan 2005 *)
+    val grabKeyboard : window -> int
+    val ungrabKeyboard : window -> int
   end (* WINDOW *)

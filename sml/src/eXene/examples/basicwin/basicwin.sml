@@ -9,7 +9,7 @@
 
 structure BasicWin : sig
 
-    val doit' : (string list * string * LargeInt.int) -> OS.Process.status
+    val doit' : (string list * string * Int32.int) -> OS.Process.status
     val doit  : string -> OS.Process.status
     val main  : (string * string list) -> OS.Process.status
 

@@ -47,7 +47,10 @@ functor ButtonCtrl (BV : BUTTON_VIEW) : BUTTON_CTRL =
                 ]
           in wait(timeOutEvt delay) end
 
-    fun realize {env=inenv, win, sz} (state,(quanta,reqc,evtc,bv)) = let
+    fun realize {env=inenv, win, sz} (state,(quanta,reqc,
+        (* next line type added ddeboer: *)
+        evtc: ButtonType.button_act CML.chan,
+        bv)) = let
           open Interact
           val InEnv{m,ci,...} = ignoreKey inenv
           val mchan = channel ()
@@ -166,14 +169,14 @@ functor ButtonCtrl (BV : BUTTON_VIEW) : BUTTON_CTRL =
           val evtc = channel ()
           val reqc = channel ()
           val quanta = (case getIntOpt(attrs attr_repeatDelay)
-		of NONE => NONE
-		 | SOME d => let
+        of NONE => NONE
+         | SOME d => let
                     val i = getInt(attrs attr_repeatInterval)
-		    val millisecs = Time.fromMilliseconds o Int.toLarge
+            val millisecs = Time.fromMilliseconds o Int.toLarge
                     in
-		      SOME(millisecs d, millisecs i)
-		    end
-	       (* end case *))
+              SOME(millisecs d, millisecs i)
+            end
+           (* end case *))
           val state = mkWState(getBool(attrs attr_isActive),
                                getBool(attrs attr_isSet))
           val bv = BV.buttonView (root,view,args)
@@ -190,7 +193,9 @@ functor ButtonCtrl (BV : BUTTON_VIEW) : BUTTON_CTRL =
                 realize = fn arg => send(reqc,DoRealize arg)
               },
               rqst = reqc,
-              evt = recvEvt evtc
+              (* modified by ddeboer; original: *)
+              (* evt = recvEvt evtc *)
+              evt = (WidgetBase.wrapQueue (recvEvt evtc))
             }
           end
 

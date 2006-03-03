@@ -74,6 +74,9 @@ structure WinRegistry : WIN_REGISTRY =
 	| ToAll
 	| ToTrash
 
+	(* ddeboer test, fall 2004. 
+	val rcref = ref 0*)
+	
     (* discard instances of an X-event that are the product of SubstructureNotify,
      * instead of StructureNotify. *)
       fun filterSubstructXEvt (w1, w2) = if (w1 = w2) then (ToWindow w1) else ToTrash
@@ -170,6 +173,11 @@ end
     val unlockTree = setLock false
 
     fun createRegistry {dpy=XDpy.XDPY{conn, ...}, keymap, propEvtCh, selEvtCh} = let
+    	  (* testing: ddeboer, fall 2004. *
+    	  val rn = (!rcref)
+    	  val _ = (TextIO.print ("Started registry " ^ (Int.toString rn) ^ "\n");
+    	  		rcref:=(!rcref)+1)
+    	  * end testing. *)
 	  val xevtIn = XIo.waitForXEvent conn
 	  val registerReqCh = CML.channel() and registerReplyCh = CML.channel()
 	  val lockReplyCh = CML.channel()
@@ -206,11 +214,18 @@ end
 		  children := child :: (! children);
 		  insert (childId, child)
 		end
-	  fun sendEvt (e, WD{path, evt_strm, ...}) = CML.send (evt_strm, (path, e))
+	  (* ddeboer, test, fall 2004 
+	  val cref = ref 0*)
+	  fun sendEvt (e, WD{path, evt_strm, ...}) = 
+	  	(* test, ddeboer, fall 2004: *)
+	  	( (*TextIO.print ("reg sending "^(Int.toString rn)^" "^(Int.toString (!cref))^"\n");*)
+	  	 CML.send (evt_strm, (path, e)))
+	  	 (*TextIO.print ("reg sent    "^(Int.toString rn)^" "^(Int.toString (!cref))^"\n");
+	  	 cref := ((!cref)+1))*)
 	  fun sendEvtToWin (e, winId) = (sendEvt (e, find winId))
 		handle HashXId.XIdNotFound => ()
 	  fun handleEvt e = (case (extractDst e)
-		 of (ToWindow winId) => sendEvtToWin(e, winId)
+		 of (ToWindow winId) => (sendEvtToWin(e, winId))
 		  | (CreateWin{parent, new_win}) => (
 		      newSubwin(parent, new_win);
 		      sendEvtToWin(e, parent))

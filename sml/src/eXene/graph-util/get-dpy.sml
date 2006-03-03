@@ -12,9 +12,9 @@ structure GetDpy : GET_DPY =
     structure SS = Substring
 
     fun getDpyName NONE = (case (OS.Process.getEnv "DISPLAY")
-	   of NONE => ""
-	    | (SOME dpy) => dpy
-	  (* end case *))
+       of NONE => ""
+        | (SOME dpy) => dpy
+      (* end case *))
       | getDpyName (SOME dpy) = dpy
 
   (* parse a string specifying a X display into its components. *)
@@ -34,27 +34,33 @@ structure GetDpy : GET_DPY =
    * information.  If the argument is NONE, then we use the DISPLAY environment
    * variable if it is defined, and "" if it is not defined.
    *)
-    fun getDpy dpyOpt = let
-	  val dpy = getDpyName dpyOpt
-          val auth = (case dpy
-                 of "" => XAuth.getAuthByAddr {
+    fun getDpy dpyOpt = 
+      let
+      val dpy = getDpyName dpyOpt
+      val auth = 
+        (case dpy of 
+            "" =>   XAuth.getAuthByAddr {
                         family = XAuth.familyLocal,
                         addr = "",
                         dpy = "0"
-                      }
-                  | d => let
-		      val {dpy,...} = parseDisplay d
-		      in
-			XAuth.getAuthByAddr {
-                            family = XAuth.familyInternet,
-                            addr = "",
-			    dpy = dpy
-			  }
-		      end
-                 (* end case *))
-	  in
-	    (dpy, auth)
-	  end
+                    }
+          | d => let
+              (* following line modified, ddeboer, Jan 2005. was:
+              val {dpy,...} = parseDisplay d *)
+              val {dpy,host,...} = parseDisplay d
+              in
+                    XAuth.getAuthByAddr {
+                        family = XAuth.familyInternet,
+                        (* following line modified, ddeboer, Jan 2005: was:
+                        addr = "", *)
+                        addr = host,
+                        dpy = dpy
+                    }
+              end
+        (* end case *))
+      in
+        (dpy, auth)
+      end
 
   end;
 

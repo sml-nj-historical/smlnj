@@ -34,9 +34,10 @@ signature SHELL =
                     -> hints
 
     val shell : (W.root * W.view * W.arg list) -> W.widget -> shell
-
+    
     val mkShell : W.widget * W.EXB.color option * wm_args -> shell
     val mkShellAt : W.G.rect -> W.widget * W.EXB.color option * wm_args -> shell
+    
     val mkTransientShell : W.EXB.window -> 
           W.widget * W.EXB.color option * wm_args -> shell
     val mkTransientShellAt : W.G.rect -> W.EXB.window ->
@@ -47,7 +48,11 @@ signature SHELL =
     val map : shell -> unit
     val unmap : shell -> unit
     val destroy : shell -> unit
-
+    
+    (* added by ddeboer: *)
+    val deleteEvent : shell -> unit CML.event
+    (* end added *)
+    
   end (* SHELL *)
 
 structure Shell : SHELL = 
@@ -66,7 +71,10 @@ structure Shell : SHELL =
     fun mkHints a = a
     datatype shell_msg = Init | Destroy | Map of bool | Hints of hints
 
-    datatype shell = Shell of (shell_msg chan)
+    (* modified by ddeboer; original:
+    datatype shell = Shell of (shell_msg chan) *)
+    datatype shell = Shell of (shell_msg chan * unit chan)
+    (* end modified *)
     
     fun setSizeHints {x_dim=x_dim as DIM xdim,y_dim=y_dim as DIM ydim} = let
           fun minSz () = let
@@ -134,15 +142,23 @@ structure Shell : SHELL =
             case colorOpt of 
               NONE => whiteOfScr scr
             | SOME color => color
-  
+      
+          (* added by ddeboer: *)
+          val delCh = CML.channel()
+          (* end added *)
+      
           fun setProtocols win = 
-                setWMProtocols win [ICCC.internAtom (displayOf root) "WM_DELETE_WINDOW"]
+                (* modified, ddeboer, to include WM_TAKE_FOCUS. *)
+                setWMProtocols win [(ICCC.internAtom (displayOf root) "WM_DELETE_WINDOW") (*,
+                                    (ICCC.internAtom (displayOf root) "WM_TAKE_FOCUS") *)]
                
           fun init (hintlist,mapped) = let
                 val bnds as {x_dim,y_dim} = boundsOf widget
                 val dfltsize = SIZE{wid=natDim x_dim,ht=natDim y_dim}
                 val (origin,size) = placement(rectopt,dfltsize)
-                val (twin, inEnv) = crwin widget {
+                (* modified by ddeboer; original: 
+                val (twin, inEnv) = crwin widget { ... *)
+                val (twin, inEnv, inDelChOpt) = crwin widget {
                   geom=WGEOM{pos=origin, sz=size, border=0},
                   backgrnd = color,
                   border = color   (* not used *)
@@ -186,15 +202,15 @@ structure Shell : SHELL =
                 fun handleCO CO_ResizeReq = let
                       val (bnds as {x_dim, y_dim}) = boundsOf widget
                       in
-			setWMProperties twin {
-			    argv = [],
-			    win_name = NONE,
-			    icon_name = NONE,
-			    size_hints = setSizeHints bnds,
-			    wm_hints = [],
-			    class_hints = NONE
-			  };
-                        resizeWin twin (SIZE{wid=natDim x_dim,ht=natDim y_dim})
+                  setWMProperties twin {
+                    argv = [],
+                    win_name = NONE,
+                    icon_name = NONE,
+                    size_hints = setSizeHints bnds,
+                    wm_hints = [],
+                    class_hints = NONE
+                  };                
+                  resizeWin twin (SIZE{wid=natDim x_dim,ht=natDim y_dim})
                       end
                   | handleCO CO_KillReq = (destroyWin twin; zombie())
           
@@ -218,6 +234,13 @@ structure Shell : SHELL =
                 fun loop mapped =
                        (select [
                            wrap (myci, handleCI o msgBodyOf),
+                           (* added by ddeboer: *)
+                           (case inDelChOpt of
+                            SOME inDelCh => 
+                                wrap (recvEvt inDelCh, 
+                                 fn () => (CML.send (delCh, ())))
+                              | NONE => never), 
+                           (* end added *)
                            wrap (recvEvt reqChan, loop o (handleReq mapped)),
                            wrap (childco, handleCO)
                          ]; 
@@ -242,18 +265,28 @@ structure Shell : SHELL =
   
           in
             XDebug.xspawn ("shell", fn () => initLoop ([],true));
-            Shell reqChan
+            (* modified by ddeboer; original:
+            Shell reqChan *) 
+            (Shell (reqChan, delCh))
           end
   
     local
-      fun simple wdgt = createSimpleTopWin (screenOf(rootOf wdgt))
-      fun trans w _ = createTransientWin w
+      (* modified by ddeboer; original: 
+      fun simple wdgt = createSimpleTopWin (screenOf(rootOf wdgt)) 
+      fun trans w _ = createTransientWin w*)
+      fun simple wdgt g = 
+        let
+        val (win,inEnv,delCh) = (createSimpleTopWin (screenOf(rootOf wdgt)) g)
+        in (win,inEnv,SOME delCh) end
+      fun trans w _ g = 
+        let
+        val (win,inEnv) = createTransientWin w g
+        in (win,inEnv,NONE) end (* end modified *)
     in
     fun mkShellAt r = mk_shell simple (SOME r)
     val mkShell = mk_shell simple NONE
     fun mkTransientShellAt r w = mk_shell (trans w) (SOME r)
     fun mkTransientShell w = mk_shell (trans w) NONE
-
     val attrs = [
         (Attrs.attr_title,          Attrs.AT_Str,    Attrs.AV_NoValue),
         (Attrs.attr_iconName,       Attrs.AT_Str,    Attrs.AV_NoValue),
@@ -267,15 +300,23 @@ structure Shell : SHELL =
           val pos = NONE (* FIX to lookup geometry *)
           val color = Attrs.getColorOpt (attrs Attrs.attr_background)
           val args = {win_name = win_name, icon_name = icon_name}
-          in mk_shell simple pos (widget, color, args) end
+          in mk_shell simple pos (widget, color, args) end 
 
     end (* local *)
 
+    (* following modified by ddeboer; original:
     fun init (Shell ch) = send (ch, Init)
     fun destroy (Shell ch) = send (ch, Destroy)
     fun unmap (Shell ch) = send(ch, Map false)
     fun map (Shell ch) = send(ch, Map true)
-    fun setWMHints (Shell ch) arg = send (ch, Hints arg)
-
+    fun setWMHints (Shell ch) arg = send (ch, Hints arg) *)
+    fun init (Shell (ch,dch)) = send (ch, Init)
+    fun destroy (Shell (ch,dch)) = send (ch, Destroy)
+    fun unmap (Shell (ch,dch)) = send(ch, Map false)
+    fun map (Shell (ch,dch)) = send(ch, Map true)
+    fun setWMHints (Shell (ch,dch)) arg = send (ch, Hints arg)
+    fun deleteEvent (Shell (ch,dch)) = (recvEvt dch)
+    (* end modified *)
+    
     end (* local *)
   end (* Shell *)

@@ -48,25 +48,27 @@ signature EXENE_WIN =
     exception BadWindowGeometry
 
     val createSimpleTopWin : EXB.screen -> {
-	      geom : G.win_geom,
-	      border : EXB.color,
-	      backgrnd : EXB.color
-	    } -> (window * Interact.in_env)
+          geom : G.win_geom,
+          border : EXB.color,
+          backgrnd : EXB.color
+        (* modified ddeboer, Jul 2004; original: 
+        } -> (window * Interact.in_env) *)
+        } -> (window * Interact.in_env * unit CML.chan)
     val createSimpleSubwin : window -> {
-	      geom : G.win_geom,
-	      border : EXB.color option,
-	      backgrnd : EXB.color option
-	    } -> window
+          geom : G.win_geom,
+          border : EXB.color option,
+          backgrnd : EXB.color option
+        } -> window
     val createTransientWin : EXB.window -> {
-	      geom : G.win_geom,
-	      border : EXB.color,
-	      backgrnd : EXB.color
-	    } -> (window * Interact.in_env)
+          geom : G.win_geom,
+          border : EXB.color,
+          backgrnd : EXB.color
+        } -> (window * Interact.in_env)
     val createSimplePopupWin : EXB.screen -> {
-	      geom : G.win_geom,
-	      border : EXB.color,
-	      backgrnd : EXB.color
-	    } -> (window * Interact.in_env)
+          geom : G.win_geom,
+          border : EXB.color,
+          backgrnd : EXB.color
+        } -> (window * Interact.in_env)
     val createInputOnlyWin : window -> G.rect -> window
 
   (* raise this exception on operations, such as drawing, that are illegal for
@@ -75,13 +77,13 @@ signature EXENE_WIN =
 
   (* set the properties of a top-level window *)
     val setWMProperties : window -> {
-	      win_name : string option,
-	      icon_name : string option,
-	      argv : string list,
-	      size_hints : ICCC.size_hints list,
-	      wm_hints : ICCC.wm_hints list,
-	      class_hints : {res_class : string, res_name : string} option
-	    } -> unit
+          win_name : string option,
+          icon_name : string option,
+          argv : string list,
+          size_hints : ICCC.size_hints list,
+          wm_hints : ICCC.wm_hints list,
+          class_hints : {res_class : string, res_name : string} option
+        } -> unit
 
   (* set the window-manager protocols for a window *)
     val setWMProtocols : window -> EXB.atom list -> bool
@@ -99,13 +101,13 @@ signature EXENE_WIN =
     val setCursor : window -> EXB.cursor option -> unit
 
     val setBackground : window -> EXB.color option -> unit
-	(* set the background color attribute of the window.  Note that this does
-	 * not have an immediate affect on the window's contents, but if it is done
-	 * before the window is mapped, the window will come up with the right color.
-	 *)
+    (* set the background color attribute of the window.  Note that this does
+     * not have an immediate affect on the window's contents, but if it is done
+     * before the window is mapped, the window will come up with the right color.
+     *)
 
     val changeWinAttrs : window -> window_attr list -> unit
-	(* Set various window attributes *)
+    (* Set various window attributes *)
 
     val mapWin : window -> unit
     val unmapWin : window -> unit
@@ -115,4 +117,7 @@ signature EXENE_WIN =
     val screenOfWin : window -> EXB.screen
     val displayOfWin : window -> EXB.display
 
+    (* added ddeboer *)
+    val grabKeyboard : window -> int
+    val ungrabKeyboard : window -> int
   end (* EXENE_WIN *)

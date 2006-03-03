@@ -122,7 +122,10 @@ structure FieldEdit : FIELD_EDIT = struct
       val (rinenv, routenv as OutEnv{co=rco,...}) = createWinEnv ()
 
       val (my_inenv, my_outenv) = createWinEnv ()
-      val InEnv{ci=myci,...} = ignoreInput my_inenv
+      (* modified by ddeboer: testing *)
+      (*val InEnv{ci=myci,...} = ignoreInput my_inenv*)
+      val InEnv{ci=myci,m=mym,k=myk,...} = my_inenv
+      (* end modification *)
       val router = Router.mkRouter (env, my_outenv, [])
 
       val childco = wrapQueue cco
@@ -167,10 +170,26 @@ structure FieldEdit : FIELD_EDIT = struct
               else lo
             end
           | handleC (CO_KillReq, lo) = lo
-  
+        
+        (* added by ddeboer: *)
+        fun handleK ((KEY_Press _),lo) = 
+                ((TextIO.print " [field-edit received KEY_Press]\n"); lo)
+          | handleK ((_),lo) = lo
+        fun handleM ((MOUSE_Enter _),lo) =
+                let
+                val a = grabKeyboard cwin
+                (* val _ = (TextIO.print (" [field-edit received MOUSE_Enter: "^(Int.toString(a))^"]\n")) *)
+                in lo end
+          | handleM ((_),lo) = lo
+        (* end addition *)
+        
         fun loop lo =
           loop (select [
             wrap (myci, fn evt => handleCI (msgBodyOf evt,lo)),
+            (* added by ddeboer: *)
+            wrap (myk, fn evt => handleK (msgBodyOf evt,lo)),
+            wrap (mym, fn evt => handleM (msgBodyOf evt,lo)),
+            (* end addition *)
             wrap (lco, fn _ => lo),
             wrap (rco, fn _ => lo),
             wrap (childco, fn evt => handleC(evt,lo))

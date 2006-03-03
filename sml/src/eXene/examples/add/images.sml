@@ -34,15 +34,8 @@ structure Images =
     val climbIndex = 2
     val topIndex = 6
 
-    fun mkImage {x, y, wid, ht, data} = let
-	  val data = List.map (List.map Byte.stringToBytes) data
-	  in (
-	    PT{x=x, y=y},
-	    EXeneBase.IMAGE{sz = SIZE{wid=wid, ht=ht}, data = data}
-	  ) end
-
-    val dive = mkImage {
-	    x=15,y=31, wid=16, ht=32,
+    val dive = (PT{x=15,y=31}, EXeneBase.IMAGE{
+            sz = Geometry.SIZE{wid=16, ht=32},
             data = [[
                 "\000\000",
                 "\001\224",
@@ -77,9 +70,9 @@ structure Images =
                 "\000\040",
                 "\000\016"
               ]]
-          }
-    val stand = mkImage {
-	    x=0,y=31, wid=16, ht=32,
+          })
+    val stand = (PT{x=0,y=31}, EXeneBase.IMAGE{
+            sz = Geometry.SIZE{wid=16, ht=32},
             data = [[
                 "\000\000",
                 "\000\000",
@@ -114,9 +107,9 @@ structure Images =
                 "\007\192",
                 "\007\192"
               ]]
-          }
-    val climb1 = mkImage {
-	    x=0,y=25, wid=16, ht=26,
+          })
+    val climb1 = (PT{x=0,y=25}, EXeneBase.IMAGE{
+            sz = Geometry.SIZE{wid=16, ht=26},
             data = [[
                 "\129\192",
                 "\193\224",
@@ -145,9 +138,9 @@ structure Images =
                 "\224\000",
                 "\224\000"
               ]]
-          }
-    val climb2 = mkImage {
-	    x=0,y=25, wid=16, ht=26,
+          })
+    val climb2 = (PT{x=0,y=25}, EXeneBase.IMAGE{
+            sz = Geometry.SIZE{wid=16, ht=26},
             data = [[
                 "\129\192",
                 "\193\224",
@@ -176,9 +169,9 @@ structure Images =
                 "\224\000",
                 "\224\000"
               ]]
-          }
-    val climb3 = mkImage {
-	    x=0,y=25, wid=16, ht=26,
+          })
+    val climb3 = (PT{x=0,y=25}, EXeneBase.IMAGE{
+            sz = Geometry.SIZE{wid=16, ht=26},
             data = [[
                 "\001\192",
                 "\001\224",
@@ -207,9 +200,9 @@ structure Images =
                 "\224\000",
                 "\224\000"
               ]]
-          }
-    val climb4 = mkImage {
-	    x=0,y=25, wid=16, ht=26,
+          })
+    val climb4 = (PT{x=0,y=25}, EXeneBase.IMAGE{
+            sz = Geometry.SIZE{wid=16, ht=26},
             data = [[
                 "\129\192",
                 "\065\224",
@@ -238,9 +231,9 @@ structure Images =
                 "\224\000",
                 "\224\000"
               ]]
-          }
-    val top1 = mkImage {
-	    x=8,y=41, wid=16, ht=42,
+          })
+    val top1 = (PT{x=8,y=41},EXeneBase.IMAGE{
+            sz = Geometry.SIZE{wid=16, ht=42},
             data = [[
                 "\000\028",
                 "\000\100",
@@ -285,10 +278,10 @@ structure Images =
                 "\007\112",
                 "\007\112"
               ]]
-          }
+          })
 
-    val top2 = mkImage {
-	    x=10,y=35, wid=32, ht=36,
+    val top2 = (PT{x=10,y=35}, EXeneBase.IMAGE{
+            sz = Geometry.SIZE{wid=32, ht=36},
             data = [[
                 "\000\000\000\016",
                 "\000\000\000\040",
@@ -327,9 +320,9 @@ structure Images =
                 "\001\220\000\000",
                 "\001\220\000\000"
               ]]
-          }
-    val top3 = mkImage {
-	    x=10,y=31, wid=32, ht=32,
+          })
+    val top3 = (PT{x=10,y=31}, EXeneBase.IMAGE{
+            sz = Geometry.SIZE{wid=32, ht=32},
             data = [[
                 "\000\000\000\000",
                 "\000\000\000\000",
@@ -364,9 +357,9 @@ structure Images =
                 "\001\220\000\000",
                 "\001\220\000\000"
               ]]
-          }
-    val top4 = mkImage {
-	    x=8,y=31, wid=20, ht=32,
+          })
+    val top4 = (PT{x=8,y=31}, EXeneBase.IMAGE{
+            sz = Geometry.SIZE{wid=20, ht=32},
             data = [[
                 "\000\000\000",
                 "\000\000\000",
@@ -401,7 +394,7 @@ structure Images =
                 "\007\112\128",
                 "\007\112\000"
               ]]
-          }
+          })
 
     val images = [
       dive, stand, climb1, climb2, climb3, climb4, top1, top2, top3, top4

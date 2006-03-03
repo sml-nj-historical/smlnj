@@ -154,7 +154,8 @@ structure ColorServer : COLOR_SERVER =
       fun get (CS{req_ch, reply_ch, ...}, colorSpec) = (
 	    CML.send (req_ch, colorSpec);
 	    case (CML.recv reply_ch)
-	     of ReplyError => raise NoColorCell
+	     of ReplyError => raise NoColorCell 
+	       (* ddeboer: NoColorCell raised here... So who wrote the comment at top?? <-- *)
 	      | (ReplyColor c) => c
 	    (* end case *))
     in

@@ -26,7 +26,9 @@ signature ROUTER =
        *)
 
     val routePair : Interact.in_env * Interact.out_env * Interact.out_env -> unit
-
+    (* added by ddeboer: *)
+    val bufferEvt : ('a Interact.addr_msg -> unit CML.event) -> ('a Interact.addr_msg -> unit CML.event)
+    (* end added *)
   end (* ROUTER *)
 
 structure Router : ROUTER = struct
@@ -48,6 +50,25 @@ structure Router : ROUTER = struct
     replych : out_env option chan
   }
 
+  (* make a buffer-handler; ddeboer, fall 2004. 
+   * Try to synchronize on inev, queueing value v; or
+   * Try to synchronize on outev v if queue is nonempty, where v is head of queue.
+   * bufferEvt : ('a addr_msg -> unit event) -> ('a addr_msg -> unit event)
+   *)
+  (* note: should use wrapQueue where possible. *)
+  fun bufferEvt outStm : ('a addr_msg -> unit event) =
+      let val inCh = channel()
+          fun loop ([], [])   = loop([(recv inCh)],[])
+            | loop ([], rear) = loop(rev rear,[])
+            | loop (front as (msgOut::r), rear) =
+                (select[
+                    (wrap((outStm msgOut), fn () => loop(r,rear))),
+                    (wrap(recvEvt inCh, fn msg => loop(front,msg::rear)))
+                ])
+      fun inEvt msg = (sendEvt (inCh,msg))
+          in spawn(fn () => loop ([],[])); inEvt end
+  (* end addition *)
+  
   (* The router is constructed with an in_env, out_env for a
    * composite widget and an initial distribution
    * list. The router listens for an event on the input environment, 
@@ -63,12 +84,18 @@ structure Router : ROUTER = struct
     fun findMsg m = addrLookup winMap m
     val insert = insert winMap
     val remove = remove winMap
-          
+             
     fun mEvt (OutEnv {m,...}) = m
     fun kEvt (OutEnv {k,...}) = k
     fun ciEvt (OutEnv {ci,...}) = ci
           
-    fun handleReq (AddChild item) = insert item
+    (* modified by ddeboer; original:
+     fun handleReq (AddChild item) = insert item*)
+    val myOut = case myOut of OutEnv{m,k,ci,co} => 
+            OutEnv{m=(bufferEvt m),k=(bufferEvt k),ci=(bufferEvt ci),co=co}
+    fun handleReq (AddChild (w,OutEnv{m,k,ci,co})) = 
+        insert (w,OutEnv{m=(bufferEvt m),k=(bufferEvt k),ci=(bufferEvt ci),co=co}) 
+    (* end modification *)
       | handleReq (DelChild w) = ((remove w; ()) handle _ => ())
       | handleReq (GetChild w) = send(routeReplyCh, (SOME(find w)) handle _ => NONE)
           
@@ -109,10 +136,19 @@ structure Router : ROUTER = struct
    *)
   fun routePair (InEnv{m, k, ci,...}, parentOut, childOut) = let
           
-    fun mEvt (OutEnv {m,...}) = m
-    fun kEvt (OutEnv {k,...}) = k
+    fun mEvt  (OutEnv {m,...})  = m (* mouse_msg addr_msg -> unit event *)
+    fun kEvt  (OutEnv {k,...})  = k
     fun ciEvt (OutEnv {ci,...}) = ci
           
+    (* added by ddeboer: *)
+    val childOut = 
+        case childOut of OutEnv{m,k,ci,co} => 
+            OutEnv{m= (bufferEvt m),
+                   k= (bufferEvt k),
+                   ci=(bufferEvt ci),
+                   co=co}
+    (* end added. *)
+    
     fun handleEvt proj msg =
       case stripMsg msg of
         Here _ => sync (proj parentOut msg)
