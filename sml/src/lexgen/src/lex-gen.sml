@@ -149,7 +149,7 @@ structure LexGen :
 			 else header),
 	       arg = arg,
 	       actions = actionsVec,
-	       dfa = clamp LexSpec.CLAMP127 states,
+	       dfa = states,
 	       startStates = ListPair.zip 
 			       (List.map Atom.toString startStates, 
 				initStates)
