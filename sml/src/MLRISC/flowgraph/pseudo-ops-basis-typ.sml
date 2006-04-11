@@ -32,7 +32,7 @@ structure PseudoOpsBasisTyp = struct
             *)
    | DATA_READ_ONLY
    | DATA 
-   | BSS
+   | BSS	(* data initialized to zero *)
    | TEXT
    | SECTION of Atom.atom 
    

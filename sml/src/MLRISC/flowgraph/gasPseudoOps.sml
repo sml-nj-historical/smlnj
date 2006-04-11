@@ -94,8 +94,8 @@ struct
 	val pop = (case sz
 	       of 8 => "\t.byte\t"
 		| 16 => "\t.short\t"
-		| 32 => "\t.int\t"
-		| 64 => error "INT64"
+		| 32 => "\t.long\t"	(* NOTE: ".int" doesn't work in older versions of gas *)
+		| 64 => "\t.quad\t"
 		| n => error ("unexpected INT size: " ^ Int.toString n)
 	      (* end case *))
 	in
@@ -124,7 +124,7 @@ struct
 	end
 
     | toString(PB.IMPORT labs) = decls("\t.extern\t%s", labs)
-    | toString(PB.EXPORT labs) = decls("\t.global\t%s", labs)
+    | toString(PB.EXPORT labs) = decls("\t.globl\t%s", labs)
     | toString(PB.COMMENT txt) = Fmt.format "/* %s */" [Fmt.STR txt]
         
 
