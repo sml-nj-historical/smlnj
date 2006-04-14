@@ -3,6 +3,7 @@ Library
 (*	signature CFG_VIEW *)
 (*	functor CFGView *)
 	signature ARCH_SPILL_INSTR
+	signature AS_PSEUDO_OPS
 	signature ASM_FORMAT_UTIL
 	signature ASM_STREAM
 	signature ASSEMBLY_EMITTER
@@ -21,7 +22,6 @@ Library
 	signature DELAY_SLOT_PROPERTIES
 	signature DOMINATOR_TREE
 	signature FREQUENCY_PROPERTIES
-	signature GAS_PSEUDO_OPS
 	signature GC_CELLS
 	signature GC_TYPE
 	signature GETREG
@@ -97,6 +97,7 @@ Library
 	functor CompleteProbsFn
 	functor ComputeFreqsFn
 	functor ControlFlowGraph
+	functor DarwinPseudoOps
 	functor DefaultBlockPlacement
 	functor DominatorTree
 	functor EstimateLoopProbsFn
@@ -198,6 +199,7 @@ is
 	../mltree/mltree-mult.sml
 	../mltree/machine-int.sig
 	../mltree/machine-int.sml
+	../flowgraph/as-pseudo-ops.sig
 	../flowgraph/buildFlowgraph.sml
 	../flowgraph/cfg-optimization.sig
 	../flowgraph/client-pseudo-ops.sig
@@ -208,6 +210,7 @@ is
 *)
 	../flowgraph/cfgCountCopies.sml
 	../flowgraph/cfgExpandCopies.sml
+	../flowgraph/darwin-pseudo-ops.sml
 	../flowgraph/gasPseudoOps.sml
 	../flowgraph/printFlowgraph.sml
 	../flowgraph/pseudo-ops.sig

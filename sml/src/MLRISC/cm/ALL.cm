@@ -267,6 +267,7 @@ IA32.cm:
         (* c calls *)
         ../x86/c-calls/ia32-svid.sml
 
+        ../x86/flowgraph/x86-darwin-pseudo-ops.sml
         ../x86/flowgraph/x86GasPseudoOps.sml
 
 	(* omit frame pointer *)
@@ -611,6 +612,7 @@ MLRISC.cm:
 	../mltree/machine-int.sml
 	
 	(* Basic cluster stuff. These are required. *)
+	../flowgraph/as-pseudo-ops.sig
 	../flowgraph/buildFlowgraph.sml
 	../flowgraph/cfg-optimization.sig
 	../flowgraph/client-pseudo-ops.sig
@@ -620,6 +622,7 @@ MLRISC.cm:
 	../flowgraph/cfgView.sml
 	../flowgraph/cfgCountCopies.sml
 	../flowgraph/cfgExpandCopies.sml
+	../flowgraph/darwin-pseudo-ops.sml
 	../flowgraph/gasPseudoOps.sml
 	../flowgraph/printFlowgraph.sml
 	../flowgraph/pseudo-ops.sig

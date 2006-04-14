@@ -13,6 +13,18 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: John Reppy
+Date: 2006/04/14
+Tag: 
+Description:
+
+MLRISC changes:
+  1) renamed GAS_PSEUDO_OPS to AS_PSEUDO_OPS and put it in its own file.
+  2) added support for NOTB and XORB operators in pseudo-op expressions
+  3) added DarwinPseudoOp functor that supports Darwin's assembler syntax.
+  4) added support for 64-bit integer literals
+
+----------------------------------------------------------------------
 Name: 
 Date: yyyy/mm/dd
 Tag: Release_110_58
