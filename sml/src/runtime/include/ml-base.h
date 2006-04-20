@@ -196,9 +196,18 @@ extern int		NumVProcs;
 
 #endif /* !_ASM_ */
 
+/* macro to prepend an underscore if necessary and stringify a symbol */
+#if defined(OPSYS_FREEBSD) || defined(OPSYS_LINUX)
+#define DLSYM_AUX1(S)	#S
+#define DLSYM_AUX2(S)	DLSYM_AUX1(_ ## S)
+#define DLSYM_STRING(SYM)	DLSYM_AUX2(SYM)
+#else
+#define DLSYM_STRING(SYM)	#SYM
+#endif
+
 #ifndef HEAP_IMAGE_SYMBOL
-#define HEAP_IMAGE_SYMBOL       "smlnj_heap_image"
-#define HEAP_IMAGE_LEN_SYMBOL   "smlnj_heap_image_len"
+#define HEAP_IMAGE_SYMBOL	DLSYM_STRING(smlnj_heap_image)
+#define HEAP_IMAGE_LEN_SYMBOL	DLSYM_STRING(smlnj_heap_image_len)
 #endif
 
 #endif /* !_ML_BASE_ */

@@ -114,7 +114,7 @@ request ckit
 
 # Build and install 'heap2asm' - an experimental component of
 # a new facility for producing true stand-alone executables.
-#request heap2asm
+request heap2asm
 
 # Note: autoloading is always enabled.
 #   In order to customize what is being pre-registered for autoloading

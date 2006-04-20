@@ -1,5 +1,18 @@
 #!@SHELL@
 
+CMD=`basename "$0"`
+
+usage() {
+	echo "usage: $CMD [--linkwith-<format>] heapfile execfile"
+	echo "       <format> = exec | so | a"
+	exit 1
+}
+
+die () {
+	echo "${CMD}: $1"
+	exit 1
+}
+
 if [ x${SMLNJ_HOME} = x ] ; then
     BIN_DIR="@BINDIR@"
 else
@@ -8,35 +21,134 @@ fi
 
 ARCH_N_OPSYS=`"$BIN_DIR/.arch-n-opsys"`
 if [ "$?" != "0" ]; then
-  echo "$CMD: unable to determine architecture/operating system"
-  exit 1
+	die "unable to determine architecture/operating system"
 fi
 eval $ARCH_N_OPSYS
 
 RUNX=${BIN_DIR}/.run/runx.${ARCH}-${OPSYS}
+RUN_SO=${BIN_DIR}/.run/run.${ARCH}-${OPSYS}.so
+RUN_A=${BIN_DIR}/.run/run.${ARCH}-${OPSYS}.a
 H2A=${BIN_DIR}/heap2asm
 
+FORMAT=
 if [ $# != 2 ] ; then
-    echo usage: $0 heapfile execfile
-    exit 1
+	if [ $# = 3 ] ; then
+		case $1 in
+			--linkwith-exec)
+				FORMAT=exec
+				;;
+			--linkwith-so)
+				FORMAT=so
+				;;
+			--linkwith-a)
+				FORMAT=a
+				;;
+			*)
+				usage
+				;;
+		esac
+		shift
+   	else
+		usage
+	fi
+else
+	case ${OPSYS} in
+		darwin)
+			FORMAT=exec
+			;;
+		freebsd|linux)
+			FORMAT=a
+			;;
+		*)
+			die "no default runtime link format known for ${OPSYS}"
+			;;
+		esac
+fi
+if [ -z "$FORMAT" ] ; then
+	die "no runtime object format specified"
 fi
 
 heapfile=$1
 execfile=$2
 
-if [ -f $RUNX ] ; then
-    if [ -f $H2A ]; then
-	${H2A} "$heapfile" "$execfile".s
-	cc -c "$execfile".s
-	ld -o "$execfile" ${RUNX} "$execfile".o -lc
-	rm "$execfile".[so]
-    else
-	echo $0: heap2asm is not installed
+CC=cc
+LD=ld
+
+EXEC_PROG=
+EXEC_FLAGS=
+EXEC_LIBS=
+SO_PROG=
+SO_FLAGS=
+SO_LIBS=
+A_PROG=
+A_FLAGS=
+A_LIBS=
+
+case ${OPSYS} in
+	darwin)
+		EXEC_PROG=${LD}
+		EXEC_LIBS=-lc
+		;;
+	freebsd)
+		SO_PROG=${CC}
+		SO_FLAGS=-Wl,--export-dynamic
+		SO_LIBS=-lm
+		A_PROG=${CC}
+		A_FLAGS=-Wl,--export-dynamic
+		A_LIBS=-lm
+		;;
+	linux)
+		SO_PROG=${CC}
+		SO_FLAGS=-Wl,--export-dynamic
+		A_PROG=${CC}
+		A_FLAGS=-Wl,--export-dynamic
+		A_LIBS="-lm -ldl"
+		;;
+	*)
+		;;
+esac
+
+if [ ! -f $H2A ]; then
+	echo "${CMD}: heap2asm is not installed"
 	exit 2
-    fi
+fi
+
+RESULT=0
+if ${H2A} "$heapfile" "$execfile".s ; then
+	if [ -f "$execfile".s ] ; then
+		if ${CC} -c -o "$execfile".o "$execfile".s ; then
+			rm "$execfile".s
+		else
+			rm "$execfile".s
+			die "${execfile}.o creation failed"
+		fi
+	else
+		die "${execfile}.s creation failed"
+	fi
+	if [ "$FORMAT" = exec -a -f "${RUNX}" ] ; then
+		[ -z "${EXEC_PROG}" ] && die "no linker specified for runtime format $FORMAT"
+		${EXEC_PROG} ${EXEC_FLAGS} -o "$execfile" ${RUNX} "$execfile".o ${EXEC_LIBS}
+		RESULT=$?
+	elif [ "$FORMAT" = so -a -f "${RUN_SO}" ] ; then
+		[ -z "${SO_PROG}" ] && die "no linker specified for runtime format $FORMAT"
+		${SO_PROG} ${SO_FLAGS} -o "$execfile" ${RUN_SO} "$execfile".o ${SO_LIBS}
+		RESULT=$?
+	elif [ "$FORMAT" = a -a -f "${RUN_A}" ] ; then
+		[ -z "${A_PROG}" ] && die "no linker specified for runtime format $FORMAT"
+		${A_PROG} ${A_FLAGS} -o "$execfile" ${RUN_A} "$execfile".o ${A_LIBS}
+		RESULT=$?
+	else
+		echo "${CMD}: linkable runtime system object ($FORMAT) not available"
+		rm "$execfile".o
+		exit 2
+	fi
+	rm "$execfile".o
 else
-    echo $0: linkable runtime system object not available
-    exit 2
+	die "heap2asm failed"
+fi
+
+if [ $RESULT != 0 ] ; then
+	die "linking failed with return code $RESULT"
 fi
 
 exit 0

@@ -114,6 +114,22 @@ clean:
 $(RUNTIME):	$(VERSION) main.o $(OBJS) $(ALL_LIBS)
 	$(CC) -o $(RUNTIME) $(CFLAGS) $(LDFLAGS) main.o $(OBJS) $(ALL_LIBS) $(LD_LIBS) -lm
 
+$(RUNTIME_A):	$(VERSION) main.o $(OBJS) $(ALL_LIBS)
+	rm -f $(RUNTIME_A)
+	$(AR) rc $(RUNTIME_A) main.o $(OBJS)
+	rm -rf tmp
+	mkdir tmp
+	for lib in $(ALL_LIBS) ; \
+	do \
+		cd tmp && \
+		$(AR) x ../$$lib && \
+		$(AR) q ../$(RUNTIME_A) *.o && \
+		rm * && \
+		cd .. ; \
+	done
+	$(RANLIB) $(RUNTIME_A)
+	rmdir tmp
+
 $(VERSION):
 		($(MAKE) MAKE="$(MAKE)" clean)
 		echo "$(VERSION)" > $(VERSION)

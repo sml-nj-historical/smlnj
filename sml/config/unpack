@@ -286,6 +286,9 @@ do
       heap2asm)
 	unpack "Heap->ASM tool" "$SRCDIR" heap2asm heap2asm
 	;;
+      tools)
+	unpack "debugging tools" "$SRCDIR" tools tools
+	;;
       doc)
 	echo Package doc is currently unavailable.
 	# unpack Doc $ROOT doc doc

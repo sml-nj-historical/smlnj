@@ -24,3 +24,5 @@ pgraph-util
 mlrisc
 mlrisc-tools
 smlnj-c
+heap2asm
+tools
