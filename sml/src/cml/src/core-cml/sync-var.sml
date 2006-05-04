@@ -176,12 +176,17 @@ structure SyncVar :> SYNC_VAR =
 	    R.BEVT[pollFn]
 	  end
 
-    fun iGetPoll (CELL{priority, readQ, value}) = (
-	  S.atomicBegin();
-	  case !value
-	   of NONE => NONE
-	    | (SOME v) => (S.atomicEnd(); SOME v)
-	  (* end case *))
+    fun iGetPoll (CELL{priority, readQ, value}) = let
+	  val res = (
+		S.atomicBegin();
+		case !value
+		 of NONE => NONE
+		  | (SOME v) => SOME v
+		(* end case *))
+	  in
+	    S.atomicEnd();
+	    res
+	  end
 
 
   (** M-variables **)
@@ -243,12 +248,16 @@ structure SyncVar :> SYNC_VAR =
 	    R.BEVT[pollFn]
 	  end
 
-    fun mTakePoll (CELL{priority, readQ, value}) = (
-	  S.atomicBegin();
-	  case !value
-	   of NONE => NONE
-	    | (SOME v) => (value := NONE; S.atomicEnd(); SOME v)
-	  (* end case *))
+    fun mTakePoll (CELL{priority, readQ, value}) = let
+	  val res = (
+		S.atomicBegin();
+		case !value
+		 of NONE => NONE
+		  | (SOME v) => (value := NONE; SOME v)
+		(* end case *))
+	  in
+	    S.atomicEnd(); res
+	  end
 
     fun mGet (CELL{priority, readQ, value}) = (
 	  S.atomicBegin();
@@ -336,4 +345,3 @@ structure SyncVar :> SYNC_VAR =
 	  end
 
   end; (* SyncVar *)
-
