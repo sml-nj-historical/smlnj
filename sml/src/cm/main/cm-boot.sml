@@ -336,28 +336,29 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		  case archos of
 		      NONE => fnpolicy
 		    | SOME ao => FilenamePolicy.colocate_generic ao
-	      fun sourcesOf ((p, gth, _), (v, a)) =
+	      fun sourcesOf ((p, gth, _), (v, a, r)) =
 		  let val v' = SrcPathSet.add (v, p)
 		  in case gth () of
-			 GG.ERRORGROUP => (v', a)
+			 GG.ERRORGROUP => (v', a, r)
 		       | GG.GROUP { kind, sources, ... } =>
 			 let fun add (p, x, a) =
 				 StringMap.insert (a, SrcPath.osstring p, x)
 			     fun sg l =
-				 if SrcPathSet.member (v, p) then (v, a)
+				 if SrcPathSet.member (v, p) then (v, a, r)
 				 else foldl sourcesOf
 					    (v', SrcPathMap.foldli
-						     add a sources)
+						     add a sources, r)
 					    l
 			 in case kind of
 				GG.LIB { kind, version } =>
 				(case kind of
 				     GG.STABLE _ =>
 				     let val f = SrcPath.osstring p
-					 val (a, x) = StringMap.remove (a, f)
+					 val r' = StringSet.add (r, f)
+					 val x = valOf (StringMap.find (a, f))
 					 val sf = FilenamePolicy.mkStableName
 						      policy (p, version)
-				     in (v', StringMap.insert (a, sf, x))
+				     in (v', StringMap.insert (a, sf, x), r')
 				     end
 				   | GG.DEVELOPED d => sg (#subgroups d))
 			      | GG.NOLIB n => sg (#subgroups n)
@@ -368,13 +369,16 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	  in
 	      (case Parse.parse (parse_arg (gr, NONE, p)) of
 		   SOME (g, _) => let
-		       val (_, sm) =
+		       val (_, sm, removed) =
 			   sourcesOf ((p, fn () => g, []),
 				      (SrcPathSet.empty,
 				       StringMap.singleton
 					   (SrcPath.osstring p,
 					    { class = "cm",
-					      derived = false })))
+					      derived = false }),
+				       StringSet.empty))
+		       fun trim (f, sm) = #1 (StringMap.remove (sm, f))
+		       val sm = StringSet.foldl trim sm removed
 		       fun add (s, { class, derived }, l) =
 			   { file = s, class = class, derived = derived } :: l
 		   in SOME (StringMap.foldli add [] sm)

@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/05/12 15:15:00 CST
+Tag: blume-20060512-makedepend
+Description:
+
+Fixed long-standing bug with ml-makedepend where it would output a
+spurious dependency to a non-existing file.  (This is a simple fix.
+It might need further looking into.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2006/04/20 10:30:00 CDT
 Tag: blume-20060420-heap2exec
 Description:
