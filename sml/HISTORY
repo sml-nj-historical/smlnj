@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/05/12 15:20:00 CST
+Tag: blume-20060515-makedepend
+Description:
+
+Implemented ml-makedepend (i.e., CM.sources) in a better (more robust)
+way.  This should hopefully fix the ml-makedepend problem permanently.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2006/05/12 15:15:00 CST
 Tag: blume-20060512-makedepend
 Description:

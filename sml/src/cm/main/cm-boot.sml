@@ -331,61 +331,67 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 				    (GroupReg.new (), NONE, mkStdSrcPath s)))
 	  end
 
-	  fun sources archos group = let
-	      val policy =
-		  case archos of
-		      NONE => fnpolicy
-		    | SOME ao => FilenamePolicy.colocate_generic ao
-	      fun sourcesOf ((p, gth, _), (v, a, r)) =
-		  let val v' = SrcPathSet.add (v, p)
-		  in case gth () of
-			 GG.ERRORGROUP => (v', a, r)
-		       | GG.GROUP { kind, sources, ... } =>
-			 let fun add (p, x, a) =
-				 StringMap.insert (a, SrcPath.osstring p, x)
-			     fun sg l =
-				 if SrcPathSet.member (v, p) then (v, a, r)
-				 else foldl sourcesOf
-					    (v', SrcPathMap.foldli
-						     add a sources, r)
-					    l
-			 in case kind of
-				GG.LIB { kind, version } =>
-				(case kind of
-				     GG.STABLE _ =>
-				     let val f = SrcPath.osstring p
-					 val r' = StringSet.add (r, f)
-					 val x = valOf (StringMap.find (a, f))
-					 val sf = FilenamePolicy.mkStableName
-						      policy (p, version)
-				     in (v', StringMap.insert (a, sf, x), r')
-				     end
-				   | GG.DEVELOPED d => sg (#subgroups d))
-			      | GG.NOLIB n => sg (#subgroups n)
-			 end
-		  end
-	      val p = mkStdSrcPath group
-	      val gr = GroupReg.new ()
-	  in
-	      (case Parse.parse (parse_arg (gr, NONE, p)) of
-		   SOME (g, _) => let
-		       val (_, sm, removed) =
-			   sourcesOf ((p, fn () => g, []),
-				      (SrcPathSet.empty,
-				       StringMap.singleton
-					   (SrcPath.osstring p,
-					    { class = "cm",
-					      derived = false }),
-				       StringSet.empty))
-		       fun trim (f, sm) = #1 (StringMap.remove (sm, f))
-		       val sm = StringSet.foldl trim sm removed
-		       fun add (s, { class, derived }, l) =
-			   { file = s, class = class, derived = derived } :: l
-		   in SOME (StringMap.foldli add [] sm)
-		   end
-		 | _ => NONE)
-	      before dropPickles ()
-	  end
+	  fun sources archos group =
+	      let val policy =
+		      case archos of
+			  NONE => fnpolicy
+			| SOME ao => FilenamePolicy.colocate_generic ao
+		  fun snam (p, version) = FilenamePolicy.mkStableName
+					      policy (p, version)
+		  fun insert0 (a, f, x) = StringMap.insert (a, f, x)
+		  fun insert (a, p, x) = insert0 (a, SrcPath.osstring p, x)
+		  fun add (s, p) = SrcPathSet.add (s, p)
+
+		  fun addSources (subgroups, sources, a, v) =
+		      let fun findSG p =
+			      List.find (fn (p', _, _) =>
+					    SrcPath.compare (p, p') = EQUAL)
+					subgroups
+			  fun one (p, x as { class, derived }, (a, v)) =
+			      if SrcPathSet.member (v, p) then (a, v)
+			      else if class = "cm" then
+				  case findSG p of
+				      NONE => (a, v) (* unused group/library *)
+				    | SOME (_, gth, _) =>
+				        addGroup (p, x, gth, a, add (v, p))
+			      else (insert (a, p, x), add (v, p))
+		      in SrcPathMap.foldli one (a, v) sources
+		      end
+
+		  and addGroup (p, x, gth, a, v) =
+		      case gth () of
+			  GG.ERRORGROUP => (a, v)
+			| GG.GROUP { kind, sources, ... } =>
+			    (case kind of
+				 GG.LIB { kind, version } =>
+				   (case kind of
+					GG.STABLE _ =>
+					  (insert0 (a, snam (p, version), x), v)
+				      | GG.DEVELOPED d =>
+ 					  addSources (#subgroups d, sources,
+						      insert (a, p, x), v))
+			       | GG.NOLIB n =>
+				   addSources (#subgroups n, sources,
+					       insert (a, p, x), v))
+		      
+		  val p = mkStdSrcPath group
+		  val gr = GroupReg.new ()
+		  val x0 = { class = "cm", derived = false }
+		  fun doit () =
+		      case Parse.parse (parse_arg (gr, NONE, p)) of
+			  SOME (g, _) =>
+			    let val (sm, _) =
+				    addGroup (p, x0, fn () => g,
+					      StringMap.empty,
+					      SrcPathSet.singleton p)
+				fun add (f, { class, derived }, l) =
+				    { file = f, class = class,
+				      derived = derived } :: l
+			    in SOME (StringMap.foldli add [] sm)
+			    end
+			| NONE => NONE
+	      in doit () before dropPickles ()
+	      end
 
 	  fun mk_standalone sflag { setup, project, wrapper, target } = let
 	      val hsfx = SMLofNJ.SysInfo.getHeapSuffix ()
