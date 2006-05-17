@@ -40,22 +40,48 @@ structure GetDpy : GET_DPY =
       val auth = 
         (case dpy of 
             "" =>   XAuth.getAuthByAddr {
+                        (* modified ddeboer, spring 2005:
+                         * this condition should probably throw exception;
+                         * xlib XOpenDisplay code "/* Oops! No DISPLAY environment variable..."
+                         * returns NULL from XOpenDisplay (fails to open connection).
+                         * was:
                         family = XAuth.familyLocal,
-                        addr = "",
+                        addr = "", *)
+                        family = XAuth.familyWild,
+                        addr = NetHostDB.getHostName(), (* necessary to look up xrdb record *)
                         dpy = "0"
                     }
           | d => let
               (* following line modified, ddeboer, Jan 2005. was:
               val {dpy,...} = parseDisplay d *)
               val {dpy,host,...} = parseDisplay d
+              (* added ddeboer, spring 2005 *)
+              fun mkXA fam addr = XAuth.getAuthByAddr{
+                                  family = fam,
+                                  addr   = addr,
+                                  dpy    = dpy
+                                }
               in
+                (* added ddeboer, spring 2005, was:
                     XAuth.getAuthByAddr {
                         family = XAuth.familyInternet,
-                        (* following line modified, ddeboer, Jan 2005: was:
-                        addr = "", *)
-                        addr = host,
+                        addr = "",
                         dpy = dpy
                     }
+                *)
+                (* we must obtain the string to be used for comparison in getAuthByAddr.
+                 * for familyLocal, this is the local hostname.
+                 * for familyInternet, this is the IP address (as a string) *)
+                case host of
+                    ""          => mkXA XAuth.familyLocal (NetHostDB.getHostName())
+                  | "localhost" => mkXA XAuth.familyLocal (NetHostDB.getHostName())
+                  | _           => mkXA XAuth.familyInternet 
+                    (* this should more properly be set to the peer address of the
+                     * connection, *after* the connection has been made. However,
+                     * that would be a bit difficult with this architecture. *)
+                        (case (NetHostDB.getByName host) of 
+                          SOME e => (NetHostDB.toString (NetHostDB.addr e))
+                        | _ => "")
               end
         (* end case *))
       in

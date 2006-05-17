@@ -94,19 +94,19 @@ structure XAuth : X_AUTH =
             SOME(EXB.AUTH{
             (* modified by ddeboer: 
              * entries of family=familyInternet are stored as 4-byte ip addresses.
-             * it seems that we must convert these into hostnames for comparison...?!?
             original:
             family = get16 (contents, offset),
             addr = getString (contents, addrStart, addrLen),*) 
             family = family,
             addr = (if (family = familyInternet) 
-                then (let val str = getAddressString(contents,addrStart,addrLen) in
+                then (getAddressString (contents,addrStart,addrLen))
+                (* (let val str = getAddressString(contents,addrStart,addrLen) in
                     (case (NetHostDB.fromString str) of
                         NONE => ""
                       | SOME ia => (case (NetHostDB.getByAddr ia) of 
                                         NONE => "" 
-                                      | SOME e => (NetHostDB.name e))) end)
-                else getString (contents, addrStart, addrLen)),
+                                      | SOME e => (NetHostDB.name e))) end) *)
+                else (getString (contents, addrStart, addrLen)) ),
             (* end modification *)
             dpy = getString (contents, dpyStart, dpyLen),
             name = getString (contents, nameStart, nameLen),
@@ -127,10 +127,10 @@ structure XAuth : X_AUTH =
       val extractAuth = extractAuth (readFile (authFileName()))
       (* hack by ddeboer, Feb 2005 - this is surely not the right way to do this...?? 
          if family is internet and address is localhost, change to the local hostname
-         and familyLocal. *)
-      val (family,addr) = if (((addr="localhost") (* orelse (addr="")*) ) andalso family=familyInternet) 
+         and familyLocal. 
+      val (family,addr) = if (((addr="localhost")) andalso family=familyInternet) 
                             then (familyLocal,NetHostDB.getHostName())
-                            else (family,addr) 
+                            else (family,addr) *)
       (* end hack *)
       fun cmpStr ("", _) = true
         | cmpStr (_, "") = true
@@ -148,14 +148,14 @@ structure XAuth : X_AUTH =
               if (chkAuth auth) then (SOME auth) else look next
         (* end case *))
       in
-         look 0 
+        (* look 0 *)
         (* modified ddeboer, Jan 2005 for testing. *)
-        (*(let val rv = look 0 in 
+        (let val rv = look 0 in 
             (case rv of (SOME (EXB.AUTH{addr,dpy,name,data,...})) =>
-                (TextIO.print ("getAuthByAddr returns SOME EXB.AUTH{addr="^
-                    addr^",dpy="^dpy^",name="^name^",...}\n"))
-                | NONE => (TextIO.print ("getAuthByAddr returns NONE (addr="^
-                    addr^",dpy="^dpy^")\n"))); rv end)*) 
+                ((*TextIO.print ("getAuthByAddr returns SOME EXB.AUTH{addr="^
+                    addr^",dpy="^dpy^",name="^name^",...}\n")*))
+                | NONE => ((*TextIO.print ("getAuthByAddr returns NONE (addr="^
+                    addr^",dpy="^dpy^")\n")*))); rv end)
       end
         handle _ => NONE
 
@@ -168,10 +168,10 @@ structure XAuth : X_AUTH =
       val extractAuth = extractAuth (readFile (authFileName()))
       (* hack by ddeboer, Feb 2005 - this is surely not the right way to do this...?? 
          if family is internet and address is localhost, change to the local hostname
-         and familyLocal. *)
-      val (family,addr) = if (((addr="localhost") (* orelse (addr="")*) ) andalso family=familyInternet) 
+         and familyLocal. 
+      val (family,addr) = if (((addr="localhost") ) andalso family=familyInternet) 
                             then (familyLocal,NetHostDB.getHostName())
-                            else (family,addr)
+                            else (family,addr)*)
       (* end hack *)
       fun cmpStr ("", _) = true
         | cmpStr (_, "") = true

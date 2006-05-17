@@ -71,9 +71,9 @@ structure AttrValue : ATTR_VALUE =
 		      Bits.lshift(StringCvt.xatoi(substring(s, i, n)), shift)
 		in
 		  EXeneBase.CMS_RGB{
-		      red = extract(s, 1),
-		      green = extract(s, 1+n),
-		      blue = extract(s, 1+n+n)
+		      red = debug("red", extract(s, 1)),
+		      green = debug("green", extract(s, 1+n)),
+		      blue = debug("blue", extract(s, 1+n+n))
 		    }
 		end
 	  in

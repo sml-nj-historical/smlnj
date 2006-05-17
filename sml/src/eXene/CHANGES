@@ -1,11 +1,20 @@
 eXene-2.0a
 ------------------------
 
+Fixed bug in creation of color_spec's (widgets/util/attrs.sml)
+    [Apr 2006]
+
+Included small bug fixes to widgets/composite/pipe.sml (by David Benson) and
+  widgets/composite/viewport.sml (by Dominic Gelinas).
+    [Apr 2006]
+
 GRAPHICS UTILITIES
   - modifications to xauth.sml to unpack IP addresses from Xauth file 
-     to strings for comparison; if "localhost" is specified as the
-     host to connect to, search Xauth file by the actual hostname.
-    [Feb 2005]
+     to strings for comparison; if a local connection is to be created, 
+     search Xauth file by the full system name of the local host, or if 
+     an Internet connection is to be created, search by the IP address 
+     of the remote host.
+    [Feb/Sept 2005/Apr 2006]
 
 LIBRARY CHANGES
   - modified createSimpleTopWin to return channel on which X window

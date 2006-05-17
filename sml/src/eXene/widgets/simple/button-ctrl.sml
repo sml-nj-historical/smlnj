@@ -195,7 +195,7 @@ functor ButtonCtrl (BV : BUTTON_VIEW) : BUTTON_CTRL =
               rqst = reqc,
               (* modified by ddeboer; original: *)
               (* evt = recvEvt evtc *)
-              evt = (WidgetBase.wrapQueue (recvEvt evtc))
+              evt = (*(WidgetBase.wrapQueue )*)recvEvt evtc(*))*)
             }
           end
 

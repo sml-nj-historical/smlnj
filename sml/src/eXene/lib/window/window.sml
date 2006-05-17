@@ -83,7 +83,8 @@ structure Window : WINDOW =
             XEventTypes.XEVT_LeaveWindow,
         XEventTypes.XEVT_Exposure,
         XEventTypes.XEVT_StructureNotify,
-        XEventTypes.XEVT_SubstructureNotify
+        XEventTypes.XEVT_SubstructureNotify,
+        XEventTypes.XEVT_PropertyChange
       ]
 
     val popupXEventMask = XEventTypes.maskOfXEvtList [

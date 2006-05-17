@@ -3,6 +3,8 @@
  * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
  *
  * Types to add: FontList, Atom
+ *
+ * Alley Stoughton, April 2006: added shifting when forming CMS_RGB values
  *)
 
 structure Attrs : ATTRS =
@@ -165,11 +167,13 @@ structure Attrs : ATTRS =
 	  fun split n = let
 		fun extract i =
                       #1(valOf(Word.scan StringCvt.HEX SS.getc (SS.slice(s, i, SOME n))))
+                (* Alley: shift originally was missing *)
+                fun shift m = Word.<<(m, Word.fromInt(16 - n * 4))
 		in
 		  EXeneBase.CMS_RGB{
-		      red = extract 1,
-		      green = extract(1+n),
-		      blue = extract(1+n+n)
+		      red = shift(extract 1),
+		      green = shift(extract(1+n)),
+		      blue = shift(extract(1+n+n))
 		    }
 		end
 	  in

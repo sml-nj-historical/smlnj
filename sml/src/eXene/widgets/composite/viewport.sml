@@ -15,6 +15,10 @@ structure Viewport : VIEWPORT = struct
 
   open CML Geometry EXeneBase EXeneWin Interact Drawing Widget
 
+  val viewportTM  = TraceCML.traceModule(XDebug.eXeneTM, "viewport")
+  fun trace f = TraceCML.trace (viewportTM, f)
+  fun debug str = trace(fn () => [str])
+
   datatype req_msg
     = DoRealize of {
           env : in_env,
@@ -56,9 +60,6 @@ structure Viewport : VIEWPORT = struct
         val x = case horz of SOME h => h | _ => x
         val y = case vert of SOME v => v | _ => y
         in RECT{x=x,y=y,wid=wid,ht=ht} end
-
-    (* Handle child's request for resizing : unimplemented *)
-  fun doResizeReq g = g (* FIX *)
 
   fun filter (inevt, outchan) = let
     val timeOut = timeOutEvt(Time.fromMilliseconds 30)
@@ -118,7 +119,8 @@ structure Viewport : VIEWPORT = struct
             {rect=newGeom (wid,ht,geom),childSz= #childSz geom}
         | handleCI (_,geom) = geom
 
-      fun handleCO (CO_ResizeReq,g) = doResizeReq g
+      fun handleCO (CO_ResizeReq,{rect,childSz}) =
+            {rect=rect,childSz=sizeOfRect (naturalRect (boundsOf widget))}
         | handleCO (CO_KillReq,g) = (destroyWin cwin; g)
 
       fun handleReq (Set arg,{rect,childSz} : geometry) = let
@@ -144,10 +146,27 @@ structure Viewport : VIEWPORT = struct
                        then changed {rect=rect',childSz=childSz}
                     else loop geom
                   end
+
+            fun doCO evt = let
+                  val geom' as {rect=rect',
+                                childSz=childSz'} = handleCO (evt, geom)
+                  val origin' as PT{x,y} = originOfRect rect'
+                  in if childSz <> childSz'
+                        then (
+                          let val SIZE{wid=cw,ht=ch} = childSz'
+                              val cr = RECT{x= ~x,y= ~y,wid=cw,ht=ch}
+                          in moveAndResizeWin cwin cr;
+                          (* moveWin cwin (PT{x= ~x,y= ~y}); *)
+                             changed geom'
+                          end
+                        )
+                     else loop geom
+                  end
+
             in
               (select [
                 wrap (myci, doCI),
-                wrap (childco, fn arg => loop(handleCO (arg,geom))),
+                wrap (childco, doCO),
                 wrap (recvEvt filtChan, fn arg => loop(handleReq (arg, geom)))
               ])
             end

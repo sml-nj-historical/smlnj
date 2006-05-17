@@ -7,10 +7,40 @@ description.
 
 The form of an entry should be:
 
-Name: 
-Date: yyyy/mm/dd
-Tag: <post-commit CVS tag>
+
+Name: Your Name (web page or e-mail)
+Date: yyyy/mm/dd hh:mm:ss 
+Tag: cvs-tag-for-this-change
 Description:
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/05/17 14:00:00 CST
+Tag: Release_110_59
+Description:
+
+New working version (110.58).  NEW BOOTFILES!
+
+I am freezing 110.59.  Changes other than the version-number increase:
+
+  eXene:
+
+     * committed changes to eXene from Alley Stoughton:
+         "fixed bugs in X authorization and resource handling, as well
+          as in the pile and viewport widgets"
+
+  Runtime:
+    * fixed linking problem with NetBSD 3.x.
+
+  Lexgen:
+    * lexgen tool handles non-ascii characters in 7-bit mode the same
+      way that ml-lex does
+
+    * lexgen propagates exceptions the same way that ml-lex does
+
+  CML:
+    * Fixed a bug in the SyncVar polling functions (iGetPoll,
+      mTakePoll, and mGetPoll) that could lead to livelock.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
