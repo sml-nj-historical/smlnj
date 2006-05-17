@@ -1,6 +1,12 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2006-05-04]
+	Fixed bug with iGetPoll, mTakePoll, and mGetPoll.  In some cases, the
+	atomic region was not being closed properly.  The iGetPoll and mGetPoll
+	operations just read the value field now, since there is reads are
+	atomic.
+
 [2006-02-27]
 	Fixed bug with the combination of withNack and never, where the
 	negative acknowledgement is never generated.  Thanks to Heath

@@ -176,17 +176,10 @@ structure SyncVar :> SYNC_VAR =
 	    R.BEVT[pollFn]
 	  end
 
-    fun iGetPoll (CELL{priority, readQ, value}) = let
-	  val res = (
-		S.atomicBegin();
-		case !value
-		 of NONE => NONE
-		  | (SOME v) => SOME v
-		(* end case *))
-	  in
-	    S.atomicEnd();
-	    res
-	  end
+  (* NOTE: we assume that reads are atomic, so this function does not
+   * need to run in an atomic region.
+   *)
+    fun iGetPoll (CELL{value, ...}) = !value
 
 
   (** M-variables **)
@@ -294,12 +287,10 @@ structure SyncVar :> SYNC_VAR =
 	    R.BEVT[pollFn]
 	  end
 
-    fun mGetPoll (CELL{priority, readQ, value}) = (
-	  S.atomicBegin();
-	  case !value
-	   of NONE => NONE
-	    | (SOME v) => (S.atomicEnd(); SOME v)
-	  (* end case *))
+  (* NOTE: we assume that reads are atomic, so this function does not
+   * need to run in an atomic region.
+   *)
+    fun mGetPoll (CELL{value, ...}) = !value
 
   (* Swap the current contents of the cell with a new value.  This function
    * has the effect of an mTake followed by an mPut, except that it is
