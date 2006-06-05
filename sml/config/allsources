@@ -1,0 +1,28 @@
+# allsources
+#
+# This is a list of all modules which the installer knows about.
+# The list is consulted if the "src-smlnj" target was enabled in
+# the "targets" file.
+
+runtime
+compiler
+cm
+system
+ml-yacc
+ml-lex
+lexgen
+ml-burg
+ml-nlffigen
+ml-nlffi-lib
+nowhere
+smlnj-lib
+cml
+cml-lib
+eXene
+ckit
+pgraph-util
+mlrisc
+mlrisc-tools
+smlnj-c
+heap2asm
+tools
