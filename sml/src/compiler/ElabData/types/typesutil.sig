@@ -74,7 +74,9 @@ sig
   val getRecTyvarMap : int * Types.ty -> (int -> bool)
   val gtLabel : Symbol.symbol * Symbol.symbol -> bool
 
-  val isValue : { ii_ispure : II.ii -> bool } -> Absyn.exp -> bool
+  val isValue : Absyn.exp -> bool
+  (* checks whether an expression is nonexpansive; used to determine
+   * when type generalization is permitted under the value rule *)
   val isVarTy : Types.ty -> bool
 
   val sortFields : (Absyn.numberedLabel * 'a) list
