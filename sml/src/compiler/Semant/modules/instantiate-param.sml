@@ -4,6 +4,7 @@
  *
  * SML/NJ-specific instantiation of INSTANTIATE_PARAM.
  *)
+
 structure InstantiateParam : INSTANTIATE_PARAM = struct
 
     type tkind = PLambdaType.tkind
@@ -16,10 +17,6 @@ structure InstantiateParam : INSTANTIATE_PARAM = struct
 
     val tvi_exn = TVI.toExn
 
-    fun ii2ty i =
-	InlInfo.match i { inl_prim = fn (_, t) => SOME t,
-			  inl_str = fn _ => NONE,
-			  inl_no = fn () => NONE }
-	  
-
 end
+
+(* [dbm, 6/16/06] Eliminated ii2ty. Call InlInfo.primopTy directly. *)

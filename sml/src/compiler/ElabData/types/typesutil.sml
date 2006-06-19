@@ -583,16 +583,9 @@ fun isValue (VARexp _) = true
   | isValue (APPexp(rator, rand)) =
     let fun isrefdcon(DATACON{rep=A.REF,...}) = true
           | isrefdcon _ = false
-        fun iscast (VALvar { info, ... }) = InlInfo.pureInfo info
+
+        fun iscast (VALvar { info, ... }) = InlInfo.isPrimCast info
           | iscast _ = false
-        (* -- parameterized by ii_ispure, which will be bound to InlInfo.pureInfo 
-        fun iscast (VALvar { info, ... }) = ii_ispure info
-          | iscast _ = false
-        *)
-        (*
-        fun iscast(VALvar{info,...}) = II.pureInfo (II.fromExn info)
-          | iscast _ = false
-         *)
 
         (* LAZY: The following function allows applications of the
          * fixed-point combinators generated for lazy val recs to

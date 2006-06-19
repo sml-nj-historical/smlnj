@@ -186,7 +186,7 @@ fun absEqvTy (spec, actual, dinfo) : (ty list * tyvar list * ty * bool) =
           | _ =>insttys0)
 *)
       val insttys = 
-	  case INS.Param.ii2ty dinfo of
+	  case InlInfo.primopTy dinfo of
 	      SOME st =>
               (let val (actinst', insttys') = TU.instantiatePoly st
                in
@@ -198,7 +198,7 @@ fun absEqvTy (spec, actual, dinfo) : (ty list * tyvar list * ty * bool) =
       val res = (Unify.unifyTy(actinst, specinst); true) handle _ => false
 
       val instbtvs = map TU.tyvarType insttys0
-      (* should I use stys here instead, why insttys0 ? *)
+      (* should I use stys here instead?, why insttys0? *)
 
    in (insttys, instbtvs, specinst, res)
   end
@@ -231,7 +231,7 @@ fun eqvTnspTy (spec, actual, dinfo) : (ty list * tyvar list) =
           | _ =>insttys)
 *)
       val insttys = 
-	  case INS.Param.ii2ty dinfo of
+	  case InlInfo.primopTy dinfo of
 	      SOME st =>
               (let val (actinst', insttys') = TU.instantiatePoly st
                in

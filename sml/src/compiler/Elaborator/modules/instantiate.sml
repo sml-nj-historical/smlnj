@@ -48,7 +48,6 @@ signature INSTANTIATE_PARAM = sig
 
     val tvi_exn : { depth: DebIndex.depth, num: int, kind: tkind } -> exn
 
-    val ii2ty : II.ii -> Types.ty option
 end
 
 signature INSTANTIATE =
@@ -1865,4 +1864,7 @@ val getTycPaths =
 
 end (* local *)
 end (* structure Instantiate *)
+
+(* [dbm, 6/16/06] Eliminated ii2ty from INSTANTIATE_PARAM. Eventually want
+   to eliminate the parameterization completely. *)
 

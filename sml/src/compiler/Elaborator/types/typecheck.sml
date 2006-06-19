@@ -12,8 +12,8 @@ end (* signature TYPECHECK *)
 
 
 (* No longer functorized to factor out dependencies on FLINT (ii2ty, ii_ispure)
- * Instead, TypesUtil depends directly on InlInfo -- it calls InlInfo.pureInfo to test
- * for the CAST primop in function isValue. *)
+ * Instead, TypesUtil depends directly on InlInfo -- it calls InlInfo.isPrimCast
+ * to test for the CAST primop in function isValue. *)
 
 structure Typecheck : TYPECHECK =
 struct
