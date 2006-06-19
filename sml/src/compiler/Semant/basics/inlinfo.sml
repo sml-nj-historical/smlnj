@@ -26,7 +26,7 @@ structure InlInfo : INL_INFO = struct
 	(List.nth (l, i) handle Subscript => bug "Wrong field in List")
       | selStrInfo (Null, _) = Null
       | selStrInfo (Info _, i) = bug "Unexpected selection from Info"
-    end
+   
 
     fun match i { inl_prim, inl_str, inl_no } =
 	case i
@@ -45,7 +45,7 @@ structure InlInfo : INL_INFO = struct
 		    | h::t =>
 		      "{" :: loop (h,foldr (fn (x, a) => "," :: loop (x, a))
                                            ("}" :: acc)
-					   t)
+					   t))
     in
 	concat (loop (i, []))
     end
