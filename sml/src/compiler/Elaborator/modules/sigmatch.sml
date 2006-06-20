@@ -280,10 +280,7 @@ val _ = let fun h pps sign =PPModules.ppSignature pps (sign,statenv,6)
         end
 
 fun matchTypes (spec, actual, dinfo, name) : (T.ty list * T.tyvar list) = 
-  if TU.compareTypes(spec, actual) then 
-       let val (insttys, btvs) = eqvTnspTy(spec, actual, dinfo)
-        in (insttys, btvs)
-       end
+  if TU.compareTypes(spec, actual) then eqvTnspTy(spec, actual, dinfo)
   else (err EM.COMPLAIN 
             "value type in structure doesn't match signature spec"
             (fn ppstrm =>
@@ -842,7 +839,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                    let val spectyp = typeInMatched("$specty(val/val)", spectyp)
                        val acttyp = typeInOriginal("$actty(val/val)", acttyp)
                        val dacc = DA.selAcc(rootAcc, actslot)
-                       val dinfo = II.sel(rootInfo, actslot)
+                       val dinfo = II.selStrInfo(rootInfo, actslot)
                        val (instys,btvs) = 
                          matchTypes(spectyp, acttyp, dinfo, sym)
 

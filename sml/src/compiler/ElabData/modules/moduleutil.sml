@@ -7,6 +7,7 @@ struct
 local structure S   = Symbol
       structure SP  = SymPath
       structure IP  = InvPath
+      structure II = InlInfo
       structure CVP = ConvertPaths
       structure EP  = EntPath
       structure EPC = EntPathContext
@@ -78,7 +79,7 @@ fun getStr (elements, entEnv, sym, dacc, dinfo) =
         (case EE.look(entEnv,entVar)
  	  of STRent entity => 
                (STR{sign = sign, rlzn = entity, access = A.selAcc(dacc,slot),
-                    info = II.sel (dinfo, slot)},
+                    info = II.selStrInfo (dinfo, slot)},
 		entVar)
 	   | _ => bug "getStr: bad entity")
      | _ => bug "getStr: wrong spec"
@@ -90,7 +91,7 @@ fun getFct (elements, entEnv, sym, dacc, dinfo) =
         (case EE.look(entEnv,entVar)
           of FCTent entity => 
                (FCT{sign = sign, rlzn = entity, access = A.selAcc(dacc,slot),
-                    info = II.sel (dinfo, slot)},
+                    info = II.selStrInfo (dinfo, slot)},
 		entVar)
            | _ => bug "getFct: bad entity")
      | _ => bug "getFct: wrong spec"
@@ -114,7 +115,7 @@ fun getStrs (STR { sign = SIG sg, rlzn = {entities,...}, access,info,...}) =
 		SOME(STR{sign = sign,
 			 rlzn = EE.lookStrEnt(entities,entVar),
 			 access = A.selAcc(access, slot), 
-			 info = II.sel (info, slot)})
+			 info = II.selStrInfo (info, slot)})
 	      | _ => NONE)
 	    elements
     end
@@ -174,7 +175,7 @@ val transType =
 fun strDefToStr(CONSTstrDef str, _) = str
   | strDefToStr(VARstrDef(sign,entPath), entEnv) =
     STR{sign=sign,rlzn=EE.lookStrEP(entEnv,entPath),
-        access=A.nullAcc, info=II.Null}
+        access=A.nullAcc, info=II.nullInfo}
 
 (* 
  * two pieces of essential structure information gathered during
@@ -182,9 +183,9 @@ fun strDefToStr(CONSTstrDef str, _) = str
  * being searched is a STRSIG; otherwise it return STRINFO.
  *)
 datatype strInfo = SIGINFO of EP.entPath  (* reverse order! *)
-                 | STRINFO of strEntity * A.access * II.ii
+                 | STRINFO of strEntity * A.access * InlInfo.inl_info
 
-val bogusInfo = STRINFO (bogusStrEntity, A.nullAcc, II.Null)
+val bogusInfo = STRINFO (bogusStrEntity, A.nullAcc, II.nullInfo)
 
 fun getStrElem (sym, sign as SIG {elements,...}, sInfo) = 
       (case getSpec (elements,sym)
@@ -194,7 +195,7 @@ fun getStrElem (sym, sign as SIG {elements,...}, sInfo) =
                    of SIGINFO ep => SIGINFO (entVar::ep)
                     | STRINFO ({entities,...}, dacc, dinfo) =>
                       STRINFO(EE.lookStrEnt(entities,entVar), 
-                              A.selAcc(dacc,slot), II.sel (dinfo, slot))
+                              A.selAcc(dacc,slot), II.selStrInfo (dinfo, slot))
               in (subsig, newInfo)
              end)
          | _ => bug "getStrElem: wrong spec case")
@@ -207,7 +208,7 @@ fun getFctElem (sym, sign as SIG {elements,...},
         of FCTspec{sign=subfsig, entVar, slot} =>
              FCT{sign=subfsig, rlzn=EE.lookFctEnt(entities,entVar),
                  access=A.selAcc(dacc, slot),
-		 info=II.sel (dinfo, slot)}
+		 info=II.selStrInfo (dinfo, slot)}
          | _ => bug "mkFctVar - bad spec")
 
   | getFctElem _ = ERRORfct
@@ -231,7 +232,7 @@ fun mkVal (sym, sp, sign as SIG {elements,...},
     (case getSpec(elements, sym) of
 	 VALspec{spec,slot} =>
          V.VAL(V.VALvar{access = A.selAcc(dacc,slot), 
-			info = II.sel (dinfo, slot),
+			info = II.selStrInfo (dinfo, slot),
 			path = sp,
 			typ = ref(transType entities spec)})
        | CONspec{spec=T.DATACON{name, const, typ, rep, sign, lazyp},
@@ -452,7 +453,7 @@ fun openStructure (env: SE.staticEnv, str) =
 fun extractInfo(B.STRbind (M.STR { info, ... })) = info
   | extractInfo(B.FCTbind (M.FCT { info, ... })) = info
   | extractInfo(B.VALbind (V.VALvar {info, ...})) = info
-  | extractInfo(B.CONbind _) = II.Null
+  | extractInfo(B.CONbind _) = II.nullInfo
   | extractInfo _ = bug "unexpected binding in extractInfo"
 
 (* extract all signature names from a structure --

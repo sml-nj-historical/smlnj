@@ -19,6 +19,13 @@ structure InlInfo : INL_INFO = struct
       | List of inl_info list
       | Null
 
+(* alternative types:
+    datatype primInfo = Prim of int | Null
+    datatype strElemInfo = PrimE of primInfo
+                         | StrE of strInfo
+    withtype strInfo = strElemInfo list
+*)
+
     fun isPrimop (Info _) = true
       | isPrimop _ = false
 

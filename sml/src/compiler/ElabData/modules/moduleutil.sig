@@ -16,11 +16,11 @@ val getTyc : Modules.elements * Modules.entityEnv * Symbol.symbol
                  -> Types.tycon * EntPath.entVar
 
 val getStr : Modules.elements * Modules.entityEnv
-	     * Symbol.symbol * Access.access * II.ii
+	     * Symbol.symbol * Access.access * InlInfo.inl_info
              -> Modules.Structure * EntPath.entVar
 
 val getFct : Modules.elements * Modules.entityEnv 
-             * Symbol.symbol * Access.access * II.ii
+             * Symbol.symbol * Access.access * InlInfo.inl_info
              -> Modules.Functor * EntPath.entVar
 
 (*** these functions are used in eqtypes.sml ***)
@@ -68,7 +68,7 @@ val openStructure : StaticEnv.staticEnv * Modules.Structure
 		    -> StaticEnv.staticEnv
 
 (*** extract inl_info from a list of bindings *)
-val extractInfo : Bindings.binding -> II.ii
+val extractInfo : Bindings.binding -> InlInfo.inl_info
 
 val getSigSymbols: Modules.Signature -> Symbol.symbol list
 

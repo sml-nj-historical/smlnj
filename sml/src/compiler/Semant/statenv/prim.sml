@@ -866,23 +866,24 @@ val inLine =
             (rev allSymbols, rev allElements, rev infList)
 
       val sigrec ={stamp=ST.special "inLineSig",
-		       name=NONE, closed=true, 
-		       fctflag=false,
-		       symbols=allSymbols, elements=allElements,
-		       typsharing=nil, strsharing=nil,
-		       properties = PropList.newHolder (),
-		       (* boundeps=ref (SOME []), *)
-		       (* lambdaty=ref NONE, *)
-		       stub = NONE}
+		   name=NONE, closed=true, 
+		   fctflag=false,
+		   symbols=allSymbols, elements=allElements,
+		   typsharing=nil, strsharing=nil,
+		   properties = PropList.newHolder (),
+		   (* boundeps=ref (SOME []), *)
+		   (* lambdaty=ref NONE, *)
+		   stub = NONE}
       val _ = ModulePropLists.setSigBoundeps (sigrec, SOME [])
-   in M.STR{sign=M.SIG sigrec,
-            rlzn={stamp=ST.special "inLineStr",
-		  stub=NONE,
-		  entities=EE.empty,
-		  properties = PropList.newHolder (),
-		  (* lambdaty=ref(NONE), *)
-		  rpath=IP.IPATH[S.strSymbol "inLine"]},
-	    access=A.nullAcc, info= II.mkStrInfo infList}
+   in M.STR{sign = M.SIG sigrec,
+            rlzn = {stamp=ST.special "inLineStr",
+		    stub=NONE,
+		    entities=EE.empty,
+		    properties = PropList.newHolder (),
+		    (* lambdaty=ref(NONE), *)
+		    rpath=IP.IPATH[S.strSymbol "inLine"]},
+	    access = A.nullAcc,
+            info = II.mkStrInfo infList}
   end
 
 (* priming structures: PrimTypes and InLine *)
