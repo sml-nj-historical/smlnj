@@ -84,19 +84,19 @@ val bogusID = S.varSymbol "*bogus*"
 val bogusExnID = S.varSymbol "*Bogus*"
 
 
-val TRUEpat = CONpat(trueDcon,[])
-val TRUEexp = CONexp(trueDcon,[])
-val FALSEpat = CONpat(falseDcon,[])
-val FALSEexp = CONexp(falseDcon,[])
+val TRUEpat = CONpat(trueDcon,NONE) (** These constructors were updated to the ty option type - GK *)
+val TRUEexp = CONexp(trueDcon,NONE)
+val FALSEpat = CONpat(falseDcon,NONE)
+val FALSEexp = CONexp(falseDcon,NONE)
 
-val NILpat = CONpat(nilDcon,[])
-val NILexp = CONexp(nilDcon,[])
+val NILpat = CONpat(nilDcon,NONE)
+val NILexp = CONexp(nilDcon,NONE)
 val CONSpat = fn pat => APPpat(consDcon,[],pat)
-val CONSexp = CONexp(consDcon,[])
+val CONSexp = CONexp(consDcon,NONE)
 
 val unitExp = AbsynUtil.unitExp
 val unitPat = RECORDpat{fields = nil, flex = false, typ = ref UNDEFty}
-val bogusExp = VARexp(ref(V.mkVALvar(bogusID, A.nullAcc)), [])
+val bogusExp = VARexp(ref(V.mkVALvar(bogusID, A.nullAcc)), NONE)
 
 (* Verifies that all the elements of a list are unique *)
 fun checkUniq (err,message,names) =
@@ -249,8 +249,9 @@ fun completeMatch(env,name) =
     completeMatch'' 
       (fn marker =>
           RULE(WILDpat, 
-	       marker(RAISEexp(CONexp(CoreAccess.getExn(env,name),[]),
+	       marker(RAISEexp(CONexp(CoreAccess.getExn(env,name),NONE),
 			       UNDEFty))))
+(** Updated to the ty option type - GK *)
 
 val trivialCompleteMatch = completeMatch(SE.empty,"Match")
 
@@ -281,11 +282,11 @@ fun wrapRECdecGen (rvbs, compInfo as {mkLvar=mkv, ...} : compInfo) =
        case vars
         of [(v, nv, sym)] =>
             (VALdec [VB{pat=VARpat nv, boundtvs=[], tyvars=tyvars,
-                        exp=LETexp(odec, VARexp(ref v, []))}])
+                        exp=LETexp(odec, VARexp(ref v, NONE))}]) (** Updated to the ty option type -GK *)
          | _ => 
-          (let val vs = map (fn (v, _, _) => VARexp(ref v, [])) vars
+          (let val vs = map (fn (v, _, _) => VARexp(ref v, NONE)) vars (** Updated to the ty option type -GK*)
                val rootv = newVALvar(internalSym, mkv)
-               val rvexp = VARexp(ref rootv, [])
+               val rvexp = VARexp(ref rootv, NONE) (** Updated to the ty option type -GK *)
                val nvdec = 
                  VALdec([VB{pat=VARpat rootv, boundtvs=[], tyvars=tyvars,
                             exp=LETexp(odec, TUPLEexp vs)}])
@@ -326,7 +327,7 @@ fun FUNdec (completeMatch, fbl,
 		val vars = map getvar pats
 		fun not1(f,[a]) = a
 		  | not1(f,l) = f l
-		fun dovar valvar = VARexp(ref(valvar),[])
+		fun dovar valvar = VARexp(ref(valvar),NONE) (** Updated to the ty option type - GK *)
 		fun doclause ({pats,exp,resultty=NONE}) =
 			      RULE(not1(TUPLEpat,pats), exp)
 		  | doclause ({pats,exp,resultty=SOME ty}) =
@@ -362,7 +363,7 @@ fun FUNdec (completeMatch, fbl,
 
 fun makeHANDLEexp(exp, rules, compInfo as {mkLvar=mkv, ...}: compInfo) =
     let val v = newVALvar(exnID, mkv)
-        val r = RULE(VARpat v, RAISEexp(VARexp(ref(v),[]),UNDEFty))
+        val r = RULE(VARpat v, RAISEexp(VARexp(ref(v),NONE),UNDEFty)) (** Updated to the ty option type - GK*)
 	val rules = completeMatch' r rules 
      in HANDLEexp(exp, (rules,UNDEFty))
     end
@@ -375,7 +376,7 @@ fun pat_id (spath, env, err, compInfo as {mkLvar=mkv, ...}: compInfo) =
     case spath
       of SymPath.SPATH[id] =>
 	   ((case LU.lookValSym (env,id,fn _ => raise SE.Unbound)
-	       of V.CON c => CONpat(c,[]) 
+	       of V.CON c => CONpat(c,NONE) (** Updated to the ty option type - GK *) 
 	        | _ => VARpat(newVALvar(id,mkv)))
 	    handle SE.Unbound => VARpat(newVALvar(id,mkv)))
        | _ =>
@@ -385,8 +386,8 @@ fun pat_id (spath, env, err, compInfo as {mkLvar=mkv, ...}: compInfo) =
 			  ("variable found where constructor is required: "^
 			   SymPath.toString spath)
 			  nullErrorBody;
-			 (bogusCON,[]))
-		      | V.CON c => (c,[]))
+			 (bogusCON,NONE)) (** Updated to ty option type -GK*)
+		      | V.CON c => (c,NONE)) (** Updated to ty option type -GK*)
 		   handle SE.Unbound => bug "unbound untrapped")
 
 fun makeRECORDpat(l,flex,err) =
@@ -417,7 +418,8 @@ fun pat_to_string WILDpat = "_"
   | pat_to_string _ = "<illegal pattern>"
 
 fun makeAPPpat err (CONpat(d as DATACON{const=false,lazyp,...},t),p) =
-      let val p1 = APPpat(d,t,p)
+      let val t' = (case t of NONE => [] | SOME t'' => [t'']) (** Need for ty option containing CONpat -GK*)
+	  val p1 = APPpat(d,t',p) (** Updated to ty option type -GK *) 
        in if lazyp (* LAZY *)
 	  then APPpat(BT.dollarDcon, [], p1)
           else p1

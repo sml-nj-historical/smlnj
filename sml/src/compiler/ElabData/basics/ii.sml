@@ -28,4 +28,5 @@ structure II = struct
       | sel (Null, _) = Null
       | sel (Info _, i) = bug "Unexpected selection from II.Info !"
     end
+
 end

@@ -857,6 +857,10 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                                   val specvar = 
                                     VALvar{path=spath, typ=ref spectyp,
                                            access=acc, info=dinfo}
+				  (** This seems a bit sensitive. Here, a VB 
+				      is constructed with a VARexp field that
+				      gets its instys from a matchTypes call 
+				      -GK *)
                                   val vb = 
                                     A.VB {pat=A.VARpat specvar,
                                           exp=A.VARexp(ref actvar, instys),

@@ -562,6 +562,9 @@ fun gtLabel(a,b) =
 (* Modified to support CAST, and special binding CASEexp. (ZHONG) *)
 (* Modified to allow applications of lazy val rec Y combinators to
    be nonexpansive. (Taha, DBM) *) 
+(** Either InlInfo must be moved closer to here or this function needs
+    to move to where InlInfo is. -GK *)
+(**
 local open Absyn in
 
 fun isValue (VARexp _) = true
@@ -583,7 +586,6 @@ fun isValue (VARexp _) = true
   | isValue (APPexp(rator, rand)) =
     let fun isrefdcon(DATACON{rep=A.REF,...}) = true
           | isrefdcon _ = false
-
         fun iscast (VALvar { info, ... }) = InlInfo.isPrimCast info
           | iscast _ = false
 
@@ -609,6 +611,8 @@ fun isValue (VARexp _) = true
   | isValue (LETexp(VALRECdec _, e)) = (isValue e) (* special RVB hacks *)
   | isValue (MARKexp(e,_)) = isValue e
   | isValue _ = false
+ 
+
 
 (* testing if a binding pattern is irrefutable --- complete *)
 and irref pp  = 
@@ -634,6 +638,8 @@ and irref pp  =
    in g pp
   end
 end (* local *)
+*)
+
 
 fun isVarTy(VARty(ref(INSTANTIATED ty))) = isVarTy ty
   | isVarTy(VARty _) = true

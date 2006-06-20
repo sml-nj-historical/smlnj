@@ -18,11 +18,12 @@ Group
 
 	functor InstantiateFn
 	functor EvalEntityFn
-	functor TypecheckFn
+	(** functor TypecheckFn *)
 	functor SigMatchFn
 	functor ElabModFn
 	functor ElabTopFn
 
+	structure Typecheck
 	structure PrimTycNum
 	structure DebIndex
 	structure BasicTypes

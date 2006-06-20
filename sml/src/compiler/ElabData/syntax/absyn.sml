@@ -18,8 +18,8 @@ type region = Ast.region  (* = int * int *)
 datatype numberedLabel = LABEL of {name: S.symbol, number: int}
 
 datatype exp
-  = VARexp of var ref * ty
-  | CONexp of datacon * ty
+  = VARexp of var ref * ty option
+  | CONexp of datacon * ty option
   | INTexp of IntInf.int * ty
   | WORDexp of IntInf.int * ty
   | REALexp of string
@@ -53,7 +53,7 @@ and pat
   | REALpat of string
   | STRINGpat of string
   | CHARpat of string
-  | CONpat of datacon * ty
+  | CONpat of datacon * ty option
   | RECORDpat of {fields: (label * pat) list, flex: bool, typ: ty ref}
   | APPpat of datacon * ty list * pat
   | CONSTRAINTpat of pat * ty
