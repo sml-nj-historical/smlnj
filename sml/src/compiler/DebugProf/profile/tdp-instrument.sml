@@ -120,7 +120,7 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	val tdp_reserve_var = tmpvar ("<tdp_reserve>", i_i_Ty)
 	val tdp_module_var = tmpvar ("<tdp_module>", BT.intTy)
 
-	fun VARexp v = A.VARexp (ref v, [])
+	fun VARexp v = A.VARexp (ref v, NONE)
 	fun INTexp i = A.INTexp (IntInf.fromInt i, BT.intTy)
 
 	val uExp = AU.unitExp
@@ -252,12 +252,12 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 		val re = let val A.RULE (_, lst) = List.last rl
 			     val t = Reconstruct.expType lst
 			 in
-			     A.RAISEexp (A.CONexp (matchcon, []), t)
+			     A.RAISEexp (A.CONexp (matchcon, NONE), t)
 			 end
 	    in
 		A.FNexp ([A.RULE (A.VARpat arg,
 				  A.SEQexp [enterexp,
-					    A.CASEexp (A.VARexp (ref arg, []),
+					    A.CASEexp (A.VARexp (ref arg, NONE),
 						       rl', true)]),
 			  A.RULE (A.WILDpat, re)],
 			 t)
