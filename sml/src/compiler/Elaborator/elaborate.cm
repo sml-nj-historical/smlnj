@@ -15,15 +15,15 @@ Group
 	signature EVALENTITY
 	signature ELABTOP
 	signature UNIFY
+	signature TYPECHECK
+	signature SIGMATCH
 
 	functor InstantiateFn
 	functor EvalEntityFn
-	(** functor TypecheckFn *)
-	functor SigMatchFn
+	(** functor SigMatchFn *)
 	functor ElabModFn
 	functor ElabTopFn
 
-	structure Typecheck
 	structure PrimTycNum
 	structure DebIndex
 	structure BasicTypes
@@ -59,10 +59,12 @@ is
 	types/unify.sml
 	types/overload.sml
 	types/overloadlit.sml
-	types/typecheck.sml
+	types/typecheck.sig
+	(** types/typecheck.sml *)
 
 	modules/expandtycon.sml
-	modules/sigmatch.sml
+	(**modules/sigmatch.sml *)
+	modules/sigmatch.sig
 	modules/instantiate.sml
 	modules/evalent.sml
 

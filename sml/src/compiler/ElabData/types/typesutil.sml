@@ -638,7 +638,7 @@ and irref pp  =
    in g pp
   end
 end (* local *)
-*)
+ *)
 
 
 fun isVarTy(VARty(ref(INSTANTIATED ty))) = isVarTy ty

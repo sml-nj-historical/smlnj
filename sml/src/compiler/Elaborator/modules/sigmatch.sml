@@ -155,6 +155,7 @@ fun ident _ = ()
 
 (* returns true and the new instantiations if actual type > spec type *)
 (* matches an abstract version of a type with its actual version *)
+(**
 fun absEqvTy (spec, actual, dinfo) : (ty list * tyvar list * ty * bool) =
   let val actual = TU.prune actual
       val spec = TU.prune spec
@@ -202,7 +203,7 @@ fun absEqvTy (spec, actual, dinfo) : (ty list * tyvar list * ty * bool) =
 
    in (insttys, instbtvs, specinst, res)
   end
-
+*)
 fun eqvTnspTy (spec, actual, dinfo) : (ty list * tyvar list) = 
   let val actual = TU.prune actual
       val (actinst, insttys) = TU.instantiatePoly actual
