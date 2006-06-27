@@ -939,6 +939,9 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
             | h (a::r, b::z) = (b := a; h(r, z))
             | h _ = bug "unexpected cases in mkPE"
 
+          (* [dbm, 6/22/06] Why do we need to restore the original
+             contents of the uninstantiated meta type variables? *)
+
           val _ = h(savedtvs, boundtvs)  (* recover *)
           val len = length(boundtvs)
        
