@@ -15,7 +15,7 @@ datatype simp
   = VARsimp of var 
   | RECORDsimp of (label * simp) list
 
-type dconinfo = datacon * ty list
+type dconinfo = datacon * ty option
 
 datatype pcon 
   = DATApcon of dconinfo
