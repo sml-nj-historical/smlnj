@@ -523,16 +523,21 @@ fun compareTypes (spec : ty, actual: ty): bool =
    Comments: compareTypes does pruning so there is no need to prune in
              this function or anywhere else that uses compareTypes or
 	     matchTypes. 
+
+   matchTypes is used in SigMatch for matching structures (matchStr1) only
  *)
 fun matchTypes (specTy, actualTy) =
-    (* If specTy is not an instance of actualTy, then give up. *)
+    (* If specTy is an instance of actualTy, 
+       then match, otherwise give up. *)
     if compareTypes(specTy, actualTy) then
+	(* compareTypes should have already determined that the 
+	   two types match. *)
 	let
-	    val (actinst, actParamTvs) =
-		instantiatePoly actual
-            val (specinst, specGenericTvs) =
-		instantiatePoly spec
+	    val (actinst, actParamTvs) = instantiatePoly actualTy
+            val (specinst, specGenericTvs) = instantiatePoly specTy
 	in 
+	    (* These metavariable lists may be empty if either actualTy
+	       or specTy are monomorphic *)
 	    (specGenericTvs, actParamTvs)
 	end
     else ([], [])
