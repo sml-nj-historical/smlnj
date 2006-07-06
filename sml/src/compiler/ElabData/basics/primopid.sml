@@ -30,7 +30,7 @@ struct
   fun isPrimCast (Prim "cast") = true
     | isPrimCast _ = false
 
-  val selStrPrimId = nth
+  val selStrPrimId = List.nth
 
 (* 
     fun selStrInfo (StrE l, i) =

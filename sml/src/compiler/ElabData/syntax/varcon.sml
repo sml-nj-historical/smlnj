@@ -18,7 +18,7 @@ datatype var
       {path : SP.path,
        typ : T.ty ref,
        access : A.access,
-       info : PrimOpId.primId}
+       prim : PrimOpId.primId}
   | OVLDvar of       	      	      (* overloaded identifier *)
       {name : S.symbol,
        options: {indicator: T.ty, variant: var} list ref,
@@ -35,7 +35,7 @@ fun mkVALvar (id, acc) =
       VALvar{path = SP.SPATH [id], 
              typ = ref T.UNDEFty,
              access = acc,
-             info = II.Null}
+             prim = PrimOpId.NonPrim}
 
 val bogusCON = T.DATACON{name=S.varSymbol "bogus",
                          typ=T.WILDCARDty,

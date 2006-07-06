@@ -7,7 +7,6 @@ struct
 local structure S   = Symbol
       structure SP  = SymPath
       structure IP  = InvPath
-      structure II = InlInfo
       structure CVP = ConvertPaths
       structure EP  = EntPath
       structure EPC = EntPathContext
@@ -79,7 +78,7 @@ fun getStr (elements, entEnv, sym, dacc, dinfo) =
         (case EE.look(entEnv,entVar)
  	  of STRent entity => 
                (STR{sign = sign, rlzn = entity, access = A.selAcc(dacc,slot),
-                    info = II.selStrInfo (dinfo, slot)},
+                    prim = PrimOpId.selStrPrimId (dinfo, slot)},
 		entVar)
 	   | _ => bug "getStr: bad entity")
      | _ => bug "getStr: wrong spec"
@@ -91,7 +90,7 @@ fun getFct (elements, entEnv, sym, dacc, dinfo) =
         (case EE.look(entEnv,entVar)
           of FCTent entity => 
                (FCT{sign = sign, rlzn = entity, access = A.selAcc(dacc,slot),
-                    info = II.selStrInfo (dinfo, slot)},
+                    prim = PrimOpId.selStrPrimId (dinfo, slot)},
 		entVar)
            | _ => bug "getFct: bad entity")
      | _ => bug "getFct: wrong spec"
@@ -107,7 +106,7 @@ fun getStrName(STR { rlzn = {rpath,...}, ... }) = rpath
   | getStrName ERRORstr = errorStrName
   | getStrName _ = bug "getStrName"
 
-fun getStrs (STR { sign = SIG sg, rlzn = {entities,...}, access,info,...}) =
+fun getStrs (STR { sign = SIG sg, rlzn = {entities,...}, access,prim,...}) =
     let val elements = #elements sg
     in
 	List.mapPartial
@@ -115,7 +114,7 @@ fun getStrs (STR { sign = SIG sg, rlzn = {entities,...}, access,info,...}) =
 		SOME(STR{sign = sign,
 			 rlzn = EE.lookStrEnt(entities,entVar),
 			 access = A.selAcc(access, slot), 
-			 info = II.selStrInfo (info, slot)})
+			 prim = PrimOpId.selStrPrimId (prim, slot)})
 	      | _ => NONE)
 	    elements
     end
@@ -175,7 +174,7 @@ val transType =
 fun strDefToStr(CONSTstrDef str, _) = str
   | strDefToStr(VARstrDef(sign,entPath), entEnv) =
     STR{sign=sign,rlzn=EE.lookStrEP(entEnv,entPath),
-        access=A.nullAcc, info=II.nullInfo}
+        access=A.nullAcc, info=StrE []}
 
 (* 
  * two pieces of essential structure information gathered during
@@ -449,12 +448,29 @@ fun openStructure (env: SE.staticEnv, str) =
    in SE.atop(nenv,env)
   end
 
-(** extract inl_info from a list of bindings *)
-fun extractInfo(B.STRbind (M.STR { info, ... })) = info
-  | extractInfo(B.FCTbind (M.FCT { info, ... })) = info
-  | extractInfo(B.VALbind (V.VALvar {info, ...})) = info
-  | extractInfo(B.CONbind _) = II.nullInfo
-  | extractInfo _ = bug "unexpected binding in extractInfo"
+(** Get a strPrimElem with all the primIds found in 
+    a list of bindings 
+ 
+    Used in Elaborator/elaborate/elabmod.sml and 
+    SigMatch
+ *)
+fun strPrimElemInBinds [] = StrE [] 
+  | strPrimElemInBinds (bind::rest) =
+    let
+	val strPrims =
+	   (case bind 
+	     of B.STRbind (M.STR { prim, ... }) => prim 
+	      | B.FCTbind (M.FCT { prim, ... }) => prim
+	      | B.VALbind (V.VALvar {info, ...}) => PrimE info
+	      | B.CONbind _ => PrimE NonPrim
+	      | B.TYCbind _  => 
+		  bug "unexpected binding in strPrimElemInBinds")
+    in  
+       (case (strPrimElemInBinds rest) of
+	    (StrE restPrims) =>
+	      StrE (strPrims :: restPrims)
+	  | PrimE id => StrE (PrimE id))
+    end
 
 (* extract all signature names from a structure --
  *  doesn't look into functor components *)

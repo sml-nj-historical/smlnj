@@ -10,7 +10,7 @@ sig
         {path : SymPath.path,
 	 typ : Types.ty ref,
          access : Access.access,
-         info   : II.ii}
+         prim   : PrimOpId.primId}
     | OVLDvar of			(* overloaded identifier *)
 	  {name : Symbol.symbol,
 	   options: {indicator: Types.ty, variant: var} list ref,
