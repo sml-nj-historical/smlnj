@@ -6,9 +6,20 @@
 signature PRIMOPID =
 sig
 
-    type primId
-    type strElemPrimIds
+  datatype primId = Prim of string | NonPrim
 
+  datatype strPrimElem
+    = PrimE of primId
+    | StrE of strPrimInfo
+
+  withtype strPrimInfo = strPrimElem list
+
+  val isPrimop : primId -> bool
+
+  val isPrimCallcc : primId -> bool
+  val isPrimCast : primId -> bool
+
+  val selStrPrimId : strPrimInfo * int -> strPrimElem
 (*
     val match : inl_info ->
 		{ inl_prim: PrimOp.primop * Types.ty -> 'a,

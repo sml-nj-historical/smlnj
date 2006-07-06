@@ -410,11 +410,11 @@ let fun boolUnifyErr { ty, name, message } =
 in
      case exp
       of VARexp(r as ref(VALvar{typ, ...}), _) =>
-	  let val (ty, insts) = instantiatePoly(!typ)
-	   in (VARexp(r, SOME ty), ty)
-	  end
+	   let val (ty, insts) = instantiatePoly(!typ)
+	    in (VARexp(r, insts), ty)
+	   end
        | VARexp(refvar as ref(OVLDvar _),_) =>
- 	    (exp, ol_push (refvar, err region))
+ 	   (exp, ol_push (refvar, err region))
        | VARexp(r as ref ERRORvar, _) => (exp, WILDCARDty)
        | CONexp(dcon as DATACON{typ,...},_) => 
            let val (ty,insts) = instantiatePoly typ

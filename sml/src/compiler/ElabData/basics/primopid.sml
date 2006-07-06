@@ -11,16 +11,27 @@
 structure PrimOpId : PRIMOPID = 
 struct
 
-    fun bug s = ErrorMsg.impossible ("PrimOpId: " ^ s)
+  (* in the front end, primops are identified by a primop number *)
+  datatype primId = Prim of string | NonPrim
 
-    datatype primId = Prim of int | NonPrim
-    datatype strElemPrimIds = PrimE of primId
-                            | StrE of strInfo
-    withtype strInfo = strElemPrimIds list
+  datatype strPrimElem = PrimE of primId
+                       | StrE of strPrimInfo
 
+  withtype strPrimInfo = strPrimElem list
 
-    fun isPrimop (Prim _) = true
-      | isPrimop NonPrim  = false
+  fun bug s = ErrorMsg.impossible ("PrimOpId: " ^ s)
+
+  fun isPrimop (Prim _) = true
+    | isPrimop NonPrim  = false
+
+  fun isPrimCallcc (Prim("callcc" | "capture")) = true
+    | isPrimCallcc _ = false
+
+  fun isPrimCast (Prim "cast") = true
+    | isPrimCast _ = false
+
+  val selStrPrimId = nth
+
 (* 
     fun selStrInfo (StrE l, i) =
 	(List.nth (l, i) handle Subscript => bug "Wrong field in List")
