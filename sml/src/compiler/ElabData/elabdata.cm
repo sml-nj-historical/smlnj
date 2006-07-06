@@ -24,6 +24,7 @@ Group
 	signature STATICENV
 	signature CORE_PRIM_TYC_NUM
 	signature ENTITY_ENV
+	signature PRIMOPID
 
 	structure ElabDataControl
 	structure Access
@@ -49,13 +50,13 @@ Group
 	structure StaticEnv
 	structure Lookup
 	structure CompInfo
-	structure II
 	structure CoreSym
 	structure CorePrimTycNum
 	structure CoreBasicTypes
 	structure GenModIdMap
 	structure CoreAccess
 	structure BrowseStatEnv
+	structure PrimOpId
 
 is
 	main/edcontrol.sig
@@ -69,7 +70,8 @@ is
 	basics/stamps.sig
 	basics/stamps.sml
 	basics/stampmap.sml
-	basics/ii.sml
+	basics/primopid.sml
+	basics/primopid.sig
 	basics/coresym.sml
 	basics/access.sig
 	basics/access.sml

@@ -183,7 +183,7 @@ and strrec =
     {sign   : Signature,
      rlzn   : strEntity,
      access : A.access,
-     info   : II.ii}
+     info   : PrimOpId.strElemPrimIds}
 
 and fctEntity =
     {stamp    : ST.stamp,

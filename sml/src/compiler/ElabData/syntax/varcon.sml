@@ -18,7 +18,7 @@ datatype var
       {path : SP.path,
        typ : T.ty ref,
        access : A.access,
-       info : II.ii}
+       info : PrimOpId.primId}
   | OVLDvar of       	      	      (* overloaded identifier *)
       {name : S.symbol,
        options: {indicator: T.ty, variant: var} list ref,
