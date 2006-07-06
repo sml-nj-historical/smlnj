@@ -293,7 +293,10 @@ So that matchTypes products can be used where matchTypes1 is called below.
 It should prune (if necessary).
 Test for whether actual type was a polytype reduces to testing whether 
 actual type produces and generic instantiation metavariables (i.e. null test).
+
+  gk: compareTypes does pruning. 
 *)
+
   fun matchTypes (spec, actual, dinfo, name) : bool =
       TU.compareTypes(spec, actual)
 (*    if TU.compareTypes(spec, actual) then eqvTnspTy(spec, actual, dinfo) *)
@@ -877,10 +880,6 @@ actual type produces and generic instantiation metavariables (i.e. null test).
                                     val specvar = 
                                       VALvar{path=spath, typ=ref spectyp,
                                              access=acc, info=dinfo}
-                                    (** This seems a bit sensitive. Here, a VB 
-                                        is constructed with a VARexp field that
-                                        gets its instys from a matchTypes call 
-                                        -GK *)
                                     val vb = 
                                       A.VB {pat=A.VARpat specvar,
                                             exp=A.VARexp(ref actvar, actParamTvs),

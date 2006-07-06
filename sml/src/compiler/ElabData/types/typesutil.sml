@@ -506,6 +506,37 @@ fun compareTypes (spec : ty, actual: ty): bool =
 		  | _ => equalType(spec,actual))
     end handle CompareTypes => false
 
+(* matchTypes -- one-way matching of actual to spec type; yields 
+		 list of instantiation metavariables
+   Parameters:
+	spec -- specification type 
+	actual -- actual type 
+   Returns:
+        (specGenericTvs, -- spec metavariables that are generalized 
+			    in the match
+	 actParamTvs) -- metavariables in actual type that are instantiations
+			of spec metavariables in match
+   Invariant: specGenericTvs are always instantiated but 
+	      actInstTvs are never generalized (because they are only
+	      meaningful in this function and are immediately generalized 
+	      away. 
+   Comments: compareTypes does pruning so there is no need to prune in
+             this function or anywhere else that uses compareTypes or
+	     matchTypes. 
+ *)
+fun matchTypes (specTy, actualTy) =
+    (* If specTy is not an instance of actualTy, then give up. *)
+    if compareTypes(specTy, actualTy) then
+	let
+	    val (actinst, actParamTvs) =
+		instantiatePoly actual
+            val (specinst, specGenericTvs) =
+		instantiatePoly spec
+	in 
+	    (specGenericTvs, actParamTvs)
+	end
+    else ([], [])
+
 (* given a single-type-variable type, extract out the tyvar *)
 fun tyvarType (VARty (tv as ref(OPEN _))) = tv
   | tyvarType (VARty (tv as ref(INSTANTIATED t))) = tyvarType t
