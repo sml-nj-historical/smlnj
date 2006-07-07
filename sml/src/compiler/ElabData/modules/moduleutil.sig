@@ -68,7 +68,7 @@ val openStructure : StaticEnv.staticEnv * Modules.Structure
 		    -> StaticEnv.staticEnv
 
 (*** extract inl_info from a list of bindings *)
-val extractInfo : Bindings.binding -> PrimOpId.primId
+val strPrimElemInBinds : Bindings.binding list -> PrimOpId.strPrimElem
 
 val getSigSymbols: Modules.Signature -> Symbol.symbol list
 

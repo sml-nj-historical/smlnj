@@ -30,7 +30,23 @@ struct
   fun isPrimCast (Prim "cast") = true
     | isPrimCast _ = false
 
-  val selStrPrimId = List.nth
+  fun selStrPrimId(StrE elems, slot) = List.nth(elems, slot)
+    | selStrPrimId(PrimE id, slot) = 
+        bug "PrimOpId.selStrPrimId: unexpected PrimE"
+	(* This bug happens if we got a primid for a value 
+	   component when we expected a strPrimElem for a 
+	   structure *)
+
+  fun selValPrimFromStrPrim(StrE elems, slot) =
+      (case List.nth(elems, slot)
+	of PrimE(id) => id
+	 | _ => 
+	   bug "PrimOpId.selValPrimFromStrPrim: unexpected StrE")
+           (* This bug occurs if we got a substructure's
+	      strPrimElem instead of an expected value component's
+	      primId *)
+    | selValPrimFromStrPrim(PrimE _, slot) =
+      bug "PrimOpId.selValPrimFromStrPrim: unexpected PrimE"
 
 (* 
     fun selStrInfo (StrE l, i) =
