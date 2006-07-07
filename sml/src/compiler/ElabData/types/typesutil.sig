@@ -65,7 +65,7 @@ sig
   val compareTypes : Types.ty * Types.ty -> bool 
 
   val matchInstTypes : Types.ty * Types.ty -> 
-                         (Types.tyvar list * Types.tyvar list) option
+                         (Types.ty list * Types.ty list) option
    (* matchInstTypes probably supercedes compareTypes, and if so,
     * compareTypes should be deleted *)
 

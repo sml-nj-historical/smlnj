@@ -579,11 +579,11 @@ fun matchTypes (specTy, actualTy) =
 fun matchInstTypes(specTy,actualTy) =
     let	fun match'(WILDCARDty, _) = () (* possible? how? *)
 	  | match'(_, WILDCARDty) = () (* possible? how? *)
-	  | match'(ty1, VARty(tv as ref(OPEN{kind=META,eq,...})) =
+	  | match'(ty1, VARty(tv as ref(OPEN{kind=META,eq,...}))) =
               if eq andalso not(checkEqTyInst(ty1))
 	      then raise CompareTypes
 	      else tv := INSTANTIATED ty1
-	  | match'(ty1, VARty(tv as ref(INSTANTIATED ty2)) =
+	  | match'(ty1, VARty(tv as ref(INSTANTIATED ty2))) =
               if equalType(ty1,ty2) then () else raise CompareTypes
 	  | match'(CONty(tycon1, args1), CONty(tycon2, args2)) =
 	      if eqTycon(tycon1,tycon2)
