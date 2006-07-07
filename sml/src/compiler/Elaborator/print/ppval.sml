@@ -12,7 +12,7 @@ sig
   val ppVar: PrettyPrint.stream -> VarCon.var -> unit
   val ppDebugDcon : PrettyPrint.stream
 		    -> StaticEnv.staticEnv -> VarCon.datacon -> unit
-  val ppDebugVar: (II.ii -> string) ->
+  val ppDebugVar: (PrimOpId -> string) ->
 		  PrettyPrint.stream 
 		  -> StaticEnv.staticEnv -> VarCon.var -> unit
 end (* signature PPVAL *)
@@ -24,7 +24,6 @@ local structure PP = PrettyPrint
       structure TU = TypesUtil
       structure LU = Lookup 
       structure A = Access
-      (* structure II = InlInfo *)
       open PrettyPrint PPUtil VarCon Types
 
 in 

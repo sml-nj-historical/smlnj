@@ -565,5 +565,4 @@ in
     UnpickMod.unpickleEnv (fn _ => ModuleId.emptyTmap) (hash, pickle)
 end
 
-end (* local *)
 end (* structure PrimEnv *)
