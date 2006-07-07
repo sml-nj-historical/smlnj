@@ -286,21 +286,24 @@ let
            in debugPrint (showsigs) (s, h, specSig)
           end
 
-(* dbm: we want matchTypes to produce:
- (1) the actual type generic instantiation metavariables,
- (2) the spec type generic instantiation metavariables,
-So that matchTypes products can be used where matchTypes1 is called below.
-It should prune (if necessary).
-Test for whether actual type was a polytype reduces to testing whether 
-actual type produces and generic instantiation metavariables (i.e. null test).
-
-  gk: compareTypes does pruning. 
-*)
-
-  fun matchTypes (spec, actual, dinfo, name) : bool =
-      TU.compareTypes(spec, actual)
-(*    if TU.compareTypes(spec, actual) then eqvTnspTy(spec, actual, dinfo) *)
-    else (err EM.COMPLAIN 
+  (* matchTypes checks whether the spec type is a generic instance of
+   * the actual type, and if so it returns two lists of type metavariables (tyvars):
+   *  (1) the spec type generic instantiation metavariables (btvs),
+   *  (2) the actual type generic instantiation metavariables (ptvs).
+   * In the matching, the btvs variables are not instantiated, while the
+   * ptvs are always instantiated, and their instantiations constitute the
+   * "parameters of instantiatiation" that make the actual type agree with
+   * the (generic instance of the) spec. The parameter instantiations will
+   * contain types containing occurrences of the bound tyvars.
+   * If the actual is not a polytype, the ptvs list is nil. Similarly for
+   * the spec type and btvs. If both spec and actual are monotypes, the
+   * matching is equivalent to equalTypes(spec,actual). [dbm: 7/7/06]
+   *)
+  fun matchTypes (spec, actual, name) : T.tyvar list * T.tyvar list =
+      case TU.matchInstTypes(spec, actual)
+       of SOME(btvs,ptvs) => (btvs,ptvs)
+        | NONE =>
+          (err EM.COMPLAIN 
               "value type in structure doesn't match signature spec"
               (fn ppstrm =>
                    (PPType.resetPPType();
@@ -857,37 +860,27 @@ actual type produces and generic instantiation metavariables (i.e. null test).
                      let val spectyp = typeInMatched("$specty(val/val)", spectyp)
                          val acttyp = typeInOriginal("$actty(val/val)", acttyp)
                          val dacc = DA.selAcc(rootAcc, actslot)
-                         val dinfo = II.selStrInfo(rootInfo, actslot)
-                         val _ = 
-                           matchTypes(spectyp, acttyp, (* dinfo, dbm *) sym)
+                         val prim = PrimOpId.selStrPrimId(rootInfo, actslot)
+                         val (btvs,ptvs) = matchTypes(spectyp, acttyp, sym)
 
                          val spath = SP.SPATH[sym]
                          val actvar = VALvar{path=spath, typ=ref acttyp,
-                                             access=dacc, info=dinfo}
+                                             access=dacc, prim=prim}
 
                          val (decs', nv) = 
-                           case TU.prune(TU.headReduceType acttyp)
-                             of POLYty _ =>
-                                let val (actinst, actParamTvs) =
-                                        TU.instantiatePoly actual
-                                    val (specinst, specGenericTvs) =
-                                        TU.instantiatePoly spec
-                                    val _ = matchTypes1(actinst,specinst)
-                                    (* dbm: this is a variation on what the
-                                            original matchTypes does, so it
-                                            should be folded into that function *)
-                                    val acc = DA.namedAcc(sym, mkv)
-                                    val specvar = 
-                                      VALvar{path=spath, typ=ref spectyp,
-                                             access=acc, info=dinfo}
-                                    val vb = 
-                                      A.VB {pat=A.VARpat specvar,
-                                            exp=A.VARexp(ref actvar, actParamTvs),
-                                            boundtvs=specGenericTvs, tyvars=ref []}
-
-                                 in ((A.VALdec [vb])::decs, specvar)
-                                end
-                             | _ => (decs, actvar)
+                             case ptvs
+                               of [] => (decs, actvar) (* acttyp is mono *)
+                                | _ =>
+                                  let val acc = DA.namedAcc(sym, mkv)
+                                      val specvar = 
+                                        VALvar{path=spath, typ=ref spectyp,
+                                               access=acc, prim=prim}
+                                      val vb = 
+                                        A.VB {pat=A.VARpat specvar,
+                                              exp=A.VARexp(ref actvar, ptvs),
+                                              boundtvs=btvs, tyvars=ref []}
+                                   in ((A.VALdec [vb])::decs, specvar)
+                                  end
 
                          val bindings' = (B.VALbind nv)::bindings
 
@@ -898,8 +891,8 @@ actual type produces and generic instantiation metavariables (i.e. null test).
                                            rep, sign, lazyp}, slot} => 
                      let val spectyp = typeInMatched("$specty(val/con)", spectyp)
                          val acttyp = typeInOriginal("$actty(val/con)", acttyp)
-                         val (instys, btvs) = 
-                           matchTypes(spectyp, acttyp, II.Null, name)
+                         val (boundtvs,paramtvs) = 
+                             matchTypes(spectyp, acttyp, name)
 
                          val nrep = 
                            case slot 
@@ -913,12 +906,12 @@ actual type produces and generic instantiation metavariables (i.e. null test).
                                val acc = DA.namedAcc(name, mkv)
                                val specvar = 
                                  VALvar{path=SP.SPATH[name], access=acc,
-                                        info=II.Null,
+                                        prim=PrimOpId.NonPrim,
                                         typ=ref spectyp}
                                val vb = 
                                  A.VB {pat=A.VARpat specvar,
-                                       exp=A.CONexp(con, instys),
-                                       boundtvs=btvs, tyvars=ref []}
+                                       exp=A.CONexp(con, paramtvs),
+                                       boundtvs=boundtvs, tyvars=ref []}
                             in ((A.VALdec [vb])::decs, 
                                 (B.VALbind specvar)::bindings)
                            end
@@ -937,7 +930,7 @@ actual type produces and generic instantiation metavariables (i.e. null test).
                      if (DA.isExn specrep) = (DA.isExn actrep) then
                      let val spectyp = typeInMatched("$specty(con/con)", spectyp)
                          val acttyp = typeInOriginal("$actty(con/con)", acttyp)
-                         val _ = matchTypes(spectyp, acttyp, II.Null, name)
+                         val _ = matchTypes(spectyp, acttyp, name)
 
                          val bindings' =
                            case slot 
@@ -1300,20 +1293,20 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
               (let val restyp = typeInRes("$spec-resty(packStr-val)", spectyp)
                    val srctyp = typeInSrc("$spec-srcty(packStr-val)", spectyp)
                    val dacc = DA.selAcc(rootAcc, s)
-                   val dinfo = II.sel(rootInfo, s)
+                   val dinfo = PrimOpId.selStrPrimId(rootInfo, s)
                    val (instys, btvs, resinst, eqflag) = 
                      absEqvTy(restyp, srctyp, dinfo)
 
                    val spath = SP.SPATH[sym]
                    val srcvar = VALvar{path=spath, typ=ref srctyp,
-                                       access=dacc, info=dinfo}
+                                       access=dacc, prim=dinfo}
 
                    val (decs', nv) =
                      if eqflag then (decs, srcvar)
                      else (let val acc = DA.namedAcc(sym, mkv)
                                val resvar = 
                                  VALvar{path=spath, typ=ref restyp,
-                                        access=acc, info=II.Null}
+                                        access=acc, prim=PrimOpId.NonPrim}
 
                                val ntycs = TU.filterSet(resinst, abstycs)
                                val exp = 

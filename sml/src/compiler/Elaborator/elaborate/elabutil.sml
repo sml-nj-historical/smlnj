@@ -118,10 +118,10 @@ fun checkUniq (err,message,names) =
 fun bindVARp (patlist,err) =
     let val vl = ref (nil: symbol list)
 	val env = ref(SE.empty: SE.staticEnv)
-	fun f (VARpat(v as VALvar{path=SP.SPATH[name],info,...})) = 
+	fun f (VARpat(v as VALvar{path=SP.SPATH[name],prim,...})) = 
 	       (if S.eq(name, EQUALsym) (*** major hack ***)
 		then (* if InlInfo.isPrimInfo(InlInfo.fromExn info) then ()
-                     else *) err WARN "rebinding =" nullErrorBody
+                     else [dbm: ???] *) err WARN "rebinding =" nullErrorBody
 		else ();
 		env := SE.bind(name,B.VALbind v,!env); 
 		vl := name :: !vl)
@@ -153,7 +153,7 @@ fun isPrimPat (VARpat{info, ...}) = II.isPrimInfo(info)
 fun patproc (pp, compInfo as {mkLvar=mkv, ...} : compInfo) =
     let val oldnew : (Absyn.pat * var) list ref = ref nil
 
-	fun f (p as VARpat(VALvar{access=acc,info,typ=ref typ',path})) =
+	fun f (p as VARpat(VALvar{access=acc,prim,typ=ref typ',path})) =
               let fun find ((VARpat(VALvar{access=acc',...}), x)::rest, v) = 
 		        (case (A.accLvar acc') (* DBM: can this return NONE? *)
                           of SOME w => if v=w then x else find(rest, v)
@@ -163,7 +163,7 @@ fun patproc (pp, compInfo as {mkLvar=mkv, ...} : compInfo) =
                            | _ => find(rest, v))
                     | find (_::rest, v) = find(rest, v)
 		    | find (nil, v) = (* DBM: assert this rule always applies ? *)
-		        let val x = VALvar{access=A.dupAcc(v,mkv), info=info,
+		        let val x = VALvar{access=A.dupAcc(v,mkv), prim=prim,
                                            typ=ref typ', path=path}
 			 in oldnew := (p,x):: !oldnew; x
 			end

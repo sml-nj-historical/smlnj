@@ -411,7 +411,7 @@ fun isValue (VARexp _) = true
   | isValue (APPexp(rator, rand)) =
     let fun isrefdcon(DATACON{rep=A.REF,...}) = true
           | isrefdcon _ = false
-        fun iscast (VALvar { info, ... }) = InlInfo.isPrimCast info
+        fun iscast (VALvar { prim, ... }) = PrimOpId.isPrimCast prim
           | iscast _ = false
 
         (* LAZY: The following function allows applications of the

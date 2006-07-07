@@ -954,8 +954,8 @@ in
 			 inl_no = fn () => "C" $ [] }
 
 	val op $ = PU.$ VAR
-	fun var (V.VALvar { access = a, info, path, typ = ref t }) =
-	    "1" $ [access a, inl_info info, spath path, ty t]
+	fun var (V.VALvar { access = a, prim, path, typ = ref t }) =
+	    "1" $ [access a, inl_info prim, spath path, ty t]
 	  | var (V.OVLDvar { name, options = ref p,
 			     scheme = T.TYFUN { arity, body } }) =
 	    "2" $ [symbol name, list overld p, int arity, ty body]
@@ -1247,14 +1247,14 @@ in
 	fun newAccess i = A.PATH (A.EXTERN hash, i)
 	fun mapbinding (sym, (i, env, lvars)) =
 	    case StaticEnv.look (senv, sym) of
-		B.VALbind (V.VALvar {access=a, info=z, path=p, typ= ref t }) =>
+		B.VALbind (V.VALvar {access=a, prim=z, path=p, typ= ref t }) =>
 		(case a of
 		     A.LVAR k =>
 		     (i+1,
 		      StaticEnv.bind (sym,
 				      B.VALbind (V.VALvar
 						     { access = newAccess i,
-						       info = z, path = p,
+						       prim = z, path = p,
 						       typ = ref t}),
 				      env),
 		      k :: lvars)

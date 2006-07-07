@@ -90,7 +90,7 @@ val addop =
 
 fun tmpvar(str,ty,mkv) = 
     let val sym = S.varSymbol str
-     in VALvar{access=A.namedAcc(sym, mkv), info=II.Null,
+     in VALvar{access=A.namedAcc(sym, mkv), prim=PrimOpId.NonPrim,
                path=SP.SPATH[sym], typ=ref ty}
     end
 
@@ -180,16 +180,18 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 
 	       fun instrvb(vb as VB{pat,exp,tyvars,boundtvs}) =
 	            (case getvar pat
-		      of SOME(VALvar{info, path=SP.SPATH[n],...}) =>
-                           if II.isSimple info then vb
-                           else VB{pat=pat, tyvars=tyvars,
-			           exp=instrexp (n::clean names, 
-                                                 ccvara) false exp,
-  			           boundtvs=boundtvs}
-                       | SOME(VALvar{info, ...}) =>
-                           if II.isSimple info then vb
-                           else VB{pat=pat, exp=instrexp sp false exp, 
-                                   tyvars=tyvars, boundtvs=boundtvs}
+		      of SOME(VALvar{prim, path=SP.SPATH[n],...}) =>
+                          (case prim
+                             of PrimOpId.NonPrim => vb
+                              | _ => VB{pat=pat, tyvars=tyvars,
+			                exp=instrexp (n::clean names, 
+                                                      ccvara) false exp,
+  			                boundtvs=boundtvs})
+                       | SOME(VALvar{prim, ...}) =>
+                          (case prim
+                             of PrimOpId.NonPrim => vb
+                              | _ =>  VB{pat=pat, exp=instrexp sp false exp, 
+                                         tyvars=tyvars, boundtvs=boundtvs})
 		       | _ => VB{pat=pat, exp=instrexp sp false exp, 
                                  tyvars=tyvars, boundtvs=boundtvs})
                            
@@ -288,11 +290,12 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 		       WHILEexp { test = iinstr test, expr = iinstr expr }
 
                    | exp as APPexp (f,a) =>
-                       let fun safe(VARexp(ref(VALvar{info, ...}), _)) =
-                               if II.isSimple info then
-                                   (if mayReturnMoreThanOnce info then false
-				    else true)
-                               else false
+                       let fun safe(VARexp(ref(VALvar{prim, ...}), _)) =
+                               (case prim
+                                 of PrimOpId.NonPrim => false
+                                  | _ => 
+                                     if mayReturnMoreThanOnce prim then false
+				     else true)
                              | safe(MARKexp(e,_)) = safe e
                              | safe(CONSTRAINTexp(e,_)) = safe e
                              | safe(SEQexp[e]) = safe e

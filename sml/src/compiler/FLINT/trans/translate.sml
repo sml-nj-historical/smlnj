@@ -835,8 +835,8 @@ end
  *   val mkBnd : DI.depth -> B.binding -> L.lexp                           *
  *                                                                         *
  ***************************************************************************)
-fun mkVar (v as V.VALvar{access, info, typ, path}, d) = 
-      mkAccInfo(access, info, fn () => toLty d (!typ), getNameOp path)
+fun mkVar (v as V.VALvar{access, prim, typ, path}, d) = 
+      mkAccInfo(access, prim, fn () => toLty d (!typ), getNameOp path)
   | mkVar _ = bug "unexpected vars in mkVar"
 
 fun mkVE (v, ts, d) = let
@@ -846,11 +846,12 @@ fun mkVE (v, ts, d) = let
 	  | _ => TAPP(mkVar(v, d), map (toTyc d) ts)
 in
     case v of
-	V.VALvar { info, ... } =>
-	II.match info
-	   { inl_prim = fn (p, typ) =>
-	     (case (p, ts) of
-		  (PO.POLYEQL, [t]) => eqGen(typ, t, toTcLt d)
+	V.VALvar { prim, ... } =>
+	case prim
+	 of PrimOpId.Prim p => 
+            let val ts = (* compute intrinsic instantiation params *) []
+            in (case (p, ts)
+		of (PO.POLYEQL, [t]) => eqGen(typ, t, toTcLt d)
 		| (PO.POLYNEQ, [t]) =>
 		  composeNOT(eqGen(typ, t, toTcLt d), toLty d t)
 		| (PO.INLMKARRAY, [t]) => 
@@ -865,9 +866,9 @@ in
 			      handle CProto.BadEncoding => NONE
 		  in PRIM (PO.RAW_CCALL i, toLty d typ, map (toTyc d) ts)
 		  end
-		| _ => transPrim(p, (toLty d typ), map (toTyc d) ts)),
-	     inl_str = fn _ => otherwise (),
-	     inl_no = fn () => otherwise () }
+		| _ => transPrim(p, (toLty d typ), map (toTyc d) ts))
+            end
+	  |  PrimOpId.NonPrim => otherwise ()
       | _ => otherwise ()
 end
 

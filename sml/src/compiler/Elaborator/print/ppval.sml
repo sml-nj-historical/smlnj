@@ -119,7 +119,7 @@ fun ppDebugVar ii2string ppstrm env  =
     let val {openHVBox, openHOVBox,closeBox,pps,...} = en_pp ppstrm
 	val ppAccess = ppAccess ppstrm
         val ppInfo = ppInfo ii2string ppstrm
-	fun ppDV(VALvar {access,path,typ,info}) = 
+	fun ppDV(VALvar {access,path,typ,prim}) = 
 	     (openHVBox 0;
 	      pps "VALvar";
 	      openHVBox 3;
@@ -152,7 +152,7 @@ fun ppDebugVar ii2string ppstrm env  =
 
 fun ppVariable ppstrm  =
     let val {openHVBox, openHOVBox,closeBox,pps,...} = en_pp ppstrm
-	fun ppV(env:StaticEnv.staticEnv,VALvar{path,access,typ,info}) = 
+	fun ppV(env:StaticEnv.staticEnv,VALvar{path,access,typ,prim}) = 
 	      (openHVBox 0;
 	       pps(SymPath.toString path);
 	       if !internals then ppAccess ppstrm access else ();

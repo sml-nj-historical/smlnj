@@ -197,7 +197,7 @@ let
 	    (* val exn = V.bogusEXN (* see if this will work? *) *)
 
 	    (* Y variable and local variables ri and fi and d *)
-	    val yvar (* as VALvar{path,typ,access,info} *) =
+	    val yvar (* as VALvar{path,typ,access,prim} *) =
 		newVALvar(S.varSymbol("Y$"^(Int.toString n)))
 	    fun mkVarSym s i = newVALvar(S.varSymbol(s^(Int.toString i)))
 	    val rvars = repeat(mkVarSym "r$")
@@ -356,12 +356,12 @@ let
 				   (errorMsg id; (access0, ty0)))
 		       fun doPat(insFn: (S.symbol*access*ty ref)
                                           ->access*ty ref) =
-			   let fun doPat' (VARpat(VALvar{access, info, path, 
+			   let fun doPat' (VARpat(VALvar{access, prim, path, 
                                                          typ})) =
 				     let val (access,typ) = 
 					 insFn(SymPath.first path,access,typ)
 				      in VARpat(VALvar{access=access, 
-                                                       path=path,info=info,
+                                                       path=path,prim=prim,
 						       typ=typ})
 				     end
 				 | doPat' (RECORDpat{fields, flex, typ}) =
@@ -789,19 +789,20 @@ let
                *)
 	      val pat = 
 		case stripExpAbs exp
-		 of VARexp(ref(VALvar{info=dinfo,...}),_) =>
-                      (if II.isSimple dinfo then
+		 of VARexp(ref(VALvar{prim=dinfo,...}),_) =>
+                      (case dinfo
+                         of Prim _ => 
 		        (case pat
 			  of CONSTRAINTpat(VARpat(VALvar{path,typ,
                                                          access,...}), ty) =>
 			      CONSTRAINTpat(VARpat(
                                    VALvar{path=path, typ=typ, access=access,
-                                          info=dinfo}), ty)
+                                          prim=dinfo}), ty)
 			   | VARpat(VALvar{path, typ, access, ...}) =>
 			      VARpat(VALvar{path=path, typ=typ, access=access,
-                                            info=dinfo})
+                                            prim=dinfo})
 			   | _ => pat)
-                       else pat)
+                       | PrimOpId.NonPrim => pat)
 		  | _ => pat
 
 	      (* DBM: can the first two cases ever return NONE? *)

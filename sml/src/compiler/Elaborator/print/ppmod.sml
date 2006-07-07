@@ -179,7 +179,7 @@ fun ppStructureName ppstrm (str,env) =
 
 fun ppVariable ppstrm  =
     let val {openHVBox, openHOVBox,closeBox,pps,...} = en_pp ppstrm
-	fun ppV(V.VALvar{path,access,typ,info},env:StaticEnv.staticEnv) = 
+	fun ppV(V.VALvar{path,access,typ,prim},env:StaticEnv.staticEnv) = 
 	      (openHVBox 0;
 	       pps (SP.toString path);
 	       if !internals then PPVal.ppAccess ppstrm access else ();

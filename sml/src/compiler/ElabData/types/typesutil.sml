@@ -76,7 +76,7 @@ fun mkSCHEMEty () : ty = VARty(mkTyvar(SCHEME false))
  * variable), use mkMETAtyBounded with the appropriate depth.
  *)
 
-fun mkMETAtyBounded depth : ty = VARty(mkTyvar (mkMETA depth))
+fun mkMETAtyBounded (depth: int) : ty = VARty(mkTyvar (mkMETA depth))
 
 fun mkMETAty() = mkMETAtyBounded infinity
 
@@ -332,20 +332,17 @@ fun boundargs n =
     end
 
 fun dconType (tyc,domain) =
-    let val arity = tyconArity tyc
-    in
-	case arity of
-	    0 => (case domain of
-		      NONE => CONty(tyc,[])
-		    | SOME dom => dom --> CONty(tyc,[]))
-	  | _ =>
-	    POLYty{sign=mkPolySign arity,
-		   tyfun=TYFUN{arity=arity,
-			       body = case domain of
-					  NONE => CONty(tyc,boundargs(arity))
-					| SOME dom =>
-					  dom --> CONty(tyc,boundargs(arity))}}
-    end
+    (case tyconArity tyc
+      of 0 => (case domain
+                 of NONE => CONty(tyc,[])
+                  | SOME dom => dom --> CONty(tyc,[]))
+       | arity =>
+         POLYty{sign=mkPolySign arity,
+                tyfun=TYFUN{arity=arity,
+                            body = case domain
+                                     of NONE => CONty(tyc,boundargs(arity))
+                                      | SOME dom =>
+                                        dom --> CONty(tyc,boundargs(arity))}})
 
 (* matching a scheme against a target type -- used declaring overloadings *)
 fun matchScheme (TYFUN{arity,body}: tyfun, target: ty) : ty =
@@ -455,6 +452,25 @@ fun checkEqTySig(ty, sign: polysign) =
 	true
     end
     handle CHECKEQ => false
+
+fun checkEqTyInst(ty) =
+    let fun eqty(VARty(ref(INSTANTIATED ty))) = eqty ty
+          | eqty(VARty(ref(OPEN{eq,...}))) = if eq then () else raise CHECKEQ
+	  | eqty(CONty(DEFtyc{tyfun,...}, args)) =
+	      eqty(applyTyfun(tyfun,args))
+	  | eqty(CONty(GENtyc { eq, ... }, args)) =
+	     (case !eq
+		of OBJ => ()
+		 | YES => app eqty args
+		 | (NO | ABS | IND) => raise CHECKEQ
+		 | p => bug ("checkEqTyInst: "^eqpropToString p))
+	  | eqty(CONty(RECORDtyc _, args)) = app eqty args
+	  | eqty(IBOUND n) = bug "checkEqTyInst: IBOUND in instantiated polytype"
+	  | eqty _ = () (* what other cases? dbm *)
+     in eqty ty;
+	true
+    end
+    handle CHECKEQ => false
 end
 
 (* compType, compareTypes used to compare specification type with type of
@@ -472,8 +488,7 @@ fun compType(specty, specsign:polysign, actty,
 		    (let val eq = List.nth(actsign,i)
 		      in if eq andalso not(checkEqTySig(ty1,specsign))
 			 then raise CompareTypes
-			 else ();
-			 update(env,i,ty1)
+			 else update(env,i,ty1)
 		     end handle Subscript => ())
 		 | ty => if equalType(ty1,ty)
 			 then ()
@@ -496,9 +511,9 @@ fun compareTypes (spec : ty, actual: ty): bool =
 		 of POLYty{sign=sign',tyfun=TYFUN{arity,body=body'}} =>
 		      (compType(body,sign,body',sign',arity); true)
 		  | WILDCARDty => true
-		  | _ => false)
+		  | _ => false) (* if spec is poly, then actual must be poly *)
 	   | WILDCARDty => true
-	   | _ =>
+	   | _ => (* spec is a monotype *)
 	      (case actual
 		 of POLYty{sign,tyfun=TYFUN{arity,body}} =>
 		      (compType(spec,[],body,sign,arity); true)
@@ -525,7 +540,13 @@ fun compareTypes (spec : ty, actual: ty): bool =
 	     matchTypes. 
 
    matchTypes is used in SigMatch for matching structures (matchStr1) only
+
+   dbm:This doesn't work. After instantiating spec and actual, have to do
+     a one-way match of spec (specinst) against (more general) actual (actinst),
+     and this match should instantiate the tyvars in actParamTvs to capture
+     the parameters that instantiate actual to produce specinst.
  *)
+(*
 fun matchTypes (specTy, actualTy) =
     (* If specTy is an instance of actualTy, 
        then match, otherwise give up. *)
@@ -541,6 +562,40 @@ fun matchTypes (specTy, actualTy) =
 	    (specGenericTvs, actParamTvs)
 	end
     else ([], [])
+*)
+(* matchInstTypes: ty * ty -> (tyvar list * tyvar list) option
+ * The first argument is a spec type (e.g. from a signature spec),
+ * while the second is a potentially more general actual type. The
+ * two types are instantiated (if they are polymorphic), and a one-way
+ * match is performed on their generic instantiations. 
+ * [Note that the match cannot succeed if spec is polymorphic while
+ * actualTy is monomorphic.]
+ * This function is also used more generally to obtain instantiation
+ * parameters for a polytype (actualTy) to obtain one of its instantiations
+ * (specTy). This usage occurs in translate.sml where we match an occurrence
+ * type of a primop variable with the intrinsic type of the primop to obtain
+ * the parameters of instantiation of the primop.
+ *)
+fun matchInstTypes(specTy,actualTy) =
+    let	fun match'(WILDCARDty, _) = () (* possible? how? *)
+	  | match'(_, WILDCARDty) = () (* possible? how? *)
+	  | match'(ty1, VARty(tv as ref(OPEN{kind=META,eq,...})) =
+              if eq andalso not(checkEqTyInst(ty1))
+	      then raise CompareTypes
+	      else tv := INSTANTIATED ty1
+	  | match'(ty1, VARty(tv as ref(INSTANTIATED ty2)) =
+              if equalType(ty1,ty2) then () else raise CompareTypes
+	  | match'(CONty(tycon1, args1), CONty(tycon2, args2)) =
+	      if eqTycon(tycon1,tycon2)
+	      then ListPair.app match (args1,args2)
+	      else raise CompareTypes
+	  | match' _ = raise CompareTypes
+        and match(ty1,ty2) = match'(headReduceType ty1, headReduceType ty2)
+        val (actinst, actParamTvs) = instantiatePoly actualTy
+        val (specinst, specGenericTvs) = instantiatePoly specTy
+    in match(specinst,actinst);
+       SOME(specGenericTvs, actParamTvs)
+    end handle CompareTypes => NONE
 
 (* given a single-type-variable type, extract out the tyvar *)
 fun tyvarType (VARty (tv as ref(OPEN _))) = tv
@@ -556,7 +611,7 @@ fun tyvarType (VARty (tv as ref(OPEN _))) = tv
  * getRecTyvarMap : int * ty -> (int -> bool) 
  * see if a bound tyvar has occurred in some datatypes, e.g. 'a list. 
  * this is useful for representation analysis. This function probably
- * will soon be obsolete. 
+ * will soon be obsolete (dbm: Why?). 
  *)
 fun getRecTyvarMap (n,ty) =
     let val s = Array.array(n,false)
@@ -622,7 +677,7 @@ fun isValue (VARexp _) = true
   | isValue (APPexp(rator, rand)) =
     let fun isrefdcon(DATACON{rep=A.REF,...}) = true
           | isrefdcon _ = false
-        fun iscast (VALvar { info, ... }) = InlInfo.isPrimCast info
+        fun iscast (VALvar {prim, ...}) = PrimOpId.isPrimCast prim
           | iscast _ = false
 
         (* LAZY: The following function allows applications of the
@@ -930,6 +985,9 @@ fun unWrapDefStar tyc =
 	of SOME tyc' => unWrapDefStar tyc'
          | NONE => tyc)
 
+(* dummyTyGen produces a generator of dummy types with names X0, X1, etc.
+ * These are used to to instantiate type metavariables in top-level val
+ * decls that are not generalized because of the value restriction. *)
 fun dummyTyGen () : unit -> Types.ty =
     let val count = ref 0
 	fun next () = (count := !count + 1; !count)

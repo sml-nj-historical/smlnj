@@ -774,13 +774,12 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                    let val spectyp = typeInMatched("$specty(val/val)", spectyp)
                        val acttyp = typeInOriginal("$actty(val/val)", acttyp)
                        val dacc = DA.selAcc(rootAcc, actslot)
-                       val dinfo = II.sel(rootInfo, actslot)
-                       val (instys,btvs) = 
-                         matchTypes(spectyp, acttyp, dinfo, sym)
+                       val prim = PrimOpId.selStrPrimId(rootInfo, actslot)
+                       val (instys,btvs) = matchTypes(spectyp, acttyp, sym)
 
                        val spath = SP.SPATH[sym]
                        val actvar = VALvar{path=spath, typ=ref acttyp,
-                                           access=dacc, info=dinfo}
+                                           access=dacc, prim=prim}
 
                        val (decs', nv) = 
                          case (TU.headReduceType acttyp, 
@@ -789,7 +788,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                               let val acc = DA.namedAcc(sym, mkv)
                                   val specvar = 
                                     VALvar{path=spath, typ=ref spectyp,
-                                           access=acc, info=dinfo}
+                                           access=acc, info=prim}
 				  (** This seems a bit sensitive. Here, a VB 
 				      is constructed with a VARexp field that
 				      gets its instys from a matchTypes call 
@@ -827,7 +826,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                              val acc = DA.namedAcc(name, mkv)
                              val specvar = 
                                VALvar{path=SP.SPATH[name], access=acc,
-                                      info=II.Null,
+                                      prim=PrimOpId.NonPrim,
 				      typ=ref spectyp}
                              val vb = 
                                A.VB {pat=A.VARpat specvar,
@@ -902,9 +901,9 @@ fun matchIt entEnv =
 				rpath=rpath,
 				stub = NONE}
 		  val dacc = DA.newAcc(mkv)
-		  val dinfo = II.List (map MU.extractInfo bindings)
+		  val dinfo = (map MU.extractInfo bindings)
 	      in M.STR {sign=specSig, rlzn=strEnt, access=dacc,
-			info=dinfo}
+			prim=dinfo}
 	      end
 
 	    val resDec = 
@@ -1214,20 +1213,20 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
               (let val restyp = typeInRes("$spec-resty(packStr-val)", spectyp)
                    val srctyp = typeInSrc("$spec-srcty(packStr-val)", spectyp)
                    val dacc = DA.selAcc(rootAcc, s)
-                   val dinfo = II.sel(rootInfo, s)
+                   val prim = PrimOpId.selStrPrimId(rootInfo, s)
                    val (instys, btvs, resinst, eqflag) = 
                      absEqvTy(restyp, srctyp, dinfo)
 
                    val spath = SP.SPATH[sym]
                    val srcvar = VALvar{path=spath, typ=ref srctyp,
-                                       access=dacc, info=dinfo}
+                                       access=dacc, prim=prim}
 
                    val (decs', nv) =
                      if eqflag then (decs, srcvar)
                      else (let val acc = DA.namedAcc(sym, mkv)
                                val resvar = 
                                  VALvar{path=spath, typ=ref restyp,
-                                        access=acc, info=II.Null}
+                                        access=acc, prim=PrimOpId.NonPrim}
 
                                val ntycs = TU.filterSet(resinst, abstycs)
                                val exp = 
@@ -1274,8 +1273,8 @@ val (absDecs, bindings) = packElems(sigElements, entEnv, [], [])
 
 val resStr =
   let val dacc = DA.newAcc(mkv)
-      val dinfo = II.List (map MU.extractInfo bindings)
-   in M.STR{sign=specSig, rlzn=resRlzn, access=dacc, info=dinfo}
+      val prim = map MU.extractInfo bindings
+   in M.STR{sign=specSig, rlzn=resRlzn, access=dacc, prim=prim}
   end
 
 val resDec = 
