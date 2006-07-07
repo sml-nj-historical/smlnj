@@ -449,8 +449,10 @@ fun openStructure (env: SE.staticEnv, str) =
    in SE.atop(nenv,env)
   end
 
-(** Get a strPrimElem with all the primIds found in 
-    a list of bindings 
+(** strPrimElemInBinds 
+
+    Get a strPrimElem with all the primIds found in a list of bindings 
+    (including those in nested structures) 
  
     Used in Elaborator/elaborate/elabmod.sml and 
     SigMatch
@@ -463,7 +465,7 @@ fun strPrimElemInBinds [] = POI.StrE []
 	     of B.STRbind (M.STR { prim, ... }) => prim 
 	      | B.FCTbind (M.FCT { prim, ... }) => prim
 	      | B.VALbind (V.VALvar {prim, ...}) => POI.PrimE prim
-	      | B.CONbind _ => POI.PrimE POI.NonPrim
+	      | B.CONbind _ => POI.PrimE POI.NonPrim (* still fishy *)
 	      | _  => 
 		  bug "unexpected binding in strPrimElemInBinds")
     in  
