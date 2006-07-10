@@ -94,7 +94,7 @@ fun stripExpAst(MarkExp(e,r'),r) = stripExpAst(e,r')
 val internalSym = SpecialSymbols.internalVarId
 
 val dummyFNexp =
-    FNexp([RULE(WILDpat,RAISEexp(CONexp(V.bogusEXN,NONE),UNDEFty))],UNDEFty)
+    FNexp([RULE(WILDpat,RAISEexp(CONexp(V.bogusEXN,[]),UNDEFty))],UNDEFty)
 (** Updated CONexp ty option type -GK *)
 
 (* LAZY *)
@@ -122,7 +122,7 @@ val bangExp = VARexp(ref bangVar,NONE)
 *)
 
 local
-    fun mkCoreExp name env = VARexp (ref (CoreAccess.getVar(env, name)), NONE)
+    fun mkCoreExp name env = VARexp (ref (CoreAccess.getVar(env, name)), [])
 in
     val mkAssignExp = mkCoreExp "assign"
     val mkBangExp = mkCoreExp "deref"
@@ -171,7 +171,7 @@ let
     fun forceExp e = 
 	let val v = newVALvar(S.varSymbol "x")
 	 in APPexp(FNexp(completeMatch[RULE(APPpat(BT.dollarDcon,[],VARpat v),
-				     VARexp(ref v,NONE))],
+				     VARexp(ref v,[]))],
 			 UNDEFty),
 		   e)
 	     (* DBM: second arg of APPpat and VARexp = nil and 
@@ -179,7 +179,7 @@ let
 	end
 
     fun delayExp e = 
-	APPexp(CONexp(BT.dollarDcon,NONE), e)
+	APPexp(CONexp(BT.dollarDcon,[]), e)
 
     (* lrvbMakeY n: build declaration of n-ary Y combinator for lazy val rec *)
     fun lrvbMakeY n =
@@ -205,22 +205,22 @@ let
 	    val dvar  = newVALvar(S.varSymbol "d$")
 
 	    (* "ref($(raise Match))" *)
-	    fun rdrExp _ = APPexp(CONexp(BT.refDcon,NONE),
-				  delayExp(RAISEexp(CONexp(exn,NONE),UNDEFty)))
+	    fun rdrExp _ = APPexp(CONexp(BT.refDcon,[]),
+				  delayExp(RAISEexp(CONexp(exn,[]),UNDEFty)))
 	    val rpat  = TUPLEpat (map VARpat rvars)
 	    val rexp  = TUPLEexp (repeat rdrExp)
 	    val rdec  = VALdec([VB{pat=rpat, exp=rexp, boundtvs=[], tyvars=ref[]}])
 
 	    (* "$(force(!ri))" *)
-	    fun dfbr rv = hold(APPexp(mkBangExp env,VARexp(ref rv,NONE)))
+	    fun dfbr rv = hold(APPexp(mkBangExp env,VARexp(ref rv,[])))
 	    val ddec  = VALdec[VB{pat=VARpat dvar, exp=TUPLEexp(map dfbr rvars),
 				  boundtvs=[],tyvars=ref[]}]
 
-	    fun dexp () = VARexp(ref dvar,NONE)
+	    fun dexp () = VARexp(ref dvar,[])
 	    fun setrExp (rv,fv) =
 		APPexp(mkAssignExp env,
-		       TUPLEexp([VARexp(ref rv,NONE),
-				 hold(APPexp(VARexp(ref fv,NONE),dexp()))]))
+		       TUPLEexp([VARexp(ref rv,[]),
+				 hold(APPexp(VARexp(ref fv,[]),dexp()))]))
 	    val updates = ListPair.map setrExp (rvars,fvars)
 
 	    val yexp = FNexp(completeMatch
@@ -456,19 +456,19 @@ let
 	(case exp
 	  of VarExp path =>
 	       ((case LU.lookVal(env,SP.SPATH path,error region)
-		  of V.VAL v => VARexp(ref v,NONE)  
+		  of V.VAL v => VARexp(ref v,[])  
 		   | V.CON(d as DATACON{lazyp,const,...}) =>
 		      if lazyp then  (* LAZY *)
-		        if const then delayExp(CONexp(d,NONE))
+		        if const then delayExp(CONexp(d,[]))
 			else let val var = newVALvar(S.varSymbol "x")
 			      in FNexp(completeMatch
 				        [RULE(VARpat(var),
 					      delayExp(
-					        APPexp(CONexp(d,NONE),
-						       VARexp(ref(var),NONE))))],
+					        APPexp(CONexp(d,[]),
+						       VARexp(ref(var),[]))))],
 				       UNDEFty (* DBM: ? *))
 			     end
-		      else CONexp(d, NONE)), 
+		      else CONexp(d, [])), 
 		TS.empty, no_updt)
 	   | IntExp s => 
                (INTexp(s,TU.mkLITERALty(T.INT,region)),TS.empty,no_updt)
@@ -580,7 +580,7 @@ let
 		 in FNexp(completeMatch
 			  [RULE(RECORDpat{fields=[(s,VARpat v)], flex=true,
 					  typ= ref UNDEFty},
-				cMARKexp(VARexp(ref v,NONE),region))],UNDEFty)
+				cMARKexp(VARexp(ref v,[]),region))],UNDEFty)
 		end,
 		TS.empty, no_updt)
 	   | FlatAppExp items => elabExp(expParse(items,env,error),env,region))
@@ -791,7 +791,7 @@ let
 		case stripExpAbs exp
 		 of VARexp(ref(VALvar{prim=dinfo,...}),_) =>
                       (case dinfo
-                         of Prim _ => 
+                         of PrimOpId.Prim _ => 
 		        (case pat
 			  of CONSTRAINTpat(VARpat(VALvar{path,typ,
                                                          access,...}), ty) =>
@@ -815,7 +815,7 @@ let
                of NONE => (* DBM: pattern is not a variable? *)
 		(let val (newpat,oldvars,newvars) = patproc(pat, compInfo)
 		         (* this is the only call of patproc *)
-                     val b = map (fn v => VARexp(ref v,NONE)) newvars 
+                     val b = map (fn v => VARexp(ref v,[])) newvars 
 		     val r = RULE(newpat, TUPLEexp(b))
                      val newexp = CASEexp(exp, completeBind[r], false)
 
@@ -828,7 +828,7 @@ let
                        | _ => 
                            (let val nv = newVALvar internalSym
                                 val nvpat = VARpat(nv)
-                                val nvexp = VARexp(ref nv, NONE)
+                                val nvexp = VARexp(ref nv, [])
 
                                 val nvdec = 
                                   VALdec([VB{exp=newexp, tyvars=tvref, 
@@ -991,17 +991,17 @@ let
 
 	    val declAppY =
 		VALdec[VB{pat=TUPLEpat(map VARpat lhsVars),
-			  exp=APPexp(VARexp(ref yvar,NONE),TUPLEexp fns),
+			  exp=APPexp(VARexp(ref yvar,[]),TUPLEexp fns),
 			  tyvars=tvref,boundtvs=[]}]
 
 	    fun forceStrict ((sym,var1,lazyp),(vbs,vars)) =
 		  let val var2 = newVALvar sym
 		      val vb = if lazyp
 			       then VB{pat=VARpat var2, 
-				       exp=VARexp (ref var1,NONE),boundtvs=[],
+				       exp=VARexp (ref var1,[]),boundtvs=[],
 				       tyvars=ref[]}
 			       else VB{pat=APPpat(BT.dollarDcon,[],(VARpat var2)), 
-				       exp=VARexp (ref var1,NONE),boundtvs=[],
+				       exp=VARexp (ref var1,[]),boundtvs=[],
 				       tyvars=ref[]}
 		  in  (vb::vbs,var2::vars)
 		  end

@@ -12,7 +12,7 @@ sig
   val ppVar: PrettyPrint.stream -> VarCon.var -> unit
   val ppDebugDcon : PrettyPrint.stream
 		    -> StaticEnv.staticEnv -> VarCon.datacon -> unit
-  val ppDebugVar: (PrimOpId -> string) ->
+  val ppDebugVar: (PrimOpId.primId -> string) ->
 		  PrettyPrint.stream 
 		  -> StaticEnv.staticEnv -> VarCon.var -> unit
 end (* signature PPVAL *)
@@ -123,7 +123,7 @@ fun ppDebugVar ii2string ppstrm env  =
 	      pps "VALvar";
 	      openHVBox 3;
 	      pps "({access="; ppAccess access; ppcomma_nl ppstrm;
-              pps "info="; ppInfo info; ppcomma_nl ppstrm;
+              pps "prim="; ppInfo prim; ppcomma_nl ppstrm;
 	      pps "path="; pps (SymPath.toString path); ppcomma_nl ppstrm;
 	      pps "typ=ref "; ppType env ppstrm (!typ); 
 	      pps "})";

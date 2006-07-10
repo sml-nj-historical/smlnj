@@ -315,7 +315,7 @@ fun elabWhere (sigexp,env,epContext,mkStamp,error,region) =
 				of CONSTstrDef(STR {sign,rlzn,...}) =>
 				   CONSTstrDef(STR{sign=sign,rlzn=rlzn,
 						   access=Access.nullAcc,
-						   info=II.Null})
+						   prim=PrimOpId.StrE []})
 				 | _ => strDef
 		       in loop1(rest,STRdef(lhspath,strDef)::defs)
 		      end

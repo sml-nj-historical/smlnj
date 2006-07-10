@@ -589,10 +589,10 @@ fun elab (BaseStr decl, env, entEnv, region) =
 		      rpath=rpath, stub = NONE}
 
                 val dacc = DA.namedAcc(tempStrId, mkv)
-                val dinfo = II.List (map MU.extractInfo locations)
+                val dinfo = MU.strPrimElemInBinds locations
 
             in M.STR {sign=sign, rlzn=strRlzn, access=dacc,
-		      info=dinfo}
+		      prim=dinfo}
             end
           
           val resDec = 
@@ -924,7 +924,7 @@ case fctexp
           val paramStr = 
             let val paramDacc = DA.namedAcc(paramName, mkv)
              in M.STR{sign=paramSig, rlzn=paramRlzn, 
-                      access=paramDacc, info=II.Null}
+                      access=paramDacc, prim=PrimOpId.StrE []}
             end
 
           val _ = debugmsg "--elabFct[BaseFct]: param instantiated"
@@ -1009,7 +1009,7 @@ case fctexp
 
                 val dacc = DA.namedAcc(name, mkv)
 
-             in M.FCT{sign=fctSig, rlzn=rlzn, access=dacc, info=II.Null}
+             in M.FCT{sign=fctSig, rlzn=rlzn, access=dacc, prim=PrimOpId.StrE []}
             end
 
           val _ = debugmsg "--elabFct[BaseFct]: resFct defined"
@@ -1186,9 +1186,9 @@ fun loop([], decls, entDecls, env, entEnv) =
            *)
           val (bindStr, strEnt) = 
             case resStr
-             of STR { rlzn, sign, access, info } =>
+             of STR { rlzn, sign, access, prim } =>
                 (STR{rlzn = rlzn, sign = sign,
-		     access = DA.namedAcc(name, mkv),info = info},
+		     access = DA.namedAcc(name, mkv),prim = prim},
                  M.STRent rlzn)
               | _ => (resStr, M.STRent M.bogusStrEntity)
 
@@ -1308,8 +1308,8 @@ and elabDecl0
                       *)
                      val (bindFct, fctEnt) = 
                        case fct
-			 of FCT {rlzn, sign, access, info} =>
-			    (FCT{rlzn = rlzn, sign = sign, info = info,
+			 of FCT {rlzn, sign, access, prim} =>
+			    (FCT{rlzn = rlzn, sign = sign, prim = prim,
                                  access = DA.namedAcc(name, mkv)},
 			     FCTent rlzn)
 			  | ERRORfct => (fct, ERRORent)
