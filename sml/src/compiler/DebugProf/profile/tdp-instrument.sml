@@ -120,7 +120,7 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	val tdp_reserve_var = tmpvar ("<tdp_reserve>", i_i_Ty)
 	val tdp_module_var = tmpvar ("<tdp_module>", BT.intTy)
 
-	fun VARexp v = A.VARexp (ref v, NONE)
+	fun VARexp v = A.VARexp (ref v, [])
 	fun INTexp i = A.INTexp (IntInf.fromInt i, BT.intTy)
 
 	val uExp = AU.unitExp
@@ -256,12 +256,12 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 		val re = let val A.RULE (_, lst) = List.last rl
 			     val t = Reconstruct.expType lst
 			 in
-			     A.RAISEexp (A.CONexp (matchcon, NONE), t)
+			     A.RAISEexp (A.CONexp (matchcon, []), t)
 			 end
 	    in
 		A.FNexp ([A.RULE (A.VARpat arg,
 				  A.SEQexp [enterexp,
-					    A.CASEexp (A.VARexp (ref arg, NONE),
+					    A.CASEexp (A.VARexp (ref arg, []),
 						       rl', true)]),
 			  A.RULE (A.WILDpat, re)],
 			 t)
@@ -311,10 +311,10 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 				     boundtvs = boundtvs, tyvars = tyvars }
 	    in
 		case gv pat of
-		    SOME (VC.VALvar { path = SP.SPATH [x], info, ... }) =>
+		    SOME (VC.VALvar { path = SP.SPATH [x], prim, ... }) =>
 		      if II.isSimple info then vb
 		      else recur (cons (x, n))
-		  | SOME (VC.VALvar { info, ... }) =>
+		  | SOME (VC.VALvar { prim, ... }) =>
 		      if II.isSimple info then vb else recur n
 		  | _ => recur n
 	    end
