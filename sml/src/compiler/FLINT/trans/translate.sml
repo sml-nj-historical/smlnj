@@ -345,8 +345,10 @@ and mkRep (rep, lt, name) =
         | _ => rep 
   end
 
-(** converting a value of access+info into the lambda expression *)
-fun mkAccInfo (acc, info, getLty, nameOp) = 
+(** converting a value of access+prim into the lambda expression
+ ** [KM???} But it is ignoring the prim argument!!! 
+ **)
+fun mkAccInfo (acc, prim, getLty, nameOp) = 
   if extern acc then mkAccT(acc, getLty(), nameOp) else mkAcc (acc, nameOp)
 
 fun fillPat(pat, d) = 
@@ -835,6 +837,7 @@ end
  *   val mkBnd : DI.depth -> B.binding -> L.lexp                           *
  *                                                                         *
  ***************************************************************************)
+(* [KM???] mkVar is calling mkAccInfo, which just drops the prim!!! *)
 fun mkVar (v as V.VALvar{access, prim, typ, path}, d) = 
       mkAccInfo(access, prim, fn () => toLty d (!typ), getNameOp path)
   | mkVar _ = bug "unexpected vars in mkVar"
@@ -876,7 +879,7 @@ fun mkCE (TP.DATACON{const, rep, name, typ, ...}, ts, apOp, d) =
   let val lt = toDconLty d typ
       val rep' = mkRep(rep, lt, name)
       val dc = (name, rep', lt)
-      val ts' = map (toTyc d) ts
+      val ts' = map (toTyc d o T.VARty) ts
    in if const then CON'(dc, ts', unitLexp)
       else (case apOp
              of SOME le => CON'(dc, ts', le)
@@ -936,29 +939,44 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
           val _ = g(0, boundtvs) (* assign the TV_MARK tyvars *)
           val exp' = mkExp(exp, DI.next d)
 
-          fun h ([], []) = ()
-            | h (a::r, b::z) = (b := a; h(r, z))
-            | h _ = bug "unexpected cases in mkPE"
+          (* restore tyvar states to that before translate *)
+          fun restore ([], []) = ()
+            | restore (a::r, b::z) = (b := a; restore(r, z))
+            | restore _ = bug "unexpected cases in mkPE"
 
           (* [dbm, 6/22/06] Why do we need to restore the original
-             contents of the uninstantiated meta type variables? *)
+             contents of the uninstantiated meta type variables? 
+             Only seems to be necessary if a given tyvar gets generalized
+             in two different valbinds *)
 
-          val _ = h(savedtvs, boundtvs)  (* recover *)
+          val _ = restore(savedtvs, boundtvs)
           val len = length(boundtvs)
        
        in TFN(LT.tkc_arg(len), exp')
       end
 
 and mkVBs (vbs, d) =
-  let fun eqTvs ([], []) = true
-        | eqTvs (a::r, (TP.VARty b)::s) = if (a=b) then eqTvs(r, s) else false
-        | eqTvs _ = false
-
-      fun g (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
-                exp as VARexp (ref (w as (V.VALvar _)), instys),
-                boundtvs=tvs, ...}, b) = 
-              if eqTvs(tvs, instys) then LET(v, mkVar(w, d), b)
-              else LET(v, mkPE(exp, d, tvs), b)
+  let fun g (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
+                exp as VARexp (ref (w as (V.VALvar{typ,prim,...})), instvs),
+                boundtvs=btvs, ...}, b) = 
+            (* [dbm: 7/10/06] Originally, the mkVar and mkPE translations
+             * were chosen based on whether btvs and instvs were the same
+             * list of tyvars, which would be the case for all non-primop
+             * variables, but also in the primop case whenever the rhs
+             * variable environment type (!typ) was the same (equalTypeP)
+             * to the intrinsic type of the primop (e.g. when they are
+             * both monotypes).  So in most cases, the mkVar translation
+             * will be used, and this drops the primop information!!!
+             * This seems definitely wrong. *)
+            (case prim
+              of PrimOpId.Prim name =>
+                   let val (primop,primopty) = PrimOpMap name
+                   in if TU.equalTypeP(!typ,primopty)
+                      then LET(v, mkVar(w, d), b)
+                      else LET(v, mkPE(exp, d, btvs), b)
+                   end
+               | _ => LET(v, mkVar(w, d), b)
+                 (* when generalized variables = instantiation params *)
 
         | g (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
                 exp, boundtvs=tvs, ...}, b) = LET(v, mkPE(exp, d, tvs), b)
@@ -981,7 +999,7 @@ and mkRVBs (rvbs, d) =
   let fun g (RVB{var=V.VALvar{access=DA.LVAR v, typ=ref ty, ...},
                  exp, boundtvs=tvs, ...}, (vlist, tlist, elist)) = 
                let val ee = mkExp(exp, d) (* was mkPE(exp, d, tvs) *)
-                       (* we no longer track type bindings at RVB anymore ! *)
+                   (* [ZHONG?]we no longer track type bindings at RVB anymore ! *)
                    val vt = toLty d ty
                 in (v::vlist, vt::tlist, ee::elist)
                end
@@ -1127,7 +1145,8 @@ and mkExp (exp, d) =
 
       fun mkRules xs = map (fn (RULE(p, e)) => (fillPat(p, d), g e)) xs
 
-      and g (VARexp (ref v, ts)) = mkVE(v, ts, d)
+      and g (VARexp (ref v, ts)) = 
+            mkVE(v, map T.VARty ts, d)
 
         | g (CONexp (dc, ts)) = mkCE(dc, ts, NONE, d)
         | g (APPexp (CONexp(dc, ts), e2)) = mkCE(dc, ts, SOME(g e2), d)
@@ -1182,7 +1201,10 @@ and mkExp (exp, d) =
              end 
 
         | g (PACKexp(e, ty, tycs)) = g e
-(*
+(* [dbm, 7/10/06]: Does PACKexp do anything now? What was it doing before
+ * this was commented out? This appears to be the only place reformat was called
+ * Is it also the only place the FLINT PACK constructor is used? [KM???] *)
+(* (by who, when why?)
              let val (nty, ks, tps) = TU.reformat(ty, tycs, d)
                  val ts = map (tpsTyc d) tps
                  (** use of LtyEnv.tcAbs is a temporary hack (ZHONG) **)

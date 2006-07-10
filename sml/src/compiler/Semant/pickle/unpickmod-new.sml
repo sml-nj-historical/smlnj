@@ -420,7 +420,10 @@ structure UnpickMod : UNPICKMOD = struct
 	val tyOptionM = UU.mkMap ()
 	val tyListM = UU.mkMap ()
 	val iiM = UU.mkMap ()
-	val vM = UU.mkMap ()
+	val primIdM = UU.mkMap ()
+        val strPrimElemM = UU.mkMap ()
+	val speListM = UU.mkMap()
+        val vM = UU.mkMap ()
 	val sdM = UU.mkMap ()
 	val sigM = UU.mkMap ()
 	val fsigM = UU.mkMap ()
@@ -679,7 +682,7 @@ structure UnpickMod : UNPICKMOD = struct
 	in
 	    (l, branch trl)
 	end
-
+(* GK: replaced by primId and strPrimElem
 	and inl_info () = let
 	    fun ii #"A" = II.INL_PRIM (primop (), ty ())
 	      | ii #"B" = II.INL_STR (iilist ())
@@ -689,7 +692,25 @@ structure UnpickMod : UNPICKMOD = struct
 	    share iiM ii
 	end
 
-	and iilist () = list iiListM inl_info ()
+        and iilist () = list iiListM inl_info ()
+ *)       
+        and primId () = 
+            let
+                fun p #"A" = POI.Prim (string ())
+                  | p #"B" = POI.NonPrim ()
+            in 
+                share primIdM p
+            end
+
+        and strPrimElem () =
+            let
+                fun sp #"a" = POI.PrimE (primId ())
+                  | sp #"b" = POI.StrE ( spelist ())
+            in
+                share strPrimElemM sp
+            end
+        and spelist () = list speListM strPrimElem ()
+	
 
 	and var' () = let
 	    fun v #"1" =
@@ -894,7 +915,7 @@ structure UnpickMod : UNPICKMOD = struct
 		    val r = { sign = s,
 			      rlzn = lookStr (libModSpec (), strId ()),
 			      access = access (),
-			      info = inl_info () }
+			      prim = spelist () }
 		in
 		    (M.STR r, branch [str, M.STRNODE r])
 		end
@@ -903,7 +924,7 @@ structure UnpickMod : UNPICKMOD = struct
 		    val r = { sign = s,
 			      rlzn = strEntity (),
 			      access = access (),
-			      info = inl_info () }
+			      prim = spelist () }
 		in
 		    (M.STR r, branch [str, M.STRNODE r])
 		end
@@ -924,7 +945,7 @@ structure UnpickMod : UNPICKMOD = struct
 		    val r = { sign = s,
 			      rlzn = lookFct (libModSpec (), fctId ()),
 			      access = access (),
-			      info = inl_info () }
+			      prim = spelist () }
 		in
 		    (M.FCT r, branch [str, M.FCTNODE r])
 		end
@@ -933,7 +954,7 @@ structure UnpickMod : UNPICKMOD = struct
 		    val r = { sign = s,
 			      rlzn = fctEntity (),
 			      access = access (),
-			      info = inl_info () }
+			      prim = spelist () }
 		in
 		    (M.FCT r, branch [str, M.FCTNODE r])
 		end

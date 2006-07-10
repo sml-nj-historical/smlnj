@@ -189,7 +189,8 @@ fun shareMap f nil = raise SHARE
       (f x) :: ((shareMap f l) handle SHARE => l)
       handle SHARE => x :: (shareMap f l)
 
-(*** This function should be merged with instantiatePoly soon --zsh ***)
+(*** This function should be merged with instantiatePoly soon --zsh
+     dbm: don't agree! ***)
 fun applyTyfun(TYFUN{arity,body},args) =
   let fun subst(IBOUND n) = List.nth(args,n)
         | subst(CONty(tyc,args)) = CONty(tyc, shareMap subst args)
@@ -201,6 +202,10 @@ fun applyTyfun(TYFUN{arity,body},args) =
 		   | Subscript => bug "applyTyfun - not enough arguments"
       else body
   end
+
+fun applyPoly(POLYty{tyfun,...}, args) =
+    applyTyfun(tyfun, args)
+  | applyPoly _ = bug "TypesUtil.applyPoly"
 
 fun mapTypeFull f =
     let fun mapTy ty =
@@ -253,6 +258,13 @@ fun equalType(ty,ty') =
 	  | eq _ = false
      in eq(prune ty, prune ty')
     end
+
+fun equalTypeP(POLYty{sign=s1,tyfun=TYFUN{body=b1,...}},
+               POLYty{sign=s2,tyfun=TYFUN{body=b2,...}}) =
+    if s1 = s2 then equalType(b1,b2) else false
+  | equalTypeP(POLYty _, t2) = false
+  | equalTypeP(t1, POLYty _) = false
+  | equalTypeP(t1,t2) = equalType(t1,t2)
 
 local
   (* making dummy argument lists to be used in equalTycon *)
@@ -521,48 +533,6 @@ fun compareTypes (spec : ty, actual: ty): bool =
 		  | _ => equalType(spec,actual))
     end handle CompareTypes => false
 
-(* matchTypes -- one-way matching of actual to spec type; yields 
-		 list of instantiation metavariables
-   Parameters:
-	spec -- specification type 
-	actual -- actual type 
-   Returns:
-        (specGenericTvs, -- spec metavariables that are generalized 
-			    in the match
-	 actParamTvs) -- metavariables in actual type that are instantiations
-			of spec metavariables in match
-   Invariant: specGenericTvs are always instantiated but 
-	      actInstTvs are never generalized (because they are only
-	      meaningful in this function and are immediately generalized 
-	      away. 
-   Comments: compareTypes does pruning so there is no need to prune in
-             this function or anywhere else that uses compareTypes or
-	     matchTypes. 
-
-   matchTypes is used in SigMatch for matching structures (matchStr1) only
-
-   dbm:This doesn't work. After instantiating spec and actual, have to do
-     a one-way match of spec (specinst) against (more general) actual (actinst),
-     and this match should instantiate the tyvars in actParamTvs to capture
-     the parameters that instantiate actual to produce specinst.
- *)
-(*
-fun matchTypes (specTy, actualTy) =
-    (* If specTy is an instance of actualTy, 
-       then match, otherwise give up. *)
-    if compareTypes(specTy, actualTy) then
-	(* compareTypes should have already determined that the 
-	   two types match. *)
-	let
-	    val (actinst, actParamTvs) = instantiatePoly actualTy
-            val (specinst, specGenericTvs) = instantiatePoly specTy
-	in 
-	    (* These metavariable lists may be empty if either actualTy
-	       or specTy are monomorphic *)
-	    (specGenericTvs, actParamTvs)
-	end
-    else ([], [])
-*)
 (* matchInstTypes: ty * ty -> (tyvar list * tyvar list) option
  * The first argument is a spec type (e.g. from a signature spec),
  * while the second is a potentially more general actual type. The

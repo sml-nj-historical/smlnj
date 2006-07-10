@@ -164,7 +164,7 @@ and strrec =
     {sign   : Signature,
      rlzn   : strEntity,
      access : Access.access,
-     prim   : PrimOpId.strPrimElem}
+     prim   : PrimOpId.strPrimInfo}
 
 and fctEntity =
     {stamp    : Stamps.stamp,
@@ -178,7 +178,7 @@ and fctrec =
     {sign   : fctSig,
      rlzn   : fctEntity,
      access : Access.access, 
-     prim   : PrimOpId.strPrimElem}
+     prim   : PrimOpId.strPrimInfo}
 
 (* the stamp and arith inside Types.tycon are critical *)  
 and tycEntity = Types.tycon

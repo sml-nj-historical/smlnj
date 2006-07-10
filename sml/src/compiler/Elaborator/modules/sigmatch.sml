@@ -197,13 +197,16 @@ fun absEqvTy (spec, actual, dinfo) : (ty list * tyvar list * ty * bool) =
             | NONE =>insttys0
 
       val res = (Unify.unifyTy(actinst, specinst); true) handle _ => false
+      (* dbm: shouldn't this unifyTy always succeed, because when called
+       in packElems, the structure will already have been matched against
+       the signature (according to the comment before packStr) *)
 
       val instbtvs = map TU.tyvarType insttys0
       (* should I use stys here instead?, why insttys0? *)
 
    in (insttys, instbtvs, specinst, res)
   end
-*)
+**)
 
 (* dbm: obsolete!
 fun eqvTnspTy (spec, actual, dinfo) : (ty list * tyvar list) = 
@@ -1294,13 +1297,19 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
                    val srctyp = typeInSrc("$spec-srcty(packStr-val)", spectyp)
                    val dacc = DA.selAcc(rootAcc, s)
                    val dinfo = PrimOpId.selStrPrimId(rootInfo, s)
+(* dbm: assume that eqflag will always be true because of prior successful
+ * sigmatch, therefore this does nothing ---
                    val (instys, btvs, resinst, eqflag) = 
-                     absEqvTy(restyp, srctyp, dinfo)
-
+                       absEqvTy(restyp, srctyp, dinfo)
+*)
                    val spath = SP.SPATH[sym]
                    val srcvar = VALvar{path=spath, typ=ref srctyp,
                                        access=dacc, prim=dinfo}
 
+(* does nothing -- just use decs and srcvar below
+                   val (decs', nv) = (decs, srcvar)
+*)
+(* dbm: was:
                    val (decs', nv) =
                      if eqflag then (decs, srcvar)
                      else (let val acc = DA.namedAcc(sym, mkv)
@@ -1318,10 +1327,10 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
 
                             in ((A.VALdec [vb])::decs, resvar)
                            end)
+*)
 
-
-                   val bindings' = (B.VALbind nv)::bindings
-                in packElems(elems, entEnv, decs', bindings')
+                   val bindings' = (B.VALbind srcvar)::bindings
+                in packElems(elems, entEnv, decs, bindings')
                end)
 
            | CONspec{spec=DATACON{name, typ, rep, const, sign, lazyp}, slot} =>

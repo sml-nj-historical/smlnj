@@ -262,13 +262,16 @@ and toTyc d t =
         end
 
       and h (INSTANTIATED t) = g t
-        | h (TV_MARK m) = let
-	      val (depth, num) = findLBOUND m
-	  in
-	      LT.tcc_var(DI.calc(d, depth), num)
-	  end
+        | h (TV_MARK m) =
+            let val (depth, num) = findLBOUND m
+            in
+                LT.tcc_var(DI.calc(d, depth), num)
+            end
+        | h (UBOUND _) = LT.tcc_void
+            (* dbm: should this have been converted to a TV_MARK before
+             * being passed to toTyc? *)
         | h (OPEN _) = LT.tcc_void
-        | h _ = LT.tcc_void  (* ZHONG? *)
+        | h _ = bug "toTyc:h" (* LITERAL and SCHEME should not occur *)
 
       and g (VARty tv) = (* h(!tv) *) lookTv tv
         | g (CONty(RECORDtyc _, [])) = LT.tcc_unit

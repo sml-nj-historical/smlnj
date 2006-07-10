@@ -35,9 +35,11 @@ sig
   exception ReduceType
   val mapTypeFull: (Types.tycon -> Types.tycon) -> Types.ty -> Types.ty
   val applyTyfun : Types.tyfun * Types.ty list -> Types.ty
+  val applyPoly : Types.ty * Types.ty list -> Types.ty
   val reduceType : Types.ty -> Types.ty
   val headReduceType : Types.ty -> Types.ty
   val equalType  : Types.ty * Types.ty -> bool
+  val equalTypeP  : Types.ty * Types.ty -> bool
   val equalTycon : Types.tycon * Types.tycon -> bool
 
   (* making a "generic" copy of a type *)

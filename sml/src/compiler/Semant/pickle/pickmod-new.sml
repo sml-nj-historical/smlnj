@@ -137,17 +137,18 @@ in
     (* type info *)
     val (NK, AO, CO, PO, CS, A, CR, LT, TC, TK,
 	 V, C, E, FK, RK, ST, MI, EQP, TYCKIND, DTI,
-	 DTF, TYCON, T, II, VAR, SD, SG, FSG,  SP, EN,
+	 DTF, TYCON, T, PI, VAR, SD, SG, FSG,  SP, EN,
 	 STR, F, STE, TCE, STRE, FE, EE, ED, EEV, FX,
 	 B, DCON, DICT, FPRIM, FUNDEC, TFUNDEC, DATACON, DTMEM, NRD,
 	 OVERLD, FCTC, SEN, FEN, SPATH, IPATH, STRID, FCTID, CCI, CTYPE,
-         CCALL_TYPE) =
+         CCALL_TYPE, SPE) =
 	(1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
 	 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 	 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
 	 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
 	 41, 42, 43, 44, 45, 46, 47, 48, 49,
-	 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60)
+	 50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
+         60, 61)
 
     (* this is a bit awful...
      * (we really ought to have syntax for "functional update") *)
@@ -947,15 +948,26 @@ in
 	    ty arg
 	end
 
+(* replaced by primId and strPrimElem below -- should be removed after
+ * testing. [dbm: 7/10/06]
 	val op $ = PU.$ II
 	fun inl_info i =
 	    II.match i { inl_prim = fn (p, t) => "A" $ [primop p, ty t],
 			 inl_str = fn sl => "B" $ [list inl_info sl],
 			 inl_no = fn () => "C" $ [] }
+*)
+
+        val op $ = PU.$ PI
+        fun primId (POI.Prim s) = "A" $ [string s]
+          | primId (POI.NonPrim) = "B" $ []
+
+        val op $ = PU.$ SPE
+        fun strPrimElem(POI.PrimE p) = "a" $ [primId p]
+          | strPrimElem(POI.StrE s) = "b" $ [list strPrimElem s]
 
 	val op $ = PU.$ VAR
 	fun var (V.VALvar { access = a, prim, path, typ = ref t }) =
-	    "1" $ [access a, inl_info prim, spath path, ty t]
+	    "1" $ [access a, primId prim, spath path, ty t]
 	  | var (V.OVLDvar { name, options = ref p,
 			     scheme = T.TYFUN { arity, body } }) =
 	    "2" $ [symbol name, list overld p, int arity, ty body]
@@ -1062,17 +1074,17 @@ in
 	    fun str (M.STRSIG { sign, entPath = p }) =
 		"A" $ [Signature sign, entPath p]
 	      | str M.ERRORstr = "B" $ []
-	      | str (M.STR (s as { sign, rlzn, access = a, info })) =
+	      | str (M.STR (s as { sign, rlzn, access = a, prim })) =
 		(case strStub s of
 		     (* stub represents just the strerec suspension! *)
 		     SOME (l, i) => "C" $ [Signature sign,
 					   libModSpec l,
 					   strId i,
 					   access a,
-					   inl_info info]
+					   list strPrimElem prim]
 		   | NONE => "D" $ [Signature sign,
 				    shStrEntity (MI.strId s) rlzn,
-				    access a, inl_info info])
+				    access a, list strPrimElem prim])
 	in
 	    str arg
 	end
@@ -1080,16 +1092,16 @@ in
 	and Functor arg = let
 	    val op $ = PU.$ F
 	    fun fct M.ERRORfct = "E" $ []
-	      | fct (M.FCT (f as { sign, rlzn, access = a, info })) =
+	      | fct (M.FCT (f as { sign, rlzn, access = a, prim })) =
 		(case fctStub f of
 		     SOME (l, i) => "F" $ [fctSig sign,
 					   libModSpec l,
 					   fctId i,
 					   access a,
-					   inl_info info]
+					   list strPrimElem prim]
 		   | NONE => "G" $ [fctSig sign,
 				    shFctEntity (MI.fctId f) rlzn,
-				    access a, inl_info info])
+				    access a, list strPrimElem prim])
 	in
 	    fct arg
 	end
@@ -1259,7 +1271,7 @@ in
 				      env),
 		      k :: lvars)
 		   | _ => bug ("dontPickle 1: " ^ A.prAcc a))
-	      | B.STRbind (M.STR { sign = s, rlzn = r, access = a, info =z }) =>
+	      | B.STRbind (M.STR { sign = s, rlzn = r, access = a, prim =z }) =>
 		(case a of
 		     A.LVAR k => 
 		     (i+1,
@@ -1267,11 +1279,11 @@ in
 				      B.STRbind (M.STR
 						     { access = newAccess i,
 						       sign = s, rlzn = r,
-						       info = z }),
+						       prim = z }),
 				env),
 		      k :: lvars)
 		   | _ => bug ("dontPickle 2" ^ A.prAcc a))
-	      | B.FCTbind (M.FCT { sign = s, rlzn = r, access = a, info=z }) =>
+	      | B.FCTbind (M.FCT { sign = s, rlzn = r, access = a, prim = z }) =>
 		(case a of
 		     A.LVAR k => 
 		     (i+1,
@@ -1279,7 +1291,7 @@ in
 				      B.FCTbind (M.FCT
 						     { access = newAccess i,
 						       sign = s, rlzn = r,
-						       info = z }),
+						       prim = z }),
 				      env),
 		      k :: lvars)
 		   | _ => bug ("dontPickle 3" ^ A.prAcc a))

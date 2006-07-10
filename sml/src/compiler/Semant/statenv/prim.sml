@@ -544,7 +544,7 @@ val inLine =
 		    properties = PropList.newHolder (),  (* dbm: ??? *)
 		    rpath=IP.IPATH[S.strSymbol "inLine"]},
 	    access = A.nullAcc,
-            info = primList}
+            prim = primList}
   end
 
 (* priming structures: PrimTypes and InLine *)
