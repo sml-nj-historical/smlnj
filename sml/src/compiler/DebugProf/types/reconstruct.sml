@@ -14,23 +14,15 @@ infix -->
 fun reduceType(POLYty{tyfun=TYFUN{body,arity},...}) = headReduceType body
   | reduceType ty = headReduceType ty
 
-fun expType(VARexp(ref(VALvar{typ=ref ty,...}),instty)) =
-    let
-	val insttys = (case instty of NONE => [] | SOME t => [t])
-    in
+fun expType(VARexp(ref(VALvar{typ=ref ty,...}),insttys)) =
      (case ty
 	  of POLYty{tyfun,...} => TU.applyTyfun(tyfun,insttys)
 	   | _ => ty)
-    end
   | expType(VARexp _) = bug "varexp"
-  | expType(CONexp(DATACON{typ,...},instty)) =
-    let
-	val insttys = (case instty of NONE => [] | SOME t => [t])
-    in
+  | expType(CONexp(DATACON{typ,...},insttys)) =
      (case typ
 	  of POLYty{tyfun,...} => TU.applyTyfun(tyfun,insttys)
 	   | _ => typ)
-    end
   | expType(INTexp (_, t)) = t
   | expType(WORDexp (_, t)) = t
   | expType(STRINGexp _) = stringTy

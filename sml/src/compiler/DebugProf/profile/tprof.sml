@@ -7,7 +7,7 @@ sig
      * if the operator (specified via inlining info) can return multiple
      * times.  In practical terms, this means call/cc. *)
   val instrumDec :
-      (II.ii -> bool) ->
+      (PrimOpId.primId -> bool) ->
       (StaticEnv.staticEnv * Absyn.dec CompInfo.compInfo)
       -> Absyn.dec -> Absyn.dec
 
@@ -98,7 +98,7 @@ fun varexp(v as VALvar{typ=ref ty,path,...}) =
     (case TypesUtil.headReduceType ty
       of POLYty _ =>
 	 bug ("poly["^SP.toString path^"] in Prof")
-       | ty' => VARexp(ref v, NONE)) (* VARexp(ref v, SOME ty') *)
+       | ty' => VARexp(ref v, [])) (* VARexp(ref v, SOME ty') *)
   | varexp _ = bug "090924 in prof"
 
 fun clean (path as name::names) = if S.eq(name,anonSym) then names else path
@@ -148,11 +148,11 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 
      fun BUMPCCexp (ccvara : int) = 
        let val lvar = tmpvar("indexvar",intTy,mkv)
-	in APPexp(VARexp(ref updateop,SOME intTy),  
+	in APPexp(VARexp(ref updateop, [intTy]),  
 	       TUPLEexp[countarray,
 		INTexp (IntInf.fromInt ccvara, intTy),
 		   APPexp(varexp addop,
-		     TUPLEexp[APPexp(VARexp(ref subop,SOME intTy),
+		     TUPLEexp[APPexp(VARexp(ref subop,[intTy]),
 			       TUPLEexp[countarray,
 			               INTexp(IntInf.fromInt ccvara,intTy)]),
 					     INTexp (IntInf.fromInt 1,intTy)])])
@@ -169,7 +169,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 						  baseexp]),
 			      tyvars=ref nil,
 			      boundtvs=[]}],
-		    APPexp(VARexp(ref assignop,SOME intTy),  
+		    APPexp(VARexp(ref assignop,[intTy]),  
 			   TUPLEexp[currentexp, varexp lvar]))
 	 end
 
@@ -363,7 +363,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                                          instrrules (instrexp (anonSym::names,
                                                         ccvara') true) l,
                                               true)])),
-                                   RULE(WILDpat,RAISEexp(CONexp(exnMatch,NONE),
+                                   RULE(WILDpat,RAISEexp(CONexp(exnMatch,[]),
                                                  Reconstruct.expType special))
                                   ], t)
                        end
@@ -390,7 +390,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                                        VARpat countarrayvar,
                                        VARpat currentvar],
                           exp=APPexp(APPexp(VARexp(ref derefop,
-                                                   SOME profDerefTy),
+                                                   [profDerefTy]),
                                             varexp register),
                                      STRINGexp(concat(rev(!entries)))),
                           tyvars=ref nil,

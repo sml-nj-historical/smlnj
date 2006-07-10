@@ -74,7 +74,7 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	fun tmpvar (n, t) = let
 	    val sy = Symbol.varSymbol n
 	in
-	    VC.VALvar { access = Access.namedAcc (sy, mkv), info = II.Null,
+	    VC.VALvar { access = Access.namedAcc (sy, mkv), prim = PrimOpId.NonPrim,
 			path = SP.SPATH [sy], typ = ref t }
 	end
 
@@ -161,8 +161,12 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	fun LETexp (v, e, b) = A.LETexp (VALdec (v, e), b)
 	fun AUexp v = A.APPexp (VARexp v, uExp)	(* apply to unit *)
 
+        (* GK: There is no need for isSimple because primId and strPrimElem
+	   are now two separate datatypes. Previously, isSimple checked 
+	   whether the info was just an Info or a compound, structured 
+	   info List/Null *)
 	fun is_prim_exp (A.VARexp (ref (VC.VALvar v), _)) =
-	      II.isSimple (#info v)
+	      II.isSimple (#prim v)
 	  | is_prim_exp (A.CONexp _) = true
 	  | is_prim_exp (A.CONSTRAINTexp (e, _)) = is_prim_exp e
 	  | is_prim_exp (A.MARKexp (e, _)) = is_prim_exp e
