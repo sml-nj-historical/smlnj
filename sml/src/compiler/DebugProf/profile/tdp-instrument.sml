@@ -161,12 +161,10 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	fun LETexp (v, e, b) = A.LETexp (VALdec (v, e), b)
 	fun AUexp v = A.APPexp (VARexp v, uExp)	(* apply to unit *)
 
-        (* GK: There is no need for isSimple because primId and strPrimElem
-	   are now two separate datatypes. Previously, isSimple checked 
-	   whether the info was just an Info or a compound, structured 
-	   info List/Null *)
 	fun is_prim_exp (A.VARexp (ref (VC.VALvar v), _)) =
-	      II.isSimple (#prim v)
+              (case #prim v
+                 of PrimOpId.Prim _ => true
+                  | PrimOpId.NonPrim => false)
 	  | is_prim_exp (A.CONexp _) = true
 	  | is_prim_exp (A.CONSTRAINTexp (e, _)) = is_prim_exp e
 	  | is_prim_exp (A.MARKexp (e, _)) = is_prim_exp e
@@ -312,10 +310,13 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	    in
 		case gv pat of
 		    SOME (VC.VALvar { path = SP.SPATH [x], prim, ... }) =>
-		      if II.isSimple info then vb
-		      else recur (cons (x, n))
+                      (case prim
+                        of PrimOpId.Prim _ => vb
+                         | PrimOpId.NonPrim => recur (cons (x, n)))
 		  | SOME (VC.VALvar { prim, ... }) =>
-		      if II.isSimple info then vb else recur n
+                      (case prim
+                        of PrimOpId.Prim _ => vb
+                         | PrimOpId.NonPrim => recur n)
 		  | _ => recur n
 	    end
 

@@ -417,9 +417,9 @@ fun pat_to_string WILDpat = "_"
   | pat_to_string (ORpat _) = "<or pattern>"
   | pat_to_string _ = "<illegal pattern>"
 
-fun makeAPPpat err (CONpat(d as DATACON{const=false,lazyp,...},t),p) =
+fun makeAPPpat err (CONpat(d as DATACON{const=false,lazyp,...},tvs),p) =
       let 
-	  val p1 = APPpat(d,map VARty t,p) 
+	  val p1 = APPpat(d, tvs, p) 
        in if lazyp (* LAZY *)
 	  then APPpat(BT.dollarDcon, [], p1)
           else p1

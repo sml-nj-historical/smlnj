@@ -842,44 +842,60 @@ fun mkVar (v as V.VALvar{access, prim, typ, path}, d) =
       mkAccInfo(access, prim, fn () => toLty d (!typ), getNameOp path)
   | mkVar _ = bug "unexpected vars in mkVar"
 
-fun mkVE (v, ts, d) = let
-    fun otherwise () =
-	case ts of
-	    [] => mkVar (v, d)
-	  | _ => TAPP(mkVar(v, d), map (toTyc d) ts)
-in
-    case v of
-	V.VALvar { prim, ... } =>
-	case prim
-	 of PrimOpId.Prim p => 
-            let val ts = (* compute intrinsic instantiation params *) []
-            in (case (p, ts)
-		of (PO.POLYEQL, [t]) => eqGen(typ, t, toTcLt d)
-		| (PO.POLYNEQ, [t]) =>
-		  composeNOT(eqGen(typ, t, toTcLt d), toLty d t)
-		| (PO.INLMKARRAY, [t]) => 
-                  let val dict = 
-			  {default = coreAcc "mkNormArray",
-			   table = [([LT.tcc_real], coreAcc "mkRealArray")]}
-                  in GENOP (dict, p, toLty d typ, map (toTyc d) ts)
-                  end
-		| (PO.RAW_CCALL NONE, [a, b, c]) =>
-		  let val i = SOME (CProto.decode cproto_conv
-						  { fun_ty = a, encoding = b })
-			      handle CProto.BadEncoding => NONE
-		  in PRIM (PO.RAW_CCALL i, toLty d typ, map (toTyc d) ts)
-		  end
-		| _ => transPrim(p, (toLty d typ), map (toTyc d) ts))
-            end
-	  |  PrimOpId.NonPrim => otherwise ()
-      | _ => otherwise ()
-end
+(* mkVE : V.var * type list * depth -> lexp 
+ * This translates a variable, which might be bound to a primop.
+ * In the case of a primop variable, this function reconstructs the
+ * type parameters of instantiation of the intrinsic primop type relative
+ * to the variable occurrence type *)
+fun mkVE (V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
+      let val occty = (* compute the occurrence type of the variable *)
+              case ts
+                of [] => !typ
+                 | _ => TU.applyPoly(!typ, ts)
+          val (primop,intrinsicType) =
+              case PrimopMap.primopMap p
+               of SOME(p,t) => (p,t)
+                | NONE => bug "mkVE: unrecognized primop name"
+          val intrinsicParams =
+              (* compute intrinsic instantiation params of intrinsicType *)
+              case TU.matchInstTypes(occty,intrinsicType)
+                of SOME(_,tvs) => map TU.pruneTyvar tvs
+                 | NONE => bug "primop intrinsic type does't match occurence type"
+       in case (primop, intrinsicParams)
+            of (PO.POLYEQL, [t]) => eqGen(intrinsicType, t, toTcLt d)
+             | (PO.POLYNEQ, [t]) =>
+               composeNOT(eqGen(intrinsicType, t, toTcLt d), toLty d t)
+             | (PO.INLMKARRAY, [t]) => 
+               let val dict = 
+                       {default = coreAcc "mkNormArray",
+                        table = [([LT.tcc_real], coreAcc "mkRealArray")]}
+                in GENOP (dict, primop, toLty d intrinsicType,
+                         map (toTyc d) intrinsicParams)
+               end
+             | (PO.RAW_CCALL NONE, [a, b, c]) =>
+               let val i = SOME (CProto.decode cproto_conv
+                                   { fun_ty = a, encoding = b })
+                           handle CProto.BadEncoding => NONE
+               in PRIM (PO.RAW_CCALL i, toLty d intrinsicType,
+                        map (toTyc d) intrinsicParams)
+               end
+             | _ => transPrim(primop, (toLty d intrinsicType),
+                              map (toTyc d) intrinsicParams)
+      end
+  | mkVE (V.VALvar{typ, prim = PrimOpId.NonPrim, ... }, ts, d) =
+    (* non primop variable *)
+      (case ts
+         of [] => mkVar (v, d)
+          | _ => TAPP(mkVar(v, d), map (toTyc d) ts))
+                 (* dbm: when does this second case occur? *)
+  | mkVE _ = bug "non VALvar passed to mkVE"
+
 
 fun mkCE (TP.DATACON{const, rep, name, typ, ...}, ts, apOp, d) = 
   let val lt = toDconLty d typ
       val rep' = mkRep(rep, lt, name)
       val dc = (name, rep', lt)
-      val ts' = map (toTyc d o T.VARty) ts
+      val ts' = map (toTyc d o TP.VARty) ts
    in if const then CON'(dc, ts', unitLexp)
       else (case apOp
              of SOME le => CON'(dc, ts', le)
@@ -916,30 +932,39 @@ fun mkBnd d =
  *                                                                         *
  * Translating core absyn declarations into lambda expressions:            *
  *                                                                         *
- *    val mkVBs  : Absyn.vb list * depth -> Lambda.lexp -> Lambda.lexp     *
- *    val mkRVBs : Absyn.rvb list * depth -> Lambda.lexp -> Lambda.lexp    *
- *    val mkEBs  : Absyn.eb list * depth -> Lambda.lexp -> Lambda.lexp     *
+ *    val mkVBs  : Absyn.vb list * depth -> PLambda.lexp -> PLambda.lexp     *
+ *    val mkRVBs : Absyn.rvb list * depth -> PLambda.lexp -> PLambda.lexp    *
+ *    val mkEBs  : Absyn.eb list * depth -> PLambda.lexp -> PLambda.lexp     *
  *                                                                         *
  ***************************************************************************)
+
+(* mkPE : Absyn.exp * depth * Types.tyvar list -> PLambda.lexp
+ * translate an expression with potential type parameters *)
 fun mkPE (exp, d, []) = mkExp(exp, d)
   | mkPE (exp, d, boundtvs) = 
       let val savedtvs = map ! boundtvs
+            (* save original contents of boundtvs for later restoration
+             * by the restore function below *)
 
-          fun g (i, []) = ()
-            | g (i, (tv as ref (TP.OPEN _))::rest) = let
-		  val m = markLBOUND (d, i);
-	      in
-		  tv := TP.TV_MARK m;
-		  g (i+1, rest)
-	      end
-            | g (i, (tv as ref (TP.TV_MARK _))::res) =
-                   bug ("unexpected tyvar TV_MARK in mkPE")
-            | g _ = bug "unexpected tyvar INSTANTIATED in mkPE"
+          fun setbtvs (i, []) = ()
+            | setbtvs (i, (tv as ref (TP.OPEN _))::rest) =
+		let val m = markLBOUND (d, i)
+	         in tv := TP.TV_MARK m;
+		    setbtvs (i+1, rest)
+	        end
+            | setbtvs (i, (tv as ref (TP.TV_MARK _))::res) =
+                bug ("unexpected tyvar TV_MARK in mkPE")
+            | setbtvs _ = bug "unexpected tyvar INSTANTIATED in mkPE"
 
-          val _ = g(0, boundtvs) (* assign the TV_MARK tyvars *)
+          val _ = setbtvs(0, boundtvs)
+            (* assign TV_MARKs to the boundtvs to mark them as type
+             * parameter variables during translation of exp *)
+
           val exp' = mkExp(exp, DI.next d)
+            (* increase the depth to indicate that the expression is
+             * going to be wrapped by a type abstraction (TFN) *)
 
-          (* restore tyvar states to that before translate *)
+          (* restore tyvar states to that before the translation *)
           fun restore ([], []) = ()
             | restore (a::r, b::z) = (b := a; restore(r, z))
             | restore _ = bug "unexpected cases in mkPE"
@@ -947,7 +972,8 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
           (* [dbm, 6/22/06] Why do we need to restore the original
              contents of the uninstantiated meta type variables? 
              Only seems to be necessary if a given tyvar gets generalized
-             in two different valbinds *)
+             in two different valbinds. We assume that this does not
+             happen (Single Generalization Conjecture) *)
 
           val _ = restore(savedtvs, boundtvs)
           val len = length(boundtvs)
@@ -956,9 +982,9 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
       end
 
 and mkVBs (vbs, d) =
-  let fun g (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
-                exp as VARexp (ref (w as (V.VALvar{typ,prim,...})), instvs),
-                boundtvs=btvs, ...}, b) = 
+  let fun mkVB (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
+                   exp as VARexp (ref (w as (V.VALvar{typ,prim,...})), instvs),
+                   boundtvs=btvs, ...}, b: lexp) = 
             (* [dbm: 7/10/06] Originally, the mkVar and mkPE translations
              * were chosen based on whether btvs and instvs were the same
              * list of tyvars, which would be the case for all non-primop
@@ -970,42 +996,46 @@ and mkVBs (vbs, d) =
              * This seems definitely wrong. *)
             (case prim
               of PrimOpId.Prim name =>
-                   let val (primop,primopty) = PrimOpMap name
-                   in if TU.equalTypeP(!typ,primopty)
-                      then LET(v, mkVar(w, d), b)
-                      else LET(v, mkPE(exp, d, btvs), b)
-                   end
+                  (case PrimOpMap.primopMap name
+                     of SOME(primop,primopty) =>
+                        if TU.equalTypeP(!typ,primopty)
+                        then LET(v, mkVar(w, d), b)
+                        else LET(v, mkPE(exp, d, btvs), b)
+                      | NONE => bug "mkVBs: unknown primop name")
                | _ => LET(v, mkVar(w, d), b))
                  (* when generalized variables = instantiation params *)
 
-        | g (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
-                exp, boundtvs=tvs, ...}, b) = LET(v, mkPE(exp, d, tvs), b)
+        | mkVB (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
+                   exp, boundtvs=btvs, ...}, b) =
+            LET(v, mkPE(exp, d, btvs), b)
 
-        | g (VB{pat=CONSTRAINTpat(VARpat(V.VALvar{access=DA.LVAR v, ...}),_),
-                exp, boundtvs=tvs, ...}, b) = LET(v, mkPE(exp, d, tvs), b)
+        | mkVB (VB{pat=CONSTRAINTpat(VARpat(V.VALvar{access=DA.LVAR v, ...}),_),
+                   exp, boundtvs=tvs, ...}, b) =
+            LET(v, mkPE(exp, d, tvs), b)
 
-        | g (VB{pat, exp, boundtvs=tvs, ...}, b) =
-              let val ee = mkPE(exp, d, tvs)
-                  val rules = [(fillPat(pat, d), b), (WILDpat, unitLexp)]
-                  val rootv = mkv()
-                  fun finish x = LET(rootv, ee, x)
-               in MC.bindCompile(env, rules, finish, rootv, toTcLt d, complain,
-				 genintinfswitch)
-              end
-   in fold g vbs
-  end
+        | mkVB (VB{pat, exp, boundtvs=tvs, ...}, b) =
+            let val ee = mkPE(exp, d, tvs)
+                val rules = [(fillPat(pat, d), b), (WILDpat, unitLexp)]
+                val rootv = mkv()
+                fun finish x = LET(rootv, ee, x)
+             in MC.bindCompile(env, rules, finish, rootv, toTcLt d, complain,
+			       genintinfswitch)
+            end
+
+   in fold mkVB vbs
+  end (* mkVBs *)
 
 and mkRVBs (rvbs, d) =
-  let fun g (RVB{var=V.VALvar{access=DA.LVAR v, typ=ref ty, ...},
-                 exp, boundtvs=tvs, ...}, (vlist, tlist, elist)) = 
-               let val ee = mkExp(exp, d) (* was mkPE(exp, d, tvs) *)
-                   (* [ZHONG?]we no longer track type bindings at RVB anymore ! *)
-                   val vt = toLty d ty
-                in (v::vlist, vt::tlist, ee::elist)
-               end
-        | g _ = bug "unexpected valrec bindings in mkRVBs"
+  let fun mkRVB (RVB{var=V.VALvar{access=DA.LVAR v, typ=ref ty, ...},
+                     exp, boundtvs=btvs, ...}, (vlist, tlist, elist)) = 
+            let val ee = mkExp(exp, d) (* was mkPE(exp, d, btvs) *)
+                (* [ZHONG?] we no longer track type bindings at RVB anymore ! *)
+                val vt = toLty d ty
+            in (v::vlist, vt::tlist, ee::elist)
+            end
+        | mkRVB _ = bug "unexpected valrec bindings in mkRVBs"
 
-      val (vlist, tlist, elist) = foldr g ([], [], []) rvbs
+      val (vlist, tlist, elist) = foldr mkRVB ([], [], []) rvbs
 
    in fn b => FIX(vlist, tlist, elist, b)
   end
@@ -1033,10 +1063,10 @@ and mkEBs (ebs, d) =
  *                                                                         *
  * Translating module exprs and decls into lambda expressions:             *
  *                                                                         *
- *    val mkStrexp : Absyn.strexp * depth -> Lambda.lexp                   *
- *    val mkFctexp : Absyn.fctexp * depth -> Lambda.lexp                   *
- *    val mkStrbs  : Absyn.strb list * depth -> Lambda.lexp -> Lambda.lexp *
- *    val mkFctbs  : Absyn.fctb list * depth -> Lambda.lexp -> Lambda.lexp *
+ *    val mkStrexp : Absyn.strexp * depth -> PLambda.lexp                   *
+ *    val mkFctexp : Absyn.fctexp * depth -> PLambda.lexp                   *
+ *    val mkStrbs  : Absyn.strb list * depth -> PLambda.lexp -> PLambda.lexp *
+ *    val mkFctbs  : Absyn.fctb list * depth -> PLambda.lexp -> PLambda.lexp *
  *                                                                         *
  ***************************************************************************)
 and mkStrexp (se, d) = 
@@ -1106,8 +1136,8 @@ and mkFctbs (fbs, d) =
 (***************************************************************************
  * Translating absyn decls and exprs into lambda expression:               *
  *                                                                         *
- *    val mkExp : A.exp * DI.depth -> L.lexp                               *
- *    val mkDec : A.dec * DI.depth -> L.lexp -> L.lexp                     *
+ *    val mkExp : A.exp * DI.depth -> PLambda.lexp                         *
+ *    val mkDec : A.dec * DI.depth -> PLambda.lexp -> PLambda.lexp         *
  *                                                                         *
  ***************************************************************************)
 and mkDec (dec, d) = 
@@ -1146,7 +1176,7 @@ and mkExp (exp, d) =
       fun mkRules xs = map (fn (RULE(p, e)) => (fillPat(p, d), g e)) xs
 
       and g (VARexp (ref v, ts)) = 
-            mkVE(v, map T.VARty ts, d)
+            mkVE(v, map TP.VARty ts, d)
 
         | g (CONexp (dc, ts)) = mkCE(dc, ts, NONE, d)
         | g (APPexp (CONexp(dc, ts), e2)) = mkCE(dc, ts, SOME(g e2), d)
@@ -1204,7 +1234,7 @@ and mkExp (exp, d) =
 (* [dbm, 7/10/06]: Does PACKexp do anything now? What was it doing before
  * this was commented out? This appears to be the only place reformat was called
  * Is it also the only place the FLINT PACK constructor is used? [KM???] *)
-(* (by who, when why?)
+(* (commented out by whom, when why?)
              let val (nty, ks, tps) = TU.reformat(ty, tycs, d)
                  val ts = map (tpsTyc d) tps
                  (** use of LtyEnv.tcAbs is a temporary hack (ZHONG) **)

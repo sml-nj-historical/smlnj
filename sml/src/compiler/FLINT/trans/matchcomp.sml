@@ -1124,7 +1124,7 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
         (case pcon
           of DATApcon (dc, ts) => 
                let val newvar = mkv()
-                   val nts = map toTyc ts
+                   val nts = map (toTyc o TP.VARty) ts
                    val nenv = (DELTAPATH(pcon, path), newvar)::env
                 in (DATAcon (mkDcon dc, nts, newvar), nenv)
                end

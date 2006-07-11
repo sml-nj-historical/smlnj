@@ -148,11 +148,11 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 
      fun BUMPCCexp (ccvara : int) = 
        let val lvar = tmpvar("indexvar",intTy,mkv)
-	in APPexp(VARexp(ref updateop, [intTy]),  
+	in APPexp(VARexp(ref updateop, [ref(INSTANTIATED(intTy))]),  
 	       TUPLEexp[countarray,
 		INTexp (IntInf.fromInt ccvara, intTy),
 		   APPexp(varexp addop,
-		     TUPLEexp[APPexp(VARexp(ref subop,[intTy]),
+		     TUPLEexp[APPexp(VARexp(ref subop,[ref(INSTANTIATED(intTy))]),
 			       TUPLEexp[countarray,
 			               INTexp(IntInf.fromInt ccvara,intTy)]),
 					     INTexp (IntInf.fromInt 1,intTy)])])
@@ -169,7 +169,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 						  baseexp]),
 			      tyvars=ref nil,
 			      boundtvs=[]}],
-		    APPexp(VARexp(ref assignop,[intTy]),  
+		    APPexp(VARexp(ref assignop,[ref(INSTANTIATED(intTy))]),  
 			   TUPLEexp[currentexp, varexp lvar]))
 	 end
 
@@ -390,7 +390,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                                        VARpat countarrayvar,
                                        VARpat currentvar],
                           exp=APPexp(APPexp(VARexp(ref derefop,
-                                                   [profDerefTy]),
+                                                   [ref(INSTANTIATED(profDerefTy))]),
                                             varexp register),
                                      STRINGexp(concat(rev(!entries)))),
                           tyvars=ref nil,

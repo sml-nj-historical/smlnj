@@ -13,20 +13,26 @@
 
 signature PRIMOP_MAP =
 sig 
-  val primopMap : string -> Primop.primop * Types.ty
+  val primopMap : string -> (PrimOp.primop * Types.ty) option
 end (* signature PRIMOP_MAP *)
 
 
 structure PrimOpMap : PRIMOP_MAP = 
 struct
 
-local
-
   structure T = Types
   structure BT = BasicTypes
   structure P = PrimOp
 
-in
+structure StringKey : ORD_KEY =
+struct
+  type ord_key = string
+  val compare = String.compare
+end
+
+structure RBMap = RedBlackMapFn(StringKey)
+
+fun bug msg = ErrorMsg.impossible("PrimOpMap: " ^ msg)
 
 (**************************************************************************
  *                 BUILDING A COMPLETE LIST OF PRIMOPS                    *
@@ -219,8 +225,6 @@ val cc_b = binp BT.charTy
  *)
 val rccType = p3(ar(tu[w32,v1,v2],v3))
 
-in
-
 (*
  * I made an effort to eliminate the cases where type info for primops
  * is left NONE because this is, in fact, incorrect.  (As long as they
@@ -229,13 +233,6 @@ in
  *    - M.Blume (1/2001)
  *)
 
-structure StringKey : ORD_KEY =
-struct
-  type ord_key = string
-  val compare = String.compare
-end
-
-structure RBMap = RedBlackMapFn(StringKey)
 
 val empty = RBMap.empty
 
@@ -349,11 +346,11 @@ val primops =
        ("test_32_31_w",  (P.TEST(32,31),  	w32_i)) :-:
        ("test_32_31_i",  (P.TEST(32,31),  	i32_i)) :-:
 
-       ("testu_31_31",   (P.TESTU(31,31),       w_i))) :-:
+       ("testu_31_31",   (P.TESTU(31,31),       w_i)) :-:
 
-       ("testu_32_31",   (P.TESTU(32,31),       w32_i))) :-:
+       ("testu_32_31",   (P.TESTU(32,31),       w32_i)) :-:
 
-       ("testu_32_32",   (P.TESTU(32,32),   	w32_i32))) :-:
+       ("testu_32_32",   (P.TESTU(32,32),   	w32_i32)) :-:
 
        ("copy_32_32_ii", (P.COPY(32,32),   	i32_i32)) :-:
        ("copy_32_32_wi", (P.COPY(32,32),   	w32_i32)) :-:
@@ -391,26 +388,26 @@ val primops =
        ("trunc_32_8_w",  (P.TRUNC(32,8),   	w32_w8)) :-:
 
        (* conversion primops involving intinf *)
-       ("test_inf_31",   (P.TEST_INF 31,         inf_i)   :-:
+       ("test_inf_31",   (P.TEST_INF 31,         inf_i))   :-:
        ("test_inf_32",   (P.TEST_INF 32,         inf_i32)) :-:
        ("test_inf_64",   (P.TEST_INF 64,         inf_i64)) :-:
-       ("copy_8_inf",    (P.COPY_INF 8,          w8_inf)  :-:
-       ("copy_8_inf_w",  (P.COPY_INF 8,          w8_inf)  :-:
-       ("copy_31_inf_w", (P.COPY_INF 31,         w_inf)   :-:
+       ("copy_8_inf",    (P.COPY_INF 8,          w8_inf))  :-:
+       ("copy_8_inf_w",  (P.COPY_INF 8,          w8_inf))  :-:
+       ("copy_31_inf_w", (P.COPY_INF 31,         w_inf))   :-:
        ("copy_32_inf_w", (P.COPY_INF 32,         w32_inf)) :-:
        ("copy_64_inf_w", (P.COPY_INF 64,         w64_inf)) :-:
-       ("copy_31_inf_i", (P.COPY_INF 31,         i_inf)   :-:
+       ("copy_31_inf_i", (P.COPY_INF 31,         i_inf))   :-:
        ("copy_32_inf_i", (P.COPY_INF 32,         i32_inf)) :-:
        ("copy_64_inf_i", (P.COPY_INF 64,         i64_inf)) :-:
-       ("extend_8_inf",  (P.EXTEND_INF 8,        w8_inf)  :-:
-       ("extend_8_inf_w",  (P.EXTEND_INF 8,      w8_inf)  :-:
+       ("extend_8_inf",  (P.EXTEND_INF 8,        w8_inf))  :-:
+       ("extend_8_inf_w",  (P.EXTEND_INF 8,      w8_inf))  :-:
        ("extend_31_inf_w", (P.EXTEND_INF 31,     w_inf)) :-:
        ("extend_32_inf_w", (P.EXTEND_INF 32,     w32_inf)) :-:
        ("extend_64_inf_w", (P.EXTEND_INF 64,     w64_inf)) :-:
        ("extend_31_inf_i", (P.EXTEND_INF 31,     i_inf)) :-:
        ("extend_32_inf_i", (P.EXTEND_INF 32,     i32_inf)) :-:
        ("extend_64_inf_i", (P.EXTEND_INF 64,     i64_inf)) :-:
-       ("trunc_inf_8",   (P.TRUNC_INF 8,         inf_w8)  :-:
+       ("trunc_inf_8",   (P.TRUNC_INF 8,         inf_w8))  :-:
        ("trunc_inf_31",  (P.TRUNC_INF 31,        inf_w)) :-:
        ("trunc_inf_32",  (P.TRUNC_INF 32,        inf_w32)) :-:
        ("trunc_inf_64",  (P.TRUNC_INF 64,        inf_w64)) :-:
@@ -704,6 +701,7 @@ val primops =
            * the record as a ML object, in case it passes thru a gc boundary.
            * rawupdatexxx writes to the record.
            *) 
+
        ("rawrecord",    (P.RAW_RECORD { fblock = false }, i_x)) :-:
        ("rawrecord64",  (P.RAW_RECORD { fblock = true }, i_x)) :-:
 
@@ -723,10 +721,15 @@ val primops =
        ("rawupdatew32", (P.RAW_STORE (P.UINT 32), xw32w32_u)) :-:
        ("rawupdatei32", (P.RAW_STORE (P.INT 32), xw32i32_u)) :-:
        ("rawupdatef32", (P.RAW_STORE (P.FLOAT 32), xw32f64_u)) :-:
-       ("rawupdatef64", (P.RAW_STORE (P.FLOAT 64), xw32f64_u)) 
-
-end (* local *)
+       ("rawupdatef64", (P.RAW_STORE (P.FLOAT 64), xw32f64_u))
 
 fun primopMap name = RBMap.find(primops,name)
+
+(* Not needed now, delete later...
+fun primopIntrinsicType name =
+    case PrimopMap.primopMap p
+      of SOME(_,ty) => ty
+       | NONE => bug "unknown primop"
+*)
 
 end (* structure PrimOpMap *)

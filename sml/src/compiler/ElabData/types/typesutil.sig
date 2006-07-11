@@ -27,6 +27,7 @@ sig
   val mkCONty : Types.tycon * Types.ty list -> Types.ty
 
   val prune : Types.ty -> Types.ty
+  val pruneTyvar : Types.tyvar -> Types.ty
 
   val eqTyvar : Types.tyvar * Types.tyvar -> bool
   val bindTyvars : Types.tyvar list -> unit

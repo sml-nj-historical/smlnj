@@ -59,7 +59,7 @@ and pat
   | CHARpat of string
   | CONpat of datacon * tyvar list (* See comment for VARexp *)
   | RECORDpat of {fields: (label * pat) list, flex: bool, typ: ty ref}
-  | APPpat of datacon * ty list * pat
+  | APPpat of datacon * tyvar list * pat
   | CONSTRAINTpat of pat * ty
   | LAYEREDpat of pat * pat
   | ORpat of pat * pat

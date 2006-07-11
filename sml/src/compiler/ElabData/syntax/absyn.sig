@@ -48,7 +48,7 @@ and pat
   | CONpat of VarCon.datacon * Types.tyvar list (* instance type *)
   | RECORDpat of {fields : (Types.label * pat) list, 
                   flex : bool, typ : Types.ty ref}
-  | APPpat of VarCon.datacon * Types.ty list * pat
+  | APPpat of VarCon.datacon * Types.tyvar list * pat
   | CONSTRAINTpat of pat * Types.ty
   | LAYEREDpat of pat * pat
   | ORpat of pat * pat

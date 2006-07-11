@@ -161,6 +161,12 @@ fun prune(VARty(tv as ref(INSTANTIATED ty))) : ty =
       end
   | prune ty = ty
     
+fun pruneTyvar(tv as ref(INSTANTIATED ty)) : ty =
+      let val pruned = prune ty
+       in tv := INSTANTIATED pruned; pruned
+      end
+  | pruneTyvar _ = bug "pruneTyvar: not an instantiated tyvar"
+
 fun eqTyvar(tv1: tyvar, tv2: tyvar) = (tv1 = tv2)
 
 fun bindTyvars(tyvars: tyvar list) : unit =

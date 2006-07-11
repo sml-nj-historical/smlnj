@@ -70,8 +70,8 @@ is
 	basics/stamps.sig
 	basics/stamps.sml
 	basics/stampmap.sml
-	basics/primopid.sml
 	basics/primopid.sig
+	basics/primopid.sml
 	basics/coresym.sml
 	basics/access.sig
 	basics/access.sml
