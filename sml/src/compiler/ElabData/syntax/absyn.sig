@@ -10,8 +10,8 @@ type region
 datatype numberedLabel = LABEL of {name: Symbol.symbol, number: int}
 
 datatype exp
-  = VARexp of VarCon.var ref * Types.ty list (* instance type *)
-  | CONexp of VarCon.datacon * Types.ty list (* instance type *)
+  = VARexp of VarCon.var ref * Types.tyvar list (* instance type *)
+  | CONexp of VarCon.datacon * Types.tyvar list (* instance type *)
   | INTexp of IntInf.int * Types.ty
   | WORDexp of IntInf.int * Types.ty
   | REALexp of string
@@ -45,7 +45,7 @@ and pat
   | REALpat of string
   | STRINGpat of string
   | CHARpat of string
-  | CONpat of VarCon.datacon * Types.ty list (* instance type *)
+  | CONpat of VarCon.datacon * Types.tyvar list (* instance type *)
   | RECORDpat of {fields : (Types.label * pat) list, 
                   flex : bool, typ : Types.ty ref}
   | APPpat of VarCon.datacon * Types.ty list * pat

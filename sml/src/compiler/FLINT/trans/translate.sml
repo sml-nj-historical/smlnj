@@ -975,7 +975,7 @@ and mkVBs (vbs, d) =
                       then LET(v, mkVar(w, d), b)
                       else LET(v, mkPE(exp, d, btvs), b)
                    end
-               | _ => LET(v, mkVar(w, d), b)
+               | _ => LET(v, mkVar(w, d), b))
                  (* when generalized variables = instantiation params *)
 
         | g (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),

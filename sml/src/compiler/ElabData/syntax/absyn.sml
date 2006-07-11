@@ -18,12 +18,12 @@ type region = Ast.region  (* = int * int *)
 datatype numberedLabel = LABEL of {name: S.symbol, number: int}
 
 datatype exp
-  = VARexp of var ref * ty list
+  = VARexp of var ref * tyvar list
     (* the 2nd arg is a type mv list used to capture the instantiation
        parameters for this occurence of var when its type is polymorphic.
        FLINT will use these to provide explicit type parameters for
        var if var is bound to a primop. *)
-  | CONexp of datacon * ty list (* ditto *)
+  | CONexp of datacon * tyvar list (* ditto *)
   | INTexp of IntInf.int * ty
   | WORDexp of IntInf.int * ty
   | REALexp of string
@@ -57,7 +57,7 @@ and pat
   | REALpat of string
   | STRINGpat of string
   | CHARpat of string
-  | CONpat of datacon * ty list (* See comment for VARexp *)
+  | CONpat of datacon * tyvar list (* See comment for VARexp *)
   | RECORDpat of {fields: (label * pat) list, flex: bool, typ: ty ref}
   | APPpat of datacon * ty list * pat
   | CONSTRAINTpat of pat * ty
