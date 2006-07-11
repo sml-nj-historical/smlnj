@@ -79,7 +79,7 @@ fun getStr (elements, entEnv, sym, dacc, prims) =
         (case EE.look(entEnv,entVar)
  	  of STRent entity => 
                (STR{sign = sign, rlzn = entity, access = A.selAcc(dacc,slot),
-                    prim = POI.selStrPrimId (prims, slot)},
+                    prim = POI.selStrPrimId(prims, slot)},
 		entVar)
 	   | _ => bug "getStr: bad entity")
      | _ => bug "getStr: wrong spec"
@@ -175,7 +175,7 @@ val transType =
 fun strDefToStr(CONSTstrDef str, _) = str
   | strDefToStr(VARstrDef(sign,entPath), entEnv) =
     STR{sign=sign,rlzn=EE.lookStrEP(entEnv,entPath),
-        access=A.nullAcc, prim=POI.StrE []}
+        access=A.nullAcc, prim=[]}
 
 (* 
  * two pieces of essential structure information gathered during
@@ -183,9 +183,9 @@ fun strDefToStr(CONSTstrDef str, _) = str
  * being searched is a STRSIG; otherwise it return STRINFO.
  *)
 datatype strInfo = SIGINFO of EP.entPath  (* reverse order! *)
-                 | STRINFO of strEntity * A.access * POI.strPrimElem
+                 | STRINFO of strEntity * A.access * POI.strPrimInfo
 
-val bogusInfo = STRINFO (bogusStrEntity, A.nullAcc, POI.StrE [])
+val bogusInfo = STRINFO (bogusStrEntity, A.nullAcc, [])
 
 fun getStrElem (sym, sign as SIG {elements,...}, sInfo) = 
       (case getSpec (elements,sym)
@@ -451,28 +451,29 @@ fun openStructure (env: SE.staticEnv, str) =
 
 (** strPrimElemInBinds 
 
-    Get a strPrimElem with all the primIds found in a list of bindings 
+    Get a strPrimElem list with all the primIds found in a list of bindings 
     (including those in nested structures) 
  
     Used in Elaborator/elaborate/elabmod.sml and 
     SigMatch
  *)
-fun strPrimElemInBinds [] = POI.StrE [] 
-  | strPrimElemInBinds (bind::rest) =
+fun strPrimElemInBinds (bindings) =
     let
-	val strPrims =
+	fun strPrims bind =  
 	   (case bind 
-	     of B.STRbind (M.STR { prim, ... }) => prim 
-	      | B.FCTbind (M.FCT { prim, ... }) => prim
+	     of B.STRbind (M.STR { prim, ... }) => POI.StrE prim 
+	      | B.FCTbind (M.FCT { prim, ... }) => POI.StrE prim
 	      | B.VALbind (V.VALvar {prim, ...}) => POI.PrimE prim
 	      | B.CONbind _ => POI.PrimE POI.NonPrim (* still fishy *)
+			       (* GK: Doesn't this throw off the slot number
+				  correspondence because CONbinds may
+				  or may not have a corresponding slot
+				  number (Data cons do not and Exception
+				  cons do) *)
 	      | _  => 
 		  bug "unexpected binding in strPrimElemInBinds")
     in  
-       (case (strPrimElemInBinds rest) of
-	    (POI.StrE restPrims) =>
-	      POI.StrE (strPrims :: restPrims)
-	  | POI.PrimE id => POI.StrE ([POI.PrimE id]))
+	map strPrims bindings
     end (* let *)
 
 (* extract all signature names from a structure --

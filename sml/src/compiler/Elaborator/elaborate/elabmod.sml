@@ -924,7 +924,7 @@ case fctexp
           val paramStr = 
             let val paramDacc = DA.namedAcc(paramName, mkv)
              in M.STR{sign=paramSig, rlzn=paramRlzn, 
-                      access=paramDacc, prim=PrimOpId.StrE []}
+                      access=paramDacc, prim=[]}
             end
 
           val _ = debugmsg "--elabFct[BaseFct]: param instantiated"
@@ -1009,7 +1009,7 @@ case fctexp
 
                 val dacc = DA.namedAcc(name, mkv)
 
-             in M.FCT{sign=fctSig, rlzn=rlzn, access=dacc, prim=PrimOpId.StrE []}
+             in M.FCT{sign=fctSig, rlzn=rlzn, access=dacc, prim=[]}
             end
 
           val _ = debugmsg "--elabFct[BaseFct]: resFct defined"

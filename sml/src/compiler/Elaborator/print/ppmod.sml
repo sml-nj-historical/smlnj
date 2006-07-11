@@ -90,7 +90,7 @@ fun strToEnv(M.SIG {elements,...},entities) =
 		  let val strEnt = EE.lookStrEnt(entities,entVar)
 		   in SE.bind(sym,B.STRbind(M.STR{sign=sign,rlzn=strEnt,
 						  access=A.nullAcc,
-						  prim=PrimOpId.StrE []}),
+						  prim=[]}),
 			      env)
 		  end
 	       | M.CONspec{spec=dcon, ...} => SE.bind(sym,B.CONbind dcon,env)

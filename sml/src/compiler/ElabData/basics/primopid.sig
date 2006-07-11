@@ -19,8 +19,8 @@ sig
   val isPrimCallcc : primId -> bool
   val isPrimCast : primId -> bool
 
-  val selStrPrimId : strPrimElem * int -> strPrimElem
-  val selValPrimFromStrPrim : strPrimElem * int -> primId
+  val selStrPrimId : strPrimElem list * int -> strPrimElem list
+  val selValPrimFromStrPrim : strPrimElem list * int -> primId
 (*
     val match : inl_info ->
 		{ inl_prim: PrimOp.primop * Types.ty -> 'a,

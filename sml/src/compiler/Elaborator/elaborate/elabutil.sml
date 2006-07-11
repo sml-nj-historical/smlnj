@@ -419,7 +419,7 @@ fun pat_to_string WILDpat = "_"
 
 fun makeAPPpat err (CONpat(d as DATACON{const=false,lazyp,...},t),p) =
       let 
-	  val p1 = APPpat(d,t,p) 
+	  val p1 = APPpat(d,map VARty t,p) 
        in if lazyp (* LAZY *)
 	  then APPpat(BT.dollarDcon, [], p1)
           else p1

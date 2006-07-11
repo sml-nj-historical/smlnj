@@ -383,7 +383,7 @@ fun getElemDefs (strDef,mkStamp,depth): (S.symbol * constraint) list =
 					      rlzn=EE.lookStrEnt(entities,
 								 entVar),
 					      access=A.nullAcc,
-					      prim=PrimOpId.StrE []}),
+					      prim=[]}),
 					 depth))
 			before debugmsg ("<<getElemDefs.C: STRspec " ^
 					 Symbol.name sym))
