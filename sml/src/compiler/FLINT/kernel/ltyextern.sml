@@ -34,6 +34,9 @@ in
 
 open LtyBasic
 
+fun tc_bug tc s = bug (s ^ "\n\n" ^ (tc_print tc) ^ "\n\n")
+fun lt_bug lt s = bug (s ^ "\n\n" ^ (lt_print lt) ^ "\n\n")
+
 (** instantiating a polymorphic type or an higher-order constructor *)
 fun lt_inst (lt : lty, ts : tyc list) = 
   let val nt = lt_whnm lt
@@ -43,7 +46,10 @@ fun lt_inst (lt : lty, ts : tyc list) =
               in map (fn x => ltc_env(x, 1, 0, nenv)) b
              end
          | (_, []) => [nt]   (* this requires further clarifications !!! *)
-         | _ => bug "incorrect lty instantiation in lt_inst")
+         | (lt,ts) => 
+           (print "lt_inst arg: "; print(lt_print (lt_inj lt)); print "\n";
+            print ("ts length: "); print(Int.toString(length ts)); print "\n";
+            bug "incorrect lty instantiation in lt_inst"))
   end 
 
 fun lt_pinst (lt : lty, ts : tyc list) = 
