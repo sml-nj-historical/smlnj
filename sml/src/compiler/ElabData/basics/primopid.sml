@@ -24,9 +24,11 @@ struct
   fun isPrimop (Prim _) = true
     | isPrimop NonPrim  = false
 
+  (* Used in TopLevel/main/compile.sml *)
   fun isPrimCallcc (Prim("callcc" | "capture")) = true
     | isPrimCallcc _ = false
 
+  (* Used in ElabData/modules/moduleutil.sml *)
   fun isPrimCast (Prim "cast") = true
     | isPrimCast _ = false
 

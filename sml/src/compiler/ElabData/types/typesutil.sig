@@ -63,12 +63,12 @@ sig
   val lamdepth : occ -> int
   val toplevel : occ -> bool
 
-  val instantiatePoly : Types.ty -> Types.ty * Types.ty list
+  val instantiatePoly : Types.ty -> Types.ty * Types.tyvar list
 
   val compareTypes : Types.ty * Types.ty -> bool 
 
   val matchInstTypes : Types.ty * Types.ty -> 
-                         (Types.ty list * Types.ty list) option
+                         (Types.tyvar list * Types.tyvar list) option
    (* matchInstTypes probably supercedes compareTypes, and if so,
     * compareTypes should be deleted *)
 
@@ -81,12 +81,14 @@ sig
    *)
   val getRecTyvarMap : int * Types.ty -> (int -> bool)
   val gtLabel : Symbol.symbol * Symbol.symbol -> bool
-(**
+
   val isValue : Absyn.exp -> bool
   (* checks whether an expression is nonexpansive; used to determine
    * when type generalization is permitted under the value rule *)
-  dbm: where has this moved to? typecheck.sml?
-**)
+  (*
+  dbm: where has this moved to? typecheck.sml? 
+  gk: restoring this function because PrimOpId is now self-contained.
+  *)
   val isVarTy : Types.ty -> bool
  
   val sortFields : (Absyn.numberedLabel * 'a) list

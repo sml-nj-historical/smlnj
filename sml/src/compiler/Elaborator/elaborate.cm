@@ -20,7 +20,7 @@ Group
 
 	functor InstantiateFn
 	functor EvalEntityFn
-	(** functor SigMatchFn *)
+	functor SigMatchFn
 	functor ElabModFn
 	functor ElabTopFn
 
@@ -31,6 +31,7 @@ Group
 	structure SpecialSymbols
 	structure ElabDebug
 	structure Unify
+	structure Typecheck
 
 	signature PPUTIL
 	signature PPTYPE
@@ -59,12 +60,10 @@ is
 	types/unify.sml
 	types/overload.sml
 	types/overloadlit.sml
-	types/typecheck.sig
-	(** types/typecheck.sml *)
+	types/typecheck.sml
 
 	modules/expandtycon.sml
-	(**modules/sigmatch.sml *)
-	modules/sigmatch.sig
+	modules/sigmatch.sml 
 	modules/instantiate.sml
 	modules/evalent.sml
 

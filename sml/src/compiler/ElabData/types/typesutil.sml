@@ -437,16 +437,16 @@ with
 
 end (* abstype occ *)
 
-(* instantiatePoly: ty -> ty * ty list
+(* instantiatePoly: ty -> ty * tyvar list
    if argument is a POLYty, instantiates body of POLYty with new META typa
    variables, returning the instantiatied body and the list of META tyvars.
    if argument is not a POLYty, does nothing, returning argument type *)
-fun instantiatePoly(POLYty{sign,tyfun}) : ty * ty list =
+fun instantiatePoly(POLYty{sign,tyfun}) : ty * tyvar list =
       let val args =
 	      map (fn eq => 
-		      VARty(ref(OPEN{kind = META, depth = infinity, eq = eq})))
+		      ref(OPEN{kind = META, depth = infinity, eq = eq}))
 		  sign
-       in (applyTyfun(tyfun, args), args)
+       in (applyTyfun(tyfun, map VARty args), args)
       end
   | instantiatePoly ty = (ty,[])
 
@@ -629,9 +629,7 @@ fun gtLabel(a,b) =
 (* Modified to support CAST, and special binding CASEexp. (ZHONG) *)
 (* Modified to allow applications of lazy val rec Y combinators to
    be nonexpansive. (Taha, DBM) *) 
-(** Either InlInfo must be moved closer to here or this function needs
-    to move to where InlInfo is. -GK *)
-(**
+
 local open Absyn in
 
 fun isValue (VARexp _) = true
@@ -705,7 +703,7 @@ and irref pp  =
    in g pp
   end
 end (* local *)
- *)
+ 
 
 
 fun isVarTy(VARty(ref(INSTANTIATED ty))) = isVarTy ty

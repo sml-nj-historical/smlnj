@@ -345,7 +345,7 @@ fun patType(pat: pat, depth, region) : pat * ty =
                val nty = mkMETAtyBounded depth
                val _ = unifyTy(nty, ty) 
             in (** (CONpat(dcon,insts),ty) *)
-	       (CONpat(dcon, SOME ty), ty)
+	       (CONpat(dcon, [ref (INSTANTIATED ty)]), ty)
            end
        | APPpat(dcon as DATACON{typ,rep,...},_,arg) =>
 	   let val (argpat,argty) = patType(arg,depth,region)
@@ -418,7 +418,7 @@ in
        | VARexp(r as ref ERRORvar, _) => (exp, WILDCARDty)
        | CONexp(dcon as DATACON{typ,...},_) => 
            let val (ty,insts) = instantiatePoly typ
-            in (CONexp(dcon, SOME ty), ty)
+            in (CONexp(dcon, [ref (INSTANTIATED ty)]), ty)
            end
        | INTexp (_,ty) => (oll_push ty; (exp,ty))
        | WORDexp (_,ty) => (oll_push ty; (exp,ty))
@@ -662,7 +662,7 @@ and decType0(decl,occ,region) : dec =
 	   let fun vbType(vb as VB{pat, exp, tyvars=(tv as (ref tyvars)), boundtvs}) =
 	        let val (pat',pty) = patType(pat,infinity,region)
 		    val (exp',ety) = expType(exp,occ,region)
-                    val generalize = isValue exp (* orelse isVarTy ety *)
+                    val generalize = TypesUtil.isValue exp (* orelse isVarTy ety *)
 		 in unifyErr{ty1=pty,ty2=ety, name1="pattern", name2="expression",
 			     message="pattern and expression in val dec don't agree",
 			     region=region,kind=ppVB,kindname="declaration",

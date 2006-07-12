@@ -273,7 +273,7 @@ fun matchStr1(specSig as SIG{stamp=sigStamp,closed,fctflag,
               str as STR { sign = SIG{stamp=strSigStamp,
 				      elements=strElements,...},
 			   rlzn as {stamp=strStamp,entities=strEntEnv,...},
-			   access = rootAcc, info = rootInfo },
+			   access = rootAcc, prim = rootInfo },
               strName : S.symbol,
               depth, matchEntEnv, 
               epath: EP.entVar list,
@@ -863,7 +863,7 @@ let
                      let val spectyp = typeInMatched("$specty(val/val)", spectyp)
                          val acttyp = typeInOriginal("$actty(val/val)", acttyp)
                          val dacc = DA.selAcc(rootAcc, actslot)
-                         val prim = PrimOpId.selStrPrimId(rootInfo, actslot)
+                         val prim = PrimOpId.selValPrimFromStrPrim(rootInfo, actslot)
                          val (btvs,ptvs) = matchTypes(spectyp, acttyp, sym)
 
                          val spath = SP.SPATH[sym]
@@ -984,9 +984,9 @@ let
                                   rpath=rpath,
                                   stub = NONE}
                     val dacc = DA.newAcc(mkv)
-                    val dinfo = II.List (map MU.extractInfo bindings)
+                    val dinfo = MU.strPrimElemInBinds bindings
                 in M.STR {sign=specSig, rlzn=strEnt, access=dacc,
-                          info=dinfo}
+                          prim=dinfo}
                 end
 
               val resDec = 
@@ -1094,7 +1094,7 @@ val depth'= DebIndex.next depth
 val fsigParInst = 
   let val fsigParDacc = DA.newAcc(mkv)
    in M.STR{sign=fsigParamSig, rlzn=fsigParEnt, 
-            access=fsigParDacc, info=II.Null}
+            access=fsigParDacc, prim=[]}
   end
 
 (*** applying fct to the fsigParInst structure ***)
@@ -1139,7 +1139,7 @@ val resFct =
 		     stub = NONE}
 
    in M.FCT{sign = specSig, rlzn = resRlzn,
-            access = DA.newAcc(mkv), info = II.Null}
+            access = DA.newAcc(mkv), prim = []}
   end
 
 (*** the resulting functor absyn ***)
@@ -1213,7 +1213,7 @@ and packStr1(specSig as M.SIG {elements=sigElements,...},
 	     resRlzn as {entities=resEntEnv,...},
 	     str as M.STR {access=rootAcc,
 			   rlzn=srcRlzn as {entities=srcEntEnv,...},
-			   info=rootInfo, ... },
+			   prim=rootInfo, ... },
              abstycs, strName, depth, entEnv, rpath, statenv, region, 
              compInfo as {mkLvar=mkv, error, ...}: EU.compInfo) 
              : Absyn.dec * M.Structure =
@@ -1240,7 +1240,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
                  of (M.STRent resStrRlzn, M.STRent srcStrRlzn) =>
 		     let val srcStr = M.STR{sign=thisSpecsig, rlzn=srcStrRlzn,
 					    access=DA.selAcc(rootAcc,s),
-					    info=II.sel(rootInfo,s)}
+					    prim=PrimOpId.selStrPrimId(rootInfo,s)}
 
 			 val rpath' = IP.extend(rpath, sym)
 			 val (thinDec, thinStr) = 
@@ -1269,7 +1269,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
 		     let val srcFct =
 			     M.FCT {sign=thisSpecsig, rlzn=srcFctRlzn,
 				    access=DA.selAcc(rootAcc,s),
-				    info=II.sel(rootInfo,s)}
+				    prim=PrimOpId.selStrPrimId(rootInfo,s)}
 
 			 val rpath' = IP.extend(rpath, sym)
 
@@ -1296,7 +1296,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
               (let val restyp = typeInRes("$spec-resty(packStr-val)", spectyp)
                    val srctyp = typeInSrc("$spec-srcty(packStr-val)", spectyp)
                    val dacc = DA.selAcc(rootAcc, s)
-                   val dinfo = PrimOpId.selStrPrimId(rootInfo, s)
+                   val dinfo = PrimOpId.selValPrimFromStrPrim(rootInfo, s)
 (* dbm: assume that eqflag will always be true because of prior successful
  * sigmatch, therefore this does nothing ---
                    val (instys, btvs, resinst, eqflag) = 
@@ -1362,8 +1362,8 @@ val (absDecs, bindings) = packElems(sigElements, entEnv, [], [])
 
 val resStr =
   let val dacc = DA.newAcc(mkv)
-      val dinfo = II.List (map MU.extractInfo bindings)
-   in M.STR{sign=specSig, rlzn=resRlzn, access=dacc, info=dinfo}
+      val dprim = MU.strPrimElemInBinds bindings
+   in M.STR{sign=specSig, rlzn=resRlzn, access=dacc, prim=dprim}
   end
 
 val resDec = 
@@ -1448,7 +1448,7 @@ val depth'= DebIndex.next depth
 val paramStr = 
   let val paramDacc = DA.newAcc(mkv)
    in M.STR{sign=paramsig, rlzn=paramEnt, access=paramDacc,
-	    info=II.Null}
+	    prim=[]}
   end
 
 val {resDec=rdec1, resStr=bodyStr, resExp=_} =
@@ -1479,7 +1479,7 @@ val (rdec2, resStr) =
 
 val resFct = 
   let val resDacc = DA.newAcc(mkv)
-   in M.FCT{sign=specSig, rlzn=resFctRlzn, access=resDacc, info=II.Null}
+   in M.FCT{sign=specSig, rlzn=resFctRlzn, access=resDacc, prim=[]}
   end
 
 val resDec = 
@@ -1540,7 +1540,7 @@ and applyFct{fct as FCT {sign=FSIG{paramsig, bodysig, ...},
       val resStr = 
         let val bodyDacc = DA.namedAcc(anonSym,mkv)
          in M.STR {sign=bodysig, rlzn=bodyRlzn,
-		   access=bodyDacc, info=II.Null}
+		   access=bodyDacc, prim=[]}
         end
 
       val resDec = 

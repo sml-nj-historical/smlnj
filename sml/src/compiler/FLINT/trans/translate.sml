@@ -24,7 +24,6 @@ local structure B  = Bindings
       structure DA = Access
       structure DI = DebIndex
       structure EM = ErrorMsg
-      structure II = InlInfo
       structure LT = PLambdaType
       structure M  = Modules
       structure MC = MatchComp
@@ -853,14 +852,14 @@ fun mkVE (V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
                 of [] => !typ
                  | _ => TU.applyPoly(!typ, ts)
           val (primop,intrinsicType) =
-              case PrimopMap.primopMap p
+              case PrimOpMap.primopMap p
                of SOME(p,t) => (p,t)
                 | NONE => bug "mkVE: unrecognized primop name"
           val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
-              case TU.matchInstTypes(occty,intrinsicType)
+              case ((TU.matchInstTypes(occty,intrinsicType)) : (TP.tyvar list * TP.tyvar list) option )
                 of SOME(_,tvs) => map TU.pruneTyvar tvs
-                 | NONE => bug "primop intrinsic type does't match occurence type"
+                 | NONE => bug "primop intrinsic type doesn't match occurence type"
        in case (primop, intrinsicParams)
             of (PO.POLYEQL, [t]) => eqGen(intrinsicType, t, toTcLt d)
              | (PO.POLYNEQ, [t]) =>
@@ -882,7 +881,7 @@ fun mkVE (V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
              | _ => transPrim(primop, (toLty d intrinsicType),
                               map (toTyc d) intrinsicParams)
       end
-  | mkVE (V.VALvar{typ, prim = PrimOpId.NonPrim, ... }, ts, d) =
+  | mkVE (v as V.VALvar{typ, prim = PrimOpId.NonPrim, ... }, ts, d) =
     (* non primop variable *)
       (case ts
          of [] => mkVar (v, d)
@@ -906,12 +905,12 @@ fun mkCE (TP.DATACON{const, rep, name, typ, ...}, ts, apOp, d) =
                  end)
   end 
 
-fun mkStr (s as M.STR { access, info, ... }, d) =
-    mkAccInfo(access, info, fn () => strLty(s, d, compInfo), NONE)
+fun mkStr (s as M.STR { access, prim, ... }, d) =
+    mkAccInfo(access, prim, fn () => strLty(s, d, compInfo), NONE)
   | mkStr _ = bug "unexpected structures in mkStr"
 
-fun mkFct (f as M.FCT { access, info, ... }, d) =
-    mkAccInfo(access, info, fn () => fctLty(f, d, compInfo), NONE)
+fun mkFct (f as M.FCT { access, prim, ... }, d) =
+    mkAccInfo(access, prim, fn () => fctLty(f, d, compInfo), NONE)
   | mkFct _ = bug "unexpected functors in mkFct"
 
 fun mkBnd d =
@@ -1318,8 +1317,8 @@ and transIntInf d s =
      * no indication within the program that we are really
      * dealing with a constant value that -- in principle --
      * could be subject to such things as constant folding. *)
-    let val consexp = CONexp (BT.consDcon, [BT.wordTy])
-	fun build [] = CONexp (BT.nilDcon, [BT.wordTy])
+    let val consexp = CONexp (BT.consDcon, [ref (TP.INSTANTIATED BT.wordTy)])
+	fun build [] = CONexp (BT.nilDcon, [ref (TP.INSTANTIATED BT.wordTy)])
 	  | build (d :: ds) = let
 		val i = Word.toIntX d
 	    in

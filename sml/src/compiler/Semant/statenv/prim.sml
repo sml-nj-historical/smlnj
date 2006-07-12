@@ -128,7 +128,7 @@ val primTypes =
 		 properties = PropList.newHolder (),
 		 (* lambdaty=ref NONE,  *)
 		 rpath=IP.IPATH[S.strSymbol "primTypes"]},
-	   access=A.nullAcc, info= II.mkStrInfo []}
+	   access=A.nullAcc, prim= []}
    in M.STR strrec
 
   end (* primTypes *)
@@ -477,8 +477,6 @@ val allPrimops =
      "rawupdatef32",
      "rawupdatef64"]
 
-end (* local *)
-
 (* uList structure *)
 val uList =
   let val ev = ST.special "uListVar"
@@ -505,7 +503,7 @@ val uList =
 		  properties = PropList.newHolder (),
 		  (* lambdaty=ref(NONE), *)
 		  rpath=IP.IPATH[S.strSymbol "uList"]},
-            access=A.nullAcc, info= II.mkStrInfo[]}
+            access=A.nullAcc, prim= []}
   end
 
 (* inLine structure *)
@@ -517,7 +515,7 @@ val inLine =
         let val s = S.varSymbol name
             val sp = M.VALspec{spec=bottom, slot=offset}
                     (* using universal generic type bottom for all components *)
-            val p = PrimOpId.PrimE(PrimOpId.Prim offset) (* the primop code *)
+            val p = PrimOpId.PrimE(PrimOpId.Prim name) (* the primop code *)
          in (s::symbols, (s,sp)::elements, p::primElems, offset+1)
         end
       
@@ -564,5 +562,7 @@ val primEnv = let
 in
     UnpickMod.unpickleEnv (fn _ => ModuleId.emptyTmap) (hash, pickle)
 end
+
+end (* local *)
 
 end (* structure PrimEnv *)

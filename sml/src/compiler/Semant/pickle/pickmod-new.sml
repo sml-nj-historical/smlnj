@@ -91,7 +91,7 @@ in
     structure SP = SymPath
     structure IP = InvPath
     structure MI = ModuleId
-    structure II = InlInfo
+    structure POI = PrimOpId
     structure V = VarCon
     structure ED = EntPath.EvDict
     structure PS = PersStamps

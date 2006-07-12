@@ -23,8 +23,7 @@ end (* signature ELABMOD *)
 
 
 (* functorized to factor out dependencies on FLINT... *)
-functor ElabModFn (structure SM : SIGMATCH
-		   structure Typecheck : TYPECHECK) : ELABMOD =
+functor ElabModFn (structure SM : SIGMATCH) : ELABMOD =
 struct
 
 local structure S  = Symbol

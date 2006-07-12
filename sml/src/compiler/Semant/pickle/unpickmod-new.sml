@@ -55,13 +55,13 @@ structure UnpickMod : UNPICKMOD = struct
     structure SP = SymPath
     structure IP = InvPath
     structure MI = ModuleId
-    structure II = InlInfo
     structure V = VarCon
     structure ED = EntPath.EvDict
     structure PS = PersStamps
     structure P = PrimOp
     structure M = Modules
     structure B = Bindings
+    structure POI = PrimOpId
 
     structure UU = UnpickleUtil
     exception Format = UU.Format
@@ -682,7 +682,8 @@ structure UnpickMod : UNPICKMOD = struct
 	in
 	    (l, branch trl)
 	end
-(* GK: replaced by primId and strPrimElem
+
+(* GK: replaced by primId and strPrimInfo type distinction
 	and inl_info () = let
 	    fun ii #"A" = II.INL_PRIM (primop (), ty ())
 	      | ii #"B" = II.INL_STR (iilist ())
@@ -697,7 +698,8 @@ structure UnpickMod : UNPICKMOD = struct
         and primId () = 
             let
                 fun p #"A" = POI.Prim (string ())
-                  | p #"B" = POI.NonPrim ()
+                  | p #"B" = POI.NonPrim
+		  | p _ = raise Format
             in 
                 share primIdM p
             end
@@ -705,7 +707,8 @@ structure UnpickMod : UNPICKMOD = struct
         and strPrimElem () =
             let
                 fun sp #"a" = POI.PrimE (primId ())
-                  | sp #"b" = POI.StrE ( spelist ())
+                  | sp #"b" = POI.StrE (spelist ())
+		  | sp _ = raise Format
             in
                 share strPrimElemM sp
             end
@@ -715,7 +718,7 @@ structure UnpickMod : UNPICKMOD = struct
 	and var' () = let
 	    fun v #"1" =
 		let val a = access ()
-		    val i = inl_info ()
+		    val i = primId ()
 		    val p = spath ()
 		    val (t, tr) = ty' ()
 		in
