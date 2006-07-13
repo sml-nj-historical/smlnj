@@ -311,6 +311,9 @@ fun coreExn id =
 	 TP.DATACON { name, rep as DA.EXN _, typ, ... } =>
          let val nt = toDconLty DI.top typ
              val nrep = mkRep(rep, nt, name)
+	     val _ = print "coreExn in translate.sml: "
+	     val _ = PPLexp.printLexp (CON'((name, nrep, nt), [], unitLexp))
+	     val _ = print "\n"
          in CON'((name, nrep, nt), [], unitLexp)
          end
        | _ => bug "coreExn in translate")
@@ -1177,9 +1180,14 @@ and mkExp (exp, d) =
       and g (VARexp (ref v, ts)) = 
             mkVE(v, map TP.VARty ts, d)
 
-        | g (CONexp (dc, ts)) = mkCE(dc, ts, NONE, d)
-        | g (APPexp (CONexp(dc, ts), e2)) = mkCE(dc, ts, SOME(g e2), d)
-
+        | g (CONexp (dc, ts)) = (let val _ = print "mkExp CONexp: "
+				     val c = mkCE(dc, ts, NONE, d)
+				     val _ = PPLexp.printLexp c
+				 in c end)
+        | g (APPexp (CONexp(dc, ts), e2)) = (let val _ = print "mkExp APPexp: "
+						 val c = mkCE(dc, ts, SOME(g e2), d)
+						 val _ = PPLexp.printLexp c
+					     in c end)
         | g (INTexp (s, t)) =
              ((if TU.equalType (t, BT.intTy) then INT (LN.int s)
                else if TU.equalType (t, BT.int32Ty) then INT32 (LN.int32 s)
@@ -1417,7 +1425,10 @@ fun prGen (flag,printE) s e =
 val _ = prGen(Control.FLINT.print, PPLexp.printLexp) "Translate" plexp
 
 (** normalizing the plambda expression into FLINT *)
-val flint = FlintNM.norm plexp
+val flint = let val _ = print "prenorm\n"
+		val n = FlintNM.norm plexp
+		val _ = print "postnorm\n"
+	    in n end
 
 in {flint = flint, imports = imports}
 end (* function transDec *)

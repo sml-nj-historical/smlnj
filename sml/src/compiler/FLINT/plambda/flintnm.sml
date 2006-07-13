@@ -109,21 +109,25 @@ fun tocon con =
     end
 
 fun tofundec (venv,d,f_lv,arg_lv,arg_lty,body,isrec) =
-    let val (body',body_lty) =
+    let val _ = (print (concat ["tofundec translate body: ", 
+				(LtyBasic.lt_print arg_lty),
+				" "]);
+		 PPLexp.printLexp body; print "\n")
+	val (body',body_lty) =
         (* first, we translate the body (in the extended env) *)
         tolexp (LT.ltInsert(venv, arg_lv, arg_lty, d), d) body
-
+	val _ = print "tofundec detuple arg type\n"
         (* detuple the arg type *)
 	val ((arg_raw, arg_ltys, _), unflatten) = FL.v_punflatten arg_lty
-            
+        val _ = print "unflatten body\n"    
         (* now, we add tupling code at the beginning of the body *)
         val (arg_lvs, body'') = unflatten(arg_lv, body')
-
+	val _ = print "construct return type\n"
 	(* construct the return type if necessary *)
 	val (body_raw, body_ltys, _) = FL.t_pflatten body_lty
 	val rettype = if not isrec then NONE
 		      else SOME(map FL.ltc_raw body_ltys, F.LK_UNKNOWN)
-
+	val _ = print "Handle fcn or fct\n"
 	val (f_lty, fkind) =
 	    if (LT.ltp_tyc arg_lty andalso LT.ltp_tyc body_lty) then
 		(* a function *)
