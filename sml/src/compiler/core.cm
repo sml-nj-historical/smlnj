@@ -169,7 +169,7 @@ Semant/pickle/unpickmod-new.sml
 Semant/pickle/rehash.sml
 
 
-Semant/statenv/primtypemap.sml
+Semant/statenv/primoptypemap.sml
 Semant/statenv/prim.sml
 
 Semant/types/tp-var-info.sml

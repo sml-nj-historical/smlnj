@@ -855,9 +855,9 @@ fun mkVE (V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
                 of [] => !typ
                  | _ => TU.applyPoly(!typ, ts)
           val (primop,intrinsicType) =
-              case PrimOpMap.primopMap p
-               of SOME(p,t) => (p,t)
-                | NONE => bug "mkVE: unrecognized primop name"
+              case (PrimOpMap.primopMap p, PrimOpTypeMap.primopTypeMap p)
+               of (SOME p, SOME t) => (p,t)
+                | _ => bug "mkVE: unrecognized primop name"
           val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
               case ((TU.matchInstTypes(occty,intrinsicType)) : (TP.tyvar list * TP.tyvar list) option )
@@ -998,8 +998,8 @@ and mkVBs (vbs, d) =
              * This seems definitely wrong. *)
             (case prim
               of PrimOpId.Prim name =>
-                  (case PrimOpMap.primopMap name
-                     of SOME(primop,primopty) =>
+                  (case PrimOpTypeMap.primopTypeMap name
+                     of SOME(primopty) =>
                         if TU.equalTypeP(!typ,primopty)
                         then LET(v, mkVar(w, d), b)
                         else LET(v, mkPE(exp, d, btvs), b)
