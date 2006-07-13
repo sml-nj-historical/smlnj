@@ -313,10 +313,10 @@ fun equalTycon(ERRORtyc,_) = true
   | equalTycon(_,ERRORtyc) = true
   | equalTycon(t1,t2) =
      let val a1 = tyconArity t1 and a2 = tyconArity t2
-      in if a1<>a2 then false
-         else let val args = dummyargs a1
-	       in equalType(mkCONty(t1,args),mkCONty(t2,args))
-	      end
+      in a1=a2 andalso
+         (let val args = dummyargs a1
+	  in equalType(mkCONty(t1,args),mkCONty(t2,args))
+	  end)
      end
 
 (* instantiating polytypes *)
@@ -616,12 +616,9 @@ fun gtLabel(a,b) =
     let val a' = Symbol.name a and b' = Symbol.name b
         val a0 = String.sub(a',0) and b0 = String.sub(b',0)
      in if Char.isDigit a0
-	  then if Char.isDigit b0
-	    then (size a' > size b' orelse size a' = size b' andalso a' > b')
-	    else false
-	  else if Char.isDigit b0
-	    then true
-	    else (a' > b')
+	  then Char.isDigit b0
+	    andalso (size a' > size b' orelse size a' = size b' andalso a' > b')
+	  else Char.isDigit b0 orelse (a' > b')
     end
 
 (* Tests used to implement the value restriction *)
@@ -821,7 +818,7 @@ in
     | inTycSet _ = false
 
   fun filterSet(ty, tycs) = 
-    let fun inList (a::r, tc) = if eqTycon(a, tc) then true else inList(r, tc)
+    let fun inList (a::r, tc) = eqTycon(a, tc) orelse inList(r, tc)
           | inList ([], tc) = false
 
         fun pass1 (tc, tset) = 

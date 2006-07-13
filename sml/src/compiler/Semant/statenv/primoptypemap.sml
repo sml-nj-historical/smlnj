@@ -38,7 +38,7 @@ fun bug msg = ErrorMsg.impossible("PrimOpMap: " ^ msg)
  *                 BUILDING A COMPLETE LIST OF PRIMOPS                    *
  **************************************************************************)
 
-
+(* 
 fun bits size oper = P.ARITH{oper=oper, overflow=false, kind=P.INT size}
 val bits31 = bits 31		
 val bits32 = bits 32		
@@ -64,7 +64,7 @@ val word31cmp = cmp (P.UINT 31)
 val word8cmp  = cmp (P.UINT 8)
 
 val float64cmp = cmp (P.FLOAT 64)
-
+ *)
 val v1 = T.IBOUND 0
 val v2 = T.IBOUND 1
 val v3 = T.IBOUND 2
@@ -97,7 +97,7 @@ fun p1 t = T.POLYty {sign=[false], tyfun=T.TYFUN {arity=1, body=t}}
 fun ep1 t = T.POLYty {sign=[true], tyfun=T.TYFUN {arity=1, body=t}}
 fun p2 t = T.POLYty {sign=[false,false], tyfun=T.TYFUN {arity=2, body=t}}
 fun p3 t = T.POLYty {sign=[false,false,false], tyfun=T.TYFUN {arity=3, body=t}}
-
+(*
 fun sub kind = P.NUMSUBSCRIPT{kind=kind, checked=false, immutable=false}
 fun chkSub kind = P.NUMSUBSCRIPT{kind=kind, checked=true, immutable=false}
 
@@ -106,7 +106,7 @@ fun chkSubv kind = P.NUMSUBSCRIPT{kind=kind, checked=true, immutable=true}
 
 fun update kind = P.NUMUPDATE {kind=kind, checked=false}
 fun chkUpdate kind = P.NUMUPDATE {kind=kind, checked=true}
-
+*)
 val numSubTy = p2(ar(tu[v1,i],v2))
 val numUpdTy = p2(ar(tu[v1,i,v2],u))
 
