@@ -712,8 +712,8 @@ structure UnpickMod : UNPICKMOD = struct
             in
                 share strPrimElemM sp
             end
+
         and spelist () = list speListM strPrimElem ()
-	
 
 	and var' () = let
 	    fun v #"1" =

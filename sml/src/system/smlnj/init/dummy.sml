@@ -48,5 +48,3 @@ structure Assembly :> ASSEMBLYBOXED =
     val sighandler : ((int * int * unit cont) -> unit cont) ref = cast()
 
  end (* abstraction Assembly *)
-
-

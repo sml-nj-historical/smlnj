@@ -345,7 +345,7 @@ fun patType(pat: pat, depth, region) : pat * ty =
                val nty = mkMETAtyBounded depth
                val _ = unifyTy(nty, ty) 
             in (** (CONpat(dcon,insts),ty) *)
-	       (CONpat(dcon, [ref (INSTANTIATED ty)]), ty)
+	       (CONpat(dcon, insts), ty)
            end
        | APPpat(dcon as DATACON{typ,rep,...},_,arg) =>
 	   let val (argpat,argty) = patType(arg,depth,region)
@@ -418,7 +418,7 @@ in
        | VARexp(r as ref ERRORvar, _) => (exp, WILDCARDty)
        | CONexp(dcon as DATACON{typ,...},_) => 
            let val (ty,insts) = instantiatePoly typ
-            in (CONexp(dcon, [ref (INSTANTIATED ty)]), ty)
+            in (CONexp(dcon, insts), ty)
            end
        | INTexp (_,ty) => (oll_push ty; (exp,ty))
        | WORDexp (_,ty) => (oll_push ty; (exp,ty))

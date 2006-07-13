@@ -54,6 +54,7 @@ Group
 	(* stuff that lived (or should have) in Frontend (aka GenericVC) *)
 	structure Control
 	structure SymbolicEnv
+	structure PrimOpTypeMap
 	structure PrimEnv
 	structure Environment
 	structure EnvRef	
@@ -167,6 +168,8 @@ Semant/pickle/unpickle-sym-pid.sml
 Semant/pickle/unpickmod-new.sml
 Semant/pickle/rehash.sml
 
+
+Semant/statenv/primtypemap.sml
 Semant/statenv/prim.sml
 
 Semant/types/tp-var-info.sml

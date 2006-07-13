@@ -513,7 +513,8 @@ val inLine =
 
       fun mkVarElement(name,(symbols,elements,primElems,offset)) =
         let val s = S.varSymbol name
-            val sp = M.VALspec{spec=bottom, slot=offset}
+            val ty = PrimOpTypeMap.primopTypeMap name (* the intrinsic type *)
+            val sp = M.VALspec{spec=ty, slot=offset}
                     (* using universal generic type bottom for all components *)
             val p = PrimOpId.PrimE(PrimOpId.Prim name) (* the primop code *)
          in (s::symbols, (s,sp)::elements, p::primElems, offset+1)
