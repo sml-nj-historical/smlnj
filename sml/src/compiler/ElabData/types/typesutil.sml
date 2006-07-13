@@ -552,24 +552,36 @@ fun compareTypes (spec : ty, actual: ty): bool =
  * type of a primop variable with the intrinsic type of the primop to obtain
  * the parameters of instantiation of the primop.
  *)
+
 fun matchInstTypes(specTy,actualTy) =
     let	fun match'(WILDCARDty, _) = () (* possible? how? *)
 	  | match'(_, WILDCARDty) = () (* possible? how? *)
 	  | match'(ty1, VARty(tv as ref(OPEN{kind=META,eq,...}))) =
               if eq andalso not(checkEqTyInst(ty1))
-	      then raise CompareTypes
+	      then (print "VARty META\n"; raise CompareTypes)
 	      else tv := INSTANTIATED ty1
 	  | match'(ty1, VARty(tv as ref(INSTANTIATED ty2))) =
-              if equalType(ty1,ty2) then () else raise CompareTypes
+              if equalType(ty1,ty2) then () else (print "INSTANTIATED\n"; raise CompareTypes)
 	  | match'(CONty(tycon1, args1), CONty(tycon2, args2)) =
 	      if eqTycon(tycon1,tycon2)
 	      then ListPair.app match (args1,args2)
-	      else raise CompareTypes
-	  | match' _ = raise CompareTypes
+	      else (print "CONty\n"; raise CompareTypes)
+	  | match'(_, UNDEFty) = (print "UNDEFty\n"; raise CompareTypes)
+	  | match'(_, IBOUND _) = (print "IBOUND\n"; raise CompareTypes)
+	  | match'(_, POLYty _) = (print "POLYty\n"; raise CompareTypes)
+	  | match'(_, CONty _) = (print "unmatched CONty\n"; raise CompareTypes)
+	  | match'(_, VARty vk) = (print "VARty other\n"; 
+				  (case vk of 
+				       (ref (OPEN _)) => print "open\n"
+				     | (ref (UBOUND _)) => print "ubound\n"
+				     | (ref (LITERAL _)) => print "literal\n"
+				     | (ref (SCHEME _)) => print "scheme\n"
+				     | (ref (TV_MARK _)) => print "mark\n");
+				  raise CompareTypes)
         and match(ty1,ty2) = match'(headReduceType ty1, headReduceType ty2)
         val (actinst, actParamTvs) = instantiatePoly actualTy
         val (specinst, specGenericTvs) = instantiatePoly specTy
-    in match(specinst,actinst);
+    in match(specinst, actinst);
        SOME(specGenericTvs, actParamTvs)
     end handle CompareTypes => NONE
 

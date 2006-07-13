@@ -849,7 +849,7 @@ fun mkVar (v as V.VALvar{access, prim, typ, path}, d) =
  * In the case of a primop variable, this function reconstructs the
  * type parameters of instantiation of the intrinsic primop type relative
  * to the variable occurrence type *)
-fun mkVE (V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
+fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
       let val occty = (* compute the occurrence type of the variable *)
               case ts
                 of [] => !typ
@@ -860,9 +860,26 @@ fun mkVE (V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
                 | _ => bug "mkVE: unrecognized primop name"
           val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
-              case ((TU.matchInstTypes(occty,intrinsicType)) : (TP.tyvar list * TP.tyvar list) option )
-                of SOME(_,tvs) => map TU.pruneTyvar tvs
-                 | NONE => bug "primop intrinsic type doesn't match occurence type"
+              case ((TU.matchInstTypes(occty, intrinsicType)) : (TP.tyvar list * TP.tyvar list) option )
+                of SOME(_, tvs) => map TU.pruneTyvar tvs
+                 | NONE => (complain EM.COMPLAIN "matchInstTypes"
+                              (fn ppstrm => 
+                                    (PP.newline ppstrm;
+				     PP.string ppstrm "VALvar: ";
+				     PPVal.ppVar ppstrm e;
+				     PP.newline ppstrm;
+                                     PP.string ppstrm "occtypes: ";
+                                     PPType.ppType env ppstrm occty;
+				     PP.newline ppstrm;
+				     PP.string ppstrm "intrinsicType: ";
+				     PPType.ppType env ppstrm intrinsicType;
+				     PP.newline ppstrm;
+				     PP.string ppstrm "instpoly occ: ";
+				     PPType.ppType env ppstrm (#1 (TU.instantiatePoly occty));
+				     PP.newline ppstrm;
+				     PP.string ppstrm "instpoly intrinsicType: ";
+				     PPType.ppType env ppstrm (#1 (TU.instantiatePoly intrinsicType))));
+			    bug "primop intrinsic type doesn't match occurence type")
        in case (primop, intrinsicParams)
             of (PO.POLYEQL, [t]) => eqGen(intrinsicType, t, toTcLt d)
              | (PO.POLYNEQ, [t]) =>
