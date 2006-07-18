@@ -883,9 +883,7 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
 				     PPType.ppType env ppstrm (#1 (TU.instantiatePoly occty));
 				     PP.newline ppstrm;
 				     PP.string ppstrm "instpoly intrinsicType: ";
-				     let val inst = (#1 (TU.instantiatePoly intrinsicType))	 
-				     in PPType.ppType env ppstrm inst 
-				     end));
+				     PPType.ppType env ppstrm (#1 (TU.instantiatePoly intrinsicType))));
 			    bug "primop intrinsic type doesn't match occurrence type")
 	  val _ = print "mkVE: after matchInstTypes\n"
        in case (primop, intrinsicParams)
@@ -1438,8 +1436,10 @@ fun wrapPidInfo (body, pidinfos) =
 (** the list of things being exported from the current compilation unit *)
 val exportLexp = SRECORD (map VAR exportLvars)
 
+val _ = print "pre-mkDec\n"
 (** translating the ML absyn into the PLambda expression *)
 val body = mkDec (rootdec, DI.top) exportLexp
+val _ = print "post-mkDec\n"
 
 (** add bindings for intinf constants *)
 val body = wrapII body

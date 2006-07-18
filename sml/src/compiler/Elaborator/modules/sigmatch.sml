@@ -1238,7 +1238,8 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
           of STRspec{sign=thisSpecsig, entVar=ev, slot=s,...} =>
               (case (EE.look(resEntEnv, ev), EE.look(srcEntEnv, ev))  
                  of (M.STRent resStrRlzn, M.STRent srcStrRlzn) =>
-		     let val srcStr = M.STR{sign=thisSpecsig, rlzn=srcStrRlzn,
+		     let val _ = print "packElems\n"
+			 val srcStr = M.STR{sign=thisSpecsig, rlzn=srcStrRlzn,
 					    access=DA.selAcc(rootAcc,s),
 					    prim=PrimOpId.selStrPrimId(rootInfo,s)}
 
@@ -1266,7 +1267,8 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
            | FCTspec{sign=thisSpecsig, entVar=ev, slot=s} => 
               (case (EE.look(resEntEnv, ev), EE.look(srcEntEnv, ev))
 		 of (M.FCTent resFctRlzn, M.FCTent srcFctRlzn) =>
-		     let val srcFct =
+		     let val _ = print "packElems FCTspec\n"
+			 val srcFct =
 			     M.FCT {sign=thisSpecsig, rlzn=srcFctRlzn,
 				    access=DA.selAcc(rootAcc,s),
 				    prim=PrimOpId.selStrPrimId(rootInfo,s)}

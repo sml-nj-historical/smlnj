@@ -37,6 +37,7 @@ struct
       (case List.nth(elems, slot) 
 	of StrE elems' => elems'
 	 | PrimE _ => bug "PrimOpId.selStrPrimId: unexpected PrimE")
+      handle Subscript => bug "PrimOpId.selStrPrimId Subscript"
 	(* This bug happens if we got a primid for a value 
 	   component when we expected a strPrimElem for a 
 	   structure *)
@@ -47,11 +48,20 @@ struct
 	of PrimE(id) => id
 	 | _ => 
 	   bug "PrimOpId.selValPrimFromStrPrim: unexpected StrE"
-      )
+      ) handle Subscript => bug "PrimOpId.selValPrimFromStrPrim Subscript"
            (* This bug occurs if we got a substructure's
 	      strPrimElem instead of an expected value component's
 	      primId *)
 
+  fun ppPrim NonPrim = print "<NonPrim>"
+    | ppPrim (Prim p) = print ("<PrimE "^p^">")
+
+  fun ppStrInfo strelems = 
+      let fun ppElem [] = ()
+	    | ppElem ((PrimE p)::xs) = (ppPrim p; ppElem xs)
+	    | ppElem ((StrE s)::xs) = (ppStrInfo s; ppElem xs)
+      in (print "[ "; ppElem strelems; print " ]\n")
+      end
 (* 
     fun selStrInfo (StrE l, i) =
 	(List.nth (l, i) handle Subscript => bug "Wrong field in List")

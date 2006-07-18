@@ -21,6 +21,10 @@ sig
 
   val selStrPrimId : strPrimElem list * int -> strPrimElem list
   val selValPrimFromStrPrim : strPrimElem list * int -> primId
+
+  val ppPrim : primId -> unit
+  val ppStrInfo : strPrimInfo -> unit
+
 (*
     val match : inl_info ->
 		{ inl_prim: PrimOp.primop * Types.ty -> 'a,
