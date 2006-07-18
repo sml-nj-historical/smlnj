@@ -195,6 +195,7 @@ fun getStrElem (sym, sign as SIG {elements,...}, sInfo) =
                    of SIGINFO ep => SIGINFO (entVar::ep)
                     | STRINFO ({entities,...}, dacc, dinfo) => 
 		      (print ("getStrElem " ^ (Int.toString slot) ^ "\n");
+		       print ("dacc: " ^ A.prAcc dacc ^ "\n");
 		       PrimOpId.ppStrInfo dinfo;
                       STRINFO(EE.lookStrEnt(entities,entVar), 
                               A.selAcc(dacc,slot), POI.selStrPrimId (dinfo, slot)))
@@ -253,7 +254,8 @@ fun mkVal (sym, sp, sign as SIG {elements,...},
   | mkVal _ = V.VAL(V.ERRORvar)
 
 fun mkStrBase (sym, sign, sInfo) = 
-  let val (newsig, newInfo) = getStrElem (sym, sign, sInfo)
+  let val _ = print "### mkStrBase\n"
+      val (newsig, newInfo) = getStrElem (sym, sign, sInfo)
    in case newsig
        of ERRORsig => ERRORstr
 	| _ =>
@@ -267,7 +269,8 @@ fun mkStrBase (sym, sign, sInfo) =
 fun mkStr (sym, _, sign, sInfo) = mkStrBase (sym, sign, sInfo)
 
 fun mkStrDef (sym, _, sign, sInfo) = 
-  let val (newsig, newInfo) = getStrElem (sym, sign, sInfo)
+  let val _ = print "### mkStrDef\n"
+      val (newsig, newInfo) = getStrElem (sym, sign, sInfo)
    in case newsig
         of ERRORsig => CONSTstrDef ERRORstr
 	 | _ =>
@@ -281,7 +284,8 @@ fun mkStrDef (sym, _, sign, sInfo) =
 fun mkFct (sym, sp, sign, sInfo) = getFctElem (sym, sign, sInfo)
 
 fun getPath makeIt (str, SP.SPATH spath, fullsp) =
-  let fun loop([sym], sign, sInfo) = makeIt (sym, fullsp, sign, sInfo)
+  let val _ = print "### getPath\n"
+      fun loop([sym], sign, sInfo) = makeIt (sym, fullsp, sign, sInfo)
         | loop(sym::rest, sign, sInfo) = 
             let val (newsig, newsInfo) = getStrElem (sym, sign, sInfo)
              in loop(rest, newsig, newsInfo)
@@ -443,7 +447,8 @@ fun getBinding (sym, str as STR st) =
   | getBinding _ = bug "getBinding - bad arg"
 
 fun openStructure (env: SE.staticEnv, str) =
-  let fun look sym =
+  let val _ = print "### openStructure\n"
+      fun look sym =
 	  getBinding (sym,str) handle Unbound _ => raise SE.Unbound
       val symbols = getStrSymbols str
       val genSyms = (fn () => symbols)
