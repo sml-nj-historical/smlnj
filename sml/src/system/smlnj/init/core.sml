@@ -347,7 +347,7 @@ structure Core =
 	val assign = ( InLine.:= )
         val deref = ( InLine.! )
 	val unboxedupdate = InLine.unboxedupdate
-	val subscript = InLine.arrSub
+	val subscript : 'a array * int -> 'a = InLine.arrSub
 	val iadd = InLine.i31add
 
 	val testInf = CoreIntInf.testInf

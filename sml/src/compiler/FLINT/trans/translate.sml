@@ -863,9 +863,10 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
               (* compute intrinsic instantiation params of intrinsicType *)
               case ((TU.matchInstTypes(occty, intrinsicType)) : (TP.tyvar list * TP.tyvar list) option )
                 of SOME(_, tvs) => 
-		   (print ("tvs length "^ (Int.toString (length tvs)) ^"\n"); 
+		   ((*print ("tvs length "^ (Int.toString (length tvs)) ^"\n"); 
 		    complain EM.WARN "mkVE ->matchInstTypes -> pruneTyvar " (fn ppstrm => PPVal.ppDebugVar (fn x => "") ppstrm env e);
-		    map TU.pruneTyvar tvs)
+		    if (length tvs) = 1 then complain EM.WARN "mkVE ->matchInstTypes -> pruneTyvar " (fn ppstrm => PPType.ppType env ppstrm (TP.VARty (hd tvs))) else ();
+		    *)map TU.pruneTyvar tvs)
                  | NONE => (complain EM.COMPLAIN "matchInstTypes"
                               (fn ppstrm => 
                                     (PP.newline ppstrm;

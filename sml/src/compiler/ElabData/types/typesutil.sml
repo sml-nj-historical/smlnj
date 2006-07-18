@@ -156,17 +156,17 @@ fun mkCONty(ERRORtyc, _) = WILDCARDty
   | mkCONty(tycon, args) = CONty(tycon, args);
 
 fun prune(VARty(tv as ref(INSTANTIATED ty))) : ty =
-      let val _ = print "prune VARty\n"
+      let (* val _ = print "prune VARty\n" *)
 	  val pruned = prune ty
-	  val _ = print "pruned VARty\n"
+	  (* val _ = print "pruned VARty\n" *)
        in tv := INSTANTIATED pruned; pruned
       end
   | prune ty = ty
     
 fun pruneTyvar(tv as ref(INSTANTIATED ty)) : ty =
-      let val _ = print "pruneTyvar\n"
+      let (* val _ = print "pruneTyvar\n" *)
 	  val pruned = prune ty
-	  val _ = print "pruned\n"
+	  (* val _ = print "pruned\n" *)
        in tv := INSTANTIATED pruned; pruned
       end
   | pruneTyvar _ = bug "pruneTyvar: not an instantiated tyvar"
@@ -561,9 +561,11 @@ exception WILDCARDmatch
 fun matchInstTypes(specTy,actualTy) =
     let	fun match'(WILDCARDty, _) = raise WILDCARDmatch (* possible? how? *)
 	  | match'(_, WILDCARDty) = raise WILDCARDmatch (* possible? how? *)
-	  | match'(ty1, VARty(tv as ref(OPEN{kind=META,eq,...}))) =
+	  | match'(ty1, ty2 as VARty(tv as ref(OPEN{kind=META,eq,...}))) =
               if eq andalso not(checkEqTyInst(ty1))
 	      then (print "VARty META\n"; raise CompareTypes)
+	      else if equalType(ty1, ty2) 
+	      then (* (print "matching Equal Tyvars\n") *) ()
 	      else tv := INSTANTIATED ty1
 	  | match'(ty1, VARty(tv as ref(INSTANTIATED ty2))) =
               if equalType(ty1,ty2) then () else (print "INSTANTIATED\n"; raise CompareTypes)
@@ -581,7 +583,7 @@ fun matchInstTypes(specTy,actualTy) =
 	  | match'(_, POLYty _) = (print "POLYty\n"; raise CompareTypes)
 	  | match'(_, CONty _) = (print "unmatched CONty\n"; raise CompareTypes)
 	  | match'(t1, VARty vk) = (print "VARty other\n"; 
-				  (case vk of 
+				 (* (case vk of 
 				       (ref (OPEN _)) => print "open\n"
 				     | (ref (UBOUND _)) => print "ubound\n"
 				     | (ref (LITERAL _)) => print "literal\n"
@@ -599,7 +601,7 @@ fun matchInstTypes(specTy,actualTy) =
 								| (VARty(ref (SCHEME _))) =>
 								  print "SCHEME\n"
 								| (POLYty _) => print "POLYty\n"))
-				     | (ref (INSTANTIATED _)) => print "inst'ed\n");
+				     | (ref (INSTANTIATED _)) => print "inst'ed\n");*)
 				  raise CompareTypes)
         and match(ty1,ty2) = match'(headReduceType ty1, headReduceType ty2)
         val (actinst, actParamTvs) = instantiatePoly actualTy
