@@ -858,10 +858,11 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
               case (PrimOpMap.primopMap p, PrimOpTypeMap.primopTypeMap p)
                of (SOME p, SOME t) => (p,t)
                 | _ => bug "mkVE: unrecognized primop name"
+	  val _ = print "mkVE: before matchInstTypes\n"
           val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
               case ((TU.matchInstTypes(occty, intrinsicType)) : (TP.tyvar list * TP.tyvar list) option )
-                of SOME(_, tvs) => map TU.pruneTyvar tvs
+                of SOME(_, tvs) => (print ("tvs length "^ (Int.toString (length tvs)) ^"\n"); map TU.pruneTyvar tvs)
                  | NONE => (complain EM.COMPLAIN "matchInstTypes"
                               (fn ppstrm => 
                                     (PP.newline ppstrm;
@@ -878,8 +879,11 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
 				     PPType.ppType env ppstrm (#1 (TU.instantiatePoly occty));
 				     PP.newline ppstrm;
 				     PP.string ppstrm "instpoly intrinsicType: ";
-				     PPType.ppType env ppstrm (#1 (TU.instantiatePoly intrinsicType))));
-			    bug "primop intrinsic type doesn't match occurence type")
+				     let val inst = (#1 (TU.instantiatePoly intrinsicType))	 
+				     in PPType.ppType env ppstrm inst 
+				     end));
+			    bug "primop intrinsic type doesn't match occurrence type")
+	  val _ = print "mkVE: after matchInstTypes\n"
        in case (primop, intrinsicParams)
             of (PO.POLYEQL, [t]) => eqGen(intrinsicType, t, toTcLt d)
              | (PO.POLYNEQ, [t]) =>
@@ -1160,13 +1164,13 @@ and mkFctbs (fbs, d) =
  *                                                                         *
  ***************************************************************************)
 and mkDec (dec, d) = 
-  let fun g (VALdec vbs) = mkVBs(vbs, d)
-        | g (VALRECdec rvbs) = mkRVBs(rvbs, d)
+  let fun g (VALdec vbs) = (print "VALdec"; mkVBs(vbs, d))
+        | g (VALRECdec rvbs) = (print "VALRECdec"; mkRVBs(rvbs, d))
         | g (ABSTYPEdec{body,...}) = g body
-        | g (EXCEPTIONdec ebs) = mkEBs(ebs, d)
-        | g (STRdec sbs) = mkStrbs(sbs, d)
-        | g (ABSdec sbs) = mkStrbs(sbs, d)
-        | g (FCTdec fbs) = mkFctbs(fbs, d)
+        | g (EXCEPTIONdec ebs) = (print "EXCEPTIONdec"; mkEBs(ebs, d))
+        | g (STRdec sbs) = (print "STRdec"; mkStrbs(sbs, d))
+        | g (ABSdec sbs) = (print "ABSdec"; mkStrbs(sbs, d))
+        | g (FCTdec fbs) = (print "FCTdec"; mkFctbs(fbs, d))
         | g (LOCALdec(ld, vd)) = (g ld) o (g vd)
         | g (SEQdec ds) =  foldr (op o) ident (map g ds)
         | g (MARKdec(x, reg)) = 
@@ -1195,7 +1199,7 @@ and mkExp (exp, d) =
       fun mkRules xs = map (fn (RULE(p, e)) => (fillPat(p, d), g e)) xs
 
       and g (VARexp (ref v, ts)) = 
-            mkVE(v, map TP.VARty ts, d)
+            (print "mkExp VARexp\n"; mkVE(v, map TP.VARty ts, d))
 
         | g (CONexp (dc, ts)) = (let val _ = print "mkExp CONexp: "
 				     val c = mkCE(dc, ts, NONE, d)
@@ -1206,6 +1210,7 @@ and mkExp (exp, d) =
 						 val _ = PPLexp.printLexp c
 					     in c end)
         | g (INTexp (s, t)) =
+	  (print "mkExp INTexp\n";
              ((if TU.equalType (t, BT.intTy) then INT (LN.int s)
                else if TU.equalType (t, BT.int32Ty) then INT32 (LN.int32 s)
 	       else if TU.equalType (t, BT.intinfTy) then VAR (getII s)
@@ -1214,9 +1219,10 @@ and mkExp (exp, d) =
 		   in RECORD [WORD32 hi, WORD32 lo]
 		   end
                else bug "translate INTexp")
-              handle Overflow => (repErr "int constant too large"; INT 0))
+              handle Overflow => (repErr "int constant too large"; INT 0)))
 
         | g (WORDexp(s, t)) =
+	  (print "WORDexp\n";
              ((if TU.equalType (t, BT.wordTy) then WORD (LN.word s)
                else if TU.equalType (t, BT.word8Ty) then WORD (LN.word8 s)
                else if TU.equalType (t, BT.word32Ty) then WORD32 (LN.word32 s)
@@ -1225,7 +1231,7 @@ and mkExp (exp, d) =
 		   in RECORD [WORD32 hi, WORD32 lo]
 		   end
                else (ppType t; bug "translate WORDexp"))
-               handle Overflow => (repErr "word constant too large"; INT 0))
+               handle Overflow => (repErr "word constant too large"; INT 0)))
 
         | g (REALexp s) = REAL s
         | g (STRINGexp s) = STRING s
