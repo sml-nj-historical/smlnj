@@ -37,7 +37,7 @@ struct
       (case List.nth(elems, slot) 
 	of StrE elems' => elems'
 	 | PrimE _ => bug "PrimOpId.selStrPrimId: unexpected PrimE")
-      handle Subscript => bug "PrimOpId.selStrPrimId Subscript"
+      handle Subscript => (bug "PrimOpId.selStrPrimId Subscript")
 	(* This bug happens if we got a primid for a value 
 	   component when we expected a strPrimElem for a 
 	   structure *)

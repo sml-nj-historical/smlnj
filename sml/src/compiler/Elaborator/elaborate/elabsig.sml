@@ -1024,7 +1024,7 @@ case fsigexp
                 val paramElmt = [(paramName, paramSpec)]
           in val nsctxt = paramElmt :: sigContext
           end (* a temporary work-around for the sigContext hack *)
-
+	  val _ = print "elabFctSig0\n"
           val env' = 
             case paramNameOp
              of SOME id => (* expose binding of paramName *)

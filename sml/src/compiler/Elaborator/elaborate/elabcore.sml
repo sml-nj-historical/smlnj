@@ -746,10 +746,11 @@ let
 
     and elabOPENdec(spaths, env, region) = 
         let val err = error region
-            val strs = map (fn s => let val sp = SP.SPATH s
+            val _ = print "elabOPENdec\n"
+	    val strs = map (fn s => let val sp = SP.SPATH s
                                      in (sp, LU.lookStr(env, sp, err))
                                     end) spaths
-
+	    
             fun loop([], env) = (OPENdec strs, env, TS.empty, no_updt)
               | loop((_, s)::r, env) = loop(r, MU.openStructure(env, s))
 

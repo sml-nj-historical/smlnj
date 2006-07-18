@@ -208,7 +208,8 @@ fun getStrElem (sym, sign as SIG {elements,...}, sInfo) =
 fun getFctElem (sym, sign as SIG {elements,...},
 	       sinfo as STRINFO(rlzn as {entities,...}, dacc, dinfo)) = 
       (case getSpec(elements, sym)
-        of FCTspec{sign=subfsig, entVar, slot} =>( print "getFctElem\n";
+        of FCTspec{sign=subfsig, entVar, slot} =>
+	   ( print "### getFctElem\n";
              FCT{sign=subfsig, rlzn=EE.lookFctEnt(entities,entVar),
                  access=A.selAcc(dacc, slot),
 		 prim=POI.selStrPrimId (dinfo, slot)})
@@ -266,7 +267,7 @@ fun mkStrBase (sym, sign, sInfo) =
 	      | SIGINFO ep => STRSIG{sign=newsig, entPath=rev ep})
   end
 
-fun mkStr (sym, _, sign, sInfo) = mkStrBase (sym, sign, sInfo)
+fun mkStr (sym, _, sign, sInfo) = (print "### mkStr\n"; mkStrBase (sym, sign, sInfo))
 
 fun mkStrDef (sym, _, sign, sInfo) = 
   let val _ = print "### mkStrDef\n"
@@ -305,7 +306,7 @@ val getTycPath : M.Structure * SP.path * SP.path -> T.tycon =
 val getValPath : M.Structure * SP.path * SP.path -> V.value =
       getPath mkVal
 val getStrPath : M.Structure * SP.path * SP.path -> M.Structure =
-      getPath mkStr
+      (print "### getStrPath\n"; getPath mkStr)
 val getFctPath : M.Structure * SP.path * SP.path -> M.Functor =
       getPath mkFct
 val getStrDef : M.Structure * SP.path * SP.path -> M.strDef =
@@ -419,6 +420,7 @@ fun getBinding (sym, str as STR st) =
 	 {sign as SIG _, rlzn, access=dacc, prim=dinfo} =>
 	 let val sinfo = STRINFO(rlzn, dacc, dinfo)
 	     val entities = #entities rlzn
+	     val _ = print "### getBinding\n"
 	 in
 	     case S.nameSpace sym
 	      of S.VALspace => 
@@ -435,6 +437,7 @@ fun getBinding (sym, str as STR st) =
        | { sign = ERRORsig, ... } => errBinding sym)
   | getBinding (sym, STRSIG{sign as SIG _,entPath=ep}) = 
      let val sinfo = SIGINFO(rev ep)
+	 val _ = print "### getBinding\n"
      in
 	 case S.nameSpace sym
           of S.TYCspace =>

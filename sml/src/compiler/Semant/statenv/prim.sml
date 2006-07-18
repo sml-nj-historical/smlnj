@@ -555,6 +555,7 @@ val nameofPT = S.strSymbol "PrimTypes"
 val nameofUL = S.strSymbol "UnrolledList"
 val nameofIL = S.strSymbol "InLine"
 
+val _ = print "setup primEnv\n"
 val primEnv =
       SE.bind(nameofIL,B.STRbind inLine,
           SE.bind(nameofUL,B.STRbind uList,

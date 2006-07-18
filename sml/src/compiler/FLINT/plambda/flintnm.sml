@@ -109,10 +109,10 @@ fun tocon con =
     end
 
 fun tofundec (venv,d,f_lv,arg_lv,arg_lty,body,isrec) =
-    let val _ = (print (concat ["tofundec translate body: ", 
+    let (* val _ = (print (concat ["tofundec translate body: ", 
 				(LtyBasic.lt_print arg_lty),
 				" "]);
-		 PPLexp.printLexp body; print "\n")
+		 PPLexp.printLexp body; print "\n") *)
 	val (body',body_lty) =
         (* first, we translate the body (in the extended env) *)
         tolexp (LT.ltInsert(venv, arg_lv, arg_lty, d), d) body

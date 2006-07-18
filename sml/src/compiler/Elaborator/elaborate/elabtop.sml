@@ -145,6 +145,7 @@ fun elab(SeqDec decs, env0, top, region) =
           (* look up the structure variables *)
           val strs = map (fn p => L.lookStr(env,SP.SPATH p,err)) paths
 
+	  val _ = print "elab\n"
           (* open their environments to add datatypes, etc. *)
           fun h(M.ERRORstr, env) = env
             | h(str, env) = MU.openStructure(env, str)

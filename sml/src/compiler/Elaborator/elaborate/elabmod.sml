@@ -61,7 +61,7 @@ in
 
 (* debugging *)
 val say = Control_Print.say
-val debugging = ElabControl.emdebugging (* ref false *)
+val debugging = ref true; (* ElabControl.emdebugging (* ref false *) *)
 fun debugmsg (msg: string) =
       if !debugging then (say msg; say "\n") else ()
 
@@ -664,9 +664,12 @@ fun elab (BaseStr decl, env, entEnv, region) =
   | elab (AppStrI(spath,[]), env, entEnv, region) =
       bug "elabStr.AppStrI -- empty arg list"
 
-  | elab (VarStr path, env, entEnv, region) =
+  | elab (v as VarStr path, env, entEnv, region) =
       let val _ = debugmsg ">>elab[VarStr]"
+	  val _ = error region EM.WARN "VarStr lookStr: " 
+			(fn ppstrm => PPAst.ppStrExp (env, NONE) ppstrm (v, 10))  
           val str = LU.lookStr(env,SP.SPATH path,error region)
+	  val _ = print "lookStr ### \n"
 (*
           val _ = showStr("--elab[VarStr]: str: ",str,env)
 *)
@@ -683,7 +686,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 			  | SOME ep => M.VARstr ep)
 		   | _ => M.CONSTstr M.bogusStrEntity (* error recovery *)
 
-       in (* debugmsg "<<elab[VarStr]"; *)
+       in debugmsg "<<elab[VarStr]"; (* GK: Used to be commented out *) 
 	  (A.SEQdec [], str, resExp, EE.empty)
       end
 
@@ -933,6 +936,7 @@ case fctexp
                EE.mark(mkStamp,EE.bind(paramEntVar,M.STRent paramRlzn,entEnv))
           val _ = debugmsg "--elabFct[BaseFct]: param EE.bind"
 
+	  val _ = print "elabmod before env'\n"
           val env' =
             case paramNameOp 
              of NONE => MU.openStructure(env,paramStr)
@@ -1264,10 +1268,10 @@ and elabDecl0
 
    | OpenDec paths =>
        let val err = error region
+	   val _ = print "elabDecl0 \n"
            val strs = map (fn s => let val sp = SP.SPATH s
                                     in (sp, LU.lookStr(env0, sp, err))
                                    end) paths
-
            fun loop([], env) = (A.OPENdec strs, M.EMPTYdec, env, EE.empty)
              | loop((_, s)::r, env) = loop(r, MU.openStructure(env, s))
 
