@@ -57,6 +57,8 @@ local structure S  = Symbol
       structure PPU = PPUtil
       structure ED = ElabDebug
       open Ast Modules
+      open SpecialSymbols (* special symbols *)
+
 in
 
 (* debugging *)
@@ -97,9 +99,6 @@ fun seqEntDec ds =
   end
 
 fun localEntDec(d1, d2) = seqEntDec [d1, d2] 
-
-(* special symbols *)
-open SpecialSymbols
 
 fun stripMarkSigb(MarkSigb(sigb',region'),region) =
       stripMarkSigb(sigb',region')
@@ -588,10 +587,10 @@ fun elab (BaseStr decl, env, entEnv, region) =
 		      rpath=rpath, stub = NONE}
 
                 val dacc = DA.namedAcc(tempStrId, mkv)
-                val dinfo = MU.strPrimElemInBinds locations
+                val prim = MU.strPrimElemInBinds locations
 
             in M.STR {sign=sign, rlzn=strRlzn, access=dacc,
-		      prim=dinfo}
+		      prim=prim}
             end
           
           val resDec = 
@@ -1132,18 +1131,18 @@ fun loop([], decls, entDecls, env, entEnv) =
 	  val str = if S.eq(name,returnId) then
 	            (* str should be functor application wrapper structure
 		     * with single structure component "resultStr" *)
-		      if (case str
-			    of ERRORstr => true
-			     | _ => (case MU.getStrSymbols str
-				       of [sym] => S.eq(sym,resultId)
-					| _ => false))
-		      then str
-		      else (error region' EM.COMPLAIN
-			    ("structure " ^ S.name(IP.last rpath) ^
-			     " defined by partially applied functor")
-			    EM.nullErrorBody;
-			    ERRORstr)
-		     else str
+                       if (case str
+                             of ERRORstr => true
+                              | _ => (case MU.getStrSymbols str
+                                        of [sym] => S.eq(sym,resultId)
+                                         | _ => false))
+                       then str
+                       else (error region' EM.COMPLAIN
+                             ("structure " ^ S.name(IP.last rpath) ^
+                              " defined by partially applied functor")
+                             EM.nullErrorBody;
+                             ERRORstr)
+		    else str
 
           val _ = debugmsg "--elabStrbs: elabStr done"
 (*
@@ -1187,6 +1186,7 @@ fun loop([], decls, entDecls, env, entEnv) =
            * both the dynamic access and the inl_info will be updated 
            * completely and replaced with proper persistent accesses (ZHONG)
            *)
+          (* [KM ???] What is the purpose of changing the dynamic access? *)
           val (bindStr, strEnt) = 
             case resStr
              of STR { rlzn, sign, access, prim } =>
@@ -1619,7 +1619,7 @@ and elabDecl0
                        (case EPC.lookTycPath(epContext, MU.tycId tyc)
                          of SOME _ => true 
                           | _ => false))
-                      | _ => (fn _ => false))
+                | _ => (fn _ => false))
 
             val (decl,env') = EC.elabDec(dec, env0, isFree, 
                                          rpath, region, compInfo)

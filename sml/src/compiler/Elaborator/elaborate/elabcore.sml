@@ -790,23 +790,26 @@ let
                *)
 	      val pat = 
 		case stripExpAbs exp
-		 of VARexp(ref(VALvar{prim=dinfo,...}),_) =>
-                      (case dinfo
+		 of VARexp(ref(VALvar{prim,...}),_) =>
+                      (case prim
                          of PrimOpId.Prim _ => 
 		        (case pat
 			  of CONSTRAINTpat(VARpat(VALvar{path,typ,
                                                          access,...}), ty) =>
 			      CONSTRAINTpat(VARpat(
                                    VALvar{path=path, typ=typ, access=access,
-                                          prim=dinfo}), ty)
+                                          prim=prim}), ty)
 			   | VARpat(VALvar{path, typ, access, ...}) =>
 			      VARpat(VALvar{path=path, typ=typ, access=access,
-                                            prim=dinfo})
+                                            prim=prim})
 			   | _ => pat)
                        | PrimOpId.NonPrim => pat)
 		  | _ => pat
 
-	      (* DBM: can the first two cases ever return NONE? *)
+	      (* DBM: The first two cases (single variable pattern)
+               * are guaranteed to produce SOME. So bindpat could just
+               * as well return a boolean, since the following case does
+               * not use the value carried by SOME. *)
               fun bindpat(VARpat(VALvar{access=acc, ...})) = A.accLvar acc
                 | bindpat(CONSTRAINTpat(VARpat(VALvar{access=acc, ...}),_)) = 
                       A.accLvar acc

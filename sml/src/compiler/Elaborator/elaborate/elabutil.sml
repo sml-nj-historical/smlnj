@@ -118,10 +118,9 @@ fun checkUniq (err,message,names) =
 fun bindVARp (patlist,err) =
     let val vl = ref (nil: symbol list)
 	val env = ref(SE.empty: SE.staticEnv)
-	fun f (VARpat(v as VALvar{path=SP.SPATH[name],prim,...})) = 
-	       (if S.eq(name, EQUALsym) (*** major hack ***)
-		then (* if InlInfo.isPrimInfo(InlInfo.fromExn info) then ()
-                     else [dbm: ???] *) err WARN "rebinding =" nullErrorBody
+	fun f (VARpat(v as VALvar{path=SP.SPATH[name],...})) = 
+	       (if S.eq(name, EQUALsym)
+		then err WARN "rebinding =" nullErrorBody
 		else ();
 		env := SE.bind(name,B.VALbind v,!env); 
 		vl := name :: !vl)
