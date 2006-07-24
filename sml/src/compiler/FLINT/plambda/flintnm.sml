@@ -22,7 +22,14 @@ local structure LT = PLambdaType
       structure BT = BasicTypes
 in
 
+(* debugging *)
 val say = Control_Print.say
+
+val debugging = ref false;
+fun debugmsg (msg : string) = 
+    if !debugging then (say msg; say "\n") else ()
+
+
 val mkv = LambdaVar.mkLvar
 val cplv = LambdaVar.dupLvar
 val ident = fn le : L.lexp => le
@@ -116,18 +123,18 @@ fun tofundec (venv,d,f_lv,arg_lv,arg_lty,body,isrec) =
 	val (body',body_lty) =
         (* first, we translate the body (in the extended env) *)
         tolexp (LT.ltInsert(venv, arg_lv, arg_lty, d), d) body
-	val _ = print "tofundec detuple arg type\n"
+	val _ =  debugmsg ">>tofundec detuple arg type"
         (* detuple the arg type *)
 	val ((arg_raw, arg_ltys, _), unflatten) = FL.v_punflatten arg_lty
-        val _ = print "unflatten body\n"    
+        val _ = debugmsg ">>unflatten body"    
         (* now, we add tupling code at the beginning of the body *)
         val (arg_lvs, body'') = unflatten(arg_lv, body')
-	val _ = print "construct return type\n"
+	val _ = debugmsg ">>construct return type"
 	(* construct the return type if necessary *)
 	val (body_raw, body_ltys, _) = FL.t_pflatten body_lty
 	val rettype = if not isrec then NONE
 		      else SOME(map FL.ltc_raw body_ltys, F.LK_UNKNOWN)
-	val _ = print "Handle fcn or fct\n"
+	val _ = debugmsg ">>Handle fcn or fct"
 	val (f_lty, fkind) =
 	    if (LT.ltp_tyc arg_lty andalso LT.ltp_tyc body_lty) then
 		(* a function *)

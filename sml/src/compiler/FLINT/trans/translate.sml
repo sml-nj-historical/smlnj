@@ -48,9 +48,13 @@ in
  *                   CONSTANTS AND UTILITY FUNCTIONS                        *
  ****************************************************************************)
 
-val debugging = ref true
+val debugging = ref false
 fun bug msg = EM.impossible("Translate: " ^ msg)
 val say = Control.Print.say
+
+fun debugmsg (msg : string) =
+    if !debugging then (say msg; say "\n") else ()
+
 val ppDepth = Control.Print.printDepth
 
 fun ppType ty =
@@ -311,9 +315,9 @@ fun coreExn id =
 	 TP.DATACON { name, rep as DA.EXN _, typ, ... } =>
          let val nt = toDconLty DI.top typ
              val nrep = mkRep(rep, nt, name)
-	     val _ = print "coreExn in translate.sml: "
-	     val _ = PPLexp.printLexp (CON'((name, nrep, nt), [], unitLexp))
-	     val _ = print "\n"
+	     val _ = debugmsg ">>coreExn in translate.sml: "
+	     (* val _ = PPLexp.printLexp (CON'((name, nrep, nt), [], unitLexp))
+	     val _ = print "\n" *)
          in CON'((name, nrep, nt), [], unitLexp)
          end
        | _ => bug "coreExn in translate")
@@ -858,7 +862,7 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
               case (PrimOpMap.primopMap p, PrimOpTypeMap.primopTypeMap p)
                of (SOME p, SOME t) => (p,t)
                 | _ => bug "mkVE: unrecognized primop name"
-	  val _ = print "mkVE: before matchInstTypes\n"
+	  val _ = debugmsg ">>mkVE: before matchInstTypes"
           val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
               case ((TU.matchInstTypes(occty, intrinsicType)) : (TP.tyvar list * TP.tyvar list) option )
@@ -885,7 +889,7 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
 				     PP.string ppstrm "instpoly intrinsicType: ";
 				     PPType.ppType env ppstrm (#1 (TU.instantiatePoly intrinsicType))));
 			    bug "primop intrinsic type doesn't match occurrence type")
-	  val _ = print "mkVE: after matchInstTypes\n"
+	  val _ = debugmsg "<<mkVE: after matchInstTypes"
        in case (primop, intrinsicParams)
             of (PO.POLYEQL, [t]) => eqGen(intrinsicType, t, toTcLt d)
              | (PO.POLYNEQ, [t]) =>
@@ -1166,13 +1170,13 @@ and mkFctbs (fbs, d) =
  *                                                                         *
  ***************************************************************************)
 and mkDec (dec, d) = 
-  let fun g (VALdec vbs) = (print "VALdec"; mkVBs(vbs, d))
-        | g (VALRECdec rvbs) = (print "VALRECdec"; mkRVBs(rvbs, d))
+  let fun g (VALdec vbs) = mkVBs(vbs, d)
+        | g (VALRECdec rvbs) = mkRVBs(rvbs, d)
         | g (ABSTYPEdec{body,...}) = g body
-        | g (EXCEPTIONdec ebs) = (print "EXCEPTIONdec"; mkEBs(ebs, d))
-        | g (STRdec sbs) = (print "STRdec"; mkStrbs(sbs, d))
-        | g (ABSdec sbs) = (print "ABSdec"; mkStrbs(sbs, d))
-        | g (FCTdec fbs) = (print "FCTdec"; mkFctbs(fbs, d))
+        | g (EXCEPTIONdec ebs) = mkEBs(ebs, d)
+        | g (STRdec sbs) = mkStrbs(sbs, d)
+        | g (ABSdec sbs) = mkStrbs(sbs, d)
+        | g (FCTdec fbs) = mkFctbs(fbs, d)
         | g (LOCALdec(ld, vd)) = (g ld) o (g vd)
         | g (SEQdec ds) =  foldr (op o) ident (map g ds)
         | g (MARKdec(x, reg)) = 
@@ -1201,18 +1205,20 @@ and mkExp (exp, d) =
       fun mkRules xs = map (fn (RULE(p, e)) => (fillPat(p, d), g e)) xs
 
       and g (VARexp (ref v, ts)) = 
-            (print "mkExp VARexp\n"; mkVE(v, map TP.VARty ts, d))
+            (debugmsg ">>mkExp VARexp"; mkVE(v, map TP.VARty ts, d))
 
-        | g (CONexp (dc, ts)) = (let val _ = print "mkExp CONexp: "
-				     val c = mkCE(dc, ts, NONE, d)
-				     val _ = PPLexp.printLexp c
-				 in c end)
-        | g (APPexp (CONexp(dc, ts), e2)) = (let val _ = print "mkExp APPexp: "
-						 val c = mkCE(dc, ts, SOME(g e2), d)
-						 val _ = PPLexp.printLexp c
-					     in c end)
+        | g (CONexp (dc, ts)) = 
+	  (let val _ = debugmsg ">>mkExp CONexp: "
+	       val c = mkCE(dc, ts, NONE, d)
+	       val _ = if !debugging then PPLexp.printLexp c else ()
+	   in c end)
+        | g (APPexp (CONexp(dc, ts), e2)) = 
+	  (let val _ = debugmsg ">>mkExp APPexp: "
+	       val c = mkCE(dc, ts, SOME(g e2), d)
+	       val _ = if !debugging then PPLexp.printLexp c else ()
+	   in c end)
         | g (INTexp (s, t)) =
-	  (print "mkExp INTexp\n";
+	  (debugmsg ">>mkExp INTexp";
              ((if TU.equalType (t, BT.intTy) then INT (LN.int s)
                else if TU.equalType (t, BT.int32Ty) then INT32 (LN.int32 s)
 	       else if TU.equalType (t, BT.intinfTy) then VAR (getII s)
@@ -1224,7 +1230,7 @@ and mkExp (exp, d) =
               handle Overflow => (repErr "int constant too large"; INT 0)))
 
         | g (WORDexp(s, t)) =
-	  (print "WORDexp\n";
+	  (debugmsg ">>WORDexp";
              ((if TU.equalType (t, BT.wordTy) then WORD (LN.word s)
                else if TU.equalType (t, BT.word8Ty) then WORD (LN.word8 s)
                else if TU.equalType (t, BT.word32Ty) then WORD32 (LN.word32 s)
@@ -1436,10 +1442,10 @@ fun wrapPidInfo (body, pidinfos) =
 (** the list of things being exported from the current compilation unit *)
 val exportLexp = SRECORD (map VAR exportLvars)
 
-val _ = print "pre-mkDec\n"
+val _ = debugmsg ">>mkDec"
 (** translating the ML absyn into the PLambda expression *)
 val body = mkDec (rootdec, DI.top) exportLexp
-val _ = print "post-mkDec\n"
+val _ = debugmsg "<<mkDec"
 
 (** add bindings for intinf constants *)
 val body = wrapII body
@@ -1452,9 +1458,9 @@ fun prGen (flag,printE) s e =
 val _ = prGen(Control.FLINT.print, PPLexp.printLexp) "Translate" plexp
 
 (** normalizing the plambda expression into FLINT *)
-val flint = let val _ = print "prenorm\n"
+val flint = let val _ = debugmsg ">>norm"
 		val n = FlintNM.norm plexp
-		val _ = print "postnorm\n"
+		val _ = debugmsg "<<postnorm"
 	    in n end
 
 in {flint = flint, imports = imports}
