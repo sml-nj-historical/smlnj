@@ -22,7 +22,7 @@ sig
   val selStrPrimId : strPrimElem list * int -> strPrimElem list
   val selValPrimFromStrPrim : strPrimElem list * int -> primId
 
-  val ppPrim : primId -> unit
+  val ppPrim : primId -> string
   val ppStrInfo : strPrimInfo -> unit
 
 (*

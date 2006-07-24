@@ -233,6 +233,7 @@ fun mkTyc (sym, sp, SIG {elements,...}, sInfo) =
 
 fun mkVal (sym, sp, sign as SIG {elements,...},
 	  sInfo as STRINFO({entities,...}, dacc, dinfo)) : V.value =
+    (print "mkVal\n";
     (case getSpec(elements, sym) of
 	 VALspec{spec,slot} =>
          V.VAL(V.VALvar{access = A.selAcc(dacc,slot), 
@@ -251,7 +252,7 @@ fun mkVal (sym, sp, sign as SIG {elements,...},
                              typ=transType entities typ, 
                              const=const, sign=sign, lazyp=lazyp})
          end
-       | _ => bug "mkVal: wrong spec")
+       | _ => bug "mkVal: wrong spec"))
   | mkVal _ = V.VAL(V.ERRORvar)
 
 fun mkStrBase (sym, sign, sInfo) = 

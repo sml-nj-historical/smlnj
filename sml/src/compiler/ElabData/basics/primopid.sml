@@ -33,7 +33,8 @@ struct
     | isPrimCast _ = false
 
   (* Select the prim ids for a substructure *)
-  fun selStrPrimId(elems, slot) = 
+  fun selStrPrimId([], slot) = []  
+    | selStrPrimId(elems, slot) = 
       (case List.nth(elems, slot) 
 	of StrE elems' => elems'
 	 | PrimE _ => bug "PrimOpId.selStrPrimId: unexpected PrimE")
@@ -43,22 +44,23 @@ struct
 	   structure *)
 
   (* Select the prim id for a value component *)
-  fun selValPrimFromStrPrim(elems, slot) =
-      (case List.nth(elems, slot)
+  fun selValPrimFromStrPrim([], slot) = NonPrim 
+    | selValPrimFromStrPrim(elems, slot) =
+      (print ("selValPrim "^(Int.toString slot)^"\n"); (case List.nth(elems, slot)
 	of PrimE(id) => id
 	 | _ => 
 	   bug "PrimOpId.selValPrimFromStrPrim: unexpected StrE"
-      ) handle Subscript => bug "PrimOpId.selValPrimFromStrPrim Subscript"
+      ) handle Subscript => bug "PrimOpId.selValPrimFromStrPrim Subscript")
            (* This bug occurs if we got a substructure's
 	      strPrimElem instead of an expected value component's
 	      primId *)
 
-  fun ppPrim NonPrim = print "<NonPrim>"
-    | ppPrim (Prim p) = print ("<PrimE "^p^">")
+  fun ppPrim NonPrim = "<NonPrim>"
+    | ppPrim (Prim p) = ("<PrimE "^p^">")
 
   fun ppStrInfo strelems = 
       let fun ppElem [] = ()
-	    | ppElem ((PrimE p)::xs) = (ppPrim p; ppElem xs)
+	    | ppElem ((PrimE p)::xs) = (print (ppPrim p); ppElem xs)
 	    | ppElem ((StrE s)::xs) = (ppStrInfo s; ppElem xs)
       in (print "[ "; ppElem strelems; print " ]\n")
       end
