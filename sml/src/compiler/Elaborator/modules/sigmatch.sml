@@ -104,7 +104,7 @@ structure EvalEntity = EV
 
 exception BadBinding
 
-val debugging = ElabControl.smdebugging (* ref false *)
+val debugging = ref true(* ElabControl.smdebugging *) (* ref false *)
 val showsigs = ref false
 
 val say = Control_Print.say
@@ -1539,6 +1539,7 @@ and applyFct{fct as FCT {sign=FSIG{paramsig, bodysig, ...},
       val argRlzn = case argStr1 of M.STR { rlzn, ... } => rlzn
                                   | _ => M.bogusStrEntity 
       val bodyRlzn = EV.evalApp(fctRlzn, argRlzn, depth, epc, rpath, compInfo)
+
       val resStr = 
         let val bodyDacc = DA.namedAcc(anonSym,mkv)
          in M.STR {sign=bodysig, rlzn=bodyRlzn,

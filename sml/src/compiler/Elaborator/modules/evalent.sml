@@ -36,7 +36,7 @@ structure Instantiate = I
 
 (* debugging *)
 val say = Control_Print.say
-val debugging = ElabDataControl.eedebugging
+val debugging = ref true (* ElabDataControl.eedebugging *)
 fun debugmsg (msg: string) =
     if !debugging then (say msg; say "\n") else ()
 
