@@ -221,7 +221,7 @@ fun ppConBinding ppstrm =
 fun ppStructure ppstrm (str,env,depth) =
     let val {openHVBox, openHOVBox,closeBox,pps,break,newline} = en_pp ppstrm
      in case str
-	  of M.STR { sign, rlzn as { entities, ... }, ... } =>
+	  of M.STR { sign, rlzn as { entities, ... }, prim, ... } =>
 	     (if !internals 
 	      then (openHVBox 2;
 		       pps "STR";
@@ -234,6 +234,13 @@ fun ppStructure ppstrm (str,env,depth) =
 		        pps "rlzn:";
 			break {nsp=1,offset=2};
 			ppStrEntity ppstrm (rlzn,env,depth-1);
+			newline();
+			pps "prim:";
+			break {nsp=1,offset=2};
+			(* GK: This should be cleaned up soon so as to use a 
+			   ppStrInfo that is an actual pretty printer conforming
+			   to the pattern of the other pretty printers. *)
+			PrimOpId.ppStrInfo prim;
 		       closeBox();
 		      closeBox())
 		else case sign
@@ -475,7 +482,6 @@ and ppFunsig ppstrm (sign,env,depth) =
 			 closeBox())
 		| M.ERRORfsig => pps "<error fsig>"
     end
-
 
 and ppStrEntity ppstrm (e,env,depth) =
     let val {stamp,entities,properties,rpath,stub} = e
