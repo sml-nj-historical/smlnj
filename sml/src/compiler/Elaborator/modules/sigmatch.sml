@@ -198,8 +198,8 @@ fun absEqvTy (spec, actual, dinfo) : (ty list * tyvar list * ty * bool) =
 
       val res = (Unify.unifyTy(actinst, specinst); true) handle _ => false
       (* dbm: shouldn't this unifyTy always succeed, because when called
-       in packElems, the structure will already have been matched against
-       the signature (according to the comment before packStr) *)
+       * in packElems, the structure will already have been matched against
+       * the signature (according to the comment before packStr)  [KM ???]*)
 
       val instbtvs = map TU.tyvarType insttys0
       (* should I use stys here instead?, why insttys0? *)
@@ -273,7 +273,7 @@ fun matchStr1(specSig as SIG{stamp=sigStamp,closed,fctflag,
               str as STR { sign = SIG{stamp=strSigStamp,
 				      elements=strElements,...},
 			   rlzn as {stamp=strStamp,entities=strEntEnv,...},
-			   access = rootAcc, prim = rootInfo },
+			   access = rootAcc, prim = rootPrim },
               strName : S.symbol,
               depth, matchEntEnv, 
               epath: EP.entVar list,
@@ -783,7 +783,7 @@ let
                                                     S.name sym,", ",
                                                     ST.toString entVar])
                      val (strStr, strEntVar) = 
-                       MU.getStr(strElements, strEntEnv, sym, rootAcc, rootInfo)
+                       MU.getStr(strElements, strEntEnv, sym, rootAcc, rootPrim)
 
                      (* verify spec definition, if any *)
                        (* matchDefStr now does the proper deep, component-wise
@@ -836,7 +836,7 @@ let
                                                     ST.toString entVar])
 
                      val (strFct, fctEntVar) = 
-                       MU.getFct(strElements, strEntEnv, sym, rootAcc, rootInfo)
+                       MU.getFct(strElements, strEntEnv, sym, rootAcc, rootPrim)
                      val exp' = M.VARfct(rev(fctEntVar::epath))
                      val rpath' = IP.extend(rpath,sym)
                      val (thinDec, thinFct, fctExp) = 
@@ -863,7 +863,7 @@ let
                      let val spectyp = typeInMatched("$specty(val/val)", spectyp)
                          val acttyp = typeInOriginal("$actty(val/val)", acttyp)
                          val dacc = DA.selAcc(rootAcc, actslot)
-                         val prim = PrimOpId.selValPrimFromStrPrim(rootInfo, actslot)
+                         val prim = PrimOpId.selValPrimFromStrPrim(rootPrim, actslot)
                          val (btvs,ptvs) = matchTypes(spectyp, acttyp, sym)
 
                          val spath = SP.SPATH[sym]
@@ -1213,7 +1213,7 @@ and packStr1(specSig as M.SIG {elements=sigElements,...},
 	     resRlzn as {entities=resEntEnv,...},
 	     str as M.STR {access=rootAcc,
 			   rlzn=srcRlzn as {entities=srcEntEnv,...},
-			   prim=rootInfo, ... },
+			   prim=rootPrim, ... },
              abstycs, strName, depth, entEnv, rpath, statenv, region, 
              compInfo as {mkLvar=mkv, error, ...}: EU.compInfo) 
              : Absyn.dec * M.Structure =
@@ -1241,7 +1241,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
 		     let val _ = print "packElems\n"
 			 val srcStr = M.STR{sign=thisSpecsig, rlzn=srcStrRlzn,
 					    access=DA.selAcc(rootAcc,s),
-					    prim=PrimOpId.selStrPrimId(rootInfo,s)}
+					    prim=PrimOpId.selStrPrimId(rootPrim,s)}
 
 			 val rpath' = IP.extend(rpath, sym)
 			 val (thinDec, thinStr) = 
@@ -1271,7 +1271,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
 			 val srcFct =
 			     M.FCT {sign=thisSpecsig, rlzn=srcFctRlzn,
 				    access=DA.selAcc(rootAcc,s),
-				    prim=PrimOpId.selStrPrimId(rootInfo,s)}
+				    prim=PrimOpId.selStrPrimId(rootPrim,s)}
 
 			 val rpath' = IP.extend(rpath, sym)
 
@@ -1298,15 +1298,15 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
               (let val restyp = typeInRes("$spec-resty(packStr-val)", spectyp)
                    val srctyp = typeInSrc("$spec-srcty(packStr-val)", spectyp)
                    val dacc = DA.selAcc(rootAcc, s)
-                   val dinfo = PrimOpId.selValPrimFromStrPrim(rootInfo, s)
+                   val prim = PrimOpId.selValPrimFromStrPrim(rootPrim, s)
 (* dbm: assume that eqflag will always be true because of prior successful
  * sigmatch, therefore this does nothing ---
                    val (instys, btvs, resinst, eqflag) = 
-                       absEqvTy(restyp, srctyp, dinfo)
+                       absEqvTy(restyp, srctyp, prim)
 *)
                    val spath = SP.SPATH[sym]
                    val srcvar = VALvar{path=spath, typ=ref srctyp,
-                                       access=dacc, prim=dinfo}
+                                       access=dacc, prim=prim}
 
 (* does nothing -- just use decs and srcvar below
                    val (decs', nv) = (decs, srcvar)
