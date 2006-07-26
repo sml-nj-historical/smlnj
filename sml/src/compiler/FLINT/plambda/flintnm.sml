@@ -116,9 +116,9 @@ fun tocon con =
     end
 
 fun tofundec (venv,d,f_lv,arg_lv,arg_lty,body,isrec) =
-    let val _ = (debugmsg (concat ["tofundec translate body: ", 
+    let val _ = (debugmsg (concat ["tofundec normalize argument: ", 
 				(LtyBasic.lt_print arg_lty),
-				" "]);
+				"\ntofundec normalize body: \n"]);
 		 PPLexp.printLexp body) 
 	val (body',body_lty) =
         (* first, we translate the body (in the extended env) *)

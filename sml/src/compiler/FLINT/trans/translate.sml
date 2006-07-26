@@ -178,6 +178,15 @@ fun repPolyEq () =
     if !Control.polyEqWarn then complain EM.WARN "calling polyEqual" EM.nullErrorBody
     else ()
 
+fun repWarn msg = complain EM.WARN msg EM.nullErrorBody 
+
+(** This may shadow previous definition of mkv ... this version reports the
+    site of introduction of the lvar *)
+fun mkv () = 
+    let val v = mkvN NONE 
+    in (repWarn ("LVar" ^ LambdaVar.lvarName v); v)
+    end 
+
 end (* markexn-local *)
 
 (***************************************************************************
