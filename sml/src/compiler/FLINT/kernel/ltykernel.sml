@@ -435,6 +435,96 @@ fun lt_cmp (t1, t2) = cmp(lt_table, t1, t2)
 fun lt_key (ref (h : int, _ : ltyI, _ : aux_info)) = h
 
 (***************************************************************************
+ *            UTILITY FUNCTIONS FOR PRETTY PRINTING                        *
+ ***************************************************************************)
+(* DBM: moved from ltybasic.sml *)
+local
+
+      val itos = Int.toString
+
+      fun plist(p, []) = ""
+        | plist(p, x::xs) = 
+            (p x) ^ (String.concat (map (fn z => ("," ^ (p z))) xs))
+
+      fun pfflag (FF_VAR b) = 
+            let fun pff (true, true) = "rr"  | pff (true, false) = "rc"
+                  | pff (false, true) = "cr" | pff (false, false) = "cc"
+             in pff b
+            end
+        | pfflag (FF_FIXED) = "f"
+
+      fun parw(p, (ff, t1, t2)) = 
+            "<" ^ (p t1) ^ "> -" ^ pfflag ff ^ "-> <" ^ (p t2) ^ ">"
+
+in
+
+(** pretty printing of tkinds, tycs, and ltys *)
+fun tk_print (x : tkind) = 
+  (case tk_outX x
+     of TK_MONO => "K0"
+      | TK_BOX => "KB0"
+      | TK_FUN (ks, k) =>
+          "<" ^ (plist(tk_print, ks)) ^ "->" ^ (tk_print k) ^ ">"
+      | TK_SEQ zs => "KS(" ^ (plist(tk_print, zs)) ^ ")")
+
+fun tc_print (x : tyc) =
+  (case tc_outX x
+     of TC_VAR(i,j) => "TV(" ^ (DI.di_print i) ^ "," ^ (itos j) ^ ")"
+      | TC_NVAR v => "NTV(v" ^ (itos v) ^ ")"
+      | TC_PRIM pt => PT.pt_print pt
+      | TC_FN(ks, t) =>
+          "(\\[" ^ plist(tk_print, ks) ^ "]." ^ (tc_print t) ^ ")"
+      | TC_APP(t, []) => tc_print t ^ "[]"
+      | TC_APP(t, zs) =>
+          (tc_print t) ^ "[" ^ (plist(tc_print, zs)) ^ "]"
+      | TC_SEQ zs => "TS(" ^ (plist(tc_print,zs)) ^ ")"
+      | TC_PROJ (t, i) =>
+          "TP(" ^ (tc_print t) ^ "," ^ (itos i) ^ ")"
+      | TC_SUM tcs =>
+          "TSUM(" ^ (plist(tc_print, tcs)) ^ ")"
+      | TC_FIX ((_, tc, ts), i) =>
+          if false (* tc_eqv(x,tcc_bool) *) then "B" 
+          else if false (* tc_eqv(x,tcc_list) *) then "LST" 
+               else (let (* val ntc = case ts of [] => tc
+                                            | _ => tcc_app(tc, ts) *)
+                         val _ = 1
+                      in ("DT{" ^ "DATA" (* ^ "[" ^ (tc_print tc)  
+                                ^ "] &&" ^ (plist(tc_print, ts))
+                                      ^ "&&" *) ^ "===" ^ (itos i) ^ "}")
+                     end)
+      | TC_ABS t => "Ax(" ^ (tc_print t) ^ ")"
+      | TC_BOX t => "Bx(" ^ (tc_print t) ^ ")"
+      | TC_TUPLE(_,zs) => "TT<" ^ (plist(tc_print, zs)) ^ ">"
+      | TC_ARROW (ff,z1,z2) =>
+          parw(fn u => plist(tc_print,u),(ff,z1,z2))
+      | TC_PARROW _ => "<TC_PARROW>"
+      | TC_TOKEN (k, t) =>
+          if token_isvalid k then 
+             (token_abbrev k) ^ "(" ^ (tc_print t) ^ ")"
+          else bug "<TC_TOKEN>"
+      | TC_CONT ts => "Cnt(" ^ (plist(tc_print,ts)) ^ ")"
+      | TC_IND _ => "<TC_IND>"
+      | TC_ENV _ => "<TC_ENV>")
+     (* function tc_print *)
+
+fun lt_print (x : lty) =
+  let fun h (i, t) = "(" ^ (itos i) ^ "," ^ (lt_print t) ^ ")"
+   in case lt_outX x
+        of LT_TYC t => tc_print t
+         | LT_STR zs => "S{" ^ (plist(lt_print, zs)) ^ "}"
+         | LT_FCT (ts1,ts2) =>
+             "(" ^ (plist(lt_print, ts1)) ^ ") ==> ("
+                 ^ (plist(lt_print, ts2)) ^ ")"
+         | LT_POLY(ks, ts) =>
+             "(Q[" ^ plist(tk_print, ks) ^ "]." ^ (plist(lt_print,ts)) ^ ")"
+         | LT_CONT ts => "CNT(" ^ (plist(lt_print, ts)) ^ ")"
+         | LT_IND _ => "<LT_IND>"
+         | LT_ENV _ => "<LT_ENV>"
+  end (* function lt_print *)
+
+end (* local *)
+
+(***************************************************************************
  *            UTILITY FUNCTIONS ON TKIND ENVIRONMENT                       *
  ***************************************************************************)
 (** tkind environment: maps each tyvar, i.e., its debindex, to its kind *)
@@ -684,7 +774,7 @@ and tcc_arw (x as (FF_FIXED, _, _)) = tc_injX (TC_ARROW x)
       end
 
 (** utility function to read the top-level of a tyc *)
-and tc_lzrd t = 
+and tc_lzrd(t: tyc) = 
   let fun g x = 
             (case tc_outX x
               of TC_IND (tc, _) => g tc
@@ -706,9 +796,13 @@ and tc_lzrd t =
                                 | (SOME ts, n) => 
                                     (let val y = List.nth(ts, j) 
                                            handle Subscript => 
-						  (print ("Selecting "^(Int.toString j)^"th elem");
-						   if length ts = 0 then print " empty list\n" else
-						   print " length > 0 tyc list\n";
+                    (print "***Debugging***\n";
+                     print "tc_lzrd arg: "; 
+                     print(tc_print t); print "\n";
+                     print ("Selecting: j = "^(Int.toString j)^ "\n");
+                     print ("ts length: "^(Int.toString(length ts))^"\n");
+                     print ("ts elements: \n");
+                     app (fn tc => (print(tc_print tc); print "\n")) ts;
 						   raise tcUnbound)
                                       in h(y, 0, nl - n, initTycEnv)
                                      end)

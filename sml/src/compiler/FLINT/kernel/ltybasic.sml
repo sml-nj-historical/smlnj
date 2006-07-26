@@ -24,7 +24,10 @@ local structure PT = PrimTyc
       val tcc_env = LK.tcc_env
       val ltc_env = LK.ltc_env
 
+(* duplicated in ltykernel.sml *)
+
       val itos = Int.toString
+
       fun plist(p, []) = ""
         | plist(p, x::xs) = 
             (p x) ^ (String.concat (map (fn z => ("," ^ (p z))) xs))
@@ -38,6 +41,7 @@ local structure PT = PrimTyc
 
       fun parw(p, (ff, t1, t2)) = 
             "<" ^ (p t1) ^ "> -" ^ pfflag ff ^ "-> <" ^ (p t2) ^ ">"
+
 in
 
 open LtyDef
