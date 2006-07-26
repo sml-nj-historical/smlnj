@@ -157,11 +157,12 @@ fun tofundec (venv,d,f_lv,arg_lv,arg_lty,body,isrec) =
  * in Flint as in PLambda (either both binding or both non-binding)
  * a continuation is unnecessary *)
 and tolexp (venv,d) lexp =
-    let fun default_tovalues () =
+    let val _ = debugmsg ">>tolexp"
+	fun default_tovalues () =
         tovalues(venv, d, lexp,
                 fn (vals, lty) =>
 		(F.RET vals, lty))
-    in case lexp of
+    val v = case lexp of
         L.APP (L.PRIM _, arg) => default_tovalues()
       | L.APP (L.GENOP _,arg) => default_tovalues()
       | L.APP (L.FN (arg_lv,arg_lty,body), arg_le) =>
@@ -254,6 +255,8 @@ and tolexp (venv,d) lexp =
 	    
       (* for mere values, use tovalues *)
       | _ => default_tovalues ()
+    val _ = debugmsg "<<tolexp"
+    in v 
     end
 
 (*
@@ -265,8 +268,10 @@ and tolexp (venv,d) lexp =
  * - conts is the continuation
  *)
 and tovalue (venv,d,lexp,cont) =
-    let val _ = 1
-    in case lexp of
+    let val _ = debugmsg ">>tovalue"
+	val _ = PPLexp.printLexp lexp
+	val _ = 1
+    val v = case lexp of
         (* for simple values, it's trivial *)
         L.VAR v => cont(F.VAR v, LT.ltLookup(venv, v, d))
       | L.INT i => 
@@ -295,6 +300,8 @@ and tovalue (venv,d,lexp,cont) =
             let val lv = mkv()
             in tolvar(venv, d, lv, lexp, fn lty => cont(F.VAR lv, lty))
             end
+    val _ = debugmsg "<<tovalue"
+    in v
     end
 		    
 		    
@@ -308,8 +315,9 @@ and tovalue (venv,d,lexp,cont) =
  * - cont is the continuation
  *)
 and tovalues (venv,d,lexp,cont) =
-    let val _ = 1
-    in case lexp of
+    let val _ = debugmsg ">>tovalues"
+	val _ = 1
+    val v = case lexp of
 	L.RECORD (lexps) =>
 	    lexps2values(venv,d,lexps,
 			 fn (vals,ltys) =>
@@ -337,6 +345,8 @@ and tovalues (venv,d,lexp,cont) =
 			 val (c_lexp, c_lty) = cont(vs, lty)
 		     in (wrap c_lexp, c_lty)
 		     end)
+    val _ = debugmsg "<<tovalues"
+    in v
     end
 
 (* eval each lexp to a value *)
