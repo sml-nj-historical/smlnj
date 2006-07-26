@@ -26,6 +26,7 @@ infix -->
 
 val say = Control_Print.say
 val debugging = ref false
+fun debugmsg msg = if !debugging then say ("TypesUtil: " ^ msg ^ "\n") else ()
 fun bug msg = EM.impossible("TypesUtil: "^msg)
 
 fun eqpropToString p =
@@ -156,19 +157,15 @@ fun mkCONty(ERRORtyc, _) = WILDCARDty
   | mkCONty(tycon, args) = CONty(tycon, args);
 
 fun prune(VARty(tv as ref(INSTANTIATED ty))) : ty =
-      let (* val _ = print "prune VARty\n" *)
-	  val pruned = prune ty
-	  (* val _ = print "pruned VARty\n" *)
-       in tv := INSTANTIATED pruned; pruned
+      let val pruned = prune ty
+      in tv := INSTANTIATED pruned; pruned
       end
   | prune ty = ty
     
 fun pruneTyvar(tv as ref(INSTANTIATED ty)) : ty =
-      let (* val _ = print "pruneTyvar\n" *)
-	  val pruned = prune ty
-	  (* val _ = print "pruned\n" *)
-       in tv := INSTANTIATED pruned; pruned
-      end
+    let val pruned = prune ty
+    in tv := INSTANTIATED pruned; pruned
+    end
   | pruneTyvar _ = bug "pruneTyvar: not an instantiated tyvar"
 
 fun eqTyvar(tv1: tyvar, tv2: tyvar) = (tv1 = tv2)
@@ -559,16 +556,17 @@ fun compareTypes (spec : ty, actual: ty): bool =
 exception WILDCARDmatch
 
 fun matchInstTypes(specTy,actualTy) =
-    let	fun match'(WILDCARDty, _) = raise WILDCARDmatch (* possible? how? *)
+    let	fun debugmsg' msg = debugmsg ("matchInstTypes: " ^ msg)
+	fun match'(WILDCARDty, _) = raise WILDCARDmatch (* possible? how? *)
 	  | match'(_, WILDCARDty) = raise WILDCARDmatch (* possible? how? *)
 	  | match'(ty1, ty2 as VARty(tv as ref(OPEN{kind=META,eq,...}))) =
               if eq andalso not(checkEqTyInst(ty1))
-	      then (print "VARty META\n"; raise CompareTypes)
+	      then (debugmsg' "VARty META\n"; raise CompareTypes)
 	      else if equalType(ty1, ty2) 
-	      then (* (print "matching Equal Tyvars\n") *) ()
+	      then ()
 	      else tv := INSTANTIATED ty1
 	  | match'(ty1, VARty(tv as ref(INSTANTIATED ty2))) =
-              if equalType(ty1,ty2) then () else (print "INSTANTIATED\n"; raise CompareTypes)
+              if equalType(ty1,ty2) then () else (debugmsg' "INSTANTIATED"; raise CompareTypes)
 	  (* GK: Does this make sense? matchInstTypes should not apply
 		 as is if all the metavariables have been translated 
 	         into TV_MARKs *)
@@ -577,38 +575,19 @@ fun matchInstTypes(specTy,actualTy) =
 	  | match'(CONty(tycon1, args1), CONty(tycon2, args2)) =
 	      if eqTycon(tycon1,tycon2)
 	      then ListPair.app match (args1,args2)
-	      else (print "CONty\n"; raise CompareTypes)
-	  | match'(_, UNDEFty) = (print "UNDEFty\n"; raise CompareTypes)
-	  | match'(_, IBOUND _) = (print "IBOUND\n"; raise CompareTypes)
-	  | match'(_, POLYty _) = (print "POLYty\n"; raise CompareTypes)
-	  | match'(_, CONty _) = (print "unmatched CONty\n"; raise CompareTypes)
-	  | match'(t1, VARty vk) = (print "VARty other\n"; 
-				 (* (case vk of 
-				       (ref (OPEN _)) => print "open\n"
-				     | (ref (UBOUND _)) => print "ubound\n"
-				     | (ref (LITERAL _)) => print "literal\n"
-				     | (ref (SCHEME _)) => print "scheme\n"
-				     | (ref (TV_MARK m)) => (print ("mark" ^ (Int.toString m) ^"\n");
-							     (case t1 
-							       of (VARty(ref (TV_MARK m'))) =>
-								  print ("mark'" ^ (Int.toString m') ^ "\n")
-								| (VARty(ref (OPEN _))) => 
-								  print ("OPEN\n")
-								| (VARty(ref (UBOUND _))) =>
-								  print ("UBOUND\n")
-								| (VARty(ref (LITERAL _))) =>
-								  print ("LITERAL\n")
-								| (VARty(ref (SCHEME _))) =>
-								  print "SCHEME\n"
-								| (POLYty _) => print "POLYty\n"))
-				     | (ref (INSTANTIATED _)) => print "inst'ed\n");*)
-				  raise CompareTypes)
+	      else (debugmsg' "CONty"; raise CompareTypes)
+	  | match'(_, UNDEFty) = (debugmsg' "UNDEFty"; raise CompareTypes)
+	  | match'(_, IBOUND _) = (debugmsg' "IBOUND"; raise CompareTypes)
+	  | match'(_, POLYty _) = (debugmsg' "POLYty"; raise CompareTypes)
+	  | match'(_, CONty _) = (debugmsg' "unmatched CONty"; raise CompareTypes)
+	  | match'(t1, VARty vk) = (debugmsg' "VARty other"; 
+				    raise CompareTypes)
         and match(ty1,ty2) = match'(headReduceType ty1, headReduceType ty2)
         val (actinst, actParamTvs) = instantiatePoly actualTy
         val (specinst, specGenericTvs) = instantiatePoly specTy
-	val _ = print "Instantiated both\n"
+	val _ = debugmsg' "Instantiated both\n"
     in match(specinst, actinst);
-       print "matched\n";
+       debugmsg' "matched\n";
        SOME(specGenericTvs, actParamTvs)
     end handle CompareTypes => NONE
 

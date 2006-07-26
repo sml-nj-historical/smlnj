@@ -25,7 +25,7 @@ in
 (* debugging *)
 val say = Control_Print.say
 
-val debugging = ref false;
+val debugging = ref true;
 fun debugmsg (msg : string) = 
     if !debugging then (say msg; say "\n") else ()
 
@@ -116,10 +116,10 @@ fun tocon con =
     end
 
 fun tofundec (venv,d,f_lv,arg_lv,arg_lty,body,isrec) =
-    let (* val _ = (print (concat ["tofundec translate body: ", 
+    let val _ = (debugmsg (concat ["tofundec translate body: ", 
 				(LtyBasic.lt_print arg_lty),
 				" "]);
-		 PPLexp.printLexp body; print "\n") *)
+		 PPLexp.printLexp body) 
 	val (body',body_lty) =
         (* first, we translate the body (in the extended env) *)
         tolexp (LT.ltInsert(venv, arg_lv, arg_lty, d), d) body
@@ -146,8 +146,9 @@ fun tofundec (venv,d,f_lv,arg_lv,arg_lty,body,isrec) =
 		(LT.ltc_pfct(arg_lty, body_lty),
 		 {isrec=rettype, known=false, inline=F.IH_SAFE,
 		  cconv=F.CC_FCT})
-			
-    in ((fkind, f_lv, ListPair.zip(arg_lvs, map FL.ltc_raw arg_ltys), body''),
+	val arg_ltys' =  map FL.ltc_raw arg_ltys
+	val _ = debugmsg "<<tofundec"
+    in ((fkind, f_lv, ListPair.zip(arg_lvs, arg_ltys'), body''),
 	f_lty)
     end
 
@@ -586,8 +587,11 @@ and tolvar (venv,d,lvar,lexp,cont) =
     end
 
 fun norm (lexp as L.FN(arg_lv,arg_lty,e)) =
-    (#1(tofundec(LT.initLtyEnv, DI.top, mkv(), arg_lv, arg_lty, e, false))
-    handle x => raise x)
+    let val r = 
+	    (#1(tofundec(LT.initLtyEnv, DI.top, mkv(), arg_lv, arg_lty, e, false))
+	     handle x => raise x)
+    in (debugmsg "<<norm"; r)
+    end
   | norm _ = bug "unexpected toplevel lexp"
 
 end (* toplevel local *)

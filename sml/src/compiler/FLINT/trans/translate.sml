@@ -48,7 +48,7 @@ in
  *                   CONSTANTS AND UTILITY FUNCTIONS                        *
  ****************************************************************************)
 
-val debugging = ref false
+val debugging = ref true
 fun bug msg = EM.impossible("Translate: " ^ msg)
 val say = Control.Print.say
 
@@ -1459,6 +1459,9 @@ val _ = prGen(Control.FLINT.print, PPLexp.printLexp) "Translate" plexp
 
 (** normalizing the plambda expression into FLINT *)
 val flint = let val _ = debugmsg ">>norm"
+		val _ = if !debugging 
+			then complain EM.WARN ">>flintnm" EM.nullErrorBody
+			else ()
 		val n = FlintNM.norm plexp
 		val _ = debugmsg "<<postnorm"
 	    in n end

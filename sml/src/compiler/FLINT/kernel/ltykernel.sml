@@ -705,7 +705,11 @@ and tc_lzrd t =
                                of (NONE, n) => tcc_var(nl - n, j)
                                 | (SOME ts, n) => 
                                     (let val y = List.nth(ts, j) 
-                                           handle _ => raise tcUnbound
+                                           handle Subscript => 
+						  (print ("Selecting "^(Int.toString j)^"th elem");
+						   if length ts = 0 then print " empty list\n" else
+						   print " length > 0 tyc list\n";
+						   raise tcUnbound)
                                       in h(y, 0, nl - n, initTycEnv)
                                      end)
                           end)
