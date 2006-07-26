@@ -119,7 +119,7 @@ fun tofundec (venv,d,f_lv,arg_lv,arg_lty,body,isrec) =
     let val _ = (debugmsg (concat ["tofundec normalize argument: ", 
 				(LtyBasic.lt_print arg_lty),
 				"\ntofundec normalize body: \n"]);
-		 PPLexp.printLexp body) 
+		 if !debugging then PPLexp.printLexp body else ()) 
 	val (body',body_lty) =
         (* first, we translate the body (in the extended env) *)
         tolexp (LT.ltInsert(venv, arg_lv, arg_lty, d), d) body
@@ -269,7 +269,7 @@ and tolexp (venv,d) lexp =
  *)
 and tovalue (venv,d,lexp,cont) =
     let val _ = debugmsg ">>tovalue"
-	val _ = PPLexp.printLexp lexp
+	val _ = if !debugging then PPLexp.printLexp lexp else ()
 	val _ = 1
     val v = case lexp of
         (* for simple values, it's trivial *)
@@ -316,6 +316,7 @@ and tovalue (venv,d,lexp,cont) =
  *)
 and tovalues (venv,d,lexp,cont) =
     let val _ = debugmsg ">>tovalues"
+	val _ = if !debugging then PPLexp.printLexp lexp else ()
 	val _ = 1
     val v = case lexp of
 	L.RECORD (lexps) =>
@@ -351,14 +352,20 @@ and tovalues (venv,d,lexp,cont) =
 
 (* eval each lexp to a value *)
 and lexps2values (venv,d,lexps,cont) =
-    let val _ = 1
+    let val _ = debugmsg ">>lexps2values"
+	val _ = if !debugging 
+		then ignore(map PPLexp.printLexp lexps) 
+		else ()
+	val _ = 1
 	fun f [] (vals,ltys) = cont (rev vals, rev ltys)
 	  | f (lexp::lexps) (vals,ltys) =
 	    tovalue(venv,d,lexp,
 		    fn (v, lty) =>
 		    f lexps (v::vals, lty::ltys))
+	val v = f lexps ([], [])
+	val _ = debugmsg "<<lexp2values"
     in
-	f lexps ([], [])
+	v
     end
 
 (*
