@@ -504,7 +504,9 @@ fun tc_print (x : tyc) =
           else bug "<TC_TOKEN>"
       | TC_CONT ts => "Cnt(" ^ (plist(tc_print,ts)) ^ ")"
       | TC_IND _ => "<TC_IND>"
-      | TC_ENV _ => "<TC_ENV>")
+      | TC_ENV (tc, depth, cnt, tycenv) => 
+	  "TCENV( "^ tc_print tc ^ " depth = " ^ itos depth 
+	  ^ " cnt = " ^ itos cnt ^ " tycenv = " ^ tc_print tycenv ^")" )
      (* function tc_print *)
 
 fun lt_print (x : lty) =
