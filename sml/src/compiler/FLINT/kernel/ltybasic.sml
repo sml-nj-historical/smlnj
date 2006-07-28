@@ -175,9 +175,9 @@ fun tc_print (x : tyc) =
                    else (let (* val ntc = case ts of [] => tc
                                                 | _ => tcc_app(tc, ts) *)
                              val _ = 1
-                          in ("DT{" ^ "DATA" (* ^ "[" ^ (tc_print tc)  
+                          in ("DT{" ^ "DATA"  ^ (* "[" ^ (tc_print tc)  
                                     ^ "] &&" ^ (plist(tc_print, ts))
-                                          ^ "&&" *) ^ "===" ^ (itos i) ^ "}")
+                                          ^ "&&" ^*)  "===" ^ (itos i) ^ "}")
                          end)
         | g (LK.TC_ABS t) = "Ax(" ^ (tc_print t) ^ ")"
         | g (LK.TC_BOX t) = "Bx(" ^ (tc_print t) ^ ")"

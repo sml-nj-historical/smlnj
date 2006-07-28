@@ -276,7 +276,8 @@ and tovalue (venv,d,lexp,cont) =
         L.VAR v => cont(F.VAR v, LT.ltLookup(venv, v, d))
       | L.INT i => 
          ((i+i+2; cont(F.INT i, LT.ltc_int)) handle Overflow => 
-            (let val z = i div 2
+            (let val _ = debugmsg "toValue INT Overflow"
+		 val z = i div 2
                  val ne = L.APP(iadd_prim, L.RECORD [L.INT z, L.INT (i-z)])
               in tovalue(venv, d, ne, cont)
              end))
@@ -298,7 +299,10 @@ and tovalue (venv,d,lexp,cont) =
       (* for cases where tolvar is more convenient *)
       | _ => 
             let val lv = mkv()
-            in tolvar(venv, d, lv, lexp, fn lty => cont(F.VAR lv, lty))
+            in tolvar(venv, d, lv, lexp, 
+		      fn lty => (debugmsg ">>tovalue tolvar cont"; 
+				 if !debugging then PPLexp.printLexp lexp else ();
+				 cont(F.VAR lv, lty)))
             end
     val _ = debugmsg "<<tovalue"
     in v
@@ -322,17 +326,52 @@ and tovalues (venv,d,lexp,cont) =
 	L.RECORD (lexps) =>
 	    lexps2values(venv,d,lexps,
 			 fn (vals,ltys) =>
-			 let val lty = LT.ltc_tuple ltys
+			 let val _ = debugmsg ">>tovalues continuation"
+			     val _ = 
+			 if length ltys = 0 then
+			     debugmsg ("tovalues cont ltys null")
+			 else if length ltys = 1 
+			 then debugmsg ("tovalues cont ltys singleton"^
+					LtyBasic.lt_print (hd ltys))
+			 else debugmsg ("tovalues cont ltys > 1 "^
+					"starting with "^
+					LtyBasic.lt_print (hd ltys) ^ 
+					"\nlength is " 
+					^ Int.toString (length ltys))
+			      fun scan [] = debugmsg "tovalues end of ltys"
+				| scan (lts) =
+				    let fun scan' ([], [], n) = ()
+					  | scan' (x::xs, l::ls, n) = 
+					    (debugmsg ("tovalues cont ltys ["^
+						      Int.toString n ^"]:");
+					     PPLexp.printLexp l;
+					debugmsg (LtyBasic.lt_print x); scan' (xs, ls, n + 1))
+				    in scan'(lts, lexps, 0)
+				    end
+                             val _ = scan ltys 
+			     val lty = LT.ltc_tuple ltys
+			     val _ = debugmsg ("<<tovalues cont tupled "^
+					       LtyBasic.lt_print lty)
 			     val (_, ltys, _) = FL.t_pflatten lty
+			     val _ = debugmsg "<<tovalues cont flatten"
+			     val _ = debugmsg (">>tovalues cont LT.lt_eqv " ^
+					       LtyBasic.lt_print lty ^ " eqv? ")
+			     val _ = debugmsg ">>tovalues cont LT.ltc_tuple"
+			     val ltyst = (LT.ltc_tuple ltys)
+			     val _ = debugmsg ("<<tovalues cont LT.ltc_tuple "
+					       ^ LtyBasic.lt_print ltyst) 
+			     val eqvLty = LT.lt_eqv(lty, LT.ltc_tuple ltys)
+			     val _ = debugmsg "<<tovalues cont lt_eqv"
 			 in
 			     (* detect the case where flattening is trivial *)
-			     if LT.lt_eqv(lty, LT.ltc_tuple ltys) then
+			     if eqvLty then 
 				 cont(vals,lty)
 			     else
 				 let val lv = mkv()
                                      val (_, pflatten) = FL.v_pflatten lty 
 				     val (vs,wrap) = pflatten (F.VAR lv)
 				     val (c_lexp,c_lty) = cont(vs, lty)
+				     val _ = debugmsg "<<tovalues continuation"
 				 in
 				     (F.RECORD(FU.rk_tuple,
 					       vals, lv, wrap c_lexp),
@@ -359,9 +398,12 @@ and lexps2values (venv,d,lexps,cont) =
 	val _ = 1
 	fun f [] (vals,ltys) = cont (rev vals, rev ltys)
 	  | f (lexp::lexps) (vals,ltys) =
+	    (debugmsg ("lexps2values ltys "^concat (map (fn x => ("\n"^LtyBasic.lt_print x)) ltys)); 
 	    tovalue(venv,d,lexp,
-		    fn (v, lty) =>
-		    f lexps (v::vals, lty::ltys))
+		    fn (v, lty) => (debugmsg ">>lexps2values tovalue";
+				    if !debugging then PPLexp.printLexp lexp else ();
+				    if !debugging then debugmsg ("lty: "^ LtyBasic.lt_print lty) else ();
+		    f lexps (v::vals, lty::ltys))))
 	val v = f lexps ([], [])
 	val _ = debugmsg "<<lexp2values"
     in
@@ -373,7 +415,9 @@ and lexps2values (venv,d,lexps,cont) =
  * to the indicated lvar and passes just the type to the continutation
  *)
 and tolvar (venv,d,lvar,lexp,cont) =
-    let fun eta_expand (f, f_lty) =
+    let val _ = debugmsg ">>tolvar"
+	val _ = if !debugging then PPLexp.printLexp lexp else ()
+	fun eta_expand (f, f_lty) =
             let val lv = mkv()
                 val (arg_lty, ret_lty) = (LT.ltd_parrow f_lty)
             in tolvar(venv, d, lvar,
@@ -400,6 +444,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
                    and flat indicates whether we should flatten the arguments
                    or not. The results of primops are never flattened.
                  *)
+		val _ = debugmsg ">>tolvar PO_helper"
                 val (pty, r_lty, flat) = 
                   (case (LT.ltp_ppoly f_lty, tycs) 
                     of (true, _) => 
@@ -430,15 +475,18 @@ and tolvar (venv,d,lvar,lexp,cont) =
                           in (pty, rty, flat)
                          end
                      | _ => bug "unexpected case in PO_helper")
-             in if flat then
+             val r = if flat then
                  (* ZHONG asks: is the following definitely safe ?
                     what would happen if ltc_raw is not an identity function ?
                   *)
                   tovalues(venv, d, arg,
 		     	   fn (arg_vals, arg_lty) =>
-		     	   let val (c_lexp, c_lty) = cont(r_lty)
+		     	   let val _ = debugmsg ">>tolvar PO_helper cont"
+			       val (c_lexp, c_lty) = cont(r_lty)
 		     	   (* put the filling inbetween *)
-		     	   in (filler(arg_vals, pty, c_lexp), c_lty)
+		     	   val r' = (filler(arg_vals, pty, c_lexp), c_lty)
+			   val _ = debugmsg "<<tolvar PO_helper cont"
+			   in r' 
 		     	   end)  
                 else 
                    tovalue(venv, d, arg,
@@ -446,7 +494,9 @@ and tolvar (venv,d,lvar,lexp,cont) =
 		     	   let val (c_lexp, c_lty) = cont(r_lty)
 		     	   (* put the filling inbetween *)
 		     	   in (filler([arg_val], pty, c_lexp), c_lty)
-		     	   end)   
+		     	   end)
+	     val _ = debugmsg "<<tolvar PO_helper"
+	    in r 
             end (* function PO_helper *)
 
         fun default_tolexp () =
@@ -464,7 +514,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
 (*                     in (F.LET([lvar], F.RET[v], lexp'), ltys) *)
 (*                     end) *)
 
-    in case lexp of
+    val r = case lexp of
       (* primops have to be eta-expanded since they're not valid
        * function values anymore in Flint *)
         L.PRIM (po,lty,tycs) => eta_expand(lexp, LT.lt_pinst(lty, tycs))
@@ -480,10 +530,17 @@ and tolvar (venv,d,lvar,lexp,cont) =
 
       (* this is were we really deal with primops *)
       | L.APP (L.PRIM ((po,f_lty,tycs)),arg) =>
+	let val _ = debugmsg ">>tolvar L.APP"
+	    val (lexp', lty') = 
             PO_helper(arg, f_lty, tycs,
                        fn (arg_vals,pty, c_lexp) =>
                        flint_prim((NONE, po, pty, map FL.tcc_raw tycs),
 				  arg_vals, lvar, c_lexp))
+	    val _ = debugmsg "<<tolvar L.APP"
+	    
+	    val _ = if !debugging then debugmsg (LtyBasic.lt_print lty') else ()
+	in (lexp', lty')
+	end
 
       | L.APP (L.GENOP({default,table},po,f_lty,tycs),arg) =>
             let fun f ([],table,cont) = cont (table)
@@ -551,7 +608,8 @@ and tolvar (venv,d,lvar,lexp,cont) =
       | L.VECTOR (lexps,tyc) =>
 	   lexps2values(venv,d,lexps,
 			fn (vals, ltys) =>
-			let val lty = LT.ltc_tyc(LT.tcc_vector tyc)
+			let val _ = debugmsg ">>tolvar VECTOR cont"
+			    val lty = LT.ltc_tyc(LT.tcc_vector tyc)
 			    val (c_lexp, c_lty) = cont(lty)
 			in (F.RECORD(F.RK_VECTOR (FL.tcc_raw tyc),
 				     vals, lvar, c_lexp),
@@ -560,7 +618,8 @@ and tolvar (venv,d,lvar,lexp,cont) =
       | L.RECORD lexps =>
 	   lexps2values(venv,d,lexps,
 			fn (vals, ltys) =>
-			let val lty = LT.ltc_tuple ltys
+			let val _ = debugmsg ">>tolvar RECORD cont"
+			    val lty = LT.ltc_tuple ltys
 			    val (c_lexp, c_lty) = cont(lty)
 			in (F.RECORD(FU.rk_tuple,
                                      vals, lvar, c_lexp), c_lty)
@@ -568,7 +627,8 @@ and tolvar (venv,d,lvar,lexp,cont) =
       | L.SRECORD lexps =>
 	   lexps2values(venv,d,lexps,
 			fn (vals, ltys) =>
-			let val lty = LT.ltc_str(ltys)
+			let val _ = debugmsg ">>tolvar SRECORD cont"
+			    val lty = LT.ltc_str(ltys)
 			    val (c_lexp, c_lty) = cont(lty)
 			in (F.RECORD(F.RK_STRUCT, vals, lvar, c_lexp), c_lty)
 			end)
@@ -601,6 +661,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
 (*       | L.UNWRAP _ => bug "unexpected UNWRAP in plambda" *)
 
       | _ => default_tolexp ()
+    in (debugmsg "<<tolvar"; r)
     end
 
 fun norm (lexp as L.FN(arg_lv,arg_lty,e)) =
