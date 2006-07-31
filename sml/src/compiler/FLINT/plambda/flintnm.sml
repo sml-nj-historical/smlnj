@@ -396,6 +396,11 @@ and lexps2values (venv,d,lexps,cont) =
 		then ignore(map PPLexp.printLexp lexps) 
 		else ()
 	val _ = 1
+
+fun ppLtyc ltyc = 
+    PrettyPrintNew.with_default_pp (fn ppstrm => PPLTy.ppTyc ppstrm ltyc)
+
+
 	fun f [] (vals,ltys) = cont (rev vals, rev ltys)
 	  | f (lexp::lexps) (vals,ltys) =
 	    (debugmsg ("lexps2values ltys "^concat (map (fn x => ("\n"^LtyBasic.lt_print x)) ltys)); 
@@ -403,7 +408,11 @@ and lexps2values (venv,d,lexps,cont) =
 		    fn (v, lty) => (debugmsg ">>lexps2values tovalue";
 				    if !debugging then PPLexp.printLexp lexp else ();
 				    if !debugging then debugmsg ("lty: "^ LtyBasic.lt_print lty) else ();
-		    f lexps (v::vals, lty::ltys))))
+		    f lexps (v::vals, lty::ltys)))) 
+	    handle LtyKernel.tcUnbound tenv => 
+		   (
+		    ppLtyc (LtyKernel.tc_inj (LtyKernel.tycEnvOut tenv));
+		    raise LtyKernel.tcUnbound tenv)
 	val v = f lexps ([], [])
 	val _ = debugmsg "<<lexp2values"
     in

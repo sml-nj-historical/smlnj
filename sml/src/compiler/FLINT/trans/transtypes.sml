@@ -297,11 +297,8 @@ and toTyc d t =
         | g (IBOUND i) = LT.tcc_var(DI.innermost, i)
         | g (POLYty _) = bug "unexpected poly-type in toTyc"
         | g (UNDEFty) = bug "unexpected undef-type in toTyc"
-        | g (WILDCARDty) = bug "unexpected wildcard-type in toTyc"
-      val plamty = (g t)
-      val _ = debugmsg "<<toTyc"
-      val _ = if !debugging then ppLtyc plamty else ()
-   in plamty
+        | g (WILDCARDty) = bug "unexpected wildcard-type in toTyc"      
+   in g t
   end
 
 and toLty d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) = toLty d body

@@ -590,7 +590,7 @@ local val tc_void = tc_injX(TC_PRIM(PT.ptc_void))
 
 in
 
-exception tcUnbound
+exception tcUnbound of tycEnv
 val initTycEnv : tycEnv = tc_void
 
 fun tcLookup(i, tenv : tycEnv) = 
@@ -599,7 +599,7 @@ fun tcLookup(i, tenv : tycEnv) =
                             | _ => bug "unexpected tycEnv in tcLookup")
       else if i = 1 then
              (case tc_outX tenv of TC_ARROW(_,[x],_) => tc_interp x 
-                                 | _ => raise tcUnbound)
+                                 | _ => raise tcUnbound tenv)
            else bug "unexpected argument in tcLookup"
 
 fun tcInsert(tenv : tycEnv, et) = tc_cons(tc_encode et, tenv)
@@ -807,7 +807,7 @@ and tc_lzrd(t: tyc) =
                      print ("ts length: "^(Int.toString(length ts))^"\n");
                      print ("ts elements: \n");
                      app (fn tc => (print(tc_print tc); print "\n")) ts;
-						   raise tcUnbound)
+						   raise tcUnbound tenv)
                                       in h(y, 0, nl - n, initTycEnv)
                                      end)
                           end)
