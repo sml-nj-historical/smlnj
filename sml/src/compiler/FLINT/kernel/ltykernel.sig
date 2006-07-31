@@ -94,7 +94,8 @@ val lt_eqv_x : lty * lty -> bool
 exception tcUnbound of tycEnv
 val initTycEnv : tycEnv
 val tcInsert : tycEnv * (tyc list option * int) -> tycEnv
-val tycEnvOut : tycEnv -> tycI
+val tcSplit : tycEnv -> ((tyc list option * int) * tycEnv) option 
+(* val tycEnvOut : tycEnv -> tycI *)
 
 (** testing if a tyc (or lty) is in the normal form *)
 val tcp_norm : tyc -> bool

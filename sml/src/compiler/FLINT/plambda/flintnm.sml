@@ -397,8 +397,8 @@ and lexps2values (venv,d,lexps,cont) =
 		else ()
 	val _ = 1
 
-fun ppLtyc ltyc = 
-    PrettyPrintNew.with_default_pp (fn ppstrm => PPLTy.ppTyc ppstrm ltyc)
+fun ppTycEnv tenv = 
+    PrettyPrintNew.with_default_pp (fn ppstrm => PPLTy.ppTycEnv ppstrm tenv)
 
 
 	fun f [] (vals,ltys) = cont (rev vals, rev ltys)
@@ -410,9 +410,7 @@ fun ppLtyc ltyc =
 				    if !debugging then debugmsg ("lty: "^ LtyBasic.lt_print lty) else ();
 		    f lexps (v::vals, lty::ltys)))) 
 	    handle LtyKernel.tcUnbound tenv => 
-		   (
-		    ppLtyc (LtyKernel.tc_inj (LtyKernel.tycEnvOut tenv));
-		    raise LtyKernel.tcUnbound tenv)
+		   (ppTycEnv tenv; raise LtyKernel.tcUnbound tenv)
 	val v = f lexps ([], [])
 	val _ = debugmsg "<<lexp2values"
     in

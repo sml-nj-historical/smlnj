@@ -803,6 +803,7 @@ and tc_lzrd(t: tyc) =
                     (print "***Debugging***\n";
                      print "tc_lzrd arg: "; 
                      print(tc_print t); print "\n";
+		     print ("i = " ^ Int.toString i ^ "\n");
                      print ("Selecting: j = "^(Int.toString j)^ "\n");
                      print ("ts length: "^(Int.toString(length ts))^"\n");
                      print ("ts elements: \n");
