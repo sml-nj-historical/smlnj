@@ -33,6 +33,9 @@ Group
 	structure ErrorMsg
 	structure CompileExn
 	structure PrettyPrint
+
+	structure PrettyPrintNew
+
 	structure Stats
 	structure PrintUtil
 	structure WordStringHashTable
@@ -70,6 +73,7 @@ is
 	print/printutil.sig
 	print/printutil.sml
 	print/pp-init.sml
+	print/pp-init-new.sml
 
 	miscutil/wordstr-hashtable.sml
 	miscutil/symbol-hashtable.sml

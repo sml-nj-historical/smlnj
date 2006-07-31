@@ -63,7 +63,7 @@ in
 
 (* debugging *)
 val say = Control_Print.say
-val debugging = ref true; (* ElabControl.emdebugging (* ref false *) *)
+val debugging = ElabControl.emdebugging (* ref false *)
 fun debugmsg (msg: string) =
       if !debugging then (say msg; say "\n") else ()
 

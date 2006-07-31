@@ -36,7 +36,7 @@ in
 
 fun bug msg = ErrorMsg.impossible ("TransTypes: " ^ msg)
 val say = Control.Print.say 
-val debugging = Control.CG.tmdebugging
+val debugging = ref true (* Control.CG.tmdebugging *)
 fun debugmsg (msg: string) =
   if !debugging then (say msg; say "\n") else ()
 val debugPrint = (fn x => debugPrint debugging x)
@@ -60,6 +60,13 @@ fun ppTycon x =
                           PPType.resetPPType();
                           PPType.ppTycon env ppstrm x)))
   handle _ => say "fail to print anything")
+end
+
+local 
+    structure PPN = PrettyPrintNew
+in
+fun ppLtyc ltyc = 
+    PPN.with_default_pp (fn ppstrm => PPLTy.ppTyc ppstrm ltyc)
 end
 
 (****************************************************************************
@@ -291,8 +298,10 @@ and toTyc d t =
         | g (POLYty _) = bug "unexpected poly-type in toTyc"
         | g (UNDEFty) = bug "unexpected undef-type in toTyc"
         | g (WILDCARDty) = bug "unexpected wildcard-type in toTyc"
-
-   in (g t) 
+      val plamty = (g t)
+      val _ = debugmsg "<<toTyc"
+      val _ = if !debugging then ppLtyc plamty else ()
+   in plamty
   end
 
 and toLty d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) = toLty d body

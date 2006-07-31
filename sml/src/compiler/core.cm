@@ -123,6 +123,8 @@ Group
 	structure LambdaVar
 	structure ChkFlint
 	structure DebIndex
+
+	structure PPLTy
 is
 
 TopLevel/environ/environ.sig
@@ -218,6 +220,9 @@ FLINT/kernel/ltyextern.sig
 FLINT/kernel/ltyextern.sml
 FLINT/kernel/ltykernel.sig
 FLINT/kernel/ltykernel.sml
+
+FLINT/kernel/pplty.sml
+
 FLINT/kernel/primop.sig
 FLINT/kernel/primop.sml
 FLINT/main/flintcomp.sml

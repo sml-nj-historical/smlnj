@@ -609,7 +609,9 @@ fun tcSplit(tenv : tycEnv) =
                      | _ => NONE)
   
 
-end (* utililty function for tycEnv *)
+fun tycEnvOut(tenv : tycEnv) = tc_outX tenv
+
+end (* utility function for tycEnv *)
 
 
 (** checking if a tyc or an lty is in the normal form *)

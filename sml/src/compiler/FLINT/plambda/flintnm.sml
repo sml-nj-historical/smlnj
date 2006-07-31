@@ -25,7 +25,7 @@ in
 (* debugging *)
 val say = Control_Print.say
 
-val debugging = ref true;
+val debugging = ref false;
 fun debugmsg (msg : string) = 
     if !debugging then (say msg; say "\n") else ()
 
