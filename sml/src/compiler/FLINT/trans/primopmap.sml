@@ -65,39 +65,6 @@ val word8cmp  = cmp (P.UINT 8)
 
 val float64cmp = cmp (P.FLOAT 64)
 
-val v1 = T.IBOUND 0
-val v2 = T.IBOUND 1
-val v3 = T.IBOUND 2
-
-val tu = BT.tupleTy
-fun ar(t1,t2) = BT.--> (t1, t2)
-
-fun ap(tc,l) = T.CONty(tc, l)
-fun cnt t = T.CONty(BT.contTycon,[t])
-fun ccnt t = T.CONty(BT.ccontTycon,[t])
-fun rf t = T.CONty(BT.refTycon,[t])
-fun ay t = T.CONty(BT.arrayTycon,[t])
-fun vct t = T.CONty(BT.vectorTycon,[t])
-
-val u = BT.unitTy
-val bo = BT.boolTy
-val i = BT.intTy
-val i32 = BT.int32Ty
-val i64 = BT.int64Ty
-val inf = BT.intinfTy
-val w8 = BT.word8Ty
-val w = BT.wordTy
-val w32 = BT.word32Ty
-val w64 = BT.word64Ty
-val f64 = BT.realTy
-val s  = BT.stringTy
-
-fun p0 t = t
-fun p1 t = T.POLYty {sign=[false], tyfun=T.TYFUN {arity=1, body=t}}
-fun ep1 t = T.POLYty {sign=[true], tyfun=T.TYFUN {arity=1, body=t}}
-fun p2 t = T.POLYty {sign=[false,false], tyfun=T.TYFUN {arity=2, body=t}}
-fun p3 t = T.POLYty {sign=[false,false,false], tyfun=T.TYFUN {arity=3, body=t}}
-
 fun sub kind = P.NUMSUBSCRIPT{kind=kind, checked=false, immutable=false}
 fun chkSub kind = P.NUMSUBSCRIPT{kind=kind, checked=true, immutable=false}
 
@@ -106,124 +73,6 @@ fun chkSubv kind = P.NUMSUBSCRIPT{kind=kind, checked=true, immutable=true}
 
 fun update kind = P.NUMUPDATE {kind=kind, checked=false}
 fun chkUpdate kind = P.NUMUPDATE {kind=kind, checked=true}
-
-val numSubTy = p2(ar(tu[v1,i],v2))
-val numUpdTy = p2(ar(tu[v1,i,v2],u))
-
-fun unf t = p0(ar(t,t))
-fun binf t = p0(ar(tu[t,t],t))
-fun binp t = p0(ar(tu[t,t],bo))
-fun shifter t = p0(ar(tu[t,w],t))
-
-val w32_i32 = p0(ar(w32,i32))
-val w32_f64 = p0(ar(w32,f64))
-val w32w32_u = p0(ar(tu[w32,w32],u))
-val w32i32_u = p0(ar(tu[w32,i32],u))
-val w32f64_u = p0(ar(tu[w32,f64],u))
-
-val i_x      = p1(ar(i,v1))
-val xw32_w32 = p1(ar(tu[v1,w32],w32))
-val xw32_i32 = p1(ar(tu[v1,w32],i32))
-val xw32_f64 = p1(ar(tu[v1,w32],f64))
-val xw32w32_u = p1(ar(tu[v1,w32,w32],u))
-val xw32i32_u = p1(ar(tu[v1,w32,i32],u))
-val xw32f64_u = p1(ar(tu[v1,w32,f64],u))
-
-val b_b = unf bo
-
-val f64_i = p0(ar(f64,i))
-val i_f64 = p0(ar(i,f64))
-val i32_f64 = p0(ar(i32,f64))
-
-val w32_i = p0(ar(w32,i))
-val i32_i = p0(ar(i32,i))
-
-val i_i32 = p0(ar(i,i32))
-val i_w32 = p0(ar(i,w32))
-
-val w32_w = p0(ar(w32,w))
-val i32_w = p0(ar(i32,w))
-
-val w_w32 = p0(ar(w,w32))
-val w_i32 = p0(ar(w,i32))
-
-val w_i = p0(ar(w,i))
-val i_w = p0(ar(i,w))
-
-val w32_i32 = p0(ar(w32,i32))
-val i32_w32 = p0(ar(i32,w32))
-
-val i_i = unf i
-val ii_i = binf i
-val ii_b = binp i
-val iw_i = shifter i
-
-val w_w = unf w
-val ww_w = binf w
-val ww_b = binp w
-
-val i32_i32 = unf i32
-val i32i32_i32 = binf i32
-val i32i32_b = binp i32
-
-val w32_w32 = unf w32
-val w32w32_w32 = binf w32
-val w32w32_b = binp w32
-val w32w_w32 = shifter w32
-
-val w8_w8 = unf w8
-val w8w8_w8 = binf w8
-val w8w8_b = binp w8
-val w8w_w8 = shifter w8
-
-val f64_f64 = unf f64
-val f64f64_f64 = binf f64
-val f64f64_b = binp f64
-
-val w8_i = p0(ar(w8,i))
-val w8_i32 = p0(ar(w8,i32))
-val w8_w32 = p0(ar(w8,w32))
-val i_w8 = p0(ar(i,w8))
-val i32_w8 = p0(ar(i32,w8))
-val w32_w8 = p0(ar(w32,w8))
-
-val inf_i   = p0(ar(inf,i))
-val inf_i32 = p0(ar(inf,i32))
-val inf_i64 = p0(ar(inf,i64))
-val inf_w8  = p0(ar(inf,w8))
-val inf_w   = p0(ar(inf,w))
-val inf_w32 = p0(ar(inf,w32))
-val inf_w64 = p0(ar(inf,w64))
-val i_inf   = p0(ar(i,inf))
-val i32_inf = p0(ar(i32,inf))
-val i64_inf = p0(ar(i64,inf))
-val w8_inf  = p0(ar(w8,inf))
-val w_inf   = p0(ar(w,inf))
-val w32_inf = p0(ar(w32,inf))
-val w64_inf = p0(ar(w64,inf))
-
-val w64_pw32 = p0(ar(w64,tu[w32,w32]))
-val pw32_w64 = p0(ar(tu[w32,w32],w64))
-val i64_pw32 = p0(ar(i64,tu[w32,w32]))
-val pw32_i64 = p0(ar(tu[w32,w32],i64))
-
-val cc_b = binp BT.charTy
-
-(* The type of the RAW_CCALL primop (as far as the type checker is concerned)
- * is:
- *    word32 * 'a * 'b -> 'd
- * However, the primop cannot be used without having 'a, 'b, and 'c
- * monomorphically instantiated.  In particular, 'a will be the type of the
- * ML argument list, 'c will be the type of the result, and 'b
- * will be a type of a fake arguments.  The idea is that 'b will be
- * instantiated with some ML type that encodes the type of the actual
- * C function in order to be able to generate code according to the C
- * calling convention.
- * (In other words, 'b will be a completely ad-hoc encoding of a CTypes.c_proto
- * value in ML types.  The encoding also contains information about
- * calling conventions and reentrancy.)
- *)
-val rccType = p3(ar(tu[w32,v1,v2],v3))
 
 (*
  * I made an effort to eliminate the cases where type info for primops
@@ -723,13 +572,7 @@ val primops =
        ("rawupdatef32", (P.RAW_STORE (P.FLOAT 32))) :-:
        ("rawupdatef64", (P.RAW_STORE (P.FLOAT 64)))
 
-fun primopMap name = RBMap.find(primops,name)
 
-(* Not needed now, delete later...
-fun primopIntrinsicType name =
-    case PrimopMap.primopMap p
-      of SOME(_,ty) => ty
-       | NONE => bug "unknown primop"
-*)
+fun primopMap name = RBMap.find(primops,name)
 
 end (* structure PrimOpMap *)

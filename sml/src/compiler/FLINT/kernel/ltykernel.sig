@@ -94,7 +94,7 @@ val lt_eqv_x : lty * lty -> bool
 exception tcUnbound of tycEnv
 val initTycEnv : tycEnv
 val tcInsert : tycEnv * (tyc list option * int) -> tycEnv
-val tcSplit : tycEnv -> ((tyc list option * int) * tycEnv) option 
+val tcSplit : tycEnv -> ((tyc list option * int) * tycEnv) option
 (* val tycEnvOut : tycEnv -> tycI *)
 
 (** testing if a tyc (or lty) is in the normal form *)
@@ -149,5 +149,11 @@ val token_key     : int -> token
 
 (** primitive TC_WRAP constructor, built through the token facility *)
 val wrap_token    : token
+
+(** pretty printing of tkinds, tycs, and ltys *)
+(* (temporarily?) moved from ltybasic.sig *)
+val tk_print   : tkind -> string
+val tc_print   : tyc -> string
+val lt_print   : lty -> string
 
 end (* signature LTYKERNEL *)

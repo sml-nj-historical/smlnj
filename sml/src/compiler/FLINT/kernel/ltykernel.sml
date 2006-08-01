@@ -796,8 +796,8 @@ and tc_lzrd(t: tyc) =
                        if (i <= ol) then
                          (let val et = tcLookup(i, tenv)
                            in case et 
-                               of (NONE, n) => tcc_var(nl - n, j)
-                                | (SOME ts, n) => 
+                               of (NONE, n) => tcc_var(nl - n, j) (* rule r5 *)
+                                | (SOME ts, n) =>  
                                     (let val y = List.nth(ts, j) 
                                            handle Subscript => 
                     (print "***Debugging***\n";
@@ -809,17 +809,17 @@ and tc_lzrd(t: tyc) =
                      print ("ts elements: \n");
                      app (fn tc => (print(tc_print tc); print "\n")) ts;
 						   raise tcUnbound tenv)
-                                      in h(y, 0, nl - n, initTycEnv)
+                                      in h(y, 0, nl - n, initTycEnv)  (* rule r6 *)
                                      end)
                           end)
-                       else tcc_var(i-ol+nl, j)
+                       else tcc_var(i-ol+nl, j) (* rule r4 *)
                    | TC_NVAR _ => x
-                   | TC_PRIM _ => x
+                   | TC_PRIM _ => x    (* rule r7 *)
                    | TC_FN (ks, tc) => 
                       let val tenv' = tcInsert(tenv, (NONE, nl))
-                       in tcc_fn(ks, tcc_env(tc, ol+1, nl+1, tenv'))
+                       in tcc_fn(ks, tcc_env(tc, ol+1, nl+1, tenv')) (* rule r10 *)
                       end
-                   | TC_APP (tc, tcs) => tcc_app(prop tc, map prop tcs)
+                   | TC_APP (tc, tcs) => tcc_app(prop tc, map prop tcs) (* rule r9 *)
                    | TC_SEQ tcs => tcc_seq (map prop tcs)
                    | TC_PROJ (tc, i) => tcc_proj(prop tc, i)
                    | TC_SUM tcs => tcc_sum (map prop tcs)
@@ -829,13 +829,13 @@ and tc_lzrd(t: tyc) =
                    | TC_BOX tc => tcc_box (prop tc)
                    | TC_TUPLE (rk, tcs) => tcc_tup (rk, map prop tcs)
                    | TC_ARROW (r, ts1, ts2) => 
-                       tcc_arw (r, map prop ts1, map prop ts2)
+                       tcc_arw (r, map prop ts1, map prop ts2)  (* rule r8 *)
                    | TC_PARROW (t1, t2) => tcc_parw (prop t1, prop t2)
                    | TC_TOKEN (k, t) => tcc_token(k, prop t)
                    | TC_CONT _ => bug "unexpected TC_CONT in tc_lzrd"
                    | TC_IND (tc, _) => h(tc, ol, nl, tenv)
                    | TC_ENV(tc, ol', nl', tenv') => 
-                       if ol = 0 then h(tc, ol', nl+nl', tenv')
+                       if ol = 0 then h(tc, ol', nl+nl', tenv')  (* rule r11 *)
                        else h(g x, ol, nl, tenv))
             end (* function h *)
    in if tcp_norm(t) then t else g t
