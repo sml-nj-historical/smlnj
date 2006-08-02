@@ -1,4 +1,4 @@
-(* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
+ (* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
 (* ltykernel.sml *)
 
 structure LtyKernel :> LTYKERNEL = 
@@ -483,9 +483,9 @@ fun tc_print (x : tyc) =
       | TC_SUM tcs =>
           "TSUM(" ^ (plist(tc_print, tcs)) ^ ")"
       | TC_FIX ((_, tc, ts), i) =>
-          if false (* tc_eqv(x,tcc_bool) *) then "B" 
-          else if false (* tc_eqv(x,tcc_list) *) then "LST" 
-               else (let (* val ntc = case ts of [] => tc
+          (* if tc_eqv(x,tcc_bool) then "B" 
+          else if tc_eqv(x,tcc_list) then "LST" 
+               else *) (let (* val ntc = case ts of [] => tc
                                             | _ => tcc_app(tc, ts) *)
                          val _ = 1
                       in ("DT{" ^ "DATA"  ^ "[" ^ (tc_print tc)  
@@ -876,9 +876,36 @@ and lt_lzrd t =
 (** taking out the TC_IND indirection *)
 and stripInd t = (case tc_outX t of TC_IND (x,_) => stripInd x | _ => t)
 
+and printParamArgs (tc,tcs) = 
+    let 
+	fun getArity(TC_FN(params, _)) = 
+	    (print "printParamArgs TC_FN \n"; 
+	     length params)
+	  | getArity(TC_APP(tc, _)) = 
+	    (case (tc_outX tc)
+	      of (TC_FN(_, tc')) => getArity (tc_outX tc')
+	       | _ => 0)
+	  | getArity(TC_FIX((numFamily,tc,freetycs),_)) = 
+	    (case (tc_outX tc) of
+		 (TC_FN _) =>
+		 (getArity (tc_outX tc))
+	       | _ => 0)
+	  | getArity _ = (print ("getArity on:\n "^tc_print tc^"\n"); 0)
+	val numParams = getArity (tc_outX tc)
+    in
+	if numParams = (length tcs) then 
+	    print ("(TC_APP params args matched "^Int.toString (length tcs)^")\n")
+	else print ("(TC_APP of " ^tc_print tc^ "\nparams "
+		    ^ Int.toString numParams
+		    ^ "\nargument list length: " 
+		    ^ Int.toString (length tcs) 
+		    ^ ")\n")
+    end
+	
 (** normalizing an arbitrary tyc into a simple weak-head-normal-form *)
 and tc_whnm t = if tcp_norm(t) then t else 
-  let val nt = tc_lzrd t
+  let (* val _ = print ">>tc_whnm not norm\n" *)
+      val nt = tc_lzrd t
    in case (tc_outX nt)
        of TC_APP(tc, tcs) =>
             (let val tc' = tc_whnm tc
@@ -902,7 +929,8 @@ and tc_whnm t = if tcp_norm(t) then t else
                        end
                    | ((TC_SEQ _) | (TC_TUPLE _) | (TC_ARROW _) | (TC_IND _)) =>
                        bug "unexpected tycs in tc_whnm-TC_APP"
-                   | _ => let val xx = tcc_app(tc', tcs) 
+                   | _ => let val _ = printParamArgs (tc', tcs)
+			      val xx = tcc_app(tc', tcs) 
                            in stripInd xx
                           end
              end)
@@ -953,8 +981,7 @@ fun tc_norm t = if (tcp_norm t) then t else
         (let val res = 
               (case (tc_outX nt)
                 of TC_FN (ks, tc) => tcc_fn(ks, tc_norm tc)
-                 | TC_APP (tc, tcs) => 
-                     tcc_app(tc_norm tc, map tc_norm tcs)
+                 | TC_APP (tc, tcs) => tcc_app(tc_norm tc, map tc_norm tcs)
                  | TC_SEQ tcs => tcc_seq(map tc_norm tcs)
                  | TC_PROJ (tc, i) => tcc_proj(tc_norm tc, i)
                  | TC_SUM tcs => tcc_sum (map tc_norm tcs)
