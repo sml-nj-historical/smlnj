@@ -152,10 +152,39 @@ and ppTyc ppstrm (tycon : LK.tyc) =
 	     PP.break ppstrm {nsp=1,offset=1};
 	     ppList' {sep=", ", pp=ppTyc'} tycs;
 	     pps ")")
-	    (* TC_FIX is a recursive DATATYPE *)
+	    (* TC_FIX is a recursive datatype constructor 
+	       from a (mutually-)recursive family *)
 	  | ppTycI (LK.TC_FIX((numStamps, datatypeFamily, freetycs), index)) =
 	    (openHOVBox 1;
 	     pps "TC_FIX(";
+	     PP.break ppstrm {nsp=1,offset=1};
+	     (case (LK.tc_out datatypeFamily) of
+		  LK.TC_FN(params, rectyc) => (* generator function *) 
+		  let fun ppMus 0 = ()
+			| ppMus i = (pps "mu"; 
+				     ppi ppstrm i; 
+				     pps " "; 
+				     ppMus (i - 1))
+		  in 
+		  (pps "RECTYCGEN(";
+		   if (length params) > 0 then (pps "[";
+						ppMus (length params);
+						pps "]")
+		   else ();
+		   PP.break ppstrm {nsp=1,offset=1};  
+		  (case (LK.tc_out rectyc) of
+			 (rectycI as LK.TC_FN _) => ppTycI rectycI
+		       | LK.TC_SEQ(dconstycs) => 
+			 ppTyc' (List.nth(dconstycs, index))
+		       | tycI => ppTycI tycI);
+		  PP.break ppstrm {nsp=0,offset=0};
+		  pps ")")
+		  end
+		| _ => pps "<No rectyc generator>");
+	     PP.break ppstrm {nsp=0,offset=0};
+	     pps ")";
+	     closeBox()
+	 (*    pps "TC_FIX(";
 	     PP.break ppstrm {nsp=1,offset=1};
 	     pps "nStamps = ";
 	     pps (Int.toString numStamps);
@@ -172,7 +201,7 @@ and ppTyc ppstrm (tycon : LK.tyc) =
 	     pps "index = ";
 	     pps (Int.toString index);
 	     pps ")";
-	     closeBox())
+	     closeBox() *) )
 	  | ppTycI (LK.TC_ABS tyc) =
 	    (pps "TC_ABS(";
 	     PP.break ppstrm {nsp=1,offset=1};
