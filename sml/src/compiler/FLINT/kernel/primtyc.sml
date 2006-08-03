@@ -57,7 +57,7 @@ datatype ptyc
   | PT_INTINF
 
 (** the primtive type constructor *)
-type primtyc = ptyc * int * int
+type primtyc = ptyc * int * int      (* ptyc, arity, generic primtyc numbers *)
 
 (** the set of primitive type constructors *)
 val ptc_int31  = (PT_INT31, 0, PTN.ptn_int31)

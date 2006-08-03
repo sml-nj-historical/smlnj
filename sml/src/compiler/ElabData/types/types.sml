@@ -50,7 +50,7 @@ and tyckind
      {index: int,
       stamps: ST.stamp vector,
       root : EP.entVar option,    (* the root field used by type spec only *)
-      freetycs: tycon list,
+      freetycs: tycon list,       (* tycs derived from functor params *)
       family : dtypeFamily}
   | ABSTRACT of tycon
   | FLEXTYC of tycpath            (* instantiated formal type constructor *)

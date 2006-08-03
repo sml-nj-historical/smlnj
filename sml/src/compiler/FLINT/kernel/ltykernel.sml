@@ -102,7 +102,13 @@ datatype tycI
   | TC_PROJ of tyc * int                       (* tyc projection *)
 
   | TC_SUM of tyc list                         (* sum tyc *)
-  | TC_FIX of (int * tyc * tyc list) * int     (* recursive tyc *)
+  | TC_FIX of (int * tyc * tyc list) * int     (* (mutually-)recursive tyc 
+	                                        * int # of family members  
+						* tyc of rec-type generator
+						* tyc list is freetycs 
+						* int index of dcon in dt 
+						*  built in 
+                                                * trans/transtypes.sml*)
 
   | TC_TUPLE of rflag * tyc list               (* std record tyc *)
   | TC_ARROW of fflag * tyc list * tyc list    (* std function tyc *)
@@ -878,23 +884,28 @@ and stripInd t = (case tc_outX t of TC_IND (x,_) => stripInd x | _ => t)
 
 and printParamArgs (tc,tcs) = 
     let 
-	fun getArity(TC_FN(params, _)) = 
-	    (print "printParamArgs TC_FN \n"; 
-	     length params)
-	  | getArity(TC_APP(tc, _)) = 
-	    (case (tc_outX tc)
-	      of (TC_FN(_, tc')) => getArity (tc_outX tc')
-	       | _ => 0)
-	  | getArity(TC_FIX((numFamily,tc,freetycs),_)) = 
-	    (case (tc_outX tc) of
-		 (TC_FN _) =>
-		 (getArity (tc_outX tc))
-	       | _ => 0)
-	  | getArity _ = (print ("getArity on:\n "^tc_print tc^"\n"); 0)
-	val numParams = getArity (tc_outX tc)
+	fun getArity(tycEnv) =
+	    (case (tc_outX tycEnv) of
+		 TC_PRIM(ptyc) => PT.pt_arity ptyc
+	       | TC_FN(params, _) =>
+		 (print "printParamArgs TC_FN \n"; 
+		  length params)
+	       | (TC_APP(tc, _)) => 
+		 (case (tc_outX tc)
+		   of (TC_FN(_, tc')) => getArity tc'
+		    | _ => 0)
+	       | (TC_FIX((numFamily,tc,freetycs),index)) => 
+		 (case (tc_outX tc) of
+		      (TC_FN (_,tc')) => (* generator function *)
+		      (case (tc_outX tc') of
+			   (TC_SEQ tycs) => getArity (List.nth (tycs, index))
+			 | TC_FN (params, _) => length params
+			 | _ => raise Fail "Malformed generator range")
+		    | _ => raise Fail "FIX without generator!" )
+	       | _ => (print ("getArity on:\n "^tc_print tc^"\n"); 0))
+	val numParams = getArity tc
     in
-	if numParams = (length tcs) then 
-	    print ("(TC_APP params args matched "^Int.toString (length tcs)^")\n")
+	if numParams = (length tcs) then ()
 	else print ("(TC_APP of " ^tc_print tc^ "\nparams "
 		    ^ Int.toString numParams
 		    ^ "\nargument list length: " 
