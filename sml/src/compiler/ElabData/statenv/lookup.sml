@@ -105,7 +105,6 @@ fun lookVal (env,path,err) : V.value =
 fun lookStr (env,path,err) : M.Structure =
   let fun outStr(B.STRbind str) = str
         | outStr _ = bug "lookStr"
-      val _ = print "### lookStr\n"
    in lookGen(env,path,outStr,MU.getStrPath,bogusSTR,err)
   end
 

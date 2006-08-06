@@ -77,10 +77,10 @@ fun getStr (elements, entEnv, sym, dacc, prims) =
    case getSpec(elements, sym)
     of STRspec{sign, slot, def, entVar} => 
         (case EE.look(entEnv,entVar)
- 	  of STRent entity => (print "getStr\n";
+ 	  of STRent entity => 
                (STR{sign = sign, rlzn = entity, access = A.selAcc(dacc,slot),
                     prim = POI.selStrPrimId(prims, slot)},
-		entVar))
+		entVar)
 	   | _ => bug "getStr: bad entity")
      | _ => bug "getStr: wrong spec"
 
@@ -89,10 +89,10 @@ fun getFct (elements, entEnv, sym, dacc, dinfo) =
    case getSpec(elements, sym)
     of FCTspec{sign, slot, entVar} => 
         (case EE.look(entEnv,entVar)
-          of FCTent entity => (print "getFct\n"; 
+          of FCTent entity => 
                (FCT{sign = sign, rlzn = entity, access = A.selAcc(dacc,slot),
                     prim = POI.selStrPrimId (dinfo, slot)},
-		entVar))
+		entVar)
            | _ => bug "getFct: bad entity")
      | _ => bug "getFct: wrong spec"
 
@@ -193,12 +193,10 @@ fun getStrElem (sym, sign as SIG {elements,...}, sInfo) =
             (let val newInfo = 
                   case sInfo
                    of SIGINFO ep => SIGINFO (entVar::ep)
-                    | STRINFO ({entities,...}, dacc, dinfo) => 
-		      (debugmsg (">>getStrElem " ^ (Int.toString slot));
-		       debugmsg ("dacc: " ^ A.prAcc dacc);
-		       PrimOpId.ppStrInfo dinfo;
+                    | STRINFO ({entities,...}, dacc, prim) => 
                       STRINFO(EE.lookStrEnt(entities,entVar), 
-                              A.selAcc(dacc,slot), POI.selStrPrimId (dinfo, slot)))
+                              A.selAcc(dacc,slot), 
+			      POI.selStrPrimId (prim, slot))
               in (subsig, newInfo)
              end)
          | _ => bug "getStrElem: wrong spec case")

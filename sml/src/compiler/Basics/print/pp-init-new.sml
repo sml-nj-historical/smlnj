@@ -1,4 +1,4 @@
- (* pp-init.sml
+ (* pp-init-new.sml
  *
  * COPYRIGHT (c) 2006 The SML/NJ Fellowship
  * 

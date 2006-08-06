@@ -2,11 +2,12 @@ structure PPPrim =
 struct
 
 local 
-    open PPUtilNew 
+    structure PP = PrettyPrint
+    open PPUtil
 in
 
 fun ppPrim ppstrm prim =
-    let val {pps, ...} = ppstrm
+    let val {pps, ...} = en_pp ppstrm
     in (case prim of 
 	    PrimOpId.NonPrim => pps "<NonPrim>"
 	  | PrimOpId.Prim(name) => (pps "<PrimE ";
@@ -15,9 +16,9 @@ fun ppPrim ppstrm prim =
     end (* function ppPrim *)
 
 fun ppStrPrimInfo ppstrm strPrimInfo =
-    let val {openHOVBox, pps, ...} = ppstrm
-	fun ppStrPrimElem ppstrm (PrimE p) = ppPrim ppstrm p
-	  | ppStrPrimElem ppstrm (StrE ps) = ppStrPrimInfo ppstrm ps
+    let val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm
+	fun ppStrPrimElem ppstrm (PrimOpId.PrimE p) = ppPrim ppstrm p
+	  | ppStrPrimElem ppstrm (PrimOpId.StrE ps) = ppStrPrimInfo ppstrm ps
     in
 	ppSequence ppstrm 
 		   {sep = fn ppstrm => (PP.string ppstrm ", ";
@@ -25,9 +26,9 @@ fun ppStrPrimInfo ppstrm strPrimInfo =
 		    pr = (fn _ => fn elem => 
 				     (openHOVBox 1; 
 				      pps "(";
-				      ppStrPrimElem ppstrm,
+				      ppStrPrimElem ppstrm;
 				      pps ")";
-				      closeBox()))
+				      closeBox())),
 		    style = INCONSISTENT
 		    }
 		   strPrimInfo

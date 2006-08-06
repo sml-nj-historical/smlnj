@@ -46,11 +46,11 @@ struct
   (* Select the prim id for a value component *)
   fun selValPrimFromStrPrim([], slot) = NonPrim 
     | selValPrimFromStrPrim(elems, slot) =
-      (print ("selValPrim "^(Int.toString slot)^"\n"); (case List.nth(elems, slot)
+      (case List.nth(elems, slot)
 	of PrimE(id) => id
 	 | _ => 
 	   bug "PrimOpId.selValPrimFromStrPrim: unexpected StrE"
-      ) handle Subscript => bug "PrimOpId.selValPrimFromStrPrim Subscript")
+      ) handle Subscript => bug "PrimOpId.selValPrimFromStrPrim Subscript"
            (* This bug occurs if we got a substructure's
 	      strPrimElem instead of an expected value component's
 	      primId *)

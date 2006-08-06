@@ -668,7 +668,6 @@ fun elab (BaseStr decl, env, entEnv, region) =
 	  val _ = error region EM.WARN "VarStr lookStr: " 
 			(fn ppstrm => PPAst.ppStrExp (env, NONE) ppstrm (v, 10))  
           val str = LU.lookStr(env,SP.SPATH path,error region)
-	  val _ = print "lookStr ### \n"
 (*
           val _ = showStr("--elab[VarStr]: str: ",str,env)
 *)
@@ -1268,7 +1267,6 @@ and elabDecl0
 
    | OpenDec paths =>
        let val err = error region
-	   val _ = print "elabDecl0 \n"
            val strs = map (fn s => let val sp = SP.SPATH s
                                     in (sp, LU.lookStr(env0, sp, err))
                                    end) paths

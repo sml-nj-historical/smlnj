@@ -104,7 +104,7 @@ structure EvalEntity = EV
 
 exception BadBinding
 
-val debugging = ref true(* ElabControl.smdebugging *) (* ref false *)
+val debugging = ElabControl.smdebugging (* ref false *)
 val showsigs = ref false
 
 val say = Control_Print.say
@@ -1238,11 +1238,10 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
           of STRspec{sign=thisSpecsig, entVar=ev, slot=s,...} =>
               (case (EE.look(resEntEnv, ev), EE.look(srcEntEnv, ev))  
                  of (M.STRent resStrRlzn, M.STRent srcStrRlzn) =>
-		     let val _ = print "packElems\n"
-			 val srcStr = M.STR{sign=thisSpecsig, rlzn=srcStrRlzn,
-					    access=DA.selAcc(rootAcc,s),
-					    prim=PrimOpId.selStrPrimId(rootPrim,s)}
-
+		     let val srcStr = 
+			     M.STR{sign=thisSpecsig, rlzn=srcStrRlzn,
+				   access=DA.selAcc(rootAcc,s),
+				    prim=PrimOpId.selStrPrimId(rootPrim,s)}
 			 val rpath' = IP.extend(rpath, sym)
 			 val (thinDec, thinStr) = 
 			   packStr1(thisSpecsig, resStrRlzn, srcStr, abstycs,
@@ -1267,8 +1266,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
            | FCTspec{sign=thisSpecsig, entVar=ev, slot=s} => 
               (case (EE.look(resEntEnv, ev), EE.look(srcEntEnv, ev))
 		 of (M.FCTent resFctRlzn, M.FCTent srcFctRlzn) =>
-		     let val _ = print "packElems FCTspec\n"
-			 val srcFct =
+		     let val srcFct =
 			     M.FCT {sign=thisSpecsig, rlzn=srcFctRlzn,
 				    access=DA.selAcc(rootAcc,s),
 				    prim=PrimOpId.selStrPrimId(rootPrim,s)}

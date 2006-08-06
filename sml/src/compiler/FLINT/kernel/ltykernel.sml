@@ -887,9 +887,7 @@ and printParamArgs (tc,tcs) =
 	fun getArity(tycEnv) =
 	    (case (tc_outX tycEnv) of
 		 TC_PRIM(ptyc) => PT.pt_arity ptyc
-	       | TC_FN(params, _) =>
-		 (print "printParamArgs TC_FN \n"; 
-		  length params)
+	       | TC_FN(params, _) => length params
 	       | (TC_APP(tc, _)) => 
 		 (case (tc_outX tc)
 		   of (TC_FN(_, tc')) => getArity tc'
