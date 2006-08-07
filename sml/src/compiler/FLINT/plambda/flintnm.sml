@@ -344,7 +344,7 @@ and tovalues (venv,d,lexp,cont) =
 					  | scan' (x::xs, l::ls, n) = 
 					    (debugmsg ("tovalues cont ltys ["^
 						      Int.toString n ^"]:");
-					     PPLexp.printLexp l;
+					     if !debugging then PPLexp.printLexp l else ();
 					debugmsg (LtyBasic.lt_print x); scan' (xs, ls, n + 1))
 				    in scan'(lts, lexps, 0)
 				    end

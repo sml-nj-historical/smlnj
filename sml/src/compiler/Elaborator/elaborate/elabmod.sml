@@ -665,8 +665,6 @@ fun elab (BaseStr decl, env, entEnv, region) =
 
   | elab (v as VarStr path, env, entEnv, region) =
       let val _ = debugmsg ">>elab[VarStr]"
-	  val _ = error region EM.WARN "VarStr lookStr: " 
-			(fn ppstrm => PPAst.ppStrExp (env, NONE) ppstrm (v, 10))  
           val str = LU.lookStr(env,SP.SPATH path,error region)
 (*
           val _ = showStr("--elab[VarStr]: str: ",str,env)
