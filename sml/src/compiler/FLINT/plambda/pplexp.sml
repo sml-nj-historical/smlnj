@@ -111,7 +111,9 @@ fun complex le =
 
 fun printLexp l = 
   let fun prLty t = say (LT.lt_print t)
-      fun prTyc t = say (LT.tc_print t)
+      fun prTyc t = PrettyPrintNew.with_default_pp 
+			(fn ppstrm => PPLTy.ppTyc ppstrm t)
+                     (* say (LT.tc_print t) *)
       fun prKnd k = say (LT.tk_print k)
 
       fun plist (p, [], sep) = ()

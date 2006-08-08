@@ -411,7 +411,12 @@ fun ppTycEnv tenv =
 				    if !debugging then debugmsg ("lty: "^ LtyBasic.lt_print lty) else ();
 		    f lexps (v::vals, lty::ltys)))) 
 	    handle LtyKernel.tcUnbound tenv => 
-		   (ppTycEnv tenv; raise LtyKernel.tcUnbound tenv)
+		   (print "\n*** lexps2values ***\nlexp: "; 
+		    PPLexp.printLexp lexp;
+		    print "\ntype: ";
+		    (* Fill in with PPLty.pplty (lty) *)
+		    print "\ntenv";
+		    ppTycEnv tenv; raise LtyKernel.tcUnbound tenv)
 	val v = f lexps ([], [])
 	val _ = debugmsg "<<lexp2values"
     in

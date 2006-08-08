@@ -712,7 +712,41 @@ fun lty_upd (tgt as ref(i : int, old : ltyI, AX_NO), nt) =
 (** a list of constructor functions *)
 val tcc_var = tc_injX o TC_VAR
 val tcc_fn = tc_injX o TC_FN
-val tcc_app = tc_injX o TC_APP
+val tcc_app = fn (fntyc, argtycs) =>
+		 (* Check that parameter arity matches number of arguments
+		    supplied because type application must be saturated *) 
+		 let fun checkParamArity (tc,tcs) = 
+			 let 
+			     fun getArity(tycEnv) =
+				 (case (tc_outX tycEnv) of
+				      TC_PRIM(ptyc) => PT.pt_arity ptyc
+				    | TC_FN(params, _) => length params
+				    | (TC_APP(tc, _)) => 
+				      (case (tc_outX tc)
+					of (TC_FN(_, tc')) => getArity tc'
+					 | _ => 0)
+				    | (TC_FIX((numFamily,tc,freetycs),index)) => 
+				      (case (tc_outX tc) of
+					   (TC_FN (_,tc')) => (* generator function *)
+					   (case (tc_outX tc') of
+						(TC_SEQ tycs) => getArity (List.nth (tycs, index))
+					      | TC_FN (params, _) => length params
+					      | _ => raise Fail "Malformed generator range")
+					 | _ => raise Fail "FIX without generator!" )
+				    | _ => (print ("getArity on:\n "^tc_print tc^"\n"); 0))
+			     val numParams = getArity tc
+			 in
+			     if numParams = (length tcs) then ()
+			     else print ("(TC_APP of " ^tc_print tc^ "\nparams "
+					 ^ Int.toString numParams
+					 ^ "\nargument list length: " 
+					 ^ Int.toString (length tcs) 
+					 ^ ")\n")
+			 end
+		 in
+		     (checkParamArity(fntyc, argtycs); 
+		      (tc_injX o TC_APP) (fntyc, argtycs))
+		 end
 val tcc_seq = tc_injX o TC_SEQ
 val tcc_proj = tc_injX o TC_PROJ
 val tcc_fix = tc_injX o TC_FIX
@@ -897,6 +931,7 @@ and lt_lzrd t =
 (** taking out the TC_IND indirection *)
 and stripInd t = (case tc_outX t of TC_IND (x,_) => stripInd x | _ => t)
 
+(*
 and printParamArgs (tc,tcs) = 
     let 
 	fun getArity(tycEnv) =
@@ -925,7 +960,7 @@ and printParamArgs (tc,tcs) =
 		    ^ Int.toString (length tcs) 
 		    ^ ")\n")
     end
-	
+ *)
 (** normalizing an arbitrary tyc into a simple weak-head-normal-form *)
 and tc_whnm t = if tcp_norm(t) then t else 
   let (* val _ = print ">>tc_whnm not norm\n" *)
@@ -953,8 +988,7 @@ and tc_whnm t = if tcp_norm(t) then t else
                        end
                    | ((TC_SEQ _) | (TC_TUPLE _) | (TC_ARROW _) | (TC_IND _)) =>
                        bug "unexpected tycs in tc_whnm-TC_APP"
-                   | _ => let val _ = printParamArgs (tc', tcs)
-			      val xx = tcc_app(tc', tcs) 
+                   | _ => let val xx = tcc_app(tc', tcs) 
                            in stripInd xx
                           end
              end)
