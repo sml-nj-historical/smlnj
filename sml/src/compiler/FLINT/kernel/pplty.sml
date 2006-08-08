@@ -26,9 +26,9 @@ fun ppList ppstrm {sep, pp : 'a -> unit} list =
 		     style = INCONSISTENT,
 		     pr = (fn _ => fn elem => 
 				      (openHOVBox 1;
-				       pps "(";
+				       (* pps "("; *)
 				       pp elem;
-				       pps ")";
+				       (* pps ")"; *)
 				       closeBox()))}
 		    list)
     end (* ppList *)
@@ -69,14 +69,14 @@ fun ppTycEnvElem ppstrm (tycop, i) =
     let val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm
     in
 	openHOVBox 1;
-	pps "(";
+	(* pps "("; *)
 	(case tycop of
 	     NONE => pps "*"
 	   | SOME(tycs) => ppList ppstrm {sep=",", pp=ppTyc ppstrm} tycs);
 	pps ", ";
 	PP.break ppstrm {nsp = 1, offset=0}; 
 	ppi ppstrm i;
-	pps ")";
+	(* pps ")"; *)
 	closeBox()
     end (* function ppTycEnvElem *)
 
@@ -214,10 +214,12 @@ and ppTyc ppstrm (tycon : LK.tyc) =
 	     pps ")")
 	    (* rflag is a tuple kind template, a singleton datatype RF_TMP *)
 	  | ppTycI (LK.TC_TUPLE (rflag, tycs)) =
-	    (pps "TC_TUPLE(";
-	     PP.break ppstrm {nsp=1,offset=1};
-	     ppList' {sep="* ", pp=ppTyc'} tycs;
-	     pps ")")
+	    (case tycs of
+		 [] => pps "UNIT"
+	       | _ => (pps "TC_TUPLE(";
+		       PP.break ppstrm {nsp=1,offset=1};
+		       ppList' {sep="* ", pp=ppTyc'} tycs;
+		       pps ")"))
 	    (* fflag records the calling convention: either FF_FIXED or FF_VAR *)
 	  | ppTycI (LK.TC_ARROW (fflag, argTycs, resTycs)) =
 	    (pps "TC_ARROW(";

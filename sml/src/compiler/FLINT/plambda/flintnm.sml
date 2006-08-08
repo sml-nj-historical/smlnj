@@ -346,6 +346,7 @@ and tovalues (venv,d,lexp,cont) =
 						      Int.toString n ^"]:");
 					     if !debugging then PPLexp.printLexp l else ();
 					debugmsg (LtyBasic.lt_print x); scan' (xs, ls, n + 1))
+					  | scan' _ = raise Fail "flintnm.sml:tovalues::scan'"
 				    in scan'(lts, lexps, 0)
 				    end
                              val _ = scan ltys 

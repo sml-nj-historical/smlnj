@@ -488,16 +488,31 @@ fun tc_print (x : tyc) =
           "TP(" ^ (tc_print t) ^ "," ^ (itos i) ^ ")"
       | TC_SUM tcs =>
           "TSUM(" ^ (plist(tc_print, tcs)) ^ ")"
-      | TC_FIX ((_, tc, ts), i) =>
-          (* if tc_eqv(x,tcc_bool) then "B" 
-          else if tc_eqv(x,tcc_list) then "LST" 
-               else *) (let (* val ntc = case ts of [] => tc
-                                            | _ => tcc_app(tc, ts) *)
-                         val _ = 1
-                      in ("DT{" ^ "DATA"  ^ "[" ^ (tc_print tc)  
-                                ^ "] &&" ^ (plist(tc_print, ts))
-                                      ^ "&&" ^ "===" ^ (itos i) ^ "}")
-                     end)
+      | TC_FIX ((_, datatypeFamily, ts), index) =>
+	     concat["TC_FIX(",
+	     (case (tc_outX datatypeFamily) of
+		  TC_FN(params, rectyc) => (* generator function *) 
+		  let fun ppMus 0 = ""
+			| ppMus i = (concat["mu", 
+					    Int.toString i, 
+					    " ",
+					    ppMus (i - 1)])
+		  in 
+		  (concat["RECTYCGEN(",
+		   if (length params) > 0 then (concat["[",
+						ppMus (length params),
+						"]"])
+		   else "",
+		   
+		  (case (tc_outX rectyc) of
+			 (rectycI as TC_FN _) => tc_print rectyc
+		       | TC_SEQ(dconstycs) => 
+			 tc_print (List.nth(dconstycs, index))
+		       | tycI => tc_print rectyc),
+		  ")"])
+		  end
+		| _ => "<No rectyc generator>"),
+	     ")"]
       | TC_ABS t => "Ax(" ^ (tc_print t) ^ ")"
       | TC_BOX t => "Bx(" ^ (tc_print t) ^ ")"
       | TC_TUPLE(_,zs) => "TT<" ^ (plist(tc_print, zs)) ^ ">"
