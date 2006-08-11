@@ -91,7 +91,7 @@ val tc_eqv_x : tyc * tyc -> bool
 val lt_eqv_x : lty * lty -> bool
 
 (** utility functions on tycEnv *)
-exception tcUnbound of tycEnv
+exception tcUnbound of tycEnv * tyc
 val initTycEnv : tycEnv
 val tcInsert : tycEnv * (tyc list option * int) -> tycEnv
 val tcSplit : tycEnv -> ((tyc list option * int) * tycEnv) option

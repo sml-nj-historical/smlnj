@@ -474,8 +474,10 @@ fun tk_print (x : tkind) =
       | TK_SEQ zs => "KS(" ^ (plist(tk_print, zs)) ^ ")")
 
 fun tc_print (x : tyc) =
-  (case tc_outX x
-     of TC_VAR(i,j) => "TV(" ^ (DI.di_print i) ^ "," ^ (itos j) ^ ")"
+  tci_print (tc_outX x)
+
+and tci_print (tci ) =
+     (case tci of TC_VAR(i,j) => "TV(" ^ (DI.di_print i) ^ "," ^ (itos j) ^ ")"
       | TC_NVAR v => "NTV(v" ^ (itos v) ^ ")"
       | TC_PRIM pt => PT.pt_print pt
       | TC_FN(ks, t) =>
@@ -611,7 +613,7 @@ local val tc_void = tc_injX(TC_PRIM(PT.ptc_void))
 
 in
 
-exception tcUnbound of tycEnv
+exception tcUnbound of tycEnv * tyc
 val initTycEnv : tycEnv = tc_void
 
 fun tcLookup(i, tenv : tycEnv) = 
@@ -620,7 +622,8 @@ fun tcLookup(i, tenv : tycEnv) =
                             | _ => bug "unexpected tycEnv in tcLookup")
       else if i = 1 then
              (case tc_outX tenv of TC_ARROW(_,[x],_) => tc_interp x 
-                                 | _ => raise tcUnbound tenv)
+                                 | _ => (print "\ntcLookup\n";
+				        raise tcUnbound (tenv, tc_injX (TC_CONT []))))
            else bug "unexpected argument in tcLookup"
 
 fun tcInsert(tenv : tycEnv, et) = tc_cons(tc_encode et, tenv)
@@ -670,14 +673,28 @@ local fun tcc_env_int(x, 0, 0, te) = x
 in 
 
 fun tcc_env(x, ol, nl, tenv) =
-  let val tvs = tc_vs x
+  (let fun checkTCVAR tyc = case (tc_outX tyc) of
+       TC_VAR(i,j) => (case tcLookup(i,tenv) 
+			of (SOME ts, _) => if j >= length ts 
+					   then (print "tcc_env TC_VAR ";
+						 print (Int.toString j);
+						 print " ts length ";
+						 print (Int.toString (length ts));
+						 raise Fail "Bad TC_ENV TC_VAR")
+					   else ()
+			 | _ => ())
+     | TC_ENV(tc, _, _, _)  => (print "TC_ENV("; checkTCVAR(tc); print ")\n")
+     | _ => () (* print ("tcc_env OTHER " ^ tci_print tci ^"\n") *) 
+   in checkTCVAR(x); 
+    let val tvs = tc_vs x
    in case tvs
        of NONE => tcc_env_int(x, ol, nl, tenv)
         | SOME [] => x
         | SOME nvs => if withEff(nvs, ol, nl, tenv) 
                       then tcc_env_int(x, ol, nl, tenv)
                       else x 
-  end
+    end
+   end)
 
 fun ltc_env(x, ol, nl, tenv) = 
   let val tvs = lt_vs x
@@ -845,7 +862,8 @@ and tc_lzrd(t: tyc) =
 
       and h (x, 0, 0, _) = g x
         | h (x, ol, nl, tenv) = 
-            let fun prop z = tcc_env(z, ol, nl, tenv)
+            let fun prop z = tcc_env(z, ol, nl, tenv) 
+		             handle Fail _ => raise Fail ("tc_lzrd prop "^tc_print(z)^"\n") 
              in (case tc_outX x
                   of TC_VAR (i,j) => 
                        if (i <= ol) then
@@ -863,7 +881,7 @@ and tc_lzrd(t: tyc) =
                      print ("ts length: "^(Int.toString(length ts))^"\n");
                      print ("ts elements: \n");
                      app (fn tc => (print(tc_print tc); print "\n")) ts;
-						   raise tcUnbound tenv)
+						   raise tcUnbound (tenv, t))
                                       in h(y, 0, nl - n, initTycEnv)  (* rule r6 *)
                                      end)
                           end)
@@ -872,7 +890,9 @@ and tc_lzrd(t: tyc) =
                    | TC_PRIM _ => x    (* rule r7 *)
                    | TC_FN (ks, tc) => 
                       let val tenv' = tcInsert(tenv, (NONE, nl))
-                       in tcc_fn(ks, tcc_env(tc, ol+1, nl+1, tenv')) (* rule r10 *)
+                       in tcc_fn(ks, 
+				 tcc_env(tc, ol+1, nl+1, tenv') 
+				 handle Fail _ => raise Fail "tc_lzrd TC_FN") (* rule r10 *)
                       end
                    | TC_APP (tc, tcs) => tcc_app(prop tc, map prop tcs) (* rule r9 *)
                    | TC_SEQ tcs => tcc_seq (map prop tcs)
@@ -963,11 +983,12 @@ and printParamArgs (tc,tcs) =
  *)
 (** normalizing an arbitrary tyc into a simple weak-head-normal-form *)
 and tc_whnm t = if tcp_norm(t) then t else 
-  let (* val _ = print ">>tc_whnm not norm\n" *)
+  let (* val _ = print ">>tc_whnm not norm\n" *) 
       val nt = tc_lzrd t
    in case (tc_outX nt)
        of TC_APP(tc, tcs) =>
-            (let val tc' = tc_whnm tc
+	    ((* print "\ntc_whnm: TC_APP\n"; *)
+            (let val tc' = tc_whnm tc handle Fail _ => raise Fail "TC_APP in tc_whnm 1"
               in case (tc_outX tc')
                   of TC_FN(ks, b) =>  
                        let fun base () = 
@@ -982,8 +1003,9 @@ and tc_whnm t = if tcp_norm(t) then t else
                                                  tcInsert(te, (SOME tcs, n)))
                                            else base()
                                        | _ => base())
-                                | _ => base())
-                           val res = tc_whnm(tcc_env sp)
+                                | _ => base()) 
+                           val res = tc_whnm(tcc_env sp) 
+			             handle Fail _ => raise Fail "TC_APP in tc_whnm 2" 
                         in tyc_upd(nt, res); res
                        end
                    | ((TC_SEQ _) | (TC_TUPLE _) | (TC_ARROW _) | (TC_IND _)) =>
@@ -991,9 +1013,10 @@ and tc_whnm t = if tcp_norm(t) then t else
                    | _ => let val xx = tcc_app(tc', tcs) 
                            in stripInd xx
                           end
-             end)
+             end))
         | TC_PROJ(tc, i) =>
-            (let val tc' = tc_whnm tc
+	   ((* print "\ntc_whnm: TC_PROJ\n"; *) 
+	   (let val tc' = tc_whnm tc
               in (case (tc_outX tc')
                    of (TC_SEQ tcs) => 
                         let val res = List.nth(tcs, i)
@@ -1008,19 +1031,20 @@ and tc_whnm t = if tcp_norm(t) then t else
                     | _ => let val xx = tcc_proj(tc', i)
                             in stripInd xx
                            end)
-             end)
+             end))
         | TC_TOKEN(k, tc)  =>
-            (let val tc' = tc_whnm tc
+	    ((* print "\ntc_whnm: TC_TOKEN\n"; *)
+	    (let val tc' = tc_whnm tc
               in if token_whnm k tc' 
                  then let val xx = tcc_token(k, tc') in stripInd xx end
                  else let val res = token_reduce(k, tc')
                           val nres = tc_whnm res
                        in tyc_upd(nt, nres); nres
                       end
-             end)
-        | TC_IND (tc, _) => tc_whnm tc
+             end))
+        | TC_IND (tc, _) => ((*print "\ntc_whnm: TC_IND\n"; *) tc_whnm tc)
         | TC_ENV _ => bug "unexpected TC_ENV in tc_whnm"
-        | _ => nt
+        | _ => ((* print "\ntc_whnm: OTHER\n"; *) nt)
   end (* function tc_whnm *)
 
 (** normalizing an arbitrary lty into the simple weak-head-normal-form *)

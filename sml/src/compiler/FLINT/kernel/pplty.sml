@@ -61,9 +61,10 @@ fun ppTKind ppstrm (tk : LK.tkind) =
     end (* ppTKind *)
 
 fun tycEnvFlatten(tycenv) = 
-    (case LK.tcSplit(tycenv) of
+    (print "flatten";
+     (case LK.tcSplit(tycenv) of
 	 NONE => []
-       | SOME(elem, rest) => elem::tycEnvFlatten(rest))
+       | SOME(elem, rest) => elem::tycEnvFlatten(rest)))
 
 fun ppTycEnvElem ppstrm (tycop, i) =
     let val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm
@@ -158,6 +159,7 @@ and ppTyc ppstrm (tycon : LK.tyc) =
 	    (openHOVBox 1;
 	     pps "TC_FIX(";
 	     PP.break ppstrm {nsp=1,offset=1};
+	     print "LK.tc_out";
 	     (case (LK.tc_out datatypeFamily) of
 		  LK.TC_FN(params, rectyc) => (* generator function *) 
 		  let fun ppMus 0 = ()
@@ -171,7 +173,8 @@ and ppTyc ppstrm (tycon : LK.tyc) =
 						ppMus (length params);
 						pps "]")
 		   else ();
-		   PP.break ppstrm {nsp=1,offset=1};  
+		   PP.break ppstrm {nsp=1,offset=1};
+		   print "LK.tc_out";
 		  (case (LK.tc_out rectyc) of
 			 (rectycI as LK.TC_FN _) => ppTycI rectycI
 		       | LK.TC_SEQ(dconstycs) => 
@@ -247,6 +250,7 @@ and ppTyc ppstrm (tycon : LK.tyc) =
 	  | ppTycI (LK.TC_TOKEN (tok, tyc)) =
 	    (pps "TC_TOKEN(";
 	     PP.break ppstrm {nsp=1,offset=1};
+	     print "LK.token_name\n";
 	     pps (LK.token_name tok);
 	     pps ", ";
 	     PP.break ppstrm {nsp=1,offset=0};
@@ -283,6 +287,7 @@ and ppTyc ppstrm (tycon : LK.tyc) =
 	     PP.break ppstrm {nsp=1,offset=0};
 	     ppList' {sep=", ", pp=(ppTycEnvElem ppstrm)} (tycEnvFlatten tenv);
 	     closeBox())
+    val _ = print "LK.tc_out 1 \n" 
     in ppTycI (LK.tc_out tycon)
     end (* ppTyc *)
 

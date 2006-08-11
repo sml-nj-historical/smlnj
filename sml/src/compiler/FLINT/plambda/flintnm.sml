@@ -344,9 +344,14 @@ and tovalues (venv,d,lexp,cont) =
 					  | scan' (x::xs, l::ls, n) = 
 					    (debugmsg ("tovalues cont ltys ["^
 						      Int.toString n ^"]:");
-					     if !debugging then PPLexp.printLexp l else ();
-					debugmsg (LtyBasic.lt_print x); scan' (xs, ls, n + 1))
-					  | scan' _ = raise Fail "flintnm.sml:tovalues::scan'"
+					     if !debugging 
+					     then PPLexp.printLexp l else ();
+					     debugmsg (LtyBasic.lt_print x); 
+					     scan' (xs, ls, n + 1))
+					  | scan' _ = 
+					    raise Fail "flintnm.sml:\
+							\ tovalues::scan'"
+
 				    in scan'(lts, lexps, 0)
 				    end
                              val _ = scan ltys 
@@ -400,23 +405,24 @@ and lexps2values (venv,d,lexps,cont) =
 
 fun ppTycEnv tenv = 
     PrettyPrintNew.with_default_pp (fn ppstrm => PPLTy.ppTycEnv ppstrm tenv)
-
+fun ppTyc tyc =
+    PrettyPrintNew.with_default_pp (fn ppstrm => PPLTy.ppTyc ppstrm tyc)
 
 	fun f [] (vals,ltys) = cont (rev vals, rev ltys)
 	  | f (lexp::lexps) (vals,ltys) =
 	    (debugmsg ("lexps2values ltys "^concat (map (fn x => ("\n"^LtyBasic.lt_print x)) ltys)); 
 	    tovalue(venv,d,lexp,
-		    fn (v, lty) => (debugmsg ">>lexps2values tovalue";
+		    fn (v, lty) => ((*debugmsg ">>lexps2values tovalue";
 				    if !debugging then PPLexp.printLexp lexp else ();
-				    if !debugging then debugmsg ("lty: "^ LtyBasic.lt_print lty) else ();
+				    if !debugging then debugmsg ("lty: "^ LtyBasic.lt_print lty) else ();*)
 		    f lexps (v::vals, lty::ltys)))) 
-	    handle LtyKernel.tcUnbound tenv => 
-		   (print "\n*** lexps2values ***\nlexp: "; 
+	    (* handle LtyKernel.tcUnbound (tenv,tyc) => 
+		   (print "\n*** lexps2values ***\nlexp: \n"; 
 		    PPLexp.printLexp lexp;
-		    print "\ntype: ";
-		    (* Fill in with PPLty.pplty (lty) *)
-		    print "\ntenv";
-		    ppTycEnv tenv; raise LtyKernel.tcUnbound tenv)
+		    print "\ntype: \n";
+		    ppTyc tyc;
+		    print "\ntenv: \n";
+		    ppTycEnv tenv; raise LtyKernel.tcUnbound (tenv,tyc)) *)
 	val v = f lexps ([], [])
 	val _ = debugmsg "<<lexp2values"
     in
