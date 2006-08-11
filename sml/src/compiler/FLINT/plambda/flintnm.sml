@@ -20,6 +20,8 @@ local structure LT = PLambdaType
       structure FU = FlintUtil
       structure DA = Access
       structure BT = BasicTypes
+      structure PP = PrettyPrintNew
+      structure PU = PPUtilNew
 in
 
 (* debugging *)
@@ -29,6 +31,9 @@ val debugging = ref false;
 fun debugmsg (msg : string) = 
     if !debugging then (say msg; say "\n") else ()
 
+fun ppTycEnv tenv = 
+    PP.with_default_pp
+      (fn ppstrm => (PPLty.ppTycEnv 20 ppstrm tenv; PU.pps ppstrm "\n"))
 
 val mkv = LambdaVar.mkLvar
 val cplv = LambdaVar.dupLvar
@@ -404,9 +409,9 @@ and lexps2values (venv,d,lexps,cont) =
 	val _ = 1
 
 fun ppTycEnv tenv = 
-    PrettyPrintNew.with_default_pp (fn ppstrm => PPLTy.ppTycEnv ppstrm tenv)
+    PrettyPrintNew.with_default_pp (fn ppstrm => PPLty.ppTycEnv 20 ppstrm tenv)
 fun ppTyc tyc =
-    PrettyPrintNew.with_default_pp (fn ppstrm => PPLTy.ppTyc ppstrm tyc)
+    PrettyPrintNew.with_default_pp (fn ppstrm => PPLty.ppTyc 20 ppstrm tyc)
 
 	fun f [] (vals,ltys) = cont (rev vals, rev ltys)
 	  | f (lexp::lexps) (vals,ltys) =
@@ -417,12 +422,15 @@ fun ppTyc tyc =
 				    if !debugging then debugmsg ("lty: "^ LtyBasic.lt_print lty) else ();*)
 		    f lexps (v::vals, lty::ltys)))) 
 	    (* handle LtyKernel.tcUnbound (tenv,tyc) => 
-		   (print "\n*** lexps2values ***\nlexp: \n"; 
-		    PPLexp.printLexp lexp;
-		    print "\ntype: \n";
-		    ppTyc tyc;
-		    print "\ntenv: \n";
-		    ppTycEnv tenv; raise LtyKernel.tcUnbound (tenv,tyc)) *)
+		   (with_pp(fn s =>
+                      (PU.pps s "*** lexps2values ***; PP.newline s;
+                       lexp: \n"; 
+		       PPLexp.printLexp lexp;
+		       print "\ntype: \n";
+		       ppTyc 20 s tyc; PP.newline s;
+		       PU.pps s "tenv:"; PP.newline s;
+		       ppTycEnv 20 s tenv;
+                       raise LtyKernel.tcUnbound (tenv,tyc)))) *)
 	val v = f lexps ([], [])
 	val _ = debugmsg "<<lexp2values"
     in

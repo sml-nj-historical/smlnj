@@ -109,7 +109,7 @@ fun fexp mf depth lexp = let
 	      * if they are the head of the function or if the head
 	      * is already recursive *)
 	     of ((SOME{isrec=NONE,...},{isrec=SOME _,...}) |
-		 (SOME{cconv=F.CC_FCT,...},{cconv=F.CC_FUN (LK.FF_VAR _),...}) |
+		 (SOME{cconv=F.CC_FCT,...},{cconv=F.CC_FUN (Lty.FF_VAR _),...}) |
 		 (SOME{cconv=F.CC_FUN _,...},{cconv=F.CC_FCT,...})) =>
 		([], le)
 	      | _ =>
@@ -140,8 +140,8 @@ fun fexp mf depth lexp = let
 		case #cconv(#1(hd args))
 		 of F.CC_FCT => F.CC_FCT
 		  | _ => case #cconv(#1(List.last args))
-			  of F.CC_FUN(LK.FF_VAR(_,raw)) =>
-			     F.CC_FUN(LK.FF_VAR(true, raw))
+			  of F.CC_FUN(Lty.FF_VAR(_,raw)) =>
+			     F.CC_FUN(Lty.FF_VAR(true, raw))
 			   | cconv => cconv
 	    val (nfk,nfk') = OU.fk_wrap(fk, foldl getrtypes NONE args)
 	    val nfk' = {inline= #inline nfk', isrec= #isrec nfk',

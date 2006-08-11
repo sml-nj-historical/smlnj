@@ -27,7 +27,7 @@ local structure DI = DebIndex
       structure PO = PrimOp
       structure PT = PrimTyc
       structure LV = LambdaVar
-      open LtyKernel FLINT 
+      open Lty LtyKernel FLINT 
 in
 
   type tcode = int

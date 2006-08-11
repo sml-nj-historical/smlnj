@@ -75,7 +75,8 @@ struct
   fun pp_to_string wid ppFn obj =
       let val l = ref ([] : string list)
           fun attach s = l := s :: !l
-          val device = {consumer = attach, linewidth = (fn _ => wid), flush = fn()=>()}
+          val device = {consumer = attach, linewidth = (fn _ => wid),
+                        flush = fn()=>()}
        in with_pp device
             (fn ppStrm => ppFn ppStrm obj);
           String.concat(List.rev(!l))

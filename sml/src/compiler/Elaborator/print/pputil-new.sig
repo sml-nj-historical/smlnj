@@ -45,6 +45,7 @@ sig
   val ppTuple: PrettyPrintNew.stream
 	       -> (PrettyPrintNew.stream -> 'a -> unit) -> 'a list -> unit
 
+  val pps: PrettyPrintNew.stream -> string -> unit
   val ppi: PrettyPrintNew.stream -> int -> unit
   val ppcomma : PrettyPrintNew.stream -> unit
   val ppcomma_nl : PrettyPrintNew.stream -> unit
@@ -58,7 +59,8 @@ sig
 	       openHVBox  : int -> unit,
 	       openHOVBox : int -> unit,
 	       closeBox   : unit -> unit, 
-	       pps        : string -> unit}
+	       pps        : string -> unit,
+               ppi        : int -> unit}
   val ppArray : PrettyPrintNew.stream -> 
                 (PrettyPrintNew.stream -> 'a -> unit) * 'a array
 	        -> unit

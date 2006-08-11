@@ -63,10 +63,10 @@ fun ppTycon x =
 end
 
 local 
-    structure PPN = PrettyPrintNew
+  structure PPN = PrettyPrintNew
 in
 fun ppLtyc ltyc = 
-    PPN.with_default_pp (fn ppstrm => PPLTy.ppTyc ppstrm ltyc)
+    PPN.with_default_pp (fn ppstrm => PPLty.ppTyc 20 ppstrm ltyc)
 end
 
 (****************************************************************************

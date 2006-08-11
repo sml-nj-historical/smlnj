@@ -6,179 +6,170 @@
  *
  *)
 
-structure PPLTy =
+structure PPLty =
 struct
 
 local 
 
-    structure LK = LtyKernel
+    structure LK = Lty
     structure PT = PrimTyc
     structure PP = PrettyPrintNew
     open PPUtilNew
 in
 
-fun ppList ppstrm {sep, pp : 'a -> unit} list =
+fun ppSeq ppstrm {sep: string, pp : PP.stream -> 'a -> unit} (list: 'a list) =
     let val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm
-    in
-	(ppSequence ppstrm
-		    {sep = fn ppstrm => (PP.string ppstrm sep;
-					 PP.break ppstrm {nsp=1, offset=0}),
-		     style = INCONSISTENT,
-		     pr = (fn _ => fn elem => 
-				      (openHOVBox 1;
-				       (* pps "("; *)
-				       pp elem;
-				       (* pps ")"; *)
-				       closeBox()))}
-		    list)
-    end (* ppList *)
+     in	ppSequence ppstrm
+	   {sep = fn ppstrm => (PP.string ppstrm sep;
+			        PP.break ppstrm {nsp=1, offset=0}),
+	    style = INCONSISTENT,
+            pr = pp}
+           list
+    end (* ppSeq *)
+
+fun ppList ppstrm {sep: string, pp : PP.stream -> 'a -> unit} (list: 'a list) =
+    ppClosedSequence ppstrm
+      {front = fn ppstrm => (PP.string ppstrm "["),
+       back = fn ppstrm => (PP.string ppstrm "]"),
+       sep = fn ppstrm => (PP.string ppstrm sep;
+		           PP.break ppstrm {nsp=1, offset=0}),
+       style = INCONSISTENT,
+       pr = pp}
+      list
 
 (* ppTKind : tkind -> unit 
  * Print a hashconsed representation of the kind *)
-fun ppTKind ppstrm (tk : LK.tkind) =
-    let val ppTKind' = ppTKind ppstrm
-	val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm
+fun ppTKind pd ppstrm (tk : Lty.tkind) =
+    if pd < 1 then pps ppstrm "<tk>" else
+    let val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm
+        val ppTKind' = ppTKind (pd-1) ppstrm
 	val ppList' = ppList ppstrm
-	fun ppTKindI(LK.TK_MONO) = pps "TK_MONO"
-	  | ppTKindI(LK.TK_BOX) = pps "TK_BOX"
-	  | ppTKindI(LK.TK_FUN (argTkinds, resTkind)) = 
+	fun ppTKindI(Lty.TK_MONO) = pps "MK"
+	  | ppTKindI(Lty.TK_BOX) = pps "BK"
+	  | ppTKindI(Lty.TK_FUN (argTkinds, resTkind)) = 
 	      (* res_tkind is a TK_SEQ wrapping some tkinds 
 	       * These are produced by Elaborate/modules/instantiate.sml 
 	       *)
 	     (openHOVBox 1;
-	      pps "TK_FUN (";
-	      ppList' {sep="* ", pp=ppTKind'} argTkinds;
-	      ppTKind' resTkind;
-	      pps ")";
+	       pps "(";
+	       ppList' {sep=",", pp=ppTKind (pd-1)} argTkinds;
+	       pps "=>"; ppTKind' resTkind;
+	       pps ")";
 	      closeBox())
-	  | ppTKindI(LK.TK_SEQ tkinds) =
-	    (openHOVBox 1;
-	     pps "TK_SEQ(";
-	     ppList' {sep=", ", pp=ppTKind'} tkinds;
-	     pps ")";
-	     closeBox())
-    in ppTKindI (LK.tk_out tk)
+	  | ppTKindI(Lty.TK_SEQ tkinds) =
+	     (openHOVBox 1;
+	       pps "SK";
+	       ppList' {sep=",", pp=ppTKind (pd-1)} tkinds;
+	      closeBox())
+     in ppTKindI (Lty.tk_outX tk)
     end (* ppTKind *)
 
 fun tycEnvFlatten(tycenv) = 
-    (print "flatten";
-     (case LK.tcSplit(tycenv) of
-	 NONE => []
-       | SOME(elem, rest) => elem::tycEnvFlatten(rest)))
+    (case Lty.tcSplit(tycenv)
+       of NONE => []
+        | SOME(elem, rest) => elem::tycEnvFlatten(rest))
 
-fun ppTycEnvElem ppstrm (tycop, i) =
-    let val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm
-    in
-	openHOVBox 1;
-	(* pps "("; *)
-	(case tycop of
-	     NONE => pps "*"
-	   | SOME(tycs) => ppList ppstrm {sep=",", pp=ppTyc ppstrm} tycs);
-	pps ", ";
-	PP.break ppstrm {nsp = 1, offset=0}; 
-	ppi ppstrm i;
-	(* pps ")"; *)
-	closeBox()
+fun ppTycEnvElem pd ppstrm ((tycop,i): Lty.tycEnvElem) =
+    if pd < 1 then pps ppstrm "<tee>" else
+    let val {openHOVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
+    in openHOVBox 1;
+	pps "(";
+	(case tycop
+	   of NONE => pps "*"
+	    | SOME(tycs) => ppList ppstrm {sep=",", pp=ppTyc (pd-1)} tycs);
+	pps ",";
+	ppi i;
+	pps ")";
+       closeBox()
     end (* function ppTycEnvElem *)
 
-and ppTyc ppstrm (tycon : LK.tyc) =
+and ppTyc pd ppstrm (tycon : Lty.tyc) =
     (* FLINT variables are represented using deBruijn indices *)
-    let val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm
-					       (* eta-expansion of ppList to avoid 
-						  value restriction *) 
-	val ppList' : {pp:'a -> unit, sep: string} -> 'a list -> unit = fn x => ppList ppstrm x
-	val ppTKind' = ppTKind ppstrm
-	val ppTyc' = ppTyc ppstrm
-	fun ppTycI (LK.TC_VAR(depth, cnt)) =
-	    (pps "TC_VAR(";
-	     PP.break ppstrm {nsp=1,offset=1};
+    if pd < 1 then pps ppstrm "<tyc>" else
+    let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
+	val ppList' : {pp:PP.stream -> 'a -> unit, sep: string} -> 'a list -> unit =
+              fn x => ppList ppstrm x
+	       (* eta-expansion of ppList to avoid value restriction *) 
+
+	val ppTKind' = ppTKind (pd-1) ppstrm
+	val ppTyc' = ppTyc (pd-1) ppstrm
+
+	fun ppTycI (Lty.TC_VAR(depth, cnt)) =
+	    (pps "TV(";
 	     (* depth is a deBruijn index set in elabmod.sml/instantiate.sml *)
 	     pps (DebIndex.di_print depth);
 	     pps ",";
-	     PP.break ppstrm {nsp=1,offset=0};
 	     (* cnt is computed in instantiate.sml sigToInst or 
 	        alternatively may be simply the IBOUND index *)
-	     pps (Int.toString cnt);
+	     ppi cnt;
 	     pps ")")
 	  (* Named tyc VAR; is actually an lvar *)
-	  | ppTycI (LK.TC_NVAR tvar) =
-	    (pps "TC_NVAR(";
-	     PP.break ppstrm {nsp=1,offset=1};
-	     pps (Int.toString tvar);
-	     pps ")")
-	  | ppTycI (LK.TC_PRIM primtycon) =
-	    (pps "TC_PRIM(";
-	     PP.break ppstrm {nsp=1,offset=0};
+	  | ppTycI (Lty.TC_NVAR tvar) =
+	    (pps "NTV:"; ppi tvar)
+	  | ppTycI (Lty.TC_PRIM primtycon) =
+	    (pps "PRIM(";
 	     pps (PT.pt_print primtycon);
 	     pps ")")
-	  | ppTycI (LK.TC_FN (argTkinds, resultTyc)) =
+	  | ppTycI (Lty.TC_FN (argTkinds, resultTyc)) =
 	    (openHOVBox 1;
-	     pps "TC_FN(";
-	     PP.break ppstrm {nsp=1,offset=1};
-	     ppList' {sep="* ", pp=ppTKind'} argTkinds;
+	     pps "FN(";
+	     ppList' {sep="*", pp=ppTKind (pd-1)} argTkinds;
 	     pps ",";
 	     PP.break ppstrm {nsp=1,offset=0};
 	     ppTyc' resultTyc;
 	     pps ")";
 	     closeBox())
-	  | ppTycI (LK.TC_APP(contyc, tys)) =
+	  | ppTycI (Lty.TC_APP(contyc, tys)) =
 	    (openHOVBox 1;
-	     pps "TC_APP(";
-	     PP.break ppstrm {nsp=1,offset=1};
+	     pps "APP(";
 	     ppTyc' contyc;
 	     pps ",";
 	     PP.break ppstrm {nsp=1,offset=0};
-	     ppList' {sep="* ", pp=ppTyc'} tys;
+	     ppList' {sep=",", pp=ppTyc (pd-1)} tys;
 	     pps ")";
 	     closeBox())
-	  | ppTycI (LK.TC_SEQ tycs) =
+	  | ppTycI (Lty.TC_SEQ tycs) =
 	    (openHOVBox 1;
-	     pps "TC_SEQ(";
-	     PP.break ppstrm {nsp=1,offset=1};
-	     ppList' {sep=", ", pp=ppTyc'} tycs;
+	     pps "SEQ(";
+	     ppList' {sep=",", pp=ppTyc (pd-1)} tycs;
 	     pps ")";
 	     closeBox())
-	  | ppTycI (LK.TC_PROJ(tycon, index)) =
+	  | ppTycI (Lty.TC_PROJ(tycon, index)) =
 	    (openHOVBox 1;
-	     pps "TC_PROJ(";
-	     PP.break ppstrm {nsp=1,offset=1};
+	     pps "PROJ(";
 	     ppTyc' tycon;
-	     pps ", ";
+	     pps ",";
 	     PP.break ppstrm {nsp=1,offset=0};
 	     pps (Int.toString index);
 	     pps ")";
 	     closeBox())
-	  | ppTycI (LK.TC_SUM(tycs)) =
-	    (pps "TC_SUM(";
-	     PP.break ppstrm {nsp=1,offset=1};
-	     ppList' {sep=", ", pp=ppTyc'} tycs;
+	  | ppTycI (Lty.TC_SUM(tycs)) =
+	    (pps "SUM(";
+	     ppList' {sep=",", pp=ppTyc (pd-1)} tycs;
 	     pps ")")
 	    (* TC_FIX is a recursive datatype constructor 
 	       from a (mutually-)recursive family *)
-	  | ppTycI (LK.TC_FIX((numStamps, datatypeFamily, freetycs), index)) =
+	  | ppTycI (Lty.TC_FIX((numStamps, datatypeFamily, freetycs), index)) =
 	    (openHOVBox 1;
-	     pps "TC_FIX(";
-	     PP.break ppstrm {nsp=1,offset=1};
-	     print "LK.tc_out";
-	     (case (LK.tc_out datatypeFamily) of
-		  LK.TC_FN(params, rectyc) => (* generator function *) 
+	     pps "FIX(";
+	     (case (Lty.tc_outX datatypeFamily) of
+		  Lty.TC_FN(params, rectyc) => (* generator function *) 
 		  let fun ppMus 0 = ()
-			| ppMus i = (pps "mu"; 
-				     ppi ppstrm i; 
+			| ppMus i = (pps "mu";
+				     ppi i; 
 				     pps " "; 
 				     ppMus (i - 1))
 		  in 
-		  (pps "RECTYCGEN(";
+		  (pps "REC(";
 		   if (length params) > 0 then (pps "[";
-						ppMus (length params);
+						ppi (length params);
 						pps "]")
 		   else ();
-		   PP.break ppstrm {nsp=1,offset=1};
-		   print "LK.tc_out";
-		  (case (LK.tc_out rectyc) of
-			 (rectycI as LK.TC_FN _) => ppTycI rectycI
-		       | LK.TC_SEQ(dconstycs) => 
-			 ppTyc' (List.nth(dconstycs, index))
+		   PP.break ppstrm {nsp=1,offset=1};  
+		  (case (Lty.tc_outX rectyc) of
+			 (rectycI as Lty.TC_FN _) => ppTycI rectycI
+		       | Lty.TC_SEQ(dconstycs) => 
+		         ppTyc' (List.nth(dconstycs, index))
 		       | tycI => ppTycI tycI);
 		  PP.break ppstrm {nsp=0,offset=0};
 		  pps ")")
@@ -198,109 +189,100 @@ and ppTyc ppstrm (tycon : LK.tyc) =
 	     pps ", ";
 	     PP.break ppstrm {nsp=1, offset=0};
 	     pps "freeTycs = ";
-	     ppList' {sep = ", ", pp = ppTyc'} freetycs;
+	     ppList' {sep = ", ", pp = ppTyc} freetycs;
 	     pps ", ";
 	     PP.break ppstrm {nsp=1, offset=0};
 	     pps "index = ";
 	     pps (Int.toString index);
 	     pps ")";
 	     closeBox() *) )
-	  | ppTycI (LK.TC_ABS tyc) =
-	    (pps "TC_ABS(";
-	     PP.break ppstrm {nsp=1,offset=1};
+	  | ppTycI (Lty.TC_ABS tyc) =
+	    (pps "ABS(";
 	     ppTyc' tyc;
 	     pps ")")
-	  | ppTycI (LK.TC_BOX tyc) =
-	    (pps "TC_BOX(";
-	     PP.break ppstrm {nsp=1,offset=1};
+	  | ppTycI (Lty.TC_BOX tyc) =
+	    (pps "BOX(";
 	     ppTyc' tyc;
 	     pps ")")
 	    (* rflag is a tuple kind template, a singleton datatype RF_TMP *)
-	  | ppTycI (LK.TC_TUPLE (rflag, tycs)) =
-	    (case tycs of
-		 [] => pps "UNIT"
-	       | _ => (pps "TC_TUPLE(";
-		       PP.break ppstrm {nsp=1,offset=1};
-		       ppList' {sep="* ", pp=ppTyc'} tycs;
-		       pps ")"))
+	  | ppTycI (Lty.TC_TUPLE(rflag, tycs)) =
+	    (ppClosedSequence ppstrm
+                {front = (fn s => PP.string s "{"),
+                 sep =  (fn s => PP.string s ","),
+                 back =  (fn s => PP.string s "}"),
+                 pr = ppTyc (pd-1),
+                 style = INCONSISTENT}
+	        tycs)
 	    (* fflag records the calling convention: either FF_FIXED or FF_VAR *)
-	  | ppTycI (LK.TC_ARROW (fflag, argTycs, resTycs)) =
-	    (pps "TC_ARROW(";
-	     PP.break ppstrm {nsp=1,offset=1};
-	     (case fflag of LK.FF_FIXED => pps "FF_FIXED"
-			  | LK.FF_VAR(b1, b2) => (pps "<FF_VAR>" (*;
-						   ppBool b1;
-						  pps ", ";
-						  ppBool b2; 
-						  pps ")"*) ));
-	     ppList' {sep="* ", pp=ppTyc'} argTycs;
-	     pps ", ";
+	  | ppTycI (Lty.TC_ARROW (fflag, argTycs, resTycs)) =
+	    (pps "ARR(";
+	     (case fflag of Lty.FF_FIXED => pps "FF_FIXED"
+			  | Lty.FF_VAR(b1, b2) =>
+                              (pps "<FF_VAR>" (*; ppBool b1; pps ",";
+						  ppBool b2; pps ")"*) ));
+	     pps ",";
 	     PP.break ppstrm {nsp=1,offset=0};
-	     ppList' {sep="* ", pp=ppTyc'} resTycs;
+	     ppList' {sep=",", pp=ppTyc (pd-1)} argTycs;
+	     pps ",";
+	     PP.break ppstrm {nsp=1,offset=0};
+	     ppList' {sep=",", pp=ppTyc (pd-1)} resTycs;
 	     pps ")")
 	    (* According to ltykernel.sml comment, this arrow tyc is not used *)
-	  | ppTycI (LK.TC_PARROW (argTyc, resTyc)) =
-	    (pps "TC_PARROW(";
-	     PP.break ppstrm {nsp=1,offset=1};
+	  | ppTycI (Lty.TC_PARROW (argTyc, resTyc)) =
+	    (pps "PARR(";
 	     ppTyc' argTyc;
-	     pps ", ";
+	     pps ",";
 	     PP.break ppstrm {nsp=1,offset=0};
 	     ppTyc' resTyc;
 	     pps ")")
-	  | ppTycI (LK.TC_TOKEN (tok, tyc)) =
-	    (pps "TC_TOKEN(";
-	     PP.break ppstrm {nsp=1,offset=1};
-	     print "LK.token_name\n";
-	     pps (LK.token_name tok);
-	     pps ", ";
+	  | ppTycI (Lty.TC_TOKEN (tok, tyc)) =
+	    (pps "TOK(";
+	     pps (Lty.token_name tok);
+	     pps ",";
 	     PP.break ppstrm {nsp=1,offset=0};
 	     ppTyc' tyc;
 	     pps ")")
-	  | ppTycI (LK.TC_CONT tycs) = 
-	    (pps "TC_CONT(";
-	     PP.break ppstrm {nsp=1,offset=1};
-	     ppList' {sep=", ", pp=ppTyc'} tycs;
+	  | ppTycI (Lty.TC_CONT tycs) = 
+	    (pps "CONT(";
+	     ppList' {sep=", ", pp=ppTyc (pd-1)} tycs;
 	     pps ")")
-	  | ppTycI (LK.TC_IND (tyc, tycI)) =
+	  | ppTycI (Lty.TC_IND (tyc, tycI)) =
 	    (openHOVBox 1;
-	     pps "TC_IND(";
-	     PP.break ppstrm {nsp=1,offset=1};
+	     pps "IND(";
 	     ppTyc' tyc;
 	     pps ", ";
 	     PP.break ppstrm {nsp=1,offset=0};
 	     ppTycI tycI;
 	     pps ")";
 	     closeBox())
-	  | ppTycI (LK.TC_ENV (tyc, ol, nl, tenv)) =
-	    (openHOVBox 1;
-	     pps "TC_ENV(";
-	     PP.break ppstrm {nsp=1,offset=1};
-	     ppTyc' tyc;
-	     pps ", ";
-	     PP.break ppstrm {nsp=1,offset=0};
-	     pps "ol = ";
+	  | ppTycI (Lty.TC_ENV (tyc, ol, nl, tenv)) =
+	    (openHVBox 1;
+	     pps "ENV(";
+	     pps "ol=";
 	     pps (Int.toString ol);
 	     pps ", ";
-	     pps "nl = ";
+	     pps "nl=";
 	     pps (Int.toString nl);
-	     pps ", ";
+	     pps ",";
 	     PP.break ppstrm {nsp=1,offset=0};
-	     ppList' {sep=", ", pp=(ppTycEnvElem ppstrm)} (tycEnvFlatten tenv);
+	     ppTyc' tyc;
+	     pps ",";
+	     PP.break ppstrm {nsp=1,offset=0};
+	     ppList' {sep=",", pp=ppTycEnvElem (pd-1)} (tycEnvFlatten tenv);
 	     closeBox())
-    val _ = print "LK.tc_out 1 \n" 
-    in ppTycI (LK.tc_out tycon)
+    in ppTycI (Lty.tc_outX tycon)
     end (* ppTyc *)
 
-fun ppTycEnv ppstrm (tycEnv : LK.tycEnv) =
+fun ppTycEnv pd ppstrm (tycEnv : Lty.tycEnv) =
+    if pd < 1 then pps ppstrm "<tycEnv>" else
     let val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm
-    in
-	openHOVBox 1;
-	pps "TycEnv(";
-	ppList ppstrm {sep=", ", pp=ppTycEnvElem ppstrm} (tycEnvFlatten tycEnv);
-	pps ")";
+     in openHOVBox 1;
+	 pps "TycEnv(";
+	 ppList ppstrm {sep=", ", pp=ppTycEnvElem (pd-1)} (tycEnvFlatten tycEnv);
+	 pps ")";
 	closeBox()
-    end (* function ppTycEnv *)
+    end (* ppTycEnv *)
 
 end (* local *)	    
 	     
-end
+end (* structure PPLty *)

@@ -16,14 +16,14 @@ sig
 type index = DebIndex.index
 type depth = DebIndex.depth
 type primtyc = PrimTyc.primtyc
-type tvar = LtyKernel.tvar
+type tvar = Lty.tvar
 
-type fflag = LtyKernel.fflag 
-type rflag = LtyKernel.rflag
+type fflag = Lty.fflag 
+type rflag = Lty.rflag
 
-type tkind = LtyKernel.tkind
-type tyc = LtyKernel.tyc
-type lty = LtyKernel.lty
+type tkind = Lty.tkind
+type tyc = Lty.tyc
+type lty = Lty.lty
 
 (* 
  * FLINT tkind is roughly equivalent to the following ML datatype 

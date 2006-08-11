@@ -29,7 +29,7 @@ struct
         fun extendEnv env d _ tvtks = let
             fun tvtk2tyc (tvar, _) = LT.tcc_nvar tvar
         in
-            LK.tcInsert (env, (SOME (map tvtk2tyc tvtks), 0))
+            Lty.tcInsert (env, (SOME (map tvtk2tyc tvtks), 0))
         end
 
         fun cvtExp env d = let
@@ -136,7 +136,7 @@ struct
              ) : F.fundec
         end (* cvtFundec *)
     in
-        cvtFundec LK.initTycEnv DI.top
+        cvtFundec Lty.initTycEnv DI.top
     end
 
     (* `names2debIndex' removes all named variables (`TC_NVAR')

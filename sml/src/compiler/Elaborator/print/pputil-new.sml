@@ -11,22 +11,23 @@ struct
 
   val pps = PP.string
 
-  fun ppSequence0 ppstream (sep:PP.stream->unit,pr,elems) =
-      let fun prElems [el] = pr ppstream el
-	    | prElems (el::rest) =
-	        (pr ppstream el;
-		 sep ppstream;
-                 prElems rest)
-	    | prElems [] = ()
-       in prElems elems
-      end
-
   datatype break_style = CONSISTENT | INCONSISTENT
 
   fun openStyleBox style = 
       case style
         of CONSISTENT => PP.openHVBox
          | INCONSISTENT => PP.openHOVBox
+
+  fun ppSequence0 ppstream (sep:PP.stream->unit,pr,elems) =
+      let fun prElems [el] = pr ppstream el
+	    | prElems (el::rest) =
+	        (pr ppstream el;
+		 sep ppstream;
+                 PP.break ppstream {nsp=1,offset=0};
+                 prElems rest)
+	    | prElems [] = ()
+       in prElems elems
+      end
 
   fun ppSequence ppstream {sep:PP.stream->unit, pr:PP.stream->'a->unit, 
                            style:break_style} (elems: 'a list) =
@@ -37,7 +38,7 @@ struct
   fun ppClosedSequence ppstream{front:PP.stream->unit,sep:PP.stream->unit,
                                 back:PP.stream->unit,pr:PP.stream->'a->unit,
                                 style:break_style} (elems:'a list) =
-      (PP.openHVBox ppstream (PP.Rel 0);
+      (PP.openHVBox ppstream (PP.Rel 1);
        front ppstream;
        openStyleBox style ppstream (PP.Rel 0);
        ppSequence0 ppstream (sep,pr,elems); 
@@ -181,7 +182,8 @@ struct
       {openHVBox = (fn indent => PP.openHVBox ppstrm (PP.Rel indent)),  (* CONSISTENT *)
        openHOVBox = (fn indent => PP.openHOVBox ppstrm (PP.Rel indent)),  (* INCONSISTENT *)
        closeBox = fn () => PP.closeBox ppstrm,
-       pps = PP.string ppstrm,
+       pps = pps ppstrm,
+       ppi = ppi ppstrm,
        break = fn nsp_offset => PP.break ppstrm nsp_offset,
        newline = fn () => PP.newline ppstrm};
 
@@ -210,4 +212,4 @@ struct
 	 pr=f, style=INCONSISTENT}
 
 
-end (* structure PPUtil *)
+end (* structure PPUtilNew *)

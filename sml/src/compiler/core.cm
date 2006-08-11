@@ -112,6 +112,7 @@ Group
 
 	(* export of structures required to use FLINT directly *)
 	structure Translate
+	structure Lty
 	structure LtyKernel
 	structure LtyDef
 	structure LtyExtern
@@ -124,7 +125,7 @@ Group
 	structure ChkFlint
 	structure DebIndex
 
-	structure PPLTy
+	structure PPLty
 is
 
 TopLevel/environ/environ.sig
@@ -220,6 +221,8 @@ FLINT/kernel/ltyextern.sig
 FLINT/kernel/ltyextern.sml
 FLINT/kernel/ltykernel.sig
 FLINT/kernel/ltykernel.sml
+FLINT/kernel/lty.sig
+FLINT/kernel/lty.sml
 
 FLINT/kernel/pplty.sml
 

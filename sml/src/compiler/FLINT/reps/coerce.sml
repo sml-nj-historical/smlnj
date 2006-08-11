@@ -24,7 +24,7 @@ local structure DI = DebIndex
       structure LV = LambdaVar
       structure PF = PFlatten
       structure FU = FlintUtil
-      open LtyKernel FLINT
+      open Lty LtyKernel FLINT
 in
 
 (****************************************************************************

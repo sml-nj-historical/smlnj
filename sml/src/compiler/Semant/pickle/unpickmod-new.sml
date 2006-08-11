@@ -47,7 +47,8 @@ structure UnpickMod : UNPICKMOD = struct
 
     structure A = Access
     structure DI = DebIndex
-    structure LT = LtyDef
+    structure LT = Lty
+    structure LD = LtyDef
     structure LK = LtyKernel
     structure PT = PrimTyc
     structure F = FLINT
@@ -245,10 +246,10 @@ structure UnpickMod : UNPICKMOD = struct
 	end
 
 	fun tkind () = let
-	    fun tk #"A" = LT.tkc_mono
-	      | tk #"B" = LT.tkc_box
-	      | tk #"C" = LT.tkc_seq (tkindlist ())
-	      | tk #"D" = LT.tkc_fun (tkindlist (), tkind ())
+	    fun tk #"A" = LD.tkc_mono
+	      | tk #"B" = LD.tkc_box
+	      | tk #"C" = LD.tkc_seq (tkindlist ())
+	      | tk #"D" = LD.tkc_fun (tkindlist (), tkind ())
 	      | tk _ = raise Format
 	in
 	    share tkindM tk
@@ -1291,10 +1292,10 @@ structure UnpickMod : UNPICKMOD = struct
 	val tycLvPM = UU.mkMap ()
 
 	fun lty () = let
-	    fun lt #"A" = LT.ltc_tyc (tyc ())
-	      | lt #"B" = LT.ltc_str (ltylist ())
-	      | lt #"C" = LT.ltc_fct (ltylist (), ltylist ())
-	      | lt #"D" = LT.ltc_poly (tkindlist (), ltylist ())
+	    fun lt #"A" = LD.ltc_tyc (tyc ())
+	      | lt #"B" = LD.ltc_str (ltylist ())
+	      | lt #"C" = LD.ltc_fct (ltylist (), ltylist ())
+	      | lt #"D" = LD.ltc_poly (tkindlist (), ltylist ())
 	      | lt _ = raise Format
 	in
 	    share ltyM lt
@@ -1303,22 +1304,22 @@ structure UnpickMod : UNPICKMOD = struct
 	and ltylist () = list ltyListM lty ()
 
 	and tyc () = let
-	    fun tc #"A" = LT.tcc_var (DI.di_fromint (int ()), int ())
-	      | tc #"B" = LT.tcc_nvar (int ())
-	      | tc #"C" = LT.tcc_prim (PT.pt_fromint (int ()))
-	      | tc #"D" = LT.tcc_fn (tkindlist (), tyc ())
-	      | tc #"E" = LT.tcc_app (tyc (), tyclist ())
-	      | tc #"F" = LT.tcc_seq (tyclist ())
-	      | tc #"G" = LT.tcc_proj (tyc (), int ())
-	      | tc #"H" = LT.tcc_sum (tyclist ())
-	      | tc #"I" = LT.tcc_fix ((int (), tyc (), tyclist ()), int ())
-	      | tc #"J" = LT.tcc_abs (tyc ())
-	      | tc #"K" = LT.tcc_box (tyc ())
-	      | tc #"L" = LT.tcc_tuple (tyclist ())
-	      | tc #"M" = LT.tcc_arrow (LT.ffc_var (bool (), bool ()),
+	    fun tc #"A" = LD.tcc_var (DI.di_fromint (int ()), int ())
+	      | tc #"B" = LD.tcc_nvar (int ())
+	      | tc #"C" = LD.tcc_prim (PT.pt_fromint (int ()))
+	      | tc #"D" = LD.tcc_fn (tkindlist (), tyc ())
+	      | tc #"E" = LD.tcc_app (tyc (), tyclist ())
+	      | tc #"F" = LD.tcc_seq (tyclist ())
+	      | tc #"G" = LD.tcc_proj (tyc (), int ())
+	      | tc #"H" = LD.tcc_sum (tyclist ())
+	      | tc #"I" = LD.tcc_fix ((int (), tyc (), tyclist ()), int ())
+	      | tc #"J" = LD.tcc_abs (tyc ())
+	      | tc #"K" = LD.tcc_box (tyc ())
+	      | tc #"L" = LD.tcc_tuple (tyclist ())
+	      | tc #"M" = LD.tcc_arrow (LD.ffc_var (bool (), bool ()),
 					tyclist (), tyclist ())
-	      | tc #"N" = LT.tcc_arrow (LT.ffc_fixed, tyclist (), tyclist ())
-	      | tc #"O" = LK.tc_inj (LK.TC_TOKEN (LK.token_key (int ()),
+	      | tc #"N" = LD.tcc_arrow (LD.ffc_fixed, tyclist (), tyclist ())
+	      | tc #"O" = LK.tc_inj (LT.TC_TOKEN (LK.token_key (int ()),
 						  tyc ()))
 	      | tc _ = raise Format
 	in
@@ -1445,11 +1446,11 @@ structure UnpickMod : UNPICKMOD = struct
 	    fun fk #"2" = { isrec = NONE, cconv = F.CC_FCT,
 			    known = false, inline = F.IH_SAFE }
 	      | fk #"3" = { isrec = Option.map aug_unknown (ltylistoption ()),
-			    cconv = F.CC_FUN (LT.ffc_var (bool (), bool ())),
+			    cconv = F.CC_FUN (LD.ffc_var (bool (), bool ())),
 			    known = bool (),
 			    inline = inlflag (bool ()) }
 	      | fk #"4" = { isrec = Option.map aug_unknown (ltylistoption ()),
-			    cconv = F.CC_FUN LT.ffc_fixed,
+			    cconv = F.CC_FUN LD.ffc_fixed,
 			    known = bool (),
 			    inline = inlflag (bool ()) }
 	      | fk _ = raise Format

@@ -115,7 +115,7 @@ val tkLookup : tkindEnv * int * int -> tkind
 val tkInsert : tkindEnv * tkind list -> tkindEnv
 
 (** utility functions on tycEnv *)
-exception tcUnbound of LtyKernel.tycEnv * LtyKernel.tyc
+exception tcUnbound
 type tycEnv = LtyKernel.tycEnv
 val initTycEnv : tycEnv
 val tcInsert : tycEnv * (tyc list option * int) -> tycEnv

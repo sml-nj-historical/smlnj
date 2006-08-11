@@ -15,6 +15,7 @@ local
     structure M  = IntRedBlackMap
     structure S  = IntRedBlackSet
     structure OU = OptUtils
+    structure LT = Lty
     structure LK = LtyKernel
     structure CTRL = FLINT_Control
 in
@@ -148,9 +149,9 @@ in case le
 		  else
 		      let val cconv' =
 			      case cconv
-			       of (F.CC_FCT | F.CC_FUN(LK.FF_FIXED)) => cconv
-				| F.CC_FUN(LK.FF_VAR(f1,f2)) =>
-				  F.CC_FUN(LK.FF_VAR(true,f2))
+			       of (F.CC_FCT | F.CC_FUN(LT.FF_FIXED)) => cconv
+				| F.CC_FUN(LT.FF_VAR(f1,f2)) =>
+				  F.CC_FUN(LT.FF_VAR(true,f2))
 
 			  (* figure out what arguments of the tail loop
 			   * are invariants and create the corresponding

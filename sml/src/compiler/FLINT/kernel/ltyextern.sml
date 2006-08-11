@@ -6,6 +6,7 @@ struct
 
 local structure PT = PrimTyc
       structure DI = DebIndex
+      structure LT = Lty
       structure LK = LtyKernel
       structure PO = PrimOp     (* really should not refer to this *)
       structure FL = FLINT
@@ -41,8 +42,8 @@ fun lt_bug lt s = bug (s ^ "\n\n" ^ (lt_print lt) ^ "\n\n")
 fun lt_inst (lt : lty, ts : tyc list) = 
   let val nt = lt_whnm lt
    in (case ((* lt_outX *) lt_out nt, ts)
-        of (LK.LT_POLY(ks, b), ts) => 
-             let val nenv = LK.tcInsert(LK.initTycEnv, (SOME ts, 0))
+        of (LT.LT_POLY(ks, b), ts) => 
+             let val nenv = LT.tcInsert(LT.initTycEnv, (SOME ts, 0))
               in map (fn x => ltc_env(x, 1, 0, nenv)) b
              end
          | (_, []) => [nt]   (* this requires further clarifications !!! *)
@@ -70,15 +71,15 @@ fun tksSubkind (ks1, ks2) =
 and tkSubkind (k1, k2) = 
     tk_eqv (k1, k2) orelse              (* reflexive *)
     case (tk_out k1, tk_out k2) of
-        (LK.TK_BOX, LK.TK_MONO) => true (* ground kinds (base case) *)
+        (LT.TK_BOX, LT.TK_MONO) => true (* ground kinds (base case) *)
       (* this next case is WRONG, but necessary until the
        * infrastructure is there to give proper boxed kinds to
        * certain tycons (e.g., ref : Omega -> Omega_b)
        *)
-      | (LK.TK_MONO, LK.TK_BOX) => true
-      | (LK.TK_SEQ ks1, LK.TK_SEQ ks2) =>     
+      | (LT.TK_MONO, LT.TK_BOX) => true
+      | (LT.TK_SEQ ks1, LT.TK_SEQ ks2) =>     
           tksSubkind (ks1, ks2)
-      | (LK.TK_FUN (ks1, k1'), LK.TK_FUN (ks2, k2')) => 
+      | (LT.TK_FUN (ks1, k1'), LT.TK_FUN (ks2, k2')) => 
           tksSubkind (ks1, ks2) andalso (* contravariant *)
           tkSubkind (k1', k2')
       | _ => false
@@ -99,14 +100,14 @@ fun tkAssertIsMono k =
 (* select the ith element from a kind sequence *)
 fun tkSel (tk, i) = 
   (case (tk_out tk)
-    of (LK.TK_SEQ ks) => (List.nth(ks, i) handle _ => raise TkTycChk)
+    of (LT.TK_SEQ ks) => (List.nth(ks, i) handle _ => raise TkTycChk)
      | _ => raise TkTycChk)
 
 fun tks_eqv (ks1, ks2) = tk_eqv(tkc_seq ks1, tkc_seq ks2)
 
 fun tkApp (tk, tks) = 
   (case (tk_out tk)
-    of LK.TK_FUN(a, b) => if tks_eqv(a, tks) then b else raise TkTycChk
+    of LT.TK_FUN(a, b) => if tks_eqv(a, tks) then b else raise TkTycChk
      | _ => raise TkTycChk)
 
 (* check the application of tycs of kinds `tks' to a type function of
@@ -114,7 +115,7 @@ fun tkApp (tk, tks) =
  *)
 fun tkApp (tk, tks) = 
   (case (tk_out tk)
-    of LK.TK_FUN(a, b) =>
+    of LT.TK_FUN(a, b) =>
        if tksSubkind(tks, a) then b else raise TkTycChk
      | _ => raise TkTycChk)
 
@@ -128,21 +129,21 @@ fun tkApp (tk, tks) =
  * variables in the tyc (represented as a TK_SEQ) to the tyc's kind.
  *)
 structure TcDict = BinaryMapFn
-                       (struct
-                           type ord_key = tyc
-                           val compare = LK.tc_cmp
-			end)
+                     (struct
+                        type ord_key = tyc
+                        val compare = LT.tc_cmp
+		      end)
                        
 structure Memo :> sig
-    type dict 
-    val newDict         : unit -> dict
-    val recallOrCompute : dict * tkindEnv * tyc * (unit -> tkind) -> tkind
+  type dict 
+  val newDict         : unit -> dict
+  val recallOrCompute : dict * tkindEnv * tyc * (unit -> tkind) -> tkind
 end =
 struct
     structure TcDict = RedBlackMapFn
                            (struct
                                type ord_key = tyc
-                               val compare = LK.tc_cmp
+                               val compare = LT.tc_cmp
                            end)
 
     type dict = (tkind * tkind) list TcDict.map ref
@@ -152,7 +153,7 @@ struct
         (* what are the valuations of tyc's free variables
          * in kenv? *)
         (* (might not be available for some tycs) *)
-        case LK.tkLookupFreeVars (kenv, tyc) of
+        case LT.tkLookupFreeVars (kenv, tyc) of
             SOME ks_fvs => let
                 (* encode those as a kind sequence *)
                 val k_fvs = tkc_seq ks_fvs
@@ -194,24 +195,24 @@ fun tkTycGen() = let
         (* how to compute the kind of a tyc *)
         fun mk() =
             case tc_out t of
-                LK.TC_VAR (i, j) =>
+                LT.TC_VAR (i, j) =>
                 tkLookup (kenv, i, j)
-              | LK.TC_NVAR _ => 
+              | LT.TC_NVAR _ => 
                 bug "TC_NVAR not supported yet in tkTyc"
-              | LK.TC_PRIM pt =>
+              | LT.TC_PRIM pt =>
                 tkc_int (PrimTyc.pt_arity pt)
-              | LK.TC_FN(ks, tc) =>
+              | LT.TC_FN(ks, tc) =>
                 tkc_fun(ks, tkTyc (tkInsert (kenv,ks)) tc)
-              | LK.TC_APP (tc, tcs) =>
+              | LT.TC_APP (tc, tcs) =>
                 tkApp (g tc, map g tcs)
-              | LK.TC_SEQ tcs =>
+              | LT.TC_SEQ tcs =>
                 tkc_seq (map g tcs)
-              | LK.TC_PROJ(tc, i) =>
+              | LT.TC_PROJ(tc, i) =>
                 tkSel(g tc, i)
-              | LK.TC_SUM tcs =>
+              | LT.TC_SUM tcs =>
                 (List.app (tkAssertIsMono o g) tcs;
                  tkc_mono)
-              | LK.TC_FIX ((n, tc, ts), i) =>
+              | LT.TC_FIX ((n, tc, ts), i) =>
                 let val k = g tc
                     val nk =
                         case ts of
@@ -219,7 +220,7 @@ fun tkTycGen() = let
                           | _ => tkApp(k, map g ts)
                 in
                     case (tk_out nk) of
-                        LK.TK_FUN(a, b) => 
+                        LT.TK_FUN(a, b) => 
                         let val arg =
                                 case a of
                                     [x] => x
@@ -231,26 +232,26 @@ fun tkTycGen() = let
                         end
                       | _ => raise TkTycChk
                 end
-              | LK.TC_ABS tc =>
+              | LT.TC_ABS tc =>
                 (tkAssertIsMono (g tc);
                  tkc_mono)
-              | LK.TC_BOX tc =>
+              | LT.TC_BOX tc =>
                 (tkAssertIsMono (g tc);
                  tkc_mono)
-              | LK.TC_TUPLE (_,tcs) =>
+              | LT.TC_TUPLE (_,tcs) =>
                 (List.app (tkAssertIsMono o g) tcs;
                  tkc_mono)
-              | LK.TC_ARROW (_, ts1, ts2) =>
+              | LT.TC_ARROW (_, ts1, ts2) =>
                 (List.app (tkAssertIsMono o g) ts1;
                  List.app (tkAssertIsMono o g) ts2;
                  tkc_mono)
-              | LK.TC_TOKEN(_, tc) =>
+              | LT.TC_TOKEN(_, tc) =>
                 (tkAssertIsMono (g tc);
                  tkc_mono)
-              | LK.TC_PARROW _ => bug "unexpected TC_PARROW in tkTyc"
-              | LK.TC_ENV _ => bug "unexpected TC_ENV in tkTyc"
-              | LK.TC_IND _ => bug "unexpected TC_IND in tkTyc"
-              | LK.TC_CONT _ => bug "unexpected TC_CONT in tkTyc"
+              | LT.TC_PARROW _ => bug "unexpected TC_PARROW in tkTyc"
+              | LT.TC_ENV _ => bug "unexpected TC_ENV in tkTyc"
+              | LT.TC_IND _ => bug "unexpected TC_IND in tkTyc"
+              | LT.TC_CONT _ => bug "unexpected TC_CONT in tkTyc"
     in
         Memo.recallOrCompute (dict, kenv, t, mk)
     end
@@ -259,13 +260,12 @@ in
 end
 
 (* assert that the kind of `tc' is a subkind of `k' in `kenv' *)
-fun tkChkGen() = let
-    val tkTyc = tkTycGen()
-    fun tkChk kenv (k, tc) =
-        tkAssertSubkind (tkTyc kenv tc, k)
-in
-    tkChk
-end
+fun tkChkGen() =
+    let val tkTyc = tkTycGen()
+        fun tkChk kenv (k, tc) =
+            tkAssertSubkind (tkTyc kenv tc, k)
+    in tkChk
+    end
     
 (* lty application with kind-checking (exported) *)
 fun lt_inst_chk_gen() = let
@@ -273,7 +273,7 @@ fun lt_inst_chk_gen() = let
     fun lt_inst_chk (lt : lty, ts : tyc list, kenv : tkindEnv) = 
         let val nt = lt_whnm lt
         in (case ((* lt_outX *) lt_out nt, ts)
-              of (LK.LT_POLY(ks, b), ts) => 
+              of (LT.LT_POLY(ks, b), ts) => 
                  let val _ = ListPair.app (tkChk kenv) (ks, ts)
                      fun h x = ltc_env(x, 1, 0,
                                        tcInsert(initTycEnv, (SOME ts, 0)))
@@ -288,65 +288,65 @@ end
 
 (** a special lty application --- used inside the translate/specialize.sml *)
 fun lt_sp_adj(ks, lt, ts, dist, bnl) = 
-  let fun h(abslevel, ol, nl, tenv) =
-        if abslevel = 0 then ltc_env(lt, ol, nl, tenv)
-        else if abslevel > 0 then 
-               h(abslevel-1, ol+1, nl+1, tcInsert(tenv, (NONE, nl)))
-             else bug "unexpected cases in ltAdjSt"
+    let fun h(abslevel, ol, nl, tenv) =
+          if abslevel = 0 then ltc_env(lt, ol, nl, tenv)
+          else if abslevel > 0 then 
+                 h(abslevel-1, ol+1, nl+1, tcInsert(tenv, (NONE, nl)))
+               else bug "unexpected cases in ltAdjSt"
 
-      val btenv = tcInsert(initTycEnv, (SOME ts, 0))
-      val nt = h(dist, 1, bnl, btenv)
-   in nt (* was lt_norm nt *)
-  end
+        val btenv = tcInsert(initTycEnv, (SOME ts, 0))
+        val nt = h(dist, 1, bnl, btenv)
+     in nt (* was lt_norm nt *)
+    end
 
-(** a special tyc application --- used inside the translate/specialize.sml *)
+(** a special tyc application --- used in translate/specialize.sml *)
 fun tc_sp_adj(ks, tc, ts, dist, bnl) =
-  let fun h(abslevel, ol, nl, tenv) =
-        if abslevel = 0 then tcc_env(tc, ol, nl, tenv)
-        else if abslevel > 0 then 
-               h(abslevel-1, ol+1, nl+1, tcInsert(tenv, (NONE, nl)))
-             else bug "unexpected cases in tcAdjSt"
+    let fun h(abslevel, ol, nl, tenv) =
+          if abslevel = 0 then tcc_env(tc, ol, nl, tenv)
+          else if abslevel > 0 then 
+                 h(abslevel-1, ol+1, nl+1, tcInsert(tenv, (NONE, nl)))
+               else bug "unexpected cases in tcAdjSt"
 
-      val btenv = tcInsert(initTycEnv, (SOME ts, 0))
-      val nt = h(dist, 1, bnl, btenv)
-   in nt (* was tc_norm nt *)
-  end
+        val btenv = tcInsert(initTycEnv, (SOME ts, 0))
+        val nt = h(dist, 1, bnl, btenv)
+     in nt (* was tc_norm nt *)
+    end
 
-(** sinking the lty one-level down --- used inside the specialize.sml *)
+(** sinking the lty one-level down --- used in specialize.sml *)
 fun lt_sp_sink (ks, lt, d, nd) = 
-  let fun h(abslevel, ol, nl, tenv) =
-        if abslevel = 0 then ltc_env(lt, ol, nl, tenv)
-        else if abslevel > 0 then
-               h(abslevel-1, ol+1, nl+1, tcInsert(tenv, (NONE, nl)))
-             else bug "unexpected cases in ltSinkSt"
-      val nt = h(nd-d, 0, 1, initTycEnv)
-   in nt (* was lt_norm nt *)
-  end
+    let fun h(abslevel, ol, nl, tenv) =
+          if abslevel = 0 then ltc_env(lt, ol, nl, tenv)
+          else if abslevel > 0 then
+                 h(abslevel-1, ol+1, nl+1, tcInsert(tenv, (NONE, nl)))
+               else bug "unexpected cases in ltSinkSt"
+        val nt = h(nd-d, 0, 1, initTycEnv)
+     in nt (* was lt_norm nt *)
+    end
 
-(** sinking the tyc one-level down --- used inside the specialize.sml *)
+(** sinking the tyc one-level down --- used in specialize.sml *)
 fun tc_sp_sink (ks, tc, d, nd) = 
-  let fun h(abslevel, ol, nl, tenv) =
-        if abslevel = 0 then tcc_env(tc, ol, nl, tenv)
-        else if abslevel > 0 then
-               h(abslevel-1, ol+1, nl+1, tcInsert(tenv, (NONE, nl)))
-             else bug "unexpected cases in ltSinkSt"
-      val nt = h(nd-d, 0, 1, initTycEnv)
-   in nt (* was tc_norm nt *)
-  end
+    let fun h(abslevel, ol, nl, tenv) =
+          if abslevel = 0 then tcc_env(tc, ol, nl, tenv)
+          else if abslevel > 0 then
+                 h(abslevel-1, ol+1, nl+1, tcInsert(tenv, (NONE, nl)))
+               else bug "unexpected cases in ltSinkSt"
+        val nt = h(nd-d, 0, 1, initTycEnv)
+     in nt (* was tc_norm nt *)
+    end
 
 (** utility functions used in CPS *)
 fun lt_iscont lt = 
       (case lt_out lt
-        of LK.LT_CONT _ => true
-         | LK.LT_TYC tc => 
-             (case tc_out tc of LK.TC_CONT _ => true | _ => false)
+        of LT.LT_CONT _ => true
+         | LT.LT_TYC tc => 
+             (case tc_out tc of LT.TC_CONT _ => true | _ => false)
          | _ => false)
 
 fun ltw_iscont (lt, f, g, h) = 
       (case lt_out lt
-        of LK.LT_CONT t => f t
-         | LK.LT_TYC tc => 
-             (case tc_out tc of LK.TC_CONT x => g x | _ => h lt)
+        of LT.LT_CONT t => f t
+         | LT.LT_TYC tc => 
+             (case tc_out tc of LT.TC_CONT x => g x | _ => h lt)
          | _ => h lt)
 
 
@@ -356,29 +356,29 @@ fun lt_bug lt s = bug (s ^ "\n\n" ^ (lt_print lt) ^ "\n\n")
 (** other misc utility functions *)
 fun tc_select(tc, i) = 
   (case tc_out tc
-    of LK.TC_TUPLE (_,zs) =>
+    of LT.TC_TUPLE (_,zs) =>
          ((List.nth(zs, i)) handle _ => bug "wrong TC_TUPLE in tc_select")
      | _ => tc_bug tc "wrong TCs in tc_select")
 
 fun lt_select(t, i) = 
   (case lt_out t
-    of LK.LT_STR ts => 
+    of LT.LT_STR ts => 
          ((List.nth(ts, i)) handle _ => bug "incorrect LT_STR in lt_select")
-     | LK.LT_TYC tc => ltc_tyc(tc_select(tc, i))
+     | LT.LT_TYC tc => ltc_tyc(tc_select(tc, i))
      | _ => bug "incorrect lambda types in lt_select")
 
 fun tc_swap t = 
   (case (tc_out t)
-    of LK.TC_ARROW (LK.FF_VAR (r1,r2), [s1], [s2]) => 
-         tcc_arrow(LK.FF_VAR (r2,r1), [s2], [s1])
-     | LK.TC_ARROW (LK.FF_FIXED, [s1], [s2]) =>
-         tcc_arrow(LK.FF_FIXED, [s2], [s1])
+    of LT.TC_ARROW (LT.FF_VAR (r1,r2), [s1], [s2]) => 
+         tcc_arrow(LT.FF_VAR (r2,r1), [s2], [s1])
+     | LT.TC_ARROW (LT.FF_FIXED, [s1], [s2]) =>
+         tcc_arrow(LT.FF_FIXED, [s2], [s1])
      | _ => bug "unexpected tycs in tc_swap")
 
 fun lt_swap t = 
   (case (lt_out t)
-    of (LK.LT_POLY (ks, [x])) => ltc_poly(ks, [lt_swap x])
-     | (LK.LT_TYC x) => ltc_tyc(tc_swap x)
+    of (LT.LT_POLY (ks, [x])) => ltc_poly(ks, [lt_swap x])
+     | (LT.LT_TYC x) => ltc_tyc(tc_swap x)
      | _ => bug "unexpected type in lt_swap")
 
 (** functions that manipulate the FLINT function and record types *)
@@ -404,19 +404,19 @@ fun ltd_rkind (lt, i) = lt_select (lt, i)
  ****************************************************************************)
 (** find out what is the appropriate primop given a tyc *)
 fun tc_upd_prim tc = 
-  let fun h(LK.TC_PRIM pt) = 
+  let fun h(LT.TC_PRIM pt) = 
             if PT.ubxupd pt then PO.UNBOXEDUPDATE
             else if PT.bxupd pt then PO.BOXEDUPDATE 
                  else PO.UPDATE
-        | h(LK.TC_TUPLE _ | LK.TC_ARROW _) = PO.BOXEDUPDATE
-        | h(LK.TC_FIX ((1,tc,ts), 0)) = 
+        | h(LT.TC_TUPLE _ | LT.TC_ARROW _) = PO.BOXEDUPDATE
+        | h(LT.TC_FIX ((1,tc,ts), 0)) = 
             let val ntc = case ts of [] => tc
                                    | _ => tcc_app(tc, ts)
              in (case (tc_out ntc)
-                  of LK.TC_FN([k],b) => h (tc_out b)
+                  of LT.TC_FN([k],b) => h (tc_out b)
                    | _ => PO.UPDATE)
             end
-        | h(LK.TC_SUM tcs) = 
+        | h(LT.TC_SUM tcs) = 
             let fun g (a::r) = if tc_eqv(a, tcc_unit) then g r else false
                   | g [] = true
              in if (g tcs) then PO.UNBOXEDUPDATE else PO.UPDATE
@@ -428,10 +428,10 @@ fun tc_upd_prim tc =
 (** tk_lty : tkind -> lty --- finds out the corresponding type for a tkind *)
 fun tk_lty tk = 
   (case tk_out tk
-    of LK.TK_MONO => ltc_int
-     | LK.TK_BOX => ltc_int
-     | LK.TK_SEQ ks => ltc_tuple (map tk_lty ks)
-     | LK.TK_FUN (ks, k) => 
+    of LT.TK_MONO => ltc_int
+     | LT.TK_BOX => ltc_int
+     | LT.TK_SEQ ks => ltc_tuple (map tk_lty ks)
+     | LT.TK_FUN (ks, k) => 
          ltc_arrow(ffc_fixed, [ltc_tuple(map tk_lty ks)], [tk_lty k]))
 
 
@@ -439,23 +439,23 @@ fun tk_lty tk =
 fun tnarrow_gen () = 
   let fun tcNarrow tcf t = 
         (case (tc_out t)
-          of LK.TC_PRIM pt => 
+          of LT.TC_PRIM pt => 
                if PT.isvoid pt then tcc_void else t
-           | LK.TC_TUPLE (_, tcs) => tcc_tuple (map tcf tcs)
-           | LK.TC_ARROW (r, ts1, ts2) => 
+           | LT.TC_TUPLE (_, tcs) => tcc_tuple (map tcf tcs)
+           | LT.TC_ARROW (r, ts1, ts2) => 
                tcc_arrow(ffc_fixed, map tcf ts1, map tcf ts2)
            | _ => tcc_void)
 
       fun ltNarrow (tcf, ltf) t = 
         (case lt_out t
-          of LK.LT_TYC tc => ltc_tyc (tcf tc)
-           | LK.LT_STR ts => ltc_str (map ltf ts)
-           | LK.LT_FCT (ts1, ts2) => ltc_fct(map ltf ts1, map ltf ts2)
-           | LK.LT_POLY (ks, xs) => 
+          of LT.LT_TYC tc => ltc_tyc (tcf tc)
+           | LT.LT_STR ts => ltc_str (map ltf ts)
+           | LT.LT_FCT (ts1, ts2) => ltc_fct(map ltf ts1, map ltf ts2)
+           | LT.LT_POLY (ks, xs) => 
                ltc_fct([ltc_str (map tk_lty ks)], map ltf xs)
-           | LK.LT_CONT _ => bug "unexpected CNTs in ltNarrow"
-           | LK.LT_IND _ => bug "unexpected INDs in ltNarrow"
-           | LK.LT_ENV _ => bug "unexpected ENVs in ltNarrow")
+           | LT.LT_CONT _ => bug "unexpected CNTs in ltNarrow"
+           | LT.LT_IND _ => bug "unexpected INDs in ltNarrow"
+           | LT.LT_ENV _ => bug "unexpected ENVs in ltNarrow")
 
       val {tc_map, lt_map} = LtyDict.tmemo_gen {tcf=tcNarrow, ltf=ltNarrow}
    in (tc_map o tc_norm, lt_map o lt_norm, fn ()=>())
@@ -467,18 +467,18 @@ fun tnarrow_gen () =
 fun twrap_gen bbb = 
   let fun tc_wmap (w, u) t =
         (case (tc_out t)
-          of (LK.TC_VAR _ | LK.TC_NVAR _) => t
-           | LK.TC_PRIM pt => if PT.unboxed pt then tcc_wrap t else t
-           | LK.TC_FN (ks, tc) => tcc_fn(ks, w tc) (* impossible case *)
-           | LK.TC_APP (tc, tcs) => tcc_app(w tc, map w tcs)
-           | LK.TC_SEQ tcs => tcc_seq(map w tcs)
-           | LK.TC_PROJ (tc, i) => tcc_proj(w tc, i)
-           | LK.TC_SUM tcs => tcc_sum (map w tcs)
-           | LK.TC_FIX ((n,tc,ts), i) => 
+          of (LT.TC_VAR _ | LT.TC_NVAR _) => t
+           | LT.TC_PRIM pt => if PT.unboxed pt then tcc_wrap t else t
+           | LT.TC_FN (ks, tc) => tcc_fn(ks, w tc) (* impossible case *)
+           | LT.TC_APP (tc, tcs) => tcc_app(w tc, map w tcs)
+           | LT.TC_SEQ tcs => tcc_seq(map w tcs)
+           | LT.TC_PROJ (tc, i) => tcc_proj(w tc, i)
+           | LT.TC_SUM tcs => tcc_sum (map w tcs)
+           | LT.TC_FIX ((n,tc,ts), i) => 
                tcc_fix((n, tc_norm (u tc), map w ts), i) 
 
-           | LK.TC_TUPLE (_, ts) => tcc_wrap(tcc_tuple (map w ts)) (* ? *)
-           | LK.TC_ARROW (LK.FF_VAR(b1,b2), ts1, ts2) =>  
+           | LT.TC_TUPLE (_, ts) => tcc_wrap(tcc_tuple (map w ts)) (* ? *)
+           | LT.TC_ARROW (LT.FF_VAR(b1,b2), ts1, ts2) =>  
                let val nts1 =    (* too specific ! *)                       
                      (case ts1 of [t11,t12] => [w t11, w t12] 
                                 | _ => [w (LK.tc_autotuple ts1)])
@@ -486,49 +486,49 @@ fun twrap_gen bbb =
                    val nt = tcc_arrow(ffc_fixed, nts1, nts2)
                 in if b1 then nt else tcc_wrap nt
                end
-           | LK.TC_ARROW (LK.FF_FIXED, _, _) =>  
+           | LT.TC_ARROW (LT.FF_FIXED, _, _) =>  
                 bug "unexpected TC_FIXED_ARROW in tc_umap"
-           | LK.TC_TOKEN (k, t) => bug "unexpected token tyc in tc_wmap"
-           | LK.TC_BOX _ => bug "unexpected TC_BOX in tc_wmap"
-           | LK.TC_ABS _ => bug "unexpected TC_ABS in tc_wmap"
+           | LT.TC_TOKEN (k, t) => bug "unexpected token tyc in tc_wmap"
+           | LT.TC_BOX _ => bug "unexpected TC_BOX in tc_wmap"
+           | LT.TC_ABS _ => bug "unexpected TC_ABS in tc_wmap"
            | _ => bug "unexpected other tycs in tc_wmap")
 
       fun tc_umap (u, w) t =
         (case (tc_out t)
-          of (LK.TC_VAR _ | LK.TC_NVAR _ | LK.TC_PRIM _) => t
-           | LK.TC_FN (ks, tc) => tcc_fn(ks, u tc) (* impossible case *) 
-           | LK.TC_APP (tc, tcs) => tcc_app(u tc, map w tcs)
-           | LK.TC_SEQ tcs => tcc_seq(map u tcs)
-           | LK.TC_PROJ (tc, i) => tcc_proj(u tc, i)
-           | LK.TC_SUM tcs => tcc_sum (map u tcs)
-           | LK.TC_FIX ((n,tc,ts), i) => 
+          of (LT.TC_VAR _ | LT.TC_NVAR _ | LT.TC_PRIM _) => t
+           | LT.TC_FN (ks, tc) => tcc_fn(ks, u tc) (* impossible case *) 
+           | LT.TC_APP (tc, tcs) => tcc_app(u tc, map w tcs)
+           | LT.TC_SEQ tcs => tcc_seq(map u tcs)
+           | LT.TC_PROJ (tc, i) => tcc_proj(u tc, i)
+           | LT.TC_SUM tcs => tcc_sum (map u tcs)
+           | LT.TC_FIX ((n,tc,ts), i) => 
                tcc_fix((n, tc_norm (u tc), map w ts), i) 
 
-           | LK.TC_TUPLE (rk, tcs) => tcc_tuple(map u tcs)
-           | LK.TC_ARROW (LK.FF_VAR(b1,b2), ts1, ts2) =>  
+           | LT.TC_TUPLE (rk, tcs) => tcc_tuple(map u tcs)
+           | LT.TC_ARROW (LT.FF_VAR(b1,b2), ts1, ts2) =>  
                tcc_arrow(ffc_fixed, map u ts1, map u ts2)
-           | LK.TC_ARROW (LK.FF_FIXED, _, _) =>  
+           | LT.TC_ARROW (LT.FF_FIXED, _, _) =>  
                bug "unexpected TC_FIXED_ARROW in tc_umap"
-           | LK.TC_PARROW _ => bug "unexpected TC_PARROW in tc_umap"
+           | LT.TC_PARROW _ => bug "unexpected TC_PARROW in tc_umap"
 
-           | LK.TC_BOX _ => bug "unexpected TC_BOX in tc_umap"
-           | LK.TC_ABS _ => bug "unexpected TC_ABS in tc_umap"
-           | LK.TC_TOKEN (k, t) => 
+           | LT.TC_BOX _ => bug "unexpected TC_BOX in tc_umap"
+           | LT.TC_ABS _ => bug "unexpected TC_ABS in tc_umap"
+           | LT.TC_TOKEN (k, t) => 
                if LK.token_eq(k, LK.wrap_token) then 
                  bug "unexpected TC_WRAP in tc_umap"
-               else tc_inj (LK.TC_TOKEN (k, u t))
+               else tc_inj (LT.TC_TOKEN (k, u t))
 
            | _ => bug "unexpected other tycs in tc_umap")
 
       fun lt_umap (tcf, ltf) t = 
         (case (lt_out t)
-          of LK.LT_TYC tc => ltc_tyc (tcf tc)
-           | LK.LT_STR ts => ltc_str (map ltf ts)
-           | LK.LT_FCT (ts1, ts2) => ltc_fct(map ltf ts1, map ltf ts2)
-           | LK.LT_POLY (ks, xs) => ltc_poly(ks, map ltf xs)
-           | LK.LT_CONT _ => bug "unexpected CNTs in lt_umap"
-           | LK.LT_IND _ => bug "unexpected INDs in lt_umap"
-           | LK.LT_ENV _ => bug "unexpected ENVs in lt_umap")
+          of LT.LT_TYC tc => ltc_tyc (tcf tc)
+           | LT.LT_STR ts => ltc_str (map ltf ts)
+           | LT.LT_FCT (ts1, ts2) => ltc_fct(map ltf ts1, map ltf ts2)
+           | LT.LT_POLY (ks, xs) => ltc_poly(ks, map ltf xs)
+           | LT.LT_CONT _ => bug "unexpected CNTs in lt_umap"
+           | LT.LT_IND _ => bug "unexpected INDs in lt_umap"
+           | LT.LT_ENV _ => bug "unexpected ENVs in lt_umap")
 
       val {tc_wmap=tcWrap, tc_umap=tcMap, lt_umap=ltMap, cleanup} =
         LtyDict.wmemo_gen{tc_wmap=tc_wmap, tc_umap=tc_umap, lt_umap=lt_umap}
@@ -548,7 +548,7 @@ fun twrap_gen bbb =
 structure LtDict = BinaryMapFn
                        (struct
                            type ord_key = lty
-                           val compare = LtyKernel.lt_cmp
+                           val compare = Lty.lt_cmp
                        end)
 
 fun tc_nvar_elim_gen() = let
@@ -570,41 +570,41 @@ fun tc_nvar_elim_gen() = let
                 val rs = map r          (* recursive invocation on list *)
                 val t = 
                     case tc_out tyc of
-                        LK.TC_NVAR tvar =>   
+                        LT.TC_NVAR tvar =>   
                             (case s (tvar, d) of
                                  SOME t => t
                                | NONE => tyc)
-                      | LK.TC_VAR _ => tyc
-                      | LK.TC_PRIM _ => tyc
-                      | LK.TC_FN (tks, t) =>
+                      | LT.TC_VAR _ => tyc
+                      | LT.TC_PRIM _ => tyc
+                      | LT.TC_FN (tks, t) =>
                             tcc_fn (tks, tc_nvar_elim s (DI.next d) t)
-                      | LK.TC_APP (t, ts) =>
+                      | LT.TC_APP (t, ts) =>
                             tcc_app (r t, rs ts)
-                      | LK.TC_SEQ ts =>
+                      | LT.TC_SEQ ts =>
                             tcc_seq (rs ts)
-                      | LK.TC_PROJ (t, i) =>
+                      | LT.TC_PROJ (t, i) =>
                             tcc_proj (r t, i)
-                      | LK.TC_SUM ts =>
+                      | LT.TC_SUM ts =>
                             tcc_sum (rs ts)
-                      | LK.TC_FIX ((i,t,ts),j) =>
+                      | LT.TC_FIX ((i,t,ts),j) =>
                             tcc_fix ((i, r t, rs ts), j)
-                      | LK.TC_TUPLE (rf,ts) =>
+                      | LT.TC_TUPLE (rf,ts) =>
                             tcc_tuple (rs ts)
-                      | LK.TC_ARROW (ff, ts, ts') =>
+                      | LT.TC_ARROW (ff, ts, ts') =>
                             tcc_arrow (ff, rs ts, rs ts')
-                      | LK.TC_PARROW (t, t') =>
+                      | LT.TC_PARROW (t, t') =>
                             tcc_parrow (r t, r t')
-                      | LK.TC_BOX t =>
+                      | LT.TC_BOX t =>
                             tcc_box (r t)
-                      | LK.TC_ABS t =>
+                      | LT.TC_ABS t =>
                             tcc_abs (r t)
-                      | LK.TC_TOKEN (tok, t) =>
-                            tc_inj (LK.TC_TOKEN (tok, r t))
-                      | LK.TC_CONT ts =>
+                      | LT.TC_TOKEN (tok, t) =>
+                            tc_inj (LT.TC_TOKEN (tok, r t))
+                      | LT.TC_CONT ts =>
                             tcc_cont (rs ts)
-                      | LK.TC_IND _ =>
+                      | LT.TC_IND _ =>
                             bug "unexpected TC_IND in tc_nvar_elim"
-                      | LK.TC_ENV _ =>
+                      | LT.TC_ENV _ =>
                             bug "unexpected TC_ENV in tc_nvar_elim"
             in
                 dict := TcDict.insert(!dict, tycdepth, t);
@@ -620,13 +620,13 @@ fun lt_nvar_elim_gen() = let
     val tc_nvar_elim = tc_nvar_elim_gen()
 
     fun lt_nvar_elim s d lty = 
-        case LK.lt_nvars lty of
-            [] => lty                   (* nothing to elim *)
-          | _ => 
+        case LK.lt_nvars lty
+          of [] => lty                   (* nothing to elim *)
+           | _ => 
     let
         (* encode the lty and depth info using LT_ENV
          * (only first 2 args are useful) *)
-        val ltydepth = lt_inj (LK.LT_ENV (lty, d, 0, LK.initTycEnv))
+        val ltydepth = lt_inj (LT.LT_ENV (lty, d, 0, LT.initTycEnv))
     in
         case LtDict.find(!dict, ltydepth) of
             SOME t => t                 (* hit! *)
@@ -635,20 +635,20 @@ fun lt_nvar_elim_gen() = let
                 val rs = map r          (* recursive invocation on list *)
                 val t =
                     case lt_out lty of
-                        LK.LT_TYC t => 
+                        LT.LT_TYC t => 
                             ltc_tyc (tc_nvar_elim s d t)
-                      | LK.LT_STR ts => 
+                      | LT.LT_STR ts => 
                             ltc_str (rs ts)
-                      | LK.LT_FCT (ts, ts') => 
+                      | LT.LT_FCT (ts, ts') => 
                             ltc_fct (rs ts, rs ts')
-                      | LK.LT_POLY (tks, ts) => 
+                      | LT.LT_POLY (tks, ts) => 
                             ltc_poly (tks, 
                                       map (lt_nvar_elim s (DI.next d)) ts)
-                      | LK.LT_CONT ts => 
+                      | LT.LT_CONT ts => 
                             ltc_cont (rs ts)
-                      | LK.LT_IND _ =>
+                      | LT.LT_IND _ =>
                             bug "unexpected LT_IND in lt_nvar_elim"
-                      | LK.LT_ENV _ =>
+                      | LT.LT_ENV _ =>
                             bug "unexpected LT_ENV in lt_nvar_elim"
             in
                 dict := LtDict.insert(!dict, ltydepth, t);
@@ -698,42 +698,42 @@ fun tc_nvar_subst_gen() = let
               let                       (* must recompute *)
                   val t =
                     case tc_out tyc of
-                        LK.TC_NVAR tv => 
+                        LT.TC_NVAR tv => 
                             (case searchSubst(tv,subst) of 
                                  SOME t => t 
                                | NONE => tyc
                                  )
-                      | LK.TC_VAR _ => tyc
-                      | LK.TC_PRIM _ => tyc
-                      | LK.TC_FN (tks, t) =>
+                      | LT.TC_VAR _ => tyc
+                      | LT.TC_PRIM _ => tyc
+                      | LT.TC_FN (tks, t) =>
                             tcc_fn (tks, loop t)
-                      | LK.TC_APP (t, ts) =>
+                      | LT.TC_APP (t, ts) =>
                             tcc_app (loop t, map loop ts)
-                      | LK.TC_SEQ ts =>
+                      | LT.TC_SEQ ts =>
                             tcc_seq (map loop ts)
-                      | LK.TC_PROJ (t, i) =>
+                      | LT.TC_PROJ (t, i) =>
                             tcc_proj (loop t, i)
-                      | LK.TC_SUM ts =>
+                      | LT.TC_SUM ts =>
                             tcc_sum (map loop ts)
-                      | LK.TC_FIX ((i,t,ts),j) =>
+                      | LT.TC_FIX ((i,t,ts),j) =>
                             tcc_fix ((i, loop t, map loop ts), j)
-                      | LK.TC_TUPLE (rf,ts) =>
+                      | LT.TC_TUPLE (rf,ts) =>
                             tcc_tuple (map loop ts)
-                      | LK.TC_ARROW (ff, ts, ts') =>
+                      | LT.TC_ARROW (ff, ts, ts') =>
                             tcc_arrow (ff, map loop ts, map loop ts')
-                      | LK.TC_PARROW (t, t') =>
+                      | LT.TC_PARROW (t, t') =>
                             tcc_parrow (loop t, loop t')
-                      | LK.TC_BOX t =>
+                      | LT.TC_BOX t =>
                             tcc_box (loop t)
-                      | LK.TC_ABS t =>
+                      | LT.TC_ABS t =>
                             tcc_abs (loop t)
-                      | LK.TC_TOKEN (tok, t) =>
-                            tc_inj (LK.TC_TOKEN (tok, loop t))
-                      | LK.TC_CONT ts =>
+                      | LT.TC_TOKEN (tok, t) =>
+                            tc_inj (LT.TC_TOKEN (tok, loop t))
+                      | LT.TC_CONT ts =>
                             tcc_cont (map loop ts)
-                      | LK.TC_IND _ =>
+                      | LT.TC_IND _ =>
                             bug "unexpected TC_IND in substTyc"
-                      | LK.TC_ENV _ =>
+                      | LT.TC_ENV _ =>
                             bug "unexpected TC_ENV in substTyc"
               in
                   (* update memoization table *)
@@ -765,19 +765,19 @@ fun lt_nvar_subst_gen() = let
               let                       (* must recompute *)
                   val t =
                     case lt_out lty of
-                        LK.LT_TYC t => 
+                        LT.LT_TYC t => 
                             ltc_tyc (tc_nvar_subst t)
-                      | LK.LT_STR ts => 
+                      | LT.LT_STR ts => 
                             ltc_str (map loop ts)
-                      | LK.LT_FCT (ts, ts') => 
+                      | LT.LT_FCT (ts, ts') => 
                             ltc_fct (map loop ts, map loop ts')
-                      | LK.LT_POLY (tks, ts) => 
+                      | LT.LT_POLY (tks, ts) => 
                             ltc_poly (tks, map loop ts)
-                      | LK.LT_CONT ts => 
+                      | LT.LT_CONT ts => 
                             ltc_cont (map loop ts)
-                      | LK.LT_IND _ =>
+                      | LT.LT_IND _ =>
                             bug "unexpected LT_IND in lt_nvar_elim"
-                      | LK.LT_ENV _ =>
+                      | LT.LT_ENV _ =>
                             bug "unexpected LT_ENV in lt_nvar_elim"
               in
                   (* update memoization table *)
@@ -839,41 +839,41 @@ fun tc_nvar_cvt_gen() = let
                 val rs = map r          (* recursive invocation on list *)
                 val t = 
                     case tc_out tyc of
-                        LK.TC_NVAR tvar =>
+                        LT.TC_NVAR tvar =>
                             (case searchSubst(tvar,tvoffs) of
                                  SOME i => tcc_var (d, i)
                                | NONE => tyc)
-                      | LK.TC_VAR _ => tyc
-                      | LK.TC_PRIM _ => tyc
-                      | LK.TC_FN (tks, t) =>
+                      | LT.TC_VAR _ => tyc
+                      | LT.TC_PRIM _ => tyc
+                      | LT.TC_FN (tks, t) =>
                             tcc_fn (tks, tc_nvar_cvt tvoffs (DI.next d) t)
-                      | LK.TC_APP (t, ts) =>
+                      | LT.TC_APP (t, ts) =>
                             tcc_app (r t, rs ts)
-                      | LK.TC_SEQ ts =>
+                      | LT.TC_SEQ ts =>
                             tcc_seq (rs ts)
-                      | LK.TC_PROJ (t, i) =>
+                      | LT.TC_PROJ (t, i) =>
                             tcc_proj (r t, i)
-                      | LK.TC_SUM ts =>
+                      | LT.TC_SUM ts =>
                             tcc_sum (rs ts)
-                      | LK.TC_FIX ((i,t,ts),j) =>
+                      | LT.TC_FIX ((i,t,ts),j) =>
                             tcc_fix ((i, r t, rs ts), j)
-                      | LK.TC_TUPLE (rf,ts) =>
+                      | LT.TC_TUPLE (rf,ts) =>
                             tcc_tuple (rs ts)
-                      | LK.TC_ARROW (ff, ts, ts') =>
+                      | LT.TC_ARROW (ff, ts, ts') =>
                             tcc_arrow (ff, rs ts, rs ts')
-                      | LK.TC_PARROW (t, t') =>
+                      | LT.TC_PARROW (t, t') =>
                             tcc_parrow (r t, r t')
-                      | LK.TC_BOX t =>
+                      | LT.TC_BOX t =>
                             tcc_box (r t)
-                      | LK.TC_ABS t =>
+                      | LT.TC_ABS t =>
                             tcc_abs (r t)
-                      | LK.TC_TOKEN (tok, t) =>
-                            tc_inj (LK.TC_TOKEN (tok, r t))
-                      | LK.TC_CONT ts =>
+                      | LT.TC_TOKEN (tok, t) =>
+                            tc_inj (LT.TC_TOKEN (tok, r t))
+                      | LT.TC_CONT ts =>
                             tcc_cont (rs ts)
-                      | LK.TC_IND _ =>
+                      | LT.TC_IND _ =>
                             bug "unexpected TC_IND in tc_nvar_cvt"
-                      | LK.TC_ENV _ =>
+                      | LT.TC_ENV _ =>
                             bug "unexpected TC_ENV in tc_nvar_cvt"
             in
                 dict := TcDict.insert(!dict, tycdepth, t);
@@ -898,7 +898,7 @@ fun lt_nvar_cvt_gen() = let
     let
         (* encode the lty and depth info using LT_ENV
          * (only first 2 args are useful) *)
-        val ltydepth = lt_inj (LK.LT_ENV (lty, d, 0, LK.initTycEnv))
+        val ltydepth = lt_inj (LT.LT_ENV (lty, d, 0, LT.initTycEnv))
     in
         case LtDict.find(!dict, ltydepth) of
             SOME t => t                 (* hit! *)
@@ -907,20 +907,20 @@ fun lt_nvar_cvt_gen() = let
                 val rs = map r          (* recursive invocation on list *)
                 val t =
                     case lt_out lty of
-                        LK.LT_TYC t => 
+                        LT.LT_TYC t => 
                             ltc_tyc (tc_nvar_cvt tvoffs d t)
-                      | LK.LT_STR ts => 
+                      | LT.LT_STR ts => 
                             ltc_str (rs ts)
-                      | LK.LT_FCT (ts, ts') => 
+                      | LT.LT_FCT (ts, ts') => 
                             ltc_fct (rs ts, rs ts')
-                      | LK.LT_POLY (tks, ts) => 
+                      | LT.LT_POLY (tks, ts) => 
                             ltc_poly (tks, 
                                       map (lt_nvar_cvt tvoffs (DI.next d)) ts)
-                      | LK.LT_CONT ts => 
+                      | LT.LT_CONT ts => 
                             ltc_cont (rs ts)
-                      | LK.LT_IND _ =>
+                      | LT.LT_IND _ =>
                             bug "unexpected LT_IND in lt_nvar_cvt"
-                      | LK.LT_ENV _ =>
+                      | LT.LT_ENV _ =>
                             bug "unexpected LT_ENV in lt_nvar_cvt"
             in
                 dict := LtDict.insert(!dict, ltydepth, t);

@@ -53,7 +53,7 @@ local structure DI = DebIndex
       structure BT = BasicTypes 
       structure TP = Types
       structure RT = RuntimeType
-      open LtyKernel FLINT OT
+      open Lty LtyKernel FLINT OT
 in
 
 type tkind = tkind

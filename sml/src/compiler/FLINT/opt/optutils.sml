@@ -30,8 +30,12 @@ end
 
 structure OptUtils :> OPT_UTILS =
 struct
-local structure F = FLINT
-      structure LK = LtyKernel
+local
+
+  structure F = FLINT
+  structure LT = Lty
+  structure LK = LtyKernel
+
 in
     datatype ('a,'b) either = A of 'a | B of 'b
 
@@ -40,8 +44,8 @@ in
     fun fk_wrap ({inline,known,isrec,cconv},rtys') =
 	let val cconv' =
 		case cconv
-		 of F.CC_FUN(LK.FF_VAR(f1,f2)) => F.CC_FUN(LK.FF_VAR(true, f2))
-		  | (F.CC_FCT | F.CC_FUN(LK.FF_FIXED)) => cconv
+		 of F.CC_FUN(LT.FF_VAR(f1,f2)) => F.CC_FUN(LT.FF_VAR(true, f2))
+		  | (F.CC_FCT | F.CC_FUN(LT.FF_FIXED)) => cconv
 	    val isrec' = Option.map (fn ltys => (ltys, F.LK_UNKNOWN)) rtys'
 	in ({isrec=isrec, known=known, cconv=cconv, inline=F.IH_ALWAYS},
 	    {isrec=isrec', known=true, cconv=cconv', inline=inline})

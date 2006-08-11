@@ -22,6 +22,7 @@ local structure A = Absyn
       structure DA = Access
       structure S = Symbol
       structure PP = PrettyPrint
+      structure PPN = PrettyPrintNew
       structure PU = PrintUtil
       structure LT = PLambdaType
       open PLambda PrintUtil 
@@ -111,8 +112,9 @@ fun complex le =
 
 fun printLexp l = 
   let fun prLty t = say (LT.lt_print t)
-      fun prTyc t = PrettyPrintNew.with_default_pp 
-			(fn ppstrm => PPLTy.ppTyc ppstrm t)
+      fun prTyc t = PPN.with_default_pp 
+			(fn ppstrm => (PPLty.ppTyc 20 ppstrm t;
+                                       PPN.flushStream ppstrm))
                      (* say (LT.tc_print t) *)
       fun prKnd k = say (LT.tk_print k)
 

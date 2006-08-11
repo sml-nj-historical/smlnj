@@ -6,6 +6,7 @@ struct
 
 local structure PT = PrimTyc
       structure DI = DebIndex
+      structure LT = Lty
       structure LK = LtyKernel
 
       fun bug msg = ErrorMsg.impossible("LtyExtern: "^msg)
@@ -32,12 +33,12 @@ local structure PT = PrimTyc
         | plist(p, x::xs) = 
             (p x) ^ (String.concat (map (fn z => ("," ^ (p z))) xs))
 
-      fun pfflag (LK.FF_VAR b) = 
+      fun pfflag (LT.FF_VAR b) = 
             let fun pff (true, true) = "rr"  | pff (true, false) = "rc"
                   | pff (false, true) = "cr" | pff (false, false) = "cc"
              in pff b
             end
-        | pfflag (LK.FF_FIXED) = "f"
+        | pfflag (LT.FF_FIXED) = "f"
 
       fun parw(p, (ff, t1, t2)) = 
             "<" ^ (p t1) ^ "> -" ^ pfflag ff ^ "-> <" ^ (p t2) ^ ">"
@@ -47,7 +48,7 @@ in
 open LtyDef
 
 (** new a type variable, currently not used *)
-val mkTvar : unit -> tvar = LK.mkTvar
+val mkTvar : unit -> tvar = LT.mkTvar
 
 (** utility functions for constructing tkinds *)
 fun tkc_arg n = 
@@ -69,12 +70,12 @@ fun tkc_int 0 = tkc_mono
 val ffc_plambda = ffc_var (false, false)
 val ffc_rrflint = ffc_var (true, true)
 
-fun ffc_fspec (x as LK.FF_FIXED, (true,true)) = x
-  | ffc_fspec (x as LK.FF_VAR _, nx) = ffc_var nx
+fun ffc_fspec (x as LT.FF_FIXED, (true,true)) = x
+  | ffc_fspec (x as LT.FF_VAR _, nx) = ffc_var nx
   | ffc_fspec _ = bug "unexpected case in ffc_fspec"
 
-fun ffd_fspec (LK.FF_FIXED) = (true,true)
-  | ffd_fspec (LK.FF_VAR x) = x
+fun ffd_fspec (LT.FF_FIXED) = (true,true)
+  | ffd_fspec (LT.FF_VAR x) = x
 
 (** utility functions for constructing tycs *)
 val tcc_int    = tcc_prim PT.ptc_int31
@@ -145,72 +146,67 @@ val lt_eqv_x  : lty * lty -> bool = LK.lt_eqv_x
  *            UTILITY FUNCTIONS FOR PRETTY PRINTING                        *
  ***************************************************************************)
 
-(** pretty printing of tkinds, tycs, and ltys *)
+(** (pretty?) printing of tkinds, tycs, and ltys -- see pplty.sml for real
+ ** pretty printing **)
 fun tk_print (x : tkind) = 
-  let fun g (LK.TK_MONO) = "K0"
-        | g (LK.TK_BOX) = "KB0"
-        | g (LK.TK_FUN (ks, k)) =  
-               "<" ^ (plist(tk_print, ks)) ^ "->" ^ (tk_print k) ^ ">"
-        | g (LK.TK_SEQ zs) = "KS(" ^ (plist(tk_print, zs)) ^ ")"
-   in g (tk_out x)
-  end
+  (case tk_out x
+    of LT.TK_MONO => "K0"
+     | LT.TK_BOX => "KB0"
+     | LT.TK_FUN(ks, k) =>
+         "<" ^ (plist(tk_print, ks)) ^ "->" ^ (tk_print k) ^ ">"
+     | LT.TK_SEQ zs => "KS(" ^ (plist(tk_print, zs)) ^ ")")
 
 fun tc_print (x : tyc) =
-  let fun g (LK.TC_VAR(i,j)) = "TV(" ^ (DI.di_print i) ^ "," ^ (itos j) ^ ")"
-        | g (LK.TC_NVAR v) = "NTV(v" ^ (itos v) ^ ")"
-        | g (LK.TC_PRIM pt) = PT.pt_print pt
-        | g (LK.TC_FN(ks, t)) = 
-              "(\\[" ^ plist(tk_print, ks) ^ "]." ^ (tc_print t) ^ ")"
-        | g (LK.TC_APP(t, [])) = tc_print t ^ "[]"
-        | g (LK.TC_APP(t, zs)) =
-              (tc_print t) ^ "[" ^ (plist(tc_print, zs)) ^ "]"
-        | g (LK.TC_SEQ zs) = "TS(" ^ (plist(tc_print,zs)) ^ ")"
-        | g (LK.TC_PROJ (t, i)) = 
-              "TP(" ^ (tc_print t) ^ "," ^ (itos i) ^ ")"
-        | g (LK.TC_SUM tcs) =  
-              "TSUM(" ^ (plist(tc_print, tcs)) ^ ")"
-        | g (LK.TC_FIX ((_, tc, ts), i)) = 
-              if tc_eqv(x,tcc_bool) then "B" 
-              else if tc_eqv(x,tcc_list) then "LST" 
-                   else (let (* val ntc = case ts of [] => tc
-                                                | _ => tcc_app(tc, ts) *)
-                             val _ = 1
-                          in ("DT{" ^ "DATA"  ^ (* "[" ^ (tc_print tc)  
-                                    ^ "] &&" ^ (plist(tc_print, ts))
-                                          ^ "&&" ^*)  "===" ^ (itos i) ^ "}")
-                         end)
-        | g (LK.TC_ABS t) = "Ax(" ^ (tc_print t) ^ ")"
-        | g (LK.TC_BOX t) = "Bx(" ^ (tc_print t) ^ ")"
-        | g (LK.TC_TUPLE(_,zs)) = "TT<" ^ (plist(tc_print, zs)) ^ ">"
-        | g (LK.TC_ARROW (ff,z1,z2)) = 
-               parw(fn u => plist(tc_print,u),(ff,z1,z2))
-        | g (LK.TC_PARROW _) = bug "unexpected TC_PARROW in tc_print"
-        | g (LK.TC_TOKEN (k, t)) = 
-              if LK.token_isvalid k then 
-                 (LK.token_abbrev k) ^ "(" ^ (tc_print t) ^ ")"
-              else bug "unexpected TC_TOKEN tyc in tc_print"
-        | g (LK.TC_CONT ts) = "Cnt(" ^ (plist(tc_print,ts)) ^ ")"
-        | g (LK.TC_IND _) = bug "unexpected TC_IND in tc_print"
-        | g (LK.TC_ENV _) = bug "unexpected TC_ENV in tc_print"
-   in g (tc_out x)
-  end (* function tc_print *)
+  (case (tc_out x)
+    of LT.TC_VAR(i,j) => "TV(" ^ (DI.di_print i) ^ "," ^ (itos j) ^ ")"
+     | LT.TC_NVAR v => "NTV(v" ^ (itos v) ^ ")"
+     | LT.TC_PRIM pt => PT.pt_print pt
+     | LT.TC_FN(ks, t) =>
+         "(\\[" ^ plist(tk_print, ks) ^ "]." ^ (tc_print t) ^ ")"
+     | LT.TC_APP(t, []) => tc_print t ^ "[]"
+     | LT.TC_APP(t, zs) =>
+         (tc_print t) ^ "[" ^ (plist(tc_print, zs)) ^ "]"
+     | LT.TC_SEQ zs => "TS(" ^ (plist(tc_print,zs)) ^ ")"
+     | LT.TC_PROJ (t, i) =>
+         "TP(" ^ (tc_print t) ^ "," ^ (itos i) ^ ")"
+     | LT.TC_SUM tcs =>
+         "TSUM(" ^ (plist(tc_print, tcs)) ^ ")"
+     | LT.TC_FIX ((_, tc, ts), i) =>
+         if tc_eqv(x,tcc_bool) then "B" 
+         else if tc_eqv(x,tcc_list) then "LST" 
+         else (let (* val ntc = case ts of [] => tc
+                                                 | _ => tcc_app(tc, ts) *)
+                   val _ = 1
+               in ("DT{" ^ "DATA"  ^ (* "[" ^ (tc_print tc)  
+                   ^ "] &&" ^ (plist(tc_print, ts))
+                   ^ "&&" ^*)  "===" ^ (itos i) ^ "}")
+               end)
+     | LT.TC_ABS t => "Ax(" ^ (tc_print t) ^ ")"
+     | LT.TC_BOX t => "Bx(" ^ (tc_print t) ^ ")"
+     | LT.TC_TUPLE(_,zs) => "TT<" ^ (plist(tc_print, zs)) ^ ">"
+     | LT.TC_ARROW (ff,z1,z2) =>
+         parw(fn u => plist(tc_print,u),(ff,z1,z2))
+     | LT.TC_PARROW _ => bug "unexpected TC_PARROW in tc_print"
+     | LT.TC_TOKEN (k, t) =>
+         if LT.token_isvalid k then 
+             (LT.token_abbrev k) ^ "(" ^ (tc_print t) ^ ")"
+         else bug "unexpected TC_TOKEN tyc in tc_print"
+     | LT.TC_CONT ts => "Cnt(" ^ (plist(tc_print,ts)) ^ ")"
+     | LT.TC_IND _ => bug "unexpected TC_IND in tc_print"
+     | LT.TC_ENV _ => bug "unexpected TC_ENV in tc_print")
 
 fun lt_print (x : lty) =
-  let fun h (i, t) = "(" ^ (itos i) ^ "," ^ (lt_print t) ^ ")"
-
-      fun g (LK.LT_TYC t) = tc_print t
-        | g (LK.LT_STR zs) = "S{" ^ (plist(lt_print, zs)) ^ "}"
-        | g (LK.LT_FCT (ts1,ts2)) = 
-             "(" ^ (plist(lt_print, ts1)) ^ ") ==> ("
-                 ^ (plist(lt_print, ts2)) ^ ")"
-        | g (LK.LT_POLY(ks, ts)) = 
-             "(Q[" ^ plist(tk_print, ks) ^ "]." ^ (plist(lt_print,ts)) ^ ")"
-        | g (LK.LT_CONT ts) = "CNT(" ^ (plist(lt_print, ts)) ^ ")"
-        | g (LK.LT_IND _) = bug "unexpected LT_IND in lt_print"
-        | g (LK.LT_ENV _) = bug "unexpected LT_ENV in lt_print"
-
-   in g (lt_out x)
-  end (* function lt_print *)
+  (case lt_out x
+    of LT.LT_TYC t => tc_print t
+     | LT.LT_STR zs => "S{" ^ (plist(lt_print, zs)) ^ "}"
+     | LT.LT_FCT (ts1,ts2) => 
+         "(" ^ (plist(lt_print, ts1)) ^ ") ==> ("
+         ^ (plist(lt_print, ts2)) ^ ")"
+     | LT.LT_POLY(ks, ts) =>
+         "(Q[" ^ plist(tk_print, ks) ^ "]." ^ (plist(lt_print,ts)) ^ ")"
+     | LT.LT_CONT ts => "CNT(" ^ (plist(lt_print, ts)) ^ ")"
+     | LT.LT_IND _ => bug "unexpected LT_IND in lt_print"
+     | LT.LT_ENV _ => bug "unexpected LT_ENV in lt_print")
 
 (** finding out the depth for a tyc's innermost-bound free variables *)
 val tc_depth : tyc * depth -> depth = LK.tc_depth
@@ -219,29 +215,29 @@ val tcs_depth: tyc list * depth -> depth = LK.tcs_depth
 (** adjusting an lty or tyc from one depth to another *)
 fun lt_adj (lt, d, nd) = 
   if d = nd then lt 
-  else ltc_env(lt, 0, nd - d, LK.initTycEnv)
+  else ltc_env(lt, 0, nd - d, LT.initTycEnv)
 
 fun tc_adj (tc, d, nd) = 
   if d = nd then tc 
-  else tcc_env(tc, 0, nd - d, LK.initTycEnv)
+  else tcc_env(tc, 0, nd - d, LT.initTycEnv)
 
-(** the following functions does the smiliar thing as lt_adj and
-    tc_adj; it adjusts an lty (or tyc) from depth d+k to depth nd+k,
+(** The following functions are similiar to lt_adj and tc_adj;
+    they adjust an lty (or tyc) from depth d+k to depth nd+k,
     assuming the last k levels are type abstractions. So lt_adj
     is really lt_adj_k with k set to 0. Both functions are currently
-    called inside the lcontract.sml only. *)
+    called only in lcontract.sml. *)
 local
 fun mkTycEnv (i, k, dd, e) = 
-  if i >= k then e else mkTycEnv(i+1, k, dd, LK.tcInsert(e,(NONE, dd+i)))
+  if i >= k then e else mkTycEnv(i+1, k, dd, LT.tcInsert(e,(NONE, dd+i)))
 
 in 
 fun lt_adj_k (lt, d, nd, k) = 
   if d = nd then lt 
-  else ltc_env(lt, k, nd-d+k, mkTycEnv(0, k, nd-d, LK.initTycEnv))
+  else ltc_env(lt, k, nd-d+k, mkTycEnv(0, k, nd-d, LT.initTycEnv))
 
 fun tc_adj_k (tc, d, nd, k) = 
   if d = nd then tc 
-  else tcc_env(tc, k, nd-d+k, mkTycEnv(0, k, nd-d, LK.initTycEnv))
+  else tcc_env(tc, k, nd-d+k, mkTycEnv(0, k, nd-d, LT.initTycEnv))
 
 end (* lt_adj_k and tc_adj_k *)
 
@@ -255,20 +251,20 @@ val tc_unknown : tyc -> bool = LK.tc_unknown
  *            UTILITY FUNCTIONS ON TKIND ENVIRONMENT                       *
  ***************************************************************************)
 
-type tkindEnv = LK.tkindEnv
-exception tkUnbound = LK.tkUnbound
-val initTkEnv = LK.initTkEnv
-val tkLookup = LK.tkLookup
-val tkInsert = LK.tkInsert
+type tkindEnv = LT.tkindEnv
+exception tkUnbound = LT.tkUnbound
+val initTkEnv = LT.initTkEnv
+val tkLookup = LT.tkLookup
+val tkInsert = LT.tkInsert
   
 (***************************************************************************
  *            UTILITY FUNCTIONS ON TYC ENVIRONMENT                         *
  ***************************************************************************)
 
-exception tcUnbound = LK.tcUnbound
-type tycEnv = LK.tycEnv
-val initTycEnv = LK.initTycEnv
-val tcInsert = LK.tcInsert
+exception tcUnbound = LT.tcUnbound
+type tycEnv = LT.tycEnv
+val initTycEnv = LT.initTycEnv
+val tcInsert = LT.tcInsert
 
 (***************************************************************************
  *            UTILITY FUNCTIONS ON LTY ENVIRONMENT                         *
@@ -289,7 +285,7 @@ fun ltLookup (venv, lv, nd) =
       | SOME (lt, d) => 
 	  if d=nd then lt
 	  else if d > nd then bug "unexpected depth info in ltLookup"
-	       else ltc_env(lt, 0, nd - d, LK.initTycEnv)
+	       else ltc_env(lt, 0, nd - d, LT.initTycEnv)
   (*easc*))
 
 fun ltInsert (venv, lv, lt, d) = IntRedBlackMap.insert(venv, lv, (lt, d))
