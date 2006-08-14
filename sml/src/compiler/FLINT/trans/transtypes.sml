@@ -295,10 +295,9 @@ and toTyc d t =
 	     | _ => LT.tcc_app (tycTyc (tc, d), map g ts))
         | g (CONty(tyc, ts)) = LT.tcc_app(tycTyc(tyc, d), map g ts)
         | g (IBOUND i) = LT.tcc_var(DI.innermost, i) 
-			 (* [KM???] If we do not expect POLYty's, we definitely
-			    do not expect IBOUNDs because IBOUNDs are 
-			    supposed to be found only without 
-			    POLYty's *)
+			 (* [KM] IBOUNDs are encountered when toTyc
+                          * is called on the body of a POLYty in 
+                          * toLty (see below). *)
         | g (POLYty _) = bug "unexpected poly-type in toTyc"
         | g (UNDEFty) = bug "unexpected undef-type in toTyc"
         | g (WILDCARDty) = bug "unexpected wildcard-type in toTyc"      
