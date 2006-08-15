@@ -113,11 +113,23 @@ val lt_cmp   : lty * lty -> order
 val lt_key   : lty -> int
 
 (** utility functions on tycEnv *)
-exception tcUnbound
-val initTycEnv : tycEnv
-val tcLookup : int * tycEnv -> tycEnvElem
-val tcInsert : tycEnv * tycEnvElem -> tycEnv
-val tcSplit : tycEnv -> (tycEnvElem * tycEnv) option
+(* values returned by lookupTycEnv *)
+datatype tycEnvElem
+  = B of tkind list * tyc list
+  | L of tkind list * int
+
+(* components of a tycEnv *)
+datatype tycEnvComp
+  = TEempty
+  | TEbind of tkind list * tyc list
+  | TElam of tkind list * int * tycEnv
+
+exception UnboundTycEnv
+val emptyTycEnv : tycEnv
+val lookupTycEnv : tycEnv * int -> tycEnvElem
+val bindTycEnv : tkind list * tyc list -> tycEnv
+val lamTycEnv : tkind list * int * tycEnv -> tycEnv
+val splitTycEnv : tycEnv -> tycEnvComp
 
 (** utility functions on tkindEnv *)
 type tkindEnv 

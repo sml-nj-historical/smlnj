@@ -248,8 +248,9 @@ and tc_lzrd(t: tyc) =
                    end
                | _ => x)
 
-      and h (x, 0, 0, _) = g x
-        | h (x, ol, nl, tenv) = 
+      (* [KM ???] claim: h will not return a TC_IND nor a TC_ENV *)
+      and h (x, 0, 0, _) = g x  (* [KM ???] redundant call to g here? *)
+        | h (x, ol, nl, tenv) =
             let fun prop z = tcc_env(z, ol, nl, tenv) 
 		             handle Fail _ =>
                                (with_pp(fn s =>
@@ -257,12 +258,12 @@ and tc_lzrd(t: tyc) =
                                   ppTyc (!dp) s z; PP.newline s));
                                 raise Fail ("tc_lzrd prop"))
              in (case tc_outX x
-                  of TC_VAR (i,j) => 
-                       if (i <= ol) then  (* i is bound in tenv *)
-                         (case tcLookup(i, tenv) 
-                           of (NONE, n) => tcc_var(nl - n, j) (* rule r5 *)
+                  of TC_VAR (n,k) => 
+                       if (n <= ol) then  (* i is bound in tenv *)
+                         (case lookupTycEnv(tenv, i) 
+                           of (NONE, nl') => tcc_var(nl - nl', k) (* rule r5 *)
                             | (SOME ts, n) =>  
-                                 let val y = List.nth(ts, j) 
+                                 let val y = List.nth(ts, k) 
                                              handle Subscript => 
                     (with_pp(fn s =>
                        let val {break,newline,openHVBox,openHOVBox,closeBox,
@@ -270,7 +271,7 @@ and tc_lzrd(t: tyc) =
                        in openHVBox 0;
                           pps "***Debugging***"; newline();
                           pps "tc_lzrd arg: "; PPLty.ppTyc (!dp) s t; newline();
-		          pps "i = "; ppi i; pps ", j = "; ppi j; newline();
+		          pps "n = "; ppi n; pps ", k = "; ppi k; newline();
                           pps "length(ts) = : "; ppi (length ts); newline();
                           pps "ts elements: "; break{nsp=2,offset=2};
                           openHOVBox 2;
@@ -280,9 +281,9 @@ and tc_lzrd(t: tyc) =
                           newline(); PP.flushStream s
 			end);
 			raise tcUnbound2)
-                                 in h(y, 0, nl - n, initTycEnv)  (* rule r6 *)
+                                 in h(y, 0, nl - nl', emptyTycEnv)  (* rule r6 *)
                                  end)
-                       else tcc_var(i-ol+nl, j) (* rule r4 *)
+                       else tcc_var(n-ol+nl, k) (* rule r4 *)
                    | TC_NVAR _ => x
                    | TC_PRIM _ => x    (* rule r7 *)
                    | TC_FN (ks, tc) => 
@@ -398,7 +399,7 @@ and tc_whnm t = if tcp_norm(t) then t else
                            val sp = 
                              (case tc_outX b
                                of TC_ENV(b', ol', nl', te') => 
-                                    (case tcSplit te'
+                                    (case splitTycEnv te'
                                       of SOME((NONE, n), te) =>
                                            if (n = nl'-1) andalso (ol' > 0)
                                            then (b', ol', n, 

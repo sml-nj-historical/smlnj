@@ -240,7 +240,7 @@ local structure Weak = SMLofNJ.Weak
       val andb = Word.andb
 
       val N = 2048 (* 1024 *)
-      val NN = itow (N*N)
+      val NNdec = itow (N*N) - 0w1
       val P = 0w509 (* was 0w1019, a prime < 1024 so that N*N*P < maxint *)
 
       val tk_table : tkind Weak.weak list Array.array = Array.array(N,nil)
@@ -254,7 +254,7 @@ local structure Weak = SMLofNJ.Weak
 
       fun combine [x] = itow x
         | combine (a::rest) = 
-            andb(itow a +(combine rest)*P, NN - 0w1)
+            andb(itow a +(combine rest)*P, NNdec)
         | combine _ = bug "unexpected case in combine"
 
       (* 
@@ -268,7 +268,7 @@ local structure Weak = SMLofNJ.Weak
             fun g(l, z as (w::rest)) = 
                   (case Weak.strong w
                     of SOME (r as ref(h',t',_)) =>
-                        if (h=h') andalso (eq {new=t, old=t'})
+                        IF (h=h') andalso (eq {new=t, old=t'})
                         then (Array.update(table, i, revcat(l,z)); r)
                         else g(w::l, rest)
                      | NONE => g(l, rest))
@@ -477,60 +477,57 @@ end (* local -- hask consing *)
  *            UTILITY FUNCTIONS ON TYC ENVIRONMENT                         *
  ***************************************************************************)
 
-type tycEnvElem = tyc list option * int
-
+(* virtual tycEnv datatype
+ *   datatype tycEnv
+ *     = Empty
+ *     | B of tkind list * tyc list
+ *     | L of tkind list * int * tycEnv
+ *)
+             
 (** utility functions for manipulating the tycEnv **)
-local
-  val tcenv_nil : tycEnv = tc_injX(TC_PRIM(PT.ptc_void))
-  fun tcenv_cons (t: tyc, b: tycEnv): tycEnv =
-      tc_injX(TC_ARROW(FF_FIXED, [t],[b]))
 
-  (* tc_encode : tycEnvElem -> tyc *)
-  fun tc_encode(NONE, i) =
-        tc_injX(TC_PROJ(tcenv_nil,i))
-    | tc_encode(SOME ts, i) = 
-        tc_injX(TC_PROJ(tc_injX(TC_SEQ(ts)), i))
+val emptyTycEnv : tycEnv = tc_injX(TC_SUM[])
 
-  (* tc_decode : tyc -> tycEnvElem *)
-  fun tc_decode (x: tyc) : tycEnvElem = 
-      (case tc_outX x
-        of TC_PROJ(y, i) =>
-           (case tc_outX y
-             of TC_SEQ ts => (SOME ts, i)
-              | TC_PRIM _ => (NONE, i)
-              | _ => bug "unexpected tycEnv1 in tc_decode")
-         | _ => bug "unexpected tycEnv2 in tc_decode")
-in
+fun bindTycEnv (ks: tkind list, tycs : tyc list): tycEnv =
+      tc_injX(TC_FN(ks,TC_SEQ tycs))
 
+fun lamTycEnv (ks: tkind list, j: int, tenv: tycEnv) : tycEnv =
+      tc_injX(TC_PROJ(TC_FN(ks,tenv),j))
 
-(* tcUnbound -- raised when first element of a deBruijn index is 
+(* TycEnvUnbound -- raised when first element of a deBruijn index is 
  * out of bounds *)
-exception tcUnbound
+exception UnboundTycEnv
 
-val initTycEnv : tycEnv = tcenv_nil
+datatype tycEnvElem
+  = B of tkind list * tyc list
+  | L of tkind list * int
 
-fun tcLookup(i, tenv : tycEnv) : tyc list option * int = 
+(* 1-based index lookup *)
+fun lookupTycEnv(tenv : tycEnv, i) : tycEnvElem = 
     if i > 1 then
       (case tc_outX tenv
-        of TC_ARROW(_,_,[x]) => tcLookup(i-1, x)  (* cons *)
-         | TC_PRIM _ => raise tcUnbound           (* nil *)
-         | _ => bug "unexpected tycEnv in tcLookup")
+        of TC_PROJ(TC_FN(_,tenv),_) => lookupTycEnv(tenv,i-1)  (* L *)
+         | TC_SUM _ | TC_PROJ _ => raise UnboundTycEnv         (* Empty or B *)
+         | _ => bug "unexpected tycEnv in tycEnvLookup")
     else if i = 1 then
       (case tc_outX tenv
-        of TC_ARROW(_,[x],_) => tc_decode x   (* cons *)
-         | TC_PRIM _ => raise tcUnbound       (* nil *)
-         | _ => bug "unexpected tycEnv in tcLookup")
-    else bug "index 0 in tcLookup"
+        of TC_FN(ks,TC_SEQ(tycs)) => B(ks,tycs)   (* Bind *)
+         | TC_PROJ(TC_FN(ks,_,),j) => L(ks,j)     (* Lam *)
+         | TC_SUM _ => raise UnboundTycEnv        (* Empty *)
+         | _ => bug "unexpected tycEnv in tycEnvLookup")
+    else bug "index 0 in tycEnvLookup"
 
-fun tcInsert(tenv : tycEnv, elem: tycEnvElem): tycEnv =
-    tcenv_cons(tc_encode elem, tenv)
+datatype tycEnvComp
+  = TEempty
+  | TEbind of tkind list * tyc list
+  | TElam of tkind list * int * tycEnv
 
-fun tcSplit(tenv : tycEnv) : (tycEnvElem * tycEnv) option =
+fun splitTycEnv(tenv : tycEnv) : tycEnvComp =
     (case tc_outX tenv
-      of TC_ARROW(_,[x],[y]) => SOME (tc_decode x, y)
-       | _ => NONE)
-  
-end (* local -- utility functions for tycEnv *)
+      of TC_FN(ks,TC_SEQ(tycs)) => TEbind(ks,tycs)   (* B *)
+       | TC_PROJ(TC_FN(ks,tenv,),j) => TElam(ks,j,tenv)     (* L *)
+       | TC_SUM _ => TEempty)
+
 
 (***************************************************************************
  *            UTILITY FUNCTIONS ON TKIND ENVIRONMENT                       *

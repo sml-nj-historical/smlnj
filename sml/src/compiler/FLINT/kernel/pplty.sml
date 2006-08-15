@@ -11,7 +11,6 @@ struct
 
 local 
 
-    structure LK = Lty
     structure PT = PrimTyc
     structure PP = PrettyPrintNew
     open PPUtilNew
@@ -152,8 +151,8 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	  | ppTycI (Lty.TC_FIX((numStamps, datatypeFamily, freetycs), index)) =
 	    (openHOVBox 1;
 	     pps "FIX(";
-	     (case (Lty.tc_outX datatypeFamily) of
-		  Lty.TC_FN(params, rectyc) => (* generator function *) 
+	     (case (Lty.tc_outX datatypeFamily)
+		of Lty.TC_FN(params, rectyc) => (* generator function *) 
 		  let fun ppMus 0 = ()
 			| ppMus i = (pps "mu";
 				     ppi i; 
