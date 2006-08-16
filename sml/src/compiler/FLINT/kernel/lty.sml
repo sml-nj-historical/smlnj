@@ -268,7 +268,7 @@ local structure Weak = SMLofNJ.Weak
             fun g(l, z as (w::rest)) = 
                   (case Weak.strong w
                     of SOME (r as ref(h',t',_)) =>
-                        IF (h=h') andalso (eq {new=t, old=t'})
+                        if (h=h') andalso (eq {new=t, old=t'})
                         then (Array.update(table, i, revcat(l,z)); r)
                         else g(w::l, rest)
                      | NONE => g(l, rest))
