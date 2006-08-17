@@ -64,16 +64,21 @@ in
 
 fun tcc_env(x, ol, nl, tenv) =
   (let fun checkTCVAR tyc = case (tc_outX tyc) of
-       TC_VAR(i,j) => (case tcLookup(i,tenv) 
-			of (SOME ts, _) => if j >= length ts 
-					   then (print "tcc_env TC_VAR ";
-						 print (Int.toString j);
-						 print " ts length ";
-						 print (Int.toString (length ts));
-						 raise Fail "Bad TC_ENV TC_VAR")
-					   else ()
+       TC_VAR(i,j) => (case teLookup(tenv, i) 
+			of SOME(Beta(j, tcs, _)) => 
+			   if j >= length tcs 
+			   then (print "tcc_env TC_VAR ";
+				 print (Int.toString j);
+				 print "B tcs length ";
+				 print (Int.toString (length tcs));
+				 raise Fail "Bad TC_ENV TC_VAR")
+			   else ()
+			 | SOME(Lamb(j)) => 
+			   print "TC_VAR referencing LAMB"
 			 | _ => ())
-     | TC_ENV(tc, _, _, _)  => (print "TC_ENV("; checkTCVAR(tc); print ")\n")
+     | TC_ENV(tc, _, _, _)  => (print "TC_ENV("; 
+				checkTCVAR(tc); 
+				print ")\n")
      | _ => () (* print ("tcc_env OTHER " ^ tci_print tci ^"\n") *) 
    in checkTCVAR(x); 
     let val tvs = tc_vs x
@@ -259,20 +264,24 @@ and tc_lzrd(t: tyc) =
                                 raise Fail ("tc_lzrd prop"))
              in (case tc_outX x
                   of TC_VAR (n,k) => 
-                       if (n <= ol) then  (* i is bound in tenv *)
-                         (case lookupTycEnv(tenv, i) 
-                           of (NONE, nl') => tcc_var(nl - nl', k) (* rule r5 *)
-                            | (SOME ts, n) =>  
+                       if (n <= ol) then  (* n is bound in tenv *)
+                         (case teLookup(tenv, n) 
+                           of SOME(Lamb(nl', _)) => 
+			        tcc_var(nl - nl', k) (* rule r5 *)
+                            | SOME(Beta(nl', ts, _)) =>  
                                  let val y = List.nth(ts, k) 
                                              handle Subscript => 
                     (with_pp(fn s =>
-                       let val {break,newline,openHVBox,openHOVBox,closeBox,
-                                pps, ppi} = PU.en_pp s
+                       let val {break,newline,openHVBox,openHOVBox,
+				closeBox, pps, ppi} = PU.en_pp s
                        in openHVBox 0;
                           pps "***Debugging***"; newline();
-                          pps "tc_lzrd arg: "; PPLty.ppTyc (!dp) s t; newline();
-		          pps "n = "; ppi n; pps ", k = "; ppi k; newline();
-                          pps "length(ts) = : "; ppi (length ts); newline();
+                          pps "tc_lzrd arg: "; PPLty.ppTyc (!dp) s t; 
+			  newline();
+		          pps "n = "; ppi n; pps ", k = "; ppi k; 
+			  newline();
+                          pps "length(ts) = : "; ppi (length ts); 
+			  newline();
                           pps "ts elements: "; break{nsp=2,offset=2};
                           openHOVBox 2;
                           ppList s {sep=",",pp=ppTyc (!dp)} ts;
@@ -281,13 +290,17 @@ and tc_lzrd(t: tyc) =
                           newline(); PP.flushStream s
 			end);
 			raise tcUnbound2)
-                                 in h(y, 0, nl - nl', emptyTycEnv)  (* rule r6 *)
-                                 end)
+                                 in h(y, 0, nl - nl', teEmpty)  (* rule r6 *)
+                                 end
+			(* Could not find TV(n,_) in tenv 
+			   and ol = length tenv invariant 
+			   failed! *)
+			    | NONE => raise tcUnbound) 
                        else tcc_var(n-ol+nl, k) (* rule r4 *)
                    | TC_NVAR _ => x
                    | TC_PRIM _ => x    (* rule r7 *)
                    | TC_FN (ks, tc) => 
-                      let val tenv' = tcInsert(tenv, (NONE, nl))
+                      let val tenv' = teCons(Lamb(nl, ks), tenv)
                        in tcc_fn(ks, 
 				 tcc_env(tc, ol+1, nl+1, tenv') 
 				 handle Fail _ => raise Fail "tc_lzrd TC_FN") (* rule r10 *)
@@ -333,7 +346,7 @@ and lt_lzrd t =
                    | LT_STR ts => ltc_str (map prop ts)
                    | LT_FCT (ts1, ts2) => ltc_fct(map prop ts1, map prop ts2)
                    | LT_POLY (ks, ts) => 
-                       let val tenv' = tcInsert(tenv, (NONE, nl))
+                       let val tenv' = teCons(Lamb (nl, ks), tenv)
                         in ltc_poly(ks, 
                              map (fn t => ltc_env(t, ol+1, nl+1, tenv')) ts)
                        end
@@ -391,24 +404,29 @@ and tc_whnm t = if tcp_norm(t) then t else
    in case (tc_outX nt)
        of TC_APP(tc, tcs) =>
 	    ((* print "\ntc_whnm: TC_APP\n"; *)
-            (let val tc' = tc_whnm tc handle Fail _ => raise Fail "TC_APP in tc_whnm 1"
+            (let val tc' = tc_whnm tc 
+		     handle Fail _ => raise Fail "TC_APP in tc_whnm 1"
               in case (tc_outX tc')
                   of TC_FN(ks, b) =>  
                        let fun base () = 
-                             (b, 1, 0, tcInsert(initTycEnv,(SOME tcs, 0)))
+                             (b, 1, 0, teCons(Beta(0, tcs, ks), teEmpty))
                            val sp = 
                              (case tc_outX b
                                of TC_ENV(b', ol', nl', te') => 
-                                    (case splitTycEnv te'
-                                      of SOME((NONE, n), te) =>
-                                           if (n = nl'-1) andalso (ol' > 0)
-                                           then (b', ol', n, 
-                                                 tcInsert(te, (SOME tcs, n)))
-                                           else base()
+                                    (case teDest te'
+                                      of SOME(Lamb(n, ks'), te) =>
+                                         if (n = nl'-1) andalso (ol' > 0)
+                                         then (b', ol', n, 
+                                               teCons(Beta(n, tcs, ks),
+						      te))
+					      (* Which ks correspond to
+					         this Beta? *)
+                                         else base()
                                        | _ => base())
                                 | _ => base()) 
                            val res = tc_whnm(tcc_env sp) 
-			             handle Fail _ => raise Fail "TC_APP in tc_whnm 2" 
+			             handle Fail _ => 
+					    raise Fail "TC_APP in tc_whnm 2" 
                         in tyc_upd(nt, res); res
                        end
                    | ((TC_SEQ _) | (TC_TUPLE _) | (TC_ARROW _) | (TC_IND _)) =>

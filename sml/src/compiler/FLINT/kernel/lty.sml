@@ -496,7 +496,7 @@ datatype teBinder
       (* Lamb(j,ks):
          created when pushing a closure (Env) through a lambda (r10);
          j: the nesting level of the closure just before r10 is applied,
-            i.e. the nesteing level of the abstraction relative to the
+            i.e. the nesting level of the abstraction relative to the
             point where the closure was originally created;
          ks: the kinds of the abstraction parameters *)
 
