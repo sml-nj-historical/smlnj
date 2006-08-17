@@ -520,7 +520,7 @@ fun teDecodeBinder (tyc : tyc) : teBinder =
              of TC_PROJ(tyc'',j) =>
                   (case tc_outX tyc''
                      of TC_SEQ(args) => Beta(j,args,ks)
-                      | bug "teDecodeBinder")
+                      | _ => bug "teDecodeBinder")
               | _ => bug "teDecodeBinder")
       | TC_PROJ(tyc',j) =>
           (case tc_outX tyc'
@@ -548,7 +548,7 @@ fun teLookup(tenv : tycEnv, i: int) : teBinder option =
              if i > 1 then teLookup(tenv',i-1)
              else if i = 1 then SOME binder
              else bug "index 0 in tycEnvLookup"
-         | NONE => NONE
+         | NONE => NONE)
 
 
 (***************************************************************************
