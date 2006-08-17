@@ -511,7 +511,7 @@ val teEmpty : tycEnv = tc_injX(TC_SUM[])
 fun teEncodeBinder (Beta(j,args,ks)) : tyc =
       tc_injX(TC_FN(ks,tc_injX(TC_PROJ(tc_injX(TC_SEQ args), j))))
   | teEncodeBinder (Lamb(j,ks)) =
-      tc_injX(TC_PROJ(tc_injX(TC_FN(ks,tc_injX(TC_SUM[])), j)))
+      tc_injX(TC_PROJ(tc_injX(TC_FN(ks,tc_injX(TC_SUM[]))), j))
 
 fun teDecodeBinder (tyc : tyc) : teBinder =
     case tc_outX(tyc)
@@ -529,7 +529,7 @@ fun teDecodeBinder (tyc : tyc) : teBinder =
       | _ => bug "teDecodeBinder"
 
 fun teCons (b: teBinder, tenv: tycEnv) : tycEnv =
-    tc_injX(TC_PARROW(b,tenv))
+    tc_injX(TC_PARROW(teEncodeBinder b, tenv))
 
 fun teDest (tenv: tycEnv) : (teBinder * tycEnv) option =
     case tc_outX tenv
