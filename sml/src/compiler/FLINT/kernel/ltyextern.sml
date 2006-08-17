@@ -59,7 +59,7 @@ fun lt_pinst (lt : lty, ts : tyc list) =
 (********************************************************************
  *                      KIND-CHECKING ROUTINES                      *
  ********************************************************************)
-exception TkTycChk
+exception TkTycChk of string
 exception LtyAppChk
 
 (* tkSubkind returns true if k1 is a subkind of k2, or if they are 
@@ -80,7 +80,7 @@ and tkSubkind (k1, k2) =
       | (LT.TK_SEQ ks1, LT.TK_SEQ ks2) =>     
           tksSubkind (ks1, ks2)
       | (LT.TK_FUN (ks1, k1'), LT.TK_FUN (ks2, k2')) => 
-          tksSubkind (ks1, ks2) andalso (* contravariant *)
+          tksSubkind (ks2, ks1) andalso (* contravariant *)
           tkSubkind (k1', k2')
       | _ => false
 
@@ -90,25 +90,25 @@ fun tkIsMono k = tkSubkind (k, tkc_mono)
 (* assert that k1 is a subkind of k2 *)
 fun tkAssertSubkind (k1, k2) =
     if tkSubkind (k1, k2) then ()
-    else raise TkTycChk
+    else raise TkTycChk "Subkind assertion failed!"
 
 (* assert that a kind is monomorphic *)
 fun tkAssertIsMono k =
     if tkIsMono k then ()
-    else raise TkTycChk
+    else raise TkTycChk "Mono assertion failed!"
 
 (* select the ith element from a kind sequence *)
 fun tkSel (tk, i) = 
   (case (tk_out tk)
-    of (LT.TK_SEQ ks) => (List.nth(ks, i) handle _ => raise TkTycChk)
-     | _ => raise TkTycChk)
+    of (LT.TK_SEQ ks) => (List.nth(ks, i) handle Subscript => raise TkTycChk "Invalid TC_SEQ index")
+     | _ => raise TkTycChk "Projecting out of non-tyc sequence")
 
 fun tks_eqv (ks1, ks2) = tk_eqv(tkc_seq ks1, tkc_seq ks2)
 
 fun tkApp (tk, tks) = 
   (case (tk_out tk)
-    of LT.TK_FUN(a, b) => if tks_eqv(a, tks) then b else raise TkTycChk
-     | _ => raise TkTycChk)
+    of LT.TK_FUN(a, b) => if tks_eqv(a, tks) then b else raise TkTycChk "Param/Arg Tyc Kind mismatch"
+     | _ => raise TkTycChk "Application of non-TK_FUN")
 
 (* check the application of tycs of kinds `tks' to a type function of
  * kind `tk'.
@@ -116,8 +116,8 @@ fun tkApp (tk, tks) =
 fun tkApp (tk, tks) = 
   (case (tk_out tk)
     of LT.TK_FUN(a, b) =>
-       if tksSubkind(tks, a) then b else raise TkTycChk
-     | _ => raise TkTycChk)
+       if tksSubkind(tks, a) then b else raise TkTycChk "Param/Arg Tyc Kind mismatch"
+     | _ => raise TkTycChk "Application of non-TK_FUN") 
 
 (* Kind-checking naturally requires traversing type graphs.  to avoid
  * re-traversing bits of the dag, we use a dictionary to memoize the
@@ -213,7 +213,9 @@ fun tkTycGen() = let
                 (List.app (tkAssertIsMono o g) tcs;
                  tkc_mono)
               | LT.TC_FIX ((n, tc, ts), i) =>
-                let val k = g tc
+                let (* Kind check generator tyc *)
+		    val k = g tc
+		    (* Kind check freetycs *)
                     val nk =
                         case ts of
                             [] => k 
@@ -226,11 +228,12 @@ fun tkTycGen() = let
                                     [x] => x
                                   | _ => tkc_seq a
                         in
+			    (* Kind check recursive tyc app ??*)
                             if tkSubkind(arg, b) then (* order? *)
                                 (if n = 1 then b else tkSel(arg, i))
-                            else raise TkTycChk
+                            else raise TkTycChk "Recursive app mismatch"
                         end
-                      | _ => raise TkTycChk
+                      | _ => raise TkTycChk "FIX with no generator"
                 end
               | LT.TC_ABS tc =>
                 (tkAssertIsMono (g tc);
