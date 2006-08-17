@@ -64,23 +64,31 @@ fun ppTKind pd ppstrm (tk : Lty.tkind) =
     end (* ppTKind *)
 
 fun tycEnvFlatten(tycenv) = 
-    (case Lty.tcSplit(tycenv)
+    (case Lty.teDest(tycenv)
        of NONE => []
         | SOME(elem, rest) => elem::tycEnvFlatten(rest))
 
-fun ppTycEnvElem pd ppstrm ((tycop,i): Lty.tycEnvElem) =
-    if pd < 1 then pps ppstrm "<tee>" else
+fun ppTEBinder pd ppstrm (binder: Lty.teBinder) =
+    if pd < 1 then pps ppstrm "<teBinder>" else
     let val {openHOVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
     in openHOVBox 1;
-	pps "(";
-	(case tycop
-	   of NONE => pps "*"
-	    | SOME(tycs) => ppList ppstrm {sep=",", pp=ppTyc (pd-1)} tycs);
-	pps ",";
-	ppi i;
-	pps ")";
+	let val ks = 
+		(case binder
+		  of Lty.Lamb (level, ks) => (pps "L"; ppi level; ks) 
+		   | Lty.Beta (level, args, ks) =>
+	             (pps "B";
+		      ppi level;
+		      pps "(";
+		      ppList ppstrm {sep=",", pp=ppTyc (pd-1)} args;
+		      pps ")";
+		      ks)
+		)
+	in if pd < 2 then () 
+	   else (pps " : ";
+		 ppList ppstrm {sep="*", pp=ppTKind (pd-1)} ks)
+	end;
        closeBox()
-    end (* function ppTycEnvElem *)
+    end (* function ppTEBinder *)
 
 and ppTyc pd ppstrm (tycon : Lty.tyc) =
     (* FLINT variables are represented using deBruijn indices *)
@@ -267,7 +275,7 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	     ppTyc' tyc;
 	     pps ",";
 	     PP.break ppstrm {nsp=1,offset=0};
-	     ppList' {sep=",", pp=ppTycEnvElem (pd-1)} (tycEnvFlatten tenv);
+	     ppList' {sep=",", pp=ppTEBinder (pd-1)} (tycEnvFlatten tenv);
 	     closeBox())
     in ppTycI (Lty.tc_outX tycon)
     end (* ppTyc *)
@@ -277,7 +285,7 @@ fun ppTycEnv pd ppstrm (tycEnv : Lty.tycEnv) =
     let val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm
      in openHOVBox 1;
 	 pps "TycEnv(";
-	 ppList ppstrm {sep=", ", pp=ppTycEnvElem (pd-1)} (tycEnvFlatten tycEnv);
+	 ppList ppstrm {sep=", ", pp=ppTEBinder (pd-1)} (tycEnvFlatten tycEnv);
 	 pps ")";
 	closeBox()
     end (* ppTycEnv *)
