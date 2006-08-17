@@ -146,14 +146,6 @@ withtype tyc = tycI hash_cell                  (* hash-consed tyc cell *)
                            * and SEQ[(PROJ(VOID, i))]. (ZHONG)
                            *)
 
-(* tycEnvElem: the tyc list is the set of arguments bound at an application,
- * if the tycEnv element was the result of a lazy beta-reduction (SOME case),
- * or NONE if the tycEnv element is the result of pushing a suspended subst
- * through a lambda abstraction. The int is the original lambda depth of the
- * arguments (SOME case) or of the lambda abstraction.
- *)
-type tycEnvElem = (tyc list option * int)
-
 (** definitions of lambda types *)
 datatype ltyI          
   = LT_TYC of tyc                              (* monomorphic type *)
@@ -477,56 +469,86 @@ end (* local -- hask consing *)
  *            UTILITY FUNCTIONS ON TYC ENVIRONMENT                         *
  ***************************************************************************)
 
-(* virtual tycEnv datatype
- *   datatype tycEnv
- *     = Empty
- *     | B of tkind list * tyc list
- *     | L of tkind list * int * tycEnv
+(* tycEnvs are represented by an encoding as tycs. The abstract representation
+ * of tycEnvs would be given by:
+ *
+ *   datatype teBinder
+ *     = Beta of int * tyc list * tkind list
+ *     | Lamb of int * tkind list
+ *
+ *   type tycEnv = teBinder list
+ *
+ * Invariant: a tycEnv cannot terminate with a Lamb, i.e. the last binder
+ *   in a tycEnv must be a Beta. tycEnvs are created when a closure is created
+ *   when reducing a beta-redex (rule r1), and they are always initially of
+ *   of the form Beta(0,args,ks)::nil.
  *)
              
-(** utility functions for manipulating the tycEnv **)
+datatype teBinder
+  = Beta of int * tyc list * tkind list
+      (* Beta(j,args,ks):
+         created when reducing a beta redex (r1);
+         j: the embedding level of the original redex -- 0 if the redex was
+            created by r1, or the nesting level of the new closure if by r12;
+         args: the tycs bound by the n-ary beta reduction, i.e. the arguments;
+         ks: the operator domain kinds *)
+  | Lamb of int * tkind list
+      (* Lamb(j,ks):
+         created when pushing a closure (Env) through a lambda (r10);
+         j: the nesting level of the closure just before r10 is applied,
+            i.e. the nesteing level of the abstraction relative to the
+            point where the closure was originally created;
+         ks: the kinds of the abstraction parameters *)
 
-val emptyTycEnv : tycEnv = tc_injX(TC_SUM[])
+val teEmpty : tycEnv = tc_injX(TC_SUM[])
 
-fun bindTycEnv (ks: tkind list, tycs : tyc list): tycEnv =
-      tc_injX(TC_FN(ks,TC_SEQ tycs))
+(** utility functions for manipulating tycEnvs and teBinders **)
 
-fun lamTycEnv (ks: tkind list, j: int, tenv: tycEnv) : tycEnv =
-      tc_injX(TC_PROJ(TC_FN(ks,tenv),j))
+(* encoding teBinders as tycs:
+ * Beta(j,args,ks) <=> TC_FN(ks,TC_PROJ(TC_SEQ args, j))
+ * Lamb(j,ks) <=> TC_PROJ(TC_FN(ks,TC_SUM[]), j)
+ *)
+fun teEncodeBinder (Beta(j,args,ks)) : tyc =
+      tc_injX(TC_FN(ks,tc_injX(TC_PROJ(tc_injX(TC_SEQ args), j))))
+  | teEncodeBinder (Lamb(j,ks)) =
+      tc_injX(TC_PROJ(tc_injX(TC_FN(ks,tc_injX(TC_SUM[])), j)))
 
-(* TycEnvUnbound -- raised when first element of a deBruijn index is 
+fun teDecodeBinder (tyc : tyc) : teBinder =
+    case tc_outX(tyc)
+     of TC_FN(ks,tyc') =>
+          (case tc_outX tyc'
+             of TC_PROJ(tyc'',j) =>
+                  (case tc_outX tyc''
+                     of TC_SEQ(args) => Beta(j,args,ks)
+                      | bug "teDecodeBinder")
+              | _ => bug "teDecodeBinder")
+      | TC_PROJ(tyc',j) =>
+          (case tc_outX tyc'
+             of TC_FN(ks,_) => Lamb(j, ks)
+              | _ => bug "teDecodeBinder")
+      | _ => bug "teDecodeBinder"
+
+fun teCons (b: teBinder, tenv: tycEnv) : tycEnv =
+    tc_injX(TC_PARROW(b,tenv))
+
+fun teDest (tenv: tycEnv) : (teBinder * tycEnv) option =
+    case tc_outX tenv
+     of TC_PARROW(b,tenv) => SOME(teDecodeBinder b, tenv)
+      | TC_SUM [] => NONE
+      | _ => bug "teDest"
+
+(* TeUnbound -- raised when first element of a deBruijn index is 
  * out of bounds *)
-exception UnboundTycEnv
+exception TeUnbound
 
-datatype tycEnvElem
-  = B of tkind list * tyc list
-  | L of tkind list * int
-
-(* 1-based index lookup *)
-fun lookupTycEnv(tenv : tycEnv, i) : tycEnvElem = 
-    if i > 1 then
-      (case tc_outX tenv
-        of TC_PROJ(TC_FN(_,tenv),_) => lookupTycEnv(tenv,i-1)  (* L *)
-         | TC_SUM _ | TC_PROJ _ => raise UnboundTycEnv         (* Empty or B *)
-         | _ => bug "unexpected tycEnv in tycEnvLookup")
-    else if i = 1 then
-      (case tc_outX tenv
-        of TC_FN(ks,TC_SEQ(tycs)) => B(ks,tycs)   (* Bind *)
-         | TC_PROJ(TC_FN(ks,_,),j) => L(ks,j)     (* Lam *)
-         | TC_SUM _ => raise UnboundTycEnv        (* Empty *)
-         | _ => bug "unexpected tycEnv in tycEnvLookup")
-    else bug "index 0 in tycEnvLookup"
-
-datatype tycEnvComp
-  = TEempty
-  | TEbind of tkind list * tyc list
-  | TElam of tkind list * int * tycEnv
-
-fun splitTycEnv(tenv : tycEnv) : tycEnvComp =
-    (case tc_outX tenv
-      of TC_FN(ks,TC_SEQ(tycs)) => TEbind(ks,tycs)   (* B *)
-       | TC_PROJ(TC_FN(ks,tenv,),j) => TElam(ks,j,tenv)     (* L *)
-       | TC_SUM _ => TEempty)
+(* 1-based index lookup: assume i >= 1 *)
+fun teLookup(tenv : tycEnv, i: int) : teBinder option =
+      (case teDest tenv
+        of SOME(binder, tenv') =>
+             if i > 1 then teLookup(tenv',i-1)
+             else if i = 1 then SOME binder
+             else bug "index 0 in tycEnvLookup"
+         | NONE => NONE
 
 
 (***************************************************************************
@@ -568,10 +590,12 @@ fun tkLookupFreeVars (kenv, tyc) =
     in Option.map h (tc_vs tyc)
     end
 
+
 (** testing the "pointer" equality on normalized tkind, tyc, and lty *)
 fun tk_eq (x: tkind, y) = (x = y)
 fun tc_eq (x: tyc, y) = (x = y)
 fun lt_eq (x: lty, y) = (x = y)
+
 
 (** utility functions for updating tycs and ltys *)
 fun tyc_upd (tgt as ref(i : int, old : tycI, AX_NO), nt) = 
@@ -585,5 +609,6 @@ fun lty_upd (tgt as ref(i : int, old : ltyI, AX_NO), nt) =
   | lty_upd (tgt as ref(i : int, old : ltyI, x as (AX_REG(false,_,_))), nt) = 
       (tgt := (i, LT_IND (nt, old), x))
   | lty_upd _ = bug "unexpected lty_upd on already normalized lty"
+
 
 end (* structure Lty *)

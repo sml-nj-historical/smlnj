@@ -37,13 +37,37 @@ type tyc
  *)
 type tycEnv 
 
-(* tycEnvElem: the tyc list is the set of arguments bound at an application,
- * if the tycEnv element was the result of a lazy beta-reduction (SOME case),
- * or NONE if the tycEnv element is the result of pushing a suspended subst
- * through a lambda abstraction. The int is the original lambda depth of the
- * arguments (SOME case) or of the lambda abstraction.
+(* tycEnvs are represented by an encoding as tycs. The abstract representation
+ * of tycEnvs would be given by:
+ *
+ *   datatype teBinder
+ *     = Beta of int * tyc list * tkind list
+ *     | Lamb of int * tkind list
+ *
+ *   type tycEnv = teBinder list
+ *
+ * Invariant: a tycEnv cannot terminate with a Lamb, i.e. the last binder
+ *   in a tycEnv must be a Beta. tycEnvs are created when a closure is created
+ *   when reducing a beta-redex (rule r1), and they are always initially of
+ *   of the form Beta(0,args,ks)::nil.
  *)
-type tycEnvElem = (tyc list option * int)
+             
+datatype teBinder
+  = Beta of int * tyc list * tkind list
+      (* Beta(j,args,ks):
+         created when reducing a beta redex (r1);
+         j: the embedding level of the original redex -- 0 if the redex was
+            created by r1, or the nesting level of the new closure if by r12;
+         args: the tycs bound by the n-ary beta reduction, i.e. the arguments;
+         ks: the operator domain kinds *)
+  | Lamb of int * tkind list
+      (* Lamb(j,ks):
+         created when pushing a closure (Env) through a lambda (r10);
+         j: the nesting level of the closure just before r10 is applied,
+            i.e. the nesteing level of the abstraction relative to the
+            point where the closure was originally created;
+         ks: the kinds of the abstraction parameters *)
+
 
 (* token: a hook to add new tyc *)
 type token                                    
@@ -113,23 +137,11 @@ val lt_cmp   : lty * lty -> order
 val lt_key   : lty -> int
 
 (** utility functions on tycEnv *)
-(* values returned by lookupTycEnv *)
-datatype tycEnvElem
-  = B of tkind list * tyc list
-  | L of tkind list * int
 
-(* components of a tycEnv *)
-datatype tycEnvComp
-  = TEempty
-  | TEbind of tkind list * tyc list
-  | TElam of tkind list * int * tycEnv
-
-exception UnboundTycEnv
-val emptyTycEnv : tycEnv
-val lookupTycEnv : tycEnv * int -> tycEnvElem
-val bindTycEnv : tkind list * tyc list -> tycEnv
-val lamTycEnv : tkind list * int * tycEnv -> tycEnv
-val splitTycEnv : tycEnv -> tycEnvComp
+val teEmpty : tycEnv
+val teLookup : tycEnv * int -> teBinder option
+val teCons : teBinder * tycEnv -> tycEnv
+val teDest : tycEnv -> (teBinder * tycEnv) option
 
 (** utility functions on tkindEnv *)
 type tkindEnv 
