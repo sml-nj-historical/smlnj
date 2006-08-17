@@ -43,7 +43,7 @@ include LTYBASIC        (* see ltydef.sig and ltybasic.sig for details *)
 val lt_inst     : lty * tyc list -> lty list
 val lt_pinst    : lty * tyc list -> lty
 
-exception TkTycChk
+exception TkTycChk of string (* kind checker exception *)
 exception LtyAppChk
 val lt_inst_chk_gen : unit -> lty * tyc list * tkindEnv -> lty list
 

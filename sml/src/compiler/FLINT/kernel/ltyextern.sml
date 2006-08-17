@@ -43,7 +43,7 @@ fun lt_inst (lt : lty, ts : tyc list) =
   let val nt = lt_whnm lt
    in (case ((* lt_outX *) lt_out nt, ts)
         of (LT.LT_POLY(ks, b), ts) => 
-             let val nenv = LT.tcInsert(LT.initTycEnv, (SOME ts, 0))
+             let val nenv = LT.teCons(LT.Beta(0,ts,ks), LT.teEmpty)
               in map (fn x => ltc_env(x, 1, 0, nenv)) b
              end
          | (_, []) => [nt]   (* this requires further clarifications !!! *)
@@ -100,14 +100,18 @@ fun tkAssertIsMono k =
 (* select the ith element from a kind sequence *)
 fun tkSel (tk, i) = 
   (case (tk_out tk)
-    of (LT.TK_SEQ ks) => (List.nth(ks, i) handle Subscript => raise TkTycChk "Invalid TC_SEQ index")
+    of (LT.TK_SEQ ks) => 
+       (List.nth(ks, i)
+        handle Subscript => raise TkTycChk "Invalid TC_SEQ index")
      | _ => raise TkTycChk "Projecting out of non-tyc sequence")
 
 fun tks_eqv (ks1, ks2) = tk_eqv(tkc_seq ks1, tkc_seq ks2)
 
 fun tkApp (tk, tks) = 
   (case (tk_out tk)
-    of LT.TK_FUN(a, b) => if tks_eqv(a, tks) then b else raise TkTycChk "Param/Arg Tyc Kind mismatch"
+    of LT.TK_FUN(a, b) =>
+       if tks_eqv(a, tks) then b
+       else raise TkTycChk "Param/Arg Tyc Kind mismatch"
      | _ => raise TkTycChk "Application of non-TK_FUN")
 
 (* check the application of tycs of kinds `tks' to a type function of
@@ -116,7 +120,8 @@ fun tkApp (tk, tks) =
 fun tkApp (tk, tks) = 
   (case (tk_out tk)
     of LT.TK_FUN(a, b) =>
-       if tksSubkind(tks, a) then b else raise TkTycChk "Param/Arg Tyc Kind mismatch"
+       if tksSubkind(tks, a) then b
+       else raise TkTycChk "Param/Arg Tyc Kind mismatch"
      | _ => raise TkTycChk "Application of non-TK_FUN") 
 
 (* Kind-checking naturally requires traversing type graphs.  to avoid
@@ -217,16 +222,16 @@ fun tkTycGen() = let
 		    val k = g tc
 		    (* Kind check freetycs *)
                     val nk =
-                        case ts of
-                            [] => k 
-                          | _ => tkApp(k, map g ts)
+                        case ts
+                          of [] => k 
+                           | _ => tkApp(k, map g ts)
                 in
                     case (tk_out nk) of
                         LT.TK_FUN(a, b) => 
                         let val arg =
-                                case a of
-                                    [x] => x
-                                  | _ => tkc_seq a
+                                case a
+                                  of [x] => x
+                                   | _ => tkc_seq a
                         in
 			    (* Kind check recursive tyc app ??*)
                             if tkSubkind(arg, b) then (* order? *)
@@ -278,8 +283,7 @@ fun lt_inst_chk_gen() = let
         in (case ((* lt_outX *) lt_out nt, ts)
               of (LT.LT_POLY(ks, b), ts) => 
                  let val _ = ListPair.app (tkChk kenv) (ks, ts)
-                     fun h x = ltc_env(x, 1, 0,
-                                       tcInsert(initTycEnv, (SOME ts, 0)))
+                     fun h x = ltc_env(x, 1, 0, teCons(Beta(0,ts,ks),teEmpty))
                  in map h b
                  end
                | (_, []) => [nt]    (* ? problematic *)
@@ -294,10 +298,10 @@ fun lt_sp_adj(ks, lt, ts, dist, bnl) =
     let fun h(abslevel, ol, nl, tenv) =
           if abslevel = 0 then ltc_env(lt, ol, nl, tenv)
           else if abslevel > 0 then 
-                 h(abslevel-1, ol+1, nl+1, tcInsert(tenv, (NONE, nl)))
+                 h(abslevel-1, ol+1, nl+1, teCons(Lamb(nl,ks (* dbm ??? *)), tenv))
                else bug "unexpected cases in ltAdjSt"
 
-        val btenv = tcInsert(initTycEnv, (SOME ts, 0))
+        val btenv = teCons(Beta(0,ts,ks (* dbm ??? *)),teEmpty)
         val nt = h(dist, 1, bnl, btenv)
      in nt (* was lt_norm nt *)
     end
@@ -307,10 +311,10 @@ fun tc_sp_adj(ks, tc, ts, dist, bnl) =
     let fun h(abslevel, ol, nl, tenv) =
           if abslevel = 0 then tcc_env(tc, ol, nl, tenv)
           else if abslevel > 0 then 
-                 h(abslevel-1, ol+1, nl+1, tcInsert(tenv, (NONE, nl)))
+                 h(abslevel-1, ol+1, nl+1, teCons(Lamb(nl,ks (* dbm ??? *)), tenv))
                else bug "unexpected cases in tcAdjSt"
 
-        val btenv = tcInsert(initTycEnv, (SOME ts, 0))
+        val btenv = teCons(Beta(0,ts,ks (* dbm ??? *)), teEmpty)
         val nt = h(dist, 1, bnl, btenv)
      in nt (* was tc_norm nt *)
     end
@@ -320,9 +324,9 @@ fun lt_sp_sink (ks, lt, d, nd) =
     let fun h(abslevel, ol, nl, tenv) =
           if abslevel = 0 then ltc_env(lt, ol, nl, tenv)
           else if abslevel > 0 then
-                 h(abslevel-1, ol+1, nl+1, tcInsert(tenv, (NONE, nl)))
+                 h(abslevel-1, ol+1, nl+1, teCons(Lamb(nl,ks (* dbm ??? *)), tenv))
                else bug "unexpected cases in ltSinkSt"
-        val nt = h(nd-d, 0, 1, initTycEnv)
+        val nt = h(nd-d, 0, 1, teEmpty)
      in nt (* was lt_norm nt *)
     end
 
@@ -331,9 +335,9 @@ fun tc_sp_sink (ks, tc, d, nd) =
     let fun h(abslevel, ol, nl, tenv) =
           if abslevel = 0 then tcc_env(tc, ol, nl, tenv)
           else if abslevel > 0 then
-                 h(abslevel-1, ol+1, nl+1, tcInsert(tenv, (NONE, nl)))
+                 h(abslevel-1, ol+1, nl+1, teCons(Lamb(nl,ks), tenv))
                else bug "unexpected cases in ltSinkSt"
-        val nt = h(nd-d, 0, 1, initTycEnv)
+        val nt = h(nd-d, 0, 1, teEmpty)
      in nt (* was tc_norm nt *)
     end
 
@@ -629,7 +633,7 @@ fun lt_nvar_elim_gen() = let
     let
         (* encode the lty and depth info using LT_ENV
          * (only first 2 args are useful) *)
-        val ltydepth = lt_inj (LT.LT_ENV (lty, d, 0, LT.initTycEnv))
+        val ltydepth = lt_inj (LT.LT_ENV (lty, d, 0, LT.teEmpty))
     in
         case LtDict.find(!dict, ltydepth) of
             SOME t => t                 (* hit! *)
@@ -901,7 +905,7 @@ fun lt_nvar_cvt_gen() = let
     let
         (* encode the lty and depth info using LT_ENV
          * (only first 2 args are useful) *)
-        val ltydepth = lt_inj (LT.LT_ENV (lty, d, 0, LT.initTycEnv))
+        val ltydepth = lt_inj (LT.LT_ENV (lty, d, 0, LT.teEmpty))
     in
         case LtDict.find(!dict, ltydepth) of
             SOME t => t                 (* hit! *)

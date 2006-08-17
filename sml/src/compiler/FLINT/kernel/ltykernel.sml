@@ -49,46 +49,58 @@ local
         let val (i, j) = tvDecode a
             val neweff = 
               if i > ol then (ol <> nl)
-              else (* case tcLookup(i, tenv)
-                       of (NONE, n) => (nl - n) <> i
-                        | (SOME ts, n) =>
+              else true
+                  (* case teLookup(i, tenv)
+                       of SOME(Lamb(n,_)) => (nl - n) <> i
+                        | SOME(Beta(n,ts,_)) =>
                              (let val y = List.nth(ts, j)
                                in (case tc_outX y
                                     of TC_VAR(ni, nj) =>
                                         ((nj <> j) orelse ((ni+nl-n) <> i))
                                      | _ => true)
-                              end) *) true
+                              end) *)
          in neweff orelse (withEff(r, ol, nl, tenv))
         end
 in 
 
 fun tcc_env(x, ol, nl, tenv) =
-  (let fun checkTCVAR tyc = case (tc_outX tyc) of
-       TC_VAR(i,j) => (case teLookup(tenv, i) 
-			of SOME(Beta(j, tcs, _)) => 
-			   if j >= length tcs 
-			   then (print "tcc_env TC_VAR ";
-				 print (Int.toString j);
-				 print "B tcs length ";
-				 print (Int.toString (length tcs));
-				 raise Fail "Bad TC_ENV TC_VAR")
-			   else ()
-			 | SOME(Lamb(j)) => 
-			   print "TC_VAR referencing LAMB"
-			 | _ => ())
-     | TC_ENV(tc, _, _, _)  => (print "TC_ENV("; 
-				checkTCVAR(tc); 
-				print ")\n")
-     | _ => () (* print ("tcc_env OTHER " ^ tci_print tci ^"\n") *) 
+  (let fun checkTCVAR tyc =  (* GK -- debugging *)
+           case (tc_outX tyc)
+             of TC_VAR(i,j) =>
+                 (case teLookup(tenv,i)
+		   of SOME(Beta(_,ts,ks)) =>
+                        if j >= length ts
+			then (print "tcc_env TC_VAR ";
+			      print (Int.toString j);
+			      print ", ts length = ";
+			      print (Int.toString (length ts));
+                              print "\n";
+			      raise Fail "Bad TC_ENV TC_VAR")
+			else ()
+                    | SOME(Lamb(_,ks)) =>
+                        if j >= length ks
+			then (print "tcc_env TC_VAR ";
+			      print (Int.toString j);
+			      print ", ks length = ";
+			      print (Int.toString (length ks));
+                              print "\n";
+			      raise Fail "Bad TC_ENV TC_VAR")
+			else ()
+		    | NONE => (print "tcc_env TC_VAR: i out of bounds: ";
+                               print (Int.toString i); print "\n"))
+              | TC_ENV(tc, _, _, _)  =>
+                 (print "TC_ENV("; checkTCVAR(tc); print ")\n")
+              | _ => () (* print ("tcc_env OTHER " ^ tci_print tci ^"\n") *) 
    in checkTCVAR(x); 
-    let val tvs = tc_vs x
-   in case tvs
-       of NONE => tcc_env_int(x, ol, nl, tenv)
-        | SOME [] => x
-        | SOME nvs => if withEff(nvs, ol, nl, tenv) 
-                      then tcc_env_int(x, ol, nl, tenv)
-                      else x 
-    end
+   (* original body --- *)
+   let val tvs = tc_vs x
+    in case tvs
+        of NONE => tcc_env_int(x, ol, nl, tenv)
+         | SOME [] => x
+         | SOME nvs => if withEff(nvs, ol, nl, tenv) 
+                       then tcc_env_int(x, ol, nl, tenv)
+                       else x 
+   end
    end)
 
 fun ltc_env(x, ol, nl, tenv) = 
@@ -183,9 +195,9 @@ val tcc_token = tc_injX o TC_TOKEN
  *) 
 val flatten_limit = 9  
 
-(* tcUnbound2 -- raised when second index of a deBruijn index pair is
+(* teUnbound2 -- raised when second index of a deBruijn index pair is
  * out of bounds *)
-exception tcUnbound2
+exception teUnbound2
 
 fun isKnown tc = 
   (case tc_outX(tc_whnm tc)
@@ -265,12 +277,13 @@ and tc_lzrd(t: tyc) =
              in (case tc_outX x
                   of TC_VAR (n,k) => 
                        if (n <= ol) then  (* n is bound in tenv *)
-                         (case teLookup(tenv, n) 
-                           of SOME(Lamb(nl', _)) => 
-			        tcc_var(nl - nl', k) (* rule r5 *)
-                            | SOME(Beta(nl', ts, _)) =>  
-                                 let val y = List.nth(ts, k) 
-                                             handle Subscript => 
+                         (case teLookup(tenv, n)
+                           of NONE => bug "tc_lzrd: short tenv"
+                            | SOME(Lamb(nl',ks)) =>   (* rule r5 *)
+                                tcc_var(nl - nl', k)
+                            | SOME(Beta(nl',ts,ks)) =>  (* rule r6 *)
+                                let val y = List.nth(ts, k) 
+                                            handle Subscript => (* kind error! *)
                     (with_pp(fn s =>
                        let val {break,newline,openHVBox,openHOVBox,
 				closeBox, pps, ppi} = PU.en_pp s
@@ -289,18 +302,14 @@ and tc_lzrd(t: tyc) =
                           closeBox ();
                           newline(); PP.flushStream s
 			end);
-			raise tcUnbound2)
+			raise teUnbound2)
                                  in h(y, 0, nl - nl', teEmpty)  (* rule r6 *)
-                                 end
-			(* Could not find TV(n,_) in tenv 
-			   and ol = length tenv invariant 
-			   failed! *)
-			    | NONE => raise tcUnbound) 
+                                 end)
                        else tcc_var(n-ol+nl, k) (* rule r4 *)
                    | TC_NVAR _ => x
                    | TC_PRIM _ => x    (* rule r7 *)
                    | TC_FN (ks, tc) => 
-                      let val tenv' = teCons(Lamb(nl, ks), tenv)
+                      let val tenv' = teCons(Lamb(nl,ks),tenv)
                        in tcc_fn(ks, 
 				 tcc_env(tc, ol+1, nl+1, tenv') 
 				 handle Fail _ => raise Fail "tc_lzrd TC_FN") (* rule r10 *)
@@ -346,7 +355,7 @@ and lt_lzrd t =
                    | LT_STR ts => ltc_str (map prop ts)
                    | LT_FCT (ts1, ts2) => ltc_fct(map prop ts1, map prop ts2)
                    | LT_POLY (ks, ts) => 
-                       let val tenv' = teCons(Lamb (nl, ks), tenv)
+                       let val tenv' = teCons(Lamb(nl,ks), tenv)
                         in ltc_poly(ks, 
                              map (fn t => ltc_env(t, ol+1, nl+1, tenv')) ts)
                        end
@@ -404,41 +413,38 @@ and tc_whnm t = if tcp_norm(t) then t else
    in case (tc_outX nt)
        of TC_APP(tc, tcs) =>
 	    ((* print "\ntc_whnm: TC_APP\n"; *)
-            (let val tc' = tc_whnm tc 
-		     handle Fail _ => raise Fail "TC_APP in tc_whnm 1"
+             let val tc' = tc_whnm tc
+                           handle Fail _ =>
+                                  raise Fail "TC_APP in tc_whnm 1"
               in case (tc_outX tc')
                   of TC_FN(ks, b) =>  
                        let fun base () = 
-                             (b, 1, 0, teCons(Beta(0, tcs, ks), teEmpty))
+                             (b, 1, 0, teCons(Beta(0,tcs,ks),teEmpty))  (* r1 *)
                            val sp = 
                              (case tc_outX b
                                of TC_ENV(b', ol', nl', te') => 
                                     (case teDest te'
-                                      of SOME(Lamb(n, ks'), te) =>
-                                         if (n = nl'-1) andalso (ol' > 0)
-                                         then (b', ol', n, 
-                                               teCons(Beta(n, tcs, ks),
-						      te))
-					      (* Which ks correspond to
-					         this Beta? *)
-                                         else base()
+                                      of SOME(Lamb(n,ks'), te) =>
+                                           if (n = nl'-1) andalso (ol' > 0)
+                                           then (* r12 *)
+                                             (b', ol', n, teCons(Beta(n,tcs,ks),te))
+                                           else base()
+                                           (* dbm: ks and ks' should be the same *)
                                        | _ => base())
                                 | _ => base()) 
                            val res = tc_whnm(tcc_env sp) 
-			             handle Fail _ => 
-					    raise Fail "TC_APP in tc_whnm 2" 
+			             handle Fail _ =>
+                                            raise Fail "TC_APP in tc_whnm 2" 
                         in tyc_upd(nt, res); res
                        end
                    | ((TC_SEQ _) | (TC_TUPLE _) | (TC_ARROW _) | (TC_IND _)) =>
                        bug "unexpected tycs in tc_whnm-TC_APP"
-                   | _ => let val xx = tcc_app(tc', tcs) 
-                           in stripInd xx
-                          end
-             end))
+                   | _ => stripInd(tcc_app(tc', tcs))
+             end)
         | TC_PROJ(tc, i) =>
-	   ((* print "\ntc_whnm: TC_PROJ\n"; *) 
-	   (let val tc' = tc_whnm tc
-              in (case (tc_outX tc')
+	    ((* print "\ntc_whnm: TC_PROJ\n"; *) 
+	     let val tc' = tc_whnm tc
+              in case (tc_outX tc')
                    of (TC_SEQ tcs) => 
                         let val res = List.nth(tcs, i)
                                       handle _ => bug "TC_SEQ in tc_whnm"
@@ -449,10 +455,8 @@ and tc_whnm t = if tcp_norm(t) then t else
                        (TC_SUM _) | (TC_ARROW _) | (TC_ABS _) | (TC_BOX _) | 
                        (TC_IND _) | (TC_TUPLE _)) =>
                          bug "unexpected tycs in tc_whnm-TC_PROJ"
-                    | _ => let val xx = tcc_proj(tc', i)
-                            in stripInd xx
-                           end)
-             end))
+                    | _ => stripInd(tcc_proj(tc', i))
+             end)
         | TC_TOKEN(k, tc)  =>
 	    ((* print "\ntc_whnm: TC_TOKEN\n"; *)
 	    (let val tc' = tc_whnm tc

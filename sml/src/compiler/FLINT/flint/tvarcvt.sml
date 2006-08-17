@@ -27,9 +27,10 @@ struct
     val debIndex2names = let
 
         fun extendEnv env d _ tvtks = let
+            val (tvars,ks) = ListPair.unzip tvtks
             fun tvtk2tyc (tvar, _) = LT.tcc_nvar tvar
         in
-            Lty.tcInsert (env, (SOME (map tvtk2tyc tvtks), 0))
+            Lty.teCons(Lty.Beta(0,map LT.tcc_nvar tvars,ks), env)
         end
 
         fun cvtExp env d = let
@@ -136,7 +137,7 @@ struct
              ) : F.fundec
         end (* cvtFundec *)
     in
-        cvtFundec Lty.initTycEnv DI.top
+        cvtFundec Lty.teEmpty DI.top
     end
 
     (* `names2debIndex' removes all named variables (`TC_NVAR')

@@ -115,10 +115,10 @@ val tkLookup : tkindEnv * int * int -> tkind
 val tkInsert : tkindEnv * tkind list -> tkindEnv
 
 (** utility functions on tycEnv *)
-exception tcUnbound
-type tycEnv = LtyKernel.tycEnv
-val initTycEnv : tycEnv
-val tcInsert : tycEnv * (tyc list option * int) -> tycEnv
+type tycEnv = Lty.tycEnv
+datatype teBinder = datatype Lty.teBinder
+val teEmpty : tycEnv
+val teCons : teBinder * tycEnv -> tycEnv
 
 (** the ltyEnv maps from lvar to its lty; notice lty is depth-dependent *)
 type ltyEnv 

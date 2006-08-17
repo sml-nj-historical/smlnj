@@ -215,11 +215,11 @@ val tcs_depth: tyc list * depth -> depth = LK.tcs_depth
 (** adjusting an lty or tyc from one depth to another *)
 fun lt_adj (lt, d, nd) = 
   if d = nd then lt 
-  else ltc_env(lt, 0, nd - d, LT.initTycEnv)
+  else ltc_env(lt, 0, nd - d, LT.teEmpty)
 
 fun tc_adj (tc, d, nd) = 
   if d = nd then tc 
-  else tcc_env(tc, 0, nd - d, LT.initTycEnv)
+  else tcc_env(tc, 0, nd - d, LT.teEmpty)
 
 (** The following functions are similiar to lt_adj and tc_adj;
     they adjust an lty (or tyc) from depth d+k to depth nd+k,
@@ -227,17 +227,19 @@ fun tc_adj (tc, d, nd) =
     is really lt_adj_k with k set to 0. Both functions are currently
     called only in lcontract.sml. *)
 local
-fun mkTycEnv (i, k, dd, e) = 
-  if i >= k then e else mkTycEnv(i+1, k, dd, LT.tcInsert(e,(NONE, dd+i)))
+fun mkTycEnv (i, k, dd, te) = 
+  if i >= k then te 
+  else mkTycEnv(i+1, k, dd, LT.teCons(LT.Lamb(dd+i,[]),te))
+  (* dbm: no ks available *)
 
 in 
 fun lt_adj_k (lt, d, nd, k) = 
   if d = nd then lt 
-  else ltc_env(lt, k, nd-d+k, mkTycEnv(0, k, nd-d, LT.initTycEnv))
+  else ltc_env(lt, k, nd-d+k, mkTycEnv(0, k, nd-d, LT.teEmpty))
 
 fun tc_adj_k (tc, d, nd, k) = 
   if d = nd then tc 
-  else tcc_env(tc, k, nd-d+k, mkTycEnv(0, k, nd-d, LT.initTycEnv))
+  else tcc_env(tc, k, nd-d+k, mkTycEnv(0, k, nd-d, LT.teEmpty))
 
 end (* lt_adj_k and tc_adj_k *)
 
@@ -261,10 +263,10 @@ val tkInsert = LT.tkInsert
  *            UTILITY FUNCTIONS ON TYC ENVIRONMENT                         *
  ***************************************************************************)
 
-exception tcUnbound = LT.tcUnbound
 type tycEnv = LT.tycEnv
-val initTycEnv = LT.initTycEnv
-val tcInsert = LT.tcInsert
+datatype teBinder = datatype LT.teBinder
+val teEmpty = LT.teEmpty
+val teCons = LT.teCons
 
 (***************************************************************************
  *            UTILITY FUNCTIONS ON LTY ENVIRONMENT                         *
@@ -285,7 +287,7 @@ fun ltLookup (venv, lv, nd) =
       | SOME (lt, d) => 
 	  if d=nd then lt
 	  else if d > nd then bug "unexpected depth info in ltLookup"
-	       else ltc_env(lt, 0, nd - d, LT.initTycEnv)
+	       else ltc_env(lt, 0, nd - d, LT.teEmpty)
   (*easc*))
 
 fun ltInsert (venv, lv, lt, d) = IntRedBlackMap.insert(venv, lv, (lt, d))
