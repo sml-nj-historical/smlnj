@@ -310,6 +310,9 @@ fun tkChkGen() =
     in tkChk
     end
 *)
+
+val tkTycGen : unit -> (tkindEnv -> tyc -> tkind) = LT.tkTycGen
+val tkChkGen : unit -> (tkindEnv -> (tkind * tyc) -> unit) = LT.tkChkGen
     
 (* lty application with kind-checking (exported) *)
 fun lt_inst_chk_gen() = let

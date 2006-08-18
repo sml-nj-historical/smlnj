@@ -187,6 +187,8 @@ val lt_nvars : lty -> tvar list
 
 (* Kind checker *)
 exception LtyAppChk
+
+val tkTycGen : unit -> (tkindEnv -> tyc -> tkind)
 val tkChkGen : unit -> (tkindEnv -> (tkind * tyc) -> unit)
 
 end (* signature LTY *)

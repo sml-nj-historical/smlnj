@@ -778,27 +778,12 @@ struct
 end (* Memo *)
 
 (* return the kind of a given tyc in the given kind environment *)
-fun tkTycGen() = let
+fun tkTycGen'() = let
     val dict = Memo.newDict()
 
     fun tkTyc (kenv : tkindEnv) t = let
         (* default recursive invocation *)    
         val g = tkTyc kenv
-	fun chkKindEnv(env : tycEnv,j,kenv : tkindEnv) : unit =
-	    let 
-		fun chkBinder(Lamb _) = ()
-		  | chkBinder(Beta(j',args,ks)) = 
-		    let 
-			val kenv' = List.drop(kenv, j-j')
-			val argks = map (fn t => tkTyc kenv' t) args
-		    in if tksSubkind(ks, argks)
-		       then ()
-		       else bug "chkKindEnv: Beta binder kinds mismatch"
-		    end
-		    handle Subscript => 
-			   bug "tkTyc[Env]: dropping too many frames"
-	    in app chkBinder (teToBinders env)
-	    end
         (* how to compute the kind of a tyc *)
         fun mk() =
             case tc_outX t of
@@ -883,17 +868,79 @@ fun tkTycGen() = let
     in
         Memo.recallOrCompute (dict, kenv, t, mk)
     end
+    and chkKindEnv(env : tycEnv,j,kenv : tkindEnv) : unit =
+	let 
+	    fun chkBinder(Lamb _) = ()
+	      | chkBinder(Beta(j',args,ks)) = 
+		let 
+		    val kenv' = List.drop(kenv, j-j')
+		    val argks = map (fn t => tkTyc kenv' t) args
+		in if tksSubkind(ks, argks)
+		   then ()
+		   else bug "chkKindEnv: Beta binder kinds mismatch"
+		end
+		handle Subscript => 
+		       bug "tkTyc[Env]: dropping too many frames"
+	in app chkBinder (teToBinders env)
+	end (* function chkKindEnv *)
 in
-    tkTyc
-end (* function tkTycGen *)
+    (tkTyc, chkKindEnv)
+end (* function tkTycGen' *)
 
+fun tkTycGen() = 
+    case tkTycGen'() 
+     of (tkTyc, _) => tkTyc
+      
+ 
 (* assert that the kind of `tc' is a subkind of `k' in `kenv' *)
 fun tkChkGen() =
     let val tkTyc = tkTycGen()
         fun tkChk kenv (k, tc) =
             tkAssertSubkind (tkTyc kenv tc, k)
     in tkChk
-    end
-end (* local *)
+    end (* function tkChkGen *)
 
+
+fun ltyChk (lty : lty) =
+    let val (tkChk, chkKindEnv) = tkTycGen'()
+	fun ltyChk' (kenv : tkindEnv) (lty : lty) =
+	    (case lt_outX lty 
+	      of LT_TYC(tyc) => 
+		   (tkAssertIsMono (tkChk kenv tyc); tkc_mono)
+	       | LT_STR(ltys) => tkc_seq(map (ltyChk' kenv) ltys)
+	       | LT_FCT(paramLtys, rngLtys) => 
+		   let val paramks = map (ltyChk' kenv) paramLtys
+		       val tenv' = paramks :: kenv
+		   in 
+		       tkc_fun(paramks,
+			      tkc_seq(map (ltyChk' tenv') rngLtys))
+		   end
+		    (* TODO might need a little more here *)
+	       | LT_POLY(ks, ltys) => 
+		   tkc_seq(map (ltyChk' (ks::kenv)) ltys)
+		   (* ??? *)
+	       | LT_CONT(ltys) => 
+		   tkc_seq(map (ltyChk' kenv) ltys)
+	       | LT_IND(thunk, sigltyI) =>
+		   (ltyChk' kenv) thunk
+		   (* TODO Need to check against sigltyI kind also? *)
+	       | LT_ENV(body, i, j, env) =>
+		   (* Should be the same as checking TC_ENV *)
+		   (let val kenv' = 
+			    List.drop(kenv, j)
+			    handle Subscript => 
+				   bug "[Env]: dropping too many frames"
+			fun bindToKinds(Lamb(_,ks)) = ks
+			  | bindToKinds(Beta(_,_,ks)) = ks
+			fun addBindToKEnv(b,ke) = 
+			    bindToKinds b :: ke
+			val bodyKenv = 
+			    foldr addBindToKEnv kenv' (teToBinders env)
+		    in chkKindEnv(env,j,kenv);
+		       ltyChk' bodyKenv body
+		    end))
+    in ltyChk' [] lty
+    end (* function ltyChk *)	   
+end (* local *)
+		   
 end (* structure Lty *)
