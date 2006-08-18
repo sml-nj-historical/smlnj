@@ -197,6 +197,20 @@ fun tkTycGen() = let
     fun tkTyc kenv t = let
         (* default recursive invocation *)    
         val g = tkTyc kenv
+	fun chkKindEnv(env,j,kenv) : unit =
+	    let fun bindToKinds(Lamb(_,ks)) = ks
+		  | bindToKinds(Beta(_,_,ks)) = ks
+		fun chkBinder(Lamb _) = ()
+		  | chkBinder(Beta(j',args,ks)) = 
+		    let val kenv' = List.drop(kenv, j-j')
+		    in if tksSubkind(ks, map (fn t => tkTyc(t,kenv')) args)
+		       then ()
+		       else error "chkKindEnv: Beta binder kinds mismatch"
+		    end
+		    handle Subscript => 
+			   error "tkTyc[Env]: dropping too many frames"
+	    in app chkBinder env
+	    end
         (* how to compute the kind of a tyc *)
         fun mk() =
             case tc_out t of
@@ -257,7 +271,17 @@ fun tkTycGen() = let
                 (tkAssertIsMono (g tc);
                  tkc_mono)
               | LT.TC_PARROW _ => bug "unexpected TC_PARROW in tkTyc"
-              | LT.TC_ENV _ => bug "unexpected TC_ENV in tkTyc"
+           (* | LT.TC_ENV _ => bug "unexpected TC_ENV in tkTyc" *)
+	      | LT.TC_ENV(body, 0, j, teEmpty) => 
+		  (tkTyc List.drop(kenv,j) body 
+		   handle Subscript => error "[Env]: dropping too many frames")
+	      | LT.TC_ENV(body, i, j, env) =>
+		  (let val kenv' = 
+			   List.drop(kenv, j)
+			   handle Subscript => "[Env]: dropping too many frames"
+		   in chkKindEnv(env,j,kenv);
+		      tkTyc (foldr (fn (b,ke) => bindToKinds b :: ke)) body
+		   end 
               | LT.TC_IND _ => bug "unexpected TC_IND in tkTyc"
               | LT.TC_CONT _ => bug "unexpected TC_CONT in tkTyc"
     in
