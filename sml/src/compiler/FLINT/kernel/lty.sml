@@ -785,8 +785,8 @@ fun tkTycGen'() = let
         (* default recursive invocation *)    
         val g = tkTyc kenv
         (* how to compute the kind of a tyc *)
-        fun mk() =
-            case tc_outX t of
+	fun mkI tycI =
+            case tycI of
                 TC_VAR (i, j) =>
                 tkLookup (kenv, i, j)
               | TC_NVAR _ => 
@@ -863,8 +863,17 @@ fun tkTycGen'() = let
 		   in chkKindEnv(env,j,kenv);
 		      tkTyc bodyKenv body
 		   end) 
-              | TC_IND _ => bug "unexpected TC_IND in tkTyc"
+            (*  | TC_IND _ =>  bug "unexpected TC_IND in tkTyc" *)
+	      | TC_IND(newtyc, oldtycI) =>
+		  let val newtycknd = g newtyc
+		  in   
+		      if tk_eq(newtycknd, mkI oldtycI) 
+		      then newtycknd
+		      else bug "tkTyc[IND]: new tyc and old tycI kind mismatch"
+		  end 
               | TC_CONT _ => bug "unexpected TC_CONT in tkTyc"
+        fun mk () =
+	    mkI (tc_outX t)
     in
         Memo.recallOrCompute (dict, kenv, t, mk)
     end
@@ -903,8 +912,8 @@ fun tkChkGen() =
 
 fun ltyChk (lty : lty) =
     let val (tkChk, chkKindEnv) = tkTycGen'()
-	fun ltyChk' (kenv : tkindEnv) (lty : lty) =
-	    (case lt_outX lty 
+	fun ltyIChk (kenv : tkindEnv) (ltyI : ltyI) =
+	    (case ltyI 
 	      of LT_TYC(tyc) => 
 		   (tkAssertIsMono (tkChk kenv tyc); tkc_mono)
 	       | LT_STR(ltys) => tkc_seq(map (ltyChk' kenv) ltys)
@@ -915,17 +924,21 @@ fun ltyChk (lty : lty) =
 		       tkc_fun(paramks,
 			      tkc_seq(map (ltyChk' tenv') rngLtys))
 		   end
-		    (* TODO might need a little more here *)
 	       | LT_POLY(ks, ltys) => 
 		   tkc_seq(map (ltyChk' (ks::kenv)) ltys)
 		   (* ??? *)
 	       | LT_CONT(ltys) => 
 		   tkc_seq(map (ltyChk' kenv) ltys)
-	       | LT_IND(thunk, sigltyI) =>
-		   (ltyChk' kenv) thunk
-		   (* TODO Need to check against sigltyI kind also? *)
+	       | LT_IND(newLty, oldLtyI) =>
+		   let val newLtyKnd = (ltyChk' kenv) newLty
+		   in if tk_eq(newLtyKnd, ltyIChk kenv oldLtyI)
+		      then newLtyKnd
+		      else bug "ltyChk[IND]: kind mismatch"
+		   end
 	       | LT_ENV(body, i, j, env) =>
-		   (* Should be the same as checking TC_ENV *)
+		   (* Should be the same as checking TC_ENV and 
+		    * therefore the two cases should probably just
+		    * call the same helper function *)
 		   (let val kenv' = 
 			    List.drop(kenv, j)
 			    handle Subscript => 
@@ -939,6 +952,7 @@ fun ltyChk (lty : lty) =
 		    in chkKindEnv(env,j,kenv);
 		       ltyChk' bodyKenv body
 		    end))
+	and ltyChk' kenv lty = ltyIChk kenv (lt_outX lty)
     in ltyChk' [] lty
     end (* function ltyChk *)	   
 end (* local *)
