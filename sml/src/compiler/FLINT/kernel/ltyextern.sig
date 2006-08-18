@@ -48,6 +48,12 @@ exception TkTycChk of string (* kind checker exception *)
 exception LtyAppChk
  *) 
 
+(* kind checking functions (re-exported here from Lty) *)
+val tkTycGen : unit -> (tkindEnv -> tyc -> tkind)
+val tkChkGen : unit -> (tkindEnv -> (tkind * tyc) -> unit)
+val ltyChkGen : unit -> (tkindEnv -> lty -> tkind)
+
+(* perform polytype instantiation with kind checking *)
 val lt_inst_chk_gen : unit -> lty * tyc list * tkindEnv -> lty list
 
 (* substitution of named type variables *)

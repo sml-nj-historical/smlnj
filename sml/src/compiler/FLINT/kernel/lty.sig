@@ -190,5 +190,6 @@ exception LtyAppChk
 
 val tkTycGen : unit -> (tkindEnv -> tyc -> tkind)
 val tkChkGen : unit -> (tkindEnv -> (tkind * tyc) -> unit)
+val ltyChkGen : unit -> (tkindEnv -> lty -> tkind)
 
 end (* signature LTY *)

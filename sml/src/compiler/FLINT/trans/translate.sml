@@ -24,7 +24,7 @@ local structure B  = Bindings
       structure DA = Access
       structure DI = DebIndex
       structure EM = ErrorMsg
-      structure LT = PLambdaType
+      structure LT = PLambdaType   (* = LtyExtern *)
       structure M  = Modules
       structure MC = MatchComp
       structure PO = PrimOp
@@ -115,6 +115,8 @@ fun mkvN NONE = mkv()
 
 val mkvN = #mkLvar compInfo
 fun mkv () = mkvN NONE
+
+val kindCh = LT.tkTycGen ()
 
 (** generate the set of ML-to-FLINT type translation functions *)
 val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty, markLBOUND} =
@@ -997,7 +999,7 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
 
           val exp' = mkExp(exp, DI.next d)
             (* increase the depth to indicate that the expression is
-             * going to be wrapped by a type abstraction (TFN) *)
+             * going to be wrapped by a type abstraction (TFN); see body *)
 
           (* restore tyvar states to that before the translation *)
           fun restore ([], []) = ()
@@ -1125,7 +1127,7 @@ and mkFctexp (fe, d) =
 	  (case access of
 	       DA.LVAR v =>
                let val knds = map tpsKnd argtycs
-                   val nd = DI.next d
+                   val nd = DI.next d  (* reflecting type abstraction *)
                    val body = mkStrexp (def, nd)
                    val hdr = buildHdr v
                (* binding of all v's components *)
@@ -1452,6 +1454,8 @@ val _ = debugmsg ">>mkDec"
 (** translating the ML absyn into the PLambda expression *)
 val body = mkDec (rootdec, DI.top) exportLexp
 val _ = debugmsg "<<mkDec"
+(** type check body (including kind check) **)
+val _ = ChkPlexp.checkLty(body,0)
 
 (** add bindings for intinf constants *)
 val body = wrapII body

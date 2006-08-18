@@ -21,15 +21,15 @@ in
 (* encoded deBruijn indexes *)
 (* Type lambda bindings (TC_FN) bind several variables at a time,
  * i.e. they are n-ary for some n, with each type variable given a kind.
- * A type variable is represented by a pair (d,i), where d is a
+ * A type variable is represented by a pair (d,k), where d is a
  * 1-based deBruijn index designating a lambda binder by its lambda
- * nesting level, counting inside out, and i is a 0-based index
- * into a list of the type variables bound by the corresponding binder.
- * These (d,i) pairs are encoded into a single integer by tvEncode,
+ * nesting level, counting inside out, and k is a 0-based index
+ * into the list of the type variables bound by that binder.
+ * These (d,k) pairs are encoded into a single integer by tvEncode,
  * and the pair can be recovered from its encoding by tvDecode. *)
 
 type enc_tvar = int 
-fun tvEncode (d, i) = d * MVAL + i
+fun tvEncode (d, k) = d * MVAL + k
 fun tvDecode x = ((x div MVAL), (x mod MVAL))
 
 (* enc_tvars < BVAL are bound by the innermost TC_FN binder.
@@ -43,23 +43,31 @@ fun exitLevel (xs: enc_tvar list) : enc_tvar list =
   
 (* definitions of named tyc variables.
    for now, these share the same namespace with lvars. *)
-(* [KM ???] Are these used at all? *)
-type tvar = LambdaVar.lvar
+(* [KM ???] Are these used at all? Yes, they are used after
+ * translation into the flint language(?). Are these the
+ * "run-time" type parameters? *)
+type tvar = LambdaVar.lvar (* = int = enc_tvar *)
 val mkTvar = LambdaVar.mkLvar
 
 (* for lists of free type variables, debruijn indices are collapsed
    into a single integer using tvEncode/tvDecode, named variables use
    the tvar as an integer.  The deBruijn-indexed list is kept sorted,
-   the named variables are in arbitrary order (for now) --league, 2 July 1998
+   the named variables are in arbitrary order (for now) --league, 2 July 1998.
+
+   [DBM,8/18/06]: but the mergeTvs function below is used to merge both
+   enc_tvar (deBruijn) and tvar lists, and it assumes its argument lists
+   are sorted. 
  *)
 datatype aux_info
-  = AX_REG of bool                      (* normalization flag *)
-            * enc_tvar list             (* free debruijn-indexed type vars *)
-            * tvar list                 (* free named type vars *)
-  | AX_NO                               (* no aux_info available *)
+  = AX_REG of bool           (* normalization flag *)
+            * enc_tvar list  (* free debruijn-indexed type vars, sorted *)
+            * tvar list      (* free named type vars, sorted? *)
+  | AX_NO                    (* no aux_info available *)
 
 (* these two are originally from SortedList -- which I wanted to get
  * rid off.  -- Matthias  11/2000 *)
+(* mergeTvs: tvar list * tvar list -> tvar list
+ * merge two sorted lists of tvars into a sorted list, eliminating duplicates *)
 fun mergeTvs (l : tvar list, []) = l
   | mergeTvs ([], l) = l
   | mergeTvs (l as (h :: t), l' as (h' :: t')) =
@@ -67,13 +75,11 @@ fun mergeTvs (l : tvar list, []) = l
       else if h = h' then h :: mergeTvs (t, t')
       else h' :: mergeTvs (l, t')
 
+(* fmergeTvs : tvar list list -> tvar list
+ * merge a list of sorted lists of tvars into a single sorted list,
+ * eliminating duplicates. *)
 fun fmergeTvs [] = []
-  | fmergeTvs (h :: t) = 
-    let fun loop ([], a) = a
-	  | loop (h :: t, a) = loop (t, mergeTvs (h, a))
-    in
-	loop (t, h)
-    end
+  | fmergeTvs (h :: t) = foldr mergeTvs h t
 
 (*
 val mergeTvs = SortedList.merge
@@ -275,18 +281,20 @@ local structure Weak = SMLofNJ.Weak
       fun cmp(table, a as ref(ai,_,_), b as ref (bi,_,_)) =
         if ai < bi then LESS 
         else if ai > bi then GREATER
-           else if a = b then EQUAL
-                else let val index = wtoi (andb(itow ai,itow(N-1)))
-                         fun g [] = bug "unexpected case in cmp"
-                           | g (w::rest) =
-                                 (case Weak.strong w
-                                   of SOME r => 
-                                        if a=r then LESS 
-                                        else if b=r then GREATER
-                                                    else g rest
-                                    | NONE => g rest)
-                      in g(Array.sub(table,index))
-                     end
+        else if a = b then EQUAL (* pointer equality on refs *)
+        else (* ai = bi, so a,b in same bucket of table, use order
+              * a and b appear in the bucket *)
+             let val index = wtoi (andb(itow ai,itow(N-1)))
+                 fun g [] = bug "unexpected case in cmp"
+                   | g (w::rest) =
+                     (case Weak.strong w
+                       of SOME r => 
+                          if a=r then LESS 
+                          else if b=r then GREATER
+                          else g rest
+                        | NONE => g rest)
+              in g(Array.sub(table,index))
+             end
 
 
       fun getnum (ref(i,_,_)) = i
@@ -542,11 +550,8 @@ fun teToBinders (tenv: tycEnv) =
      of NONE => []
       | SOME(binder, tenvRest) => binder::(teToBinders tenvRest)
 
-(* TeUnbound -- raised when first element of a deBruijn index is 
- * out of bounds *)
-exception TeUnbound
-
-(* 1-based index lookup: assume i >= 1 *)
+(* teLookup: tenv * int -> teBinder option
+ * 1-based index lookup: assume i >= 1, return NONE if i > "length" of tenv *)
 fun teLookup(tenv : tycEnv, i: int) : teBinder option =
       (case teDest tenv
         of SOME(binder, tenv') =>
@@ -694,12 +699,15 @@ fun tkSel (tk, i) =
 
 fun tks_eqv (ks1, ks2) = tk_eq(tkc_seq ks1, tkc_seq ks2)
 
+(* this is superceded by the following redefinition using tksSubkind
+ * instead of tks_eqv.  Does it make any difference? If so, example? *)
 fun tkApp (tk, tks) = 
   (case (tk_outX tk)
     of TK_FUN(a, b) =>
        if tks_eqv(a, tks) then b
        else raise TkTycChk "Param/Arg Tyc Kind mismatch"
      | _ => raise TkTycChk "Application of non-TK_FUN")
+*)
 
 (* check the application of tycs of kinds `tks' to a type function of
  * kind `tk'.
@@ -733,10 +741,10 @@ structure Memo :> sig
 end =
 struct
     structure TcDict = RedBlackMapFn
-                           (struct
-                               type ord_key = tyc
-                               val compare = tc_cmp
-                           end)
+                         (struct
+                            type ord_key = tyc
+                            val compare = tc_cmp
+                          end)
 
     type dict = (tkind * tkind) list TcDict.map ref
     val newDict : unit -> dict = ref o (fn () => TcDict.empty)
@@ -745,8 +753,9 @@ struct
         (* what are the valuations of tyc's free variables
          * in kenv? *)
         (* (might not be available for some tycs) *)
-        case tkLookupFreeVars (kenv, tyc) of
-            SOME ks_fvs => let
+        case tkLookupFreeVars (kenv, tyc)
+          of SOME ks_fvs =>
+             let
                 (* encode those as a kind sequence *)
                 val k_fvs = tkc_seq ks_fvs
                 (* query the dictionary *)
@@ -819,8 +828,12 @@ fun tkTycGen'() = let
                                 case a
                                   of [x] => x
                                    | _ => tkc_seq a
+                              (* "sequencize" the domain to make it comparable
+                               * to b *)
                         in
 			    (* Kind check recursive tyc app ??*)
+                            (* [KM ???] seems bogus if arg is a proper subkind,
+                             * but probably ok if tkSubkind is really equivalence *)
                             if tkSubkind(arg, b) then (* order? *)
                                 (if n = 1 then b else tkSel(arg, i))
                             else raise TkTycChk "Recursive app mismatch"
@@ -910,51 +923,52 @@ fun tkChkGen() =
     end (* function tkChkGen *)
 
 
-fun ltyChk (lty : lty) =
-    let val (tkChk, chkKindEnv) = tkTycGen'()
-	fun ltyIChk (kenv : tkindEnv) (ltyI : ltyI) =
-	    (case ltyI 
-	      of LT_TYC(tyc) => 
-		   (tkAssertIsMono (tkChk kenv tyc); tkc_mono)
-	       | LT_STR(ltys) => tkc_seq(map (ltyChk' kenv) ltys)
-	       | LT_FCT(paramLtys, rngLtys) => 
-		   let val paramks = map (ltyChk' kenv) paramLtys
-		       val tenv' = paramks :: kenv
-		   in 
-		       tkc_fun(paramks,
-			      tkc_seq(map (ltyChk' tenv') rngLtys))
-		   end
-	       | LT_POLY(ks, ltys) => 
-		   tkc_seq(map (ltyChk' (ks::kenv)) ltys)
-		   (* ??? *)
-	       | LT_CONT(ltys) => 
-		   tkc_seq(map (ltyChk' kenv) ltys)
-	       | LT_IND(newLty, oldLtyI) =>
-		   let val newLtyKnd = (ltyChk' kenv) newLty
-		   in if tk_eq(newLtyKnd, ltyIChk kenv oldLtyI)
-		      then newLtyKnd
-		      else bug "ltyChk[IND]: kind mismatch"
-		   end
-	       | LT_ENV(body, i, j, env) =>
-		   (* Should be the same as checking TC_ENV and 
-		    * therefore the two cases should probably just
-		    * call the same helper function *)
-		   (let val kenv' = 
-			    List.drop(kenv, j)
-			    handle Subscript => 
-				   bug "[Env]: dropping too many frames"
-			fun bindToKinds(Lamb(_,ks)) = ks
-			  | bindToKinds(Beta(_,_,ks)) = ks
-			fun addBindToKEnv(b,ke) = 
-			    bindToKinds b :: ke
-			val bodyKenv = 
-			    foldr addBindToKEnv kenv' (teToBinders env)
-		    in chkKindEnv(env,j,kenv);
-		       ltyChk' bodyKenv body
-		    end))
-	and ltyChk' kenv lty = ltyIChk kenv (lt_outX lty)
-    in ltyChk' [] lty
-    end (* function ltyChk *)	   
+fun ltyChkGen () = 
+let val (tkChk, chkKindEnv) = tkTycGen'()
+    fun ltyIChk (kenv : tkindEnv) (ltyI : ltyI) =
+        (case ltyI 
+          of LT_TYC(tyc) => 
+               (tkAssertIsMono (tkChk kenv tyc); tkc_mono)
+           | LT_STR(ltys) => tkc_seq(map (ltyChk' kenv) ltys)
+           | LT_FCT(paramLtys, rngLtys) => 
+               let val paramks = map (ltyChk' kenv) paramLtys
+                   val tenv' = paramks :: kenv
+               in 
+                   tkc_fun(paramks,
+                          tkc_seq(map (ltyChk' tenv') rngLtys))
+               end
+           | LT_POLY(ks, ltys) => 
+               tkc_seq(map (ltyChk' (ks::kenv)) ltys)
+               (* ??? *)
+           | LT_CONT(ltys) => 
+               tkc_seq(map (ltyChk' kenv) ltys)
+           | LT_IND(newLty, oldLtyI) =>
+               let val newLtyKnd = (ltyChk' kenv) newLty
+               in if tk_eq(newLtyKnd, ltyIChk kenv oldLtyI)
+                  then newLtyKnd
+                  else bug "ltyChk[IND]: kind mismatch"
+               end
+           | LT_ENV(body, i, j, env) =>
+               (* Should be the same as checking TC_ENV and 
+                * therefore the two cases should probably just
+                * call the same helper function *)
+               (let val kenv' = 
+                        List.drop(kenv, j)
+                        handle Subscript => 
+                               bug "[Env]: dropping too many frames"
+                    fun bindToKinds(Lamb(_,ks)) = ks
+                      | bindToKinds(Beta(_,_,ks)) = ks
+                    fun addBindToKEnv(b,ke) = 
+                        bindToKinds b :: ke
+                    val bodyKenv = 
+                        foldr addBindToKEnv kenv' (teToBinders env)
+                in chkKindEnv(env,j,kenv);
+                   ltyChk' bodyKenv body
+                end))
+    and ltyChk' kenv lty = ltyIChk kenv (lt_outX lty)
+ in ltyChk'
+end (* function ltyChk *)	   
+
 end (* local *)
 		   
 end (* structure Lty *)

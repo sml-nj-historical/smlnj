@@ -107,8 +107,10 @@ fun ltArrow lt =
    else LT.ltd_pfct lt) handle _ => raise LtyArrow
 
 val lt_inst_chk = LT.lt_inst_chk_gen()
+(* kind checker for ltys *)
+val ltyChk = LT.ltyChkGen ()
 
-fun ltAppChk (lt, ts, kenv) = 
+fun ltAppChk (lt, ts, kenv) : LT.lty = 
   (case lt_inst_chk(lt, ts, kenv) 
     of [b] => b 
      | _ => bug "unexpected ase in ltAppChk")
@@ -206,13 +208,15 @@ fun ltConChk le s (DATAcon ((_,rep,lt), ts, v), root, kenv, venv, d) =
        in ltMatch le s (nt, root); venv
       end
 
-
 (** check : tkindEnv * ltyEnv * DI.depth -> lexp -> lty *)
 fun check (kenv, venv, d) = 
-  let fun loop le =
+  let val ltyChkenv = ltyChk kenv
+      fun loop le =
        (case le
          of VAR v => 
-              (LT.ltLookup(venv, v, d) 
+              (let val lty = LT.ltLookup(venv, v, d) 
+                in ltyChk kenv lty; lty  (* no -- move this out and kcheck result *)
+               end
                handle LT.ltUnbound => 
                 (say ("** Lvar ** " ^ (LV.lvarName(v)) ^ " is unbound *** \n");
                  bug "unexpected lambda code in checkLty"))
@@ -220,16 +224,21 @@ fun check (kenv, venv, d) =
           | (INT32 _ | WORD32 _) => LT.ltc_int32
           | REAL _ => LT.ltc_real
           | STRING _ => ltString
-          | PRIM(p, t, ts) => ltTyApp le "PRIM" (t, ts, kenv) 
+          | PRIM(p, t, ts) =>
+             (* kind check t and ts *)
+              (ltyChkenv t; map ltyChkenv ts;
+               ltTyApp le "PRIM" (t, ts, kenv))
 
-          | FN(v, t, e1) => 
-              let val venv' = LT.ltInsert(venv, v, t, d)
+          | FN(v, t, e1) =>
+              let val _ = ltyChkenv t (* kind check *)
+                  val venv' = LT.ltInsert(venv, v, t, d)
                   val res = check (kenv, venv', d) e1
                in ltFun(t, res) (* handle both functions and functors *)
               end
 
           | FIX(vs, ts, es, eb) => 
-              let fun h (env, v::r, x::z) = h(LT.ltInsert(env, v, x, d), r, z)
+              let val _ = map ltyChkenv ts  (* kind check *)
+                  fun h (env, v::r, x::z) = h(LT.ltInsert(env, v, x, d), r, z)
                     | h (env, [], []) = env
                     | h _ = bug "unexpected FIX bindings in checkLty."
                   val venv' = h(venv, vs, ts)
@@ -330,9 +339,8 @@ fun check (kenv, venv, d) =
                   val nt = LT.ltc_tyc ntc
                in (ltMatch le "UNWRAP" (loop e, nt); LT.ltc_tyc t)
               end)
-                            
-
-  in loop 
+  in (* wrap loop with kind check of result *)
+     fn x => let val y = loop x in ltyChkenv y; y end
  end (* end-of-fn-check *)
 
 in 
@@ -342,4 +350,3 @@ end (* end of function checkLty *)
 
 end (* toplevel local *)
 end (* structure CheckLty *)
-

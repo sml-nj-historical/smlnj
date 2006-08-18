@@ -274,10 +274,10 @@ and toTyc d t =
             in
                 LT.tcc_var(DI.calc(d, depth), num)
             end
-        | h (UBOUND _) = LT.tcc_void
+        | h (UBOUND _) = (print "#### toTyc UBOUND!"; LT.tcc_void)
             (* dbm: should this have been converted to a TV_MARK before
              * being passed to toTyc? *)
-        | h (OPEN _) = LT.tcc_void
+        | h (OPEN _) = (print "#### toTyc OPEN!"; LT.tcc_void)
         | h _ = bug "toTyc:h" (* LITERAL and SCHEME should not occur *)
 
       and g (VARty tv) = (* h(!tv) *) lookTv tv
