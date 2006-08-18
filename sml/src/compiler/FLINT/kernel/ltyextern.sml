@@ -56,6 +56,7 @@ fun lt_inst (lt : lty, ts : tyc list) =
 fun lt_pinst (lt : lty, ts : tyc list) = 
   (case lt_inst (lt, ts) of [y] => y | _ => bug "unexpected lt_pinst")
 
+(*
 (********************************************************************
  *                      KIND-CHECKING ROUTINES                      *
  ********************************************************************)
@@ -133,12 +134,13 @@ fun tkApp (tk, tks) =
  * tyc to an association list that maps the kinds of the free
  * variables in the tyc (represented as a TK_SEQ) to the tyc's kind.
  *)
+ *)
 structure TcDict = BinaryMapFn
                      (struct
                         type ord_key = tyc
                         val compare = LT.tc_cmp
 		      end)
-                       
+ (*                      
 structure Memo :> sig
   type dict 
   val newDict         : unit -> dict
@@ -298,7 +300,7 @@ fun tkTycGen() = let
     end
 in
     tkTyc
-end
+end 
 
 (* assert that the kind of `tc' is a subkind of `k' in `kenv' *)
 fun tkChkGen() =
@@ -307,10 +309,11 @@ fun tkChkGen() =
             tkAssertSubkind (tkTyc kenv tc, k)
     in tkChk
     end
+*)
     
 (* lty application with kind-checking (exported) *)
 fun lt_inst_chk_gen() = let
-    val tkChk = tkChkGen()
+    val tkChk = LT.tkChkGen()
     fun lt_inst_chk (lt : lty, ts : tyc list, kenv : tkindEnv) = 
         let val nt = lt_whnm lt
         in (case ((* lt_outX *) lt_out nt, ts)
@@ -320,7 +323,7 @@ fun lt_inst_chk_gen() = let
                  in map h b
                  end
                | (_, []) => [nt]    (* ? problematic *)
-               | _ => raise LtyAppChk)
+               | _ => raise LT.LtyAppChk)
         end
 in
     lt_inst_chk
