@@ -707,7 +707,7 @@ fun tkApp (tk, tks) =
        if tks_eqv(a, tks) then b
        else raise TkTycChk "Param/Arg Tyc Kind mismatch"
      | _ => raise TkTycChk "Application of non-TK_FUN")
-*)
+
 
 (* check the application of tycs of kinds `tks' to a type function of
  * kind `tk'.

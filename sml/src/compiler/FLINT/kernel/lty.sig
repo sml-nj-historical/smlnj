@@ -186,6 +186,7 @@ val tc_nvars : tyc -> tvar list
 val lt_nvars : lty -> tvar list
 
 (* Kind checker *)
+exception TkTycChk of string
 exception LtyAppChk
 
 val tkTycGen : unit -> (tkindEnv -> tyc -> tkind)

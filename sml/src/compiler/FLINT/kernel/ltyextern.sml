@@ -56,6 +56,10 @@ fun lt_inst (lt : lty, ts : tyc list) =
 fun lt_pinst (lt : lty, ts : tyc list) = 
   (case lt_inst (lt, ts) of [y] => y | _ => bug "unexpected lt_pinst")
 
+
+exception TkTycChk = LT.TkTycChk
+exception LtyAppChk = LT.LtyAppChk
+
 (*
 (********************************************************************
  *                      KIND-CHECKING ROUTINES                      *
