@@ -60,6 +60,8 @@ fun lt_pinst (lt : lty, ts : tyc list) =
 exception TkTycChk = LT.TkTycChk
 exception LtyAppChk = LT.LtyAppChk
 
+exception TeUnbound = LK.teUnbound2
+
 (*
 (********************************************************************
  *                      KIND-CHECKING ROUTINES                      *

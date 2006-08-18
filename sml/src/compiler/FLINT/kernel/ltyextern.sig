@@ -46,7 +46,8 @@ val lt_pinst    : lty * tyc list -> lty
 
 exception TkTycChk of string (* kind checker exception *)
 exception LtyAppChk
-  
+
+exception TeUnbound  
 
 (* kind checking functions (re-exported here from Lty) *)
 val tkTycGen : unit -> (tkindEnv -> tyc -> tkind)

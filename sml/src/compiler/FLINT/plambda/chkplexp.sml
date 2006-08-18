@@ -109,6 +109,8 @@ fun ltArrow lt =
 val lt_inst_chk = LT.lt_inst_chk_gen()
 (* kind checker for ltys *)
 val ltyChk = LT.ltyChkGen ()
+(* kind checker for tycs *)
+val tycChk = LT.tkTycGen ()
 
 fun ltAppChk (lt, ts, kenv) : LT.lty = 
   (case lt_inst_chk(lt, ts, kenv) 
@@ -122,7 +124,7 @@ fun ltTyApp le s (lt, ts, kenv) =
        (clickerror ();
         say (s ^ "  **** Kind conflicting in lexp =====> \n    ");
         case zz of LT.LtyAppChk => say "      exception LtyAppChk raised! \n"
-                 | LT.TkTycChk =>  say "      exception TkTycChk raised! \n"
+                 | LT.TkTycChk _ =>  say "      exception TkTycChk raised! \n"
                  | _ => say "   other weird exception raised! \n";
         say "\n \n"; lePrint le; say "\n For Types: \n";  
         ltPrint lt; say "\n and   \n    "; 
@@ -151,7 +153,7 @@ fun ltFnApp le s (t1, t2) =
             (clickerror ();
              say (s ^ "  **** Applying Non-Arrow Type in lexp =====> \n    ");
              case zz of LtyArrow => say "exception LtyArrow raised. \n"
-                      | LT.tcUnbound => say "exception tcUnbound raised. \n"
+                      | LT.TeUnbound => say "exception TeUnbound raised. \n"
                       | _ => say "other weird exceptions raised\n";
              say "\n \n";  lePrint le; say "\n For Types \n";
              ltPrint t1; say "\n and   \n    "; ltPrint t2; say "\n \n";  
@@ -167,7 +169,7 @@ fun ltFnAppR le s (t1, t2) =  (*** used for DECON lexps ***)
             (clickerror ();
              say (s ^ "  **** Rev-Apply Non-Arrow Type in lexp =====> \n    ");
              case zz of LtyArrow => say "exception LtyArrow raised. \n"
-                      | LT.tcUnbound => say "exception tcUnbound raised. \n"
+                      | LT.TeUnbound => say "exception TeUnbound raised. \n"
                       | _ => say "other weird exceptions raised\n";
              say "\n \n";  lePrint le; say "\n For Types \n";
              ltPrint t1; say "\n and   \n    "; ltPrint t2; say "\n \n"; 
@@ -183,7 +185,7 @@ fun ltSelect le s (lt, i) =
        (clickerror ();
         say (s ^ "  **** Select from a wrong-type lexp  =====> \n    ");
         case zz of LtySelect => say "exception LtyArrow raised. \n"
-                 | LT.tcUnbound => say "exception tcUnbound raised. \n"
+                 | LT.TeUnbound => say "exception TeUnbound raised. \n"
                  | _ => say "other weird exceptions raised\n";
         say "\n \n";  lePrint le; say "\n \n";
         say "Selecting "; say (Int.toString i); 
@@ -226,7 +228,7 @@ fun check (kenv, venv, d) =
           | STRING _ => ltString
           | PRIM(p, t, ts) =>
              (* kind check t and ts *)
-              (ltyChkenv t; map ltyChkenv ts;
+              (ltyChkenv t; map (tycChk kenv) ts;
                ltTyApp le "PRIM" (t, ts, kenv))
 
           | FN(v, t, e1) =>
