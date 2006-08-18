@@ -68,6 +68,7 @@ datatype teBinder
             point where the closure was originally created;
          ks: the kinds of the abstraction parameters *)
 
+val teToBinders : tycEnv -> teBinder list
 
 (* token: a hook to add new tyc *)
 type token                                    

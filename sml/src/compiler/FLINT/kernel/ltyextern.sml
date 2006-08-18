@@ -194,22 +194,23 @@ end (* Memo *)
 fun tkTycGen() = let
     val dict = Memo.newDict()
 
-    fun tkTyc kenv t = let
+    fun tkTyc (kenv : tkindEnv) t = let
         (* default recursive invocation *)    
         val g = tkTyc kenv
-	fun chkKindEnv(env,j,kenv) : unit =
-	    let fun bindToKinds(Lamb(_,ks)) = ks
-		  | bindToKinds(Beta(_,_,ks)) = ks
+	fun chkKindEnv(env : tycEnv,j,kenv : tkindEnv) : unit =
+	    let 
 		fun chkBinder(Lamb _) = ()
 		  | chkBinder(Beta(j',args,ks)) = 
-		    let val kenv' = List.drop(kenv, j-j')
-		    in if tksSubkind(ks, map (fn t => tkTyc(t,kenv')) args)
+		    let 
+			val kenv' = List.drop(kenv, j-j')
+			val argks = map (fn t => tkTyc kenv' t) args
+		    in if tksSubkind(ks, argks)
 		       then ()
-		       else error "chkKindEnv: Beta binder kinds mismatch"
+		       else bug "chkKindEnv: Beta binder kinds mismatch"
 		    end
 		    handle Subscript => 
-			   error "tkTyc[Env]: dropping too many frames"
-	    in app chkBinder env
+			   bug "tkTyc[Env]: dropping too many frames"
+	    in app chkBinder (LT.teToBinders env)
 	    end
         (* how to compute the kind of a tyc *)
         fun mk() =
@@ -273,15 +274,23 @@ fun tkTycGen() = let
               | LT.TC_PARROW _ => bug "unexpected TC_PARROW in tkTyc"
            (* | LT.TC_ENV _ => bug "unexpected TC_ENV in tkTyc" *)
 	      | LT.TC_ENV(body, 0, j, teEmpty) => 
-		  (tkTyc List.drop(kenv,j) body 
-		   handle Subscript => error "[Env]: dropping too many frames")
+		  (tkTyc (List.drop(kenv,j)) body 
+		   handle Subscript => 
+			  bug "[Env]: dropping too many frames")
 	      | LT.TC_ENV(body, i, j, env) =>
 		  (let val kenv' = 
 			   List.drop(kenv, j)
-			   handle Subscript => "[Env]: dropping too many frames"
+			   handle Subscript => 
+				  bug "[Env]: dropping too many frames"
+		       fun bindToKinds(Lamb(_,ks)) = ks
+			 | bindToKinds(Beta(_,_,ks)) = ks
+		       fun addBindToKEnv(b,ke) = 
+			   bindToKinds b :: ke
+		       val bodyKenv = 
+			   foldr addBindToKEnv kenv' (LT.teToBinders env)
 		   in chkKindEnv(env,j,kenv);
-		      tkTyc (foldr (fn (b,ke) => bindToKinds b :: ke)) body
-		   end 
+		      tkTyc bodyKenv body
+		   end) 
               | LT.TC_IND _ => bug "unexpected TC_IND in tkTyc"
               | LT.TC_CONT _ => bug "unexpected TC_CONT in tkTyc"
     in

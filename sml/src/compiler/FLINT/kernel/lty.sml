@@ -537,6 +537,11 @@ fun teDest (tenv: tycEnv) : (teBinder * tycEnv) option =
       | TC_SUM [] => NONE
       | _ => bug "teDest"
 
+fun teToBinders (tenv: tycEnv) =
+    case teDest tenv 
+     of NONE => []
+      | SOME(binder, tenvRest) => binder::(teToBinders tenvRest)
+
 (* TeUnbound -- raised when first element of a deBruijn index is 
  * out of bounds *)
 exception TeUnbound
