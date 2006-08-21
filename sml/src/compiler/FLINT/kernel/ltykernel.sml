@@ -61,33 +61,41 @@ local
                               end) *)
          in neweff orelse (withEff(r, ol, nl, tenv))
         end
+
+fun tenvLength (tenv: tycEnv) : int =
+    case teDest tenv
+      of NONE => 0
+       | SOME(_,tenv') => 1 + tenvLength tenv'
+
 in 
 
 fun tcc_env(x, ol, nl, tenv) =
   (let fun checkTCVAR tyc =  (* GK -- debugging *)
            case (tc_outX tyc)
-             of TC_VAR(i,j) =>
-                 (case teLookup(tenv,i)
+             of TC_VAR(d,k) =>
+                 (case teLookup(tenv,d)
 		   of SOME(Beta(_,ts,ks)) =>
-                        if j >= length ts
-			then (print "tcc_env TC_VAR ";
-			      print (Int.toString j);
+                        if k >= length ts
+			then (print "tcc_env TC_VAR [Beta]: ";
+			      print (Int.toString k);
 			      print ", ts length = ";
 			      print (Int.toString (length ts));
                               print "\n";
-			      raise Fail "Bad TC_ENV TC_VAR")
+			      bug "Bad TC_ENV TC_VAR [Beta]")
 			else ()
                     | SOME(Lamb(_,ks)) =>
-                        if j >= length ks
-			then (print "tcc_env TC_VAR ";
-			      print (Int.toString j);
+                        if k >= length ks
+			then (print "tcc_env TC_VAR [Lamb]: ";
+			      print (Int.toString k);
 			      print ", ks length = ";
 			      print (Int.toString (length ks));
                               print "\n";
-			      raise Fail "Bad TC_ENV TC_VAR")
+			      bug "Bad TC_ENV TC_VAR [Lamb]")
 			else ()
-		    | NONE => (print "tcc_env TC_VAR: i out of bounds: ";
-                               print (Int.toString i); print "\n"))
+		    | NONE => (print "tcc_env TC_VAR: d out of bounds:\n";
+                               print "d = "; print (Int.toString d); print "\n";
+                               print "ol = "; print (Int.toString ol); print "\n";
+                               print "length(tenv) = "; print (Int.toString(tenvLength tenv)); print "\n"))
               | TC_ENV(tc, _, _, _)  =>
                  (print "TC_ENV("; checkTCVAR(tc); print ")\n")
               | _ => () (* print ("tcc_env OTHER " ^ tci_print tci ^"\n") *) 
@@ -142,8 +150,8 @@ val tcc_app = fn (fntyc, argtycs) =>
 					   (case (tc_outX tc') of
 						(TC_SEQ tycs) => getArity (List.nth (tycs, index))
 					      | TC_FN (params, _) => length params
-					      | _ => raise Fail "Malformed generator range")
-					 | _ => raise Fail "FIX without generator!" )
+					      | _ => bug "Malformed generator range")
+					 | _ => bug "FIX without generator!" )
 				    | _ => (with_pp (fn s =>
                                               (PU.pps s "getArity?:";
                                                PP.newline s;
@@ -273,7 +281,7 @@ and tc_lzrd(t: tyc) =
                                (with_pp(fn s =>
                                  (PU.pps s "tc_lzrd.prop:"; PP.newline s;
                                   ppTyc (!dp) s z; PP.newline s));
-                                raise Fail ("tc_lzrd prop"))
+                                bug "tc_lzrd prop")
              in (case tc_outX x
                   of TC_VAR (n,k) => 
                        if (n <= ol) then  (* n is bound in tenv *)
@@ -283,7 +291,8 @@ and tc_lzrd(t: tyc) =
                                 tcc_var(nl - nl', k)
                             | SOME(Beta(nl',ts,ks)) =>  (* rule r6 *)
                                 let val y = List.nth(ts, k) 
-                                            handle Subscript => (* kind error! *)
+                                            handle Subscript =>
+                                            (* kind/arity error! *)
                     (with_pp(fn s =>
                        let val {break,newline,openHVBox,openHOVBox,
 				closeBox, pps, ppi} = PU.en_pp s
@@ -310,9 +319,9 @@ and tc_lzrd(t: tyc) =
                    | TC_PRIM _ => x    (* rule r7 *)
                    | TC_FN (ks, tc) => 
                       let val tenv' = teCons(Lamb(nl,ks),tenv)
-                       in tcc_fn(ks, 
+                       in tcc_fn(ks,
 				 tcc_env(tc, ol+1, nl+1, tenv') 
-				 handle Fail _ => raise Fail "tc_lzrd TC_FN") (* rule r10 *)
+				 handle Fail _ => bug "tc_lzrd TC_FN") (* rule r10 *)
                       end
                    | TC_APP (tc, tcs) => tcc_app(prop tc, map prop tcs) (* rule r9 *)
                    | TC_SEQ tcs => tcc_seq (map prop tcs)
@@ -387,8 +396,8 @@ and printParamArgs (tc,tcs) =
 		      (case (tc_outX tc') of
 			   (TC_SEQ tycs) => getArity (List.nth (tycs, index))
 			 | TC_FN (params, _) => length params
-			 | _ => raise Fail "Malformed generator range")
-		    | _ => raise Fail "FIX without generator!" )
+			 | _ => bug "Malformed generator range")
+		    | _ => bug "FIX without generator!" )
 	       | _ => (with_pp (fn s => (PP.openHOVBox s (PP.Rel 2);
                                          PU.pps s "getArity on:";
                                          ppTyc (!dp) s tc; PP.newline s;
@@ -406,6 +415,7 @@ and printParamArgs (tc,tcs) =
 		         PU.ppi s (length tcs); PP.newline s))
     end
  *)
+
 (** normalizing an arbitrary tyc into a simple weak-head-normal-form *)
 and tc_whnm t = if tcp_norm(t) then t else 
   let (* val _ = print ">>tc_whnm not norm\n" *) 
@@ -424,12 +434,12 @@ and tc_whnm t = if tcp_norm(t) then t else
                              (case tc_outX b
                                of TC_ENV(b', ol', nl', te') => 
                                     (case teDest te'
-                                      of SOME(Lamb(n,ks'), te) =>
+                                      of SOME(Lamb(n,ks'), te'') =>
                                            if (n = nl'-1) andalso (ol' > 0)
                                            then (* r12 *)
-                                             (b', ol', n, teCons(Beta(n,tcs,ks),te))
+                                             (b', ol', n, teCons(Beta(n,tcs,ks),te''))
+                                             (* dbm: ks and ks' should be the same *)
                                            else base()
-                                           (* dbm: ks and ks' should be the same *)
                                        | _ => base())
                                 | _ => base()) 
                            val res = tc_whnm(tcc_env sp) 
@@ -877,7 +887,7 @@ fun lt_eqv(x : lty, y) =
   end (* function lt_eqv *)
 
 fun lt_eqv_x(x : lty, y) = 
-  let val seq = lt_eqv_gen (lt_eqv_x, tc_eqv_x) 
+  let val seq = lt_eqv_gen (lt_eqv_x, tc_eqv_x)
    in if ((ltp_norm x) andalso (ltp_norm y)) then 
            (lt_eq(x, y)) orelse (seq(x, y))
       else (let val t1 = lt_whnm x
@@ -886,7 +896,7 @@ fun lt_eqv_x(x : lty, y) =
                   (lt_eq(t1, t2)) orelse (seq(t1, t2))
                 else seq(t1, t2)
             end)
-  end (* function lt_eqv *)
+  end (* function lt_eqv_x *)
 
 (** testing equivalence of fflags and rflags *)
 fun ff_eqv (FF_VAR (b1, b2), FF_VAR (b1', b2')) = b1 = b1' andalso b2 = b2'

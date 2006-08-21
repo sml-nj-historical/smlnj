@@ -475,7 +475,7 @@ fun lt_nvars (lty:lty) =
      of AX_REG (_,_,tvs) => tvs
       | AX_NO => bug "unexpected case in lt_nvars"
 
-end (* local -- hask consing *)
+end (* local -- hash consing *)
 
 (***************************************************************************
  *            UTILITY FUNCTIONS ON TYC ENVIRONMENT                         *
@@ -995,7 +995,7 @@ fun tkChkGen() =
     in tkChk
     end (* function tkChkGen *)
 
-
+(* ltyChkGen : unit -> tkindEnv -> lty -> tkind *)
 fun ltyChkGen () = 
 let val (tkChk, chkKindEnv) = tkTycGen'()
     fun ltyIChk (kenv : tkindEnv) (ltyI : ltyI) =

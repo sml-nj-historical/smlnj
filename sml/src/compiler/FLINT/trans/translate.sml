@@ -1454,14 +1454,16 @@ val _ = debugmsg ">>mkDec"
 (** translating the ML absyn into the PLambda expression *)
 val body = mkDec (rootdec, DI.top) exportLexp
 val _ = debugmsg "<<mkDec"
-(** type check body (including kind check) **)
-val _ = ChkPlexp.checkLty(body,0)
-
 (** add bindings for intinf constants *)
 val body = wrapII body
 
 (** wrapping up the body with the imported variables *)
 val (plexp, imports) = wrapPidInfo (body, PersMap.listItemsi (!persmap))
+
+(** type check body (including kind check) **)
+val _ = print "**** Translate: plexp ****\n"
+val _ = PPLexp.printLexp plexp
+val _ = ChkPlexp.checkLty(plexp,0)
 
 fun prGen (flag,printE) s e =
   if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e) else ()
