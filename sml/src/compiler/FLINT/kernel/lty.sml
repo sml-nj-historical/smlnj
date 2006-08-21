@@ -454,10 +454,14 @@ fun lt_cmp (t1, t2) = cmp(lt_table, t1, t2)
 fun lt_key (ref (h : int, _ : ltyI, _ : aux_info)) = h
 
 (** checking if a tyc or an lty is in the normal form *)
-fun tcp_norm ((ref(_, _, AX_REG(b,_,_))) : tyc) =  b
-  | tcp_norm _ = false
+fun  tcp_norm ((ref(_, TC_IND _, AX_REG(true,_,_))) : tyc) =  bug "TC_IND is norm?!"
+   | tcp_norm ((ref(_, _, AX_REG(b,_,_))) : tyc) =  b
+   | tcp_norm _ = false
 
-fun ltp_norm ((ref(_, _, AX_REG(b,_,_))) : lty) =  b
+fun ltp_norm ((ref(_, LT_TYC (ref (_,TC_IND _, _)), AX_REG(true,_,_))) : lty) =  
+    bug "LT_TYC (TC_IND ) is norm?!"
+  | ltp_norm ((ref(_, LT_IND _, AX_REG(true,_,_))) : lty) =  bug "LT_IND is norm?!"
+  | ltp_norm ((ref(_, _, AX_REG(b,_,_))) : lty) =  b
   | ltp_norm _ = false
 
 (** accessing free named tyvars *)
@@ -603,9 +607,78 @@ fun tkLookupFreeVars (kenv, tyc) =
 
 (** testing the "pointer" equality on normalized tkind, tyc, and lty *)
 fun tk_eq (x: tkind, y) = (x = y)
-fun tc_eq (x: tyc, y) = (x = y)
-fun lt_eq (x: lty, y) = (x = y)
 
+local
+      fun stripIND tyc =
+	  (case tc_outX tyc 
+	    of (TC_IND(new,_)) => stripIND new
+	     | _ => tyc)
+  fun verify(ref(_, TC_IND _, AX_REG(true,_,_))) =  bug "TC_IND is norm?!"
+    | verify _ = ()
+in 
+fun tc_eq (x: tyc, y) =  (verify x; verify y; x = y)
+end
+
+local 
+  fun verify(ref(_, LT_IND _, AX_REG(true,_,_))) =  bug "LT_IND is norm?!"
+    | verify(ref(_, LT_TYC(ref(_,TC_IND _,_)), AX_REG(true,_,_))) = bug "LT_TYC (TC_IND) is norm?!"
+    | verify(ref(_, _, AX_REG(true, _, _))) = ()
+    | verify(ref(_, _, AX_REG(false, _, _))) = bug "Non-normalized (AX_REG false).\n"
+    | verify(ref(_, _, AX_NO)) = bug "Non-normalized (AX_NO)\n"
+in 
+fun lt_eq (x: lty, y) =
+    (verify x; verify y;
+    if not (x = y) then 
+	((case (lt_outX x, lt_outX y) 
+	  of (LT_TYC tyc1, LT_TYC tyc2) =>
+	     (x = y)
+	   | _ => x = y))
+    else (x = y)  )
+end (*
+	     (case (tc_outX tyc1, tc_outX tyc2) 
+	       of (TC_PRIM pt1, TC_PRIM pt2) => 
+		    print "PRIM\n"
+		| (TC_FN _, _) => 
+		    print "FN\n"
+		| (TC_FIX _, _) => print "FIX\n"
+		| (TC_VAR _, _) => print "VAR\n"
+		| (TC_NVAR _, _) => print "NVAR\n"
+		| (TC_APP _, _) => print "APP\n"
+		| (TC_SEQ _, _) => print "SEQ\n"		| (TC_PROJ _, _) => print "PROJ\n"
+		| (TC_SUM _, _) => print "SUM\n"
+		| (TC_TUPLE _, _) => print "TUPLE\n"
+		| (TC_ARROW _, _) => print "ARROW\n"
+		| (TC_PARROW _, _) => print "PARROW\n"
+		| (TC_BOX _, _) => print "BOX\n"
+		| (TC_ABS _, _) => print "ABS\n"
+		| (TC_TOKEN _, _) => print "TOKEN\n"
+		| (TC_CONT _, _) => print "CONT\n"
+		| (TC_IND _, _) => print "IND\n"
+		| (TC_ENV _, _) => print "ENV\n"
+		| (TC_PRIM _, tyc2') => 
+		    (print "unmatched PRIM\n"; 
+		     case tyc2' 
+		      of (TC_FN _) => 
+			 print "FN\n"
+		       | (TC_FIX _) => print "FIX\n"
+		       | (TC_VAR _) => print "VAR\n"
+		       | (TC_NVAR _) => print "NVAR\n"
+		       | (TC_APP _) => print "APP\n"
+		       | (TC_SEQ _) => print "SEQ\n"
+		       | (TC_PROJ _) => print "PROJ\n"
+		       | (TC_SUM _) => print "SUM\n"
+		       | (TC_TUPLE _) => print "TUPLE\n"
+		       | (TC_ARROW _) => print "ARROW\n"
+		       | (TC_PARROW _) => print "PARROW\n"
+		       | (TC_BOX _) => print "BOX\n"
+		       | (TC_ABS _) => print "ABS\n"
+		       | (TC_TOKEN _) => print "TOKEN\n"
+		       | (TC_CONT _) => print "CONT\n"
+		       | (TC_IND _) => print "IND\n"
+		       | (TC_ENV _) => print "ENV\n"
+		       | (TC_PRIM _) => print "PRIM\n")
+			 )); x = y) 
+    else (x = y) *)
 
 (** utility functions for updating tycs and ltys *)
 fun tyc_upd (tgt as ref(i : int, old : tycI, AX_NO), nt) = 

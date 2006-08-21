@@ -868,10 +868,10 @@ fun lt_eqv_gen (eqop1, eqop2) (x : lty, y) =
 
 fun lt_eqv(x : lty, y) = 
   let val seq = lt_eqv_gen (lt_eqv, tc_eqv) 
-   in if ((ltp_norm x) andalso (ltp_norm y)) then lt_eq(x,y)
+   in if ((ltp_norm x) andalso (ltp_norm y)) then (if not (lt_eq(x,y)) then (print "norm first\n"; lt_eq(x,y)) else true)
       else (let val t1 = lt_whnm x
                 val t2 = lt_whnm y
-             in if (ltp_norm t1) andalso (ltp_norm t2) then lt_eq(x, y)
+             in if (ltp_norm t1) andalso (ltp_norm t2) then lt_eq(t1, t2)
                 else seq(t1, t2)
             end)
   end (* function lt_eqv *)
