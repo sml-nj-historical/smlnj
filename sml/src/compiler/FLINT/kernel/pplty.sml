@@ -290,6 +290,58 @@ fun ppTycEnv pd ppstrm (tycEnv : Lty.tycEnv) =
 	closeBox()
     end (* ppTycEnv *)
 
-end (* local *)	    
 	     
+fun ppLty pd ppstrm (lty: Lty.lty) =
+    if pd < 1 then pps ppstrm "<tyc>" else
+    let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
+	val ppList' : {pp:PP.stream -> 'a -> unit, sep: string} -> 'a list -> unit =
+              fn x => ppList ppstrm x
+	       (* eta-expansion of ppList to avoid value restriction *) 
+
+	val ppTKind' = ppTKind (pd-1) ppstrm
+	val ppLty' = ppLty (pd-1) ppstrm
+
+        fun ppLtyI (Lty.LT_TYC tc) =
+            (pps "TYC("; ppTyc pd ppstrm tc; pps "0")
+          | ppLtyI (Lty.LT_STR ltys) =
+            (pps "STR("; ppList' {sep=",",pp=ppLty (pd-1)} ltys; pps ")")
+          | ppLtyI (Lty.LT_FCT (args,res)) =
+            (pps "FCT("; ppList' {sep=",",pp=ppLty (pd-1)} args; pps ",";
+             PP.break ppstrm {nsp=1,offset=0};
+             ppList' {sep=",",pp=ppLty (pd-1)} res; pps ")")
+          | ppLtyI (Lty.LT_POLY (ks,ltys)) =
+	    (openHOVBox 1;
+	     pps "FN(";
+	     ppList' {sep="*", pp=ppTKind (pd-1)} ks;
+	     pps ",";
+	     PP.break ppstrm {nsp=1,offset=0};
+	     ppList' {sep=",",pp=ppLty (pd-1)} ltys;
+	     pps ")";
+	     closeBox())
+          | ppLtyI (Lty.LT_CONT ltys) =
+            (pps "CONT("; ppList' {sep=",",pp=ppLty (pd-1)} ltys; pps ")")
+          | ppLtyI (Lty.LT_IND(nt,ot)) =
+            (pps "IND("; ppLty (pd-1) ppstrm nt; pps ",";
+             PP.break ppstrm {nsp=1,offset=0};
+             ppLtyI ot; pps ")")
+	  | ppLtyI (Lty.LT_ENV (lty, ol, nl, tenv)) =
+	    (openHVBox 1;
+	     pps "LT_ENV(";
+	     pps "ol=";
+	     pps (Int.toString ol);
+	     pps ", ";
+	     pps "nl=";
+	     pps (Int.toString nl);
+	     pps ",";
+	     PP.break ppstrm {nsp=1,offset=0};
+	     ppLty' lty;
+	     pps ",";
+	     PP.break ppstrm {nsp=1,offset=0};
+	     ppList' {sep=",", pp=ppTEBinder (pd-1)} (tycEnvFlatten tenv);
+	     closeBox())
+    in ppLtyI (Lty.lt_outX lty)
+    end (* ppLty *)
+
+end (* local *)	    
+
 end (* structure PPLty *)

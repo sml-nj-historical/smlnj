@@ -27,13 +27,26 @@ in
 (* debugging *)
 val say = Control_Print.say
 
-val debugging = ref false;
+val debugging = ref true
+val debugging2 = ref false
+
 fun debugmsg (msg : string) = 
     if !debugging then (say msg; say "\n") else ()
+val pd = 15  (* debugging print depth *)
 
-fun ppTycEnv tenv = 
+fun ppTycEnv (tenv: Lty.tycEnv) = 
     PP.with_default_pp
-      (fn ppstrm => (PPLty.ppTycEnv 20 ppstrm tenv; PU.pps ppstrm "\n"))
+      (fn ppstrm => (PPLty.ppTycEnv pd ppstrm tenv; PU.pps ppstrm "\n"))
+
+fun ppLty (lty: Lty.lty) = 
+    PP.with_default_pp
+      (fn ppstrm => (PPLty.ppLty pd ppstrm lty; PU.pps ppstrm "\n"))
+
+fun debugLty (lty: Lty.lty) =
+    if !debugging then ppLty lty else ()
+
+fun debugLexp (lexp) = 
+    if !debugging2 then PPLexp.printLexp lexp else ()
 
 val mkv = LambdaVar.mkLvar
 val cplv = LambdaVar.dupLvar
@@ -121,10 +134,10 @@ fun tocon con =
     end
 
 fun tofundec (venv,d,f_lv,arg_lv,arg_lty,body,isrec) =
-    let val _ = (debugmsg (concat ["tofundec normalize argument: ", 
-				(LtyBasic.lt_print arg_lty),
-				"\ntofundec normalize body: \n"]);
-		 if !debugging then PPLexp.printLexp body else ()) 
+    let val _ = (debugmsg "tofundec normalize argument:\n";
+		 debugLty arg_lty;
+		 debugmsg "\ntofundec normalize body: \n";
+		 debugLexp body)
 	val (body',body_lty) =
         (* first, we translate the body (in the extended env) *)
         tolexp (LT.ltInsert(venv, arg_lv, arg_lty, d), d) body
@@ -274,7 +287,7 @@ and tolexp (venv,d) lexp =
  *)
 and tovalue (venv,d,lexp,cont) =
     let val _ = debugmsg ">>tovalue"
-	val _ = if !debugging then PPLexp.printLexp lexp else ()
+	val _ = debugLexp lexp
 	val _ = 1
     val v = case lexp of
         (* for simple values, it's trivial *)
@@ -306,7 +319,7 @@ and tovalue (venv,d,lexp,cont) =
             let val lv = mkv()
             in tolvar(venv, d, lv, lexp, 
 		      fn lty => (debugmsg ">>tovalue tolvar cont"; 
-				 if !debugging then PPLexp.printLexp lexp else ();
+				 debugLexp lexp;
 				 cont(F.VAR lv, lty)))
             end
     val _ = debugmsg "<<tovalue"
@@ -325,7 +338,7 @@ and tovalue (venv,d,lexp,cont) =
  *)
 and tovalues (venv,d,lexp,cont) =
     let val _ = debugmsg ">>tovalues"
-	val _ = if !debugging then PPLexp.printLexp lexp else ()
+	val _ = debugLexp lexp
 	val _ = 1
     val v = case lexp of
 	L.RECORD (lexps) =>
@@ -336,22 +349,21 @@ and tovalues (venv,d,lexp,cont) =
 			 if length ltys = 0 then
 			     debugmsg ("tovalues cont ltys null")
 			 else if length ltys = 1 
-			 then debugmsg ("tovalues cont ltys singleton"^
-					LtyBasic.lt_print (hd ltys))
-			 else debugmsg ("tovalues cont ltys > 1 "^
-					"starting with "^
-					LtyBasic.lt_print (hd ltys) ^ 
-					"\nlength is " 
-					^ Int.toString (length ltys))
+			 then (debugmsg ("tovalues cont ltys singleton:\n");
+			       debugLty (hd ltys))
+			 else (debugmsg ("tovalues cont ltys > 1\n \
+					\length is: "
+					^ Int.toString (length ltys) ^
+					"\nstarting with:\n");
+			       debugLty (hd ltys))
 			      fun scan [] = debugmsg "tovalues end of ltys"
 				| scan (lts) =
 				    let fun scan' ([], [], n) = ()
 					  | scan' (x::xs, l::ls, n) = 
 					    (debugmsg ("tovalues cont ltys ["^
 						      Int.toString n ^"]:");
-					     if !debugging 
-					     then PPLexp.printLexp l else ();
-					     debugmsg (LtyBasic.lt_print x); 
+					     debugLexp l;
+					     ppLty x;
 					     scan' (xs, ls, n + 1))
 					  | scan' _ = 
 					    raise Fail "flintnm.sml:\
@@ -361,16 +373,16 @@ and tovalues (venv,d,lexp,cont) =
 				    end
                              val _ = scan ltys 
 			     val lty = LT.ltc_tuple ltys
-			     val _ = debugmsg ("<<tovalues cont tupled "^
-					       LtyBasic.lt_print lty)
+			     val _ = (debugmsg ("<<tovalues cont tupled");
+				      debugLty lty)
 			     val (_, ltys, _) = FL.t_pflatten lty
 			     val _ = debugmsg "<<tovalues cont flatten"
-			     val _ = debugmsg (">>tovalues cont LT.lt_eqv " ^
-					       LtyBasic.lt_print lty ^ " eqv? ")
+			     val _ = (debugmsg (">>tovalues cont LT.lt_eqv");
+				      debugLty lty)
 			     val _ = debugmsg ">>tovalues cont LT.ltc_tuple"
 			     val ltyst = (LT.ltc_tuple ltys)
-			     val _ = debugmsg ("<<tovalues cont LT.ltc_tuple "
-					       ^ LtyBasic.lt_print ltyst) 
+			     val _ = (debugmsg ("<<tovalues cont LT.ltc_tuple");
+				      debugLty ltyst)
 			     val eqvLty = LT.lt_eqv(lty, LT.ltc_tuple ltys)
 			     val _ = debugmsg "<<tovalues cont lt_eqv"
 			 in
@@ -403,9 +415,7 @@ and tovalues (venv,d,lexp,cont) =
 (* eval each lexp to a value *)
 and lexps2values (venv,d,lexps,cont) =
     let val _ = debugmsg ">>lexps2values"
-	val _ = if !debugging 
-		then ignore(map PPLexp.printLexp lexps) 
-		else ()
+	val _ = map debugLexp lexps
 	val _ = 1
 
 fun ppTycEnv tenv = 
@@ -415,12 +425,14 @@ fun ppTyc tyc =
 
 	fun f [] (vals,ltys) = cont (rev vals, rev ltys)
 	  | f (lexp::lexps) (vals,ltys) =
-	    (debugmsg ("lexps2values ltys "^concat (map (fn x => ("\n"^LtyBasic.lt_print x)) ltys)); 
-	    tovalue(venv,d,lexp,
-		    fn (v, lty) => ((*debugmsg ">>lexps2values tovalue";
-				    if !debugging then PPLexp.printLexp lexp else ();
-				    if !debugging then debugmsg ("lty: "^ LtyBasic.lt_print lty) else ();*)
-		    f lexps (v::vals, lty::ltys)))) 
+	    (debugmsg ("lexps2values ltys:");
+             map debugLty ltys; 
+	     tovalue(venv,d,lexp,
+		     fn (v, lty) =>
+                       ((* debugmsg ">>lexps2values tovalue";
+			 debugLexp lexp;
+			 debugmsg "lty:"; debugLty lty *)
+		        f lexps (v::vals, lty::ltys))))
 	    (* handle LtyKernel.tcUnbound (tenv,tyc) => 
 		   (with_pp(fn s =>
                       (PU.pps s "*** lexps2values ***; PP.newline s;
@@ -443,7 +455,7 @@ fun ppTyc tyc =
  *)
 and tolvar (venv,d,lvar,lexp,cont) =
     let val _ = debugmsg ">>tolvar"
-	val _ = if !debugging then PPLexp.printLexp lexp else ()
+	val _ = debugLexp lexp
 	fun eta_expand (f, f_lty) =
             let val lv = mkv()
                 val (arg_lty, ret_lty) = (LT.ltd_parrow f_lty)
@@ -502,7 +514,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
                           in (pty, rty, flat)
                          end
                      | _ => bug "unexpected case in PO_helper")
-             val r = if flat then
+                val r = if flat then
                  (* ZHONG asks: is the following definitely safe ?
                     what would happen if ltc_raw is not an identity function ?
                   *)
@@ -564,8 +576,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
                        flint_prim((NONE, po, pty, map FL.tcc_raw tycs),
 				  arg_vals, lvar, c_lexp))
 	    val _ = debugmsg "<<tolvar L.APP"
-	    
-	    val _ = if !debugging then debugmsg (LtyBasic.lt_print lty') else ()
+	    val _ = debugLty lty'
 	in (lexp', lty')
 	end
 

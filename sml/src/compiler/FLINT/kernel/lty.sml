@@ -29,7 +29,7 @@ in
  * and the pair can be recovered from its encoding by tvDecode. *)
 
 type enc_tvar = int 
-fun tvEncode (d, k) = d * MVAL + k
+fun tvEncode (d, k) = d * MVAL + k   (* d >= 1, k >= 0 *)
 fun tvDecode x = ((x div MVAL), (x mod MVAL))
 
 (* enc_tvars < BVAL are bound by the innermost TC_FN binder.
@@ -73,7 +73,7 @@ fun mergeTvs (l : tvar list, []) = l
   | mergeTvs (l as (h :: t), l' as (h' :: t')) =
       if h < h' then h :: mergeTvs (t, l')
       else if h = h' then h :: mergeTvs (t, t')
-      else h' :: mergeTvs (l, t')
+      else h' :: mergeTvs (l, t') (* h' < h *)
 
 (* fmergeTvs : tvar list list -> tvar list
  * merge a list of sorted lists of tvars into a single sorted list,
@@ -589,19 +589,33 @@ fun tkInsert (kenv, ks) = ks::kenv
  * as in ltybasic.
  * --CALeague
  *)
-fun tkLookupFreeVars (kenv, tyc) =
+fun tkLookupFreeVars (kenv, tyc) : tkind list option =
+    (* invariant for g: kenv starts with the d(th) frame of the original
+     * kenv passed to tkLookupFreeVars *)
     let fun g (kenv, d, []) = []
 	  | g (kenv, d, ftv::ftvs) =
-	    let val (d', i') = tvDecode ftv
+	    let val (d', k') = tvDecode ftv
 		val kenv' = List.drop (kenv, d'-d)
-		    handle Subscript => raise tkUnbound
-		val k = List.nth (hd kenv', i')
-		    handle Subscript => raise tkUnbound
+		            handle Subscript =>
+                              (print "### tkLookupFreeVars:1\n";
+                               raise tkUnbound)
+                (* kenv' should start with the d'(th) frame *)
+		val k = case kenv'
+                          of nil => (print "### tkLookupFreeVars:2\n";
+                                     raise tkUnbound)
+                           | ks :: _ =>  (* ks is d'(th) frame *)
+                             (List.nth (ks, k')
+		              handle Subscript =>
+                                     (print "### tkLookupFreeVars:3\n";
+                                      raise tkUnbound))
 	    in
 		k :: g (kenv', d', ftvs)
 	    end
         fun h ftvs = g (kenv, 1, ftvs)
     in Option.map h (tc_vs tyc)
+       (* assumes that tc_vs returns free variable codes sorted in
+        * ascending numerical order, which means lexicographical order
+        * on the decoded pairs *)
     end
 
 
@@ -762,7 +776,7 @@ fun tkAssertIsMono k =
     if tkIsMono k then ()
     else raise TkTycChk "Mono assertion failed!"
 
-(* select the ith element from a kind sequence *)
+(* select the ith element (0 based) from a kind sequence *)
 fun tkSel (tk, i) = 
   (case (tk_outX tk)
     of (TK_SEQ ks) => 
@@ -791,6 +805,9 @@ fun tkApp (tk, tks) =
        if tksSubkind(tks, a) then b
        else raise TkTycChk "Param/Arg Tyc Kind mismatch"
      | _ => raise TkTycChk "Application of non-TK_FUN") 
+
+
+(* Kind checking **************************************************)
 
 (* Kind-checking naturally requires traversing type graphs.  to avoid
  * re-traversing bits of the dag, we use a dictionary to memoize the

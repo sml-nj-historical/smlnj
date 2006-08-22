@@ -233,7 +233,7 @@ fun check (kenv, venv, d) =
               let val _ = ltyChkenv t (* kind check bound variable type *)
                   val venv' = LT.ltInsert(venv, v, t, d)
                   val res = check (kenv, venv', d) e1
-(*                  val _ = ltyChkenv res *)
+                  val _ = ltyChkenv res
                in ltFun(t, res) (* handle both functions and functors *)
               end
 
@@ -245,7 +245,7 @@ fun check (kenv, venv, d) =
                   val venv' = h(venv, vs, ts)
 
                   val nts = map (check (kenv, venv', d)) es
-(*                   val _ = map ltyChkenv nts *)
+                  val _ = map ltyChkenv nts
                   val _ = app2(ltMatch le "FIX1", ts, nts)
 
                in check (kenv, venv', d) eb
@@ -260,7 +260,7 @@ fun check (kenv, venv, d) =
 
           | LET(v, e1, e2) => 
               let val t1 = loop e1
-(*                  val _ = ltyChkenv t1 *)
+                  val _ = ltyChkenv t1
                   val venv' = LT.ltInsert(venv, v, t1, d)
                in check (kenv, venv', d) e2
               end
@@ -268,19 +268,21 @@ fun check (kenv, venv, d) =
           | TFN(ks, e) => 
               let val kenv' = LT.tkInsert(kenv, ks)
                   val lt = check (kenv', venv, DI.next d) e
-(*                  val _ = ltyChkenv lt *)
+                  val _ = ltyChk (ks::kenv) lt
                in LT.ltc_poly(ks, [lt])
               end
 
           | TAPP(e, ts) =>
               let val lt = loop e
-(*                  val _ = ltyChkenv lt *)
+                  val _ = map (fn tc => ltyChkenv(LT.ltc_tyc tc)) ts  (* kind check type args *)
+                  val _ = ltyChkenv lt
               in  ltTyApp le "TAPP" (lt, ts, kenv)
               end
 
           | GENOP(dict, p, t, ts) => 
               ((* should type check dict also *)
-               ltTyApp le "GENOP" (t, ts, kenv))
+               (map (fn tc => ltyChkenv(LT.ltc_tyc tc)) ts;
+                ltTyApp le "GENOP" (t, ts, kenv)))
 
           | PACK(lt, ts, nts, e) => 
               let val argTy = ltTyApp le "PACK-A" (lt, ts, kenv)
@@ -290,9 +292,9 @@ fun check (kenv, venv, d) =
 
           | CON((_, rep, lt), ts, e) =>   
               let val t1 = ltTyApp le "CON" (lt, ts, kenv)
-(*                  val _ = ltyChkenv t1 *)
+                  val _ = ltyChkenv t1
                   val t2 = loop e
-(*                  val _ = ltyChkenv t2 *)
+                  val _ = ltyChkenv t2
                in ltFnApp le "CON-A" (t1, t2)
               end
 (*
@@ -307,7 +309,9 @@ fun check (kenv, venv, d) =
 
           | VECTOR (el, t)  => 
               let val ts = map loop el
-               in app (fn x => ltMatch le "VECTOR" (x, LT.ltc_tyc t)) ts; 
+               in ltyChkenv (LT.ltc_tyc t);
+                  map ltyChkenv ts;
+                  app (fn x => ltMatch le "VECTOR" (x, LT.ltc_tyc t)) ts; 
                   ltVector t
               end
 
@@ -320,6 +324,7 @@ fun check (kenv, venv, d) =
                      in check (kenv, venv', d) x 
                     end
                   val ts = map h cl
+                  val _ = map ltyChkenv ts
                in (case ts
                     of [] => bug "empty switch in checkLty"
                      | a::r => 
@@ -332,6 +337,7 @@ fun check (kenv, venv, d) =
           | ETAG(e, t) => 
               let val z = loop e   (* what do we check on e ? *)
                   val _ = ltMatch le "ETAG1" (z, LT.ltc_string) 
+                  val _ = ltyChkenv t
                in ltEtag t
               end
 
@@ -354,6 +360,7 @@ fun check (kenv, venv, d) =
               let val ntc = if laterPhase(phase) then LT.tcc_void
                             else (if b then LT.tcc_box t else LT.tcc_abs t)
                   val nt = LT.ltc_tyc ntc
+                  val _ = ltyChkenv nt
                in (ltMatch le "UNWRAP" (loop e, nt); LT.ltc_tyc t)
               end)
   in (* wrap loop with kind check of result *)

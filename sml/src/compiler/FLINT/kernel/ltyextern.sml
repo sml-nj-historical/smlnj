@@ -38,12 +38,23 @@ open LtyBasic
 fun tc_bug tc s = bug (s ^ "\n\n" ^ (tc_print tc) ^ "\n\n")
 fun lt_bug lt s = bug (s ^ "\n\n" ^ (lt_print lt) ^ "\n\n")
 
+val ltKindChk = Lty.ltyChkGen ()
+val (tcKindChk,teKindChk) = Lty.tkTycGen' ()
+
 (** instantiating a polymorphic type or an higher-order constructor *)
 fun lt_inst (lt : lty, ts : tyc list) = 
   let val nt = lt_whnm lt
    in (case ((* lt_outX *) lt_out nt, ts)
-        of (LT.LT_POLY(ks, b), ts) => 
+        of (LT.LT_POLY(ks, b), ts) =>
+             if length ks <> length ts
+             then (print "### arity error in lt_inst:\n|ks| = ";
+                   print (Int.toString (length ks)); 
+                   print ", |ts| = "; print (Int.toString (length ks));
+                   print "\n";
+                   bug "lt_inst")
+             else
              let val nenv = LT.teCons(LT.Beta(0,ts,ks), LT.teEmpty)
+(* (no kind env)                val _ = teKindChk(nenv,0,Lty.initTkEnv) *)
               in map (fn x => ltc_env(x, 1, 0, nenv)) b
              end
          | (_, []) => [nt]   (* this requires further clarifications !!! *)

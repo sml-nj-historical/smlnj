@@ -48,7 +48,7 @@ in
  *                   CONSTANTS AND UTILITY FUNCTIONS                        *
  ****************************************************************************)
 
-val debugging = ref false
+val debugging = ref true
 fun bug msg = EM.impossible("Translate: " ^ msg)
 val say = Control.Print.say
 
@@ -1461,9 +1461,10 @@ val body = wrapII body
 val (plexp, imports) = wrapPidInfo (body, PersMap.listItemsi (!persmap))
 
 (** type check body (including kind check) **)
-val _ = print "**** Translate: plexp ****\n"
+val _ = print "**** Translate: typechecking plexp ****\n"
 val _ = PPLexp.printLexp plexp
 val _ = ChkPlexp.checkLty(plexp,0)
+val _ = print "**** Translate: finished typechecking plexp ****\n"
 
 fun prGen (flag,printE) s e =
   if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e) else ()
