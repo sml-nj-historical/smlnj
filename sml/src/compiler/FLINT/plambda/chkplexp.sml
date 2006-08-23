@@ -108,9 +108,9 @@ fun ltArrow lt =
 
 val lt_inst_chk = LT.lt_inst_chk_gen()
 (* kind checker for ltys *)
-val ltyChk = LT.ltyChkGen ()
+val ltyChk = LtyKindChk.ltKindCheckGen ()
 (* kind checker for tycs *)
-val tycChk = LT.tkTycGen ()
+val tycChk = LtyKindChk.tcKindCheckGen ()
 
 fun ltAppChk (lt, ts, kenv) : LT.lty = 
   (case lt_inst_chk(lt, ts, kenv) 
@@ -124,7 +124,7 @@ fun ltTyApp le s (lt, ts, kenv) =
        (clickerror ();
         say (s ^ "  **** Kind conflicting in lexp =====> \n    ");
         case zz of LT.LtyAppChk => say "      exception LtyAppChk raised! \n"
-                 | LT.TkTycChk _ =>  say "      exception TkTycChk raised! \n"
+                 | LT.KindChk _ =>  say "      exception KindChk raised! \n"
                  | _ => say "   other weird exception raised! \n";
         say "\n \n"; lePrint le; say "\n For Types: \n";  
         ltPrint lt; say "\n and   \n    "; 

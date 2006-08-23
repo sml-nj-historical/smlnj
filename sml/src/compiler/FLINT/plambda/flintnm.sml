@@ -27,7 +27,7 @@ in
 (* debugging *)
 val say = Control_Print.say
 
-val debugging = ref true
+val debugging = ref false
 val debugging2 = ref false
 
 fun debugmsg (msg : string) = 
@@ -451,7 +451,7 @@ fun ppTyc tyc =
 
 (*
  * tolvar: same as tovalue except that it binds the value of the PLambda
- * to the indicated lvar and passes just the type to the continutation
+ * to the indicated lvar and passes just the type to the continuation
  *)
 and tolvar (venv,d,lvar,lexp,cont) =
     let val _ = debugmsg ">>tolvar"
@@ -700,7 +700,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
 
       | _ => default_tolexp ()
     in (debugmsg "<<tolvar"; r)
-    end
+    end (* function tolvar *)
 
 fun norm (lexp as L.FN(arg_lv,arg_lty,e)) =
     let val r = 

@@ -198,15 +198,17 @@ fun shareMap f nil = raise SHARE
 
 (*** This function should be merged with instantiatePoly soon --zsh
      dbm: don't agree! ***)
-fun applyTyfun(TYFUN{arity,body},args) =
+fun applyTyfun(TYFUN{arity,body}, args: ty list) =
   let fun subst(IBOUND n) = List.nth(args,n)
         | subst(CONty(tyc,args)) = CONty(tyc, shareMap subst args)
         | subst(VARty(ref(INSTANTIATED ty))) = subst ty
         | subst _ = raise SHARE
-   in if arity > 0
-      then subst body
-              handle SHARE => body
-		   | Subscript => bug "applyTyfun - not enough arguments"
+   in if arity <> length args
+        then bug "applyTyfun: arity mismatch"
+      else if arity > 0
+        then subst body
+             handle SHARE => body
+		  | Subscript => bug "applyTyfun - not enough arguments"
       else body
   end
 
@@ -443,7 +445,7 @@ end (* abstype occ *)
    variables, returning the instantiatied body and the list of META tyvars.
    if argument is not a POLYty, does nothing, returning argument type *)
 fun instantiatePoly(POLYty{sign,tyfun}) : ty * tyvar list =
-      let val args =
+      let val args =  (* fresh OPEN metavariables *)
 	      map (fn eq => 
 		      ref(OPEN{kind = META, depth = infinity, eq = eq}))
 		  sign

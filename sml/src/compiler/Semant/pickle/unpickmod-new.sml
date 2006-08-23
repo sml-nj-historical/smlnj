@@ -246,10 +246,10 @@ structure UnpickMod : UNPICKMOD = struct
 	end
 
 	fun tkind () = let
-	    fun tk #"A" = LD.tkc_mono
-	      | tk #"B" = LD.tkc_box
-	      | tk #"C" = LD.tkc_seq (tkindlist ())
-	      | tk #"D" = LD.tkc_fun (tkindlist (), tkind ())
+	    fun tk #"A" = LT.tkc_mono
+	      | tk #"B" = LT.tkc_box
+	      | tk #"C" = LT.tkc_seq (tkindlist ())
+	      | tk #"D" = LT.tkc_fun (tkindlist (), tkind ())
 	      | tk _ = raise Format
 	in
 	    share tkindM tk

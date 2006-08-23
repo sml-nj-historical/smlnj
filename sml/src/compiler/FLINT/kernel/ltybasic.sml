@@ -45,7 +45,7 @@ local structure PT = PrimTyc
 
 in
 
-open LtyDef
+open Lty LtyDef
 
 (** new a type variable, currently not used *)
 val mkTvar : unit -> tvar = LT.mkTvar

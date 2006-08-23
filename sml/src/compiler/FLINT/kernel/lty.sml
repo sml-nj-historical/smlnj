@@ -13,7 +13,7 @@ fun bug s = ErrorMsg.impossible ("Lty:" ^ s)
  ***************************************************************************)
 
 (** hashconsing implementation basics *)
-local (* open SortedList *)
+local (* hashconsing *)
   val MVAL = 10000
   val BVAL = MVAL * 2 (* all indexes i start from 0 *)
 in 
@@ -227,205 +227,207 @@ end (* end of all token-related hacks *)
 
 (** Hash-consing implementations of tyc, tkind, lty *)
 
-local structure Weak = SMLofNJ.Weak
-      structure PT = PrimTyc
-      structure DI = DebIndex
+local (* hashconsing impl *)
+  structure Weak = SMLofNJ.Weak
+  structure PT = PrimTyc
+  structure DI = DebIndex
 
-      fun bug msg = ErrorMsg.impossible("LtyKernel: "^msg)
- 
-      val itow = Word.fromInt
-      val wtoi = Word.toIntX
-      val andb = Word.andb
+  fun bug msg = ErrorMsg.impossible("LtyKernel: "^msg)
 
-      val N = 2048 (* 1024 *)
-      val NNdec = itow (N*N) - 0w1
-      val P = 0w509 (* was 0w1019, a prime < 1024 so that N*N*P < maxint *)
+  val itow = Word.fromInt
+  val wtoi = Word.toIntX
+  val andb = Word.andb
 
-      val tk_table : tkind Weak.weak list Array.array = Array.array(N,nil)
-      val tc_table : tyc Weak.weak list Array.array = Array.array(N,nil)
-      val lt_table : lty Weak.weak list Array.array = Array.array(N,nil)
+  val N = 2048 (* 1024 *)
+  val NNdec = itow (N*N) - 0w1
+  val P = 0w509 (* was 0w1019, a prime < 1024 so that N*N*P < maxint *)
 
-      fun vector2list v = Vector.foldr (op ::) [] v
+  val tk_table : tkind Weak.weak list Array.array = Array.array(N,nil)
+  val tc_table : tyc Weak.weak list Array.array = Array.array(N,nil)
+  val lt_table : lty Weak.weak list Array.array = Array.array(N,nil)
 
-      fun revcat(a::rest,b) = revcat(rest,a::b)
-        | revcat(nil,b) = b
+  fun vector2list v = Vector.foldr (op ::) [] v
 
-      fun combine [x] = itow x
-        | combine (a::rest) = 
-            andb(itow a +(combine rest)*P, NNdec)
-        | combine _ = bug "unexpected case in combine"
+  fun revcat(a::rest,b) = revcat(rest,a::b)
+    | revcat(nil,b) = b
 
-      (* 
-       * Because of the "cmp" function below, it's necessary to keep
-       * each bucket-list in a consistent order, and not reverse
-       * or move-to-front or whatever. 
-       *)
-      fun look(table, h, t, eq, mk) =
-        let val i = wtoi(andb(itow h, itow(N-1)))
+  fun combine [x] = itow x
+    | combine (a::rest) = 
+        andb(itow a +(combine rest)*P, NNdec)
+    | combine _ = bug "unexpected case in combine"
 
-            fun g(l, z as (w::rest)) = 
-                  (case Weak.strong w
-                    of SOME (r as ref(h',t',_)) =>
-                        if (h=h') andalso (eq {new=t, old=t'})
-                        then (Array.update(table, i, revcat(l,z)); r)
-                        else g(w::l, rest)
-                     | NONE => g(l, rest))
-              | g(l, []) = 
-                  let val r = mk(h, t)
-                   in Array.update(table, i, (Weak.weak r) :: rev l); r
-                  end
+  (* 
+   * Because of the "cmp" function below, it's necessary to keep
+   * each bucket-list in a consistent order, and not reverse
+   * or move-to-front or whatever. 
+   *)
+  fun look(table, h, t, eq, mk) =
+    let val i = wtoi(andb(itow h, itow(N-1)))
 
-         in g([], Array.sub(table, i))
+        fun g(l, z as (w::rest)) = 
+              (case Weak.strong w
+                of SOME (r as ref(h',t',_)) =>
+                    if (h=h') andalso (eq {new=t, old=t'})
+                    then (Array.update(table, i, revcat(l,z)); r)
+                    else g(w::l, rest)
+                 | NONE => g(l, rest))
+          | g(l, []) = 
+              let val r = mk(h, t)
+               in Array.update(table, i, (Weak.weak r) :: rev l); r
+              end
+
+     in g([], Array.sub(table, i))
+    end
+
+  fun cmp(table, a as ref(ai,_,_), b as ref (bi,_,_)) =
+    if ai < bi then LESS 
+    else if ai > bi then GREATER
+    else if a = b then EQUAL (* pointer equality on refs *)
+    else (* ai = bi, so a,b in same bucket of table, use order
+          * a and b appear in the bucket *)
+         let val index = wtoi (andb(itow ai,itow(N-1)))
+             fun g [] = bug "unexpected case in cmp"
+               | g (w::rest) =
+                 (case Weak.strong w
+                   of SOME r => 
+                      if a=r then LESS 
+                      else if b=r then GREATER
+                      else g rest
+                    | NONE => g rest)
+          in g(Array.sub(table,index))
+         end
+
+
+  fun getnum (ref(i,_,_)) = i
+
+  fun tagnums nil = nil
+    | tagnums ((i,t)::rest) = i::getnum t::tagnums rest
+
+  fun tk_hash (TK_MONO) = 0w1
+    | tk_hash (TK_BOX) = 0w2
+    | tk_hash (TK_SEQ ks) = combine (3::map getnum ks)
+    | tk_hash (TK_FUN(ks, k)) = combine (4::getnum k::(map getnum ks))
+
+  fun tc_hash tc = 
+    case tc
+     of (TC_VAR(d, i)) => combine [1, (DI.di_key d)*10, i]
+      | (TC_NVAR v) => combine[15, v]
+      | (TC_PRIM pt) => combine [2, PT.pt_toint pt]
+      | (TC_FN(ks, t)) => combine (3::(getnum t)::(map getnum ks))
+      | (TC_APP(t, ts)) => combine (4::(getnum t)::(map getnum ts))
+      | (TC_SEQ ts) => combine (5::(map getnum ts))
+      | (TC_PROJ(t, i)) => combine [6, (getnum t), i]
+      | (TC_SUM ts) => combine (7::(map getnum ts))
+      | (TC_FIX((n, t, ts), i)) => 
+          combine (8::n::i::(getnum t)::(map getnum ts))
+      | (TC_ABS t) => combine [9, getnum t]
+      | (TC_BOX t) => combine [10, getnum t]
+      | (TC_TUPLE (_, ts)) => combine (11::(map getnum ts))
+      | (TC_ARROW(rw, ts1, ts2)) => 
+          let fun h (FF_FIXED) = 10
+                | h (FF_VAR(true,b2)) = if b2 then 20 else 30
+                | h (FF_VAR(false,b2)) = if b2 then 40 else 50
+          in combine (12::(h rw)::(map getnum (ts1@ts2)))
+          end
+      | (TC_PARROW (t1,t2)) => combine [13, getnum t1, getnum t2]
+      | (TC_TOKEN (i, tc)) => combine [14, i, getnum tc]
+      | (TC_CONT ts) => combine (15::(map getnum ts))
+      | (TC_ENV(t,i,j,env)) => 
+          combine[16, getnum t, i, j, getnum env]
+      | (TC_IND _) => bug "unexpected TC_IND in tc_hash"
+
+  fun lt_hash lt = 
+    case lt
+     of (LT_TYC t) => combine [1, getnum t]
+      | (LT_STR ts) => combine (2::(map getnum ts))
+      | (LT_FCT(ts1, ts2)) =>
+          combine (3::(map getnum (ts1@ts2)))
+      | (LT_POLY(ks, ts)) =>
+          combine (4::((map getnum ts)@(map getnum ks)))
+      | (LT_CONT ts) => combine (5::(map getnum ts))
+      | (LT_ENV(t,i,j,env)) => 
+          combine [6, getnum t, i, j, getnum env]
+      | (LT_IND _) => bug "unexpected LT_IND in lt_hash"
+
+  fun tkI_eq {new: tkindI, old} = (new = old)
+
+  (* the 1st is one being mapped; the 2nd is in the hash table *)
+  fun tcI_eq {new : tycI, old=TC_IND(_,s)} = tcI_eq {new=new, old=s}
+    | tcI_eq {new, old} = (new=old)
+
+  fun ltI_eq {new : ltyI, old=LT_IND(_,s)} = ltI_eq {new=new, old=s}
+    | ltI_eq {new, old} = (new=old)
+
+  val baseAux = AX_REG (true, [], [])
+
+  fun getAux (ref(i : int, _, x)) = x
+
+  fun mergeAux(AX_NO, _) = AX_NO
+    | mergeAux(_, AX_NO) = AX_NO
+    | mergeAux(AX_REG(b1,vs1,nvs1), AX_REG(b2,vs2,nvs2)) =
+        AX_REG(b2 andalso b1, mergeTvs(vs1, vs2),
+               mergeTvs(nvs1, nvs2))
+
+  fun fsmerge [] = baseAux
+    | fsmerge [x] = getAux x
+    | fsmerge xs = 
+        let fun loop([], z) = z
+              | loop(_, AX_NO) = AX_NO
+              | loop(a::r, z) = loop(r, mergeAux(getAux a, z))
+         in loop(xs, baseAux)
         end
 
-      fun cmp(table, a as ref(ai,_,_), b as ref (bi,_,_)) =
-        if ai < bi then LESS 
-        else if ai > bi then GREATER
-        else if a = b then EQUAL (* pointer equality on refs *)
-        else (* ai = bi, so a,b in same bucket of table, use order
-              * a and b appear in the bucket *)
-             let val index = wtoi (andb(itow ai,itow(N-1)))
-                 fun g [] = bug "unexpected case in cmp"
-                   | g (w::rest) =
-                     (case Weak.strong w
-                       of SOME r => 
-                          if a=r then LESS 
-                          else if b=r then GREATER
-                          else g rest
-                        | NONE => g rest)
-              in g(Array.sub(table,index))
-             end
+  fun exitAux(AX_REG(b, vs, nvs)) = AX_REG(b, exitLevel vs, nvs)
+    | exitAux x = x
 
-
-      fun getnum (ref(i,_,_)) = i
-
-      fun tagnums nil = nil
-        | tagnums ((i,t)::rest) = i::getnum t::tagnums rest
-
-      fun tk_hash (TK_MONO) = 0w1
-        | tk_hash (TK_BOX) = 0w2
-        | tk_hash (TK_SEQ ks) = combine (3::map getnum ks)
-        | tk_hash (TK_FUN(ks, k)) = combine (4::getnum k::(map getnum ks))
-
-      fun tc_hash tc = 
-        case tc
-         of (TC_VAR(d, i)) => combine [1, (DI.di_key d)*10, i]
-          | (TC_NVAR v) => combine[15, v]
-          | (TC_PRIM pt) => combine [2, PT.pt_toint pt]
-          | (TC_FN(ks, t)) => combine (3::(getnum t)::(map getnum ks))
-          | (TC_APP(t, ts)) => combine (4::(getnum t)::(map getnum ts))
-          | (TC_SEQ ts) => combine (5::(map getnum ts))
-          | (TC_PROJ(t, i)) => combine [6, (getnum t), i]
-          | (TC_SUM ts) => combine (7::(map getnum ts))
-          | (TC_FIX((n, t, ts), i)) => 
-              combine (8::n::i::(getnum t)::(map getnum ts))
-          | (TC_ABS t) => combine [9, getnum t]
-          | (TC_BOX t) => combine [10, getnum t]
-          | (TC_TUPLE (_, ts)) => combine (11::(map getnum ts))
-          | (TC_ARROW(rw, ts1, ts2)) => 
-              let fun h (FF_FIXED) = 10
-                    | h (FF_VAR(true,b2)) = if b2 then 20 else 30
-                    | h (FF_VAR(false,b2)) = if b2 then 40 else 50
-              in combine (12::(h rw)::(map getnum (ts1@ts2)))
-              end
-          | (TC_PARROW (t1,t2)) => combine [13, getnum t1, getnum t2]
-          | (TC_TOKEN (i, tc)) => combine [14, i, getnum tc]
-          | (TC_CONT ts) => combine (15::(map getnum ts))
-          | (TC_ENV(t,i,j,env)) => 
-              combine[16, getnum t, i, j, getnum env]
-          | (TC_IND _) => bug "unexpected TC_IND in tc_hash"
-
-      fun lt_hash lt = 
-        case lt
-         of (LT_TYC t) => combine [1, getnum t]
-          | (LT_STR ts) => combine (2::(map getnum ts))
-          | (LT_FCT(ts1, ts2)) =>
-              combine (3::(map getnum (ts1@ts2)))
-          | (LT_POLY(ks, ts)) =>
-              combine (4::((map getnum ts)@(map getnum ks)))
-          | (LT_CONT ts) => combine (5::(map getnum ts))
-          | (LT_ENV(t,i,j,env)) => 
-              combine [6, getnum t, i, j, getnum env]
-          | (LT_IND _) => bug "unexpected LT_IND in lt_hash"
-
-      fun tkI_eq {new: tkindI, old} = (new = old)
-      
-      (* the 1st is one being mapped; the 2nd is in the hash table *)
-      fun tcI_eq {new : tycI, old=TC_IND(_,s)} = tcI_eq {new=new, old=s}
-        | tcI_eq {new, old} = (new=old)
-
-      fun ltI_eq {new : ltyI, old=LT_IND(_,s)} = ltI_eq {new=new, old=s}
-        | ltI_eq {new, old} = (new=old)
-
-      val baseAux = AX_REG (true, [], [])
-
-      fun getAux (ref(i : int, _, x)) = x
-
-      fun mergeAux(AX_NO, _) = AX_NO
-        | mergeAux(_, AX_NO) = AX_NO
-        | mergeAux(AX_REG(b1,vs1,nvs1), AX_REG(b2,vs2,nvs2)) =
-            AX_REG(b2 andalso b1, mergeTvs(vs1, vs2),
-                   mergeTvs(nvs1, nvs2))
-
-      fun fsmerge [] = baseAux
-        | fsmerge [x] = getAux x
-        | fsmerge xs = 
-            let fun loop([], z) = z
-                  | loop(_, AX_NO) = AX_NO
-                  | loop(a::r, z) = loop(r, mergeAux(getAux a, z))
-             in loop(xs, baseAux)
+  fun tc_aux tc = 
+      case tc
+       of (TC_VAR(d, i)) => AX_REG(true, [tvEncode(d, i)], [])
+        | (TC_NVAR v) => AX_REG(true, [], [v])
+        | (TC_PRIM pt) => baseAux
+        | (TC_APP(ref(_, TC_FN _, AX_NO), _)) => AX_NO
+        | (TC_PROJ(ref(_, TC_SEQ _, AX_NO), _)) => AX_NO
+        | (TC_APP(ref(_, TC_FN _, AX_REG(_,vs,nvs)), ts)) => 
+            mergeAux(AX_REG(false, vs, nvs), fsmerge ts) (* ? *)
+        | (TC_PROJ(ref(_, TC_SEQ _, AX_REG(_,vs,nvs)), _)) => 
+            AX_REG(false, vs, nvs) (* ? *)
+        | (TC_FN(ks, t)) => exitAux(getAux t)
+        | (TC_APP(t, ts)) => fsmerge (t::ts)
+        | (TC_SEQ ts) => fsmerge ts
+        | (TC_PROJ(t, _)) => getAux t
+        | (TC_SUM ts) => fsmerge ts
+        | (TC_FIX((_,t,ts), _)) => 
+            let val ax = getAux t
+            in case ax
+                of AX_REG(_,[],[]) => mergeAux(ax, fsmerge ts)
+                 | AX_REG _ => bug "unexpected TC_FIX freevars in tc_aux"
+                 | AX_NO => AX_NO
             end
+        | (TC_ABS t) => getAux t
+        | (TC_BOX t) => getAux t
+        | (TC_TUPLE (_, ts)) => fsmerge ts
+        | (TC_ARROW(_, ts1, ts2)) => fsmerge (ts1@ts2)
+        | (TC_PARROW(t1, t2)) => fsmerge [t1, t2]
+        | (TC_TOKEN (k, (ref(_, t, AX_NO)))) => AX_NO
+        | (TC_TOKEN (k, (x as ref(_, t, AX_REG(b,vs,nvs))))) => 
+            AX_REG((token_whnm k x) andalso b, vs, nvs)
+        | (TC_CONT ts) => fsmerge ts
+        | (TC_IND _) => bug "unexpected TC_IND in tc_aux"
+        | (TC_ENV _) => AX_NO
 
-      fun exitAux(AX_REG(b, vs, nvs)) = AX_REG(b, exitLevel vs, nvs)
-        | exitAux x = x
+  fun lt_aux (LT_TYC t) = getAux t
+    | lt_aux (LT_STR ts) = fsmerge ts
+    | lt_aux (LT_FCT(ts1, ts2)) = fsmerge (ts1@ts2)
+    | lt_aux (LT_POLY(ks, ts)) = exitAux(fsmerge ts)
+    | lt_aux (LT_CONT ts) = fsmerge ts
+    | lt_aux (LT_IND _) = bug "unexpected LT_IND in lt_aux"
+    | lt_aux (LT_ENV _) = AX_NO
 
-      fun tc_aux tc = 
-          case tc
-           of (TC_VAR(d, i)) => AX_REG(true, [tvEncode(d, i)], [])
-            | (TC_NVAR v) => AX_REG(true, [], [v])
-            | (TC_PRIM pt) => baseAux
-            | (TC_APP(ref(_, TC_FN _, AX_NO), _)) => AX_NO
-            | (TC_PROJ(ref(_, TC_SEQ _, AX_NO), _)) => AX_NO
-            | (TC_APP(ref(_, TC_FN _, AX_REG(_,vs,nvs)), ts)) => 
-                mergeAux(AX_REG(false, vs, nvs), fsmerge ts) (* ? *)
-            | (TC_PROJ(ref(_, TC_SEQ _, AX_REG(_,vs,nvs)), _)) => 
-                AX_REG(false, vs, nvs) (* ? *)
-            | (TC_FN(ks, t)) => exitAux(getAux t)
-            | (TC_APP(t, ts)) => fsmerge (t::ts)
-            | (TC_SEQ ts) => fsmerge ts
-            | (TC_PROJ(t, _)) => getAux t
-            | (TC_SUM ts) => fsmerge ts
-            | (TC_FIX((_,t,ts), _)) => 
-                let val ax = getAux t
-                in case ax
-                    of AX_REG(_,[],[]) => mergeAux(ax, fsmerge ts)
-                     | AX_REG _ => bug "unexpected TC_FIX freevars in tc_aux"
-                     | AX_NO => AX_NO
-                end
-            | (TC_ABS t) => getAux t
-            | (TC_BOX t) => getAux t
-            | (TC_TUPLE (_, ts)) => fsmerge ts
-            | (TC_ARROW(_, ts1, ts2)) => fsmerge (ts1@ts2)
-            | (TC_PARROW(t1, t2)) => fsmerge [t1, t2]
-            | (TC_TOKEN (k, (ref(_, t, AX_NO)))) => AX_NO
-            | (TC_TOKEN (k, (x as ref(_, t, AX_REG(b,vs,nvs))))) => 
-                AX_REG((token_whnm k x) andalso b, vs, nvs)
-            | (TC_CONT ts) => fsmerge ts
-            | (TC_IND _) => bug "unexpected TC_IND in tc_aux"
-            | (TC_ENV _) => AX_NO
-        
-      fun lt_aux (LT_TYC t) = getAux t
-        | lt_aux (LT_STR ts) = fsmerge ts
-        | lt_aux (LT_FCT(ts1, ts2)) = fsmerge (ts1@ts2)
-        | lt_aux (LT_POLY(ks, ts)) = exitAux(fsmerge ts)
-        | lt_aux (LT_CONT ts) = fsmerge ts
-        | lt_aux (LT_IND _) = bug "unexpected LT_IND in lt_aux"
-        | lt_aux (LT_ENV _) = AX_NO
+  fun tk_mk (i : int, k: tkindI) = ref (i, k, AX_NO)
+  fun tc_mk (i : int, tc : tycI) = ref (i, tc, tc_aux tc)
+  fun lt_mk (i : int, lt : ltyI) = ref (i, lt, lt_aux lt)
 
-      fun tk_mk (i : int, k: tkindI) = ref (i, k, AX_NO)
-      fun tc_mk (i : int, tc : tycI) = ref (i, tc, tc_aux tc)
-      fun lt_mk (i : int, lt : ltyI) = ref (i, lt, lt_aux lt)
-in 
+in (* body hashconsing impl *)
 
 (** a temporary hack on getting the list of free tyvars *)
 (* ignores named vars for now.  --CALeague, 1 Jul 1998 *)
@@ -475,7 +477,7 @@ fun lt_nvars (lty:lty) =
      of AX_REG (_,_,tvs) => tvs
       | AX_NO => bug "unexpected case in lt_nvars"
 
-end (* local -- hash consing *)
+end (* local -- hashconsing impl *)
 
 (***************************************************************************
  *            UTILITY FUNCTIONS ON TYC ENVIRONMENT                         *
@@ -582,73 +584,37 @@ fun tkLookup (kenv, i, j) =
 
 fun tkInsert (kenv, ks) = ks::kenv
 
-(* strip any unused type variables out of a kenv, given a list of
- * [encoded] free type variables.  the result is a "parallel list" of
- * the kinds of those free type variables in the environment.
- * This is meant to use the same representation of a kind environment
- * as in ltybasic.
- * --CALeague
- *)
-fun tkLookupFreeVars (kenv, tyc) : tkind list option =
-    (* invariant for g: kenv starts with the d(th) frame of the original
-     * kenv passed to tkLookupFreeVars *)
-    let fun g (kenv, d, []) = []
-	  | g (kenv, d, ftv::ftvs) =
-	    let val (d', k') = tvDecode ftv
-		val kenv' = List.drop (kenv, d'-d)
-		            handle Subscript =>
-                              (print "### tkLookupFreeVars:1\n";
-                               raise tkUnbound)
-                (* kenv' should start with the d'(th) frame *)
-		val k = case kenv'
-                          of nil => (print "### tkLookupFreeVars:2\n";
-                                     raise tkUnbound)
-                           | ks :: _ =>  (* ks is d'(th) frame *)
-                             (List.nth (ks, k')
-		              handle Subscript =>
-                                     (print "### tkLookupFreeVars:3\n";
-                                      raise tkUnbound))
-	    in
-		k :: g (kenv', d', ftvs)
-	    end
-        fun h ftvs = g (kenv, 1, ftvs)
-    in Option.map h (tc_vs tyc)
-       (* assumes that tc_vs returns free variable codes sorted in
-        * ascending numerical order, which means lexicographical order
-        * on the decoded pairs *)
-    end
-
 
 (** testing the "pointer" equality on normalized tkind, tyc, and lty *)
 fun tk_eq (x: tkind, y) = (x = y)
 
 local
-      fun stripIND tyc =
-	  (case tc_outX tyc 
-	    of (TC_IND(new,_)) => stripIND new
-	     | _ => tyc)
+  fun stripIND tyc =
+      (case tc_outX tyc 
+	of (TC_IND(new,_)) => stripIND new
+	 | _ => tyc)
+
   fun verify(ref(_, TC_IND _, AX_REG(true,_,_))) =  bug "TC_IND is norm?!"
     | verify _ = ()
 in 
-fun tc_eq (x: tyc, y) =  (verify x; verify y; x = y)
+  fun tc_eq (x: tyc, y) =  (verify x; verify y; x = y)
 end
 
 local 
   fun verify(ref(_, LT_IND _, AX_REG(true,_,_))) =  bug "LT_IND is norm?!"
-    | verify(ref(_, LT_TYC(ref(_,TC_IND _,_)), AX_REG(true,_,_))) = bug "LT_TYC (TC_IND) is norm?!"
+    | verify(ref(_, LT_TYC(ref(_,TC_IND _,_)), AX_REG(true,_,_))) =
+        bug "LT_TYC (TC_IND) is norm?!"
     | verify(ref(_, _, AX_REG(true, _, _))) = ()
-    | verify(ref(_, _, AX_REG(false, _, _))) = bug "Non-normalized (AX_REG false).\n"
+    | verify(ref(_, _, AX_REG(false, _, _))) =
+        bug "Non-normalized (AX_REG false).\n"
     | verify(ref(_, _, AX_NO)) = bug "Non-normalized (AX_NO)\n"
 in 
-fun lt_eq (x: lty, y) =
-    (verify x; verify y;
-    if not (x = y) then 
-	((case (lt_outX x, lt_outX y) 
-	  of (LT_TYC tyc1, LT_TYC tyc2) =>
-	     (x = y)
-	   | _ => x = y))
-    else (x = y)  )
-end (*
+  fun lt_eq (x: lty, y: lty) =
+      (* ASSERT: x and y are in normal form *)
+      (verify x; verify y;
+       x = y)
+end
+(*
 	     (case (tc_outX tyc1, tc_outX tyc2) 
 	       of (TC_PRIM pt1, TC_PRIM pt2) => 
 		    print "PRIM\n"
@@ -708,18 +674,13 @@ fun lty_upd (tgt as ref(i : int, old : ltyI, AX_NO), nt) =
   | lty_upd _ = bug "unexpected lty_upd on already normalized lty"
 
 
-(********************************************************************
- *                      KIND-CHECKING ROUTINES                      *
- ********************************************************************)
-exception TkTycChk of string
-exception LtyAppChk
-
 (* tkSubkind returns true if k1 is a subkind of k2, or if they are 
  * equivalent kinds.  it is NOT commutative.  tksSubkind is the same
  * thing, component-wise on lists of kinds.
  *)
 fun tksSubkind (ks1, ks2) =
     ListPair.all tkSubkind (ks1, ks2)   (* component-wise *)
+
 and tkSubkind (k1, k2) = 
     tk_eq (k1, k2) orelse              (* reflexive *)
     case (tk_outX k1, tk_outX k2) of
@@ -736,16 +697,40 @@ and tkSubkind (k1, k2) =
           tkSubkind (k1', k2')
       | _ => false
 
-local 
-
 (* TODO 
  * There must be a better factoring of the dependencies 
  * These functions are in either ltydefs or ltybasic *)
-    (** tkind constructors *)
-  val tkc_mono   : tkind = tk_injX (TK_MONO)
-  val tkc_box    : tkind = tk_injX (TK_BOX)
-  val tkc_seq    : tkind list -> tkind = tk_injX o TK_SEQ
-  val tkc_fun    : tkind list * tkind -> tkind = tk_injX o TK_FUN
+(** tkind constructors *)
+val tkc_mono   : tkind = tk_injX (TK_MONO)
+val tkc_box    : tkind = tk_injX (TK_BOX)
+val tkc_seq    : tkind list -> tkind = tk_injX o TK_SEQ
+val tkc_fun    : tkind list * tkind -> tkind = tk_injX o TK_FUN
+
+(** tkind deconstructors *)
+val tkd_mono   : tkind -> unit = fn _ => ()
+val tkd_box    : tkind -> unit = fn _ => ()
+val tkd_seq    : tkind -> tkind list = fn tk => 
+      (case tk_outX tk of TK_SEQ x => x
+                       | _ => bug "unexpected tkind in tkd_seq")  
+val tkd_fun    : tkind -> tkind list * tkind = fn tk => 
+      (case tk_outX tk of TK_FUN x => x
+                       | _ => bug "unexpected tkind in tkd_fun")  
+
+(** tkind predicates *)
+val tkp_mono   : tkind -> bool = fn tk => tk_eq(tk, tkc_mono)
+val tkp_box    : tkind -> bool = fn tk => tk_eq(tk, tkc_box)
+val tkp_seq    : tkind -> bool = fn tk => 
+      (case tk_outX tk of TK_SEQ _ => true | _ => false)
+val tkp_fun    : tkind -> bool = fn tk => 
+      (case tk_outX tk of TK_FUN _ => true | _ => false)
+
+(** tkind one-arm switches *)
+fun tkw_mono (tk, f, g) = if tk_eq(tk, tkc_mono) then f () else g tk
+fun tkw_box (tk, f, g) = if tk_eq(tk, tkc_box) then f () else g tk
+fun tkw_seq (tk, f, g) = 
+      (case tk_outX tk of TK_SEQ x => f x | _ => g tk)
+fun tkw_fun (tk, f, g) = 
+      (case tk_outX tk of TK_FUN x => f x | _ => g tk)
 
 (** utility functions for constructing tkinds *)
 fun tkc_arg n = 
@@ -762,303 +747,8 @@ fun tkc_int 0 = tkc_mono
   | tkc_int 2 = tkc_fn2
   | tkc_int 3 = tkc_fn3
   | tkc_int i = tkc_fun(tkc_arg i, tkc_mono)
-in
+
 (* is a kind monomorphic? *)
 fun tkIsMono k = tkSubkind (k, tkc_mono)
 
-(* assert that k1 is a subkind of k2 *)
-fun tkAssertSubkind (k1, k2) =
-    if tkSubkind (k1, k2) then ()
-    else raise TkTycChk "Subkind assertion failed!"
-
-(* assert that a kind is monomorphic *)
-fun tkAssertIsMono k =
-    if tkIsMono k then ()
-    else raise TkTycChk "Mono assertion failed!"
-
-(* select the ith element (0 based) from a kind sequence *)
-fun tkSel (tk, i) = 
-  (case (tk_outX tk)
-    of (TK_SEQ ks) => 
-       (List.nth(ks, i)
-        handle Subscript => raise TkTycChk "Invalid TC_SEQ index")
-     | _ => raise TkTycChk "Projecting out of non-tyc sequence")
-
-fun tks_eqv (ks1, ks2) = tk_eq(tkc_seq ks1, tkc_seq ks2)
-
-(* this is superceded by the following redefinition using tksSubkind
- * instead of tks_eqv.  Does it make any difference? If so, example? *)
-fun tkApp (tk, tks) = 
-  (case (tk_outX tk)
-    of TK_FUN(a, b) =>
-       if tks_eqv(a, tks) then b
-       else raise TkTycChk "Param/Arg Tyc Kind mismatch"
-     | _ => raise TkTycChk "Application of non-TK_FUN")
-
-
-(* check the application of tycs of kinds `tks' to a type function of
- * kind `tk'.
- *)
-fun tkApp (tk, tks) = 
-  (case (tk_outX tk)
-    of TK_FUN(a, b) =>
-       if tksSubkind(tks, a) then b
-       else raise TkTycChk "Param/Arg Tyc Kind mismatch"
-     | _ => raise TkTycChk "Application of non-TK_FUN") 
-
-
-(* Kind checking **************************************************)
-
-(* Kind-checking naturally requires traversing type graphs.  to avoid
- * re-traversing bits of the dag, we use a dictionary to memoize the
- * kind of each tyc we process.
- *
- * The problem is that a tyc can have different kinds, depending on
- * the valuations of its free variables.  So this dictionary maps a
- * tyc to an association list that maps the kinds of the free
- * variables in the tyc (represented as a TK_SEQ) to the tyc's kind.
- *)
-(* structure TcDict = BinaryMapFn
-                     (struct
-                        type ord_key = tyc
-                        val compare = tc_cmp
-		      end) *)
-                       
-structure Memo :> sig
-  type dict 
-  val newDict         : unit -> dict
-  val recallOrCompute : dict * tkindEnv * tyc * (unit -> tkind) -> tkind
-end =
-struct
-    structure TcDict = RedBlackMapFn
-                         (struct
-                            type ord_key = tyc
-                            val compare = tc_cmp
-                          end)
-
-    type dict = (tkind * tkind) list TcDict.map ref
-    val newDict : unit -> dict = ref o (fn () => TcDict.empty)
-
-    fun recallOrCompute (dict, kenv, tyc, doit) =
-        (* what are the valuations of tyc's free variables
-         * in kenv? *)
-        (* (might not be available for some tycs) *)
-        case tkLookupFreeVars (kenv, tyc)
-          of SOME ks_fvs =>
-             let
-                (* encode those as a kind sequence *)
-                val k_fvs = tkc_seq ks_fvs
-                (* query the dictionary *)
-                val kci = case TcDict.find(!dict, tyc) of
-                    SOME kci => kci
-                  | NONE => []
-                (* look for an equivalent environment *)
-                fun sameEnv (k_fvs',_) = tk_eq(k_fvs, k_fvs')
-            in
-                case List.find sameEnv kci of
-                    SOME (_,k) => k     (* HIT! *)
-                  | NONE => let
-                        (* not in the list.  we will compute
-                         * the answer and cache it
-                         *)
-                        val k = doit()
-                        val kci' = (k_fvs, k) :: kci
-                    in
-                        dict := TcDict.insert(!dict, tyc, kci');
-                        k
-                    end
-            end
-          | NONE =>
-            (* freevars were not available.  we'll have to
-             * recompute and cannot cache the result.
-             *)
-            doit()
-
-end (* Memo *)
-
-(* return the kind of a given tyc in the given kind environment *)
-fun tkTycGen'() = let
-    val dict = Memo.newDict()
-
-    fun tkTyc (kenv : tkindEnv) t = let
-        (* default recursive invocation *)    
-        val g = tkTyc kenv
-        (* how to compute the kind of a tyc *)
-	fun mkI tycI =
-            case tycI of
-                TC_VAR (i, j) =>
-                tkLookup (kenv, i, j)
-              | TC_NVAR _ => 
-                bug "TC_NVAR not supported yet in tkTyc"
-              | TC_PRIM pt =>
-                tkc_int (PrimTyc.pt_arity pt)
-              | TC_FN(ks, tc) =>
-                tkc_fun(ks, tkTyc (tkInsert (kenv,ks)) tc)
-              | TC_APP (tc, tcs) =>
-                tkApp (g tc, map g tcs)
-              | TC_SEQ tcs =>
-                tkc_seq (map g tcs)
-              | TC_PROJ(tc, i) =>
-                tkSel(g tc, i)
-              | TC_SUM tcs =>
-                (List.app (tkAssertIsMono o g) tcs;
-                 tkc_mono)
-              | TC_FIX ((n, tc, ts), i) =>
-                let (* Kind check generator tyc *)
-		    val k = g tc
-		    (* Kind check freetycs *)
-                    val nk =
-                        case ts
-                          of [] => k 
-                           | _ => tkApp(k, map g ts)
-                in
-                    case (tk_outX nk) of
-                        TK_FUN(a, b) => 
-                        let val arg =
-                                case a
-                                  of [x] => x
-                                   | _ => tkc_seq a
-                              (* "sequencize" the domain to make it comparable
-                               * to b *)
-                        in
-			    (* Kind check recursive tyc app ??*)
-                            (* [KM ???] seems bogus if arg is a proper subkind,
-                             * but probably ok if tkSubkind is really equivalence *)
-                            if tkSubkind(arg, b) then (* order? *)
-                                (if n = 1 then b else tkSel(arg, i))
-                            else raise TkTycChk "Recursive app mismatch"
-                        end
-                      | _ => raise TkTycChk "FIX with no generator"
-                end
-              | TC_ABS tc =>
-                (tkAssertIsMono (g tc);
-                 tkc_mono)
-              | TC_BOX tc =>
-                (tkAssertIsMono (g tc);
-                 tkc_mono)
-              | TC_TUPLE (_,tcs) =>
-                (List.app (tkAssertIsMono o g) tcs;
-                 tkc_mono)
-              | TC_ARROW (_, ts1, ts2) =>
-                (List.app (tkAssertIsMono o g) ts1;
-                 List.app (tkAssertIsMono o g) ts2;
-                 tkc_mono)
-              | TC_TOKEN(_, tc) =>
-                (tkAssertIsMono (g tc);
-                 tkc_mono)
-              | TC_PARROW _ => bug "unexpected TC_PARROW in tkTyc"
-           (* | TC_ENV _ => bug "unexpected TC_ENV in tkTyc" *)
-	      | TC_ENV(body, 0, j, teEmpty) => 
-		  (tkTyc (List.drop(kenv,j)) body 
-		   handle Subscript => 
-			  bug "[Env]: dropping too many frames")
-	      | TC_ENV(body, i, j, env) =>
-		  (let val kenv' = 
-			   List.drop(kenv, j)
-			   handle Subscript => 
-				  bug "[Env]: dropping too many frames"
-		       fun bindToKinds(Lamb(_,ks)) = ks
-			 | bindToKinds(Beta(_,_,ks)) = ks
-		       fun addBindToKEnv(b,ke) = 
-			   bindToKinds b :: ke
-		       val bodyKenv = 
-			   foldr addBindToKEnv kenv' (teToBinders env)
-		   in chkKindEnv(env,j,kenv);
-		      tkTyc bodyKenv body
-		   end) 
-            (*  | TC_IND _ =>  bug "unexpected TC_IND in tkTyc" *)
-	      | TC_IND(newtyc, oldtycI) =>
-		  let val newtycknd = g newtyc
-		  in   
-		      if tk_eq(newtycknd, mkI oldtycI) 
-		      then newtycknd
-		      else bug "tkTyc[IND]: new tyc and old tycI kind mismatch"
-		  end 
-              | TC_CONT _ => bug "unexpected TC_CONT in tkTyc"
-        fun mk () =
-	    mkI (tc_outX t)
-    in
-        Memo.recallOrCompute (dict, kenv, t, mk)
-    end
-    and chkKindEnv(env : tycEnv,j,kenv : tkindEnv) : unit =
-	let 
-	    fun chkBinder(Lamb _) = ()
-	      | chkBinder(Beta(j',args,ks)) = 
-		let 
-		    val kenv' = List.drop(kenv, j-j')
-		    val argks = map (fn t => tkTyc kenv' t) args
-		in if tksSubkind(ks, argks)
-		   then ()
-		   else bug "chkKindEnv: Beta binder kinds mismatch"
-		end
-		handle Subscript => 
-		       bug "tkTyc[Env]: dropping too many frames"
-	in app chkBinder (teToBinders env)
-	end (* function chkKindEnv *)
-in
-    (tkTyc, chkKindEnv)
-end (* function tkTycGen' *)
-
-fun tkTycGen() = 
-    case tkTycGen'() 
-     of (tkTyc, _) => tkTyc
-      
- 
-(* assert that the kind of `tc' is a subkind of `k' in `kenv' *)
-fun tkChkGen() =
-    let val tkTyc = tkTycGen()
-        fun tkChk kenv (k, tc) =
-            tkAssertSubkind (tkTyc kenv tc, k)
-    in tkChk
-    end (* function tkChkGen *)
-
-(* ltyChkGen : unit -> tkindEnv -> lty -> tkind *)
-fun ltyChkGen () = 
-let val (tkChk, chkKindEnv) = tkTycGen'()
-    fun ltyIChk (kenv : tkindEnv) (ltyI : ltyI) =
-        (case ltyI 
-          of LT_TYC(tyc) => 
-               (tkAssertIsMono (tkChk kenv tyc); tkc_mono)
-           | LT_STR(ltys) => tkc_seq(map (ltyChk' kenv) ltys)
-           | LT_FCT(paramLtys, rngLtys) => 
-               let val paramks = map (ltyChk' kenv) paramLtys
-                   val tenv' = paramks :: kenv
-               in 
-                   tkc_fun(paramks,
-                          tkc_seq(map (ltyChk' tenv') rngLtys))
-               end
-           | LT_POLY(ks, ltys) => 
-               tkc_seq(map (ltyChk' (ks::kenv)) ltys)
-               (* ??? *)
-           | LT_CONT(ltys) => 
-               tkc_seq(map (ltyChk' kenv) ltys)
-           | LT_IND(newLty, oldLtyI) =>
-               let val newLtyKnd = (ltyChk' kenv) newLty
-               in if tk_eq(newLtyKnd, ltyIChk kenv oldLtyI)
-                  then newLtyKnd
-                  else bug "ltyChk[IND]: kind mismatch"
-               end
-           | LT_ENV(body, i, j, env) =>
-               (* Should be the same as checking TC_ENV and 
-                * therefore the two cases should probably just
-                * call the same helper function *)
-               (let val kenv' = 
-                        List.drop(kenv, j)
-                        handle Subscript => 
-                               bug "[Env]: dropping too many frames"
-                    fun bindToKinds(Lamb(_,ks)) = ks
-                      | bindToKinds(Beta(_,_,ks)) = ks
-                    fun addBindToKEnv(b,ke) = 
-                        bindToKinds b :: ke
-                    val bodyKenv = 
-                        foldr addBindToKEnv kenv' (teToBinders env)
-                in chkKindEnv(env,j,kenv);
-                   ltyChk' bodyKenv body
-                end))
-    and ltyChk' kenv lty = ltyIChk kenv (lt_outX lty)
- in ltyChk'
-end (* function ltyChk *)	   
-
-end (* local *)
-		   
 end (* structure Lty *)

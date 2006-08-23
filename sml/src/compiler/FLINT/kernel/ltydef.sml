@@ -58,32 +58,6 @@ val tkc_box    : tkind = tk_inj (LT.TK_BOX)
 val tkc_seq    : tkind list -> tkind = tk_inj o LT.TK_SEQ
 val tkc_fun    : tkind list * tkind -> tkind = tk_inj o LT.TK_FUN
 
-(** tkind deconstructors *)
-val tkd_mono   : tkind -> unit = fn _ => ()
-val tkd_box    : tkind -> unit = fn _ => ()
-val tkd_seq    : tkind -> tkind list = fn tk => 
-      (case tk_out tk of LT.TK_SEQ x => x
-                       | _ => bug "unexpected tkind in tkd_seq")  
-val tkd_fun    : tkind -> tkind list * tkind = fn tk => 
-      (case tk_out tk of LT.TK_FUN x => x
-                       | _ => bug "unexpected tkind in tkd_fun")  
-
-(** tkind predicates *)
-val tkp_mono   : tkind -> bool = fn tk => tk_eqv(tk, tkc_mono)
-val tkp_box    : tkind -> bool = fn tk => tk_eqv(tk, tkc_box)
-val tkp_seq    : tkind -> bool = fn tk => 
-      (case tk_out tk of LT.TK_SEQ _ => true | _ => false)
-val tkp_fun    : tkind -> bool = fn tk => 
-      (case tk_out tk of LT.TK_FUN _ => true | _ => false)
-
-(** tkind one-arm switches *)
-fun tkw_mono (tk, f, g) = if tk_eqv(tk, tkc_mono) then f () else g tk
-fun tkw_box (tk, f, g) = if tk_eqv(tk, tkc_box) then f () else g tk
-fun tkw_seq (tk, f, g) = 
-      (case tk_out tk of LT.TK_SEQ x => f x | _ => g tk)
-fun tkw_fun (tk, f, g) = 
-      (case tk_out tk of LT.TK_FUN x => f x | _ => g tk)
-
 
 (* 
  * FLINT fflag and rflag are used to classify different kinds of monomorphic 

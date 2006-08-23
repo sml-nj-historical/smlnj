@@ -48,7 +48,7 @@ in
  *                   CONSTANTS AND UTILITY FUNCTIONS                        *
  ****************************************************************************)
 
-val debugging = ref true
+val debugging = ref false
 fun bug msg = EM.impossible("Translate: " ^ msg)
 val say = Control.Print.say
 
@@ -116,7 +116,7 @@ fun mkvN NONE = mkv()
 val mkvN = #mkLvar compInfo
 fun mkv () = mkvN NONE
 
-val kindCh = LT.tkTycGen ()
+val kindCh = LtyKindChk.tcKindCheckGen ()
 
 (** generate the set of ML-to-FLINT type translation functions *)
 val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty, markLBOUND} =
@@ -399,12 +399,15 @@ fun fillPat(pat, d) =
             end
         | fill (VECTORpat(pats,ty)) = VECTORpat(map fill pats, ty)
         | fill (ORpat(p1, p2)) = ORpat(fill p1, fill p2)
-        | fill (CONpat(TP.DATACON{name, const, typ, rep, sign, lazyp}, ts)) = 
+        | fill (CONpat(TP.DATACON{name,const,typ,rep,sign,lazyp}, ts)) = 
             CONpat(TP.DATACON{name=name, const=const, typ=typ, lazyp=lazyp,
-                        sign=sign, rep=mkRep(rep, toDconLty d typ, name)}, ts)
-        | fill (APPpat(TP.DATACON{name, const, typ, rep, sign, lazyp}, ts, pat)) = 
-            APPpat(TP.DATACON{name=name, const=const, typ=typ, sign=sign, lazyp=lazyp,
-                       rep=mkRep(rep, toDconLty d typ, name)}, ts, fill pat)
+                              sign=sign,rep=mkRep(rep,toDconLty d typ,name)},
+                   ts)
+        | fill (APPpat(TP.DATACON{name,const,typ,rep,sign,lazyp}, ts, pat)) = 
+            APPpat(TP.DATACON{name=name, const=const, typ=typ,
+                              sign=sign, lazyp=lazyp,
+                              rep=mkRep(rep, toDconLty d typ, name)},
+                   ts, fill pat)
         | fill xp = xp
 
    in fill pat
@@ -865,6 +868,7 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
       let val occty = (* compute the occurrence type of the variable *)
               case ts
                 of [] => !typ
+                   (* ASSERT: !typ is not a POLYty *)
                  | _ => TU.applyPoly(!typ, ts)
           val (primop,intrinsicType) =
               case (PrimOpMap.primopMap p, PrimOpTypeMap.primopTypeMap p)
@@ -873,30 +877,44 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
 	  val _ = debugmsg ">>mkVE: before matchInstTypes"
           val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
-              case ((TU.matchInstTypes(occty, intrinsicType)) : (TP.tyvar list * TP.tyvar list) option )
+              case (TU.matchInstTypes(occty, intrinsicType)
+                      : (TP.tyvar list * TP.tyvar list) option )
                 of SOME(_, tvs) => 
-		   ((*print ("tvs length "^ (Int.toString (length tvs)) ^"\n"); 
-		    complain EM.WARN "mkVE ->matchInstTypes -> pruneTyvar " (fn ppstrm => PPVal.ppDebugVar (fn x => "") ppstrm env e);
-		    if (length tvs) = 1 then complain EM.WARN "mkVE ->matchInstTypes -> pruneTyvar " (fn ppstrm => PPType.ppType env ppstrm (TP.VARty (hd tvs))) else ();
-		    *)map TU.pruneTyvar tvs)
-                 | NONE => (complain EM.COMPLAIN "matchInstTypes"
-                              (fn ppstrm => 
-                                    (PP.newline ppstrm;
-				     PP.string ppstrm "VALvar: ";
-				     PPVal.ppVar ppstrm e;
-				     PP.newline ppstrm;
-                                     PP.string ppstrm "occtypes: ";
-                                     PPType.ppType env ppstrm occty;
-				     PP.newline ppstrm;
-				     PP.string ppstrm "intrinsicType: ";
-				     PPType.ppType env ppstrm intrinsicType;
-				     PP.newline ppstrm;
-				     PP.string ppstrm "instpoly occ: ";
-				     PPType.ppType env ppstrm (#1 (TU.instantiatePoly occty));
-				     PP.newline ppstrm;
-				     PP.string ppstrm "instpoly intrinsicType: ";
-				     PPType.ppType env ppstrm (#1 (TU.instantiatePoly intrinsicType))));
-			    bug "primop intrinsic type doesn't match occurrence type")
+		   (if !debugging then
+                      complain EM.WARN
+                        "mkVE ->matchInstTypes -> pruneTyvar"
+                        (fn ppstrm => 
+                          (PP.string ppstrm
+                            ("tvs length: " ^ Int.toString (length tvs));
+                           PP.newline ppstrm;
+                           PPVal.ppDebugVar
+                            (fn x => "") ppstrm env e;
+                           if (length tvs) = 1
+                           then PPType.ppType env ppstrm (TP.VARty (hd tvs))
+                           else ()))
+                    else ();
+                    map TU.pruneTyvar tvs)
+                 | NONE =>
+                   (complain EM.COMPLAIN
+                      "mkVE:primop intrinsic type doesn't match occurrence type"
+                      (fn ppstrm => 
+                          (PP.string ppstrm "VALvar: ";
+                           PPVal.ppVar ppstrm e;
+                           PP.newline ppstrm;
+                           PP.string ppstrm "occtypes: ";
+                           PPType.ppType env ppstrm occty;
+                           PP.newline ppstrm;
+                           PP.string ppstrm "intrinsicType: ";
+                           PPType.ppType env ppstrm intrinsicType;
+                           PP.newline ppstrm;
+                           PP.string ppstrm "instpoly occ: ";
+                           PPType.ppType env ppstrm
+                             (#1 (TU.instantiatePoly occty));
+                           PP.newline ppstrm;
+                           PP.string ppstrm "instpoly intrinsicType: ";
+                           PPType.ppType env ppstrm
+                             (#1 (TU.instantiatePoly intrinsicType))));
+                    bug "mkVE -- NONE")
 	  val _ = debugmsg "<<mkVE: after matchInstTypes"
        in case (primop, intrinsicParams)
             of (PO.POLYEQL, [t]) => eqGen(intrinsicType, t, toTcLt d)
@@ -1461,6 +1479,7 @@ val body = wrapII body
 val (plexp, imports) = wrapPidInfo (body, PersMap.listItemsi (!persmap))
 
 (** type check body (including kind check) **)
+val _ = complain EM.WARN ">>translate typecheck" EM.nullErrorBody
 val _ = print "**** Translate: typechecking plexp ****\n"
 val _ = PPLexp.printLexp plexp
 val _ = ChkPlexp.checkLty(plexp,0)

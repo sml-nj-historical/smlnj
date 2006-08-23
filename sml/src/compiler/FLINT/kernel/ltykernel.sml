@@ -70,7 +70,7 @@ fun tenvLength (tenv: tycEnv) : int =
 in 
 
 fun tcc_env(x, ol, nl, tenv) =
-  (let fun checkTCVAR tyc =  (* GK -- debugging *)
+  (let fun checkTCVAR (tyc,ol,nl,tenv) =  (* GK -- debugging *)
            case (tc_outX tyc)
              of TC_VAR(d,k) =>
                  (case teLookup(tenv,d)
@@ -96,10 +96,10 @@ fun tcc_env(x, ol, nl, tenv) =
                                print "d = "; print (Int.toString d); print "\n";
                                print "ol = "; print (Int.toString ol); print "\n";
                                print "length(tenv) = "; print (Int.toString(tenvLength tenv)); print "\n"))
-              | TC_ENV(tc, _, _, _)  =>
-                 (print "TC_ENV("; checkTCVAR(tc); print ")\n")
+              | TC_ENV(tc, ol', nl', tenv')  =>
+                 (print "TC_ENV("; checkTCVAR(tc,ol',nl',tenv'); print ")\n")
               | _ => () (* print ("tcc_env OTHER " ^ tci_print tci ^"\n") *) 
-   in checkTCVAR(x); 
+   in checkTCVAR(x,ol,nl,tenv); 
    (* original body --- *)
    let val tvs = tc_vs x
     in case tvs

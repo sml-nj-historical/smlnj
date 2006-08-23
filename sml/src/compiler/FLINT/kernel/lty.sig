@@ -150,7 +150,6 @@ exception tkUnbound
 val initTkEnv        : tkindEnv
 val tkLookup         : tkindEnv * int * int -> tkind
 val tkInsert         : tkindEnv * tkind list -> tkindEnv
-val tkLookupFreeVars : tkindEnv * tyc -> tkind list option
 
 (* token functions *)
 val register_token : token_info -> token
@@ -185,14 +184,43 @@ val lt_vs : lty -> enc_tvar list option
 val tc_nvars : tyc -> tvar list
 val lt_nvars : lty -> tvar list
 
-(* Kind checker *)
-exception TkTycChk of string
-exception LtyAppChk
+(** tkind constructors *)
+val tkc_mono   : tkind
+val tkc_box    : tkind
+val tkc_seq    : tkind list -> tkind
+val tkc_fun    : tkind list * tkind -> tkind
 
-val tkTycGen : unit -> (tkindEnv -> tyc -> tkind)
-val tkChkGen : unit -> (tkindEnv -> (tkind * tyc) -> unit)
-val ltyChkGen : unit -> (tkindEnv -> lty -> tkind)
-val tkTycGen' : unit -> (tkindEnv -> tyc -> tkind) *
-                        (tycEnv * int * tkindEnv -> unit)
+(** tkind deconstructors *)
+val tkd_mono   : tkind -> unit
+val tkd_box    : tkind -> unit
+val tkd_seq    : tkind -> tkind list
+val tkd_fun    : tkind -> tkind list * tkind
+
+(** tkind predicates *)
+val tkp_mono   : tkind -> bool
+val tkp_box    : tkind -> bool
+val tkp_seq    : tkind -> bool
+val tkp_fun    : tkind -> bool
+
+(** tkind one-arm switch *)
+val tkw_mono   : tkind * (unit -> 'a) * (tkind -> 'a) -> 'a
+val tkw_box    : tkind * (unit -> 'a) * (tkind -> 'a) -> 'a
+val tkw_seq    : tkind * (tkind list -> 'a) * (tkind -> 'a) -> 'a
+val tkw_fun    : tkind * (tkind list * tkind -> 'a) * (tkind -> 'a) -> 'a
+
+(** subkind relation **)
+val tksSubkind : tkind list * tkind list -> bool
+val tkSubkind : tkind * tkind -> bool
+
+(** utility functions for constructing tkinds *)
+val tkc_fn1 : tkind
+val tkc_fn2 : tkind
+val tkc_fn3 : tkind
+
+val tkc_int : int -> tkind
+val tkc_arg : int -> tkind list
+
+(* is a kind monomorphic? *)
+val tkIsMono : tkind -> bool
 
 end (* signature LTY *)

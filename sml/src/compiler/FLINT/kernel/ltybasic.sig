@@ -30,10 +30,6 @@ include LTYDEF        (* see ltydef.sig for details *)
 (** new a type variable, currently not used *)
 val mkTvar : unit -> tvar 
 
-(** utility functions for constructing tkinds *)
-val tkc_int    : int -> tkind
-val tkc_arg    : int -> tkind list    
-
 (** primitives and utility functions for fflags and rflags *)
 val ffc_plambda: fflag
 val ffc_rrflint: fflag

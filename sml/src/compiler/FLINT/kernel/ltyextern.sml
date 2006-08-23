@@ -7,6 +7,7 @@ struct
 local structure PT = PrimTyc
       structure DI = DebIndex
       structure LT = Lty
+      structure LKC = LtyKindChk
       structure LK = LtyKernel
       structure PO = PrimOp     (* really should not refer to this *)
       structure FL = FLINT
@@ -35,11 +36,40 @@ in
 
 open LtyBasic
 
+(** tkind constructors *)
+val tkc_mono = Lty.tkc_mono
+val tkc_box = Lty.tkc_box
+val tkc_seq = Lty.tkc_seq
+val tkc_fun = Lty.tkc_fun
+
+(** tkind deconstructors *)
+val tkd_mono = Lty.tkd_mono
+val tkd_box = Lty.tkd_box
+val tkd_seq = Lty.tkd_seq
+val tkd_fun = Lty.tkd_fun
+
+(** tkind predicates *)
+val tkp_mono = Lty.tkp_mono
+val tkp_box = Lty.tkp_box
+val tkp_seq = Lty.tkp_seq
+val tkp_fun = Lty.tkp_fun
+
+(** tkind one-arm switch *)
+val tkw_mono = Lty.tkw_mono
+val tkw_box = Lty.tkw_box
+val tkw_seq = Lty.tkw_seq
+val tkw_fun = Lty.tkw_fun
+
+val tkc_int = Lty.tkc_int
+val tkc_arg = Lty.tkc_arg
+
 fun tc_bug tc s = bug (s ^ "\n\n" ^ (tc_print tc) ^ "\n\n")
 fun lt_bug lt s = bug (s ^ "\n\n" ^ (lt_print lt) ^ "\n\n")
 
-val ltKindChk = Lty.ltyChkGen ()
-val (tcKindChk,teKindChk) = Lty.tkTycGen' ()
+val ltKindChk = LtyKindChk.ltKindCheckGen ()
+val (tcKindChk,teKindChk) = LtyKindChk.tcteKindCheckGen ()
+
+val tkc_mono = LT.tkc_mono
 
 (** instantiating a polymorphic type or an higher-order constructor *)
 fun lt_inst (lt : lty, ts : tyc list) = 
@@ -68,273 +98,19 @@ fun lt_pinst (lt : lty, ts : tyc list) =
   (case lt_inst (lt, ts) of [y] => y | _ => bug "unexpected lt_pinst")
 
 
-exception TkTycChk = LT.TkTycChk
-exception LtyAppChk = LT.LtyAppChk
+exception KindChk = LtyKindChk.KindChk
+exception LtyAppChk
 
 exception TeUnbound = LK.teUnbound2
 
-(*
-(********************************************************************
- *                      KIND-CHECKING ROUTINES                      *
- ********************************************************************)
-exception TkTycChk of string
-exception LtyAppChk
+val tcKindCheckGen : unit -> (tkindEnv -> tyc -> tkind) = LKC.tcKindCheckGen
+val tcKindVerifyGen : unit -> (tkindEnv -> (tkind * tyc) -> unit)
+    = LKC.tcKindVerifyGen
+val ltKindCheckGen : unit -> (tkindEnv -> lty -> tkind) = LKC.ltKindCheckGen
 
-(* tkSubkind returns true if k1 is a subkind of k2, or if they are 
- * equivalent kinds.  it is NOT commutative.  tksSubkind is the same
- * thing, component-wise on lists of kinds.
- *)
-fun tksSubkind (ks1, ks2) =
-    ListPair.all tkSubkind (ks1, ks2)   (* component-wise *)
-and tkSubkind (k1, k2) = 
-    tk_eqv (k1, k2) orelse              (* reflexive *)
-    case (tk_out k1, tk_out k2) of
-        (LT.TK_BOX, LT.TK_MONO) => true (* ground kinds (base case) *)
-      (* this next case is WRONG, but necessary until the
-       * infrastructure is there to give proper boxed kinds to
-       * certain tycons (e.g., ref : Omega -> Omega_b)
-       *)
-      | (LT.TK_MONO, LT.TK_BOX) => true
-      | (LT.TK_SEQ ks1, LT.TK_SEQ ks2) =>     
-          tksSubkind (ks1, ks2)
-      | (LT.TK_FUN (ks1, k1'), LT.TK_FUN (ks2, k2')) => 
-          tksSubkind (ks2, ks1) andalso (* contravariant *)
-          tkSubkind (k1', k2')
-      | _ => false
-
-(* is a kind monomorphic? *)
-fun tkIsMono k = tkSubkind (k, tkc_mono)
-
-(* assert that k1 is a subkind of k2 *)
-fun tkAssertSubkind (k1, k2) =
-    if tkSubkind (k1, k2) then ()
-    else raise TkTycChk "Subkind assertion failed!"
-
-(* assert that a kind is monomorphic *)
-fun tkAssertIsMono k =
-    if tkIsMono k then ()
-    else raise TkTycChk "Mono assertion failed!"
-
-(* select the ith element from a kind sequence *)
-fun tkSel (tk, i) = 
-  (case (tk_out tk)
-    of (LT.TK_SEQ ks) => 
-       (List.nth(ks, i)
-        handle Subscript => raise TkTycChk "Invalid TC_SEQ index")
-     | _ => raise TkTycChk "Projecting out of non-tyc sequence")
-
-fun tks_eqv (ks1, ks2) = tk_eqv(tkc_seq ks1, tkc_seq ks2)
-
-fun tkApp (tk, tks) = 
-  (case (tk_out tk)
-    of LT.TK_FUN(a, b) =>
-       if tks_eqv(a, tks) then b
-       else raise TkTycChk "Param/Arg Tyc Kind mismatch"
-     | _ => raise TkTycChk "Application of non-TK_FUN")
-
-(* check the application of tycs of kinds `tks' to a type function of
- * kind `tk'.
- *)
-fun tkApp (tk, tks) = 
-  (case (tk_out tk)
-    of LT.TK_FUN(a, b) =>
-       if tksSubkind(tks, a) then b
-       else raise TkTycChk "Param/Arg Tyc Kind mismatch"
-     | _ => raise TkTycChk "Application of non-TK_FUN") 
-
-(* Kind-checking naturally requires traversing type graphs.  to avoid
- * re-traversing bits of the dag, we use a dictionary to memoize the
- * kind of each tyc we process.
- *
- * The problem is that a tyc can have different kinds, depending on
- * the valuations of its free variables.  So this dictionary maps a
- * tyc to an association list that maps the kinds of the free
- * variables in the tyc (represented as a TK_SEQ) to the tyc's kind.
- *)
- *)
-structure TcDict = BinaryMapFn
-                     (struct
-                        type ord_key = tyc
-                        val compare = LT.tc_cmp
-		      end)
- (*                      
-structure Memo :> sig
-  type dict 
-  val newDict         : unit -> dict
-  val recallOrCompute : dict * tkindEnv * tyc * (unit -> tkind) -> tkind
-end =
-struct
-    structure TcDict = RedBlackMapFn
-                           (struct
-                               type ord_key = tyc
-                               val compare = LT.tc_cmp
-                           end)
-
-    type dict = (tkind * tkind) list TcDict.map ref
-    val newDict : unit -> dict = ref o (fn () => TcDict.empty)
-
-    fun recallOrCompute (dict, kenv, tyc, doit) =
-        (* what are the valuations of tyc's free variables
-         * in kenv? *)
-        (* (might not be available for some tycs) *)
-        case LT.tkLookupFreeVars (kenv, tyc) of
-            SOME ks_fvs => let
-                (* encode those as a kind sequence *)
-                val k_fvs = tkc_seq ks_fvs
-                (* query the dictionary *)
-                val kci = case TcDict.find(!dict, tyc) of
-                    SOME kci => kci
-                  | NONE => []
-                (* look for an equivalent environment *)
-                fun sameEnv (k_fvs',_) = tk_eqv(k_fvs, k_fvs')
-            in
-                case List.find sameEnv kci of
-                    SOME (_,k) => k     (* HIT! *)
-                  | NONE => let
-                        (* not in the list.  we will compute
-                         * the answer and cache it
-                         *)
-                        val k = doit()
-                        val kci' = (k_fvs, k) :: kci
-                    in
-                        dict := TcDict.insert(!dict, tyc, kci');
-                        k
-                    end
-            end
-          | NONE =>
-            (* freevars were not available.  we'll have to
-             * recompute and cannot cache the result.
-             *)
-            doit()
-
-end (* Memo *)
-
-(* return the kind of a given tyc in the given kind environment *)
-fun tkTycGen() = let
-    val dict = Memo.newDict()
-
-    fun tkTyc (kenv : tkindEnv) t = let
-        (* default recursive invocation *)    
-        val g = tkTyc kenv
-	fun chkKindEnv(env : tycEnv,j,kenv : tkindEnv) : unit =
-	    let 
-		fun chkBinder(Lamb _) = ()
-		  | chkBinder(Beta(j',args,ks)) = 
-		    let 
-			val kenv' = List.drop(kenv, j-j')
-			val argks = map (fn t => tkTyc kenv' t) args
-		    in if tksSubkind(ks, argks)
-		       then ()
-		       else bug "chkKindEnv: Beta binder kinds mismatch"
-		    end
-		    handle Subscript => 
-			   bug "tkTyc[Env]: dropping too many frames"
-	    in app chkBinder (LT.teToBinders env)
-	    end
-        (* how to compute the kind of a tyc *)
-        fun mk() =
-            case tc_out t of
-                LT.TC_VAR (i, j) =>
-                tkLookup (kenv, i, j)
-              | LT.TC_NVAR _ => 
-                bug "TC_NVAR not supported yet in tkTyc"
-              | LT.TC_PRIM pt =>
-                tkc_int (PrimTyc.pt_arity pt)
-              | LT.TC_FN(ks, tc) =>
-                tkc_fun(ks, tkTyc (tkInsert (kenv,ks)) tc)
-              | LT.TC_APP (tc, tcs) =>
-                tkApp (g tc, map g tcs)
-              | LT.TC_SEQ tcs =>
-                tkc_seq (map g tcs)
-              | LT.TC_PROJ(tc, i) =>
-                tkSel(g tc, i)
-              | LT.TC_SUM tcs =>
-                (List.app (tkAssertIsMono o g) tcs;
-                 tkc_mono)
-              | LT.TC_FIX ((n, tc, ts), i) =>
-                let (* Kind check generator tyc *)
-		    val k = g tc
-		    (* Kind check freetycs *)
-                    val nk =
-                        case ts
-                          of [] => k 
-                           | _ => tkApp(k, map g ts)
-                in
-                    case (tk_out nk) of
-                        LT.TK_FUN(a, b) => 
-                        let val arg =
-                                case a
-                                  of [x] => x
-                                   | _ => tkc_seq a
-                        in
-			    (* Kind check recursive tyc app ??*)
-                            if tkSubkind(arg, b) then (* order? *)
-                                (if n = 1 then b else tkSel(arg, i))
-                            else raise TkTycChk "Recursive app mismatch"
-                        end
-                      | _ => raise TkTycChk "FIX with no generator"
-                end
-              | LT.TC_ABS tc =>
-                (tkAssertIsMono (g tc);
-                 tkc_mono)
-              | LT.TC_BOX tc =>
-                (tkAssertIsMono (g tc);
-                 tkc_mono)
-              | LT.TC_TUPLE (_,tcs) =>
-                (List.app (tkAssertIsMono o g) tcs;
-                 tkc_mono)
-              | LT.TC_ARROW (_, ts1, ts2) =>
-                (List.app (tkAssertIsMono o g) ts1;
-                 List.app (tkAssertIsMono o g) ts2;
-                 tkc_mono)
-              | LT.TC_TOKEN(_, tc) =>
-                (tkAssertIsMono (g tc);
-                 tkc_mono)
-              | LT.TC_PARROW _ => bug "unexpected TC_PARROW in tkTyc"
-           (* | LT.TC_ENV _ => bug "unexpected TC_ENV in tkTyc" *)
-	      | LT.TC_ENV(body, 0, j, teEmpty) => 
-		  (tkTyc (List.drop(kenv,j)) body 
-		   handle Subscript => 
-			  bug "[Env]: dropping too many frames")
-	      | LT.TC_ENV(body, i, j, env) =>
-		  (let val kenv' = 
-			   List.drop(kenv, j)
-			   handle Subscript => 
-				  bug "[Env]: dropping too many frames"
-		       fun bindToKinds(Lamb(_,ks)) = ks
-			 | bindToKinds(Beta(_,_,ks)) = ks
-		       fun addBindToKEnv(b,ke) = 
-			   bindToKinds b :: ke
-		       val bodyKenv = 
-			   foldr addBindToKEnv kenv' (LT.teToBinders env)
-		   in chkKindEnv(env,j,kenv);
-		      tkTyc bodyKenv body
-		   end) 
-              | LT.TC_IND _ => bug "unexpected TC_IND in tkTyc"
-              | LT.TC_CONT _ => bug "unexpected TC_CONT in tkTyc"
-    in
-        Memo.recallOrCompute (dict, kenv, t, mk)
-    end
-in
-    tkTyc
-end 
-
-(* assert that the kind of `tc' is a subkind of `k' in `kenv' *)
-fun tkChkGen() =
-    let val tkTyc = tkTycGen()
-        fun tkChk kenv (k, tc) =
-            tkAssertSubkind (tkTyc kenv tc, k)
-    in tkChk
-    end
-*)
-
-val tkTycGen : unit -> (tkindEnv -> tyc -> tkind) = LT.tkTycGen
-val tkChkGen : unit -> (tkindEnv -> (tkind * tyc) -> unit) = LT.tkChkGen
-val ltyChkGen : unit -> (tkindEnv -> lty -> tkind) = LT.ltyChkGen
-    
 (* lty application with kind-checking (exported) *)
 fun lt_inst_chk_gen() = let
-    val tkChk = LT.tkChkGen()
+    val tkChk = LKC.tcKindVerifyGen()
     fun lt_inst_chk (lt : lty, ts : tyc list, kenv : tkindEnv) = 
         let val nt = lt_whnm lt
         in (case ((* lt_outX *) lt_out nt, ts)
@@ -344,7 +120,7 @@ fun lt_inst_chk_gen() = let
                  in map h b
                  end
                | (_, []) => [nt]    (* ? problematic *)
-               | _ => raise LT.LtyAppChk)
+               | _ => raise LtyAppChk)
         end
 in
     lt_inst_chk
@@ -355,9 +131,9 @@ fun lt_sp_adj(ks, lt, ts, dist, bnl) =
     let fun h(abslevel, ol, nl, tenv) =
           if abslevel = 0 then ltc_env(lt, ol, nl, tenv)
           else if abslevel > 0 then 
-                 h(abslevel-1, ol+1, nl+1, teCons(Lamb(nl,ks (* dbm ??? *)), tenv))
+                 h(abslevel-1, ol+1, nl+1,
+                   teCons(Lamb(nl,ks (* dbm ??? *)), tenv))
                else bug "unexpected cases in ltAdjSt"
-
         val btenv = teCons(Beta(0,ts,ks (* dbm ??? *)),teEmpty)
         val nt = h(dist, 1, bnl, btenv)
      in nt (* was lt_norm nt *)
@@ -368,9 +144,9 @@ fun tc_sp_adj(ks, tc, ts, dist, bnl) =
     let fun h(abslevel, ol, nl, tenv) =
           if abslevel = 0 then tcc_env(tc, ol, nl, tenv)
           else if abslevel > 0 then 
-                 h(abslevel-1, ol+1, nl+1, teCons(Lamb(nl,ks (* dbm ??? *)), tenv))
+                 h(abslevel-1, ol+1, nl+1,
+                   teCons(Lamb(nl,ks (* dbm ??? *)), tenv))
                else bug "unexpected cases in tcAdjSt"
-
         val btenv = teCons(Beta(0,ts,ks (* dbm ??? *)), teEmpty)
         val nt = h(dist, 1, bnl, btenv)
      in nt (* was tc_norm nt *)
@@ -381,7 +157,8 @@ fun lt_sp_sink (ks, lt, d, nd) =
     let fun h(abslevel, ol, nl, tenv) =
           if abslevel = 0 then ltc_env(lt, ol, nl, tenv)
           else if abslevel > 0 then
-                 h(abslevel-1, ol+1, nl+1, teCons(Lamb(nl,ks (* dbm ??? *)), tenv))
+                 h(abslevel-1, ol+1, nl+1,
+                   teCons(Lamb(nl,ks (* dbm ??? *)), tenv))
                else bug "unexpected cases in ltSinkSt"
         val nt = h(nd-d, 0, 1, teEmpty)
      in nt (* was lt_norm nt *)
@@ -609,6 +386,12 @@ fun twrap_gen bbb =
 (************************************************************************
  *            SUBSTITION OF NAMED VARS IN A TYC/LTY                     *
  ************************************************************************)
+structure TcDict = BinaryMapFn
+                     (struct
+                        type ord_key = tyc
+                        val compare = LT.tc_cmp
+		      end)
+
 structure LtDict = BinaryMapFn
                        (struct
                            type ord_key = lty

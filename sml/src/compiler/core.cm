@@ -113,6 +113,7 @@ Group
 	(* export of structures required to use FLINT directly *)
 	structure Translate
 	structure Lty
+	structure LtyKindChk
 	structure LtyKernel
 	structure LtyDef
 	structure LtyExtern
@@ -223,6 +224,7 @@ FLINT/kernel/ltykernel.sig
 FLINT/kernel/ltykernel.sml
 FLINT/kernel/lty.sig
 FLINT/kernel/lty.sml
+FLINT/kernel/ltykindchk.sml
 
 FLINT/kernel/pplty.sml
 

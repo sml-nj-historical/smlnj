@@ -39,31 +39,6 @@ type lty = Lty.lty
  *
  *)
 
-(** tkind constructors *)
-val tkc_mono   : tkind
-val tkc_box    : tkind
-val tkc_seq    : tkind list -> tkind
-val tkc_fun    : tkind list * tkind -> tkind
-
-(** tkind deconstructors *)
-val tkd_mono   : tkind -> unit
-val tkd_box    : tkind -> unit
-val tkd_seq    : tkind -> tkind list
-val tkd_fun    : tkind -> tkind list * tkind
-
-(** tkind predicates *)
-val tkp_mono   : tkind -> bool
-val tkp_box    : tkind -> bool
-val tkp_seq    : tkind -> bool
-val tkp_fun    : tkind -> bool
-
-(** tkind one-arm switch *)
-val tkw_mono   : tkind * (unit -> 'a) * (tkind -> 'a) -> 'a
-val tkw_box    : tkind * (unit -> 'a) * (tkind -> 'a) -> 'a
-val tkw_seq    : tkind * (tkind list -> 'a) * (tkind -> 'a) -> 'a
-val tkw_fun    : tkind * (tkind list * tkind -> 'a) * (tkind -> 'a) -> 'a
-
-
 (* 
  * FLINT fflag and rflag are used to classify different kinds of monomorphic 
  * functions and records. As of now, they are roughly equivalent to:

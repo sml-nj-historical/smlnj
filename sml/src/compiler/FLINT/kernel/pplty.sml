@@ -6,6 +6,11 @@
  *
  *)
 
+signature PPLTY =
+sig
+
+end
+
 structure PPLty =
 struct
 
