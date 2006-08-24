@@ -1282,6 +1282,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val lvarListM = UU.mkMap ()
 	val fundecListM = UU.mkMap ()
 	val conListM = UU.mkMap ()
+        val strListM = UU.mkMap ()
 	val lexpOptionM = UU.mkMap ()
 	val fundecM = UU.mkMap ()
 	val tfundecM = UU.mkMap ()
@@ -1312,7 +1313,8 @@ structure UnpickMod : UNPICKMOD = struct
 	      | tc #"F" = LD.tcc_seq (tyclist ())
 	      | tc #"G" = LD.tcc_proj (tyc (), int ())
 	      | tc #"H" = LD.tcc_sum (tyclist ())
-	      | tc #"I" = LD.tcc_fix ((int (), tyc (), tyclist ()), int ())
+	      | tc #"I" = LD.tcc_fix ((int (), Vector.fromList(strlist ()),
+                                       tyc (), tyclist ()), int ())
 	      | tc #"J" = LD.tcc_abs (tyc ())
 	      | tc #"K" = LD.tcc_box (tyc ())
 	      | tc #"L" = LD.tcc_tuple (tyclist ())
@@ -1326,6 +1328,7 @@ structure UnpickMod : UNPICKMOD = struct
 	    share tycM tc
 	end
 
+        and strlist () = list strListM string ()
 	and tyclist () = list tycListM tyc ()
 
 	val lvar = int

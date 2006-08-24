@@ -250,7 +250,7 @@ fun tc_upd_prim tc =
             else if PT.bxupd pt then PO.BOXEDUPDATE 
                  else PO.UPDATE
         | h(LT.TC_TUPLE _ | LT.TC_ARROW _) = PO.BOXEDUPDATE
-        | h(LT.TC_FIX ((1,tc,ts), 0)) = 
+        | h(LT.TC_FIX{family={size=1,gen=tc,params=ts,...},index=0}) =
             let val ntc = case ts of [] => tc
                                    | _ => tcc_app(tc, ts)
              in (case (tc_out ntc)
@@ -315,8 +315,8 @@ fun twrap_gen bbb =
            | LT.TC_SEQ tcs => tcc_seq(map w tcs)
            | LT.TC_PROJ (tc, i) => tcc_proj(w tc, i)
            | LT.TC_SUM tcs => tcc_sum (map w tcs)
-           | LT.TC_FIX ((n,tc,ts), i) => 
-               tcc_fix((n, tc_norm (u tc), map w ts), i) 
+           | LT.TC_FIX{family={size=n,names,gen=tc,params=ts},index=i} => 
+               tcc_fix((n, names, tc_norm (u tc), map w ts), i) 
 
            | LT.TC_TUPLE (_, ts) => tcc_wrap(tcc_tuple (map w ts)) (* ? *)
            | LT.TC_ARROW (LT.FF_VAR(b1,b2), ts1, ts2) =>  
@@ -342,8 +342,8 @@ fun twrap_gen bbb =
            | LT.TC_SEQ tcs => tcc_seq(map u tcs)
            | LT.TC_PROJ (tc, i) => tcc_proj(u tc, i)
            | LT.TC_SUM tcs => tcc_sum (map u tcs)
-           | LT.TC_FIX ((n,tc,ts), i) => 
-               tcc_fix((n, tc_norm (u tc), map w ts), i) 
+           | LT.TC_FIX{family={size=n,names,gen=tc,params=ts},index=i} => 
+               tcc_fix((n, names, tc_norm (u tc), map w ts), i) 
 
            | LT.TC_TUPLE (rk, tcs) => tcc_tuple(map u tcs)
            | LT.TC_ARROW (LT.FF_VAR(b1,b2), ts1, ts2) =>  
@@ -433,8 +433,8 @@ fun tc_nvar_elim_gen() = let
                             tcc_proj (r t, i)
                       | LT.TC_SUM ts =>
                             tcc_sum (rs ts)
-                      | LT.TC_FIX ((i,t,ts),j) =>
-                            tcc_fix ((i, r t, rs ts), j)
+                      | LT.TC_FIX {family={size,names,gen,params},index} =>
+                            tcc_fix ((size,names,r gen,rs params),index)
                       | LT.TC_TUPLE (rf,ts) =>
                             tcc_tuple (rs ts)
                       | LT.TC_ARROW (ff, ts, ts') =>
@@ -562,8 +562,8 @@ fun tc_nvar_subst_gen() = let
                             tcc_proj (loop t, i)
                       | LT.TC_SUM ts =>
                             tcc_sum (map loop ts)
-                      | LT.TC_FIX ((i,t,ts),j) =>
-                            tcc_fix ((i, loop t, map loop ts), j)
+                      | LT.TC_FIX{family={size,names,gen,params},index} =>
+                            tcc_fix ((size, names, loop gen, map loop params),index)
                       | LT.TC_TUPLE (rf,ts) =>
                             tcc_tuple (map loop ts)
                       | LT.TC_ARROW (ff, ts, ts') =>
@@ -702,8 +702,8 @@ fun tc_nvar_cvt_gen() = let
                             tcc_proj (r t, i)
                       | LT.TC_SUM ts =>
                             tcc_sum (rs ts)
-                      | LT.TC_FIX ((i,t,ts),j) =>
-                            tcc_fix ((i, r t, rs ts), j)
+                      | LT.TC_FIX{family={size,names,gen,params},index} =>
+                            tcc_fix ((size, names, r gen, rs params), index)
                       | LT.TC_TUPLE (rf,ts) =>
                             tcc_tuple (rs ts)
                       | LT.TC_ARROW (ff, ts, ts') =>

@@ -88,7 +88,7 @@ val tcc_unit   = tcc_tuple []
 val tcc_bool   = 
   let val tbool = tcc_sum [tcc_unit, tcc_unit]
       val tsig_bool = tcc_fn ([tkc_mono], tbool)
-   in tcc_fix((1, tsig_bool, []), 0)
+   in tcc_fix((1, #["bool"], tsig_bool, []), 0)
   end
 
 val tcc_list   =  (* not exported, used for the printing purpose *)
@@ -100,7 +100,7 @@ val tcc_list   =  (* not exported, used for the printing purpose *)
                             (** the order here should be consistent with
                                 that in basics/basictypes.sml **)
       val tsig_list = tcc_fn([tkc_int 1], tlist)
-   in tcc_fix((1, tsig_list, []), 0)
+   in tcc_fix((1, #["list"], tsig_list, []), 0)
   end
 
 fun tcc_tv i     = tcc_var(DI.innermost, i)
@@ -171,7 +171,7 @@ fun tc_print (x : tyc) =
          "TP(" ^ (tc_print t) ^ "," ^ (itos i) ^ ")"
      | LT.TC_SUM tcs =>
          "TSUM(" ^ (plist(tc_print, tcs)) ^ ")"
-     | LT.TC_FIX ((_, tc, ts), i) =>
+     | LT.TC_FIX {family={gen=tc,params=ts,...}, index=i} =>
          if tc_eqv(x,tcc_bool) then "B" 
          else if tc_eqv(x,tcc_list) then "LST" 
          else (let (* val ntc = case ts of [] => tc

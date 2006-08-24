@@ -249,7 +249,7 @@ fun tcTag (kenv, tc) =
 	   | (TC_ARROW (_,tc1,tc2)) => YES (* NO *)
 	   | (TC_ABS tx) => loop tx
 	   | (TC_TOKEN(_,tx)) => loop tx
-	   | (TC_FIX(_, i)) => YES
+	   | (TC_FIX _) => YES
 	   | (TC_APP(tx, _)) => 
 		(case tc_out tx
 		  of (TC_APP _ | TC_PROJ _ | TC_VAR _) => 

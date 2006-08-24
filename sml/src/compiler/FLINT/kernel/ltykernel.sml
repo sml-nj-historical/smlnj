@@ -144,12 +144,13 @@ val tcc_app = fn (fntyc, argtycs) =>
 				      (case (tc_outX tc)
 					of (TC_FN(_, tc')) => getArity tc'
 					 | _ => 0)
-				    | (TC_FIX((numFamily,tc,freetycs),index)) => 
-				      (case (tc_outX tc) of
-					   (TC_FN (_,tc')) => (* generator function *)
-					   (case (tc_outX tc') of
-						(TC_SEQ tycs) => getArity (List.nth (tycs, index))
-					      | TC_FN (params, _) => length params
+				    | (TC_FIX{family={size,gen,params,...},index}) =>
+				      (case (tc_outX gen)
+					of (TC_FN (_,tc')) => (* generator function *)
+					   (case (tc_outX tc')
+				             of (TC_SEQ tycs) =>
+                                                  getArity (List.nth (tycs, index))
+					      | TC_FN (args, _) => length args
 					      | _ => bug "Malformed generator range")
 					 | _ => bug "FIX without generator!" )
 				    | _ => (with_pp (fn s =>
@@ -175,7 +176,9 @@ val tcc_app = fn (fntyc, argtycs) =>
 		 end
 val tcc_seq = tc_injX o TC_SEQ
 val tcc_proj = tc_injX o TC_PROJ
-val tcc_fix = tc_injX o TC_FIX
+val tcc_fix = 
+    fn ((size:int,names: string vector,gen: tyc,params: tyc list),index:int) =>
+       tc_injX(TC_FIX{family={size=size,names=names,gen=gen,params=params},index=index})
 val tcc_abs = tc_injX o TC_ABS
 val tcc_tup  = tc_injX o TC_TUPLE
 val tcc_parw = tc_injX o TC_PARROW
@@ -327,8 +330,8 @@ and tc_lzrd(t: tyc) =
                    | TC_SEQ tcs => tcc_seq (map prop tcs)
                    | TC_PROJ (tc, i) => tcc_proj(prop tc, i)
                    | TC_SUM tcs => tcc_sum (map prop tcs)
-                   | TC_FIX ((n,tc,ts), i) => 
-                        tcc_fix((n, prop tc, map prop ts), i)
+                   | TC_FIX{family={size,names,gen,params},index} =>
+                        tcc_fix((size, names, prop gen, map prop params), index)
                    | TC_ABS tc => tcc_abs (prop tc)
                    | TC_BOX tc => tcc_box (prop tc)
                    | TC_TUPLE (rk, tcs) => tcc_tup (rk, map prop tcs)
@@ -390,12 +393,12 @@ and printParamArgs (tc,tcs) =
 		 (case (tc_outX tc)
 		   of (TC_FN(_, tc')) => getArity tc'
 		    | _ => 0)
-	       | (TC_FIX((numFamily,tc,freetycs),index)) => 
-		 (case (tc_outX tc) of
-		      (TC_FN (_,tc')) => (* generator function *)
-		      (case (tc_outX tc') of
-			   (TC_SEQ tycs) => getArity (List.nth (tycs, index))
-			 | TC_FN (params, _) => length params
+	       | (TC_FIX{family={size,gen,params,...},index}) =>
+		 (case (tc_outX gen)
+		   of (TC_FN (_,tc')) => (* generator function *)
+		      (case (tc_outX tc')
+			of (TC_SEQ tycs) => getArity (List.nth (tycs, index))
+			 | TC_FN (args, _) => length args
 			 | _ => bug "Malformed generator range")
 		    | _ => bug "FIX without generator!" )
 	       | _ => (with_pp (fn s => (PP.openHOVBox s (PP.Rel 2);
@@ -502,8 +505,8 @@ fun tc_norm t = if (tcp_norm t) then t else
                  | TC_SEQ tcs => tcc_seq(map tc_norm tcs)
                  | TC_PROJ (tc, i) => tcc_proj(tc_norm tc, i)
                  | TC_SUM tcs => tcc_sum (map tc_norm tcs)
-                 | TC_FIX ((n,tc,ts), i) => 
-                     tcc_fix((n, tc_norm tc, map tc_norm ts), i)
+                 | TC_FIX{family={size,names,gen,params},index} =>
+                     tcc_fix((size,names,tc_norm gen,map tc_norm params),index)
                  | TC_ABS tc => tcc_abs(tc_norm tc)
                  | TC_BOX tc => tcc_box(tc_norm tc)
                  | TC_TUPLE (rk, tcs) => tcc_tup(rk, map tc_norm tcs)
@@ -696,20 +699,20 @@ end (* Click *)
 
 (** unrolling a fix, tyc -> tyc *)
 fun tc_unroll_fix tyc =
-    case tc_outX tyc of
-        (TC_FIX((n,tc,ts),i)) => let
-            fun genfix i = tcc_fix ((n,tc,ts),i)
-            val fixes = List.tabulate(n, genfix)
-            val mu = tc
-            val mu = if null ts then mu
-                     else tcc_app (mu,ts)
-            val mu = tcc_app (mu, fixes)
-            val mu = if n=1 then mu
-                     else tcc_proj (mu, i)
-        in
-            Click.unroll();
-            mu
-        end
+    case tc_outX tyc
+     of (TC_FIX{family={size=n,names,gen=tc,params=ts},index=i}) =>
+         let fun genfix i = tcc_fix ((n,names,tc,ts),i)
+             val fixes = List.tabulate(n, genfix)
+             val mu = tc
+             val mu = if null ts then mu
+                      else tcc_app (mu,ts)
+             val mu = tcc_app (mu, fixes)
+             val mu = if n=1 then mu
+                      else tcc_proj (mu, i)
+         in
+             Click.unroll();
+             mu
+         end
       | _ => bug "unexpected non-FIX in tc_unroll_fix"
 
 (* In order to check equality of two FIXes, we need to be able to
@@ -761,7 +764,8 @@ val visited : eqclass option -> bool
 (* testing if two recursive datatypes are equivalent *)
 fun eq_fix (eqop1, hyp) (t1, t2) = 
   (case (tc_outX t1, tc_outX t2) 
-    of (TC_FIX((n1,tc1,ts1),i1), TC_FIX((n2,tc2,ts2),i2)) => 
+    of (TC_FIX{family={size=n1,gen=tc1,params=ts1,...},index=i1},
+        TC_FIX{family={size=n2,gen=tc2,params=ts2,...},index=i2}) => 
         if not (!Control.FLINT.checkDatatypes) then true 
         else let 
             val t1eqOpt = TcDict.find (hyp, t1)

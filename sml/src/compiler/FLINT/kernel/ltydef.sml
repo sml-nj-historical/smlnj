@@ -138,7 +138,9 @@ val tcc_app    : tyc * tyc list -> tyc = tc_inj o LT.TC_APP
 val tcc_seq    : tyc list -> tyc = tc_inj o LT.TC_SEQ
 val tcc_proj   : tyc * int -> tyc = tc_inj o LT.TC_PROJ
 val tcc_sum    : tyc list -> tyc = tc_inj o LT.TC_SUM
-val tcc_fix    : (int * tyc * tyc list) * int -> tyc = tc_inj o LT.TC_FIX
+val tcc_fix    : (int * string vector * tyc * tyc list) * int -> tyc =
+    fn ((s,ns,g,p),i) =>
+       tc_inj(LT.TC_FIX{family={size=s,names=ns,gen=g,params=p},index=i})
 val tcc_wrap   : tyc -> tyc = fn tc => tc_inj (LT.TC_TOKEN(LK.wrap_token, tc))
 val tcc_abs    : tyc -> tyc = tc_inj o LT.TC_ABS
 val tcc_box    : tyc -> tyc = tc_inj o LT.TC_BOX 
@@ -171,8 +173,9 @@ val tcd_sum    : tyc -> tyc list = fn tc =>
       (case tc_out tc of LT.TC_SUM x => x
                        | _ => bug "unexpected tyc in tcd_sum")  
 val tcd_fix    : tyc -> (int * tyc * tyc list) * int = fn tc =>
-      (case tc_out tc of LT.TC_FIX x => x
-                       | _ => bug "unexpected tyc in tcd_fix")  
+      (case tc_out tc of LT.TC_FIX{family={size,names,gen,params},index} =>
+                           ((size,gen,params),index)
+                       | _ => bug "unexpected tyc in tcd_fix")
 val tcd_wrap   : tyc -> tyc = fn tc => 
       (case tc_out tc 
         of LT.TC_TOKEN(tk, x) => 
@@ -241,7 +244,9 @@ fun tcw_proj (tc, f, g) =
 fun tcw_sum (tc, f, g) = 
       (case tc_out tc of LT.TC_SUM x => f x | _ => g tc)  
 fun tcw_fix (tc, f, g) = 
-      (case tc_out tc of LT.TC_FIX x => f x | _ => g tc)  
+      (case tc_out tc
+        of LT.TC_FIX{family={size,names,gen,params},index} => f((size,gen,params),index)
+         | _ => g tc)  
 fun tcw_wrap (tc, f, g) = 
       (case tc_out tc 
         of LT.TC_TOKEN(rk, x) => 

@@ -547,8 +547,9 @@ in
 		  | LT.TC_SEQ l => "F" $ [list tyc l]
 		  | LT.TC_PROJ (tc, i) => "G" $ [tyc tc, int i]
 		  | LT.TC_SUM l => "H" $ [list tyc l]
-		  | LT.TC_FIX ((n, tc, ts), i) =>
-			"I" $ [int n, tyc tc, list tyc ts, int i]
+		  | LT.TC_FIX{family={size=n,names,gen=tc,params=ts},index=i} =>
+			"I" $ [int n, list string (Vector.foldr (op ::) [] names),
+                               tyc tc, list tyc ts, int i]
 		  | LT.TC_ABS tc => "J" $ [tyc tc]
 		  | LT.TC_BOX tc => "K" $ [tyc tc]
 		  | LT.TC_TUPLE (_, l) => "L" $ [list tyc l]

@@ -126,13 +126,14 @@ datatype tycI
   | TC_PROJ of tyc * int                       (* tyc projection *)
 
   | TC_SUM of tyc list                         (* sum tyc *)
-  | TC_FIX of (int * tyc * tyc list) * int     (* (mutually-)recursive tyc 
-	                                        * int # of family members  
-						* tyc of rec-type generator
-						* tyc list is freetycs 
-						* int index of dcon in dt 
-						*  built in 
-                                                * trans/transtypes.sml*)
+  | TC_FIX of				       (* datatype tyc *)
+    {family :                                  (* recursive dt family *)
+      {size : int,                             (* size of family *)
+       names : string vector,                  (* datatype names for printing *)
+       gen : tyc,                              (* common generator fn *)
+       params: tyc list},                      (* parameters for generator *)
+      index : int}                             (* index of this dt in family *)
+     (* TC_FIX are built in trans/transtypes.sml*)
 
   | TC_TUPLE of rflag * tyc list               (* std record tyc *)
   | TC_ARROW of fflag * tyc list * tyc list    (* std function tyc *)
@@ -318,7 +319,8 @@ local (* hashconsing impl *)
       | (TC_SEQ ts) => combine (5::(map getnum ts))
       | (TC_PROJ(t, i)) => combine [6, (getnum t), i]
       | (TC_SUM ts) => combine (7::(map getnum ts))
-      | (TC_FIX((n, t, ts), i)) => 
+      | (TC_FIX{family={size=n,gen=t,params=ts,...},index=i}) => 
+          (* names not involved the the hash *)
           combine (8::n::i::(getnum t)::(map getnum ts))
       | (TC_ABS t) => combine [9, getnum t]
       | (TC_BOX t) => combine [10, getnum t]
@@ -396,10 +398,10 @@ local (* hashconsing impl *)
         | (TC_SEQ ts) => fsmerge ts
         | (TC_PROJ(t, _)) => getAux t
         | (TC_SUM ts) => fsmerge ts
-        | (TC_FIX((_,t,ts), _)) => 
-            let val ax = getAux t
+        | (TC_FIX{family={gen,params,...},...}) => 
+            let val ax = getAux gen
             in case ax
-                of AX_REG(_,[],[]) => mergeAux(ax, fsmerge ts)
+                of AX_REG(_,[],[]) => mergeAux(ax, fsmerge params)
                  | AX_REG _ => bug "unexpected TC_FIX freevars in tc_aux"
                  | AX_NO => AX_NO
             end

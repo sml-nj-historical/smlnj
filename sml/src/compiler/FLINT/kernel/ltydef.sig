@@ -112,7 +112,7 @@ val tcc_app    : tyc * tyc list -> tyc
 val tcc_seq    : tyc list -> tyc
 val tcc_proj   : tyc * int -> tyc
 val tcc_sum    : tyc list -> tyc
-val tcc_fix    : (int * tyc * tyc list) * int -> tyc 
+val tcc_fix    : (int * string vector * tyc * tyc list) * int -> tyc 
 val tcc_wrap   : tyc -> tyc
 val tcc_abs    : tyc -> tyc
 val tcc_box    : tyc -> tyc

@@ -21,6 +21,8 @@ local
     open PPUtilNew
 in
 
+val dtPrintNames : bool ref = ref true
+
 fun ppSeq ppstrm {sep: string, pp : PP.stream -> 'a -> unit} (list: 'a list) =
     let val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm
      in	ppSequence ppstrm
@@ -174,53 +176,25 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	     pps ")")
 	    (* TC_FIX is a recursive datatype constructor 
 	       from a (mutually-)recursive family *)
-	  | ppTycI (Lty.TC_FIX((numStamps, datatypeFamily, freetycs), index)) =
+	  | ppTycI (Lty.TC_FIX{family={size,names,gen,params},index}) =
+            if !dtPrintNames then pps (Vector.sub(names,index))
+            else
 	    (openHOVBox 1;
-	     pps "FIX(";
-	     (case (Lty.tc_outX datatypeFamily)
-		of Lty.TC_FN(params, rectyc) => (* generator function *) 
-		  let fun ppMus 0 = ()
-			| ppMus i = (pps "mu";
-				     ppi i; 
-				     pps " "; 
-				     ppMus (i - 1))
-		  in 
-		  (pps "REC(";
-		   if (length params) > 0 then (pps "[";
-						ppi (length params);
-						pps "]")
-		   else ();
-		   PP.break ppstrm {nsp=1,offset=1};  
-		  (case (Lty.tc_outX rectyc) of
-			 (rectycI as Lty.TC_FN _) => ppTycI rectycI
-		       | Lty.TC_SEQ(dconstycs) => 
-		         ppTyc' (List.nth(dconstycs, index))
-		       | tycI => ppTycI tycI);
-		  PP.break ppstrm {nsp=0,offset=0};
-		  pps ")")
-		  end
-		| _ => pps "<No rectyc generator>");
-	     PP.break ppstrm {nsp=0,offset=0};
-	     pps ")";
-	     closeBox()
-	 (*    pps "TC_FIX(";
-	     PP.break ppstrm {nsp=1,offset=1};
-	     pps "nStamps = ";
-	     pps (Int.toString numStamps);
-	     pps ",";
-	     PP.break ppstrm {nsp=1, offset=0};
-	     pps "datatypeFamily = ";
-	     ppTyc' datatypeFamily;
-	     pps ", ";
-	     PP.break ppstrm {nsp=1, offset=0};
-	     pps "freeTycs = ";
-	     ppList' {sep = ", ", pp = ppTyc} freetycs;
-	     pps ", ";
-	     PP.break ppstrm {nsp=1, offset=0};
-	     pps "index = ";
-	     pps (Int.toString index);
-	     pps ")";
-	     closeBox() *) )
+              pps "FIX(";
+              openHVBox 0;
+              pps "size = "; ppi size; PP.break ppstrm {nsp=1,offset=0};
+              pps "index = "; ppi index; PP.break ppstrm {nsp=1,offset=0};
+              pps "gen = ";
+              openHOVBox 2;
+               ppTyc' gen;
+              closeBox;
+              pps "prms = ";
+              openHOVBox 2;
+               ppList' {sep = ",", pp = ppTyc (pd-1)} params;
+              closeBox ();
+              PP.break ppstrm {nsp=0,offset=0};
+              pps ")";
+	     closeBox())
 	  | ppTycI (Lty.TC_ABS tyc) =
 	    (pps "ABS(";
 	     ppTyc' tyc;

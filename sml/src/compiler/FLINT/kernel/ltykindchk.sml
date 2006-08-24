@@ -244,7 +244,7 @@ let val dict = Memo.newDict()
               | TC_SUM tcs =>
                 (List.app (tkAssertIsMono o g) tcs;
                  tkc_mono)
-              | TC_FIX ((n, tc, ts), i) =>
+              | TC_FIX {family={size=n, gen=tc, params=ts,...},index=i} =>
                 let (* Kind check generator tyc *)
 		    val k = g tc
 		    (* Kind check freetycs *)

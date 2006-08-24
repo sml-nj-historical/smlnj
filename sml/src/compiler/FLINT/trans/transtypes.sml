@@ -203,8 +203,10 @@ and tycTyc(tc, d) =
         | h (DATATYPE {index, family, freetycs, stamps, root}, _) = 
               let val tc = dtsFam (freetycs, family)
                   val n = Vector.length stamps 
-                  (* invariant: n should be the length of family members *)
-               in LT.tcc_fix((n, tc, (map g freetycs)), index)
+                  val names = Vector.map (fn ({tycname,...}: dtmember) => Symbol.name tycname)
+                                         (#members family)
+                  (* invariant: n should be the number of family members *)
+               in LT.tcc_fix((n, names, tc, (map g freetycs)), index)
               end
         | h (ABSTRACT tc, 0) = (g tc) 
               (*>>> LT.tcc_abs(g tc) <<<*) 

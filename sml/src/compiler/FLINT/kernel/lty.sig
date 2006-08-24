@@ -95,7 +95,11 @@ datatype tycI
   | TC_PROJ of tyc * int                      (* tyc projection *)
 
   | TC_SUM of tyc list                        (* sum tyc *)
-  | TC_FIX of (int * tyc * tyc list) * int    (* recursive tyc *) 
+  | TC_FIX of {family: {size: int,            (* recursive tyc *) 
+                        names: string vector,
+                        gen : tyc,
+                        params : tyc list},
+               index: int}
 
   | TC_TUPLE of rflag * tyc list              (* std record tyc *)
   | TC_ARROW of fflag * tyc list * tyc list   (* std function tyc *)
