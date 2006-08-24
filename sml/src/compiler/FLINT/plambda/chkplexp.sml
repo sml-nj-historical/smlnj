@@ -4,6 +4,8 @@
 signature CHKPLEXP = 
 sig 
 
+exception ChkPlexp (* PLambda type check error *)
+
 val checkLtyTop : PLambda.lexp * int -> bool
 val checkLty : PLambda.lexp * PLambdaType.ltyEnv * int -> bool
 val newlam_ref : PLambda.lexp ref
@@ -20,6 +22,8 @@ local structure LT = PLambdaType
       structure DI = DebIndex
       open PLambda 
 in
+
+exception ChkPlexp (* PLambda type check error *)
 
 (*** a hack of printing diagnostic output into a separate file ***) 
 val newlam_ref : PLambda.lexp ref = ref (RECORD[])
@@ -213,40 +217,58 @@ fun ltConChk le s (DATAcon ((_,rep,lt), ts, v), root, kenv, venv, d) =
 
 (** check : tkindEnv * ltyEnv * DI.depth -> lexp -> lty *)
 fun check (kenv, venv, d) = 
-  let val ltyChkenv = ltyChk kenv
+  let fun ltyChkMsg msg lexp kenv lty = 
+		  ltyChk kenv lty 
+		  handle LT.KindChk kndchkmsg =>
+			 (say ("*** Kind check failure during \
+			       \ PLambda type check: ");
+			  say (msg);
+			  say ("***\n Term: ");
+			  PPLexp.printLexp lexp;
+			  say ("\n Kind check error: ");
+			  say kndchkmsg;
+			  say ("\n");
+			  raise ChkPlexp)
       fun loop le =
-       (case le
-         of VAR v => 
-              (LT.ltLookup(venv, v, d) 
-               handle LT.ltUnbound => 
-                (say ("** Lvar ** " ^ (LV.lvarName(v)) ^ " is unbound *** \n");
-                 bug "unexpected lambda code in checkLty"))
-          | (INT _ | WORD _) => LT.ltc_int
-          | (INT32 _ | WORD32 _) => LT.ltc_int32
-          | REAL _ => LT.ltc_real
-          | STRING _ => ltString
-          | PRIM(p, t, ts) =>
-             (* kind check t and ts *)
-              ((* ltyChkenv t; map (tycChk kenv) ts; *)
-               ltTyApp le "PRIM" (t, ts, kenv))
-
-          | FN(v, t, e1) =>
-              let val _ = ltyChkenv t (* kind check bound variable type *)
-                  val venv' = LT.ltInsert(venv, v, t, d)
-                  val res = check (kenv, venv', d) e1
-                  val _ = ltyChkenv res
-               in ltFun(t, res) (* handle both functions and functors *)
-              end
-
-          | FIX(vs, ts, es, eb) => 
-              let val _ = map ltyChkenv ts  (* kind check bound variable types *)
-                  fun h (env, v::r, x::z) = h(LT.ltInsert(env, v, x, d), r, z)
-                    | h (env, [], []) = env
-                    | h _ = bug "unexpected FIX bindings in checkLty."
-                  val venv' = h(venv, vs, ts)
-
-                  val nts = map (check (kenv, venv', d)) es
-                  val _ = map ltyChkenv nts
+	  let fun ltyChkMsgLexp msg kenv lty = 
+		    ltyChkMsg msg lexp kenv lty 
+	      fun ltyChkenv msg lty = ltyChkMsgLexp msg kenv lty
+	  in
+	      (case le
+		of VAR v => 
+		   (LT.ltLookup(venv, v, d) 
+		    handle LT.ltUnbound => 
+			   (say ("** Lvar ** " ^ (LV.lvarName(v)) 
+				 ^ " is unbound *** \n");
+			    bug "unexpected lambda code in checkLty"))
+		 | (INT _ | WORD _) => LT.ltc_int
+		 | (INT32 _ | WORD32 _) => LT.ltc_int32
+		 | REAL _ => LT.ltc_real
+		 | STRING _ => ltString
+		 | PRIM(p, t, ts) =>
+		   (* kind check t and ts *)
+		       ((* ltyChkenv t; map (tycChk kenv) ts; *)
+			    ltTyApp le "PRIM" (t, ts, kenv))
+		   
+		 | FN(v, t, e1) =>
+		   let val _ = ltyChkenv "FN bound var" t 
+					 (* kind check bound variable type *)
+                       val venv' = LT.ltInsert(venv, v, t, d)
+                       val res = check (kenv, venv', d) e1
+                       val _ = ltyChkenv "FN rng" res
+		   in ltFun(t, res) (* handle both functions and functors *)
+		   end
+		   
+		 | FIX(vs, ts, es, eb) => 
+		   let val _ = map (ltyChkenv "FIX bound var") ts  
+				   (* kind check bound variable types *)
+                       fun h (env, v::r, x::z) = h(LT.ltInsert(env, v, x, d), r, z)
+			 | h (env, [], []) = env
+			 | h _ = bug "unexpected FIX bindings in checkLty."
+                       val venv' = h(venv, vs, ts)
+				   
+                       val nts = map (check (kenv, venv', d)) es
+                       val _ = map (ltyChkenv "FIX body types") nts
                   val _ = app2(ltMatch le "FIX1", ts, nts)
 
                in check (kenv, venv', d) eb
@@ -261,28 +283,30 @@ fun check (kenv, venv, d) =
 
           | LET(v, e1, e2) => 
               let val t1 = loop e1
-                  val _ = ltyChkenv t1
+                  val _ = ltyChkenv "LET definen" t1 
                   val venv' = LT.ltInsert(venv, v, t1, d)
-               in check (kenv, venv', d) e2
+		  val bodyLty = check (kenv, venv', d) e2
+		  val _ = ltyChkenv "LET body" bodyLty
+	       in bodyLty
               end
 
           | TFN(ks, e) => 
               let val kenv' = LT.tkInsert(kenv, ks)
                   val lt = check (kenv', venv, DI.next d) e
-                  val _ = ltyChk (ks::kenv) lt
+                  val _ = ltyChkMsgLexp "TFN body" (ks::kenv) lt
                in LT.ltc_poly(ks, [lt])
               end
 
           | TAPP(e, ts) =>
               let val lt = loop e
-                  val _ = map (fn tc => ltyChkenv(LT.ltc_tyc tc)) ts  (* kind check type args *)
-                  val _ = ltyChkenv lt
+                  val _ = map (fn tc => ltyChkenv "TAPP args" (LT.ltc_tyc tc)) ts  (* kind check type args *)
+                  val _ = ltyChkenv "TAPP type function " lt
               in  ltTyApp le "TAPP" (lt, ts, kenv)
               end
 
           | GENOP(dict, p, t, ts) => 
               ((* should type check dict also *)
-               (map (fn tc => ltyChkenv(LT.ltc_tyc tc)) ts;
+               (map (fn tc => ltyChkenv "GENOP args " (LT.ltc_tyc tc)) ts;
                 ltTyApp le "GENOP" (t, ts, kenv)))
 
           | PACK(lt, ts, nts, e) => 
@@ -293,9 +317,9 @@ fun check (kenv, venv, d) =
 
           | CON((_, rep, lt), ts, e) =>   
               let val t1 = ltTyApp le "CON" (lt, ts, kenv)
-                  val _ = ltyChkenv t1
+                  val _ = ltyChkenv "CON 1 " t1
                   val t2 = loop e
-                  val _ = ltyChkenv t2
+                  val _ = ltyChkenv "CON 2 " t2
                in ltFnApp le "CON-A" (t1, t2)
               end
 (*
@@ -310,8 +334,8 @@ fun check (kenv, venv, d) =
 
           | VECTOR (el, t)  => 
               let val ts = map loop el
-               in ltyChkenv (LT.ltc_tyc t);
-                  map ltyChkenv ts;
+               in ltyChkenv "VECTOR index " (LT.ltc_tyc t);
+                  map (ltyChkenv "VECTOR vector ") ts;
                   app (fn x => ltMatch le "VECTOR" (x, LT.ltc_tyc t)) ts; 
                   ltVector t
               end
@@ -325,7 +349,7 @@ fun check (kenv, venv, d) =
                      in check (kenv, venv', d) x 
                     end
                   val ts = map h cl
-                  val _ = map ltyChkenv ts
+                  val _ = map (ltyChkenv "SWITCH branch ") ts
                in (case ts
                     of [] => bug "empty switch in checkLty"
                      | a::r => 
@@ -338,7 +362,7 @@ fun check (kenv, venv, d) =
           | ETAG(e, t) => 
               let val z = loop e   (* what do we check on e ? *)
                   val _ = ltMatch le "ETAG1" (z, LT.ltc_string) 
-                  val _ = ltyChkenv t
+                  val _ = ltyChkenv "ETAG " t
                in ltEtag t
               end
 
@@ -361,11 +385,12 @@ fun check (kenv, venv, d) =
               let val ntc = if laterPhase(phase) then LT.tcc_void
                             else (if b then LT.tcc_box t else LT.tcc_abs t)
                   val nt = LT.ltc_tyc ntc
-                  val _ = ltyChkenv nt
+                  val _ = ltyChkenv "UNWRAP " nt
                in (ltMatch le "UNWRAP" (loop e, nt); LT.ltc_tyc t)
               end)
+	  end (* loop *)
   in (* wrap loop with kind check of result *)
-     fn x => let val y = loop x in ltyChkenv y; y end
+     fn x => let val y = loop x in ltyChkMsg "RESULT " x kenv y; y end
  end (* end-of-fn-check *)
 
 in 
