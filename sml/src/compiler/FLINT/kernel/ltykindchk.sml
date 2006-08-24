@@ -24,9 +24,11 @@ sig
 
   val tcKindCheckGen :   unit -> (Lty.tkindEnv -> Lty.tyc -> Lty.tkind)
   val tcKindVerifyGen :  unit -> (Lty.tkindEnv -> (Lty.tkind * Lty.tyc) -> unit)
+  val teKindCheckGen :   unit -> (Lty.tkindEnv -> (Lty.tycEnv * int) -> unit)
   val ltKindCheckGen :   unit -> (Lty.tkindEnv -> Lty.lty -> Lty.tkind)
   val tcteKindCheckGen : unit -> (Lty.tkindEnv -> Lty.tyc -> Lty.tkind) *
-                                 (Lty.tycEnv * int * Lty.tkindEnv -> unit)
+                                 (Lty.tkindEnv -> (Lty.tkind * Lty.tyc) -> unit) *
+                                 (Lty.tkindEnv -> (Lty.tycEnv * int) -> unit)
 
 end (* signature LTYKINDCHK *)
 
@@ -37,7 +39,9 @@ structure PP = PrettyPrintNew
 structure PU = PPUtilNew
 open Lty
 
-fun bug s = ErrorMsg.impossible ("Lty:" ^ s)
+fun bug s = ErrorMsg.impossible ("LtyKindChk:" ^ s)
+
+val with_pp = PP.with_default_pp
 
 (********************************************************************
  *                      KIND-CHECKING ROUTINES                      *
@@ -60,7 +64,7 @@ fun tkSel (tk, i) =
     of (TK_SEQ ks) => 
        (List.nth(ks, i)
         handle Subscript => raise KindChk "Invalid TC_SEQ index")
-     | _ => raise KindChk "Projecting out of non-tyc sequence")
+     | _ => raise KindChk "Projecting out of sequence")
 
 (* tks_eqv: not used, and not exported -- was used in superceded version 
  * of tkApp that used it instead of tksSubkind
@@ -96,6 +100,7 @@ fun tkApp (tk, tks) =
                         val compare = tc_cmp
 		      end) *)
                        
+(*
 (* strip any unused type variables out of a kenv, given a list of
  * [encoded] free type variables.  the result is a "parallel list" of
  * the kinds of those free type variables in the environment.
@@ -121,7 +126,7 @@ fun tkLookupFreeVars (kenv, tyc) : tkind list option =
                              (List.nth (ks, k')
 		              handle Subscript =>
                                      (print "### tkLookupFreeVars:3\n";
-                                      PP.with_default_pp
+                                      with_pp
                                         (fn ppstrm =>
                                             (PP.string ppstrm "tyc: ";
                                              PP.newline ppstrm;
@@ -144,6 +149,7 @@ fun tkLookupFreeVars (kenv, tyc) : tkind list option =
         * ascending numerical order, which means lexicographical order
         * on the decoded pairs *)
     end
+*)
 
 structure Memo :> sig
   type dict 
@@ -157,14 +163,15 @@ struct
                             val compare = tc_cmp
                           end)
 
-    type dict = (tkind * tkind) list TcDict.map ref
+(*    type dict = (tkind * tkind) list TcDict.map ref  *)
+    type dict = tkind TcDict.map ref
     val newDict : unit -> dict = ref o (fn () => TcDict.empty)
 
     fun recallOrCompute (dict, kenv, tyc, doit) =
-        (* what are the valuations of tyc's free variables
-         * in kenv? *)
-        (* (might not be available for some tycs) *)
-        case tkLookupFreeVars (kenv, tyc)
+        (* only cashe kinds of closed tycs, to avoid possibility
+         * of free tvs that are not bound in kenv *)
+        case tc_vs tyc  (* tkLookupFreeVars (kenv, tyc) *)
+(*
           of SOME ks_fvs =>
              let
                 (* encode those as a kind sequence *)
@@ -189,21 +196,28 @@ struct
                         k
                     end
             end
-          | NONE =>
-            (* freevars were not available.  we'll have to
-             * recompute and cannot cache the result.
-             *)
-            doit()
+*)
+          of SOME [] =>  (* tyc is closed *)
+             (case TcDict.find(!dict, tyc)
+               of SOME tk => tk
+                | NONE => 
+                   let val tk = doit()
+                    in dict := TcDict.insert(!dict, tyc, tk);
+                       tk
+                   end)
+           | _ => (* not known to be closed. Have to compute,
+                   * and can't cashe. *)
+             doit()
 
 end (* Memo *)
 
 (* return the kind of a given tyc in the given kind environment *)
-fun tcteKindCheckGen() = let
-    val dict = Memo.newDict()
+fun tcteKindCheckGen() =
+let val dict = Memo.newDict()
 
-    fun tkTyc (kenv : tkindEnv) t = let
+    fun tcKindChk (kenv : tkindEnv) t = let
         (* default recursive invocation *)    
-        val g = tkTyc kenv
+        val g = tcKindChk kenv
         (* how to compute the kind of a tyc *)
 	fun mkI tycI =
             case tycI
@@ -212,15 +226,15 @@ fun tcteKindCheckGen() = let
                  handle tkUnbound =>
                   (with_pp (fn s =>
                      (PU.pps s "KindChk: unbound tv: ";
-                      PPL.ppTycI 10 s tycI;
+                      PPLty.ppTyc 10 s (tc_injX tycI);
                       PP.newline s));
-                   raise KindChk "unbound tv")
+                   raise KindChk "unbound tv"))
               | TC_NVAR _ => 
-                bug "TC_NVAR not supported yet in tkTyc"
+                bug "TC_NVAR not supported yet in tcKindChk"
               | TC_PRIM pt =>
                 tkc_int (PrimTyc.pt_arity pt)
               | TC_FN(ks, tc) =>
-                tkc_fun(ks, tkTyc (tkInsert (kenv,ks)) tc)
+                tkc_fun(ks, tcKindChk (tkInsert (kenv,ks)) tc)
               | TC_APP (tc, tcs) =>
                 tkApp (g tc, map g tcs)
               | TC_SEQ tcs =>
@@ -239,22 +253,22 @@ fun tcteKindCheckGen() = let
                           of [] => k 
                            | _ => tkApp(k, map g ts)
                  in case (tk_outX nk)
-                     of TK_FUN(a, b) => 
-                        let val arg =
-                                case a
+                     of TK_FUN(argk, resk) => 
+                        let val argk' =
+                                case argk
                                   of [x] => x
-                                   | _ => tkc_seq a
+                                   | _ => tkc_seq argk
                               (* "sequencize" the domain to make it comparable
-                               * to b *)
+                               * to resk *)
                         in
 			    (* Kind check recursive tyc app ??*)
                             (* [KM ???] seems bogus if arg is a proper subkind,
                              * but probably ok if tkSubkind is really equivalence *)
-                            if tkSubkind(arg, b) then (* order? *)
-                                (if n = 1 then b else tkSel(arg, i))
+                            if tkSubkind(argk', resk) then (* order? *)
+                                (if n = 1 then resk else tkSel(resk, i))
                             else raise KindChk "Recursive app mismatch"
                         end
-                      | _ => raise KindChk "FIX with no generator"
+                      | _ => raise KindChk "FIX with bad generator"
                 end
               | TC_ABS tc =>
                 (tkAssertIsMono (g tc);
@@ -272,10 +286,10 @@ fun tcteKindCheckGen() = let
               | TC_TOKEN(_, tc) =>
                 (tkAssertIsMono (g tc);
                  tkc_mono)
-              | TC_PARROW _ => bug "unexpected TC_PARROW in tkTyc"
-           (* | TC_ENV _ => bug "unexpected TC_ENV in tkTyc" *)
+              | TC_PARROW _ => bug "unexpected TC_PARROW in tcKindChk"
+           (* | TC_ENV _ => bug "unexpected TC_ENV in tcKindChk" *)
 	      | TC_ENV(body, 0, j, teEmpty) => 
-		  (tkTyc (List.drop(kenv,j)) body 
+		  (tcKindChk (List.drop(kenv,j)) body 
 		   handle Subscript => 
 			  bug "[Env]: dropping too many frames")
 	      | TC_ENV(body, i, j, env) =>
@@ -289,63 +303,64 @@ fun tcteKindCheckGen() = let
 			   bindToKinds b :: ke
 		       val bodyKenv = 
 			   foldr addBindToKEnv kenv' (teToBinders env)
-		   in chkKindEnv(env,j,kenv);
-		      tkTyc bodyKenv body
+		   in teKindChk kenv (env,j);
+		      tcKindChk bodyKenv body
 		   end) 
-            (*  | TC_IND _ =>  bug "unexpected TC_IND in tkTyc" *)
+            (*  | TC_IND _ =>  bug "unexpected TC_IND in tcKindChk" *)
 	      | TC_IND(newtyc, oldtycI) =>
 		  let val newtycknd = g newtyc
 		  in   
 		      if tk_eq(newtycknd, mkI oldtycI) 
 		      then newtycknd
-		      else bug "tkTyc[IND]: new tyc and old tycI kind mismatch"
+		      else bug "tcKindChk[IND]: new and old kind mismatch"
 		  end 
-              | TC_CONT _ => bug "unexpected TC_CONT in tkTyc"
+              | TC_CONT _ => bug "unexpected TC_CONT in tcKindChk"
         fun mk () =
 	    mkI (tc_outX t)
     in
         Memo.recallOrCompute (dict, kenv, t, mk)
         handle tkUnbound => raise KindChk "tkUnbound"
-    end
-    and chkKindEnv(env : tycEnv,j,kenv : tkindEnv) : unit =
+    end (* function tcKindChk *)
+
+    and teKindChk(kenv: tkindEnv) (env: tycEnv, j: int) : unit =
 	let 
 	    fun chkBinder(Lamb _) = ()
 	      | chkBinder(Beta(j',args,ks)) = 
 		let 
 		    val kenv' = List.drop(kenv, j-j')
-		    val argks = map (fn t => tkTyc kenv' t) args
+		    val argks = map (fn t => tcKindChk kenv' t) args
 		in if tksSubkind(ks, argks)
 		   then ()
-		   else bug "chkKindEnv: Beta binder kinds mismatch"
+		   else bug "teKindChk: Beta binder kinds mismatch"
 		end
 		handle Subscript => 
-		       bug "tkTyc[Env]: dropping too many frames"
+		       bug "tcKindChk[Env]: dropping too many frames"
 	in app chkBinder (teToBinders env)
-	end (* function chkKindEnv *)
+	end (* function teKindChk *)
+
+    (* assert that the kind of `tc' is a subkind of `k' in `kenv' *)
+    fun tcKindVer kenv (k, tc) =
+        tkAssertSubkind (tcKindChk kenv tc, k)
 in
-    (tkTyc, chkKindEnv)
+    (tcKindChk, tcKindVer, teKindChk)
 end (* function tcteKindCheckGen *)
 
 fun tcKindCheckGen() = 
-    case tcteKindCheckGen() 
-     of (tcKindChk, _) => tcKindChk
+    #1(tcteKindCheckGen())
       
- 
-(* assert that the kind of `tc' is a subkind of `k' in `kenv' *)
 fun tcKindVerifyGen() =
-    let val tkTyc = tcKindCheckGen()
-        fun tkChk kenv (k, tc) =
-            tkAssertSubkind (tkTyc kenv tc, k)
-    in tkChk
-    end (* function tkChkGen *)
-
+    #2(tcteKindCheckGen())
+ 
+fun teKindCheckGen() =
+    #3(tcteKindCheckGen())
+ 
 (* ltKindCheckGen : unit -> tkindEnv -> lty -> tkind *)
 fun ltKindCheckGen () = 
-let val (tkChk, chkKindEnv) = tcteKindCheckGen()
+let val (tcKindChk, _, teKindChk) = tcteKindCheckGen()
     fun ltyIChk (kenv : tkindEnv) (ltyI : ltyI) =
         (case ltyI 
           of LT_TYC(tyc) => 
-               (tkAssertIsMono (tkChk kenv tyc); tkc_mono)
+               (tkAssertIsMono (tcKindChk kenv tyc); tkc_mono)
            | LT_STR(ltys) => tkc_seq(map (ltyChk' kenv) ltys)
            | LT_FCT(paramLtys, rngLtys) => 
                let val paramks = map (ltyChk' kenv) paramLtys
@@ -379,7 +394,7 @@ let val (tkChk, chkKindEnv) = tcteKindCheckGen()
                         bindToKinds b :: ke
                     val bodyKenv = 
                         foldr addBindToKEnv kenv' (teToBinders env)
-                in chkKindEnv(env,j,kenv);
+                in teKindChk kenv (env,j);
                    ltyChk' bodyKenv body
                 end))
     and ltyChk' kenv lty = ltyIChk kenv (lt_outX lty)

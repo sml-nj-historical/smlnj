@@ -74,7 +74,7 @@ fun tycEnvFlatten(tycenv) =
         | SOME(elem, rest) => elem::tycEnvFlatten(rest))
 
 fun ppKeFrame pd ppstrm ks =
-    ppList ppstrm {sep=",", pp=ppTKind pd} ks)
+    ppList ppstrm {sep=",", pp=ppTKind pd} ks
 
 fun ppKindEnv pd ppstrm kenv =
     if pd < 1 then pps ppstrm "<tkenv>" else

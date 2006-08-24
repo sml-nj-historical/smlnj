@@ -67,7 +67,7 @@ fun tc_bug tc s = bug (s ^ "\n\n" ^ (tc_print tc) ^ "\n\n")
 fun lt_bug lt s = bug (s ^ "\n\n" ^ (lt_print lt) ^ "\n\n")
 
 val ltKindChk = LtyKindChk.ltKindCheckGen ()
-val (tcKindChk,teKindChk) = LtyKindChk.tcteKindCheckGen ()
+val (tcKindChk,tcKindVer,teKindChk) = LtyKindChk.tcteKindCheckGen ()
 
 val tkc_mono = LT.tkc_mono
 
