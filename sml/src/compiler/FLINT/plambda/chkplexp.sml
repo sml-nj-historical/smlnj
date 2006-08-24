@@ -4,7 +4,8 @@
 signature CHKPLEXP = 
 sig 
 
-val checkLty : PLambda.lexp * int -> bool
+val checkLtyTop : PLambda.lexp * int -> bool
+val checkLty : PLambda.lexp * PLambdaType.ltyEnv * int -> bool
 val newlam_ref : PLambda.lexp ref
 val fname_ref : string ref
 
@@ -77,7 +78,7 @@ fun laterPhase i = (i > 20)
 (****************************************************************************
  *           MAIN FUNCTION --- val checkLty : PLambda.lexp -> bool          *
  ****************************************************************************)
-fun checkLty (lexp, phase) = 
+fun checkLty (lexp, venv : LT.ltyEnv, phase) = 
 let 
 
 val ltEquiv = LT.lt_eqv
@@ -369,8 +370,10 @@ fun check (kenv, venv, d) =
 
 in 
 anyerror := false;
-check (LT.initTkEnv, LT.initLtyEnv, DI.top) lexp; !anyerror
+check (LT.initTkEnv, venv, DI.top) lexp; !anyerror
 end (* end of function checkLty *)
+
+fun checkLtyTop(lexp, phase) = checkLty(lexp, LT.initLtyEnv, phase)
 
 end (* toplevel local *)
 end (* structure CheckLty *)

@@ -1482,7 +1482,7 @@ val (plexp, imports) = wrapPidInfo (body, PersMap.listItemsi (!persmap))
 val _ = complain EM.WARN ">>translate typecheck" EM.nullErrorBody
 val _ = print "**** Translate: typechecking plexp ****\n"
 val _ = PPLexp.printLexp plexp
-val _ = ChkPlexp.checkLty(plexp,0)
+val _ = ChkPlexp.checkLtyTop(plexp,0)
 val _ = print "**** Translate: finished typechecking plexp ****\n"
 
 fun prGen (flag,printE) s e =
