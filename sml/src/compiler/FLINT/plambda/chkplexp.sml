@@ -254,7 +254,7 @@ fun check (kenv, venv, d) =
 		   (* kind check t and ts *)
 		       (ltyChkenv " PRIM " t; 
 			map (tycChk kenv) ts;
-			debugmsg " PRIM \n";
+			debugmsg " PRIM";
 			ltTyApp le "PRIM" (t, ts, kenv))
 		   
 		 | FN(v, t, e1) =>
@@ -263,10 +263,10 @@ fun check (kenv, venv, d) =
                        val venv' = LT.ltInsert(venv, v, t, d)
                        val res = check (kenv, venv', d) e1
                        val _ = ltyChkenv "FN rng" res
-		       val _ = debugmsg " FN \n"
+		       val _ = debugmsg " FN"
 		       val fnlty = ltFun(t, res) (* handle both functions and functors *)
 		       val  _ = ltyChkenv "FNlty " fnlty
-		       val _ = debugmsg " FN 2 \n"
+		       val _ = debugmsg " FN 2"
 		   in fnlty
 		   end
 		   
@@ -281,7 +281,7 @@ fun check (kenv, venv, d) =
                        val nts = map (check (kenv, venv', d)) es
                        val _ = map (ltyChkenv "FIX body types") nts
                        val _ = app2(ltMatch le "FIX1", ts, nts)
-		       val _ = debugmsg " FIX \n"
+		       val _ = debugmsg " FIX"
 		   in check (kenv, venv', d) eb
 		   end
 		   
@@ -290,7 +290,7 @@ fun check (kenv, venv, d) =
                        val targ = loop e2
 		       val _ = ltyChkenv "APP operator " top
 		       val _ = ltyChkenv "APP argument " targ
-		       val _ = debugmsg " APP \n"
+		       val _ = debugmsg " APP"
 		   in 
                        ltFnApp le "APP" (top, targ)
 		   end
@@ -301,7 +301,7 @@ fun check (kenv, venv, d) =
                        val venv' = LT.ltInsert(venv, v, t1, d)
 		       val bodyLty = check (kenv, venv', d) e2
 		       val _ = ltyChkenv "LET body" bodyLty
-		       val _ = debugmsg "LET \n"
+		       val _ = debugmsg "LET"
 		   in bodyLty
 		   end
 		   
@@ -309,7 +309,7 @@ fun check (kenv, venv, d) =
 		   let val kenv' = LT.tkInsert(kenv, ks)
                        val lt = check (kenv', venv, DI.next d) e
                        val _ = ltyChkMsgLexp "TFN body" (ks::kenv) lt
-		       val _ = debugmsg " TFN\n"
+		       val _ = debugmsg " TFN"
 		   in LT.ltc_poly(ks, [lt])
 		   end
 		   
@@ -318,7 +318,7 @@ fun check (kenv, venv, d) =
                        val _ = map ((ltyChkenv "TAPP args") o LT.ltc_tyc) ts  
 				   (* kind check type args *)
                        val _ = ltyChkenv "TAPP type function " lt
-		       val _ = debugmsg " TAPP \n"
+		       val _ = debugmsg " TAPP"
 		   in  ltTyApp le "TAPP" (lt, ts, kenv)
 		   end
 		   
@@ -332,7 +332,7 @@ fun check (kenv, venv, d) =
 		       val _ = ltyChkenv " PACK-A " argTy
 		       val bodyTy = loop e
 		       val _ = ltyChkenv " PACK body " bodyTy
-		       val _ = debugmsg "PACK \n"
+		       val _ = debugmsg "PACK"
 		   in ltMatch le "PACK-M" (argTy, loop e);
                       ltTyApp le "PACK-R" (lt, nts, kenv)
 		   end
@@ -342,7 +342,7 @@ fun check (kenv, venv, d) =
                        val _ = ltyChkenv "CON 1 " t1
                        val t2 = loop e
                        val _ = ltyChkenv "CON 2 " t2
-		       val _ = debugmsg " CON\n"
+		       val _ = debugmsg " CON"
 		   in ltFnApp le "CON-A" (t1, t2)
 		   end
 		       (*
@@ -355,7 +355,7 @@ fun check (kenv, venv, d) =
 		 | RECORD el => 
 		   let val elemsltys = map loop el
 		       val _ = map (ltyChkenv "RECORD elem ") elemsltys
-		       val _ = debugmsg " RECORD \n"
+		       val _ = debugmsg " RECORD"
 		   in ltTup elemsltys
 		   end
 		 | SRECORD el => 
@@ -368,14 +368,14 @@ fun check (kenv, venv, d) =
 		   in ltyChkenv "VECTOR index " (LT.ltc_tyc t);
                       map (ltyChkenv "VECTOR vector ") ts;
                       app (fn x => ltMatch le "VECTOR" (x, LT.ltc_tyc t)) ts; 
-                      debugmsg " VECTOR\n "; 
+                      debugmsg " VECTOR "; 
 		      ltVector t
 		   end
 		   
 		 | SELECT(i,e) => 
 		    let val lty = loop e
 			val _ = ltyChkenv " SELECT " lty
-			val _ = debugmsg " SELECT \n"
+			val _ = debugmsg " SELECT"
 		    in 
 			ltSelect le "SEL" (lty, i)
 		    end  
@@ -388,7 +388,7 @@ fun check (kenv, venv, d) =
 			   end
                        val ts = map h cl
                        val _ = map (ltyChkenv "SWITCH branch ") ts
-		       val _ = debugmsg "SWITCH\n"
+		       val _ = debugmsg "SWITCH"
 		   in (case ts
 			of [] => bug "empty switch in checkLty"
 			 | a::r => 
@@ -410,7 +410,7 @@ fun check (kenv, venv, d) =
 		 | RAISE(e,t) => 
 		   let val exlty = loop e
 		       val _ = ltyChkenv "RAISE " exlty
-		       val _ = debugmsg "RAISE\n"
+		       val _ = debugmsg "RAISE"
 		   in
 		       (ltMatch le "RAISE" (exlty, ltExn); t)
 		   end
@@ -421,7 +421,7 @@ fun check (kenv, venv, d) =
 		       val _  = ltyChkenv "HANDLE handler " t2
 		       val arg = ltFnAppR le "HANDLE" (loop e2, t1)
 		       val _  = ltyChkenv "HANDLE arg " arg
-		       val _ = debugmsg "HANDLE\n"
+		       val _ = debugmsg "HANDLE"
 		   in t1 (* [GK] Is this right?? *)
 		   end
 		       

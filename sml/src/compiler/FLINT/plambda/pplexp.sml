@@ -28,6 +28,7 @@ local structure A = Absyn
       open PLambda PrintUtil 
 in 
 
+val depth = ref 20
 val say = Control.Print.say
 fun sayrep rep = say (DA.prRep rep)
 val lvarName = LambdaVar.lvarName
@@ -111,12 +112,13 @@ fun complex le =
   end
 
 fun printLexp l = 
-  let fun prLty t = say (LT.lt_print t)
+  let fun prLty t = PPN.with_default_pp
+			(fn ppstrm => (PPLty.ppLty (!depth) ppstrm t))
       fun prTyc t = PPN.with_default_pp 
-			(fn ppstrm => (PPLty.ppTyc 20 ppstrm t;
+			(fn ppstrm => (PPLty.ppTyc (!depth) ppstrm t;
                                        PPN.flushStream ppstrm))
-                     (* say (LT.tc_print t) *)
-      fun prKnd k = say (LT.tk_print k)
+      fun prKnd k = PPN.with_default_pp
+			(fn ppstrm => (PPLty.ppTKind (!depth) ppstrm k))
 
       fun plist (p, [], sep) = ()
         | plist (p, a::r, sep) = 
