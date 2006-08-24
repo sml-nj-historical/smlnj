@@ -73,6 +73,19 @@ fun tycEnvFlatten(tycenv) =
        of NONE => []
         | SOME(elem, rest) => elem::tycEnvFlatten(rest))
 
+fun ppKeFrame pd ppstrm ks =
+    ppList ppstrm {sep=",", pp=ppTKind pd} ks)
+
+fun ppKindEnv pd ppstrm kenv =
+    if pd < 1 then pps ppstrm "<tkenv>" else
+    let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
+     in pps "[";
+        openHOVBox 1;
+        ppList ppstrm {sep=",",pp=ppKeFrame (pd-1)} kenv;
+        closeBox ();
+        pps "]"
+    end
+
 fun ppTEBinder pd ppstrm (binder: Lty.teBinder) =
     if pd < 1 then pps ppstrm "<teBinder>" else
     let val {openHOVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
@@ -90,7 +103,7 @@ fun ppTEBinder pd ppstrm (binder: Lty.teBinder) =
 		)
 	in if pd < 2 then () 
 	   else (pps " : ";
-		 ppList ppstrm {sep="*", pp=ppTKind (pd-1)} ks)
+                 ppKeFrame (pd-1) ppstrm ks)
 	end;
        closeBox()
     end (* function ppTEBinder *)
@@ -284,6 +297,7 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	     closeBox())
     in ppTycI (Lty.tc_outX tycon)
     end (* ppTyc *)
+
 
 fun ppTycEnv pd ppstrm (tycEnv : Lty.tycEnv) =
     if pd < 1 then pps ppstrm "<tycEnv>" else

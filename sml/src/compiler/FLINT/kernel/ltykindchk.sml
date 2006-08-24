@@ -7,23 +7,20 @@ sig
 
   exception KindChk of string
 
-  (* assert that k1 is a subkind of k2 *)
   val tkAssertSubkind : Lty.tkind * Lty.tkind -> unit
+  (* tkAssertSubkind(k1,k2): assert that k1 is a subkind of k2 *)
 
-  (* assert that a kind is monomorphic *)
   val tkAssertIsMono : Lty.tkind -> unit
+  (* assert that a kind is monomorphic *)
 
-  (* select the ith element (0 based) from a kind sequence *)
   val tkSel : Lty.tkind * int -> Lty.tkind
+  (* select the ith element (0 based) from a kind sequence *)
 
-  val tks_eqv : Lty.tkind list * Lty.tkind list -> bool
-
-  (* tkApp: tkind * tkind list
-   * tkApp(tk,tks): check the validity of an application of a
+  val tkApp : Lty.tkind * Lty.tkind list -> Lty.tkind
+  (* tkApp(tk,tks): check the validity of an application of a
    * type function of kind `tk' to a list of arguments of kinds `tks'.
    * Returns the result kind if valid, raises KindChk otherwise.
    *)
-  val tkApp : Lty.tkind * Lty.tkind list -> Lty.tkind
 
   val tcKindCheckGen :   unit -> (Lty.tkindEnv -> Lty.tyc -> Lty.tkind)
   val tcKindVerifyGen :  unit -> (Lty.tkindEnv -> (Lty.tkind * Lty.tyc) -> unit)
@@ -65,7 +62,10 @@ fun tkSel (tk, i) =
         handle Subscript => raise KindChk "Invalid TC_SEQ index")
      | _ => raise KindChk "Projecting out of non-tyc sequence")
 
+(* tks_eqv: not used, and not exported -- was used in superceded version 
+ * of tkApp that used it instead of tksSubkind
 fun tks_eqv (ks1, ks2) = tk_eq(tkc_seq ks1, tkc_seq ks2)
+ *)
 
 (* tkApp: tkind * tkind list
  * check the application of a type function of
@@ -206,9 +206,15 @@ fun tcteKindCheckGen() = let
         val g = tkTyc kenv
         (* how to compute the kind of a tyc *)
 	fun mkI tycI =
-            case tycI of
-                TC_VAR (i, j) =>
-                tkLookup (kenv, i, j)
+            case tycI
+             of TC_VAR (i, j) =>
+                (tkLookup (kenv, i, j)
+                 handle tkUnbound =>
+                  (with_pp (fn s =>
+                     (PU.pps s "KindChk: unbound tv: ";
+                      PPL.ppTycI 10 s tycI;
+                      PP.newline s));
+                   raise KindChk "unbound tv")
               | TC_NVAR _ => 
                 bug "TC_NVAR not supported yet in tkTyc"
               | TC_PRIM pt =>
@@ -232,9 +238,8 @@ fun tcteKindCheckGen() = let
                         case ts
                           of [] => k 
                            | _ => tkApp(k, map g ts)
-                in
-                    case (tk_outX nk) of
-                        TK_FUN(a, b) => 
+                 in case (tk_outX nk)
+                     of TK_FUN(a, b) => 
                         let val arg =
                                 case a
                                   of [x] => x
