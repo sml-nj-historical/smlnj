@@ -38,7 +38,7 @@ fun ppList ppstrm {sep: string, pp : PP.stream -> 'a -> unit} (list: 'a list) =
       {front = fn ppstrm => (PP.string ppstrm "["),
        back = fn ppstrm => (PP.string ppstrm "]"),
        sep = fn ppstrm => (PP.string ppstrm sep;
-		           PP.break ppstrm {nsp=1, offset=0}),
+		           PP.break ppstrm {nsp=0, offset=0}),
        style = INCONSISTENT,
        pr = pp}
       list
@@ -50,8 +50,8 @@ fun ppTKind pd ppstrm (tk : Lty.tkind) =
     let val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm
         val ppTKind' = ppTKind (pd-1) ppstrm
 	val ppList' = ppList ppstrm
-	fun ppTKindI(Lty.TK_MONO) = pps "MK"
-	  | ppTKindI(Lty.TK_BOX) = pps "BK"
+	fun ppTKindI(Lty.TK_MONO) = pps "M"
+	  | ppTKindI(Lty.TK_BOX) = pps "B"
 	  | ppTKindI(Lty.TK_FUN (argTkinds, resTkind)) = 
 	      (* res_tkind is a TK_SEQ wrapping some tkinds 
 	       * These are produced by Elaborate/modules/instantiate.sml 
@@ -64,7 +64,7 @@ fun ppTKind pd ppstrm (tk : Lty.tkind) =
 	      closeBox())
 	  | ppTKindI(Lty.TK_SEQ tkinds) =
 	     (openHOVBox 1;
-	       pps "SK";
+	       pps "S";
 	       ppList' {sep=",", pp=ppTKind (pd-1)} tkinds;
 	      closeBox())
      in ppTKindI (Lty.tk_outX tk)
@@ -81,11 +81,9 @@ fun ppKeFrame pd ppstrm ks =
 fun ppKindEnv pd ppstrm kenv =
     if pd < 1 then pps ppstrm "<tkenv>" else
     let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
-     in pps "[";
-        openHOVBox 1;
+     in openHOVBox 1;
         ppList ppstrm {sep=",",pp=ppKeFrame (pd-1)} kenv;
-        closeBox ();
-        pps "]"
+        closeBox ()
     end
 
 fun ppTEBinder pd ppstrm (binder: Lty.teBinder) =
@@ -268,6 +266,7 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	     pps ",";
 	     PP.break ppstrm {nsp=1,offset=0};
 	     ppList' {sep=",", pp=ppTEBinder (pd-1)} (tycEnvFlatten tenv);
+             pps ")";
 	     closeBox())
     in ppTycI (Lty.tc_outX tycon)
     end (* ppTyc *)
@@ -295,7 +294,7 @@ fun ppLty pd ppstrm (lty: Lty.lty) =
 	val ppLty' = ppLty (pd-1) ppstrm
 
         fun ppLtyI (Lty.LT_TYC tc) =
-            (pps "TYC("; ppTyc pd ppstrm tc; pps "0")
+            (pps "TYC("; ppTyc pd ppstrm tc; pps ")")
           | ppLtyI (Lty.LT_STR ltys) =
             (pps "STR("; ppList' {sep=",",pp=ppLty (pd-1)} ltys; pps ")")
           | ppLtyI (Lty.LT_FCT (args,res)) =
@@ -304,7 +303,7 @@ fun ppLty pd ppstrm (lty: Lty.lty) =
              ppList' {sep=",",pp=ppLty (pd-1)} res; pps ")")
           | ppLtyI (Lty.LT_POLY (ks,ltys)) =
 	    (openHOVBox 1;
-	     pps "FN(";
+	     pps "P0L(";
 	     ppList' {sep="*", pp=ppTKind (pd-1)} ks;
 	     pps ",";
 	     PP.break ppstrm {nsp=1,offset=0};
@@ -331,6 +330,7 @@ fun ppLty pd ppstrm (lty: Lty.lty) =
 	     pps ",";
 	     PP.break ppstrm {nsp=1,offset=0};
 	     ppList' {sep=",", pp=ppTEBinder (pd-1)} (tycEnvFlatten tenv);
+             pps ")";
 	     closeBox())
     in ppLtyI (Lty.lt_outX lty)
     end (* ppLty *)

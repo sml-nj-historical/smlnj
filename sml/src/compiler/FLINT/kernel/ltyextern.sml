@@ -34,6 +34,10 @@ local structure PT = PrimTyc
 
 in
 
+structure PP = PrettyPrintNew
+structure PU = PPUtilNew
+val with_pp = PP.with_default_pp
+
 open LtyBasic
 
 (** tkind constructors *)
@@ -63,8 +67,17 @@ val tkw_fun = Lty.tkw_fun
 val tkc_int = Lty.tkc_int
 val tkc_arg = Lty.tkc_arg
 
-fun tc_bug tc s = bug (s ^ "\n\n" ^ (tc_print tc) ^ "\n\n")
-fun lt_bug lt s = bug (s ^ "\n\n" ^ (lt_print lt) ^ "\n\n")
+fun tc_bug tc msg = 
+    (with_pp (fn ppstm =>
+      (PU.pps ppstm msg; PP.newline ppstm;
+       PPLty.ppTyc 20 ppstm tc; PP.newline ppstm));
+     bug "LtyExtern.tc_bug")
+
+fun lt_bug lt msg =
+    (with_pp (fn ppstm =>
+      (PU.pps ppstm msg; PP.newline ppstm;
+       PPLty.ppLty 20 ppstm lt; PP.newline ppstm));
+     bug "LtyExtern.lt_bug")
 
 val ltKindChk = LtyKindChk.ltKindCheckGen ()
 val (tcKindChk,tcKindVer,teKindChk) = LtyKindChk.tcteKindCheckGen ()
@@ -89,8 +102,11 @@ fun lt_inst (lt : lty, ts : tyc list) =
              end
          | (_, []) => [nt]   (* this requires further clarifications !!! *)
          | (lt,ts) => 
-           (print "lt_inst arg: "; print(lt_print (lt_inj lt)); print "\n";
-            print ("ts length: "); print(Int.toString(length ts)); print "\n";
+           (with_pp (fn ppstm =>
+              (PU.pps ppstm "lt_inst arg:"; PP.newline ppstm;
+               PPLty.ppLty 20 ppstm (lt_inj lt); PP.newline ppstm;
+               PU.pps ppstm "ts length: "; 
+               PU.ppi ppstm (length ts); PP.newline ppstm));
             bug "incorrect lty instantiation in lt_inst"))
   end 
 
@@ -189,10 +205,6 @@ fun ltw_iscont (lt, f, g, h) =
          | LT.LT_TYC tc => 
              (case tc_out tc of LT.TC_CONT x => g x | _ => h lt)
          | _ => h lt)
-
-
-fun tc_bug tc s = bug (s ^ "\n\n" ^ (tc_print tc) ^ "\n\n")
-fun lt_bug lt s = bug (s ^ "\n\n" ^ (lt_print lt) ^ "\n\n")
 
 (** other misc utility functions *)
 fun tc_select(tc, i) = 

@@ -142,6 +142,7 @@ val rf_eqv    : rflag * rflag -> bool = LK.rf_eqv
 val tc_eqv_x  : tyc * tyc -> bool = LK.tc_eqv_x
 val lt_eqv_x  : lty * lty -> bool = LK.lt_eqv_x
 
+
 (***************************************************************************
  *            UTILITY FUNCTIONS FOR PRETTY PRINTING                        *
  ***************************************************************************)
@@ -207,6 +208,7 @@ fun lt_print (x : lty) =
      | LT.LT_CONT ts => "CNT(" ^ (plist(lt_print, ts)) ^ ")"
      | LT.LT_IND _ => bug "unexpected LT_IND in lt_print"
      | LT.LT_ENV _ => bug "unexpected LT_ENV in lt_print")
+
 
 (** finding out the depth for a tyc's innermost-bound free variables *)
 val tc_depth : tyc * depth -> depth = LK.tc_depth

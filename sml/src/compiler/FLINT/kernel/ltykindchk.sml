@@ -41,6 +41,7 @@ open Lty
 
 fun bug s = ErrorMsg.impossible ("LtyKindChk:" ^ s)
 
+val pd = ref 10
 val with_pp = PP.with_default_pp
 
 (********************************************************************
@@ -226,8 +227,13 @@ let val dict = Memo.newDict()
                  handle tkUnbound =>
                   (with_pp (fn s =>
                      (PU.pps s "KindChk: unbound tv: ";
-                      PPLty.ppTyc 10 s (tc_injX tycI);
-                      PP.newline s));
+                      PPLty.ppTyc (!pd) s (tc_injX tycI);
+                      PP.newline s;
+                      PU.pps s "kenv: ";
+                      PP.openHOVBox s (PP.Rel 0);
+                      PPLty.ppKindEnv (!pd) s kenv;
+                      PP.newline s;
+                      PP.closeBox s));
                    raise KindChk "unbound tv"))
               | TC_NVAR _ => 
                 bug "TC_NVAR not supported yet in tcKindChk"
@@ -315,6 +321,7 @@ let val dict = Memo.newDict()
 		      else bug "tcKindChk[IND]: new and old kind mismatch"
 		  end 
               | TC_CONT _ => bug "unexpected TC_CONT in tcKindChk"
+
         fun mk () =
 	    mkI (tc_outX t)
     in
@@ -364,13 +371,13 @@ let val (tcKindChk, _, teKindChk) = tcteKindCheckGen()
            | LT_STR(ltys) => tkc_seq(map (ltyChk' kenv) ltys)
            | LT_FCT(paramLtys, rngLtys) => 
                let val paramks = map (ltyChk' kenv) paramLtys
-                   val tenv' = paramks :: kenv
+(*                   val kenv' = tkInsert(kenv,paramks) *)
                in 
                    tkc_fun(paramks,
-                          tkc_seq(map (ltyChk' tenv') rngLtys))
+                          tkc_seq(map (ltyChk' kenv) rngLtys))
                end
            | LT_POLY(ks, ltys) => 
-               tkc_seq(map (ltyChk' (ks::kenv)) ltys)
+               tkc_seq(map (ltyChk' (tkInsert(kenv,ks))) ltys)
                (* ??? *)
            | LT_CONT(ltys) => 
                tkc_seq(map (ltyChk' kenv) ltys)
@@ -391,13 +398,18 @@ let val (tcKindChk, _, teKindChk) = tcteKindCheckGen()
                     fun bindToKinds(Lamb(_,ks)) = ks
                       | bindToKinds(Beta(_,_,ks)) = ks
                     fun addBindToKEnv(b,ke) = 
-                        bindToKinds b :: ke
+                        tkInsert(ke,bindToKinds b)
                     val bodyKenv = 
                         foldr addBindToKEnv kenv' (teToBinders env)
                 in teKindChk kenv (env,j);
                    ltyChk' bodyKenv body
                 end))
-    and ltyChk' kenv lty = ltyIChk kenv (lt_outX lty)
+    and ltyChk' kenv lty =
+         ltyIChk kenv (lt_outX lty)
+         handle x => 
+           (with_pp (fn ppstrm => (PPLty.ppLty (!pd) ppstrm lty;
+                                   PP.newline ppstrm));
+            raise x)
  in ltyChk'
 end (* function ltKindCheckGen *)	   
 

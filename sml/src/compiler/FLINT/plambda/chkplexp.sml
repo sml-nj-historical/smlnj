@@ -34,6 +34,11 @@ val fname_ref : string ref = ref "yyy"
 fun bug s = ErrorMsg.impossible ("CheckLty: "^s)
 val say = Control.Print.say
 
+structure PP = PrettyPrintNew
+structure PU = PPUtilNew
+val with_pp = PP.with_default_pp
+val pd = ref 20
+
 val anyerror = ref false
 val clickerror = fn () => (anyerror := true)
 
@@ -76,9 +81,21 @@ fun simplify(le,0) = STRING "<dummy>"
       end (* end of simplify *)
 
 (** utility functions for printing *)
-val tkPrint = say o LT.tk_print
-val tcPrint = say o LT.tc_print
-val ltPrint = say o LT.lt_print
+fun tkPrint tk =
+    with_pp (fn stm =>
+     (PPLty.ppTKind (!pd) stm tk;
+      PP.newline stm))
+
+fun tcPrint tc =
+    with_pp (fn stm =>
+     (PPLty.ppTyc (!pd) stm tc;
+      PP.newline stm))
+
+fun ltPrint lt =
+    with_pp (fn stm =>
+     (PPLty.ppLty (!pd) stm lt;
+      PP.newline stm))
+
 fun lePrint le = PPLexp.printLexp (simplify(le, 3))
 
 (*** a hack for type checking ***)
