@@ -296,22 +296,26 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
             let fun flist([v],[t],[l]) =
                       let val lv = lvarName v
                           val len = size lv + 2
-                       in pps lv; pps " : ";prLty t;pps " :: ";
-                          indent len ; ppl l; undent len
+                       in pps lv; pps ": "; ppLty' t; pps " :: ";
+                          ppl l
                       end
                   | flist(v::vs,t::ts,l::ls) =
                       let val lv = lvarName v
                           val len = size lv + 2
-                       in pps lv; pps " : "; prLty t; pps " :: ";
-                          indent len ; ppl l; undent len;
-                          newline(); dent(); flist(vs,ts,ls)
+                       in pps lv; pps ": "; ppLty' t; pps " :: ";
+                          ppl l; newline();
+                          flist(vs,ts,ls)
                       end
                   | flist(nil,nil,nil) = ()
                   | flist _ = bug "unexpected cases in flist"
 
-             in pps "FIX("; indent 4; flist(varlist,ltylist,lexplist); 
-                undent 4; newline(); dent(); pps "IN  ";
-                indent 4; ppl lexp; pps ")"; undent 4
+             in openHOVBox 0;
+                pps "FIX(";
+                openHVBox 0; flist(varlist,ltylist,lexplist); closeBox();
+                newline(); pps "IN ";
+                ppl lexp;
+                pps ")";
+                closeBox()
             end
 
         | ppl (RAISE(l,t)) = 
@@ -350,29 +354,31 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
   end
 
 fun printMatch env ((p,r)::more) =
-      (PP.with_pp (ErrorMsg.defaultConsumer())
-       (fn ppstrm =>
-        (PPAbsyn.ppPat env ppstrm (p,!Control.Print.printDepth);
-         PP.newline ppstrm));
-       pps " => "; ppLexp 20 ppstrm r; printMatch env more)
+    let val pd = !Control.Print.printDepth)
+    in (PP.with_pp (ErrorMsg.defaultConsumer())
+         (fn ppstrm =>
+          (PPAbsyn.ppPat env ppstrm (p,pd);
+           PP.newline ppstrm));
+         pps " => "; ppLexp pd ppstrm r; printMatch env more)
   | printMatch _ [] = ()
 
-fun printFun l v =
+fun ppFun ppstrm l v =
   let fun last (DA.LVAR x) = x 
         | last (DA.PATH(r,_)) = last r
         | last _ = bug "unexpected access in last"
 
       fun find le =
         case le
-          of VAR w => if (v=w)
-                      then (pps("VAR " ^ lvarName v ^ " is free in <lexp>\n");())
-                      else ()
-           | l as FN(w,_,b) => if v=w then printLexp l else find b
-           | l as FIX(vl,_,ll,b) => 
-             if List.exists (fn w => v=w) vl then printLexp l
+          of VAR w => 
+               if (v=w)
+               then (pps("VAR " ^ lvarName v ^ " is free in <lexp>\n");())
+               else ()
+           | l as FN(w,_,b) => if v=w then ppLexp 20 ppstrm l else find b
+           | l as FIX(vl,_,ll,b) =>
+             if List.exists (fn w => v=w) vl then ppLexp 20 ppstrm l
              else (app find ll; find b)
            | APP(l,r) => (find l; find r)
-           | LET(w,l,r) => (if v=w then printLexp l else find l; find r)
+           | LET(w,l,r) => (if v=w then ppLexp 20 ppstrm l else find l; find r)
            | PACK(_,_,_,r) => find r
            | TFN(_, r) => find r
            | TAPP(l, _) => find l
@@ -434,5 +440,3 @@ fun stringTag (VAR _) = "VAR"
 
 end (* toplevel local *)
 end (* struct PPLexp *)
-
-

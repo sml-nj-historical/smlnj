@@ -1,14 +1,16 @@
 (* Copyright 1997 by Bell Laboratories *)
 (* pplexp.sml *)
 
+(* _Real_ pretty printing for plambda lexp *)
+
 signature PPLEXP =
 sig
 
-  val printCon : PLambda.con -> unit
-  val printLexp : PLambda.lexp -> unit
+  val conToString : PLambda.con -> string
+  val ppLexp : int -> PrettyPrintNew.stream -> PLambda.lexp -> unit
   val printMatch : StaticEnv.staticEnv ->  
                        (Absyn.pat * PLambda.lexp) list -> unit
-  val printFun : PLambda.lexp -> LambdaVar.lvar -> unit
+  val printFun : PrettyPrintNew.stream -> PLambda.lexp -> LambdaVar.lvar -> unit
 
   val stringTag : PLambda.lexp -> string
 
@@ -21,63 +23,33 @@ struct
 local structure A = Absyn
       structure DA = Access
       structure S = Symbol
-      structure PP = PrettyPrint
-      structure PPN = PrettyPrintNew
-      structure PU = PrintUtil
+      structure PP = PrettyPrintNew
+      structure PU = PPUtilNew
       structure LT = PLambdaType
-      open PLambda PrintUtil 
+      open PLambda PPUtilNew
 in 
 
-val depth = ref 20
-val say = Control.Print.say
-fun sayrep rep = say (DA.prRep rep)
-val lvarName = LambdaVar.lvarName
+fun bug s = ErrorMsg.impossible ("PPLexp: "^s)
 
-fun bug s = ErrorMsg.impossible ("MCprint: "^s)
+val lvarName = LambdaVar.lvarName
 
 fun app2(f, [], []) = ()
   | app2(f, a::r, b::z) = (f(a, b); app2(f, r, z))
   | app2(f, _, _) = bug "unexpected list arguments in function app2"
   
-val margin = ref 0
-fun indent i = margin := !margin + i
-
-exception Undent
-  
-fun undent i = 
-  (margin := !margin - i; if !margin < 0 then raise Undent else ())
-
-fun dent () = tab(!margin)
-
-fun whitespace() =
-  let fun ws(n) =
-        if n < 0 then raise Undent
-        else if n >= 8 then "\t" :: ws(n-8)
-             else let val str = case n of 0 => "" | 1 => " " | 2 => "  "
-                                        | 3 => "   " | 4 => "    " 
-                                        | 5 => "     " | 6 => "      " 
-                                        | _ => "       "
-                   in [str]
-                  end
-   in concat(ws(!margin))
-  end
-
-fun prCon (DATAcon((sym, _, _), _, v)) = ((S.name sym) ^ " " ^ (lvarName v))
-  | prCon (INTcon i) = Int.toString i
-  | prCon (INT32con i) = "(I32)" ^ (Int32.toString i)
-  | prCon (INTINFcon i) = "II" ^ IntInf.toString i
-  | prCon (WORDcon i) = "(W)" ^ (Word.toString i)
-  | prCon (WORD32con i) = "(W32)" ^ (Word32.toString i)
-  | prCon (REALcon r) = r
-  | prCon (STRINGcon s) = PU.mlstr s (* was PU.pr_mlstr s *)
-  | prCon (VLENcon n) = Int.toString n
-
-fun printCon x = say (prCon x)
+fun conToString (DATAcon((sym, _, _), _, v)) = ((S.name sym) ^ "." ^ (lvarName v))
+  | conToString (INTcon i) = Int.toString i
+  | conToString (INT32con i) = "(I32)" ^ (Int32.toString i)
+  | conToString (INTINFcon i) = "(II)" ^ IntInf.toString i
+  | conToString (WORDcon i) = "(W)" ^ (Word.toString i)
+  | conToString (WORD32con i) = "(W32)" ^ (Word32.toString i)
+  | conToString (REALcon r) = r
+  | conToString (STRINGcon s) = PU.mlstr s
+  | conToString (VLENcon n) = Int.toString n
 
 (** use of complex in printLexp may lead to stupid n^2 behavior. *)
 fun complex le = 
-  let fun h [] = false
-        | h (a::r) = g a orelse h r
+  let fun h l = List.exists g l
 
       and g (FN(_, _, b)) = g b
         | g (FIX(vl, _, ll, b)) = true
@@ -111,57 +83,70 @@ fun complex le =
    in g le
   end
 
-fun printLexp l = 
-  let fun prLty t = PPN.with_default_pp
-			(fn ppstrm => (PPLty.ppLty (!depth) ppstrm t))
-      fun prTyc t = PPN.with_default_pp 
-			(fn ppstrm => (PPLty.ppTyc (!depth) ppstrm t;
-                                       PPN.flushStream ppstrm))
-      fun prKnd k = PPN.with_default_pp
-			(fn ppstrm => (PPLty.ppTKind (!depth) ppstrm k))
+fun ppLexp (pd:int) ppstrm (l: lexp): unit = 
+    if pd < 1 then pps ppstrm "<tyc>" else
+    let val {openHOVBox, openHVBox, closeBox, break, newline, pps, ppi, ...} =
+            en_pp ppstrm
+(*
+	val ppList' : {pp:PP.stream -> 'a -> unit, sep: string} -> 'a list -> unit =
+              fn x => PPLty.ppList ppstrm x
+	       (* eta-expansion of ppList to avoid value restriction *) 
+*)
+        val ppLexp' = ppLexp (pd-1) ppstrm
+        val ppLty' = PPLty.ppLty (pd-1) ppstrm
+        val ppTyc' = PPLty.ppTyc (pd-1) ppstrm
+        fun br0 n = PP.break ppstrm {nsp=0,offset=n}
+        fun br1 n = PP.break ppstrm {nsp=1,offset=n}
+        fun br(n,m) = PP.break ppstrm {nsp=n,offset=m}
+        fun ppClosedSeq (start,sep,close) ppfn elems =
+            PU.ppClosedSequence ppstrm
+              {front = (fn s => PP.string s start),
+               back = (fn s => PP.string s close),
+               sep = (fn s => PP.string s sep),
+               pr = ppfn,
+               style = PU.INCONSISTENT}
+              elems
 
-      fun plist (p, [], sep) = ()
-        | plist (p, a::r, sep) = 
-           (p a; app (fn x => (say sep; p x)) r)
+        fun ppl (VAR v) = pps (lvarName v)
+          | ppl (INT i) = ppi i
+          | ppl (WORD i) = (pps "(W)"; pps (Word.toString i))
+          | ppl (INT32 i) = (pps "(I32)"; pps(Int32.toString i))
+          | ppl (WORD32 i) = (pps "(W32)"; pps(Word32.toString i))
+          | ppl (REAL s) = pps s
+          | ppl (STRING s) = pps (mlstr s)
+          | ppl (ETAG (l,_)) = ppl l
 
-      fun g (VAR v) = say(lvarName v)
-        | g (INT i) = say(Int.toString i)
-        | g (WORD i) = (say "(W)"; say(Word.toString i))
-        | g (INT32 i) = (say "(I32)"; say(Int32.toString i))
-        | g (WORD32 i) = (say "(W32)"; say(Word32.toString i))
-        | g (REAL s) = say s
-        | g (STRING s) = say (mlstr s)
-        | g (ETAG (l,_)) = g l
+          | ppl (RECORD l) =
+              (openHOVBox 3;
+               pps "RCD";
+               ppClosedSeq ("(",",",")") (ppLexp (pd-1)) l;
+               closeBox ())
+        | ppl (SRECORD l) =
+              (openHOVBox 4;
+               pps "SRCD";
+               ppClosedSeq ("(",",",")") (ppLexp (pd-1)) l;
+               closeBox ())
 
-        | g (r as RECORD l) =
-            if complex r
-            then (say "RECORD";
-                 indent 7;
-                 PU.printClosedSequence ("(",",\n"^whitespace(),")") g l;
-                 undent 7)
-            else (say "RECORD"; PU.printClosedSequence ("(", ",", ")") g l)
+        | ppl (le as VECTOR (l, _)) =
+              let val style = if complex le then PU.CONSISTENT else PU.INCONSISTENT
+               in openHOVBox 3;
+                  pps "VEC";
+                  ppClosedSeq ("(",",",")") (ppLexp (pd-1)) l;
+                  closeBox ()
+              end
 
-        | g (r as SRECORD l) =
-            if complex r
-            then (say "SRECORD";
-                 indent 7;
-                 PU.printClosedSequence ("(",",\n"^whitespace(),")") g l;
-                 undent 7)
-            else (say "SRECORD"; PU.printClosedSequence ("(", ",", ")") g l)
+        | ppl (PRIM(p,t,ts)) = 
+            (openHOVBox 4;
+              pps "PRM(";
+              openHOVBox 0;
+               pps(PrimOp.prPrimop p); pps ","; br1 0;
+               ppLty' t; br1 0;
+               ppClosedSeq ("[",",","]") (PPLty.ppTyc (pd-1)) ts;
+              closeBox();
+              pps ")";
+             closeBox ())
 
-        | g (r as VECTOR (l, _)) =
-            if complex r
-            then (say "VECTOR";
-                 indent 7;
-                 PU.printClosedSequence ("(",",\n"^whitespace(),")") g l;
-                 undent 7)
-            else (say "VECTOR"; PU.printClosedSequence ("(", ",", ")") g l)
-
-        | g (PRIM(p,t,ts)) = 
-              (say ("PRIM (" ^ (PrimOp.prPrimop p) ^ ", "); prLty t; 
-               say ", ["; plist(prTyc, ts, ","); say "])")
-
-        | g (l as SELECT(i, _)) =
+        | ppl (l as SELECT(i, _)) =
             let fun gather(SELECT(i,l)) =
                       let val (more,root) = gather l
                        in  (i :: more,root)
@@ -169,186 +154,263 @@ fun printLexp l =
                   | gather l = (nil, l)
 
                 val (path,root) = gather l
-                fun ipr (i:int) = say(Int.toString i)
-             in g root;
-                PU.printClosedSequence ("[",",","]") ipr (rev path)
+                fun ipr (i:int) = pps(Int.toString i)
+             in openHOVBox 2;
+                ppl root;
+                ppClosedSeq ("[",",","]") (fn s => ppi) (rev path);
+                closeBox ()
             end
 
-        | g (FN(v,t,l)) = 
-            (say "FN("; say(lvarName v); say " : "; prLty t; say ", ";
-             if complex l then (newline(); indent 3; dent();
-                                g l; say ")"; undent 3)
-             else (g l; say ")"))
+        | ppl (FN(v,t,l)) = 
+            (openHOVBox 3; pps "FN(";
+              pps(lvarName v); pps ":"; br1 0; ppLty' t; pps ",";
+              if complex l then
+                 (newline(); ppLexp' l; pps ")")
+              else (ppl l; pps ")");
+             closeBox())
 
-        | g (CON((s, c, lt), ts, l)) = 
-            (say "CON(("; say(S.name s); say ","; sayrep c; say ",";
-             prLty lt; say "), ["; plist(prTyc, ts, ","); say "], ";
-             if complex l then (indent 4; g l; say ")"; undent 4)
-             else (g l; say ")"))
+        | ppl (CON((s, c, lt), ts, l)) = 
+            (openHOVBox 4;
+              pps "CON(";
+              openHOVBox 1; pps "("; pps(S.name s); pps ",";
+               pps(DA.prRep c); pps ",";
+               ppLty' lt; pps ")";
+              closeBox ();
+              pps ","; br1 0;
+              ppClosedSeq ("[",",","]") (PPLty.ppTyc (pd-1)) ts;
+              pps ","; br1 0;
+              ppl l; pps ")";
+             closeBox())
+
 (*
-        | g (DECON((s, c, lt), ts, l)) = 
-            (say "DECON(("; say(S.name s); say ","; sayrep c; say ",";
-             prLty lt; say "), ["; plist(prTyc, ts, ","); say "], ";
-             if complex l then (indent 4; g l; say ")"; undent 4)
-             else (g l; say ")"))
+        | ppl (DECON((s, c, lt), ts, l)) = 
+            (pps "DECON(("; pps(S.name s); pps ","; ppsrep c; pps ",";
+             ppLty lt; pps "), ["; plist(prTyc, ts, ","); pps "], ";
+             if complex l then (indent 4; ppl l; pps ")"; undent 4)
+             else (g l; pps ")"))
 *)
-        | g (APP(FN(v,_,l),r)) = (say "(APP) "; g (LET(v, r, l)))
+        | ppl (APP(FN(v,_,l),r)) = 
+            (openHOVBox 5;
+             pps "(APP)";
+             ppl (LET(v, r, l));
+             closeBox())
         
-        | g (LET(v, r, l)) = 
-            let val lv = lvarName v
-                val len = size lv + 3
-             in say lv; say " = ";
-                if complex r
-                then (indent 2; newline(); dent(); g r; undent 2)
-                else (indent len ; g r; undent len);
-                newline(); dent(); g l
-            end
+        | ppl (LET(v, r, l)) = 
+            (openHVBox 2;
+              openHOVBox 4;
+               pps (lvarName v); br1 0; pps "="; br1 0; ppl r;
+              closeBox();
+              newline();
+              ppl l;
+             closeBox())
 
-        | g (APP(l, r)) = 
-            (say "APP(";
-             if complex l orelse complex r
-             then (indent 4; g l; say ",\n"; dent();
-                   g r; say ")"; undent 4)
-             else (g l; say ",";
-                   g r; say ")"))
+        | ppl (APP(l, r)) = 
+            (pps "APP(";
+             openHVBox 0;
+             ppl l; pps ","; br1 0; ppl r;
+             closeBox();
+             pps ")")
 
-        | g (TFN(ks, b)) = 
-            (say "TFN("; app (fn k => (prKnd k; say ",")) ks; 
-             if complex b 
-             then (newline(); indent 3; dent(); g b; say ")"; undent 3)
-             else (g b; say ")"))
+        | ppl (TFN(ks, b)) = 
+            (openHOVBox 0; pps "TFN(";
+             openHVBox 0;
+             ppClosedSeq ("(",",",")") (PPLty.ppTKind (pd-1)) ks; br1 0;
+             ppl b;
+             closeBox();
+             pps ")";
+             closeBox())
                   
-        | g (TAPP(l, ts)) = 
-            (say "TAPP("; 
-             if complex l 
-             then (indent 4; g l; say ",\n"; dent(); say "[";
-                   plist(prTyc, ts, ","); say "])"; undent 4)
-             else (g l; say ", ["; plist(prTyc, ts, ","); say "])"))
+        | ppl (TAPP(l, ts)) = 
+            (openHOVBox 0;
+              pps "TAPP(";
+              openHVBox 0;
+               ppl l; br1 0;
+               ppClosedSeq ("[",",","]") (PPLty.ppTyc (pd-1)) ts;
+              closeBox();
+              pps ")";
+             closeBox()) 
 
-        | g (GENOP(dict, p, t, ts)) = 
-              (say ("GENOP (" ^ (PrimOp.prPrimop p) ^ ", "); prLty t; 
-               say ", ["; plist(prTyc, ts, ","); say "])")
+        | ppl (GENOP(dict, p, t, ts)) = 
+              (openHOVBox 4;
+                pps "GEN(";
+                openHOVBox 0;
+                 pps(PrimOp.prPrimop p); pps ","; br1 0;
+                 ppLty' t; br1 0;
+                 ppClosedSeq ("[",",","]") (PPLty.ppTyc (pd-1)) ts;
+                closeBox();
+                pps ")";
+               closeBox ())
 
-        | g (PACK(lt, ts, nts, l)) = 
-            (say "PACK("; 
-             app2 (fn (tc,ntc) => (say "<"; prTyc tc; say ","; prTyc ntc;
-                                 say ">,"), ts, nts);
-             say " "; prLty lt; say ", ";
-             if complex l 
-             then (newline(); indent 3; dent(); g l; say ")"; undent 3)
-             else (g l; say ")"))
+        | ppl (PACK(lt, ts, nts, l)) = 
+            (openHOVBox 0;
+              pps "PACK("; 
+              openHVBox 0;
+               openHOVBox 0;
+                app2 (fn (tc,ntc) =>
+                        (pps "<"; ppTyc' tc; pps ","; ppTyc' ntc;
+                         pps ">,"; br1 0),
+                     ts, nts);
+               closeBox(); br1 0;
+               ppLty' lt; pps ","; br1 0;
+               ppl l;
+              closeBox();
+              pps ")";
+             closeBox())
 
-        | g (SWITCH (l,_,llist,default)) =
+        | ppl (SWITCH (l,_,llist,default)) =
             let fun switch [(c,l)] =
-                      (printCon c; say " => "; indent 8; g l; undent 8)
+                      (openHOVBox 2;
+                       pps (conToString c); pps " =>"; br1 0; ppl l;
+                       closeBox())
                   | switch ((c,l)::more) = 
-                      (printCon c; say " => ";
-                       indent 8; g l; undent 8; newline(); dent(); switch more)
-                  | switch [] = bug "unexpected case in switch" 
+                      (openHOVBox 2;
+                       pps (conToString c); pps " =>"; br1 0; ppl l;
+                       closeBox();
+                       newline();
+                       switch more)
+                  | switch [] = () (* bug "unexpected case in switch" *)
 
-             in say "SWITCH ";
-                indent 7; g l; undent 6; newline(); dent();
-                say "of "; indent 3; switch llist;
-
+             in openHOVBox 3;
+                pps "SWI";
+                ppl l; newline();
+                pps "of ";
+                openHVBox 0;
+                switch llist;
                 case (default,llist)
                  of (NONE,_) => ()
-                  | (SOME l,nil) => (say "_ => "; indent 5; g l; undent 5)
-                  | (SOME l,_) => (newline(); dent(); say "_ => ";
-                                   indent 5; g l; undent 5);
-
-                undent 4
+                  | (SOME l,nil) => (openHOVBox 2; pps "_ =>"; br1 0; ppl l;
+                                     closeBox())
+                  | (SOME l,_) => (newline();
+                                   openHOVBox 2;
+                                   pps "_ =>"; br1 0; ppl l;
+                                   closeBox());
+                closeBox();
+                closeBox()
             end
 
-        | g (FIX(varlist,ltylist,lexplist,lexp)) =
+        | ppl (FIX(varlist,ltylist,lexplist,lexp)) =
             let fun flist([v],[t],[l]) =
                       let val lv = lvarName v
                           val len = size lv + 2
-                       in say lv; say " : ";prLty t;say " :: ";
-                          indent len ; g l; undent len
+                       in pps lv; pps ": "; ppLty' t; pps " :: ";
+                          ppl l
                       end
                   | flist(v::vs,t::ts,l::ls) =
                       let val lv = lvarName v
                           val len = size lv + 2
-                       in say lv; say " : "; prLty t; say " :: ";
-                          indent len ; g l; undent len;
-                          newline(); dent(); flist(vs,ts,ls)
+                       in pps lv; pps ": "; ppLty' t; pps " :: ";
+                          ppl l; newline();
+                          flist(vs,ts,ls)
                       end
                   | flist(nil,nil,nil) = ()
                   | flist _ = bug "unexpected cases in flist"
 
-             in say "FIX("; indent 4; flist(varlist,ltylist,lexplist); 
-                undent 4; newline(); dent(); say "IN  ";
-                indent 4; g lexp; say ")"; undent 4
+             in openHOVBox 0;
+                pps "FIX(";
+                openHVBox 0; flist(varlist,ltylist,lexplist); closeBox();
+                newline(); pps "IN ";
+                ppl lexp;
+                pps ")";
+                closeBox()
             end
 
-        | g (RAISE(l,t)) = 
-            (say "RAISE("; prLty t; say ", "; indent 6; g l; say ")"; undent 6)
+        | ppl (RAISE(l,t)) = 
+            (openHOVBox 0;
+              pps "RAISE(";
+              openHVBox 0;
+               ppLty' t; pps ","; br1 0; ppl l;
+              closeBox();
+              pps ")";
+             closeBox())
 
-        | g (HANDLE (lexp,withlexp)) =
-            (say "HANDLE "; indent 7; g lexp; undent 5; newline(); dent();
-             say "WITH "; indent 5; g withlexp; undent 7)
+        | ppl (HANDLE (lexp,withlexp)) =
+            (openHOVBox 0;
+             pps "HANDLE"; br1 0; ppl lexp;
+             newline();
+             pps "WITH"; br1 0; ppl withlexp;
+             closeBox())
 
-        | g (WRAP(t, _, l)) = 
-            (say "WRAP("; prTyc t; say ","; indent 5; newline(); dent(); g l; 
-             say ")"; undent 5)
+        | ppl (WRAP(t, _, l)) = 
+            (openHOVBox 0;
+              pps "WRAP("; ppTyc' t; pps ",";
+              newline();
+              ppl l; 
+              pps ")";
+             closeBox())
 
-        | g (UNWRAP(t, _, l)) = 
-            (say "UNWRAP("; prTyc t; say ","; indent 7; 
-             newline(); dent(); g l; say ")"; undent 7)
+        | ppl (UNWRAP(t, _, l)) = 
+            (openHOVBox 0;
+              pps "UNWRAP("; ppTyc' t; pps ",";
+              newline();
+              ppl l; 
+              pps ")";
+             closeBox())
 
-   in g l; newline(); newline()
+   in ppl l; newline(); newline()
   end
 
-fun printMatch env ((p,r)::more) =
-      (PP.with_pp (ErrorMsg.defaultConsumer())
-       (fn ppstrm =>
-        (PPAbsyn.ppPat env ppstrm (p,!Control.Print.printDepth);
-         PP.newline ppstrm));
-       say " => "; printLexp r; printMatch env more)
-  | printMatch _ [] = ()
+fun printMatch env (rules: (Absyn.pat * lexp) list) =
+    let val pd = !Control.Print.printDepth
+    in PP.with_default_pp (fn ppstrm =>
+         let fun ppMatch ((p,r)::more) = 
+                 (PP.openHVBox ppstrm (PP.Rel 0);
+                   PP.openHOVBox ppstrm (PP.Rel 2);
+                    PPAbsyn.ppPat env ppstrm (p,pd);
+                    PP.string ppstrm " =>"; PP.break ppstrm {nsp=1,offset=2};
+                    ppLexp pd ppstrm r;
+                   PP.closeBox ppstrm;
+                   PP.newline ppstrm;
+                   ppMatch more;
+                  PP.closeBox ppstrm)
+               | ppMatch [] = ()
+         in ppMatch rules
+         end)
+    end
 
-fun printFun l v =
+fun ppFun ppstrm l v =
   let fun last (DA.LVAR x) = x 
         | last (DA.PATH(r,_)) = last r
         | last _ = bug "unexpected access in last"
 
-      val rec find =
-        fn VAR w => if (v=w)
-             then (say("VAR " ^ lvarName v ^ " is free in <lexp>\n");())
-             else ()
-         | l as FN(w,_,b) => if v=w then printLexp l else find b
-         | l as FIX(vl,_,ll,b) => 
-             if List.exists (fn w => v=w) vl then printLexp l
+      fun find le =
+        case le
+          of VAR w => 
+               if (v=w)
+               then PU.pps ppstrm ("VAR " ^ lvarName v ^ " is free in <lexp>\n")
+               else ()
+           | l as FN(w,_,b) => if v=w then ppLexp 20 ppstrm l else find b
+           | l as FIX(vl,_,ll,b) =>
+             if List.exists (fn w => v=w) vl then ppLexp 20 ppstrm l
              else (app find ll; find b)
-         | APP(l,r) => (find l; find r)
-         | LET(w,l,r) => (if v=w then printLexp l else find l; find r)
-         | PACK(_,_,_,r) => find r
-         | TFN(_, r) => find r
-         | TAPP(l, _) => find l
-         | SWITCH (l,_,ls,d) =>
+           | APP(l,r) => (find l; find r)
+           | LET(w,l,r) => (if v=w then ppLexp 20 ppstrm l else find l; find r)
+           | PACK(_,_,_,r) => find r
+           | TFN(_, r) => find r
+           | TAPP(l, _) => find l
+           | SWITCH (l,_,ls,d) =>
              (find l; app (fn(_,l) => find l) ls;
               case d of NONE => () | SOME l => find l)
-         | RECORD l => app find l 
-         | SRECORD l => app find l 
-         | VECTOR (l, t) => app find l 
-         | SELECT(_,l) => find l
-         | CON((_, DA.EXN p, _), _, e) => (find(VAR(last p)); find e)
-         | CON(_,_,e) => find e
+           | RECORD l => app find l 
+           | SRECORD l => app find l 
+           | VECTOR (l, t) => app find l 
+           | SELECT(_,l) => find l
+           | CON((_, DA.EXN p, _), _, e) => (find(VAR(last p)); find e)
+           | CON(_,_,e) => find e
 (*
          | DECON((_, DA.EXN p, _), _, e) => (find(VAR(last p)); find e)
          | DECON(_,_,e) => find e  
 *)
-         | HANDLE(e,h) => (find e; find h) 
-         | RAISE(l,_) => find l
-         | INT _ => () | WORD _ => () 
-         | INT32 _ => () | WORD32 _ => () 
-         | STRING _ => () | REAL _ => ()
-         | ETAG (e,_) => find e
-         | PRIM _ => ()
-         | GENOP ({default=e1,table=es}, _, _, _) => 
+           | HANDLE(e,h) => (find e; find h) 
+           | RAISE(l,_) => find l
+           | INT _ => () | WORD _ => () 
+           | INT32 _ => () | WORD32 _ => () 
+           | STRING _ => () | REAL _ => ()
+           | ETAG (e,_) => find e
+           | PRIM _ => ()
+           | GENOP ({default=e1,table=es}, _, _, _) => 
              (find e1; app (fn (_, x) => find x) es)
-         | WRAP(_, _, e) => find e
-         | UNWRAP(_, _, e) => find e
+           | WRAP(_, _, e) => find e
+           | UNWRAP(_, _, e) => find e
 
    in find l
   end
@@ -383,5 +445,3 @@ fun stringTag (VAR _) = "VAR"
 
 end (* toplevel local *)
 end (* struct PPLexp *)
-
-
