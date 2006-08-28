@@ -84,7 +84,6 @@ fun complex le =
   end
 
 fun ppLexp (pd:int) ppstrm (l: lexp): unit = 
-    if pd < 1 then pps ppstrm "<tyc>" else
     let val {openHOVBox, openHVBox, closeBox, break, newline, pps, ppi, ...} =
             en_pp ppstrm
 (*
@@ -107,35 +106,38 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
                style = PU.INCONSISTENT}
               elems
 
-        fun ppl (VAR v) = pps (lvarName v)
-          | ppl (INT i) = ppi i
-          | ppl (WORD i) = (pps "(W)"; pps (Word.toString i))
-          | ppl (INT32 i) = (pps "(I32)"; pps(Int32.toString i))
-          | ppl (WORD32 i) = (pps "(W32)"; pps(Word32.toString i))
-          | ppl (REAL s) = pps s
-          | ppl (STRING s) = pps (mlstr s)
-          | ppl (ETAG (l,_)) = ppl l
+        fun ppl pd (VAR v) = pps (lvarName v)
+          | ppl pd (INT i) = ppi i
+          | ppl pd (WORD i) = (pps "(W)"; pps (Word.toString i))
+          | ppl pd (INT32 i) = (pps "(I32)"; pps(Int32.toString i))
+          | ppl pd (WORD32 i) = (pps "(W32)"; pps(Word32.toString i))
+          | ppl pd (REAL s) = pps s
+          | ppl pd (STRING s) = pps (mlstr s)
+          | ppl pd (ETAG (l,_)) = ppl pd l
 
-          | ppl (RECORD l) =
+          | ppl pd (RECORD l) =
+            if pd < 1 then pps "<REC>" else
               (openHOVBox 3;
                pps "RCD";
-               ppClosedSeq ("(",",",")") (ppLexp (pd-1)) l;
+               ppClosedSeq ("(",",",")") (fn s => ppl (pd-1)) l;
                closeBox ())
-        | ppl (SRECORD l) =
+
+          | ppl ps (SRECORD l) =
+            if pd < 1 then pps "<REC>" else
               (openHOVBox 4;
                pps "SRCD";
-               ppClosedSeq ("(",",",")") (ppLexp (pd-1)) l;
+               ppClosedSeq ("(",",",")") (fn s => ppl (pd-1)) l;
                closeBox ())
 
-        | ppl (le as VECTOR (l, _)) =
-              let val style = if complex le then PU.CONSISTENT else PU.INCONSISTENT
-               in openHOVBox 3;
-                  pps "VEC";
-                  ppClosedSeq ("(",",",")") (ppLexp (pd-1)) l;
-                  closeBox ()
-              end
+          | ppl pd (le as VECTOR (l, _)) =
+            if pd < 1 then pps "<VEC>" else
+              (openHOVBox 3;
+               pps "VEC";
+               ppClosedSeq ("(",",",")") (fn s => ppl (pd-1)) l;
+               closeBox ())
 
-        | ppl (PRIM(p,t,ts)) = 
+          | ppl pd (PRIM(p,t,ts)) = 
+            if pd < 1 then pps "<PRIM>" else
             (openHOVBox 4;
               pps "PRM(";
               openHOVBox 0;
@@ -146,7 +148,8 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
               pps ")";
              closeBox ())
 
-        | ppl (l as SELECT(i, _)) =
+          | ppl pd (l as SELECT(i, _)) =
+            if pd < 1 then pps "<SEL>" else
             let fun gather(SELECT(i,l)) =
                       let val (more,root) = gather l
                        in  (i :: more,root)
@@ -156,20 +159,21 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
                 val (path,root) = gather l
                 fun ipr (i:int) = pps(Int.toString i)
              in openHOVBox 2;
-                ppl root;
+                ppl (pd-1) root;
                 ppClosedSeq ("[",",","]") (fn s => ppi) (rev path);
                 closeBox ()
             end
 
-        | ppl (FN(v,t,l)) = 
+          | ppl pd (FN(v,t,l)) = 
+            if pd < 1 then pps "<FN>" else
             (openHOVBox 3; pps "FN(";
               pps(lvarName v); pps ":"; br1 0; ppLty' t; pps ",";
-              if complex l then
-                 (newline(); ppLexp' l; pps ")")
-              else (ppl l; pps ")");
+              if complex l then newline() else ();
+              ppl (pd-1) l; pps ")";
              closeBox())
 
-        | ppl (CON((s, c, lt), ts, l)) = 
+          | ppl pd (CON((s, c, lt), ts, l)) = 
+            if pd < 1 then pps "<FN>" else
             (openHOVBox 4;
               pps "CON(";
               openHOVBox 1; pps "("; pps(S.name s); pps ",";
@@ -179,7 +183,7 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
               pps ","; br1 0;
               ppClosedSeq ("[",",","]") (PPLty.ppTyc (pd-1)) ts;
               pps ","; br1 0;
-              ppl l; pps ")";
+              ppl (pd-1) l; pps ")";
              closeBox())
 
 (*
@@ -189,59 +193,67 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
              if complex l then (indent 4; ppl l; pps ")"; undent 4)
              else (g l; pps ")"))
 *)
-        | ppl (APP(FN(v,_,l),r)) = 
+          | ppl pd (APP(FN(v,_,l),r)) = 
+            if pd < 1 then pps "<LET*>" else
             (openHOVBox 5;
-             pps "(APP)";
-             ppl (LET(v, r, l));
+              pps "(APP)";
+              ppl (pd-1) (LET(v, r, l));
              closeBox())
         
-        | ppl (LET(v, r, l)) = 
+          | ppl pd (LET(v, r, l)) = 
+            if pd < 1 then pps "<LET>" else
             (openHVBox 2;
               openHOVBox 4;
-               pps (lvarName v); br1 0; pps "="; br1 0; ppl r;
+               pps (lvarName v); br1 0; pps "="; br1 0; ppl (pd-1) r;
               closeBox();
               newline();
-              ppl l;
+              ppl (pd-1) l;
              closeBox())
 
-        | ppl (APP(l, r)) = 
+          | ppl pd (APP(l, r)) = 
+            if pd < 1 then pps "<APP>" else
             (pps "APP(";
              openHVBox 0;
-             ppl l; pps ","; br1 0; ppl r;
+             ppl (pd-1) l; pps ","; br1 0; ppl (pd-1) r;
              closeBox();
              pps ")")
 
-        | ppl (TFN(ks, b)) = 
-            (openHOVBox 0; pps "TFN(";
+          | ppl pd (TFN(ks, b)) = 
+            if pd < 1 then pps "<TFN>" else
+            (openHOVBox 0;
+             pps "TFN(";
              openHVBox 0;
              ppClosedSeq ("(",",",")") (PPLty.ppTKind (pd-1)) ks; br1 0;
-             ppl b;
+             ppl (pd-1) b;
              closeBox();
              pps ")";
              closeBox())
                   
-        | ppl (TAPP(l, ts)) = 
+          | ppl pd (TAPP(l, ts)) = 
+            if pd < 1 then pps "<TAP>" else
             (openHOVBox 0;
-              pps "TAPP(";
+              pps "TAP(";
               openHVBox 0;
-               ppl l; br1 0;
+               ppl (pd-1) l; br1 0;
                ppClosedSeq ("[",",","]") (PPLty.ppTyc (pd-1)) ts;
               closeBox();
               pps ")";
              closeBox()) 
 
-        | ppl (GENOP(dict, p, t, ts)) = 
-              (openHOVBox 4;
-                pps "GEN(";
-                openHOVBox 0;
-                 pps(PrimOp.prPrimop p); pps ","; br1 0;
-                 ppLty' t; br1 0;
-                 ppClosedSeq ("[",",","]") (PPLty.ppTyc (pd-1)) ts;
-                closeBox();
-                pps ")";
-               closeBox ())
+          | ppl pd (GENOP(dict, p, t, ts)) = 
+            if pd < 1 then pps "<GEN>" else
+            (openHOVBox 4;
+              pps "GEN(";
+              openHOVBox 0;
+               pps(PrimOp.prPrimop p); pps ","; br1 0;
+               ppLty' t; br1 0;
+               ppClosedSeq ("[",",","]") (PPLty.ppTyc (pd-1)) ts;
+              closeBox();
+              pps ")";
+             closeBox ())
 
-        | ppl (PACK(lt, ts, nts, l)) = 
+          | ppl pd (PACK(lt, ts, nts, l)) = 
+            if pd < 1 then pps "<PACK>" else
             (openHOVBox 0;
               pps "PACK("; 
               openHVBox 0;
@@ -252,19 +264,20 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
                      ts, nts);
                closeBox(); br1 0;
                ppLty' lt; pps ","; br1 0;
-               ppl l;
+               ppl (pd-1) l;
               closeBox();
               pps ")";
              closeBox())
 
-        | ppl (SWITCH (l,_,llist,default)) =
+          | ppl pd (SWITCH (l,_,llist,default)) =
+            if pd < 1 then pps "<SWI>" else
             let fun switch [(c,l)] =
                       (openHOVBox 2;
-                       pps (conToString c); pps " =>"; br1 0; ppl l;
+                       pps (conToString c); pps " =>"; br1 0; ppl (pd-1) l;
                        closeBox())
                   | switch ((c,l)::more) = 
                       (openHOVBox 2;
-                       pps (conToString c); pps " =>"; br1 0; ppl l;
+                       pps (conToString c); pps " =>"; br1 0; ppl (pd-1) l;
                        closeBox();
                        newline();
                        switch more)
@@ -272,34 +285,35 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
 
              in openHOVBox 3;
                 pps "SWI";
-                ppl l; newline();
+                ppl (pd-1) l; newline();
                 pps "of ";
                 openHVBox 0;
                 switch llist;
                 case (default,llist)
                  of (NONE,_) => ()
-                  | (SOME l,nil) => (openHOVBox 2; pps "_ =>"; br1 0; ppl l;
+                  | (SOME l,nil) => (openHOVBox 2; pps "_ =>"; br1 0; ppl (pd-1)l;
                                      closeBox())
                   | (SOME l,_) => (newline();
                                    openHOVBox 2;
-                                   pps "_ =>"; br1 0; ppl l;
+                                   pps "_ =>"; br1 0; ppl (pd-1) l;
                                    closeBox());
                 closeBox();
                 closeBox()
             end
 
-        | ppl (FIX(varlist,ltylist,lexplist,lexp)) =
+          | ppl pd (FIX(varlist,ltylist,lexplist,lexp)) =
+            if pd < 1 then pps "<FIX>" else
             let fun flist([v],[t],[l]) =
                       let val lv = lvarName v
                           val len = size lv + 2
                        in pps lv; pps ": "; ppLty' t; pps " :: ";
-                          ppl l
+                          ppl (pd-1) l
                       end
                   | flist(v::vs,t::ts,l::ls) =
                       let val lv = lvarName v
                           val len = size lv + 2
                        in pps lv; pps ": "; ppLty' t; pps " :: ";
-                          ppl l; newline();
+                          ppl (pd-1) l; newline();
                           flist(vs,ts,ls)
                       end
                   | flist(nil,nil,nil) = ()
@@ -309,44 +323,48 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
                 pps "FIX(";
                 openHVBox 0; flist(varlist,ltylist,lexplist); closeBox();
                 newline(); pps "IN ";
-                ppl lexp;
+                ppl (pd-1) lexp;
                 pps ")";
                 closeBox()
             end
 
-        | ppl (RAISE(l,t)) = 
+          | ppl pd (RAISE(l,t)) = 
+            if pd < 1 then pps "<RAISE>" else
             (openHOVBox 0;
               pps "RAISE(";
               openHVBox 0;
-               ppLty' t; pps ","; br1 0; ppl l;
+               ppLty' t; pps ","; br1 0; ppl (pd-1) l;
               closeBox();
               pps ")";
              closeBox())
 
-        | ppl (HANDLE (lexp,withlexp)) =
+          | ppl pd (HANDLE (lexp,withlexp)) =
+            if pd < 1 then pps "<HANDLE>" else
             (openHOVBox 0;
-             pps "HANDLE"; br1 0; ppl lexp;
+             pps "HANDLE"; br1 0; ppl (pd-1) lexp;
              newline();
-             pps "WITH"; br1 0; ppl withlexp;
+             pps "WITH"; br1 0; ppl (pd-1) withlexp;
              closeBox())
 
-        | ppl (WRAP(t, _, l)) = 
+          | ppl pd (WRAP(t, _, l)) = 
+            if pd < 1 then pps "<WRAP>" else
             (openHOVBox 0;
               pps "WRAP("; ppTyc' t; pps ",";
               newline();
-              ppl l; 
+              ppl (pd-1) l; 
               pps ")";
              closeBox())
 
-        | ppl (UNWRAP(t, _, l)) = 
+          | ppl pd (UNWRAP(t, _, l)) = 
+            if pd < 1 then pps "<WRAP>" else
             (openHOVBox 0;
               pps "UNWRAP("; ppTyc' t; pps ",";
               newline();
-              ppl l; 
+              ppl (pd-1) l; 
               pps ")";
              closeBox())
 
-   in ppl l; newline(); newline()
+   in ppl pd l; newline(); newline()
   end
 
 (* ppMatch : StaticEnv.statenv * (Absyn.pat * lexp) list -> unit *)

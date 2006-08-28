@@ -45,8 +45,10 @@ val clickerror = fn () => (anyerror := true)
 (****************************************************************************
  *                         BASIC UTILITY FUNCTIONS                          *
  ****************************************************************************)
-fun debugmsg msg = if !debugging then (say "[ChkPlexp]: "; say msg; say "\n")
-		   else ()
+fun debugmsg msg =
+    if false (* !debugging *)
+    then (say "[ChkPlexp]: "; say msg; say "\n")
+    else ()
 
 fun app2(f, [], []) = ()
   | app2(f, a::r, b::z) = (f(a, b); app2(f, r, z))
@@ -163,17 +165,22 @@ fun ltTyApp le s (lt, ts, kenv) =
 fun ltMatch le s (t1, t2) = 
   (if ltEquiv(t1,t2) then ()
    else (clickerror();
-         say (s ^ "  **** Lty conflicting in lexp =====> \n    ");
-         ltPrint t1; say "\n and   \n    "; ltPrint t2;
-         say "\n \n";  with_pp(fn s => PPLexp.ppLexp 20 s le);
-         say "***************************************************** \n"))
-  handle zz => 
+         with_pp(fn s =>
+           (PU.pps s "ERROR(checkLty): ltEquiv fails in ltMatch"; PP.newline s;
+            PU.pps s "le:"; PP.newline s; PPLexp.ppLexp 6 s le;
+            PU.pps s "t1:"; PP.newline s; PPLty.ppLty 10 s t1; PP.newline s;
+            PU.pps s "t2:"; PP.newline s; PPLty.ppLty 10 s t2; PP.newline s;
+            PU.pps s"***************************************************";
+            PP.newline s))))
+  handle teUnbound2 => 
   (clickerror();
-   say (s ^ "  **** Lty conflicting in lexp =====> \n    ");
-   say "uncaught exception found ";
-   say "\n \n";  with_pp(fn s => PPLexp.ppLexp 20 s le); say "\n";  
-   ltPrint t1; say "\n and   \n    "; ltPrint t2; say "\n";  
-   say "***************************************************** \n")
+   with_pp(fn s =>
+     (PU.pps s "ERROR(checkLty): exception teUnbound2 in ltMatch"; PP.newline s;
+      PU.pps s "le:"; PP.newline s; PPLexp.ppLexp 6 s le;
+      PU.pps s "t1:"; PP.newline s; PPLty.ppLty 10 s t1; PP.newline s;
+      PU.pps s "t2:"; PP.newline s; PPLty.ppLty 10 s t2; PP.newline s;
+      PU.pps s"***************************************************";
+      PP.newline s)))
 
 fun ltFnApp le s (t1, t2) = 
   let val (a1, b1) = 
@@ -272,7 +279,7 @@ fun check (kenv, venv, d) =
 		   (* kind check t and ts *)
 		       (ltyChkenv " PRIM " t; 
 			map (tycChk kenv) ts;
-			debugmsg " PRIM";
+			debugmsg "PRIM";
 			ltTyApp le "PRIM" (t, ts, kenv))
 		   
 		 | FN(v, t, e1) =>
@@ -281,10 +288,10 @@ fun check (kenv, venv, d) =
                        val venv' = LT.ltInsert(venv, v, t, d)
                        val res = check (kenv, venv', d) e1
                        val _ = ltyChkenv "FN rng" res
-		       val _ = debugmsg " FN"
+		       val _ = debugmsg "FN"
 		       val fnlty = ltFun(t, res) (* handle both functions and functors *)
 		       val  _ = ltyChkenv "FNlty " fnlty
-		       val _ = debugmsg " FN 2"
+		       val _ = debugmsg "FN 2"
 		   in fnlty
 		   end
 		   
@@ -299,7 +306,7 @@ fun check (kenv, venv, d) =
                        val nts = map (check (kenv, venv', d)) es
                        val _ = map (ltyChkenv "FIX body types") nts
                        val _ = app2(ltMatch le "FIX1", ts, nts)
-		       val _ = debugmsg " FIX"
+		       val _ = debugmsg "FIX"
 		   in check (kenv, venv', d) eb
 		   end
 		   
@@ -308,7 +315,7 @@ fun check (kenv, venv, d) =
                        val targ = loop e2
 		       val _ = ltyChkenv "APP operator " top
 		       val _ = ltyChkenv "APP argument " targ
-		       val _ = debugmsg " APP"
+		       val _ = debugmsg "APP"
 		   in 
                        ltFnApp le "APP" (top, targ)
 		   end
@@ -327,7 +334,7 @@ fun check (kenv, venv, d) =
 		   let val kenv' = LT.tkInsert(kenv, ks)
                        val lt = check (kenv', venv, DI.next d) e
                        val _ = ltyChkMsgLexp "TFN body" (ks::kenv) lt
-		       val _ = debugmsg " TFN"
+		       val _ = debugmsg "TFN"
 		   in LT.ltc_poly(ks, [lt])
 		   end
 		   
@@ -336,7 +343,7 @@ fun check (kenv, venv, d) =
                        val _ = map ((ltyChkenv "TAPP args") o LT.ltc_tyc) ts  
 				   (* kind check type args *)
                        val _ = ltyChkenv "TAPP type function " lt
-		       val _ = debugmsg " TAPP"
+		       val _ = debugmsg "TAPP"
 		   in  ltTyApp le "TAPP" (lt, ts, kenv)
 		   end
 		   
@@ -360,7 +367,7 @@ fun check (kenv, venv, d) =
                        val _ = ltyChkenv "CON 1 " t1
                        val t2 = loop e
                        val _ = ltyChkenv "CON 2 " t2
-		       val _ = debugmsg " CON"
+		       val _ = debugmsg "CON"
 		   in ltFnApp le "CON-A" (t1, t2)
 		   end
 		       (*
@@ -373,7 +380,7 @@ fun check (kenv, venv, d) =
 		 | RECORD el => 
 		   let val elemsltys = map loop el
 		       val _ = map (ltyChkenv "RECORD elem ") elemsltys
-		       val _ = debugmsg " RECORD"
+		       val _ = debugmsg "RECORD"
 		   in ltTup elemsltys
 		   end
 		 | SRECORD el => 
@@ -386,14 +393,14 @@ fun check (kenv, venv, d) =
 		   in ltyChkenv "VECTOR index " (LT.ltc_tyc t);
                       map (ltyChkenv "VECTOR vector ") ts;
                       app (fn x => ltMatch le "VECTOR" (x, LT.ltc_tyc t)) ts; 
-                      debugmsg " VECTOR "; 
+                      debugmsg "VECTOR "; 
 		      ltVector t
 		   end
 		   
 		 | SELECT(i,e) => 
 		    let val lty = loop e
 			val _ = ltyChkenv " SELECT " lty
-			val _ = debugmsg " SELECT"
+			val _ = debugmsg "SELECT"
 		    in 
 			ltSelect le "SEL" (lty, i)
 		    end  
@@ -462,8 +469,9 @@ fun check (kenv, venv, d) =
  end (* end-of-fn-check *)
 
 in 
-anyerror := false;
-check (LT.initTkEnv, venv, DI.top) lexp; !anyerror
+  anyerror := false;
+  check (LT.initTkEnv, venv, DI.top) lexp;
+  !anyerror
 end (* end of function checkLty *)
 
 fun checkLtyTop(lexp, phase) = checkLty(lexp, LT.initLtyEnv, phase)

@@ -301,7 +301,9 @@ and tc_lzrd(t: tyc) =
 				closeBox, pps, ppi} = PU.en_pp s
                        in openHVBox 0;
                           pps "***Debugging***"; newline();
-                          pps "tc_lzrd arg: "; PPLty.ppTyc (!dp) s t; 
+                          pps "tc_lzrd arg:";
+                          newline();
+                          PPLty.ppTyc (!dp) s t; 
 			  newline();
 		          pps "n = "; ppi n; pps ", k = "; ppi k; 
 			  newline();

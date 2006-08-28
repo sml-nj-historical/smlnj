@@ -35,7 +35,7 @@ and tvKind
      {kind: litKind, region: SourceMap.region}
   | SCHEME of bool (* overloaded operator type scheme variable
 		   * arg is true if must be instantiated to equality type *)
-  | TV_MARK of int
+  | TV_MARK of int * int
 
 and tycpath                        
   = TP_VAR of exn

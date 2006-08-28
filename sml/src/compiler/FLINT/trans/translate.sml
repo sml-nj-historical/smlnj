@@ -48,7 +48,7 @@ in
  *                   CONSTANTS AND UTILITY FUNCTIONS                        *
  ****************************************************************************)
 
-val debugging = ref false
+val debugging = ref true
 fun bug msg = EM.impossible("Translate: " ^ msg)
 val say = Control.Print.say
 
@@ -56,6 +56,8 @@ fun debugmsg (msg : string) =
     if !debugging then (say msg; say "\n") else ()
 
 val ppDepth = Control.Print.printDepth
+
+val with_pp = PP.with_default_pp
 
 fun ppType ty =
     ElabDebug.withInternals
@@ -940,9 +942,16 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
              | _ => transPrim(primop, (toLty d intrinsicType),
                               map (toTyc d) intrinsicParams)
       end
-  | mkVE (v as V.VALvar{typ, prim = PrimOpId.NonPrim, ... }, ts, d) =
+  | mkVE (v as V.VALvar{typ, prim = PrimOpId.NonPrim, path, ...}, ts, d) =
     (* non primop variable *)
-      (case ts
+      (if !debugging
+       then (print "### mkVE nonprimop\n";
+             print (SymPath.toString path); print "\n";
+             ppType (!typ); print "\n";
+             print "|ts| = "; print (Int.toString(length ts)); print "\n";
+             app ppType ts; print "\n")
+       else ();
+       case ts
          of [] => mkVar (v, d)
           | _ => TAPP(mkVar(v, d), map (toTyc d) ts))
                  (* dbm: when does this second case occur? *)
@@ -1007,7 +1016,7 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
           fun setbtvs (i, []) = ()
             | setbtvs (i, (tv as ref (TP.OPEN _))::rest) =
 		let val m = markLBOUND (d, i)
-	         in tv := TP.TV_MARK m;
+	         in tv := TP.TV_MARK (d,i);
 		    setbtvs (i+1, rest)
 	        end
             | setbtvs (i, (tv as ref (TP.TV_MARK _))::res) =
@@ -1485,8 +1494,12 @@ val (plexp, imports) = wrapPidInfo (body, PersMap.listItemsi (!persmap))
 val _ = complain EM.WARN ">>translate typecheck" EM.nullErrorBody
 val _ = print "**** Translate: typechecking plexp ****\n"
 (* val _ = PPLexp.printLexp plexp *)
-val _ = ChkPlexp.checkLtyTop(plexp,0)
-val _ = print "**** Translate: finished typechecking plexp ****\n"
+val ltyerrors = ChkPlexp.checkLtyTop(plexp,0)
+val _ = if ltyerrors
+        then (print "**** Translate: checkLty failed ****\n";
+              with_pp(fn ppstm => (PPLexp.ppLexp 5 ppstm plexp));
+              complain EM.WARN "checkLty" EM.nullErrorBody)
+        else print "**** Translate: finished typechecking plexp ****\n"
 
 fun prGen (flag,printE) s e =
   if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e) else ()

@@ -257,9 +257,9 @@ structure LrParser :> LR_PARSER =
 		 of SHIFT s =>
 		  let val newStack = (s,value) :: stack
 		      val newLexPair = Stream.get lexer
-		  in parseStep(newLexPair,(s,value)::stack, 
-			       Fifo.put(( newStack,newLexPair),queue) ,distance-1 ) 
- 		  end
+		  in parseStep(newLexPair,(s,value)::stack,
+			       Fifo.put((newStack,newLexPair),queue),distance-1)
+		  end
 		 | REDUCE i =>
 		    (case saction(i,leftPos,stack,arg)
 		      of (nonterm,value,stack as (state,_) :: _) =>

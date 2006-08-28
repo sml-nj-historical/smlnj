@@ -90,11 +90,27 @@ fun lt_inst (lt : lty, ts : tyc list) =
    in (case ((* lt_outX *) lt_out nt, ts)
         of (LT.LT_POLY(ks, b), ts) =>
              if length ks <> length ts
-             then (print "### arity error in lt_inst:\n|ks| = ";
-                   print (Int.toString (length ks)); 
-                   print ", |ts| = "; print (Int.toString (length ks));
-                   print "\n";
-                   bug "lt_inst")
+             then (with_pp (fn ppstm =>
+                     (PU.pps ppstm "### arity error in lt_inst:\n|ks| = ";
+                      PU.ppi ppstm (length ks); 
+                      PU.pps ppstm ", |ts| = "; PU.ppi ppstm (length ts);
+                      PP.newline ppstm;
+                      PU.pps ppstm "lt: ";
+                      PP.openHOVBox ppstm (PP.Rel 0);
+                      PPLty.ppLty 20 ppstm lt;
+                      PP.closeBox ppstm;
+                      PP.newline ppstm;
+                      PU.pps ppstm "nt: ";
+                      PP.openHOVBox ppstm (PP.Rel 0);
+                      PPLty.ppLty 20 ppstm nt;
+                      PP.closeBox ppstm;
+                      PP.newline ppstm;
+                      PU.pps ppstm "ts: ";
+                      PPLty.ppList ppstm
+                        {sep = ",",pp=PPLty.ppTyc 20}
+                        ts;
+                      PP.newline ppstm));
+                   bug "lt_inst - arity mismatch")
              else
              let val nenv = LT.teCons(LT.Beta(0,ts,ks), LT.teEmpty)
 (* (no kind env)                val _ = teKindChk(nenv,0,Lty.initTkEnv) *)

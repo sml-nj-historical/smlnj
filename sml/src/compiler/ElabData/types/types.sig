@@ -31,7 +31,7 @@ and tvKind
    * but unlike the old "LBOUND" thing, it does not need to know about
    * specific types used by those phases. In any case, we should figure
    * out how to get rid of it altogether.) *)
-  | TV_MARK of int
+  | TV_MARK of int * int
 
 and tycpath
   = TP_VAR of exn

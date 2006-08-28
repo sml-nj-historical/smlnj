@@ -104,7 +104,7 @@ structure EvalEntity = EV
 
 exception BadBinding
 
-val debugging = ElabControl.smdebugging (* ref false *)
+val debugging = ref true (* ElabControl.smdebugging *) (* ref false *)
 val showsigs = ref false
 
 val say = Control_Print.say
@@ -290,14 +290,15 @@ let
           end
 
   (* matchTypes checks whether the spec type is a generic instance of
-   * the actual type, and if so it returns two lists of type metavariables (tyvars):
+   * the actual type, and if so it returns two lists of type metavariables
+   * (tyvars):
    *  (1) the spec type generic instantiation metavariables (btvs),
    *  (2) the actual type generic instantiation metavariables (ptvs).
    * In the matching, the btvs variables are not instantiated, while the
    * ptvs are always instantiated, and their instantiations constitute the
    * "parameters of instantiatiation" that make the actual type agree with
-   * the (generic instance of the) spec. The parameter instantiations will
-   * contain types containing occurrences of the bound tyvars.
+   * the (generic instance of the) spec. The types in the parameter
+   * instantiations will contain occurrences of the bound tyvars.
    * If the actual is not a polytype, the ptvs list is nil. Similarly for
    * the spec type and btvs. If both spec and actual are monotypes, the
    * matching is equivalent to equalTypes(spec,actual). [dbm: 7/7/06]
@@ -865,6 +866,21 @@ let
                          val dacc = DA.selAcc(rootAcc, actslot)
                          val prim = PrimOpId.selValPrimFromStrPrim(rootPrim, actslot)
                          val (btvs,ptvs) = matchTypes(spectyp, acttyp, sym)
+                         val _ =
+                             (print "###SM: "; print (S.name sym); print "\n";
+                              debugPrint debugging
+                                         ("spectype", PPType.ppType statenv,
+                                         spectyp);
+                              debugPrint debugging 
+                                         ("acttyp", PPType.ppType statenv,
+                                         acttyp);
+                              debugPrint debugging
+                                  ("ptvs",
+                                 (fn pps =>
+                                     app (fn tv =>
+                                             PPType.ppType statenv pps (T.VARty tv))),
+                                 ptvs);
+                              print "\n")
 
                          val spath = SP.SPATH[sym]
                          val actvar = VALvar{path=spath, typ=ref acttyp,

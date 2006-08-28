@@ -23,7 +23,7 @@ struct
 	    | prElems (el::rest) =
 	        (pr ppstream el;
 		 sep ppstream;
-                 PP.break ppstream {nsp=1,offset=0};
+                 PP.break ppstream {nsp=0,offset=0};
                  prElems rest)
 	    | prElems [] = ()
        in prElems elems

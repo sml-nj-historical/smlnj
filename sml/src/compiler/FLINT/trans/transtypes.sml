@@ -267,11 +267,11 @@ and toTyc d t =
         end
 
       and h (INSTANTIATED t) = g t
-        | h (TV_MARK m) =
-            let val (depth, num) = findLBOUND m
-            in
+        | h (TV_MARK(depth,num)) =
+(*            let val (depth, num) = findLBOUND m
+            in *)
                 LT.tcc_var(DI.calc(d, depth), num)
-            end
+(*            end *)
         | h (UBOUND _) = (print "#### toTyc UBOUND!\n"; LT.tcc_void)
             (* dbm: should this have been converted to a TV_MARK before
              * being passed to toTyc? *)

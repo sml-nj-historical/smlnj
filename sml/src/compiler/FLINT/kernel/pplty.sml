@@ -22,6 +22,7 @@ local
 in
 
 val dtPrintNames : bool ref = ref true
+val printIND : bool ref = ref false
 
 fun ppSeq ppstrm {sep: string, pp : PP.stream -> 'a -> unit} (list: 'a list) =
     let val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm
@@ -37,8 +38,7 @@ fun ppList ppstrm {sep: string, pp : PP.stream -> 'a -> unit} (list: 'a list) =
     ppClosedSequence ppstrm
       {front = fn ppstrm => (PP.string ppstrm "["),
        back = fn ppstrm => (PP.string ppstrm "]"),
-       sep = fn ppstrm => (PP.string ppstrm sep;
-		           PP.break ppstrm {nsp=0, offset=0}),
+       sep = fn ppstrm => (PP.string ppstrm sep),
        style = INCONSISTENT,
        pr = pp}
       list
@@ -111,7 +111,8 @@ fun ppTEBinder pd ppstrm (binder: Lty.teBinder) =
 and ppTyc pd ppstrm (tycon : Lty.tyc) =
     (* FLINT variables are represented using deBruijn indices *)
     if pd < 1 then pps ppstrm "<tyc>" else
-    let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
+    let val {openHOVBox, openHVBox, closeBox, pps, ppi, break, ...} =
+            en_pp ppstrm
 	val ppList' : {pp:PP.stream -> 'a -> unit, sep: string} -> 'a list -> unit =
               fn x => ppList ppstrm x
 	       (* eta-expansion of ppList to avoid value restriction *) 
@@ -138,9 +139,9 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	  | ppTycI (Lty.TC_FN (argTkinds, resultTyc)) =
 	    (openHOVBox 1;
 	     pps "FN(";
-	     ppList' {sep="*", pp=ppTKind (pd-1)} argTkinds;
+	     ppList' {sep=",", pp=ppTKind (pd-1)} argTkinds;
 	     pps ",";
-	     PP.break ppstrm {nsp=1,offset=0};
+	     break {nsp=1,offset=0};
 	     ppTyc' resultTyc;
 	     pps ")";
 	     closeBox())
@@ -149,7 +150,7 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	     pps "APP(";
 	     ppTyc' contyc;
 	     pps ",";
-	     PP.break ppstrm {nsp=1,offset=0};
+	     break {nsp=1,offset=0};
 	     ppList' {sep=",", pp=ppTyc (pd-1)} tys;
 	     pps ")";
 	     closeBox())
@@ -164,7 +165,7 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	     pps "PROJ(";
 	     ppTyc' tycon;
 	     pps ",";
-	     PP.break ppstrm {nsp=1,offset=0};
+	     break {nsp=1,offset=0};
 	     pps (Int.toString index);
 	     pps ")";
 	     closeBox())
@@ -180,8 +181,8 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	    (openHOVBox 1;
               pps "FIX(";
               openHVBox 0;
-              pps "size = "; ppi size; PP.break ppstrm {nsp=1,offset=0};
-              pps "index = "; ppi index; PP.break ppstrm {nsp=1,offset=0};
+              pps "size = "; ppi size; break {nsp=1,offset=0};
+              pps "index = "; ppi index; break {nsp=1,offset=0};
               pps "gen = ";
               openHOVBox 2;
                ppTyc' gen;
@@ -190,7 +191,7 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
               openHOVBox 2;
                ppList' {sep = ",", pp = ppTyc (pd-1)} params;
               closeBox ();
-              PP.break ppstrm {nsp=0,offset=0};
+              break {nsp=0,offset=0};
               pps ")";
 	     closeBox())
 	  | ppTycI (Lty.TC_ABS tyc) =
@@ -205,38 +206,38 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	  | ppTycI (Lty.TC_TUPLE(rflag, tycs)) =
 	    (ppClosedSequence ppstrm
                 {front = (fn s => PP.string s "{"),
-                 sep =  (fn s => PP.string s ","),
-                 back =  (fn s => PP.string s "}"),
+                 sep = (fn s => PP.string s ","),
+                 back = (fn s => PP.string s "}"),
                  pr = ppTyc (pd-1),
                  style = INCONSISTENT}
 	        tycs)
 	    (* fflag records the calling convention: either FF_FIXED or FF_VAR *)
 	  | ppTycI (Lty.TC_ARROW (fflag, argTycs, resTycs)) =
-	    (pps "ARR(";
-	     (case fflag of Lty.FF_FIXED => pps "FF_FIXED"
-			  | Lty.FF_VAR(b1, b2) =>
-                              (pps "<FF_VAR>" (*; ppBool b1; pps ",";
-						  ppBool b2; pps ")"*) ));
-	     pps ",";
-	     PP.break ppstrm {nsp=1,offset=0};
+	    ((case fflag
+                of Lty.FF_FIXED => pps "ARF("
+		 | Lty.FF_VAR(b1, b2) =>
+                    (pps "ARV(" (*; ppBool b1; pps ",";
+				    ppBool b2; pps ")"*) ));
+             openHOVBox 0;
 	     ppList' {sep=",", pp=ppTyc (pd-1)} argTycs;
 	     pps ",";
-	     PP.break ppstrm {nsp=1,offset=0};
+	     break {nsp=1,offset=0};
 	     ppList' {sep=",", pp=ppTyc (pd-1)} resTycs;
+             closeBox ();
 	     pps ")")
 	    (* According to ltykernel.sml comment, this arrow tyc is not used *)
 	  | ppTycI (Lty.TC_PARROW (argTyc, resTyc)) =
 	    (pps "PARR(";
 	     ppTyc' argTyc;
 	     pps ",";
-	     PP.break ppstrm {nsp=1,offset=0};
+	     break {nsp=1,offset=0};
 	     ppTyc' resTyc;
 	     pps ")")
 	  | ppTycI (Lty.TC_TOKEN (tok, tyc)) =
 	    (pps "TOK(";
 	     pps (Lty.token_name tok);
 	     pps ",";
-	     PP.break ppstrm {nsp=1,offset=0};
+	     break {nsp=1,offset=0};
 	     ppTyc' tyc;
 	     pps ")")
 	  | ppTycI (Lty.TC_CONT tycs) = 
@@ -244,14 +245,16 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	     ppList' {sep=", ", pp=ppTyc (pd-1)} tycs;
 	     pps ")")
 	  | ppTycI (Lty.TC_IND (tyc, tycI)) =
-	    (openHOVBox 1;
-	     pps "IND(";
-	     ppTyc' tyc;
-	     pps ", ";
-	     PP.break ppstrm {nsp=1,offset=0};
-	     ppTycI tycI;
-	     pps ")";
-	     closeBox())
+            if !printIND then
+              (openHOVBox 1;
+               pps "IND(";
+               ppTyc' tyc;
+               pps ",";
+               break {nsp=1,offset=0};
+               ppTycI tycI;
+               pps ")";
+               closeBox())
+            else ppTyc' tyc
 	  | ppTycI (Lty.TC_ENV (tyc, ol, nl, tenv)) =
 	    (openHVBox 1;
 	     pps "ENV(";
@@ -261,10 +264,10 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	     pps "nl=";
 	     pps (Int.toString nl);
 	     pps ",";
-	     PP.break ppstrm {nsp=1,offset=0};
+	     break {nsp=1,offset=0};
 	     ppTyc' tyc;
 	     pps ",";
-	     PP.break ppstrm {nsp=1,offset=0};
+	     break {nsp=1,offset=0};
 	     ppList' {sep=",", pp=ppTEBinder (pd-1)} (tycEnvFlatten tenv);
              pps ")";
 	     closeBox())
@@ -285,7 +288,8 @@ fun ppTycEnv pd ppstrm (tycEnv : Lty.tycEnv) =
 	     
 fun ppLty pd ppstrm (lty: Lty.lty) =
     if pd < 1 then pps ppstrm "<tyc>" else
-    let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
+    let val {openHOVBox, openHVBox, closeBox, pps, ppi, break, newline} =
+            en_pp ppstrm
 	val ppList' : {pp:PP.stream -> 'a -> unit, sep: string} -> 'a list -> unit =
               fn x => ppList ppstrm x
 	       (* eta-expansion of ppList to avoid value restriction *) 
@@ -299,23 +303,25 @@ fun ppLty pd ppstrm (lty: Lty.lty) =
             (pps "STR("; ppList' {sep=",",pp=ppLty (pd-1)} ltys; pps ")")
           | ppLtyI (Lty.LT_FCT (args,res)) =
             (pps "FCT("; ppList' {sep=",",pp=ppLty (pd-1)} args; pps ",";
-             PP.break ppstrm {nsp=1,offset=0};
+             break {nsp=1,offset=0};
              ppList' {sep=",",pp=ppLty (pd-1)} res; pps ")")
           | ppLtyI (Lty.LT_POLY (ks,ltys)) =
 	    (openHOVBox 1;
-	     pps "P0L(";
-	     ppList' {sep="*", pp=ppTKind (pd-1)} ks;
+	     pps "POL(";
+	     ppList' {sep=",", pp=ppTKind (pd-1)} ks;
 	     pps ",";
-	     PP.break ppstrm {nsp=1,offset=0};
+	     break {nsp=1,offset=0};
 	     ppList' {sep=",",pp=ppLty (pd-1)} ltys;
 	     pps ")";
 	     closeBox())
           | ppLtyI (Lty.LT_CONT ltys) =
             (pps "CONT("; ppList' {sep=",",pp=ppLty (pd-1)} ltys; pps ")")
           | ppLtyI (Lty.LT_IND(nt,ot)) =
-            (pps "IND("; ppLty (pd-1) ppstrm nt; pps ",";
-             PP.break ppstrm {nsp=1,offset=0};
-             ppLtyI ot; pps ")")
+            if !printIND then
+              (pps "IND("; ppLty' nt; pps ",";
+               break {nsp=1,offset=0};
+               ppLtyI ot; pps ")")
+            else ppLty pd ppstrm nt
 	  | ppLtyI (Lty.LT_ENV (lty, ol, nl, tenv)) =
 	    (openHVBox 1;
 	     pps "LT_ENV(";
@@ -325,10 +331,10 @@ fun ppLty pd ppstrm (lty: Lty.lty) =
 	     pps "nl=";
 	     pps (Int.toString nl);
 	     pps ",";
-	     PP.break ppstrm {nsp=1,offset=0};
+	     break {nsp=1,offset=0};
 	     ppLty' lty;
 	     pps ",";
-	     PP.break ppstrm {nsp=1,offset=0};
+	     break {nsp=1,offset=0};
 	     ppList' {sep=",", pp=ppTEBinder (pd-1)} (tycEnvFlatten tenv);
              pps ")";
 	     closeBox())
