@@ -3,7 +3,7 @@
 
 signature PPDEC =
 sig
-  val ppDec : Environment.environment -> PrettyPrint.stream 
+  val ppDec : Environment.environment -> PrettyPrintNew.stream 
                 -> (Absyn.dec * Access.lvar list) -> unit
   val debugging : bool ref
 end (* signature PPDEC *)
@@ -15,9 +15,11 @@ local
   structure S = Symbol
   structure IP = InvPath
   structure M = Modules
-  structure V = VarCon structure PP = PrettyPrint
+  structure V = VarCon
+  structure PP = PrettyPrintNew
+  structure PU = PPUtilNew
   open Types VarCon Modules Bindings Fixity Absyn
-       PrettyPrint PPUtil PPType PPObj Access
+       PrettyPrintNew PPUtilNew PPType PPObj Access
 in 
 
 (* debugging *)
@@ -305,10 +307,10 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 	    (openHVBox ppstrm (PP.Rel 0);
 	     openHVBox ppstrm (PP.Rel 0);
 	     PP.string ppstrm (Fixity.fixityToString fixity);
-	     PPUtil.ppSequence ppstrm {sep=C break {nsp=1,offset=0},
-			               pr=PPUtil.ppSym,
-			               style=INCONSISTENT}
-	                       ops;
+	     PU.ppSequence ppstrm {sep=C break {nsp=1,offset=0},
+			                  pr=PU.ppSym,
+			                  style=INCONSISTENT}
+	                          ops;
 	     closeBox ppstrm;
 	     PP.newline ppstrm;		       
 	     closeBox ppstrm)

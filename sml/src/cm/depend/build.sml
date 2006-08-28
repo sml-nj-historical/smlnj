@@ -39,6 +39,7 @@ structure BuildDepend :> BUILDDEPEND = struct
     structure DE = DAEnv
     structure EM = ErrorMsg
     structure SP = SymPath
+    structure PP = PrettyPrintNew
 
     type impexp = DG.impexp
 
@@ -154,11 +155,11 @@ structure BuildDepend :> BUILDDEPEND = struct
 				    n' :: " refers to " ::
 				    symDesc (s, [" defined in ", n''])
 			    in
-				app (PrettyPrint.string pps) l;
-				PrettyPrint.newline pps
+				app (PP.string pps) l;
+				PP.newline pps
 			    end
 		    in
-			PrettyPrint.newline pps;
+			PP.newline pps;
 			recur (SrcPath.descr f, history)
 		    end
 		in

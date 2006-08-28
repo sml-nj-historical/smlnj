@@ -19,14 +19,14 @@ structure Typecheck : TYPECHECK =
 struct
 
 local open Array List Types VarCon BasicTypes TypesUtil Unify Absyn
-	   ErrorMsg PrettyPrint PPUtil PPType PPAbsyn
+	   ErrorMsg PrettyPrintNew PPUtilNew PPType PPAbsyn
 
   structure SE = StaticEnv
   (* structure II = InlInfo *)
   structure DA = Access
   structure EU = ElabUtil
   structure ED = ElabDebug
-  structure PP = PrettyPrint
+  structure PP = PrettyPrintNew
 	  
 in 
 

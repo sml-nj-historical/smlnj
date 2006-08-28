@@ -28,7 +28,7 @@ local structure B  = Bindings
       structure M  = Modules
       structure MC = MatchComp
       structure PO = PrimOp
-      structure PP = PrettyPrint
+      structure PP = PrettyPrintNew
       structure S  = Symbol
       structure SP = SymPath
       structure LN = LiteralToNum
@@ -61,6 +61,9 @@ fun ppType ty =
     ElabDebug.withInternals
      (fn () => ElabDebug.debugPrint debugging
 		("type: ",PPType.ppType StaticEnv.empty, ty))
+
+fun ppLexp lexp = 
+    PP.with_default_pp(fn s => PPLexp.ppLexp 20 s lexp)
 
 fun ident x = x
 val unitLexp = RECORD []
@@ -1236,12 +1239,12 @@ and mkExp (exp, d) =
         | g (CONexp (dc, ts)) = 
 	  (let val _ = debugmsg ">>mkExp CONexp: "
 	       val c = mkCE(dc, ts, NONE, d)
-	       val _ = if !debugging then PPLexp.printLexp c else ()
+	       val _ = if !debugging then ppLexp c else ()
 	   in c end)
         | g (APPexp (CONexp(dc, ts), e2)) = 
 	  (let val _ = debugmsg ">>mkExp APPexp: "
 	       val c = mkCE(dc, ts, SOME(g e2), d)
-	       val _ = if !debugging then PPLexp.printLexp c else ()
+	       val _ = if !debugging then ppLexp c else ()
 	   in c end)
         | g (INTexp (s, t)) =
 	  (debugmsg ">>mkExp INTexp";
@@ -1487,7 +1490,7 @@ val _ = print "**** Translate: finished typechecking plexp ****\n"
 
 fun prGen (flag,printE) s e =
   if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e) else ()
-val _ = prGen(Control.FLINT.print, PPLexp.printLexp) "Translate" plexp
+val _ = prGen(Control.FLINT.print, ppLexp) "Translate" plexp
 
 (** normalizing the plambda expression into FLINT *)
 val flint = let val _ = debugmsg ">>norm"

@@ -12,7 +12,7 @@ struct
         sourceMap: SourceMap.sourcemap,
         fileOpened: string,
         anyErrors: bool ref,
-        errConsumer: PrettyPrint.device,
+        errConsumer: PrettyPrintNew.device,
         interactive: bool,
         sourceStream: TextIO.instream
       }

@@ -31,6 +31,7 @@ local structure BT = BasicTypes
       structure MU = ModuleUtil
       structure SE = StaticEnv
       structure TU = TypesUtil
+      structure PP = PrettyPrintNew
       open Types Modules ElabDebug
 in
 
@@ -43,10 +44,8 @@ val debugPrint = (fn x => debugPrint debugging x)
 val defaultError =
   EM.errorNoFile(EM.defaultConsumer(),ref false) SourceMap.nullRegion
 
-local
-structure PP = PrettyPrint
-in
 val env = StaticEnv.empty
+
 fun ppType x = 
  ((PP.with_pp (EM.defaultConsumer())
            (fn ppstrm => (PP.string ppstrm "find: ";
@@ -55,19 +54,16 @@ fun ppType x =
   handle _ => say "fail to print anything")
 
 fun ppTycon x = 
- ((PP.with_pp (EM.defaultConsumer())
-           (fn ppstrm => (PP.string ppstrm "find: ";
-                          PPType.resetPPType();
-                          PPType.ppTycon env ppstrm x)))
-  handle _ => say "fail to print anything")
-end
+    ((PP.with_pp (EM.defaultConsumer())
+        (fn ppstrm => (PP.string ppstrm "find: ";
+                       PPType.resetPPType();
+                       PPType.ppTycon env ppstrm x)))
+    handle _ => say "fail to print anything")
 
-local 
-  structure PPN = PrettyPrintNew
-in
+
 fun ppLtyc ltyc = 
-    PPN.with_default_pp (fn ppstrm => PPLty.ppTyc 20 ppstrm ltyc)
-end
+    PP.with_default_pp (fn ppstrm => PPLty.ppTyc 20 ppstrm ltyc)
+
 
 (****************************************************************************
  *               TRANSLATING ML TYPES INTO FLINT TYPES                      *

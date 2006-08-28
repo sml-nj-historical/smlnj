@@ -15,6 +15,8 @@ local
   structure BT = BasicTypes
   structure TU = TypesUtil
   structure ED = ElabDebug
+  structure PP = PrettyPrintNew
+  structure PU = PPUtilNew
   open VarCon Types
 in
 
@@ -133,11 +135,11 @@ fun new () = let
 			(err EM.COMPLAIN "overloaded variable not defined at type"
 			     (fn ppstrm =>
 				 (PPType.resetPPType();
-				  PrettyPrint.newline ppstrm;
-				  PrettyPrint.string ppstrm "symbol: "; 
-				  PPUtil.ppSym ppstrm name;
-				  PrettyPrint.newline ppstrm;
-				  PrettyPrint.string ppstrm "type: ";
+				  PP.newline ppstrm;
+				  PP.string ppstrm "symbol: "; 
+				  PU.ppSym ppstrm name;
+				  PP.newline ppstrm;
+				  PP.string ppstrm "type: ";
 				  PPType.ppType env ppstrm context));
 			     ())
 

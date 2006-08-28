@@ -8,9 +8,9 @@ sig
 
   val conToString : PLambda.con -> string
   val ppLexp : int -> PrettyPrintNew.stream -> PLambda.lexp -> unit
-  val printMatch : StaticEnv.staticEnv ->  
-                       (Absyn.pat * PLambda.lexp) list -> unit
-  val printFun : PrettyPrintNew.stream -> PLambda.lexp -> LambdaVar.lvar -> unit
+  val ppMatch : StaticEnv.staticEnv ->  
+                  (Absyn.pat * PLambda.lexp) list -> unit
+  val ppFun : PrettyPrintNew.stream -> PLambda.lexp -> LambdaVar.lvar -> unit
 
   val stringTag : PLambda.lexp -> string
 
@@ -349,10 +349,10 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
    in ppl l; newline(); newline()
   end
 
-fun printMatch env (rules: (Absyn.pat * lexp) list) =
+(* ppMatch : StaticEnv.statenv * (Absyn.pat * lexp) list -> unit *)
+fun ppMatch env (rules: (Absyn.pat * lexp) list) =
     let val pd = !Control.Print.printDepth
-    in PP.with_default_pp (fn ppstrm =>
-         let fun ppMatch ((p,r)::more) = 
+        fun ppMatch' ppstrm ((p,r)::more) = 
                  (PP.openHVBox ppstrm (PP.Rel 0);
                    PP.openHOVBox ppstrm (PP.Rel 2);
                     PPAbsyn.ppPat env ppstrm (p,pd);
@@ -360,11 +360,10 @@ fun printMatch env (rules: (Absyn.pat * lexp) list) =
                     ppLexp pd ppstrm r;
                    PP.closeBox ppstrm;
                    PP.newline ppstrm;
-                   ppMatch more;
+                   ppMatch' ppstrm more;
                   PP.closeBox ppstrm)
-               | ppMatch [] = ()
-         in ppMatch rules
-         end)
+               | ppMatch' _ [] = ()
+    in PP.with_default_pp (fn ppstrm => ppMatch' ppstrm rules)
     end
 
 fun ppFun ppstrm l v =

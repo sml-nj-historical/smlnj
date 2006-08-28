@@ -46,7 +46,9 @@ fun debugLty (lty: Lty.lty) =
     if !debugging then ppLty lty else ()
 
 fun debugLexp (lexp) = 
-    if !debugging2 then PPLexp.printLexp lexp else ()
+    if !debugging2 then
+       PP.with_default_pp(fn ppstrm => PPLexp.ppLexp 20 ppstrm lexp)
+    else ()
 
 val mkv = LambdaVar.mkLvar
 val cplv = LambdaVar.dupLvar

@@ -96,7 +96,8 @@ fun ltPrint lt =
      (PPLty.ppLty (!pd) stm lt;
       PP.newline stm))
 
-fun lePrint le = PPLexp.printLexp (simplify(le, 3))
+fun lePrint le = 
+    with_pp(fn ppstrm => PPLexp.ppLexp 20 ppstrm (simplify(le, 3)))
 
 (*** a hack for type checking ***)
 fun laterPhase i = (i > 20)
@@ -164,13 +165,13 @@ fun ltMatch le s (t1, t2) =
    else (clickerror();
          say (s ^ "  **** Lty conflicting in lexp =====> \n    ");
          ltPrint t1; say "\n and   \n    "; ltPrint t2;
-         say "\n \n";  PPLexp.printLexp le;
+         say "\n \n";  with_pp(fn s => PPLexp.ppLexp 20 s le);
          say "***************************************************** \n"))
   handle zz => 
   (clickerror();
    say (s ^ "  **** Lty conflicting in lexp =====> \n    ");
    say "uncaught exception found ";
-   say "\n \n";  PPLexp.printLexp le; say "\n";  
+   say "\n \n";  with_pp(fn s => PPLexp.ppLexp 20 s le); say "\n";  
    ltPrint t1; say "\n and   \n    "; ltPrint t2; say "\n";  
    say "***************************************************** \n")
 
@@ -246,7 +247,7 @@ fun check (kenv, venv, d) =
 			       \ PLambda type check: ");
 			  say (msg);
 			  say ("***\n Term: ");
-			  PPLexp.printLexp lexp;
+			  with_pp(fn s => PPLexp.ppLexp 20 s lexp);
 			  say ("\n Kind check error: ");
 			  say kndchkmsg;
 			  say ("\n");

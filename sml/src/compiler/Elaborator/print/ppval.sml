@@ -6,25 +6,27 @@
 
 signature PPVAL = 
 sig
-  val ppAccess: PrettyPrint.stream -> Access.access -> unit
-  val ppRep: PrettyPrint.stream -> Access.conrep -> unit
-  val ppDcon: PrettyPrint.stream -> VarCon.datacon -> unit
-  val ppVar: PrettyPrint.stream -> VarCon.var -> unit
-  val ppDebugDcon : PrettyPrint.stream
+  val ppAccess: PrettyPrintNew.stream -> Access.access -> unit
+  val ppRep: PrettyPrintNew.stream -> Access.conrep -> unit
+  val ppDcon: PrettyPrintNew.stream -> VarCon.datacon -> unit
+  val ppVar: PrettyPrintNew.stream -> VarCon.var -> unit
+  val ppDebugDcon : PrettyPrintNew.stream
 		    -> StaticEnv.staticEnv -> VarCon.datacon -> unit
   val ppDebugVar: (PrimOpId.primId -> string) ->
-		  PrettyPrint.stream 
+		  PrettyPrintNew.stream 
 		  -> StaticEnv.staticEnv -> VarCon.var -> unit
 end (* signature PPVAL *)
 
 structure PPVal : PPVAL =
 struct
 
-local structure PP = PrettyPrint
-      structure TU = TypesUtil
-      structure LU = Lookup 
-      structure A = Access
-      open PrettyPrint PPUtil VarCon Types
+local
+  structure PP = PrettyPrintNew
+  structure PU = PPUtilNew
+  structure TU = TypesUtil
+  structure LU = Lookup 
+  structure A = Access
+  open PrettyPrintNew PPUtilNew VarCon Types
 
 in 
 

@@ -29,7 +29,7 @@ local structure DA = Access
       structure TU = TypesUtil
       structure SE = StaticEnv
       structure PO = PrimOp
-      structure PP = PrettyPrint
+      structure PP = PrettyPrintNew
       open Types PLambda 
 
 in

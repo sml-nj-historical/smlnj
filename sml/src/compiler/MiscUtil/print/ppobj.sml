@@ -8,7 +8,7 @@ signature PPOBJ =
 sig
   type object
   val ppObj : StaticEnv.staticEnv
-              -> PrettyPrint.stream
+              -> PrettyPrintNew.stream
                  -> object * Types.ty * int
                     -> unit
   val debugging : bool ref
@@ -18,7 +18,8 @@ end
 structure PPObj : PPOBJ =
 struct
 
-structure PP = PrettyPrint
+structure PP = PrettyPrintNew
+structure PU = PPUtilNew
 structure V = Vector
 structure A = Access
 structure T = Types
@@ -27,7 +28,7 @@ structure BT = BasicTypes
 structure F = Fixity
 structure Obj = Unsafe.Object
 
-open PrettyPrint PPUtil
+open PrettyPrintNew PPUtilNew
 
 (* debugging *)
 val say = Control.Print.say
@@ -239,7 +240,7 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 		      else if TU.eqTycon(tyc,BT.int32Tycon) then
 			  PP.string ppstrm (Int32.toString(Obj.toInt32 obj))
 		      else if TU.eqTycon(tyc,BT.intinfTycon) then
-			  PPUtil.pp_intinf ppstrm (Unsafe.cast obj)
+			  PU.pp_intinf ppstrm (Unsafe.cast obj)
 	              else if TU.eqTycon(tyc,BT.wordTycon) then 
 			  ppWord (Word.toString(Obj.toWord obj))
 	              else if TU.eqTycon(tyc,BT.word8Tycon) then 
@@ -249,10 +250,10 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 	              else if TU.eqTycon(tyc,BT.realTycon) then
 			  PP.string ppstrm (Real.toString(Obj.toReal obj))
 	              else if TU.eqTycon(tyc,BT.stringTycon) then
-			  PPUtil.pp_mlstr ppstrm (Obj.toString obj)
+			  PU.pp_mlstr ppstrm (Obj.toString obj)
 	              else if TU.eqTycon(tyc,BT.charTycon) then
 			  (PP.string ppstrm "#";
-			   PPUtil.pp_mlstr ppstrm
+			   PU.pp_mlstr ppstrm
 					(String.str(Char.chr(Obj.toInt obj))))
 	              else if TU.eqTycon(tyc,BT.arrowTycon) then
 			  PP.string ppstrm  "fn"

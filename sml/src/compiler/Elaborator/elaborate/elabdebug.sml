@@ -5,10 +5,10 @@ signature ELABDEBUG =
 sig
   val debugPrint : bool ref 
                    -> (string *
-		       (PrettyPrint.stream -> 'a -> unit) *
+		       (PrettyPrintNew.stream -> 'a -> unit) *
 		       'a)
                    -> unit
-  val ppSymList : PrettyPrint.stream -> Symbol.symbol list -> unit
+  val ppSymList : PrettyPrintNew.stream -> Symbol.symbol list -> unit
   val envSymbols : StaticEnv.staticEnv -> Symbol.symbol list
   val checkEnv : StaticEnv.staticEnv * Symbol.symbol -> string
   val withInternals : (unit -> 'a) -> 'a
@@ -19,20 +19,21 @@ end (* signature ELABDEBUG *)
 structure ElabDebug : ELABDEBUG =
 struct
 
-local structure S  = Symbol
-      structure SE = StaticEnv
-      structure PP = PrettyPrint
-      structure PPU = PPUtil
-      structure EM = ErrorMsg
+local
+  structure S  = Symbol
+  structure SE = StaticEnv
+  structure PP = PrettyPrintNew
+  structure PU = PPUtilNew
+  structure EM = ErrorMsg
 
-      open PP
+  open PP
 
 in 
 
 fun debugPrint (debugging: bool ref)
                (msg: string, printfn: PP.stream -> 'a -> unit, arg: 'a) =
   if (!debugging) then
-       with_pp (EM.defaultConsumer())
+       with_default_pp
 	(fn ppstrm =>
 	  (openHVBox ppstrm (PP.Rel 0);
 	   PP.string ppstrm msg;
@@ -47,12 +48,12 @@ fun debugPrint (debugging: bool ref)
   else ()
 
 fun ppSymList ppstrm (syms: S.symbol list) = 
-     PPU.ppClosedSequence ppstrm
+     PU.ppClosedSequence ppstrm
      {front=(fn ppstrm => PP.string ppstrm "["),
       sep=(fn ppstrm => (PP.string ppstrm ",")),
       back=(fn ppstrm => PP.string ppstrm "]"),
-      style=PPU.INCONSISTENT,
-      pr=PPU.ppSym}
+      style=PU.INCONSISTENT,
+      pr=PU.ppSym}
      syms
 
 
