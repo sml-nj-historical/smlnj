@@ -1497,7 +1497,7 @@ val _ = print "**** Translate: typechecking plexp ****\n"
 val ltyerrors = ChkPlexp.checkLtyTop(plexp,0)
 val _ = if ltyerrors
         then (print "**** Translate: checkLty failed ****\n";
-              with_pp(fn ppstm => (PPLexp.ppLexp 5 ppstm plexp));
+              with_pp(fn ppstm => (PPLexp.ppLexp 25 ppstm plexp));
               complain EM.WARN "checkLty" EM.nullErrorBody)
         else print "**** Translate: finished typechecking plexp ****\n"
 

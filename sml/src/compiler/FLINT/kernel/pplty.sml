@@ -90,21 +90,17 @@ fun ppTEBinder pd ppstrm (binder: Lty.teBinder) =
     if pd < 1 then pps ppstrm "<teBinder>" else
     let val {openHOVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
     in openHOVBox 1;
-	let val ks = 
-		(case binder
-		  of Lty.Lamb (level, ks) => (pps "L"; ppi level; ks) 
-		   | Lty.Beta (level, args, ks) =>
-	             (pps "B";
-		      ppi level;
-		      pps "(";
-		      ppList ppstrm {sep=",", pp=ppTyc (pd-1)} args;
-		      pps ")";
-		      ks)
-		)
-	in if pd < 2 then () 
-	   else (pps " : ";
-                 ppKeFrame (pd-1) ppstrm ks)
-	end;
+       (case binder
+         of Lty.Lamb (level, ks) =>
+            (pps "L"; ppi level;
+             pps ": ";
+             ppKeFrame (pd-1) ppstrm ks) 
+          | Lty.Beta (level, args, ks) =>
+            (pps "B"; ppi level; pps "(";
+             ppList ppstrm {sep=",", pp=ppTyc (pd-1)} args;
+             pps ": ";
+             ppKeFrame (pd-1) ppstrm ks;
+             pps ")"));
        closeBox()
     end (* function ppTEBinder *)
 
