@@ -741,15 +741,14 @@ and ppStrexp (context as (_,source_opt)) ppstrm =
         | ppStrexp'(STRstr bindings, d) =
               (openHVBox ppstrm (Rel 0);
                pps "struct"; nl_indent ppstrm 2;
-               pps "...";
+(*               pps "..."; *)
                (* ppBinding not yet undefined *)
-               (*
                  ppSequence ppstrm
                    {sep=newline,
-                    pr=(fn ppstrm => fn b => ppBinding context ppstrm (b,d-1)),
+                    pr=(fn ppstrm => fn (B.VALbind v) => ppVar ppstrm v | b => pps "#"),
+                          (*ppBinding context ppstrm (b,d-1)),*)
                     style=CONSISTENT}
                  bindings;
-                *)
                pps "end";
                closeBox ppstrm)
 	| ppStrexp'(LETstr(dec,body),d) =

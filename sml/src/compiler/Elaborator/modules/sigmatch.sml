@@ -88,6 +88,7 @@ local structure A  = Absyn
       structure M  = Modules
       structure MU = ModuleUtil
       structure PP = PrettyPrintNew
+      structure PU = PPUtilNew
       structure S  = Symbol
       structure SE = StaticEnv
       structure SP = SymPath
@@ -869,17 +870,25 @@ let
                          val _ =
                              (print "###SM: "; print (S.name sym); print "\n";
                               debugPrint debugging
-                                         ("spectype", PPType.ppType statenv,
-                                         spectyp);
+                                ("spectype", PPType.ppType statenv,
+                                 spectyp);
                               debugPrint debugging 
-                                         ("acttyp", PPType.ppType statenv,
-                                         acttyp);
+                                ("acttyp", PPType.ppType statenv,
+                                  acttyp);
                               debugPrint debugging
-                                  ("ptvs",
+                                ("ptvs",
                                  (fn pps =>
-                                     app (fn tv =>
-                                             PPType.ppType statenv pps (T.VARty tv))),
+                                     PU.ppTuple pps 
+                                       (fn pps => (fn tv => 
+                                          PPType.ppType statenv pps (T.VARty tv)))),
                                  ptvs);
+                              debugPrint debugging
+                                ("btvs",
+                                 (fn pps =>
+                                     PU.ppTuple pps 
+                                       (fn pps => (fn tv =>
+                                          PPType.ppType statenv pps (T.VARty tv)))),
+                                 btvs);
                               print "\n")
 
                          val spath = SP.SPATH[sym]

@@ -29,6 +29,7 @@ local structure B  = Bindings
       structure MC = MatchComp
       structure PO = PrimOp
       structure PP = PrettyPrintNew
+      structure PU = PPUtilNew
       structure S  = Symbol
       structure SP = SymPath
       structure LN = LiteralToNum
@@ -1050,10 +1051,10 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
 
 and mkVBs (vbs, d) =
   let fun mkVB (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
-                   exp as VARexp (ref (w as (V.VALvar{typ,prim,...})), instvs),
+                   exp as VARexp (ref (w as (V.VALvar{typ,prim,...})), ptvs),
                    boundtvs=btvs, ...}, b: lexp) = 
             (* [dbm: 7/10/06] Originally, the mkVar and mkPE translations
-             * were chosen based on whether btvs and instvs were the same
+             * were chosen based on whether btvs and ptvs were the same
              * list of tyvars, which would be the case for all non-primop
              * variables, but also in the primop case whenever the rhs
              * variable environment type (!typ) was the same (equalTypeP)
@@ -1069,7 +1070,10 @@ and mkVBs (vbs, d) =
                         then LET(v, mkVar(w, d), b)
                         else LET(v, mkPE(exp, d, btvs), b)
                       | NONE => bug "mkVBs: unknown primop name")
+               | _ => LET(v, mkPE(exp, d, btvs), b))
+(*
                | _ => LET(v, mkVar(w, d), b))
+*)
                  (* when generalized variables = instantiation params *)
 
         | mkVB (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
@@ -1497,7 +1501,12 @@ val _ = print "**** Translate: typechecking plexp ****\n"
 val ltyerrors = ChkPlexp.checkLtyTop(plexp,0)
 val _ = if ltyerrors
         then (print "**** Translate: checkLty failed ****\n";
-              with_pp(fn ppstm => (PPLexp.ppLexp 25 ppstm plexp));
+              with_pp(fn str =>
+                (PU.pps str "absyn:"; PP.newline str;
+                 ElabDebug.withInternals
+                  (fn () => PPAbsyn.ppDec (env,NONE) str (rootdec,1000)); PP.newline str;
+                 PU.pps str "lexp:"; PP.newline str;
+                 PPLexp.ppLexp 25 str plexp));
               complain EM.WARN "checkLty" EM.nullErrorBody)
         else print "**** Translate: finished typechecking plexp ****\n"
 
