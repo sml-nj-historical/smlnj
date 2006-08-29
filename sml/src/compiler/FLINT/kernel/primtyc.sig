@@ -47,6 +47,9 @@ val pt_print   : primtyc -> string
 val pt_toint   : primtyc -> int
 val pt_fromint : int -> primtyc
 
+(** equality of primtycs *)
+val pt_eq : primtyc * primtyc -> bool
+
 (** check the boxity of values of each prim tyc *)
 val unboxed : primtyc -> bool
 

@@ -365,7 +365,7 @@ and tovalues (venv,d,lexp,cont) =
 					    (debugmsg ("tovalues cont ltys ["^
 						      Int.toString n ^"]:");
 					     debugLexp l;
-					     ppLty x;
+					     debugLty x;
 					     scan' (xs, ls, n + 1))
 					  | scan' _ = 
 					    raise Fail "flintnm.sml:\

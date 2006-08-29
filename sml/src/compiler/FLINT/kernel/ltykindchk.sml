@@ -10,7 +10,7 @@ sig
   val tkAssertSubkind : Lty.tkind * Lty.tkind -> unit
   (* tkAssertSubkind(k1,k2): assert that k1 is a subkind of k2 *)
 
-  val tkAssertIsMono : Lty.tkind -> unit
+  val tkAssertIsMono : Lty.tkind * string -> unit
   (* assert that a kind is monomorphic *)
 
   val tkSel : Lty.tkind * int -> Lty.tkind
@@ -55,9 +55,9 @@ fun tkAssertSubkind (k1, k2) =
     else raise KindChk "Subkind assertion failed!"
 
 (* assert that a kind is monomorphic *)
-fun tkAssertIsMono k =
+fun tkAssertIsMono (k,msg) =
     if tkIsMono k then ()
-    else raise KindChk "Mono assertion failed!"
+    else raise KindChk ("Mono assertion failed! "^msg)
 
 (* select the ith element (0 based) from a kind sequence *)
 fun tkSel (tk, i) = 
@@ -248,7 +248,7 @@ let val dict = Memo.newDict()
               | TC_PROJ(tc, i) =>
                 tkSel(g tc, i)
               | TC_SUM tcs =>
-                (List.app (tkAssertIsMono o g) tcs;
+                (List.app (fn tc => (tkAssertIsMono(g tc,"TC_SUM"))) tcs;
                  tkc_mono)
               | TC_FIX {family={size=n, gen=tc, params=ts,...},index=i} =>
                 let (* Kind check generator tyc *)
@@ -277,27 +277,32 @@ let val dict = Memo.newDict()
                       | _ => raise KindChk "FIX with bad generator"
                 end
               | TC_ABS tc =>
-                (tkAssertIsMono (g tc);
+                (tkAssertIsMono(g tc, "TC_ABS");
                  tkc_mono)
               | TC_BOX tc =>
-                (tkAssertIsMono (g tc);
+                (tkAssertIsMono (g tc, "TC_BOX");
                  tkc_mono)
               | TC_TUPLE (_,tcs) =>
-                (List.app (tkAssertIsMono o g) tcs;
+                (List.app (fn tc => (tkAssertIsMono(g tc, "TC_TUPLE"))) tcs;
                  tkc_mono)
-              | TC_ARROW (_, ts1, ts2) =>
-                (List.app (tkAssertIsMono o g) ts1;
-                 List.app (tkAssertIsMono o g) ts2;
+              | TC_ARROW (_, tcs1, tcs2) =>
+                (List.app (fn tc => (tkAssertIsMono(g tc, "TC_ARROW domain"))) tcs1;
+                 List.app (fn tc => (tkAssertIsMono(g tc, "TC_ARROW range"))) tcs2;
                  tkc_mono)
               | TC_TOKEN(_, tc) =>
-                (tkAssertIsMono (g tc);
+                (tkAssertIsMono (g tc, "TC_TOKEN");
                  tkc_mono)
               | TC_PARROW _ => bug "unexpected TC_PARROW in tcKindChk"
            (* | TC_ENV _ => bug "unexpected TC_ENV in tcKindChk" *)
 	      | TC_ENV(body, 0, j, teEmpty) => 
 		  (tcKindChk (List.drop(kenv,j)) body 
 		   handle Subscript => 
-			  bug "[Env]: dropping too many frames")
+                     (if j < 0 then print ("KindChk: negative j: "^Int.toString j^"\n")
+                      else if j >= (length kenv) then
+                          (print ("KindChk: drop to large: "^Int.toString j^
+                                  ", |kenv| = "^Int.toString(length kenv)^"\n"))
+                      else ();
+		      bug "KindChk: TC_ENV: dropping frames"))
 	      | TC_ENV(body, i, j, env) =>
 		  (let val kenv' = 
 			   List.drop(kenv, j)
@@ -366,12 +371,10 @@ fun ltKindCheckGen () =
 let val (tcKindChk, _, teKindChk) = tcteKindCheckGen()
     fun ltyIChk (kenv : tkindEnv) (ltyI : ltyI) =
         (case ltyI 
-          of LT_TYC(tyc) => 
-               (tkAssertIsMono (tcKindChk kenv tyc); tkc_mono)
+          of LT_TYC(tyc) => tcKindChk kenv tyc
            | LT_STR(ltys) => tkc_seq(map (ltyChk' kenv) ltys)
            | LT_FCT(paramLtys, rngLtys) => 
                let val paramks = map (ltyChk' kenv) paramLtys
-(*                   val kenv' = tkInsert(kenv,paramks) *)
                in 
                    tkc_fun(paramks,
                           tkc_seq(map (ltyChk' kenv) rngLtys))

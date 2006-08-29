@@ -37,7 +37,7 @@ in
 
 fun bug msg = ErrorMsg.impossible ("TransTypes: " ^ msg)
 val say = Control.Print.say 
-val debugging = ref true (* Control.CG.tmdebugging *)
+val debugging = Control.CG.tmdebugging
 fun debugmsg (msg: string) =
   if !debugging then (say msg; say "\n") else ()
 val debugPrint = (fn x => debugPrint debugging x)
@@ -268,10 +268,7 @@ and toTyc d t =
 
       and h (INSTANTIATED t) = g t
         | h (TV_MARK(depth,num)) =
-(*            let val (depth, num) = findLBOUND m
-            in *)
-                LT.tcc_var(DI.calc(d, depth), num)
-(*            end *)
+             LT.tcc_var(DI.calc(d, depth), num)
         | h (UBOUND _) = (print "#### toTyc UBOUND!\n"; LT.tcc_void)
             (* dbm: should this have been converted to a TV_MARK before
              * being passed to toTyc? *)

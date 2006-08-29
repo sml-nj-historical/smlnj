@@ -109,6 +109,8 @@ in
 	     handle Subscript => bug "unexpected integer in pt_fromint")
 end
 
+fun pt_eq ((_,_,ptn1): primtyc, (_,_,ptn2): primtyc) = (ptn1 = ptn2)
+
 (** printing out the primitive type constructor *)
 fun pt_print (pt, _, _) =
   let fun g (PT_INT31)  = "I"

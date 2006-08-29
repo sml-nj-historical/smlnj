@@ -49,7 +49,7 @@ in
  *                   CONSTANTS AND UTILITY FUNCTIONS                        *
  ****************************************************************************)
 
-val debugging = ref true
+val debugging = ref false
 fun bug msg = EM.impossible("Translate: " ^ msg)
 val say = Control.Print.say
 

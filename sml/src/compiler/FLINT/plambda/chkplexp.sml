@@ -162,11 +162,11 @@ fun ltTyApp le s (lt, ts, kenv) =
         say "***************************************************** \n"; 
         bug "fatal typing error in ltTyApp"))
 
-fun ltMatch le s (t1, t2) = 
+fun ltMatch le msg (t1, t2) = 
   (if ltEquiv(t1,t2) then ()
    else (clickerror();
          with_pp(fn s =>
-           (PU.pps s "ERROR(checkLty): ltEquiv fails in ltMatch"; PP.newline s;
+           (PU.pps s ("ERROR(checkLty): ltEquiv fails in ltMatch: "^msg); PP.newline s;
             PU.pps s "le:"; PP.newline s; PPLexp.ppLexp 6 s le;
             PU.pps s "t1:"; PP.newline s; PPLty.ppLty 10 s t1; PP.newline s;
             PU.pps s "t2:"; PP.newline s; PPLty.ppLty 10 s t2; PP.newline s;
@@ -175,7 +175,7 @@ fun ltMatch le s (t1, t2) =
   handle teUnbound2 => 
   (clickerror();
    with_pp(fn s =>
-     (PU.pps s "ERROR(checkLty): exception teUnbound2 in ltMatch"; PP.newline s;
+     (PU.pps s ("ERROR(checkLty): exception teUnbound2 in ltMatch"^msg); PP.newline s;
       PU.pps s "le:"; PP.newline s; PPLexp.ppLexp 6 s le;
       PU.pps s "t1:"; PP.newline s; PPLty.ppLty 10 s t1; PP.newline s;
       PU.pps s "t2:"; PP.newline s; PPLty.ppLty 10 s t2; PP.newline s;

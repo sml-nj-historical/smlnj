@@ -317,7 +317,12 @@ and tc_lzrd(t: tyc) =
                           newline(); PP.flushStream s
 			end);
 			raise teUnbound2)
-                                 in h(y, 0, nl - nl', teEmpty)  (* rule r6 *)
+                                 in if nl' > nl then
+                                        (print ("ERROR: tc_lzrd (r6): nl ="^
+                                               Int.toString nl ^ ", nl' = " ^
+                                               Int.toString nl' ^ "\n");
+                                         bug "tc_lzrd - nl' > nl")
+                                    else h(y, 0, nl - nl', teEmpty)  (* rule r6 *)
                                  end)
                        else tcc_var(n-ol+nl, k) (* rule r4 *)
                    | TC_NVAR _ => x
@@ -811,8 +816,8 @@ fun eq_fix (eqop1, hyp) (t1, t2) =
  * Each of these first takes the set of hypotheses.
  *)
 fun tc_eqv_gen (eqop1, eqop2, hyp) (t1, t2) = 
-    case (tc_outX t1, tc_outX t2) of
-        (TC_FIX _, TC_FIX _) => eqop2 (eqop1, hyp) (t1, t2)
+    case (tc_outX t1, tc_outX t2)
+     of (TC_FIX _, TC_FIX _) => eqop2 (eqop1, hyp) (t1, t2)
       | (TC_FN(ks1, b1), TC_FN(ks2, b2)) =>
         eqlist tk_eqv (ks1, ks2) andalso eqop1 hyp (b1, b2)
       | (TC_APP(a1, b1), TC_APP(a2, b2)) =>
@@ -838,6 +843,8 @@ fun tc_eqv_gen (eqop1, eqop2, hyp) (t1, t2) =
         eqop1 hyp (a1, a2) andalso eqop1 hyp (b1, b2)
       | (TC_CONT ts1, TC_CONT ts2) =>
         eqlist (eqop1 hyp) (ts1, ts2)
+      | (TC_PRIM ptyc1, TC_PRIM ptyc2) =>
+        PT.pt_eq(ptyc1,ptyc2)
       | _ => false
 
 (** general equality for tycs *)
@@ -884,12 +891,11 @@ fun lt_eqv_gen (eqop1, eqop2) (x : lty, y) =
 
 fun lt_eqv(x : lty, y) = 
   let val seq = lt_eqv_gen (lt_eqv, tc_eqv) 
-   in if ((ltp_norm x) andalso (ltp_norm y)) then (if not (lt_eq(x,y)) then (print "norm first\n"; lt_eq(x,y)) else true)
-      else (let val t1 = lt_whnm x
-                val t2 = lt_whnm y
-             in if (ltp_norm t1) andalso (ltp_norm t2) then lt_eq(t1, t2)
-                else seq(t1, t2)
-            end)
+   in let val t1 = lt_whnm x
+          val t2 = lt_whnm y
+      in if (ltp_norm t1) andalso (ltp_norm t2) then lt_eq(t1, t2)
+         else seq(t1, t2)
+      end
   end (* function lt_eqv *)
 
 fun lt_eqv_x(x : lty, y) = 
