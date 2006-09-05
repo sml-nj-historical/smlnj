@@ -1507,7 +1507,8 @@ val _ = if ltyerrors
                   (fn () => PPAbsyn.ppDec (env,NONE) str (rootdec,1000)); PP.newline str;
                  PU.pps str "lexp:"; PP.newline str;
                  PPLexp.ppLexp 25 str plexp));
-              complain EM.WARN "checkLty" EM.nullErrorBody)
+              complain EM.WARN "checkLty" EM.nullErrorBody;
+	     bug "PLambda type check error!")
         else print "**** Translate: finished typechecking plexp ****\n"
 
 fun prGen (flag,printE) s e =

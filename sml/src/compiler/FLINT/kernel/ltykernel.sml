@@ -97,7 +97,7 @@ fun tcc_env(x, ol, nl, tenv) =
                                print "ol = "; print (Int.toString ol); print "\n";
                                print "length(tenv) = "; print (Int.toString(tenvLength tenv)); print "\n"))
               | TC_ENV(tc, ol', nl', tenv')  =>
-                 (print "TC_ENV("; checkTCVAR(tc,ol',nl',tenv'); print ")\n")
+                 ((* print "TC_ENV("; *) checkTCVAR(tc,ol',nl',tenv') (*;print ")\n" *))
               | _ => () (* print ("tcc_env OTHER " ^ tci_print tci ^"\n") *) 
    in checkTCVAR(x,ol,nl,tenv); 
    (* original body --- *)
