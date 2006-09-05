@@ -142,7 +142,9 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
               pps "PRM(";
               openHOVBox 0;
                pps(PrimOp.prPrimop p); pps ","; br1 0;
-               ppLty' t; br1 0;
+               ppLty' t; 
+	       pps ",";
+	       br1 0;
                ppClosedSeq ("[",",","]") (PPLty.ppTyc (pd-1)) ts;
               closeBox();
               pps ")";
