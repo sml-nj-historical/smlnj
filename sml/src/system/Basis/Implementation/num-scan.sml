@@ -8,16 +8,17 @@
  *)
 
 structure NumScan : sig
-
-  (*  val scanWord : StringCvt.radix
+  
+    val scanWord : StringCvt.radix
 	  -> (char, 'a) StringCvt.reader -> (Word32.word, 'a) StringCvt.reader
     val scanInt  : StringCvt.radix
 	  -> (char, 'a) StringCvt.reader -> (Int32.int, 'a) StringCvt.reader
-    val scanReal : (char, 'a) StringCvt.reader -> (real, 'a) StringCvt.reader *)
+    val scanReal : (char, 'a) StringCvt.reader -> (real, 'a) StringCvt.reader 
 	(** should be to LargeReal.real **)
-
+   
   end = struct
-(*
+    (* val z = InlineT.Word32.toLargeIntX *)
+    
     structure W = InlineT.Word32
     structure I = InlineT.Int31
     structure I32 = InlineT.Int32
@@ -28,21 +29,21 @@ structure NumScan : sig
     val op >= = W.>=
     val op +  = W.+
     val op -  = W.-
-    val op *  = W.* *)
-(*
+    val op *  = W.* 
+
     val largestWordDiv10 : word = 0w429496729	(* 2^32-1 divided by 10 *)
     val largestWordMod10 : word = 0w5		(* remainder *)
  
     val largestNegInt32 : word = 0wx80000000
     val largestPosInt32 : word = 0wx7fffffff
     val minInt32 : Int32.int = ~2147483648
- *)
+ 
   (* A table for mapping digits to values.  Whitespace characters map to
    * 128, "+" maps to 129, "-","~" map to 130, "." maps to 131, and the
    * characters 0-9,A-Z,a-z map to their * base-36 value.  All other
    * characters map to 255.
    *)
-(*
+
     local
       val cvtTable = "\
 	    \\255\255\255\255\255\255\255\255\255\128\128\255\255\255\255\255\
@@ -268,11 +269,15 @@ structure NumScan : sig
       | scanWord StringCvt.OCT = finalWord scanOct
       | scanWord StringCvt.DEC = finalWord scanDec
       | scanWord StringCvt.HEX = finalWord scanHex
- *)
+ 
     local
-      val fromword32 = InlineT.Int32.fromLarge o InlineT.Word32.toLargeIntX
+      (* Type check Bug test case
+	   fun test x = InlineT.Int32.fromLarge (InlineT.Word32.toLargeIntX x)
+       *) 
+ 
+       val fromword32 = InlineT.Int32.fromLarge o InlineT.Word32.toLargeIntX
     in
-(*
+
     fun finalInt scanFn getc cs = (case (scanFn false getc cs)
 	   of NONE => NONE
 	    | (SOME{neg=true, word, rest}) =>
@@ -288,9 +293,9 @@ structure NumScan : sig
 	        else 
 	           SOME(fromword32 word, rest)
 	  (* end case *))
- *)
+ 
     end (* end local *)
-(*
+
     fun scanInt StringCvt.BIN = finalInt scanBin
       | scanInt StringCvt.OCT = finalInt scanOct
       | scanInt StringCvt.DEC = finalInt scanDec
@@ -422,8 +427,8 @@ structure NumScan : sig
 		       | NONE => NONE (* ASSERT: this case can't happen *)
 		   (* end case *))
 	
-	  end
-*)
+	  end 
+       
   end;
 
 
