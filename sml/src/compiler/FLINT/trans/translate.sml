@@ -602,6 +602,17 @@ in
 	      VAR x, APP (negate, VAR x)))
 end
 
+(** inl_infPrec : string * string * PrimOp.primop * Lty.lty * bool -> PLambda.lexp
+
+    Precision converting translation using a conversion
+    primitive named in the second argument. 
+
+    Examples: 
+	     inl_infPrec ("EXTEND_INF", "finToInf", p, lt, false) 
+             inl_infPrec ("COPY", "finToInf", p, lt, false) 
+
+	system/smlnj/init/core-intinf.sml:51:    val finToInf  : int32 * bool -> intinf
+ *)
 fun inl_infPrec (what, corename, p, lt, is_from_inf) = let
     val (orig_arg_lt, res_lt) =
 	case LT.ltd_arrow lt of
@@ -611,14 +622,33 @@ fun inl_infPrec (what, corename, p, lt, is_from_inf) = let
 	LT.ltc_parrow (if is_from_inf then (orig_arg_lt, LT.ltc_int32)
 		       else (LT.ltc_int32, orig_arg_lt))
     val new_arg_lt = LT.ltc_tuple [orig_arg_lt, extra_arg_lt]
-    val new_lt = LT.ltc_parrow (new_arg_lt, res_lt)
+    val new_lt = LT.ltc_parrow (new_arg_lt, res_lt )
     val x = mkv ()
-in
+    (** Begin DEBUG edits *)
+    val y = mkv ()	
+    (** val coreOcc = (if corename = "finToInf" then
+			FN(y, LT.ltc_int32 (** Where should this type come from *), 
+			   APP(coreAcc corename, RECORD [VAR y,
+				falseLexp 
+				(** Apply to CoreBasicType falseDcon ...  *) ]))
+		   else coreAcc corename) *)
+    (** End DEBUG edits *)
+    val e = 	
     FN (x, orig_arg_lt,
 	APP (PRIM (p, new_lt, []),
 	     RECORD [VAR x, coreAcc corename]))
+     val _ = print ("### inl_infPrec ### corename " ^ corename ^ "\n")
+    val _ = with_pp (fn ppstrm => PPLexp.ppLexp 20 ppstrm e)
+    val _ = print "### end inl_infPrec ###\n" 
+    in
+    e	
 end
 
+(** transPrim : PrimOp.primop * Lty.lty * Lty.tyc list 
+	
+   Translate Absyn primop to PLambda form using given 
+   intrinsic PLambda type and type parameters   
+ *)
 fun transPrim (prim, lt, ts) = 
   let fun g (PO.INLLSHIFT k) = inlineShift(lshiftOp, k, fn _ => lword0(k))
         | g (PO.INLRSHIFTL k) = inlineShift(rshiftlOp, k, fn _ => lword0(k))
@@ -808,8 +838,7 @@ fun transPrim (prim, lt, ts) =
 	| g (p as PO.EXTEND_INF prec) =
 	    inl_infPrec ("EXTEND_INF", "finToInf", p, lt, false)
 	| g (p as PO.COPY_INF prec) =
-	    inl_infPrec ("COPY", "finToInf", p, lt, false)
-
+	    inl_infPrec ("COPY", "finToInf", p, lt, false) 
 	(* default handling for all other primops *)
         | g p = PRIM(p, lt, ts) 
 
@@ -940,7 +969,9 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
                in PRIM (PO.RAW_CCALL i, toLty d intrinsicType,
                         map (toTyc d) intrinsicParams)
                end
-             | _ => transPrim(primop, (toLty d intrinsicType),
+             | _ => (** where do these intrinsicType originate? 
+			A: PrimOpTypeMap *)
+		    transPrim(primop, (toLty d intrinsicType),
                               map (toTyc d) intrinsicParams)
       end
   | mkVE (v as V.VALvar{typ, prim = PrimOpId.NonPrim, path, ...}, ts, d) =
@@ -1510,6 +1541,7 @@ val _ = if ltyerrors
               complain EM.WARN "checkLty" EM.nullErrorBody;
 	     bug "PLambda type check error!")
         else print "**** Translate: finished typechecking plexp ****\n"
+
 
 fun prGen (flag,printE) s e =
   if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e) else ()

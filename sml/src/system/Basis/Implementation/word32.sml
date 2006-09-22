@@ -16,9 +16,9 @@ structure Word32Imp : WORD =
     val toLargeWordX  : word -> LargeWord.word = W32.toLargeWordX
     val fromLargeWord : LargeWord.word -> word = W32.fromLargeWord
 
-    val toLargeInt : word -> LargeInt.int    = W32.toLargeInt
-    val toLargeIntX : word -> LargeInt.int   = W32.toLargeIntX
-    val fromLargeInt : LargeInt.int -> word  = W32.fromLargeInt
+    val toLargeInt (* : word -> LargeInt.int *)   = W32.toLargeInt
+    val toLargeIntX (* : word -> LargeInt.int *)   = W32.toLargeIntX
+    val fromLargeInt (* : LargeInt.int -> word *) = W32.fromLargeInt
 
     val toInt   : word -> int = W32.toInt
     val toIntX  : word -> int = W32.toIntX

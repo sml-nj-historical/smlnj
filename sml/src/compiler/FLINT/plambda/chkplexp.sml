@@ -322,7 +322,7 @@ fun check (kenv, venv, d) =
 		   
 		 | LET(v, e1, e2) => 
 		   let val t1 = loop e1
-                       val _ = ltyChkenv "LET definen" t1 
+                       val _ = ltyChkenv "LET definien" t1 
                        val venv' = LT.ltInsert(venv, v, t1, d)
 		       val bodyLty = check (kenv, venv', d) e2
 		       val _ = ltyChkenv "LET body" bodyLty

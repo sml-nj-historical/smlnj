@@ -137,8 +137,8 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
 	val toLargeWord   = copy_word32
 	val toLargeWordX  = copy_word32
 	val fromLargeWord = copy_word32
-	val toLargeInt    : word32 -> intinf  = IntInf.copy_word32
-	val toLargeIntX   : word32 -> intinf  = IntInf.extend_word32
+	val toLargeInt    = IntInf.copy_word32
+	val toLargeIntX   = IntInf.extend_word32
 	val fromLargeInt  = IntInf.trunc_word32
 	val toInt         = testu_int31
 	val toIntX        = test_int31

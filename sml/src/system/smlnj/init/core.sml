@@ -352,6 +352,8 @@ structure Core =
 
 	val testInf = CoreIntInf.testInf
 	val truncInf = CoreIntInf.truncInf
+	(** ADDED copyInf ... because finToInf takes sign extension parameter *) 
+	val copyInf = CoreIntInf.copyInf
 	val finToInf = CoreIntInf.finToInf
 	val makeNegInf = CoreIntInf.makeNegInf
 	val makePosInf = CoreIntInf.makePosInf
