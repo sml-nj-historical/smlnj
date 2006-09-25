@@ -613,6 +613,44 @@ end
 
 	system/smlnj/init/core-intinf.sml:51:    val finToInf  : int32 * bool -> intinf
  *)
+fun inlToInfPrec (opname, coerceFnName, primop, primoplt) =
+   let 
+	val (orig_arg_lt, res_lt) =
+		case LT.ltd_arrow primoplt of
+	    	(_, [a], [r]) => (a, r)
+	  	| _ => bug ("unexpected type of " ^ opname)
+    	val extra_arg_lt =
+		if coerceFnName = "finToInf" then
+			LT.ltc_arrow(LT.ffc_var(true,false), [LT.ltc_int32 ,LT.ltc_bool], [res_lt])
+		else
+			LT.ltc_parrow(LT.ltc_int32, res_lt)
+        val new_arg_lt = LT.ltc_tuple [orig_arg_lt, extra_arg_lt]
+        val new_lt = LT.ltc_parrow (new_arg_lt, res_lt )
+        val x = mkv ()
+    in
+       FN (x, orig_arg_lt,
+	  APP (PRIM (primop, new_lt, []),
+	       RECORD [VAR x, coreAcc coerceFnName]))
+    end
+
+fun inlFromInfPrec (opname, coerceFnName, primop, primoplt) =    
+    let 
+	val (orig_arg_lt, res_lt) =
+		case LT.ltd_arrow primoplt of
+	    	(_, [a], [r]) => (a, r)
+	  	| _ => bug ("unexpected type of " ^ opname)
+    	val extra_arg_lt =
+		LT.ltc_parrow (orig_arg_lt, LT.ltc_int32)
+        val new_arg_lt = LT.ltc_tuple [orig_arg_lt, extra_arg_lt]
+        val new_lt = LT.ltc_parrow (new_arg_lt, res_lt )
+        val x = mkv ()
+    in
+       FN (x, orig_arg_lt,
+	  APP (PRIM (primop, new_lt, []),
+	       RECORD [VAR x, coreAcc coerceFnName]))
+    end
+    
+  
 fun inl_infPrec (what, corename, p, lt, is_from_inf) = let
     val (orig_arg_lt, res_lt) =
 	case LT.ltd_arrow lt of
@@ -620,18 +658,18 @@ fun inl_infPrec (what, corename, p, lt, is_from_inf) = let
 	  | _ => bug ("unexpected type of " ^ what)
     val extra_arg_lt =
 	LT.ltc_parrow (if is_from_inf then (orig_arg_lt, LT.ltc_int32)
-		       else (LT.ltc_int32, orig_arg_lt))
+		       else (LT.ltc_int32, res_lt (* orig_arg_lt *) ))
     val new_arg_lt = LT.ltc_tuple [orig_arg_lt, extra_arg_lt]
     val new_lt = LT.ltc_parrow (new_arg_lt, res_lt )
     val x = mkv ()
     (** Begin DEBUG edits *)
     val y = mkv ()	
-    (** val coreOcc = (if corename = "finToInf" then
+    val coreOcc = (if corename = "finToInf" then
 			FN(y, LT.ltc_int32 (** Where should this type come from *), 
 			   APP(coreAcc corename, RECORD [VAR y,
 				falseLexp 
 				(** Apply to CoreBasicType falseDcon ...  *) ]))
-		   else coreAcc corename) *)
+		   else coreAcc corename) 
     (** End DEBUG edits *)
     val e = 	
     FN (x, orig_arg_lt,
@@ -832,13 +870,14 @@ fun transPrim (prim, lt, ts) =
 	 * does the actual conversion to or from IntInf. *)
 
 	| g (p as PO.TEST_INF prec) =
-	    inl_infPrec ("TEST_INF", "testInf", p, lt, true)
+	    inlFromInfPrec ("TEST_INF", "testInf", p, lt)
 	| g (p as PO.TRUNC_INF prec) =
-	    inl_infPrec ("TRUNC_INF", "truncInf", p, lt, true)
+	    inlFromInfPrec ("TRUNC_INF", "truncInf", p, lt)
 	| g (p as PO.EXTEND_INF prec) =
-	    inl_infPrec ("EXTEND_INF", "finToInf", p, lt, false)
+	    (* inl_infPrec ("EXTEND_INF", "finToInf", p, lt, false) *)
+	    inlToInfPrec("EXTEND_INF", "finToInf", p, lt)
 	| g (p as PO.COPY_INF prec) =
-	    inl_infPrec ("COPY", "finToInf", p, lt, false) 
+	    inlToInfPrec ("COPY", "copyInf", p, lt) 
 	(* default handling for all other primops *)
         | g p = PRIM(p, lt, ts) 
 
