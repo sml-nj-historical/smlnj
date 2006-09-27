@@ -499,6 +499,9 @@ extern Addr_t *ML_X86Frame;		/* used to get at limitptr */
 #  elif defined(OPSYS_DARWIN)
     /** x86, Darwin **/
 #    define SIG_FAULT1		SIGFPE
+/* NOTE: MacOS X 10.4.7 sets the code to 0, so we need to test the opcode. */
+#    define INTO_OPCODE		0xce	/* the 'into' instruction is a single */
+					/* instruction that signals Overflow */
 #    define INT_DIVZERO(s, c)	(((s) == SIGFPE) && ((c) == FPE_FLTDIV))
 #    define INT_OVFLW(s, c)	(((s) == SIGFPE) && ((c) == FPE_FLTOVF))
     /* see /usr/include/mach/i386/thread_status.h */

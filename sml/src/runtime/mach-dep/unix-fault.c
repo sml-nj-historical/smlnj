@@ -59,8 +59,8 @@ PVT SigReturn_t FaultHandler (int signal, siginfo_t *si, void *c)
     int		    code = SIG_GetCode(si, scp);
 
 #ifdef SIGNAL_DEBUG
-    SayDebug ("Fault handler: sig = %d, inML = %d\n",
-	signal, SELF_VPROC->vp_inMLFlag);
+    SayDebug ("Fault handler: sig = %d, code = %d, inML = %d\n",
+	signal, code, SELF_VPROC->vp_inMLFlag);
 #endif
 
     if (! SELF_VPROC->vp_inMLFlag) 
@@ -68,6 +68,17 @@ PVT SigReturn_t FaultHandler (int signal, siginfo_t *si, void *c)
 	    signal, SIG_GetCode(si, scp), SIG_GetPC(scp));
 
    /* Map the signal to the appropriate ML exception. */
+#if defined(HOST_X86) && defined(OPSYS_DARWIN)
+  /* NOTE: early versions of Mac OS X 10.4.x set the code to FPE_FLTDIV or
+   * FPE_FLTOVF, but 10.4.7 sets it to 0, so we need this workaround.
+   */
+    if ((signal == SIGFPE) && (code == 0)) {
+	if (((Byte_t *)SIG_GetPC(scp))[-1] == INTO_OPCODE)
+	    code = FPE_FLTOVF;
+	else
+	    code = FPE_FLTDIV;
+    }
+#endif
     if (INT_OVFLW(signal, code)) {
 	msp->ml_faultExn = OverflowId;
 	msp->ml_faultPC = (Word_t)SIG_GetPC(scp);
