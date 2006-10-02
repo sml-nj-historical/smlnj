@@ -266,7 +266,7 @@ fun tcLoop wflag (nx, ox) =
                     end)
           end
      | (_, _) => 
-          if LT.tc_eqv_x(nx, ox) then NONE
+          if LT.tc_eqv(nx, ox) then NONE
           else (say " Type nx is : \n"; say (LT.tc_print nx);
                 say "\n Type ox is : \n"; say (LT.tc_print ox); say "\n";
                 bug "unexpected other tycs in tcLoop")))

@@ -77,10 +77,6 @@ val lt_eqv     : lty * lty -> bool
 val ff_eqv     : fflag * fflag -> bool
 val rf_eqv     : rflag * rflag -> bool
 
-(** testing the equivalence for tycs and ltys with relaxed constraints *)
-val tc_eqv_x   : tyc * tyc -> bool
-val lt_eqv_x   : lty * lty -> bool
-
 (** pretty printing of tkinds, tycs, and ltys *)
 val tk_print   : tkind -> string
 val tc_print   : tyc -> string

@@ -21,7 +21,7 @@ local
     open PPUtilNew
 in
 
-val dtPrintNames : bool ref = ref true
+val dtPrintNames : bool ref = ref false
 val printIND : bool ref = ref true
 
 fun ppSeq ppstrm {sep: string, pp : PP.stream -> 'a -> unit} (list: 'a list) =
@@ -142,13 +142,14 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	     pps ")";
 	     closeBox())
 	  | ppTycI (Lty.TC_APP(contyc, tys)) =
-	    (openHOVBox 1;
+	    (openHOVBox 0;
 	     pps "APP(";
+             PP.openHVBox ppstrm (PP.Rel 0);
 	     ppTyc' contyc;
-	     pps ",";
-	     break {nsp=1,offset=0};
+	     pps ","; break {nsp=1,offset=0};
 	     ppList' {sep=",", pp=ppTyc (pd-1)} tys;
 	     pps ")";
+             closeBox();
 	     closeBox())
 	  | ppTycI (Lty.TC_SEQ tycs) =
 	    (openHOVBox 1;
@@ -174,21 +175,22 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	  | ppTycI (Lty.TC_FIX{family={size,names,gen,params},index}) =
             if !dtPrintNames then pps (Vector.sub(names,index))
             else
-	    (openHOVBox 1;
+	    (openHOVBox 0;
               pps "FIX(";
               openHVBox 0;
-              pps "size = "; ppi size; break {nsp=1,offset=0};
-              pps "index = "; ppi index; break {nsp=1,offset=0};
-              pps "gen = ";
-              openHOVBox 2;
-               ppTyc' gen;
-              closeBox;
-              pps "prms = ";
-              openHOVBox 2;
-               ppList' {sep = ",", pp = ppTyc (pd-1)} params;
-              closeBox ();
-              break {nsp=0,offset=0};
-              pps ")";
+               pps "size = "; ppi size; break {nsp=1,offset=0};
+               pps "index = "; ppi index; break {nsp=1,offset=0};
+               pps "gen = ";
+               openHOVBox 2;
+                ppTyc' gen;
+               closeBox ();
+               break {nsp=1,offset=0};
+               pps "prms = ";
+               openHOVBox 2;
+                ppList' {sep = ",", pp = ppTyc (pd-1)} params;
+               closeBox ();
+               pps ")";
+              closeBox();
 	     closeBox())
 	  | ppTycI (Lty.TC_ABS tyc) =
 	    (pps "ABS(";
@@ -244,10 +246,12 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
             if !printIND then
               (openHOVBox 1;
                pps "IND(";
+               openHOVBox 0;
                ppTyc' tyc;
                pps ",";
                break {nsp=1,offset=0};
                ppTycI tycI;
+               closeBox();
                pps ")";
                closeBox())
             else ppTyc' tyc
@@ -314,9 +318,13 @@ fun ppLty pd ppstrm (lty: Lty.lty) =
             (pps "CONT("; ppList' {sep=",",pp=ppLty (pd-1)} ltys; pps ")")
           | ppLtyI (Lty.LT_IND(nt,ot)) =
             if !printIND then
-              (pps "IND("; ppLty' nt; pps ",";
+              (pps "IND(";
+               openHOVBox 0;
+               ppLty' nt; pps ",";
                break {nsp=1,offset=0};
-               ppLtyI ot; pps ")")
+               ppLtyI ot;
+               closeBox();
+               pps ")")
             else ppLty pd ppstrm nt
 	  | ppLtyI (Lty.LT_ENV (lty, ol, nl, tenv)) =
 	    (openHVBox 1;

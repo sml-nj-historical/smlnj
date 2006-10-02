@@ -31,10 +31,6 @@ val lt_eqv   : lty * lty -> bool
 val ff_eqv   : fflag * fflag -> bool
 val rf_eqv   : rflag * rflag -> bool
 
-(** testing the equivalence for tycs and ltys with relaxed constraints *)
-val tc_eqv_x : tyc * tyc -> bool
-val lt_eqv_x : lty * lty -> bool
-
 (** finding out the depth for a tyc's innermost-bound free variables *)
 val tc_depth : tyc * DebIndex.depth -> DebIndex.depth
 val tcs_depth: tyc list * DebIndex.depth -> DebIndex.depth

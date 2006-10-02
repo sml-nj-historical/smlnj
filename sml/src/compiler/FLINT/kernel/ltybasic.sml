@@ -138,10 +138,6 @@ val lt_eqv    : lty * lty -> bool = LK.lt_eqv
 val ff_eqv    : fflag * fflag -> bool = LK.ff_eqv
 val rf_eqv    : rflag * rflag -> bool = LK.rf_eqv
 
-(** testing the equivalence for tycs and ltys with relaxed constraints *)
-val tc_eqv_x  : tyc * tyc -> bool = LK.tc_eqv_x
-val lt_eqv_x  : lty * lty -> bool = LK.lt_eqv_x
-
 
 (***************************************************************************
  *            UTILITY FUNCTIONS FOR PRETTY PRINTING                        *

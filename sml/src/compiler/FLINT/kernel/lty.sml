@@ -457,14 +457,16 @@ fun lt_cmp (t1, t2) = cmp(lt_table, t1, t2)
 (** get the hash key of each lty, only used by reps/coerce.sml; a hack **)
 fun lt_key (ref (h : int, _ : ltyI, _ : aux_info)) = h
 
-(** checking if a tyc or an lty is in the normal form *)
-fun  tcp_norm ((ref(_, TC_IND _, AX_REG(true,_,_))) : tyc) =  bug "TC_IND is norm?!"
+(** checking if a tyc or an lty is in normal form *)
+fun  tcp_norm ((ref(_, TC_IND _, AX_REG(true,_,_))) : tyc) =
+       bug "TC_IND is norm?!"
    | tcp_norm ((ref(_, _, AX_REG(b,_,_))) : tyc) =  b
    | tcp_norm _ = false
 
-fun ltp_norm ((ref(_, LT_TYC (ref (_,TC_IND _, _)), AX_REG(true,_,_))) : lty) =  
-    bug "LT_TYC (TC_IND ) is norm?!"
-  | ltp_norm ((ref(_, LT_IND _, AX_REG(true,_,_))) : lty) =  bug "LT_IND is norm?!"
+fun ltp_norm ((ref(_, LT_TYC (ref (_,TC_IND _, _)), AX_REG(true,_,_))) : lty) =
+      bug "LT_TYC(TC_IND) is norm?!"
+  | ltp_norm ((ref(_, LT_IND _, AX_REG(true,_,_))) : lty) =
+      bug "LT_IND is norm?!"
   | ltp_norm ((ref(_, _, AX_REG(b,_,_))) : lty) =  b
   | ltp_norm _ = false
 
@@ -599,7 +601,8 @@ local
   fun verify(ref(_, TC_IND _, AX_REG(true,_,_))) =  bug "TC_IND is norm?!"
     | verify _ = ()
 in 
-  fun tc_eq (x: tyc, y) =  (verify x; verify y; x = y)
+  fun tc_eq (x: tyc, y: tyc) =
+      (verify x; verify y; x = y)
 end
 
 local 
