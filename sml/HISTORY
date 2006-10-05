@@ -15,6 +15,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/10/05 11:30:00 CDT 
+Tag: blume-20061005-merge-amd64
+Description:
+
+Merged code for AMD64 backend (Mike Rainey's work).
+Everything is hooked up but untested.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2006/05/17 14:00:00 CST
 Tag: Release_110_59
 Description:

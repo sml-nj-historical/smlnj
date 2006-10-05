@@ -46,8 +46,8 @@ struct
   type reducer = 
     (I.instruction, I.C.cellset, I.operand, I.addressing_mode, CFG.cfg) TS.reducer
 
-  val esp = C.esp
-  val espOpnd = I.Direct(esp)
+  val esp = C.rsp
+  val espOpnd = I.Direct(64,esp)
 
   fun error msg = MLRiscErrorMsg.error("AMD64CompInstrExt", msg)
 
@@ -78,7 +78,7 @@ struct
      | X.LOCK_CMPXCHGL(src, dst) =>
        (* src must in a register *)
        emit(I.cmpxchg{lock=true,sz=I.I32, 
-                      src=I.Direct(reduceOperand(operand src)), 
+                      src=I.Direct(64,reduceOperand(operand src)), 
                       dst=operand dst},an)
   end
 end

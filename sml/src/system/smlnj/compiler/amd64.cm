@@ -1,12 +1,9 @@
-(* current.cm
+(*
+ * Library exporting "visible" compiler for AMD64.
  *
- * Library exporting "visible" compiler for host architecture.
+ * (C) 2006 The Fellowship of SML/NJ
  *
- * (C) 2001, Lucent Technologies, Bell Labs
- *
- * author: Matthias Blume (blume@research.bell-labs.com)
  *)
-(cm-init)
 Library
 	(* signatures *)
 	signature STATS
@@ -93,53 +90,14 @@ Library
         structure Access
         structure Unify
 
-	(* the current backend *)
-	structure Backend
-
+	(* the amd64 backend(s) *)
+	structure AMD64StdCallBackend
+	structure AMD64CCallBackend
 is
-# if defined(ARCH_ALPHA)
-	$smlnj/compiler/alpha32.cm
-	alpha32.sml
-# elif defined(ARCH_MIPS)
-#   if defined(BIG_ENDIAN)
-	$smlnj/compiler/mipseb.cm
-	mipseb.sml
-#   else
-	$smlnj/compiler/mipsel.cm
-	mipsel.sml
-#   endif
-# elif defined(ARCH_HPPA)
-	$smlnj/compiler/hppa.cm
-	hppa.sml
-# elif defined(ARCH_RS6000)
-	$smlnj/compiler/rs6000.cm
-	rs6000.sml
-# elif defined(ARCH_PPC)
-	$smlnj/compiler/ppc.cm
-	ppc.sml
-# elif defined(ARCH_SPARC)
-	$smlnj/compiler/sparc.cm
-	sparc.sml
-# elif defined(ARCH_X86)
-	$smlnj/compiler/x86.cm
-#   if defined(OPSYS_UNIX)
-(*
-#     if defined(ABI_Darwin)
-        x86-intelmac.sml
-#     else
-*)
-	x86-ccall.sml
-(*
-#     endif
-*)
-#   elif defined(OPSYS_WIN32)
-	x86-stdcall.sml
-#   else
-#	error Strange OS (for x86)!
-#   endif
-# elif defined (ARCH_AMD64)
-       $smlnj/compiler/amd64.cm
-       amd64.sml
-# else
-#   error Strange architecture!
-# endif
+	$smlnj/viscomp/basics.cm
+	$smlnj/viscomp/parser.cm
+	$smlnj/viscomp/elabdata.cm
+	$smlnj/viscomp/elaborate.cm
+	$smlnj/viscomp/execute.cm
+	$smlnj/viscomp/core.cm
+	$smlnj/viscomp/amd64.cm

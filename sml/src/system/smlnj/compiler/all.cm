@@ -103,6 +103,7 @@ is
 	$smlnj/compiler/ppc.cm
 	$smlnj/compiler/sparc.cm
 	$smlnj/compiler/x86.cm
+	$smlnj/compiler/amd64.cm
 
 	$smlnj/cmb/alpha32-unix.cm
 	$smlnj/cmb/hppa-unix.cm
@@ -111,6 +112,7 @@ is
 	$smlnj/cmb/sparc-unix.cm
 	$smlnj/cmb/x86-unix.cm
 	$smlnj/cmb/x86-win32.cm
+	$smlnj/cmb/amd64-unix.cm
 (*
 	$smlnj/cmb/x86-intelmac.cm
 *)

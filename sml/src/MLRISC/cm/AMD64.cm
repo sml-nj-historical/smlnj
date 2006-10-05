@@ -8,7 +8,9 @@ Library
 	signature AMD64SHUFFLE
 	structure AMD64Cells
 	structure AMD64InstrExt
+(*
 	functor AMD64SVID_CCalls
+*)
 	functor AMD64
 	functor AMD64AsmEmitter
 	functor AMD64CompInstrExt
@@ -19,7 +21,9 @@ Library
 	functor AMD64Instr
 	functor AMD64Jumps
 	functor AMD64MCEmitter
+(*
 	functor AMD64OmitFramePointer
+*)
 	functor AMD64Props
 	functor AMD64RA
 	functor AMD64Rewrite
@@ -30,11 +34,11 @@ is
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
 	$/smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-	MLTREE.cm
+	$/MLRISC.cm
+	$/Control.cm
+	$/Lib.cm
+	$/Graphs.cm
+	$/MLTREE.cm
 #else
 	basis.cm
 	smlnj-lib.cm
@@ -52,10 +56,14 @@ is
 	Graphs.cm
 	MLTREE.cm
 #endif
+(*
         ../amd64/c-calls/amd64-svid.sml
+*)
         ../amd64/flowgraph/amd64-darwin-pseudo-ops.sml
         ../amd64/flowgraph/amd64GasPseudoOps.sml
+(*
 	../amd64/omit-frameptr/amd64omit-frameptr.sml
+*)
 	../amd64/instructions/amd64Cells.sml
 	../amd64/instructions/amd64comp-instr-ext.sml
 	../amd64/instructions/amd64Instr.sml

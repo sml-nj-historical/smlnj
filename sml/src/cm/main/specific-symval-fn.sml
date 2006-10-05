@@ -20,6 +20,7 @@ functor SpecificSymValFn (val arch: string
 		  | "hppa" => ("HPPA", false, 32)
 		  | "rs6000" => ("RS6000", false, 32)
 		  | "ppc" => ("PPC", true, 32)
+		  | "amd64" => ("AMD64", false, 32)
 		  | arch => ErrorMsg.impossible
 				("unknown architecture: " ^ arch)
 	    val extra_syms =
