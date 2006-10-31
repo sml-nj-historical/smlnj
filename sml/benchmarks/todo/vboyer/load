@@ -1,7 +1,0 @@
-app use [
-    "vector-util.sml",
-    "terms.sml",
-    "rules.sml",
-    "boyer.sml"
-  ];
-

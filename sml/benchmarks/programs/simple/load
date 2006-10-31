@@ -1,6 +1,0 @@
-app use [
-    "control.sml",
-    "array2.sml",
-    "simple.sml",
-    "main.sml"
-  ];
