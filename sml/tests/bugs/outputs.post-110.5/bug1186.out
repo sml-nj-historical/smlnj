@@ -1,4 +1,0 @@
-val it = () : unit
-datatype t = A
-val x = A : t
-

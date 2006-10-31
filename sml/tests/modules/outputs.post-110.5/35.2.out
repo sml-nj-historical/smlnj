@@ -1,4 +1,0 @@
-val it = () : unit
-signature T6 = sig structure A : sig eqtype t end end
-functor F : <sig>
-

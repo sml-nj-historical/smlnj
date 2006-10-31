@@ -1,3 +1,0 @@
-val it = () : unit
-val it = fn : ('a -> 'b) * ('c -> 'a) -> 'c -> 'b
-

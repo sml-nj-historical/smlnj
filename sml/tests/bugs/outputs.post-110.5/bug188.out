@@ -1,5 +1,0 @@
-val it = () : unit
-signature TRIVSIG = sig end
-functor A : <sig>
-functor B : <sig>
-

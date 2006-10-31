@@ -1,2 +1,0 @@
-val it = () : unit
-val x = 0wx400 : Word32.word

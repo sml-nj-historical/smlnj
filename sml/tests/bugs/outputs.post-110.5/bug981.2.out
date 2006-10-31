@@ -1,3 +1,0 @@
-val it = () : unit
-bug981.2.sml:4.12-4.15 Error: unbound structure: X in path X.d
-

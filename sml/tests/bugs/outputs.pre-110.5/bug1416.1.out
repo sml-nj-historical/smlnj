@@ -1,2 +1,0 @@
-val it = () : unit
-val it = "001 00 00 %z" : string

@@ -1,4 +1,0 @@
-val it = () : unit
-val S = fn : ('a -> 'b -> 'c) -> ('a -> 'b) -> 'a -> 'c
-val K = fn : 'a -> 'b -> 'a
-val it = 6 : int

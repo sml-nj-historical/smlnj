@@ -1,2 +1,0 @@
-val it = () : unit
-val readAll = fn : unit -> TextIO.elem list

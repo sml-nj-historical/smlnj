@@ -1,8 +1,0 @@
-val it = () : unit
-signature TX =
-  sig
-    datatype ty = UNDEFty
-    type  dtycsig = ty
-    type  dtmembers = dtycsig
-  end
-structure Tx : TX

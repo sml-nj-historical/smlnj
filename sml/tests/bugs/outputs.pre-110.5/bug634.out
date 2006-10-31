@@ -1,6 +1,0 @@
-val it = () : unit
-
- 
- This is correct! 
- 
-structure GetWorkingDirectory : sig val getwd : unit -> string end

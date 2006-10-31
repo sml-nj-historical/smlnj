@@ -1,4 +1,0 @@
-val it = () : unit
-exception exc_test
-val x = 1 : int
-

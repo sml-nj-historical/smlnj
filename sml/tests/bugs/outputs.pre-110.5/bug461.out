@@ -1,2 +1,0 @@
-val it = () : unit
-val define = fn : string list -> unit

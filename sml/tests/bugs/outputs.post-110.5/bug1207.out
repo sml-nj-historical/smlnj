@@ -1,7 +1,0 @@
-val it = () : unit
-signature SIG =
-  sig
-    datatype d = c
-    type t = d
-  end
-

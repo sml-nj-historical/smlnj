@@ -1,4 +1,0 @@
-val it = () : unit
-type 'a q
-val empty = - : 'a q
-

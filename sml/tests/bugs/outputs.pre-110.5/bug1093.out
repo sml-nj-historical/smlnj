@@ -1,6 +1,0 @@
-val it = () : unit
-structure S :
-  sig
-    type t
-    type  u = t
-  end

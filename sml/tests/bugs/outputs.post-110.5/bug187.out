@@ -1,6 +1,0 @@
-val it = () : unit
-infix xxx
-val xxx = fn : 'a * 'b -> 'b
-val xxx = fn : 'a * 'b -> 'c -> 'c
-bug187.sml:7.7-7.10 Error: infix operator "xxx" used without "op" in fun dec
-

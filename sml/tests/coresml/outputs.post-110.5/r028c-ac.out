@@ -1,6 +1,0 @@
-val it = () : unit
-type x = int
-type x = real
-type y = int
-val t = 2 : y
-

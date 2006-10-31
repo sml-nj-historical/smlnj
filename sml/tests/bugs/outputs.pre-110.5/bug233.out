@@ -1,3 +1,0 @@
-val it = () : unit
-opening Bug
-  val message : string

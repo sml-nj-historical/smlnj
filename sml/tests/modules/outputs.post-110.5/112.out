@@ -1,4 +1,0 @@
-val it = () : unit
-signature S7 = sig structure A : sig structure A1 : <sig> end end
-functor F7 : <sig>
-

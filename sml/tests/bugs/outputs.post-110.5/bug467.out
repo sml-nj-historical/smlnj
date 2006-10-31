@@ -1,5 +1,0 @@
-val it = () : unit
-infix L
-infixr R
-nonfix N
-

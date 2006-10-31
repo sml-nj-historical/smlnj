@@ -1,4 +1,0 @@
-val it = () : unit
-datatype t = A of u
-datatype u = B of t | C
-

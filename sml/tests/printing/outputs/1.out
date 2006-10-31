@@ -1,5 +1,0 @@
-val it = () : unit
-datatype d = D of t
-datatype s = A of int | B of string
-datatype t = C of s list
-val p = C [B "b"] : t

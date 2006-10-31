@@ -1,3 +1,0 @@
-val it = () : unit
-datatype foo = FOO
-datatype foo = FOO

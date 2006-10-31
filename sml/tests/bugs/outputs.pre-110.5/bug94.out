@@ -1,4 +1,0 @@
-val it = () : unit
-functor mkDummy : <sig>
-functor mkLalr : <sig>
-functor mkTable : <sig>

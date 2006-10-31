@@ -1,4 +1,0 @@
-val it = () : unit
-datatype a = A of int
-bug82.sml:5.19 Error: unbound type constructor: A
-
