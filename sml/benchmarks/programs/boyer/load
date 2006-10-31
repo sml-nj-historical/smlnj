@@ -1,6 +1,0 @@
-app use [
-    "terms.sml",
-    "rules.sml",
-    "boyer.sml"
-  ];
-
