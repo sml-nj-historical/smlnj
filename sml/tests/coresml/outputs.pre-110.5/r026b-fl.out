@@ -1,2 +1,0 @@
-val it = () : unit
-r026b-fl.sml:13.20 Error: unbound variable or constructor: x

@@ -1,8 +1,0 @@
-val it = () : unit
-functor F : <sig>
-structure Bug :
-  sig
-    datatype p = P of d
-    val bug : p
-  end
-val it = P (B A) : ?.p

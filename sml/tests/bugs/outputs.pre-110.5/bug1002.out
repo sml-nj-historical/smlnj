@@ -1,3 +1,0 @@
-val it = () : unit
-type 'a foo
-val test = fn : ''a foo -> bool

@@ -1,3 +1,0 @@
-val it = () : unit
-funsig S1(<param>: sig type  t = string end) : sig type  t = int end
-

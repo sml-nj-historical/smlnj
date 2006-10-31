@@ -1,5 +1,0 @@
-val it = () : unit
-exception A of int * bool
-exception B
-exception C
-exception B = A

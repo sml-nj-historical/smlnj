@@ -1,5 +1,0 @@
-val it = () : unit
-signature S = sig datatype d = D end
-structure E : sig datatype d = D end
-functor F : <sig>
-

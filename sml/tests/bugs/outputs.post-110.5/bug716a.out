@@ -1,4 +1,0 @@
-val it = () : unit
-val bug = fn : real -> real
-val it = 1e160 : real
-

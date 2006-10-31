@@ -1,9 +1,0 @@
-val it = () : unit
-infix xxx
-val xxx = fn : 'a * 'b -> int
-bug123.sml:5.20-5.30 Error: operator and operand don't agree [circularity]
-  operator domain: 'Z * 'Y
-  operand:         'Z
-  in expression:
-    output s
-

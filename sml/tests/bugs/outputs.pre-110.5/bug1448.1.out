@@ -1,6 +1,0 @@
-val it = () : unit
-val it = 0 : int
-val it = 2 : int
-val it = 2 : int
-val it = 0 : int
-val it = ~2 : int

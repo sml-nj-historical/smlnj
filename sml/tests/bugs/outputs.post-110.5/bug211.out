@@ -1,4 +1,0 @@
-val it = () : unit
-bug211.sml:10.64-10.74 Error: nonlocal path in type sharing: t
-bug211.sml:11.15-11.18 Error: nonlocal path in structure sharing: K
-

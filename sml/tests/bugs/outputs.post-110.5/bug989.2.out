@@ -1,8 +1,0 @@
-val it = () : unit
-bug989.2.sml:7.17-7.27 Error: nonlocal path in type sharing: unit
-bug989.2.sml:10.20-10.34 Error: operator and operand don't agree [tycon mismatch]
-  operator domain: Arg
-  operand:         unit
-  in expression:
-    (parser file) ()
-

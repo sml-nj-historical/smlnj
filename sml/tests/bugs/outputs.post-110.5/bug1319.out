@@ -1,3 +1,0 @@
-val it = () : unit
-val it = {exp=0,man=1.58e308} : {exp:int, man:real}
-

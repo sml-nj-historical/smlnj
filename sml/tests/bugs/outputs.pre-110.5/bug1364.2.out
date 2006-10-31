@@ -1,2 +1,0 @@
-val it = () : unit
-structure S : sig datatype u = T end

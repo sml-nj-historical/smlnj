@@ -1,3 +1,0 @@
-val it = () : unit
-bug699.sml:5.3-7.18 Error: unbound signature: SIGU
-

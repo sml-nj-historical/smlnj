@@ -1,3 +1,0 @@
-val it = () : unit
-bug179.sml:3.15-3.19 Error: unbound functor: GG
-

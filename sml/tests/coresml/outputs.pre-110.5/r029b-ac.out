@@ -1,2 +1,0 @@
-val it = () : unit
-val it = (A 3,A true) : int ?.t * bool ?.t

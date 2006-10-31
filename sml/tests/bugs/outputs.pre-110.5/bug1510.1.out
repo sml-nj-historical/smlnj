@@ -1,8 +1,0 @@
-val it = () : unit
-functor Cast : <sig>
-structure IntListToIntOption :
-  sig
-    type ('a,'b) t = 'a -> 'b
-    val cast : (from,to) t
-  end
-val it = SOME 17 : ?.to

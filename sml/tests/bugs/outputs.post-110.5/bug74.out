@@ -1,3 +1,0 @@
-val it = () : unit
-bug74.sml:5.19-5.23 Error: unbound type constructor: Tree
-

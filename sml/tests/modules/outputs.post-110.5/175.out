@@ -1,3 +1,0 @@
-val it = () : unit
-175.sml:3.35-3.40 Error: nonlocal path in structure sharing: A
-

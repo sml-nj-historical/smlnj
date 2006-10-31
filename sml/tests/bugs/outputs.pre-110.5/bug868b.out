@@ -1,2 +1,0 @@
-val it = () : unit
-signature foo = sig structure A : sig type  elmt = int end end

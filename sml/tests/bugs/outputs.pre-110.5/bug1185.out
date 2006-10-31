@@ -1,6 +1,0 @@
-val it = () : unit
-structure A :
-  sig
-    datatype context = Local of unit | NoContext
-    val pp_context : context -> unit
-  end
