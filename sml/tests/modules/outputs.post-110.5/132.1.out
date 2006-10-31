@@ -1,4 +1,0 @@
-val it = () : unit
-signature SIG = sig type  t = unit end
-functor F : <sig>
-

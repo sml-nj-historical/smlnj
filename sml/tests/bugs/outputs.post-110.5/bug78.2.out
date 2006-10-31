@@ -1,3 +1,0 @@
-val it = () : unit
-bug78.2.sml:7.13-7.17 Error: type constructor Fred given 1 arguments, wants 0
-

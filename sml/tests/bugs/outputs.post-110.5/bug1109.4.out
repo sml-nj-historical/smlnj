@@ -1,5 +1,0 @@
-val it = () : unit
-datatype nodep = NNP of node ref | NP
-datatype node = Node of int * nodep
-val it = NNP (ref (Node (0,NP))) : nodep
-

@@ -1,7 +1,0 @@
-val it = () : unit
-signature TS1 =
-  sig
-    eqtype t
-    val f : t -> t
-  end
-functor SF : <sig>

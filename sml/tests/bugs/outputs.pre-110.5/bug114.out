@@ -1,3 +1,0 @@
-val it = () : unit
-signature old = sig type t end
-signature new = sig type t end

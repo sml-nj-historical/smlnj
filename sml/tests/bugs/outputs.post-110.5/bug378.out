@@ -1,4 +1,0 @@
-val it = () : unit
-bug378.sml:28.37 Error: unbound structure: B
-bug378.sml:28.20-28.39 Error: unmatched structure specification: B
-

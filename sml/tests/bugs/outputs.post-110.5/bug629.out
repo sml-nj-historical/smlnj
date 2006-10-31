@@ -1,3 +1,0 @@
-val it = () : unit
-bug629.sml:4.5-5.23 Error: clauses don't all have same number of patterns
-

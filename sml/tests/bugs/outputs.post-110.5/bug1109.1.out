@@ -1,4 +1,0 @@
-val it = () : unit
-datatype 'a lyst = CONS of ('a * 'a lyst) ref | NIL
-val a = CONS (ref ("foo",NIL)) : string lyst
-

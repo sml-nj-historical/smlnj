@@ -1,8 +1,0 @@
-val it = () : unit
-functor F : <sig>
-structure S :
-  sig
-    structure S : <sig>
-    datatype t = T of S.v
-  end
-

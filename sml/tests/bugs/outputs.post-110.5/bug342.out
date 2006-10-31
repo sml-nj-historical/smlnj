@@ -1,4 +1,0 @@
-val it = () : unit
-val it = () : unit
-val it = ">foo<\n" : string
-

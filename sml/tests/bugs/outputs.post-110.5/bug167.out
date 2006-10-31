@@ -1,4 +1,0 @@
-val it = () : unit
-bug167.sml:4.1-4.44 Error: duplicate type variable name: a
-bug167.sml:4.1-4.44 Error: duplicate type variable name: a
-

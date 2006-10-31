@@ -1,3 +1,0 @@
-val it = () : unit
-bug171.sml:4.1-4.28 Error: datatype t has duplicate constructor name(s): C1
-

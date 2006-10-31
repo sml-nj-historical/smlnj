@@ -1,3 +1,0 @@
-val it = () : unit
-bug124.sml:3.9 Error: syntax error found at SEMICOLON
-

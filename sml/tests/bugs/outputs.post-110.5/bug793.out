@@ -1,3 +1,0 @@
-val it = () : unit
-bug793.sml:4.1-4.9 Error: unbound structure: Foo
-

@@ -1,5 +1,0 @@
-val it = () : unit
-exception e
-val e' = e(-) : exn
-bug343.sml:4.1-4.19 Error: found variable instead of exception
-

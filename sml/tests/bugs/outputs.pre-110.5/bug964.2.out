@@ -1,2 +1,0 @@
-val it = () : unit
-structure S : sig type  'a t = 'a end

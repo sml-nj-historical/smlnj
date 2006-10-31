@@ -1,7 +1,0 @@
-val it = () : unit
-structure S :
-  sig
-    datatype t = A of b
-    datatype b = B
-    structure T : <sig>
-  end

@@ -1,3 +1,0 @@
-val it = () : unit
-/usr/local/sml/110/bin/sml: Fatal error -- blast bigobj unimplemented
-

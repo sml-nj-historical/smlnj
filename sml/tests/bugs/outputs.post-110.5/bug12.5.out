@@ -1,9 +1,0 @@
-val it = () : unit
-signature SS =
-  sig
-    type r
-    val x : r
-  end
-structure S : SS
-val it = C 3 : S.r
-

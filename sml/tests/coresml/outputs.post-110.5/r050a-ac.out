@@ -1,4 +1,0 @@
-val it = () : unit
-type t = int -> int * bool
-val f = fn : t
-
