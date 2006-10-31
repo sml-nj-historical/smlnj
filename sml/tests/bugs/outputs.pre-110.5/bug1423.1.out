@@ -1,2 +1,0 @@
-val it = () : unit
-val it = 4.0 : real

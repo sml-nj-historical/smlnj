@@ -1,4 +1,0 @@
-val it = () : unit
-signature SIG = sig type t end
-bug242.sml:6.55-6.69 Error: nonlocal path in type sharing: Foo.t
-

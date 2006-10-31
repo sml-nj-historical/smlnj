@@ -1,4 +1,0 @@
-val it = () : unit
-This program is invoked as `sml'
-with arguments:
-

@@ -1,7 +1,0 @@
-val it = () : unit
-signature foosig = sig val foo : 'a -> int end
-bug459.sml:4.1-4.54 Error: value type in structure doesn't match signature spec
-    name: foo
-  spec:   'a -> int
-  actual: 'a -> 'a
-

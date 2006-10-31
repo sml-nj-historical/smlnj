@@ -1,4 +1,0 @@
-val it = () : unit
-signature S = sig type t end
-bug241.sml:9.15-9.24 Error: unbound type constructor: s in path A.s
-

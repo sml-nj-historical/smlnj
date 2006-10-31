@@ -1,4 +1,0 @@
-val it = () : unit
-val it = fn : 'a list -> 'a list
-val it = fn : 'a option -> 'a list
-

@@ -1,6 +1,0 @@
-val it = () : unit
-bug332.sml:2.1-9.6 Error: value type in structure doesn't match signature spec
-    name: F
-  spec:   unit -> ?.S.t
-  actual: ?.S.t
-

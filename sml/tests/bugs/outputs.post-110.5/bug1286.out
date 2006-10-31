@@ -1,4 +1,0 @@
-val it = () : unit
-val f = fn : unit -> unit
-val g = fn : unit -> {a:unit, b:unit}
-

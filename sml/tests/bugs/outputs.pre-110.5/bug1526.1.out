@@ -1,4 +1,0 @@
-val it = () : unit
-val test1 = NONE : char option
-val test2 = SOME #"\"" : char option
-val test3 = SOME #"\"" : char option

@@ -1,7 +1,0 @@
-val it = () : unit
-signature S =
-  sig
-    type ('a,'b) t = 'a -> 'b
-    val x : ('a,int) t
-  end
-bug1511.1.sml:9.1-13.4 Error: type t does not match definitional specification

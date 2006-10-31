@@ -1,4 +1,0 @@
-val it = () : unit
-val it = inf : real
-val it = inf : real
-val it = ~inf : real

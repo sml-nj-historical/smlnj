@@ -1,2 +1,0 @@
-val it = () : unit
-36.sml:7.41-7.48 Error: nonlocal path in type sharing: A.t

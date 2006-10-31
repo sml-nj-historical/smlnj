@@ -1,9 +1,0 @@
-val it = () : unit
-signature T =
-  sig
-    type p
-    structure A : sig type s end
-    val f1 : unit -> A.s list
-  end
-functor PD : <sig>
-functor TF : <sig>

@@ -1,3 +1,0 @@
-val it = () : unit
-bug344.sml:10.24-10.48 Error: explicit type variable cannot be generalized at its binding declaration: 'a
-

@@ -1,2 +1,0 @@
-val it = () : unit
-bug1510.1.sml:3.9-11.4 Error: type t does not match definitional specification

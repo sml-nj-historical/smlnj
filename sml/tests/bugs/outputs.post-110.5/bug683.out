@@ -1,4 +1,0 @@
-val it = () : unit
-bug683.sml:7.17 Error: unbound signature: S
-bug683.sml:7.22 Error: unbound signature: S
-

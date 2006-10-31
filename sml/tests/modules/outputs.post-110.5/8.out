@@ -1,9 +1,0 @@
-val it = () : unit
-functor F : <sig>
-structure S :
-  sig
-    structure C : <sig>
-    structure M : <sig>
-  end
-val x = V : S.M.s
-

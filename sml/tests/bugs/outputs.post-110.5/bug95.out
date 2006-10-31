@@ -1,7 +1,0 @@
-val it = () : unit
-type  ('a,'b) --> = 'a -> 'b
-val a = fn : 'a -> int
-val it = fn : ('a,int) -->
-infix -->
-val it = fn : ('a,int) -->
-

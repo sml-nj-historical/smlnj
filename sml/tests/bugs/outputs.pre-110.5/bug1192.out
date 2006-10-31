@@ -1,3 +1,0 @@
-val it = () : unit
-datatype d = D
-val it = () : unit

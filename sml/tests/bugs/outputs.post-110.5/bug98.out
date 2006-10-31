@@ -1,4 +1,0 @@
-val it = () : unit
-datatype constant_type = CONSTANT
-bug98.sml:6.47-6.55 Error: unbound type constructor: CONSTANT
-

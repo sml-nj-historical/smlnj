@@ -1,2 +1,0 @@
-val it = () : unit
-167.sml:8.1-10.4 Error: unmatched functor specification: S

@@ -1,3 +1,0 @@
-val it = () : unit
-bug173.sml:3.9 Error: unbound variable or constructor: t
-

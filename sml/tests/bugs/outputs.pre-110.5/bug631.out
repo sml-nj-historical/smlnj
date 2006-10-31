@@ -1,3 +1,0 @@
-val it = () : unit
-structure Interface : sig val ast : string -> ?.Ast.dec end
-val it = SeqDec [MarkDec (StrDec #,(#,#)),MarkDec (ValDec #,(#,#))] : ?.Ast.dec
