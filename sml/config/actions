@@ -1,0 +1,59 @@
+#
+# This file describes the actions to be taken when installing a "module".
+# See src/smlnj/installer/libinstall.sml for how this file is to be
+# interpreted.
+#
+# (C) 2006 The Fellowship of SML/NJ
+#
+
+smlnj-lib ulib unix-lib.cm      unix-lib.cm      src/smlnj-lib/Unix
+smlnj-lib  lib inet-lib.cm      inet-lib.cm      src/smlnj-lib/INet
+smlnj-lib  lib regexp-lib.cm    regexp-lib.cm    src/smlnj-lib/RegExp
+smlnj-lib  lib reactive-lib.cm  reactive-lib.cm  src/smlnj-lib/Reactive
+smlnj-lib  lib hash-cons-lib.cm hash-cons-lib.cm src/smlnj-lib/HashCons
+
+cml lib cml core-cml.cm     src/cml/src
+cml lib cml cml-internal.cm src/cml/src
+cml lib cml cml.cm          src/cml/src
+cml lib cml basis.cm        src/cml/src
+
+cml-lib lib cml-lib      trace-cml.cm src/cml/cml-lib/cm-descr
+cml-lib lib cml-lib      smlnj-lib.cm src/cml/cml-lib/cm-descr
+
+eXene lib eXene.cm eXene.cm src/eXene
+
+ckit lib ckit-lib.cm ckit-lib.cm ckit/src
+
+ml-nlffi-lib lib c memory/memory.cm   src/ml-nlffi-lib
+ml-nlffi-lib lib c internals/c-int.cm src/ml-nlffi-lib
+ml-nlffi-lib lib c c.cm               src/ml-nlffi-lib
+
+pgraph-util lib pgraph-util.cm pgraph-util.cm src/cm/pgraph
+
+mlrisc libanchor Control.cm SMLNJ-MLRISC
+mlrisc libanchor Lib.cm     SMLNJ-MLRISC
+mlrisc libanchor Visual.cm  SMLNJ-MLRISC
+mlrisc libanchor MLRISC.cm  SMLNJ-MLRISC
+mlrisc libanchor MLTREE.cm  SMLNJ-MLRISC
+mlrisc libanchor Graphs.cm  SMLNJ-MLRISC
+mlrisc libanchor IA32.cm    SMLNJ-MLRISC
+mlrisc anchor Peephole.cm src/MLRISC/cm
+mlrisc lib OTHER-MLRISC RA.cm            src/MLRISC/cm SMLNJ-MLRISC
+mlrisc lib OTHER-MLRISC Peephole.cm      src/MLRISC/cm SMLNJ-MLRISC
+mlrisc lib OTHER-MLRISC IA32-Peephole.cm src/MLRISC/cm SMLNJ-MLRISC
+
+mlrisc-tools lib mlrisc-tools pp.cm             src/MLRISC/Tools
+mlrisc-tools lib mlrisc-tools source-map.cm     src/MLRISC/Tools
+mlrisc-tools lib mlrisc-tools sml-ast.cm        src/MLRISC/Tools
+mlrisc-tools lib mlrisc-tools prec-parser.cm    src/MLRISC/Tools
+mlrisc-tools lib mlrisc-tools parser.cm         src/MLRISC/Tools
+mlrisc-tools lib mlrisc-tools match-compiler.cm src/MLRISC/Tools
+
+ml-yacc  prog ml-yacc src
+ml-lex   prog
+lexgen   prog lexgen src
+ml-burg  prog
+heap2asm prog
+
+ml-nlffigen dprog
+nowhere     dprog nowhere - src/MLRISC/Tools

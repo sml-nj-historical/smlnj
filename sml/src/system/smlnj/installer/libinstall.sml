@@ -111,7 +111,13 @@ end = struct
 	#set (CM.Anchor.anchor anchor) (SOME (native path))
 
     fun getInputTokens s =
-	Option.map (String.tokens Char.isSpace) (TextIO.inputLine s)
+	case TextIO.inputLine s of
+	    NONE => NONE
+	  | SOME "" => NONE
+	  | SOME l =>
+	      if String.sub (l, 0) = #"#" then getInputTokens s
+	      else SOME (String.tokens Char.isSpace l)
+    fun tokenLine l = String.concatWith " " l
 
     (* Take a list of modules and dependencies (in depfile) and
      * build the transitive closure of those modules.
@@ -168,7 +174,6 @@ end = struct
 	val installdir = F.fullPath installdir
         val libdir = P.concat (installdir, "lib")
 	val configdir = P.concat (smlnjroot, "config")
-        val srcdir = P.concat (smlnjroot, "src")
 	val bindir = P.concat (installdir, "bin")
 	val heapdir = P.concat (bindir, ".heap")
 	val cm_pathconfig = P.concat (libdir, "pathconfig")
@@ -178,6 +183,9 @@ end = struct
 
 	(* where to get additional path configurations *)
 	val extrapathconfig = P.concat (configdir, "extrapathconfig")
+
+	(* action file: mapping from "modules" to lists of "actions" *)
+	val actionfile = P.concat (configdir, "actions")
 
 	(* add an entry to lib/pathconfig *)
 	fun write_cm_pathconfig (a, p) = let
@@ -210,20 +218,16 @@ end = struct
 
 	(* parse the targets file *)
 	fun loop (ml, allsrc) =
-	    case TextIO.inputLine s of
+	    case getInputTokens s of
 		NONE => (TextIO.closeIn s; (ml, allsrc))
-	      | SOME l =>
-		  if String.sub (l, 0) = #"#" then loop (ml, allsrc)
-		  else (case String.tokens Char.isSpace l of
-			    [x as ("dont_move_libraries" |
-				   "move_libraries")] =>
-			      (warn ["\"", x, "\" no longer supported",
-				     " (installer always moves libraries)\n"];
-			       loop (ml, allsrc))
-			  | ["request", "src-smlnj"] => loop (ml, true)
-			  | ["request", module] => loop (module :: ml, allsrc)
-			  | [] => loop (ml, allsrc)
-			  | _ => fail ["ill-formed targets line: ", l])
+	      | SOME [x as ("dont_move_libraries" | "move_libraries")] =>
+  		  (warn ["\"", x, "\" no longer supported",
+			 " (installer always moves libraries)\n"];
+		   loop (ml, allsrc))
+	      | SOME ["request", "src-smlnj"] => loop (ml, true)
+	      | SOME ["request", module] => loop (module :: ml, allsrc)
+	      | SOME [] => loop (ml, allsrc)
+	      | SOME l => fail ["ill-formed targets line: ", tokenLine l, "\n"]
 
 	val (modules, allsrc) = loop ([], false)
 
@@ -239,12 +243,9 @@ end = struct
 		    fun one (m, ms) =
 			if SS.member (ms, m) then ms else SS.add (ms, m)
 		    fun loop ms =
-			case TextIO.inputLine s of
+			case getInputTokens s of
 			    NONE => (TextIO.closeIn s; ms)
-			  | SOME l =>
-			    if String.sub (l, 0) = #"#" then loop ms
-			    else loop (foldl one ms
-					     (String.tokens Char.isSpace l))
+			  | SOME l => loop (foldl one ms l)
 		in
 		    loop moduleset
 		end
@@ -283,11 +284,11 @@ end = struct
 	     * relname: path to library's .cm file relative to anchor
 	     *   (standard syntax)
 	     * dir: directory name that anchor should be bound to,
-	     *   name is relative to srcdir and in standard syntax *)
+	     *   name is relative to smlnjroot and in standard syntax *)
 	    val nrelname = native relname
 	    val ndir = native dir
 	    val libname = concat ["$", anchor, "/", relname]
-	    val adir = P.concat (srcdir, ndir)
+	    val adir = P.concat (smlnjroot, ndir)
 	    val finalanchor = getOpt (altanchor, anchor)
 	    val { dir = nreldir, file = relbase } = P.splitDirFile nrelname
 	    val relloc =
@@ -323,29 +324,22 @@ end = struct
 	    write_cm_pathconfig (target, P.concat (P.parentArc, "bin"))
 
 	(* build a standalone program, using auxiliary build script *)
-	fun standalone { target, optheapdir, optsrcdir } = let
+	fun standalone { target, optheapdir, dir } = let
 	    (* target: name of program; this is the same as the basename
 	     *   of the heap image to be generated as well as the
 	     *   final arc of the source tree's directory name
 	     * optheapdir: optional subdirectory where the build command
 	     *   drops the heap image
-	     * optsrcdir:
-	     *   The source tree for target is located in a directory
-	     *   named the same as the target itself.  Normally it is
-	     *   a subdirectory of srcdir.  With optsrcdir one can specify
-	     *   an alternative for srcdir by giving a path relative to
-	     *   the original srcdir. *)
+	     * dir:
+	     *   The source tree for the target, relative to smlnjroot. *)
 	    val heapname = concat [target, ".", heap_suffix]
 	    val targetheaploc =
 		case optheapdir of
 		    NONE => heapname
 		  | SOME hd => P.concat (native hd, heapname)
-	    val mysrcdir =
-		case optsrcdir of
-		    NONE => srcdir
-		  | SOME sd => P.concat (srcdir, native sd)
+	    val srcdir = P.concat (smlnjroot, native dir)
+	    val treedir = P.concat (srcdir, target)
 	    val finalheaploc = P.concat (heapdir, heapname)
-	    val treedir = P.concat (mysrcdir, target)
 	in
 	    if fexists finalheaploc then
 		say ["Target ", target, " already exists.\n"]
@@ -380,40 +374,115 @@ end = struct
 	fun a (anch, p) = localanchor { anchor = anch, path = p }
 
 	fun sa (t, d) =
-	    standalone { target = t, optheapdir = d, optsrcdir = NONE }
+	    standalone { target = t, optheapdir = d, dir = "src" }
 
 	fun sa' (t, d, s) =
-	    standalone { target = t, optheapdir = d, optsrcdir = SOME s }
+	    standalone { target = t, optheapdir = d, dir = s }
 
 	(* ------------------------------ *)
 
+	datatype action =
+	    RegLib of { anchor: string, relname: string, dir: string,
+			altanchor: string option }
+		      * bool (* true = only on Unix *)
+	  | Anchor of { anchor: string, path: string }
+		      * bool (* true = relative to libdir *)
+	  | Program of { target: string, optheapdir: string option,
+			 dir: string }
+		       * bool	(* true = defer *)
+
+	val actions =
+	    let val s = TextIO.openIn actionfile
+		fun opthd "-" = NONE
+		  | opthd h = SOME h
+		fun progargs (mn, []) =
+		      { target = mn, optheapdir = NONE, dir = "src" }
+		  | progargs (mn, [t]) =
+		      { target = t, optheapdir = NONE, dir = "src" }
+		  | progargs (mn, [t, h]) =
+		      { target = t, optheapdir = opthd h, dir = "src" }
+		  | progargs (mn, t :: h :: d :: _) =
+		      { target = t, optheapdir = opthd h, dir = d }
+		fun libargs (a, r, d, aa) =
+		      { anchor = a, relname = r, dir = d, altanchor = aa }
+		fun loop m =
+		    case getInputTokens s of
+			NONE => m
+		      | SOME [mn, "lib", a, r, d] =>
+			  ins (m, mn, RegLib (libargs (a, r, d, NONE), false))
+		      | SOME [mn, "lib", a, r, d, aa] =>
+			  ins (m, mn, RegLib (libargs (a, r, d, SOME aa), false))
+		      | SOME [mn, "ulib", a, r, d] =>
+			  ins (m, mn, RegLib (libargs (a, r, d, NONE), true))
+		      | SOME [mn, "ulib", a, r, d, aa] =>
+			  ins (m, mn, RegLib (libargs (a, r, d, SOME aa), true))
+		      | SOME [mn, "anchor", a, p] =>
+			  ins (m, mn, Anchor ({ anchor = a, path = p }, false))
+		      | SOME [mn, "libanchor", a, p] =>
+			  ins (m, mn, Anchor ({ anchor = a, path = p }, true))
+		      | SOME (mn :: "prog" :: args) =>
+			  ins (m, mn, Program (progargs (mn, args), false))
+		      | SOME (mn :: "dprog" :: args) =>
+			  ins (m, mn, Program (progargs (mn, args), true))
+		      | SOME [] => loop m
+		      | SOME other =>
+			  fail ["Illegal line in ", actionfile, ": ",
+				String.concatWith " " other, "\n"]
+		and ins (m, mn, a) =
+		    loop (SM.insert (m, mn, a :: getOpt (SM.find (m, mn), [])))
+	    in loop SM.empty
+	       before TextIO.closeIn s
+	    end
+
+	(* ------------------------------ *)
+
+	fun one module =
+	    let fun perform (RegLib (args, justunix)) =
+		      if not justunix orelse isUnix then reglib args else ()
+		  | perform (Anchor ({ anchor, path }, false)) =
+		      #set (CM.Anchor.anchor anchor) (SOME (native path))
+		  | perform (Anchor ({ anchor, path }, true)) =
+		      #set (CM.Anchor.anchor anchor)
+		           (SOME (P.concat (libdir, path)))
+		  | perform (Program (args, false)) =
+		      standalone args
+		  | perform (Program (args, true)) =
+		      salist := (fn () => standalone args) :: (!salist)
+	    in case SM.find (actions, module) of
+		   SOME al => app perform (rev al)
+		 | NONE => fail ["unknown module: ", module, "\n"]
+	    end
+
+	(* ------------------------------ *)
+
+(*
 	(* process one module *)
 	fun one "smlnj-lib" =
 	    (if isUnix then
-		 r ("unix-lib.cm", "unix-lib.cm", "smlnj-lib/Unix")
+		 r ("unix-lib.cm", "unix-lib.cm", "src/smlnj-lib/Unix")
 	     else ();
-	     r ("inet-lib.cm", "inet-lib.cm", "smlnj-lib/INet");
-	     r ("regexp-lib.cm", "regexp-lib.cm", "smlnj-lib/RegExp");
-	     r ("reactive-lib.cm", "reactive-lib.cm", "smlnj-lib/Reactive");
-	     r ("hash-cons-lib.cm", "hash-cons-lib.cm", "smlnj-lib/HashCons"))
+	     r ("inet-lib.cm", "inet-lib.cm", "src/smlnj-lib/INet");
+	     r ("regexp-lib.cm", "regexp-lib.cm", "src/smlnj-lib/RegExp");
+	     r ("reactive-lib.cm", "reactive-lib.cm", "src/smlnj-lib/Reactive");
+	     r ("hash-cons-lib.cm", "hash-cons-lib.cm", "src/smlnj-lib/HashCons"))
 	  | one "cml" =
-	    (r ("cml", "core-cml.cm", "cml/src");
-	     r ("cml", "cml-internal.cm", "cml/src");
-	     r ("cml", "cml.cm", "cml/src");
-	     r ("cml", "basis.cm", "cml/src"))
+	    (r ("cml", "core-cml.cm", "src/cml/src");
+	     r ("cml", "cml-internal.cm", "src/cml/src");
+	     r ("cml", "cml.cm", "src/cml/src");
+	     r ("cml", "basis.cm", "src/cml/src"))
 	  | one "cml-lib" =
-	    (r ("cml-lib", "trace-cml.cm", "cml/cml-lib/cm-descr");
-	     r ("cml-lib", "smlnj-lib.cm", "cml/cml-lib/cm-descr"))
+	    (r ("cml-lib", "trace-cml.cm", "src/cml/cml-lib/cm-descr");
+	     r ("cml-lib", "smlnj-lib.cm", "src/cml/cml-lib/cm-descr"))
 	  | one "eXene" =
-	    (r ("eXene.cm", "eXene.cm", "eXene"))
+	    (r ("eXene.cm", "eXene.cm", "src/eXene"))
 	  | one "ckit" =
-	    (r ("ckit-lib.cm", "ckit-lib.cm", "../ckit/src"))
+	    (r ("ckit-lib.cm", "ckit-lib.cm", "ckit/src"))
 	  | one "ml-nlffi-lib" =
-	    (r ("c", "memory/memory.cm", "ml-nlffi-lib");
-	     r ("c", "internals/c-int.cm", "ml-nlffi-lib");
-	     r ("c", "c.cm", "ml-nlffi-lib"))
+	    (r ("c", "memory/memory.cm", "src/ml-nlffi-lib");
+	     r ("c", "internals/c-int.cm", "src/ml-nlffi-lib");
+	     r ("c", "c.cm", "src/ml-nlffi-lib"))
 	  | one "pgraph-util" =
-	    (r ("pgraph-util.cm", "pgraph-util.cm", "cm/pgraph"))
+	    (r ("pgraph-util.cm", "pgraph-util.cm", "src/cm/pgraph"))
 	  | one "mlrisc" =
 	    (a ("Control.cm", P.concat (libdir, "SMLNJ-MLRISC"));
 	     a ("Lib.cm", P.concat (libdir, "SMLNJ-MLRISC"));
@@ -423,16 +492,16 @@ end = struct
 	     a ("Graphs.cm", P.concat (libdir, "SMLNJ-MLRISC"));
 	     a ("IA32.cm", P.concat (libdir, "SMLNJ-MLRISC"));
 	     a ("Peephole.cm", "src/MLRISC/cm");
-	     r' ("OTHER-MLRISC", "RA.cm", "MLRISC/cm", "SMLNJ-MLRISC");
-	     r' ("OTHER-MLRISC", "Peephole.cm", "MLRISC/cm", "SMLNJ-MLRISC");
-	     r' ("OTHER-MLRISC", "IA32-Peephole.cm", "MLRISC/cm", "SMLNJ-MLRISC"))
+	     r' ("OTHER-MLRISC", "RA.cm", "src/MLRISC/cm", "SMLNJ-MLRISC");
+	     r' ("OTHER-MLRISC", "Peephole.cm", "src/MLRISC/cm", "SMLNJ-MLRISC");
+	     r' ("OTHER-MLRISC", "IA32-Peephole.cm", "src/MLRISC/cm", "SMLNJ-MLRISC"))
 	  | one "mlrisc-tools" =
-	    (r ("mlrisc-tools", "pp.cm", "MLRISC/Tools");
-	     r ("mlrisc-tools", "source-map.cm", "MLRISC/Tools");
-	     r ("mlrisc-tools", "sml-ast.cm", "MLRISC/Tools");
-	     r ("mlrisc-tools", "prec-parser.cm", "MLRISC/Tools");
-	     r ("mlrisc-tools", "parser.cm", "MLRISC/Tools");
-	     r ("mlrisc-tools", "match-compiler.cm", "MLRISC/Tools"))
+	    (r ("mlrisc-tools", "pp.cm", "src/MLRISC/Tools");
+	     r ("mlrisc-tools", "source-map.cm", "src/MLRISC/Tools");
+	     r ("mlrisc-tools", "sml-ast.cm", "src/MLRISC/Tools");
+	     r ("mlrisc-tools", "prec-parser.cm", "src/MLRISC/Tools");
+	     r ("mlrisc-tools", "parser.cm", "src/MLRISC/Tools");
+	     r ("mlrisc-tools", "match-compiler.cm", "src/MLRISC/Tools"))
 	  | one "ml-yacc" =
 	      sa ("ml-yacc", SOME "src")
 	  | one "ml-lex" =
@@ -447,9 +516,10 @@ end = struct
 	      salist := (fn () => sa ("ml-nlffigen", NONE))
 			:: !salist
 	  | one "nowhere" =
-	      salist := (fn () => sa' ("nowhere", NONE, "MLRISC/Tools"))
+	      salist := (fn () => sa' ("nowhere", NONE, "src/MLRISC/Tools"))
 			:: !salist
 	  | one module = fail ["unknown module: ", module, "\n"]
+*)
     in
 	(command_pathconfig "bindir";	(* dummy -- for CM make tool *)
 	 app one modules;
