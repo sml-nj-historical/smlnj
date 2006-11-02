@@ -52,6 +52,8 @@ mlrisc-tools lib mlrisc-tools match-compiler.cm MLRISC/Tools
 ml-yacc  prog ml-yacc src
 ml-lex   prog
 lexgen   prog lexgen src
+ml-ulex  prog
+ml-antlr prog
 ml-burg  prog
 heap2asm prog
 

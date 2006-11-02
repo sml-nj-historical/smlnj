@@ -34,12 +34,19 @@ request ml-yacc
 #
 request lexgen
 
+# build even newer ML-Lex
+#
+#request ml-ulex
+
 # build legacy ML-Lex
 #
 request ml-lex
 
-# Always: install the pre-compiled SML/NJ Library (necessary to bootstrap).
+# build ML-Antlr
+#
+#request ml-antlr
 
+# Always: install the pre-compiled SML/NJ Library (necessary to bootstrap).
 
 # build ML-Burg
 #
