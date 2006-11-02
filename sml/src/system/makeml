@@ -2,11 +2,11 @@
 
 this=$0
 here=`pwd`
-cd ../..
-twoup=`pwd`
+cd ../../..
+threeup=`pwd`
 cd $here
 
-LINK=$twoup/bin/.link-sml
+LINK=$threeup/bin/.link-sml
 
 if [ ! -x $LINK ] ; then
     echo $this: link script $LINK is not operational.
@@ -47,14 +47,14 @@ bare=no
 # ... unless it was already set at the time we run this script.
 #
 
-CM_PATHCONFIG=${CM_PATHCONFIG:-$twoup/lib/pathconfig}
+CM_PATHCONFIG=${CM_PATHCONFIG:-$threeup/lib/pathconfig}
 export CM_PATHCONFIG
 
 #
 # use the arch-n-opsys script to determine the ARCH/OS if possible
 #
-if [ -f $twoup/bin/.arch-n-opsys ]; then
-    ARCH_N_OPSYS=`$twoup/bin/.arch-n-opsys`
+if [ -f $threeup/bin/.arch-n-opsys ]; then
+    ARCH_N_OPSYS=`$threeup/bin/.arch-n-opsys`
     if [ "$?" = "0" ]; then
 	eval $ARCH_N_OPSYS
 	echo $this: architecture = $ARCH

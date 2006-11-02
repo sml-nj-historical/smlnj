@@ -337,8 +337,7 @@ end = struct
 		case optheapdir of
 		    NONE => heapname
 		  | SOME hd => P.concat (native hd, heapname)
-	    val srcdir = P.concat (smlnjroot, native dir)
-	    val treedir = P.concat (srcdir, target)
+	    val treedir = P.concat (smlnjroot, native dir)
 	    val finalheaploc = P.concat (heapdir, heapname)
 	in
 	    if fexists finalheaploc then
@@ -396,11 +395,11 @@ end = struct
 		fun opthd "-" = NONE
 		  | opthd h = SOME h
 		fun progargs (mn, []) =
-		      { target = mn, optheapdir = NONE, dir = "src" }
+		      { target = mn, optheapdir = NONE, dir = mn }
 		  | progargs (mn, [t]) =
-		      { target = t, optheapdir = NONE, dir = "src" }
+		      { target = t, optheapdir = NONE, dir = mn }
 		  | progargs (mn, [t, h]) =
-		      { target = t, optheapdir = opthd h, dir = "src" }
+		      { target = t, optheapdir = opthd h, dir = mn }
 		  | progargs (mn, t :: h :: d :: _) =
 		      { target = t, optheapdir = opthd h, dir = d }
 		fun libargs (a, r, d, aa) =

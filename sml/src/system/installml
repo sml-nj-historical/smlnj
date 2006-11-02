@@ -7,13 +7,13 @@ trap 'rm -f $tmpfile; exit 1' 1 2 3 15
 
 this=$0
 here=`pwd`
-cd ../..
-twoup=`pwd`
+cd ../../..
+threeup=`pwd`
 cd $here
 
-MAIN_HEAP_DIR=$twoup/bin/.heap
-MAIN_LIB_DIR=$twoup/lib
-MAIN_CONFIG_DIR=$twoup/config
+MAIN_HEAP_DIR=$threeup/bin/.heap
+MAIN_LIB_DIR=$threeup/lib
+MAIN_CONFIG_DIR=$threeup/config
 
 if [ $# -gt 0 ] ; then
     STEM=$1

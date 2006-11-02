@@ -9,7 +9,7 @@ esac
 cmddir=`dirname $0`
 cmddir=`cd $cmddir; pwd`
 
-bin=../../bin
+bin=../../../bin
 [ -x "$bin/.arch-n-opsys" ] || bin="$cmddir/$bin"
 
 eval `$bin/.arch-n-opsys`
@@ -22,7 +22,7 @@ LIB_DIR=${HEAP_IMAGE}.lib
 LPC=${LIB_DIR}/local_pathconfig
 
 rm -f $LPC
-cp ../../config/extrapathconfig $LPC
+cp ../../../config/extrapathconfig $LPC
 
 CM_PATHCONFIG=$LIB_DIR/pathconfig CM_LOCAL_PATHCONFIG=$LPC \
     $bin/sml @SMLload=$HEAP_IMAGE "$@"
