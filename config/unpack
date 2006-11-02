@@ -296,7 +296,8 @@ do
 	;;
       *)
 	echo Unknown package: ${i}.
-	exit 1
+	echo Trying default method...
+	unpack ${i} "$ROOT" ${i} ${i}
 	;;
     esac
 done
