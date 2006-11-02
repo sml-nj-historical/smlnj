@@ -10,8 +10,8 @@ CMD=$0
 
 ROOT="heap2asm"
 HEAP_IMAGE=""
-TWOUP=`pwd`/../../
-BIN=${INSTALLDIR:-$TWOUP}/bin
+ONEUP=`pwd`/..
+BIN=${INSTALLDIR:-$ONEUP}/bin
 BUILD=$BIN/ml-build
 
 #
