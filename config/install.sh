@@ -77,7 +77,7 @@ BINDIR=$INSTALLDIR/bin		# main dir for binary stuff
 CONFIGDIR=$ROOT/config
 HEAPDIR=$BINDIR/.heap		# where heap images live
 RUNDIR=$BINDIR/.run		# where executables (i.e., the RTS) live
-SRCDIR=$ROOT/base/src		# where the source tree is rooted
+BASEDIR=$ROOT/base		# where the base source tree is rooted
 LIBDIR=$INSTALLDIR/lib		# where libraries live
 
 #
@@ -206,7 +206,7 @@ dirarcs() {
 #
 # create the various sub directories
 #
-for dir in "$BINDIR" "$HEAPDIR" "$RUNDIR" "$LIBDIR" "$SRCDIR" ; do
+for dir in "$BINDIR" "$HEAPDIR" "$RUNDIR" "$LIBDIR" "$BASEDIR" ; do
     makedir "$dir"
 done
 
@@ -316,7 +316,7 @@ if [ -x "$RUNDIR"/run.$ARCH-$OPSYS ]; then
     vsay $this: Run-time system already exists.
 else
     "$CONFIGDIR"/unpack "$ROOT" runtime
-    cd "$SRCDIR"/runtime/objs
+    cd "$BASEDIR"/runtime/objs
     echo $this: Compiling the run-time system.
     $MAKE -f mk.$ARCH-$OPSYS $EXTRA_DEFS
     if [ -x run.$ARCH-$OPSYS ]; then
@@ -335,7 +335,7 @@ else
 	complain "$this: !!! Run-time system build failed for some reason."
     fi
 fi
-cd "$SRCDIR"
+cd "$BASEDIR"
 
 #
 # boot the base SML system

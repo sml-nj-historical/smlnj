@@ -220,19 +220,19 @@ for i
 do
     case "$i" in
       runtime)
-        unpack run-time "$ROOT"/base/src runtime runtime
+        unpack run-time "$ROOT"/base runtime runtime
 	;;
       boot.*)
         unpack bootfiles "$ROOT" sml.$i $i
 	;;
       compiler)
-	unpack compiler "$ROOT"/base/src compiler compiler
+	unpack compiler "$ROOT"/base compiler compiler
 	;;
       cm)
-	unpack compiler "$ROOT"/base/src cm cm
+	unpack compiler "$ROOT"/base cm cm
 	;;
       system)
-	unpack compiler "$ROOT"/base/src system system
+	unpack compiler "$ROOT"/base system system
 	;;
       ml-yacc)
 	unpack ML-Yacc "$ROOT" ml-yacc ml-yacc
@@ -271,7 +271,7 @@ do
         unpack "NLFFI Library" "$ROOT" nlffi nlffi
 	;;
       pgraph-util)
-	unpack "CM source code" "$ROOT"/base/src cm cm
+	unpack "CM source code" "$ROOT"/base cm cm
 	;;
       mlrisc)
 	unpack "MLRISC Library" "$ROOT" MLRISC MLRISC
@@ -286,7 +286,7 @@ do
 	unpack "Heap->ASM tool" "$ROOT" heap2asm heap2asm
 	;;
       tools)
-	unpack "debugging tools" "$ROOT"/base/src tools tools
+	unpack "debugging tools" "$ROOT"/base tools tools
 	;;
       doc)
 	echo Package doc is currently unavailable.

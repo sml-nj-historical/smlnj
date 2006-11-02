@@ -11,7 +11,7 @@ mkdir bin\.heap
 mkdir lib
 
 REM compile runtime system and move executable to bin\.run
-cd src\runtime\objs
+cd base\runtime\objs
 nmake -f mk.x86-win32
 move run.x86-win32.exe ..\..\..\bin\.run
 cd ..\..\..
