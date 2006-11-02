@@ -7,17 +7,18 @@
  *)
 structure LexTool = struct
     val legacy_control =
-	Tools.boolcontrol ("use-legacy-lex",
-			   "whether to use the old ml-lex instead of ml-flex",
-			   true)
+	Tools.stringcontrol ("lex-program",
+			     "which version of the lexer generator to use",
+			     "ml-lex")
 
     val _ = Tools.registerStdShellCmdTool
 	{ tool = "ML-Lex",
 	  class = "mllex",
 	  suffixes = ["lex", "l"],
-	  cmdStdPath = fn () => if #get legacy_control ()
-				then ("ml-lex", [])
-				else ("lexgen", ["--ml-lex-mode"]),
+	  cmdStdPath = fn () =>
+			  case #get legacy_control () of
+			      "ml-lex" => ("ml-lex", [])
+			    | other => (other, ["--ml-lex-mode"]),
 	  template = NONE,
 	  extensionStyle = Tools.EXTEND [("sml", SOME "sml", fn too => too)],
 	  dflopts = [] }

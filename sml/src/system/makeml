@@ -42,7 +42,7 @@ rebuilt=no
 bare=no
 
 #
-# Set CM_PATHCONFIG to ../../lib/pathconfig
+# Set CM_PATHCONFIG to ../../../lib/pathconfig
 # (using an absolute path!)
 # ... unless it was already set at the time we run this script.
 #

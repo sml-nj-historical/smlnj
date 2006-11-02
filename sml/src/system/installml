@@ -21,8 +21,8 @@ else
     STEM=sml
 fi
 
-if [ -f ../../bin/.arch-n-opsys ]; then
-  ARCH_N_OPSYS=`../../bin/.arch-n-opsys`
+if [ -f $threeup/bin/.arch-n-opsys ]; then
+  ARCH_N_OPSYS=`$threeup/bin/.arch-n-opsys`
   if [ "$?" = "0" ]; then
     eval $ARCH_N_OPSYS
   else

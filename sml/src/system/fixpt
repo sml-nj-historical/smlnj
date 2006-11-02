@@ -4,7 +4,8 @@
 #  - to be run in src/system to iterate compilation to a fixed point
 #  - assumes no sml.boot... directory in src/system (but uses it if it
 #    is there and the base is set to "sml" -- which is the default)
-#  - assumes that ../../bin/sml and ../../bin/.arch-n-opsys have been installed
+#  - assumes that ../../../bin/sml and ../../../bin/.arch-n-opsys have
+#     been installed
 
 this=$0
 here=`pwd`

@@ -119,4 +119,6 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
 
     fun boolcontrol (name, doc, default) =
 	StdConfig.new (ControlUtil.Cvt.bool, name, doc, default)
+    fun stringcontrol (name, doc, default) =
+	StdConfig.new (ControlUtil.Cvt.string, name, doc, default)
 end

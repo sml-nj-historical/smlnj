@@ -33,4 +33,7 @@ signature TOOLS = sig
     (* make a bool control *)
     val boolcontrol : string * string * bool ->
 		      { get: unit -> bool, set: bool -> unit }
+    (* make a string control *)
+    val stringcontrol : string * string * string ->
+		      { get: unit -> string, set: string -> unit }
 end
