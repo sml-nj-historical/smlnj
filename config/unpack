@@ -15,7 +15,6 @@ ROOT=$1
 shift
 
 CONFIGDIR=$ROOT/config
-SRCDIR=$ROOT/src
 
 VERSION=`cat "$CONFIGDIR"/version`
 . "$CONFIGDIR"/srcarchiveurl
@@ -221,73 +220,73 @@ for i
 do
     case "$i" in
       runtime)
-        unpack run-time "$ROOT"/src runtime runtime
+        unpack run-time "$ROOT"/base/src runtime runtime
 	;;
       boot.*)
         unpack bootfiles "$ROOT" sml.$i $i
 	;;
       compiler)
-	unpack compiler "$ROOT"/src compiler compiler
+	unpack compiler "$ROOT"/base/src compiler compiler
 	;;
       cm)
-	unpack compiler "$ROOT"/src cm cm
+	unpack compiler "$ROOT"/base/src cm cm
 	;;
       system)
-	unpack compiler "$ROOT"/src system system
+	unpack compiler "$ROOT"/base/src system system
 	;;
       ml-yacc)
-	unpack ML-Yacc "$ROOT"/src ml-yacc ml-yacc
+	unpack ML-Yacc "$ROOT" ml-yacc ml-yacc
 	;;
       ml-lex)
-	unpack ML-Lex "$ROOT"/src ml-lex ml-lex
+	unpack ML-Lex "$ROOT" ml-lex ml-lex
 	;;
       lexgen)
-	unpack LexGen "$ROOT"/src lexgen lexgen
+	unpack LexGen "$ROOT" lexgen lexgen
 	;;
       ml-burg)
-        unpack ML-Burg "$ROOT"/src ml-burg ml-burg
+        unpack ML-Burg "$ROOT" ml-burg ml-burg
 	;;
       ml-nlffigen)
-	unpack ML-NLFFI-Gen "$ROOT"/src ml-nlffigen ml-nlffigen
+	unpack ML-NLFFI-Gen "$ROOT" nlffi nlffi
 	;;
       nowhere)
-	unpack "MLRISC Tools Library" "$SRCDIR" MLRISC MLRISC
+	unpack "MLRISC Tools Library" "$ROOT" MLRISC MLRISC
 	;;
       smlnj-lib)
-        unpack "SML/NJ Library" "$SRCDIR" smlnj-lib smlnj-lib
+        unpack "SML/NJ Library" "$ROOT" smlnj-lib smlnj-lib
 	;;
       cml)
-        unpack CML "$SRCDIR" cml cml
+        unpack CML "$ROOT" cml cml
 	;;
       cml-lib)
-        unpack CML "$SRCDIR" cml cml
+        unpack CML "$ROOT" cml cml
 	;;
       eXene)
-        unpack EXene "$SRCDIR" eXene eXene
+        unpack EXene "$ROOT" eXene eXene
 	;;
       ckit)
         unpack "C-Kit" "$ROOT" ckit ckit
 	;;
       ml-nlffi-lib)
-        unpack "NLFFI Library" "$SRCDIR" ml-nlffi-lib ml-nlffi-lib
+        unpack "NLFFI Library" "$ROOT" nlffi nlffi
 	;;
       pgraph-util)
-	unpack "CM source code" "$SRCDIR" cm cm
+	unpack "CM source code" "$ROOT"/base/src cm cm
 	;;
       mlrisc)
-	unpack "MLRISC Library" "$SRCDIR" MLRISC MLRISC
+	unpack "MLRISC Library" "$ROOT" MLRISC MLRISC
 	;;
       mlrisc-tools)
-	unpack "MLRISC Tools Library" "$SRCDIR" MLRISC MLRISC
+	unpack "MLRISC Tools Library" "$ROOT" MLRISC MLRISC
 	;;
       smlnj-c)
-	unpack "SML/NJ-C FFI" "$SRCDIR" smlnj-c smlnj-c
+	unpack "SML/NJ-C FFI" "$ROOT" smlnj-c smlnj-c
 	;;
       heap2asm)
-	unpack "Heap->ASM tool" "$SRCDIR" heap2asm heap2asm
+	unpack "Heap->ASM tool" "$ROOT" heap2asm heap2asm
 	;;
       tools)
-	unpack "debugging tools" "$SRCDIR" tools tools
+	unpack "debugging tools" "$ROOT"/base/src tools tools
 	;;
       doc)
 	echo Package doc is currently unavailable.

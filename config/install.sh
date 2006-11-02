@@ -77,7 +77,7 @@ BINDIR=$INSTALLDIR/bin		# main dir for binary stuff
 CONFIGDIR=$ROOT/config
 HEAPDIR=$BINDIR/.heap		# where heap images live
 RUNDIR=$BINDIR/.run		# where executables (i.e., the RTS) live
-SRCDIR=$ROOT/src		# where the source tree is rooted
+SRCDIR=$ROOT/base/src		# where the source tree is rooted
 LIBDIR=$INSTALLDIR/lib		# where libraries live
 
 #
