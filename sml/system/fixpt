@@ -9,18 +9,18 @@
 
 this=$0
 here=`pwd`
-cd ../../..
-threeup=`pwd`
+cd ../..
+twoup=`pwd`
 cd $here
 
-SML=$threeup/bin/sml
+SML=$twoup/bin/sml
 ARCH=sparc
 
 #
 # use the arch-n-opsys script to determine the ARCH/OS if possible
 #
-if [ -f $threeup/bin/.arch-n-opsys ]; then
-    ARCH_N_OPSYS=`$threeup/bin/.arch-n-opsys`
+if [ -f $twoup/bin/.arch-n-opsys ]; then
+    ARCH_N_OPSYS=`$twoup/bin/.arch-n-opsys`
     if [ "$?" = "0" ]; then
 	eval $ARCH_N_OPSYS
 	echo Architecture: $ARCH

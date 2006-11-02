@@ -3,7 +3,7 @@
 root.cm			../system
 
 smlnj			../system/smlnj
-SMLNJ-MLRISC		../../../MLRISC/cm
+SMLNJ-MLRISC		../../MLRISC/cm
 pickle-lib.cm		../compiler/MiscUtil/library
 
 pgraph.cm		../cm/pgraph
@@ -11,8 +11,8 @@ cm			../cm
 compiler		../compiler
 
 SMLNJ-BASIS		../system/Basis
-SMLNJ-LIB		../../../smlnj-lib
-SMLNJ-ML-YACC-LIB	../../../ml-yacc/lib
+SMLNJ-LIB		../../smlnj-lib
+SMLNJ-ML-YACC-LIB	../../ml-yacc/lib
 smlnj-tdp		../tools/TraceDebugProf
 
 mlyacc-tool.cm		../cm/tools/mlyacc
