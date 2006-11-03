@@ -273,6 +273,9 @@ do
       pgraph-util)
 	unpack "CM source code" "$ROOT" pgraph pgraph
 	;;
+      tdp-util)
+        unpack "Trace/Debug/Profile code" "$ROOT" trace-debug-profile trace-debug-profile
+	;;
       mlrisc)
 	unpack "MLRISC Library" "$ROOT" MLRISC MLRISC
 	;;

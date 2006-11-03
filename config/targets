@@ -61,6 +61,11 @@ request smlnj-lib
 #
 #request pgraph-util
 
+# pre-compile and install "Trace-Debug-Profile" utility library
+# (provides simple back-trace- and coverage facilities)
+#
+#request tdp-util
+
 # pre-compile and install Concurrent ML, which is a library for message-passing
 # concurrency.
 #

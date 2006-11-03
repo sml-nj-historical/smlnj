@@ -30,6 +30,10 @@ ml-nlffi-lib lib c c.cm               nlffi/lib
 
 pgraph-util lib pgraph-util.cm pgraph-util.cm pgraph
 
+tdp-util lib smlnj-tdp plugins.cm trace-debug-profile
+tdp-util lib smlnj-tdp back-trace.cm trace-debug-profile
+tdp-util lib smlnj-tdp coverage.cm trace-debug-profile
+
 mlrisc libanchor Control.cm SMLNJ-MLRISC
 mlrisc libanchor Lib.cm     SMLNJ-MLRISC
 mlrisc libanchor Visual.cm  SMLNJ-MLRISC
