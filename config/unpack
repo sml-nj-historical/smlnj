@@ -271,7 +271,7 @@ do
         unpack "NLFFI Library" "$ROOT" nlffi nlffi
 	;;
       pgraph-util)
-	unpack "CM source code" "$ROOT"/base cm cm
+	unpack "CM source code" "$ROOT" pgraph pgraph
 	;;
       mlrisc)
 	unpack "MLRISC Library" "$ROOT" MLRISC MLRISC

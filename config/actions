@@ -28,7 +28,7 @@ ml-nlffi-lib lib c memory/memory.cm   nlffi/lib
 ml-nlffi-lib lib c internals/c-int.cm nlffi/lib
 ml-nlffi-lib lib c c.cm               nlffi/lib
 
-pgraph-util lib pgraph-util.cm pgraph-util.cm base/cm/pgraph
+pgraph-util lib pgraph-util.cm pgraph-util.cm pgraph
 
 mlrisc libanchor Control.cm SMLNJ-MLRISC
 mlrisc libanchor Lib.cm     SMLNJ-MLRISC
