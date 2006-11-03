@@ -47,9 +47,6 @@ is
 	$smlnj/compiler/minimal-only.cm
 	$smlnj/cm.cm
 	$smlnj/cmb.cm
-	$smlnj-tdp/plugins.cm
-	$smlnj-tdp/back-trace.cm
-	$smlnj-tdp/coverage.cm
 
 	$smlnj/cm/tools.cm
         (* We need the ml-yacc and ml-lex tool plugins here. They must
