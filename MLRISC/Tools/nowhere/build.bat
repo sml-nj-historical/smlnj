@@ -1,1 +1,1 @@
-..\..\..\..\bin\ml-build nowhere.cm NoWhere.main nowhere
+..\..\..\bin\ml-build nowhere.cm NoWhere.main nowhere

@@ -10,8 +10,8 @@ CMD=$0
 
 ROOT="nowhere"
 HEAP_IMAGE=""
-FOURUP=`pwd`/../../../../
-BIN=${INSTALLDIR:-$FOURUP}/bin
+SMLNJROOT=`pwd`/../../..
+BIN=${INSTALLDIR:-$SMLNJROOT}/bin
 BUILD=$BIN/ml-build
 
 #
