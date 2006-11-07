@@ -1,1 +1,1 @@
-..\..\bin\ml-build ml-lex.cm ExportLexGen.lexGen ml-lex
+..\bin\ml-build ml-lex.cm ExportLexGen.lexGen ml-lex

@@ -10,8 +10,8 @@ CMD=$0
 
 ROOT="ml-lex"
 HEAP_IMAGE=""
-ONEUP=`pwd`/..
-BIN=${INSTALLDIR:-$ONEUP}/bin
+SMLNJROOT=`pwd`/..
+BIN=${INSTALLDIR:-$SMLNJROOT}/bin
 BUILD=$BIN/ml-build
 
 #
