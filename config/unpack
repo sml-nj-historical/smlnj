@@ -288,8 +288,11 @@ do
       heap2asm)
 	unpack "Heap->ASM tool" "$ROOT" heap2asm heap2asm
 	;;
-      tools)
-	unpack "debugging tools" "$ROOT"/base tools tools
+      ml-ulex)
+	unpack "new unicode lexer generator" "$ROOT" ml-lpt ml-lpt
+	;;
+      ml-antlr)
+	unpack "new LL(k) parser generator" "$ROOT" ml-lpt ml-lpt
 	;;
       doc)
 	echo Package doc is currently unavailable.
