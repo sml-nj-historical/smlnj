@@ -365,21 +365,6 @@ end = struct
 
 	(* ------------------------------ *)
 
-	(* abbreviations *)
-	fun r (a, r, d) = reglib { anchor = a, relname = r, dir = d,
-				   altanchor = NONE }
-	fun r' (a, r, d, aa) = reglib { anchor = a, relname = r, dir = d,
-					altanchor = SOME aa }
-	fun a (anch, p) = localanchor { anchor = anch, path = p }
-
-	fun sa (t, d) =
-	    standalone { target = t, optheapdir = d, dir = "src" }
-
-	fun sa' (t, d, s) =
-	    standalone { target = t, optheapdir = d, dir = s }
-
-	(* ------------------------------ *)
-
 	datatype action =
 	    RegLib of { anchor: string, relname: string, dir: string,
 			altanchor: string option }
@@ -442,7 +427,7 @@ end = struct
 		      #set (CM.Anchor.anchor anchor) (SOME (native path))
 		  | perform (Anchor ({ anchor, path }, true)) =
 		      #set (CM.Anchor.anchor anchor)
-		           (SOME (P.concat (libdir, path)))
+		           (SOME (P.concat (libdir, native path)))
 		  | perform (Program (args, false)) =
 		      standalone args
 		  | perform (Program (args, true)) =
@@ -451,74 +436,6 @@ end = struct
 		   SOME al => app perform (rev al)
 		 | NONE => fail ["unknown module: ", module, "\n"]
 	    end
-
-	(* ------------------------------ *)
-
-(*
-	(* process one module *)
-	fun one "smlnj-lib" =
-	    (if isUnix then
-		 r ("unix-lib.cm", "unix-lib.cm", "src/smlnj-lib/Unix")
-	     else ();
-	     r ("inet-lib.cm", "inet-lib.cm", "src/smlnj-lib/INet");
-	     r ("regexp-lib.cm", "regexp-lib.cm", "src/smlnj-lib/RegExp");
-	     r ("reactive-lib.cm", "reactive-lib.cm", "src/smlnj-lib/Reactive");
-	     r ("hash-cons-lib.cm", "hash-cons-lib.cm", "src/smlnj-lib/HashCons"))
-	  | one "cml" =
-	    (r ("cml", "core-cml.cm", "src/cml/src");
-	     r ("cml", "cml-internal.cm", "src/cml/src");
-	     r ("cml", "cml.cm", "src/cml/src");
-	     r ("cml", "basis.cm", "src/cml/src"))
-	  | one "cml-lib" =
-	    (r ("cml-lib", "trace-cml.cm", "src/cml/cml-lib/cm-descr");
-	     r ("cml-lib", "smlnj-lib.cm", "src/cml/cml-lib/cm-descr"))
-	  | one "eXene" =
-	    (r ("eXene.cm", "eXene.cm", "src/eXene"))
-	  | one "ckit" =
-	    (r ("ckit-lib.cm", "ckit-lib.cm", "ckit/src"))
-	  | one "ml-nlffi-lib" =
-	    (r ("c", "memory/memory.cm", "src/ml-nlffi-lib");
-	     r ("c", "internals/c-int.cm", "src/ml-nlffi-lib");
-	     r ("c", "c.cm", "src/ml-nlffi-lib"))
-	  | one "pgraph-util" =
-	    (r ("pgraph-util.cm", "pgraph-util.cm", "src/cm/pgraph"))
-	  | one "mlrisc" =
-	    (a ("Control.cm", P.concat (libdir, "SMLNJ-MLRISC"));
-	     a ("Lib.cm", P.concat (libdir, "SMLNJ-MLRISC"));
-	     a ("Visual.cm", P.concat (libdir, "SMLNJ-MLRISC"));
-	     a ("MLRISC.cm", P.concat (libdir, "SMLNJ-MLRISC"));
-	     a ("MLTREE.cm", P.concat (libdir, "SMLNJ-MLRISC"));
-	     a ("Graphs.cm", P.concat (libdir, "SMLNJ-MLRISC"));
-	     a ("IA32.cm", P.concat (libdir, "SMLNJ-MLRISC"));
-	     a ("Peephole.cm", "src/MLRISC/cm");
-	     r' ("OTHER-MLRISC", "RA.cm", "src/MLRISC/cm", "SMLNJ-MLRISC");
-	     r' ("OTHER-MLRISC", "Peephole.cm", "src/MLRISC/cm", "SMLNJ-MLRISC");
-	     r' ("OTHER-MLRISC", "IA32-Peephole.cm", "src/MLRISC/cm", "SMLNJ-MLRISC"))
-	  | one "mlrisc-tools" =
-	    (r ("mlrisc-tools", "pp.cm", "src/MLRISC/Tools");
-	     r ("mlrisc-tools", "source-map.cm", "src/MLRISC/Tools");
-	     r ("mlrisc-tools", "sml-ast.cm", "src/MLRISC/Tools");
-	     r ("mlrisc-tools", "prec-parser.cm", "src/MLRISC/Tools");
-	     r ("mlrisc-tools", "parser.cm", "src/MLRISC/Tools");
-	     r ("mlrisc-tools", "match-compiler.cm", "src/MLRISC/Tools"))
-	  | one "ml-yacc" =
-	      sa ("ml-yacc", SOME "src")
-	  | one "ml-lex" =
-	      sa ("ml-lex", NONE)
-	  | one "lexgen" =
-	      sa ("lexgen", SOME "src")
-	  | one "ml-burg" =
-	      sa ("ml-burg", NONE)
-	  | one "heap2asm" =
-	      sa ("heap2asm", NONE)
-	  | one "ml-nlffigen" =
-	      salist := (fn () => sa ("ml-nlffigen", NONE))
-			:: !salist
-	  | one "nowhere" =
-	      salist := (fn () => sa' ("nowhere", NONE, "src/MLRISC/Tools"))
-			:: !salist
-	  | one module = fail ["unknown module: ", module, "\n"]
-*)
     in
 	(command_pathconfig "bindir";	(* dummy -- for CM make tool *)
 	 app one modules;
