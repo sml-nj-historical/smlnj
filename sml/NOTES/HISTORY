@@ -15,6 +15,76 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/11/09 14:30:00 CST
+Tag: release-110.60
+Description:
+
+New working release (110.60).  NEW BOOTFILES!
+
+This is the first subversion-hosted release.  There are also changes
+to the directory layout.  Here is a table:
+
+(All pathnames are relative to the SML/NJ "root" directory.)
+
+  config -> config
+
+  src/cm -> base/cm
+  src/compiler -> base/compiler
+  src/runtime -> base/runtime
+  src/system -> base/system
+
+  src/cm/pgraph -> pgraph
+
+  src/READMES -> base/READMES
+  src/$notefile -> base/NOTES/$notefile
+     for <notefile> in BOOT CVSNOTES CYGWININSTALL HISTORY INSTALL
+                       MACOSXINSTALL WININSTALL
+
+  src/smlnj-lib -> smlnj-lib
+  src/MLRISC -> MLRISC
+  ckit -> ckit
+  src/cml -> cml
+  src/eXene -> eXene
+  src/heap2asm -> heap2asm
+  src/lexgen -> lexgen
+  src/ml-burg -> ml-burg
+  src/ml-lex -> ml-lex
+  src/ml-yacc -> ml-yacc
+  src/ml-nlffi-lib -> nlffi/lib
+  src/ml-nlffigen -> nlffi/gen
+  src/smlnj-c -> smlnj-c
+  src/tools/TraceDebugProf -> trace-debug-profile
+
+In addition, there is also a new
+
+  ml-lpt
+
+directory containing two new program generator tools: ml-ulex and
+ml-antlr (a lexer generator that handles unicode and an ANTRL-inspired
+LL(k) parser generator). These tools are currently "beta-quality"
+
+The latest versios of the sources can now be obtained anonymously
+via subversion.  For this, it is useful to first check out
+
+   svn://smlnj-gforge.cs.uchicago.edu/smlnj/admin
+
+and put the resulting directory on your shell's PATH.  This provides
+access to three shell scripts: checkout-all.sh, stat-all.sh,
+and refresh-all.sh.
+
+To create a freshly checked-out copy of the sources, do
+
+   checkout-all.sh [dir]
+
+where dir is the optional SML/NJ root directory (default is ".").
+
+This creates the above directory layout.  Each subdirectory of
+the root is under individual subversion control.  The stat-all.sh
+and refresh-al.sh scripts apply "svn stat" or "svn update" to
+each of these subtrees.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2006/11/02 12:20:00 CST
 Description:
 
@@ -93,7 +163,7 @@ Date: 2006/05/17 14:00:00 CST
 Tag: Release_110_59
 Description:
 
-New working version (110.58).  NEW BOOTFILES!
+New working version (110.59).  NEW BOOTFILES!
 
 I am freezing 110.59.  Changes other than the version-number increase:
 
