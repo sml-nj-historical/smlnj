@@ -21,8 +21,10 @@ cml-lib
 eXene
 ckit
 pgraph-util
+tdp-util
 mlrisc
 mlrisc-tools
 smlnj-c
 heap2asm
-tools
+ml-ulex
+ml-antlr
