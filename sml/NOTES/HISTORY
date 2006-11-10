@@ -15,6 +15,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/11/10 11:00:00 CST
+Description:
+
+Fixed bug in CM where "with:" specifications that affect compilation
+(as opposed to parsing) were ignored.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2006/11/09 14:30:00 CST
 Tag: release-110.60
 Description:

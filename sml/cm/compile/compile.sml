@@ -315,6 +315,7 @@ in
 				(#set topLevel orig_toplenv;
 				 app (fn r => r ()) orig_settings)
 			    fun work () = let
+				val _ = map (fn c => #set c ()) controllers
 				val _ = perform_setup "pre" pre
 				(* clear error flag (could still be set from
 				 * earlier run) *)
