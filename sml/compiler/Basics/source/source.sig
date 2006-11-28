@@ -13,10 +13,10 @@ signature SOURCE =
         interactive: bool,
         sourceStream: TextIO.instream, 
         anyErrors: bool ref,
-        errConsumer: PrettyPrint.device
+        errConsumer: PrettyPrintNew.device
       }
 
-    val newSource : (string * int * TextIO.instream * bool * PrettyPrint.device)
+    val newSource : (string * int * TextIO.instream * bool * PrettyPrintNew.device)
           -> inputSource
     val closeSource: inputSource -> unit
     val filepos: inputSource -> SourceMap.charpos -> string * int * int

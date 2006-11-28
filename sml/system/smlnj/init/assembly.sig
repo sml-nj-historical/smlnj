@@ -56,7 +56,6 @@ signature ASSEMBLYBOXED =
   sig
     type object
     datatype 'a option = NONE | SOME of 'a
-
     structure A : 
       sig
         type c_function

@@ -260,7 +260,7 @@ fun append lvs code le =
 fun extract (con,le) =
     let val f = mklv()
 	val fk = {isrec=NONE,known=true,inline=F.IH_SAFE,
-		  cconv=F.CC_FUN(LK.FF_FIXED)}
+		  cconv=F.CC_FUN(Lty.FF_FIXED)}
     in case con of
 	F.DATAcon(dc as (_,_,lty),tycs,lv) =>
 	let val nlv = cplv lv

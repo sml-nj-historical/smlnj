@@ -315,7 +315,7 @@ fun elabWhere (sigexp,env,epContext,mkStamp,error,region) =
 				of CONSTstrDef(STR {sign,rlzn,...}) =>
 				   CONSTstrDef(STR{sign=sign,rlzn=rlzn,
 						   access=Access.nullAcc,
-						   info=II.Null})
+						   prim=[]})
 				 | _ => strDef
 		       in loop1(rest,STRdef(lhspath,strDef)::defs)
 		      end
@@ -1024,7 +1024,7 @@ case fsigexp
                 val paramElmt = [(paramName, paramSpec)]
           in val nsctxt = paramElmt :: sigContext
           end (* a temporary work-around for the sigContext hack *)
-
+	  val _ = print "elabFctSig0\n"
           val env' = 
             case paramNameOp
              of SOME id => (* expose binding of paramName *)

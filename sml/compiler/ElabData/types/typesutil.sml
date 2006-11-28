@@ -26,6 +26,7 @@ infix -->
 
 val say = Control_Print.say
 val debugging = ref false
+fun debugmsg msg = if !debugging then say ("TypesUtil: " ^ msg ^ "\n") else ()
 fun bug msg = EM.impossible("TypesUtil: "^msg)
 
 fun eqpropToString p =
@@ -76,7 +77,7 @@ fun mkSCHEMEty () : ty = VARty(mkTyvar(SCHEME false))
  * variable), use mkMETAtyBounded with the appropriate depth.
  *)
 
-fun mkMETAtyBounded depth : ty = VARty(mkTyvar (mkMETA depth))
+fun mkMETAtyBounded (depth: int) : ty = VARty(mkTyvar (mkMETA depth))
 
 fun mkMETAty() = mkMETAtyBounded infinity
 
@@ -157,10 +158,16 @@ fun mkCONty(ERRORtyc, _) = WILDCARDty
 
 fun prune(VARty(tv as ref(INSTANTIATED ty))) : ty =
       let val pruned = prune ty
-       in tv := INSTANTIATED pruned; pruned
+      in tv := INSTANTIATED pruned; pruned
       end
   | prune ty = ty
     
+fun pruneTyvar(tv as ref(INSTANTIATED ty)) : ty =
+    let val pruned = prune ty
+    in tv := INSTANTIATED pruned; pruned
+    end
+  | pruneTyvar _ = bug "pruneTyvar: not an instantiated tyvar"
+
 fun eqTyvar(tv1: tyvar, tv2: tyvar) = (tv1 = tv2)
 
 fun bindTyvars(tyvars: tyvar list) : unit =
@@ -189,18 +196,25 @@ fun shareMap f nil = raise SHARE
       (f x) :: ((shareMap f l) handle SHARE => l)
       handle SHARE => x :: (shareMap f l)
 
-(*** This function should be merged with instantiatePoly soon --zsh ***)
-fun applyTyfun(TYFUN{arity,body},args) =
+(*** This function should be merged with instantiatePoly soon --zsh
+     dbm: don't agree! ***)
+fun applyTyfun(TYFUN{arity,body}, args: ty list) =
   let fun subst(IBOUND n) = List.nth(args,n)
         | subst(CONty(tyc,args)) = CONty(tyc, shareMap subst args)
         | subst(VARty(ref(INSTANTIATED ty))) = subst ty
         | subst _ = raise SHARE
-   in if arity > 0
-      then subst body
-              handle SHARE => body
-		   | Subscript => bug "applyTyfun - not enough arguments"
+   in if arity <> length args
+        then bug "applyTyfun: arity mismatch"
+      else if arity > 0
+        then subst body
+             handle SHARE => body
+		  | Subscript => bug "applyTyfun - not enough arguments"
       else body
   end
+
+fun applyPoly(POLYty{tyfun,...}, args) =
+    applyTyfun(tyfun, args)
+  | applyPoly _ = bug "TypesUtil.applyPoly"
 
 fun mapTypeFull f =
     let fun mapTy ty =
@@ -254,6 +268,13 @@ fun equalType(ty,ty') =
      in eq(prune ty, prune ty')
     end
 
+fun equalTypeP(POLYty{sign=s1,tyfun=TYFUN{body=b1,...}},
+               POLYty{sign=s2,tyfun=TYFUN{body=b2,...}}) =
+    if s1 = s2 then equalType(b1,b2) else false
+  | equalTypeP(POLYty _, t2) = false
+  | equalTypeP(t1, POLYty _) = false
+  | equalTypeP(t1,t2) = equalType(t1,t2)
+
 local
   (* making dummy argument lists to be used in equalTycon *)
     val generator = Stamps.newGenerator()
@@ -295,10 +316,10 @@ fun equalTycon(ERRORtyc,_) = true
   | equalTycon(_,ERRORtyc) = true
   | equalTycon(t1,t2) =
      let val a1 = tyconArity t1 and a2 = tyconArity t2
-      in if a1<>a2 then false
-         else let val args = dummyargs a1
-	       in equalType(mkCONty(t1,args),mkCONty(t2,args))
-	      end
+      in a1=a2 andalso
+         (let val args = dummyargs a1
+	  in equalType(mkCONty(t1,args),mkCONty(t2,args))
+	  end)
      end
 
 (* instantiating polytypes *)
@@ -332,20 +353,17 @@ fun boundargs n =
     end
 
 fun dconType (tyc,domain) =
-    let val arity = tyconArity tyc
-    in
-	case arity of
-	    0 => (case domain of
-		      NONE => CONty(tyc,[])
-		    | SOME dom => dom --> CONty(tyc,[]))
-	  | _ =>
-	    POLYty{sign=mkPolySign arity,
-		   tyfun=TYFUN{arity=arity,
-			       body = case domain of
-					  NONE => CONty(tyc,boundargs(arity))
-					| SOME dom =>
-					  dom --> CONty(tyc,boundargs(arity))}}
-    end
+    (case tyconArity tyc
+      of 0 => (case domain
+                 of NONE => CONty(tyc,[])
+                  | SOME dom => dom --> CONty(tyc,[]))
+       | arity =>
+         POLYty{sign=mkPolySign arity,
+                tyfun=TYFUN{arity=arity,
+                            body = case domain
+                                     of NONE => CONty(tyc,boundargs(arity))
+                                      | SOME dom =>
+                                        dom --> CONty(tyc,boundargs(arity))}})
 
 (* matching a scheme against a target type -- used declaring overloadings *)
 fun matchScheme (TYFUN{arity,body}: tyfun, target: ty) : ty =
@@ -422,16 +440,16 @@ with
 
 end (* abstype occ *)
 
-(* instantiatePoly: ty -> ty * ty list
+(* instantiatePoly: ty -> ty * tyvar list
    if argument is a POLYty, instantiates body of POLYty with new META typa
    variables, returning the instantiatied body and the list of META tyvars.
    if argument is not a POLYty, does nothing, returning argument type *)
-fun instantiatePoly(POLYty{sign,tyfun}) : ty * ty list =
-      let val args =
+fun instantiatePoly(POLYty{sign,tyfun}) : ty * tyvar list =
+      let val args =  (* fresh OPEN metavariables *)
 	      map (fn eq => 
-		      VARty(ref(OPEN{kind = META, depth = infinity, eq = eq})))
+		      ref(OPEN{kind = META, depth = infinity, eq = eq}))
 		  sign
-       in (applyTyfun(tyfun, args), args)
+       in (applyTyfun(tyfun, map VARty args), args)
       end
   | instantiatePoly ty = (ty,[])
 
@@ -455,12 +473,34 @@ fun checkEqTySig(ty, sign: polysign) =
 	true
     end
     handle CHECKEQ => false
+
+fun checkEqTyInst(ty) =
+    let fun eqty(VARty(ref(INSTANTIATED ty))) = eqty ty
+          | eqty(VARty(ref(OPEN{eq,...}))) = if eq then () else raise CHECKEQ
+	  | eqty(CONty(DEFtyc{tyfun,...}, args)) =
+	      eqty(applyTyfun(tyfun,args))
+	  | eqty(CONty(GENtyc { eq, ... }, args)) =
+	     (case !eq
+		of OBJ => ()
+		 | YES => app eqty args
+		 | (NO | ABS | IND) => raise CHECKEQ
+		 | p => bug ("checkEqTyInst: "^eqpropToString p))
+	  | eqty(CONty(RECORDtyc _, args)) = app eqty args
+	  | eqty(IBOUND n) = bug "checkEqTyInst: IBOUND in instantiated polytype"
+	  | eqty _ = () (* what other cases? dbm *)
+     in eqty ty;
+	true
+    end
+    handle CHECKEQ => false
 end
 
+(* compType, compareTypes used to compare specification type with type of
+ * corresponding actual element.  Check that spec type is an instance of
+ * the actual type *)
 exception CompareTypes
 fun compType(specty, specsign:polysign, actty,
 	     actsign:polysign, actarity): unit =
-    let val env = array(actarity,UNDEFty)
+    let val env = array(actarity,UNDEFty) (* instantiations of IBOUNDs in actual body *)
 	fun comp'(WILDCARDty, _) = ()
 	  | comp'(_, WILDCARDty) = ()
 	  | comp'(ty1, IBOUND i) =
@@ -469,8 +509,7 @@ fun compType(specty, specsign:polysign, actty,
 		    (let val eq = List.nth(actsign,i)
 		      in if eq andalso not(checkEqTySig(ty1,specsign))
 			 then raise CompareTypes
-			 else ();
-			 update(env,i,ty1)
+			 else update(env,i,ty1)
 		     end handle Subscript => ())
 		 | ty => if equalType(ty1,ty)
 			 then ()
@@ -484,7 +523,7 @@ fun compType(specty, specsign:polysign, actty,
      in comp(specty,actty)
     end
 
-(* returns true if actual type > spec type *)
+(* returns true if actual type > spec type, i.e. if spec is an instance of actual *)
 fun compareTypes (spec : ty, actual: ty): bool = 
     let val actual = prune actual
      in case spec
@@ -493,15 +532,66 @@ fun compareTypes (spec : ty, actual: ty): bool =
 		 of POLYty{sign=sign',tyfun=TYFUN{arity,body=body'}} =>
 		      (compType(body,sign,body',sign',arity); true)
 		  | WILDCARDty => true
-		  | _ => false)
+		  | _ => false) (* if spec is poly, then actual must be poly *)
 	   | WILDCARDty => true
-	   | _ =>
+	   | _ => (* spec is a monotype *)
 	      (case actual
 		 of POLYty{sign,tyfun=TYFUN{arity,body}} =>
 		      (compType(spec,[],body,sign,arity); true)
 		  | WILDCARDty => true
 		  | _ => equalType(spec,actual))
     end handle CompareTypes => false
+
+(* matchInstTypes: ty * ty -> (tyvar list * tyvar list) option
+ * The first argument is a spec type (e.g. from a signature spec),
+ * while the second is a potentially more general actual type. The
+ * two types are instantiated (if they are polymorphic), and a one-way
+ * match is performed on their generic instantiations. 
+ * [Note that the match cannot succeed if spec is polymorphic while
+ * actualTy is monomorphic.]
+ * This function is also used more generally to obtain instantiation
+ * parameters for a polytype (actualTy) to obtain one of its instantiations
+ * (specTy). This usage occurs in translate.sml where we match an occurrence
+ * type of a primop variable with the intrinsic type of the primop to obtain
+ * the parameters of instantiation of the primop.
+ *)
+exception WILDCARDmatch
+
+fun matchInstTypes(specTy,actualTy) =
+    let	fun debugmsg' msg = debugmsg ("matchInstTypes: " ^ msg)
+	fun match'(WILDCARDty, _) = raise WILDCARDmatch (* possible? how? *)
+	  | match'(_, WILDCARDty) = raise WILDCARDmatch (* possible? how? *)
+	  | match'(ty1, ty2 as VARty(tv as ref(OPEN{kind=META,eq,...}))) =
+              if eq andalso not(checkEqTyInst(ty1))
+	      then (debugmsg' "VARty META\n"; raise CompareTypes)
+	      else if equalType(ty1, ty2) 
+	      then ()
+	      else tv := INSTANTIATED ty1
+	  | match'(ty1, VARty(tv as ref(INSTANTIATED ty2))) =
+              if equalType(ty1,ty2) then () else (debugmsg' "INSTANTIATED"; raise CompareTypes)
+	  (* GK: Does this make sense? matchInstTypes should not apply
+		 as is if all the metavariables have been translated 
+	         into TV_MARKs *)
+	  | match'(VARty(ref (TV_MARK m)), VARty(ref (TV_MARK m'))) = 
+	      if m = m' then () else raise CompareTypes 
+	  | match'(CONty(tycon1, args1), CONty(tycon2, args2)) =
+	      if eqTycon(tycon1,tycon2)
+	      then ListPair.app match (args1,args2)
+	      else (debugmsg' "CONty"; raise CompareTypes)
+	  | match'(_, UNDEFty) = (debugmsg' "UNDEFty"; raise CompareTypes)
+	  | match'(_, IBOUND _) = (debugmsg' "IBOUND"; raise CompareTypes)
+	  | match'(_, POLYty _) = (debugmsg' "POLYty"; raise CompareTypes)
+	  | match'(_, CONty _) = (debugmsg' "unmatched CONty"; raise CompareTypes)
+	  | match'(t1, VARty vk) = (debugmsg' "VARty other"; 
+				    raise CompareTypes)
+        and match(ty1,ty2) = match'(headReduceType ty1, headReduceType ty2)
+        val (actinst, actParamTvs) = instantiatePoly actualTy
+        val (specinst, specGenericTvs) = instantiatePoly specTy
+	val _ = debugmsg' "Instantiated both\n"
+    in match(specinst, actinst);
+       debugmsg' "matched\n";
+       SOME(specGenericTvs, actParamTvs)
+    end handle CompareTypes => NONE
 
 (* given a single-type-variable type, extract out the tyvar *)
 fun tyvarType (VARty (tv as ref(OPEN _))) = tv
@@ -511,13 +601,13 @@ fun tyvarType (VARty (tv as ref(OPEN _))) = tv
   | tyvarType (CONty(_,_)) = bug "tyvarType: CONty"
   | tyvarType (POLYty _) = bug "tyvarType: POLYty"
   | tyvarType UNDEFty = bug "tyvarType: UNDEFty"
-  | tyvarType _ = bug "tyvarType 124" 
+  | tyvarType _ = bug "tyvarType - unexpected argument" 
 
 (* 
  * getRecTyvarMap : int * ty -> (int -> bool) 
  * see if a bound tyvar has occurred in some datatypes, e.g. 'a list. 
  * this is useful for representation analysis. This function probably
- * will soon be obsolete. 
+ * will soon be obsolete (dbm: Why?). 
  *)
 fun getRecTyvarMap (n,ty) =
     let val s = Array.array(n,false)
@@ -546,12 +636,9 @@ fun gtLabel(a,b) =
     let val a' = Symbol.name a and b' = Symbol.name b
         val a0 = String.sub(a',0) and b0 = String.sub(b',0)
      in if Char.isDigit a0
-	  then if Char.isDigit b0
-	    then (size a' > size b' orelse size a' = size b' andalso a' > b')
-	    else false
-	  else if Char.isDigit b0
-	    then true
-	    else (a' > b')
+	  then Char.isDigit b0
+	    andalso (size a' > size b' orelse size a' = size b' andalso a' > b')
+	  else Char.isDigit b0 orelse (a' > b')
     end
 
 (* Tests used to implement the value restriction *)
@@ -559,60 +646,55 @@ fun gtLabel(a,b) =
 (* Modified to support CAST, and special binding CASEexp. (ZHONG) *)
 (* Modified to allow applications of lazy val rec Y combinators to
    be nonexpansive. (Taha, DBM) *) 
+
 local open Absyn in
 
-fun isValue { ii_ispure } = let
-    fun isval (VARexp _) = true
-      | isval (CONexp _) = true
-      | isval (INTexp _) = true
-      | isval (WORDexp _) = true
-      | isval (REALexp _) = true
-      | isval (STRINGexp _) = true
-      | isval (CHARexp _) = true
-      | isval (FNexp _) = true
-      | isval (RECORDexp fields) =
-	foldr (fn ((_,exp),x) => x andalso (isval exp)) true fields
-      | isval (SELECTexp(_, e)) = isval e
-      | isval (VECTORexp (exps, _)) =
-	foldr (fn (exp,x) => x andalso (isval exp)) true exps
-      | isval (SEQexp nil) = true
-      | isval (SEQexp [e]) = isval e
-      | isval (SEQexp _) = false
-      | isval (APPexp(rator, rand)) =
-	let fun isrefdcon(DATACON{rep=A.REF,...}) = true
-              | isrefdcon _ = false
-	    fun iscast (VALvar { info, ... }) = ii_ispure info
-	      | iscast _ = false
-	    (*
-            fun iscast(VALvar{info,...}) = II.pureInfo (II.fromExn info)
-              | iscast _ = false
-	     *)
+fun isValue (VARexp _) = true
+  | isValue (CONexp _) = true
+  | isValue (INTexp _) = true
+  | isValue (WORDexp _) = true
+  | isValue (REALexp _) = true
+  | isValue (STRINGexp _) = true
+  | isValue (CHARexp _) = true
+  | isValue (FNexp _) = true
+  | isValue (RECORDexp fields) =
+    foldr (fn ((_,exp),x) => x andalso (isValue exp)) true fields
+  | isValue (SELECTexp(_, e)) = isValue e
+  | isValue (VECTORexp (exps, _)) =
+    foldr (fn (exp,x) => x andalso (isValue exp)) true exps
+  | isValue (SEQexp nil) = true
+  | isValue (SEQexp [e]) = isValue e
+  | isValue (SEQexp _) = false
+  | isValue (APPexp(rator, rand)) =
+    let fun isrefdcon(DATACON{rep=A.REF,...}) = true
+          | isrefdcon _ = false
+        fun iscast (VALvar {prim, ...}) = PrimOpId.isPrimCast prim
+          | iscast _ = false
 
-            (* LAZY: The following function allows applications of the
-	     * fixed-point combinators generated for lazy val recs to
-	     * be non-expansive. *)
-            fun issafe(VALvar{path=(SymPath.SPATH [s]),...}) = 
-		(case String.explode (Symbol.name s)
-		  of (#"Y" :: #"$" :: _) => true
-		   | _ => false)
-              | issafe _ = false
+        (* LAZY: The following function allows applications of the
+         * fixed-point combinators generated for lazy val recs to
+         * be non-expansive. *)
+        fun issafe(VALvar{path=(SymPath.SPATH [s]),...}) = 
+            (case String.explode (Symbol.name s)
+              of (#"Y" :: #"$" :: _) => true
+               | _ => false)
+          | issafe _ = false
 
-	    fun iscon (CONexp(dcon,_)) = not (isrefdcon dcon)
-	      | iscon (MARKexp(e,_)) = iscon e
-              | iscon (VARexp(ref v, _)) = (iscast v) orelse (issafe v)
-	      | iscon _ = false
-	in if iscon rator then isval rand
-           else false
-	end
-      | isval (CONSTRAINTexp(e,_)) = isval e
-      | isval (CASEexp(e, (RULE(p,_))::_, false)) = 
-	(isval e) andalso (irref p) (* special bind CASEexps *)
-      | isval (LETexp(VALRECdec _, e)) = (isval e) (* special RVB hacks *)
-      | isval (MARKexp(e,_)) = isval e
-      | isval _ = false
-in
-    isval
-end
+        fun iscon (CONexp(dcon,_)) = not (isrefdcon dcon)
+          | iscon (MARKexp(e,_)) = iscon e
+          | iscon (VARexp(ref v, _)) = (iscast v) orelse (issafe v)
+          | iscon _ = false
+    in if iscon rator then isValue rand
+       else false
+    end
+  | isValue (CONSTRAINTexp(e,_)) = isValue e
+  | isValue (CASEexp(e, (RULE(p,_))::_, false)) = 
+    (isValue e) andalso (irref p) (* special bind CASEexps *)
+  | isValue (LETexp(VALRECdec _, e)) = (isValue e) (* special RVB hacks *)
+  | isValue (MARKexp(e,_)) = isValue e
+  | isValue _ = false
+ 
+
 
 (* testing if a binding pattern is irrefutable --- complete *)
 and irref pp  = 
@@ -638,6 +720,8 @@ and irref pp  =
    in g pp
   end
 end (* local *)
+ 
+
 
 fun isVarTy(VARty(ref(INSTANTIATED ty))) = isVarTy ty
   | isVarTy(VARty _) = true
@@ -754,7 +838,7 @@ in
     | inTycSet _ = false
 
   fun filterSet(ty, tycs) = 
-    let fun inList (a::r, tc) = if eqTycon(a, tc) then true else inList(r, tc)
+    let fun inList (a::r, tc) = eqTycon(a, tc) orelse inList(r, tc)
           | inList ([], tc) = false
 
         fun pass1 (tc, tset) = 
@@ -892,6 +976,9 @@ fun unWrapDefStar tyc =
 	of SOME tyc' => unWrapDefStar tyc'
          | NONE => tyc)
 
+(* dummyTyGen produces a generator of dummy types with names X0, X1, etc.
+ * These are used to to instantiate type metavariables in top-level val
+ * decls that are not generalized because of the value restriction. *)
 fun dummyTyGen () : unit -> Types.ty =
     let val count = ref 0
 	fun next () = (count := !count + 1; !count)

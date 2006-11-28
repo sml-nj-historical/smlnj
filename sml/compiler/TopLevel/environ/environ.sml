@@ -14,6 +14,7 @@ local structure A = Access
       structure SE = StaticEnv
       structure DE = DynamicEnv
       structure SY = SymbolicEnv
+      structure PP = PrettyPrintNew
 in
 
 type symbol = S.symbol
@@ -193,19 +194,16 @@ in
 end
 
 fun describe static (s: symbol) : unit =
-      let open PrettyPrint PPUtil
-       in with_pp (ErrorMsg.defaultConsumer())
-	   (fn ppstrm =>
-	    (openHVBox ppstrm (Rel 0);
+      PP.with_default_pp
+	  (fn ppstrm =>
+	    (PP.openHVBox ppstrm (PP.Rel 0);
 	      PPModules.ppBinding ppstrm
 	        (s, SE.look(static,s), static, !Control.Print.printDepth);
-	      newline ppstrm;
-	     closeBox ppstrm))
-      end handle SE.Unbound => print (S.name s ^ " not found\n")
+	      PP.newline ppstrm;
+	     PP.closeBox ppstrm))
+      handle SE.Unbound => print (S.name s ^ " not found\n")
 
 val primEnv = PrimEnv.primEnv
 
 end (* local *)
 end (* structure Environment *)
-
-

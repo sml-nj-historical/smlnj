@@ -142,7 +142,7 @@ fun writeLambda([], exp) = exp
   | writeLambda(fvs, exp) =
     let fun g(fvs', exp') = 
 	    let val newvar = mkv()
-		val fund = {isrec = NONE, cconv = CC_FUN(FF_VAR(true,true)), known = false,
+		val fund = {isrec = NONE, cconv = CC_FUN(Lty.FF_VAR(true,true)), known = false,
 				  inline = IH_SAFE }
 	    in  FIX([(fund, newvar, fvs', exp')], RET [VAR newvar])
 	    end

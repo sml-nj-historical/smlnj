@@ -11,7 +11,7 @@ local
     structure GG = GroupGraph
     structure SE = StaticEnv
     structure Pid = PersStamps
-    structure PP = PrettyPrint
+    structure PP = PrettyPrintNew
     structure EM = ErrorMsg
     structure SF = SmlFile
 

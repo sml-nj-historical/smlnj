@@ -47,7 +47,8 @@ structure UnpickMod : UNPICKMOD = struct
 
     structure A = Access
     structure DI = DebIndex
-    structure LT = LtyDef
+    structure LT = Lty
+    structure LD = LtyDef
     structure LK = LtyKernel
     structure PT = PrimTyc
     structure F = FLINT
@@ -55,13 +56,13 @@ structure UnpickMod : UNPICKMOD = struct
     structure SP = SymPath
     structure IP = InvPath
     structure MI = ModuleId
-    structure II = InlInfo
     structure V = VarCon
     structure ED = EntPath.EvDict
     structure PS = PersStamps
     structure P = PrimOp
     structure M = Modules
     structure B = Bindings
+    structure POI = PrimOpId
 
     structure UU = UnpickleUtil
     exception Format = UU.Format
@@ -420,7 +421,10 @@ structure UnpickMod : UNPICKMOD = struct
 	val tyOptionM = UU.mkMap ()
 	val tyListM = UU.mkMap ()
 	val iiM = UU.mkMap ()
-	val vM = UU.mkMap ()
+	val primIdM = UU.mkMap ()
+        val strPrimElemM = UU.mkMap ()
+	val speListM = UU.mkMap()
+        val vM = UU.mkMap ()
 	val sdM = UU.mkMap ()
 	val sigM = UU.mkMap ()
 	val fsigM = UU.mkMap ()
@@ -680,6 +684,7 @@ structure UnpickMod : UNPICKMOD = struct
 	    (l, branch trl)
 	end
 
+(* GK: replaced by primId and strPrimInfo type distinction
 	and inl_info () = let
 	    fun ii #"A" = II.INL_PRIM (primop (), ty ())
 	      | ii #"B" = II.INL_STR (iilist ())
@@ -689,16 +694,36 @@ structure UnpickMod : UNPICKMOD = struct
 	    share iiM ii
 	end
 
-	and iilist () = list iiListM inl_info ()
+        and iilist () = list iiListM inl_info ()
+ *)       
+        and primId () = 
+            let
+                fun p #"A" = POI.Prim (string ())
+                  | p #"B" = POI.NonPrim
+		  | p _ = raise Format
+            in 
+                share primIdM p
+            end
+
+        and strPrimElem () =
+            let
+                fun sp #"a" = POI.PrimE (primId ())
+                  | sp #"b" = POI.StrE (spelist ())
+		  | sp _ = raise Format
+            in
+                share strPrimElemM sp
+            end
+
+        and spelist () = list speListM strPrimElem ()
 
 	and var' () = let
 	    fun v #"1" =
 		let val a = access ()
-		    val i = inl_info ()
+		    val i = primId ()
 		    val p = spath ()
 		    val (t, tr) = ty' ()
 		in
-		    (V.VALvar { access = a, info = i, path = p, typ = ref t },
+		    (V.VALvar { access = a, prim = i, path = p, typ = ref t },
 		     tr)
 		end
 	      | v #"2" =
@@ -894,7 +919,7 @@ structure UnpickMod : UNPICKMOD = struct
 		    val r = { sign = s,
 			      rlzn = lookStr (libModSpec (), strId ()),
 			      access = access (),
-			      info = inl_info () }
+			      prim = spelist () }
 		in
 		    (M.STR r, branch [str, M.STRNODE r])
 		end
@@ -903,7 +928,7 @@ structure UnpickMod : UNPICKMOD = struct
 		    val r = { sign = s,
 			      rlzn = strEntity (),
 			      access = access (),
-			      info = inl_info () }
+			      prim = spelist () }
 		in
 		    (M.STR r, branch [str, M.STRNODE r])
 		end
@@ -924,7 +949,7 @@ structure UnpickMod : UNPICKMOD = struct
 		    val r = { sign = s,
 			      rlzn = lookFct (libModSpec (), fctId ()),
 			      access = access (),
-			      info = inl_info () }
+			      prim = spelist () }
 		in
 		    (M.FCT r, branch [str, M.FCTNODE r])
 		end
@@ -933,7 +958,7 @@ structure UnpickMod : UNPICKMOD = struct
 		    val r = { sign = s,
 			      rlzn = fctEntity (),
 			      access = access (),
-			      info = inl_info () }
+			      prim = spelist () }
 		in
 		    (M.FCT r, branch [str, M.FCTNODE r])
 		end
@@ -1257,6 +1282,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val lvarListM = UU.mkMap ()
 	val fundecListM = UU.mkMap ()
 	val conListM = UU.mkMap ()
+        val strListM = UU.mkMap ()
 	val lexpOptionM = UU.mkMap ()
 	val fundecM = UU.mkMap ()
 	val tfundecM = UU.mkMap ()
@@ -1267,10 +1293,10 @@ structure UnpickMod : UNPICKMOD = struct
 	val tycLvPM = UU.mkMap ()
 
 	fun lty () = let
-	    fun lt #"A" = LT.ltc_tyc (tyc ())
-	      | lt #"B" = LT.ltc_str (ltylist ())
-	      | lt #"C" = LT.ltc_fct (ltylist (), ltylist ())
-	      | lt #"D" = LT.ltc_poly (tkindlist (), ltylist ())
+	    fun lt #"A" = LD.ltc_tyc (tyc ())
+	      | lt #"B" = LD.ltc_str (ltylist ())
+	      | lt #"C" = LD.ltc_fct (ltylist (), ltylist ())
+	      | lt #"D" = LD.ltc_poly (tkindlist (), ltylist ())
 	      | lt _ = raise Format
 	in
 	    share ltyM lt
@@ -1279,28 +1305,30 @@ structure UnpickMod : UNPICKMOD = struct
 	and ltylist () = list ltyListM lty ()
 
 	and tyc () = let
-	    fun tc #"A" = LT.tcc_var (DI.di_fromint (int ()), int ())
-	      | tc #"B" = LT.tcc_nvar (int ())
-	      | tc #"C" = LT.tcc_prim (PT.pt_fromint (int ()))
-	      | tc #"D" = LT.tcc_fn (tkindlist (), tyc ())
-	      | tc #"E" = LT.tcc_app (tyc (), tyclist ())
-	      | tc #"F" = LT.tcc_seq (tyclist ())
-	      | tc #"G" = LT.tcc_proj (tyc (), int ())
-	      | tc #"H" = LT.tcc_sum (tyclist ())
-	      | tc #"I" = LT.tcc_fix ((int (), tyc (), tyclist ()), int ())
-	      | tc #"J" = LT.tcc_abs (tyc ())
-	      | tc #"K" = LT.tcc_box (tyc ())
-	      | tc #"L" = LT.tcc_tuple (tyclist ())
-	      | tc #"M" = LT.tcc_arrow (LT.ffc_var (bool (), bool ()),
+	    fun tc #"A" = LD.tcc_var (DI.di_fromint (int ()), int ())
+	      | tc #"B" = LD.tcc_nvar (int ())
+	      | tc #"C" = LD.tcc_prim (PT.pt_fromint (int ()))
+	      | tc #"D" = LD.tcc_fn (tkindlist (), tyc ())
+	      | tc #"E" = LD.tcc_app (tyc (), tyclist ())
+	      | tc #"F" = LD.tcc_seq (tyclist ())
+	      | tc #"G" = LD.tcc_proj (tyc (), int ())
+	      | tc #"H" = LD.tcc_sum (tyclist ())
+	      | tc #"I" = LD.tcc_fix ((int (), Vector.fromList(strlist ()),
+                                       tyc (), tyclist ()), int ())
+	      | tc #"J" = LD.tcc_abs (tyc ())
+	      | tc #"K" = LD.tcc_box (tyc ())
+	      | tc #"L" = LD.tcc_tuple (tyclist ())
+	      | tc #"M" = LD.tcc_arrow (LD.ffc_var (bool (), bool ()),
 					tyclist (), tyclist ())
-	      | tc #"N" = LT.tcc_arrow (LT.ffc_fixed, tyclist (), tyclist ())
-	      | tc #"O" = LK.tc_inj (LK.TC_TOKEN (LK.token_key (int ()),
+	      | tc #"N" = LD.tcc_arrow (LD.ffc_fixed, tyclist (), tyclist ())
+	      | tc #"O" = LK.tc_inj (LT.TC_TOKEN (LK.token_key (int ()),
 						  tyc ()))
 	      | tc _ = raise Format
 	in
 	    share tycM tc
 	end
 
+        and strlist () = list strListM string ()
 	and tyclist () = list tycListM tyc ()
 
 	val lvar = int
@@ -1421,11 +1449,11 @@ structure UnpickMod : UNPICKMOD = struct
 	    fun fk #"2" = { isrec = NONE, cconv = F.CC_FCT,
 			    known = false, inline = F.IH_SAFE }
 	      | fk #"3" = { isrec = Option.map aug_unknown (ltylistoption ()),
-			    cconv = F.CC_FUN (LT.ffc_var (bool (), bool ())),
+			    cconv = F.CC_FUN (LD.ffc_var (bool (), bool ())),
 			    known = bool (),
 			    inline = inlflag (bool ()) }
 	      | fk #"4" = { isrec = Option.map aug_unknown (ltylistoption ()),
-			    cconv = F.CC_FUN LT.ffc_fixed,
+			    cconv = F.CC_FUN LD.ffc_fixed,
 			    known = bool (),
 			    inline = inlflag (bool ()) }
 	      | fk _ = raise Format

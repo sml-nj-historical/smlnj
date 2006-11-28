@@ -31,6 +31,7 @@ local structure BT = BasicTypes
       structure MU = ModuleUtil
       structure SE = StaticEnv
       structure TU = TypesUtil
+      structure PP = PrettyPrintNew
       open Types Modules ElabDebug
 in
 
@@ -43,10 +44,8 @@ val debugPrint = (fn x => debugPrint debugging x)
 val defaultError =
   EM.errorNoFile(EM.defaultConsumer(),ref false) SourceMap.nullRegion
 
-local
-structure PP = PrettyPrint
-in
 val env = StaticEnv.empty
+
 fun ppType x = 
  ((PP.with_pp (EM.defaultConsumer())
            (fn ppstrm => (PP.string ppstrm "find: ";
@@ -55,12 +54,16 @@ fun ppType x =
   handle _ => say "fail to print anything")
 
 fun ppTycon x = 
- ((PP.with_pp (EM.defaultConsumer())
-           (fn ppstrm => (PP.string ppstrm "find: ";
-                          PPType.resetPPType();
-                          PPType.ppTycon env ppstrm x)))
-  handle _ => say "fail to print anything")
-end
+    ((PP.with_pp (EM.defaultConsumer())
+        (fn ppstrm => (PP.string ppstrm "find: ";
+                       PPType.resetPPType();
+                       PPType.ppTycon env ppstrm x)))
+    handle _ => say "fail to print anything")
+
+
+fun ppLtyc ltyc = 
+    PP.with_default_pp (fn ppstrm => PPLty.ppTyc 20 ppstrm ltyc)
+
 
 (****************************************************************************
  *               TRANSLATING ML TYPES INTO FLINT TYPES                      *
@@ -196,8 +199,10 @@ and tycTyc(tc, d) =
         | h (DATATYPE {index, family, freetycs, stamps, root}, _) = 
               let val tc = dtsFam (freetycs, family)
                   val n = Vector.length stamps 
-                  (* invariant: n should be the length of family members *)
-               in LT.tcc_fix((n, tc, (map g freetycs)), index)
+                  val names = Vector.map (fn ({tycname,...}: dtmember) => Symbol.name tycname)
+                                         (#members family)
+                  (* invariant: n should be the number of family members *)
+               in LT.tcc_fix((n, names, tc, (map g freetycs)), index)
               end
         | h (ABSTRACT tc, 0) = (g tc) 
               (*>>> LT.tcc_abs(g tc) <<<*) 
@@ -262,13 +267,13 @@ and toTyc d t =
         end
 
       and h (INSTANTIATED t) = g t
-        | h (TV_MARK m) = let
-	      val (depth, num) = findLBOUND m
-	  in
-	      LT.tcc_var(DI.calc(d, depth), num)
-	  end
-        | h (OPEN _) = LT.tcc_void
-        | h _ = LT.tcc_void  (* ZHONG? *)
+        | h (TV_MARK(depth,num)) =
+             LT.tcc_var(DI.calc(d, depth), num)
+        | h (UBOUND _) = (print "#### toTyc UBOUND!\n"; LT.tcc_void)
+            (* dbm: should this have been converted to a TV_MARK before
+             * being passed to toTyc? *)
+        | h (OPEN _) = (print "#### toTyc OPEN!\n"; LT.tcc_void)
+        | h _ = bug "toTyc:h" (* LITERAL and SCHEME should not occur *)
 
       and g (VARty tv) = (* h(!tv) *) lookTv tv
         | g (CONty(RECORDtyc _, [])) = LT.tcc_unit
@@ -284,12 +289,14 @@ and toTyc d t =
                else LT.tcc_app(tycTyc(tc, d), [g t1, g t2])
 	     | _ => LT.tcc_app (tycTyc (tc, d), map g ts))
         | g (CONty(tyc, ts)) = LT.tcc_app(tycTyc(tyc, d), map g ts)
-        | g (IBOUND i) = LT.tcc_var(DI.innermost, i)
+        | g (IBOUND i) = LT.tcc_var(DI.innermost, i) 
+			 (* [KM] IBOUNDs are encountered when toTyc
+                          * is called on the body of a POLYty in 
+                          * toLty (see below). *)
         | g (POLYty _) = bug "unexpected poly-type in toTyc"
         | g (UNDEFty) = bug "unexpected undef-type in toTyc"
-        | g (WILDCARDty) = bug "unexpected wildcard-type in toTyc"
-
-   in (g t) 
+        | g (WILDCARDty) = bug "unexpected wildcard-type in toTyc"      
+   in g t
   end
 
 and toLty d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) = toLty d body

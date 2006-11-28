@@ -20,6 +20,7 @@ local structure S   = Symbol
       structure M   = Modules
       structure MI  = ModuleId
       structure SE  = StaticEnv
+      structure POI = PrimOpId
       open Modules
 in
 
@@ -72,13 +73,13 @@ fun getTyc (elements, entEnv, sym) =
      | _ => bug "getTyc: wrong spec"
 
 (*** The function getStr is used in modules/sigmatch.sml only ***)
-fun getStr (elements, entEnv, sym, dacc, dinfo) =
+fun getStr (elements, entEnv, sym, dacc, prims) =
    case getSpec(elements, sym)
     of STRspec{sign, slot, def, entVar} => 
         (case EE.look(entEnv,entVar)
  	  of STRent entity => 
                (STR{sign = sign, rlzn = entity, access = A.selAcc(dacc,slot),
-                    info = II.sel (dinfo, slot)},
+                    prim = POI.selStrPrimId(prims, slot)},
 		entVar)
 	   | _ => bug "getStr: bad entity")
      | _ => bug "getStr: wrong spec"
@@ -90,7 +91,7 @@ fun getFct (elements, entEnv, sym, dacc, dinfo) =
         (case EE.look(entEnv,entVar)
           of FCTent entity => 
                (FCT{sign = sign, rlzn = entity, access = A.selAcc(dacc,slot),
-                    info = II.sel (dinfo, slot)},
+                    prim = POI.selStrPrimId (dinfo, slot)},
 		entVar)
            | _ => bug "getFct: bad entity")
      | _ => bug "getFct: wrong spec"
@@ -106,7 +107,7 @@ fun getStrName(STR { rlzn = {rpath,...}, ... }) = rpath
   | getStrName ERRORstr = errorStrName
   | getStrName _ = bug "getStrName"
 
-fun getStrs (STR { sign = SIG sg, rlzn = {entities,...}, access,info,...}) =
+fun getStrs (STR { sign = SIG sg, rlzn = {entities,...}, access,prim,...}) =
     let val elements = #elements sg
     in
 	List.mapPartial
@@ -114,7 +115,7 @@ fun getStrs (STR { sign = SIG sg, rlzn = {entities,...}, access,info,...}) =
 		SOME(STR{sign = sign,
 			 rlzn = EE.lookStrEnt(entities,entVar),
 			 access = A.selAcc(access, slot), 
-			 info = II.sel (info, slot)})
+			 prim = POI.selStrPrimId (prim, slot)})
 	      | _ => NONE)
 	    elements
     end
@@ -174,7 +175,7 @@ val transType =
 fun strDefToStr(CONSTstrDef str, _) = str
   | strDefToStr(VARstrDef(sign,entPath), entEnv) =
     STR{sign=sign,rlzn=EE.lookStrEP(entEnv,entPath),
-        access=A.nullAcc, info=II.Null}
+        access=A.nullAcc, prim=[]}
 
 (* 
  * two pieces of essential structure information gathered during
@@ -182,9 +183,9 @@ fun strDefToStr(CONSTstrDef str, _) = str
  * being searched is a STRSIG; otherwise it return STRINFO.
  *)
 datatype strInfo = SIGINFO of EP.entPath  (* reverse order! *)
-                 | STRINFO of strEntity * A.access * II.ii
+                 | STRINFO of strEntity * A.access * POI.strPrimInfo
 
-val bogusInfo = STRINFO (bogusStrEntity, A.nullAcc, II.Null)
+val bogusInfo = STRINFO (bogusStrEntity, A.nullAcc, [])
 
 fun getStrElem (sym, sign as SIG {elements,...}, sInfo) = 
       (case getSpec (elements,sym)
@@ -192,9 +193,10 @@ fun getStrElem (sym, sign as SIG {elements,...}, sInfo) =
             (let val newInfo = 
                   case sInfo
                    of SIGINFO ep => SIGINFO (entVar::ep)
-                    | STRINFO ({entities,...}, dacc, dinfo) =>
+                    | STRINFO ({entities,...}, dacc, prim) => 
                       STRINFO(EE.lookStrEnt(entities,entVar), 
-                              A.selAcc(dacc,slot), II.sel (dinfo, slot))
+                              A.selAcc(dacc,slot), 
+			      POI.selStrPrimId (prim, slot))
               in (subsig, newInfo)
              end)
          | _ => bug "getStrElem: wrong spec case")
@@ -205,9 +207,10 @@ fun getFctElem (sym, sign as SIG {elements,...},
 	       sinfo as STRINFO(rlzn as {entities,...}, dacc, dinfo)) = 
       (case getSpec(elements, sym)
         of FCTspec{sign=subfsig, entVar, slot} =>
+	   ( debugmsg ">>getFctElem";
              FCT{sign=subfsig, rlzn=EE.lookFctEnt(entities,entVar),
                  access=A.selAcc(dacc, slot),
-		 info=II.sel (dinfo, slot)}
+		 prim=POI.selStrPrimId (dinfo, slot)})
          | _ => bug "mkFctVar - bad spec")
 
   | getFctElem _ = ERRORfct
@@ -228,10 +231,11 @@ fun mkTyc (sym, sp, SIG {elements,...}, sInfo) =
 
 fun mkVal (sym, sp, sign as SIG {elements,...},
 	  sInfo as STRINFO({entities,...}, dacc, dinfo)) : V.value =
+    (debugmsg ">>mkVal";
     (case getSpec(elements, sym) of
 	 VALspec{spec,slot} =>
          V.VAL(V.VALvar{access = A.selAcc(dacc,slot), 
-			info = II.sel (dinfo, slot),
+			prim = POI.selValPrimFromStrPrim (dinfo, slot),
 			path = sp,
 			typ = ref(transType entities spec)})
        | CONspec{spec=T.DATACON{name, const, typ, rep, sign, lazyp},
@@ -246,39 +250,42 @@ fun mkVal (sym, sp, sign as SIG {elements,...},
                              typ=transType entities typ, 
                              const=const, sign=sign, lazyp=lazyp})
          end
-       | _ => bug "mkVal: wrong spec")
+       | _ => bug "mkVal: wrong spec"))
   | mkVal _ = V.VAL(V.ERRORvar)
 
 fun mkStrBase (sym, sign, sInfo) = 
-  let val (newsig, newInfo) = getStrElem (sym, sign, sInfo)
+  let val _ = debugmsg ">>mkStrBase"
+      val (newsig, newInfo) = getStrElem (sym, sign, sInfo)
    in case newsig
        of ERRORsig => ERRORstr
 	| _ =>
 	  (case newInfo
 	     of STRINFO(newrlzn, newacc, newinfo) => 
 		STR{sign=newsig, rlzn=newrlzn, access=newacc,
-		    info=newinfo}
+		    prim=newinfo}
 	      | SIGINFO ep => STRSIG{sign=newsig, entPath=rev ep})
   end
 
-fun mkStr (sym, _, sign, sInfo) = mkStrBase (sym, sign, sInfo)
+fun mkStr (sym, _, sign, sInfo) = (debugmsg ">>mkStr"; mkStrBase (sym, sign, sInfo))
 
 fun mkStrDef (sym, _, sign, sInfo) = 
-  let val (newsig, newInfo) = getStrElem (sym, sign, sInfo)
+  let val _ = debugmsg ">>mkStrDef"
+      val (newsig, newInfo) = getStrElem (sym, sign, sInfo)
    in case newsig
         of ERRORsig => CONSTstrDef ERRORstr
 	 | _ =>
 	   (case newInfo
 	      of STRINFO (newrlzn, newacc, newinfo) => 
 		  CONSTstrDef(STR{sign=newsig, rlzn=newrlzn,
-				  access=newacc, info=newinfo})
+				  access=newacc, prim=newinfo})
 	       | SIGINFO ep => VARstrDef(newsig, rev ep))
   end
 
 fun mkFct (sym, sp, sign, sInfo) = getFctElem (sym, sign, sInfo)
 
 fun getPath makeIt (str, SP.SPATH spath, fullsp) =
-  let fun loop([sym], sign, sInfo) = makeIt (sym, fullsp, sign, sInfo)
+  let val _ = debugmsg ">>getPath"
+      fun loop([sym], sign, sInfo) = makeIt (sym, fullsp, sign, sInfo)
         | loop(sym::rest, sign, sInfo) = 
             let val (newsig, newsInfo) = getStrElem (sym, sign, sInfo)
              in loop(rest, newsig, newsInfo)
@@ -286,8 +293,8 @@ fun getPath makeIt (str, SP.SPATH spath, fullsp) =
         | loop _ = bug "getPath.loop"
 
    in case str 
-       of STR { sign, rlzn, access, info } =>
-          loop(spath, sign, STRINFO(rlzn, access, info))
+       of STR { sign, rlzn, access, prim } =>
+          loop(spath, sign, STRINFO(rlzn, access, prim))
         | STRSIG{sign, entPath} => 
             loop(spath, sign, SIGINFO (rev entPath))
         | _ => loop(spath, ERRORsig, bogusInfo)
@@ -298,7 +305,7 @@ val getTycPath : M.Structure * SP.path * SP.path -> T.tycon =
 val getValPath : M.Structure * SP.path * SP.path -> V.value =
       getPath mkVal
 val getStrPath : M.Structure * SP.path * SP.path -> M.Structure =
-      getPath mkStr
+      (debugmsg ">>getStrPath"; getPath mkStr)
 val getFctPath : M.Structure * SP.path * SP.path -> M.Functor =
       getPath mkFct
 val getStrDef : M.Structure * SP.path * SP.path -> M.strDef =
@@ -409,7 +416,7 @@ val relativizeType =
  *)
 fun getBinding (sym, str as STR st) =
     (case st of
-	 {sign as SIG _, rlzn, access=dacc, info=dinfo} =>
+	 {sign as SIG _, rlzn, access=dacc, prim=dinfo} =>
 	 let val sinfo = STRINFO(rlzn, dacc, dinfo)
 	     val entities = #entities rlzn
 	 in
@@ -440,7 +447,8 @@ fun getBinding (sym, str as STR st) =
   | getBinding _ = bug "getBinding - bad arg"
 
 fun openStructure (env: SE.staticEnv, str) =
-  let fun look sym =
+  let val _ = debugmsg ">>openStructure"
+      fun look sym =
 	  getBinding (sym,str) handle Unbound _ => raise SE.Unbound
       val symbols = getStrSymbols str
       val genSyms = (fn () => symbols)
@@ -448,12 +456,32 @@ fun openStructure (env: SE.staticEnv, str) =
    in SE.atop(nenv,env)
   end
 
-(** extract inl_info from a list of bindings *)
-fun extractInfo(B.STRbind (M.STR { info, ... })) = info
-  | extractInfo(B.FCTbind (M.FCT { info, ... })) = info
-  | extractInfo(B.VALbind (V.VALvar {info, ...})) = info
-  | extractInfo(B.CONbind _) = II.Null
-  | extractInfo _ = bug "unexpected binding in extractInfo"
+(** strPrimElemInBinds 
+
+    Get a strPrimElem list with all the primIds found in a list of bindings 
+    (including those in nested structures) 
+ 
+    Used in Elaborator/elaborate/elabmod.sml and 
+    SigMatch
+ *)
+fun strPrimElemInBinds (bindings) =
+    let
+	fun strPrims bind =  
+	   (case bind 
+	     of B.STRbind (M.STR { prim, ... }) => POI.StrE prim 
+	      | B.FCTbind (M.FCT { prim, ... }) => POI.StrE prim
+	      | B.VALbind (V.VALvar {prim, ...}) => POI.PrimE prim
+	      | B.CONbind _ => POI.PrimE POI.NonPrim (* still fishy *)
+			       (* GK: Doesn't this throw off the slot number
+				  correspondence because CONbinds may
+				  or may not have a corresponding slot
+				  number (Data cons do not and Exception
+				  cons do) *)
+	      | _  => 
+		  bug "unexpected binding in strPrimElemInBinds")
+    in  
+	map strPrims bindings
+    end (* let *)
 
 (* extract all signature names from a structure --
  *  doesn't look into functor components *)

@@ -4,5 +4,4 @@
  *
  * SML/NJ-specific instantiation of the ElabMod functor.
  *)
-structure ElabMod = ElabModFn (structure SM = SigMatch
-			       structure Typecheck = Typecheck)
+structure ElabMod = ElabModFn (structure SM = SigMatch)

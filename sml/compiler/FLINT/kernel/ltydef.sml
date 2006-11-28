@@ -6,10 +6,10 @@ struct
 
 local structure PT = PrimTyc
       structure DI = DebIndex
+      structure LT = Lty
       structure LK = LtyKernel
 
       fun bug msg = ErrorMsg.impossible("LtyDef: "^msg)
-      val say = Control.Print.say
 
       (** common utility functions *)
       val tk_inj = LK.tk_inj
@@ -30,14 +30,14 @@ in
 type index = DI.index
 type depth = DI.depth
 type primtyc = PT.primtyc
-type tvar = LK.tvar
+type tvar = LT.tvar
 
-type fflag = LK.fflag
-type rflag = LK.rflag
+type fflag = LT.fflag
+type rflag = LT.rflag
 
-type tkind = LK.tkind
-type tyc = LK.tyc
-type lty = LK.lty
+type tkind = LT.tkind
+type tyc = LT.tyc
+type lty = LT.lty
 
 (* 
  * FLINT tkind is roughly equivalent to the following ML datatype 
@@ -53,36 +53,10 @@ type lty = LK.lty
  *)
 
 (** tkind constructors *)
-val tkc_mono   : tkind = tk_inj (LK.TK_MONO)
-val tkc_box    : tkind = tk_inj (LK.TK_BOX)
-val tkc_seq    : tkind list -> tkind = tk_inj o LK.TK_SEQ
-val tkc_fun    : tkind list * tkind -> tkind = tk_inj o LK.TK_FUN
-
-(** tkind deconstructors *)
-val tkd_mono   : tkind -> unit = fn _ => ()
-val tkd_box    : tkind -> unit = fn _ => ()
-val tkd_seq    : tkind -> tkind list = fn tk => 
-      (case tk_out tk of LK.TK_SEQ x => x
-                       | _ => bug "unexpected tkind in tkd_seq")  
-val tkd_fun    : tkind -> tkind list * tkind = fn tk => 
-      (case tk_out tk of LK.TK_FUN x => x
-                       | _ => bug "unexpected tkind in tkd_fun")  
-
-(** tkind predicates *)
-val tkp_mono   : tkind -> bool = fn tk => tk_eqv(tk, tkc_mono)
-val tkp_box    : tkind -> bool = fn tk => tk_eqv(tk, tkc_box)
-val tkp_seq    : tkind -> bool = fn tk => 
-      (case tk_out tk of LK.TK_SEQ _ => true | _ => false)
-val tkp_fun    : tkind -> bool = fn tk => 
-      (case tk_out tk of LK.TK_FUN _ => true | _ => false)
-
-(** tkind one-arm switches *)
-fun tkw_mono (tk, f, g) = if tk_eqv(tk, tkc_mono) then f () else g tk
-fun tkw_box (tk, f, g) = if tk_eqv(tk, tkc_box) then f () else g tk
-fun tkw_seq (tk, f, g) = 
-      (case tk_out tk of LK.TK_SEQ x => f x | _ => g tk)
-fun tkw_fun (tk, f, g) = 
-      (case tk_out tk of LK.TK_FUN x => f x | _ => g tk)
+val tkc_mono   : tkind = tk_inj (LT.TK_MONO)
+val tkc_box    : tkind = tk_inj (LT.TK_BOX)
+val tkc_seq    : tkind list -> tkind = tk_inj o LT.TK_SEQ
+val tkc_fun    : tkind list * tkind -> tkind = tk_inj o LT.TK_FUN
 
 
 (* 
@@ -102,29 +76,29 @@ fun tkw_fun (tk, f, g) =
  *)
 
 (** fflag and rflag constructors *)
-val ffc_var    : bool * bool -> fflag = fn x => LK.FF_VAR x
-val ffc_fixed  : fflag = LK.FF_FIXED
-val rfc_tmp    : rflag = LK.RF_TMP
+val ffc_var    : bool * bool -> fflag = fn x => LT.FF_VAR x
+val ffc_fixed  : fflag = LT.FF_FIXED
+val rfc_tmp    : rflag = LT.RF_TMP
 
 (** fflag and rflag deconstructors *)
 val ffd_var    : fflag -> bool * bool = fn x =>
-      (case x of LK.FF_VAR x => x | _ => bug "unexpected fflag in ffd_var")
+      (case x of LT.FF_VAR x => x | _ => bug "unexpected fflag in ffd_var")
 val ffd_fixed  : fflag -> unit = fn x =>
-      (case x of LK.FF_FIXED => () | _ => bug "unexpected fflag in ffd_fixed")
-val rfd_tmp    : rflag -> unit = fn (LK.RF_TMP) => ()
+      (case x of LT.FF_FIXED => () | _ => bug "unexpected fflag in ffd_fixed")
+val rfd_tmp    : rflag -> unit = fn (LT.RF_TMP) => ()
 
 (** fflag and rflag predicates *)
 val ffp_var    : fflag -> bool = fn x => 
-      (case x of LK.FF_VAR _ => true | _ => false)
+      (case x of LT.FF_VAR _ => true | _ => false)
 val ffp_fixed  : fflag -> bool = fn x => 
-      (case x of LK.FF_FIXED => true | _ => false)
-val rfp_tmp    : rflag -> bool = fn (LK.RF_TMP) => true
+      (case x of LT.FF_FIXED => true | _ => false)
+val rfp_tmp    : rflag -> bool = fn (LT.RF_TMP) => true
 
 (** fflag and rflag one-arm switch *)
 fun ffw_var (ff, f, g) = 
-      (case ff of LK.FF_VAR x => f x | _ => g ff)
+      (case ff of LT.FF_VAR x => f x | _ => g ff)
 fun ffw_fixed (ff, f, g) = 
-      (case ff of LK.FF_FIXED => f () | _ => g ff)
+      (case ff of LT.FF_FIXED => f () | _ => g ff)
 fun rfw_tmp (rf, f, g) = f()
 
 
@@ -156,131 +130,136 @@ fun rfw_tmp (rf, f, g) = f()
  *)
 
 (** tyc constructors *)
-val tcc_var    : index * int -> tyc = tc_inj o LK.TC_VAR
-val tcc_nvar   : tvar -> tyc = tc_inj o LK.TC_NVAR
-val tcc_prim   : primtyc -> tyc = tc_inj o LK.TC_PRIM
-val tcc_fn     : tkind list * tyc -> tyc = tc_inj o LK.TC_FN
-val tcc_app    : tyc * tyc list -> tyc = tc_inj o LK.TC_APP
-val tcc_seq    : tyc list -> tyc = tc_inj o LK.TC_SEQ
-val tcc_proj   : tyc * int -> tyc = tc_inj o LK.TC_PROJ
-val tcc_sum    : tyc list -> tyc = tc_inj o LK.TC_SUM
-val tcc_fix    : (int * tyc * tyc list) * int -> tyc = tc_inj o LK.TC_FIX
-val tcc_wrap   : tyc -> tyc = fn tc => tc_inj (LK.TC_TOKEN(LK.wrap_token, tc))
-val tcc_abs    : tyc -> tyc = tc_inj o LK.TC_ABS
-val tcc_box    : tyc -> tyc = tc_inj o LK.TC_BOX 
-val tcc_tuple  : tyc list -> tyc = fn ts => tc_inj (LK.TC_TUPLE (rfc_tmp, ts))
+val tcc_var    : index * int -> tyc = tc_inj o LT.TC_VAR
+val tcc_nvar   : tvar -> tyc = tc_inj o LT.TC_NVAR
+val tcc_prim   : primtyc -> tyc = tc_inj o LT.TC_PRIM
+val tcc_fn     : tkind list * tyc -> tyc = tc_inj o LT.TC_FN
+val tcc_app    : tyc * tyc list -> tyc = tc_inj o LT.TC_APP
+val tcc_seq    : tyc list -> tyc = tc_inj o LT.TC_SEQ
+val tcc_proj   : tyc * int -> tyc = tc_inj o LT.TC_PROJ
+val tcc_sum    : tyc list -> tyc = tc_inj o LT.TC_SUM
+val tcc_fix    : (int * string vector * tyc * tyc list) * int -> tyc =
+    fn ((s,ns,g,p),i) =>
+       tc_inj(LT.TC_FIX{family={size=s,names=ns,gen=g,params=p},index=i})
+val tcc_wrap   : tyc -> tyc = fn tc => tc_inj (LT.TC_TOKEN(LK.wrap_token, tc))
+val tcc_abs    : tyc -> tyc = tc_inj o LT.TC_ABS
+val tcc_box    : tyc -> tyc = tc_inj o LT.TC_BOX 
+val tcc_tuple  : tyc list -> tyc = fn ts => tc_inj (LT.TC_TUPLE (rfc_tmp, ts))
 val tcc_arrow  : fflag * tyc list * tyc list -> tyc = LK.tcc_arw
 
 (** tyc deconstructors *)
 val tcd_var    : tyc -> index * int = fn tc =>
-      (case tc_out tc of LK.TC_VAR x => x
+      (case tc_out tc of LT.TC_VAR x => x
                        | _ => bug "unexpected tyc in tcd_var")  
 val tcd_nvar   : tyc -> tvar = fn tc =>
-      (case tc_out tc of LK.TC_NVAR x => x
+      (case tc_out tc of LT.TC_NVAR x => x
                        | _ => bug "unexpected tyc in tcd_nvar")  
 val tcd_prim   : tyc -> primtyc = fn tc =>
-      (case tc_out tc of LK.TC_PRIM x => x
+      (case tc_out tc of LT.TC_PRIM x => x
                        | _ => bug "unexpected tyc in tcd_prim")  
 val tcd_fn     : tyc -> tkind list * tyc = fn tc =>
-      (case tc_out tc of LK.TC_FN x => x
+      (case tc_out tc of LT.TC_FN x => x
                        | _ => bug "unexpected tyc in tcd_fn")  
 val tcd_app    : tyc -> tyc * tyc list = fn tc =>
-      (case tc_out tc of LK.TC_APP x => x
+      (case tc_out tc of LT.TC_APP x => x
                        | _ => bug "unexpected tyc in tcd_app")  
 val tcd_seq    : tyc -> tyc list = fn tc =>
-      (case tc_out tc of LK.TC_SEQ x => x
+      (case tc_out tc of LT.TC_SEQ x => x
                        | _ => bug "unexpected tyc in tcd_seq")  
 val tcd_proj   : tyc -> tyc * int = fn tc =>
-      (case tc_out tc of LK.TC_PROJ x => x
+      (case tc_out tc of LT.TC_PROJ x => x
                        | _ => bug "unexpected tyc in tcd_proj")  
 val tcd_sum    : tyc -> tyc list = fn tc =>
-      (case tc_out tc of LK.TC_SUM x => x
+      (case tc_out tc of LT.TC_SUM x => x
                        | _ => bug "unexpected tyc in tcd_sum")  
 val tcd_fix    : tyc -> (int * tyc * tyc list) * int = fn tc =>
-      (case tc_out tc of LK.TC_FIX x => x
-                       | _ => bug "unexpected tyc in tcd_fix")  
+      (case tc_out tc of LT.TC_FIX{family={size,names,gen,params},index} =>
+                           ((size,gen,params),index)
+                       | _ => bug "unexpected tyc in tcd_fix")
 val tcd_wrap   : tyc -> tyc = fn tc => 
       (case tc_out tc 
-        of LK.TC_TOKEN(tk, x) => 
-             if LK.token_eq(tk, LK.wrap_token) then x
+        of LT.TC_TOKEN(tk, x) => 
+             if LT.token_eq(tk, LK.wrap_token) then x
              else bug "unexpected token tyc in tcd_wrap"
          | _ => bug "unexpected regular tyc in tcd_wrap")
 val tcd_abs    : tyc -> tyc = fn tc =>
-      (case tc_out tc of LK.TC_ABS x => x
+      (case tc_out tc of LT.TC_ABS x => x
                        | _ => bug "unexpected tyc in tcd_abs")  
 val tcd_box    : tyc -> tyc = fn tc =>
-      (case tc_out tc of LK.TC_BOX x => x
+      (case tc_out tc of LT.TC_BOX x => x
                        | _ => bug "unexpected tyc in tcd_box")  
 val tcd_tuple  : tyc -> tyc list = fn tc =>
-      (case tc_out tc of LK.TC_TUPLE (_,x) => x
+      (case tc_out tc of LT.TC_TUPLE (_,x) => x
                        | _ => bug "unexpected tyc in tcd_tuple")  
 val tcd_arrow  : tyc -> fflag * tyc list * tyc list = fn tc => 
-      (case tc_out tc of LK.TC_ARROW x => x
+      (case tc_out tc of LT.TC_ARROW x => x
                        | _ => bug "unexpected tyc in tcd_arrow")  
 
 (** tyc predicates *)
 val tcp_var    : tyc -> bool = fn tc => 
-      (case tc_out tc of LK.TC_VAR _ => true | _ => false)
+      (case tc_out tc of LT.TC_VAR _ => true | _ => false)
 val tcp_nvar   : tyc -> bool = fn tc => 
-      (case tc_out tc of LK.TC_NVAR _ => true | _ => false)
+      (case tc_out tc of LT.TC_NVAR _ => true | _ => false)
 val tcp_prim   : tyc -> bool = fn tc => 
-      (case tc_out tc of LK.TC_PRIM _ => true | _ => false)
+      (case tc_out tc of LT.TC_PRIM _ => true | _ => false)
 val tcp_fn     : tyc -> bool = fn tc => 
-      (case tc_out tc of LK.TC_FN _ => true | _ => false)
+      (case tc_out tc of LT.TC_FN _ => true | _ => false)
 val tcp_app    : tyc -> bool = fn tc => 
-      (case tc_out tc of LK.TC_APP _ => true | _ => false)
+      (case tc_out tc of LT.TC_APP _ => true | _ => false)
 val tcp_seq    : tyc -> bool = fn tc => 
-      (case tc_out tc of LK.TC_SEQ _ => true | _ => false)
+      (case tc_out tc of LT.TC_SEQ _ => true | _ => false)
 val tcp_proj   : tyc -> bool = fn tc => 
-      (case tc_out tc of LK.TC_PROJ _ => true | _ => false)
+      (case tc_out tc of LT.TC_PROJ _ => true | _ => false)
 val tcp_sum    : tyc -> bool = fn tc => 
-      (case tc_out tc of LK.TC_SUM _ => true | _ => false)
+      (case tc_out tc of LT.TC_SUM _ => true | _ => false)
 val tcp_fix    : tyc -> bool = fn tc => 
-      (case tc_out tc of LK.TC_FIX _ => true | _ => false)
+      (case tc_out tc of LT.TC_FIX _ => true | _ => false)
 val tcp_wrap   : tyc -> bool = fn tc =>
-      (case tc_out tc of LK.TC_TOKEN (tk, _) => LK.token_eq(tk, LK.wrap_token)
+      (case tc_out tc of LT.TC_TOKEN (tk, _) => LT.token_eq(tk, LK.wrap_token)
                        | _ => false)
 val tcp_abs    : tyc -> bool = fn tc => 
-      (case tc_out tc of LK.TC_ABS _ => true | _ => false)
+      (case tc_out tc of LT.TC_ABS _ => true | _ => false)
 val tcp_box    : tyc -> bool = fn tc => 
-      (case tc_out tc of LK.TC_BOX _ => true | _ => false)
+      (case tc_out tc of LT.TC_BOX _ => true | _ => false)
 val tcp_tuple  : tyc -> bool = fn tc => 
-      (case tc_out tc of LK.TC_TUPLE _ => true | _ => false)
+      (case tc_out tc of LT.TC_TUPLE _ => true | _ => false)
 val tcp_arrow  : tyc -> bool = fn tc => 
-      (case tc_out tc of LK.TC_ARROW _ => true | _ => false)
+      (case tc_out tc of LT.TC_ARROW _ => true | _ => false)
 
 (** tyc one-arm switches *)
 fun tcw_var (tc, f, g) = 
-      (case tc_out tc of LK.TC_VAR x => f x | _ => g tc)
+      (case tc_out tc of LT.TC_VAR x => f x | _ => g tc)
 fun tcw_nvar (tc, f, g) = 
-      (case tc_out tc of LK.TC_NVAR x => f x | _ => g tc)
+      (case tc_out tc of LT.TC_NVAR x => f x | _ => g tc)
 fun tcw_prim (tc, f, g) = 
-      (case tc_out tc of LK.TC_PRIM x => f x | _ => g tc) 
+      (case tc_out tc of LT.TC_PRIM x => f x | _ => g tc) 
 fun tcw_fn (tc, f, g) = 
-      (case tc_out tc of LK.TC_FN x => f x | _ => g tc)   
+      (case tc_out tc of LT.TC_FN x => f x | _ => g tc)   
 fun tcw_app (tc, f, g) = 
-      (case tc_out tc of LK.TC_APP x => f x | _ => g tc)  
+      (case tc_out tc of LT.TC_APP x => f x | _ => g tc)  
 fun tcw_seq (tc, f, g) = 
-      (case tc_out tc of LK.TC_SEQ x => f x | _ => g tc)  
+      (case tc_out tc of LT.TC_SEQ x => f x | _ => g tc)  
 fun tcw_proj (tc, f, g) = 
-      (case tc_out tc of LK.TC_PROJ x => f x | _ => g tc) 
+      (case tc_out tc of LT.TC_PROJ x => f x | _ => g tc) 
 fun tcw_sum (tc, f, g) = 
-      (case tc_out tc of LK.TC_SUM x => f x | _ => g tc)  
+      (case tc_out tc of LT.TC_SUM x => f x | _ => g tc)  
 fun tcw_fix (tc, f, g) = 
-      (case tc_out tc of LK.TC_FIX x => f x | _ => g tc)  
+      (case tc_out tc
+        of LT.TC_FIX{family={size,names,gen,params},index} => f((size,gen,params),index)
+         | _ => g tc)  
 fun tcw_wrap (tc, f, g) = 
       (case tc_out tc 
-        of LK.TC_TOKEN(rk, x) => 
-             if LK.token_eq(rk, LK.wrap_token) then f x else g tc
+        of LT.TC_TOKEN(rk, x) => 
+             if LT.token_eq(rk, LK.wrap_token) then f x else g tc
          | _ => g tc)  
 fun tcw_abs (tc, f, g) = 
-      (case tc_out tc of LK.TC_ABS x => f x | _ => g tc)  
+      (case tc_out tc of LT.TC_ABS x => f x | _ => g tc)  
 fun tcw_box (tc, f, g) = 
-      (case tc_out tc of LK.TC_BOX x => f x | _ => g tc)  
+      (case tc_out tc of LT.TC_BOX x => f x | _ => g tc)  
 fun tcw_tuple (tc, f, g) = 
-      (case tc_out tc of LK.TC_TUPLE (_,x) => f x | _ => g tc)
+      (case tc_out tc of LT.TC_TUPLE (_,x) => f x | _ => g tc)
 fun tcw_arrow (tc, f, g) = 
-      (case tc_out tc of LK.TC_ARROW x => f x | _ => g tc)
+      (case tc_out tc of LT.TC_ARROW x => f x | _ => g tc)
 
 
 (* 
@@ -298,44 +277,44 @@ fun tcw_arrow (tc, f, g) =
  *)
 
 (** lty constructors *)
-val ltc_tyc    : tyc -> lty = lt_inj o LK.LT_TYC
-val ltc_str    : lty list -> lty = lt_inj o LK.LT_STR
-val ltc_fct    : lty list * lty list -> lty = lt_inj o LK.LT_FCT
-val ltc_poly   : tkind list * lty list -> lty = lt_inj o LK.LT_POLY
+val ltc_tyc    : tyc -> lty = lt_inj o LT.LT_TYC
+val ltc_str    : lty list -> lty = lt_inj o LT.LT_STR
+val ltc_fct    : lty list * lty list -> lty = lt_inj o LT.LT_FCT
+val ltc_poly   : tkind list * lty list -> lty = lt_inj o LT.LT_POLY
 
 (** lty deconstructors *)
 val ltd_tyc    : lty -> tyc = fn lt => 
-      (case lt_out lt of LK.LT_TYC x => x
+      (case lt_out lt of LT.LT_TYC x => x
                        | _ => bug "unexpected lty in ltd_tyc")
 val ltd_str    : lty -> lty list = fn lt => 
-      (case lt_out lt of LK.LT_STR x => x
+      (case lt_out lt of LT.LT_STR x => x
                        | _ => bug "unexpected lty in ltd_str")
 val ltd_fct    : lty -> lty list * lty list = fn lt => 
-      (case lt_out lt of LK.LT_FCT x => x
+      (case lt_out lt of LT.LT_FCT x => x
                        | _ => bug "unexpected lty in ltd_fct")
 val ltd_poly   : lty -> tkind list * lty list = fn lt => 
-      (case lt_out lt of LK.LT_POLY x => x
+      (case lt_out lt of LT.LT_POLY x => x
                        | _ => bug "unexpected lty in ltd_poly")
 
 (** lty predicates *)
 val ltp_tyc    : lty -> bool = fn lt =>
-      (case lt_out lt of LK.LT_TYC _ => true | _ => false)
+      (case lt_out lt of LT.LT_TYC _ => true | _ => false)
 val ltp_str    : lty -> bool = fn lt =>
-      (case lt_out lt of LK.LT_STR _ => true | _ => false)
+      (case lt_out lt of LT.LT_STR _ => true | _ => false)
 val ltp_fct    : lty -> bool = fn lt =>
-      (case lt_out lt of LK.LT_FCT _ => true | _ => false)
+      (case lt_out lt of LT.LT_FCT _ => true | _ => false)
 val ltp_poly   : lty -> bool = fn lt =>
-      (case lt_out lt of LK.LT_POLY _ => true | _ => false)
+      (case lt_out lt of LT.LT_POLY _ => true | _ => false)
 
 (** lty one-arm switches *)
 fun ltw_tyc (lt, f, g) = 
-      (case lt_out lt of LK.LT_TYC x => f x | _ => g lt)
+      (case lt_out lt of LT.LT_TYC x => f x | _ => g lt)
 fun ltw_str (lt, f, g) = 
-      (case lt_out lt of LK.LT_STR x => f x | _ => g lt)
+      (case lt_out lt of LT.LT_STR x => f x | _ => g lt)
 fun ltw_fct (lt, f, g) = 
-      (case lt_out lt of LK.LT_FCT x => f x | _ => g lt)
+      (case lt_out lt of LT.LT_FCT x => f x | _ => g lt)
 fun ltw_poly (lt, f, g) = 
-      (case lt_out lt of LK.LT_POLY x => f x | _ => g lt)
+      (case lt_out lt of LT.LT_POLY x => f x | _ => g lt)
 
 
 (* 
@@ -365,37 +344,37 @@ val ltd_arrow  : lty -> fflag * lty list * lty list = fn t =>
 
 (** tyc-lty predicates *)
 val ltp_var    : lty -> bool = fn t =>
-  (case lt_out t of LK.LT_TYC x => tcp_var x | _ => false)
+  (case lt_out t of LT.LT_TYC x => tcp_var x | _ => false)
 val ltp_prim   : lty -> bool = fn t =>
-  (case lt_out t of LK.LT_TYC x => tcp_prim x | _ => false)
+  (case lt_out t of LT.LT_TYC x => tcp_prim x | _ => false)
 val ltp_tuple  : lty -> bool = fn t =>
-  (case lt_out t of LK.LT_TYC x => tcp_tuple x | _ => false)
+  (case lt_out t of LT.LT_TYC x => tcp_tuple x | _ => false)
 val ltp_arrow  : lty -> bool = fn t =>
-  (case lt_out t of LK.LT_TYC x => tcp_arrow x | _ => false)
+  (case lt_out t of LT.LT_TYC x => tcp_arrow x | _ => false)
 
 (** tyc-lty one-arm switches *)
 fun ltw_var (lt, f, g) = 
   (case lt_out lt 
-    of LK.LT_TYC tc => 
-         (case tc_out tc of LK.TC_VAR x => f x | _ => g lt)
+    of LT.LT_TYC tc => 
+         (case tc_out tc of LT.TC_VAR x => f x | _ => g lt)
      | _ => g lt)
 
 fun ltw_prim (lt, f, g) = 
   (case lt_out lt 
-    of LK.LT_TYC tc => 
-         (case tc_out tc of LK.TC_PRIM x => f x | _ => g lt)
+    of LT.LT_TYC tc => 
+         (case tc_out tc of LT.TC_PRIM x => f x | _ => g lt)
      | _ => g lt)
 
 fun ltw_tuple (lt, f, g) = 
   (case lt_out lt 
-    of LK.LT_TYC tc => 
-         (case tc_out tc of LK.TC_TUPLE (_, x) => f x | _ => g lt)
+    of LT.LT_TYC tc => 
+         (case tc_out tc of LT.TC_TUPLE (_, x) => f x | _ => g lt)
      | _ => g lt)
 
 fun ltw_arrow (lt, f, g) = 
   (case lt_out lt 
-    of LK.LT_TYC tc => 
-         (case tc_out tc of LK.TC_ARROW x => f x | _ => g lt)
+    of LT.LT_TYC tc => 
+         (case tc_out tc of LT.TC_ARROW x => f x | _ => g lt)
      | _ => g lt)
 
 
@@ -410,28 +389,28 @@ fun ltw_arrow (lt, f, g) =
  *)
 
 (** cont-tyc-lty constructors *)
-val tcc_cont   : tyc list -> tyc = tc_inj o LK.TC_CONT
-val ltc_cont   : lty list -> lty = lt_inj o LK.LT_CONT
+val tcc_cont   : tyc list -> tyc = tc_inj o LT.TC_CONT
+val ltc_cont   : lty list -> lty = lt_inj o LT.LT_CONT
 
 (** cont-tyc-lty deconstructors *)
 val tcd_cont   : tyc -> tyc list = fn tc => 
-      (case tc_out tc of LK.TC_CONT x => x
+      (case tc_out tc of LT.TC_CONT x => x
                        | _ => bug "unexpected tyc in tcd_cont")  
 val ltd_cont   : lty -> lty list = fn lt => 
-      (case lt_out lt of LK.LT_CONT x => x 
+      (case lt_out lt of LT.LT_CONT x => x 
                        | _ => bug "unexpected lty in ltd_cont")
 
 (** cont-tyc-lty predicates *)
 val tcp_cont   : tyc -> bool = fn tc => 
-      (case tc_out tc of LK.TC_CONT _ => true | _ => false)
+      (case tc_out tc of LT.TC_CONT _ => true | _ => false)
 val ltp_cont   : lty -> bool = fn lt => 
-      (case lt_out lt of LK.LT_CONT _ => true | _ => false)
+      (case lt_out lt of LT.LT_CONT _ => true | _ => false)
 
 (** cont-tyc-lty one-arm switches *)
 fun tcw_cont (tc, f, g) = 
-      (case tc_out tc of LK.TC_CONT x => f x | _ => g tc) 
+      (case tc_out tc of LT.TC_CONT x => f x | _ => g tc) 
 fun ltw_cont (lt, f, g) = 
-      (case lt_out lt of LK.LT_CONT x => f x | _ => g lt)
+      (case lt_out lt of LT.LT_CONT x => f x | _ => g lt)
 
 
 
@@ -466,7 +445,7 @@ val ltc_pfct   : lty * lty -> lty = fn (x, y) => ltc_fct ([x], [y])
 (** plambda tyc-lty deconstructors *)
 val tcd_parrow : tyc -> tyc * tyc = fn tc =>   
   (case tc_out tc 
-    of LK.TC_ARROW (_, xs, ys) => (LK.tc_autotuple xs, LK.tc_autotuple ys)
+    of LT.TC_ARROW (_, xs, ys) => (LK.tc_autotuple xs, LK.tc_autotuple ys)
      | _ => bug "unexpected tyc in tcd_parrow")
 val ltd_parrow : lty -> lty * lty = fn t =>
   let val (t1, t2) = tcd_parrow (ltd_tyc t)
@@ -485,26 +464,26 @@ val ltd_pfct   : lty -> lty * lty = fn t =>
 
 (** plambda tyc-lty predicates *)
 val tcp_parrow : tyc -> bool = fn tc =>  
-  (case tc_out tc of LK.TC_ARROW (_, [x], [y]) => true | _ => false)
+  (case tc_out tc of LT.TC_ARROW (_, [x], [y]) => true | _ => false)
 val ltp_parrow : lty -> bool = fn t => 
-  (case lt_out t of LK.LT_TYC x => tcp_parrow x | _ => false)
+  (case lt_out t of LT.LT_TYC x => tcp_parrow x | _ => false)
 val ltp_ppoly  : lty -> bool = fn t =>
-  (case lt_out t of LK.LT_POLY (_, [x]) => true | _ => false)
+  (case lt_out t of LT.LT_POLY (_, [x]) => true | _ => false)
 val ltp_pfct   : lty -> bool = fn t =>
-  (case lt_out t of LK.LT_FCT ([x], [y]) => true | _ => false)
+  (case lt_out t of LT.LT_FCT ([x], [y]) => true | _ => false)
 
 (** plambda tyc-lty one-arm switches *)
 fun tcw_parrow (tc, f, g) =     
-  (case tc_out tc of LK.TC_ARROW (_,[x],[y]) => f (x,y) | _ => g tc)
+  (case tc_out tc of LT.TC_ARROW (_,[x],[y]) => f (x,y) | _ => g tc)
 fun ltw_parrow (lt, f, g) = 
   (case lt_out lt
-    of LK.LT_TYC tc => 
-         (case tc_out tc of LK.TC_ARROW (_,[x],[y]) => f(x,y) | _ => g lt)
+    of LT.LT_TYC tc => 
+         (case tc_out tc of LT.TC_ARROW (_,[x],[y]) => f(x,y) | _ => g lt)
      | _ => g lt)
 fun ltw_ppoly (lt, f, g) =
-  (case lt_out lt of LK.LT_POLY(ks,[x]) => f(ks,x) | _ => g lt)
+  (case lt_out lt of LT.LT_POLY(ks,[x]) => f(ks,x) | _ => g lt)
 fun ltw_pfct (lt, f, g) =
-  (case lt_out lt of LK.LT_FCT([x],[y]) => f(x,y) | _ => g lt)
+  (case lt_out lt of LT.LT_FCT([x],[y]) => f(x,y) | _ => g lt)
 
 end (* top-level local *)
 end (* structure LtyDef *)

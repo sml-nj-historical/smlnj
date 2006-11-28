@@ -7,7 +7,7 @@ sig
      * if the operator (specified via inlining info) can return multiple
      * times.  In practical terms, this means call/cc. *)
   val instrumDec :
-      (II.ii -> bool) ->
+      (PrimOpId.primId -> bool) ->
       (StaticEnv.staticEnv * Absyn.dec CompInfo.compInfo)
       -> Absyn.dec -> Absyn.dec
 
@@ -90,7 +90,7 @@ val addop =
 
 fun tmpvar(str,ty,mkv) = 
     let val sym = S.varSymbol str
-     in VALvar{access=A.namedAcc(sym, mkv), info=II.Null,
+     in VALvar{access=A.namedAcc(sym, mkv), prim=PrimOpId.NonPrim,
                path=SP.SPATH[sym], typ=ref ty}
     end
 
@@ -148,11 +148,11 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 
      fun BUMPCCexp (ccvara : int) = 
        let val lvar = tmpvar("indexvar",intTy,mkv)
-	in APPexp(VARexp(ref updateop,[intTy]),  
+	in APPexp(VARexp(ref updateop, [ref(INSTANTIATED(intTy))]),  
 	       TUPLEexp[countarray,
 		INTexp (IntInf.fromInt ccvara, intTy),
 		   APPexp(varexp addop,
-		     TUPLEexp[APPexp(VARexp(ref subop,[intTy]),
+		     TUPLEexp[APPexp(VARexp(ref subop,[ref(INSTANTIATED(intTy))]),
 			       TUPLEexp[countarray,
 			               INTexp(IntInf.fromInt ccvara,intTy)]),
 					     INTexp (IntInf.fromInt 1,intTy)])])
@@ -169,7 +169,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 						  baseexp]),
 			      tyvars=ref nil,
 			      boundtvs=[]}],
-		    APPexp(VARexp(ref assignop,[intTy]),  
+		    APPexp(VARexp(ref assignop,[ref(INSTANTIATED(intTy))]),  
 			   TUPLEexp[currentexp, varexp lvar]))
 	 end
 
@@ -180,16 +180,18 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 
 	       fun instrvb(vb as VB{pat,exp,tyvars,boundtvs}) =
 	            (case getvar pat
-		      of SOME(VALvar{info, path=SP.SPATH[n],...}) =>
-                           if II.isSimple info then vb
-                           else VB{pat=pat, tyvars=tyvars,
-			           exp=instrexp (n::clean names, 
-                                                 ccvara) false exp,
-  			           boundtvs=boundtvs}
-                       | SOME(VALvar{info, ...}) =>
-                           if II.isSimple info then vb
-                           else VB{pat=pat, exp=instrexp sp false exp, 
-                                   tyvars=tyvars, boundtvs=boundtvs}
+		      of SOME(VALvar{prim, path=SP.SPATH[n],...}) =>
+                          (case prim
+                             of PrimOpId.NonPrim => vb
+                              | _ => VB{pat=pat, tyvars=tyvars,
+			                exp=instrexp (n::clean names, 
+                                                      ccvara) false exp,
+  			                boundtvs=boundtvs})
+                       | SOME(VALvar{prim, ...}) =>
+                          (case prim
+                             of PrimOpId.NonPrim => vb
+                              | _ =>  VB{pat=pat, exp=instrexp sp false exp, 
+                                         tyvars=tyvars, boundtvs=boundtvs})
 		       | _ => VB{pat=pat, exp=instrexp sp false exp, 
                                  tyvars=tyvars, boundtvs=boundtvs})
                            
@@ -288,11 +290,12 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 		       WHILEexp { test = iinstr test, expr = iinstr expr }
 
                    | exp as APPexp (f,a) =>
-                       let fun safe(VARexp(ref(VALvar{info, ...}), _)) =
-                               if II.isSimple info then
-                                   (if mayReturnMoreThanOnce info then false
-				    else true)
-                               else false
+                       let fun safe(VARexp(ref(VALvar{prim, ...}), _)) =
+                               (case prim
+                                 of PrimOpId.NonPrim => false
+                                  | _ => 
+                                     if mayReturnMoreThanOnce prim then false
+				     else true)
                              | safe(MARKexp(e,_)) = safe e
                              | safe(CONSTRAINTexp(e,_)) = safe e
                              | safe(SEQexp[e]) = safe e
@@ -387,7 +390,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                                        VARpat countarrayvar,
                                        VARpat currentvar],
                           exp=APPexp(APPexp(VARexp(ref derefop,
-                                                   [profDerefTy]),
+                                                   [ref(INSTANTIATED(profDerefTy))]),
                                             varexp register),
                                      STRINGexp(concat(rev(!entries)))),
                           tyvars=ref nil,

@@ -29,12 +29,13 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 
     val lookAhead = 30
 
+    structure PP = PrettyPrintNew
     structure S = Source
     structure EM = ErrorMsg
     structure SM = SourceMap
     structure GG = GroupGraph
     structure DG = DependencyGraph
-
+    
     structure CMLrVals = CMLrValsFun (structure Token = LrParser.Token)
     structure CMLex = CMLexFun (structure Tokens = CMLrVals.Tokens)
     structure CMParse =
@@ -176,10 +177,10 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		      | loop (g0, (g, (s, p1, p2)) :: t) = let
 			    val s = EM.matchErrorString s (p1, p2)
 			in
-			    PrettyPrint.newline pps;
-			    PrettyPrint.string pps s;
-			    PrettyPrint.string pps ": importing ";
-			    PrettyPrint.string pps (SrcPath.descr g0);
+			    PP.newline pps;
+			    PP.string pps s;
+			    PP.string pps ": importing ";
+			    PP.string pps (SrcPath.descr g0);
 			    loop (g, t)
 			end
 		in
@@ -213,8 +214,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    fun pphist pps = let
 			fun loop [] = ()
 			  | loop (h :: t) =
-			    (PrettyPrint.newline pps;
-			     PrettyPrint.string pps (SrcPath.descr h);
+			    (PP.newline pps;
+			     PP.string pps (SrcPath.descr h);
 			     loop t)
 		    in
 			loop (rev cyc)

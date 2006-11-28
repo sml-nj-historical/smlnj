@@ -39,12 +39,48 @@ sig
 include LTYBASIC        (* see ltydef.sig and ltybasic.sig for details *)
 
 
+(** tkind constructors *)
+val tkc_mono   : tkind
+val tkc_box    : tkind
+val tkc_seq    : tkind list -> tkind
+val tkc_fun    : tkind list * tkind -> tkind
+
+(** tkind deconstructors *)
+val tkd_mono   : tkind -> unit
+val tkd_box    : tkind -> unit
+val tkd_seq    : tkind -> tkind list
+val tkd_fun    : tkind -> tkind list * tkind
+
+(** tkind predicates *)
+val tkp_mono   : tkind -> bool
+val tkp_box    : tkind -> bool
+val tkp_seq    : tkind -> bool
+val tkp_fun    : tkind -> bool
+
+(** tkind one-arm switch *)
+val tkw_mono   : tkind * (unit -> 'a) * (tkind -> 'a) -> 'a
+val tkw_box    : tkind * (unit -> 'a) * (tkind -> 'a) -> 'a
+val tkw_seq    : tkind * (tkind list -> 'a) * (tkind -> 'a) -> 'a
+val tkw_fun    : tkind * (tkind list * tkind -> 'a) * (tkind -> 'a) -> 'a
+
 (** instantiating a polymorphic type or an higher-order constructor *)
 val lt_inst     : lty * tyc list -> lty list
 val lt_pinst    : lty * tyc list -> lty
 
-exception TkTycChk
+val tkc_int : int -> tkind
+val tkc_arg : int -> tkind list
+
+exception KindChk of string (* kind checker exception *)
 exception LtyAppChk
+
+exception TeUnbound  
+
+(* kind checking functions (re-exported here from Lty) *)
+val tcKindCheckGen : unit -> (tkindEnv -> tyc -> tkind)
+val tcKindVerifyGen : unit -> (tkindEnv -> (tkind * tyc) -> unit)
+val ltKindCheckGen : unit -> (tkindEnv -> lty -> tkind)
+
+(* perform polytype instantiation with kind checking *)
 val lt_inst_chk_gen : unit -> lty * tyc list * tkindEnv -> lty list
 
 (* substitution of named type variables *)

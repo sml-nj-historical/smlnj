@@ -82,6 +82,7 @@ structure POSIX_Process =
 
     fun fromStatus s = mkExitStatus (Int.quot (s, 256), Int.rem (s, 256))
 
+    structure W0' = BitFlagsFn()
     structure W = struct
         local structure W0 = BitFlagsFn ()
 	in

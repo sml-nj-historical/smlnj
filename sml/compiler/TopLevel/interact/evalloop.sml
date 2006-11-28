@@ -8,7 +8,7 @@ local open Environment
       structure C  = Compile
       structure EM = ErrorMsg
       structure E  = Environment
-      structure PP = PrettyPrint
+      structure PP = PrettyPrintNew
       structure T = Time
       structure U = Unsafe
       structure PC = SMLofNJ.Internals.ProfControl

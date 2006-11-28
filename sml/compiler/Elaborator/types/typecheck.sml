@@ -11,20 +11,22 @@ sig
 end (* signature TYPECHECK *)
 
 
-(* functorized to factor out dependencies on FLINT... *)
-functor TypecheckFn (val ii_ispure : II.ii -> bool
-		     val ii2ty : II.ii -> Types.ty option) : TYPECHECK =
+(* No longer functorized to factor out dependencies on FLINT (ii2ty, ii_ispure)
+ * Instead, TypesUtil depends directly on InlInfo -- it calls InlInfo.isPrimCast
+ * to test for the CAST primop in function isValue. *)
+
+structure Typecheck : TYPECHECK =
 struct
 
 local open Array List Types VarCon BasicTypes TypesUtil Unify Absyn
-	   ErrorMsg PrettyPrint PPUtil PPType PPAbsyn
+	   ErrorMsg PrettyPrintNew PPUtilNew PPType PPAbsyn
 
   structure SE = StaticEnv
   (* structure II = InlInfo *)
   structure DA = Access
   structure EU = ElabUtil
   structure ED = ElabDebug
-  structure PP = PrettyPrint
+  structure PP = PrettyPrintNew
 	  
 in 
 
@@ -35,8 +37,6 @@ fun debugmsg (msg: string) = if !debugging then (say msg; say "\n") else ()
 val debugPrint = (fn x => ED.debugPrint debugging x)
 
 fun bug msg = ErrorMsg.impossible("TypeCheck: "^msg)
-
-val isValue = isValue { ii_ispure = ii_ispure }
 
 infix 9 sub
 infix -->
@@ -266,6 +266,9 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
   | generalizeTy _ = bug "generlizeTy - bad arg"
   
 
+(* the VARpat case seems designed to ensure that only one variable in a pattern
+ * can have generalized type variables: either x or !tvs must be nil or a bug
+ * message is generated.  Why is this? [dbm] *)
 fun generalizePat(pat: pat, userbound: tyvar list, occ: occ, 
                   generalize: bool, region) =
     let val tvs : tyvar list ref = ref []
@@ -341,7 +344,8 @@ fun patType(pat: pat, depth, region) : pat * ty =
                 *)
                val nty = mkMETAtyBounded depth
                val _ = unifyTy(nty, ty) 
-            in (CONpat(dcon,insts),ty)
+            in (** (CONpat(dcon,insts),ty) *)
+	       (CONpat(dcon, insts), ty)
            end
        | APPpat(dcon as DATACON{typ,rep,...},_,arg) =>
 	   let val (argpat,argty) = patType(arg,depth,region)
@@ -405,25 +409,16 @@ let fun boolUnifyErr { ty, name, message } =
 	end
 in
      case exp
-      of VARexp(r as ref(VALvar{typ, info, ...}), _) =>
-	 (case ii2ty info of
-	      SOME st =>
-              let val (sty, insts) = instantiatePoly(st)
-		  val (nty, _) = instantiatePoly(!typ)
-              in
-		  unifyTy(sty, nty) handle _ => ();  (* ??? *)
-		  (VARexp(r, insts), sty)
-              end
-	    | NONE =>
-	      let val (ty, insts) = instantiatePoly(!typ)
-	      in (VARexp(r, insts), ty)
-	      end)
+      of VARexp(r as ref(VALvar{typ, ...}), _) =>
+	   let val (ty, insts) = instantiatePoly(!typ)
+	    in (VARexp(r, insts), ty)
+	   end
        | VARexp(refvar as ref(OVLDvar _),_) =>
- 	    (exp, ol_push (refvar, err region))
+ 	   (exp, ol_push (refvar, err region))
        | VARexp(r as ref ERRORvar, _) => (exp, WILDCARDty)
        | CONexp(dcon as DATACON{typ,...},_) => 
            let val (ty,insts) = instantiatePoly typ
-            in (CONexp(dcon,insts),ty)
+            in (CONexp(dcon, insts), ty)
            end
        | INTexp (_,ty) => (oll_push ty; (exp,ty))
        | WORDexp (_,ty) => (oll_push ty; (exp,ty))
@@ -667,7 +662,7 @@ and decType0(decl,occ,region) : dec =
 	   let fun vbType(vb as VB{pat, exp, tyvars=(tv as (ref tyvars)), boundtvs}) =
 	        let val (pat',pty) = patType(pat,infinity,region)
 		    val (exp',ety) = expType(exp,occ,region)
-                    val generalize = isValue exp (* orelse isVarTy ety *)
+                    val generalize = TypesUtil.isValue exp (* orelse isVarTy ety *)
 		 in unifyErr{ty1=pty,ty2=ety, name1="pattern", name2="expression",
 			     message="pattern and expression in val dec don't agree",
 			     region=region,kind=ppVB,kindname="declaration",

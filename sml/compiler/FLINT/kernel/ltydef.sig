@@ -16,14 +16,14 @@ sig
 type index = DebIndex.index
 type depth = DebIndex.depth
 type primtyc = PrimTyc.primtyc
-type tvar = LtyKernel.tvar
+type tvar = Lty.tvar
 
-type fflag = LtyKernel.fflag 
-type rflag = LtyKernel.rflag
+type fflag = Lty.fflag 
+type rflag = Lty.rflag
 
-type tkind = LtyKernel.tkind
-type tyc = LtyKernel.tyc
-type lty = LtyKernel.lty
+type tkind = Lty.tkind
+type tyc = Lty.tyc
+type lty = Lty.lty
 
 (* 
  * FLINT tkind is roughly equivalent to the following ML datatype 
@@ -38,31 +38,6 @@ type lty = LtyKernel.lty
  * pattern matching. 
  *
  *)
-
-(** tkind constructors *)
-val tkc_mono   : tkind
-val tkc_box    : tkind
-val tkc_seq    : tkind list -> tkind
-val tkc_fun    : tkind list * tkind -> tkind
-
-(** tkind deconstructors *)
-val tkd_mono   : tkind -> unit
-val tkd_box    : tkind -> unit
-val tkd_seq    : tkind -> tkind list
-val tkd_fun    : tkind -> tkind list * tkind
-
-(** tkind predicates *)
-val tkp_mono   : tkind -> bool
-val tkp_box    : tkind -> bool
-val tkp_seq    : tkind -> bool
-val tkp_fun    : tkind -> bool
-
-(** tkind one-arm switch *)
-val tkw_mono   : tkind * (unit -> 'a) * (tkind -> 'a) -> 'a
-val tkw_box    : tkind * (unit -> 'a) * (tkind -> 'a) -> 'a
-val tkw_seq    : tkind * (tkind list -> 'a) * (tkind -> 'a) -> 'a
-val tkw_fun    : tkind * (tkind list * tkind -> 'a) * (tkind -> 'a) -> 'a
-
 
 (* 
  * FLINT fflag and rflag are used to classify different kinds of monomorphic 
@@ -137,7 +112,7 @@ val tcc_app    : tyc * tyc list -> tyc
 val tcc_seq    : tyc list -> tyc
 val tcc_proj   : tyc * int -> tyc
 val tcc_sum    : tyc list -> tyc
-val tcc_fix    : (int * tyc * tyc list) * int -> tyc 
+val tcc_fix    : (int * string vector * tyc * tyc list) * int -> tyc 
 val tcc_wrap   : tyc -> tyc
 val tcc_abs    : tyc -> tyc
 val tcc_box    : tyc -> tyc

@@ -23,8 +23,7 @@ end (* signature ELABMOD *)
 
 
 (* functorized to factor out dependencies on FLINT... *)
-functor ElabModFn (structure SM : SIGMATCH
-		   structure Typecheck : TYPECHECK) : ELABMOD =
+functor ElabModFn (structure SM : SIGMATCH) : ELABMOD =
 struct
 
 local structure S  = Symbol
@@ -58,6 +57,8 @@ local structure S  = Symbol
       structure PPU = PPUtil
       structure ED = ElabDebug
       open Ast Modules
+      open SpecialSymbols (* special symbols *)
+
 in
 
 (* debugging *)
@@ -98,9 +99,6 @@ fun seqEntDec ds =
   end
 
 fun localEntDec(d1, d2) = seqEntDec [d1, d2] 
-
-(* special symbols *)
-open SpecialSymbols
 
 fun stripMarkSigb(MarkSigb(sigb',region'),region) =
       stripMarkSigb(sigb',region')
@@ -589,10 +587,10 @@ fun elab (BaseStr decl, env, entEnv, region) =
 		      rpath=rpath, stub = NONE}
 
                 val dacc = DA.namedAcc(tempStrId, mkv)
-                val dinfo = II.List (map MU.extractInfo locations)
+                val prim = MU.strPrimElemInBinds locations
 
             in M.STR {sign=sign, rlzn=strRlzn, access=dacc,
-		      info=dinfo}
+		      prim=prim}
             end
           
           val resDec = 
@@ -665,7 +663,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
   | elab (AppStrI(spath,[]), env, entEnv, region) =
       bug "elabStr.AppStrI -- empty arg list"
 
-  | elab (VarStr path, env, entEnv, region) =
+  | elab (v as VarStr path, env, entEnv, region) =
       let val _ = debugmsg ">>elab[VarStr]"
           val str = LU.lookStr(env,SP.SPATH path,error region)
 (*
@@ -684,7 +682,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 			  | SOME ep => M.VARstr ep)
 		   | _ => M.CONSTstr M.bogusStrEntity (* error recovery *)
 
-       in (* debugmsg "<<elab[VarStr]"; *)
+       in debugmsg "<<elab[VarStr]"; (* GK: Used to be commented out *) 
 	  (A.SEQdec [], str, resExp, EE.empty)
       end
 
@@ -924,7 +922,7 @@ case fctexp
           val paramStr = 
             let val paramDacc = DA.namedAcc(paramName, mkv)
              in M.STR{sign=paramSig, rlzn=paramRlzn, 
-                      access=paramDacc, info=II.Null}
+                      access=paramDacc, prim=[]}
             end
 
           val _ = debugmsg "--elabFct[BaseFct]: param instantiated"
@@ -934,6 +932,7 @@ case fctexp
                EE.mark(mkStamp,EE.bind(paramEntVar,M.STRent paramRlzn,entEnv))
           val _ = debugmsg "--elabFct[BaseFct]: param EE.bind"
 
+	  val _ = print "elabmod before env'\n"
           val env' =
             case paramNameOp 
              of NONE => MU.openStructure(env,paramStr)
@@ -1009,7 +1008,7 @@ case fctexp
 
                 val dacc = DA.namedAcc(name, mkv)
 
-             in M.FCT{sign=fctSig, rlzn=rlzn, access=dacc, info=II.Null}
+             in M.FCT{sign=fctSig, rlzn=rlzn, access=dacc, prim=[]}
             end
 
           val _ = debugmsg "--elabFct[BaseFct]: resFct defined"
@@ -1129,18 +1128,18 @@ fun loop([], decls, entDecls, env, entEnv) =
 	  val str = if S.eq(name,returnId) then
 	            (* str should be functor application wrapper structure
 		     * with single structure component "resultStr" *)
-		      if (case str
-			    of ERRORstr => true
-			     | _ => (case MU.getStrSymbols str
-				       of [sym] => S.eq(sym,resultId)
-					| _ => false))
-		      then str
-		      else (error region' EM.COMPLAIN
-			    ("structure " ^ S.name(IP.last rpath) ^
-			     " defined by partially applied functor")
-			    EM.nullErrorBody;
-			    ERRORstr)
-		     else str
+                       if (case str
+                             of ERRORstr => true
+                              | _ => (case MU.getStrSymbols str
+                                        of [sym] => S.eq(sym,resultId)
+                                         | _ => false))
+                       then str
+                       else (error region' EM.COMPLAIN
+                             ("structure " ^ S.name(IP.last rpath) ^
+                              " defined by partially applied functor")
+                             EM.nullErrorBody;
+                             ERRORstr)
+		    else str
 
           val _ = debugmsg "--elabStrbs: elabStr done"
 (*
@@ -1184,11 +1183,12 @@ fun loop([], decls, entDecls, env, entEnv) =
            * both the dynamic access and the inl_info will be updated 
            * completely and replaced with proper persistent accesses (ZHONG)
            *)
+          (* [KM ???] What is the purpose of changing the dynamic access? *)
           val (bindStr, strEnt) = 
             case resStr
-             of STR { rlzn, sign, access, info } =>
+             of STR { rlzn, sign, access, prim } =>
                 (STR{rlzn = rlzn, sign = sign,
-		     access = DA.namedAcc(name, mkv),info = info},
+		     access = DA.namedAcc(name, mkv),prim = prim},
                  M.STRent rlzn)
               | _ => (resStr, M.STRent M.bogusStrEntity)
 
@@ -1268,7 +1268,6 @@ and elabDecl0
            val strs = map (fn s => let val sp = SP.SPATH s
                                     in (sp, LU.lookStr(env0, sp, err))
                                    end) paths
-
            fun loop([], env) = (A.OPENdec strs, M.EMPTYdec, env, EE.empty)
              | loop((_, s)::r, env) = loop(r, MU.openStructure(env, s))
 
@@ -1308,8 +1307,8 @@ and elabDecl0
                       *)
                      val (bindFct, fctEnt) = 
                        case fct
-			 of FCT {rlzn, sign, access, info} =>
-			    (FCT{rlzn = rlzn, sign = sign, info = info,
+			 of FCT {rlzn, sign, access, prim} =>
+			    (FCT{rlzn = rlzn, sign = sign, prim = prim,
                                  access = DA.namedAcc(name, mkv)},
 			     FCTent rlzn)
 			  | ERRORfct => (fct, ERRORent)
@@ -1616,7 +1615,7 @@ and elabDecl0
                        (case EPC.lookTycPath(epContext, MU.tycId tyc)
                          of SOME _ => true 
                           | _ => false))
-                      | _ => (fn _ => false))
+                | _ => (fn _ => false))
 
             val (decl,env') = EC.elabDec(dec, env0, isFree, 
                                          rpath, region, compInfo)

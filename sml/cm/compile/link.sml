@@ -12,7 +12,7 @@ local
     structure GG = GroupGraph
     structure DE = DynamicEnv
     structure EM = ErrorMsg
-    structure PP = PrettyPrint
+    structure PP = PrettyPrintNew
 
     type env = DynamicEnv.env
     type posmap = env IntMap.map

@@ -15,10 +15,11 @@ Group
 	signature EVALENTITY
 	signature ELABTOP
 	signature UNIFY
+	signature TYPECHECK
+	signature SIGMATCH
 
 	functor InstantiateFn
 	functor EvalEntityFn
-	functor TypecheckFn
 	functor SigMatchFn
 	functor ElabModFn
 	functor ElabTopFn
@@ -30,8 +31,10 @@ Group
 	structure SpecialSymbols
 	structure ElabDebug
 	structure Unify
+	structure Typecheck
 
 	signature PPUTIL
+	signature PPUTILNEW
 	signature PPTYPE
 	signature PPABSYN
 	signature PPMOD
@@ -39,6 +42,8 @@ Group
 	signature PPAST
 
 	structure PPUtil
+	structure PPUtilNew
+	structure PPPrim 
 	structure PPType
 	structure PPAbsyn
 	structure PPModules
@@ -61,7 +66,7 @@ is
 	types/typecheck.sml
 
 	modules/expandtycon.sml
-	modules/sigmatch.sml
+	modules/sigmatch.sml 
 	modules/instantiate.sml
 	modules/evalent.sml
 
@@ -79,8 +84,11 @@ is
 	elaborate/elabmod.sml
 	elaborate/elabtop.sml
 
+	print/ppprim.sml 
 	print/pputil.sig
 	print/pputil.sml
+	print/pputil-new.sig
+	print/pputil-new.sml
 	print/pptype.sml
 	print/ppval.sml
 	print/ppabsyn.sml

@@ -15,7 +15,7 @@ datatype simp
   = VARsimp of var 
   | RECORDsimp of (label * simp) list
 
-type dconinfo = datacon * ty list
+type dconinfo = datacon * tyvar list
 
 datatype pcon 
   = DATApcon of dconinfo
@@ -105,6 +105,3 @@ fun unary (DATACON{const,...},_) = const
 
 end (* toplevel local *)
 end (* structure MCCommon *)
-
-
-

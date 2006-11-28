@@ -21,7 +21,7 @@ end (* signature LTYDICT *)
 structure LtyDict : LTYDICT = 
 struct 
 
-local structure LT = LtyBasic
+local 
       open LtyKernel
 in 
 
@@ -29,11 +29,11 @@ fun bug s = ErrorMsg.impossible ("LtyDict: " ^ s)
 val say = Control.Print.say
 
 structure TcDict = RedBlackMapFn(struct type ord_key = tyc
-				      val compare = tc_cmp
+				      val compare = Lty.tc_cmp
 			       end)
 
 structure LtDict = RedBlackMapFn(struct type ord_key = lty
-				      val compare = lt_cmp
+				      val compare = Lty.lt_cmp
 			       end)
 
 type tyc = tyc

@@ -27,7 +27,7 @@ local structure DI = DebIndex
       structure PO = PrimOp
       structure PT = PrimTyc
       structure LV = LambdaVar
-      open LtyKernel FLINT 
+      open Lty LtyKernel FLINT 
 in
 
   type tcode = int
@@ -294,7 +294,7 @@ fun rtLexp (kenv : kenv) (tc : tyc) =
 	   | (TC_ARROW (_,tc1,tc2)) => tcode_void
 	   | (TC_ABS tx) => loop tx
 	   | (TC_TOKEN(_,tx)) => loop tx           
-	   | (TC_FIX((n,tx,ts), i)) => 
+	   | (TC_FIX{family={size=n,gen=tx,params=ts,...}, index=i}) => 
 		let val ntx = 
                       (case ts 
                         of [] => tx
@@ -340,7 +340,7 @@ and isFloat (kenv, tc) =
 	   | (TC_TUPLE (_, ts)) => NO
 	   | (TC_ARROW (_,tc1,tc2)) => NO
 	   | (TC_TOKEN(_,tx)) => loop tx
-	   | (TC_FIX(_, i)) => NO
+	   | (TC_FIX _) => NO
 	   | (TC_APP(tx, _)) => 
 		(case tc_out tx
 		  of (TC_APP _ | TC_PROJ _ | TC_VAR _) => 
@@ -366,7 +366,7 @@ fun isPair (kenv, tc) =
 	   | (TC_TUPLE _) => NO
 	   | (TC_ARROW _) => NO
 	   | (TC_TOKEN(_,tx)) => loop tx
-	   | (TC_FIX(_, i)) => NO
+	   | (TC_FIX _) => NO
 	   | (TC_APP(tx, _)) => 
 		(case tc_out tx
 		  of (TC_APP _ | TC_PROJ _ | TC_VAR _ | TC_NVAR _) => 

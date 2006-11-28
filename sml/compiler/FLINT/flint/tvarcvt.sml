@@ -27,12 +27,12 @@ struct
     val debIndex2names = let
 
         fun extendEnv env d _ tvtks = let
-            fun tvtk2tyc (tvar, _) = LT.tcc_nvar tvar
+            val (tvars,ks) = ListPair.unzip tvtks
         in
-            LK.tcInsert (env, (SOME (map tvtk2tyc tvtks), 0))
+            Lty.teCons(Lty.Beta(0,map LT.tcc_nvar tvars,ks), env)
         end
 
-        fun cvtExp env d = let
+        fun cvtExp (env: Lty.tycEnv) (d: int) = let
             fun tcSubst tyc = LK.tcc_env (tyc, d, d, env)
             fun ltSubst lty = LK.ltc_env (lty, d, d, env)
 
@@ -115,28 +115,26 @@ struct
             r
         end (* cvtExp *)            
 
-        and cvtFundec env d (fkind, lvar, lvlts, e) = let
-            fun tcSubst tyc = LK.tcc_env (tyc, d, d, env)
-            fun ltSubst lty = LK.ltc_env (lty, d, d, env)
+        and cvtFundec env d (fkind, lvar, lvlts, e) =
+            let fun ltSubst lty = LK.ltc_env (lty, d, d, env)
 
-            fun cvtFkind {isrec = SOME(ltys,lk),
-                                    cconv, known, inline} =
-                {isrec = SOME (map ltSubst ltys, lk),
-		 cconv = cconv,
-		 known = known,
-		 inline = inline}
-              | cvtFkind fk = fk
+                fun cvtFkind {isrec = SOME(ltys,lk),
+                              cconv, known, inline} =
+                    {isrec = SOME (map ltSubst ltys, lk),
+		     cconv = cconv,
+		     known = known,
+		     inline = inline}
+                  | cvtFkind fk = fk
 
-            fun cvtLvLt (lvar, lty) = (lvar, ltSubst lty)
-        in
-            (cvtFkind fkind, 
-             lvar,
-             map cvtLvLt lvlts,
-             cvtExp env d e
-             ) : F.fundec
-        end (* cvtFundec *)
+                fun cvtLvLt (lvar, lty) = (lvar, ltSubst lty)
+            in (cvtFkind fkind, 
+                lvar,
+                map cvtLvLt lvlts,
+                cvtExp env d e
+               ) : F.fundec
+            end (* cvtFundec *)
     in
-        cvtFundec LK.initTycEnv DI.top
+        cvtFundec Lty.teEmpty DI.top
     end
 
     (* `names2debIndex' removes all named variables (`TC_NVAR')

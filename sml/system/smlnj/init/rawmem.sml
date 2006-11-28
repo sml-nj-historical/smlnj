@@ -6,7 +6,9 @@
  *
  * author: Matthias Blume (blume@research.bell-labs.com)
  *)
-structure RawMemInlineT = struct
+structure RawMemInlineT =
+struct
+
     val w8l  : word32 -> word32           = InLine.raww8l
     val i8l  : word32 -> int32            = InLine.rawi8l
     val w16l : word32 -> word32           = InLine.raww16l
@@ -46,4 +48,5 @@ structure RawMemInlineT = struct
     val updi32 : 'a * word32 * int32  -> unit = InLine.rawupdatei32
     val updf32 : 'a * word32 * real   -> unit = InLine.rawupdatef32
     val updf64 : 'a * word32 * real   -> unit = InLine.rawupdatef64
-end
+
+end (* structure RawMemInlineT *)

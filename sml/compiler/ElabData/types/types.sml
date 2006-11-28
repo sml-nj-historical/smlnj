@@ -35,7 +35,7 @@ and tvKind
      {kind: litKind, region: SourceMap.region}
   | SCHEME of bool (* overloaded operator type scheme variable
 		   * arg is true if must be instantiated to equality type *)
-  | TV_MARK of int
+  | TV_MARK of int * int
 
 and tycpath                        
   = TP_VAR of exn
@@ -50,7 +50,7 @@ and tyckind
      {index: int,
       stamps: ST.stamp vector,
       root : EP.entVar option,    (* the root field used by type spec only *)
-      freetycs: tycon list,
+      freetycs: tycon list,       (* tycs derived from functor params *)
       family : dtypeFamily}
   | ABSTRACT of tycon
   | FLEXTYC of tycpath            (* instantiated formal type constructor *)

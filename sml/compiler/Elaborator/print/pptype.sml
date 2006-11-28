@@ -8,19 +8,19 @@ signature PPTYPE =
 sig
   val typeFormals : int -> string list
   val tyvarPrintname : Types.tyvar -> string
-  val ppTycon : StaticEnv.staticEnv -> PrettyPrint.stream 
+  val ppTycon : StaticEnv.staticEnv -> PrettyPrintNew.stream 
                 -> Types.tycon -> unit
-  val ppTyfun : StaticEnv.staticEnv -> PrettyPrint.stream 
+  val ppTyfun : StaticEnv.staticEnv -> PrettyPrintNew.stream 
                 -> Types.tyfun -> unit 
-  val ppType  : StaticEnv.staticEnv -> PrettyPrint.stream 
+  val ppType  : StaticEnv.staticEnv -> PrettyPrintNew.stream 
                 -> Types.ty -> unit
   val ppDconDomain : (Types.dtmember vector * Types.tycon list) 
                      -> StaticEnv.staticEnv 
-                     -> PrettyPrint.stream -> Types.ty -> unit
-  val ppDataconTypes : StaticEnv.staticEnv -> PrettyPrint.stream 
+                     -> PrettyPrintNew.stream -> Types.ty -> unit
+  val ppDataconTypes : StaticEnv.staticEnv -> PrettyPrintNew.stream 
                 -> Types.tycon -> unit
   val resetPPType : unit -> unit
-  val ppFormals : PrettyPrint.stream -> int -> unit
+  val ppFormals : PrettyPrintNew.stream -> int -> unit
 
   val debugging : bool ref
   val unalias : bool ref
@@ -36,8 +36,9 @@ local
       structure BT = BasicTypes
       structure T = Types
       structure TU = TypesUtil
-      structure PP = PrettyPrint
-      open Types PPUtil  
+      structure PP = PrettyPrintNew
+      structure PU = PPUtilNew
+      open Types PPUtilNew  
 in
 
 val debugging = ref false
@@ -127,7 +128,7 @@ fun tyvarPrintname (tyvar) = let
 	    annotate(litKindPrintName kind,"L",NONE)
 	  | SCHEME eq =>
 	    tvHead(eq,annotate(metaTyvarName tyvar,"S",NONE))
-	  | TV_MARK _ => "<TV_MARK ?>"
+	  | TV_MARK(d,i) => "<TVM"^Int.toString d^"."^Int.toString i^">"
 in
     prKind (!tyvar)
 end
@@ -273,7 +274,7 @@ fun ppTycon1 env ppstrm membersOp =
 
 and ppType1 env ppstrm (ty: ty, sign: T.polysign, 
                         membersOp: (T.dtmember vector * T.tycon list) option) : unit =
-    let val {openHVBox,openHOVBox,closeBox,pps,break,newline} = en_pp ppstrm
+    let val {openHVBox,openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
         fun prty ty =
 	    case ty
 	      of VARty(ref(INSTANTIATED ty')) => prty(ty')
