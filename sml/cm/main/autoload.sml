@@ -129,15 +129,16 @@ functor AutoLoadFn (structure L : LINK
 		 SafeIO.perform
 		     { openIt = fn () => #get StdConfig.verbose () before
 					 #set StdConfig.verbose false,
-	               closeIt = #set StdConfig.verbose,
+	               closeIt = #set StdConfig.verbose, (* just in case *)
 		       cleanup = fn _ => (),
-		       work = fn _ =>
+		       work = fn orig_verbosity =>
 				 (case loadit loadmap of
 				      SOME e =>
 				      (#set ter (E.concatEnv (e, te));
 				       pending := noloadmap;
+				       #set StdConfig.verbose orig_verbosity;
 				       if not quiet then
-					   Say.say ["[autoloading done]\n"]
+					   Say.vsay ["[autoloading done]\n"]
 				       else ())
 				    | NONE => raise Fail "unable to load module(s)") }
 		     handle Fail msg =>
@@ -151,7 +152,7 @@ functor AutoLoadFn (structure L : LINK
 	    fn () =>
 	       (if !announced then ()
 		else (announced := true;
-		      Say.say ["[autoloading]\n"]))
+		      Say.vsay ["[autoloading]\n"]))
 	end
 
 	fun manageImports (ast, ter: ER.envref) = let
