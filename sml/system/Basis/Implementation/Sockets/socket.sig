@@ -1,7 +1,7 @@
 (* socket.sig
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2006 The Fellowship of SML/NJ (http://smlnj.org)
+ * All rights reserved.
  *)
 
 local
@@ -141,11 +141,11 @@ signature SYNCHRONOUS_SOCKET =
 			-> int
 
     val recvVecFrom  : ('a, dgram) sock * int
-			-> Word8Vector.vector * 'b sock_addr
+			-> Word8Vector.vector * 'a sock_addr
     val recvArrFrom  : ('a, dgram) sock * Word8ArraySlice.slice
 			-> int * 'a sock_addr
     val recvVecFrom' : ('a, dgram) sock * int * in_flags
-			-> Word8Vector.vector * 'b sock_addr
+			-> Word8Vector.vector * 'a sock_addr
     val recvArrFrom' : ('a, dgram) sock * Word8ArraySlice.slice * in_flags
 			-> int * 'a sock_addr
   end
@@ -187,11 +187,11 @@ signature SOCKET =
 			-> int option
 
     val recvVecFromNB: ('a, dgram) sock * int
-			-> (Word8Vector.vector * 'b sock_addr) option
+			-> (Word8Vector.vector * 'a sock_addr) option
     val recvArrFromNB: ('a, dgram) sock * Word8ArraySlice.slice
 			-> (int * 'a sock_addr) option
     val recvVecFromNB':('a, dgram) sock * int * in_flags
-			-> (Word8Vector.vector * 'b sock_addr) option
+			-> (Word8Vector.vector * 'a sock_addr) option
     val recvArrFromNB':('a, dgram) sock * Word8ArraySlice.slice * in_flags
 			-> (int * 'a sock_addr) option
   end
