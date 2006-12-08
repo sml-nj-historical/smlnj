@@ -2,9 +2,9 @@
  * The common core of both public and private interface to CM's tools
  * mechanism.
  *
- *   (C) 2000 Lucent Technologies, Bell Laboratories
+ *   (C) 2006 The Fellowship of SML/NJ
  *
- * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ * Author: Matthias Blume (blume@tti-c.org)
  *)
 signature CORETOOLS = sig
 
@@ -171,6 +171,9 @@ signature CORETOOLS = sig
      * always considered outdated. *)
     val outdated' : string ->
 		    { src: string, wtn: string, tgt: string } -> bool
+
+    (* see if all given targets exist (regardless of time stamp) *)
+    val targetsExist : string list -> bool
 
     (* open output file; make all necessary directories for it *)
     val openTextOut : string -> TextIO.outstream

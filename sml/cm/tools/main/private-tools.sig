@@ -2,9 +2,9 @@
  * A private interface to CM's tools mechanism to be used internally
  * by CM itself.
  *
- *   (C) 2000 Lucent Technologies, Bell Laboratories
+ *   (C) 2006 The Fellowship of SML/NJ
  *
- * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ * Author: Matthias Blume (blume@tti-c.org)
  *)
 signature PRIVATETOOLS = sig
     include CORETOOLS where type srcpath = SrcPath.file
