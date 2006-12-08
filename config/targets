@@ -32,7 +32,7 @@ request ml-yacc
 
 # build new ML-Lex
 #
-request lexgen
+#request lexgen
 
 # build even newer ML-Lex
 #
@@ -64,7 +64,7 @@ request smlnj-lib
 # pre-compile and install "Trace-Debug-Profile" utility library
 # (provides simple back-trace- and coverage facilities)
 #
-#request tdp-util
+request tdp-util
 
 # pre-compile and install Concurrent ML, which is a library for message-passing
 # concurrency.
@@ -89,7 +89,7 @@ request mlrisc
 # pre-compile and install the C-Kit, which is a library for parsing and
 # type-checking C programs
 #
-request ckit
+#request ckit
 
 # pre-compile and install the ML-NLFFI Library, which is the core of
 # a new foreign function interface (where "foreign" functions are
