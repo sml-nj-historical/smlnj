@@ -31,13 +31,13 @@ signature CML_SOCKET =
 	    -> int CML.event
     val recvVecFromEvt :
 	  ('a, dgram) sock * int
-	    -> (Word8Vector.vector * 'b sock_addr) CML.event
+	    -> (Word8Vector.vector * 'a sock_addr) CML.event
     val recvArrFromEvt :
 	  ('a, dgram) sock * Word8ArraySlice.slice
 	    -> (int * 'a sock_addr) CML.event
     val recvVecFromEvt' :
 	  ('a, dgram) sock * int * in_flags
-	    -> (Word8Vector.vector * 'b sock_addr) CML.event
+	    -> (Word8Vector.vector * 'a sock_addr) CML.event
     val recvArrFromEvt' :
 	  ('a, dgram) sock * Word8ArraySlice.slice * in_flags
 	    -> (int * 'a sock_addr) CML.event
