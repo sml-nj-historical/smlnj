@@ -228,6 +228,7 @@ installdriver() {
 	cat "$CONFIGDIR"/"$dsrc" | \
 	sed -e "s,@SHELL@,$SHELL,g" \
 	    -e "s,@BINDIR@,$BINDIR," \
+	    -e "s,@LIBDIR@,$LIBDIR," \
 	    -e "s,@VERSION@,$VERSION," \
 	    -e "s,@CMDIRARC@,${CM_DIR_ARC:-dummy}," \
 	    > "$BINDIR"/"$ddst"
