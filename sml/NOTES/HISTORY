@@ -1,4 +1,4 @@
-This is the HISTORY file for the Yale SML/NJ CVS repository.
+This is the HISTORY file for the SML/NJ repository.
 
 An entry should be made for _every_ commit to the repository.
 The entries in this file will be used when creating the README
@@ -12,6 +12,14 @@ Name: Your Name (web page or e-mail)
 Date: yyyy/mm/dd hh:mm:ss
 Tag: cvs-tag-for-this-change
 Description:
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/12/14 12:00:00 CST
+Tag: release-110.61
+Description:
+
+New working release (110.61).  NEW BOOTFILES!
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://cs.uchicago.edu/~jhr)
