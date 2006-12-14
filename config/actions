@@ -1,0 +1,65 @@
+#
+# This file describes the actions to be taken when installing a "module".
+# See src/smlnj/installer/libinstall.sml for how this file is to be
+# interpreted.
+#
+# (C) 2006 The Fellowship of SML/NJ
+#
+
+smlnj-lib ulib unix-lib.cm      unix-lib.cm      smlnj-lib/Unix
+smlnj-lib  lib inet-lib.cm      inet-lib.cm      smlnj-lib/INet
+smlnj-lib  lib regexp-lib.cm    regexp-lib.cm    smlnj-lib/RegExp
+smlnj-lib  lib reactive-lib.cm  reactive-lib.cm  smlnj-lib/Reactive
+smlnj-lib  lib hash-cons-lib.cm hash-cons-lib.cm smlnj-lib/HashCons
+
+cml lib cml core-cml.cm     cml/src
+cml lib cml cml-internal.cm cml/src
+cml lib cml cml.cm          cml/src
+cml lib cml basis.cm        cml/src
+
+cml-lib lib cml-lib      trace-cml.cm cml/cml-lib/cm-descr
+cml-lib lib cml-lib      smlnj-lib.cm cml/cml-lib/cm-descr
+
+eXene lib eXene.cm eXene.cm eXene
+
+ckit lib ckit-lib.cm ckit-lib.cm ckit/src
+
+ml-nlffi-lib lib c memory/memory.cm   nlffi/lib
+ml-nlffi-lib lib c internals/c-int.cm nlffi/lib
+ml-nlffi-lib lib c c.cm               nlffi/lib
+
+pgraph-util lib pgraph-util.cm pgraph-util.cm pgraph
+
+tdp-util lib smlnj-tdp plugins.cm trace-debug-profile
+tdp-util lib smlnj-tdp back-trace.cm trace-debug-profile
+tdp-util lib smlnj-tdp coverage.cm trace-debug-profile
+
+mlrisc libanchor Control.cm SMLNJ-MLRISC
+mlrisc libanchor Lib.cm     SMLNJ-MLRISC
+mlrisc libanchor Visual.cm  SMLNJ-MLRISC
+mlrisc libanchor MLRISC.cm  SMLNJ-MLRISC
+mlrisc libanchor MLTREE.cm  SMLNJ-MLRISC
+mlrisc libanchor Graphs.cm  SMLNJ-MLRISC
+mlrisc libanchor IA32.cm    SMLNJ-MLRISC
+mlrisc anchor Peephole.cm MLRISC/cm
+mlrisc lib OTHER-MLRISC RA.cm            MLRISC/cm SMLNJ-MLRISC
+mlrisc lib OTHER-MLRISC Peephole.cm      MLRISC/cm SMLNJ-MLRISC
+mlrisc lib OTHER-MLRISC IA32-Peephole.cm MLRISC/cm SMLNJ-MLRISC
+
+mlrisc-tools lib mlrisc-tools pp.cm             MLRISC/Tools
+mlrisc-tools lib mlrisc-tools source-map.cm     MLRISC/Tools
+mlrisc-tools lib mlrisc-tools sml-ast.cm        MLRISC/Tools
+mlrisc-tools lib mlrisc-tools prec-parser.cm    MLRISC/Tools
+mlrisc-tools lib mlrisc-tools parser.cm         MLRISC/Tools
+mlrisc-tools lib mlrisc-tools match-compiler.cm MLRISC/Tools
+
+ml-yacc  prog ml-yacc src
+ml-lex   prog
+lexgen   prog lexgen src
+ml-ulex  dprog ml-ulex - ml-lpt/ml-ulex
+ml-antlr dprog ml-antlr - ml-lpt/ml-antlr
+ml-burg  prog
+heap2asm prog
+
+ml-nlffigen dprog ml-nlffigen - nlffi/gen
+nowhere     dprog nowhere - MLRISC/Tools/nowhere

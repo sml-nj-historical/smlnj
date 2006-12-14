@@ -1,0 +1,88 @@
+(* This file is created by makeallcm *)
+Library
+	signature MEMORY_REGISTERS
+	signature AMD64CELLS
+	signature AMD64COMP_INSTR_EXT
+	signature AMD64INSTR
+	signature AMD64REWRITE
+	signature AMD64SHUFFLE
+	structure AMD64Cells
+	structure AMD64InstrExt
+(*
+	functor AMD64SVID_CCalls
+*)
+	functor AMD64
+	functor AMD64AsmEmitter
+	functor AMD64CompInstrExt
+	functor AMD64DarwinPseudoOps
+	functor AMD64FP
+	functor AMD64FreqProps
+	functor AMD64GasPseudoOps
+	functor AMD64Instr
+	functor AMD64Jumps
+	functor AMD64MCEmitter
+(*
+	functor AMD64OmitFramePointer
+*)
+	functor AMD64Props
+	functor AMD64RA
+	functor AMD64Rewrite
+	functor AMD64Shuffle
+        functor AMD64SpillInstr
+is
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+	$/basis.cm
+	$/smlnj-lib.cm
+	$/MLRISC.cm
+	$/Control.cm
+	$/Lib.cm
+	$/Graphs.cm
+	$/MLTREE.cm
+#else
+	basis.cm
+	smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	MLTREE.cm
+#endif
+#else
+	smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	MLTREE.cm
+#endif
+(*
+        ../amd64/c-calls/amd64-svid.sml
+*)
+        ../amd64/flowgraph/amd64-darwin-pseudo-ops.sml
+        ../amd64/flowgraph/amd64GasPseudoOps.sml
+(*
+	../amd64/omit-frameptr/amd64omit-frameptr.sml
+*)
+	../amd64/instructions/amd64Cells.sml
+	../amd64/instructions/amd64comp-instr-ext.sml
+	../amd64/instructions/amd64Instr.sml
+	../amd64/instructions/amd64instr-ext.sml
+	../amd64/instructions/amd64Shuffle.sig
+	../amd64/instructions/amd64Shuffle.sml
+	../amd64/instructions/amd64Props.sml
+	../amd64/instructions/amd64MemRegs.sig
+	../amd64/instructions/amd64FreqProps.sml
+	../amd64/emit/amd64Asm.sml
+	../amd64/amd64MC.sml
+	../amd64/ra/amd64Rewrite.sig
+	../amd64/ra/amd64Rewrite.sml
+	../amd64/ra/amd64SpillInstr.sml
+	../amd64/backpatch/amd64Jumps.sml 
+	../amd64/mltree/amd64.sml
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION < 11042
+	../amd64/mltree/orig-amd64-fp.sml
+#else
+	../amd64/mltree/amd64-fp.sml
+#endif
+	../amd64/ra/amd64RA.sml
