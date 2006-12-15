@@ -1,9 +1,0 @@
-(* fast-load
- * Load the calculator example assuming that eXene is already loaded.
- *)
-
-app use [
-    "acc.sml",
-    "calc.sml",
-    "main.sml"
-  ];

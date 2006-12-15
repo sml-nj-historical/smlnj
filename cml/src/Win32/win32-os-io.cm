@@ -1,6 +1,0 @@
-
-Group
-   structure Win32OSIO
-is
-
-   win32-os-io.sml

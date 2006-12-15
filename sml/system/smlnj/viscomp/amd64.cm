@@ -1,6 +1,0 @@
-(* smlnj/viscomp/amd64.cm *)
-
-Library
-	group($compiler/backend-amd64.cm)
-is
-	$compiler/backend-amd64.cm

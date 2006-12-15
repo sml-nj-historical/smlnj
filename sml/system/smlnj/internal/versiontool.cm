@@ -1,6 +1,0 @@
-library
-	structure VersionTool
-is
-	versiontool.sml
-	$/basis.cm
-	$smlnj/cm/tools.cm

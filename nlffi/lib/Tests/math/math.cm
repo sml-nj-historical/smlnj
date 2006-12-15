@@ -1,6 +1,0 @@
-library
-	library(FFI/math.cm)
-is
-	$/basis.cm
-	$c/c.cm
-	FFI/math.cm : make (-f math.make)

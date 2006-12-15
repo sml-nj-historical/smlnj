@@ -1,5 +1,0 @@
-Library
-  structure X
-is
-xalias.cm
-self.sml

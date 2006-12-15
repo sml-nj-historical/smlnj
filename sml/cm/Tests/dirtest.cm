@@ -1,6 +1,0 @@
-library
-	structure A
-	structure B
-	structure C
-is
-	foo/bar/baz

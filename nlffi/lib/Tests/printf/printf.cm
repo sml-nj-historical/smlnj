@@ -1,7 +1,0 @@
-library
-	structure Printf
-is
-	$/basis.cm
-	$c/c.cm
-	FFI/printf.cm : make (-f printf.make)
-	printf.sml

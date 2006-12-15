@@ -1,2 +1,0 @@
-Group is
-	shelltest.src : shell (target:shelltest.ml class:sml cp %s %t)

@@ -1,2 +1,0 @@
-structure DefaultSizes = SizesSparc
-

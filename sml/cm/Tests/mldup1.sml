@@ -1,1 +1,0 @@
-structure A = struct end

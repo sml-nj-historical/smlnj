@@ -1,2 +1,0 @@
-Group is
-  maketest.sml : make (class:sml options:(shared) -f maketest.mk)

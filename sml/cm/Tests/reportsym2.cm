@@ -1,5 +1,0 @@
-Library
-  structure RS2
-is
-  reportsym2.sml
-  newsym.cm

@@ -1,8 +1,0 @@
-app use [
-  "images.sml",
-  "splash.sml",
-  "scene.sml",
-  "answer.sml",
-  "calc.sml",
-  "add.sml"
-]

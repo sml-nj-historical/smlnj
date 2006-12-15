@@ -1,5 +1,0 @@
-Library
-	structure SMLCopyTool
-is
-	smlcopy-tool.sml
-	$smlnj/cm/tools.cm

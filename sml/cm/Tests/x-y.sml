@@ -1,1 +1,0 @@
-structure Y = struct end
