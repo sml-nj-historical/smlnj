@@ -21,7 +21,7 @@ local
     open PPUtilNew
 in
 
-val dtPrintNames : bool ref = ref false
+val dtPrintNames : bool ref = ref true
 val printIND : bool ref = ref true
 
 fun ppSeq ppstrm {sep: string, pp : PP.stream -> 'a -> unit} (list: 'a list) =

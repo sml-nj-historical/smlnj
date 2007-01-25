@@ -307,7 +307,10 @@ let val dict = Memo.newDict()
 		  (let val kenv' = 
 			   List.drop(kenv, j)
 			   handle Subscript => 
-				  bug "[Env]: dropping too many frames"
+                               (if j < 0 then (print "j = "; print(Int.toString j);
+                                               print "\n")
+                                else ();
+                                bug "[TC_ENV]: dropping too many frames")
 		       fun bindToKinds(Lamb(_,ks)) = ks
 			 | bindToKinds(Beta(_,_,ks)) = ks
 		       fun addBindToKEnv(b,ke) = 
@@ -397,7 +400,10 @@ let val (tcKindChk, _, teKindChk) = tcteKindCheckGen()
                (let val kenv' = 
                         List.drop(kenv, j)
                         handle Subscript => 
-                               bug "[Env]: dropping too many frames"
+                               (if j < 0 then (print "j = "; print(Int.toString j);
+                                               print "\n")
+                                else ();
+                                bug "[LT_ENV]: dropping too many frames")
                     fun bindToKinds(Lamb(_,ks)) = ks
                       | bindToKinds(Beta(_,_,ks)) = ks
                     fun addBindToKEnv(b,ke) = 

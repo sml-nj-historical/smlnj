@@ -39,10 +39,16 @@ fun dgPrint (msg: string, printfn: PP.stream -> 'a -> unit, arg: 'a) =
 local
 
   fun tcc_env_int(x, 0, 0, te) = x
-    | tcc_env_int(x, i, j, te) = tc_injX(TC_ENV(x, i, j, te))
+    | tcc_env_int(x, i, j, te) =
+      if i < 0 then bug "tcc_env_int: negative i"
+      else if j < 0 then bug "tcc_env_int: negative j"
+      else tc_injX(TC_ENV(x, i, j, te))
 
   fun ltc_env_int(x, 0, 0, te) = x
-    | ltc_env_int(x, i, j, te) = lt_injX(LT_ENV(x, i, j, te))
+    | ltc_env_int(x, i, j, te) =
+      if i < 0 then bug "ltc_env_int: negative i"
+      else if j < 0 then bug "ltc_env_int: negative j"
+      else lt_injX(LT_ENV(x, i, j, te))
  
   fun withEff ([], ol, nl, tenv) = false
     | withEff (a::r, ol, nl, tenv) = 
@@ -152,7 +158,13 @@ val tcc_app = fn (fntyc, argtycs) =>
                                                   getArity (List.nth (tycs, index))
 					      | TC_FN (args, _) => length args
 					      | _ => bug "Malformed generator range")
-					 | _ => bug "FIX without generator!" )
+					 | _ =>
+                                           (with_pp(fn s =>
+                                              (PU.pps s "ERROR: checkParamArity - FIX";
+                                               PP.newline s;
+                                               ppTyc (!dp) s gen;
+                                               PP.newline s));
+                                            bug "FIX without generator!" ))
 				    | _ => (with_pp (fn s =>
                                               (PU.pps s "getArity?:";
                                                PP.newline s;
@@ -551,7 +563,7 @@ fun lt_norm t = if (ltp_norm t) then t else
  *         REGISTER A NEW TOKEN TYC --- TC_WRAP                            *
  ***************************************************************************)
 
-(** we add a new constructor named TC_RBOX through the token facility *)
+(** we add a new constructor named TC_WRAP through the token facility *)
 local val name = "TC_WRAP"
       val abbrev = "WR"
       val is_known = fn _ => true      (* why is this ? *)
@@ -658,7 +670,7 @@ val wrap_token =
   register_token {name=name, abbrev=abbrev, reduce_one=reduce_one,
                   is_whnm=is_whnm, is_known=is_known}
 
-end (* end of creating the box token for "tcc_rbox" *)
+end (* end of creating the wrap token for "tcc_rbox" *)
 
 (** testing if a tyc is a unknown constructor *)
 fun tc_unknown tc = not (isKnown tc)
@@ -778,14 +790,13 @@ and tc_eqv (x, y) =
         if tcp_norm t1 andalso tcp_norm t2 then tc_eq (t1, t2)
         else tc_eqv_gen (t1, t2)
     in res orelse 
-     (with_pp(fn s =>
-           (PU.pps s "TC_EQV:"; PP.newline s;
-            PP.openHOVBox s (PP.Rel 0);
-            PU.pps s "t1:"; PP.newline s; PPLty.ppTyc 10 s t1; PP.newline s;
-            PU.pps s "t2:"; PP.newline s; PPLty.ppTyc 10 s t2; PP.newline s;
-            PP.closeBox s;
-            PU.pps s"***************************************************";
-            PP.newline s)); false)
+       (dgPrint ("TC_EQV", 
+         (fn s => fn (t1,t2) =>
+             (PU.pps s "t1:"; PP.newline s; PPLty.ppTyc 10 s t1; PP.newline s;
+              PU.pps s "t2:"; PP.newline s; PPLty.ppTyc 10 s t2; PP.newline s;
+              PU.pps s"***************************************************";
+              PP.newline s)), (t1,t2));
+        false)
     end (* tc_eqv *)
 
 in
@@ -794,15 +805,23 @@ val tc_eqv = tc_eqv
 
 end (* tyc equivalence utilities *)
 
+(* temporary placeholder implementation of a tyc match function, where
+ * t1 is a scheme with variables of sig ks, and t2 is a "ground" tyc
+ * being matched against t1 *)
+fun tc_match(ks: tkind list, ltys: lty list, argtyc: tyc) = true
 
 (** lt_eqv_generator, invariant: t1 and t2 are in the wh-normal form *)
+(** The LT_TCY/LT_POLY case is asymmetric, reflecting the fact that
+ ** a polytype in a functor argument (t2) can match a monotype in the 
+ ** functor parameter signature (t1) **)
 fun lt_eqv_gen (t1 : lty, t2: lty) = 
     (case (lt_outX t1, lt_outX t2)
       of (LT_POLY(ks1, b1), LT_POLY(ks2, b2)) =>
          (eqlist tk_eqv (ks1, ks2)) andalso (eqlist lt_eqv (b1, b2))
+       | (LT_TYC a, LT_TYC b) => tc_eqv(a, b)
+       | (LT_TYC a, LT_POLY(ks, b)) => tc_match(ks, b, a)
        | (LT_FCT(as1, bs1), LT_FCT(as2, bs2)) => 
          (eqlist lt_eqv (as1, as2)) andalso (eqlist lt_eqv (bs1, bs2))
-       | (LT_TYC a, LT_TYC b) => tc_eqv(a, b)
        | (LT_STR s1, LT_STR s2) => eqlist lt_eqv (s1, s2)
        | (LT_CONT s1, LT_CONT s2) => eqlist lt_eqv (s1, s2)
        | _ => (print "%%%lt_eqv_gen DEFAULT\n"; false))
@@ -814,12 +833,13 @@ and lt_eqv(x : lty, y: lty) : bool =
         val res = if (ltp_norm t1) andalso (ltp_norm t2) then lt_eq(t1, t2)
                   else lt_eqv_gen(t1, t2)
     in res orelse 
-       (with_pp(fn s =>
-             (PU.pps s "LT_EQV"; PP.newline s;
-              PU.pps s "t1:"; PP.newline s; PPLty.ppLty 10 s t1; PP.newline s;
+       (dgPrint ("LT_EQV", 
+         (fn s => fn (t1,t2) =>
+             (PU.pps s "t1:"; PP.newline s; PPLty.ppLty 10 s t1; PP.newline s;
               PU.pps s "t2:"; PP.newline s; PPLty.ppLty 10 s t2; PP.newline s;
               PU.pps s"***************************************************";
-              PP.newline s)); false)
+              PP.newline s)), (t1,t2));
+        false)
     end (* function lt_eqv *)
 
 (*

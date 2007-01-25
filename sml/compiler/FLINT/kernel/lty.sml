@@ -14,11 +14,11 @@ fun bug s = ErrorMsg.impossible ("Lty:" ^ s)
 
 (** hashconsing implementation basics *)
 local (* hashconsing *)
-  val MVAL = 10000
-  val BVAL = MVAL * 2 (* all indexes i start from 0 *)
+  val MVAL = 10000     (* big enough? No more than MVAL variables per binder *)
+  val BVAL = MVAL * 2  (* bound on encoded tvars of innermost binder *)
 in 
 
-(* encoded deBruijn indexes *)
+(* enc_tvar: encoded type variables = deBruijn indexes * binder arity indexes *)
 (* Type lambda bindings (TC_FN) bind several variables at a time,
  * i.e. they are n-ary for some n, with each type variable given a kind.
  * A type variable is represented by a pair (d,k), where d is a
@@ -26,30 +26,37 @@ in
  * nesting level, counting inside out, and k is a 0-based index
  * into the list of the type variables bound by that binder.
  * These (d,k) pairs are encoded into a single integer by tvEncode,
- * and the pair can be recovered from its encoding by tvDecode. *)
+ * and the pair can be recovered from its encoding by tvDecode.
+ * ASSUMPTION: k < MVAL = 10000. *)
 
-type enc_tvar = int 
-fun tvEncode (d, k) = d * MVAL + k   (* d >= 1, k >= 0 *)
+type enc_tvar = int  (* tv : enc_tvar => tv >= MVAL *)
+fun tvEncode (d, k) = d * MVAL + k   (* d >= 1, k >= 0, k < MVAL *)
 fun tvDecode x = ((x div MVAL), (x mod MVAL))
 
 (* enc_tvars < BVAL are bound by the innermost TC_FN binder.
  * exitLevel takes a list of enc_tvars and eliminates those bound
- * by the intermost binder, and decrements the d-level of the remainder *)
+ * by the innermost binder, and decrements the d-level of the remainder,
+ * thus effectively popping out of the innermost binding context.
+ *)
 fun exitLevel (xs: enc_tvar list) : enc_tvar list =
     let fun h ([], x) = rev x
           | h (a::r, x) = if a < BVAL then h(r, x) else h(r, (a-MVAL)::x)
     in h(xs, [])
     end
   
-(* definitions of named tyc variables.
-   for now, these share the same namespace with lvars. *)
+(* tvar : "named"(?) tyc variables.
+   For now(?), these share the same "namespace" with lvars. *)
 (* [KM ???] Are these used at all? Yes, they are used after
  * translation into the flint language(?). Are these the
  * "run-time" type parameters? *)
-type tvar = LambdaVar.lvar (* = int = enc_tvar *)
+type tvar = LambdaVar.lvar (* = int, coincidentally = enc_tvar *)
 val mkTvar = LambdaVar.mkLvar
 
-(* for lists of free type variables, debruijn indices are collapsed
+(* aus_info: auxiliary information maintained in hash_cells.
+ * bool records whether the contents is fully normalized,
+ * enc_tvar list and tvar list contain free type variables (both sorted) *) 
+
+(* for lists of free type variables, deBruijn indices are collapsed
    into a single integer using tvEncode/tvDecode, named variables use
    the tvar as an integer.  The deBruijn-indexed list is kept sorted,
    the named variables are in arbitrary order (for now) --league, 2 July 1998.
@@ -64,8 +71,10 @@ datatype aux_info
             * tvar list      (* free named type vars, sorted? *)
   | AX_NO                    (* no aux_info available *)
 
-(* these two are originally from SortedList -- which I wanted to get
- * rid off.  -- Matthias  11/2000 *)
+(* Functions for merging lists of env_tvars and tvars.
+ * [Matthias  11/2000: These two are originally from SortedList
+ *   -- which I wanted to get rid of.] *)
+
 (* mergeTvs: tvar list * tvar list -> tvar list
  * merge two sorted lists of tvars into a sorted list, eliminating duplicates *)
 fun mergeTvs (l : tvar list, []) = l
@@ -81,11 +90,7 @@ fun mergeTvs (l : tvar list, []) = l
 fun fmergeTvs [] = []
   | fmergeTvs (h :: t) = foldr mergeTvs h t
 
-(*
-val mergeTvs = SortedList.merge
-val fmergeTvs = SortedList.foldmerge
-*)
-
+(* hash cells -- used to represent hash consed types plambda types *)
 type 'a hash_cell = (int * 'a * aux_info) ref
 
 end (* local of hashconsing implementation basics *)
@@ -95,6 +100,7 @@ end (* local of hashconsing implementation basics *)
  ***************************************************************************)
 
 (** definition of kinds for all the lambda tycs *)
+(* [KM???] TK_BOX does not appear to be used *)
 datatype tkindI
   = TK_MONO                                    (* ground mono tycon *)
   | TK_BOX                                     (* boxed/tagged tycon *)
@@ -112,16 +118,16 @@ datatype fflag                                 (* calling conventions *)
 
 datatype rflag = RF_TMP                        (* tuple kind: a template *)
  (* [dbm] only one rflag value, so doesn't discriminate anything, 
-  * therefore probably redundant *)
+  * therefore redundant, could be removed *)
 
-(** definitions of lambda type constructors *)
+(** definitions of concrete plambda type constructors *)
 datatype tycI
-  = TC_VAR of DebIndex.index * int             (* tyc variables *)
-  | TC_NVAR of tvar                            (* named tyc variables *)
+  = TC_VAR of DebIndex.index * int             (* tyc variables [why not enc_tvar?] *)
+  | TC_NVAR of tvar                            (* "named" tyc variables *)
   | TC_PRIM of PrimTyc.primtyc                 (* primitive tyc *)
 
-  | TC_FN of tkind list * tyc                  (* tyc abstraction *)
-  | TC_APP of tyc * tyc list                   (* tyc application *)
+  | TC_FN of tkind list * tyc                  (* tyc abstraction, n-ary *)
+  | TC_APP of tyc * tyc list                   (* tyc application, n-ary *)
   | TC_SEQ of tyc list                         (* tyc sequence *)
   | TC_PROJ of tyc * int                       (* tyc projection *)
 
@@ -137,21 +143,21 @@ datatype tycI
 
   | TC_TUPLE of rflag * tyc list               (* std record tyc *)
   | TC_ARROW of fflag * tyc list * tyc list    (* std function tyc *)
-  | TC_PARROW of tyc * tyc                     (* special fun tyc, not used *)
+  | TC_PARROW of tyc * tyc                     (* special fun tyc [not used] *)
 
   | TC_BOX of tyc                              (* boxed tyc *)
-  | TC_ABS of tyc                              (* abstract tyc, not used *)
+  | TC_ABS of tyc                              (* abstract tyc  [not used] *)
   | TC_TOKEN of token * tyc                    (* extensible token tyc *)
   | TC_CONT of tyc list                        (* intern continuation tycon *)
-  | TC_IND of tyc * tycI                       (* indirect tyc thunk *)
+  | TC_IND of tyc * tycI                       (* indirect tyc "thunk" *)
   | TC_ENV of tyc * int * int * tycEnv         (* tyc closure *)
 
 withtype tyc = tycI hash_cell                  (* hash-consed tyc cell *)
-     and tycEnv = tyc     (* 
-                           * This really is (tyc list option * int) list,
-                           * it is encoded using SEQ[(PROJ(SEQ tcs),i)]
-                           * and SEQ[(PROJ(VOID, i))]. (ZHONG)
-                           *)
+     and tycEnv = tyc
+
+(* tycEnv are lists of "type environment binders" (see datatype teBinder
+ * below), but are encoded as tycs so that the hash-consing machinery
+ * for tycs can be applied to them. [dbm, 1/25/07] *)
 
 (** definitions of lambda types *)
 datatype ltyI          
@@ -166,6 +172,7 @@ datatype ltyI
 
 withtype lty = ltyI hash_cell                  (* hash-consed lty cell *)
 
+
 (***************************************************************************
  *                   TOKEN TYC UTILITY FUNCTIONS                           *
  ***************************************************************************)
@@ -179,7 +186,7 @@ type token_info
 
 local val token_key = ref 0
       val token_table_size = 10
-      val default_token_info = 
+      val default_token_info : token_info = 
         {name="TC_GARBAGE", 
          abbrev="GB",
          reduce_one=(fn _ => bug "token not implemented"),
@@ -621,15 +628,14 @@ in
 end
 (*
 	     (case (tc_outX tyc1, tc_outX tyc2) 
-	       of (TC_PRIM pt1, TC_PRIM pt2) => 
-		    print "PRIM\n"
-		| (TC_FN _, _) => 
-		    print "FN\n"
+	       of (TC_PRIM pt1, TC_PRIM pt2) => print "PRIM\n"
+		| (TC_FN _, _) => print "FN\n"
 		| (TC_FIX _, _) => print "FIX\n"
 		| (TC_VAR _, _) => print "VAR\n"
 		| (TC_NVAR _, _) => print "NVAR\n"
 		| (TC_APP _, _) => print "APP\n"
-		| (TC_SEQ _, _) => print "SEQ\n"		| (TC_PROJ _, _) => print "PROJ\n"
+		| (TC_SEQ _, _) => print "SEQ\n"
+		| (TC_PROJ _, _) => print "PROJ\n"
 		| (TC_SUM _, _) => print "SUM\n"
 		| (TC_TUPLE _, _) => print "TUPLE\n"
 		| (TC_ARROW _, _) => print "ARROW\n"
