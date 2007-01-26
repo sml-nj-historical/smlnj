@@ -1,0 +1,23 @@
+Organization of FLINT/kernel
+
+primop.sig/sml
+
+primtyc.sig/sml
+
+lty.sig/sml
+
+pplty.sml
+
+ltykindchk.sml
+
+ltykernel.sig/sml
+
+ltybasic.sig/sml
+
+ltydef.sig/sml
+
+ltydict.sml
+
+ltyextern.sig/sml
+
+
