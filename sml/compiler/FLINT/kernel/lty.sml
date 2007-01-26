@@ -577,6 +577,11 @@ fun teLookup(tenv : tycEnv, i: int) : teBinder option =
              else bug "index 0 in tycEnvLookup"
          | NONE => NONE)
 
+fun teLength (tenv: tycEnv) : int =
+    case teDest tenv
+      of NONE => 0
+       | SOME(_,tenv') => 1 + teLength tenv'
+
 
 (***************************************************************************
  *            UTILITY FUNCTIONS ON TKIND ENVIRONMENT                       *

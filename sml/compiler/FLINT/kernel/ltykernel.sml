@@ -38,40 +38,43 @@ fun dgPrint (msg: string, printfn: PP.stream -> 'a -> unit, arg: 'a) =
 (** utility functions for tc_env and lt_env *)
 local
 
-  fun tcc_env_int(x, 0, 0, te) = x
-    | tcc_env_int(x, i, j, te) =
-      if i < 0 then bug "tcc_env_int: negative i"
-      else if j < 0 then bug "tcc_env_int: negative j"
-      else tc_injX(TC_ENV(x, i, j, te))
+  (* tcc_env_chkd and ltc_env_chkd check for the r2 condition to avoid
+   * constructing a closure, and check the invariants that ol and nl
+   * are nonnegative are satisfied *)
+  fun tcc_env_chkd(x, 0, 0, te) = x
+    | tcc_env_chkd(x, ol, nl, te) =
+      if ol < 0 then bug "tcc_env_chkd: negative ol"
+      else if nl < 0 then bug "tcc_env_chkd: negative nl"
+      else tc_injX(TC_ENV(x, ol, nl, te))
 
-  fun ltc_env_int(x, 0, 0, te) = x
-    | ltc_env_int(x, i, j, te) =
-      if i < 0 then bug "ltc_env_int: negative i"
-      else if j < 0 then bug "ltc_env_int: negative j"
-      else lt_injX(LT_ENV(x, i, j, te))
+  fun ltc_env_chkd(x, 0, 0, te) = x
+    | ltc_env_chkd(x, ol, nl, te) =
+      if ol < 0 then bug "ltc_env_chkd: negative ol"
+      else if nl < 0 then bug "ltc_env_chkd: negative nl"
+      else lt_injX(LT_ENV(x, ol, nl, te))
  
-  fun withEff ([], ol, nl, tenv) = false
-    | withEff (a::r, ol, nl, tenv) = 
-        let val (i, j) = tvDecode a
+  (* needsClosure : enc_tvar list * int * int * tycenv -> bool
+   * checks to see whether any of a list of free variables need
+   * the closure. This could be because they are bound in the 
+   * environment, or because they are subject to a depth adjustment
+   * carried by the nl term *)
+  fun needsClosure ([], ol, nl, tenv) = false
+    | needsClosure (a::r, ol, nl, tenv) = 
+        let val (n, k) = tvDecode a
             val neweff = 
-              if i > ol then (ol <> nl)
+              if n > ol then (ol <> nl)
               else true
-                  (* case teLookup(i, tenv)
-                       of SOME(Lamb(n,_)) => (nl - n) <> i
-                        | SOME(Beta(n,ts,_)) =>
-                             (let val y = List.nth(ts, j)
+                  (* case teLookup(n, tenv)
+                       of SOME(Lamb(nl',_)) => (nl - nl') <> n
+                        | SOME(Beta(nl',ts,_)) =>
+                             (let val y = List.nth(ts, k)  (what is y???)
                                in (case tc_outX y
                                     of TC_VAR(ni, nj) =>
-                                        ((nj <> j) orelse ((ni+nl-n) <> i))
+                                        ((nj <> k) orelse ((ni+nl-nl') <> n))
                                      | _ => true)
                               end) *)
-         in neweff orelse (withEff(r, ol, nl, tenv))
+         in neweff orelse (needsClosure(r, ol, nl, tenv))
         end
-
-fun tenvLength (tenv: tycEnv) : int =
-    case teDest tenv
-      of NONE => 0
-       | SOME(_,tenv') => 1 + tenvLength tenv'
 
 in 
 
@@ -101,30 +104,35 @@ fun tcc_env(x, ol, nl, tenv) =
 		    | NONE => (print "tcc_env TC_VAR: d out of bounds:\n";
                                print "d = "; print (Int.toString d); print "\n";
                                print "ol = "; print (Int.toString ol); print "\n";
-                               print "length(tenv) = "; print (Int.toString(tenvLength tenv)); print "\n"))
+                               print "length(tenv) = ";
+                               print (Int.toString(teLength tenv)); print "\n"))
               | TC_ENV(tc, ol', nl', tenv')  =>
-                 ((* print "TC_ENV("; *) checkTCVAR(tc,ol',nl',tenv') (*;print ")\n" *))
+                 ((* print "TC_ENV("; *)
+                 checkTCVAR(tc,ol',nl',tenv')
+                 (*;print ")\n" *))
               | _ => () (* print ("tcc_env OTHER " ^ tci_print tci ^"\n") *) 
    in checkTCVAR(x,ol,nl,tenv); 
    (* original body --- *)
    let val tvs = tc_vs x
     in case tvs
-        of NONE => tcc_env_int(x, ol, nl, tenv)
+        of NONE => tcc_env_chkd(x, ol, nl, tenv)
          | SOME [] => x
-         | SOME nvs => if withEff(nvs, ol, nl, tenv) 
-                       then tcc_env_int(x, ol, nl, tenv)
-                       else x 
+         | SOME nvs =>  (* there are known free variables in body *)
+             if needsClosure(nvs, ol, nl, tenv) 
+             then tcc_env_chkd(x, ol, nl, tenv)
+             else x 
    end
    end)
 
 fun ltc_env(x, ol, nl, tenv) = 
   let val tvs = lt_vs x
    in case tvs
-       of NONE => ltc_env_int(x, ol, nl, tenv)
+       of NONE => ltc_env_chkd(x, ol, nl, tenv)
         | SOME [] => x
-        | SOME nvs => if withEff (nvs, ol, nl, tenv) 
-                      then ltc_env_int(x, ol, nl, tenv)
-                      else x 
+        | SOME nvs =>  (* there are known free variables in body *)
+            if needsClosure (nvs, ol, nl, tenv) 
+            then ltc_env_chkd(x, ol, nl, tenv)
+            else x 
   end
 
 end (* local -- utility functions for lt_env and tc_env *)

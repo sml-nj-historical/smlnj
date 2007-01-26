@@ -144,9 +144,10 @@ val lt_key   : lty -> int
 (** utility functions on tycEnv *)
 
 val teEmpty : tycEnv
-val teLookup : tycEnv * int -> teBinder option
 val teCons : teBinder * tycEnv -> tycEnv
 val teDest : tycEnv -> (teBinder * tycEnv) option
+val teLookup : tycEnv * int -> teBinder option
+val teLength : tycEnv -> int
 
 (** utility functions on tkindEnv *)
 type tkindEnv 
