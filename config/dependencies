@@ -13,5 +13,5 @@ nowhere mlrisc-tools
 eXene cml cml-lib
 cml-lib cml
 cml smlnj-lib
-ml-ulex smlnj-lib
-ml-antlr smlnj-lib
+ml-ulex smlnj-lib ml-lpt-lib
+ml-antlr smlnj-lib ml-lpt-lib

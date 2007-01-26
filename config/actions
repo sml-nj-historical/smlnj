@@ -1,6 +1,6 @@
 #
 # This file describes the actions to be taken when installing a "module".
-# See src/smlnj/installer/libinstall.sml for how this file is to be
+# See base/system/smlnj/installer/libinstall.sml for how this file is to be
 # interpreted.
 #
 # (C) 2006 The Fellowship of SML/NJ
@@ -58,6 +58,7 @@ ml-lex   prog
 lexgen   prog lexgen src
 ml-ulex  dprog ml-ulex - ml-lpt/ml-ulex
 ml-antlr dprog ml-antlr - ml-lpt/ml-antlr
+ml-lpt-lib lib ml-lpt-lib.cm ml-lpt-lib.cm ml-lpt/lib
 ml-burg  prog
 heap2asm prog
 

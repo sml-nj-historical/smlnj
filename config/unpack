@@ -294,6 +294,9 @@ do
       ml-antlr)
 	unpack "new LL(k) parser generator" "$ROOT" ml-lpt ml-lpt
 	;;
+      ml-lpt-lib)
+	unpack "utilities for language processing tools" "$ROOT" ml-lpt ml-lpt
+	;;
       doc)
 	echo Package doc is currently unavailable.
 	# unpack Doc $ROOT doc doc

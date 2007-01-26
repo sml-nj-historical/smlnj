@@ -46,6 +46,10 @@ request ml-lex
 #
 #request ml-antlr
 
+# utility library for ml-antlr and ml-ulex
+#
+#request ml-lpt-lib
+
 # Always: install the pre-compiled SML/NJ Library (necessary to bootstrap).
 
 # build ML-Burg
