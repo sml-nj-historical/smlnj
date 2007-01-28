@@ -48,6 +48,7 @@ signature RANDOM
 signature SCAN
 signature SPLAY_TREE
 signature UREF
+signature UTF8
 
 structure ANSITerm
 structure ArrayQSort
@@ -101,6 +102,7 @@ structure WordRedBlackMap
 structure WordRedBlackSet
 structure RealOrderStats
 structure UnivariateStats
+structure UTF8
 
 functor ArrayQSortFn
 functor BSearchFn

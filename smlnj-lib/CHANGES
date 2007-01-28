@@ -2,6 +2,9 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2007-01-28]
+	Added UTF8 signature and structure.
+
 [2005-11-07]
 	Internal change: replaced uses of the depreciated Substring.all
 	with the Substring.full
