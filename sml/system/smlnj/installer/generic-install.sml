@@ -13,7 +13,7 @@
  * 
  * Author: Matthias Blume (blume@tti-c.org)
  *)
-structure LibInstall : sig
+structure GenericInstall : sig
 
     (* all filenames that are passed as arguments use native syntax: *)
     val proc :

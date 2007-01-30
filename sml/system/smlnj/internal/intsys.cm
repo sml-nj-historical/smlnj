@@ -23,7 +23,8 @@ Library
 	structure MakeTool
 	structure ShellTool
 	structure DirTool
-	structure LibInstall (* $smlnj/installer.cm *)
+	structure GenericInstall (* $smlnj/installer.cm *)
+	structure LibraryInstall (* $smlnj/library-install.cm *)
 
 # if not defined(LIGHT)
 	(* export one representative from $smlnj/compiler/all.cm *)
@@ -72,9 +73,10 @@ is
 	 * itself) is always "plugged-in". *)
 	$/dir-tool.cm
 
-	(* The next is the installer.  It just needs to get compiled
-	 * so we know it is in sync with the rest of the code... *)
+	(* The next are installers.  They just needs to get compiled
+	 * so we know they are in sync with the rest of the code... *)
 	$smlnj/installer.cm
+	$smlnj/library-install.cm
 
 	(* We add the HTML lib.  It gets compiled anyway (even though
 	 * the compiler does not need it) because of a static dependence
