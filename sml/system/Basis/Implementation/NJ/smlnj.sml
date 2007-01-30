@@ -14,6 +14,8 @@ structure SMLofNJ (* : SML_OF_NJ *) =
 	  CInterface.c_function "SMLNJ-RunT" "argv"
     val getAllArgs : unit -> string list =
 	  CInterface.c_function "SMLNJ-RunT" "rawArgv"
+    val shiftArgs : unit -> unit =
+	  CInterface.c_function "SMLNJ-RunT" "shiftArgv"
 
 (** How do we define this here???
     val use = Compiler.Interact.use_file
@@ -28,5 +30,3 @@ structure SMLofNJ (* : SML_OF_NJ *) =
 	   InlineT.cast(fn (_,_,hist: string list) => hist)
 
   end;
-
-

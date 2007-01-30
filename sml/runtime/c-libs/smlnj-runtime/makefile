@@ -23,6 +23,7 @@ OBJS =		smlnj-runt-lib.o \
 		alloc-code.o \
 		argv.o \
 		raw-argv.o \
+		shift-argv.o \
 		cmd-name.o \
 		blast-in.o \
 		blast-out.o \

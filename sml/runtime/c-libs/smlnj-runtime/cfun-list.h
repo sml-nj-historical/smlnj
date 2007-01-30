@@ -14,6 +14,7 @@
 CFUNC("argv",		_ml_Proc_argv,		"unit -> string list")
 CFUNC("rawArgv",	_ml_Proc_raw_argv,	"unit -> string list")
 CFUNC("cmdName",	_ml_Proc_cmd_name,	"unit -> string")
+CFUNC("shiftArgv",      _ml_Proc_shift_argv,    "unit -> unit")
 CFUNC("blastIn",	_ml_RunT_blast_in,	"Word8Vector.vector -> 'a")
 CFUNC("blastOut",	_ml_RunT_blast_out,	"'a -> Word8Vector.vector")
 CFUNC("debug",		_ml_RunT_debug,		"string -> unit")

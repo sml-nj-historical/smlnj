@@ -27,6 +27,7 @@ OBJS =		smlnj-runt-lib.obj \
 		argv.obj \
 		raw-argv.obj \
 		cmd-name.obj \
+		shift-arv.obj \
 		blast-in.obj \
 		blast-out.obj \
 		debug.obj \
@@ -70,6 +71,9 @@ raw-argv.obj: raw-argv.c $(DEPENDENTS)
 
 cmd-name.obj: cmd-name.c $(DEPENDENTS)
 	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c cmd-name.c
+
+shift-argv.obj: shift-argv.c $(DEPENDENTS)
+	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c shift-argv.c
 
 blast-in.obj: blast-in.c $(DEPENDENTS)
 	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c blast-in.c
