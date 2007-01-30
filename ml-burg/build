@@ -47,9 +47,7 @@ fi
 
 #
 # Install CM support for ml-burg:
-"$SML" -m \$smlnj/library-install.cm \
-    tool/mlburg-tool.cm ${LIB} mlburg-tool.cm/mlburg-tool.cm
-"$SML" -m \$smlnj/library-install.cm \
-    tool/burg-ext.cm ${LIB} burg-ext.cm/burg-ext.cm
+"$SML" -m \$smlnj/library-install.cm tool/mlburg-tool.cm ${LIB}
+"$SML" -m \$smlnj/library-install.cm tool/burg-ext.cm ${LIB}
 
 exit 0
