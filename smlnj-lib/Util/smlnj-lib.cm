@@ -245,3 +245,6 @@ word-redblack-map.sml
 word-redblack-set.sml
 real-order-stats.sml
 univariate-stats.sml
+utf8-sig.sml
+utf8.sml
+
