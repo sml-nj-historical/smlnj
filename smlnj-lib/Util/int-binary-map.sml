@@ -185,6 +185,16 @@ in
 	    mem set
 	  end
 
+    fun lookup (set, x) = let 
+	  fun mem E = raise LibBase.NotFound
+	    | mem (T(n as {key,left,right,...})) =
+		if x > key then mem right
+		else if x < key then mem left
+		else #value n
+	  in
+	    mem set
+	  end
+
     fun remove (E,x) = raise LibBase.NotFound
       | remove (set as T{key,left,right,value,...},x) =
           if key > x then 

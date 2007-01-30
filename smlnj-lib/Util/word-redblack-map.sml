@@ -112,6 +112,19 @@ structure WordRedBlackMap :> ORD_MAP where type Key.ord_key = word =
 	    find' t
 	  end
 
+  (* Look for an item, raise NotFound if the item doesn't exist *)
+    fun lookup (MAP(_, t), k) = let
+	  fun look E = raise LibBase.NotFound
+	    | look (T(_, a, yk, y, b)) =
+		if (k < yk)
+		  then  look a
+		else if (k = yk)
+		  then y
+		  else look b
+	  in
+	    look t
+	  end
+
   (* Remove an item, returning new map and value removed.
    * Raises LibBase.NotFound if not found.
    *)

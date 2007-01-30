@@ -185,6 +185,17 @@ in
 	    mem set
 	  end
 
+    fun lookup (set, x) = let 
+	  fun mem E = raise LibBase.NotFound
+	    | mem (T(n as {key,left,right,...})) = (case K.compare (x,key)
+		 of GREATER => mem right
+		  | EQUAL => #value n
+		  | LESS => mem left
+		(* end case *))
+	  in
+	    mem set
+	  end
+
     fun remove (E,x) = raise LibBase.NotFound
       | remove (set as T{key,left,right,value,...},x) = (
           case K.compare (key,x)

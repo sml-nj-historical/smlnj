@@ -3,6 +3,9 @@ correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
 [2007-01-30]
+	Added the lookup function to the ORD_MAP interface.
+
+[2007-01-30]
 	Added the fromList function to the ORD_SET interface.  For the red-black
 	tree and list based implementations, this operation is linear for ordered
 	inputs.

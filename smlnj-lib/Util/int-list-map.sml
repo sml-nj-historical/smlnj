@@ -63,6 +63,17 @@ structure IntListMap :> ORD_MAP where type Key.ord_key = Int.int =
 	    f l
 	  end
 
+  (* Look for an item, raise NotFound if the item doesn't exist *)
+    fun lookup (l, key) = let
+	  fun f [] = raise LibBase.NotFound
+	    | f ((key', x) :: r) =
+		if (key < key') then raise LibBase.NotFound
+		else if (key = key') then x
+		else f r
+	  in
+	    f l
+	  end
+
   (* Remove an item, returning new map and value removed.
    * Raise LibBase.NotFound if not found.
    *)

@@ -107,6 +107,18 @@ functor RedBlackMapFn (K : ORD_KEY) :> ORD_MAP where Key = K =
 	    find' t
 	  end
 
+  (* Look for an item, raise NotFound if the item doesn't exist *)
+    fun lookup (MAP(_, t), k) = let
+	  fun look E = raise LibBase.NotFound
+	    | look (T(_, a, yk, y, b)) = (case K.compare(k, yk)
+		 of LESS => look a
+		  | EQUAL => y
+		  | GREATER => look b
+		(* end case *))
+	  in
+	    look t
+	  end
+
   (* Remove an item, returning new map and value removed.
    * Raises LibBase.NotFound if not found.
    *)

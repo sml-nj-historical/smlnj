@@ -29,6 +29,9 @@ signature ORD_MAP =
     val find : 'a map * Key.ord_key -> 'a option
 	(* Look for an item, return NONE if the item doesn't exist *)
 
+    val lookup : 'a map * Key.ord_key -> 'a
+	(* look for an item, raise the NotFound exception if it doesn't exist *)
+
     val inDomain : ('a map * Key.ord_key) -> bool
 	(* return true, if the key is in the domain of the map *)
 

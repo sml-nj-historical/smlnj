@@ -64,6 +64,18 @@ functor ListMapFn (K : ORD_KEY) :> ORD_MAP where type Key.ord_key = K.ord_key =
 	    f l
 	  end
 
+  (* Look for an item, raise NotFound if the item doesn't exist *)
+    fun lookup (l, key) = let
+	  fun f [] = raise LibBase.NotFound
+	    | f ((key', x) :: r) = (case Key.compare(key, key')
+		   of LESS => raise LibBase.NotFound
+		    | EQUAL => x
+		    | GREATER => f r
+		  (* end case *))
+	  in
+	    f l
+	  end
+
   (* Remove an item, returning new map and value removed.
    * Raise LibBase.NotFound if not found.
    *)

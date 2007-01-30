@@ -82,7 +82,15 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
     fun find (EMPTY,_) = NONE
       | find (MAP{root,nobj},key) = (case splay (cmpf key, !root)
 	   of (EQUAL, r as SplayObj{value,...}) => (root := r; SOME(#2 value))
-	    | (_, r) => (root := r; NONE))
+	    | (_, r) => (root := r; NONE)
+	  (* end case *))
+
+  (* Look for an item, raise NotFound if the item doesn't exist *)
+    fun lookup (EMPTY,_) = raise LibBase.NotFound
+      | lookup (MAP{root,nobj},key) = (case splay (cmpf key, !root)
+	   of (EQUAL, r as SplayObj{value,...}) => (root := r; #2 value)
+	    | (_, r) => (root := r; raise LibBase.NotFound)
+	  (* end case *))
 
 	(* Remove an item.
          * Raise LibBase.NotFound if not found
