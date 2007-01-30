@@ -2,12 +2,15 @@
 
 if [ x${SMLNJ_HOME} = x ] ; then
     BIN_DIR="@BINDIR@"
+    LIB_DIR="@LIBDIR"
 else
-    if [ x"$CM_PATHCONFIG" = x ] ; then
-	CM_PATHCONFIG=${SMLNJ_HOME}/lib/pathconfig
-	export CM_PATHCONFIG
-    fi
     BIN_DIR=${SMLNJ_HOME}/bin
+    LIB_DIR=${SMLNJ_HOME}/lib
+fi
+
+if [ x"$CM_PATHCONFIG" = x ] ; then
+    CM_PATHCONFIG=${LIB_DIR}/pathconfig
+    export CM_PATHCONFIG
 fi
 
 SML=$BIN_DIR/sml
