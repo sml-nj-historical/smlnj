@@ -72,7 +72,7 @@ structure LibraryInstall : sig end = struct
 	end
 
     (* src is still Unix-style, tgt is native: *)
-    fun install (usrc, libdir, rtgt) =
+    fun install (usrc, src, libdir, rtgt) =
 	(if CM.stabilize false usrc then
 	     case #arcs (P.fromString rtgt) of
 		 anchor :: _ =>
@@ -80,7 +80,6 @@ structure LibraryInstall : sig end = struct
 			   case OS.Process.getEnv "CM_PATHCONFIG" of
 			       SOME pc => pc
 			     | NONE => P.concat (libdir, "pathconfig")
-		       val src = P.fromUnixPath usrc
 		       val srcdir = P.dir src
 		       val srcfile = P.file src
 		       val s_src = pconc [srcdir, CM.cm_dir_arc,
@@ -100,7 +99,13 @@ structure LibraryInstall : sig end = struct
 	handle exn => fail ["uncaught exception: ",
 			    General.exnMessage exn, "\n"]
 
-    fun doit [src, libdir, tgt] = install (src, libdir, P.fromUnixPath tgt)
+    fun doit [src, libdir, tgt] =
+	  install (src, P.fromUnixPath src, libdir, P.fromUnixPath tgt)
+      | doit [src, libdir] =
+	  let val nsrc = P.fromUnixPath src
+	      val f = P.file nsrc
+	  in install (src, nsrc, libdir, P.concat (f, f))
+	  end
       | doit _ = (usage (); OS.Process.failure)
 
     (* run the installer *)
