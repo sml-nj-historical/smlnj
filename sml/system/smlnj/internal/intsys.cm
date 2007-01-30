@@ -18,7 +18,6 @@ Library
 	structure Tools
 	structure YaccTool
 	structure LexTool
-	structure BurgTool
 	structure NowebTool
 	structure MakeTool
 	structure ShellTool
@@ -55,10 +54,6 @@ is
 	 * i.e., at a time when on-demand loading does not work yet. *)
 	$/grm-ext.cm		(* implies $/mlyacc-tool.cm *)
 	$/lex-ext.cm		(* implies $/mllex-tool.cm *)
-        (* Technically, the ml-burg tool is not needed here.  It should
-         * eventually be moved into the ML-Burg source tree and installed
-         * from there. *)
-	$/burg-ext.cm		(* implies $/mlburg-tool.cm *)
         (* Technically, the noweb tool is not needed here.  It should
          * eventually be moved into the noweb source tree and installed
          * from there. *)

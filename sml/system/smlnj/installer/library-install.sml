@@ -25,9 +25,9 @@ structure LibraryInstall : sig end = struct
       | pconc (p :: ps) = P.concat (p, pconc ps)
 
     fun usage () =
-	say ["sml -m $smlnj/lib-install.cm src libdir tgt\n",
+	say ["sml -m $smlnj/library-install.cm src libdir tgt\n",
 	     "\tsrc: .cm-file for library (path name in Unix syntax)\n",
-	     "\tlibdir: library directory (path name in native syntax)",
+	     "\tlibdir: library directory (path name in native syntax)\n",
 	     "\ttgt: .cm-file for destination (Unix-syntax, ",
 	     "relative to libdir)\n"]
 	 
