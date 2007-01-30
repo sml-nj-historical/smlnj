@@ -77,6 +77,21 @@ structure IntListSet :> ORD_SET where type Key.ord_key = Int.int =
 	    union (l, items')
 	  end
 
+  (* create a set from a list of items; this function works in linear time if the list
+   * is in increasing order.
+   *)
+    fun fromList [] = []
+      | fromList (first::rest) = let
+	  fun add (prev, x::xs, s) = (case Key.compare(prev, x)
+		 of LESS => add (x, xs, x::s)
+		  | _ => (* not ordered, so fallback to addList *)
+		      addList (List.rev s, x::xs)
+		(* end case *))
+	    | add (_, [], s) = List.rev s
+	  in
+	    add (first, rest, [first])
+	  end
+
   (* Remove an item, returning new map and value removed.
    * Raise LibBase.NotFound if not found.
    *)

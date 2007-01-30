@@ -19,6 +19,9 @@ signature ORD_SET =
     val singleton : item -> set
 	(* Create a singleton set *)
 
+    val fromList : item list -> set
+	(* create a set from a list of items *)
+
     val add  : set * item -> set
     val add' : (item * set) -> set
 	(* Insert an item. *)

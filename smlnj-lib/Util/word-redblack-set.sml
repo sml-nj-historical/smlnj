@@ -271,6 +271,20 @@ structure WordRedBlackSet :> ORD_SET where type Key.ord_key = word =
 	    link (E, t)
 	  end
 
+  (* create a set from a list of items; this function works in linear time if the list
+   * is in increasing order.
+   *)
+    fun fromList [] = empty
+      | fromList (first::rest) = let
+	  fun add (prev, x::xs, n, accum) = if (prev < x)
+		then add(x, xs, n+1, addItem(x, accum))
+		else (* list not in order, so fall back to addList code *)
+		    addList(SET(n, linkAll accum), x::xs)
+	    | add (_, [], n, accum) = SET(n, linkAll accum)
+	  in
+	    add (first, rest, 1, addItem(first, ZERO))
+	  end
+
   (* return the union of the two sets *)
     fun union (SET(_, s1), SET(_, s2)) = let
 	  fun ins ((E, _), n, result) = (n, result)

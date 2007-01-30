@@ -271,6 +271,21 @@ functor RedBlackSetFn (K : ORD_KEY) :> ORD_SET where Key = K =
 	    link (E, t)
 	  end
 
+  (* create a set from a list of items; this function works in linear time if the list
+   * is in increasing order.
+   *)
+    fun fromList [] = empty
+      | fromList (first::rest) = let
+	  fun add (prev, x::xs, n, accum) = (case Key.compare(prev, x)
+		 of LESS => add(x, xs, n+1, addItem(x, accum))
+		  | _ => (* list not in order, so fall back to addList code *)
+		      addList(SET(n, linkAll accum), x::xs)
+		(* end case *))
+	    | add (_, [], n, accum) = SET(n, linkAll accum)
+	  in
+	    add (first, rest, 1, addItem(first, ZERO))
+	  end
+
   (* return the union of the two sets *)
     fun union (SET(_, s1), SET(_, s2)) = let
 	  fun ins ((E, _), n, result) = (n, result)

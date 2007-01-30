@@ -2,6 +2,11 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2007-01-30]
+	Added the fromList function to the ORD_SET interface.  For the red-black
+	tree and list based implementations, this operation is linear for ordered
+	inputs.
+
 [2007-01-28]
 	Added UTF8 signature and structure.
 

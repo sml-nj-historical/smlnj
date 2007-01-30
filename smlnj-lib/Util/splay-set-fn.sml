@@ -67,6 +67,8 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
             SET{nobj=cnt,root=ref t}
           end
 
+    fun fromList l = addList (empty, l)
+
 	(* Remove an item.
          * Raise LibBase.NotFound if not found
 	 *)

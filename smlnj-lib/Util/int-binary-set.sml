@@ -273,6 +273,8 @@ structure IntBinarySet :> ORD_SET where type Key.ord_key = Int.int =
 
     fun addList (s,l) = List.foldl (fn (i,s) => add(s,i)) s l
 
+    fun fromList l = addList (E, l)
+
     val add = add
 
     fun member (set, x) = let
