@@ -24,8 +24,14 @@ is
   ml-yacc-lib.cm
 #endif
 
+#if defined(CMB_REBUILD)
+  html-lex.sml
+  html-gram.sig
+  html-gram.sml
+#else
   html-lex : MLLex
   html-gram : MLYacc
+#endif
 
   html-error-sig.sml
   html-sig.sml
