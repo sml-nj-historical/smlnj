@@ -1,0 +1,87 @@
+Notation:
+
+tenv closure:
+  TC_ENV(tyc,ol,nl,tenv)
+    - tyc : the hashed tyc that is being closed
+    - ol : int -- number of bindings in tenv = length of tenv
+    - nl : int -- 
+           (a) number of lambda bindings between original beta-redex
+           and current site of the closure (roughly the number of
+           lambda bindings the closure has been pushed through by
+	   rule (r10).
+    - tenv : tycEnv -- tyc env mapping deBruijn indexes to teBinders
+
+teBinder:
+  Beta(j,args,ks)
+    - j: int -- lambda nesting level of the beta-redex (relative to
+           original beta-redex site)
+    - args : tyc list -- the redex arguments
+    - ks : tkind list -- the kinds of the redex arguments
+  Lamb(j,ks)
+    - j: int -- lambda nesting level of a "promoted" lambda binding
+    - ks: tkind list -- kinds of the lambda-bound variables
+
+
+Rules for tyc normalization
+
+Beta reduction:
+
+(r1) TC_APP(TC_FN(ks,tyc),tycs) =>             (beta reduction)
+       TC_ENV(tyc,1,0,Beta(0,tycs,ks)::nil)
+
+Simplification rules:
+
+(r2) TC_ENV(tyc,0,0,nil) => tyc                (null env)
+
+(r3) TC_ENV(tyc,ol,nl,tcenv) => tyc  (if tyc closed)
+
+
+Variable lookup:
+
+(r4) TC_ENV((n,k),ol,nl,tcenv) => (n-ol+nl,k)  if n > ol  (adjust free var)
+
+(r5) TC_ENV((n,k),ol,nl,tcenv) => (nl-nl',k)  where tcenv[n] = Lamb(nl',ks)
+
+(r6) TC_ENV((n,k),ol,nl,tcenv) => TC_ENV(tycs[k],0,nl-nl',nil)
+     where tcenv[n] = Beta(nl',tycs,ks)
+
+Constructors
+
+(r7) TC_ENV(tyc as TC_PRIM _,ol,nl,tcenv) = tyc   (special case of (r3))
+
+Distribution (r8, r9)
+
+(r8a) TC_ENV(TC_* tyc,ol,nl,tcenv) = 
+       TC_* (TC_ENV(tyc,ol,nl,tcenv))
+
+     where TC_* ranges over unary constructors, preserving non-tyc args
+
+(r8b) TC_ENV(TC_* tycs,ol,nl,tcenv) = 
+       TC_*(map (fn tyc => TC_ENV(tyc,ol,nl,tcenv)) tycs)
+
+     where TC_* ranges over n-ary constructors: TC_APP, TC_SEQ, TC_SUM,
+     TC_ARROW, etc.
+     
+(r10) TC_ENV(TC_FN(ks,tyc),ol,nl,tcenv) => 
+        TC_FN(ks, TC_ENV(tyc,ol+1,nl+1,Lamb(nl,ks)))
+
+
+Pushing through lambda
+
+(r11) TC_ENV(TC_ENV(tyc,ol,nl,tcenv),0,nl',nil) =>
+        TC(tyc,ol,nl+nl',tcenv)
+
+
+Closure reuse
+
+(r12) TC_APP(TC_FN(ks,TC_ENV(tyc1,ol,nl,Lamb(nl-1,ks))), tycs2) =>
+        TC_ENV(tyc1,ol,nl-1,Beta(nl-1,tycs2,ks)::tcenv)
+
+Invariants:
+
+1. ol is the length of the environment
+
+	ol = |tenv|
+
+2. ol = nl =>  ???
+
