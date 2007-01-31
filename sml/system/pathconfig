@@ -15,12 +15,10 @@ SMLNJ-LIB		../../smlnj-lib
 SMLNJ-ML-YACC-LIB	../../ml-yacc/lib
 smlnj-tdp		../../trace-debug-profile
 
-mlyacc-tool.cm		../cm/tools/mlyacc
-grm-ext.cm		../cm/tools/mlyacc
-mllex-tool.cm		../cm/tools/mllex
-lex-ext.cm		../cm/tools/mllex
-mlburg-tool.cm		../cm/tools/mlburg
-burg-ext.cm		../cm/tools/mlburg
+mlyacc-tool.cm		../../ml-yacc/tool
+grm-ext.cm		../../ml-yacc/tool
+mllex-tool.cm		../../ml-lex/tool
+lex-ext.cm		../../ml-lex/tool
 make-tool.cm		../cm/tools/make
 shell-tool.cm		../cm/tools/shell
 noweb-tool.cm		../cm/tools/noweb

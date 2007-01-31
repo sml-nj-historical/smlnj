@@ -16,6 +16,7 @@ Library
 	structure CM        (* $smlnj/cm.cm *)
 	structure CMB       (* $smlnj/cmb.cm *)
 	structure Tools
+	structure LexTool
 	structure YaccTool
 	structure NowebTool
 	structure MakeTool
@@ -49,6 +50,7 @@ is
 
 	$smlnj/cm/tools.cm
 	$/grm-ext.cm		(* implies $/mlyacc-tool.cm *)
+	$/lex-ext.cm		(* implies $/mllex-tool.cm *)
         (* Technically, the noweb tool is not needed here.  It should
          * eventually be moved into the noweb source tree and installed
          * from there. *)

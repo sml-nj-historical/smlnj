@@ -876,8 +876,6 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		       icm)
     end
 
-    val initPaths = initPaths
-
     structure CM = struct
 	type 'a controller = { get : unit -> 'a, set : 'a -> unit }
 

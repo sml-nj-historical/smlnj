@@ -141,9 +141,7 @@ end = struct
 
     (* stabilization of libraries... *)
     fun dostabs () =
-	(CM.Anchor.reset ();
-	 CM0.initPaths ();
-	 foldr (fn (f, true) => f () | (_, false) => false) true (!stablist))
+	foldr (fn (f, true) => f () | (_, false) => false) true (!stablist)
 
     (* move stable library files to their final locations... *)
     fun domoves () =
