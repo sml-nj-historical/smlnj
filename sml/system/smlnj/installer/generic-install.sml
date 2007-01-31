@@ -141,7 +141,9 @@ end = struct
 
     (* stabilization of libraries... *)
     fun dostabs () =
-	foldr (fn (f, true) => f () | (_, false) => false) true (!stablist)
+	(CM.Anchor.reset ();
+	 CM0.initPaths ();
+	 foldr (fn (f, true) => f () | (_, false) => false) true (!stablist))
 
     (* move stable library files to their final locations... *)
     fun domoves () =
@@ -195,14 +197,16 @@ end = struct
 	    before TextIO.closeOut s
 	end
 
-	(* augment anchor mapping with extra bindings: *)
-	val _ =
+	fun augment_anchor_mapping pcfile =
 	    pc_fold (fn ((), k, v) =>
 			(#set (CM.Anchor.anchor k)
 			      (SOME (P.concat (libdir, native v)));
 			 write_cm_pathconfig (k, v)))
 		    ()
-	            extrapathconfig
+		    pcfile
+
+	(* augment anchor mapping with extra bindings: *)
+	val _ = augment_anchor_mapping extrapathconfig
 
 	(* find and open first usable targetsfiles *)
 	val targetsfiles =

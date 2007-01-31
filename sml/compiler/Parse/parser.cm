@@ -23,10 +23,16 @@ is
 	ast/astutil.sig
 	ast/astutil.sml
 
-	lex/ml.lex
 	lex/tokentable.sml
 
+#if defined(CMB_REBUILD)
+        lex/ml.lex.sml
+	parse/ml.grm.sig
+	parse/ml.grm.sml
+#else
+	lex/ml.lex
 	parse/ml.grm
+#endif
 
 	main/parsercontrol.sml
 	main/parser.sig
