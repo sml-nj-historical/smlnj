@@ -21,15 +21,6 @@
 #
 #request src-smlnj
 
-# build ML-Yacc
-#
-request ml-yacc
-
-# Always: install the pre-compiled ML-Yacc Library; this is necessary
-# to use parsers produced by ML-Yacc, but also to bootstrap the system
-# in the first place.
-
-
 # build new ML-Lex
 #
 #request lexgen
@@ -41,6 +32,15 @@ request ml-yacc
 # build legacy ML-Lex
 #
 request ml-lex
+
+# build ML-Yacc (must come after ml-lex)
+#
+request ml-yacc
+
+# Always: install the pre-compiled ML-Yacc Library; this is necessary
+# to use parsers produced by ML-Yacc, but also to bootstrap the system
+# in the first place.
+
 
 # build ML-Antlr
 #

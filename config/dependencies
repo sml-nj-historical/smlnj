@@ -7,6 +7,7 @@
 # (C) 2006 The Fellowship of SML/NJ
 #
 
+ml-yacc ml-lex
 ml-burg ml-yacc ml-lex
 ml-nlffigen ckit smlnj-lib
 nowhere mlrisc-tools
