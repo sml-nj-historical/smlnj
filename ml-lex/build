@@ -12,7 +12,9 @@ ROOT="ml-lex"
 HEAP_IMAGE=""
 SMLNJROOT=`pwd`/..
 BIN=${INSTALLDIR:-$SMLNJROOT}/bin
+LIB=${INSTALLDIR:-$SMLNJROOT}/lib
 BUILD=$BIN/ml-build
+SML=$BIN/sml
 
 #
 # process command-line options
@@ -41,3 +43,9 @@ fi
 
 "$BUILD" ml-lex.cm ExportLexGen.lexGen $HEAP_IMAGE
 
+#
+# Install CM support for ml-lex:
+"$SML" -m \$smlnj/library-install.cm tool/mllex-tool.cm ${LIB}
+"$SML" -m \$smlnj/library-install.cm tool/lex-ext.cm ${LIB}
+
+exit 0
