@@ -22,7 +22,7 @@ local
 in
 
 val dtPrintNames : bool ref = ref true
-val printIND : bool ref = ref true
+val printIND : bool ref = ref false
 
 fun ppSeq ppstrm {sep: string, pp : PP.stream -> 'a -> unit} (list: 'a list) =
     let val {openHOVBox, closeBox, pps, ...} = en_pp ppstrm

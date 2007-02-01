@@ -57,10 +57,10 @@ local
    * checks to see whether any of a list of free variables need
    * the closure. This could be because they are bound in the 
    * environment, or because they are subject to a depth adjustment
-   * carried by the nl term *)
+   * carried by the nl term [formally named withEff] *)
   fun needsClosure ([], ol, nl, tenv) = false
     | needsClosure (a::r, ol, nl, tenv) = 
-        let val (n, k) = tvDecode a
+        let val (n, k) = tvDecode a  (* n is the deBruijn index *)
             val neweff = 
               if n > ol then (ol <> nl)
               else true
@@ -300,7 +300,7 @@ and tc_lzrd(t: tyc) =
       and h (x, 0, 0, _) = g x  (* [KM ???] redundant call to g here? *)
         | h (x, ol, nl, tenv) =
             let fun prop z = tcc_env(z, ol, nl, tenv) 
-		             handle Fail _ =>
+		             handle exn =>
                                (with_pp(fn s =>
                                  (PU.pps s "tc_lzrd.prop:"; PP.newline s;
                                   ppTyc (!dp) s z; PP.newline s));
@@ -311,9 +311,15 @@ and tc_lzrd(t: tyc) =
                          (case teLookup(tenv, n)
                            of NONE => bug "tc_lzrd: short tenv"
                             | SOME(Lamb(nl',ks)) =>   (* rule r5 *)
-                                tcc_var(nl - nl', k)
+                               (* ASSERT: nl > nl' *)
+                                if nl' >= nl then
+                                  (print ("ERROR: tc_lzrd (r5): nl ="^
+                                          Int.toString nl ^ ", nl' = " ^
+                                          Int.toString nl' ^ "\n");
+                                   bug "tc_lzrd - nl' > nl")
+                                else tcc_var(nl - nl', k)
                             | SOME(Beta(nl',ts,ks)) =>  (* rule r6 *)
-                                let val y = List.nth(ts, k) 
+                                let val y = List.nth(ts, k)
                                             handle Subscript =>
                                             (* kind/arity error! *)
                     (with_pp(fn s =>
@@ -321,10 +327,8 @@ and tc_lzrd(t: tyc) =
 				closeBox, pps, ppi} = PU.en_pp s
                        in openHVBox 0;
                           pps "***Debugging***"; newline();
-                          pps "tc_lzrd arg:";
-                          newline();
-                          PPLty.ppTyc (!dp) s t; 
-			  newline();
+                          pps "tc_lzrd arg:"; newline();
+                          PPLty.ppTyc (!dp) s t; newline();
 		          pps "n = "; ppi n; pps ", k = "; ppi k; 
 			  newline();
                           pps "length(ts) = : "; ppi (length ts); 
@@ -337,7 +341,8 @@ and tc_lzrd(t: tyc) =
                           newline(); PP.flushStream s
 			end);
 			raise teUnbound2)
-                                 in if nl' > nl then
+                                 in (* ASSERT: nl >= nl' *)
+                                    if nl' > nl then
                                         (print ("ERROR: tc_lzrd (r6): nl ="^
                                                Int.toString nl ^ ", nl' = " ^
                                                Int.toString nl' ^ "\n");
@@ -351,7 +356,8 @@ and tc_lzrd(t: tyc) =
                       let val tenv' = teCons(Lamb(nl,ks),tenv)
                        in tcc_fn(ks,
 				 tcc_env(tc, ol+1, nl+1, tenv') 
-				 handle Fail _ => bug "tc_lzrd TC_FN") (* rule r10 *)
+				 handle exn =>
+                                   bug "tc_lzrd TC_FN") (* rule r10 *)
                       end
                    | TC_APP (tc, tcs) => tcc_app(prop tc, map prop tcs) (* rule r9 *)
                    | TC_SEQ tcs => tcc_seq (map prop tcs)
@@ -454,8 +460,8 @@ and tc_whnm t = if tcp_norm(t) then t else
        of TC_APP(tc, tcs) =>
 	    ((* print "\ntc_whnm: TC_APP\n"; *)
              let val tc' = tc_whnm tc
-                           handle Fail _ =>
-                                  raise Fail "TC_APP in tc_whnm 1"
+                           handle exn =>
+                             (print "TC_APP in tc_whnm 1\n"; raise exn)
               in case (tc_outX tc')
                   of TC_FN(ks, b) =>  
                        let fun base () = 
@@ -473,8 +479,9 @@ and tc_whnm t = if tcp_norm(t) then t else
                                        | _ => base())
                                 | _ => base()) 
                            val res = tc_whnm(tcc_env sp) 
-			             handle Fail _ =>
-                                            raise Fail "TC_APP in tc_whnm 2" 
+			             handle exn =>
+                                       (print "TC_APP in tc_whnm 2\n";
+                                        raise exn)
                         in tyc_upd(nt, res); res
                        end
                    | ((TC_SEQ _) | (TC_TUPLE _) | (TC_ARROW _) | (TC_IND _)) =>
@@ -786,17 +793,16 @@ and tc_eqv_gen (t1, t2) =
       | (TC_PRIM ptyc1, TC_PRIM ptyc2) =>
         PT.pt_eq(ptyc1,ptyc2)
       | _ => (with_pp(fn s =>
-                         (PU.pps s "%%%tc_eqv_gen DEFAULT";
-                          PP.newline s));
+                (PU.pps s "%%%tc_eqv_gen DEFAULT";
+                 PP.newline s));
               false)
 
 (** general equality for tycs *)
 and tc_eqv (x, y) =
     let val t1 = tc_whnm x
         val t2 = tc_whnm y
-        val res = 
-        if tcp_norm t1 andalso tcp_norm t2 then tc_eq (t1, t2)
-        else tc_eqv_gen (t1, t2)
+        val res = if tcp_norm t1 andalso tcp_norm t2 then tc_eq (t1, t2)
+                  else tc_eqv_gen (t1, t2)
     in res orelse 
        (dgPrint ("TC_EQV", 
          (fn s => fn (t1,t2) =>
