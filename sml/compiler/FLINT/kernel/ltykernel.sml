@@ -35,6 +35,8 @@ fun dgPrint (msg: string, printfn: PP.stream -> 'a -> unit, arg: 'a) =
 	   PP.flushStream ppstrm))
   else ()
 
+exception TCENV
+
 (** utility functions for tc_env and lt_env *)
 local
 
@@ -43,14 +45,14 @@ local
    * are nonnegative are satisfied *)
   fun tcc_env_chkd(x, 0, 0, te) = x
     | tcc_env_chkd(x, ol, nl, te) =
-      if ol < 0 then bug "tcc_env_chkd: negative ol"
-      else if nl < 0 then bug "tcc_env_chkd: negative nl"
+      if ol < 0 then (print "tcc_env_chkd: negative ol\n"; raise TCENV)
+      else if nl < 0 then (print "tcc_env_chkd: negative nl\n"; raise TCENV)
       else tc_injX(TC_ENV(x, ol, nl, te))
 
   fun ltc_env_chkd(x, 0, 0, te) = x
     | ltc_env_chkd(x, ol, nl, te) =
-      if ol < 0 then bug "ltc_env_chkd: negative ol"
-      else if nl < 0 then bug "ltc_env_chkd: negative nl"
+      if ol < 0 then (print "ltc_env_chkd: negative ol\n"; raise TCENV)
+      else if nl < 0 then (print "ltc_env_chkd: negative nl\n"; raise TCENV)
       else lt_injX(LT_ENV(x, ol, nl, te))
  
   (* needsClosure : enc_tvar list * int * int * tycenv -> bool
@@ -101,11 +103,12 @@ fun tcc_env(x, ol, nl, tenv) =
                               print "\n";
 			      bug "Bad TC_ENV TC_VAR [Lamb]")
 			else ()
-		    | NONE => (print "tcc_env TC_VAR: d out of bounds:\n";
+		    | NONE => (* (print "tcc_env TC_VAR: d out of bounds:\n";
                                print "d = "; print (Int.toString d); print "\n";
                                print "ol = "; print (Int.toString ol); print "\n";
                                print "length(tenv) = ";
                                print (Int.toString(teLength tenv)); print "\n"))
+                               *) ())
               | TC_ENV(tc, ol', nl', tenv')  =>
                  ((* print "TC_ENV("; *)
                  checkTCVAR(tc,ol',nl',tenv')
@@ -290,8 +293,8 @@ and tc_lzrd(t: tyc) =
   let fun g x = 
             (case tc_outX x
               of TC_IND (tc, _) => g tc
-               | TC_ENV (tc, i, j, te) => 
-                   let val ntc = g(h(tc, i, j, te))
+               | TC_ENV (tc, ol, nl, te) => 
+                   let val ntc = g(h(tc, ol, nl, te))
                     in tyc_upd(x, ntc); ntc
                    end
                | _ => x)
@@ -300,7 +303,7 @@ and tc_lzrd(t: tyc) =
       and h (x, 0, 0, _) = g x  (* [KM ???] redundant call to g here? *)
         | h (x, ol, nl, tenv) =
             let fun prop z = tcc_env(z, ol, nl, tenv) 
-		             handle exn =>
+		             handle TCENV =>
                                (with_pp(fn s =>
                                  (PU.pps s "tc_lzrd.prop:"; PP.newline s;
                                   ppTyc (!dp) s z; PP.newline s));
@@ -353,13 +356,13 @@ and tc_lzrd(t: tyc) =
                    | TC_NVAR _ => x
                    | TC_PRIM _ => x    (* rule r7 *)
                    | TC_FN (ks, tc) => 
-                      let val tenv' = teCons(Lamb(nl,ks),tenv)
-                       in tcc_fn(ks,
-				 tcc_env(tc, ol+1, nl+1, tenv') 
-				 handle exn =>
-                                   bug "tc_lzrd TC_FN") (* rule r10 *)
-                      end
-                   | TC_APP (tc, tcs) => tcc_app(prop tc, map prop tcs) (* rule r9 *)
+                       let val tenv' = teCons(Lamb(nl,ks),tenv)
+                        in tcc_fn(ks,
+				  tcc_env(tc, ol+1, nl+1, tenv')  (* rule r10 *)
+				  handle TCENV => bug "tc_lzrd TC_FN")
+                       end
+                   | TC_APP (tc, tcs) =>
+                       tcc_app(prop tc, map prop tcs) (* rule r9 *)
                    | TC_SEQ tcs => tcc_seq (map prop tcs)
                    | TC_PROJ (tc, i) => tcc_proj(prop tc, i)
                    | TC_SUM tcs => tcc_sum (map prop tcs)
@@ -494,7 +497,7 @@ and tc_whnm t = if tcp_norm(t) then t else
               in case (tc_outX tc')
                    of (TC_SEQ tcs) => 
                         let val res = List.nth(tcs, i)
-                                      handle _ => bug "TC_SEQ in tc_whnm"
+                                      handle Subscript => bug "TC_SEQ in tc_whnm"
                             val nres = tc_whnm res
                          in tyc_upd(nt, nres); nres
                         end
