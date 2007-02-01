@@ -29,6 +29,22 @@ however, is needed in the documentation.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/02/01 10:05:00 CST
+Description:
+
+Implemented library installer.  Moved CM plugin code for
+ml-burg, ml-lex, and ml-yacc out of CM source tree and into
+their respective trees.  Implemented CM plugin for ml-ulex
+and ml-antlr.  Used library installer for ml-burg, ml-ulex,
+and ml-antlr.
+
+For ml-yacc and ml-lex we continue to have permanently "plugged-in"
+CM tools.  (It turns out to be too messy to do otherwise because
+there is too much code that during installation relies on the presence
+of these tools -- resulting in a tricky ordering problem.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2007/01/30 11:05:00 CST
 Description:
 
