@@ -14,6 +14,20 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Aaron Turon (http://www.cs.uchicago.edu/~adrassi)
+Date: 2007/01/31
+Description:
+
+Brought ml-lpt manual up-to-date with the code.  Many minor 
+improvements to the tools, and a few minor bugfixes.  Prepared
+ml-lpt-lib for integration with new UTF8 structure.  Changed
+the interface for creating streams in ml-ulex (we now support
+stream creation from several kinds of sources).  Overall, the 
+tools are now quite stable, and their interfaces are unlikely to 
+change in a way that would break compatibility.  More work,
+however, is needed in the documentation.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2007/01/30 11:05:00 CST
 Description:
