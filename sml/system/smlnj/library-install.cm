@@ -9,6 +9,7 @@
 Library
 	structure LibraryInstall
 is
+	$smlnj/installer/util.cm
 	$smlnj/basis/basis.cm
 	$smlnj/smlnj-lib/smlnj-lib.cm
 	$smlnj/cm.cm

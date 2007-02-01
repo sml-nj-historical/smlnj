@@ -17,9 +17,9 @@ Library
 # endif
 
 is
+	$smlnj/installer/util.cm
 	$smlnj/basis/basis.cm
 	$smlnj/smlnj-lib/smlnj-lib.cm
-	$smlnj/internal/cm0.cm
 	$smlnj/cm.cm
 
 	installer/generic-install.sml

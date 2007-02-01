@@ -5,24 +5,15 @@
  *
  * author: Matthias Blume
  *)
-
-(**** TODO: factor out all common functionality between this and
- *          generic-install.sml *)
-
 structure LibraryInstall : sig end = struct
 
+    structure U = InstallerUtil
     structure P = OS.Path
     structure F = OS.FileSys
     structure SI = SMLofNJ.SysInfo
 
-    fun say l = TextIO.output (TextIO.stdErr, concat l)
-    fun warn l = say ("WARNING: " :: l)
-    fun fail l = (say ("FAILURE: " :: l);
-		  OS.Process.exit OS.Process.failure)
-
-    fun pconc [] = ""
-      | pconc [p] = p
-      | pconc (p :: ps) = P.concat (p, pconc ps)
+    val say = U.say and fail = U.fail
+    val pconc = U.pconcat
 
     fun usage () =
 	say ["sml -m $smlnj/library-install.cm src libdir tgt\n",
@@ -30,40 +21,9 @@ structure LibraryInstall : sig end = struct
 	     "\tlibdir: library directory (path name in native syntax)\n",
 	     "\ttgt: .cm-file for destination (Unix-syntax, ",
 	     "relative to libdir)\n"]
-	 
+
     (* figure out who and what we are *)
-    val arch = String.map Char.toLower (SMLofNJ.SysInfo.getHostArch ())
-    val (isUnix, oskind) = case SI.getOSKind () of
-			       SI.UNIX => (true, "unix")
-			     | SI.WIN32 => (false, "win32")
-			     | _ => fail ["os kind not supported\n"]
-
-    val arch_oskind = concat [arch, "-", oskind]
-
-    fun fexists f = F.access (f, []) handle _ => false
-    fun rmfile f = F.remove f handle _ => ()
-
-    (* make a directory (including parent, parent's parent, ...) *)
-    fun mkdir "" = ()
-      | mkdir d = if fexists d then () else (mkdir (P.dir d); F.mkDir d)
-
-    (* generalized F.rename that works across different file systems *)
-    fun rename { old, new } =
-	let fun copy () =
-		let val ins = BinIO.openIn old
-		    val outs = BinIO.openOut new
-		    fun loop () =
-			let val v = BinIO.input ins
-			in if Word8Vector.length v = 0 then
-			       (BinIO.closeIn ins; BinIO.closeOut outs)
-			   else (BinIO.output (outs, v); loop ())
-			end
-		in loop ()
-		end
-	in F.rename { old = old, new = new }
-	   handle _ => (* probably on different filesys *)
-		  (copy (); rmfile old)
-	end
+    val { arch_oskind, ... } = U.platformInfo ()
 
     fun add_anchor (f, a) =
 	let val s = TextIO.openAppend f
@@ -88,8 +48,8 @@ structure LibraryInstall : sig end = struct
 		       val { dir = tgtdir, file = tgtfile } = P.splitDirFile tgt
 		       val s_tgtdir = pconc [tgtdir, CM.cm_dir_arc, arch_oskind]
 		       val s_tgt = P.concat (s_tgtdir, tgtfile)
-		   in mkdir s_tgtdir;
-		      rename { old = s_src, new = s_tgt };
+		   in U.mkdir s_tgtdir;
+		      U.rename { old = s_src, new = s_tgt };
 		      add_anchor (pathconfig, anchor);
 		      (* TODO: uniqconfig *)
 		      OS.Process.success
