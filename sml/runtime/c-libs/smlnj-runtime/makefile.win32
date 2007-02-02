@@ -27,7 +27,7 @@ OBJS =		smlnj-runt-lib.obj \
 		argv.obj \
 		raw-argv.obj \
 		cmd-name.obj \
-		shift-arv.obj \
+		shift-argv.obj \
 		blast-in.obj \
 		blast-out.obj \
 		debug.obj \
