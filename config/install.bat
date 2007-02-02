@@ -23,7 +23,7 @@ copy config\sml.bat bin
 
 REM copy config\ml-lex.bat bin
 REM copy config\lexgen.bat bin
-REMcopy config\ml-yacc.bat bin
+REM copy config\ml-yacc.bat bin
 
 REM create heap image and lib hierarchy ("boot")
 copy config\preloads preloads.standard
