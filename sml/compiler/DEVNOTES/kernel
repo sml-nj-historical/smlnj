@@ -106,11 +106,15 @@ within nl additional lambdas relative to its original site.
 -----------------
 Invariants:
 
+0. deBruijn indexes start at 1
+
+0a. in (r5), nl > nl'
+
 1. ol and nl are non-negative
 
 	ol >= 0, nl >= 0
 
-1a. nl >= nl' in rule (r6)
+1a. in (r6), nl >= nl'
 
 
 2. ol is the length of the environment
