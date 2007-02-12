@@ -2,7 +2,7 @@
 
 if [ x${SMLNJ_HOME} = x ] ; then
     BIN_DIR="@BINDIR@"
-    LIB_DIR="@LIBDIR"
+    LIB_DIR="@LIBDIR@"
 else
     BIN_DIR=${SMLNJ_HOME}/bin
     LIB_DIR=${SMLNJ_HOME}/lib
