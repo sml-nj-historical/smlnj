@@ -444,7 +444,8 @@ in
 							   stats = stats }
 					in
 					    if isValidMemo (memo, pids, i) then
-						(report stats;
+						(notify gp i;
+						 report stats;
 						 storeBFC' (gp, i, contst);
 						 SOME memo)
 					    else otherwise ()
