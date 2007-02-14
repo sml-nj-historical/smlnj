@@ -2,6 +2,10 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2007-02-14]
+	Changed the representation type of UTF8.wchar from Word32.word to word.
+	Also added the UTF8.maxCodePoint value.
+
 [2007-01-30]
 	Added the lookup function to the ORD_MAP interface.
 

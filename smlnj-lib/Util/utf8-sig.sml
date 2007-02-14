@@ -9,7 +9,9 @@
 signature UTF8 =
   sig
 
-    type wchar = Word32.word
+    type wchar = word
+
+    val maxCodePoint : wchar	(* = 0wx0010FFFF *)
 
     exception Incomplete
 	(* raised by some operations when applied to incomplete strings. *)

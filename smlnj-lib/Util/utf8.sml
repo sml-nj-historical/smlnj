@@ -22,10 +22,12 @@
 structure UTF8 :> UTF8 =
   struct
 
-    structure W = Word32
+    structure W = Word
     structure SS = Substring
 
     type wchar = W.word
+
+    val maxCodePoint : wchar = 0wx0010FFFF
 
     exception Incomplete
 	(* raised by some operations when applied to incomplete strings. *)
