@@ -240,9 +240,6 @@ do
       ml-lex)
 	unpack ML-Lex "$ROOT" ml-lex ml-lex
 	;;
-      lexgen)
-	unpack LexGen "$ROOT" lexgen lexgen
-	;;
       ml-burg)
         unpack ML-Burg "$ROOT" ml-burg ml-burg
 	;;
