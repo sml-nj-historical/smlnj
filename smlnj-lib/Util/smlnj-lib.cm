@@ -21,7 +21,6 @@ signature FORMAT_COMB
 signature GRAPH_SCC
 signature HASH_KEY
 signature HASH_TABLE
-signature INT_INF
 signature INTERVAL_DOMAIN
 signature INTERVAL_SET
 signature IO_UTIL
@@ -74,7 +73,6 @@ structure HashTable
 structure IntBinaryMap		(* to be removed *)
 structure IntBinarySet		(* to be removed *)
 structure IntHashTable
-structure IntInf
 structure IntListMap
 structure IntListSet
 structure IntRedBlackMap
@@ -176,12 +174,6 @@ keyword-fn.sml
 int-binary-map.sml
 int-binary-set.sml
 int-hash-table.sml
-# if not (defined (signature INT_INF))
-int-inf-sig.sml
-# endif
-# if not (defined (structure IntInf))
-int-inf.sml
-# endif
 int-list-map.sml
 int-list-set.sml
 int-redblack-map.sml
