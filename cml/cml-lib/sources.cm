@@ -43,7 +43,6 @@ Group
   signature GRAPH_SCC
   signature HASH_KEY
   signature HASH_TABLE
-  signature INT_INF
   signature INTERVAL_DOMAIN
   signature INTERVAL_SET
   signature IO_UTIL		(* copied to avoid typing problems *)
@@ -96,7 +95,6 @@ Group
   structure IntBinaryMap
   structure IntBinarySet
   structure IntHashTable
-  structure IntInf
   structure IntListMap
   structure IntListSet
   structure IntRedBlackMap
