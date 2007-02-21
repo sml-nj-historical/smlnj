@@ -14,6 +14,22 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2007/02/20 19:08:00 EST
+Description:
+
+    Bug triggered by:
+
+    val a1 = Word8Array.array(a1, 0w0); 
+    val _  = Word8Array.update(a1, 0, 0w128);
+
+    x86MCEmitter crashed when the immediate operand to MOVB was outside
+of the range -128 ... 127.  I've changed the code so that the range
+check is disabled.   Only the low order 8 bits of the immediate operand
+is now significant.
+
+
+----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2007/02/15 09:20:00 CST
 Description:
