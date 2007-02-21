@@ -162,13 +162,17 @@ void SaveCState (ml_state_t *msp, ...)
     int		    n, i;
     ml_val_t	    *vp;
 
+  /* count the number of values to be saved */
     va_start (ap, msp);
     for (n = 0; (vp = va_arg(ap, ml_val_t *)) != NIL(ml_val_t *);  n++)
 	continue;
     va_end (ap);
 
     va_start (ap, msp);
-    ML_AllocWrite (msp, 0, MAKE_DESC(n, DTAG_record));
+  /* NOTE: we use a DTAG_arr_data to ensure that if n == 2, we don't lose our
+   * header in a GC before RestoreCState is called.
+   */
+    ML_AllocWrite (msp, 0, MAKE_DESC(n, DTAG_arr_data));
     for (i = 1;  i <= n;  i++) {
 	vp = va_arg (ap, ml_val_t *);
         ML_AllocWrite (msp, i, *vp);
