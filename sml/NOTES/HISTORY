@@ -14,6 +14,15 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/02/20
+Description:
+
+  Bug fix: when SaveCState was called with two values to save, a subsequent
+  GC could cause the RestoreCState to fail because the saved state had been
+  promoted to tagless pair.
+
+----------------------------------------------------------------------
 Name: Allen Leung (leunga (at) reservoir (dot) com)
 Date: 2007/02/20 19:08:00 EST
 Description:
@@ -26,7 +35,7 @@ Description:
     x86MCEmitter crashed when the immediate operand to MOVB was outside
 of the range -128 ... 127.  I've changed the code so that the range
 check is disabled.   Only the low order 8 bits of the immediate operand
-is now significant.
+are now significant.
 
 
 ----------------------------------------------------------------------
