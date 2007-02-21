@@ -84,7 +84,7 @@ ml_val_t BuildLiterals (ml_state_t *msp, Byte_t *lits, int len)
     int		availSpace, spaceReq;
 
 /* A check that the available space is sufficient for the literal object that
- * we are about to allocate.  Note that the conce cell has already been accounted
+ * we are about to allocate.  Note that the cons cell has already been accounted
  * for in availSpace (but not in spaceReq).
  */
 #define GC_CHECK									\
@@ -113,6 +113,7 @@ SayDebug("BuildLiterals: lits = %#x, len = %d\n", lits, len);
     availSpace = 0;
     while (TRUE) {
 	ASSERT(pc < len);
+	ASSERT(availSpace <= ((int)msp->ml_limitPtr - (int)msp->ml_allocPtr));
 	availSpace -= CONS_SZB;	/* space for stack cons cell */
 	if (availSpace < ONE_K) {
 	    if (NeedGC(msp, 64*ONE_K))
