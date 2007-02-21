@@ -289,10 +289,15 @@ struct
        in mv(src, dst)
        end
      | I.MOVE{mvOp=I.MOVB, dst, src=I.Immed(i)} =>
+          encodeByteImm(0wxc6, 0, dst, i)
+       (* 2007/02/20 AKL: just store the low order 8 bits.  
+          Forget about checking for the range.  This is because of
+          sign-extension issues in sml/nj's code generator.
        (case size i
          of Bits32 => error "MOVE: MOVB: imm8"
           | _ => encodeByteImm(0wxc6, 0, dst, i)
        (*esac*))
+       *)
      | I.MOVE{mvOp=I.MOVB, dst, src=I.Direct r} => encodeReg(0wx88, r, dst)
      | I.MOVE{mvOp=I.MOVB, dst=I.Direct r, src} => encodeReg(0wx8a, r, src)
      | I.MOVE{mvOp, src=I.Immed _, ...} => error "MOVE: Immed"
