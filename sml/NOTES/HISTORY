@@ -14,6 +14,19 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/02/26
+Description:
+
+Added preliminary support in MLRISC for Staged Allocation, a technique
+for specifying calling conventions (see 
+http://www.eecs.harvard.edu/~nr/pubs/staged-abstract.html).  
+Initially, we plan to use this code to generate C calls for the AMD64.
+
+The staged allocation code base resides in MLRISC/staged-allocation, 
+and specialized calling conventions go in MLRISC/ARCH/staged-allocation.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2007/02/20
 Description:
