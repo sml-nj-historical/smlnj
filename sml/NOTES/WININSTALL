@@ -24,7 +24,7 @@ string
 
 to the end of your path variable, i.e., you need to execute
 
-  path %PATH%;c:\sml\blume\smlnj
+  path %PATH%;c:\sml\blume\smlnj\bin
 
 ]
 
