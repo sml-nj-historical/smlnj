@@ -1,5 +1,8 @@
 (* staged-allocation-fn.sml
  *
+ * This code implements the Staged Allocation technique for calling conventions.
+ * You can find the POPL06 paper describing this technique at
+ * http://www.eecs.harvard.edu/~nr/pubs/staged-abstract.html
  * 
  *)
 
@@ -45,7 +48,7 @@ functor StagedAllocationFn (
 	 | PAD of counter
 	 | ALIGN_TO of (width -> width)
 
-  type stepper_fn = (str * slot) -> (str * location_info list)
+  type stepper_fn = (str * slot) -> (str * location_info)
 
   val memSize = 8
 
@@ -92,18 +95,18 @@ functor StagedAllocationFn (
 
   fun init cs = foldl (fn (c, str) => insStr (str, c, 0)) Str.empty cs
 
-  fun allocate ([], str, ls) _ = (str, ls)
-    | allocate (OVERFLOW {counter, blockDirection=UP, maxAlign} :: ss, str, ls) 
+  fun allocate ([], str, locs) _ = (str, locs)
+    | allocate (OVERFLOW {counter, blockDirection=UP, maxAlign} :: ss, str, locs) 
 	       (w, k, al) 
       =
-      if divides (maxAlign, al) andalso divides (w, memSize)
+      if (*divides (maxAlign, al) andalso*) divides (w, memSize)
       then
 	  let val n = findStr (str, counter)
 	  in 
-	      (insStr (str, counter, n + toMemSize w), (w, BLOCK_OFFSET n, k)  :: ls)
+	      (insStr (str, counter, n + toMemSize w), (w, BLOCK_OFFSET n, k) :: locs)
 	  end
       else raise StagedAlloc
-    | allocate (OVERFLOW {counter, blockDirection=DOWN, maxAlign} :: ss, str, ls) 
+    | allocate (OVERFLOW {counter, blockDirection=DOWN, maxAlign} :: ss, str, locs) 
 	       (w, k, al) 
       =
       if divides (maxAlign, al) andalso divides (w, memSize)
@@ -111,92 +114,93 @@ functor StagedAllocationFn (
 	  let val n = findStr (str, counter)
 	      val n' = n + toMemSize w
 	  in 
-	      (insStr (str, counter, n'), (w, BLOCK_OFFSET (~n'), k) :: ls)
+	      (insStr (str, counter, n'), (w, BLOCK_OFFSET (~n'), k) :: locs)
 	  end
       else raise StagedAlloc
-    | allocate (WIDEN f :: ss, str, ls) (w, k, al) =
+    | allocate (WIDEN f :: ss, str, locs) (w, k, al) =
       if w <= (f w) then	
-	  let val (str', (_, l, _) :: ls') = allocate (ss, str, ls) (f w, k, al)
+	  let val (str', (_, l, _) :: _) = allocate (ss, str, locs) (f w, k, al)
 	      val l' = NARROW (l, w, k)
 	  in 
-	      (str', (w, l', k) :: ls)
+	      (str', (w, l', k) :: locs)
 	  end
-      else allocate (ss, str, ls) (f w, k, al)
-    | allocate (CHOICE cs :: ss, str, ls) (w, k, al) =
+      else allocate (ss, str, locs) (f w, k, al)
+    | allocate (CHOICE cs :: ss, str, locs) (w, k, al) =
       let fun choose [] = raise StagedAlloc
 	    | choose ((p, c) :: cs) =
 	      if (p (w, k, al)) then c else choose cs
 	  val c = choose cs
       in
-	  allocate (c :: ss, str, ls) (w, k, al)
+	  allocate (c :: ss, str, locs) (w, k, al)
       end 
-    | allocate (REGS_BY_ARGS (c, rs) :: ss, str, ls) (w, k, al) =
+    | allocate (REGS_BY_ARGS (c, rs) :: ss, str, locs) (w, k, al) =
       let val n = findStr (str, c)
 	  val rs' = drop (n, rs)
       in
 	  (case rs'
-	    of [] => allocate (ss, str, ls) (w, k, al)
+	    of [] => allocate (ss, str, locs) (w, k, al)
 	     | r :: _ => if (regWidth r) = w 
-		       then (str, (w, REG r, k) :: ls) 
+		       then (str, (w, REG r, k) :: locs) 
 		       else raise StagedAlloc
 	  (* esac *))
       end
-    | allocate (REGS_BY_BITS (c, rs) :: ss, str, ls) (w, k, al) =
+    | allocate (REGS_BY_BITS (c, rs) :: ss, str, locs) (w, k, al) =
       let val n = findStr (str, c)
 	  val rs' = dropBits (n, rs)
       in
 	  (case rs'
 	    of [] => (* insufficient bits *) 
-	       allocate (ss, str, ls) (w, k, al)
+	       allocate (ss, str, locs) (w, k, al)
 	     | r :: _ => 
 	       if ((regWidth r) = w)
 	       then (* the arg fits into the regs *) 
-		   (str, (w, REG r, k) :: ls)
+		   (str, (w, REG r, k) :: locs)
 	       else (* some of the arg's bits fit into the regs *)
 		   let val lWidth = regWidth r
 		       val str' = insStr (str, c, n + lWidth)
 		       val l = REG r
-		       val (str', (_, l', _) :: ls) = 
-			   allocate (REGS_BY_BITS (c, rs) :: ss, str', ls) 
+		       val (str', (_, l', _) :: _) = 
+			   allocate (REGS_BY_BITS (c, rs) :: ss, str', locs) 
 				    (w - lWidth, k, al)
 		       val l'' = COMBINE (l, l')
 		       val n' = findStr (str', c)
 		   in
-		       (insStr (str', c, n' - lWidth), (w, l'', k) :: ls)
+		       (insStr (str', c, n' - lWidth), (w, l'', k) :: locs)
 		   end
 	  (* esac *))
       end
-    | allocate (SEQ ss' :: ss, str, ls) (w, k, al) =
-      allocate (ss' @ ss, str, ls) (w, k, al)
-    | allocate (BITCOUNTER c :: ss, str, ls) (w, k, al) =
-      let val (str', ls') = allocate (ss, str, ls) (w, k, al)
+    | allocate (SEQ ss' :: ss, str, locs) (w, k, al) =
+      allocate (ss' @ ss, str, locs) (w, k, al)
+    | allocate (BITCOUNTER c :: ss, str, locs) (w, k, al) =
+      let val (str', locs') = allocate (ss, str, locs) (w, k, al)
 	  val n = findStr (str', c)
       in
-	  (insStr (str', c, n + w), ls')
+	  (insStr (str', c, n + w), locs')
       end
-    | allocate (PAD c :: ss, str, ls) (w, k, al) =
+    | allocate (PAD c :: ss, str, locs) (w, k, al) =
       let val n = findStr (str, c)
 	  val n' = roundUp (n, al * memSize)
       in 
-	  (insStr (str, c, n'), ls)
+	  (insStr (str, c, n'), locs)
       end
-    | allocate (ALIGN_TO f :: ss, str, ls) (w, k, al) =
-      allocate (ss, str, ls) (w, k, f w)
-    | allocate (ARGCOUNTER c :: ss, str, ls) (w, k, al) =
-      let val (str', ls') = allocate (ss, str, ls) (w, k, al)
+    | allocate (ALIGN_TO f :: ss, str, locs) (w, k, al) =
+      allocate (ss, str, locs) (w, k, f w)
+    | allocate (ARGCOUNTER c :: ss, str, locs) (w, k, al) =
+      let val (str', locs') = allocate (ss, str, locs) (w, k, al)
 	  val n = findStr (str', c)
       in
-	  (insStr (str, c, n + 1), ls')
+	  (insStr (str', c, n + 1), locs')
       end (* allocate *)
 
-  fun mkStep stages (str, slot) =
-      let val (str, ls) = allocate (stages, str, []) slot
-      in
-	  (str, rev ls)
-      end (* mkStep *)
-		  
-  fun process {counters, stages} slots =
-      let val str0 = init counters
+  (* staging returns only a single location at present *)
+  fun mkStep stages (str, slot) = 
+      (case allocate (stages, str, []) slot
+	of (str, [l]) => (str, l)
+	 | _ => raise StagedAlloc
+      (* esac *))
+		 
+  fun process {counters, stages} slots = raise Fail ""
+(*      let val str0 = init counters
 	  val step = mkStep stages
 	  fun processSlot (slot, (str, lss)) =
 	      let val (str, ls) = step (str, slot)
@@ -207,6 +211,6 @@ functor StagedAllocationFn (
       in
 	  resetCounter ();
 	  rev lss
-      end (* process *)
+      end (* process *) *)
 
 end (* StagedAllocationFn *)
