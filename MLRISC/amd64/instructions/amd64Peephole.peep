@@ -9,7 +9,7 @@
 
 local
  
-
+    (* ew! *)
    structure I =  
    struct
      include "amd64Instr.sml" (* import instruction definitions *)
@@ -29,7 +29,7 @@ struct
 
    (* IMPORTANT: instructions are given in forward order *)
    fun peephole instrs =
-   let fun isStackPtr(I.Direct r) = CBase.sameColor(r, C.esp)
+   let fun isStackPtr(I.Direct (_, r)) = CBase.sameColor(r, C.rsp)
          | isStackPtr _ = false
 
        fun isZeroLE le = (Eval.valueOf le = 0) handle _ => false
@@ -47,7 +47,7 @@ struct
 
               (* x <- x +/- 0; 
                *)
-           | I.INSTR(I.BINARY{binOp=(I.ADDL | I.SUBL),
+           | I.INSTR(I.BINARY{binOp=(I.ADDL | I.SUBL | I.ADDQ | I.SUBQ),
                               src=I.ImmedLabel le, ...})::rest 
                where isZeroLE le => loop(rest, instrs)
 
@@ -57,60 +57,65 @@ struct
                 where (isZeroLE le) andalso 
                       CBase.sameColor(r32,base) => loop(rest, instrs)
 
-             (*   addl n, %esp; subl m, %esp
-              * => addl (n-m), %esp     ;; when m < n
+           | I.INSTR(I.LEAQ{r64, 
+                        addr=I.Displace{base, disp=I.ImmedLabel le,...}})::rest
+                where (isZeroLE le) andalso 
+                      CBase.sameColor(r64,base) => loop(rest, instrs)
+
+             (*   addq n, %rsp; subq m, %rsp
+              * => addq (n-m), %rsp     ;; when m < n
               * => -                    ;; when m = n
-              * => subl (m-n), %esp     ;; when m > n
+              * => subq (m-n), %rsp     ;; when m > n
               *)
-           | I.INSTR(I.BINARY{binOp=I.ADDL, src=I.Immed n, dst=I.Direct d_i})::
-             I.INSTR(I.BINARY{binOp=I.SUBL, src=I.Immed m, dst=I.Direct d_j})::
+           | I.INSTR(I.BINARY{binOp=I.ADDQ, src=I.Immed n, dst=I.Direct (_, d_i)})::
+             I.INSTR(I.BINARY{binOp=I.SUBQ, src=I.Immed m, dst=I.Direct (ty, d_j)})::
              rest
-                where CBase.sameColor(d_i, C.esp) andalso
-                      CBase.sameColor(d_j, C.esp) =>
+                where CBase.sameColor(d_i, C.rsp) andalso
+                      CBase.sameColor(d_j, C.rsp) =>
                   if (m = n) then loop (rest, instrs)
                   else if (m < n) then 
                     loop(rest,
-                         I.binary{binOp=I.ADDL, src=I.Immed(n-m), 
-                                  dst=I.Direct(C.esp)}::instrs)
+                         I.binary{binOp=I.ADDQ, src=I.Immed(n-m), 
+                                  dst=I.Direct(ty, C.rsp)}::instrs)
                   else 
                     loop(rest,
-                         I.binary{binOp=I.SUBL, src=I.Immed(m-n), 
-                                  dst=I.Direct(C.esp)}::instrs)
+                         I.binary{binOp=I.SUBQ, src=I.Immed(m-n), 
+                                  dst=I.Direct(ty, C.rsp)}::instrs)
 
              (* push folding:
-              *   subl 4, %esp
-              *   movl src, 0(%esp)  (where src <> %esp !!! )
+              *   subq 4, %rsp
+              *   movq src, 0(%rsp)  (where src <> %rsp !!! )
               * => 
-              *   pushl src
+              *   pushq src
               *)
-           | I.INSTR(I.BINARY{binOp=I.SUBL,src=I.Immed 4,dst=I.Direct dst_i}):: 
-             I.INSTR(I.MOVE{mvOp=I.MOVL,src,
+           | I.INSTR(I.BINARY{binOp=I.SUBQ,src=I.Immed 4,dst=I.Direct (_, dst_i)}):: 
+             I.INSTR(I.MOVE{mvOp=I.MOVQ,src,
                             dst=I.Displace{base,disp=I.Immed 0,...}})
              ::rest 
-               where CBase.sameColor(base, C.esp) andalso
-                     CBase.sameColor(dst_i, C.esp) andalso
+               where CBase.sameColor(base, C.rsp) andalso
+                     CBase.sameColor(dst_i, C.rsp) andalso
                      not(isStackPtr src) =>
-               loop(rest, I.pushl src::instrs)
+               loop(rest, I.pushq src::instrs)
                
              (* pop folding: 
-              *   movl 0(%esp), dst   (where dst <> %esp!!!!)
-              *   addl 4, %esp
+              *   movq 0(%rsp), dst   (where dst <> %rsp!!!!)
+              *   addq 4, %rsp
               * => 
-              *   popl dst
+              *   popq dst
               *)
-           | I.INSTR(I.MOVE{mvOp=I.MOVL, 
+           | I.INSTR(I.MOVE{mvOp=I.MOVQ, 
                             src=I.Displace{base, disp=I.Immed 0, ...}, dst})::
-             I.INSTR(I.BINARY{binOp=I.ADDL, src=I.Immed 4, 
-                              dst=I.Direct dst_i}):: 
+             I.INSTR(I.BINARY{binOp=I.ADDQ, src=I.Immed 4, 
+                              dst=I.Direct (_, dst_i)}):: 
              rest 
-               where CBase.sameColor(base, C.esp) andalso
-                     CBase.sameColor(dst_i,C.esp) andalso
+               where CBase.sameColor(base, C.rsp) andalso
+                     CBase.sameColor(dst_i,C.rsp) andalso
                      not(isStackPtr dst) =>
                loop(rest, I.pop dst::instrs)
 
-           | I.INSTR(I.MOVE{mvOp=I.MOVL, src, dst as I.Direct _})::rest 
+           | I.INSTR(I.MOVE{mvOp=I.MOVQ, src, dst as I.Direct _})::rest 
               where isZero src => 
-                loop(rest, I.binary{binOp=I.XORL, src=dst, dst=dst}::instrs)
+                loop(rest, I.binary{binOp=I.XORQ, src=dst, dst=dst}::instrs)
 
            | i::rest => loop(rest, i::instrs)
            )

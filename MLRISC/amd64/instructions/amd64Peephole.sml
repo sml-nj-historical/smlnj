@@ -29,7 +29,7 @@ struct
    fun peephole instrs = 
        let 
 (*#line 32.8 "amd64Peephole.peep"*)
-           fun isStackPtr (I.Direct r) = CBase.sameColor (r, C.esp)
+           fun isStackPtr (I.Direct(_, r)) = CBase.sameColor (r, C.rsp)
              | isStackPtr _ = false
 
 (*#line 35.8 "amd64Peephole.peep"*)
@@ -47,249 +47,292 @@ struct
 
 (*#line 44.8 "amd64Peephole.peep"*)
            fun loop (code, instrs) = 
-               let val v_34 = code
-                   fun state_9 (v_0, v_3) = 
+               let val v_39 = code
+                   fun state_10 (v_0, v_3) = 
                        let val i = v_0
                            and rest = v_3
                        in loop (rest, i :: instrs)
                        end
-                   fun state_22 (v_0, v_17, v_3) = 
-                       let val le = v_17
+                   fun state_12 (v_0, v_19, v_3) = 
+                       let val le = v_19
                            and rest = v_3
                        in (if (isZeroLE le)
                              then (loop (rest, instrs))
-                             else (state_9 (v_0, v_3)))
+                             else (state_10 (v_0, v_3)))
                        end
-                   fun state_51 (v_0, v_1, v_2, v_3) = 
+                   fun state_67 (v_0, v_1, v_2, v_3) = 
                        (case v_1 of
-                         I.Direct v_26 => 
+                         I.Direct v_35 => 
                          let val dst = v_1
                              and rest = v_3
                              and src = v_2
                          in (if (isZero src)
-                               then (loop (rest, (I.binary {binOp=I.XORL, src=dst, dst=dst}) :: instrs))
-                               else (state_9 (v_0, v_3)))
+                               then (loop (rest, (I.binary {binOp=I.XORQ, src=dst, dst=dst}) :: instrs))
+                               else (state_10 (v_0, v_3)))
                          end
-                       | _ => state_9 (v_0, v_3)
+                       | _ => state_10 (v_0, v_3)
+                       )
+                   fun state_13 (v_0, v_2, v_3) = 
+                       (case v_2 of
+                         I.ImmedLabel v_19 => state_12 (v_0, v_19, v_3)
+                       | _ => state_10 (v_0, v_3)
                        )
                in 
-                  (case v_34 of
-                    op :: v_33 => 
-                    let val (v_0, v_3) = v_33
+                  (case v_39 of
+                    op :: v_38 => 
+                    let val (v_0, v_3) = v_38
                     in 
                        (case v_0 of
-                         I.INSTR v_32 => 
-                         (case v_32 of
-                           I.BINARY v_19 => 
-                           let val {binOp=v_31, dst=v_1, src=v_2, ...} = v_19
+                         I.INSTR v_37 => 
+                         (case v_37 of
+                           I.BINARY v_21 => 
+                           let val {binOp=v_36, dst=v_1, src=v_2, ...} = v_21
                            in 
-                              (case v_31 of
-                                I.ADDL => 
+                              (case v_36 of
+                                I.ADDL => state_13 (v_0, v_2, v_3)
+                              | I.ADDQ => 
                                 (case v_2 of
-                                  I.Immed v_17 => 
+                                  I.Immed v_19 => 
                                   (case v_1 of
-                                    I.Direct v_26 => 
-                                    (case v_3 of
-                                      op :: v_14 => 
-                                      let val (v_13, v_4) = v_14
-                                      in 
-                                         (case v_13 of
-                                           I.INSTR v_12 => 
-                                           (case v_12 of
-                                             I.BINARY v_11 => 
-                                             let val {binOp=v_10, dst=v_9, src=v_8, ...} = v_11
-                                             in 
-                                                (case v_10 of
-                                                  I.SUBL => 
-                                                  (case v_9 of
-                                                    I.Direct v_5 => 
-                                                    (case v_8 of
-                                                      I.Immed v_7 => 
-                                                      let val d_i = v_26
-                                                          and d_j = v_5
-                                                          and m = v_7
-                                                          and n = v_17
-                                                          and rest = v_4
-                                                      in (if ((CBase.sameColor (d_i, C.esp)) andalso (CBase.sameColor (d_j, C.esp)))
-                                                            then (if (m = n)
-                                                               then (loop (rest, instrs))
-                                                               else (if (m < n)
-                                                                  then (loop (rest, (I.binary {binOp=I.ADDL, src=I.Immed (n - m), dst=I.Direct C.esp}) :: instrs))
-                                                                  else (loop (rest, (I.binary {binOp=I.SUBL, src=I.Immed (m - n), dst=I.Direct C.esp}) :: instrs))))
-                                                            else (state_9 (v_0, v_3)))
-                                                      end
-                                                    | _ => state_9 (v_0, v_3)
-                                                    )
-                                                  | _ => state_9 (v_0, v_3)
-                                                  )
-                                                | _ => state_9 (v_0, v_3)
+                                    I.Direct v_35 => 
+                                    let val (v_34, v_29) = v_35
+                                    in 
+                                       (case v_3 of
+                                         op :: v_16 => 
+                                         let val (v_15, v_4) = v_16
+                                         in 
+                                            (case v_15 of
+                                              I.INSTR v_14 => 
+                                              (case v_14 of
+                                                I.BINARY v_13 => 
+                                                let val {binOp=v_12, dst=v_11, src=v_8, ...} = v_13
+                                                in 
+                                                   (case v_12 of
+                                                     I.SUBQ => 
+                                                     (case v_11 of
+                                                       I.Direct v_10 => 
+                                                       let val (v_9, v_5) = v_10
+                                                       in 
+                                                          (case v_8 of
+                                                            I.Immed v_7 => 
+                                                            let val d_i = v_29
+                                                                and d_j = v_5
+                                                                and m = v_7
+                                                                and n = v_19
+                                                                and rest = v_4
+                                                                and ty = v_9
+                                                            in (if ((CBase.sameColor (d_i, C.rsp)) andalso (CBase.sameColor (d_j, C.rsp)))
+                                                                  then (if (m = n)
+                                                                     then (loop (rest, instrs))
+                                                                     else (if (m < n)
+                                                                        then (loop (rest, (I.binary {binOp=I.ADDQ, src=I.Immed (n - m), dst=I.Direct (ty, C.rsp)}) :: instrs))
+                                                                        else (loop (rest, (I.binary {binOp=I.SUBQ, src=I.Immed (m - n), dst=I.Direct (ty, C.rsp)}) :: instrs))))
+                                                                  else (state_10 (v_0, v_3)))
+                                                            end
+                                                          | _ => state_10 (v_0, v_3)
+                                                          )
+                                                       end
+                                                     | _ => state_10 (v_0, v_3)
+                                                     )
+                                                   | _ => state_10 (v_0, v_3)
+                                                   )
+                                                end
+                                              | _ => state_10 (v_0, v_3)
+                                              )
+                                            | _ => state_10 (v_0, v_3)
+                                            )
+                                         end
+                                       | nil => state_10 (v_0, v_3)
+                                       )
+                                    end
+                                  | _ => state_10 (v_0, v_3)
+                                  )
+                                | I.ImmedLabel v_19 => state_12 (v_0, v_19, v_3)
+                                | _ => state_10 (v_0, v_3)
+                                )
+                              | I.SUBL => state_13 (v_0, v_2, v_3)
+                              | I.SUBQ => 
+                                (case v_2 of
+                                  I.Immed v_19 => 
+                                  (case v_1 of
+                                    I.Direct v_35 => 
+                                    let val (v_34, v_29) = v_35
+                                    in 
+                                       (case v_19 of
+                                         4 => 
+                                         (case v_3 of
+                                           op :: v_16 => 
+                                           let val (v_15, v_4) = v_16
+                                           in 
+                                              (case v_15 of
+                                                I.INSTR v_14 => 
+                                                (case v_14 of
+                                                  I.MOVE v_13 => 
+                                                  let val {dst=v_11, mvOp=v_31, src=v_8, ...} = v_13
+                                                  in 
+                                                     (case v_11 of
+                                                       I.Displace v_10 => 
+                                                       let val {base=v_30, disp=v_33, ...} = v_10
+                                                       in 
+                                                          (case v_33 of
+                                                            I.Immed v_32 => 
+                                                            (case v_32 of
+                                                              0 => 
+                                                              (case v_31 of
+                                                                I.MOVQ => 
+                                                                let val base = v_30
+                                                                    and dst_i = v_29
+                                                                    and rest = v_4
+                                                                    and src = v_8
+                                                                in (if (((CBase.sameColor (base, C.rsp)) andalso (CBase.sameColor (dst_i, C.rsp))) andalso (not (isStackPtr src)))
+                                                                      then (loop (rest, (I.pushq src) :: instrs))
+                                                                      else (state_10 (v_0, v_3)))
+                                                                end
+                                                              | _ => state_10 (v_0, v_3)
+                                                              )
+                                                            | _ => state_10 (v_0, v_3)
+                                                            )
+                                                          | _ => state_10 (v_0, v_3)
+                                                          )
+                                                       end
+                                                     | _ => state_10 (v_0, v_3)
+                                                     )
+                                                  end
+                                                | _ => state_10 (v_0, v_3)
                                                 )
-                                             end
-                                           | _ => state_9 (v_0, v_3)
-                                           )
-                                         | _ => state_9 (v_0, v_3)
+                                              | _ => state_10 (v_0, v_3)
+                                              )
+                                           end
+                                         | nil => state_10 (v_0, v_3)
                                          )
-                                      end
-                                    | nil => state_9 (v_0, v_3)
-                                    )
-                                  | _ => state_9 (v_0, v_3)
+                                       | _ => state_10 (v_0, v_3)
+                                       )
+                                    end
+                                  | _ => state_10 (v_0, v_3)
                                   )
-                                | I.ImmedLabel v_17 => state_22 (v_0, v_17, v_3)
-                                | _ => state_9 (v_0, v_3)
+                                | I.ImmedLabel v_19 => state_12 (v_0, v_19, v_3)
+                                | _ => state_10 (v_0, v_3)
                                 )
-                              | I.SUBL => 
-                                (case v_2 of
-                                  I.Immed v_17 => 
-                                  (case v_1 of
-                                    I.Direct v_26 => 
-                                    (case v_17 of
-                                      4 => 
-                                      (case v_3 of
-                                        op :: v_14 => 
-                                        let val (v_13, v_4) = v_14
-                                        in 
-                                           (case v_13 of
-                                             I.INSTR v_12 => 
-                                             (case v_12 of
-                                               I.MOVE v_11 => 
-                                               let val {dst=v_9, mvOp=v_28, src=v_8, ...} = v_11
-                                               in 
-                                                  (case v_9 of
-                                                    I.Displace v_5 => 
-                                                    let val {base=v_27, disp=v_30, ...} = v_5
-                                                    in 
-                                                       (case v_30 of
-                                                         I.Immed v_29 => 
-                                                         (case v_29 of
-                                                           0 => 
-                                                           (case v_28 of
-                                                             I.MOVL => 
-                                                             let val base = v_27
-                                                                 and dst_i = v_26
-                                                                 and rest = v_4
-                                                                 and src = v_8
-                                                             in (if (((CBase.sameColor (base, C.esp)) andalso (CBase.sameColor (dst_i, C.esp))) andalso (not (isStackPtr src)))
-                                                                   then (loop (rest, (I.pushl src) :: instrs))
-                                                                   else (state_9 (v_0, v_3)))
-                                                             end
-                                                           | _ => state_9 (v_0, v_3)
-                                                           )
-                                                         | _ => state_9 (v_0, v_3)
-                                                         )
-                                                       | _ => state_9 (v_0, v_3)
-                                                       )
-                                                    end
-                                                  | _ => state_9 (v_0, v_3)
-                                                  )
-                                               end
-                                             | _ => state_9 (v_0, v_3)
-                                             )
-                                           | _ => state_9 (v_0, v_3)
-                                           )
-                                        end
-                                      | nil => state_9 (v_0, v_3)
-                                      )
-                                    | _ => state_9 (v_0, v_3)
-                                    )
-                                  | _ => state_9 (v_0, v_3)
-                                  )
-                                | I.ImmedLabel v_17 => state_22 (v_0, v_17, v_3)
-                                | _ => state_9 (v_0, v_3)
-                                )
-                              | _ => state_9 (v_0, v_3)
+                              | _ => state_10 (v_0, v_3)
                               )
                            end
-                         | I.LEA v_19 => 
-                           let val {addr=v_25, r32=v_20, ...} = v_19
+                         | I.LEA v_21 => 
+                           let val {addr=v_27, r32=v_28, ...} = v_21
                            in 
-                              (case v_25 of
-                                I.Displace v_24 => 
-                                let val {base=v_22, disp=v_23, ...} = v_24
+                              (case v_27 of
+                                I.Displace v_26 => 
+                                let val {base=v_24, disp=v_25, ...} = v_26
                                 in 
-                                   (case v_23 of
-                                     I.ImmedLabel v_21 => 
-                                     let val base = v_22
-                                         and le = v_21
-                                         and r32 = v_20
+                                   (case v_25 of
+                                     I.ImmedLabel v_23 => 
+                                     let val base = v_24
+                                         and le = v_23
+                                         and r32 = v_28
                                          and rest = v_3
                                      in (if ((isZeroLE le) andalso (CBase.sameColor (r32, base)))
                                            then (loop (rest, instrs))
-                                           else (state_9 (v_0, v_3)))
+                                           else (state_10 (v_0, v_3)))
                                      end
-                                   | _ => state_9 (v_0, v_3)
+                                   | _ => state_10 (v_0, v_3)
                                    )
                                 end
-                              | _ => state_9 (v_0, v_3)
+                              | _ => state_10 (v_0, v_3)
                               )
                            end
-                         | I.MOVE v_19 => 
-                           let val {dst=v_1, mvOp=v_18, src=v_2, ...} = v_19
+                         | I.LEAQ v_21 => 
+                           let val {addr=v_27, r64=v_22, ...} = v_21
                            in 
-                              (case v_18 of
-                                I.MOVL => 
+                              (case v_27 of
+                                I.Displace v_26 => 
+                                let val {base=v_24, disp=v_25, ...} = v_26
+                                in 
+                                   (case v_25 of
+                                     I.ImmedLabel v_23 => 
+                                     let val base = v_24
+                                         and le = v_23
+                                         and r64 = v_22
+                                         and rest = v_3
+                                     in (if ((isZeroLE le) andalso (CBase.sameColor (r64, base)))
+                                           then (loop (rest, instrs))
+                                           else (state_10 (v_0, v_3)))
+                                     end
+                                   | _ => state_10 (v_0, v_3)
+                                   )
+                                end
+                              | _ => state_10 (v_0, v_3)
+                              )
+                           end
+                         | I.MOVE v_21 => 
+                           let val {dst=v_1, mvOp=v_20, src=v_2, ...} = v_21
+                           in 
+                              (case v_20 of
+                                I.MOVQ => 
                                 (case v_2 of
-                                  I.Displace v_17 => 
-                                  let val {base=v_6, disp=v_16, ...} = v_17
+                                  I.Displace v_19 => 
+                                  let val {base=v_6, disp=v_18, ...} = v_19
                                   in 
-                                     (case v_16 of
-                                       I.Immed v_15 => 
-                                       (case v_15 of
+                                     (case v_18 of
+                                       I.Immed v_17 => 
+                                       (case v_17 of
                                          0 => 
                                          (case v_3 of
-                                           op :: v_14 => 
-                                           let val (v_13, v_4) = v_14
+                                           op :: v_16 => 
+                                           let val (v_15, v_4) = v_16
                                            in 
-                                              (case v_13 of
-                                                I.INSTR v_12 => 
-                                                (case v_12 of
-                                                  I.BINARY v_11 => 
-                                                  let val {binOp=v_10, dst=v_9, src=v_8, ...} = v_11
+                                              (case v_15 of
+                                                I.INSTR v_14 => 
+                                                (case v_14 of
+                                                  I.BINARY v_13 => 
+                                                  let val {binOp=v_12, dst=v_11, src=v_8, ...} = v_13
                                                   in 
-                                                     (case v_10 of
-                                                       I.ADDL => 
-                                                       (case v_9 of
-                                                         I.Direct v_5 => 
-                                                         (case v_8 of
-                                                           I.Immed v_7 => 
-                                                           (case v_7 of
-                                                             4 => 
-                                                             let val base = v_6
-                                                                 and dst = v_1
-                                                                 and dst_i = v_5
-                                                                 and rest = v_4
-                                                             in (if (((CBase.sameColor (base, C.esp)) andalso (CBase.sameColor (dst_i, C.esp))) andalso (not (isStackPtr dst)))
-                                                                   then (loop (rest, (I.pop dst) :: instrs))
-                                                                   else (state_51 (v_0, v_1, v_2, v_3)))
-                                                             end
-                                                           | _ => state_51 (v_0, v_1, v_2, v_3)
-                                                           )
-                                                         | _ => state_51 (v_0, v_1, v_2, v_3)
-                                                         )
-                                                       | _ => state_51 (v_0, v_1, v_2, v_3)
+                                                     (case v_12 of
+                                                       I.ADDQ => 
+                                                       (case v_11 of
+                                                         I.Direct v_10 => 
+                                                         let val (v_9, v_5) = v_10
+                                                         in 
+                                                            (case v_8 of
+                                                              I.Immed v_7 => 
+                                                              (case v_7 of
+                                                                4 => 
+                                                                let val base = v_6
+                                                                    and dst = v_1
+                                                                    and dst_i = v_5
+                                                                    and rest = v_4
+                                                                in (if (((CBase.sameColor (base, C.rsp)) andalso (CBase.sameColor (dst_i, C.rsp))) andalso (not (isStackPtr dst)))
+                                                                      then (loop (rest, (I.pop dst) :: instrs))
+                                                                      else (state_67 (v_0, v_1, v_2, v_3)))
+                                                                end
+                                                              | _ => state_67 (v_0, v_1, v_2, v_3)
+                                                              )
+                                                            | _ => state_67 (v_0, v_1, v_2, v_3)
+                                                            )
+                                                         end
+                                                       | _ => state_67 (v_0, v_1, v_2, v_3)
                                                        )
-                                                     | _ => state_51 (v_0, v_1, v_2, v_3)
+                                                     | _ => state_67 (v_0, v_1, v_2, v_3)
                                                      )
                                                   end
-                                                | _ => state_51 (v_0, v_1, v_2, v_3)
+                                                | _ => state_67 (v_0, v_1, v_2, v_3)
                                                 )
-                                              | _ => state_51 (v_0, v_1, v_2, v_3)
+                                              | _ => state_67 (v_0, v_1, v_2, v_3)
                                               )
                                            end
-                                         | nil => state_51 (v_0, v_1, v_2, v_3)
+                                         | nil => state_67 (v_0, v_1, v_2, v_3)
                                          )
-                                       | _ => state_51 (v_0, v_1, v_2, v_3)
+                                       | _ => state_67 (v_0, v_1, v_2, v_3)
                                        )
-                                     | _ => state_51 (v_0, v_1, v_2, v_3)
+                                     | _ => state_67 (v_0, v_1, v_2, v_3)
                                      )
                                   end
-                                | _ => state_51 (v_0, v_1, v_2, v_3)
+                                | _ => state_67 (v_0, v_1, v_2, v_3)
                                 )
-                              | _ => state_9 (v_0, v_3)
+                              | _ => state_10 (v_0, v_3)
                               )
                            end
-                         | _ => state_9 (v_0, v_3)
+                         | _ => state_10 (v_0, v_3)
                          )
-                       | _ => state_9 (v_0, v_3)
+                       | _ => state_10 (v_0, v_3)
                        )
                     end
                   | nil => instrs
