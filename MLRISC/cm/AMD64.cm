@@ -29,6 +29,7 @@ Library
 	functor AMD64Rewrite
 	functor AMD64Shuffle
         functor AMD64SpillInstr
+	functor AMD64GenCCallFn
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -75,11 +76,12 @@ is
 	../amd64/instructions/amd64FreqProps.sml
 	../amd64/emit/amd64Asm.sml
 	../amd64/amd64MC.sml
-	../amd64/ra/amd64Rewrite.sig
-	../amd64/ra/amd64Rewrite.sml
-	../amd64/ra/amd64SpillInstr.sml
+(*	../amd64/ra/amd64Rewrite.sig
+	../amd64/ra/amd64Rewrite.sml *)
+	../amd64/ra/amd64SpillInstr.sml 
 	../amd64/backpatch/amd64Jumps.sml 
 	../amd64/mltree/amd64.sml
+	../amd64/staged-allocation/amd64-svid.sml
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION < 11042
 	../amd64/mltree/orig-amd64-fp.sml
 #else
