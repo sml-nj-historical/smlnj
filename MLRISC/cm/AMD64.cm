@@ -4,7 +4,9 @@ Library
 	signature AMD64CELLS
 	signature AMD64COMP_INSTR_EXT
 	signature AMD64INSTR
+(*
 	signature AMD64REWRITE
+*)
 	signature AMD64SHUFFLE
 	structure AMD64Cells
 	structure AMD64InstrExt
@@ -26,7 +28,9 @@ Library
 *)
 	functor AMD64Props
 	functor AMD64RA
+(*
 	functor AMD64Rewrite
+*)
 	functor AMD64Shuffle
         functor AMD64SpillInstr
 	functor AMD64GenCCallFn
@@ -40,6 +44,7 @@ is
 	$/Lib.cm
 	$/Graphs.cm
 	$/MLTREE.cm
+	SA.cm
 #else
 	basis.cm
 	smlnj-lib.cm
@@ -48,6 +53,7 @@ is
 	Lib.cm
 	Graphs.cm
 	MLTREE.cm
+	CM.cm
 #endif
 #else
 	smlnj-lib.cm
@@ -56,6 +62,7 @@ is
 	Lib.cm
 	Graphs.cm
 	MLTREE.cm
+	CM.cm
 #endif
 (*
         ../amd64/c-calls/amd64-svid.sml
@@ -81,7 +88,6 @@ is
 	../amd64/ra/amd64SpillInstr.sml 
 	../amd64/backpatch/amd64Jumps.sml 
 	../amd64/mltree/amd64.sml
-	../amd64/staged-allocation/amd64-svid.sml
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION < 11042
 	../amd64/mltree/orig-amd64-fp.sml
 #else
