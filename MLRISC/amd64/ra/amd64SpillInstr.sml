@@ -91,9 +91,9 @@ functor AMD64SpillInstr(structure Instr: AMD64INSTR
 		  I.MULW | I.IMULW | I.BTSW | I.BTCW | I.BTRW | I.ROLW | I.RORW | I.XCHGW ) => 16
 	      | ( I.ADDB | I.SUBB | I.ANDB | I.ORB | I.XORB | I.SHLB | I.SARB | I.SHRB | 
 		  I.MULB | I.IMULB | I.XCHGB ) => 8
-	      | _ => 64
+	      | _ => raise Fail "" (* 64*)
 	   (* esac *))
-	 | _ => 64
+	 | _ => raise Fail "" (*64*)
       (* esac *))
 
   fun genMvIns ins =
@@ -311,7 +311,7 @@ functor AMD64SpillInstr(structure Instr: AMD64INSTR
 	      let 
 		  (* determine the size of the instruction, and use the
 		   * appropriate move instruction *)
-		  val (ty, mvOp) = genMvIns instr
+		  val (ty, tmpMvOp) = genMvIns instr
 
 		  fun operand (rt, opnd) =
 		      (case opnd
@@ -351,7 +351,7 @@ functor AMD64SpillInstr(structure Instr: AMD64INSTR
 			    let val tmpR = newReg()
 			    in  {newReg=NONE,
 				 proh=[tmpR], 
-				 code=[I.move{mvOp=mvOp, src=spillLoc, dst=I.Direct (ty,tmpR)}, 
+				 code=[I.move{mvOp=tmpMvOp, src=spillLoc, dst=I.Direct (ty,tmpR)}, 
 				       mark(f tmpR, an)
 				      ]
 				}
@@ -371,7 +371,7 @@ functor AMD64SpillInstr(structure Instr: AMD64INSTR
 				val tmp  = I.Direct (ty,tmpR)
 			    in  {newReg=SOME tmpR,
 				 proh=[tmpR], 
-				 code=[I.move{mvOp=mvOp, src=spillLoc, dst=I.Direct (ty,tmpR)}, 
+				 code=[I.move{mvOp=tmpMvOp, src=spillLoc, dst=I.Direct (ty,tmpR)}, 
 				       mark(f tmpR, an)
 				      ]
 				}

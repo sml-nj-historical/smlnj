@@ -11,11 +11,11 @@ is
 
 	$/basis.cm
 	$/smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-	MLTREE.cm
+	$/MLRISC.cm
+	$/Control.cm
+	$/Lib.cm
+	$/Graphs.cm
+	$/MLTREE.cm
 
 (*	../staged-allocation/c-types.sml*)
 	../staged-allocation/c-call-sig.sml

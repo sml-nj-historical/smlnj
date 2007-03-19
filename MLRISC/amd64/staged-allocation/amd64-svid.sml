@@ -13,6 +13,12 @@ functor AMD64GenCCallFn (
 
   structure CTy = CTypes
 
+  val ty = 64
+
+  fun gpr r = T.GPR (T.REG (ty, r))
+  fun fpr(sz,f) = T.FPR (T.FREG (sz, f))
+  val fpStk = List.tabulate(8, fn i => fpr (80, AMD64Cells.ST i))
+		  
   fun isFloat (CTy.C_float | CTy.C_double | CTy.C_long_double) = true
     | isFloat _ = false
 
@@ -90,8 +96,6 @@ functor AMD64GenCCallFn (
 	    end
     | sizeOfTy (CTy.C_STRUCT tys) = sizeOfStruct tys
     | sizeOfTy (CTy.C_UNION tys) = sizeOfUnion tys 
-
-  val ty = 64
 
   datatype c_location_kind = K_GPR
 			   | K_FLOAT
@@ -308,19 +312,24 @@ raise Fail "todo"
 	   ], 
 	   retRegs=rs}
       end (* doRet *)
-			     
+
+  val callerSaveRegs = [AMD64Cells.rax, AMD64Cells.rcx, AMD64Cells.rdx,
+			AMD64Cells.rsi, AMD64Cells.rdi, 
+			AMD64Cells.GPReg 8, AMD64Cells.GPReg 9, 
+			AMD64Cells.GPReg 10, AMD64Cells.GPReg 11]
+		       			     
   fun genCall {name, proto={conv, retTy, paramTys}, args} =
       let val callStackAddr = T.REG (ty, AMD64Cells.rsp)
 	  val {processParams, processReturn} = AMD64SVID.genAutomaton ()
 	  val paramStms = doParams (processParams, callStackAddr, args, paramTys)
 
 	  val {retStms, retRegs} = doRet (processReturn, retTy)
-	  fun gpr r = T.GPR (T.REG (ty, r))
       in
 	  { callseq=List.concat [
 	    paramStms,
-	    [T.CALL {funct=name, targets=[], defs=[gpr AMD64Cells.rax],
-		     uses=map (gpr o #2) AMD64SVID.gprParamRegs, 
+	    [T.CALL {funct=name, targets=[], defs=map gpr callerSaveRegs
+						  @ fpStk,
+		     uses=[] (*map (gpr o #2) AMD64SVID.gprParamRegs*), 
 		     region=memory, pops=0}],
 	    retStms
 	    ],
