@@ -14,6 +14,13 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/03/19
+Description:
+
+Fixed bogus operand sizes in AMD64 instruction spilling.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2007/03/19
 Description:
