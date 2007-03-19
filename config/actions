@@ -5,6 +5,17 @@
 #
 # (C) 2006 The Fellowship of SML/NJ
 #
+# Each action is on a single line and has one of the following forms:
+#
+#	<module> lib <a> <r> <d>
+#	<module> lib <a> <r> <d> <aa>
+#	<module> ulib <a> <r> <d>
+#	<module> ulib <a> <r> <d> <aa>
+#	<module> anchor <a> <p>
+#	<module> libanchor <a> <p>
+#	<module> prog ...
+#	<module> dprog ...
+#
 
 smlnj-lib ulib unix-lib.cm      unix-lib.cm      smlnj-lib/Unix
 smlnj-lib  lib inet-lib.cm      inet-lib.cm      smlnj-lib/INet
