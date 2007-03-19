@@ -29,7 +29,6 @@ functor AMD64SpillInstr(structure Instr: AMD64INSTR
   fun isMemory(I.Displace _) = true
     | isMemory(I.Indexed _) = true
     | isMemory(I.LabelEA _) = true
-(*    | isMemory (I.MemReg _) = true*)
     | isMemory _ = false
 
   (* Annotate instruction *)
@@ -48,475 +47,547 @@ functor AMD64SpillInstr(structure Instr: AMD64INSTR
 
   val ty = 64
 
-  fun spillR(instr, reg, spillLoc) = let
-    fun amd64Spill(instr, an) = let
-      fun done(instr, an) = {code=[mark(instr, an)], proh=[], newReg=NONE}
-    in
-      case instr of 
-	I.CALL{opnd=addr, defs, uses, return, cutsTo, mem, pops} =>
-	  done(I.CALL{opnd=addr, defs=C.rmvReg(reg,defs), 
-				 return=return, uses=uses, 
-		      cutsTo=cutsTo, mem=mem, pops=pops}, an)
-      | I.MOVE{mvOp as (I.MOVZBL|I.MOVZBQ|I.MOVSBL|I.MOVSBQ|
-			I.MOVZWL|I.MOVZWQ|I.MOVSWL|I.MOVSWQ|
-			I.MOVSLQ), src, dst} => 
-	  let val tmpR = newReg() val tmp = I.Direct (ty, tmpR)
-	  in  {proh=[tmpR], newReg=SOME tmpR,
-	       code=[mark(I.MOVE{mvOp=mvOp, src=src, dst=tmp}, an),
-		     I.move{mvOp=I.MOVQ, src=tmp, dst=spillLoc}]
-	      }
-	  end
-      | I.MOVE{mvOp, src as I.Direct (_,rs), dst} =>
-	  if CB.sameColor(rs,reg) then {code=[], proh=[], newReg=NONE}
-	  else done(I.MOVE{mvOp=mvOp, src=src, dst=spillLoc}, an)
-      | I.MOVE{mvOp, src, dst=I.Direct _} => 
-	  if Props.eqOpn(src, spillLoc) then {code=[], proh=[], newReg=NONE}
-	  else if immed src then 
-	     done(I.MOVE{mvOp=I.MOVQ, src=src, dst=spillLoc}, an)
-	  else 
-	  let val tmpR = newReg()
-	      val tmp  = I.Direct (ty,tmpR)
-	  in  {proh=[tmpR],
-	       newReg=SOME tmpR,
-	       code=[mark(I.MOVE{mvOp=mvOp, src=src, dst=tmp}, an),
-		     I.move{mvOp=I.MOVQ, src=tmp, dst=spillLoc}]
-	      }
-	  end 
-      | I.LEA{addr, r32} => 
-	  let val tmpR = newReg()
-	  in  {proh=[tmpR],
-	       newReg=SOME tmpR,
-	       code=[mark(I.LEA{addr=addr, r32=tmpR}, an),
-		     I.move{mvOp=I.MOVQ, src=I.Direct (ty,tmpR), dst=spillLoc}]
-	      }
-	  end 
-      | I.LEAQ{addr, r64} => 
-	  let val tmpR = newReg()
-	  in  {proh=[tmpR],
-	       newReg=SOME tmpR,
-	       code=[mark(I.LEAQ{addr=addr, r64=tmpR}, an),
-		     I.move{mvOp=I.MOVQ, src=I.Direct (ty,tmpR), dst=spillLoc}]
-	      }
-	  end 
-      | I.BINARY{binOp=I.XORL, src as I.Direct (_,rs), dst=I.Direct (_,rd)} => 
-	  if CB.sameColor(rs,rd) then 
-	     {proh=[],
-	      code=[mark(I.MOVE{mvOp=I.MOVL, src=I.Immed 0, dst=spillLoc}, an)],
-	      newReg=NONE
-	     }
-	  else
-	     {proh=[],
-	      code=[mark(I.BINARY{binOp=I.XORL, src=src, dst=spillLoc}, an)],
-	      newReg=NONE
-	     }
-      | I.BINARY{binOp=I.XORQ, src as I.Direct (_,rs), dst=I.Direct (_,rd)} => 
-	  if CB.sameColor(rs,rd) then 
-	     {proh=[],
-	      code=[mark(I.MOVE{mvOp=I.MOVQ, src=I.Immed 0, dst=spillLoc}, an)],
-	      newReg=NONE
-	     }
-	  else
-	     {proh=[],
-	      code=[mark(I.BINARY{binOp=I.XORQ, src=src, dst=spillLoc}, an)],
-	      newReg=NONE
-	     }
-      | I.BINARY{binOp, src, dst} => let (* note: dst = reg *)
-	 fun multBinOp(I.MULQ|I.MULL|I.MULW|I.MULB|I.IMULQ|I.IMULL|I.IMULW|I.IMULB) = true
-	   | multBinOp _ = false
-	in
-	  if multBinOp binOp then let
-	     (* destination must remain a register *)
-	      val tmpR = newReg()
-	      val tmp = I.Direct (ty,tmpR)
-	    in
-	      {proh=[tmpR],
-	       code=  [I.move{mvOp=I.MOVQ, src=spillLoc, dst=tmp},
-		       I.binary{binOp=binOp, src=src, dst=tmp},
-		       I.move{mvOp=I.MOVQ, src=tmp, dst=spillLoc}],
-	       newReg=SOME tmpR
-	      }
-	    end
-	  else if immedOrReg src then
-	     (* can replace the destination directly *)
-	     done(I.BINARY{binOp=binOp, src=src, dst=spillLoc}, an)
-	  else let
-	     (* a memory src and non multBinOp  
-	      * --- cannot have two memory operands
-	      *)
-	      val tmpR = newReg()
-	      val tmp = I.Direct (ty,tmpR)
-	    in 
-	      { proh=[tmpR],
-		code=[I.move{mvOp=I.MOVQ, src=src, dst=tmp},
-		      I.binary{binOp=binOp, src=tmp, dst=spillLoc}],
-		newReg=NONE
-	       }
-	    end
-	end 
-      | I.SHIFT{shiftOp, count, src, dst} => error "go and implement SHIFT"
-      | I.CMOV{cond, src, dst} => 
-           (* note: dst must be a register *)
-         (case spillLoc of
-           I.Direct (_,r) =>
-	      {proh=[],
-	       newReg=NONE,
-	       code=[mark(I.CMOV{cond=cond,src=src,dst=r},an)]
-	      }
-         | _ =>
-	  let val tmpR = newReg()
-	      val tmp  = I.Direct (ty,tmpR)
-	  in  {proh=[tmpR],
-	       newReg=SOME tmpR,
-	       code=[I.move{mvOp=I.MOVQ, src=spillLoc, dst=tmp},
-                     mark(I.CMOV{cond=cond,src=src,dst=tmpR},an),
-		     I.move{mvOp=I.MOVQ, src=tmp, dst=spillLoc}]
-	      }
-	  end 
-         )
-      | I.CMOVQ{cond, src, dst} => 
-           (* note: dst must be a register *)
-         (case spillLoc of
-           I.Direct (_,r) =>
-	      {proh=[],
-	       newReg=NONE,
-	       code=[mark(I.CMOVQ{cond=cond,src=src,dst=r},an)]
-	      }
-         | _ =>
-	  let val tmpR = newReg()
-	      val tmp  = I.Direct (ty,tmpR)
-	  in  {proh=[tmpR],
-	       newReg=SOME tmpR,
-	       code=[I.move{mvOp=I.MOVQ, src=spillLoc, dst=tmp},
-                     mark(I.CMOVQ{cond=cond,src=src,dst=tmpR},an),
-		     I.move{mvOp=I.MOVQ, src=tmp, dst=spillLoc}]
-	      }
-	  end 
-         )
+  fun szOfInstr instr =
+      (case instr
+	of I.JCC _ => 32
+	 | I.MOVE {mvOp, ...} => 
+	   (case mvOp
+	     of ( I.MOVQ | I.MOVSWQ | I.MOVZWQ | I.MOVSBQ | 
+		  I.MOVZBQ | I.MOVSLQ ) => 64
+	      | ( I.MOVL | I.MOVSWL | I.MOVZWL | I.MOVSBL | 
+		  I.MOVZBL ) => 32
+	      | I.MOVW => 16
+	      | I.MOVB => 8
+	   (* esac *))
+	 | ( I.CALL _ | I.LEA _ | I.CMPL _ | I.TESTL _ | I.CMOV _ | I.MUL3 _ ) => 32
+	 | ( I.CALLQ _ | I.LEAQ _ | I.CMPQ _ | I.TESTQ _ | I.CMOVQ _ | I.MULQ3 _ ) => 64 
+	 | ( I.CMPW _ | I.TESTW _ ) => 16
+	 | ( I.CMPB _ | I.TESTB _ ) => 8 
+	 | I.SHIFT {shiftOp, ...} =>
+	   (case shiftOp
+	     of ( I.SHLDL | I.SHRDL ) => 32
+	   (* esac *))
+	 | I.UNARY {unOp, ...} =>
+	   (case unOp
+	     of ( I.DECQ | I.INCQ | I.NEGQ | I.NOTQ | 
+		  I.LOCK_DECQ | I.LOCK_INCQ | I.LOCK_NEGQ | I.LOCK_NOTQ ) => 64
+	      | ( I.DECL | I.INCL | I.NEGL | I.NOTL ) => 32
+	      | ( I.DECW | I.INCW | I.NEGW | I.NOTW ) => 16
+	      | ( I.DECB | I.INCB | I.NEGB | I.NOTB ) => 8
+	   (* esac *))
+	 | I.MULTDIV {multDivOp, ...} => 
+	   (case multDivOp
+	     of ( I.IMULL1 | I.MULL1 | I.IDIVL1 | I.DIVL1 ) => 32
+	      | ( I.IMULQ1 | I.MULQ1 | I.IDIVQ1 | I.DIVQ1 ) => 64
+	   (* esac *))
+	 | I.BINARY {binOp, ...} => 
+	   (case binOp
+	     of ( I.ADDQ | I.SUBQ | I.ANDQ | I.ORQ | I.XORQ | I.SHLQ | I.SARQ | I.SHRQ | 
+		  I.MULQ | I.IMULQ | I.ADCQ | I.SBBQ ) => 64
+	      | ( I.ADDL | I.SUBL | I.ANDL | I.ORL | I.XORL | I.SHLL | I.SARL | I.SHRL | 
+		  I.MULL | I.IMULL | I.ADCL | I.SBBL | I.BTSL | I.BTCL | I.BTRL | I.ROLL | 
+		  I.RORL | I.XCHGL ) => 32
+	      | ( I.ADDW | I.SUBW | I.ANDW | I.ORW | I.XORW | I.SHLW | I.SARW | I.SHRW | 
+		  I.MULW | I.IMULW | I.BTSW | I.BTCW | I.BTRW | I.ROLW | I.RORW | I.XCHGW ) => 16
+	      | ( I.ADDB | I.SUBB | I.ANDB | I.ORB | I.XORB | I.SHLB | I.SARB | I.SHRB | 
+		  I.MULB | I.IMULB | I.XCHGB ) => 8
+	      | _ => 64
+	   (* esac *))
+	 | _ => 64
+      (* esac *))
 
-      | I.CMPXCHG{lock,sz,src,dst} => 
-	   if immedOrReg src then
-	       {proh=[],
-		code=[mark(I.CMPXCHG{lock=lock,sz=sz,src=src,dst=spillLoc},an)],
-		newReg=NONE
-	       }
-	   else
-	   let val tmpR = newReg()
-	       val tmp  = I.Direct (ty,tmpR)
-	   in {proh=[],
-	       code=[I.move{mvOp=I.MOVQ, src=src, dst=tmp},
-		     mark(I.CMPXCHG{lock=lock,sz=sz,src=tmp,dst=spillLoc},an)],
-	       newReg=NONE
-	      }
-	   end
-      | I.MULTDIV _ => error "spill: MULTDIV"
-      | I.MUL3{src1, src2, dst} => 
-	  let val tmpR = newReg() 
-	  in  {proh=[tmpR], newReg=SOME tmpR,
-	       code=[mark(I.MUL3{src1=src1, src2=src2, dst=tmpR}, an),
-		     I.move{mvOp=I.MOVQ, src=I.Direct (ty,tmpR), dst=spillLoc}]
-	      }
-	  end
-      | I.MULQ3{src1, src2, dst} => 
-	  let val tmpR = newReg() 
-	  in  {proh=[tmpR], newReg=SOME tmpR,
-	       code=[mark(I.MULQ3{src1=src1, src2=src2, dst=tmpR}, an),
-		     I.move{mvOp=I.MOVQ, src=I.Direct (ty,tmpR), dst=spillLoc}]
-	      }
-	  end
-      | I.UNARY{unOp, opnd} => done(I.UNARY{unOp=unOp, opnd=spillLoc}, an)
-      | I.SET{cond, opnd} => done(I.SET{cond=cond, opnd=spillLoc}, an)
-      | I.POP _ => done(I.POP spillLoc, an)
-      | I.FNSTSW  => error "spill: FNSTSW"
-      | _ => error "spill"
-    end (* amd64Spill *)
+  fun genMvIns ins =
+      let fun mvOp 8 = I.MOVB
+	    | mvOp 16 = I.MOVW
+	    | mvOp 32 = I.MOVL
+	    | mvOp 64 = I.MOVQ
+	    | mvOp _ = I.MOVQ
+	  val sz = szOfInstr ins
+      in 
+	  (sz, mvOp sz)
+      end (* genMvIns *)
 
-    fun f(I.INSTR instr, an) = amd64Spill(instr, an)
-      | f(I.ANNOTATION{a, i}, an) = f(i, a::an)
-      | f(I.KILL lk, an) = 
-	   {code=[annotate(I.KILL(rLiveKill (lk, reg)), an)],
-	    proh=[],
-	    newReg=NONE}
-      | f _ = error "spill:f"
-  in f(instr, [])
-  end 
+  fun spillR(instr, reg, spillLoc) = 
+      let fun amd64Spill(instr, an) = 
+	      let fun done(instr, an) = {code=[mark(instr, an)], proh=[], newReg=NONE}
+		  (* determine the size of the instruction and the appropriate
+		   * move instruction for spilling *) 
+		  val (ty, tmpMvOp) = genMvIns instr
+	      in
+		  case instr of 
+		      I.CALL{opnd=addr, defs, uses, return, cutsTo, mem, pops} =>
+		      done(I.CALL{opnd=addr, defs=C.rmvReg(reg,defs), 
+				  return=return, uses=uses, 
+				  cutsTo=cutsTo, mem=mem, pops=pops}, an)
+		    | I.MOVE{mvOp as (I.MOVZBQ|I.MOVSBQ|I.MOVZWQ|I.MOVSWQ|I.MOVSLQ|
+				     I.MOVZBL|I.MOVSBL|I.MOVZWL|I.MOVSWL), src, dst} => 
+		      let val tmpR = newReg() 
+			  val tmp = I.Direct (ty, tmpR)
+		      in  {proh=[tmpR], newReg=SOME tmpR,
+			   code=[mark(I.MOVE{mvOp=mvOp, src=src, dst=tmp}, an),
+				 I.move{mvOp=tmpMvOp, src=tmp, dst=spillLoc}]
+			  }
+		      end
+		    | I.MOVE{mvOp, src as I.Direct (_,rs), dst} =>
+		      if CB.sameColor(rs,reg) then {code=[], proh=[], newReg=NONE}
+		      else done(I.MOVE{mvOp=mvOp, src=src, dst=spillLoc}, an)
+		    | I.MOVE{mvOp, src, dst=I.Direct _} => 
+		      if Props.eqOpn(src, spillLoc) then {code=[], proh=[], newReg=NONE}
+		      else if immed src then 
+			  done(I.MOVE{mvOp=mvOp, src=src, dst=spillLoc}, an)
+		      else 
+			  let val tmpR = newReg()
+			      val tmp  = I.Direct (ty,tmpR)
+			  in  {proh=[tmpR],
+			       newReg=SOME tmpR,
+			       code=[mark(I.MOVE{mvOp=mvOp, src=src, dst=tmp}, an),
+				     I.move{mvOp=tmpMvOp, src=tmp, dst=spillLoc}]
+			      }
+			  end 
+		    | I.LEA{addr, r32} => 
+		      let val tmpR = newReg()
+		      in  {proh=[tmpR],
+			   newReg=SOME tmpR,
+			   code=[mark(I.LEA{addr=addr, r32=tmpR}, an),
+				 I.move{mvOp=I.MOVL, src=I.Direct (32,tmpR), dst=spillLoc}]
+			  }
+		      end 
+		    | I.LEAQ{addr, r64} => 
+		      let val tmpR = newReg()
+		      in  {proh=[tmpR],
+			   newReg=SOME tmpR,
+			   code=[mark(I.LEAQ{addr=addr, r64=tmpR}, an),
+				 I.move{mvOp=I.MOVQ, src=I.Direct (64,tmpR), dst=spillLoc}]
+			  }
+		      end 
+		    | I.BINARY{binOp=I.XORL, src as I.Direct (_,rs), dst=I.Direct (_,rd)} => 
+		      if CB.sameColor(rs,rd) then 
+			  {proh=[],
+			   code=[mark(I.MOVE{mvOp=I.MOVL, src=I.Immed 0, dst=spillLoc}, an)],
+			   newReg=NONE
+			  }
+		      else
+			  {proh=[],
+			   code=[mark(I.BINARY{binOp=I.XORL, src=src, dst=spillLoc}, an)],
+			   newReg=NONE
+			  }
+		    | I.BINARY{binOp=I.XORQ, src as I.Direct (_,rs), dst=I.Direct (_,rd)} => 
+		      if CB.sameColor(rs,rd) then 
+			  {proh=[],
+			   code=[mark(I.MOVE{mvOp=I.MOVQ, src=I.Immed 0, dst=spillLoc}, an)],
+			   newReg=NONE
+			  }
+		      else
+			  {proh=[],
+			   code=[mark(I.BINARY{binOp=I.XORQ, src=src, dst=spillLoc}, an)],
+			   newReg=NONE
+			  }
+			  
+		    | I.BINARY{binOp, src, dst} => 
+		      let (* note: dst = reg *)
+			  fun multBinOp(I.MULQ|I.MULL|I.MULW|I.MULB|
+					I.IMULQ|I.IMULL|I.IMULW|I.IMULB) = true
+			    | multBinOp _ = false
+		      in
+			  if multBinOp binOp then 
+			      let (* destination must remain a register *)
+				  val tmpR = newReg()
+				  val tmp = I.Direct (ty,tmpR)
+			      in
+				  {proh=[tmpR],
+				   code=  [I.move{mvOp=tmpMvOp, src=spillLoc, dst=tmp},
+					   I.binary{binOp=binOp, src=src, dst=tmp},
+					   I.move{mvOp=tmpMvOp, src=tmp, dst=spillLoc}],
+				   newReg=SOME tmpR
+				  }
+			      end
+			  else if immedOrReg src then
+			      (* can replace the destination directly *)
+			      done(I.BINARY{binOp=binOp, src=src, dst=spillLoc}, an)
+			  else let
+				  (* a memory src and non multBinOp  
+				   * --- cannot have two memory operands
+				   *)
+				  val tmpR = newReg()
+				  val tmp = I.Direct (ty,tmpR)
+			      in 
+				  { proh=[tmpR],
+				    code=[I.move{mvOp=tmpMvOp, src=src, dst=tmp},
+					  I.binary{binOp=binOp, src=tmp, dst=spillLoc}],
+				    newReg=NONE
+		    }
+			      end
+		      end 
+		    | I.SHIFT{shiftOp, count, src, dst} => error "go and implement SHIFT"
+		    | I.CMOV{cond, src, dst} => 
+		      (* note: dst must be a register *)
+		      (case spillLoc of
+			   I.Direct (_,r) =>
+			   {proh=[],
+			    newReg=NONE,
+			    code=[mark(I.CMOV{cond=cond,src=src,dst=r},an)]
+			   }
+			 | _ =>
+			   let val tmpR = newReg()
+			       val tmp  = I.Direct (ty,tmpR)
+			   in  {proh=[tmpR],
+				newReg=SOME tmpR,
+				code=[I.move{mvOp=I.MOVQ, src=spillLoc, dst=tmp},
+				      mark(I.CMOV{cond=cond,src=src,dst=tmpR},an),
+				      I.move{mvOp=I.MOVQ, src=tmp, dst=spillLoc}]
+			       }
+			   end 
+		      )
+		    | I.CMOVQ{cond, src, dst} => 
+		      (* note: dst must be a register *)
+		      (case spillLoc of
+			   I.Direct (_,r) =>
+			   {proh=[],
+			    newReg=NONE,
+			    code=[mark(I.CMOVQ{cond=cond,src=src,dst=r},an)]
+			   }
+			 | _ =>
+			   let val tmpR = newReg()
+			       val tmp  = I.Direct (ty,tmpR)
+			   in  {proh=[tmpR],
+				newReg=SOME tmpR,
+				code=[I.move{mvOp=I.MOVQ, src=spillLoc, dst=tmp},
+				      mark(I.CMOVQ{cond=cond,src=src,dst=tmpR},an),
+				      I.move{mvOp=I.MOVQ, src=tmp, dst=spillLoc}]
+			       }
+			   end 
+		      )
+		      
+		    | I.CMPXCHG{lock,sz,src,dst} => 
+		      if immedOrReg src then
+			  {proh=[],
+			   code=[mark(I.CMPXCHG{lock=lock,sz=sz,src=src,dst=spillLoc},an)],
+			   newReg=NONE
+			  }
+		      else
+			  let val tmpR = newReg()
+			      val tmp  = I.Direct (ty,tmpR)
+			  in {proh=[],
+			      code=[I.move{mvOp=I.MOVQ, src=src, dst=tmp},
+				    mark(I.CMPXCHG{lock=lock,sz=sz,src=tmp,dst=spillLoc},an)],
+			      newReg=NONE
+			     }
+			  end
+		    | I.MULTDIV _ => error "spill: MULTDIV"
+		    | I.MUL3{src1, src2, dst} => 
+		      let val tmpR = newReg() 
+		      in  {proh=[tmpR], newReg=SOME tmpR,
+			   code=[mark(I.MUL3{src1=src1, src2=src2, dst=tmpR}, an),
+				 I.move{mvOp=I.MOVL, src=I.Direct (32,tmpR), dst=spillLoc}]
+			  }
+		      end
+		    | I.MULQ3{src1, src2, dst} => 
+		      let val tmpR = newReg() 
+		      in  {proh=[tmpR], newReg=SOME tmpR,
+			   code=[mark(I.MULQ3{src1=src1, src2=src2, dst=tmpR}, an),
+				 I.move{mvOp=I.MOVQ, src=I.Direct (64,tmpR), dst=spillLoc}]
+			  }
+		      end
+		    | I.UNARY{unOp, opnd} => done(I.UNARY{unOp=unOp, opnd=spillLoc}, an)
+		    | I.SET{cond, opnd} => done(I.SET{cond=cond, opnd=spillLoc}, an)
+		    | I.POP _ => done(I.POP spillLoc, an)
+		    | I.FNSTSW  => error "spill: FNSTSW"
+		    | _ => error "spill"
+	      end (* amd64Spill *)
+	      
+	  fun f (I.INSTR instr, an) = amd64Spill(instr, an)
+	    | f (I.ANNOTATION{a, i}, an) = f(i, a::an)
+	    | f (I.KILL lk, an) = 
+	      {code=[annotate(I.KILL(rLiveKill (lk, reg)), an)],
+	       proh=[],
+	       newReg=NONE}
+	    | f _ = error "spill:f"
+      in 
+	  f(instr, [])
+      end 
 
-  fun reloadR(instr, reg, spillLoc) = let
-    fun amd64Reload(instr, reg, spillLoc, an) = let
-        fun operand(rt, opnd) =
-	(case opnd
-	 of I.Direct (ty,r) => if CB.sameColor(r,reg) then I.Direct (ty,rt) else opnd
-	  | I.Displace{base, disp, mem} => 
-	     if CB.sameColor(base,reg) 
-	     then I.Displace{base=rt, disp=disp, mem=mem} 
-	     else opnd
-	  | I.Indexed{base=NONE, index, scale, disp, mem=mem} => 
-	     if CB.sameColor(index,reg) then
-	       I.Indexed{base=NONE, index=rt, scale=scale, disp=disp, mem=mem}
-	     else opnd
-	  | I.Indexed{base as SOME b, index, scale, disp, mem=mem} => 
-	     if CB.sameColor(b,reg) then 
-	       operand(rt, I.Indexed{base=SOME rt, index=index, 
-				     scale=scale, disp=disp, mem=mem})
-	     else if CB.sameColor(index,reg) then
-	       I.Indexed{base=base, index=rt, scale=scale, disp=disp, mem=mem}
-		  else opnd
-	  | opnd => opnd
-	(*esac*))
+  fun reloadR (instr, reg, spillLoc) = 
+      let fun amd64Reload (instr, reg, spillLoc, an) = 
+	      let 
+		  (* determine the size of the instruction, and use the
+		   * appropriate move instruction *)
+		  val (ty, mvOp) = genMvIns instr
 
-      fun done(instr, an) = {code=[mark(instr, an)], proh=[], newReg=NONE}
-
-      fun isReloading (I.Direct (_,r)) = CB.sameColor(r,reg) 
-        | isReloading _ = false
-
-      (* This version assumes that the value of tmpR is killed *)
-      fun withTmp(f, an) = 
-	  case spillLoc of 
-	    I.Direct (_,tmpR) =>  
-		{newReg=NONE,
-		 proh=[], 
-		 code=[mark(f tmpR, an)]
-		}
-	  |  _ =>
-	    let val tmpR = newReg()
-	    in  {newReg=NONE,
-		 proh=[tmpR], 
-		 code=[I.move{mvOp=I.MOVQ, src=spillLoc, dst=I.Direct (ty,tmpR)}, 
-		       mark(f tmpR, an)
-		      ]
-		}
-	    end
-
-      (* This version assumes that the value of tmpR is available afterwards *)
-      fun withTmpAvail(f, an) =  
-	  case spillLoc of
-	     I.Direct (_,tmpR) =>
-	      {newReg=SOME tmpR,
-	       proh=[tmpR], 
-	       code=[mark(f tmpR, an)]
-	      }
-	  |  _ =>
-	      let val tmpR = newReg()
-		  val tmp  = I.Direct (ty,tmpR)
-	      in  {newReg=SOME tmpR,
-		   proh=[tmpR], 
-		   code=[I.move{mvOp=I.MOVQ, src=spillLoc, dst=I.Direct (ty,tmpR)}, 
-			 mark(f tmpR, an)
-			]
-		  }
-	      end
-
-      fun replace(opn as I.Direct (_,r)) = 
-	    if CB.sameColor(r,reg) then spillLoc else opn
-	| replace opn         = opn
-
-      (* Fold in a memory operand if possible.  Makes sure that both operands
-       * are not in memory.  lsrc cannot be immediate.
-       *)
-      fun reloadCmp(cmp, lsrc, rsrc, an) = 
-	  let fun reloadIt() =  
-		withTmp(fn tmpR => 
-		  cmp{lsrc=operand(tmpR, lsrc), rsrc=operand(tmpR, rsrc)}, an)
-	  in  if immedOrReg lsrc andalso immedOrReg rsrc then
-	      let val lsrc' = replace lsrc
-		  val rsrc' = replace rsrc
-	      in  if isMemory lsrc' andalso isMemory rsrc' then
-		     reloadIt()
-		  else
-		     done(cmp{lsrc=lsrc', rsrc=rsrc'}, an)
-	      end
-	      else reloadIt()
-	  end
-
-      fun reloadBT(bitOp, lsrc, rsrc, an) = 
-	     reloadCmp(fn {lsrc,rsrc} => I.BITOP{bitOp=bitOp,lsrc=lsrc,rsrc=rsrc},
-		       lsrc, rsrc, an)
-
-      (* Fold in a memory operand if possible.  Makes sure that the right 
-       * operand is not in memory and left operand is not an immediate.
-       *  lsrc   rsrc
-       *   AL,   imm8  opc1 A8
-       *  EAX,   imm32 opc1 A9
-       *  r/m8,  imm8  opc2 F6/0 ib
-       *  r/m32, imm32 opc2 F7/0 id
-       *  r/m32, r32   opc3 85/r
-       *)
-      fun reloadTest(test, lsrc, rsrc, an) = 
-	  let fun reloadIt() = 
-		 withTmp(fn tmpR => 
-		   test{lsrc=operand(tmpR, lsrc), rsrc=operand(tmpR, rsrc)}, an)
-	  in  if immedOrReg lsrc andalso immedOrReg rsrc then
-	      let val lsrc = replace lsrc
-		  val rsrc = replace rsrc
-	      in  if isMemory rsrc then 
-		     if isMemory lsrc then reloadIt()
-		     else (* it is commutative! *)
-			done(test{lsrc=rsrc, rsrc=lsrc}, an)
-		  else 
-		     done(test{lsrc=lsrc, rsrc=rsrc}, an)
-	      end
-	      else reloadIt()
-	  end
-
-      fun reloadPush(push, arg as I.Direct _, an) =
-	    done(push(replace arg), an)
-	| reloadPush(push, arg, an) =
-	    withTmpAvail(fn tmpR => push(operand(tmpR, arg)), an)
-
-      fun reloadReal(realOp, opnd, an) =
-	    withTmpAvail(fn tmpR => realOp(operand(tmpR, opnd)), an)
-   in   
-      case instr
-      of I.JMP(I.Direct _, labs) => done(I.JMP(spillLoc, labs), an)
-       | I.JMP(opnd, labs) => withTmp(fn t => I.JMP(operand(t, opnd), labs), an)
-       | I.JCC{opnd=I.Direct _, cond} => done(I.JCC{opnd=spillLoc, cond=cond}, an)
-       | I.JCC{opnd, cond} => 
-	    withTmp(fn t => I.JCC{opnd=operand(t,opnd), cond=cond}, an)
-       | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => 
-	    withTmp(fn t => 
-		I.CALL{opnd=operand(t, opnd), defs=defs, return=return,pops=pops,
-		       uses=C.rmvReg(reg, uses), cutsTo=cutsTo, mem=mem}, an)
-       | I.MOVE{mvOp, src as I.Direct _, dst as I.Direct _} => 
-	  done(I.MOVE{mvOp=mvOp, src=replace src, dst=dst},an)
-       | I.MOVE{mvOp, src, dst as I.Direct _} => 
-	  withTmpAvail(fn t =>I.MOVE{mvOp=mvOp, src=operand(t, src), dst=dst},an)
-       | I.MOVE{mvOp, src as I.Direct _, dst} => 
-	  if Props.eqOpn(dst, spillLoc) then {code=[], proh=[], newReg=NONE}
-	  else withTmpAvail (* dst is not the spill reg *)
-	    (fn t => 
-	       I.MOVE{mvOp=mvOp, src=operand(t, src), dst=operand(t, dst)}, an)
-       | I.MOVE{mvOp, src, dst} => 
-	  withTmpAvail (* dst is not the spill reg *)
-	   (fn t => 
-	      I.MOVE{mvOp=mvOp, src=operand(t, src), dst=operand(t, dst)}, an)
-       | I.LEA{r32, addr} => 
-	 withTmpAvail(fn tmpR => I.LEA{r32=r32, addr=operand(tmpR, addr)}, an)
-       | I.LEAQ{r64, addr} => 
-	 withTmpAvail(fn tmpR => I.LEAQ{r64=r64, addr=operand(tmpR, addr)}, an)
-       | I.CMPQ{lsrc, rsrc} => reloadCmp(I.CMPQ, lsrc, rsrc, an) 
-       | I.CMPL{lsrc, rsrc} => reloadCmp(I.CMPL, lsrc, rsrc, an) 
-       | I.CMPW{lsrc, rsrc} => reloadCmp(I.CMPW, lsrc, rsrc, an) 
-       | I.CMPB{lsrc, rsrc} => reloadCmp(I.CMPB, lsrc, rsrc, an) 
-       | I.TESTQ{lsrc, rsrc} => reloadTest(I.TESTQ, lsrc, rsrc, an) 
-       | I.TESTL{lsrc, rsrc} => reloadTest(I.TESTL, lsrc, rsrc, an) 
-       | I.TESTW{lsrc, rsrc} => reloadTest(I.TESTW, lsrc, rsrc, an) 
-       | I.TESTB{lsrc, rsrc} => reloadTest(I.TESTB, lsrc, rsrc, an) 
-       | I.BITOP{bitOp,lsrc, rsrc} => reloadBT(bitOp, lsrc, rsrc, an) 
-       | I.BINARY{binOp, src, dst as I.Direct _} => 
-	    (case src of
-	      I.Direct _ => 
-		done(I.BINARY{binOp=binOp, src=replace src, dst=dst},an)
-	    | _ => withTmp(fn tmpR => 
-		I.BINARY{binOp=binOp, src=operand(tmpR, src), dst=dst}, an)
-	    )
-       | I.BINARY{binOp, src, dst} => 
-	  withTmp(fn tmpR => I.BINARY{binOp=binOp, src=operand(tmpR, src), 
-						   dst=operand(tmpR, dst)}, an)
-       | I.CMOV{cond, src, dst} => 
-         if CB.sameColor(dst,reg) then
-            error "CMOV"
-         else
-            done(I.CMOV{cond=cond, src=spillLoc, dst=dst}, an)
-       | I.CMOVQ{cond, src, dst} => 
-         if CB.sameColor(dst,reg) then
-            error "CMOV"
-         else
-            done(I.CMOVQ{cond=cond, src=spillLoc, dst=dst}, an)
-       | I.SHIFT{shiftOp, count, src, dst} => error "go and implement SHIFT"
-       | I.CMPXCHG{lock,sz,src,dst} => 
-	  withTmp(fn tmpR => I.CMPXCHG{lock=lock, sz=sz,
-				       src=operand(tmpR, src),
-				       dst=operand(tmpR, dst)},an)
-       | I.MULTDIV{multDivOp, src as I.Direct _} => 
-	  done(I.MULTDIV{multDivOp=multDivOp, src=replace src}, an)
-       | I.MULTDIV{multDivOp, src} =>
-	  withTmp(fn tmpR => 
-	      I.MULTDIV{multDivOp=multDivOp, src=operand(tmpR, src)}, an)
-       | I.MUL3{src1, src2, dst} => 
-	  withTmp(fn tmpR => 
-	    I.MUL3{src1=operand(tmpR, src1), src2=src2, 
-		   dst=if CB.sameColor(dst,reg) 
-		       then error "reload:MUL3" else dst}, an)
-       | I.MULQ3{src1, src2, dst} => 
-	  withTmp(fn tmpR => 
-	    I.MULQ3{src1=operand(tmpR, src1), src2=src2, 
-		   dst=if CB.sameColor(dst,reg) 
-		       then error "reload:MULQ3" else dst}, an)
-       | I.UNARY{unOp, opnd} => 
-	  withTmpAvail
-	     (fn tmpR => I.UNARY{unOp=unOp, opnd=operand(tmpR, opnd)}, an)
-       | I.SET{cond, opnd} => 
-	  withTmpAvail(fn tmpR => I.SET{cond=cond, opnd=operand(tmpR, opnd)}, an)
-       | I.PUSHL arg => reloadPush(I.PUSHL, arg, an)
-       | I.PUSHW arg => reloadPush(I.PUSHW, arg, an)
-       | I.PUSHB arg => reloadPush(I.PUSHB, arg, an)
-       | I.FILD opnd => reloadReal(I.FILD, opnd, an) 
-       | I.FILDL opnd => reloadReal(I.FILDL, opnd, an) 
-       | I.FILDLL opnd => reloadReal(I.FILDLL, opnd, an) 
-       | I.FLDT opnd => reloadReal(I.FLDT, opnd, an)
-       | I.FLDL opnd => reloadReal(I.FLDL, opnd, an)
-       | I.FLDS opnd => reloadReal(I.FLDS, opnd, an)
-       | I.FSTPT opnd => reloadReal(I.FSTPT, opnd, an)
-       | I.FSTPL opnd => reloadReal(I.FSTPL, opnd, an)
-       | I.FSTPS opnd => reloadReal(I.FSTPS, opnd, an)
-       | I.FSTL opnd => reloadReal(I.FSTL, opnd, an)
-       | I.FSTS opnd => reloadReal(I.FSTS, opnd, an)
-       | I.FUCOM opnd => reloadReal(I.FUCOM, opnd, an)
-       | I.FUCOMP opnd => reloadReal(I.FUCOMP, opnd, an)
-       | I.FCOMI opnd => reloadReal(I.FCOMI, opnd, an)
-       | I.FCOMIP opnd => reloadReal(I.FCOMIP, opnd, an)
-       | I.FUCOMI opnd => reloadReal(I.FUCOMI, opnd, an)
-       | I.FUCOMIP opnd => reloadReal(I.FUCOMIP, opnd, an)
-       | I.FENV{fenvOp, opnd} => reloadReal(fn opnd => 
-				   I.FENV{fenvOp=fenvOp,opnd=opnd}, opnd, an)
-       | I.FBINARY{binOp, src, dst} => 
-	  withTmpAvail(fn tmpR => 
-		   I.FBINARY{binOp=binOp, src=operand(tmpR, src), dst=dst}, an)
-       | I.FIBINARY{binOp, src} => 
-	  withTmpAvail
-	    (fn tmpR => I.FIBINARY{binOp=binOp, src=operand(tmpR, src)}, an)
-
-	 (* Pseudo fp instrctions *)
-       | I.FMOVE{fsize,src,dst} => 
-	  withTmpAvail
-	    (fn tmpR => I.FMOVE{fsize=fsize, src=operand(tmpR, src), 
-				dst=operand(tmpR, dst)}, an)
-       | I.FILOAD{isize,ea,dst} => 
-	  withTmpAvail
-	    (fn tmpR => I.FILOAD{isize=isize, ea=operand(tmpR, ea), 
-				 dst=operand(tmpR, dst)}, an)
-       | I.FBINOP{fsize,binOp,lsrc,rsrc,dst} =>
-	  withTmpAvail(fn tmpR =>
-	     I.FBINOP{fsize=fsize, binOp=binOp, lsrc=operand(tmpR, lsrc),
-		      rsrc=operand(tmpR, rsrc), dst=operand(tmpR, dst)}, an)
-       | I.FIBINOP{isize,binOp,lsrc,rsrc,dst} =>
-	  withTmpAvail(fn tmpR =>
-	     I.FIBINOP{isize=isize, binOp=binOp, lsrc=operand(tmpR, lsrc),
-		       rsrc=operand(tmpR, rsrc), dst=operand(tmpR, dst)}, an)
-       | I.FUNOP{fsize,unOp,src,dst} =>
-	  withTmpAvail(fn tmpR =>
-	     I.FUNOP{fsize=fsize, unOp=unOp, src=operand(tmpR, src),
-		     dst=operand(tmpR, dst)}, an)
-       | I.FCMP{i,fsize,lsrc,rsrc} =>
-	  withTmpAvail(fn tmpR =>
-	     I.FCMP{i=i,fsize=fsize, 
-		    lsrc=operand(tmpR, lsrc), rsrc=operand(tmpR, rsrc)
-		   }, an)
-
-       | _ => error "reload"
-    end (*amd64Reload*)
-
-    fun f(I.ANNOTATION{a, i}, an) = f(i, a::an)
-      | f(I.INSTR i, an) = amd64Reload(i, reg, spillLoc, an)
-      | f(I.LIVE lk, an) = 
-	   {code=[annotate(I.LIVE(rLiveKill (lk, reg)), an)],
-	    proh=[],
-	    newReg=NONE}
-      | f _ = error "reload: f"
-  in f(instr, [])
-  end (* reload *)
-
-
-
+		  fun operand (rt, opnd) =
+		      (case opnd
+			of I.Direct (ty,r) => if CB.sameColor(r,reg) then I.Direct (ty,rt) else opnd
+			 | I.Displace{base, disp, mem} => 
+			   if CB.sameColor(base,reg) 
+			   then I.Displace{base=rt, disp=disp, mem=mem} 
+			   else opnd
+			 | I.Indexed{base=NONE, index, scale, disp, mem=mem} => 
+			   if CB.sameColor(index,reg) then
+			       I.Indexed{base=NONE, index=rt, scale=scale, disp=disp, mem=mem}
+			   else opnd
+			 | I.Indexed{base as SOME b, index, scale, disp, mem=mem} => 
+			   if CB.sameColor(b,reg) then 
+			       operand(rt, I.Indexed{base=SOME rt, index=index, 
+						     scale=scale, disp=disp, mem=mem})
+			   else if CB.sameColor(index,reg) then
+			       I.Indexed{base=base, index=rt, scale=scale, disp=disp, mem=mem}
+			   else opnd
+			 | opnd => opnd
+		      (*esac*))
+		      
+		  fun done(instr, an) = {code=[mark(instr, an)], proh=[], newReg=NONE}
+					
+		  fun isReloading (I.Direct (_,r)) = CB.sameColor(r,reg) 
+		    | isReloading _ = false
+				      
+		  (* This version assumes that the value of tmpR is killed *)
+		  fun withTmp(f, an) = 
+		      (case spillLoc of 
+			   I.Direct (_,tmpR) =>  
+			   {newReg=NONE,
+			    proh=[], 
+			    code=[mark(f tmpR, an)]
+			   }
+			 |  _ =>
+			    let val tmpR = newReg()
+			    in  {newReg=NONE,
+				 proh=[tmpR], 
+				 code=[I.move{mvOp=mvOp, src=spillLoc, dst=I.Direct (ty,tmpR)}, 
+				       mark(f tmpR, an)
+				      ]
+				}
+			    end
+		      (* esac *))
+			   
+		  (* This version assumes that the value of tmpR is available afterwards *)
+		  fun withTmpAvail(f, an) =  
+		      (case spillLoc of
+			   I.Direct (_,tmpR) =>
+			   {newReg=SOME tmpR,
+			    proh=[tmpR], 
+			    code=[mark(f tmpR, an)]
+			   }
+			 |  _ =>
+			    let val tmpR = newReg()
+				val tmp  = I.Direct (ty,tmpR)
+			    in  {newReg=SOME tmpR,
+				 proh=[tmpR], 
+				 code=[I.move{mvOp=mvOp, src=spillLoc, dst=I.Direct (ty,tmpR)}, 
+				       mark(f tmpR, an)
+				      ]
+				}
+			    end
+		      (* esac *))
+			    
+		  fun replace(opn as I.Direct (_,r)) = 
+		      if CB.sameColor(r,reg) then spillLoc else opn
+		    | replace opn         = opn
+					    
+		  (* Fold in a memory operand if possible.  Makes sure that both operands
+		   * are not in memory.  lsrc cannot be immediate.
+		   *)
+		  fun reloadCmp(cmp, lsrc, rsrc, an) = 
+		      let fun reloadIt() =  
+			      withTmp(fn tmpR => 
+					cmp{lsrc=operand(tmpR, lsrc), rsrc=operand(tmpR, rsrc)}, an)
+		      in  if immedOrReg lsrc andalso immedOrReg rsrc then
+			      let val lsrc' = replace lsrc
+				  val rsrc' = replace rsrc
+			      in  if isMemory lsrc' andalso isMemory rsrc' then
+				      reloadIt()
+				  else
+				      done(cmp{lsrc=lsrc', rsrc=rsrc'}, an)
+			      end
+			  else reloadIt()
+		      end
+		      
+		  fun reloadBT(bitOp, lsrc, rsrc, an) = 
+		      reloadCmp(fn {lsrc,rsrc} => I.BITOP{bitOp=bitOp,lsrc=lsrc,rsrc=rsrc},
+				lsrc, rsrc, an)
+		      
+		  (* Fold in a memory operand if possible.  Makes sure that the right 
+		   * operand is not in memory and left operand is not an immediate.
+		   *  lsrc   rsrc
+		   *   AL,   imm8  opc1 A8
+		   *  EAX,   imm32 opc1 A9
+		   *  r/m8,  imm8  opc2 F6/0 ib
+		   *  r/m32, imm32 opc2 F7/0 id
+		   *  r/m32, r32   opc3 85/r
+		   *)
+		  fun reloadTest(test, lsrc, rsrc, an) = 
+		      let fun reloadIt() = 
+			      withTmp(fn tmpR => 
+					test{lsrc=operand(tmpR, lsrc), rsrc=operand(tmpR, rsrc)}, an)
+		      in  if immedOrReg lsrc andalso immedOrReg rsrc then
+			      let val lsrc = replace lsrc
+				  val rsrc = replace rsrc
+			      in  if isMemory rsrc then 
+				      if isMemory lsrc then reloadIt()
+				      else (* it is commutative! *)
+					  done(test{lsrc=rsrc, rsrc=lsrc}, an)
+				  else 
+				      done(test{lsrc=lsrc, rsrc=rsrc}, an)
+			      end
+			  else reloadIt()
+		      end
+		      
+		  fun reloadPush(push, arg as I.Direct _, an) =
+		      done(push(replace arg), an)
+		    | reloadPush(push, arg, an) =
+		      withTmpAvail(fn tmpR => push(operand(tmpR, arg)), an)
+		      
+		  fun reloadReal(realOp, opnd, an) =
+		      withTmpAvail(fn tmpR => realOp(operand(tmpR, opnd)), an)
+	      in   
+		  case instr
+		   of I.JMP(I.Direct _, labs) => done(I.JMP(spillLoc, labs), an)
+		    | I.JMP(opnd, labs) => withTmp(fn t => I.JMP(operand(t, opnd), labs), an)
+		    | I.JCC{opnd=I.Direct _, cond} => done(I.JCC{opnd=spillLoc, cond=cond}, an)
+		    | I.JCC{opnd, cond} => 
+		      withTmp(fn t => I.JCC{opnd=operand(t,opnd), cond=cond}, an)
+		    | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => 
+		      withTmp(fn t => 
+				I.CALL{opnd=operand(t, opnd), defs=defs, return=return,pops=pops,
+				       uses=C.rmvReg(reg, uses), cutsTo=cutsTo, mem=mem}, an)
+		    | I.MOVE{mvOp, src as I.Direct _, dst as I.Direct _} => 
+		      done(I.MOVE{mvOp=mvOp, src=replace src, dst=dst},an)
+		    | I.MOVE{mvOp, src, dst as I.Direct _} => 
+		      withTmpAvail(fn t =>I.MOVE{mvOp=mvOp, src=operand(t, src), dst=dst},an)
+		    | I.MOVE{mvOp, src as I.Direct _, dst} => 
+		      if Props.eqOpn(dst, spillLoc) then {code=[], proh=[], newReg=NONE}
+		      else withTmpAvail (* dst is not the spill reg *)
+			       (fn t => 
+				  I.MOVE{mvOp=mvOp, src=operand(t, src), dst=operand(t, dst)}, an)
+		    | I.MOVE{mvOp, src, dst} => 
+		      withTmpAvail (* dst is not the spill reg *)
+			  (fn t => 
+			     I.MOVE{mvOp=mvOp, src=operand(t, src), dst=operand(t, dst)}, an)
+		    | I.LEA{r32, addr} => 
+		      withTmpAvail(fn tmpR => I.LEA{r32=r32, addr=operand(tmpR, addr)}, an)
+		    | I.LEAQ{r64, addr} => 
+		      withTmpAvail(fn tmpR => I.LEAQ{r64=r64, addr=operand(tmpR, addr)}, an)
+		    | I.CMPQ{lsrc, rsrc} => reloadCmp(I.CMPQ, lsrc, rsrc, an) 
+		    | I.CMPL{lsrc, rsrc} => reloadCmp(I.CMPL, lsrc, rsrc, an) 
+		    | I.CMPW{lsrc, rsrc} => reloadCmp(I.CMPW, lsrc, rsrc, an) 
+		    | I.CMPB{lsrc, rsrc} => reloadCmp(I.CMPB, lsrc, rsrc, an) 
+		    | I.TESTQ{lsrc, rsrc} => reloadTest(I.TESTQ, lsrc, rsrc, an) 
+		    | I.TESTL{lsrc, rsrc} => reloadTest(I.TESTL, lsrc, rsrc, an) 
+		    | I.TESTW{lsrc, rsrc} => reloadTest(I.TESTW, lsrc, rsrc, an) 
+		    | I.TESTB{lsrc, rsrc} => reloadTest(I.TESTB, lsrc, rsrc, an) 
+		    | I.BITOP{bitOp,lsrc, rsrc} => reloadBT(bitOp, lsrc, rsrc, an) 
+		    | I.BINARY{binOp, src, dst as I.Direct _} => 
+		      (case src of
+			   I.Direct _ => 
+			   done(I.BINARY{binOp=binOp, src=replace src, dst=dst},an)
+			 | _ => withTmp(fn tmpR => 
+					 I.BINARY{binOp=binOp, src=operand(tmpR, src), dst=dst}, an)
+		      )
+		    | I.BINARY{binOp, src, dst} => 
+		      withTmp(fn tmpR => I.BINARY{binOp=binOp, src=operand(tmpR, src), 
+						dst=operand(tmpR, dst)}, an)
+		    | I.CMOV{cond, src, dst} => 
+		      if CB.sameColor(dst,reg) then
+			  error "CMOV"
+		      else
+			  done(I.CMOV{cond=cond, src=spillLoc, dst=dst}, an)
+		    | I.CMOVQ{cond, src, dst} => 
+		      if CB.sameColor(dst,reg) then
+			  error "CMOV"
+		      else
+			  done(I.CMOVQ{cond=cond, src=spillLoc, dst=dst}, an)
+		    | I.SHIFT{shiftOp, count, src, dst} => error "go and implement SHIFT"
+		    | I.CMPXCHG{lock,sz,src,dst} => 
+		      withTmp(fn tmpR => I.CMPXCHG{lock=lock, sz=sz,
+						 src=operand(tmpR, src),
+						 dst=operand(tmpR, dst)},an)
+		    | I.MULTDIV{multDivOp, src as I.Direct _} => 
+		      done(I.MULTDIV{multDivOp=multDivOp, src=replace src}, an)
+		    | I.MULTDIV{multDivOp, src} =>
+		      withTmp(fn tmpR => 
+				I.MULTDIV{multDivOp=multDivOp, src=operand(tmpR, src)}, an)
+		    | I.MUL3{src1, src2, dst} => 
+		      withTmp(fn tmpR => 
+				I.MUL3{src1=operand(tmpR, src1), src2=src2, 
+				       dst=if CB.sameColor(dst,reg) 
+					   then error "reload:MUL3" else dst}, an)
+		    | I.MULQ3{src1, src2, dst} => 
+		      withTmp(fn tmpR => 
+				I.MULQ3{src1=operand(tmpR, src1), src2=src2, 
+					dst=if CB.sameColor(dst,reg) 
+					    then error "reload:MULQ3" else dst}, an)
+		    | I.UNARY{unOp, opnd} => 
+		      withTmpAvail
+			  (fn tmpR => I.UNARY{unOp=unOp, opnd=operand(tmpR, opnd)}, an)
+		    | I.SET{cond, opnd} => 
+		      withTmpAvail(fn tmpR => I.SET{cond=cond, opnd=operand(tmpR, opnd)}, an)
+		    | I.PUSHQ arg => reloadPush(I.PUSHQ, arg, an)
+		    | I.PUSHL arg => reloadPush(I.PUSHL, arg, an)
+		    | I.PUSHW arg => reloadPush(I.PUSHW, arg, an)
+		    | I.PUSHB arg => reloadPush(I.PUSHB, arg, an)
+		    | I.FILD opnd => reloadReal(I.FILD, opnd, an) 
+		    | I.FILDL opnd => reloadReal(I.FILDL, opnd, an) 
+		    | I.FILDLL opnd => reloadReal(I.FILDLL, opnd, an) 
+		    | I.FLDT opnd => reloadReal(I.FLDT, opnd, an)
+		    | I.FLDL opnd => reloadReal(I.FLDL, opnd, an)
+		    | I.FLDS opnd => reloadReal(I.FLDS, opnd, an)
+		    | I.FSTPT opnd => reloadReal(I.FSTPT, opnd, an)
+		    | I.FSTPL opnd => reloadReal(I.FSTPL, opnd, an)
+		    | I.FSTPS opnd => reloadReal(I.FSTPS, opnd, an)
+		    | I.FSTL opnd => reloadReal(I.FSTL, opnd, an)
+		    | I.FSTS opnd => reloadReal(I.FSTS, opnd, an)
+		    | I.FUCOM opnd => reloadReal(I.FUCOM, opnd, an)
+		    | I.FUCOMP opnd => reloadReal(I.FUCOMP, opnd, an)
+		    | I.FCOMI opnd => reloadReal(I.FCOMI, opnd, an)
+		    | I.FCOMIP opnd => reloadReal(I.FCOMIP, opnd, an)
+		    | I.FUCOMI opnd => reloadReal(I.FUCOMI, opnd, an)
+		    | I.FUCOMIP opnd => reloadReal(I.FUCOMIP, opnd, an)
+		    | I.FENV{fenvOp, opnd} => reloadReal(fn opnd => 
+							  I.FENV{fenvOp=fenvOp,opnd=opnd}, opnd, an)
+		    | I.FBINARY{binOp, src, dst} => 
+		      withTmpAvail(fn tmpR => 
+				     I.FBINARY{binOp=binOp, src=operand(tmpR, src), dst=dst}, an)
+		    | I.FIBINARY{binOp, src} => 
+		      withTmpAvail
+			  (fn tmpR => I.FIBINARY{binOp=binOp, src=operand(tmpR, src)}, an)
+		      
+		    (* Pseudo fp instrctions *)
+		    | I.FMOVE{fsize,src,dst} => 
+		      withTmpAvail
+			  (fn tmpR => I.FMOVE{fsize=fsize, src=operand(tmpR, src), 
+					    dst=operand(tmpR, dst)}, an)
+		    | I.FILOAD{isize,ea,dst} => 
+		      withTmpAvail
+			  (fn tmpR => I.FILOAD{isize=isize, ea=operand(tmpR, ea), 
+					     dst=operand(tmpR, dst)}, an)
+		    | I.FBINOP{fsize,binOp,lsrc,rsrc,dst} =>
+		      withTmpAvail(fn tmpR =>
+				     I.FBINOP{fsize=fsize, binOp=binOp, lsrc=operand(tmpR, lsrc),
+					      rsrc=operand(tmpR, rsrc), dst=operand(tmpR, dst)}, an)
+		    | I.FIBINOP{isize,binOp,lsrc,rsrc,dst} =>
+		      withTmpAvail(fn tmpR =>
+				     I.FIBINOP{isize=isize, binOp=binOp, lsrc=operand(tmpR, lsrc),
+					       rsrc=operand(tmpR, rsrc), dst=operand(tmpR, dst)}, an)
+		    | I.FUNOP{fsize,unOp,src,dst} =>
+		      withTmpAvail(fn tmpR =>
+				     I.FUNOP{fsize=fsize, unOp=unOp, src=operand(tmpR, src),
+					     dst=operand(tmpR, dst)}, an)
+		    | I.FCMP{i,fsize,lsrc,rsrc} =>
+		      withTmpAvail(fn tmpR =>
+				     I.FCMP{i=i,fsize=fsize, 
+					    lsrc=operand(tmpR, lsrc), rsrc=operand(tmpR, rsrc)
+					   }, an)
+		      
+		    | _ => error "reload"
+	      end (*amd64Reload*)
+	      
+	  fun f(I.ANNOTATION{a, i}, an) = f(i, a::an)
+	    | f(I.INSTR i, an) = amd64Reload(i, reg, spillLoc, an)
+	    | f(I.LIVE lk, an) = 
+	      {code=[annotate(I.LIVE(rLiveKill (lk, reg)), an)],
+	       proh=[],
+	       newReg=NONE}
+	    | f _ = error "reload: f"
+      in f(instr, [])
+      end (* reload *)
 
   fun spillF(instr, reg, spillLoc) = let
     fun amd64Fspill(instr, reg, spillLoc, an) = let
@@ -712,7 +783,6 @@ functor AMD64SpillInstr(structure Instr: AMD64INSTR
 	 case ea
 	  of I.Displace _ => returnMove()
 	   | I.Indexed _ => returnMove()
-(*	   | I.MemReg _ => returnMove()*)
 	   | _ => error "spillToEA: GP"
       end
     | spillToEA CB.FP (freg, ea) = error "spillToEA: FP"
@@ -726,7 +796,6 @@ functor AMD64SpillInstr(structure Instr: AMD64INSTR
       in
 	 case ea
 	  of I.Displace _ => returnMove()
-(*	   | I.MemReg _ => returnMove()*)
 	   | I.Indexed _ => returnMove()
 	   | _ => error "reloadFromEA: GP"
       end 
