@@ -1,7 +1,7 @@
 #
 # This file describes the actions to be taken when installing a "module".
-# See base/system/smlnj/installer/libinstall.sml for how this file is to be
-# interpreted.
+# See base/system/smlnj/installer/generic-install.sml for how this file
+# is to be interpreted.
 #
 # (C) 2006 The Fellowship of SML/NJ
 #
