@@ -14,6 +14,14 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/03/19
+Description:
+
+Fixed a number of inconsistencies between the Posix.TTY structure
+and the Basis specification.  Thanks to Adam Chilpala.
+
+----------------------------------------------------------------------
 Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
 Date: 2007/02/26
 Description:
@@ -128,6 +136,14 @@ or library that is mentioned at the top level will see only
 those arguments that have not yet been processed at this point.
 In other words, the init code can "seize control" and process the
 remaining command line.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/01/30
+Description:
+
+Added fromList function to the ORD_SET interface and lookup to the
+ORD_MAP interface.  See the SML/NJ Library CHANGES file for details.
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)

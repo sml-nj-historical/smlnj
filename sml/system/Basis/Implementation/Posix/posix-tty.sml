@@ -29,6 +29,41 @@ structure POSIX_TTY =
     val osval : string -> s_int = cfun "osval"
     val w_osval = SysWord.fromInt o osval
 
+    structure V =
+      struct
+        structure WV = Word8Vector
+        structure WA = Word8Array
+        structure B = Byte
+
+        val nccs = osval "NCCS"
+
+        val eof   = (osval "EOF")
+        val eol   = (osval "EOL")
+        val erase = (osval "ERASE")
+        val intr  = (osval "INTR")
+        val kill  = (osval "KILL")
+        val min   = (osval "MIN")
+        val quit  = (osval "QUIT")
+        val susp  = (osval "SUSP")
+        val time  = (osval "TIME")
+        val start = (osval "START")
+        val stop  = (osval "STOP")
+
+        datatype cc = CC of WV.vector
+
+        fun mkCC (arr, l) = let
+              fun update (i, c) = WA.update(arr, i, B.charToByte c)
+              in
+                List.app update l;
+                CC (WA.vector arr)
+              end
+
+        fun cc vals = mkCC (WA.array(nccs, 0w0), vals)
+        fun update (CC v, vals) =
+              mkCC (WA.tabulate (nccs, fn i => WV.sub(v,i)), vals)
+        fun sub (CC v, i) = B.byteToChar (WV.sub(v,i))
+      end
+
     structure I =
       struct
         local structure BF = BitFlagsFn ()
@@ -97,41 +132,6 @@ structure POSIX_TTY =
         val tostop = fromWord (w_osval "TOSTOP")
       end
 
-    structure V =
-      struct
-        structure WV = Word8Vector
-        structure WA = Word8Array
-        structure B = Byte
-
-        val nccs = osval "NCCS"
-
-        val eof   = (osval "EOF")
-        val eol   = (osval "EOL")
-        val erase = (osval "ERASE")
-        val intr  = (osval "INTR")
-        val kill  = (osval "KILL")
-        val min   = (osval "MIN")
-        val quit  = (osval "QUIT")
-        val susp  = (osval "SUSP")
-        val time  = (osval "TIME")
-        val start = (osval "START")
-        val stop  = (osval "STOP")
-
-        datatype cc = CC of WV.vector
-
-        fun mkCC (arr, l) = let
-              fun update (i, c) = WA.update(arr, i, B.charToByte c)
-              in
-                List.app update l;
-                CC (WA.vector arr)
-              end
-
-        fun cc vals = mkCC (WA.array(nccs, 0w0), vals)
-        fun update (CC v, vals) =
-              mkCC (WA.tabulate (nccs, fn i => WV.sub(v,i)), vals)
-        fun sub (CC v, i) = B.byteToChar (WV.sub(v,i))
-      end
-
     datatype speed = B of word
     fun compareSpeed (B w, B w') =
           if SysWord.<(w, w') then LESS
@@ -174,29 +174,30 @@ structure POSIX_TTY =
     fun getlflag (TIOS{lflag, ...}) = lflag
     fun getcc (TIOS{cc,...}) = cc
 
-    fun getospeed (TIOS{ospeed,...}) = ospeed
-    fun getispeed (TIOS{ispeed,...}) = ispeed
-
-    fun setospeed (TIOS r, ospeed) =
-          TIOS {
-            iflag = #iflag r,
-            oflag = #oflag r,
-            cflag = #cflag r,
-            lflag = #lflag r,
-            cc = #cc r,
-            ispeed = #ispeed r,
-            ospeed = ospeed
-          }
-    fun setispeed (TIOS r, ispeed) =
-          TIOS {
-            iflag = #iflag r,
-            oflag = #oflag r,
-            cflag = #cflag r,
-            lflag = #lflag r,
-            cc = #cc r,
-            ispeed = ispeed,
-            ospeed = #ospeed r
-          }
+    structure CF =
+      struct
+	fun getospeed (TIOS{ospeed,...}) = ospeed
+	fun getispeed (TIOS{ispeed,...}) = ispeed
+    
+	fun setospeed (TIOS r, ospeed) = TIOS {
+		iflag = #iflag r,
+		oflag = #oflag r,
+		cflag = #cflag r,
+		lflag = #lflag r,
+		cc = #cc r,
+		ispeed = #ispeed r,
+		ospeed = ospeed
+	      }
+	fun setispeed (TIOS r, ispeed) = TIOS {
+		iflag = #iflag r,
+		oflag = #oflag r,
+		cflag = #cflag r,
+		lflag = #lflag r,
+		cc = #cc r,
+		ispeed = ispeed,
+		ospeed = #ospeed r
+	      }
+      end
     
     structure TC =
       struct
@@ -218,64 +219,64 @@ structure POSIX_TTY =
         val iflush = QS (osval "TCIFLUSH")
         val oflush = QS (osval "TCOFLUSH")
         val ioflush = QS (osval "TCIOFLUSH")
-      end
 
-    type termio_rep = (
-           word *       	(* iflags *)
-           word *       	(* oflags *)
-           word *       	(* cflags *)
-           word *       	(* lflags *)
-           V.WV.vector *	(* cc *)
-           word *		(* inspeed *)
-	   word			(* outspeed *)
-         )
-
-    val tcgetattr : int -> termio_rep = cfun "tcgetattr"
-    fun getattr fd = let
-          val (ifs,ofs,cfs,lfs,cc,isp,osp) = tcgetattr (FS.intOf fd)
-          in
-            TIOS {
-              iflag = I.fromWord ifs,
-              oflag = O.fromWord ofs,
-              cflag = C.fromWord cfs,
-              lflag = L.fromWord lfs,
-              cc = V.CC cc,
-              ispeed = B isp,
-              ospeed = B osp
-            }
-          end
-
-    val tcsetattr : int * s_int * termio_rep -> unit = cfun "tcsetattr"
-    fun setattr (fd, TC.SA sa, TIOS tios) = let
-          val iflag = I.toWord (#iflag tios)
-          val oflag = O.toWord (#oflag tios)
-          val cflag = C.toWord (#cflag tios)
-          val lflag = L.toWord (#lflag tios)
-          val (V.CC cc) = #cc tios
-          val (B ispeed) = #ispeed tios
-          val (B ospeed) = #ospeed tios
-          val trep = (iflag,oflag,cflag,lflag,cc,ispeed,ospeed)
-          in
-            tcsetattr (FS.intOf fd, sa, trep)
-          end
-
-    val tcsendbreak : int * int -> unit = cfun "tcsendbreak"
-    fun sendbreak (fd, duration) = tcsendbreak (FS.intOf fd, duration)
-
-    val tcdrain : int -> unit = cfun "tcdrain"
-    fun drain fd = tcdrain (FS.intOf fd)
-
-    val tcflush : int * s_int -> unit = cfun "tcflush"
-    fun flush (fd, TC.QS qs) = tcflush (FS.intOf fd, qs)
-
-    val tcflow : int * s_int -> unit = cfun "tcflow"
-    fun flow (fd, TC.FA action) = tcflow (FS.intOf fd, action)
-
-    val tcgetpgrp : int -> s_int = cfun "tcgetpgrp"
-    fun getpgrp fd = P.PID(tcgetpgrp(FS.intOf fd))
-
-    val tcsetpgrp : int * s_int -> unit = cfun "tcsetpgrp"
-    fun setpgrp (fd, P.PID pid) = tcsetpgrp(FS.intOf fd, pid)
+	type termio_rep = (
+	       word *       	(* iflags *)
+	       word *       	(* oflags *)
+	       word *       	(* cflags *)
+	       word *       	(* lflags *)
+	       V.WV.vector *	(* cc *)
+	       word *		(* inspeed *)
+	       word		(* outspeed *)
+	     )
+    
+	val tcgetattr : int -> termio_rep = cfun "tcgetattr"
+	fun getattr fd = let
+	      val (ifs,ofs,cfs,lfs,cc,isp,osp) = tcgetattr (FS.intOf fd)
+	      in
+		TIOS {
+		  iflag = I.fromWord ifs,
+		  oflag = O.fromWord ofs,
+		  cflag = C.fromWord cfs,
+		  lflag = L.fromWord lfs,
+		  cc = V.CC cc,
+		  ispeed = B isp,
+		  ospeed = B osp
+		}
+	      end
+    
+	val tcsetattr : int * s_int * termio_rep -> unit = cfun "tcsetattr"
+	fun setattr (fd, SA sa, TIOS tios) = let
+	      val iflag = I.toWord (#iflag tios)
+	      val oflag = O.toWord (#oflag tios)
+	      val cflag = C.toWord (#cflag tios)
+	      val lflag = L.toWord (#lflag tios)
+	      val (V.CC cc) = #cc tios
+	      val (B ispeed) = #ispeed tios
+	      val (B ospeed) = #ospeed tios
+	      val trep = (iflag,oflag,cflag,lflag,cc,ispeed,ospeed)
+	      in
+		tcsetattr (FS.intOf fd, sa, trep)
+	      end
+    
+	val tcsendbreak : int * int -> unit = cfun "tcsendbreak"
+	fun sendbreak (fd, duration) = tcsendbreak (FS.intOf fd, duration)
+    
+	val tcdrain : int -> unit = cfun "tcdrain"
+	fun drain fd = tcdrain (FS.intOf fd)
+    
+	val tcflush : int * s_int -> unit = cfun "tcflush"
+	fun flush (fd, QS qs) = tcflush (FS.intOf fd, qs)
+    
+	val tcflow : int * s_int -> unit = cfun "tcflow"
+	fun flow (fd, FA action) = tcflow (FS.intOf fd, action)
+    
+	val tcgetpgrp : int -> s_int = cfun "tcgetpgrp"
+	fun getpgrp fd = P.PID(tcgetpgrp(FS.intOf fd))
+    
+	val tcsetpgrp : int * s_int -> unit = cfun "tcsetpgrp"
+	fun setpgrp (fd, P.PID pid) = tcsetpgrp(FS.intOf fd, pid)
+      end (* structure TC *)
 
   end (* structure POSIX_TTY *)
 end
