@@ -44,7 +44,7 @@ is
 	$/Lib.cm
 	$/Graphs.cm
 	$/MLTREE.cm
-	SA.cm
+	$/SA.cm
 #else
 	basis.cm
 	smlnj-lib.cm
