@@ -171,8 +171,8 @@ fun ltMatch le msg (t1, t2) =
             PU.pps s "t1:"; PP.newline s; PPLty.ppLty 10 s t1; PP.newline s;
             PU.pps s "t2:"; PP.newline s; PPLty.ppLty 10 s t2; PP.newline s;
             PU.pps s"***************************************************";
-            PP.newline s))))
-  handle teUnbound2 => 
+            PP.newline s)); raise Fail "ltMatch"))
+  handle LT.TeUnbound => 
   (clickerror();
    with_pp(fn s =>
      (PU.pps s ("ERROR(checkLty): exception teUnbound2 in ltMatch"^msg); PP.newline s;
@@ -195,7 +195,7 @@ fun ltFnApp le s (t1, t2) =
              say "***************************************************** \n"; 
              bug "fatal typing error in ltFnApp"))
 
-   in ltMatch le s (a1, t2); b1
+   in ltMatch le (s^":ltFnApp") (a1, t2); b1
   end
 
 fun ltFnAppR le s (t1, t2) =  (*** used for DECON lexps ***)
@@ -242,7 +242,7 @@ fun ltConChk le s (DATAcon ((_,rep,lt), ts, v), root, kenv, venv, d) =
                             | STRINGcon _ => ltString
 			    | INTINFcon _ => bug "INTINFcon"
                             |  _ => LT.ltc_int)
-       in ltMatch le s (nt, root); venv
+       in ((ltMatch le s (nt, root)) handle Fail _ => say "ConChk ltEquiv\n"); venv
       end
 
 (** check : tkindEnv * ltyEnv * DI.depth -> lexp -> lty *)
@@ -358,7 +358,7 @@ fun check (kenv, venv, d) =
 		       val bodyTy = loop e
 		       val _ = ltyChkenv " PACK body " bodyTy
 		       val _ = debugmsg "PACK"
-		   in ltMatch le "PACK-M" (argTy, loop e);
+		   in ((ltMatch le "PACK-M" (argTy, loop e)) handle Fail _ => say "PACK ltEquiv\n") ;
                       ltTyApp le "PACK-R" (lt, nts, kenv)
 		   end
 		   
