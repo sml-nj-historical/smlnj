@@ -849,14 +849,14 @@ and lt_eqv(x : lty, y: lty) : bool =
         val t2 = lt_whnm y
         val res = if (ltp_norm t1) andalso (ltp_norm t2) then lt_eq(t1, t2)
                   else lt_eqv_gen(t1, t2)
-    in res orelse 
+    in res (* orelse 
        (dgPrint ("LT_EQV", 
          (fn s => fn (t1,t2) =>
              (PU.pps s "t1:"; PP.newline s; PPLty.ppLty 10 s t1; PP.newline s;
               PU.pps s "t2:"; PP.newline s; PPLty.ppLty 10 s t2; PP.newline s;
               PU.pps s"***************************************************";
               PP.newline s)), (t1,t2));
-        false)
+        false) *)
     end (* function lt_eqv *)
 
 (*
