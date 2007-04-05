@@ -15,11 +15,20 @@ found in the following modules:
   MathInlineT   (system/smlnj/init/math-built-in.sml)
   RawMemInlineT (system/smlnj/init/rawmem.sml)
 
+The first item in each entry after the number is the name of the
+primop in Inline.  The next item is the primop value (using
+constructors from FLINT/kernel/primop.sml), and the final item is the
+"intrinsic type" of the primop, i.e. the type it is assigned in the
+InLine structure. The following indented lines, if present, give
+secondary bindings of the primop in intermediate structures like
+InlineT.IntInf, with their types, which may be specializations of the
+intrinsic type if the intrinsic type is polymorphic.
 
-Ternary bindings are found in the Basis modules (system/Basis).
+Ternary bindings are found in the Basis modules (system/Basis), and
+are not yet included here.
 
-Hypothesis: all primops that are contained in the environment are created
-here.
+Hypothesis: all primops that are contained in the environment are
+listed here.
 
 
 0    callcc,	 P.CALLCC,     	('a cont -> 'a) -> 'a

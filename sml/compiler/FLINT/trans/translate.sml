@@ -613,17 +613,17 @@ end
 
 	system/smlnj/init/core-intinf.sml:51:    val finToInf  : int32 * bool -> intinf
  *)
-fun inlToInfPrec (opname, coerceFnName, primop, primoplt) =
+fun inlToInfPrec (opname: string, coerceFnName: string, primop, primoplt) =
    let 
 	val (orig_arg_lt, res_lt) =
-		case LT.ltd_arrow primoplt of
-	    	(_, [a], [r]) => (a, r)
-	  	| _ => bug ("unexpected type of " ^ opname)
+	    case LT.ltd_arrow primoplt
+	      of (_, [a], [r]) => (a, r)
+	       | _ => bug ("unexpected type of " ^ opname)
     	val extra_arg_lt =
-		if coerceFnName = "finToInf" then
-			LT.ltc_arrow(LT.ffc_var(true,false), [LT.ltc_int32 ,LT.ltc_bool], [res_lt])
-		else
-			LT.ltc_parrow(LT.ltc_int32, res_lt)
+            if coerceFnName = "finToInf" then
+              LT.ltc_arrow(LT.ffc_var(true,false),
+                           [LT.ltc_int32 ,LT.ltc_bool], [res_lt])
+            else LT.ltc_parrow(LT.ltc_int32, res_lt)
         val new_arg_lt = LT.ltc_tuple [orig_arg_lt, extra_arg_lt]
         val new_lt = LT.ltc_parrow (new_arg_lt, res_lt )
         val x = mkv ()
@@ -651,11 +651,11 @@ fun inlFromInfPrec (opname, coerceFnName, primop, primoplt) =
     end
     
   
-fun inl_infPrec (what, corename, p, lt, is_from_inf) = let
+fun inl_infPrec (opname, coerceFnName, primop, primoplt, is_from_inf) = let
     val (orig_arg_lt, res_lt) =
-	case LT.ltd_arrow lt of
-	    (_, [a], [r]) => (a, r)
-	  | _ => bug ("unexpected type of " ^ what)
+	case LT.ltd_arrow primoplt
+	  of (_, [a], [r]) => (a, r)
+	   | _ => bug ("unexpected type of " ^ opname)
     val extra_arg_lt =
 	LT.ltc_parrow (if is_from_inf then (orig_arg_lt, LT.ltc_int32)
 		       else (LT.ltc_int32, res_lt (* orig_arg_lt *) ))
@@ -664,18 +664,18 @@ fun inl_infPrec (what, corename, p, lt, is_from_inf) = let
     val x = mkv ()
     (** Begin DEBUG edits *)
     val y = mkv ()	
-    val coreOcc = (if corename = "finToInf" then
+    val coreOcc = (if coerceFnName = "finToInf" then
 			FN(y, LT.ltc_int32 (** Where should this type come from *), 
-			   APP(coreAcc corename, RECORD [VAR y,
+			   APP(coreAcc coerceFnName, RECORD [VAR y,
 				falseLexp 
 				(** Apply to CoreBasicType falseDcon ...  *) ]))
-		   else coreAcc corename) 
+		   else coreAcc coerceFnName) 
     (** End DEBUG edits *)
     val e = 	
     FN (x, orig_arg_lt,
-	APP (PRIM (p, new_lt, []),
-	     RECORD [VAR x, coreAcc corename]))
-     val _ = print ("### inl_infPrec ### corename " ^ corename ^ "\n")
+	APP (PRIM (primop, new_lt, []),
+	     RECORD [VAR x, coreAcc coerceFnName]))
+     val _ = print ("### inl_infPrec ### coerceFnName " ^ coerceFnName ^ "\n")
     val _ = with_pp (fn ppstrm => PPLexp.ppLexp 20 ppstrm e)
     val _ = print "### end inl_infPrec ###\n" 
     in
@@ -939,7 +939,7 @@ fun mkVar (v as V.VALvar{access, prim, typ, path}, d) =
  * type parameters of instantiation of the intrinsic primop type relative
  * to the variable occurrence type *)
 fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
-      let val occty = (* compute the occurrence type of the variable *)
+      let val occurenceTy = (* compute the occurrence type of the variable *)
               case ts
                 of [] => !typ
                    (* ASSERT: !typ is not a POLYty *)
@@ -951,7 +951,7 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
 	  val _ = debugmsg ">>mkVE: before matchInstTypes"
           val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
-              case (TU.matchInstTypes(occty, intrinsicType)
+              case (TU.matchInstTypes(occurenceTy, intrinsicType)
                       : (TP.tyvar list * TP.tyvar list) option )
                 of SOME(_, tvs) => 
 		   (if !debugging then
@@ -976,14 +976,14 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
                            PPVal.ppVar ppstrm e;
                            PP.newline ppstrm;
                            PP.string ppstrm "occtypes: ";
-                           PPType.ppType env ppstrm occty;
+                           PPType.ppType env ppstrm occurenceTy;
                            PP.newline ppstrm;
                            PP.string ppstrm "intrinsicType: ";
                            PPType.ppType env ppstrm intrinsicType;
                            PP.newline ppstrm;
                            PP.string ppstrm "instpoly occ: ";
                            PPType.ppType env ppstrm
-                             (#1 (TU.instantiatePoly occty));
+                             (#1 (TU.instantiatePoly occurenceTy));
                            PP.newline ppstrm;
                            PP.string ppstrm "instpoly intrinsicType: ";
                            PPType.ppType env ppstrm

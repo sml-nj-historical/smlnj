@@ -22,7 +22,7 @@ teBinder:
     - ks: tkind list -- kinds of the lambda-bound variables
 
 
-Rules for tyc normalization
+Rules for tyc normalization from ltykernel.sml.
 
 Beta reduction:
 
@@ -39,11 +39,15 @@ Simplification rules:
 Variable lookup:
 
 (r4) TC_ENV((n,k),ol,nl,tcenv) => (n-ol+nl,k)  if n > ol  (adjust free var)
+    [A reference to a "nonlocal" variable, whose index points outside the
+     closure environment.]
 
 (r5) TC_ENV((n,k),ol,nl,tcenv) => (nl-nl',k)  where tcenv[n] = Lamb(nl',ks)
+    [A reference to a "local" lambda bound variable.]
 
 (r6) TC_ENV((n,k),ol,nl,tcenv) => TC_ENV(tycs[k],0,nl-nl',nil)
      where tcenv[n] = Beta(nl',tycs,ks)
+    [A reference to a local beta-bound variable.]
 
 Constructors
 

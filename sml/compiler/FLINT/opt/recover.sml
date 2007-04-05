@@ -8,7 +8,7 @@ sig
                   {getLty: FLINT.value -> FLINT.lty,
                    cleanUp: unit -> unit,
 		   addLty: (FLINT.lvar * FLINT.lty) -> unit}
-end (* signature SPECIALIZE *)
+end (* signature RECOVER *)
 
 structure Recover : RECOVER = 
 struct 
