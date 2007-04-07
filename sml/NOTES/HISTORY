@@ -14,6 +14,14 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/04/07
+Description:
+
+More Basis fixes: the WORD signature was missing {to,from}Large.
+Thanks to Andreas Rossberg.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2007/03/22 16:07:00 CDT
 Tag: release-110.63

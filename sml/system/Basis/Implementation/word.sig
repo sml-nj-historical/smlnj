@@ -10,6 +10,11 @@ signature WORD =
 
     val wordSize : int
 
+    val toLarge   : word -> LargeWord.word
+    val toLargeX  : word -> LargeWord.word
+    val fromLarge : LargeWord.word -> word
+
+  (* same as above, but deprecated *)
     val toLargeWord   : word -> LargeWord.word
     val toLargeWordX  : word -> LargeWord.word
     val fromLargeWord : LargeWord.word -> word

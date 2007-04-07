@@ -13,9 +13,14 @@ structure Word31Imp : WORD =
 
     val wordSize = 31
 
-    val toLargeWord   : word -> LargeWord.word = W31.toLargeWord
-    val toLargeWordX : word -> LargeWord.word = W31.toLargeWordX
-    val fromLargeWord : LargeWord.word -> word = W31.fromLargeWord
+    val toLarge   : word -> LargeWord.word = W31.toLargeWord
+    val toLargeX : word -> LargeWord.word = W31.toLargeWordX
+    val fromLarge : LargeWord.word -> word = W31.fromLargeWord
+
+  (* same as above, but deprecated *)
+    val toLargeWord = toLarge
+    val toLargeWordX = toLargeX
+    val fromLargeWord = fromLarge
 
     val toLargeInt : word -> LargeInt.int = W31.toLargeInt
     val toLargeIntX  : word -> LargeInt.int = W31.toLargeIntX

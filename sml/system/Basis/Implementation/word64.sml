@@ -19,9 +19,14 @@ structure Word64 : WORD = struct
 
     fun unimplemented _ = raise Fail "unimplemented"
 
-    val toLargeWord  = unimplemented
-    val toLargeWordX = unimplemented
-    val fromLargeWord = unimplemented
+    val toLarge  = unimplemented
+    val toLargeX = unimplemented
+    val fromLarge = unimplemented
+
+  (* same as above, but deprecated *)
+    val toLargeWord = toLarge
+    val toLargeWordX = toLargeX
+    val fromLargeWord = fromLarge
 
     val toLargeInt = CoreIntInf.copyInf64 o extern
     val toLargeIntX = CoreIntInf.extendInf64 o extern
