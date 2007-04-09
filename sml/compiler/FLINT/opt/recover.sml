@@ -60,7 +60,6 @@ fun recover (fdec, postRep) =
 
             fun lpd (fk, f, vts, e) = 
               (addvs vts; addv (f, LT.ltc_fkfun(fk, map #2 vts, lpe e)))
-
             and lpds (fds as ((fk as {isrec=SOME _, ...},_,_,_)::_)) =
                   let fun h ((fk as {isrec=SOME (rts,_), ...}, 
                              f, vts, _) : fundec) = 
@@ -80,7 +79,12 @@ fun recover (fdec, postRep) =
               | lpe (LET(vs, e1, e2)) = 
                   (addvs (ListPair.zip(vs, lpe e1)); lpe e2)
               | lpe (FIX(fdecs, e)) = (lpds fdecs; lpe e)
-              | lpe (APP(u, vs)) = #2(LT.ltd_fkfun (lpv u))
+              | lpe (APP(u, vs)) = let val u' = lpv u
+				   in (#2(LT.ltd_fkfun u') 
+		(* handle LT.DeconExn => 
+		       (PPFlint.printLexp (APP(u, vs));
+			bug "loop in recover") *) )
+				   end
               | lpe (TFN((tfk, v, tvks, e1), e2)) = 
                   (addv(v, LT.lt_nvpoly(tvks, loop e1));
                    lpe e2)
@@ -117,7 +121,8 @@ fun recover (fdec, postRep) =
       val (fkind, f, vts, e) = fdec
       val _ = addvs vts
       val atys = map #2 vts
-      val rtys = loop e
+      (* val _ = PPFlint.printLexp e *)
+      val rtys = loop e handle LT.DeconExn => (PPFlint.printLexp e; bug "ltd decon") 
       val _ = addv (f, LT.ltc_fkfun(fkind, atys, rtys))
   in {getLty=getlty, cleanUp=fn () => IntHashTable.clear zz, addLty=addv}
  end (* function recover *)

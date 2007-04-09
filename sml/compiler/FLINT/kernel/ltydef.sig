@@ -189,6 +189,8 @@ val ltc_str    : lty list -> lty
 val ltc_fct    : lty list * lty list -> lty
 val ltc_poly   : tkind list * lty list -> lty    
 
+exception DeconExn
+
 (** lty deconstructors *)
 val ltd_tyc    : lty -> tyc
 val ltd_str    : lty -> lty list

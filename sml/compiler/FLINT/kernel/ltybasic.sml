@@ -120,10 +120,10 @@ val ltc_unit   = ltc_tyc tcc_unit
 val ltc_bool   = ltc_tyc tcc_bool
 
 val ltc_tv     = ltc_tyc o tcc_tv
-val ltc_ref    = ltc_tyc o tcc_ref o ltd_tyc
-val ltc_array  = ltc_tyc o tcc_array o ltd_tyc
-val ltc_vector = ltc_tyc o tcc_vector o ltd_tyc
-val ltc_etag   = ltc_tyc o tcc_etag o ltd_tyc
+val ltc_ref    = fn x => (ltc_tyc o tcc_ref o ltd_tyc) x handle DeconExn => bug "ltc_ref on Poly"
+val ltc_array  = fn x => (ltc_tyc o tcc_array o ltd_tyc) x handle DeconExn => bug "ltc_array on Poly"
+val ltc_vector = fn x => (ltc_tyc o tcc_vector o ltd_tyc) x handle DeconExn => bug "ltc_vector on Poly"
+val ltc_etag   = fn x => (ltc_tyc o tcc_etag o ltd_tyc) x handle DeconExn => bug "ltc_etag on Poly"
 
 val ltc_top = ltc_ppoly([tkc_mono], ltc_tv 0)
 

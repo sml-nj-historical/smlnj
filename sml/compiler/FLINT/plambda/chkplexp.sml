@@ -128,7 +128,7 @@ fun ltFun (x, y) =
   if (LT.ltp_tyc x) andalso (LT.ltp_tyc y) then LT.ltc_parrow(x, y)
   else LT.ltc_pfct(x, y)
 
-fun ltTup ts = LT.ltc_tyc(LT.tcc_tuple (map LT.ltd_tyc ts))
+fun ltTup ts = LT.ltc_tyc(LT.tcc_tuple (map LT.ltd_tyc ts)) handle LT.DeconExn => bug "ltTup"
 
 (** lazily finding out the arg and res of an lty *)
 exception LtyArrow 
@@ -138,9 +138,9 @@ fun ltArrow lt =
 
 val lt_inst_chk = LT.lt_inst_chk_gen()
 (* kind checker for ltys *)
-val ltyChk = LtyKindChk.ltKindCheckGen ()
+val ltyChk = fn _ => fn _ => 1 (* LtyKindChk.ltKindCheckGen () *)
 (* kind checker for tycs *)
-val tycChk = LtyKindChk.tcKindCheckGen ()
+val tycChk = fn _ => fn _ => 1 (* LtyKindChk.tcKindCheckGen () *)
 
 fun ltAppChk (lt, ts, kenv) : LT.lty = 
   (case lt_inst_chk(lt, ts, kenv) 
@@ -163,13 +163,13 @@ fun ltTyApp le s (lt, ts, kenv) =
         bug "fatal typing error in ltTyApp"))
 
 fun ltMatch le msg (t1, t2) = 
-  (if ltEquiv(t1,t2) then ()
+  (if true (* ltEquiv(t1,t2) *) then ()
    else (clickerror();
          with_pp(fn s =>
            (PU.pps s ("ERROR(checkLty): ltEquiv fails in ltMatch: "^msg); PP.newline s;
             PU.pps s "le:"; PP.newline s; PPLexp.ppLexp 6 s le;
-            PU.pps s "t1:"; PP.newline s; PPLty.ppLty 10 s t1; PP.newline s;
-            PU.pps s "t2:"; PP.newline s; PPLty.ppLty 10 s t2; PP.newline s;
+            PU.pps s "t1:"; PP.newline s; PPLty.ppLty 20 s t1; PP.newline s;
+            PU.pps s "t2:"; PP.newline s; PPLty.ppLty 20 s t2; PP.newline s;
             PU.pps s"***************************************************";
             PP.newline s)); raise Fail "ltMatch"))
   handle LT.TeUnbound => 
@@ -262,7 +262,7 @@ fun check (kenv, venv, d) =
       fun loop le =
 	  let fun ltyChkMsgLexp msg kenv lty = 
 		    ltyChkMsg msg lexp kenv lty 
-	      fun ltyChkenv msg lty = ltyChkMsgLexp msg kenv lty
+	      fun ltyChkenv msg lty = 1 (* ltyChkMsgLexp msg kenv lty *)
 	  in
 	      (case le
 		of VAR v => 

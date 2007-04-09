@@ -25,7 +25,7 @@ val --> = CoreBasicTypes.-->
 infix -->
 
 val say = Control_Print.say
-val debugging = ref false
+val debugging = ref true
 fun debugmsg msg = if !debugging then say ("TypesUtil: " ^ msg ^ "\n") else ()
 fun bug msg = EM.impossible("TypesUtil: "^msg)
 
@@ -557,8 +557,10 @@ fun compareTypes (spec : ty, actual: ty): bool =
  *)
 exception WILDCARDmatch
 
-fun matchInstTypes(specTy,actualTy) =
+fun matchInstTypes(doExpandAbstract, specTy,actualTy) =
     let	fun debugmsg' msg = debugmsg ("matchInstTypes: " ^ msg)
+	fun expandAbstract(GENtyc {kind=ABSTRACT tyc', ...}) = expandAbstract tyc'
+	  | expandAbstract(tyc) = tyc
 	fun match'(WILDCARDty, _) = raise WILDCARDmatch (* possible? how? *)
 	  | match'(_, WILDCARDty) = raise WILDCARDmatch (* possible? how? *)
 	  | match'(ty1, ty2 as VARty(tv as ref(OPEN{kind=META,eq,...}))) =
@@ -577,6 +579,19 @@ fun matchInstTypes(specTy,actualTy) =
 	  | match'(CONty(tycon1, args1), CONty(tycon2, args2)) =
 	      if eqTycon(tycon1,tycon2)
 	      then ListPair.app match (args1,args2)
+	      else 
+		  (* Example: 
+		   *)
+		  if doExpandAbstract (* Expand GENtyc ABSTRACT for translate *)
+		  then
+		      let val tyc1 = expandAbstract tycon1
+			  val tyc2 = expandAbstract tycon2
+		      in if not (eqTycon(tyc1,tycon1) 
+				 andalso eqTycon(tyc2,tycon2)) 
+			 then match(CONty(tyc1, args1),
+				    CONty(tyc2, args2))
+			 else raise CompareTypes
+		      end
 	      else (debugmsg' "CONty"; raise CompareTypes)
 	  | match'(_, UNDEFty) = (debugmsg' "UNDEFty"; raise CompareTypes)
 	  | match'(_, IBOUND _) = (debugmsg' "IBOUND"; raise CompareTypes)

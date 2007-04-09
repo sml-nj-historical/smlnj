@@ -258,7 +258,7 @@ fun ltc_fkfun ({cconv=FL.CC_FCT, ...}: FL.fkind, atys, rtys) =
 
 fun ltd_fkfun (lty: lty) : lty list * lty list = 
   if ltp_fct lty then ltd_fct lty
-  else let val (_, atys, rtys) = ltd_arrow lty
+  else let val (_, atys, rtys) = ltd_arrow lty 
         in (atys, rtys)
        end
 

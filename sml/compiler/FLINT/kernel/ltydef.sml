@@ -282,10 +282,20 @@ val ltc_str    : lty list -> lty = lt_inj o LT.LT_STR
 val ltc_fct    : lty list * lty list -> lty = lt_inj o LT.LT_FCT
 val ltc_poly   : tkind list * lty list -> lty = lt_inj o LT.LT_POLY
 
+exception DeconExn
+
 (** lty deconstructors *)
 val ltd_tyc    : lty -> tyc = fn lt => 
       (case lt_out lt of LT.LT_TYC x => x
-                       | _ => bug "unexpected lty in ltd_tyc")
+		       | LT.LT_ENV _ => bug "unexpected lty in ltd_tyc (i.e. LT_ENV)"
+		       | LT.LT_STR _ => bug "unexpected LT_STR"
+		       | LT.LT_FCT _ => bug "unexpected LT_FCT"
+		       | LT.LT_POLY _ => (PrettyPrintNew.with_default_pp(fn s => PPLty.ppLty 10 s lt); 
+					  raise DeconExn; 
+					  bug "unexpected LT_POLY")
+		       | LT.LT_CONT _ => bug "unexpected LT_CONT"
+		       | LT.LT_IND _ => bug "unexpected LT_IND"
+                       (*| _ => bug "unexpected lty in ltd_tyc" *))
 val ltd_str    : lty -> lty list = fn lt => 
       (case lt_out lt of LT.LT_STR x => x
                        | _ => bug "unexpected lty in ltd_str")
@@ -326,21 +336,21 @@ fun ltw_poly (lt, f, g) =
 (** tyc-lty constructors *)
 val ltc_var    : index * int -> lty = ltc_tyc o tcc_var
 val ltc_prim   : primtyc -> lty = ltc_tyc o tcc_prim
-val ltc_tuple  : lty list -> lty = ltc_tyc o (tcc_tuple o (map ltd_tyc))
+val ltc_tuple  : lty list -> lty = ltc_tyc o (tcc_tuple o (map (fn x => ltd_tyc x handle DeconExn => bug "ltc_tuple")))
 val ltc_arrow  : fflag * lty list * lty list -> lty = fn (r, t1, t2) => 
   let val ts1 = map ltd_tyc t1
       val ts2 = map ltd_tyc t2
-   in ltc_tyc (tcc_arrow(r, ts1, ts2))
-  end
+   in ltc_tyc (tcc_arrow(r, ts1, ts2)) 
+  end handle DeconExn => bug "ltc_arrow"
 
 (** tyc-lty deconstructors *)
-val ltd_var    : lty -> index * int = tcd_var o ltd_tyc
-val ltd_prim   : lty -> primtyc = tcd_prim o ltd_tyc
-val ltd_tuple  : lty -> lty list = (map ltc_tyc) o (tcd_tuple o ltd_tyc)
+val ltd_var    : lty -> index * int = tcd_var o (fn x => ltd_tyc x handle DeconExn => bug "ltd_var")
+val ltd_prim   : lty -> primtyc = tcd_prim o (fn x => ltd_tyc x handle DeconExn => bug "ltd_prim")
+val ltd_tuple  : lty -> lty list = (map ltc_tyc) o (tcd_tuple o (fn x => ltd_tyc x handle DeconExn => bug "ltd_tuple"))
 val ltd_arrow  : lty -> fflag * lty list * lty list = fn t =>
   let val (r, ts1, ts2) = tcd_arrow (ltd_tyc t)
    in (r, map ltc_tyc ts1, map ltc_tyc ts2)
-  end
+  end (* handle DeconExn => bug "ltd_arrow" *)
 
 (** tyc-lty predicates *)
 val ltp_var    : lty -> bool = fn t =>
@@ -438,7 +448,7 @@ fun ltw_cont (lt, f, g) =
 val tcc_parrow : tyc * tyc -> tyc =    
   fn (x, y) => tcc_arrow(ffc_var (false, false), [x], [y])
 val ltc_parrow : lty * lty -> lty =
-  fn (x, y) => ltc_tyc (tcc_parrow (ltd_tyc x, ltd_tyc y))
+  fn (x, y) => ltc_tyc (tcc_parrow (ltd_tyc x, ltd_tyc y)) handle DeconExn => bug "ltc_parrow"
 val ltc_ppoly  : tkind list * lty -> lty = fn (ks, t) => ltc_poly(ks, [t]) 
 val ltc_pfct   : lty * lty -> lty = fn (x, y) => ltc_fct ([x], [y])
 
@@ -450,7 +460,7 @@ val tcd_parrow : tyc -> tyc * tyc = fn tc =>
 val ltd_parrow : lty -> lty * lty = fn t =>
   let val (t1, t2) = tcd_parrow (ltd_tyc t)
    in (ltc_tyc t1, ltc_tyc t2)
-  end
+  end handle DeconExn => bug "ltd_parrow"
 val ltd_ppoly  : lty -> tkind list * lty = fn t =>
   let val (ks, ts) = ltd_poly t
    in case ts of [x] => (ks, x)

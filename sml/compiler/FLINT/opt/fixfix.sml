@@ -132,7 +132,8 @@ fun fexp mf depth lexp = let
 	    (* find the rtys of the uncurried function *)
 	    fun getrtypes (({isrec=SOME(rtys,_),...}:F.fkind,_,_),_) = SOME rtys
 	      | getrtypes ((_,_,_),rtys) =
-		Option.map (fn [lty] => #2(LT.ltd_fkfun lty)
+		Option.map (fn [lty] => #2(LT.ltd_fkfun lty) 
+					handle LT.DeconExn => bug "uncurry"
 			     | _ => bug "strange isrec") rtys
 
 	    (* create the new fkinds *)

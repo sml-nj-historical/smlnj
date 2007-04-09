@@ -45,15 +45,15 @@ local
    * are nonnegative are satisfied *)
   fun tcc_env_chkd(x, 0, 0, te) = x
     | tcc_env_chkd(x, ol, nl, te) =
-      if ol < 0 then (print "tcc_env_chkd: negative ol\n"; raise TCENV)
+     (* if ol < 0 then (print "tcc_env_chkd: negative ol\n"; raise TCENV)
       else if nl < 0 then (print "tcc_env_chkd: negative nl\n"; raise TCENV)
-      else tc_injX(TC_ENV(x, ol, nl, te))
+      else *) tc_injX(TC_ENV(x, ol, nl, te))
 
   fun ltc_env_chkd(x, 0, 0, te) = x
     | ltc_env_chkd(x, ol, nl, te) =
-      if ol < 0 then (print "ltc_env_chkd: negative ol\n"; raise TCENV)
+      (* if ol < 0 then (print "ltc_env_chkd: negative ol\n"; raise TCENV)
       else if nl < 0 then (print "ltc_env_chkd: negative nl\n"; raise TCENV)
-      else lt_injX(LT_ENV(x, ol, nl, te))
+      else *) lt_injX(LT_ENV(x, ol, nl, te))
  
   (* needsClosure : enc_tvar list * int * int * tycenv -> bool
    * checks to see whether any of a list of free variables need
@@ -194,7 +194,7 @@ val tcc_app = fn (fntyc, argtycs) =>
                                      ppTyc (!dp) s tc; PP.newline s) )
 			 end
 		 in
-		     (checkParamArity(fntyc, argtycs); 
+		     ((* checkParamArity(fntyc, argtycs); *)
 		      (tc_injX o TC_APP) (fntyc, argtycs))
 		 end
 val tcc_seq = tc_injX o TC_SEQ

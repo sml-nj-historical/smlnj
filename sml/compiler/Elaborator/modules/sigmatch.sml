@@ -305,7 +305,7 @@ let
    * matching is equivalent to equalTypes(spec,actual). [dbm: 7/7/06]
    *)
   fun matchTypes (spec, actual, name) : T.tyvar list * T.tyvar list =
-      case TU.matchInstTypes(spec, actual)
+      case TU.matchInstTypes(false, spec, actual)
        of SOME(btvs,ptvs) => (btvs,ptvs)
         | NONE =>
           (err EM.COMPLAIN 

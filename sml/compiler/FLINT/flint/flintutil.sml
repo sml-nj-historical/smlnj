@@ -77,6 +77,7 @@ fun UNWRAP(tc, vs, v, e) = PRIMOP(unwrap tc, vs, v, e)
 fun getEtagTyc (_, _, lt, [tc]) = tc
   | getEtagTyc (_, _, lt, []) = 
       let val nt = LT.ltd_tyc (#2(LT.ltd_parrow lt))
+		   handle LT.DeconExn => bug "getEtagTyc"
        in if LT.tcp_app nt then 
             (case #2 (LT.tcd_app nt)
               of [x] => x
@@ -85,10 +86,12 @@ fun getEtagTyc (_, _, lt, [tc]) = tc
       end
   | getEtagTyc _ = bug "unexpected case 2 in getEtagTyc"
 
-fun getWrapTyc (_, _, lt, []) = LT.ltd_tyc(#1(LT.ltd_parrow lt))
+fun getWrapTyc (_, _, lt, []) = (LT.ltd_tyc(#1(LT.ltd_parrow lt))
+				handle LT.DeconExn => bug "getWrapTyc")
   | getWrapTyc _ = bug "unexpected case in getWrapTyc"
 
-fun getUnWrapTyc (_, _, lt, []) = LT.ltd_tyc(#2(LT.ltd_parrow lt))
+fun getUnWrapTyc (_, _, lt, []) = (LT.ltd_tyc(#2(LT.ltd_parrow lt))
+				  handle LT.DeconExn => bug "getUnWrapTyc")
   | getUnWrapTyc _ = bug "unexpected case in getUnWrapTyc"
 
 fun dcon_eq ((s1,c1,t1):FLINT.dcon,(s2,c2,t2)) =

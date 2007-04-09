@@ -458,7 +458,7 @@ fun transform (ienv, d, nmap, smap, did_flat) =
         | lpfd (fk as {cconv=CC_FUN fflag,isrec,known,inline}, f, vts, be) = 
            let (** first get the original arg and res types of f *)
                val (fflag', atys, rtys) = LT.ltd_arrow (getlty (VAR f))
-
+		   handle LT.DeconExn => bug "lpfd"
                (** just a sanity check; should turn it off later **)
                val (b1,b2) = 
                  if LT.ff_eqv (fflag, fflag') then LT.ffd_fspec fflag
@@ -539,6 +539,7 @@ fun transform (ienv, d, nmap, smap, did_flat) =
                    else 
                      let (** first get the original arg and res types of v *)
                          val (fflag, atys, rtys) = LT.ltd_arrow vty
+			     handle LT.DeconExn => bug "loop"
                          val (b1, b2) = LT.ffd_fspec fflag
 
                          (** get the newly specialized types **)

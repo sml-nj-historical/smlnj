@@ -122,7 +122,6 @@ fun mkvN NONE = mkv()
 val mkvN = #mkLvar compInfo
 fun mkv () = mkvN NONE
 
-val kindCh = LtyKindChk.tcKindCheckGen ()
 
 (** generate the set of ML-to-FLINT type translation functions *)
 val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty, markLBOUND} =
@@ -616,9 +615,9 @@ end
 fun inlToInfPrec (opname: string, coerceFnName: string, primop, primoplt) =
    let 
 	val (orig_arg_lt, res_lt) =
-	    case LT.ltd_arrow primoplt
-	      of (_, [a], [r]) => (a, r)
-	       | _ => bug ("unexpected type of " ^ opname)
+		case LT.ltd_arrow primoplt handle LT.DeconExn => bug "inlToInfPrec" of
+	    	(_, [a], [r]) => (a, r)
+	  	| _ => bug ("unexpected type of " ^ opname)
     	val extra_arg_lt =
             if coerceFnName = "finToInf" then
               LT.ltc_arrow(LT.ffc_var(true,false),
@@ -636,7 +635,7 @@ fun inlToInfPrec (opname: string, coerceFnName: string, primop, primoplt) =
 fun inlFromInfPrec (opname, coerceFnName, primop, primoplt) =    
     let 
 	val (orig_arg_lt, res_lt) =
-		case LT.ltd_arrow primoplt of
+		case LT.ltd_arrow primoplt handle LT.DeconExn => bug "inlFromInfPrec" of
 	    	(_, [a], [r]) => (a, r)
 	  	| _ => bug ("unexpected type of " ^ opname)
     	val extra_arg_lt =
@@ -653,9 +652,9 @@ fun inlFromInfPrec (opname, coerceFnName, primop, primoplt) =
   
 fun inl_infPrec (opname, coerceFnName, primop, primoplt, is_from_inf) = let
     val (orig_arg_lt, res_lt) =
-	case LT.ltd_arrow primoplt
-	  of (_, [a], [r]) => (a, r)
-	   | _ => bug ("unexpected type of " ^ opname)
+	case LT.ltd_arrow primoplt handle LT.DeconExn => bug "inl_infPrec" of
+	    (_, [a], [r]) => (a, r)
+	  | _ => bug ("unexpected type of " ^ opname)
     val extra_arg_lt =
 	LT.ltc_parrow (if is_from_inf then (orig_arg_lt, LT.ltc_int32)
 		       else (LT.ltc_int32, res_lt (* orig_arg_lt *) ))
@@ -951,7 +950,7 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
 	  val _ = debugmsg ">>mkVE: before matchInstTypes"
           val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
-              case (TU.matchInstTypes(occurenceTy, intrinsicType)
+              case (TU.matchInstTypes(true, occurenceTy, intrinsicType)
                       : (TP.tyvar list * TP.tyvar list) option )
                 of SOME(_, tvs) => 
 		   (if !debugging then
@@ -969,7 +968,7 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
                     else ();
                     map TU.pruneTyvar tvs)
                  | NONE =>
-                   (complain EM.COMPLAIN
+                   (ElabDebug.withInternals (fn () => (complain EM.COMPLAIN
                       "mkVE:primop intrinsic type doesn't match occurrence type"
                       (fn ppstrm => 
                           (PP.string ppstrm "VALvar: ";
@@ -988,7 +987,7 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
                            PP.string ppstrm "instpoly intrinsicType: ";
                            PPType.ppType env ppstrm
                              (#1 (TU.instantiatePoly intrinsicType))));
-                    bug "mkVE -- NONE")
+                    bug "mkVE -- NONE")))
 	  val _ = debugmsg "<<mkVE: after matchInstTypes"
        in case (primop, intrinsicParams)
             of (PO.POLYEQL, [t]) => eqGen(intrinsicType, t, toTcLt d)
@@ -1567,7 +1566,7 @@ val (plexp, imports) = wrapPidInfo (body, PersMap.listItemsi (!persmap))
 (** type check body (including kind check) **)
 val _ = complain EM.WARN ">>translate typecheck" EM.nullErrorBody
 val _ = print "**** Translate: typechecking plexp ****\n"
-(* val _ = PPLexp.printLexp plexp *)
+(* val _ = with_pp(fn strm => PPLexp.ppLexp 20 strm plexp) *)
 val ltyerrors = ChkPlexp.checkLtyTop(plexp,0)
 val _ = if ltyerrors
         then (print "**** Translate: checkLty failed ****\n";

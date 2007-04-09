@@ -632,6 +632,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
                     fn (le_lv, le_lty) =>
                     let val (c_lexp, c_lty) = cont(LT.ltc_etag lty)
                         val mketag = FU.mketag (FL.tcc_raw (LT.ltd_tyc lty))
+				     handle LT.DeconExn => bug "etag in flintnm"
                     in (flint_prim(mketag, [le_lv], lvar, c_lexp), c_lty)
                     end)
       | L.CON ((s,cr,lty),tycs,le) =>
@@ -708,7 +709,7 @@ fun norm (lexp as L.FN(arg_lv,arg_lty,e)) =
     let val r = 
 	    (#1(tofundec(LT.initLtyEnv, DI.top, mkv(), arg_lv, arg_lty, e, false))
 	     handle x => raise x)
-    in (debugmsg "<<norm"; r)
+    in (debugmsg "<<norm" (*; PPFlint.printFundec r *); r)
     end
   | norm _ = bug "unexpected toplevel lexp"
 
