@@ -133,6 +133,7 @@ fun lt_pinst (lt : lty, ts : tyc list) =
 exception KindChk = LtyKindChk.KindChk
 exception LtyAppChk
 
+exception TCENV = LK.TCENV
 exception TeUnbound = LK.teUnbound2
 
 val tcKindCheckGen : unit -> (tkindEnv -> tyc -> tkind) = LKC.tcKindCheckGen

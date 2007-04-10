@@ -217,7 +217,8 @@ fun lt_adj (lt, d, nd) =
 
 fun tc_adj (tc, d, nd) = 
   if d = nd then tc 
-  else tcc_env(tc, 0, nd - d, LT.teEmpty)
+  else tcc_env(tc, 0, nd - d, LT.teEmpty) 
+       (* handle LK.TCENV => bug "tc_adj" *)
 
 (** The following functions are similiar to lt_adj and tc_adj;
     they adjust an lty (or tyc) from depth d+k to depth nd+k,
@@ -238,6 +239,7 @@ fun lt_adj_k (lt, d, nd, k) =
 fun tc_adj_k (tc, d, nd, k) = 
   if d = nd then tc 
   else tcc_env(tc, k, nd-d+k, mkTycEnv(0, k, nd-d, LT.teEmpty))
+       handle LK.TCENV => bug "tc_adj_k"
 
 end (* lt_adj_k and tc_adj_k *)
 

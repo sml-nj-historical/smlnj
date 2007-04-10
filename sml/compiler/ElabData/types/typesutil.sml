@@ -25,7 +25,7 @@ val --> = CoreBasicTypes.-->
 infix -->
 
 val say = Control_Print.say
-val debugging = ref true
+val debugging = ref false
 fun debugmsg msg = if !debugging then say ("TypesUtil: " ^ msg ^ "\n") else ()
 fun bug msg = EM.impossible("TypesUtil: "^msg)
 

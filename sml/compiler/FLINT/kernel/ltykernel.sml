@@ -399,7 +399,9 @@ and lt_lzrd t =
         | h (x, ol, nl, tenv) = 
             let fun prop z = ltc_env(z, ol, nl, tenv)
              in (case lt_outX x
-                  of LT_TYC tc => ltc_tyc (tcc_env(tc, ol, nl, tenv))
+                  of LT_TYC tc => ltc_tyc (tcc_env(tc, ol, nl, tenv)
+					   handle TCENV => 
+						  bug "lt_lzrd LT_TYC")
                    | LT_STR ts => ltc_str (map prop ts)
                    | LT_FCT (ts1, ts2) => ltc_fct(map prop ts1, map prop ts2)
                    | LT_POLY (ks, ts) => 

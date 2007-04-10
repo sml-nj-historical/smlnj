@@ -116,7 +116,8 @@ fun bndGen(oks, bnds, d, info) =
       val spk = g(bnds, [], true)
 
       val adj = case spk of FULL => (fn tc => tc)
-                          | _ => (fn tc => LT.tc_adj(tc, d, DI.next d))
+                          | _ => (fn tc => LT.tc_adj(tc, d, DI.next d)
+				           handle LT.TCENV => bug "bndGen")
         (* if not full-specializations, we push depth one-level down *)
 
       (** pass 2 **)
@@ -253,7 +254,7 @@ fun lookItable (IENV (itabs,dtab), d, v, ts, getlty, nv_depth) =
       val (itab,_) = ((List.nth(itabs, d-nd)) handle _ => 
                       bug "unexpected itables in lookItable")
     
-      val nts = map (fn t => LT.tc_adj(t, d, nd)) ts
+      val nts = map (fn t => (LT.tc_adj(t, d, nd) handle LT.TCENV => bug "lookItable")) ts
       val xi = getOpt (IntHashTable.find itab v, [])
 
       fun h ((ots,xs)::r) = if tcs_eqv(ots, nts) then (map VAR xs) else h r

@@ -74,6 +74,7 @@ exception KindChk of string (* kind checker exception *)
 exception LtyAppChk
 
 exception TeUnbound  
+exception TCENV
 
 (* kind checking functions (re-exported here from Lty) *)
 val tcKindCheckGen : unit -> (tkindEnv -> tyc -> tkind)

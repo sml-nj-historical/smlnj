@@ -868,7 +868,9 @@ let
                          val prim = PrimOpId.selValPrimFromStrPrim(rootPrim, actslot)
                          val (btvs,ptvs) = matchTypes(spectyp, acttyp, sym)
                          val _ =
-                             (print "###SM: "; print (S.name sym); print "\n";
+                             (debugmsg "###SM: "; 
+			      debugmsg (S.name sym); 
+			      debugmsg "\n";
                               debugPrint debugging
                                 ("spectype", PPType.ppType statenv,
                                  spectyp);

@@ -13,6 +13,7 @@ type lty = Lty.lty
 type token = Lty.token
 type tycEnv = Lty.tycEnv
 
+exception TCENV
 exception teUnbound2 
 
 (** injections and projections on tkind, tyc, and lty *)
