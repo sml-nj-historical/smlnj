@@ -943,12 +943,12 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
                 of [] => !typ
                    (* ASSERT: !typ is not a POLYty *)
                  | _ => TU.applyPoly(!typ, ts)
-          val (primop,intrinsicType) =
+	  val (primop,intrinsicType) =
               case (PrimOpMap.primopMap p, PrimOpTypeMap.primopTypeMap p)
                of (SOME p, SOME t) => (p,t)
                 | _ => bug "mkVE: unrecognized primop name"
 	  val _ = debugmsg ">>mkVE: before matchInstTypes"
-          val intrinsicParams =
+	  val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
               case (TU.matchInstTypes(true, occurenceTy, intrinsicType)
                       : (TP.tyvar list * TP.tyvar list) option )
@@ -1131,13 +1131,15 @@ and mkVBs (vbs, d) =
              * both monotypes).  So in most cases, the mkVar translation
              * will be used, and this drops the primop information!!!
              * This seems definitely wrong. *)
-            (case prim
+            	(case prim
               of PrimOpId.Prim name =>
                   (case PrimOpTypeMap.primopTypeMap name
                      of SOME(primopty) =>
-                        if TU.equalTypeP(!typ,primopty)
-                        then LET(v, mkVar(w, d), b)
-                        else LET(v, mkPE(exp, d, btvs), b)
+                        (case TU.matchInstTypes(true,TU.applyPoly(!typ,
+				map (TU.prune o TP.VARty) ptvs),primopty)
+                        of NONE => bug "mkVB: occtype and intrinsic don't match"
+			 | SOME(_,[]) => LET(v, mkVar(w, d), b)
+                         | SOME(_,ptvs') => LET(v, mkPE(exp, d, btvs), b))
                       | NONE => bug "mkVBs: unknown primop name")
                | _ => LET(v, mkPE(exp, d, btvs), b))
 (*
@@ -1316,8 +1318,8 @@ and mkExp (exp, d) =
       fun mkRules xs = map (fn (RULE(p, e)) => (fillPat(p, d), g e)) xs
 
       and g (VARexp (ref v, ts)) = 
-            (debugmsg ">>mkExp VARexp"; mkVE(v, map TP.VARty ts, d))
-
+            (debugmsg ">>mkExp VARexp"; 
+	     mkVE(v, map TP.VARty ts, d))
         | g (CONexp (dc, ts)) = 
 	  (let val _ = debugmsg ">>mkExp CONexp: "
 	       val c = mkCE(dc, ts, NONE, d)

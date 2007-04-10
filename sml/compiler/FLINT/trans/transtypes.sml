@@ -153,8 +153,9 @@ and tycTyc(tc, d) =
       fun dtsFam (freetycs, fam as { members, ... } : dtypeFamily) =
 	  case ModulePropLists.dtfLtyc fam of
 	      SOME (tc, od) =>
-              LT.tc_adj(tc, od, d) (* invariant: tc contains no free variables 
+              (LT.tc_adj(tc, od, d) (* invariant: tc contains no free variables 
 				    * so tc_adj should have no effects *)
+	      handle LT.TCENV => bug "transtypes dtsFam")
 	    | NONE => 
               let fun ttk (GENtyc { arity, ... }) = LT.tkc_int arity
                     | ttk (DEFtyc{tyfun=TYFUN{arity=i, ...},...}) =
@@ -269,10 +270,11 @@ and toTyc d t =
       and h (INSTANTIATED t) = g t
         | h (TV_MARK(depth,num)) =
              LT.tcc_var(DI.calc(d, depth), num)
-        | h (UBOUND _) = (print "#### toTyc UBOUND!\n"; LT.tcc_void)
+        | h (UBOUND _) = LT.tcc_void
             (* dbm: should this have been converted to a TV_MARK before
-             * being passed to toTyc? *)
-        | h (OPEN _) = (print "#### toTyc OPEN!\n"; LT.tcc_void)
+             * being passed to toTyc? 
+	     * gk: Doesn't seem to experimentally *)
+        | h (OPEN _) = LT.tcc_void
         | h _ = bug "toTyc:h" (* LITERAL and SCHEME should not occur *)
 
       and g (VARty tv) = (* h(!tv) *) lookTv tv
@@ -481,7 +483,8 @@ structure MIDict = RedBlackMapFn(struct type ord_key = ModuleId.modId
       fun tycTycLook (t as (GENtyc _ | DEFtyc _), d) = 
             let tid = MU.tycId t
              in (case MIDict.peek(!m1, tid)
-                  of SOME (t', od) => LT.tc_adj(t', od, d)
+                  of SOME (t', od) => (LT.tc_adj(t', od, d)
+				       handle LT.TCENV => bug "tycTycLook")
                    | NONE => 
                        let val x = tycTyc (t, d)
                            val _ = (m1 := TcDict.insert(!m1, tid, (x, d)))
