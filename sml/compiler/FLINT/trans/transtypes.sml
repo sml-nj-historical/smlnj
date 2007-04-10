@@ -153,9 +153,9 @@ and tycTyc(tc, d) =
       fun dtsFam (freetycs, fam as { members, ... } : dtypeFamily) =
 	  case ModulePropLists.dtfLtyc fam of
 	      SOME (tc, od) =>
-              (LT.tc_adj(tc, od, d) (* invariant: tc contains no free variables 
+              LT.tc_adj(tc, od, d) (* invariant: tc contains no free variables 
 				    * so tc_adj should have no effects *)
-	      handle LT.TCENV => bug "transtypes dtsFam")
+	      
 	    | NONE => 
               let fun ttk (GENtyc { arity, ... }) = LT.tkc_int arity
                     | ttk (DEFtyc{tyfun=TYFUN{arity=i, ...},...}) =
@@ -483,8 +483,7 @@ structure MIDict = RedBlackMapFn(struct type ord_key = ModuleId.modId
       fun tycTycLook (t as (GENtyc _ | DEFtyc _), d) = 
             let tid = MU.tycId t
              in (case MIDict.peek(!m1, tid)
-                  of SOME (t', od) => (LT.tc_adj(t', od, d)
-				       handle LT.TCENV => bug "tycTycLook")
+                  of SOME (t', od) => LT.tc_adj(t', od, d) 
                    | NONE => 
                        let val x = tycTyc (t, d)
                            val _ = (m1 := TcDict.insert(!m1, tid, (x, d)))
