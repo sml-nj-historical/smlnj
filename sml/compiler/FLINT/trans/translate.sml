@@ -676,9 +676,12 @@ fun inl_infPrec (opname, coerceFnName, primop, primoplt, is_from_inf) = let
     FN (x, orig_arg_lt,
 	APP (PRIM (primop, new_lt, []),
 	     RECORD [VAR x, coreAcc coerceFnName]))
-     val _ = print ("### inl_infPrec ### coerceFnName " ^ coerceFnName ^ "\n")
-    val _ = with_pp (fn ppstrm => PPLexp.ppLexp 20 ppstrm e)
-    val _ = print "### end inl_infPrec ###\n" 
+     val _ = if !debugging then 
+		 (print ("### inl_infPrec ### coerceFnName " ^ coerceFnName ^ 
+			 "\n");
+		  with_pp (fn ppstrm => PPLexp.ppLexp 20 ppstrm e);
+		  print "### end inl_infPrec ###\n")
+	     else ()
     in
     e	
 end
@@ -1568,21 +1571,19 @@ val body = wrapII body
 val (plexp, imports) = wrapPidInfo (body, PersMap.listItemsi (!persmap))
 
 (** type check body (including kind check) **)
-val _ = complain EM.WARN ">>translate typecheck" EM.nullErrorBody
-val _ = print "**** Translate: typechecking plexp ****\n"
-(* val _ = with_pp(fn strm => PPLexp.ppLexp 20 strm plexp) *)
 val ltyerrors = ChkPlexp.checkLtyTop(plexp,0)
 val _ = if ltyerrors
         then (print "**** Translate: checkLty failed ****\n";
               with_pp(fn str =>
                 (PU.pps str "absyn:"; PP.newline str;
                  ElabDebug.withInternals
-                  (fn () => PPAbsyn.ppDec (env,NONE) str (rootdec,1000)); PP.newline str;
+                  (fn () => PPAbsyn.ppDec (env,NONE) str (rootdec,1000)); 
+		 PP.newline str;
                  PU.pps str "lexp:"; PP.newline str;
                  PPLexp.ppLexp 25 str plexp));
               complain EM.WARN "checkLty" EM.nullErrorBody;
 	     bug "PLambda type check error!")
-        else print "**** Translate: finished typechecking plexp ****\n"
+        else ()
 
 
 fun prGen (flag,printE) s e =

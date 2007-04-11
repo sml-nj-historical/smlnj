@@ -891,7 +891,7 @@ let
                                        (fn pps => (fn tv =>
                                           PPType.ppType statenv pps (T.VARty tv)))),
                                  btvs);
-                              print "\n")
+                              debugmsg "\n")
 
                          val spath = SP.SPATH[sym]
                          val actvar = VALvar{path=spath, typ=ref acttyp,

@@ -932,7 +932,7 @@ case fctexp
                EE.mark(mkStamp,EE.bind(paramEntVar,M.STRent paramRlzn,entEnv))
           val _ = debugmsg "--elabFct[BaseFct]: param EE.bind"
 
-	  val _ = print "elabmod before env'\n"
+	  val _ = debugmsg "elabmod before env'\n"
           val env' =
             case paramNameOp 
              of NONE => MU.openStructure(env,paramStr)

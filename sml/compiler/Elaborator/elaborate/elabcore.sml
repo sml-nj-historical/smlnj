@@ -746,7 +746,6 @@ let
 
     and elabOPENdec(spaths, env, region) = 
         let val err = error region
-            val _ = print "elabOPENdec\n"
 	    val strs = map (fn s => let val sp = SP.SPATH s
                                      in (sp, LU.lookStr(env, sp, err))
                                     end) spaths

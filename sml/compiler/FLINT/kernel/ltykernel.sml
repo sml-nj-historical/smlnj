@@ -797,9 +797,11 @@ and tc_eqv_gen (t1, t2) =
         eqlist tc_eqv (ts1, ts2)
       | (TC_PRIM ptyc1, TC_PRIM ptyc2) =>
         PT.pt_eq(ptyc1,ptyc2)
-      | _ => (with_pp(fn s =>
-                (PU.pps s "%%%tc_eqv_gen DEFAULT";
-                 PP.newline s));
+      | _ => (if !debugging 
+	      then with_pp(fn s =>
+			      (PU.pps s "%%%tc_eqv_gen DEFAULT";
+			       PP.newline s))
+	      else ();
               false)
 
 (** general equality for tycs *)
@@ -843,7 +845,10 @@ fun lt_eqv_gen (t1 : lty, t2: lty) =
          (eqlist lt_eqv (as1, as2)) andalso (eqlist lt_eqv (bs1, bs2))
        | (LT_STR s1, LT_STR s2) => eqlist lt_eqv (s1, s2)
        | (LT_CONT s1, LT_CONT s2) => eqlist lt_eqv (s1, s2)
-       | _ => (print "%%%lt_eqv_gen DEFAULT\n"; false))
+       | _ => (dgPrint("LT_CONT", 
+		       (fn s => fn () => PU.pps s "%%%lt_eqv_gen DEFAULT\n"),
+		       ()); 
+	       false))
     (* function lt_eqv_gen *)
 
 and lt_eqv(x : lty, y: lty) : bool = 
