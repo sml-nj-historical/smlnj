@@ -7,6 +7,7 @@ sig
   (* Invariant: transDec always applies to a top-level absyn declaration *) 
   val transDec : { rootdec: Absyn.dec,
 		   exportLvars: Access.lvar list,
+                   oldenv: StaticEnv.staticEnv,
                    env: StaticEnv.staticEnv,
 		   cproto_conv: string,
 		   compInfo: Absyn.dec CompInfo.compInfo }
@@ -102,7 +103,7 @@ exception NoCore
  ****************************************************************************)
 
 fun transDec
-	{ rootdec, exportLvars, env, cproto_conv,
+	{ rootdec, exportLvars, oldenv, env, cproto_conv,
 	 compInfo as {errorMatch,error,...}: Absyn.dec CompInfo.compInfo } =
 let 
 
@@ -141,6 +142,7 @@ fun toDconLty d ty =
             else toLty d (BT.-->(BT.unitTy, ty)))
 
 (** the special lookup functions for the Core environment *)
+(* DBM: not used -- superceded by CoreAccess *)
 fun coreLookup(id, env) = 
   let val sp = SymPath.SPATH [CoreSym.coreSym, S.varSymbol id]
       val err = fn _ => fn _ => fn _ => raise NoCore
@@ -324,7 +326,7 @@ fun mkAcc (p, nameOp) =
 exception NoCore
 
 fun coreExn id =
-    (case CoreAccess.getCon' (fn () => raise NoCore) (env, id) of
+    (case CoreAccess.getCon' (fn () => raise NoCore) (oldenv, id) of
 	 TP.DATACON { name, rep as DA.EXN _, typ, ... } =>
          let val nt = toDconLty DI.top typ
              val nrep = mkRep(rep, nt, name)
@@ -337,7 +339,7 @@ fun coreExn id =
     handle NoCore => (say "WARNING: no Core access\n"; INT 0)
 
 and coreAcc id =
-    (case CoreAccess.getVar' (fn () => raise NoCore) (env, id) of
+    (case CoreAccess.getVar' (fn () => raise NoCore) (oldenv, id) of
 	 V.VALvar { access, typ, path, ... } =>
 	 mkAccT(access, toLty DI.top (!typ), getNameOp path)
        | _ => bug "coreAcc in translate")
@@ -876,7 +878,7 @@ fun transPrim (prim, lt, ts) =
 	    (* inl_infPrec ("EXTEND_INF", "finToInf", p, lt, false) *)
 	    inlToInfPrec("EXTEND_INF", "finToInf", p, lt)
 	| g (p as PO.COPY_INF prec) =
-	    inlToInfPrec ("COPY", "copyInf", p, lt) 
+	    inlToInfPrec ("COPY", "finToInf", p, lt) 
 	(* default handling for all other primops *)
         | g p = PRIM(p, lt, ts) 
 

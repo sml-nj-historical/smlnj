@@ -1,9 +1,11 @@
 (* Copyright (c) 1997 YALE FLINT PROJECT *)
 (* ltydict.sml *)
 
-signature LTYDICT = sig 
-  type tyc = LtyKernel.tyc
-  type lty = LtyKernel.lty
+signature LTYDICT =
+sig 
+  type tyc = Lty.tyc
+  type lty = Lty.lty
+
   val tmemo_gen : {tcf: (tyc -> 'a) -> (tyc -> 'a),
                    ltf: ((tyc -> 'a) * (lty -> 'b)) -> (lty -> 'b)} 
                   -> {tc_map: tyc -> 'a, lt_map: lty -> 'b}
@@ -21,23 +23,18 @@ end (* signature LTYDICT *)
 structure LtyDict : LTYDICT = 
 struct 
 
-local 
-      open LtyKernel
-in 
+type tyc = Lty.tyc
+type lty = Lty.lty
 
-fun bug s = ErrorMsg.impossible ("LtyDict: " ^ s)
-val say = Control.Print.say
+structure TcDict = RedBlackMapFn(struct
+                                   type ord_key = tyc
+				   val compare = Lty.tc_cmp
+			         end)
 
-structure TcDict = RedBlackMapFn(struct type ord_key = tyc
-				      val compare = Lty.tc_cmp
-			       end)
-
-structure LtDict = RedBlackMapFn(struct type ord_key = lty
-				      val compare = Lty.lt_cmp
-			       end)
-
-type tyc = tyc
-type lty = lty
+structure LtDict = RedBlackMapFn(struct
+                                   type ord_key = lty
+				   val compare = Lty.lt_cmp
+			         end)
 
 fun tmemo_gen {tcf, ltf} =
   let val m1 = ref (TcDict.empty)
@@ -99,10 +96,4 @@ fun wmemo_gen {tc_wmap, tc_umap, lt_umap} =
    in {tc_wmap=tcw_look, tc_umap=tcu_look, lt_umap=ltu_look, cleanup=cleanup}
   end (* wmemo_gen *)
 
-end (* toplevel local *)
 end (* structure LtyDict *)
-
-
-
-
-

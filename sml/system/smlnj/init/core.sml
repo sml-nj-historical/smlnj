@@ -347,15 +347,11 @@ structure Core =
 	val assign = ( InLine.:= )
         val deref = ( InLine.! )
 	val unboxedupdate = InLine.unboxedupdate
-	val subscript : 'a array * int -> 'a = InLine.arrSub
+	val subscript = InLine.arrSub
 	val iadd = InLine.i31add
 
 	val testInf = CoreIntInf.testInf
 	val truncInf = CoreIntInf.truncInf
-	(** ADDED copyInf ... because finToInf takes sign extension parameter *) 
-	val copyInf = CoreIntInf.copyInf
-        (** DBM: why had extendInf not been added also? *)
-	val extendInf = CoreIntInf.extendInf
 	val finToInf = CoreIntInf.finToInf
 	val makeNegInf = CoreIntInf.makeNegInf
 	val makePosInf = CoreIntInf.makePosInf

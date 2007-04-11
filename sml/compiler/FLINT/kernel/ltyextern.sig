@@ -3,7 +3,7 @@
 
 (*
  * This interface hides the implementation details of FLINT tkind, tyc, and 
- * lty defined inside LtyKernel. For each entity, we provide a series of 
+ * lty defined inside Lty. For each entity, we provide a series of 
  * constructor funtions, deconstructor functions, predicate functions,
  * and other utility functions. We divide these functions into three files:
  * LtyDef contains the set of abstract constructor, deconstructor, and
@@ -22,7 +22,7 @@
  * (2) functions should all be accessed as "LtyExtern.foo". The client
  * in general should never need to access LtyKernel.
  *
- * This interface should only refer to structures such as DebIndex, LtyKernel, 
+ * This interface should only refer to structures such as DebIndex, Lty, 
  * PrimTyc, Symbol, and LtyBasic (indirectly LtyDef).
  *)
 

@@ -92,7 +92,8 @@ struct
 	in
 	    Translate.transDec { rootdec = absyn,
 				 exportLvars = exportLvars,
-				 env = statenv,
+				 oldenv = oldstatenv,
+                                 env = statenv,
 				 cproto_conv = cproto_conv,
 				 compInfo = compInfo }
 	end

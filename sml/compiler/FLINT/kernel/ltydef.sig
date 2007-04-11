@@ -3,10 +3,10 @@
 
 (*
  * This interface hides the implementation details of FLINT tkind, tyc, and 
- * lty defined inside LtyKernel. For each entity, we provide a series of 
+ * lty defined inside Lty. For each entity, we provide a series of 
  * constructor funtions, deconstructor functions, predicate functions, and
  * functions that test equivalence and do pretty-printing. This interface 
- * should only refer to DebIndex, LtyKernel, PrimTyc, and Symbol. 
+ * should only refer to DebIndex, Lty, PrimTyc, and Symbol. 
  *)
 
 signature LTYDEF = 

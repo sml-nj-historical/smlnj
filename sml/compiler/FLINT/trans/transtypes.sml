@@ -155,7 +155,6 @@ and tycTyc(tc, d) =
 	      SOME (tc, od) =>
               LT.tc_adj(tc, od, d) (* invariant: tc contains no free variables 
 				    * so tc_adj should have no effects *)
-	      
 	    | NONE => 
               let fun ttk (GENtyc { arity, ... }) = LT.tkc_int arity
                     | ttk (DEFtyc{tyfun=TYFUN{arity=i, ...},...}) =

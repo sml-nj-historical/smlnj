@@ -570,7 +570,8 @@ fun matchInstTypes(doExpandAbstract, specTy,actualTy) =
 	      then ()
 	      else tv := INSTANTIATED ty1
 	  | match'(ty1, VARty(tv as ref(INSTANTIATED ty2))) =
-              if equalType(ty1,ty2) then () else (debugmsg' "INSTANTIATED"; raise CompareTypes)
+              if equalType(ty1,ty2) then ()
+              else (debugmsg' "INSTANTIATED"; raise CompareTypes)
 	  (* GK: Does this make sense? matchInstTypes should not apply
 		 as is if all the metavariables have been translated 
 	         into TV_MARKs *)
@@ -883,10 +884,6 @@ fun reformat { tp_var, tp_tyc } (ty, tycs, depth) =
 		  (case kind of
 		       ABSTRACT itc => let
 			   val tk = LT.tkc_int arity
-(*
-			   val tps = TP_VAR (TVI.toExn
-						 {depth=depth, num=i, kind=tk})
-*)
 			   val tps = tp_var { depth=depth, num=i, kind=tk}
 			   val nkind = FLEXTYC tps
 			   val ntc =
