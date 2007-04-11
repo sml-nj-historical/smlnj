@@ -542,9 +542,12 @@ fun compareTypes (spec : ty, actual: ty): bool =
 		  | _ => equalType(spec,actual))
     end handle CompareTypes => false
 
-(* matchInstTypes: ty * ty -> (tyvar list * tyvar list) option
- * The first argument is a spec type (e.g. from a signature spec),
- * while the second is a potentially more general actual type. The
+(* matchInstTypes: bool * ty * ty -> (tyvar list * tyvar list) option
+ * The first argument tells matchInstTypes to ignore the abstract property
+ * of abstract types, i.e., this call is being used in FLINT where
+ * we can look into abstract types.  
+ * The second argument is a spec type (e.g. from a signature spec),
+ * while the third is a potentially more general actual type. The
  * two types are instantiated (if they are polymorphic), and a one-way
  * match is performed on their generic instantiations. 
  * [Note that the match cannot succeed if spec is polymorphic while
@@ -559,12 +562,24 @@ exception WILDCARDmatch
 
 fun matchInstTypes(doExpandAbstract, specTy,actualTy) =
     let	fun debugmsg' msg = debugmsg ("matchInstTypes: " ^ msg)
-	fun expandAbstract(GENtyc {kind=ABSTRACT tyc', ...}) = expandAbstract tyc'
+	fun expandAbstract(GENtyc {kind=ABSTRACT tyc', ...}) = 
+	    expandAbstract tyc'
 	  | expandAbstract(tyc) = tyc
 	fun match'(WILDCARDty, _) = raise WILDCARDmatch (* possible? how? *)
 	  | match'(_, WILDCARDty) = raise WILDCARDmatch (* possible? how? *)
 	  | match'(ty1, ty2 as VARty(tv as ref(OPEN{kind=META,eq,...}))) =
-              if eq andalso not(checkEqTyInst(ty1))
+              (* If we're told to ignore abstract, then we can't 
+		 check for equality types because the original GENtyc
+		 was lost by setting the type to abstract imperatively.
+		 Thus, if doExpandAbstract, we skip the equality type 
+		 check. At this point, the elaborator already checked
+		 for equality types (before they were side-effected),
+		 hence it is guaranteed that if one is an equality type
+		 so is the other. The regression test suite coresml
+		 d005a-ac.sml tests this. [GK 4/11/07] 
+		*)
+	      if not(doExpandAbstract) andalso 
+		 (eq andalso not(checkEqTyInst(ty1))) 
 	      then (debugmsg' "VARty META\n"; raise CompareTypes)
 	      else if equalType(ty1, ty2) 
 	      then ()
