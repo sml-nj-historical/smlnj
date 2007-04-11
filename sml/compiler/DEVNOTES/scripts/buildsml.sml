@@ -9,7 +9,7 @@ fun startSlaves(i) =
 	if i < numprocs then startSlaves(i + 1) else lastSlave
     end;
 
-startSlaves(0); 
+startSlaves(1); 
 
 CM.autoload "$smlnj/cmb.cm";
 CMB.make();
