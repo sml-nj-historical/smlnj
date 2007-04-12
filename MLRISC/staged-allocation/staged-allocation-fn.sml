@@ -198,19 +198,5 @@ functor StagedAllocationFn (
 	of (str, [l]) => (str, l)
 	 | _ => raise StagedAlloc
       (* esac *))
-		 
-  fun process {counters, stages} slots = raise Fail ""
-(*      let val str0 = init counters
-	  val step = mkStep stages
-	  fun processSlot (slot, (str, lss)) =
-	      let val (str, ls) = step (str, slot)
-	      in
-		  (str, ls :: lss)
-	      end (* processSlot *)
-	  val (_, lss) = foldl processSlot (str0, []) slots
-      in
-	  resetCounter ();
-	  rev lss
-      end (* process *) *)
 
 end (* StagedAllocationFn *)

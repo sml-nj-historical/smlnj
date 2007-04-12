@@ -60,7 +60,7 @@ signature STAGED_ALLOCATION = sig
     (* Create a counter. *)
     val freshCounter : unit -> counter
     (* Helper function that creates a counter c, and returns the sequence:
-     * [BITCOUNTER c, REGS_BY_BITS (c, regs)] (this function is stolen from 
+     * [BITCOUNTER c, REGS_BY_BITS (c, regs)] (this function is taken from 
      * the paper). *)
     val useRegs : reg list -> (counter * stage)
     (* Retrieve a counter value from the store. *)

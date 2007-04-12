@@ -2,12 +2,35 @@ signature C_CALL = sig
 
     structure T : MLTREE
 
-    (* A GPR specifies either an integer or pointer; if the 
-     * corresponding parameter is a C struct, then 
-     * this argument is the address of the struct. 
-     *)
-    datatype c_arg = datatype T.mlrisc
-		  
+    datatype c_arg 
+      = ARG of T.rexp	
+	  (* rexp specifies integer or pointer; if the 
+           * corresponding parameter is a C struct, then 
+	   * this argument is the address of the struct. 
+	   *)
+      | FARG of T.fexp
+	  (* fexp specifies floating-point argument *)
+      | ARGS of c_arg list
+	  (* list of arguments corresponding to the contents of a C struct *)
+
+    (* An arg_location specifies the location of arguments/parameters
+     * for a C call.  Offsets are given with respect to the low end 
+     * of the parameter area. *)
+    datatype arg_location =
+	C_GPR  of (T.ty * T.reg) (* integer/pointer argument in register *)
+      | C_FPR  of (T.fty * T.reg) (* floating-point argument in register *)
+      | C_STK  of (T.ty * T.I.machine_int)  (* integer/pointer argument on the call stack *)
+      | C_FSTK of (T.fty * T.I.machine_int) (* floating-point argument on the call stack *)
+
+    val layout : CTypes.c_proto -> {
+	    argLocs : arg_location list,	(* argument/parameter assignment *)
+	    argMem : {szb : int, align : int},	(* memory requirements for stack-allocated *)
+						(* arguments; this value can be passed to *)
+						(* the paramAlloc callback. *)
+	    resLoc : arg_location option,	(* result location; NONE for void functions *)
+	    structRetLoc : {szb : int, align : int} option
+	  }
+
   (* translate a C function call with the given argument list into
    * a MLRISC statement list.  The arguments are as follows:
    *
@@ -58,11 +81,11 @@ signature C_CALL = sig
     val genCall : {
 	    name  : T.rexp,
             proto : CTypes.c_proto,
-(*	    paramAlloc : {szb : int, align : int} -> bool,
+	    paramAlloc : {szb : int, align : int} -> bool,
             structRet : {szb : int, align : int} -> T.rexp,
 	    saveRestoreDedicated :
 	      T.mlrisc list -> {save: T.stm list, restore: T.stm list},
-	    callComment : string option, *)
+	    callComment : string option, 
             args : c_arg list
 	  } -> {
 	    callseq : T.stm list,
