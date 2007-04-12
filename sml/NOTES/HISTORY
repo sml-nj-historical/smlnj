@@ -14,6 +14,15 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/04/12
+Description:
+
+Substantially changed the signature and implementation of AMD64
+SVID.  It now looks similar to the ia32 SVID, yet uses staged
+allocation.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2007/04/07
 Description:
