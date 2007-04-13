@@ -380,7 +380,7 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
 		       closeBox()))
 		  constraints;
 		closeBox ())
-	val somePrint = ref false
+	val somePrint = ref false (* i.e., signature is not empty sig end *)
      in if depth <= 0
 	then pps "<sig>"
 	else
@@ -417,7 +417,10 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
 	      else (* not !internals *)
 		(openHVBox 0;
 		  pps "sig";
-		  break{nsp=1,offset=2};
+		  (case elements 
+		       of nil => pps " "
+			| [_] => pps " "
+			| _ => nl_indent ppstrm 2);
 		  openHVBox 0;
 		   case elements
 		     of nil => ()
@@ -434,7 +437,10 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
 			      ppConstraints("type ",typsharing);
 			      somePrint := true);
 		  closeBox();
-		  if !somePrint then break{nsp=1,offset=0} else ();
+		  (case elements 
+		    of nil => ()
+		     | [_] => pps " "
+		     | _ => newline());
 		  pps "end";
 		 closeBox())
 	   | M.ERRORsig => pps "<error sig>"
