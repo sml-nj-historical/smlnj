@@ -326,7 +326,7 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
  *                                                                         *
  * Recompute all the dynamic accesses in an environment, suppress doubles  *
  * and allocate slots. Components are ordered so that slot allocation is   *
- * independant from the way elaboration is done.                           *
+ * independent from the way elaboration is done.                           *
  *                                                                         *
  * Should use Env.fold or Env.map?                                         *
  *                                                                         *
@@ -472,11 +472,17 @@ fun extractSig (env, epContext, context,
               end
 
           | _ => (elements, entEnv, entDecl, trans, slotCount, fctflag)
-
-        val binders = SE.sort (SE.consolidate env) 
+		 (* [GK 4/15/07] This consolidate is somehow 
+		    messing the elements order ... it is supposed 
+		    to just eliminate EMPTY bindings. 
+		    SE.foldOverElems seems to fix this problem. We can
+		    now compute the elements (specs) in the correct 
+		    order on the consolidated list. *)
+        val envSymInOrder = SE.symbols env
+        val cenv = SE.consolidate env 
         val (elements, entEnv, entDecl, trans, _, fctflag) = 
-          List.foldl transBind (nil, EE.empty, [], [], 0, false) binders
-
+          SE.foldOverElems(transBind,(nil, EE.empty, [], [], 0, false),cenv,
+			   envSymInOrder)
      in (rev elements, entEnv, rev entDecl, rev trans, fctflag)
     end
 
@@ -592,7 +598,8 @@ fun elab (BaseStr decl, env, entEnv, region) =
             in M.STR {sign=sign, rlzn=strRlzn, access=dacc,
 		      prim=prim}
             end
-          
+          val _ = debugPrint("BaseStr after resStr  - symbols: ", ED.ppSymList,
+                             ED.envSymbols env')
           val resDec = 
             let val body = A.LETstr(absDecl, A.STRstr(locations))
              in A.STRdec [A.STRB {name=tempStrId, str=resStr, def=body}]

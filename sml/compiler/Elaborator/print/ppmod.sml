@@ -386,6 +386,17 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
 	else
 	case sign
 	  of M.SIG {stamp,name,elements,typsharing,strsharing,...} =>
+	     let 
+		 (* Filter out ordinary dcon that do not print in ppElements 
+		    for element printing so that we do not print the spurious
+	            newline. We still use the unfiltered elements
+		    for determining whether the sig ... end should be 
+		    multiline even with just one datatype. *) 
+                val elems' = List.filter 
+				 (fn (_,M.CONspec{spec=dcon,...}) => false | 
+				     _ => true) 
+				 elements
+	     in
 	     if !internals then 
 	       (openHVBox 0;
 		 pps "SIG:";
@@ -424,7 +435,7 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
 		  openHVBox 0;
 		   case elements
 		     of nil => ()
-		      | _ => (ppElements (env,depth,entityEnvOp) ppstrm elements;
+		      | _ => (ppElements (env,depth,entityEnvOp) ppstrm elems';
 			      somePrint := true);
 		   case strsharing
 		     of nil => ()
@@ -443,6 +454,7 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
 		     | _ => newline());
 		  pps "end";
 		 closeBox())
+	     end
 	   | M.ERRORsig => pps "<error sig>"
     end
 
