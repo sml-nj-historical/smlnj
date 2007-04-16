@@ -27,7 +27,6 @@ Library
 
 	functor AMD64Shuffle
         functor AMD64SpillInstr
-	functor AMD64GenCCallFn
 	functor AMD64SVIDFn
 	structure CSizes
 is
@@ -77,7 +76,7 @@ is
 	../amd64/instructions/amd64FreqProps.sml
 	../amd64/emit/amd64Asm.sml
 	../amd64/amd64MC.sml
-	../amd64/ra/amd64Rewrite.sml *)
+	../amd64/ra/amd64Rewrite.sml
 	../amd64/ra/amd64SpillInstr.sml 
 	../amd64/backpatch/amd64Jumps.sml 
 	../amd64/mltree/amd64.sml
