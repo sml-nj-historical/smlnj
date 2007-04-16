@@ -15,6 +15,13 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/04/16
+Description:
+
+Fixed an unbound functor bug in the AMD64 CM file.
+
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
 Date: 2007/04/12
 Description:
 
