@@ -12,34 +12,26 @@ in
 
 type binding = B.binding
 type real_binding = binding * M.modtree option
-
-(* [GK 4/16/07] 
-   A symbol list is attached to each environment to keep a record 
-   of the original order bindings are added to the static environment.
-   This symbol list will be used to determine the order of printing 
-   these bindings in an inferred signature (signature extracted from
-   a struct...end with no ascribed signature) *)
-type staticEnv = real_binding E.env * Symbol.symbol list
+type staticEnv = real_binding E.env
 
 exception Unbound = E.Unbound
 
 fun aug x = (x, NONE)
 fun strip (rb: real_binding) = #1 rb
 
-val empty = (E.empty, [])
-fun look ((e,_), s) = strip (E.look (e, s))
-fun bind0 (s, b, (e,names)) = (E.bind (s, b, e), names)
-fun bind (s, b, (e,names)) = (E.bind (s, aug b, e), s::names)
-fun special (mkb, mks) = (E.special (aug o mkb, mks), [])
-fun atop((e,names),(e',names')) = (E.atop(e,e'), names @ names')
-fun consolidate (e,names) = (E.consolidate e, names)
-fun consolidateLazy (e,names) = (E.consolidateLazy e, names)
-fun app f (e,names) = E.app (fn (s, b) => f (s, strip b)) e
-fun map f (e,names) = (E.map (aug o f o strip) e, names)
-fun fold f x0 (e,_) = E.fold (fn ((s, b), x) => f ((s, strip b), x)) x0 e
-
-fun realfold f x0 (e,_) = E.fold f x0 e
-fun symbols (e,_) = E.symbols e 
+val empty = E.empty
+fun look (e, s) = strip (E.look (e, s))
+val bind0 = E.bind
+fun bind (s, b, e) = E.bind (s, aug b, e)
+fun special (mkb, mks) = E.special (aug o mkb, mks)
+val atop = E.atop
+val consolidate = E.consolidate
+val consolidateLazy = E.consolidateLazy
+fun app f e = E.app (fn (s, b) => f (s, strip b)) e
+fun map f e = E.map (aug o f o strip) e
+fun fold f x0 e = E.fold (fn ((s, b), x) => f ((s, strip b), x)) x0 e
+val realfold = E.fold
+val symbols = E.symbols
 
 (* fold but only over the elements in the environment with the keys
    given in the key list (last parameter). This functions allows 
@@ -48,12 +40,9 @@ fun symbols (e,_) = E.symbols e
    elabmod to keep the inferred signature specs in the same order as
    the original structure decls. 
  *)
-fun foldOrigOrder(f, x0, (env, symOrder)) =
-    let fun loop(f, x0, (env, [])) = x0
-	  | loop(f, x0, senv as (env, elem::rest)) = 
-	    loop(f, f((elem, look(senv,elem)), x0), (env, rest))
-    in loop(f, x0, (env, rev symOrder))
-    end  
+fun foldOverElems(f, x0, env, []) = x0
+  | foldOverElems(f, x0, env, elem::rest) = 
+      foldOverElems(f, f((elem, look(env,elem)), x0), env, rest)  
 (* 
  * sort: sort the bindings in an environment.
  *  

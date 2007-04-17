@@ -478,9 +478,11 @@ fun extractSig (env, epContext, context,
 		    SE.foldOverElems seems to fix this problem. We can
 		    now compute the elements (specs) in the correct 
 		    order on the consolidated list. *)
+        val envSymInOrder = SE.symbols env
         val cenv = SE.consolidate env 
         val (elements, entEnv, entDecl, trans, _, fctflag) = 
-          SE.foldOrigOrder(transBind,(nil, EE.empty, [], [], 0, false),cenv)
+          SE.foldOverElems(transBind,(nil, EE.empty, [], [], 0, false),cenv,
+			   envSymInOrder)
      in (rev elements, entEnv, rev entDecl, rev trans, fctflag)
     end
 
@@ -560,6 +562,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
           val (elements, entEnv'', entDecls, locations, fctflag) =
                 extractSig(env', epContext', context, compInfo)
           val _ = debugmsg "--elab[BaseStr]: extractSig done"
+
           val (entEnvLocal, entDecLocal) =
               case context
                of EU.INFCT _ => 
@@ -1508,8 +1511,6 @@ and elabDecl0
                   val (datatycs,withtycs,_,env) =
 		    ET.elabDATATYPEdec(x, env0, [], EE.empty, isFree, rpath,
                                        region, compInfo)
-                  val _ = debugPrint("elabDecl0 DatatypeDec: ", ED.ppSymList,
-                                     ED.envSymbols env)
 		  val (entEnv, entDec) = 
 		    bindNewTycs(context, epContext, mkStamp, 
                                 datatycs, withtycs, rpath, error region)
@@ -1544,8 +1545,6 @@ and elabDecl0
  					   SE.empty dcons
 				 val env = SE.bind(name, B.TYCbind tyc, 
 						   envDcons)
-				 val _ = debugPrint("elabDecl0 DAT DatatypeDec: ", ED.ppSymList,
-						    ED.envSymbols env)
 				 val ev = mkStamp()
 				 val tyc_id = MU.tycId tyc
 				 val (ee_dec,ee_env) =

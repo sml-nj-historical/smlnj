@@ -30,8 +30,7 @@ sig
   val fold: ((Symbol.symbol * binding) * 'a -> 'a) -> 'a -> staticEnv -> 'a
   val realfold :
       ((Symbol.symbol * real_binding) * 'a -> 'a) -> 'a -> staticEnv -> 'a
-  val foldOrigOrder: ((Symbol.symbol * binding) * 'a -> 'a) * 
-		     'a * staticEnv -> 'a 
+  val foldOverElems: ((Symbol.symbol * binding) * 'a -> 'a) * 'a * staticEnv * Symbol.symbol list -> 'a 
   val sort: staticEnv -> (Symbol.symbol * binding) list
 
   val bind0: Symbol.symbol * real_binding * staticEnv -> staticEnv
