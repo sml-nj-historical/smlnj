@@ -448,10 +448,11 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 	                     SE.empty 
 	                     finalDcons
         
-        val finalEnv = foldr (fn ({old,name,new},e) =>
+        val finalEnv = foldl (fn ({old,name,new},e) =>
 			         SE.bind(name,B.TYCbind new,e)) 
 	                     envDcons alltycmap
-
+          val _ = ElabDebug.debugPrint (ref true) ("elabDATATYPE finalEnv - symbols: ", ElabDebug.ppSymList,
+                             ElabDebug.envSymbols finalEnv)
         val _ = debugmsg "--elabDATATYPEdec: envDcons, finalEnv defined"
 
      in EU.checkUniq
