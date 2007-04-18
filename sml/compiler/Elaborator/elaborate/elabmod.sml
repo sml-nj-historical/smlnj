@@ -56,9 +56,10 @@ local structure S  = Symbol
       structure DI = DebIndex
       structure PPU = PPUtil
       structure ED = ElabDebug
+      structure ST = RedBlackSetFn(type ord_key = S.symbol
+                                   val compare = S.compare) 
       open Ast Modules
-      open SpecialSymbols (* special symbols *)
-
+      open SpecialSymbols (* special symbols *)      
 in
 
 (* debugging *)
@@ -332,8 +333,80 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
  *                                                                         *
  ***************************************************************************)
 fun extractSig (env, epContext, context, 
-                compInfo as {mkStamp,...} : EU.compInfo) =
-  let fun getEpOp (look, modId) =
+                compInfo as {mkStamp,...} : EU.compInfo,
+	        absDecl) =
+  let fun getDeclOrder(decl) =
+	  let fun procstrbs([]) = []
+		| procstrbs((A.STRB{name,...})::rest) = name::(procstrbs rest)
+	      fun procpat(A.VARpat(V.VALvar{path,...})) = [SymPath.first path] 
+		| procpat(A.VARpat(_)) = 
+		    bug "elabmod: extractSig -- Bad VARpat"
+		| procpat(A.RECORDpat{fields,...}) = 
+		    foldl (fn ((_,pat), names) => (procpat pat)@names) [] 
+			  fields
+		| procpat(A.APPpat(_,_,pat)) = procpat pat
+		| procpat(A.CONSTRAINTpat(pat,_)) = procpat pat
+		| procpat(A.LAYEREDpat(pat,pat')) = 
+		    (procpat pat)@(procpat pat')
+		| procpat(A.ORpat(pat,pat')) = (procpat pat)@(procpat pat')
+		| procpat(A.VECTORpat(pats,_)) = 
+		    foldl (fn (pat,names) => (procpat pat)@names) [] pats
+		| procpat _ = []
+	      fun procvbs([]) = []
+		| procvbs((A.VB{pat,...})::rest) = 
+		    (procpat pat)@(procvbs rest)
+	      fun proctycs([]) = []
+		| proctycs(tyc::rest) = (TU.tycName tyc)::(proctycs rest) 
+	      fun procdatatycs([]) = []
+		| procdatatycs(T.GENtyc{kind=T.DATATYPE dt, path, ...}::rest) =
+		    let val {index,family as {members,...},...} = dt
+			val {tycname,dcons,...} = Vector.sub(members,index)
+			val pathname = InvPath.last path
+		    in (map (fn ({name,...}) => name) dcons)@
+		       (pathname::procdatatycs rest)
+		    end 
+		| procdatatycs(_) = bug "elabmod: extractSig -- bad datatycs"
+	      fun procebs([]) = []
+		| procebs((A.EBgen{exn=T.DATACON{name,...},...})::rest) = 
+		    name::(procebs rest)
+		| procebs((A.EBdef{exn=T.DATACON{name,...},...})::rest) =
+		    name::(procebs rest)
+	      fun procfctbs([]) = []
+		| procfctbs(A.FCTB{name,...}::rest) = name::(procfctbs rest)
+	      fun procstr(M.STR{sign=M.SIG{symbols,...},...}) = symbols
+		| procstr(M.STR{sign=M.ERRORsig,...}) = 
+		    bug "elabmod: extractSig ERRORsig"
+		| procstr(M.STRSIG{sign=M.SIG{symbols,...},...}) = symbols
+		| procstr(M.STRSIG{sign=M.ERRORsig,...}) = 
+		    bug "elabmod: extractSig ERRORsig in STRSIG"
+		| procstr(M.ERRORstr) = bug "elabmod: extractSig ERRORstr"
+	      fun procrvbs([]) = []
+		| procrvbs(A.RVB{var=V.VALvar{path,...},...}::rest) =
+		    (SymPath.first path)::(procrvbs rest)
+		| procrvbs(_::rest) = bug "elabmod: extractSig -- Bad RVB"
+	  in case decl 
+	      of A.STRdec(strbs) => procstrbs strbs
+	       | A.VALdec(vbs) => procvbs vbs
+	       | A.VALRECdec(rvbs) => procrvbs rvbs
+	       | A.TYPEdec(tycs) => proctycs tycs
+	       | A.DATATYPEdec{datatycs,withtycs} => 
+		   (procdatatycs datatycs)@(proctycs withtycs)
+	       | A.ABSTYPEdec{abstycs,withtycs,body} =>
+		   (proctycs abstycs)@(proctycs withtycs)@(getDeclOrder body)
+	       | A.EXCEPTIONdec(ebs) => procebs ebs
+	       | A.ABSdec(strbs) => procstrbs strbs
+	       | A.FCTdec(fctbs) => procfctbs fctbs
+	       | A.OPENdec(pathstrs) => 
+		   foldl (fn (str,names) => (procstr str)@names) [] 
+			 (map #2 pathstrs)
+	       | A.LOCALdec(_,dec) => (getDeclOrder dec) 
+	       | A.SEQdec(decs) => 
+		   foldl (fn (dec,names) => (getDeclOrder dec)@names) [] decs
+	       | A.MARKdec(dec,_) => getDeclOrder dec
+	       | A.FIXdec{ops,...} => ops
+	       | _ => bug "elabmod: extractSig Unexpected dec"  
+	  end	      
+      fun getEpOp (look, modId) =
         case context of EU.INFCT _ => look (epContext, modId)
                       | _ => NONE
       val relativize =
@@ -478,11 +551,32 @@ fun extractSig (env, epContext, context,
 		    SE.foldOverElems seems to fix this problem. We can
 		    now compute the elements (specs) in the correct 
 		    order on the consolidated list. *)
-        val envSymInOrder = SE.symbols env
+        fun suppressDuplicates syms =
+	    let 
+               
+		fun helper([], memset, result) = (memset, result)
+		  | helper(s::rest, memset, result) = 
+		    if ST.member(memset,s)
+		    then helper(rest,memset, result)
+		    else helper(rest,ST.add(memset,s),s::result)
+	    in helper(syms, ST.empty, [])
+	    end
+		      
+	val (oldset, oldsyms) = suppressDuplicates(SE.symbols env)
+        val (newset, origdeclorder) = suppressDuplicates(getDeclOrder absDecl)
+	val _ = if ST.equal(oldset,newset) 
+		then say "elabmod: extractSig oldsyms = newsyms\n"
+		else (say (concat["elabmod: extractSig oldsyms <> newsyms\n",
+				 "oldset: ", Int.toString(ST.numItems oldset),
+				 "\nnewset: ", Int.toString(ST.numItems newset),
+				 "\n"]);
+		      ST.app (fn s => say ((S.name s)^" ")) (ST.difference(oldset,newset)); say "\noldset "; ST.app (fn s => say ((S.name s)^" ")) oldset;
+		     say "\nnewset "; ST.app (fn s => say ((S.name s)^" ")) newset;
+		     say "\n") 
         val cenv = SE.consolidate env 
         val (elements, entEnv, entDecl, trans, _, fctflag) = 
           SE.foldOverElems(transBind,(nil, EE.empty, [], [], 0, false),cenv,
-			   envSymInOrder)
+			   origdeclorder)
      in (rev elements, entEnv, rev entDecl, rev trans, fctflag)
     end
 
@@ -560,7 +654,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
           val _ = debugmsg "--elab[BaseStr]: elabDecl0 done"
    
           val (elements, entEnv'', entDecls, locations, fctflag) =
-                extractSig(env', epContext', context, compInfo)
+                extractSig(env', epContext', context, compInfo, absDecl)
           val _ = debugmsg "--elab[BaseStr]: extractSig done"
 
           val (entEnvLocal, entDecLocal) =
@@ -1535,7 +1629,9 @@ and elabDecl0
 		 | [] =>
 		     let val tyc = L.lookTyc(env0, SP.SPATH syms, error region)
 		      in case tyc
-			  of T.GENtyc { kind = T.DATATYPE _, ... } =>
+			  of T.GENtyc {stamp, arity, eq, path, stub,
+			               kind = dt as (T.DATATYPE _)
+				       } =>
 			     let val dcons = TU.extractDcons tyc
 				 val envDcons =
 				     foldl (fn (d as T.DATACON{name,...},
@@ -1560,8 +1656,12 @@ and elabDecl0
 						     EE.empty))
 					 end
 				       | _ => (M.EMPTYdec,EE.empty)
+				 val tyc' = T.GENtyc{stamp=stamp,
+						     arity=arity,
+						     eq=eq, path=InvPath.extend(InvPath.empty,name),
+						     stub=stub, kind=dt}
 				 val resDec =
-				     A.DATATYPEdec{datatycs=[tyc],
+				     A.DATATYPEdec{datatycs=[tyc' (* tyc *)],
 						   withtycs=[]}
 			     in
 				 EPC.bindTycPath(epContext, tyc_id, ev);

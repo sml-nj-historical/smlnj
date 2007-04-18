@@ -23,7 +23,7 @@ signature SYMBOL = sig
     val nameSpaceToString : namespace -> string
     val describe : symbol -> string
     val symbolToString : symbol -> string
-
+    val compare : symbol * symbol -> order
 (* Probably should merge STRspace and FCTspace into one namespace.
    Similarly for SIGspace and FSIGspace. *)
 end
