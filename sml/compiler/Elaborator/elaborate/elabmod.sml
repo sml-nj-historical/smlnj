@@ -533,7 +533,7 @@ fun extractSig (env, epContext, context,
 	       | A.VALRECdec(rvbs) => procrvbs rvbs
 	       | A.TYPEdec(tycs) => proctycs tycs
 	       | A.DATATYPEdec{datatycs,withtycs} => 
-		   (procdatatycs datatycs)@(proctycs withtycs)
+		   (rev (procdatatycs datatycs))@(proctycs withtycs)
 	       | A.ABSTYPEdec{abstycs,withtycs,body} =>
 		   (proctycs abstycs)@(proctycs withtycs)@(getDeclOrder body)
 	       | A.EXCEPTIONdec(ebs) => procebs ebs
