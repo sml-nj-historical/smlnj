@@ -92,6 +92,24 @@ fun extern (DA.EXTERN _) = true
 (** an exception raised if coreEnv is not available *)
 exception NoCore
 
+(** instPoly : ty * ty list -> ty 
+ * instPoly(t,ts): the type t is instantiated with parameters ts.
+ * Checked innvariant: ts <> nil <==>  t is polymophic (a POLYty) (DBM) *)
+fun instPoly(ty: TP.ty, tys : TP.ty list) : TP.ty =
+    case tys
+      of nil =>  (* no instantiation parameters *)
+         (case ty
+            of TP.POLYty{tyfun=TP.TYFUN{arity,body},...} =>
+               if arity = 0 then body
+               else (say "instPoly: polytype with no inst parameters\n";
+                     ppType ty;
+                     ty)
+             | _ => ty)
+       | _ =>    (* instantiation parameters *)
+         (case ty
+            of TP.POLYty _ => TU.applyPoly(ty, tys)
+             | _ => bug "instPoly: non-polytype with inst parameters")
+
 (****************************************************************************
  *                          MAIN FUNCTION                                   *
  *                                                                          *
@@ -943,11 +961,8 @@ fun mkVar (v as V.VALvar{access, prim, typ, path}, d) =
  * type parameters of instantiation of the intrinsic primop type relative
  * to the variable occurrence type *)
 fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
-      let val occurenceTy = (* compute the occurrence type of the variable *)
-              case ts
-                of [] => !typ
-                   (* ASSERT: !typ is not a POLYty *)
-                 | _ => TU.applyPoly(!typ, ts)
+      let val occurenceTy = instPoly(!typ, ts)
+              (* compute the occurrence type of the variable *)
 	  val (primop,intrinsicType) =
               case (PrimOpMap.primopMap p, PrimOpTypeMap.primopTypeMap p)
                of (SOME p, SOME t) => (p,t)
@@ -1136,15 +1151,16 @@ and mkVBs (vbs, d) =
              * both monotypes).  So in most cases, the mkVar translation
              * will be used, and this drops the primop information!!!
              * This seems definitely wrong. *)
-            	(case prim
+           (case prim
               of PrimOpId.Prim name =>
                   (case PrimOpTypeMap.primopTypeMap name
                      of SOME(primopty) =>
-                        (case TU.matchInstTypes(true,TU.applyPoly(!typ,
-				map (TU.prune o TP.VARty) ptvs),primopty)
-                        of NONE => bug "mkVB: occtype and intrinsic don't match"
-			 | SOME(_,[]) => LET(v, mkVar(w, d), b)
-                         | SOME(_,ptvs') => LET(v, mkPE(exp, d, btvs), b))
+                        (case TU.matchInstTypes(true,
+                                instPoly(!typ, map (TU.prune o TP.VARty) ptvs),
+                                primopty)
+                          of NONE => bug "mkVB: occtype and intrinsic don't match"
+			   | SOME(_,[]) => LET(v, mkVar(w, d), b)
+                           | SOME(_,ptvs') => LET(v, mkPE(exp, d, btvs), b))
                       | NONE => bug "mkVBs: unknown primop name")
                | _ => LET(v, mkPE(exp, d, btvs), b))
 (*

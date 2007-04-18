@@ -147,6 +147,8 @@ listed here.
 
 34   inlnot,	 P.INLNOT,      bool -> bool
 	 InlineT.inlnot : 	bool -> bool
+         <pervasive>.not:	bool -> bool
+         Bool.not:		bool -> bool
 
 35   floor, P.ROUND{floor=true,fromkind=P.FLOAT 64,tokind=P.INT 31},   real -> int
 
