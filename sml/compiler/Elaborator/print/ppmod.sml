@@ -392,10 +392,13 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
 	            newline. We still use the unfiltered elements
 		    for determining whether the sig ... end should be 
 		    multiline even with just one datatype. *) 
-                val elems' = List.filter 
-				 (fn (_,M.CONspec{spec=dcon,...}) => false | 
-				     _ => true) 
-				 elements
+                val elems' = 
+		    List.filter 
+		    (fn (_,M.CONspec{spec=T.DATACON{rep=A.EXN _,...},...})
+			    => true 
+		      | (_,M.CONspec{spec=dcon,...}) => false 
+		      | _ => true) 
+		    elements
 	     in
 	     if !internals then 
 	       (openHVBox 0;
