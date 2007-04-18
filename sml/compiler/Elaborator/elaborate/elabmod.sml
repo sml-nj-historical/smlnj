@@ -540,7 +540,7 @@ fun extractSig (env, epContext, context,
 	       | A.ABSdec(strbs) => procstrbs strbs
 	       | A.FCTdec(fctbs) => procfctbs fctbs
 	       | A.OPENdec(pathstrs) => 
-		   foldl (fn (str,names) => (procstr str)@names) [] 
+		   foldl (fn (str,names) => (rev (procstr str))@names) [] 
 			 (map #2 pathstrs)
 	       | A.LOCALdec(_,dec) => (getDeclOrder dec) 
 	       | A.SEQdec(decs) => 
