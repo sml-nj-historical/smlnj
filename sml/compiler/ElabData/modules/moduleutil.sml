@@ -469,16 +469,28 @@ fun strPrimElemInBinds (bindings) =
 	fun strPrims bind =  
 	   (case bind 
 	     of B.STRbind (M.STR { prim, ... }) => POI.StrE prim 
+	      | B.STRbind (M.ERRORstr) => POI.PrimE POI.NonPrim
 	      | B.FCTbind (M.FCT { prim, ... }) => POI.StrE prim
+	      | B.FCTbind (M.ERRORfct) => POI.PrimE POI.NonPrim
 	      | B.VALbind (V.VALvar {prim, ...}) => POI.PrimE prim
+	      | B.VALbind (V.ERRORvar) => POI.PrimE POI.NonPrim
+	      | B.VALbind (V.OVLDvar _) => 
+		  bug "unexpected VALbind OVLDvar in strPrimElemInBinds"
 	      | B.CONbind _ => POI.PrimE POI.NonPrim (* still fishy *)
 			       (* GK: Doesn't this throw off the slot number
 				  correspondence because CONbinds may
 				  or may not have a corresponding slot
 				  number (Data cons do not and Exception
 				  cons do) *)
-	      | _  => 
-		  bug "unexpected binding in strPrimElemInBinds")
+	      | B.TYCbind _ => 
+		  bug "unexpected TYCbind in strPrimElemInBinds" 
+	      | B.SIGbind _ => 
+		  bug "unexpected SIGbind in strPrimElemInBinds" 
+	      | B.FSGbind _ =>
+		  bug "unexpected FSGbind in strPrimElemInBinds" 
+	      | B.FIXbind _ =>
+		  bug "unexpected FIXbind in strPrimElemInBinds" 
+	      | _  => bug "unexpected binding in strPrimElemInBinds")
     in  
 	map strPrims bindings
     end (* let *)
