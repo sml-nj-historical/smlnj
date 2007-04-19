@@ -517,12 +517,11 @@ fun extractSig (env, epContext, context,
 	      fun procfctbs([]) = []
 		| procfctbs(A.FCTB{name,...}::rest) = name::(procfctbs rest)
 	      fun procstr(M.STR{sign=M.SIG{symbols,...},...}) = symbols
-		| procstr(M.STR{sign=M.ERRORsig,...}) = 
-		    bug "elabmod: extractSig ERRORsig"
+		| procstr(M.STR{sign=M.ERRORsig,...}) = []
 		| procstr(M.STRSIG{sign=M.SIG{symbols,...},...}) = symbols
 		| procstr(M.STRSIG{sign=M.ERRORsig,...}) = 
 		    bug "elabmod: extractSig ERRORsig in STRSIG"
-		| procstr(M.ERRORstr) = bug "elabmod: extractSig ERRORstr"
+		| procstr(M.ERRORstr) = []
 	      fun procrvbs([]) = []
 		| procrvbs(A.RVB{var=V.VALvar{path,...},...}::rest) =
 		    (SymPath.first path)::(procrvbs rest)
