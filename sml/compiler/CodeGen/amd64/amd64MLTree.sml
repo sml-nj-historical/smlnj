@@ -48,7 +48,6 @@ structure AMD64Props =
 	structure MLTreeHash = AMD64MLTreeHash
         structure MLTreeEval = AMD64MLTreeEval)
 
-structure AMD64Rewrite = AMD64Rewrite(AMD64Instr)
 structure AMD64Shuffle = AMD64Shuffle(AMD64Instr)
 
 (* Assembly code emmitter *)

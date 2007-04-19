@@ -5,7 +5,9 @@
  *
  * Author: Matthias Blume (blume@tti-c.org)
  *)
-structure UnixLibInstall : sig end = struct
+structure UnixInstall : sig end = struct
+
+    structure I = GenericInstall
 
     fun proc () = let
 	val home = valOf (OS.Process.getEnv "ROOT")
@@ -24,19 +26,16 @@ structure UnixLibInstall : sig end = struct
 	fun bincmd cmd = OS.Path.concat (bindir, cmd)
 	val runsml = ".run-sml"		(* don't prepend bindir! *)
     in
-	LibInstall.proc { smlnjroot = home,
-			  installdir = installdir,
-			  buildcmd = "CM_LOCAL_PATHCONFIG=/dev/null ./build",
-			  unpack = SOME unpack,
-			  instcmd = fn target => let
-					   val new = bincmd target
-				       in
-					   if OS.FileSys.access (new, []) then
-					       ()
-					   else
-					       Posix.FileSys.symlink
-						   { old = runsml, new = new }
-				       end }
+	I.proc { smlnjroot = home,
+		 installdir = installdir,
+		 buildcmd = "CM_LOCAL_PATHCONFIG=/dev/null ./build",
+		 unpack = SOME unpack,
+		 instcmd = fn target =>
+			      let val new = bincmd target
+			      in if OS.FileSys.access (new, []) then ()
+				 else Posix.FileSys.symlink
+					  { old = runsml, new = new }
+			      end }
     end
 
     val _ = proc ()

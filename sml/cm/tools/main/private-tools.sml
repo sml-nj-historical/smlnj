@@ -3,9 +3,9 @@
  * mechanism.  It lacks certain public features implemented by ToolsFn
  * but provides other, non-public routines such as "expand".
  *
- *   (C) 2000 Lucent Technologies, Bell Laboratories
+ *   (C) 2006 The Fellowship of SML/NJ
  *
- * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ * Author: Matthias Blume (blume@tti-c.org)
  *)
 structure PrivateTools : PRIVATETOOLS = struct
 
@@ -231,6 +231,8 @@ structure PrivateTools : PRIVATETOOLS = struct
 		end
 	    else true
 	end
+
+	fun targetsExist l = List.all (#2 o timex) l
     end
 
     val openTextOut = AutoDir.openTextOut

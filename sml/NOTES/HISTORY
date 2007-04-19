@@ -1,4 +1,4 @@
-This is the HISTORY file for the Yale SML/NJ CVS repository.
+This is the HISTORY file for the SML/NJ repository.
 
 An entry should be made for _every_ commit to the repository.
 The entries in this file will be used when creating the README
@@ -12,6 +12,275 @@ Name: Your Name (web page or e-mail)
 Date: yyyy/mm/dd hh:mm:ss
 Tag: cvs-tag-for-this-change
 Description:
+
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/04/16
+Description:
+
+Fixed an unbound functor bug in the AMD64 CM file.
+
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/04/12
+Description:
+
+Substantially changed the signature and implementation of AMD64
+SVID.  It now looks similar to the ia32 SVID, yet uses staged
+allocation.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/04/07
+Description:
+
+More Basis fixes: the WORD signature was missing {to,from}Large.
+Thanks to Andreas Rossberg.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/03/22 16:07:00 CDT
+Tag: release-110.63
+Description:
+
+Bumped version number to 110.63.
+
+   !!!NEW BOOTFILES!!!
+
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/03/19
+Description:
+
+Fixed bogus operand sizes in AMD64 instruction spilling.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/03/19
+Description:
+
+Fixed a number of inconsistencies between the Posix.TTY structure
+and the Basis specification.  Thanks to Adam Chilpala.
+
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/02/26
+Description:
+
+Added preliminary support in MLRISC for Staged Allocation, a technique
+for specifying calling conventions (see 
+http://www.eecs.harvard.edu/~nr/pubs/staged-abstract.html).  
+Initially, we plan to use this code to generate C calls for the AMD64.
+
+The staged allocation code base resides in MLRISC/staged-allocation, 
+and specialized calling conventions go in MLRISC/ARCH/staged-allocation.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/02/20
+Description:
+
+  Bug fix: when SaveCState was called with two values to save, a subsequent
+  GC could cause the RestoreCState to fail because the saved state had been
+  promoted to tagless pair.
+
+----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2007/02/20 19:08:00 EST
+Description:
+
+    Bug triggered by:
+
+    val a1 = Word8Array.array(a1, 0w0); 
+    val _  = Word8Array.update(a1, 0, 0w128);
+
+    x86MCEmitter crashed when the immediate operand to MOVB was outside
+of the range -128 ... 127.  I've changed the code so that the range
+check is disabled.   Only the low order 8 bits of the immediate operand
+are now significant.
+
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/02/15 09:20:00 CST
+Description:
+
+Eliminated any mention of lexgen.  (Lexgen was an early precursor
+to ml-ulex.)
+
+You should update your admin directory, so the shell scripts for
+maintaining your local copy of the repository reflect this change.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/02/14 15:45:00 CST
+Description:
+
+Fixed bug in CM's parallel make facility that failed to have
+the master re-link modules after letting slaves compile them.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/02/12 15:10:00 CST
+Description:
+
+Fixed typo in ml-build script that prevented library anchors
+from being registered.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/02/02 15:20:00 CST
+Tag: release-110.62
+Description:
+
+New working release (110.62).  NEW BOOTFILES!
+
+----------------------------------------------------------------------
+Name: Aaron Turon (http://www.cs.uchicago.edu/~adrassi)
+Date: 2007/01/31
+Description:
+
+Brought ml-lpt manual up-to-date with the code.  Many minor 
+improvements to the tools, and a few minor bugfixes.  Prepared
+ml-lpt-lib for integration with new UTF8 structure.  Changed
+the interface for creating streams in ml-ulex (we now support
+stream creation from several kinds of sources).  Overall, the 
+tools are now quite stable, and their interfaces are unlikely to 
+change in a way that would break compatibility.  More work,
+however, is needed in the documentation.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/02/01 10:05:00 CST
+Description:
+
+Implemented library installer.  Moved CM plugin code for
+ml-burg, ml-lex, and ml-yacc out of CM source tree and into
+their respective trees.  Implemented CM plugin for ml-ulex
+and ml-antlr.  Used library installer for ml-burg, ml-ulex,
+and ml-antlr.
+
+For ml-yacc and ml-lex we continue to have permanently "plugged-in"
+CM tools.  (It turns out to be too messy to do otherwise because
+there is too much code that during installation relies on the presence
+of these tools -- resulting in a tricky ordering problem.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/01/30 11:05:00 CST
+Description:
+
+Added SMLofNJ.shiftArgs which is like a shell's "shift" command.
+Modified CM's startup code to use shiftArgs as it processes
+command line arguments.  This way, the init code in each .sml-file
+or library that is mentioned at the top level will see only
+those arguments that have not yet been processed at this point.
+In other words, the init code can "seize control" and process the
+remaining command line.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/01/30
+Description:
+
+Added fromList function to the ORD_SET interface and lookup to the
+ORD_MAP interface.  See the SML/NJ Library CHANGES file for details.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/01/28
+Description:
+
+Added the UTF8 structure and signature from the Moby compiler to
+the SML/NJ library (and the CML library).  These modules will replace
+the version in the ml-lpt-lib.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/01/26 15:10:00 CST
+Description:
+
+Added entries to handle ml-lpt-lib.cm in installer.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/12/15 11:10:00 CST
+Tag: release-110.61
+Description:
+
+New working release (110.61).  NEW BOOTFILES!
+
+This supersedes the pre-brown-paper-bug release (see below).
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/12/15 11:00:00 CST
+Description:
+
+Fixed brown-paper-bag bug with CM's pathname handling, which made
+installation fail under Win32.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/12/14 12:00:00 CST
+Description:
+
+Obsolete!
+
+[New working release (110.61).  NEW BOOTFILES!]
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2006/14/06 09:50:00 CST
+Description:
+
+Fixed the code in runtime/c-libs/posix-tty/{tcgetattr,tcsetattr}.c to
+get the c_cc termios data copied correctly.  Also moved the allocation
+of the string to avoid problems if it caused a GC.
+
+Thanks to Timothy Bourke for the bug report and fix.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume)
+Date: 2006/12/08 09:50:00 CST
+Description:
+
+Added code to CM's "standard shell tool" implementation which
+causes it to tolerate (with a warning) the situation where the shell
+command fails (e.g., due to the shell command's non-existence)
+as long as all target files exist.
+
+This makes it possible to, e.g., build ml-yacc from sources even if
+svn checkout messed up the time stamps on files in such a way that
+yacc.grm is younger than yacc.grm.sml or yacc.grm.sig.  (Ml-yacc would
+be needed to re-process yacc.grm, but obviously it might not yet be
+available at that time.)
+
+----------------------------------------------------------------------
+Name: John Reppy (http://cs.uchicago.edu/~jhr)
+Date: 2006/12/06 12:06:00 CST
+Description:
+
+Fixed the types of recvVecFrom, recvVecFrom', recvVecFromNB, and
+recvVecFromNB' in the SOCKET signature.  This error is actually
+in the SML Basis specification too.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/12/05 22:40:00 CST
+Description:
+
+CM now reports undefined anchors as errors and aborts execution
+rather than silently pressing on using bogus values.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2006/11/29 10:00:00 CST
+Description:
+
+Use Say.vsay for printing the "[autoloading]" message, so
+#set CM.Control.verbose false (or -Ccm.verbose=false) can be used
+to suppress them.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)

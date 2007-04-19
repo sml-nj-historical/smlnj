@@ -30,6 +30,10 @@ ml_val_t _ml_P_TTY_tcgetattr (ml_state_t *msp, ml_val_t arg)
 
     if (sts < 0)
 	return RAISE_SYSERR(msp, sts);
+    
+  /* allocate the vector; note that this might cause a GC */
+    cc = ML_AllocString (msp, NCCS);
+    memcpy (GET_SEQ_DATAPTR(void, cc), data.c_cc, NCCS);
 
     WORD_ALLOC (msp, iflag, data.c_iflag);
     WORD_ALLOC (msp, oflag, data.c_oflag);
@@ -37,10 +41,6 @@ ml_val_t _ml_P_TTY_tcgetattr (ml_state_t *msp, ml_val_t arg)
     WORD_ALLOC (msp, lflag, data.c_lflag);
     WORD_ALLOC (msp, ispeed, cfgetispeed (&data));
     WORD_ALLOC (msp, ospeed, cfgetospeed (&data));
-    
-  /* allocate the vector; note that this might cause a GC */
-    cc = ML_AllocString (msp, NCCS);
-    memcpy (PTR_MLtoC(void, cc), data.c_cc, NCCS);
 
     ML_AllocWrite (msp, 0, MAKE_DESC(DTAG_record, 7));
     ML_AllocWrite (msp, 1, iflag);

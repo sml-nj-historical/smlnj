@@ -13,7 +13,7 @@
  * 
  * Author: Matthias Blume (blume@tti-c.org)
  *)
-structure LibInstall : sig
+structure GenericInstall : sig
 
     (* all filenames that are passed as arguments use native syntax: *)
     val proc :
@@ -25,9 +25,9 @@ structure LibInstall : sig
 
 end = struct
 
+    structure U = InstallerUtil
     structure P = OS.Path
     structure F = OS.FileSys
-    structure SI = SMLofNJ.SysInfo
     structure SM = RedBlackMapFn (type ord_key = string
 				  val compare = String.compare)
     structure SS = RedBlackSetFn (type ord_key = string
@@ -36,75 +36,22 @@ end = struct
     structure SCC = GraphSCCFn (type ord_key = string
 				val compare = String.compare)
 
-    fun say l = TextIO.output (TextIO.stdErr, concat l)
-    fun warn l = say ("WARNING: " :: l)
-    fun fail l = (say ("FAILURE: " :: l);
-		  OS.Process.exit OS.Process.failure)
+    val say = U.say and warn = U.warn and fail = U.fail
 
-    (* figure out who and what we are *)
-    val arch = String.map Char.toLower (SMLofNJ.SysInfo.getHostArch ())
-    val (isUnix, oskind) = case SI.getOSKind () of
-			       SI.UNIX => (true, "unix")
-			     | SI.WIN32 => (false, "win32")
-			     | _ => fail ["os kind not supported\n"]
-
-    val arch_oskind = concat [arch, "-", oskind]
-    val heap_suffix = SMLofNJ.SysInfo.getHeapSuffix ()
-
-    (* File names in configuration files are used across all platforms
-     * and for that reason are written using CM's standard syntax
-     * which is like Unix pathname syntax. *)
-
-    (* standard arc separator is / *)
-    fun usep #"/" = true
-      | usep _ = false
+    val { arch_oskind, heap_suffix, isUnix } = U.platformInfo ()
 
     (* convert standard syntax to native syntax *)
-    fun native f =
-	case String.fields usep f of
-	    "" :: arcs => P.toString { vol = "", isAbs = true, arcs = arcs }
-	  | arcs => P.toString { vol = "", isAbs = false, arcs = arcs }
-
-    fun fexists f = F.access (f, []) handle _ => false
-
-    fun rmfile f = F.remove f handle _ => ()
+    val native = P.fromUnixPath
 
     (* several worklists for delayed execution *)
     val stablist : (unit -> bool) list ref = ref []
     val movlist  : (unit -> unit) list ref = ref []
     val salist : (unit -> unit) list ref = ref []
 
-    (* make a directory (including parent, parent's parent, ...) *)
-    fun mkdir "" = ()
-      | mkdir d = if fexists d then () else (mkdir (P.dir d); F.mkDir d)
-
-    (* generalized F.rename that works across different file systems *)
-    fun rename { old, new } =
-	let fun copy () =
-		let val ins = BinIO.openIn old
-		    val outs = BinIO.openOut new
-		    fun loop () =
-			let val v = BinIO.input ins
-			in
-			    if Word8Vector.length v = 0 then
-				(BinIO.closeIn ins;
-				 BinIO.closeOut outs)
-			    else (BinIO.output (outs, v);
-				  loop ())
-			end
-		in
-		    loop ()
-		end
-	in
-	    F.rename { old = old, new = new }
-	    handle _ =>
-		   (* probably on different filesys *)
-		   (copy (); rmfile old)
-	end
 
     (* move a stable library file to its final location *)
     fun movelib src dst () =
-	(mkdir (P.dir dst); rename { old = src, new = dst })
+	(U.mkdir (P.dir dst); U.rename { old = src, new = dst })
 
     (* register a temporary anchor-value binding *)
     fun localanchor { anchor, path } =
@@ -195,14 +142,16 @@ end = struct
 	    before TextIO.closeOut s
 	end
 
-	(* augment anchor mapping with extra bindings: *)
-	val _ =
+	fun augment_anchor_mapping pcfile =
 	    pc_fold (fn ((), k, v) =>
 			(#set (CM.Anchor.anchor k)
 			      (SOME (P.concat (libdir, native v)));
 			 write_cm_pathconfig (k, v)))
 		    ()
-	            extrapathconfig
+		    pcfile
+
+	(* augment anchor mapping with extra bindings: *)
+	val _ = augment_anchor_mapping extrapathconfig
 
 	(* find and open first usable targetsfiles *)
 	val targetsfiles =
@@ -212,7 +161,7 @@ end = struct
 	val allsrcfile = P.concat (configdir, "allsources")
 
 	val s =
-	    case List.find fexists targetsfiles of
+	    case List.find U.fexists targetsfiles of
 		SOME f => TextIO.openIn f
 	      | NONE => fail ["no targetsfiles\n"]
 
@@ -238,7 +187,7 @@ end = struct
 	val moduleset = SS.addList (SS.empty, modules)
 
 	val srcmoduleset =
-	    if allsrc andalso fexists allsrcfile then
+	    if allsrc andalso U.fexists allsrcfile then
 		let val s = TextIO.openIn allsrcfile
 		    fun one (m, ms) =
 			if SS.member (ms, m) then ms else SS.add (ms, m)
@@ -292,21 +241,18 @@ end = struct
 	    val finalanchor = getOpt (altanchor, anchor)
 	    val { dir = nreldir, file = relbase } = P.splitDirFile nrelname
 	    val relloc =
-		P.concat (nreldir, P.concat (CM.cm_dir_arc,
-					     P.concat (arch_oskind, relbase)))
+		U.pconcat [nreldir, CM.cm_dir_arc, arch_oskind, relbase]
 	    val srcfinalloc = P.concat (adir, relloc)
 	    val (finalloc, finalconfigpath) =
-		(P.concat (libdir,
-			       P.concat (finalanchor, relloc)),
-		     finalanchor)
+		(U.pconcat [libdir, finalanchor, relloc], finalanchor)
 	in
-	    if fexists finalloc then
+	    if U.fexists finalloc then
 		(say ["Library ", libname, " already existed in ",
 		      finalloc, ".  Will rebuild.\n"];
-		 rmfile finalloc)
+		 U.rmfile finalloc)
 	    else ();
-	    if fexists srcfinalloc then	rmfile srcfinalloc else ();
-	    if not (fexists (P.concat (adir, nrelname))) then
+	    if U.fexists srcfinalloc then U.rmfile srcfinalloc else ();
+	    if not (U.fexists (P.concat (adir, nrelname))) then
 		fail ["Source tree for ", libname, " at ",
 		      P.concat (adir, nreldir), "(", relbase,
 		      ") does not exist.\n"]
@@ -340,18 +286,18 @@ end = struct
 	    val treedir = P.concat (smlnjroot, native dir)
 	    val finalheaploc = P.concat (heapdir, heapname)
 	in
-	    if fexists finalheaploc then
+	    if U.fexists finalheaploc then
 		say ["Target ", target, " already exists.\n"]
-	    else if not (fexists treedir) then
+	    else if not (U.fexists treedir) then
 		fail ["Source tree for ", target, " at ", treedir,
 		      " does not exist.\n"]
 	    else
 		(say ["Building ", target, ".\n"];
 		 F.chDir treedir;
 		 if OS.Process.system buildcmd = OS.Process.success then
-		     if fexists targetheaploc then
-			 (rename { old = targetheaploc,
-				   new = finalheaploc };
+		     if U.fexists targetheaploc then
+			 (U.rename { old = targetheaploc,
+				     new = finalheaploc };
 			  instcmd target;
 			  #set (CM.Anchor.anchor target) (SOME bindir))
 		     else

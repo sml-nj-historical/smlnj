@@ -62,9 +62,9 @@ structure S = CMSemant
        | toolopts of S.toolopt list
        | ptoolopts of S.toolopt list
        | opttoolopts of S.toolopt list option
-       | srcfile of SrcPath.file
-       | srcfiles of SrcPath.file option
-       | filecat of SrcPath.file option * S.complainer -> S.exports
+       | srcfile of unit -> SrcPath.file
+       | srcfiles of unit -> SrcPath.file option
+       | filecat of (unit -> SrcPath.file option) * S.complainer -> S.exports
 
 %pos int
 %verbose
@@ -205,7 +205,7 @@ ml_symbolset : ml_symbol                        (S.export
 							     srcfilesright)))
              | LIBRARY LPAREN pathname opttoolopts RPAREN
                                                 (S.exportlibrary
-						     (SrcPath.file
+						     (fn () => SrcPath.file
 							 (#mkpath pathname ()),
 						      error (pathnameleft,
 							     pathnameright),
@@ -322,7 +322,7 @@ pathname : FILE_STANDARD			({ name = FILE_STANDARD,
 							(FILE_NATIVEleft,
 							 FILE_NATIVEright)) })
 
-srcfile : pathname                              (SrcPath.file
-						     (#mkpath pathname ()))
-srcfiles : srcfile                              (SOME srcfile)
-         | DASH                                 (NONE)
+srcfile : pathname                              (fn () => SrcPath.file
+							 (#mkpath pathname ()))
+srcfiles : srcfile                              (SOME o srcfile)
+         | DASH                                 (fn () => NONE)

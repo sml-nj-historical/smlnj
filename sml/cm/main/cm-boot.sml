@@ -842,28 +842,31 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		  p (f, mk, String.map Char.toLower
 				       (getOpt (OS.Path.ext f, "<none>")))
 
-	    fun args ("-a" :: rest, _) = args (rest, autoload)
-	      | args ("-m" :: rest, _) = args (rest, make)
-	      | args ("-H" :: rest, mk) = (help NONE; args_q (rest, mk))
-	      | args ("-S" :: rest, mk) = (showcur NONE; args_q (rest, mk))
-	      | args ("-E" :: rest, mk) = (show_envvars NONE; args_q (rest, mk))
-	      | args ("-q" :: _, _) = quit ()
+	    fun args ([], _) = ()
+	      | args ("-a" :: _, _) = nextarg autoload
+	      | args ("-m" :: _, _) = nextarg make
+	      | args (["-H"], _) = (help NONE; quit ())
+	      | args ("-H" :: _ :: _, mk) = (help NONE; nextarg mk)
+	      | args (["-S"], _) = (showcur NONE; quit ())
+	      | args ("-S" :: _ :: _, mk) = (showcur NONE; nextarg mk)
+	      | args (["-E"], _) = (show_envvars NONE; quit ())
+	      | args ("-E" :: _ :: _, mk) = (show_envvars NONE; nextarg mk)
 	      | args ("@CMbuild" :: rest, _) = mlbuild rest
-	      | args (["@CMredump", heapfile], _) =
-		  redump_heap heapfile
+	      | args (["@CMredump", heapfile], _) = redump_heap heapfile
 	      | args (f :: rest, mk) =
-		(carg (String.substring (f, 0, 2)
-		         handle General.Subscript => "",
-		       f, mk, List.null rest);
-		 args (rest, mk))
-	      | args ([], _) = ()
+		  (carg (String.substring (f, 0, 2)
+			 handle General.Subscript => "",
+			 f, mk, List.null rest);
+		   nextarg mk)
 
-	    and args_q ([], _) = quit ()
-	      | args_q (rest, f) = args (rest, f)
+	    and nextarg mk =
+		let val l = SMLofNJ.getArgs ()
+		in SMLofNJ.shiftArgs (); args (l, mk)
+		end
 	in
 	    case SMLofNJ.getArgs () of
 		["@CMslave"] => (#set StdConfig.verbose false; slave ())
-	      | l => args (l, autoload)
+	      | l => (SMLofNJ.shiftArgs (); args (l, autoload))
 	end
     in
 	useStreamHook := useStream;

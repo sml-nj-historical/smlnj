@@ -11,7 +11,29 @@ signature POSIX_TTY =
 
     eqtype pid       (* process ID *)
     eqtype file_desc (* file descriptor *)
-    
+
+    structure V : sig
+        val eof   : int
+        val eol   : int
+        val erase : int
+        val intr  : int
+        val kill  : int
+        val min   : int
+        val quit  : int
+        val susp  : int
+        val time  : int
+        val start : int
+        val stop  : int
+
+        val nccs : int
+
+        type cc
+
+        val cc     : (int * char) list -> cc
+        val update : (cc * (int * char) list) -> cc
+        val sub    : (cc * int) -> char
+      end
+
     structure I :
       sig
         include BIT_FLAGS
@@ -68,33 +90,12 @@ signature POSIX_TTY =
         val tostop : flags
       end
 
-    structure V :
-      sig
-        val eof   : int
-        val eol   : int
-        val erase : int
-        val intr  : int
-        val kill  : int
-        val min   : int
-        val quit  : int
-        val susp  : int
-        val time  : int
-        val start : int
-        val stop  : int
-
-        val nccs : int
-
-        type cc
-
-        val cc     : (int * char) list -> cc
-        val update : (cc * (int * char) list) -> cc
-        val sub    : (cc * int) -> char
-      end
-
     eqtype speed
+
     val compareSpeed : speed * speed -> General.order
     val speedToWord : speed -> SysWord.word
     val wordToSpeed : SysWord.word -> speed
+
     val b0     : speed
     val b50    : speed
     val b75    : speed
@@ -136,13 +137,14 @@ signature POSIX_TTY =
     val getlflag  : termios -> L.flags
     val getcc     : termios -> V.cc
 
-    val getospeed : termios -> speed
-    val setospeed : (termios * speed) -> termios
-    val getispeed : termios -> speed
-    val setispeed : (termios * speed) -> termios
+    structure CF : sig
+	val getospeed : termios -> speed
+	val setospeed : (termios * speed) -> termios
+	val getispeed : termios -> speed
+	val setispeed : (termios * speed) -> termios
+      end
     
-    structure TC :
-      sig
+    structure TC : sig
         eqtype set_action
 
         val sanow   : set_action
@@ -161,18 +163,18 @@ signature POSIX_TTY =
         val iflush  : queue_sel
         val oflush  : queue_sel
         val ioflush : queue_sel
+
+	val getattr : file_desc -> termios
+	val setattr : file_desc * set_action * termios -> unit
+
+	val sendbreak : file_desc * int -> unit
+	val drain : file_desc -> unit
+	val flush : file_desc * queue_sel -> unit
+	val flow : file_desc * flow_action -> unit
+
+	val getpgrp : file_desc -> pid
+	val setpgrp : file_desc * pid -> unit
       end
-
-    val getattr : file_desc -> termios
-    val setattr : file_desc * TC.set_action * termios -> unit
-
-    val sendbreak : file_desc * int -> unit
-    val drain : file_desc -> unit
-    val flush : file_desc * TC.queue_sel -> unit
-    val flow : file_desc * TC.flow_action -> unit
-
-    val getpgrp : file_desc -> pid
-    val setpgrp : file_desc * pid -> unit
 
   end (* signature POSIX_TTY *)
 

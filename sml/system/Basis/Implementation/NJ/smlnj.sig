@@ -21,6 +21,7 @@ signature SML_OF_NJ =
     val getCmdName : unit -> string
     val getArgs    : unit -> string list
     val getAllArgs : unit -> string list
+    val shiftArgs : unit -> unit (* like /bin/sh's "shift" command *)
 
 (** can't handle this yet **
     val use : string -> unit

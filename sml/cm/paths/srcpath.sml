@@ -8,6 +8,10 @@
 signature SRCPATH = sig
 
     exception Format
+    (* When faced with an undefined anchor, pressing on does not
+     * make much sense.  Therefore, we raise an exception in this
+     * case after reporting the error. *)
+    exception BadAnchor
 
     type file
     type dir
@@ -120,6 +124,7 @@ end
 structure SrcPath :> SRCPATH = struct
 
     exception Format
+    exception BadAnchor
 
     structure P = OS.Path
     structure F = OS.FileSys
@@ -165,7 +170,7 @@ structure SrcPath :> SRCPATH = struct
     type rebindings = { anchor: anchor, value: prefile } list
 
     type env =
-	 { get_free: anchor -> elab,
+	 { get_free: anchor * (string -> unit) -> elab,
 	   set_free: anchor * prepath option -> unit,
 	   is_set: anchor -> bool,
 	   reset: unit -> unit,
@@ -177,7 +182,7 @@ structure SrcPath :> SRCPATH = struct
     fun compare (f1: file, f2: file) = Int.compare (#2 f1, #2 f2)
 
     val null_pp : prepath = { revarcs = [], vol = "", isAbs = false }
-    val bogus_elab : elab =
+    val bogus_elab =
 	{ pp = null_pp, valid = fn _ => false, reanchor = fn _ => NONE }
 
     fun string2pp n = let
@@ -255,12 +260,13 @@ structure SrcPath :> SRCPATH = struct
 	e_ac (#arcs pf, #context pf, false, [])
     end
 
-    fun mk_anchor (e: env, a) =
+    fun mk_anchor (e: env, a, err) =
 	case StringMap.find (#bound e, a) of
 	    SOME (elaborate, encode) =>
-	    { name = a , look = elaborate, encode = SOME o encode }
+	      { name = a , look = elaborate, encode = SOME o encode }
 	  | NONE =>
-	    { name = a, look = fn () => #get_free e a, encode = fn _ => NONE }
+	      { name = a, look = fn () => #get_free e (a, err),
+		encode = fn _ => NONE }
 	
     val encode_prefile = encode0 false
     val encode = encode_prefile o pre
@@ -343,7 +349,8 @@ structure SrcPath :> SRCPATH = struct
 
     fun compare0 (f1, f2) = I.compare (idOf f1, idOf f2)
 
-    structure F0M = RedBlackMapFn (type ord_key = file0 val compare = compare0)
+    structure F0M = RedBlackMapFn (type ord_key = file0
+                                     val compare = compare0)
 
     local
 	val known = ref (F0M.empty: int F0M.map)
@@ -405,8 +412,10 @@ structure SrcPath :> SRCPATH = struct
 	val freeMap = ref StringMap.empty
 	fun fetch a =
 	    case StringMap.find (!freeMap, a) of
-		SOME x => x
-	      | NONE => let
+		SOME (pp, validity) => (SOME pp, validity)
+	      | NONE => (NONE, ref false)
+		(*
+		let
 		    val validity = ref true
 		    val pp = { revarcs = [concat ["$Undef<", a, ">"]],
 			       vol = "", isAbs = false }
@@ -415,12 +424,16 @@ structure SrcPath :> SRCPATH = struct
 		    freeMap := StringMap.insert (!freeMap, a, x);
 		    x
 		end
-	fun get_free a = let
-	    val (pp, validity) = fetch a
-	    fun reanchor cvt = SOME (string2pp (cvt a))
-	in
-	    { pp = pp, valid = fn () => !validity, reanchor = reanchor }
-	end
+		 *)
+	fun get_free (a, err) =
+	    case fetch a of
+		(SOME pp, validity) =>
+		  let fun reanchor cvt = SOME (string2pp (cvt a))
+		  in { pp = pp, valid = fn () => !validity,
+		       reanchor = reanchor }
+		end
+	      | (NONE, _) => (err ("anchor $" ^ a ^ " not defined");
+			      raise BadAnchor)
 	fun set_free (a, ppo) = let
 	    val (_, validity) = fetch a
 	in
@@ -443,7 +456,8 @@ structure SrcPath :> SRCPATH = struct
     end
 
     fun get_anchor (e: env, a) =
-	if #is_set e a then SOME (pp2name (#pp (#get_free e a))) else NONE
+	if #is_set e a then SOME (pp2name (#pp (#get_free e (a, fn _ => ()))))
+	else NONE
 
     fun set0 mkAbsolute (e: env, a, so) = let
 	fun name2pp s = string2pp (if P.isAbsolute s then s else mkAbsolute s)
@@ -555,7 +569,7 @@ structure SrcPath :> SRCPATH = struct
 	    RELATIVE l => prefile (context, l, err)
 	  | ABSOLUTE l => prefile (ROOT "", l, err)
 	  | ANCHORED (a, l) =>
-	    prefile (ANCHOR (mk_anchor (env, a)), l, err)
+	      prefile (ANCHOR (mk_anchor (env, a, err)), l, err)
 
     fun extend { context, arcs, err } morearcs =
 	{ context = context, arcs = arcs @ morearcs, err = err }
@@ -598,12 +612,13 @@ structure SrcPath :> SRCPATH = struct
     end
 
     fun unpickle env { pickled, relativeTo } = let
-	fun u_pf (arcs :: l) = prefile (u_c l, arcs, fn _ => raise Format)
+	fun err _ = raise Format
+	fun u_pf (arcs :: l) = prefile (u_c l, arcs, err)
 	  | u_pf _ = raise Format
 	and u_p l = file0 (u_pf l)
 	and u_c [[vol, "r"]] = ROOT vol
 	  | u_c [["c"]] = dir relativeTo
-	  | u_c [[n, "a"]] = ANCHOR (mk_anchor (env, n))
+	  | u_c [[n, "a"]] = ANCHOR (mk_anchor (env, n, err))
 	  | u_c l = DIR (u_p l)
     in
 	u_pf pickled
@@ -624,8 +639,8 @@ structure SrcPath :> SRCPATH = struct
 	fun arc "." = P.currentArc
 	  | arc ".." = P.parentArc
 	  | arc a = unesc a
-	fun file (c, l) =
-	    file0 (prefile (c, l, fn s => raise Fail ("SrcPath.decode: " ^ s)))
+	fun err s = raise Fail ("SrcPath.decode: " ^ s)
+	fun file (c, l) = file0 (prefile (c, l, err))
 	fun addseg (seg, p) =
 	    file (dir0 p, map arc (String.fields (isChar #"/") seg))
 	fun doseg0 s =
@@ -644,7 +659,7 @@ structure SrcPath :> SRCPATH = struct
 			  | #"$" => let
 				val n = xtr ()
 			    in
-				file (ANCHOR (mk_anchor (env, n)), arcs)
+				file (ANCHOR (mk_anchor (env, n, err)), arcs)
 			    end
 			  | _ => file (cwd (), arc arc0 :: arcs)
 		end

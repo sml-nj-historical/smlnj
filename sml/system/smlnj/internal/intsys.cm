@@ -16,14 +16,14 @@ Library
 	structure CM        (* $smlnj/cm.cm *)
 	structure CMB       (* $smlnj/cmb.cm *)
 	structure Tools
-	structure YaccTool
 	structure LexTool
-	structure BurgTool
+	structure YaccTool
 	structure NowebTool
 	structure MakeTool
 	structure ShellTool
 	structure DirTool
-	structure LibInstall (* $smlnj/installer.cm *)
+	structure GenericInstall (* $smlnj/installer.cm *)
+	structure LibraryInstall (* $smlnj/library-install.cm *)
 
 # if not defined(LIGHT)
 	(* export one representative from $smlnj/compiler/all.cm *)
@@ -49,15 +49,8 @@ is
 	$smlnj/cmb.cm
 
 	$smlnj/cm/tools.cm
-        (* We need the ml-yacc and ml-lex tool plugins here. They must
-         * always be "plugged in" because they are needed for -rebuild,
-	 * i.e., at a time when on-demand loading does not work yet. *)
 	$/grm-ext.cm		(* implies $/mlyacc-tool.cm *)
 	$/lex-ext.cm		(* implies $/mllex-tool.cm *)
-        (* Technically, the ml-burg tool is not needed here.  It should
-         * eventually be moved into the ML-Burg source tree and installed
-         * from there. *)
-	$/burg-ext.cm		(* implies $/mlburg-tool.cm *)
         (* Technically, the noweb tool is not needed here.  It should
          * eventually be moved into the noweb source tree and installed
          * from there. *)
@@ -72,9 +65,10 @@ is
 	 * itself) is always "plugged-in". *)
 	$/dir-tool.cm
 
-	(* The next is the installer.  It just needs to get compiled
-	 * so we know it is in sync with the rest of the code... *)
+	(* The next are installers.  They just needs to get compiled
+	 * so we know they are in sync with the rest of the code... *)
 	$smlnj/installer.cm
+	$smlnj/library-install.cm
 
 	(* We add the HTML lib.  It gets compiled anyway (even though
 	 * the compiler does not need it) because of a static dependence

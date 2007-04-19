@@ -23,8 +23,14 @@ is
 
 	(* the CM description file parser *)
 	parse/parse.sml
+#if defined(CMB_REBUILD)
+        parse/cm.grm.sig
+        parse/cm.grm.sml
+	parse/cm.lex.sml
+#else
 	parse/cm.grm
 	parse/cm.lex
+#endif
 
 	semant/sharing.sml
 	semant/iinfo.sml

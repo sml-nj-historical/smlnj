@@ -9,24 +9,25 @@
  * Author: Matthias Blume (blume@tti-c.org)
  *)
 Library
-	structure LibInstall
+	structure GenericInstall
 # if defined (OPSYS_UNIX)
-     	structure UnixLibInstall
+     	structure UnixInstall
 # elif defined(OPSYS_WIN32)
-	structure WinLibInstall
+	structure WinInstall
 # endif
 
 is
+	$smlnj/installer/util.cm
 	$smlnj/basis/basis.cm
 	$smlnj/smlnj-lib/smlnj-lib.cm
 	$smlnj/cm.cm
 
-	installer/libinstall.sml
+	installer/generic-install.sml
 
 # if defined (OPSYS_UNIX)
-     	installer/nixlibinstall.sml
+     	installer/nix-install.sml
 # elif defined(OPSYS_WIN32)
-	installer/winlibinstall.sml
+	installer/win-install.sml
 # else
 # error Unsupported operating system.
 # endif

@@ -3,9 +3,9 @@
  *   (This functor must be instantiated after the rest of CM is
  *    already in place because it uses load_plugin.)
  *
- *   (C) 2000 Lucent Technologies, Bell Laboratories
+ *   (C) 2006 The Fellowship of SML/NJ
  *
- * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ * Author: Matthias Blume (blume@tti-c.org)
  *)
 functor ToolsFn (val load_plugin' : SrcPath.file -> bool
 		 val penv: SrcPath.env) : TOOLS = struct
@@ -48,7 +48,7 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
 					   opts = too,
 					   derived = true })
 		     tfiles)
-	    fun runcmd () = let
+	    fun runcmd targets = let
 		val (csp, shelloptions) = cmdStdPath ()
 		val cmdname = mkCmdName csp
 		val cmd =
@@ -66,12 +66,17 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
 	    in
 		Say.vsay ["[", cmd, "]\n"];
 		if OS.Process.system cmd = OS.Process.success then ()
+		else if targetsExist targets then
+		    Say.say ["[*** WARNING: \"", cmd, "\" failed ***]\n\
+			     \[*** using potentially outdated targets ***]\n"]
 		else err cmd
 	    end
 	    fun rulefn () =
-		(if outdated tool (map #1 tfiles, nativename) then runcmd ()
-		 else ();
-		 partial_expansion)
+		let val targets = map #1 tfiles
+		in if outdated tool (targets, nativename) then runcmd targets
+		   else ();
+		   partial_expansion
+		end
 	in
 	    context rulefn
 	end

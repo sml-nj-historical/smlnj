@@ -89,9 +89,9 @@ signature CM_SEMANT = sig
     val union : exports * exports -> exports
     val difference : exports * exports -> exports
     val intersection : exports * exports -> exports
-    val exportsource : SrcPath.file option * complainer -> exports
-    val exportgroup : SrcPath.file option * complainer -> exports
-    val exportlibrary : SrcPath.file * complainer *
+    val exportsource : (unit -> SrcPath.file option) * complainer -> exports
+    val exportgroup : (unit -> SrcPath.file option) * complainer -> exports
+    val exportlibrary : (unit -> SrcPath.file) * complainer *
 			{ hasoptions: bool,
 			  elab: unit -> members,
 			  curlib: SrcPath.file option }
@@ -371,16 +371,16 @@ structure CMSemant :> CM_SEMANT = struct
 	in
 	    SymbolSet.foldl add1 SymbolMap.empty ss
 	end
-	fun exportfile F (fopt, error: string -> unit) (env: environment) =
-	    withCheckers (F (env, fopt, error), error)
+	fun exportfile F (foptth, error: string -> unit) (env: environment) =
+	    withCheckers (F (env, foptth (), error), error)
     in
         val exportsource =
 	    exportfile MC.smlexports
 	val exportgroup =
 	    exportfile MC.groupexports
-	fun exportlibrary (p, error, { hasoptions, elab, curlib }) env = let
+	fun exportlibrary (pth, error, { hasoptions, elab, curlib }) env = let
 	    fun elab' () = elab () (MC.emptycollection, curlib)
-	    val raw = MC.libraryexports (env, p, error, hasoptions, elab')
+	    val raw = MC.libraryexports (env, pth(), error, hasoptions, elab')
 	in
 	    withCheckers (raw, error)
 	end
@@ -390,8 +390,8 @@ structure CMSemant :> CM_SEMANT = struct
     fun guarded_exports (c, (e1, e2), error) env =
 	if saveEval (c, env, error) then e1 env else e2 env
     fun default_group_exports env =
-	union (exportsource (NONE, fn s => ()),
-	       exportgroup (NONE, fn s => ()))
+	union (exportsource (fn () => NONE, fn s => ()),
+	       exportgroup (fn () => NONE, fn s => ()))
 	      env
     fun error_export thunk env = (thunk (); SymbolMap.empty)
 
