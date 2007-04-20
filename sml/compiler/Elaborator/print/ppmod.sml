@@ -433,6 +433,7 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
 		  pps "sig";
 		  (case elements 
 		       of nil => pps " "
+			| [(_,M.STRspec _)] => nl_indent ppstrm 2
 			| [_] => pps " "
 			| _ => nl_indent ppstrm 2);
 		  openHVBox 0;
@@ -453,6 +454,7 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
 		  closeBox();
 		  (case elements 
 		    of nil => ()
+		     | [(_,M.STRspec _)] => newline()
 		     | [_] => pps " "
 		     | _ => newline());
 		  pps "end";
