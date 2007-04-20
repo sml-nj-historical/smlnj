@@ -565,8 +565,14 @@ fun matchInstTypes(doExpandAbstract, specTy,actualTy) =
 	fun expandAbstract(GENtyc {kind=ABSTRACT tyc', ...}) = 
 	    expandAbstract tyc'
 	  | expandAbstract(tyc) = tyc
-	fun match'(WILDCARDty, _) = raise WILDCARDmatch (* possible? how? *)
-	  | match'(_, WILDCARDty) = raise WILDCARDmatch (* possible? how? *)
+	fun match'(WILDCARDty, _) = () (* possible? how? 
+					 [GK 4/20/07] See bug1179
+					 We do matches against WILDCARDs
+					 when signature matching fails to
+					 match a type spec and yet we have
+					 to match valspec and vals mentioning
+					 that missing type. *)
+	  | match'(_, WILDCARDty) = ()
 	  | match'(ty1, ty2 as VARty(tv as ref(OPEN{kind=META,eq,...}))) =
               (* If we're told to ignore abstract, then we can't 
 		 check for equality types because the original GENtyc
