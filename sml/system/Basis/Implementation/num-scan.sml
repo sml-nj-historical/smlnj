@@ -420,7 +420,7 @@ structure NumScan : sig
 				       getExp(negate(neg,R.+(whole,frac)),rest'')
                                     | NONE =>
 				       (* no fraction -- point terminates num *)
-				       SOME(negate(neg,whole), rest)
+				       getExp(negate(neg,whole), rest')
 		                 (* end case *))
 			      | _ => getExp(negate(neg,whole),rest)
 			   (* end case *))
