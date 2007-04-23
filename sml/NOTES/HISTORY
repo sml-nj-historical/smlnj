@@ -18,6 +18,14 @@ Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2007/04/23
 Description:
 
+More Basis fixes: Time.fmt dropped the leading "~" for negative time
+values that had no whole part.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/04/23
+Description:
+
 More Basis fixes: the OS.Path module did not include the InvalidArc
 exception and did not do sufficient argument checking.
 

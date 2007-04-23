@@ -1,15 +1,16 @@
 (* time.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
+ * COPYRIGHT (c) 2007 The Fellowship of SML/NJ (http://smlnj.org)
+ * All rights reserved.
  *)
+
 structure TimeImp : sig
     include TIME
-    (* export these for the benefit of, e.g., Posix.ProcEnv.times: *)
+  (* export these for the benefit of, e.g., Posix.ProcEnv.times: *)
     val fractionsPerSecond : LargeInt.int
     val toFractions   : time -> LargeInt.int
     val fromFractions : LargeInt.int -> time
-end = struct
+  end = struct
 
     structure PB = PreBasis
     structure LInt = LargeIntImp
@@ -32,7 +33,7 @@ end = struct
     fun toFractions (PB.TIME { usec }) = usec
     fun fromFractions usec = (PB.TIME { usec = usec })
 
-    (* rounding is towards ZERO *)
+  (* rounding is towards ZERO *)
     fun toSeconds (PB.TIME { usec }) = usec quot 1000000
     fun fromSeconds sec = PB.TIME { usec = sec * 1000000 }
     fun toMilliseconds (PB.TIME { usec }) = usec quot 1000
@@ -42,10 +43,8 @@ end = struct
     fun toNanoseconds (PB.TIME { usec }) = usec * 1000
     fun fromNanoseconds nsec = PB.TIME { usec = nsec quot 1000 }
 
-    fun fromReal rsec =
-	PB.TIME { usec = Real.toLargeInt IEEEReal.TO_ZERO (rsec * 1.0e6) }
-    fun toReal (PB.TIME { usec }) =
-	Real.fromLargeInt usec * 1.0e~6
+    fun fromReal rsec = PB.TIME{ usec = Real.toLargeInt IEEEReal.TO_ZERO (rsec * 1.0e6) }
+    fun toReal (PB.TIME{usec}) = Real.fromLargeInt usec * 1.0e~6
 
     local
 	val gettimeofday : unit -> (Int32.int * int) =
@@ -63,17 +62,18 @@ end = struct
     fun fmt prec (PB.TIME { usec }) = let
 	val (neg, usec) = if usec < 0 then (true, ~usec) else (false, usec)
 	fun fmtInt i = LInt.fmt StringCvt.DEC i
-	fun fmtSec (neg, i) = fmtInt (if neg then ~i else i)
+	fun fmtSec (true, i) = "~" ^ fmtInt i
+	  | fmtSec (false, i) = fmtInt i
 	fun isEven i = LInt.rem (i, 2) = 0
     in
 	if prec < 0 then raise General.Size
 	else if prec = 0 then
 	    let val (sec, usec) = IntInfImp.quotRem (usec, 1000000)
-		val sec =
-		    case LInt.compare (usec, 500000) of
-			LESS => sec
-		      | GREATER => sec + 1
-		      | EQUAL => if isEven sec then sec else sec + 1
+		val sec = (case LInt.compare (usec, 500000)
+		       of LESS => sec
+			| GREATER => sec + 1
+			| EQUAL => if isEven sec then sec else sec + 1
+		      (* end  case *))
 	    in
 		fmtSec (neg, sec)
 	    end
@@ -87,11 +87,11 @@ end = struct
 	else
 	    let	val rnd = Vector.sub (rndv, prec - 1)
 		val (whole, frac) = IntInfImp.quotRem (usec, 2 * rnd)
-		val whole =
-		    case LInt.compare (frac, rnd) of
-			LESS => whole
-		      | GREATER => whole + 1
-		      | EQUAL => if isEven whole then whole else whole + 1
+		val whole = (case LInt.compare (frac, rnd)
+		       of LESS => whole
+			| GREATER => whole + 1
+			| EQUAL => if isEven whole then whole else whole + 1
+		      (* end  case *))
 		val rscl = 2 * Vector.sub (rndv, 5 - prec)
 		val (sec, frac) = IntInfImp.quotRem (whole, rscl)
 	    in
