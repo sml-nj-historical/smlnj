@@ -109,6 +109,8 @@ structure Int31Imp : INTEGER =
 			 if Char.isSpace c then skipwhite (i ++ 1)
 			 else if c = #"-" orelse c = #"~" then
 			     negabs (i ++ 1)
+                         else if c = #"+" then
+                             Option.map ~ (negabs (i ++ 1))
 			 else Option.map ~ (negabs i)
 		     end
 	in
