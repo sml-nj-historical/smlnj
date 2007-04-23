@@ -1,9 +1,9 @@
 (* os-path.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2007 The Fellowship of SML/NJ (http://smlnj.org)
+ * All rights reserved.
  *
  * This is the UNIX implementation of the generic OS.Path structure.
- *
  *)
 
 structure OS_Path = OS_PathFn (
@@ -21,6 +21,14 @@ structure OS_Path = OS_PathFn (
     val parentArc = ".."
 
     val currentArc = "."
+
+    fun validArc "" = false
+      | validArc arc = let
+	  fun ok #"/" = false
+	    | ok c = Char.isPrint c
+	  in
+	    CharVector.all ok arc
+	  end
 
     fun validVolume (_, vol)= Substring.isEmpty vol
 

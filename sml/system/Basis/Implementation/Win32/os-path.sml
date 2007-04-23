@@ -1,9 +1,9 @@
 (* os-path.sml
  *
- * COPYRIGHT (c) 1996 Bell Laboratories.
+ * COPYRIGHT (c) 2007 The Fellowship of SML/NJ (http://smlnj.org)
+ * All rights reserved.
  *
  * Win32 implementation of the OS.Path structure.
- *
  *)
 
 local
@@ -27,6 +27,15 @@ structure OS_Path = OS_PathFn (
 
       val parentArc  = ".."
       val currentArc = "."
+
+    fun validArc "" = false
+      | validArc arc = let
+	  fun ok #"\\" = false
+	    | ok #":" = false
+	    | ok c = Char.isPrint c
+	  in
+	    CharVector.all ok arc
+	  end
 
       val volSepChar = #":"
 
