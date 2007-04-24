@@ -51,6 +51,9 @@ signature CONTROL_REGISTRY =
 	subregs : registry_tree list
       }
 
+  (* get the registry-tree representation of a registry; an optional obscurity
+   * argument may be supplied to filter out obscure options.
+   *)
     val controls : (registry * int option) -> registry_tree
 
   end
