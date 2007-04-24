@@ -25,6 +25,11 @@ structure Queue :> QUEUE =
             x
           end
   
+    fun next q = (case Fifo.next (!q)
+	   of SOME(x, newq) => (q := newq; SOME x)
+            | NONE => NONE
+	  (* end case *))
+  
     fun delete (q, pred) = (q := Fifo.delete (!q, pred))
     fun head q = Fifo.head (!q)
     fun peek q = Fifo.peek (!q)

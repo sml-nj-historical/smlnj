@@ -22,10 +22,14 @@ signature QUEUE =
 	(* enqueue an element at the rear *)
     val dequeue : 'a queue -> 'a
 	(* remove the front element (raise Dequeue if empty) *)
+    val next : 'a queue -> 'a option
+	(* remove the first element; return NONE if the queue is empty *)
     val delete : ('a queue * ('a -> bool)) -> unit
 	(* delete all elements satisfying the given predicate *)
     val head : 'a queue -> 'a
+	(* return the first queue element without removing it *)
     val peek : 'a queue -> 'a option
+	(* peek at the first queue element without removing it *)
     val length : 'a queue -> int
     val contents : 'a queue -> 'a list
     val app : ('a -> unit) -> 'a queue -> unit

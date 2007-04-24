@@ -2,6 +2,9 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2007-04-24]
+	Added next function to Fifo and Queue modules.
+
 [2007-02-15]
 	Removed vestigial IntInf and INT_INF definitions.
 

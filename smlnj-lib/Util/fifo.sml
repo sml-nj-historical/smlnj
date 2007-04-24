@@ -23,6 +23,10 @@ structure Fifo : FIFO =
       | dequeue (Q{rear=[],...}) = raise Dequeue
       | dequeue (Q{rear,...}) = dequeue(Q{front=rev rear,rear=[]})
 
+    fun next (Q{front=(hd::tl),rear}) = SOME(hd, Q{front=tl,rear=rear})
+      | next (Q{rear=[],...}) = NONE
+      | next (Q{rear,...}) = next(Q{front=rev rear,rear=[]})
+
     fun delete (Q{front, rear}, pred) = let
 	  fun doFront [] = {front = doRear(rev rear), rear = []}
 	    | doFront (x::r) = if (pred x)

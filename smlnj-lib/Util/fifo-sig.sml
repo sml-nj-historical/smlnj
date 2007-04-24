@@ -16,6 +16,7 @@ signature FIFO =
     val isEmpty : 'a fifo -> bool
     val enqueue : 'a fifo * 'a -> 'a fifo
     val dequeue : 'a fifo -> 'a fifo * 'a
+    val next : 'a fifo -> ('a * 'a fifo) option
     val delete : ('a fifo * ('a -> bool)) -> 'a fifo
     val head : 'a fifo -> 'a
     val peek : 'a fifo -> 'a option
