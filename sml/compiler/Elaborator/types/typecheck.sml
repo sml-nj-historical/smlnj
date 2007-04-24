@@ -4,8 +4,15 @@
 signature TYPECHECK = 
 sig
 
-  val decType : StaticEnv.staticEnv * Absyn.dec * bool
+  val decType : StaticEnv.staticEnv * Absyn.dec * int * bool
 		* ErrorMsg.errorFn * SourceMap.region -> Absyn.dec
+    (* decType(senv,dec,tdepth,toplev,err,region):
+         senv: the context static environment
+         dec: the declaration to be type checked
+         tdepth: abstraction depth of lambda-bound type variables
+         err: error function
+         region: source region of dec
+     *)
   val debugging : bool ref
 
 end (* signature TYPECHECK *)
@@ -22,7 +29,7 @@ local open Array List Types VarCon BasicTypes TypesUtil Unify Absyn
 	   ErrorMsg PrettyPrintNew PPUtilNew PPType PPAbsyn
 
   structure SE = StaticEnv
-  (* structure II = InlInfo *)
+  structure DI = DebIndex
   structure DA = Access
   structure EU = ElabUtil
   structure ED = ElabDebug
@@ -56,7 +63,7 @@ fun mkDummy0 () = BasicTypes.unitTy
 (*
  * decType : SE.staticEnv * A.dec * bool * EM.errorFn * region -> A.dec 
  *)
-fun decType(env,dec,toplev,err,region) = 
+fun decType(env,dec,tdepth,toplev,err,region) = 
 let
 
 val { push = oll_push, resolve = oll_resolve } = OverloadLit.new ()
@@ -102,7 +109,8 @@ fun unifyErr{ty1,name1,ty2,name2,message=m,region,kind,kindname,phrase} =
 		    ppType ppstrm ty2);
 	     if kindname="" then ()
 	     else (newline ppstrm; PP.string ppstrm("in "^kindname^":");
-		   break ppstrm {nsp=1,offset=2}; kind ppstrm (phrase,!printDepth))
+		   break ppstrm {nsp=1,offset=2};
+                   kind ppstrm (phrase,!printDepth))
 	 end));
        false)
 
@@ -120,14 +128,11 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
 	              then TypesUtil.dummyTyGen()
 		      else mkDummy0 (* shouldn't be called *)
 
-	val index = ref 0  (* counts no of type variables bound *)
-	fun next() = let val i = !index in index := i+1; i end
+	val index = ref 0  (* counts number of type variables bound *)
+	fun next() = !index before (index := !index + 1)
 	val sign = ref([]: Types.polysign)
-	fun localUbound tv =
-	    let fun mem(tv'::rest) = eqTyvar(tv,tv') orelse mem rest
-		  | mem [] = false
-	     in mem userbound
-	    end
+	fun localUbound tv = List.exists (fn tv' => eqTyvar(tv,tv')) userbound
+
 	(* menv: a reference to an association list environment mapping
 	 *   generalized tyvars to the corresponding IBOUND type. 
 	 * ASSERT: there are no duplicate tyvars in domain of menv. *)
@@ -139,6 +144,7 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
 	     in find(!menv)
 	    end
 	fun bind(tv,ty) = menv := (tv,ty) :: !menv
+
 	fun gen(ty) =     
 	    case ty
 	     of VARty(ref(INSTANTIATED ty)) => gen ty
@@ -269,7 +275,7 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
 (* the VARpat case seems designed to ensure that only one variable in a pattern
  * can have generalized type variables: either x or !tvs must be nil or a bug
  * message is generated.  Why is this? [dbm] *)
-fun generalizePat(pat: pat, userbound: tyvar list, occ: occ, 
+fun generalizePat(pat: pat, userbound: tyvar list, occ: occ, tdepth,
                   generalize: bool, region) =
     let val tvs : tyvar list ref = ref []
         fun gen(VARpat v) = 
@@ -284,7 +290,7 @@ fun generalizePat(pat: pat, userbound: tyvar list, occ: occ,
 	  | gen(CONSTRAINTpat(pat,_)) = gen pat
 	  | gen(LAYEREDpat(varPat,pat)) = (gen varPat; gen pat)
 	  | gen _ = ()
-     in gen pat; !tvs
+     in gen pat; indexBoundTyvars(tdepth,!tvs); !tvs
     end
 
 fun applyType(ratorTy: ty, randTy: ty) : ty =
@@ -392,14 +398,14 @@ fun patType(pat: pat, depth, region) : pat * ty =
 	   end
        | p => bug "patType -- unexpected pattern"
 
-fun expType(exp: exp, occ: occ, region) : exp * ty =
+fun expType(exp: exp, occ: occ, tdepth: DI.depth, region) : exp * ty =
 let fun boolUnifyErr { ty, name, message } =
 	unifyErr { ty1 = ty, name1 = name, ty2 = boolTy, name2 = "",
 		   message = message, region = region, kind = ppExp,
 		   kindname = "expression", phrase = exp }
     fun boolshortcut (con, what, e1, e2) =
-	let val (e1', t1) = expType (e1, occ, region)
-	    val (e2', t2) = expType (e2, occ, region)
+	let val (e1', t1) = expType (e1, occ, tdepth, region)
+	    val (e2', t2) = expType (e2, occ, tdepth, region)
 	    val m = String.concat ["operand of ", what, " is not of type bool"]
 	in
 	    if boolUnifyErr { ty = t1, name = "operand", message = m }
@@ -427,7 +433,7 @@ in
        | CHARexp _ => (exp,charTy)
        | RECORDexp fields =>
            let fun h(l as LABEL{name,...},exp') = 
-                    let val (nexp,nty) = expType(exp',occ,region)
+                    let val (nexp,nty) = expType(exp',occ,tdepth,region)
                      in ((l,nexp),(l,nty))
                     end
                fun extract(LABEL{name,...},t) = (name,t)
@@ -436,7 +442,7 @@ in
             in (RECORDexp fields',recordTy(rty))
            end
        | SELECTexp (l, e) =>
-           let val (nexp, nty) = expType(e, occ, region)
+           let val (nexp, nty) = expType(e, occ, tdepth, region)
                val res = mkMETAty ()
                val labtys = [(EU.labsym l, res)]
                val pt = VARty(mkTyvar(mkFLEX(labtys,infinity)))
@@ -458,7 +464,7 @@ in
                     (exp, WILDCARDty))
            end
        | VECTORexp(exps,_) =>
-          (let val (exps',nty) = mapUnZip (fn e => expType(e,occ,region)) exps
+          (let val (exps',nty) = mapUnZip (fn e => expType(e,occ,tdepth,region)) exps
                val vty = foldr (fn (a,b) => (unifyTy(a,b); b)) (mkMETAty()) nty
             in (VECTORexp(exps',vty), CONty(vectorTycon,[vty]))
            end handle Unify(mode) =>
@@ -468,11 +474,11 @@ in
        | SEQexp exps => 
 	   let fun scan nil = (nil,unitTy)
 	         | scan [e] = 
-                     let val (e',ety) = expType(e,occ,region)
+                     let val (e',ety) = expType(e,occ,tdepth,region)
                       in ([e'],ety)
                      end
 		 | scan (e::rest) = 
-                     let val (e',_) = expType(e,occ,region)
+                     let val (e',_) = expType(e,occ,tdepth,region)
                          val (el',ety) = scan rest
                       in (e'::el',ety)
                      end
@@ -480,8 +486,8 @@ in
             in (SEQexp exps',expty)
 	   end
        | APPexp(rator, rand) =>
-	   let val (rator',ratorTy) = expType(rator,occ,region)
-	       val (rand',randTy) = expType(rand,occ,region)
+	   let val (rator',ratorTy) = expType(rator,occ,tdepth,region)
+	       val (rand',randTy) = expType(rand,occ,tdepth,region)
                val exp' = APPexp(rator',rand')
 	    in (exp',applyType(ratorTy,randTy))
 	       handle Unify(mode) => 
@@ -515,7 +521,7 @@ in
 	       end
 	   end
        | CONSTRAINTexp(e,ty) =>
-	   let val (e',ety) = expType(e,occ,region)
+	   let val (e',ety) = expType(e,occ,tdepth,region)
 	    in if unifyErr{ty1=ety,name1="expression", ty2=ty, name2="constraint",
 			message="expression doesn't match constraint",
 			region=region,kind=ppExp,kindname="expression",
@@ -524,7 +530,7 @@ in
 		else (exp,WILDCARDty)
 	   end
        | HANDLEexp(e, (rules, _)) =>
-	   let val (e',ety) = expType(e,occ,region)
+	   let val (e',ety) = expType(e,occ,tdepth,region)
 	       and (rules',rty,hty) = matchType (rules, occ, region)
                val exp' = HANDLEexp(e', (rules', rty))
 	    in (unifyTy(hty, exnTy --> ety); (exp',ety))
@@ -543,7 +549,7 @@ in
 		  (exp,WILDCARDty))
 	   end
        | RAISEexp(e,_) =>
-	   let val (e',ety) = expType(e,occ,region)
+	   let val (e',ety) = expType(e,occ,tdepth,region)
                val newty = mkMETAty()
 	    in unifyErr{ty1=ety, name1="raised", ty2=exnTy, name2="",
 			message="argument of raise is not an exception",
@@ -551,12 +557,12 @@ in
 	       (RAISEexp(e',newty),newty)
 	   end
        | LETexp(d,e) => 
-           let val d' = decType0(d,LetDef(occ),region)
-               val (e',ety) = expType(e,occ,region)
+           let val d' = decType0(d,LetDef(occ),tdepth,region)
+               val (e',ety) = expType(e,occ,tdepth,region)
             in (LETexp(d',e'),ety)
            end
        | CASEexp(e,rules,isMatch) =>
-	   let val (e',ety) = expType(e,occ,region)
+	   let val (e',ety) = expType(e,occ,tdepth,region)
 	       val (rules',_,rty) = matchType(rules,occ,region)
                val exp' = CASEexp(e',rules', isMatch)
 	    in (exp',applyType(rty,ety))
@@ -582,9 +588,9 @@ in
 		 (* this causes case to behave differently from let, i.e.
 		    bound variables do not have generic types *)
        | IFexp { test, thenCase, elseCase } =>
-	   let val (test', tty) = expType (test, occ, region)
-	       val (thenCase', tct) = expType (thenCase, occ, region)
-	       val (elseCase', ect) = expType (elseCase, occ, region)
+	   let val (test', tty) = expType (test,occ,tdepth,region)
+	       val (thenCase', tct) = expType (thenCase, occ, tdepth, region)
+	       val (elseCase', ect) = expType (elseCase, occ, tdepth, region)
 	   in
 	       if boolUnifyErr
 		      { ty = tty, name = "test expression",
@@ -607,8 +613,8 @@ in
        | ORELSEexp (e1, e2) =>
 	   boolshortcut (ORELSEexp, "orelse", e1, e2)
        | WHILEexp { test, expr } =>
-	   let val (test', tty) = expType (test, occ, region)
-	       val (expr', _) = expType (expr, occ, region)
+	   let val (test', tty) = expType (test, occ, tdepth, region)
+	       val (expr', _) = expType (expr, occ, tdepth, region)
 	   in
 	       if boolUnifyErr { ty = tty, name = "test expression",
 				 message = "test expression in while is not of type bool" }
@@ -622,7 +628,7 @@ in
             in (FNexp(rules',ty),rty)
            end
        | MARKexp(e,region) => 
-           let val (e',et) = expType(e,occ,region)
+           let val (e',et) = expType(e,occ,tdepth,region)
             in (MARKexp(e',region),et)
            end
        | _ => bug "exptype -- bad expression"
@@ -631,7 +637,7 @@ end
 and ruleType(RULE(pat,exp),occ,region) =  
  let val occ = Abstr occ
      val (pat',pty) = patType(pat,lamdepth occ,region)
-     val (exp',ety) = expType(exp,occ,region)
+     val (exp',ety) = expType(exp,occ,tdepth,region)
   in (RULE(pat',exp'),pty,pty --> ety)
  end
 
@@ -656,19 +662,19 @@ and matchType(l,occ,region) =
 	     in (rule0::(map checkrule rest),argt,rty)
 	    end
 
-and decType0(decl,occ,region) : dec =
+and decType0(decl,occ,tdepth,region) : dec =
      case decl
       of VALdec vbs =>
 	   let fun vbType(vb as VB{pat, exp, tyvars=(tv as (ref tyvars)), boundtvs}) =
 	        let val (pat',pty) = patType(pat,infinity,region)
-		    val (exp',ety) = expType(exp,occ,region)
+		    val (exp',ety) = expType(exp,occ,DI.next tdepth,region)
                     val generalize = TypesUtil.isValue exp (* orelse isVarTy ety *)
 		 in unifyErr{ty1=pty,ty2=ety, name1="pattern", name2="expression",
 			     message="pattern and expression in val dec don't agree",
 			     region=region,kind=ppVB,kindname="declaration",
 			     phrase=vb};
                    VB{pat=pat',exp=exp',tyvars=tv,
-                      boundtvs=generalizePat(pat,tyvars,occ,generalize,region)}
+                      boundtvs=generalizePat(pat,tyvars,occ,tdepth,generalize,region)}
                 end
 	       val _ = debugmsg ">>decType0: VALdec"
 	    in VALdec(map vbType vbs)
@@ -684,7 +690,7 @@ and decType0(decl,occ,region) : dec =
 	       fun setType(rvb as RVB{var=VALvar{typ,...},exp,resultty,...}) = 
                    let val domainty = mkMETAtyBounded(lamdepth occ)
 		       val rangety = mkMETAtyBounded(lamdepth occ)
-
+                                      (* depth should be infinity? *)
 		       val funty = domainty --> rangety
 
 		       val _ = 
@@ -723,7 +729,7 @@ and decType0(decl,occ,region) : dec =
 				 val exps = map #3 patTyExps
 
 				 fun doExp (e,region) =
-				     let val (exp', ety) = expType(e,occ,region)
+				     let val (exp', ety) = expType(e,occ,tdepth,region)
 				      in unifyErr{ty1=ety, name1="expression",
 					  ty2=rangety, name2="result type",
 					  message="right-hand-side of clause\
@@ -789,13 +795,13 @@ and decType0(decl,occ,region) : dec =
                decl
 	   end
        | LOCALdec(decIn,decOut) =>
-	   let val decIn' = decType0(decIn,LetDef occ,region)
-               val decOut' = decType0(decOut,occ,region)
+	   let val decIn' = decType0(decIn,LetDef occ,tdepth,region)
+               val decOut' = decType0(decOut,occ,tdepth,region)
 	       val _ = debugmsg ">>decType0: LOCALdec"
             in LOCALdec(decIn',decOut')
            end
        | SEQdec(decls) => 
-           SEQdec(map (fn decl => decType0(decl,occ,region)) decls)
+           SEQdec(map (fn decl => decType0(decl,occ,tdepth,region)) decls)
        | ABSTYPEdec{abstycs,withtycs,body} => 
 	   let fun makeAbstract(GENtyc { eq, ... }) = eq := ABS
 		 | makeAbstract _ = bug "makeAbstract"
@@ -811,47 +817,47 @@ and decType0(decl,occ,region) : dec =
 		    (redefineEq din; redefineEq dout)
 	         | redefineEq(MARKdec(dec,_)) = redefineEq dec
 	         | redefineEq _ = ()
-	       val body'= decType0(body,occ,region)
+	       val body'= decType0(body,occ,tdepth,region)
 	       val _ = debugmsg ">>decType0: ABSTYPEdec"
 	    in app makeAbstract abstycs;
 	       redefineEq body';
 	       ABSTYPEdec{abstycs=abstycs,withtycs=withtycs,body=body'}
 	   end
-       | MARKdec(dec,region) => MARKdec(decType0(dec,occ,region),region)
+       | MARKdec(dec,region) => MARKdec(decType0(dec,occ,tdepth,region),region)
 
       (* 
        * The next several declarations will never be seen ordinarily;
        * they are for re-typechecking after the instrumentation phase
        * of debugger or profiler. 
        *)
-       | STRdec strbs => STRdec(map (strbType(occ,region)) strbs)
-       | ABSdec strbs => ABSdec(map (strbType(occ,region)) strbs)
-       | FCTdec fctbs => FCTdec(map (fctbType(occ,region)) fctbs)
+       | STRdec strbs => STRdec(map (strbType(occ,tdepth,region)) strbs)
+       | ABSdec strbs => ABSdec(map (strbType(occ,tdepth,region)) strbs)
+       | FCTdec fctbs => FCTdec(map (fctbType(occ,tdepth,region)) fctbs)
        | _ => decl
 
-and fctbType (occ,region) (FCTB{fct,def,name}) =
+and fctbType (occ,tdepth,region) (FCTB{fct,def,name}) =
       let fun fctexpType(FCTfct{param, argtycs, def}) =
-  	        FCTfct{param=param, def=strexpType (occ,region) def,
+  	        FCTfct{param=param, def=strexpType (occ,DI.next tdepth,region) def,
 	               argtycs=argtycs}
  	    | fctexpType(LETfct(dec,e)) =
-	        LETfct(decType0(dec,LetDef occ,region), fctexpType e)
+	        LETfct(decType0(dec,LetDef occ,tdepth,region), fctexpType e)
 	    | fctexpType(MARKfct(f,region)) = MARKfct(fctexpType f,region)
             | fctexpType v = v
        in FCTB{fct=fct,def=fctexpType def,name=name}
       end
 
-and strexpType (occ,region) (se as (APPstr{oper,arg,argtycs})) = se
-  | strexpType (occ,region) (LETstr(dec,e)) =
-      LETstr(decType0(dec,LetDef occ,region), strexpType (occ,region) e)
-  | strexpType (occ,_) (MARKstr(e,region)) = 
-      MARKstr(strexpType (occ,region) e, region)
+and strexpType (occ,tdepth,region) (se as (APPstr{oper,arg,argtycs})) = se
+  | strexpType (occ,tdepth,region) (LETstr(dec,e)) =
+      LETstr(decType0(dec,LetDef occ,tdepth,region), strexpType (occ,tdepth,region) e)
+  | strexpType (occ,tdepth,_) (MARKstr(e,region)) = 
+      MARKstr(strexpType (occ,tdepth,region) e, region)
   | strexpType _ v = v
 
-and strbType (occ,region) (STRB{str,def,name}) =
-    STRB{str=str,def=strexpType (occ,region) def,name=name}
+and strbType (occ,tdepth,region) (STRB{str,def,name}) =
+    STRB{str=str,def=strexpType (occ,tdepth,region) def,name=name}
 
 val _ = debugmsg ">>decType: calling decType0"
-val dec' = decType0(dec, if toplev then Root else (LetDef Root), region);
+val dec' = decType0(dec, if toplev then Root else (LetDef Root), tdepth, region);
 in
     oll_resolve (); 
     ol_resolve env;

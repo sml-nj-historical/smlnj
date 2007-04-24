@@ -212,7 +212,7 @@ and evalFct (fctExp, depth, epc, entEnv,
                   let val rpath' = IP.IPATH [paramSym]
                       val {rlzn=paramEnt, tycpaths=paramTps} =
                         I.instParam{sign=paramsig, entEnv=entEnv, 
-                                    rpath=rpath', depth=depth,
+                                    rpath=rpath', tdepth=depth,
                                     region=S.nullRegion, compInfo=compInfo}
                       val entEnv' = 
                         EE.mark(mkStamp, EE.bind(param, STRent paramEnt, 

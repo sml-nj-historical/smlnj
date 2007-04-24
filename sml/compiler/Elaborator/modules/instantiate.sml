@@ -46,7 +46,7 @@ signature INSTANTIATE_PARAM = sig
     val setSigBoundeps :
 	Modules.sigrec * (EntPath.entPath * tkind) list option -> unit
 
-    val tvi_exn : { depth: DebIndex.depth, num: int, kind: tkind } -> exn
+    val tvi_exn : { tdepth: DebIndex.depth, num: int, kind: tkind } -> exn
 
 end
 
@@ -59,7 +59,7 @@ sig
   val instParam : 
          {sign     : Modules.Signature,
           entEnv   : Modules.entityEnv,
-          depth    : DebIndex.depth,	(* # of enclosing fct abstractions *)
+          tdepth   : DebIndex.depth,	(* # of enclosing fct abstractions *)
           rpath    : InvPath.path,
           region   : SourceMap.region,
           compInfo : ElabUtil.compInfo} -> {rlzn: Modules.strEntity,
@@ -1015,10 +1015,10 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
         case instKind
          of INST_ABSTR {entities,...} =>
 	    (fn (ep,_) => T.ABSTRACT(EE.lookTycEP (entities, ep)))
-          | INST_PARAM depth => 
+          | INST_PARAM tdepth => 
               (fn (ep,tk) => 
                   T.FLEXTYC(T.TP_VAR (Param.tvi_exn
-					  {depth=depth, num=cnt, kind=tk})))
+					  {tdepth=tdepth, num=cnt, kind=tk})))
           | INST_FMBD tp => (fn (ep,_) => T.FLEXTYC(T.TP_SEL(tp,cnt)))
  
       fun addInst (slot,depth)=
@@ -1404,12 +1404,12 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 			  in (M.FORMstr sign, SOME res)
 			 end)
 
-		     | INST_PARAM depth => 
+		     | INST_PARAM tdepth => 
 		       (fn (sign, ep, rp, nenv) => 
 			 let val tk = getTkFct{sign=sign,entEnv=nenv,
 					       rpath=rp,compInfo=compInfo}
 			     val res = T.TP_VAR (Param.tvi_exn
-						     { depth = depth,
+						     { tdepth = tdepth,
 						       num = cnt (),
 						       kind = tk })
 			     val _ = addRes(SOME(ep, tk), res)
@@ -1799,9 +1799,9 @@ fun instAbstr{sign, entEnv, srcRlzn, rpath, region, compInfo} =
   end
 
 (*** instantiation of the functor parameter signatures ***)
-fun instParam{sign, entEnv, depth, rpath, region, compInfo} =
+fun instParam{sign, entEnv, tdepth, rpath, region, compInfo} =
   let val (rlzn, tycs, fcttps, _, _) 
-        = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_PARAM depth,
+        = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_PARAM tdepth,
                       rpath=rpath, region=region, compInfo=compInfo}
 
       fun h1(T.GENtyc { kind = T.FLEXTYC tp, ... }) = tp

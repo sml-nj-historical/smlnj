@@ -128,7 +128,7 @@ fun tyvarPrintname (tyvar) = let
 	    annotate(litKindPrintName kind,"L",NONE)
 	  | SCHEME eq =>
 	    tvHead(eq,annotate(metaTyvarName tyvar,"S",NONE))
-	  | TV_MARK(d,i) => "<TVM"^Int.toString d^"."^Int.toString i^">"
+	  | LBOUND{depth,index} => "<LBD"^Int.toString depth^"."^Int.toString index^">"
 in
     prKind (!tyvar)
 end

@@ -11,8 +11,7 @@ sig
                         strLty : Modules.Structure * DebIndex.depth 
                                  * ElabUtil.compInfo -> PLambdaType.lty,
                         fctLty : Modules.Functor * DebIndex.depth 
-                                 * ElabUtil.compInfo -> PLambdaType.lty,
-			markLBOUND: DebIndex.depth * int -> int}
+                                 * ElabUtil.compInfo -> PLambdaType.lty}
 end (* signature TRANSTYPES *)
 
 structure TransTypes : TRANSTYPES = 
@@ -94,25 +93,11 @@ fun tpsKnd (TP_VAR x) = #kind (TVI.fromExn x)
 fun genTT() = 
   let
 
-val nextmark = ref 0
-val markmap = ref IntRedBlackMap.empty
-fun markLBOUND (di, n) =
-    let val m = !nextmark
-    in
-	nextmark := m + 1;
-	markmap := IntRedBlackMap.insert (!markmap, m, (di, n));
-	m
-    end
-fun findLBOUND m =
-    case IntRedBlackMap.find (!markmap, m) of
-	SOME i => i
-      | NONE => ErrorMsg.impossible "transtypes:findLBOUND"
-	      
 fun tpsTyc d tp = 
   let fun h (TP_VAR x, cur) =
-	  let val { depth, num, ... } = TVI.fromExn x
+	  let val { tdepth, num, ... } = TVI.fromExn x
 	  in
-              LT.tcc_var(DI.calc(cur, depth), num)
+              LT.tcc_var(DI.calc(cur, tdepth), num)
 	  end
         | h (TP_TYC tc, cur) = tycTyc(tc, cur)
         | h (TP_SEL (tp, i), cur) = LT.tcc_proj(h(tp, cur), i)
@@ -267,8 +252,8 @@ and toTyc d t =
         end
 
       and h (INSTANTIATED t) = g t
-        | h (TV_MARK(depth,num)) =
-             LT.tcc_var(DI.calc(d, depth), num)
+        | h (LBOUND{depth,index}) =
+             LT.tcc_var(DI.calc(d, depth), index)
         | h (UBOUND _) = LT.tcc_void
             (* dbm: should this have been converted to a TV_MARK before
              * being passed to toTyc? 
@@ -425,7 +410,7 @@ and fctRlznLty (sign, rlzn, depth, compInfo) =
       | (FSIG{paramsig, bodysig, ...}, _,
          {closure as CLOSURE{env,...}, ...}) =>
         let val {rlzn=argRlzn, tycpaths=tycpaths} = 
-                INS.instParam {sign=paramsig, entEnv=env, depth=depth, 
+                INS.instParam {sign=paramsig, entEnv=env, tdepth=depth, 
                                rpath=InvPath.IPATH[], compInfo=compInfo,
                                region=SourceMap.nullRegion}
             val nd = DI.next depth
@@ -525,8 +510,7 @@ structure MIDict = RedBlackMapFn(struct type ord_key = ModuleId.modId
 *)
 
    in {tpsKnd=tpsKnd, tpsTyc=tpsTyc,
-       toTyc=toTyc, toLty=toLty, strLty=strLty, fctLty=fctLty,
-       markLBOUND = markLBOUND}
+       toTyc=toTyc, toLty=toLty, strLty=strLty, fctLty=fctLty}
   end (* function genTT *)
 
 end (* toplevel local *)

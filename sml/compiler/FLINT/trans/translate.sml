@@ -143,7 +143,7 @@ fun mkv () = mkvN NONE
 
 
 (** generate the set of ML-to-FLINT type translation functions *)
-val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty, markLBOUND} =
+val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty} =
     TT.genTT()
 fun toTcLt d = (toTyc d, toLty d)
 
@@ -970,7 +970,7 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
 	  val _ = debugmsg ">>mkVE: before matchInstTypes"
 	  val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
-              case (TU.matchInstTypes(true, occurenceTy, intrinsicType)
+              case (TU.matchInstTypes(true, d, occurenceTy, intrinsicType)  (* DBM ? *)
                       : (TP.tyvar list * TP.tyvar list) option )
                 of SOME(_, tvs) => 
 		   (if !debugging then
@@ -1099,22 +1099,34 @@ fun mkBnd d =
  * translate an expression with potential type parameters *)
 fun mkPE (exp, d, []) = mkExp(exp, d)
   | mkPE (exp, d, boundtvs) = 
-      let val savedtvs = map ! boundtvs
+      let 
+(* now done in type checker (generalizePat)
+ * but we will do it again here and check consistencey, with he
+ * local computation taking priority --- *)
+
+          val savedtvs = map ! boundtvs
             (* save original contents of boundtvs for later restoration
              * by the restore function below *)
 
           fun setbtvs (i, []) = ()
             | setbtvs (i, (tv as ref (TP.OPEN _))::rest) =
-		let val m = markLBOUND (d, i)
-	         in tv := TP.TV_MARK (d,i);
-		    setbtvs (i+1, rest)
-	        end
-            | setbtvs (i, (tv as ref (TP.TV_MARK _))::res) =
-                bug ("unexpected tyvar TV_MARK in mkPE")
+	        (tv := TP.LBOUND {depth=d,index=i};
+		 setbtvs (i+1, rest))
+            | setbtvs (i, (tv as ref (TP.LBOUND{depth=d',index=i'}))::rest) =
+                (if !debugging
+                 then (if d <> d' then say ("### setbtvs: d = "^(Int.toString d)^
+                                            ", d' = "^(Int.toString d')^"\n")
+                       else ();
+                       if i <> i' then say ("### setbtvs: i = "^(Int.toString i)^
+                                            ", i' = "^(Int.toString i')^"\n")
+                       else ())
+                 else ();
+                 tv := TP.LBOUND {depth=d,index=i};  (* reset with local values *)
+		 setbtvs (i+1, rest))
             | setbtvs _ = bug "unexpected tyvar INSTANTIATED in mkPE"
 
           val _ = setbtvs(0, boundtvs)
-            (* assign TV_MARKs to the boundtvs to mark them as type
+            (* assign LBOUNDs to the boundtvs to mark them as type
              * parameter variables during translation of exp *)
 
           val exp' = mkExp(exp, DI.next d)
@@ -1133,6 +1145,7 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
              happen (Single Generalization Conjecture) *)
 
           val _ = restore(savedtvs, boundtvs)
+
           val len = length(boundtvs)
        
        in TFN(LT.tkc_arg(len), exp')
@@ -1140,7 +1153,7 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
 
 and mkVBs (vbs, d) =
   let fun mkVB (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
-                   exp as VARexp (ref (w as (V.VALvar{typ,prim,...})), ptvs),
+                   exp as VARexp (w as (ref (V.VALvar{typ,prim,...})), ptvs),
                    boundtvs=btvs, ...}, b: lexp) = 
             (* [dbm: 7/10/06] Originally, the mkVar and mkPE translations
              * were chosen based on whether btvs and ptvs were the same
@@ -1155,29 +1168,33 @@ and mkVBs (vbs, d) =
               of PrimOpId.Prim name =>
                   (case PrimOpTypeMap.primopTypeMap name
                      of SOME(primopty) =>
-                        (case TU.matchInstTypes(true,
+                        (case TU.matchInstTypes(true,d,
                                 instPoly(!typ, map (TU.prune o TP.VARty) ptvs),
                                 primopty)
                           of NONE => bug "mkVB: occtype and intrinsic don't match"
-			   | SOME(_,[]) => LET(v, mkVar(w, d), b)
-                           | SOME(_,ptvs') => LET(v, mkPE(exp, d, btvs), b))
+			   | SOME(_,[]) => LET(v, mkExp(exp, d), b)
+                           | SOME(_,ptvs') =>
+                             (* substitute instantiation parameters wrt
+                              * intrinsic type (DBM) *)
+                             let val exp' = VARexp(w, ptvs')
+                             in LET(v, mkPE(exp, d, btvs), b)
+                             end)
                       | NONE => bug "mkVBs: unknown primop name")
                | _ => LET(v, mkPE(exp, d, btvs), b))
 (*
                | _ => LET(v, mkVar(w, d), b))
 *)
-                 (* when generalized variables = instantiation params *)
 
         | mkVB (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
                    exp, boundtvs=btvs, ...}, b) =
             LET(v, mkPE(exp, d, btvs), b)
 
         | mkVB (VB{pat=CONSTRAINTpat(VARpat(V.VALvar{access=DA.LVAR v, ...}),_),
-                   exp, boundtvs=tvs, ...}, b) =
-            LET(v, mkPE(exp, d, tvs), b)
+                   exp, boundtvs=btvs, ...}, b) =
+            LET(v, mkPE(exp, d, btvs), b)
 
-        | mkVB (VB{pat, exp, boundtvs=tvs, ...}, b) =
-            let val ee = mkPE(exp, d, tvs)
+        | mkVB (VB{pat, exp, boundtvs=btvs, ...}, b) =
+            let val ee = mkPE(exp, d, btvs)
                 val rules = [(fillPat(pat, d), b), (WILDpat, unitLexp)]
                 val rootv = mkv()
                 fun finish x = LET(rootv, ee, x)

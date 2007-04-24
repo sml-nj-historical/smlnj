@@ -473,6 +473,7 @@ fun labsym (LABEL{name, ...}) = name
 
 exception IsRec
 
+(** FLINT in front end **)
 (** formerly defined in translate/nonrec.sml; now done during type checking *)
 fun recDecs (rvbs as [RVB {var as V.VALvar{access=A.LVAR v, ...}, 
                            exp, resultty, tyvars, boundtvs}]) = 

@@ -31,7 +31,12 @@ and tvKind
    * but unlike the old "LBOUND" thing, it does not need to know about
    * specific types used by those phases. In any case, we should figure
    * out how to get rid of it altogether.) *)
-  | TV_MARK of int * int
+  | LBOUND of {depth: int, index: int}
+     (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
+      * associated with polymorphic bindings (including val bindings and
+      * functor parameter bindings). The depth is depth of type lambda bindings,
+      * (1-based), and the index is the index within a sequence of type variables
+      * bound at a given binding site. *)
 
 and tycpath
   = TP_VAR of exn

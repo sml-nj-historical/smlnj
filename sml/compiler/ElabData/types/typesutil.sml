@@ -204,7 +204,9 @@ fun applyTyfun(TYFUN{arity,body}, args: ty list) =
         | subst(VARty(ref(INSTANTIATED ty))) = subst ty
         | subst _ = raise SHARE
    in if arity <> length args
-        then bug "applyTyfun: arity mismatch"
+        then (say ("$$$ applyTyfun: arity = "^(Int.toString arity)^
+                   ", |args| = "^(Int.toString(length args))^"\n");
+              bug "applyTyfun: arity mismatch")
       else if arity > 0
         then subst body
              handle SHARE => body
@@ -417,11 +419,8 @@ val rec compressTy =
 
 (*
  * 8/18/92: cleaned up occ "state machine" some and fixed bug #612.
- *
  * Known behaviour of the attributes about the context that are kept:
- *
  * lamd = # of Abstr's seen so far.  Starts at 0 with Root.
- *
  * top = true iff haven't seen a LetDef yet.
  *)
 
@@ -542,6 +541,20 @@ fun compareTypes (spec : ty, actual: ty): bool =
 		  | _ => equalType(spec,actual))
     end handle CompareTypes => false
 
+exception WILDCARDmatch
+
+fun indexBoundTyvars (tdepth : int, []: tyvar list) : unit = ()
+  | indexBoundTyvars (tdepth, lboundtvs) =
+    let fun setbtvs (i, []) = ()
+          | setbtvs (i, (tv as ref (OPEN _))::rest) =
+	     (tv := LBOUND{depth=tdepth,index=i};
+	      setbtvs (i+1, rest))
+          | setbtvs (i, (tv as ref (LBOUND _))::res) =
+             bug ("unexpected tyvar LBOUND in indexBoundTyvars")
+          | setbtvs _ = bug "unexpected tyvar INSTANTIATED in mkPE"
+     in setbtvs(0, lboundtvs)
+    end
+
 (* matchInstTypes: bool * ty * ty -> (tyvar list * tyvar list) option
  * The first argument tells matchInstTypes to ignore the abstract property
  * of abstract types, i.e., this call is being used in FLINT where
@@ -556,11 +569,9 @@ fun compareTypes (spec : ty, actual: ty): bool =
  * parameters for a polytype (actualTy) to obtain one of its instantiations
  * (specTy). This usage occurs in translate.sml where we match an occurrence
  * type of a primop variable with the intrinsic type of the primop to obtain
- * the parameters of instantiation of the primop.
+ * the instantiation parameters for the primop relative to its intrinsic type.
  *)
-exception WILDCARDmatch
-
-fun matchInstTypes(doExpandAbstract, specTy,actualTy) =
+fun matchInstTypes(doExpandAbstract,tdepth,specTy,actualTy) =
     let	fun debugmsg' msg = debugmsg ("matchInstTypes: " ^ msg)
 	fun expandAbstract(GENtyc {kind=ABSTRACT tyc', ...}) = 
 	    expandAbstract tyc'
@@ -595,9 +606,11 @@ fun matchInstTypes(doExpandAbstract, specTy,actualTy) =
               else (debugmsg' "INSTANTIATED"; raise CompareTypes)
 	  (* GK: Does this make sense? matchInstTypes should not apply
 		 as is if all the metavariables have been translated 
-	         into TV_MARKs *)
-	  | match'(VARty(ref (TV_MARK m)), VARty(ref (TV_MARK m'))) = 
-	      if m = m' then () else raise CompareTypes 
+	         into LBOUNDs *)
+	  | match'(ty1, ty2 as VARty(tv' as (ref(LBOUND _)))) = 
+              if equalType(ty1,ty2) then ()
+              else (debugmsg' "matchInstTypes: matching and LBOUND tyvar";
+                    raise CompareTypes)
 	  | match'(CONty(tycon1, args1), CONty(tycon2, args2)) =
 	      if eqTycon(tycon1,tycon2)
 	      then ListPair.app match (args1,args2)
@@ -624,6 +637,7 @@ fun matchInstTypes(doExpandAbstract, specTy,actualTy) =
         and match(ty1,ty2) = match'(headReduceType ty1, headReduceType ty2)
         val (actinst, actParamTvs) = instantiatePoly actualTy
         val (specinst, specGenericTvs) = instantiatePoly specTy
+        val _ = indexBoundTyvars(tdepth,specGenericTvs)
 	val _ = debugmsg' "Instantiated both\n"
     in match(specinst, actinst);
        debugmsg' "matched\n";
