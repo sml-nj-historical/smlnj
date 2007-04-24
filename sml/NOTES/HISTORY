@@ -15,6 +15,24 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/04/24
+Description:
+
+More Basis fixes: The Char.fromString (etc.) functions did not handle
+the "\uxxxx" escape sequence.  There is still an outstanding bug with
+String.fromString the tail is a format escape.  I added a comment to
+this effect in Basis/Implementation/string.sml.
+Thanks to Andreas Rossberg.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/04/24
+Description:
+
+Added next function to Fifo and Queue modules in the SML/NJ Library.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2007/04/23
 Description:
 
@@ -28,6 +46,7 @@ Description:
 
 More Basis fixes: the OS.Path module did not include the InvalidArc
 exception and did not do sufficient argument checking.
+Thanks to Stephen Weeks and Adam Chilpala.
 
 ----------------------------------------------------------------------
 Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
