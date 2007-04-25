@@ -325,7 +325,13 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
 		       | _ => otherwise ()
 		 end
 	       | POLYty{sign,tyfun=TYFUN{arity,body}} => 
-                        ppType1 env ppstrm (body,sign, membersOp)
+                   if !internals
+                   then (openHOVBox 1;
+                         pps "[POLY("; pps(Int.toString arity); pps ")";
+                         ppType1 env ppstrm (body,sign, membersOp);
+                         pps "]";
+                         closeBox())
+                   else ppType1 env ppstrm (body,sign, membersOp)
 	       | WILDCARDty => pps "_"
 	       | UNDEFty => pps "undef"
 

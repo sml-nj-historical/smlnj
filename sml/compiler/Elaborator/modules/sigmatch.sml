@@ -106,7 +106,7 @@ structure EvalEntity = EV
 exception BadBinding
 
 val debugging = ElabControl.smdebugging
-val showsigs = ref false
+val showsigs = ref true
 
 val say = Control_Print.say
 fun debugmsg (msg: string) =
@@ -863,10 +863,27 @@ let
              | VALspec{spec=spectyp, ...} => 
                 ((case (MU.getSpec(strElements, sym))
                    of VALspec{spec=acttyp, slot=actslot} =>
-                     let val spectyp = typeInMatched("$specty(val/val)", spectyp)
+                     let 
+                         val _ =
+                             (debugPrint debugging
+                                ("spectype[0]", PPType.ppType statenv,
+                                 spectyp);
+                              debugPrint debugging 
+                                ("acttyp[0]", PPType.ppType statenv,
+                                  acttyp))
+
+                         val spectyp = typeInMatched("$specty(val/val)", spectyp)
                          val acttyp = typeInOriginal("$actty(val/val)", acttyp)
                          val dacc = DA.selAcc(rootAcc, actslot)
                          val prim = PrimOpId.selValPrimFromStrPrim(rootPrim, actslot)
+                         val _ =
+                             (debugPrint debugging
+                                ("spectype[1]", PPType.ppType statenv,
+                                 spectyp);
+                              debugPrint debugging 
+                                ("acttyp[1]", PPType.ppType statenv,
+                                  acttyp))
+
                          val (btvs,ptvs) = matchTypes(spectyp, acttyp, sym)
                          val _ =
                              (debugmsg "###SM: "; 

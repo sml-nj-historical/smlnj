@@ -87,7 +87,7 @@ val tkc_mono = LT.tkc_mono
 (** instantiating a polymorphic type or an higher-order constructor *)
 fun lt_inst (lt : lty, ts : tyc list) = 
   let val nt = lt_whnm lt
-   in (case ((* lt_outX *) lt_out nt, ts)
+   in case ((* lt_outX *) lt_out nt, ts)
         of (LT.LT_POLY(ks, b), ts) =>
              if length ks <> length ts
              then (with_pp (fn ppstm =>
@@ -122,8 +122,10 @@ fun lt_inst (lt : lty, ts : tyc list) =
               (PU.pps ppstm "lt_inst arg:"; PP.newline ppstm;
                PPLty.ppLty 20 ppstm (lt_inj lt); PP.newline ppstm;
                PU.pps ppstm "ts length: "; 
-               PU.ppi ppstm (length ts); PP.newline ppstm));
-            bug "incorrect lty instantiation in lt_inst"))
+               PU.ppi ppstm (length ts); PP.newline ppstm;
+               PU.pps ppstm "ts head: "; 
+               PPLty.ppTyc 20 ppstm (hd ts); PP.newline ppstm));
+            bug "incorrect lty instantiation in lt_inst")
   end 
 
 fun lt_pinst (lt : lty, ts : tyc list) = 

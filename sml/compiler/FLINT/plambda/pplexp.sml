@@ -234,7 +234,7 @@ fun ppLexp (pd:int) ppstrm (l: lexp): unit =
           | ppl pd (TAPP(l, ts)) = 
             if pd < 1 then pps "<TAP>" else
             (openHOVBox 0;
-              pps "TAP(";
+              pps "TAPP(";
               openHVBox 0;
                ppl (pd-1) l; br1 0;
                ppClosedSeq ("[",",","]") (PPLty.ppTyc (pd-1)) ts;

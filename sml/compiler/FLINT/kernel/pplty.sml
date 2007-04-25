@@ -8,14 +8,22 @@
 
 signature PPLTY =
 sig
+  (* printing flags *)
+  val dtPrintNames : bool ref
+  val printIND : bool ref
 
+  val ppList : PrettyPrintNew.stream -> 
+               {sep: string, pp : PrettyPrintNew.stream -> 'a -> unit} ->
+               'a list -> unit
+  val ppTKind : int -> PrettyPrintNew.stream -> Lty.tkind -> unit
+  val ppTyc : int -> PrettyPrintNew.stream -> Lty.tyc -> unit
+  val ppLty : int -> PrettyPrintNew.stream -> Lty.lty -> unit
 end
 
-structure PPLty =
+structure PPLty (* : PPLTY *) =
 struct
 
 local 
-
     structure PT = PrimTyc
     structure PP = PrettyPrintNew
     open PPUtilNew
@@ -53,7 +61,7 @@ fun ppTKind pd ppstrm (tk : Lty.tkind) =
 	fun ppTKindI(Lty.TK_MONO) = pps "M"
 	  | ppTKindI(Lty.TK_BOX) = pps "B"
 	  | ppTKindI(Lty.TK_FUN (argTkinds, resTkind)) = 
-	      (* res_tkind is a TK_SEQ wrapping some tkinds 
+	      (* resTkind may be a TK_SEQ wrapping some tkinds 
 	       * These are produced by Elaborate/modules/instantiate.sml 
 	       *)
 	     (openHOVBox 1;
@@ -64,7 +72,7 @@ fun ppTKind pd ppstrm (tk : Lty.tkind) =
 	      closeBox())
 	  | ppTKindI(Lty.TK_SEQ tkinds) =
 	     (openHOVBox 1;
-	       pps "S";
+	       pps "KSEQ";
 	       ppList' {sep=",", pp=ppTKind (pd-1)} tkinds;
 	      closeBox())
      in ppTKindI (Lty.tk_outX tk)
@@ -109,9 +117,12 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
     if pd < 1 then pps ppstrm "<tyc>" else
     let val {openHOVBox, openHVBox, closeBox, pps, ppi, break, ...} =
             en_pp ppstrm
-	val ppList' : {pp:PP.stream -> 'a -> unit, sep: string} -> 'a list -> unit =
+        
+        (* partially applied versions of functions *)
+	val ppList' : {pp: PP.stream -> 'a -> unit, sep: string}
+                      -> 'a list -> unit =
               fn x => ppList ppstrm x
-	       (* eta-expansion of ppList to avoid value restriction *) 
+            (* eta-expand (ppList ppstrm) to avoid value restriction *) 
 
 	val ppTKind' = ppTKind (pd-1) ppstrm
 	val ppTyc' = ppTyc (pd-1) ppstrm
@@ -127,14 +138,14 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	     pps ")")
 	  (* Named tyc VAR; is actually an lvar *)
 	  | ppTycI (Lty.TC_NVAR tvar) =
-	    (pps "NTV:"; ppi tvar)
+	    (pps "NTV(v"; ppi tvar; pps ")")
 	  | ppTycI (Lty.TC_PRIM primtycon) =
 	    (pps "PRIM(";
 	     pps (PT.pt_print primtycon);
 	     pps ")")
 	  | ppTycI (Lty.TC_FN (argTkinds, resultTyc)) =
 	    (openHOVBox 1;
-	     pps "FN(";
+	     pps "TCFN(";
 	     ppList' {sep=",", pp=ppTKind (pd-1)} argTkinds;
 	     pps ",";
 	     break {nsp=1,offset=0};
@@ -143,7 +154,7 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	     closeBox())
 	  | ppTycI (Lty.TC_APP(contyc, tys)) =
 	    (openHOVBox 0;
-	     pps "APP(";
+	     pps "TCAP(";
              PP.openHVBox ppstrm (PP.Rel 0);
 	     ppTyc' contyc;
 	     pps ","; break {nsp=1,offset=0};
@@ -212,10 +223,14 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	    (* fflag records the calling convention: either FF_FIXED or FF_VAR *)
 	  | ppTycI (Lty.TC_ARROW (fflag, argTycs, resTycs)) =
 	    ((case fflag
-                of Lty.FF_FIXED => pps "ARF("
+                of Lty.FF_FIXED => pps "AR("
 		 | Lty.FF_VAR(b1, b2) =>
-                    (pps "ARV(" (*; ppBool b1; pps ",";
-				    ppBool b2; pps ")"*) ));
+                    (pps "AR[";
+                     pps(case (b1,b2)
+                           of (true, true) => "rr]("
+                            | (true, false) => "rc]("
+                            | (false, true) => "cr]("
+                            | (false, false) => "cc](")));
              openHOVBox 0;
 	     ppList' {sep=",", pp=ppTyc (pd-1)} argTycs;
 	     pps ",";
@@ -225,7 +240,7 @@ and ppTyc pd ppstrm (tycon : Lty.tyc) =
 	     pps ")")
 	    (* According to ltykernel.sml comment, this arrow tyc is not used *)
 	  | ppTycI (Lty.TC_PARROW (argTyc, resTyc)) =
-	    (pps "PARR(";
+	    (pps "PAR(";
 	     ppTyc' argTyc;
 	     pps ",";
 	     break {nsp=1,offset=0};
