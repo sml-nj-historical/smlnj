@@ -148,7 +148,9 @@ fun eqTycon (GENtyc g, GENtyc g') = Stamps.eq (#stamp g, #stamp g')
   | eqTycon(RECORDtyc l1, RECORDtyc l2) = eqRecordLabels(l1,l2)
   | eqTycon _ = false
 
-	(* for now... *)
+(* for now... *)
+(* DBM: bad idea! Can eliminate necessary type variables in polymorphic
+ * types. *)
 fun mkCONty(ERRORtyc, _) = WILDCARDty
   | mkCONty(tycon as DEFtyc{tyfun,strict,...}, args) =
       CONty(tycon, ListPair.map
@@ -222,7 +224,7 @@ fun mapTypeFull f =
     let fun mapTy ty =
 	    case ty
 	      of CONty (tc, tl) => 
-		  mkCONty(f tc, map mapTy tl)
+		  CONty(f tc, map mapTy tl)
 	       | POLYty {sign, tyfun=TYFUN{arity, body}} =>
 		  POLYty{sign=sign, tyfun=TYFUN{arity=arity,body=mapTy body}}
 	       | VARty(ref(INSTANTIATED ty)) => mapTy ty
@@ -250,11 +252,21 @@ fun reduceType(CONty(DEFtyc{tyfun,...}, args)) = applyTyfun(tyfun,args)
 
 fun headReduceType ty = headReduceType(reduceType ty) handle ReduceType => ty
 
-fun equalType(ty,ty') =
+fun equalType(ty: ty,ty': ty) : bool =
     let fun eq(IBOUND i1, IBOUND i2) = i1 = i2
 	  | eq(VARty(tv),VARty(tv')) = eqTyvar(tv,tv')
 	  | eq(ty as CONty(tycon, args), ty' as CONty(tycon', args')) =
-	      if eqTycon(tycon, tycon') then ListPair.all equalType(args,args') 
+	      if eqTycon(tycon, tycon') then
+                 (case tycon
+                    of DEFtyc{strict,...} =>
+                       let fun eqargs([],[],[]) = true
+                             | eqargs(true::ss,ty1::rest1,ty2::rest2) =
+                                 equalType(ty1,ty2) andalso eqargs(ss,rest1,rest2)
+                             | eqargs(false::ss,ty1::rest1,ty2::rest2) =
+                                 eqargs(ss,rest1,rest2)
+                        in eqargs(strict,args,args')
+                       end
+                     | _ => ListPair.all equalType(args,args'))
 	      else (eq(reduceType ty, ty')
 		    handle ReduceType =>
 		      (eq(ty,reduceType ty') handle ReduceType => false))
@@ -320,7 +332,7 @@ fun equalTycon(ERRORtyc,_) = true
      let val a1 = tyconArity t1 and a2 = tyconArity t2
       in a1=a2 andalso
          (let val args = dummyargs a1
-	  in equalType(mkCONty(t1,args),mkCONty(t2,args))
+	  in equalType(CONty(t1,args),CONty(t2,args))
 	  end)
      end
 
@@ -826,7 +838,7 @@ fun mapTypeEntire f =
     let fun mapTy ty =
 	  case ty
 	   of CONty (tc, tl) => 
-		mkCONty(f(mapTc, tc), map mapTy tl)
+		CONty(f(mapTc, tc), map mapTy tl)
 	    | POLYty {sign, tyfun=TYFUN{arity, body}} =>
 		POLYty{sign=sign, tyfun=TYFUN{arity=arity,body=mapTy body}}
 	    | VARty(ref(INSTANTIATED ty)) => mapTy ty

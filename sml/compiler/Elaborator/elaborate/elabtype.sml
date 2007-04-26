@@ -57,7 +57,7 @@ fun elabType(ast:Ast.ty,env:SE.staticEnv,error,region:region)
 		   then BT.arrowTycon
 		   else L.lookArTyc(env,SP.SPATH co,length ts,error region)
 	       val (lts1,lvt1) = elabTypeList(ts,env,error,region)
-	    in (mkCONty (co1,lts1),lvt1)
+	    in (CONty (co1,lts1),lvt1)
 	   end
        | RecordTy lbs => 
 	   let val (lbs1,lvt1) = elabTLabel(lbs,env,error,region)
@@ -90,7 +90,7 @@ and elabTypeList(ts,env,error,region:region) =
 exception ISREC
 
 fun elabDB((tyc,args,name,def,region,lazyp),env,rpath:IP.path,error) =
-   let val rhs = mkCONty(tyc, map VARty args)
+   let val rhs = CONty(tyc, map VARty args)
 
        fun checkrec(_,NONE) = ()
          | checkrec(_,SOME typ) = 

@@ -106,7 +106,7 @@ structure EvalEntity = EV
 exception BadBinding
 
 val debugging = ElabControl.smdebugging
-val showsigs = ref true
+val showsigs = ref false
 
 val say = Control_Print.say
 fun debugmsg (msg: string) =
