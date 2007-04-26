@@ -250,6 +250,8 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
 
         (* a hack to eliminate all user bound type variables --zsh *)
 	(* ZHONG?: is this still necessary? [dbm] *)
+        (* DBM: are ubound tyvars redefined by indexBoundTyvars in
+         * generalizePat below? *)
 	fun elimUbound(tv as ref(UBOUND{depth,eq,...})) = 
               (tv := OPEN{depth=depth,eq=eq,kind=META})
           | elimUbound _ = ()
@@ -264,8 +266,10 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
 		nullErrorBody
           else ();
 	debugmsg "generalizeTy returning";
-	typ := POLYty{sign = rev(!sign),
-		      tyfun = TYFUN{arity=(!index),body=ty}};
+	typ := (if !index > 0 then
+                   POLYty{sign = rev(!sign),
+		          tyfun = TYFUN{arity=(!index),body=ty}}
+               else ty);
 	generalizedTyvars  (* return the tyvars that were generalized *)
     end
 
@@ -869,4 +873,3 @@ val decType = Stats.doPhase (Stats.makePhase "Compiler 035 typecheck") decType
 
 end (* local *)
 end (* structure Typecheck *)
-
