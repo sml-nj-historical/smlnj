@@ -305,9 +305,9 @@ let
    * the spec type and btvs. If both spec and actual are monotypes, the
    * matching is equivalent to equalTypes(spec,actual). [dbm: 7/7/06]
    *)
-  fun matchTypes (spec, actual, name) : T.tyvar list * T.tyvar list =
+  fun matchTypes (spec, actual, name) : (T.tyvar list * T.tyvar list) option =
       case TU.matchInstTypes(false, tdepth, spec, actual)
-       of SOME(btvs,ptvs) => (btvs,ptvs)
+       of x as SOME(btvs,ptvs) => x
         | NONE =>
           (err EM.COMPLAIN 
               "value type in structure doesn't match signature spec"
@@ -321,7 +321,7 @@ let
                     PP.newline ppstrm;
                     PP.string ppstrm "actual: ";
                     PPType.ppType statenv ppstrm actual));
-          ([],[]))
+           NONE)
 
   fun complain s = err EM.COMPLAIN s EM.nullErrorBody
   fun complain' x = (complain x; raise BadBinding)
@@ -612,8 +612,8 @@ let
   (* 
    * val matchElems : 
    *      (S.symbol * spec) list * entEnv * entityDec list * A.dec list 
-   *       * B.binding list 
-   *       -> (entEnv * entityDec list * A.dec list * B.binding list)
+   *       * B.binding list * bool
+   *       -> (entEnv * entityDec list * A.dec list * B.binding list * bool)
    *
    * Given the elements and the entities of a structure S, and a spec
    * from a signature, extend the realization (entityEnv) with the
@@ -829,7 +829,9 @@ let
                      val entDecs' = M.STRdec(entVar, strExp, sym) :: entDecs 
                      val decs' = thinDec :: decs
                      val bindings' = (B.STRbind thinStr)::bindings
-
+                     val succeed = (case thinStr
+                                      of M.ERRORstr => false
+                                       | _ => succeed)
                   in matchElems(elems, entEnv', entDecs', decs', bindings', succeed)
                  end handle MU.Unbound sym => matchErr (SOME "structure"))
 
@@ -856,6 +858,9 @@ let
                      val entDecs' = M.FCTdec(entVar, fctExp) :: entDecs 
                      val decs' = thinDec :: decs
                      val bindings' = (B.FCTbind thinFct)::bindings
+                     val succeed = (case thinFct
+                                      of M.ERRORfct => false
+                                       | _ => succeed)
 
                   in matchElems(elems, entEnv', entDecs', decs', bindings', succeed)
                  end handle MU.Unbound sym => matchErr(SOME "functor"))
@@ -876,6 +881,7 @@ let
                          val acttyp = typeInOriginal("$actty(val/val)", acttyp)
                          val dacc = DA.selAcc(rootAcc, actslot)
                          val prim = PrimOpId.selValPrimFromStrPrim(rootPrim, actslot)
+
                          val _ =
                              (debugPrint debugging
                                 ("spectype[1]", PPType.ppType statenv,
@@ -884,89 +890,95 @@ let
                                 ("acttyp[1]", PPType.ppType statenv,
                                   acttyp))
 
-                         val (btvs,ptvs) = matchTypes(spectyp, acttyp, sym)
-                         val _ =
-                             (debugmsg "###SM: "; 
-			      debugmsg (S.name sym); 
-			      debugmsg "\n";
-                              debugPrint debugging
-                                ("spectype", PPType.ppType statenv,
-                                 spectyp);
-                              debugPrint debugging 
-                                ("acttyp", PPType.ppType statenv,
-                                  acttyp);
-                              debugPrint debugging
-                                ("ptvs",
-                                 (fn pps =>
-                                     PU.ppTuple pps 
-                                       (fn pps => (fn tv => 
-                                          PPType.ppType statenv pps (T.VARty tv)))),
-                                 ptvs);
-                              debugPrint debugging
-                                ("btvs",
-                                 (fn pps =>
-                                     PU.ppTuple pps 
-                                       (fn pps => (fn tv =>
-                                          PPType.ppType statenv pps (T.VARty tv)))),
-                                 btvs);
-                              debugmsg "\n")
+                     in case matchTypes(spectyp, acttyp, sym)
+                          of NONE => matchErr NONE
+                           | SOME (btvs,ptvs) =>
+                             let val _ =
+                                 (debugmsg "###SM: "; 
+                                  debugmsg (S.name sym); 
+                                  debugmsg "\n";
+                                  debugPrint debugging
+                                    ("spectype", PPType.ppType statenv,
+                                     spectyp);
+                                  debugPrint debugging 
+                                    ("acttyp", PPType.ppType statenv,
+                                      acttyp);
+                                  debugPrint debugging
+                                    ("ptvs",
+                                     (fn pps =>
+                                         PU.ppTuple pps 
+                                           (fn pps => (fn tv => 
+                                              PPType.ppType statenv pps
+                                                            (T.VARty tv)))),
+                                     ptvs);
+                                  debugPrint debugging
+                                    ("btvs",
+                                     (fn pps =>
+                                         PU.ppTuple pps 
+                                           (fn pps => (fn tv =>
+                                              PPType.ppType statenv pps
+                                                            (T.VARty tv)))),
+                                     btvs);
+                                  debugmsg "\n")
 
-                         val spath = SP.SPATH[sym]
-                         val actvar = VALvar{path=spath, typ=ref acttyp,
+                                 val spath = SP.SPATH[sym]
+                                 val actvar = VALvar{path=spath, typ=ref acttyp,
                                              access=dacc, prim=prim}
 
-                         val (decs', nv) = 
-                             case ptvs
-                               of [] => (decs, actvar) (* acttyp is mono *)
-                                | _ =>
-                                  let val acc = DA.namedAcc(sym, mkv)
-                                      val specvar = 
-                                        VALvar{path=spath, typ=ref spectyp,
-                                               access=acc, prim=prim}
-                                      val vb = 
-                                        A.VB {pat=A.VARpat specvar,
-                                              exp=A.VARexp(ref actvar, ptvs),
-                                              boundtvs=btvs, tyvars=ref []}
-                                   in ((A.VALdec [vb])::decs, specvar)
-                                  end
+                                 val (decs', nv) = 
+                                     case ptvs
+                                       of [] => (decs, actvar) (* acttyp is mono *)
+                                        | _ =>
+                                          let val acc = DA.namedAcc(sym, mkv)
+                                              val specvar = 
+                                                VALvar{path=spath, typ=ref spectyp,
+                                                       access=acc, prim=prim}
+                                              val vb = 
+                                                A.VB {pat=A.VARpat specvar,
+                                                      exp=A.VARexp(ref actvar, ptvs),
+                                                      boundtvs=btvs, tyvars=ref []}
+                                           in ((A.VALdec [vb])::decs, specvar)
+                                          end
 
-                         val bindings' = (B.VALbind nv)::bindings
+                                 val bindings' = (B.VALbind nv)::bindings
 
-                      in matchElems(elems, entEnv, entDecs, decs', bindings', succeed)
+                              in matchElems(elems, entEnv, entDecs,
+                                            decs', bindings', succeed)
+                             end
                      end
 
                     | CONspec{spec=DATACON{typ=acttyp, name, const,
                                            rep, sign, lazyp}, slot} => 
                      let val spectyp = typeInMatched("$specty(val/con)", spectyp)
                          val acttyp = typeInOriginal("$actty(val/con)", acttyp)
-                         val (boundtvs,paramtvs) = 
-                             matchTypes(spectyp, acttyp, name)
+                      in case matchTypes(spectyp, acttyp, name)
+                           of NONE => matchErr NONE
+                            | SOME(boundtvs,paramtvs) =>
+                              let val nrep = 
+                                      case slot 
+                                       of SOME s => exnRep(rep, DA.selAcc(rootAcc, s))
+                                        | NONE => rep
 
-                         val nrep = 
-                           case slot 
-                            of SOME s => exnRep(rep, DA.selAcc(rootAcc, s))
-                             | NONE => rep
-
-                         val (decs', bindings') =
-                           let val con = 
-                                 DATACON{typ=acttyp, name=name, const=const, 
-                                         rep=nrep, sign=sign, lazyp=lazyp}
-                               val acc = DA.namedAcc(name, mkv)
-                               val specvar = 
-                                 VALvar{path=SP.SPATH[name], access=acc,
-                                        prim=PrimOpId.NonPrim,
-                                        typ=ref spectyp}
-                               val vb = 
-                                 A.VB {pat=A.VARpat specvar,
-                                       exp=A.CONexp(con, paramtvs),
-                                       boundtvs=boundtvs, tyvars=ref []}
-                            in ((A.VALdec [vb])::decs, 
-                                (B.VALbind specvar)::bindings)
-                           end
-                      in matchElems(elems, entEnv, entDecs, decs', 
-                                    bindings', succeed)
+                                  val (decs', bindings') =
+                                      let val con = 
+                                              DATACON{typ=acttyp, name=name, const=const, 
+                                                      rep=nrep, sign=sign, lazyp=lazyp}
+                                          val acc = DA.namedAcc(name, mkv)
+                                          val specvar = 
+                                              VALvar{path=SP.SPATH[name], access=acc,
+                                                     prim=PrimOpId.NonPrim,
+                                                     typ=ref spectyp}
+                                          val vb = 
+                                              A.VB {pat=A.VARpat specvar,
+                                                    exp=A.CONexp(con, paramtvs),
+                                                    boundtvs=boundtvs, tyvars=ref []}
+                                      in ((A.VALdec [vb])::decs, 
+                                          (B.VALbind specvar)::bindings)
+                                      end
+                              in matchElems(elems, entEnv, entDecs, decs', 
+                                            bindings', succeed)
+                              end
                      end
-
                  | _ => bug "matchVElem.1")
                handle MU.Unbound sym => matchErr(SOME "value"))
 
@@ -978,21 +990,25 @@ let
                      if (DA.isExn specrep) = (DA.isExn actrep) then
                      let val spectyp = typeInMatched("$specty(con/con)", spectyp)
                          val acttyp = typeInOriginal("$actty(con/con)", acttyp)
-                         val _ = matchTypes(spectyp, acttyp, name)
+                      in case matchTypes(spectyp, acttyp, name)
+                           of NONE => matchErr NONE
+                            | _ => 
+                              let
+                                  val bindings' =
+                                    case slot 
+                                     of NONE => bindings 
+                                      | SOME s => 
+                                          let val dacc = DA.selAcc(rootAcc, s)
+                                              val nrep = exnRep(actrep, dacc) 
+                                              val con = DATACON{typ=acttyp, name=name,
+                                                                const=const, rep=nrep,
+                                                                sign=sign, lazyp=lazyp}
+                                           in (B.CONbind con) :: bindings
+                                          end
 
-                         val bindings' =
-                           case slot 
-                            of NONE => bindings 
-                             | SOME s => 
-                                 let val dacc = DA.selAcc(rootAcc, s)
-                                     val nrep = exnRep(actrep, dacc) 
-                                     val con = DATACON{typ=acttyp, name=name,
-                                                       const=const, rep=nrep,
-                                                       sign=sign, lazyp=lazyp}
-                                  in (B.CONbind con) :: bindings
-                                 end
-
-                      in matchElems(elems, entEnv, entDecs, decs, bindings', succeed)
+                               in matchElems(elems, entEnv, entDecs, decs,
+                                             bindings', succeed)
+                              end
                      end
                      else raise MU.Unbound sym
 

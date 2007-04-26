@@ -264,6 +264,7 @@ fun equalType(ty: ty,ty': ty) : bool =
                                  equalType(ty1,ty2) andalso eqargs(ss,rest1,rest2)
                              | eqargs(false::ss,ty1::rest1,ty2::rest2) =
                                  eqargs(ss,rest1,rest2)
+                             | eqargs _ = bug "eqargs in equalType [TypesUtil]"
                         in eqargs(strict,args,args')
                        end
                      | _ => ListPair.all equalType(args,args'))

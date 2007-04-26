@@ -11,7 +11,9 @@
 structure PrimOpId : PRIMOPID = 
 struct
 
-  (* in the front end, primops are identified by a primop number *)
+  (* in the front end, primops are identified by a unique primop name,
+     represented as a string. See the file primop-list for the catalog
+     of primops with their names *)
   datatype primId = Prim of string | NonPrim
 
   datatype strPrimElem = PrimE of primId
@@ -21,17 +23,19 @@ struct
 
   fun bug s = ErrorMsg.impossible ("PrimOpId: " ^ s)
 
+  (* isPrimop : primId -> bool *)
   fun isPrimop (Prim _) = true
     | isPrimop NonPrim  = false
 
-  (* Used in TopLevel/main/compile.sml *)
+  (* Used in TopLevel/main/compile.sml to identify callcc/capture primops *)
   fun isPrimCallcc (Prim("callcc" | "capture")) = true
     | isPrimCallcc _ = false
 
-  (* Used in ElabData/modules/moduleutil.sml *)
+  (* Used in ElabData/modules/moduleutil.sml to identify cast primop *)
   fun isPrimCast (Prim "cast") = true
     | isPrimCast _ = false
 
+  (* selStrPrimId : strPrimInfo * int -> strPrimInfo *)
   (* Select the prim ids for a substructure *)
   fun selStrPrimId([], slot) = []  
     | selStrPrimId(elems, slot) = 
@@ -48,12 +52,12 @@ struct
     | selValPrimFromStrPrim(elems, slot) =
       (case List.nth(elems, slot)
 	of PrimE(id) => id
-	 | _ => 
-	   bug "PrimOpId.selValPrimFromStrPrim: unexpected StrE"
-      ) handle Subscript => bug "PrimOpId.selValPrimFromStrPrim Subscript"
-           (* This bug occurs if we got a substructure's
-	      strPrimElem instead of an expected value component's
-	      primId *)
+	 | StrE _ => 
+	   bug "PrimOpId.selValPrimFromStrPrim: unexpected StrE")
+      handle Subscript => bug "PrimOpId.selValPrimFromStrPrim Subscript"
+        (* This bug occurs if we got a substructure's
+           strPrimElem instead of an expected value component's
+           primId *)
 
   fun ppPrim NonPrim = "<NonPrim>"
     | ppPrim (Prim p) = ("<PrimE "^p^">")
@@ -64,46 +68,5 @@ struct
 	    | ppElem ((StrE s)::xs) = (ppStrInfo s; ppElem xs)
       in (print "[ "; ppElem strelems; print " ]\n")
       end
-(* 
-    fun selStrInfo (StrE l, i) =
-	(List.nth (l, i) handle Subscript => bug "Wrong field in List")
-      | selStrInfo (Null, _) = Null
-      | selStrInfo (Info _, i) = bug "Unexpected selection from Info"
-   
 
-    fun match i { inl_prim, inl_str, inl_no } =
-	case i
-	  of Info x => inl_prim x
-	   | List l => inl_str l
-	   | Null => inl_no ()
-
-    fun prInfo i = let
-	fun loop (i, acc) =
-	    case i
-              of Info (p,_) => PrimOp.prPrimop p :: acc
-	       | Null => "<InlNo>" :: acc
-	       | List m => 
-                 (case m
-                   of [] => "{}" :: acc
-		    | h::t =>
-		      "{" :: loop (h,foldr (fn (x, a) => "," :: loop (x, a))
-                                           ("}" :: acc)
-					   t))
-    in
-	concat (loop (i, []))
-    end
-
-    fun isPrimCallcc (Info ((PrimOp.CALLCC | PrimOp.CAPTURE), _)) = true
-      | isPrimCallcc _ = false
-
-    fun isPrimCast (Info (PrimOp.CAST, _)) = true
-      | isPrimCast _ = false
-
-    val mkPrimInfo = Info
-    val mkStrInfo = List
-    val nullInfo = Null
-
-    fun primopTy (Info (_, ty)) = SOME ty
-      | primopTy _ = NONE
- *)
-end (* structure InlInfo *)
+end (* structure PrimOpId *)
