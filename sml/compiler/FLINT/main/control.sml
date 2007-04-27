@@ -52,6 +52,9 @@ struct
 	      "wrap", "fcontract", "reify",
 	      (*"abcopt",*) "fcontract", "fixfix", "fcontract+eta"])
 			  
+    val tmdebugging = new (flag_cvt, "tmdebugging", "?", false)  (* TransTypes *)
+    val trdebugging = new (flag_cvt, "trdebugging", "?", false)  (* Translate *)
+
     val inlineThreshold = new (int_cvt, "inline-theshold",
 			       "inline threshold", 16)
     (* val splitThreshold  = ref 0 *)

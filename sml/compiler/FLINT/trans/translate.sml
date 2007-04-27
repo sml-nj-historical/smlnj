@@ -50,7 +50,7 @@ in
  *                   CONSTANTS AND UTILITY FUNCTIONS                        *
  ****************************************************************************)
 
-val debugging = ref false
+val debugging = FLINT_Control.trdebugging
 fun bug msg = EM.impossible("Translate: " ^ msg)
 val say = Control.Print.say
 

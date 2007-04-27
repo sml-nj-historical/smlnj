@@ -180,15 +180,7 @@ struct
     val flinton = new (b, "flinton", "?", true)
 
     val compdebugging = new (b, "compdebugging", "?", false)
-    val mudebugging   = ElabDataControl.mudebugging
-    val eedebugging   = ElabDataControl.eedebugging
-    val insdebugging  = ElabControl.insdebugging
-    val smdebugging   = ElabControl.smdebugging
-    val emdebugging   = ElabControl.emdebugging
-    val esdebugging   = ElabControl.esdebugging
-    val etdebugging   = ElabControl.etdebugging
-    val ecdebugging   = new (b, "ecdebugging", "?", false)
-    val tmdebugging   = new (b, "tmdebugging", "?", false)
+
 end
 
 structure Control : CONTROL =
@@ -228,6 +220,10 @@ structure Control : CONTROL =
 
     structure Print : PRINTCONTROL = Control_Print
 
+    structure ElabData : ELABDATA_CONTROL = ElabDataControl
+
+    structure Elab : ELAB_CONTROL = ElabControl
+
     structure MC : MCCONTROL = Control_MC
 
     structure MLRISC = MLRiscControl
@@ -247,24 +243,15 @@ structure Control : CONTROL =
 		 val quotation = ref false
      *)
 
-    val saveLvarNames = ElabDataControl.saveLvarNames
-
-    val valueRestrictionLocalWarn = ElabControl.valueRestrictionLocalWarn
-    val valueRestrictionTopWarn = ElabControl.valueRestrictionTopWarn
-    val multDefWarn = ElabControl.multDefWarn
-    val shareDefError = ElabControl.shareDefError
-    val instantiateSigs = ElabControl.instantiateSigs
     val debugging = new ("debugging", "?", false)
     val printAst = new ("printAst", "?", false)
     val printAbsyn = new ("printAbsyn", "?", false)
-    val internals = ElabControl.internals
     val interp = new ("interp", "?", false)
 (*
     val debugLook = ref false
     val debugCollect = ref false
     val debugBind = ref false
 *)
-    val markabsyn = ElabControl.markabsyn
     val trackExn =
 	new ("track-exn",
 	     "whether to generate code that tracks exceptions", true)
@@ -276,7 +263,7 @@ structure Control : CONTROL =
 
     val preserveLvarNames = new ("preserve-names", "?", false)
     (* these are really all the same ref cell: *)
-    val saveit : bool ref = saveLvarNames
+    val saveit : bool ref = ElabData.saveLvarNames
     val saveAbsyn : bool ref = saveit
     val saveLambda : bool ref = saveit
     val saveConvert : bool ref = saveit

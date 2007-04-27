@@ -36,7 +36,7 @@ in
 
 fun bug msg = ErrorMsg.impossible ("TransTypes: " ^ msg)
 val say = Control.Print.say 
-val debugging = Control.CG.tmdebugging
+val debugging = FLINT_Control.tmdebugging
 fun debugmsg (msg: string) =
   if !debugging then (say msg; say "\n") else ()
 val debugPrint = (fn x => debugPrint debugging x)

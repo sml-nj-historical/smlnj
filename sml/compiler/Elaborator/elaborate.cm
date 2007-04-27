@@ -5,6 +5,7 @@
  * The SML/NJ elaborator.
  *)
 Group
+        signature ELAB_CONTROL
 	structure ElabControl
 
 	signature PRIM_TYC_NUM
@@ -51,6 +52,7 @@ Group
 	structure PPAst
 is
 
+	basics/elabcontrol.sig
 	basics/elabcontrol.sml
 	basics/debindex.sig
 	basics/debindex.sml

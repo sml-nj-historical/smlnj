@@ -29,7 +29,7 @@ structure Unify: UNIFY =
 struct
 
 (*** type unification ***)
-val debugging = ref false
+val debugging = ElabControl.unidebugging
 
 local
   structure T = Types
