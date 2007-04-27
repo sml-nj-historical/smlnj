@@ -140,23 +140,17 @@ fun eqTycon (GENtyc g, GENtyc g') = Stamps.eq (#stamp g, #stamp g')
      approximation *)
   | eqTycon(PATHtyc{entPath=ep,...},PATHtyc{entPath=ep',...}) =
       EP.eqEntPath(ep,ep')
+  | eqTycon(RECORDtyc l1, RECORDtyc l2) = eqRecordLabels(l1,l2)
   (*
-   * This last case used for comparing DEFtyc's, RECORDtyc's.
+   * This next case used for comparing DEFtyc's, where we can be
+   * sure they are equal if they share the same creation stamp,
+   * but otherwise we'll assume they may be different.
    * Also used in PPBasics to check data constructors of
    * a datatype.  Used elsewhere?
    *)
-  | eqTycon(RECORDtyc l1, RECORDtyc l2) = eqRecordLabels(l1,l2)
+  | eqTycon(DEFtyc{stamp=s1,...},DEFtyc{stamp=s2,...}) =
+      Stamps.eq(s1,s2)
   | eqTycon _ = false
-
-(* for now... *)
-(* DBM: bad idea! Can eliminate necessary type variables in polymorphic
- * types. *)
-fun mkCONty(ERRORtyc, _) = WILDCARDty
-  | mkCONty(tycon as DEFtyc{tyfun,strict,...}, args) =
-      CONty(tycon, ListPair.map
-	              (fn (ty,strict) => if strict then ty else WILDCARDty)
-                      (args,strict))
-  | mkCONty(tycon, args) = CONty(tycon, args);
 
 fun prune(VARty(tv as ref(INSTANTIATED ty))) : ty =
       let val pruned = prune ty
@@ -259,6 +253,8 @@ fun equalType(ty: ty,ty': ty) : bool =
 	      if eqTycon(tycon, tycon') then
                  (case tycon
                     of DEFtyc{strict,...} =>
+                       (* since tycons are equal, both are DEFtycs with
+                        * the same arity and strict field values *)
                        let fun eqargs([],[],[]) = true
                              | eqargs(true::ss,ty1::rest1,ty2::rest2) =
                                  equalType(ty1,ty2) andalso eqargs(ss,rest1,rest2)

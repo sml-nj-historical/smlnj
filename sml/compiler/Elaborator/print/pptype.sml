@@ -208,6 +208,9 @@ fun ppEqProp ppstrm p =
 fun ppInvPath ppstream (InvPath.IPATH path: InvPath.path) = 
     PP.string ppstream (SymPath.toString (SymPath.SPATH(rev path)))
 
+fun ppBool ppstream b =
+    case b of true => pps ppstream "b" | false => pps ppstream "f"
+
 fun ppTycon1 env ppstrm membersOp =
     let val {openHVBox,openHOVBox,closeBox,pps,break,...} = en_pp ppstrm
 	fun ppTyc (tyc as GENtyc { path, stamp, eq, kind, ... }) =
@@ -222,11 +225,18 @@ fun ppTycon1 env ppstrm membersOp =
 		  pps "]";
 		  closeBox())
 	    else pps(effectivePath(path,tyc,env))
-	  | ppTyc(tyc as DEFtyc{path,tyfun=TYFUN{body,...},...}) =
+	  | ppTyc(tyc as DEFtyc{path,strict,tyfun=TYFUN{body,...},...}) =
 	     if !internals
 	     then (openHOVBox 1;
 		    ppInvPath ppstrm path;
-		    pps "["; pps "D;"; 
+		    pps "["; pps "D"; 
+                    ppClosedSequence ppstrm
+                      {front=C PP.string "(",
+                       sep=fn ppstrm => (PP.string ppstrm ","; 
+				   PP.break ppstrm {nsp=0,offset=0}),
+		       back=C PP.string ");",
+		       style=CONSISTENT,
+                       pr=ppBool} strict;
 		    ppType env ppstrm body;
 		    pps "]";
 		   closeBox())

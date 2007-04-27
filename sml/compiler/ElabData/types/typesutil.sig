@@ -24,7 +24,6 @@ sig
   val tyconArity : Types.tycon -> int
   val setTycPath : Types.tycon * InvPath.path -> Types.tycon
   val eqTycon : Types.tycon * Types.tycon -> bool
-  val mkCONty : Types.tycon * Types.ty list -> Types.ty
 
   val prune : Types.ty -> Types.ty
   val pruneTyvar : Types.tyvar -> Types.ty

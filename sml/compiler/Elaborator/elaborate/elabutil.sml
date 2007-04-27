@@ -446,7 +446,10 @@ fun calc_strictness (arity, body) =
     let val argument_found = Array.array(arity,false)
 	fun search(VARty(ref(INSTANTIATED ty))) = search ty
 	  | search(IBOUND n) = Array.update(argument_found,n,true)
-	  | search(CONty(tycon, args)) = app search args
+	  | search(ty as CONty(tycon, args)) =
+              (case tycon
+                 of DEFtyc _ => search(headReduceType ty)
+                  | _ => app search args)
 	  | search _ = ()	(* for now... *)
      in search body;
 	Array.foldr (op ::) nil argument_found
