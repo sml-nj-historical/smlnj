@@ -132,12 +132,16 @@ fun fieldwise(_,just2,_,[],fields2) = map (fn (n,t) => (n,just2 t)) fields2
 
 (* propagate depth and eq while checking for circularities in the
  * type ty that is going to unify with tyvar var *)
+
+(* ASSERT: VARty var <> ty *)
 fun adjustType (var,depth,eq,ty) =
     let val _ = debugPPType(">>adjustType: ",ty)
 	fun iter _ WILDCARDty = ()
 	  | iter eq (VARty(var' as ref(info))) =
 	      (case info
-		 of INSTANTIATED ty => iter eq ty
+		 of INSTANTIATED ty => 
+		      (debugmsg "adjustType INSTANTIATED";
+		       iter eq ty)
 		  | OPEN{kind=k,depth=d,eq=e} =>
 		      (* check for circularity, propagage eq and depth *)
 		      if TU.eqTyvar(var,var')
@@ -169,8 +173,12 @@ fun adjustType (var,depth,eq,ty) =
 		      then raise Unify EQ
 		      else ()
 		  | LBOUND _ => bug "unify:adjustType:LBOUND")
-	  | iter eq (ty as CONty(DEFtyc _, args)) =
-	      iter eq (TU.headReduceType ty)
+	  | iter eq (ty as CONty(DEFtyc{tyfun=TYFUN{body,...},...}, args)) =
+	      (app (iter eq) args; iter eq (TU.headReduceType ty))
+	      (* A headReduceType here may cause instTyvar to 
+	       * infinite loop if this CONty has a nonstrict arg 
+	       * against which we are unifying/instantiating
+	       * [GK 4/28/07] *)
  	  | iter eq (CONty(tycon,args)) =
 	      (case tyconEqprop tycon
 		 of OBJ => app (iter false) args
@@ -183,7 +191,7 @@ fun adjustType (var,depth,eq,ty) =
           | iter _ (POLYty _) = bug "adjustType 1"
           | iter _ (IBOUND _) = bug "adjustType 2"
 	  | iter _ _ = bug "adjustType 3"
-     in iter eq ty
+     in iter eq ty; debugmsg "<<adjustType"
     end
 
 (*************** unify functions *****************************************)
@@ -209,12 +217,15 @@ fun sortVars(v1 as ref i1, v2 as ref i2) =
        | (_, OPEN{kind=FLEX _,...})=> (v2,v1)
        | _ => (v1,v2) (* both OPEN/META *)
 
+(* unifyTy expects that there are no POLYtys with 0-arity 
+   CONty(DEFtyc, _) are reduced only if absolutely necessary. *)
 fun unifyTy(type1,type2) =
     let val type1 = TU.prune type1
 	val type2 = TU.prune type2
 	val _ = debugPPType(">>unifyTy: type1: ",type1)
 	val _ = debugPPType(">>unifyTy: type2: ",type2)
-     in case (TU.headReduceType type1, TU.headReduceType type2)
+	fun unifyRaw(type1, type2) = (* unify without reducing CONty(DEFtycs) *)
+	    case (type1, type2)
 	  of (VARty var1,VARty var2) =>
 	       unifyTyvars(var1,var2)  (* used to take type1 and type2 as args *)
 	   | (VARty var1,etype2) => (* etype2 may be WILDCARDty *)
@@ -223,7 +234,21 @@ fun unifyTy(type1,type2) =
 	       instTyvar(var2,type1,etype1)
 	   | (CONty(tycon1,args1),CONty(tycon2,args2)) =>
 	       if TU.eqTycon(tycon1,tycon2) then
-		   ListPair.app unifyTy (args1,args2)
+		   (* Because tycons are equal, they must have the 
+		      same arity. Assume that lengths of args1 and
+		      args2 are the same. Type abbrev. strictness
+		      optimization. If tycons equal, then only check
+		      strict arguments. [GK 4/28/07] *)
+		   (case tycon1 
+		     of DEFtyc{strict, ...} =>
+			let fun unifyArgs([],[],[]) = ()
+			      | unifyArgs(true::ss, ty1::tys1, ty2::tys2) =
+				(unifyTy(ty1,ty2); unifyArgs(ss,tys1,tys2))
+			      | unifyArgs(false::ss, _::tys1, _::tys2) =
+				unifyArgs(ss,tys1,tys2)
+			in unifyArgs(strict,args1,args2)
+			end
+		      | _ => ListPair.app unifyTy (args1,args2))
 	       else raise Unify (TYC(tycon1,tycon2))
 	  (* if one of the types is WILDCARDty, propagate it down into the
 	   * other type to eliminate tyvars that might otherwise cause
@@ -235,6 +260,15 @@ fun unifyTy(type1,type2) =
 	   | (WILDCARDty,_) => ()
 	   | (_,WILDCARDty) => ()
 	   | tys => raise Unify (TYP tys)
+    in unifyRaw(type1, type2) 
+       handle Unify _ => (* try reducing CONty(DEFtyc, _) to make types equal *)
+	      let val type1' = TU.headReduceType type1
+	      in unifyRaw(type1', type2)
+		 handle Unify _ => (* try reducing type2 *)
+			unifyRaw(type1', TU.headReduceType type2)
+			(* if unification still fails, then type1 and type2
+			   really cannot be made to be equal *)
+	      end
     end
 
 and unifyTyvars (var1, var2) =
@@ -317,6 +351,9 @@ and instTyvar (var as ref(OPEN{kind=META,depth,eq}),ty,ety) =
       (case ety
          of WILDCARDty => ()
 	  | _ => adjustType(var,depth,eq,ety);
+       debugPPType("instTyvar ", VARty var);
+       debugPPType("instTyvar to ", ty);
+       (* Also need to check for circularity with ty here *)
        var := INSTANTIATED ty)
 
   | instTyvar (var as ref(OPEN{kind=FLEX fields,depth,eq}),ty,ety) =
