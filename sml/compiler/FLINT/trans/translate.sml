@@ -402,13 +402,7 @@ fun fillPat(pat, d) =
 
                 fun find (t as TP.CONty(TP.RECORDtyc labels, _)) = 
                              (typ := t; labels)
-                  | find _ = (complain EM.COMPLAIN "unresolved flexible record"
-                              (fn ppstrm => 
-                                    (PP.newline ppstrm;
-                                     PP.string ppstrm "pattern: ";
-                                     PPAbsyn.ppPat env ppstrm
-                                        (pat,!Control.Print.printDepth)));
-                               raise DontBother)
+                  | find _ = bug "fillPat found unresolved flex record type"
 
                 fun merge (a as ((id,p)::r), lab::s) =
                       if S.eq(id,lab) then (id,p) :: merge(r,s)

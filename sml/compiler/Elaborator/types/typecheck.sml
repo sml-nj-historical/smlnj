@@ -66,6 +66,7 @@ fun mkDummy0 () = BasicTypes.unitTy
 fun decType(env,dec,tdepth,toplev,err,region) = 
 let
 
+(* setup for recording and resolving overloaded variables and literals *)
 val { push = oll_push, resolve = oll_resolve } = OverloadLit.new ()
 val { push = ol_push, resolve = ol_resolve } = Overload.new ()
 
@@ -86,6 +87,31 @@ fun ppTypeDebug (msg,ty) =
 
 fun ppTyvarDebug tv = 
   ED.withInternals(fn () => debugmsg (PPType.tyvarPrintname tv))
+
+(* setup for recording FLEX tyvars and checking that they are eventually
+ * resolved to exact record types. This is to prevent the leakage of
+ * unresolved flex record types into the middle end. *)
+val flexTyVars : (tyvar * region) list ref = ref nil
+
+fun registerFlex (x as (tv : tyvar, region: region)) =
+    flexTyVars := x :: !flexTyVars
+
+fun checkFlex (): unit =
+    let fun check1 (tv,r) =
+            (case !tv
+               of OPEN{kind=FLEX _,...} =>
+                  (err region COMPLAIN 
+			  "unresolved flex record (hidden)"
+		       (fn ppstrm =>
+			     (PPType.resetPPType();
+			      newline ppstrm;
+			      PP.string ppstrm "type: ";
+			      ppType ppstrm (VARty(tv)))))
+                | INSTANTIATED _ => ()
+                | _ => bug "checkFlex")
+    in app check1 (!flexTyVars)
+    end
+			
 
 fun unifyErr{ty1,name1,ty2,name2,message=m,region,kind,kindname,phrase} =
     (unifyTy(ty1,ty2); true) handle Unify(mode) =>
@@ -323,8 +349,10 @@ fun patType(pat: pat, depth, region) : pat * ty =
                val (fields',labtys) = mapUnZip g fields
                val npat = RECORDpat{fields=fields',flex=flex,typ=typ}
 	    in if flex
-	       then let val ty = VARty(mkTyvar(mkFLEX(labtys,depth)))
-		     in typ := ty; (npat,ty)
+	       then let val tv = mkTyvar(mkFLEX(labtys,depth))
+                        val ty = VARty(tv)
+		     in registerFlex(tv,region);
+                        typ := ty; (npat,ty)
 		    end
 	       else (npat,recordTy(labtys))
 	   end
@@ -449,7 +477,9 @@ in
            let val (nexp, nty) = expType(e, occ, tdepth, region)
                val res = mkMETAty ()
                val labtys = [(EU.labsym l, res)]
-               val pt = VARty(mkTyvar(mkFLEX(labtys,infinity)))
+               val tv = mkTyvar(mkFLEX(labtys,infinity))
+               val pt = VARty tv
+               val _ = registerFlex(tv,region)
             in (unifyTy(pt,nty); (SELECTexp(l, nexp), res))
                handle Unify(mode) =>
                  (err region COMPLAIN
@@ -865,6 +895,7 @@ val dec' = decType0(dec, if toplev then Root else (LetDef Root), tdepth, region)
 in
     oll_resolve (); 
     ol_resolve env;
+    checkFlex ();
     debugmsg "<<decType: returning";
     dec'
 end (* function decType *)
