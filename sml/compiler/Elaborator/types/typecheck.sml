@@ -185,8 +185,9 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
 			     ["unresolved flex record\n\
 			      \   (can't tell what fields there are besides #",
 			      Symbol.name lab, ")"])
-			    nullErrorBody;
-			   WILDCARDty)
+			     nullErrorBody;
+                            tv := INSTANTIATED WILDCARDty;
+			    WILDCARDty)
                          else ty
 		      | FLEX _ =>
                          if ((depth > lamdepth occ) andalso
@@ -201,6 +202,7 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
 				newline ppstrm;
 				PP.string ppstrm "type: ";
 				ppType ppstrm ty));
+                            tv := INSTANTIATED WILDCARDty;
 			    WILDCARDty)
                          else ty
 		      | META =>
