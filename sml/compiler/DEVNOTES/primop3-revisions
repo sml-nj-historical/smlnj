@@ -167,3 +167,12 @@ Sending        system/Basis/Implementation/string.sml
 Sending        system/Basis/Implementation/time.sml
 Transmitting file data .........
 Committed revision 2464.
+
+elpis$ svn merge -r 2464:HEAD svn://smlnj-gforge.cs.uchicago.edu/smlnj/sml/trunk
+U    system/Basis/Implementation/Unix/os-path.sml
+U    system/Basis/Implementation/Win32/os-path.sml
+elpis$ svn ci -m "merging 2464:2472, unix-path bug fix from trunk"
+Sending        system/Basis/Implementation/Unix/os-path.sml
+Sending        system/Basis/Implementation/Win32/os-path.sml
+Transmitting file data ..
+Committed revision 2473.
