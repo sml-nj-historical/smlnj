@@ -1,6 +1,7 @@
 (* os-path-fn.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2007 The Fellowship of SML/NJ (http://smlnj.org)
+ * All rights reserved.
  *
  * A functorized implementation of the OS.Path structure.
  *
@@ -21,6 +22,7 @@ functor OS_PathFn (OSPathBase : sig
     val classify : string -> arc_kind
     val parentArc : string
     val currentArc : string
+    val validArc : string -> bool
     val validVolume : (bool * Substring.substring) -> bool
     val splitVolPath : string -> (bool * Substring.substring * Substring.substring)
 	(* Split a string into the volume part and arcs part and note whether it
@@ -39,6 +41,10 @@ functor OS_PathFn (OSPathBase : sig
     structure SS = Substring
 
     exception Path = P.Path
+    exception InvalidArc
+
+  (* check an arc to see if it is valid and raise InvalidArc if not *)
+    fun checkArc arc = if P.validArc arc then arc else raise InvalidArc
 
     val arcSepStr = String.str P.arcSepChar
 
@@ -68,10 +74,12 @@ functor OS_PathFn (OSPathBase : sig
     fun toString {isAbs=false, vol, arcs="" :: _} = raise Path
       | toString {isAbs, vol, arcs} = let
 	  fun f [] = [""]
-	    | f [a] = [a]
-	    | f (a :: al) = a :: arcSepStr :: (f al)
+	    | f [a] = [checkArc a]
+	    | f (a :: al) = (checkArc a) :: arcSepStr :: (f al)
 	  in
-	    String.concat(P.joinVolPath(isAbs, vol, "") :: f arcs)
+	    if validVolume{isAbs=isAbs, vol=vol}
+	      then String.concat(P.joinVolPath(isAbs, vol, "") :: f arcs)
+	      else raise Path
 	  end
 
     fun getVolume p = #vol(fromString p)
@@ -111,11 +119,11 @@ functor OS_PathFn (OSPathBase : sig
 	  in
 	    split' arcs
 	  end
-    fun joinDirFile {dir="", file} = file
+    fun joinDirFile {dir="", file} = checkArc file
       | joinDirFile {dir, file} = let
 	  val {isAbs, vol, arcs} = fromString dir
 	  in
-	    toString {isAbs=isAbs, vol=vol, arcs = concatArcs(arcs, [file])}
+	    toString {isAbs=isAbs, vol=vol, arcs = concatArcs(arcs, [checkArc file])}
 	  end
     fun dir p = #dir(splitDirFile p)
     fun file p = #file(splitDirFile p)
@@ -235,30 +243,30 @@ functor OS_PathFn (OSPathBase : sig
 	  (* end case *))
 
     local
-	fun fromUnixPath' up = let
+      fun fromUnixPath' up = let
 	    fun tr "." = P.currentArc
 	      | tr ".." = P.parentArc
-	      | tr arc = arc
-	in
-	    case String.fields (fn c => c = #"/") up of
-		"" :: arcs => { isAbs = true, vol = "", arcs = map tr arcs }
-	      | arcs => { isAbs = false, vol = "", arcs = map tr arcs }
-	end
-
-	fun toUnixPath' { isAbs, vol = "", arcs } =
-	    let fun tr arc =
-		    if arc = P.currentArc then "."
-		    else if arc = P.parentArc then ".."
-		    else if Char.contains arc #"/" then raise Path
-		    else arc
+	      | tr arc = checkArc arc
 	    in
-		String.concatWith "/" (if isAbs then "" :: arcs else arcs)
+	      case String.fields (fn c => c = #"/") up
+	       of "" :: arcs => { isAbs = true, vol = "", arcs = map tr arcs }
+		| arcs => { isAbs = false, vol = "", arcs = map tr arcs }
 	    end
-	  | toUnixPath' _ = raise Path
+      fun toUnixPath' { isAbs, vol = "", arcs } = let
+	    fun tr arc =
+		  if arc = P.currentArc then "."
+		  else if arc = P.parentArc then ".."
+		  else if CharVector.exists (fn #"/" => true | _ => false) arc then raise InvalidArc
+		  else arc
+	    in
+	      String.concatWith "/" (if isAbs then "" :: arcs else arcs)
+	    end
+	| toUnixPath' _ = raise Path
     in
-        val fromUnixPath = toString o fromUnixPath'
-	val toUnixPath = toUnixPath' o fromString
-    end
+    val fromUnixPath = toString o fromUnixPath'
+    val toUnixPath = toUnixPath' o fromString
+    end (* local *)
+
   end
 end
 

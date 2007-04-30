@@ -1,23 +1,24 @@
 (* os-path.sig
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2007 The Fellowship of SML/NJ (http://smlnj.org)
+ * All rights reserved.
  *
  * The generic interface to syntactic pathname manipulation.
- *
  *)
 
 signature OS_PATH =
   sig
 
     exception Path
+    exception InvalidArc
 
     val parentArc  : string
     val currentArc : string
 
-    val validVolume : {isAbs : bool, vol : string} -> bool
-
     val fromString : string -> {isAbs : bool, vol : string, arcs : string list}
     val toString   : {isAbs : bool, vol : string, arcs : string list} -> string
+
+    val validVolume : {isAbs : bool, vol : string} -> bool
 
     val getVolume   : string -> string
     val getParent   : string -> string

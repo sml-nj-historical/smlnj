@@ -188,6 +188,10 @@ structure Char : sig
 			  | (SOME(#"v", rep'')) => (SOME(#"\v", rep''))
 			  | (SOME(#"f", rep'')) => (SOME(#"\f", rep''))
 			  | (SOME(#"r", rep'')) => (SOME(#"\r", rep''))
+			  | (SOME(#"u", rep'')) => (case (scanDigits isHexDigit getc 4 rep'')
+			       of res as ([_, _, _, _], _) => chkDigits StringCvt.HEX res
+				| _ => NONE
+			      (* end case *))
 			  | (SOME(#"^", rep'')) => (case (getc rep'')
 			       of NONE => NONE
 	    			| (SOME(c, rep''')) =>

@@ -242,6 +242,14 @@ structure StringImp : STRING =
     fun op >= (a,b) = b <= a
     val op > = sgtr
 
+(* FIXME: this code does not work when the string ends in a formatting character
+ * escape sequence.  For example:
+ *
+ *	fromString "0\\ \\"
+ *
+ * will return NONE, instead of SOME "0".  The problem is that scanChar returns NONE
+ * on "\\  \\".  I'm not sure how to fix this problem.
+ *)
     fun fromString' scanChar s = let
 	  val len = size s
 	  fun getc i = if InlineT.DfltInt.<(i, len)

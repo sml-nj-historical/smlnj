@@ -140,3 +140,16 @@ Adding         system/smlnj/library-install.cm
 Transmitting file data ....................................
 Committed revision 2431.
 ------------------------------------------------------------
+
+2. 2nd merge from trunk from trunk revision r2410 to current head (r2450)
+
+Sun Apr 29 20:09:12 CDT 2007
+westray$ svn merge -r 2410:HEAD $smlnj/sml/trunk
+U    system/Basis/Implementation/OS/os-path-fn.sml
+U    system/Basis/Implementation/OS/os-path.sig
+U    system/Basis/Implementation/Unix/os-path.sml
+U    system/Basis/Implementation/time.sml
+U    system/Basis/Implementation/string.sml
+U    system/Basis/Implementation/Win32/os-path.sml
+U    system/Basis/Implementation/char.sml
+U    NOTES/HISTORY
