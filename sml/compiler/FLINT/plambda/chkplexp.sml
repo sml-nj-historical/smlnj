@@ -163,7 +163,7 @@ fun ltTyApp le s (lt, ts, kenv) =
         bug "fatal typing error in ltTyApp"))
 
 fun ltMatch le msg (t1, t2) = 
-  (if true (* ltEquiv(t1,t2) *) then ()
+  (if ltEquiv(t1,t2) then ()
    else (clickerror();
          with_pp(fn s =>
            (PU.pps s ("ERROR(checkLty): ltEquiv fails in ltMatch: "^msg); PP.newline s;

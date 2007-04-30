@@ -1597,6 +1597,9 @@ val _ = debugmsg ">>mkDec"
 (** translating the ML absyn into the PLambda expression *)
 val body = mkDec (rootdec, DI.top) exportLexp
 val _ = debugmsg "<<mkDec"
+val _ = if CompInfo.anyErrors compInfo 
+	then raise EM.Error 
+	else ()
 (** add bindings for intinf constants *)
 val body = wrapII body
 
@@ -1604,7 +1607,9 @@ val body = wrapII body
 val (plexp, imports) = wrapPidInfo (body, PersMap.listItemsi (!persmap))
 
 (** type check body (including kind check) **)
-val ltyerrors = ChkPlexp.checkLtyTop(plexp,0)
+val ltyerrors = if !FLINT_Control.plchk 
+		then ChkPlexp.checkLtyTop(plexp,0)
+		else false
 val _ = if ltyerrors
         then (print "**** Translate: checkLty failed ****\n";
               with_pp(fn str =>
