@@ -178,6 +178,9 @@ fun adjustType (var,depth,eq,ty) =
 	      (* A headReduceType here may cause instTyvar to 
 	       * infinite loop if this CONty has a nonstrict arg 
 	       * against which we are unifying/instantiating
+	       * Because we may be instantiating to nonstrict 
+	       * univariables, it is safer to do an occurrence 
+	       * check on all the arguments. 
 	       * [GK 4/28/07] *)
  	  | iter eq (CONty(tycon,args)) =
 	      (case tyconEqprop tycon
