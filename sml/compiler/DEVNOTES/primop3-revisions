@@ -153,3 +153,17 @@ U    system/Basis/Implementation/string.sml
 U    system/Basis/Implementation/Win32/os-path.sml
 U    system/Basis/Implementation/char.sml
 U    NOTES/HISTORY
+
+westray$ svn commit -m "committing changes merged from the trunk, revisions
+> r2410 to r2450), including possibly erroneous changes to OS.Path"
+Sending        NOTES/HISTORY
+Sending        compiler/DEVNOTES/primop3-revisions
+Sending        system/Basis/Implementation/OS/os-path-fn.sml
+Sending        system/Basis/Implementation/OS/os-path.sig
+Sending        system/Basis/Implementation/Unix/os-path.sml
+Sending        system/Basis/Implementation/Win32/os-path.sml
+Sending        system/Basis/Implementation/char.sml
+Sending        system/Basis/Implementation/string.sml
+Sending        system/Basis/Implementation/time.sml
+Transmitting file data .........
+Committed revision 2464.
