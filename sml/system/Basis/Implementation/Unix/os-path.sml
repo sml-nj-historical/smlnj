@@ -22,8 +22,7 @@ structure OS_Path = OS_PathFn (
 
     val currentArc = "."
 
-    fun validArc "" = false
-      | validArc arc = let
+    fun validArc arc = let
 	  fun ok #"/" = false
 	    | ok c = Char.isPrint c
 	  in
