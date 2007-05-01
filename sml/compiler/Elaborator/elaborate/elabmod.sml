@@ -1383,7 +1383,8 @@ and elabDecl0
        epContext: EPC.context,
        rpath: IP.path,
        region: SourceMap.region,
-       compInfo as {mkStamp,mkLvar=mkv,error,transform,...}: EU.compInfo)
+       compInfo as {mkStamp,mkLvar=mkv,error,anyErrors,transform,...}
+         : EU.compInfo)
       : A.dec * entityDec * SE.staticEnv * entityEnv =
 
 (case decl
@@ -1729,9 +1730,10 @@ and elabDecl0
              * they may not be properly dealt with now ! (ZHONG)
              *)
 
+            fun chkError () = !anyErrors
             (* note that transform is applied to decl before type checking *)
             val decl' = Typecheck.decType(SE.atop(env',env0), transform decl,
-                                          tdepth, top, error, region)
+                                          tdepth, top, error, chkError, region)
             val (entEnv, entDec) = 
               bindNewTycs(context, epContext, mkStamp, abstycs, withtycs,
 			  rpath, error region)
@@ -1762,8 +1764,9 @@ and elabDecl0
                               ^ (Bool.toString top))
             val decl' = transform decl
             val _ = debugmsg ">>elabDecl0.dec[after transform]"
+            fun chkError () = !anyErrors
             val decl'' = Typecheck.decType(SE.atop(env',env0), decl',
-                                           tdepth, top, error, region)
+                                           tdepth, top, error, chkError, region)
                          handle EE.Unbound => (debugmsg("$decType");
                                                raise EE.Unbound)
             val _ = debugmsg ">>elabDecl0.dec[after decType]"

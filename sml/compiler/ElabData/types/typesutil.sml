@@ -575,7 +575,7 @@ fun indexBoundTyvars (tdepth : int, []: tyvar list) : unit = ()
  * [Note that the match cannot succeed if spec is polymorphic while
  * actualTy is monomorphic.]
  * This function is also used more generally to obtain instantiation
- * parameters for a polytype (actualTy) to obtain one of its instantiations
+ * parameters for a polytype (actualTy) to match one of its instantiations
  * (specTy). This usage occurs in translate.sml where we match an occurrence
  * type of a primop variable with the intrinsic type of the primop to obtain
  * the instantiation parameters for the primop relative to its intrinsic type.

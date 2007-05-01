@@ -384,10 +384,11 @@ and mkRep (rep, lt, name) =
         | _ => rep 
   end
 
-(** converting a value of access+prim into the lambda expression
+(** converting a value of access into a lambda expression
  ** [KM???} But it is ignoring the prim argument!!! 
+ ** [DBM: 5/1/07]: I've eliminated the unused prim argument.
  **)
-fun mkAccInfo (acc, prim, getLty, nameOp) = 
+fun mkAccInfo (acc, getLty, nameOp) = 
   if extern acc then mkAccT(acc, getLty(), nameOp) else mkAcc (acc, nameOp)
 
 fun fillPat(pat, d) = 
@@ -946,7 +947,7 @@ end
  ***************************************************************************)
 (* [KM???] mkVar is calling mkAccInfo, which just drops the prim!!! *)
 fun mkVar (v as V.VALvar{access, prim, typ, path}, d) = 
-      mkAccInfo(access, prim, fn () => toLty d (!typ), getNameOp path)
+      mkAccInfo(access, fn () => toLty d (!typ), getNameOp path)
   | mkVar _ = bug "unexpected vars in mkVar"
 
 (* mkVE : V.var * type list * depth -> lexp 
@@ -1058,11 +1059,11 @@ fun mkCE (TP.DATACON{const, rep, name, typ, ...}, ts, apOp, d) =
   end 
 
 fun mkStr (s as M.STR { access, prim, ... }, d) =
-    mkAccInfo(access, prim, fn () => strLty(s, d, compInfo), NONE)
+    mkAccInfo(access, fn () => strLty(s, d, compInfo), NONE)
   | mkStr _ = bug "unexpected structures in mkStr"
 
 fun mkFct (f as M.FCT { access, prim, ... }, d) =
-    mkAccInfo(access, prim, fn () => fctLty(f, d, compInfo), NONE)
+    mkAccInfo(access, fn () => fctLty(f, d, compInfo), NONE)
   | mkFct _ = bug "unexpected functors in mkFct"
 
 fun mkBnd d =
@@ -1147,49 +1148,24 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
 
 and mkVBs (vbs, d) =
   let fun mkVB (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
-                   exp as VARexp (w as (ref (V.VALvar{typ,prim,...})), ptvs),
-                   boundtvs=btvs, ...}, b: lexp) = 
-            (* [dbm: 7/10/06] Originally, the mkVar and mkPE translations
-             * were chosen based on whether btvs and ptvs were the same
-             * list of tyvars, which would be the case for all non-primop
-             * variables, but also in the primop case whenever the rhs
-             * variable environment type (!typ) was the same (equalTypeP)
-             * to the intrinsic type of the primop (e.g. when they are
-             * both monotypes).  So in most cases, the mkVar translation
-             * will be used, and this drops the primop information!!!
-             * This seems definitely wrong. *)
-           (case prim
-              of PrimOpId.Prim name =>
-                  (case PrimOpTypeMap.primopTypeMap name
-                     of SOME(primopty) =>
-                        (case TU.matchInstTypes(true,d,
-                                instPoly(!typ, map (TU.prune o TP.VARty) ptvs),
-                                primopty)
-                          of NONE => bug "mkVB: occtype and intrinsic don't match"
-			   | SOME(_,[]) => LET(v, mkExp(exp, d), b)
-                           | SOME(_,ptvs') =>
-                             (* substitute instantiation parameters wrt
-                              * intrinsic type (DBM) *)
-                             let val exp' = VARexp(w, ptvs')
-                             in LET(v, mkPE(exp, d, btvs), b)
-                             end)
-                      | NONE => bug "mkVBs: unknown primop name")
-               | _ => LET(v, mkPE(exp, d, btvs), b))
-(*
-               | _ => LET(v, mkVar(w, d), b))
-*)
+                   exp as VARexp _, boundtvs=btvs, ...},
+                body: lexp) = 
+            (* We uniformly call mkPE in the case of simple variable bindings,
+             * No special case for primops, or for the case wher btvs = ptvs
+             * [dbm: 5/1/07] *)
+           LET(v, mkPE(exp, d, btvs), body)
 
         | mkVB (VB{pat=VARpat(V.VALvar{access=DA.LVAR v, ...}),
-                   exp, boundtvs=btvs, ...}, b) =
-            LET(v, mkPE(exp, d, btvs), b)
+                   exp, boundtvs=btvs, ...}, body) =
+            LET(v, mkPE(exp, d, btvs), body)
 
         | mkVB (VB{pat=CONSTRAINTpat(VARpat(V.VALvar{access=DA.LVAR v, ...}),_),
-                   exp, boundtvs=btvs, ...}, b) =
-            LET(v, mkPE(exp, d, btvs), b)
+                   exp, boundtvs=btvs, ...}, body) =
+            LET(v, mkPE(exp, d, btvs), body)
 
-        | mkVB (VB{pat, exp, boundtvs=btvs, ...}, b) =
+        | mkVB (VB{pat, exp, boundtvs=btvs, ...}, body) =
             let val ee = mkPE(exp, d, btvs)
-                val rules = [(fillPat(pat, d), b), (WILDpat, unitLexp)]
+                val rules = [(fillPat(pat, d), body), (WILDpat, unitLexp)]
                 val rootv = mkv()
                 fun finish x = LET(rootv, ee, x)
              in MC.bindCompile(env, rules, finish, rootv, toTcLt d, complain,

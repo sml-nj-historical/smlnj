@@ -5,7 +5,8 @@ signature TYPECHECK =
 sig
 
   val decType : StaticEnv.staticEnv * Absyn.dec * int * bool
-		* ErrorMsg.errorFn * SourceMap.region -> Absyn.dec
+		* ErrorMsg.errorFn * (unit -> bool) * SourceMap.region
+                -> Absyn.dec
     (* decType(senv,dec,tdepth,toplev,err,region):
          senv: the context static environment
          dec: the declaration to be type checked
@@ -63,7 +64,7 @@ fun mkDummy0 () = BasicTypes.unitTy
 (*
  * decType : SE.staticEnv * A.dec * bool * EM.errorFn * region -> A.dec 
  *)
-fun decType(env,dec,tdepth,toplev,err,region) = 
+fun decType(env,dec,tdepth,toplev,err,anyErrors,region) = 
 let
 
 (* setup for recording and resolving overloaded variables and literals *)
@@ -109,7 +110,8 @@ fun checkFlex (): unit =
 			      ppType ppstrm (VARty(tv)))))
                 | INSTANTIATED _ => ()
                 | _ => bug "checkFlex")
-    in app check1 (!flexTyVars)
+    in if anyErrors () then ()
+       else app check1 (!flexTyVars)
     end
 			
 
