@@ -41,6 +41,12 @@ struct
     val printFctTypes   = new (flag_cvt, "print-fct-types",
 			       "show function types", false)
     val plchk           = new (flag_cvt, "plchk", "typecheck plambda", false)
+    val nmdebugging     = new (flag_cvt, "nmdebugging", 
+			       "PLambda normalization debugging", false)
+    val redebugging     = new (flag_cvt, "redebugging",
+			       "reify phase debugging", false)
+    val rtdebugging     = new (flag_cvt, "rtdebugging", 
+			       "runtime types(?) debugging", false)
     (* `split' should probably be called just after `fixfix' since
      * fcontract might eliminate some uncurry wrappers which are
      * locally unused but could be cross-module inlined. *)

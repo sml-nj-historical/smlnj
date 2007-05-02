@@ -20,8 +20,13 @@ local structure LP = TypeOper
       open FLINT
 in
 
+val debugging = FLINT_Control.redebugging
+
+
 fun bug s = ErrorMsg.impossible ("Reify: " ^ s)
 val say = Control_Print.say
+fun debugmsg(m) = if !debugging then say (m^"\n") else ()
+
 val mkv = LambdaVar.mkLvar
 val ident = fn le => le
 fun option f NONE = NONE
@@ -170,13 +175,24 @@ let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false)
                    in hdr(ne1, loop e2)
                   end
               | TAPP(v, ts) => 
-                  let val (u, hdr) = lpev(LP.tsLexp(kenv, ts))
-
+                  let val _ = debugmsg ">>loop TAPP"
+		      val _ = if !debugging then PPFlint.printLexp le
+			      else ()
+		      val args = LP.tsLexp(kenv, ts)
+		      val _ = debugmsg "--loop TAPP tsLexp args:"
+		      val _ = if !debugging then PPFlint.printLexp args 
+			      else ()
+		      val (u, hdr) = lpev(args)
+		      val _ = debugmsg "--loop TAPP lpev: "
+		      val _ = if !debugging then PPFlint.printLexp (hdr(RET [v]))
+			      else ()
                       (* a temporary hack that fixes type mismatches *)
                       val lt = getlty v
                       val oldts = map ltf (#2 (LT.ltd_poly lt))
                       val newts = map ltf (LT.lt_inst(lt, ts))
                       val nhdr = mcast(oldts, newts)
+		      
+		      val _ = debugmsg "<<loop TAPP"
                    in nhdr (hdr (APP(v, [u])))
                   end
     

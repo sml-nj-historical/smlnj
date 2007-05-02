@@ -27,8 +27,7 @@ in
 (* debugging *)
 val say = Control_Print.say
 
-val debugging = ref false
-val debugging2 = ref false
+val debugging = FLINT_Control.nmdebugging
 
 fun debugmsg (msg : string) = 
     if !debugging then (say msg; say "\n") else ()
@@ -46,8 +45,8 @@ fun debugLty (lty: Lty.lty) =
     if !debugging then ppLty lty else ()
 
 fun debugLexp (lexp) = 
-    if !debugging2 then
-       PP.with_default_pp(fn ppstrm => PPLexp.ppLexp 20 ppstrm lexp)
+    if !debugging then
+       PP.with_default_pp(fn ppstrm => PPLexp.ppLexp pd ppstrm lexp)
     else ()
 
 val mkv = LambdaVar.mkLvar

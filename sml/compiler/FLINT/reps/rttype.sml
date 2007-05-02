@@ -33,8 +33,15 @@ in
   type tcode = int
   type rtype = FLINT.lexp
 
+val debugging = FLINT_Control.rtdebugging
+
 fun bug s = ErrorMsg.impossible ("RuntimeType: " ^ s)
 fun say (s : string) = Control.Print.say s
+
+fun debugmsg(m) = if !debugging then (say m; say "\n") else ()
+fun ppTyc tc = 
+    PrettyPrintNew.with_default_pp (fn ppstrm => PPLty.ppTycEnv 20 ppstrm tc)
+
 fun mkv _ = LV.mkLvar()
 val ident = fn le => le
 val fkfun = {isrec=NONE, known=false, inline=IH_ALWAYS, cconv=CC_FUN LT.ffc_fixed}
@@ -71,9 +78,14 @@ fun split(RET [v]) = (v, ident)
               end
 
 fun SELECTg(i, e) = 
-  let val (v, hdr) = split e
+  let val _ = debugmsg ">>SELECTg"
+      val _ = if !debugging then PPFlint.printLexp e else ()
+      val (v, hdr) = split e
       val x = mkv()
-   in hdr(SELECT(v, i, x, RET [VAR x]))
+      val res = hdr(SELECT(v, i, x, RET [VAR x]))
+      val _ = if !debugging then PPFlint.printLexp res else ()
+      val _ = debugmsg "<<SELECTg"
+   in res 
   end
 
 fun FNg(vts, e) = 
@@ -106,13 +118,17 @@ fun RECORDg es =
 
 fun SRECORDg es = 
   let fun f ([], vs, hdr) = 
-               let val x = mkv()
+               let val _ = debugmsg "<<SRECORDg base case"
+		   val x = mkv()
                 in hdr(RECORD(RK_STRUCT, rev vs, x, RET[VAR x]))
                end
         | f (e::r, vs, hdr) = 
-              let val (v, h) = split e
+              let val _ = debugmsg "--SRECORD g"
+		  val _ = if !debugging then PPFlint.printLexp e else ()
+		  val (v, h) = split e
                in f(r, v::vs, hdr o h)
               end
+      val _ = debugmsg ">>SRECORDg"
    in f(es, [], ident)
   end
 
@@ -258,25 +274,41 @@ fun tkTfn (kenv, ks) =
 (* val rtLexp : kenv -> tyc -> rtype *)
 
 fun rtLexp (kenv : kenv) (tc : tyc) = 
-  let fun loop (x : tyc) = 
+  let val _ = (debugmsg ">>rtLexp"; 
+	       if !debugging then debugmsg(LT.tc_print tc)
+				  else ())
+      fun loop (x : tyc) = 
 	(case (tc_out x)
 	  of (TC_FN(ks, tx)) => 
 		let val (nenv, hdr) = tkTfn(kenv, ks)
 		 in hdr(rtLexp nenv tx)
 		end
 	   | (TC_APP(tx, ts)) => 
+	       (debugmsg ">>rtLexp TC_APP";
+		if !debugging 
+		then (debugmsg(LT.tc_print tx); debugmsg "\n";
+		     app (fn tx => (debugmsg(LT.tc_print tx); debugmsg ", ")) ts)
+		else ();
 		(case tc_out tx
-		  of (TC_APP _ | TC_PROJ _ | TC_VAR _) => 
+		  of (TC_APP _ | TC_PROJ _ | TC_VAR _ | TC_NVAR _) => 
 			APPg(loop tx, tcsLexp(kenv, ts))
-		   | _ => tcode_void)
+		   | _ => (debugmsg "--rtLexp TC_APP void!!"; tcode_void))
+		(* [GK 5/2/07] This looks very, very wrong. If we have any 
+		   malformed TC_APP, we get void; should it be a bug? *)
+		before debugmsg "<<rtLexp TC_APP")
 	   | (TC_SEQ ts) => tcsLexp(kenv, ts)
-	   | (TC_PROJ(tx, i)) => SELECTg(i, loop tx)
+	   | (TC_PROJ(tx, i)) => (debugmsg ">>rtLexp TC_PROJ: "; 
+				  if !debugging then debugmsg(LT.tc_print tx)
+				  else ();
+				  SELECTg(i, loop tx) 
+				  before debugmsg "<<rtLexp TC_PROJ")
 	   | (TC_PRIM pt) => 
 		if (pt = PT.ptc_real) then tcode_real 
 		else if (pt = PT.ptc_int32) then tcode_int32
 		     else tcode_void
 	   | (TC_VAR(i, j)) => RET[(VAR(vlookKE(kenv, i, j)))]
 	   | (TC_TUPLE (_, [t1,t2])) =>
+	       (debugmsg ">>rtLexp TC_TUPLE";
 		(case (isFloat(kenv,t1), isFloat(kenv,t2))
 		  of (YES, YES) => tcode_fpair
 		   | ((NO, _) | (_, NO)) => tcode_pair
@@ -288,7 +320,8 @@ fun rtLexp (kenv : kenv) (tc : tyc) =
 			let val e = iaddLexp(e1, e2)
 			    val test = ieqLexp(e, tcode_realN 2)
 			 in COND(test, tcode_fpair, tcode_pair)
-			end)
+			end) before
+		debugmsg "<<rtLexp TC_TUPLE")
 	   | (TC_TUPLE (_, [])) => tcode_void
 	   | (TC_TUPLE (_, ts)) => tcode_record
 	   | (TC_ARROW (_,tc1,tc2)) => tcode_void
@@ -328,7 +361,10 @@ and tcsLexp (kenv, ts) =
   end (* function tcsLexp *)
 
 and tsLexp (kenv, ts) = 
-  let fun h tc = rtLexp kenv tc
+  let val _ = (debugmsg ">>tsLexp"; 
+	       if !debugging then app (fn tc => (debugmsg(LT.tc_print tc); debugmsg "\n")) ts
+	       else ())
+      fun h tc = rtLexp kenv tc
    in SRECORDg(map h ts)
   end (* function tsLexp *)
 
