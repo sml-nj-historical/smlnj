@@ -924,10 +924,13 @@ let
                                  val spath = SP.SPATH[sym]
                                  val actvar = VALvar{path=spath, typ=ref acttyp,
                                              access=dacc, prim=prim}
-
+			         (* spectyp may be polymorphic even if 
+				    acttyp is monomorphic (for nonstrict
+				    type operators), see modules test case 309 *)
                                  val (decs', nv) = 
-                                     case ptvs
-                                       of [] => (decs, actvar) (* acttyp is mono *)
+                                     case (ptvs, btvs)
+                                       of ([],[]) => (* acttyp & spectyp mono *)
+					  (decs, actvar) 
                                         | _ =>
                                           let val acc = DA.namedAcc(sym, mkv)
                                               val specvar = 
