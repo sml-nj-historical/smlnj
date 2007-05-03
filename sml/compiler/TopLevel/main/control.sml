@@ -1,6 +1,7 @@
 (* COPYRIGHT (c) 1995 AT&T Bell Laboratories *)
 (* control.sml *)
 
+(* Match compiler controls *)
 structure Control_MC : MCCONTROL =
 struct
     val priority = [10, 10, 4]
@@ -61,6 +62,7 @@ struct
 *)
 end
 
+(* Code generation controls (including some used in FLINT?) *)
 structure Control_CG : CGCONTROL =
 struct
     val priority = [10, 11, 2]
@@ -247,6 +249,8 @@ structure Control : CONTROL =
     val printAst = new ("printAst", "?", false)
     val printAbsyn = new ("printAbsyn", "?", false)
     val interp = new ("interp", "?", false)
+
+    val progressMsgs = new ("progressMsgs", "?", false)
 (*
     val debugLook = ref false
     val debugCollect = ref false

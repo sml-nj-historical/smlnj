@@ -59,8 +59,13 @@ fun evalLoop source = let
     val parser = SmlFile.parseOne source
     val cinfo = C.mkCompInfo { source = source, transform = fn x => x }
 
-    fun checkErrors s = 
-        if CompInfo.anyErrors cinfo then raise EM.Error else ()
+    fun checkErrors (s: string) = 
+        if CompInfo.anyErrors cinfo then
+           (if !Control.progressMsgs then say ("<<< Error stop after "^s^"\n")
+            else ();
+            raise EM.Error)
+        else if !Control.progressMsgs then say ("<<< "^s^" successful\n")
+        else ()
 
     fun oneUnit () = (* perform one transaction  *)
 	case parser () of
@@ -93,7 +98,7 @@ fun evalLoop source = let
                 val executable = Execute.mkexec
 				     { cs = csegments,
 				       exnwrapper = ExnDuringExecution }
-				 before checkErrors ()
+				 before checkErrors ("mkexec")
                 val executable = Isolate.isolate (interruptable executable)
 
                 val _ = (PC.current := Profile.otherIndex)

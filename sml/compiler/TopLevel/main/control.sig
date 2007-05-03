@@ -157,6 +157,10 @@ sig
 
   val interp : bool ref
      (* turn on interpreter -- defunct *)
+
+  val progressMsgs : bool ref
+     (* turn on printing of progress messages at end of major stages *)
+
 (*
   val debugLook : bool ref
   val debugCollect : bool ref
