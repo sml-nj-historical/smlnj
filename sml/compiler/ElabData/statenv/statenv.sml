@@ -33,6 +33,16 @@ fun fold f x0 e = E.fold (fn ((s, b), x) => f ((s, strip b), x)) x0 e
 val realfold = E.fold
 val symbols = E.symbols
 
+(* fold but only over the elements in the environment with the keys
+   given in the key list (last parameter). This functions allows 
+   us to compute folds in arbitrary order over a consolidated list.
+   In particular, this function is currently used in extractSig in
+   elabmod to keep the inferred signature specs in the same order as
+   the original structure decls. 
+ *)
+fun foldOverElems(f, x0, env, []) = x0
+  | foldOverElems(f, x0, env, elem::rest) = 
+      foldOverElems(f, f((elem, look(env,elem)), x0), env, rest)  
 (* 
  * sort: sort the bindings in an environment.
  *  

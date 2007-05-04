@@ -24,9 +24,9 @@ sig
   val tyconArity : Types.tycon -> int
   val setTycPath : Types.tycon * InvPath.path -> Types.tycon
   val eqTycon : Types.tycon * Types.tycon -> bool
-  val mkCONty : Types.tycon * Types.ty list -> Types.ty
 
   val prune : Types.ty -> Types.ty
+  val pruneTyvar : Types.tyvar -> Types.ty
 
   val eqTyvar : Types.tyvar * Types.tyvar -> bool
   val bindTyvars : Types.tyvar list -> unit
@@ -35,9 +35,11 @@ sig
   exception ReduceType
   val mapTypeFull: (Types.tycon -> Types.tycon) -> Types.ty -> Types.ty
   val applyTyfun : Types.tyfun * Types.ty list -> Types.ty
+  val applyPoly : Types.ty * Types.ty list -> Types.ty
   val reduceType : Types.ty -> Types.ty
   val headReduceType : Types.ty -> Types.ty
   val equalType  : Types.ty * Types.ty -> bool
+  val equalTypeP  : Types.ty * Types.ty -> bool
   val equalTycon : Types.tycon * Types.tycon -> bool
 
   (* making a "generic" copy of a type *)
@@ -60,9 +62,16 @@ sig
   val lamdepth : occ -> int
   val toplevel : occ -> bool
 
-  val instantiatePoly : Types.ty -> Types.ty * Types.ty list
+  val instantiatePoly : Types.ty -> Types.ty * Types.tyvar list
 
   val compareTypes : Types.ty * Types.ty -> bool 
+
+  val indexBoundTyvars : int * Types.tyvar list -> unit
+
+  val matchInstTypes : bool * int * Types.ty * Types.ty -> 
+                         (Types.tyvar list * Types.tyvar list) option
+   (* matchInstTypes probably supercedes compareTypes, and if so,
+    * compareTypes should be deleted *)
 
   val tyvarType : Types.ty -> Types.tyvar
 
@@ -74,9 +83,15 @@ sig
   val getRecTyvarMap : int * Types.ty -> (int -> bool)
   val gtLabel : Symbol.symbol * Symbol.symbol -> bool
 
-  val isValue : { ii_ispure : II.ii -> bool } -> Absyn.exp -> bool
+  val isValue : Absyn.exp -> bool
+  (* checks whether an expression is nonexpansive; used to determine
+   * when type generalization is permitted under the value rule *)
+  (*
+  dbm: where has this moved to? typecheck.sml? 
+  gk: restoring this function because PrimOpId is now self-contained.
+  *)
   val isVarTy : Types.ty -> bool
-
+ 
   val sortFields : (Absyn.numberedLabel * 'a) list
         -> (Absyn.numberedLabel * 'a) list
   val mapUnZip : ('a -> 'b * 'c) -> 'a list -> 'b list * 'c list

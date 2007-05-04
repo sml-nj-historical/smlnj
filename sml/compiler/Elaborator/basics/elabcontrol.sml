@@ -42,24 +42,43 @@ structure ElabControl = struct
     in
 
     val etdebugging = onew ("et-debugging", "?", false)
+        (* ElabType *)
     val esdebugging = onew ("es-debugging", "?", false)
+        (* ElabSig *)
     val insdebugging = onew ("ins-debugging", "?", false)
+        (* Instantiate *)
     val smdebugging = onew ("sm-debugging", "?", false)
+        (* Sigmatch *)
+    val ecdebugging = onew ("ec-debugging", "?", false)
+        (* ElabCore *)
     val emdebugging = onew ("em-debugging", "?", false)
+        (* ElabMod *)
+    val tcdebugging = onew ("tc-debugging", "?", false)
+        (* Typecheck *)
+    val unidebugging = onew ("uni-debugging", "?", false)
+        (* Unify *)
+    val instantiateSigs = onew ("instantiate-sigs", "?", true)
+        (* ElabMod, Control_MC *)
 
     val internals = onew ("internals", "?", false)
 
     val markabsyn = onew ("markabsyn", "?", true)
+        (* ElabCore, ElabTop, ElabUtil, Control_MC *)                    
 
     val boxedconstconreps = onew ("boxedconstreps", "?", false)
+        (* ConRep *)
 
     val multDefWarn = cnew ("mult-def-warn", "?", false)
+        (* Instantiate, Control_MC (TopLevel/main/control.sml) *)
+
     val shareDefError = cnew ("share-def-error", "?", true)
+        (* Instantiate, Control_MC *)
+
     val valueRestrictionLocalWarn =
 	cnew ("value-restriction-local-warn", "?", false)
+
     val valueRestrictionTopWarn =
 	cnew ("value-restriction-top-warn", "?", true)
-    val instantiateSigs = onew ("instantiate-sigs", "?", true)
 
     end
 end

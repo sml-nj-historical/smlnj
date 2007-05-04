@@ -27,6 +27,7 @@ signature ENT_PATH = sig
   val bogusEntVar : entVar
 
   structure EvDict : ORD_MAP where type Key.ord_key = entVar
+
 end  (* signature ENT_PATH *)
 
 
@@ -53,15 +54,13 @@ val rep2ep = rev
 
 val eqEntVar = ST.eq
 
-fun eqEntPath (ep1,ep2) =
-    let fun all(v::l,u::m) = eqEntVar(v,u) andalso all(l,m)
-	  | all(nil,nil) = true
-	  | all _ = false
-     in all(ep1,ep2)
-    end
+(* eqEntPath: elementwise equality of entPaths *)
+val eqEntPath = ListPair.allEq eqEntVar
 
 val cmpEntVar = ST.compare
 
+(* cmpEntPath: entPath * entPath -> order
+ * lexicographic comparison of two entPaths *)
 fun cmpEntPath (ep1, ep2) = 
   let fun f(a::ar, b::br) =
             (case ST.compare(a,b) of EQUAL => f(ar,br) | z => z)
@@ -71,9 +70,10 @@ fun cmpEntPath (ep1, ep2) =
    in f(ep1,ep2)
   end
 
-structure EvDict = RedBlackMapFn(struct type ord_key = entVar 
-                                     val compare = cmpEntVar
-                              end)
+structure EvDict =
+  RedBlackMapFn(struct type ord_key = entVar 
+                       val compare = cmpEntVar
+                end)
 
 (* ListPair.all didn't cut it because it doesn't require lists of equal length
     length ep1 = length ep2 andalso

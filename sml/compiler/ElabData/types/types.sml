@@ -35,9 +35,14 @@ and tvKind
      {kind: litKind, region: SourceMap.region}
   | SCHEME of bool (* overloaded operator type scheme variable
 		   * arg is true if must be instantiated to equality type *)
-  | TV_MARK of int
+  | LBOUND of {depth: int, index: int}
+     (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
+      * associated with polymorphic bindings (including val bindings and
+      * functor parameter bindings). The depth is depth of type lambda bindings,
+      * (1-based), and the index is the index within a sequence of type variables
+      * bound at a given binding site. *)
 
-and tycpath                        
+and tycpath (* FLINT *)
   = TP_VAR of exn
   | TP_TYC of tycon
   | TP_FCT of tycpath list * tycpath list
@@ -50,7 +55,7 @@ and tyckind
      {index: int,
       stamps: ST.stamp vector,
       root : EP.entVar option,    (* the root field used by type spec only *)
-      freetycs: tycon list,
+      freetycs: tycon list,       (* tycs derived from functor params *)
       family : dtypeFamily}
   | ABSTRACT of tycon
   | FLEXTYC of tycpath            (* instantiated formal type constructor *)

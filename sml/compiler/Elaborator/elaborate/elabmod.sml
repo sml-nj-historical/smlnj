@@ -9,8 +9,9 @@ sig
          {ast       : Ast.dec,
           statenv   : StaticEnv.staticEnv,
           entEnv    : Modules.entityEnv,
-          context   : ElabUtil.context,  (* elab context *)
+          context   : ElabUtil.context,         (* elab context *)
           level     : bool,                     (* T if top-level decl. *)
+          tdepth    : int,
           epContext : EntPathContext.context,
           path      : InvPath.path,
           region    : SourceMap.region,
@@ -23,8 +24,7 @@ end (* signature ELABMOD *)
 
 
 (* functorized to factor out dependencies on FLINT... *)
-functor ElabModFn (structure SM : SIGMATCH
-		   structure Typecheck : TYPECHECK) : ELABMOD =
+functor ElabModFn (structure SM : SIGMATCH) : ELABMOD =
 struct
 
 local structure S  = Symbol
@@ -57,7 +57,10 @@ local structure S  = Symbol
       structure DI = DebIndex
       structure PPU = PPUtil
       structure ED = ElabDebug
+      structure ST = RedBlackSetFn(type ord_key = S.symbol
+                                   val compare = S.compare) 
       open Ast Modules
+      open SpecialSymbols (* special symbols *)      
 in
 
 (* debugging *)
@@ -98,9 +101,6 @@ fun seqEntDec ds =
   end
 
 fun localEntDec(d1, d2) = seqEntDec [d1, d2] 
-
-(* special symbols *)
-open SpecialSymbols
 
 fun stripMarkSigb(MarkSigb(sigb',region'),region) =
       stripMarkSigb(sigb',region')
@@ -328,13 +328,14 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
  *                                                                         *
  * Recompute all the dynamic accesses in an environment, suppress doubles  *
  * and allocate slots. Components are ordered so that slot allocation is   *
- * independant from the way elaboration is done.                           *
+ * independent from the way elaboration is done.                           *
  *                                                                         *
  * Should use Env.fold or Env.map?                                         *
  *                                                                         *
  ***************************************************************************)
 fun extractSig (env, epContext, context, 
-                compInfo as {mkStamp,...} : EU.compInfo) =
+                compInfo as {mkStamp,...} : EU.compInfo,
+	        absDecl) =
   let fun getEpOp (look, modId) =
         case context of EU.INFCT _ => look (epContext, modId)
                       | _ => NONE
@@ -474,11 +475,135 @@ fun extractSig (env, epContext, context,
               end
 
           | _ => (elements, entEnv, entDecl, trans, slotCount, fctflag)
-
-        val binders = SE.sort (SE.consolidate env) 
+      (* getDeclOrder : absyn -> symbol list 
+	 getDeclOrder returns the names of all the surface declaractions
+	 in decl. We use this function to return the signature elements
+         in the same order as the structure decls. *)
+      fun getDeclOrder(decl) =
+	  let fun procstrbs([]) = []
+		| procstrbs((A.STRB{name,...})::rest) = name::(procstrbs rest)
+	      fun procpat(A.VARpat(V.VALvar{path,...})) = [SymPath.first path] 
+		| procpat(A.VARpat(_)) = 
+		    bug "elabmod: extractSig -- Bad VARpat"
+		| procpat(A.RECORDpat{fields,...}) = 
+		    foldl (fn ((_,pat), names) => (procpat pat)@names) [] 
+			  fields
+		| procpat(A.APPpat(_,_,pat)) = procpat pat
+		| procpat(A.CONSTRAINTpat(pat,_)) = procpat pat
+		| procpat(A.LAYEREDpat(pat,pat')) = 
+		    (procpat pat)@(procpat pat')
+		| procpat(A.ORpat(pat,pat')) = (procpat pat)@(procpat pat')
+		| procpat(A.VECTORpat(pats,_)) = 
+		    foldl (fn (pat,names) => (procpat pat)@names) [] pats
+		| procpat _ = []
+	      fun procvbs([]) = []
+		| procvbs((A.VB{pat,...})::rest) = 
+		    (procpat pat)@(procvbs rest)
+	      fun proctycs([]) = []
+		| proctycs(tyc::rest) = (TU.tycName tyc)::(proctycs rest) 
+	      fun procdatatycs([]) = []
+		| procdatatycs(T.GENtyc{kind=T.DATATYPE dt, path, ...}::rest) =
+		    let val {index,family as {members,...},...} = dt
+			val {tycname,dcons,...} = Vector.sub(members,index)
+			val pathname = InvPath.last path
+		    in (map (fn ({name,...}) => name) dcons)@
+		       (pathname::procdatatycs rest)
+		    end 
+		| procdatatycs(_) = bug "elabmod: extractSig -- bad datatycs"
+	      fun procebs([]) = []
+		| procebs((A.EBgen{exn=T.DATACON{name,...},...})::rest) = 
+		    name::(procebs rest)
+		| procebs((A.EBdef{exn=T.DATACON{name,...},...})::rest) =
+		    name::(procebs rest)
+	      fun procfctbs([]) = []
+		| procfctbs(A.FCTB{name,...}::rest) = name::(procfctbs rest)
+	      fun procstr(M.STR{sign=M.SIG{symbols,...},...}) = symbols
+		| procstr(M.STR{sign=M.ERRORsig,...}) = []
+		| procstr(M.STRSIG{sign=M.SIG{symbols,...},...}) = symbols
+		| procstr(M.STRSIG{sign=M.ERRORsig,...}) = 
+		    bug "elabmod: extractSig ERRORsig in STRSIG"
+		| procstr(M.ERRORstr) = []
+	      fun procrvbs([]) = []
+		| procrvbs(A.RVB{var=V.VALvar{path,...},...}::rest) =
+		    (SymPath.first path)::(procrvbs rest)
+		| procrvbs(_::rest) = bug "elabmod: extractSig -- Bad RVB"
+	  in case decl 
+	      of A.STRdec(strbs) => procstrbs strbs
+	       | A.VALdec(vbs) => procvbs vbs
+	       | A.VALRECdec(rvbs) => procrvbs rvbs
+	       | A.TYPEdec(tycs) => proctycs tycs
+	       | A.DATATYPEdec{datatycs,withtycs} => 
+		   (rev (proctycs withtycs))@(rev (procdatatycs datatycs))
+	       | A.ABSTYPEdec{abstycs,withtycs,body} =>
+		   (proctycs abstycs)@(proctycs withtycs)@(getDeclOrder body)
+	       | A.EXCEPTIONdec(ebs) => procebs ebs
+	       | A.ABSdec(strbs) => procstrbs strbs
+	       | A.FCTdec(fctbs) => procfctbs fctbs
+	       | A.OPENdec(pathstrs) => 
+		   foldl (fn (str,names) => (rev (procstr str))@names) [] 
+			 (map #2 pathstrs)
+	       | A.LOCALdec(_,dec) => (getDeclOrder dec) 
+	       | A.SEQdec(decs) => 
+		   foldl (fn (dec,names) => (getDeclOrder dec)@names) [] decs
+	       | A.MARKdec(dec,_) => getDeclOrder dec
+	       | A.FIXdec{ops,...} => ops
+	       | _ => bug "elabmod: extractSig Unexpected dec"  
+	  end
+	(* suppressDuplicates is not strictly necessary for correctness
+	   because signature matching will just try to match the duplicate
+	   specs to the same type. However, suppressing duplicates will
+	   eliminate these extraneous signature match checks. 
+	   [GK 4/18/07] *)
+        fun suppressDuplicates syms =
+	    let        
+		fun helper([], memset, result) = (memset, result)
+		  | helper(s::rest, memset, result) = 
+		    if ST.member(memset,s)
+		    then helper(rest,memset, result)
+		    else helper(rest,ST.add(memset,s),s::result)
+	    in helper(syms, ST.empty, [])
+	    end
+	(* Check that the decl names list computed by getDeclOrder is
+	   equivalent (up to reordering) to the keys in the static 
+	   environment. If they are not equal, then getDeclOrder may 
+	   be missing some decl name. We use the decl names list to 
+	   order the elements in this extracted/inferred signature. 
+	   [GK 4/18/07] *)
+	val (envkeyset, envkeyorder) = suppressDuplicates(SE.symbols env)
+        val (declnameset, origdeclorder) = 
+	      suppressDuplicates(getDeclOrder absDecl)
+	val _ = 
+	    if ST.equal(envkeyset,declnameset) 
+	    then ()
+	    else (debugmsg 
+		      (concat["--elabmod: extractSig statenv and absyn decl\
+			       \mismatch\n\toldset: ", 
+			      Int.toString(ST.numItems envkeyset),
+			      "\n\tnewset: ", 
+			      Int.toString(ST.numItems declnameset),
+			      "\n\tDifference: "]);
+		  ST.app (fn s => say ((S.name s)^" ")) 
+			 (ST.difference(envkeyset,declnameset)); 
+		  say "\n\toldset "; 
+		  ST.app (fn s => say ((S.name s)^" ")) envkeyset;
+		  say "\n\tnewset "; 
+		  ST.app (fn s => say ((S.name s)^" ")) declnameset;
+		  say "\n";
+		  bug "elabmod: extractSig getDeclOrder") 
+	(* [GK 4/15/07] Consolidate will compact the potentially
+	   linear static environment (i.e., BIND(...BIND(...)))
+           into a hashtable (IntStrMap) and therefore eliminate
+	   any connection between statenv binding order and the
+	   structure declaration order. We use getDeclOrder to 
+           extract the structure decl order and then use 
+           SE.foldOverElems to compute the elements (specs) in 
+           the structure decl order on the consolidated list. *)
+        val cenv = SE.consolidate env 
         val (elements, entEnv, entDecl, trans, _, fctflag) = 
-          List.foldl transBind (nil, EE.empty, [], [], 0, false) binders
-
+          SE.foldOverElems(transBind,(nil, EE.empty, [], [], 0, false),cenv,
+			   origdeclorder)
+	  handle SE.Unbound => bug "elabmod: extractSig -- SE.foldOverElems \
+				    \Unbound symbol in origdeclorder"
      in (rev elements, entEnv, rev entDecl, rev trans, fctflag)
     end
 
@@ -491,17 +616,17 @@ fun extractSig (env, epContext, context,
  * matching should be done transparently (true) or opaquely (false).        *
  *                                                                          *
  ****************************************************************************)
-fun constrStr(transp, sign, str, strDec, strExp, evOp, depth, entEnv, rpath, 
+fun constrStr(transp, sign, str, strDec, strExp, evOp, tdepth, entEnv, rpath, 
               env, region, compInfo) : A.dec * M.Structure * M.strExp = 
   let val {resDec=resDec1, resStr=resStr1, resExp=resExp1} = 
         SM.matchStr{sign=sign, str=str, strExp=strExp, evOp=evOp, 
-                    depth=depth, entEnv=entEnv, rpath=rpath, statenv=env, 
+                    tdepth=tdepth, entEnv=entEnv, rpath=rpath, statenv=env, 
                     region=region, compInfo=compInfo}
 
    in if transp then (A.SEQdec[strDec, resDec1], resStr1, resExp1)
       else (let val {resDec=resDec2, resStr=resStr2, resExp=resExp2} = 
                   SM.packStr{sign=sign, str=resStr1, strExp=resExp1, 
-                             depth=depth, entEnv=entEnv, rpath=rpath, 
+                             tdepth=tdepth, entEnv=entEnv, rpath=rpath, 
                              statenv=env, region=region, compInfo=compInfo}
              in (A.SEQdec[strDec, resDec1, resDec2], resStr2, resExp2)
             end)
@@ -525,6 +650,7 @@ fun elabStr
        env: SE.staticEnv,
        entEnv: M.entityEnv,
        context: EU.context,
+       tdepth : int,
        epContext: EPC.context,   
        entsv: EP.entVar option,  
        rpath: IP.path,
@@ -551,12 +677,12 @@ fun elab (BaseStr decl, env, entEnv, region) =
           (* we enter the epcontext when we get into BaseStr *)
           val epContext'=EPC.enterOpen(epContext,entsv) 
           val (absDecl, entDecl, env', entEnv') = 
-                 elabDecl0(decl, env, entEnv, inStr context, true,
+                 elabDecl0(decl, env, entEnv, inStr context, true, tdepth,
                            epContext', rpath, region, compInfo)
           val _ = debugmsg "--elab[BaseStr]: elabDecl0 done"
    
           val (elements, entEnv'', entDecls, locations, fctflag) =
-                extractSig(env', epContext', context, compInfo)
+                extractSig(env', epContext', context, compInfo, absDecl)
           val _ = debugmsg "--elab[BaseStr]: extractSig done"
 
           val (entEnvLocal, entDecLocal) =
@@ -589,12 +715,13 @@ fun elab (BaseStr decl, env, entEnv, region) =
 		      rpath=rpath, stub = NONE}
 
                 val dacc = DA.namedAcc(tempStrId, mkv)
-                val dinfo = II.List (map MU.extractInfo locations)
+                val prim = MU.strPrimElemInBinds locations
 
             in M.STR {sign=sign, rlzn=strRlzn, access=dacc,
-		      info=dinfo}
+		      prim=prim}
             end
-          
+          val _ = debugPrint("BaseStr after resStr  - symbols: ", ED.ppSymList,
+                             ED.envSymbols env')
           val resDec = 
             let val body = A.LETstr(absDecl, A.STRstr(locations))
              in A.STRdec [A.STRB {name=tempStrId, str=resStr, def=body}]
@@ -622,7 +749,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 
           val entv = mkStamp()   (* ev for the uncoerced argument *)
           val (argDec, argStr, argExp, argDee) = 
-	      elabStr(arg, NONE, env, entEnv, context, epContext,
+	      elabStr(arg, NONE, env, entEnv, context, tdepth, epContext,
 		      SOME entv, IP.IPATH[], region, compInfo)
 
           val _ = debugmsg "--elab[AppStr-one]: elab arg done"
@@ -642,7 +769,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 			   | NONE => CONSTfct fctEnt
 		    val {resDec, resStr, resExp} = 
 			SM.applyFct{fct=fct, fctExp=fctExp, argStr=argStr, 
-				    argExp=argExp, evOp = SOME entv, depth=depth,
+				    argExp=argExp, evOp = SOME entv, tdepth=depth,
 				    epc=EPC.enterOpen(epContext,entsv),
 				    statenv=env, rpath=rpath, region=region,
 				    compInfo=compInfo}
@@ -665,7 +792,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
   | elab (AppStrI(spath,[]), env, entEnv, region) =
       bug "elabStr.AppStrI -- empty arg list"
 
-  | elab (VarStr path, env, entEnv, region) =
+  | elab (v as VarStr path, env, entEnv, region) =
       let val _ = debugmsg ">>elab[VarStr]"
           val str = LU.lookStr(env,SP.SPATH path,error region)
 (*
@@ -684,14 +811,14 @@ fun elab (BaseStr decl, env, entEnv, region) =
 			  | SOME ep => M.VARstr ep)
 		   | _ => M.CONSTstr M.bogusStrEntity (* error recovery *)
 
-       in (* debugmsg "<<elab[VarStr]"; *)
+       in debugmsg "<<elab[VarStr]"; (* GK: Used to be commented out *) 
 	  (A.SEQdec [], str, resExp, EE.empty)
       end
 
   | elab (LetStr(decl,str), env, entEnv, region) =
       let val _ = debugmsg ">>elab[LetStr]"
           val (localAbsDec, localEntDecl, env', entEnv') = 
-            elabDecl0(decl, env, entEnv, context, true,
+            elabDecl0(decl, env, entEnv, context, true, tdepth,
                       epContext, rpath, region, compInfo)
 	     (* top = true: don't allow nongeneralized type variables
               * in local decls because of bug 905/952.  This is
@@ -741,7 +868,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 
           (** elaborating the structure body *)
           val (strAbsDec, str, exp, deltaEntEnv) = 
-            elabStr(strexp, NONE, env, entEnv, context,
+            elabStr(strexp, NONE, env, entEnv, context, tdepth,
                     epContext, entsv, rpath, region, compInfo)
 
           val resDee = 
@@ -795,6 +922,7 @@ and elabFct
        env: SE.staticEnv,
        entEnv: M.entityEnv,
        context: EU.context,
+       tdepth : int,
        epContext: EPC.context,
        rpath: IP.path,
        region: SourceMap.region,
@@ -838,7 +966,7 @@ case fctexp
 			      val {resDec, resFct, resExp} =
 				  SM.matchFct
 				    {sign=fsig, fct=fct, fctExp=uncoercedExp,
-				     depth=depth, entEnv=entEnv, 
+				     tdepth=depth, entEnv=entEnv, 
 				     rpath=rpath, statenv=env, region=region, 
 				     compInfo=compInfo}
 			   in (resDec, resFct, resExp, EE.empty)
@@ -851,14 +979,14 @@ case fctexp
   | LetFct(decl,fct) =>
       let val _ = debugmsg ">>elab[LetFct]"
           val (localAbsDec, localEntDecl, env', entEnv') = 
-            elabDecl0(decl, env, entEnv, context, true,
+            elabDecl0(decl, env, entEnv, context, true, tdepth,
 	              epContext, rpath, region, compInfo)
            (* top = true: don't allow nongeneralized type variables
               in local decls because of bug 905/952 [dbm] *)
           val _ = debugmsg "--elab[LetFct]: local elabDecl0 done"
           val (bodyAbsDec, bodyFct, bodyExp, bodyDee) = 
             elabFct(fct, false, name, SE.atop(env',env), EE.atop(entEnv',entEnv),
-                    context, epContext, rpath, region, compInfo)
+                    context, tdepth, epContext, rpath, region, compInfo)
 
           val resAbsyn = A.SEQdec [localAbsDec, bodyAbsDec]
           val resExp = M.LETfct(localEntDecl, bodyExp)
@@ -872,7 +1000,7 @@ case fctexp
                                            def=AppStrI(spath,larg)}],
                                VarFct([hiddenId,functorId],constraint))
 
-       in elabFct(fctexp', false, name, env, entEnv, context, epContext,
+       in elabFct(fctexp', false, name, env, entEnv, context, tdepth, epContext,
                   rpath, region, compInfo)
       end
 
@@ -917,14 +1045,14 @@ case fctexp
           val {rlzn=paramRlzn, tycpaths=paramTps} =
                 INS.instParam
                   {sign=paramSig, entEnv=entEnv, region=region,
-		   depth=depth, rpath=IP.IPATH(case paramNameOp
+		   tdepth=depth, rpath=IP.IPATH(case paramNameOp
 						 of NONE => []
 						  | _ => [paramName]),
 		   compInfo=compInfo}
           val paramStr = 
             let val paramDacc = DA.namedAcc(paramName, mkv)
              in M.STR{sign=paramSig, rlzn=paramRlzn, 
-                      access=paramDacc, info=II.Null}
+                      access=paramDacc, prim=[]}
             end
 
           val _ = debugmsg "--elabFct[BaseFct]: param instantiated"
@@ -934,6 +1062,7 @@ case fctexp
                EE.mark(mkStamp,EE.bind(paramEntVar,M.STRent paramRlzn,entEnv))
           val _ = debugmsg "--elabFct[BaseFct]: param EE.bind"
 
+	  val _ = debugmsg "elabmod before env'\n"
           val env' =
             case paramNameOp 
              of NONE => MU.openStructure(env,paramStr)
@@ -969,7 +1098,7 @@ case fctexp
           (* bodyDee was discarded here; however, it was not discarded when
              functor is applied. *)
           val (bodyAbsDec, bodyStr, bodyExp, bodyDee) = 
-            elabStr(body, NONE, env', entEnv', context', epContext', entsv,
+            elabStr(body, NONE, env', entEnv', context', tdepth, epContext', entsv,
                     IP.IPATH [], region, compInfo)
           val _ = debugmsg "--elabFct[BaseFct]: body elaborated"
           val _ = showStr("--elabFct[BaseFct]: bodyStr: ",bodyStr,env)
@@ -1009,7 +1138,7 @@ case fctexp
 
                 val dacc = DA.namedAcc(name, mkv)
 
-             in M.FCT{sign=fctSig, rlzn=rlzn, access=dacc, info=II.Null}
+             in M.FCT{sign=fctSig, rlzn=rlzn, access=dacc, prim=[]}
             end
 
           val _ = debugmsg "--elabFct[BaseFct]: resFct defined"
@@ -1035,14 +1164,14 @@ case fctexp
                                                   constraint=constraint}}]),
 		    constraint=NoSig}
 
-       in elabFct(fctexp', true, name, env, entEnv, context, epContext,
+       in elabFct(fctexp', true, name, env, entEnv, context, tdepth, epContext,
                   rpath, region, compInfo)
       end
 
   | BaseFct{params=[],...} => bug "elabFct"
 
   | MarkFct(fctexp',region') =>
-      elabFct(fctexp', curried, name, env, entEnv, context, epContext,
+      elabFct(fctexp', curried, name, env, entEnv, context, tdepth, epContext,
               rpath, region', compInfo)
 
 end (* end of function elabFct *)
@@ -1054,6 +1183,7 @@ and elabStrbs(strbs: Ast.strb list,
               env0: SE.staticEnv,
               entEnv0: M.entityEnv,
               context: EU.context,
+              tdepth : int,
               epContext: EPC.context,
               rpath: IP.path,
               region: SourceMap.region,
@@ -1122,25 +1252,25 @@ fun loop([], decls, entDecls, env, entEnv) =
 
           (** elaborating the structure body *)
           val (strAbsDec, str, exp, deltaEntEnv) = 
-            elabStr(def, SOME name, env0, entEnv0, context, epContext,
+            elabStr(def, SOME name, env0, entEnv0, context, tdepth, epContext,
                     SOME entsv, IP.extend(rpath,name), region', compInfo)
 
 	  (** check for partially applied curried functor *)
 	  val str = if S.eq(name,returnId) then
 	            (* str should be functor application wrapper structure
 		     * with single structure component "resultStr" *)
-		      if (case str
-			    of ERRORstr => true
-			     | _ => (case MU.getStrSymbols str
-				       of [sym] => S.eq(sym,resultId)
-					| _ => false))
-		      then str
-		      else (error region' EM.COMPLAIN
-			    ("structure " ^ S.name(IP.last rpath) ^
-			     " defined by partially applied functor")
-			    EM.nullErrorBody;
-			    ERRORstr)
-		     else str
+                       if (case str
+                             of ERRORstr => true
+                              | _ => (case MU.getStrSymbols str
+                                        of [sym] => S.eq(sym,resultId)
+                                         | _ => false))
+                       then str
+                       else (error region' EM.COMPLAIN
+                             ("structure " ^ S.name(IP.last rpath) ^
+                              " defined by partially applied functor")
+                             EM.nullErrorBody;
+                             ERRORstr)
+		    else str
 
           val _ = debugmsg "--elabStrbs: elabStr done"
 (*
@@ -1184,11 +1314,12 @@ fun loop([], decls, entDecls, env, entEnv) =
            * both the dynamic access and the inl_info will be updated 
            * completely and replaced with proper persistent accesses (ZHONG)
            *)
+          (* [KM ???] What is the purpose of changing the dynamic access? *)
           val (bindStr, strEnt) = 
             case resStr
-             of STR { rlzn, sign, access, info } =>
+             of STR { rlzn, sign, access, prim } =>
                 (STR{rlzn = rlzn, sign = sign,
-		     access = DA.namedAcc(name, mkv),info = info},
+		     access = DA.namedAcc(name, mkv),prim = prim},
                  M.STRent rlzn)
               | _ => (resStr, M.STRent M.bogusStrEntity)
 
@@ -1248,19 +1379,21 @@ and elabDecl0
        entEnv0: M.entityEnv,
        context: EU.context,
        top: bool,
+       tdepth: int,
        epContext: EPC.context,
        rpath: IP.path,
        region: SourceMap.region,
-       compInfo as {mkStamp,mkLvar=mkv,error,transform,...}: EU.compInfo)
+       compInfo as {mkStamp,mkLvar=mkv,error,anyErrors,transform,...}
+         : EU.compInfo)
       : A.dec * entityDec * SE.staticEnv * entityEnv =
 
 (case decl
   of StrDec strbs =>
-       elabStrbs(strbs, true, env0, entEnv0, context, epContext, 
+       elabStrbs(strbs, true, env0, entEnv0, context, tdepth, epContext, 
                  rpath, region, compInfo)
 
    | AbsDec strbs =>
-       elabStrbs(strbs, false, env0, entEnv0, context, epContext, 
+       elabStrbs(strbs, false, env0, entEnv0, context, tdepth, epContext, 
                  rpath, region, compInfo)
 
    | OpenDec paths =>
@@ -1268,7 +1401,6 @@ and elabDecl0
            val strs = map (fn s => let val sp = SP.SPATH s
                                     in (sp, LU.lookStr(env0, sp, err))
                                    end) paths
-
            fun loop([], env) = (A.OPENdec strs, M.EMPTYdec, env, EE.empty)
              | loop((_, s)::r, env) = loop(r, MU.openStructure(env, s))
 
@@ -1295,7 +1427,7 @@ and elabDecl0
 
                      (* dynamic access is already assigned in elabFct *)
                      val (fctAbsDec, fct, fctExp, deltaEntEnv) = 
-                         elabFct(def, false, name, env0, entEnv0, context,
+                         elabFct(def, false, name, env0, entEnv0, context, tdepth,
 				 epContext, rpath, region', compInfo)
   
                      (*
@@ -1308,8 +1440,8 @@ and elabDecl0
                       *)
                      val (bindFct, fctEnt) = 
                        case fct
-			 of FCT {rlzn, sign, access, info} =>
-			    (FCT{rlzn = rlzn, sign = sign, info = info,
+			 of FCT {rlzn, sign, access, prim} =>
+			    (FCT{rlzn = rlzn, sign = sign, prim = prim,
                                  access = DA.namedAcc(name, mkv)},
 			     FCTent rlzn)
 			  | ERRORfct => (fct, ERRORent)
@@ -1366,7 +1498,7 @@ and elabDecl0
 		     val _ = (* instantiate to check well-formedness *)
 			if !ElabControl.instantiateSigs
 			then (INS.instParam
-			        {sign=s,entEnv=EE.empty,depth=DI.top,
+			        {sign=s,entEnv=EE.empty,tdepth=DI.top,
 				 rpath=InvPath.empty,region=region',
 				 compInfo=compInfo};
 			      ())
@@ -1416,14 +1548,14 @@ and elabDecl0
 		* it excludes some legal SML 96 programs where structures
 		* but not functors are present. *)
 	   val (absyn_in, entDecl_in, env_in, entEnv_in) =
-               elabDecl0(decl_in, env0, entEnv0, context, top_in,
+               elabDecl0(decl_in, env0, entEnv0, context, top_in, tdepth,
 			 epContext, rpath, region, compInfo)
 
            (*** DAVE? what is the right epContext to pass here? ***)
            val env = SE.atop(env_in,env0)
            val entEnv = EE.mark(mkStamp,EE.atop(entEnv_in,entEnv0))
            val (absyn_out, entDecl_out, env_out, entEnv_out) = 
-               elabDecl0(decl_out, env, entEnv, context, top,
+               elabDecl0(decl_out, env, entEnv, context, top, tdepth,
 			 epContext, rpath, region, compInfo)
 
            val resAbsyn = A.LOCALdec(absyn_in,absyn_out)
@@ -1461,7 +1593,7 @@ and elabDecl0
                  let val env1 = SE.atop(env,env0)
                      val entEnv1 = EE.mark(mkStamp, EE.atop(entEnv,entEnv0))
                      val (absyn, entDecl, env', entEnv') = 
-			 elabDecl0(decl, env1, entEnv1, context, top,
+			 elabDecl0(decl, env1, entEnv1, context, top, tdepth,
 				   epContext, rpath, region, compInfo)
                   in loop(rest, absyn::asdecls, entDecl::entDecls,
                           SE.atop(env',env),
@@ -1529,7 +1661,9 @@ and elabDecl0
 		 | [] =>
 		     let val tyc = L.lookTyc(env0, SP.SPATH syms, error region)
 		      in case tyc
-			  of T.GENtyc { kind = T.DATATYPE _, ... } =>
+			  of T.GENtyc {stamp, arity, eq, path, stub,
+			               kind = dt as (T.DATATYPE _)
+				       } =>
 			     let val dcons = TU.extractDcons tyc
 				 val envDcons =
 				     foldl (fn (d as T.DATACON{name,...},
@@ -1554,8 +1688,12 @@ and elabDecl0
 						     EE.empty))
 					 end
 				       | _ => (M.EMPTYdec,EE.empty)
+				 val tyc' = T.GENtyc{stamp=stamp,
+						     arity=arity,
+						     eq=eq, path=InvPath.extend(InvPath.empty,name),
+						     stub=stub, kind=dt}
 				 val resDec =
-				     A.DATATYPEdec{datatycs=[tyc],
+				     A.DATATYPEdec{datatycs=[tyc' (* tyc *)],
 						   withtycs=[]}
 			     in
 				 EPC.bindTycPath(epContext, tyc_id, ev);
@@ -1592,9 +1730,10 @@ and elabDecl0
              * they may not be properly dealt with now ! (ZHONG)
              *)
 
+            fun chkError () = !anyErrors
             (* note that transform is applied to decl before type checking *)
             val decl' = Typecheck.decType(SE.atop(env',env0), transform decl,
-                                          top, error, region)
+                                          tdepth, top, error, chkError, region)
             val (entEnv, entDec) = 
               bindNewTycs(context, epContext, mkStamp, abstycs, withtycs,
 			  rpath, error region)
@@ -1605,7 +1744,7 @@ and elabDecl0
 	   raise EE.Unbound))
 
    | MarkDec(decl',region') =>
-       elabDecl0(decl', env0, entEnv0, context, top,
+       elabDecl0(decl', env0, entEnv0, context, top, tdepth,
                  epContext, rpath, region', compInfo)
 
    | dec =>
@@ -1616,7 +1755,7 @@ and elabDecl0
                        (case EPC.lookTycPath(epContext, MU.tycId tyc)
                          of SOME _ => true 
                           | _ => false))
-                      | _ => (fn _ => false))
+                | _ => (fn _ => false))
 
             val (decl,env') = EC.elabDec(dec, env0, isFree, 
                                          rpath, region, compInfo)
@@ -1625,8 +1764,9 @@ and elabDecl0
                               ^ (Bool.toString top))
             val decl' = transform decl
             val _ = debugmsg ">>elabDecl0.dec[after transform]"
+            fun chkError () = !anyErrors
             val decl'' = Typecheck.decType(SE.atop(env',env0), decl',
-                                           top, error, region)
+                                           tdepth, top, error, chkError, region)
                          handle EE.Unbound => (debugmsg("$decType");
                                                raise EE.Unbound)
             val _ = debugmsg ">>elabDecl0.dec[after decType]"
@@ -1636,10 +1776,10 @@ and elabDecl0
 
 
 (*** the top-level wrapper of the elabDecl0 function ***)
-fun elabDecl {ast, statenv, entEnv, context, level,
+fun elabDecl {ast, statenv, entEnv, context, level, tdepth,
               epContext, path, region, compInfo} =
     let val (resDec, _, senv, _) = 
-	    elabDecl0(ast, statenv, entEnv, context, level, 
+	    elabDecl0(ast, statenv, entEnv, context, level, tdepth, 
                       epContext, path, region, compInfo)
      in {absyn=resDec, statenv=senv}
     end

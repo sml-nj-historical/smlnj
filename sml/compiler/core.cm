@@ -30,8 +30,6 @@ Group
         structure CPSRegions
         structure SMLGCType
 
-	structure Typecheck
-
 	(* To be able to separate machine-dependent parts of viscomp-lib.cm
 	 * from machine-independent parts, we must also export the
 	 * the following things.... *)
@@ -56,6 +54,7 @@ Group
 	(* stuff that lived (or should have) in Frontend (aka GenericVC) *)
 	structure Control
 	structure SymbolicEnv
+	structure PrimOpTypeMap
 	structure PrimEnv
 	structure Environment
 	structure EnvRef	
@@ -80,11 +79,12 @@ Group
         structure TypesUtil
         structure VarCon
         structure ModuleUtil
-        structure II
+	structure PrimOpId
         structure BasicTypes
         structure PPType
         structure Access
 	structure Unify
+	structure SigMatch
 
 	(* corresponding signatures *)
 	signature CONTROL
@@ -112,6 +112,8 @@ Group
 
 	(* export of structures required to use FLINT directly *)
 	structure Translate
+	structure Lty
+	structure LtyKindChk
 	structure LtyKernel
 	structure LtyDef
 	structure LtyExtern
@@ -123,6 +125,8 @@ Group
 	structure LambdaVar
 	structure ChkFlint
 	structure DebIndex
+
+	structure PPLty
 is
 
 TopLevel/environ/environ.sig
@@ -149,17 +153,18 @@ TopLevel/main/printhooks.sml
 TopLevel/main/pptable.sml
 
 (* Semantic analysis (elaborator) specialized for SML/NJ. *)
+(*
 Semant/basics/inlinfo.sig
 Semant/basics/inlinfo.sml
-
+*)
 Semant/elaborate/elabmod.sml
 Semant/elaborate/elabtop.sml
 
 Semant/modules/instantiate-param.sml
 Semant/modules/instantiate.sml
-Semant/modules/sigmatch.sml
 Semant/modules/evalent.sml
 Semant/modules/module-plists.sml
+Semant/modules/sigmatch.sml
 
 Semant/pickle/pickle-sym-pid.sml
 Semant/pickle/pickmod-new.sml
@@ -167,10 +172,11 @@ Semant/pickle/unpickle-sym-pid.sml
 Semant/pickle/unpickmod-new.sml
 Semant/pickle/rehash.sml
 
+
+Semant/statenv/primoptypemap.sml
 Semant/statenv/prim.sml
 
 Semant/types/tp-var-info.sml
-Semant/types/typecheck.sml
 Semant/types/cproto.sml
 
 
@@ -216,6 +222,12 @@ FLINT/kernel/ltyextern.sig
 FLINT/kernel/ltyextern.sml
 FLINT/kernel/ltykernel.sig
 FLINT/kernel/ltykernel.sml
+FLINT/kernel/lty.sig
+FLINT/kernel/lty.sml
+FLINT/kernel/ltykindchk.sml
+
+FLINT/kernel/pplty.sml
+
 FLINT/kernel/primop.sig
 FLINT/kernel/primop.sml
 FLINT/main/flintcomp.sml
@@ -251,6 +263,7 @@ FLINT/trans/matchcomp.sml
 FLINT/trans/mccommon.sml
 FLINT/trans/pequal.sml
 FLINT/trans/tempexpn.sml
+FLINT/trans/primopmap.sml
 FLINT/trans/translate.sml
 FLINT/trans/transtypes.sml
 

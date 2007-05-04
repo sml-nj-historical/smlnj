@@ -8,7 +8,7 @@ sig
                   {getLty: FLINT.value -> FLINT.lty,
                    cleanUp: unit -> unit,
 		   addLty: (FLINT.lvar * FLINT.lty) -> unit}
-end (* signature SPECIALIZE *)
+end (* signature RECOVER *)
 
 structure Recover : RECOVER = 
 struct 
@@ -50,7 +50,7 @@ fun recover (fdec, postRep) =
         | getlty (INT32 _ | WORD32 _) = LT.ltc_int32
         | getlty (REAL _) = LT.ltc_real
         | getlty (STRING _) = LT.ltc_string
-
+      
       val lt_nvar_cvt = LT.lt_nvar_cvt_gen()
 
       (* loop : depth -> lexp -> lty list *)
@@ -60,7 +60,6 @@ fun recover (fdec, postRep) =
 
             fun lpd (fk, f, vts, e) = 
               (addvs vts; addv (f, LT.ltc_fkfun(fk, map #2 vts, lpe e)))
-
             and lpds (fds as ((fk as {isrec=SOME _, ...},_,_,_)::_)) =
                   let fun h ((fk as {isrec=SOME (rts,_), ...}, 
                              f, vts, _) : fundec) = 
@@ -80,7 +79,14 @@ fun recover (fdec, postRep) =
               | lpe (LET(vs, e1, e2)) = 
                   (addvs (ListPair.zip(vs, lpe e1)); lpe e2)
               | lpe (FIX(fdecs, e)) = (lpds fdecs; lpe e)
-              | lpe (APP(u, vs)) = #2(LT.ltd_fkfun (lpv u))
+              | lpe (APP(u, vs)) = 
+		  let val u' = lpv u
+		  in (#2(LT.ltd_fkfun u') 
+		      handle LT.DeconExn => 
+		       (print "\nError Application:\n";
+			PPFlint.printLexp (APP(u, vs));
+			raise LT.DeconExn))
+		  end
               | lpe (TFN((tfk, v, tvks, e1), e2)) = 
                   (addv(v, LT.lt_nvpoly(tvks, loop e1));
                    lpe e2)
@@ -111,13 +117,15 @@ fun recover (fdec, postRep) =
               | lpe (PRIMOP((_,_,lt,ts), _, v, e)) = 
                   (addv (v, reslty (lt, ts)); lpe e)
 
-         in lpe e 
+         in lpe e handle LT.DeconExn => (print "\nWhole Expr:\n"; 
+					 PPFlint.printLexp e; bug "ltd decon") 
         end (* function transform *)
 
       val (fkind, f, vts, e) = fdec
       val _ = addvs vts
       val atys = map #2 vts
-      val rtys = loop e
+      (* val _ = PPFlint.printLexp e *)
+      val rtys = loop e 
       val _ = addv (f, LT.ltc_fkfun(fkind, atys, rtys))
   in {getLty=getlty, cleanUp=fn () => IntHashTable.clear zz, addLty=addv}
  end (* function recover *)

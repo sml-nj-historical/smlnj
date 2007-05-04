@@ -6,7 +6,7 @@
  * by the FLINT type and term language. The notion of depth
  * refers to the type-binding depth relative to the top level
  * of the current compilation unit. I can't make type depth 
- * and index abstract because certain clients wants to use 
+ * and index abstract because certain clients want to use 
  * the values of these types as table indices.
  *)
 

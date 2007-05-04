@@ -24,6 +24,9 @@ sig
     val printFctTypes   : bool ref
     val phases		: string list ref
 
+    val tmdebugging     : bool ref
+    val trdebugging     : bool ref
+
     val inlineThreshold	: int ref
     (* val splitThreshold	: int ref *)
     val unrollThreshold	: int ref
@@ -125,24 +128,18 @@ sig
   val controlDependence : bool ref
 
   val compdebugging : bool ref
-  val mudebugging   : bool ref
-  val eedebugging   : bool ref
-  val insdebugging  : bool ref
-  val smdebugging   : bool ref
-  val emdebugging   : bool ref
-  val esdebugging   : bool ref
-  val etdebugging   : bool ref
-  val ecdebugging   : bool ref
-  val tmdebugging   : bool ref
+
 end
 
 signature CONTROL = 
 sig
+  structure ElabData : ELABDATA_CONTROL
+  structure Elab : ELAB_CONTROL
   structure MC : MCCONTROL
   structure CG : CGCONTROL
-  structure MLRISC : MLRISC_CONTROL
   structure Print : PRINTCONTROL
   structure FLINT : FLINTCONTROL
+  structure MLRISC : MLRISC_CONTROL
   val debugging : bool ref
   val printAst : bool ref
   val printAbsyn : bool ref
@@ -157,22 +154,13 @@ sig
 	       val lazysml : bool ref
 	       val quotation : bool ref
    *)
-  val saveLvarNames : bool ref
 
-  val valueRestrictionLocalWarn : bool ref  (* default false *)
-     (* warning message on failure of value restriction in local decls *)
-  val valueRestrictionTopWarn : bool ref    (* default true *)
-     (* warning message on failure of value restriction at top level *)
-  val multDefWarn : bool ref    (* default false *)
-     (* warning messages for multiple defs in sigs *)
-  val shareDefError : bool ref  (* default true *)
-     (* error (true) or warning (false) for defs in sharing constraints *)
-  val instantiateSigs : bool ref (* default true *)
-     (* check signatures at declaration by instantiating them *)
-  val internals : bool ref  (* default false *)
-     (* print internal representations of types at top level *)
   val interp : bool ref
      (* turn on interpreter -- defunct *)
+
+  val progressMsgs : bool ref
+     (* turn on printing of progress messages at end of major stages *)
+
 (*
   val debugLook : bool ref
   val debugCollect : bool ref
@@ -180,7 +168,6 @@ sig
 *)
   val saveLambda : bool ref
   val preserveLvarNames : bool ref
-  val markabsyn : bool ref
   val trackExn : bool ref
   val polyEqWarn : bool ref
   val indexing : bool ref

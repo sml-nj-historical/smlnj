@@ -74,7 +74,7 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	fun tmpvar (n, t) = let
 	    val sy = Symbol.varSymbol n
 	in
-	    VC.VALvar { access = Access.namedAcc (sy, mkv), info = II.Null,
+	    VC.VALvar { access = Access.namedAcc (sy, mkv), prim = PrimOpId.NonPrim,
 			path = SP.SPATH [sy], typ = ref t }
 	end
 
@@ -162,7 +162,9 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	fun AUexp v = A.APPexp (VARexp v, uExp)	(* apply to unit *)
 
 	fun is_prim_exp (A.VARexp (ref (VC.VALvar v), _)) =
-	      II.isSimple (#info v)
+              (case #prim v
+                 of PrimOpId.Prim _ => true
+                  | PrimOpId.NonPrim => false)
 	  | is_prim_exp (A.CONexp _) = true
 	  | is_prim_exp (A.CONSTRAINTexp (e, _)) = is_prim_exp e
 	  | is_prim_exp (A.MARKexp (e, _)) = is_prim_exp e
@@ -307,11 +309,14 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 				     boundtvs = boundtvs, tyvars = tyvars }
 	    in
 		case gv pat of
-		    SOME (VC.VALvar { path = SP.SPATH [x], info, ... }) =>
-		      if II.isSimple info then vb
-		      else recur (cons (x, n))
-		  | SOME (VC.VALvar { info, ... }) =>
-		      if II.isSimple info then vb else recur n
+		    SOME (VC.VALvar { path = SP.SPATH [x], prim, ... }) =>
+                      (case prim
+                        of PrimOpId.Prim _ => vb
+                         | PrimOpId.NonPrim => recur (cons (x, n)))
+		  | SOME (VC.VALvar { prim, ... }) =>
+                      (case prim
+                        of PrimOpId.Prim _ => vb
+                         | PrimOpId.NonPrim => recur n)
 		  | _ => recur n
 	    end
 

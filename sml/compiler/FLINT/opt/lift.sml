@@ -142,7 +142,7 @@ fun writeLambda([], exp) = exp
   | writeLambda(fvs, exp) =
     let fun g(fvs', exp') = 
 	    let val newvar = mkv()
-		val fund = {isrec = NONE, cconv = CC_FUN(FF_VAR(true,true)), known = false,
+		val fund = {isrec = NONE, cconv = CC_FUN(Lty.FF_VAR(true,true)), known = false,
 				  inline = IH_SAFE }
 	    in  FIX([(fund, newvar, fvs', exp')], RET [VAR newvar])
 	    end
@@ -335,7 +335,7 @@ fun lift (e, env, td, d, ad, rename) =
 	       val (v1', t, fvs, hd) = loopc env v1
 	       val vls = map (loopc env) vs
 	       val (vs', ts', fvs', hd') = foldr comb (nil, nil, nil, nil) vls
-	       val nt = #2(LE.ltd_fkfun t)
+	       val nt = #2(LE.ltd_fkfun t) handle LE.DeconExn => bug "loope"
 	   in
 	       (APP(v1', vs'), nt, fvs@fvs', hd@hd')
 	   end

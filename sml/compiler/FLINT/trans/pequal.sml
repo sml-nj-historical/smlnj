@@ -29,7 +29,7 @@ local structure DA = Access
       structure TU = TypesUtil
       structure SE = StaticEnv
       structure PO = PrimOp
-      structure PP = PrettyPrint
+      structure PP = PrettyPrintNew
       open Types PLambda 
 
 in
@@ -257,8 +257,8 @@ fun test(ty, 0) = raise Poly
 	     | (YES, ABSTRACT tyc') => test (CONty (tyc', tyl), depth)
 
              | (ABS,_) =>
-               test(TU.mkCONty(GENtyc{eq=ref YES,stamp=stamp,arity=arity,
-                                      kind=kind,path=path,stub=NONE}, tyl),
+               test(T.CONty(GENtyc{eq=ref YES,stamp=stamp,arity=arity,
+                                    kind=kind,path=path,stub=NONE}, tyl),
 		    depth)
              (* assume that an equality datatype has been converted
 	      * to an abstract type in an abstype declaration *)

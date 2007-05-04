@@ -4,6 +4,8 @@
 structure PrimOp : PRIM_OP = 
 struct
 
+(* imports: CTypes *)
+
 (* numkind includes kind and number of bits *)
 datatype numkind 
   = INT of int 

@@ -48,7 +48,7 @@ datatype access
 datatype conrep
   = UNTAGGED                             (* 30 bit + 00; a pointer *)
   | TAGGED of int                        (* a pointer; 1st field is the tag *)
-  | TRANSPARENT                          (* 32 bit value *)
+  | TRANSPARENT                          (* 32 bit value, singleton dcon dt *)
   | CONSTANT of int                      (* should be int31 *)
   | REF                                  
   | EXN of access                   
@@ -56,9 +56,12 @@ datatype conrep
   | LISTCONS                              
   | LISTNIL
 
-
-datatype consig 
-  = CSIG of int * int
+(* See ElabData/types/core-basictypes.sml and 
+ * Elaborator/types/basictypes.sml for samples 
+ * 
+ * FLINT/cps/switch.sml uses consig during representation analysis *)
+datatype consig                          
+  = CSIG of int * int                    (* # dcon tagged, # untagged *) 
   | CNIL
 
 (****************************************************************************

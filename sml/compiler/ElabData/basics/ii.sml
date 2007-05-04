@@ -5,6 +5,12 @@
  * Framework for passing inlining information around during elaboration.
  * (Uses the "exn-hack" to avoid being even more middle-end specific.)
  *)
+
+(* Are nested lists of Info possible? 
+ * What configurations actually occur?
+ * [dbm]
+ *)
+
 structure II = struct
     datatype ii =
 	Info of exn
@@ -22,4 +28,5 @@ structure II = struct
       | sel (Null, _) = Null
       | sel (Info _, i) = bug "Unexpected selection from II.Info !"
     end
+
 end

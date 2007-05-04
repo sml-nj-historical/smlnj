@@ -30,10 +30,6 @@ include LTYDEF        (* see ltydef.sig for details *)
 (** new a type variable, currently not used *)
 val mkTvar : unit -> tvar 
 
-(** utility functions for constructing tkinds *)
-val tkc_int    : int -> tkind
-val tkc_arg    : int -> tkind list    
-
 (** primitives and utility functions for fflags and rflags *)
 val ffc_plambda: fflag
 val ffc_rrflint: fflag
@@ -81,10 +77,6 @@ val lt_eqv     : lty * lty -> bool
 val ff_eqv     : fflag * fflag -> bool
 val rf_eqv     : rflag * rflag -> bool
 
-(** testing the equivalence for tycs and ltys with relaxed constraints *)
-val tc_eqv_x   : tyc * tyc -> bool
-val lt_eqv_x   : lty * lty -> bool
-
 (** pretty printing of tkinds, tycs, and ltys *)
 val tk_print   : tkind -> string
 val tc_print   : tyc -> string
@@ -115,10 +107,10 @@ val tkLookup : tkindEnv * int * int -> tkind
 val tkInsert : tkindEnv * tkind list -> tkindEnv
 
 (** utility functions on tycEnv *)
-exception tcUnbound
-type tycEnv = LtyKernel.tycEnv
-val initTycEnv : tycEnv
-val tcInsert : tycEnv * (tyc list option * int) -> tycEnv
+type tycEnv = Lty.tycEnv
+datatype teBinder = datatype Lty.teBinder
+val teEmpty : tycEnv
+val teCons : teBinder * tycEnv -> tycEnv
 
 (** the ltyEnv maps from lvar to its lty; notice lty is depth-dependent *)
 type ltyEnv 

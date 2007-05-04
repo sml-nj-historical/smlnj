@@ -4,7 +4,7 @@
  *)
 structure TVI = struct
 local
-    exception TP_VAR_INFO of { depth: DebIndex.depth,
+    exception TP_VAR_INFO of { tdepth: DebIndex.depth,
 			       num: int, kind: PLambdaType.tkind }
 in
     val toExn = TP_VAR_INFO

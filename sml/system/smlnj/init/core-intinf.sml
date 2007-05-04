@@ -107,21 +107,21 @@ structure CoreIntInf :> sig
 end = struct
 
     infixr 5 ::
-    val not = InLine.inlnot
+    val not : bool -> bool = InLine.inlnot
 
-    val w31ToI32  = InLine.copy_31_32_i
-    val w32ToI32  = InLine.copy_32_32_wi
-    val w31ToW32  = InLine.copy_31_32_w
-    val i32ToW31  = InLine.trunc_32_31_i
-    val i32ToW32  = InLine.copy_32_32_iw
-    val w32ToW31  = InLine.trunc_32_31_w
-    val ~ = InLine.i32neg
+    val w31ToI32 : word -> int32  = InLine.copy_31_32_i
+    val w32ToI32 : word32 -> int32 = InLine.copy_32_32_wi
+    val w31ToW32 : word -> word32 = InLine.copy_31_32_w
+    val i32ToW31 : int32 -> word = InLine.trunc_32_31_i
+    val i32ToW32 : int32 -> word32 = InLine.copy_32_32_iw
+    val w32ToW31 : word32 -> word = InLine.trunc_32_31_w
+    val ~ : int32 -> int32 = InLine.i32neg
     infix || && >> ^ <<
-    val op || = InLine.w32orb
-    val op ^ = InLine.w32xorb
-    val op && = InLine.w32andb
-    val op >> = InLine.w32rshiftl
-    val op << = InLine.w32lshift
+    val op || : word32 * word32 -> word32 = InLine.w32orb
+    val op ^ : word32 * word32 -> word32 = InLine.w32xorb
+    val op && : word32 * word32 -> word32 = InLine.w32andb
+    val op >> : word32 * word -> word32 = InLine.w32rshiftl
+    val op << : word32 * word -> word32 = InLine.w32lshift
 
     (* ******************* *)
     type intinf = PrimTypes.intinf
@@ -145,10 +145,10 @@ end = struct
     val base32 = w31ToW32 base
     val neg_base_as_int : int = ~0x40000000
 
-    val gap = InLine.w31sub (0w32, baseBits) (* 32 - baseBits *)
-    val slc = InLine.w31sub (baseBits, gap)  (* baseBits - gap *)
+    val gap : word = InLine.w31sub (0w32, baseBits) (* 32 - baseBits *)
+    val slc : word = InLine.w31sub (baseBits, gap)  (* baseBits - gap *)
 
-    fun neg64 (hi, 0w0) = (InLine.w32neg hi, 0w0)
+    fun neg64 (hi, 0w0) : word32 * word32 = (InLine.w32neg hi, 0w0)
       | neg64 (hi, lo) = (InLine.w32notb hi, InLine.w32neg lo)
 	      
     fun testInf i =
@@ -231,7 +231,8 @@ end = struct
     fun copyInf64' (_, (0w0, 0w0)) = abstract (BI { negative = false,
 						 digits = [] })
       | copyInf64' (negative, (hi, lo)) = 
-	let infix <> val op <> = InLine.w31ne
+	let infix <> 
+            val op <> : word * word -> bool = InLine.w31ne
 	    val d0 = w32ToW31 (lo && 0wx3fffffff)
 	    val d1 = w32ToW31 (((hi && 0wxfffffff) << 0w2) || (lo >> 0w30))
 	    val d2 = w32ToW31 (hi >> 0w28)
@@ -330,12 +331,12 @@ end = struct
     fun ge (x, y) = not (lt (x, y))
     fun le (x, y) = not (gt (x, y))
 
-    fun adddig (d1, d2) = let
-	val sum = InLine.w31add (d1, d2)
-    in
-	{ carry = InLine.w31ge (sum, base),
-	  res = InLine.w31andb (sum, maxDigit) }
-    end
+    fun adddig (d1, d2) : {carry: bool, res: word} =
+        let val sum = InLine.w31add (d1, d2)
+        in
+	    {carry = InLine.w31ge (sum, base),
+	     res = InLine.w31andb (sum, maxDigit) }
+        end
 
     (* add one to nat *)
     fun natinc [] = [0w1]
@@ -622,8 +623,8 @@ end = struct
 			   val x = exp (m, InLine.w31rshiftl (n, 0w1))
 			   val y = natmul (x, x)
 		       in
-			   if InLine.w31eq (InLine.w31andb (n, 0w1), 0w0) then
-			       y
+			   if InLine.w31eq (InLine.w31andb (n, 0w1), 0w0)
+                           then y
 			   else natmul (y, m)
 		       end
 	       in

@@ -84,7 +84,7 @@ val bogusID = S.varSymbol "*bogus*"
 val bogusExnID = S.varSymbol "*Bogus*"
 
 
-val TRUEpat = CONpat(trueDcon,[])
+val TRUEpat = CONpat(trueDcon,[]) 
 val TRUEexp = CONexp(trueDcon,[])
 val FALSEpat = CONpat(falseDcon,[])
 val FALSEexp = CONexp(falseDcon,[])
@@ -118,10 +118,9 @@ fun checkUniq (err,message,names) =
 fun bindVARp (patlist,err) =
     let val vl = ref (nil: symbol list)
 	val env = ref(SE.empty: SE.staticEnv)
-	fun f (VARpat(v as VALvar{path=SP.SPATH[name],info,...})) = 
-	       (if S.eq(name, EQUALsym) (*** major hack ***)
-		then (* if InlInfo.isPrimInfo(InlInfo.fromExn info) then ()
-                     else *) err WARN "rebinding =" nullErrorBody
+	fun f (VARpat(v as VALvar{path=SP.SPATH[name],...})) = 
+	       (if S.eq(name, EQUALsym)
+		then err WARN "rebinding =" nullErrorBody
 		else ();
 		env := SE.bind(name,B.VALbind v,!env); 
 		vl := name :: !vl)
@@ -153,7 +152,7 @@ fun isPrimPat (VARpat{info, ...}) = II.isPrimInfo(info)
 fun patproc (pp, compInfo as {mkLvar=mkv, ...} : compInfo) =
     let val oldnew : (Absyn.pat * var) list ref = ref nil
 
-	fun f (p as VARpat(VALvar{access=acc,info,typ=ref typ',path})) =
+	fun f (p as VARpat(VALvar{access=acc,prim,typ=ref typ',path})) =
               let fun find ((VARpat(VALvar{access=acc',...}), x)::rest, v) = 
 		        (case (A.accLvar acc') (* DBM: can this return NONE? *)
                           of SOME w => if v=w then x else find(rest, v)
@@ -163,7 +162,7 @@ fun patproc (pp, compInfo as {mkLvar=mkv, ...} : compInfo) =
                            | _ => find(rest, v))
                     | find (_::rest, v) = find(rest, v)
 		    | find (nil, v) = (* DBM: assert this rule always applies ? *)
-		        let val x = VALvar{access=A.dupAcc(v,mkv), info=info,
+		        let val x = VALvar{access=A.dupAcc(v,mkv), prim=prim,
                                            typ=ref typ', path=path}
 			 in oldnew := (p,x):: !oldnew; x
 			end
@@ -251,6 +250,7 @@ fun completeMatch(env,name) =
           RULE(WILDpat, 
 	       marker(RAISEexp(CONexp(CoreAccess.getExn(env,name),[]),
 			       UNDEFty))))
+(** Updated to the ty option type - GK *)
 
 val trivialCompleteMatch = completeMatch(SE.empty,"Match")
 
@@ -281,11 +281,11 @@ fun wrapRECdecGen (rvbs, compInfo as {mkLvar=mkv, ...} : compInfo) =
        case vars
         of [(v, nv, sym)] =>
             (VALdec [VB{pat=VARpat nv, boundtvs=[], tyvars=tyvars,
-                        exp=LETexp(odec, VARexp(ref v, []))}])
+                        exp=LETexp(odec, VARexp(ref v, []))}]) 
          | _ => 
-          (let val vs = map (fn (v, _, _) => VARexp(ref v, [])) vars
+          (let val vs = map (fn (v, _, _) => VARexp(ref v, [])) vars 
                val rootv = newVALvar(internalSym, mkv)
-               val rvexp = VARexp(ref rootv, [])
+               val rvexp = VARexp(ref rootv, []) 
                val nvdec = 
                  VALdec([VB{pat=VARpat rootv, boundtvs=[], tyvars=tyvars,
                             exp=LETexp(odec, TUPLEexp vs)}])
@@ -326,7 +326,7 @@ fun FUNdec (completeMatch, fbl,
 		val vars = map getvar pats
 		fun not1(f,[a]) = a
 		  | not1(f,l) = f l
-		fun dovar valvar = VARexp(ref(valvar),[])
+		fun dovar valvar = VARexp(ref(valvar),[]) 
 		fun doclause ({pats,exp,resultty=NONE}) =
 			      RULE(not1(TUPLEpat,pats), exp)
 		  | doclause ({pats,exp,resultty=SOME ty}) =
@@ -362,7 +362,7 @@ fun FUNdec (completeMatch, fbl,
 
 fun makeHANDLEexp(exp, rules, compInfo as {mkLvar=mkv, ...}: compInfo) =
     let val v = newVALvar(exnID, mkv)
-        val r = RULE(VARpat v, RAISEexp(VARexp(ref(v),[]),UNDEFty))
+        val r = RULE(VARpat v, RAISEexp(VARexp(ref(v),[]),UNDEFty)) (** Updated to the ty option type - GK*)
 	val rules = completeMatch' r rules 
      in HANDLEexp(exp, (rules,UNDEFty))
     end
@@ -385,8 +385,8 @@ fun pat_id (spath, env, err, compInfo as {mkLvar=mkv, ...}: compInfo) =
 			  ("variable found where constructor is required: "^
 			   SymPath.toString spath)
 			  nullErrorBody;
-			 (bogusCON,[]))
-		      | V.CON c => (c,[]))
+			 (bogusCON,[])) 
+		      | V.CON c => (c,[])) 
 		   handle SE.Unbound => bug "unbound untrapped")
 
 fun makeRECORDpat(l,flex,err) =
@@ -416,8 +416,9 @@ fun pat_to_string WILDpat = "_"
   | pat_to_string (ORpat _) = "<or pattern>"
   | pat_to_string _ = "<illegal pattern>"
 
-fun makeAPPpat err (CONpat(d as DATACON{const=false,lazyp,...},t),p) =
-      let val p1 = APPpat(d,t,p)
+fun makeAPPpat err (CONpat(d as DATACON{const=false,lazyp,...},tvs),p) =
+      let 
+	  val p1 = APPpat(d, tvs, p) 
        in if lazyp (* LAZY *)
 	  then APPpat(BT.dollarDcon, [], p1)
           else p1
@@ -445,7 +446,10 @@ fun calc_strictness (arity, body) =
     let val argument_found = Array.array(arity,false)
 	fun search(VARty(ref(INSTANTIATED ty))) = search ty
 	  | search(IBOUND n) = Array.update(argument_found,n,true)
-	  | search(CONty(tycon, args)) = app search args
+	  | search(ty as CONty(tycon, args)) =
+              (case tycon
+                 of DEFtyc _ => search(headReduceType ty)
+                  | _ => app search args)
 	  | search _ = ()	(* for now... *)
      in search body;
 	Array.foldr (op ::) nil argument_found
@@ -472,6 +476,7 @@ fun labsym (LABEL{name, ...}) = name
 
 exception IsRec
 
+(** FLINT in front end **)
 (** formerly defined in translate/nonrec.sml; now done during type checking *)
 fun recDecs (rvbs as [RVB {var as V.VALvar{access=A.LVAR v, ...}, 
                            exp, resultty, tyvars, boundtvs}]) = 

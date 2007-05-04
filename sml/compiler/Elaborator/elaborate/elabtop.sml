@@ -15,7 +15,8 @@ end (* signature ELABTOP *)
 functor ElabTopFn (structure ElabMod : ELABMOD) : ELABTOP =
 struct
 
-local structure PP = PrettyPrint
+local structure PP = PrettyPrintNew
+      structure PU = PPUtilNew
       structure S = Symbol
       structure SP = SymPath
       structure IP = InvPath
@@ -135,9 +136,9 @@ fun elab(SeqDec decs, env0, top, region) =
   | elab(OpenDec paths, env, top, region) = 
       let val _ = debugPrint("top level open: ",
                     (fn pps => fn paths =>
-                       PPUtil.ppSequence pps
+                       PU.ppSequence pps
                          {sep=(fn pps => PP.string pps ","),
-                          pr=PPUtil.ppSymPath, style=PPUtil.INCONSISTENT}
+                          pr=PU.ppSymPath, style=PU.INCONSISTENT}
                        (List.map SymPath.SPATH paths)), paths)
 
           val err = error region
@@ -179,7 +180,8 @@ fun elab(SeqDec decs, env0, top, region) =
           val {absyn=ds, statenv=env'} =
                 ElabMod.elabDecl{ast=(SeqDec newDecs), statenv=minEnv,
                                  entEnv=EE.empty, context=EU.TOP,
-                                 level=top, epContext=EPC.initContext, 
+                                 level=top, tdepth=DebIndex.top,
+                                 epContext=EPC.initContext, 
                                  path=IP.IPATH[], region=region,
                                  compInfo=compInfo}
 
@@ -194,7 +196,7 @@ fun elab(SeqDec decs, env0, top, region) =
       let val _ = debugmsg "--elabTop.elab[dec]: calling ElabMod.elabDecl"
           val {absyn=d, statenv=env'} = 
             ElabMod.elabDecl{ast=dec, statenv=env, entEnv=EE.empty,
-                             context=EU.TOP, level=top, 
+                             context=EU.TOP, level=top, tdepth=DebIndex.top,
                              epContext=EPC.initContext, path=IP.IPATH[],
                              region=region,compInfo=compInfo}
        in (d, env')

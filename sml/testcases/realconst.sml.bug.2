@@ -1,0 +1,36 @@
+ signature Y =
+  sig
+    type array
+    type elem
+
+    val array    : int * elem -> array
+  end
+
+functor F (A : Y) =
+  struct
+
+    type array = A.array
+
+    fun array (sz, dflt) = A.array (sz, dflt)
+
+  end
+ 
+structure DFA = F(
+  struct 
+  
+    type elem = unit->(unit * unit)
+    type array = elem Array.array
+
+    val array = Array.array 
+  end)
+ 
+
+signature PRIMREAL = sig
+end
+ 
+
+functor RealConst(P : PRIMREAL) =
+struct
+end
+
+

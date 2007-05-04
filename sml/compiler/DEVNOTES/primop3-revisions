@@ -1,0 +1,190 @@
+Revision History
+primop-branch-3
+
+Base revision for primop-branch-3: r2221
+
+Branch root revision
+r2221 | blume | 2006-11-28 15:56:55 -0600 (Tue, 28 Nov 2006) | 1 line
+
+Trunk HEAD revision at merge
+r2410 | mrainey | 2007-04-16 10:37:56 -0500 (Mon, 16 Apr 2007) | 1 line
+
+create primop branch 3 as future target to merge changes from primop branch 2
+
+Merge from $smlnj/sml/trunk 2221:2410 into base(sml) working directory for
+primop-branch-3:
+4/18/07: ~8:40pm
+
+------------------------------------------------------------
+westray$ svn merge -r 2221:HEAD $smlnj/sml/trunk
+U    cm/paths/srcpath.sml
+U    cm/main/autoload.sml
+U    cm/main/cm-boot.sml
+U    cm/semant/semant.sml
+U    cm/compile/compile.sml
+U    cm/tools/main/private-tools.sml
+U    cm/tools/main/core-tools.sig
+U    cm/tools/main/private-tools.sig
+U    cm/tools/main/tools-fn.sml
+Skipped 'cm/tools/mllex'
+Skipped 'cm/tools/mlburg'
+Skipped 'cm/tools/mlyacc'
+U    cm/cm-lib.cm
+U    cm/parse/cm.grm
+A    READMES/110.61-README
+A    READMES/110.63-README
+A    READMES/110.61-README.html
+A    READMES/110.62-README.html
+A    READMES/110.63-README.html
+A    READMES/110.62-README
+U    runtime/kernel/ml-state.c
+U    runtime/gc/build-literals.c
+U    runtime/c-libs/smlnj-runtime/cfun-list.h
+A    runtime/c-libs/smlnj-runtime/shift-argv.c
+U    runtime/c-libs/smlnj-runtime/makefile
+U    runtime/c-libs/smlnj-runtime/makefile.win32
+U    runtime/c-libs/posix-tty/tcgetattr.c
+U    runtime/c-libs/posix-tty/tcsetattr.c
+U    system/pathconfig
+U    system/smlnj/MLRISC/AMD64.cm
+U    system/smlnj/installer.cm
+A    system/smlnj/installer/library-install.sml
+A    system/smlnj/installer/installer-util.sml
+A    system/smlnj/installer/generic-install.sml
+A    system/smlnj/installer/util.cm
+A    system/smlnj/installer/win-install.sml
+A    system/smlnj/installer/nix-install.sml
+D    system/smlnj/installer/winlibinstall.sml
+D    system/smlnj/installer/nixlibinstall.sml
+D    system/smlnj/installer/libinstall.sml
+A    system/smlnj/library-install.cm
+U    system/smlnj/internal/intsys.cm
+U    system/Basis/Implementation/Posix/posix-tty.sig
+U    system/Basis/Implementation/Posix/posix-tty.sml
+U    system/Basis/Implementation/word64.sml
+C    system/Basis/Implementation/word8.sml
+U    system/Basis/Implementation/word31.sml
+C    system/Basis/Implementation/word32.sml
+U    system/Basis/Implementation/NJ/smlnj.sig
+U    system/Basis/Implementation/NJ/smlnj.sml
+U    system/Basis/Implementation/Sockets/socket.sig
+U    system/Basis/Implementation/word.sig
+U    NOTES/HISTORY
+U    NOTES/WININSTALL
+U    compiler/CodeGen/amd64/amd64MLTree.sml
+U    compiler/Parse/parser.cm
+------------------------------------------------------------
+
+Note: after merge, have to manually recompile runtime system:
+
+   cd base/runtime/objs
+   make -f mk.ppc-darwin
+
+
+After building a fixpoint, merged changed committed. (4/18/07, 10:15pm)
+------------------------------------------------------------
+westray$ svn commit -m "merged revisions 2221:2410 of sml/trunk into base"
+Sending        NOTES/HISTORY
+Sending        NOTES/WININSTALL
+Adding         READMES/110.61-README
+Adding         READMES/110.61-README.html
+Adding         READMES/110.62-README
+Adding         READMES/110.62-README.html
+Adding         READMES/110.63-README
+Adding         READMES/110.63-README.html
+Sending        cm/cm-lib.cm
+Sending        cm/compile/compile.sml
+Sending        cm/main/autoload.sml
+Sending        cm/main/cm-boot.sml
+Sending        cm/parse/cm.grm
+Sending        cm/paths/srcpath.sml
+Sending        cm/semant/semant.sml
+Sending        cm/tools/main/core-tools.sig
+Sending        cm/tools/main/private-tools.sig
+Sending        cm/tools/main/private-tools.sml
+Sending        cm/tools/main/tools-fn.sml
+Sending        compiler/CodeGen/amd64/amd64MLTree.sml
+Sending        compiler/Parse/parser.cm
+Sending        runtime/c-libs/posix-tty/tcgetattr.c
+Sending        runtime/c-libs/posix-tty/tcsetattr.c
+Sending        runtime/c-libs/smlnj-runtime/cfun-list.h
+Sending        runtime/c-libs/smlnj-runtime/makefile
+Sending        runtime/c-libs/smlnj-runtime/makefile.win32
+Adding         runtime/c-libs/smlnj-runtime/shift-argv.c
+Sending        runtime/gc/build-literals.c
+Sending        runtime/kernel/ml-state.c
+Sending        system/Basis/Implementation/NJ/smlnj.sig
+Sending        system/Basis/Implementation/NJ/smlnj.sml
+Sending        system/Basis/Implementation/Posix/posix-tty.sig
+Sending        system/Basis/Implementation/Posix/posix-tty.sml
+Sending        system/Basis/Implementation/Sockets/socket.sig
+Sending        system/Basis/Implementation/word.sig
+Sending        system/Basis/Implementation/word31.sml
+Sending        system/Basis/Implementation/word32.sml
+Sending        system/Basis/Implementation/word64.sml
+Sending        system/Basis/Implementation/word8.sml
+Sending        system/pathconfig
+Sending        system/smlnj/MLRISC/AMD64.cm
+Adding         system/smlnj/installer/generic-install.sml
+Adding         system/smlnj/installer/installer-util.sml
+Deleting       system/smlnj/installer/libinstall.sml
+Adding         system/smlnj/installer/library-install.sml
+Adding         system/smlnj/installer/nix-install.sml
+Deleting       system/smlnj/installer/nixlibinstall.sml
+Adding         system/smlnj/installer/util.cm
+Adding         system/smlnj/installer/win-install.sml
+Deleting       system/smlnj/installer/winlibinstall.sml
+Sending        system/smlnj/installer.cm
+Sending        system/smlnj/internal/intsys.cm
+Adding         system/smlnj/library-install.cm
+Transmitting file data ....................................
+Committed revision 2431.
+------------------------------------------------------------
+
+2. 2nd merge from trunk from trunk revision r2410 to current head (r2450)
+
+Sun Apr 29 20:09:12 CDT 2007
+westray$ svn merge -r 2410:HEAD $smlnj/sml/trunk
+U    system/Basis/Implementation/OS/os-path-fn.sml
+U    system/Basis/Implementation/OS/os-path.sig
+U    system/Basis/Implementation/Unix/os-path.sml
+U    system/Basis/Implementation/time.sml
+U    system/Basis/Implementation/string.sml
+U    system/Basis/Implementation/Win32/os-path.sml
+U    system/Basis/Implementation/char.sml
+U    NOTES/HISTORY
+
+westray$ svn commit -m "committing changes merged from the trunk, revisions
+> r2410 to r2450), including possibly erroneous changes to OS.Path"
+Sending        NOTES/HISTORY
+Sending        compiler/DEVNOTES/primop3-revisions
+Sending        system/Basis/Implementation/OS/os-path-fn.sml
+Sending        system/Basis/Implementation/OS/os-path.sig
+Sending        system/Basis/Implementation/Unix/os-path.sml
+Sending        system/Basis/Implementation/Win32/os-path.sml
+Sending        system/Basis/Implementation/char.sml
+Sending        system/Basis/Implementation/string.sml
+Sending        system/Basis/Implementation/time.sml
+Transmitting file data .........
+Committed revision 2464.
+
+
+3. 3rd merge from trunk from trunk revision r2450 to current head (r2467)
+
+[dbm] -- not committed 
+arran$ svn merge -r 2450:HEAD $smlnj/sml/trunk
+U    system/Basis/Implementation/Unix/os-path.sml
+U    system/Basis/Implementation/Win32/os-path.sml
+
+
+[george] -- this one committed
+elpis$ svn merge -r 2464:HEAD svn://smlnj-gforge.cs.uchicago.edu/smlnj/sml/trunk
+U    system/Basis/Implementation/Unix/os-path.sml
+U    system/Basis/Implementation/Win32/os-path.sml
+elpis$ svn ci -m "merging 2464:2472, unix-path bug fix from trunk"
+Sending        system/Basis/Implementation/Unix/os-path.sml
+Sending        system/Basis/Implementation/Win32/os-path.sml
+Transmitting file data ..
+Committed revision 2473.
+
+

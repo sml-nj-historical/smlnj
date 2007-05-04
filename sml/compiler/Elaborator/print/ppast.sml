@@ -9,9 +9,10 @@ local structure EM = ErrorMsg
       structure B = Bindings
       structure S = Symbol
       structure BT = BasicTypes
-      structure PP = PrettyPrint
+      structure PP = PrettyPrintNew
+      structure PU = PPUtilNew
 
-      open Ast Tuples Fixity VarCon Types PrettyPrint PPUtil PPType PPVal
+      open Ast Tuples Fixity VarCon Types PrettyPrintNew PPUtilNew PPType PPVal
 in
 
 val internals = ElabControl.internals
@@ -27,7 +28,7 @@ fun strongerL(INfix(_,m),INfix(n,_)) = m >= n
 fun strongerR(INfix(_,m),INfix(n,_)) = n > m
   | strongerR _ = true			(* should not matter *)
 
-fun prpos(ppstrm: PrettyPrint.stream,
+fun prpos(ppstrm: PP.stream,
           source: Source.inputSource, charpos: int) =
     if (!lineprint) then
       let val (file:string,line:int,pos:int) = Source.filepos source charpos
@@ -91,43 +92,43 @@ fun pp_path ppstrm symbols =
     end
 
 fun ppPat (context as (env, source_opt)) ppstrm =
-    let val ppsay = PP.string ppstrm
+    let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
         val pp_symbol_list = pp_path ppstrm
-	fun ppPat' (WildPat,_) = (ppsay "_")
+	fun ppPat' (WildPat,_) = (pps "_")
 	  | ppPat' (VarPat p, d) =  pp_symbol_list(p)
-	  | ppPat' (IntPat i,_) = ppsay(IntInf.toString i)
-	  | ppPat' (WordPat w,_) = ppsay(IntInf.toString w)
+	  | ppPat' (IntPat i,_) = pps(IntInf.toString i)
+	  | ppPat' (WordPat w,_) = pps(IntInf.toString w)
 	  | ppPat' (StringPat s, _) = pp_mlstr ppstrm s
-	  | ppPat' (CharPat s,_) = (ppsay "#"; pp_mlstr ppstrm s)
+	  | ppPat' (CharPat s,_) = (pps "#"; pp_mlstr ppstrm s)
 	  | ppPat' (LayeredPat {varPat,expPat},d) =
-		(openHVBox ppstrm (PP.Rel 0);
-		 ppPat'(varPat,d); ppsay " as "; ppPat'(expPat,d-1);
-		 closeBox ppstrm)
+	      (openHVBox 0;
+	       ppPat'(varPat,d); pps " as "; ppPat'(expPat,d-1);
+	       closeBox ())
 	  | ppPat' (RecordPat{def=[],flexibility},_) =
-		if flexibility then ppsay "{...}"
-		else ppsay "()"
+	      if flexibility then pps "{...}"
+	      else pps "()"
 	  | ppPat' (r as RecordPat{def,flexibility},d) =
-		if isTUPLEpat r
-		then ppClosedSequence ppstrm
-			{front=(C PP.string "("),
-			 sep=(fn ppstrm => (PP.string ppstrm ",";
-                                            break ppstrm {nsp=0,offset=0})),
-			 back=(C PP.string ")"),
-			 pr=(fn _ => fn (sym,pat) => ppPat' (pat, d-1)),
-			 style=INCONSISTENT}
-			def
-		else ppClosedSequence ppstrm
-			{front=(C PP.string "{"),
-			 sep=(fn ppstrm => (PP.string ppstrm ",";
-                                            break ppstrm {nsp=0,offset=0})),
-			 back=(fn ppstrm => if flexibility then PP.string ppstrm ",...}"
-					    else PP.string ppstrm "}"),
-			 pr=(fn ppstrm => fn (sym,pat) => (ppSym ppstrm sym;
-                                                           PP.string ppstrm "=";
-			     ppPat' (pat, d-1))),
-			 style=INCONSISTENT}
-			def  
-	  | ppPat' (ListPat nil, d) = ppsay "[]"
+              if isTUPLEpat r
+              then ppClosedSequence ppstrm
+                      {front=(C PP.string "("),
+                       sep=(fn ppstrm => (PP.string ppstrm ",";
+                                          break ppstrm {nsp=0,offset=0})),
+                       back=(C PP.string ")"),
+                       pr=(fn _ => fn (sym,pat) => ppPat' (pat, d-1)),
+                       style=INCONSISTENT}
+                      def
+              else ppClosedSequence ppstrm
+                      {front=(C PP.string "{"),
+                       sep=(fn ppstrm => (PP.string ppstrm ",";
+                                          break ppstrm {nsp=0,offset=0})),
+                       back=(fn ppstrm => if flexibility then PP.string ppstrm ",...}"
+                                          else PP.string ppstrm "}"),
+                       pr=(fn ppstrm => fn (sym,pat) => (ppSym ppstrm sym;
+                                                         PP.string ppstrm "=";
+                           ppPat' (pat, d-1))),
+                       style=INCONSISTENT}
+                      def  
+	  | ppPat' (ListPat nil, d) = pps "[]"
 	  | ppPat' (ListPat l, d) =	
 		let fun pr _ pat = ppPat'(pat, d-1)
 		in ppClosedSequence ppstrm
@@ -159,16 +160,16 @@ fun ppPat (context as (env, source_opt)) ppstrm =
 			fap
 		end 
 	  | ppPat' (AppPat {constr, argument}, d) = 
-		(openHVBox ppstrm (PP.Rel 0);
-		 ppPat'(constr,d); ppsay " as "; ppPat'(argument,d);
-		 closeBox ppstrm)
+		(openHVBox 0;
+		 ppPat'(constr,d); pps " as "; ppPat'(argument,d);
+		 closeBox ())
 	  | ppPat' (ConstraintPat {pattern, constraint}, d) = 
-		(openHOVBox ppstrm (PP.Rel 0);
-		 ppPat' (pattern, d-1); ppsay " :";
+		(openHOVBox 0;
+		 ppPat' (pattern, d-1); pps " :";
 		 break ppstrm {nsp=1,offset=2};
 		 ppTy context ppstrm (constraint, d);
-		 closeBox ppstrm)
-	  | ppPat' (VectorPat nil, d) = ppsay "#[]"
+		 closeBox ())
+	  | ppPat' (VectorPat nil, d) = pps "#[]"
 	  | ppPat' (VectorPat v, d) = 
 		let fun pr _ pat = ppPat'(pat, d-1)
 		in ppClosedSequence ppstrm
@@ -183,10 +184,10 @@ fun ppPat (context as (env, source_opt)) ppstrm =
 	    (case source_opt
 		of SOME source =>
 		     if !internals
-		     then (ppsay "<MARK(";
-			   prpos(ppstrm,source,s); ppsay ",";
-			   prpos(ppstrm,source,e); ppsay "): ";
-			   ppPat'(pat,d); ppsay ">")
+		     then (pps "<MARK(";
+			   prpos(ppstrm,source,s); pps ",";
+			   prpos(ppstrm,source,e); pps "): ";
+			   ppPat'(pat,d); pps ">")
 		     else ppPat'(pat,d)
 	         | NONE => ppPat'(pat,d))
 
@@ -205,15 +206,15 @@ fun ppPat (context as (env, source_opt)) ppstrm =
 
 
 and ppExp (context as (env, source_opt)) ppstrm =
-  let val ppsay = PP.string ppstrm
-      fun lparen() = ppsay "(" 
-      fun rparen() = ppsay ")"
-      fun lpcond(atom) = if atom then ppsay "(" else ()      
-      fun rpcond(atom) = if atom then ppsay ")" else ()
+  let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
+      fun lparen() = pps "(" 
+      fun rparen() = pps ")"
+      fun lpcond(atom) = if atom then pps "(" else ()      
+      fun rpcond(atom) = if atom then pps ")" else ()
       val pp_symbol_list = pp_path ppstrm
-      fun ppExp' (_,_,0) = ppsay "<exp>"
+      fun ppExp' (_,_,0) = pps "<exp>"
 	| ppExp' (VarExp p,_,_) = pp_symbol_list(p)
-	| ppExp' (FnExp nil,_,d) = ppsay "<function>"
+	| ppExp' (FnExp nil,_,d) = pps "<function>"
 	| ppExp' (FnExp rules,_,d)=	
 		let fun pr _ pat = ppRule context ppstrm(pat, d-1)
 		in ppSequence ppstrm
@@ -238,27 +239,27 @@ and ppExp (context as (env, source_opt)) ppstrm =
 		  rpcond(atom)
 	      end
 	| ppExp' (CaseExp {expr, rules},_,d) = 
-	      (openHVBox ppstrm (PP.Rel 0);
-	       ppsay "(case "; ppExp'(expr,true,d-1); nl_indent ppstrm 2;
+	      (openHVBox 0;
+	       pps "(case "; ppExp'(expr,true,d-1); nl_indent ppstrm 2;
 	       ppvlist ppstrm ("of ","   | ",
 		 (fn ppstrm => fn r => ppRule context ppstrm (r,d-1)), 
                   trim rules);
 	       rparen();
-	       closeBox ppstrm)
+	       closeBox ())
 	| ppExp' (LetExp {dec, expr},_,d) =
-	      (openHVBox ppstrm (PP.Rel 0);
-		ppsay "let ";
-		openHVBox ppstrm (PP.Rel 0);
+	      (openHVBox 0;
+		pps "let ";
+		openHVBox 0;
 		 ppDec context ppstrm (dec,d-1); 
-		closeBox ppstrm;
+		closeBox ();
 		break ppstrm {nsp=1,offset=0};
-		ppsay "in ";
-		openHVBox ppstrm (PP.Rel 0);
+		pps "in ";
+		openHVBox 0;
 		 ppExp'(expr,false,d-1);
-		closeBox ppstrm;
+		closeBox ();
 		break ppstrm {nsp=1,offset=0};
-		ppsay "end";
-	       closeBox ppstrm)
+		pps "end";
+	       closeBox ())
  	| ppExp'(SeqExp exps,_,d) =
 	      ppClosedSequence ppstrm
 	        {front=(C PP.string "("),
@@ -268,11 +269,11 @@ and ppExp (context as (env, source_opt)) ppstrm =
 		 pr=(fn _ => fn exp => ppExp'(exp,false,d-1)),
 		 style=INCONSISTENT}
 		exps
-	| ppExp' (IntExp i,_,_) = ppsay (IntInf.toString i)
-	| ppExp' (WordExp w,_,_) = ppsay (IntInf.toString w)
-	| ppExp' (RealExp r,_,_) = ppsay r
+	| ppExp' (IntExp i,_,_) = pps (IntInf.toString i)
+	| ppExp' (WordExp w,_,_) = pps (IntInf.toString w)
+	| ppExp' (RealExp r,_,_) = pps r
 	| ppExp' (StringExp s,_,_) = pp_mlstr ppstrm s
-	| ppExp' (CharExp s,_,_) = (ppsay "#"; pp_mlstr ppstrm s)
+	| ppExp' (CharExp s,_,_) = (pps "#"; pp_mlstr ppstrm s)
 	| ppExp'(r as RecordExp fields,_,d) =
 	      if isTUPLEexp r
 	      then ppClosedSequence ppstrm
@@ -289,7 +290,7 @@ and ppExp (context as (env, source_opt)) ppstrm =
 					 break ppstrm {nsp=0,offset=0})),
 		      back=(C PP.string "}"),
 		      pr=(fn ppstrm => fn (name,exp) =>
-			  (ppSym ppstrm name; ppsay "=";
+			  (ppSym ppstrm name; pps "=";
 			   ppExp'(exp,false,d))),
 		      style=INCONSISTENT}
 		     fields
@@ -314,94 +315,94 @@ and ppExp (context as (env, source_opt)) ppstrm =
 		      style=INCONSISTENT}
 		     p
 	| ppExp'(SelectorExp name, atom,d) =
-	      (openHVBox ppstrm (PP.Rel 0);
+	      (openHVBox 0;
 	        lpcond(atom);
-	        ppsay "#"; ppSym ppstrm name;
-	        ppsay ">";
+	        pps "#"; ppSym ppstrm name;
+	        pps ">";
 		rpcond(atom);
-	       closeBox ppstrm)
+	       closeBox ())
 	| ppExp' (ConstraintExp {expr,constraint},atom,d) = 
-	     (openHOVBox ppstrm (PP.Rel 0);
+	     (openHOVBox 0;
 	       lpcond(atom);
-	       ppExp'(expr,false,d); ppsay ":";
+	       ppExp'(expr,false,d); pps ":";
 	       break ppstrm {nsp=1,offset=2};
 	       ppTy context ppstrm (constraint,d);
 	       rpcond(atom);
-	      closeBox ppstrm)
+	      closeBox ())
         | ppExp'(HandleExp{expr,rules},atom,d) =
-	     (openHVBox ppstrm (PP.Rel 0);
+	     (openHVBox 0;
 	       lpcond(atom);
-	       ppExp'(expr,atom,d-1); newline ppstrm; ppsay "handle ";
+	       ppExp'(expr,atom,d-1); newline ppstrm; pps "handle ";
 	       nl_indent ppstrm 2;
 	       ppvlist ppstrm ("  ","| ",
 		  (fn ppstrm => fn r => ppRule context ppstrm (r,d-1)), rules);
 	       rpcond(atom);
-	      closeBox ppstrm)
+	      closeBox ())
 	| ppExp' (RaiseExp exp,atom,d) = 
-	      (openHVBox ppstrm (PP.Rel 0);
+	      (openHVBox 0;
 	       lpcond(atom);
-	       ppsay "raise "; ppExp'(exp,true,d-1);
+	       pps "raise "; ppExp'(exp,true,d-1);
 	       rpcond(atom);
-	       closeBox ppstrm)
+	       closeBox ())
 	| ppExp' (IfExp { test, thenCase, elseCase },atom,d) =
-	      (openHVBox ppstrm (PP.Rel 0);
+	      (openHVBox 0;
 	       lpcond(atom);
-	       ppsay "if ";
-	       openHVBox ppstrm (PP.Rel 0);
+	       pps "if ";
+	       openHVBox 0;
 	        ppExp' (test, false, d-1);
-	       closeBox ppstrm;
+	       closeBox ();
 	       break ppstrm {nsp=1,offset= 0};
-	       ppsay "then ";
-	       openHVBox ppstrm (PP.Rel 0);
+	       pps "then ";
+	       openHVBox 0;
 	        ppExp' (thenCase, false, d-1);
-	       closeBox ppstrm;
+	       closeBox ();
 	       break ppstrm {nsp=1,offset= 0};
-	       ppsay "else ";
-	       openHVBox ppstrm (PP.Rel 0);
+	       pps "else ";
+	       openHVBox 0;
 	        ppExp' (elseCase, false, d-1);
-	       closeBox ppstrm;
+	       closeBox ();
 	       rpcond(atom);
-	       closeBox ppstrm)
+	       closeBox ())
 	| ppExp' (AndalsoExp (e1, e2),atom,d) =
-	      (openHVBox ppstrm (PP.Rel 0);
+	      (openHVBox 0;
 	       lpcond(atom);
-	       openHVBox ppstrm (PP.Rel 0);
+	       openHVBox 0;
 	       ppExp' (e1,true,d-1);
-	       closeBox ppstrm;
+	       closeBox ();
 	       break ppstrm {nsp=1,offset= 0};
-	       ppsay "andalso ";
-	       openHVBox ppstrm (PP.Rel 0);
+	       pps "andalso ";
+	       openHVBox 0;
 	       ppExp' (e2,true,d-1);
-	       closeBox ppstrm;
+	       closeBox ();
 	       rpcond(atom);
-	       closeBox ppstrm)
+	       closeBox ())
 	 | ppExp' (OrelseExp (e1, e2),atom,d) =
-	      (openHVBox ppstrm (PP.Rel 0);
+	      (openHVBox 0;
 	       lpcond(atom);
-	       openHVBox ppstrm (PP.Rel 0);
+	       openHVBox 0;
 	       ppExp' (e1,true,d-1);
-	       closeBox ppstrm;
+	       closeBox ();
 	       break ppstrm {nsp=1,offset= 0};
-	       ppsay "orelse ";
-	       openHVBox ppstrm (PP.Rel 0);
+	       pps "orelse ";
+	       openHVBox 0;
 	       ppExp' (e2,true,d-1);
-	       closeBox ppstrm;
+	       closeBox ();
 	       rpcond(atom);
-	       closeBox ppstrm)
+	       closeBox ())
 	 | ppExp' (WhileExp { test, expr },atom,d) =
-	      (openHVBox ppstrm (PP.Rel 0);
-	       ppsay "while ";
-	       openHVBox ppstrm (PP.Rel 0);
+	      (openHVBox 0;
+	       pps "while ";
+	       openHVBox 0;
 	        ppExp'(test,false,d-1);
-	       closeBox ppstrm;
+	       closeBox ();
 	       break ppstrm {nsp=1,offset= 0};
-	       ppsay "do ";
-	       openHVBox ppstrm (PP.Rel 0);
+	       pps "do ";
+	       openHVBox 0;
 	         ppExp'(expr,false,d-1);
-	       closeBox ppstrm;
-	       closeBox ppstrm)
+	       closeBox ();
+	       closeBox ())
 	
-	 | ppExp'(VectorExp nil,_,d) = ppsay "#[]"
+	 | ppExp'(VectorExp nil,_,d) = pps "#[]"
 	 | ppExp'(VectorExp exps,_,d) =
 	      let fun pr _ exp = ppExp'(exp,false,d-1)
 	      in  ppClosedSequence ppstrm
@@ -417,25 +418,25 @@ and ppExp (context as (env, source_opt)) ppstrm =
 	      (case source_opt
 		of SOME source =>
 		     if !internals
-		     then (ppsay "<MARK(";
-			   prpos(ppstrm,source,s); ppsay ",";
-			   prpos(ppstrm,source,e); ppsay "): ";
-			   ppExp'(exp,false,d); ppsay ">")
+		     then (pps "<MARK(";
+			   prpos(ppstrm,source,s); pps ",";
+			   prpos(ppstrm,source,e); pps "): ";
+			   ppExp'(exp,false,d); pps ">")
 		     else ppExp'(exp,atom,d)
 	         | NONE => ppExp'(exp,atom,d))
 	 and ppAppExp (_,_,_,0) = PP.string ppstrm "<exp>"
 	   | ppAppExp arg =
-	    let val ppsay = PP.string ppstrm
+             let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
 		fun fixitypp(name,rand,leftFix,rightFix,d) =
 		    let val dname = SymPath.toString(SymPath.SPATH name)
 			val thisFix = case name
 					of [id] => lookFIX(env,id)
 					 | _ => NONfix
 			fun prNon exp =
-			    (openHOVBox ppstrm (PP.Rel 2);
-			     ppsay dname; break ppstrm {nsp=1,offset=0};
+			    (openHOVBox 2;
+			     pps dname; break ppstrm {nsp=1,offset=0};
 			     ppExp'(exp,true,d-1);
-			     closeBox ppstrm)
+			     closeBox ())
 		     in case thisFix
 			  of INfix _ =>
 			     (case stripMark rand
@@ -445,20 +446,20 @@ and ppExp (context as (env, source_opt)) ppstrm =
 					val (left,right) =
 					    if atom then (nullFix,nullFix)
 					    else (leftFix,rightFix)
-				     in (openHOVBox ppstrm (PP.Rel 2);
+				     in (openHOVBox 2;
 					  lpcond(atom);
 					  ppAppExp (pl,left,thisFix,d-1);
 					  break ppstrm {nsp=1,offset=0};
-					  ppsay dname;
+					  pps dname;
 					  break ppstrm {nsp=1,offset=0};
 					  ppAppExp (pr,thisFix,right,d-1);
 					  rpcond(atom);
-					 closeBox ppstrm)
+					 closeBox ())
 				    end
 				 | e' => prNon e')
 			   | NONfix => prNon rand
 		    end
-		fun appPrint(_,_,_,0) = ppsay "#"
+		fun appPrint(_,_,_,0) = pps "#"
 		  | appPrint(AppExp{function=rator,argument=rand},l,r,d) =
 		    (case stripMark rator
 		       of VarExp v =>
@@ -466,18 +467,18 @@ and ppExp (context as (env, source_opt)) ppstrm =
 			    in fixitypp(path,rand,l,r,d)
 			   end
 		        | rator =>
-			   (openHOVBox ppstrm (PP.Rel 2);
+			   (openHOVBox 2;
 			     ppExp'(rator,true,d-1); break ppstrm {nsp=1,offset=2};
 			     ppExp'(rand,true,d-1);
-			    closeBox ppstrm))
+			    closeBox ()))
 		  | appPrint(MarkExp(exp,(s,e)),l,r,d) =
 		      (case source_opt
 			of SOME source =>
 			     if !internals
-			     then (ppsay "<MARK(";
-				   prpos(ppstrm,source,s); ppsay ",";
-				   prpos(ppstrm,source,e); ppsay "): ";
-				   ppExp'(exp,false,d); ppsay ">")
+			     then (pps "<MARK(";
+				   prpos(ppstrm,source,s); pps ",";
+				   prpos(ppstrm,source,e); pps "): ";
+				   ppExp'(exp,false,d); pps ">")
 			     else appPrint(exp,l,r,d)
 			 | NONE => appPrint(exp,l,r,d))
 		  | appPrint (e,_,_,d) = ppExp'(e,true,d)
@@ -495,35 +496,35 @@ and ppRule (context as (env,source_opt)) ppstrm (Rule{pat,exp},d) =
     else PP.string ppstrm "<rule>"
 
 and ppStrExp (context as (_,source_opt)) ppstrm =
-    let val ppsay = PP.string ppstrm
+    let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
         val pp_symbol_list = pp_path ppstrm
-        fun  ppStrExp'(_,0) = ppsay "<strexp>"
+        fun  ppStrExp'(_,0) = pps "<strexp>"
 
 	   | ppStrExp'(VarStr p, d) = pp_symbol_list(p)
 
            | ppStrExp'(BaseStr(SeqDec nil), d) =
-	       (ppsay "struct"; nbSpace ppstrm 1; ppsay "end")
+	       (pps "struct"; nbSpace ppstrm 1; pps "end")
            | ppStrExp'(BaseStr de, d) =
                (openVBox ppstrm (Rel 0);
-                ppsay "stuct";  PPUtil.nl_indent ppstrm 2;
+                pps "stuct";  PU.nl_indent ppstrm 2;
                 ppDec context ppstrm (de, d-1);
-                ppsay "end";
-                closeBox ppstrm)
+                pps "end";
+                PP.closeBox ppstrm)
 	   | ppStrExp'(ConstrainedStr (stre, constraint), d) =
-               (openHOVBox ppstrm (Rel 0);
+               (openHOVBox 0;
                 ppStrExp' (stre, d-1);
                 case constraint
                   of NoSig => ()
                    | Transparent sigexp => 
-                     (ppsay " :"; break ppstrm {nsp=1,offset=2};
+                     (pps " :"; break ppstrm {nsp=1,offset=2};
                       ppSigExp context ppstrm (sigexp, d-1))
                    | Opaque sigexp => 
-                     (ppsay " :>"; break ppstrm {nsp=1,offset=2};
+                     (pps " :>"; break ppstrm {nsp=1,offset=2};
                       ppSigExp context ppstrm (sigexp, d-1));
-                closeBox ppstrm)
+                closeBox ())
 	   | ppStrExp'(AppStr (path, str_list), d) = 
 	       let fun pr ppstrm (strl, bool) =
-                       (ppsay "("; ppStrExp context ppstrm (strl,d); ppsay ")")
+                       (pps "("; ppStrExp context ppstrm (strl,d); pps ")")
 	        in pp_symbol_list(path); ppSequence ppstrm
 		    {sep=(fn ppstrm => (break ppstrm {nsp=1,offset=0})),
 		     pr=pr,
@@ -533,7 +534,7 @@ and ppStrExp (context as (_,source_opt)) ppstrm =
 
            | ppStrExp'(AppStrI (path, str_list), d) = 
 	       let fun pr ppstrm (strl, bool) =
-                       (ppsay "("; ppStrExp context ppstrm (strl,d); ppsay ")")
+                       (pps "("; ppStrExp context ppstrm (strl,d); pps ")")
 	        in pp_symbol_list(path); ppSequence ppstrm
 		    {sep=(fn ppstrm => (break ppstrm {nsp=1,offset=0})),
 		     pr=pr,
@@ -542,21 +543,21 @@ and ppStrExp (context as (_,source_opt)) ppstrm =
                end	
 
 	   | ppStrExp'(LetStr(dec,body),d) =
-	      (openHVBox ppstrm (PP.Rel 0);
-	       ppsay "let "; ppDec context ppstrm (dec,d-1); 
+	      (openHVBox 0;
+	       pps "let "; ppDec context ppstrm (dec,d-1); 
                newline ppstrm;
-	       ppsay " in "; ppStrExp'(body,d-1); newline ppstrm;
-	       ppsay "end";
-	       closeBox ppstrm)
+	       pps " in "; ppStrExp'(body,d-1); newline ppstrm;
+	       pps "end";
+	       closeBox ())
 
          | ppStrExp'(MarkStr(body,(s,e)),d) =
              ppStrExp' (body,d)
 (*	      (case source_opt
 		of SOME source =>
-	           (ppsay "MARKstr(";
-		      ppStrExp'(body,d); ppsay ",";
-		      prpos(ppstrm,source,s); ppsay ",";
-		      prpos(ppstrm,source,e); ppsay ")")
+	           (pps "MARKstr(";
+		      ppStrExp'(body,d); pps ",";
+		      prpos(ppstrm,source,s); pps ",";
+		      prpos(ppstrm,source,e); pps ")")
 	         | NONE => ppStrExp'(body,d))
 *)
     in
@@ -564,20 +565,20 @@ and ppStrExp (context as (_,source_opt)) ppstrm =
     end
 
 and ppFctExp (context as (_,source_opt)) ppstrm =
-    let val ppsay = PP.string ppstrm
+    let val pps = PP.string ppstrm
         val pp_symbol_list = pp_path ppstrm
-	fun ppFctExp'(_, 0) = ppsay "<fctexp>"
+	fun ppFctExp'(_, 0) = pps "<fctexp>"
 	  | ppFctExp'(VarFct (p, _), d) = pp_symbol_list(p)
           | ppFctExp'(LetFct(dec,body),d) =
 	      (openHVBox ppstrm (PP.Rel 0);
-	        ppsay "let "; ppDec context ppstrm (dec,d-1); 
+	        pps "let "; ppDec context ppstrm (dec,d-1); 
                 newline ppstrm;
-	        ppsay " in "; ppFctExp'(body,d-1); newline ppstrm;
-	        ppsay "end";
+	        pps " in "; ppFctExp'(body,d-1); newline ppstrm;
+	        pps "end";
 	       closeBox ppstrm)
 	  | ppFctExp'(AppFct(path,sblist, fsigconst),d) =
               let fun pr ppstrm (strexp, _) =
-                      (ppsay "("; ppStrExp context ppstrm (strexp,d); ppsay ")")
+                      (pps "("; ppStrExp context ppstrm (strexp,d); pps ")")
                in openHVBox ppstrm (PP.Rel 0);
                   pp_symbol_list path;
                   ppSequence ppstrm
@@ -595,13 +596,13 @@ and ppFctExp (context as (_,source_opt)) ppstrm =
     end
 
 and ppWhereSpec (context as (env,source_opt)) ppstrm =
-  let val ppsay = PP.string ppstrm
-      fun ppWhereSpec'(_,0) = ppsay "<WhereSpec>"
+  let val pps = PP.string ppstrm
+      fun ppWhereSpec'(_,0) = pps "<WhereSpec>"
         | ppWhereSpec'(WhType([],[],ty),d) = ppTy context ppstrm (ty, d)
         | ppWhereSpec'(WhType(slist,tvlist,ty),d) = 
             let fun pr _ sym = ppSym ppstrm sym
                 fun pr' _ tyv = ppTyvar context ppstrm (tyv,d)
-	      in  ppsay "type "; ppSequence ppstrm
+	      in  pps "type "; ppSequence ppstrm
 		  {sep=(fn ppstrm => (break ppstrm {nsp=1,offset=0})),
 		   pr=pr',
 		   style=INCONSISTENT}
@@ -611,11 +612,11 @@ and ppWhereSpec (context as (env,source_opt)) ppstrm =
 		   pr=pr,
 		   style=INCONSISTENT}
 		   slist;	 
-		   ppsay" ="; break ppstrm {nsp=1,offset=0}; ppTy context ppstrm (ty,d)
+		   pps" ="; break ppstrm {nsp=1,offset=0}; ppTy context ppstrm (ty,d)
 	      end
         | ppWhereSpec'(WhStruct(slist,slist'),d) =
 	      let fun pr _ sym = ppSym ppstrm sym
-            in ppsay "structure "; ppSequence ppstrm
+            in pps "structure "; ppSequence ppstrm
                 {sep=(fn ppstrm => (break ppstrm {nsp=1,offset=0})),
                  pr=pr,
                  style=INCONSISTENT}
@@ -631,30 +632,32 @@ and ppWhereSpec (context as (env,source_opt)) ppstrm =
   end
 
 and ppSigExp (context as (env,source_opt)) ppstrm =
-  let val ppsay = PP.string ppstrm
-      fun ppSigExp'(_,0) = ppsay "<SigExp>"
+  let val {openHOVBox, openHVBox, closeBox, pps, ppi, newline, break} = en_pp ppstrm
+      fun ppSigExp'(_,0) = pps "<SigExp>"
 	| ppSigExp'(VarSig s,d) = (ppSym ppstrm s)
 	| ppSigExp'(AugSig (sign, wherel),d) =
-           (ppSigExp' (sign, d); break ppstrm {nsp=1,offset=0};
+           (ppSigExp' (sign, d); break {nsp=1,offset=0};
 	   (case sign
 		of VarSig s => ppvlist ppstrm ("where ","and ",
 		 (fn ppstrm => fn r => ppWhereSpec context ppstrm (r,d-1)),wherel)
 		 | MarkSig(VarSig s, r) => ppvlist ppstrm ("where ","and ",
 		 (fn ppstrm => fn r => ppWhereSpec context ppstrm (r,d-1)),wherel)
-                 | _ => (newline ppstrm;  ppvlist ppstrm ("where ","and ",
+                 | _ => (newline ();  ppvlist ppstrm ("where ","and ",
 		 (fn ppstrm => fn r => ppWhereSpec context ppstrm (r,d-1)),wherel))
 		))
 	| ppSigExp'(BaseSig [],d) =	
-	    (ppsay "sig"; nbSpace ppstrm 1; ppsay"end")
+	    (pps "sig"; nbSpace ppstrm 1; pps"end")
 	| ppSigExp'(BaseSig specl,d) = 
 	  let fun pr ppstrm speci = (ppSpec context ppstrm (speci,d))
-	   in (openVBox ppstrm (Rel 0); ppsay "sig"; PPUtil.nl_indent ppstrm 2;
-              ppSequence ppstrm
-		{sep=(fn ppstrm => (newline ppstrm)),
-		 pr=pr,
-		 style=INCONSISTENT}
-		specl;
-              newline ppstrm; ppsay"end"; closeBox ppstrm)
+	   in (openVBox ppstrm (Rel 0);
+                pps "sig"; PU.nl_indent ppstrm 2;
+                ppSequence ppstrm
+                 {sep=(fn ppstrm => (PP.newline ppstrm)),
+                  pr=pr,
+                  style=INCONSISTENT}
+                 specl;
+                newline (); pps"end";
+               PP.closeBox ppstrm)
 	  end
 	| ppSigExp'(MarkSig (m,r),d) = ppSigExp context ppstrm (m,d)
   in
@@ -662,23 +665,24 @@ and ppSigExp (context as (env,source_opt)) ppstrm =
   end
 
 and ppFsigExp (context as (env,source_opt)) ppstrm =
-  let val ppsay = PP.string ppstrm
-      fun ppFsigExp'(_,0) = ppsay "<FsigExp>"
+  let val pps = PP.string ppstrm
+      fun ppFsigExp'(_,0) = pps "<FsigExp>"
 	| ppFsigExp'(VarFsig s,d) = ppSym ppstrm s
 	| ppFsigExp'(BaseFsig {param,result},d) =
 	  let fun pr ppstrm (SOME symbol, sigexp) =
-		  (ppsay "("; ppSym ppstrm symbol; ppsay ":";
+		  (PU.pps ppstrm "("; ppSym ppstrm symbol; PU.pps ppstrm ":";
 		   ppSigExp context ppstrm (sigexp, d);
-                   ppsay ")")
+                   PU.pps ppstrm ")")
 		| pr ppstrm (NONE, sigexp) =
-		  (ppsay "("; ppSigExp context ppstrm (sigexp, d); ppsay ")")
+		  (PU.pps ppstrm "("; ppSigExp context ppstrm (sigexp, d);
+                   PU.pps ppstrm ")")
 	   in ppSequence ppstrm
                {sep=(fn ppstrm => (newline ppstrm)),
 		pr = pr,
 		style = INCONSISTENT}
 	       param;
 	      break ppstrm {nsp=1,offset=2};
-	      ppsay "=> ";
+	      pps "=> ";
 	      ppSigExp context ppstrm (result,d)
 	  end
 		
@@ -688,7 +692,7 @@ and ppFsigExp (context as (env,source_opt)) ppstrm =
   end
 
 and ppSpec (context as (env,source_opt)) ppstrm =
-  let val ppsay = PP.string ppstrm
+  let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
       fun pp_tyvar_list([],d) = ()
         | pp_tyvar_list([tyvar],d) = 
               (ppTyvar context ppstrm (tyvar,d); break ppstrm {nsp=1,offset=0})
@@ -696,21 +700,23 @@ and ppSpec (context as (env,source_opt)) ppstrm =
 		let fun pr _ (tyvar) = (ppTyvar context ppstrm (tyvar,d))
                 in ppClosedSequence ppstrm
                     {front=(fn ppstrm => PP.string ppstrm "("),
-                     sep=(PP.string ppstrm ",";fn ppstrm => (break ppstrm {nsp=1,offset=0})),
-                     back=(PP.string ppstrm ")";fn ppstrm => (break ppstrm {nsp=1,offset=0})),
+                     sep=(fn ppstrm =>
+                             (PP.string ppstrm ","; break ppstrm {nsp=1,offset=0})),
+                     back=(fn ppstrm =>
+                              (PP.string ppstrm ")"; break ppstrm {nsp=1,offset=0})),
                      pr=pr,
                      style=INCONSISTENT}
                     tyvar_list
                 end
          
-      fun ppSpec'(_,0) = ppsay "<Spec>"
+      fun ppSpec'(_,0) = pps "<Spec>"
 	| ppSpec'(StrSpec sspo_list,d) =
 	  let fun pr _ (symbol, sigexp, path) =
 		  (case path
-                    of SOME p => (ppSym ppstrm symbol; ppsay " = ";
+                    of SOME p => (ppSym ppstrm symbol; pps " = ";
                                   ppSigExp context ppstrm (sigexp,d);
                                   break ppstrm {nsp=1,offset=0}; pp_path ppstrm p)
-                     | NONE => (ppSym ppstrm symbol; ppsay " = ";
+                     | NONE => (ppSym ppstrm symbol; pps " = ";
                                 ppSigExp context ppstrm (sigexp,d)))
 	   in ppClosedSequence ppstrm
 	       {front=(C PP.string "structure "),
@@ -725,7 +731,7 @@ and ppSpec (context as (env,source_opt)) ppstrm =
 	  let fun pr _ (symbol, tyvar_list, tyo) =
 		  (case tyo
 		    of SOME ty =>
-                       (pp_tyvar_list (tyvar_list,d);ppSym ppstrm symbol; ppsay "= ";
+                       (pp_tyvar_list (tyvar_list,d);ppSym ppstrm symbol; pps "= ";
                         ppTy context ppstrm(ty, d))
 		     | NONE =>  (pp_tyvar_list (tyvar_list,d);ppSym ppstrm symbol))
 	   in ppClosedSequence ppstrm
@@ -738,53 +744,53 @@ and ppSpec (context as (env,source_opt)) ppstrm =
 	  end 
 	| ppSpec'(FctSpec sf_list,d) =
 	  let fun pr ppstrm (symbol, fsigexp) =
-                  (ppSym ppstrm symbol; ppsay " : ";
+                  (ppSym ppstrm symbol; pps " : ";
                    ppFsigExp context ppstrm (fsigexp, d-1)) 
-	   in openHVBox ppstrm (Rel 0);
+	   in openHVBox 0;
               ppvlist ppstrm ("functor ", "and ", pr, sf_list);
-              closeBox ppstrm
+              closeBox ()
 	  end 
 	| ppSpec'(ValSpec st_list,d) = 
 	  let fun pr ppstrm (symbol, ty) = 
-                  (ppSym ppstrm symbol; ppsay ":"; ppTy context ppstrm (ty, d)) 
-	   in openHVBox ppstrm (Rel 0);
+                  (ppSym ppstrm symbol; pps ":"; ppTy context ppstrm (ty, d)) 
+	   in openHVBox 0;
               ppvlist ppstrm ("val ", "and ", pr, st_list);
-              closeBox ppstrm
+              closeBox ()
 	  end 
 	| ppSpec'(DataSpec{datatycs,withtycs=[]},d) = 
 	  let fun pr ppstrm (dbing) = (ppDb context ppstrm (dbing, d))
-	   in openHVBox ppstrm (Rel 0);
+	   in openHVBox 0;
               ppvlist ppstrm ("datatype ", "and ", pr, datatycs);
-              closeBox ppstrm
+              closeBox ()
 	  end 
 	| ppSpec'(DataSpec {datatycs, withtycs},d) = 
 	  let fun prd ppstrm (dbing) = (ppDb context ppstrm (dbing, d))
 	      fun prw ppstrm (tbing) = (ppTb context ppstrm (tbing, d))
-	   in (openHVBox ppstrm (PP.Rel 0);
+	   in (openHVBox 0;
                ppvlist ppstrm ("datatype ", "and ", prd, datatycs);
 	       newline ppstrm;
                ppvlist ppstrm ("datatype ", "and ", prw, withtycs);
-	       closeBox ppstrm)
+	       closeBox ())
 	  end
 	| ppSpec'(ExceSpec sto_list,d) = 
 	  let fun pr ppstrm (symbol, tyo) =
 		  (case tyo
 		    of SOME ty =>
-                       (ppSym ppstrm symbol; ppsay " : ";
+                       (ppSym ppstrm symbol; pps " : ";
                         ppTy context ppstrm (ty, d))
 		     | NONE =>  ppSym ppstrm symbol)
-	   in openHVBox ppstrm (Rel 0);
+	   in openHVBox 0;
               ppvlist ppstrm ("exception ", "and ", pr, sto_list);
-              closeBox ppstrm
+              closeBox ()
 	  end 
 	| ppSpec'(ShareStrSpec paths,d) = 
-	   (openHVBox ppstrm (Rel 0);
+	   (openHVBox 0;
             ppvlist ppstrm ("sharing ", " = ", pp_path, paths);
-            closeBox ppstrm)
+            closeBox ())
         | ppSpec'(ShareTycSpec paths,d) = 
-	   (openHVBox ppstrm (Rel 0);
+	   (openHVBox 0;
             ppvlist ppstrm ("sharing type ", " = ", pp_path, paths);
-            closeBox ppstrm)
+            closeBox ())
 	| ppSpec'(IncludeSpec sigexp ,d) = ppSigExp context ppstrm (sigexp, d)
 	| ppSpec'(MarkSpec (m,r),d) = ppSpec context ppstrm (m,d)
   in
@@ -792,26 +798,26 @@ and ppSpec (context as (env,source_opt)) ppstrm =
   end
 
 and ppDec (context as (env,source_opt)) ppstrm =
-  let val ppsay = PP.string ppstrm
+  let val {openHOVBox, openHVBox, closeBox, pps, ppi, ...} = en_pp ppstrm
       val pp_symbol_list = pp_path ppstrm
 
-      fun ppDec'(_,0) = ppsay "<dec>"
+      fun ppDec'(_,0) = pps "<dec>"
         | ppDec'(ValDec (vbs, tyvars),d) =
-	  (openHVBox ppstrm (PP.Rel 0);
+	  (openHVBox 0;
 	   ppvlist ppstrm ("val ","and ",
 	     (fn ppstrm => fn vb => ppVb context ppstrm (vb,d-1)),vbs);
-	   closeBox ppstrm)
+	   closeBox ())
 	| ppDec'(ValrecDec (rvbs, tyvars),d) = 
-	  (openHVBox ppstrm (PP.Rel 0);
+	  (openHVBox 0;
 	   ppvlist ppstrm ("val rec ","and ",
 	     (fn ppstrm => fn rvb => ppRvb context ppstrm (rvb,d-1)),rvbs);
-	   closeBox ppstrm)
+	   closeBox ())
         | ppDec'(FunDec (fbs,tyvars),d) =
-	  (openHVBox ppstrm (PP.Rel 0);
+	  (openHVBox 0;
 	   ppvlist' ppstrm ("fun ","and ",
 	     (fn ppstrm => fn str => fn fb => ppFb context ppstrm str (fb,d-1)),
              fbs);
-	   closeBox ppstrm)
+	   closeBox ())
         | ppDec'(TypeDec tycs,d) =
 	  let fun pr ppstrm (tyc) = (ppTb context ppstrm (tyc, d))
 	   in ppClosedSequence ppstrm
@@ -835,7 +841,7 @@ and ppDec (context as (env,source_opt)) ppstrm =
         | ppDec'(DatatypeDec{datatycs,withtycs},d) = 
 	  let fun prd ppstrm dbing = (ppDb context ppstrm (dbing, d))
 	      fun prw ppstrm tbing = (ppTb context ppstrm (tbing, d))
-	   in (openHVBox ppstrm (PP.Rel 0);
+	   in (openHVBox 0;
 	        ppClosedSequence ppstrm
 		  {front=(C PP.string "datatype "),
 		   sep=(fn ppstrm => (break ppstrm {nsp=1,offset=0})),
@@ -851,12 +857,12 @@ and ppDec (context as (env,source_opt)) ppstrm =
 		  pr=prw,
 		  style=INCONSISTENT}
 		 withtycs;
-	       closeBox ppstrm)
+	       closeBox ())
 	  end
 	| ppDec'(AbstypeDec{abstycs,withtycs=[],body},d) = 
 	  let fun prd ppstrm dbing = (ppDb context ppstrm (dbing, d))
 	      fun prw ppstrm tbing = (ppTb context ppstrm (tbing, d))
-	   in (openHVBox ppstrm (PP.Rel 0);
+	   in (openHVBox 0;
 	        (ppClosedSequence ppstrm
 		   {front=(C PP.string "datatype "),
 		    sep=(fn ppstrm => (break ppstrm {nsp=1,offset=0})),
@@ -866,12 +872,12 @@ and ppDec (context as (env,source_opt)) ppstrm =
 		   abstycs);
 	       newline ppstrm;
 	       ppDec' (body, d);
-	       closeBox ppstrm)
+	       closeBox ())
 	  end
         | ppDec'(AbstypeDec{abstycs,withtycs,body},d) = 
 	  let fun prd _ (dbing) = (ppDb context ppstrm (dbing, d))
 	      fun prw _ (tbing) = (ppTb context ppstrm (tbing, d))
-	   in (openHVBox ppstrm (PP.Rel 0);
+	   in (openHVBox 0;
 	        (ppClosedSequence ppstrm
 		   {front=(C PP.string "datatype "),
 		    sep=(fn ppstrm => (break ppstrm {nsp=1,offset=0})),
@@ -889,12 +895,12 @@ and ppDec (context as (env,source_opt)) ppstrm =
 		  withtycs);
 	       newline ppstrm;
 	       ppDec' (body, d);
-	       closeBox ppstrm)
+	       closeBox ())
 	  end
         | ppDec'(ExceptionDec ebs,d) =
-	  (openHVBox ppstrm (PP.Rel 0);
+	  (openHVBox 0;
 	   ((fn ppstrm => fn eb => ppEb context ppstrm (eb,d-1)),ebs);
-	   closeBox ppstrm)
+	   closeBox ())
         | ppDec'(StrDec sbs,d) =
           let fun pr _ (sbing) = (ppStrb context ppstrm (sbing, d))
 		in ppClosedSequence ppstrm
@@ -911,95 +917,95 @@ and ppDec (context as (env,source_opt)) ppstrm =
 		     break ppstrm {nsp=1,offset=2};
 		     ppStrExp context ppstrm (def,d-1))
 		| f _ _ = bug "ppDec':ABSdec"
-	   in openHVBox ppstrm (PP.Rel 0);
+	   in openHVBox 0;
 	      ppvlist ppstrm ("abstraction ","and ", f, sbs);
-	      closeBox ppstrm
+	      closeBox ()
 	  end
         | ppDec'(FctDec fbs,d) = 
 	  let fun f ppstrm fctb = ppFctb context ppstrm (fctb,d)
-	   in openHVBox ppstrm (PP.Rel 0);
+	   in openHVBox 0;
 	      ppvlist ppstrm ("functor ","and ", f, fbs);
-              closeBox ppstrm
+              closeBox ()
 	  end
         | ppDec'(SigDec sigvars,d) = 
 	  let fun f ppstrm (Sigb{name=fname, def}) =
-                  (ppSym ppstrm fname; ppsay " =";
+                  (ppSym ppstrm fname; pps " =";
 		   newline ppstrm;
 		   ppSigExp context ppstrm (def,d))
 		| f ppstrm (MarkSigb(t,r)) = f ppstrm t
-	   in openHVBox ppstrm (PP.Rel 0);
+	   in openHVBox 0;
 	      ppvlist ppstrm ("signature ","and ", f, sigvars);
-              closeBox ppstrm
+              closeBox ()
 	  end
         | ppDec'(FsigDec sigvars,d) = 
 	  let fun pr ppstrm sigv = ppFsigb context ppstrm (sigv,d)
-	   in openHVBox ppstrm (PP.Rel 0);
+	   in openHVBox 0;
 	       ppSequence ppstrm
 	         {sep=newline,
 	          pr=pr,
 	          style=CONSISTENT}
 	         sigvars;
-	      closeBox ppstrm
+	      closeBox ()
 	  end
         | ppDec'(LocalDec(inner,outer),d) =
-	    (openHVBox ppstrm (PP.Rel 0);
-	     ppsay "local"; nl_indent ppstrm 2;
+	    (openHVBox 0;
+	     pps "local"; nl_indent ppstrm 2;
 	     ppDec'(inner,d-1); newline ppstrm;
-	     ppsay "in ";
+	     pps "in ";
 	     ppDec'(outer,d-1); newline ppstrm;
-	     ppsay "end";
-	     closeBox ppstrm)
+	     pps "end";
+	     closeBox ())
         | ppDec'(SeqDec decs,d) =
-	    (openHVBox ppstrm (PP.Rel 0);
+	    (openHVBox 0;
 	     ppSequence ppstrm
 	       {sep=newline,
 	        pr=(fn ppstrm => fn dec => ppDec'(dec,d)),
 	        style=CONSISTENT}
 	        decs;
-	     closeBox ppstrm)
+	     closeBox ())
         | ppDec'(OpenDec strbs,d) = 
-	  (openHVBox ppstrm (PP.Rel 0);
-	   ppsay "open ";
+	  (openHVBox 0;
+	   pps "open ";
 	   ppSequence ppstrm
 	     {sep=(fn ppstrm => break ppstrm {nsp=1,offset=0}),
 	      pr=(fn ppstrm => fn sp => pp_symbol_list sp),
 	      style=INCONSISTENT}
              strbs;
-	   closeBox ppstrm)
+	   closeBox ())
         | ppDec'(OvldDec (sym, ty, explist),d) = ppSym ppstrm sym
 	| ppDec'(FixDec {fixity,ops},d) =
-	  (openHVBox ppstrm (PP.Rel 0);
+	  (openHVBox 0;
 	   case fixity
-	     of NONfix => ppsay "nonfix "
+	     of NONfix => pps "nonfix "
 	      | INfix (i,_) => 
 		 (if i mod 2 = 0 then 
-		      ppsay "infix "
-		  else ppsay "infixr ";
+		      pps "infix "
+		  else pps "infixr ";
 		  if i div 2 > 0 then
-		      (ppsay(Int.toString(i div 2));
-		       ppsay " ")
+		      (pps(Int.toString(i div 2));
+		       pps " ")
 		  else ());
 	   ppSequence ppstrm
 	     {sep=(fn ppstrm => break ppstrm {nsp=1,offset=0}),
 	      pr=ppSym,style=INCONSISTENT}
 	     ops;
-	   closeBox ppstrm)
+	   closeBox ())
 
         | ppDec'(MarkDec(dec,(s,e)),d) =  
 	   (case source_opt
 	      of SOME source =>
-	         (ppsay "MarkDec(";
-		  ppDec'(dec,d); ppsay ",";
-		  prpos(ppstrm,source,s); ppsay ",";
-		  prpos(ppstrm,source,e); ppsay ")")
+	         (pps "MarkDec(";
+		  ppDec'(dec,d); pps ",";
+		  prpos(ppstrm,source,s); pps ",";
+		  prpos(ppstrm,source,e); pps ")")
 	       | NONE => ppDec'(dec,d))
 	  
      in ppDec'
     end
 
 and ppVb (context as (env,source_opt)) ppstrm =
-    let val ppsay = PP.string ppstrm
-	fun ppVb'(_,0)= ppsay "<binding>"
+    let val pps = PP.string ppstrm
+	fun ppVb'(_,0)= pps "<binding>"
 	  | ppVb'(Vb{pat,exp,...},d) = 
 		(openHVBox ppstrm (PP.Rel 0);
 	  	 ppPat context ppstrm (pat,d-1); PP.string ppstrm " =";
@@ -1011,8 +1017,8 @@ and ppVb (context as (env,source_opt)) ppstrm =
     end
 
 and ppRvb (context as (_,source_opt)) ppstrm  = 
-    let val ppsay = PP.string ppstrm
-	fun ppRvb'(_,0)= ppsay "<rec binding>"
+    let val pps = PP.string ppstrm
+	fun ppRvb'(_,0)= pps "<rec binding>"
 	  | ppRvb'(Rvb{var, exp, ...},d) =
 	     (openHOVBox ppstrm (PP.Rel 0);
 	      ppSym ppstrm var; PP.string ppstrm " =";
@@ -1024,8 +1030,8 @@ and ppRvb (context as (_,source_opt)) ppstrm  =
     end
 
 and ppFb (context as (_,source_opt)) ppstrm head = 
-    let val ppsay = PP.string ppstrm
-	fun ppFb'(_,0)= ppsay "<FunBinding>"
+    let val pps = PP.string ppstrm
+	fun ppFb'(_,0)= pps "<FunBinding>"
 	  | ppFb'(Fb (clauses, ops),d) =
               ppvlist ppstrm (head, "  | ",
 	       (fn ppstrm => fn (cl: clause) => (ppClause context ppstrm (cl,d))),
@@ -1036,7 +1042,7 @@ and ppFb (context as (_,source_opt)) ppstrm head =
     end
 
 and ppClause (context as (_,source_opt)) ppstrm =
-    let val ppsay = PP.string ppstrm
+    let val pps = PP.string ppstrm
         fun ppClause' (Clause{pats, resultty, exp}, d) =
 	    let fun pr _ {item:pat,fixity:symbol option,region:region} =
 		    (case fixity
@@ -1078,7 +1084,7 @@ and ppClause (context as (_,source_opt)) ppstrm =
     end
 
 and ppTb (context as (_,source_opt)) ppstrm  = 
-    let val ppsay = PP.string ppstrm
+    let val pps = PP.string ppstrm
 	fun pp_tyvar_list (symbol_list, d) =
 	    let fun pr _ (tyvar) = (ppTyvar context ppstrm (tyvar, d))
 	     in ppSequence ppstrm
@@ -1089,7 +1095,7 @@ and ppTb (context as (_,source_opt)) ppstrm  =
 		 symbol_list
 	    end
 
-	  fun ppTb'(_,0)= ppsay "<T.binding>"
+	  fun ppTb'(_,0)= pps "<T.binding>"
 	    | ppTb'(Tb{tyc,def,tyvars},d) = 
 		(openHOVBox ppstrm (PP.Rel 0);
 	  	  ppSym ppstrm tyc; PP.string ppstrm " =";
@@ -1102,7 +1108,7 @@ and ppTb (context as (_,source_opt)) ppstrm  =
     end
 
 and ppDb (context as (_,source_opt)) ppstrm  = 
-    let val ppsay = PP.string ppstrm
+    let val pps = PP.string ppstrm
 	fun pp_tyvar_list (symbol_list, d) =
 	    let fun pr _ (tyvar) = (ppTyvar context ppstrm (tyvar, d))
 	     in ppSequence ppstrm
@@ -1112,7 +1118,7 @@ and ppDb (context as (_,source_opt)) ppstrm  =
 		  style=INCONSISTENT}
 		 symbol_list
 	    end
-	fun ppDb'(_,0)= ppsay "<D.binding>"
+	fun ppDb'(_,0)= pps "<D.binding>"
 	  | ppDb'(Db{tyc,tyvars,rhs,lazyp},d) = 
 	     (openHOVBox ppstrm (PP.Rel 0);
 	      ppSym ppstrm tyc; PP.string ppstrm " =";
@@ -1124,13 +1130,13 @@ and ppDb (context as (_,source_opt)) ppstrm  =
     end
 
 and ppDbrhs (context as (_,source_opt)) ppstrm =
-    let val ppsay = PP.string ppstrm
-	fun ppDbrhs'(_,0)= ppsay "<dbrhs>"
+    let val pps = PP.string ppstrm
+	fun ppDbrhs'(_,0)= pps "<dbrhs>"
 	  | ppDbrhs'(Constrs const,d) = 
 	    let fun pr ppstrm (sym:symbol, tv:Ast.ty option) =
 		    (case tv
 		       of SOME a =>
-			  (ppSym ppstrm sym; ppsay" of "; ppTy context ppstrm (a, d))
+			  (ppSym ppstrm sym; pps" of "; ppTy context ppstrm (a, d))
 		        | NONE =>
 			  (ppSym ppstrm sym))
 	        in  ppSequence ppstrm
@@ -1151,9 +1157,9 @@ and ppDbrhs (context as (_,source_opt)) ppstrm =
     end
 
 and ppEb (context as (_,source_opt)) ppstrm =
-    let val ppsay = PP.string ppstrm
+    let val pps = PP.string ppstrm
         val pp_symbol_list = pp_path ppstrm
-	fun ppEb'(_,0)= ppsay "<Eb>"
+	fun ppEb'(_,0)= pps "<Eb>"
 	  | ppEb'(EbGen{exn, etype},d) = 
 	     (case etype
 	        of SOME a => 
@@ -1177,8 +1183,8 @@ and ppEb (context as (_,source_opt)) ppstrm =
     end
 
 and ppStrb (context as (_,source_opt)) ppstrm =
-    let val ppsay = PP.string ppstrm
-	fun ppStrb'(_,0)= ppsay "<Strb>"
+    let val pps = PP.string ppstrm
+	fun ppStrb'(_,0)= pps "<Strb>"
 	  | ppStrb'(Strb{name,def,constraint},d) = 
 	     (openHVBox ppstrm (PP.Rel 0);
 	      ppSym ppstrm name; PP.string ppstrm " :";
@@ -1190,16 +1196,16 @@ and ppStrb (context as (_,source_opt)) ppstrm =
     end
 
 and ppFctb (context as (_,source_opt)) ppstrm =
-    let val ppsay = PP.string ppstrm
-	fun ppFctb'(_,0)= ppsay "<Fctb>"
+    let val pps = PP.string ppstrm
+	fun ppFctb'(_,0)= pps "<Fctb>"
 	  | ppFctb'(Fctb{name,def=BaseFct{params,body,constraint}},d) =
 	    (openHVBox ppstrm (PP.Rel 0);
              ppSym ppstrm name;
              let fun pr ppstrm (SOME symbol, sigexp) =
-                     (ppsay "("; ppSym ppstrm symbol; ppsay " : ";
-                      ppSigExp context ppstrm (sigexp, d); ppsay ")")
+                     (pps "("; ppSym ppstrm symbol; pps " : ";
+                      ppSigExp context ppstrm (sigexp, d); pps ")")
                    | pr ppstrm (NONE, sigexp) =
-                     (ppsay "("; ppSigExp context ppstrm (sigexp, d); ppsay ")")
+                     (pps "("; ppSigExp context ppstrm (sigexp, d); pps ")")
               in (ppSequence ppstrm
                     {sep=(fn ppstrm => (break ppstrm {nsp=1,offset=0})),
                      pr = pr,
@@ -1208,13 +1214,13 @@ and ppFctb (context as (_,source_opt)) ppstrm =
                   case constraint
                     of NoSig => ()
                      | Transparent(sigexp) => 
-                       (ppsay " :"; break ppstrm {nsp=1,offset=2};
+                       (pps " :"; break ppstrm {nsp=1,offset=2};
                         ppSigExp context ppstrm (sigexp,d))
                      | Opaque(sigexp) => 
-                       (ppsay " :>"; break ppstrm {nsp=1,offset=2};
+                       (pps " :>"; break ppstrm {nsp=1,offset=2};
                         ppSigExp context ppstrm (sigexp,d));
                   nbSpace ppstrm 1;
-                  ppsay "="; break ppstrm {nsp=1,offset=0};
+                  pps "="; break ppstrm {nsp=1,offset=0};
                   ppStrExp context ppstrm (body,d))
               end;
              closeBox ppstrm)
@@ -1229,11 +1235,11 @@ and ppFctb (context as (_,source_opt)) ppstrm =
     end
 
 and ppFsigb (context as (_,source_opt)) ppstrm =
-    let val ppsay = PP.string ppstrm
-	fun ppFsigb'(_,0)= ppsay "<Fsigb>"
+    let val pps = PP.string ppstrm
+	fun ppFsigb'(_,0)= pps "<Fsigb>"
 	  | ppFsigb'(Fsigb{name,def},d) = 
 	    (openHVBox ppstrm (PP.Rel 0);
-	      ppsay "funsig "; ppSym ppstrm name; ppsay " =";
+	      pps "funsig "; ppSym ppstrm name; pps " =";
 	      break ppstrm {nsp=1,offset=2}; ppFsigExp context ppstrm (def,d-1);
 	     closeBox ppstrm)
 	  | ppFsigb'(MarkFsigb (t,r),d) = ppFsigb context ppstrm (t,d)
@@ -1242,8 +1248,8 @@ and ppFsigb (context as (_,source_opt)) ppstrm =
     end
 
 and ppTyvar (context as (_,source_opt)) ppstrm =
-    let val ppsay = PP.string ppstrm
-	fun ppTyvar'(_,0)= ppsay "<tyvar>"
+    let val pps = PP.string ppstrm
+	fun ppTyvar'(_,0)= pps "<tyvar>"
 	  | ppTyvar'(Tyv s,d) = (ppSym ppstrm s) 
 	  | ppTyvar'(MarkTyv (t,r),d) = ppTyvar context ppstrm (t,d)
     in
@@ -1251,8 +1257,8 @@ and ppTyvar (context as (_,source_opt)) ppstrm =
     end
 
 and ppTy (context as (env, source_opt)) ppstrm =			
-  let val ppsay = PP.string ppstrm
-      fun ppTy' (_,0) = ppsay "<type>"
+  let val pps = PP.string ppstrm
+      fun ppTy' (_,0) = pps "<type>"
         | ppTy' (VarTy t,d) =  (ppTyvar context ppstrm (t,d))
 	| ppTy' (ConTy (tycon, []),d) =
 	  (openHVBox ppstrm (PP.Rel 1);
@@ -1265,7 +1271,7 @@ and ppTy (context as (env, source_opt)) ppstrm =
 	         if S.eq(S.tycSymbol("->"), tyc) then
                    (case args
                       of [dom,ran] =>
-                         (ppTy' (dom,d-1); ppsay " ->"; break ppstrm {nsp=1,offset=2};
+                         (ppTy' (dom,d-1); pps " ->"; break ppstrm {nsp=1,offset=2};
                           ppTy' (ran,d-1))
                        | _ => EM.impossible "wrong args for -> type")
 		 else (ppTypeArgs(args,d);
@@ -1277,7 +1283,7 @@ and ppTy (context as (env, source_opt)) ppstrm =
 
 	| ppTy' (RecordTy s, d) = 
 	  let fun pr ppstrm (sym:symbol, tv:Ast.ty) = 
-		  (ppSym ppstrm sym; ppsay ":"; ppTy context ppstrm (tv, d))
+		  (ppSym ppstrm sym; pps ":"; ppTy context ppstrm (tv, d))
 	  in  ppClosedSequence ppstrm
 	        {front=(C PP.string "{"),
 		 sep=(fn ppstrm => (PP.string ppstrm ",";
@@ -1301,9 +1307,9 @@ and ppTy (context as (env, source_opt)) ppstrm =
 	| ppTypeArgs ([ty],d) = 
 	  (if strength ty <= 1
 	   then (openHOVBox ppstrm (PP.Rel 1);
-                 ppsay "("; 
+                 pps "("; 
                  ppTy' (ty,d); 
-                 ppsay ")";
+                 pps ")";
                  closeBox ppstrm)
 	   else ppTy' (ty,d);
 	   break ppstrm {nsp=1,offset=0})

@@ -14,6 +14,17 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: David MacQueen (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/05/03
+Revision: r2492
+Description:
+
+Merge of the primop3 branch (base) into the trunk to create 110.63.1.
+Significant changes in FLINT and the front end, mostly having to do
+with a reorganized system for handling primops.  Various bug fixes
+and improvements in printing signatures.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2007/04/24
 Description:

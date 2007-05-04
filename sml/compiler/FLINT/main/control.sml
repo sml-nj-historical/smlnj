@@ -40,6 +40,13 @@ struct
     val printPhases	= new (flag_cvt, "print-phases", "show phases", false)
     val printFctTypes   = new (flag_cvt, "print-fct-types",
 			       "show function types", false)
+    val plchk           = new (flag_cvt, "plchk", "typecheck plambda", false)
+    val nmdebugging     = new (flag_cvt, "nmdebugging", 
+			       "PLambda normalization debugging", false)
+    val redebugging     = new (flag_cvt, "redebugging",
+			       "reify phase debugging", false)
+    val rtdebugging     = new (flag_cvt, "rtdebugging", 
+			       "runtime types(?) debugging", false)
     (* `split' should probably be called just after `fixfix' since
      * fcontract might eliminate some uncurry wrappers which are
      * locally unused but could be cross-module inlined. *)
@@ -52,6 +59,9 @@ struct
 	      "wrap", "fcontract", "reify",
 	      (*"abcopt",*) "fcontract", "fixfix", "fcontract+eta"])
 			  
+    val tmdebugging = new (flag_cvt, "tmdebugging", "?", false)  (* TransTypes *)
+    val trdebugging = new (flag_cvt, "trdebugging", "?", false)  (* Translate *)
+
     val inlineThreshold = new (int_cvt, "inline-theshold",
 			       "inline threshold", 16)
     (* val splitThreshold  = ref 0 *)

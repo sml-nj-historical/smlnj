@@ -4,10 +4,10 @@
 signature PPTABLE =
 sig
   exception PP_NOT_INSTALLED
-  val pp_object : PrettyPrint.stream -> Stamps.stamp -> Unsafe.Object.object
+  val pp_object : PrettyPrintNew.stream -> Stamps.stamp -> Unsafe.Object.object
                   -> unit
   val install_pp : string list -> 
-                   (PrettyPrint.stream -> Unsafe.Object.object -> unit) -> unit
+                   (PrettyPrintNew.stream -> Unsafe.Object.object -> unit) -> unit
 end
 
 structure PPTable : PPTABLE =
@@ -44,7 +44,7 @@ struct
     | make_path _ = error "install_pp: empty path" 
 
   fun install_pp (path_names: string list)
-                 (p: PrettyPrint.stream -> object -> unit) =
+                 (p: PrettyPrintNew.stream -> object -> unit) =
       let val sym_path = make_path(path_names,[])
 	  val tycon = Lookup.lookTyc ((#static(EnvRef.combined())),
 		sym_path,

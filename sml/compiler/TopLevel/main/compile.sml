@@ -74,7 +74,7 @@ struct
     (** instrumenting the abstract syntax to do time- and space-profiling *)
     fun instrument {source, senv, compInfo} =
 	SProf.instrumDec (senv, compInfo) source 
-	o TProf.instrumDec InlInfo.isPrimCallcc (senv, compInfo)
+	o TProf.instrumDec PrimOpId.isPrimCallcc (senv, compInfo)
 	o TDPInstrument.instrument isSpecial (senv, compInfo)
     end
 
@@ -92,7 +92,8 @@ struct
 	in
 	    Translate.transDec { rootdec = absyn,
 				 exportLvars = exportLvars,
-				 env = statenv,
+				 oldenv = oldstatenv,
+                                 env = statenv,
 				 cproto_conv = cproto_conv,
 				 compInfo = compInfo }
 	end

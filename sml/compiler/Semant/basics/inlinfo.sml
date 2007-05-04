@@ -2,57 +2,72 @@
  *
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
+
+(* [dbm, 6/19/06]
+     Folded ii.sml into this structure, eliminating exn hack.
+     Changed name of pureInfo to isPrimCast.
+     Eliminated redundant INL_PRIM, INL_STR, INL_NO. *)
+
 structure InlInfo : INL_INFO = struct
 
     fun bug s = ErrorMsg.impossible ("InlInfo: " ^ s)
 
     exception E of PrimOp.primop * Types.ty
 
-    type inl_info = II.ii
+    datatype inl_info
+      = Info of PrimOp.primop * Types.ty
+      | List of inl_info list
+      | Null
 
-    val INL_PRIM = II.Info o E
-    val INL_STR = II.List
-    val INL_NO = II.Null
+(* alternative types:
+    datatype primInfo = Prim of int | Null
+    datatype strElemInfo = PrimE of primInfo
+                         | StrE of strInfo
+    withtype strInfo = strElemInfo list
+*)
+
+    fun isPrimop (Info _) = true
+      | isPrimop _ = false
+
+    fun selStrInfo (List l, i) =
+	(List.nth (l, i) handle Subscript => bug "Wrong field in List")
+      | selStrInfo (Null, _) = Null
+      | selStrInfo (Info _, i) = bug "Unexpected selection from Info"
+   
 
     fun match i { inl_prim, inl_str, inl_no } =
-	case i of
-	    II.Info (E x) => inl_prim x
-	  | II.Info _ => bug "bogus Info node"
-	  | II.List l => inl_str l
-	  | II.Null => inl_no ()
+	case i
+	  of Info x => inl_prim x
+	   | List l => inl_str l
+	   | Null => inl_no ()
 
     fun prInfo i = let
 	fun loop (i, acc) =
-	    match i { inl_prim = fn (p, _) => PrimOp.prPrimop p :: acc,
-		      inl_no = fn () => "<InlNo>" :: acc,
-		      inl_str = fn [] => "{}" :: acc
-				 | h::t =>
-				   "{" :: loop (h,
-						foldr (fn (x, a) =>
-							  "," :: loop (x, a))
-						      ("}" :: acc)
-						      t) }
+	    case i
+              of Info (p,_) => PrimOp.prPrimop p :: acc
+	       | Null => "<InlNo>" :: acc
+	       | List m => 
+                 (case m
+                   of [] => "{}" :: acc
+		    | h::t =>
+		      "{" :: loop (h,foldr (fn (x, a) => "," :: loop (x, a))
+                                           ("}" :: acc)
+					   t))
     in
 	concat (loop (i, []))
     end
 
-    val selInfo = II.sel
-
-    val isPrimInfo = II.isSimple
-
-    fun isPrimCallcc (II.Info (E ((PrimOp.CALLCC | PrimOp.CAPTURE), _))) = true
+    fun isPrimCallcc (Info ((PrimOp.CALLCC | PrimOp.CAPTURE), _)) = true
       | isPrimCallcc _ = false
 
-    fun pureInfo (II.Info (E (p, _))) =
-	let fun isPure PrimOp.CAST = true
-	      | isPure _ = false
-	(* val isPure = PrimOp.purePrimop *)
-	in
-	    isPure p
-	end
-      | pureInfo _ = false
+    fun isPrimCast (Info (PrimOp.CAST, _)) = true
+      | isPrimCast _ = false
 
-    val mkPrimInfo = INL_PRIM
-    val mkStrInfo = INL_STR
-    val nullInfo = INL_NO
-end
+    val mkPrimInfo = Info
+    val mkStrInfo = List
+    val nullInfo = Null
+
+    fun primopTy (Info (_, ty)) = SOME ty
+      | primopTy _ = NONE
+
+end (* structure InlInfo *)

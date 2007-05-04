@@ -84,6 +84,7 @@ in
 
     structure A = Access
     structure DI = DebIndex
+    structure LT = Lty
     structure LK = LtyKernel
     structure PT = PrimTyc
     structure F = FLINT
@@ -91,7 +92,7 @@ in
     structure SP = SymPath
     structure IP = InvPath
     structure MI = ModuleId
-    structure II = InlInfo
+    structure POI = PrimOpId
     structure V = VarCon
     structure ED = EntPath.EvDict
     structure PS = PersStamps
@@ -112,11 +113,11 @@ in
 	else if Symbol.eq (a, b) then EQUAL else LESS
 
     structure LTMap = MapFn
-	(struct type ord_key = LK.lty val compare = LK.lt_cmp end)
+	(struct type ord_key = LT.lty val compare = LT.lt_cmp end)
     structure TCMap = MapFn
-	(struct type ord_key = LK.tyc val compare = LK.tc_cmp end)
+	(struct type ord_key = LT.tyc val compare = LT.tc_cmp end)
     structure TKMap = MapFn
-	(struct type ord_key = LK.tkind val compare = LK.tk_cmp end)
+	(struct type ord_key = LT.tkind val compare = LT.tk_cmp end)
     structure DTMap = StampMap
     structure MBMap = StampMap
 
@@ -137,17 +138,18 @@ in
     (* type info *)
     val (NK, AO, CO, PO, CS, A, CR, LT, TC, TK,
 	 V, C, E, FK, RK, ST, MI, EQP, TYCKIND, DTI,
-	 DTF, TYCON, T, II, VAR, SD, SG, FSG,  SP, EN,
+	 DTF, TYCON, T, PI, VAR, SD, SG, FSG,  SP, EN,
 	 STR, F, STE, TCE, STRE, FE, EE, ED, EEV, FX,
 	 B, DCON, DICT, FPRIM, FUNDEC, TFUNDEC, DATACON, DTMEM, NRD,
 	 OVERLD, FCTC, SEN, FEN, SPATH, IPATH, STRID, FCTID, CCI, CTYPE,
-         CCALL_TYPE) =
+         CCALL_TYPE, SPE) =
 	(1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
 	 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 	 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
 	 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
 	 41, 42, 43, 44, 45, 46, 47, 48, 49,
-	 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60)
+	 50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
+         60, 61)
 
     (* this is a bit awful...
      * (we really ought to have syntax for "functional update") *)
@@ -509,10 +511,10 @@ in
 	val op $ = PU.$ TK
 	fun tk x =
 	    case LK.tk_out x of
-	    LK.TK_MONO => "A" $ []
-	  | LK.TK_BOX => "B" $ []
-	  | LK.TK_SEQ ks => "C" $ [list tkind ks]
-	  | LK.TK_FUN (ks, kr) => "D" $ [list tkind ks, tkind kr]
+	    LT.TK_MONO => "A" $ []
+	  | LT.TK_BOX => "B" $ []
+	  | LT.TK_SEQ ks => "C" $ [list tkind ks]
+	  | LT.TK_FUN (ks, kr) => "D" $ [list tkind ks, tkind kr]
     in
 	share TKs tk x
     end
@@ -522,13 +524,13 @@ in
 	    val op $ = PU.$ LT
 	    fun ltyI x =
 		case LK.lt_out x of
-		    LK.LT_TYC tc => "A" $ [tyc tc]
-		  | LK.LT_STR l => "B" $ [list lty l]
-		  | LK.LT_FCT (ts1, ts2) => "C" $ [list lty ts1, list lty ts2]
-		  | LK.LT_POLY (ks, ts) => "D" $ [list tkind ks, list lty ts]
-		  | LK.LT_IND _ => bug "unexpected LT_IND in mkPickleLty"
-		  | LK.LT_ENV _ => bug "unexpected LT_ENV in mkPickleLty"
-		  | LK.LT_CONT _ => bug "unexpected LT_CONT in mkPickleLty"
+		    LT.LT_TYC tc => "A" $ [tyc tc]
+		  | LT.LT_STR l => "B" $ [list lty l]
+		  | LT.LT_FCT (ts1, ts2) => "C" $ [list lty ts1, list lty ts2]
+		  | LT.LT_POLY (ks, ts) => "D" $ [list tkind ks, list lty ts]
+		  | LT.LT_IND _ => bug "unexpected LT_IND in mkPickleLty"
+		  | LT.LT_ENV _ => bug "unexpected LT_ENV in mkPickleLty"
+		  | LT.LT_CONT _ => bug "unexpected LT_CONT in mkPickleLty"
 	in
 	    share LTs ltyI x
 	end
@@ -537,28 +539,29 @@ in
 	    val op $ = PU.$ TC
 	    fun tycI x =
 		case LK.tc_out x of
-		    LK.TC_VAR (db, i) => "A" $ [int (DI.di_toint db), int i]
-		  | LK.TC_NVAR n => "B" $ [lvar n]
-		  | LK.TC_PRIM t => "C" $ [int (PT.pt_toint t)]
-		  | LK.TC_FN (ks, tc) => "D" $ [list tkind ks, tyc tc]
-		  | LK.TC_APP (tc, l) => "E" $ [tyc tc, list tyc l]
-		  | LK.TC_SEQ l => "F" $ [list tyc l]
-		  | LK.TC_PROJ (tc, i) => "G" $ [tyc tc, int i]
-		  | LK.TC_SUM l => "H" $ [list tyc l]
-		  | LK.TC_FIX ((n, tc, ts), i) =>
-			"I" $ [int n, tyc tc, list tyc ts, int i]
-		  | LK.TC_ABS tc => "J" $ [tyc tc]
-		  | LK.TC_BOX tc => "K" $ [tyc tc]
-		  | LK.TC_TUPLE (_, l) => "L" $ [list tyc l]
-		  | LK.TC_ARROW (LK.FF_VAR (b1, b2), ts1, ts2) =>
+		    LT.TC_VAR (db, i) => "A" $ [int (DI.di_toint db), int i]
+		  | LT.TC_NVAR n => "B" $ [lvar n]
+		  | LT.TC_PRIM t => "C" $ [int (PT.pt_toint t)]
+		  | LT.TC_FN (ks, tc) => "D" $ [list tkind ks, tyc tc]
+		  | LT.TC_APP (tc, l) => "E" $ [tyc tc, list tyc l]
+		  | LT.TC_SEQ l => "F" $ [list tyc l]
+		  | LT.TC_PROJ (tc, i) => "G" $ [tyc tc, int i]
+		  | LT.TC_SUM l => "H" $ [list tyc l]
+		  | LT.TC_FIX{family={size=n,names,gen=tc,params=ts},index=i} =>
+			"I" $ [int n, list string (Vector.foldr (op ::) [] names),
+                               tyc tc, list tyc ts, int i]
+		  | LT.TC_ABS tc => "J" $ [tyc tc]
+		  | LT.TC_BOX tc => "K" $ [tyc tc]
+		  | LT.TC_TUPLE (_, l) => "L" $ [list tyc l]
+		  | LT.TC_ARROW (LT.FF_VAR (b1, b2), ts1, ts2) =>
 			"M" $ [bool b1, bool b2, list tyc ts1, list tyc ts2]
-		  | LK.TC_ARROW (LK.FF_FIXED, ts1, ts2) =>
+		  | LT.TC_ARROW (LT.FF_FIXED, ts1, ts2) =>
 			"N" $ [list tyc ts1, list tyc ts2]
-		  | LK.TC_PARROW _ => bug "unexpected TC_PARREW in mkPickleLty"
-		  | LK.TC_TOKEN (tk, t) => "O" $ [int (LK.token_int tk), tyc t]
-		  | LK.TC_IND _ => bug "unexpected TC_IND in mkPickleLty"
-		  | LK.TC_ENV _ => bug "unexpected TC_ENV in mkPickleLty"
-		  | LK.TC_CONT _ => bug "unexpected TC_CONT in mkPickleLty"
+		  | LT.TC_PARROW _ => bug "unexpected TC_PARREW in mkPickleLty"
+		  | LT.TC_TOKEN (tk, t) => "O" $ [int (LT.token_int tk), tyc t]
+		  | LT.TC_IND _ => bug "unexpected TC_IND in mkPickleLty"
+		  | LT.TC_ENV _ => bug "unexpected TC_ENV in mkPickleLty"
+		  | LT.TC_CONT _ => bug "unexpected TC_CONT in mkPickleLty"
 	in
 	    share TCs tycI x
 	end
@@ -663,11 +666,11 @@ in
 	    fun fk { cconv = F.CC_FCT, ... } = "2" $ []
 	      | fk { isrec, cconv = F.CC_FUN fixed, known, inline } =
 		case fixed of
-		    LK.FF_VAR (b1, b2) =>
+		    LT.FF_VAR (b1, b2) =>
 			"3" $ [option (list lty) (Option.map strip isrec),
 			       bool b1, bool b2, bool known,
 			       bool (isAlways inline)]
-		  | LK.FF_FIXED =>
+		  | LT.FF_FIXED =>
 			"4" $ [option (list lty) (Option.map strip isrec),
 			       bool known, bool (isAlways inline)]
 	in
@@ -947,15 +950,26 @@ in
 	    ty arg
 	end
 
+(* replaced by primId and strPrimElem below -- should be removed after
+ * testing. [dbm: 7/10/06]
 	val op $ = PU.$ II
 	fun inl_info i =
 	    II.match i { inl_prim = fn (p, t) => "A" $ [primop p, ty t],
 			 inl_str = fn sl => "B" $ [list inl_info sl],
 			 inl_no = fn () => "C" $ [] }
+*)
+
+        val op $ = PU.$ PI
+        fun primId (POI.Prim s) = "A" $ [string s]
+          | primId (POI.NonPrim) = "B" $ []
+
+        val op $ = PU.$ SPE
+        fun strPrimElem(POI.PrimE p) = "a" $ [primId p]
+          | strPrimElem(POI.StrE s) = "b" $ [list strPrimElem s]
 
 	val op $ = PU.$ VAR
-	fun var (V.VALvar { access = a, info, path, typ = ref t }) =
-	    "1" $ [access a, inl_info info, spath path, ty t]
+	fun var (V.VALvar { access = a, prim, path, typ = ref t }) =
+	    "1" $ [access a, primId prim, spath path, ty t]
 	  | var (V.OVLDvar { name, options = ref p,
 			     scheme = T.TYFUN { arity, body } }) =
 	    "2" $ [symbol name, list overld p, int arity, ty body]
@@ -1062,17 +1076,17 @@ in
 	    fun str (M.STRSIG { sign, entPath = p }) =
 		"A" $ [Signature sign, entPath p]
 	      | str M.ERRORstr = "B" $ []
-	      | str (M.STR (s as { sign, rlzn, access = a, info })) =
+	      | str (M.STR (s as { sign, rlzn, access = a, prim })) =
 		(case strStub s of
 		     (* stub represents just the strerec suspension! *)
 		     SOME (l, i) => "C" $ [Signature sign,
 					   libModSpec l,
 					   strId i,
 					   access a,
-					   inl_info info]
+					   list strPrimElem prim]
 		   | NONE => "D" $ [Signature sign,
 				    shStrEntity (MI.strId s) rlzn,
-				    access a, inl_info info])
+				    access a, list strPrimElem prim])
 	in
 	    str arg
 	end
@@ -1080,16 +1094,16 @@ in
 	and Functor arg = let
 	    val op $ = PU.$ F
 	    fun fct M.ERRORfct = "E" $ []
-	      | fct (M.FCT (f as { sign, rlzn, access = a, info })) =
+	      | fct (M.FCT (f as { sign, rlzn, access = a, prim })) =
 		(case fctStub f of
 		     SOME (l, i) => "F" $ [fctSig sign,
 					   libModSpec l,
 					   fctId i,
 					   access a,
-					   inl_info info]
+					   list strPrimElem prim]
 		   | NONE => "G" $ [fctSig sign,
 				    shFctEntity (MI.fctId f) rlzn,
-				    access a, inl_info info])
+				    access a, list strPrimElem prim])
 	in
 	    fct arg
 	end
@@ -1247,19 +1261,19 @@ in
 	fun newAccess i = A.PATH (A.EXTERN hash, i)
 	fun mapbinding (sym, (i, env, lvars)) =
 	    case StaticEnv.look (senv, sym) of
-		B.VALbind (V.VALvar {access=a, info=z, path=p, typ= ref t }) =>
+		B.VALbind (V.VALvar {access=a, prim=z, path=p, typ= ref t }) =>
 		(case a of
 		     A.LVAR k =>
 		     (i+1,
 		      StaticEnv.bind (sym,
 				      B.VALbind (V.VALvar
 						     { access = newAccess i,
-						       info = z, path = p,
+						       prim = z, path = p,
 						       typ = ref t}),
 				      env),
 		      k :: lvars)
 		   | _ => bug ("dontPickle 1: " ^ A.prAcc a))
-	      | B.STRbind (M.STR { sign = s, rlzn = r, access = a, info =z }) =>
+	      | B.STRbind (M.STR { sign = s, rlzn = r, access = a, prim =z }) =>
 		(case a of
 		     A.LVAR k => 
 		     (i+1,
@@ -1267,11 +1281,11 @@ in
 				      B.STRbind (M.STR
 						     { access = newAccess i,
 						       sign = s, rlzn = r,
-						       info = z }),
+						       prim = z }),
 				env),
 		      k :: lvars)
 		   | _ => bug ("dontPickle 2" ^ A.prAcc a))
-	      | B.FCTbind (M.FCT { sign = s, rlzn = r, access = a, info=z }) =>
+	      | B.FCTbind (M.FCT { sign = s, rlzn = r, access = a, prim = z }) =>
 		(case a of
 		     A.LVAR k => 
 		     (i+1,
@@ -1279,7 +1293,7 @@ in
 				      B.FCTbind (M.FCT
 						     { access = newAccess i,
 						       sign = s, rlzn = r,
-						       info = z }),
+						       prim = z }),
 				      env),
 		      k :: lvars)
 		   | _ => bug ("dontPickle 3" ^ A.prAcc a))

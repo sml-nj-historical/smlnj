@@ -11,8 +11,7 @@ sig
                         strLty : Modules.Structure * DebIndex.depth 
                                  * ElabUtil.compInfo -> PLambdaType.lty,
                         fctLty : Modules.Functor * DebIndex.depth 
-                                 * ElabUtil.compInfo -> PLambdaType.lty,
-			markLBOUND: DebIndex.depth * int -> int}
+                                 * ElabUtil.compInfo -> PLambdaType.lty}
 end (* signature TRANSTYPES *)
 
 structure TransTypes : TRANSTYPES = 
@@ -31,22 +30,21 @@ local structure BT = BasicTypes
       structure MU = ModuleUtil
       structure SE = StaticEnv
       structure TU = TypesUtil
+      structure PP = PrettyPrintNew
       open Types Modules ElabDebug
 in
 
 fun bug msg = ErrorMsg.impossible ("TransTypes: " ^ msg)
 val say = Control.Print.say 
-val debugging = Control.CG.tmdebugging
+val debugging = FLINT_Control.tmdebugging
 fun debugmsg (msg: string) =
   if !debugging then (say msg; say "\n") else ()
 val debugPrint = (fn x => debugPrint debugging x)
 val defaultError =
   EM.errorNoFile(EM.defaultConsumer(),ref false) SourceMap.nullRegion
 
-local
-structure PP = PrettyPrint
-in
 val env = StaticEnv.empty
+
 fun ppType x = 
  ((PP.with_pp (EM.defaultConsumer())
            (fn ppstrm => (PP.string ppstrm "find: ";
@@ -55,12 +53,16 @@ fun ppType x =
   handle _ => say "fail to print anything")
 
 fun ppTycon x = 
- ((PP.with_pp (EM.defaultConsumer())
-           (fn ppstrm => (PP.string ppstrm "find: ";
-                          PPType.resetPPType();
-                          PPType.ppTycon env ppstrm x)))
-  handle _ => say "fail to print anything")
-end
+    ((PP.with_pp (EM.defaultConsumer())
+        (fn ppstrm => (PP.string ppstrm "find: ";
+                       PPType.resetPPType();
+                       PPType.ppTycon env ppstrm x)))
+    handle _ => say "fail to print anything")
+
+
+fun ppLtyc ltyc = 
+    PP.with_default_pp (fn ppstrm => PPLty.ppTyc 20 ppstrm ltyc)
+
 
 (****************************************************************************
  *               TRANSLATING ML TYPES INTO FLINT TYPES                      *
@@ -91,25 +93,11 @@ fun tpsKnd (TP_VAR x) = #kind (TVI.fromExn x)
 fun genTT() = 
   let
 
-val nextmark = ref 0
-val markmap = ref IntRedBlackMap.empty
-fun markLBOUND (di, n) =
-    let val m = !nextmark
-    in
-	nextmark := m + 1;
-	markmap := IntRedBlackMap.insert (!markmap, m, (di, n));
-	m
-    end
-fun findLBOUND m =
-    case IntRedBlackMap.find (!markmap, m) of
-	SOME i => i
-      | NONE => ErrorMsg.impossible "transtypes:findLBOUND"
-	      
 fun tpsTyc d tp = 
   let fun h (TP_VAR x, cur) =
-	  let val { depth, num, ... } = TVI.fromExn x
+	  let val { tdepth, num, ... } = TVI.fromExn x
 	  in
-              LT.tcc_var(DI.calc(cur, depth), num)
+              LT.tcc_var(DI.calc(cur, tdepth), num)
 	  end
         | h (TP_TYC tc, cur) = tycTyc(tc, cur)
         | h (TP_SEL (tp, i), cur) = LT.tcc_proj(h(tp, cur), i)
@@ -196,8 +184,10 @@ and tycTyc(tc, d) =
         | h (DATATYPE {index, family, freetycs, stamps, root}, _) = 
               let val tc = dtsFam (freetycs, family)
                   val n = Vector.length stamps 
-                  (* invariant: n should be the length of family members *)
-               in LT.tcc_fix((n, tc, (map g freetycs)), index)
+                  val names = Vector.map (fn ({tycname,...}: dtmember) => Symbol.name tycname)
+                                         (#members family)
+                  (* invariant: n should be the number of family members *)
+               in LT.tcc_fix((n, names, tc, (map g freetycs)), index)
               end
         | h (ABSTRACT tc, 0) = (g tc) 
               (*>>> LT.tcc_abs(g tc) <<<*) 
@@ -262,13 +252,14 @@ and toTyc d t =
         end
 
       and h (INSTANTIATED t) = g t
-        | h (TV_MARK m) = let
-	      val (depth, num) = findLBOUND m
-	  in
-	      LT.tcc_var(DI.calc(d, depth), num)
-	  end
+        | h (LBOUND{depth,index}) =
+             LT.tcc_var(DI.calc(d, depth), index)
+        | h (UBOUND _) = LT.tcc_void
+            (* dbm: should this have been converted to a TV_MARK before
+             * being passed to toTyc? 
+	     * gk: Doesn't seem to experimentally *)
         | h (OPEN _) = LT.tcc_void
-        | h _ = LT.tcc_void  (* ZHONG? *)
+        | h _ = bug "toTyc:h" (* LITERAL and SCHEME should not occur *)
 
       and g (VARty tv) = (* h(!tv) *) lookTv tv
         | g (CONty(RECORDtyc _, [])) = LT.tcc_unit
@@ -284,12 +275,14 @@ and toTyc d t =
                else LT.tcc_app(tycTyc(tc, d), [g t1, g t2])
 	     | _ => LT.tcc_app (tycTyc (tc, d), map g ts))
         | g (CONty(tyc, ts)) = LT.tcc_app(tycTyc(tyc, d), map g ts)
-        | g (IBOUND i) = LT.tcc_var(DI.innermost, i)
+        | g (IBOUND i) = LT.tcc_var(DI.innermost, i) 
+			 (* [KM] IBOUNDs are encountered when toTyc
+                          * is called on the body of a POLYty in 
+                          * toLty (see below). *)
         | g (POLYty _) = bug "unexpected poly-type in toTyc"
         | g (UNDEFty) = bug "unexpected undef-type in toTyc"
-        | g (WILDCARDty) = bug "unexpected wildcard-type in toTyc"
-
-   in (g t) 
+        | g (WILDCARDty) = bug "unexpected wildcard-type in toTyc"      
+   in g t
   end
 
 and toLty d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) = toLty d body
@@ -417,7 +410,7 @@ and fctRlznLty (sign, rlzn, depth, compInfo) =
       | (FSIG{paramsig, bodysig, ...}, _,
          {closure as CLOSURE{env,...}, ...}) =>
         let val {rlzn=argRlzn, tycpaths=tycpaths} = 
-                INS.instParam {sign=paramsig, entEnv=env, depth=depth, 
+                INS.instParam {sign=paramsig, entEnv=env, tdepth=depth, 
                                rpath=InvPath.IPATH[], compInfo=compInfo,
                                region=SourceMap.nullRegion}
             val nd = DI.next depth
@@ -474,7 +467,7 @@ structure MIDict = RedBlackMapFn(struct type ord_key = ModuleId.modId
       fun tycTycLook (t as (GENtyc _ | DEFtyc _), d) = 
             let tid = MU.tycId t
              in (case MIDict.peek(!m1, tid)
-                  of SOME (t', od) => LT.tc_adj(t', od, d)
+                  of SOME (t', od) => LT.tc_adj(t', od, d) 
                    | NONE => 
                        let val x = tycTyc (t, d)
                            val _ = (m1 := TcDict.insert(!m1, tid, (x, d)))
@@ -517,8 +510,7 @@ structure MIDict = RedBlackMapFn(struct type ord_key = ModuleId.modId
 *)
 
    in {tpsKnd=tpsKnd, tpsTyc=tpsTyc,
-       toTyc=toTyc, toLty=toLty, strLty=strLty, fctLty=fctLty,
-       markLBOUND = markLBOUND}
+       toTyc=toTyc, toLty=toLty, strLty=strLty, fctLty=fctLty}
   end (* function genTT *)
 
 end (* toplevel local *)

@@ -20,8 +20,13 @@ local structure LP = TypeOper
       open FLINT
 in
 
+val debugging = FLINT_Control.redebugging
+
+
 fun bug s = ErrorMsg.impossible ("Reify: " ^ s)
 val say = Control_Print.say
+fun debugmsg(m) = if !debugging then say (m^"\n") else ()
+
 val mkv = LambdaVar.mkLvar
 val ident = fn le => le
 fun option f NONE = NONE
@@ -94,9 +99,9 @@ let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false)
     fun dcf ((name,rep,lt),ts) = (name,rep,lt_vfn)
     fun dargtyc ((name,rep,lt), ts) = 
       let val skt = LT.lt_pinst(lt, map (fn _ => LT.tcc_void) ts)
-          val (tc, _) = LT.tcd_parrow (LT.ltd_tyc skt)
+          val (tc, _) = LT.tcd_parrow (LT.ltd_tyc skt) handle LT.DeconExn => bug "reify in dargtyc"
           val nt = ltf (LT.lt_pinst(lt, ts))
-          val (rt, _) = LT.tcd_parrow (LT.ltd_tyc nt)
+          val (rt, _) = LT.tcd_parrow (LT.ltd_tyc nt) handle LT.DeconExn => bug "reify in dargtyc 2"
        in (tc, rt, (name,rep,lt_vfn))
       end
 
@@ -118,7 +123,8 @@ let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false)
          and lpcon (DATAcon(dc as (_, DA.EXN _, nt), [], v)) = 
                let val ndc = dcf(dc, []) and z = mkv() and w = mkv()
                    (* WARNING: the 3rd field should (string list) *) 
-                   val (ax,_) = LT.tcd_parrow (LT.ltd_tyc nt)
+                   val (ax,_) = LT.tcd_parrow (LT.ltd_tyc nt) 
+		       handle LT.DeconExn => bug "transform" 
                    val lt_exr = 
                      LT.tcc_tuple [LT.tcc_void, tcf ax, LT.tcc_int]
                 in (DATAcon(ndc, [], z), 
@@ -169,13 +175,24 @@ let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false)
                    in hdr(ne1, loop e2)
                   end
               | TAPP(v, ts) => 
-                  let val (u, hdr) = lpev(LP.tsLexp(kenv, ts))
-
+                  let val _ = debugmsg ">>loop TAPP"
+		      val _ = if !debugging then PPFlint.printLexp le
+			      else ()
+		      val args = LP.tsLexp(kenv, ts)
+		      val _ = debugmsg "--loop TAPP tsLexp args:"
+		      val _ = if !debugging then PPFlint.printLexp args 
+			      else ()
+		      val (u, hdr) = lpev(args)
+		      val _ = debugmsg "--loop TAPP lpev: "
+		      val _ = if !debugging then PPFlint.printLexp (hdr(RET [v]))
+			      else ()
                       (* a temporary hack that fixes type mismatches *)
                       val lt = getlty v
                       val oldts = map ltf (#2 (LT.ltd_poly lt))
                       val newts = map ltf (LT.lt_inst(lt, ts))
                       val nhdr = mcast(oldts, newts)
+		      
+		      val _ = debugmsg "<<loop TAPP"
                    in nhdr (hdr (APP(v, [u])))
                   end
     
@@ -189,7 +206,8 @@ let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false)
 
               | CON ((_, DA.EXN (DA.LVAR x), nt), [], u, v, e) => 
                   let val z = mkv()
-                      val (ax,_) = LT.tcd_parrow (LT.ltd_tyc nt)
+                      val (ax,_) = LT.tcd_parrow (LT.ltd_tyc nt) 
+			  handle LT.DeconExn => bug "transform loop"
                       val lt_exr = 
                         LT.tcc_tuple [LT.tcc_void, tcf ax, LT.tcc_int]
                    in RECORD(FU.rk_tuple, [VAR x, u, INT 0], z, 

@@ -14,14 +14,14 @@ infix -->
 fun reduceType(POLYty{tyfun=TYFUN{body,arity},...}) = headReduceType body
   | reduceType ty = headReduceType ty
 
-fun expType(VARexp(ref(VALvar{typ=ref ty,...}),insttys)) =
+fun expType(VARexp(ref(VALvar{typ=ref ty,...}),insttvs)) =
      (case ty
-	  of POLYty{tyfun,...} => TU.applyTyfun(tyfun,insttys)
+	  of POLYty{tyfun,...} => TU.applyTyfun(tyfun,map VARty insttvs)
 	   | _ => ty)
   | expType(VARexp _) = bug "varexp"
-  | expType(CONexp(DATACON{typ,...},insttys)) =
+  | expType(CONexp(DATACON{typ,...},insttvs)) =
      (case typ
-	  of POLYty{tyfun,...} => TU.applyTyfun(tyfun,insttys)
+	  of POLYty{tyfun,...} => TU.applyTyfun(tyfun,map VARty insttvs)
 	   | _ => typ)
   | expType(INTexp (_, t)) = t
   | expType(WORDexp (_, t)) = t

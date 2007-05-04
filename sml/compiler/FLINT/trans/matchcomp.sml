@@ -45,11 +45,11 @@ local structure DA = Access
       structure EM = ErrorMsg
       structure TP = Types
       structure LN = LiteralToNum
-      structure PP = PrettyPrint
+      structure PP = PrettyPrintNew
 
       open VarCon Types
       open Absyn PLambda         
-      open PrettyPrint
+      open PrettyPrintNew
       open TemplateExpansion MCCommon
 
 in 
@@ -61,6 +61,9 @@ fun isthere(i,set) = SortedList.member set i
 
 fun bug s = EM.impossible ("MatchComp: " ^ s)
 val say = Control.Print.say
+val pd = ref 20
+fun ppLexp le = PP.with_default_pp(fn ppstrm => MP.ppLexp (!pd) ppstrm le)
+
 type toTcLt = (ty -> LT.tyc) * (ty -> LT.lty)
 
 type genintinfswitch =
@@ -1124,7 +1127,7 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) =
         (case pcon
           of DATApcon (dc, ts) => 
                let val newvar = mkv()
-                   val nts = map toTyc ts
+                   val nts = map (toTyc o TP.VARty) ts
                    val nenv = (DELTAPATH(pcon, path), newvar)::env
                 in (DATAcon (mkDcon dc, nts, newvar), nenv)
                end
@@ -1235,7 +1238,7 @@ in
  *)
 fun bindCompile (env, rules, finish, rootv, toTcLt, err, giis) =
   let val _ = 
-        if !printArgs then (say "MC called with:"; MP.printMatch env rules)
+        if !printArgs then (say "MC called with:"; MP.ppMatch env rules)
         else ()
       val (code, _, _, exhaustive) = 
         doMatchCompile(rules, finish, rootv, toTcLt, err, giis)
@@ -1256,7 +1259,7 @@ fun bindCompile (env, rules, finish, rootv, toTcLt, err, giis) =
            else ();
 
       if !printRet then 
-        (say "MC:  returns with\n"; MP.printLexp code)
+        (say "MC:  returns with\n"; ppLexp code)
       else ();
       code
   end
@@ -1270,7 +1273,7 @@ fun bindCompile (env, rules, finish, rootv, toTcLt, err, giis) =
  *)
 fun handCompile (env, rules, finish, rootv, toTcLt, err, giis) =
   let val _ = 
-        if !printArgs then (say "MC called with: "; MP.printMatch env rules)
+        if !printArgs then (say "MC called with: "; MP.ppMatch env rules)
         else ()
       val (code, unused, redundant, _) = 
         doMatchCompile(rules, finish, rootv, toTcLt, err, giis)
@@ -1284,7 +1287,7 @@ fun handCompile (env, rules, finish, rootv, toTcLt, err, giis) =
       else ();
 
       if !printRet 
-      then (say "MC:  returns with\n"; MP.printLexp code)
+      then (say "MC:  returns with\n"; ppLexp code)
       else ();
       code
   end
@@ -1300,7 +1303,7 @@ fun handCompile (env, rules, finish, rootv, toTcLt, err, giis) =
  *)
 fun matchCompile (env, rules, finish, rootv, toTcLt, err, giis) =
   let val _ = 
-        if !printArgs then (say "MC called with: "; MP.printMatch env rules)
+        if !printArgs then (say "MC called with: "; MP.ppMatch env rules)
         else ()
       val (code, unused, redundant, exhaustive) = 
         doMatchCompile(rules, finish, rootv, toTcLt, err, giis)
@@ -1329,7 +1332,7 @@ fun matchCompile (env, rules, finish, rootv, toTcLt, err, giis) =
         | _ => ();
 
       if (!printRet) 
-      then (say "MatchComp:  returns with\n"; MP.printLexp code) else ();
+      then (say "MatchComp:  returns with\n"; ppLexp code) else ();
       code
   end
 

@@ -6,22 +6,22 @@
 
 signature PPMOD = 
 sig
-  val ppSignature: PrettyPrint.stream 
+  val ppSignature: PrettyPrintNew.stream 
         -> Modules.Signature * StaticEnv.staticEnv * int -> unit
-  val ppStructure: PrettyPrint.stream
+  val ppStructure: PrettyPrintNew.stream
         -> Modules.Structure * StaticEnv.staticEnv * int -> unit
-  val ppOpen: PrettyPrint.stream
+  val ppOpen: PrettyPrintNew.stream
         -> SymPath.path * Modules.Structure * StaticEnv.staticEnv * int -> unit
-  val ppStructureName : PrettyPrint.stream
+  val ppStructureName : PrettyPrintNew.stream
 	-> Modules.Structure * StaticEnv.staticEnv -> unit
-  val ppFunctor : PrettyPrint.stream
+  val ppFunctor : PrettyPrintNew.stream
 	-> Modules.Functor * StaticEnv.staticEnv * int -> unit
-  val ppFunsig : PrettyPrint.stream
+  val ppFunsig : PrettyPrintNew.stream
         -> Modules.fctSig * StaticEnv.staticEnv * int -> unit
-  val ppBinding: PrettyPrint.stream 
+  val ppBinding: PrettyPrintNew.stream 
 	-> Symbol.symbol * Bindings.binding * StaticEnv.staticEnv * int
              -> unit
-  val ppEnv : PrettyPrint.stream
+  val ppEnv : PrettyPrintNew.stream
 	      -> StaticEnv.staticEnv * StaticEnv.staticEnv * int *
 	         Symbol.symbol list option
 	      -> unit
@@ -29,14 +29,14 @@ sig
   (* module internals *)
 
   val ppElements : (StaticEnv.staticEnv * int * Modules.entityEnv option)
-                   -> PrettyPrint.stream
+                   -> PrettyPrintNew.stream
                    -> Modules.elements -> unit
 
-  val ppEntity : PrettyPrint.stream
+  val ppEntity : PrettyPrintNew.stream
                  -> Modules.entity * StaticEnv.staticEnv * int
                  -> unit
 
-  val ppEntityEnv : PrettyPrint.stream
+  val ppEntityEnv : PrettyPrintNew.stream
                     -> Modules.entityEnv * StaticEnv.staticEnv * int
                     -> unit
 
@@ -62,8 +62,9 @@ local structure S = Symbol
       structure EE = EntityEnv
       structure LU = Lookup
      
-      structure PP = PrettyPrint
-      open PrettyPrint PPUtil
+      structure PP = PrettyPrintNew
+      structure PU = PPUtilNew
+      open PrettyPrintNew PPUtilNew
 
 in 
 
@@ -90,7 +91,7 @@ fun strToEnv(M.SIG {elements,...},entities) =
 		  let val strEnt = EE.lookStrEnt(entities,entVar)
 		   in SE.bind(sym,B.STRbind(M.STR{sign=sign,rlzn=strEnt,
 						  access=A.nullAcc,
-						  info=II.Null}),
+						  prim=[]}),
 			      env)
 		  end
 	       | M.CONspec{spec=dcon, ...} => SE.bind(sym,B.CONbind dcon,env)
@@ -179,7 +180,7 @@ fun ppStructureName ppstrm (str,env) =
 
 fun ppVariable ppstrm  =
     let val {openHVBox, openHOVBox,closeBox,pps,...} = en_pp ppstrm
-	fun ppV(V.VALvar{path,access,typ,info},env:StaticEnv.staticEnv) = 
+	fun ppV(V.VALvar{path,access,typ,prim},env:StaticEnv.staticEnv) = 
 	      (openHVBox 0;
 	       pps (SP.toString path);
 	       if !internals then PPVal.ppAccess ppstrm access else ();
@@ -190,7 +191,7 @@ fun ppVariable ppstrm  =
 	       ppSym ppstrm (name); pps " : "; ppType env ppstrm body; 
 	       pps " as ";
 	       ppSequence ppstrm
-		 {sep=C PrettyPrint.break{nsp=1,offset=0},
+		 {sep=C PrettyPrintNew.break{nsp=1,offset=0},
 		  pr=(fn ppstrm => fn{variant,...} =>ppV(variant,env)),
 		  style=CONSISTENT}
 		 optl;
@@ -219,9 +220,9 @@ fun ppConBinding ppstrm =
     end
 
 fun ppStructure ppstrm (str,env,depth) =
-    let val {openHVBox, openHOVBox,closeBox,pps,break,newline} = en_pp ppstrm
+    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
      in case str
-	  of M.STR { sign, rlzn as { entities, ... }, ... } =>
+	  of M.STR { sign, rlzn as { entities, ... }, prim, ... } =>
 	     (if !internals 
 	      then (openHVBox 2;
 		       pps "STR";
@@ -234,6 +235,14 @@ fun ppStructure ppstrm (str,env,depth) =
 		        pps "rlzn:";
 			break {nsp=1,offset=2};
 			ppStrEntity ppstrm (rlzn,env,depth-1);
+			newline();
+			pps "prim:";
+			break {nsp=1,offset=2};
+			(* GK: This should be cleaned up soon so as to use a 
+			   ppStrInfo that is an actual pretty printer conforming
+			   to the pattern of the other pretty printers. 
+			PrimOpId.ppStrInfo prim; *)
+			PPPrim.ppStrPrimInfo ppstrm prim;
 		       closeBox();
 		      closeBox())
 		else case sign
@@ -351,7 +360,7 @@ and ppElements (env,depth,entityEnvOp) ppstrm elements =
     end
 
 and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) = 
-    let val {openHVBox, openHOVBox,closeBox,pps,break,newline} = en_pp ppstrm
+    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
 	val env = SE.atop(case entityEnvOp
 			    of NONE => sigToEnv sign
 			     | SOME entEnv => strToEnv(sign,entEnv),
@@ -371,12 +380,26 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
 		       closeBox()))
 		  constraints;
 		closeBox ())
-	val somePrint = ref false
+	val somePrint = ref false (* i.e., signature is not empty sig end *)
      in if depth <= 0
 	then pps "<sig>"
 	else
 	case sign
 	  of M.SIG {stamp,name,elements,typsharing,strsharing,...} =>
+	     let 
+		 (* Filter out ordinary dcon that do not print in ppElements 
+		    for element printing so that we do not print the spurious
+	            newline. We still use the unfiltered elements
+		    for determining whether the sig ... end should be 
+		    multiline even with just one datatype. *) 
+                val elems' = 
+		    List.filter 
+		    (fn (_,M.CONspec{spec=T.DATACON{rep=A.EXN _,...},...})
+			    => true 
+		      | (_,M.CONspec{spec=dcon,...}) => false 
+		      | _ => true) 
+		    elements
+	     in
 	     if !internals then 
 	       (openHVBox 0;
 		 pps "SIG:";
@@ -408,11 +431,15 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
 	      else (* not !internals *)
 		(openHVBox 0;
 		  pps "sig";
-		  break{nsp=1,offset=2};
+		  (case elements 
+		       of nil => pps " "
+			| [(_,M.STRspec _)] => nl_indent ppstrm 2
+			| [_] => pps " "
+			| _ => nl_indent ppstrm 2);
 		  openHVBox 0;
 		   case elements
 		     of nil => ()
-		      | _ => (ppElements (env,depth,entityEnvOp) ppstrm elements;
+		      | _ => (ppElements (env,depth,entityEnvOp) ppstrm elems';
 			      somePrint := true);
 		   case strsharing
 		     of nil => ()
@@ -425,14 +452,19 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
 			      ppConstraints("type ",typsharing);
 			      somePrint := true);
 		  closeBox();
-		  if !somePrint then break{nsp=1,offset=0} else ();
+		  (case elements 
+		    of nil => ()
+		     | [(_,M.STRspec _)] => newline()
+		     | [_] => pps " "
+		     | _ => newline());
 		  pps "end";
 		 closeBox())
+	     end
 	   | M.ERRORsig => pps "<error sig>"
     end
 
 and ppFunsig ppstrm (sign,env,depth) =
-    let val {openHVBox, openHOVBox,closeBox,pps,break,newline} = en_pp ppstrm
+    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
 	fun trueBodySig (orig as M.SIG { elements =
 					 [(sym, M.STRspec { sign, ... })],
 					 ... }) =
@@ -476,10 +508,9 @@ and ppFunsig ppstrm (sign,env,depth) =
 		| M.ERRORfsig => pps "<error fsig>"
     end
 
-
 and ppStrEntity ppstrm (e,env,depth) =
     let val {stamp,entities,properties,rpath,stub} = e
-	val {openHVBox, openHOVBox,closeBox,pps,break,newline} = en_pp ppstrm
+	val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
      in if depth <= 1 
 	then pps "<structure entity>"
 	else (openHVBox 0;
@@ -505,7 +536,7 @@ and ppStrEntity ppstrm (e,env,depth) =
 
 and ppFctEntity ppstrm (e, env, depth) =
     let val {stamp,closure,properties,tycpath,rpath,stub} = e
-	val {openHVBox,openHOVBox,closeBox,pps,break,newline} = en_pp ppstrm
+	val {openHVBox,openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
     in if depth <= 1 
 	then pps "<functor entity>"
 	else (openHVBox 0;
@@ -533,7 +564,7 @@ and ppFctEntity ppstrm (e, env, depth) =
     end
 
 and ppFunctor ppstrm =
-    let val {openHVBox, openHOVBox,closeBox,pps,break,newline} = en_pp ppstrm
+    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
 	fun ppF (M.FCT { sign, rlzn, ... }, env, depth) =
 		if depth <= 1 
 		then pps "<functor>"
@@ -551,7 +582,7 @@ and ppFunctor ppstrm =
     end
 
 and ppTycBind ppstrm (tyc,env) =
-    let val {openHVBox, openHOVBox,closeBox,pps,break,newline} = en_pp ppstrm
+    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
         fun visibleDcons(tyc,dcons) =
 	    let fun checkCON(V.CON c) = c
 		  | checkCON _ = raise SE.Unbound
@@ -668,7 +699,7 @@ and ppTycBind ppstrm (tyc,env) =
 
 and ppReplBind ppstrm
      (T.DEFtyc{tyfun=T.TYFUN{body=T.CONty(rightTyc,_),...},path,...},env) =
-    let val {openHVBox, openHOVBox,closeBox,pps,break,newline} = en_pp ppstrm
+    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
      in openHOVBox 2;
         pps "datatype"; break{nsp=1,offset=0};
         ppSym ppstrm (IP.last path);
@@ -691,7 +722,7 @@ and ppEntityEnv ppstrm (entEnv,env,depth) =
     then pps ppstrm "<entityEnv>"
     else (ppvseq ppstrm 2 ""
 	      (fn ppstrm => fn (entVar,entity) =>
-		let val {openHVBox,openHOVBox,closeBox,pps,break,newline} =
+		let val {openHVBox,openHOVBox,closeBox,pps,ppi,break,newline} =
 			 en_pp ppstrm
 		 in openHVBox 2;
 		     pps (EntPath.entVarToString entVar);
@@ -850,7 +881,7 @@ and ppBinding ppstrm (name,binding:B.binding,env:SE.staticEnv,depth:int) =
        | B.CONbind con => ppConBinding ppstrm (con,env)
        | B.TYCbind tycon => ppTycBind ppstrm (tycon,env)
        | B.SIGbind sign =>
-	  let val {openHVBox,openHOVBox,closeBox,pps,break,...} = en_pp ppstrm
+	  let val {openHVBox,openHOVBox,closeBox,pps,ppi,break,...} = en_pp ppstrm
 	   in openHVBox 0;
 	       pps "signature "; ppSym ppstrm name; pps " =";
 	       break{nsp=1,offset=2};
@@ -865,7 +896,7 @@ and ppBinding ppstrm (name,binding:B.binding,env:SE.staticEnv,depth:int) =
 	      closeBox()
 	  end
        | B.STRbind str =>
-	  let val {openHVBox, openHOVBox,closeBox,pps,break,...} = en_pp ppstrm
+	  let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,...} = en_pp ppstrm
 	   in openHVBox 0;
 	       pps "structure "; ppSym ppstrm name; pps " :";
 	       break{nsp=1,offset=2};
@@ -907,7 +938,7 @@ and ppEnv ppstrm (env,topenv,depth,boundsyms) =
     end
 
 fun ppOpen ppstrm (path,str,env,depth) =
-    let val {openHVBox,openHOVBox,closeBox,pps,break,newline} = en_pp ppstrm
+    let val {openHVBox,openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
      in openHVBox 0;
 	 openHVBox 2;
 	  pps "opening ";

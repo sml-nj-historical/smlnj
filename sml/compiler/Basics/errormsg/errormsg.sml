@@ -4,8 +4,8 @@
 structure ErrorMsg : ERRORMSG =
 struct
 
-  structure PP = PrettyPrint
-  open PrettyPrint SourceMap
+  structure PP = PrettyPrintNew
+  open PP SourceMap
 
  (* error reporting *)
 
@@ -21,14 +21,11 @@ struct
                  errorMatch: region->string,
                  anyErrors: bool ref}
 
-  fun defaultConsumer () =
-      {consumer = Control_Print.say,
-       linewidth = !Control_Print.linewidth,
-       flush = Control_Print.flush}
+  fun defaultConsumer () = PP.defaultDevice
 
   val nullErrorBody = (fn (ppstrm: PP.stream) => ())
 
-  fun ppmsg(errConsumer,location,severity,msg,body) =
+  fun ppmsg(errConsumer: PP.device, location, severity, msg, body) =
       case (!BasicControl.printWarnings, severity)
 	of (false,WARN) => ()
 	 | _ =>

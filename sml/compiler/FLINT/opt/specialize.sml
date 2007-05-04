@@ -116,7 +116,8 @@ fun bndGen(oks, bnds, d, info) =
       val spk = g(bnds, [], true)
 
       val adj = case spk of FULL => (fn tc => tc)
-                          | _ => (fn tc => LT.tc_adj(tc, d, DI.next d))
+                          | _ => (fn tc => LT.tc_adj(tc, d, DI.next d)
+				           handle LT.TCENV => bug "bndGen")
         (* if not full-specializations, we push depth one-level down *)
 
       (** pass 2 **)
@@ -253,7 +254,7 @@ fun lookItable (IENV (itabs,dtab), d, v, ts, getlty, nv_depth) =
       val (itab,_) = ((List.nth(itabs, d-nd)) handle _ => 
                       bug "unexpected itables in lookItable")
     
-      val nts = map (fn t => LT.tc_adj(t, d, nd)) ts
+      val nts = map (fn t => (LT.tc_adj(t, d, nd) handle LT.TCENV => bug "lookItable")) ts
       val xi = getOpt (IntHashTable.find itab v, [])
 
       fun h ((ots,xs)::r) = if tcs_eqv(ots, nts) then (map VAR xs) else h r
@@ -458,7 +459,7 @@ fun transform (ienv, d, nmap, smap, did_flat) =
         | lpfd (fk as {cconv=CC_FUN fflag,isrec,known,inline}, f, vts, be) = 
            let (** first get the original arg and res types of f *)
                val (fflag', atys, rtys) = LT.ltd_arrow (getlty (VAR f))
-
+		   handle LT.DeconExn => bug "lpfd"
                (** just a sanity check; should turn it off later **)
                val (b1,b2) = 
                  if LT.ff_eqv (fflag, fflag') then LT.ffd_fspec fflag
@@ -539,6 +540,7 @@ fun transform (ienv, d, nmap, smap, did_flat) =
                    else 
                      let (** first get the original arg and res types of v *)
                          val (fflag, atys, rtys) = LT.ltd_arrow vty
+			     handle LT.DeconExn => bug "loop"
                          val (b1, b2) = LT.ffd_fspec fflag
 
                          (** get the newly specialized types **)

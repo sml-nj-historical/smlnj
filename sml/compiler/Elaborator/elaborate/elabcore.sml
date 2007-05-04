@@ -57,7 +57,7 @@ fun cMARKexp (e, r) = if !ElabControl.markabsyn then MARKexp (e, r) else e
 fun cMARKdec (d, r) = if !ElabControl.markabsyn then MARKdec (d, r) else d
 
 val say = Control_Print.say
-val debugging = ref false
+val debugging = ElabControl.ecdebugging
 fun debugmsg (msg: string) = if !debugging then (say msg; say "\n") else ()
 fun bug msg = ErrorMsg.impossible("ElabCore: "^msg)
 
@@ -95,6 +95,7 @@ val internalSym = SpecialSymbols.internalVarId
 
 val dummyFNexp =
     FNexp([RULE(WILDpat,RAISEexp(CONexp(V.bogusEXN,[]),UNDEFty))],UNDEFty)
+(** Updated CONexp ty option type -GK *)
 
 (* LAZY *)
 (* clauseKind: used for communicating information about lazy fun decls
@@ -116,8 +117,8 @@ val bangVar =
 		    dummyComplainer)
       of V.VAL v => v
        | _ => bug "lazy 2"
-val assignExp = VARexp(ref assignVar,[])
-val bangExp = VARexp(ref bangVar,[])
+val assignExp = VARexp(ref assignVar,NONE)
+val bangExp = VARexp(ref bangVar,NONE)
 *)
 
 local
@@ -196,7 +197,7 @@ let
 	    (* val exn = V.bogusEXN (* see if this will work? *) *)
 
 	    (* Y variable and local variables ri and fi and d *)
-	    val yvar (* as VALvar{path,typ,access,info} *) =
+	    val yvar (* as VALvar{path,typ,access,prim} *) =
 		newVALvar(S.varSymbol("Y$"^(Int.toString n)))
 	    fun mkVarSym s i = newVALvar(S.varSymbol(s^(Int.toString i)))
 	    val rvars = repeat(mkVarSym "r$")
@@ -355,12 +356,12 @@ let
 				   (errorMsg id; (access0, ty0)))
 		       fun doPat(insFn: (S.symbol*access*ty ref)
                                           ->access*ty ref) =
-			   let fun doPat' (VARpat(VALvar{access, info, path, 
+			   let fun doPat' (VARpat(VALvar{access, prim, path, 
                                                          typ})) =
 				     let val (access,typ) = 
 					 insFn(SymPath.first path,access,typ)
 				      in VARpat(VALvar{access=access, 
-                                                       path=path,info=info,
+                                                       path=path,prim=prim,
 						       typ=typ})
 				     end
 				 | doPat' (RECORDpat{fields, flex, typ}) =
@@ -745,10 +746,10 @@ let
 
     and elabOPENdec(spaths, env, region) = 
         let val err = error region
-            val strs = map (fn s => let val sp = SP.SPATH s
+	    val strs = map (fn s => let val sp = SP.SPATH s
                                      in (sp, LU.lookStr(env, sp, err))
                                     end) spaths
-
+	    
             fun loop([], env) = (OPENdec strs, env, TS.empty, no_updt)
               | loop((_, s)::r, env) = loop(r, MU.openStructure(env, s))
 
@@ -788,22 +789,26 @@ let
                *)
 	      val pat = 
 		case stripExpAbs exp
-		 of VARexp(ref(VALvar{info=dinfo,...}),_) =>
-                      (if II.isSimple dinfo then
+		 of VARexp(ref(VALvar{prim,...}),_) =>
+                      (case prim
+                         of PrimOpId.Prim _ => 
 		        (case pat
 			  of CONSTRAINTpat(VARpat(VALvar{path,typ,
                                                          access,...}), ty) =>
 			      CONSTRAINTpat(VARpat(
                                    VALvar{path=path, typ=typ, access=access,
-                                          info=dinfo}), ty)
+                                          prim=prim}), ty)
 			   | VARpat(VALvar{path, typ, access, ...}) =>
 			      VARpat(VALvar{path=path, typ=typ, access=access,
-                                            info=dinfo})
+                                            prim=prim})
 			   | _ => pat)
-                       else pat)
+                       | PrimOpId.NonPrim => pat)
 		  | _ => pat
 
-	      (* DBM: can the first two cases ever return NONE? *)
+	      (* DBM: The first two cases (single variable pattern)
+               * are guaranteed to produce SOME. So bindpat could just
+               * as well return a boolean, since the following case does
+               * not use the value carried by SOME. *)
               fun bindpat(VARpat(VALvar{access=acc, ...})) = A.accLvar acc
                 | bindpat(CONSTRAINTpat(VARpat(VALvar{access=acc, ...}),_)) = 
                       A.accLvar acc

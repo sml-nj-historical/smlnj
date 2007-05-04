@@ -16,6 +16,10 @@ structure Symbol = struct
   fun symbolGt(SYMBOL(_,s1), SYMBOL(_,s2)) = s1 > s2
   fun symbolCMLt (SYMBOL (a1, s1), SYMBOL (a2, s2)) =
         a1 < a2 orelse a1 = a2 andalso s1 < s2
+  fun compare(SYMBOL(a1,s1),SYMBOL(a2,s2)) = 
+      case Word.compare(a1,a2) 
+       of EQUAL => String.compare(s1,s2)
+	| order => order
 
   fun varSymbol (name: string) =
         SYMBOL(HashString.hashString name + varInt,name)

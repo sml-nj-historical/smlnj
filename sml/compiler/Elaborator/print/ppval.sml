@@ -6,26 +6,27 @@
 
 signature PPVAL = 
 sig
-  val ppAccess: PrettyPrint.stream -> Access.access -> unit
-  val ppRep: PrettyPrint.stream -> Access.conrep -> unit
-  val ppDcon: PrettyPrint.stream -> VarCon.datacon -> unit
-  val ppVar: PrettyPrint.stream -> VarCon.var -> unit
-  val ppDebugDcon : PrettyPrint.stream
+  val ppAccess: PrettyPrintNew.stream -> Access.access -> unit
+  val ppRep: PrettyPrintNew.stream -> Access.conrep -> unit
+  val ppDcon: PrettyPrintNew.stream -> VarCon.datacon -> unit
+  val ppVar: PrettyPrintNew.stream -> VarCon.var -> unit
+  val ppDebugDcon : PrettyPrintNew.stream
 		    -> StaticEnv.staticEnv -> VarCon.datacon -> unit
-  val ppDebugVar: (II.ii -> string) ->
-		  PrettyPrint.stream 
+  val ppDebugVar: (PrimOpId.primId -> string) ->
+		  PrettyPrintNew.stream 
 		  -> StaticEnv.staticEnv -> VarCon.var -> unit
 end (* signature PPVAL *)
 
 structure PPVal : PPVAL =
 struct
 
-local structure PP = PrettyPrint
-      structure TU = TypesUtil
-      structure LU = Lookup 
-      structure A = Access
-      (* structure II = InlInfo *)
-      open PrettyPrint PPUtil VarCon Types
+local
+  structure PP = PrettyPrintNew
+  structure PU = PPUtilNew
+  structure TU = TypesUtil
+  structure LU = Lookup 
+  structure A = Access
+  open PrettyPrintNew PPUtilNew VarCon Types
 
 in 
 
@@ -119,12 +120,12 @@ fun ppDebugVar ii2string ppstrm env  =
     let val {openHVBox, openHOVBox,closeBox,pps,...} = en_pp ppstrm
 	val ppAccess = ppAccess ppstrm
         val ppInfo = ppInfo ii2string ppstrm
-	fun ppDV(VALvar {access,path,typ,info}) = 
+	fun ppDV(VALvar {access,path,typ,prim}) = 
 	     (openHVBox 0;
 	      pps "VALvar";
 	      openHVBox 3;
 	      pps "({access="; ppAccess access; ppcomma_nl ppstrm;
-              pps "info="; ppInfo info; ppcomma_nl ppstrm;
+              pps "prim="; ppInfo prim; ppcomma_nl ppstrm;
 	      pps "path="; pps (SymPath.toString path); ppcomma_nl ppstrm;
 	      pps "typ=ref "; ppType env ppstrm (!typ); 
 	      pps "})";
@@ -152,7 +153,7 @@ fun ppDebugVar ii2string ppstrm env  =
 
 fun ppVariable ppstrm  =
     let val {openHVBox, openHOVBox,closeBox,pps,...} = en_pp ppstrm
-	fun ppV(env:StaticEnv.staticEnv,VALvar{path,access,typ,info}) = 
+	fun ppV(env:StaticEnv.staticEnv,VALvar{path,access,typ,prim}) = 
 	      (openHVBox 0;
 	       pps(SymPath.toString path);
 	       if !internals then ppAccess ppstrm access else ();

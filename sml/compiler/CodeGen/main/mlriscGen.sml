@@ -2024,9 +2024,9 @@ struct
                 (*esac*)) 
               then gen(e, hp)
               else gen(d, hp)
-            | gen(BRANCH(P.cmp{oper,kind=P.INT 32},[INT32 v,INT32 k],_,e,d), hp) = let
-		val v' = Word32.toLargeIntX v
-		val k' = Word32.toLargeIntX k
+            | gen(BRANCH(P.cmp{oper,kind=P.INT 32},[INT32 v',INT32 k'],_,e,d), hp) = let
+		val v = Word32.toLargeIntX v'
+		val k = Word32.toLargeIntX k'
 		in
 		  if (case oper
                        of P.> => v>k 
