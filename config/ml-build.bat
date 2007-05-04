@@ -13,7 +13,7 @@ goto DONEFLAGS
 
 :FOUNDFLAG
 
-set flags="%flags% %1%2"
+set flags=%flags% %1%2
 shift
 shift
 goto DOFLAGS
