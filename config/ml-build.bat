@@ -1,7 +1,35 @@
 @echo off
-set root=%1%
-set main=%2%
-set heap=%3%
+
+set flags=""
+set setup=""
+
+:DOFLAGS
+
+if %1 == -D goto FOUNDFLAG
+if %1 == -U goto FOUNDFLAG
+if %1 == -C goto FOUNDFLAG
+if %1 == -S goto FOUNDSETUP
+goto DONEFLAGS
+
+:FOUNDFLAG
+
+set flags="%flags% %1=%2"
+shift
+shift
+goto DOFLAGS
+
+:FOUNDSETUP
+
+set setup=%2
+shift
+shift
+goto DOFLAGS
+
+:DONEFLAGS
+
+set root=%1
+set main=%2
+set heap=%3
 
 set smlfile=XYZ_XXX_smlfile.sml
 set cmfile=XYZ_XXX_cmfile.cm
@@ -14,18 +42,18 @@ echo structure %rare% = struct val _ = SMLofNJ.exportFn ("%heap%", %main%) end >
 
 echo Group structure %rare% is $/basis.cm "%root%" %smlfile% >%cmfile%
 
-%COMSPEC% /C "%SMLNJ_HOME%\bin\sml.bat @CMbuild %root% %cmfile% %heap% %listfile% %linkargsfile%"
-IF ERRORLEVEL 1 GOTO ERR
-IF NOT EXIST %linkargsfile% GOTO END
+%COMSPEC% /C "%SMLNJ_HOME%\bin\sml.bat %flags% %setup% @CMbuild %root% %cmfile% %heap% %listfile% %linkargsfile%"
+if ERRORLEVEL 1 goto ERR
+if NOT EXIST %linkargsfile% goto END
 "%SMLNJ_HOME%\bin\.run\run.x86-win32.exe" @SMLboot=%listfile%
 del %linkargsfile%
-GOTO END
+goto END
 
 :ERR
 echo Compilation failed with error.
 
 :END
-REM more cleaning up
+rem more cleaning up
 del %smlfile%
 del %cmfile%
 del %listfile%
