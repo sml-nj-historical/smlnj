@@ -43,7 +43,7 @@ fi
 
 #
 # Build the ml-burg standalone program:
-"$BUILD" ml-burg.cm Main.main $HEAP_IMAGE
+"$BUILD" -DNO_ML_LEX -DNO_ML_YACC ml-burg.cm Main.main $HEAP_IMAGE
 
 #
 # Install CM support for ml-burg:

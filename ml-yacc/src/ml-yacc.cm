@@ -9,28 +9,45 @@ is
   ../lib/ml-yacc-lib.cm
 # endif
 
-sigs.sml
+  sigs.sml
 
-utils.sig
-hdr.sml
-yacc.grm
-yacc.lex
-parse.sml
+  utils.sig
+  hdr.sml
 
-utils.sml
-grammar.sml
-core.sml
-coreutils.sml
-graph.sml
-look.sml
-lalr.sml
-mklrtable.sml
-mkprstruct.sml
-shrink.sml
-verbose.sml
+(* During installation we rely on pre-generated files
+ * to avoid certain chicken-and-egg problems. *)
+#if defined(NO_ML_YACC)
+  yacc.grm.sig
+  yacc.grm.sml
+#else
+  yacc.grm
+#endif
 
-absyn.sig
-absyn.sml
-yacc.sml
-link.sml
-export-yacc.sml
+(* During installation we rely on pre-generated files
+ * to avoid certain chicken-and-egg problems. *)
+#if defined(NO_ML_LEX)
+  yacc.lex.sml
+#else
+  yacc.lex
+#endif
+
+  parse.sml
+
+  utils.sml
+  grammar.sml
+  core.sml
+  coreutils.sml
+  graph.sml
+  look.sml
+  lalr.sml
+  mklrtable.sml
+  mkprstruct.sml
+  shrink.sml
+  verbose.sml
+
+  absyn.sig
+  absyn.sml
+  yacc.sml
+  link.sml
+
+  export-yacc.sml
