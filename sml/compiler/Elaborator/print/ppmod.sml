@@ -697,18 +697,34 @@ and ppTycBind ppstrm (tyc,env) =
 		 ppTycon env ppstrm tycon)
     end (* ppTycBind *)
 
-and ppReplBind ppstrm
-     (T.DEFtyc{tyfun=T.TYFUN{body=T.CONty(rightTyc,_),...},path,...},env) =
-    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
-     in openHOVBox 2;
-        pps "datatype"; break{nsp=1,offset=0};
-        ppSym ppstrm (IP.last path);
-        pps " ="; break{nsp=1,offset=0};
-        pps "datatype"; break{nsp=1,offset=0};
-        ppTycon env ppstrm rightTyc;
-        closeBox ()
-    end
-  | ppReplBind _ _ = ErrorMsg.impossible "ppReplBind"
+and ppReplBind ppstrm =
+    let 
+	val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = 
+	      en_pp ppstrm
+    in
+        fn (T.DEFtyc{tyfun=T.TYFUN{body=T.CONty(rightTyc,_),...},path,...},
+	    env) =>
+	   (* [GK 5/4/07] Does this case ever occur? All datatype
+	      replication tycs are GENtycs after elaboration *)
+	   (openHOVBox 2;
+            pps "datatype"; break{nsp=1,offset=0};
+            ppSym ppstrm (IP.last path);
+            pps " ="; break{nsp=1,offset=0};
+            pps "datatype"; break{nsp=1,offset=0};
+            ppTycon env ppstrm rightTyc;
+            closeBox ())
+	 | (tyc as T.GENtyc{stamp, arity, eq, kind, path, stub}, env) =>
+	   (openHOVBox 2;
+	    pps "datatype"; break{nsp=1,offset=0};
+	    ppSym ppstrm (IP.last path);
+	    pps " ="; break{nsp=1,offset=0};
+	    ppTycBind ppstrm (tyc, env);
+	    closeBox()) 
+	 | (T.PATHtyc _, _) => ErrorMsg.impossible "<replbind:PATHtyc>"
+	 | (T.RECtyc _, _) => ErrorMsg.impossible "<replbind:RECtyc>"
+	 | (T.FREEtyc _, _) => ErrorMsg.impossible "<replbind:FREEtyc>"
+	 | _ => ErrorMsg.impossible "ppReplBind"
+    end (* fun ppReplBind *)
 
 and ppEntity ppstrm (entity,env,depth) =
     case entity

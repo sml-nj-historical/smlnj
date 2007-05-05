@@ -451,9 +451,14 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
 						     arity=arity,
 						     path=path})
 				 | expandTyc(T.FREEtyc n) = 
-                                   ((List.nth(freetycs,n))
-				    handle _ => 
-					bug "unexpected freetycs in expandTyc")
+				    (* [GK 5/4/07] Bug fix: entPath must be
+				       extended here too. If entPath is not
+				       extended then bug 1603.1 will fail.
+				       In general, entityenv lookups of 
+                                       freetycs would fail. *)
+				     (expandTyc (List.nth(freetycs,n))
+				      handle _ => 
+					     bug "unexpected freetycs in expandTyc")
 				 | expandTyc(T.RECtyc n) =
 				   if n = index then etyc
 				   (* could equivalently be tyc? *)
@@ -546,8 +551,22 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
 		       | _ => (* fixed global *)
 			 let (* add the type *)
 			     val ev = mkStamp()
+			     val wrappedTyc =
+				 case TU.wrapDef(tyc,mkStamp())
+				  of T.DEFtyc{stamp, tyfun, strict, path} =>
+				      T.DEFtyc{stamp=stamp, tyfun=tyfun, strict=strict, 
+					       path=IP.IPATH[name]}
+				    | _ => bug "--elabSig[elabDATATYPErepl] TU.wrapDef failed."
+			     (* [GK 5/4/07] This TU.wrapDef operation seems to replace the 
+			        name (path) in this signature with the replicated datatype's
+				path. The printing of such datatype replications is wrong. 
+
+			        signature S = sig datatype u = datatype t end
+			        should not print datatype t = datatype t
+				[BUGFIX BLOCK]
+			      *)
 			     val tspec =
-				 M.TYCspec{spec=TU.wrapDef(tyc,mkStamp()),
+				 M.TYCspec{spec=wrappedTyc,
 					   entVar=ev,repl=true,scope=0}
 			     (* put in the constant tyc
 					   how to treat this in instantiate?*)
