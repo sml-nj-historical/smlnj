@@ -265,19 +265,38 @@ val functorId = S.fctSymbol "<functor>"
  *)
 fun addElement(x,elements) = x::elements
 
+(* add: symbol * spec * elements * error fn -> elements
+ * Adds a symbol, spec pair to the elements unless the symbol already
+ * occurs (duplicate spec), in which case it generates an error message
+ * and returns the original elements list.
+ * Checking for duplicates is now primarily the responsibility of the
+ * checkDups function below, but we retain the checking in add for now
+ * for redundancy *)
 fun add(symbol,spec,elements,err) =
   (* check to see whether symbol is already bound in the given env *)
   (debugmsg (">>add: "^S.name symbol);
-     if List.exists (fn (n,_) => S.eq(symbol,n)) elements
-     then (* if so, this indicates a duplicate specification error *)
-       (err EM.COMPLAIN ("duplicate specifications for "
-		     ^S.nameSpaceToString(S.nameSpace symbol)
-		     ^" "^S.name symbol^" in signature")
-	    EM.nullErrorBody;
-	elements)
-     (* otherwise, add the symbol *)
-     else addElement((symbol,spec),elements))
+   if List.exists (fn (n,_) => S.eq(symbol,n)) elements
+   then (* if so, this indicates a duplicate specification error *)
+     (err EM.COMPLAIN ("duplicate specifications for "
+		       ^S.nameSpaceToString(S.nameSpace symbol)
+		       ^" "^S.name symbol^" in signature")
+	  EM.nullErrorBody;
+      elements)
+   (* otherwise, add the symbol *)
+   else addElement((symbol,spec),elements))
 
+(* check for duplicate specs
+ * return true if none detected. If duplicate detected, print error message
+ * and return false *)
+fun checkDups(name: S.symbol, elements, err) : bool = 
+   if List.exists (fn (n,_) => S.eq(name,n)) elements
+   then (* if so, this indicates a duplicate specification error *)
+     (err EM.COMPLAIN ("duplicate specifications for "
+		       ^S.nameSpaceToString(S.nameSpace name)
+		       ^" "^S.name name^" in signature")
+	  EM.nullErrorBody;
+      false)
+   else true
 
 (* elaborating where type clauses around signatures *)
 fun elabWhere (sigexp,env,epContext,mkStamp,error,region) =
@@ -354,6 +373,7 @@ fun elabTYPEspec(tspecs, env, elements, symbols, eqspec, region) =
 
       fun loop([], env, elems, syms) = (env, elems, syms)
         | loop((name,tyvars,abbrev)::rest, env, elems, syms) = 
+          if checkDups(name, elems, err) then
             let val tvs = ET.elabTyvList(tyvars,error,region)
                 val arity = length tvs
                 val tycon =
@@ -389,10 +409,10 @@ fun elabTYPEspec(tspecs, env, elements, symbols, eqspec, region) =
 
                 val ts = TYCspec{spec=tycon, entVar=ev, repl=false, scope=0}
                 val elems' = add(name, ts, elems, err)
-
-             in loop(rest, env', elems', name::syms)
+                val syms' = name :: syms
+             in loop(rest, env', elems', syms')
             end
-
+          else loop(rest, env, elems, syms)
    in loop(tspecs, env, elements, symbols)
   end 
 
@@ -402,6 +422,7 @@ fun allButLast l = List.take(l,List.length l - 1)
  *  Uses DEFtyc wrappings of the rhs datatype in the resulting specs.
  *  Need to check that this will do the "right thing" in instantiate. *)
 fun elabDATArepl(name,syms,env,elements,symbols,region) =
+    if checkDups(name,elements,error region) then
     let val tyc = Lookup.lookTyc(env, SP.SPATH syms, error region)
 	(* rhs is not local to current (outermost) signature *)
 	fun no_datatype () =
@@ -518,12 +539,14 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
 			     val tspec =
 				 TYCspec{spec=TU.wrapDef(tyc',mkStamp()),
 					 entVar=ev,repl=true,scope=0}
+
 			     val elements' =
 				 add(name,tspec,elements,error region)
+			     val symbols' = name::symbols
+
 			     val etyc = T.PATHtyc{arity=arity,entPath=[ev],
 						  path=IP.IPATH[name]}
 			     val env' = SE.bind(name, B.TYCbind etyc, env)
-			     val symbols' = name::symbols
 				
 			   (* get the dcons -- quick and dirty (buggy?) hack *)
 			     val dcons = TU.extractDcons tyc
@@ -572,10 +595,11 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
 					   how to treat this in instantiate?*)
 			     val elements' =
 				 add(name,tspec,elements,error region)
+			     val symbols' = name::symbols
+
 			     val etyc = T.PATHtyc{arity=arity,entPath=[ev],
 						  path=IP.IPATH[name]}
 			     val env' = SE.bind(name, B.TYCbind etyc, env)
-			     val symbols' = name::symbols
 
 			     val dcons = TU.extractDcons tyc
 			     fun addDcons([], elems, syms) = (elems, syms)
@@ -594,7 +618,10 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
 		| _ => no_datatype ())
 	   | _ => no_datatype ()
     end
+    else (env,elements,symbols)
 
+(* exception raised with ElabDATATYPEspec0 in case of duplicated type specs *)
+exception TypeDups
 
 (*** elaborating datatype specification ***)
 fun elabDATATYPEspec0(dtycspec, env, elements, symbols, region) = 
@@ -686,12 +713,15 @@ fun elabDATATYPEspec0(dtycspec, env, elements, symbols, region) =
             let val tspec = TYCspec{spec=tyc, entVar=ev, repl=false, scope=0}
                 val name = TU.tycName tyc
 		val _ = debugmsg ("--elabDATATYPEspec - name: "^ S.name name)
+                val _ = if checkDups(name,elems,err) then () else raise TypeDups
                 val elems' = add(name, tspec, elems, err)
+                val syms' = name::syms
                 val etyc = T.PATHtyc{arity=arity,entPath=[ev],
                                      path=IP.IPATH[name]}
                 val env' = SE.bind(name, B.TYCbind etyc, env)
-             in addTycs(tycs, env', elems', name::syms)
+             in addTycs(tycs, env', elems', syms')
             end
+
       val (env', elements', symbols') = 
             addTycs(ndtycs@nwtycs, env, elements, symbols)
       val _ = debugmsg "--elabDATATYPEspec: tycs added"
@@ -709,15 +739,20 @@ fun elabDATATYPEspec0(dtycspec, env, elements, symbols, region) =
 
                 val dspec = CONspec{spec=nd, slot=NONE}
                 val elems' = add(name, dspec, elems, err)
-             in addDcons(ds, elems', name::syms)
+                val syms' = name::syms
+             in addDcons(ds, elems', syms')
             end
 
       val (elements'', symbols'') = addDcons(dcons, elements', symbols')
+
       val _ = debugmsg "--elabDATATYPEspec: dcons added"
       val _ = debugmsg "<<elabDATATYPEspec"
 
    in (env', elements'', symbols'')
   end
+  handle TypeDups => (env,elements,symbols)
+    (* in case of duplicate type specs introduced by the datatype specs,
+     * ignore the datatype specs and return original env,elements, and symbols *)                                                      
 
 fun elabDATATYPEspec(db as {datatycs,withtycs}, env, elements, symbols, region) = 
     case datatycs
@@ -725,13 +760,15 @@ fun elabDATATYPEspec(db as {datatycs,withtycs}, env, elements, symbols, region) 
 	  (* LAZY: not allowing datatype replication with lazy keyword *)
 	  elabDATArepl(name,syms,env,elements,symbols,region)
        | (Db{rhs=Constrs _,...}::_) => 
-	  elabDATATYPEspec0(db,env,elements,symbols,region)
+	  (elabDATATYPEspec0(db,env,elements,symbols,region)
+           handle TypeDups => (env,elements,symbols))
        | _ => (error region EM.COMPLAIN "ill-formed datatype spec"
 	         EM.nullErrorBody;
 	       (env,elements,symbols))
 
 (*** elaborating structure specification ***)
 fun elabSTRspec((name,sigexp,defOp), env, elements, syms, slots, region) =
+  if checkDups(name,elements,error region) then
   let val _ = debugmsg ("--elabSTRspec: "^S.name name)
       val region0 = region
       val err = error region
@@ -797,6 +834,7 @@ fun elabSTRspec((name,sigexp,defOp), env, elements, syms, slots, region) =
       val _ = debugmsg "--elabSTRspec: signature elaborated"
 
       val env' = SE.bind(name, B.STRbind(STRSIG{sign=sign,entPath=[ev]}), env)
+      val syms' = name::syms
       val strspec = STRspec{sign=sign,entVar=ev,def=defStrOp,slot=slots}
       val elements' = add(name, strspec, elements, err)
       val _ = debugmsg "<<elabSTRspec"
@@ -804,9 +842,10 @@ fun elabSTRspec((name,sigexp,defOp), env, elements, syms, slots, region) =
       val fflag = case sign of SIG {fctflag,...} => fctflag
                              | _ => false
 
-   in (env', elements', name::syms, fflag)
-
-  end (* fun elabSTRspec *)
+   in (env', elements', syms', fflag)
+  end
+  else (env, elements, syms, false)
+  (* fun elabSTRspec *)
 
 (*** elaborating structure specifications ***)
 fun elabSTRspecs([], env, elements, symbols, slots, region, fflag) =
@@ -850,17 +889,19 @@ fun elabSpec (spec, env, elements, symbols, slots, region) =
             fun fctspecs(nil,elems,syms,slots) = 
                   (env, elems, syms, [], [], slots, true)
               | fctspecs((name,fsig)::rest,elems,syms,slots) =
-		  let val fctsig = 
-                        elabFctSig0 {fsigexp=fsig, nameOp=NONE, env=env,
-                                     entEnv=entEnv, sigContext=sctxt,
-                                     epContext=epContext, region=region, 
-                                     compInfo=compInfo, curried=false}
-                      val ev = mkStamp()
-                      val spec = FCTspec{sign=fctsig, slot=slots, entVar=ev}
-                      val elems' = add(name,spec,elems, err)
-                   in fctspecs(rest, elems', name::syms, slots+1)
-                  end
-
+		  if checkDups(name,elems,err) then
+                      let val fctsig = 
+                            elabFctSig0 {fsigexp=fsig, nameOp=NONE, env=env,
+                                         entEnv=entEnv, sigContext=sctxt,
+                                         epContext=epContext, region=region, 
+                                         compInfo=compInfo, curried=false}
+                          val ev = mkStamp()
+                          val spec = FCTspec{sign=fctsig, slot=slots, entVar=ev}
+                          val elems' = add(name,spec,elems, err)
+                          val syms' = name::syms
+                       in fctspecs(rest, elems', syms', slots+1)
+                      end
+                  else fctspecs(rest, elems, syms, slots)
          in fctspecs(specs,elements,symbols,slots)
         end
 
@@ -883,7 +924,8 @@ fun elabSpec (spec, env, elements, symbols, slots, region) =
             fun valspecs(nil,elems,syms,slots) =
                   (env,elems,syms,[],[],slots,false)
               | valspecs((name,ty)::rest,elems,syms,slots) =
-                  let val _ = debugmsg ("--elabSpec[ValSpec]: " ^ S.name name)
+                if checkDups(name,elems,err) then
+                let val _ = debugmsg ("--elabSpec[ValSpec]: " ^ S.name name)
                       val (ty,tv) = ET.elabType(ty,env,error,region)
                       val typ =
                         case TyvarSet.elements tv
@@ -898,8 +940,10 @@ fun elabSpec (spec, env, elements, symbols, slots, region) =
                       val (typ,_) = MU.relativizeType epContext typ
                       val vspec = VALspec{spec=typ, slot=slots}
                       val elems' = add(name,vspec,elems,err)
-                   in valspecs(rest, elems', name::syms, slots+1)
+                      val syms' = name :: syms
+                   in valspecs(rest, elems', syms', slots+1)
                   end
+                else valspecs(rest,elems,syms,slots)
          in valspecs(specs,elements,symbols,slots)
         end
 
@@ -908,6 +952,7 @@ fun elabSpec (spec, env, elements, symbols, slots, region) =
             fun exnspecs(nil,elems,syms,slots) =
                   (env,elems,syms,[],[],slots, false)
               | exnspecs((name,tyOp)::rest,elems,syms,slots) =
+                if checkDups(name,elems,err) then
                   let val (typ, const) =
                         (case tyOp
                           of SOME ty =>
@@ -932,9 +977,10 @@ fun elabSpec (spec, env, elements, symbols, slots, region) =
                                            typ=typ, sign=A.CNIL, rep=rep}
                       val cspec = CONspec{spec=dcon, slot=SOME slots}
                       val elems' = add(name,cspec,elems,err)
-                   in exnspecs(rest, elems', name::syms, slots+1)
+                      val syms' = name :: syms
+                   in exnspecs(rest, elems', syms', slots+1)
                   end
-
+                else exnspecs(rest, elems, syms, slots)
          in exnspecs(specs,elements,symbols,slots)
         end
 

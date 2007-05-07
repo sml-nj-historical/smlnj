@@ -1495,8 +1495,10 @@ and elabDecl0
                        ES.elabSig {sigexp=def, nameOp=SOME name, env=env0, 
                                    entEnv=entEnv0, epContext=epContext, 
                                    region=region', compInfo=compInfo}
-		     val _ = (* instantiate to check well-formedness *)
+		     val _ = (* instantiate to check well-formedness, 
+                              * but only if there have been no earlier errors *)
 			if !ElabControl.instantiateSigs
+                           andalso not(!(#anyErrors compInfo))
 			then (INS.instParam
 			        {sign=s,entEnv=EE.empty,tdepth=DI.top,
 				 rpath=InvPath.empty,region=region',
