@@ -94,6 +94,10 @@ fun eqLitKind (lk : T.litKind) =
  * because an ERRORtyc should never occur in a CONty and hence an eqprop
  * of one of them should never be needed.
  *
+ * [GK 5/7/07] The above note is not true. See bug271. Since an error
+ * was already flagged, it seems harmless to return YES for the eqprop 
+ * to avoid possibly spurious eqprop related warnings.  
+ * 
  * Calling this function on a DEFtyc also produces an impossible because
  * the current eqprop scheme is insufficiently expressive to describe
  * the possibilities.  (Ex: first argument must be an eq type but not
@@ -104,7 +108,7 @@ fun tyconEqprop (GENtyc { eq, ... }) =
     (case !eq of ABS => NO | ep => ep)
   | tyconEqprop (RECORDtyc _)  = YES
   | tyconEqprop (DEFtyc _) = bug "tyconEqprop: DEFtyc"
-  | tyconEqprop (ERRORtyc) = bug "tyconEqprop: ERRORtyc"
+  | tyconEqprop (ERRORtyc) = YES
   | tyconEqprop _ = bug "unexpected tycon in tyconEqprop"
 
 (*
@@ -249,6 +253,8 @@ fun unifyTy(type1,type2) =
 				(unifyTy(ty1,ty2); unifyArgs(ss,tys1,tys2))
 			      | unifyArgs(false::ss, _::tys1, _::tys2) =
 				unifyArgs(ss,tys1,tys2)
+			      | unifyArgs _ = 
+				  bug "unifyTy: arg ty lists wrong length"
 			in unifyArgs(strict,args1,args2)
 			end
 		      | _ => ListPair.app unifyTy (args1,args2))

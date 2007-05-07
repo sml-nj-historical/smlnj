@@ -1001,6 +1001,8 @@ fun extractDcons (tyc as GENtyc { kind = DATATYPE dt, ... }) =
 
     in map mkDcon dcons
     end
+  | extractDcons ERRORtyc = bug "extractDcons ERRORtyc"
+  | extractDcons (DEFtyc _) = bug "extractDcons DEFtyc"
   | extractDcons _ = bug "extractDcons"
 
 fun mkStrict 0 = []

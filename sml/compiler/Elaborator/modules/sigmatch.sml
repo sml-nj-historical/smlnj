@@ -117,6 +117,7 @@ val nth = List.nth
 fun for l f = app f l
 
 fun unTYCent (TYCent x) = x
+  | unTYCent ERRORent = ERRORtyc (* [GK 5/7/07] Avoid secondary bug, bug 1599.1 *)
   | unTYCent _ = bug "unTYCent"
 
 fun symbolsToString []  = ""
@@ -1022,8 +1023,9 @@ let
                 handle MU.Unbound sym => 
                        if DA.isExn specrep then matchErr(SOME "exception")
                        else matchErr(SOME "constructor"))
-             | _ => bug "matchElems"
-
+	       (* [GK 5/7/07] Try to avoid secondary error. Keep matching after
+		  this ERRORspec. *)
+	     | ERRORspec => matchElems(elems, entEnv, entDecs, decs, bindings, false)
        end (* function matchElems *)
 
   fun matchIt entEnv = 
