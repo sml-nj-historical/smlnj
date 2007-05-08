@@ -452,10 +452,10 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
 						   entVar=ev,repl=true,scope=0}
 			       val elements' = 
 				   add(name,tspec,elements,error region)
+			       val symbols' = name::symbols
 			       val etyc = T.PATHtyc{arity=arity,entPath=[ev],
 						    path=IP.IPATH[name]}
 			       val env' = SE.bind(name, B.TYCbind etyc, env)
-			       val symbols' = name::symbols
 			    (* unlike normal case (rhs=Constrs), won't bother
 			       to re-register the tyc in epContext *)
 
@@ -515,7 +515,8 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
  			               val dspec = CONspec{spec=nd, slot=NONE}
 			               val elems' = add(name, dspec, elems, 
 							error region)
-				   in addDcons(dds, elems', name::syms)
+                                       val syms' = name::syms
+				   in addDcons(dds, elems', syms')
 				   end
 			       val (elements'', symbols'') =
 				   addDcons(dcons, elements', symbols')
@@ -564,7 +565,8 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
 				     val dspec = CONspec{spec=nd, slot=NONE}
 				     val elems' =
 					 add(name, dspec, elems, error region)
-				 in addDcons(ds, elems', name::syms)
+                                         val syms' = name::syms
+				 in addDcons(ds, elems', syms')
 				 end
 
 			     val (elements'', symbols'') =
@@ -608,7 +610,8 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
 				 let val dspec = CONspec{spec=dc, slot=NONE}
 				     val elems' =
 					 add(name, dspec, elems, error region)
-				 in addDcons(dcs, elems', name::syms)
+                                         val syms' = name::syms
+				 in addDcons(dcs, elems', syms')
 				 end
 			     val (elements'', symbols'') =
 				 addDcons(dcons, elements', symbols')
@@ -834,9 +837,11 @@ fun elabSTRspec((name,sigexp,defOp), env, elements, syms, slots, region) =
       val _ = debugmsg "--elabSTRspec: signature elaborated"
 
       val env' = SE.bind(name, B.STRbind(STRSIG{sign=sign,entPath=[ev]}), env)
-      val syms' = name::syms
       val strspec = STRspec{sign=sign,entVar=ev,def=defStrOp,slot=slots}
+
       val elements' = add(name, strspec, elements, err)
+      val syms' = name::syms
+
       val _ = debugmsg "<<elabSTRspec"
 
       val fflag = case sign of SIG {fctflag,...} => fctflag
