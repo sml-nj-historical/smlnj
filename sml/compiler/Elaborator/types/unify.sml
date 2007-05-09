@@ -184,7 +184,7 @@ fun adjustType (var,depth,eq,ty) =
 	       * against which we are unifying/instantiating
 	       * Because we may be instantiating to nonstrict 
 	       * univariables, it is safer to do an occurrence 
-	       * check on all the arguments. 
+	       * check on all the arguments. (typing/tests/20.sml)
 	       * [GK 4/28/07] *)
  	  | iter eq (CONty(tycon,args)) =
 	      (case tyconEqprop tycon
@@ -231,14 +231,14 @@ fun unifyTy(type1,type2) =
 	val type2 = TU.prune type2
 	val _ = debugPPType(">>unifyTy: type1: ",type1)
 	val _ = debugPPType(">>unifyTy: type2: ",type2)
-	fun unifyRaw(type1, type2) = (* unify without reducing CONty(DEFtycs) *)
-	    case (type1, type2)
+	fun unifyRaw(type1, type2) = 
+	 case (type1, type2)
 	  of (VARty var1,VARty var2) =>
 	       unifyTyvars(var1,var2)  (* used to take type1 and type2 as args *)
-	   | (VARty var1,etype2) => (* etype2 may be WILDCARDty *)
-	       instTyvar(var1,type2,etype2)
-	   | (etype1,VARty var2) => (* etype1 may be WILDCARDty *)
-	       instTyvar(var2,type1,etype1)
+	   | (VARty var1, _) => (* type2 may be WILDCARDty *)
+	       instTyvar(var1,type2)
+	   | (_, VARty var2) => (* type1 may be WILDCARDty *)
+	       instTyvar(var2,type1)
 	   | (CONty(tycon1,args1),CONty(tycon2,args2)) =>
 	       if TU.eqTycon(tycon1,tycon2) then
 		   (* Because tycons are equal, they must have the 
@@ -269,15 +269,17 @@ fun unifyTy(type1,type2) =
 	   | (WILDCARDty,_) => ()
 	   | (_,WILDCARDty) => ()
 	   | tys => raise Unify (TYP tys)
-    in unifyRaw(type1, type2) 
-       handle Unify _ => (* try reducing CONty(DEFtyc, _) to make types equal *)
-	      let val type1' = TU.headReduceType type1
-	      in unifyRaw(type1', type2)
-		 handle Unify _ => (* try reducing type2 *)
-			unifyRaw(type1', TU.headReduceType type2)
-			(* if unification still fails, then type1 and type2
-			   really cannot be made to be equal *)
-	      end
+    in (* first try unifying without reducing CONty(DEFtycs) *)
+       unifyRaw(type1, type2) 
+       handle Unify _ => 
+         (* try head reducing type1 *)
+         let val type1' = TU.headReduceType type1
+         in unifyRaw(type1', type2)
+            handle Unify _ => (* try head reducing type2 *)
+                   unifyRaw(type1', TU.headReduceType type2)
+                   (* if unification still fails, then type1 and type2
+                      really cannot be made to be equal *)
+         end
     end
 
 and unifyTyvars (var1, var2) =
@@ -290,7 +292,7 @@ and unifyTyvars (var1, var2) =
 			 if kind = kind'
 			 then var2 := INSTANTIATED (VARty var1)
 			 else raise Unify (LIT i1)
-		      | (OPEN{kind=META,eq=e2,...} | SCHEME e2)=>
+		      | (OPEN{kind=META,eq=e2,...} | SCHEME e2) =>
 			 (* check eq compatibility *)
 			 if not e2 orelse eqLitKind kind
 			 then var2 := INSTANTIATED (VARty var1)
@@ -351,46 +353,57 @@ and unifyTyvars (var1, var2) =
 		      | _ => bug "unifyTyvars 3")
 
 	       | _ => bug "unifyTyvars 4"
-val _ = debugmsg ">>unifyTyvars"			 
+        val _ = debugmsg ">>unifyTyvars"			 
      in if TU.eqTyvar(var1,var2) then ()
         else unify(sortVars(var1,var2))
     end
 
-and instTyvar (var as ref(OPEN{kind=META,depth,eq}),ty,ety) =
-      (case ety
+(* instTyvar: tyvar * ty -> unit
+ * instTyvar(tv,ty) -- instantiate tyvar tv to type ty.
+ * ty is not necessarily head normal form.
+ * ASSERT: ty is not a VARty (otherwise unifyTyvars would have been
+ * used instead. *)
+and instTyvar (var as ref(OPEN{kind=META,depth,eq}),ty) =
+      (case ty
          of WILDCARDty => ()
-	  | _ => adjustType(var,depth,eq,ety);
+	  | _ => adjustType(var,depth,eq,ty);
        debugPPType("instTyvar ", VARty var);
        debugPPType("instTyvar to ", ty);
        (* Also need to check for circularity with ty here *)
        var := INSTANTIATED ty)
 
-  | instTyvar (var as ref(OPEN{kind=FLEX fields,depth,eq}),ty,ety) =
-      (case ety
-	 of CONty(RECORDtyc field_names, field_types) =>
-	      let val record_fields = ListPair.zip (field_names,field_types)
-	       in app (fn t => adjustType(var,depth,eq,t)) field_types;
-		  merge_fields(false,true,fields,record_fields);
-		  var := INSTANTIATED ty
-	      end
-          | WILDCARDty => (* propagate WILDCARDty to the fields *)
-	      (app (fn (lab,ty) => unifyTy(WILDCARDty,ty)) fields)
-          | _ => raise Unify (TYP(VARty(var), ety)))
+  | instTyvar (var as ref(OPEN{kind=FLEX fields,depth,eq}),ty) =
+      let val ty' = readReduceType ty (* try to reduce to a record type *)
+       in case ty'
+	   of CONty(RECORDtyc field_names, field_types) =>
+                let val record_fields = ListPair.zip (field_names,field_types)
+                 in app (fn t => adjustType(var,depth,eq,t)) field_types;
+                    merge_fields(false,true,fields,record_fields);
+                    var := INSTANTIATED ty
+                end
+            | WILDCARDty => (* propagate WILDCARDty to the fields *)
+	       (app (fn (lab,ty) => unifyTy(WILDCARDty,ty)) fields)
+            | _ => raise Unify (TYP(VARty(var), ty))
+      end
 
-  | instTyvar (var as ref(i as SCHEME eq),ty,ety) =
-      (adjustType(var,infinity,eq,ety);
-       var := INSTANTIATED ty)
+  | instTyvar (var as ref(i as SCHEME eq),ty) =
+      let val ty' = readReduceType ty
+       in case ty'
+            of VARty var1 => unifyTyvars(var, var1)
+             | _ => adjustType(var,infinity,eq,ty');
+          var := INSTANTIATED ty'
+      end
 
-  | instTyvar (var as ref(i as LITERAL{kind,...}),ty,ety) =
-      (case ety
+  | instTyvar (var as ref(i as LITERAL{kind,...}),ty) =
+      (case headReduceType ty
 	 of WILDCARDty => ()
-	  | _ => 
-	     if OLL.isLiteralTy(kind,ety)
+	  | ty' => 
+	     if OLL.isLiteralTy(kind,ty')
 	     then var := INSTANTIATED ty
 	     else raise Unify (LIT i))   (* could return the ty for error msg*)
 
-  | instTyvar (ref(i as UBOUND _),_,ety) =
-      (case ety
+  | instTyvar (ref(i as UBOUND _),ty) =
+      (case ty
          of WILDCARDty => ()
           | _ =>  raise Unify (UBV i))   (* could return the ty for error msg*)
 
