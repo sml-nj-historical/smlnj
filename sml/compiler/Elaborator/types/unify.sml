@@ -10,6 +10,7 @@ sig
     | TYC of Types.tycon * Types.tycon (* tycon mismatch *)
     | TYP of Types.ty * Types.ty (* type mismatch *)
     | LIT of Types.tvKind (* literal *)
+    | OVLD of Types.ty (* overload scheme *)
     | UBVE of Types.tvKind (* UBOUND, equality mismatch *)
     | UBV of Types.tvKind (* UBOUND match *)
     | SCH (* SCHEME, equality mismatch  *)
@@ -56,6 +57,7 @@ datatype unifyFail
   | TYC of Types.tycon * Types.tycon (* tycon mismatch *)
   | TYP of Types.ty * Types.ty (* type mismatch *)
   | LIT of Types.tvKind (* literal *)
+  | OVLD of Types.ty (* overload scheme *)
   | UBVE of Types.tvKind (* UBOUND, equality mismatch *)
   | UBV of Types.tvKind (* UBOUND match *)
   | SCH (* SCHEME, equality mismatch  *)
@@ -68,6 +70,7 @@ fun failMessage failure =
        | TYC(tyc1,tyc2) => "tycon mismatch"
        | TYP(ty1,ty2) => "type mismatch"
        | LIT(info) => "literal"
+       | OVLD(info) => "overload"
        | UBVE(info) => "UBOUND, equality mismatch"
        | UBV(info) => "UBOUND match"
        | SCH => "SCHEME, equality mismatch"
@@ -373,7 +376,7 @@ and instTyvar (var as ref(OPEN{kind=META,depth,eq}),ty) =
        var := INSTANTIATED ty)
 
   | instTyvar (var as ref(OPEN{kind=FLEX fields,depth,eq}),ty) =
-      let val ty' = readReduceType ty (* try to reduce to a record type *)
+      let val ty' = TU.headReduceType ty (* try to reduce to a record type *)
        in case ty'
 	   of CONty(RECORDtyc field_names, field_types) =>
                 let val record_fields = ListPair.zip (field_names,field_types)
@@ -387,15 +390,17 @@ and instTyvar (var as ref(OPEN{kind=META,depth,eq}),ty) =
       end
 
   | instTyvar (var as ref(i as SCHEME eq),ty) =
-      let val ty' = readReduceType ty
+      let val ty' = TU.headReduceType ty
        in case ty'
             of VARty var1 => unifyTyvars(var, var1)
-             | _ => adjustType(var,infinity,eq,ty');
-          var := INSTANTIATED ty'
+             | CONty(tyc,nil) => var := INSTANTIATED ty'
+                 (* valid potential resolution type. Could check 
+                  * for membership in allowed basic types (e.g. int, real, ...) *)
+             | _ => raise Unify(OVLD ty')
       end
 
   | instTyvar (var as ref(i as LITERAL{kind,...}),ty) =
-      (case headReduceType ty
+      (case TU.headReduceType ty
 	 of WILDCARDty => ()
 	  | ty' => 
 	     if OLL.isLiteralTy(kind,ty')
@@ -407,8 +412,8 @@ and instTyvar (var as ref(OPEN{kind=META,depth,eq}),ty) =
          of WILDCARDty => ()
           | _ =>  raise Unify (UBV i))   (* could return the ty for error msg*)
 
-  | instTyvar (ref(INSTANTIATED _),_,_) = bug "instTyvar: INSTANTIATED"
-  | instTyvar (ref(LBOUND _),_,_) = bug "instTyvar: LBOUND"
+  | instTyvar (ref(INSTANTIATED _),_) = bug "instTyvar: INSTANTIATED"
+  | instTyvar (ref(LBOUND _),_) = bug "instTyvar: LBOUND"
 
 (*
  * merge_fields(extra1,extra2,fields1,fields2):
@@ -430,4 +435,3 @@ and merge_fields(extra1,extra2,fields1,fields2) =
 
 end (* local *)
 end (* structure Unify *)
-
