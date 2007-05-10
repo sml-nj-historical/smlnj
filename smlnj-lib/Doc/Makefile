@@ -14,7 +14,7 @@ RUN_LATEX = $(MLDOC_BIN)/run-latex
 DVIPS = dvips
 
 SRC_DIR = ML-Doc
-INFO_DIR = Info
+INFO_DIR = INDEX
 HTML_DIR = HTML
 LATEX_DIR = Hardcopy
 PROOF_DIR = Proof

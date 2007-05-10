@@ -8,6 +8,9 @@
 <!ENTITY SML-BASIS-DOC  SDATA "SML-Basis-Doc">
 <!ENTITY SMLNJ-DOC  SDATA "SML-of-NJ-Doc">
 
+<!-- HashCons library filname entities -->
+<!ENTITY HASH-CONS SDATA "hash-cons-sig.sml">
+
 <!-- Util library file entities -->
 <!ENTITY ARRAY-SORT SDATA "array-sort-sig.sml">
 <!ENTITY ATOM SDATA "atom-sig.sml">

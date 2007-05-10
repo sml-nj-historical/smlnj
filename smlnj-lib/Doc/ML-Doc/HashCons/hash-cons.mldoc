@@ -9,11 +9,11 @@
 <INTERFACE>
 <HEAD>The <CD>HASH_CONS</CD> signature</HEAD>
   <SEEALSO>
-    <STRREF TOPID>HashConsAtom</STRREF>
-    <STRREF TOPID>HashConsMap</STRREF>
-    <STRREF TOPID>HashConsString</STRREF>
-    <STRREF TOPID>HashConsSet</STRREF>
-    <FCTREF TOPID>HashConsGroundFn</FCTREF>
+    <STRREF>HashConsAtom</STRREF>
+    <STRREF>HashConsMap</STRREF>
+    <STRREF>HashConsString</STRREF>
+    <STRREF>HashConsSet</STRREF>
+    <FCTREF>HashConsGroundFn</FCTREF>
   </SEEALSO>
 
 <PP>
