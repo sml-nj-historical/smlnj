@@ -1002,10 +1002,8 @@ in
 		   | NONE => let
 			 fun sig_raw (s: M.sigrec) = let
 			     val { stamp = sta, name, closed,
-				   fctflag, symbols, elements,
+				   fctflag, elements,
 				   properties,
-				   (* boundeps = ref b, *)
-				   (* lambdaty = _, *)
 				   stub, typsharing, strsharing } = s
 			     val b = ModulePropLists.sigBoundeps s
 			     val b = NONE (* currently turned off *)
@@ -1013,7 +1011,6 @@ in
 			     "C" $ ([stamp sta,
 				     option symbol name, bool closed,
 				     bool fctflag,
-				     list symbol symbols,
 				     list (pair (symbol, spec)) elements,
 				     option (list (pair (entPath, tkind))) b,
 				     list (list spath) typsharing,

@@ -782,7 +782,6 @@ structure UnpickMod : UNPICKMOD = struct
 		    val n = symboloption ()
 		    val c = bool ()
 		    val ff = bool ()
-		    val sl = symbollist ()
 		    val (el, eltrl) =
 			ListPair.unzip
 			    (map (fn (sy, (sp, tr)) => ((sy, sp), tr))
@@ -797,7 +796,6 @@ structure UnpickMod : UNPICKMOD = struct
 			      name = n,
 			      closed = c,
 			      fctflag = ff,
-			      symbols = sl,
 			      elements = el,
 			      properties = PropList.newHolder (),
 			      (* boundeps = ref beps, *)

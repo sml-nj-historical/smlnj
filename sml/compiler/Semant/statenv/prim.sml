@@ -97,7 +97,6 @@ val primTypes =
       val conElements = map mkConElement primCons
 
       val allElements = tycElements@conElements
-      val allSymbols = map #1 allElements
 
       val entities = let
 	  fun f ((_,M.TYCspec{spec,entVar,repl,scope}),r) =
@@ -113,7 +112,7 @@ val primTypes =
 	  {stamp=ST.special "PrimTypesSig",
 	   name=SOME(S.sigSymbol "PRIMTYPES"), closed=true,
 	   fctflag=false,
-	   symbols=allSymbols,elements=allElements,
+	   elements=allElements,
 	   typsharing=nil,strsharing=nil,
 	   properties = PropList.newHolder (),
 	   (* boundeps=ref (SOME []), *)
@@ -485,11 +484,10 @@ val uList =
 					    repl=false,scope=0}),
               mkConElement("nil", BT.unilDcon),
               mkConElement("::", BT.uconsDcon)]
-      val allSymbols = map #1 allElements
       val sigrec = {stamp=ST.special "uListSig",
 		       name=NONE, closed=true, 
 		       fctflag=false,
-		       symbols=allSymbols, elements=allElements,
+		       elements=allElements,
 		       typsharing=nil, strsharing=nil,
 		       properties = PropList.newHolder (),
 		       (* boundeps=ref (SOME []), *)
@@ -511,7 +509,7 @@ val inLine =
   let val bottom = T.POLYty{sign=[false], 
                             tyfun=T.TYFUN{arity=1,body=T.IBOUND 0}}
 
-      fun mkVarElement(name,(symbols,elements,primElems,offset)) =
+      fun mkVarElement(name,(elements,primElems,offset)) =
         let val s = S.varSymbol name
             val ty = 
 		(case PrimOpTypeMap.primopTypeMap name (* the intrinsic type *)
@@ -521,19 +519,19 @@ val inLine =
             val sp = M.VALspec{spec=ty, slot=offset}
                     (* using universal generic type bottom for all components *)
             val p = PrimOpId.PrimE(PrimOpId.Prim name) (* the primop code *)
-         in (s::symbols, (s,sp)::elements, p::primElems, offset+1)
+         in ((s,sp)::elements, p::primElems, offset+1)
         end
       
-      val (allSymbols, allElements, primList, _) = 
-            foldl mkVarElement ([],[],[],0) allPrimops
+      val (allElements, primList, _) = 
+            foldl mkVarElement ([],[],0) allPrimops
 
-      val (allSymbols, allElements, primList) = 
-            (rev allSymbols, rev allElements, rev primList)
+      val (allElements, primList) = 
+            (rev allElements, rev primList)
 
       val sigrec ={stamp=ST.special "inLineSig",
 		   name=NONE, closed=true, 
 		   fctflag=false,
-		   symbols=allSymbols, elements=allElements,
+		   elements=allElements,
 		   typsharing=nil, strsharing=nil,
 		   properties = PropList.newHolder (),  (* dbm: ??? *)
 		   stub = NONE}

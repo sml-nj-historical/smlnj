@@ -136,13 +136,14 @@ withtype stubinfo =
      lib   : bool,
      tree  : modtree}
 
+and elements = (Symbol.symbol * spec) list
+
 and sigrec =
     {stamp      : Stamps.stamp,
      name       : Symbol.symbol option,
      closed     : bool,
      fctflag    : bool,
-     symbols    : Symbol.symbol list, 
-     elements   : (Symbol.symbol * spec) list,
+     elements   : elements,
      properties : PropList.holder, (* boundeps, lambdaty *)
      typsharing : sharespec list,
      strsharing : sharespec list,
@@ -182,8 +183,6 @@ and fctrec =
 
 (* the stamp and arith inside Types.tycon are critical *)  
 and tycEntity = Types.tycon
-
-and elements = (Symbol.symbol * spec) list
 
 (*
 and constraint  

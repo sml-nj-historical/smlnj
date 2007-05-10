@@ -517,9 +517,11 @@ fun extractSig (env, epContext, context,
 		    name::(procebs rest)
 	      fun procfctbs([]) = []
 		| procfctbs(A.FCTB{name,...}::rest) = name::(procfctbs rest)
-	      fun procstr(M.STR{sign=M.SIG{symbols,...},...}) = symbols
+	      fun procstr(M.STR{sign=M.SIG{elements,...},...}) = 
+                    MU.getElementsSymbols elements
 		| procstr(M.STR{sign=M.ERRORsig,...}) = []
-		| procstr(M.STRSIG{sign=M.SIG{symbols,...},...}) = symbols
+		| procstr(M.STRSIG{sign=M.SIG{elements,...},...}) =
+                    MU.getElementsSymbols elements
 		| procstr(M.STRSIG{sign=M.ERRORsig,...}) = 
 		    bug "elabmod: extractSig ERRORsig in STRSIG"
 		| procstr(M.ERRORstr) = []
@@ -700,7 +702,6 @@ fun elab (BaseStr decl, env, entEnv, region) =
                   M.SIG{stamp = mkStamp (),
 			name=NONE, closed=false, fctflag=fctflag,
                         elements=elements, 
-                        symbols=symbols,
 			properties = PropList.newHolder (),
 			(* boundeps=ref(NONE),  *)
                         (* lambdaty=ref(NONE), *)

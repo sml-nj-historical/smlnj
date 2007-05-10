@@ -155,13 +155,14 @@ withtype stubinfo =
      lib   : bool,
      tree  : modtree}
 
+and elements = (S.symbol * spec) list
+
 and sigrec =
     {stamp      : ST.stamp,
      name       : S.symbol option,
      closed     : bool,
      fctflag    : bool,
-     symbols    : S.symbol list,
-     elements   : (S.symbol * spec) list,
+     elements   : elements,
      properties : PropList.holder, (* boundeps, lambdaty *)
      typsharing : sharespec list,
      strsharing : sharespec list,
@@ -202,8 +203,6 @@ and fctrec =
 (* the stamp and arith inside T.tycon are critical *)  
 and tycEntity = T.tycon
 
-and elements = (S.symbol * spec) list
-
 (*
 and constraint  
   = {my_path : SP.path, its_ancestor : instrep, its_path : SP.path}
@@ -224,7 +223,6 @@ val bogusStrEntity : strEntity =
 val bogusSig : Signature = 
     SIG {stamp = bogusSigStamp,
 	 name=NONE, closed=true, fctflag=false,
-	 symbols=[], 
 	 elements=[],
 	 properties = PropList.newHolder (),
 	 (* boundeps=ref NONE, lambdaty=ref NONE *)

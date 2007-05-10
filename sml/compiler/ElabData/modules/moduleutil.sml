@@ -107,34 +107,31 @@ fun getStrName(STR { rlzn = {rpath,...}, ... }) = rpath
   | getStrName ERRORstr = errorStrName
   | getStrName _ = bug "getStrName"
 
-fun getStrs (STR { sign = SIG sg, rlzn = {entities,...}, access,prim,...}) =
-    let val elements = #elements sg
-    in
-	List.mapPartial
-	    (fn (sym,STRspec{sign,slot,def,entVar}) =>
-		SOME(STR{sign = sign,
-			 rlzn = EE.lookStrEnt(entities,entVar),
-			 access = A.selAcc(access, slot), 
-			 prim = POI.selStrPrimId (prim, slot)})
-	      | _ => NONE)
-	    elements
-    end
+fun getStrs (STR { sign = SIG{elements,...}, rlzn = {entities,...}, access,prim,...}) =
+    List.mapPartial
+      (fn (sym,STRspec{sign,slot,def,entVar}) =>
+          SOME(STR{sign = sign,
+                   rlzn = EE.lookStrEnt(entities,entVar),
+                   access = A.selAcc(access, slot), 
+                   prim = POI.selStrPrimId (prim, slot)})
+        | _ => NONE)
+      elements
   | getStrs ERRORstr = nil
   | getStrs _ = bug "getStrs"
 
-fun getTycs (STR { sign = SIG sg, rlzn = {entities,...}, ... }) =
-    let val elements = #elements sg
-	val tycvars = List.mapPartial
+fun getTycs (STR { sign = SIG{elements,...}, rlzn = {entities,...}, ... }) =
+    let val tycvars = List.mapPartial
                           (fn (sym,TYCspec{entVar,...}) => SOME entVar
 			    | _ => NONE)
 			  elements
-    in
-	List.map (fn tycVar => EE.lookTycEnt(entities,tycVar)) tycvars
+     in List.map (fn tycVar => EE.lookTycEnt(entities,tycVar)) tycvars
     end
   | getTycs ERRORstr = nil
   | getTycs _ = bug "getTycs (2)"
 
-fun getSigSymbols(SIG {symbols,...}) = symbols
+fun getElementsSymbols (elements: elements) = map #1 elements
+
+fun getSigSymbols(SIG {elements,...}) = getElementsSymbols elements
   | getSigSymbols _ = nil
 
 fun getStrSymbols(STR { sign, ... }) = getSigSymbols sign
