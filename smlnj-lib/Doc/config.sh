@@ -24,3 +24,5 @@ function mkDirTree {
 
 mkDirTree Info
 mkDirTree HTML
+mkDirTree Hardcopy
+
