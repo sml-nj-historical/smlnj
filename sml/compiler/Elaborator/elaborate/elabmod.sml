@@ -339,6 +339,7 @@ fun extractSig (env, epContext, context,
   let fun getEpOp (look, modId) =
         case context of EU.INFCT _ => look (epContext, modId)
                       | _ => NONE
+
       val relativize =
         case context
 	  of EU.INFCT _ => (fn ty => #1(MU.relativizeType epContext ty))
@@ -475,10 +476,11 @@ fun extractSig (env, epContext, context,
               end
 
           | _ => (elements, entEnv, entDecl, trans, slotCount, fctflag)
+
       (* getDeclOrder : absyn -> symbol list 
 	 getDeclOrder returns the names of all the surface declaractions
 	 in decl. We use this function to return the signature elements
-         in the same order as the structure decls. *)
+         in the same order as the structure element decls. *)
       fun getDeclOrder(decl) =
 	  let fun procstrbs([]) = []
 		| procstrbs((A.STRB{name,...})::rest) = name::(procstrbs rest)
@@ -551,20 +553,21 @@ fun extractSig (env, epContext, context,
 	       | A.FIXdec{ops,...} => ops
 	       | _ => bug "elabmod: extractSig Unexpected dec"  
 	  end
+
 	(* suppressDuplicates is not strictly necessary for correctness
 	   because signature matching will just try to match the duplicate
 	   specs to the same type. However, suppressing duplicates will
 	   eliminate these extraneous signature match checks. 
 	   [GK 4/18/07] *)
         fun suppressDuplicates syms =
-	    let        
-		fun helper([], memset, result) = (memset, result)
+	    let fun helper([], memset, result) = (memset, result)
 		  | helper(s::rest, memset, result) = 
 		    if ST.member(memset,s)
 		    then helper(rest,memset, result)
 		    else helper(rest,ST.add(memset,s),s::result)
 	    in helper(syms, ST.empty, [])
 	    end
+
 	(* Check that the decl names list computed by getDeclOrder is
 	   equivalent (up to reordering) to the keys in the static 
 	   environment. If they are not equal, then getDeclOrder may 
@@ -592,6 +595,7 @@ fun extractSig (env, epContext, context,
 		  ST.app (fn s => say ((S.name s)^" ")) declnameset;
 		  say "\n";
 		  bug "elabmod: extractSig getDeclOrder") 
+
 	(* [GK 4/15/07] Consolidate will compact the potentially
 	   linear static environment (i.e., BIND(...BIND(...)))
            into a hashtable (IntStrMap) and therefore eliminate
@@ -601,13 +605,14 @@ fun extractSig (env, epContext, context,
            SE.foldOverElems to compute the elements (specs) in 
            the structure decl order on the consolidated list. *)
         val cenv = SE.consolidate env 
+
         val (elements, entEnv, entDecl, trans, _, fctflag) = 
           SE.foldOverElems(transBind,(nil, EE.empty, [], [], 0, false),cenv,
 			   origdeclorder)
 	  handle SE.Unbound => bug "elabmod: extractSig -- SE.foldOverElems \
 				    \Unbound symbol in origdeclorder"
      in (rev elements, entEnv, rev entDecl, rev trans, fctflag)
-    end
+    end (* fun extractSig *)
 
 
 (****************************************************************************

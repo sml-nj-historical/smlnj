@@ -142,8 +142,8 @@ and entityEnv
   | NILeenv
   | ERReenv
 
-and modtree =
-    TYCNODE of Types.gtrec
+and modtree
+  = TYCNODE of Types.gtrec
   | SIGNODE of sigrec
   | STRNODE of strrec
   | FCTNODE of fctrec

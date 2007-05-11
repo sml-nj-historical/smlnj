@@ -105,6 +105,30 @@ flint/
     type variables in a FLINT program.
     defs: TVARCVT, TvarCvt :> TVARCVT
 
+
+trans/
+
+  primopmap.sml
+    mapping from primop names (strings) to primop representations
+    defs: PRIMOP_MAP, PrimOpMap
+    see: ElabData/basics/primoptypemap.sml
+
+  matchcomp.sml
+    main match compiler
+
+  mccommon.sml
+
+  pequal.sml
+
+  tempexpn.sml
+
+  transtypes.sml
+    translate front-end types to flint types (lty, tyc)
+  
+  translate.sml
+    translate absyn to plambda lexp
+
+
 opt/
 
 main/
@@ -119,5 +143,3 @@ main/
        CpsSplit, FLINT_Control, FContract, FixFix, FLINT, FSplit, GlobalFix,
        LContract, Lift, Limit, Literals, Loopify, LtyExtern, PPCps, PPFlint,
        Recover, Reify, Specialize, SMLofNJ, TextIO, Wrapping
-
-
