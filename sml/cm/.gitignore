@@ -1,2 +1,2 @@
-*.grm.*
-*.lex.*
+cm.grm.*
+cm.lex.sml
