@@ -1,11 +1,7 @@
 (* unix-path.sml
  *
- * COPYRIGHT (c) 1991 by AT&T Bell Laboratories.  See COPYRIGHT file for details.
- *
- * AUTHOR:  John Reppy
- *	    AT&T Bell Laboratories
- *	    Murray Hill, NJ 07974
- *	    jhr@research.att.com
+ * COPYRIGHT (c) 2007 The Fellowship of SML/NJ (http://smlnj.org)
+ * All rights reserved.
  *)
 
 structure UnixPath : UNIX_PATH =
@@ -19,7 +15,7 @@ structure UnixPath : UNIX_PATH =
 
   (** Path lists **)
 
-    datatype path_list = PathList of string list
+    type path_list = string list
 
     exception NoSuchFile
 
@@ -51,7 +47,7 @@ structure UnixPath : UNIX_PATH =
     (* return the first path p in the pathlist, such that p/name satisfies
      * the predicate.
      *)
-      fun findFile' (PathList l, pred) fname = let
+      fun findFile' (l, pred) fname = let
 	    fun find [] = raise NoSuchFile
 	      | find (p::r) = let val pn = OS.Path.joinDirFile{dir=p, file=fname}
 		  in
@@ -65,7 +61,7 @@ structure UnixPath : UNIX_PATH =
     (* return the list of paths p in the pathlist, such that p/name satisfies
      * the predicate.
      *)
-      fun findFiles' (PathList l, pred) fname = let
+      fun findFiles' (l, pred) fname = let
 	    fun find ([], l) = rev l
 	      | find (p::r, l) = let val pn = OS.Path.joinDirFile{dir=p, file=fname}
 		  in

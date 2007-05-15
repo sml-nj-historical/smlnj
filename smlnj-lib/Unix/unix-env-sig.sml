@@ -1,6 +1,7 @@
 (* unix-env-sig.sml
  *
- * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.  See COPYRIGHT file for details.
+ * COPYRIGHT (c) 2007 The Fellowship of SML/NJ (http://smlnj.org)
+ * All rights reserved.
  *
  * A UNIX environment is a list of strings of the form "name=value", where
  * the "=" character does not appear in name.

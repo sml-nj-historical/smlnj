@@ -1,18 +1,13 @@
 (* unix-path-sig.sml
  *
- * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.  See COPYRIGHT file for details.
- *
- * AUTHOR:  John Reppy and Emden Gansner
- *	    AT&T Bell Laboratories
- *	    Murray Hill, NJ 07974
- *	    jhr@research.att.com
- *	    erg@research.att.com
+ * COPYRIGHT (c) 2007 The Fellowship of SML/NJ (http://smlnj.org)
+ * All rights reserved.
  *)
 
 signature UNIX_PATH =
   sig
 
-    type path_list
+    type path_list = string list
 
     val getPath : unit -> path_list
 	(* get the user's PATH environment variable. *)

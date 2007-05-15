@@ -11,6 +11,10 @@
 <!-- HashCons library filname entities -->
 <!ENTITY HASH-CONS SDATA "hash-cons-sig.sml">
 
+<!-- Unix library file entities -->
+<!ENTITY UNIX-ENVSORT SDATA "unix-env-sig.sml">
+<!ENTITY UNIX_PATH SDATA "unix-path-sig.sml">
+
 <!-- Util library file entities -->
 <!ENTITY ARRAY-SORT SDATA "array-sort-sig.sml">
 <!ENTITY ATOM SDATA "atom-sig.sml">
