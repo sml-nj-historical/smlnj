@@ -5,7 +5,8 @@
 
 functor BlockPlacement 
    (structure CFG : CONTROL_FLOW_GRAPH
-    structure Props : INSN_PROPERTIES)
+    structure Props : INSN_PROPERTIES
+	where I = CFG.I)
 
    : BLOCK_PLACEMENT =
 
