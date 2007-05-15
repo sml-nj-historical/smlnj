@@ -687,11 +687,13 @@ let
                          val {entVar=evM,sign=signM',...} = unSTRspec specM
                          val {entities=eeD,...} = rlznD
                          val {entities=eeM,...} = rlznM
-                         fun unSTRent (STRent x) = x
-                           | unSTRent _ = bug "matchStr:unSTRent"
-                         val rlznD' = unSTRent (EE.look(eeD,evD))
-                         val rlznM' = unSTRent (EE.look(eeM,evM))
-                      in matchDefStr0(elements,signD',rlznD',signM',rlznM')
+                     in (case (EE.look(eeD,evD), EE.look(eeM,evM)) 
+			  of ((ERRORent, _) | (_, ERRORent)) =>
+			     matchDefStr0(elements,signD,rlznD,signM,rlznM)
+			   | (STRent rlznD', STRent rlznM') =>
+			     matchDefStr0(elements,signD',rlznD',signM',
+					  rlznM')
+			   | _ => bug "strMatch:matchDefStr0")
                      end
                   | _ => bug "matchStr")
        in loop common
@@ -706,6 +708,7 @@ let
           then true
           else matchDefStr0(sigElements,signD,rlznD,signM,rlznM)
       end
+    | matchDefStr((_, ERRORstr, _) | (_, _, ERRORstr)) = true 
     | matchDefStr _ = bug "matchDefStr (2)"
 
   fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
