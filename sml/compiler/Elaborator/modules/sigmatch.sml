@@ -656,7 +656,7 @@ let
                       | intersect(_,_) = nil
                  in intersect(elemsD,elemsM)
                 end
-          val sigElements' = dropVals sigElements
+          val sigElements' = ListMergeSort.sort elemGt (dropVals sigElements)
           fun intersect'(elems1 as ((sym1,x)::rest1),
                          elems2 as ((sym2,y,z)::rest2)) =
               if S.eq(sym1,sym2) then
@@ -678,7 +678,18 @@ let
                          val {entities=eeM,...} = rlznM
                          val tycD = unTYCent (EE.look(eeD,evD))
                          val tycM = unTYCent (EE.look(eeM,evM))
-                      in TU.equalTycon(tycD,tycM)
+			 val speceq = TU.equalTycon(tycD,tycM) 
+		     in (if speceq then speceq 
+			 else 
+			     (withInternals
+				  (fn() => 
+				     (debugPrint(debugging)
+					("Tycon mismatch def: ",
+					 PPType.ppTycon statenv, tycD); 
+				      debugPrint(debugging)
+					("Tycon mismatch mod: ",
+					 PPType.ppTycon statenv, tycM))); 
+			      speceq)) andalso loop rest
                      end
                   | STRspec{sign=SIG {elements,...},...} =>
                      let fun unSTRspec (STRspec x) = x
@@ -690,12 +701,14 @@ let
                      in (case (EE.look(eeD,evD), EE.look(eeM,evM)) 
 			  of ((ERRORent, _) | (_, ERRORent)) =>
 			     matchDefStr0(elements,signD,rlznD,signM,rlznM)
+			     andalso loop rest
 			   | (STRent rlznD', STRent rlznM') =>
 			     matchDefStr0(elements,signD',rlznD',signM',
 					  rlznM')
+			     andalso loop rest
 			   | _ => bug "strMatch:matchDefStr0")
                      end
-                  | _ => bug "matchStr")
+                  | _ => bug "matchStr") 
        in loop common
       end
 
