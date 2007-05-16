@@ -20,7 +20,7 @@ signature CONTROL_SET =
 
   (* list the members; the list is ordered by priority.  The listControls'
    * function allows one to specify an obscurity level; controls with equal
-   * or higher obscurioty are omitted from the list.
+   * or higher obscurity are omitted from the list.
    *)
     val listControls : ('a, 'b) control_set -> {ctl : 'a control, info : 'b} list
     val listControls' : (('a, 'b) control_set * int)

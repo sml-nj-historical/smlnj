@@ -8,14 +8,20 @@
 <!ENTITY SML-BASIS-DOC  SDATA "SML-Basis-Doc">
 <!ENTITY SMLNJ-DOC  SDATA "SML-of-NJ-Doc">
 
-<!-- HashCons library filname entities -->
+<!-- Controls library filename entities -->
+<!ENTITY CONTROLS SDATA "controls-sig.sml">
+<!ENTITY CONTROL-REGISTRY SDATA "registry-sig.sml">
+<!ENTITY CONTROL-SET SDATA "controls-set-sig.sml">
+<!ENTITY CONTROL-UTIL SDATA "controls-util-sig.sml">
+
+<!-- HashCons library filename entities -->
 <!ENTITY HASH-CONS SDATA "hash-cons-sig.sml">
 
-<!-- Unix library file entities -->
+<!-- Unix library filename entities -->
 <!ENTITY UNIX-ENV SDATA "unix-env-sig.sml">
 <!ENTITY UNIX-PATH SDATA "unix-path-sig.sml">
 
-<!-- Util library file entities -->
+<!-- Util library filename entities -->
 <!ENTITY ARRAY-SORT SDATA "array-sort-sig.sml">
 <!ENTITY ATOM SDATA "atom-sig.sml">
 <!ENTITY CHAR-MAP SDATA "char-map-sig.sml">

@@ -16,6 +16,7 @@
 <TITLE>SML/NJ Library Manual</TITLE>
 
 <INCLFILE FILE="intro-part">
+<INCLFILE FILE="Controls/controls-lib-part">
 <INCLFILE FILE="Unix/unix-lib-part">
 <INCLFILE FILE="Util/util-lib-part">
 <INCLFILE FILE="RegExp/regexp-lib-part">
