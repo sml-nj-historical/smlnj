@@ -12,8 +12,9 @@ structure PrimOpId : PRIMOPID =
 struct
 
   (* in the front end, primops are identified by a unique primop name,
-     represented as a string. See the file primop-list for the catalog
-     of primops with their names *)
+     represented as a string. See the file DEVNOTES/Flint/primop-list
+     for the catalog of primop names with their types and primop specs *)
+
   datatype primId = Prim of string | NonPrim
 
   datatype strPrimElem = PrimE of primId

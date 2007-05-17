@@ -1,6 +1,11 @@
+Procedure to add a new primop
+
 Step 1:
   o compiler/FLINT/kernel/primop.{sig,sml}	-- define primop
+  o compiler/DEVNOTES/Flint/primop-list		-- add description
   o compiler/Semant/statenv/prim.sml		-- add to Inline structure
+  o compiler/ElabData/basics/primoptypemap.sml  -- add with intrinsic type
+  o compiler/FLINT/trans/primopmap.sml          -- add representation
   o compiler/Semant/pickle/picklemod-new.sml	-- pickle 
   o compiler/Semant/pickle/unpicklemode-new.sml -- unpickle
 

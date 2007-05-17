@@ -246,6 +246,15 @@ fun reduceType(CONty(DEFtyc{tyfun,...}, args)) = applyTyfun(tyfun,args)
 
 fun headReduceType ty = headReduceType(reduceType ty) handle ReduceType => ty
 
+(* used in SCHEME tyvar case of instTyvar in Unify. Reduce until we have
+ * either a noninstantiated tyvar, or a "null CONty", which is guaranteed
+ * to be closed (tyvar free) *)
+fun nullReduceType ty =
+    (case ty
+       of CONty(DEFtyc{tyfun,...}, nil) => ty
+        | _ => nullReduceType(reduceType ty))
+    handle ReduceType => ty
+
 fun equalType(ty: ty,ty': ty) : bool =
     let fun eq(IBOUND i1, IBOUND i2) = i1 = i2
 	  | eq(VARty(tv),VARty(tv')) = eqTyvar(tv,tv')

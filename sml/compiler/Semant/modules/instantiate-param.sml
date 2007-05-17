@@ -5,7 +5,8 @@
  * SML/NJ-specific instantiation of INSTANTIATE_PARAM.
  *)
 
-structure InstantiateParam : INSTANTIATE_PARAM = struct
+structure InstantiateParam : INSTANTIATE_PARAM =
+struct
 
     type tkind = PLambdaType.tkind
     val tkc_int = PLambdaType.tkc_int
@@ -20,3 +21,5 @@ structure InstantiateParam : INSTANTIATE_PARAM = struct
 end
 
 (* [dbm, 6/16/06] Eliminated ii2ty. Call InlInfo.primopTy directly. *)
+(* [dbm, 5/11/07] Above comment superceded. InlInfo gone, and the
+   functionality it supported is now in FLINT/trans *)

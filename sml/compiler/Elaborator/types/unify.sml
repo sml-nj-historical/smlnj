@@ -389,22 +389,36 @@ and instTyvar (var as ref(OPEN{kind=META,depth,eq}),ty) =
             | _ => raise Unify (TYP(VARty(var), ty))
       end
 
+  (* special handling of SCHEME tyvar instantiation:
+   * ty must reduce to either a tyvar, var', in which case we unify
+   * var and var' (in that order!), or
+   * ty must reduce to a (basic) constant type, in which case ty
+   * does not contain any type variables, and the occurrence check
+   * (i.e. adjustType) is not necessary *)                                     
   | instTyvar (var as ref(i as SCHEME eq),ty) =
-      let val ty' = TU.headReduceType ty
-       in case ty'
-            of VARty var1 => unifyTyvars(var, var1)
-             | CONty(tyc,nil) => var := INSTANTIATED ty'
-                 (* valid potential resolution type. Could check 
-                  * for membership in allowed basic types (e.g. int, real, ...) *)
-             | _ => raise Unify(OVLD ty')
-      end
+      (case ty
+         of VARty var1 => unifyTyvars(var, var1)
+              (* because of asymmetric handling of SCHEME tyvars in
+               * unifyTyvars -- here SCHEME must be first arg *)
+          | CONty(tyc,nil) => var := INSTANTIATED ty
+          | CONty(tyc,_) => (* nonnull arguments *)
+             (case TU.nullReduceType ty
+                of VARty var1 => unifyTyvars(var, var1)
+                 | ty' as CONty(tyc,nil) => var := INSTANTIATED ty'
+                 (* valid potential resolution type. Could check more precisely
+                  * for membership in the allowed basic types
+                  * (e.g. int, real, ...) *)
+                 | WILDCARDty => ()
+                 | _ => raise Unify(OVLD ty))
+          | WILDCARDty => ()
+          | _ => bug "instTyvar: SCHEME")
 
   | instTyvar (var as ref(i as LITERAL{kind,...}),ty) =
       (case TU.headReduceType ty
 	 of WILDCARDty => ()
 	  | ty' => 
 	     if OLL.isLiteralTy(kind,ty')
-	     then var := INSTANTIATED ty
+	     then var := INSTANTIATED (TU.nullReduceType ty)
 	     else raise Unify (LIT i))   (* could return the ty for error msg*)
 
   | instTyvar (ref(i as UBOUND _),ty) =

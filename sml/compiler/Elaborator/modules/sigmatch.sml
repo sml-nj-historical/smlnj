@@ -53,7 +53,7 @@ sig
         argStr   : Modules.Structure, 
         argExp   : Modules.strExp,
         evOp     : EntPath.entVar option,
-        tdepth    : DebIndex.depth,
+        tdepth   : DebIndex.depth,
         epc      : EntPathContext.context,                                
         statenv  : StaticEnv.staticEnv,
 	rpath    : InvPath.path,
@@ -83,7 +83,6 @@ local structure A  = Absyn
       structure EPC = EntPathContext
       structure EU = ElabUtil
       structure INS = EV.Instantiate
-      (* structure II = InlInfo *)
       structure IP = InvPath
       structure M  = Modules
       structure MU = ModuleUtil
@@ -1257,7 +1256,7 @@ end handle Match => (A.SEQdec [], ERRORfct, bogusFctExp))
  *     {sign     : Modules.fctSig,                                         *
  *      fct      : Modules.Functor,                                        *
  *      fctExp   : Modules.fctExp,                                         *
- *      tdepth    : DebIndex.depth,                                         *
+ *      tdepth   : DebIndex.depth,                                         *
  *      entEnv   : Modules.entityEnv,                                      *
  *      rpath    : InvPath.path,                                           *
  *      statenv  : StaticEnv.staticEnv,                                    *
@@ -1594,7 +1593,7 @@ end (* function packFct1 *)
  *                                        resStr : Modules.Structure,      *
  *                                        resExp : Modules.strExp}         *
  *                                                                         *
- * Matches and coerces the argument and then do the functor application.   *
+ * Match and coerce the argument and then do the functor application.      *
  * Returns the result structure, the result entity expression, and the     *
  * result abstract syntax declaration of resStr.                           *
  *                                                                         *
@@ -1604,7 +1603,8 @@ end (* function packFct1 *)
  ***************************************************************************)
 and applyFct{fct as FCT {sign=FSIG{paramsig, bodysig, ...},
 			 rlzn = fctRlzn, ... },
-             fctExp, argStr, argExp, evOp, epc, tdepth, statenv, rpath, region,
+             fctExp, argStr, argExp, evOp, epc, tdepth,
+             statenv, rpath, region,
              compInfo as {mkStamp, mkLvar=mkv, ...}} =
   let val {closure=CLOSURE {env=fctEntEnv, ... }, ... } = fctRlzn
       val _ = debugmsg ">>applyFct"

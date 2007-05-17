@@ -94,11 +94,11 @@ and stampExp
   | NEW                (* generate a new stamp *)
 
 and tycExp (* expression evaluating to a TYCentity *)
-  = VARtyc of EP.entPath                          (* selection from cur-EE *)
-  | CONSTtyc of T.tycon                       (* actual tycon *)
-  | FORMtyc of T.tycon                        (* formal tycon *)
+  = VARtyc of EP.entPath    (* selection from cur-EE *)
+  | CONSTtyc of T.tycon     (* actual tycon *)
+  | FORMtyc of T.tycon      (* formal tycon *)
 
-and strExp 
+and strExp
   = VARstr of EP.entPath       (* selection from current entityEnv *)
   | CONSTstr of strEntity
   | STRUCTURE of {stamp : stampExp, entDec : entityDec}
