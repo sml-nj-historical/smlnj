@@ -42,8 +42,8 @@ and tvKind
       * (1-based), and the index is the index within a sequence of type variables
       * bound at a given binding site. *)
 
-and tycpath (* FLINT *)
-  = TP_VAR of exn
+and tycpath (* FLINT!!! *)
+  = TP_VAR of exn   (* exn carries some hidden FLINT data *)
   | TP_TYC of tycon
   | TP_FCT of tycpath list * tycpath list
   | TP_APP of tycpath * tycpath list
@@ -76,7 +76,8 @@ and tycon
   | RECORDtyc of label list
   | RECtyc of int                 (* used only in domain type of dconDesc *)
   | FREEtyc of int                (* used only in domain type of dconDesc *)
-  | ERRORtyc
+  | ERRORtyc                      (* for error recovery, and used as a dummy
+                                     tycon in ElabMod.extractSig *)
 
 and ty 
   = VARty of tyvar

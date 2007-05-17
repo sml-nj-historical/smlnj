@@ -336,9 +336,10 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
 fun extractSig (env, epContext, context, 
                 compInfo as {mkStamp,...} : EU.compInfo,
 	        absDecl) =
-  let fun getEpOp (look, modId) =
-        case context of EU.INFCT _ => look (epContext, modId)
-                      | _ => NONE
+  let fun getEpOp (lookfn, modId) =
+        case context
+          of EU.INFCT _ => lookfn (epContext, modId)
+           | _ => NONE
 
       val relativize =
         case context
@@ -460,7 +461,8 @@ fun extractSig (env, epContext, context,
                            in (x, ee, ed)
                           end)
 
-                  val spec = TYCspec{spec=T.ERRORtyc,entVar=ev,repl=false,scope=0}
+                  val spec = TYCspec{spec=T.ERRORtyc,entVar=ev,repl=false,
+                                     scope=0}
                   val elements' = addElems((sym, spec), elements)
                   (* 
                    * Use of T.ERRORtyc here is a hack. It relies on the

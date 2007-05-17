@@ -59,7 +59,7 @@ sig
   val instParam : 
          {sign     : Modules.Signature,
           entEnv   : Modules.entityEnv,
-          tdepth   : DebIndex.depth,	(* # of enclosing fct abstractions *)
+          tdepth   : DebIndex.depth,	(* # of enclosing fct abstractions? *)
           rpath    : InvPath.path,
           region   : SourceMap.region,
           compInfo : ElabUtil.compInfo} -> {rlzn: Modules.strEntity,

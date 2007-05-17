@@ -315,7 +315,15 @@ and ppElements (env,depth,entityEnvOp) ppstrm elements =
 		     of NONE =>
                          if repl then
                            ppReplBind ppstrm (spec,env)
-                         else ppTycBind ppstrm (spec,env)
+                         else (case spec
+                                 of T.ERRORtyc => 
+                                     (* dummy TYCspec in inferred signature
+                                      * We don't know the arity without an
+                                      * entity env (next case), so we have to
+                                      * punt on printing arity *)
+                                     (pps ppstrm "type";
+			              break ppstrm {nsp=1,offset=0};                                                  ppSym ppstrm sym)
+                                  | _ => ppTycBind ppstrm (spec,env))
 		      | SOME eenv =>
 			 (case EE.look(eenv,entVar)
 			    of M.TYCent tyc => 
@@ -350,7 +358,8 @@ and ppElements (env,depth,entityEnvOp) ppstrm elements =
  		 if !internals
  		 then (if first then () else newline ppstrm;
  		       ppConBinding ppstrm (dcon,env))
- 		 else () (* ordinary data constructor, don't print *)
+ 		 else () (* don't pring ordinary data constructor,
+                          * because it was printed with its datatype *)
 
      in openHVBox ppstrm (PP.Rel 0);
 	case elements
@@ -360,7 +369,8 @@ and ppElements (env,depth,entityEnvOp) ppstrm elements =
     end
 
 and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) = 
-    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
+    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} =
+            en_pp ppstrm
 	val env = SE.atop(case entityEnvOp
 			    of NONE => sigToEnv sign
 			     | SOME entEnv => strToEnv(sign,entEnv),
@@ -464,7 +474,8 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
     end
 
 and ppFunsig ppstrm (sign,env,depth) =
-    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
+    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} =
+            en_pp ppstrm
 	fun trueBodySig (orig as M.SIG { elements =
 					 [(sym, M.STRspec { sign, ... })],
 					 ... }) =
@@ -510,7 +521,8 @@ and ppFunsig ppstrm (sign,env,depth) =
 
 and ppStrEntity ppstrm (e,env,depth) =
     let val {stamp,entities,properties,rpath,stub} = e
-	val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
+	val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} =
+            en_pp ppstrm
      in if depth <= 1 
 	then pps "<structure entity>"
 	else (openHVBox 0;
@@ -665,7 +677,8 @@ and ppTycBind ppstrm (tyc,env) =
 			       (break{nsp=1,offset=2};
 				openHVBox 0;
 				 pps "= "; ppDcon first;
-				 app (fn d => (break{nsp=1,offset=0}; pps "| "; ppDcon d))
+				 app (fn d => (break{nsp=1,offset=0};
+                                               pps "| "; ppDcon d))
 				     rest;
 				 if incomplete
 				     then (break{nsp=1,offset=0}; pps "... ")
@@ -692,6 +705,11 @@ and ppTycBind ppstrm (tyc,env) =
 		 break{nsp=1,offset=0};
 		 ppType env ppstrm body;
 		 closeBox ())
+	      | T.ERRORtyc =>
+		(pps "ERRORtyc")
+	      | T.PATHtyc _ =>
+		(pps "PATHtyc:";
+		 ppTycon env ppstrm tyc)
 	      | tycon =>
 		(pps "strange tycon: ";
 		 ppTycon env ppstrm tycon)
