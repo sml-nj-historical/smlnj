@@ -14,6 +14,49 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Aaron Turon (http://www.cs.uchicago.edu/~adrassi)
+Date: 2007/05/19
+Description:
+
+Merge of ml-lpt revisions for 110.64.
+
+The name of several ml-lpt-lib modules has changed:
+  Repair	=> AntlrRepair
+  StreamPos	=> AntlrStreamPos
+  ErrHandlerFn	=> AntlrErrHandler
+  EBNF		=> AntlrEBNF
+
+The ml-antlr specification format has changed: declarations such as
+%tokens and nonterminal definitions can occur *multiple* times in the
+same specification.  The semantics are such that each new declaration
+extends the previous ones.  This does not apply to %start or %name,
+of course.
+
+Importing a grammar via %import now includes *all* declarations in from
+the imported grammar, except for %name, %entry, and %start.  Tokens
+and nonterminals can be dropped using the new %dropping clause of the
+%import directive; the separate %drop and %extend have been removed.
+
+We now allow optional type annotations on nonterminals, using the %nonterms
+directive as in ml-yacc.
+
+The refcell construct is now implemented using SML's regular reference
+cells, so the :== and !! notation has been deprecated.
+
+The ml-antlr tool now does much more checking of specifications, and 
+its error messages have been greatly improved.  Error repair for
+generated parsers has been completely rewritten, and is now both
+much faster and more accurate.
+
+ml-ulex is now more lenient with escape codes (non-SML-standard
+escape codes are now interpreted literally, so e.g. \| denotes "|").
+Also, character classes may now include a "-" character at the beginning
+as is standard in most other regexp tools.
+
+All of these changes are documented in the user guide, which has 
+been updated and improved with this merge.
+
+----------------------------------------------------------------------
 Name: David MacQueen (http://www.cs.uchicago.edu/~jhr)
 Date: 2007/05/03
 Revision: r2492
