@@ -192,12 +192,26 @@ Semant/
   Semant/pickle/
   pickling static environments
     pickle-sym-pid.sml
+      pickling symbols and pids (persistant stamps)
+      uses: PickleUtil
+      defs: PickleSymPid (inline sig)
     unpickle-sym-pid.sml
-    pickmod-new.sml
-    unpickmod-new-sml
+      unpickling symbols and pids (persistant stamps)
+      defs: UnpickleSymPid (inline sig)
+    pickmod.sml
+      pickling functions for each type involved in staticEnv
+      defs: PICKMOD, PickMod :> PICKMOD
+    unpickmod.sml
+      unpickling functions for each type involved in staticEnv
+      defs: UNPICKMOD, UnpickMod : UNPICKMOD
     rehash.sml
+      recompute hash of an environment resulting from filtering
+      a larger invironment
+      defs: Rehash (inline sig)
 
   Semant/statenv/
+  construction of base static environment for environment bootstrap
+  and table mapping primop names to intrinsic primop types
     prim.sml
       define static env primEnv, containing primitive types (PrimTypes), 
       primops (InLine), and unrolled lists (UnrolledList)
@@ -250,10 +264,11 @@ Basic datastructures used in elaboration (including type checking)
       SymPath and InvPath: direct and inverse symbolic paths (selecting
       module components)
       defs: SYMPATH, INVPATH, CONVERTPATHS, SymPath, InvPath, ConvertPaths
-    [#Deleted
+  [#Deleted
     ii.sml [FLINT]
       FLINT related information for inlining (why is this in elaborator?)
-      defs: II#]
+      defs: II
+  #]
     core-ptnum.sml
       core prim-type numbers (essentially the same as Elaborator/basics/ptnum.sml
       except only language-standard types are included) 

@@ -9,24 +9,30 @@
  * of re-hashing will then be the same value that would have been
  * produced had the smaller environment been pickled (and hashed) in
  * the first place. *)
-structure Rehash : sig
+
+structure Rehash :
+  sig
     val addGUID : { hash: PersStamps.persstamp, guid: string }
 		    -> PersStamps.persstamp
     val rehash : { env: StaticEnv.staticEnv,
 		   orig_pid: PersStamps.persstamp,
 		   guid: string }
 		 -> PersStamps.persstamp
-end = struct
-    fun addGUID { hash, guid } = let
-	val crc = CRC.fromString (Byte.bytesToString (PersStamps.toBytes hash))
-	fun append (c, x) = CRC.append (x, c)
-	val crc' = CharVector.foldl append crc guid
-    in
-	PersStamps.fromBytes (Byte.stringToBytes (CRC.toString crc'))
-    end
+  end =
 
-    fun rehash { env, orig_pid, guid } =
-	addGUID { hash = #hash (PickMod.pickleEnv
-				    (PickMod.REHASH orig_pid) env),
-		  guid = guid }
-end
+struct
+
+  fun addGUID { hash, guid } = let
+      val crc = CRC.fromString (Byte.bytesToString (PersStamps.toBytes hash))
+      fun append (c, x) = CRC.append (x, c)
+      val crc' = CharVector.foldl append crc guid
+  in
+      PersStamps.fromBytes (Byte.stringToBytes (CRC.toString crc'))
+  end
+
+  fun rehash { env, orig_pid, guid } =
+      addGUID { hash = #hash (PickMod.pickleEnv
+                                  (PickMod.REHASH orig_pid) env),
+                guid = guid }
+
+end (* structure Rehash *)

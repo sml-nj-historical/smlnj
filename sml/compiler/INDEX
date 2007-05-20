@@ -213,14 +213,8 @@ INCLUDE
   Elaborator/elaborate/include.sml
 Include
   Elaborator/elaborate/include.sml
-II
-  ElabData/basics/ii.sml
 ImportTree
   Execution/main/importtree.sml
-INL_INFO
-  Semant/basics/inlinfo.sig
-InlInfo
-  Semant/basics/inlinfo.sml
 INTERACT
   TopLevel/interact/interact.sig
 Interact
@@ -293,10 +287,16 @@ PersStamps
   Basics/mlcomp/persstamps.sml
 PersMap
   Basics/mlcomp/persmap.sml
+PickleSymMod
+  Semant/pickle/pickle-sym-pid.sml
 PICKLE_UTIL
   MiscUtil/library/pickle-util.sml
 PickleUtil
   MiscUtil/library/pickle-util.sml
+PICKMOD
+  Semant/pickle/pickmod.sml
+PickMod
+  Semant/pickle/pickmod.sml
 PIDENV
   Basics/mlcomp/pidenv.sig
 PidEnvFn
@@ -427,10 +427,16 @@ UNIFY
   Elaborator/types/unify.sml
 Unify
   Elaborator/types/unify.sml
+UnpickleSymPid
+  Semant/pickle/unpickle-sym-pid.sml
 UNPICKLE_UTIL
   MiscUtil/library/unpickle-util.sml
 UnpickleUtil
   MiscUtil/library/unpickle-util.sml
+UNPICKMOD
+  Semant/pickle/unpickmod.sml
+UnpickMod
+  Semant/pickle/unpickmod.sml
 VARCON
   ElabData/syntax/varcon.sig
 VarCon

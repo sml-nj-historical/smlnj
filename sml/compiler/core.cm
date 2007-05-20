@@ -153,10 +153,7 @@ TopLevel/main/printhooks.sml
 TopLevel/main/pptable.sml
 
 (* Semantic analysis (elaborator) specialized for SML/NJ. *)
-(*
-Semant/basics/inlinfo.sig
-Semant/basics/inlinfo.sml
-*)
+
 Semant/elaborate/elabmod.sml
 Semant/elaborate/elabtop.sml
 
@@ -167,11 +164,10 @@ Semant/modules/module-plists.sml
 Semant/modules/sigmatch.sml
 
 Semant/pickle/pickle-sym-pid.sml
-Semant/pickle/pickmod-new.sml
+Semant/pickle/pickmod.sml
 Semant/pickle/unpickle-sym-pid.sml
-Semant/pickle/unpickmod-new.sml
+Semant/pickle/unpickmod.sml
 Semant/pickle/rehash.sml
-
 
 Semant/statenv/primoptypemap.sml
 Semant/statenv/prim.sml
