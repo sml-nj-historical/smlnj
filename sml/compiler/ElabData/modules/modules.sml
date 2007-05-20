@@ -24,7 +24,7 @@ datatype Signature
   | ERRORsig
 
 (*
- * 1. tycspec should only be GENtyc, with FORMAL or DATATYPE tyckinds, or DEFtyc.
+ * 1. tyc spec should only be GENtyc, with FORMAL or DATATYPE tyckinds, or DEFtyc.
  * 2. the stamp and the path for the GENtyc or DEFtyc should be meaningless
  *    (but the stamps are in fact used for relativization of withtype bodies and
  *     the datacon domains of datatype repl specs)
@@ -32,12 +32,21 @@ datatype Signature
  *    the whole thing can be further cleaned up.
  *)
 and spec
-  = TYCspec of {entVar : EP.entVar, spec : T.tycon, repl: bool, scope: int}
+  = TYCspec of {entVar : EP.entVar, info: tycSpecInfo}
   | STRspec of {entVar : EP.entVar, sign : Signature,
 		def : (strDef * int) option, slot : int}
   | FCTspec of {entVar : EP.entVar, sign : fctSig, slot : int}
   | VALspec of {spec : T.ty, slot : int}
   | CONspec of {spec : T.datacon, slot : int option}
+
+(* there are two forms of TYCspec. One for regular, explicitly defined signatures,
+ * and the other for inferred signatures, where all the type info is always in the
+ * realization. But we need some info for printing in the one case where a
+ * realization is not available with the signature, namely an inferred result
+ * signature for a functor. *)
+and tycSpecInfo
+  = RegTycSpec of {spec : T.tycon, repl: bool, scope: int} (* normal signature *)
+  | InfTycSpec of {name: S.symbol, arity: int} (* inferred signature *)
 
 (*
  * and specEnv

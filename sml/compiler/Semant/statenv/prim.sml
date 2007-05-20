@@ -32,8 +32,9 @@ local
 in
 
 fun mkTycElement (name: string, tyc) = 
-     (S.tycSymbol name, M.TYCspec{entVar=ST.special name, spec=tyc, repl=false,
-				  scope=0})
+     (S.tycSymbol name, M.TYCspec{entVar=ST.special name,
+                                  info=M.RegTycSpec{spec=tyc, repl=false,
+				                    scope=0}})
 
 (* 
  * Note: this function only applies to constructors but not exceptions;
@@ -99,7 +100,7 @@ val primTypes =
       val allElements = tycElements@conElements
 
       val entities = let
-	  fun f ((_,M.TYCspec{spec,entVar,repl,scope}),r) =
+	  fun f ((_,M.TYCspec{entVar,info=M.RegTycSpec{spec,repl,scope}}),r) =
 	      EE.bind(entVar,M.TYCent spec,r)
 	    | f _ = ErrorMsg.impossible "primTypes:entities"
       in
@@ -480,10 +481,12 @@ val allPrimops =
 val uList =
   let val ev = ST.special "uListVar"
       val allElements = 
-            [(S.tycSymbol "list", M.TYCspec{spec=BT.ulistTycon,entVar=ev,
-					    repl=false,scope=0}),
-              mkConElement("nil", BT.unilDcon),
-              mkConElement("::", BT.uconsDcon)]
+            [(S.tycSymbol "list",
+              M.TYCspec{entVar=ev,
+                        info=M.RegTycSpec{spec=BT.ulistTycon,
+					  repl=false,scope=0}}),
+             mkConElement("nil", BT.unilDcon),
+             mkConElement("::", BT.uconsDcon)]
       val sigrec = {stamp=ST.special "uListSig",
 		       name=NONE, closed=true, 
 		       fctflag=false,

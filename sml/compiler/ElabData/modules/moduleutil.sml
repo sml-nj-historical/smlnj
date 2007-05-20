@@ -68,9 +68,10 @@ fun getSpecVar (STRspec{entVar,...}) = SOME entVar
 
 (*** The function getTyc is used in modules/sigmatch.sml only ***)
 fun getTyc (elements, entEnv, sym) =
-   case getSpec (elements, sym)
-    of TYCspec{entVar,...} => (EE.lookTycEnt(entEnv,entVar), entVar)
-     | _ => bug "getTyc: wrong spec"
+    case getSpec (elements, sym)
+      of TYCspec{entVar,...} =>
+         (EE.lookTycEnt(entEnv,entVar), entVar)
+       | _ => bug "getTyc: wrong spec"
 
 (*** The function getStr is used in modules/sigmatch.sml only ***)
 fun getStr (elements, entEnv, sym, dacc, prims) =
@@ -120,10 +121,11 @@ fun getStrs (STR { sign = SIG{elements,...}, rlzn = {entities,...}, access,prim,
   | getStrs _ = bug "getStrs"
 
 fun getTycs (STR { sign = SIG{elements,...}, rlzn = {entities,...}, ... }) =
-    let val tycvars = List.mapPartial
-                          (fn (sym,TYCspec{entVar,...}) => SOME entVar
-			    | _ => NONE)
-			  elements
+    let val tycvars =
+            List.mapPartial
+              (fn (sym,TYCspec{entVar,...}) => SOME entVar
+		| _ => NONE)
+              elements
      in List.map (fn tycVar => EE.lookTycEnt(entities,tycVar)) tycvars
     end
   | getTycs ERRORstr = nil
@@ -213,17 +215,19 @@ fun getFctElem (sym, sign as SIG {elements,...},
   | getFctElem _ = ERRORfct
 
 fun mkTyc (sym, sp, SIG {elements,...}, sInfo) =
-      (case getSpec (elements, sym)
-        of TYCspec{spec,entVar=ev,repl,scope} => 
-             (case sInfo
-               of SIGINFO ep => 
-                    T.PATHtyc{arity=TU.tyconArity spec, entPath=rev(ev::ep),
-			      path=CVP.invertSPath sp}
-                | STRINFO ({entities,...}, _, _) =>
-		  EE.lookTycEnt(entities, ev))
- 
-         | _ => bug "mkTyc: wrong spec case")
-
+    let val (arity,ev) =
+            (case getSpec (elements, sym)
+               of TYCspec{entVar,info=RegTycSpec{spec,...}} =>
+                    (TU.tyconArity spec, entVar)
+                | TYCspec{entVar,info=InfTycSpec{arity,...}} => (arity,entVar)
+                | _ => bug "mkTyc: wrong spec case")
+     in case sInfo
+         of SIGINFO ep => 
+            T.PATHtyc{arity=arity, entPath=rev(ev::ep),
+		      path=CVP.invertSPath sp}
+          | STRINFO ({entities,...}, _, _) =>
+	    EE.lookTycEnt(entities, ev)
+    end
   | mkTyc _ = T.ERRORtyc
 
 fun mkVal (sym, sp, sign as SIG {elements,...},

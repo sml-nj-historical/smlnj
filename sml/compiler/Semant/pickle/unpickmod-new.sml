@@ -429,6 +429,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val sigM = UU.mkMap ()
 	val fsigM = UU.mkMap ()
 	val spM = UU.mkMap ()
+	val tsiM = UU.mkMap ()
 	val enM = UU.mkMap ()
 	val fctcM = UU.mkMap ()
 	val strM = UU.mkMap ()
@@ -838,11 +839,10 @@ structure UnpickMod : UNPICKMOD = struct
 
 	and spec' () = let
 	    fun sp #"1" =
-		let val (t, ttr) = tycon' ()
+		let val (i, itr) = tycSpecInfo' ()
 		in
-		    (M.TYCspec { spec = t, entVar = entVar (),
-				 repl = bool (), scope = int () },
-		     ttr)
+		    (M.TYCspec { entVar = entVar (), info = i },
+		     itr)
 		end
 	      | sp #"2" =
 		let val (s, str) = Signature' ()
@@ -873,6 +873,19 @@ structure UnpickMod : UNPICKMOD = struct
 	in
 	    share spM sp
 	end
+
+        and tycSpecInfo' () =
+            let fun tsi #"a" =
+                    let val (t,ttr) = tycon' ()
+                    in (M.RegTycSpec{spec = t, repl = bool (), scope = int ()},
+                        ttr)
+                    end
+                  | tsi #"b" =
+                    (M.InfTycSpec{name = symbol (), arity = int ()},
+                     notree)
+                  | tsi _ = raise Format
+             in share tsiM tsi 
+            end
 
 	and entity' () = let
 	    fun en #"A" = & M.TYCent (tycEntity' ())

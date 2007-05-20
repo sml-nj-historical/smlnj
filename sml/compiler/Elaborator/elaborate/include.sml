@@ -151,8 +151,10 @@ and adjustElems(elements,tycmap) = map (adjustElem tycmap) elements
 and adjustElem tycmap (sym,spec) =
       let val nspec = 
             case spec
-             of TYCspec{spec=tycon, entVar=ev, repl=r, scope=s} =>
-                  TYCspec{spec=adjustTyc(tycon,tycmap),entVar=ev, repl=r, scope=s}
+             of TYCspec{entVar=ev,info=RegTycSpec{spec=tycon, repl=r, scope=s}} =>
+                  TYCspec{entVar=ev,
+                          info=RegTycSpec{spec=adjustTyc(tycon,tycmap),
+                                          repl=r, scope=s}}
               | STRspec{sign, entVar=ev, def=d, slot=s} =>
                   STRspec{sign=adjustSig(sign,tycmap),entVar=ev,def=d,slot=s}
 		  (* BUG: def component may need adjustment? *)
@@ -164,15 +166,17 @@ and adjustElem tycmap (sym,spec) =
                   CONspec{spec=DATACON{rep=rep,name=name,const=const,lazyp=lazyp,
                                        typ=adjustType(typ,tycmap),sign=sign},
                           slot=s}
+              | _ => bug "adjustElem"
        in (sym, nspec)
       end
 
 fun addElem((name,nspec: M.spec), env, elems, slot) =
   case nspec
-   of TYCspec{spec=tc, entVar=ev, repl=r, scope=s} =>
-      (let val {spec=otc,entVar=oev,repl=or,scope=os} =
+   of TYCspec{entVar=ev, info=RegTycSpec{spec=tc, repl=r, scope=s}} =>
+      (let val (oev,otc,or,os) =
 	       case MU.getSpec(elems,name) of
-		   TYCspec x => x
+		   TYCspec{entVar,info=RegTycSpec{spec,repl,scope}} =>
+                      (entVar,spec,repl,scope)
 		 | _ => bug "addElem:TYCspec"
          in case compatible(tc,otc)
              of KEEP_OLD => 
@@ -183,7 +187,9 @@ fun addElem((name,nspec: M.spec), env, elems, slot) =
                   end
               | REPLACE =>
                   let val ntc = adjustTyc(tc, getMap())
-                      val nspec' = TYCspec{spec=ntc,entVar=oev,repl=or,scope=s} (*?*)
+                      val nspec' = TYCspec{entVar=oev,
+                                           info=RegTycSpec{spec=ntc,repl=or,scope=s}}
+                                          (*???*)
                       val elems' = substElem((name,nspec'),elems)
 
                       val ntc = PATHtyc{arity=TU.tyconArity ntc,
@@ -202,8 +208,9 @@ fun addElem((name,nspec: M.spec), env, elems, slot) =
 				      path=IP.IPATH[name]}
                    val env' = SE.bind(name, B.TYCbind ntyc, env)
 
-                   val spec' = TYCspec{spec=adjustTyc(tc, getMap()),
-                                       entVar=ev,repl=r,scope=s}
+                   val spec' = TYCspec{entVar=ev,
+                                       info=RegTycSpec{spec=adjustTyc(tc, getMap()),
+                                                       repl=r,scope=s}}
                    val elems' = addElement((name,spec'), elems)
                 in (env', elems', slot)
                end))
@@ -268,6 +275,7 @@ fun addElem((name,nspec: M.spec), env, elems, slot) =
               val elems' = addElement((name,newspec), elems)
            in (env, elems', slot')
           end)
+   | _ => bug "addElem"
 
 fun addElems(nil, env, elems, slot) = (env, elems, slot)
   | addElems(e::nelems, env, elems, slot) = 

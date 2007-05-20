@@ -103,7 +103,15 @@ fun strToEnv(M.SIG {elements,...},entities) =
 fun sigToEnv(M.SIG {elements,...}) =
     let fun bindElem ((sym,spec), env) =
 	  (case spec
-            of M.TYCspec{spec,...} => SE.bind(sym,B.TYCbind spec,env)
+            of M.TYCspec{info=M.RegTycSpec{spec,...},...} =>
+                SE.bind(sym,B.TYCbind spec,env)
+             | M.TYCspec{info=M.InfTycSpec{name,arity},...} =>
+                let val tyc =
+                        T.GENtyc{stamp=Stamps.special "x", arity=arity,
+                                 eq=ref(T.UNDEF), kind=T.FORMAL, stub=NONE,
+                                 path=InvPath.extend(InvPath.empty,name)}
+                in SE.bind(sym,B.TYCbind tyc,env)
+                end
 	     | M.STRspec{sign,slot,def,entVar=ev} =>
 		 SE.bind(sym,B.STRbind(M.STRSIG{sign=sign,entPath=[ev]}),env)
 	     | M.CONspec{spec=dcon, ...} => SE.bind(sym,B.CONbind dcon,env)
@@ -308,39 +316,53 @@ and ppElements (env,depth,entityEnvOp) ppstrm elements =
 		   closeBox ppstrm;
 		  closeBox ppstrm)
 
-	      | M.TYCspec{spec,entVar,repl,scope} => 
+	      | M.TYCspec{entVar,info} => 
 		 (if first then () else newline ppstrm;
-		  openHVBox ppstrm (PP.Rel 0);
-		   case entityEnvOp
-		     of NONE =>
-                         if repl then
-                           ppReplBind ppstrm (spec,env)
-                         else (case spec
-                                 of T.ERRORtyc => 
-                                     (* dummy TYCspec in inferred signature
-                                      * We don't know the arity without an
-                                      * entity env (next case), so we have to
-                                      * punt on printing arity *)
-                                     (pps ppstrm "type";
-			              break ppstrm {nsp=1,offset=0};                                                  ppSym ppstrm sym)
-                                  | _ => ppTycBind ppstrm (spec,env))
-		      | SOME eenv =>
-			 (case EE.look(eenv,entVar)
-			    of M.TYCent tyc => 
-                                 if repl then
-                                   ppReplBind ppstrm (tyc,env)
-                                 else ppTycBind ppstrm (tyc,env)
-			     | M.ERRORent => pps ppstrm "<ERRORent>"
-			     | _ => bug "ppElements:TYCent");
-		   if !internals
-		   then (newline ppstrm;
-			 pps ppstrm "entVar: ";
-			 pps ppstrm (EntPath.entVarToString entVar);
-			 newline ppstrm;
-			 pps ppstrm "scope: ";
-			 pps ppstrm (Int.toString scope))
-		   else ();
-		  closeBox ppstrm)
+                  case info
+                    of M.RegTycSpec{spec,repl,scope} =>
+		       (openHVBox ppstrm (PP.Rel 0);
+                         case entityEnvOp
+                          of NONE =>
+                             if repl then
+                                 ppReplBind ppstrm (spec,env)
+                             else ppTycBind ppstrm (spec,env)
+                           | SOME eenv =>
+                             (case EE.look(eenv,entVar)
+                               of M.TYCent tyc => 
+                                  if repl then
+                                      ppReplBind ppstrm (tyc,env)
+                                  else ppTycBind ppstrm (tyc,env)
+                                | M.ERRORent => pps ppstrm "<ERRORent>"
+                                | _ => bug "ppElements:TYCent");
+                         if !internals
+                         then (newline ppstrm;
+                               pps ppstrm "entVar: ";
+                               pps ppstrm (EntPath.entVarToString entVar);
+                               newline ppstrm;
+                               pps ppstrm "scope: ";
+                               pps ppstrm (Int.toString scope))
+                         else ();
+		        closeBox ppstrm)
+                     | M.InfTycSpec{name,arity} =>
+                       (openHVBox ppstrm (PP.Rel 0);
+                         case entityEnvOp
+                           of NONE =>
+                               (pps ppstrm "type";
+                                break ppstrm {nsp=1,offset=0};
+                                ppFormals ppstrm arity; pps ppstrm " ";
+                                ppSym ppstrm name)
+                            | SOME eenv =>
+                               (case EE.look(eenv,entVar)
+                                  of M.TYCent tyc => 
+                                       ppTycBind ppstrm (tyc,env)
+                                   | M.ERRORent => pps ppstrm "<ERRORent>"
+                                   | _ => bug "ppElements:TYCent");
+                         if !internals
+                         then (newline ppstrm;
+                               pps ppstrm "entVar: ";
+                               pps ppstrm (EntPath.entVarToString entVar))
+                         else ();
+                        closeBox ppstrm))
 
 	      | M.VALspec{spec=typ,...} =>
 		 (if first then () else newline ppstrm;

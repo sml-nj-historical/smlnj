@@ -387,7 +387,7 @@ fun getElemDefs (strDef,mkStamp,depth): (S.symbol * constraint) list =
 					 depth))
 			before debugmsg ("<<getElemDefs.C: STRspec " ^
 					 Symbol.name sym))
-		     | (sym,TYCspec{spec=tyc,entVar,repl,scope}) =>
+		     | (sym,(TYCspec{entVar,...})) =>
 		       (debugmsg (">>getElemDefs.C: TYCspec " ^
 				  Symbol.name sym);
 			let val tyc' = EE.lookTycEnt(entities,entVar)
@@ -404,14 +404,24 @@ fun getElemDefs (strDef,mkStamp,depth): (S.symbol * constraint) list =
 				  ^", entPath: "^EP.entPathToString entPath
 				  ^", entVar: "^EP.entVarToString entVar);
 			SOME(sym,SDEFINE(VARstrDef(sign,entPath@[entVar]),depth)))
-		     | (sym,TYCspec{spec=tyc,entVar,repl,scope}) =>
-		       (debugmsg (">>getElemDefs.V: TYCspec " ^ Symbol.name sym
+		     | (sym,TYCspec{entVar,
+                                    info=RegTycSpec{spec=tyc,repl,scope}}) =>
+		       (debugmsg (">>getElemDefs.V: TYCspec(Reg) " ^ Symbol.name sym
 				  ^", entPath: "^EP.entPathToString entPath
 				  ^", entVar: "^EP.entVarToString entVar);
 			SOME(sym,TDEFINE(NOTINST(
 					   PATHtyc{arity=TU.tyconArity tyc,
 						   entPath=entPath@[entVar],
 						   path=TU.tycPath tyc}),
+					 depth)))
+		     | (sym,TYCspec{entVar,info=InfTycSpec{name,arity}}) =>
+		       (debugmsg (">>getElemDefs.V: TYCspec(Inf) " ^ Symbol.name sym
+				  ^", entPath: "^EP.entPathToString entPath
+				  ^", entVar: "^EP.entVarToString entVar);
+			SOME(sym,TDEFINE(NOTINST(
+					   PATHtyc{arity=arity,
+						   entPath=entPath@[entVar],
+						   path=IP.extend(IP.empty,name)}),
 					 depth)))
 		     | _ => NONE)
 		   elements
@@ -449,7 +459,8 @@ fun mkElemSlots(SIG {elements,...},slotEnv,rpath,epath,sigDepth) =
 	     end
 	  | mkSlot((sym,STRspec{sign as ERRORsig,entVar,...}),slotEnv) = 
 	     SOME (entVar, ref(ErrorStr))
-	  | mkSlot((sym,TYCspec{spec=tycon,entVar,repl,scope}),slotEnv) = 
+	  | mkSlot((sym,TYCspec{entVar,info=RegTycSpec{spec=tycon,repl,scope}}),
+                   slotEnv) = 
 	     (case tycon
 		of DEFtyc{stamp,path,tyfun=TYFUN{arity,...},...} => 
 		    (* translate a DEFtyc spec into a TDEFINE constraint *)
@@ -848,7 +859,7 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
 			 case sign of SIG s => s
 				    | _ => bug "instantiate:constrain:SIG"
 		  in case MU.getSpec(elements,sym)
-		       of TYCspec{spec=tycon,entVar,repl,scope} => 
+		       of TYCspec{entVar,info=RegTycSpec{spec=tycon,repl,scope}} => 
 			   (* ASSERT: rest = nil *)
 			   (case !(lookSlot(slotEnv,entVar))
 			     of InitialTyc {inherited, ...} =>
@@ -1573,11 +1584,13 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 		  * in checkTycBinding in SigMatch.  Fixes bugs 1364 and
 		  * 1432. [DBM]
 		  *)
-		 fun fixUpTycEnt (TYCspec{spec=GENtyc{kind=DATATYPE _,...},...},
+		 fun fixUpTycEnt (TYCspec{info=RegTycSpec{spec=GENtyc{kind=DATATYPE _,
+                                                                      ...},...},...},
 				  TYCent(tyc)) =
 		       (* possible indirect datatype repl.  See bug1432.7.sml *)
 		       TYCent(TU.unWrapDefStar tyc)
-		   | fixUpTycEnt (TYCspec{repl=true,...}, TYCent(tyc)) =
+		   | fixUpTycEnt (TYCspec{info=RegTycSpec{repl=true,...},...},
+                                  TYCent(tyc)) =
 		       (* direct or indirect datatype repl.  Original spec
 			* was a datatype spec. See bug1432.1.sml *)
 		       TYCent(TU.unWrapDefStar tyc)

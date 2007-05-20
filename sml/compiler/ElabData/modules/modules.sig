@@ -12,13 +12,16 @@ datatype Signature
   | ERRORsig
 
 and spec
-  = TYCspec of {entVar : EntPath.entVar,
-		spec : Types.tycon, repl: bool, scope : int}
+  = TYCspec of {entVar : EntPath.entVar, info: tycSpecInfo}
   | STRspec of {entVar : EntPath.entVar, sign : Signature,
 		def : (strDef * int) option, slot : int}
   | FCTspec of {entVar : EntPath.entVar, sign : fctSig, slot : int}
   | VALspec of {spec : Types.ty, slot : int}
   | CONspec of {spec : Types.datacon, slot : int option}
+
+and tycSpecInfo
+  = RegTycSpec of {spec : Types.tycon, repl: bool, scope: int} (* normal signature *)
+  | InfTycSpec of {name: Symbol.symbol, arity: int} (* inferred signature *)
 
 (*
  * and specEnv

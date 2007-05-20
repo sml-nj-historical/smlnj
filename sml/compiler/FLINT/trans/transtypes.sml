@@ -299,7 +299,8 @@ and toLty d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) = toLty d body
 
 fun specLty (elements, entEnv, depth, compInfo) = 
   let fun g ([], entEnv, ltys) = rev ltys
-        | g ((sym, TYCspec _)::rest, entEnv, ltys) = g(rest, entEnv, ltys)
+        | g ((sym, (TYCspec _ ))::rest, entEnv, ltys) =
+              g(rest, entEnv, ltys)
         | g ((sym, STRspec {sign, entVar, ...})::rest, entEnv, ltys) =
               let val rlzn = EE.lookStrEnt(entEnv,entVar)
                   val lt = strRlznLty(sign, rlzn, depth, compInfo) 

@@ -32,7 +32,8 @@ type sigContext = M.elements list
 exception OUTER
 
 (* ignoring FCTspec - won't find any types there *)
-fun lookEntVar(ev,(_,s as (M.TYCspec{entVar,...} | M.STRspec{entVar,...}))::rest) =
+fun lookEntVar(ev,(_,s as (M.TYCspec{entVar,...} |
+                           M.STRspec{entVar,...}))::rest) =
       if EP.eqEntVar(ev,entVar) then SOME s else lookEntVar(ev,rest)
   | lookEntVar(ev,_::rest) = lookEntVar(ev,rest)
   | lookEntVar(ev,nil) = NONE
@@ -48,7 +49,7 @@ fun findContext(ev,context as elements0::outer) =
 fun expandTycon(tycon,context,entEnv) =
     let fun expandTycVar(ev,context as elements::outer) : T.tycon =
 	      (case lookEntVar(ev, elements)
-		 of SOME(M.TYCspec{spec,...}) =>
+		 of SOME(M.TYCspec{info=M.RegTycSpec{spec,...},...}) =>
 		     (case spec
 			of T.GENtyc _ => spec
 			 | T.DEFtyc{stamp,strict,path,tyfun} =>

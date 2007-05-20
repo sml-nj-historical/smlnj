@@ -554,8 +554,7 @@ let
                            let val _ = debugmsg "$compStr: unequal signs"
                                val common = commonElements(sign1,sign2)
                            in for common (fn 
-                                (sym,TYCspec{entVar=v1,...},
-                                 TYCspec{entVar=v2,...}) =>
+                                (sym,TYCspec{entVar=v1,...},TYCspec{entVar=v2,...}) =>
                                 let val tyc1 = unTYCent (EE.look(ee1,v1))
                                     val tyc2 = unTYCent (EE.look(ee2,v2))
                                 in if eqTyc(tyc1,tyc2) then ()
@@ -628,7 +627,7 @@ let
 
   fun matchDefStr0(sigElements,signD,rlznD,signM,rlznM) =
       let val dropVals = List.filter
-                          (fn (s,(TYCspec _ | STRspec _ )) => true | _ => false)
+               (fn (s,(TYCspec _ | STRspec _ )) => true | _ => false)
           fun elemGt ((s1,_),(s2,_)) = S.symbolGt(s1,s2)
           val commonDM =
               if MU.eqSign(signD,signM) then
@@ -668,11 +667,12 @@ let
           fun loop nil = true
             | loop ((sym,spec,specD,specM)::rest) =
               (case spec
-                 of TYCspec _ =>
-                     let fun unTYCspec (TYCspec x) = x
+                 of (TYCspec _ ) =>
+                     let fun unTYCspec (TYCspec{entVar,...}) =
+                               entVar
                            | unTYCspec _ = bug "matchStr:unTYCspec"
-                         val {entVar=evD,...} = unTYCspec specD
-                         val {entVar=evM,...} = unTYCspec specM
+                         val evD = unTYCspec specD
+                         val evM = unTYCspec specM
                          val {entities=eeD,...} = rlznD
                          val {entities=eeM,...} = rlznM
                          val tycD = unTYCent (EE.look(eeD,evD))
@@ -713,7 +713,7 @@ let
 
   fun matchDefStr (sigElements, STR {sign=signD,rlzn=rlznD,...},
                                 STR {sign=signM,rlzn=rlznM,...}) =
-      let	val sD = #stamp rlznD
+      let val sD = #stamp rlznD
           val sM = #stamp rlznM
       in
           if ST.eq(sD,sM) (* eqOrigin *)
@@ -736,18 +736,18 @@ let
                      | NONE => entEnv
 
                  (* synthesize a new error binding to remove improper error
-                    messages on inlInfo (ZHONG) *) 
+                    messages on inlInfo (ZHONG)
                  val bindings' = 
                    case spec
-                    of TYCspec _ => bindings
-                     | CONspec {slot=NONE, ...} => bindings
-                     | _ => B.CONbind VarCon.bogusEXN :: bindings
-
+                     of TYCspec _ => bindings
+                      | CONspec {slot=NONE, ...} => bindings
+                      | _ => B.CONbind VarCon.bogusEXN :: bindings
+                 -- assume this is no longer relevant, since inlInfo is gone (DBM) *) 
               in case kindOp
                    of SOME kind =>
                         complain("unmatched " ^ kind ^ " specification: " ^ S.name sym)
                     | NONE => ();
-                 matchElems(elems, entEnv', entDecs, decs, bindings', false)
+                 matchElems(elems, entEnv', entDecs, decs, bindings, false)
              end
 
            fun typeInMatched (kind,typ) = 
@@ -763,7 +763,7 @@ let
                        raise EE.Unbound)
 
         in case spec
-            of TYCspec{spec=specTycon,entVar,repl,scope} =>
+            of TYCspec{entVar,info=RegTycSpec{spec=specTycon,repl,scope}} =>
                 (let val _ = debugmsg(String.concat[">>matchElems TYCspec: ",
                                                     S.name sym, ", ",
                                                     ST.toString entVar])
@@ -1431,11 +1431,12 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
                 in packElems(elems, entEnv, decs, bindings')
                end)
 
-           | TYCspec{spec=specTycon,entVar=ev,repl,scope} =>
+           | TYCspec{entVar=ev,info=RegTycSpec{spec=specTycon,repl,scope}} =>
               (let val entEnv' = EE.bind(ev, EE.look(resEntEnv, ev), entEnv) 
                 in packElems(elems, entEnv', decs, bindings)
                end)
 
+           | _ => bug "packElems"
      end (* function packElems *)
 
 

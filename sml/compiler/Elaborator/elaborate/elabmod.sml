@@ -461,8 +461,8 @@ fun extractSig (env, epContext, context,
                            in (x, ee, ed)
                           end)
 
-                  val spec = TYCspec{spec=T.ERRORtyc,entVar=ev,repl=false,
-                                     scope=0}
+                  val spec = TYCspec{entVar=ev,
+                                     info=InfTycSpec{name=sym,arity=TU.tyconArity tyc}}
                   val elements' = addElems((sym, spec), elements)
                   (* 
                    * Use of T.ERRORtyc here is a hack. It relies on the

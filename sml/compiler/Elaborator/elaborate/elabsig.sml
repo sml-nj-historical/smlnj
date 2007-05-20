@@ -118,15 +118,16 @@ fun pushDefs(elements,defs,error,mkStamp) =
 		  | loop _ = bug "pushDefs:findDefs:loop"
              in loop(defs,nil,nil)
 	    end
-	fun applyTycDef(tspec as TYCspec{entVar,spec,...},
+	fun applyTycDef(tspec as TYCspec{entVar,info=RegTycSpec{spec,...}},
 			TYCdef{path=spath,tyc,...}) =
 	    (case spec
 	      of T.GENtyc {kind,arity,eq=eqp,path=tpath,...} =>
 		 (case kind
 		   of T.FORMAL =>
 		      if TU.tyconArity tyc = arity
-		      then TYCspec{entVar=entVar, spec=tyc, repl=false,
-				   scope=SP.length spath}
+		      then TYCspec{entVar=entVar,
+                                   info=RegTycSpec{spec=tyc, repl=false,
+				                   scope=SP.length spath}}
 		      (* DBM: we should check at this point that the
 		       * definition represented by TYCdef#tyc has the
 		       * appropriate equality property to match the
@@ -149,8 +150,9 @@ fun pushDefs(elements,defs,error,mkStamp) =
                    * signature is instantiated (bugs 1364, 1432).
 		   *)
 		      if arity = TU.tyconArity tyc
-		      then TYCspec{entVar=entVar, spec=tyc, repl=true,
-				   scope=SP.length spath (* ??? *)}
+		      then TYCspec{entVar=entVar,
+                                   info=RegTycSpec{spec=tyc, repl=true,
+				                   scope=SP.length spath (* ??? *)}}
 		      else (error ("where type definition has wrong arity: " ^
 				   SP.toString spath);
 			    tspec)
@@ -402,7 +404,8 @@ fun elabTYPEspec(tspecs, env, elements, eqspec, region) =
                                      path=IP.IPATH[name]}
                 val env' = SE.bind(name, B.TYCbind etyc, env)
 
-                val ts = TYCspec{spec=tycon, entVar=ev, repl=false, scope=0}
+                val ts = TYCspec{entVar=ev,
+                                 info=RegTycSpec{spec=tycon, repl=false, scope=0}}
                 val elems' = add(name, ts, elems, err)
              in loop(rest, env', elems')
             end
@@ -441,9 +444,10 @@ fun elabDATArepl(name,path,env,elements,region) =
 			       (* add the type *)
 			       val ev = mkStamp()
 			       (* spec uses wrapped version of the PATHtyc!! *)
-			       val tspec = TYCspec{spec=TU.wrapDef(tyc,
-								   mkStamp()),
-						   entVar=ev,repl=true,scope=0}
+			       val tspec = TYCspec{entVar=ev,
+                                                   info=RegTycSpec
+                                                     {spec=TU.wrapDef(tyc, mkStamp()),
+						      repl=true,scope=0}}
 			       val elements' = 
 				   add(name,tspec,elements,error region)
 			       val etyc = T.PATHtyc{arity=arity,entPath=[ev],
@@ -530,8 +534,10 @@ fun elabDATArepl(name,path,env,elements,region) =
 			     val ev = mkStamp()
 			     (* spec uses wrapped version of the PATHtyc!! *)
 			     val tspec =
-				 TYCspec{spec=TU.wrapDef(tyc',mkStamp()),
-					 entVar=ev,repl=true,scope=0}
+				 TYCspec{entVar=ev,
+                                         info=RegTycSpec
+                                           {spec=TU.wrapDef(tyc',mkStamp()),
+					    repl=true,scope=0}}
 
 			     val elements' =
 				 add(name,tspec,elements,error region)
@@ -581,8 +587,9 @@ fun elabDATArepl(name,path,env,elements,region) =
 				[BUGFIX BLOCK]
 			      *)
 			     val tspec =
-				 M.TYCspec{spec=wrappedTyc,
-					   entVar=ev,repl=true,scope=0}
+				 M.TYCspec{entVar=ev,
+                                           info=RegTycSpec{spec=wrappedTyc,
+					                   repl=true,scope=0}}
 			     (* put in the constant tyc
 					   how to treat this in instantiate?*)
 			     val elements' =
@@ -701,7 +708,8 @@ fun elabDATATYPEspec0(dtycspec, env, elements, region) =
 
       fun addTycs([], env, elems) = (env, elems)
         | addTycs((ev,arity,tyc)::tycs, env, elems) =
-            let val tspec = TYCspec{spec=tyc, entVar=ev, repl=false, scope=0}
+            let val tspec = TYCspec{entVar=ev,
+                                    info=RegTycSpec{spec=tyc, repl=false, scope=0}}
                 val name = TU.tycName tyc
 		val _ = debugmsg ("--elabDATATYPEspec - name: "^ S.name name)
                 val _ = if checkDups(name,elems,err) then () else raise TypeDups
