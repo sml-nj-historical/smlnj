@@ -2,16 +2,17 @@
 
 signature FLINTCONTROL =
 sig
+
     val print		: bool ref   (* show IR *)
     val printPhases	: bool ref   (* show phases *)
     val printFctTypes   : bool ref   (* show functor types *)
     val phases		: string list ref  (* determine phases and their order *)
 
-    val tmdebugging     : bool ref   (* TransTypes *)
-    val trdebugging     : bool ref   (* Translate *)
-    val nmdebugging     : bool ref   (* Plambda normalization (flintnm) *)
+    val tmdebugging     : bool ref   (* TransTypes debugging *)
+    val trdebugging     : bool ref   (* Translate debugging *)
+    val nmdebugging     : bool ref   (* Plambda normalization (FlintNM) *)
     val redebugging     : bool ref   (* reify phase debugging (Reify) *)
-    val rtdebugging     : bool ref   (* runtime types debugging *)
+    val rtdebugging     : bool ref   (* runtime types debugging (RuntimeType) *)
 
     val inlineThreshold	: int ref    (* inline threshold *)
     (* val splitThreshold	: int ref *)

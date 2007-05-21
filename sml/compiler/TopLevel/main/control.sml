@@ -1,224 +1,226 @@
-(* COPYRIGHT (c) 1995 AT&T Bell Laboratories *)
 (* control.sml *)
+(* COPYRIGHT (c) 1995 AT&T Bell Laboratories *)
 
 (* Match compiler controls *)
 structure Control_MC : MCCONTROL =
 struct
-    val priority = [10, 10, 4]
-    val obscurity = 2
-    val prefix = "compiler-mc"
 
-    val registry = ControlRegistry.new { help = "match compiler settings" }
+  val priority = [10, 10, 4]
+  val obscurity = 2
+  val prefix = "compiler-mc"
 
-    val _ = BasicControl.nest (prefix, registry, priority)
+  val registry = ControlRegistry.new { help = "match compiler settings" }
 
-    val bool_cvt = ControlUtil.Cvt.bool
+  val _ = BasicControl.nest (prefix, registry, priority)
 
-    val nextpri = ref 0
+  val bool_cvt = ControlUtil.Cvt.bool
 
-    fun flag (n, h, d) = let
-	val r = ref d
-	val p = !nextpri
-	val ctl = Controls.control { name = n,
-				     pri = [p],
-				     obscurity = obscurity,
-				     help = h,
-				     ctl = r }
-    in
-	nextpri := p + 1;
-	ControlRegistry.register
-	    registry
-	    { ctl = Controls.stringControl bool_cvt ctl,
-	      envName = SOME (ControlUtil.EnvName.toUpper "COMPILER_MC_" n) };
-	r
-    end
+  val nextpri = ref 0
 
-    val printArgs = flag ("print-args", "arguments print mode", false)
-    val printRet = flag ("print-ret", "return print mode", false)
-    val bindNoVariableWarn =
-	flag ("nobind-warn", "whether to warn if no variables get bound",
-	      false)
-    val bindNonExhaustiveWarn =
-	flag ("warn-non-exhaustive-bind",
-	      "whether to warn on non-exhaustive bind", true)
-    val bindNonExhaustiveError =
-	flag ("error-non-exhaustive-bind",
-	      "whether non-exhaustive bind is an error", false)
-    val matchNonExhaustiveWarn =
-	flag ("warn-non-exhaustive-match",
-	      "whether to warn on non-exhaustive match", true)
-    val matchNonExhaustiveError =
-	flag ("error-non-exhaustive-match",
-	      "whether non-exhaustive match is an error", false)
-    (* matchExhaustiveError overrides matchExhaustiveWarn *)
-    val matchRedundantWarn =
-	flag ("warn-redundant", "whether to warn on redundant matches", true)
-    val matchRedundantError =
-	flag ("error-redundant", "whether a redundant match is an error", true)
-    (* matchRedundantError overrides matchRedundantWarn *)
+  fun flag (n, h, d) = let
+      val r = ref d
+      val p = !nextpri
+      val ctl = Controls.control { name = n,
+                                   pri = [p],
+                                   obscurity = obscurity,
+                                   help = h,
+                                   ctl = r }
+  in
+      nextpri := p + 1;
+      ControlRegistry.register
+          registry
+          { ctl = Controls.stringControl bool_cvt ctl,
+            envName = SOME (ControlUtil.EnvName.toUpper "COMPILER_MC_" n) };
+      r
+  end
+
+  val printArgs = flag ("print-args", "arguments print mode", false)
+  val printRet = flag ("print-ret", "return print mode", false)
+  val bindNoVariableWarn =
+      flag ("nobind-warn", "whether to warn if no variables get bound",
+            false)
+  val bindNonExhaustiveWarn =
+      flag ("warn-non-exhaustive-bind",
+            "whether to warn on non-exhaustive bind", true)
+  val bindNonExhaustiveError =
+      flag ("error-non-exhaustive-bind",
+            "whether non-exhaustive bind is an error", false)
+  val matchNonExhaustiveWarn =
+      flag ("warn-non-exhaustive-match",
+            "whether to warn on non-exhaustive match", true)
+  val matchNonExhaustiveError =
+      flag ("error-non-exhaustive-match",
+            "whether non-exhaustive match is an error", false)
+  (* matchExhaustiveError overrides matchExhaustiveWarn *)
+  val matchRedundantWarn =
+      flag ("warn-redundant", "whether to warn on redundant matches", true)
+  val matchRedundantError =
+      flag ("error-redundant", "whether a redundant match is an error", true)
+  (* matchRedundantError overrides matchRedundantWarn *)
 (*
     val expandResult =
 	flag ("expand-result", "whether to expand result of match", false)
 *)
-end
+end (* structure Control_MC *)
+
 
 (* Code generation controls (including some used in FLINT?) *)
 structure Control_CG : CGCONTROL =
 struct
-    val priority = [10, 11, 2]
-    val obscurity = 6
-    val prefix = "cg"
+  val priority = [10, 11, 2]
+  val obscurity = 6
+  val prefix = "cg"
 
-    val registry = ControlRegistry.new { help = "code generator settings" }
+  val registry = ControlRegistry.new { help = "code generator settings" }
 
-    val _ = BasicControl.nest (prefix, registry, priority)
+  val _ = BasicControl.nest (prefix, registry, priority)
 
-    val b = ControlUtil.Cvt.bool
-    val i = ControlUtil.Cvt.int
-    val r = ControlUtil.Cvt.real
-    val sl = ControlUtil.Cvt.stringList
+  val b = ControlUtil.Cvt.bool
+  val i = ControlUtil.Cvt.int
+  val r = ControlUtil.Cvt.real
+  val sl = ControlUtil.Cvt.stringList
 
-    val nextpri = ref 0
+  val nextpri = ref 0
 
-    fun new (c, n, h, d) = let
-	val r = ref d
-	val p = !nextpri
-	val ctl = Controls.control { name = n,
-				     pri = [p],
-				     obscurity = obscurity,
-				     help = h,
-				     ctl = r }
-    in
-	nextpri := p + 1;
-	ControlRegistry.register
-	    registry
-	    { ctl = Controls.stringControl c ctl,
-	      envName = SOME (ControlUtil.EnvName.toUpper "CG_" n) };
-	r
-    end
+  fun new (c, n, h, d) = let
+      val r = ref d
+      val p = !nextpri
+      val ctl = Controls.control { name = n,
+                                   pri = [p],
+                                   obscurity = obscurity,
+                                   help = h,
+                                   ctl = r }
+  in
+      nextpri := p + 1;
+      ControlRegistry.register
+          registry
+          { ctl = Controls.stringControl c ctl,
+            envName = SOME (ControlUtil.EnvName.toUpper "CG_" n) };
+      r
+  end
 
-    val tailrecur = new (b, "tailrecur", "?", true)
-    val recordopt = new (b, "recordopt", "?", true)
-    val tail = new (b, "tail", "?", true)
-    val allocprof = new (b, "allocprof", "?", false)
-    val closureprint = new (b, "closureprint", "?", false)
-    val closureStrategy = new (i, "closure-strategy", "?", 0)
-    val lambdaopt = new (b, "lambdaopt", "?", true)
-    val cpsopt = new (sl, "cpsopt", "cps optimizer phases",
-		      ["zeroexpand", "last_contract"])
-    (* ["first_contract", "eta", "uncurry", "etasplit",
-	"cycle_expand", "eta", "last_contract" ] *)
-    val rounds = new (i, "rounds", "max # of cpsopt rounds", 10)
-    val path = new (b, "path", "?", false)
-    val betacontract = new (b, "betacontract", "?", true)
-    val eta = new (b, "eta", "?", true)
-    val selectopt = new (b, "selectopt", "?", true)
-    val dropargs = new (b, "dropargs", "?", true)
-    val deadvars = new (b, "deadvars", "?", true)
-    val flattenargs = new (b, "flattenargs", "?", false)
-    val extraflatten = new (b, "extraflatten", "?", false)
-    val switchopt = new (b, "switchopt", "?", true)
-    val handlerfold = new (b, "handlerfold", "?", true)
-    val branchfold = new (b, "branchfold", "?", false)
-    val arithopt = new (b, "arithopt", "?", true)
-    val betaexpand = new (b, "betaexpand", "?", true)
-    val unroll = new (b, "unroll", "?", true)
-    val knownfiddle = new (b, "knownfiddle", "?", false)
-    val invariant = new (b, "invariant", "?", true)
-    val targeting = new (i, "targeting", "?", 0)
-    val lambdaprop = new (b, "lambdaprop", "?", false)
-    val newconreps = new (b, "newconreps", "?", true)
-    val boxedconstconreps = ElabControl.boxedconstconreps
-    val unroll_recur = new (b, "unroll-recur", "?", true)
-    val sharepath = new (b, "sharepath", "?", true)
-    val staticprof = new (b, "staticprof", "?", false)
-    val hoistup = new (b, "hoistup", "?", false)
-    val hoistdown = new (b, "hoistdown", "?", false)
-    val recordcopy = new (b, "recordcopy", "?", true)
-    val recordpath = new (b, "recordpath", "?", true)
-    val verbose = new (b, "verbose", "?", false)
-    val debugcps = new (b, "debugcps", "?", false)
-    val misc4 = new (i, "misc4", "?", 0)
-    val argrep = new (b, "argrep", "?", true)
-    val bodysize = new (i, "bodysize", "?", 20)
-    val reducemore = new (i, "reducemore", "?", 15)
-    val alphac = new (b, "alphac", "?", true)
-    val comment = new (b, "comment", "?", false)
-    val knownGen = new (i, "known-gen", "?", 0)
-    val knownClGen = new (i, "known-cl-gen", "?", 0)
-    val escapeGen = new (i, "escape-gen", "?", 0)
-    val calleeGen = new (i, "callee-gen", "?", 0)
-    val spillGen = new (i, "spill-gen", "?", 0)
-    val foldconst = new (b, "foldconst", "?", true)
-    val etasplit = new (b, "etasplit", "?", true)
-    val printit = new (b, "printit", "whether to show CPS", false)
-    val printsize = new (b, "printsize", "?", false)
-    val scheduling = new (b, "scheduling", "?", true)
-    val cse = new (b, "cse", "?", false)
-    val optafterclosure = new (b, "opt-after-closure", "?", false)
-    val uncurry = new (b, "uncurry", "?", true)
-    val ifidiom = new (b, "if-idiom", "?", true)
-    val comparefold = new (b, "comparefold", "?", true)
-    val csehoist = new (b, "csehoist", "?", false)
-    val rangeopt = new (b, "rangeopt", "?", false)
-    val icount = new (b, "icount", "?", false)
-    val debugRep = new (b, "debug-rep", "?", false)
-    val checklty1 = new (b, "checklty1", "?", false)
-    val checklty2 = new (b, "checklty2", "?", false)
-    val checklty3 = new (b, "checklty3", "?", false)
-    val checkcps1 = new (b, "checkcps1", "?", false)
-    val checkcps2 = new (b, "checkcps2", "?", false)
-    val checkcps3 = new (b, "checkcps3", "?", false)
-    val checkcps = new (b, "checkcps", "?", false)
-    val flatfblock = new (b, "flatfblock", "?", true)
-    val deadup = new (b, "deadup", "?", true)
-    val pollChecks = new (b, "poll-checks", "?", false)
-    val pollRatioAtoI = new (r, "poll-ratio-a-to-i", "?", 1.0)
+  val tailrecur = new (b, "tailrecur", "?", true)
+  val recordopt = new (b, "recordopt", "?", true)
+  val tail = new (b, "tail", "?", true)
+  val allocprof = new (b, "allocprof", "?", false)
+  val closureprint = new (b, "closureprint", "?", false)
+  val closureStrategy = new (i, "closure-strategy", "?", 0)
+  val lambdaopt = new (b, "lambdaopt", "?", true)
+  val cpsopt = new (sl, "cpsopt", "cps optimizer phases",
+                    ["zeroexpand", "last_contract"])
+  (* ["first_contract", "eta", "uncurry", "etasplit",
+      "cycle_expand", "eta", "last_contract" ] *)
+  val rounds = new (i, "rounds", "max # of cpsopt rounds", 10)
+  val path = new (b, "path", "?", false)
+  val betacontract = new (b, "betacontract", "?", true)
+  val eta = new (b, "eta", "?", true)
+  val selectopt = new (b, "selectopt", "?", true)
+  val dropargs = new (b, "dropargs", "?", true)
+  val deadvars = new (b, "deadvars", "?", true)
+  val flattenargs = new (b, "flattenargs", "?", false)
+  val extraflatten = new (b, "extraflatten", "?", false)
+  val switchopt = new (b, "switchopt", "?", true)
+  val handlerfold = new (b, "handlerfold", "?", true)
+  val branchfold = new (b, "branchfold", "?", false)
+  val arithopt = new (b, "arithopt", "?", true)
+  val betaexpand = new (b, "betaexpand", "?", true)
+  val unroll = new (b, "unroll", "?", true)
+  val knownfiddle = new (b, "knownfiddle", "?", false)
+  val invariant = new (b, "invariant", "?", true)
+  val targeting = new (i, "targeting", "?", 0)
+  val lambdaprop = new (b, "lambdaprop", "?", false)
+  val newconreps = new (b, "newconreps", "?", true)
+  val boxedconstconreps = ElabControl.boxedconstconreps
+  val unroll_recur = new (b, "unroll-recur", "?", true)
+  val sharepath = new (b, "sharepath", "?", true)
+  val staticprof = new (b, "staticprof", "?", false)
+  val hoistup = new (b, "hoistup", "?", false)
+  val hoistdown = new (b, "hoistdown", "?", false)
+  val recordcopy = new (b, "recordcopy", "?", true)
+  val recordpath = new (b, "recordpath", "?", true)
+  val verbose = new (b, "verbose", "?", false)
+  val debugcps = new (b, "debugcps", "?", false)
+  val misc4 = new (i, "misc4", "?", 0)
+  val argrep = new (b, "argrep", "?", true)
+  val bodysize = new (i, "bodysize", "?", 20)
+  val reducemore = new (i, "reducemore", "?", 15)
+  val alphac = new (b, "alphac", "?", true)
+  val comment = new (b, "comment", "?", false)
+  val knownGen = new (i, "known-gen", "?", 0)
+  val knownClGen = new (i, "known-cl-gen", "?", 0)
+  val escapeGen = new (i, "escape-gen", "?", 0)
+  val calleeGen = new (i, "callee-gen", "?", 0)
+  val spillGen = new (i, "spill-gen", "?", 0)
+  val foldconst = new (b, "foldconst", "?", true)
+  val etasplit = new (b, "etasplit", "?", true)
+  val printit = new (b, "printit", "whether to show CPS", false)
+  val printsize = new (b, "printsize", "?", false)
+  val scheduling = new (b, "scheduling", "?", true)
+  val cse = new (b, "cse", "?", false)
+  val optafterclosure = new (b, "opt-after-closure", "?", false)
+  val uncurry = new (b, "uncurry", "?", true)
+  val ifidiom = new (b, "if-idiom", "?", true)
+  val comparefold = new (b, "comparefold", "?", true)
+  val csehoist = new (b, "csehoist", "?", false)
+  val rangeopt = new (b, "rangeopt", "?", false)
+  val icount = new (b, "icount", "?", false)
+  val debugRep = new (b, "debug-rep", "?", false)
+  val checklty1 = new (b, "checklty1", "?", false)
+  val checklty2 = new (b, "checklty2", "?", false)
+  val checklty3 = new (b, "checklty3", "?", false)
+  val checkcps1 = new (b, "checkcps1", "?", false)
+  val checkcps2 = new (b, "checkcps2", "?", false)
+  val checkcps3 = new (b, "checkcps3", "?", false)
+  val checkcps = new (b, "checkcps", "?", false)
+  val flatfblock = new (b, "flatfblock", "?", true)
+  val deadup = new (b, "deadup", "?", true)
+  val pollChecks = new (b, "poll-checks", "?", false)
+  val pollRatioAtoI = new (r, "poll-ratio-a-to-i", "?", 1.0)
 
-    val printFlowgraphStream = ref TextIO.stdOut
+  val printFlowgraphStream = ref TextIO.stdOut
 
-    val memDisambiguate = new (b, "mem-disambiguate", "?", false)
-    val controlDependence = new (b, "control-dependence", "?", false)
-    val flinton = new (b, "flinton", "?", true)
+  val memDisambiguate = new (b, "mem-disambiguate", "?", false)
+  val controlDependence = new (b, "control-dependence", "?", false)
+  val flinton = new (b, "flinton", "?", true)
 
-    val compdebugging = new (b, "compdebugging", "?", false)
+  val compdebugging = new (b, "compdebugging", "?", false)
 
-end
+end (* structure Control_CG *)
+
 
 structure Control : CONTROL =
-  struct
+struct
 
-    local
-	val priority = [10, 10, 9]
-	val obscurity = 4
-	val prefix = "control"
+  local
+      val priority = [10, 10, 9]
+      val obscurity = 4
+      val prefix = "control"
 
-	val registry = ControlRegistry.new
-			   { help = "miscellaneous control settings" }
+      val registry = ControlRegistry.new
+                         { help = "miscellaneous control settings" }
 
-	val _ = BasicControl.nest (prefix, registry, priority)
+      val _ = BasicControl.nest (prefix, registry, priority)
 
-	val bool_cvt = ControlUtil.Cvt.bool
+      val bool_cvt = ControlUtil.Cvt.bool
 
-	val nextpri = ref 0
+      val nextpri = ref 0
 
-	fun new (n, h, d) = let
-	    val r = ref d
-	    val p = !nextpri
-	    val ctl = Controls.control { name = n,
-					 pri = [p],
-					 obscurity = obscurity,
-					 help = h,
-					 ctl = r }
-	in
-	    nextpri := p + 1;
-	    ControlRegistry.register
-		registry
-		{ ctl = Controls.stringControl bool_cvt ctl,
-		  envName = SOME (ControlUtil.EnvName.toUpper "CONTROL_" n) };
-	    r
-	end
-    in
+      fun new (n, h, d) =
+          let val r = ref d
+              val p = !nextpri
+              val ctl = Controls.control { name = n,
+                                           pri = [p],
+                                           obscurity = obscurity,
+                                           help = h,
+                                           ctl = r }
+           in nextpri := p + 1;
+              ControlRegistry.register
+                  registry
+                  { ctl = Controls.stringControl bool_cvt ctl,
+                    envName = SOME (ControlUtil.EnvName.toUpper "CONTROL_" n) };
+              r
+          end
+  in
 
     structure Print : PRINTCONTROL = Control_Print
 
@@ -228,9 +230,9 @@ structure Control : CONTROL =
 
     structure MC : MCCONTROL = Control_MC
 
-    structure MLRISC = MLRiscControl
+    structure FLINT = FLINT_Control
 
-    structure FLINT :> FLINTCONTROL = FLINT_Control
+    structure MLRISC = MLRiscControl
 
     structure CG : CGCONTROL = Control_CG
 
@@ -322,4 +324,5 @@ structure Control : CONTROL =
     val tdp_instrument = TDPInstrument.enabled
 
     end (* local *)
-  end
+
+end (* structure Control *)
