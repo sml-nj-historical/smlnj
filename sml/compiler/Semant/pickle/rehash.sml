@@ -1,5 +1,5 @@
-(* rehash.sml
- *
+(* rehash.sml *)
+(*
  *  (C) 2001 Lucent Technologies, Bell Labs
  *
  * Compute hash for a library that is the product of filtering

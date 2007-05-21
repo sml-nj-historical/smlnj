@@ -348,8 +348,8 @@ and ppElements (env,depth,entityEnvOp) ppstrm elements =
                          case entityEnvOp
                            of NONE =>
                                (pps ppstrm "type";
-                                break ppstrm {nsp=1,offset=0};
-                                ppFormals ppstrm arity; pps ppstrm " ";
+                                ppFormals ppstrm arity;
+                                pps ppstrm " ";
                                 ppSym ppstrm name)
                             | SOME eenv =>
                                (case EE.look(eenv,entVar)
