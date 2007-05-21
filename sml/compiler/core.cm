@@ -227,6 +227,7 @@ FLINT/kernel/pplty.sml
 FLINT/kernel/primop.sig
 FLINT/kernel/primop.sml
 FLINT/main/flintcomp.sml
+FLINT/main/control.sig
 FLINT/main/control.sml
 FLINT/main/literals.sml
 FLINT/opt/fixfix.sml

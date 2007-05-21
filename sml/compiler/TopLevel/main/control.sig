@@ -17,6 +17,7 @@ sig
 *)
 end
 
+(* moved to FLINT/basic/control.sig --
 signature FLINTCONTROL =
 sig
     val print		: bool ref
@@ -24,8 +25,10 @@ sig
     val printFctTypes   : bool ref
     val phases		: string list ref
 
-    val tmdebugging     : bool ref
-    val trdebugging     : bool ref
+    val tmdebugging     : bool ref   (* TransTypes *)
+    val trdebugging     : bool ref   (* Translate *)
+    val nmdebugging     : bool ref   (* Plambda normalization (flintnm) *)
+    val rtdebugging     : bool ref   (* runtime types debugging *)
 
     val inlineThreshold	: int ref
     (* val splitThreshold	: int ref *)
@@ -42,10 +45,12 @@ sig
     val misc		: int ref
 
     (* FLINT internal type-checking controls *)
-    val check		: bool ref
-    val checkDatatypes	: bool ref
-    val checkKinds	: bool ref
+    val check		: bool ref    (* typecheck IR? *)
+    val checkDatatypes	: bool ref    (* typecheck datatypes *)
+    val checkKinds	: bool ref    (* check kinds *)
+    val plchk           : bool ref    (* type check plambda after translate *)
 end
+*)
 
 signature CGCONTROL =
 sig
