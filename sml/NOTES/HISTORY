@@ -14,6 +14,19 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/05/22 11:50:00 CDT
+Description:
+
+Added a boolean control named cm.tolerate-tool-failures (env. variable
+name: CM_TOLERATE_TOOL_FAILURES).  The default is false and makes
+CM fail if a shell tool reports a non-success exit status.  If
+the control is set to true, then CM will press on after tool failures
+in the event that the target files exist (even though they are
+considered outdated).  Turning the control to true can be useful for
+bootstrapping.
+
+----------------------------------------------------------------------
 Name: Aaron Turon (http://www.cs.uchicago.edu/~adrassi)
 Date: 2007/05/19
 Description:
