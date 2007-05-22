@@ -188,3 +188,10 @@ Transmitting file data ..
 Committed revision 2473.
 
 
+4. Merge from trunk
+arran$ date
+Tue May 22 16:25:26 CDT 2007
+arran$ svn merge -r 2492:HEAD $smlnj/sml/trunk
+U    cm/tools/main/tools-fn.sml
+ U   cm/parse
+U    NOTES/HISTORY

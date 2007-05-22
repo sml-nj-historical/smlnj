@@ -15,6 +15,17 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
     val say = Say.say
     val vsay = Say.vsay
 
+    fun boolcontrol (name, doc, default) =
+	StdConfig.new (ControlUtil.Cvt.bool, name, doc, default)
+    fun stringcontrol (name, doc, default) =
+	StdConfig.new (ControlUtil.Cvt.string, name, doc, default)
+
+    val tolerate_tool_failures =
+	boolcontrol ("tolerate-tool-failures",
+		     "let CM continue if a tool fails \
+		     \as long as target files exist",
+		     false)
+
     fun mkCmdName cmdStdPath =
 	(* The result of this function should not be cached. Otherwise
 	 * a later addition or change of an anchor will go unnoticed. *)
@@ -66,7 +77,8 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
 	    in
 		Say.vsay ["[", cmd, "]\n"];
 		if OS.Process.system cmd = OS.Process.success then ()
-		else if targetsExist targets then
+		else if #get tolerate_tool_failures ()
+			andalso targetsExist targets then
 		    Say.say ["[*** WARNING: \"", cmd, "\" failed ***]\n\
 			     \[*** using potentially outdated targets ***]\n"]
 		else err cmd
@@ -121,9 +133,4 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
         val _ = registerClass (toolclass, toolrule)
 	val _ = registerClass (suffixclass, suffixrule)
     end
-
-    fun boolcontrol (name, doc, default) =
-	StdConfig.new (ControlUtil.Cvt.bool, name, doc, default)
-    fun stringcontrol (name, doc, default) =
-	StdConfig.new (ControlUtil.Cvt.string, name, doc, default)
 end

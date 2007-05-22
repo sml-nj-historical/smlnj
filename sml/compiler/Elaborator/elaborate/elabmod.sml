@@ -576,27 +576,8 @@ fun extractSig (env, epContext, context,
 	   be missing some decl name. We use the decl names list to 
 	   order the elements in this extracted/inferred signature. 
 	   [GK 4/18/07] *)
-	val (envkeyset, envkeyorder) = suppressDuplicates(SE.symbols env)
         val (declnameset, origdeclorder) = 
 	      suppressDuplicates(getDeclOrder absDecl)
-	val _ = 
-	    if ST.equal(envkeyset,declnameset) 
-	    then ()
-	    else (debugmsg 
-		      (concat["--elabmod: extractSig statenv and absyn decl\
-			       \mismatch\n\toldset: ", 
-			      Int.toString(ST.numItems envkeyset),
-			      "\n\tnewset: ", 
-			      Int.toString(ST.numItems declnameset),
-			      "\n\tDifference: "]);
-		  ST.app (fn s => say ((S.name s)^" ")) 
-			 (ST.difference(envkeyset,declnameset)); 
-		  say "\n\toldset "; 
-		  ST.app (fn s => say ((S.name s)^" ")) envkeyset;
-		  say "\n\tnewset "; 
-		  ST.app (fn s => say ((S.name s)^" ")) declnameset;
-		  say "\n";
-		  bug "elabmod: extractSig getDeclOrder") 
 
 	(* [GK 4/15/07] Consolidate will compact the potentially
 	   linear static environment (i.e., BIND(...BIND(...)))

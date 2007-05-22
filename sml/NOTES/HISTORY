@@ -14,6 +14,62 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/05/22 11:50:00 CDT
+Description:
+
+Added a boolean control named cm.tolerate-tool-failures (env. variable
+name: CM_TOLERATE_TOOL_FAILURES).  The default is false and makes
+CM fail if a shell tool reports a non-success exit status.  If
+the control is set to true, then CM will press on after tool failures
+in the event that the target files exist (even though they are
+considered outdated).  Turning the control to true can be useful for
+bootstrapping.
+
+----------------------------------------------------------------------
+Name: Aaron Turon (http://www.cs.uchicago.edu/~adrassi)
+Date: 2007/05/19
+Description:
+
+Merge of ml-lpt revisions for 110.64.
+
+The name of several ml-lpt-lib modules has changed:
+  Repair	=> AntlrRepair
+  StreamPos	=> AntlrStreamPos
+  ErrHandlerFn	=> AntlrErrHandler
+  EBNF		=> AntlrEBNF
+
+The ml-antlr specification format has changed: declarations such as
+%tokens and nonterminal definitions can occur *multiple* times in the
+same specification.  The semantics are such that each new declaration
+extends the previous ones.  This does not apply to %start or %name,
+of course.
+
+Importing a grammar via %import now includes *all* declarations in from
+the imported grammar, except for %name, %entry, and %start.  Tokens
+and nonterminals can be dropped using the new %dropping clause of the
+%import directive; the separate %drop and %extend have been removed.
+
+We now allow optional type annotations on nonterminals, using the %nonterms
+directive as in ml-yacc.
+
+The refcell construct is now implemented using SML's regular reference
+cells, so the :== and !! notation has been deprecated.
+
+The ml-antlr tool now does much more checking of specifications, and 
+its error messages have been greatly improved.  Error repair for
+generated parsers has been completely rewritten, and is now both
+much faster and more accurate.
+
+ml-ulex is now more lenient with escape codes (non-SML-standard
+escape codes are now interpreted literally, so e.g. \| denotes "|").
+Also, character classes may now include a "-" character at the beginning
+as is standard in most other regexp tools.
+
+All of these changes are documented in the user guide, which has 
+been updated and improved with this merge.
+
+----------------------------------------------------------------------
 Name: David MacQueen (http://www.cs.uchicago.edu/~jhr)
 Date: 2007/05/03
 Revision: r2492
@@ -23,6 +79,26 @@ Merge of the primop3 branch (base) into the trunk to create 110.63.1.
 Significant changes in FLINT and the front end, mostly having to do
 with a reorganized system for handling primops.  Various bug fixes
 and improvements in printing signatures.
+
+----------------------------------------------------------------------
+Name: Aaron Turon (http://www.cs.uchicago.edu/~adrassi)
+Date: 2007/05/02
+Description:
+
+Preliminary commit of large ml-lpt revisions (more to come for 110.64).
+The ml-antlr specification format has changed: declarations such as
+%tokens and nonterminal definitions can occur *multiple* times in the
+same specification.  The semantics are such that each new declaration
+extends the previous ones.  Grammar extension constructs have also
+changed.  We now allow type annotations on nonterminals.  Finally,
+the refcell construct is now implemented using SML's regular reference
+cells, so the :== and !! notation has been deprecated.  All of these
+changes will appear in the 110.64 user guide for ml-lpt.
+
+The ml-antlr tool now does much more checking of specifications, and 
+its error messages have been greatly improved.  There has also been
+some work on the error repair process for generated parsers, but this
+will be further improved in 110.64.
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
