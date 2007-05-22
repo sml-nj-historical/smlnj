@@ -421,6 +421,8 @@ cd "$ROOT"
 if [ $nolib = false ] ; then
     echo $this: Installing other libraries and programs:
     export ROOT INSTALLDIR CONFIGDIR BINDIR
+    CM_TOLERATE_TOOL_FAILURES=true
+    export CM_TOLERATE_TOOL_FAILURES
     if "$BINDIR"/sml -m \$smlnj/installer.cm
     then
 	vsay $this: Installation complete.
