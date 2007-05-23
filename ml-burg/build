@@ -12,9 +12,7 @@ ROOT="ml-burg"
 HEAP_IMAGE=""
 SMLNJROOT=`pwd`/..
 BIN=${INSTALLDIR:-$SMLNJROOT}/bin
-LIB=${INSTALLDIR:-$SMLNJROOT}/lib
 BUILD=$BIN/ml-build
-SML=$BIN/sml
 
 #
 # process command-line options
@@ -44,10 +42,5 @@ fi
 #
 # Build the ml-burg standalone program:
 "$BUILD" -DNO_ML_LEX -DNO_ML_YACC ml-burg.cm Main.main $HEAP_IMAGE
-
-#
-# Install CM support for ml-burg:
-"$SML" -m \$smlnj/library-install.cm tool/mlburg-tool.cm ${LIB}
-"$SML" -m \$smlnj/library-install.cm tool/burg-ext.cm ${LIB}
 
 exit 0

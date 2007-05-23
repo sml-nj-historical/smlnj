@@ -14,7 +14,6 @@ structure LexTool = struct
     val _ = Tools.registerStdShellCmdTool
 	{ tool = "ML-Lex",
 	  class = "mllex",
-	  suffixes = ["lex", "l"],
 	  cmdStdPath = fn () =>
 			  case #get legacy_control () of
 			      "ml-lex" => ("ml-lex", [])

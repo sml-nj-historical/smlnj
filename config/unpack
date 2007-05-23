@@ -237,7 +237,16 @@ do
       ml-yacc)
 	unpack ML-Yacc "$ROOT" ml-yacc ml-yacc
 	;;
+      ml-yacc-grm-ext)
+	unpack ML-Yacc "$ROOT" ml-yacc ml-yacc
+	;;
       ml-lex)
+	unpack ML-Lex "$ROOT" ml-lex ml-lex
+	;;
+      ml-lex-mllex-tool)
+	unpack ML-Lex "$ROOT" ml-lex ml-lex
+	;;
+      ml-lex-lex-ext)
 	unpack ML-Lex "$ROOT" ml-lex ml-lex
 	;;
       ml-burg)
@@ -288,7 +297,16 @@ do
       ml-ulex)
 	unpack "new unicode lexer generator" "$ROOT" ml-lpt ml-lpt
 	;;
+      ml-ulex-lex-ext)
+	unpack "new unicode lexer generator" "$ROOT" ml-lpt ml-lpt
+	;;
+      ml-ulex-mllex-tool)
+	unpack "new unicode lexer generator" "$ROOT" ml-lpt ml-lpt
+	;;
       ml-antlr)
+	unpack "new LL(k) parser generator" "$ROOT" ml-lpt ml-lpt
+	;;
+      ml-antlr-grm-ext)
 	unpack "new LL(k) parser generator" "$ROOT" ml-lpt ml-lpt
 	;;
       ml-lpt-lib)

@@ -1,13 +1,12 @@
 (*
- * A pointer to the plugin library for ML-Burg.
- *   (For each to-be-recognized file name suffix <s>, a copy of this
- *    file should be created and stored under the name <s>-ext.cm.)
+ * Plugin for registering "burg" classifier.
  *
- * (C) 2000 Lucent Technologies, Bell Laboratories
+ * (C) 2007 The Fellowship of SML/NJ
  *
- * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ * Author: Matthias Blume (blume@tti-c.org)
  *)
 Library
-	structure BurgTool
+	structure BurgBurgExt
 is
-	$/mlburg-tool.cm
+	$smlnj/cm/tools.cm
+	ext.sml

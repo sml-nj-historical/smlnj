@@ -67,13 +67,30 @@ mlrisc-tools lib mlrisc-tools prec-parser.cm    MLRISC/Tools
 mlrisc-tools lib mlrisc-tools parser.cm         MLRISC/Tools
 mlrisc-tools lib mlrisc-tools match-compiler.cm MLRISC/Tools
 
-ml-yacc  prog ml-yacc src
-ml-lex   prog
-ml-ulex  dprog ml-ulex - ml-lpt/ml-ulex
-ml-antlr dprog ml-antlr - ml-lpt/ml-antlr
-ml-lpt-lib lib ml-lpt-lib.cm ml-lpt-lib.cm ml-lpt/lib
-ml-burg  prog
-heap2asm prog
+ml-lex     	   prog
+ml-lex-mllex-tool  lib  mllex-tool.cm mllex-tool.cm ml-lex/tool
+ml-lex-lex-ext	   lib  lex-ext.cm    lex-ext.cm    ml-lex/tool
+
+ml-yacc            prog ml-yacc src
+ml-yacc   	   lib  mlyacc-tool.cm mlyacc-tool.cm ml-yacc/tool
+ml-yacc-grm-ext    lib  grm-ext.cm     grm-ext.cm     ml-yacc/tool
+
+ml-ulex    	   dprog ml-ulex - ml-lpt/ml-ulex
+ml-ulex	   	   lib ml-ulex-tool.cm ml-ulex-tool.cm ml-lpt/ml-ulex/tool
+#ml-ulex-mllex-tool lib mllex-tool.cm   mllex-tool.cm   ml-lpt/ml-ulex/tool
+#ml-ulex-lex-ext    lib lex-ext.cm      lex-ext.cm      ml-lpt/ml-ulex/tool
+
+ml-antlr           dprog ml-antlr - ml-lpt/ml-antlr
+ml-antlr   	   lib ml-antlr-tool.cm ml-antlr-tool.cm ml-lpt/ml-antlr/tool
+#ml-antlr-grm-ext   lib grm-ext.cm       grm-ext.cm       ml-lpt/ml-antlr/tool
+
+ml-lpt-lib 	   lib ml-lpt-lib.cm ml-lpt-lib.cm ml-lpt/lib
+
+ml-burg    	   prog
+ml-burg		   lib mlburg-tool.cm mlburg-tool.cm ml-burg/tool
+ml-burg		   lib burg-ext.cm    burg-ext.cm    ml-burg/tool
+
+heap2asm   prog
 
 ml-nlffigen dprog ml-nlffigen - nlffi/gen
 nowhere     dprog nowhere - MLRISC/Tools/nowhere

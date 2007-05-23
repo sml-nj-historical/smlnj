@@ -21,7 +21,6 @@ structure YaccTool = struct
         val _ = Tools.registerStdShellCmdTool
 		    { tool = tool,
 		      class = "mlyacc",
-		      suffixes = ["grm", "y"],
 		      cmdStdPath = fn () => ("ml-yacc", []),
 		      template = NONE,
 		      extensionStyle =

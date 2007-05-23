@@ -9,7 +9,6 @@ structure BurgTool = struct
     val _ = Tools.registerStdShellCmdTool
 	{ tool = "ML-Burg",
 	  class = "mlburg",
-	  suffixes = ["burg"],
 	  cmdStdPath = fn () => ("ml-burg", []),
 	  template = NONE,
 	  extensionStyle =

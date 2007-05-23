@@ -28,10 +28,13 @@ request ml-ulex
 # build legacy ML-Lex
 #
 request ml-lex
+request ml-lex-mllex-tool
+request ml-lex-lex-ext
 
 # build ML-Yacc (must come after ml-lex)
 #
 request ml-yacc
+request ml-yacc-grm-ext
 
 # Always: install the pre-compiled ML-Yacc Library; this is necessary
 # to use parsers produced by ML-Yacc, but also to bootstrap the system
