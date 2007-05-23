@@ -1,6 +1,7 @@
 (* COPYRIGHT (c) 1995 AT&T Bell Laboratories *)
 (* control.sig *)
 
+(* match compiler controls *)
 signature MCCONTROL =
 sig
   val printArgs : bool ref
@@ -15,38 +16,9 @@ sig
 (*
   val expandResult : bool ref
 *)
-end
+end (* signature MCCONTROL *)
 
-signature FLINTCONTROL =
-sig
-    val print		: bool ref
-    val printPhases	: bool ref
-    val printFctTypes   : bool ref
-    val phases		: string list ref
-
-    val tmdebugging     : bool ref
-    val trdebugging     : bool ref
-
-    val inlineThreshold	: int ref
-    (* val splitThreshold	: int ref *)
-    val unrollThreshold	: int ref
-    val maxargs		: int ref	(* to put a cap on arity raising *)
-    val dropinvariant	: bool ref
-
-    val specialize	: bool ref
-    (* val liftLiterals	: bool ref *)
-    val sharewrap	: bool ref
-    val saytappinfo	: bool ref	(* for verbose typelifting *)
-
-    (* only for temporary debugging *)
-    val misc		: int ref
-
-    (* FLINT internal type-checking controls *)
-    val check		: bool ref
-    val checkDatatypes	: bool ref
-    val checkKinds	: bool ref
-end
-
+(* general code-generation controls *)
 signature CGCONTROL =
 sig
   val tailrecur : bool ref
@@ -129,16 +101,17 @@ sig
 
   val compdebugging : bool ref
 
-end
+end (* signature CGCONTROL *)
 
+(* main Control structure *)
 signature CONTROL = 
 sig
+  structure Print : PRINTCONTROL
   structure ElabData : ELABDATA_CONTROL
   structure Elab : ELAB_CONTROL
   structure MC : MCCONTROL
-  structure CG : CGCONTROL
-  structure Print : PRINTCONTROL
   structure FLINT : FLINTCONTROL
+  structure CG : CGCONTROL
   structure MLRISC : MLRISC_CONTROL
   val debugging : bool ref
   val printAst : bool ref
@@ -179,19 +152,20 @@ sig
   val saveCPSopt : bool ref
   val saveClosure : bool ref
 
-    structure LambdaSplitting : sig
-	datatype globalsetting =
-	    Off				(* completely disabled *)
-	  | Default of int option       (* default aggressiveness; NONE: off *)
-	type localsetting = int option option
-	val UseDefault : localsetting
-	val Suggest : int option -> localsetting
-	val set : globalsetting -> unit
-	val get : unit -> int option
-	val get' : localsetting -> int option
-	val parse : string -> globalsetting option
-	val show : globalsetting -> string
-    end
+  structure LambdaSplitting : sig
+      datatype globalsetting =
+          Off				(* completely disabled *)
+        | Default of int option       (* default aggressiveness; NONE: off *)
+      type localsetting = int option option
+      val UseDefault : localsetting
+      val Suggest : int option -> localsetting
+      val set : globalsetting -> unit
+      val get : unit -> int option
+      val get' : localsetting -> int option
+      val parse : string -> globalsetting option
+      val show : globalsetting -> string
+  end
 
-    val tdp_instrument : bool ref
-end
+  val tdp_instrument : bool ref
+
+end (* signature CONTROL *)

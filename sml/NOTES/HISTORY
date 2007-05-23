@@ -14,6 +14,17 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: David MacQueen (dbm@cs.uchicago.edu)
+Date: 2007/5/23 17:23:00 CDT
+Revision: 2603
+Description:
+
+2nd merge of base from primop-branch-3 into the trunk.
+Additional bug fixes included:
+ Date.scan and Date.fromString fixed;
+ Overloading resolution fixed and some type printing problems corrected.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2007/05/23 09:50:00 CDT
 Description:
@@ -85,6 +96,37 @@ as is standard in most other regexp tools.
 
 All of these changes are documented in the user guide, which has 
 been updated and improved with this merge.
+
+----------------------------------------------------------------------
+Name: David MacQueen (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/05/03
+Revision: r2492
+Description:
+
+Merge of the primop3 branch (base) into the trunk to create 110.63.1.
+Significant changes in FLINT and the front end, mostly having to do
+with a reorganized system for handling primops.  Various bug fixes
+and improvements in printing signatures.
+
+----------------------------------------------------------------------
+Name: Aaron Turon (http://www.cs.uchicago.edu/~adrassi)
+Date: 2007/05/02
+Description:
+
+Preliminary commit of large ml-lpt revisions (more to come for 110.64).
+The ml-antlr specification format has changed: declarations such as
+%tokens and nonterminal definitions can occur *multiple* times in the
+same specification.  The semantics are such that each new declaration
+extends the previous ones.  Grammar extension constructs have also
+changed.  We now allow type annotations on nonterminals.  Finally,
+the refcell construct is now implemented using SML's regular reference
+cells, so the :== and !! notation has been deprecated.  All of these
+changes will appear in the 110.64 user guide for ml-lpt.
+
+The ml-antlr tool now does much more checking of specifications, and 
+its error messages have been greatly improved.  There has also been
+some work on the error repair process for generated parsers, but this
+will be further improved in 110.64.
 
 ----------------------------------------------------------------------
 Name: David MacQueen (http://www.cs.uchicago.edu/~jhr)

@@ -1,3 +1,5 @@
+(* unpickmod.sml *)
+
 (*
  * The new unpickler (based on the new generic unpickling facility).
  *
@@ -17,6 +19,7 @@
  *
  * March 2000, Matthias Blume
  *)
+
 signature UNPICKMOD = sig
 
     type context = (int * Symbol.symbol) option -> ModuleId.tmap
@@ -429,6 +432,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val sigM = UU.mkMap ()
 	val fsigM = UU.mkMap ()
 	val spM = UU.mkMap ()
+	val tsiM = UU.mkMap ()
 	val enM = UU.mkMap ()
 	val fctcM = UU.mkMap ()
 	val strM = UU.mkMap ()
@@ -782,7 +786,6 @@ structure UnpickMod : UNPICKMOD = struct
 		    val n = symboloption ()
 		    val c = bool ()
 		    val ff = bool ()
-		    val sl = symbollist ()
 		    val (el, eltrl) =
 			ListPair.unzip
 			    (map (fn (sy, (sp, tr)) => ((sy, sp), tr))
@@ -797,7 +800,6 @@ structure UnpickMod : UNPICKMOD = struct
 			      name = n,
 			      closed = c,
 			      fctflag = ff,
-			      symbols = sl,
 			      elements = el,
 			      properties = PropList.newHolder (),
 			      (* boundeps = ref beps, *)
@@ -840,11 +842,10 @@ structure UnpickMod : UNPICKMOD = struct
 
 	and spec' () = let
 	    fun sp #"1" =
-		let val (t, ttr) = tycon' ()
+		let val (i, itr) = tycSpecInfo' ()
 		in
-		    (M.TYCspec { spec = t, entVar = entVar (),
-				 repl = bool (), scope = int () },
-		     ttr)
+		    (M.TYCspec { entVar = entVar (), info = i },
+		     itr)
 		end
 	      | sp #"2" =
 		let val (s, str) = Signature' ()
@@ -875,6 +876,19 @@ structure UnpickMod : UNPICKMOD = struct
 	in
 	    share spM sp
 	end
+
+        and tycSpecInfo' () =
+            let fun tsi #"a" =
+                    let val (t,ttr) = tycon' ()
+                    in (M.RegTycSpec{spec = t, repl = bool (), scope = int ()},
+                        ttr)
+                    end
+                  | tsi #"b" =
+                    (M.InfTycSpec{name = symbol (), arity = int ()},
+                     notree)
+                  | tsi _ = raise Format
+             in share tsiM tsi 
+            end
 
 	and entity' () = let
 	    fun en #"A" = & M.TYCent (tycEntity' ())

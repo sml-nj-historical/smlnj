@@ -24,7 +24,7 @@ datatype Signature
   | ERRORsig
 
 (*
- * 1. tycspec should only be GENtyc, with FORMAL or DATATYPE tyckinds, or DEFtyc.
+ * 1. tyc spec should only be GENtyc, with FORMAL or DATATYPE tyckinds, or DEFtyc.
  * 2. the stamp and the path for the GENtyc or DEFtyc should be meaningless
  *    (but the stamps are in fact used for relativization of withtype bodies and
  *     the datacon domains of datatype repl specs)
@@ -32,12 +32,21 @@ datatype Signature
  *    the whole thing can be further cleaned up.
  *)
 and spec
-  = TYCspec of {entVar : EP.entVar, spec : T.tycon, repl: bool, scope: int}
+  = TYCspec of {entVar : EP.entVar, info: tycSpecInfo}
   | STRspec of {entVar : EP.entVar, sign : Signature,
 		def : (strDef * int) option, slot : int}
   | FCTspec of {entVar : EP.entVar, sign : fctSig, slot : int}
   | VALspec of {spec : T.ty, slot : int}
   | CONspec of {spec : T.datacon, slot : int option}
+
+(* there are two forms of TYCspec. One for regular, explicitly defined signatures,
+ * and the other for inferred signatures, where all the type info is always in the
+ * realization. But we need some info for printing in the one case where a
+ * realization is not available with the signature, namely an inferred result
+ * signature for a functor. *)
+and tycSpecInfo
+  = RegTycSpec of {spec : T.tycon, repl: bool, scope: int} (* normal signature *)
+  | InfTycSpec of {name: S.symbol, arity: int} (* inferred signature *)
 
 (*
  * and specEnv
@@ -94,11 +103,11 @@ and stampExp
   | NEW                (* generate a new stamp *)
 
 and tycExp (* expression evaluating to a TYCentity *)
-  = VARtyc of EP.entPath                          (* selection from cur-EE *)
-  | CONSTtyc of T.tycon                       (* actual tycon *)
-  | FORMtyc of T.tycon                        (* formal tycon *)
+  = VARtyc of EP.entPath    (* selection from cur-EE *)
+  | CONSTtyc of T.tycon     (* actual tycon *)
+  | FORMtyc of T.tycon      (* formal tycon *)
 
-and strExp 
+and strExp
   = VARstr of EP.entPath       (* selection from current entityEnv *)
   | CONSTstr of strEntity
   | STRUCTURE of {stamp : stampExp, entDec : entityDec}
@@ -142,8 +151,8 @@ and entityEnv
   | NILeenv
   | ERReenv
 
-and modtree =
-    TYCNODE of Types.gtrec
+and modtree
+  = TYCNODE of Types.gtrec
   | SIGNODE of sigrec
   | STRNODE of strrec
   | FCTNODE of fctrec
@@ -155,13 +164,14 @@ withtype stubinfo =
      lib   : bool,
      tree  : modtree}
 
+and elements = (S.symbol * spec) list
+
 and sigrec =
     {stamp      : ST.stamp,
      name       : S.symbol option,
      closed     : bool,
      fctflag    : bool,
-     symbols    : S.symbol list,
-     elements   : (S.symbol * spec) list,
+     elements   : elements,
      properties : PropList.holder, (* boundeps, lambdaty *)
      typsharing : sharespec list,
      strsharing : sharespec list,
@@ -202,8 +212,6 @@ and fctrec =
 (* the stamp and arith inside T.tycon are critical *)  
 and tycEntity = T.tycon
 
-and elements = (S.symbol * spec) list
-
 (*
 and constraint  
   = {my_path : SP.path, its_ancestor : instrep, its_path : SP.path}
@@ -224,7 +232,6 @@ val bogusStrEntity : strEntity =
 val bogusSig : Signature = 
     SIG {stamp = bogusSigStamp,
 	 name=NONE, closed=true, fctflag=false,
-	 symbols=[], 
 	 elements=[],
 	 properties = PropList.newHolder (),
 	 (* boundeps=ref NONE, lambdaty=ref NONE *)

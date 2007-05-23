@@ -336,9 +336,11 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
 fun extractSig (env, epContext, context, 
                 compInfo as {mkStamp,...} : EU.compInfo,
 	        absDecl) =
-  let fun getEpOp (look, modId) =
-        case context of EU.INFCT _ => look (epContext, modId)
-                      | _ => NONE
+  let fun getEpOp (lookfn, modId) =
+        case context
+          of EU.INFCT _ => lookfn (epContext, modId)
+           | _ => NONE
+
       val relativize =
         case context
 	  of EU.INFCT _ => (fn ty => #1(MU.relativizeType epContext ty))
@@ -459,7 +461,8 @@ fun extractSig (env, epContext, context,
                            in (x, ee, ed)
                           end)
 
-                  val spec = TYCspec{spec=T.ERRORtyc,entVar=ev,repl=false,scope=0}
+                  val spec = TYCspec{entVar=ev,
+                                     info=InfTycSpec{name=sym,arity=TU.tyconArity tyc}}
                   val elements' = addElems((sym, spec), elements)
                   (* 
                    * Use of T.ERRORtyc here is a hack. It relies on the
@@ -475,10 +478,11 @@ fun extractSig (env, epContext, context,
               end
 
           | _ => (elements, entEnv, entDecl, trans, slotCount, fctflag)
+
       (* getDeclOrder : absyn -> symbol list 
 	 getDeclOrder returns the names of all the surface declaractions
 	 in decl. We use this function to return the signature elements
-         in the same order as the structure decls. *)
+         in the same order as the structure element decls. *)
       fun getDeclOrder(decl) =
 	  let fun procstrbs([]) = []
 		| procstrbs((A.STRB{name,...})::rest) = name::(procstrbs rest)
@@ -517,9 +521,11 @@ fun extractSig (env, epContext, context,
 		    name::(procebs rest)
 	      fun procfctbs([]) = []
 		| procfctbs(A.FCTB{name,...}::rest) = name::(procfctbs rest)
-	      fun procstr(M.STR{sign=M.SIG{symbols,...},...}) = symbols
+	      fun procstr(M.STR{sign=M.SIG{elements,...},...}) = 
+                    MU.getElementsSymbols elements
 		| procstr(M.STR{sign=M.ERRORsig,...}) = []
-		| procstr(M.STRSIG{sign=M.SIG{symbols,...},...}) = symbols
+		| procstr(M.STRSIG{sign=M.SIG{elements,...},...}) =
+                    MU.getElementsSymbols elements
 		| procstr(M.STRSIG{sign=M.ERRORsig,...}) = 
 		    bug "elabmod: extractSig ERRORsig in STRSIG"
 		| procstr(M.ERRORstr) = []
@@ -549,47 +555,30 @@ fun extractSig (env, epContext, context,
 	       | A.FIXdec{ops,...} => ops
 	       | _ => bug "elabmod: extractSig Unexpected dec"  
 	  end
+
 	(* suppressDuplicates is not strictly necessary for correctness
 	   because signature matching will just try to match the duplicate
 	   specs to the same type. However, suppressing duplicates will
 	   eliminate these extraneous signature match checks. 
 	   [GK 4/18/07] *)
         fun suppressDuplicates syms =
-	    let        
-		fun helper([], memset, result) = (memset, result)
+	    let fun helper([], memset, result) = (memset, result)
 		  | helper(s::rest, memset, result) = 
 		    if ST.member(memset,s)
 		    then helper(rest,memset, result)
 		    else helper(rest,ST.add(memset,s),s::result)
 	    in helper(syms, ST.empty, [])
 	    end
+
 	(* Check that the decl names list computed by getDeclOrder is
 	   equivalent (up to reordering) to the keys in the static 
 	   environment. If they are not equal, then getDeclOrder may 
 	   be missing some decl name. We use the decl names list to 
 	   order the elements in this extracted/inferred signature. 
 	   [GK 4/18/07] *)
-	val (envkeyset, envkeyorder) = suppressDuplicates(SE.symbols env)
         val (declnameset, origdeclorder) = 
 	      suppressDuplicates(getDeclOrder absDecl)
-	val _ = 
-	    if ST.equal(envkeyset,declnameset) 
-	    then ()
-	    else (debugmsg 
-		      (concat["--elabmod: extractSig statenv and absyn decl\
-			       \mismatch\n\toldset: ", 
-			      Int.toString(ST.numItems envkeyset),
-			      "\n\tnewset: ", 
-			      Int.toString(ST.numItems declnameset),
-			      "\n\tDifference: "]);
-		  ST.app (fn s => say ((S.name s)^" ")) 
-			 (ST.difference(envkeyset,declnameset)); 
-		  say "\n\toldset "; 
-		  ST.app (fn s => say ((S.name s)^" ")) envkeyset;
-		  say "\n\tnewset "; 
-		  ST.app (fn s => say ((S.name s)^" ")) declnameset;
-		  say "\n";
-		  bug "elabmod: extractSig getDeclOrder") 
+
 	(* [GK 4/15/07] Consolidate will compact the potentially
 	   linear static environment (i.e., BIND(...BIND(...)))
            into a hashtable (IntStrMap) and therefore eliminate
@@ -599,13 +588,14 @@ fun extractSig (env, epContext, context,
            SE.foldOverElems to compute the elements (specs) in 
            the structure decl order on the consolidated list. *)
         val cenv = SE.consolidate env 
+
         val (elements, entEnv, entDecl, trans, _, fctflag) = 
           SE.foldOverElems(transBind,(nil, EE.empty, [], [], 0, false),cenv,
 			   origdeclorder)
 	  handle SE.Unbound => bug "elabmod: extractSig -- SE.foldOverElems \
 				    \Unbound symbol in origdeclorder"
      in (rev elements, entEnv, rev entDecl, rev trans, fctflag)
-    end
+    end (* fun extractSig *)
 
 
 (****************************************************************************
@@ -700,7 +690,6 @@ fun elab (BaseStr decl, env, entEnv, region) =
                   M.SIG{stamp = mkStamp (),
 			name=NONE, closed=false, fctflag=fctflag,
                         elements=elements, 
-                        symbols=symbols,
 			properties = PropList.newHolder (),
 			(* boundeps=ref(NONE),  *)
                         (* lambdaty=ref(NONE), *)
@@ -1495,8 +1484,10 @@ and elabDecl0
                        ES.elabSig {sigexp=def, nameOp=SOME name, env=env0, 
                                    entEnv=entEnv0, epContext=epContext, 
                                    region=region', compInfo=compInfo}
-		     val _ = (* instantiate to check well-formedness *)
+		     val _ = (* instantiate to check well-formedness, 
+                              * but only if there have been no earlier errors *)
 			if !ElabControl.instantiateSigs
+                           andalso not(!(#anyErrors compInfo))
 			then (INS.instParam
 			        {sign=s,entEnv=EE.empty,tdepth=DI.top,
 				 rpath=InvPath.empty,region=region',

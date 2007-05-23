@@ -68,9 +68,10 @@ fun getSpecVar (STRspec{entVar,...}) = SOME entVar
 
 (*** The function getTyc is used in modules/sigmatch.sml only ***)
 fun getTyc (elements, entEnv, sym) =
-   case getSpec (elements, sym)
-    of TYCspec{entVar,...} => (EE.lookTycEnt(entEnv,entVar), entVar)
-     | _ => bug "getTyc: wrong spec"
+    case getSpec (elements, sym)
+      of TYCspec{entVar,...} =>
+         (EE.lookTycEnt(entEnv,entVar), entVar)
+       | _ => bug "getTyc: wrong spec"
 
 (*** The function getStr is used in modules/sigmatch.sml only ***)
 fun getStr (elements, entEnv, sym, dacc, prims) =
@@ -107,34 +108,32 @@ fun getStrName(STR { rlzn = {rpath,...}, ... }) = rpath
   | getStrName ERRORstr = errorStrName
   | getStrName _ = bug "getStrName"
 
-fun getStrs (STR { sign = SIG sg, rlzn = {entities,...}, access,prim,...}) =
-    let val elements = #elements sg
-    in
-	List.mapPartial
-	    (fn (sym,STRspec{sign,slot,def,entVar}) =>
-		SOME(STR{sign = sign,
-			 rlzn = EE.lookStrEnt(entities,entVar),
-			 access = A.selAcc(access, slot), 
-			 prim = POI.selStrPrimId (prim, slot)})
-	      | _ => NONE)
-	    elements
-    end
+fun getStrs (STR { sign = SIG{elements,...}, rlzn = {entities,...}, access,prim,...}) =
+    List.mapPartial
+      (fn (sym,STRspec{sign,slot,def,entVar}) =>
+          SOME(STR{sign = sign,
+                   rlzn = EE.lookStrEnt(entities,entVar),
+                   access = A.selAcc(access, slot), 
+                   prim = POI.selStrPrimId (prim, slot)})
+        | _ => NONE)
+      elements
   | getStrs ERRORstr = nil
   | getStrs _ = bug "getStrs"
 
-fun getTycs (STR { sign = SIG sg, rlzn = {entities,...}, ... }) =
-    let val elements = #elements sg
-	val tycvars = List.mapPartial
-                          (fn (sym,TYCspec{entVar,...}) => SOME entVar
-			    | _ => NONE)
-			  elements
-    in
-	List.map (fn tycVar => EE.lookTycEnt(entities,tycVar)) tycvars
+fun getTycs (STR { sign = SIG{elements,...}, rlzn = {entities,...}, ... }) =
+    let val tycvars =
+            List.mapPartial
+              (fn (sym,TYCspec{entVar,...}) => SOME entVar
+		| _ => NONE)
+              elements
+     in List.map (fn tycVar => EE.lookTycEnt(entities,tycVar)) tycvars
     end
   | getTycs ERRORstr = nil
   | getTycs _ = bug "getTycs (2)"
 
-fun getSigSymbols(SIG {symbols,...}) = symbols
+fun getElementsSymbols (elements: elements) = map #1 elements
+
+fun getSigSymbols(SIG {elements,...}) = getElementsSymbols elements
   | getSigSymbols _ = nil
 
 fun getStrSymbols(STR { sign, ... }) = getSigSymbols sign
@@ -216,17 +215,19 @@ fun getFctElem (sym, sign as SIG {elements,...},
   | getFctElem _ = ERRORfct
 
 fun mkTyc (sym, sp, SIG {elements,...}, sInfo) =
-      (case getSpec (elements, sym)
-        of TYCspec{spec,entVar=ev,repl,scope} => 
-             (case sInfo
-               of SIGINFO ep => 
-                    T.PATHtyc{arity=TU.tyconArity spec, entPath=rev(ev::ep),
-			      path=CVP.invertSPath sp}
-                | STRINFO ({entities,...}, _, _) =>
-		  EE.lookTycEnt(entities, ev))
- 
-         | _ => bug "mkTyc: wrong spec case")
-
+    let val (arity,ev) =
+            (case getSpec (elements, sym)
+               of TYCspec{entVar,info=RegTycSpec{spec,...}} =>
+                    (TU.tyconArity spec, entVar)
+                | TYCspec{entVar,info=InfTycSpec{arity,...}} => (arity,entVar)
+                | _ => bug "mkTyc: wrong spec case")
+     in case sInfo
+         of SIGINFO ep => 
+            T.PATHtyc{arity=arity, entPath=rev(ev::ep),
+		      path=CVP.invertSPath sp}
+          | STRINFO ({entities,...}, _, _) =>
+	    EE.lookTycEnt(entities, ev)
+    end
   | mkTyc _ = T.ERRORtyc
 
 fun mkVal (sym, sp, sign as SIG {elements,...},

@@ -1,3 +1,5 @@
+(* pickmod.sml *)
+
 (*
  * The revised pickler using the new "generic" pickling facility.
  *
@@ -138,18 +140,18 @@ in
     (* type info *)
     val (NK, AO, CO, PO, CS, A, CR, LT, TC, TK,
 	 V, C, E, FK, RK, ST, MI, EQP, TYCKIND, DTI,
-	 DTF, TYCON, T, PI, VAR, SD, SG, FSG,  SP, EN,
+	 DTF, TYCON, T, PI, VAR, SD, SG, FSG, SP, EN,
 	 STR, F, STE, TCE, STRE, FE, EE, ED, EEV, FX,
-	 B, DCON, DICT, FPRIM, FUNDEC, TFUNDEC, DATACON, DTMEM, NRD,
-	 OVERLD, FCTC, SEN, FEN, SPATH, IPATH, STRID, FCTID, CCI, CTYPE,
-         CCALL_TYPE, SPE) =
-	(1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+	 B, DCON, DICT, FPRIM, FUNDEC, TFUNDEC, DATACON, DTMEM, NRD, OVERLD,
+         FCTC, SEN, FEN, SPATH, IPATH, STRID, FCTID, CCI, CTYPE, CCALL_TYPE,
+         SPE, TSI) =
+	( 1,  2,  3,  4,  5,  6,  7,  8,  9, 10,
 	 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 	 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
 	 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-	 41, 42, 43, 44, 45, 46, 47, 48, 49,
-	 50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
-         60, 61)
+	 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+	 51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
+         61, 62)
 
     (* this is a bit awful...
      * (we really ought to have syntax for "functional update") *)
@@ -1002,10 +1004,8 @@ in
 		   | NONE => let
 			 fun sig_raw (s: M.sigrec) = let
 			     val { stamp = sta, name, closed,
-				   fctflag, symbols, elements,
+				   fctflag, elements,
 				   properties,
-				   (* boundeps = ref b, *)
-				   (* lambdaty = _, *)
 				   stub, typsharing, strsharing } = s
 			     val b = ModulePropLists.sigBoundeps s
 			     val b = NONE (* currently turned off *)
@@ -1013,7 +1013,6 @@ in
 			     "C" $ ([stamp sta,
 				     option symbol name, bool closed,
 				     bool fctflag,
-				     list symbol symbols,
 				     list (pair (symbol, spec)) elements,
 				     option (list (pair (entPath, tkind))) b,
 				     list (list spath) typsharing,
@@ -1041,19 +1040,29 @@ in
 
 	and spec arg = let
 	    val op $ = PU.$ SP
-	    fun sp (M.TYCspec { spec = t, entVar = v, repl, scope }) =
-		"1" $ [tycon t, entVar v, bool repl, int scope]
+	    fun sp (M.TYCspec { info, entVar = v }) =
+		"1" $ [tycSpecInfo info, entVar v]
 	      | sp (M.STRspec { sign, slot, def, entVar = v }) =
 		"2" $ [Signature sign, int slot,
 		       option (pair (strDef, int)) def, entVar v]
 	      | sp (M.FCTspec { sign, slot, entVar = v }) =
 		"3" $ [fctSig sign, int slot, entVar v]
-	      | sp (M.VALspec { spec = t, slot }) = "4" $ [ty t, int slot]
+	      | sp (M.VALspec { spec = t, slot }) =
+                "4" $ [ty t, int slot]
 	      | sp (M.CONspec { spec = c, slot }) =
 		"5" $ [datacon c, option int slot]
 	in
 	    sp arg
 	end
+
+        and tycSpecInfo arg =
+            let val op $ = PU.$ TSI
+                fun tsi(M.RegTycSpec{spec = t, repl, scope}) =
+                    "a" $ [tycon t, bool repl, int scope]
+                  | tsi(M.InfTycSpec{name,arity}) =
+                    "b" $ [symbol name, int arity]
+             in tsi arg
+            end
 
 	and entity arg = let
 	    val op $ = PU.$ EN

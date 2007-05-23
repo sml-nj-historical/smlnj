@@ -143,10 +143,12 @@ Semant/
   Modules related to elaboration and pickling (external representation
   of static environments)
 
+ [#Deleted: replaced by ElabData/basics/primopid.sig,sml
   Semant/basics/
     inlinfo.sig/sml
       inlining info [FLINT]
       defs: INL_INFO, InlInfo: INL_INFO
+ ]
 
   Semant/elaborate/
   apply functors defined in corresponding Elaborate/elaborate modules
@@ -190,16 +192,33 @@ Semant/
   Semant/pickle/
   pickling static environments
     pickle-sym-pid.sml
+      pickling symbols and pids (persistant stamps)
+      uses: PickleUtil
+      defs: PickleSymPid (inline sig)
     unpickle-sym-pid.sml
-    pickmod-new.sml
-    unpickmod-new-sml
+      unpickling symbols and pids (persistant stamps)
+      defs: UnpickleSymPid (inline sig)
+    pickmod.sml
+      pickling functions for each type involved in staticEnv
+      defs: PICKMOD, PickMod :> PICKMOD
+    unpickmod.sml
+      unpickling functions for each type involved in staticEnv
+      defs: UNPICKMOD, UnpickMod : UNPICKMOD
     rehash.sml
+      recompute hash of an environment resulting from filtering
+      a larger invironment
+      defs: Rehash (inline sig)
 
   Semant/statenv/
+  construction of base static environment for environment bootstrap
+  and table mapping primop names to intrinsic primop types
     prim.sml
       define static env primEnv, containing primitive types (PrimTypes), 
       primops (InLine), and unrolled lists (UnrolledList)
       defs: PRIM_ENV, PrimEnv: PRIM_ENV  
+    primoptypemap.sml
+      defines mapping from primop names (strings) to their "intrinsic" types
+      defs: PRIMOP_TYPE_MAP, PrimOpTypeMap
 
   Semant/types/
   some types-related stuff
@@ -212,10 +231,12 @@ Semant/
     types-reformat.sml [FLINT]
       FLINT-related "reformatting" of types, used to be in typesutil.sml
       defs: TypesReformat
+   [#Deleted: type checker is no longer functorized
     typecheck.sml [FLINT]
       apply TypecheckFn defined in Elaborator/types/typecheck.sml (should eliminate)
       see: Elaborator/types/typecheck.sml
       defs: TypeCheck
+   ]
 
 
 ElabData/
@@ -243,9 +264,11 @@ Basic datastructures used in elaboration (including type checking)
       SymPath and InvPath: direct and inverse symbolic paths (selecting
       module components)
       defs: SYMPATH, INVPATH, CONVERTPATHS, SymPath, InvPath, ConvertPaths
+  [#Deleted
     ii.sml [FLINT]
       FLINT related information for inlining (why is this in elaborator?)
       defs: II
+  #]
     core-ptnum.sml
       core prim-type numbers (essentially the same as Elaborator/basics/ptnum.sml
       except only language-standard types are included) 
@@ -255,6 +278,10 @@ Basic datastructures used in elaboration (including type checking)
       defines the special structure symbol "_Core" used to access certain
       special bindings (e.g Match and Bind exceptions)
       defs: CoreSym
+    primopid.sig/sml
+      defines front-end representation of primops, where a primop is identified
+      with a string name
+      defs: PRIMOPID, PrimopId
 
   ElabData/syntax/
   (typed) abstract syntax
@@ -700,6 +727,9 @@ modules (signatures, structures, functors)
 
 primop
   PrimOp           (FLINT/kernel/primop.sml)
+  PrimOpMap	   (FLINT/trans/primopmap.sml)
+  PrimOpId	   (ElabData/basics/primopid.sml)
+  PrimOpTypeMap	   (Semant/statenv/primoptypemap.sml)
   PrimEnv          (Semant/statenv/prim.sml)
 
 control

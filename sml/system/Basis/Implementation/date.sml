@@ -322,6 +322,14 @@ structure Date : DATE =
 			 | NONE => NONE)
 		  | NONE => NONE
 
+            (* day can be two digits or one digit preceded by a space *)
+            fun getday s =
+                case get2dig s
+                  of NONE => 
+                       expect #" " s (fn s' => getdig s')
+                   | (res as SOME (n, s')) => res
+                   
+
 	    fun year0 (wday, mon, d, hr, mn, sc) s =
 		case IntImp.scan StringCvt.DEC getc s of
 		    NONE => NONE
@@ -358,7 +366,7 @@ structure Date : DATE =
 	    fun time args s = expect #" " s (time0 args)
 
 	    fun mday0 (wday, mon) s =
-		case get2dig s of
+		case getday s of
 		    NONE => NONE
 		  | SOME (d, s') => time (wday, mon, d) s'
 

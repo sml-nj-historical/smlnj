@@ -103,7 +103,15 @@ fun strToEnv(M.SIG {elements,...},entities) =
 fun sigToEnv(M.SIG {elements,...}) =
     let fun bindElem ((sym,spec), env) =
 	  (case spec
-            of M.TYCspec{spec,...} => SE.bind(sym,B.TYCbind spec,env)
+            of M.TYCspec{info=M.RegTycSpec{spec,...},...} =>
+                SE.bind(sym,B.TYCbind spec,env)
+             | M.TYCspec{info=M.InfTycSpec{name,arity},...} =>
+                let val tyc =
+                        T.GENtyc{stamp=Stamps.special "x", arity=arity,
+                                 eq=ref(T.UNDEF), kind=T.FORMAL, stub=NONE,
+                                 path=InvPath.extend(InvPath.empty,name)}
+                in SE.bind(sym,B.TYCbind tyc,env)
+                end
 	     | M.STRspec{sign,slot,def,entVar=ev} =>
 		 SE.bind(sym,B.STRbind(M.STRSIG{sign=sign,entPath=[ev]}),env)
 	     | M.CONspec{spec=dcon, ...} => SE.bind(sym,B.CONbind dcon,env)
@@ -308,31 +316,53 @@ and ppElements (env,depth,entityEnvOp) ppstrm elements =
 		   closeBox ppstrm;
 		  closeBox ppstrm)
 
-	      | M.TYCspec{spec,entVar,repl,scope} => 
+	      | M.TYCspec{entVar,info} => 
 		 (if first then () else newline ppstrm;
-		  openHVBox ppstrm (PP.Rel 0);
-		   case entityEnvOp
-		     of NONE =>
-                         if repl then
-                           ppReplBind ppstrm (spec,env)
-                         else ppTycBind ppstrm (spec,env)
-		      | SOME eenv =>
-			 (case EE.look(eenv,entVar)
-			    of M.TYCent tyc => 
-                                 if repl then
-                                   ppReplBind ppstrm (tyc,env)
-                                 else ppTycBind ppstrm (tyc,env)
-			     | M.ERRORent => pps ppstrm "<ERRORent>"
-			     | _ => bug "ppElements:TYCent");
-		   if !internals
-		   then (newline ppstrm;
-			 pps ppstrm "entVar: ";
-			 pps ppstrm (EntPath.entVarToString entVar);
-			 newline ppstrm;
-			 pps ppstrm "scope: ";
-			 pps ppstrm (Int.toString scope))
-		   else ();
-		  closeBox ppstrm)
+                  case info
+                    of M.RegTycSpec{spec,repl,scope} =>
+		       (openHVBox ppstrm (PP.Rel 0);
+                         case entityEnvOp
+                          of NONE =>
+                             if repl then
+                                 ppReplBind ppstrm (spec,env)
+                             else ppTycBind ppstrm (spec,env)
+                           | SOME eenv =>
+                             (case EE.look(eenv,entVar)
+                               of M.TYCent tyc => 
+                                  if repl then
+                                      ppReplBind ppstrm (tyc,env)
+                                  else ppTycBind ppstrm (tyc,env)
+                                | M.ERRORent => pps ppstrm "<ERRORent>"
+                                | _ => bug "ppElements:TYCent");
+                         if !internals
+                         then (newline ppstrm;
+                               pps ppstrm "entVar: ";
+                               pps ppstrm (EntPath.entVarToString entVar);
+                               newline ppstrm;
+                               pps ppstrm "scope: ";
+                               pps ppstrm (Int.toString scope))
+                         else ();
+		        closeBox ppstrm)
+                     | M.InfTycSpec{name,arity} =>
+                       (openHVBox ppstrm (PP.Rel 0);
+                         case entityEnvOp
+                           of NONE =>
+                               (pps ppstrm "type";
+                                ppFormals ppstrm arity;
+                                pps ppstrm " ";
+                                ppSym ppstrm name)
+                            | SOME eenv =>
+                               (case EE.look(eenv,entVar)
+                                  of M.TYCent tyc => 
+                                       ppTycBind ppstrm (tyc,env)
+                                   | M.ERRORent => pps ppstrm "<ERRORent>"
+                                   | _ => bug "ppElements:TYCent");
+                         if !internals
+                         then (newline ppstrm;
+                               pps ppstrm "entVar: ";
+                               pps ppstrm (EntPath.entVarToString entVar))
+                         else ();
+                        closeBox ppstrm))
 
 	      | M.VALspec{spec=typ,...} =>
 		 (if first then () else newline ppstrm;
@@ -350,7 +380,8 @@ and ppElements (env,depth,entityEnvOp) ppstrm elements =
  		 if !internals
  		 then (if first then () else newline ppstrm;
  		       ppConBinding ppstrm (dcon,env))
- 		 else () (* ordinary data constructor, don't print *)
+ 		 else () (* don't pring ordinary data constructor,
+                          * because it was printed with its datatype *)
 
      in openHVBox ppstrm (PP.Rel 0);
 	case elements
@@ -360,7 +391,8 @@ and ppElements (env,depth,entityEnvOp) ppstrm elements =
     end
 
 and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) = 
-    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
+    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} =
+            en_pp ppstrm
 	val env = SE.atop(case entityEnvOp
 			    of NONE => sigToEnv sign
 			     | SOME entEnv => strToEnv(sign,entEnv),
@@ -464,7 +496,8 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
     end
 
 and ppFunsig ppstrm (sign,env,depth) =
-    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
+    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} =
+            en_pp ppstrm
 	fun trueBodySig (orig as M.SIG { elements =
 					 [(sym, M.STRspec { sign, ... })],
 					 ... }) =
@@ -510,7 +543,8 @@ and ppFunsig ppstrm (sign,env,depth) =
 
 and ppStrEntity ppstrm (e,env,depth) =
     let val {stamp,entities,properties,rpath,stub} = e
-	val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
+	val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} =
+            en_pp ppstrm
      in if depth <= 1 
 	then pps "<structure entity>"
 	else (openHVBox 0;
@@ -665,7 +699,8 @@ and ppTycBind ppstrm (tyc,env) =
 			       (break{nsp=1,offset=2};
 				openHVBox 0;
 				 pps "= "; ppDcon first;
-				 app (fn d => (break{nsp=1,offset=0}; pps "| "; ppDcon d))
+				 app (fn d => (break{nsp=1,offset=0};
+                                               pps "| "; ppDcon d))
 				     rest;
 				 if incomplete
 				     then (break{nsp=1,offset=0}; pps "... ")
@@ -692,23 +727,44 @@ and ppTycBind ppstrm (tyc,env) =
 		 break{nsp=1,offset=0};
 		 ppType env ppstrm body;
 		 closeBox ())
+	      | T.ERRORtyc =>
+		(pps "ERRORtyc")
+	      | T.PATHtyc _ =>
+		(pps "PATHtyc:";
+		 ppTycon env ppstrm tyc)
 	      | tycon =>
 		(pps "strange tycon: ";
 		 ppTycon env ppstrm tycon)
     end (* ppTycBind *)
 
-and ppReplBind ppstrm
-     (T.DEFtyc{tyfun=T.TYFUN{body=T.CONty(rightTyc,_),...},path,...},env) =
-    let val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
-     in openHOVBox 2;
-        pps "datatype"; break{nsp=1,offset=0};
-        ppSym ppstrm (IP.last path);
-        pps " ="; break{nsp=1,offset=0};
-        pps "datatype"; break{nsp=1,offset=0};
-        ppTycon env ppstrm rightTyc;
-        closeBox ()
-    end
-  | ppReplBind _ _ = ErrorMsg.impossible "ppReplBind"
+and ppReplBind ppstrm =
+    let 
+	val {openHVBox, openHOVBox,closeBox,pps,ppi,break,newline} = 
+	      en_pp ppstrm
+    in
+        fn (T.DEFtyc{tyfun=T.TYFUN{body=T.CONty(rightTyc,_),...},path,...},
+	    env) =>
+	   (* [GK 5/4/07] Does this case ever occur? All datatype
+	      replication tycs are GENtycs after elaboration *)
+	   (openHOVBox 2;
+            pps "datatype"; break{nsp=1,offset=0};
+            ppSym ppstrm (IP.last path);
+            pps " ="; break{nsp=1,offset=0};
+            pps "datatype"; break{nsp=1,offset=0};
+            ppTycon env ppstrm rightTyc;
+            closeBox ())
+	 | (tyc as T.GENtyc{stamp, arity, eq, kind, path, stub}, env) =>
+	   (openHOVBox 2;
+	    pps "datatype"; break{nsp=1,offset=0};
+	    ppSym ppstrm (IP.last path);
+	    pps " ="; break{nsp=1,offset=0};
+	    ppTycBind ppstrm (tyc, env);
+	    closeBox()) 
+	 | (T.PATHtyc _, _) => ErrorMsg.impossible "<replbind:PATHtyc>"
+	 | (T.RECtyc _, _) => ErrorMsg.impossible "<replbind:RECtyc>"
+	 | (T.FREEtyc _, _) => ErrorMsg.impossible "<replbind:FREEtyc>"
+	 | _ => ErrorMsg.impossible "ppReplBind"
+    end (* fun ppReplBind *)
 
 and ppEntity ppstrm (entity,env,depth) =
     case entity

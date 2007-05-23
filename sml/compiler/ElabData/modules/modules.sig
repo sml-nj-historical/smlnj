@@ -12,13 +12,16 @@ datatype Signature
   | ERRORsig
 
 and spec
-  = TYCspec of {entVar : EntPath.entVar,
-		spec : Types.tycon, repl: bool, scope : int}
+  = TYCspec of {entVar : EntPath.entVar, info: tycSpecInfo}
   | STRspec of {entVar : EntPath.entVar, sign : Signature,
 		def : (strDef * int) option, slot : int}
   | FCTspec of {entVar : EntPath.entVar, sign : fctSig, slot : int}
   | VALspec of {spec : Types.ty, slot : int}
   | CONspec of {spec : Types.datacon, slot : int option}
+
+and tycSpecInfo
+  = RegTycSpec of {spec : Types.tycon, repl: bool, scope: int} (* normal signature *)
+  | InfTycSpec of {name: Symbol.symbol, arity: int} (* inferred signature *)
 
 (*
  * and specEnv
@@ -136,13 +139,14 @@ withtype stubinfo =
      lib   : bool,
      tree  : modtree}
 
+and elements = (Symbol.symbol * spec) list
+
 and sigrec =
     {stamp      : Stamps.stamp,
      name       : Symbol.symbol option,
      closed     : bool,
      fctflag    : bool,
-     symbols    : Symbol.symbol list, 
-     elements   : (Symbol.symbol * spec) list,
+     elements   : elements,
      properties : PropList.holder, (* boundeps, lambdaty *)
      typsharing : sharespec list,
      strsharing : sharespec list,
@@ -182,8 +186,6 @@ and fctrec =
 
 (* the stamp and arith inside Types.tycon are critical *)  
 and tycEntity = Types.tycon
-
-and elements = (Symbol.symbol * spec) list
 
 (*
 and constraint  

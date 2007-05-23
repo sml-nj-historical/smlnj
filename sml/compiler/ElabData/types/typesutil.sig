@@ -38,6 +38,7 @@ sig
   val applyPoly : Types.ty * Types.ty list -> Types.ty
   val reduceType : Types.ty -> Types.ty
   val headReduceType : Types.ty -> Types.ty
+  val nullReduceType : Types.ty -> Types.ty
   val equalType  : Types.ty * Types.ty -> bool
   val equalTypeP  : Types.ty * Types.ty -> bool
   val equalTycon : Types.tycon * Types.tycon -> bool

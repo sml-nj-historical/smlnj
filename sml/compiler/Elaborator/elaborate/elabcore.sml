@@ -657,18 +657,29 @@ let
 		     (* BUG: what to do if rhs is lazy "datatype"? (DBM) *)
 		     (case withtycs
 			of nil =>
-			    let val tyc = LU.lookTyc(env, SP.SPATH syms,
-						    error region)
-				val dcons = TU.extractDcons tyc
-				val envDcons =
-				     foldl (fn (d as T.DATACON{name,...},e)=>
-					       SE.bind(name,B.CONbind d, e))
-					   SE.empty 
-					   dcons
-				val env = SE.bind(name,B.TYCbind tyc,envDcons)
-			     in noTyvars(DATATYPEdec{datatycs=[tyc], withtycs=[]},
-					 env)
-			    end
+			    (case LU.lookTyc(env, SP.SPATH syms, error region)
+			      of (DEFtyc _) =>
+			        (* [GK 5/7/07] Shouldn't we flag an error
+				   if this tyc is a DEFtyc? See bug 1578.1 
+				   (an open bug) *)
+				    ((error region EM.COMPLAIN
+					   "rhs of datatype replication not a \
+					   \datatype"
+					   EM.nullErrorBody);
+				     noTyvars(SEQdec[], SE.empty))
+			       | tyc =>
+				 let 
+				     val dcons = TU.extractDcons tyc
+				     val envDcons =
+					 foldl (fn (d as T.DATACON{name,...},e)=>
+						   SE.bind(name,B.CONbind d, e))
+					       SE.empty 
+					       dcons
+				     val env = SE.bind(name,B.TYCbind tyc,envDcons)
+				 in noTyvars(DATATYPEdec{datatycs=[tyc], 
+							 withtycs=[]},
+					     env)
+				 end)
 			 | _ => (error region EM.COMPLAIN
 				  "withtype not allowed in datatype replication"
 				  EM.nullErrorBody;

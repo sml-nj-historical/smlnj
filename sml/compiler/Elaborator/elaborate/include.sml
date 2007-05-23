@@ -6,8 +6,8 @@ sig
 
   val elabInclude:
      Modules.Signature * StaticEnv.staticEnv * Modules.elements
-     * Symbol.symbol list * int * SourceMap.region * ElabUtil.compInfo
-     -> StaticEnv.staticEnv * Modules.elements * Symbol.symbol list 
+     * int * SourceMap.region * ElabUtil.compInfo
+     -> StaticEnv.staticEnv * Modules.elements
         * Modules.sharespec list (* type sharing *)
         * Modules.sharespec list (* structure sharing *)
         * int  (* slots *) * bool (* fctflag *)
@@ -63,10 +63,10 @@ fun specified(symbol,elements) =
 
 (*** elaborating IncludeSpec in signatures ***)                 
 (* BUG! currently doesn't deal with general sigexp case (e.g. sigid where ...) *)
-fun elabInclude(SIG {stamp, elements=newElements, symbols=newSymbols, 
+fun elabInclude(SIG {stamp, elements=newElements,
 		     properties, typsharing, strsharing, 
 		     name, closed, fctflag, stub},
-                oldEnv, oldElements, oldSymbols, oldSlots,
+                oldEnv, oldElements, oldSlots,
                 region, compInfo as {mkStamp,error,...} : EU.compInfo) =
 let val err = error region
 
@@ -122,7 +122,7 @@ fun adjustTyc(tycon,[]) = tycon
  *)
 and adjustSig(sign,[]) = sign
   | adjustSig(sign as SIG {stamp, name, closed, fctflag, 
-			   elements, symbols, properties,
+			   elements, properties,
 			   (* boundeps, lambdaty, *)
 			   typsharing, strsharing, stub},
 	      tycmap) =
@@ -133,7 +133,7 @@ and adjustSig(sign,[]) = sign
              (* boundeps=ref NONE, *)
 	     (* lambdaty=ref NONE, *)
 	     elements=adjustElems(elements,tycmap), 
-	     symbols=symbols, typsharing=typsharing, 
+	     typsharing=typsharing, 
 	     strsharing=strsharing,
 	     stub = NONE}
   | adjustSig _ = bug "adjustSig"
@@ -151,8 +151,10 @@ and adjustElems(elements,tycmap) = map (adjustElem tycmap) elements
 and adjustElem tycmap (sym,spec) =
       let val nspec = 
             case spec
-             of TYCspec{spec=tycon, entVar=ev, repl=r, scope=s} =>
-                  TYCspec{spec=adjustTyc(tycon,tycmap),entVar=ev, repl=r, scope=s}
+             of TYCspec{entVar=ev,info=RegTycSpec{spec=tycon, repl=r, scope=s}} =>
+                  TYCspec{entVar=ev,
+                          info=RegTycSpec{spec=adjustTyc(tycon,tycmap),
+                                          repl=r, scope=s}}
               | STRspec{sign, entVar=ev, def=d, slot=s} =>
                   STRspec{sign=adjustSig(sign,tycmap),entVar=ev,def=d,slot=s}
 		  (* BUG: def component may need adjustment? *)
@@ -164,49 +166,53 @@ and adjustElem tycmap (sym,spec) =
                   CONspec{spec=DATACON{rep=rep,name=name,const=const,lazyp=lazyp,
                                        typ=adjustType(typ,tycmap),sign=sign},
                           slot=s}
+              | _ => bug "adjustElem"
        in (sym, nspec)
       end
 
-fun addElem((name,nspec: M.spec), env, elems, syms, slot) =
+fun addElem((name,nspec: M.spec), env, elems, slot) =
   case nspec
-   of TYCspec{spec=tc, entVar=ev, repl=r, scope=s} =>
-      (let val {spec=otc,entVar=oev,repl=or,scope=os} =
+   of TYCspec{entVar=ev, info=RegTycSpec{spec=tc, repl=r, scope=s}} =>
+      (let val (oev,otc,or,os) =
 	       case MU.getSpec(elems,name) of
-		   TYCspec x => x
+		   TYCspec{entVar,info=RegTycSpec{spec,repl,scope}} =>
+                      (entVar,spec,repl,scope)
 		 | _ => bug "addElem:TYCspec"
          in case compatible(tc,otc)
              of KEEP_OLD => 
                   let val ntc = PATHtyc{arity=TU.tyconArity otc,
 					entPath=[oev], path=IP.IPATH[name]}
                       val _ = addMap(ev,ntc)
-                   in (env, elems, syms, slot)
+                   in (env, elems, slot)
                   end
               | REPLACE =>
                   let val ntc = adjustTyc(tc, getMap())
-                      val nspec' = TYCspec{spec=ntc,entVar=oev,repl=or,scope=s} (*?*)
+                      val nspec' = TYCspec{entVar=oev,
+                                           info=RegTycSpec{spec=ntc,repl=or,scope=s}}
+                                          (*???*)
                       val elems' = substElem((name,nspec'),elems)
 
                       val ntc = PATHtyc{arity=TU.tyconArity ntc,
 					entPath=[oev], path=IP.IPATH[name]}
                       val _ = addMap(ev,ntc)
 
-                   in (env, elems', syms, slot)
+                   in (env, elems', slot)
                   end
               | INCOMPATIBLE =>
                   (err EM.COMPLAIN ("duplicate specifications for type "
                                     ^ S.name name ^ " caused by include")
                    EM.nullErrorBody; 
-                   (env, elems, syms, slot))
+                   (env, elems, slot))
         end handle MU.Unbound _ => (* new tycon *)
               (let val ntyc = PATHtyc{arity=TU.tyconArity tc, entPath=[ev],
 				      path=IP.IPATH[name]}
                    val env' = SE.bind(name, B.TYCbind ntyc, env)
 
-                   val spec' = TYCspec{spec=adjustTyc(tc, getMap()),
-                                       entVar=ev,repl=r,scope=s}
+                   val spec' = TYCspec{entVar=ev,
+                                       info=RegTycSpec{spec=adjustTyc(tc, getMap()),
+                                                       repl=r,scope=s}}
                    val elems' = addElement((name,spec'), elems)
-                   val syms' = name :: syms
-                in (env', elems', syms', slot)
+                in (env', elems', slot)
                end))
 
    | STRspec{sign, entVar, def, ...} =>
@@ -214,15 +220,14 @@ fun addElem((name,nspec: M.spec), env, elems, syms, slot) =
         then (err EM.COMPLAIN ("duplicate specifications for structure "
                                ^ S.name name ^ " caused by include")
               EM.nullErrorBody;
-              (env, elems, syms, slot))
+              (env, elems, slot))
         else (* new specification - ok *)
           let val newsign = adjustSig(sign,getMap())
               val newspec = STRspec{sign=newsign,slot=slot,entVar=entVar,def=def}
               val nstr = STRSIG{sign=newsign, entPath=[entVar]}
               val env' = SE.bind(name, B.STRbind nstr, env)
               val elems' = addElement((name,newspec), elems)
-              val syms' = name :: syms
-           in (env', elems', syms', slot+1)
+           in (env', elems', slot+1)
           end)
 
    | FCTspec{sign,entVar, ...} =>
@@ -230,13 +235,12 @@ fun addElem((name,nspec: M.spec), env, elems, syms, slot) =
         then (err EM.COMPLAIN ("duplicate specifications for functor "
                                ^ S.name name ^ " caused by include")
               EM.nullErrorBody;
-              (env, elems, syms, slot))
+              (env, elems, slot))
         else (* new specification - ok *)
           let val newsign = adjustFsig(sign,getMap())
               val newspec = FCTspec{sign=newsign,slot=slot,entVar=entVar}
               val elems' = addElement((name,newspec), elems)
-              val syms' = name :: syms
-           in (env, elems', syms', slot+1)
+           in (env, elems', slot+1)
           end)
 
    | VALspec{spec=typ, ...} => 
@@ -244,13 +248,12 @@ fun addElem((name,nspec: M.spec), env, elems, syms, slot) =
         then (err EM.COMPLAIN ("duplicate value specifications for "
                                ^ S.name name ^ " caused by include")
               EM.nullErrorBody;
-              (env, elems, syms, slot))
+              (env, elems, slot))
         else (* new specification - ok *)
           let val newtyp = adjustType(typ,getMap())
               val newspec = VALspec{spec=newtyp,slot=slot}
               val elems' = addElement((name,newspec), elems)
-              val syms' = name :: syms
-           in (env, elems', syms', slot+1)
+           in (env, elems', slot+1)
           end)
 
    | CONspec{spec=DATACON{rep,name,typ,const,sign,lazyp},...} =>
@@ -258,7 +261,7 @@ fun addElem((name,nspec: M.spec), env, elems, syms, slot) =
         then (err EM.COMPLAIN ("duplicate constructor specifications for "
                                ^ S.name name ^ " caused by include")
               EM.nullErrorBody;
-              (env, elems, syms, slot))
+              (env, elems, slot))
         else (* new specification - ok *)
           let val newtyp = adjustType(typ,getMap())
               val ndcon = DATACON {rep=rep, name=name, typ=newtyp, 
@@ -270,30 +273,28 @@ fun addElem((name,nspec: M.spec), env, elems, syms, slot) =
 
               val newspec = CONspec {spec=ndcon,slot=slotOp}
               val elems' = addElement((name,newspec), elems)
-              val syms' = name :: syms
-           in (env, elems', syms', slot')
+           in (env, elems', slot')
           end)
+   | _ => bug "addElem"
 
-fun addElems(nelems, [], env, elems, syms, slot) = (env, elems, syms, slot)
-  | addElems(e::nelems, s::rest, env, elems, syms, slot) = 
+fun addElems(nil, env, elems, slot) = (env, elems, slot)
+  | addElems(e::nelems, env, elems, slot) = 
       let (*** should use s to search for e in nelems if
                 elements is represented as a real env. ***)
-          val (env', elems', syms', slot') =
-                addElem(e, env, elems, syms, slot)
-       in addElems(nelems, rest, env', elems', syms', slot')
+          val (env', elems', slot') =
+                addElem(e, env, elems, slot)
+       in addElems(nelems, env', elems', slot')
       end
-  | addElems _ = bug "addElems"
 
-val (env', elems', syms', slots') = 
-      addElems(newElements, newSymbols,
-               oldEnv, oldElements, oldSymbols, oldSlots)
+val (env', elems', slots') = 
+      addElems(newElements, oldEnv, oldElements, oldSlots)
 
- in (env',elems', syms', typsharing, strsharing, slots', fctflag)
+ in (env',elems', typsharing, strsharing, slots', fctflag)
 
 end  (* end of case #1 for function elabInclude *)
 
-  | elabInclude(ERRORsig, env, elems, syms, slots, region, compInfo) =
-      (env, elems, syms, [], [], slots, false)
+  | elabInclude(ERRORsig, env, elems, slots, region, compInfo) =
+      (env, elems, [], [], slots, false)
 
 end (* local *)
 end (* structure Include *)

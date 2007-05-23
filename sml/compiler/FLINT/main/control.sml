@@ -1,6 +1,7 @@
+(* control.sml *)
 (* copyright 1999 YALE FLINT project *)
 
-structure FLINT_Control (* : FLINTCONTROL *) =
+structure FLINT_Control :> FLINTCONTROL =
 struct
    local
        val priority = [10, 11, 1]
@@ -59,8 +60,8 @@ struct
 	      "wrap", "fcontract", "reify",
 	      (*"abcopt",*) "fcontract", "fixfix", "fcontract+eta"])
 			  
-    val tmdebugging = new (flag_cvt, "tmdebugging", "?", false)  (* TransTypes *)
-    val trdebugging = new (flag_cvt, "trdebugging", "?", false)  (* Translate *)
+    val tmdebugging = new (flag_cvt, "tmdebugging", "TransTypes debugging", false)
+    val trdebugging = new (flag_cvt, "trdebugging", "Translate debugging", false)
 
     val inlineThreshold = new (int_cvt, "inline-theshold",
 			       "inline threshold", 16)
@@ -90,7 +91,8 @@ struct
     val checkKinds = new (flag_cvt, "check-kinds",
 			  "check kinding information", true)
 
-    (* non-exported crap *)
+    (* exported for use in FLINT/main/flintcomp.sml *)
     val recover : (int -> unit) ref = ref(fn x => ())
+
    end
 end
