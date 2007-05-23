@@ -21,19 +21,52 @@
 #
 #request src-smlnj
 
-# build new (Unicode-capable) ML-Lex
+# build new (Unicode-capable) ML-ULex
 #
 request ml-ulex
+#
+# Arrange for the .lex suffix to be recognized by CM as (new-style)
+# ML-ULex input.
+#   (Notice that you should NOT select this option even if you want to have
+#    ml-ulex process legacy ml-lex input using the --ml-lex-mode option.)
+# Since most existing projects have legacy .lex files, this should be
+# kept off by default.
+# WARNING: This is incompatible with ml-ulex-lex-ext!!
+#request ml-ulex-lex-ext
+#
+# Register the "mllex" CM tool class in such a way that "legacy" ml-lex
+# input is processed by "ml-ulex --ml-lex-mode".
+#   (If you want the .lex extension to be mapped to the "mllex" class
+#   and have that be processed by ml-ulex, you should request
+#   ml-ulex-mllex-tool and ml-lex-lex-ext, but NOT ml-ulex-lex-ext.)
+# WARNING: This is incompatible with ml-lex-mllex-tool!!
+request ml-ulex-mllex-tool
 
 # build legacy ML-Lex
 #
 request ml-lex
-request ml-lex-mllex-tool
+#
+# Register the "mllex" CM tool class in such a way that "legacy" ml-lex
+# input is processed by the legacy ml-lex program.
+# WARNING: This is incompatible with ml-ulex-mllex-tool!!
+#request ml-lex-mllex-tool
+#
+# Arrange for the .lex suffix to be recognized by CM as legacy ml-lex input.
+# This requires that either ml-lex-mllex-tool or ml-ulex-mllex-tool
+# (but not both at the same time!) is installed.
+# Since most existing projects have legacy .lex files, this should be
+# kept on by default.
+# WARNING: This is incompatible with ml-ulex-lex-ext!!
 request ml-lex-lex-ext
 
 # build ML-Yacc (must come after ml-lex)
 #
 request ml-yacc
+#
+# Arrange for the .grm suffix to be recognized by CM as ML-Yacc input.
+# Since .grm files in most existing project are ML-Yacc input, this should be
+# kept on by default.
+# WARNING: This is incompatible with ml-antlr-grm-ext!!
 request ml-yacc-grm-ext
 
 # Always: install the pre-compiled ML-Yacc Library; this is necessary
@@ -43,6 +76,12 @@ request ml-yacc-grm-ext
 # build ML-Antlr
 #
 request ml-antlr
+#
+# Arrange for the .grm suffix to be recognized by CM as ML-Antlr input.
+# Since .grm files in most existing project are ML-Yacc input, this should be
+# kept off by default.
+# WARNING: This is incompatible with ml-yacc-grm-ext!!
+#request ml-antlr-grm-ext
 
 # utility library for ml-antlr and ml-ulex
 #

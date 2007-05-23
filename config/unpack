@@ -234,37 +234,19 @@ do
       system)
 	unpack compiler "$ROOT"/base system system
 	;;
-      ml-yacc)
+      ml-yacc|ml-yacc-grm-ext)
 	unpack ML-Yacc "$ROOT" ml-yacc ml-yacc
 	;;
-      ml-yacc-grm-ext)
-	unpack ML-Yacc "$ROOT" ml-yacc ml-yacc
-	;;
-      ml-lex)
-	unpack ML-Lex "$ROOT" ml-lex ml-lex
-	;;
-      ml-lex-mllex-tool)
-	unpack ML-Lex "$ROOT" ml-lex ml-lex
-	;;
-      ml-lex-lex-ext)
+      ml-lex|ml-lex-mllex-tool|ml-lex-lex-ext)
 	unpack ML-Lex "$ROOT" ml-lex ml-lex
 	;;
       ml-burg)
         unpack ML-Burg "$ROOT" ml-burg ml-burg
 	;;
-      ml-nlffigen)
-	unpack ML-NLFFI-Gen "$ROOT" nlffi nlffi
-	;;
-      nowhere)
-	unpack "MLRISC Tools Library" "$ROOT" MLRISC MLRISC
-	;;
       smlnj-lib)
         unpack "SML/NJ Library" "$ROOT" smlnj-lib smlnj-lib
 	;;
-      cml)
-        unpack CML "$ROOT" cml cml
-	;;
-      cml-lib)
+      cml|cml-lib)
         unpack CML "$ROOT" cml cml
 	;;
       eXene)
@@ -273,8 +255,8 @@ do
       ckit)
         unpack "C-Kit" "$ROOT" ckit ckit
 	;;
-      ml-nlffi-lib)
-        unpack "NLFFI Library" "$ROOT" nlffi nlffi
+      ml-nlffi-lib|ml-nlffigen)
+        unpack "NLFFI" "$ROOT" nlffi nlffi
 	;;
       pgraph-util)
 	unpack "CM source code" "$ROOT" pgraph pgraph
@@ -282,11 +264,8 @@ do
       tdp-util)
         unpack "Trace/Debug/Profile code" "$ROOT" trace-debug-profile trace-debug-profile
 	;;
-      mlrisc)
+      mlrisc|mlrisc-tools|nowhere)
 	unpack "MLRISC Library" "$ROOT" MLRISC MLRISC
-	;;
-      mlrisc-tools)
-	unpack "MLRISC Tools Library" "$ROOT" MLRISC MLRISC
 	;;
       smlnj-c)
 	unpack "SML/NJ-C FFI" "$ROOT" smlnj-c smlnj-c
@@ -294,19 +273,10 @@ do
       heap2asm)
 	unpack "Heap->ASM tool" "$ROOT" heap2asm heap2asm
 	;;
-      ml-ulex)
+      ml-ulex|ml-ulex-mllex-tool|ml-ulex-lex-ext)
 	unpack "new unicode lexer generator" "$ROOT" ml-lpt ml-lpt
 	;;
-      ml-ulex-lex-ext)
-	unpack "new unicode lexer generator" "$ROOT" ml-lpt ml-lpt
-	;;
-      ml-ulex-mllex-tool)
-	unpack "new unicode lexer generator" "$ROOT" ml-lpt ml-lpt
-	;;
-      ml-antlr)
-	unpack "new LL(k) parser generator" "$ROOT" ml-lpt ml-lpt
-	;;
-      ml-antlr-grm-ext)
+      ml-antlr|ml-antlr-grm-ext)
 	unpack "new LL(k) parser generator" "$ROOT" ml-lpt ml-lpt
 	;;
       ml-lpt-lib)
