@@ -14,6 +14,17 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: David MacQueen (dbm@cs.uchicago.edu)
+Date: 2007/5/23 17:23:00 CDT
+Revision: 2599
+Description:
+
+2nd merge of base from primop-branch-3 into the trunk. Additional
+bug fixes included:
+ Date.scan and Date.fromString fixed;
+ Overloading resolution fixed and some type printing problems corrected.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2007/05/23 09:50:00 CDT
 Description:
