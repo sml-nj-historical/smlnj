@@ -30,8 +30,8 @@ is
 	parse/ml.grm.sig
 	parse/ml.grm.sml
 #else
-	lex/ml.lex
-	parse/ml.grm
+	lex/ml.lex : MLLex
+	parse/ml.grm : MLYacc
 #endif
 
 	main/parsercontrol.sml
