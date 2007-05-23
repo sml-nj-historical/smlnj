@@ -24,7 +24,6 @@ signature TOOLS = sig
     (* Register a "standard" tool based on some shell command. *)
     val registerStdShellCmdTool : { tool: string,
 				    class: string,
-				    suffixes: string list,
 				    cmdStdPath: unit -> string * string list,
 				    extensionStyle: extensionStyle,
 				    template: string option,

@@ -28,8 +28,8 @@ is
         parse/cm.grm.sml
 	parse/cm.lex.sml
 #else
-	parse/cm.grm
-	parse/cm.lex
+	parse/cm.grm : MLYacc
+	parse/cm.lex : MLLex
 #endif
 
 	semant/sharing.sml

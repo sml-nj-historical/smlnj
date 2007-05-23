@@ -15,6 +15,23 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/05/23 09:50:00 CDT
+Description:
+
+Changed the installation mechanism for CM tool plugins.  These are
+just libaries and now get installed like ordinary libaries.
+
+There are now a number of new installation targets that give some
+fine-grain control over what classes and suffixes are known, and what
+they will map to.
+See config/targets for details.
+
+The code that caused plugin installation as part of running a
+tool's "build" script has been removed.  (The build script is for
+building, not for installing.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2007/05/22 11:50:00 CDT
 Description:
 

@@ -188,10 +188,35 @@ Transmitting file data ..
 Committed revision 2473.
 
 
-4. Merge from trunk
+4. Merge from trunk (2492:2578), producing 2579
 arran$ date
 Tue May 22 16:25:26 CDT 2007
 arran$ svn merge -r 2492:HEAD $smlnj/sml/trunk
 U    cm/tools/main/tools-fn.sml
  U   cm/parse
 U    NOTES/HISTORY
+
+arran$ svn update
+At revision 2578.
+arran$ svn commit -m "merge -r 2492:2578 from sml/trunk"
+Sending        NOTES/HISTORY
+Sending        cm/parse
+Sending        cm/tools/main/tools-fn.sml
+Sending        compiler/DEVNOTES/primop3-revisions
+Sending        compiler/Elaborator/elaborate/elabmod.sml
+Transmitting file data ....
+Committed revision 2579.
+
+
+5. merge from trunk (2579:2594)
+Wed May 23 11:28:56 CDT 2007
+arran$ svn update
+At revision 2594.
+arran$ svn merge -r2579:HEAD $smlnj/sml/trunk
+U    cm/tools/main/tools-fn.sml
+U    cm/tools/main/public-tools.sig
+U    cm/cm-lib.cm
+U    system/smlnj/internal/boot-env-fn.sml
+U    system/smlnj/internal/intsys.cm
+U    NOTES/HISTORY
+U    compiler/Parse/parser.cm

@@ -34,7 +34,7 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
 	  | SOME p => OS.Path.joinDirFile { dir = p, file = cmdStdPath }
 
     fun registerStdShellCmdTool args = let
-	val { tool, class, suffixes, cmdStdPath,
+	val { tool, class, cmdStdPath,
 	      extensionStyle, template, dflopts } = args
 	val template = getOpt (template, "%c %u %s")
 	fun err m = raise ToolError { tool = tool, msg = m }
@@ -74,14 +74,13 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
 			      Subst.subnsel (1, #"u", fn x => x, " ")
 					    shelloptions] }]
 			template
-	    in
-		Say.vsay ["[", cmd, "]\n"];
-		if OS.Process.system cmd = OS.Process.success then ()
-		else if #get tolerate_tool_failures ()
-			andalso targetsExist targets then
-		    Say.say ["[*** WARNING: \"", cmd, "\" failed ***]\n\
-			     \[*** using potentially outdated targets ***]\n"]
-		else err cmd
+	    in Say.vsay ["[", cmd, "]\n"];
+	       if OS.Process.system cmd = OS.Process.success then ()
+	       else if #get tolerate_tool_failures ()
+		       andalso targetsExist targets then
+		   Say.say ["[*** WARNING: \"", cmd, "\" failed ***]\n\
+			    \[*** using potentially outdated targets ***]\n"]
+	       else err cmd
 	    end
 	    fun rulefn () =
 		let val targets = map #1 tfiles
@@ -89,14 +88,9 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
 		   else ();
 		   partial_expansion
 		end
-	in
-	    context rulefn
+	in context rulefn
 	end
-	fun sfx s =
-	    registerClassifier (stdSfxClassifier { sfx = s, class = class })
-    in
-	registerClass (class, rule);
-	app sfx suffixes
+    in registerClass (class, rule)
     end
 
     local
