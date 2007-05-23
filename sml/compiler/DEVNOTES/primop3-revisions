@@ -220,3 +220,19 @@ U    system/smlnj/internal/boot-env-fn.sml
 U    system/smlnj/internal/intsys.cm
 U    NOTES/HISTORY
 U    compiler/Parse/parser.cm
+
+arran$ svn update
+At revision 2594.
+arran$ date
+Wed May 23 11:39:41 CDT 2007
+arran$ svn commit -m "merge (2579:2594) from $smlnj/sml/trunk (CM changes)"
+Sending        NOTES/HISTORY
+Sending        cm/cm-lib.cm
+Sending        cm/tools/main/public-tools.sig
+Sending        cm/tools/main/tools-fn.sml
+Sending        compiler/DEVNOTES/primop3-revisions
+Sending        compiler/Parse/parser.cm
+Sending        system/smlnj/internal/boot-env-fn.sml
+Sending        system/smlnj/internal/intsys.cm
+Transmitting file data ........
+Committed revision 2595.
