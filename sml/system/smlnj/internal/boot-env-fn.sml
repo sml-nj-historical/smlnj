@@ -29,13 +29,6 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 
     exception BootFailure
 
-(*
-    (* To be able to use ml-yacc and ml-lex at -rebuild time it is necessary
-     * to force their plugins to be _always_ plugged in.  We achieve this
-     * by simply mentioning the structure names here. *)
-    structure YaccTool = YaccTool and LexTool = LexTool
-	  and YaccGrmExt = YaccGrmExt and LexLexExt = LexLexExt
-*)
     (* The classifier for dir-tool.cm must also be registered permanently... *)
     structure DirToolClassify = DirToolClassify
 

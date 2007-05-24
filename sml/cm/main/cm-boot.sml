@@ -447,6 +447,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	      fun parse p = Parse.parse (slave_parse_arg (gr, NONE, p))
 	  in
 	      #set (SSV.symval "CM_SLAVE_MODE") (SOME 1);
+	      #set (SSV.symval "NO_PLUGINS") (SOME 1);
 	      Slave.slave { penv = penv,
 			    parse = parse,
 			    my_archos = my_archos,
