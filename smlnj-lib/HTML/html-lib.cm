@@ -24,7 +24,7 @@ is
   ml-yacc-lib.cm
 #endif
 
-#if defined(CMB_REBUILD)
+#if defined(NO_PLUGINS)
   html-lex.sml
   html-gram.sig
   html-gram.sml
