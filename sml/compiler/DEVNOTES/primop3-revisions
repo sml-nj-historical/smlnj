@@ -263,3 +263,21 @@ U    system/smlnj/internal/intsys.cm
 U    system/smlnj/internal/smlnj-version.cm
 U    NOTES/HISTORY
 U    compiler/Parse/parser.cm
+
+westray$ svn update
+At revision 2610.
+westray$ date
+Thu May 24 20:30:03 CDT 2007
+westray$ svn commit -m "merge from trunk (2603:2610)"
+Sending        NOTES/HISTORY
+Sending        cm/bootstrap/btcompile.sml
+Sending        cm/cm-lib.cm
+Sending        cm/main/cm-boot.sml
+Sending        compiler/DEVNOTES/primop3-revisions
+Sending        compiler/Parse/parser.cm
+Sending        system/smlnj/internal/boot-env-fn.sml
+Sending        system/smlnj/internal/boot-env.sml
+Sending        system/smlnj/internal/intsys.cm
+Sending        system/smlnj/internal/smlnj-version.cm
+Transmitting file data ..........
+Committed revision 2611.
