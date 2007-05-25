@@ -14,6 +14,13 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/05/23
+Description:
+
+Fixed Bug 1416 (problems with Date.fmt and yday).
+
+----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2007/05/23 22:30:00 CDT
 Description:
