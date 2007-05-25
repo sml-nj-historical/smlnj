@@ -436,6 +436,7 @@ struct
 	  | slave (SOME (dirbase, root)) =
 	    (StabModmap.reset ();
 	     #set (SSV.symval "CMB_SLAVE_MODE") (SOME 1);
+	     #set (SSV.symval "NO_PLUGINS") (SOME 1);
 	     case mk_compile { master = false, root = SOME root,
 			       dirbase = SOME dirbase } of
 		 NONE => NONE

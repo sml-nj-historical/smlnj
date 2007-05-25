@@ -25,7 +25,7 @@ is
 
 	lex/tokentable.sml
 
-#if defined(CMB_REBUILD)
+#if defined (NO_PLUGINS)
         lex/ml.lex.sml
 	parse/ml.grm.sig
 	parse/ml.grm.sml

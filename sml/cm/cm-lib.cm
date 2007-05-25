@@ -23,7 +23,7 @@ is
 
 	(* the CM description file parser *)
 	parse/parse.sml
-#if defined(CMB_REBUILD)
+#if defined (NO_PLUGINS)
         parse/cm.grm.sig
         parse/cm.grm.sml
 	parse/cm.lex.sml

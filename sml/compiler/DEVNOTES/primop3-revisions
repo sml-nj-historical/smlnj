@@ -236,3 +236,30 @@ Sending        system/smlnj/internal/boot-env-fn.sml
 Sending        system/smlnj/internal/intsys.cm
 Transmitting file data ........
 Committed revision 2595.
+
+
+6. merge from trunk (2603:2610)
+westray$ date
+Thu May 24 19:58:01 CDT 2007
+westray$ svn info
+Path: .
+URL: svn://smlnj-gforge.cs.uchicago.edu/smlnj/sml/branches/primop-branch-3
+Repository UUID: d172b47e-f5d9-4df3-ab46-1c4da947e531
+Revision: 2610
+Node Kind: directory
+Schedule: normal
+Last Changed Author: dbm
+Last Changed Rev: 2601
+Last Changed Date: 2007-05-23 15:20:16 -0500 (Wed, 23 May 2007)
+Properties Last Updated: 2007-05-09 19:29:14 -0500 (Wed, 09 May 2007)
+
+westray$ svn merge -r2603:HEAD $smlnj/sml/trunk
+U    cm/main/cm-boot.sml
+U    cm/cm-lib.cm
+U    cm/bootstrap/btcompile.sml
+U    system/smlnj/internal/boot-env.sml
+U    system/smlnj/internal/boot-env-fn.sml
+U    system/smlnj/internal/intsys.cm
+U    system/smlnj/internal/smlnj-version.cm
+U    NOTES/HISTORY
+U    compiler/Parse/parser.cm
