@@ -14,6 +14,15 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/05/29
+Description:
+
+Added the new MLRISC code generator for the AMD64.  This version,
+in contrast to the previous one, uses SSE registers and instructions
+for all floating-point computations.
+
+----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2007/05/29
 Description:
