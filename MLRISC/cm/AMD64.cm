@@ -25,12 +25,12 @@ Library
 is
 	$/basis.cm
 	$/smlnj-lib.cm
-	MLRISC.cm
-	Control.cm
-	Lib.cm
-	Graphs.cm
-	MLTREE.cm 
-	SA.cm
+	$/MLRISC.cm
+	$/Control.cm
+	$/Lib.cm
+	$/Graphs.cm
+	$/MLTREE.cm 
+	$/SA.cm
 
 	../amd64/flowgraph/amd64GasPseudoOps.sml
 
