@@ -69,8 +69,8 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
 
 
     structure MLTreeComp=
-       AMD64(val defaultIntTy = 64
-           structure AMD64Instr=AMD64Instr
+       AMD64Gen(
+           structure I=AMD64Instr
 	   structure MLTreeUtils = MLTreeUtils
                (structure T = AMD64MLTree
                 fun hashSext  _ _ = 0w0 
@@ -106,7 +106,6 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
                 cleanup = []
                }
            end
-           val fast_floating_point = fast_floating_point
           )
 
     structure Jumps = 
@@ -125,10 +124,10 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
                  structure CodeString=CodeString)
 
     structure RA = 
-      AMD64RA
+      AMD64RegAlloc
       (structure I         = AMD64Instr
        structure CB	   = CellsBasis
-       structure InsnProps = InsnProps
+       structure Props = InsnProps
        structure Asm       = AMD64AsmEmitter
        structure CFG       = AMD64CFG
        structure SpillHeur = ChowHennessySpillHeur
@@ -140,7 +139,6 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
        type spill_info = unit
 
        fun beforeRA _ = AMD64StackSpills.init()
-       val fast_floating_point = fast_floating_point
 
        val toInt32 = Int32.fromInt
        fun cacheOffset r = I.Immed(toInt32(AMD64Runtime.vregStart + 
@@ -148,14 +146,13 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
        fun cacheFPOffset f = I.Immed(toInt32(AMD64Runtime.vFpStart + 
                                 Word.toIntX(Word.<<(Word.fromInt(f-40),0w3))))
 
-       datatype raPhase = SPILL_PROPAGATION | SPILL_COLORING
-       datatype spillOperandKind = SPILL_LOC | CONST_VAL
+       datatype ra_phase = SPILL_PROPAGATION | SPILL_COLORING
+       datatype spill_operand_kind = SPILL_LOC | CONST_VAL
 
        structure Int =  
        struct
           val avail     = R.availR
           val dedicated = R.dedicatedR
-          val memRegs   = [] 
           val phases    = [SPILL_PROPAGATION,SPILL_COLORING]
 
           (* We try to make unused memregs available for spilling 
@@ -191,11 +188,9 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
        struct
           val avail     = R.availF
           val dedicated = R.dedicatedF
-          val memRegs   = []
           val phases    = [SPILL_PROPAGATION]
 
           fun spillInit(RAGraph.GRAPH{nodes, ...}) = 
-              if !fast_floating_point then
               let val lookup = IntHashTable.lookup nodes
                  fun find(r, free) =
                      if r >= 32+8 then 
@@ -210,13 +205,10 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
                  val free = find(63, [])
               in AMD64StackSpills.setAvailableFPOffsets free
               end 
-              else ()
 
           fun spillLoc(S, an, loc) =
             I.Displace{base=base(), disp=AMD64StackSpills.getFregLoc loc, mem=spill}
 
-          val fastMemRegs = C.Regs CB.FP {from=8, to=31, step=1}
-          val fastPhases  = [SPILL_PROPAGATION,SPILL_COLORING]
       end
     ) (* AMD64RA *)
   ) (* AMD64CG *)
