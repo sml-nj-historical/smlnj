@@ -23,6 +23,7 @@ ml_val_t _ml_Date_asctime (ml_state_t *msp, ml_val_t arg)
     ml_val_t	res;
     struct tm	tm;
 
+    bzero (&tm, sizeof(tm));
     tm.tm_sec	= REC_SELINT(arg, 0);
     tm.tm_min	= REC_SELINT(arg, 1);
     tm.tm_hour	= REC_SELINT(arg, 2);

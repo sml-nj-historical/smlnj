@@ -15,10 +15,12 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
-Date: 2007/05/23
+Date: 2007/05/29
 Description:
 
-Fixed Bug 1416 (problems with Date.fmt and yday).
+A number of fixes related to the formatting of dates.  These include fixes
+for bugs #1415 and #1416.  We also now correctly handle format characters that
+lie outside the specified set.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)

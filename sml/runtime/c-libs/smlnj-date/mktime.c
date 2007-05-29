@@ -21,6 +21,7 @@ ml_val_t _ml_Date_mktime (ml_state_t *msp, ml_val_t arg)
     struct tm	tm;
     time_t	t;
 
+    bzero (&tm, sizeof(tm));
     tm.tm_sec	= REC_SELINT(arg, 0);
     tm.tm_min	= REC_SELINT(arg, 1);
     tm.tm_hour	= REC_SELINT(arg, 2);

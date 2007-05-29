@@ -27,6 +27,7 @@ ml_val_t _ml_Date_strftime (ml_state_t *msp, ml_val_t arg)
     size_t	sz;
 
     date	= REC_SEL(arg, 1);
+    bzero (&tm, sizeof(tm));
     tm.tm_sec	= REC_SELINT(date, 0);
     tm.tm_min	= REC_SELINT(date, 1);
     tm.tm_hour	= REC_SELINT(date, 2);

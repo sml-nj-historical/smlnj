@@ -5,13 +5,14 @@
  *)
 
 local
-    structure Int = IntImp
-    structure Int32 = Int32Imp
-    structure Time = TimeImp
+  structure Int = IntImp
+  structure Int32 = Int32Imp
+  structure Time = TimeImp
+  structure SS = InitSubstring
+  structure String = StringImp
 in
 structure Date : DATE =
   struct
-
 
   (* the run-time system indexes the year off this *)
     val baseYear = 1900
@@ -62,7 +63,7 @@ structure Date : DATE =
       | monthToInt Sep = 8
       | monthToInt Oct = 9
       | monthToInt Nov = 10
-      | monthToInt Doc = 11
+      | monthToInt Dec = 11
 
   (* the tuple type used to communicate with C; this 9-tuple has the
    * fields:
@@ -296,7 +297,84 @@ structure Date : DATE =
 	  end
 
     fun toString d = ascTime (toTM d)
-    fun fmt fmtStr d = strfTime (fmtStr, toTM d)
+
+  (* the size of the runtime system character buffer, not including space for the '\0' *)
+    val fmtBuf = 512-1
+    fun fmt fmtStr = let
+	(* get a format character; the next character in start should be #"%" (or else
+	 * start is empty.  Returns a triple (maxLen, frag, rest), where maxLen is an
+	 * upperbound on the expansion of the format string, frag is the format string
+	 * and rest is the rest of the substring.
+	 *)
+	  fun getFmtC start = (case SS.getc start
+		 of SOME(_, rest) => let
+		      fun continue (len, ss') = (len, SS.slice(start, 0, SOME 2), ss')
+		      in
+			case SS.getc rest
+			 of NONE => (1, SS.full "%", rest)
+			  | SOME(#"a", ss') => continue(3, ss')
+			  | SOME(#"A", ss') => continue(20, ss')
+			  | SOME(#"b", ss') => continue(3, ss')
+			  | SOME(#"B", ss') => continue(20, ss')
+			  | SOME(#"c", ss') => continue(24, ss')
+			  | SOME(#"d", ss') => continue(2, ss')
+			  | SOME(#"H", ss') => continue(2, ss')
+			  | SOME(#"I", ss') => continue(2, ss')
+			  | SOME(#"j", ss') => continue(3, ss')
+			  | SOME(#"m", ss') => continue(2, ss')
+			  | SOME(#"M", ss') => continue(2, ss')
+			  | SOME(#"p", ss') => continue(3, ss')
+			  | SOME(#"S", ss') => continue(2, ss')
+			  | SOME(#"U", ss') => continue(2, ss')
+			  | SOME(#"w", ss') => continue(1, ss')
+			  | SOME(#"W", ss') => continue(2, ss')
+			  | SOME(#"x", ss') => continue(24, ss')
+			  | SOME(#"X", ss') => continue(24, ss')
+			  | SOME(#"y", ss') => continue(2, ss')
+			  | SOME(#"Y", ss') => continue(4, ss')
+			  | SOME(#"Z", ss') => continue(3, ss')
+			  | SOME(c, ss') => (1, SS.full(String.str c), ss')
+			(* end case *)
+		      end
+		  | NONE => (0, start, start)
+		(* end case *))
+	  fun mkFmtFn (frags, fmtFns) = if List.null frags
+		then fmtFns
+		else let
+		  val s = SS.concat(List.rev frags)
+		  in
+		    (fn tm => strfTime(s, tm)) :: fmtFns
+		  end
+	  fun notPct #"%" = false | notPct _ = true
+	  fun scan (ss, totLen, frags, fmtFns) = let
+		val (ss1, ss2) = SS.splitl notPct ss
+		val n = SS.size ss1
+		val (totLen, frags, fmtFns) = if (n = 0)
+			then (totLen, frags, fmtFns)
+		      else if (totLen+n >= fmtBuf)
+			then let
+			  val fmtFns = mkFmtFn(frags, fmtFns)
+			  val s = SS.string ss1
+			  in
+			    (0, [], (fn _ => s) :: fmtFns)
+			  end
+			else (totLen+n, ss1::frags, fmtFns)
+		in
+		  case getFmtC ss2
+		   of (0, _, _) => List.rev(mkFmtFn (frags, fmtFns))
+		    | (n, frag, rest) => if (totLen + n >= fmtBuf)
+			then let
+			  val fmtFns = mkFmtFn(frags, fmtFns)
+			  in
+			    scan (rest, n, [frag], fmtFns)
+			  end
+			else scan (rest, totLen+n, frag::frags, fmtFns)
+		  (* end case *)
+		end
+	  val fmtFns = scan (SS.full fmtStr, 0, [], [])
+	  in
+	    fn d => let val tm = toTM d in String.concat(List.map (fn f => f tm) fmtFns) end
+	  end
 
     fun scan getc s = let
 
