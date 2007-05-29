@@ -159,6 +159,7 @@ fun toDconLty d ty =
      | _ => if BT.isArrowType ty then toLty d ty
             else toLty d (BT.-->(BT.unitTy, ty)))
 
+(*
 (** the special lookup functions for the Core environment *)
 (* DBM: not used -- superceded by CoreAccess *)
 fun coreLookup(id, env) = 
@@ -166,6 +167,7 @@ fun coreLookup(id, env) =
       val err = fn _ => fn _ => fn _ => raise NoCore
    in Lookup.lookVal(env, sp, err)
   end
+*)
 
 fun CON' ((_, DA.REF, lt), ts, e) = APP (PRIM (PO.MAKEREF, lt, ts), e)
   | CON' ((_, DA.SUSP (SOME(DA.LVAR d, _)), lt), ts, e) =
@@ -343,8 +345,8 @@ fun mkAcc (p, nameOp) =
  *)
 exception NoCore
 
-fun coreExn id =
-    (case CoreAccess.getCon' (fn () => raise NoCore) (oldenv, id) of
+fun coreExn ids =
+    (case CoreAccess.getCon' (fn () => raise NoCore) oldenv ids of
 	 TP.DATACON { name, rep as DA.EXN _, typ, ... } =>
          let val nt = toDconLty DI.top typ
              val nrep = mkRep(rep, nt, name)
@@ -357,7 +359,7 @@ fun coreExn id =
     handle NoCore => (say "WARNING: no Core access\n"; INT 0)
 
 and coreAcc id =
-    (case CoreAccess.getVar' (fn () => raise NoCore) (oldenv, id) of
+    (case CoreAccess.getVar' (fn () => raise NoCore) oldenv [id] of
 	 V.VALvar { access, typ, path, ... } =>
 	 mkAccT(access, toLty DI.top (!typ), getNameOp path)
        | _ => bug "coreAcc in translate")
@@ -576,14 +578,26 @@ fun inlops nk = let
     val lt_neg = lt_arw (lt_arg, lt_arg)
     val less = PRIM (PO.CMP { oper = PO.<, kind = nk }, lt_cmp, [])
     val greater = PRIM (PO.CMP { oper = PO.>, kind = nk }, lt_cmp, [])
+    val equal = PRIM (PO.CMP { oper = PO.EQL, kind = nk }, lt_cmp, [])
     val negate =
 	PRIM (PO.ARITH { oper = PO.~, overflow = overflow, kind = nk },
 	      lt_neg, [])
 in
     { lt_arg = lt_arg, lt_argpair = lt_argpair, lt_cmp = lt_cmp,
-      less = less, greater = greater,
+      less = less, greater = greater, equal = equal,
       zero = zero, negate = negate }
 end
+
+fun inldiv (nk, po) =
+    let val { lt_argpair, lt_cmp, zero, equal, ... } = inlops nk
+	val z = mkv () val y = mkv ()
+    in FN (z, lt_argpair,
+	   LET (y, SELECT (1, VAR z),
+		COND (APP (equal, RECORD [VAR y, zero]),
+		      mkRaise (coreExn ["Assembly", "Div"], lt_bool),
+		      APP (PRIM (po, lt_cmp, []), VAR z))))
+    end
+		
 
 fun inlminmax (nk, ismax) = let
     val { lt_argpair, less, greater, lt_cmp, ... } = inlops nk
@@ -717,6 +731,11 @@ fun transPrim (prim, lt, ts) =
 	| g (PO.INLMAX nk) = inlminmax (nk, true)
 	| g (PO.INLABS nk) = inlabs nk
 
+	| g (po as PO.ARITH { oper = (PO./ | PO.DIV | PO.MOD | PO.REM),
+			      kind = nk as (PO.INT _ | PO.UINT _),
+			      overflow }) =
+	    inldiv (nk, po)
+
         | g (PO.INLNOT) =
               let val x = mkv()
                in FN(x, lt_bool, COND(VAR x, falseLexp, trueLexp))
@@ -778,7 +797,7 @@ fun transPrim (prim, lt, ts) =
                         COND(APP(cmpOp(LESSU), 
                                  RECORD[vi, APP(lenOp seqtc, va)]),
                              APP(oper, RECORD[va, vi]),
-                             mkRaise(coreExn "Subscript", t1)))))
+                             mkRaise(coreExn ["Subscript"], t1)))))
               end
 
         | g (PO.INLSUBSCRIPT) = 
@@ -797,7 +816,7 @@ fun transPrim (prim, lt, ts) =
                         COND(APP(cmpOp(LESSU), 
                                  RECORD[vi, APP(lenOp seqtc, va)]),
                              APP(oper, RECORD[va, vi]),
-                             mkRaise(coreExn "Subscript", t1)))))
+                             mkRaise(coreExn ["Subscript"], t1)))))
               end
 
         | g (PO.NUMSUBSCRIPT{kind,checked=true,immutable}) =
@@ -817,7 +836,7 @@ fun transPrim (prim, lt, ts) =
                         COND(APP(cmpOp(LESSU), RECORD[vi, 
                                                  APP(lenOp tc1, va)]),
                              APP(oper', RECORD [va, vi]),
-                             mkRaise(coreExn "Subscript", t2)))))
+                             mkRaise(coreExn ["Subscript"], t2)))))
               end
 
         | g (PO.INLUPDATE) = 
@@ -838,7 +857,7 @@ fun transPrim (prim, lt, ts) =
                           COND(APP(cmpOp(LESSU),
                                    RECORD[vi,APP(lenOp seqtc, va)]),
                                APP(oper, RECORD[va,vi,vv]),
-                               mkRaise(coreExn "Subscript", LT.ltc_unit))))))
+                               mkRaise(coreExn ["Subscript"], LT.ltc_unit))))))
               end
 
         | g (PO.NUMUPDATE{kind,checked=true}) =
@@ -860,7 +879,7 @@ fun transPrim (prim, lt, ts) =
                           COND(APP(cmpOp(LESSU),
                                    RECORD[vi,APP(lenOp tc1, va)]),
                                APP(oper', RECORD[va,vi,vv]),
-                               mkRaise(coreExn "Subscript", LT.ltc_unit))))))
+                               mkRaise(coreExn ["Subscript"], LT.ltc_unit))))))
               end
 
 (**** ASSIGN(r, x) <> UPDATE(r, 0, x) under new array reps (JHR;1998-10-30)

@@ -122,7 +122,7 @@ val bangExp = VARexp(ref bangVar,NONE)
 *)
 
 local
-    fun mkCoreExp name env = VARexp (ref (CoreAccess.getVar(env, name)), [])
+    fun mkCoreExp name env = VARexp (ref (CoreAccess.getVar env [name]), [])
 in
     val mkAssignExp = mkCoreExp "assign"
     val mkBangExp = mkCoreExp "deref"
@@ -192,7 +192,7 @@ let
 
 	    (* capture Match exn from coreEnv as a random exn for use internally
 	       in the Y combinator definition *)
-	    val exn = CoreAccess.getExn (env,"Match")
+	    val exn = CoreAccess.getExn env ["Match"]
 
 	    (* val exn = V.bogusEXN (* see if this will work? *) *)
 

@@ -101,8 +101,8 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	      else if Symbol.eq (s, s') then (s, m+1) :: t
 	      else (s, 0) :: l
 
-	fun getCoreVal s = CoreAccess.getVar (senv, s)
-	fun getCoreCon s = CoreAccess.getCon (senv, s)
+	fun getCoreVal s = CoreAccess.getVar senv [s]
+	fun getCoreCon s = CoreAccess.getCon senv [s]
 
 	val tdp_reserve = getCoreVal "tdp_reserve"
 	val tdp_register = getCoreVal "tdp_register"
