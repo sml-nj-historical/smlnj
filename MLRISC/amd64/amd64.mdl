@@ -764,6 +764,12 @@ architecture AMD64 =
     | FCOM of {comOp : fcom_op, dst : $FP, src : operand}
       ``<comOp>\t <src>, <dst>''
 
+    | FSQRTS of {dst : operand, src : operand}
+      ``sqrtss\t <src>, <dst>''
+
+    | FSQRTD of {dst : operand, src : operand}
+      ``sqrtsd\t <src>, <dst>''
+
    (* misc *)
     | SAHF        (* %flags -> %ah *)
 	``sahf''

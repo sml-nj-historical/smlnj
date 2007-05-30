@@ -252,6 +252,8 @@ functor AMD64Props (
             of I.FMOVE {dst, src, ...} => (operand dst, operand src)
              | I.FBINOP {dst, src, ...} => ([dst], [src])
              | I.FCOM {dst, src, ...} => ([dst], operand src)
+             | ( I.FSQRTS {dst, src} | I.FSQRTD {dst, src} )=> 
+               (operand dst, operand src)
              | ( I.CALL {defs, uses, ...} | I.CALLQ {defs, uses, ...} ) =>
                (C.getFreg defs, C.getFreg uses)
              | _ => ([], [])
@@ -357,6 +359,8 @@ functor AMD64Props (
            of ( I.ADDSS | I.SUBSS | I.MULSS | I.DIVSS ) => 32
             | ( I.ADDSD | I.SUBSD | I.MULSD | I.DIVSD ) => 64
            (* end case *))
+         | I.FSQRTS _ => 32
+         | I.FSQRTD _ => 64
         (* end case *))
 
   end (* AMD64Props *)

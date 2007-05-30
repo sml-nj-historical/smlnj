@@ -257,6 +257,8 @@ sig
    | FMOVE of {fmvOp:fmove_op, dst:operand, src:operand}
    | FBINOP of {binOp:fbin_op, dst:CellsBasis.cell, src:CellsBasis.cell}
    | FCOM of {comOp:fcom_op, dst:CellsBasis.cell, src:operand}
+   | FSQRTS of {dst:operand, src:operand}
+   | FSQRTD of {dst:operand, src:operand}
    | SAHF
    | LAHF
    | SOURCE of {}
@@ -316,6 +318,8 @@ sig
    val fmove : {fmvOp:fmove_op, dst:operand, src:operand} -> instruction
    val fbinop : {binOp:fbin_op, dst:CellsBasis.cell, src:CellsBasis.cell} -> instruction
    val fcom : {comOp:fcom_op, dst:CellsBasis.cell, src:operand} -> instruction
+   val fsqrts : {dst:operand, src:operand} -> instruction
+   val fsqrtd : {dst:operand, src:operand} -> instruction
    val sahf : instruction
    val lahf : instruction
    val source : {} -> instruction
@@ -574,6 +578,8 @@ struct
    | FMOVE of {fmvOp:fmove_op, dst:operand, src:operand}
    | FBINOP of {binOp:fbin_op, dst:CellsBasis.cell, src:CellsBasis.cell}
    | FCOM of {comOp:fcom_op, dst:CellsBasis.cell, src:operand}
+   | FSQRTS of {dst:operand, src:operand}
+   | FSQRTD of {dst:operand, src:operand}
    | SAHF
    | LAHF
    | SOURCE of {}
@@ -631,6 +637,8 @@ struct
    and fmove = INSTR o FMOVE
    and fbinop = INSTR o FBINOP
    and fcom = INSTR o FCOM
+   and fsqrts = INSTR o FSQRTS
+   and fsqrtd = INSTR o FSQRTD
    and sahf = INSTR SAHF
    and lahf = INSTR LAHF
    and source = INSTR o SOURCE

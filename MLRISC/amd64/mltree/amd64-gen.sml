@@ -830,6 +830,17 @@ functor AMD64Gen (
 	      mark (I.FBINOP {binOp=binOp, dst=d, src=bReg}, an)
 	    end
 	
+	and fsqrt (fty, d, a, an) = let
+	    val aOpnd = foperand (fty, a)
+	    val oper = (case fty
+	          of 32 => I.FSQRTS
+	           | 64 => I.FSQRTD
+	           | _ => error "fsqrt"
+	          (* end case *))
+	    in
+	      mark (oper {src=aOpnd, dst=I.FDirect d}, an)
+	    end
+	
 	and convertf2f (fromTy, toTy, e, d, an) = let
 	    val fmvOp = (case (fromTy, toTy)
 	    of (32, 64) => I.CVTSS2SD
@@ -866,7 +877,7 @@ functor AMD64Gen (
 	       (* unary operators *)
 	       | T.FNEG (_, a) => raise Fail "todo"
 	       | T.FABS (_, a) => raise Fail "todo"
-	       | T.FSQRT (_, a) => raise Fail "todo"
+	       | T.FSQRT (fty, a) => fsqrt (fty, d, a, an)
 	       (* conversions *)
 	       | T.CVTF2F (fTy, tTy, e) => convertf2f (fTy, tTy, e, d, an)
 	       | T.CVTI2F (fty, ty, e) => converti2f (fty, ty, e, d, an)
