@@ -171,17 +171,18 @@ fun dec (ri as ref i) = (ri := i-1)
 
     fun mk yyins = let
         (* current start state *)
-          val yyss = ref INITIAL
-	  fun YYBEGIN ss = (yyss := ss)
+        val yyss = ref INITIAL
+	fun YYBEGIN ss = (yyss := ss)
 	(* current input stream *)
-          val yystrm = ref yyins
+        val yystrm = ref yyins
 	(* get one char of input *)
-	  val yygetc = yyInput.getc 
+	val yygetc = yyInput.getc 
 	(* create yytext *)
-	  fun yymktext(strm) = yyInput.subtract (strm, !yystrm)
-          open UserDeclarations
-          fun lex 
-(yyarg as (inputSource)) () = let
+	fun yymktext(strm) = yyInput.subtract (strm, !yystrm)
+        open UserDeclarations
+        fun lex 
+(yyarg as (inputSource)) () = let 
+     fun continue() = let
             fun yystuck (yyNO_MATCH) = raise Fail "stuck state"
 	      | yystuck (yyMATCH (strm, action, old)) = 
 		  action (strm, old)
@@ -211,7 +212,7 @@ fun dec (ri as ref i) = (ri := i-1)
 					 yyactsToMatches (strm, finals, oldMatches)))
 			   | NONE => tryfinal()
 		      end)
-	    fun continue() = 
+	    in 
 let
 fun yyAction0 (strm, lastMatch : yymatch) = let
       val yytext = yymktext(strm)
@@ -1699,11 +1700,12 @@ in
     | INITIAL => yyQ6(!(yystrm), yyNO_MATCH)
   (* end case *))
 end
-	    in continue() end
-          in 
-            lex 
-	    handle IO.Io{cause, ...} => raise cause
-          end
+            end
+	  in continue() end
+        in 
+          lex 
+	  handle IO.Io{cause, ...} => raise cause
+        end
     in
     fun makeLexer yyinputN = mk (yyInput.mkStream yyinputN)
     fun makeLexer' ins = mk (yyInput.mkStream ins)
