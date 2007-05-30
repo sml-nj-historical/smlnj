@@ -248,7 +248,7 @@ fun completeMatch(env,name) =
     completeMatch'' 
       (fn marker =>
           RULE(WILDpat, 
-	       marker(RAISEexp(CONexp(CoreAccess.getExn(env,name),[]),
+	       marker(RAISEexp(CONexp(CoreAccess.getExn env [name],[]),
 			       UNDEFty))))
 (** Updated to the ty option type - GK *)
 

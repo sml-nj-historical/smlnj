@@ -139,8 +139,9 @@ Sending        system/smlnj/internal/intsys.cm
 Adding         system/smlnj/library-install.cm
 Transmitting file data ....................................
 Committed revision 2431.
-------------------------------------------------------------
 
+
+======================================================================
 2. 2nd merge from trunk from trunk revision r2410 to current head (r2450)
 
 Sun Apr 29 20:09:12 CDT 2007
@@ -169,6 +170,7 @@ Transmitting file data .........
 Committed revision 2464.
 
 
+======================================================================
 3. 3rd merge from trunk from trunk revision r2450 to current head (r2467)
 
 [dbm] -- not committed 
@@ -187,7 +189,7 @@ Sending        system/Basis/Implementation/Win32/os-path.sml
 Transmitting file data ..
 Committed revision 2473.
 
-
+======================================================================
 4. Merge from trunk (2492:2578), producing 2579
 arran$ date
 Tue May 22 16:25:26 CDT 2007
@@ -207,7 +209,7 @@ Sending        compiler/Elaborator/elaborate/elabmod.sml
 Transmitting file data ....
 Committed revision 2579.
 
-
+======================================================================
 5. merge from trunk (2579:2594)
 Wed May 23 11:28:56 CDT 2007
 arran$ svn update
@@ -237,7 +239,7 @@ Sending        system/smlnj/internal/intsys.cm
 Transmitting file data ........
 Committed revision 2595.
 
-
+======================================================================
 6. merge from trunk (2603:2610)
 westray$ date
 Thu May 24 19:58:01 CDT 2007
@@ -281,3 +283,25 @@ Sending        system/smlnj/internal/intsys.cm
 Sending        system/smlnj/internal/smlnj-version.cm
 Transmitting file data ..........
 Committed revision 2611.
+
+======================================================================
+7. merge from trunk (2610:2630)
+arran$ svn update
+At revision 2630.
+arran$ date
+Wed May 30 13:50:21 CDT 2007
+arran$ svn merge -r2610:HEAD $smlnj/sml/trunk
+U    runtime/c-libs/smlnj-date/asctime.c
+U    runtime/c-libs/smlnj-date/mktime.c
+U    runtime/c-libs/smlnj-date/strftime.c
+U    system/Basis/Implementation/date.sml
+G    NOTES/HISTORY
+U    compiler/DebugProf/profile/tprof.sml
+U    compiler/DebugProf/profile/tdp-instrument.sml
+U    compiler/Elaborator/elaborate/elabcore.sml
+U    compiler/Elaborator/elaborate/elabutil.sml
+U    compiler/ElabData/statenv/coreacc.sml
+U    compiler/CodeGen/main/mlriscGen.sml
+U    compiler/CodeGen/amd64/amd64CG.sml
+U    compiler/CodeGen/amd64/amd64MLTreeExtComp.sml
+U    compiler/FLINT/trans/translate.sml

@@ -105,7 +105,7 @@ fun clean (path as name::names) = if S.eq(name,anonSym) then names else path
   | clean x = x
 
 fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
- let fun getVar name = CoreAccess.getVar (env, name)
+ let fun getVar name = CoreAccess.getVar env [name]
      val updateop = getVar "unboxedupdate"
      val assignop = getVar "assign"
      val subop = getVar "subscript"
@@ -122,7 +122,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
      val currentvar = tmpvar("profCurrent",CONty(refTycon,[intTy]), mkv)
      val currentexp = varexp currentvar
      
-     val register = CoreAccess.getVar (env, "profile_register")
+     val register = getVar "profile_register"
 
      local
 	 val ty = case register of
@@ -353,7 +353,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                            val ccvara' = makeEntry(name)
                            val lvar = tmpvar("fnvar",t,mkv);
 
-                           val exnMatch = CoreAccess.getCon (env, "Match")
+                           val exnMatch = CoreAccess.getCon env ["Match"]
 
                            val RULE(_,special) = List.last l
                         in FNexp ([RULE(VARpat(lvar), 
