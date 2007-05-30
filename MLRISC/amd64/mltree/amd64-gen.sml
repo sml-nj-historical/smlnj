@@ -806,29 +806,28 @@ functor AMD64Gen (
 	    end 
 
 	(* put a floating-point expression into a register *)
-	and fexpToReg (fty, e) = 
-(*(case e
+	and fexpToReg (fty, e) = (case e
 	    of T.FREG (fty', r) => r
-	     | e => *)let
+	     | e => let
 	       val r = newFreg ()
 	       in
 	         fexpr (fty, r, e, []);
 	         r
 	       end
-(*	    (* end case *))*)
+	    (* end case *))
 
 	(* put a floating-point expression into an operand *)
 	and foperand (fty, e) = (case e
 	    of T.FLOAD (fty, ea, mem) => address (ea, mem)
+	     | T.FREG (fty, r) => I.FDirect r
 	     | e => I.FDirect (fexpToReg (fty, e))
 	    (* end case *))
 
 	and fbinop (fty, binOp, a, b, d, an) = let
-	    val aReg = fexpToReg (fty, a)
 	    val bReg = fexpToReg (fty, b)
 	    in
-	      emit (I.FBINOP {binOp=binOp, dst=aReg, src=bReg});
-	      fcopy (fty, [d], [aReg], an)
+	      fexpr (fty, d, a, []);
+	      mark (I.FBINOP {binOp=binOp, dst=d, src=bReg}, an)
 	    end
 	
 	and convertf2f (fromTy, toTy, e, d, an) = let
@@ -1029,7 +1028,7 @@ functor AMD64Gen (
                      (case (l, r)
                        of (I.FDirect lReg, I.FDirect _) => cmp (lReg, r, fcc)
                         | (mem, I.FDirect rReg) => 
-                          cmp (rReg, r, T.Basis.swapFcond fcc)
+                          cmp (rReg, l, T.Basis.swapFcond fcc)
                         | (I.FDirect lReg, mem) => cmp (lReg, r, fcc)
                         | _ => let
                           val tmpR = newFreg ()
@@ -1138,7 +1137,7 @@ functor AMD64Gen (
 	 *)
 	and cmpWithZero(cc as (T.EQ | T.NE), e as T.ANDB(ty, a, b), an) = 
 		(case ty 
-		  of 8  => test(ty, I.TESTB, a, b, an)
+		  of 8 => test(ty, I.TESTB, a, b, an)
 		  | 16 => test(ty, I.TESTW, a, b, an)
 		  | 32 => test(ty, I.TESTL, a, b, an)
 		  | 64 => test(ty, I.TESTQ, a, b, an)
