@@ -14,6 +14,17 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/05/29 19:00:00 CDT
+Description:
+
+FLINT/trans/translate.sml now wraps all DIV/MOD/QUOT/REM operations
+with an explicit test for zero division.  This should fixes several
+regressions and makes it possible for downstream optimization phases
+to treat these operations as "pure" when they are applied to unsigned
+operands.
+
+----------------------------------------------------------------------
 Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
 Date: 2007/05/29
 Description:

@@ -1547,6 +1547,13 @@ struct
                       | P.-    => defI31(x, int31sub(M.SUB, v, w), e, hp)
                       | P.*    => defI31(x, int31mul(false, M.MULU, v, w),
 					 e, hp)
+		      (* we now explicitly defend agains div by 0, so these
+		       * two can be treated as pure op: *)
+		      | P./ => defI31(x,int31div(false,M.DIV_TO_ZERO,v,w),
+				      e,hp)
+		      | P.rem => defI31(x,int31rem(false,M.DIV_TO_ZERO,v,w),
+					e,hp)
+(*
                       | P./    => (* This is not really a pure 
                                      operation -- oh well *)
                                  (updtHeapPtr hp;
@@ -1558,6 +1565,7 @@ struct
 				  defI31(x, int31rem(false, M.DIV_TO_ZERO,
 						     v, w),
 					 e, 0))
+*)
                       | P.xorb => defI31(x, int31xor(v, w), e, hp)
                       | P.lshift  => defI31(x,int31lshift(v, w), e, hp)
                       | P.rshift  => defI31(x,int31rshift(M.SRA,v, w),e,hp)
@@ -1568,10 +1576,17 @@ struct
                      of P.+     => arith32(M.ADD, v, w, x, e, hp)
                       | P.-     => arith32(M.SUB, v, w, x, e, hp)
                       | P.*     => arith32(M.MULU, v, w, x, e, hp)
+		      (* same here: the explicit test for 0 that is inserted
+		       * by translate lets us treat the following two as
+		       * pure: *)
+		      | P./     => arith32(M.DIVU, v, w, x, e, hp)
+		      | P.rem   => arith32(M.REMU, v, w, x, e, hp)
+(*
                       | P./     => (updtHeapPtr hp; 
                                     arith32(M.DIVU, v, w, x, e, 0))
 		      | P.rem   => (updtHeapPtr hp;
 				    arith32(M.REMU, v, w, x, e, 0))
+*)
                       | P.xorb  => arith32(M.XORB, v, w, x, e, hp)
                       | P.lshift => logical32(M.SLL, v, w, x, e, hp)
                       | P.rshift => logical32(M.SRA, v, w, x, e, hp)
