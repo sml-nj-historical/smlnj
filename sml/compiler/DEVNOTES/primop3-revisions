@@ -305,3 +305,27 @@ U    compiler/CodeGen/main/mlriscGen.sml
 U    compiler/CodeGen/amd64/amd64CG.sml
 U    compiler/CodeGen/amd64/amd64MLTreeExtComp.sml
 U    compiler/FLINT/trans/translate.sml
+
+arran$ svn update
+At revision 2635.
+arran$ date
+Wed May 30 15:22:02 CDT 2007
+arran$ svn commit -m "merge from trunk (2610:2630)"
+Sending        NOTES/HISTORY
+Sending        compiler/CodeGen/amd64/amd64CG.sml
+Sending        compiler/CodeGen/amd64/amd64MLTreeExtComp.sml
+Sending        compiler/CodeGen/main/mlriscGen.sml
+Sending        compiler/DEVNOTES/primop3-revisions
+Sending        compiler/DebugProf/profile/tdp-instrument.sml
+Sending        compiler/DebugProf/profile/tprof.sml
+Sending        compiler/ElabData/statenv/coreacc.sml
+Sending        compiler/Elaborator/elaborate/elabcore.sml
+Sending        compiler/Elaborator/elaborate/elabutil.sml
+Sending        compiler/FLINT/opt/fcontract.sml
+Sending        compiler/FLINT/trans/translate.sml
+Sending        runtime/c-libs/smlnj-date/asctime.c
+Sending        runtime/c-libs/smlnj-date/mktime.c
+Sending        runtime/c-libs/smlnj-date/strftime.c
+Sending        system/Basis/Implementation/date.sml
+Transmitting file data ................
+Committed revision 2636.
