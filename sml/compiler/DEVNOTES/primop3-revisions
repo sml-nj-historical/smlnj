@@ -609,3 +609,10 @@ C    NOTES/HISTORY
 C    compiler/DEVNOTES/primop3-revisions
 U    compiler/FLINT/opt/fcontract.sml
 
+arran$ svn commit -m "merge from primop-branch-3 (base) into trunk (2603:2649)"
+Sending        NOTES/HISTORY
+Sending        compiler/DEVNOTES/primop3-revisions
+Sending        compiler/FLINT/opt/fcontract.sml
+Sending        system/Basis/Implementation/timer.sml
+Transmitting file data ....
+Committed revision 2650.
