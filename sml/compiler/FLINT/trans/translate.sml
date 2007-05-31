@@ -588,14 +588,14 @@ in
       zero = zero, negate = negate }
 end
 
-fun inldiv (nk, po) =
+fun inldiv (nk, po, lt, ts) =
     let val { lt_argpair, lt_cmp, zero, equal, ... } = inlops nk
 	val z = mkv () val y = mkv ()
     in FN (z, lt_argpair,
 	   LET (y, SELECT (1, VAR z),
 		COND (APP (equal, RECORD [VAR y, zero]),
 		      mkRaise (coreExn ["Assembly", "Div"], lt_bool),
-		      APP (PRIM (po, lt_cmp, []), VAR z))))
+		      APP (PRIM (po, lt, ts), VAR z))))
     end
 		
 
@@ -734,7 +734,7 @@ fun transPrim (prim, lt, ts) =
 	| g (po as PO.ARITH { oper = (PO./ | PO.DIV | PO.MOD | PO.REM),
 			      kind = nk as (PO.INT _ | PO.UINT _),
 			      overflow }) =
-	    inldiv (nk, po)
+	    inldiv (nk, po, lt, ts)
 
         | g (PO.INLNOT) =
               let val x = mkv()
