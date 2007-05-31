@@ -15,6 +15,31 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/05/31 11:40:00 CDT
+Description:
+
+Fixed some bugs in new Div code in FLINT/trans/translate.sml.
+
+Also, changed the handling of "no core access":  When translate.sml
+needs access to a core exception at a time when the core has not
+been set up yet (this only happens when compiling system/smlnj/init/*),
+then don't bother generating the corresponding tests.
+
+The old scheme was to generate a bogus value to be used in place of the
+exception.  Unfortunately, that confuses the plambda type checker.  Moreover, it
+does not do any good, because at runtime we don't expect such an exception
+to be ever raised.  (The code in system/smlnj/init/* has to be written
+very carefully with this in mind!)
+
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/05/29
+Description:
+
+Added FSQRT instructions for the AMD64 code generator.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2007/05/29 19:00:00 CDT
 Description:
 
