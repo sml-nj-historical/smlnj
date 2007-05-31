@@ -14,6 +14,20 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Dave MacQueen (dbm@cs.uchicago.edu)
+Date: 2007/05/31 14:45:00 CDT
+Revision: 265x
+Description:
+
+3rd merge of base from primop-branch-3 into the trunk.
+Additional bug fixes included:
+
+ * Timer.cpu_timer, etc. type printing corrected (by making
+     Timer have opaque sig constraint in basis/Implementation/timer.sml)
+ * Infinite loop in FLINT (tests/typing/tests/25.sml) (fix by
+     Stefan Monnier)
+
+----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2007/05/31 11:40:00 CDT
 Description:
@@ -25,11 +39,11 @@ needs access to a core exception at a time when the core has not
 been set up yet (this only happens when compiling system/smlnj/init/*),
 then don't bother generating the corresponding tests.
 
-The old scheme was to generate a bogus value to be used in place of the
-exception.  Unfortunately, that confuses the plambda type checker.  Moreover, it
-does not do any good, because at runtime we don't expect such an exception
-to be ever raised.  (The code in system/smlnj/init/* has to be written
-very carefully with this in mind!)
+The old scheme was to generate a bogus value to be used in place of
+the exception.  Unfortunately, that confuses the plambda type checker.
+Moreover, it does not do any good, because at runtime we don't expect
+such an exception to be ever raised.  (The code in system/smlnj/init/*
+has to be written very carefully with this in mind!)
 
 ----------------------------------------------------------------------
 Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
