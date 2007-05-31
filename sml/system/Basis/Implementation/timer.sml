@@ -4,5 +4,5 @@
  *
  *)
 
-structure Timer : TIMER = InternalTimer;
+structure Timer :> TIMER = InternalTimer;
 

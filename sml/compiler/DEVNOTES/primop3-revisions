@@ -139,8 +139,9 @@ Sending        system/smlnj/internal/intsys.cm
 Adding         system/smlnj/library-install.cm
 Transmitting file data ....................................
 Committed revision 2431.
-------------------------------------------------------------
 
+
+======================================================================
 2. 2nd merge from trunk from trunk revision r2410 to current head (r2450)
 
 Sun Apr 29 20:09:12 CDT 2007
@@ -169,6 +170,7 @@ Transmitting file data .........
 Committed revision 2464.
 
 
+======================================================================
 3. 3rd merge from trunk from trunk revision r2450 to current head (r2467)
 
 [dbm] -- not committed 
@@ -187,7 +189,7 @@ Sending        system/Basis/Implementation/Win32/os-path.sml
 Transmitting file data ..
 Committed revision 2473.
 
-
+======================================================================
 arran$ svn commit -m "merge revisions 2221:2491 from primop-branch-3"
 Sending        NOTES/HISTORY
 Sending        cm/compile/compile.sml
@@ -377,7 +379,7 @@ Sending        compiler/Elaborator/elaborate/elabmod.sml
 Transmitting file data ....
 Committed revision 2579.
 
-
+======================================================================
 5. merge from trunk (2579:2594)
 Wed May 23 11:28:56 CDT 2007
 arran$ svn update
@@ -407,7 +409,7 @@ Sending        system/smlnj/internal/intsys.cm
 Transmitting file data ........
 Committed revision 2595.
 
-
+======================================================================
 6. merge from primop3 to trunk working copy (2495:2602)
 arran$ date
 Wed May 23 15:25:39 CDT 2007
@@ -483,4 +485,127 @@ D    testcases/realconst.sml.bug.2
 D    testcases
 arran$ svn update
 At revision 2602.
+
+After commit at revision 2603.
+
+
+======================================================================
+7. merge from trunk (2603:2610)
+westray$ date
+Thu May 24 19:58:01 CDT 2007
+westray$ svn info
+Path: .
+URL: svn://smlnj-gforge.cs.uchicago.edu/smlnj/sml/branches/primop-branch-3
+Repository UUID: d172b47e-f5d9-4df3-ab46-1c4da947e531
+Revision: 2610
+Node Kind: directory
+Schedule: normal
+Last Changed Author: dbm
+Last Changed Rev: 2601
+Last Changed Date: 2007-05-23 15:20:16 -0500 (Wed, 23 May 2007)
+Properties Last Updated: 2007-05-09 19:29:14 -0500 (Wed, 09 May 2007)
+
+westray$ svn merge -r2603:HEAD $smlnj/sml/trunk
+U    cm/main/cm-boot.sml
+U    cm/cm-lib.cm
+U    cm/bootstrap/btcompile.sml
+U    system/smlnj/internal/boot-env.sml
+U    system/smlnj/internal/boot-env-fn.sml
+U    system/smlnj/internal/intsys.cm
+U    system/smlnj/internal/smlnj-version.cm
+U    NOTES/HISTORY
+U    compiler/Parse/parser.cm
+
+westray$ svn update
+At revision 2610.
+westray$ date
+Thu May 24 20:30:03 CDT 2007
+westray$ svn commit -m "merge from trunk (2603:2610)"
+Sending        NOTES/HISTORY
+Sending        cm/bootstrap/btcompile.sml
+Sending        cm/cm-lib.cm
+Sending        cm/main/cm-boot.sml
+Sending        compiler/DEVNOTES/primop3-revisions
+Sending        compiler/Parse/parser.cm
+Sending        system/smlnj/internal/boot-env-fn.sml
+Sending        system/smlnj/internal/boot-env.sml
+Sending        system/smlnj/internal/intsys.cm
+Sending        system/smlnj/internal/smlnj-version.cm
+Transmitting file data ..........
+Committed revision 2611.
+
+======================================================================
+8. merge from trunk (2610:2630)
+arran$ svn update
+At revision 2630.
+arran$ date
+Wed May 30 13:50:21 CDT 2007
+arran$ svn merge -r2610:HEAD $smlnj/sml/trunk
+U    runtime/c-libs/smlnj-date/asctime.c
+U    runtime/c-libs/smlnj-date/mktime.c
+U    runtime/c-libs/smlnj-date/strftime.c
+U    system/Basis/Implementation/date.sml
+G    NOTES/HISTORY
+U    compiler/DebugProf/profile/tprof.sml
+U    compiler/DebugProf/profile/tdp-instrument.sml
+U    compiler/Elaborator/elaborate/elabcore.sml
+U    compiler/Elaborator/elaborate/elabutil.sml
+U    compiler/ElabData/statenv/coreacc.sml
+U    compiler/CodeGen/main/mlriscGen.sml
+U    compiler/CodeGen/amd64/amd64CG.sml
+U    compiler/CodeGen/amd64/amd64MLTreeExtComp.sml
+U    compiler/FLINT/trans/translate.sml
+
+arran$ svn update
+At revision 2635.
+arran$ date
+Wed May 30 15:22:02 CDT 2007
+arran$ svn commit -m "merge from trunk (2610:2630)"
+Sending        NOTES/HISTORY
+Sending        compiler/CodeGen/amd64/amd64CG.sml
+Sending        compiler/CodeGen/amd64/amd64MLTreeExtComp.sml
+Sending        compiler/CodeGen/main/mlriscGen.sml
+Sending        compiler/DEVNOTES/primop3-revisions
+Sending        compiler/DebugProf/profile/tdp-instrument.sml
+Sending        compiler/DebugProf/profile/tprof.sml
+Sending        compiler/ElabData/statenv/coreacc.sml
+Sending        compiler/Elaborator/elaborate/elabcore.sml
+Sending        compiler/Elaborator/elaborate/elabutil.sml
+Sending        compiler/FLINT/opt/fcontract.sml
+Sending        compiler/FLINT/trans/translate.sml
+Sending        runtime/c-libs/smlnj-date/asctime.c
+Sending        runtime/c-libs/smlnj-date/mktime.c
+Sending        runtime/c-libs/smlnj-date/strftime.c
+Sending        system/Basis/Implementation/date.sml
+Transmitting file data ................
+Committed revision 2636.
+
+======================================================================
+8. merge from trunk into primop3 base (2631:2647)
+
+arran$ date
+Thu May 31 14:21:38 CDT 2007
+arran$ svn update
+At revision 2647.
+arran$ svn merge -r2631:HEAD $smlnj/sml/trunk
+U    NOTES/HISTORY
+U    compiler/FLINT/trans/translate.sml
+arran$ svn commit -m "merge from trunk (2631:2647)"
+Sending        NOTES/HISTORY
+Sending        compiler/FLINT/trans/translate.sml
+Sending        system/Basis/Implementation/timer.sml
+Transmitting file data ...
+Committed revision 2648.
+
+======================================================================
+9. merge from primop3 to trunk working copy (2603:2649)
+arran$ date
+Thu May 31 14:38:56 CDT 2007
+arran$ svn update
+At revision 2649.
+arran$ svn merge -r 2603:HEAD $smlnj/sml/branches/primop-branch-3
+U    system/Basis/Implementation/timer.sml
+C    NOTES/HISTORY
+C    compiler/DEVNOTES/primop3-revisions
+U    compiler/FLINT/opt/fcontract.sml
 

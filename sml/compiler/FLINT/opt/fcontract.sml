@@ -412,6 +412,11 @@ fun contract {etaSplit,tfnInline} (fdec as (_,f,_,_)) = let
 	(s, Access.EXN(Access.LVAR(substvar m lv)), lty)
       | cdcon _ dc = dc
 
+    (* The set of functions which are apparently non-recursive but which seem
+     * to recurse nevertheless, typically with the help of a type-level
+     * recursion.  *)
+    val recursive_funs = ref S.empty
+
 (* ifs (inlined functions): records which functions we're currently inlining
  *     in order to detect loops
  * m: is a map lvars to their defining expressions (svals) *)
@@ -713,6 +718,15 @@ fun fcApp (f,vs) =
 		    * This inlining strategy looks inoffensive enough,
 		    * but still requires some care: see comments at the
 		    * begining of this file and in cfun *)
+                   (* FIXME: this may cause body to be optimized a second
+                    * time.  Usually, this is not a big deal, but it can
+                    * lead to infinite inlining in the following case:
+                    * inlining a call to F generates a function G which
+                    * contains a call to F (not inlined this time around
+                    * thanks to ifs), later on G gets simpleinlined at which
+                    * point the new call to F does get inlined, ...
+                    * This particular case is handled by recursive_funs,
+                    * but there might be other problematic scenarios.  *)
 		   (click_simpleinline();
 		    (*  say("simpleinline "^(C.LVarString g)^"\n"); *)
 		    ignore(C.unuse true gi);
@@ -721,7 +735,18 @@ fun fcApp (f,vs) =
 		   (* aggressive inlining.  We allow pretty much
 		    * any inlinling, but we detect and reject inlining
 		    * recursively which would else lead to infinite loop *)
-		   (* unrolling is not as straightforward as it seems:
+                   if S.member(ifs, g) orelse S.member(!recursive_funs, g) then
+                     (* We're trying to inline a function we're already in
+                      * the process of inlining (or which we found earlier
+                      * to be recursive).  This means this function is
+                      * declared as non-recursive, whereas it does recurse in
+                      * practice.  Record it in recursive_funs to make sure
+                      * we won't try to inline it ever again, even after
+                      * we're done inlining it.  *)
+                     (recursive_funs := S.add(!recursive_funs, g);
+                      noinline()) else
+		   (* Do the actual inlining.  Random half-related note:
+                    * unrolling is not as straightforward as it seems:
 		    * if you inline the function you're currently
 		    * fcontracting, you're asking for trouble: there is a
 		    * hidden assumption in the counting that the old code
@@ -735,21 +760,22 @@ fun fcApp (f,vs) =
 		       val nle = C.copylexp M.empty nle
 		   in
 		       click_copyinline();
-		       (*  say("copyinline "^(C.LVarString g)^"\n"); *)
 		       (app (unuseval m) vs);
 		       unusecall m g;
+		       (* say("copyinline "^(C.LVarString g)^"\n"); *)
 		       fcexp (S.add(ifs, g)) m nle cont
 		   end
 
-	   in if C.usenb gi = 1 andalso not(S.member(ifs, g)) then simpleinline()
+	   in if C.usenb gi = 1
+                 (* Not sure why/if this is needed.  *)
+                 andalso not(S.member(ifs, g))
+              then simpleinline()
 	      else case inline of
 		  F.IH_SAFE => noinline()
 		| F.IH_UNROLL => noinline()
-		| F.IH_ALWAYS =>
-		  if S.member(ifs, g) then noinline() else copyinline()
+		| F.IH_ALWAYS => copyinline()
 		| F.IH_MAYBE(min,ws) =>
-		  if S.member(ifs, g) then noinline() else let
-		      fun value w _ (Val _ | Con _ | Record _) = w
+		  let fun value w _ (Val _ | Con _ | Record _) = w
 			| value w v (Fun (f,_,args,_,_)) =
 			  if C.usenb(C.get v) = 1 then w * 2 else w
 			| value w _ _ = 0
