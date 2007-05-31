@@ -1,0 +1,201 @@
+Below is an excerpt from translate.sml that is concerned with translation
+between intinf an finite precision integers (at least int32). It is followed
+by some questions for which we are seeking answers. To us it looks like 
+there are bugs here, but perhaps we are missing something.
+
+------------------------------
+FLINT/trans/translate.sml
+------------------------------
+
+fun inl_infPrec (what, corename, p, lt, is_from_inf) = let
+    val (orig_arg_lt, res_lt) =
+	case LT.ltd_arrow lt of
+	    (_, [a], [r]) => (a, r)
+	  | _ => bug ("unexpected type of " ^ what)
+    val extra_arg_lt =
+	LT.ltc_parrow (if is_from_inf then (orig_arg_lt, LT.ltc_int32)
+		       else (LT.ltc_int32, orig_arg_lt))
+    val new_arg_lt = LT.ltc_tuple [orig_arg_lt, extra_arg_lt]
+    val new_lt = LT.ltc_parrow (new_arg_lt, res_lt)
+    val x = mkv ()
+in
+    FN (x, orig_arg_lt,
+	APP (PRIM (p, new_lt, []),
+	     RECORD [VAR x, coreAcc corename]))
+end
+
+
+fun transPrim (prim, lt, ts) = 
+  let fun g (PO.INLLSHIFT k) = inlineShift(lshiftOp, k, fn _ => lword0(k))
+   ....
+
+	(* Precision-conversion operations involving IntInf.
+	 * These need to be translated specially by providing
+	 * a second argument -- the routine from _Core that
+	 * does the actual conversion to or from IntInf. *)
+
+	| g (p as PO.TEST_INF prec) =
+	    inl_infPrec ("TEST_INF", "testInf", p, lt, true)
+	| g (p as PO.TRUNC_INF prec) =
+	    inl_infPrec ("TRUNC_INF", "truncInf", p, lt, true)
+	| g (p as PO.EXTEND_INF prec) =
+	    inl_infPrec ("EXTEND_INF", "finToInf", p, lt, false)
+	| g (p as PO.COPY_INF prec) =
+	    inl_infPrec ("COPY", "finToInf", p, lt, false)
+
+	(* default handling for all other primops *)
+        | g p = PRIM(p, lt, ts) 
+
+   in g prim
+  end (* function transPrim *)
+----------------------------------------------------------------------
+
+Questions:
+
+1. Why is finToInf used in the EXTEND_INF and COPY cases instead of
+   the specialized extendInf and copyInf?
+
+2. Why is copyInf included in Core but not extendInf?
+
+3. finToInf can perform the functions of both copyInf and extendInf,
+but it needs a second boolean argument.  The translation in inl_infPrec
+above does not seem to provide the appropriate boolean arguments (true
+when finToInt is to perform extendInf, false for copyInf).  How can this
+work?
+
+4. finToInf does not look at the precision argument of the primop
+constructors. But from the excerpt from the primop catalog below, we
+see that there are several variants of these primops with different
+precisions.  inl_infPrec seems to assume the precision is always int32.
+What happens for other precisions?  Do we need to add missing variants
+of the operations for the other precisions to Core and arrange for 
+inl_infPrec
+
+5. For EXTEND_INF 32, for example the intrinsic type is int32 -> intinf.
+This means that in inl_infPrec we will have
+
+	lt = int32 -> intinf   (as an lty)
+	orig_arg_lt = int32
+	res_lt = intinf
+	extra_arg_lt = parrow(int32, int32)
+	new_arg_lt = tuple [int32, parrow(int32,int32)]
+	new_lt = parrow(tuple [int32, parrow(int32,int32)], intinf)
+
+Is this the right type to be associated with the primop p = EXTEND_INF 32
+in the generated plexp expression?  Or should it be
+
+	new_lt = parrow(tuple [int32, parrow(int32,intinf)], intinf)
+
+
+---------------
+core.sml, core-intinf.sml
+---------------
+The following declarations are in the Core structure:
+
+	val testInf = CoreIntInf.testInf
+	val truncInf = CoreIntInf.truncInf
+	(** ADDED copyInf ... because finToInf takes sign extension parameter *) 
+	val copyInf = CoreIntInf.copyInf
+	val finToInf = CoreIntInf.finToInf
+
+        (** DBM: why has extendInf not been added also?
+	val extendInf = CoreIntInf.extendInf *)
+
+Where in the signature of CoreIntInf we have the following type specifications.
+
+    (* fit value (2's complement) in int32, raise Overflow if too large *)
+    val testInf   : intinf -> int32
+    (* truncate value (2's complement repr) to fit in int32: *)
+    val truncInf  : intinf -> int32
+    (* copy bits from int32 into (non-negative) intinf: *)
+    val copyInf   : int32 -> intinf
+    (* sign-extend int32: *)
+    val extendInf : int32 -> intinf
+    (* combined (sign-extension takes place when second argument is true): *)
+    val finToInf  : int32 * bool -> intinf
+
+
+Primops
+-------
+Here is a summary of all the primops that this section of transPrim 
+could apply to (the numbers are from a complete primop catalog, and are
+intended to be used to identify primops in the front end).
+
+The first item in each entry after the number is the name of the
+primop in Inline.  The next item is the primop value (using
+constructors from FLINT/kernel/primop.sml), and the final item is the
+"intrinsic type" of the primop, i.e. the type it is assigned in the
+InLine structure (Semant/statenv/prim.sml). The following indented
+lines, if present, give secondary bindings of the primop in
+intermediate structures like InlineT.IntInf, with their types, which
+may be specializations of the intrinsic type if the intrinsic type is
+polymorphic.
+
+
+84   test_inf_31,     P.TEST_INF 31,    intinf -> int
+	 InlineT.IntInf.test_int_31 :	intinf -> int
+
+85   test_inf_32,     P.TEST_INF 32,    intinf -> int32
+	 InlineT.IntInf.test_int32 :	intinf -> int32
+	 InlineT.IntInf.fromLarge :	intinf -> int32
+	 InlineT.Int32.fromLarge :	intinf -> int32 
+	
+86   test_inf_64,     P.TEST_INF 64,    intinf -> int64
+
+87   copy_8_inf,      P.COPY_INF 8,     word8 -> intinf
+	 InlineT.IntInf.copy_word8 : 	word8 -> intinf 
+	 InlineT.Word8.toLargeInt :	word8 -> intinf
+
+88   copy_8_inf_w,    P.COPY_INF 8,     word8 -> intinf
+	
+89   copy_31_inf_w,   P.COPY_INF 31,    word -> intinf 
+	InlineT.IntInf.copy_word31 : 	word -> intinf
+	InlineT.Word31.toLargeInt :	word -> intinf 
+
+90   copy_32_inf_w,   P.COPY_INF 32,    word32 -> intinf
+	InlineT.IntInf.copy_word32 :	word32 -> intinf
+	InlineT.Word32.toLargeInt :	word32 -> intinf
+
+91   copy_64_inf_w,   P.COPY_INF 64,    word64-> intinf
+92   copy_31_inf_i,   P.COPY_INF 31,    int -> intinf 
+	InlineT.IntInf.copy_int31 : 	int -> intinf
+ 	
+93   copy_32_inf_i,   P.COPY_INF 32,    int32 -> intinf
+ 	InlineT.IntInf.copy_int32 : 	int32 -> intinf
+
+94   copy_64_inf_i,   P.COPY_INF 64,    int64 -> intinf
+95   extend_8_inf,    P.EXTEND_INF 8,   word8 -> intinf
+	InlineT.IntInf.extend_word8 : 	word8 -> intinf
+	InlineT.IntInf.toLargeIntX :	word8 -> intinf
+
+96   extend_8_inf_w,  P.EXTEND_INF 8,   word8 -> intinf
+97   extend_31_inf_w, P.EXTEND_INF 31,  word  -> intinf
+	InlineT.IntInf.extend_word31 : 	word -> intinf
+	InlineT.Word31.toLargeIntX :	word -> intinf 
+
+98   extend_32_inf_w, P.EXTEND_INF 32,  word32 -> intinf
+	InlineT.IntInf.extend_word32 : 	word32 -> intinf
+	InlineT.Word32.toLargeIntX :	word32 -> intinf
+
+99   extend_64_inf_w, P.EXTEND_INF 64,  word64 -> intinf
+100  extend_31_inf_i, P.EXTEND_INF 31,  int -> intinf
+	InlineT.IntInf.extend_int31 : 	int -> intinf
+	InlineT.Int31.toLarge :		int -> intinf
+	
+101  extend_32_inf_i, P.EXTEND_INF 32,  int32 -> intinf
+	InlineT.IntInf.extend_int32 : 	int32 -> intinf
+	InlineT.Int32.toLarge :		int -> intinf
+
+102  extend_64_inf_i, P.EXTEND_INF 64,  int64 -> intinf
+103  trunc_inf_8,     P.TRUNC_INF 8,    intinf -> word8
+	InlineT.IntInf.trunc_word8 : 	intinf -> word8
+
+104  trunc_inf_31,    P.TRUNC_INF 31,   intinf -> word
+	InlineT.IntInf.trunc_word31 : 	intinf -> word
+ 	InlineT.IntInf.fromLargeInt :	intinf -> word
+
+105  trunc_inf_32,    P.TRUNC_INF 32,   intinf -> word32
+	InlineT.IntInf.trunc_word32 : 	intinf -> word32
+	InlineT.Word32.fromLargeInt :	intinf -> word32
+
+106  trunc_inf_64,    P.TRUNC_INF 64,   intinf -> word64
