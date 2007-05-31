@@ -53,6 +53,7 @@ in
 val debugging = FLINT_Control.trdebugging
 fun bug msg = EM.impossible("Translate: " ^ msg)
 val say = Control.Print.say
+fun warn s = say ("*** WARNING: " ^ s ^ "\n")
 
 fun debugmsg (msg : string) =
     if !debugging then (say msg; say "\n") else ()
@@ -345,6 +346,7 @@ fun mkAcc (p, nameOp) =
  *)
 exception NoCore
 
+(*
 fun coreExn ids =
     (case CoreAccess.getCon' (fn () => raise NoCore) oldenv ids of
 	 TP.DATACON { name, rep as DA.EXN _, typ, ... } =>
@@ -357,13 +359,27 @@ fun coreExn ids =
          end
        | _ => bug "coreExn in translate")
     handle NoCore => (say "WARNING: no Core access\n"; INT 0)
+*)
+
+fun coreExn ids =
+    (case CoreAccess.getCon' (fn () => raise NoCore) oldenv ids of
+	 TP.DATACON { name, rep as DA.EXN _, typ, ... } =>
+         let val nt = toDconLty DI.top typ
+             val nrep = mkRep(rep, nt, name)
+	     val _ = debugmsg ">>coreExn in translate.sml: "
+	 (* val _ = PPLexp.printLexp (CON'((name, nrep, nt), [], unitLexp))
+	  val _ = print "\n" *)
+         in SOME (CON'((name, nrep, nt), [], unitLexp))
+         end
+       | _ => bug "coreExn in translate")
+    handle NoCore => NONE
 
 and coreAcc id =
     (case CoreAccess.getVar' (fn () => raise NoCore) oldenv [id] of
 	 V.VALvar { access, typ, path, ... } =>
 	 mkAccT(access, toLty DI.top (!typ), getNameOp path)
        | _ => bug "coreAcc in translate")
-    handle NoCore => (say "WARNING: no Core access\n"; INT 0)
+    handle NoCore => (warn "no Core access\n"; INT 0)
 
 (** expands the flex record pattern and convert the EXN access pat *)
 (** internalize the conrep's access, always exceptions *)
@@ -589,15 +605,19 @@ in
 end
 
 fun inldiv (nk, po, lt, ts) =
-    let val { lt_argpair, lt_cmp, zero, equal, ... } = inlops nk
-	val z = mkv () val y = mkv ()
-    in FN (z, lt_argpair,
-	   LET (y, SELECT (1, VAR z),
-		COND (APP (equal, RECORD [VAR y, zero]),
-		      mkRaise (coreExn ["Assembly", "Div"], lt_bool),
-		      APP (PRIM (po, lt, ts), VAR z))))
+    let val oper = PRIM (po, lt, ts)
+    in case coreExn ["Assembly", "Div"] of
+	   SOME divexn =>
+	     let val { lt_arg, lt_argpair, lt_cmp, zero, equal, ... } = inlops nk
+		 val z = mkv () val y = mkv ()
+	     in FN (z, lt_argpair,
+		    LET (y, SELECT (1, VAR z),
+			 COND (APP (equal, RECORD [VAR y, zero]),
+			       mkRaise (divexn, lt_arg),
+			       APP (oper, VAR z))))
+	     end
+	 | NONE => (warn "no access to exn Div"; oper)
     end
-		
 
 fun inlminmax (nk, ismax) = let
     val { lt_argpair, less, greater, lt_cmp, ... } = inlops nk
@@ -781,106 +801,141 @@ fun transPrim (prim, lt, ts) =
 
 	| g (PO.CVT64) = let val v = mkv () in FN (v, lt_i32pair, VAR v) end
 
-        | g (PO.INLSUBSCRIPTV) =
-              let val (tc1, t1) = case ts of [z] => (z, lt_tyc z)
-                                    | _ => bug "unexpected ty for INLSUBV"
+        | g PO.INLSUBSCRIPTV =
+	    let val oper = PRIM (PO.SUBSCRIPT, lt, ts)
+	    in case coreExn ["Subscript"] of
+		   SOME ssexn =>
+		     let val (tc1, t1) =
+			     case ts of [z] => (z, lt_tyc z)
+				      | _ => bug "unexpected ty for INLSUBV"
 
-                  val seqtc = LT.tcc_vector tc1
-                  val argt = lt_tup [lt_tyc seqtc, lt_int]
+			 val seqtc = LT.tcc_vector tc1
+			 val argt = lt_tup [lt_tyc seqtc, lt_int]
 
-                  val oper = PRIM(PO.SUBSCRIPT, lt, ts)
-                  val p = mkv() and a = mkv() and i = mkv()
-                  val vp = VAR p and va = VAR a and vi = VAR i
-               in FN(p, argt,
-                    LET(a, SELECT(0,vp),
-                      LET(i, SELECT(1,vp),
-                        COND(APP(cmpOp(LESSU), 
-                                 RECORD[vi, APP(lenOp seqtc, va)]),
-                             APP(oper, RECORD[va, vi]),
-                             mkRaise(coreExn ["Subscript"], t1)))))
-              end
+			 val p = mkv() and a = mkv() and i = mkv()
+			 val vp = VAR p and va = VAR a and vi = VAR i
+		     in FN(p, argt,
+			   LET(a, SELECT(0,vp),
+			       LET(i, SELECT(1,vp),
+				   COND(APP(cmpOp(LESSU), 
+					    RECORD[vi, APP(lenOp seqtc, va)]),
+					APP(oper, RECORD[va, vi]),
+					mkRaise(ssexn, t1)))))
+		     end
+		 | NONE =>
+		     (warn "no access to exn Subscript for INLSUBSCRIPTV";
+		      oper)
+            end
 
         | g (PO.INLSUBSCRIPT) = 
-              let val (tc1, t1) = case ts of [z] => (z, lt_tyc z)
-                                    | _ => bug "unexpected ty for INLSUB"
+	    let val oper = PRIM (PO.SUBSCRIPT, lt, ts)
+	    in case coreExn ["Subscript"] of
+		   SOME ssexn =>
+		     let val (tc1, t1) =
+			     case ts of [z] => (z, lt_tyc z)
+				      | _ => bug "unexpected ty for INLSUB"
 
-                  val seqtc = LT.tcc_array tc1
-                  val argt = lt_tup [lt_tyc seqtc, lt_int]
+			 val seqtc = LT.tcc_array tc1
+			 val argt = lt_tup [lt_tyc seqtc, lt_int]
 
-                  val oper = PRIM(PO.SUBSCRIPT, lt, ts)
-                  val p = mkv() and a = mkv() and i = mkv()
-                  val vp = VAR p and va = VAR a and vi = VAR i
-               in FN(p, argt,
-                    LET(a, SELECT(0, vp),
-                      LET(i, SELECT(1, vp),
-                        COND(APP(cmpOp(LESSU), 
-                                 RECORD[vi, APP(lenOp seqtc, va)]),
-                             APP(oper, RECORD[va, vi]),
-                             mkRaise(coreExn ["Subscript"], t1)))))
-              end
+			 val p = mkv() and a = mkv() and i = mkv()
+			 val vp = VAR p and va = VAR a and vi = VAR i
+		     in FN(p, argt,
+			   LET(a, SELECT(0, vp),
+			       LET(i, SELECT(1, vp),
+				   COND(APP(cmpOp(LESSU), 
+					    RECORD[vi, APP(lenOp seqtc, va)]),
+					APP(oper, RECORD[va, vi]),
+					mkRaise(ssexn, t1)))))
+		     end
+		 | NONE =>
+		     (warn "no access to exn Subscript for INLSUBSCRIPT";
+		      oper)
+            end
 
         | g (PO.NUMSUBSCRIPT{kind,checked=true,immutable}) =
-              let val (tc1, t1, t2) = 
-                    case ts of [a,b] => (a, lt_tyc a, lt_tyc b)
-                             | _ => bug "unexpected type for NUMSUB"
+	    let val oper = PRIM (PO.NUMSUBSCRIPT { kind=kind, checked=false,
+						   immutable=immutable },
+				 lt, ts)
+	    in case coreExn ["Subscript"] of
+		   SOME ssexn =>
+		     let val (tc1, t1, t2) = 
+			     case ts of [a,b] => (a, lt_tyc a, lt_tyc b)
+				      | _ => bug "unexpected type for NUMSUB"
 
-                  val argt = lt_tup [t1, lt_int]
-                  val p = mkv() and a = mkv() and i = mkv()
-                  val vp = VAR p and va = VAR a and vi = VAR i
-                  val oper = PO.NUMSUBSCRIPT{kind=kind,checked=false,
-                                             immutable=immutable}
-                  val oper' = PRIM(oper, lt, ts)
-               in FN(p, argt,
-                    LET(a, SELECT(0, vp),
-                      LET(i, SELECT(1, vp),
-                        COND(APP(cmpOp(LESSU), RECORD[vi, 
-                                                 APP(lenOp tc1, va)]),
-                             APP(oper', RECORD [va, vi]),
-                             mkRaise(coreExn ["Subscript"], t2)))))
-              end
+			 val argt = lt_tup [t1, lt_int]
+			 val p = mkv() and a = mkv() and i = mkv()
+			 val vp = VAR p and va = VAR a and vi = VAR i
+		     in FN(p, argt,
+			   LET(a, SELECT(0, vp),
+			       LET(i, SELECT(1, vp),
+				   COND(APP(cmpOp(LESSU),
+					    RECORD[vi, APP(lenOp tc1, va)]),
+					APP(oper, RECORD [va, vi]),
+					mkRaise(ssexn, t2)))))
+		     end
+		 | NONE =>
+		     (warn "no access to exn Subscript for NUMSUBSCRIPT";
+		      oper)
+	    end
 
-        | g (PO.INLUPDATE) = 
-              let val (tc1, t1) = case ts of [z] => (z, lt_tyc z)
-                                    | _ => bug "unexpected ty for INLSUB"
+        | g (PO.INLUPDATE) =
+            let val oper = PRIM(PO.UPDATE, lt, ts)
+	    in case coreExn ["Subscript"] of
+		   SOME ssexn =>
+		     let val (tc1, t1) =
+			     case ts of [z] => (z, lt_tyc z)
+				      | _ => bug "unexpected ty for INLSUB"
 
-                  val seqtc = LT.tcc_array tc1
-                  val argt = lt_tup [lt_tyc seqtc, lt_int, t1]
+			 val seqtc = LT.tcc_array tc1
+			 val argt = lt_tup [lt_tyc seqtc, lt_int, t1]
 
-                  val oper = PRIM(PO.UPDATE, lt, ts)
-                  val x = mkv() and a = mkv() and i = mkv() and v = mkv()
-                  val vx = VAR x and va = VAR a and vi = VAR i and vv = VAR v
+			 val x = mkv() and a = mkv()
+			 val i = mkv() and v = mkv()
+			 val vx = VAR x and va = VAR a
+			 val vi = VAR i and vv = VAR v
 
-               in FN(x, argt,
-                    LET(a, SELECT(0, vx),
-                      LET(i, SELECT(1, vx),
-                        LET(v, SELECT(2, vx),
-                          COND(APP(cmpOp(LESSU),
-                                   RECORD[vi,APP(lenOp seqtc, va)]),
-                               APP(oper, RECORD[va,vi,vv]),
-                               mkRaise(coreExn ["Subscript"], LT.ltc_unit))))))
-              end
+		     in FN(x, argt,
+			   LET(a, SELECT(0, vx),
+			       LET(i, SELECT(1, vx),
+				   LET(v, SELECT(2, vx),
+				       COND(APP(cmpOp(LESSU),
+						RECORD[vi,APP(lenOp seqtc, va)]),
+					    APP(oper, RECORD[va,vi,vv]),
+					    mkRaise(ssexn, LT.ltc_unit))))))
+		     end
+		 | NONE =>
+		     (warn "no access to exn Subscript for INLUPDATE";
+		      oper)
+            end
 
         | g (PO.NUMUPDATE{kind,checked=true}) =
-              let val (tc1, t1, t2) = 
-                    case ts of [a,b] => (a, lt_tyc a, lt_tyc b)
-                             | _ => bug "unexpected type for NUMUPDATE"
+	    let val oper = PRIM (PO.NUMUPDATE { kind = kind, checked = false },
+				lt, ts)
+	    in case coreExn ["Subscript"] of
+		   SOME ssexn =>
+		     let val (tc1, t1, t2) = 
+			     case ts of [a,b] => (a, lt_tyc a, lt_tyc b)
+				      | _ => bug "unexpected type for NUMUPDATE"
 
-                  val argt = lt_tup [t1, lt_int, t2]
+			 val argt = lt_tup [t1, lt_int, t2]
 
-                  val p=mkv() and a=mkv() and i=mkv() and v=mkv()
-                  val vp=VAR p and va=VAR a and vi=VAR i and vv=VAR v
+			 val p=mkv() and a=mkv() and i=mkv() and v=mkv()
+			 val vp=VAR p and va=VAR a and vi=VAR i and vv=VAR v
 
-                  val oper = PO.NUMUPDATE{kind=kind,checked=false}
-                  val oper' = PRIM(oper, lt, ts)
-               in FN(p, argt,
-                    LET(a, SELECT(0, vp),
-                      LET(i, SELECT(1, vp),
-                        LET(v, SELECT(2, vp),
-                          COND(APP(cmpOp(LESSU),
-                                   RECORD[vi,APP(lenOp tc1, va)]),
-                               APP(oper', RECORD[va,vi,vv]),
-                               mkRaise(coreExn ["Subscript"], LT.ltc_unit))))))
-              end
+		     in FN(p, argt,
+			   LET(a, SELECT(0, vp),
+			       LET(i, SELECT(1, vp),
+				   LET(v, SELECT(2, vp),
+				       COND(APP(cmpOp(LESSU),
+						RECORD[vi,APP(lenOp tc1, va)]),
+					    APP(oper, RECORD[va,vi,vv]),
+					    mkRaise(ssexn, LT.ltc_unit))))))
+		     end
+		 | NONE =>
+		     (warn "no access to exn Subscript for NUMUPDATE";
+		      oper)
+            end
 
 (**** ASSIGN(r, x) <> UPDATE(r, 0, x) under new array reps (JHR;1998-10-30)
         | g (PO.ASSIGN) = 
