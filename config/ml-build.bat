@@ -1,7 +1,7 @@
 @echo off
 
-set flags=""
-set setup=""
+set flags=
+set setup=
 
 :DOFLAGS
 
