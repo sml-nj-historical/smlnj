@@ -15,6 +15,18 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/06/04 21:21:00 CDT
+Description:
+
+After Aaron Turon's bug fix for ml-ulex (handling the ^ character
+in legacy mode), re-ran the lexer generator on all lex input files
+and committed the results.
+
+This should fix the problem with ckit and nlffi that was reported
+by Vesa A. Norrman.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2007/05/31 11:40:00 CDT
 Tag: release-110.64
 Description:
