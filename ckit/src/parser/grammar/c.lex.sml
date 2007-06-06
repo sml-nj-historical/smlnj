@@ -12,6 +12,7 @@ functor CLexFun(structure Tokens : C_TOKENS
 	val getlineNo : stream -> int
 	val subtract : stream * stream -> string
 	val eof : stream -> bool
+	val lastWasNL : stream -> bool
 
       end = struct
 
@@ -24,7 +25,8 @@ functor CLexFun(structure Tokens : C_TOKENS
 	    id : int,  (* track which streams originated 
 			* from the same stream *)
 	    pos : int,
-	    lineNo : int
+	    lineNo : int,
+	    lastWasNL : bool
           }
 
 	local
@@ -55,14 +57,15 @@ functor CLexFun(structure Tokens : C_TOKENS
 				ioDesc = NONE
 			      }, "")
 	      in 
-		Stream {strm = strm, id = nextId(), pos = initPos, lineNo = 1}
+		Stream {strm = strm, id = nextId(), pos = initPos, lineNo = 1,
+			lastWasNL = true}
 	      end
 
 	fun fromStream strm = Stream {
-		strm = strm, id = nextId(), pos = initPos, lineNo = 1
+		strm = strm, id = nextId(), pos = initPos, lineNo = 1, lastWasNL = true
 	      }
 
-	fun getc (Stream {strm, pos, id, lineNo}) = (case TSIO.input1 strm
+	fun getc (Stream {strm, pos, id, lineNo, ...}) = (case TSIO.input1 strm
               of NONE => NONE
 	       | SOME (c, strm') => 
 		   SOME (c, Stream {
@@ -70,7 +73,8 @@ functor CLexFun(structure Tokens : C_TOKENS
 				pos = pos+1, 
 				id = id,
 				lineNo = lineNo + 
-					 (if c = #"\n" then 1 else 0)
+					 (if c = #"\n" then 1 else 0),
+				lastWasNL = (c = #"\n")
 			      })
 	     (* end case*))
 
@@ -90,6 +94,8 @@ functor CLexFun(structure Tokens : C_TOKENS
 	      end
 
 	fun eof (Stream {strm, ...}) = TSIO.endOfStream strm
+
+	fun lastWasNL (Stream {lastWasNL, ...}) = lastWasNL
 
       end
 
@@ -233,19 +239,14 @@ fun special_char(c,fst,last,errWarn:errWarn) =
 	(* current input stream *)
         val yystrm = ref yyins
 	(* get one char of input *)
-	val yylastwasnref = ref true
-	fun yygetc strm = (case yyInput.getc strm
-              of NONE => NONE
-	       | SOME (#"\n", strm') => (yylastwasnref := true; SOME (#"\n", strm'))
-	       | SOME (c, strm') => (yylastwasnref := false; SOME (c, strm'))
-             (* end case *))
+	val yygetc = yyInput.getc
 	(* create yytext *)
 	fun yymktext(strm) = yyInput.subtract (strm, !yystrm)
         open UserDeclarations
         fun lex 
 (yyarg as ({comLevel,errWarn,sourceMap,charlist,stringstart})) () = let 
      fun continue() = let
-            val yylastwasn = !yylastwasnref
+            val yylastwasn = yyInput.lastWasNL (!yystrm)
             fun yystuck (yyNO_MATCH) = raise Fail "stuck state"
 	      | yystuck (yyMATCH (strm, action, old)) = 
 		  action (strm, old)
