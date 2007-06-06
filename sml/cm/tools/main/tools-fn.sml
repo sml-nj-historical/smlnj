@@ -26,6 +26,11 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
 		     \as long as target files exist",
 		     false)
 
+    val force_tools =
+	boolcontrol ("force-tools",
+		     "force execution of shell-command tools",
+		     false)
+
     fun mkCmdName cmdStdPath =
 	(* The result of this function should not be cached. Otherwise
 	 * a later addition or change of an anchor will go unnoticed. *)
@@ -84,7 +89,9 @@ functor ToolsFn (val load_plugin' : SrcPath.file -> bool
 	    end
 	    fun rulefn () =
 		let val targets = map #1 tfiles
-		in if outdated tool (targets, nativename) then runcmd targets
+		in if #get force_tools ()
+		      orelse outdated tool (targets, nativename)
+		   then runcmd targets
 		   else ();
 		   partial_expansion
 		end
