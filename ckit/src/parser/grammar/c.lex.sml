@@ -1438,7 +1438,7 @@ fun yyQ27 (strm, lastMatch : yymatch) = (case (yygetc(strm))
 fun yyQ26 (strm, lastMatch : yymatch) = yyAction71(strm, yyNO_MATCH)
 fun yyQ2 (strm, lastMatch : yymatch) = (case (yygetc(strm))
        of NONE =>
-            if yyInput.eof(strm)
+            if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yyAction2(strm, yyNO_MATCH)
         | SOME(inp, strm') =>
@@ -1672,7 +1672,7 @@ fun yyQ12 (strm, lastMatch : yymatch) = (case (yygetc(strm))
       (* end case *))
 fun yyQ1 (strm, lastMatch : yymatch) = (case (yygetc(strm))
        of NONE =>
-            if yyInput.eof(strm)
+            if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yyAction9(strm, yyNO_MATCH)
         | SOME(inp, strm') =>
@@ -1729,7 +1729,7 @@ fun yyQ4 (strm, lastMatch : yymatch) = (case (yygetc(strm))
 fun yyQ3 (strm, lastMatch : yymatch) = yyAction5(strm, yyNO_MATCH)
 fun yyQ0 (strm, lastMatch : yymatch) = (case (yygetc(strm))
        of NONE =>
-            if yyInput.eof(strm)
+            if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yyAction2(strm, yyNO_MATCH)
         | SOME(inp, strm') =>
