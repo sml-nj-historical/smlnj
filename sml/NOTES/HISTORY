@@ -15,6 +15,20 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/06/06 21:45:00 CDT
+Description:
+
+- Aaron: fixed a number of bugs in ml-ulex.
+- Matthias:
+   - added CM control "cm.force-tools"; this is false by default;
+     when set to true, then tools like ml-yacc, ml-lex, ml-ulex, etc.
+     will be forced to run regardless of whether or not their targets
+     are up-to-date
+   - changed installer code so that config/install.sh will re-build
+     heap images for all tools even if those heap images already existed
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2007/06/04 21:21:00 CDT
 Description:
 

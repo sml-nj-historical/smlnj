@@ -285,10 +285,12 @@ end = struct
 		  | SOME hd => P.concat (native hd, heapname)
 	    val treedir = P.concat (smlnjroot, native dir)
 	    val finalheaploc = P.concat (heapdir, heapname)
+	    val already_existed = U.fexists finalheaploc
 	in
-	    if U.fexists finalheaploc then
-		say ["Target ", target, " already exists.\n"]
-	    else if not (U.fexists treedir) then
+	    if already_existed then
+		say ["Target ", target, " already existed.  Will rebuild.\n"]
+	    else ();
+	    if not (U.fexists treedir) then
 		fail ["Source tree for ", target, " at ", treedir,
 		      " does not exist.\n"]
 	    else
@@ -296,7 +298,10 @@ end = struct
 		 F.chDir treedir;
 		 if OS.Process.system buildcmd = OS.Process.success then
 		     if U.fexists targetheaploc then
-			 (U.rename { old = targetheaploc,
+			 (if already_existed
+			  then U.rmfile finalheaploc
+			  else ();
+			  U.rename { old = targetheaploc,
 				     new = finalheaploc };
 			  instcmd target;
 			  #set (CM.Anchor.anchor target) (SOME bindir))
