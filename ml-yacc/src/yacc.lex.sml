@@ -15,6 +15,7 @@ functor LexMLYACC(structure Tokens : Mlyacc_TOKENS
 	val getlineNo : stream -> int
 	val subtract : stream * stream -> string
 	val eof : stream -> bool
+	val lastWasNL : stream -> bool
 
       end = struct
 
@@ -27,7 +28,8 @@ functor LexMLYACC(structure Tokens : Mlyacc_TOKENS
 	    id : int,  (* track which streams originated 
 			* from the same stream *)
 	    pos : int,
-	    lineNo : int
+	    lineNo : int,
+	    lastWasNL : bool
           }
 
 	local
@@ -58,14 +60,15 @@ functor LexMLYACC(structure Tokens : Mlyacc_TOKENS
 				ioDesc = NONE
 			      }, "")
 	      in 
-		Stream {strm = strm, id = nextId(), pos = initPos, lineNo = 1}
+		Stream {strm = strm, id = nextId(), pos = initPos, lineNo = 1,
+			lastWasNL = true}
 	      end
 
 	fun fromStream strm = Stream {
-		strm = strm, id = nextId(), pos = initPos, lineNo = 1
+		strm = strm, id = nextId(), pos = initPos, lineNo = 1, lastWasNL = true
 	      }
 
-	fun getc (Stream {strm, pos, id, lineNo}) = (case TSIO.input1 strm
+	fun getc (Stream {strm, pos, id, lineNo, ...}) = (case TSIO.input1 strm
               of NONE => NONE
 	       | SOME (c, strm') => 
 		   SOME (c, Stream {
@@ -73,7 +76,8 @@ functor LexMLYACC(structure Tokens : Mlyacc_TOKENS
 				pos = pos+1, 
 				id = id,
 				lineNo = lineNo + 
-					 (if c = #"\n" then 1 else 0)
+					 (if c = #"\n" then 1 else 0),
+				lastWasNL = (c = #"\n")
 			      })
 	     (* end case*))
 
@@ -93,6 +97,8 @@ functor LexMLYACC(structure Tokens : Mlyacc_TOKENS
 	      end
 
 	fun eof (Stream {strm, ...}) = TSIO.endOfStream strm
+
+	fun lastWasNL (Stream {lastWasNL, ...}) = lastWasNL
 
       end
 
@@ -176,19 +182,14 @@ fun dec (ri as ref i) = (ri := i-1)
 	(* current input stream *)
         val yystrm = ref yyins
 	(* get one char of input *)
-	val yylastwasnref = ref true
-	fun yygetc strm = (case yyInput.getc strm
-              of NONE => NONE
-	       | SOME (#"\n", strm') => (yylastwasnref := true; SOME (#"\n", strm'))
-	       | SOME (c, strm') => (yylastwasnref := false; SOME (c, strm'))
-             (* end case *))
+	val yygetc = yyInput.getc
 	(* create yytext *)
 	fun yymktext(strm) = yyInput.subtract (strm, !yystrm)
         open UserDeclarations
         fun lex 
 (yyarg as (inputSource)) () = let 
      fun continue() = let
-            val yylastwasn = !yylastwasnref
+            val yylastwasn = yyInput.lastWasNL (!yystrm)
             fun yystuck (yyNO_MATCH) = raise Fail "stuck state"
 	      | yystuck (yyMATCH (strm, action, old)) = 
 		  action (strm, old)
@@ -508,7 +509,7 @@ fun yyQ87 (strm, lastMatch : yymatch) = (case (yygetc(strm))
       (* end case *))
 fun yyQ6 (strm, lastMatch : yymatch) = (case (yygetc(strm))
        of NONE =>
-            if yyInput.eof(strm)
+            if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yystuck(lastMatch)
         | SOME(inp, strm') =>
@@ -577,7 +578,7 @@ fun yyQ81 (strm, lastMatch : yymatch) = (case (yygetc(strm))
       (* end case *))
 fun yyQ5 (strm, lastMatch : yymatch) = (case (yygetc(strm))
        of NONE =>
-            if yyInput.eof(strm)
+            if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yystuck(lastMatch)
         | SOME(inp, strm') =>
@@ -639,7 +640,7 @@ fun yyQ75 (strm, lastMatch : yymatch) = (case (yygetc(strm))
       (* end case *))
 fun yyQ4 (strm, lastMatch : yymatch) = (case (yygetc(strm))
        of NONE =>
-            if yyInput.eof(strm)
+            if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yystuck(lastMatch)
         | SOME(inp, strm') =>
@@ -736,7 +737,7 @@ fun yyQ66 (strm, lastMatch : yymatch) = (case (yygetc(strm))
       (* end case *))
 fun yyQ3 (strm, lastMatch : yymatch) = (case (yygetc(strm))
        of NONE =>
-            if yyInput.eof(strm)
+            if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yystuck(lastMatch)
         | SOME(inp, strm') =>
@@ -803,7 +804,7 @@ fun yyQ60 (strm, lastMatch : yymatch) = (case (yygetc(strm))
       (* end case *))
 fun yyQ2 (strm, lastMatch : yymatch) = (case (yygetc(strm))
        of NONE =>
-            if yyInput.eof(strm)
+            if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yystuck(lastMatch)
         | SOME(inp, strm') =>
@@ -864,7 +865,7 @@ fun yyQ55 (strm, lastMatch : yymatch) = (case (yygetc(strm))
 fun yyQ54 (strm, lastMatch : yymatch) = yyAction50(strm, yyNO_MATCH)
 fun yyQ1 (strm, lastMatch : yymatch) = (case (yygetc(strm))
        of NONE =>
-            if yyInput.eof(strm)
+            if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yystuck(lastMatch)
         | SOME(inp, strm') =>
@@ -1625,7 +1626,7 @@ fun yyQ8 (strm, lastMatch : yymatch) = (case (yygetc(strm))
 fun yyQ7 (strm, lastMatch : yymatch) = yyAction28(strm, yyNO_MATCH)
 fun yyQ0 (strm, lastMatch : yymatch) = (case (yygetc(strm))
        of NONE =>
-            if yyInput.eof(strm)
+            if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yystuck(lastMatch)
         | SOME(inp, strm') =>
