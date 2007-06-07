@@ -10,6 +10,7 @@ functor BurgLexFun(structure Tokens : Burg_TOKENS)  = struct
 	val getlineNo : stream -> int
 	val subtract : stream * stream -> string
 	val eof : stream -> bool
+	val lastWasNL : stream -> bool
 
       end = struct
 
@@ -22,7 +23,8 @@ functor BurgLexFun(structure Tokens : Burg_TOKENS)  = struct
 	    id : int,  (* track which streams originated 
 			* from the same stream *)
 	    pos : int,
-	    lineNo : int
+	    lineNo : int,
+	    lastWasNL : bool
           }
 
 	local
@@ -53,14 +55,15 @@ functor BurgLexFun(structure Tokens : Burg_TOKENS)  = struct
 				ioDesc = NONE
 			      }, "")
 	      in 
-		Stream {strm = strm, id = nextId(), pos = initPos, lineNo = 1}
+		Stream {strm = strm, id = nextId(), pos = initPos, lineNo = 1,
+			lastWasNL = true}
 	      end
 
 	fun fromStream strm = Stream {
-		strm = strm, id = nextId(), pos = initPos, lineNo = 1
+		strm = strm, id = nextId(), pos = initPos, lineNo = 1, lastWasNL = true
 	      }
 
-	fun getc (Stream {strm, pos, id, lineNo}) = (case TSIO.input1 strm
+	fun getc (Stream {strm, pos, id, lineNo, ...}) = (case TSIO.input1 strm
               of NONE => NONE
 	       | SOME (c, strm') => 
 		   SOME (c, Stream {
@@ -68,7 +71,8 @@ functor BurgLexFun(structure Tokens : Burg_TOKENS)  = struct
 				pos = pos+1, 
 				id = id,
 				lineNo = lineNo + 
-					 (if c = #"\n" then 1 else 0)
+					 (if c = #"\n" then 1 else 0),
+				lastWasNL = (c = #"\n")
 			      })
 	     (* end case*))
 
@@ -88,6 +92,8 @@ functor BurgLexFun(structure Tokens : Burg_TOKENS)  = struct
 	      end
 
 	fun eof (Stream {strm, ...}) = TSIO.endOfStream strm
+
+	fun lastWasNL (Stream {lastWasNL, ...}) = lastWasNL
 
       end
 
@@ -175,19 +181,14 @@ fun eof()		= (if !comLevel > 0 then E.complain "unclosed comment"
 	(* current input stream *)
         val yystrm = ref yyins
 	(* get one char of input *)
-	val yylastwasnref = ref true
-	fun yygetc strm = (case yyInput.getc strm
-              of NONE => NONE
-	       | SOME (#"\n", strm') => (yylastwasnref := true; SOME (#"\n", strm'))
-	       | SOME (c, strm') => (yylastwasnref := false; SOME (c, strm'))
-             (* end case *))
+	val yygetc = yyInput.getc
 	(* create yytext *)
 	fun yymktext(strm) = yyInput.subtract (strm, !yystrm)
         open UserDeclarations
         fun lex 
 (yyarg as ()) = let 
      fun continue() = let
-            val yylastwasn = !yylastwasnref
+            val yylastwasn = yyInput.lastWasNL (!yystrm)
             fun yystuck (yyNO_MATCH) = raise Fail "stuck state"
 	      | yystuck (yyMATCH (strm, action, old)) = 
 		  action (strm, old)
@@ -556,12 +557,12 @@ fun yyQ16 (strm, lastMatch : yymatch) = (case (yygetc(strm))
       (* end case *))
 fun yyQ3 (strm, lastMatch : yymatch) = (case (yygetc(strm))
        of NONE =>
-            if yyInput.eof(strm)
+            if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yyAction3(strm, yyNO_MATCH)
         | SOME(inp, strm') =>
             if inp = #"-"
-              then if yyInput.eof(strm)
+              then if yyInput.eof(!(yystrm))
                   then UserDeclarations.eof(yyarg)
                   else yyAction3(strm, yyNO_MATCH)
             else if inp < #"-"
@@ -569,7 +570,7 @@ fun yyQ3 (strm, lastMatch : yymatch) = (case (yygetc(strm))
                   then yyQ18(strm', yyMATCH(strm, yyAction3, yyNO_MATCH))
                 else if inp < #"%"
                   then if inp = #"\v"
-                      then if yyInput.eof(strm)
+                      then if yyInput.eof(!(yystrm))
                           then UserDeclarations.eof(yyarg)
                           else yyAction3(strm, yyNO_MATCH)
                     else if inp < #"\v"
@@ -577,12 +578,12 @@ fun yyQ3 (strm, lastMatch : yymatch) = (case (yygetc(strm))
                           then yyQ16(strm', yyMATCH(strm, yyAction3, yyNO_MATCH))
                         else if inp = #"\n"
                           then yyQ17(strm', yyMATCH(strm, yyAction3, yyNO_MATCH))
-                        else if yyInput.eof(strm)
+                        else if yyInput.eof(!(yystrm))
                           then UserDeclarations.eof(yyarg)
                           else yyAction3(strm, yyNO_MATCH)
                     else if inp = #" "
                       then yyQ16(strm', yyMATCH(strm, yyAction3, yyNO_MATCH))
-                    else if yyInput.eof(strm)
+                    else if yyInput.eof(!(yystrm))
                       then UserDeclarations.eof(yyarg)
                       else yyAction3(strm, yyNO_MATCH)
                 else if inp = #")"
@@ -590,16 +591,16 @@ fun yyQ3 (strm, lastMatch : yymatch) = (case (yygetc(strm))
                 else if inp < #")"
                   then if inp = #"("
                       then yyQ19(strm', yyMATCH(strm, yyAction3, yyNO_MATCH))
-                    else if yyInput.eof(strm)
+                    else if yyInput.eof(!(yystrm))
                       then UserDeclarations.eof(yyarg)
                       else yyAction3(strm, yyNO_MATCH)
                 else if inp = #","
                   then yyQ21(strm', yyMATCH(strm, yyAction3, yyNO_MATCH))
-                else if yyInput.eof(strm)
+                else if yyInput.eof(!(yystrm))
                   then UserDeclarations.eof(yyarg)
                   else yyAction3(strm, yyNO_MATCH)
             else if inp = #">"
-              then if yyInput.eof(strm)
+              then if yyInput.eof(!(yystrm))
                   then UserDeclarations.eof(yyarg)
                   else yyAction3(strm, yyNO_MATCH)
             else if inp < #">"
@@ -609,14 +610,14 @@ fun yyQ3 (strm, lastMatch : yymatch) = (case (yygetc(strm))
                   then if inp = #"0"
                       then yyQ22(strm', yyMATCH(strm, yyAction3, yyNO_MATCH))
                     else if inp < #"0"
-                      then if yyInput.eof(strm)
+                      then if yyInput.eof(!(yystrm))
                           then UserDeclarations.eof(yyarg)
                           else yyAction3(strm, yyNO_MATCH)
                     else if inp = #":"
                       then yyQ23(strm', yyMATCH(strm, yyAction3, yyNO_MATCH))
                       else yyQ22(strm', yyMATCH(strm, yyAction3, yyNO_MATCH))
                 else if inp = #"<"
-                  then if yyInput.eof(strm)
+                  then if yyInput.eof(!(yystrm))
                       then UserDeclarations.eof(yyarg)
                       else yyAction3(strm, yyNO_MATCH)
                   else yyQ25(strm', yyMATCH(strm, yyAction3, yyNO_MATCH))
@@ -626,23 +627,23 @@ fun yyQ3 (strm, lastMatch : yymatch) = (case (yygetc(strm))
               then if inp = #"A"
                   then yyQ26(strm', yyMATCH(strm, yyAction3, yyNO_MATCH))
                 else if inp < #"A"
-                  then if yyInput.eof(strm)
+                  then if yyInput.eof(!(yystrm))
                       then UserDeclarations.eof(yyarg)
                       else yyAction3(strm, yyNO_MATCH)
                 else if inp <= #"Z"
                   then yyQ26(strm', yyMATCH(strm, yyAction3, yyNO_MATCH))
-                else if yyInput.eof(strm)
+                else if yyInput.eof(!(yystrm))
                   then UserDeclarations.eof(yyarg)
                   else yyAction3(strm, yyNO_MATCH)
             else if inp = #"|"
               then yyQ27(strm', yyMATCH(strm, yyAction3, yyNO_MATCH))
             else if inp < #"|"
               then if inp = #"{"
-                  then if yyInput.eof(strm)
+                  then if yyInput.eof(!(yystrm))
                       then UserDeclarations.eof(yyarg)
                       else yyAction3(strm, yyNO_MATCH)
                   else yyQ26(strm', yyMATCH(strm, yyAction3, yyNO_MATCH))
-            else if yyInput.eof(strm)
+            else if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yyAction3(strm, yyNO_MATCH)
       (* end case *))
@@ -666,7 +667,7 @@ fun yyQ11 (strm, lastMatch : yymatch) = yyAction21(strm, yyNO_MATCH)
 fun yyQ10 (strm, lastMatch : yymatch) = yyAction23(strm, yyNO_MATCH)
 fun yyQ2 (strm, lastMatch : yymatch) = (case (yygetc(strm))
        of NONE =>
-            if yyInput.eof(strm)
+            if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yystuck(lastMatch)
         | SOME(inp, strm') =>
@@ -690,7 +691,7 @@ fun yyQ8 (strm, lastMatch : yymatch) = (case (yygetc(strm))
       (* end case *))
 fun yyQ1 (strm, lastMatch : yymatch) = (case (yygetc(strm))
        of NONE =>
-            if yyInput.eof(strm)
+            if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yyAction28(strm, yyNO_MATCH)
         | SOME(inp, strm') =>
@@ -728,7 +729,7 @@ fun yyQ6 (strm, lastMatch : yymatch) = (case (yygetc(strm))
 fun yyQ5 (strm, lastMatch : yymatch) = yyAction25(strm, yyNO_MATCH)
 fun yyQ0 (strm, lastMatch : yymatch) = (case (yygetc(strm))
        of NONE =>
-            if yyInput.eof(strm)
+            if yyInput.eof(!(yystrm))
               then UserDeclarations.eof(yyarg)
               else yyAction26(strm, yyNO_MATCH)
         | SOME(inp, strm') =>
