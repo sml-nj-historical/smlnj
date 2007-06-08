@@ -1,0 +1,1 @@
+structure MathInlineT = struct end
