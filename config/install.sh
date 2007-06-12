@@ -296,7 +296,7 @@ case $OPSYS in
 	MAKE=/usr/ccs/bin/make
 	;;
     linux)
-	EXTRA_DEFS=`$CONFIGDIR/chk-global-names.sh`
+	EXTRA_DEFS=`"$CONFIGDIR/chk-global-names.sh"`
 	if [ "$?" != "0" ]; then
 	    complain "$this: !!! Problems checking for underscores in asm names."
 	fi
