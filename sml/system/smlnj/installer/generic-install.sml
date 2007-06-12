@@ -9,7 +9,7 @@
  * The script is written in such a way that it can be used portably
  * on both *nix- and win32-systems.
  *
- * (C) 2003 The Fellowship of SML/NJ
+ * (C) 2007 The Fellowship of SML/NJ
  * 
  * Author: Matthias Blume (blume@tti-c.org)
  *)
@@ -158,12 +158,79 @@ end = struct
 	    [P.concat (configdir, "targets.customized"),
 	     P.concat (configdir, "targets")]
 
-	val allsrcfile = P.concat (configdir, "allsources")
-
 	val s =
 	    case List.find U.fexists targetsfiles of
 		SOME f => TextIO.openIn f
 	      | NONE => fail ["no targetsfiles\n"]
+
+	(* ------------------------------ *)
+
+	datatype action =
+	    RegLib of { anchor: string, relname: string, dir: string,
+			altanchor: string option }
+		      * bool (* true = only on Unix *)
+	  | Anchor of { anchor: string, path: string }
+		      * bool (* true = relative to libdir *)
+	  | Program of { target: string, optheapdir: string option,
+			 dir: string }
+		       * bool	(* true = defer *)
+
+	val (actions, allmoduleset) =
+	    let val s = TextIO.openIn actionfile
+		fun opthd "-" = NONE
+		  | opthd h = SOME h
+		fun progargs (mn, []) =
+		      { target = mn, optheapdir = NONE, dir = mn }
+		  | progargs (mn, [t]) =
+		      { target = t, optheapdir = NONE, dir = mn }
+		  | progargs (mn, [t, h]) =
+		      { target = t, optheapdir = opthd h, dir = mn }
+		  | progargs (mn, t :: h :: d :: _) =
+		      { target = t, optheapdir = opthd h, dir = d }
+		fun libargs (a, r, d, aa) =
+		      { anchor = a, relname = r, dir = d, altanchor = aa }
+		fun loop (m, ams) =
+		    case getInputTokens s of
+			NONE => (m, ams)
+		      | SOME [mn, "src"] =>
+			  loop (m, SS.add (ams, mn))
+		      | SOME [mn, "lib", a, r, d] =>
+			  ins (m, ams, mn,
+			       RegLib (libargs (a, r, d, NONE), false))
+		      | SOME [mn, "lib", a, r, d, aa] =>
+			  ins (m, ams, mn,
+			       RegLib (libargs (a, r, d, SOME aa), false))
+		      | SOME [mn, "ulib", a, r, d] =>
+			  ins (m, ams, mn,
+			       RegLib (libargs (a, r, d, NONE), true))
+		      | SOME [mn, "ulib", a, r, d, aa] =>
+			  ins (m, ams, mn,
+			       RegLib (libargs (a, r, d, SOME aa), true))
+		      | SOME [mn, "anchor", a, p] =>
+			  ins (m, ams, mn,
+			       Anchor ({ anchor = a, path = p }, false))
+		      | SOME [mn, "libanchor", a, p] =>
+			  ins (m, ams, mn,
+			       Anchor ({ anchor = a, path = p }, true))
+		      | SOME (mn :: "prog" :: args) =>
+			  ins (m, ams, mn,
+			       Program (progargs (mn, args), false))
+		      | SOME (mn :: "dprog" :: args) =>
+			  ins (m, ams, mn,
+			       Program (progargs (mn, args), true))
+		      | SOME [] =>
+			  loop (m, ams)
+		      | SOME other =>
+			  fail ["Illegal line in ", actionfile, ": ",
+				String.concatWith " " other, "\n"]
+		and ins (m, ams, mn, a) =
+		    loop (SM.insert (m, mn, a :: getOpt (SM.find (m, mn), [])),
+			  SS.add (ams, mn))
+	    in loop (SM.empty, SS.empty)
+	       before TextIO.closeIn s
+	    end
+
+	(* ------------------------------ *)
 
 	(* parse the targets file *)
 	fun loop (ml, allsrc) =
@@ -183,22 +250,9 @@ end = struct
 	(* now resolve dependencies; get full list of modules
 	 * in correct build order: *)
 	val modules = resolve (modules, depfile)
-
 	val moduleset = SS.addList (SS.empty, modules)
-
-	val srcmoduleset =
-	    if allsrc andalso U.fexists allsrcfile then
-		let val s = TextIO.openIn allsrcfile
-		    fun one (m, ms) =
-			if SS.member (ms, m) then ms else SS.add (ms, m)
-		    fun loop ms =
-			case getInputTokens s of
-			    NONE => (TextIO.closeIn s; ms)
-			  | SOME l => loop (foldl one ms l)
-		in
-		    loop moduleset
-		end
-	    else moduleset
+	val srcmoduleset = if allsrc then SS.union (moduleset, allmoduleset)
+			   else moduleset
 
 	(* fetch and unpack source trees, using auxiliary helper command
 	 * which takes the root directory as its first and the module
@@ -313,61 +367,6 @@ end = struct
 		 command_pathconfig target;
 		 F.chDir smlnjroot)
 	end
-
-	(* ------------------------------ *)
-
-	datatype action =
-	    RegLib of { anchor: string, relname: string, dir: string,
-			altanchor: string option }
-		      * bool (* true = only on Unix *)
-	  | Anchor of { anchor: string, path: string }
-		      * bool (* true = relative to libdir *)
-	  | Program of { target: string, optheapdir: string option,
-			 dir: string }
-		       * bool	(* true = defer *)
-
-	val actions =
-	    let val s = TextIO.openIn actionfile
-		fun opthd "-" = NONE
-		  | opthd h = SOME h
-		fun progargs (mn, []) =
-		      { target = mn, optheapdir = NONE, dir = mn }
-		  | progargs (mn, [t]) =
-		      { target = t, optheapdir = NONE, dir = mn }
-		  | progargs (mn, [t, h]) =
-		      { target = t, optheapdir = opthd h, dir = mn }
-		  | progargs (mn, t :: h :: d :: _) =
-		      { target = t, optheapdir = opthd h, dir = d }
-		fun libargs (a, r, d, aa) =
-		      { anchor = a, relname = r, dir = d, altanchor = aa }
-		fun loop m =
-		    case getInputTokens s of
-			NONE => m
-		      | SOME [mn, "lib", a, r, d] =>
-			  ins (m, mn, RegLib (libargs (a, r, d, NONE), false))
-		      | SOME [mn, "lib", a, r, d, aa] =>
-			  ins (m, mn, RegLib (libargs (a, r, d, SOME aa), false))
-		      | SOME [mn, "ulib", a, r, d] =>
-			  ins (m, mn, RegLib (libargs (a, r, d, NONE), true))
-		      | SOME [mn, "ulib", a, r, d, aa] =>
-			  ins (m, mn, RegLib (libargs (a, r, d, SOME aa), true))
-		      | SOME [mn, "anchor", a, p] =>
-			  ins (m, mn, Anchor ({ anchor = a, path = p }, false))
-		      | SOME [mn, "libanchor", a, p] =>
-			  ins (m, mn, Anchor ({ anchor = a, path = p }, true))
-		      | SOME (mn :: "prog" :: args) =>
-			  ins (m, mn, Program (progargs (mn, args), false))
-		      | SOME (mn :: "dprog" :: args) =>
-			  ins (m, mn, Program (progargs (mn, args), true))
-		      | SOME [] => loop m
-		      | SOME other =>
-			  fail ["Illegal line in ", actionfile, ": ",
-				String.concatWith " " other, "\n"]
-		and ins (m, mn, a) =
-		    loop (SM.insert (m, mn, a :: getOpt (SM.find (m, mn), [])))
-	    in loop SM.empty
-	       before TextIO.closeIn s
-	    end
 
 	(* ------------------------------ *)
 

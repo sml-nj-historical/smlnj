@@ -15,6 +15,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/06/12 11:22:00 CDT
+Description:
+
+Eliminated config/allsources.  The information is now drawn directly
+from config/actions.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2007/06/07 23:30:00 CDT
 Tag: release-110.65
 Description:
