@@ -233,7 +233,7 @@ fun realconst f =
 	val exp = exp+size
     in transreal(
 	case size 
-	 of 0 => (0,bits,0)
+	 of 0 => (sign,bits,0)
 	  | _ => if exp<minexp orelse exp>maxexp then raise BadReal f
 		  else (sign,bits,exp))
     end
