@@ -14,6 +14,14 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/06/21
+Description:
+
+Fixed bug in {TextIO,BinIO}.StreamIO.endOfStream that would incorrectly
+signal end of stream.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (http://www.tti-c.org/blume/)
 Date: 2007/06/12 11:22:00 CDT
 Description:
