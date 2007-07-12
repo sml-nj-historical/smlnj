@@ -923,49 +923,6 @@ val filterSet = fn x =>
 
 end (* local TycSet *)
 
-(*
-(* The reformat function is called inside translate.sml to reformat
- * a type abstraction packing inside PACKexp absyn. It is a hack. (ZHONG)
- *)
-fun reformat { tp_var, tp_tyc } (ty, tycs, depth) = 
-  let fun h ([], i, ks, ps, nts) = (rev ks, rev ps, rev nts)
-	| h (tc :: rest, i, ks, ps, nts) = let
-	      fun noabs () = bug "non-abstract tycons seen in TU.reformat"
-	  in
-	      case tc
-	       of GENtyc { stamp, arity, eq, path, kind, stub } =>
-		  (case kind of
-		       ABSTRACT itc => let
-			   val tk = LT.tkc_int arity
-			   val tps = tp_var { depth=depth, num=i, kind=tk}
-			   val nkind = FLEXTYC tps
-			   val ntc =
-			       GENtyc { stamp = stamp, arity = arity,
-					eq = eq, kind = nkind, path = path,
-					stub = NONE}
-		       in
-			   h (rest, i+1, tk::ks, (tp_tyc itc)::ps, ntc::nts)
-		       end
-		     | _ => noabs ())
-		| _ => noabs ()
-	  end
-
-      val (tks, tps, ntycs) = h(tycs, 0, [], [], [])
-
-      fun getTyc (foo, tc) = 
-        let fun h(a::r, tc) = if eqTycon(a, tc) then a else h(r, tc)
-              | h([], tc) = foo tc
-         in h(ntycs, tc)
-        end
-
-      val nty = mapTypeEntire getTyc ty
-
-   in (nty, tks, tps)
-  end
-
-val reformat = Stats.doPhase(Stats.makePhase "Compiler 047 reformat") reformat
-*)
-
 fun dtSibling(n,tyc as GENtyc { kind = DATATYPE dt, ... }) =
     let val {index,stamps,freetycs,root, family as {members,...} } = dt
     in
