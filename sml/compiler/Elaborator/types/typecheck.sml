@@ -669,7 +669,7 @@ in
            let val (e',et) = expType(e,occ,tdepth,region)
             in (MARKexp(e',region),et)
            end
-       | _ => bug "exptype -- bad expression"
+       (*| _ => bug "exptype -- bad expression" (* due to PACKexp *) *)
 end
 
 and ruleType(RULE(pat,exp),occ,region) =  

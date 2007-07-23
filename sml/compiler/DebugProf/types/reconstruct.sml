@@ -34,7 +34,7 @@ fun expType(VARexp(ref(VALvar{typ=ref ty,...}),insttvs)) =
 	end
   | expType(VECTORexp(nil,vty)) = CONty(vectorTycon,[vty])
   | expType(VECTORexp((a::_),vty)) = CONty(vectorTycon,[vty])
-  | expType(PACKexp(e, t, _)) = t
+  (*| expType(PACKexp(e, t, _)) = t*)
   | expType(SEQexp [a]) = expType a
   | expType(SEQexp (_::rest)) = expType(SEQexp rest)
   | expType(APPexp(rator,rand)) =

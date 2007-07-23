@@ -285,14 +285,14 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 		     style=INCONSISTENT}
 		    exps
 	      end
-          | ppExp'(PACKexp (e, t, tcs),atom,d) = 
-	      if !internals then
-		 (openHOVBox 0;
-		  pps "<PACK: "; ppExp'(e,false,d); pps "; ";
-		  break ppstrm {nsp=1,offset=2};
-		  ppType env ppstrm t; pps ">";
-		  closeBox ())
-	      else ppExp'(e,atom,d)
+          (*| ppExp'(PACKexp (e, t, tcs),atom,d) = 
+        	      if !internals then
+        		 (openHOVBox 0;
+        		  pps "<PACK: "; ppExp'(e,false,d); pps "; ";
+        		  break ppstrm {nsp=1,offset=2};
+        		  ppType env ppstrm t; pps ">";
+        		  closeBox ())
+        	      else ppExp'(e,atom,d)*)
 	  | ppExp'(SEQexp exps,_,d) =
 	      ppClosedSequence ppstrm
 	        {front=(C PP.string "("),

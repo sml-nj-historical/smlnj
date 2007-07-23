@@ -83,7 +83,7 @@ datatype lexp
   | SRECORD of lexp list    
   | SELECT of int * lexp
 
-  | PACK of lty * tyc list * tyc list * lexp   
+  (*| PACK of lty * tyc list * tyc list * lexp   *)
   | WRAP of tyc * bool * lexp
   | UNWRAP of tyc * bool * lexp
 

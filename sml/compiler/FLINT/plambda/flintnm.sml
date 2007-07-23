@@ -681,8 +681,8 @@ and tolvar (venv,d,lvar,lexp,cont) =
 		    in (F.SELECT(v, n, lvar, c_lexp), c_lty)
 		    end)
 
-      | L.PACK (lty,otycs,ntycs,lexp) =>
-            bug "PACK is not currently supported"
+      (*| L.PACK (lty,otycs,ntycs,lexp) =>
+                bug "PACK is not currently supported"*)
 (*
 	    tovalue(venv, d, lexp,
 		    fn (v, v_lty) =>

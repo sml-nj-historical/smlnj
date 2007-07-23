@@ -63,7 +63,7 @@ fun simplify(le,0) = STRING "<dummy>"
             | LET(v, e1, e2) => LET(v, h e1, h e2)
             | TFN(ks, e) => TFN(ks, h e)
             | TAPP(e, ts) => TAPP(h e, ts)
-            | PACK(lt, ts, nts, e) => PACK(lt, ts, nts, h e)
+            (*| PACK(lt, ts, nts, e) => PACK(lt, ts, nts, h e)*)
             | CON(l, x, e) => CON(l, x, h e)
 (*          | DECON(l, x, e) => DECON(l, x, h e) *)
             | FIX(lv, lt, le, b) => FIX(lv, lt, map h le, h b)
@@ -352,15 +352,15 @@ fun check (kenv, venv, d) =
 			(map ((ltyChkenv "GENOP args ") o LT.ltc_tyc) ts;
 			 ltTyApp le "GENOP" (t, ts, kenv)))
 		   
-		 | PACK(lt, ts, nts, e) => 
-		   let val argTy = ltTyApp le "PACK-A" (lt, ts, kenv)
-		       val _ = ltyChkenv " PACK-A " argTy
-		       val bodyTy = loop e
-		       val _ = ltyChkenv " PACK body " bodyTy
-		       val _ = debugmsg "PACK"
-		   in ((ltMatch le "PACK-M" (argTy, loop e)) handle Fail _ => say "PACK ltEquiv\n") ;
-                      ltTyApp le "PACK-R" (lt, nts, kenv)
-		   end
+		 (*| PACK(lt, ts, nts, e) => 
+				   let val argTy = ltTyApp le "PACK-A" (lt, ts, kenv)
+				       val _ = ltyChkenv " PACK-A " argTy
+				       val bodyTy = loop e
+				       val _ = ltyChkenv " PACK body " bodyTy
+				       val _ = debugmsg "PACK"
+				   in ((ltMatch le "PACK-M" (argTy, loop e)) handle Fail _ => say "PACK ltEquiv\n") ;
+		                      ltTyApp le "PACK-R" (lt, nts, kenv)
+				   end*)
 		   
 		 | CON((_, rep, lt), ts, e) =>   
 		   let val t1 = ltTyApp le "CON" (lt, ts, kenv)

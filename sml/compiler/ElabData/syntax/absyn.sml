@@ -32,7 +32,7 @@ datatype exp
   | RECORDexp of (numberedLabel * exp) list
   | SELECTexp of numberedLabel * exp           (* record selections *)
   | VECTORexp of exp list * ty        
-  | PACKexp of exp * ty * tycon list           (* abstraction packing *)
+  (*| PACKexp of exp * ty * tycon list *)          (* abstraction packing *)
   | APPexp of exp * exp
   | HANDLEexp of exp * fnrules
   | RAISEexp of exp * ty              

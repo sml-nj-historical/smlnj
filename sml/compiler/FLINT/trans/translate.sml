@@ -1463,7 +1463,7 @@ and mkExp (exp, d) =
               in foldr bind (VECTOR (bexp, tc)) vars
              end 
 
-        | g (PACKexp(e, ty, tycs)) = g e
+        (*| g (PACKexp(e, ty, tycs)) = g e*)
 (* [dbm, 7/10/06]: Does PACKexp do anything now? What was it doing before
  * this was commented out? This appears to be the only place reformat was called
  * Is it also the only place the FLINT PACK constructor is used? [KM???] *)
