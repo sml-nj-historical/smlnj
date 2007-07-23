@@ -31,7 +31,7 @@ request ml-ulex
 #    ml-ulex process legacy ml-lex input using the --ml-lex-mode option.)
 # Since most existing projects have legacy .lex files, this should be
 # kept off by default.
-# WARNING: This is incompatible with ml-ulex-lex-ext!!
+# WARNING: This is incompatible with ml-lex-lex-ext!!
 #request ml-ulex-lex-ext
 #
 # Register the "mllex" CM tool class in such a way that "legacy" ml-lex
