@@ -64,6 +64,7 @@ fun branchName P.boxed = "boxed"
        | P.fULE  => "?<="
        | P.fUE   => "?="
        | P.fUN   => "?"
+	   | P.fsgn  => "sgn"
      (*esac*)))  
   | branchName P.pneq = "pneq"
   | branchName P.peql = "peql"
@@ -93,7 +94,7 @@ fun cvtParams(from, to) = concat [cvtParam from, "_", cvtParam to]
 fun arithName (P.arith{oper,kind}) =
     ((case oper of  P.+ => "+" |  P.- => "-" |  P.* => "*"
 	          | P./ => "/" |  P.~ => "~" | P.abs => "abs" 
-	          | P.fsqrt => "fsqrt" 
+	          | P.fsqrt => "fsqrt"
 		  | P.fsin => "sin" | P.fcos => "cos" | P.ftan => "tan"
 		  | P.rshift => "rshift" | P.rshiftl => "rshiftl"
 	          | P.lshift => "lshift" | P.andb => "andb"

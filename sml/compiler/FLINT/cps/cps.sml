@@ -40,7 +40,7 @@ structure P = struct
       = fEQ (* = *)  | fULG (* ?<> *) | fUN (* ? *)   | fLEG (* <=> *) 
       | fGT (* > *)  | fGE  (* >= *)  | fUGT (* ?> *) | fUGE (* ?>= *) 
       | fLT (* < *)  | fLE  (* <= *)  | fULT (* ?< *) | fULE (* ?<= *) 
-      | fLG (* <> *) | fUE  (* ?= *)
+      | fLG (* <> *) | fUE  (* ?= *)  | fsgn
 
     (* These are two-way branches dependent on pure inputs *)
     datatype branch
@@ -117,6 +117,7 @@ structure P = struct
 	| foper fULE  = fGT
 	| foper fUE   = fLG
 	| foper fUN   = fLEG
+	| foper fsgn  = bug "fsgn has no opposite"
     in 
       fun opp boxed = unboxed 
 	| opp unboxed = boxed

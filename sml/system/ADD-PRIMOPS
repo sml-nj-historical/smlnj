@@ -6,8 +6,8 @@ Step 1:
   o compiler/ElabData/basics/primoptypemap.sml  -- add with intrinsic type
   o compiler/FLINT/trans/primopmap.sml          -- add representation
   o compiler/Semant/statenv/prim.sml		-- add to Inline structure
-  o compiler/Semant/pickle/picklemod-new.sml	-- pickle 
-  o compiler/Semant/pickle/unpicklemode-new.sml -- unpickle
+  o compiler/Semant/pickle/pickmod.sml	-- pickle 
+  o compiler/Semant/pickle/unpickmod.sml -- unpickle
 
 	-- compile with -rebuild	
 	-- compile to fixpoint

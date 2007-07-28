@@ -315,6 +315,7 @@ in
 	  | cmpopc P.GTU = "\007"
 	  | cmpopc P.EQL = "\008"
 	  | cmpopc P.NEQ = "\009"
+	  | cmpopc P.FSGN = "\010"
     in
 	cmpopc oper $ []
     end

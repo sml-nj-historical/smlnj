@@ -98,6 +98,7 @@ fun cmpop stuff =
 	       | c AP.<=   = P.fLE
  	       | c AP.EQL  = P.fEQ
  	       | c AP.NEQ  = P.fULG
+		   | c AP.FSGN = P.fsgn
  	       | c _ = bug "cmpop:kind=AP.FLOAT"
           in P.fcmp{oper= c oper, size=size}
          end
@@ -114,6 +115,7 @@ fun cmpop stuff =
  	       | c AP.GTU = (check ("gtu", kind); P.> )
  	       | c AP.EQL = P.eql
  	       | c AP.NEQ = P.neq
+		   | c AP.FSGN = bug "cmpop:kind=AP.UINT"
   	  in P.cmp{oper=c oper, kind=numkind kind} 
          end)
 

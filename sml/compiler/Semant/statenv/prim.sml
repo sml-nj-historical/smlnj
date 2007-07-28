@@ -343,6 +343,7 @@ val allPrimops =
      "f64lt",
      "f64eq",
      "f64ne",
+     "f64sgn",
      "f64abs",
      "f64sin",
      "f64cos",

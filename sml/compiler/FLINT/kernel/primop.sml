@@ -20,7 +20,7 @@ datatype arithop
   | REM | DIV | MOD			        (* int only *)
 
 datatype cmpop = > | >= | < | <= | LEU | LTU | GEU | GTU | EQL | NEQ
-
+			   | FSGN (* floating point only *)
 (* 
  * Various primitive operations.  Those that are designated "inline" are
  * expanded into lambda code in terms of other operators,
@@ -188,7 +188,7 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
       ((case oper 
          of op > => ">" |  op < => "<" | op >= => ">=" | op <= => "<="
           | GEU => ">=U" | GTU => ">U" | LEU => "<=U" | LTU => "<U"
-          | EQL => "=" | NEQ => "<>" )
+          | EQL => "=" | NEQ => "<>" | FSGN => "fsgn" )
        ^ prNumkind kind)
 
   | prPrimop(TEST arg) = "test_" ^ cvtParams arg

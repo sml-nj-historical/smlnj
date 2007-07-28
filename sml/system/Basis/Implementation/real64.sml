@@ -133,8 +133,9 @@ structure Real64Imp : REAL =
 
     fun sign x = if (x < 0.0) then ~1 else if (x > 0.0) then 1 
                   else if isNan x then raise Domain else 0
-    fun signBit x = (* Bug: negative zero not handled properly *)
-                   Assembly.A.scalb(x, ~(Assembly.A.logb x)) < 0.0
+    (*fun signBit x = (* Bug: negative zero not handled properly *)
+                   Assembly.A.scalb(x, ~(Assembly.A.logb x)) < 0.0*)
+    val signBit : real -> bool = InlineT.Real64.signBit (*fn x => true*)
 
     fun sameSign (x, y) = signBit x = signBit y
 

@@ -37,7 +37,7 @@ structure P : sig
       = fEQ (* = *)  | fULG (* ?<> *) | fUN (* ? *)   | fLEG (* <=> *) 
       | fGT (* > *)  | fGE  (* >= *)  | fUGT (* ?> *) | fUGE (* ?>= *) 
       | fLT (* < *)  | fLE  (* <= *)  | fULT (* ?< *) | fULE (* ?<= *) 
-      | fLG (* <> *) | fUE  (* ?= *)
+      | fLG (* <> *) | fUE  (* ?= *) | fsgn
 
 
     (* These are two-way branches dependent on pure inputs *)

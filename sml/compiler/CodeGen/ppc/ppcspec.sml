@@ -12,7 +12,7 @@ struct
   val framesize = 8192
 
   val architecture = "ppc"
-  val bigEndian = false
+  val bigEndian = true
   val spillAreaSz = 8192		(* really the end of the spill area! *)
   val initialSpillOffset = 4096+144
   val numRegs = 15

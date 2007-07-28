@@ -14,6 +14,14 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: George Kuan (http://www.cs.uchicago.edu/~gkuan)
+Date: 2007/07/27
+Description:
+
+Added f64sgn (for Real64.signBit) as a primop defined
+in MLRiscGen. signBit(~0.0) not handled correctly.  
+
+----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2007/06/21
 Description:

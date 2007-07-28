@@ -176,6 +176,7 @@ val w8w8_w8 = binf w8
 val w8w8_b = binp w8
 val w8w_w8 = shifter w8
 
+val f64_b = p0(ar(f64,bo))
 val f64_f64 = unf f64
 val f64f64_f64 = binf f64
 val f64f64_b = binp f64
@@ -515,6 +516,7 @@ val primopTypes =
        ("f64lt",	 (f64f64_b)) :-:
        ("f64eq",	 (f64f64_b)) :-:
        ("f64ne",	 (f64f64_b)) :-:
+       ("f64sgn",	 (f64_b)) :-:
        ("f64abs",	 (f64_f64)) :-:
 
        ("f64sin",	 (f64_f64)) :-:
