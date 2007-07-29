@@ -2106,7 +2106,7 @@ struct
 					 M.SRL(ity, M.LOAD(ity, rReg, R.memory),
 			  		       LW 0w31), zero), trueLab)))
 		  else (* x86 signbit code *)
-			(emit(M.BCC(M.CMP(ity, M.GTU,
+			(emit(M.BCC(M.CMP(ity, M.GT,
 		 			 M.SRL(ity, M.LOAD(ity,
 		 					   M.ADD(pty,rReg, 
 		 						 LI((fty -pty) div 8)), 
