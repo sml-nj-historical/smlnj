@@ -1223,7 +1223,7 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 		| ERRORtyc => (FinalTyc(ref(INST ERRORtyc)), NONE)
 		| DEFtyc _ => bug "scanForRep 6"
 		| _ => bug "scanForRep 7"
-	  end
+	  end (* fun scanForRep *)
 
       fun getSlotEp slot =
 	  case !slot

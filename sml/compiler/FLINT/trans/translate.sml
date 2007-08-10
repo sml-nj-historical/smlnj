@@ -70,6 +70,9 @@ fun ppType ty =
 fun ppLexp lexp = 
     PP.with_default_pp(fn s => PPLexp.ppLexp 20 s lexp)
 
+fun ppTKind knd =
+    with_pp(fn s => PPLty.ppTKind 10 s knd)
+
 fun ident x = x
 val unitLexp = RECORD []
 
@@ -1309,17 +1312,50 @@ and mkStrexp (se, d) =
   end
 
 and mkFctexp (fe, d) = 
-  let fun g (VARfct f) = mkFct(f, d)
-        | g (FCTfct {param as M.STR { access, ... }, argtycs, def }) =
+  let fun getFctKnds(M.SIG{elements,...}) =
+	let (* Tyc Kinds precede all Functor Kinds, 
+	       so they are computed separately *)
+	    fun getFct((_,spec)::rest) =
+		(case spec
+		   of M.FCTspec{entVar, sign=M.FSIG{paramsig,bodysig,...}, ...} => 
+		      LT.tkc_fun(getFctKnds paramsig,LT.tkc_seq (getFctKnds bodysig))::getFct(rest)
+		    | _ => getFct rest)
+	      | getFct([]) = []
+	    fun getTyc((_,spec)::rest) =
+		(case spec 
+		   of M.TYCspec{entVar, info=M.RegTycSpec{spec=tycon,...}} => 
+		      (case tycon
+			 of TP.GENtyc {kind=TP.FORMAL,arity,...} =>
+		            LT.tkc_int(arity)::getTyc(rest)
+			  | TP.GENtyc {kind=_,...} => 
+			    (* FIXME?? Datatypes shouldn't be dropped *)
+			    getTyc rest
+			  | TP.DEFtyc{tyfun=TP.TYFUN{arity,...},...} =>
+		            getTyc(rest)
+			  | _ => bug "getFctKnds 1")
+		    | M.STRspec{entVar, sign, def, ...} => getFctKnds(sign)@getTyc(rest)
+		    | _ => getTyc rest)
+	       | getTyc([]) = []
+	in (getTyc elements)@(getFct elements)
+	end 
+	| getFctKnds(_) = bug "getFctKnds 2"
+      fun g (VARfct f) = mkFct(f, d)
+        | g (FCTfct {param as M.STR { sign, access, ... }, argtycs, def }) =
 	  (case access of
 	       DA.LVAR v =>
                let val knds = map tpsKnd argtycs
+		   val knds2 = getFctKnds sign
+		   (*val _ = print ("tpsKnd: "^Int.toString (length knds)^"\n")
+		   val _ = app (fn k => (ppTKind k; print " ")) knds
+		   val _ = print ("\ngetFctKnds: "^Int.toString (length knds2)^"\n")
+		   val _ = app (fn k => (ppTKind k; print " ")) knds2
+		   val _ = print ("\n")*)
                    val nd = DI.next d  (* reflecting type abstraction *)
                    val body = mkStrexp (def, nd)
                    val hdr = buildHdr v
                (* binding of all v's components *)
                in
-		   TFN(knds, FN(v, strLty(param, nd, compInfo), hdr body))
+		   TFN(knds2, FN(v, strLty(param, nd, compInfo), hdr body))
                end
 	     | _ => bug "mkFctexp: unexpected access")
         | g (LETfct (dec, b)) = mkDec (dec, d) (g b)
