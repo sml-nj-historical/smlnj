@@ -1343,8 +1343,8 @@ and mkFctexp (fe, d) =
         | g (FCTfct {param as M.STR { sign, access, ... }, argtycs, def }) =
 	  (case access of
 	       DA.LVAR v =>
-               let val knds = map tpsKnd argtycs
-		   val knds2 = getFctKnds sign
+               let val knds = map tpsKnd argtycs (* Old way of obtaining kinds from INST *)
+		   val knds2 = getFctKnds sign (* Computing kinds directly *)
 		   (*val _ = print ("tpsKnd: "^Int.toString (length knds)^"\n")
 		   val _ = app (fn k => (ppTKind k; print " ")) knds
 		   val _ = print ("\ngetFctKnds: "^Int.toString (length knds2)^"\n")
