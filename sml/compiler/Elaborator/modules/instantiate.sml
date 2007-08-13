@@ -176,9 +176,9 @@ fun signName (SIG { name, ... }) = getOpt (Option.map S.name name, "Anonymous")
  * the different kinds of instantiations 
  *)
 datatype instKind 
-  = INST_ABSTR of M.strEntity
-  | INST_FMBD of T.tycpath
-  | INST_PARAM of DebIndex.depth
+  = INST_ABSTR of M.strEntity     (* ??? *)
+  | INST_FMBD of T.tycpath        (* result sig of a functor sig *)
+  | INST_PARAM of DebIndex.depth  (* functor parameter sig *)
 
 (* datatype stampInfo 
  * encodes an instruction about how to get a stamp for a new entity
@@ -212,7 +212,7 @@ datatype tycInst
  * This datatype represents the continually changing DAG that is being 
  * constructed by instantiate.  We start off with just an Initial node.  
  * It is expanded into a Partial node whose children are 
- * initialized to Initial nodes.  When all of the members of the nodes
+ * initialized to Initial nodes.  When all of the members of the node's
  * equivalence class have been found, and converted to Partial nodes, 
  * the node is converted to FinalStr.  Finally, we recurse on the children
  * of the node.  
@@ -330,7 +330,7 @@ fun lookSlot((ev,slot)::rest,ev') =
 
 (* 
  * Get slot for signature element (tycon or structure) --- 
- * Lookup sym in sign, get entVar, lookup this entVar in slotEnv 
+ * Lookup sym in sign, get its entVar, lookup this entVar in slotEnv 
  *)
 fun getElemSlot(sym, SIG {elements,...}, slotEnv) : slot =
     (case MU.getSpecVar(MU.getSpec(elements,sym))
@@ -436,9 +436,9 @@ fun getElemDefs (strDef,mkStamp,depth): (S.symbol * constraint) list =
  *
  *   create slots with initial insts for the components of the signature
  *   for a structure spec.  slots are associated with element names and
- *   sorted in ascending order by element name.  the slots are also 
- *   added to the inherited slotEnv, bound the corresponding element's
- *   entityVar, and the augmented slotEnv is returned
+ *   sorted in ascending order by element name.  The slots are also 
+ *   added to the inherited slotEnv, bound to the corresponding element's
+ *   entityVar, and the augmented slotEnv is returned.
  *)
 fun mkElemSlots(SIG {elements,...},slotEnv,rpath,epath,sigDepth) =
     let fun mkSlot((sym,STRspec{sign as SIG {closed,...},
@@ -488,7 +488,8 @@ fun mkElemSlots(SIG {elements,...},slotEnv,rpath,epath,sigDepth) =
 	  | mkSlot _ = NONE  (* value element *)
 
 	fun mkSlots(nil,slotEnv,slots) =
-	    (slotEnv, ListMergeSort.sort(fn((s1,_),(s2,_)) => S.symbolGt(s1,s2)) slots)
+	    (slotEnv, ListMergeSort.sort
+                        (fn((s1,_),(s2,_)) => S.symbolGt(s1,s2)) slots)
 	  | mkSlots((element as (sym,_))::rest,slotEnv,slots) =
 	      (case mkSlot(element,slotEnv)
 		of SOME(binder as (_,slot)) =>
@@ -539,9 +540,9 @@ fun propDefs(nil,_) = ()
 
 (* propSharing : (S.symbol * slot) list * (S.symbol * slot) list -> unit
  *
- *   Propogates inherited sharing constraints (SHARE) to the matching
- *   elements of two structure nodes.  Called only in addInst in
- *   buildStrClass, i.e. when adding a new instance to an equiv. class.
+ *   Propogates inherited sharing constraints (SHARE) to the common
+ *   elements of two structure nodes that are made to share by addInst
+ *   (in buildStrClass).
  * 
  * ASSERT: both arguments of propSharing are sorted in assending order by the
  * symbol component.
@@ -587,7 +588,7 @@ val propSharing = wrap "propSharing" propSharing
 
 
 (**************************************************************************
- * distributeS : Signature * slotEnv * entEnv * int -> unit               *
+ * distributeS : Signature * slotEnv * int -> unit                        *
  *                                                                        *
  * This function distributes the structure sharing constraints of a       *
  * signature to the children of a corresponding node.  Note that this     *
@@ -597,7 +598,7 @@ val propSharing = wrap "propSharing" propSharing
  **************************************************************************)
 exception DistributeS
 
-fun distributeS (sign as SIG {strsharing,...}, slotEnv, entEnv, sigDepth) =
+fun distributeS (sign as SIG {strsharing,...}, slotEnv, sigDepth) =
      let fun stepPath (SP.SPATH(sym::path)) =
               let val slot = getElemSlot(sym,sign,slotEnv)
                in case !slot
@@ -625,15 +626,16 @@ fun distributeS (sign as SIG {strsharing,...}, slotEnv, entEnv, sigDepth) =
 
 
 (****************************************************************************
- * distributeT : Signature * slotEnv * entEnv * (unit->stamp) * int -> unit *
+ * distributeT : Signature * slotEnv * (unit->stamp) * int -> unit          *
  *                                                                          *
- * This function distributes the type sharing constraints that a signature  *
- * has to the children of the corresponding node.                           *
+ * This function distributes the signature's type sharing constraints       *
+ * into the inherited fields of the instances for the children of the       *
+ * corresponding node.                                                      *
  ****************************************************************************)
 exception DistributeT
 
 fun distributeT (sign as SIG {typsharing,...},
-		 slotEnv, entEnv, mkStamp, sigDepth) =
+		 slotEnv, mkStamp, sigDepth) =
      let fun stepPath(SP.SPATH[sym]) =
                let val slot = getElemSlot(sym,sign,slotEnv)
                 in case !slot
@@ -656,12 +658,12 @@ fun distributeT (sign as SIG {typsharing,...},
               let val (p1,h1,slot1) = stepPath p
 		      (* stepPath might raise MU.Unbound if there were errors
 		         in the signature (testing/modules/tests/101.sml) *)
-                  fun g (p2, h2, slot2) =
+                  fun addConstraints (p2, h2, slot2) =
                     (push(h1,SHARE{my_path=p1, its_path=p2, its_ancestor=slot2,
 				   depth=sigDepth});
                      push(h2,SHARE{my_path=p2, its_path=p1, its_ancestor=slot1,
 				   depth=sigDepth}))
-               in app (fn p' => g (stepPath p')) rest
+               in app (fn p' => addConstraints (stepPath p')) rest
               end
            | distShare [] = ()
 
@@ -696,7 +698,7 @@ exception ExploreInst of IP.path
  * 4. This node's inherited constraints are processed.  If they apply
  *    to this node, the equivalence class is enlarged (using addInst) or 
  *    a definition is set (classDef).  If a constraint applies to children
- *    of this node, they are propogated to the children.  Processing a 
+ *    of this node, it is propogated to the children.  Processing a 
  *    sharing constraint may require that an ancestor of the other node
  *    in the constraint first be explored by buildStrClass.
  *    Once constrain is complete, class contains a list of equivalent PartialStr
@@ -734,8 +736,9 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
     (* addInst(old,new,depth);
      * (1) Adds new to the current equivalence class in response to a sharing
      * constraint relating old to new.
-     * (2) Converts the new node from InitialStr to PartialStr.  Propagates sharing
-     * to the respective common components.  Propagate downward the sharing
+     * (2) Converts the new node from InitialStr to PartialStr. Propagates sharing
+     * to the respective common components. Propagate downward the sharing
+
      * constraints in new's signature. Then apply constrain to each of the
      * inherited constraints.
      * depth is the signature nesting depth of this sharing constraint.  *)
@@ -743,34 +746,34 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
        (minDepth := Int.min(!minDepth, depth);
 	case !new
 	  of ErrorStr => ()
-	   | (PartialStr {depth, path, ...}) =>
+	   | PartialStr {depth, path, ...} =>
 		if (depth = classDepth) then () (* member current class *)
 		else raise ExploreInst path (* member of pending class *)
-	   | (InitialStr {sign, sigDepth, path, slotEnv, inherited, epath}) =>
+	   | InitialStr {sign, sigDepth, path, slotEnv, inherited, epath} =>
 	       (case !old
-		  of (p as (PartialStr{sign=sign',
-				       slotEnv=slotEnv',
+		  of (p as (PartialStr{sign=oldSign,
+				       slotEnv=oldSlotEnv,
 				       comps=oldComps,...})) =>
-		       if eqSig(sign,sign') then  (* same sign *)
+		       if eqSig(sign,oldSign) then  (* same sig *)
 			  (new := p;   (* share the old instance *)
 			   push(class,new);  (* add new slot to class *)
-			   constrain(new,!inherited,sign,slotEnv',path))
+			   constrain(new,!inherited,sign,oldSlotEnv,path))
 			     (* may be new inherited constraints *)
-		       else (* different sign *)
+		       else (* new has different sig *)
 			(let val sigDepth' = sigDepth + 1
-			     val (slotEnv',newComps) =
+			     val (newSlotEnv,newComps) =
 				 mkElemSlots(sign,slotEnv,path,epath,sigDepth')
 			  in new := PartialStr{sign=sign,path=path,
-					       slotEnv=slotEnv',
+					       slotEnv=newSlotEnv,
 					       comps=newComps,
 					       final_rep = ref NONE,
 					       depth=classDepth};
-			     push(class,new);
+			     push(class,new); (* add new to the class *)
 			     propSharing(oldComps,newComps,depth);
-			     distributeS (sign, slotEnv', entEnv, sigDepth');
-			     distributeT (sign, slotEnv', entEnv, mkStamp,
+			     distributeS (sign, newSlotEnv, sigDepth');
+			     distributeT (sign, newSlotEnv, mkStamp,
 					  sigDepth');
-			     constrain (new, !inherited, sign, slotEnv', path)
+			     constrain (new, !inherited, sign, newSlotEnv, path)
 			  end
 			  handle (MU.Unbound _) =>  (* bad sharing paths *)
 			      (error_found := true;
@@ -781,6 +784,7 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
 		   | _ => bug "addInst 1")
 	   | _ => if !error_found then new := ErrorStr
 		  else bug "addInst.2")
+
 
     and constrain (oldSlot, inherited, sign, slotEnv, path) =
 	(* Class shares with some external structure *)
@@ -940,8 +944,8 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
 			    comps=newComps,
 			    final_rep = ref NONE,
 			    depth=classDepth};
-	       distributeS (sign, slotEnv', entEnv, sigDepth');
-	       distributeT (sign, slotEnv', entEnv, mkStamp, sigDepth');
+	       distributeS (sign, slotEnv', sigDepth');
+	       distributeT (sign, slotEnv', mkStamp, sigDepth');
 	       constrain (this_slot, !inherited, sign, slotEnv', path)
 	   end
 	   handle (MU.Unbound _) =>  (* bad sharing paths *)
@@ -1364,12 +1368,12 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 	   | PATH_ENT ep =>
 	     (let val strEnt = EE.lookStrEP(entEnv,ep)
 	      in finalEnt := CONST_ENT strEnt;
-	      (strEnt,failuresSoFar)
+ 	         (strEnt,failuresSoFar)
 	      end
-		  handle EE.Unbound =>
-			 (debugmsg ("instToStr':PATH_ENT failed: "^
-				    EP.entPathToString ep);
-			  raise EE.Unbound))
+	      handle EE.Unbound =>
+		     (debugmsg ("instToStr':PATH_ENT failed: "^
+				EP.entPathToString ep);
+		      raise EE.Unbound))
 	   | GENERATE_ENT closedDef =>
 	     let 
 		 (* Gets the stamp of an instance -- generates one if 
@@ -1383,12 +1387,12 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 			     (let val {stamp=s,...} = EE.lookStrEP(entEnv,ep)
 			      in stamp := STAMP s; s
 			      end
-				  handle EE.Unbound => (debugmsg "getStamp:PATH failed";
+			      handle EE.Unbound => (debugmsg "getStamp:PATH failed";
 						   raise EE.Unbound)))
 			 | GENERATE =>
 			    let val s = mkStamp()
 			     in debugmsg "getStamp:GENERATE";
-				 stamp := STAMP s; s
+				stamp := STAMP s; s
 			    end
 		  end
 
@@ -1429,8 +1433,8 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 
 		fun instToTyc(ref(INST tycon),_) = tycon 
 		      (* already instantiated *)
-		  | instToTyc(r as ref(NOTINST tycon), entEnv) = let
-			fun badtycon () =(* bogus tycon *)
+		  | instToTyc(r as ref(NOTINST tycon), entEnv) =
+                    let	fun badtycon () = (* bogus tycon *)
 			    (debugType("#instToTyc(NOTINST/bogus)",tycon);
 			     r := INST ERRORtyc;
 			     ERRORtyc)
@@ -1446,18 +1450,19 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 				     let val T.CONty(tyc,_) = body
 				      in MU.transTycon entEnv tyc
 				     end
-				else *) let val tf = 
-				          T.TYFUN{arity=arity, 
-						  body=MU.transType entEnv body}
-			              in T.DEFtyc{tyfun=tf, strict=strict, 
-						  stamp=mkStamp(),
-						  path=IP.append(rpath,path)}
-				     end
+				else *)
+                                let val tf = 
+				        T.TYFUN{arity=arity, 
+						body=MU.transType entEnv body}
+			        in T.DEFtyc{tyfun=tf, strict=strict, 
+					    stamp=mkStamp(),
+					    path=IP.append(rpath,path)}
+				end
 			    in debugType("#instToTyc(NOTINST/DEFtyc)",tc);
 			       r := INST tc;
 			       tc
-			   end
-			   handle EE.Unbound =>
+			    end
+			    handle EE.Unbound =>
 			     (debugmsg "#instToTyc(NOTINST/DEFtyc) failed";
 			      raise EE.Unbound))
 

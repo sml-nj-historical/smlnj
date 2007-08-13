@@ -190,6 +190,176 @@ Transmitting file data ..
 Committed revision 2473.
 
 ======================================================================
+arran$ svn commit -m "merge revisions 2221:2491 from primop-branch-3"
+Sending        NOTES/HISTORY
+Sending        cm/compile/compile.sml
+Sending        cm/compile/link.sml
+Sending        cm/depend/build.sml
+Sending        cm/depend/checksharing.sml
+Sending        cm/main/general-params.sml
+Sending        cm/parse/parse.sml
+Sending        cm/stable/stabilize.sml
+Sending        compiler/Basics/basics.cm
+Sending        compiler/Basics/errormsg/errormsg.sig
+Sending        compiler/Basics/errormsg/errormsg.sml
+Sending        compiler/Basics/mlcomp/persstamps.sml
+Sending        compiler/Basics/mlcomp/symbol.sig
+Sending        compiler/Basics/mlcomp/symbol.sml
+Adding         compiler/Basics/print/pp-init-new.sml
+Sending        compiler/Basics/source/source.sig
+Sending        compiler/Basics/source/source.sml
+Sending        compiler/CodeGen/main/mlriscGen.sml
+Adding         compiler/DEVNOTES
+Adding         compiler/DEVNOTES/FLINT
+Adding         compiler/DEVNOTES/FLINT-FE
+Adding         compiler/DEVNOTES/kernel
+Adding         compiler/DEVNOTES/primop-list
+Adding         compiler/DEVNOTES/primop2-note-1
+Adding         compiler/DEVNOTES/primop2-note-2
+Adding         compiler/DEVNOTES/primop3-revisions
+Adding         compiler/DEVNOTES/scripts
+Adding         compiler/DEVNOTES/scripts/buildsml.sml
+Sending        compiler/DebugProf/profile/tdp-instrument.sml
+Sending        compiler/DebugProf/profile/tprof.sml
+Sending        compiler/DebugProf/types/reconstruct.sml
+Sending        compiler/ElabData/basics/access.sml
+Sending        compiler/ElabData/basics/ii.sml
+Adding         compiler/ElabData/basics/primopid.sig
+Adding         compiler/ElabData/basics/primopid.sml
+Sending        compiler/ElabData/basics/stamps.sml
+Sending        compiler/ElabData/elabdata.cm
+Sending        compiler/ElabData/main/edcontrol.sig
+Sending        compiler/ElabData/modules/entpath.sml
+Sending        compiler/ElabData/modules/modules.sig
+Sending        compiler/ElabData/modules/modules.sml
+Sending        compiler/ElabData/modules/moduleutil.sig
+Sending        compiler/ElabData/modules/moduleutil.sml
+Sending        compiler/ElabData/statenv/statenv.sig
+Sending        compiler/ElabData/statenv/statenv.sml
+Sending        compiler/ElabData/syntax/absyn.sig
+Sending        compiler/ElabData/syntax/absyn.sml
+Sending        compiler/ElabData/syntax/varcon.sig
+Sending        compiler/ElabData/syntax/varcon.sml
+Sending        compiler/ElabData/types/types.sig
+Sending        compiler/ElabData/types/types.sml
+Sending        compiler/ElabData/types/typesutil.sig
+Sending        compiler/ElabData/types/typesutil.sml
+Sending        compiler/Elaborator/basics/debindex.sml
+Adding         compiler/Elaborator/basics/elabcontrol.sig
+Sending        compiler/Elaborator/basics/elabcontrol.sml
+Sending        compiler/Elaborator/elaborate/elabcore.sml
+Sending        compiler/Elaborator/elaborate/elabdebug.sml
+Sending        compiler/Elaborator/elaborate/elabmod.sml
+Sending        compiler/Elaborator/elaborate/elabsig.sml
+Sending        compiler/Elaborator/elaborate/elabtop.sml
+Sending        compiler/Elaborator/elaborate/elabtype.sml
+Sending        compiler/Elaborator/elaborate/elabutil.sml
+Sending        compiler/Elaborator/elaborate.cm
+Sending        compiler/Elaborator/modules/evalent.sml
+Sending        compiler/Elaborator/modules/instantiate.sml
+Adding         compiler/Elaborator/modules/sigmatch.sig
+Sending        compiler/Elaborator/modules/sigmatch.sml
+Sending        compiler/Elaborator/print/ppabsyn.sml
+Sending        compiler/Elaborator/print/ppast.sig
+Sending        compiler/Elaborator/print/ppast.sml
+Sending        compiler/Elaborator/print/ppmod.sml
+Adding         compiler/Elaborator/print/ppprim.sml
+Sending        compiler/Elaborator/print/pptype.sml
+Adding         compiler/Elaborator/print/pputil-new.sig
+Adding         compiler/Elaborator/print/pputil-new.sml
+Sending        compiler/Elaborator/print/ppval.sml
+Sending        compiler/Elaborator/types/overload.sml
+Adding         compiler/Elaborator/types/typecheck.sig
+Sending        compiler/Elaborator/types/typecheck.sml
+Sending        compiler/Elaborator/types/unify.sml
+Adding         compiler/FLINT/INDEX
+Adding         compiler/FLINT/MAP
+Sending        compiler/FLINT/flint/chkflint.sml
+Sending        compiler/FLINT/flint/flintutil.sml
+Sending        compiler/FLINT/flint/tvarcvt.sml
+Adding         compiler/FLINT/kernel/lty.sig
+Adding         compiler/FLINT/kernel/lty.sml
+Sending        compiler/FLINT/kernel/ltybasic.sig
+Sending        compiler/FLINT/kernel/ltybasic.sml
+Sending        compiler/FLINT/kernel/ltydef.sig
+Sending        compiler/FLINT/kernel/ltydef.sml
+Sending        compiler/FLINT/kernel/ltydict.sml
+Sending        compiler/FLINT/kernel/ltyextern.sig
+Sending        compiler/FLINT/kernel/ltyextern.sml
+Sending        compiler/FLINT/kernel/ltykernel.sig
+Sending        compiler/FLINT/kernel/ltykernel.sml
+Adding         compiler/FLINT/kernel/ltykindchk.sml
+Adding         compiler/FLINT/kernel/pplty.sml
+Sending        compiler/FLINT/kernel/primop.sml
+Sending        compiler/FLINT/kernel/primtyc.sig
+Sending        compiler/FLINT/kernel/primtyc.sml
+Sending        compiler/FLINT/lsplit/ls-inline.sml
+Sending        compiler/FLINT/main/control.sml
+Sending        compiler/FLINT/opt/fcontract.sml
+Sending        compiler/FLINT/opt/fixfix.sml
+Sending        compiler/FLINT/opt/lift.sml
+Sending        compiler/FLINT/opt/loopify.sml
+Sending        compiler/FLINT/opt/optutils.sml
+Sending        compiler/FLINT/opt/recover.sml
+Sending        compiler/FLINT/opt/specialize.sml
+Sending        compiler/FLINT/plambda/chkplexp.sml
+Sending        compiler/FLINT/plambda/flintnm.sml
+Sending        compiler/FLINT/plambda/pplexp.sml
+Adding         compiler/FLINT/plambda/rpplexp.sml
+Sending        compiler/FLINT/reps/coerce.sml
+Sending        compiler/FLINT/reps/reify.sml
+Sending        compiler/FLINT/reps/rttype.sml
+Sending        compiler/FLINT/reps/typeoper.sml
+Sending        compiler/FLINT/trans/matchcomp.sml
+Sending        compiler/FLINT/trans/mccommon.sml
+Sending        compiler/FLINT/trans/pequal.sml
+Adding         compiler/FLINT/trans/primopmap.sml
+Sending        compiler/FLINT/trans/tempexpn.sml
+Sending        compiler/FLINT/trans/translate.sml
+Sending        compiler/FLINT/trans/transtypes.sml
+Sending        compiler/MiscUtil/print/ppdec.sml
+Sending        compiler/MiscUtil/print/ppobj.sml
+Sending        compiler/MiscUtil/print/pptable.sml
+Sending        compiler/Semant/basics/inlinfo.sig
+Sending        compiler/Semant/basics/inlinfo.sml
+Sending        compiler/Semant/elaborate/elabmod.sml
+Sending        compiler/Semant/modules/instantiate-param.sml
+Sending        compiler/Semant/pickle/pickmod-new.sml
+Sending        compiler/Semant/pickle/unpickmod-new.sml
+Sending        compiler/Semant/statenv/prim.sml
+Adding         compiler/Semant/statenv/primoptypemap.sml
+Sending        compiler/Semant/types/tp-var-info.sml
+Deleting       compiler/Semant/types/typecheck.sml
+Sending        compiler/TopLevel/environ/environ.sml
+Sending        compiler/TopLevel/interact/evalloop.sml
+Sending        compiler/TopLevel/main/compile.sml
+Sending        compiler/TopLevel/main/control.sig
+Sending        compiler/TopLevel/main/control.sml
+Sending        compiler/TopLevel/main/printhooks.sml
+Sending        compiler/core.cm
+Sending        system/Basis/Implementation/Posix/posix-process.sml
+Sending        system/Basis/Implementation/int31.sml
+Sending        system/Basis/Implementation/num-scan.sml
+Sending        system/smlnj/compiler/alpha32.cm
+Sending        system/smlnj/compiler/amd64.cm
+Sending        system/smlnj/compiler/current.cm
+Sending        system/smlnj/compiler/hppa.cm
+Sending        system/smlnj/compiler/ppc.cm
+Sending        system/smlnj/compiler/sparc.cm
+Sending        system/smlnj/compiler/x86.cm
+Sending        system/smlnj/init/assembly.sig
+Sending        system/smlnj/init/built-in.sml
+Sending        system/smlnj/init/core-intinf.sml
+Sending        system/smlnj/init/core-word64.sml
+Sending        system/smlnj/init/dummy.sml
+Sending        system/smlnj/init/rawmem.sml
+Adding         testcases
+Adding         testcases/realconst.sml.bug.1
+Adding         testcases/realconst.sml.bug.2
+Transmitting file data .....................................................................................................................................
+Committed revision 2492.
+
+
 4. Merge from trunk (2492:2578), producing 2579
 arran$ date
 Tue May 22 16:25:26 CDT 2007
@@ -240,7 +410,87 @@ Transmitting file data ........
 Committed revision 2595.
 
 ======================================================================
-6. merge from trunk (2603:2610)
+6. merge from primop3 to trunk working copy (2495:2602)
+arran$ date
+Wed May 23 15:25:39 CDT 2007
+arran$ svn update
+At revision 2602.
+arran$ svn merge -r2492:HEAD $smlnj/sml/branches/primop-branch-3
+ U   cm/parse
+U    system/ADD-PRIMOPS
+U    system/Basis/Implementation/date.sml
+C    NOTES/HISTORY
+U    compiler/core.cm
+U    compiler/INDEX
+A    compiler/DEVNOTES/bootfiles
+C    compiler/DEVNOTES/primop3-revisions
+A    compiler/DEVNOTES/Primops
+A    compiler/DEVNOTES/Primops/primop-list
+A    compiler/DEVNOTES/Primops/intinf-conversion-primops
+A    compiler/DEVNOTES/Primops/primop2-note-1
+A    compiler/DEVNOTES/Primops/primop2-note-2
+A    compiler/DEVNOTES/Flint
+A    compiler/DEVNOTES/Flint/kernel
+A    compiler/DEVNOTES/Flint/kernel-files
+A    compiler/DEVNOTES/Flint/FLINT-FE
+A    compiler/DEVNOTES/Flint/translate.txt
+D    compiler/DEVNOTES/primop-list
+D    compiler/DEVNOTES/kernel
+D    compiler/DEVNOTES/FLINT-FE
+D    compiler/DEVNOTES/primop2-note-1
+D    compiler/DEVNOTES/primop2-note-2
+Skipped 'compiler/DEVNOTES/FLINT'
+U    compiler/Semant/statenv/prim.sml
+A    compiler/Semant/pickle/pickmod.sml
+U    compiler/Semant/pickle/pickle-sym-pid.sml
+A    compiler/Semant/pickle/unpickmod.sml
+U    compiler/Semant/pickle/rehash.sml
+U    compiler/Semant/pickle/unpickle-sym-pid.sml
+D    compiler/Semant/pickle/pickmod-new.sml
+D    compiler/Semant/pickle/unpickmod-new.sml
+U    compiler/Semant/modules/module-plists.sml
+U    compiler/Semant/modules/instantiate-param.sml
+D    compiler/Semant/basics/inlinfo.sig
+D    compiler/Semant/basics/inlinfo.sml
+D    compiler/Semant/basics
+U    compiler/Elaborator/types/unify.sml
+U    compiler/Elaborator/modules/expandtycon.sml
+U    compiler/Elaborator/modules/sigmatch.sml
+U    compiler/Elaborator/modules/instantiate.sml
+U    compiler/Elaborator/print/ppmod.sml
+U    compiler/Elaborator/elaborate/elabsig.sml
+U    compiler/Elaborator/elaborate/elabcore.sml
+U    compiler/Elaborator/elaborate/include.sml
+U    compiler/Elaborator/elaborate/elabmod.sml
+U    compiler/TopLevel/main/control.sig
+U    compiler/TopLevel/main/control.sml
+U    compiler/ElabData/types/typesutil.sig
+U    compiler/ElabData/types/typesutil.sml
+U    compiler/ElabData/types/types.sml
+U    compiler/ElabData/main/compinfo.sml
+U    compiler/ElabData/basics/primopid.sig
+U    compiler/ElabData/basics/primopid.sml
+D    compiler/ElabData/basics/ii.sml
+U    compiler/ElabData/modules/modules.sml
+U    compiler/ElabData/modules/moduleutil.sig
+U    compiler/ElabData/modules/modules.sig
+U    compiler/ElabData/modules/moduleutil.sml
+A    compiler/FLINT/main/control.sig
+U    compiler/FLINT/main/control.sml
+U    compiler/FLINT/trans/transtypes.sml
+U    compiler/FLINT/MAP
+U    compiler/MAP
+D    testcases/realconst.sml.bug.1
+D    testcases/realconst.sml.bug.2
+D    testcases
+arran$ svn update
+At revision 2602.
+
+After commit at revision 2603.
+
+
+======================================================================
+7. merge from trunk (2603:2610)
 westray$ date
 Thu May 24 19:58:01 CDT 2007
 westray$ svn info
@@ -285,7 +535,7 @@ Transmitting file data ..........
 Committed revision 2611.
 
 ======================================================================
-7. merge from trunk (2610:2630)
+8. merge from trunk (2610:2630)
 arran$ svn update
 At revision 2630.
 arran$ date
@@ -329,3 +579,40 @@ Sending        runtime/c-libs/smlnj-date/strftime.c
 Sending        system/Basis/Implementation/date.sml
 Transmitting file data ................
 Committed revision 2636.
+
+======================================================================
+8. merge from trunk into primop3 base (2631:2647)
+
+arran$ date
+Thu May 31 14:21:38 CDT 2007
+arran$ svn update
+At revision 2647.
+arran$ svn merge -r2631:HEAD $smlnj/sml/trunk
+U    NOTES/HISTORY
+U    compiler/FLINT/trans/translate.sml
+arran$ svn commit -m "merge from trunk (2631:2647)"
+Sending        NOTES/HISTORY
+Sending        compiler/FLINT/trans/translate.sml
+Sending        system/Basis/Implementation/timer.sml
+Transmitting file data ...
+Committed revision 2648.
+
+======================================================================
+9. merge from primop3 to trunk working copy (2603:2649)
+arran$ date
+Thu May 31 14:38:56 CDT 2007
+arran$ svn update
+At revision 2649.
+arran$ svn merge -r 2603:HEAD $smlnj/sml/branches/primop-branch-3
+U    system/Basis/Implementation/timer.sml
+C    NOTES/HISTORY
+C    compiler/DEVNOTES/primop3-revisions
+U    compiler/FLINT/opt/fcontract.sml
+
+arran$ svn commit -m "merge from primop-branch-3 (base) into trunk (2603:2649)"
+Sending        NOTES/HISTORY
+Sending        compiler/DEVNOTES/primop3-revisions
+Sending        compiler/FLINT/opt/fcontract.sml
+Sending        system/Basis/Implementation/timer.sml
+Transmitting file data ....
+Committed revision 2650.
