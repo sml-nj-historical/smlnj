@@ -695,13 +695,14 @@ exception ExploreInst of IP.path
  * 3. The signature's explicit type and structure sharing constraints are
  *    propogated to the member elements using distributeS and distributeT.
  * 
- * 4. This node's inherited constraints are processed.  If they apply
- *    to this node, the equivalence class is enlarged (using addInst) or 
+ * 4. This node's inherited constraints are processed, using constrain.
+ *    If a constraint equates an element to this node,
+ *    the equivalence class is enlarged (using addInst) or 
  *    a definition is set (classDef).  If a constraint applies to children
  *    of this node, it is propogated to the children.  Processing a 
  *    sharing constraint may require that an ancestor of the other node
  *    in the constraint first be explored by buildStrClass.
- *    Once constrain is complete, class contains a list of equivalent PartialStr
+ *    Once constrain returns, class contains a list of equivalent PartialStr
  *    nodes that constitute the sharing equivalence class of the original
  *    node (thisSlot).
  * 
@@ -714,13 +715,11 @@ exception ExploreInst of IP.path
  * then the slots are made to point to only one of the nodes.  Of course,
  * the sharing constraints for both must be propogated to the descendants.  
  * 
- * Also, the "entEnv" argument here is strictly used for interpreting the
- * sharing constraints only. (ZHONG)
  ***************************************************************************)
 
 (* ASSERT: this_slot is an InitialStr *)
 fun buildStrClass (this_slot: slot, classDepth: int, 
-                   entEnv: M.entityEnv, mkStamp, err: EM.complainer) : unit =
+                   mkStamp, err: EM.complainer) : unit =
 let val class = ref ([this_slot] : slot list) (* the equivalence class *)
     val classDef = ref (NONE : (strDef * int) option)
     val minDepth = ref infinity
@@ -830,8 +829,7 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
 		   of InitialStr _ => 
 			(debugmsg "<Having to call buildStrClass on an ancestor \
 				   \of a node I'm equivalent to.>";
-			 buildStrClass (slot, (classDepth+1), entEnv,
-					mkStamp, err)
+			 buildStrClass (slot, (classDepth+1), mkStamp, err)
 			 handle (ExploreInst _) => bug "buildStrClass.4")
 		    | ErrorStr => ()
 		    | _ => ();
@@ -1007,13 +1005,10 @@ exception INCONSISTENT_EQ
  * types are completely equivalent; otherwise, the behavior of the elaboration
  * would be rather odd sometimes. (ZHONG)
  *
- * Also, the "entEnv" argument here is strictly used for interpreting the
- * sharing constraints only. (ZHONG)
- *
  *************************************************************************)
 
 (* ASSERT: this_slot is an InitialTycon *)
-fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
+fun buildTycClass (cnt, this_slot, instKind, rpath, mkStamp, err) =
   let val class = ref ([] : slot list)
       val classDef = ref (NONE : (tycInst * int) option)
       val minDepth = ref infinity
@@ -1069,7 +1064,7 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 			   its_path=SP.SPATH(sym::rest),depth}) =
 	    (case !slot
 	      of InitialStr _ =>
-		  (buildStrClass (slot, 0, entEnv, mkStamp, err)
+		  (buildStrClass (slot, 0, mkStamp, err)
 		   handle ExploreInst _ => bug "buildTycClass.2")
 	       | _ => ();
 
@@ -1277,9 +1272,9 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 val buildTycClass = wrap "buildTycClass" buildTycClass
 *)
 
-fun sigToInst (ERRORsig, entEnv, instKind, rpath, err, compInfo) = 
+fun sigToInst (ERRORsig, instKind, rpath, err, compInfo) = 
       (ErrorStr,[],[],0)
-  | sigToInst (sign, entEnv, instKind, rpath, err,
+  | sigToInst (sign, instKind, rpath, err,
 	       compInfo as {mkStamp,...}: EU.compInfo) = 
   let val flextycs : T.tycon list ref = ref []
       val flexeps : (EP.entPath * Param.tkind) list ref = ref []
@@ -1306,7 +1301,7 @@ fun sigToInst (ERRORsig, entEnv, instKind, rpath, err, compInfo) =
                     of InitialStr _ =>
                          (debugmsg("--expandInst: exploring InitialStr "^
                                    S.name sym);
-                          buildStrClass (slot,0,entEnv,mkStamp,err)
+                          buildStrClass (slot, 0, mkStamp, err)
                               handle ExploreInst _ => bug "expandInst 1";
 
                           case !slot
@@ -1323,7 +1318,7 @@ fun sigToInst (ERRORsig, entEnv, instKind, rpath, err, compInfo) =
                                    S.name sym);
                           expand inst)
                      | InitialTyc _ =>
-                         addbt(buildTycClass(!cnt, slot, entEnv, instKind, 
+                         addbt(buildTycClass(!cnt, slot, instKind, 
 					     rpath, mkStamp, err))
                      | _ => ())
 
@@ -1337,7 +1332,7 @@ fun sigToInst (ERRORsig, entEnv, instKind, rpath, err, compInfo) =
                                     inherited=ref [], slotEnv=nil})
          (* correct initial value for sigDepth? *)
 
-      val _ = buildStrClass(baseSlot,0,entEnv,mkStamp,err)
+      val _ = buildStrClass(baseSlot, 0, mkStamp, err)
               handle (ExploreInst _) => bug "sigToInst 2"
 
       val strInst = !baseSlot
@@ -1739,7 +1734,7 @@ and instGeneric{sign, entEnv, instKind, rpath, region,
       val baseStamp = mkStamp()
  
       val (inst, abstycs, tyceps, cnt) = 
-        sigToInst(sign, entEnv, instKind, rpath, err, compInfo)
+          sigToInst(sign, instKind, rpath, err, compInfo)
 
       val counter = ref cnt
       fun cntf x = 
@@ -1758,7 +1753,7 @@ and instGeneric{sign, entEnv, instKind, rpath, region,
           instToStr(inst,entEnv,instKind,cntf,addRes,rpath,err,compInfo)
 
       val (abs_tycs, fct_tps, all_eps) = 
-        (rev abstycs, rev(!alltps), rev(!alleps))
+          (rev abstycs, rev(!alltps), rev(!alleps))
 
       (* let's memoize the resulting boundeps list *)
       val _ = case sign 
@@ -1768,28 +1763,6 @@ and instGeneric{sign, entEnv, instKind, rpath, region,
 		     | _ => ())
 		| _ => ()
 
-   (* SML96: eliminate eqAnalyze -- not required 
-      (* the eqAnalyze code needs major clean-up ! *)
-      val _ = 
-        let val limitStamp = mkStamp()
-            fun isLocalStamp s =
-              (case Stamps.cmp(baseStamp,s)
-                of LESS => (case Stamps.cmp(s,limitStamp) 
-                             of LESS => true
-                              | _ => false)
-                 | _ => false)
-
-            val str = M.STR{sign=sign, rlzn=strEnt, 
-                            access=A.nullAcc, info=II.nullInfo}
-            (*
-             * eqAnalyze should not need to know what access is;
-             * so it should takes a signature plus a rlzn as the
-             * argument.  (ZHONG)
-             *)
-         in EqTypes.eqAnalyze(str, isLocalStamp, err)
-        end
-    *)
-           
       val _ = debugmsg "<<instantiate"
    in (strEnt, abs_tycs, fct_tps, all_eps, rev tyceps)
   end
