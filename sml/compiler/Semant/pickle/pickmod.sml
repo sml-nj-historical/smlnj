@@ -118,6 +118,18 @@ in
 	(struct type ord_key = LT.lty val compare = LT.lt_cmp end)
     structure TCMap = MapFn
 	(struct type ord_key = LT.tyc val compare = LT.tc_cmp end)
+    structure PKMap = MapFn
+        (struct 
+	   type ord_key = T.pkind 
+           (* [GK] TODO: compare needs to be done right. TKMap uses 
+              LT.tk_cmp, which is just pointer ordering. The front-end
+              representation of kinds is simpler, hence cannot do 
+	      pointer ordering there. *)
+           fun compare(T.PK_MONO, T.PK_MONO) = EQUAL 
+ 	     | compare(T.PK_MONO, T.PK_SEQ _) = LESS
+ 	     | compare(T.PK_SEQ _, T.PK_MONO) = GREATER
+	     | compare _ = EQUAL 
+	 end)
     structure TKMap = MapFn
 	(struct type ord_key = LT.tkind val compare = LT.tk_cmp end)
     structure DTMap = StampMap
@@ -129,12 +141,14 @@ in
     type map =
 	{ lt: PU.id LTMap.map,
 	  tc: PU.id TCMap.map,
+	  pk: PU.id PKMap.map,
 	  tk: PU.id TKMap.map,
 	  dt: PU.id DTMap.map,
 	  mb: PU.id MBMap.map,
 	  mi: PU.id MI.umap }
 
-    val emptyMap = { lt = LTMap.empty, tc = TCMap.empty, tk = TKMap.empty,
+    val emptyMap = { lt = LTMap.empty, tc = TCMap.empty, pk = PKMap.empty,
+		     tk = TKMap.empty,
 		     dt = DTMap.empty, mb = MBMap.empty, mi = MI.emptyUmap }
 
     (* type info *)
@@ -144,93 +158,112 @@ in
 	 STR, F, STE, TCE, STRE, FE, EE, ED, EEV, FX,
 	 B, DCON, DICT, FPRIM, FUNDEC, TFUNDEC, DATACON, DTMEM, NRD, OVERLD,
          FCTC, SEN, FEN, SPATH, IPATH, STRID, FCTID, CCI, CTYPE, CCALL_TYPE,
-         SPE, TSI) =
+         SPE, TSI, PK) =
 	( 1,  2,  3,  4,  5,  6,  7,  8,  9, 10,
 	 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 	 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
 	 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
 	 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
 	 51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
-         61, 62)
+         61, 62, 63)
 
     (* this is a bit awful...
      * (we really ought to have syntax for "functional update") *)
     val LTs = { find = fn (m: map, x) => LTMap.find (#lt m, x),
-	        insert = fn ({ lt, tc, tk, dt, mb, mi }, x, v) =>
+	        insert = fn ({ lt, tc, pk,tk, dt, mb, mi }, x, v) =>
 		         { lt = LTMap.insert (lt, x, v),
 			   tc = tc,
+			   pk = pk,
 			   tk = tk,
 			   dt = dt,
 			   mb = mb,
 			   mi = mi } }
     val TCs = { find = fn (m: map, x) => TCMap.find (#tc m, x),
-	        insert = fn ({ lt, tc, tk, dt, mb, mi }, x, v) =>
+	        insert = fn ({ lt, tc, pk,tk, dt, mb, mi }, x, v) =>
 		         { lt = lt,
 			   tc = TCMap.insert (tc, x, v),
+			   pk = pk,
 			   tk = tk,
 			   dt = dt,
 			   mb = mb,
 			   mi = mi } }
     val TKs = { find = fn (m: map, x) => TKMap.find (#tk m, x),
-	        insert = fn ({ lt, tc, tk, dt, mb, mi }, x, v) =>
+	        insert = fn ({ lt, tc, pk,tk, dt, mb, mi }, x, v) =>
 		         { lt = lt,
 			   tc = tc,
+			   pk = pk,
 			   tk = TKMap.insert (tk, x, v),
 			   dt = dt,
 			   mb = mb,
 			   mi = mi } }
+    val PKs = { find = fn (m: map, x) => PKMap.find (#pk m, x),
+                insert = fn ({ lt, tc, pk,tk, dt, mb, mi }, x, v) =>
+		         { lt = lt,
+			   tc = tc,
+			   pk = PKMap.insert (pk, x, v),
+			   tk = tk,
+			   dt = dt,
+			   mb = mb,
+			   mi = mi } }
     fun DTs x = { find = fn (m: map, _) => DTMap.find (#dt m, x),
-		  insert = fn ({ lt, tc, tk, dt, mb, mi }, _, v) =>
+		  insert = fn ({ lt, tc, pk,tk, dt, mb, mi }, _, v) =>
 		           { lt = lt,
 			     tc = tc,
+			     pk = pk,
 			     tk = tk,
 			     dt = DTMap.insert (dt, x, v),
 			     mb = mb,
 			     mi = mi } }
     fun MBs x = { find = fn (m: map, _) => MBMap.find (#mb m, x),
-		  insert = fn ({ lt, tc, tk, dt, mb, mi }, _, v) =>
+		  insert = fn ({ lt, tc, pk,tk, dt, mb, mi }, _, v) =>
 		           { lt = lt,
 			     tc = tc,
+			     pk = pk,
 			     tk = tk,
 			     dt = dt,
 			     mb = MBMap.insert (mb, x, v),
 			     mi = mi } }
     fun TYCs id = { find = fn (m: map, _) => MI.uLookTyc (#mi m, id),
-		    insert = fn ({ lt, tc, tk, dt, mb, mi }, _, v) =>
+		    insert = fn ({ lt, tc, pk,tk, dt, mb, mi }, _, v) =>
 				{ lt = lt,
 				  tc = tc,
+				  pk = pk,
 				  tk = tk,
 				  dt = dt,
 				  mb = mb,
 				  mi = MI.uInsertTyc (mi, id, v) } }
     val SIGs = { find = fn (m: map, r) => MI.uLookSig (#mi m, MI.sigId r),
-		 insert = fn ({ lt, tc, tk, dt, mb, mi }, r, v) =>
+		 insert = fn ({ lt, tc, pk,tk, dt, mb, mi }, r, v) =>
 			     { lt = lt,
 			       tc = tc,
+			       pk = pk,
 			       tk = tk,
 			       dt = dt,
 			       mb = mb,
 			       mi = MI.uInsertSig (mi, MI.sigId r, v) } }
     fun STRs i = { find = fn (m: map, _) => MI.uLookStr (#mi m, i),
-		   insert = fn ({ lt, tc, tk, dt, mb, mi }, _, v) =>
+		   insert = fn ({ lt, tc, pk,tk, dt, mb, mi }, _, v) =>
 			       { lt = lt,
 				 tc = tc,
+				 pk = pk,
 				 tk = tk,
 				 dt = dt,
 				 mb = mb,
 				 mi = MI.uInsertStr (mi, i, v) } }
     fun FCTs i = { find = fn (m: map, _) => MI.uLookFct (#mi m, i),
-		   insert = fn ({ lt, tc, tk, dt, mb, mi }, _, v) =>
+		   insert = fn ({ lt, tc, pk,tk, dt, mb, mi }, _, v) =>
 			       { lt = lt,
 				 tc = tc,
+				 pk = pk,
 				 tk = tk,
 				 dt = dt,
 				 mb = mb,
 				 mi = MI.uInsertFct (mi, i, v) } }
     val ENVs = { find = fn (m: map, r) => MI.uLookEnv (#mi m, MI.envId r),
-		 insert = fn ({ lt, tc, tk, dt, mb, mi }, r, v) =>
+		 insert = fn ({ lt, tc, pk,tk, dt, mb, mi }, r, v) =>
 			     { lt = lt,
 			       tc = tc,
+			       pk = pk,
 			       tk = tk,
 			       dt = dt,
 			       mb = mb,
@@ -506,6 +539,15 @@ in
 	  | conrep (A.SUSP (SOME (a, b))) = "J" $ [access a, access b]
     in
 	{ access = access, conrep = conrep }
+    end
+
+    fun pkind x = let
+	val op $ = PU.$ PK
+	fun pk T.PK_MONO = "A" $ []
+	  | pk (T.PK_SEQ ks) = "B" $ [list pkind ks]
+	  | pk (T.PK_FUN (ks, kr)) = "C" $ [list pkind ks, pkind kr]
+    in
+	share PKs pk x
     end
 
     (* lambda-type stuff; some of it is used in both picklers *)
@@ -1007,14 +1049,14 @@ in
 				   fctflag, elements,
 				   properties,
 				   stub, typsharing, strsharing } = s
-			     val b = ModulePropLists.sigBoundeps s
+			     val b = ModPropList.sigBoundeps s
 			     val b = NONE (* currently turned off *)
 			 in
 			     "C" $ ([stamp sta,
 				     option symbol name, bool closed,
 				     bool fctflag,
 				     list (pair (symbol, spec)) elements,
-				     option (list (pair (entPath, tkind))) b,
+				     option (list (pair (entPath, pkind))) b,
 				     list (list spath) typsharing,
 				     list (list spath) strsharing]
 				    @ libPid (stub, #owner))

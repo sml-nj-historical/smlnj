@@ -26,6 +26,7 @@ Group
 	signature CORE_PRIM_TYC_NUM
 	signature ENTITY_ENV
 	signature PRIMOPID
+	signature DEB_INDEX
 
 	structure ElabDataControl
 	structure Access
@@ -58,6 +59,7 @@ Group
 	structure CoreAccess
 	structure BrowseStatEnv
 	structure PrimOpId
+	structure DebIndex
 
 is
 	main/edcontrol.sig
@@ -79,6 +81,8 @@ is
 	basics/sympaths.sig
 	basics/sympaths.sml
 	basics/core-ptnum.sml
+	basics/debindex.sig
+	basics/debindex.sml
 
 	syntax/absyn.sig
 	syntax/absyn.sml

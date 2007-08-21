@@ -24,7 +24,7 @@ end (* signature ELABMOD *)
 
 
 (* functorized to factor out dependencies on FLINT... *)
-functor ElabModFn (structure SM : SIGMATCH) : ELABMOD =
+structure ElabMod : ELABMOD =
 struct
 
 local structure S  = Symbol
@@ -47,7 +47,7 @@ local structure S  = Symbol
       structure B  = Bindings
       structure LU = Lookup
       (* structure SM = SigMatch *)
-      structure INS = SM.EvalEntity.Instantiate
+      structure INS = Instantiate
       (* structure II = InlInfo *)
       structure SE = StaticEnv
       structure EM = ErrorMsg
@@ -609,13 +609,13 @@ fun extractSig (env, epContext, context,
 fun constrStr(transp, sign, str, strDec, strExp, evOp, tdepth, entEnv, rpath, 
               env, region, compInfo) : A.dec * M.Structure * M.strExp = 
   let val {resDec=resDec1, resStr=resStr1, resExp=resExp1} = 
-        SM.matchStr{sign=sign, str=str, strExp=strExp, evOp=evOp, 
+        SigMatch.matchStr{sign=sign, str=str, strExp=strExp, evOp=evOp, 
                     tdepth=tdepth, entEnv=entEnv, rpath=rpath, statenv=env, 
                     region=region, compInfo=compInfo}
 
    in if transp then (A.SEQdec[strDec, resDec1], resStr1, resExp1)
       else (let val {resDec=resDec2, resStr=resStr2, resExp=resExp2} = 
-                  SM.packStr{sign=sign, str=resStr1, strExp=resExp1, 
+                  SigMatch.packStr{sign=sign, str=resStr1, strExp=resExp1, 
                              tdepth=tdepth, entEnv=entEnv, rpath=rpath, 
                              statenv=env, region=region, compInfo=compInfo}
              in (A.SEQdec[strDec, resDec1, resDec2], resStr2, resExp2)
@@ -757,7 +757,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 			  of SOME ep => VARfct ep
 			   | NONE => CONSTfct fctEnt
 		    val {resDec, resStr, resExp} = 
-			SM.applyFct{fct=fct, fctExp=fctExp, argStr=argStr, 
+			SigMatch.applyFct{fct=fct, fctExp=fctExp, argStr=argStr, 
 				    argExp=argExp, evOp = SOME entv, tdepth=depth,
 				    epc=EPC.enterOpen(epContext,entsv),
 				    statenv=env, rpath=rpath, region=region,
@@ -953,7 +953,7 @@ case fctexp
 				     region=region, compInfo=compInfo}
 
 			      val {resDec, resFct, resExp} =
-				  SM.matchFct
+				  SigMatch.matchFct
 				    {sign=fsig, fct=fct, fctExp=uncoercedExp,
 				     tdepth=depth, entEnv=entEnv, 
 				     rpath=rpath, statenv=env, region=region, 

@@ -27,13 +27,6 @@ struct
       PropList.newProp (holder, init)
   end
 
-  val { getFn = sigBoundeps, setFn = setSigBoundeps, ... } = let
-      fun holder (e: Modules.sigrec) = #properties e
-      fun init _ = NONE: (EntPath.entPath * PLambdaType.tkind) list option
-  in
-      PropList.newProp (holder, init)
-  end
-
   val { getFn = dtfLtyc, setFn = setDtfLtyc, ... } = let
       fun holder (f: Types.dtypeFamily) = #properties f
       fun init _ = NONE: (PLambdaType.tyc * DebIndex.depth) option

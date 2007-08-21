@@ -87,18 +87,21 @@ fun freeTyc (i) =
       end
 end (* end of recTyc and freeTyc hack *)
 
-fun tpsKnd (TP_VAR x) = #kind (TVI.fromExn x)
+fun tpsKnd (TP_VAR{kind,...}) = 
+	let fun kindToTKind PK_MONO = LT.tkc_int 0
+	      | kindToTKind (PK_SEQ x) = LT.tkc_seq(map kindToTKind x)
+	      | kindToTKind (PK_FUN (paramks,bodyknd)) =
+		LT.tkc_fun(map kindToTKind paramks, kindToTKind bodyknd)
+	in kindToTKind kind
+	end
   | tpsKnd _ = bug "unexpected tycpath parameters in tpsKnd"
 
 fun genTT() = 
   let
 
 fun tpsTyc d tp = 
-  let fun h (TP_VAR x, cur) =
-	  let val { tdepth, num, ... } = TVI.fromExn x
-	  in
+  let fun h (TP_VAR {tdepth, num, ...}, cur) =
               LT.tcc_var(DI.calc(cur, tdepth), num)
-	  end
         | h (TP_TYC tc, cur) = tycTyc(tc, cur)
         | h (TP_SEL (tp, i), cur) = LT.tcc_proj(h(tp, cur), i)
         | h (TP_APP (tp, ps), cur) = 

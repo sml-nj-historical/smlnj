@@ -19,6 +19,11 @@ datatype eqprop = YES | NO | IND | OBJ | DATA | ABS | UNDEF
 
 datatype litKind = INT | WORD | REAL | CHAR | STRING 
 
+datatype pkind (* Functor parameter kinds *)
+  = PK_MONO                                    (* ground mono tycon *)
+  | PK_SEQ of pkind list                       (* sequence of tycons *)
+  | PK_FUN of pkind list * pkind               (* n-ary tycon function *)
+
 datatype openTvKind 	
   = META                          (* metavariables: 
                                      depth = infinity for meta-args
@@ -27,8 +32,7 @@ datatype openTvKind
 
 and tvKind		  
   = INSTANTIATED of ty (* instantiation of an OPEN *)
-  | OPEN of
-     {depth: int, eq: bool, kind: openTvKind}
+  | OPEN of {depth: int, eq: bool, kind: openTvKind}
   | UBOUND of (* explicit type variables *)
      {depth: int, eq: bool, name: S.symbol}
   | LITERAL of (* type of a literal *)
@@ -43,7 +47,8 @@ and tvKind
       * bound at a given binding site. *)
 
 and tycpath (* FLINT!!! *)
-  = TP_VAR of exn   (* exn carries some hidden FLINT data *)
+  = TP_VAR of { tdepth: DebIndex.depth,
+		num: int, kind: pkind }   (* exn carries some hidden FLINT data *)
   | TP_TYC of tycon
   | TP_FCT of tycpath list * tycpath list
   | TP_APP of tycpath * tycpath list

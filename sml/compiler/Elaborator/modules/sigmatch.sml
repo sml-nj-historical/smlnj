@@ -4,8 +4,6 @@
 signature SIGMATCH =
 sig
 
-  structure EvalEntity : EVALENTITY
-
   (*** these four functions are only called inside elabmod.sml ***)
   val matchStr : 
        {sign     : Modules.Signature, 
@@ -70,7 +68,7 @@ end (* signature SIGMATCH *)
 
 
 (* functorized to factor out dependencies on FLINT... *)
-functor SigMatchFn (structure EV : EVALENTITY) : SIGMATCH =
+structure SigMatch : SIGMATCH =
 struct
 
 local structure A  = Absyn
@@ -82,7 +80,7 @@ local structure A  = Absyn
       structure EP = EntPath
       structure EPC = EntPathContext
       structure EU = ElabUtil
-      structure INS = EV.Instantiate
+      structure INS = Instantiate
       structure IP = InvPath
       structure M  = Modules
       structure MU = ModuleUtil
@@ -99,8 +97,6 @@ local structure A  = Absyn
       open Types Modules VarCon ElabDebug
 
 in
-
-structure EvalEntity = EV
 
 exception BadBinding
 
@@ -1619,7 +1615,7 @@ and applyFct{fct as FCT {sign=FSIG{paramsig, bodysig, ...},
       (*** step #2: do the functor application ***)
       val argRlzn = case argStr1 of M.STR { rlzn, ... } => rlzn
                                   | _ => M.bogusStrEntity 
-      val bodyRlzn = EV.evalApp(fctRlzn, argRlzn, tdepth, epc, rpath, compInfo)
+      val bodyRlzn = EvalEntity.evalApp(fctRlzn, argRlzn, tdepth, epc, rpath, compInfo)
 
       val resStr = 
         let val bodyDacc = DA.namedAcc(anonSym,mkv)

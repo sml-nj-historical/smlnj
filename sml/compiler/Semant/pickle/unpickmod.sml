@@ -199,6 +199,8 @@ structure UnpickMod : UNPICKMOD = struct
 	val poM = UU.mkMap ()
 	val boolListM = UU.mkMap ()
 	val boolOptionM = UU.mkMap ()
+	val pkindM = UU.mkMap ()
+	val pkindListM = UU.mkMap()
 	val tkindM = UU.mkMap ()
 	val tkindListM = UU.mkMap ()
 	val ctypeM = UU.mkMap ()
@@ -248,6 +250,17 @@ structure UnpickMod : UNPICKMOD = struct
 	    share csM cs
 	end
 
+	fun pkind () = let
+	    fun pk #"A" = T.PK_MONO
+	      | pk #"B" = T.PK_SEQ (pkindlist ())
+	      | pk #"C" = T.PK_FUN (pkindlist (), pkind ())
+	      | pk _ = raise Format
+	in
+	    share pkindM pk
+	end
+	
+	and pkindlist () = list pkindListM pkind ()
+	
 	fun tkind () = let
 	    fun tk #"A" = LT.tkc_mono
 	      | tk #"B" = LT.tkc_box
@@ -368,6 +381,7 @@ structure UnpickMod : UNPICKMOD = struct
 	{ pid = pid, string = string, symbol = symbol,
 	  access = access, conrep = conrep, consig = consig,
 	  primop = primop, boollist = boollist, intoption = intoption,
+	  pkind = pkind, pkindlist = pkindlist, 
 	  tkind = tkind, tkindlist = tkindlist }
     end
 
@@ -470,7 +484,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val lmsPairM = UU.mkMap ()
 
 	val { pid, string, symbol, access, conrep, consig, intoption,
-	      primop, boollist, tkind, tkindlist } = sharedStuff
+	      primop, boollist, pkind, pkindlist, tkind, tkindlist } = sharedStuff
 
 	fun libModSpec () = option lmsOptM (pair lmsPairM (int, symbol)) ()
 
@@ -793,7 +807,7 @@ structure UnpickMod : UNPICKMOD = struct
 				  (pair symSpecPM (symbol, spec')) ()))
 		    val beps = option bepsOM
 				      (list bepsLM
-					    (pair epTkPM (entPath, tkind))) ()
+					    (pair epTkPM (entPath, pkind))) ()
 		    val ts = spathlistlist ()
 		    val ss = spathlistlist ()
 		    val r = { stamp = s,
@@ -811,7 +825,7 @@ structure UnpickMod : UNPICKMOD = struct
 					    tree = branch eltrl,
 					    lib = lib } }
 		in
-		    ModulePropLists.setSigBoundeps (r, beps);
+		    ModPropList.setSigBoundeps (r, beps);
 		    (M.SIG r, M.SIGNODE r)
 		end
 	      | sg _ = raise Format
@@ -1275,7 +1289,8 @@ structure UnpickMod : UNPICKMOD = struct
 	val bool = UU.r_bool session
 
 	val { pid, string, symbol, access, conrep, consig,
-	      primop, boollist, tkind, tkindlist, intoption } = sharedStuff
+	      primop, boollist, pkind, pkindlist, 
+	      tkind, tkindlist, intoption } = sharedStuff
 
 	val ltyM = UU.mkMap ()
 	val ltyListM = UU.mkMap ()

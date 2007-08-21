@@ -11,7 +11,6 @@ Group
 	signature PRIM_TYC_NUM
 	signature DEB_INDEX
 	signature BASICTYPES
-	signature INSTANTIATE_PARAM
 	signature INSTANTIATE
 	signature EVALENTITY
 	signature ELABTOP
@@ -19,14 +18,14 @@ Group
 	signature TYPECHECK
 	signature SIGMATCH
 
-	functor InstantiateFn
-	functor EvalEntityFn
-	functor SigMatchFn
-	functor ElabModFn
-	functor ElabTopFn
+	structure Instantiate
+	structure EvalEntity
+	structure SigMatch
+	structure ElabMod
+	structure ElabTop
 
+	structure ModPropList
 	structure PrimTycNum
-	structure DebIndex
 	structure BasicTypes
 	structure ElabUtil
 	structure SpecialSymbols
@@ -54,8 +53,6 @@ is
 
 	basics/elabcontrol.sig
 	basics/elabcontrol.sml
-	basics/debindex.sig
-	basics/debindex.sml
 	basics/conrep.sml
 	basics/ptnum.sml
 
@@ -67,6 +64,7 @@ is
 	types/overloadlit.sml
 	types/typecheck.sml
 
+	modules/plist.sml
 	modules/expandtycon.sml
 	modules/sigmatch.sml 
 	modules/instantiate.sml

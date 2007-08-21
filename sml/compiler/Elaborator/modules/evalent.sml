@@ -4,8 +4,6 @@
 signature EVALENTITY =
 sig 
 
-  structure Instantiate : INSTANTIATE
-
   val evalApp : Modules.fctEntity * Modules.strEntity 
                 * DebIndex.depth * EntPathContext.context
                 * InvPath.path * ElabUtil.compInfo
@@ -16,7 +14,7 @@ sig
 end (* signature EVALENTITY *)
 
 (* functorized to factor out dependencies on FLINT... *)
-functor EvalEntityFn (structure I : INSTANTIATE): EVALENTITY =
+structure EvalEntity : EVALENTITY =
 struct
 
 local (* structure DI = DebIndex *)
@@ -29,6 +27,7 @@ local (* structure DI = DebIndex *)
       structure EU = ElabUtil
       structure MI = ModuleId
       structure MU = ModuleUtil
+      structure I = Instantiate
       open Modules 
 in 
 
@@ -153,7 +152,7 @@ and evalStr(strExp, depth, epc, entsv, entEnv, rpath,
 	    let val (srcRlzn, entEnv1) = 
                   evalStr(strExp, depth, epc, entsv, entEnv, rpath, compInfo)
                 val {rlzn=rlzn, abstycs=abstycs, tyceps=tyceps} = 
-                  I.instAbstr{sign=sign, entEnv=entEnv, srcRlzn=srcRlzn,
+                  Instantiate.instAbstr{sign=sign, entEnv=entEnv, srcRlzn=srcRlzn,
                               rpath=rpath, 
                               region=S.nullRegion, compInfo=compInfo}
 
@@ -211,7 +210,7 @@ and evalFct (fctExp, depth, epc, entEnv,
                 val tps = 
                   let val rpath' = IP.IPATH [paramSym]
                       val {rlzn=paramEnt, tycpaths=paramTps} =
-                        I.instParam{sign=paramsig, entEnv=entEnv, 
+                        Instantiate.instParam{sign=paramsig, entEnv=entEnv, 
                                     rpath=rpath', tdepth=depth,
                                     region=S.nullRegion, compInfo=compInfo}
                       val entEnv' = 
@@ -221,7 +220,7 @@ and evalFct (fctExp, depth, epc, entEnv,
                         evalStr(body, DebIndex.next depth, epc, NONE,
                                 entEnv', IP.empty, compInfo)
                       val bodyTps = 
-                        I.getTycPaths{sign=bodysig, rlzn=bodyRlzn, 
+                        Instantiate.getTycPaths{sign=bodysig, rlzn=bodyRlzn, 
                                       entEnv=entEnv', compInfo=compInfo}
                    in T.TP_FCT(paramTps, bodyTps)
                   end
@@ -252,7 +251,7 @@ and evalApp(fctRlzn : Modules.fctEntity, argRlzn, depth, epc, rpath,
           val  _ = debugmsg ("[Inside EvalAPP] ......")
        in case (body, tycpath)
            of (FORMstr(FSIG{paramsig, bodysig, ...}), SOME tp) => 
-               let val argTps = I.getTycPaths{sign=paramsig, rlzn=argRlzn,
+               let val argTps = Instantiate.getTycPaths{sign=paramsig, rlzn=argRlzn,
                                               entEnv=env, compInfo=compInfo}
                    val resTp = T.TP_APP(tp, argTps)
 
@@ -261,7 +260,7 @@ and evalApp(fctRlzn : Modules.fctEntity, argRlzn, depth, epc, rpath,
                        future.  ZHONG **)
 
                    val {rlzn=rlzn, abstycs=abstycs, tyceps=tyceps} = 
-                     I.instFmBody {sign=bodysig, entEnv=nenv, tycpath=resTp,
+                     Instantiate.instFmBody {sign=bodysig, entEnv=nenv, tycpath=resTp,
                                    rpath=rpath, region=S.nullRegion,
                                    compInfo=compInfo}
 

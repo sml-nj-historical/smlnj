@@ -12,7 +12,7 @@ end (* signature ELABTOP *)
 
 
 (* functorized to factor out dependencies on FLINT... *)
-functor ElabTopFn (structure ElabMod : ELABMOD) : ELABTOP =
+structure ElabTop : ELABTOP =
 struct
 
 local structure PP = PrettyPrintNew

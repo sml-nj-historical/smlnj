@@ -119,7 +119,7 @@ val primTypes =
 	   (* boundeps=ref (SOME []), *)
 	   (* lambdaty=ref(NONE), *)
 	   stub = NONE}
-      val _ = ModulePropLists.setSigBoundeps (sigrec, SOME [])
+      val _ = ModPropList.setSigBoundeps (sigrec, SOME [])
       val strrec =
 	  {sign=M.SIG sigrec,
 	   rlzn={stamp=ST.special "PrimTypesStr",
@@ -496,7 +496,7 @@ val uList =
 		       (* boundeps=ref (SOME []), *)
 		       (* lambdaty=ref NONE, *)
 		       stub = NONE}
-      val _ = ModulePropLists.setSigBoundeps (sigrec, SOME [])
+      val _ = ModPropList.setSigBoundeps (sigrec, SOME [])
    in M.STR{sign=M.SIG sigrec,
             rlzn={stamp=ST.special "uListStr",
 		  stub=NONE,
@@ -539,7 +539,7 @@ val inLine =
 		   properties = PropList.newHolder (),  (* dbm: ??? *)
 		   stub = NONE}
 
-      val _ = ModulePropLists.setSigBoundeps (sigrec, SOME [])
+      val _ = ModPropList.setSigBoundeps (sigrec, SOME [])
 
    in M.STR{sign = M.SIG sigrec,
             rlzn = {stamp=ST.special "inLineStr",
