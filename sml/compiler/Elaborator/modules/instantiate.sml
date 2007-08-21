@@ -517,8 +517,8 @@ fun mkElemSlots(SIG {elements,...},slotEnv,rpath,epath,sigDepth) =
  * NOTE: does not check that each element in the first list has
  * an associated constraint in the second list.
  * 
- * ASSERT: both arguments of propDefs are sorted in assending order by the
- * symbol component (the arguments are supplied by mkElementSlots and
+ * ASSERT: both arguments of propDefs are sorted in ascending order by the
+ * symbol component (the arguments are produced by mkElementSlots and
  * getElemDefs, respectively).
  *
  * ASSERT: all constraints in the second argument are SDEFINE or TDEFINE,
@@ -679,9 +679,9 @@ val distributeT = wrap "distributeT" distributeT
 exception ExploreInst of IP.path
 
 
-(* THIS COMMENT OBSOLETE *)
+(* THIS COMMENT PARTLY OBSOLETE? *)
 (***************************************************************************
- * buildStrClass : slot * int * entityEnv * (unit -> stamp) * EM.complainer
+ * buildStrClass : slot * int * (unit -> stamp) * EM.complainer
  *                  -> unit                          
  *
  * The slot argument is assumed to contain an InitialStr.
@@ -697,7 +697,7 @@ exception ExploreInst of IP.path
  * 
  * 4. This node's inherited constraints are processed, using constrain.
  *    If a constraint equates an element to this node,
- *    the equivalence class is enlarged (using addInst) or 
+ *    the equivalence class is enlarged (using addIns)t or 
  *    a definition is set (classDef).  If a constraint applies to children
  *    of this node, it is propogated to the children.  Processing a 
  *    sharing constraint may require that an ancestor of the other node
@@ -712,7 +712,7 @@ exception ExploreInst of IP.path
  *    will contain the same FinalStr value.
  * 
  * If two slots in the class have nodes that share the same signature,
- * then the slots are made to point to only one of the nodes.  Of course,
+ * then the slots are made to point to the same PartialStr node. Of course,
  * the sharing constraints for both must be propogated to the descendants.  
  * 
  ***************************************************************************)
@@ -990,7 +990,8 @@ exception INCONSISTENT_EQ
 
 (*************************************************************************
  * buildTycClass: int * slot * entityEnv * instKind * rpath * (unit->stamp)
- *                EM.complainer -> unit
+ *                * EM.complainer
+ *                -> (tycon * (entPath * tkind) list) option
  *
  * This function deals with exploration of type nodes in the instance
  * graph.  It is similar to the buildStrClass function above, but it is
@@ -1005,9 +1006,13 @@ exception INCONSISTENT_EQ
  * types are completely equivalent; otherwise, the behavior of the elaboration
  * would be rather odd sometimes. (ZHONG)
  *
+ * buildTycClass is only called once, in the InitialTyc case of expandInst
+ *  in expand in sigToInst
  *************************************************************************)
 
-(* ASSERT: this_slot is an InitialTycon *)
+(* ASSERT: this_slot is an InitialTyc
+ * This is clearly true given that buildTycClass is only called in
+ * a case branch (in expandInst) where the pattern is InitialTyc *)
 fun buildTycClass (cnt, this_slot, instKind, rpath, mkStamp, err) =
   let val class = ref ([] : slot list)
       val classDef = ref (NONE : (tycInst * int) option)
@@ -1276,14 +1281,17 @@ fun sigToInst (ERRORsig, instKind, rpath, err, compInfo) =
       (ErrorStr,[],[],0)
   | sigToInst (sign, instKind, rpath, err,
 	       compInfo as {mkStamp,...}: EU.compInfo) = 
-  let val flextycs : T.tycon list ref = ref []
+  let val flextycs : T.tycon list ref = ref [] (* the "abstract" tycons *)
       val flexeps : (EP.entPath * Param.tkind) list ref = ref []
+          (* the tkind environment *)
       val cnt = ref 0
 
+      (* addbt: collects tycons and entity path -> tkind bindings
+         produced by calls of buildTycClass below *)
       fun addbt NONE = ()
-        | addbt (SOME (tc,ep)) = 
-            (flextycs := (tc::(!flextycs));
-             flexeps := (ep::(!flexeps));
+        | addbt (SOME (tyc,ep_tk)) = 
+            (flextycs := (tyc::(!flextycs));
+             flexeps := (ep_tk::(!flexeps));
              cnt := ((!cnt) + 1))
 
       fun expand ErrorStr = ()
@@ -1564,7 +1572,6 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 					 rpath=path,
 					 closure=cl,
 					 properties = PropList.newHolder (),
-					 (* lambdaty=ref NONE,*)
 					 tycpath=tpOp,
 					 stub=NONE}
 			      end
@@ -1726,6 +1733,21 @@ and getTkFct{sign as M.FSIG{paramvar, paramsig, bodysig, ...}, entEnv,
   | getTkFct _ = Param.tkc_fun([], Param.tkc_seq [])
 
 (*** the generic instantiation function ***)
+(* instGeneric :
+   sign : Signature     -- the signature to instantiate
+   entEnv : entityEnv   -- contextual entityEnv (for open signatures?)
+   instKind : instKind  -- kind of instantiation (parameter, formal body, abstr)
+   rpath : InvPath.path -- context symbolic path (?)
+   region: SourceMap.region -- soure region for error messages
+   compInfo : compInfo  -- for mkStamp and error
+->
+   strEnt : structure entity
+   abs_tycs : tycon list  -- flex tycs introduced by instantiation
+   fct_tps : tycpath list -- tycpaths of ?  (collected in instToStr)
+   all_eps : (entpath * tkind) list -- collected in sigToInst + instToStr
+   tyceps :  (entpath * tkind) list -- the initial segment of all_eps
+     collected in sigToInst
+*)
 and instGeneric{sign, entEnv, instKind, rpath, region, 
                 compInfo as {mkStamp,error,...} : EU.compInfo} =
   let val _ = debugmsg (">>instantiate: "^signName sign)

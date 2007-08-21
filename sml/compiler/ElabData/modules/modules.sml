@@ -172,7 +172,7 @@ and sigrec =
      closed     : bool,
      fctflag    : bool,
      elements   : elements,
-     properties : PropList.holder, (* boundeps, lambdaty *)
+     properties : PropList.holder, (* FLINE: (entpath * tkind) list option *)
      typsharing : sharespec list,
      strsharing : sharespec list,
      stub       : stubinfo option}
