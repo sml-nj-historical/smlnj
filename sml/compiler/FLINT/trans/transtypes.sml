@@ -258,7 +258,7 @@ and toTyc d t =
         | h (LBOUND{depth,index}) =
              LT.tcc_var(DI.calc(d, depth), index)
         | h (UBOUND _) = LT.tcc_void
-            (* dbm: should this have been converted to a TV_MARK before
+            (* dbm: should this have been converted to an LBOUND before
              * being passed to toTyc? 
 	     * gk: Doesn't seem to experimentally *)
         | h (OPEN _) = LT.tcc_void

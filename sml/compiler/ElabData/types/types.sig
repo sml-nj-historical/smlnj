@@ -22,26 +22,36 @@ datatype openTvKind
   = META
   | FLEX of (label * ty) list
 
+(* tvKind: the contents of the ref cell representing a type variable
+ * introduced by type checking. *)
 and tvKind
   = INSTANTIATED of ty
+    (* a substitution has been applied to the type variable, replacing
+     * it with ty *)
   | OPEN of {depth: int, eq: bool, kind: openTvKind}
+    (* a unification variable awaiting elimination by (1) substitution, when
+     * it will become INSTANTIATED, or by (2) generalization, when the type
+     * variable itself will be replaced by an IBOUND type, or (3) in the
+     * case of a top-level value restriction preventing generalization,
+     * by instantiation to a fresh atomic type *)
   | UBOUND of {depth: int, eq: bool, name: Symbol.symbol}
+    (* a type variable corresponding to an explicit type variable in the
+     * code, which can only be generalized, never instantiated *)
   | LITERAL of {kind: litKind, region: SourceMap.region}
+    (* representing the unresolved type of a literal expression (constant) *)
   | SCHEME of bool
-  (* for marking a type variable so that it can be easily identified
-   * (A type variable's ref cell provides an identity already, but
-   * since ref cells are unordered, this is not enough for efficient
-   * data structure lookups (binary trees...).  TV_MARK is really
-   * a hack for the benefit of later translation phases (FLINT),
-   * but unlike the old "LBOUND" thing, it does not need to know about
-   * specific types used by those phases. In any case, we should figure
-   * out how to get rid of it altogether.) *)
+    (* representing a type variable in the type scheme of an overloaded
+     * operator. Must be eliminated by overloading resolution, cannot be
+     * generalized *)
   | LBOUND of {depth: int, index: int}
-     (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
-      * associated with polymorphic bindings (including val bindings and
-      * functor parameter bindings). The depth is depth of type lambda bindings,
-      * (1-based), and the index is the index within a sequence of type variables
-      * bound at a given binding site. *)
+    (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
+     * associated with polymorphic bindings (including val bindings and
+     * functor parameter bindings). The depth is depth of type lambda bindings,
+     * (1-based), and the index is the index within a sequence of type variables
+     * bound at a given binding site. Replaces older TV_MARK constructor.
+     * LBOUND are assigned to residual type variables in types embedded in
+     * the abstract syntax of a definiens, after they have been generalized
+     * away in the type computed by the type checker for the defined variable. *)
 
 and tycpath
   = TP_VAR of { tdepth: DebIndex.depth,
