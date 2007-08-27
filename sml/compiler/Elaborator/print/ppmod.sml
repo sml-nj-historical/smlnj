@@ -776,7 +776,7 @@ and ppEntity ppstrm (entity,env,depth) =
 and ppEntityEnv ppstrm (entEnv,env,depth) =
     if depth <= 1 
     then pps ppstrm "<entityEnv>"
-    else (ppvseq ppstrm 2 ""
+    else (ppvseq ppstrm 0 ""
 	      (fn ppstrm => fn (entVar,entity) =>
 		let val {openHVBox,openHOVBox,closeBox,pps,ppi,break,newline} =
 			 en_pp ppstrm
