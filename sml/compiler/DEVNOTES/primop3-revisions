@@ -616,3 +616,52 @@ Sending        compiler/FLINT/opt/fcontract.sml
 Sending        system/Basis/Implementation/timer.sml
 Transmitting file data ....
 Committed revision 2650.
+
+======================================================================
+10. merge from trunk working copy to primop3 (2650:2741)
+Exmoor:~/wc/smlnj/primop3/base gkuan$ date
+Sat Aug 25 20:52:21 CDT 2007
+Exmoor:~/wc/smlnj/primop3/base gkuan$ svn up
+At revision 2741.
+Exmoor:~/wc/smlnj/primop3/base gkuan$ svn merge -r 2650:HEAD  svn://smlnj-gforge.cs.uchicago.edu/smlnj/sml/trunk
+U    cm/tools/main/tools-fn.sml
+ U   runtime/memory
+ U   runtime/gc
+ U   runtime/c-libs/smlnj-time
+ U   runtime/c-libs/smlnj-prof
+ U   runtime/c-libs/smlnj-sockets
+U    runtime/c-libs/smlnj-date/asctime.c
+U    runtime/c-libs/smlnj-date/mktime.c
+U    runtime/c-libs/smlnj-date/strftime.c
+ U   runtime/c-libs/smlnj-date
+ U   runtime/c-libs/dl
+ U   runtime/c-libs/smlnj-runtime
+ U   runtime/c-libs/win32-filesys
+ U   runtime/c-libs/smlnj-signals
+ U   runtime/c-libs/win32
+ U   runtime/c-libs/win32-io
+ U   runtime/c-libs/smlnj-math
+ U   runtime/c-libs/win32-process
+ U   runtime/objs
+U    system/ADD-PRIMOPS
+U    system/smlnj/installer/generic-install.sml
+U    system/smlnj/init/built-in.sml
+U    system/Basis/Implementation/real64.sml
+U    system/Basis/Implementation/IO/text-io-fn.sml
+U    system/Basis/Implementation/IO/bin-io-fn.sml
+U    NOTES/HISTORY
+U    compiler/DEVNOTES/Primops/primop-list
+U    compiler/Semant/statenv/primoptypemap.sml
+U    compiler/Semant/statenv/prim.sml
+U    compiler/Semant/pickle/pickmod.sml
+U    compiler/Semant/pickle/unpickmod.sml
+U    compiler/MiscUtil/bignums/realconst.sml
+U    compiler/CodeGen/ppc/ppcspec.sml
+U    compiler/CodeGen/main/mlriscGen.sml
+U    compiler/FLINT/kernel/primop.sig
+U    compiler/FLINT/kernel/primop.sml
+U    compiler/FLINT/cps/ppcps.sml
+U    compiler/FLINT/cps/cps.sml
+U    compiler/FLINT/cps/cps.sig
+U    compiler/FLINT/cps/convert.sml
+U    compiler/FLINT/trans/primopmap.sml

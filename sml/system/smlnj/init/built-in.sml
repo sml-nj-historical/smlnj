@@ -92,6 +92,8 @@ it appears that the "local open PrimTypes in ..." is not necessary. *)
 
 	val from_int31 : int -> real      = InLine.real
 	val from_int32 : int32 -> real    = InLine.real32
+	
+	val signBit : real -> bool = InLine.f64sgn 
       end
 
     structure IntInf =

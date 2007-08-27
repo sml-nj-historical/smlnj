@@ -913,6 +913,7 @@ struct
                          | P.fULE => M.?<= 
                          | P.fLG => M.<>  
                          | P.fUE  => M.?= 
+			 | P.fsgn => error "unary fsgn used as binary operator"
           in M.FCMP(64, fcond, fregbind v, fregbind w) end
     
           fun branchToLabel(lab) = M.JMP(M.LABEL lab,[])
@@ -2092,6 +2093,28 @@ struct
     
             | gen(BRANCH(P.cmp{oper, kind=P.INT 32}, vw, p, e, d), hp) = 
                 branch(p, signedCmp oper, vw, e, d, hp)
+	    | gen(BRANCH(P.fcmp{oper=P.fsgn,size=64}, [v], p, d, e), hp) =
+	      let val trueLab = newLabel ()
+		  val r = fregbind v
+		  val r' = newReg I32
+		  val rReg = M.REG(ity, r')
+	      in (emit(M.MV(ity, r', M.ADD(addrTy, C.allocptr, LI hp)));
+	      	  emit(M.FSTORE(fty,rReg,r,R.memory));
+		  (if MachineSpec.bigEndian
+		 		  then (* Big-endian/PPC code *)
+			(emit(M.BCC(M.CMP(ity, M.GTU, 
+					 M.SRL(ity, M.LOAD(ity, rReg, R.memory),
+			  		       LW 0w31), zero), trueLab)))
+		  else (* x86 signbit code *)
+			(emit(M.BCC(M.CMP(ity, M.GT,
+		 			 M.SRL(ity, M.LOAD(ity,
+		 					   M.ADD(pty,rReg, 
+		 						 LI((fty -pty) div 8)), 
+		 			                   R.memory),
+		 			       LW 0w31), zero), trueLab))));
+		  genCont(e, hp);
+		  genlab(trueLab, d, hp))
+	      end
             | gen(BRANCH(P.fcmp{oper,size=64}, [v,w], p, d, e), hp) =
               let val trueLab = newLabel ()
                   val cmp     = real64Cmp(oper, v, w)

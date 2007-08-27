@@ -378,6 +378,7 @@ val primops =
        ("f64lt",	 (float64cmp (P.<))) :-:
        ("f64eq",	 (float64cmp P.EQL)) :-:
        ("f64ne",	 (float64cmp P.NEQ)) :-:
+       ("f64sgn",	 (float64cmp P.FSGN)) :-:
        ("f64abs",	 (purefloat64 P.ABS)) :-:
 
        ("f64sin",	 (purefloat64 P.FSIN)) :-:

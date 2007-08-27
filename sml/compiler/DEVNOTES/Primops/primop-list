@@ -656,7 +656,7 @@ listed here.
 
 184  f64neg,	 purefloat64 P.~,      	 real -> real
 	InlineT.Real64.~ :		 real -> real
-
+	
 185  f64ge,	 float64cmp (P.>=),      real * real -> bool
 	InlineT.Real64.>= :		 real * real -> bool
 
@@ -675,9 +675,12 @@ listed here.
 190  f64ne,	 float64cmp P.NEQ,       real * real -> bool
 	InlineT.Real64.!= :		 real * real -> bool
 
+	f64sgn,		 purefloat64 P.FSGN,	 real -> bool
+	InlineT.Real64.sgn :	 real -> bool
+
 191  f64abs,	 purefloat64 P.ABS,      real -> real
 	InlineT.Real64.abs :		 real -> real
-
+	
 192  f64sin,	 purefloat64 P.FSIN,	 real -> real
 	MathInlineT.sine :		 real -> real  [x86 only]
 

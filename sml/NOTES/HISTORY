@@ -14,6 +14,72 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: George Kuan (http://www.cs.uchicago.edu/~gkuan)
+Date: 2007/07/27
+Description:
+
+Added f64sgn (for Real64.signBit) as a primop defined
+in MLRiscGen. signBit(~0.0) not handled correctly.  
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/06/21
+Description:
+
+Fixed bug in {TextIO,BinIO}.StreamIO.endOfStream that would incorrectly
+signal end of stream.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/06/12 11:22:00 CDT
+Description:
+
+Eliminated config/allsources.  The information is now drawn directly
+from config/actions.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/06/07 23:30:00 CDT
+Tag: release-110.65
+Description:
+
+Version 110.65. NEW BOOTFILES!
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/06/06 21:45:00 CDT
+Description:
+
+- Aaron: fixed a number of bugs in ml-ulex.
+- Matthias:
+   - added CM control "cm.force-tools"; this is false by default;
+     when set to true, then tools like ml-yacc, ml-lex, ml-ulex, etc.
+     will be forced to run regardless of whether or not their targets
+     are up-to-date
+   - changed installer code so that config/install.sh will re-build
+     heap images for all tools even if those heap images already existed
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/06/04 21:21:00 CDT
+Description:
+
+After Aaron Turon's bug fix for ml-ulex (handling the ^ character
+in legacy mode), re-ran the lexer generator on all lex input files
+and committed the results.
+
+This should fix the problem with ckit and nlffi that was reported
+by Vesa A. Norrman.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/05/31 11:40:00 CDT
+Tag: release-110.64
+Description:
+
+Version 110.64. NEW BOOTFILES!
+
+----------------------------------------------------------------------
 Name: Dave MacQueen (dbm@cs.uchicago.edu)
 Date: 2007/05/31 14:55:00 CDT
 Revision: 2650

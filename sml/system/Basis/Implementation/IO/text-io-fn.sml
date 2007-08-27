@@ -293,7 +293,6 @@ functor TextIOFn (
 	      (* end case *))
 	fun endOfStream (ISTRM(buf, pos)) = (case buf
 	       of (IBUF{more=ref(MORE _), ...}) => false
-		| (IBUF{more=ref(EOS _), ...}) => true
 		| (IBUF{more, data, info=INFO{closed, ...}, ...}) =>
 		    if (pos = V.length data)
 		      then (case (!more, !closed)

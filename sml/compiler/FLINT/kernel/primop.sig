@@ -134,7 +134,8 @@ datatype arithop
   | ANDB | ORB | XORB | NOTB			(* int only *)
   | REM | DIV | MOD			        (* int only *)
 
-datatype cmpop = > | >= | < | <= | LEU | LTU | GEU | GTU | EQL | NEQ
+datatype cmpop = > | >= | < | <= | LEU | LTU | GEU | GTU | EQL | NEQ 
+				| FSGN (* floating point only *)
 
 (* 
  * Various primitive operations.  Those that are designated "inline" are
