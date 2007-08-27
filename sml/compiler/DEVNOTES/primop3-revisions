@@ -665,3 +665,50 @@ U    compiler/FLINT/cps/cps.sml
 U    compiler/FLINT/cps/cps.sig
 U    compiler/FLINT/cps/convert.sml
 U    compiler/FLINT/trans/primopmap.sml
+
+Exmoor:~/wc/smlnj/primop3/base gkuan$ svn ci -m "merge from trunk into primop-
+anch-3 (2650:2741)"
+Sending        NOTES/HISTORY
+Sending        cm/tools/main/tools-fn.sml
+Sending        compiler/CodeGen/main/mlriscGen.sml
+Sending        compiler/CodeGen/ppc/ppcspec.sml
+Sending        compiler/DEVNOTES/Primops/primop-list
+Sending        compiler/DEVNOTES/primop3-revisions
+Sending        compiler/FLINT/cps/convert.sml
+Sending        compiler/FLINT/cps/cps.sig
+Sending        compiler/FLINT/cps/cps.sml
+Sending        compiler/FLINT/cps/ppcps.sml
+Sending        compiler/FLINT/kernel/primop.sig
+Sending        compiler/FLINT/kernel/primop.sml
+Sending        compiler/FLINT/trans/primopmap.sml
+Sending        compiler/MiscUtil/bignums/realconst.sml
+Sending        compiler/Semant/pickle/pickmod.sml
+Sending        compiler/Semant/pickle/unpickmod.sml
+Sending        compiler/Semant/statenv/prim.sml
+Sending        compiler/Semant/statenv/primoptypemap.sml
+Sending        runtime/c-libs/dl
+Sending        runtime/c-libs/smlnj-date
+Sending        runtime/c-libs/smlnj-date/asctime.c
+Sending        runtime/c-libs/smlnj-date/mktime.c
+Sending        runtime/c-libs/smlnj-date/strftime.c
+Sending        runtime/c-libs/smlnj-math
+Sending        runtime/c-libs/smlnj-prof
+Sending        runtime/c-libs/smlnj-runtime
+Sending        runtime/c-libs/smlnj-signals
+Sending        runtime/c-libs/smlnj-sockets
+Sending        runtime/c-libs/smlnj-time
+Sending        runtime/c-libs/win32
+Sending        runtime/c-libs/win32-filesys
+Sending        runtime/c-libs/win32-io
+Sending        runtime/c-libs/win32-process
+Sending        runtime/gc
+Sending        runtime/memory
+Sending        runtime/objs
+Sending        system/ADD-PRIMOPS
+Sending        system/Basis/Implementation/IO/bin-io-fn.sml
+Sending        system/Basis/Implementation/IO/text-io-fn.sml
+Sending        system/Basis/Implementation/real64.sml
+Sending        system/smlnj/init/built-in.sml
+Sending        system/smlnj/installer/generic-install.sml
+Transmitting file data ...........................
+Committed revision 2742.
