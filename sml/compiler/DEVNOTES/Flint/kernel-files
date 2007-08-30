@@ -29,17 +29,22 @@ ltystructure.sig/sml (was ltydef)
   tkind, tyc, lty without pattern matching.
   Sets of constructors, destructors, and predicates.
   Some operations specialized for CPS or Plambda only.
+  defines: LtyStructure: LTYSTRUCTURE
   uses: lty.sml
+
+ltydict.sml
 
 ltyutil.sig/sml (was ltybasic)
   generic utility functions for working with plambda/flint types
+  defines: LtyUtil: LTYUTIL
   uses: PrimTyc (primtyc.sml)
 	Lty (lty.sml)
 	LtyNorm (ltynorm.sml)
 
-ltydict.sml
-
+ltymisc.sig/sml (was part of ltyextern)
+  more specialized utility functions on types
 
 ltyextern.sig/sml
-
-
+  combined interface consisting of the union of
+  LtyStructure, LtyUtil, and LtyMisc, with a few added definitions
+  from Lty and LtyNorm
