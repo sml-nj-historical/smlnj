@@ -434,7 +434,7 @@ fun ppTyc tyc =
 			 debugLexp lexp;
 			 debugmsg "lty:"; debugLty lty *)
 		        f lexps (v::vals, lty::ltys))))
-	    (* handle LtyKernel.tcUnbound (tenv,tyc) => 
+	    (* handle LtyNorm.tcUnbound (tenv,tyc) => 
 		   (with_pp(fn s =>
                       (PU.pps s "*** lexps2values ***; PP.newline s;
                        lexp: \n"; 
@@ -443,7 +443,7 @@ fun ppTyc tyc =
 		       ppTyc 20 s tyc; PP.newline s;
 		       PU.pps s "tenv:"; PP.newline s;
 		       ppTycEnv 20 s tenv;
-                       raise LtyKernel.tcUnbound (tenv,tyc)))) *)
+                       raise LtyNorm.tcUnbound (tenv,tyc)))) *)
 	val v = f lexps ([], [])
 	val _ = debugmsg "<<lexp2values"
     in

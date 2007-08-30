@@ -29,7 +29,6 @@ local
     structure M = IntRedBlackMap
     structure PP = PPFlint
     structure LT = LtyExtern
-    structure LK = LtyKernel
     structure OU = OptUtils
     structure CTRL = FLINT_Control
 in

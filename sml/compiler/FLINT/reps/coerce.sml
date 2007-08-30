@@ -8,10 +8,10 @@ signature COERCE = sig
   val wpNew    : wpEnv * DebIndex.depth -> wpEnv
   val wpBuild  : wpEnv * FLINT.lexp -> FLINT.lexp
 
-  val unwrapOp : wpEnv * LtyDef.lty list * LtyDef.lty list * DebIndex.depth
+  val unwrapOp : wpEnv * LtyExtern.lty list * LtyExtern.lty list * DebIndex.depth
                    -> (FLINT.value list -> FLINT.lexp) option
 
-  val wrapOp   : wpEnv * LtyDef.lty list * LtyDef.lty list * DebIndex.depth
+  val wrapOp   : wpEnv * LtyExtern.lty list * LtyExtern.lty list * DebIndex.depth
                    -> (FLINT.value list -> FLINT.lexp) option
 
 end (* signature COERCE *)
@@ -19,12 +19,15 @@ end (* signature COERCE *)
 structure Coerce : COERCE = 
 struct
 
-local structure DI = DebIndex
-      structure LT = LtyExtern
-      structure LV = LambdaVar
-      structure PF = PFlatten
-      structure FU = FlintUtil
-      open Lty LtyKernel FLINT
+local
+  structure DI = DebIndex
+  structure LN = LtyNorm
+  structure LT = LtyExtern
+  structure LTS = LtyToString
+  structure LV = LambdaVar
+  structure PF = PFlatten
+  structure FU = FlintUtil
+  open Lty LtyNorm FLINT  (* should not open Lty and LtyKernel *)
 in
 
 (****************************************************************************
@@ -164,11 +167,11 @@ fun getWTC(wflag, nx, ox, doit) =
                val key = LT.ltc_str [LT.ltc_tyc nx, LT.ltc_tyc ox, mark]
             in case wcLook(wenv, key)
                 of SOME x => x
-                 | NONE => (let val res = doit (tc_out nx, tc_out ox)
+                 | NONE => (let val res = doit (LN.tc_out_nm nx, LN.tc_out_nm ox)
                              in wcEnter(wenv, key, res); res
                             end)
            end)
-        else doit (tc_out nx, tc_out ox))
+        else doit (LN.tc_out_nm nx, LN.tc_out_nm ox))
 
 fun getWLT(wflag, nx, ox, doit) = 
   if lt_eqv(nx, ox) then NONE
@@ -177,11 +180,11 @@ fun getWLT(wflag, nx, ox, doit) =
                val key = LT.ltc_str [nx, ox, mark]
             in case wcLook(wenv, key)
                 of SOME x => x
-                 | NONE => (let val res = doit (lt_out nx, lt_out ox)
+                 | NONE => (let val res = doit (LN.lt_out_nm nx, LN.lt_out_nm ox)
                              in wcEnter(wenv, key, res); res
                             end)
            end)
-        else doit (lt_out nx, lt_out ox))
+        else doit (LN.lt_out_nm nx, LN.lt_out_nm ox))
 
 fun tcLoop wflag (nx, ox) = 
   getWTC(wflag, nx, ox, 
@@ -267,8 +270,8 @@ fun tcLoop wflag (nx, ox) =
           end
      | (_, _) => 
           if LT.tc_eqv(nx, ox) then NONE
-          else (say " Type nx is : \n"; say (LT.tc_print nx);
-                say "\n Type ox is : \n"; say (LT.tc_print ox); say "\n";
+          else (say " Type nx is : \n"; say (LTS.tc_print nx);
+                say "\n Type ox is : \n"; say (LTS.tc_print ox); say "\n";
                 bug "unexpected other tycs in tcLoop")))
 
 fun ltLoop wflag (nx, ox) = 
@@ -343,8 +346,8 @@ fun ltLoop wflag (nx, ox) =
                     end)
           end
      | _ => 
-          (say " Type nx is : \n"; say (LT.lt_print nx);
-           say "\n Type ox is : \n"; say (LT.lt_print ox); say "\n";
+          (say " Type nx is : \n"; say (LTS.lt_print nx);
+           say "\n Type ox is : \n"; say (LTS.lt_print ox); say "\n";
            bug "unexpected other ltys in ltLoop")))
 
 val wps = ListPair.map (ltLoop wflag) (nts, ots)

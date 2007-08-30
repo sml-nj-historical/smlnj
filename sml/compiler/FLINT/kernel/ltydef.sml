@@ -1,28 +1,26 @@
 (* Copyright (c) 1997 YALE FLINT PROJECT *)
-(* ltydef.sml *)
+(* ltystructure.sml *)
 
-structure LtyDef : LTYDEF = 
+structure LtyStructure : LTYSTRUCTURE = 
 struct
 
-local structure PT = PrimTyc
-      structure DI = DebIndex
-      structure LT = Lty
-      structure LK = LtyKernel
+local 
 
-      fun bug msg = ErrorMsg.impossible("LtyDef: "^msg)
+  structure PT = PrimTyc
+  structure DI = DebIndex
+  structure LT = Lty
+  structure LN = LtyNorm
 
-      (** common utility functions *)
-      val tk_inj = LK.tk_inj
-      val tk_out = LK.tk_out
-      val tk_eqv = LK.tk_eqv
+  fun bug msg = ErrorMsg.impossible("LtyStructure: "^msg)
 
-      val tc_inj = LK.tc_inj
-      val tc_out = LK.tc_out 
-      val tc_eqv = LK.tc_eqv
+  (** common utility functions *)
+  val tk_inj = LT.tk_inj
+
+  val tc_inj = LT.tc_inj
+  val tc_out = LN.tc_out_nm
  
-      val lt_inj = LK.lt_inj
-      val lt_out = LK.lt_out 
-      val lt_eqv = LK.lt_eqv
+  val lt_inj = LT.lt_inj
+  val lt_out = LN.lt_out_nm
 
 in
 
@@ -141,11 +139,11 @@ val tcc_sum    : tyc list -> tyc = tc_inj o LT.TC_SUM
 val tcc_fix    : (int * string vector * tyc * tyc list) * int -> tyc =
     fn ((s,ns,g,p),i) =>
        tc_inj(LT.TC_FIX{family={size=s,names=ns,gen=g,params=p},index=i})
-val tcc_wrap   : tyc -> tyc = fn tc => tc_inj (LT.TC_TOKEN(LK.wrap_token, tc))
+val tcc_wrap   : tyc -> tyc = fn tc => tc_inj (LT.TC_TOKEN(LN.wrap_token, tc))
 val tcc_abs    : tyc -> tyc = tc_inj o LT.TC_ABS
 val tcc_box    : tyc -> tyc = tc_inj o LT.TC_BOX 
 val tcc_tuple  : tyc list -> tyc = fn ts => tc_inj (LT.TC_TUPLE (rfc_tmp, ts))
-val tcc_arrow  : fflag * tyc list * tyc list -> tyc = LK.tcc_arw
+val tcc_arrow  : fflag * tyc list * tyc list -> tyc = LN.tcc_arw
 
 (** tyc deconstructors *)
 val tcd_var    : tyc -> index * int = fn tc =>
@@ -179,7 +177,7 @@ val tcd_fix    : tyc -> (int * tyc * tyc list) * int = fn tc =>
 val tcd_wrap   : tyc -> tyc = fn tc => 
       (case tc_out tc 
         of LT.TC_TOKEN(tk, x) => 
-             if LT.token_eq(tk, LK.wrap_token) then x
+             if LT.token_eq(tk, LN.wrap_token) then x
              else bug "unexpected token tyc in tcd_wrap"
          | _ => bug "unexpected regular tyc in tcd_wrap")
 val tcd_abs    : tyc -> tyc = fn tc =>
@@ -215,7 +213,7 @@ val tcp_sum    : tyc -> bool = fn tc =>
 val tcp_fix    : tyc -> bool = fn tc => 
       (case tc_out tc of LT.TC_FIX _ => true | _ => false)
 val tcp_wrap   : tyc -> bool = fn tc =>
-      (case tc_out tc of LT.TC_TOKEN (tk, _) => LT.token_eq(tk, LK.wrap_token)
+      (case tc_out tc of LT.TC_TOKEN (tk, _) => LT.token_eq(tk, LN.wrap_token)
                        | _ => false)
 val tcp_abs    : tyc -> bool = fn tc => 
       (case tc_out tc of LT.TC_ABS _ => true | _ => false)
@@ -245,12 +243,13 @@ fun tcw_sum (tc, f, g) =
       (case tc_out tc of LT.TC_SUM x => f x | _ => g tc)  
 fun tcw_fix (tc, f, g) = 
       (case tc_out tc
-        of LT.TC_FIX{family={size,names,gen,params},index} => f((size,gen,params),index)
+        of LT.TC_FIX{family={size,names,gen,params},index} =>
+             f((size,gen,params),index)
          | _ => g tc)  
 fun tcw_wrap (tc, f, g) = 
       (case tc_out tc 
         of LT.TC_TOKEN(rk, x) => 
-             if LT.token_eq(rk, LK.wrap_token) then f x else g tc
+             if LT.token_eq(rk, LN.wrap_token) then f x else g tc
          | _ => g tc)  
 fun tcw_abs (tc, f, g) = 
       (case tc_out tc of LT.TC_ABS x => f x | _ => g tc)  
@@ -286,16 +285,18 @@ exception DeconExn
 
 (** lty deconstructors *)
 val ltd_tyc    : lty -> tyc = fn lt => 
-      (case lt_out lt of LT.LT_TYC x => x
-		       | LT.LT_ENV _ => bug "unexpected lty in ltd_tyc (i.e. LT_ENV)"
-		       | LT.LT_STR _ => bug "unexpected LT_STR"
-		       | LT.LT_FCT _ => bug "unexpected LT_FCT"
-		       | LT.LT_POLY _ => (PrettyPrintNew.with_default_pp(fn s => PPLty.ppLty 10 s lt); 
-					  raise DeconExn; 
-					  bug "unexpected LT_POLY")
-		       | LT.LT_CONT _ => bug "unexpected LT_CONT"
-		       | LT.LT_IND _ => bug "unexpected LT_IND"
-                       (*| _ => bug "unexpected lty in ltd_tyc" *))
+      (case lt_out lt
+         of LT.LT_TYC x => x
+	  | LT.LT_ENV _ => bug "unexpected lty in ltd_tyc (i.e. LT_ENV)"
+	  | LT.LT_STR _ => bug "unexpected LT_STR"
+	  | LT.LT_FCT _ => bug "unexpected LT_FCT"
+	  | LT.LT_POLY _ =>
+              (PrettyPrintNew.with_default_pp(fn s => PPLty.ppLty 10 s lt); 
+	       raise DeconExn; 
+	       bug "unexpected LT_POLY")
+	  | LT.LT_CONT _ => bug "unexpected LT_CONT"
+	  | LT.LT_IND _ => bug "unexpected LT_IND"
+        (*| _ => bug "unexpected lty in ltd_tyc" *))
 val ltd_str    : lty -> lty list = fn lt => 
       (case lt_out lt of LT.LT_STR x => x
                        | _ => bug "unexpected lty in ltd_str")
@@ -336,7 +337,9 @@ fun ltw_poly (lt, f, g) =
 (** tyc-lty constructors *)
 val ltc_var    : index * int -> lty = ltc_tyc o tcc_var
 val ltc_prim   : primtyc -> lty = ltc_tyc o tcc_prim
-val ltc_tuple  : lty list -> lty = ltc_tyc o (tcc_tuple o (map (fn x => ltd_tyc x handle DeconExn => bug "ltc_tuple")))
+val ltc_tuple  : lty list -> lty = 
+    ltc_tyc o (tcc_tuple o (map (fn x => ltd_tyc x
+                                    handle DeconExn => bug "ltc_tuple")))
 val ltc_arrow  : fflag * lty list * lty list -> lty = fn (r, t1, t2) => 
   let val ts1 = map ltd_tyc t1
       val ts2 = map ltd_tyc t2
@@ -344,13 +347,18 @@ val ltc_arrow  : fflag * lty list * lty list -> lty = fn (r, t1, t2) =>
   end handle DeconExn => bug "ltc_arrow"
 
 (** tyc-lty deconstructors *)
-val ltd_var    : lty -> index * int = tcd_var o (fn x => ltd_tyc x handle DeconExn => bug "ltd_var")
-val ltd_prim   : lty -> primtyc = tcd_prim o (fn x => ltd_tyc x handle DeconExn => bug "ltd_prim")
-val ltd_tuple  : lty -> lty list = (map ltc_tyc) o (tcd_tuple o (fn x => ltd_tyc x handle DeconExn => bug "ltd_tuple"))
-val ltd_arrow  : lty -> fflag * lty list * lty list = fn t =>
-  let val (r, ts1, ts2) = tcd_arrow (ltd_tyc t)
-   in (r, map ltc_tyc ts1, map ltc_tyc ts2)
-  end (* handle DeconExn => bug "ltd_arrow" *)
+val ltd_var    : lty -> index * int =
+    tcd_var o (fn x => ltd_tyc x handle DeconExn => bug "ltd_var")
+val ltd_prim   : lty -> primtyc = 
+    tcd_prim o (fn x => ltd_tyc x handle DeconExn => bug "ltd_prim")
+val ltd_tuple  : lty -> lty list = 
+    (map ltc_tyc) o (tcd_tuple o (fn x => ltd_tyc x
+                                     handle DeconExn => bug "ltd_tuple"))
+val ltd_arrow  : lty -> fflag * lty list * lty list =
+    fn t =>
+      let val (r, ts1, ts2) = tcd_arrow (ltd_tyc t)
+       in (r, map ltc_tyc ts1, map ltc_tyc ts2)
+      end (* handle DeconExn => bug "ltd_arrow" *)
 
 (** tyc-lty predicates *)
 val ltp_var    : lty -> bool = fn t =>
@@ -433,7 +441,7 @@ fun ltw_cont (lt, f, g) =
  * the translation from PLambdaType to FLINT types, so we let them
  * share the same representations as much as possible. 
  *
- * Ultimately, LtyDef should be separated into two files: one for 
+ * Ultimately, LtyStructure should be separated into two files: one for 
  * FLINT, another for PLambda, but we will see if this is necessary.
  *
  *)
@@ -448,14 +456,15 @@ fun ltw_cont (lt, f, g) =
 val tcc_parrow : tyc * tyc -> tyc =    
   fn (x, y) => tcc_arrow(ffc_var (false, false), [x], [y])
 val ltc_parrow : lty * lty -> lty =
-  fn (x, y) => ltc_tyc (tcc_parrow (ltd_tyc x, ltd_tyc y)) handle DeconExn => bug "ltc_parrow"
+  fn (x, y) => ltc_tyc (tcc_parrow (ltd_tyc x, ltd_tyc y))
+               handle DeconExn => bug "ltc_parrow"
 val ltc_ppoly  : tkind list * lty -> lty = fn (ks, t) => ltc_poly(ks, [t]) 
 val ltc_pfct   : lty * lty -> lty = fn (x, y) => ltc_fct ([x], [y])
 
 (** plambda tyc-lty deconstructors *)
 val tcd_parrow : tyc -> tyc * tyc = fn tc =>   
   (case tc_out tc 
-    of LT.TC_ARROW (_, xs, ys) => (LK.tc_autotuple xs, LK.tc_autotuple ys)
+    of LT.TC_ARROW (_, xs, ys) => (LN.tc_autotuple xs, LN.tc_autotuple ys)
      | _ => bug "unexpected tyc in tcd_parrow")
 val ltd_parrow : lty -> lty * lty = fn t =>
   let val (t1, t2) = tcd_parrow (ltd_tyc t)
@@ -496,4 +505,4 @@ fun ltw_pfct (lt, f, g) =
   (case lt_out lt of LT.LT_FCT([x],[y]) => f(x,y) | _ => g lt)
 
 end (* top-level local *)
-end (* structure LtyDef *)
+end (* structure LtyStructure *)

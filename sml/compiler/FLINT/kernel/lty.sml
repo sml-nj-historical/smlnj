@@ -50,7 +50,7 @@ fun exitLevel (xs: enc_tvar list) : enc_tvar list =
  * translation into the flint language(?). Are these the
  * "run-time" type parameters? *)
 type tvar = LambdaVar.lvar (* = int, coincidentally = enc_tvar *)
-val mkTvar = LambdaVar.mkLvar
+val mkTvar = LambdaVar.mkLvar (* used in reps/coerce.sml *)
 
 (* aus_info: auxiliary information maintained in hash_cells.
  * bool records whether the contents is fully normalized,
@@ -240,7 +240,7 @@ local (* hashconsing impl *)
   structure PT = PrimTyc
   structure DI = DebIndex
 
-  fun bug msg = ErrorMsg.impossible("LtyKernel: "^msg)
+  fun bug msg = ErrorMsg.impossible("Lty: "^msg)
 
   val itow = Word.fromInt
   val wtoi = Word.toIntX
@@ -447,14 +447,14 @@ fun lt_vs (ref(_ : int, _ : ltyI, AX_NO)) = NONE
   | lt_vs (ref(_ : int, _ : ltyI, AX_REG (_,x,_))) = SOME x
 
 (** converting from the hash-consing reps to the standard reps *)
-fun tk_outX (r as ref(_ : int, t : tkindI, _ : aux_info)) = t
-fun tc_outX (r as ref(_ : int, t : tycI, _ : aux_info)) = t
-fun lt_outX (r as ref(_ : int, t : ltyI, _ : aux_info)) = t
+fun tk_out (r as ref(_ : int, t : tkindI, _ : aux_info)) = t
+fun tc_out (r as ref(_ : int, t : tycI, _ : aux_info)) = t
+fun lt_out (r as ref(_ : int, t : ltyI, _ : aux_info)) = t
 
 (** converting from the standard reps to the hash-consing reps *)
-fun tk_injX t = look(tk_table, wtoi(tk_hash t), t, tkI_eq, tk_mk)
-fun tc_injX t = look(tc_table, wtoi(tc_hash t), t, tcI_eq, tc_mk)
-fun lt_injX t = look(lt_table, wtoi(lt_hash t), t, ltI_eq, lt_mk)
+fun tk_inj t = look(tk_table, wtoi(tk_hash t), t, tkI_eq, tk_mk)
+fun tc_inj t = look(tc_table, wtoi(tc_hash t), t, tcI_eq, tc_mk)
+fun lt_inj t = look(lt_table, wtoi(lt_hash t), t, ltI_eq, lt_mk)
 
 (** key-comparison on tkind, tyc, lty *)
 fun tk_cmp (k1, k2) = cmp(tk_table, k1, k2)
@@ -525,7 +525,7 @@ datatype teBinder
             point where the closure was originally created;
          ks: the kinds of the abstraction parameters *)
 
-val teEmpty : tycEnv = tc_injX(TC_SUM[])
+val teEmpty : tycEnv = tc_inj(TC_SUM[])
 
 (** utility functions for manipulating tycEnvs and teBinders **)
 
@@ -534,30 +534,30 @@ val teEmpty : tycEnv = tc_injX(TC_SUM[])
  * Lamb(j,ks) <=> TC_PROJ(TC_FN(ks,TC_SUM[]), j)
  *)
 fun teEncodeBinder (Beta(j,args,ks)) : tyc =
-      tc_injX(TC_FN(ks,tc_injX(TC_PROJ(tc_injX(TC_SEQ args), j))))
+      tc_inj(TC_FN(ks,tc_inj(TC_PROJ(tc_inj(TC_SEQ args), j))))
   | teEncodeBinder (Lamb(j,ks)) =
-      tc_injX(TC_PROJ(tc_injX(TC_FN(ks,tc_injX(TC_SUM[]))), j))
+      tc_inj(TC_PROJ(tc_inj(TC_FN(ks,tc_inj(TC_SUM[]))), j))
 
 fun teDecodeBinder (tyc : tyc) : teBinder =
-    case tc_outX(tyc)
+    case tc_out(tyc)
      of TC_FN(ks,tyc') =>
-          (case tc_outX tyc'
+          (case tc_out tyc'
              of TC_PROJ(tyc'',j) =>
-                  (case tc_outX tyc''
+                  (case tc_out tyc''
                      of TC_SEQ(args) => Beta(j,args,ks)
                       | _ => bug "teDecodeBinder")
               | _ => bug "teDecodeBinder")
       | TC_PROJ(tyc',j) =>
-          (case tc_outX tyc'
+          (case tc_out tyc'
              of TC_FN(ks,_) => Lamb(j, ks)
               | _ => bug "teDecodeBinder")
       | _ => bug "teDecodeBinder"
 
 fun teCons (b: teBinder, tenv: tycEnv) : tycEnv =
-    tc_injX(TC_PARROW(teEncodeBinder b, tenv))
+    tc_inj(TC_PARROW(teEncodeBinder b, tenv))
 
 fun teDest (tenv: tycEnv) : (teBinder * tycEnv) option =
-    case tc_outX tenv
+    case tc_out tenv
      of TC_PARROW(b,tenv) => SOME(teDecodeBinder b, tenv)
       | TC_SUM [] => NONE
       | _ => bug "teDest"
@@ -606,7 +606,7 @@ fun tk_eq (x: tkind, y) = (x = y)
 
 local
   fun stripIND tyc =
-      (case tc_outX tyc 
+      (case tc_out tyc 
 	of (TC_IND(new,_)) => stripIND new
 	 | _ => tyc)
 
@@ -632,7 +632,7 @@ in
        x = y)
 end
 (*
-	     (case (tc_outX tyc1, tc_outX tyc2) 
+	     (case (tc_out tyc1, tc_out tyc2) 
 	       of (TC_PRIM pt1, TC_PRIM pt2) => print "PRIM\n"
 		| (TC_FN _, _) => print "FN\n"
 		| (TC_FIX _, _) => print "FIX\n"
@@ -699,7 +699,7 @@ fun tksSubkind (ks1, ks2) =
 
 and tkSubkind (k1, k2) = 
     tk_eq (k1, k2) orelse              (* reflexive *)
-    case (tk_outX k1, tk_outX k2) of
+    case (tk_out k1, tk_out k2) of
         (TK_BOX, TK_MONO) => true (* ground kinds (base case) *)
       (* this next case is WRONG, but necessary until the
        * infrastructure is there to give proper boxed kinds to
@@ -717,36 +717,36 @@ and tkSubkind (k1, k2) =
  * There must be a better factoring of the dependencies 
  * These functions are in either ltydefs or ltybasic *)
 (** tkind constructors *)
-val tkc_mono   : tkind = tk_injX (TK_MONO)
-val tkc_box    : tkind = tk_injX (TK_BOX)
-val tkc_seq    : tkind list -> tkind = tk_injX o TK_SEQ
-val tkc_fun    : tkind list * tkind -> tkind = tk_injX o TK_FUN
+val tkc_mono   : tkind = tk_inj (TK_MONO)
+val tkc_box    : tkind = tk_inj (TK_BOX)
+val tkc_seq    : tkind list -> tkind = tk_inj o TK_SEQ
+val tkc_fun    : tkind list * tkind -> tkind = tk_inj o TK_FUN
 
 (** tkind deconstructors *)
 val tkd_mono   : tkind -> unit = fn _ => ()
 val tkd_box    : tkind -> unit = fn _ => ()
 val tkd_seq    : tkind -> tkind list = fn tk => 
-      (case tk_outX tk of TK_SEQ x => x
+      (case tk_out tk of TK_SEQ x => x
                        | _ => bug "unexpected tkind in tkd_seq")  
 val tkd_fun    : tkind -> tkind list * tkind = fn tk => 
-      (case tk_outX tk of TK_FUN x => x
+      (case tk_out tk of TK_FUN x => x
                        | _ => bug "unexpected tkind in tkd_fun")  
 
 (** tkind predicates *)
 val tkp_mono   : tkind -> bool = fn tk => tk_eq(tk, tkc_mono)
 val tkp_box    : tkind -> bool = fn tk => tk_eq(tk, tkc_box)
 val tkp_seq    : tkind -> bool = fn tk => 
-      (case tk_outX tk of TK_SEQ _ => true | _ => false)
+      (case tk_out tk of TK_SEQ _ => true | _ => false)
 val tkp_fun    : tkind -> bool = fn tk => 
-      (case tk_outX tk of TK_FUN _ => true | _ => false)
+      (case tk_out tk of TK_FUN _ => true | _ => false)
 
 (** tkind one-arm switches *)
 fun tkw_mono (tk, f, g) = if tk_eq(tk, tkc_mono) then f () else g tk
 fun tkw_box (tk, f, g) = if tk_eq(tk, tkc_box) then f () else g tk
 fun tkw_seq (tk, f, g) = 
-      (case tk_outX tk of TK_SEQ x => f x | _ => g tk)
+      (case tk_out tk of TK_SEQ x => f x | _ => g tk)
 fun tkw_fun (tk, f, g) = 
-      (case tk_outX tk of TK_FUN x => f x | _ => g tk)
+      (case tk_out tk of TK_FUN x => f x | _ => g tk)
 
 (** utility functions for constructing tkinds *)
 fun tkc_arg n = 

@@ -187,7 +187,7 @@ val isTagged : cty -> bool
 
 val BOGt : cty
 
-val ctyc  : LtyDef.tyc -> cty
-val ctype : LtyDef.lty -> cty
+val ctyc  : LtyExtern.tyc -> cty
+val ctype : LtyExtern.lty -> cty
 end (* signature CPS *)
 

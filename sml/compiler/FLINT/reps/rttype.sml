@@ -23,11 +23,13 @@ structure RuntimeType (* :> RTTYPE *) =
 struct
 
 local structure DI = DebIndex
+      structure LN = LtyNorm
       structure LT = LtyExtern
+      structure LTS = LtyToString
       structure PO = PrimOp
       structure PT = PrimTyc
       structure LV = LambdaVar
-      open Lty LtyKernel FLINT 
+      open Lty LtyNorm FLINT 
 in
 
   type tcode = int
@@ -275,10 +277,10 @@ fun tkTfn (kenv, ks) =
 
 fun rtLexp (kenv : kenv) (tc : tyc) = 
   let val _ = (debugmsg ">>rtLexp"; 
-	       if !debugging then debugmsg(LT.tc_print tc)
+	       if !debugging then debugmsg(LTS.tc_print tc)
 				  else ())
       fun loop (x : tyc) = 
-	(case (tc_out x)
+	(case (LN.tc_out_nm x)
 	  of (TC_FN(ks, tx)) => 
 		let val (nenv, hdr) = tkTfn(kenv, ks)
 		 in hdr(rtLexp nenv tx)
@@ -286,10 +288,10 @@ fun rtLexp (kenv : kenv) (tc : tyc) =
 	   | (TC_APP(tx, ts)) => 
 	       (debugmsg ">>rtLexp TC_APP";
 		if !debugging 
-		then (debugmsg(LT.tc_print tx); debugmsg "\n";
-		     app (fn tx => (debugmsg(LT.tc_print tx); debugmsg ", ")) ts)
+		then (debugmsg(LTS.tc_print tx); debugmsg "\n";
+		     app (fn tx => (debugmsg(LTS.tc_print tx); debugmsg ", ")) ts)
 		else ();
-		(case tc_out tx
+		(case LN.tc_out_nm tx
 		  of (TC_APP _ | TC_PROJ _ | TC_VAR _ | TC_NVAR _) => 
 			APPg(loop tx, tcsLexp(kenv, ts))
 		   | _ => (debugmsg "--rtLexp TC_APP void!!"; tcode_void))
@@ -298,7 +300,7 @@ fun rtLexp (kenv : kenv) (tc : tyc) =
 		before debugmsg "<<rtLexp TC_APP")
 	   | (TC_SEQ ts) => tcsLexp(kenv, ts)
 	   | (TC_PROJ(tx, i)) => (debugmsg ">>rtLexp TC_PROJ: "; 
-				  if !debugging then debugmsg(LT.tc_print tx)
+				  if !debugging then debugmsg(LTS.tc_print tx)
 				  else ();
 				  SELECTg(i, loop tx) 
 				  before debugmsg "<<rtLexp TC_PROJ")
@@ -332,11 +334,11 @@ fun rtLexp (kenv : kenv) (tc : tyc) =
                       (case ts 
                         of [] => tx
                          | _ => 
-                            (case tc_out tx
+                            (case LN.tc_out_nm tx
                               of TC_FN(_, x) => x
                                | _ => bug "unexpected FIX 333 in rtLexp-loop"))
                     val tk = 
-		     (case tc_out ntx
+		     (case LN.tc_out_nm ntx
 		       of TC_FN (ks, _) => List.nth(ks, i)
 			| _ => bug "unexpected FIX tycs in rtLexp-loop")
 		 in case tk_out tk
@@ -362,7 +364,8 @@ and tcsLexp (kenv, ts) =
 
 and tsLexp (kenv, ts) = 
   let val _ = (debugmsg ">>tsLexp"; 
-	       if !debugging then app (fn tc => (debugmsg(LT.tc_print tc); debugmsg "\n")) ts
+	       if !debugging then app (fn tc => (debugmsg(LTS.tc_print tc);
+                                                 debugmsg "\n")) ts
 	       else ())
       fun h tc = rtLexp kenv tc
    in SRECORDg(map h ts)
@@ -370,7 +373,7 @@ and tsLexp (kenv, ts) =
 
 and isFloat (kenv, tc) = 
   let fun loop x = 
-	(case (tc_out x)
+	(case (LN.tc_out_nm x)
 	  of (TC_PRIM pt) => 
 		if (pt = PT.ptc_real) then YES else NO
 	   | (TC_TUPLE (_, ts)) => NO
@@ -378,7 +381,7 @@ and isFloat (kenv, tc) =
 	   | (TC_TOKEN(_,tx)) => loop tx
 	   | (TC_FIX _) => NO
 	   | (TC_APP(tx, _)) => 
-		(case tc_out tx
+		(case LN.tc_out_nm tx
 		  of (TC_APP _ | TC_PROJ _ | TC_VAR _) => 
 		       MAYBE(rtLexp kenv x)
 		   | _ => NO)
@@ -396,7 +399,7 @@ and isFloat (kenv, tc) =
 
 fun isPair (kenv, tc) = 
   let fun loop x = 
-	(case (tc_out x)
+	(case (LN.tc_out_nm x)
 	  of (TC_PRIM pt) => NO
 	   | (TC_TUPLE (_, [_,_])) => YES
 	   | (TC_TUPLE _) => NO
@@ -404,7 +407,7 @@ fun isPair (kenv, tc) =
 	   | (TC_TOKEN(_,tx)) => loop tx
 	   | (TC_FIX _) => NO
 	   | (TC_APP(tx, _)) => 
-		(case tc_out tx
+		(case LN.tc_out_nm tx
 		  of (TC_APP _ | TC_PROJ _ | TC_VAR _ | TC_NVAR _) => 
 		       MAYBE(rtLexp kenv x)
 		   | _ => NO)
@@ -413,8 +416,6 @@ fun isPair (kenv, tc) =
 
    in loop tc
   end
-
-
 
 end (* local *)
 end (* structure RuntimeType *)

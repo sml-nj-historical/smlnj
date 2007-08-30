@@ -18,7 +18,7 @@ structure LSplitInline :> LSPLIT_INLINE = struct
     type symenv = SymbolicEnv.env
 
     structure LT = Lty
-    structure LK = LtyKernel
+    structure LN = LtyNorm
     structure LV = LambdaVar
     structure F  = FLINT
     structure FU = FlintUtil
@@ -29,7 +29,7 @@ structure LSplitInline :> LSPLIT_INLINE = struct
 		 imports, symenv) =
 	let
 	    val importTypes =
-		case LK.lt_out mainArgLty of
+		case LN.lt_out_nm mainArgLty of
 		    LT.LT_STR it => it
 		  | _ => bug "non-structure arg to comp-unit"
 	    val newArgLvar = LV.mkLvar ()
@@ -93,7 +93,7 @@ structure LSplitInline :> LSPLIT_INLINE = struct
 		end
 
 	    val (tyl, imps, newBody) = build (imports, importTypes, 0, [])
-	    val newArgLty = LK.lt_inj (LT.LT_STR tyl)
+	    val newArgLty = LT.lt_inj (LT.LT_STR tyl)
 	in
 	    ((mainFkind, mainLvar, [(newArgLvar, newArgLty)], newBody), imps)
 	end

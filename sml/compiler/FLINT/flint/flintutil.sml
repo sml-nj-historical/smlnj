@@ -95,7 +95,7 @@ fun getUnWrapTyc (_, _, lt, []) = (LT.ltd_tyc(#2(LT.ltd_parrow lt))
   | getUnWrapTyc _ = bug "unexpected case in getUnWrapTyc"
 
 fun dcon_eq ((s1,c1,t1):FLINT.dcon,(s2,c2,t2)) =
-    Symbol.eq (s1,s2) andalso (c1 = c2) andalso LtyBasic.lt_eqv(t1, t2)
+    Symbol.eq (s1,s2) andalso (c1 = c2) andalso LtyExtern.lt_eqv(t1, t2)
 
 val cplv = LambdaVar.dupLvar
 (* 

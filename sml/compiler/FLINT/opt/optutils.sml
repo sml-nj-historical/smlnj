@@ -34,7 +34,6 @@ local
 
   structure F = FLINT
   structure LT = Lty
-  structure LK = LtyKernel
 
 in
     datatype ('a,'b) either = A of 'a | B of 'b

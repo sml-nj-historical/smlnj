@@ -66,9 +66,9 @@ fun simplify (le,0) = RET [STRING "<...>"]
       end (* end of simplify *)
 
 (** utility functions for printing *)
-val tkPrint = say o LT.tk_print
-val tcPrint = say o LT.tc_print
-val ltPrint = say o LT.lt_print
+val tkPrint = say o LtyToString.tk_print
+val tcPrint = say o LtyToString.tc_print
+val ltPrint = say o LtyToString.lt_print
 fun lePrint le = PP.printLexp (simplify (le, 3))
 val svPrint = PP.printSval
 

@@ -87,7 +87,7 @@ in
     structure A = Access
     structure DI = DebIndex
     structure LT = Lty
-    structure LK = LtyKernel
+    structure LN = LtyNorm
     structure PT = PrimTyc
     structure F = FLINT
     structure T = Types
@@ -555,7 +555,7 @@ in
     fun tkind x = let
 	val op $ = PU.$ TK
 	fun tk x =
-	    case LK.tk_out x of
+	    case LT.tk_out x of
 	    LT.TK_MONO => "A" $ []
 	  | LT.TK_BOX => "B" $ []
 	  | LT.TK_SEQ ks => "C" $ [list tkind ks]
@@ -568,7 +568,7 @@ in
 	fun lty x = let
 	    val op $ = PU.$ LT
 	    fun ltyI x =
-		case LK.lt_out x of
+		case LN.lt_out_nm x of
 		    LT.LT_TYC tc => "A" $ [tyc tc]
 		  | LT.LT_STR l => "B" $ [list lty l]
 		  | LT.LT_FCT (ts1, ts2) => "C" $ [list lty ts1, list lty ts2]
@@ -583,7 +583,7 @@ in
 	and tyc x = let
 	    val op $ = PU.$ TC
 	    fun tycI x =
-		case LK.tc_out x of
+		case LN.tc_out_nm x of
 		    LT.TC_VAR (db, i) => "A" $ [int (DI.di_toint db), int i]
 		  | LT.TC_NVAR n => "B" $ [lvar n]
 		  | LT.TC_PRIM t => "C" $ [int (PT.pt_toint t)]

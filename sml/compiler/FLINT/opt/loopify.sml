@@ -16,7 +16,6 @@ local
     structure S  = IntRedBlackSet
     structure OU = OptUtils
     structure LT = Lty
-    structure LK = LtyKernel
     structure CTRL = FLINT_Control
 in
 

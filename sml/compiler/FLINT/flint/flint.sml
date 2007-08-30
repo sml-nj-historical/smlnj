@@ -4,23 +4,24 @@
 structure FLINT : FLINT = 
 struct
 
-local structure A  = Access   (* should go away soon *)
-      structure LD = LtyDef
-      structure LB = LtyBasic
-      structure LV = LambdaVar
-      structure PO = PrimOp
-      structure S  = Symbol
+local
+  structure A  = Access   (* should go away soon *)
+  structure LT = Lty (* have to refer directly to Lty to avoid circularity,
+                      * since LtyMisc and hence LtyExtern depend on FLINT *)
+  structure LV = LambdaVar
+  structure PO = PrimOp
+  structure S  = Symbol
 in 
 
-type tkind = LD.tkind
-type tyc = LD.tyc
-type lty = LD.lty
+type tkind = LT.tkind
+type tyc = LT.tyc
+type lty = LT.lty
 
-type tvar = LD.tvar   
+type tvar = LT.tvar   
 type lvar = LV.lvar
 
-type fflag = LD.fflag
-type rflag = LD.rflag
+type fflag = LT.fflag
+type rflag = LT.rflag
 
 
 (* what kind of inlining behavior is desired for the function *)

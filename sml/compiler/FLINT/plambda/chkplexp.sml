@@ -16,11 +16,13 @@ end (* signature CHKPLEXP *)
 structure ChkPlexp : CHKPLEXP = 
 struct
 
-local structure LT = PLambdaType
-      structure LV = LambdaVar
-      structure DA = Access 
-      structure DI = DebIndex
-      open PLambda 
+local
+  structure LT = PLambdaType
+  structure LKC = LtyKindChk
+  structure LV = LambdaVar
+  structure DA = Access 
+  structure DI = DebIndex
+  open PLambda 
 in
 
 exception ChkPlexp (* PLambda type check error *)
@@ -154,7 +156,7 @@ fun ltTyApp le s (lt, ts, kenv) =
        (clickerror ();
         say (s ^ "  **** Kind conflicting in lexp =====> \n    ");
         case zz of LT.LtyAppChk => say "      exception LtyAppChk raised! \n"
-                 | LT.KindChk _ =>  say "      exception KindChk raised! \n"
+                 | LKC.KindChk _ =>  say "      exception KindChk raised! \n"
                  | _ => say "   other weird exception raised! \n";
         say "\n \n"; lePrint le; say "\n For Types: \n";  
         ltPrint lt; say "\n and   \n    "; 
@@ -248,17 +250,17 @@ fun ltConChk le s (DATAcon ((_,rep,lt), ts, v), root, kenv, venv, d) =
 (** check : tkindEnv * ltyEnv * DI.depth -> lexp -> lty *)
 fun check (kenv, venv, d) = 
   let fun ltyChkMsg msg lexp kenv lty = 
-		  ltyChk kenv lty 
-		  handle LT.KindChk kndchkmsg =>
-			 (say ("*** Kind check failure during \
-			       \ PLambda type check: ");
-			  say (msg);
-			  say ("***\n Term: ");
-			  with_pp(fn s => PPLexp.ppLexp 20 s lexp);
-			  say ("\n Kind check error: ");
-			  say kndchkmsg;
-			  say ("\n");
-			  raise ChkPlexp)
+	  ltyChk kenv lty 
+	  handle LKC.KindChk kndchkmsg =>
+		 (say ("*** Kind check failure during \
+		       \ PLambda type check: ");
+		  say (msg);
+		  say ("***\n Term: ");
+		  with_pp(fn s => PPLexp.ppLexp 20 s lexp);
+		  say ("\n Kind check error: ");
+		  say kndchkmsg;
+		  say ("\n");
+		  raise ChkPlexp)
       fun loop le =
 	  let fun ltyChkMsgLexp msg kenv lty = 
 		    ltyChkMsg msg lexp kenv lty 

@@ -187,7 +187,6 @@ local
     structure PP = PPFlint
     structure FU = FlintUtil
     structure LT = LtyExtern
-    structure LK = LtyKernel
     structure OU = OptUtils
     structure PO = PrimOp
     structure CTRL = FLINT_Control

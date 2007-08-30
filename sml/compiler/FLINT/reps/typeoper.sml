@@ -4,10 +4,10 @@
 signature TYPEOPER = 
 sig
   type kenv
-  type tkind = LtyDef.tkind
-  type tyc   = LtyDef.tyc
-  type lty   = LtyDef.lty
-  type tvar  = LtyDef.tvar
+  type tkind = LtyExtern.tkind
+  type tyc   = LtyExtern.tyc
+  type lty   = LtyExtern.lty
+  type tvar  = LtyExtern.tvar
   type lvar  = LambdaVar.lvar
   type lexp  = FLINT.lexp
   type value = FLINT.value
@@ -46,6 +46,7 @@ structure TypeOper : TYPEOPER =
 struct
 
 local structure DI = DebIndex
+      structure LN = LtyNorm
       structure LT = LtyExtern
       structure LV = LambdaVar
       structure PO = PrimOp
@@ -53,13 +54,13 @@ local structure DI = DebIndex
       structure BT = BasicTypes 
       structure TP = Types
       structure RT = RuntimeType
-      open Lty LtyKernel FLINT OT
+      open Lty LtyNorm FLINT OT
 in
 
 type tkind = tkind
 type tyc   = tyc
 type lty   = lty
-type tvar  = LtyDef.tvar
+type tvar  = LtyExtern.tvar
 type lvar  = LV.lvar
 type lexp  = lexp
 type value = value
@@ -240,7 +241,7 @@ val isPair = RT.isPair
 (** tc is of kind Omega; this function tests whether tc can be int31 ? *)
 fun tcTag (kenv, tc) = 
   let fun loop x =     (* a lot of approximations in this function *)
-	(case (tc_out x)
+	(case (LN.tc_out_nm x)
 	  of (TC_PRIM pt) => if PT.unboxed pt then NO else YES
                 (* if PT.ubxupd pt then YES else NO *)
 		    (* this is just an approximation *)
@@ -251,7 +252,7 @@ fun tcTag (kenv, tc) =
 	   | (TC_TOKEN(_,tx)) => loop tx
 	   | (TC_FIX _) => YES
 	   | (TC_APP(tx, _)) => 
-		(case tc_out tx
+		(case LN.tc_out_nm tx
 		  of (TC_APP _ | TC_PROJ _ | TC_VAR _) => 
 		       MAYBE (tcLexp kenv x)
 		   | _ => YES)
@@ -316,7 +317,7 @@ fun tgdd (i, tc, kenv, rt) =
     program, otherwise we may run into space blow-up ! *)
 (* val tcCoerce : kenv * tyc * bool * bool -> (lexp -> lexp) option *)
 fun tcCoerce (kenv, tc, nt, wflag, b) = 
-  (case (tc_out tc, tc_out nt)
+  (case (LN.tc_out_nm tc, LN.tc_out_nm nt)
     of (TC_TUPLE (_, ts), _) =>
 	 let fun h([], i, e, el, 0) = NONE
 	       | h([], i, e, el, res) = 
@@ -574,4 +575,3 @@ fun arrNew(tc, pv, rv, kenv) =
 
 end (* toplevel local *)
 end (* structure TypeOper *)
-

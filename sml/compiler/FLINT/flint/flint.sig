@@ -4,15 +4,15 @@
 signature FLINT = 
 sig
 
-type tkind = LtyDef.tkind
-type tyc = LtyDef.tyc
-type lty = LtyDef.lty
+type tkind = Lty.tkind
+type tyc = Lty.tyc
+type lty = Lty.lty
 
-type tvar = LtyDef.tvar 
+type tvar = Lty.tvar 
 type lvar = LambdaVar.lvar
 
-type fflag = LtyDef.fflag
-type rflag = LtyDef.rflag
+type fflag = Lty.fflag
+type rflag = Lty.rflag
 
 
 (* what kind of inlining behavior is desired for the function *)

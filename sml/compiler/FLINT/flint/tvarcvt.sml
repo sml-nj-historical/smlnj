@@ -15,8 +15,8 @@ struct
     (* local abbreviations *)
     structure F = FLINT
     structure DI = DebIndex
+    structure LK = LtyNorm
     structure LT = LtyExtern
-    structure LK = LtyKernel
 
     (* `debIndex2names' converts all variables bound by the
      * term-language TFN (capital lambda) construct into named

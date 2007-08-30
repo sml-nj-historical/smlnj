@@ -61,7 +61,7 @@ fun tkAssertIsMono (k,msg) =
 
 (* select the ith element (0 based) from a kind sequence *)
 fun tkSel (tk, i) = 
-  (case (tk_outX tk)
+  (case (tk_out tk)
     of (TK_SEQ ks) => 
        (List.nth(ks, i)
         handle Subscript => raise KindChk "Invalid TC_SEQ index")
@@ -77,7 +77,7 @@ fun tks_eqv (ks1, ks2) = tk_eq(tkc_seq ks1, tkc_seq ks2)
  * kind `tk' to a list of arguments of kinds `tks'
  *)
 fun tkApp (tk, tks) = 
-  (case (tk_outX tk)
+  (case (tk_out tk)
     of TK_FUN(a, b) =>
          if tksSubkind(tks, a) then b
          else raise KindChk "Param/Arg Tyc Kind mismatch"
@@ -227,7 +227,7 @@ let val dict = Memo.newDict()
                  handle tkUnbound =>
                   (with_pp (fn s =>
                      (PU.pps s "KindChk: unbound tv: ";
-                      PPLty.ppTyc (!pd) s (tc_injX tycI);
+                      PPLty.ppTyc (!pd) s (tc_inj tycI);
                       PP.newline s;
                       PU.pps s "kenv: ";
                       PP.openHOVBox s (PP.Rel 0);
@@ -258,7 +258,7 @@ let val dict = Memo.newDict()
                         case ts
                           of [] => k 
                            | _ => tkApp(k, map g ts)
-                 in case (tk_outX nk)
+                 in case (tk_out nk)
                      of TK_FUN(argk, resk) => 
                         let val argk' =
                                 case argk
@@ -331,7 +331,7 @@ let val dict = Memo.newDict()
               | TC_CONT _ => bug "unexpected TC_CONT in tcKindChk"
 
         fun mk () =
-	    mkI (tc_outX t)
+	    mkI (tc_out t)
     in
         Memo.recallOrCompute (dict, kenv, t, mk)
         handle tkUnbound => raise KindChk "tkUnbound"
@@ -414,7 +414,7 @@ let val (tcKindChk, _, teKindChk) = tcteKindCheckGen()
                    ltyChk' bodyKenv body
                 end))
     and ltyChk' kenv lty =
-         ltyIChk kenv (lt_outX lty)
+         ltyIChk kenv (lt_out lty)
          handle x => 
            (with_pp (fn ppstrm => (PPLty.ppLty (!pd) ppstrm lty;
                                    PP.newline ppstrm));

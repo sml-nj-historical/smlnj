@@ -114,8 +114,8 @@ Group
 	structure Translate
 	structure Lty
 	structure LtyKindChk
-	structure LtyKernel
-	structure LtyDef
+	structure LtyStructure
+	structure LtyNorm
 	structure LtyExtern
 	structure PrimTyc  
 	structure PPFlint
@@ -201,19 +201,23 @@ FLINT/flint/ppflint.sml
 FLINT/flint/tvarcvt.sml
 FLINT/kernel/primtyc.sig
 FLINT/kernel/primtyc.sml
-FLINT/kernel/ltybasic.sig
-FLINT/kernel/ltybasic.sml
-FLINT/kernel/ltydef.sig
-FLINT/kernel/ltydef.sml
-FLINT/kernel/ltydict.sml
-FLINT/kernel/ltyextern.sig
-FLINT/kernel/ltyextern.sml
-FLINT/kernel/ltykernel.sig
-FLINT/kernel/ltykernel.sml
 FLINT/kernel/lty.sig
 FLINT/kernel/lty.sml
+FLINT/kernel/ltykernel.sig
+FLINT/kernel/ltykernel.sml
 FLINT/kernel/ltykindchk.sml
+FLINT/kernel/ltydef.sig
+FLINT/kernel/ltydef.sml
+FLINT/kernel/ltybasic.sig
+FLINT/kernel/ltybasic.sml
+FLINT/kernel/ltydict.sml
+FLINT/kernel/ltymisc.sig
+FLINT/kernel/ltymisc.sml
+FLINT/kernel/ltyextern.sig
+FLINT/kernel/ltyextern.sml
 
+FLINT/kernel/ltytostring.sig
+FLINT/kernel/ltytostring.sml
 FLINT/kernel/pplty.sml
 
 FLINT/kernel/primop.sig

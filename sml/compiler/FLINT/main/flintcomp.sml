@@ -145,7 +145,8 @@ fun flintcomp
 		  | ("wellformed",_) => wff(f,l)
 		  | ("recover",_) =>
 		    let val {getLty,...} = recover(f, fk = FK_REIFY)
-		    in CTRL.recover := (say o LT.lt_print o getLty o F.VAR)
+		    in CTRL.recover := 
+                         (say o LtyToString.lt_print o getLty o F.VAR)
 		    end
 		  | ("print",_) =>
 		    (say("\n[After "^l^"...]\n\n"); PP.printFundec f; say "\n")

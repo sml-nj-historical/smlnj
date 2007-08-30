@@ -1172,7 +1172,7 @@ fun mkBnd d =
 fun mkPE (exp, d, []) = mkExp(exp, d)
   | mkPE (exp, d, boundtvs) = 
       let 
-(* now done in type checker (generalizePat)
+(* now we try to do this in the type checker (generalizePat)
  * but we will do it again here and check consistencey, with he
  * local computation taking priority --- *)
 

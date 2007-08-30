@@ -1,5 +1,5 @@
 (* Copyright (c) 1998 YALE FLINT PROJECT *)
-(* ltydef.sig *)
+(* ltystructure.sig *)
 
 (*
  * This interface hides the implementation details of FLINT tkind, tyc, and 
@@ -9,21 +9,8 @@
  * should only refer to DebIndex, Lty, PrimTyc, and Symbol. 
  *)
 
-signature LTYDEF = 
+signature LTYSTRUCTURE = 
 sig
-
-(** basic entities *)
-type index = DebIndex.index
-type depth = DebIndex.depth
-type primtyc = PrimTyc.primtyc
-type tvar = Lty.tvar
-
-type fflag = Lty.fflag 
-type rflag = Lty.rflag
-
-type tkind = Lty.tkind
-type tyc = Lty.tyc
-type lty = Lty.lty
 
 (* 
  * FLINT tkind is roughly equivalent to the following ML datatype 
@@ -56,24 +43,24 @@ type lty = Lty.lty
  *)
 
 (** fflag and rflag constructors *)
-val ffc_var    : bool * bool -> fflag
-val ffc_fixed  : fflag
-val rfc_tmp    : rflag
+val ffc_var    : bool * bool -> Lty.fflag
+val ffc_fixed  : Lty.fflag
+val rfc_tmp    : Lty.rflag
 
 (** fflag and rflag deconstructors *)
-val ffd_var    : fflag -> bool * bool
-val ffd_fixed  : fflag -> unit
-val rfd_tmp    : rflag -> unit
+val ffd_var    : Lty.fflag -> bool * bool
+val ffd_fixed  : Lty.fflag -> unit
+val rfd_tmp    : Lty.rflag -> unit
 
 (** fflag and rflag predicates *)
-val ffp_var    : fflag -> bool
-val ffp_fixed  : fflag -> bool
-val rfp_tmp    : rflag -> bool
+val ffp_var    : Lty.fflag -> bool
+val ffp_fixed  : Lty.fflag -> bool
+val rfp_tmp    : Lty.rflag -> bool
 
 (** fflag and rflag one-arm switch *)
-val ffw_var    : fflag * (bool * bool -> 'a) * (fflag -> 'a) -> 'a
-val ffw_fixed  : fflag * (unit -> 'a) * (fflag -> 'a) -> 'a
-val rfw_tmp    : rflag * (unit -> 'a) * (rflag -> 'a) -> 'a
+val ffw_var    : Lty.fflag * (bool * bool -> 'a) * (Lty.fflag -> 'a) -> 'a
+val ffw_fixed  : Lty.fflag * (unit -> 'a) * (Lty.fflag -> 'a) -> 'a
+val rfw_tmp    : Lty.rflag * (unit -> 'a) * (Lty.rflag -> 'a) -> 'a
 
 
 (* 
@@ -81,7 +68,7 @@ val rfw_tmp    : rflag * (unit -> 'a) * (rflag -> 'a) -> 'a
  *
  *    datatype tyc
  *      = TC_VAR of index * int
- *      | TC_NVAR of tvar
+ *      | TC_NVAR of Lty.tvar
  *      | TC_PRIM of primtyc
  *      | TC_FN of tkind list * tyc
  *      | TC_APP of tyc * tyc list
@@ -104,69 +91,69 @@ val rfw_tmp    : rflag * (unit -> 'a) * (rflag -> 'a) -> 'a
  *)
 
 (** tyc constructors *)
-val tcc_var    : index * int -> tyc
-val tcc_nvar   : tvar -> tyc
-val tcc_prim   : primtyc -> tyc
-val tcc_fn     : tkind list * tyc -> tyc
-val tcc_app    : tyc * tyc list -> tyc
-val tcc_seq    : tyc list -> tyc
-val tcc_proj   : tyc * int -> tyc
-val tcc_sum    : tyc list -> tyc
-val tcc_fix    : (int * string vector * tyc * tyc list) * int -> tyc 
-val tcc_wrap   : tyc -> tyc
-val tcc_abs    : tyc -> tyc
-val tcc_box    : tyc -> tyc
-val tcc_tuple  : tyc list -> tyc
-val tcc_arrow  : fflag * tyc list * tyc list -> tyc
+val tcc_var    : DebIndex.index * int -> Lty.tyc
+val tcc_nvar   : Lty.tvar -> Lty.tyc
+val tcc_prim   : PrimTyc.primtyc -> Lty.tyc
+val tcc_fn     : Lty.tkind list * Lty.tyc -> Lty.tyc
+val tcc_app    : Lty.tyc * Lty.tyc list -> Lty.tyc
+val tcc_seq    : Lty.tyc list -> Lty.tyc
+val tcc_proj   : Lty.tyc * int -> Lty.tyc
+val tcc_sum    : Lty.tyc list -> Lty.tyc
+val tcc_fix    : (int * string vector * Lty.tyc * Lty.tyc list) * int -> Lty.tyc 
+val tcc_wrap   : Lty.tyc -> Lty.tyc
+val tcc_abs    : Lty.tyc -> Lty.tyc
+val tcc_box    : Lty.tyc -> Lty.tyc
+val tcc_tuple  : Lty.tyc list -> Lty.tyc
+val tcc_arrow  : Lty.fflag * Lty.tyc list * Lty.tyc list -> Lty.tyc
 
 (** tyc deconstructors *)
-val tcd_var    : tyc -> index * int 
-val tcd_nvar   : tyc -> tvar
-val tcd_prim   : tyc -> primtyc 
-val tcd_fn     : tyc -> tkind list * tyc 
-val tcd_app    : tyc -> tyc * tyc list 
-val tcd_seq    : tyc -> tyc list 
-val tcd_proj   : tyc -> tyc * int 
-val tcd_sum    : tyc -> tyc list 
-val tcd_fix    : tyc -> (int * tyc * tyc list) * int 
-val tcd_wrap   : tyc -> tyc
-val tcd_abs    : tyc -> tyc 
-val tcd_box    : tyc -> tyc 
-val tcd_tuple  : tyc -> tyc list 
-val tcd_arrow  : tyc -> fflag * tyc list * tyc list 
+val tcd_var    : Lty.tyc -> DebIndex.index * int 
+val tcd_nvar   : Lty.tyc -> Lty.tvar
+val tcd_prim   : Lty.tyc -> PrimTyc.primtyc 
+val tcd_fn     : Lty.tyc -> Lty.tkind list * Lty.tyc 
+val tcd_app    : Lty.tyc -> Lty.tyc * Lty.tyc list 
+val tcd_seq    : Lty.tyc -> Lty.tyc list 
+val tcd_proj   : Lty.tyc -> Lty.tyc * int 
+val tcd_sum    : Lty.tyc -> Lty.tyc list 
+val tcd_fix    : Lty.tyc -> (int * Lty.tyc * Lty.tyc list) * int 
+val tcd_wrap   : Lty.tyc -> Lty.tyc
+val tcd_abs    : Lty.tyc -> Lty.tyc 
+val tcd_box    : Lty.tyc -> Lty.tyc 
+val tcd_tuple  : Lty.tyc -> Lty.tyc list 
+val tcd_arrow  : Lty.tyc -> Lty.fflag * Lty.tyc list * Lty.tyc list 
 
 (** tyc predicates *)
-val tcp_var    : tyc -> bool
-val tcp_nvar   : tyc -> bool
-val tcp_prim   : tyc -> bool
-val tcp_fn     : tyc -> bool
-val tcp_app    : tyc -> bool
-val tcp_seq    : tyc -> bool
-val tcp_proj   : tyc -> bool
-val tcp_sum    : tyc -> bool
-val tcp_fix    : tyc -> bool
-val tcp_wrap   : tyc -> bool
-val tcp_abs    : tyc -> bool
-val tcp_box    : tyc -> bool
-val tcp_tuple  : tyc -> bool
-val tcp_arrow  : tyc -> bool
+val tcp_var    : Lty.tyc -> bool
+val tcp_nvar   : Lty.tyc -> bool
+val tcp_prim   : Lty.tyc -> bool
+val tcp_fn     : Lty.tyc -> bool
+val tcp_app    : Lty.tyc -> bool
+val tcp_seq    : Lty.tyc -> bool
+val tcp_proj   : Lty.tyc -> bool
+val tcp_sum    : Lty.tyc -> bool
+val tcp_fix    : Lty.tyc -> bool
+val tcp_wrap   : Lty.tyc -> bool
+val tcp_abs    : Lty.tyc -> bool
+val tcp_box    : Lty.tyc -> bool
+val tcp_tuple  : Lty.tyc -> bool
+val tcp_arrow  : Lty.tyc -> bool
 
 (** tyc one-arm switch *)
-val tcw_var    : tyc * (index * int -> 'a) * (tyc -> 'a) -> 'a
-val tcw_nvar   : tyc * (tvar -> 'a) * (tyc -> 'a) -> 'a
-val tcw_prim   : tyc * (primtyc -> 'a) * (tyc -> 'a) -> 'a
-val tcw_fn     : tyc * (tkind list * tyc -> 'a) * (tyc -> 'a) -> 'a
-val tcw_app    : tyc * (tyc * tyc list -> 'a) * (tyc -> 'a) -> 'a
-val tcw_seq    : tyc * (tyc list -> 'a) * (tyc -> 'a) -> 'a
-val tcw_proj   : tyc * (tyc * int -> 'a) * (tyc -> 'a) -> 'a
-val tcw_sum    : tyc * (tyc list -> 'a) * (tyc -> 'a) -> 'a
-val tcw_fix    : tyc * ((int * tyc * tyc list) * int -> 'a) * (tyc -> 'a) -> 'a
-val tcw_wrap   : tyc * (tyc -> 'a) * (tyc -> 'a) -> 'a
-val tcw_abs    : tyc * (tyc -> 'a) * (tyc -> 'a) -> 'a
-val tcw_box    : tyc * (tyc -> 'a) * (tyc -> 'a) -> 'a
-val tcw_tuple  : tyc * (tyc list -> 'a) * (tyc -> 'a) -> 'a
-val tcw_arrow  : tyc * (fflag * tyc list * tyc list -> 'a) 
-                     * (tyc -> 'a) -> 'a
+val tcw_var    : Lty.tyc * (DebIndex.index * int -> 'a) * (Lty.tyc -> 'a) -> 'a
+val tcw_nvar   : Lty.tyc * (Lty.tvar -> 'a) * (Lty.tyc -> 'a) -> 'a
+val tcw_prim   : Lty.tyc * (PrimTyc.primtyc -> 'a) * (Lty.tyc -> 'a) -> 'a
+val tcw_fn     : Lty.tyc * (Lty.tkind list * Lty.tyc -> 'a) * (Lty.tyc -> 'a) -> 'a
+val tcw_app    : Lty.tyc * (Lty.tyc * Lty.tyc list -> 'a) * (Lty.tyc -> 'a) -> 'a
+val tcw_seq    : Lty.tyc * (Lty.tyc list -> 'a) * (Lty.tyc -> 'a) -> 'a
+val tcw_proj   : Lty.tyc * (Lty.tyc * int -> 'a) * (Lty.tyc -> 'a) -> 'a
+val tcw_sum    : Lty.tyc * (Lty.tyc list -> 'a) * (Lty.tyc -> 'a) -> 'a
+val tcw_fix    : Lty.tyc * ((int * Lty.tyc * Lty.tyc list) * int -> 'a) * (Lty.tyc -> 'a) -> 'a
+val tcw_wrap   : Lty.tyc * (Lty.tyc -> 'a) * (Lty.tyc -> 'a) -> 'a
+val tcw_abs    : Lty.tyc * (Lty.tyc -> 'a) * (Lty.tyc -> 'a) -> 'a
+val tcw_box    : Lty.tyc * (Lty.tyc -> 'a) * (Lty.tyc -> 'a) -> 'a
+val tcw_tuple  : Lty.tyc * (Lty.tyc list -> 'a) * (Lty.tyc -> 'a) -> 'a
+val tcw_arrow  : Lty.tyc * (Lty.fflag * Lty.tyc list * Lty.tyc list -> 'a) 
+                     * (Lty.tyc -> 'a) -> 'a
                                       
 
 (* 
@@ -184,30 +171,30 @@ val tcw_arrow  : tyc * (fflag * tyc list * tyc list -> 'a)
  *)
 
 (** lty constructors *)
-val ltc_tyc    : tyc -> lty
-val ltc_str    : lty list -> lty
-val ltc_fct    : lty list * lty list -> lty
-val ltc_poly   : tkind list * lty list -> lty    
+val ltc_tyc    : Lty.tyc -> Lty.lty
+val ltc_str    : Lty.lty list -> Lty.lty
+val ltc_fct    : Lty.lty list * Lty.lty list -> Lty.lty
+val ltc_poly   : Lty.tkind list * Lty.lty list -> Lty.lty    
 
 exception DeconExn
 
 (** lty deconstructors *)
-val ltd_tyc    : lty -> tyc
-val ltd_str    : lty -> lty list
-val ltd_fct    : lty -> lty list * lty list
-val ltd_poly   : lty -> tkind list * lty list
+val ltd_tyc    : Lty.lty -> Lty.tyc
+val ltd_str    : Lty.lty -> Lty.lty list
+val ltd_fct    : Lty.lty -> Lty.lty list * Lty.lty list
+val ltd_poly   : Lty.lty -> Lty.tkind list * Lty.lty list
 
 (** lty predicates *)
-val ltp_tyc    : lty -> bool
-val ltp_str    : lty -> bool
-val ltp_fct    : lty -> bool
-val ltp_poly   : lty -> bool
+val ltp_tyc    : Lty.lty -> bool
+val ltp_str    : Lty.lty -> bool
+val ltp_fct    : Lty.lty -> bool
+val ltp_poly   : Lty.lty -> bool
 
 (** lty one arm switches *)
-val ltw_tyc    : lty * (tyc -> 'a) * (lty -> 'a) -> 'a
-val ltw_str    : lty * (lty list -> 'a) * (lty -> 'a) -> 'a
-val ltw_fct    : lty * (lty list * lty list -> 'a) * (lty -> 'a) -> 'a
-val ltw_poly   : lty * (tkind list * lty list -> 'a) * (lty -> 'a) -> 'a
+val ltw_tyc    : Lty.lty * (Lty.tyc -> 'a) * (Lty.lty -> 'a) -> 'a
+val ltw_str    : Lty.lty * (Lty.lty list -> 'a) * (Lty.lty -> 'a) -> 'a
+val ltw_fct    : Lty.lty * (Lty.lty list * Lty.lty list -> 'a) * (Lty.lty -> 'a) -> 'a
+val ltw_poly   : Lty.lty * (Lty.tkind list * Lty.lty list -> 'a) * (Lty.lty -> 'a) -> 'a
                                         
 
 (* 
@@ -217,56 +204,56 @@ val ltw_poly   : lty * (tkind list * lty list -> 'a) * (lty -> 'a) -> 'a
  *)
 
 (** tyc-lty constructors *)
-val ltc_var    : index * int -> lty
-val ltc_prim   : primtyc -> lty
-val ltc_tuple  : lty list -> lty
-val ltc_arrow  : fflag * lty list * lty list -> lty
+val ltc_var    : DebIndex.index * int -> Lty.lty
+val ltc_prim   : PrimTyc.primtyc -> Lty.lty
+val ltc_tuple  : Lty.lty list -> Lty.lty
+val ltc_arrow  : Lty.fflag * Lty.lty list * Lty.lty list -> Lty.lty
 
 (** tyc-lty deconstructors *)
-val ltd_var    : lty -> index * int
-val ltd_prim   : lty -> primtyc
-val ltd_tuple  : lty -> lty list
-val ltd_arrow  : lty -> fflag * lty list * lty list
+val ltd_var    : Lty.lty -> DebIndex.index * int
+val ltd_prim   : Lty.lty -> PrimTyc.primtyc
+val ltd_tuple  : Lty.lty -> Lty.lty list
+val ltd_arrow  : Lty.lty -> Lty.fflag * Lty.lty list * Lty.lty list
 
 (** tyc-lty predicates *)
-val ltp_var    : lty -> bool
-val ltp_prim   : lty -> bool
-val ltp_tuple  : lty -> bool
-val ltp_arrow  : lty -> bool
+val ltp_var    : Lty.lty -> bool
+val ltp_prim   : Lty.lty -> bool
+val ltp_tuple  : Lty.lty -> bool
+val ltp_arrow  : Lty.lty -> bool
 
 (** tyc-lty one-arm switches *)
-val ltw_var    : lty * (index * int -> 'a) * (lty -> 'a) -> 'a
-val ltw_prim   : lty * (primtyc -> 'a) * (lty -> 'a) -> 'a
-val ltw_tuple  : lty * (tyc list -> 'a) * (lty -> 'a) -> 'a
-val ltw_arrow  : lty * (fflag * tyc list * tyc list -> 'a) 
-                     * (lty -> 'a) -> 'a
+val ltw_var    : Lty.lty * (DebIndex.index * int -> 'a) * (Lty.lty -> 'a) -> 'a
+val ltw_prim   : Lty.lty * (PrimTyc.primtyc -> 'a) * (Lty.lty -> 'a) -> 'a
+val ltw_tuple  : Lty.lty * (Lty.tyc list -> 'a) * (Lty.lty -> 'a) -> 'a
+val ltw_arrow  : Lty.lty * (Lty.fflag * Lty.tyc list * Lty.tyc list -> 'a) 
+                     * (Lty.lty -> 'a) -> 'a
 
 
 (* 
  * The following functions are written for CPS only. If you are writing
  * code for FLINT, you should not use any of these functions. 
- * The continuation referred here is the internal continuation introduced
+ * The continuation referred to here is the internal continuation introduced
  * via CPS conversion; it is different from the source-level continuation 
- * ('a cont) or control continuation ('a control-cont) where are represented 
+ * ('a cont) or control continuation ('a control-cont) which are represented 
  * as PT.ptc_cont and PT.ptc_ccont respectively. 
  *
  *)
 
 (** cont-tyc-lty constructors *)
-val tcc_cont   : tyc list -> tyc      
-val ltc_cont   : lty list -> lty                
+val tcc_cont   : Lty.tyc list -> Lty.tyc      
+val ltc_cont   : Lty.lty list -> Lty.lty                
 
 (** cont-tyc-lty deconstructors *)
-val tcd_cont   : tyc -> tyc list      
-val ltd_cont   : lty -> lty list        
+val tcd_cont   : Lty.tyc -> Lty.tyc list      
+val ltd_cont   : Lty.lty -> Lty.lty list        
 
 (** cont-tyc-lty predicates *)
-val tcp_cont   : tyc -> bool          
-val ltp_cont   : lty -> bool            
+val tcp_cont   : Lty.tyc -> bool          
+val ltp_cont   : Lty.lty -> bool            
 
 (** cont-tyc-lty one-arm switches *)
-val tcw_cont   : tyc * (tyc list -> 'a) * (tyc -> 'a) -> 'a
-val ltw_cont   : lty * (lty list -> 'a) * (lty -> 'a) -> 'a
+val tcw_cont   : Lty.tyc * (Lty.tyc list -> 'a) * (Lty.tyc -> 'a) -> 'a
+val ltw_cont   : Lty.lty * (Lty.lty list -> 'a) * (Lty.lty -> 'a) -> 'a
 
 
 (* 
@@ -274,37 +261,37 @@ val ltw_cont   : lty * (lty list -> 'a) * (lty -> 'a) -> 'a
  * are writing code for FLINT only, don't use any of these functions. 
  * The idea is that in PLambda, all (value or type) functions have single
  * argument and single return-result. Ideally, we should define 
- * another sets of datatypes for tycs and ltys. But we want to avoid
+ * another set of datatypes for tycs and ltys. But we want to avoid
  * the translation from PLambdaType to FLINT types, so we let them
  * share the same representations as much as possible. 
  *
- * Ultimately, LtyDef should be separated into two files: one for 
+ * Ultimately, LtyStructure should be separated into two files: one for 
  * FLINT, another for PLambda, but we will see if this is necessary.
  *
  *)
 
 (** plambda tyc-lty constructors *)
-val tcc_parrow : tyc * tyc -> tyc     
-val ltc_parrow : lty * lty -> lty
-val ltc_ppoly  : tkind list * lty -> lty  
-val ltc_pfct   : lty * lty -> lty         
+val tcc_parrow : Lty.tyc * Lty.tyc -> Lty.tyc     
+val ltc_parrow : Lty.lty * Lty.lty -> Lty.lty
+val ltc_ppoly  : Lty.tkind list * Lty.lty -> Lty.lty  
+val ltc_pfct   : Lty.lty * Lty.lty -> Lty.lty         
 
 (** plambda tyc-lty deconstructors *)
-val tcd_parrow : tyc -> tyc * tyc
-val ltd_parrow : lty -> lty * lty    
-val ltd_ppoly  : lty -> tkind list * lty
-val ltd_pfct   : lty -> lty * lty       
+val tcd_parrow : Lty.tyc -> Lty.tyc * Lty.tyc
+val ltd_parrow : Lty.lty -> Lty.lty * Lty.lty    
+val ltd_ppoly  : Lty.lty -> Lty.tkind list * Lty.lty
+val ltd_pfct   : Lty.lty -> Lty.lty * Lty.lty       
 
 (** plambda tyc-lty predicates *)
-val tcp_parrow : tyc -> bool          
-val ltp_parrow : lty -> bool
-val ltp_ppoly  : lty -> bool
-val ltp_pfct   : lty -> bool            
+val tcp_parrow : Lty.tyc -> bool          
+val ltp_parrow : Lty.lty -> bool
+val ltp_ppoly  : Lty.lty -> bool
+val ltp_pfct   : Lty.lty -> bool            
 
 (** plambda tyc-lty one-arm switches *)
-val tcw_parrow : tyc * (tyc * tyc -> 'a) * (tyc -> 'a) -> 'a
-val ltw_parrow : lty * (tyc * tyc -> 'a) * (lty -> 'a) -> 'a
-val ltw_ppoly  : lty * (tkind list * lty -> 'a) * (lty -> 'a) -> 'a
-val ltw_pfct   : lty * (lty * lty -> 'a) * (lty -> 'a) -> 'a
+val tcw_parrow : Lty.tyc * (Lty.tyc * Lty.tyc -> 'a) * (Lty.tyc -> 'a) -> 'a
+val ltw_parrow : Lty.lty * (Lty.tyc * Lty.tyc -> 'a) * (Lty.lty -> 'a) -> 'a
+val ltw_ppoly  : Lty.lty * (Lty.tkind list * Lty.lty -> 'a) * (Lty.lty -> 'a) -> 'a
+val ltw_pfct   : Lty.lty * (Lty.lty * Lty.lty -> 'a) * (Lty.lty -> 'a) -> 'a
 
 end (* signature LTYDEF *)

@@ -3,7 +3,7 @@
 
 signature FLATTEN = sig
   val flatten : {function: CPS.function,
-                 table: LtyDef.lty IntHashTable.hash_table,
+                 table: LtyExtern.lty IntHashTable.hash_table,
                  click: string -> unit} -> CPS.function
 end (* signature FLATTEN *)
 

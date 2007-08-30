@@ -4,10 +4,11 @@
 structure PFlatten : PFLATTEN =
 struct
 
-local structure LT = PLambdaType
-      structure LV = LambdaVar
-      structure F = FLINT
-      structure FU = FlintUtil
+local
+  structure LT = PLambdaType  (* = LtyExtern *)
+  structure LV = LambdaVar
+  structure F = FLINT
+  structure FU = FlintUtil
 in
 
 type llty = PLambda.lty

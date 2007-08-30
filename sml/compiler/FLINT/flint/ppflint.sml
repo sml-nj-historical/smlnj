@@ -1,15 +1,18 @@
 (* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
 (* ppflint.sml -- Pretty printer for Flint IL. *)
 
+(* this should be rewritten using the prettyprint library *)
 
 structure PPFlint :> PPFLINT =
 struct
+
     (** frequently used structures *)
     structure F = FLINT
     structure FU = FlintUtil
     structure S = Symbol
     structure LV = LambdaVar
     structure LT = LtyExtern
+    structure LTS = LtyToString
     structure PO = PrimOp
     structure PU = PrintUtil
     structure CTRL = Control.FLINT
@@ -59,7 +62,7 @@ struct
     val printFKind = say o toStringFKind
 
     (** classifications of various kinds of records *)
-    fun toStringRKind (F.RK_VECTOR tyc) = "VECTOR[" ^ LT.tc_print tyc ^ "]"
+    fun toStringRKind (F.RK_VECTOR tyc) = "VECTOR[" ^ LTS.tc_print tyc ^ "]"
       | toStringRKind F.RK_STRUCT = "STRUCT"
       | toStringRKind (F.RK_TUPLE _) = "RECORD"
 
@@ -90,10 +93,10 @@ struct
     val LVarString = ref LV.lvarName
 
     fun printVar v = say (!LVarString v)
-    val printTyc = say o LT.tc_print
-    val printLty = say o LT.lt_print
+    val printTyc = say o LTS.tc_print
+    val printLty = say o LTS.lt_print
     fun printTvTk (tv:LT.tvar,tk) = 
-	say ((LV.lvarName tv)^":"^(LT.tk_print tk))
+	say ((LV.lvarName tv)^":"^(LTS.tk_print tk))
 
     val parenCommaSep = ("(", ",", ")")
     val printValList = PU.printClosedSequence ("[",",","]") printSval

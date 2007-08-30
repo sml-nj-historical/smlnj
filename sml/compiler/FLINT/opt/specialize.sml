@@ -12,13 +12,13 @@ end (* signature SPECIALIZE *)
 structure Specialize : SPECIALIZE = 
 struct
 
-local structure LD = LtyDef
-      structure LT = LtyExtern
-      structure LK = LtyKernel
-      structure DI = DebIndex
-      structure PT = PrimTyc
-      structure PF = PFlatten
-      open FLINT
+local
+  structure LN = LtyNorm  (* for tc_nvars -- shouldn't need to access LtyNorm *)
+  structure LT = LtyExtern
+  structure DI = DebIndex
+  structure PT = PrimTyc
+  structure PF = PFlatten
+  open FLINT
 in
 
 val say = Control_Print.say
@@ -241,7 +241,7 @@ fun sumDtable(IENV(kenv, dtable), v, infos) =
   end
 
 (** find out the set of nvars in a list of tycs *)
-fun tcs_nvars tcs = SortedList.foldmerge (map LK.tc_nvars tcs)
+fun tcs_nvars tcs = SortedList.foldmerge (map LN.tc_nvars tcs)
 
 (** look and add a new type instance into the itable *)
 fun lookItable (IENV (itabs,dtab), d, v, ts, getlty, nv_depth) = 

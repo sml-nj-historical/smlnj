@@ -7,10 +7,10 @@ primtyc.sig/sml
   prim types
 
 lty.sig/sml
-  basic types for plambda types
-  tycI, ltyI -- concrete representations
-  tyc, lty -- hashed representations
-  tycEnv -- type environments for closures (= tyc)
+  basic types for plambda types, and their kinds
+  tycI, ltyI, tkindI -- concrete representations
+  tyc, lty, tkind -- hashed representations
+  tycEnv -- type environments for closures (encoded as tyc)
 
 pplty.sml
   pretty printing plambda types
@@ -20,15 +20,22 @@ ltykindchk.sml
   kind checking for types
   uses: lty.sml
 
-ltykernel.sig/sml
+ltynorm.sig/sml (was ltykernel)
   normalization and equivalence functions for types
   uses: lty.sml, pplty.sml
 
-ltybasic.sig/sml
+ltystructure.sig/sml (was ltydef)
+  structural operations for manipulatiing the abstract hashed representations
+  tkind, tyc, lty without pattern matching.
+  Sets of constructors, destructors, and predicates.
+  Some operations specialized for CPS or Plambda only.
+  uses: lty.sml
 
-
-ltydef.sig/sml
-
+ltyutil.sig/sml (was ltybasic)
+  generic utility functions for working with plambda/flint types
+  uses: PrimTyc (primtyc.sml)
+	Lty (lty.sml)
+	LtyNorm (ltynorm.sml)
 
 ltydict.sml
 

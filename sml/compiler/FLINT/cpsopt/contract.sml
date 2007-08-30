@@ -36,7 +36,7 @@ Conversion Primops:
 
 signature CONTRACT = sig
   val contract : {function: CPS.function,
-                  table: LtyDef.lty IntHashTable.hash_table,
+                  table: LtyExtern.lty IntHashTable.hash_table,
                   click: string -> unit,
                   last: bool,
                   size: int ref}
@@ -82,7 +82,8 @@ fun sameName(x,VAR y) = LV.sameName(x,y)
 
 fun complain(t1,t2,s) = 
   (say (s^"  ____ Type conflicting while contractions =====> \n    ");
-   say (LT.lt_print t1); say "\n and   \n    "; say (LT.lt_print t2);
+   say (LtyToString.lt_print t1); say "\n and   \n    ";
+   say (LtyToString.lt_print t2);
    say "\n \n";
    say "_____________________________________________________ \n")
 

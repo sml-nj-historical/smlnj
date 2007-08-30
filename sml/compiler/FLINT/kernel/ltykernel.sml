@@ -1,7 +1,10 @@
 (* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
-(* ltykernel.sml *)
+(* ltynorm.sml *)
 
-structure LtyKernel :> LTYKERNEL = 
+(* normalizing tyc and lty, equivalence functions for tking, tyc, lty,
+ * plus related operations *)
+
+structure LtyNorm :> LTYNORM = 
 struct 
 
 structure PT = PrimTyc
@@ -10,7 +13,7 @@ open Lty
 
 val debugging : bool ref = ref false
 val dp : int ref = ref 20
-fun bug s = ErrorMsg.impossible ("LtyKernel:" ^ s)
+fun bug s = ErrorMsg.impossible ("LtyNorm:" ^ s)
 
 structure PP = PrettyPrintNew
 structure PU = PPUtilNew
@@ -47,13 +50,13 @@ local
     | tcc_env_chkd(x, ol, nl, te) =
      (* if ol < 0 then (print "tcc_env_chkd: negative ol\n"; raise TCENV)
       else if nl < 0 then (print "tcc_env_chkd: negative nl\n"; raise TCENV)
-      else *) tc_injX(TC_ENV(x, ol, nl, te))
+      else *) tc_inj(TC_ENV(x, ol, nl, te))
 
   fun ltc_env_chkd(x, 0, 0, te) = x
     | ltc_env_chkd(x, ol, nl, te) =
       (* if ol < 0 then (print "ltc_env_chkd: negative ol\n"; raise TCENV)
       else if nl < 0 then (print "ltc_env_chkd: negative nl\n"; raise TCENV)
-      else *) lt_injX(LT_ENV(x, ol, nl, te))
+      else *) lt_inj(LT_ENV(x, ol, nl, te))
  
   (* needsClosure : enc_tvar list * int * int * tycenv -> bool
    * checks to see whether any of a list of free variables need
@@ -70,7 +73,7 @@ local
                        of SOME(Lamb(nl',_)) => (nl - nl') <> n
                         | SOME(Beta(nl',ts,_)) =>
                              (let val y = List.nth(ts, k)  (what is y???)
-                               in (case tc_outX y
+                               in (case tc_out y
                                     of TC_VAR(ni, nj) =>
                                         ((nj <> k) orelse ((ni+nl-nl') <> n))
                                      | _ => true)
@@ -82,7 +85,7 @@ in
 
 fun tcc_env(x, ol, nl, tenv) =
   (let fun checkTCVAR (tyc,ol,nl,tenv) =  (* GK -- debugging *)
-           case (tc_outX tyc)
+           case (tc_out tyc)
              of TC_VAR(d,k) =>
                  (case teLookup(tenv,d)
 		   of SOME(Beta(_,ts,ks)) =>
@@ -146,25 +149,25 @@ end (* local -- utility functions for lt_env and tc_env *)
  ***************************************************************************)
 
 (** a list of constructor functions *)
-val tcc_var = tc_injX o TC_VAR
-val tcc_fn = tc_injX o TC_FN
+val tcc_var = tc_inj o TC_VAR
+val tcc_fn = tc_inj o TC_FN
 val tcc_app = fn (fntyc, argtycs) =>
 		 (* Check that parameter arity matches number of arguments
 		    supplied because type application must be saturated *) 
 		 let fun checkParamArity (tc,tcs) = 
 			 let 
 			     fun getArity(tycEnv) =
-				 (case (tc_outX tycEnv)
+				 (case (tc_out tycEnv)
 				   of TC_PRIM(ptyc) => PT.pt_arity ptyc
 				    | TC_FN(params, _) => length params
 				    | (TC_APP(tc, _)) => 
-				      (case (tc_outX tc)
+				      (case (tc_out tc)
 					of (TC_FN(_, tc')) => getArity tc'
 					 | _ => 0)
 				    | (TC_FIX{family={size,gen,params,...},index}) =>
-				      (case (tc_outX gen)
+				      (case (tc_out gen)
 					of (TC_FN (_,tc')) => (* generator function *)
-					   (case (tc_outX tc')
+					   (case (tc_out tc')
 				             of (TC_SEQ tycs) =>
                                                   getArity (List.nth (tycs, index))
 					      | TC_FN (args, _) => length args
@@ -195,24 +198,25 @@ val tcc_app = fn (fntyc, argtycs) =>
 			 end
 		 in
 		     ((* checkParamArity(fntyc, argtycs); *)
-		      (tc_injX o TC_APP) (fntyc, argtycs))
+		      (tc_inj o TC_APP) (fntyc, argtycs))
 		 end
-val tcc_seq = tc_injX o TC_SEQ
-val tcc_proj = tc_injX o TC_PROJ
+
+val tcc_seq = tc_inj o TC_SEQ
+val tcc_proj = tc_inj o TC_PROJ
 val tcc_fix = 
     fn ((size:int,names: string vector,gen: tyc,params: tyc list),index:int) =>
-       tc_injX(TC_FIX{family={size=size,names=names,gen=gen,params=params},index=index})
-val tcc_abs = tc_injX o TC_ABS
-val tcc_tup  = tc_injX o TC_TUPLE
-val tcc_parw = tc_injX o TC_PARROW
-val tcc_box = tc_injX o TC_BOX
-val tcc_real = tc_injX (TC_PRIM PT.ptc_real)
-val ltc_tyc = lt_injX o LT_TYC
-val ltc_str = lt_injX o LT_STR
-val ltc_fct = lt_injX o LT_FCT
-val ltc_poly = lt_injX o LT_POLY
-val tcc_sum = tc_injX o TC_SUM
-val tcc_token = tc_injX o TC_TOKEN
+       tc_inj(TC_FIX{family={size=size,names=names,gen=gen,params=params},index=index})
+val tcc_abs = tc_inj o TC_ABS
+val tcc_tup  = tc_inj o TC_TUPLE
+val tcc_parw = tc_inj o TC_PARROW
+val tcc_box = tc_inj o TC_BOX
+val tcc_real = tc_inj (TC_PRIM PT.ptc_real)
+val ltc_tyc = lt_inj o LT_TYC
+val ltc_str = lt_inj o LT_STR
+val ltc_fct = lt_inj o LT_FCT
+val ltc_poly = lt_inj o LT_POLY
+val tcc_sum = tc_inj o TC_SUM
+val tcc_token = tc_inj o TC_TOKEN
 
 (* The following functions decide on how to flatten the arguments 
  * and results of an arbitrary FLINT function. The current threshold
@@ -229,12 +233,12 @@ val tcc_token = tc_injX o TC_TOKEN
  *) 
 val flatten_limit = 9  
 
-(* teUnbound2 -- raised when second index of a deBruijn index pair is
+(* TeUnbound -- raised when second index of a deBruijn index pair is
  * out of bounds *)
-exception teUnbound2
+exception TeUnbound
 
 fun isKnown tc = 
-  (case tc_outX(tc_whnm tc)
+  (case tc_out(tc_whnm tc)
     of (TC_PRIM _ | TC_ARROW _ | TC_BOX _ | TC_ABS _ | TC_PARROW _) => true 
      | (TC_CONT _ | TC_FIX _ | TC_SUM _ | TC_TUPLE _) => true
      | TC_APP(tc, _) => isKnown tc
@@ -244,7 +248,7 @@ fun isKnown tc =
 
 and tc_autoflat tc = 
   let val ntc = tc_whnm tc 
-   in (case tc_outX ntc
+   in (case tc_out ntc
         of TC_TUPLE (_, [_]) => (* singleton record is not flattened to ensure
                               isomorphism btw plambdatype and flinttype *)
              (true, [ntc], false)
@@ -272,7 +276,7 @@ and tcs_autoflat (flag, ts) =
           | _ => bug "unexpected cooked multiples in tcs_autoflat")
 
 and lt_autoflat lt = 
-  (case lt_outX(lt_whnm lt)
+  (case lt_out(lt_whnm lt)
     of LT_TYC tc => 
          let val (raw, ts, flag) = tc_autoflat tc
           in (raw, map ltc_tyc ts, flag)
@@ -280,18 +284,18 @@ and lt_autoflat lt =
      | _ => (true, [lt], false))
 
 (** a special version of tcc_arw that does automatic flattening *)
-and tcc_arw (x as (FF_FIXED, _, _)) = tc_injX (TC_ARROW x)
-  | tcc_arw (x as (FF_VAR (true, true), _, _)) = tc_injX (TC_ARROW x)
+and tcc_arw (x as (FF_FIXED, _, _)) = tc_inj (TC_ARROW x)
+  | tcc_arw (x as (FF_VAR (true, true), _, _)) = tc_inj (TC_ARROW x)
   | tcc_arw (b as (FF_VAR (b1, b2)), ts1, ts2) =
       let val (nb1, nts1) = tcs_autoflat (b1, ts1)
           val (nb2, nts2) = tcs_autoflat (b2, ts2)
-       in tc_injX (TC_ARROW(FF_VAR(nb1, nb2),  nts1, nts2))
+       in tc_inj (TC_ARROW(FF_VAR(nb1, nb2),  nts1, nts2))
       end
 
 (** utility function to read the top-level of a tyc *)
 and tc_lzrd(t: tyc) = 
   let fun g x = 
-            (case tc_outX x
+            (case tc_out x
               of TC_IND (tc, _) => g tc
                | TC_ENV (tc, ol, nl, te) => 
                    let val ntc = g(h(tc, ol, nl, te))
@@ -308,7 +312,7 @@ and tc_lzrd(t: tyc) =
                                  (PU.pps s "tc_lzrd.prop:"; PP.newline s;
                                   ppTyc (!dp) s z; PP.newline s));
                                 bug "tc_lzrd prop")
-             in (case tc_outX x
+             in (case tc_out x
                   of TC_VAR (n,k) => 
                        if (n <= ol) then  (* n is bound in tenv *)
                          (case teLookup(tenv, n)
@@ -343,7 +347,7 @@ and tc_lzrd(t: tyc) =
                           closeBox ();
                           newline(); PP.flushStream s
 			end);
-			raise teUnbound2)
+			raise TeUnbound)
                                  in (* ASSERT: nl >= nl' *)
                                     if nl' > nl then
                                         (print ("ERROR: tc_lzrd (r6): nl ="^
@@ -387,7 +391,7 @@ and tc_lzrd(t: tyc) =
 (** utility function to read the top-level of an lty *)
 and lt_lzrd t = 
   let fun g x = 
-           (case lt_outX x
+           (case lt_out x
              of LT_IND (lt, _) => g lt
               | LT_ENV(lt, i, j, te) => 
                   let val nlt = g(h(lt, i, j, te))
@@ -398,7 +402,7 @@ and lt_lzrd t =
       and h (x, 0, 0, _) = g x
         | h (x, ol, nl, tenv) = 
             let fun prop z = ltc_env(z, ol, nl, tenv)
-             in (case lt_outX x
+             in (case lt_out x
                   of LT_TYC tc => ltc_tyc (tcc_env(tc, ol, nl, tenv)
 					   handle TCENV => 
 						  bug "lt_lzrd LT_TYC")
@@ -419,22 +423,22 @@ and lt_lzrd t =
   end (* function lt_lzrd *)
 
 (** taking out the TC_IND indirection *)
-and stripInd t = (case tc_outX t of TC_IND (x,_) => stripInd x | _ => t)
+and stripInd t = (case tc_out t of TC_IND (x,_) => stripInd x | _ => t)
 
 (*
 and printParamArgs (tc,tcs) = 
     let fun getArity(tycEnv) =
-	    (case (tc_outX tycEnv) of
+	    (case (tc_out tycEnv) of
 		 TC_PRIM(ptyc) => PT.pt_arity ptyc
 	       | TC_FN(params, _) => length params
 	       | (TC_APP(tc, _)) => 
-		 (case (tc_outX tc)
+		 (case (tc_out tc)
 		   of (TC_FN(_, tc')) => getArity tc'
 		    | _ => 0)
 	       | (TC_FIX{family={size,gen,params,...},index}) =>
-		 (case (tc_outX gen)
+		 (case (tc_out gen)
 		   of (TC_FN (_,tc')) => (* generator function *)
-		      (case (tc_outX tc')
+		      (case (tc_out tc')
 			of (TC_SEQ tycs) => getArity (List.nth (tycs, index))
 			 | TC_FN (args, _) => length args
 			 | _ => bug "Malformed generator range")
@@ -461,18 +465,18 @@ and printParamArgs (tc,tcs) =
 and tc_whnm t = if tcp_norm(t) then t else 
   let (* val _ = print ">>tc_whnm not norm\n" *) 
       val nt = tc_lzrd t
-   in case (tc_outX nt)
+   in case (tc_out nt)
        of TC_APP(tc, tcs) =>
 	    ((* print "\ntc_whnm: TC_APP\n"; *)
              let val tc' = tc_whnm tc
                            handle exn =>
                              (print "TC_APP in tc_whnm 1\n"; raise exn)
-              in case (tc_outX tc')
+              in case (tc_out tc')
                   of TC_FN(ks, b) =>  
                        let fun base () = 
                              (b, 1, 0, teCons(Beta(0,tcs,ks),teEmpty))  (* r1 *)
                            val sp = 
-                             (case tc_outX b
+                             (case tc_out b
                                of TC_ENV(b', ol', nl', te') => 
                                     (case teDest te'
                                       of SOME(Lamb(n,ks'), te'') =>
@@ -496,7 +500,7 @@ and tc_whnm t = if tcp_norm(t) then t else
         | TC_PROJ(tc, i) =>
 	    ((* print "\ntc_whnm: TC_PROJ\n"; *) 
 	     let val tc' = tc_whnm tc
-              in case (tc_outX tc')
+              in case (tc_out tc')
                    of (TC_SEQ tcs) => 
                         let val res = List.nth(tcs, i)
                                       handle Subscript => bug "TC_SEQ in tc_whnm"
@@ -528,7 +532,7 @@ and tc_whnm t = if tcp_norm(t) then t else
 and lt_whnm t =
     if ltp_norm(t) then t
     else let val nt = lt_lzrd t
-         in case (lt_outX nt)
+         in case (lt_out nt)
              of LT_TYC tc => ltc_tyc(tc_whnm tc)
               | _ => nt
          end (* function lt_whnm *)
@@ -539,7 +543,7 @@ fun tc_norm t = if (tcp_norm t) then t else
    in if (tcp_norm nt) then nt
       else
         (let val res = 
-              (case (tc_outX nt)
+              (case (tc_out nt)
                 of TC_FN (ks, tc) => tcc_fn(ks, tc_norm tc)
                  | TC_APP (tc, tcs) => tcc_app(tc_norm tc, map tc_norm tcs)
                  | TC_SEQ tcs => tcc_seq(map tc_norm tcs)
@@ -567,7 +571,7 @@ fun lt_norm t = if (ltp_norm t) then t else
    in if (ltp_norm nt) then nt
       else 
         (let val res = 
-              (case lt_outX nt
+              (case lt_out nt
                 of LT_TYC tc => ltc_tyc(tc_norm tc)
                  | LT_STR ts => ltc_str(map lt_norm ts)
                  | LT_FCT (ts1, ts2) => 
@@ -590,7 +594,7 @@ local val name = "TC_WRAP"
       fun tcc_tok k t = tcc_token(k, t)
 
       fun unknown tc = 
-        (case tc_outX tc
+        (case tc_out tc
           of (TC_VAR _ | TC_NVAR _) => true
            | (TC_APP(tc, _)) => unknown tc
            | (TC_PROJ(tc, _)) => unknown tc
@@ -599,9 +603,9 @@ local val name = "TC_WRAP"
       fun flex_tuple ts = 
         let fun hhh(x::r, ukn, wfree) = 
                  let fun iswp tc =
-                       (case tc_outX tc
+                       (case tc_out tc
                          of TC_TOKEN(k', t) => (* WARNING: need check k' *)
-                              (case tc_outX t
+                              (case tc_out t
                                 of TC_PRIM pt => false
                                  | _ => true)
                           | _ => true)
@@ -612,7 +616,7 @@ local val name = "TC_WRAP"
         end
 
       fun is_whnm tc = 
-        (case tc_outX tc
+        (case tc_out tc
           of (TC_ARROW(FF_FIXED, [t], _)) => (unknown t) 
            | (TC_TUPLE(rf, ts)) => flex_tuple ts
            | (TC_PRIM pt) => PT.unboxed pt
@@ -620,16 +624,16 @@ local val name = "TC_WRAP"
 
       (* invariants: tc itself is in whnm but is_whnm tc = false *)
       fun reduce_one (k, tc) =  
-        (case tc_outX tc
+        (case tc_out tc
           of TC_TUPLE (rk, ts) => 
                let fun hhh (x::r, nts, ukn) = 
                          let val nx = tc_whnm x
                              val b1 = unknown nx
                              val nnx = 
-                               (case tc_outX nx
+                               (case tc_out nx
                                  of TC_TOKEN(k', t) =>
                                       if token_eq(k, k') then
-                                        (case tc_outX t 
+                                        (case tc_out t 
                                           of TC_PRIM _ => t
                                            | _ => nx)
                                       else nx
@@ -647,18 +651,18 @@ local val name = "TC_WRAP"
                let val nt1 = tc_whnm t1
                    fun ggg z = 
                      let val nz = tc_whnm z
-                      in (case tc_outX nz
+                      in (case tc_out nz
                            of TC_PRIM pt => 
                                 if PT.unboxed pt then tcc_token(k, nz)
                                 else nz
                             | _ => nz)
                      end
                    val (wp, nts1) =
-                     (case tc_outX nt1
+                     (case tc_out nt1
                        of TC_TUPLE(_, [x,y]) => (false, [ggg x, ggg y])
                         | TC_TOKEN(k', x) => 
                             if token_eq(k, k') then
-                              (case (tc_outX x)
+                              (case (tc_out x)
                                 of TC_TUPLE(_, [y, z]) => 
                                     (false, [ggg y, ggg z])
                                  | _ => (false, [nt1]))
@@ -694,19 +698,6 @@ end (* end of creating the wrap token for "tcc_rbox" *)
 
 (** testing if a tyc is a unknown constructor *)
 fun tc_unknown tc = not (isKnown tc)
-
-(***************************************************************************
- *         REBINDING THE INJECTION AND PROJECTION FUNCTIONS                *
- ***************************************************************************)
-(** converting from the standard reps to the hash-consing reps *)
-val tk_inj = tk_injX
-val tc_inj = tc_injX
-val lt_inj = lt_injX
-
-(** converting from the hash-consing reps to the standard reps *)
-val tk_out = tk_outX 
-val tc_out = tc_outX o tc_whnm
-val lt_out = lt_outX o lt_whnm
 
 (***************************************************************************
  *         UTILITY FUNCTIONS ON TESTING EQUIVALENCE                        *
@@ -750,7 +741,7 @@ end (* Click *)
 
 (* testing if two recursive datatypes are equivalent *)
 fun eq_fix (t1, t2) = 
-    (case (tc_outX t1, tc_outX t2) 
+    (case (tc_out t1, tc_out t2) 
       of (TC_FIX{family={size=n1,gen=gen1,params=par1,...},index=i1},
           TC_FIX{family={size=n2,gen=gen2,params=par2,...},index=i2}) => 
           (n1 = n2 andalso i1 = i2 andalso
@@ -767,7 +758,7 @@ fun eq_fix (t1, t2) =
  * Each of these first takes the set of hypotheses.
  *)
 and tc_eqv_gen (t1, t2) = 
-    case (tc_outX t1, tc_outX t2)
+    case (tc_out t1, tc_out t2)
      of (TC_FIX _, TC_FIX _) =>
         eq_fix (t1, t2)
       | (TC_FN(ks1, b1), TC_FN(ks2, b2)) =>
@@ -836,7 +827,7 @@ fun tc_match(ks: tkind list, ltys: lty list, argtyc: tyc) = true
  ** a polytype in a functor argument (t2) can match a monotype in the 
  ** functor parameter signature (t1) **)
 fun lt_eqv_gen (t1 : lty, t2: lty) = 
-    (case (lt_outX t1, lt_outX t2)
+    (case (lt_out t1, lt_out t2)
       of (LT_POLY(ks1, b1), LT_POLY(ks2, b2)) =>
          (eqlist tk_eqv (ks1, ks2)) andalso (eqlist lt_eqv (b1, b2))
        | (LT_TYC a, LT_TYC b) => tc_eqv(a, b)
@@ -909,4 +900,21 @@ fun tc_nvars (tyc:tyc) =
 fun lt_nvars (lty:lty) =
     Lty.lt_nvars(lt_norm lty)
 
-end (* abstraction LtyKernel *)
+(* don't redefine -- already in Lty
+(***************************************************************************
+ *         REBINDING THE INJECTION AND PROJECTION FUNCTIONS                *
+ ***************************************************************************)
+(** converting from the standard reps to the hash-consing reps *)
+val tk_inj = Lty.tk_inj
+val tc_inj = Lty.tc_inj
+val lt_inj = Lty.lt_inj
+
+(** converting from the hash-consing reps to the standard reps *)
+val tk_out = Lty.tk_out 
+*)
+
+(* normalizing versions of out projections for tyc and lty *)
+val tc_out_nm = Lty.tc_out o tc_whnm
+val lt_out_nm = Lty.lt_out o lt_whnm
+
+end (* abstraction LtyNorm *)

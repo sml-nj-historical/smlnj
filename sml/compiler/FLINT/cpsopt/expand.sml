@@ -5,7 +5,7 @@ signature EXPAND = sig
   val expand : {function: CPS.function,
 	        bodysize: int,
 		unroll: bool,
-		table: LtyDef.lty IntHashTable.hash_table,
+		table: LtyExtern.lty IntHashTable.hash_table,
 		afterClosure: bool, do_headers: bool,
 		click: string -> unit} -> CPS.function
 end (* signature EXPAND *)

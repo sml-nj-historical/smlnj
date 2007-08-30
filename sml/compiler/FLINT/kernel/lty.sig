@@ -1,7 +1,10 @@
 (* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
 (* lty.sig *)
 
-signature LTY = sig 
+(* basic definitions of the plambda types, kinds, etc. *)
+
+signature LTY =
+sig 
 
 (* definitions of kind and kind-environment *)
 type tkind
@@ -17,8 +20,8 @@ val tvEncode : int * int -> enc_tvar
 val tvDecode : enc_tvar -> int * int
 
 (* definitions of named tyc variables *)
-type tvar = LambdaVar.lvar                    (* temporary, not used *)
-val mkTvar : unit -> tvar                     (* temporary, not used *)
+type tvar = LambdaVar.lvar
+val mkTvar : unit -> tvar                     (* used: reps/coerce.sml *)
 
 (* internal information in hash-consed tycs *)
 datatype aux_info
@@ -125,13 +128,13 @@ datatype ltyI
   | LT_ENV of lty * int * int * tycEnv        (* type closure *)
 
 (** injections and projections on tkind, tyc, and lty *)
-val tk_injX   : tkindI -> tkind 
-val tc_injX   : tycI -> tyc
-val lt_injX   : ltyI -> lty
+val tk_inj   : tkindI -> tkind 
+val tc_inj   : tycI -> tyc
+val lt_inj   : ltyI -> lty
 
-val tk_outX   : tkind -> tkindI
-val tc_outX   : tyc -> tycI
-val lt_outX   : lty -> ltyI
+val tk_out   : tkind -> tkindI
+val tc_out   : tyc -> tycI
+val lt_out   : lty -> ltyI
 
 (** key comparison for tkind, tyc, and lty; used in pickling *)
 val tk_cmp   : tkind * tkind -> order
@@ -152,9 +155,9 @@ val teLength : tycEnv -> int
 (** utility functions on tkindEnv *)
 type tkindEnv 
 exception tkUnbound
-val initTkEnv        : tkindEnv
-val tkLookup         : tkindEnv * int * int -> tkind
-val tkInsert         : tkindEnv * tkind list -> tkindEnv
+val initTkEnv     : tkindEnv
+val tkLookup      : tkindEnv * int * int -> tkind
+val tkInsert      : tkindEnv * tkind list -> tkindEnv
 
 (* token functions *)
 val register_token : token_info -> token

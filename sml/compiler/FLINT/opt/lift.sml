@@ -9,25 +9,20 @@ signature LIFT =
   end
 
   
-
 structure Lift:LIFT = 
 struct 
 
 local structure LE = LtyExtern
       structure DI = DebIndex
       structure PT = PrimTyc
-(*    structure DA = Access    *)
-      structure LB = LtyBasic
-      structure LD = LtyDef
       structure CTRL = FLINT_Control
-      open LtyKernel
+      open LtyNorm (* ??? *)
       open FLINT
       open Access
+(* also directly accesses Lty *)
 in
 
-
 (*****  Utility functions *****)
-
 
 exception PartialTypeApp 
 exception VarNotFound
