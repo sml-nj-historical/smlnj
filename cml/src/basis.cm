@@ -96,6 +96,8 @@ Library
 	structure Int
 	structure Int31
 	structure Int32
+	structure Int64
+	structure IntInf
 	structure LargeInt
 	structure LargeReal
 	structure LargeWord

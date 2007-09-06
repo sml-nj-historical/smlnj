@@ -1,6 +1,9 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2007-09-06]
+	Exported Int64 and IntInf from basis.cm.
+
 [2007-02-15]
 	Updates to the cml-lib to track removals from the SML/NJ library.
 
