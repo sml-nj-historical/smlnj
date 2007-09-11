@@ -1209,6 +1209,7 @@ val resFct =
       val tps = T.TP_FCT(paramTps, resTps)
 
       val resRlzn = {stamp = #stamp fctRlzn, (*** DAVE ? ***)
+		     paramEnts = #entities fsigParEnt,
 		     closure = resClosure, rpath=rpath,
 		     tycpath=SOME tps,
 		     properties = PropList.newHolder (),

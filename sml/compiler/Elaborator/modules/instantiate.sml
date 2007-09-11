@@ -1535,7 +1535,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 		      | FinalTyc r =>
 			  (TYCent(instToTyc(r,entEnv)),failuresSoFar)
 
-		      | FinalFct{sign as FSIG{paramvar,...},
+		      | FinalFct{sign as FSIG{paramvar,paramsig,...},
 				 def, epath, path} =>
 			 (case !def
 			   of SOME(FCT { rlzn, ... }) => FCTent rlzn
@@ -1545,11 +1545,19 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 			      let val stamp = mkStamp()
 				  val (bodyExp, tpOp) =
 				      newFctBody(sign, epath, path, entEnv)
+				  val ({entities=paramEnts,...}, _, _, _, _) =
+				      instGeneric{sign=paramsig, entEnv=entEnv, 
+	                                          rpath=path, 
+						  region=SourceMap.nullRegion,
+	                                          instKind=INST_PARAM
+							       DebIndex.top, 
+							       compInfo=compInfo}
 				  val cl = CLOSURE{param=paramvar,
 						   body=bodyExp,
 						   env=entEnv}
 			      in FCTent {stamp = stamp,
 					 rpath=path,
+					 paramEnts = paramEnts,
 					 closure=cl,
 					 properties = PropList.newHolder (),
 					 tycpath=tpOp,

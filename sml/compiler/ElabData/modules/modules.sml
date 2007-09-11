@@ -125,7 +125,7 @@ and strExp
 and fctExp
   = VARfct of EP.entPath (* selection from current entityEnv *)
   | CONSTfct of fctEntity
-  | LAMBDA of {param : EP.entVar, body : strExp}
+  | LAMBDA of {param : EP.entVar, paramEnts : entityEnv, body : strExp}
   | LAMBDA_TP of {param : EP.entVar, body : strExp, sign : fctSig}
   | LETfct of entityDec * fctExp
 
@@ -197,6 +197,7 @@ and strrec =
 
 and fctEntity =
     {stamp    : ST.stamp,
+     paramEnts: entityEnv,
      closure  : fctClosure,
      properties: PropList.holder, (* lambdaty *)
      tycpath  : T.tycpath option,
@@ -240,6 +241,7 @@ val bogusSig : Signature =
 
 val bogusFctEntity : fctEntity =
     {stamp = bogusFctStamp,
+     paramEnts = ERReenv,
      closure = CLOSURE{param=EP.bogusEntVar,
 		       body= CONSTstr bogusStrEntity,
 		       env=NILeenv},

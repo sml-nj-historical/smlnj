@@ -112,6 +112,7 @@ Group
 
 	(* export of structures required to use FLINT directly *)
 	structure Translate
+	structure RepTycProps
 	structure Lty
 	structure LtyKindChk
 	structure LtyStructure
@@ -259,6 +260,7 @@ FLINT/trans/tempexpn.sml
 FLINT/trans/primopmap.sml
 FLINT/trans/translate.sml
 FLINT/trans/transtypes.sml
+FLINT/trans/reptycprops.sml
 
 FLINT/lsplit/ls-inline.sml
 

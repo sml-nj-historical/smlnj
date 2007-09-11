@@ -158,14 +158,14 @@ in
 	 STR, F, STE, TCE, STRE, FE, EE, ED, EEV, FX,
 	 B, DCON, DICT, FPRIM, FUNDEC, TFUNDEC, DATACON, DTMEM, NRD, OVERLD,
          FCTC, SEN, FEN, SPATH, IPATH, STRID, FCTID, CCI, CTYPE, CCALL_TYPE,
-         SPE, TSI, PK) =
+         SPE, TSI, PK, FCTP) =
 	( 1,  2,  3,  4,  5,  6,  7,  8,  9, 10,
 	 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 	 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
 	 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
 	 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
 	 51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
-         61, 62, 63)
+         61, 62, 63, 64)
 
     (* this is a bit awful...
      * (we really ought to have syntax for "functional update") *)
@@ -1117,6 +1117,12 @@ in
 	    en arg
 	end
 
+	and fctParamEnts paramEnts = let
+	    val op $ = PU.$ FCTP
+	in 
+	    "g" $ [entityEnv paramEnts]
+	end
+	    
 	and fctClosure (M.CLOSURE { param, body, env }) = let
 	    val op $ = PU.$ FCTC
 	in
@@ -1188,8 +1194,8 @@ in
 	    val op $ = PU.$ FE
 	    fun fe (M.VARfct s) = "o" $ [entPath s]
 	      | fe (M.CONSTfct e) = "p" $ [fctEntity e]
-	      | fe (M.LAMBDA { param, body }) =
-		"q" $ [entVar param, strExp body]
+	      | fe (M.LAMBDA { param, paramEnts, body }) =
+		"q" $ [entVar param, fctParamEnts paramEnts, strExp body]
 	      | fe (M.LAMBDA_TP { param, body, sign }) =
 		"r" $ [entVar param, strExp body, fctSig sign]
 	      | fe (M.LETfct (e, f)) = "s" $ [entityDec e, fctExp f]
@@ -1246,12 +1252,13 @@ in
 
 	and shStrEntity id = share (STRs id) strEntity
 
-        and fctEntity { stamp = s,
+        and fctEntity { stamp = s, paramEnts = e,
 			closure, properties, tycpath, rpath, stub } =
 	    let val op $ = PU.$ FEN
 	    in
-		"f" $ ([stamp s, fctClosure closure, ipath rpath]
-		       @ libPid (stub: M.stubinfo option, #owner))
+		"f" $ ([stamp s, fctParamEnts e, fctClosure closure, 
+			ipath rpath]
+		       @ libPid (stub: M.stubinfo option, #owner)) 
 	    end
 
 	and shFctEntity id = share (FCTs id) fctEntity

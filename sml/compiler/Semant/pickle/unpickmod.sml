@@ -447,6 +447,7 @@ structure UnpickMod : UNPICKMOD = struct
 	val spM = UU.mkMap ()
 	val tsiM = UU.mkMap ()
 	val enM = UU.mkMap ()
+	val fctpM = UU.mkMap ()
 	val fctcM = UU.mkMap ()
 	val strM = UU.mkMap ()
 	val fctM = UU.mkMap ()
@@ -913,6 +914,13 @@ structure UnpickMod : UNPICKMOD = struct
 	    share enM en
 	end
 
+	and fctParamEnts' () = let
+	    fun f #"g" = entityEnv' ()
+	      | f _ = raise Format
+	in
+	    share fctpM f
+	end 
+	    
 	and fctClosure' () = let
 	    fun f #"f" =
 		let val p = entVar ()
@@ -1061,9 +1069,10 @@ structure UnpickMod : UNPICKMOD = struct
 	      | fe #"p" = & M.CONSTfct (fctEntity' ())
 	      | fe #"q" =
 		let val p = entVar ()
+		    val (e, etr) = fctParamEnts' ()
 		    val (b, btr) = strExp' ()
 		in
-		    (M.LAMBDA { param = p, body = b }, btr)
+		    (M.LAMBDA { param = p, paramEnts = e, body = b }, btr)
 		end
 	      | fe #"r" =
 		let val p = entVar ()
@@ -1198,9 +1207,11 @@ structure UnpickMod : UNPICKMOD = struct
 	and fctEntity' () = let
 	    fun f #"f" =
 		let val s = stamp ()
+		    val (e, etr) = fctParamEnts'()
 		    val (c, ctr) = fctClosure' ()
 		in
 		    ({ stamp = s,
+		       paramEnts = e,
 		       closure = c,
 		       rpath = ipath (),
 		       properties = PropList.newHolder (),

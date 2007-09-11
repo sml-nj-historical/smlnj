@@ -141,6 +141,7 @@ val mkv = LambdaVar.mkLvar
 fun mkvN NONE = mkv()
   | mkvN (SOME s) = LambdaVar.namedLvar s
 *)
+val rootdec' = RepTycProps.procDec(rootdec, 0)
 
 val mkvN = #mkLvar compInfo
 fun mkv () = mkvN NONE
@@ -1675,7 +1676,7 @@ val exportLexp = SRECORD (map VAR exportLvars)
 
 val _ = debugmsg ">>mkDec"
 (** translating the ML absyn into the PLambda expression *)
-val body = mkDec (rootdec, DI.top) exportLexp
+val body = mkDec (rootdec', DI.top) exportLexp
 val _ = debugmsg "<<mkDec"
 val _ = if CompInfo.anyErrors compInfo 
 	then raise EM.Error 

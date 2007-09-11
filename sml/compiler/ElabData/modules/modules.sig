@@ -100,7 +100,7 @@ and strExp
 and fctExp
   = VARfct of EntPath.entPath 
   | CONSTfct of fctEntity
-  | LAMBDA of {param : EntPath.entVar, body : strExp}
+  | LAMBDA of {param : EntPath.entVar, paramEnts : entityEnv, body : strExp}
   | LAMBDA_TP of {param : EntPath.entVar, body : strExp, sign : fctSig}
   | LETfct of entityDec * fctExp
 
@@ -172,6 +172,7 @@ and strrec =
 
 and fctEntity =
     {stamp    : Stamps.stamp,
+     paramEnts: entityEnv,
      closure  : fctClosure,
      properties: PropList.holder, (* lambdaty *)
      tycpath  : Types.tycpath option,
