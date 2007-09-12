@@ -41,6 +41,11 @@ ltyutil.sig/sml (was ltybasic)
 	Lty (lty.sml)
 	LtyNorm (ltynorm.sml)
 
+ltytostring.sig/sml
+  simple pseudo-prettyprinting for ltys and tycs. used to be part of ltybasic
+  defines: LtyToString : LTYTOSTRING
+  uses: PrimTyc, DebIndex, Lty, LtyNorm, LtyUtil
+
 ltymisc.sig/sml (was part of ltyextern)
   more specialized utility functions on types
 
