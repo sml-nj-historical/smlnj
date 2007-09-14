@@ -1,9 +1,10 @@
-(* amd64comp-instr-ext.sml
+(* amd64CompInstrExt.sml
  *
- * COPYRIGHT (c) 2000 Bell Labs, Lucent Technologies
+ * COPYRIGHT (c) 2007 The Fellowship of SML/NJ (http://smlnj.org)
  *
  * emit code for extensions to the amd64 instruction set.
  *)
+
 signature AMD64COMP_INSTR_EXT = sig
   structure I : AMD64INSTR
   structure TS : MLTREE_STREAM
@@ -21,8 +22,6 @@ signature AMD64COMP_INSTR_EXT = sig
 	  an: I.T.an list} 
         -> unit
 end
-
-
 
 
 functor AMD64CompInstrExt
@@ -66,15 +65,24 @@ struct
       (*esac*))
   in
     case stm
-    of X.PUSHQ(rexp) => emit(I.pushq(operand rexp), an)
-     | X.POP(rexp)   => emit(I.pop(operand rexp), an)
-
-     | X.LEAVE	     => emit(I.leave, an)
-     | X.RET(rexp)   => emit(I.ret(SOME(operand rexp)), an)
-     | X.LOCK_CMPXCHGL(src, dst) =>
-       (* src must in a register *)
-       emit(I.cmpxchg{lock=true,sz=I.I32, 
-                      src=I.Direct(64,reduceOperand(operand src)), 
-                      dst=operand dst},an)
+     of X.PUSHQ(rexp) => emit(I.pushq(operand rexp), an)
+      | X.POP(rexp)   => emit(I.pop(operand rexp), an)
+      | X.LEAVE	     => emit(I.leave, an)
+      | X.RET(rexp)   => emit(I.ret(SOME(operand rexp)), an)
+      | X.LOCK_CMPXCHGL(src, dst) =>
+	(* src must in a register *)
+	  emit(I.cmpxchg{
+	      lock=true,sz=I.I32, 
+	      src=I.Direct(32,reduceOperand(operand src)), 
+	      dst=operand dst
+	    }, an)
+      | X.LOCK_CMPXCHGQ(src, dst) =>
+	(* src must in a register *)
+	  emit(I.cmpxchg{
+	      lock=true, sz=I.I64, 
+	      src=I.Direct(64,reduceOperand(operand src)), 
+	      dst=operand dst
+	    }, an)
+    (* end case *)
   end
 end
