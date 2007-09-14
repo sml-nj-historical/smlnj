@@ -158,7 +158,7 @@ functor AMD64Gen (
 	    if CB.sameColor (s, d)
 	       then ()
 	       else mark' (I.COPY {k=CB.GP, sz=ty, src=[s], dst=[d], tmp=NONE}, an)
-	  | move' (ty, I.Immed 0, dst, an) =
+	  | move' (ty, I.Immed 0, dst as I.Direct _, an) =
 	    mark' (I.binary {binOp=O.xorOp ty, src=dst, dst=dst}, an)
 	  | move' (ty, src, dst, an) =
 	    mark' (I.move {mvOp=O.movOp ty, src=src, dst=dst}, an)
