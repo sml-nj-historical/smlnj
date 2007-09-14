@@ -141,10 +141,11 @@ functor AMD64Gen (
           | _            => false
           (* end case *))
 
-    fun selectInstructions (TS.S.STREAM{
+    fun selectInstructions (instrStream as TS.S.STREAM{
           emit=emitInstr, defineLabel, entryLabel, pseudoOp, annotation,
           getAnnotations, beginCluster, endCluster, exitBlock, 
-          comment, ...}) = let
+          comment, ...
+	}) = let
 	val emit = emitInstr o I.INSTR
 	val emits = app emitInstr
 	(* mark an expression with a list of annotations *) 
@@ -790,7 +791,7 @@ functor AMD64Gen (
 		 | T.ZX(fTy, tTy, T.LOAD (_, ea, mem)) => 
 		   genLoad (O.loadZXOp (fTy, tTy), ea, mem)
 		 | T.LET (s, e) => (stmt s; expr (e, dst, an))
-		 | _ => raise Fail "todo"
+		 | _ => raise Fail("todo: " ^ MLTreeUtils.rexpToString e)
 	      (* end case *))
 	    end (* expr' *)
 
@@ -1002,8 +1003,6 @@ functor AMD64Gen (
 	      (* end case *))
 	    end (* store *)
 
-	and reducer () = raise Fail "todo"
-
 	and fbranch (fty, fcc, t1, t2, lab, an) = let
 	    fun j cc = mark (I.JCC {cond=cc, opnd=immedLabel lab}, an)
 	    in
@@ -1214,10 +1213,11 @@ functor AMD64Gen (
 	    (* end case *))
 	and stmt s = stmt' (s, []) 
 
-	fun beginCluster' _ = (
+	and beginCluster' _ = (
 	    trapLabel := NONE;
 	    beginCluster 0)
-	fun endCluster' a = (
+
+	and endCluster' a = (
 	    (case !trapLabel
               of NONE => ()
                | SOME(_, lab) => (defineLabel lab; emit I.INTO)
@@ -1227,7 +1227,29 @@ functor AMD64Gen (
             if !floatingPointUsed then ignore (newFreg ()) else ();
             endCluster a)
 
-	fun self () = TS.S.STREAM {
+	and ccExpr e = error "ccExpr"
+
+	and reduceOpnd (I.Direct(ty, r)) = r
+	  | reduceOpnd opnd = let
+	      val dst = newReg()
+	      in
+		move(64, opnd, I.Direct(64, dst)); dst
+	      end
+
+	and reducer () = TS.REDUCER{
+		reduceRexp    = fn _ => raise Fail "todo",
+		reduceFexp    = fn _ => raise Fail "todo",
+		reduceCCexp   = ccExpr,
+		reduceStm     = stmt',
+		operand       = operand 64,
+		reduceOperand = reduceOpnd,
+		addressOf     = fn e => address(e, I.Region.memory), (*XXX*)
+		emit          = mark',
+		instrStream   = instrStream, 
+		mltreeStream  = self()
+	      }
+
+	and self () = TS.S.STREAM {
 	    beginCluster=beginCluster',
 	    endCluster=endCluster',
 	    emit=stmt,
