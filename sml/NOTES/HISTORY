@@ -13,6 +13,12 @@ Date: yyyy/mm/dd hh:mm:ss
 Tag: cvs-tag-for-this-change
 Description:
 
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/09/12
+Description:
+
+Fixed xorl memory argument bug.
+
 ----------------------------------------------------------------------
 Name: George Kuan (http://www.cs.uchicago.edu/~gkuan)
 Date: 2007/07/27
