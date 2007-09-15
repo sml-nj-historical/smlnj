@@ -1586,8 +1586,11 @@ and elabDecl0
                      val (absyn, entDecl, env', entEnv') = 
 			 elabDecl0(decl, env1, entEnv1, context, top, tdepth,
 				   epContext, rpath, region, compInfo)
+		     (* Consolidate env in case of large number of bindings
+			in a single module *)
+		     val env2 = SE.consolidateLazy (SE.atop(env',env))
                   in loop(rest, absyn::asdecls, entDecl::entDecls,
-                          SE.atop(env',env),
+                          env2,
                           EE.mark(mkStamp,EE.atop(entEnv',entEnv)))
                  end
 
