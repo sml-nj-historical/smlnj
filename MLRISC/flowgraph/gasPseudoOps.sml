@@ -94,7 +94,7 @@ functor GasPseudoOps (
 	  val pop = (case sz
 		 of 8 => "\t.byte\t"
 		  | 16 => "\t.short\t"
-		  | 32 => "\t.int\t"
+		  | 32 => "\t.long\t"
 		  | 64 => "\t.quad\t"
 		  | n => error ("unexpected INT size: " ^ Int.toString n)
 		(* end case *))
@@ -105,7 +105,7 @@ functor GasPseudoOps (
       | toString(PB.ASCII s)        =
 	  Fmt.format "\t.ascii\t\"%s\"" [Fmt.STR(String.toCString s)]
       | toString(PB.ASCIIZ s)       = 
-          Fmt.format "\t.asciz \"%s\"" [Fmt.STR(String.toCString s)]
+          Fmt.format "\t.asciz\t\"%s\"" [Fmt.STR(String.toCString s)]
 
       | toString(PB.SPACE sz)	  = Fmt.format "\t.space\t%d" [Fmt.INT sz]
 
