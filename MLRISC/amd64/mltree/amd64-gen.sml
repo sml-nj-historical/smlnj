@@ -161,6 +161,13 @@ functor AMD64Gen (
 	       else mark' (I.COPY {k=CB.GP, sz=ty, src=[s], dst=[d], tmp=NONE}, an)
 	  | move' (ty, I.Immed 0, dst as I.Direct _, an) =
 	    mark' (I.binary {binOp=O.xorOp ty, src=dst, dst=dst}, an)
+	  | move' (ty, src as I.ImmedLabel _ , dst, an) = let
+            val tmp = newReg ()
+	    val tmpR = I.Direct (64, tmp)
+	    in 
+		emitInstr (I.move {mvOp=I.MOVABSQ, src=src, dst=tmpR});
+		mark' (I.move {mvOp=I.MOVQ, src=tmpR, dst=dst}, an)
+	    end	
 	  | move' (ty, src, dst, an) =
 	    mark' (I.move {mvOp=O.movOp ty, src=src, dst=dst}, an)
 	(* move with annotation *)
@@ -917,7 +924,7 @@ functor AMD64Gen (
 	  | jmp (T.LABEXP le, labs, an) = mark (I.JMP (I.ImmedLabel le, labs), an)
           | jmp (ea, labs, an) = mark (I.JMP (operand 64 ea, labs), an)
 
-	and doStore ty (ea, d, mem, an) = 
+	and doStore ty (ea, d, mem, an) =  
 	    move' (ty, immedOrReg (ty, operand ty d), address (ea, mem), an)
 
 	and binaryMem(ty, binOp, src, dst, mem, an) =

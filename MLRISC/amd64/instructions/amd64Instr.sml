@@ -168,6 +168,7 @@ sig
    | MOVL
    | MOVB
    | MOVW
+   | MOVABSQ
    | MOVSWQ
    | MOVZWQ
    | MOVSWL
@@ -489,6 +490,7 @@ struct
    | MOVL
    | MOVB
    | MOVW
+   | MOVABSQ
    | MOVSWQ
    | MOVZWQ
    | MOVSWL

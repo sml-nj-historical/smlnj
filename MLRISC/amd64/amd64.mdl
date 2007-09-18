@@ -179,6 +179,7 @@ architecture AMD64 =
 	             | MOVL    (* zx(long) -> qword *)
                      | MOVB             
                      | MOVW             
+		     | MOVABSQ
 		     | MOVSWQ  (* sx(word) -> qword *)
                      | MOVZWQ  (* zx(word) -> qword *) 
                      | MOVSWL  (* sx(word) -> long *)
