@@ -124,7 +124,7 @@ functor GasPseudoOps (
 	  end
 
       | toString(PB.IMPORT labs) = decls("\t.extern\t%s", labs)
-      | toString(PB.EXPORT labs) = decls("\t.globl\t%s", labs)
+      | toString(PB.EXPORT labs) = decls("\t.global\t%s", labs)
       | toString(PB.COMMENT txt) = Fmt.format "/* %s */" [Fmt.STR txt]
       | toString(PB.EXT _) = error "EXT"
 

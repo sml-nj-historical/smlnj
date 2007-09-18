@@ -15,6 +15,7 @@ Library
 	functor AMD64Shuffle
 	functor AMD64CompInstrExt
 	functor AMD64GasPseudoOps
+	functor AMD64DarwinPseudoOps
 	functor AMD64Props
 	functor AMD64Gen
 	functor AMD64Opcodes
@@ -33,6 +34,7 @@ is
 	$/SA.cm
 
 	../amd64/flowgraph/amd64GasPseudoOps.sml
+	../amd64/flowgraph/amd64-darwin-pseudo-ops.sml
 
 	../amd64/emit/amd64Asm.sml
 	../amd64/amd64MC.sml

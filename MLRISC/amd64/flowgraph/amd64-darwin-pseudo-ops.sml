@@ -1,10 +1,10 @@
-(* x86-darwin-pseudo-ops.sml
+(* amd64-darwin-pseudo-ops.sml
  *
  * COPYRIGHT (c) 2006 The SML/NJ Fellowship (www.smlnj.org)
  * All rights reserved.
  *)
 
-functor X86DarwinPseudoOps (
+functor AMD64DarwinPseudoOps (
 
     structure T : MLTREE
     structure MLTreeEval : MLTREE_EVAL  where T = T
@@ -29,7 +29,7 @@ functor X86DarwinPseudoOps (
   
     type 'a pseudo_op = (T.labexp, 'a) PB.pseudo_op
     
-    fun error msg = MLRiscErrorMsg.error ("X86DarwinPseudoOps.", msg)
+    fun error msg = MLRiscErrorMsg.error ("AMD64DarwinPseudoOps.", msg)
   
     val sizeOf = Endian.sizeOf
     val emitValue = Endian.emitValue
