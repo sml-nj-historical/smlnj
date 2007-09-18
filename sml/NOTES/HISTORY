@@ -13,6 +13,14 @@ Date: yyyy/mm/dd hh:mm:ss
 Tag: cvs-tag-for-this-change
 Description:
 
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/09/17
+Description:
+
+Fixed an instruction-selection bug when loading 64-bit labels.
+
+----------------------------------------------------------------------
 Name: George Kuan (http://www.cs.uchicago.edu/~gkuan)
 Date: 2007/09/14
 Description:
