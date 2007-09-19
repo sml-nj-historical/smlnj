@@ -7,10 +7,7 @@
  * in the Darwin (Mac OS X) assembler syntax.
  *)
 
-functor DarwinPseudoOps (
-    structure T : MLTREE
-    val labFmt : {gPrefix: string, aPrefix: string}
-  ) : AS_PSEUDO_OPS =
+functor DarwinPseudoOps (T : MLTREE) : AS_PSEUDO_OPS =
   struct
     structure T = T
     structure PB = PseudoOpsBasisTyp
@@ -42,9 +39,11 @@ functor DarwinPseudoOps (
 	    then concat["(", s1, s2, s3, ")"]
 	    else concat[s1, s2, s3]
 
+    val fmtLabel = Label.fmt {gPrefix="_",aPrefix="L"}
+
     fun lexpToString le = toStr(le, 0)
 
-    and toStr(T.LABEL lab, _) = Label.fmt labFmt lab 
+    and toStr(T.LABEL lab, _) = fmtLabel lab 
       | toStr(T.LABEXP le, p) = toStr(le, p)
       | toStr(T.NEG(_, T.CONST c), _) =
           (prInt(~(T.Constant.valueOf c)) handle _ => "-"^T.Constant.toString c)
@@ -84,7 +83,7 @@ functor DarwinPseudoOps (
       | toString(PB.ALIGN_ENTRY)    = "\t.align\t4"	(* 16 byte boundary *)
       | toString(PB.ALIGN_LABEL)    = "\t.p2align\t4,,7"
 
-      | toString(PB.DATA_LABEL lab) = Label.fmt labFmt lab ^ ":"
+      | toString(PB.DATA_LABEL lab) = fmtLabel lab ^ ":"
       | toString(PB.DATA_READ_ONLY) = "\t.const_data"
       | toString(PB.DATA)	    = "\t.data"
       | toString(PB.BSS)	    = raise Fail "BSS not supported; use DATA instead"

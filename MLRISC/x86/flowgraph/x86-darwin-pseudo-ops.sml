@@ -23,9 +23,7 @@ functor X86DarwinPseudoOps (
 	   val max_alignment = SOME 7
 	   val nop = {sz=1, en=0wx90: Word32.word})
   
-    structure POps = DarwinPseudoOps(
-	structure T = T
-	val labFmt = {gPrefix="", aPrefix="L"})
+    structure POps = DarwinPseudoOps(T)
   
     type 'a pseudo_op = (T.labexp, 'a) PB.pseudo_op
     
