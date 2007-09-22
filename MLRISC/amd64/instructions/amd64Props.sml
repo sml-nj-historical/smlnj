@@ -41,8 +41,7 @@ functor AMD64Props (
 	of I.NOP => IK_NOP
 	 | ( I.CALL {cutsTo=_::_, ...} | I.CALLQ {cutsTo=_::_, ...} ) =>
 	   IK_CALL_WITH_CUTS
-	 | ( I.JMP _ | I.JCC _ | I.RET _ | I.INTO
-	   | I.CMOV _ | I.CMOVQ _ ) => IK_JUMP
+	 | ( I.JMP _ | I.JCC _ | I.RET _ | I.INTO ) => IK_JUMP
 	 | ( I.CALL _ | I. CALLQ _ ) => IK_CALL
 	 | I.PHI {} => IK_PHI
 	 | I.SOURCE {} => IK_SOURCE
