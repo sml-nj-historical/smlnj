@@ -721,10 +721,13 @@ functor AMD64Gen (
 		| multiply_notrap (ty, e1 as T.LI _, e2) = multiply_notrap (ty, e2, e1)
 		| multiply_notrap (ty, e1, e2) = multiply (ty, e1, e2)
 
+	      (* NOTE: cmovcc encodes its operand lengths implicitly in the operand names: i.e.,
+	       * cmove %rax, %rbx 
+	       * *)
 	      fun cmovcc (tyCond, tyCmp, cc, t1, t2, y, n) = let
 		  fun gen (dstR, _) = let
 		      val _ = expr' (tyCond, n, dstR, [])  (* false branch *)
-		      val src = regOrMem (tyCond, operand tyCond y)  (* yes branch (note the ordering )*)
+		      val src = regOrMem (tyCond, operand tyCond y)  (* yes branch (note the ordering ) *)
 		      val cc = cmp (true, tyCmp, cc, t1, t2, []) (* compare *)
 		      in
 		        mark (I.CMOV {cond=cond cc, src=src, dst=dstR}, an)
@@ -808,8 +811,9 @@ functor AMD64Gen (
 		 (* zero-extended loads *)
 		 | T.ZX(fTy, tTy, T.LOAD (_, ea, mem)) => 
 		   genLoad (O.loadZXOp (fTy, tTy), ea, mem)
-		 | T.COND (tyCond, T.CMP (tyCmp, cc, t1, t2), y, n) =>
+		 | T.COND (tyCond, T.CMP (tyCmp, cc, t1, t2), y, n) => 
 		   cmovcc (tyCond, tyCmp, cc, t1, t2, y, n)
+		 | T.NEG (ty, x) => unary (ty, O.negOp, x)
 		 | T.LET (s, e) => (stmt s; expr (e, dst, an))
 		 | _ => raise Fail("todo: " ^ MLTreeUtils.rexpToString e)
 	      (* end case *))

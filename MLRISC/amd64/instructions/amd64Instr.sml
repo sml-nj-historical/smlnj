@@ -245,7 +245,6 @@ sig
    | UNARY of {unOp:unaryOp, opnd:operand}
    | SET of {cond:cond, opnd:operand}
    | CMOV of {cond:cond, src:operand, dst:CellsBasis.cell}
-   | CMOVQ of {cond:cond, src:operand, dst:CellsBasis.cell}
    | PUSHQ of operand
    | PUSHL of operand
    | PUSHW of operand
@@ -306,7 +305,6 @@ sig
    val unary : {unOp:unaryOp, opnd:operand} -> instruction
    val set : {cond:cond, opnd:operand} -> instruction
    val cmov : {cond:cond, src:operand, dst:CellsBasis.cell} -> instruction
-   val cmovq : {cond:cond, src:operand, dst:CellsBasis.cell} -> instruction
    val pushq : operand -> instruction
    val pushl : operand -> instruction
    val pushw : operand -> instruction
@@ -567,7 +565,6 @@ struct
    | UNARY of {unOp:unaryOp, opnd:operand}
    | SET of {cond:cond, opnd:operand}
    | CMOV of {cond:cond, src:operand, dst:CellsBasis.cell}
-   | CMOVQ of {cond:cond, src:operand, dst:CellsBasis.cell}
    | PUSHQ of operand
    | PUSHL of operand
    | PUSHW of operand
@@ -626,7 +623,6 @@ struct
    and unary = INSTR o UNARY
    and set = INSTR o SET
    and cmov = INSTR o CMOV
-   and cmovq = INSTR o CMOVQ
    and pushq = INSTR o PUSHQ
    and pushl = INSTR o PUSHL
    and pushw = INSTR o PUSHW

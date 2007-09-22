@@ -260,23 +260,23 @@ struct
      | asm_isize (I.I64) = "64"
    and emit_isize x = emit (asm_isize x)
 
-(*#line 472.7 "amd64/amd64.mdl"*)
+(*#line 470.7 "amd64/amd64.mdl"*)
    fun emitInt32 i = 
        let 
-(*#line 472.29 "amd64/amd64.mdl"*)
+(*#line 470.29 "amd64/amd64.mdl"*)
            val s = Int32.toString i
 
-(*#line 473.10 "amd64/amd64.mdl"*)
+(*#line 471.10 "amd64/amd64.mdl"*)
            val s = (if (i >= 0)
                   then s
                   else ("-" ^ (String.substring (s, 1, (size s) - 1))))
        in emit s
        end
 
-(*#line 478.7 "amd64/amd64.mdl"*)
+(*#line 476.7 "amd64/amd64.mdl"*)
    val {low=SToffset, ...} = C.cellRange CellsBasis.FP
 
-(*#line 480.7 "amd64/amd64.mdl"*)
+(*#line 478.7 "amd64/amd64.mdl"*)
    fun emitScale 0 = emit "1"
      | emitScale 1 = emit "2"
      | emitScale 2 = emit "4"
@@ -327,23 +327,23 @@ struct
      | emit_disp (I.ImmedLabel lexp) = emit_labexp lexp
      | emit_disp _ = error "emit_disp"
 
-(*#line 524.7 "amd64/amd64.mdl"*)
+(*#line 522.7 "amd64/amd64.mdl"*)
    fun stupidGas (I.ImmedLabel lexp) = emit_labexp lexp
      | stupidGas opnd = 
        ( emit "*"; 
          emit_operand opnd )
 
-(*#line 528.7 "amd64/amd64.mdl"*)
+(*#line 526.7 "amd64/amd64.mdl"*)
    fun isMemOpnd (I.FDirect f) = true
      | isMemOpnd (I.LabelEA _) = true
      | isMemOpnd (I.Displace _) = true
      | isMemOpnd (I.Indexed _) = true
      | isMemOpnd _ = false
 
-(*#line 533.7 "amd64/amd64.mdl"*)
+(*#line 531.7 "amd64/amd64.mdl"*)
    fun chop fbinOp = 
        let 
-(*#line 534.15 "amd64/amd64.mdl"*)
+(*#line 532.15 "amd64/amd64.mdl"*)
            val n = size fbinOp
        in 
           (case Char.toLower (String.sub (fbinOp, n - 1)) of
@@ -352,34 +352,34 @@ struct
           )
        end
 
-(*#line 540.7 "amd64/amd64.mdl"*)
+(*#line 538.7 "amd64/amd64.mdl"*)
    val emit_dst = emit_operand
 
-(*#line 541.7 "amd64/amd64.mdl"*)
+(*#line 539.7 "amd64/amd64.mdl"*)
    val emit_src = emit_operand
 
-(*#line 542.7 "amd64/amd64.mdl"*)
+(*#line 540.7 "amd64/amd64.mdl"*)
    val emit_opnd = emit_operand
 
-(*#line 543.7 "amd64/amd64.mdl"*)
+(*#line 541.7 "amd64/amd64.mdl"*)
    val emit_opnd8 = emit_operand8
 
-(*#line 544.7 "amd64/amd64.mdl"*)
+(*#line 542.7 "amd64/amd64.mdl"*)
    val emit_rsrc = emit_operand
 
-(*#line 545.7 "amd64/amd64.mdl"*)
+(*#line 543.7 "amd64/amd64.mdl"*)
    val emit_lsrc = emit_operand
 
-(*#line 546.7 "amd64/amd64.mdl"*)
+(*#line 544.7 "amd64/amd64.mdl"*)
    val emit_addr = emit_operand
 
-(*#line 547.7 "amd64/amd64.mdl"*)
+(*#line 545.7 "amd64/amd64.mdl"*)
    val emit_src1 = emit_operand
 
-(*#line 548.7 "amd64/amd64.mdl"*)
+(*#line 546.7 "amd64/amd64.mdl"*)
    val emit_ea = emit_operand
 
-(*#line 549.7 "amd64/amd64.mdl"*)
+(*#line 547.7 "amd64/amd64.mdl"*)
    val emit_count = emit_operand
    fun emitInstr' instr = 
        (case instr of
@@ -572,13 +572,6 @@ struct
            emit "\t"; 
            emit_opnd8 opnd )
        | I.CMOV{cond, src, dst} => 
-         ( emit "cmov"; 
-           emit_cond cond; 
-           emit "\t"; 
-           emit_src src; 
-           emit ", "; 
-           emitCell dst )
-       | I.CMOVQ{cond, src, dst} => 
          ( emit "cmov"; 
            emit_cond cond; 
            emit "\t"; 

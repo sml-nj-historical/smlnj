@@ -225,7 +225,6 @@ functor AMD64Props (
 	      * do potentially it may define *and* use 
 	      *)
 	     | I.CMOV {src, dst,...} => ([dst], operandAcc(src, [dst]))
-	     | I.CMOVQ {src, dst,...} => ([dst], operandAcc(src, [dst]))
 	     | _ => ([], [])
 	    (* end case *))
 	in
@@ -296,6 +295,8 @@ functor AMD64Props (
     (* determine the bit width of an instruction *)
     fun szOfInstr instr = (case instr
 	of I.JCC _ => 32
+	 (* NOTE: CMOV encodes operand length in its operands! *)
+	 | I.CMOV {src=I.Direct (sz, _), ...} => sz
 	 | I.MOVE {mvOp, ...} => 
 	   (case mvOp
 	     of ( I.MOVQ | I.MOVSWQ | I.MOVZWQ | I.MOVSBQ | 
@@ -305,9 +306,9 @@ functor AMD64Props (
 	      | I.MOVW => 16
 	      | I.MOVB => 8
 	   (* esac *))
-	 | ( I.CALL _ | I.LEAL _ | I.CMPL _ | I.TESTL _ | I.CMOV _ | I.MUL3 _ )
+	 | ( I.CALL _ | I.LEAL _ | I.CMPL _ | I.TESTL _ | I.MUL3 _ )
 	     => 32
-	 | ( I.CALLQ _ | I.LEAQ _ | I.CMPQ _ | I.TESTQ _ | I.CMOVQ _ | I.MULQ3 _ )
+	 | ( I.CALLQ _ | I.LEAQ _ | I.CMPQ _ | I.TESTQ _ | I.MULQ3 _ | I.CMOV _)
 	     => 64 
 	 | ( I.CMPW _ | I.TESTW _ ) => 16
 	 | ( I.CMPB _ | I.TESTB _ ) => 8 

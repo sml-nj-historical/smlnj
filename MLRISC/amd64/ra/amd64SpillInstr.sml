@@ -217,7 +217,7 @@ functor AMD64SpillInstr (
 			   }
 		       | _ => let 
 		         val tmpR = newReg()
-			 val tmp  = I.Direct (sz, tmpR)
+			 val tmp  = I.Direct (64, tmpR)
 			 in  
 			   {proh=[tmpR], newReg=SOME tmpR,
 		            code=[I.move{mvOp=I.MOVQ, src=spillLoc, dst=tmp},
@@ -470,10 +470,6 @@ functor AMD64SpillInstr (
 		   if CB.sameColor(dst,r) 
 		     then error "CMOV"
 		      else done (I.CMOV{cond=cond, src=spillLoc, dst=dst}, an)
-		 | I.CMOVQ{cond, src, dst} => 
-		   if CB.sameColor(dst,r) 
-		     then error "CMOV"
-		     else done (I.CMOVQ{cond=cond, src=spillLoc, dst=dst}, an)
 		 | I.SHIFT {shiftOp, count as I.Direct _, src, dst} => 
 		   withTmp (fn tmp =>
 		     I.SHIFT {shiftOp=shiftOp, count=count, 

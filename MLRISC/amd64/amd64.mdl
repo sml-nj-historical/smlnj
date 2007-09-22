@@ -385,8 +385,6 @@ architecture AMD64 =
      fun cmov cc {src,dst} = if cc then $r[dst] := long src else ()
      rtl CMOV^^   [EQ,NE,LT,LE,GT,GE,B,BE,A,AE,C,NC,P,NP,O,NO] = 
          map cmov [E ,NE,L, LE,G ,GE,B,BE,A,AE,C,NC,P,NP,O,NO] 
-     rtl CMOVQ^^   [EQ,NE,LT,LE,GT,GE,B,BE,A,AE,C,NC,P,NP,O,NO] = 
-         map cmov [E ,NE,L, LE,G ,GE,B,BE,A,AE,C,NC,P,NP,O,NO] 
 
      (* push and pops *)
      rtl PUSHQ {operand} = $m[rsp - 8] := qword(operand) || rsp := rsp - 8
@@ -716,11 +714,6 @@ architecture AMD64 =
     | CMOV of {cond:cond, src:operand, dst: $GP} 
 	asm: ``cmov<cond>\t<src>, <dst>''
 	rtl: ``CMOV<cond>''
-
-(* FIXME:  *)
-    | CMOVQ of {cond:cond, src:operand, dst: $GP} 
-	        asm: ``cmov<cond>\t<src>, <dst>''
-	        rtl: ``CMOVQ<cond>''
 
     | PUSHQ of operand
 	asm: ``pushq\t<operand>''
