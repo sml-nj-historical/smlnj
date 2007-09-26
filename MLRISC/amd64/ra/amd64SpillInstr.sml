@@ -44,7 +44,17 @@ functor AMD64SpillInstr (
       | isMemory(I.LabelEA _) = true
       | isMemory _ = false
 
-    fun mvInstr instr = let
+  (* We need mvInstr and mvInstr' at the moment for two reasons: 
+   * 1. Determining the operand size for reloading instructions
+   *    requires looking at the operand being spilled. I will do this
+   *    in the next fix.  For now, just reload a 64-bit value
+   * 2. Operands and their sizes leak out from the spill phase into other 
+   *    code.  This means we need to use mvInstr' there to get operand
+   *    sizes right.
+   *)
+    fun mvInstr instr = (64, I.MOVQ)
+
+    fun mvInstr' instr = let
         fun mvOp 8 = I.MOVB
           | mvOp 16 = I.MOVW
           | mvOp 32 = I.MOVL
@@ -52,9 +62,7 @@ functor AMD64SpillInstr (
           | mvOp _ = error "mvInstr"
         val sz = Props.szOfInstr instr
         in
-	    (64, I.MOVQ)  (* FIXME: code is less efficient when always 
-			   * using 64-bit moves. *)
-(*          (sz, mvOp sz)*)
+          (sz, mvOp sz)
         end (* mvInstr *)
     
     fun fmvInstr instr = let
@@ -93,7 +101,7 @@ functor AMD64SpillInstr (
     fun spillR (i, r, spillLoc) = let
         fun spill (instr, an) = let
             fun done (instr, an) = {code=[mark (instr, an)], proh=[], newReg=NONE}
-            val (sz, sMvOp) = mvInstr instr
+            val (sz, sMvOp) = mvInstr' instr
             in
               (case instr
                 of I.CALL {opnd=addr, defs, uses, return, cutsTo, mem, pops} =>
