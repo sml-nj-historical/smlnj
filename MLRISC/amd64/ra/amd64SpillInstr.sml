@@ -52,7 +52,9 @@ functor AMD64SpillInstr (
           | mvOp _ = error "mvInstr"
         val sz = Props.szOfInstr instr
         in
-          (sz, mvOp sz)
+	    (64, I.MOVQ)  (* FIXME: code is less efficient when always 
+			   * using 64-bit moves. *)
+(*          (sz, mvOp sz)*)
         end (* mvInstr *)
     
     fun fmvInstr instr = let
