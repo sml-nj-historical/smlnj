@@ -25,10 +25,10 @@ functor AMD64SpillInstr (
     val newReg = C.newReg
     val newFreg = C.newFreg
     
-    fun annotate(instr,[]) = instr
-      | annotate(instr,a::an) = annotate(I.ANNOTATION{i=instr,a=a},an)
+    fun annotate (instr,[]) = instr
+      | annotate (instr,a::an) = annotate(I.ANNOTATION{i=instr,a=a},an)
 
-    fun mark(instr, an) = annotate(I.INSTR instr, an)
+    fun mark (instr, an) = annotate(I.INSTR instr, an)
     
     fun immed(I.Immed _) = true
       | immed(I.ImmedLabel _) = true
@@ -43,18 +43,8 @@ functor AMD64SpillInstr (
       | isMemory(I.Indexed _) = true
       | isMemory(I.LabelEA _) = true
       | isMemory _ = false
-
-  (* We need mvInstr and mvInstr' at the moment for two reasons: 
-   * 1. Determining the operand size for reloading instructions
-   *    requires looking at the operand being spilled. I will do this
-   *    in the next fix.  For now, just reload a 64-bit value
-   * 2. Operands and their sizes leak out from the spill phase into other 
-   *    code.  This means we need to use mvInstr' there to get operand
-   *    sizes right.
-   *)
-    fun mvInstr instr = (64, I.MOVQ)
-
-    fun mvInstr' instr = let
+		     
+    fun mvInstr instr = let
         fun mvOp 8 = I.MOVB
           | mvOp 16 = I.MOVW
           | mvOp 32 = I.MOVL
@@ -98,26 +88,39 @@ functor AMD64SpillInstr (
       | reloadFromEA CB.FP _ = error "reloadFromEA: FP"
       | reloadFromEA _ _ = error "reloadFromEA"
 
+    (* spill a general purpose register r at instruction i to spillLoc *)
     fun spillR (i, r, spillLoc) = let
         fun spill (instr, an) = let
             fun done (instr, an) = {code=[mark (instr, an)], proh=[], newReg=NONE}
-            val (sz, sMvOp) = mvInstr' instr
+            val (defaultSz, defaultMov) = (64, I.MOVQ)
+	    (* freshTmp generates a fresh temporary register, an operand with the 
+	     * instruction's operand size, and an operand with a 64-bit operand size. *)
+	    fun freshTmp () = let
+		val tmpR = newReg ()
+		val sz = Props.szOfInstr instr
+		val tmpOpnd = I.Direct (sz, tmpR)
+		val tmpOpnd64 = I.Direct (64, tmpR)
+	        in
+		   (tmpR, tmpOpnd, tmpOpnd64)
+		end
             in
               (case instr
                 of I.CALL {opnd=addr, defs, uses, return, cutsTo, mem, pops} =>
 		   done (I.CALL {opnd=addr, defs=C.rmvReg (r, defs), 
 		    	        return=return, uses=uses, 
 			        cutsTo=cutsTo, mem=mem, pops=pops}, an)
+		 (* With sign or zero extended spills we use different operand sizes
+		  * for copying to the tmp operand and for copying from the tmp operand. *)
 		 | I.MOVE {mvOp as (I.MOVZBQ|I.MOVSBQ|I.MOVZWQ|I.MOVSWQ|
 		                    I.MOVSLQ|I.MOVZBL|I.MOVSBL|I.MOVZWL|
 		                    I.MOVSWL), src, dst} => let
-		   val tmpR = newReg ()
-		   val tmp = I.Direct (sz, tmpR)
+		   val (tmpR, tmpOpnd, tmpOpnd64) = freshTmp ()
 		   in
 		     {proh=[tmpR], newReg=SOME tmpR,
-		      code=[mark (I.MOVE {mvOp=mvOp, src=src, dst=tmp}, an),
-		            I.move {mvOp=sMvOp, src=tmp, dst=spillLoc}]}
+		      code=[mark (I.MOVE {mvOp=mvOp, src=src, dst=tmpOpnd}, an),
+		            I.move {mvOp=defaultMov, src=tmpOpnd64, dst=spillLoc}]}
 		   end
+		 (* spill is unnecessary *)
 		 | I.MOVE {mvOp, src as I.Direct (_, rs), dst} =>
 		   if CB.sameColor (rs, r) then {code=[], proh=[], newReg=NONE}
 		   else done (I.MOVE {mvOp=mvOp, src=src, dst=spillLoc}, an)
@@ -127,13 +130,12 @@ functor AMD64SpillInstr (
 		     else if immed src then 
 			  done(I.MOVE{mvOp=mvOp, src=src, dst=spillLoc}, an)
 		      else let 
-		        val tmpR = newReg ()
-	                val tmp  = I.Direct (sz, tmpR)
+		        val (tmpR, tmpOpnd, tmpOpnd64) = freshTmp ()
 			in  
 			  {proh=[tmpR],
 			   newReg=SOME tmpR,
-			   code=[mark(I.MOVE {mvOp=mvOp, src=src, dst=tmp}, an),
-				 I.move {mvOp=sMvOp, src=tmp, dst=spillLoc}]}
+			   code=[mark(I.MOVE {mvOp=mvOp, src=src, dst=tmpOpnd}, an),
+				 I.move {mvOp=defaultMov, src=tmpOpnd64, dst=spillLoc}]}
 			end
 	         | I.LEAL {addr, r32} => let 
 	           val tmpR = newReg()
@@ -151,6 +153,8 @@ functor AMD64SpillInstr (
 				 I.move{mvOp=I.MOVQ, src=I.Direct (64,tmpR),
 				        dst=spillLoc}]}
 		      end 
+		 (* handle xorl and xorq with the special case when both operands are the
+		  * same register *)
 		 | I.BINARY {binOp=I.XORL, src as I.Direct (_,rs), 
 		             dst=I.Direct (_,rd)} => 
 		   if CB.sameColor (rs,rd) 
@@ -179,13 +183,12 @@ functor AMD64SpillInstr (
 		   in
 		     if multBinOp binOp 
 		       then let (* destination must remain a register *)
-		         val tmpR = newReg()
-		         val tmp = I.Direct (sz,tmpR)
+			 val (tmpR, tmpOpnd, tmpOpnd64) = freshTmp ()
 			 in
 		           {proh=[tmpR], newReg=SOME tmpR,
-		            code=[I.move{mvOp=sMvOp, src=spillLoc, dst=tmp},
-			          I.binary{binOp=binOp, src=src, dst=tmp},
-			          I.move{mvOp=sMvOp, src=tmp, dst=spillLoc}]}
+		            code=[I.move{mvOp=defaultMov, src=spillLoc, dst=tmpOpnd64},
+			          I.binary{binOp=binOp, src=src, dst=tmpOpnd},
+			          I.move{mvOp=defaultMov, src=tmpOpnd64, dst=spillLoc}]}
 			 end
 			else if immedOrReg src 
 			      then (* can replace the destination directly *)
@@ -194,12 +197,11 @@ functor AMD64SpillInstr (
 			  else let (* a memory src and non multBinOp  
 				   * --- cannot have two memory operands
 				   *)
-				val tmpR = newReg()
-				val tmp = I.Direct (sz,tmpR)
+				val (tmpR, tmpOpnd, tmpOpnd64) = freshTmp ()
 			        in 
 				  { proh=[tmpR], newReg=NONE,
-				    code=[I.move{mvOp=sMvOp, src=src, dst=tmp},
-					  I.binary{binOp=binOp, src=tmp,
+				    code=[I.move{mvOp=defaultMov, src=src, dst=tmpOpnd64},
+					  I.binary{binOp=binOp, src=tmpOpnd,
 					           dst=spillLoc}]}
 			        end
 		        end 
@@ -210,12 +212,11 @@ functor AMD64SpillInstr (
 		     then done (I.SHIFT {shiftOp=shiftOp, src=src, dst=spillLoc,
 		             count=count}, an)
 		     else let
-		       val tmpR = newReg ()
-		       val tmp = I.Direct (sz, tmpR)
+		       val (tmpR, tmpOpnd, tmpOpnd64) = freshTmp ()
 		       in
 		         {proh=[tmpR], newReg=NONE,
-		          code=[I.move {mvOp=sMvOp, src=src, dst=tmp},
-		                I.shift {shiftOp=shiftOp, src=tmp, dst=spillLoc,
+		          code=[I.move {mvOp=defaultMov, src=src, dst=tmpOpnd64},
+		                I.shift {shiftOp=shiftOp, src=tmpOpnd, dst=spillLoc,
 		                   count=count}]}
 		       end
 		 | I.CMOV {cond, src, dst} => 
@@ -226,13 +227,12 @@ functor AMD64SpillInstr (
 			    code=[mark(I.CMOV{cond=cond,src=src,dst=r},an)]
 			   }
 		       | _ => let 
-		         val tmpR = newReg()
-			 val tmp  = I.Direct (64, tmpR)
+			 val (tmpR, _, tmpOpnd64) = freshTmp ()
 			 in  
 			   {proh=[tmpR], newReg=SOME tmpR,
-		            code=[I.move{mvOp=I.MOVQ, src=spillLoc, dst=tmp},
+		            code=[I.move{mvOp=I.MOVQ, src=spillLoc, dst=tmpOpnd64},
 				  mark(I.CMOV{cond=cond,src=src,dst=tmpR},an),
-				  I.move{mvOp=I.MOVQ, src=tmp, dst=spillLoc}]}
+				  I.move{mvOp=I.MOVQ, src=tmpOpnd64, dst=spillLoc}]}
 			   end 
 		    (* end case *))
 		 | I.CMPXCHG{lock,sz=isz,src,dst} => 
@@ -241,13 +241,12 @@ functor AMD64SpillInstr (
 			   code=[mark(I.CMPXCHG{lock=lock,sz=isz,src=src,
 			        dst=spillLoc},an)]}
 		      else let 
-		        val tmpR = newReg()
-			val tmp  = I.Direct (sz, tmpR)
+		        val (tmpR, tmpOpnd, tmpOpnd64) = freshTmp ()
 			in 
 			  {proh=[], newReg=NONE,
-		          code=[I.move{mvOp=I.MOVQ, src=src, dst=tmp},
-		  	        mark(I.CMPXCHG{lock=lock,sz=isz,src=tmp,
-		  	             dst=spillLoc},an)]}
+		          code=[I.move{mvOp=I.MOVQ, src=src, dst=tmpOpnd64},
+		  	        mark(I.CMPXCHG{lock=lock,sz=isz,src=tmpOpnd, 
+					       dst=spillLoc},an)]}
 			end
 		 | I.MULTDIV _ => error "spill: MULTDIV"
 		 | I.MUL3 {src1, src2, dst} => let 
@@ -349,9 +348,9 @@ functor AMD64SpillInstr (
       | spill CB.FP = spillF
       | spill _ = error "spill"
 
+    (* reload a general purpose register r at instruction i from spillLoc*)
     fun reloadR (i, r, spillLoc) = let
         fun reload (instr, an) = let
-            val (sz, rMvOp) = mvInstr instr
 	    fun done (instr, an) = {code=[mark (instr, an)], proh=[], newReg=NONE}
 	    fun replace (opnd as I.Direct (_, r')) = if CB.sameColor (r, r')
 	        then spillLoc
@@ -389,8 +388,8 @@ functor AMD64SpillInstr (
 	         | _ => let
 	           val tmpR = newReg ()
 	           in
-	             {code=[I.move {mvOp=rMvOp, src=spillLoc, 
-	                            dst=I.Direct (sz, tmpR)},
+	             {code=[I.move {mvOp=I.MOVQ, src=spillLoc, 
+	                            dst=I.Direct (64, tmpR)},
 	                    mark (f tmpR, an)], 
 	              proh=[tmpR], newReg=SOME tmpR}
 	           end
