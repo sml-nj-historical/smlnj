@@ -1,0 +1,107 @@
+(* elaborate.cm
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *
+ * The SML/NJ elaborator.
+ *)
+Group
+        signature ELAB_CONTROL
+	structure ElabControl
+
+	signature PRIM_TYC_NUM
+	signature DEB_INDEX
+	signature BASICTYPES
+	signature INSTANTIATE
+	signature EVALENTITY
+	signature ELABTOP
+	signature UNIFY
+	signature TYPECHECK
+	signature SIGMATCH
+
+	structure Instantiate
+	structure EvalEntity
+	structure SigMatch
+	structure ElabMod
+	structure ElabTop
+
+	structure ModPropList
+	structure PrimTycNum
+	structure BasicTypes
+	structure ElabUtil
+	structure SpecialSymbols
+	structure ElabDebug
+	structure Unify
+	structure Typecheck
+
+	signature PPUTIL
+	signature PPUTILNEW
+	signature PPTYPE
+	signature PPABSYN
+	signature PPMOD
+	signature PPVAL
+	signature PPAST
+
+	structure PPUtil
+	structure PPUtilNew
+	structure PPPrim 
+	structure PPType
+	structure PPAbsyn
+	structure PPModules
+	structure PPVal
+	structure PPAst
+is
+
+	basics/elabcontrol.sig
+	basics/elabcontrol.sml
+	basics/conrep.sml
+	basics/ptnum.sml
+
+	types/basictypes.sig
+	types/basictypes.sml
+	types/eqtypes.sml
+	types/unify.sml
+	types/overload.sml
+	types/overloadlit.sml
+	types/typecheck.sml
+
+	modules/plist.sml
+	modules/expandtycon.sml
+	modules/sigmatch.sml 
+	modules/instantiate.sml
+	modules/evalent.sml
+
+	elaborate/tyvarset.sml
+	elaborate/elabutil.sig
+	elaborate/elabutil.sml
+	elaborate/specialsyms.sml
+	elaborate/elabtype.sig
+	elaborate/elabtype.sml
+	elaborate/precedence.sml
+	elaborate/elabcore.sml
+	elaborate/include.sml
+	elaborate/elabsig.sml
+	elaborate/elabdebug.sml
+	elaborate/elabmod.sml
+	elaborate/elabtop.sml
+
+	print/ppprim.sml 
+	print/pputil.sig
+	print/pputil.sml
+	print/pputil-new.sig
+	print/pputil-new.sml
+	print/pptype.sml
+	print/ppval.sml
+	print/ppabsyn.sml
+	print/ppmod.sml
+	print/ppast.sig
+	print/ppast.sml
+
+	$smlnj/viscomp/elabdata.cm
+	$smlnj/viscomp/basics.cm
+	$smlnj/viscomp/parser.cm
+
+	$smlnj/MLRISC/MLRISC.cm
+
+	$smlnj/smlnj-lib/smlnj-lib.cm
+	$smlnj/smlnj-lib/controls-lib.cm
+	$smlnj/basis/basis.cm

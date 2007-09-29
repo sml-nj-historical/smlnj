@@ -1,0 +1,43 @@
+Notes on Instantiate
+
+Basic Problem:
+
+Given a signature (e.g. the signature of a functor parameter),
+generate a "generic" or "free" instance structure from the signature.
+
+Notes and Questions:
+
+1. algorithm is a variant of Patterson and Wegman's linear unification
+
+2. Pass 1: traverse signature, building a set of "instance" data
+   structures representing sharing equivalence classes
+   Build equivalence classes.
+   Push sharing equations down through signature hierarchy.
+   Traversal order dictated by unification algorithm, not
+   straightforward.
+
+3. Pass 2: transform instance structures into a realization (entity
+   environment), creating representatives for type equivalence classes.
+
+4. For FLINT, Instantiate is producing a flat, coallesced (mod
+   sharing) sequence of tycon parameters.
+   GENtyc:
+     FORMAL are represented by new FLEXTYC(lambda depth, count, kind)
+     DATATYPE are represented by instantiated DATATYPE
+
+5. Functor elements:
+   * Functor elements don't contribute any tycon elements, but they
+     may contain instantiated tycon elements specified elsewhere
+
+6. instGeneric 
+   returns: 
+     1. str realization
+     2. list of tycons that are "abstract" (kind FLEXTYC)
+        these are representatives of equivalence classes of FORMAL
+	tycons in the signature specs.
+        collected only in sigToInst pass
+     3. tycpath list (collected only in instToStr pass)
+     4. entPath -> tkind environment (association list)
+        some collected in sigToInst pass, more added in instToStr pass
+     5. entPath -> tkind environment (association list)
+        the initial segment of 4 collected in sigToInst pass
