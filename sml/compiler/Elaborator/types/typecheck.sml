@@ -874,9 +874,8 @@ and decType0(decl,occ,tdepth,region) : dec =
        | _ => decl
 
 and fctbType (occ,tdepth,region) (FCTB{fct,def,name}) =
-      let fun fctexpType(FCTfct{param, argtycs, def}) =
-  	        FCTfct{param=param, def=strexpType (occ,DI.next tdepth,region) def,
-	               argtycs=argtycs}
+      let fun fctexpType(FCTfct{param, def}) =
+  	        FCTfct{param=param, def=strexpType (occ,DI.next tdepth,region) def}
  	    | fctexpType(LETfct(dec,e)) =
 	        LETfct(decType0(dec,LetDef occ,tdepth,region), fctexpType e)
 	    | fctexpType(MARKfct(f,region)) = MARKfct(fctexpType f,region)
@@ -884,7 +883,7 @@ and fctbType (occ,tdepth,region) (FCTB{fct,def,name}) =
        in FCTB{fct=fct,def=fctexpType def,name=name}
       end
 
-and strexpType (occ,tdepth,region) (se as (APPstr{oper,arg,argtycs})) = se
+and strexpType (occ,tdepth,region) (se as (APPstr{oper,arg})) = se
   | strexpType (occ,tdepth,region) (LETstr(dec,e)) =
       LETstr(decType0(dec,LetDef occ,tdepth,region), strexpType (occ,tdepth,region) e)
   | strexpType (occ,tdepth,_) (MARKstr(e,region)) = 

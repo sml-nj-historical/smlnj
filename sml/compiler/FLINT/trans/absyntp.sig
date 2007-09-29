@@ -1,15 +1,22 @@
-(* absyn.sig
+(* absyntp.sig
  *
- * (C) 2001 Lucent Technologies, Bell Labs
+ * (C) 2007 The SML/NJ Fellowship
  *)
-signature ABSYN = 
+signature ABSYNTP = 
 sig
 
 type region 
 
-datatype numberedLabel = LABEL of {name: Symbol.symbol, number: int}
+(* datatype numberedLabel = LABEL of {name: Symbol.symbol, number: int} *)
 
-datatype exp
+datatype tycpath
+  = TP_VAR of { tdepth: DebIndex.depth, num: int, kind: LtyExtern.tkind }
+  | TP_TYC of Types.tycon
+  | TP_FCT of tycpath list * tycpath list
+  | TP_APP of tycpath * tycpath list
+  | TP_SEL of tycpath * int
+
+(* datatype exp
   = VARexp of VarCon.var ref * Types.tyvar list (* instance type *)
   | CONexp of VarCon.datacon * Types.tyvar list (* instance type *)
   | INTexp of IntInf.int * Types.ty
@@ -20,7 +27,6 @@ datatype exp
   | RECORDexp of (numberedLabel * exp) list
   | SELECTexp of numberedLabel * exp
   | VECTORexp of exp list * Types.ty        
-  (*| PACKexp of exp * Types.ty * Types.tycon list*)
   | APPexp of exp * exp
   | HANDLEexp of exp * fnrules
   | RAISEexp of exp * Types.ty              
@@ -35,34 +41,16 @@ datatype exp
   | CONSTRAINTexp of exp * Types.ty         
   | MARKexp of exp * region
 
-and rule = RULE of pat * exp
+and rule = RULE of Absyn.pat * exp *)
 
-and pat 
-  = WILDpat
-  | VARpat of VarCon.var
-  | INTpat of IntInf.int * Types.ty
-  | WORDpat of IntInf.int * Types.ty
-  | REALpat of string
-  | STRINGpat of string
-  | CHARpat of string
-  | CONpat of VarCon.datacon * Types.tyvar list (* instance type *)
-  | RECORDpat of {fields : (Types.label * pat) list, 
-                  flex : bool, typ : Types.ty ref}
-  | APPpat of VarCon.datacon * Types.tyvar list * pat
-  | CONSTRAINTpat of pat * Types.ty
-  | LAYEREDpat of pat * pat
-  | ORpat of pat * pat
-  | VECTORpat of pat list * Types.ty       
-  | NOpat
-
-and dec	
-  = VALdec of vb list
-  | VALRECdec of rvb list
+datatype dec	
+  = VALdec of Absyn.vb list
+  | VALRECdec of Absyn.rvb list
   | TYPEdec of Types.tycon list
   | DATATYPEdec of {datatycs: Types.tycon list, withtycs: Types.tycon list}
   | ABSTYPEdec of {abstycs: Types.tycon list, 
                    withtycs: Types.tycon list, body: dec}
-  | EXCEPTIONdec of eb list
+  | EXCEPTIONdec of Absyn.eb list
   | STRdec of strb list
   | ABSdec of strb list
   | FCTdec of fctb list
@@ -78,28 +66,30 @@ and dec
 and strexp 
   = VARstr of Modules.Structure 
   | STRstr of Bindings.binding list
-  | APPstr of {oper: Modules.Functor, arg: Modules.Structure}
+  | APPstr of {oper: Modules.Functor, arg: Modules.Structure, 
+               argtycs: tycpath list}
   | LETstr of dec * strexp
   | MARKstr of strexp * region
 
 and fctexp 
   = VARfct of Modules.Functor
-  | FCTfct of {param: Modules.Structure, def: strexp} 
+  | FCTfct of {param: Modules.Structure, argtycs: tycpath list, 
+               def: strexp} 
   | LETfct of dec * fctexp
   | MARKfct of fctexp * region
 
-and vb = VB of {pat: pat, exp: exp, boundtvs: Types.tyvar list,
+(* and vb = VB of {pat: pat, exp: exp, boundtvs: Types.tyvar list,
                 tyvars: Types.tyvar list ref}
 
 and rvb = RVB of {var: VarCon.var, exp: exp, boundtvs: Types.tyvar list,
                   resultty: Types.ty option, tyvars: Types.tyvar list ref}
 
 and eb = EBgen of {exn: VarCon.datacon, etype: Types.ty option, ident: exp}
-       | EBdef of {exn: VarCon.datacon, edef: VarCon.datacon}
+       | EBdef of {exn: VarCon.datacon, edef: VarCon.datacon} *)
 
 and strb = STRB of {name: Symbol.symbol, str: Modules.Structure, def: strexp}
 and fctb = FCTB of {name: Symbol.symbol, fct: Modules.Functor, def: fctexp}
 
-withtype fnrules = rule list * Types.ty
+withtype fnrules = Absyn.rule list * Types.ty
 
 end (* signature ABSYN *)

@@ -145,8 +145,8 @@ fun ppkind ppstrm kind =
     pps ppstrm
       (case kind
 	 of PRIMITIVE _ => "P" | FORMAL => "F"
-          | FLEXTYC _ => "X" | ABSTRACT _ => "A"
-	  | DATATYPE _ => "D" | TEMP => "T")
+          | ABSTRACT _ => "A" | DATATYPE _ => "D" 
+	  | TEMP => "T")
 
 fun effectivePath(path,tyc,env) : string =
     let fun tycPath (GENtyc{path,...} | DEFtyc{path,...} | PATHtyc{path,...}) =

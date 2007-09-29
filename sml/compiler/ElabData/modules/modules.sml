@@ -200,7 +200,6 @@ and fctEntity =
      paramEnts: entityEnv,
      closure  : fctClosure,
      properties: PropList.holder, (* lambdaty *)
-     tycpath  : T.tycpath option,
      rpath    : IP.path,
      stub     : stubinfo option}
 
@@ -245,7 +244,6 @@ val bogusFctEntity : fctEntity =
      closure = CLOSURE{param=EP.bogusEntVar,
 		       body= CONSTstr bogusStrEntity,
 		       env=NILeenv},
-     tycpath=NONE,
      properties = PropList.newHolder (), (* lambdaty = ref NONE *)
      rpath = bogusRpath,
      stub = NONE}

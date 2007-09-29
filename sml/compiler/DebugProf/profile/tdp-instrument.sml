@@ -350,8 +350,8 @@ structure TDPInstrument :> TDP_INSTRUMENT = struct
 	      A.MARKstr (i_strexp (n, r) s, r)
 	  | i_strexp _ s = s
 
-	and i_fctexp loc (A.FCTfct { param, argtycs, def }) =
-	      A.FCTfct { param = param, argtycs = argtycs,
+	and i_fctexp loc (A.FCTfct { param, def }) =
+	      A.FCTfct { param = param,
 			 def = i_strexp loc def }
 	  | i_fctexp loc (A.LETfct (d, f)) =
 	      A.LETfct (i_dec loc d, i_fctexp loc f)

@@ -23,6 +23,7 @@ local
       structure LT = LtyExtern
       structure TU = TypesUtil
       structure S = Symbol
+      structure AT = AbsynTP
 
 	(* A map from entity TYC or FCT stamps to the first corresponding EP  *)
       structure EPMap = RedBlackMapFn (type ord_key = Stamps.stamp
@@ -57,20 +58,20 @@ in
 	ED.withInternals (fn () => with_pp (fn ppstrm => (PPModules.ppFunsig ppstrm (fctsig, SE.empty, 20); print "\n")))
       end
 
-      fun pk_eqv(k, k') =
+      (* fun pk_eqv(k, k') =
 	  (case (k, k') 
-	    of (TP.PK_MONO, TP.PK_MONO) => true
-	     | (TP.PK_SEQ ks, TP.PK_SEQ ks') => ListPair.allEq pk_eqv (ks, ks')
-	     | (TP.PK_FUN (pks, bk), TP.PK_FUN (pks', bk')) =>
+	    of (AT.PK_MONO, AT.PK_MONO) => true
+	     | (AT.PK_SEQ ks, AT.PK_SEQ ks') => ListPair.allEq pk_eqv (ks, ks')
+	     | (AT.PK_FUN (pks, bk), AT.PK_FUN (pks', bk')) =>
 	       (ListPair.allEq pk_eqv (pks, pks')) andalso (pk_eqv(bk,bk'))
-	     | _ => false)
+	     | _ => false) *)
 
-      fun eqTycPath(TP.TP_VAR x, TP.TP_VAR x') = 
+      fun eqTycPath(AT.TP_VAR x, AT.TP_VAR x') = 
 	  (case (x, x')
 	    of (v1 as {tdepth, num, kind}, 
 		v2 as {tdepth=tdepth', num=num', kind=kind'}) =>
 	       if DI.eq(tdepth,tdepth') andalso 
-		  num = num' andalso pk_eqv(kind, kind')
+		  num = num' andalso LT.tk_eqv(kind, kind') (* pk_eqv(kind, kind')*)
 		  (* LT.tk_eqv(kind, kind') *) 
 	       then true
 	       else let fun printTPVar({tdepth, num, kind}) = 
@@ -86,20 +87,20 @@ in
 		       else (); 
 	   false
 		    end)
-        | eqTycPath(TP.TP_TYC tyc, TP.TP_TYC tyc') = 
+        | eqTycPath(AT.TP_TYC tyc, AT.TP_TYC tyc') = 
             (debugmsg "--eqTycPath Tycon"; TU.equalTycon(tyc, tyc')) 
 	    (* typeutils eqTycon only compares DEFtyc stamps. equalTycon 
 	       resolves DEFtycs. Unfortunately, it appears that the tycs
 	       this module obtains are reduced forms of the ones 
 	       Instantiate produces. 
 	     *)
-        | eqTycPath(TP.TP_FCT(partps, bodytps), TP.TP_FCT(partps',bodytps')) =
+        | eqTycPath(AT.TP_FCT(partps, bodytps), AT.TP_FCT(partps',bodytps')) =
 		ListPair.allEq eqTycPath (partps, partps') andalso
 		ListPair.allEq eqTycPath (bodytps, bodytps')
-	| eqTycPath(TP.TP_APP(tp, argtps), TP.TP_APP(tp',argtps')) =
+	| eqTycPath(AT.TP_APP(tp, argtps), AT.TP_APP(tp',argtps')) =
 		eqTycPath(tp,tp') 
 		andalso ListPair.allEq eqTycPath (argtps, argtps')
-  	| eqTycPath(TP.TP_SEL(tp, i), TP.TP_SEL(tp', i')) = 
+  	| eqTycPath(AT.TP_SEL(tp, i), AT.TP_SEL(tp', i')) = 
 	 	eqTycPath(tp,tp') andalso i = i'
 	| eqTycPath _ = (debugmsg "--eqTycPath other"; false)
 		
@@ -195,21 +196,16 @@ in
 	in loop(eps, env, EPMap.empty)	
 	end (* fun repEPs *)
 
-	(* dec * int -> 
-	     dec with tycpaths and memoized ep * tkind lists 
-	   This code needs EPMap (don't forgot EPMap in the local ... in 
-	   bindings section above ...)
-	 *)
-	fun procDec (dec, d) =
-	  let 
-	      val _ = debugmsg ">>procDec"
+      local
 	      (* Should use tkc_int and tkc_fun instead of these 
 		 when TP information is eliminated from Elaborator *)
-	      fun listofmono(n) = 
-		  if n <= 0 then [] else TP.PK_MONO::listofmono(n-1)
+	      (* fun listofmono(n) = 
+		  LT.tkc_int n
 	      fun buildKind(n) = 
-		  if n <= 0 then TP.PK_MONO 
-		  else TP.PK_FUN(listofmono n, TP.PK_MONO)
+		  if n <= 0 then LT.tkc_mono
+		  else LT.tkc_fun(listofmono n, LT.tkc_mono) *)
+	      val buildKind = LT.tkc_int
+      in
 	      (* kinds : entenv * ep list * fctsig list -> kind list 
 	         Computes the functor kind based on that functor's
 	         functor signature and the current entity env. *) 
@@ -238,8 +234,7 @@ in
 			       handle EE.Unbound => 
 				      bug ("kinds Unbound "^
 					   EP.entPathToString ep)
-			   of M.TYCent(TP.GENtyc{kind=TP.FLEXTYC tp, 
-						 arity, ...}) =>
+			   of M.TYCent(TP.GENtyc{kind, arity, ...}) =>
 			      (* Use this when PK eliminated from front-end:
 		                 (LT.tkc_int arity)::loop(eps, pfsigs) *)
 			      (buildKind arity)::loop(eps, pfsigs)
@@ -253,7 +248,7 @@ in
 			    | _ => bug "kinds.0")
 		  in (* Use this when PK eliminated from front-end:
 		        LT.tkc_fun(loop(peps,pfsigs), LT.tkc_seq []) *)
-		      TP.PK_FUN(loop(peps,pfsigs), TP.PK_SEQ [])
+		      LT.tkc_fun(loop(peps,pfsigs), LT.tkc_seq [])
 		  end 
 		| kinds _ = bug "kinds.2" (* fun kinds *)
 
@@ -266,21 +261,20 @@ in
 			  handle EntityEnv.Unbound =>
 				 (print "\ngetTPforEPs for Unbound\n";
 				  raise EntityEnv.Unbound)
-		      of M.TYCent(TP.GENtyc{kind=TP.FLEXTYC tp,
-					    arity, ...}) =>
+		      of M.TYCent(TP.GENtyc{kind, arity, ...}) =>
 			   let val _ = debugmsg "TYCent GENtyc\n"
 			       val kind = (* LT.tkc_int(arity) *)
 				          buildKind arity
 			       val var = {tdepth=DI.top,num=i,
 					  kind=kind}
-			       val tp' = TP.TP_VAR var
-			       val _ = checkTycPath(tp, tp')
+			       val tp' = AT.TP_VAR var
+			       (* val _ = checkTycPath(tp, tp') *)
 			   in tp'::loop(entenv, rest, i+1, fs)
 			   end
 		       | M.TYCent tyc => 
 			    (debugmsg "TYCent\n";
-			     (TP.TP_TYC tyc)::loop(entenv, rest, i+1, fs)) 
-		       | M.FCTent {tycpath=SOME tp, paramEnts, ...} => 
+			     (AT.TP_TYC tyc)::loop(entenv, rest, i+1, fs)) 
+		       | M.FCTent {(* tycpath=SOME tp,*) paramEnts, ...} => 
 			   (debugmsg "--getTPsforEPs[FCTent SOME]";
 			    (case fs
 			      of [] => bug "getTPsforEPs.1"
@@ -299,14 +293,97 @@ in
 				     val _ = debugmsg "<<kinds done\n"
 				     val var = {tdepth=DI.top, num=i,
 						kind=kind}
-				     val tp' = TP.TP_VAR var 
+				     val tp' = AT.TP_VAR var 
 				(* val _ = checkTycPath(tp, tp') *)
-				 in tp::loop(entenv, rest, i, srest)
+				 in tp'::loop(entenv, rest, i, srest)
 				 end)) (* FIXME *)
 		       | _ => bug "getTPforEPs 0")
 		    handle EE.Unbound => bug "getTPforEPs Unbound"
 		in loop(entenv, eps, 0, fsigs)
-		end (* fun getKindsforEPs *)
+		end (* fun getTPsforEPs *)
+	      
+	      fun getTk(M.FSIG{paramsig=M.SIG ps, ...}, dummyEnts, argEnts, fsigs) =
+		  let 
+		      val alleps = 
+			  entpaths(#elements ps)
+		      val fsigs = fsigInElems(#elements ps)
+		      val eps = repEPs(alleps, dummyEnts)
+		      val argtycs' = 
+			  getTPsforEPs(argEnts, eps, fsigs)
+		  in argtycs'
+		  end (* getTk *)
+		| getTk _ = bug "getTk 0"
+
+      end (* local *)
+
+	(* dec * int -> 
+	     dec with tycpaths and memoized ep * tkind lists 
+	   This code needs EPMap (don't forgot EPMap in the local ... in 
+	   bindings section above ...)
+	 *)
+	fun procDec (dec, d) =
+	  let 
+	      val _ = debugmsg ">>procDec"
+			fun procStrexp def =
+			   (case def 
+			     of (APPstr {oper=oper as M.FCT{sign=fctsign 
+					    as M.FSIG {paramsig=fsparsig as M.SIG fsr,...},
+				            rlzn=fctRlzn,...},
+				       arg=arg as M.STR{sign=argsig as M.SIG{elements,...},
+						 rlzn=argRlzn as {entities,...},...}, ...
+				       }) => 
+				let val {paramEnts=dummyEnts, closure=M.CLOSURE{body,...},...} = 
+					fctRlzn 
+				    val _ = debugmsg "--strBinds APPstr"
+				    (* val _ = (debugmsg "===fsparsig===";
+					     ppSig fsparsig;
+					     debugmsg "===dummyEnts===";
+					     ppEntities dummyEnts;
+					     debugmsg "===argsig===";
+					     ppSig argsig;
+					     debugmsg "===argEnts===";
+					     ppEntities entities) *)
+				    val alleps = 
+					entpaths(#elements fsr)
+				    val fsigs = fsigInElems(#elements fsr)
+				    val eps = repEPs(alleps, dummyEnts)
+				    val argtycs' = 
+					getTPsforEPs(entities, eps,
+						     fsigs)
+				    
+				    (* getTycPaths(fsparsig, dummyEnts) *)
+				    val se' = AT.APPstr {oper=oper, arg=arg, 
+							 argtycs=argtycs'}
+				    (* Check that argtycs = argtycs' here *)
+				    (* val _ = if checkTycPaths(argtycs, argtycs') 
+					       orelse (not (!printStrFct))
+					    then ()
+					    else (print "\nrepEPs:\n";
+						  app ppEP eps;
+						  print "\nfsparsig:\n";
+						  ppSig fsparsig;
+						  print "\nargsig:\n";
+						  ppSig argsig;
+						  print "\nfctRlzn:\n";
+						  ppEnt (M.FCTent fctRlzn);
+						  print "\nargRlzn:\n";
+						  ppEnt (M.STRent argRlzn);
+						  print "\ndummyEnts:\n";
+						  ppEntities dummyEnts;
+						  bug "Wrong arg tycs")  *)
+				    (* val _ = if length argtycs <> length argtycs'
+				            then bug "strBinds: bad argtycs computation"
+					    else ()	 *)
+				in se'
+				end 
+			    | APPstr {oper=M.FCT _, arg=M.STRSIG _, ...} => 
+				bug "strBinds: Unimplemented"
+			    | LETstr(dec,se') => 
+			        AT.LETstr(procDec(dec,d), procStrexp se')
+			    | VARstr s => AT.VARstr s
+			    | MARKstr(se',r) => AT.MARKstr(procStrexp se', r)
+			    | STRstr binds => AT.STRstr binds
+			    | _ => bug "procStrexp")
 		    
 	      fun fctBinds([]) = []
 		| fctBinds((b as FCTB{fct=fct 
@@ -316,8 +393,8 @@ in
 				      ...}, def, name})::rest) =
 		    let fun mkFctexp(fe) =
 			    (case fe 
-			      of VARfct _ => 
-				 fe
+			      of VARfct f => 
+				 AT.VARfct f 
 			       | FCTfct{param=param 
 						  as 
 						  M.STR{sign=paramsig 
@@ -325,7 +402,7 @@ in
 							rlzn=rlzn 
 								 as {entities,
 								     ...},...},
-					def,argtycs} =>
+					def} =>
 				 (debugmsg (">>fctBinds:mkFctexp[FCTfct] name "^
 					    S.name name); 
 				  let 
@@ -360,94 +437,46 @@ in
 						  print "\nparamsig':\n";
 						  ppSig paramsig'; print "\n"
 						  bug "wrong arg tycs mkFctexp") *)
-				  in FCTfct{param=param,def=def,argtycs=argtycs'}
+				  in AT.FCTfct{param=param,def=procStrexp def,argtycs=argtycs'}
 			          end)
-			       | MARKfct(fe',region) => fe
+			       | MARKfct(fe',region) => AT.MARKfct(mkFctexp fe',region)
 			       | LETfct(dec', fe') => 
-				   LETfct(procDec(dec',d), mkFctexp fe')
-			       | _ => fe)
-			in FCTB{name=name, fct=fct, def=mkFctexp(def)} :: fctBinds(rest)
+				   AT.LETfct(procDec(dec',d), mkFctexp fe')
+			       | _ => bug "mkFctexp 0")
+			in AT.FCTB{name=name, fct=fct, def=mkFctexp(def)} :: fctBinds(rest)
 			end
 		| fctBinds _ = bug "fctBinds: unexpected binding"
 		
 	      fun strBinds([]) = []
 		| strBinds((b as STRB{name, str, def})::rest) =
 		    let val _ = debugmsg (">>strBinds "^Symbol.symbolToString name)
-			fun procStrexp def =
-			   (case def 
-			     of (APPstr {oper=oper as M.FCT{sign=fctsign 
-					    as M.FSIG {paramsig=fsparsig as M.SIG fsr,...},
-				            rlzn=fctRlzn,...},
-				       arg=arg as M.STR{sign=argsig as M.SIG{elements,...},
-						 rlzn=argRlzn as {entities,...},...},
-				       argtycs}) => 
-				let val {paramEnts=dummyEnts, closure=M.CLOSURE{body,...},...} = 
-					fctRlzn 
-				    val _ = debugmsg "--strBinds APPstr"
-				    (* val _ = (debugmsg "===fsparsig===";
-					     ppSig fsparsig;
-					     debugmsg "===dummyEnts===";
-					     ppEntities dummyEnts;
-					     debugmsg "===argsig===";
-					     ppSig argsig;
-					     debugmsg "===argEnts===";
-					     ppEntities entities) *)
-				    val alleps = 
-					entpaths(#elements fsr)
-				    val fsigs = fsigInElems(#elements fsr)
-				    val eps = repEPs(alleps, dummyEnts)
-				    val argtycs' = 
-					getTPsforEPs(entities, eps,
-						     fsigs)
-				    
-				    (* getTycPaths(fsparsig, dummyEnts) *)
-				    val se' = APPstr {oper=oper, arg=arg, 
-						      argtycs=argtycs'}
-				    (* Check that argtycs = argtycs' here *)
-				    (* val _ = if checkTycPaths(argtycs, argtycs') 
-					       orelse (not (!printStrFct))
-					    then ()
-					    else (print "\nrepEPs:\n";
-						  app ppEP eps;
-						  print "\nfsparsig:\n";
-						  ppSig fsparsig;
-						  print "\nargsig:\n";
-						  ppSig argsig;
-						  print "\nfctRlzn:\n";
-						  ppEnt (M.FCTent fctRlzn);
-						  print "\nargRlzn:\n";
-						  ppEnt (M.STRent argRlzn);
-						  print "\ndummyEnts:\n";
-						  ppEntities dummyEnts;
-						  bug "Wrong arg tycs")  *)
-				    val _ = if length argtycs <> length argtycs'
-				            then bug "strBinds: bad argtycs computation"
-					    else ()	
-				in se'
-				end 
-			    | (APPstr {oper=M.FCT _, arg=M.STRSIG _, ...}) => 
-				bug "strBinds: Unimplemented"
-			    | LETstr(dec,se') => 
-			        LETstr(procDec(dec,d), procStrexp se')
-			    | se => se)
-			val sb' = STRB{name=name, str=str, def=procStrexp def}
+			val sb' = AT.STRB{name=name, str=str, def=procStrexp def}
 		    in
 			sb' :: strBinds(rest)
 		    end (* fun strBinds *)
 	  in
 		  (case dec 
 		     of SEQdec(decs) => 
-			  SEQdec(map (fn(dec') => procDec(dec',d)) decs)
+			  AT.SEQdec(map (fn(dec') => procDec(dec',d)) decs)
 		      | LOCALdec(dec1, dec2) => 
-			  LOCALdec(procDec(dec1,d), procDec (dec2,d))	
-		      | MARKdec(dec',r) => MARKdec(procDec(dec',d), r)
-		      | FCTdec(fctbs) => FCTdec(fctBinds fctbs)  
-		      | STRdec(strbs) => STRdec(strBinds strbs)
-		      | ABSdec strbs => ABSdec(strBinds strbs)
-		      | dec' as OPENdec _ => dec' (* May have module dec *)
-		      | dec' as SIGdec bs => dec'
-		      | dec' as FSIGdec bs => dec'
-		      | dec' => dec')
+			  AT.LOCALdec(procDec(dec1,d), procDec (dec2,d))	
+		      | MARKdec(dec',r) => AT.MARKdec(procDec(dec',d), r)
+		      | FCTdec(fctbs) => AT.FCTdec(fctBinds fctbs)  
+		      | STRdec(strbs) => AT.STRdec(strBinds strbs)
+		      | ABSdec strbs => AT.ABSdec(strBinds strbs)
+		      | OPENdec x => AT.OPENdec x (* May have module dec *)
+		      | SIGdec bs => AT.SIGdec bs
+		      | FSIGdec bs => AT.FSIGdec bs
+		      | VALdec vbs => AT.VALdec vbs
+		      | VALRECdec rvbs => AT.VALRECdec rvbs
+		      | TYPEdec tycs => AT.TYPEdec tycs
+		      | DATATYPEdec x => AT.DATATYPEdec x
+		      | ABSTYPEdec{abstycs, body, withtycs} => 
+			  AT.ABSTYPEdec{abstycs=abstycs, body=procDec(body,d), 
+					withtycs=withtycs}
+		      | EXCEPTIONdec ebs => AT.EXCEPTIONdec ebs
+		      | OVLDdec v => AT.OVLDdec v
+		      | FIXdec x => AT.FIXdec x)
 	  end
 
 end (* local *)

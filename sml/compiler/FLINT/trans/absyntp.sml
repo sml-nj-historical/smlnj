@@ -1,8 +1,9 @@
-(* absyn.sml
+
+(* absyntp.sml
  *
- * (C) 2001 Lucent Technologies, Bell Labs
+ * (C) 2007 The SML/NJ Fellowship
  *)
-structure Absyn : ABSYN =
+structure AbsynTP : ABSYNTP =
 struct
 
 local
@@ -10,14 +11,22 @@ local
   structure F = Fixity
   structure SP = SymPath
   structure B = Bindings
+  structure LT = LtyExtern
   open VarCon Modules Types
 in
 
 type region = Ast.region  (* = int * int *)
 
-datatype numberedLabel = LABEL of {name: S.symbol, number: int}
+(* datatype numberedLabel = LABEL of {name: S.symbol, number: int} *)
 
-datatype exp
+datatype tycpath (* (instantiated) functor type parameter path *)
+  = TP_VAR of { tdepth: DebIndex.depth, num: int, kind: LT.tkind }   
+  | TP_TYC of tycon
+  | TP_FCT of tycpath list * tycpath list
+  | TP_APP of tycpath * tycpath list
+  | TP_SEL of tycpath * int
+
+(* datatype exp
   = VARexp of var ref * tyvar list
     (* the 2nd arg is a type mv list used to capture the instantiation
        parameters for this occurence of var when its type is polymorphic.
@@ -32,7 +41,6 @@ datatype exp
   | RECORDexp of (numberedLabel * exp) list
   | SELECTexp of numberedLabel * exp           (* record selections *)
   | VECTORexp of exp list * ty        
-  (*| PACKexp of exp * ty * tycon list *)          (* abstraction packing *)
   | APPexp of exp * exp
   | HANDLEexp of exp * fnrules
   | RAISEexp of exp * ty              
@@ -47,32 +55,15 @@ datatype exp
   | CONSTRAINTexp of exp * ty         
   | MARKexp of exp * region
 
-and rule = RULE of pat * exp
+and rule = RULE of Absyn.pat * exp *)
 
-and pat 
-  = WILDpat
-  | VARpat of var
-  | INTpat of IntInf.int * ty
-  | WORDpat of IntInf.int * ty
-  | REALpat of string
-  | STRINGpat of string
-  | CHARpat of string
-  | CONpat of datacon * tyvar list (* See comment for VARexp *)
-  | RECORDpat of {fields: (label * pat) list, flex: bool, typ: ty ref}
-  | APPpat of datacon * tyvar list * pat
-  | CONSTRAINTpat of pat * ty
-  | LAYEREDpat of pat * pat
-  | ORpat of pat * pat
-  | VECTORpat of pat list * ty       
-  | NOpat
-
-and dec	
-  = VALdec of vb list                  (* always a single element list *)
-  | VALRECdec of rvb list
+datatype dec	
+  = VALdec of Absyn.vb list                  (* always a single element list *)
+  | VALRECdec of Absyn.rvb list
   | TYPEdec of tycon list
   | DATATYPEdec of {datatycs: tycon list, withtycs: tycon list}
   | ABSTYPEdec of {abstycs: tycon list, withtycs: tycon list, body: dec}
-  | EXCEPTIONdec of eb list
+  | EXCEPTIONdec of Absyn.eb list
   | STRdec of strb list
   | ABSdec of strb list      (* should be merged with STRdec in the future *)
   | FCTdec of fctb list
@@ -92,7 +83,7 @@ and dec
 and strexp 
   = VARstr of Structure 
   | STRstr of B.binding list
-  | APPstr of {oper: Functor, arg: Structure}
+  | APPstr of {oper: Functor, arg: Structure, argtycs: tycpath list}
   | LETstr of dec * strexp
   | MARKstr of strexp * region
 
@@ -103,7 +94,7 @@ and strexp
  *)
 and fctexp 
   = VARfct of Functor
-  | FCTfct of {param: Structure, def: strexp}
+  | FCTfct of {param: Structure, argtycs: tycpath list, def: strexp}
   | LETfct of dec * fctexp
   | MARKfct of fctexp * region
 
@@ -113,8 +104,8 @@ and fctexp
  * does not contain any variable patterns; boundtvs gives the list of
  * type variables that are being generalized at this binding. 
  *)
-and vb = VB of {pat: pat, exp: exp, boundtvs: tyvar list,
-                tyvars: tyvar list ref}
+(* and vb = VB of {pat: pat, exp: exp, boundtvs: tyvar list,
+                tyvars: tyvar list ref} *)
 
 (*
  * Like value binding vb, boundtvs gives a list of type variables 
@@ -122,16 +113,16 @@ and vb = VB of {pat: pat, exp: exp, boundtvs: tyvar list,
  * list of RVBs could share type variables, that is, the boundtvs sets
  * used in these RVBs could contain overlapping set of type variables.
  *)
-and rvb = RVB of {var: var, exp: exp, boundtvs: tyvar list,
+(* and rvb = RVB of {var: var, exp: exp, boundtvs: tyvar list,
                   resultty: ty option, tyvars: tyvar list ref}
 
 and eb = EBgen of {exn: datacon, etype: ty option, ident: exp}
-       | EBdef of {exn: datacon, edef: datacon}
+       | EBdef of {exn: datacon, edef: datacon} *)
 
 and strb = STRB of {name: S.symbol, str: Structure, def: strexp} 
 and fctb = FCTB of {name: S.symbol, fct: Functor, def: fctexp}
 
-withtype fnrules = rule list * Types.ty
+withtype fnrules = Absyn.rule list * Types.ty
 
 end (* local *)
 end

@@ -41,18 +41,17 @@ sig
           tdepth   : DebIndex.depth,	(* # of enclosing fct abstractions? *)
           rpath    : InvPath.path,
           region   : SourceMap.region,
-          compInfo : ElabUtil.compInfo} -> {rlzn: Modules.strEntity,
-                                            tycpaths: Types.tycpath list}
+          compInfo : ElabUtil.compInfo} -> Modules.strEntity
+                                           
 
   (*** instantiation of the formal functor body signatures ***)
   val instFmBody : 
          {sign     : Modules.Signature,
           entEnv   : Modules.entityEnv,
-          tycpath  : Types.tycpath,
           rpath    : InvPath.path,
           region   : SourceMap.region,
           compInfo : ElabUtil.compInfo} -> {rlzn: Modules.strEntity,
-                                            abstycs: Types.tycon list,
+					    abstycs: Types.tycon list,
                                             tyceps: EntPath.entPath list}
 
   (*** instantiation of the structure abstractions ***)
@@ -62,16 +61,9 @@ sig
           srcRlzn  : Modules.strEntity, 
           rpath    : InvPath.path,
           region   : SourceMap.region,
-          compInfo : ElabUtil.compInfo} -> {rlzn: Modules.strEntity,
-                                            abstycs: Types.tycon list,
+          compInfo : ElabUtil.compInfo} -> {rlzn: Modules.strEntity,  
+					    abstycs: Types.tycon list,
                                             tyceps: EntPath.entPath list}
-
-  (*** fetching the list of tycpaths for a particular structure ***)
-  val getTycPaths :
-         {sign     : Modules.Signature,
-          rlzn     : Modules.strEntity,
-          entEnv   : Modules.entityEnv,
-          compInfo : ElabUtil.compInfo} -> Types.tycpath list
 
   val debugging : bool ref
 
@@ -154,7 +146,7 @@ fun signName (SIG { name, ... }) = getOpt (Option.map S.name name, "Anonymous")
  *)
 datatype instKind 
   = INST_ABSTR of M.strEntity     (* ??? *)
-  | INST_FMBD of T.tycpath        (* result sig of a functor sig *)
+  | INST_FMBD                     (* result sig of a functor sig *)
   | INST_PARAM of DebIndex.depth  (* functor parameter sig *)
 
 (* datatype stampInfo 
@@ -1003,14 +995,14 @@ fun buildTycClass (cnt, this_slot, instKind, rpath, mkStamp, err) =
 	    of InitialTyc{path,...} => ConvertPaths.invertIPath path
 	     | _ => bug "buildTycClass: this_slot not InitialTyc"
 
+      (* [GK] TODO cleanup this and its call sites *)
       val newTycKind = 
         case instKind
          of INST_ABSTR {entities,...} =>
-	    (fn (ep,_) => T.ABSTRACT(EE.lookTycEP (entities, ep)))
+	    (fn ep => T.ABSTRACT(EE.lookTycEP (entities, ep)))
           | INST_PARAM tdepth => 
-              (fn (ep,tk) => 
-                  T.FLEXTYC(T.TP_VAR ({tdepth=tdepth, num=cnt, kind=tk})))
-          | INST_FMBD tp => (fn (ep,_) => T.FLEXTYC(T.TP_SEL(tp,cnt)))
+              (fn _ => T.FORMAL)
+          | INST_FMBD => (fn _ => T.FORMAL)
  
       fun addInst (slot,depth)=
 	  (minDepth := Int.min(!minDepth, depth);
@@ -1183,18 +1175,12 @@ fun buildTycClass (cnt, this_slot, instKind, rpath, mkStamp, err) =
 	       of GENtyc {kind,arity,eq,path,...} =>
 		  (case kind
 		    of FORMAL =>
-		       let fun listofmono(n) = 
-				if n <= 0 then [] else PK_MONO::listofmono(n-1)
-			   fun buildKind(n) = 
-			      if n <= 0 then PK_MONO 
-			      else PK_FUN(listofmono n, PK_MONO)
-			   val tk = buildKind(arity)
-			   val knd = newTycKind(epath,tk)
+		       let val knd = newTycKind epath
 			   val tyc = GENtyc{stamp=mkStamp(), arity=arity,
 					    path=IP.append(rpath,path),
 					    kind=knd, eq=ref(eqprop),
 					    stub = NONE}
-		       in (FinalTyc(ref(INST tyc)), SOME(tyc,(epath,tk)))
+		       in (FinalTyc(ref(INST tyc)), SOME(tyc,epath))
 		       end
 		     | DATATYPE _ =>
 		       let val tyc = GENtyc{stamp=mkStamp(), kind=kind,
@@ -1263,16 +1249,16 @@ fun sigToInst (ERRORsig, instKind, rpath, err, compInfo) =
   | sigToInst (sign, instKind, rpath, err,
 	       compInfo as {mkStamp,...}: EU.compInfo) = 
   let val flextycs : T.tycon list ref = ref [] (* the "abstract" tycons *)
-      val flexeps : (EP.entPath * pkind) list ref = ref []
+      val flexeps : EP.entPath list ref = ref []
           (* the tkind environment *)
       val cnt = ref 0
 
       (* addbt: collects tycons and entity path -> tkind bindings
          produced by calls of buildTycClass below *)
       fun addbt NONE = ()
-        | addbt (SOME (tyc,ep_tk)) = 
+        | addbt (SOME (tyc,ep)) = 
             (flextycs := (tyc::(!flextycs));
-             flexeps := (ep_tk::(!flexeps));
+             flexeps := (ep::(!flexeps));
              cnt := ((!cnt) + 1))
 
       fun expand ErrorStr = ()
@@ -1339,7 +1325,7 @@ fun get_stamp_info instance =
     | _ => bug "get_stamp_info"
 
 
-fun instToStr (instance, entEnv, instKind, cnt, addRes, rpath: IP.path, err,
+fun instToStr (instance, entEnv, instKind, rpath: IP.path, err,
                compInfo as {mkStamp, ...}: EU.compInfo)
               : M.strEntity =
 let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
@@ -1389,30 +1375,18 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 				       M.ABSstr (bodysig,
 						 APPLY(CONSTfct fctEnt, 
 						       VARstr [paramvar]))
-			       in (bodyExp, NONE)
+			       in bodyExp
 			       end
 			     | f _ = bug "newFctBody:INST_ABSTR"
 		       in
 			   f
 		       end
-		     | INST_FMBD tps =>
-		       (fn (sign, _, _, _) => 
-			 let val i = cnt()
-			     val res = T.TP_SEL(tps,i)
-			     val _ = addRes(NONE, res)
-			  in (M.FORMstr sign, SOME res)
-			 end)
+		     | INST_FMBD =>
+		       (fn (sign, _, _, _) => M.FORMstr sign)
 
 		     | INST_PARAM tdepth => 
 		       (fn (sign, ep, rp, nenv) => 
-			 let val tk = getTkFct{sign=sign,entEnv=nenv,
-					       rpath=rp,compInfo=compInfo}
-			     val res = T.TP_VAR {tdepth = tdepth,
-						 num = cnt (),
-						 kind = tk }
-			     val _ = addRes(SOME(ep, tk), res)
-			  in (M.FORMstr sign, SOME res)
-			 end))
+			  M.FORMstr sign))
 
 		fun instToTyc(ref(INST tycon),_) = tycon 
 		      (* already instantiated *)
@@ -1543,9 +1517,9 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 
 			    | NONE =>
 			      let val stamp = mkStamp()
-				  val (bodyExp, tpOp) =
+				  val (bodyExp) =
 				      newFctBody(sign, epath, path, entEnv)
-				  val ({entities=paramEnts,...}, _, _, _, _) =
+				  val ({entities=paramEnts,...}, _, _, _) =
 				      instGeneric{sign=paramsig, entEnv=entEnv, 
 	                                          rpath=path, 
 						  region=SourceMap.nullRegion,
@@ -1560,7 +1534,6 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 					 paramEnts = paramEnts,
 					 closure=cl,
 					 properties = PropList.newHolder (),
-					 tycpath=tpOp,
 					 stub=NONE}
 			      end
 
@@ -1666,59 +1639,7 @@ let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
  in loop(instToStr'(instance,entEnv,rpath,0))
 end (* fun instToStr *)
 
-
 (*** fetching the TycKind for a particular functor signature ***)
-and getTkFct{sign as M.FSIG{paramvar, paramsig, bodysig, ...}, entEnv,
-             rpath, compInfo as {mkStamp, ...} : EU.compInfo} = 
-      let val (arg_eps, res_eps) =
-           (case (paramsig, bodysig)  
-             of (SIG psg, SIG bsg) =>
-		(case (ModPropList.sigBoundeps psg, ModPropList.sigBoundeps bsg)
-		  of (SOME x, SOME y) => (x, y)
-		   | (_, z) => 
-                     let val region=SourceMap.nullRegion
-			 val (rlzn, _, _, args, _) = 
-                             instGeneric{sign=paramsig, entEnv=entEnv,
-					 rpath=rpath, 
-					 instKind=INST_PARAM DebIndex.top, 
-					 region=region, compInfo=compInfo}
-                                     (*
-                                      * We use DI.top temporarily,
-                                      * the tycpath result is discarded 
-                                      * anyway. (ZHONG)
-                                      *)
-
-                     in (case z 
-                         of SOME u => (args, u)
-                          | NONE =>
-                             let val entEnv' = 
-                                   EE.mark(mkStamp, 
-                                       EE.bind(paramvar, STRent rlzn, entEnv))
- 
-                                 val (_, _, _, res, _) = 
-                                   instGeneric{sign=bodysig, entEnv=entEnv', 
-                                               rpath=rpath, region=region,
-                                               instKind=INST_PARAM
-							    DebIndex.top, 
-                                               compInfo=compInfo}
-                                     (*
-                                      * We use DI.top temporarily,
-                                      * the tycpath result is discarded 
-                                      * anyway. (ZHONG)
-                                      *)
-
-                              in (args, res)
-                             end)
-                     end)
-              | _ => ([], []))
-
-          val arg_tks = map #2 arg_eps
-          val res_tks = map #2 res_eps
-
-       in PK_FUN(arg_tks, PK_SEQ res_tks)
-      end
-
-  | getTkFct _ = PK_FUN([], PK_SEQ [])
 
 (*** the generic instantiation function ***)
 (* instGeneric :
@@ -1730,10 +1651,9 @@ and getTkFct{sign as M.FSIG{paramvar, paramsig, bodysig, ...}, entEnv,
    compInfo : compInfo  -- for mkStamp and error
 ->
    strEnt : structure entity
-   abs_tycs : tycon list  -- flex tycs introduced by instantiation
-   fct_tps : tycpath list -- tycpaths of ?  (collected in instToStr)
-   all_eps : (entpath * tkind) list -- collected in sigToInst + instToStr
-   tyceps :  (entpath * tkind) list -- the initial segment of all_eps
+   abs_tycs : tycon list  -- tycs introduced by instantiation
+   all_eps : entpath list -- collected in sigToInst + instToStr
+   tyceps :  entpath list -- the initial segment of all_eps
      collected in sigToInst
 *)
 and instGeneric{sign, entEnv, instKind, rpath, region, 
@@ -1754,16 +1674,12 @@ and instGeneric{sign, entEnv, instKind, rpath, region,
         end
 
       val alleps = ref (tyceps)
-      val alltps : T.tycpath list ref = ref []
-      fun addRes(NONE, tp) = (alltps := tp::(!alltps))
-        | addRes(SOME z, tp) = 
-             (alleps := (z::(!alleps)); alltps := tp::(!alltps))
 
       val strEnt = 
-          instToStr(inst,entEnv,instKind,cntf,addRes,rpath,err,compInfo)
+          instToStr(inst,entEnv,instKind,rpath,err,compInfo)
 
-      val (abs_tycs, fct_tps, all_eps) = 
-          (rev abstycs, rev(!alltps), rev(!alleps))
+      val (abs_tycs, all_eps) = 
+          (rev abstycs, rev(!alleps))
 
       (* let's memoize the resulting boundeps list *)
       val _ = case sign 
@@ -1774,7 +1690,7 @@ and instGeneric{sign, entEnv, instKind, rpath, region,
 		| _ => ()
 
       val _ = debugmsg "<<instantiate"
-   in (strEnt, abs_tycs, fct_tps, all_eps, rev tyceps)
+   in (strEnt, abs_tycs, all_eps, rev tyceps)
   end
 
 (* debugging wrappers
@@ -1784,70 +1700,28 @@ val instGeneric = wrap "instantiate" instGeneric
 *)
 
 (*** instantiation of the formal functor body signatures ***)
-fun instFmBody{sign, entEnv, tycpath, rpath, region, compInfo} =
-  let val (rlzn, tycs, _, _, tyceps)
-        = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_FMBD tycpath,
+fun instFmBody{sign, entEnv, rpath, region, compInfo} =
+  let val (rlzn, abstycs, _, tyceps)
+        = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_FMBD,
                       rpath=rpath, region=region, compInfo=compInfo}
-   in {rlzn=rlzn, abstycs=tycs, tyceps=map #1 tyceps}
+   in {rlzn=rlzn, abstycs=abstycs, tyceps=tyceps}
   end
 
 (*** instantiation of the structure abstractions **)
 fun instAbstr{sign, entEnv, srcRlzn, rpath, region, compInfo} =
-  let val (rlzn, tycs, _, _, tyceps)
+  let val (rlzn, abstycs, _, tyceps)
         = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_ABSTR srcRlzn,
                       rpath=rpath, region=region, compInfo=compInfo}
-   in {rlzn=rlzn, abstycs=tycs, tyceps=map #1 tyceps}
+   in {rlzn=rlzn, abstycs=abstycs, tyceps=tyceps}
   end
 
 (*** instantiation of the functor parameter signatures ***)
 fun instParam{sign, entEnv, tdepth, rpath, region, compInfo} =
-  let val (rlzn, tycs, fcttps, _, _) 
+  let val (rlzn, _, _, _) 
         = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_PARAM tdepth,
                       rpath=rpath, region=region, compInfo=compInfo}
-
-      fun h1(T.GENtyc { kind = T.FLEXTYC tp, ... }) = tp
-        | h1 _ = bug "unexpected h1 in instParam"
-
-      val tps = (map h1 tycs) @ fcttps
-   in {rlzn=rlzn, tycpaths=tps}
+   in rlzn
   end
-
-(*** fetching the list of tycpaths for a particular structure ***)
-fun getTycPaths{sign as M.SIG sr, rlzn : M.strEntity, entEnv,
-	        compInfo as {error,...}: EU.compInfo} =
-      let val { entities, ... } = rlzn
-	  val epslist = 
-           case ModPropList.sigBoundeps sr
-             of SOME x => x
-              | NONE => 
-                  let val (_, _, _, all_eps, _) = 
-                        instGeneric{sign=sign, entEnv=entEnv, 
-                                    rpath=IP.IPATH[], compInfo=compInfo,
-                                    instKind=INST_PARAM DebIndex.top, 
-                                    region=SourceMap.nullRegion}
-                                     (*
-                                      * We use DI.top temporarily,
-                                      * the tycpath result is discarded 
-                                      * anyway. (ZHONG)
-                                      *)
-                   in all_eps
-                  end
-
-          fun getTps (ep, _) = 
-            let val ent = EE.lookEP(entities, ep)
-             in case ent
-                 of M.TYCent (T.GENtyc { kind = T.FLEXTYC tp, ... }) => tp
-                  | M.TYCent tyc => T.TP_TYC tyc
-		  | M.FCTent {tycpath = SOME tp,...} => tp
-                  | M.ERRORent => T.TP_TYC T.ERRORtyc
-                  | _ => bug "unexpected entities in getTps"
-            end
-
-       in map getTps epslist 
-      end
-
-  | getTycPaths _ = []
-
 
 val instParam = 
   Stats.doPhase (Stats.makePhase "Compiler 032 instparam") instParam

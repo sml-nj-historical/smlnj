@@ -3,8 +3,8 @@
 
 signature TRANSTYPES = 
 sig
-  val genTT  : unit -> {tpsKnd : Types.tycpath -> PLambdaType.tkind,
-                        tpsTyc : DebIndex.depth -> Types.tycpath 
+  val genTT  : unit -> {tpsKnd : AbsynTP.tycpath -> PLambdaType.tkind,
+                        tpsTyc : DebIndex.depth -> AbsynTP.tycpath 
                                  -> PLambdaType.tyc,
                         toTyc  : DebIndex.depth -> Types.ty -> PLambdaType.tyc,
                         toLty  : DebIndex.depth -> Types.ty -> PLambdaType.lty,
@@ -31,7 +31,7 @@ local structure BT = BasicTypes
       structure SE = StaticEnv
       structure TU = TypesUtil
       structure PP = PrettyPrintNew
-      open Types Modules ElabDebug
+      open AbsynTP Types Modules ElabDebug
 in
 
 fun bug msg = ErrorMsg.impossible ("TransTypes: " ^ msg)
@@ -87,13 +87,13 @@ fun freeTyc (i) =
       end
 end (* end of recTyc and freeTyc hack *)
 
-fun tpsKnd (TP_VAR{kind,...}) = 
-	let fun kindToTKind PK_MONO = LT.tkc_int 0
+fun tpsKnd (TP_VAR{kind,...}) = kind 
+	(* let fun kindToTKind PK_MONO = LT.tkc_int 0
 	      | kindToTKind (PK_SEQ x) = LT.tkc_seq(map kindToTKind x)
 	      | kindToTKind (PK_FUN (paramks,bodyknd)) =
 		LT.tkc_fun(map kindToTKind paramks, kindToTKind bodyknd)
 	in kindToTKind kind
-	end
+	end *)
   | tpsKnd _ = bug "unexpected tycpath parameters in tpsKnd"
 
 fun genTT() = 
@@ -207,7 +207,7 @@ and tycTyc(tc, d) =
                in LT.tcc_fn(ks, LT.tcc_abs b)
               end
               <<<*)
-        | h (FLEXTYC tp, _) = tpsTyc d tp
+(*         | h (FLEXTYC tp, _) = tpsTyc d tp *)
         | h (FORMAL, _) = bug "unexpected FORMAL kind in tycTyc-h"
         | h (TEMP, _) = bug "unexpected TEMP kind in tycTyc-h"
 
@@ -411,15 +411,16 @@ and strRlznLty (sign, rlzn : strEntity, depth, compInfo) =
 and fctRlznLty (sign, rlzn, depth, compInfo) = 
     case (sign, ModulePropLists.fctEntityLty rlzn, rlzn) of
 	(sign, SOME (lt, od), _) => LT.lt_adj(lt, od, depth)
-      | (FSIG{paramsig, bodysig, ...}, _,
-         {closure as CLOSURE{env,...}, ...}) =>
-        let val {rlzn=argRlzn, tycpaths=tycpaths} = 
+      | (fs as FSIG{paramsig, bodysig, ...}, _,
+         {closure as CLOSURE{env,...}, paramEnts, ...}) =>
+        let val argRlzn = 
                 INS.instParam {sign=paramsig, entEnv=env, tdepth=depth, 
                                rpath=InvPath.IPATH[], compInfo=compInfo,
                                region=SourceMap.nullRegion}
             val nd = DI.next depth
             val paramLty = strMetaLty(paramsig, argRlzn, nd, compInfo)
-            val ks = map tpsKnd tycpaths
+            (* val ks = map tpsKnd tycpaths *)
+	    val ks = map tpsKnd (RepTycProps.getTk(fs, paramEnts, #entities argRlzn, []))
             val bodyRlzn = 
                 EV.evalApp(rlzn, argRlzn, nd, EPC.initContext,
                            IP.empty, compInfo)

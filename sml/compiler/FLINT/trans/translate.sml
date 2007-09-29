@@ -43,7 +43,7 @@ local structure B  = Bindings
       structure IIMap = RedBlackMapFn (type ord_key = IntInf.int
 					val compare = IntInf.compare)
 
-      open Absyn PLambda 
+      open Absyn AbsynTP PLambda 
 in 
 
 (****************************************************************************
@@ -1140,7 +1140,7 @@ fun mkStr (s as M.STR { access, prim, ... }, d) =
     mkAccInfo(access, fn () => strLty(s, d, compInfo), NONE)
   | mkStr _ = bug "unexpected structures in mkStr"
 
-fun mkFct (f as M.FCT { access, prim, ... }, d) =
+fun mkFct (f as M.FCT { access, prim, rlzn={paramEnts, ...},... }, d) =
     mkAccInfo(access, fn () => fctLty(f, d, compInfo), NONE)
   | mkFct _ = bug "unexpected functors in mkFct"
 

@@ -244,8 +244,8 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
      and instrstrb ((names,ccvara), STRB{name, str, def}) = 
            STRB{str=str, def=instrstrexp(name::names,def), name=name}
 
-     and instrfctexp(names, FCTfct {param, def, argtycs}) = 
-           FCTfct{param=param, def=instrstrexp(names,def), argtycs=argtycs}
+     and instrfctexp(names, FCTfct {param, def}) = 
+           FCTfct{param=param, def=instrstrexp(names,def)}
 
        | instrfctexp(names, LETfct(d,body)) = 
            LETfct(instrdec((names,0),d), instrfctexp(names,body))
