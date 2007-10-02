@@ -61,7 +61,7 @@ end
  * This is just a simple record type used by MLRISC to represent 
  * instruction streams.
  *)
-structure Stream = InstructionStream(UserPseudoOps)
+(*structure Stream = InstructionStream(UserPseudoOps)*)
 
 (*
  * Client defined extensions.  None for now.
@@ -70,7 +70,7 @@ structure Stream = InstructionStream(UserPseudoOps)
 structure UserExtension =
 struct
 
-   type ('s,'r,'f,'c) sx = unit
+   type ('s,'r,'f,'c) sx = ('s,'r,'f,'c) AMD64InstrExt.sext
    type ('s,'r,'f,'c) rx = unit
    type ('s,'r,'f,'c) fx = unit
    type ('s,'r,'f,'c) ccx = unit
@@ -82,11 +82,31 @@ end
  * have any yet.  This is just a bunch of dummy routines.
  *)
 functor UserMLTreeExtComp
-   (structure T : MLTREE
-    structure I : INSTRUCTIONS
-      sharing T.LabelExp = I.LabelExp
+	    (    structure I : AMD64INSTR where T.Extension = UserExtension
+    structure TS : MLTREE_STREAM where T = I.T
+    structure CFG : CONTROL_FLOW_GRAPH where I = I and P = TS.S.P
    ) : MLTREE_EXTENSION_COMP =
 struct
+    structure T = TS.T
+    structure TS = TS
+    structure I = I
+    structure CFG = CFG
+    structure C = I.C
+
+    structure CompInstrExt = AMD64CompInstrExt (
+      structure I = I
+      structure TS = TS
+      structure CFG = CFG)
+
+    type reducer =
+	  (I.instruction,C.cellset,I.operand,I.addressing_mode,CFG.cfg) TS.reducer
+
+    val compileSext = CompInstrExt.compileSext
+
+    fun compileRext _ = raise Fail "AMD64CompExtFn.compileRext"
+    fun compileFext _ = raise Fail "AMD64CompExtFn.compileFext"
+    fun compileCCext _ = raise Fail "AMD64CompExtFn.compileCCext"
+(*
    structure T = T
    structure I = I
    structure C = I.C
@@ -97,15 +117,6 @@ struct
    val compileRext  = unimplemented
    val compileFext  = unimplemented
    val compileCCext = unimplemented
+*)
 end
 
-
-(*
- * The MLTree RTL language.
- *)
-structure MLTree = MLTreeF
-   (structure LabelExp = LabelExp
-    structure Region = UserRegion
-    structure Stream = Stream
-    structure Extension = UserExtension
-   )

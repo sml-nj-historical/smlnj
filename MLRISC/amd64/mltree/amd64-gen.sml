@@ -76,6 +76,8 @@ functor AMD64Gen (
     val i32tow32 = Word32.fromLargeInt		 
     (* One day, this is going to bite us when precision(LargeInt)>32 *)
     fun wToInt32 w = Int32.fromLarge(Word32.toLargeIntX w)
+
+    fun move64 (src, dst) = I.move {mvOp=I.MOVABSQ, src=src, dst=dst}
     
     (* analyze for power-of-two-ness *)
    fun analyze i' = let 
@@ -165,7 +167,7 @@ functor AMD64Gen (
             val tmp = newReg ()
 	    val tmpR = I.Direct (64, tmp)
 	    in 
-		emitInstr (I.move {mvOp=I.MOVABSQ, src=src, dst=tmpR});
+		emitInstr (move64 (src, tmpR));
 		mark' (I.move {mvOp=I.MOVQ, src=tmpR, dst=dst}, an)
 	    end	
 	  | move' (ty, src, dst, an) =
@@ -252,21 +254,34 @@ functor AMD64Gen (
  	      | doEAImmed(trees, n, b, i, s, I.Immed m) = 
                 doEA(trees, b, i, s, I.Immed(n+m))
               | doEAImmed(trees, n, b, i, s, I.ImmedLabel le) = 
-                doEA(trees, b, i, s, 
-                     I.ImmedLabel(T.ADD(ty,le,T.LI(T.I.fromInt32(ty, n)))))
+                doEA(trees, b, i, s, I.ImmedLabel (T.ADD(ty,le,T.LI(T.I.fromInt32(ty, n)))))
               | doEAImmed(trees, n, b, i, s, _) = error "doEAImmed"
-						    
-            (* Add a label expression *)
-            and doEALabel(trees, le, b, i, s, I.Immed 0) = 
-                doEA(trees, b, i, s, I.ImmedLabel le)
-              | doEALabel(trees, le, b, i, s, I.Immed m) = 
-                doEA(trees, b, i, s, 
-                     I.ImmedLabel(T.ADD(ty,le,T.LI(T.I.fromInt32(ty, m))))
-                     handle Overflow => error "doEALabel: constant too large")
-              | doEALabel(trees, le, b, i, s, I.ImmedLabel le') = 
-                doEA(trees, b, i, s, I.ImmedLabel(T.ADD(ty,le,le')))
-              | doEALabel(trees, le, b, i, s, _) = error "doEALabel"
-						     
+
+            (* Add a label expression.
+	     * NOTE: Labels in the AMD64 can be 64 bits, but operands can only handle 32 constants.
+	     * We have to spill label expressions to temporaries to be correct.
+	     * TODO: eliminate the extra register-register move from genExpr
+	     *)
+	    and doEALabel (trees, le, b, i, s, d) = let
+		val le = (case b
+			    of NONE => le
+			     | SOME base => T.ADD (ty, le, T.REG (ty, base))
+                          (* end case *))
+		val b' = genExpr le
+	        in
+		  (case d
+		    of I.Immed 0 => doEA(trees, SOME b', i, s, I.Immed 0)
+		     | I.Immed m => (doEA (trees, 
+		              SOME (genExpr (T.ADD (ty, T.REG(ty, b'), T.LI(T.I.fromInt32(ty, m))))), 
+		         i, s, I.Immed 0)
+		       handle Overflow => error "doEALabel: constant too large")
+		     | I.ImmedLabel le' => doEA (trees, 
+		              SOME (genExpr (T.ADD (ty, T.REG(ty, b'), le'))),
+		         i, s, I.Immed 0)
+		     | _ => error "doEALabel"
+                  (* end case *))
+	        end
+
             (* generate code for tree and ensure that it is not in %rsp *)
             and exprNotRsp tree = let 
 		val r = genExpr tree
@@ -317,7 +332,7 @@ functor AMD64Gen (
 	  in 
 	    case doEA ([ea], NONE, NONE, 0, I.Immed 0)
 	     of I.Immed _ => raise EA
-	      | I.ImmedLabel le => I.LabelEA le
+	      | I.ImmedLabel le => I.Displace {base=genExpr le, disp=I.Immed 0, mem=mem}		
 	      | ea => ea
 	  end (* address' *)
 

@@ -113,9 +113,9 @@ struct
                      not(isStackPtr dst) =>
                loop(rest, I.pop dst::instrs)
 
-           | I.INSTR(I.MOVE{mvOp=I.MOVQ, src, dst as I.Direct _})::rest 
+           | I.INSTR(I.MOVE{mvOp=(I.MOVQ|I.MOVL), src, dst as I.Direct _})::rest 
               where isZero src => 
-                loop(rest, I.binary{binOp=I.XORQ, src=dst, dst=dst}::instrs)
+                loop(rest, I.binary{binOp=I.XORL, src=dst, dst=dst}::instrs)
 
            | i::rest => loop(rest, i::instrs)
            )
