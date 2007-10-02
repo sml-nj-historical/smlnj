@@ -15,6 +15,13 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/10/2
+Description:
+
+Added demo support for AMD64 for quick testing and fixed support for
+64-bit label constants.
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
 Date: 2007/09/20
 Description:
 
