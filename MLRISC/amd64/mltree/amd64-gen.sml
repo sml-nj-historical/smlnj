@@ -163,6 +163,7 @@ functor AMD64Gen (
 	       else mark' (I.COPY {k=CB.GP, sz=ty, src=[s], dst=[d], tmp=NONE}, an)
 	  | move' (ty, I.Immed 0, dst as I.Direct _, an) =
 	    mark' (I.binary {binOp=O.xorOp ty, src=dst, dst=dst}, an)
+	  | move' (ty, src as I.ImmedLabel _ , dst as I.Direct _, an) = emitInstr (move64 (src, dst))
 	  | move' (ty, src as I.ImmedLabel _ , dst, an) = let
             val tmp = newReg ()
 	    val tmpR = I.Direct (64, tmp)
@@ -254,29 +255,29 @@ functor AMD64Gen (
  	      | doEAImmed(trees, n, b, i, s, I.Immed m) = 
                 doEA(trees, b, i, s, I.Immed(n+m))
               | doEAImmed(trees, n, b, i, s, I.ImmedLabel le) = 
-                doEA(trees, b, i, s, I.ImmedLabel (T.ADD(ty,le,T.LI(T.I.fromInt32(ty, n)))))
+                doEA(trees, b, i, s, 
+                     I.ImmedLabel(T.ADD(ty,le,T.LI(T.I.fromInt32(ty, n)))))
               | doEAImmed(trees, n, b, i, s, _) = error "doEAImmed"
 
             (* Add a label expression.
-	     * NOTE: Labels in the AMD64 can be 64 bits, but operands can only handle 32 constants.
+	     * NOTE: Labels in the AMD64 can be 64 bits, but operands can only handle 32-bit constants.
 	     * We have to spill label expressions to temporaries to be correct.
 	     * TODO: eliminate the extra register-register move from genExpr
 	     *)
 	    and doEALabel (trees, le, b, i, s, d) = let
 		val le = (case b
 			    of NONE => le
-			     | SOME base => T.ADD (ty, le, T.REG (ty, base))
+			     | SOME base => T.ADD (ty, T.REG (ty, base), le)
                           (* end case *))
-		val b' = genExpr le
 	        in
 		  (case d
-		    of I.Immed 0 => doEA(trees, SOME b', i, s, I.Immed 0)
+		    of I.Immed 0 => doEA(trees, SOME (genExpr le), i, s, I.Immed 0)
 		     | I.Immed m => (doEA (trees, 
-		              SOME (genExpr (T.ADD (ty, T.REG(ty, b'), T.LI(T.I.fromInt32(ty, m))))), 
+		              SOME (genExpr (T.ADD (ty, le, T.LI(T.I.fromInt32(ty, m))))), 
 		         i, s, I.Immed 0)
 		       handle Overflow => error "doEALabel: constant too large")
 		     | I.ImmedLabel le' => doEA (trees, 
-		              SOME (genExpr (T.ADD (ty, T.REG(ty, b'), le'))),
+		              SOME (genExpr (T.ADD (ty, le', le))),
 		         i, s, I.Immed 0)
 		     | _ => error "doEALabel"
                   (* end case *))
@@ -332,7 +333,7 @@ functor AMD64Gen (
 	  in 
 	    case doEA ([ea], NONE, NONE, 0, I.Immed 0)
 	     of I.Immed _ => raise EA
-	      | I.ImmedLabel le => I.Displace {base=genExpr le, disp=I.Immed 0, mem=mem}		
+	      | I.ImmedLabel le => I.LabelEA le (*I.Displace {base=genExpr le, disp=I.Immed 0, mem=mem}*)
 	      | ea => ea
 	  end (* address' *)
 
@@ -888,8 +889,7 @@ functor AMD64Gen (
 	     | _ => error "convertf2f"
 	    (* end case *))
 	    in
-	      mark (I.FMOVE {fmvOp=fmvOp, dst=I.FDirect d, 
-	                     src=foperand (fromTy, e)}, an)
+	      mark (I.FMOVE {fmvOp=fmvOp, dst=I.FDirect d, src=foperand (fromTy, e)}, an)
 	    end (* convertf2f *)
 
 	and converti2f (fty, ty, e, d, an) = let
@@ -899,9 +899,9 @@ functor AMD64Gen (
 	                   | (64, 32) => I.CVTSI2SSQ
 	                   | (64, 64) => I.CVTSI2SDQ
 	                 (* end case *))
+	    val src = regOrMem (ty, operand ty e)
 	    in
-	      mark (I.FMOVE {fmvOp=fmvOp, dst=I.FDirect d, 
-	                     src=operand ty e}, an)
+	      mark (I.FMOVE {fmvOp=fmvOp, dst=I.FDirect d, src=src}, an)
 	    end (* converti2f *)
 
 	and fexpr (fty, d, e, an) = ( floatingPointUsed := true;
@@ -946,7 +946,7 @@ functor AMD64Gen (
 		 | NONE => return(set, an)
 		(* end case *))
 	    in
-	      mark(I.CALL{opnd=operand 32 ea,defs=cellset def,uses=cellset use,
+	      mark(I.CALL{opnd=operand 64 ea,defs=cellset def,uses=cellset use,
 			  return=return (C.empty,an),cutsTo=cutsTo,mem=mem,
 			  pops=pops},an)
 	    end (* call *)
@@ -1042,6 +1042,10 @@ functor AMD64Gen (
 	      (* end case *))
 	    end (* store *)
 
+	(* floating-point branch for
+	 *   if (t1 fcc t2)
+	 *      goto lab
+	 *)
 	and fbranch (fty, fcc, t1, t2, lab, an) = let
 	    fun j cc = mark (I.JCC {cond=cc, opnd=immedLabel lab}, an)
 	    in
@@ -1067,16 +1071,21 @@ functor AMD64Gen (
                  | _      => error(concat[
 				"fbranch(", T.Basis.fcondToString fcc, ")"])
                (*esac*))
+	    (* compare for condition  (x op y)
+	     * 
+	     *              (y)          (x)
+	     * ucomiss/d    xmm1/m32,  xmm2
+	     *)
                fun compare () = let
-                   val l = foperand (fty, t1)
-                   val r = foperand (fty, t2)
+                   val r = foperand (fty, t1)
+                   val l = foperand (fty, t2)
                    fun cmp (l, r, fcc) = (
                        emit (I.FCOM {comOp=O.ucomOp fty, src=r, dst=l});
                        fcc)
                    in
                      (case (l, r)
                        of (I.FDirect lReg, I.FDirect _) => cmp (lReg, r, fcc)
-                        | (mem, I.FDirect rReg) => 
+                        | (mem, I.FDirect rReg) =>  
                           cmp (rReg, l, T.Basis.swapFcond fcc)
                         | (I.FDirect lReg, mem) => cmp (lReg, r, fcc)
                         | _ => let
@@ -1228,7 +1237,7 @@ functor AMD64Gen (
 	and stmt' (s, an) = (case s
 	    of T.MV (ty, d, e) => expr' (ty, e, d, an)
 	     | T.FMV (fty, d, e) => fexpr (fty, d, e, an)
-	     | T.CCMV (ccd, e) => raise Fail "todo"
+	     | T.CCMV (ccd, e) => doCCexpr (e, ccd, an)
 	     | T.COPY (ty, dst, src) => copy (ty, dst, src, an)
 	     | T.FCOPY (fty, dst, src) => fcopy (fty, dst, src, an)
 	     | T.JMP (e, labs) => jmp (e, labs, an)
@@ -1276,8 +1285,8 @@ functor AMD64Gen (
 	      end
 
 	and reducer () = TS.REDUCER{
-		reduceRexp    = fn _ => raise Fail "todo",
-		reduceFexp    = fn _ => raise Fail "todo",
+		reduceRexp    = genExpr,
+		reduceFexp    = fn e => fexpToReg (64, e),
 		reduceCCexp   = ccExpr,
 		reduceStm     = stmt',
 		operand       = operand 64,
