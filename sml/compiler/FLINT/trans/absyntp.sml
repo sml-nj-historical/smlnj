@@ -17,8 +17,6 @@ in
 
 type region = Ast.region  (* = int * int *)
 
-(* datatype numberedLabel = LABEL of {name: S.symbol, number: int} *)
-
 datatype tycpath (* (instantiated) functor type parameter path *)
   = TP_VAR of { tdepth: DebIndex.depth, num: int, kind: LT.tkind }   
   | TP_TYC of tycon
@@ -26,7 +24,7 @@ datatype tycpath (* (instantiated) functor type parameter path *)
   | TP_APP of tycpath * tycpath list
   | TP_SEL of tycpath * int
 
-(* datatype exp
+datatype exp
   = VARexp of var ref * tyvar list
     (* the 2nd arg is a type mv list used to capture the instantiation
        parameters for this occurence of var when its type is polymorphic.
@@ -38,8 +36,8 @@ datatype tycpath (* (instantiated) functor type parameter path *)
   | REALexp of string
   | STRINGexp of string
   | CHARexp of string
-  | RECORDexp of (numberedLabel * exp) list
-  | SELECTexp of numberedLabel * exp           (* record selections *)
+  | RECORDexp of (Absyn.numberedLabel * exp) list
+  | SELECTexp of Absyn.numberedLabel * exp           (* record selections *)
   | VECTORexp of exp list * ty        
   | APPexp of exp * exp
   | HANDLEexp of exp * fnrules
@@ -55,15 +53,15 @@ datatype tycpath (* (instantiated) functor type parameter path *)
   | CONSTRAINTexp of exp * ty         
   | MARKexp of exp * region
 
-and rule = RULE of Absyn.pat * exp *)
+and rule = RULE of Absyn.pat * exp 
 
-datatype dec	
-  = VALdec of Absyn.vb list                  (* always a single element list *)
-  | VALRECdec of Absyn.rvb list
+and dec	
+  = VALdec of vb list                  (* always a single element list *)
+  | VALRECdec of rvb list
   | TYPEdec of tycon list
   | DATATYPEdec of {datatycs: tycon list, withtycs: tycon list}
   | ABSTYPEdec of {abstycs: tycon list, withtycs: tycon list, body: dec}
-  | EXCEPTIONdec of Absyn.eb list
+  | EXCEPTIONdec of eb list
   | STRdec of strb list
   | ABSdec of strb list      (* should be merged with STRdec in the future *)
   | FCTdec of fctb list
@@ -104,8 +102,8 @@ and fctexp
  * does not contain any variable patterns; boundtvs gives the list of
  * type variables that are being generalized at this binding. 
  *)
-(* and vb = VB of {pat: pat, exp: exp, boundtvs: tyvar list,
-                tyvars: tyvar list ref} *)
+and vb = VB of {pat: Absyn.pat, exp: exp, boundtvs: tyvar list,
+                tyvars: tyvar list ref} 
 
 (*
  * Like value binding vb, boundtvs gives a list of type variables 
@@ -113,16 +111,16 @@ and fctexp
  * list of RVBs could share type variables, that is, the boundtvs sets
  * used in these RVBs could contain overlapping set of type variables.
  *)
-(* and rvb = RVB of {var: var, exp: exp, boundtvs: tyvar list,
+and rvb = RVB of {var: var, exp: exp, boundtvs: tyvar list,
                   resultty: ty option, tyvars: tyvar list ref}
 
 and eb = EBgen of {exn: datacon, etype: ty option, ident: exp}
-       | EBdef of {exn: datacon, edef: datacon} *)
+       | EBdef of {exn: datacon, edef: datacon} 
 
 and strb = STRB of {name: S.symbol, str: Structure, def: strexp} 
 and fctb = FCTB of {name: S.symbol, fct: Functor, def: fctexp}
 
-withtype fnrules = Absyn.rule list * Types.ty
+withtype fnrules = rule list * Types.ty
 
 end (* local *)
 end

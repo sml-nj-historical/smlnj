@@ -901,7 +901,7 @@ in
 		"b" $ [int index, option entVar root,
 		       dtypeInfo (stamps, family, freetycs)]
 	      | tk (T.ABSTRACT tyc) = "c" $ [tycon tyc]
-	      | tk (T.FLEXTYC tps) = "d" $ [] (* "f" $ tycpath tps *)
+	      (* | tk (T.FLEXTYC tps) = "d" $ [] (* "f" $ tycpath tps *) *)
 	      (*** I (Matthias) carried through this message from Zhong:
 	       tycpath should never be pickled; the only way it can be
 	       pickled is when pickling the domains of a mutually 
@@ -1196,7 +1196,7 @@ in
 	      | fe (M.CONSTfct e) = "p" $ [fctEntity e]
 	      | fe (M.LAMBDA { param, paramEnts, body }) =
 		"q" $ [entVar param, fctParamEnts paramEnts, strExp body]
-	      | fe (M.LAMBDA_TP { param, body, sign }) =
+	     | fe (M.LAMBDA_TP { param, body, sign }) =
 		"r" $ [entVar param, strExp body, fctSig sign]
 	      | fe (M.LETfct (e, f)) = "s" $ [entityDec e, fctExp f]
 	in
@@ -1253,7 +1253,7 @@ in
 	and shStrEntity id = share (STRs id) strEntity
 
         and fctEntity { stamp = s, paramEnts = e,
-			closure, properties, tycpath, rpath, stub } =
+			closure, properties, (* tycpath,*) rpath, stub } =
 	    let val op $ = PU.$ FEN
 	    in
 		"f" $ ([stamp s, fctParamEnts e, fctClosure closure, 

@@ -43,7 +43,9 @@ local structure B  = Bindings
       structure IIMap = RedBlackMapFn (type ord_key = IntInf.int
 					val compare = IntInf.compare)
 
-      open Absyn AbsynTP PLambda 
+      open Absyn PLambda 
+      open AbsynTP (* TODO: Should just qualify pats or split out,
+		      counting on correct shadowing is fragile. *)
 in 
 
 (****************************************************************************
@@ -141,7 +143,7 @@ val mkv = LambdaVar.mkLvar
 fun mkvN NONE = mkv()
   | mkvN (SOME s) = LambdaVar.namedLvar s
 *)
-val rootdec' = RepTycProps.procDec(rootdec, 0)
+val rootdec' = RepTycProps.procDec(rootdec, DebIndex.top)
 
 val mkvN = #mkLvar compInfo
 fun mkv () = mkvN NONE
@@ -1576,8 +1578,8 @@ and mkExp (exp, d) =
 
         | g e = 
              EM.impossibleWithBody "untranslateable expression"
-              (fn ppstrm => (PP.string ppstrm " expression: ";
-                            PPAbsyn.ppExp (env,NONE) ppstrm (e, !ppDepth)))
+              (fn ppstrm => (PP.string ppstrm " expression: "(* ;
+                            TODO: PPAbsyn.ppExp (env,NONE) ppstrm (e, !ppDepth) *)) )
 
    in g exp
   end 
@@ -1589,13 +1591,24 @@ and transIntInf d s =
      * dealing with a constant value that -- in principle --
      * could be subject to such things as constant folding. *)
     let val consexp = CONexp (BT.consDcon, [ref (TP.INSTANTIATED BT.wordTy)])
+	(* TODO: Can factor better, taken from absynutil and converted
+	   to use AbsynTP *)
+	fun TUPLEexp l = let
+	    fun build (_, []) = []
+	      | build (i, e :: es) =
+		(Absyn.LABEL { number = i-1, name = Tuples.numlabel i }, e)
+		:: build (i+1, es)
+	in
+	    AbsynTP.RECORDexp (build (1, l))
+	end
+
 	fun build [] = CONexp (BT.nilDcon, [ref (TP.INSTANTIATED BT.wordTy)])
 	  | build (d :: ds) = let
 		val i = Word.toIntX d
 	    in
-		APPexp (consexp,
-			EU.TUPLEexp [WORDexp (IntInf.fromInt i, BT.wordTy),
-				     build ds])
+		APPexp (consexp, 
+			(TUPLEexp [AbsynTP.WORDexp (IntInf.fromInt i, BT.wordTy),
+				   build ds]))
 	    end
 	fun small w =
 	    APP (coreAcc (if LN.isNegative s then "makeSmallNegInf"

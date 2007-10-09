@@ -316,19 +316,21 @@ in
 
       end (* local *)
 
-	(* dec * int -> 
+	(* dec * DebIndex.depth -> 
 	     dec with tycpaths and memoized ep * tkind lists 
 	   This code needs EPMap (don't forgot EPMap in the local ... in 
 	   bindings section above ...)
 	 *)
-	fun procDec (dec, d) =
+	fun procDec (dec, d : DebIndex.depth) =
 	  let 
 	      val _ = debugmsg ">>procDec"
-			fun procStrexp def =
-			   (case def 
-			     of (APPstr {oper=oper as M.FCT{sign=fctsign 
-					    as M.FSIG {paramsig=fsparsig as M.SIG fsr,...},
-				            rlzn=fctRlzn,...},
+	      fun procStrexp def =
+		  (case def 
+		    of (APPstr {oper=oper 
+					 as M.FCT{sign=fctsign 
+					          as M.FSIG {paramsig=fsparsig 
+								as M.SIG fsr,...},
+						   rlzn=fctRlzn,...},
 				       arg=arg as M.STR{sign=argsig as M.SIG{elements,...},
 						 rlzn=argRlzn as {entities,...},...}, ...
 				       }) => 
@@ -454,6 +456,12 @@ in
 		    in
 			sb' :: strBinds(rest)
 		    end (* fun strBinds *)
+	 
+	      fun transVB(VB {pat,exp,boundtvs,tyvars}) = 
+		  AT.VB{pat=pat,exp=transExp d exp,boundtvs=boundtvs,tyvars=tyvars}
+	      fun transRVB(RVB{var,exp,boundtvs,resultty,tyvars}) =
+		  AT.RVB{var=var,exp=transExp d exp,boundtvs=boundtvs,
+			resultty=resultty,tyvars=tyvars}
 	  in
 		  (case dec 
 		     of SEQdec(decs) => 
@@ -467,17 +475,61 @@ in
 		      | OPENdec x => AT.OPENdec x (* May have module dec *)
 		      | SIGdec bs => AT.SIGdec bs
 		      | FSIGdec bs => AT.FSIGdec bs
-		      | VALdec vbs => AT.VALdec vbs
-		      | VALRECdec rvbs => AT.VALRECdec rvbs
+		      | VALdec vbs => AT.VALdec (map transVB vbs)
+		      | VALRECdec rvbs => AT.VALRECdec (map transRVB rvbs)
 		      | TYPEdec tycs => AT.TYPEdec tycs
 		      | DATATYPEdec x => AT.DATATYPEdec x
 		      | ABSTYPEdec{abstycs, body, withtycs} => 
 			  AT.ABSTYPEdec{abstycs=abstycs, body=procDec(body,d), 
 					withtycs=withtycs}
-		      | EXCEPTIONdec ebs => AT.EXCEPTIONdec ebs
+		      | EXCEPTIONdec ebs => 
+			AT.EXCEPTIONdec (map (fn (EBgen{exn,etype,ident}) => 
+						  AT.EBgen{exn=exn,etype=etype,
+							   ident=transExp d ident}
+					       | (EBdef{exn,edef}) => 
+					         AT.EBdef{exn=exn,edef=edef})
+						     ebs)
 		      | OVLDdec v => AT.OVLDdec v
 		      | FIXdec x => AT.FIXdec x)
 	  end
+	and transExp d e = 
+		  (let val transExp' = transExp d
+		       fun transRule(RULE(p,e)) = AT.RULE(p,transExp' e)
+		       fun transFnRules(rules, ty) = (map transRule rules, ty)
+		   in
+		  (case e 
+		    of (VARexp d) => AT.VARexp d
+		     | (CONexp d) => AT.CONexp d
+		     | (INTexp d) => AT.INTexp d
+		     | (WORDexp d) => AT.WORDexp d
+		     | (REALexp d) => AT.REALexp d
+		     | (STRINGexp d) => AT.STRINGexp d
+		     | (CHARexp d) => AT.CHARexp d
+		     | (RECORDexp recs) => 
+		       AT.RECORDexp(map (fn(lab,e) => (lab,transExp' e)) recs)
+		     | (SELECTexp(lab,e)) => AT.SELECTexp (lab, transExp' e)
+		     | (VECTORexp(es, ty)) => AT.VECTORexp(map transExp' es, ty)
+		     | (APPexp(e1,e2)) => AT.APPexp(transExp' e1, transExp' e2)
+		     | (HANDLEexp(e,rules)) => 
+		       AT.HANDLEexp(transExp' e, transFnRules rules)
+		     | RAISEexp(e,ty) => 
+		       AT.RAISEexp(transExp' e, ty)
+		     | CASEexp(e,rules, m) => 
+		       AT.CASEexp(transExp' e, map transRule rules,m)
+		     | IFexp{test,thenCase,elseCase} =>
+		       AT.IFexp{test=transExp' test, 
+			        thenCase=transExp' thenCase,
+			        elseCase=transExp' elseCase}
+		     | ANDALSOexp(e1,e2) => AT.ANDALSOexp(transExp' e1, transExp' e2)
+		     | ORELSEexp(e1,e2) => AT.ORELSEexp(transExp' e1, transExp' e2)
+		     | WHILEexp{test,expr} => 
+		       AT.WHILEexp{test=transExp' test,expr=transExp' expr}
+		     | FNexp(fnrules) => AT.FNexp(transFnRules fnrules)
+		     | LETexp(dec,e) => AT.LETexp(procDec (dec,d), transExp' e)
+		     | SEQexp(es) => AT.SEQexp(map transExp' es)
+		     | CONSTRAINTexp(e,t) => AT.CONSTRAINTexp(transExp' e, t)
+		     | MARKexp(e,r) => AT.MARKexp(transExp' e, r))
+		   end) (* transExp *)				  
 
 end (* local *)
 	

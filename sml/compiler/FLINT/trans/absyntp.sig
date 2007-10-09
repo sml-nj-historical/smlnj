@@ -7,8 +7,6 @@ sig
 
 type region 
 
-(* datatype numberedLabel = LABEL of {name: Symbol.symbol, number: int} *)
-
 datatype tycpath
   = TP_VAR of { tdepth: DebIndex.depth, num: int, kind: LtyExtern.tkind }
   | TP_TYC of Types.tycon
@@ -16,7 +14,7 @@ datatype tycpath
   | TP_APP of tycpath * tycpath list
   | TP_SEL of tycpath * int
 
-(* datatype exp
+datatype exp
   = VARexp of VarCon.var ref * Types.tyvar list (* instance type *)
   | CONexp of VarCon.datacon * Types.tyvar list (* instance type *)
   | INTexp of IntInf.int * Types.ty
@@ -24,8 +22,8 @@ datatype tycpath
   | REALexp of string
   | STRINGexp of string
   | CHARexp of string
-  | RECORDexp of (numberedLabel * exp) list
-  | SELECTexp of numberedLabel * exp
+  | RECORDexp of (Absyn.numberedLabel * exp) list
+  | SELECTexp of Absyn.numberedLabel * exp
   | VECTORexp of exp list * Types.ty        
   | APPexp of exp * exp
   | HANDLEexp of exp * fnrules
@@ -41,16 +39,16 @@ datatype tycpath
   | CONSTRAINTexp of exp * Types.ty         
   | MARKexp of exp * region
 
-and rule = RULE of Absyn.pat * exp *)
+and rule = RULE of Absyn.pat * exp 
 
-datatype dec	
-  = VALdec of Absyn.vb list
-  | VALRECdec of Absyn.rvb list
+and dec	
+  = VALdec of vb list
+  | VALRECdec of rvb list
   | TYPEdec of Types.tycon list
   | DATATYPEdec of {datatycs: Types.tycon list, withtycs: Types.tycon list}
   | ABSTYPEdec of {abstycs: Types.tycon list, 
                    withtycs: Types.tycon list, body: dec}
-  | EXCEPTIONdec of Absyn.eb list
+  | EXCEPTIONdec of eb list
   | STRdec of strb list
   | ABSdec of strb list
   | FCTdec of fctb list
@@ -78,18 +76,18 @@ and fctexp
   | LETfct of dec * fctexp
   | MARKfct of fctexp * region
 
-(* and vb = VB of {pat: pat, exp: exp, boundtvs: Types.tyvar list,
+and vb = VB of {pat: Absyn.pat, exp: exp, boundtvs: Types.tyvar list,
                 tyvars: Types.tyvar list ref}
 
 and rvb = RVB of {var: VarCon.var, exp: exp, boundtvs: Types.tyvar list,
                   resultty: Types.ty option, tyvars: Types.tyvar list ref}
 
 and eb = EBgen of {exn: VarCon.datacon, etype: Types.ty option, ident: exp}
-       | EBdef of {exn: VarCon.datacon, edef: VarCon.datacon} *)
+       | EBdef of {exn: VarCon.datacon, edef: VarCon.datacon} 
 
 and strb = STRB of {name: Symbol.symbol, str: Modules.Structure, def: strexp}
 and fctb = FCTB of {name: Symbol.symbol, fct: Modules.Functor, def: fctexp}
 
-withtype fnrules = Absyn.rule list * Types.ty
+withtype fnrules = rule list * Types.ty
 
 end (* signature ABSYN *)
