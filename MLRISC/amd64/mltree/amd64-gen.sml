@@ -680,11 +680,11 @@ functor AMD64Gen (
                * OF and CF flags are:
                *
                *          (dst)  (src1)  (src2)
-               *      imul r32, r32/m32, imm8
+               *      imul r64, r64/m64, imm8
                *          (dst)  (src) 
-               *      imul r32, imm8
-               *      imul r32, imm32
-               *      imul r32, r32/m32
+               *      imul r64, imm8
+               *      imul r64, imm32
+               *      imul r64, r32/m64
                * Note: destination must be a register!
                *)
               fun multiply (ty, e1, e2) = 

@@ -247,7 +247,7 @@ functor AMD64SpillInstr (
 		          code=[I.move{mvOp=I.MOVQ, src=src, dst=tmpOpnd64},
 		  	        mark(I.CMPXCHG{lock=lock,sz=isz,src=tmpOpnd, 
 					       dst=spillLoc},an)]}
-			end
+			end 
 		 | I.MULTDIV _ => error "spill: MULTDIV"
 		 | I.MUL3 {src1, src2, dst} => let 
 		   val tmpR = newReg() 
@@ -371,10 +371,11 @@ functor AMD64SpillInstr (
 	                 I.Indexed {base=NONE, index=index', scale=scale,
 	                            disp=disp, mem=mem})
 	             | I.Indexed {base=SOME b, index, scale, disp, mem} => 
-	               replaceR (b, fn b' =>
-	                 replaceR (index, fn index' =>
-	                   I.Indexed {base=SOME b', index=index', scale=scale,
-	                              disp=disp, mem=mem}))
+	               if CB.sameColor (b, r)
+			  then operand (I.Indexed {base=SOME tmp, index=index, scale=scale, disp=disp, mem=mem}, tmp)
+		       else if CB.sameColor (index, r)
+		          then I.Indexed {base=SOME b, index=tmp, scale=scale, disp=disp, mem=mem}
+		       else opnd
 	             | opnd => opnd
 	           (* end case *))
 	         end (* operand *)

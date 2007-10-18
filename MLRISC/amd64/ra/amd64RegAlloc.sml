@@ -420,13 +420,14 @@ functor AMD64RegAlloc (
         } : RA.raClient
 
     fun run cfg = let
-        val printCFG = if !amd64CfgDebugFlg 
+        val printCFG = if !amd64CfgDebugFlg
               then PrintFlowgraph.printCFG (!MLRiscControl.debug_stream)
               else fn msg => fn _ => () 
+val _ = printCFG "\t---Before register allocation---\n" cfg;
 	val s = beforeRA cfg
 	val _ = resetRA ()
 	val cfg' = RA.ra [raInt s, raFloat s] cfg
-        in
+        in          
           removeDeadCode cfg';
           printCFG "\t---After register allocation---\n" cfg';
           cfg'
