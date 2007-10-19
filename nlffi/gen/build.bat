@@ -1,1 +1,1 @@
-..\..\bin\ml-build ml-nlffigen.cm Main.main ml-nlffigen
+..\..\bin\ml-build.bat ml-nlffigen.cm Main.main ml-nlffigen
