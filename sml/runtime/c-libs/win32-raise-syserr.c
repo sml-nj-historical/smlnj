@@ -25,17 +25,17 @@ ml_val_t RaiseSysError (ml_state_t *msp, const char *altMsg, char *at)
     ml_val_t	    s, syserror, arg, exn, atStk;
     const char	    *msg;
     char	    buf[32];
-    int             errno = -1;
+    int             ml_errno = -1;
 
     if (altMsg != NIL(char *)) {
 	msg = altMsg;
 	syserror = OPTION_NONE;
     }
     else {
-        errno = (int) GetLastError();
-	sprintf(buf, "<win32 error code %d>", errno);
+        ml_errno = (int) GetLastError();
+	sprintf(buf, "<win32 error code %d>", ml_errno);
 	msg = buf;
-	OPTION_SOME(msp, syserror, INT_CtoML(errno));
+	OPTION_SOME(msp, syserror, INT_CtoML(ml_errno));
     }
 
     s = ML_CString (msp, msg);
