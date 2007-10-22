@@ -15,6 +15,12 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/10/22
+Description:
+
+Added AMD64 support for the atomic fetch and add instruction.
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
 Date: 2007/10/18
 Description:
 
