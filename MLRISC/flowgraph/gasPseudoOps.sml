@@ -73,7 +73,22 @@ functor GasPseudoOps (
 	  String.concat 
 	    (map (fn lab => (Fmt.format fmt [Fmt.STR (lexpToString(T.LABEL lab))])) labs)
 
-    fun toString(PB.ALIGN_SZ n)     = Fmt.format "\t.align\t%d" [Fmt.INT n]
+    (* if i is a power of two, return the lg of i, otherwise return nothing *)
+    fun lg i = let
+        fun loop (0, k) = SOME k
+	  | loop (i, k) = if i mod 2 = 0
+            then loop (i div 2, k+1)
+	    else NONE
+        in
+	   loop (i, 0)
+        end
+
+    fun toString(PB.ALIGN_SZ n)     = 
+        (* always favor p2align because it is guaranteed to be consistent across assemblers *)
+        (case lg n
+         of NONE => Fmt.format "\t.align\t%d" [Fmt.INT n]
+	  | SOME k => Fmt.format "\t.p2align\t%d" [Fmt.INT k]
+        (* end case *))
       | toString(PB.ALIGN_ENTRY)    = "\t.align\t4"	(* 16 byte boundary *)
       | toString(PB.ALIGN_LABEL)    = "\t.p2align\t4,,7"
 
