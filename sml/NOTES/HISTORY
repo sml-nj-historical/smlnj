@@ -18,6 +18,14 @@ Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
 Date: 2007/10/18
 Description:
 
+The GAS output now favors p2align over align, since the
+former is guaranteed to be consistent over multiple architectures
+and the latter is not.
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/10/18
+Description:
+
 Fixed a bug in register spilling.
 ----------------------------------------------------------------------
 Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
