@@ -206,6 +206,8 @@ functor AMD64Props (
 	     | I.SHIFT {src,dst,count,...} =>   
 	       (operandDef dst, 
                 operandAcc(count, operandAcc (src, operandUse dst)))
+	     | I.XADD {src, dst, ...} =>
+	       (operandAcc (dst, operandUse src), operandAcc (src, operandUse dst))
 	     | I.CMPXCHG {src, dst, ...} =>
 	       (C.rax::operandDef dst, C.rax::operandAcc (src, operandUse dst))
 	     | ( I.ENTER _ | I.LEAVE ) => ([C.rsp, C.rbp], [C.rsp, C.rbp])

@@ -69,15 +69,29 @@ struct
       | X.POP(rexp)   => emit(I.pop(operand rexp), an)
       | X.LEAVE	     => emit(I.leave, an)
       | X.RET(rexp)   => emit(I.ret(SOME(operand rexp)), an)
+      | X.LOCK_XADDL (src, dst) => 
+	   emit (I.xadd{
+                 (* src must be in a register *)
+                 lock=true,sz=I.I32,
+                 src=I.Direct(32,reduceOperand(operand src)),
+                 dst=operand dst},
+	       an)
+      | X.LOCK_XADDQ (src, dst) => 
+	    emit (I.xadd{
+		  (* src must be in a register *)
+                  lock=true,sz=I.I64,
+                  src=I.Direct(64,reduceOperand(operand src)),
+                  dst=operand dst},
+		  an)
       | X.LOCK_CMPXCHGL(src, dst) =>
-	(* src must in a register *)
+	(* src must be in a register *)
 	  emit(I.cmpxchg{
 	      lock=true,sz=I.I32, 
 	      src=I.Direct(32,reduceOperand(operand src)), 
 	      dst=operand dst
 	    }, an)
       | X.LOCK_CMPXCHGQ(src, dst) =>
-	(* src must in a register *)
+	(* src must be in a register *)
 	  emit(I.cmpxchg{
 	      lock=true, sz=I.I64, 
 	      src=I.Direct(64,reduceOperand(operand src)), 

@@ -239,6 +239,7 @@ sig
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
    | SHIFT of {shiftOp:shiftOp, src:operand, dst:operand, count:operand}
    | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
+   | XADD of {lock:bool, sz:isize, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
    | MUL3 of {dst:CellsBasis.cell, src2:Int32.int, src1:operand}
    | MULQ3 of {dst:CellsBasis.cell, src2:Int32.int, src1:operand}
@@ -299,6 +300,7 @@ sig
    val binary : {binOp:binaryOp, src:operand, dst:operand} -> instruction
    val shift : {shiftOp:shiftOp, src:operand, dst:operand, count:operand} -> instruction
    val cmpxchg : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
+   val xadd : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
    val multdiv : {multDivOp:multDivOp, src:operand} -> instruction
    val mul3 : {dst:CellsBasis.cell, src2:Int32.int, src1:operand} -> instruction
    val mulq3 : {dst:CellsBasis.cell, src2:Int32.int, src1:operand} -> instruction
@@ -559,6 +561,7 @@ struct
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
    | SHIFT of {shiftOp:shiftOp, src:operand, dst:operand, count:operand}
    | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
+   | XADD of {lock:bool, sz:isize, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
    | MUL3 of {dst:CellsBasis.cell, src2:Int32.int, src1:operand}
    | MULQ3 of {dst:CellsBasis.cell, src2:Int32.int, src1:operand}
@@ -617,6 +620,7 @@ struct
    and binary = INSTR o BINARY
    and shift = INSTR o SHIFT
    and cmpxchg = INSTR o CMPXCHG
+   and xadd = INSTR o XADD
    and multdiv = INSTR o MULTDIV
    and mul3 = INSTR o MUL3
    and mulq3 = INSTR o MULQ3

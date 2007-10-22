@@ -688,6 +688,17 @@ architecture AMD64 =
               ``\t<src>, <dst>''
              )
 
+    | XADD of {lock:bool, sz:isize, src:operand, dst:operand}
+       asm: (if lock then ``lock\n\t'' else ();
+              ``xadd'';
+              case sz of
+                I.I8 => ``b''
+              | I.I16 => ``w''
+              | I.I32 => ``l''
+	      | I.I64 => ``q'';
+              ``\t<src>, <dst>''
+             )
+
     | MULTDIV of {multDivOp:multDivOp, src:operand}
 	asm: ``<multDivOp>\t<src>''
 

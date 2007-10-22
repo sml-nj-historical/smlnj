@@ -235,19 +235,29 @@ functor AMD64SpillInstr (
 				  I.move{mvOp=I.MOVQ, src=tmpOpnd64, dst=spillLoc}]}
 			   end 
 		    (* end case *))
-		 | I.CMPXCHG{lock,sz=isz,src,dst} => 
-		      if immedOrReg src 
-		        then {proh=[], newReg=NONE,
-			   code=[mark(I.CMPXCHG{lock=lock,sz=isz,src=src,
-			        dst=spillLoc},an)]}
+		 | I.XADD{lock,sz=isz,src as I.Direct (_, srcR),dst} => 
+		   if CB.sameColor (r, srcR)
+		      then raise Fail "cannot spill src for XADD"
 		      else let 
 		        val (tmpR, tmpOpnd, tmpOpnd64) = freshTmp ()
-			in 
-			  {proh=[], newReg=NONE,
-		          code=[I.move{mvOp=I.MOVQ, src=src, dst=tmpOpnd64},
-		  	        mark(I.CMPXCHG{lock=lock,sz=isz,src=tmpOpnd, 
-					       dst=spillLoc},an)]}
+			in {proh=[tmpR],
+			    newReg=SOME tmpR,
+			    code=[mark (I.XADD{lock=lock,sz=isz,src=src,dst=spillLoc}, an)]}
 			end 
+		 | I.CMPXCHG{lock,sz=isz,src,dst} => 
+		   if immedOrReg src then
+		       {proh=[],
+			code=[mark(I.CMPXCHG{lock=lock,sz=isz,src=src,dst=spillLoc},an)],
+			newReg=NONE
+		       }
+		   else
+		       let val (tmpR, tmpOpnd, tmpOpnd64) = freshTmp()
+		       in {proh=[tmpR],
+			   code=[I.move{mvOp=I.MOVQ, src=src, dst=tmpOpnd64},
+				 mark(I.CMPXCHG{lock=lock,sz=isz,src=tmpOpnd,dst=spillLoc},an)],
+			   newReg=SOME tmpR
+			  }
+		       end
 		 | I.MULTDIV _ => error "spill: MULTDIV"
 		 | I.MUL3 {src1, src2, dst} => let 
 		   val tmpR = newReg() 
@@ -489,6 +499,10 @@ functor AMD64SpillInstr (
 		   I.CMPXCHG{lock=lock, sz=sz,
 			     src=operand(src, tmpR),
 			     dst=operand(dst, tmpR)})
+		 | I.XADD{lock,sz,src,dst} => withTmp(fn tmpR =>
+		   I.XADD {lock=lock,sz=sz,
+			   src=operand(src, tmpR),
+			   dst=operand(dst, tmpR)})
 		 | I.MULTDIV{multDivOp, src as I.Direct _} => 
 		   done (I.MULTDIV{multDivOp=multDivOp, src=replace src}, an)
 		 | I.MULTDIV{multDivOp, src} => withTmp(fn tmpR => 

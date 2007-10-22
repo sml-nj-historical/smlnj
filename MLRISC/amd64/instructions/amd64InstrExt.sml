@@ -15,6 +15,13 @@ structure AMD64InstrExt =
  	| POP of 'r 
         | LEAVE
         | RET of 'r
+    (* atomic fetch and add operations
+     *   XADD (src, dst)            tmp = src + dst
+     *                              src = dst
+     *                              dst := tmp
+     *)
+        | LOCK_XADDL of ('r * 'r)	(* 32-bit atomic fetch and add *)
+        | LOCK_XADDQ of ('r * 'r)	(* 64-bit atomic fetch and add *)
     (* atomic compare and exchange instructions.
      *   CMPXCHG(src, dst)	compares dst with %eax (or %rax) register.
      *				if they are equal, then the ZF flag is set and

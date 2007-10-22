@@ -544,6 +544,23 @@ struct
              emit_src src; 
              emit ", "; 
              emit_dst dst ) )
+       | I.XADD{lock, sz, src, dst} => 
+         ( (if lock
+              then (emit "lock\n\t")
+              else ()); 
+           emit "xadd"; 
+           
+           (case sz of
+             I.I8 => emit "b"
+           | I.I16 => emit "w"
+           | I.I32 => emit "l"
+           | I.I64 => emit "q"
+           ); 
+           
+           ( emit "\t"; 
+             emit_src src; 
+             emit ", "; 
+             emit_dst dst ) )
        | I.MULTDIV{multDivOp, src} => 
          ( emit_multDivOp multDivOp; 
            emit "\t"; 

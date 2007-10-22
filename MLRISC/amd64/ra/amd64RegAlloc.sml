@@ -423,7 +423,7 @@ functor AMD64RegAlloc (
         val printCFG = if !amd64CfgDebugFlg
               then PrintFlowgraph.printCFG (!MLRiscControl.debug_stream)
               else fn msg => fn _ => () 
-val _ = printCFG "\t---Before register allocation---\n" cfg;
+	val _ = printCFG "\t---Before register allocation---\n" cfg;
 	val s = beforeRA cfg
 	val _ = resetRA ()
 	val cfg' = RA.ra [raInt s, raFloat s] cfg
