@@ -14,6 +14,14 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Lars Bergstrom (web page or e-mail)
+Date: 2007/10/22
+Description:
+
+Fixed ^C handling in Windows
+Added a Windows installer
+Made it possible to build for Windows on a mapped drive from Parallels
+----------------------------------------------------------------------
 Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
 Date: 2007/10/22
 Description:
