@@ -775,6 +775,12 @@ architecture AMD64 =
     | FSQRTD of {dst : operand, src : operand}
       ``sqrtsd\t <src>, <dst>''
 
+    | XORPS of {dst : operand, src : operand}
+       ``xorps\t <src>, <dst>''
+
+    | XORPD of {dst : operand, src : operand}
+       ``xorpd\t <src>, <dst>''
+
    (* misc *)
     | SAHF        (* %flags -> %ah *)
 	``sahf''

@@ -251,6 +251,7 @@ functor AMD64Props (
         fun f i = (case i
             of I.FMOVE {dst, src, ...} => (operand dst, operand src)
              | I.FBINOP {dst, src, ...} => ([dst], [src])
+	     | ( I.XORPS {dst, src} | I.XORPD {dst, src} ) => (operand dst, operand src)
              | I.FCOM {dst, src, ...} => ([dst], operand src)
              | ( I.FSQRTS {dst, src} | I.FSQRTD {dst, src} )=> 
                (operand dst, operand src)

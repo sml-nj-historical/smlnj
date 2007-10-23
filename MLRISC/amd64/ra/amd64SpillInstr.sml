@@ -322,6 +322,10 @@ functor AMD64SpillInstr (
     	                   proh=[], newReg=NONE}
     	         | I.FMOVE {fmvOp, src, dst as I.FDirect _} => withTmp (fn tmpR =>
     	           I.FMOVE {fmvOp=fmvOp, src=src, dst=I.FDirect tmpR})
+		 | I.XORPS {src, dst as I.FDirect _} => withTmp (fn tmpR =>
+    	           I.XORPS {src=src, dst=I.FDirect tmpR})
+		 | I.XORPD {src, dst as I.FDirect _} => withTmp (fn tmpR =>
+    	           I.XORPD {src=src, dst=I.FDirect tmpR})
     	         | I.FBINOP {binOp, src, dst} => withTmp (fn tmpR =>
     	           I.FBINOP {binOp=binOp, src=src, dst=tmpR})
      	         | I.FCOM {comOp, dst, src} => withTmp (fn tmpR =>
@@ -562,6 +566,14 @@ functor AMD64SpillInstr (
                             mark (I.FMOVE {fmvOp=fmvOp, src=tmp, dst=dst}, an)],
                       proh=[tmpR], newReg=SOME tmpR}
                    end
+		 | I.XORPS {src, dst=dst as I.FDirect _} =>
+                   {code=[mark (I.XORPS {src=replace src, dst=dst},
+                           an)],
+                    proh=[], newReg=NONE}
+		 | I.XORPD {src, dst=dst as I.FDirect _} =>
+                   {code=[mark (I.XORPD {src=replace src, dst=dst},
+                           an)],
+                    proh=[], newReg=NONE}
                  | I.FBINOP {binOp, src, dst} => let
                    val tmpR = newFreg ()
                    val tmp = I.FDirect tmpR

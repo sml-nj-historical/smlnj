@@ -260,6 +260,8 @@ sig
    | FCOM of {comOp:fcom_op, dst:CellsBasis.cell, src:operand}
    | FSQRTS of {dst:operand, src:operand}
    | FSQRTD of {dst:operand, src:operand}
+   | XORPS of {dst:operand, src:operand}
+   | XORPD of {dst:operand, src:operand}
    | SAHF
    | LAHF
    | SOURCE of {}
@@ -321,6 +323,8 @@ sig
    val fcom : {comOp:fcom_op, dst:CellsBasis.cell, src:operand} -> instruction
    val fsqrts : {dst:operand, src:operand} -> instruction
    val fsqrtd : {dst:operand, src:operand} -> instruction
+   val xorps : {dst:operand, src:operand} -> instruction
+   val xorpd : {dst:operand, src:operand} -> instruction
    val sahf : instruction
    val lahf : instruction
    val source : {} -> instruction
@@ -582,6 +586,8 @@ struct
    | FCOM of {comOp:fcom_op, dst:CellsBasis.cell, src:operand}
    | FSQRTS of {dst:operand, src:operand}
    | FSQRTD of {dst:operand, src:operand}
+   | XORPS of {dst:operand, src:operand}
+   | XORPD of {dst:operand, src:operand}
    | SAHF
    | LAHF
    | SOURCE of {}
@@ -641,6 +647,8 @@ struct
    and fcom = INSTR o FCOM
    and fsqrts = INSTR o FSQRTS
    and fsqrtd = INSTR o FSQRTD
+   and xorps = INSTR o XORPS
+   and xorpd = INSTR o XORPD
    and sahf = INSTR SAHF
    and lahf = INSTR LAHF
    and source = INSTR o SOURCE

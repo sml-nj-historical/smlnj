@@ -8,8 +8,10 @@ functor AMD64Gen (
     structure MLTreeUtils : MLTREE_UTILS
 	where T = I.T
     structure ExtensionComp : MLTREE_EXTENSION_COMP
-        where I = I and T = I.T) : MLTREECOMP = 
-  struct
+        where I = I and T = I.T
+
+    val floatNegate : int -> Label.label
+   ) : MLTREECOMP = struct
 
     structure TS = ExtensionComp.TS
     structure T = I.T
@@ -30,7 +32,6 @@ functor AMD64Gen (
             datatype rep = SE | ZE | NEITHER
             val rep = NEITHER)
     structure W32 = Word32
-
 
     fun error msg = MLRiscErrorMsg.error ("AMD64Gen", msg)
 
@@ -915,7 +916,18 @@ functor AMD64Gen (
 	       | T.FMUL (_, a, b) => fbinop (fty, O.fmulOp fty, a, b, d, an)
 	       | T.FDIV (_, a, b) => fbinop (fty, O.fdivOp fty, a, b, d, an)
 	       (* unary operators *)
-	       | T.FNEG (_, a) => raise Fail "todo"
+	       | T.FNEG (_, a) => let 
+                 val l = floatNegate fty
+		 val fop = (case fty
+		     of 32 => I.XORPS
+		      | 64 => I.XORPD
+ 	             (* end case *))
+		 val r = newFreg ()
+		 in 
+		     fload (fty, T.LABEL l, I.Region.memory, r, an);
+		     mark (fop {dst=I.FDirect r, src=I.FDirect (fexpToReg (fty, a))}, an);
+		     fcopy (fty, [d], [r], an)
+		 end
 	       | T.FABS (_, a) => raise Fail "todo"
 	       | T.FSQRT (fty, a) => fsqrt (fty, d, a, an)
 	       (* conversions *)

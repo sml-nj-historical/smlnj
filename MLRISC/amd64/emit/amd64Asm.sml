@@ -642,6 +642,16 @@ struct
            emit_src src; 
            emit ", "; 
            emit_dst dst )
+       | I.XORPS{dst, src} => 
+         ( emit "xorps\t "; 
+           emit_src src; 
+           emit ", "; 
+           emit_dst dst )
+       | I.XORPD{dst, src} => 
+         ( emit "xorpd\t "; 
+           emit_src src; 
+           emit ", "; 
+           emit_dst dst )
        | I.SAHF => emit "sahf"
        | I.LAHF => emit "lahf"
        | I.SOURCE{} => emit "source"
