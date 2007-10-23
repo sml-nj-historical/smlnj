@@ -14,6 +14,12 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/10/22
+Description:
+
+Added AMD64 support for floating-point negation.
+----------------------------------------------------------------------
 Name: Lars Bergstrom (web page or e-mail)
 Date: 2007/10/22
 Description:
