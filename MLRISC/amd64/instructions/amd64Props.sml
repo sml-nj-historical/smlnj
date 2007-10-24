@@ -207,7 +207,7 @@ functor AMD64Props (
 	       (operandDef dst, 
                 operandAcc(count, operandAcc (src, operandUse dst)))
 	     | I.XADD {src, dst, ...} =>
-	       (operandAcc (dst, operandUse src), operandAcc (src, operandUse dst))
+	       (operandAcc (src, operandDef dst), operandAcc (src, operandUse dst))
 	     | I.CMPXCHG {src, dst, ...} =>
 	       (C.rax::operandDef dst, C.rax::operandAcc (src, operandUse dst))
 	     | ( I.ENTER _ | I.LEAVE ) => ([C.rsp, C.rbp], [C.rsp, C.rbp])
@@ -287,6 +287,11 @@ functor AMD64Props (
 
     fun annotate (i, a) = I.ANNOTATION {i=i, a=a}
 
+    fun szToInt I.I8 = 8
+      | szToInt I.I16 = 16
+      | szToInt I.I32 = 32
+      | szToInt I.I64 = 64
+
     fun replicate(I.ANNOTATION{i,a}) = I.ANNOTATION{i=replicate i,a=a}
 (* FIXME? *)
 (*    | replicate(I.COPY{tmp=SOME _, dst, src}) =  
@@ -345,6 +350,8 @@ functor AMD64Props (
                 | I.SHRB | I.MULB | I.IMULB | I.XCHGB ) => 8
 	      | _ => raise Fail "" (* 64*)
 	   (* esac *))
+	 | I.XADD {sz, ...} => szToInt sz
+	 | I.CMPXCHG {sz, ...} => szToInt sz
 	 | _ => raise Fail "" (*64*)
       (* esac *))
 
@@ -364,6 +371,8 @@ functor AMD64Props (
            (* end case *))
          | I.FSQRTS _ => 32
          | I.FSQRTD _ => 64
+	 | I.XORPS _ => 32
+	 | I.XORPD _ => 64
         (* end case *))
 
   end (* AMD64Props *)

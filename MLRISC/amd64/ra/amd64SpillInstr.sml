@@ -235,12 +235,11 @@ functor AMD64SpillInstr (
 				  I.move{mvOp=I.MOVQ, src=tmpOpnd64, dst=spillLoc}]}
 			   end 
 		    (* end case *))
-		 | I.XADD{lock,sz=isz,src as I.Direct (_, srcR),dst} => 
-		   if CB.sameColor (r, srcR)
-		      then raise Fail "cannot spill src for XADD"
-		      else let 
+		 | I.XADD{lock,sz=isz,src as I.Direct (_, srcR),dst} => let 
 		        val (tmpR, tmpOpnd, tmpOpnd64) = freshTmp ()
-			in {proh=[tmpR],
+			in 
+		           print "adsf\n";
+                            {proh=[tmpR],
 			    newReg=SOME tmpR,
 			    code=[mark (I.XADD{lock=lock,sz=isz,src=src,dst=spillLoc}, an)]}
 			end 
