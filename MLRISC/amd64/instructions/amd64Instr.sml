@@ -238,6 +238,7 @@ sig
    | BITOP of {bitOp:bitOp, lsrc:operand, rsrc:operand}
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
    | SHIFT of {shiftOp:shiftOp, src:operand, dst:operand, count:operand}
+   | XCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | XADD of {lock:bool, sz:isize, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
@@ -301,6 +302,7 @@ sig
    val bitop : {bitOp:bitOp, lsrc:operand, rsrc:operand} -> instruction
    val binary : {binOp:binaryOp, src:operand, dst:operand} -> instruction
    val shift : {shiftOp:shiftOp, src:operand, dst:operand, count:operand} -> instruction
+   val xchg : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
    val cmpxchg : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
    val xadd : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
    val multdiv : {multDivOp:multDivOp, src:operand} -> instruction
@@ -564,6 +566,7 @@ struct
    | BITOP of {bitOp:bitOp, lsrc:operand, rsrc:operand}
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
    | SHIFT of {shiftOp:shiftOp, src:operand, dst:operand, count:operand}
+   | XCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | XADD of {lock:bool, sz:isize, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
@@ -625,6 +628,7 @@ struct
    and bitop = INSTR o BITOP
    and binary = INSTR o BINARY
    and shift = INSTR o SHIFT
+   and xchg = INSTR o XCHG
    and cmpxchg = INSTR o CMPXCHG
    and xadd = INSTR o XADD
    and multdiv = INSTR o MULTDIV

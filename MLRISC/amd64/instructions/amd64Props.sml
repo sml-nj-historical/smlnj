@@ -210,6 +210,8 @@ functor AMD64Props (
 	       (operandAcc (src, operandDef dst), operandAcc (src, operandUse dst))
 	     | I.CMPXCHG {src, dst, ...} =>
 	       (C.rax::operandDef dst, C.rax::operandAcc (src, operandUse dst))
+	     | I.XCHG {src, dst, ...} =>
+	       (operandDef dst, operandAcc (src, operandUse dst)) 
 	     | ( I.ENTER _ | I.LEAVE ) => ([C.rsp, C.rbp], [C.rsp, C.rbp])
 	     | I.MULTDIV arg => multDiv arg
 	     | ( I.MUL3  {src1, dst, ...} | I.MULQ3 {src1, dst, ...} ) => 

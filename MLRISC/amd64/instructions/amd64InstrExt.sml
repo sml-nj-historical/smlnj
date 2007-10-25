@@ -30,5 +30,12 @@ structure AMD64InstrExt =
      *)
         | LOCK_CMPXCHGL of ('r * 'r)	(* 32-bit compare and exchange *)
         | LOCK_CMPXCHGQ of ('r * 'r)	(* 64-bit compare and exchange *)
+    (* atomic exchange instructions.
+     *   XCHG(src, dst)	       tmp = *dst
+     *                         *dst := src
+     *                         src := tmp
+     *)
+        | LOCK_XCHGL of ('r * 'r)	(* 32-bit exchange *)
+        | LOCK_XCHGQ of ('r * 'r)	(* 64-bit exchange *)
 
   end (* AMD64InstrExt *)

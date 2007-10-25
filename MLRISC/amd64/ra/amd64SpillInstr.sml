@@ -238,7 +238,6 @@ functor AMD64SpillInstr (
 		 | I.XADD{lock,sz=isz,src as I.Direct (_, srcR),dst} => let 
 		        val (tmpR, tmpOpnd, tmpOpnd64) = freshTmp ()
 			in 
-		           print "adsf\n";
                             {proh=[tmpR],
 			    newReg=SOME tmpR,
 			    code=[mark (I.XADD{lock=lock,sz=isz,src=src,dst=spillLoc}, an)]}
@@ -254,6 +253,20 @@ functor AMD64SpillInstr (
 		       in {proh=[tmpR],
 			   code=[I.move{mvOp=I.MOVQ, src=src, dst=tmpOpnd64},
 				 mark(I.CMPXCHG{lock=lock,sz=isz,src=tmpOpnd,dst=spillLoc},an)],
+			   newReg=SOME tmpR
+			  }
+		       end
+		 | I.XCHG{lock,sz=isz,src,dst} => 
+		   if immedOrReg src then
+		       {proh=[],
+			code=[mark(I.XCHG{lock=lock,sz=isz,src=src,dst=spillLoc},an)],
+			newReg=NONE
+		       }
+		   else
+		       let val (tmpR, tmpOpnd, tmpOpnd64) = freshTmp()
+		       in {proh=[tmpR],
+			   code=[I.move{mvOp=I.MOVQ, src=src, dst=tmpOpnd64},
+				 mark(I.XCHG{lock=lock,sz=isz,src=tmpOpnd,dst=spillLoc},an)],
 			   newReg=SOME tmpR
 			  }
 		       end
@@ -502,6 +515,10 @@ functor AMD64SpillInstr (
 		   I.CMPXCHG{lock=lock, sz=sz,
 			     src=operand(src, tmpR),
 			     dst=operand(dst, tmpR)})
+		 | I.XCHG{lock,sz,src,dst} => withTmp(fn tmpR =>
+		   I.XCHG{lock=lock, sz=sz,
+			  src=operand(src, tmpR),
+			  dst=operand(dst, tmpR)})
 		 | I.XADD{lock,sz,src,dst} => withTmp(fn tmpR =>
 		   I.XADD {lock=lock,sz=sz,
 			   src=operand(src, tmpR),

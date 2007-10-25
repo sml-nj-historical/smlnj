@@ -677,6 +677,17 @@ architecture AMD64 =
               | _            => ``<shiftOp>\t<src>, <count>, <dst>''
              )
 
+    | XCHG of {lock:bool, sz:isize, src: operand, dst:operand}
+	asm: (if lock then ``lock\n\t'' else ();
+              ``xchg'';
+              case sz of
+                I.I8 => ``b''
+              | I.I16 => ``w''
+              | I.I32 => ``l''
+	      | I.I64 => ``q'';
+              ``\t<src>, <dst>''
+             )
+
     | CMPXCHG of {lock:bool, sz:isize, src: operand, dst:operand}
 	asm: (if lock then ``lock\n\t'' else ();
               ``cmpxchg'';

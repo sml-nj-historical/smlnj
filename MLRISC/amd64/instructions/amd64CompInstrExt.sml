@@ -97,6 +97,18 @@ struct
 	      src=I.Direct(64,reduceOperand(operand src)), 
 	      dst=operand dst
 	    }, an)
+      | X.LOCK_XCHGL(src, dst) =>
+	  emit(I.xchg{
+	      lock=true,sz=I.I32, 
+	      src=operand src,
+	      dst=operand dst
+	    }, an)
+      | X.LOCK_XCHGQ(src, dst) =>
+	  emit(I.xchg{
+	      lock=true, sz=I.I64, 
+	      src=operand src,
+	      dst=operand dst
+	    }, an)
     (* end case *)
   end
 end
