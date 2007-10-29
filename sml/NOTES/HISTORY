@@ -15,6 +15,12 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/10/28
+Description:
+
+Fixed some bugs in the floating-point spilling code.
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
 Date: 2007/10/25
 Description:
 
