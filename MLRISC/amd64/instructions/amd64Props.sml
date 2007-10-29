@@ -252,9 +252,9 @@ functor AMD64Props (
         fun operand opnd = operandAcc (opnd, [])
         fun f i = (case i
             of I.FMOVE {dst, src, ...} => (operand dst, operand src)
-             | I.FBINOP {dst, src, ...} => ([dst], [src])
-	     | ( I.XORPS {dst, src} | I.XORPD {dst, src} ) => (operand dst, operand src)
-             | I.FCOM {dst, src, ...} => ([dst], operand src)
+             | I.FBINOP {dst, src, ...} => ([dst], [src, dst])
+	     | ( I.XORPS {dst, src} | I.XORPD {dst, src} ) => (operand dst, (operandAcc (dst, operand src)))
+             | I.FCOM {dst, src, ...} => ([], operandAcc (src, [dst]))
              | ( I.FSQRTS {dst, src} | I.FSQRTD {dst, src} )=> 
                (operand dst, operand src)
              | ( I.CALL {defs, uses, ...} | I.CALLQ {defs, uses, ...} ) =>
@@ -268,7 +268,6 @@ functor AMD64Props (
 	    | I.KILL {regs, ...} => (C.getFreg regs, [])
 	    | I.COPY {k=CB.FP, src, dst, tmp, ...} => (case tmp
 	      of SOME (I.FDirect t) => (t :: dst, src)
-	       | SOME ea => (dst, operandAcc (ea, src))
 	       | NONE => (dst, src)
 	      (* end case *))
 	    | I.COPY _ => ([], [])

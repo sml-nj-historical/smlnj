@@ -318,12 +318,15 @@ functor AMD64SpillInstr (
     	                 I.fmove {fmvOp=fmvOp, src=tmp, dst=spillLoc}],
     	           proh=[tmpR], newReg=SOME tmpR}
     	        end (* withTmp *)
-    	    fun inTmpR (I.FDirect r) = (r, [])
-    	      | inTmpR opnd = let
-    	        val tmp = newFreg ()
-    	        in
-    	          (tmp, [I.FMOVE {fmvOp=fmvOp, src=opnd, dst=I.FDirect tmp}])
-    	        end
+	    fun binOpWithTmp f = let
+                   val tmpR = newFreg ()
+		   val tmp = I.FDirect tmpR
+		   in
+		       {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=tmp},
+			      mark (f tmpR, an),
+			      I.fmove {fmvOp=fmvOp, src=tmp, dst=spillLoc}],
+			proh=[tmpR], newReg=SOME tmpR}
+		   end (* binOpWithTmp *)
     	    in
     	      (case instr
     	        of I.FMOVE {fmvOp, src=src as I.FDirect r', dst} => 
@@ -334,14 +337,12 @@ functor AMD64SpillInstr (
     	                   proh=[], newReg=NONE}
     	         | I.FMOVE {fmvOp, src, dst as I.FDirect _} => withTmp (fn tmpR =>
     	           I.FMOVE {fmvOp=fmvOp, src=src, dst=I.FDirect tmpR})
-		 | I.XORPS {src, dst as I.FDirect _} => withTmp (fn tmpR =>
+		 | I.XORPS {src, dst as I.FDirect _} => binOpWithTmp (fn tmpR =>
     	           I.XORPS {src=src, dst=I.FDirect tmpR})
-		 | I.XORPD {src, dst as I.FDirect _} => withTmp (fn tmpR =>
+		 | I.XORPD {src, dst as I.FDirect _} => binOpWithTmp (fn tmpR =>
     	           I.XORPD {src=src, dst=I.FDirect tmpR})
-    	         | I.FBINOP {binOp, src, dst} => withTmp (fn tmpR =>
-    	           I.FBINOP {binOp=binOp, src=src, dst=tmpR})
-     	         | I.FCOM {comOp, dst, src} => withTmp (fn tmpR =>
-     	           I.FCOM {comOp=comOp, src=src, dst=tmpR})
+    	         | I.FBINOP {binOp, src, dst} => binOpWithTmp (fn tmpR =>
+		   I.FBINOP {binOp=binOp, src=src, dst=tmpR})
      	         | I.FSQRTS {dst, src} => withTmp (fn tmpR =>
      	           I.FSQRTS {src=src, dst=I.FDirect tmpR})
      	         | I.FSQRTD {dst, src} => withTmp (fn tmpR =>
@@ -582,30 +583,41 @@ functor AMD64SpillInstr (
                             mark (I.FMOVE {fmvOp=fmvOp, src=tmp, dst=dst}, an)],
                       proh=[tmpR], newReg=SOME tmpR}
                    end
-		 | I.XORPS {src, dst=dst as I.FDirect _} =>
-                   {code=[mark (I.XORPS {src=replace src, dst=dst},
-                           an)],
-                    proh=[], newReg=NONE}
-		 | I.XORPD {src, dst=dst as I.FDirect _} =>
-                   {code=[mark (I.XORPD {src=replace src, dst=dst},
-                           an)],
-                    proh=[], newReg=NONE}
-                 | I.FBINOP {binOp, src, dst} => let
-                   val tmpR = newFreg ()
-                   val tmp = I.FDirect tmpR
-                   in
-                     {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=tmp},
-                            mark (I.FBINOP {binOp=binOp, src=tmpR, dst=dst}, an)],
-                      proh=[tmpR], newReg=SOME tmpR}
-                   end
+		 | I.XORPS {src, dst=dst as I.FDirect dstR} =>
+		   if CB.sameColor (r, dstR)
+		      then {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=dst},
+				  mark (I.XORPS {src=src, dst=dst}, an)], 
+			    proh=[], newReg=NONE}
+		      else {code=[mark (I.XORPS {src=replace src, dst=dst}, an)], proh=[], newReg=NONE}
+		 | I.XORPD {src, dst=dst as I.FDirect dstR} =>
+		   if CB.sameColor (r, dstR)
+		      then {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=dst},
+				  mark (I.XORPD {src=src, dst=dst}, an)], 
+			    proh=[], newReg=NONE}
+		      else {code=[mark (I.XORPD {src=replace src, dst=dst}, an)], proh=[], newReg=NONE}
+                 | I.FBINOP {binOp, src, dst} => if CB.sameColor (r, src)
+                   then let
+                     val tmpR = newFreg ()
+                     val tmp = I.FDirect tmpR
+                     in
+                       {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=tmp},
+                              mark (I.FBINOP {binOp=binOp, src=tmpR, dst=dst}, an)],
+                        proh=[tmpR], newReg=SOME tmpR}
+                     end
+                   else {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=I.FDirect dst},
+                            mark (I.FBINOP {binOp=binOp, src=src, dst=dst}, an)],
+			 proh=[], newReg=NONE}
                  | I.FCOM {comOp, src, dst} => let
                    val tmpR = newFreg ()
                    val tmp = I.FDirect tmpR
+		   val (src, dst) = if CB.sameColor (dst, r)
+				       then (src, tmpR)
+				       else (tmp, dst)
                    in
-                     {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=tmp},
-                            mark (I.FCOM {comOp=comOp, src=tmp, dst=dst}, an)],
-                      proh=[tmpR], newReg=SOME tmpR}
-                   end
+		       {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=tmp},
+                             mark (I.FCOM {comOp=comOp, src=src, dst=dst}, an)],
+                        proh=[tmpR], newReg=SOME tmpR}
+                   end 
                  | I.FSQRTS {dst, src} => let
                    val tmpR = newFreg ()
                    val tmp = I.FDirect tmpR
