@@ -98,14 +98,7 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
 		val fast_fp = fast_floating_point
                ) 
 	   structure MLTreeStream = AMD64MLTreeStream
-           fun cvti2f{src,ty,an} = let 
-	     val tempMem = I.Displace{base=base(), disp=I.Immed 304, mem=stack}
-           in
-               {instrs  = [I.move{mvOp=I.MOVQ, src=src, dst=tempMem}],
-                tempMem = tempMem,
-                cleanup = []
-               }
-           end
+           fun floatNegate ty = raise Fail "todo"
           )
 
     structure Jumps = 
