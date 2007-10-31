@@ -358,9 +358,8 @@ functor AMD64Props (
 
     fun szOfFinstr instr = (case instr
         of I.FMOVE {fmvOp, ...} => (case fmvOp
-           of ( I.MOVSS | I.CVTSS2SD | I.CVTSS2SI | I.CVTSS2SIQ ) => 32
-            | ( I.MOVSD | I.CVTSD2SS | I.CVTSD2SI | I.CVTSD2SIQ ) => 64
-            | _ => error "AMD64Props.szOfFinstr"
+           of ( I.MOVSS | I.CVTSS2SD | I.CVTSS2SI | I.CVTSS2SIQ | I.CVTSI2SS | I.CVTSI2SSQ ) => 32
+            | ( I.MOVSD | I.CVTSD2SS | I.CVTSD2SI | I.CVTSD2SIQ | I.CVTSI2SD | I.CVTSI2SDQ ) => 64
            (* end case *))
          | I.FCOM {comOp, ...} => (case comOp
            of ( I.COMISS | I.UCOMISS ) => 32
