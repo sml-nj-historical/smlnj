@@ -42,7 +42,7 @@ functor AMD64Gen (
     val trapLabel = ref (NONE: (I.instruction * Label.label) option)
 
     (* flag floating point generation *)
-    val floatingPointUsed = ref false
+(*    val floatingPointUsed = ref false*)
 
     fun gpr (ty, r) = I.Direct (ty, r)
     val fpr = I.FDirect
@@ -753,6 +753,14 @@ functor AMD64Gen (
 		    dstMustBeReg gen
 	          end
 
+              fun fcmovcc (tyCond, fty, cc, t1, t2, y, n) = dstMustBeReg (fn (dstR, _) => let
+ 		  val _ = expr' (tyCond, n, dstR, [])                 (* false branch *)
+                  val src = regOrMem (tyCond, operand tyCond y)       (* true branch *)
+                  fun j cc = mark (I.CMOV {cond=cc, src=src, dst=dst}, an)				
+                  in
+		      fbranch' (fty, cc, t1, t2, j)
+		  end)
+
 	    in
 	      (case e
 		of T.REG (ty, r) => move' (ty, gpr (ty, r), dstOpnd, an)
@@ -830,8 +838,13 @@ functor AMD64Gen (
 		   genLoad (O.loadZXOp (fTy, tTy), ea, mem)
 		 | T.COND (tyCond, T.CMP (tyCmp, cc, t1, t2), y, n) => 
 		   cmovcc (tyCond, tyCmp, cc, t1, t2, y, n)
+		 | T.COND (tyCond, T.FCMP (fty, cc, t1, t2), y, n) =>
+		   fcmovcc (tyCond, fty, cc, t1, t2, y, n)
 		 | T.NEG (ty, x) => unary (ty, O.negOp, x)
 		 | T.LET (s, e) => (stmt s; expr (e, dst, an))
+		 | T.MARK (e, A.MARKREG f) => (f dst; expr' (ty, e, dst, an))
+		 | T.MARK (e, a) => expr' (ty, e, dst, a :: an)
+		 | T.PRED (e, c) => expr' (ty, e, dst, A.CTRLUSE c :: an)
 		 | _ => raise Fail("todo: " ^ MLTreeUtils.rexpToString e)
 	      (* end case *))
 	    end (* expr' *)        
@@ -905,7 +918,7 @@ functor AMD64Gen (
 	      mark (I.FMOVE {fmvOp=fmvOp, dst=I.FDirect d, src=src}, an)
 	    end (* converti2f *)
 
-	and fexpr (fty, d, e, an) = ( floatingPointUsed := true;
+	and fexpr (fty, d, e, an) = ( (*floatingPointUsed := true;*)
 	     case e
 	      of T.FREG (_, r) => if CB.sameColor (r, d)
 	      			    then ()
@@ -1082,7 +1095,7 @@ functor AMD64Gen (
                  | T.?=   => j I.P
                  | _      => error(concat[
 				"fbranch(", T.Basis.fcondToString fcc, ")"])
-               (*esac*))
+               (* end case *))
 	    (* compare for condition  (x op y)
 	     * 
 	     *              (y)          (x)
@@ -1284,7 +1297,7 @@ functor AMD64Gen (
             (* end case *));
             (* If floating point has been used allocate an extra
              * register just in case we didn't use any explicit register *)
-            if !floatingPointUsed then ignore (newFreg ()) else ();
+            ignore (newFreg ());
             endCluster a)
 
 	and ccExpr e = error "ccExpr"
