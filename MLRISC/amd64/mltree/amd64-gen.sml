@@ -756,7 +756,7 @@ functor AMD64Gen (
               fun fcmovcc (tyCond, fty, cc, t1, t2, y, n) = dstMustBeReg (fn (dstR, _) => let
  		  val _ = expr' (tyCond, n, dstR, [])                 (* false branch *)
                   val src = regOrMem (tyCond, operand tyCond y)       (* true branch *)
-                  fun j cc = mark (I.CMOV {cond=cc, src=src, dst=dst}, an)				
+                  fun j cc = mark (I.CMOV {cond=cc, src=src, dst=dstR}, an)				
                   in
 		      fbranch' (fty, cc, t1, t2, j)
 		  end)
@@ -1083,11 +1083,11 @@ functor AMD64Gen (
                  | T.?<>  => j I.NE
                  | T.?    => j I.P
                  | T.<=>  => j I.NP
-                 | T.>    => j I.B
+                 | T.>    => j I.A
                  | T.?<=  => j I.BE
                  | T.>=   => j I.AE
                  | T.?<   => j I.BE
-                 | T.<    => j I.A
+                 | T.<    => j I.B
                  | T.?>=  => j I.AE
                  | T.<=   => j I.BE
                  | T.?>   => j I.A
@@ -1105,7 +1105,7 @@ functor AMD64Gen (
                    val r = foperand (fty, t1)
                    val l = foperand (fty, t2)
                    fun cmp (l, r, fcc) = (
-                       emit (I.FCOM {comOp=O.ucomOp fty, src=r, dst=l});
+                       emit (I.FCOM {comOp=O.ucomOp fty, dst=l, src=r});
                        fcc)
                    in
                      (case (l, r)
@@ -1117,10 +1117,10 @@ functor AMD64Gen (
                           val tmpR = newFreg ()
                           val tmp = I.FDirect tmpR
                           in
-                            emit (I.FMOVE {fmvOp=O.fmovOp fty, src=l, dst=tmp});
-                            cmp (tmpR, r, fcc)
+                            emit (I.FMOVE {fmvOp=O.fmovOp fty, src=r, dst=tmp});
+                            cmp (tmpR, l, fcc)
                           end
-                     (* esac *))
+                     (* end case *))
                    end (* compare *)
 	    in
 	      branch (compare ())
