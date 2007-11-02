@@ -10,7 +10,7 @@ signature REACTIVE =
 
     type machine
     type instruction
-    type signal
+    type signal = Atom.atom
     type config
     type in_signal
     type out_signal

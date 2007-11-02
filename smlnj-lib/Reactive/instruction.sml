@@ -16,23 +16,23 @@ structure Instruction =
 
     type signal = Atom.atom
 
-    datatype 'a instr
-      = || of ('a instr * 'a instr)
-      | & of ('a instr * 'a instr)
-      | nothing
-      | stop
-      | suspend
-      | action of 'a -> unit
-      | exec of 'a -> {stop : unit -> unit, done : unit -> bool}
-      | ifThenElse of (('a -> bool) * 'a instr * 'a instr)
-      | repeat of (int * 'a instr)
-      | loop of 'a instr
-      | close of 'a instr
-      | signal of (signal * 'a instr)
-      | rebind of (signal * signal * 'a instr)
-      | when of (signal config * 'a instr * 'a instr)
-      | trapWith of (signal config * 'a instr * 'a instr)
-      | emit of signal
-      | await of signal config
+    datatype 'ctxt instr
+      = || of ('ctxt instr * 'ctxt instr)		(* merge *)
+      | & of ('ctxt instr * 'ctxt instr)		(* sequencing *)
+      | nothing						(* nop *)
+      | stop						(* stop execution *)
+      | suspend						(* suspend execution *)
+      | action of 'ctxt -> unit				(* an atomic action *)
+      | exec of 'ctxt -> {stop : unit -> unit, done : unit -> bool}
+      | ifThenElse of (('ctxt -> bool) * 'ctxt instr * 'ctxt instr)
+      | repeat of (int * 'ctxt instr)			(* repeat loop *)
+      | loop of 'ctxt instr				(* infinite loop *)
+      | close of 'ctxt instr
+      | signal of (signal * 'ctxt instr)		(* define a signal *)
+      | rebind of (signal * signal * 'ctxt instr)	(* rename a signal *)
+      | when of (signal config * 'ctxt instr * 'ctxt instr)
+      | trapWith of (signal config * 'ctxt instr * 'ctxt instr)
+      | emit of signal					(* generate a signal *)
+      | await of signal config				(* wait for 
 
   end;
