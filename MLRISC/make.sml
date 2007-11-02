@@ -15,6 +15,7 @@ val _ = b();
 fun c f = MDLGen.gen(f^"/"^f^".mdl");
 val _ = app c
 [ "x86"
+, "amd64"
 , "sparc"
 , "alpha"
 , "hppa"
