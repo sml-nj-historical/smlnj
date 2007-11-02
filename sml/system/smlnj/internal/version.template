@@ -1,0 +1,31 @@
+(* -*- sml -*-
+ * %F version.template
+ *
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
+ *
+ * Author: Matthias Blume (blume@tti-c.org)
+ *)
+structure SMLNJVersion : sig
+
+    val version : {
+            system : string,      	(* the system title *)
+	    version_id : int list,	(* the version number *)
+            date : string         	(* date of creation *)
+	  }
+
+    val banner : string
+
+end = struct
+
+    (* generate date string at boot time *)
+    val version = {
+	    system = "Standard ML of New Jersey",
+	    version_id = [%V],
+	    date = Date.toString (Date.fromTimeLocal (Time.now ()))
+        }
+
+    val banner = concat
+	  (#system version :: " v" ::
+	   String.concatWith "." (map Int.toString (#version_id version)) ::
+	   [" [built: ", #date version, "]"])
+end
