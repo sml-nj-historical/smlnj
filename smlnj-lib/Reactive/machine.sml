@@ -134,6 +134,7 @@ structure Machine : sig
 	  end
 
     fun present (m, SIG{state, ...}) = (now m = !state)
+    fun prePresent (m, SIG{state, ...}) = (now m = !state + 1)
     fun absent (m, SIG{state, ...}) = (now m = ~(!state))
     fun emitSig (m, SIG{state, ...}) = state := now m
     fun emitNot (m, SIG{state, ...}) = state := ~(now m)
@@ -146,7 +147,7 @@ structure Machine : sig
     fun setInSignal (IN(m, s), false) = emitNot(m, s)
       | setInSignal (IN(m, s), true) = emitSig(m, s)
     fun getInSignal (IN(m, s)) = present(m, s)
-    fun getOutSignal (OUT(m, s)) = present(m, s)
+    fun getOutSignal (OUT(m, s)) = prePresent(m, s)
 
     fun terminate (C{terminate=f, ...}) = f()
     fun isTerm (C{isTerm=f, ...}) = f()
@@ -231,7 +232,7 @@ structure Machine : sig
 		terminate	= terminateMeth termFlg,
 		reset		= resetMeth termFlg,
 		preempt		= fn _ => (),
-		activation	= fn _ => STOP
+		activation	= fn _ => (termFlg := true; STOP)
 	      }
 	  end
 
@@ -242,7 +243,7 @@ structure Machine : sig
 		terminate	= terminateMeth termFlg,
 		reset		= resetMeth termFlg,
 		preempt		= fn _ => (),
-		activation	= fn _ => (termFlg := true; STOP)
+		activation	= fn _ => (termFlg := true; SUSP)
 	      }
 	  end
 
@@ -326,7 +327,9 @@ structure Machine : sig
 	  fun activationMeth m =
 		if (!counter > 0)
 		  then (case activate(i, m)
-		     of TERM => (counter := !counter-1; reset i; TERM)
+		     of TERM => (
+			  counter := !counter-1; reset i;
+			  activationMeth m)
 		      | res => res
 		    (* end case *))
 		  else TERM
@@ -342,14 +345,14 @@ structure Machine : sig
     fun loop i = let
 	  val termFlg = ref false
 	  val endReached = ref false
-	  fun resetMeth () = (termFlg := false; endReached := false)
+	  fun resetMeth () = (termFlg := false; reset i; endReached := false)
 	  fun preemptMeth m = preempt (i, m)
 	  fun activationMeth m = (case activate(i, m)
 		 of TERM => if (!endReached)
 		      then (
 (*			say(m, "instantaneous loop detected\n"); *)
 			STOP)
-		      else (endReached := true; reset i; TERM)
+		      else (endReached := true; reset i; activationMeth m)
 		  | STOP => (endReached := false; STOP)
 		  | SUSP => SUSP
 		(* end case *))
@@ -454,10 +457,8 @@ structure Machine : sig
 	  val termFlg = ref false
 	  fun activationMeth m = (case fixedEval(m, c)
 		 of NONE => SUSP
-		  | (SOME true) => STOP
-		  | (SOME false) => (
-		      termFlg := true;
-		      if (isEndOfInstant m) then STOP else TERM)
+		  | (SOME false) => STOP
+		  | (SOME true) => if (isEndOfInstant m) then STOP else TERM
 		(* end case *))
 	  in
 	    C{  isTerm		= isTermMeth termFlg,
@@ -567,7 +568,7 @@ structure Machine : sig
 	  }) = let
 	  fun resetSig (SIG{state, ...}) = state := 0
 	  in
-	    now := 1;
+	    now := 2;
 	    moveFlg := false;
 	    endOfInstant := false;
 	    reset prog;
@@ -577,6 +578,6 @@ structure Machine : sig
 	  end
 
     fun inputsOf (m as M{inputs, ...}) = List.map (fn s => IN(m, s)) inputs
-    fun outputsOf (m as M{inputs, ...}) = List.map (fn s => OUT(m, s)) inputs
+    fun outputsOf (m as M{outputs, ...}) = List.map (fn s => OUT(m, s)) outputs
 
   end;

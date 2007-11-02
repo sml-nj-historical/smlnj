@@ -2,6 +2,10 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2007-10-02]
+	A collection of bug fixes for machine.sml in the Reactive library.
+	(Thanks to Timothy Bourke)
+
 [2007-05-15]
 	Made the UnixPath.path_list type concrete (= string list).
 
