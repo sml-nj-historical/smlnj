@@ -14,6 +14,14 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Lars Bergstrom (web page or e-mail)
+Date: 2007/11/02
+Description:
+
+Made sml.bat more resilient to either not having run the installer
+and having no SMLNJ_HOME set or having just shuffled the directory
+around.
+----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2007/11/01
 Description:
