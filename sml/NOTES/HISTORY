@@ -15,6 +15,13 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/11/01
+Description:
+
+A collection of bug fixes for machine.sml in the Reactive library.
+(Thanks to Timothy Bourke)
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2007/10/28
 Description:
 
