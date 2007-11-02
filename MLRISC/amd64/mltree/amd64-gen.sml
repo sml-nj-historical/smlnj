@@ -1110,7 +1110,7 @@ functor AMD64Gen (
                  | T.<=   => j I.BE
                  | T.?>   => (j I.P; j I.A)
                  | T.<>   => j I.NE
-                 | T.?=   => j I.P
+                 | T.?=   => j I.EQ
                  | _      => error(concat[
 				"fbranch(", T.Basis.fcondToString fcc, ")"])
                (* end case *))
