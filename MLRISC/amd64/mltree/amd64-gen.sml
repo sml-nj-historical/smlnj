@@ -10,7 +10,13 @@ functor AMD64Gen (
     structure ExtensionComp : MLTREE_EXTENSION_COMP
         where I = I and T = I.T
 
-    val floatNegate : int -> Label.label
+    (* Take a number of bits and returns a label that points to a literal with the high bit set.
+     * We need this literal value for floating-point negation and absolute value (at least
+     * until SSE4).
+     *)
+    val signBit : int -> Label.label
+    (* Same as signBit, except the high bit is zero and the low bits are 1s. *)
+    val negateSignBit : int -> Label.label
    ) : MLTREECOMP = struct
 
     structure TS = ExtensionComp.TS
@@ -753,6 +759,7 @@ functor AMD64Gen (
 		    dstMustBeReg gen
 	          end
 
+	      (* conditional move for float comparisons *)
               fun fcmovcc (tyCond, fty, cc, t1, t2, y, n) = dstMustBeReg (fn (dstR, _) => let
  		  val _ = expr' (tyCond, n, dstR, [])                 (* false branch *)
                   val src = regOrMem (tyCond, operand tyCond y)       (* true branch *)
@@ -845,7 +852,7 @@ functor AMD64Gen (
 		 | T.MARK (e, A.MARKREG f) => (f dst; expr' (ty, e, dst, an))
 		 | T.MARK (e, a) => expr' (ty, e, dst, a :: an)
 		 | T.PRED (e, c) => expr' (ty, e, dst, A.CTRLUSE c :: an)
-		 | _ => raise Fail("todo: " ^ MLTreeUtils.rexpToString e)
+		 | _ => raise Fail("Unsupported rexp: " ^ MLTreeUtils.rexpToString e)
 	      (* end case *))
 	    end (* expr' *)        
 
@@ -930,7 +937,7 @@ functor AMD64Gen (
 	       | T.FDIV (_, a, b) => fbinop (fty, O.fdivOp fty, a, b, d, an)
 	       (* unary operators *)
 	       | T.FNEG (_, a) => let 
-                 val l = floatNegate fty
+                 val l = signBit fty
 		 val fop = (case fty
 		     of 32 => I.XORPS
 		      | 64 => I.XORPD
@@ -941,7 +948,18 @@ functor AMD64Gen (
 		     mark (fop {dst=I.FDirect r, src=I.FDirect (fexpToReg (fty, a))}, an);
 		     fcopy (fty, [d], [r], an)
 		 end
-	       | T.FABS (_, a) => raise Fail "todo"
+	       | T.FABS (_, a) => let 
+                 val l = negateSignBit fty
+		 val fop = (case fty
+		     of 32 => I.ANDPS
+		      | 64 => I.ANDPD
+ 	             (* end case *))
+		 val r = newFreg ()
+		 in 
+		     fload (fty, T.LABEL l, I.Region.memory, r, an);
+		     mark (fop {dst=I.FDirect r, src=I.FDirect (fexpToReg (fty, a))}, an);
+		     fcopy (fty, [d], [r], an)
+		 end
 	       | T.FSQRT (fty, a) => fsqrt (fty, d, a, an)
 	       (* conversions *)
 	       | T.CVTF2F (fTy, tTy, e) => convertf2f (fTy, tTy, e, d, an)
@@ -952,7 +970,7 @@ functor AMD64Gen (
 	       | T.FMARK (e, A.MARKREG f) => (f d; fexpr (fty, d, e, an))
 	       | T.FMARK (e, a) => fexpr (fty, d, e, a::an)
 	       | T.FPRED (e, c) => fexpr (fty, d, e, A.CTRLUSE c::an)
-	       | T.FEXT fexp => raise Fail "todo"
+	       | T.FEXT fexp => ExtensionComp.compileFext (reducer()) {e=fexp, fd=d, an=an} 
 	       | _ => error "fexpr"
 	      (* end case *))
 
@@ -1079,18 +1097,18 @@ functor AMD64Gen (
 	
 	and fbranch' (fty, fcc, t1, t2, j) = let
             fun branch fcc = (case fcc
-                of T.==   => j I.P
-                 | T.?<>  => j I.NE
+                of T.==   => j I.EQ
+                 | T.?<>  => (j I.P; j I.NE)
                  | T.?    => j I.P
                  | T.<=>  => j I.NP
                  | T.>    => j I.A
-                 | T.?<=  => j I.BE
+                 | T.?<=  => (j I.P; j I.BE)
                  | T.>=   => j I.AE
-                 | T.?<   => j I.BE
+                 | T.?<   => (j I.P; j I.BE)
                  | T.<    => j I.B
-                 | T.?>=  => j I.AE
+                 | T.?>=  => (j I.P; j I.AE)
                  | T.<=   => j I.BE
-                 | T.?>   => j I.A
+                 | T.?>   => (j I.P; j I.A)
                  | T.<>   => j I.NE
                  | T.?=   => j I.P
                  | _      => error(concat[

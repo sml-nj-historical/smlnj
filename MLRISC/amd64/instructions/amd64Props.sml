@@ -253,7 +253,9 @@ functor AMD64Props (
         fun f i = (case i
             of I.FMOVE {dst, src, ...} => (operand dst, operand src)
              | I.FBINOP {dst, src, ...} => ([dst], [src, dst])
-	     | ( I.XORPS {dst, src} | I.XORPD {dst, src} ) => (operand dst, (operandAcc (dst, operand src)))
+	     | ( I.XORPS {dst, src} | I.XORPD {dst, src} |
+		 I.ORPS {dst, src}  | I.ORPD {dst, src}  |
+		 I.ANDPS {dst, src} | I.ANDPD {dst, src} ) => (operand dst, (operandAcc (dst, operand src)))
              | I.FCOM {dst, src, ...} => ([], operandAcc (src, [dst]))
              | ( I.FSQRTS {dst, src} | I.FSQRTD {dst, src} )=> 
                (operand dst, operand src)
@@ -371,8 +373,8 @@ functor AMD64Props (
            (* end case *))
          | I.FSQRTS _ => 32
          | I.FSQRTD _ => 64
-	 | I.XORPS _ => 32
-	 | I.XORPD _ => 64
+	 | ( I.XORPS _ | I.ORPS _ | I.ANDPS _ ) => 32
+	 | ( I.XORPD _ | I.ORPD _ | I.ANDPD _ ) => 64
         (* end case *))
 
   end (* AMD64Props *)

@@ -263,6 +263,10 @@ sig
    | FSQRTD of {dst:operand, src:operand}
    | XORPS of {dst:operand, src:operand}
    | XORPD of {dst:operand, src:operand}
+   | ORPS of {dst:operand, src:operand}
+   | ORPD of {dst:operand, src:operand}
+   | ANDPS of {dst:operand, src:operand}
+   | ANDPD of {dst:operand, src:operand}
    | SAHF
    | LAHF
    | SOURCE of {}
@@ -327,6 +331,10 @@ sig
    val fsqrtd : {dst:operand, src:operand} -> instruction
    val xorps : {dst:operand, src:operand} -> instruction
    val xorpd : {dst:operand, src:operand} -> instruction
+   val orps : {dst:operand, src:operand} -> instruction
+   val orpd : {dst:operand, src:operand} -> instruction
+   val andps : {dst:operand, src:operand} -> instruction
+   val andpd : {dst:operand, src:operand} -> instruction
    val sahf : instruction
    val lahf : instruction
    val source : {} -> instruction
@@ -591,6 +599,10 @@ struct
    | FSQRTD of {dst:operand, src:operand}
    | XORPS of {dst:operand, src:operand}
    | XORPD of {dst:operand, src:operand}
+   | ORPS of {dst:operand, src:operand}
+   | ORPD of {dst:operand, src:operand}
+   | ANDPS of {dst:operand, src:operand}
+   | ANDPD of {dst:operand, src:operand}
    | SAHF
    | LAHF
    | SOURCE of {}
@@ -653,6 +665,10 @@ struct
    and fsqrtd = INSTR o FSQRTD
    and xorps = INSTR o XORPS
    and xorpd = INSTR o XORPD
+   and orps = INSTR o ORPS
+   and orpd = INSTR o ORPD
+   and andps = INSTR o ANDPS
+   and andpd = INSTR o ANDPD
    and sahf = INSTR SAHF
    and lahf = INSTR LAHF
    and source = INSTR o SOURCE

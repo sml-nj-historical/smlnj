@@ -669,6 +669,26 @@ struct
            emit_src src; 
            emit ", "; 
            emit_dst dst )
+       | I.ORPS{dst, src} => 
+         ( emit "orps\t "; 
+           emit_src src; 
+           emit ", "; 
+           emit_dst dst )
+       | I.ORPD{dst, src} => 
+         ( emit "orpd\t "; 
+           emit_src src; 
+           emit ", "; 
+           emit_dst dst )
+       | I.ANDPS{dst, src} => 
+         ( emit "andps\t "; 
+           emit_src src; 
+           emit ", "; 
+           emit_dst dst )
+       | I.ANDPD{dst, src} => 
+         ( emit "andpd\t "; 
+           emit_src src; 
+           emit ", "; 
+           emit_dst dst )
        | I.SAHF => emit "sahf"
        | I.LAHF => emit "lahf"
        | I.SOURCE{} => emit "source"

@@ -341,6 +341,17 @@ functor AMD64SpillInstr (
     	           I.XORPS {src=src, dst=I.FDirect tmpR})
 		 | I.XORPD {src, dst as I.FDirect _} => binOpWithTmp (fn tmpR =>
     	           I.XORPD {src=src, dst=I.FDirect tmpR})
+
+		 | I.ORPS {src, dst as I.FDirect _} => binOpWithTmp (fn tmpR =>
+    	           I.ORPS {src=src, dst=I.FDirect tmpR})
+		 | I.ORPD {src, dst as I.FDirect _} => binOpWithTmp (fn tmpR =>
+    	           I.ORPD {src=src, dst=I.FDirect tmpR})
+
+		 | I.ANDPS {src, dst as I.FDirect _} => binOpWithTmp (fn tmpR =>
+    	           I.ANDPS {src=src, dst=I.FDirect tmpR})
+		 | I.ANDPD {src, dst as I.FDirect _} => binOpWithTmp (fn tmpR =>
+    	           I.ANDPD {src=src, dst=I.FDirect tmpR})
+
     	         | I.FBINOP {binOp, src, dst} => binOpWithTmp (fn tmpR =>
 		   I.FBINOP {binOp=binOp, src=src, dst=tmpR})
      	         | I.FSQRTS {dst, src} => withTmp (fn tmpR =>
@@ -569,6 +580,11 @@ functor AMD64SpillInstr (
                 if CB.sameColor (r, r') then spillLoc else opnd
               | replace opnd = opnd
             val (sz, fmvOp) = fmvInstr instr
+            fun bitOp (bOp, src, dst as I.FDirect dstR) =  if CB.sameColor (r, dstR)
+ 	        then {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=dst},
+			    mark (bOp {src=src, dst=dst}, an)], 
+		      proh=[], newReg=NONE}
+		else {code=[mark (bOp {src=replace src, dst=dst}, an)], proh=[], newReg=NONE}
             in
               (case instr
                 of I.FMOVE {fmvOp, src, dst=dst as I.FDirect _} =>
@@ -583,18 +599,15 @@ functor AMD64SpillInstr (
                             mark (I.FMOVE {fmvOp=fmvOp, src=tmp, dst=dst}, an)],
                       proh=[tmpR], newReg=SOME tmpR}
                    end
-		 | I.XORPS {src, dst=dst as I.FDirect dstR} =>
-		   if CB.sameColor (r, dstR)
-		      then {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=dst},
-				  mark (I.XORPS {src=src, dst=dst}, an)], 
-			    proh=[], newReg=NONE}
-		      else {code=[mark (I.XORPS {src=replace src, dst=dst}, an)], proh=[], newReg=NONE}
-		 | I.XORPD {src, dst=dst as I.FDirect dstR} =>
-		   if CB.sameColor (r, dstR)
-		      then {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=dst},
-				  mark (I.XORPD {src=src, dst=dst}, an)], 
-			    proh=[], newReg=NONE}
-		      else {code=[mark (I.XORPD {src=replace src, dst=dst}, an)], proh=[], newReg=NONE}
+		 | I.XORPS {src, dst=dst as I.FDirect dstR} => bitOp (I.XORPS, src, dst)
+		 | I.XORPD {src, dst=dst as I.FDirect dstR} => bitOp (I.XORPD, src, dst)
+
+		 | I.ORPS {src, dst=dst as I.FDirect dstR} => bitOp (I.ORPS, src, dst)
+		 | I.ORPD {src, dst=dst as I.FDirect dstR} => bitOp (I.ORPD, src, dst)
+
+		 | I.ANDPS {src, dst=dst as I.FDirect dstR} => bitOp (I.ANDPS, src, dst)
+		 | I.ANDPD {src, dst=dst as I.FDirect dstR} => bitOp (I.ANDPD, src, dst)
+
                  | I.FBINOP {binOp, src, dst} => if CB.sameColor (r, src)
                    then let
                      val tmpR = newFreg ()

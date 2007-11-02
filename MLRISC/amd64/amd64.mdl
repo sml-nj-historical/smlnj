@@ -792,6 +792,18 @@ architecture AMD64 =
     | XORPD of {dst : operand, src : operand}
        ``xorpd\t <src>, <dst>''
 
+    | ORPS of {dst : operand, src : operand}
+       ``orps\t <src>, <dst>''
+
+    | ORPD of {dst : operand, src : operand}
+       ``orpd\t <src>, <dst>''
+
+    | ANDPS of {dst : operand, src : operand}
+       ``andps\t <src>, <dst>''
+
+    | ANDPD of {dst : operand, src : operand}
+       ``andpd\t <src>, <dst>''
+
    (* misc *)
     | SAHF        (* %flags -> %ah *)
 	``sahf''
