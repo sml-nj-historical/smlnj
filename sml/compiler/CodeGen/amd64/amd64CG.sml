@@ -98,7 +98,9 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
 		val fast_fp = fast_floating_point
                ) 
 	   structure MLTreeStream = AMD64MLTreeStream
-           fun floatNegate ty = raise Fail "todo"
+
+           fun signBit ty = raise Fail "todo"
+           fun negateSignBit ty = raise Fail "todo"
           )
 
     structure Jumps = 
