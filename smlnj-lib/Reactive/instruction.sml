@@ -33,6 +33,6 @@ structure Instruction =
       | when of (signal config * 'ctxt instr * 'ctxt instr)
       | trapWith of (signal config * 'ctxt instr * 'ctxt instr)
       | emit of signal					(* generate a signal *)
-      | await of signal config				(* wait for 
+      | await of signal config				(* wait for a signal *)
 
   end;
