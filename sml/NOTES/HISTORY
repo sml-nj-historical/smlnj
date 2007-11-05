@@ -14,6 +14,15 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/11/05
+Description:
+
+Fixed type error in ml-lpt library that occurs when compiling
+against a basis that was compiled with the USE_64_BIT_POSITIONS
+symbol set.
+(Thanks to Johannes Joemann)
+----------------------------------------------------------------------
 Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
 Date: 2007/11/03
 Description:
