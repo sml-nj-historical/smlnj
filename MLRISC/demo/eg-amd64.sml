@@ -89,7 +89,8 @@ structure AMD64Demo =
 	           proto=proto,
 	           args=args @ fpArgs}
 	val stms = [
-	    T.MV (64, C.rax, T.LOAD (64, T.ADD(64, T.LABEL ccL, reg C.rcx), ()))
+	    T.FMV (64, f3, T.FADD (64, T.FLOAD (64, T.ADD (64, li 128, T.REG (64, r2)), ()), T.FLOAD (64, T.ADD (64, li 128, T.REG (64, r1)), ()))),
+	    T.FSTORE (64, T.REG (64, r1), T.FREG (64, f3), ())
 	]
 (*	val stms' = [
 	    T.FMV (32, f1, T.FLOAD (32, T.ADD (64, li 128, T.REG (64, r1)), ())),

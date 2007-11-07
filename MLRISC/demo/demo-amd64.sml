@@ -112,7 +112,10 @@ end
 structure AMD64 = AMD64Gen (
 		  structure I = AMD64Instr
 		  structure MLTreeUtils = AMD64MTC.AMD64MLTreeUtils
-		  structure ExtensionComp = AMD64MTC)
+		  structure ExtensionComp = AMD64MTC
+		  fun signBit _ = raise Fail "todo"
+		  fun negateSignBit _ = raise Fail "todo"
+		  )
 
 structure AMD64Emit = CFGEmit (
              structure CFG = AMD64CFG
