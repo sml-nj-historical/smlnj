@@ -5,12 +5,19 @@
  *)
 
 structure TimeImp : sig
+
     include TIME
   (* export these for the benefit of, e.g., Posix.ProcEnv.times: *)
+
     val fractionsPerSecond : LargeInt.int
     val toFractions   : time -> LargeInt.int
     val fromFractions : LargeInt.int -> time
-  end = struct
+    
+    (* support for interface to runtime system *)
+    val fromTime_t : SMLBasis.Time_t -> time
+    val toTime_t : time -> SMLBasis.Time_t
+
+end = struct
 
     structure PB = PreBasis
     structure LInt = LargeIntImp
@@ -45,17 +52,6 @@ structure TimeImp : sig
 
     fun fromReal rsec = PB.TIME{ usec = Real.toLargeInt IEEEReal.TO_ZERO (rsec * 1.0e6) }
     fun toReal (PB.TIME{usec}) = Real.fromLargeInt usec * 1.0e~6
-
-    local
-	val gettimeofday : unit -> (Int32.int * int) =
-	    CInterface.c_function "SMLNJ-Time" "timeofday"
-    in
-        fun now () = let
-	    val (ts, tu) = gettimeofday ()
-	in
-	    fromMicroseconds (1000000 * Int32.toLarge ts + Int.toLarge tu)
-	end
-    end (* local *)
 
     val rndv : LInt.int vector =  #[50000, 5000, 500, 50, 5]
 
@@ -175,5 +171,17 @@ structure TimeImp : sig
     val op >= = binop op >=
 
     end
+
+    fun fromTime_t { seconds, uSeconds } =
+	fromSeconds (Int32.toLarge seconds) + 
+	fromMicroseconds (Int32.toLarge uSeconds)
+    fun toTime_t t = let 
+        val seconds = toSeconds t
+    in
+	{ seconds = Int32.fromLarge seconds,
+	  uSeconds = Int32.fromLarge (toMicroseconds (t - fromSeconds seconds))}
+    end
+
+    val now = fromTime_t o SMLBasis.now
 
   end (* TIME *)

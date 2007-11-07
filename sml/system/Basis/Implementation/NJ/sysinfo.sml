@@ -16,13 +16,12 @@ structure SysInfo : SYS_INFO =
 
     datatype os_kind
       = UNIX	(* one of the many flavours of UNIX (incl Mach and NeXTStep) *)
-      | WIN32	(* Wind32 API (incl. Windows95 and WindowsNT) *)
+      | WIN32	(* Win32 API (WindowsNT, Windows 2000, Windows XP, and Vista *)
       | MACOS	(* Macintosh OS *)
       | OS2	(* IBM's OS/2 *)
       | BEOS	(* BeOS from Be *)
 
-    fun sysInfo (s: string): string option =
-	  CInterface.c_function "SMLNJ-RunT" "sysInfo" s
+    val sysInfo : string -> string option = SMLNJRuntime.sysInfo
     fun getFlag flag = (case (getInfoStr(sysInfo flag))
 	   of "NO" => false
 	    | _ => true

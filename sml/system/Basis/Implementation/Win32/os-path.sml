@@ -11,7 +11,6 @@ local
 in
 structure OS_Path = OS_PathFn (
   struct
-      structure W32G = Win32_General
       structure C = Char
       structure S = String
       structure SS = Substring
@@ -38,7 +37,8 @@ structure OS_Path = OS_PathFn (
 
       val volSepChar = #":"
 
-      val arcSepChar = W32G.arcSepChar
+(*      val arcSepChar = W32G.arcSepChar *)
+      val arcSepChar = #"\\"
       val arcSep = S.str arcSepChar
 
       fun volPresent vol = 

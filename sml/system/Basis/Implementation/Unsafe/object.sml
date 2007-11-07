@@ -30,10 +30,10 @@ structure Object :> UNSAFE_OBJECT =
     val toObject : 'a -> object = InlineT.cast
 
     local
-      val record1 : object -> object =
-	    CInterface.c_function "SMLNJ-RunT" "record1"
-      val rConcat : (object * object) -> object =
-	    CInterface.c_function "SMLNJ-RunT" "recordConcat"
+      val record1 : object -> object = (* SMLNJRuntime.record1 *)
+	    CInterface.c_function "SMLNJRuntime" "record1"
+      val rConcat : (object * object) -> object = (* SMLNJRuntime.recordConcat *)
+	    CInterface.c_function "SMLNJRuntime" "recordConcat"
     in
     fun mkTuple [] = toObject()
       | mkTuple [a] = record1 a

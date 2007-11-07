@@ -13,10 +13,8 @@ in
 structure IntervalTimer : INTERVAL_TIMER =
   struct
 
-    fun cfun x = CInterface.c_function "SMLNJ-RunT" x
-
-    val tick' : unit -> (Int32.int * int) = cfun "intervalTick"
-    val setITimer : (Int32.int * int) option -> unit = cfun "setIntTimer"
+    val tick' : unit -> (Int32.int * int) = SMLNJRuntime.intervalTick
+    val setITimer : (Int32.int * int) option -> unit = SMLNJRuntime.setIntTimer
 
     fun tick () = let val (s, us) = tick'()
 	  in

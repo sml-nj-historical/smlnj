@@ -8,8 +8,7 @@
 structure GC : GC =
   struct
 
-    val gcCtl : ((string * int ref) list -> unit) =
-	  CInterface.c_function "SMLNJ-RunT" "gcControl"
+    val gcCtl : ((string * int ref) list -> unit) = SMLNJRuntime.gcControl
 
     fun doGC n = gcCtl [("DoGC", ref n)]
 

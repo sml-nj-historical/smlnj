@@ -87,9 +87,9 @@ structure Unsafe :> UNSAFE =
     val setPseudo = InlineT.setpseudo
 
     val blastRead : Word8Vector.vector -> 'a =
-	(fn x => CInterface.c_function "SMLNJ-RunT" "blastIn" x)
+	(fn x => CInterface.c_function "SMLNJRuntime" "blastIn" x)
     val blastWrite : 'a -> Word8Vector.vector =
-	(fn x => CInterface.c_function "SMLNJ-RunT" "blastOut" x)
+	(fn x => CInterface.c_function "SMLNJRuntime" "blastOut" x)
 
     val boxed = InlineT.boxed
 

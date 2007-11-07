@@ -9,6 +9,8 @@ structure IEEEReal : IEEE_REAL =
   (* this may cause portability problems to 64-bit systems *)
     structure Int = Int31
 
+    structure B = SMLBasis
+
     exception Unordered
 
     datatype real_order = LESS | EQUAL | GREATER | UNORDERED
@@ -28,23 +30,19 @@ structure IEEEReal : IEEE_REAL =
       | TO_POSINF
       | TO_ZERO
 
-    val ctlRoundingMode : int option -> int =
-	    CInterface.c_function "SMLNJ-Math" "ctlRoundingMode"
+    fun setRoundingMode TO_NEAREST	= B.setRoundingMode B.TO_NEAREST
+      | setRoundingMode TO_ZERO		= B.setRoundingMode B.TO_ZERO
+      | setRoundingMode TO_POSINF	= B.setRoundingMode B.TO_POSINF
+      | setRoundingMode TO_NEGINF	= B.setRoundingMode B.TO_NEGINF
 
-    fun intToRM 0 = TO_NEAREST
-      | intToRM 1 = TO_ZERO
-      | intToRM 2 = TO_POSINF
-      | intToRM 3 = TO_NEGINF
-      | intToRM _ = raise Match (* shut up compiler *)
+    fun intToRM f = 
+	  if f=B.TO_NEAREST	then TO_NEAREST
+	  else if f=B.TO_ZERO	then TO_ZERO
+	  else if f=B.TO_POSINF	then TO_POSINF
+	  else if f=B.TO_NEGINF	then TO_NEGINF
+	  else raise Match
 
-    fun setRoundingMode' m = (ctlRoundingMode (SOME m); ())
-
-    fun setRoundingMode TO_NEAREST	= setRoundingMode' 0
-      | setRoundingMode TO_ZERO		= setRoundingMode' 1
-      | setRoundingMode TO_POSINF	= setRoundingMode' 2
-      | setRoundingMode TO_NEGINF	= setRoundingMode' 3
-
-    fun getRoundingMode () = intToRM (ctlRoundingMode NONE)
+    val getRoundingMode = intToRM o B.getRoundingMode
 
     type decimal_approx = {
 	kind : float_class,

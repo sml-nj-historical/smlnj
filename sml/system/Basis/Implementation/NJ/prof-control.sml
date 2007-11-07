@@ -10,14 +10,9 @@
 structure ProfControl : PROF_CONTROL =
   struct
 
-    structure CI = Unsafe.CInterface
-
-    val setTimer : bool -> unit
-	  = CI.c_function "SMLNJ-Prof" "setTimer"
-    val getQuantum : unit -> int
-	  = CI.c_function "SMLNJ-Prof" "getQuantum"
-    val setTimeArray' : int array option -> unit
-	  = CI.c_function "SMLNJ-Prof" "setTimeArray"
+    val setTimer : bool -> unit = SMLNJRuntime.setTimer
+    val getQuantum : unit -> int = SMLNJRuntime.getQuantum
+    val setTimeArray' : int array option -> unit = SMLNJRuntime.setTimeArray
 
     val profMode = ref false	(* controls profile instrumentation *)
     val timingMode = ref false	(* controls profile timer *)

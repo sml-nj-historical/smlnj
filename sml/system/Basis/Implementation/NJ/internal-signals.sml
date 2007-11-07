@@ -21,9 +21,8 @@ structure InternalSignals : sig
 
     structure CI = CInterface
 
-    fun signalFn x = CI.c_function "SMLNJ-Signals" x
-
-    datatype signal = SIG of CI.system_const
+    type system_const = CI.system_const
+    datatype signal = SIG of system_const
 
     datatype sig_action
       = IGNORE
@@ -39,7 +38,7 @@ structure InternalSignals : sig
    *)
     type sig_info = {act : sig_action, mask : int, signal : signal}
     local
-      val listSignals' : unit -> CI.system_const list = signalFn "listSignals"
+      val listSignals' : unit -> system_const list = SMLNJRuntime.listSignals
       fun findMax sigs =
 	    List.foldl
 	      (fn (SIG(sigId, _), id) => if (id < sigId) then sigId else id)
@@ -51,7 +50,7 @@ structure InternalSignals : sig
     val sigTbl : sig_info option Array.array ref =
 	  ref(Array.fromList[])
 (** DEBUG **)
-val debug : string -> unit = CInterface.c_function "SMLNJ-RunT" "debug"
+val debug = SMLNJRuntime.debug
 fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
        of NONE => (
 	    debug(String.concat[
@@ -91,8 +90,8 @@ fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
 	  (* end case *))
 
   (* these run-time functions deal with the state of a signal in the system. *)
-    val getSigState : CI.system_const -> int		= signalFn "getSigState"
-    val setSigState : (CI.system_const * int) -> unit	= signalFn "setSigState"
+    val getSigState : system_const -> int		= SMLNJRuntime.getSigState
+    val setSigState : (system_const * int) -> unit	= SMLNJRuntime.setSigState
   (* The states are defined as: *)
     val ignoreSigState = 0
     val defaultSigState = 1
@@ -152,8 +151,8 @@ fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
      *   SOME[] -- mask all signals
      *   SOME l -- mask the signals in l
      *)
-      val setSigMask   : CI.system_const list option -> unit = signalFn "setSigMask"
-      val getSigMask : unit -> CI.system_const list option = signalFn "getSigMask"
+      val setSigMask   : system_const list option -> unit = SMLNJRuntime.setSigMask
+      val getSigMask : unit -> system_const list option = SMLNJRuntime.getSigMask
     (* sort a list of signals eliminating duplicates *)
       fun sortSigs MASKALL = !sigList
 	| sortSigs (MASK l) = let
@@ -320,7 +319,7 @@ fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
   (* sleep until the next signal; if called when signals are masked,
    * then signals will still be masked when pause returns.
    *)
-    val pause : unit -> unit = signalFn "pause"
+    val pause : unit -> unit = SMLNJRuntime.pauseUntilSig
 
   (* Here is the ML handler that gets invoked by the run-time system.
    * It is responsible for dispatching the appropriate ML handler.

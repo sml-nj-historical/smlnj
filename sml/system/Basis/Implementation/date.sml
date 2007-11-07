@@ -65,13 +65,13 @@ structure Date : DATE =
       | monthToInt Nov = 10
       | monthToInt Dec = 11
 
-  (* the tuple type used to communicate with C; this 9-tuple has the
-   * fields:
+  (* the type used to communicate with C; this record has the
+   * following fields, all int values:
    *   tm_sec, tm_min, tm_hour, tm_mday, tm_mon, tm_year,
    *   tm_wday, tm_yday,
    *   tm_isdst.
    *)
-    type tm = (int * int * int * int * int * int * int * int * int)
+    type tm = SMLBasis.Date_t
 
   (* wrap a C function call with a handler that maps SysErr
    * exception into Date exceptions.
@@ -81,20 +81,15 @@ structure Date : DATE =
   (* note: mkTime assumes the tm structure passed to it reflects
    * the local time zone
    *)
-    val ascTime : tm -> string
-	  = wrap (CInterface.c_function "SMLNJ-Date" "ascTime")
-    val localTime' : Int32.int -> tm
-	  = wrap (CInterface.c_function "SMLNJ-Date" "localTime")
-    val gmTime' : Int32.int -> tm
-	  = wrap (CInterface.c_function "SMLNJ-Date" "gmTime")
-    val mkTime' : tm -> Int32.int
-	  = wrap (CInterface.c_function "SMLNJ-Date" "mkTime")
-    val strfTime : (string * tm) -> string
-	  = wrap (CInterface.c_function "SMLNJ-Date" "strfTime")
+    val ascTime		= SMLBasis.ascTime	: tm -> string
+    val localTime'	= SMLBasis.localTime	: SMLBasis.Time_t -> tm
+    val gmTime'		= SMLBasis.gmTime	: SMLBasis.Time_t -> tm
+    val mkTime'		= SMLBasis.mkTime	: tm -> SMLBasis.Time_t
+    val strfTime	= SMLBasis.strfTime	: (string * tm) -> string
 
-    val localTime = localTime' o Int32.fromLarge o Time.toSeconds
-    val gmTime = gmTime' o Int32.fromLarge o Time.toSeconds
-    val mkTime = Time.fromSeconds o Int32.toLarge o mkTime'
+    val localTime = localTime' o Time.toTime_t
+    val gmTime = gmTime' o Time.toTime_t
+    val mkTime = Time.fromTime_t o mkTime'
 
     fun year (DATE{year, ...}) = year
     fun month (DATE{month, ...}) = month

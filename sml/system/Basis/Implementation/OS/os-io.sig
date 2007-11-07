@@ -1,10 +1,6 @@
 (* os-io.sig
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
- * NOTE: this interface has been proposed, but not yet adopted by the
- * Standard basis committee.
- *
+ * COPYRIGHT (c) 2007 Fellowship of SML/NJ
  *)
 
 signature OS_IO =

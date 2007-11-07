@@ -9,17 +9,15 @@ structure Export : EXPORT =
 
     structure Process = OS_Process
 
-    fun runtimeFn x = CInterface.c_function "SMLNJ-RunT" x
-
-    val exportHeap : string -> bool
-	  = runtimeFn "exportHeap"
+    val exportHeap : string -> bool = SMLNJRuntime.exportHeap
 
   (* We need the pair wrapper type to make sure that the second argument will
    * be fully wrapped when it is passed to the run-time system.
    * [also see wrap-export.sml]
    *)
     type cmdt =  (string, string list) WrapExport.pair -> OS.Process.status
-    val exportFn' : (string * cmdt) -> unit = runtimeFn "exportFn"
+(*    val exportFn' : (string * cmdt) -> unit = SMLNJRuntime.exportFn *)
+fun exportFn' _ = raise Fail "todo: implement exportFn'"
 
     fun nullFilename () = raise Assembly.SysErr("empty heap file name", NONE)
 

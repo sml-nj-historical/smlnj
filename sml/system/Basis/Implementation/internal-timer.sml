@@ -22,15 +22,19 @@ end = struct
     datatype real_timer = RealT of PB.time
 
     local
-      val gettime' :
-	  unit -> (Int32.int * int * Int32.int * int * Int32.int * int) =
+      val gettime'  = SMLBasis.getCPUTime
+(*
+	  : unit -> (Int32.int * int * Int32.int * int * Int32.int * int) =
 	  CInterface.c_function "SMLNJ-Time" "gettime"
+*)
 
       fun mkTime (s, us) =
-	  Time.fromMicroseconds (1000000 * Int32.toLarge s + Int.toLarge us)
+	  Time.fromMicroseconds (1000000 * Int32.toLarge s + Int32.toLarge us)
     in
     fun getTime () = let
-	val (ts, tu, ss, su, gs, gu) = gettime' ()
+	val ({seconds = ts, uSeconds = tu}, 
+	     {seconds = ss, uSeconds = su}, 
+	     {seconds = gs, uSeconds = gu}) = gettime' ()
     in
 	{ nongc = { usr = mkTime (ts, tu),
 		    sys = mkTime (ss, su) },
