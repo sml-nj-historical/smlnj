@@ -223,6 +223,7 @@ functor AMD64Props (
 	     | I.CDQ => ([C.rdx], [C.rax])
 	     | I.FMOVE {dst, src, ...} => ([], operandAcc (dst, operandUse src))
 	     | I.FCOM {src, ...} => ([], operandUse src)
+	     | I.FBINOP {src, ...} => ([], operandUse src)
 	     | I.SAHF		      => ([], [C.rax])
 	     | I.LAHF		      => ([C.rax], [])
 	     (* This sets the low order byte, 
@@ -252,10 +253,7 @@ functor AMD64Props (
         fun operand opnd = operandAcc (opnd, [])
         fun f i = (case i
             of I.FMOVE {dst, src, ...} => (operand dst, operand src)
-             | I.FBINOP {dst, src, ...} => ([dst], [src, dst])
-	     | ( I.XORPS {dst, src} | I.XORPD {dst, src} |
-		 I.ORPS {dst, src}  | I.ORPD {dst, src}  |
-		 I.ANDPS {dst, src} | I.ANDPD {dst, src} ) => (operand dst, (operandAcc (dst, operand src)))
+             | I.FBINOP {dst, src, ...} => ([dst], dst :: operand src)
              | I.FCOM {dst, src, ...} => ([], operandAcc (src, [dst]))
              | ( I.FSQRTS {dst, src} | I.FSQRTD {dst, src} )=> 
                (operand dst, operand src)
@@ -368,13 +366,11 @@ functor AMD64Props (
             | ( I.COMISD | I.UCOMISD ) => 64
            (* end case *))
          | I.FBINOP {binOp, ...} => (case binOp
-           of ( I.ADDSS | I.SUBSS | I.MULSS | I.DIVSS ) => 32
-            | ( I.ADDSD | I.SUBSD | I.MULSD | I.DIVSD ) => 64
+           of ( I.ADDSS | I.SUBSS | I.MULSS | I.DIVSS | I.XORPS | I.ANDPS | I.ORPS ) => 32
+            | ( I.ADDSD | I.SUBSD | I.MULSD | I.DIVSD | I.XORPD | I.ANDPD | I.ORPD ) => 64
            (* end case *))
          | I.FSQRTS _ => 32
          | I.FSQRTD _ => 64
-	 | ( I.XORPS _ | I.ORPS _ | I.ANDPS _ ) => 32
-	 | ( I.XORPD _ | I.ORPD _ | I.ANDPD _ ) => 64
         (* end case *))
 
   end (* AMD64Props *)

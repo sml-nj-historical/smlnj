@@ -885,11 +885,22 @@ functor AMD64Gen (
 	     | e => I.FDirect (fexpToReg (fty, e))
 	    (* end case *))
 
+       (* SSE binary ops 
+	*         (src)      (dst)
+	* binOp   freg/m64, freg
+	*)
 	and fbinop (fty, binOp, a, b, d, an) = let
-	    val bReg = fexpToReg (fty, b)
+           (* try to move memory operands to src rather than dst if binOp is commutative *)
+	    val (a, b) = (case (binOp, a, b)
+                of ( (I.ADDSS | I.ADDSD | I.MULSS | I.MULSD | I.XORPS | I.XORPD | I.ANDPS | I.ANDPD | I.ORPS | I.ORPD), 		     
+		     T.FLOAD _,
+		     T.FREG _) => (b, a)
+		 | _ => (a, b)
+   	       (* end case *))
+	    val src = foperand (fty, b)
 	    in
 	      fexpr (fty, d, a, []);
-	      mark (I.FBINOP {binOp=binOp, dst=d, src=bReg}, an)
+	      mark (I.FBINOP {binOp=binOp, dst=d, src=src}, an)
 	    end
 	
 	and fsqrt (fty, d, a, an) = let
@@ -945,7 +956,7 @@ functor AMD64Gen (
 		 val r = newFreg ()
 		 in 
 		     fload (fty, T.LABEL l, I.Region.memory, r, an);
-		     mark (fop {dst=I.FDirect r, src=I.FDirect (fexpToReg (fty, a))}, an);
+		     mark (I.FBINOP {binOp=fop, dst=r, src=foperand (fty, a)}, an);
 		     fcopy (fty, [d], [r], an)
 		 end
 	       | T.FABS (_, a) => let 
@@ -957,7 +968,7 @@ functor AMD64Gen (
 		 val r = newFreg ()
 		 in 
 		     fload (fty, T.LABEL l, I.Region.memory, r, an);
-		     mark (fop {dst=I.FDirect r, src=I.FDirect (fexpToReg (fty, a))}, an);
+		     mark (I.FBINOP {binOp=fop, dst=r, src=foperand (fty, a)}, an);
 		     fcopy (fty, [d], [r], an)
 		 end
 	       | T.FSQRT (fty, a) => fsqrt (fty, d, a, an)

@@ -195,6 +195,9 @@ architecture AMD64 =
          | SUBSS | SUBSD
          | MULSS | MULSD
          | DIVSS | DIVSD
+	 | XORPS | XORPD
+	 | ANDPS | ANDPD
+	 | ORPS  | ORPD
 
        datatype fcom_op! =
            COMISS | COMISD               (* ordered *)
@@ -774,7 +777,7 @@ architecture AMD64 =
     | FMOVE of {fmvOp : fmove_op, dst : operand, src : operand}
       ``<fmvOp>\t <src>, <dst>''
 
-    | FBINOP of {binOp : fbin_op, dst : $FP, src : $FP}
+    | FBINOP of {binOp : fbin_op, dst : $FP, src : operand}
       ``<binOp>\t <src>, <dst>''
 
     | FCOM of {comOp : fcom_op, dst : $FP, src : operand}
@@ -785,24 +788,6 @@ architecture AMD64 =
 
     | FSQRTD of {dst : operand, src : operand}
       ``sqrtsd\t <src>, <dst>''
-
-    | XORPS of {dst : operand, src : operand}
-       ``xorps\t <src>, <dst>''
-
-    | XORPD of {dst : operand, src : operand}
-       ``xorpd\t <src>, <dst>''
-
-    | ORPS of {dst : operand, src : operand}
-       ``orps\t <src>, <dst>''
-
-    | ORPD of {dst : operand, src : operand}
-       ``orpd\t <src>, <dst>''
-
-    | ANDPS of {dst : operand, src : operand}
-       ``andps\t <src>, <dst>''
-
-    | ANDPD of {dst : operand, src : operand}
-       ``andpd\t <src>, <dst>''
 
    (* misc *)
     | SAHF        (* %flags -> %ah *)

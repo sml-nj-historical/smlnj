@@ -337,21 +337,6 @@ functor AMD64SpillInstr (
     	                   proh=[], newReg=NONE}
     	         | I.FMOVE {fmvOp, src, dst as I.FDirect _} => withTmp (fn tmpR =>
     	           I.FMOVE {fmvOp=fmvOp, src=src, dst=I.FDirect tmpR})
-		 | I.XORPS {src, dst as I.FDirect _} => binOpWithTmp (fn tmpR =>
-    	           I.XORPS {src=src, dst=I.FDirect tmpR})
-		 | I.XORPD {src, dst as I.FDirect _} => binOpWithTmp (fn tmpR =>
-    	           I.XORPD {src=src, dst=I.FDirect tmpR})
-
-		 | I.ORPS {src, dst as I.FDirect _} => binOpWithTmp (fn tmpR =>
-    	           I.ORPS {src=src, dst=I.FDirect tmpR})
-		 | I.ORPD {src, dst as I.FDirect _} => binOpWithTmp (fn tmpR =>
-    	           I.ORPD {src=src, dst=I.FDirect tmpR})
-
-		 | I.ANDPS {src, dst as I.FDirect _} => binOpWithTmp (fn tmpR =>
-    	           I.ANDPS {src=src, dst=I.FDirect tmpR})
-		 | I.ANDPD {src, dst as I.FDirect _} => binOpWithTmp (fn tmpR =>
-    	           I.ANDPD {src=src, dst=I.FDirect tmpR})
-
     	         | I.FBINOP {binOp, src, dst} => binOpWithTmp (fn tmpR =>
 		   I.FBINOP {binOp=binOp, src=src, dst=tmpR})
      	         | I.FSQRTS {dst, src} => withTmp (fn tmpR =>
@@ -560,6 +545,8 @@ functor AMD64SpillInstr (
 		            dst=operand (dst, tmp)})
 		 | I.FCOM {comOp, dst, src} => withTmpAvail (fn tmp =>
 		   I.FCOM {comOp=comOp, dst=dst, src=operand (src, tmp)})
+		 | I.FBINOP {binOp, dst, src} => withTmpAvail (fn tmp =>
+                   I.FBINOP {binOp=binOp, dst=dst, src=operand (src, tmp)})
 		 | _ => error "reloadR"
               (* end case *))
             end (* reload *)
@@ -580,11 +567,6 @@ functor AMD64SpillInstr (
                 if CB.sameColor (r, r') then spillLoc else opnd
               | replace opnd = opnd
             val (sz, fmvOp) = fmvInstr instr
-            fun bitOp (bOp, src, dst as I.FDirect dstR) =  if CB.sameColor (r, dstR)
- 	        then {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=dst},
-			    mark (bOp {src=src, dst=dst}, an)], 
-		      proh=[], newReg=NONE}
-		else {code=[mark (bOp {src=replace src, dst=dst}, an)], proh=[], newReg=NONE}
             in
               (case instr
                 of I.FMOVE {fmvOp, src, dst=dst as I.FDirect _} =>
@@ -599,27 +581,13 @@ functor AMD64SpillInstr (
                             mark (I.FMOVE {fmvOp=fmvOp, src=tmp, dst=dst}, an)],
                       proh=[tmpR], newReg=SOME tmpR}
                    end
-		 | I.XORPS {src, dst=dst as I.FDirect dstR} => bitOp (I.XORPS, src, dst)
-		 | I.XORPD {src, dst=dst as I.FDirect dstR} => bitOp (I.XORPD, src, dst)
 
-		 | I.ORPS {src, dst=dst as I.FDirect dstR} => bitOp (I.ORPS, src, dst)
-		 | I.ORPD {src, dst=dst as I.FDirect dstR} => bitOp (I.ORPD, src, dst)
+                 | I.FBINOP {binOp, src, dst} => if CB.sameColor (r, dst)
+ 	           then {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=I.FDirect dst},
+			       mark (I.FBINOP {binOp=binOp, src=src, dst=dst}, an)], 
+		         proh=[], newReg=NONE}
+		   else {code=[mark (I.FBINOP {binOp=binOp, src=replace src, dst=dst}, an)], proh=[], newReg=NONE}
 
-		 | I.ANDPS {src, dst=dst as I.FDirect dstR} => bitOp (I.ANDPS, src, dst)
-		 | I.ANDPD {src, dst=dst as I.FDirect dstR} => bitOp (I.ANDPD, src, dst)
-
-                 | I.FBINOP {binOp, src, dst} => if CB.sameColor (r, src)
-                   then let
-                     val tmpR = newFreg ()
-                     val tmp = I.FDirect tmpR
-                     in
-                       {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=tmp},
-                              mark (I.FBINOP {binOp=binOp, src=tmpR, dst=dst}, an)],
-                        proh=[tmpR], newReg=SOME tmpR}
-                     end
-                   else {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=I.FDirect dst},
-                            mark (I.FBINOP {binOp=binOp, src=src, dst=dst}, an)],
-			 proh=[], newReg=NONE}
                  | I.FCOM {comOp, src, dst} => let
                    val tmpR = newFreg ()
                    val tmp = I.FDirect tmpR

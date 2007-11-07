@@ -187,6 +187,12 @@ sig
    | MULSD
    | DIVSS
    | DIVSD
+   | XORPS
+   | XORPD
+   | ANDPS
+   | ANDPD
+   | ORPS
+   | ORPD
    datatype fcom_op =
      COMISS
    | COMISD
@@ -257,16 +263,10 @@ sig
    | CDQ
    | INTO
    | FMOVE of {fmvOp:fmove_op, dst:operand, src:operand}
-   | FBINOP of {binOp:fbin_op, dst:CellsBasis.cell, src:CellsBasis.cell}
+   | FBINOP of {binOp:fbin_op, dst:CellsBasis.cell, src:operand}
    | FCOM of {comOp:fcom_op, dst:CellsBasis.cell, src:operand}
    | FSQRTS of {dst:operand, src:operand}
    | FSQRTD of {dst:operand, src:operand}
-   | XORPS of {dst:operand, src:operand}
-   | XORPD of {dst:operand, src:operand}
-   | ORPS of {dst:operand, src:operand}
-   | ORPD of {dst:operand, src:operand}
-   | ANDPS of {dst:operand, src:operand}
-   | ANDPD of {dst:operand, src:operand}
    | SAHF
    | LAHF
    | SOURCE of {}
@@ -325,16 +325,10 @@ sig
    val cdq : instruction
    val into : instruction
    val fmove : {fmvOp:fmove_op, dst:operand, src:operand} -> instruction
-   val fbinop : {binOp:fbin_op, dst:CellsBasis.cell, src:CellsBasis.cell} -> instruction
+   val fbinop : {binOp:fbin_op, dst:CellsBasis.cell, src:operand} -> instruction
    val fcom : {comOp:fcom_op, dst:CellsBasis.cell, src:operand} -> instruction
    val fsqrts : {dst:operand, src:operand} -> instruction
    val fsqrtd : {dst:operand, src:operand} -> instruction
-   val xorps : {dst:operand, src:operand} -> instruction
-   val xorpd : {dst:operand, src:operand} -> instruction
-   val orps : {dst:operand, src:operand} -> instruction
-   val orpd : {dst:operand, src:operand} -> instruction
-   val andps : {dst:operand, src:operand} -> instruction
-   val andpd : {dst:operand, src:operand} -> instruction
    val sahf : instruction
    val lahf : instruction
    val source : {} -> instruction
@@ -523,6 +517,12 @@ struct
    | MULSD
    | DIVSS
    | DIVSD
+   | XORPS
+   | XORPD
+   | ANDPS
+   | ANDPD
+   | ORPS
+   | ORPD
    datatype fcom_op =
      COMISS
    | COMISD
@@ -593,16 +593,10 @@ struct
    | CDQ
    | INTO
    | FMOVE of {fmvOp:fmove_op, dst:operand, src:operand}
-   | FBINOP of {binOp:fbin_op, dst:CellsBasis.cell, src:CellsBasis.cell}
+   | FBINOP of {binOp:fbin_op, dst:CellsBasis.cell, src:operand}
    | FCOM of {comOp:fcom_op, dst:CellsBasis.cell, src:operand}
    | FSQRTS of {dst:operand, src:operand}
    | FSQRTD of {dst:operand, src:operand}
-   | XORPS of {dst:operand, src:operand}
-   | XORPD of {dst:operand, src:operand}
-   | ORPS of {dst:operand, src:operand}
-   | ORPD of {dst:operand, src:operand}
-   | ANDPS of {dst:operand, src:operand}
-   | ANDPD of {dst:operand, src:operand}
    | SAHF
    | LAHF
    | SOURCE of {}
@@ -663,12 +657,6 @@ struct
    and fcom = INSTR o FCOM
    and fsqrts = INSTR o FSQRTS
    and fsqrtd = INSTR o FSQRTD
-   and xorps = INSTR o XORPS
-   and xorpd = INSTR o XORPD
-   and orps = INSTR o ORPS
-   and orpd = INSTR o ORPD
-   and andps = INSTR o ANDPS
-   and andpd = INSTR o ANDPD
    and sahf = INSTR SAHF
    and lahf = INSTR LAHF
    and source = INSTR o SOURCE

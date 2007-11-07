@@ -232,6 +232,12 @@ struct
      | asm_fbin_op (I.MULSD) = "mulsd"
      | asm_fbin_op (I.DIVSS) = "divss"
      | asm_fbin_op (I.DIVSD) = "divsd"
+     | asm_fbin_op (I.XORPS) = "xorps"
+     | asm_fbin_op (I.XORPD) = "xorpd"
+     | asm_fbin_op (I.ANDPS) = "andps"
+     | asm_fbin_op (I.ANDPD) = "andpd"
+     | asm_fbin_op (I.ORPS) = "orps"
+     | asm_fbin_op (I.ORPD) = "orpd"
    and emit_fbin_op x = emit (asm_fbin_op x)
    and asm_fcom_op (I.COMISS) = "comiss"
      | asm_fcom_op (I.COMISD) = "comisd"
@@ -260,23 +266,23 @@ struct
      | asm_isize (I.I64) = "64"
    and emit_isize x = emit (asm_isize x)
 
-(*#line 470.7 "amd64/amd64.mdl"*)
+(*#line 473.7 "amd64/amd64.mdl"*)
    fun emitInt32 i = 
        let 
-(*#line 470.29 "amd64/amd64.mdl"*)
+(*#line 473.29 "amd64/amd64.mdl"*)
            val s = Int32.toString i
 
-(*#line 471.10 "amd64/amd64.mdl"*)
+(*#line 474.10 "amd64/amd64.mdl"*)
            val s = (if (i >= 0)
                   then s
                   else ("-" ^ (String.substring (s, 1, (size s) - 1))))
        in emit s
        end
 
-(*#line 476.7 "amd64/amd64.mdl"*)
+(*#line 479.7 "amd64/amd64.mdl"*)
    val {low=SToffset, ...} = C.cellRange CellsBasis.FP
 
-(*#line 478.7 "amd64/amd64.mdl"*)
+(*#line 481.7 "amd64/amd64.mdl"*)
    fun emitScale 0 = emit "1"
      | emitScale 1 = emit "2"
      | emitScale 2 = emit "4"
@@ -327,23 +333,23 @@ struct
      | emit_disp (I.ImmedLabel lexp) = emit_labexp lexp
      | emit_disp _ = error "emit_disp"
 
-(*#line 522.7 "amd64/amd64.mdl"*)
+(*#line 525.7 "amd64/amd64.mdl"*)
    fun stupidGas (I.ImmedLabel lexp) = emit_labexp lexp
      | stupidGas opnd = 
        ( emit "*"; 
          emit_operand opnd )
 
-(*#line 526.7 "amd64/amd64.mdl"*)
+(*#line 529.7 "amd64/amd64.mdl"*)
    fun isMemOpnd (I.FDirect f) = true
      | isMemOpnd (I.LabelEA _) = true
      | isMemOpnd (I.Displace _) = true
      | isMemOpnd (I.Indexed _) = true
      | isMemOpnd _ = false
 
-(*#line 531.7 "amd64/amd64.mdl"*)
+(*#line 534.7 "amd64/amd64.mdl"*)
    fun chop fbinOp = 
        let 
-(*#line 532.15 "amd64/amd64.mdl"*)
+(*#line 535.15 "amd64/amd64.mdl"*)
            val n = size fbinOp
        in 
           (case Char.toLower (String.sub (fbinOp, n - 1)) of
@@ -352,34 +358,34 @@ struct
           )
        end
 
-(*#line 538.7 "amd64/amd64.mdl"*)
+(*#line 541.7 "amd64/amd64.mdl"*)
    val emit_dst = emit_operand
 
-(*#line 539.7 "amd64/amd64.mdl"*)
+(*#line 542.7 "amd64/amd64.mdl"*)
    val emit_src = emit_operand
 
-(*#line 540.7 "amd64/amd64.mdl"*)
+(*#line 543.7 "amd64/amd64.mdl"*)
    val emit_opnd = emit_operand
 
-(*#line 541.7 "amd64/amd64.mdl"*)
+(*#line 544.7 "amd64/amd64.mdl"*)
    val emit_opnd8 = emit_operand8
 
-(*#line 542.7 "amd64/amd64.mdl"*)
+(*#line 545.7 "amd64/amd64.mdl"*)
    val emit_rsrc = emit_operand
 
-(*#line 543.7 "amd64/amd64.mdl"*)
+(*#line 546.7 "amd64/amd64.mdl"*)
    val emit_lsrc = emit_operand
 
-(*#line 544.7 "amd64/amd64.mdl"*)
+(*#line 547.7 "amd64/amd64.mdl"*)
    val emit_addr = emit_operand
 
-(*#line 545.7 "amd64/amd64.mdl"*)
+(*#line 548.7 "amd64/amd64.mdl"*)
    val emit_src1 = emit_operand
 
-(*#line 546.7 "amd64/amd64.mdl"*)
+(*#line 549.7 "amd64/amd64.mdl"*)
    val emit_ea = emit_operand
 
-(*#line 547.7 "amd64/amd64.mdl"*)
+(*#line 550.7 "amd64/amd64.mdl"*)
    val emit_count = emit_operand
    fun emitInstr' instr = 
        (case instr of
@@ -640,7 +646,7 @@ struct
        | I.FBINOP{binOp, dst, src} => 
          ( emit_fbin_op binOp; 
            emit "\t "; 
-           emitCell src; 
+           emit_src src; 
            emit ", "; 
            emitCell dst )
        | I.FCOM{comOp, dst, src} => 
@@ -656,36 +662,6 @@ struct
            emit_dst dst )
        | I.FSQRTD{dst, src} => 
          ( emit "sqrtsd\t "; 
-           emit_src src; 
-           emit ", "; 
-           emit_dst dst )
-       | I.XORPS{dst, src} => 
-         ( emit "xorps\t "; 
-           emit_src src; 
-           emit ", "; 
-           emit_dst dst )
-       | I.XORPD{dst, src} => 
-         ( emit "xorpd\t "; 
-           emit_src src; 
-           emit ", "; 
-           emit_dst dst )
-       | I.ORPS{dst, src} => 
-         ( emit "orps\t "; 
-           emit_src src; 
-           emit ", "; 
-           emit_dst dst )
-       | I.ORPD{dst, src} => 
-         ( emit "orpd\t "; 
-           emit_src src; 
-           emit ", "; 
-           emit_dst dst )
-       | I.ANDPS{dst, src} => 
-         ( emit "andps\t "; 
-           emit_src src; 
-           emit ", "; 
-           emit_dst dst )
-       | I.ANDPD{dst, src} => 
-         ( emit "andpd\t "; 
            emit_src src; 
            emit ", "; 
            emit_dst dst )
