@@ -102,25 +102,32 @@ structure Date : DATE =
     fun isDst (DATE{isDst, ...}) = isDst
     fun offset (DATE{offset,...}) = offset
 
-  (* takes two tm's and returns the second tm with 
-   * its dst flag set to the first one's.
+  (* functionally updates a tm's dst flag.
    * Used to compute local offsets 
    *)
-    fun withDst dst (tm2 : tm) : tm=
-	  (#1 tm2, #2 tm2, #3 tm2, #4 tm2, #5 tm2, #6 tm2, #7 tm2, #8 tm2, dst)
+    fun withDst dst (tm : tm) : tm = {
+	    tm_sec = #tm_sec tm, 
+	    tm_min = #tm_min tm,
+	    tm_hour = #tm_hour tm,
+	    tm_mday = #tm_mday tm,
+	    tm_mon = #tm_mon tm,
+	    tm_year = #tm_year tm,
+	    tm_wday = #tm_wday tm,
+	    tm_yday = #tm_yday tm,
+	    tm_isdst = dst
+	  }
 
-    fun dstOf (tm : tm) = #9 tm
+    fun dstOf (tm : tm) = #tm_isdst tm
 
     fun localOffset' () = let
-	  val t = Int32.fromLarge (Time.toSeconds (Time.now ()))
-	  val t_as_utc_tm = gmTime' t
-	  val t_as_loc_tm = localTime' t
+          val t = Time.now()
+	  val t_as_utc_tm = gmTime t
+	  val t_as_loc_tm = localTime t
 	  val loc_dst = dstOf t_as_loc_tm
 	  val t_as_utc_tm' = withDst loc_dst t_as_utc_tm
 	  val t' = mkTime' t_as_utc_tm'
-	  val time = Time.fromSeconds o Int32.toLarge
-	  in
-	    (Time.- (time t', time t), loc_dst)
+          in
+	    (Time.- (Time.fromTime_t t', t), loc_dst)
 	  end
 
     val localOffset = #1 o localOffset'
@@ -200,26 +207,23 @@ structure Date : DATE =
 	      }
 	  end
 
-    fun toTM d = let
-	  val (DATE d) = canonicalizeDate d
-	  in (
-	    #second d,			(* tm_sec *)
-	    #minute d,			(* tm_min *)
-	    #hour d,			(* tm_hour *)
-	    #day d,			(* tm_mday *)
-	    monthToInt(#month d),	(* tm_mon *)
-	    #year d - baseYear,		(* tm_year *)
-	    dayToInt(#wday d),		(* tm_wday *)
-	    #yday d,			(* tm_yday *)
-	    case (#isDst d)		(* tm_isdst *)
-	     of NONE => ~1
-	      | (SOME false) => 0
-	      | (SOME true) => 1
-	    (* end case *)
-	  ) end
+    fun toTM (DATE d) = {
+	    tm_sec = #second d,
+	    tm_min = #minute d,		
+	    tm_hour = #hour d,	
+	    tm_mday = #day d,
+	    tm_mon = monthToInt(#month d),
+	    tm_year = #year d - baseYear,
+	    tm_wday = dayToInt(#wday d),
+	    tm_yday = #yday d,
+	    tm_isdst = case (#isDst d)
+			of NONE => ~1
+			 | (SOME false) => 0
+			 | (SOME true) => 1
+	  }
 
-    fun fromTM (tm_sec, tm_min, tm_hour, tm_mday, tm_mon,
-		tm_year, tm_wday, tm_yday, tm_isdst) offset =
+    fun fromTM {tm_sec, tm_min, tm_hour, tm_mday, tm_mon,
+		tm_year, tm_wday, tm_yday, tm_isdst} offset =
 	  DATE{
 	      year = baseYear + tm_year,
 	      month = InlineT.PolyVector.sub (monthTbl, tm_mon),
@@ -232,7 +236,6 @@ structure Date : DATE =
 	      isDst = if (tm_isdst < 0) then NONE else SOME(tm_isdst <> 0),
 	      offset = offset
 	    }
-
 
     fun fromTimeLocal t = fromTM (localTime t) NONE
 
