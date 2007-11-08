@@ -1,6 +1,7 @@
-(* text-io-fn.sml
+(* text-io.sml
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2007 Fellowship of SML/NJ
  *
  * QUESTION: what operations should raise exceptions when the stream is
  * closed?
@@ -11,20 +12,9 @@ local
     structure Int = IntImp
     structure OS = OSImp
 in
-functor TextIOFn (
+structure TextIO : TEXT_IO = struct
 
-    structure OSPrimIO : sig
-        include OS_PRIM_IO
-	val stdIn   : unit -> PrimIO.reader
-	val stdOut  : unit -> PrimIO.writer
-	val stdErr  : unit -> PrimIO.writer
-	val strReader : string -> PrimIO.reader
-      end
-      where PrimIO = TextPrimIO
-
-  ) : TEXT_IO = struct
-
-    structure PIO = OSPrimIO.PrimIO
+    structure PIO = TextPrimIO
     structure A = CharArray
     structure V = CharVector
     structure AS = CharArraySlice
@@ -779,16 +769,16 @@ functor TextIOFn (
 
   (** Open files **)
     fun openIn fname =
-	  mkInstream(StreamIO.mkInstream(OSPrimIO.openRd fname, empty))
+	  mkInstream(StreamIO.mkInstream(PIO.openRd fname, empty))
 	    handle ex => raise IO.Io{function="openIn", name=fname, cause=ex}
     fun openOut fname = let
-	  val wr = OSPrimIO.openWr fname
+	  val wr = PIO.openWr fname
 	  in
 	    mkOutstream (StreamIO.mkOutstream (wr, bufferMode wr))
 	  end
 	    handle ex => raise IO.Io{function="openOut", name=fname, cause=ex}
     fun openAppend fname =
-	  mkOutstream(StreamIO.mkOutstream(OSPrimIO.openApp fname, IO.NO_BUF))
+	  mkOutstream(StreamIO.mkOutstream(PIO.openApp fname, IO.NO_BUF))
 	    handle ex => raise IO.Io{function="openAppend", name=fname, cause=ex}
 
   (** Text stream specific operations **)
@@ -796,7 +786,7 @@ functor TextIOFn (
 	Option.map (fn (v, s) => (strm := s; v)) (StreamIO.inputLine (!strm))
     fun outputSubstr (strm, ss) = StreamIO.outputSubstr (!strm, ss)
     fun openString src =
-	  mkInstream(StreamIO.mkInstream(OSPrimIO.strReader src, empty))
+	  mkInstream(StreamIO.mkInstream(PIO.strReader src, empty))
 	    handle ex => raise IO.Io{function="openIn", name="<string>", cause=ex}
 
   (* the standard streams *)
@@ -804,7 +794,7 @@ functor TextIOFn (
       structure SIO = StreamIO
       fun mkStdIn () = let
 	    val (strm as SIO.ISTRM(SIO.IBUF{info=SIO.INFO{cleanTag, ...}, ...}, _)) =
-		  SIO.mkInstream(OSPrimIO.stdIn(), empty)
+		  SIO.mkInstream(PIO.stdIn(), empty)
 	    in
 	      CleanIO.rebindCleaner (cleanTag, {
 		  init = fn () => (),
@@ -814,7 +804,7 @@ functor TextIOFn (
 	      strm
 	    end
       fun mkStdOut () = let
-	    val wr = OSPrimIO.stdOut()
+	    val wr = PIO.stdOut()
 	    val (strm as SIO.OSTRM{cleanTag, ...}) =
 		  SIO.mkOutstream(wr, bufferMode wr)
 	    in
@@ -827,7 +817,7 @@ functor TextIOFn (
 	    end
       fun mkStdErr () = let
 	    val (strm as SIO.OSTRM{cleanTag, ...}) =
-		  SIO.mkOutstream(OSPrimIO.stdErr(), IO.NO_BUF)
+		  SIO.mkOutstream(PIO.stdErr(), IO.NO_BUF)
 	    in
 	      CleanIO.rebindCleaner (cleanTag, {
 		 init = fn () => (),
@@ -866,6 +856,6 @@ functor TextIOFn (
 	    doit
 	  end
 
-  end (* TextIOFn *)
+  end (* TextIO *)
 end
 

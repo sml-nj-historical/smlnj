@@ -1,6 +1,7 @@
-(* bin-io-fn.sml
+(* bin-io.sml
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2007 Fellowship of SML/NJ
  *
  * QUESTION: what operations should raise exceptions when the stream is
  * closed?
@@ -11,14 +12,9 @@ local
     structure Int = IntImp
     structure Position = PositionImp
 in
-functor BinIOFn (
+structure BinIO : BIN_IO = struct
 
-    structure OSPrimIO : OS_PRIM_IO
-      where PrimIO = BinPrimIO
-
-  ) : BIN_IO = struct
-
-    structure PIO = OSPrimIO.PrimIO
+    structure PIO = BinPrimIO
     structure A = Word8Array
     structure AS = Word8ArraySlice
     structure V = Word8Vector
@@ -613,13 +609,13 @@ functor BinIOFn (
 
   (** Open files **)
     fun openIn fname =
-	  mkInstream(StreamIO.mkInstream(OSPrimIO.openRd fname, empty))
+	  mkInstream(StreamIO.mkInstream(PIO.openRd fname, empty))
 	    handle ex => raise IO.Io{function="openIn", name=fname, cause=ex}
     fun openOut fname =
-	  mkOutstream(StreamIO.mkOutstream(OSPrimIO.openWr fname, IO.BLOCK_BUF))
+	  mkOutstream(StreamIO.mkOutstream(PIO.openWr fname, IO.BLOCK_BUF))
 	    handle ex => raise IO.Io{function="openOut", name=fname, cause=ex}
     fun openAppend fname =
-	  mkOutstream(StreamIO.mkOutstream(OSPrimIO.openApp fname, IO.NO_BUF))
+	  mkOutstream(StreamIO.mkOutstream(PIO.openApp fname, IO.NO_BUF))
 	    handle ex => raise IO.Io{function="openAppend", name=fname, cause=ex}
 
   end (* BinIOFn *)

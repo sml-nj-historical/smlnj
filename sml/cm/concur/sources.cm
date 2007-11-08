@@ -11,11 +11,15 @@
 Group is
 	concur.sml
 	servers.sig
+(**** to be added later ****
 # if defined (OPSYS_UNIX)
 	unix-servers.sml
 # else
+*)
 	dummy-servers.sml
+(**** to be added later ****
 # endif
+*)
 	../util/sources.cm
 	$smlnj/basis/basis.cm
 	$smlnj/internal/srcpath-lib.cm
