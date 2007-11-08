@@ -1,0 +1,84 @@
+/* smlnj-runtime.idl
+ *
+ * COPYRIGHT (c) 2001 Bell Labs, Lucent Technologies.
+ *
+ * This file is a ML-IDL specification of the SML/NJ run-time
+ * interfaces that are callable by SML.
+ */
+
+sml_structure ("SMLNJRuntime");
+sml_signature ("SMLNJ_RUNTIME");
+clib_name ("SMLNJRuntime");
+
+/******************** Useful IDL types ********************/
+
+typedef [string] char* idl_string;
+
+/******************** Common SML types ********************/
+
+typedef [sml_type ("Word8Vector.vector")] sml_value ML_word8vec_t;
+typedef [sml_type ("Word8Vector.vector option")] sml_value ML_word8vec_opt_t;
+typedef [sml_type ("Word8Array.array")] sml_value ML_word8arr_t;
+typedef [sml_type ("CharVector.vector")] sml_value ML_charvec_t;
+typedef [sml_type ("CharVector.vector option")] sml_value ML_charvec_opt_t;
+typedef [sml_type ("CharArray.array")] sml_value ML_chararr_t;
+typedef [sml_type ("unit")] sml_value ML_unit_t;
+typedef [sml_type ("bool")] sml_value ML_bool_t;
+typedef [sml_type ("int")] sml_value ML_int_t;
+typedef [sml_type ("Int32.int")] sml_value ML_int32_t;
+typedef [sml_type ("string")] sml_value ML_string_t;
+typedef [sml_type ("string option")] sml_value ML_string_opt_t;
+typedef [sml_type ("string list")] sml_value ML_string_list_t;
+typedef [sml_type ("int option")] sml_value ML_int_opt_t;
+typedef [sml_type ("word array option")] sml_value ML_word_arr_opt_t;
+typedef [sml_type ("int array option")] sml_value ML_int_arr_opt_t;
+typedef [sml_type ("(Int32.int * int) option")] sml_value ML_int_pair_opt_t;
+typedef [sml_type ("(string * int ref) list")] sml_value ML_string_intref_list_t;
+typedef [sml_type ("CInterface.system_const")] sml_value ML_sysconst_t;
+typedef [sml_type ("CInterface.system_const list")] sml_value ML_sysconst_list_t;
+typedef [sml_type ("CInterface.system_const list option")] sml_value ML_sysconst_list_opt_t;
+typedef [sml_type ("Unsafe.Object.object")] sml_value ML_object_t;
+typedef [sml_type ("Unsafe.Object.object Vector.vector")] sml_value ML_objectvec_t;
+typedef [sml_type ("Unsafe.Object.object -> Unsafe.Object.object")] sml_value ML_object_object_fn_t;
+
+/******************** Code objects ********************/
+//getCodeName
+[sml_context] ML_word8arr_t allocCode([in] sml_int nbytes);
+//flushCache
+[sml_context] ML_object_object_fn_t mkExec([in] ML_word8arr_t code, [in] sml_int entrypoint);
+[sml_context] ML_objectvec_t mkLiterals([in] ML_word8vec_t arg);
+
+/******************** Profiling ********************/
+[sml_context] void setTimer([in] ML_bool_t sts);
+sml_int getQuantum();
+[sml_context] void setTimeArray([in] ML_int_arr_opt_t prof_cnt_array);
+
+/******************** Interval timers ********************/
+[sml_context] void intervalTick([out, ref] ML_int32_t *a, [out, ref] sml_int *b);
+[sml_context] void setIntTimer([in] ML_int_pair_opt_t itv);
+
+/******************** Heap export ********************/
+// [sml_context] void exportFn
+[sml_context] ML_bool_t exportHeap([in] string fname);
+
+/******************** Signals ********************/
+[sml_context] ML_sysconst_list_t listSignals();
+[sml_context] sml_int getSigState([in] ML_sysconst_t sc);
+[sml_context] void setSigState([in] ML_sysconst_t sc, [in] sml_int i);
+[sml_context] ML_sysconst_list_opt_t getSigMask();
+[sml_context] void setSigMask([in] ML_sysconst_list_opt_t m);
+[sml_context] void pauseUntilSig();
+
+/******************** Misc. ********************/
+[sml_context] ML_string_list_t rawArgv ();
+void shiftArgv();
+[sml_context] ML_string_opt_t sysInfo([in] string name);
+[sml_context] void gcControl([in] ML_string_intref_list_t cmds);
+[sml_context] void debug([in] string s);
+
+void dummy([in] string s);
+
+[sml_context] ML_object_t recordConcat([in] ML_object_t rec1, [in] ML_object_t rec2);
+[sml_context] ML_object_t record1([in] ML_object_t obj);
+[sml_context] ML_object_t blastIn([in] string s);
+[sml_context] ML_word8vec_t blastOut([in] ML_object_t obj);

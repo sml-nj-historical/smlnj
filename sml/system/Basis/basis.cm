@@ -153,6 +153,7 @@ Library
 	structure SMLofNJ
 	structure Lazy
 
+(**** to be added later ****
 #if defined(OPSYS_UNIX) orelse defined(OPSYS_WIN32)
 	(* Sockets (common part) *)
 	signature NET_HOST_DB
@@ -208,6 +209,7 @@ Library
 
 	structure Win32
 #endif
+*)
 
 is
 	Implementation/sources.cm
@@ -246,6 +248,8 @@ is
 
 	Exports/smlnj.sml
 
+(**** to be added later ****
 #if defined(OPSYS_UNIX) orelse defined(OPSYS_WIN32)
 	Exports/socket.sml
 #endif
+*)

@@ -151,6 +151,7 @@ Group
 	structure Susp
 	structure Lazy
 
+(**** To be added later ****
 #if defined(OPSYS_UNIX) orelse defined(OPSYS_WIN32)
 	(* Sockets (common part) *)
 	signature NET_HOST_DB
@@ -169,7 +170,9 @@ Group
 	structure SocketImp
 	structure INetSock
 #endif
+*)
 
+(**** To be added later ****
 #if defined(OPSYS_UNIX)
 	(* Posix *)
 	signature POSIX_ERROR
@@ -206,11 +209,17 @@ Group
 
 	structure Win32
 #endif
+*)
 
 is
 	$smlnj/init/init.cmi : cm
 
 	../TypesOnly/sources.cm
+
+        RuntimeIDL/sml-basis-sig.sml
+        RuntimeIDL/sml-basis.sml
+	RuntimeIDL/smlnj-runtime-sig.sml
+	RuntimeIDL/smlnj-runtime.sml
 
 	NJ/cleanup.sig
 	NJ/cleanup.sml
@@ -261,6 +270,11 @@ is
 	OS/os-io.sig
 	OS/at-exit.sml
 	OS/os-path-fn.sml
+	OS/os-filesys.sml
+	OS/os-process.sml
+	OS/os-io.sml
+	OS/pre-os.sml
+	OS/os.sml
 
 	pre-basis.sml
 	pre-string.sml
@@ -378,6 +392,7 @@ is
 	bit-flags.sig
 	bit-flags-fn.sml
 
+(**** To be added later ****
 #if defined(OPSYS_UNIX)
 	Unix/pre-os.sml
 	Posix/posix-prelude.sml
@@ -445,6 +460,15 @@ is
 #else
 # error OS not supported for this system
 #endif
+*)
+
+#if defined(OPSYS_UNIX)
+	Unix/os-path.sml
+#elif defined (OPSYS_WIN32)
+	Win32/os-path.sml
+#else
+# error OS not supported for this system
+#endif
 
 	pack-word.sig
 	pack-word-b16.sml
@@ -456,7 +480,9 @@ is
 
 	IO/prim-io.sig
 	IO/prim-io-fn.sml
+	IO/bin-prim-io.sig
 	IO/bin-prim-io.sml
+	IO/text-prim-io.sig
 	IO/text-prim-io.sml
 	IO/io.sig
 	IO/io.sml
@@ -465,11 +491,11 @@ is
 	IO/text-stream-io.sig
 	IO/imperative-io.sig
 	IO/bin-io.sig
+	IO/bin-io.sml
+	IO/text-io.sml
 	IO/text-io.sig
-	IO/os-prim-io.sig
-	IO/bin-io-fn.sml
-	IO/text-io-fn.sml
 
+(**** To be added later ****
 #if defined(OPSYS_UNIX) orelse defined(OPSYS_WIN32)
 	Sockets/pre-sock.sml
 	Sockets/prot-db.sig
@@ -496,3 +522,4 @@ is
 	Sockets/win32-generic-sock.sml
 	Sockets/win32-details.sml
 #endif
+*)
