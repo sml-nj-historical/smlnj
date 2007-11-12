@@ -15,6 +15,12 @@ Description:
 
 ----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/11/12
+Description:
+
+Ensure that the size of the allocation space is at least 128K.
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2007/11/05
 Description:
 
