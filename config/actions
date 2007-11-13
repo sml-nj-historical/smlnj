@@ -1,0 +1,124 @@
+#
+# This file describes the actions to be taken when installing a "module".
+# See base/system/smlnj/installer/generic-install.sml for how this file
+# is to be interpreted.
+#
+# (C) 2006 The Fellowship of SML/NJ
+#
+# Each action is on a single line and has one of the following forms:
+#
+#	<module> lib <a> <r> <d>
+#	<module> lib <a> <r> <d> <aa>
+#	<module> ulib <a> <r> <d>
+#	<module> ulib <a> <r> <d> <aa>
+#	<module> anchor <a> <p>
+#	<module> libanchor <a> <p>
+#	<module> prog ...
+#	<module> dprog ...
+#	<module> src
+#
+
+# modules that don't require installer actions other than
+# unpacking their respectivesource trees:
+runtime	    	src
+compiler	src
+smlnj-c		src
+cm		src
+system		src
+
+# Components of the SML/NJ library:
+#    (unix-lib.cm is installed only on Unix-like systems)
+smlnj-lib ulib unix-lib.cm      unix-lib.cm      smlnj-lib/Unix
+smlnj-lib  lib inet-lib.cm      inet-lib.cm      smlnj-lib/INet
+smlnj-lib  lib regexp-lib.cm    regexp-lib.cm    smlnj-lib/RegExp
+smlnj-lib  lib reactive-lib.cm  reactive-lib.cm  smlnj-lib/Reactive
+smlnj-lib  lib hash-cons-lib.cm hash-cons-lib.cm smlnj-lib/HashCons
+
+# Concurrent ML:
+cml lib cml core-cml.cm     cml/src
+cml lib cml cml-internal.cm cml/src
+cml lib cml cml.cm          cml/src
+cml lib cml basis.cm        cml/src
+
+# Concurrent ML support libraries:
+cml-lib lib cml-lib      trace-cml.cm cml/cml-lib/cm-descr
+cml-lib lib cml-lib      smlnj-lib.cm cml/cml-lib/cm-descr
+
+# eXene toolkit:
+eXene lib eXene.cm eXene.cm eXene
+
+# C Kit:
+ckit lib ckit-lib.cm ckit-lib.cm ckit/src
+
+# NLFFI foreign function interface library
+ml-nlffi-lib lib c memory/memory.cm   nlffi/lib
+ml-nlffi-lib lib c internals/c-int.cm nlffi/lib
+ml-nlffi-lib lib c c.cm               nlffi/lib
+
+# portable dependency graph library:
+pgraph-util lib pgraph-util.cm pgraph-util.cm pgraph
+
+# tracing/debugging/profiling:
+tdp-util lib smlnj-tdp plugins.cm trace-debug-profile
+tdp-util lib smlnj-tdp back-trace.cm trace-debug-profile
+tdp-util lib smlnj-tdp coverage.cm trace-debug-profile
+
+# MLRISC libraries (those that are not already included in the compiler):
+mlrisc libanchor Control.cm SMLNJ-MLRISC
+mlrisc libanchor Lib.cm     SMLNJ-MLRISC
+mlrisc libanchor Visual.cm  SMLNJ-MLRISC
+mlrisc libanchor MLRISC.cm  SMLNJ-MLRISC
+mlrisc libanchor MLTREE.cm  SMLNJ-MLRISC
+mlrisc libanchor Graphs.cm  SMLNJ-MLRISC
+mlrisc libanchor IA32.cm    SMLNJ-MLRISC
+mlrisc libanchor AMD64.cm   SMLNJ-MLRISC
+mlrisc libanchor SA.cm	    SMLNJ-MLRSIC
+mlrisc anchor Peephole.cm MLRISC/cm
+mlrisc lib OTHER-MLRISC RA.cm            MLRISC/cm SMLNJ-MLRISC
+mlrisc lib OTHER-MLRISC Peephole.cm      MLRISC/cm SMLNJ-MLRISC
+mlrisc lib OTHER-MLRISC IA32-Peephole.cm MLRISC/cm SMLNJ-MLRISC
+mlrisc lib OTHER-MLRISC AMD64-Peephole.cm MLRISC/cm SMLNJ-MLRISC
+
+# libraries supporting MLRISC tools:
+mlrisc-tools lib mlrisc-tools pp.cm             MLRISC/Tools
+mlrisc-tools lib mlrisc-tools source-map.cm     MLRISC/Tools
+mlrisc-tools lib mlrisc-tools sml-ast.cm        MLRISC/Tools
+mlrisc-tools lib mlrisc-tools prec-parser.cm    MLRISC/Tools
+mlrisc-tools lib mlrisc-tools parser.cm         MLRISC/Tools
+mlrisc-tools lib mlrisc-tools match-compiler.cm MLRISC/Tools
+
+# old lexer generator:
+ml-lex     	   prog
+ml-lex-mllex-tool  lib   mllex-tool.cm mllex-tool.cm ml-lex/tool
+ml-lex-lex-ext	   lib   lex-ext.cm    lex-ext.cm    ml-lex/tool
+
+# LALR(1) parser generator:
+ml-yacc            prog  ml-yacc src
+ml-yacc   	   lib   mlyacc-tool.cm mlyacc-tool.cm ml-yacc/tool
+ml-yacc-grm-ext    lib   grm-ext.cm     grm-ext.cm     ml-yacc/tool
+
+# new (unicode-capable) lexer generator:
+ml-ulex    	   dprog ml-ulex - ml-lpt/ml-ulex
+ml-ulex	   	   lib 	 ml-ulex-tool.cm ml-ulex-tool.cm ml-lpt/ml-ulex/tool
+ml-ulex-mllex-tool lib 	 mllex-tool.cm   mllex-tool.cm   ml-lpt/ml-ulex/tool
+ml-ulex-lex-ext    lib 	 lex-ext.cm      lex-ext.cm      ml-lpt/ml-ulex/tool
+
+# LL(k) parser generator:
+ml-antlr           dprog ml-antlr - ml-lpt/ml-antlr
+ml-antlr   	   lib 	 ml-antlr-tool.cm ml-antlr-tool.cm ml-lpt/ml-antlr/tool
+ml-antlr-grm-ext   lib 	 grm-ext.cm       grm-ext.cm       ml-lpt/ml-antlr/tool
+
+# support library for ml-ulex and ml-antlr:
+ml-lpt-lib 	   lib 	 ml-lpt-lib.cm ml-lpt-lib.cm ml-lpt/lib
+
+# bottom-up rewrite code generator generator:
+ml-burg    	   prog
+ml-burg		   lib	 mlburg-tool.cm mlburg-tool.cm ml-burg/tool
+ml-burg		   lib 	 burg-ext.cm    burg-ext.cm    ml-burg/tool
+
+# utility program for use by heap2exec:
+heap2asm   prog
+
+# NLFFI foreign function interface generator:
+ml-nlffigen dprog ml-nlffigen - nlffi/gen
+nowhere     dprog nowhere - MLRISC/Tools/nowhere

@@ -1,0 +1,118 @@
+(*
+ * Library exporting "visible" compilers for all architectures.
+ *
+ *  (C) 2001, Lucent Technologies, Bell Labs
+ *
+ * author: Matthias Blume (blume@research.bell-labs.com)
+ *)
+Library
+	(* signatures *)
+	signature STATS
+	signature CONTROL
+	signature SOURCE
+	signature SOURCE_MAP
+	signature ERRORMSG
+	signature SYMBOL
+	signature SYMPATH
+	signature PERSSTAMPS
+	signature STATICENV
+	signature DYNAMICENV
+	signature SYMENV
+	signature ENVIRONMENT
+	signature ENVREF	
+	signature MODULE_ID
+	signature PICKMOD
+	signature UNPICKMOD
+	signature PRETTYPRINT
+	signature AST
+	signature ABSYN
+	signature SMLFILE
+	signature BINFILE
+	signature FLINT
+
+	(* frontend stuff *)
+	structure Stats
+	structure Control
+	structure Source
+	structure SourceMap
+	structure ErrorMsg
+	structure Symbol
+	structure SymPath
+	structure PersStamps
+	structure StaticEnv
+	structure DynamicEnv
+	structure SymbolicEnv
+	structure Environment
+	structure EnvRef	
+	structure ModuleId
+	structure GenModIdMap
+	structure PickMod
+	structure UnpickMod
+	structure Rehash
+	structure PickleSymPid
+	structure UnpickleSymPid
+	structure PrettyPrint
+	structure CompilerPPTable
+	structure Ast
+	structure Absyn
+	structure SmlFile
+	structure Binfile
+	structure PrintHooks
+	structure SMLNJVersion
+	structure CompInfo
+	structure CompileExn
+	structure CoreSym
+	structure FLINT
+
+	(* backends *)
+	structure Alpha32Backend
+	structure HppaBackend
+	structure PPCBackend
+	structure SparcBackend
+	structure X86StdCallBackend
+	structure X86CCallBackend
+(*
+	structure X86IntelMacBackend
+*)
+(*
+	structure MipsLittleBackend
+	structure MipsBigBackend
+	structure RS6000Backend
+*)
+
+	(* bootstrap (cross-)compilers *)
+	structure Alpha32UnixCMB
+	structure HppaUnixCMB
+	structure PPCMacOSCMB
+	structure PPCUnixCMB
+	structure SparcUnixCMB
+	structure X86UnixCMB
+	structure X86Win32CMB
+(*
+	structure X86IntelMacCMB
+*)
+(*
+	structure MipsLittleUnixCMB
+	structure MipsBigUnixCMB
+	structure RS6000UnixCMB
+
+*)
+is
+	$smlnj/compiler/alpha32.cm
+	$smlnj/compiler/hppa.cm
+	$smlnj/compiler/ppc.cm
+	$smlnj/compiler/sparc.cm
+	$smlnj/compiler/x86.cm
+	$smlnj/compiler/amd64.cm
+
+	$smlnj/cmb/alpha32-unix.cm
+	$smlnj/cmb/hppa-unix.cm
+	$smlnj/cmb/ppc-macos.cm
+	$smlnj/cmb/ppc-unix.cm
+	$smlnj/cmb/sparc-unix.cm
+	$smlnj/cmb/x86-unix.cm
+	$smlnj/cmb/x86-win32.cm
+	$smlnj/cmb/amd64-unix.cm
+(*
+	$smlnj/cmb/x86-intelmac.cm
+*)
