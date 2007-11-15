@@ -712,3 +712,27 @@ Sending        system/smlnj/init/built-in.sml
 Sending        system/smlnj/installer/generic-install.sml
 Transmitting file data ...........................
 Committed revision 2742.
+
+======================================================================
+11.merge from trunk working copy to primop3 (2741:2881)
+
+elpis:~/wc/smlnj/primop3-raw/base gkuan$ date
+Thu Nov 15 15:30:59 CST 2007
+elpis:~/wc/smlnj/primop3-raw/base gkuan$ svn up
+At revision 2881.
+elpis:~/wc/smlnj/primop3-raw/base gkuan$ svn merge -r 2741:HEAD  svn://smlnj-gforge.cs.uchicago.edu/smlnj/sml/trunk
+A    READMES/110.64-README.html
+A    READMES/110.65-README.html
+A    READMES/110.67-README.html
+U    runtime/include/ml-limits.h
+U    runtime/c-libs/win32-io/win32-io.c
+U    runtime/c-libs/win32-raise-syserr.c
+U    runtime/gc/init-gc.c
+U    runtime/objs/mk.ppc-darwin
+U    runtime/objs/mk.x86-darwin
+U    NOTES/HISTORY
+U    NOTES/WININSTALL
+U    compiler/Elaborator/elaborate/elabmod.sml
+U    compiler/CodeGen/amd64/amd64CG.sml
+U    compiler/FLINT/plambda/flintnm.sml
+elpis:~/wc/smlnj/primop3-raw/base gkuan$ svn ci -m "merge from trunk into primop-branch-3 (2741:2881)"

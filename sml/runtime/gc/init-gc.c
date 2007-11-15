@@ -83,6 +83,11 @@ heap_params_t *ParseHeapParams (char **argv)
 		    errFlg = TRUE;
 		    Error ("bad argument for \"@SMLalloc\" option\n");
 		}
+		if (params->allocSz < MIN_ALLOC_SZB) {
+		    Error ("argument for \"@SMLalloc\" option too small; using %dk\n",
+			MIN_ALLOC_SZB/ONE_K);
+		    params->allocSz = MIN_ALLOC_SZB;
+		}
 	    }
 	    else if (MATCH("ngens")) {
 		CHECK("ngens");
