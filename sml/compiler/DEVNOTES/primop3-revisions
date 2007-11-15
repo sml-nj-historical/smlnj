@@ -736,3 +736,20 @@ U    compiler/Elaborator/elaborate/elabmod.sml
 U    compiler/CodeGen/amd64/amd64CG.sml
 U    compiler/FLINT/plambda/flintnm.sml
 elpis:~/wc/smlnj/primop3-raw/base gkuan$ svn ci -m "merge from trunk into primop-branch-3 (2741:2881)"
+Sending        NOTES/HISTORY
+Sending        NOTES/WININSTALL
+Adding         READMES/110.64-README.html
+Adding         READMES/110.65-README.html
+Adding         READMES/110.67-README.html
+Sending        compiler/CodeGen/amd64/amd64CG.sml
+Sending        compiler/DEVNOTES/primop3-revisions
+Sending        compiler/Elaborator/elaborate/elabmod.sml
+Sending        compiler/FLINT/plambda/flintnm.sml
+Sending        runtime/c-libs/win32-io/win32-io.c
+Sending        runtime/c-libs/win32-raise-syserr.c
+Sending        runtime/gc/init-gc.c
+Sending        runtime/include/ml-limits.h
+Sending        runtime/objs/mk.ppc-darwin
+Sending        runtime/objs/mk.x86-darwin
+Transmitting file data ............
+Committed revision 2883.
