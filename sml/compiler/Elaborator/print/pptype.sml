@@ -141,11 +141,19 @@ fun ppkind ppstrm kind =
           | FLEXTYC _ => "FLEXTYC" | ABSTRACT _ => "ABSTYC"
 	  | DATATYPE _ => "DATATYPE" | TEMP => "TEMP")
 *)
-fun ppkind ppstrm kind =
+fun ppkind ppstrm (FLEXTYC tp) =
+    pps ppstrm 
+    (case tp 
+      of TP_VAR _ => "XV"
+       | TP_SEL _ => "XS"
+       | TP_APP _ => "XA"
+       | TP_FCT _ => "XF"
+       | TP_TYC _ => "XT")
+  | ppkind ppstrm kind =
     pps ppstrm
       (case kind
 	 of PRIMITIVE _ => "P" | FORMAL => "F"
-          | FLEXTYC _ => "X" | ABSTRACT _ => "A"
+          | FLEXTYC _ => bug "ppkind" | ABSTRACT _ => "A"
 	  | DATATYPE _ => "D" | TEMP => "T")
 
 fun effectivePath(path,tyc,env) : string =
