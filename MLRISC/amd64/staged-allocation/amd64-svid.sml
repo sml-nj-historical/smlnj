@@ -174,7 +174,7 @@ functor AMD64SVID (
 		  (SOME (rLoc ()), SOME {szb=sz, align=align}, 8)
 		end
 	      | _ => (SOME (rLoc ()), NONE, 0)
-	     (* esac *))
+	     (* end case *))
 	val argLoc = argLoc argOffset
 	(* call *)
 	fun assign (str, [], locs) = (finish str, rev locs)
@@ -194,8 +194,7 @@ functor AMD64SVID (
 
     val spReg = T.REG (wordTy, C.rsp)
 
-    fun genCall {name, proto, paramAlloc, structRet, 
-		  saveRestoreDedicated, callComment, args } = let
+    fun genCall {name, proto, paramAlloc, structRet, saveRestoreDedicated, callComment, args} = let
 	val {argLocs, argMem, resLoc, structRetLoc} = layout proto
 	val argAlloc = if ((#szb argMem = 0) orelse paramAlloc argMem)
 			then []
@@ -237,7 +236,7 @@ functor AMD64SVID (
 			 T.FMV (mty, tmp, e) :: stms
 		       end
 		     | _ => raise Fail "todo"
-		    (* esac *))
+		    (* end case *))
 		in
 		  f (args, locs, stms)
 		end
@@ -245,12 +244,15 @@ functor AMD64SVID (
 	    in
 	      f (args, argLocs, [])
 	    end
- 	val defs = map gpr callerSaveRegs @
- 	           map fpr callerSaveFRegs
-	val callStm = T.CALL {
-		funct=name, targets=[], defs=defs, uses=[], 
-		region=mem, pops=0
-		}
+       (* determine from the calling convention whether MLRISC needs to save registers over the call *)
+ 	val defs = (case #conv proto
+            of "ccall" => map gpr callerSaveRegs @ map fpr callerSaveFRegs
+	     | "ccall-bare" => []
+	     | conv => raise Fail (concat [
+			"unknown calling convention \"", String.toString conv, "\""
+		      ])
+            (* end case *))
+	val callStm = T.CALL {funct=name, targets=[], defs=defs, uses=[], region=mem, pops=0}
 	val (resultRegs, copyResult) = (case resLoc
 	     of NONE => ([], [])
 	      | SOME (C_GPR (ty, r)) => let
@@ -265,7 +267,7 @@ functor AMD64SVID (
 		   ([T.FPR (T.FREG (ty, resReg))],
 		    [T.FCOPY (ty, [resReg], [r])])
 		end
-	      (* esac *))
+	      (* end case *))
 	val callSeq = argAlloc @ copyArgs @ [callStm] @ copyResult
     in
       {callseq=callSeq, result=resultRegs}
