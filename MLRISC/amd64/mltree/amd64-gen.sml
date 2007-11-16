@@ -1106,7 +1106,7 @@ functor AMD64Gen (
 	      fbranch' (fty, fcc, t1, t2, j)
 	    end
 	
-	and fbranch' (fty, fcc, t1, t2, j) = let
+	and fbranch' (fty, fcc, x, y, j) = let
             fun branch fcc = (case fcc
                 of T.==   => j I.EQ
                  | T.?<>  => (j I.P; j I.NE)
@@ -1131,23 +1131,23 @@ functor AMD64Gen (
 	     * ucomiss/d    xmm1/m32,  xmm2
 	     *)
                fun compare () = let
-                   val r = foperand (fty, t1)
-                   val l = foperand (fty, t2)
-                   fun cmp (l, r, fcc) = (
-                       emit (I.FCOM {comOp=O.ucomOp fty, dst=l, src=r});
+                   val x = foperand (fty, x)
+                   val y = foperand (fty, y)
+                   fun cmp (x, y, fcc) = (
+                       emit (I.FCOM {comOp=O.ucomOp fty, src=y, dst=x});
                        fcc)
                    in
-                     (case (l, r)
-                       of (I.FDirect lReg, I.FDirect _) => cmp (lReg, r, fcc)
-                        | (mem, I.FDirect rReg) =>  
-                          cmp (rReg, l, T.Basis.swapFcond fcc)
-                        | (I.FDirect lReg, mem) => cmp (lReg, r, fcc)
+                     (case (x, y)
+                       of (I.FDirect xReg, I.FDirect _) => cmp (xReg, y, fcc)
+                        | (mem, I.FDirect yReg) =>
+                          cmp (yReg, x, T.Basis.swapFcond fcc)
+                        | (I.FDirect xReg, mem) => cmp (xReg, y, fcc)
                         | _ => let
-                          val tmpR = newFreg ()
-                          val tmp = I.FDirect tmpR
+                          val xReg = newFreg ()
+                          val xTmp = I.FDirect xReg
                           in
-                            emit (I.FMOVE {fmvOp=O.fmovOp fty, src=r, dst=tmp});
-                            cmp (tmpR, l, fcc)
+                            emit (I.FMOVE {fmvOp=O.fmovOp fty, src=x, dst=xTmp});
+                            cmp (xReg, y, fcc)
                           end
                      (* end case *))
                    end (* compare *)
