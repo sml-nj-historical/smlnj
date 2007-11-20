@@ -55,22 +55,8 @@ OBJS =		c-libraries.o unix-raise-syserr.o ml-options.o \
 # libraries of ML callable C functions
 #
 CLIBS =		$(XCLIBS) \
-		$(CLIB_DIR)/posix-os/libposix-os.a \
-		$(CLIB_DIR)/smlnj-runtime/libsmlnj-runt.a \
-		$(CLIB_DIR)/smlnj-signals/libsmlnj-sig.a \
-		$(CLIB_DIR)/smlnj-prof/libsmlnj-prof.a \
-		$(CLIB_DIR)/smlnj-sockets/libsmlnj-sock.a \
-		$(CLIB_DIR)/smlnj-time/libsmlnj-time.a \
-		$(CLIB_DIR)/smlnj-date/libsmlnj-date.a \
-		$(CLIB_DIR)/smlnj-math/libsmlnj-math.a \
-		$(CLIB_DIR)/posix-process/libposix-process.a \
-		$(CLIB_DIR)/posix-procenv/libposix-procenv.a \
-		$(CLIB_DIR)/posix-filesys/libposix-filesys.a \
-		$(CLIB_DIR)/posix-io/libposix-io.a \
-		$(CLIB_DIR)/posix-sysdb/libposix-sysdb.a \
-		$(CLIB_DIR)/posix-signal/libposix-signal.a \
-		$(CLIB_DIR)/posix-tty/libposix-tty.a \
-		$(CLIB_DIR)/posix-error/libposix-error.a
+		$(ROOT_DIR)/sml-basis-lib/libsml-basis.a \
+		$(ROOT_DIR)/smlnj-rt-lib/smlnj-runtime.a
 
 #
 # The mmap version is the default memory subsystem
@@ -424,59 +410,23 @@ LIB_MK_ARGS =		VERSION="$(VERSION)" \
 			RANLIB="$(RANLIB)" \
 			INCLUDES="$(LIB_INCLUDES)"
 
-$(CLIB_DIR)/posix-os/libposix-os.a: FORCE
-	(cd $(CLIB_DIR)/posix-os; $(MAKE) $(LIB_MK_ARGS) libposix-os.a)
-
-$(CLIB_DIR)/smlnj-runtime/libsmlnj-runt.a: FORCE
-	(cd $(CLIB_DIR)/smlnj-runtime; $(MAKE) $(LIB_MK_ARGS) libsmlnj-runt.a)
-
-$(CLIB_DIR)/smlnj-signals/libsmlnj-sig.a: FORCE
-	(cd $(CLIB_DIR)/smlnj-signals; $(MAKE) $(LIB_MK_ARGS) libsmlnj-sig.a)
-
-$(CLIB_DIR)/smlnj-prof/libsmlnj-prof.a: FORCE
-	(cd $(CLIB_DIR)/smlnj-prof; $(MAKE) $(LIB_MK_ARGS) libsmlnj-prof.a)
-
-$(CLIB_DIR)/smlnj-sockets/libsmlnj-sock.a: FORCE
-	(cd $(CLIB_DIR)/smlnj-sockets; $(MAKE) $(LIB_MK_ARGS) libsmlnj-sock.a)
-
-$(CLIB_DIR)/smlnj-time/libsmlnj-time.a: FORCE
-	(cd $(CLIB_DIR)/smlnj-time; $(MAKE) $(LIB_MK_ARGS) libsmlnj-time.a)
-
-$(CLIB_DIR)/smlnj-date/libsmlnj-date.a: FORCE
-	(cd $(CLIB_DIR)/smlnj-date; $(MAKE) $(LIB_MK_ARGS) libsmlnj-date.a)
-
-$(CLIB_DIR)/smlnj-math/libsmlnj-math.a: FORCE
-	(cd $(CLIB_DIR)/smlnj-math; $(MAKE) $(LIB_MK_ARGS) libsmlnj-math.a)
-
-$(CLIB_DIR)/smlnj-mp/libsmlnj-mp.a: FORCE
-	(cd $(CLIB_DIR)/smlnj-mp; $(MAKE) $(LIB_MK_ARGS) libsmlnj-mp.a)
-
-$(CLIB_DIR)/posix-process/libposix-process.a: FORCE
-	(cd $(CLIB_DIR)/posix-process; $(MAKE) $(LIB_MK_ARGS) libposix-process.a)
-
-$(CLIB_DIR)/posix-procenv/libposix-procenv.a: FORCE
-	(cd $(CLIB_DIR)/posix-procenv; $(MAKE) $(LIB_MK_ARGS) libposix-procenv.a)
-
-$(CLIB_DIR)/posix-filesys/libposix-filesys.a: FORCE
-	(cd $(CLIB_DIR)/posix-filesys; $(MAKE) $(LIB_MK_ARGS) libposix-filesys.a)
-
-$(CLIB_DIR)/posix-io/libposix-io.a: FORCE
-	(cd $(CLIB_DIR)/posix-io; $(MAKE) $(LIB_MK_ARGS) libposix-io.a)
-
-$(CLIB_DIR)/posix-sysdb/libposix-sysdb.a: FORCE
-	(cd $(CLIB_DIR)/posix-sysdb; $(MAKE) $(LIB_MK_ARGS) libposix-sysdb.a)
-
-$(CLIB_DIR)/posix-signal/libposix-signal.a: FORCE
-	(cd $(CLIB_DIR)/posix-signal; $(MAKE) $(LIB_MK_ARGS) libposix-signal.a)
-
-$(CLIB_DIR)/posix-tty/libposix-tty.a: FORCE
-	(cd $(CLIB_DIR)/posix-tty; $(MAKE) $(LIB_MK_ARGS) libposix-tty.a)
-
-$(CLIB_DIR)/posix-error/libposix-error.a: FORCE
-	(cd $(CLIB_DIR)/posix-error; $(MAKE) $(LIB_MK_ARGS) libposix-error.a)
-
 $(CLIB_DIR)/dl/libunix-dynload.a: FORCE
 	(cd $(CLIB_DIR)/dl; $(MAKE) $(LIB_MK_ARGS) libunix-dynload.a)
 
-$(CLIB_DIR)/smlnj-ccalls/libsmlnj-ccalls.a: FORCE
-	(cd $(CLIB_DIR)/smlnj-ccalls; $(MAKE) $(LIB_MK_ARGS) libsmlnj-ccalls.a)
+# Make rules for IDL-generated interfaces
+
+#
+# arguments to recursive make
+#
+IDL_MK_ARGS =		VERSION="$(VERSION)" \
+			MAKE="$(MAKE)" \
+			CC="$(CC)" CFLAGS="$(CFLAGS)" DEFS="$(DEFS)" \
+			AR="$(AR)" ARFLAGS="$(ARFLAGS)" \
+			RANLIB="$(RANLIB)" \
+			INCLUDES="$(INCLUDES)"
+
+$(ROOT_DIR)/sml-basis-lib/libsml-basis.a: FORCE
+	(cd $(ROOT_DIR)/sml-basis-lib; $(MAKE) $(IDL_MK_ARGS) libsml-basis.a)
+
+$(ROOT_DIR)/smlnj-rt-lib/smlnj-runtime.a: FORCE
+	(cd $(ROOT_DIR)/smlnj-rt-lib; $(MAKE) $(IDL_MK_ARGS) smlnj-runtime.a)

@@ -3,11 +3,14 @@
  * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
  */
 
+C_LIBRARY(SMLNJRuntime)
+C_LIBRARY(SMLBasis)
+
+/*
 C_LIBRARY(SMLNJ_RunT_Library)
 C_LIBRARY(SMLNJ_Sig_Library)
 C_LIBRARY(SMLNJ_Prof_Library)
 
-/* basis libraries */
 C_LIBRARY(SMLNJ_Time_Library)
 C_LIBRARY(SMLNJ_Date_Library)
 C_LIBRARY(SMLNJ_Math_Library)
@@ -48,3 +51,5 @@ C_LIBRARY(SMLNJ_BC_Library)
 #ifdef DLOPEN
 C_LIBRARY(UNIX_Dynload_Library)
 #endif
+
+*/
