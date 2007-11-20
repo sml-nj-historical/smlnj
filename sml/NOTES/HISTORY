@@ -14,6 +14,40 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2007/11/02
+Description:
+
+Cleaned up WININSTALL file for new MSI-based setup.
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/11/13 14:05:00 CST
+Description:
+
+Version bumped to 110.67.  New bootfiles.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/11/12
+Description:
+
+Ensure that the size of the allocation space is at least 128K.
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/11/05
+Description:
+
+Fixed type error in ml-lpt library that occurs when compiling
+against a basis that was compiled with the USE_64_BIT_POSITIONS
+symbol set.
+(Thanks to Johannes Joemann)
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/11/03
+Description:
+
+Fixed the amd64 code generator to compile with the current MLRISC.
+----------------------------------------------------------------------
 Name: Lars Bergstrom (web page or e-mail)
 Date: 2007/11/02
 Description:
