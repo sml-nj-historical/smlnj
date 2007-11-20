@@ -6,6 +6,7 @@
  */
 
 #include "ml-base.h"
+#include <string.h>
 #include "heap.h"
 #include "ml-values.h"
 #include "ml-heap-image.h"
@@ -52,7 +53,7 @@ Addr_t HeapIO_WriteExterns (writer_t *wr, export_table_t *tbl)
     ExportedSymbols (tbl, &numExterns, &externs);
 
     for (strSize = 0, i = 0;  i < numExterns;  i++)
-	strSize += (strlen(externs[i]) + 1);
+	strSize += (strlen((char *)(externs[i])) + 1);
   /* include padding to WORD_SZB bytes */
     padSzB = ROUNDUP(strSize, WORD_SZB) - strSize;
     strSize += padSzB;

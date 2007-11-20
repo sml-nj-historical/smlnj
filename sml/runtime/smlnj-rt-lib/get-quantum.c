@@ -14,5 +14,5 @@
  */
 int getQuantum ()
 {
-    return INT_CtoML(PROFILE_QUANTUM_US);
+    return PROFILE_QUANTUM_US;
 }

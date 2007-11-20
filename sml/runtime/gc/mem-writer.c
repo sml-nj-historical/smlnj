@@ -6,6 +6,7 @@
  */
 
 #include "ml-base.h"
+#include <string.h>
 #include "writer.h"
 
 #ifndef BUFSIZ

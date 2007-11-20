@@ -6,6 +6,7 @@
  */
 
 #include <time.h>
+#include <string.h>
 #include "ml-base.h"
 #include "sml-basis.h"
 #include "ml-values.h"

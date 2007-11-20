@@ -257,7 +257,7 @@ bigobj_desc_t *BO_GetDesc (ml_val_t addr)
  * Return the tag of the code object containing the given PC (or else
  * NIL).
  */
-char *BO_AddrToCodeObjTag (Word_t pc)
+Byte_t *BO_AddrToCodeObjTag (Word_t pc)
 {
     bigobj_region_t	*region;
     aid_t		aid;
@@ -272,7 +272,7 @@ char *BO_AddrToCodeObjTag (Word_t pc)
 	return BO_GetCodeObjTag (ADDR_TO_BODESC(region, pc));
     }
     else
-	return NIL(char *);
+	return NIL(Byte_t *);
 
 } /* end of BO_AddrToCodeObjTag */
 

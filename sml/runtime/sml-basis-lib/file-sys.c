@@ -209,7 +209,7 @@ ML_int32_t fileSize (ml_state_t *msp, idl_string path)
     if ((sts = stat(path, &st)) < 0)
 	return RAISE_SYSERR(msp, sts);
     else {
-	INT32_ALLOC (msp, res, st.st_size);
+	INT32_ALLOC (msp, res, (int)st.st_size);
 	return res;
     }
 

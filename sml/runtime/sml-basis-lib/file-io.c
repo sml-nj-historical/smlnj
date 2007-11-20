@@ -269,7 +269,7 @@ ML_int32_t getPos (ml_state_t *msp, ML_iodesc_t iod)
 	return RAISE_SYSERR(msp, sts);
     else {
 	ml_val_t	pos;
-	INT32_ALLOC(msp, pos, sts);
+	INT32_ALLOC(msp, pos, (int)sts);
 	return pos;
     }
 
