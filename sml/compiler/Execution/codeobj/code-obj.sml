@@ -31,10 +31,9 @@ structure CodeObj :> CODE_OBJ =
     local
       structure CI = Unsafe.CInterface
     in
-    val allocCode : int -> W8A.array =
-	  CI.c_function "SMLNJ-RunT" "allocCode"
-    val mkLiterals : W8V.vector -> object = CI.c_function "SMLNJ-RunT" "mkLiterals"
-    val mkExec : W8A.array * int -> executable = CI.c_function "SMLNJ-RunT" "mkExec"
+    val allocCode : int -> W8A.array = CI.c_function "SMLNJRuntime" "allocCode"
+    val mkLiterals : W8V.vector -> object = CI.c_function "SMLNJRuntime" "mkLiterals"
+    val mkExec : W8A.array * int -> executable = CI.c_function "SMLNJRuntime" "mkExec"
     end (* local *)
 
   (* Allocate an uninitialized code object.
