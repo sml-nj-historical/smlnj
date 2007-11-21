@@ -15,6 +15,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2007/11/21
+Description:
+
+Overwrite the SMLNJ_HOME environment variable on installation
+Properly change the package code so that subsequent version
+installations prompt for uninstall (instead of 'repair/remove')
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
 Date: 2007/11/02
 Description:
 
