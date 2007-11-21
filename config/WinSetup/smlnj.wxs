@@ -4,7 +4,7 @@
 -->
 <Wix xmlns='http://schemas.microsoft.com/wix/2003/01/wi'>
    <Product Id='f7ca0fdb-0c97-480b-a532-2a579917cfdb' Name='Standard ML of New Jersey' Language='1033' Version='0.0.0.0' Manufacturer='University of Chicago'>
-      <Package Id='f7ca0fdb-0c97-480b-a532-2a579917cfdb' Description='SML of New Jersey.' InstallerVersion='200' Compressed='yes' />
+      <Package Id='????????-????-????-????-????????????' Description='SML of New Jersey.' InstallerVersion='200' Compressed='yes' />
 
       <Property Id='WIXUI_INSTALLDIR' Value='INSTALLDIR' />
 
@@ -83,7 +83,7 @@
 		<Component Id='SMLNJBin' Guid='3be4a34f-fa44-4b7c-9fdd-d29186f6cd94' DiskId='1'>
 		  <!-- Ensures the smlnj compiler will be on the path and that sml.bat will run -->
 		  <Environment Id='SMLNJPathExtension' Action='set' Name='PATH' Part='last' Permanent='no' System='yes' Value='[SMLNJBinFolder]' />
-		  <Environment Id='SMLNJHome' Action='create' Name='SMLNJ_HOME' Permanent='no' System='yes' Value='[INSTALLDIR]' />
+		  <Environment Id='SMLNJHome' Action='set' Name='SMLNJ_HOME' Permanent='no' System='yes' Value='[INSTALLDIR]' />
                   <File Id='linksmlbin' Name='link-sml.bat' src='bin\link-sml.bat' />
                   <File Id='mlantlrbin' Name='antlr.bat' LongName='ml-antlr.bat' src='bin\ml-antlr.bat' />
                   <File Id='mlbuildbin' Name='ml-build.bat' src='bin\ml-build.bat' />
