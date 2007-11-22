@@ -71,7 +71,8 @@ end (* signature SIGMATCH *)
 structure SigMatch : SIGMATCH =
 struct
 
-local structure A  = Absyn
+local structure EV = EvalEntity
+      structure A  = Absyn
       structure B  = Bindings
       structure DA = Access
       (* structure DI = DebIndex *)

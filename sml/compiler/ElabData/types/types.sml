@@ -47,8 +47,7 @@ and tvKind
       * bound at a given binding site. *)
 
 and tycpath (* FLINT!!! *)
-  = TP_VAR of { tdepth: DebIndex.depth,
-		num: int, kind: pkind }   (* exn carries some hidden FLINT data *)
+  = TP_VAR of { tdepth: DebIndex.depth, num: int, kind: pkind }
   | TP_TYC of tycon
   | TP_FCT of tycpath list * tycpath list
   | TP_APP of tycpath * tycpath list

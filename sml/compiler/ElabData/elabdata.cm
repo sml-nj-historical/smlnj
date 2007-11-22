@@ -28,6 +28,7 @@ Group
 	signature PRIMOPID
 	signature DEB_INDEX
 
+	structure DebIndex
 	structure ElabDataControl
 	structure Access
 	structure Types
@@ -59,7 +60,6 @@ Group
 	structure CoreAccess
 	structure BrowseStatEnv
 	structure PrimOpId
-	structure DebIndex
 
 is
 	main/edcontrol.sig

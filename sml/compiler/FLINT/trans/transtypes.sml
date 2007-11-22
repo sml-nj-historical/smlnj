@@ -107,11 +107,11 @@ fun tpsTyc d tp =
         | h (TP_APP (tp, ps), cur) = 
               LT.tcc_app(h(tp, cur), map (fn x => h(x, cur)) ps)
         | h (TP_FCT (ps, ts), cur) = 
-              let val ks = map tpsKnd ps
-                  val cur' = DI.next cur
-                  val ts' = map (fn x => h(x, cur')) ts
-               in LT.tcc_fn(ks, LT.tcc_seq ts')
-              end
+             let val ks = map tpsKnd ps
+                                val cur' = DI.next cur
+                                val ts' = map (fn x => h(x, cur')) ts
+             in LT.tcc_fn(ks, LT.tcc_seq ts')
+             end
 
    in h(tp, d)
   end
@@ -419,7 +419,34 @@ and fctRlznLty (sign, rlzn, depth, compInfo) =
                                region=SourceMap.nullRegion}
             val nd = DI.next depth
             val paramLty = strMetaLty(paramsig, argRlzn, nd, compInfo)
-            val ks = map tpsKnd tycpaths
+	    fun getFctKnds(SIG{elements,...}) =
+		let (* Tyc Kinds precede all Functor Kinds, 
+		       so they are computed separately *)
+		    fun getFct((_,spec)::rest) =
+			(case spec
+			   of FCTspec{entVar, sign=FSIG{paramsig,bodysig,...}, ...} => 
+			      LT.tkc_fun(getFctKnds paramsig,LT.tkc_seq (getFctKnds bodysig))::getFct(rest)
+			    | _ => getFct rest)
+		      | getFct([]) = []
+		    fun getTyc((_,spec)::rest) =
+			(case spec 
+			   of TYCspec{entVar, info=RegTycSpec{spec=tycon,...}} => 
+			      (case tycon
+				 of GENtyc {kind=FORMAL,arity,...} =>
+			            LT.tkc_int(arity)::getTyc(rest)
+				  | GENtyc {kind=_,...} => 
+				    (* FIXME?? Datatypes shouldn't be dropped *)
+				    getTyc rest
+				  | DEFtyc{tyfun=TYFUN{arity,...},...} =>
+			            getTyc(rest)
+				  | _ => bug "getFctKnds 1")
+			    | STRspec{entVar, sign, def, ...} => getFctKnds(sign)@getTyc(rest)
+			    | _ => getTyc rest)
+		       | getTyc([]) = []
+		in (getTyc elements)@(getFct elements)
+		end 
+		| getFctKnds(_) = bug "getFctKnds 2"
+            val ks = (* getFctKnds paramsig *) map tpsKnd tycpaths
             val bodyRlzn = 
                 EV.evalApp(rlzn, argRlzn, nd, EPC.initContext,
                            IP.empty, compInfo)

@@ -54,8 +54,7 @@ and tvKind
      * away in the type computed by the type checker for the defined variable. *)
 
 and tycpath
-  = TP_VAR of { tdepth: DebIndex.depth,
-		num: int, kind: pkind }
+  = TP_VAR of { tdepth: DebIndex.depth, num: int, kind: pkind }
   | TP_TYC of tycon
   | TP_FCT of tycpath list * tycpath list
   | TP_APP of tycpath * tycpath list

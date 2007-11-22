@@ -27,7 +27,8 @@ end (* signature ELABMOD *)
 structure ElabMod : ELABMOD =
 struct
 
-local structure S  = Symbol
+local structure SM = SigMatch
+      structure S  = Symbol
       structure IP = InvPath
       structure SP = SymPath
       structure EP = EntPath
