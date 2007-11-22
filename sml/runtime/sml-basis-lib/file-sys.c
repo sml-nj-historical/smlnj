@@ -288,7 +288,7 @@ ML_bool_t fileAccess (ml_state_t *msp, idl_string path, int mode)
 
     if (access (path, m) == 0)
 	return ML_true;
-    else if (errno == EACCES)
+    else if ((errno == EACCES) || (errno == ENOENT) || (errno == ENOTDIR) || (errno == EROFS))
 	return ML_false;
     else
 	return RAISE_SYSERR(msp, -1);
