@@ -10,6 +10,9 @@ On x86/MacOSX:
     cc -c intr.c
     libtool -dynamic -lSystemStubs -o intr.so intr.o -lc
 
+On x86/Windows:
+    cl /LD intr.c
+
 On sparc/solaris:
 
     cc -c intr.c
