@@ -15,6 +15,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2007/11/26
+Description:
+
+nlffi was updated to work on Windows. It needed to pass in the correct
+value for the name of the kernel32 DLL to obtain 'base' bindings.
+Additionally updated the README for the most basic nlffi sample with
+what you need to do on MacOSX and on Windows to make it work.
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
 Date: 2007/11/21
 Description:
 
