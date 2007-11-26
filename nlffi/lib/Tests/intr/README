@@ -11,7 +11,13 @@ On x86/MacOSX:
     libtool -dynamic -lSystemStubs -o intr.so intr.o -lc
 
 On x86/Windows:
+
     cl /LD intr.c
+
+    Note that you will also need to add extern __declspec(dllexport) to the
+    function f() for it to be visible external to the DLL created.
+    You will also need to update libh.sml to reference the DLL instead of the
+    .so file.
 
 On sparc/solaris:
 

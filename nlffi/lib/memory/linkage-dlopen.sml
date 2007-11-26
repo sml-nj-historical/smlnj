@@ -73,7 +73,7 @@ structure DynLinkage :> DYN_LINKAGE = struct
 	val _ = addCleaner (label, [AtInit, AtInitFn],
 			    fn _ => now := newEra ())
     in
-        val main_lib = mkHandle (fn () => checked dlopen (NONE, true, true))
+        val main_lib = mkHandle (fn () => checked dlopen (MainLib.name, true, true))
 
 	fun open_lib' { name, lazy, global, dependencies } =
 	    mkHandle (fn () => (app (ignore o get) dependencies;
