@@ -129,7 +129,9 @@ signature FORMAT_COMB =
     val real' : StringCvt.realfmt -> ('a, real) element	(* using(Real.fmt f) *)
 
   (* "polymorphic" elements *)
-    val list : ('a, 'x) element -> ('a, 'x list) element
+    val list'  : string -> string -> string -> (* l. delim., sep., r. delim. *)
+		 ('a, 'x) element -> ('a, 'x list) element
+    val list   : ('a, 'x) element -> ('a, 'x list) element (* "[", ", ", "]" *)
     val option : ('a, 'x) element -> ('a, 'x option) element
 
   (* Generic "gluifier". *)
@@ -146,6 +148,8 @@ signature FORMAT_COMB =
     val tab     :           'a glue	(* tabulator glue *)
 
   (* glue generator constructors *)
+    val listg'  : string -> string -> string ->
+		  ('t -> 'a glue) -> ('t list -> 'a glue)
     val listg   : ('t -> 'a glue) -> ('t list -> 'a glue)
     val optiong : ('t -> 'a glue) -> ('t option -> 'a glue)
 

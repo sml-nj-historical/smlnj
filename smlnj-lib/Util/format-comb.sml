@@ -81,15 +81,18 @@ structure FormatComb :> FORMAT_COMB =
     fun nl fm         = text "\n" fm
     fun tab fm        = text "\t" fm
 
-    fun list0g g [] = nothing
-      | list0g g [x] = g x
-      | list0g g (h :: t) = g h o text ", " o list0g g t
-
-    fun listg g l = text "[" o list0g g l o text "]"
+    fun listg' ld sep rd g l =
+	let fun loop [] = nothing
+	      | loop [x] = g x
+	      | loop (h :: t) = g h o text sep o loop t
+	in text ld o loop l o text rd
+	end
+    fun listg g l = listg' "[" ", " "]" g l
 
     fun optiong g NONE = text "NONE"
       | optiong g (SOME a) = text "SOME(" o g a o text ")"
 
+    fun list' ld sep rd e = elem (listg' ld sep rd (glue e))
     fun list e = elem (listg (glue e))
     fun option e = elem (optiong (glue e))
 

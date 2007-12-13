@@ -3,6 +3,11 @@ correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
 [2007-12-13]
+	Also added list' and listg' which are parameterized over the delimiter-
+	and separator strings used for formatting lists.  (The default for "list" and
+	"listg" is the usuas "[" ", " "]".)
+
+[2007-12-13]
 	Added "elem" function as an inverse to "glue" to FormatComb module.
 	This makes writing extensions possible.  Also added "list" and "option"
 	combinators for formatting list- and option types.
