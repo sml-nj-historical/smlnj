@@ -84,10 +84,10 @@ structure FormatComb :> FORMAT_COMB =
     fun listg' ld sep rd g l =
 	let fun loop [] = nothing
 	      | loop [x] = g x
-	      | loop (h :: t) = g h o text sep o loop t
-	in text ld o loop l o text rd
+	      | loop (h :: t) = g h o sep o loop t
+	in ld o loop l o rd
 	end
-    fun listg g l = listg' "[" ", " "]" g l
+    fun listg g l = listg' (text "[") (text ", ") (text "]") g l
 
     fun optiong g NONE = text "NONE"
       | optiong g (SOME a) = text "SOME(" o g a o text ")"

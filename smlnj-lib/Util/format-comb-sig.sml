@@ -129,10 +129,13 @@ signature FORMAT_COMB =
     val real' : StringCvt.realfmt -> ('a, real) element	(* using(Real.fmt f) *)
 
   (* "polymorphic" elements *)
-    val list'  : string -> string -> string -> (* l. delim., sep., r. delim. *)
-		 ('a, 'x) element -> ('a, 'x list) element
     val list   : ('a, 'x) element -> ('a, 'x list) element (* "[", ", ", "]" *)
     val option : ('a, 'x) element -> ('a, 'x option) element
+    (* Parameterize "list" over delimiters and separator:
+     *   delimiters are arbitrary fragments, the separator must be glue;
+     *   list = list' (text "[") (text ", ") (text "]") *)
+    val list'  : ('b, 'g) fragment -> 'b glue -> ('a, 'b) fragment ->
+		 ('b, 'x) element -> ('a, 'x list -> 'g) fragment
 
   (* Generic "gluifier". *)
     val glue : ('a, 't) element -> 't -> 'a glue
@@ -148,10 +151,10 @@ signature FORMAT_COMB =
     val tab     :           'a glue	(* tabulator glue *)
 
   (* glue generator constructors *)
-    val listg'  : string -> string -> string ->
-		  ('t -> 'a glue) -> ('t list -> 'a glue)
     val listg   : ('t -> 'a glue) -> ('t list -> 'a glue)
     val optiong : ('t -> 'a glue) -> ('t option -> 'a glue)
+    val listg'  : ('b, 'g) fragment -> 'b glue -> ('a, 'b) fragment ->
+		  ('t -> 'b glue) -> ('t list -> ('a, 'g) fragment)
 
   (* "Places" say which side of a string to pad or trim... *)
     type place
