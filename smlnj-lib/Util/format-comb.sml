@@ -73,11 +73,24 @@ structure FormatComb :> FORMAT_COMB =
     fun padr n = pad right n
 
     fun glue e a fm x = e fm x a
+    fun elem gm fm x a = gm a fm x
 
     fun nothing fm    = fm
     fun text s        = glue string s
     fun sp n          = pad left n nothing
     fun nl fm         = text "\n" fm
     fun tab fm        = text "\t" fm
+
+    fun list0g g [] = nothing
+      | list0g g [x] = g x
+      | list0g g (h :: t) = g h o text ", " o list0g g t
+
+    fun listg g l = text "[" o list0g g l o text "]"
+
+    fun optiong g NONE = text "NONE"
+      | optiong g (SOME a) = text "SOME(" o g a o text ")"
+
+    fun list e = elem (listg (glue e))
+    fun option e = elem (optiong (glue e))
 
   end

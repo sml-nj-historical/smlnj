@@ -1,6 +1,6 @@
 (* format-comb-sig.sml
  *
- * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ * COPYRIGHT (c) 2007 The Fellowship of SML/NJ
  *
  *   Well-typed "printf" for SML, aka "Unparsing Combinators".
  *     This code was written by Matthias Blume (2002).  Inspiration
@@ -48,7 +48,7 @@
  *
  *  format (text "The square of " o int o text " is " o int o text ".")
  *                                      ==> fn: int -> int -> string
- *  format (text "The square of " o int o t" is " o int o t".") 2 4
+ *  format (text "The square of " o int o text " is " o int o text ".") 2 4
  *                                      ==> "The square of 2 is 4."
  *
  *  format (int o bool o char)          ==> fn : int -> bool -> char -> string
@@ -128,8 +128,15 @@ signature FORMAT_COMB =
     val int'  : StringCvt.radix   -> ('a, int) element  (* using (Int.fmt r) *)
     val real' : StringCvt.realfmt -> ('a, real) element	(* using(Real.fmt f) *)
 
+  (* "polymorphic" elements *)
+    val list : ('a, 'x) element -> ('a, 'x list) element
+    val option : ('a, 'x) element -> ('a, 'x option) element
+
   (* Generic "gluifier". *)
     val glue : ('a, 't) element -> 't -> 'a glue
+
+  (* Inverse -- useful for writing extensions *)
+    val elem : ('t -> 'a glue) -> ('a, 't) element
 
   (* Other glue... *)
     val nothing :           'a glue	(* null glue *)
@@ -137,6 +144,10 @@ signature FORMAT_COMB =
     val sp      : int ->    'a glue	(* n spaces glue *)
     val nl      :           'a glue	(* newline glue *)
     val tab     :           'a glue	(* tabulator glue *)
+
+  (* glue generator constructors *)
+    val listg   : ('t -> 'a glue) -> ('t list -> 'a glue)
+    val optiong : ('t -> 'a glue) -> ('t option -> 'a glue)
 
   (* "Places" say which side of a string to pad or trim... *)
     type place
@@ -156,4 +167,3 @@ signature FORMAT_COMB =
     val padr : int -> ('a, 't) fragment -> ('a, 't) fragment
 
   end
-
