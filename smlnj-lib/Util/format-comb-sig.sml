@@ -99,6 +99,7 @@ signature FORMAT_COMB =
    *)
     type 'a glue          = ('a, 'a) fragment
     type ('a, 't) element = ('a, 't -> 'a) fragment
+    type 'a gg			(* abstract helper type *)
 
   (* Format execution... *)
   (*  1. Simple version, produce final result as a string: *)
@@ -131,11 +132,9 @@ signature FORMAT_COMB =
   (* "polymorphic" elements *)
     val list   : ('a, 'x) element -> ('a, 'x list) element (* "[", ", ", "]" *)
     val option : ('a, 'x) element -> ('a, 'x option) element
-    (* Parameterize "list" over delimiters and separator:
-     *   delimiters are arbitrary fragments, the separator must be glue;
-     *   list = list' (text "[") (text ", ") (text "]") *)
-    val list'  : ('b, 'g) fragment -> 'b glue -> ('a, 'b) fragment ->
-		 ('b, 'x) element -> ('a, 'x list -> 'g) fragment
+    val seq    : (('x * 'a gg -> 'a gg) -> 'a gg -> 's -> 'a gg) -> (* foldr *)
+		 'a glue ->	(* separator *)
+		 ('a, 'x) element -> ('a, 's) element
 
   (* Generic "gluifier". *)
     val glue : ('a, 't) element -> 't -> 'a glue
@@ -153,8 +152,12 @@ signature FORMAT_COMB =
   (* glue generator constructors *)
     val listg   : ('t -> 'a glue) -> ('t list -> 'a glue)
     val optiong : ('t -> 'a glue) -> ('t option -> 'a glue)
-    val listg'  : ('b, 'g) fragment -> 'b glue -> ('a, 'b) fragment ->
-		  ('t -> 'b glue) -> ('t list -> ('a, 'g) fragment)
+
+    val seqg   : (('x * 'a gg -> 'a gg) -> 'a gg -> 's -> 'a gg) -> (* foldr *)
+		 'a glue ->	    (* separator *)
+		 ('x -> 'a glue) ->  (* glue maker *)
+		 's -> 'a glue	    (* glue maker for container *)
+
 
   (* "Places" say which side of a string to pad or trim... *)
     type place

@@ -8,7 +8,6 @@
  *
  * See format-comb-sig.sml for details.
  *)
-
 structure FormatComb :> FORMAT_COMB =
   struct
 
@@ -16,6 +15,7 @@ structure FormatComb :> FORMAT_COMB =
     type ('a, 'b) fragment = 'a format -> 'b format
     type 'a glue           = ('a, 'a) fragment
     type ('a, 't) element  = ('a, 't -> 'a) fragment
+    type 'a gg = 'a glue * 'a glue
 
     type place = int * int -> int
     fun left (a, i)   = a - i
@@ -81,18 +81,13 @@ structure FormatComb :> FORMAT_COMB =
     fun nl fm         = text "\n" fm
     fun tab fm        = text "\t" fm
 
-    fun listg' ld sep rd g l =
-	let fun loop [] = nothing
-	      | loop [x] = g x
-	      | loop (h :: t) = g h o sep o loop t
-	in ld o loop l o rd
-	end
-    fun listg g l = listg' (text "[") (text ", ") (text "]") g l
-
+    fun seqg (foldr : ('x * 'a gg -> 'a gg) -> 'a gg -> 'c -> 'a gg) sep g s =
+	#2 (foldr (fn (x, (f, r)) => (sep, g x o f o r)) (nothing, nothing) s)
+    fun listg g l = text "[" o seqg List.foldr (text ", ") g l o text "]"
     fun optiong g NONE = text "NONE"
       | optiong g (SOME a) = text "SOME(" o g a o text ")"
 
-    fun list' ld sep rd e = elem (listg' ld sep rd (glue e))
+    fun seq foldr sep e = elem (seqg foldr sep (glue e))
     fun list e = elem (listg (glue e))
     fun option e = elem (optiong (glue e))
 
