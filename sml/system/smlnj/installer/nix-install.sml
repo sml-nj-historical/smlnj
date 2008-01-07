@@ -33,8 +33,7 @@ structure UnixInstall : sig end = struct
 		 instcmd = fn target =>
 			      let val new = bincmd target
 			      in if OS.FileSys.access (new, []) then ()
-				 else Posix.FileSys.symlink
-					  { old = runsml, new = new }
+				 else Link.link { old = runsml, new = new }
 			      end }
     end
 

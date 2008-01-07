@@ -10,13 +10,11 @@
  *)
 Library
 	structure GenericInstall
-(**** To be added later ****
 # if defined (OPSYS_UNIX)
      	structure UnixInstall
 # elif defined(OPSYS_WIN32)
 	structure WinInstall
 # endif
-*)
 
 is
 	$smlnj/installer/util.cm
@@ -24,13 +22,17 @@ is
 	$smlnj/smlnj-lib/smlnj-lib.cm
 	$smlnj/cm.cm
 
+	installer/copy.sml
 	installer/generic-install.sml
-(**** To be added later ****
 # if defined (OPSYS_UNIX)
      	installer/nix-install.sml
+#  if defined (structure Posix)
+      	installer/symlink.sml
+#  else
+        installer/fakelink.sml
+#  endif
 # elif defined(OPSYS_WIN32)
 	installer/win-install.sml
 # else
 # error Unsupported operating system.
 # endif
-*)

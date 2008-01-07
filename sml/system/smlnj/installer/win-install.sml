@@ -9,29 +9,18 @@ structure WinInstall : sig end = struct
 
     structure I = GenericInstall
 
-    fun proc () = let
-	val home = valOf (OS.Process.getEnv "SMLNJ_HOME")
-
-	fun copy { from, to } = let
-	    val ins = TextIO.openIn from
-	    val outs = TextIO.openOut to
-	    fun loop NONE = (TextIO.closeIn ins; TextIO.closeOut outs)
-	      | loop (SOME l) = (TextIO.output (outs, l); next ())
-	    and next () = loop (TextIO.inputLine ins)
-	in
-	    next ()
+    fun proc () =
+	let val home = valOf (OS.Process.getEnv "SMLNJ_HOME")
+	in I.proc { smlnjroot = home,
+		    installdir = home,
+		    buildcmd = "build.bat",
+		    unpack = NONE,
+		    instcmd = fn target =>
+				 Copy.copy { from = concat [home, "\\config\\",
+							    target, ".bat"],
+					     to = concat [home, "\\bin\\",
+							  target, ".bat"] } }
 	end
-    in
-	I.proc { smlnjroot = home,
-		 installdir = home,
-		 buildcmd = "build.bat",
-		 unpack = NONE,
-		 instcmd = fn target =>
-			      copy { from = concat [home, "\\config\\",
-						    target, ".bat"],
-				     to = concat [home, "\\bin\\",
-						  target, ".bat"] } }
-    end
 
     (* doit right away *)
     val _ = proc ()
