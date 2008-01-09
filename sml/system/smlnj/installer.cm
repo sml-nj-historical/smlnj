@@ -29,7 +29,7 @@ is
 #  if defined (structure Posix)
       	installer/symlink.sml
 #  else
-        installer/fakelink.sml
+        installer/cmdlinelink.sml
 #  endif
 # elif defined(OPSYS_WIN32)
 	installer/win-install.sml
