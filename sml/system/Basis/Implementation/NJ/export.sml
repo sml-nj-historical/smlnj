@@ -17,7 +17,7 @@ structure Export : EXPORT =
    *)
     type cmdt =  (string, string list) WrapExport.pair -> OS.Process.status
 (*    val exportFn' : (string * cmdt) -> unit = SMLNJRuntime.exportFn *)
-fun exportFn' _ = raise Fail "todo: implement exportFn'"
+(* fun exportFn' _ = raise Fail "todo: implement exportFn'" *)
 
     fun nullFilename () = raise Assembly.SysErr("empty heap file name", NONE)
 
@@ -32,13 +32,20 @@ fun exportFn' _ = raise Fail "todo: implement exportFn'"
 	  else false)
 
     fun exportFn ("", f) = nullFilename()
-      | exportFn (fileName, f) = (
-	  Signals.maskSignals Signals.MASKALL;
-	  CleanUp.clean CleanUp.AtExportFn;
-	  Assembly.pstruct := InlineT.cast ();
-	  exportFn' (fileName, WrapExport.wrap f)
-	  (* this never returns here *))
-
+      | exportFn (fileName, f) =
+	  let fun doit () =
+		  (Signals.maskSignals Signals.MASKALL;
+		   CleanUp.clean CleanUp.AtExportFn;
+		   (* Just in case?  I don't think setting pstruct
+		    * is needed anymore, since the boot code already
+		    * kills this data structure: *)
+		   Assembly.pstruct := InlineT.cast ();
+		   Process.exit (if exportHeap fileName then
+				     (CleanUp.clean CleanUp.AtInitFn;
+				      f (SMLBasis.cmdName (),
+					 SMLBasis.cmdArgs ())
+				      handle exn => Process.failure)
+				 else Process.success))
+	  in Cont.throw (Cont.isolate doit) ()
+	  end
   end (* Export *)
-
-
