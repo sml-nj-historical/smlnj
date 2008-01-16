@@ -160,10 +160,10 @@ functor AMD64SVID (
 	argLoc argOffset (w', loc, k)
       | argLoc _ (w, S.COMBINE _, _) = raise Fail "impossible"
 
+   (* takes a calling convention, return type, and param types and returns locations for setting up the call *)
     fun layout {conv, retTy, paramTys} = let
-	val {call={cS0, cStep, finish}, ret={rS0, rStep}} =
-		 SVIDConventions.genAutomaton ()
-	(* return *)
+	val {call={cS0, cStep, finish}, ret={rS0, rStep}} = SVIDConventions.genAutomaton ()
+	(* generate locations for the return  *)
 	fun rLoc () = argLoc 0 (#2 (rStep (rS0, cTyToLoc retTy)))
 	val (resLoc, structRetLoc, argOffset) = (case retTy
 	     of CTy.C_void => (NONE, NONE, 0)
@@ -176,7 +176,7 @@ functor AMD64SVID (
 	      | _ => (SOME (rLoc ()), NONE, 0)
 	     (* end case *))
 	val argLoc = argLoc argOffset
-	(* call *)
+	(* generate locations for the call *)
 	fun assign (str, [], locs) = (finish str, rev locs)
           | assign (str, pTy :: pTys, locs) = let
 	    val (str', cLoc) = cStep (str, cTyToLoc pTy)
@@ -185,11 +185,9 @@ functor AMD64SVID (
 		assign (str', pTys, loc:: locs)
 	    end (* assign *)
 	val (frameSz, argLocs) = assign (cS0, paramTys, [])
-	val argMem = {szb=CSizes.alignAddr (frameSz, frameAlign),
-		      align=frameAlign}
+	val argMem = {szb=CSizes.alignAddr (frameSz, frameAlign), align=frameAlign}
 	in
-	  {argLocs=argLocs, resLoc=resLoc, argMem=argMem,
-	   structRetLoc=structRetLoc}
+	  {argLocs=argLocs, resLoc=resLoc, argMem=argMem, structRetLoc=structRetLoc}
 	end (* layout *)
 
     val spReg = T.REG (wordTy, C.rsp)
@@ -200,59 +198,55 @@ functor AMD64SVID (
 			then []
 			else [T.MV (wordTy, C.rsp, T.SUB (wordTy, spReg, 
 			      T.LI (T.I.fromInt (wordTy, #szb argMem))))]
-	val copyArgs = let
+	val (copyArgs, gprUses, fprUses) = let
 	    fun offSp 0 = spReg
 	      | offSp offset = T.ADD (wordTy, spReg, T.LI offset)
-	    fun f ([], [], stms) = rev stms
-	      | f (arg :: args, loc :: locs, stms) = let
-		val stms = (case (arg, loc)
+	    fun f ([], [], stms, gprs, fprs) = (rev stms, gprs, fprs)
+	      | f (arg :: args, loc :: locs, stms, gprs, fprs) = let
+		val (stms, gprs, fprs) = (case (arg, loc)
 		    of (ARG (e as T.REG _), C_STK (mty, offset)) =>
-		       T.STORE (wordTy, offSp offset, e, stack) :: stms
+		       (T.STORE (wordTy, offSp offset, e, stack) :: stms, gprs, fprs)
 		     | (ARG e, C_STK (mty, offset)) => let
 		       val tmp = C.newReg ()
 		       in
-			 T.STORE (mty, offSp offset, T.REG (mty, tmp), stack) ::
-			 T.MV (mty, tmp, e) :: stms
+			 (T.STORE (mty, offSp offset, T.REG (mty, tmp), stack) ::T.MV (mty, tmp, e) :: stms, gprs, fprs)
 		       end
 		     | (ARG e, C_GPR (mty, r)) => let
 		       val tmp = C.newReg ()
 		       in
-			 T.COPY (mty, [r], [tmp]) ::
-			 T.MV (mty, tmp, e) :: stms
+			 (T.COPY (mty, [r], [tmp]) :: T.MV (mty, tmp, e) :: stms, r :: gprs, fprs)
 		       end
 		     | (FARG (e as T.FREG _), C_STK (mty, offset)) =>
-		       T.FSTORE (mty, offSp offset, e, stack) :: stms
+		       (T.FSTORE (mty, offSp offset, e, stack) :: stms, gprs, fprs)
 		     | (FARG e, C_STK (mty, offset)) => let
 		       val tmp = C.newFreg ()
 		       in
-			 T.FSTORE (mty, offSp offset, 
-			   T.FREG (mty, tmp), stack) ::
-			 T.FMV (mty, tmp, e) :: stms
+			 (T.FSTORE (mty, offSp offset, T.FREG (mty, tmp), stack) :: T.FMV (mty, tmp, e) :: stms, gprs, fprs)
 		       end
 		     | (FARG e, C_FPR (mty, r)) => let
 		       val tmp = C.newFreg ()
 		       in
-			 T.FCOPY (mty, [r], [tmp]) ::
-			 T.FMV (mty, tmp, e) :: stms
+			 (T.FCOPY (mty, [r], [tmp]) :: T.FMV (mty, tmp, e) :: stms, gprs, (mty, r) :: fprs)
 		       end
 		     | _ => raise Fail "todo"
 		    (* end case *))
 		in
-		  f (args, locs, stms)
+		  f (args, locs, stms, gprs, fprs)
 		end
 	      | f _ = raise Fail "argument arity error"
 	    in
-	      f (args, argLocs, [])
+	      f (args, argLocs, [], [], [])
 	    end
-       (* determine from the calling convention whether MLRISC needs to save registers over the call *)
+       (* the defined registers of the call depend on the calling convention *)
  	val defs = (case #conv proto
-            of "ccall" => map gpr callerSaveRegs @ map fpr callerSaveFRegs
+            of "ccall" => List.map gpr callerSaveRegs @ List.map fpr callerSaveFRegs
 	     | "ccall-bare" => []
 	     | conv => raise Fail (concat [
 			"unknown calling convention \"", String.toString conv, "\""
 		      ])
             (* end case *))
-	val callStm = T.CALL {funct=name, targets=[], defs=defs, uses=[], region=mem, pops=0}
+	val uses = List.map gpr gprUses @ List.map fpr fprUses
+	val callStm = T.CALL {funct=name, targets=[], defs=defs, uses=uses, region=mem, pops=0}
 	val (resultRegs, copyResult) = (case resLoc
 	     of NONE => ([], [])
 	      | SOME (C_GPR (ty, r)) => let
