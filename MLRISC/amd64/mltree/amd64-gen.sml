@@ -904,14 +904,17 @@ functor AMD64Gen (
 	    end
 	
 	and fsqrt (fty, d, a, an) = let
-	    val aOpnd = foperand (fty, a)
+	    val s = fexpToReg (fty, a)
+	    (* TODO: allow the source operand to be a memory location
+	     * val aOpnd = foperand (fty, a)
+	     *)
 	    val oper = (case fty
 	          of 32 => I.FSQRTS
 	           | 64 => I.FSQRTD
 	           | _ => error "fsqrt"
 	          (* end case *))
 	    in
-	      mark (oper {src=aOpnd, dst=I.FDirect d}, an)
+	      mark (oper {src=I.FDirect s, dst=I.FDirect d}, an)
 	    end
 	
 	and convertf2f (fromTy, toTy, e, d, an) = let
@@ -954,9 +957,13 @@ functor AMD64Gen (
 		      | 64 => I.XORPD
  	             (* end case *))
 		 val r = newFreg ()
+		 val s = fexpToReg (fty, a)
+		 (* TODO: allow the source operand to be a memory location or register
+		  * val src = foperand (fty, a)
+		  *) 
 		 in 
 		     fload (fty, T.LABEL l, I.Region.memory, r, an);
-		     mark (I.FBINOP {binOp=fop, dst=r, src=foperand (fty, a)}, an);
+		     mark (I.FBINOP {binOp=fop, dst=r, src=I.FDirect s}, an);
 		     fcopy (fty, [d], [r], an)
 		 end
 	       | T.FABS (_, a) => let 
@@ -966,9 +973,13 @@ functor AMD64Gen (
 		      | 64 => I.ANDPD
  	             (* end case *))
 		 val r = newFreg ()
+		 val s = fexpToReg (fty, a)
+		 (* TODO: allow the source operand to be a memory location or register
+		  * val src = foperand (fty, a)
+		  *) 
 		 in 
 		     fload (fty, T.LABEL l, I.Region.memory, r, an);
-		     mark (I.FBINOP {binOp=fop, dst=r, src=foperand (fty, a)}, an);
+		     mark (I.FBINOP {binOp=fop, dst=r, src=I.FDirect s}, an);
 		     fcopy (fty, [d], [r], an)
 		 end
 	       | T.FSQRT (fty, a) => fsqrt (fty, d, a, an)
@@ -1131,8 +1142,8 @@ functor AMD64Gen (
 	     * ucomiss/d    xmm1/m32,  xmm2
 	     *)
                fun compare () = let
-                   val x = foperand (fty, x)
-                   val y = foperand (fty, y)
+		   val x = foperand (fty, x)
+		   val y = foperand (fty, y)
                    fun cmp (x, y, fcc) = (
                        emit (I.FCOM {comOp=O.ucomOp fty, src=y, dst=x});
                        fcc)

@@ -371,7 +371,7 @@ functor AMD64SpillInstr (
       | spill CB.FP = spillF
       | spill _ = error "spill"
 
-    (* reload a general purpose register r at instruction i from spillLoc*)
+    (* reload a general purpose register r at instruction i from spillLoc *)
     fun reloadR (i, r, spillLoc) = let
         fun reload (instr, an) = let
 	    fun done (instr, an) = {code=[mark (instr, an)], proh=[], newReg=NONE}
@@ -581,6 +581,20 @@ functor AMD64SpillInstr (
                             mark (I.FMOVE {fmvOp=fmvOp, src=tmp, dst=dst}, an)],
                       proh=[tmpR], newReg=SOME tmpR}
                    end
+
+		 | I.FBINOP {binOp=binOp as (I.XORPS | I.XORPD | I.ANDPS | I.ANDPD | I.ORPS | I.ORPD), src, dst} => if CB.sameColor (r, dst)
+                   then {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=I.FDirect dst},
+			       mark (I.FBINOP {binOp=binOp, src=src, dst=dst}, an)], 
+		         proh=[], newReg=NONE}
+                   else let
+	              (* TODO: allow the source operand to be a memory location*)
+                      val tmpR = newFreg ()
+                      val tmp = I.FDirect tmpR
+                      in
+                           {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=tmp},
+				  mark (I.FBINOP {binOp=binOp, src=tmp, dst=dst}, an)], 
+		            proh=[tmpR], newReg=SOME tmpR}
+                      end
 
                  | I.FBINOP {binOp, src, dst} => if CB.sameColor (r, dst)
  	           then {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=I.FDirect dst},
