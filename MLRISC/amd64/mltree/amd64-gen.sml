@@ -84,6 +84,8 @@ functor AMD64Gen (
     (* One day, this is going to bite us when precision(LargeInt)>32 *)
     fun wToInt32 w = Int32.fromLarge(Word32.toLargeIntX w)
 
+    fun fitsIn32Bits z = z < IntInf.<< (1, 0w31)
+
     fun move64 (src, dst) = I.move {mvOp=I.MOVABSQ, src=src, dst=dst}
     
     (* analyze for power-of-two-ness *)
@@ -347,7 +349,17 @@ functor AMD64Gen (
         and address (ea, mem) = address' 64 (ea, mem)
 
         (* reduce an expression into an operand *)
-        and operand ty (T.LI i) = I.Immed (toInt32 i)
+        and operand ty (T.LI i) = if (fitsIn32Bits i)
+            then I.Immed (toInt32 i) 
+            else let
+              (* i is a 64-bit operand *)
+               val dstR = newReg ()
+	       val dst = I.Direct (ty, dstR)
+	       val i = T.I.signed (64, i)
+               in
+		   move (ty, I.Immed64 (Int64.fromLarge i), dst);
+		   dst
+               end
           | operand _ (x as (T.CONST _ | T.LABEL _)) = I.ImmedLabel x
           | operand _ (T.LABEXP le) = I.ImmedLabel le
           | operand _ (T.REG(ty,r)) = gpr (ty, r)
@@ -771,7 +783,9 @@ functor AMD64Gen (
 	    in
 	      (case e
 		of T.REG (ty, r) => move' (ty, gpr (ty, r), dstOpnd, an)
-		 | T.LI z => move' (ty, I.Immed (toInt32 z), dstOpnd, an)
+		 | T.LI z => if (fitsIn32Bits z)
+                   then move' (ty, I.Immed (toInt32 z), dstOpnd, an)
+                   else raise Fail "todo"
 		 | (T.CONST _ | T.LABEL _) => 
                    move' (ty, I.ImmedLabel e, dstOpnd, an)
 		 | T.LABEXP le => move' (ty, I.ImmedLabel le, dstOpnd, an)
@@ -963,7 +977,7 @@ functor AMD64Gen (
 		  *) 
 		 in 
 		     fload (fty, T.LABEL l, I.Region.memory, r, an);
-		     mark (I.FBINOP {binOp=fop, dst=r, src=I.FDirect s}, an);
+		     mark (I.FBINOP {binOp=fop, dst=s, src=I.FDirect r}, an);
 		     fcopy (fty, [d], [r], an)
 		 end
 	       | T.FABS (_, a) => let 

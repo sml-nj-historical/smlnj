@@ -102,6 +102,7 @@ functor AMD64Props (
     fun loadOperand {opn, t} = I.move {mvOp=I.MOVQ, src=opn, dst=I.Direct (64, t)}
 
     fun hashOpn(I.Immed i) = Word.fromInt(Int32.toInt i)
+      | hashOpn(I.Immed64 i) = Word.fromInt(Int64.toInt i)
       | hashOpn(I.ImmedLabel le) = MLTreeHash.hash le + 0w123
       | hashOpn(I.Relative i) = Word.fromInt i + 0w1232
       | hashOpn(I.LabelEA le) = MLTreeHash.hash le + 0w44444
@@ -112,6 +113,7 @@ functor AMD64Props (
       | hashOpn(I.Indexed {base, index, scale, disp, ...}) =
         CB.hashCell index + Word.fromInt scale + hashOpn disp
     fun eqOpn(I.Immed a,I.Immed b) = a = b
+      | eqOpn(I.Immed64 a,I.Immed64 b) = a = b
       | eqOpn(I.ImmedLabel a,I.ImmedLabel b) = MLTreeEval.==(a,b)
       | eqOpn(I.Relative a,I.Relative b) = a = b
       | eqOpn(I.LabelEA a,I.LabelEA b) = MLTreeEval.==(a,b)

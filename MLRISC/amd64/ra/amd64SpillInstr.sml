@@ -31,11 +31,13 @@ functor AMD64SpillInstr (
     fun mark (instr, an) = annotate(I.INSTR instr, an)
     
     fun immed(I.Immed _) = true
+      | immed(I.Immed64 _) = true
       | immed(I.ImmedLabel _) = true
       | immed _ = false
 
     fun immedOrReg(I.Direct r) = true
       | immedOrReg(I.Immed _) = true
+      | immedOrReg(I.Immed64 _) = true
       | immedOrReg(I.ImmedLabel _) = true
       | immedOrReg _ = false
 

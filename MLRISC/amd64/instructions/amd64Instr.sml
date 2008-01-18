@@ -16,6 +16,7 @@ sig
       sharing Region = T.Region
    datatype operand =
      Immed of Int32.int
+   | Immed64 of Int64.int
    | ImmedLabel of T.labexp
    | Relative of int
    | LabelEA of T.labexp
@@ -346,6 +347,7 @@ struct
    structure Constant = T.Constant
    datatype operand =
      Immed of Int32.int
+   | Immed64 of Int64.int
    | ImmedLabel of T.labexp
    | Relative of int
    | LabelEA of T.labexp

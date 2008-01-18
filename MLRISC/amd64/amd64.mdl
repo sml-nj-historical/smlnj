@@ -87,7 +87,8 @@ architecture AMD64 =
 
       (* Note: Relative is only generated after sdi resolution *)
       datatype operand =
-         Immed      of Int32.int	   rtl: int
+         Immed      of Int32.int   	   rtl: int
+       | Immed64    of Int64.int           rtl: int
        | ImmedLabel of T.labexp            rtl: labexp
        | Relative   of int		   (* no semantics given *)
        | LabelEA    of T.labexp            rtl: labexp (* XXX *)
@@ -435,6 +436,7 @@ architecture AMD64 =
     immedOpnd{opnd} =
       (case opnd of
          I.Immed i32 => i32
+       | I.Immed i64 => i64
        | I.ImmedLabel le => lexp le
        | I.LabelEA le => lexp le
        | _ => error "immedOpnd"
@@ -463,6 +465,7 @@ architecture AMD64 =
         (I.ImmedLabel le, dst) => arith{opc1,opc2,src=I.Immed(lexp le),dst} 
       | (I.LabelEA le, dst) => arith{opc1,opc2,src=I.Immed(lexp le),dst}
       | (I.Immed i,dst) => ()
+      | (I.Immed64 i,dst) => ()
       | (src, I.Direct (_,r)) => encodeReg{prefix=opc1+op3,reg,opnd=src}
       | (I.Direct (_,r),dst) => encodeReg{prefix=opc1+0w1,reg,opnd=dst}
       | _ => error "arith"
@@ -470,11 +473,18 @@ architecture AMD64 =
 
   structure Assembly =
     struct
-      fun emitInt32 i = let val s = Int32.toString i
-         val s = if i >= 0 then s else "-"^String.substring(s,1,size s-1)
-         in
-	   emit s 
-	 end
+      fun emitInt32 i = let
+          val s = Int32.toString i
+          val s = if i >= 0 then s else "-"^String.substring(s,1,size s-1)
+          in
+	     emit s 
+	  end
+      fun emitInt64 i = let
+          val s = Int64.toString i
+          val s = if (i >= 0) then s else "-"^String.substring(s,1,size s-1)
+          in
+	      emit s
+          end
 
       val {low=SToffset, ...} = C.cellRange CellsBasis.FP
 		
@@ -484,12 +494,14 @@ architecture AMD64 =
         | emitScale 3 = emit "8"
         | emitScale _ = error "emitScale"
 
-      and eImmed(I.Immed (i)) = emitInt32 i
+      and eImmed(I.Immed i) = emitInt32 i
+	| eImmed(I.Immed64 i) = emitInt64 i
         | eImmed(I.ImmedLabel lexp) = emit_labexp lexp
         | eImmed _ = error "eImmed"
 
       and emit_operand opn = (case opn 
 	  of I.Immed i => (emit "$"; emitInt32 i)
+	   | I.Immed64 i => (emit "$"; emitInt64 i)
            | I.ImmedLabel lexp => (emit "$"; emit_labexp lexp)
            | I.LabelEA le => emit_labexp le
            | I.Relative _ => error "emit_operand"
@@ -516,6 +528,8 @@ architecture AMD64 =
 
       and emit_disp(I.Immed 0) = ()
         | emit_disp(I.Immed i) = emitInt32 i
+	| emit_disp(I.Immed64 0) = ()
+	| emit_disp(I.Immed64 i) = emitInt64 i
         | emit_disp(I.ImmedLabel lexp) = emit_labexp lexp
         | emit_disp _ = error "emit_disp"
 
