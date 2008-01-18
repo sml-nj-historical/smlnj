@@ -17,6 +17,9 @@ functor AMD64Gen (
     val signBit : int -> Label.label
     (* Same as signBit, except the high bit is zero and the low bits are 1s. *)
     val negateSignBit : int -> Label.label
+			       
+   (* guaranteeing that floats are stored at 16-byte aligned addresses reduces the number of instructions *)
+    val floats16ByteAligned : bool
    ) : MLTREECOMP = struct
 
     structure TS = ExtensionComp.TS
@@ -899,6 +902,10 @@ functor AMD64Gen (
 	     | e => I.FDirect (fexpToReg (fty, e))
 	    (* end case *))
 
+	and falignedOperand (fty, e) = if floats16ByteAligned
+            then foperand (fty, e)
+            else I.FDirect (fexpToReg (fty, e))
+
        (* SSE binary ops 
 	*         (src)      (dst)
 	* binOp   freg/m64, freg
@@ -918,7 +925,7 @@ functor AMD64Gen (
 	    end
 	
 	and fsqrt (fty, d, a, an) = let
-	    val s = fexpToReg (fty, a)
+	    val s = falignedOperand (fty, a)
 	    (* TODO: allow the source operand to be a memory location
 	     * val aOpnd = foperand (fty, a)
 	     *)
@@ -928,7 +935,7 @@ functor AMD64Gen (
 	           | _ => error "fsqrt"
 	          (* end case *))
 	    in
-	      mark (oper {src=I.FDirect s, dst=I.FDirect d}, an)
+	      mark (oper {src=s, dst=I.FDirect d}, an)
 	    end
 	
 	and convertf2f (fromTy, toTy, e, d, an) = let
@@ -971,13 +978,10 @@ functor AMD64Gen (
 		      | 64 => I.XORPD
  	             (* end case *))
 		 val r = newFreg ()
-		 val s = fexpToReg (fty, a)
-		 (* TODO: allow the source operand to be a memory location or register
-		  * val src = foperand (fty, a)
-		  *) 
+		 val s = falignedOperand (fty, a)
 		 in 
 		     fload (fty, T.LABEL l, I.Region.memory, r, an);
-		     mark (I.FBINOP {binOp=fop, dst=s, src=I.FDirect r}, an);
+		     mark (I.FBINOP {binOp=fop, dst=r, src=s}, an);
 		     fcopy (fty, [d], [r], an)
 		 end
 	       | T.FABS (_, a) => let 
@@ -987,13 +991,10 @@ functor AMD64Gen (
 		      | 64 => I.ANDPD
  	             (* end case *))
 		 val r = newFreg ()
-		 val s = fexpToReg (fty, a)
-		 (* TODO: allow the source operand to be a memory location or register
-		  * val src = foperand (fty, a)
-		  *) 
+		 val s = falignedOperand (fty, a)
 		 in 
 		     fload (fty, T.LABEL l, I.Region.memory, r, an);
-		     mark (I.FBINOP {binOp=fop, dst=r, src=I.FDirect s}, an);
+		     mark (I.FBINOP {binOp=fop, dst=r, src=s}, an);
 		     fcopy (fty, [d], [r], an)
 		 end
 	       | T.FSQRT (fty, a) => fsqrt (fty, d, a, an)

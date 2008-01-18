@@ -8,6 +8,9 @@ functor AMD64SpillInstr (
       structure I : AMD64INSTR
       structure Props : AMD64INSN_PROPERTIES
           where I = I
+
+   (* guaranteeing that floats are stored at 16-byte aligned addresses reduces the number of instructions *)
+    val floats16ByteAligned : bool
     ) : ARCH_SPILL_INSTR =
   struct
 
@@ -583,27 +586,26 @@ functor AMD64SpillInstr (
                             mark (I.FMOVE {fmvOp=fmvOp, src=tmp, dst=dst}, an)],
                       proh=[tmpR], newReg=SOME tmpR}
                    end
-
+                (* treat bitwise operators differently, as they require that their source operand is 16-byte aligned *)
 		 | I.FBINOP {binOp=binOp as (I.XORPS | I.XORPD | I.ANDPS | I.ANDPD | I.ORPS | I.ORPD), src, dst} => if CB.sameColor (r, dst)
                    then {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=I.FDirect dst},
 			       mark (I.FBINOP {binOp=binOp, src=src, dst=dst}, an)], 
 		         proh=[], newReg=NONE}
-                   else let
-	              (* TODO: allow the source operand to be a memory location*)
-                      val tmpR = newFreg ()
-                      val tmp = I.FDirect tmpR
-                      in
-                           {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=tmp},
-				  mark (I.FBINOP {binOp=binOp, src=tmp, dst=dst}, an)], 
-		            proh=[tmpR], newReg=SOME tmpR}
-                      end
-
+                   else if floats16ByteAligned
+                        then let
+                          val tmpR = newFreg ()
+                          val tmp = I.FDirect tmpR
+                          in
+                              {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=tmp},
+				     mark (I.FBINOP {binOp=binOp, src=tmp, dst=dst}, an)], 
+		               proh=[tmpR], newReg=SOME tmpR}
+                          end
+                   else {code=[mark (I.FBINOP {binOp=binOp, src=replace src, dst=dst}, an)], proh=[], newReg=NONE}
                  | I.FBINOP {binOp, src, dst} => if CB.sameColor (r, dst)
  	           then {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=I.FDirect dst},
 			       mark (I.FBINOP {binOp=binOp, src=src, dst=dst}, an)], 
 		         proh=[], newReg=NONE}
 		   else {code=[mark (I.FBINOP {binOp=binOp, src=replace src, dst=dst}, an)], proh=[], newReg=NONE}
-
                  | I.FCOM {comOp, src, dst} => let
                    val tmpR = newFreg ()
                    val tmp = I.FDirect tmpR
@@ -615,22 +617,26 @@ functor AMD64SpillInstr (
                              mark (I.FCOM {comOp=comOp, src=src, dst=dst}, an)],
                         proh=[tmpR], newReg=SOME tmpR}
                    end 
-                 | I.FSQRTS {dst, src} => let
-                   val tmpR = newFreg ()
-                   val tmp = I.FDirect tmpR
-                   in
-                     {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=tmp},
-                             mark (I.FSQRTS {src=tmp, dst=dst}, an)],
-                      proh=[tmpR], newReg=SOME tmpR}
-                   end
-                 | I.FSQRTD {dst, src} => let
-                   val tmpR = newFreg ()
-                   val tmp = I.FDirect tmpR
-                   in
-                     {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=tmp},
-                             mark (I.FSQRTD {src=tmp, dst=dst}, an)],
-                      proh=[tmpR], newReg=SOME tmpR}
-                   end
+                 | I.FSQRTS {dst, src} => if floats16ByteAligned
+                   then let
+                     val tmpR = newFreg ()
+                     val tmp = I.FDirect tmpR
+                     in
+                        {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=tmp},
+                               mark (I.FSQRTS {src=tmp, dst=dst}, an)],
+			 proh=[tmpR], newReg=SOME tmpR}
+                     end
+                   else {code=[mark (I.FSQRTS {src=spillLoc, dst=dst}, an)], proh=[], newReg=NONE}
+                 | I.FSQRTD {dst, src} => if floats16ByteAligned
+                   then let
+                     val tmpR = newFreg ()
+                     val tmp = I.FDirect tmpR
+                     in
+                        {code=[I.fmove {fmvOp=fmvOp, src=spillLoc, dst=tmp},
+                               mark (I.FSQRTD {src=tmp, dst=dst}, an)],
+			 proh=[tmpR], newReg=SOME tmpR}
+                     end
+                   else {code=[mark (I.FSQRTD {src=spillLoc, dst=dst}, an)], proh=[], newReg=NONE}
                  | I.CALL {opnd, defs, uses, return, cutsTo, mem, pops} =>
                    {code=[mark (I.CALL {opnd=opnd, defs=C.rmvReg (r, defs), 
                                         uses=uses, return=return, cutsTo=cutsTo,

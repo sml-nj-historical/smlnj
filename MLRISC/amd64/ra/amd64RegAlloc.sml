@@ -49,6 +49,9 @@ functor AMD64RegAlloc (
           val phases    : ra_phase list
       end
 
+     (* guaranteeing that floats are stored at 16-byte aligned addresses reduces the number of instructions *)
+      val floats16ByteAligned : bool
+
     ) : CFG_OPTIMIZATION = 
   struct
     
@@ -159,7 +162,8 @@ functor AMD64RegAlloc (
                        structure Asm = Asm)
     structure SpillInstr = AMD64SpillInstr (
                structure I = I
-               structure Props = Props)
+               structure Props = Props
+	       val floats16ByteAligned = true)
     val spillFInstr = SpillInstr.spill CB.FP
     val reloadFInstr = SpillInstr.reload CB.FP
     val spillInstr = SpillInstr.spill CB.GP
