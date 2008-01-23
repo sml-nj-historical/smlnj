@@ -67,6 +67,7 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
     fun base() = (* XXXX *)
       if !ClusterAnnotation.useVfp then AMD64CpsRegs.vfp else I.C.rsp 
 
+    val floats16ByteAligned = false
 
     structure MLTreeComp=
        AMD64Gen(
@@ -101,6 +102,7 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
 
            fun signBit ty = raise Fail "todo"
            fun negateSignBit ty = raise Fail "todo"
+	   val floats16ByteAligned = floats16ByteAligned
           )
 
     structure Jumps = 
@@ -205,6 +207,8 @@ functor AMD64CG (structure CCallParams: sig val frameAlign : int
             I.Displace{base=base(), disp=AMD64StackSpills.getFregLoc loc, mem=spill}
 
       end
+
+      val floats16ByteAligned = floats16ByteAligned
     ) (* AMD64RA *)
   ) (* AMD64CG *)
 end

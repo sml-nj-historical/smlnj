@@ -14,6 +14,12 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2008/01/23
+Description:
+
+Fixed the amd64 code generator to compile with the current MLRISC.
+----------------------------------------------------------------------
 Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
 Date: 2007/11/26
 Description:
