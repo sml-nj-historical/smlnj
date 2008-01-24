@@ -753,3 +753,19 @@ Sending        runtime/objs/mk.ppc-darwin
 Sending        runtime/objs/mk.x86-darwin
 Transmitting file data ............
 Committed revision 2883.
+
+======================================================================
+12.merge from trunk working copy to primop3 (2881:2930)
+
+elpis:~/wc/smlnj/primop3-current/base gkuan$ svn merge -r 2881:HEAD svn://smlnj-gforge.cs.uchicago.edu/smlnj/sml/trunk
+ U   runtime/objs
+U    NOTES/HISTORY
+U    compiler/CodeGen/amd64/amd64CG.sml
+
+elpis:~/wc/smlnj/primop3-current/base gkuan$ svn ci -m "merge from trunk into primo
+p-branch-3 (2881:2930) MLRISC/CodeGen updates"
+Sending        NOTES/HISTORY
+Sending        compiler/CodeGen/amd64/amd64CG.sml
+Sending        runtime/objs
+Transmitting file data ..
+Committed revision 2931.
