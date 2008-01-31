@@ -123,7 +123,7 @@ clean:
 
 
 $(RUNTIME):	$(VERSION) main.obj $(OBJS) $(ALL_LIBS)
-	$(CC) /Fe$(RUNTIME) $(CFLAGS) $(LDFLAGS) main.obj $(OBJS) $(ALL_LIBS) $(LD_LIBS) wsock32.lib netapi32.lib
+	$(CC) /Fe$(RUNTIME) $(CFLAGS) $(LDFLAGS) main.obj $(OBJS) $(ALL_LIBS) $(LD_LIBS) wsock32.lib netapi32.lib advapi32.lib
 
 $(VERSION):
 		($(MAKE) MAKE="$(MAKE)" clean)

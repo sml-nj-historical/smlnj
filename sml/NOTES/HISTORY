@@ -14,6 +14,13 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2008/01/31
+Description:
+
+Added outline of the Windows basis library and the basic registry
+functionality.
+----------------------------------------------------------------------
 Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
 Date: 2008/01/23
 Description:

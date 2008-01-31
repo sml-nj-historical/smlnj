@@ -207,6 +207,14 @@ Library
 	signature WIN32
 
 	structure Win32
+
+	signature WINDOWS_KEY
+	signature WINDOWS_REG
+	signature WINDOWS_CONFIG
+	signature WINDOWS_DDE
+	signature WINDOWS
+
+	structure Windows
 #endif
 
 is
