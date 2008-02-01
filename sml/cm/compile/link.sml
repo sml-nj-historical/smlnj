@@ -117,6 +117,8 @@ in
 		fun ppb pps =
 		    (PP.newline pps;
 		     PP.string pps (General.exnMessage exn);
+		     app (fn s => PP.string pps (s ^ "\n"))
+			 (SMLofNJ.exnHistory exn);
 		     PP.newline pps)
 	    in
 		error (concat [msg, " ", descr]) ppb;
