@@ -7,7 +7,7 @@
  *)
 
 signature WINDOWS_CONFIG = sig
-(*    val platformWin32s       : SysWord.word
+    val platformWin32s       : SysWord.word
     val platformWin32Windows : SysWord.word
     val platformWin32NT      : SysWord.word
     val platformWin32CE      : SysWord.word
@@ -22,6 +22,6 @@ signature WINDOWS_CONFIG = sig
     val getWindowsDirectory : unit -> string
     val getSystemDirectory : unit -> string
     val getComputerName : unit -> string
-    val getUserName : unit -> string*)
+    val getUserName : unit -> string
   end
 

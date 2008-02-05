@@ -32,4 +32,8 @@ CFUNC("reg_set_value_string", _ml_win32_REG_set_value_string, "word32 * string *
 CFUNC("reg_set_value_expand_string", _ml_win32_REG_set_value_expand_string, "word32 * string * string -> unit")
 CFUNC("reg_set_value_multi_string", _ml_win32_REG_set_value_multi_string, "word32 * string * string -> unit")
 CFUNC("reg_set_value_binary", _ml_win32_REG_set_value_binary, "word32 * string * Word8Vector.vector -> unit")
-
+CFUNC("config_get_version_ex", _ml_win32_CONFIG_get_version_ex, "unit -> word32 * word32 * word32 * word32 * string ")
+CFUNC("config_get_windows_directory", _ml_win32_CONFIG_get_windows_directory, "unit -> string")
+CFUNC("config_get_system_directory", _ml_win32_CONFIG_get_system_directory, "unit -> string")
+CFUNC("config_get_computer_name", _ml_win32_CONFIG_get_computer_name, "unit -> string")
+CFUNC("config_get_user_name", _ml_win32_CONFIG_get_user_name, "unit -> string")

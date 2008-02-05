@@ -241,7 +241,7 @@ ml_val_t _ml_win32_REG_query_value_multi_string(ml_state_t *msp, ml_val_t arg)
   while (dwSize > 0) {
 	nextToCopy = strlen(ptr);
     vec = ML_AllocRaw32 (msp, BYTES_TO_WORDS (nextToCopy+1));
-    strcpy((PTR_MLtoC(char, vec)), ptr);
+    strcpy_s((PTR_MLtoC(char, vec)), nextToCopy+1, ptr);
     SEQHDR_ALLOC (msp, str, DESC_string, vec, nextToCopy);
     ptr += strlen(ptr)+1;
     
@@ -365,7 +365,7 @@ ml_val_t _ml_win32_REG_set_value_multi_string(ml_state_t *msp, ml_val_t arg)
   ptr = concatenated;
   iter = stringList;
   while (iter != LIST_nil) {
-    strcpy(ptr, STR_MLtoC(LIST_hd(iter)));
+    strcpy_s(ptr, dwSize+1, STR_MLtoC(LIST_hd(iter)));
     ptr += strlen(ptr)+1;
 	iter = LIST_tl(iter);
   }

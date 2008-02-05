@@ -24,6 +24,7 @@ OBJS =		win32-lib.obj \
 		win32-errors.obj \
 		win32-debug.obj \
 		win32-reg.obj \
+		win32-config.obj \
 		name-val.obj 
 
 $(LIBRARY)	: $(VERSION) $(OBJS)
@@ -56,6 +57,10 @@ win32-debug.obj: win32-debug.c $(DEPENDENTS) \
 win32-reg.obj: win32-reg.c $(DEPENDENTS) \
 	$(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h $(INC_DIR)\ml-objects.h
 	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c win32-reg.c
+
+win32-config.obj: win32-config.c $(DEPENDENTS) \
+	$(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h $(INC_DIR)\ml-objects.h
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c win32-config.c
 
 name-val.obj: name-val.c name-val.h
 	$(CC) $(CFLAGS) /c name-val.c
