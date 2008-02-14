@@ -23,6 +23,7 @@ OBJS =		win32-lib.obj \
 		win32-constants.obj \
 		win32-errors.obj \
 		win32-debug.obj \
+		win32-dde.obj \
 		win32-reg.obj \
 		win32-config.obj \
 		name-val.obj 
@@ -53,6 +54,10 @@ win32-errors.obj: win32-errors.c $(DEPENDENTS) \
 win32-debug.obj: win32-debug.c $(DEPENDENTS) \
 	$(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h $(INC_DIR)\ml-objects.h
 	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c win32-debug.c
+
+win32-dde.obj: win32-dde.c $(DEPENDENTS) \
+	$(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h $(INC_DIR)\ml-objects.h
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c win32-dde.c
 
 win32-reg.obj: win32-reg.c $(DEPENDENTS) \
 	$(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h $(INC_DIR)\ml-objects.h
