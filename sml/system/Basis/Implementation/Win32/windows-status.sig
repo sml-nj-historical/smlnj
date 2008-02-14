@@ -7,7 +7,7 @@
  *)
 
 signature WINDOWS_STATUS = sig
-(*    type status = SysWord.word
+    type status
     val accessViolation     : status
     val arrayBoundsExceeded : status
     val breakpoint          : status
@@ -33,5 +33,5 @@ signature WINDOWS_STATUS = sig
     val singleStep              : status
     val stackOverflow           : status
     val timeout                 : status
-    val userAPC                 : status*)
+    val userAPC                 : status
   end
