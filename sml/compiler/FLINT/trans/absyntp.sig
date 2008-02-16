@@ -7,13 +7,6 @@ sig
 
 type region 
 
-datatype tycpath
-  = TP_VAR of { tdepth: DebIndex.depth, num: int, kind: LtyExtern.tkind }
-  | TP_TYC of Types.tycon
-  | TP_FCT of tycpath list * tycpath list
-  | TP_APP of tycpath * tycpath list
-  | TP_SEL of tycpath * int
-
 datatype exp
   = VARexp of VarCon.var ref * Types.tyvar list (* instance type *)
   | CONexp of VarCon.datacon * Types.tyvar list (* instance type *)
@@ -65,13 +58,13 @@ and strexp
   = VARstr of Modules.Structure 
   | STRstr of Bindings.binding list
   | APPstr of {oper: Modules.Functor, arg: Modules.Structure, 
-               argtycs: tycpath list}
+               argtycs: TypesTP.tycpath list}
   | LETstr of dec * strexp
   | MARKstr of strexp * region
 
 and fctexp 
   = VARfct of Modules.Functor
-  | FCTfct of {param: Modules.Structure, argtycs: tycpath list, 
+  | FCTfct of {param: Modules.Structure, argtycs: TypesTP.tycpath list, 
                def: strexp} 
   | LETfct of dec * fctexp
   | MARKfct of fctexp * region

@@ -12,20 +12,16 @@ local
   structure SP = SymPath
   structure B = Bindings
   structure LT = LtyExtern
-  open VarCon Modules Types
+  structure T = TypesTP
+  structure A = Access
+  structure V = VarCon
+  open Modules Types
 in
 
 type region = Ast.region  (* = int * int *)
 
-datatype tycpath (* (instantiated) functor type parameter path *)
-  = TP_VAR of { tdepth: DebIndex.depth, num: int, kind: LT.tkind }   
-  | TP_TYC of tycon
-  | TP_FCT of tycpath list * tycpath list
-  | TP_APP of tycpath * tycpath list
-  | TP_SEL of tycpath * int
-
 datatype exp
-  = VARexp of var ref * tyvar list
+  = VARexp of V.var ref * tyvar list
     (* the 2nd arg is a type mv list used to capture the instantiation
        parameters for this occurence of var when its type is polymorphic.
        FLINT will use these to provide explicit type parameters for
@@ -70,7 +66,7 @@ and dec
   | OPENdec of (SP.path * Structure) list
   | LOCALdec of dec * dec
   | SEQdec of dec list
-  | OVLDdec of var
+  | OVLDdec of V.var
   | FIXdec of {fixity: F.fixity, ops: S.symbol list} 
   | MARKdec of dec * region
 
@@ -81,7 +77,7 @@ and dec
 and strexp 
   = VARstr of Structure 
   | STRstr of B.binding list
-  | APPstr of {oper: Functor, arg: Structure, argtycs: tycpath list}
+  | APPstr of {oper: Functor, arg: Structure, argtycs: T.tycpath list}
   | LETstr of dec * strexp
   | MARKstr of strexp * region
 
@@ -92,7 +88,7 @@ and strexp
  *)
 and fctexp 
   = VARfct of Functor
-  | FCTfct of {param: Structure, argtycs: tycpath list, def: strexp}
+  | FCTfct of {param: Structure, argtycs: T.tycpath list, def: strexp}
   | LETfct of dec * fctexp
   | MARKfct of fctexp * region
 
@@ -111,7 +107,7 @@ and vb = VB of {pat: Absyn.pat, exp: exp, boundtvs: tyvar list,
  * list of RVBs could share type variables, that is, the boundtvs sets
  * used in these RVBs could contain overlapping set of type variables.
  *)
-and rvb = RVB of {var: var, exp: exp, boundtvs: tyvar list,
+and rvb = RVB of {var: V.var, exp: exp, boundtvs: tyvar list,
                   resultty: ty option, tyvars: tyvar list ref}
 
 and eb = EBgen of {exn: datacon, etype: ty option, ident: exp}

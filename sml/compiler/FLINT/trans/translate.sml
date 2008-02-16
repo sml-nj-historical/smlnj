@@ -39,13 +39,15 @@ local structure B  = Bindings
       structure TU = TypesUtil
       structure V  = VarCon
       structure EU = ElabUtil
+      structure TTP = TypesTP
 
       structure IIMap = RedBlackMapFn (type ord_key = IntInf.int
 					val compare = IntInf.compare)
 
       open Absyn PLambda 
       open AbsynTP (* TODO: Should just qualify pats or split out,
-		      counting on correct shadowing is fragile. *)
+		      counting on correct shadowing is fragile
+		      and dangerous. *)
 in 
 
 (****************************************************************************
@@ -152,16 +154,23 @@ fun mkv () = mkvN NONE
 (** generate the set of ML-to-FLINT type translation functions *)
 val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty} =
     TT.genTT()
-fun toTcLt d = (toTyc d, toLty d)
+(* fun tpsKnd x = tpsKnd' x handle _ => bug "tpsKnd"
+fun tpsTyc x = tpsTyc' x handle _ => bug "tpsTyc"
+fun toTyc x = toTyc' x handle _ => bug "toTyc"
+fun toLty x = toLty' x handle _ => bug "toLty"
+fun strLty x = strLty' x handle _ => bug "strLty"
+fun fctLty x = fctLty' x handle _ => bug "fctLty" *)
+
+fun toTcLt d = (toTyc d, toLty d) 
 
 (** translating the typ field in DATACON into lty; constant datacons 
     will take ltc_unit as the argument *)
 fun toDconLty d ty =
   (case ty 
     of TP.POLYty{sign, tyfun=TP.TYFUN{arity, body}} =>
-         if BT.isArrowType body then toLty d ty
-         else toLty d (TP.POLYty{sign=sign, 
-                               tyfun=TP.TYFUN{arity=arity,
+       if BT.isArrowType body then toLty d ty
+       else toLty d (TP.POLYty{sign=sign, 
+			       tyfun=TP.TYFUN{arity=arity,
                                               body=BT.-->(BT.unitTy, body)}})
      | _ => if BT.isArrowType ty then toLty d ty
             else toLty d (BT.-->(BT.unitTy, ty)))
@@ -1142,8 +1151,10 @@ fun mkStr (s as M.STR { access, prim, ... }, d) =
     mkAccInfo(access, fn () => strLty(s, d, compInfo), NONE)
   | mkStr _ = bug "unexpected structures in mkStr"
 
-fun mkFct (f as M.FCT { access, prim, rlzn={paramEnts, ...},... }, d) =
-    mkAccInfo(access, fn () => fctLty(f, d, compInfo), NONE)
+fun mkFct (f as M.FCT { access, prim, rlzn={paramEnts, ...}, ...}, d) =
+    mkAccInfo(access, 
+	      fn () => fctLty(f, d, compInfo),
+	      NONE) 
   | mkFct _ = bug "unexpected functors in mkFct"
 
 fun mkBnd d =
@@ -1303,8 +1314,8 @@ and mkStrexp (se, d) =
   let fun g (VARstr s) = mkStr(s, d)
         | g (STRstr bs) = SRECORD (map (mkBnd d) bs)
         | g (APPstr {oper, arg, argtycs}) = 
-              let val e1 = mkFct(oper, d)
-                  val tycs = map (tpsTyc d) argtycs
+              let val e1 = mkFct(oper, d) 
+                  val tycs = map (tpsTyc d) argtycs 
                   val e2 = mkStr(arg, d)
                in APP(TAPP(e1, tycs), e2)
               end
