@@ -21,6 +21,7 @@ sig
    val toWord      : sz * machine_int -> word
    val toWord32    : sz * machine_int -> Word32.word
    val toInt32     : sz * machine_int -> Int32.int
+   val toInt64     : sz * machine_int -> Int64.int
 
    val fromString  : sz * string -> machine_int option
    val toString    : sz * machine_int -> string

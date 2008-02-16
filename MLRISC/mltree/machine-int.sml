@@ -126,6 +126,8 @@ struct
        in  tow32 lo + Word32.<<(tow32 hi, 0w16) end
    fun toInt32(sz, i) = Int32.fromLarge(narrow(sz, i))
 
+   fun toInt64(sz, i) = Int64.fromLarge(narrow(sz, i))
+
    fun hash i = Word.fromInt(I.toInt(I.andb(i,0x1fffffff)))
 
    fun isInRange(sz, i) = I.<=(minOfSize sz,i) andalso I.<=(i,maxOfSize sz) 
