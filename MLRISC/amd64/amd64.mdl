@@ -190,6 +190,10 @@ architecture AMD64 =
                      | MOVSBL  (* sx(byte) -> long *)
                      | MOVZBL  (* zx(byte) -> long *)
 		     | MOVSLQ  (* sx(long) -> qword *)
+		     | CVTSD2SI  (* double -> long *)
+		     | CVTSS2SI  (* float -> long *)
+		     | CVTSD2SIQ  (* double -> qword *)
+		     | CVTSS2SIQ  (* float -> qword *)
     
        datatype fbin_op! = 
            ADDSS | ADDSD
@@ -208,7 +212,6 @@ architecture AMD64 =
 	   MOVSS | MOVSD
 	   (* conversion *)
 	 | CVTSS2SD | CVTSD2SS
-	 | CVTSS2SI | CVTSS2SIQ | CVTSD2SI | CVTSD2SIQ
 	 | CVTSI2SS | CVTSI2SSQ | CVTSI2SD | CVTSI2SDQ
 
       (* Intel floating point precision *)

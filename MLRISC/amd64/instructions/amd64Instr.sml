@@ -179,6 +179,10 @@ sig
    | MOVSBL
    | MOVZBL
    | MOVSLQ
+   | CVTSD2SI
+   | CVTSS2SI
+   | CVTSD2SIQ
+   | CVTSS2SIQ
    datatype fbin_op =
      ADDSS
    | ADDSD
@@ -204,10 +208,6 @@ sig
    | MOVSD
    | CVTSS2SD
    | CVTSD2SS
-   | CVTSS2SI
-   | CVTSS2SIQ
-   | CVTSD2SI
-   | CVTSD2SIQ
    | CVTSI2SS
    | CVTSI2SSQ
    | CVTSI2SD
@@ -510,6 +510,10 @@ struct
    | MOVSBL
    | MOVZBL
    | MOVSLQ
+   | CVTSD2SI
+   | CVTSS2SI
+   | CVTSD2SIQ
+   | CVTSS2SIQ
    datatype fbin_op =
      ADDSS
    | ADDSD
@@ -535,10 +539,6 @@ struct
    | MOVSD
    | CVTSS2SD
    | CVTSD2SS
-   | CVTSS2SI
-   | CVTSS2SIQ
-   | CVTSD2SI
-   | CVTSD2SIQ
    | CVTSI2SS
    | CVTSI2SSQ
    | CVTSI2SD

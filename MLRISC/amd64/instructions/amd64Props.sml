@@ -296,11 +296,10 @@ functor AMD64Props (
       | szToInt I.I64 = 64
 
     fun replicate(I.ANNOTATION{i,a}) = I.ANNOTATION{i=replicate i,a=a}
-(* FIXME? *)
 (*    | replicate(I.COPY{tmp=SOME _, dst, src}) =  
         I.COPY{tmp=SOME(I.Direct(C.newReg())), dst=dst, src=src}
       | replicate(I.FCOPY{tmp=SOME _, dst, src}) = 
-        I.FCOPY{tmp=SOME(I.FDirect(C.newFreg())), dst=dst, src=src} *)
+        I.FCOPY{tmp=SOME(I.FDirect(C.newFreg())), dst=dst, src=src}  *)
       | replicate i = i
 
     (* determine the bit width of an instruction *)
@@ -311,8 +310,11 @@ functor AMD64Props (
 	 | I.MOVE {mvOp, ...} => 
 	   (case mvOp
 	     of ( I.MOVQ | I.MOVSWQ | I.MOVZWQ | I.MOVSBQ | 
-		  I.MOVZBQ | I.MOVSLQ ) => 64
+		  I.MOVZBQ | I.MOVSLQ |
+		  I.CVTSD2SIQ | I.CVTSS2SIQ
+		) => 64
 	      | ( I.MOVL | I.MOVSWL | I.MOVZWL | I.MOVSBL | 
+		  I.CVTSD2SI | I.CVTSS2SI |
 		  I.MOVZBL ) => 32
 	      | I.MOVW => 16
 	      | I.MOVB => 8
@@ -360,8 +362,8 @@ functor AMD64Props (
 
     fun szOfFinstr instr = (case instr
         of I.FMOVE {fmvOp, ...} => (case fmvOp
-           of ( I.MOVSS | I.CVTSS2SD | I.CVTSS2SI | I.CVTSS2SIQ | I.CVTSI2SS | I.CVTSI2SSQ ) => 32
-            | ( I.MOVSD | I.CVTSD2SS | I.CVTSD2SI | I.CVTSD2SIQ | I.CVTSI2SD | I.CVTSI2SDQ ) => 64
+           of ( I.MOVSS | I.CVTSS2SD | I.CVTSI2SS | I.CVTSI2SSQ ) => 32
+            | ( I.MOVSD | I.CVTSD2SS | I.CVTSI2SD | I.CVTSI2SDQ ) => 64
            (* end case *))
          | I.FCOM {comOp, ...} => (case comOp
            of ( I.COMISS | I.UCOMISS ) => 32

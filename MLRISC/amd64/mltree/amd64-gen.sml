@@ -82,6 +82,7 @@ functor AMD64Gen (
     val itow = Word.fromInt
     val wtoi = Word.toInt
     fun toInt32 i = T.I.toInt32(32, i)
+    fun toInt64 i = T.I.toInt64(64, i)
     val w32toi32 = Word32.toLargeIntX 
     val i32tow32 = Word32.fromLargeInt		 
     (* One day, this is going to bite us when precision(LargeInt)>32 *)
@@ -345,7 +346,7 @@ functor AMD64Gen (
 	  in 
 	    case doEA ([ea], NONE, NONE, 0, I.Immed 0)
 	     of I.Immed _ => raise EA
-	      | I.ImmedLabel le => I.LabelEA le (*I.Displace {base=genExpr le, disp=I.Immed 0, mem=mem}*)
+	      | I.ImmedLabel le => I.Displace {base=genExpr le, disp=I.Immed 0, mem=mem} (* I.LabelEA le*)
 	      | ea => ea
 	  end (* address' *)
 
@@ -358,9 +359,9 @@ functor AMD64Gen (
               (* i is a 64-bit operand *)
                val dstR = newReg ()
 	       val dst = I.Direct (ty, dstR)
-	       val i = T.I.signed (64, i)
+	       val i' = T.I.signed (64, i)
                in
-		   move (ty, I.Immed64 (Int64.fromLarge i), dst);
+		   move (ty, I.Immed64 (Int64.fromLarge i'), dst);
 		   dst
                end
           | operand _ (x as (T.CONST _ | T.LABEL _)) = I.ImmedLabel x
@@ -788,7 +789,7 @@ functor AMD64Gen (
 		of T.REG (ty, r) => move' (ty, gpr (ty, r), dstOpnd, an)
 		 | T.LI z => if (fitsIn32Bits z)
                    then move' (ty, I.Immed (toInt32 z), dstOpnd, an)
-                   else raise Fail "todo"
+                   else mark' (move64 (I.Immed64(toInt64 z), dstOpnd), an)
 		 | (T.CONST _ | T.LABEL _) => 
                    move' (ty, I.ImmedLabel e, dstOpnd, an)
 		 | T.LABEXP le => move' (ty, I.ImmedLabel le, dstOpnd, an)
@@ -860,6 +861,17 @@ functor AMD64Gen (
 		 (* zero-extended loads *)
 		 | T.ZX(fTy, tTy, T.LOAD (_, ea, mem)) => 
 		   genLoad (O.loadZXOp (fTy, tTy), ea, mem)
+		 | T.CVTF2I (ty, roudingMd, fty, fExp) => let
+		  (* FIXME: handle the rounding mode *)
+                   val mvOp = (case (fty, ty)
+                       of (64, 32) => I.CVTSD2SI		      
+			| (32, 32) => I.CVTSS2SI
+			| (64, 64) => I.CVTSD2SIQ
+			| (32, 64) => I.CVTSS2SIQ
+                       (* end case *))
+                   in
+		       mark' (I.move {mvOp=mvOp, src=foperand(fty, fExp), dst=dstOpnd}, an)
+                   end
 		 | T.COND (tyCond, T.CMP (tyCmp, cc, t1, t2), y, n) => 
 		   cmovcc (tyCond, tyCmp, cc, t1, t2, y, n)
 		 | T.COND (tyCond, T.FCMP (fty, cc, t1, t2), y, n) =>
