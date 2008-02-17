@@ -140,9 +140,9 @@ fun ltArrow lt =
 
 val lt_inst_chk = LT.lt_inst_chk_gen()
 (* kind checker for ltys *)
-val ltyChk = fn _ => fn _ => 1 (* LtyKindChk.ltKindCheckGen () *)
+val ltyChk = LtyKindChk.ltKindCheckGen () 
 (* kind checker for tycs *)
-val tycChk = fn _ => fn _ => 1 (* LtyKindChk.tcKindCheckGen () *)
+val tycChk = LtyKindChk.tcKindCheckGen () 
 
 fun ltAppChk (lt, ts, kenv) : LT.lty = 
   (case lt_inst_chk(lt, ts, kenv) 
@@ -264,7 +264,7 @@ fun check (kenv, venv, d) =
       fun loop le =
 	  let fun ltyChkMsgLexp msg kenv lty = 
 		    ltyChkMsg msg lexp kenv lty 
-	      fun ltyChkenv msg lty = 1 (* ltyChkMsgLexp msg kenv lty *)
+	      fun ltyChkenv msg lty = ltyChkMsgLexp msg kenv lty 
 	  in
 	      (case le
 		of VAR v => 
