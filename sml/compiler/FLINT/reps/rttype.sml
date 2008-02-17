@@ -231,8 +231,12 @@ val initKE = []
 fun addKE(kenv, vs, ks) = (vs,ks)::kenv
 fun vlookKE(kenv, i, j) = 
   let val (vs,_) = (List.nth(kenv, i-1) 
-		     handle _ => bug "unexpected case1 in vlookKE")
-   in ((List.nth(vs, j) handle _ => bug "unexpected case2 in vlookKE"))
+		     handle Subscript => (print ("Getting "^Int.toString(i-1)^
+						 " from length "^
+						 Int.toString(length kenv)
+						 ^"\n");
+					  bug "unexpected case1 in vlookKE"))
+   in ((List.nth(vs, j) handle Subscript => bug "unexpected case2 in vlookKE"))
   end
 
 fun klookKE(kenv, i, j) = 
