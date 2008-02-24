@@ -655,7 +655,9 @@ fun matchInstTypes(doExpandAbstract,tdepth,specTy,actualTy) =
         and match(ty1,ty2) = match'(headReduceType ty1, headReduceType ty2)
         val (actinst, actParamTvs) = instantiatePoly actualTy
         val (specinst, specGenericTvs) = instantiatePoly specTy
-        val _ = indexBoundTyvars(tdepth,specGenericTvs)
+        val _ = (case tdepth of 
+		     SOME td => indexBoundTyvars(td,specGenericTvs)
+		   | _ => ())
 	val _ = debugmsg' "Instantiated both\n"
     in match(specinst, actinst);
        debugmsg' "matched\n";

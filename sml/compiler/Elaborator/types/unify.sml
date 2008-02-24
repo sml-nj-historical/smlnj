@@ -181,14 +181,18 @@ fun adjustType (var,depth,eq,ty) =
 		      else ()
 		  | LBOUND _ => bug "unify:adjustType:LBOUND")
 	  | iter eq (ty as CONty(DEFtyc{tyfun=TYFUN{body,...},...}, args)) =
-	      (app (iter eq) args; iter eq (TU.headReduceType ty))
+	      (app (iter false) args; iter eq (TU.headReduceType ty))
 	      (* A headReduceType here may cause instTyvar to 
 	       * infinite loop if this CONty has a nonstrict arg 
 	       * against which we are unifying/instantiating
 	       * Because we may be instantiating to nonstrict 
 	       * univariables, it is safer to do an occurrence 
 	       * check on all the arguments. (typing/tests/20.sml)
-	       * [GK 4/28/07] *)
+	       * [GK 4/28/07] 
+	       * iter should only do the occurrence check and 
+	       * not propagate eq to the args. 
+	       * MLRISC/library/dynamic-array.sml's checkArray
+	       * is an example. [GK 2/24/08] *)
  	  | iter eq (CONty(tycon,args)) =
 	      (case tyconEqprop tycon
 		 of OBJ => app (iter false) args

@@ -69,7 +69,7 @@ sig
 
   val indexBoundTyvars : int * Types.tyvar list -> unit
 
-  val matchInstTypes : bool * int * Types.ty * Types.ty -> 
+  val matchInstTypes : bool * int option * Types.ty * Types.ty -> 
                          (Types.tyvar list * Types.tyvar list) option
    (* matchInstTypes probably supercedes compareTypes, and if so,
     * compareTypes should be deleted *)
