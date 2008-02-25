@@ -219,7 +219,7 @@ functor AMD64SpillInstr (
 		     else let
 		       val (tmpR, tmpOpnd, tmpOpnd64) = freshTmp ()
 		       in
-		         {proh=[tmpR], newReg=NONE,
+		         {proh=[tmpR], newReg=SOME tmpR,
 		          code=[I.move {mvOp=defaultMov, src=src, dst=tmpOpnd64},
 		                I.shift {shiftOp=shiftOp, src=tmpOpnd, dst=spillLoc,
 		                   count=count}]}
@@ -241,7 +241,6 @@ functor AMD64SpillInstr (
 			   end 
 		    (* end case *))
 		 | I.XADD{lock,sz=isz,src as I.Direct (_, srcR),dst} => 
-(* FIXME: there are likely problems here *)
 		   if CB.sameColor (srcR, r)
 		      then let val (tmpR, tmpOpnd, tmpOpnd64) = freshTmp()
 		       in {proh=[tmpR],
@@ -252,11 +251,15 @@ functor AMD64SpillInstr (
 			   newReg=SOME tmpR
 			  }
 		       end
-		     else
-		   {proh=[],
-			code=[mark(I.XADD{lock=lock,sz=isz,src=src,dst=spillLoc},an)],
-			newReg=NONE
-		       }
+		     else let val (tmpR, tmpOpnd, tmpOpnd64) = freshTmp()
+		       in {proh=[tmpR],
+			   code=[I.move{mvOp=I.MOVQ, src=dst, dst=tmpOpnd64},
+				 mark(I.XADD{lock=lock,sz=isz,src=src,dst=tmpOpnd},an),
+				 I.move{mvOp=I.MOVQ, src=tmpOpnd64, dst=spillLoc}
+				],
+			   newReg=SOME tmpR
+			  }
+		       end
 		 | I.CMPXCHG{lock,sz=isz,src,dst} => 
 		   if immedOrReg src then
 		       {proh=[],
