@@ -1039,7 +1039,7 @@ fun mkVE (e as V.VALvar { typ, prim = PrimOpId.Prim p, ... }, ts, d) =
 	  val _ = debugmsg ">>mkVE: before matchInstTypes"
 	  val intrinsicParams =
               (* compute intrinsic instantiation params of intrinsicType *)
-              case (TU.matchInstTypes(true, SOME d, occurenceTy, intrinsicType)
+              case (TU.matchInstTypes(true, d, occurenceTy, intrinsicType)
                       : (TP.tyvar list * TP.tyvar list) option )
                 of SOME(_, tvs) => 
 		   (if !debugging then
@@ -1177,11 +1177,15 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
             (* save original contents of boundtvs for later restoration
              * by the restore function below *)
 
+    (* LBOUND equality property probably does not matter at this point
+       because typechecking and signature matching already completed.
+       [GK 2/24/08] *)
           fun setbtvs (i, []) = ()
-            | setbtvs (i, (tv as ref (TP.OPEN _))::rest) =
-	        (tv := TP.LBOUND {depth=d,index=i};
+            | setbtvs (i, (tv as ref (TP.OPEN{eq,...}))::rest) =
+	        (tv := TP.LBOUND {depth=d,eq=eq,index=i};
 		 setbtvs (i+1, rest))
-            | setbtvs (i, (tv as ref (TP.LBOUND{depth=d',index=i'}))::rest) =
+            | setbtvs (i, (tv as 
+			      ref (TP.LBOUND{depth=d',index=i',...}))::rest) =
                 (if !debugging
                  then (if d <> d' then say ("### setbtvs: d = "^(Int.toString d)^
                                             ", d' = "^(Int.toString d')^"\n")
@@ -1190,7 +1194,8 @@ fun mkPE (exp, d, []) = mkExp(exp, d)
                                             ", i' = "^(Int.toString i')^"\n")
                        else ())
                  else ();
-                 tv := TP.LBOUND {depth=d,index=i};  (* reset with local values *)
+                 tv := TP.LBOUND {depth=d,eq=false,index=i};  
+		    (* reset with local values *)
 		 setbtvs (i+1, rest))
             | setbtvs _ = bug "unexpected tyvar INSTANTIATED in mkPE"
 

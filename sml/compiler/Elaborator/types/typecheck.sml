@@ -303,7 +303,7 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
 	generalizedTyvars  (* return the tyvars that were generalized *)
     end
 
-  | generalizeTy _ = bug "generlizeTy - bad arg"
+  | generalizeTy _ = bug "generalizeTy - bad arg"
   
 
 (* the VARpat case seems designed to ensure that only one variable in a pattern
