@@ -67,10 +67,12 @@ functor AMD64Opcodes (structure I : AMD64INSTR) =
     val divOp = div1Op
     val idivOp = idiv1Op
 
+   (* fromTy, toTy *)
     fun loadZXOp (8, 32) = I.MOVZBL
       | loadZXOp (16, 32) = I.MOVZWL
       | loadZXOp (8, 64) = I.MOVZBQ
       | loadZXOp (16, 64) = I.MOVZWQ
+      | loadZXOp (32, 64) = I.MOVL
       | loadZXOp _ = raise Fail "impossible"
 
     fun loadSXOp (8, 64) = I.MOVSBQ

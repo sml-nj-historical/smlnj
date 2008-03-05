@@ -408,7 +408,7 @@ functor AMD64Gen (
 	    fun equalDst (I.Direct (_,r)) = CB.sameColor(r, dst)
               | equalDst _ = false
 	    fun dstMustBeReg f = f (dst, dstOpnd)
-	    fun genLoad (mvOp, ea, mem) = dstMustBeReg (fn (ty, dst) =>
+	    fun genLoad (mvOp, ea, mem) = dstMustBeReg (fn (_, dst) =>
    	        mark (I.MOVE {mvOp=mvOp, src=address (ea, mem), dst=dst},an))
    	    fun unknownExp exp = expr (Gen.compileRexp exp, dst, an) 
    	    
@@ -856,12 +856,12 @@ functor AMD64Gen (
 		 | T.LOAD (32, ea, mem) => genLoad (I.MOVL, ea, mem)
 		 | T.LOAD (64, ea, mem) => genLoad (I.MOVQ, ea, mem)
 		 (* sign-extended loads *)
-		 | T.SX (fTy, tTy, T.LOAD (_, ea, mem)) =>
-		   genLoad (O.loadSXOp (fTy, tTy), ea, mem)
+		 | T.SX (tTy, fTy, T.LOAD (_, ea, mem)) =>
+		   mark (I.MOVE {mvOp=O.loadSXOp (fTy, tTy), src=address (ea, mem), dst=I.Direct(fTy, dst)},an)
 		 (* zero-extended loads *)
-		 | T.ZX(fTy, tTy, T.LOAD (_, ea, mem)) => 
-		   genLoad (O.loadZXOp (fTy, tTy), ea, mem)
-		 | T.CVTF2I (ty, roudingMd, fty, fExp) => let
+		 | T.ZX(tTy, fTy, T.LOAD (_, ea, mem)) => 
+		   mark (I.MOVE {mvOp=O.loadZXOp (fTy, tTy), src=address (ea, mem), dst=I.Direct(fTy, dst)},an)
+		 | T.CVTF2I (ty, roundingMd, fty, fExp) => let
 		  (* FIXME: handle the rounding mode *)
                    val mvOp = (case (fty, ty)
                        of (64, 32) => I.CVTSD2SI		      
