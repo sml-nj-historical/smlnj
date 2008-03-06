@@ -309,7 +309,7 @@ struct
        | I.SETHI{i, d} => 
          let 
 (*#line 656.18 "sparc/sparc.mdl"*)
-             val i = Word32.toString (Word32.<< (Word32.fromInt i, 0wxa))
+             val i = Word32.toString (Word32.<< (Word32.fromInt i, 0wxA))
          in 
             ( emit "sethi\t%hi(0x"; 
               emit i; 

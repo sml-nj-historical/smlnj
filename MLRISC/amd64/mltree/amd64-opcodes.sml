@@ -72,9 +72,9 @@ functor AMD64Opcodes (structure I : AMD64INSTR) =
       | loadZXOp (16, 32) = I.MOVZWL
       | loadZXOp (8, 64) = I.MOVZBQ
       | loadZXOp (16, 64) = I.MOVZWQ
-      | loadZXOp (32, 64) = I.MOVL
       | loadZXOp _ = raise Fail "impossible"
 
+   (* fromTy, toTy *)
     fun loadSXOp (8, 64) = I.MOVSBQ
       | loadSXOp (16, 64) = I.MOVSWQ
       | loadSXOp (8, 32) = I.MOVSBL
