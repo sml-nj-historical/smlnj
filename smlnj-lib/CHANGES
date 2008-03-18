@@ -2,6 +2,14 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2008-03-18]
+	Committed a major overhaul of the RegExp library.  There is now a new
+	engine that implements Ken Thompson's RE matching algorithm.  The result
+	type of the RE matches has also been simplified by removing an unecessary
+        option type.
+	NOTE: the new RE engine is not complete in that it does not yet support
+	begin/end marks.
+
 [2007-12-13]
 	Also added list' and listg' which are parameterized over the delimiter-
 	and separator strings used for formatting lists.  (The default for "list" and

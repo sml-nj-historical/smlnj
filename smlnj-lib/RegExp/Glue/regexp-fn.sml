@@ -1,6 +1,7 @@
 (* regexp-fn.sml
  *
- * COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 2008 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Functor that implements a regular expressions matcher by combining
  * a surface syntax and a matching engine.
@@ -14,6 +15,9 @@ functor RegExpFn (
     structure M = MatchTree
 
     type regexp = E.regexp
+
+  (* a match specifies the position (as a stream) and the length of the match *)
+    type 'a match = {pos : 'a, len : int} MatchTree.match_tree
 
     fun compile reader s = (case (P.scan reader s) 
 	   of NONE => NONE

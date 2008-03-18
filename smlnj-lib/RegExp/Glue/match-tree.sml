@@ -1,6 +1,7 @@
 (* match-tree.sml
  *
- * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2008 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
  *
  * Match trees are used to represent the results of matching regular
  * expressions.
@@ -35,15 +36,15 @@ structure MatchTree :> MATCH_TREE =
 
     datatype 'a match_tree = Match of 'a * 'a match_tree list
 
-    fun num m = 
-	let fun countList [] = 0
-	      | countList ((Match (x,l))::ms) = 1+countList(l)+countList(ms)
-	in
+    fun num m = let
+	  fun countList [] = 0
+	    | countList ((Match (x,l))::ms) = 1+countList(l)+countList(ms)
+	  in
 	    (countList [m])-1
-	end
+	  end
 
   (* return the root (outermost) match in the tree *)
-    fun root (Match (x,_)) = x
+    fun root (Match(x,_)) = x
 
   (* return the nth match in the tree; matches are labeled in pre-order
    * starting at 0.
