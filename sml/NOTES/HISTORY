@@ -14,6 +14,165 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2008/01/23
+Description:
+
+Fixed the amd64 code generator to compile with the current MLRISC.
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2007/11/26
+Description:
+
+nlffi was updated to work on Windows. It needed to pass in the correct
+value for the name of the kernel32 DLL to obtain 'base' bindings.
+Additionally updated the README for the most basic nlffi sample with
+what you need to do on MacOSX and on Windows to make it work.
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2007/11/21
+Description:
+
+Overwrite the SMLNJ_HOME environment variable on installation
+Properly change the package code so that subsequent version
+installations prompt for uninstall (instead of 'repair/remove')
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2007/11/14
+Description:
+
+Cleaned up WININSTALL file for new MSI-based setup.
+----------------------------------------------------------------------
+Name: Matthias Blume (http://www.tti-c.org/blume/)
+Date: 2007/11/13 14:05:00 CST
+Description:
+
+Version bumped to 110.67.  New bootfiles.
+
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/11/12
+Description:
+
+Ensure that the size of the allocation space is at least 128K.
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/11/05
+Description:
+
+Fixed type error in ml-lpt library that occurs when compiling
+against a basis that was compiled with the USE_64_BIT_POSITIONS
+symbol set.
+(Thanks to Johannes Joemann)
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/11/03
+Description:
+
+Fixed the amd64 code generator to compile with the current MLRISC.
+----------------------------------------------------------------------
+Name: Lars Bergstrom (web page or e-mail)
+Date: 2007/11/02
+Description:
+
+Made sml.bat more resilient to either not having run the installer
+and having no SMLNJ_HOME set or having just shuffled the directory
+around.
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/11/01
+Description:
+
+A collection of bug fixes for machine.sml in the Reactive library.
+(Thanks to Timothy Bourke)
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2007/10/28
+Description:
+
+Patches for Mac OS X 10.5 (Leopard).
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/10/28
+Description:
+
+Fixed some bugs in the AMD64 floating-point spilling code.
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/10/25
+Description:
+
+Added support for the atomic XCHG instruction.
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/10/22
+Description:
+
+Added AMD64 support for floating-point negation.
+----------------------------------------------------------------------
+Name: Lars Bergstrom (web page or e-mail)
+Date: 2007/10/22
+Description:
+
+Fixed ^C handling in Windows
+Added a Windows installer
+Made it possible to build for Windows on a mapped drive from Parallels
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/10/22
+Description:
+
+Added AMD64 support for the atomic fetch and add instruction.
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/10/18
+Description:
+
+The GAS output now favors p2align over align, since the
+former is guaranteed to be consistent over multiple architectures
+and the latter is not.
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/10/18
+Description:
+
+Fixed a bug in register spilling.
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/10/2
+Description:
+
+Added demo support for AMD64 for quick testing and fixed support for
+64-bit label constants.
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/09/20
+Description:
+
+Added support for the MLRISC COND instruction and the x86-64 CMOVCC
+instruction.
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/09/17
+Description:
+
+Fixed an instruction-selection bug when loading 64-bit labels.
+
+----------------------------------------------------------------------
+Name: George Kuan (http://www.cs.uchicago.edu/~gkuan)
+Date: 2007/09/14
+Description:
+
+Fixed Elaborator and Translate performance bugs
+
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2007/09/12
+Description:
+
+Fixed xorl memory argument bug.
+
+----------------------------------------------------------------------
 Name: George Kuan (http://www.cs.uchicago.edu/~gkuan)
 Date: 2007/07/27
 Description:

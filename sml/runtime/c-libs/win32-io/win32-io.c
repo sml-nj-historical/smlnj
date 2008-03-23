@@ -15,6 +15,7 @@
 #include "win32-fault.h"
 
 #define EOF_char           '\x01a'           /* ^Z is win32 eof */
+#define CTRL_C_char        '\x003'
 
 /* macro to check if h is a console that hasn't been redirected */
 #define IS_CONIN(h) (((h) == win32_stdin_handle) && \
@@ -152,7 +153,7 @@ ml_val_t _ml_win32_IO_read_vec(ml_state_t *msp, ml_val_t arg)
   }
 }
 
-PVT void check_cntrl_c(BOOL read_OK,int bytes_read)
+PVT bool_t check_cntrl_c(BOOL read_OK,int bytes_read)
 {
   /* this is a rude hack */
   /* under NT and default console mode, on 
@@ -170,7 +171,28 @@ PVT void check_cntrl_c(BOOL read_OK,int bytes_read)
     /* guaranteed that a cntrl_c has occurred and has not been reset */
     /* wait for it to happen */
     wait_for_cntrl_c();
+    return TRUE;
   }
+  return FALSE;
+}
+
+/*
+ * Since we're not setting console mode to processed input (as that
+ * causes other issues around no longer getting an async event while
+ * executing), we need to append the ^C into the input stream
+ * manually. But since ^C isn't handled nicely (illegal character), we
+ * instead just prepend a space into the stream.
+ */
+PVT void append_cntrl_c(char *buf, int *np, int max)
+{
+    /* Out of space in buffer; exit without adding a character. This should
+     * be fine (provided max>0, which it always is), as all we're trying to
+     * prevent is returning zero bytes and causing the runtime to think we
+     * got an EOF on the input stream.
+     */
+    if (*np == max) return;
+
+    buf[(*np)++] = ' ';
 }
 
 /* _ml_win32_IO_read_vec_txt : (word32 * int) -> char8vector.vector
@@ -194,7 +216,9 @@ ml_val_t _ml_win32_IO_read_vec_txt(ml_state_t *msp, ml_val_t arg)
 
   if (IS_CONIN(h)) {
     flag = ReadConsole(h,PTR_MLtoC(void,vec),nbytes,&n,NULL);
-    check_cntrl_c(flag,n); 
+    if (check_cntrl_c(flag,n)) {
+        append_cntrl_c(PTR_MLtoC(void,vec),&n,nbytes);
+    }
   } else {
     flag = ReadFile(h,PTR_MLtoC(void,vec),nbytes,&n,NULL);
   }
@@ -290,7 +314,9 @@ ml_val_t _ml_win32_IO_read_arr_txt(ml_state_t *msp, ml_val_t arg)
 
   if (IS_CONIN(h)) {
     flag = ReadConsole(h,PTR_MLtoC(void,start),nbytes,&n,NULL);
-    check_cntrl_c(flag,n); 
+    if (check_cntrl_c(flag,n)) {
+        append_cntrl_c(PTR_MLtoC(void,start),&n,nbytes);
+    }
   } else {
     flag = ReadFile(h,PTR_MLtoC(void,start),nbytes,&n,NULL);
   }

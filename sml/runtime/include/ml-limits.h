@@ -43,8 +43,9 @@
 					    /* arena-id.h. */
 #define DFLT_CACHE_GEN	2		    /* Cache from-space for gens 1 & 2 */
 #ifndef DFLT_ALLOC
-#  define DFLT_ALLOC	(256*ONE_K)
+#  define DFLT_ALLOC	(512*ONE_K)
 #endif
+#define MIN_ALLOC_SZB	(128*ONE_K)
 #ifdef OLD_POLICY
 #define RATIO_UNIT	16		    /* ratios are measured in 1/16ths */
 #define DFLT_RATIO1	(7*(RATIO_UNIT/2))  /* gen-1 arenas are small */

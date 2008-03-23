@@ -109,11 +109,11 @@ fun tpsTyc d tp =
         | h (TP.TP_APP (tp, ps), cur) = 
               LT.tcc_app(h(tp, cur), map (fn x => h(x, cur)) ps)
         | h (TP.TP_FCT (ps, ts), cur) = 
-              let val ks = map tpsKnd ps
-                  val cur' = DI.next cur
-                  val ts' = map (fn x => h(x, cur')) ts
-               in LT.tcc_fn(ks, LT.tcc_seq ts')
-              end
+             let val ks = map tpsKnd ps
+                                val cur' = DI.next cur
+                                val ts' = map (fn x => h(x, cur')) ts
+             in LT.tcc_fn(ks, LT.tcc_seq ts')
+             end
 
    in h(tp, d)
   end

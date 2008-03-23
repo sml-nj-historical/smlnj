@@ -426,8 +426,9 @@ fun ppTyc tyc =
 
 	fun f [] (vals,ltys) = cont (rev vals, rev ltys)
 	  | f (lexp::lexps) (vals,ltys) =
-	    (debugmsg ("lexps2values ltys:");
-             map debugLty ltys; 
+	    ((* This debugging printing is quadratic
+		debugmsg ("lexps2values ltys:");
+                map debugLty ltys; *)
 	     tovalue(venv,d,lexp,
 		     fn (v, lty) =>
                        ((* debugmsg ">>lexps2values tovalue";

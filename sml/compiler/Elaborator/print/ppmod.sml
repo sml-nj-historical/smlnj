@@ -563,7 +563,7 @@ and ppStrEntity ppstrm (e,env,depth) =
 		newline();
 		pps "lambdaty:";
 		nl_indent ppstrm 2;
-		ppLty ppstrm ( (* ModulePropLists.strEntityLty e,depth-1 *));
+		ppLty ppstrm ( (* ModulePropLists.strEntityLty e,depth-1 *) );
 	       closeBox ();
 	      closeBox ())
     end
@@ -594,6 +594,12 @@ and ppFctEntity ppstrm (e, env, depth) =
 		pps "lambdaty:";
 		break{nsp=1,offset=2};
 		ppLty ppstrm ( (* ModulePropLists.fctEntityLty e,depth-1 *) );
+	(*	newline();
+		pps "tycpath:";
+		break{nsp=1,offset=2};
+		(case tycpath 
+		  of SOME(tp) => PPType.ppTycpath env ppstrm tp
+		   | NONE => pps "no tycpath"); *)
 	       closeBox ();
 	      closeBox ())
     end

@@ -1338,7 +1338,9 @@ and mkFctexp (fe, d) =
 	    fun getTyc((_,spec)::rest) =
 		(case spec 
 		   of M.TYCspec{entVar, info=M.RegTycSpec{spec=tycon,...}} => 
-		      (case tycon
+		      (case tycon (* Only want PLam kind of "representative" tycs 
+				     which should be a GENtyc of kind FLEXTYC
+				     processed in instantiate *)
 			 of TP.GENtyc {kind=TP.FORMAL,arity,...} =>
 		            LT.tkc_int(arity)::getTyc(rest)
 			  | TP.GENtyc {kind=_,...} => 
@@ -1358,18 +1360,18 @@ and mkFctexp (fe, d) =
 	  (case access of
 	       DA.LVAR v =>
                let val knds = map tpsKnd argtycs (* Old way of obtaining kinds from INST *)
-		   val knds2 = getFctKnds sign (* Computing kinds directly *)
+		   (* val knds = getFctKnds sign *) (* Computing kinds directly *)
 		   (*val _ = print ("tpsKnd: "^Int.toString (length knds)^"\n")
 		   val _ = app (fn k => (ppTKind k; print " ")) knds
-		   val _ = print ("\ngetFctKnds: "^Int.toString (length knds2)^"\n")
-		   val _ = app (fn k => (ppTKind k; print " ")) knds2
-		   val _ = print ("\n")*)
+		   *)val _ = print ("\ngetFctKnds: "^Int.toString (length knds)^"\n")
+		   val _ = app (fn k => (ppTKind k; print " ")) knds
+		   val _ = print ("\n")
                    val nd = DI.next d  (* reflecting type abstraction *)
                    val body = mkStrexp (def, nd)
                    val hdr = buildHdr v
                (* binding of all v's components *)
                in
-		   TFN(knds2, FN(v, strLty(param, nd, compInfo), hdr body))
+		   TFN(knds, FN(v, strLty(param, nd, compInfo), hdr body))
                end
 	     | _ => bug "mkFctexp: unexpected access")
         | g (LETfct (dec, b)) = mkDec (dec, d) (g b)

@@ -1196,7 +1196,7 @@ in
 	      | fe (M.CONSTfct e) = "p" $ [fctEntity e]
 	      | fe (M.LAMBDA { param, paramEnts, body }) =
 		"q" $ [entVar param, fctParamEnts paramEnts, strExp body]
-	     | fe (M.LAMBDA_TP { param, body, sign }) =
+	      | fe (M.LAMBDA_TP { param, body, sign }) =
 		"r" $ [entVar param, strExp body, fctSig sign]
 	      | fe (M.LETfct (e, f)) = "s" $ [entityDec e, fctExp f]
 	in

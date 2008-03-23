@@ -46,6 +46,15 @@ and tvKind
       * (1-based), and the index is the index within a sequence of type variables
       * bound at a given binding site. *)
 
+(* 
+ and tycpath (* FLINT!!! *)
+  = TP_VAR of { tdepth: DebIndex.depth, num: int, kind: pkind }
+  | TP_TYC of tycon
+  | TP_FCT of tycpath list * tycpath list
+  | TP_APP of tycpath * tycpath list
+  | TP_SEL of tycpath * int
+ *)
+
 and tyckind
   = PRIMITIVE of int
   | DATATYPE of

@@ -14,6 +14,8 @@ sig
                 -> Types.tyfun -> unit 
   val ppType  : StaticEnv.staticEnv -> PrettyPrintNew.stream 
                 -> Types.ty -> unit
+(*  val ppTycpath : StaticEnv.staticEnv -> PrettyPrintNew.stream
+		  -> Types.tycpath -> unit *)
   val ppDconDomain : (Types.dtmember vector * Types.tycon list) 
                      -> StaticEnv.staticEnv 
                      -> PrettyPrintNew.stream -> Types.ty -> unit
@@ -148,6 +150,30 @@ fun ppkind ppstrm kind =
           | ABSTRACT _ => "A" | DATATYPE _ => "D" 
 	  | TEMP => "T")
 
+fun ppfctpkind env ppstrm pkind =
+    (case pkind
+      of PK_MONO => pps ppstrm "_M" 
+       | PK_SEQ pks => 
+	   ppSequence ppstrm
+		      {sep = fn ppstrm => (PP.break ppstrm {nsp=1,offset=0};
+					   PP.string ppstrm "* "),
+		       style = INCONSISTENT,
+		       pr = (fn _ => fn pk => ppfctpkind env ppstrm pk)}
+		       pks
+       | PK_FUN(arg_pks, res_pk) =>
+	 (pps ppstrm "[:";
+	  ppSequence ppstrm
+	             {sep = fn ppstrm => (PP.break ppstrm {nsp=1,offset=0};
+					 PP.string ppstrm "* "),
+		     style = INCONSISTENT,
+		     pr = (fn _ => fn pk => ppfctpkind env ppstrm pk)}
+		     arg_pks;
+	  pps ppstrm "-->";
+	  ppfctpkind env ppstrm res_pk;
+	  pps ppstrm ":]"))
+		    
+
+
 fun effectivePath(path,tyc,env) : string =
     let fun tycPath (GENtyc{path,...} | DEFtyc{path,...} | PATHtyc{path,...}) =
 	    SOME path
@@ -211,14 +237,84 @@ fun ppInvPath ppstream (InvPath.IPATH path: InvPath.path) =
 fun ppBool ppstream b =
     case b of true => pps ppstream "b" | false => pps ppstream "f"
 
-fun ppTycon1 env ppstrm membersOp =
+fun (* ppkind env ppstrm (FLEXTYC tp) =
+    (pps ppstrm "X("; ppTycpath env ppstrm tp; pps ppstrm ")")
+  | *) ppkind _ ppstrm kind = 
+    pps ppstrm
+      (case kind
+	 of PRIMITIVE _ => "P" | FORMAL => "F"
+        (*  | FLEXTYC _ => bug "ppkind" *) | ABSTRACT _ => "A"
+	  | DATATYPE _ => "D" | TEMP => "T")
+
+(* and ppTycpath env ppstrm tp =
+    let val {openHVBox,openHOVBox,closeBox,pps,break,...} = en_pp ppstrm
+    in case tp
+	of TP_VAR{tdepth, num, kind} =>
+	   (openHOVBox 1;
+	    pps "TP_VAR(";
+	    ppi ppstrm (DebIndex.dp_toint tdepth);
+	    pps ", ";
+	    ppi ppstrm num;
+	    pps ", ";
+	    ppfctpkind env ppstrm kind;
+	    pps ")";
+	    closeBox())
+	 | TP_TYC tc =>
+	   (openHOVBox 1;
+	    pps "TP_TYC(";
+	    ppTycon env ppstrm tc;
+	    pps ")";
+	    closeBox())
+	 | TP_FCT(tps, tps') =>
+	   (openHOVBox 1;
+	    pps "TP_FCT((";
+	    ppSequence ppstrm
+		       {sep = fn ppstrm => (PP.break ppstrm {nsp=1,offset=0};
+				    PP.string ppstrm "* "),
+			style = INCONSISTENT,
+			pr = (fn _ => fn tp' => ppTycpath env ppstrm tp')}
+		        tps;
+	    pps "), (";
+	    ppSequence ppstrm
+	               {sep = fn ppstrm => (PP.break ppstrm {nsp=1,offset=0};
+					    PP.string ppstrm "* "),
+			style = INCONSISTENT,
+			pr = (fn _ => fn tp' => ppTycpath env ppstrm tp')}
+		        tps';
+	    pps "))";
+	    closeBox())
+	 | TP_APP(optp, argtps) =>
+	   (openHOVBox 1;
+	    pps "TP_APP(";
+	    ppTycpath env ppstrm optp;
+	    pps ", ";
+	    ppSequence ppstrm
+	               {sep = fn ppstrm => (PP.break ppstrm {nsp=1,offset=0};
+					    PP.string ppstrm "* "),
+			style = INCONSISTENT,
+			pr = (fn _ => fn tp' => ppTycpath env ppstrm tp')}
+		       argtps;
+	    pps ")";
+	    closeBox())
+	 | TP_SEL(tp', i) =>
+	   (openHOVBox 1;
+	    pps "TP_SEL(";
+	    ppTycpath env ppstrm tp';
+	    pps ", ";
+	    ppi ppstrm i;
+	    pps ")";
+	    closeBox())
+    end (* ppTycpath *)
+ *)
+
+and ppTycon1 env ppstrm membersOp =
     let val {openHVBox,openHOVBox,closeBox,pps,break,...} = en_pp ppstrm
 	fun ppTyc (tyc as GENtyc { path, stamp, eq, kind, ... }) =
 	    if !internals
 	    then (openHOVBox 1;
 		  ppInvPath ppstrm path;
 		  pps "[";
-		  pps "G"; ppkind ppstrm kind; pps ";"; 
+		  pps "G"; ppkind env ppstrm kind; pps ";"; 
 		  pps (Stamps.toShortString stamp);
 		  pps ";";
 		  ppEqProp ppstrm (!eq);
@@ -432,13 +528,13 @@ and ppType (env:StaticEnv.staticEnv) ppstrm (ty:ty) : unit =
        ppType1 env ppstrm (ty,[],NONE);
        PP.closeBox ppstrm)
 
+and ppTycon env ppstrm tyc = ppTycon1 env ppstrm NONE tyc
+
 fun ppDconDomain members (env:StaticEnv.staticEnv)
                  ppstrm (ty:ty) : unit = 
       (PP.openHOVBox ppstrm (PP.Rel 1);
        ppType1 env ppstrm (ty,[],SOME members);
        PP.closeBox ppstrm)
-
-fun ppTycon env ppstrm tyc = ppTycon1 env ppstrm NONE tyc
 
 fun ppTyfun env ppstrm (TYFUN{arity,body}) =
     let val {openHVBox, openHOVBox, closeBox, pps, break,...} = en_pp ppstrm
