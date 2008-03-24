@@ -46,12 +46,14 @@ and tvKind
       * (1-based), and the index is the index within a sequence of type variables
       * bound at a given binding site. *)
 
-and tycpath (* FLINT!!! *)
+(* 
+ and tycpath (* FLINT!!! *)
   = TP_VAR of { tdepth: DebIndex.depth, num: int, kind: pkind }
   | TP_TYC of tycon
   | TP_FCT of tycpath list * tycpath list
   | TP_APP of tycpath * tycpath list
   | TP_SEL of tycpath * int
+ *)
 
 and tyckind
   = PRIMITIVE of int
@@ -62,7 +64,6 @@ and tyckind
       freetycs: tycon list,       (* tycs derived from functor params *)
       family : dtypeFamily}
   | ABSTRACT of tycon
-  | FLEXTYC of tycpath            (* instantiated formal type constructor *)
   | FORMAL                        (* used only inside signatures *)
   | TEMP                          (* used only during datatype elaborations *)
 

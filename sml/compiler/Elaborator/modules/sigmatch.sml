@@ -1164,7 +1164,7 @@ val paramSym = case paramsym of SOME x => x
                               | NONE => paramSym
 
 (*** parameter signature instantiation ***)
-val {rlzn=fsigParEnt, tycpaths=paramTps} = 
+val fsigParEnt = 
   INS.instParam{sign=fsigParamSig, entEnv=entEnv, tdepth=tdepth,
                 rpath=IP.IPATH[paramSym], region=region, compInfo=compInfo}
 
@@ -1195,24 +1195,24 @@ val {resDec=resDec2, resStr=resStr2, resExp=resExp2} =
   end
 
 (*** constructing the tycpath for the resulting functor ***)
-val resTps = 
+(* val resTps = 
   case resStr2 
    of M.STR { sign, rlzn, ... } =>
       INS.getTycPaths{sign=sign, rlzn=rlzn, entEnv=fsigBodySigEnv, 
                       compInfo=compInfo}
-    | _ => []
+    | _ => [] *)
 
 (*** the resulting coerced functor ***)
 val resFct =
   let val resExp3 = M.LETstr(M.FCTdec(uncoerced, M.CONSTfct fctRlzn), 
                              resExp2)
       val resClosure = CLOSURE{param=paramId, body=resExp3, env=entEnv}
-      val tps = T.TP_FCT(paramTps, resTps)
+      (* val tps = T.TP_FCT(paramTps, resTps) *)
 
       val resRlzn = {stamp = #stamp fctRlzn, (*** DAVE ? ***)
 		     paramEnts = #entities fsigParEnt,
 		     closure = resClosure, rpath=rpath,
-		     tycpath=SOME tps,
+		     (* tycpath=SOME tps, *)
 		     properties = PropList.newHolder (),
 		     (* lambdaty=ref NONE, *)
 		     stub = NONE}
@@ -1224,7 +1224,7 @@ val resFct =
 (*** the resulting functor absyn ***)
 val fdec = 
   let val bodyAbs = A.LETstr(A.SEQdec [resDec1, resDec2], A.VARstr resStr2)
-      val fctexp = A.FCTfct {param=fsigParInst, argtycs=paramTps, def=bodyAbs}
+      val fctexp = A.FCTfct {param=fsigParInst, (* argtycs=paramTps,*) def=bodyAbs}
    in A.FCTdec [A.FCTB {name=anonFsym, fct=resFct, def=fctexp}]
   end
 
@@ -1520,7 +1520,7 @@ and packFct1(specSig as FSIG{paramsig, paramvar, bodysig, ...}, resFctRlzn,
 
 let
 
-val {rlzn=paramEnt, tycpaths=paramTps} = 
+val paramEnt = 
   INS.instParam{sign=paramsig, entEnv=entEnv, tdepth=tdepth,
                 rpath=IP.IPATH[paramSym], region=region, compInfo=compInfo}
 
@@ -1564,7 +1564,7 @@ val resFct =
 
 val resDec = 
   let val body = A.LETstr(rdec1, A.LETstr(rdec2, A.VARstr resStr))
-      val fctexp = A.FCTfct{param=paramStr, argtycs=paramTps, def=body}
+      val fctexp = A.FCTfct{param=paramStr, def=body}
    in A.FCTdec [A.FCTB {name=fctName, fct=resFct, def=fctexp}]
   end
 
@@ -1626,9 +1626,9 @@ and applyFct{fct as FCT {sign=FSIG{paramsig, bodysig, ...},
         end
 
       val resDec = 
-        let val argtycs = INS.getTycPaths{sign=paramsig, rlzn=argRlzn, 
-                                          entEnv=fctEntEnv, compInfo=compInfo}
-            val body = A.APPstr{oper=fct, arg=argStr1, argtycs=argtycs}
+        let (* val argtycs = INS.getTycPaths{sign=paramsig, rlzn=argRlzn, 
+                                          entEnv=fctEntEnv, compInfo=compInfo} *)
+            val body = A.APPstr{oper=fct, arg=argStr1(* , argtycs=argtycs *)}
             val resAbs = A.LETstr(argDec1, body)
 
          in A.STRdec [A.STRB{name=anonSym, str=resStr, def=resAbs}]

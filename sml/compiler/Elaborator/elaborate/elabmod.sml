@@ -1032,7 +1032,7 @@ case fctexp
 	  (* now know that paramSig is defined *)
           (* this creates new stamps, but we don't bother to update the
              epcontext, we do it later through mapPaths *)
-          val {rlzn=paramRlzn, tycpaths=paramTps} =
+          val paramRlzn =
                 INS.instParam
                   {sign=paramSig, entEnv=entEnv, region=region,
 		   tdepth=depth, rpath=IP.IPATH(case paramNameOp
@@ -1123,7 +1123,6 @@ case fctexp
 					       body=bodyExp',
 					       env=entEnv},
 		(* Closure: Using the old entity environment !! *)
-			     tycpath=NONE,
 			     properties = PropList.newHolder (),
 			     (* lambdaty=ref NONE, *)
 			     rpath=rpath,
@@ -1137,7 +1136,7 @@ case fctexp
           val _ = debugmsg "--elabFct[BaseFct]: resFct defined"
 
           val resDec =
-            let val x = A.FCTfct{param=paramStr, argtycs=paramTps,
+            let val x = A.FCTfct{param=paramStr,
                                  def=A.LETstr(bodyAbsDec',A.VARstr bodyStr')}
              in A.FCTdec [A.FCTB {name=name, fct=resFct, def=x}]
             end

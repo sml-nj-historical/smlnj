@@ -53,12 +53,14 @@ and tvKind
      * the abstract syntax of a definiens, after they have been generalized
      * away in the type computed by the type checker for the defined variable. *)
 
-and tycpath
+(* 
+  and tycpath
   = TP_VAR of { tdepth: DebIndex.depth, num: int, kind: pkind }
   | TP_TYC of tycon
   | TP_FCT of tycpath list * tycpath list
   | TP_APP of tycpath * tycpath list
-  | TP_SEL of tycpath * int
+  | TP_SEL of tycpath * int 
+ *)
 
 and tyckind
   = PRIMITIVE of int		(* primitive kinds are abstractly numbered *)
@@ -69,7 +71,6 @@ and tyckind
       root : EntPath.entVar option,
       freetycs: tycon list,
       family : dtypeFamily}
-  | FLEXTYC of tycpath
   | FORMAL
   | TEMP
 

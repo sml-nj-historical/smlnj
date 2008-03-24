@@ -200,7 +200,6 @@ and evalFct (fctExp, depth, epc, entEnv,
 		  closure=clos,
 		  properties = PropList.newHolder (),
 		  (*lambdaty=ref NONE,*)
-  		  tycpath=NONE,
 		  rpath=IP.IPATH[anonFctSym],
 		  stub=NONE},
 		 entEnv)
@@ -209,12 +208,11 @@ and evalFct (fctExp, depth, epc, entEnv,
         | LAMBDA_TP{param, body, sign as FSIG{paramsig, bodysig, ...}} =>
             let val clos = CLOSURE{param=param, body=body, env=entEnv} 
                 val rpath' = IP.IPATH [paramSym]
-                val {rlzn=paramEnt as {entities=paramEntenv,...}, 
-		     tycpaths=paramTps} =
+                val {entities=paramEntenv,...} =
                     Instantiate.instParam{sign=paramsig, entEnv=entEnv, 
 					  rpath=rpath', tdepth=depth,
 					  region=S.nullRegion, compInfo=compInfo}
-		val tps = 
+		(* val tps = 
                   let val entEnv' = 
                         EE.mark(mkStamp, EE.bind(param, STRent paramEnt, 
                                                  entEnv))
@@ -225,14 +223,14 @@ and evalFct (fctExp, depth, epc, entEnv,
                         Instantiate.getTycPaths{sign=bodysig, rlzn=bodyRlzn, 
                                       entEnv=entEnv', compInfo=compInfo}
                    in T.TP_FCT(paramTps, bodyTps)
-                  end
+                  end *)
 
              in ({stamp = mkStamp(),
 		  paramEnts = paramEntenv,
 		  closure=clos,
 		  properties = PropList.newHolder (),
 		  (* lambdaty=ref NONE, *)
-		  tycpath=SOME tps, rpath=IP.IPATH[anonFctSym],
+		  rpath=IP.IPATH[anonFctSym],
 		  stub = NONE},
 		 entEnv)
             end
@@ -249,21 +247,18 @@ and evalFct (fctExp, depth, epc, entEnv,
 
 and evalApp(fctRlzn : Modules.fctEntity, argRlzn, depth, epc, rpath,
             compInfo as {mkStamp, ...} : EU.compInfo) = 
-      let val {closure=CLOSURE{param, body, env}, tycpath, ...} = fctRlzn
+      let val {closure=CLOSURE{param, body, env}, ...} = fctRlzn
 	  val nenv = EE.mark(mkStamp, EE.bind(param, STRent argRlzn, env))
           val  _ = debugmsg ("[Inside EvalAPP] ......")
-       in case (body, tycpath)
-           of (FORMstr(FSIG{paramsig, bodysig, ...}), SOME tp) => 
-               let val argTps = Instantiate.getTycPaths{sign=paramsig, rlzn=argRlzn,
-                                              entEnv=env, compInfo=compInfo}
-                   val resTp = T.TP_APP(tp, argTps)
-
+       in case body
+           of (FORMstr(FSIG{paramsig, bodysig, ...})) => 
+               let 
                    (** failing to add the stamps into the epcontext is
                        a potential bug here. Will fix this in the
                        future.  ZHONG **)
 
                    val {rlzn=rlzn, abstycs=abstycs, tyceps=tyceps} = 
-                     Instantiate.instFmBody {sign=bodysig, entEnv=nenv, tycpath=resTp,
+                     Instantiate.instFmBody {sign=bodysig, entEnv=nenv,
                                    rpath=rpath, region=S.nullRegion,
                                    compInfo=compInfo}
 

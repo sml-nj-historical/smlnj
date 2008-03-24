@@ -14,8 +14,8 @@ sig
                 -> Types.tyfun -> unit 
   val ppType  : StaticEnv.staticEnv -> PrettyPrintNew.stream 
                 -> Types.ty -> unit
-  val ppTycpath : StaticEnv.staticEnv -> PrettyPrintNew.stream
-		  -> Types.tycpath -> unit
+(*  val ppTycpath : StaticEnv.staticEnv -> PrettyPrintNew.stream
+		  -> Types.tycpath -> unit *)
   val ppDconDomain : (Types.dtmember vector * Types.tycon list) 
                      -> StaticEnv.staticEnv 
                      -> PrettyPrintNew.stream -> Types.ty -> unit
@@ -143,6 +143,12 @@ fun ppkind ppstrm kind =
           | FLEXTYC _ => "FLEXTYC" | ABSTRACT _ => "ABSTYC"
 	  | DATATYPE _ => "DATATYPE" | TEMP => "TEMP")
 *)
+fun ppkind ppstrm kind =
+    pps ppstrm
+      (case kind
+	 of PRIMITIVE _ => "P" | FORMAL => "F"
+          | ABSTRACT _ => "A" | DATATYPE _ => "D" 
+	  | TEMP => "T")
 
 fun ppfctpkind env ppstrm pkind =
     (case pkind
@@ -231,16 +237,16 @@ fun ppInvPath ppstream (InvPath.IPATH path: InvPath.path) =
 fun ppBool ppstream b =
     case b of true => pps ppstream "b" | false => pps ppstream "f"
 
-fun ppkind env ppstrm (FLEXTYC tp) =
+fun (* ppkind env ppstrm (FLEXTYC tp) =
     (pps ppstrm "X("; ppTycpath env ppstrm tp; pps ppstrm ")")
-  | ppkind _ ppstrm kind = 
+  | *) ppkind _ ppstrm kind = 
     pps ppstrm
       (case kind
 	 of PRIMITIVE _ => "P" | FORMAL => "F"
-          | FLEXTYC _ => bug "ppkind" | ABSTRACT _ => "A"
+        (*  | FLEXTYC _ => bug "ppkind" *) | ABSTRACT _ => "A"
 	  | DATATYPE _ => "D" | TEMP => "T")
 
-and ppTycpath env ppstrm tp =
+(* and ppTycpath env ppstrm tp =
     let val {openHVBox,openHOVBox,closeBox,pps,break,...} = en_pp ppstrm
     in case tp
 	of TP_VAR{tdepth, num, kind} =>
@@ -299,6 +305,7 @@ and ppTycpath env ppstrm tp =
 	    pps ")";
 	    closeBox())
     end (* ppTycpath *)
+ *)
 
 and ppTycon1 env ppstrm membersOp =
     let val {openHVBox,openHOVBox,closeBox,pps,break,...} = en_pp ppstrm

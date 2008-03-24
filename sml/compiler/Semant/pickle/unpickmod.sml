@@ -825,7 +825,7 @@ structure UnpickMod : UNPICKMOD = struct
 					    tree = branch eltrl,
 					    lib = lib } }
 		in
-		    ModPropList.setSigBoundeps (r, beps);
+		    (* ModPropList.setSigBoundeps (r, beps);  *)
 		    (M.SIG r, M.SIGNODE r)
 		end
 	      | sg _ = raise Format
@@ -1216,7 +1216,7 @@ structure UnpickMod : UNPICKMOD = struct
 		       rpath = ipath (),
 		       properties = PropList.newHolder (),
 		       (* lambdaty = ref NONE, *)
-		       tycpath = NONE,
+		       (* tycpath = NONE, *)
 		       stub = SOME { owner = if lib then pid ()
 					     else globalPid (),
 				     tree = ctr,

@@ -569,7 +569,7 @@ and ppStrEntity ppstrm (e,env,depth) =
     end
 
 and ppFctEntity ppstrm (e, env, depth) =
-    let val {stamp,paramEnts,closure,properties,tycpath,rpath,stub} = e
+    let val {stamp,paramEnts,closure,properties,rpath,stub} = e
 	val {openHVBox,openHOVBox,closeBox,pps,ppi,break,newline} = en_pp ppstrm
     in if depth <= 1 
 	then pps "<functor entity>"
@@ -594,12 +594,12 @@ and ppFctEntity ppstrm (e, env, depth) =
 		pps "lambdaty:";
 		break{nsp=1,offset=2};
 		ppLty ppstrm ( (* ModulePropLists.fctEntityLty e,depth-1 *) );
-		newline();
+	(*	newline();
 		pps "tycpath:";
 		break{nsp=1,offset=2};
 		(case tycpath 
 		  of SOME(tp) => PPType.ppTycpath env ppstrm tp
-		   | NONE => pps "no tycpath");
+		   | NONE => pps "no tycpath"); *)
 	       closeBox ();
 	      closeBox ())
     end

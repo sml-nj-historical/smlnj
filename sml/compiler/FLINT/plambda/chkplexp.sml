@@ -264,7 +264,7 @@ fun check (kenv, venv, d) =
       fun loop le =
 	  let fun ltyChkMsgLexp msg kenv lty = 
 		    ltyChkMsg msg lexp kenv lty 
-	      fun ltyChkenv msg lty = ltyChkMsgLexp msg kenv lty 
+	      fun ltyChkenv msg lty = ltyChkMsgLexp msg kenv lty
 	  in
 	      (case le
 		of VAR v => 

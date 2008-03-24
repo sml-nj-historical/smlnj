@@ -175,7 +175,6 @@ and fctEntity =
      paramEnts: entityEnv,
      closure  : fctClosure,
      properties: PropList.holder, (* lambdaty *)
-     tycpath  : Types.tycpath option,
      rpath    : InvPath.path,
      stub     : stubinfo option}
 
