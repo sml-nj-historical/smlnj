@@ -4,9 +4,12 @@
    and sigBoundeps information.
 
    sigBoundeps is a list of the representative entities for a signature
-   This is used to determine which tycs in a functor parameter are representative
+   This is used to determine which tycs in a functor parameter are 
+   representative
    (and therefore we need to compute the FLINT kinds)
 
+   Datatype bindings should must be accounted for in Tycpath computations 
+   because they will be represented as TP_TYC(...).  
 *)
 
 structure RepTycProps =
@@ -50,26 +53,40 @@ in
 		fn ppstrm => (print "\n"; 
 			      PPType.ppTycPath SE.empty ppstrm tp; 
 			      print "\n"))) *)
-      fun ppSig sign =
-	ED.withInternals ( 
-			  fn() => 
-			    with_pp 
-				(fn ppstrm => 
-				    (PPModules.ppSignature ppstrm 
-							   (sign, 
-							    SE.empty, 20); 
-							   print "\n")))
+      local 
+	  structure PM = PPModules 
+      in
+        (* s denotes ppstrm *) 
+
+        fun ppSig sign =
+	    let val pp = fn s => 
+			 (PM.ppSignature s (sign, SE.empty, 20); 
+			  print "\n")
+	    in
+		ED.withInternals (fn() => with_pp pp)
+	    end
+
+
       fun ppEnt ent =
-	with_pp (fn ppstrm => (PPModules.ppEntity ppstrm (ent, SE.empty, 20); print "\n"))
+	with_pp (fn s => (PM.ppEntity s (ent, SE.empty, 20); print "\n"))
       fun ppEntities entenv = 
-	with_pp (fn ppstrm => (PPModules.ppEntityEnv ppstrm (entenv, SE.empty, 20); print "\n"))
+	with_pp (fn s => (PM.ppEntityEnv s (entenv, SE.empty, 20); print "\n"))
       fun ppTycon tyc =
-	ED.withInternals (fn () => with_pp (fn ppstrm => (print "\n"; PPType.ppTycon SE.empty ppstrm tyc; print "\n")))
+	ED.withInternals 
+	    (fn () => with_pp (fn s => (print "\n"; 
+					PPType.ppTycon SE.empty s tyc; 
+					print "\n")))
       fun ppEP ep = print "<entpath>"
-	(* with_pp (fn ppstrm => (print "\n"; PPModules.ppEntPath ppstrm ep; print "\n")) *)
+	(* with_pp (fn s => (print "\n"; 
+			     PPModules.ppEntPath s ep; 
+			     print "\n")) *)
       fun ppFunsig fctsig = 
-	ED.withInternals (fn () => with_pp (fn ppstrm => (PPModules.ppFunsig ppstrm (fctsig, SE.empty, 20); print "\n")))
+	ED.withInternals 
+	    (fn () => with_pp (fn s => (PM.ppFunsig s (fctsig, SE.empty, 20); 
+					print "\n")))
       end
+
+      end (* local open PPModules *)
 
       (* fun pk_eqv(k, k') =
 	  (case (k, k') 
@@ -167,8 +184,9 @@ in
     fun fsigInElems([]) = []
       | fsigInElems((_, spec)::rest) =
 	(case spec
-	  of M.FCTspec{entVar, sign, slot} =>
-	     sign::fsigInElems(rest)
+	  of M.FCTspec{entVar, sign, slot} => sign::fsigInElems(rest)
+	   | M.STRspec{sign=M.SIG{elements=elems,...},...} =>
+	       fsigInElems(elems) @ (fsigInElems rest)
 	   | _ => fsigInElems rest)
 	
     (* repEPs : ep list * EntityEnv -> ep list 
@@ -250,7 +268,9 @@ in
 			  handle EE.Unbound => 
 				 bug ("kinds Unbound "^
 				      EP.entPathToString ep)
-		      of M.TYCent(TP.GENtyc{kind, arity, ...}) =>
+		      of M.TYCent(TP.GENtyc{kind=TP.DATATYPE _, ...}) =>
+			 loop(eps, pfsigs)
+		       | M.TYCent(TP.GENtyc{kind, arity, ...}) =>
 			 (* Use this when PK eliminated from front-end:
 	                    (LT.tkc_int arity)::loop(eps, pfsigs) *)
 			 (buildKind arity)::loop(eps, pfsigs)
@@ -277,7 +297,22 @@ in
 			  handle EntityEnv.Unbound =>
 				 (print "\ngetTPforEPs for Unbound\n";
 				  raise EntityEnv.Unbound)
-		      of M.TYCent(TP.GENtyc{kind, arity, ...}) =>
+		      of M.TYCent(tyc as TP.GENtyc{kind=TP.DATATYPE _, ...}) =>
+			   T.TP_TYC(T.NoTP tyc)::loop(entenv, rest, i+1, fs)
+			   (* Datatypes should be represented directly in the 
+			      tycpath *)
+		       | M.TYCent(TP.GENtyc{kind=TP.ABSTRACT(tyc),...}) =>
+			   (case tyc 
+			     of TP.GENtyc{kind=TP.DATATYPE _,...} =>
+				T.TP_TYC(T.NoTP tyc)::loop(entenv,rest,i+1,fs)
+			      | TP.GENtyc{kind=TP.FORMAL, arity, ...} => 
+				(T.TP_VAR{tdepth=DI.top,num=i,
+					 kind=buildKind arity})::
+				loop(entenv, rest, i+1, fs)
+			      | _ => 
+				T.TP_TYC(T.NoTP tyc)::loop(entenv,rest,i+1,fs))
+		      
+		       | M.TYCent(TP.GENtyc{kind, arity, ...}) =>
 			 let val _ = debugmsg "TYCent GENtyc\n"
 			     val kind = (* LT.tkc_int(arity) *)
 				 buildKind arity

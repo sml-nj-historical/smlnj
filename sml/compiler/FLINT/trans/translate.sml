@@ -1714,7 +1714,7 @@ val body = wrapII body
 val (plexp, imports) = wrapPidInfo (body, PersMap.listItemsi (!persmap))
 
 (** type check body (including kind check) **)
-val ltyerrors = if !FLINT_Control.plchk 
+val ltyerrors = if !FLINT_Control.plchk
 		then ChkPlexp.checkLtyTop(plexp,0)
 		else false
 val _ = if ltyerrors

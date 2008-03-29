@@ -311,16 +311,16 @@ and toLty d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) =
 fun specLty (elements, entEnv, depth, compInfo) = 
   let fun g ([], entEnv, ltys) = rev ltys
         | g ((sym, (TYCspec _ ))::rest, entEnv, ltys) =
-              (print ">>specLty[TYCspec]\n"; g(rest, entEnv, ltys))
+              (debugmsg ">>specLty[TYCspec]\n"; g(rest, entEnv, ltys))
         | g ((sym, STRspec {sign, entVar, ...})::rest, entEnv, ltys) =
               let val rlzn = EE.lookStrEnt(entEnv,entVar)
-                  val _ = print ">>specLty[STRspec]\n"
+                  val _ = debugmsg ">>specLty[STRspec]\n"
 		  val lt = strRlznLty(sign, rlzn, depth, compInfo) 
                in g(rest, entEnv, lt::ltys)
               end
         | g ((sym, FCTspec {sign, entVar, ...})::rest, entEnv, ltys) = 
               let val rlzn = EE.lookFctEnt(entEnv,entVar)
-                  val _ = print ">>specLty[FCTspec]\n"
+                  val _ = debugmsg ">>specLty[FCTspec]\n"
 		  val lt = fctRlznLty(sign, rlzn, depth, compInfo) 
                in g(rest, entEnv, lt::ltys)
               end
@@ -343,11 +343,11 @@ fun specLty (elements, entEnv, depth, compInfo) =
 
                in case spec
                    of VALspec{spec=typ,...} => 
-                        (print ">>specLty[VALspec]\n";
+                        (debugmsg ">>specLty[VALspec]\n";
 			 g(rest, entEnv, (mapty typ)::ltys))
                     | CONspec{spec=DATACON{rep=DA.EXN _, 
                                            typ, ...}, ...} => 
-                        let val _ = print ">>specLty[CONspec]\n"
+                        let val _ = debugmsg ">>specLty[CONspec]\n"
 			    val argt = 
                               if BT.isArrowType typ then  
                                    #1(LT.ltd_parrow (mapty typ))
@@ -355,7 +355,7 @@ fun specLty (elements, entEnv, depth, compInfo) =
                          in g(rest, entEnv, (LT.ltc_etag argt)::ltys)
                         end
                     | CONspec{spec=DATACON _, ...} =>
-                        (print ">>specLty[CONspec]\n"; g(rest, entEnv, ltys))
+                        (debugmsg ">>specLty[CONspec]\n"; g(rest, entEnv, ltys))
                     | _ => bug "unexpected spec in specLty"
               end
 
@@ -392,9 +392,9 @@ and strMetaLty (sign, rlzn as { entities, ... }: strEntity, depth, compInfo) =
     case (sign, ModulePropLists.strEntityLty rlzn) of
 	(_, SOME (lt, od)) => LT.lt_adj(lt, od, depth)
       | (SIG { elements, ... }, NONE) => 
-	let val _ = print ">>specLty\n"
+	let val _ = debugmsg ">>specLty\n"
 	    val ltys = specLty (elements, entities, depth, compInfo)
-	    val _ = print "<<specLty\n"
+	    val _ = debugmsg "<<specLty\n"
             val lt = (* case ltys of [] => LT.ltc_int
                                    | _ => *) LT.ltc_str(ltys)
         in
@@ -424,7 +424,7 @@ and strRlznLty (sign, rlzn : strEntity, depth, compInfo) =
               in lambdaty := SOME(lt, depth); lt
              end
 *)
-      | _ => (print ">>strRlznLty[strEntityLty NONE]\n";
+      | _ => (debugmsg ">>strRlznLty[strEntityLty NONE]\n";
 	      strMetaLty(sign, rlzn, depth, compInfo))
 
 and fctRlznLty (sign, rlzn, depth, compInfo) = 
@@ -432,24 +432,24 @@ and fctRlznLty (sign, rlzn, depth, compInfo) =
 	(sign, SOME (lt, od), _) => LT.lt_adj(lt, od, depth)
       | (fs as FSIG{paramsig, bodysig, ...}, _,
          {closure as CLOSURE{env,...}, paramEnts, ...}) =>
-        let val _ = print ">>instParam\n"
+        let val _ = debugmsg ">>fctRlznLty[instParam]\n"
 	    val argRlzn = 
                 INS.instParam {sign=paramsig, entEnv=env, tdepth=depth, 
                                rpath=InvPath.IPATH[], compInfo=compInfo,
                                region=SourceMap.nullRegion}
             val nd = DI.next depth
-	    val _ = print ">>strMetaLty\n"
+	    val _ = debugmsg ">>strMetaLty\n"
             val paramLty = strMetaLty(paramsig, argRlzn, nd, compInfo)
             (* val ks = map tpsKnd tycpaths *)
-	    val _ = print ">>tpsKnd"
+	    val _ = debugmsg ">>tpsKnd"
 	    val ks = map tpsKnd (RepTycProps.getTk(fs, paramEnts, 
 						   #entities argRlzn, []))
 		     
-	    val _ = print ">>evalApp\n"
+	    val _ = debugmsg ">>evalApp\n"
             val bodyRlzn = 
                 EV.evalApp(rlzn, argRlzn, nd, EPC.initContext,
                            IP.empty, compInfo)
-	    val _ = print ">>strRlznLty\n"
+	    val _ = debugmsg ">>strRlznLty\n"
             val bodyLty = strRlznLty(bodysig, bodyRlzn, nd, compInfo)
 		
             val lt = LT.ltc_poly(ks, [LT.ltc_fct([paramLty],[bodyLty])])
