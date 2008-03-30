@@ -1363,9 +1363,11 @@ and mkFctexp (fe, d) =
 		   (* val knds = getFctKnds sign *) (* Computing kinds directly *)
 		   (*val _ = print ("tpsKnd: "^Int.toString (length knds)^"\n")
 		   val _ = app (fn k => (ppTKind k; print " ")) knds
-		   *)val _ = print ("\ngetFctKnds: "^Int.toString (length knds)^"\n")
-		   val _ = app (fn k => (ppTKind k; print " ")) knds
-		   val _ = print ("\n")
+		   *)val _ = debugmsg ("\ngetFctKnds: "^Int.toString (length knds)^"\n")
+		   val _ = if !debugging then 
+			       (app (fn k => (ppTKind k; print " ")) knds; 
+				print "\n")
+			   else ()
                    val nd = DI.next d  (* reflecting type abstraction *)
                    val body = mkStrexp (def, nd)
                    val hdr = buildHdr v

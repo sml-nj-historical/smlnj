@@ -33,6 +33,10 @@ local
 	(* A map from entity TYC or FCT stamps to the first corresponding EP  *)
       structure EPMap = RedBlackMapFn (type ord_key = Stamps.stamp
 				       val compare = Stamps.compare)
+      (* A StampSet ADT to track of unique stamps (embedded in different
+	 structures) we have seen *)
+      structure StampSet = RedBlackSetFn (type ord_key = Stamps.stamp
+					  val compare = Stamps.compare)
       open Absyn
 in
       val debugging = ref false
@@ -195,15 +199,27 @@ in
 
        Instantiate should have eliminated any seemingly FORMAL tycs 
        (that were actually constrained by a where or structure definition
-        spec) by turning them into DEFtycs. *)
+        spec) by turning them into DEFtycs. 
+     
+       The key here is that we need to avoid including duplicate stamps 
+       which can be found at the tail of each entpath. *)
     fun repEPs(eps, env) =
-        let fun loop([], env, renv) = []
-	      | loop(ep::rest, env, renv) =
+        let fun loop([], env, renv, stmpseen) = []
+	      | loop(ep::rest, env, renv, stmpseen) =
 		let fun proc s = 
-			case EPMap.find(renv, s) 
-			 of NONE => ep::loop(rest, env, 
-					     EPMap.insert(renv,s,ep))
-			      | SOME _ => loop(rest, env, renv)
+			(debugmsg ("--repEPs adding stamp "^
+				   Stamps.toShortString s^" path "^
+				   EP.entPathToString ep);
+			 (case rev ep 
+			   of [] => bug "repEPs: empty entpath"
+			    | s'::_ =>
+			      (case (EPMap.find(renv, s),
+				     StampSet.member(stmpseen,s')) 
+				of (_, false) => 
+				   ep::loop(rest, env, 
+					    EPMap.insert(renv,s,ep),
+					    StampSet.add(stmpseen,s'))
+			  | _ => loop(rest, env, renv, stmpseen))))
 		in
 		    case EntityEnv.lookEP(env, ep) 
 			 handle EntityEnv.Unbound => 
@@ -219,15 +235,16 @@ in
 			(case tyc 
 			   of TP.GENtyc{stamp=s,kind,...} =>
 				(case kind 
-				   of TP.DATATYPE _ => loop(rest, env, renv)
+				   of TP.DATATYPE _ => 
+				        loop(rest, env, renv, stmpseen)
 				    | _ => proc s)
-			    | TP.DEFtyc _ => loop(rest,env, renv)
+			    | TP.DEFtyc _ => loop(rest,env, renv, stmpseen)
 			    | _ => bug "repEPs 0")
 		      | _ => bug "repEPs 1"
 		   handle EE.Unbound => bug ("repEPs Unbound"^
 					     EP.entPathToString ep)
 		end
-	in loop(eps, env, EPMap.empty)	
+	in loop(eps, env, EPMap.empty, StampSet.empty)	
 	end (* fun repEPs *)
 
     local
@@ -287,12 +304,18 @@ in
 		LT.tkc_fun(loop(peps,pfsigs), LT.tkc_seq [])
 	    end 
 	  | kinds _ = bug "kinds.2" (* fun kinds *)
-		      
+		    
+        (* This is the important computation for generating TC_VAR 
+	   variable references to functor parameters. 
+	   *)  
 	fun getTPsforEPs(entenv, eps, fsigs) =
 	    let 
+		val _ = debugmsg ("--getTPsforEPs eps "^
+				  Int.toString (length eps))
+			      
 		fun loop(entenv, [], i, _) = []
 		  | loop(entenv, ep::rest, i, fs) =
-		    (debugmsg ("loop "^Int.toString i^"\n"); 
+		    (debugmsg ("-getTPsforEPs loop "^Int.toString i); 
 		     case EE.lookEP(entenv, ep)
 			  handle EntityEnv.Unbound =>
 				 (print "\ngetTPforEPs for Unbound\n";
@@ -313,7 +336,7 @@ in
 				T.TP_TYC(T.NoTP tyc)::loop(entenv,rest,i+1,fs))
 		      
 		       | M.TYCent(TP.GENtyc{kind, arity, ...}) =>
-			 let val _ = debugmsg "TYCent GENtyc\n"
+			 let val _ = debugmsg "--getTPsforEPs[TYCent GENtyc]"
 			     val kind = (* LT.tkc_int(arity) *)
 				 buildKind arity
 			     val var = {tdepth=DI.top,num=i,
@@ -323,7 +346,7 @@ in
 			   in tp'::loop(entenv, rest, i+1, fs)
 			   end
 		       | M.TYCent tyc => 
-			    (debugmsg "TYCent\n";
+			    (debugmsg "--getTPsforEPs[TYCent]";
 			     T.TP_TYC(T.NoTP tyc)::loop(entenv, rest, i+1, fs))
 			    (* [TODO] What to do about GENtyc FORMAL? *) 
 		       | M.FCTent {(* tycpath=SOME tp,*) paramEnts, ...} => 
@@ -442,15 +465,17 @@ in
 			      stub=fstub} = 
 			     fctRlzn 
 			 val _ = debugmsg "--strBinds APPstr"
-			 (* val _ = (debugmsg "===fsparsig===";
+			 val _ = if !debugging then 
+				     (debugmsg "===fsparsig===";
 				     ppSig fsparsig;
 				     debugmsg "===dummyEnts===";
 				     ppEntities dummyEnts;
 				     debugmsg "===argsig===";
 				     ppSig argsig;
 				     debugmsg "===argEnts===";
-				     ppEntities entities) *)
-			 val alleps = 
+				     ppEntities entities) 
+				 else () 
+			 val alleps =
 			     entpaths(#elements fsr)
 			 val fsigs = fsigInElems(#elements fsr)
 			 val eps = repEPs(alleps, dummyEnts)
