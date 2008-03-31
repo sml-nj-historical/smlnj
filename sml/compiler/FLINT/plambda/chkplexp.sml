@@ -263,7 +263,7 @@ fun check (kenv, venv, d) =
 		  raise ChkPlexp)
       fun loop le =
 	  let fun ltyChkMsgLexp msg kenv lty = 
-		    ltyChkMsg msg lexp kenv lty 
+		    ltyChkMsg msg le kenv lty 
 	      fun ltyChkenv msg lty = ltyChkMsgLexp msg kenv lty
 	  in
 	      (case le
