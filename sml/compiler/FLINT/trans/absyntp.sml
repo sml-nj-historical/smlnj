@@ -15,6 +15,8 @@ local
   structure T = TypesTP
   structure A = Access
   structure V = VarCon
+  structure ST = Stamps
+
   open Modules Types
 in
 
@@ -88,7 +90,8 @@ and strexp
  *)
 and fctexp 
   = VARfct of Functor
-  | FCTfct of {param: Structure, argtycs: T.tycpath list, def: strexp}
+  | FCTfct of {param: Structure, argtycs: T.tycpath list, 
+	       def: strexp}
   | LETfct of dec * fctexp
   | MARKfct of fctexp * region
 

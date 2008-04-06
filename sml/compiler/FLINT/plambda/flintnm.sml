@@ -109,6 +109,7 @@ end (* local flint_prim *)
    strictly used by the CON and DATAcon only 
  *)
 fun force_raw (pty) = 
+    (debugmsg ">>force_raw";
   if LT.ltp_ppoly pty then
     let val (ks, body) = LT.ltd_ppoly pty
         val (aty, rty) = LT.ltd_parrow body
@@ -118,7 +119,7 @@ fun force_raw (pty) =
   else 
     let val (aty, rty) = LT.ltd_parrow pty
      in LT.ltc_arrow(LT.ffc_rrflint, [FL.ltc_raw aty], [FL.ltc_raw rty])
-    end (* function force_raw *)
+    end) (* function force_raw *)
 
 fun tocon con =
     let val _ = 1
@@ -196,7 +197,10 @@ and tolexp (venv,d) lexp =
 			     (* now find the return type *)
 			     let val (_, r_lty) = 
                                    if LT.ltp_pfct f_lty then LT.ltd_pfct f_lty
-                                   else LT.ltd_parrow f_lty
+                                   else (debugmsg "--tolexp L.APP[f,arg]";
+					 debugLexp lexp;
+					 debugmsg "--watch out";
+					 LT.ltd_parrow f_lty)
 			     (* and finally do the call *)
 			     in (F.APP(f_val,arg_vals), r_lty)
 			     end))
@@ -250,7 +254,8 @@ and tolexp (venv,d) lexp =
 	    tovalue(venv, d, le, fn (v,lty) => tolexp (venv,d) lexp)
       | L.SWITCH (le,acs,conlexps,default) =>
 	    let fun f (L.DATAcon((s,cr,lty),tycs,lvar),le) =
-		    let val (lv_lty,_) = LT.ltd_parrow(LT.lt_pinst(lty,tycs))
+		    let val _ = debugmsg "--tolexp[SWITCH DATAcon]"
+			val (lv_lty,_) = LT.ltd_parrow(LT.lt_pinst(lty,tycs))
 			val newvenv = LT.ltInsert(venv,lvar,lv_lty,d)
 			val (le, le_lty) = tolexp (newvenv,d) le
 		    in
@@ -460,6 +465,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
 	val _ = debugLexp lexp
 	fun eta_expand (f, f_lty) =
             let val lv = mkv()
+		val _ = debugmsg "--eta_expand"
                 val (arg_lty, ret_lty) = (LT.ltd_parrow f_lty)
             in tolvar(venv, d, lvar,
                       L.FN(lv, arg_lty, L.APP(f, L.VAR lv)),
@@ -490,7 +496,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
                   (case (LT.ltp_ppoly f_lty, tycs) 
                     of (true, _) => 
                          let val (ks, lt) = LT.ltd_ppoly f_lty
-                             val (aty, rty) = LT.ltd_parrow lt
+			     val (aty, rty) = LT.ltd_parrow lt
                              val r_lty = 
                                LT.lt_pinst(LT.ltc_ppoly(ks, rty), tycs)
 
@@ -639,6 +645,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
 	    tovalue(venv, d, le,
 		     fn (v,_) =>
 		     let val r_lty = LT.lt_pinst(lty, tycs)
+			 val _ = debugmsg "--tolvar[CON]"
                          val (_,v_lty) = LT.ltd_parrow r_lty
 			 val (c_lexp, c_lty) = cont(v_lty)
 		     in (F.CON((s, cr, force_raw lty),

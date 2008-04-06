@@ -72,10 +72,10 @@ fun ppType ty =
 		("type: ",PPType.ppType StaticEnv.empty, ty))
 
 fun ppLexp lexp = 
-    PP.with_default_pp(fn s => PPLexp.ppLexp 20 s lexp)
+    PP.with_default_pp(fn s => PPLexp.ppLexp (!ppDepth) s lexp)
 
 fun ppTKind knd =
-    with_pp(fn s => PPLty.ppTKind 10 s knd)
+    with_pp(fn s => PPLty.ppTKind (!ppDepth) s knd)
 
 fun ident x = x
 val unitLexp = RECORD []
@@ -145,7 +145,7 @@ val mkv = LambdaVar.mkLvar
 fun mkvN NONE = mkv()
   | mkvN (SOME s) = LambdaVar.namedLvar s
 *)
-val rootdec' = RepTycProps.procDec(rootdec, DebIndex.top)
+val (rootdec', ftmap) = RepTycProps.procDec(rootdec, DebIndex.top)
 
 val mkvN = #mkLvar compInfo
 fun mkv () = mkvN NONE
@@ -153,7 +153,7 @@ fun mkv () = mkvN NONE
 
 (** generate the set of ML-to-FLINT type translation functions *)
 val {tpsKnd, tpsTyc, toTyc, toLty, strLty, fctLty} =
-    TT.genTT()
+    TT.genTT(ftmap)
 (* fun tpsKnd x = tpsKnd' x handle _ => bug "tpsKnd"
 fun tpsTyc x = tpsTyc' x handle _ => bug "tpsTyc"
 fun toTyc x = toTyc' x handle _ => bug "toTyc"
@@ -1311,7 +1311,8 @@ and mkEBs (ebs, d) =
  *                                                                         *
  ***************************************************************************)
 and mkStrexp (se, d) = 
-  let fun g (VARstr s) = mkStr(s, d)
+  let val _ = debugmsg ">>mkStrexp"
+      fun g (VARstr s) = mkStr(s, d)
         | g (STRstr bs) = SRECORD (map (mkBnd d) bs)
         | g (APPstr {oper, arg, argtycs}) = 
               let val e1 = mkFct(oper, d) 
@@ -1321,8 +1322,10 @@ and mkStrexp (se, d) =
               end
         | g (LETstr (dec, b)) = mkDec (dec, d) (g b)
         | g (MARKstr (b, reg)) = withRegion reg g b
-
-   in g se
+      val le = g se
+      val _ = debugmsg "<<mkStrexp"
+   in 
+      le
   end
 
 and mkFctexp (fe, d) = 
@@ -1349,7 +1352,8 @@ and mkFctexp (fe, d) =
 			  | TP.DEFtyc{tyfun=TP.TYFUN{arity,...},...} =>
 		            getTyc(rest)
 			  | _ => bug "getFctKnds 1")
-		    | M.STRspec{entVar, sign, def, ...} => getFctKnds(sign)@getTyc(rest)
+		    | M.STRspec{entVar, sign, def, ...} => 
+		        getFctKnds(sign)@getTyc(rest)
 		    | _ => getTyc rest)
 	       | getTyc([]) = []
 	in (getTyc elements)@(getFct elements)
@@ -1359,21 +1363,31 @@ and mkFctexp (fe, d) =
         | g (FCTfct {param as M.STR { sign, access, ... }, argtycs, def }) =
 	  (case access of
 	       DA.LVAR v =>
-               let val knds = map tpsKnd argtycs (* Old way of obtaining kinds from INST *)
+               let val knds = map tpsKnd argtycs
+		     (* Old way of obtaining kinds from INST *)
 		   (* val knds = getFctKnds sign *) (* Computing kinds directly *)
 		   (*val _ = print ("tpsKnd: "^Int.toString (length knds)^"\n")
 		   val _ = app (fn k => (ppTKind k; print " ")) knds
-		   *)val _ = debugmsg ("\ngetFctKnds: "^Int.toString (length knds)^"\n")
+		   *)val _ = debugmsg ("--getFctKnds: "^
+				       Int.toString (length knds))
 		   val _ = if !debugging then 
 			       (app (fn k => (ppTKind k; print " ")) knds; 
-				print "\n")
+				print "\n";
+				with_pp (fn s => PPModules.ppStructure s (param, StaticEnv.empty, 100)))
 			   else ()
                    val nd = DI.next d  (* reflecting type abstraction *)
                    val body = mkStrexp (def, nd)
                    val hdr = buildHdr v
                (* binding of all v's components *)
                in
-		   TFN(knds, FN(v, strLty(param, nd, compInfo), hdr body))
+		   TFN(knds, FN(v, strLty(param, nd, compInfo), 
+				hdr body))
+		   (* [FIXME]strLty's param has a signature with GENtyc formals.
+		    * transtypes will not know how to deal with this. 
+		    * The free instantiation of this functor's parameter 
+		    * must be supplied. Alternatively, the tycons in the 
+		    * signature can be translated. 
+		    *)
                end
 	     | _ => bug "mkFctexp: unexpected access")
         | g (LETfct (dec, b)) = mkDec (dec, d) (g b)
@@ -1436,7 +1450,8 @@ and mkDec (dec, d) =
               let (* special hack to make the import tree simpler *)
                   fun mkos (_, s as M.STR { access = acc, ... }) =
                       if extern acc then 
-                          let val _ = mkAccT(acc, strLty(s, d, compInfo), NONE)
+                          let val _ = mkAccT(acc, strLty(s, d, compInfo),
+					     NONE)
                           in ()
                           end
                       else ()

@@ -12,7 +12,20 @@
    because they will be represented as TP_TYC(...).  
 *)
 
-structure RepTycProps =
+signature REPTYCPROPS = 
+sig
+   val procDec : Absyn.dec * DebIndex.index 
+		 -> (AbsynTP.dec * TypesTP.tycpath FlexTycMap.map)
+   (*val getTPsforEPs : EntityEnv.entityEnv * EntPath.entPath list
+		     * Modules.fctSig list * DebIndex.depth  
+		      -> TypesTP.tycpath list *)
+   val getTk : Modules.fctSig * EntityEnv.entityEnv * EntityEnv.entityEnv 
+	       * Modules.fctSig list * DebIndex.depth 
+	       -> (TypesTP.tycpath list * TypesTP.tycpath FlexTycMap.map)
+   
+end
+
+structure RepTycProps : REPTYCPROPS =
 struct 
 	
 local
@@ -29,6 +42,7 @@ local
       structure S = Symbol
       structure AT = AbsynTP
       structure V = VarCon
+      structure FTM = FlexTycMap
 
 	(* A map from entity TYC or FCT stamps to the first corresponding EP  *)
       structure EPMap = RedBlackMapFn (type ord_key = Stamps.stamp
@@ -37,15 +51,25 @@ local
 	 structures) we have seen *)
       structure StampSet = RedBlackSetFn (type ord_key = Stamps.stamp
 					  val compare = Stamps.compare)
+
       open Absyn
+
+      fun unionMaps []  = FTM.empty
+	| unionMaps (m::ms) = FTM.unionWith(fn(tp1,tp2) => tp1)
+					   (m, unionMaps ms)
+
 in
-      val debugging = ref false
+      val debugging = ref true
       val printStrFct = ref true
 
       (* Support functions *)
       fun debugmsg(m) = if !debugging then print ("RepTycProps: "^m^"\n")
 			else ()
       fun bug msg = ErrorMsg.impossible("RepTycProps: " ^ msg)
+
+      fun insertMap(m, x, obj) = 
+	  (debugmsg ("--insertMap "^Stamps.toShortString x); 
+	   FTM.insert(m, x, obj))
 
       local
 	  structure ED = ElabDebug
@@ -92,14 +116,6 @@ in
 
       end (* local open PPModules *)
 
-      (* fun pk_eqv(k, k') =
-	  (case (k, k') 
-	    of (AT.PK_MONO, AT.PK_MONO) => true
-	     | (AT.PK_SEQ ks, AT.PK_SEQ ks') => ListPair.allEq pk_eqv (ks, ks')
-	     | (AT.PK_FUN (pks, bk), AT.PK_FUN (pks', bk')) =>
-	       (ListPair.allEq pk_eqv (pks, pks')) andalso (pk_eqv(bk,bk'))
-	     | _ => false) *)
-
       fun eqTycon(T.NoTP tc, T.NoTP tc') = TU.equalTycon(tc,tc')
 	| eqTycon _ = raise Fail "Unimplemented"
 
@@ -108,8 +124,7 @@ in
 	    of (v1 as {tdepth, num, kind}, 
 		v2 as {tdepth=tdepth', num=num', kind=kind'}) =>
 	       if DI.eq(tdepth,tdepth') andalso 
-		  num = num' andalso LT.tk_eqv(kind, kind') (* pk_eqv(kind, kind')*)
-		  (* LT.tk_eqv(kind, kind') *) 
+		  num = num' andalso LT.tk_eqv(kind, kind') 
 	       then true
 	       else let fun printTPVar({tdepth, num, kind}) = 
 			    (print ("\nTP_VAR("^DI.di_print tdepth^ 
@@ -248,13 +263,9 @@ in
 	end (* fun repEPs *)
 
     local
+
 	(* Should use tkc_int and tkc_fun instead of these 
 	   when TP information is eliminated from Elaborator *)
-	      (* fun listofmono(n) = 
-		  LT.tkc_int n
-	      fun buildKind(n) = 
-		  if n <= 0 then LT.tkc_mono
-		  else LT.tkc_fun(listofmono n, LT.tkc_mono) *)
 	val buildKind = LT.tkc_int
     in
       (* kinds : entenv * ep list * fctsig list -> kind list 
@@ -276,9 +287,6 @@ in
 		val _ = debugmsg "--kinds pfsigs computed\n"
 		(* What is the correct eenv to look up belem entpaths?
 		 *)
-		(* val beps = repEPs(entpaths belems, eenv)
-		   val _ = print "--kinds beps computed\n" *)
-		(* val pks = kinds(eenv, peps, pfsigs) *)
 		fun loop ([], _) = []
 		  | loop (ep::eps, pfsigs) = 
 		    (case EE.lookEP(eenv, ep)
@@ -308,7 +316,7 @@ in
         (* This is the important computation for generating TC_VAR 
 	   variable references to functor parameters. 
 	   *)  
-	fun getTPsforEPs(entenv, eps, fsigs) =
+	fun getTPsforEPs(entenv, eps, fsigs, d) =
 	    let 
 		val _ = debugmsg ("--getTPsforEPs eps "^
 				  Int.toString (length eps))
@@ -320,36 +328,42 @@ in
 			  handle EntityEnv.Unbound =>
 				 (print "\ngetTPforEPs for Unbound\n";
 				  raise EntityEnv.Unbound)
-		      of M.TYCent(tyc as TP.GENtyc{kind=TP.DATATYPE _, ...}) =>
-			   T.TP_TYC(T.NoTP tyc)::loop(entenv, rest, i+1, fs)
+		      of M.TYCent(tyc as TP.GENtyc{kind=TP.DATATYPE _, stamp, 
+						   ...}) =>
+			   (T.TP_TYC(T.NoTP tyc))
+			     ::loop(entenv, rest, i+1, fs)
 			   (* Datatypes should be represented directly in the 
 			      tycpath *)
-		       | M.TYCent(TP.GENtyc{kind=TP.ABSTRACT(tyc),...}) =>
+		       | M.TYCent(TP.GENtyc{kind=TP.ABSTRACT(tyc),stamp=s1,
+					    ...}) =>
 			   (case tyc 
-			     of TP.GENtyc{kind=TP.DATATYPE _,...} =>
-				T.TP_TYC(T.NoTP tyc)::loop(entenv,rest,i+1,fs)
-			      | TP.GENtyc{kind=TP.FORMAL, arity, ...} => 
-				(T.TP_VAR{tdepth=DI.top,num=i,
+			     of TP.GENtyc{kind=TP.DATATYPE _,stamp,...} =>
+				(T.TP_TYC(T.NoTP tyc))
+				  ::loop(entenv,rest,i+1,fs)
+			      | TP.GENtyc{kind=TP.FORMAL, arity,stamp,...} => 
+				(debugmsg ("--getTPsforEPs ABSTRACT FORMAL tdepth "
+					   ^DebIndex.dp_print d);
+				 (T.TP_VAR{tdepth=d,num=i,
 					 kind=buildKind arity})::
-				loop(entenv, rest, i+1, fs)
+				loop(entenv, rest, i+1, fs))
 			      | _ => 
-				T.TP_TYC(T.NoTP tyc)::loop(entenv,rest,i+1,fs))
+				(T.TP_TYC(T.NoTP tyc))
+				  ::loop(entenv,rest,i+1,fs))
 		      
-		       | M.TYCent(TP.GENtyc{kind, arity, ...}) =>
+		       | M.TYCent(TP.GENtyc{kind, arity, stamp, ...}) =>
 			 let val _ = debugmsg "--getTPsforEPs[TYCent GENtyc]"
-			     val kind = (* LT.tkc_int(arity) *)
-				 buildKind arity
-			     val var = {tdepth=DI.top,num=i,
-					kind=kind}
+			     val _ = debugmsg ("--getTPsforEPs GENtyc tdepth "
+					   ^DebIndex.dp_print d)
+			     val kind = buildKind arity
+			     val var = {tdepth=d,num=i,kind=kind}
 			     val tp' = T.TP_VAR var
 			       (* val _ = checkTycPath(tp, tp') *)
 			   in tp'::loop(entenv, rest, i+1, fs)
 			   end
 		       | M.TYCent tyc => 
 			    (debugmsg "--getTPsforEPs[TYCent]";
-			     T.TP_TYC(T.NoTP tyc)::loop(entenv, rest, i+1, fs))
-			    (* [TODO] What to do about GENtyc FORMAL? *) 
-		       | M.FCTent {(* tycpath=SOME tp,*) paramEnts, ...} => 
+			     (T.TP_TYC(T.NoTP tyc))::loop(entenv, rest, i+1, fs)) 
+		       | M.FCTent {paramEnts, stamp, ...} => 
 			   (debugmsg "--getTPsforEPs[FCTent SOME]";
 			    (case fs
 			      of [] => bug "getTPsforEPs.1"
@@ -365,9 +379,9 @@ in
 					 else ()
 						
 				     val kind = kinds(paramEnts, f)   
-				     val _ = debugmsg "<<kinds done\n"
-				     val var = {tdepth=DI.top, num=i,
-						kind=kind}
+				     val _ = debugmsg "<<kinds done"
+				     val _ = debugmsg ("--getTPsforEPs FCTent tdepth "^DebIndex.dp_print d)
+				     val var = {tdepth=d, num=i, kind=kind}
 				     val tp' = T.TP_VAR var 
 				(* val _ = checkTycPath(tp, tp') *)
 				 in tp'::loop(entenv, rest, i, srest)
@@ -375,25 +389,113 @@ in
 		       | _ => bug "getTPforEPs 0")
 		    handle EE.Unbound => bug "getTPforEPs Unbound"
 		in loop(entenv, eps, 0, fsigs)
-		end (* fun getTPsforEPs *)
-	      
-	      fun getTk(M.FSIG{paramsig=M.SIG ps, ...}, dummyEnts, argEnts, 
-			fsigs) =
-		  let 
-		      val alleps = 
-			  entpaths(#elements ps)
-		      val fsigs = fsigInElems(#elements ps)
-		      val eps = repEPs(alleps, dummyEnts)
-		      val argtycs' = 
-			  getTPsforEPs(argEnts, eps, fsigs)
-		  in argtycs'
-		  end (* getTk *)
-		| getTk _ = bug "getTk 0"
+		end (* fun getTPsforEPs *) 
 
-      end (* local *)
+
+       (* This is the important computation for generating TC_VAR 
+	   variable references to functor parameters. 
+
+	  entityEnv * entPath list * fctSig list -> FTM.map
+	   *)  
+	fun epsToFlexTycMap(entenv, eps, fsigs, d) =
+	    let 
+		val _ = debugmsg ("--epsToFlexTycMap eps "^
+				  Int.toString (length eps))
+		fun loop(ftmap, entenv, [], i, _) = ftmap
+		  | loop(ftmap, entenv, ep::rest, i, fs) =
+		    (debugmsg ("-epsToFlexTycMap loop "^Int.toString i); 
+		     let val ev : Stamps.stamp = hd (rev ep)
+		     in 
+		     case EE.lookEP(entenv, ep)
+			  handle EntityEnv.Unbound =>
+				 (print "\ngetTPforEPs for Unbound\n";
+				  raise EntityEnv.Unbound)
+		      of M.TYCent(tyc as TP.GENtyc{kind=TP.DATATYPE _, stamp,...}) =>
+			   (loop(insertMap(ftmap, stamp, T.TP_TYC(T.NoTP tyc)), 
+				 entenv, rest, i+1, fs))
+			   (* Datatypes should be represented directly in the 
+			      tycpath *)
+		       | M.TYCent(TP.GENtyc{kind=TP.ABSTRACT(tyc),stamp=s1,...}) =>
+			   let val (ft,s) = 
+				    (case tyc 
+			     of TP.GENtyc{kind=TP.DATATYPE _,stamp,...} =>
+				(T.TP_TYC(T.NoTP tyc), stamp)
+			      | TP.GENtyc{kind=TP.FORMAL, arity, stamp, ...} => 
+				(T.TP_VAR{tdepth=d,num=i,
+					 kind=buildKind arity}, stamp)
+			      | _ => 
+				(T.TP_TYC(T.NoTP tyc), s1))
+			    in 
+			       loop(insertMap(ftmap, s, ft), 
+				    entenv,rest,i+1,fs)
+			    end
+		      
+		       | M.TYCent(TP.GENtyc{kind, arity, stamp, ...}) =>
+			 let val _ = debugmsg "--epsToFlexTycMap[TYCent GENtyc]"
+			     val kind = (* LT.tkc_int(arity) *)
+				 buildKind arity
+			     val var = {tdepth=d,num=i,
+					kind=kind}
+			     val tp' = T.TP_VAR var
+			       (* val _ = checkTycPath(tp, tp') *)
+			   in 
+			     loop(insertMap(ftmap, stamp, tp'),
+				  entenv, rest, i+1, fs)
+			   end
+		       | M.TYCent tyc => 
+			    (debugmsg "--epsToFlexTycMap[TYCent]";
+			     loop(insertMap(ftmap, ev, T.TP_TYC(T.NoTP tyc)),
+				  entenv, rest, i+1, fs))
+			    (* [TODO] What to do about GENtyc FORMAL? *) 
+		       | M.FCTent {(* tycpath=SOME tp,*) paramEnts, ...} => 
+			   (debugmsg "--epsToFlexTycMap[FCTent SOME]";
+			    (case fs
+			      of [] => bug "epsToFlexTycMap.1"
+			       | f::srest => 
+				 let val _ = 
+					 if !debugging then 
+					     (print "\n===FCTent paramEnts===\n";
+					      ppEntities paramEnts;
+					      print "\n===FCTent eenv===\n";
+					      ppEntities entenv;
+					      print "\n--kinds[FCTent] Funsig\n";
+					      ppFunsig f; print "\n")
+					 else ()
+						
+				     val kind = kinds(paramEnts, f)   
+				     val _ = debugmsg "<<kinds done\n"
+				     val var = {tdepth=d, num=i, kind=kind}
+				     val tp' = T.TP_VAR var 
+				(* val _ = checkTycPath(tp, tp') *)
+				 in 
+				    loop(insertMap(ftmap, ev, tp'),
+					 entenv, rest, i, srest)
+				 end)) (* FIXME *)
+		       | _ => bug "epsToFlexTycMap 0"
+		     end (* loop *) )
+		    handle EE.Unbound => bug "epsToFlexTycMap Unbound"
+		in loop(FTM.empty, entenv, eps, 0, fsigs)
+	    end (* fun epsToFlexTycMap *)
+
+	fun getTk(M.FSIG{paramsig=M.SIG ps, ...}, dummyEnts, argEnts, 
+		  fsigs, d) =
+	    let 
+		val _ = debugmsg ">>getTk"
+		val alleps = entpaths(#elements ps)
+		val fsigs = fsigInElems(#elements ps)
+		val eps = repEPs(alleps, dummyEnts)
+		val argtycs' = getTPsforEPs(argEnts, eps, fsigs, d)
+		val ftmap = epsToFlexTycMap(argEnts, eps, fsigs, d)
+		val _ = debugmsg "<<getTk"
+	    in (argtycs', ftmap)
+	    end (* getTk *)
+	  | getTk _ = bug "getTk 0"
+
+    end (* local *)
 
     fun procCloSE(se) =
-	(case se 
+	(debugmsg "--procCloSE";
+	 case se 
 	  of M.VARstr _ => se
 	   | M.CONSTstr _ => se
 	   | M.STRUCTURE _ => se
@@ -408,7 +510,8 @@ in
 			    coercion=procCloSE coercion}
 	   | M.FORMstr _ => bug "unexpected FORMstr in procCloSE")
     and procCloFE(fe) =
-	(case fe
+	(debugmsg "--procCloFE";
+	 case fe
 	  of M.VARfct _ => fe
 	   | M.CONSTfct _ => fe
 	   | M.LAMBDA{body,param,paramEnts} => 
@@ -416,36 +519,15 @@ in
 	   | M.LETfct(entDec, fexp) => M.LETfct(entDec, procCloFE fexp)
 	   | M.LAMBDA_TP _ => bug "procCloFE bug LAMBDA_TP")
 
-    (* exception TransVar
-    fun transVar V.ERRORvar = raise TransVar
-      | transVar(V.OVLDvar{name,options,scheme}) =
-	let 
-	    fun transopts([]) = []
-	      | transopts({indicator,variant}::rest) =
-		let val indicator' = T.TyNoTP indicator
-		    val opt = {indicator=indicator',
-			       variant=transVar variant}
-		in opt::transopts(rest)
-		end
-	in
-	    AT.OVLDvar{name=name, options=ref (transopts (!options)),
-		       scheme=scheme}
-	end
-      | transVar(V.VALvar{path,typ,access,prim}) =
-	AT.VALvar{path=path,typ=ref (T.TyNoTP (!typ)), access=access,
-		  prim=prim}
-    (* end transVar *) *)
-
-
     (* dec * DebIndex.depth -> 
 	     dec with tycpaths and memoized ep * tkind lists 
        This code needs EPMap (don't forgot EPMap in the local ... in 
        bindings section above ...)
      *)
-    fun procDec (dec, d : DebIndex.depth) =
+    fun procDec' (ftmap, dec, d : DebIndex.depth) =
 	let 
 	    val _ = debugmsg ">>procDec"
-	    fun procStrexp def =
+	    fun procStrexp (ftmap, def, d : DebIndex.depth) =
 		(case def 
 		  of (APPstr{oper=oper 
 			      as M.FCT{sign=fctsign 
@@ -480,8 +562,8 @@ in
 			 val fsigs = fsigInElems(#elements fsr)
 			 val eps = repEPs(alleps, dummyEnts)
 			 val argtycs' = 
-			     getTPsforEPs(entities, eps,
-					  fsigs)
+			     getTPsforEPs(entities, eps, fsigs,d)
+			 val ftmap' = epsToFlexTycMap(entities, eps, fsigs,d)
 			 val body' = procCloSE(body)
 			 val fcl' = 
 			     M.CLOSURE{param=fclparam,
@@ -522,33 +604,43 @@ in
 		     (* val _ = if length argtycs <> length argtycs'
 				then bug "strBinds: bad argtycs computation"
 				else ()	 *)
-		     in se'
+		     in (se', unionMaps[ftmap, ftmap'])
 		     end 
 		   | APPstr {oper=M.FCT _, arg=M.STRSIG _, ...} => 
 		     bug "strBinds: Unimplemented"
 		   | LETstr(dec,se') => 
-		     AT.LETstr(procDec(dec,d), procStrexp se')
-		   | VARstr s => AT.VARstr s
-		   | MARKstr(se',r) => AT.MARKstr(procStrexp se', r)
-		   | STRstr binds => AT.STRstr binds
+		     let val (se'',ftmap1) = procStrexp (ftmap, se',d)
+			 val (dec',ftmap2) = procDec'(ftmap1, dec,d)
+		     in
+			 (AT.LETstr(dec', se''), ftmap2)
+		     end
+		   | VARstr s => (AT.VARstr s, ftmap)
+		   | MARKstr(se',r) =>
+		     let val (se'', ftmap1) = procStrexp (ftmap, se',d)
+		     in
+			 (AT.MARKstr(se'', r), ftmap1)
+		     end
+		   | STRstr binds => (AT.STRstr binds, ftmap)
 		   | _ => bug "procStrexp")
 		    
-	    fun fctBinds([]) = []
-	      | fctBinds((b as FCTB{fct=fct 
+	    fun fctBinds(ftmap, [], d) = ([], ftmap)
+	      | fctBinds(ftmap,
+			 (b as FCTB{fct=fct 
 				as M.FCT{sign=M.FSIG{paramsig=paramsig'
 			as M.SIG fsr,paramvar,...},
-			rlzn={paramEnts,...},
-		...}, def, name})::rest) =
-		let fun mkFctexp(fe) =
+			rlzn={paramEnts,...}, ...}, def, name})::rest, d) =
+		let val _ = debugmsg "--fctBinds"
+		    fun mkFctexp(ftmap, fe) =
 			(case fe 
 			  of VARfct f => 
-			     AT.VARfct f 
+			     (AT.VARfct f, ftmap)
 			   | FCTfct{param=param 
 				      as M.STR{sign=paramsig 
 						as M.SIG sr, 
 					       rlzn=rlzn 
 						as {entities,
-						    ...},...},
+						    ...},
+					       access, prim},
 				    def} =>
 			     (debugmsg (">>fctBinds:mkFctexp[FCTfct] name "^
 					S.name name); 
@@ -567,121 +659,171 @@ in
 					  else ()
 				  val fsigs = fsigInElems(#elements fsr)  
 				  val eps = repEPs(alleps, entities)
-				  val argtycs' = getTPsforEPs(entities, eps,fsigs) 
-			      (*val _ = printArgtycs(argtycs, argtycs')
-				val _ = if length argtycs' <> length argtycs
-					then bug "fctBinds argtycs bad computation"
-					else ()*)
-			      (* val _ = if checkTycPaths(argtycs, argtycs')
-					    orelse (not (!printStrFct))
-					 then ()
-					 else (print "\nrepEPs:\n";
-					       app ppEP eps;
-					       print "\nparamsig:\n";
-					       ppSig paramsig;
-					       print "\nentities:\n";
-					       ppEntities entities; 
-					       print "\nparamsig':\n";
-					       ppSig paramsig'; print "\n"
-					bug "wrong arg tycs mkFctexp") *)
-			      in AT.FCTfct{param=param,def=procStrexp def,
-					   argtycs=argtycs'}
+				  val argtycs' = getTPsforEPs(entities, eps,fsigs,d) 
+				  val ftmap1 = epsToFlexTycMap(entities,eps,fsigs,d)
+				  val (def',ftmap2) = 
+				      procStrexp (unionMaps [ftmap, ftmap1], 
+						  def, DebIndex.next d)
+			      in (AT.FCTfct{param=param, def=def',
+					   argtycs=argtycs'},
+			          ftmap2)
 			      end)
 			   | MARKfct(fe',region) => 
-			     AT.MARKfct(mkFctexp fe',region)
+			     let val (fe'',ftmap1) = mkFctexp(ftmap, fe')
+			     in (AT.MARKfct(fe'',region), ftmap1)
+			     end
 			   | LETfct(dec', fe') => 
-			     AT.LETfct(procDec(dec',d), mkFctexp fe')
+			     let val (dec'',ftmap1) = procDec'(ftmap, dec',d)
+				 val (fe', ftmap2) = mkFctexp (ftmap1, fe')
+			     in (AT.LETfct(dec'', fe'), ftmap2)
+			     end
 			   | _ => bug "mkFctexp 0")
-		in AT.FCTB{name=name, fct=fct, 
-			   def=mkFctexp(def)} :: fctBinds(rest)
+		    val (def', ftmap1) = mkFctexp(ftmap, def)
+		    val (binds,ftmap2) =  fctBinds(ftmap1, rest, d)
+		in (AT.FCTB{name=name, fct=fct, def=def'} :: binds, 
+		    ftmap2)
 		end
 	      | fctBinds _ = bug "fctBinds: unexpected binding"
 		
-	    fun strBinds([]) = []
-	      | strBinds((b as STRB{name, str, def})::rest) =
+	    fun strBinds(ftmap, []) = ([], ftmap)
+	      | strBinds(ftmap, (b as STRB{name, str, def})::rest) =
 		let val _ = debugmsg (">>strBinds "^
 				      Symbol.symbolToString name)
-			val sb' = AT.STRB{name=name, str=str, 
-					  def=procStrexp def}
+		    val (def', ftmap1) = procStrexp(ftmap, def, d)
+		    val sb' = AT.STRB{name=name, str=str, def=def'}
+		    val (strbs, ftmap2) = strBinds(ftmap1,rest)
 		in
-		    sb' :: strBinds(rest)
+		    (sb' :: strbs, ftmap2)
 		end (* fun strBinds *)
 		    
 	    fun transVB(VB {pat,exp,boundtvs,tyvars}) = 
-		AT.VB{pat=pat,exp=transExp d exp,boundtvs=boundtvs,
+		AT.VB{pat=pat,exp= #1 (transExp ftmap d exp),boundtvs=boundtvs,
 		      tyvars=tyvars}
 	    fun transRVB(RVB{var,exp,boundtvs,resultty,tyvars}) =
-		AT.RVB{var=var,exp=transExp d exp,boundtvs=boundtvs,
+		AT.RVB{var=var,exp= #1 (transExp ftmap d exp),boundtvs=boundtvs,
 		       resultty=resultty,tyvars=tyvars}
 	in
 	    (case dec 
-	      of SEQdec(decs) => 
-		 AT.SEQdec(map (fn(dec') => procDec(dec',d)) decs)
+	      of SEQdec(decs) =>
+		 let val (decs',ftmap1) = 
+			 foldr (fn(dec', (decs, ftmap')) => 
+				  let val (dec'', ftmap'') = 
+					  procDec'(ftmap', dec',d)
+				  in (dec''::decs, ftmap'')
+				  end) ([], ftmap) decs 
+		 in
+		     (AT.SEQdec(decs'), ftmap1) 
+		 end
 	       | LOCALdec(dec1, dec2) => 
-		 AT.LOCALdec(procDec(dec1,d), procDec (dec2,d))	
-	       | MARKdec(dec',r) => AT.MARKdec(procDec(dec',d), r)
-	       | FCTdec(fctbs) => AT.FCTdec(fctBinds fctbs)  
-	       | STRdec(strbs) => AT.STRdec(strBinds strbs)
-	       | ABSdec strbs => AT.ABSdec(strBinds strbs)
-	       | OPENdec x => AT.OPENdec x (* May have module dec *)
-	       | SIGdec bs => AT.SIGdec bs
-	       | FSIGdec bs => AT.FSIGdec bs
-	       | VALdec vbs => AT.VALdec (map transVB vbs)
-	       | VALRECdec rvbs => AT.VALRECdec (map transRVB rvbs)
-	       | TYPEdec tycs => AT.TYPEdec tycs
-	       | DATATYPEdec x => AT.DATATYPEdec x
-	       | ABSTYPEdec{abstycs, body, withtycs} => 
-		 AT.ABSTYPEdec{abstycs=abstycs, body=procDec(body,d), 
-			       withtycs=withtycs}
+		 let val (dec1',ftmap1) = procDec'(ftmap, dec1,d)
+		     val (dec2',ftmap2) = procDec'(ftmap1, dec2,d)
+		 in (AT.LOCALdec(dec1', dec2'), ftmap2)
+		 end
+	       | MARKdec(dec',r) => 
+		 let val (dec'', ftmap1) = procDec'(ftmap, dec',d)
+		 in (AT.MARKdec(dec'', r), ftmap1)
+		 end
+	       | FCTdec(fctbs) => 
+		 let val (fctbs', ftmap1) = fctBinds (ftmap, fctbs,d)
+		 in (AT.FCTdec(fctbs'), ftmap1)
+		 end
+	       | STRdec(strbs) => 
+		 let val (strbs', ftmap1) = strBinds(ftmap, strbs)
+		 in (AT.STRdec(strbs'), ftmap1)
+		 end
+	       | ABSdec strbs => 
+		 let val (strbs', ftmap1) = strBinds(ftmap,strbs)
+		 in (AT.ABSdec(strbs'), ftmap1)
+		 end
+	       | OPENdec x => (AT.OPENdec x, ftmap) (* May have module dec *)
+	       | SIGdec bs => (AT.SIGdec bs, ftmap)
+	       | FSIGdec bs => (AT.FSIGdec bs, ftmap)
+	       | VALdec vbs => (AT.VALdec (map transVB vbs), ftmap)
+	       | VALRECdec rvbs => (AT.VALRECdec (map transRVB rvbs), ftmap)
+	       | TYPEdec tycs => (AT.TYPEdec tycs, ftmap)
+	       | DATATYPEdec x => (AT.DATATYPEdec x, ftmap)
+	       | ABSTYPEdec{abstycs, body, withtycs} =>
+		 let val (body', ftmap1) = procDec'(ftmap,body,d) 
+		 in
+		     (AT.ABSTYPEdec{abstycs=abstycs, body=body', 
+				   withtycs=withtycs},
+		      ftmap1)
+		 end
 	       | EXCEPTIONdec ebs => 
-		 AT.EXCEPTIONdec (map (fn (EBgen{exn,etype,ident}) => 
+		 (AT.EXCEPTIONdec (map (fn (EBgen{exn,etype,ident}) => 
 					  AT.EBgen{exn=exn,etype=etype,
-						   ident=transExp d ident}
+						   ident= #1 (transExp ftmap d ident)}
 					| (EBdef{exn,edef}) => 
 					  AT.EBdef{exn=exn,edef=edef})
-				      ebs)
-	       | OVLDdec v => AT.OVLDdec(v)
-	       | FIXdec x => AT.FIXdec x)
+				      ebs),
+		  ftmap)
+	       | OVLDdec v => (AT.OVLDdec v, ftmap)
+	       | FIXdec x => (AT.FIXdec x, ftmap))
 	end
-    and transExp d e = 
-	(let val transExp' = transExp d
-	     fun transRule(RULE(p,e)) = AT.RULE(p,transExp' e)
+    and transExp ftmap d e = 
+	(let val transExp' = transExp ftmap d
+	     fun transRule(RULE(p,e)) = 
+		 let val (e',ftmap1) = transExp' e
+		 in AT.RULE(p,e')
+		 end
 	     fun transFnRules(rules, ty) = (map transRule rules, ty)
 	 in
 	     (case e 
-	       of VARexp(v,tyvars) => AT.VARexp(v,tyvars)
-		| (CONexp d) => AT.CONexp d
-		| (INTexp d) => AT.INTexp d
-		| (WORDexp d) => AT.WORDexp d
-		| (REALexp d) => AT.REALexp d
-		| (STRINGexp d) => AT.STRINGexp d
-		| (CHARexp d) => AT.CHARexp d
+	       of VARexp(v,tyvars) => (AT.VARexp(v,tyvars), ftmap)
+		| (CONexp d) => (AT.CONexp d, ftmap)
+		| (INTexp d) => (AT.INTexp d, ftmap)
+		| (WORDexp d) => (AT.WORDexp d, ftmap)
+		| (REALexp d) => (AT.REALexp d, ftmap)
+		| (STRINGexp d) => (AT.STRINGexp d, ftmap)
+		| (CHARexp d) => (AT.CHARexp d, ftmap)
 		| (RECORDexp recs) => 
-		  AT.RECORDexp(map (fn(lab,e) => (lab,transExp' e)) recs)
-		| (SELECTexp(lab,e)) => AT.SELECTexp (lab, transExp' e)
-		| (VECTORexp(es, ty)) => AT.VECTORexp(map transExp' es, ty)
-		| (APPexp(e1,e2)) => AT.APPexp(transExp' e1, transExp' e2)
+		  (AT.RECORDexp(map (fn(lab,e) => (lab,#1 (transExp' e))) recs),
+		   ftmap)
+		| (SELECTexp(lab,e)) => 
+		  (AT.SELECTexp (lab, #1 (transExp' e)), ftmap)
+		| (VECTORexp(es, ty)) => 
+		  (AT.VECTORexp(map (#1 o transExp') es, ty), ftmap)
+		| (APPexp(e1,e2)) => 
+		  (AT.APPexp(#1 (transExp' e1), 
+			    #1 (transExp' e2)), ftmap)
 		| (HANDLEexp(e,rules)) => 
-		  AT.HANDLEexp(transExp' e, transFnRules rules)
+		  (AT.HANDLEexp(#1 (transExp' e), transFnRules rules),
+		   ftmap)
 		| RAISEexp(e,ty) => 
-		  AT.RAISEexp(transExp' e, ty)
+		  (AT.RAISEexp(#1 (transExp' e), ty), ftmap)
 		| CASEexp(e,rules, m) => 
-		  AT.CASEexp(transExp' e, map transRule rules,m)
+		  (AT.CASEexp(#1 (transExp' e), map transRule rules,m),
+		   ftmap)
 		| IFexp{test,thenCase,elseCase} =>
-		  AT.IFexp{test=transExp' test, 
-			   thenCase=transExp' thenCase,
-			   elseCase=transExp' elseCase}
-		| ANDALSOexp(e1,e2) => AT.ANDALSOexp(transExp' e1, transExp' e2)
-		| ORELSEexp(e1,e2) => AT.ORELSEexp(transExp' e1, transExp' e2)
+		  (AT.IFexp{test= #1 (transExp' test), 
+			   thenCase= #1 (transExp' thenCase),
+			   elseCase= #1 (transExp' elseCase)},
+		   ftmap)
+		| ANDALSOexp(e1,e2) => 
+		  (AT.ANDALSOexp(#1 (transExp' e1), #1 (transExp' e2)),
+		   ftmap)
+		| ORELSEexp(e1,e2) => 
+		  (AT.ORELSEexp(#1 (transExp' e1), #1 (transExp' e2)),
+		   ftmap)
 		| WHILEexp{test,expr} => 
-		  AT.WHILEexp{test=transExp' test,expr=transExp' expr}
-		| FNexp(fnrules) => AT.FNexp(transFnRules fnrules)
-		| LETexp(dec,e) => AT.LETexp(procDec (dec,d), transExp' e)
-		| SEQexp(es) => AT.SEQexp(map transExp' es)
-		| CONSTRAINTexp(e,t) => AT.CONSTRAINTexp(transExp' e, t)
-		| MARKexp(e,r) => AT.MARKexp(transExp' e, r))
+		  (AT.WHILEexp{test= #1 (transExp' test),
+			      expr= #1 (transExp' expr)},
+		   ftmap)
+		| FNexp(fnrules) => (AT.FNexp(transFnRules fnrules),
+				     ftmap)
+		| LETexp(dec,e) => 
+		  let val (dec',ftmap1) = procDec' (ftmap, dec,d)
+		      val (e',ftmap2) = transExp ftmap1 d e
+		  in (AT.LETexp(dec', e'), ftmap2)
+		  end
+		| SEQexp(es) => (AT.SEQexp(map (#1 o transExp') es), ftmap)
+		| CONSTRAINTexp(e,t) => 
+		  (AT.CONSTRAINTexp(#1 (transExp' e), t), ftmap)
+		| MARKexp(e,r) => 
+		  (AT.MARKexp(#1 (transExp' e), r), ftmap))
 	 end) (* transExp *)				  
 
+    fun procDec(dec, d) = procDec'(FTM.empty, dec, d)
 end (* local *)
 	
 end (* structure RepTycProps *)
