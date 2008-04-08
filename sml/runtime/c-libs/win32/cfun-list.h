@@ -37,6 +37,7 @@ CFUNC("config_get_windows_directory", _ml_win32_CONFIG_get_windows_directory, "u
 CFUNC("config_get_system_directory", _ml_win32_CONFIG_get_system_directory, "unit -> string")
 CFUNC("config_get_computer_name", _ml_win32_CONFIG_get_computer_name, "unit -> string")
 CFUNC("config_get_user_name", _ml_win32_CONFIG_get_user_name, "unit -> string")
+CFUNC("config_get_volume_information", _ml_win32_CONFIG_get_volume_information, "string -> string * string * word32 * int")
 CFUNC("dde_start_dialog", _ml_win32_DDE_start_dialog, "string * string -> word32")
 CFUNC("dde_execute_string", _ml_win32_DDE_execute_string, "word32 * string * int * int -> unit")
 CFUNC("dde_stop_dialog", _ml_win32_DDE_stop_dialog, "word32 -> unit")

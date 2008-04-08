@@ -41,6 +41,48 @@ ml_val_t _ml_win32_CONFIG_get_version_ex(ml_state_t *msp, ml_val_t arg)
 
   return res;
 }
+/*
+val getVolumeInformation : string
+                             -> {
+                               volumeName : string,
+                               systemName : string,
+                               serialNumber : SysWord.word,
+                               maximumComponentLength : int
+                             }
+*/
+ml_val_t _ml_win32_CONFIG_get_volume_information(ml_state_t *msp, ml_val_t arg)
+{
+  TCHAR szVolumeName[MAX_PATH+1];
+  DWORD serialNumber;
+  DWORD maxComponentLength;
+  DWORD fileSystemFlags;
+  TCHAR szFilesystemName[MAX_PATH+1];
+  Byte_t *subKey = STR_MLtoC(arg);
+  int length;
+  ml_val_t res, volume, system, serial, maxcomponent, vec1, vec2;
+
+  if (!GetVolumeInformation(subKey, szVolumeName, MAX_PATH+1, &serialNumber, &maxComponentLength, &fileSystemFlags,
+      szFilesystemName, MAX_PATH+1)) {
+          return RAISE_SYSERR(msp,-1);
+  }
+
+  WORD_ALLOC(msp, serial, (Word_t)serialNumber);
+  maxcomponent = INT_CtoML(maxComponentLength);
+
+  length = strlen(szVolumeName);
+  vec1 = ML_AllocRaw32 (msp, BYTES_TO_WORDS (length + 1));
+  strcpy_s(PTR_MLtoC(void, vec1), length+1, szVolumeName);
+  SEQHDR_ALLOC (msp, volume, DESC_string, vec1, length);
+                       
+  length = strlen(szFilesystemName);
+  vec2 = ML_AllocRaw32 (msp, BYTES_TO_WORDS (length + 1));
+  strcpy_s(PTR_MLtoC(void, vec2), length+1, szFilesystemName);
+  SEQHDR_ALLOC (msp, system, DESC_string, vec2, length);
+                       
+  REC_ALLOC4(msp, res, volume, system, serial, maxcomponent);
+  return res;
+}
+
 
 ml_val_t _ml_win32_CONFIG_get_windows_directory(ml_state_t *msp, ml_val_t arg)
 {

@@ -12,7 +12,7 @@ signature WINDOWS = sig
     structure Config : WINDOWS_CONFIG
     structure DDE : WINDOWS_DDE
 
-(*    val getVolumeInformation : string
+    val getVolumeInformation : string
                                -> {
                                volumeName : string,
                                systemName : string,
@@ -35,12 +35,12 @@ signature WINDOWS = sig
                           -> TextIO.outstream
     val binOutstreamOf  : ('a, BinIO.outstream) proc
                           -> BinIO.outstream
-    val reap : ('a, 'b) proc -> OS.Process.status *)
+    val reap : ('a, 'b) proc -> OS.Process.status 
 
     structure Status : WINDOWS_STATUS
-(*
+
     val fromStatus : OS.Process.status -> Status.status
-    val exit : Status.status -> 'a *)
+    val exit : Status.status -> 'a
 end 
 
 

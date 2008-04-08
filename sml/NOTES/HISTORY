@@ -14,6 +14,13 @@ Tag: cvs-tag-for-this-change
 Description:
 
 ----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2008/07/04
+Description:
+
+Finished off the Windows subset of the basis library. Added process
+support and various configuration and system identification utils.
+----------------------------------------------------------------------
 Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
 Date: 2008/03/18
 Description:
