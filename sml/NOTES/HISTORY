@@ -15,7 +15,68 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
-Date: 2007/11/02
+Date: 2008/07/04
+Description:
+
+Finished off the Windows subset of the basis library. Added process
+support and various configuration and system identification utils.
+----------------------------------------------------------------------
+Name: John Reppy (http://www.cs.uchicago.edu/~jhr)
+Date: 2008/03/18
+Description:
+
+Major changes to the RegExp library: see smlnj-lib/CHANGES for details.
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2008/02/14
+Description:
+
+Added the Windows Status structure
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2008/02/14
+Description:
+
+Added the Windows DDE structure
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2008/02/05
+Description:
+
+Added the Windows Config structure
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2008/01/31
+Description:
+
+Added outline of the Windows basis library and the basic registry
+functionality.
+----------------------------------------------------------------------
+Name: Mike Rainey (http://www.cs.uchicago.edu/~mrainey)
+Date: 2008/01/23
+Description:
+
+Fixed the amd64 code generator to compile with the current MLRISC.
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2007/11/26
+Description:
+
+nlffi was updated to work on Windows. It needed to pass in the correct
+value for the name of the kernel32 DLL to obtain 'base' bindings.
+Additionally updated the README for the most basic nlffi sample with
+what you need to do on MacOSX and on Windows to make it work.
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2007/11/21
+Description:
+
+Overwrite the SMLNJ_HOME environment variable on installation
+Properly change the package code so that subsequent version
+installations prompt for uninstall (instead of 'repair/remove')
+----------------------------------------------------------------------
+Name: Lars Bergstrom (larsberg@cs.uchicago.edu)
+Date: 2007/11/14
 Description:
 
 Cleaned up WININSTALL file for new MSI-based setup.

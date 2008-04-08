@@ -22,9 +22,10 @@
  * 	%g1	standard link
  *	%g2-3  	misc regs
  *	%g4  	heap limit pointer
- * 	%g5  	store pointer
- *	%g6  	limit pointer
- *   	%g7  	exception handler
+ * 	%l5  	store pointer
+ *       %l7    alloc pointer
+ *	%g4  	limit pointer
+ *   	%l6  	exception handler
  *
  *	%o0-1	misc regs
  *	%o2	asm tmp
@@ -32,7 +33,7 @@
  *	%o6  	sp
  *   	%o7  	gcLink
  *
- *	%l0-7   misc regs	
+ *	%l0-4  misc regs	
  *
  *	%i0	standard arg
  * 	%i1	standard cont
@@ -47,9 +48,9 @@
 
 
 #define      ZERO %g0
-#define   EXNCONT %g7		/* exception handler (ml_exncont) */
-#define  ALLOCPTR %g6		/* freespace pointer (ml_allocptr) */
-#define  STOREPTR %g5		/* store pointer     (ml_storeptr) */
+#define   EXNCONT %l6		/* exception handler (ml_exncont) */
+#define  ALLOCPTR %l7		/* freespace pointer (ml_allocptr) */
+#define  STOREPTR %l5		/* store pointer     (ml_storeptr) */
 #define  LIMITPTR %g4		/* heap limit pointer (ml_limitptr)*/
 #define    STDARG %i0		/* standard argument (ml_arg)  	*/
 #define   STDCONT %i1		/* standard continuation (ml_cont) */

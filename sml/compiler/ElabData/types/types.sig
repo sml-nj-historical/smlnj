@@ -31,12 +31,14 @@ and tvKind
    * but unlike the old "LBOUND" thing, it does not need to know about
    * specific types used by those phases. In any case, we should figure
    * out how to get rid of it altogether.) *)
-  | LBOUND of {depth: int, index: int}
+  | LBOUND of {depth: int, eq: bool, index: int}
      (* FLINT-style de Bruijn index for notional "lambda"-bound type variables
       * associated with polymorphic bindings (including val bindings and
       * functor parameter bindings). The depth is depth of type lambda bindings,
-      * (1-based), and the index is the index within a sequence of type variables
-      * bound at a given binding site. *)
+      * (1-based), and the index is the index within a sequence of 
+      * type variables bound at a given binding site. LBOUNDs must carry 
+      * equality type information for signature matching because the OPENs
+      * are turned into LBOUNDs before equality type information is matched. *)
 
 and tycpath
   = TP_VAR of exn

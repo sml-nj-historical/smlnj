@@ -494,6 +494,7 @@ fun checkEqTySig(ty, sign: polysign) =
 fun checkEqTyInst(ty) =
     let fun eqty(VARty(ref(INSTANTIATED ty))) = eqty ty
           | eqty(VARty(ref(OPEN{eq,...}))) = if eq then () else raise CHECKEQ
+	  | eqty(VARty(ref(LBOUND{eq,...}))) = if eq then () else raise CHECKEQ
 	  | eqty(CONty(DEFtyc{tyfun,...}, args)) =
 	      eqty(applyTyfun(tyfun,args))
 	  | eqty(CONty(GENtyc { eq, ... }, args)) =
@@ -564,8 +565,8 @@ exception WILDCARDmatch
 fun indexBoundTyvars (tdepth : int, []: tyvar list) : unit = ()
   | indexBoundTyvars (tdepth, lboundtvs) =
     let fun setbtvs (i, []) = ()
-          | setbtvs (i, (tv as ref (OPEN _))::rest) =
-	     (tv := LBOUND{depth=tdepth,index=i};
+          | setbtvs (i, (tv as ref (OPEN{eq,...}))::rest) =
+	     (tv := LBOUND{depth=tdepth,eq=eq,index=i};
 	      setbtvs (i+1, rest))
           | setbtvs (i, (tv as ref (LBOUND _))::res) =
              bug ("unexpected tyvar LBOUND in indexBoundTyvars")
@@ -577,7 +578,7 @@ fun indexBoundTyvars (tdepth : int, []: tyvar list) : unit = ()
  * The first argument tells matchInstTypes to ignore the abstract property
  * of abstract types, i.e., this call is being used in FLINT where
  * we can look into abstract types.  
- * The second argument is a spec type (e.g. from a signature spec),
+ * The third argument is a spec type (e.g. from a signature spec),
  * while the third is a potentially more general actual type. The
  * two types are instantiated (if they are polymorphic), and a one-way
  * match is performed on their generic instantiations. 
@@ -655,7 +656,7 @@ fun matchInstTypes(doExpandAbstract,tdepth,specTy,actualTy) =
         and match(ty1,ty2) = match'(headReduceType ty1, headReduceType ty2)
         val (actinst, actParamTvs) = instantiatePoly actualTy
         val (specinst, specGenericTvs) = instantiatePoly specTy
-        val _ = indexBoundTyvars(tdepth,specGenericTvs)
+	val _ = indexBoundTyvars(tdepth,specGenericTvs)
 	val _ = debugmsg' "Instantiated both\n"
     in match(specinst, actinst);
        debugmsg' "matched\n";
