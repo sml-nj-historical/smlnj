@@ -106,17 +106,24 @@ fun genTT(ftmap : TypesTP.tycpath FlexTycMap.map) =
 
 fun tpsTyc d tp = 
   let fun h (TP.TP_VAR {tdepth, num, ...}, cur) =
-            (debugmsg ("producing tcc_var "^DI.dp_print tdepth^" "
-		       ^Int.toString num);
-	    LT.tcc_var(DI.calc(cur, tdepth), num))
+            let val finaldepth = DI.calc(cur, tdepth)
+		val _ = debugmsg ("--tpsTyc: producing tcc_var "^
+				DI.dp_print tdepth^" "
+			   ^Int.toString num^" current depth "^DI.dp_print cur)
+	    in
+		if finaldepth <= 0 then bug "Invalid depth calculation"
+		else LT.tcc_var(finaldepth, num)
+	    end
         | h (TP.TP_TYC tc, cur) = tycTyc(TP.tycStripTP tc, cur)
         | h (TP.TP_SEL (tp, i), cur) = LT.tcc_proj(h(tp, cur), i)
         | h (TP.TP_APP (tp, ps), cur) = 
               LT.tcc_app(h(tp, cur), map (fn x => h(x, cur)) ps)
         | h (TP.TP_FCT (ps, ts), cur) = 
-             let val ks = map tpsKnd ps
-                                val cur' = DI.next cur
-                                val ts' = map (fn x => h(x, cur')) ts
+             let val _ = debugmsg ">>tpsTyc[TP_FCT]"
+		 val ks = map tpsKnd ps
+                 val cur' = DI.next cur
+                 val ts' = map (fn x => h(x, cur')) ts
+		 val _ = debugmsg "<<tpsTyc[TP_FCT]"
              in LT.tcc_fn(ks, LT.tcc_seq ts')
              end
 
@@ -320,24 +327,25 @@ and toLty d (POLYty {tyfun=TYFUN{arity=0, body}, ...}) =
  ****************************************************************************)
 
 fun specLty (elements : (Symbol.symbol * spec) list, entEnv, depth, compInfo) = 
-  let fun g ([], entEnv, ltys) = rev ltys
+  let val _ = debugmsg ">>specLty"
+      fun g ([], entEnv, ltys) = rev ltys
         | g ((sym, (TYCspec _ ))::rest, entEnv, ltys) =
-              (debugmsg (">>specLty[TYCspec] "^Symbol.name sym); 
+              (debugmsg ("--specLty[TYCspec] "^Symbol.name sym); 
 	       g(rest, entEnv, ltys))
         | g ((sym, STRspec {sign, entVar, ...})::rest, entEnv, ltys) =
               let val rlzn = EE.lookStrEnt(entEnv,entVar)
-                  val _ = debugmsg (">>specLty[STRspec] "^Symbol.name sym)
+                  val _ = debugmsg ("--specLty[STRspec] "^Symbol.name sym)
 		  val lt = strRlznLty(sign, rlzn, depth, compInfo) 
                in g(rest, entEnv, lt::ltys)
               end
         | g ((sym, FCTspec {sign, entVar, ...})::rest, entEnv, ltys) = 
               let val rlzn = EE.lookFctEnt(entEnv,entVar)
-                  val _ = debugmsg (">>specLty[FCTspec] "^Symbol.name sym)
+                  val _ = debugmsg ("--specLty[FCTspec] "^Symbol.name sym)
 		  val lt = fctRlznLty(sign, rlzn, depth, compInfo) 
                in g(rest, entEnv, lt::ltys)
               end
         | g ((sym, spec)::rest, entEnv, ltys) =
-              let val _ = debugmsg (">>specLtyElt "^Symbol.name sym)
+              let val _ = debugmsg ("--specLtyElt "^Symbol.name sym)
                   (* TODO translate entEnv results here? *)
 		  fun transty ty = 
                     ((MU.transType entEnv ty)
@@ -360,11 +368,11 @@ fun specLty (elements : (Symbol.symbol * spec) list, entEnv, depth, compInfo) =
 
                in case spec
                    of VALspec{spec=typ,...} => 
-                        (debugmsg ">>specLty[VALspec]";
+                        (debugmsg "--specLty[VALspec]";
 			 g(rest, entEnv, (mapty typ)::ltys))
                     | CONspec{spec=DATACON{rep=DA.EXN _, 
                                            typ, ...}, ...} => 
-                        let val _ = debugmsg ">>specLty[CONspec]\n"
+                        let val _ = debugmsg "--specLty[CONspec]\n"
 			    val argt = 
                               if BT.isArrowType typ then  
                                    #1(LT.ltd_parrow (mapty typ))
@@ -372,11 +380,12 @@ fun specLty (elements : (Symbol.symbol * spec) list, entEnv, depth, compInfo) =
                          in g(rest, entEnv, (LT.ltc_etag argt)::ltys)
                         end
                     | CONspec{spec=DATACON _, ...} =>
-                        (debugmsg ">>specLty[CONspec]"; g(rest, entEnv, ltys))
+                        (debugmsg "--specLty[CONspec]"; g(rest, entEnv, ltys))
                     | _ => bug "unexpected spec in specLty"
               end
-
-   in g (elements, entEnv, [])
+      val res = g (elements, entEnv, [])
+      val _  = debugmsg ("<<specLty")
+   in res
   end
 
 (*
@@ -409,9 +418,7 @@ and strMetaLty (sign, rlzn as { entities, ... }: strEntity, depth, compInfo) =
     case (sign, ModulePropLists.strEntityLty rlzn) of
 	(_, SOME (lt, od)) => LT.lt_adj(lt, od, depth)
       | (SIG { elements, ... }, NONE) => 
-	let val _ = debugmsg ">>specLty"
-	    val ltys = specLty (elements, entities, depth, compInfo)
-	    val _ = debugmsg "<<specLty"
+	let val ltys = specLty (elements, entities, depth, compInfo)
             val lt = (* case ltys of [] => LT.ltc_int
                                    | _ => *) LT.ltc_str(ltys)
         in
@@ -464,16 +471,17 @@ and fctRlznLty (sign, rlzn, depth, compInfo) =
 	    val _ = debugmsg ">>strMetaLty"
             val paramLty = strMetaLty(paramsig, argRlzn, nd, compInfo)
 		     
-	    val _ = debugmsg ">>evalApp"
+	    val _ = debugmsg (">>fctRlznLty calling evalApp nd "^DI.dp_print nd)
             val bodyRlzn = 
                 EV.evalApp(rlzn, argRlzn, nd, EPC.initContext,
                            IP.empty, compInfo)
 	    val _ = debugmsg ">>strRlznLty"
             val bodyLty = strRlznLty(bodysig, bodyRlzn, nd, compInfo)
-		
+	    val _ = debugmsg "<<strRlznLty"
             val lt = LT.ltc_poly(ks, [LT.ltc_fct([paramLty],[bodyLty])])
         in
 	    ModulePropLists.setFctEntityLty (rlzn, SOME (lt, depth));
+	    debugmsg "<<fctRlznLty";
 	    lt
         end 
       | _ => bug "fctRlznLty"
@@ -490,7 +498,8 @@ and strLty (str as STR { sign, rlzn, ... }, depth, compInfo) =
   | strLty _ = bug "unexpected structure in strLty"
 
 and fctLty (fct as FCT { sign, rlzn, ... }, depth, compInfo) =
-    (case ModulePropLists.fctEntityLty rlzn of
+    (debugmsg ">>fctLty";
+     (case ModulePropLists.fctEntityLty rlzn of
 	 SOME (lt,od) => (debugmsg "--fctLty[proplist] "; 
 			  LT.lt_adj(lt, od, depth))
        | NONE =>
@@ -498,8 +507,9 @@ and fctLty (fct as FCT { sign, rlzn, ... }, depth, compInfo) =
 	     val lt = fctRlznLty(sign, rlzn, depth, compInfo) 
 	 in
 	     ModulePropLists.setFctEntityLty (rlzn, SOME(lt,depth));
+	     debugmsg "<<fctLty";
 	     lt
-         end)
+         end))
   | fctLty _ = bug "unexpected functor in fctLty"
 
 (****************************************************************************

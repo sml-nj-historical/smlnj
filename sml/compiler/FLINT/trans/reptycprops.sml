@@ -59,7 +59,7 @@ local
 					   (m, unionMaps ms)
 
 in
-      val debugging = ref true
+      val debugging = FLINT_Control.trdebugging
       val printStrFct = ref true
 
       (* Support functions *)
@@ -228,13 +228,16 @@ in
 			 (case rev ep 
 			   of [] => bug "repEPs: empty entpath"
 			    | s'::_ =>
-			      (case (EPMap.find(renv, s),
+			      (debugmsg ("--repEPs add stamp "^
+					 Stamps.toShortString s'^
+					 " to stmpseen");
+			       (case (EPMap.find(renv, s),
 				     StampSet.member(stmpseen,s')) 
-				of (_, false) => 
+				of ((_, false) | (NONE, _)) => 
 				   ep::loop(rest, env, 
 					    EPMap.insert(renv,s,ep),
 					    StampSet.add(stmpseen,s'))
-			  | _ => loop(rest, env, renv, stmpseen))))
+				 | _ => loop(rest, env, renv, stmpseen)))))
 		in
 		    case EntityEnv.lookEP(env, ep) 
 			 handle EntityEnv.Unbound => 
@@ -312,97 +315,28 @@ in
 		LT.tkc_fun(loop(peps,pfsigs), LT.tkc_seq [])
 	    end 
 	  | kinds _ = bug "kinds.2" (* fun kinds *)
-		    
+
+        (* There are two kinds of tycpath computations, one for 
+         * functor parameters and the other for functor parameter
+         * references in the body of a functor. In either case, 
+         * we want to use the deBruijn index depth at the 
+         * site of definition and not the incidental depth at the 
+         * site of occurrence. 
+         *)  
         (* This is the important computation for generating TC_VAR 
 	   variable references to functor parameters. 
 	   *)  
-	fun getTPsforEPs(entenv, eps, fsigs, d) =
-	    let 
-		val _ = debugmsg ("--getTPsforEPs eps "^
-				  Int.toString (length eps))
-			      
-		fun loop(entenv, [], i, _) = []
-		  | loop(entenv, ep::rest, i, fs) =
-		    (debugmsg ("-getTPsforEPs loop "^Int.toString i); 
-		     case EE.lookEP(entenv, ep)
-			  handle EntityEnv.Unbound =>
-				 (print "\ngetTPforEPs for Unbound\n";
-				  raise EntityEnv.Unbound)
-		      of M.TYCent(tyc as TP.GENtyc{kind=TP.DATATYPE _, stamp, 
-						   ...}) =>
-			   (T.TP_TYC(T.NoTP tyc))
-			     ::loop(entenv, rest, i+1, fs)
-			   (* Datatypes should be represented directly in the 
-			      tycpath *)
-		       | M.TYCent(TP.GENtyc{kind=TP.ABSTRACT(tyc),stamp=s1,
-					    ...}) =>
-			   (case tyc 
-			     of TP.GENtyc{kind=TP.DATATYPE _,stamp,...} =>
-				(T.TP_TYC(T.NoTP tyc))
-				  ::loop(entenv,rest,i+1,fs)
-			      | TP.GENtyc{kind=TP.FORMAL, arity,stamp,...} => 
-				(debugmsg ("--getTPsforEPs ABSTRACT FORMAL tdepth "
-					   ^DebIndex.dp_print d);
-				 (T.TP_VAR{tdepth=d,num=i,
-					 kind=buildKind arity})::
-				loop(entenv, rest, i+1, fs))
-			      | _ => 
-				(T.TP_TYC(T.NoTP tyc))
-				  ::loop(entenv,rest,i+1,fs))
-		      
-		       | M.TYCent(TP.GENtyc{kind, arity, stamp, ...}) =>
-			 let val _ = debugmsg "--getTPsforEPs[TYCent GENtyc]"
-			     val _ = debugmsg ("--getTPsforEPs GENtyc tdepth "
-					   ^DebIndex.dp_print d)
-			     val kind = buildKind arity
-			     val var = {tdepth=d,num=i,kind=kind}
-			     val tp' = T.TP_VAR var
-			       (* val _ = checkTycPath(tp, tp') *)
-			   in tp'::loop(entenv, rest, i+1, fs)
-			   end
-		       | M.TYCent tyc => 
-			    (debugmsg "--getTPsforEPs[TYCent]";
-			     (T.TP_TYC(T.NoTP tyc))::loop(entenv, rest, i+1, fs)) 
-		       | M.FCTent {paramEnts, stamp, ...} => 
-			   (debugmsg "--getTPsforEPs[FCTent SOME]";
-			    (case fs
-			      of [] => bug "getTPsforEPs.1"
-			       | f::srest => 
-				 let val _ = 
-					 if !debugging then 
-					     (print "\n===FCTent paramEnts===\n";
-					      ppEntities paramEnts;
-					      print "\n===FCTent eenv===\n";
-					      ppEntities entenv;
-					      print "\n--kinds[FCTent] Funsig\n";
-					      ppFunsig f; print "\n")
-					 else ()
-						
-				     val kind = kinds(paramEnts, f)   
-				     val _ = debugmsg "<<kinds done"
-				     val _ = debugmsg ("--getTPsforEPs FCTent tdepth "^DebIndex.dp_print d)
-				     val var = {tdepth=d, num=i, kind=kind}
-				     val tp' = T.TP_VAR var 
-				(* val _ = checkTycPath(tp, tp') *)
-				 in tp'::loop(entenv, rest, i, srest)
-				 end)) (* FIXME *)
-		       | _ => bug "getTPforEPs 0")
-		    handle EE.Unbound => bug "getTPforEPs Unbound"
-		in loop(entenv, eps, 0, fsigs)
-		end (* fun getTPsforEPs *) 
-
-
        (* This is the important computation for generating TC_VAR 
 	   variable references to functor parameters. 
 
-	  entityEnv * entPath list * fctSig list -> FTM.map
+	  entityEnv * entPath list * fctSig list -> FTM.map * tycpath list 
 	   *)  
 	fun epsToFlexTycMap(entenv, eps, fsigs, d) =
 	    let 
 		val _ = debugmsg ("--epsToFlexTycMap eps "^
 				  Int.toString (length eps))
-		fun loop(ftmap, entenv, [], i, _) = ftmap
-		  | loop(ftmap, entenv, ep::rest, i, fs) =
+		fun loop(ftmap, tps, entenv, [], i, _) = (ftmap, tps)
+		  | loop(ftmap, tps, entenv, ep::rest, i, fs) =
 		    (debugmsg ("-epsToFlexTycMap loop "^Int.toString i); 
 		     let val ev : Stamps.stamp = hd (rev ep)
 		     in 
@@ -411,12 +345,14 @@ in
 				 (print "\ngetTPforEPs for Unbound\n";
 				  raise EntityEnv.Unbound)
 		      of M.TYCent(tyc as TP.GENtyc{kind=TP.DATATYPE _, stamp,...}) =>
-			   (loop(insertMap(ftmap, stamp, T.TP_TYC(T.NoTP tyc)), 
-				 entenv, rest, i+1, fs))
+			   let val tp = T.TP_TYC(T.NoTP tyc)
+			   in (loop(insertMap(ftmap, stamp, tp), 
+				    tp::tps, entenv, rest, i+1, fs))
+			   end
 			   (* Datatypes should be represented directly in the 
 			      tycpath *)
 		       | M.TYCent(TP.GENtyc{kind=TP.ABSTRACT(tyc),stamp=s1,...}) =>
-			   let val (ft,s) = 
+			   let val (tp,s) = 
 				    (case tyc 
 			     of TP.GENtyc{kind=TP.DATATYPE _,stamp,...} =>
 				(T.TP_TYC(T.NoTP tyc), stamp)
@@ -426,26 +362,26 @@ in
 			      | _ => 
 				(T.TP_TYC(T.NoTP tyc), s1))
 			    in 
-			       loop(insertMap(ftmap, s, ft), 
-				    entenv,rest,i+1,fs)
+			       loop(insertMap(ftmap, s, tp), 
+				    tp::tps, entenv,rest,i+1,fs)
 			    end
 		      
 		       | M.TYCent(TP.GENtyc{kind, arity, stamp, ...}) =>
 			 let val _ = debugmsg "--epsToFlexTycMap[TYCent GENtyc]"
-			     val kind = (* LT.tkc_int(arity) *)
-				 buildKind arity
-			     val var = {tdepth=d,num=i,
-					kind=kind}
+			     val kind = buildKind arity
+			     val var = {tdepth=d,num=i, kind=kind}
 			     val tp' = T.TP_VAR var
 			       (* val _ = checkTycPath(tp, tp') *)
 			   in 
 			     loop(insertMap(ftmap, stamp, tp'),
-				  entenv, rest, i+1, fs)
+				  tp'::tps, entenv, rest, i+1, fs)
 			   end
 		       | M.TYCent tyc => 
 			    (debugmsg "--epsToFlexTycMap[TYCent]";
-			     loop(insertMap(ftmap, ev, T.TP_TYC(T.NoTP tyc)),
-				  entenv, rest, i+1, fs))
+			     (let val tp = T.TP_TYC(T.NoTP tyc)
+			      in loop(insertMap(ftmap, ev, tp),
+				      tp::tps, entenv, rest, i+1, fs)
+		              end))
 			    (* [TODO] What to do about GENtyc FORMAL? *) 
 		       | M.FCTent {(* tycpath=SOME tp,*) paramEnts, ...} => 
 			   (debugmsg "--epsToFlexTycMap[FCTent SOME]";
@@ -469,12 +405,12 @@ in
 				(* val _ = checkTycPath(tp, tp') *)
 				 in 
 				    loop(insertMap(ftmap, ev, tp'),
-					 entenv, rest, i, srest)
+					 tp'::tps, entenv, rest, i, srest)
 				 end)) (* FIXME *)
 		       | _ => bug "epsToFlexTycMap 0"
 		     end (* loop *) )
 		    handle EE.Unbound => bug "epsToFlexTycMap Unbound"
-		in loop(FTM.empty, entenv, eps, 0, fsigs)
+		in loop(FTM.empty, [], entenv, eps, 0, fsigs)
 	    end (* fun epsToFlexTycMap *)
 
 	fun getTk(M.FSIG{paramsig=M.SIG ps, ...}, dummyEnts, argEnts, 
@@ -484,8 +420,7 @@ in
 		val alleps = entpaths(#elements ps)
 		val fsigs = fsigInElems(#elements ps)
 		val eps = repEPs(alleps, dummyEnts)
-		val argtycs' = getTPsforEPs(argEnts, eps, fsigs, d)
-		val ftmap = epsToFlexTycMap(argEnts, eps, fsigs, d)
+		val (ftmap, argtycs') = epsToFlexTycMap(argEnts, eps, fsigs, d)
 		val _ = debugmsg "<<getTk"
 	    in (argtycs', ftmap)
 	    end (* getTk *)
@@ -524,10 +459,11 @@ in
        This code needs EPMap (don't forgot EPMap in the local ... in 
        bindings section above ...)
      *)
-    fun procDec' (ftmap, dec, d : DebIndex.depth) =
+    fun procDec' (ftmap, dec, d : DI.depth) =
 	let 
-	    val _ = debugmsg ">>procDec"
-	    fun procStrexp (ftmap, def, d : DebIndex.depth) =
+	    val _ = debugmsg (">>procDec "^DI.dp_print d)
+	    fun procStrexp (ftmap, def, d : DI.depth) =
+		(debugmsg (">>procStrexp d="^DI.dp_print d);
 		(case def 
 		  of (APPstr{oper=oper 
 			      as M.FCT{sign=fctsign 
@@ -557,13 +493,12 @@ in
 				     debugmsg "===argEnts===";
 				     ppEntities entities) 
 				 else () 
-			 val alleps =
-			     entpaths(#elements fsr)
+			 val alleps = entpaths(#elements fsr)
 			 val fsigs = fsigInElems(#elements fsr)
 			 val eps = repEPs(alleps, dummyEnts)
-			 val argtycs' = 
-			     getTPsforEPs(entities, eps, fsigs,d)
-			 val ftmap' = epsToFlexTycMap(entities, eps, fsigs,d)
+			 (* val argtycs' = 
+			     getTPsforEPs(entities, eps, fsigs,d) *)
+			 val (ftmap', argtycs') = epsToFlexTycMap(entities, eps, fsigs,d)
 			 val body' = procCloSE(body)
 			 val fcl' = 
 			     M.CLOSURE{param=fclparam,
@@ -609,8 +544,8 @@ in
 		   | APPstr {oper=M.FCT _, arg=M.STRSIG _, ...} => 
 		     bug "strBinds: Unimplemented"
 		   | LETstr(dec,se') => 
-		     let val (se'',ftmap1) = procStrexp (ftmap, se',d)
-			 val (dec',ftmap2) = procDec'(ftmap1, dec,d)
+		     let val (dec',ftmap1) = procDec'(ftmap, dec,d)
+			 val (se'',ftmap2) = procStrexp (ftmap1, se',d)
 		     in
 			 (AT.LETstr(dec', se''), ftmap2)
 		     end
@@ -621,7 +556,7 @@ in
 			 (AT.MARKstr(se'', r), ftmap1)
 		     end
 		   | STRstr binds => (AT.STRstr binds, ftmap)
-		   | _ => bug "procStrexp")
+		   | _ => bug "procStrexp"))
 		    
 	    fun fctBinds(ftmap, [], d) = ([], ftmap)
 	      | fctBinds(ftmap,
@@ -630,7 +565,7 @@ in
 			as M.SIG fsr,paramvar,...},
 			rlzn={paramEnts,...}, ...}, def, name})::rest, d) =
 		let val _ = debugmsg "--fctBinds"
-		    fun mkFctexp(ftmap, fe) =
+		    fun mkFctexp(ftmap, fe, d : DI.depth) =
 			(case fe 
 			  of VARfct f => 
 			     (AT.VARfct f, ftmap)
@@ -645,8 +580,7 @@ in
 			     (debugmsg (">>fctBinds:mkFctexp[FCTfct] name "^
 					S.name name); 
 			      let 
-				  val alleps = 
-				      entpaths (#elements fsr)
+				  val alleps = entpaths (#elements fsr)
 				  val _ = if !debugging 
 					  then (print "--fctBinds[FCTfct] paramsig'\n"; 
 						ppSig paramsig';
@@ -659,26 +593,26 @@ in
 					  else ()
 				  val fsigs = fsigInElems(#elements fsr)  
 				  val eps = repEPs(alleps, entities)
-				  val argtycs' = getTPsforEPs(entities, eps,fsigs,d) 
-				  val ftmap1 = epsToFlexTycMap(entities,eps,fsigs,d)
+				  (*val argtycs' = getTPsforEPs(entities, eps,fsigs,d)  *)
+				  val (ftmap1, argtycs') = epsToFlexTycMap(entities,eps,fsigs,d)
 				  val (def',ftmap2) = 
 				      procStrexp (unionMaps [ftmap, ftmap1], 
-						  def, DebIndex.next d)
+						  def, DI.next d)
 			      in (AT.FCTfct{param=param, def=def',
 					   argtycs=argtycs'},
 			          ftmap2)
 			      end)
 			   | MARKfct(fe',region) => 
-			     let val (fe'',ftmap1) = mkFctexp(ftmap, fe')
+			     let val (fe'',ftmap1) = mkFctexp(ftmap, fe', d)
 			     in (AT.MARKfct(fe'',region), ftmap1)
 			     end
 			   | LETfct(dec', fe') => 
 			     let val (dec'',ftmap1) = procDec'(ftmap, dec',d)
-				 val (fe', ftmap2) = mkFctexp (ftmap1, fe')
+				 val (fe', ftmap2) = mkFctexp (ftmap1, fe', d)
 			     in (AT.LETfct(dec'', fe'), ftmap2)
 			     end
 			   | _ => bug "mkFctexp 0")
-		    val (def', ftmap1) = mkFctexp(ftmap, def)
+		    val (def', ftmap1) = mkFctexp(ftmap, def, d)
 		    val (binds,ftmap2) =  fctBinds(ftmap1, rest, d)
 		in (AT.FCTB{name=name, fct=fct, def=def'} :: binds, 
 		    ftmap2)
@@ -759,7 +693,7 @@ in
 		  ftmap)
 	       | OVLDdec v => (AT.OVLDdec v, ftmap)
 	       | FIXdec x => (AT.FIXdec x, ftmap))
-	end
+	end (* fun procDec' *)
     and transExp ftmap d e = 
 	(let val transExp' = transExp ftmap d
 	     fun transRule(RULE(p,e)) = 
