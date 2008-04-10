@@ -335,7 +335,7 @@ in
 	    let 
 		val _ = debugmsg ("--epsToFlexTycMap eps "^
 				  Int.toString (length eps))
-		fun loop(ftmap, tps, entenv, [], i, _) = (ftmap, tps)
+		fun loop(ftmap, tps, entenv, [], i, _) = (ftmap, rev tps)
 		  | loop(ftmap, tps, entenv, ep::rest, i, fs) =
 		    (debugmsg ("-epsToFlexTycMap loop "^Int.toString i); 
 		     let val ev : Stamps.stamp = hd (rev ep)
