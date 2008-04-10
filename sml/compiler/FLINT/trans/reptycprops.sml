@@ -331,7 +331,7 @@ in
 
 	  entityEnv * entPath list * fctSig list -> FTM.map * tycpath list 
 	   *)  
-	fun epsToFlexTycMap(entenv, eps, fsigs, d) =
+	fun epsToFlexTycMap(ftmap0, entenv, eps, fsigs, d) =
 	    let 
 		val _ = debugmsg ("--epsToFlexTycMap eps "^
 				  Int.toString (length eps))
@@ -357,8 +357,10 @@ in
 			     of TP.GENtyc{kind=TP.DATATYPE _,stamp,...} =>
 				(T.TP_TYC(T.NoTP tyc), stamp)
 			      | TP.GENtyc{kind=TP.FORMAL, arity, stamp, ...} => 
-				(T.TP_VAR{tdepth=d,num=i,
-					 kind=buildKind arity}, stamp)
+				(case FTM.find(ftmap0, stamp)
+				  of SOME tp' => (tp', stamp)
+				   | NONE => (T.TP_VAR{tdepth=d,num=i,
+					 kind=buildKind arity}, stamp))
 			      | _ => 
 				(T.TP_TYC(T.NoTP tyc), s1))
 			    in 
@@ -369,8 +371,17 @@ in
 		       | M.TYCent(TP.GENtyc{kind, arity, stamp, ...}) =>
 			 let val _ = debugmsg "--epsToFlexTycMap[TYCent GENtyc]"
 			     val kind = buildKind arity
-			     val var = {tdepth=d,num=i, kind=kind}
-			     val tp' = T.TP_VAR var
+	                     (* Check if stamp is previously defined. 
+			      * If so, then this must be a variable occurrence
+			      * and not a functor parameter binding
+			      * so use the depth at the definition site 
+			      * (i.e., in the ftmap0 tycpath) instead of the 
+			      * current occurrence site depth. *)
+			     val tp' = 
+				 (case FTM.find(ftmap0, stamp)
+				   of SOME tp' => tp'
+				    | NONE => 
+				      T.TP_VAR {tdepth=d,num=i, kind=kind})
 			       (* val _ = checkTycPath(tp, tp') *)
 			   in 
 			     loop(insertMap(ftmap, stamp, tp'),
@@ -420,7 +431,8 @@ in
 		val alleps = entpaths(#elements ps)
 		val fsigs = fsigInElems(#elements ps)
 		val eps = repEPs(alleps, dummyEnts)
-		val (ftmap, argtycs') = epsToFlexTycMap(argEnts, eps, fsigs, d)
+		val (ftmap, argtycs') = 
+		    epsToFlexTycMap(FTM.empty, argEnts, eps, fsigs, d)
 		val _ = debugmsg "<<getTk"
 	    in (argtycs', ftmap)
 	    end (* getTk *)
@@ -498,7 +510,8 @@ in
 			 val eps = repEPs(alleps, dummyEnts)
 			 (* val argtycs' = 
 			     getTPsforEPs(entities, eps, fsigs,d) *)
-			 val (ftmap', argtycs') = epsToFlexTycMap(entities, eps, fsigs,d)
+			 val (ftmap', argtycs') = 
+			     epsToFlexTycMap(ftmap, entities, eps, fsigs,d)
 			 val body' = procCloSE(body)
 			 val fcl' = 
 			     M.CLOSURE{param=fclparam,
@@ -594,7 +607,8 @@ in
 				  val fsigs = fsigInElems(#elements fsr)  
 				  val eps = repEPs(alleps, entities)
 				  (*val argtycs' = getTPsforEPs(entities, eps,fsigs,d)  *)
-				  val (ftmap1, argtycs') = epsToFlexTycMap(entities,eps,fsigs,d)
+				  val (ftmap1, argtycs') = 
+				      epsToFlexTycMap(ftmap, entities,eps,fsigs,d)
 				  val (def',ftmap2) = 
 				      procStrexp (unionMaps [ftmap, ftmap1], 
 						  def, DI.next d)
