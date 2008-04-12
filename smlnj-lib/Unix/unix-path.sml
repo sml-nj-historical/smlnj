@@ -26,6 +26,13 @@ structure UnixPath : UNIX_PATH =
 	  end (* getPath *)
 
     local
+(* Workaround for new runtime until we have the Posix APIs implemented *)
+      structure FS = OS.FileSys
+      fun isFileTy (path, F_REGULAR) = not(FS.isDir orelse FS.isLink)
+	| isFileTy (path, F_DIR) = FS.isDir path
+	| isFileTy (path, F_SYMLINK) = FS.isLink path
+	| isFileTy (path, _) = raise Fail "unimplemented"
+(*
       structure ST = Posix.FileSys.ST
       fun isFileTy (path, ty) = let
 	    val st = Posix.FileSys.stat path
@@ -39,6 +46,7 @@ structure UnixPath : UNIX_PATH =
 		| F_BLK => ST.isBlk st
 	      (* end case *)
 	    end
+*)
       fun access mode pathname = (OS.FileSys.access(pathname, mode))
       fun accessAndType (mode, ftype) pathname = (
 	    OS.FileSys.access(pathname, mode)

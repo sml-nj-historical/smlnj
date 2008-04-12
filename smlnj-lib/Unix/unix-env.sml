@@ -74,7 +74,21 @@ structure UnixEnv : UNIX_ENV =
 	  end
 
   (* return the user's environment *)
+(* Workaround for new runtime until we have the Posix APIs implemented *)
+    local
+      fun :+: (v, l) = (case OS.Process.getEnv v
+	     of NONE => l
+	      | SOME d => concat[v, "=", d] :: l
+	    (* end case *))
+      infixr :+:
+    in
+    fun environ () = (
+	  "HOSTNAME" :+: "SHELL" :+: "DISPLAY" :+: "EDITOR" :+: "ENV"
+	      :+: "PWD" :+: "TERM" :+: "USER" :+: "PATH" :+: [])
+    end
+(*
     val environ = Posix.ProcEnv.environ
+*)
 
   (* return the binding of an environment variable in the
    * user's environment.

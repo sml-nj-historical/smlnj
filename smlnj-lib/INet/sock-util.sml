@@ -8,6 +8,7 @@
 structure SockUtil : SOCK_UTIL =
   struct
 
+(*** Commented out unti socket API is supported by new runtime
     structure C = Char
     structure PC = ParserComb
 
@@ -135,5 +136,6 @@ structure SockUtil : SOCK_UTIL =
 	  in
 	    put 0
 	  end
+***)
 
   end;
