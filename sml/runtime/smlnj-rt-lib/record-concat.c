@@ -17,7 +17,7 @@
 /* recordConcat : (object * object) -> object
  *
  */
-ML_object_t recordConcat (ml_state_t *msp,ML_object_t r1,ML_object_t r2)
+ML_object_t recordConcat (ml_state_t *msp, ML_object_t r1, ML_object_t r2)
 {
     if (r1 == ML_unit)
 	return r2;
@@ -27,7 +27,7 @@ ML_object_t recordConcat (ml_state_t *msp,ML_object_t r1,ML_object_t r2)
 	ml_val_t	res = RecordConcat (msp, r1, r2);
 
 	if (res == ML_unit)
-	    return RAISE_ERROR(msp, "recordconcat: not a record");
+	    return RAISE_ERROR(msp, "recordConcat: not a record");
 	else
 	    return res;
     }

@@ -34,7 +34,6 @@ ML_iodesc_t openFile (ml_state_t *msp, ML_string_t s, int flgs)
     if (flgs & OPEN_APPEND) flags |= O_APPEND;
 
     fd = open (STR_MLtoC(s), flags, 0666);
-    /* SayDebug("openFile(%s) = %d; flgs = %d\n", STR_MLtoC(s), fd, flgs); */
 
     CHK_RETURN(msp, fd)
 
@@ -164,10 +163,9 @@ ML_word8vec_t readBinVec (
     int		nbytes)
 {
     int		fd = INT_MLtoC(iod);
-    ml_val_t	    vec, hdr, res;
-    int		    n;
+    ml_val_t	vec, hdr, res;
+    int		n;
 
-    /* SayDebug("readBinVec: iod = %d, nbytes = %d\n", fd, nbytes); */
     if (nbytes == 0){
 	OPTION_SOME (msp, res, ML_string0);
 	return res;

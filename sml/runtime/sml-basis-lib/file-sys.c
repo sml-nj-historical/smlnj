@@ -181,9 +181,9 @@ ML_string_t readLink (ml_state_t *msp, idl_string path)
 	if (nbuf == 0)
 	    return RAISE_ERROR(msp, "out of malloc memory");
 
-        /* Try the readlink again. Give up on error or if len is still bigger
-         * than the buffer size.
-         */
+      /* Try the readlink again. Give up on error or if len is still bigger
+       * than the buffer size.
+       */
 	len = readlink(path, buf, len);
 	if (len < 0)
 	    return RAISE_SYSERR(msp, len);
