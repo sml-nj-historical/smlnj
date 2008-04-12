@@ -15,7 +15,7 @@ structure OS_FileSys : OS_FILE_SYS =
 
     val sysWordToWord = Word.fromLargeWord o SysWord.toLargeWord
 
-    (* should be finalized *)
+  (* FIXME: should be finalized *)
     datatype dirstream = DIRSTREAM of SMLBasis.ML_directory_t
     fun mkDirstream d = DIRSTREAM d
     fun unDirstream (DIRSTREAM d) = d
@@ -121,7 +121,7 @@ structure OS_FileSys : OS_FILE_SYS =
     datatype file_id = FID of Word8Vector.vector
 
     (* dbm: how to unpack the Word8Vector returned by SMLBasis.fileId *)
-    fun fileId fname = FID (SMLBasis.fileId fname)
+    fun fileId fname = FID(SMLBasis.fileId fname)
 
     fun hash (FID v) = let
 	(* FIXME: does this give a reasonably distribution (see
