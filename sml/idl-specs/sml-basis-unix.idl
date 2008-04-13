@@ -10,8 +10,24 @@ sml_structure ("SMLBasisUnix");
 sml_signature ("SML_BASIS_UNIX");
 clib_name ("SMLBasisUnix");
 
+/* typedef [ptr] struct struct_iodesc *IODesc_t; */
+/* typedef [sml_type("Unsafe.Object.object")] sml_value ML_iodesc_t; */
+typedef [sml_type("word")] sml_value ML_iodesc_t;
+typedef [sml_type ("Int32.int")] sml_value ML_unix_pid_t;
+
+typedef [sml_type("ML_unix_pid_t*word*word")] sml_value ML_process_t;
+
+(* a combination fork/exec for creating a subprocess; it returns a
+ * triple of the child-process pid, and the standard input and standard
+ * output of the pipes connected to the child.
+ *)
+(* TODO: how to signal error conditions? *)
+[sml_context] ML_process_t execute (
+    [in] ML_string_t cmd,
+    [in] ML_string_list_t args,
+    [in] ML_string_list_t env);
+
 (*
-execute
 wait
 kill
 exit
