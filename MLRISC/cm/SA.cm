@@ -6,6 +6,7 @@ Library
 	signature C_CALL
 
 	functor StagedAllocationFn
+	functor CCallStkFn
 
 is
 
@@ -19,6 +20,7 @@ is
 
 (*	../staged-allocation/c-types.sml*)
 	../staged-allocation/c-call-sig.sml
+	../staged-allocation/c-call-stk-fn.sml
 	../staged-allocation/call-conv-sig.sml
 	../staged-allocation/staged-allocation-sig.sml
 	../staged-allocation/staged-allocation-fn.sml

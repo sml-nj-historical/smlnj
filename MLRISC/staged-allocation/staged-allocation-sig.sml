@@ -3,71 +3,93 @@
  * This code implements the Staged Allocation technique for calling conventions.
  * You can find the POPL06 paper describing this technique at
  * http://www.eecs.harvard.edu/~nr/pubs/staged-abstract.html
+ *
+ * Mike Rainey (mrainey@cs.uchicago.edu)
+ * 
+ *
+ * Terminology for staged allocation (see the paper for more details):
+ *   counter - stores of current the number of bits allocated to the call
+ *   location - a mechanism for passing a parameter, e.g., machine registers, stack locations, etc.
+ *   slot - a parameter
+ *   alignment - alignment in bits for a location
+ *   width - width in bits for a location
+ *   stage - one rule for specifying calling conventions
+ *
  *)
 
-(* the target language, e.g., C, implements this signature *)
+(* Specify the language that we wish to call. *)
 signature TARGET_LANG = sig
-    (* the type of values in the target language *)
-    type location_kind
+    type location_kind     (* kind of location for passing arguments, e.g., general-purpose register, 
+			    * floating-point register, memory, etc. *)
 end (* TARGET_LANG *)
 
-signature STAGED_ALLOCATION = sig
+signature STAGED_ALLOCATION = 
+  sig
 
     structure T : MLTREE
     structure TL : TARGET_LANG
 
-    type width = int     (* bit width *)
-    type counter         (* abstract counter for a convention *)
-    type str             (* counter -> "bit offset" *)
-    datatype block_direction = UP | DOWN
-    (* A slot is a target-language argument. It contains bit width, location kind, 
-     * and bit alignment. *)
-    type slot = (width * TL.location_kind * int)
+    type width = int                                   (* bit width *)
+    type counter                                       (* abstract counter for a convention *)
+    type str                                           (* counter -> "bit offset" *)
+    datatype block_direction = UP | DOWN               (* direction in which the overflow block grows *)
+    type slot = (width * TL.location_kind * int)       (* the last field is the alignment *)
     type reg = (width * T.reg)
 
-    datatype location = 
-	     REG of reg    (* machine register *)
-	   | BLOCK_OFFSET of int     (* slot in the overflow block *)
-	   (* a location that occupies two other locations*)
+    (* locations consist of machine registers, offsets in to overflow blocks, combinations of
+     * locations, and narrowed locations.
+     *)
+    datatype location =
+	     REG of reg
+	   | BLOCK_OFFSET of int
 	   | COMBINE of (location * location)  
-	   (* a location that loses bits *)  
 	   | NARROW of (location * width * TL.location_kind) 
 		       
-    (* information about a location's width and target-language type *)
+    (* metadata assocated with a location *)
     type location_info = (width * location * TL.location_kind)
 			 
-    (* mini language for defining calling conventions (see the paper for 
-     * a explanations of the operators, and their formal semantics). *)
+    (* language for specifying calling conventions *)
     datatype stage =
-	     OVERFLOW of { counter : counter,
-			   blockDirection : block_direction,
-			   maxAlign : int }
+	     OVERFLOW of { 
+	         counter : counter,
+		 blockDirection : block_direction,
+		 maxAlign : int 
+             }
 	   | WIDEN of (width -> width)
+	   (* choose the first stage whose corresponding predicate is true. *)
 	   | CHOICE of ( (slot -> bool) * stage) list
+	   (* the first n arguments go into the first n registers *)
 	   | REGS_BY_ARGS of (counter * reg list)
+	   | ARGCOUNTER of counter
+	   (* the first n bits arguments go into the first n bits of registers *)
 	   | REGS_BY_BITS of (counter * reg list)
 	   | BITCOUNTER of counter
-	   | ARGCOUNTER of counter
+	   (* sequence of stages *)
 	   | SEQ of stage list
+	   (* specifies an alignment (this rule applies even for registers) *)
 	   | PAD of counter
+	   (* specifies an alignment *)
 	   | ALIGN_TO of (width -> width)
 
+    (* indicates that the call-generation process has encountered an error *)
     exception StagedAlloc
 
-    (* A stepper function takes a store and a target-language argument,
-     * and returns a new store and a location for the argument. *)
+    (* stepper functions take a store and an argument, and return a new store and
+     * a location for passing the argument. 
+     *)
     type stepper_fn = (str * slot) -> (str * location_info)
     (* Create a counter. *)
     val freshCounter : unit -> counter
-    (* Helper function that creates a counter c, and returns the sequence:
+    (* helper function that creates a counter c, and returns the sequence:
      * [BITCOUNTER c, REGS_BY_BITS (c, regs)] (this function is taken from 
-     * the paper). *)
+     * the paper). 
+     *)
     val useRegs : reg list -> (counter * stage)
-    (* Retrieve a counter value from the store. *)
+    (* find the value stored at a counter. *)
     val find : (str * counter) -> int
-    (* Initialize a list of counters for a calling convention. *)
+    (* initialize a list of counters for a calling convention. *)
     val init : counter list -> str
-    (* Take a calling convention, and return a stepper function for it. *)
+    (* take a calling convention, and return a stepper function for it. *)
     val mkStep : stage list -> stepper_fn
 
-end (* STAGED_ALLOCATION *)
+  end (* STAGED_ALLOCATION *)
