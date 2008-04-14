@@ -24,9 +24,15 @@ help:
 	echo "    classic -- generate C glue code for the classic runtime"
 	echo "    new-rt  -- generate C++ glue code for the new runtime"
 	echo "    sml     -- generate the SML glue code for either runtime"
+	echo "    install -- copy generated files to the appropriate locations"
+	echo "    clean   -- remove any generated files"
 
 classic:
 
 new-rt:
 
 sml:
+
+install:
+
+clean:
