@@ -16,11 +16,8 @@ signature REPTYCPROPS =
 sig
    val procDec : Absyn.dec * DebIndex.index 
 		 -> (AbsynTP.dec * TypesTP.tycpath FlexTycMap.map)
-   (*val getTPsforEPs : EntityEnv.entityEnv * EntPath.entPath list
-		     * Modules.fctSig list * DebIndex.depth  
-		      -> TypesTP.tycpath list *)
    val getTk : Modules.fctSig * EntityEnv.entityEnv * EntityEnv.entityEnv 
-	       * Modules.fctSig list * DebIndex.depth 
+	       * DebIndex.depth 
 	       -> (TypesTP.tycpath list * TypesTP.tycpath FlexTycMap.map)
    
 end
@@ -425,7 +422,7 @@ in
 	    end (* fun epsToFlexTycMap *)
 
 	fun getTk(M.FSIG{paramsig=M.SIG ps, ...}, dummyEnts, argEnts, 
-		  fsigs, d) =
+		  d) =
 	    let 
 		val _ = debugmsg ">>getTk"
 		val alleps = entpaths(#elements ps)

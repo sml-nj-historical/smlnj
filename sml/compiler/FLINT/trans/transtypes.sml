@@ -464,7 +464,7 @@ and fctRlznLty (sign, rlzn, depth, compInfo) =
             val nd = DI.next depth
             (* val ks = map tpsKnd tycpaths *)
 	    val (tps, ftmap1) = (RepTycProps.getTk(fs, paramEnts, 
-					 #entities argRlzn, [], depth))
+					 #entities argRlzn, depth))
 	    val _ = ftmap := FTM.unionWith (fn(tp1,tp2)=> tp1) (!ftmap, ftmap1)
 	    val _ = debugmsg ">>tpsKnd"
 	    val ks = map tpsKnd tps
