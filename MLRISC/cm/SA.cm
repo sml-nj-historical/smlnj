@@ -18,7 +18,6 @@ is
 	$/Graphs.cm
 	$/MLTREE.cm
 
-(*	../staged-allocation/c-types.sml*)
 	../staged-allocation/c-call-sig.sml
 	../staged-allocation/c-call-stk-fn.sml
 	../staged-allocation/call-conv-sig.sml

@@ -1,0 +1,21 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Defines public interface to code generator
+ *)
+
+Library
+  structure TestStagedAllocation
+  structure Label
+  structure Main
+is
+
+  $/basis.cm
+  wrapper.cm
+
+  test-staged-allocation-types.sml
+  test-staged-allocation-amd64.sml
+  test-staged-allocation.sml
+  test-staged-allocation-main.sml
