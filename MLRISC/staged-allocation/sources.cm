@@ -13,6 +13,7 @@ Library
 is
 
   $/basis.cm
+  $/smlnj-lib.cm
   wrapper.cm
 
   test-staged-allocation-types.sml

@@ -4,8 +4,10 @@ structure TestStagedAllocation =
     structure C = AMD64Instr.C
     structure T = AMD64MLTree
     structure CFG = AMD64CFG
+
+    val wordTy = 64
    
-    fun codegen (functionName, target, proto, args) = let 
+    fun codegen (functionName, target, proto, initStms, args) = let 
         val _ = Label.reset()
 
 	fun toLabel s = Label.global(s)
@@ -23,7 +25,9 @@ structure TestStagedAllocation =
 	           args=args}
 
 	val stms = List.concat [
-		   [T.EXT(AMD64InstrExt.PUSHQ(T.REG(64, C.rbp)))],
+		   [T.EXT(AMD64InstrExt.PUSHQ(T.REG(64, C.rbp))),
+		    T.COPY (wordTy, [C.rbp], [C.rsp])],
+		   initStms,
 		   callseq,
 		   [T.EXT(AMD64InstrExt.LEAVE)],
 		   [T.RET []]]
@@ -44,7 +48,7 @@ structure TestStagedAllocation =
             pseudoOp PseudoOpsBasisTyp.TEXT;		  
 	    pseudoOp (PseudoOpsBasisTyp.EXPORT [functionName]);    
             entryLabel functionName; (* define the entry label *)
-            app emit stms; (* emit all the statements *)
+            List.app emit stms; (* emit all the statements *)
             exitBlock result;
             endCluster [])
 	val cfg = doit ()

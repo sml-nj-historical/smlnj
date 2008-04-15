@@ -22,16 +22,16 @@ functor AMD64SVID (
 
     (* general-purpose registers *)
     val [rax, rbx, rdi, rsi, rdx, rcx, r8, r9, r10, r11, r12, r13, r14, r15] = 
-	  map (fn r => (wordTy, r)) 
+	  List.map (fn r => (wordTy, r)) 
 	    ([C.rax, C.rbx, C.rdi, C.rsi, C.rdx, C.rcx] @
 	     C.Regs CB.GP {from=8, to=15, step=1})
     (* floating-point registers (SSE2) *)
     val sseFRegs as 
         [xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8, xmm9, xmm10, 
          xmm11, xmm12, xmm13, xmm14, xmm15] =
-           map (fn r => (64, r)) (C.Regs CB.FP {from=0, to=15, step=1})
-    val calleeSaveRegs = map #2 [rbx, r12, r13, r14, r15]
-    val callerSaveRegs = map #2 [rax, rcx, rdx, rsi, rdi, r8, r9, r10, r11]
+           List.map (fn r => (64, r)) (C.Regs CB.FP {from=0, to=15, step=1})
+    val calleeSaveRegs = List.map #2 [rbx, r12, r13, r14, r15]
+    val callerSaveRegs = List.map #2 [rax, rcx, rdx, rsi, rdi, r8, r9, r10, r11]
     val callerSaveFRegs = sseFRegs
     val calleeSaveFRegs = []
     val spReg = T.REG (wordTy, C.rsp)
@@ -137,10 +137,9 @@ functor AMD64SVID (
     (* convert a C argument to a location for staged allocation *)
     fun argLoc _ (w, S.REG (_, r), K_GPR) = C_GPR (w, r)
       | argLoc _ (w, S.REG (_, r), K_FPR) = C_FPR (w, r)
-      | argLoc argOffset (w, S.BLOCK_OFFSET offB, K_GPR) = 
-	C_STK (w, T.I.fromInt (wordTy, offB+argOffset))
-      | argLoc argOffset (w, S.NARROW (loc, w', k), _) = 
-	argLoc argOffset (w', loc, k)
+      | argLoc argOffset (w, S.BLOCK_OFFSET offB, K_GPR) = C_STK (w, T.I.fromInt (wordTy, offB+argOffset))
+      | argLoc argOffset (w, S.BLOCK_OFFSET offB, K_FPR) = C_STK (w, T.I.fromInt (wordTy, offB+argOffset))
+      | argLoc argOffset (w, S.NARROW (loc, w', k), _) = argLoc argOffset (w', loc, k)
       | argLoc _ (w, S.COMBINE _, _) = raise Fail "impossible"
 
     fun layout {conv, retTy, paramTys} = let
