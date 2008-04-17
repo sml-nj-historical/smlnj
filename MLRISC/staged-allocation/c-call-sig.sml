@@ -10,8 +10,6 @@ signature C_CALL = sig
 	   *)
       | FARG of T.fexp
 	  (* fexp specifies floating-point argument *)
-      | ARGS of c_arg list
-	  (* list of arguments corresponding to the contents of a C struct *)
 
     (* An arg_location specifies the location of arguments/parameters
      * for a C call.  Offsets are given with respect to the low end 
@@ -23,7 +21,7 @@ signature C_CALL = sig
       | C_FSTK of (T.fty * T.I.machine_int) (* floating-point argument on the call stack *)
 
     val layout : CTypes.c_proto -> {
-	    argLocs : arg_location list,	(* argument/parameter assignment *)
+	    argLocs : arg_location list list,	(* argument/parameter assignment *)
 	    argMem : {szb : int, align : int},	(* memory requirements for stack-allocated *)
 						(* arguments; this value can be passed to *)
 						(* the paramAlloc callback. *)
