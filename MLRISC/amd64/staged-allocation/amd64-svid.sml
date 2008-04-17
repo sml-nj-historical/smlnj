@@ -7,7 +7,7 @@
 functor AMD64SVID (
     structure T : MLTREE
     val frameAlign : int 
-  ) : C_CALL =
+  ) (*: C_CALL*) =
   struct
 
     structure T = T
@@ -73,26 +73,27 @@ functor AMD64SVID (
 	    val cStack = S.freshCounter ()
 	    val cInt = S.freshCounter ()
 	    val cFloat = S.freshCounter ()
-	in
-	  ( cStack, [cStack, cInt, cFloat],
-	    [ S.CHOICE [
-	      (* pass in general-purpose register *)
-	      (fn (w, k, str) => k = K_GPR, S.SEQ [
-		 S.WIDEN (fn w => Int.max (wordTy, w)),
-		 S.BITCOUNTER cInt,
-		 S.REGS_BY_BITS (cInt, gprParams)] ),
-	      (* pass in floating point register *)
-	      (fn (w, k, str) => k = K_FPR, S.SEQ [
-	         S.WIDEN (fn w => Int.max (64, w)),
-	         S.BITCOUNTER cFloat,
-	         S.REGS_BY_BITS (cFloat, fprParams) ]),
-	      (* pass on the stack *)
-	      (fn (w, k, str) => k = K_MEM,
-	         S.OVERFLOW {counter=cStack, blockDirection=S.UP, maxAlign=maxAlign}) ],
-	     S.OVERFLOW {counter=cStack, blockDirection=S.UP, maxAlign=maxAlign}
-	  ] )
-	end (* call *)
-
+	    in
+	       ( cStack, [cStack, cInt, cFloat],
+		 [ S.CHOICE [
+		     (* pass in general-purpose register *)
+		     (fn (w, k, str) => k = K_GPR, S.SEQ [
+				  S.WIDEN (fn w => Int.max (wordTy, w)),
+				  S.BITCOUNTER cInt,
+				  S.REGS_BY_BITS (cInt, gprParams)] ),
+		     (* pass in floating point register *)
+		     (fn (w, k, str) => k = K_FPR, S.SEQ [
+				  S.WIDEN (fn w => Int.max (64, w)),
+				  S.BITCOUNTER cFloat,
+				  S.REGS_BY_BITS (cFloat, fprParams) ]),
+		     (* pass on the stack *)
+		     (fn (w, k, str) => k = K_MEM,
+		      S.OVERFLOW {counter=cStack, blockDirection=S.UP, maxAlign=maxAlign}) 
+		     ],
+		   S.OVERFLOW {counter=cStack, blockDirection=S.UP, maxAlign=maxAlign}
+		   ] )
+	    end (* call *)
+	    
 	val gprRets = [rax, rdx]
 	val fprRets = [xmm0, xmm1]
 
@@ -100,47 +101,180 @@ functor AMD64SVID (
 	fun return () = let
 	    val (cFloat, ssFloat) = S.useRegs fprRets
 	    val (cInt, ssGpr) = S.useRegs gprRets
-	in
-	  ( [cFloat, cInt],
-	    [ S.CHOICE [
-	     (* return in general-purpose register *)
-	     (fn (w, k, str) => k = K_GPR,
-	        S.SEQ [S.WIDEN (fn w => Int.max (wordTy, w)), ssGpr]),
-	     (* return in floating-point register *)
-	     (fn (w, k, str) => k = K_FPR,
-	        S.SEQ [S.WIDEN (fn w => Int.max (64, w)), ssFloat]),
-	     (* return in a memory location *)
-	     (fn (w, k, str) => k = K_MEM,
-(* FIXME! *)
-		ssGpr) ]
-	       ] )
-	end (* return *)
+	    in
+	      ( [cFloat, cInt],
+		[ S.CHOICE [
+	        (* return in general-purpose register *)
+	           (fn (w, k, str) => k = K_GPR,
+	            S.SEQ [S.WIDEN (fn w => Int.max (wordTy, w)), ssGpr]),
+		   (* return in floating-point register *)
+		   (fn (w, k, str) => k = K_FPR,
+	            S.SEQ [S.WIDEN (fn w => Int.max (64, w)), ssFloat]),
+		   (* return in a memory location *)
+		   (fn (w, k, str) => k = K_MEM,
+		    (* FIXME! *)
+		    ssGpr) ]
+		  ] )
+	    end (* return *)
 
         (* generate the finite automaton for the target machine's calling conventions *)
 	fun genAutomaton () = let
 	    val (stackCounter, callCounters, callStates) = call ()
 	    val (retCounters, retStates) = return ()
 	    fun finish str = S.find (str, stackCounter)
-	in
-	  {call = {cS0=S.init callCounters, 
-		   cStep=S.mkStep callStates, finish=finish},
-	   ret  = {rS0=S.init retCounters, rStep=S.mkStep retStates}}
-	end
+	    in
+	       {call = {cS0=S.init callCounters, 
+			cStep=S.mkStep callStates, finish=finish},
+		ret  = {rS0=S.init retCounters, rStep=S.mkStep retStates}}
+	    end
 
       end (* SVIDConventions *)
 
-    fun kindOfCTy (CTy.C_float | CTy.C_double | CTy.C_long_double) = K_FPR
-      | kindOfCTy (CTy.C_STRUCT _ | CTy.C_UNION _ | CTy.C_ARRAY _) = K_MEM
-      | kindOfCTy _ = K_GPR
-    fun szToLoc cty {sz, align} = (sz * 8, kindOfCTy cty, align)
-    fun cTyToLoc cty = szToLoc cty (CSizes.sizeOfTy cty)
-    (* convert a C argument to a location for staged allocation *)
+    (* converts locations in staged allocation to argument locations in C *)
     fun argLoc _ (w, S.REG (_, r), K_GPR) = C_GPR (w, r)
       | argLoc _ (w, S.REG (_, r), K_FPR) = C_FPR (w, r)
       | argLoc argOffset (w, S.BLOCK_OFFSET offB, K_GPR) = C_STK (w, T.I.fromInt (wordTy, offB+argOffset))
       | argLoc argOffset (w, S.BLOCK_OFFSET offB, K_FPR) = C_STK (w, T.I.fromInt (wordTy, offB+argOffset))
       | argLoc argOffset (w, S.NARROW (loc, w', k), _) = argLoc argOffset (w', loc, k)
       | argLoc _ (w, S.COMBINE _, _) = raise Fail "impossible"
+
+(* FIXME! *)
+    fun containsUnalignedFields cTy = false
+
+    fun szOfCTy cTy = #sz (CSizes.sizeOfTy cTy)
+    fun sum ls = List.foldl (op +) 0 ls
+
+    fun firstEightByte ([], eightByte) = (List.rev eightByte, [])
+      | firstEightByte (cTy :: cTys, eightByte) = let
+        val sz = szOfCTy cTy + sum(List.map szOfCTy eightByte)
+	in
+	   if (sz <= 8)
+	      then firstEightByte (cTys, cTy :: eightByte)
+	   else if (sz > 8 andalso sz <= 16)
+	      then (List.rev eightByte, cTy :: cTys)
+           else raise Fail "invalid unaligned C type"
+        end
+
+    (* break the aggregate into at most two eight-byte chunks *)
+    fun eightBytes cTys = let
+	val (eightByte1, cTys) = firstEightByte(cTys, [])
+        in
+	    case cTys
+	     of [] => [eightByte1]
+	      | cTys => [eightByte1, #1(firstEightByte(cTys, []))]
+        end
+
+    (* eliminate unions and structs *)
+    fun flattenCTy cTy = (case cTy
+        of (CTy.C_STRUCT cTys |
+	    CTy.C_UNION cTys ) => List.concat (List.map flattenCTy cTys)
+	 | cTy => [cTy])
+
+    fun combineKinds (k1, k2) = if (k1 = k2)
+	then k1
+	else (case (k1, k2)
+	       of (K_MEM, _) => K_MEM
+		| (_, K_MEM) => K_MEM
+		| (K_GPR, _) => K_GPR
+		| (_, K_GPR) => K_GPR
+		| _ => K_FPR
+ 	      (* end case*))
+
+    (* classify a non-aggregate C type into its location kind*)
+    fun kindOfCTy (CTy.C_float | CTy.C_double | CTy.C_long_double) = K_FPR
+      | kindOfCTy (cTy as (CTy.C_STRUCT _ | CTy.C_UNION _ | CTy.C_ARRAY _)) = raise Fail ""
+      | kindOfCTy _ = K_GPR
+
+    (* classify a C type into its location kinds *)
+    fun kindsOfCTy (CTy.C_float | CTy.C_double | CTy.C_long_double) = [K_FPR]
+      | kindsOfCTy (cTy as (CTy.C_STRUCT _ | CTy.C_UNION _ | CTy.C_ARRAY _)) = kindsOfAggregate (cTy)
+      | kindsOfCTy _ = [K_GPR]
+
+    (* classify each field of the eight byte according to the ABI. at this point,
+     * the eightbyte is flattened.
+     *)
+    and kindsOfEightByte [] = K_MEM
+      | kindsOfEightByte [cTy] = kindOfCTy cTy
+      | kindsOfEightByte (cTy1 :: cTy2 :: cTys) = let
+	val k1 = combineKinds (kindOfCTy cTy1, kindOfCTy cTy2)
+	val k2 = kindsOfEightByte(cTy2 :: cTys)
+        in
+	    combineKinds(k1, k2)
+	end
+
+    (* classify an aggregate type according to the ABI *)
+    and kindsOfAggregate (cTy as (CTy.C_STRUCT cTys | CTy.C_UNION cTys)) = let
+	val {sz, align} = CSizes.sizeOfTy cTy
+	val flatCTy = flattenCTy cTy
+        in
+	    if (sz > 2*8 orelse containsUnalignedFields cTy)
+	       then [K_MEM]
+               else let
+		  val eightBytes = eightBytes cTys
+		  in
+		       List.map kindsOfEightByte eightBytes
+		  end
+        end
+      | kindsOfAggregate (CTy.C_ARRAY (ty, i)) = raise Fail "todo"
+      | kindsOfAggregate _ = raise Fail "impossible"
+
+    (* convert a non-aggregate C type to a location for staged allocation *)
+    fun cTyToLoc cty = let
+	val {sz, align} = CSizes.sizeOfTy cty
+        in
+           (sz * 8, kindOfCTy cty, align)
+        end
+
+    (* convert a C type to a location for staged allocation *)
+(*    fun cTyToLocs cTy = (case cTy
+        of CTy.C_STRUCT cTys => let
+           val {sz, align} = CSizes.sizeOfTy cTy
+           in
+	       
+	 	  then [cTyToLoc cTy]
+	       else let
+		   val flatCTy = flattenCTy cTy
+		   val eightBytes = eightBytes flatCTy
+		   in
+		       List.concat (List.map eightByteToLoc eightBytes)
+		   end
+	   end
+	 | CTy.C_UNION cTys => raise Fail "todo"
+	 | CTy.C_ARRAY (cTy, i) => raise Fail "todo"
+	 | cTy => cTyToLoc cTy
+       (* end case *))
+	*)    
+    structure Test = struct
+      val ty1 = CTy.C_STRUCT [CTy.C_STRUCT [CTy.C_unsigned CTy.I_char, CTy.C_unsigned CTy.I_int]]
+      val ty2 = CTy.C_STRUCT [CTy.C_signed CTy.I_short]
+      val ty3 = CTy.C_STRUCT [CTy.C_signed CTy.I_short, CTy.C_PTR]
+      val ty4 = CTy.C_STRUCT [CTy.C_PTR, CTy.C_PTR]
+      val ty4 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_unsigned CTy.I_int], CTy.C_PTR]
+      val ty5 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_float]]
+      val ty6 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_float,CTy.C_float,CTy.C_float,CTy.C_float]]
+      val ty7 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_STRUCT[CTy.C_float,CTy.C_float],CTy.C_float,CTy.C_float]]
+      val ty8 = CTy.C_STRUCT [CTy.C_STRUCT[CTy.C_STRUCT[CTy.C_float,CTy.C_unsigned CTy.I_int],CTy.C_float,CTy.C_float]]
+
+      fun ebTest () = let	
+	fun test (ty, len) =
+	    if List.length (eightBytes (flattenCTy ty)) <> len
+	       then raise Fail "failed test"
+	       else ()
+        in
+	    List.app test [(ty1, 1), (ty2, 1), (ty3, 2), (ty4, 2)]
+        end
+
+      fun kindOf () = let
+	  fun test (eb, k) = (kindsOfEightByte eb = k) orelse raise Fail "failed test"
+	  fun eb1 ty = hd (eightBytes (flattenCTy ty))
+	  fun eb2 ty = hd(tl (eightBytes (flattenCTy ty)))
+          in
+	      List.all test [(eb1 ty1, K_GPR), (eb1 ty2, K_GPR), (eb2 ty3, K_GPR),
+			     (eb1 ty5, K_FPR), (eb1 ty6, K_FPR), (eb2 ty6, K_FPR),
+			     (eb1 ty7, K_FPR), (eb2 ty7, K_FPR),
+			     (eb1 ty8, K_GPR), (eb2 ty8, K_FPR)]
+	  end
+    end
 
     fun layout {conv, retTy, paramTys} = let
 	val {call={cS0, cStep, finish}, ret={rS0, rStep}} = SVIDConventions.genAutomaton ()
@@ -167,7 +301,7 @@ functor AMD64SVID (
 	val argMem = {szb=CSizes.alignAddr (frameSz, frameAlign), align=frameAlign}
         in
 	  {argLocs=argLocs, argMem=argMem, resLoc=resLoc, structRetLoc=structRetLoc}
-        end
+        end (* layout *)
 
     fun genCall {name, proto, paramAlloc, structRet, saveRestoreDedicated, callComment, args} = let
 	val {argLocs, argMem, resLoc, structRetLoc} = layout(proto)
@@ -188,8 +322,8 @@ functor AMD64SVID (
 	val callStm = T.CALL {funct=name, targets=[], defs=defs, uses=uses, region=mem, pops=0}
 	val (resultRegs, copyResult) = CCall.returnVals(resLoc)
 	val callSeq = argAlloc @ copyArgs @ [callStm] @ copyResult
-    in
-      {callseq=callSeq, result=resultRegs}
-    end (* genCall *)
+        in
+          {callseq=callSeq, result=resultRegs}
+        end (* genCall *)
 
   end (* AMD64SVID *)

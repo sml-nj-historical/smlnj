@@ -10,6 +10,7 @@ Library
   structure TestStagedAllocation
   structure Label
   structure Main
+  structure CCalls
 is
 
   $/basis.cm

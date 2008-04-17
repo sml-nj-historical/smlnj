@@ -59,8 +59,6 @@ structure Main =
     structure CFG = TestStagedAllocation.CFG
     structure Test = TestStagedAllocation
 
-    fun li i = T.LI (T.I.fromInt (64, i))
-
     (* machine-specific data *)
     val wordTy = 64
     val wordSzB = wordTy div 8
@@ -69,6 +67,8 @@ structure Main =
     val maxArgSz = 16
     val maxArgSzB = maxArgSz * wordSzB
     val retValVar = "retVal"
+
+    fun li i = T.LI (T.I.fromInt (wordTy, i))
 
     datatype c_argument =
 	     INT of int
@@ -212,6 +212,8 @@ structure Main =
 	 | CTy.C_PTR => POINTER(Random.randNat(rand))
         (* end case *))
 
+    fun output (strm, s) = TextIO.output(strm, s^"\n")
+
     fun main _ = let
 	val retTy = CTy.C_double
 	val paramTys = [CTy.C_double, CTy.C_unsigned CTy.I_int, CTy.C_PTR, CTy.C_double, 
@@ -229,19 +231,19 @@ structure Main =
 	(* output C code that glues to the MLRISC code  *)
 	val cOutStrm = TextIO.openOut "glue.c"
 	val cCode = genGlue(target, mlriscGlue, proto, cArgs, retVal)
-	val _ = TextIO.output(cOutStrm, cCode)
+	val _ = output(cOutStrm, cCode)
 	val _ = TextIO.closeOut cOutStrm
 
 	(* output C code for santity check *)
 	val cOutStrm = TextIO.openOut "sanity.c"
 	val cCode = genSanityCheck(proto, List.map cArgToString cArgs, retVal)
-	val _ = TextIO.output(cOutStrm, cCode)
+	val _ = output(cOutStrm, cCode)
 	val _ = TextIO.closeOut cOutStrm
 
 	(* output main *)
 	val cMainOutStrm = TextIO.openOut "main.c"
 	val cMain = genCMain()
-	val _ = TextIO.output(cMainOutStrm, cMain)
+	val _ = output(cMainOutStrm, cMain)
 	val _ = TextIO.closeOut cMainOutStrm
 		    
 	(* output MLRISC code*)
